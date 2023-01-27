@@ -54,8 +54,7 @@ namespace grb {
 			class argmin {
 
 				static_assert( std::is_integral< IType >::value,
-					"Argmin operator may only be constructed using integral index "
-					"types." );
+					"Argmin operator may only be constructed using integral index types." );
 
 				public:
 
@@ -91,8 +90,10 @@ namespace grb {
 					/**
 					 * Out-of-place application of the operator.
 					 *
-					 * @param[in]  a The left-hand side input. Must be pre-allocated and initialised.
-					 * @param[in]  b The right-hand side input. Must be pre-allocated and initialised.
+					 * @param[in]  a The left-hand side input. Must be pre-allocated and
+					 *               initialised.
+					 * @param[in]  b The right-hand side input. Must be pre-allocated and
+					 *               initialised.
 					 * @param[out] c The output. Must be pre-allocated.
 					 */
 					static void apply(
@@ -156,10 +157,10 @@ namespace grb {
 			class argmax {
 
 				static_assert( std::is_integral< IType >::value,
-					"Argmin operator may only be constructed using integral index "
-					"types." );
+					"Argmin operator may only be constructed using integral index types." );
 
 			public:
+
 				/** Alias to the left-hand input data type. */
 				typedef std::pair< IType, VType > left_type;
 
@@ -215,7 +216,10 @@ namespace grb {
 				 * @param[in,out] c Pointer to the right-hand side input data. This also
 				 *                  dubs as the output memory area.
 				 */
-				static void foldr( const left_type * __restrict__ const a, result_type * __restrict__ const c ) {
+				static void foldr(
+					const left_type * __restrict__ const a,
+					result_type * __restrict__ const c
+				) {
 					if( a->second > c->second ) {
 						c->first = a->first;
 						c->second = a->second;
@@ -229,12 +233,16 @@ namespace grb {
 				 *                  dubs as the output memory area.
 				 * @param[in]     b Pointer to the right-hand side input data.
 				 */
-				static void foldl( result_type * __restrict__ const c, const right_type * __restrict__ const b ) {
+				static void foldl(
+					result_type * __restrict__ const c,
+					const right_type * __restrict__ const b
+				) {
 					if( b->second >= c->second ) {
 						c->first = b->first;
 						c->second = b->second;
 					}
 				}
+
 			};
 
 			/**
@@ -264,10 +272,14 @@ namespace grb {
 			 * @tparam IN2 The right-hand input data type.
 			 * @tparam OUT The output data type.
 			 */
-			template< typename IN1, typename IN2, typename OUT, enum Backend implementation = config::default_backend >
+			template<
+				typename IN1, typename IN2, typename OUT,
+				enum Backend implementation = config::default_backend
+			>
 			class left_assign {
 
 			public:
+
 				/** Alias to the left-hand input data type. */
 				typedef IN1 left_type;
 
@@ -304,8 +316,12 @@ namespace grb {
 				 * @param[in]  b The right-hand side input. Must be pre-allocated and initialised.
 				 * @param[out] c The output. Must be pre-allocated.
 				 */
-				static void apply( const left_type * __restrict__ const a, const right_type * __restrict__ const b, result_type * __restrict__ const c ) {
-					(void)b;
+				static void apply(
+					const left_type * __restrict__ const a,
+					const right_type * __restrict__ const b,
+					result_type * __restrict__ const c
+				) {
+					(void) b;
 					*c = static_cast< result_type >( *a );
 				}
 
@@ -316,7 +332,10 @@ namespace grb {
 				 * @param[in,out] c Pointer to the right-hand side input data. This also
 				 *                  dubs as the output memory area.
 				 */
-				static void foldr( const left_type * __restrict__ const a, result_type * __restrict__ const c ) {
+				static void foldr(
+					const left_type * __restrict__ const a,
+					result_type * __restrict__ const c
+				) {
 					*c = static_cast< result_type >( *a );
 				}
 
@@ -327,10 +346,14 @@ namespace grb {
 				 *                  dubs as the output memory area.
 				 * @param[in]     b Pointer to the right-hand side input data.
 				 */
-				static void foldl( result_type * __restrict__ const c, const right_type * __restrict__ const b ) {
-					(void)b;
-					(void)c;
+				static void foldl(
+					result_type * __restrict__ const c,
+					const right_type * __restrict__ const b
+				) {
+					(void) b;
+					(void) c;
 				}
+
 			};
 
 			/**
@@ -360,10 +383,14 @@ namespace grb {
 			 * @tparam IN2 The right-hand input data type.
 			 * @tparam OUT The output data type.
 			 */
-			template< typename IN1, typename IN2, typename OUT, enum Backend implementation = config::default_backend >
+			template<
+				typename IN1, typename IN2, typename OUT,
+				enum Backend implementation = config::default_backend
+			>
 			class right_assign {
 
 			public:
+
 				/** Alias to the left-hand input data type. */
 				typedef IN1 left_type;
 
@@ -396,12 +423,18 @@ namespace grb {
 				/**
 				 * Out-of-place application of the addition c = a.
 				 *
-				 * @param[in]  a The left-hand side input. Must be pre-allocated and initialised.
-				 * @param[in]  b The right-hand side input. Must be pre-allocated and initialised.
+				 * @param[in]  a The left-hand side input. Must be pre-allocated and
+				 *               initialised.
+				 * @param[in]  b The right-hand side input. Must be pre-allocated and
+				 *               initialised.
 				 * @param[out] c The output. Must be pre-allocated.
 				 */
-				static void apply( const left_type * __restrict__ const a, const right_type * __restrict__ const b, result_type * __restrict__ const c ) {
-					(void)a;
+				static void apply(
+					const left_type * __restrict__ const a,
+					const right_type * __restrict__ const b,
+					result_type * __restrict__ const c
+				) {
+					(void) a;
 					*c = *b;
 				}
 
@@ -412,9 +445,12 @@ namespace grb {
 				 * @param[in,out] c Pointer to the right-hand side input data. This also
 				 *                  dubs as the output memory area.
 				 */
-				static void foldr( const left_type * __restrict__ const a, result_type * __restrict__ const c ) {
-					(void)a;
-					(void)c;
+				static void foldr(
+					const left_type * __restrict__ const a,
+					result_type * __restrict__ const c
+				) {
+					(void) a;
+					(void) c;
 				}
 
 				/**
@@ -424,7 +460,10 @@ namespace grb {
 				 *                  dubs as the output memory area.
 				 * @param[in]     b Pointer to the right-hand side input data.
 				 */
-				static void foldl( result_type * __restrict__ const c, const right_type * __restrict__ const b ) {
+				static void foldl(
+					result_type * __restrict__ const c,
+					const right_type * __restrict__ const b
+				) {
 					*c = static_cast< result_type >( *b );
 				}
 			};
@@ -437,10 +476,14 @@ namespace grb {
 			 *
 			 * If \f$ x \f$ does not evaluate true the operator shall have no effect.
 			 */
-			template< typename D1, typename D2, typename D3, enum Backend implementation = config::default_backend >
+			template<
+				typename D1, typename D2, typename D3,
+				enum Backend implementation = config::default_backend
+			>
 			class left_assign_if {
 
 			public:
+
 				/** Alias to the left-hand input data type. */
 				typedef D1 left_type;
 
@@ -473,11 +516,17 @@ namespace grb {
 				/**
 				 * Out-of-place application of the addition c = a.
 				 *
-				 * @param[in]  a The left-hand side input. Must be pre-allocated and initialised.
-				 * @param[in]  b The right-hand side input. Must be pre-allocated and initialised.
+				 * @param[in]  a The left-hand side input. Must be pre-allocated and
+				 *               initialised.
+				 * @param[in]  b The right-hand side input. Must be pre-allocated and
+				 *               initialised.
 				 * @param[out] c The output. Must be pre-allocated.
 				 */
-				static void apply( const D1 * __restrict__ const a, const D2 * __restrict__ const b, D3 * __restrict__ const c ) {
+				static void apply(
+					const D1 * __restrict__ const a,
+					const D2 * __restrict__ const b,
+					D3 * __restrict__ const c
+				) {
 					if( static_cast< const bool >( *b ) ) {
 						*c = *a;
 					}
@@ -490,7 +539,10 @@ namespace grb {
 				 * @param[in,out] c Pointer to the right-hand side input data. This also
 				 *                  dubs as the output memory area.
 				 */
-				static void foldr( const D1 * __restrict__ const a, D3 * __restrict__ const c ) {
+				static void foldr(
+					const D1 * __restrict__ const a,
+					D3 * __restrict__ const c
+				) {
 					if( static_cast< const bool >( *c ) ) {
 						*c = static_cast< D3 >( *a );
 					}
@@ -503,11 +555,15 @@ namespace grb {
 				 *                  dubs as the output memory area.
 				 * @param[in]     b Pointer to the right-hand side input data.
 				 */
-				static void foldl( D3 * __restrict__ const c, const D2 * __restrict__ const b ) {
+				static void foldl(
+					D3 * __restrict__ const c,
+					const D2 * __restrict__ const b
+				) {
 					if( static_cast< bool >( *b ) ) {
 						*c = static_cast< D3 >( static_cast< D1 >( *c ) );
 					}
 				}
+
 			};
 
 			/**
@@ -518,10 +574,14 @@ namespace grb {
 			 *
 			 * If \f$ x \f$ does not evaluate true the operator shall have no effect.
 			 */
-			template< typename D1, typename D2, typename D3, enum Backend implementation = config::default_backend >
+			template<
+				typename D1, typename D2, typename D3,
+				enum Backend implementation = config::default_backend
+			>
 			class right_assign_if {
 
 			public:
+
 				/** Alias to the left-hand input data type. */
 				typedef D1 left_type;
 
@@ -554,11 +614,17 @@ namespace grb {
 				/**
 				 * Out-of-place application of the addition c = a.
 				 *
-				 * @param[in]  a The left-hand side input. Must be pre-allocated and initialised.
-				 * @param[in]  b The right-hand side input. Must be pre-allocated and initialised.
+				 * @param[in]  a The left-hand side input. Must be pre-allocated and
+				 *               initialised.
+				 * @param[in]  b The right-hand side input. Must be pre-allocated and
+				 *               initialised.
 				 * @param[out] c The output. Must be pre-allocated.
 				 */
-				static void apply( const D1 * __restrict__ const a, const D2 * __restrict__ const b, D3 * __restrict__ const c ) {
+				static void apply(
+					const D1 * __restrict__ const a,
+					const D2 * __restrict__ const b,
+					D3 * __restrict__ const c
+				) {
 					if( static_cast< const bool >( *a ) ) {
 						*c = *b;
 					}
@@ -571,7 +637,10 @@ namespace grb {
 				 * @param[in,out] c Pointer to the right-hand side input data. This also
 				 *                  dubs as the output memory area.
 				 */
-				static void foldr( const D1 * __restrict__ const a, D3 * __restrict__ const c ) {
+				static void foldr(
+					const D1 * __restrict__ const a,
+					D3 * __restrict__ const c
+				) {
 					if( static_cast< const bool >( *a ) ) {
 						*c = static_cast< D3 >( static_cast< D2 >( *c ) );
 					}
@@ -584,11 +653,15 @@ namespace grb {
 				 *                  dubs as the output memory area.
 				 * @param[in]     b Pointer to the right-hand side input data.
 				 */
-				static void foldl( D3 * __restrict__ const c, const D2 * __restrict__ const b ) {
+				static void foldl(
+					D3 * __restrict__ const c,
+					const D2 * __restrict__ const b
+				) {
 					if( static_cast< bool >( *c ) ) {
 						*c = static_cast< D3 >( *b );
 					}
 				}
+
 			};
 
 			/**
@@ -611,10 +684,13 @@ namespace grb {
 			 * @tparam OUT The output data type.
 			 */
 			// [Example Base Operator Implementation]
-			template< typename IN1, typename IN2, typename OUT, enum Backend implementation = config::default_backend >
+			template<
+				typename IN1, typename IN2, typename OUT,
+				enum Backend implementation = config::default_backend >
 			class add {
 
 			public:
+
 				/** Alias to the left-hand input data type. */
 				typedef IN1 left_type;
 
@@ -647,13 +723,16 @@ namespace grb {
 				/**
 				 * Out-of-place application of the addition c = a + b.
 				 *
-				 * @param[in]  a The left-hand side input. Must be pre-allocated and initialised.
-				 * @param[in]  b The right-hand side input. Must be pre-allocated and initialised.
+				 * @param[in]  a The left-hand side input. Must be pre-allocated and
+				 *               initialised.
+				 * @param[in]  b The right-hand side input. Must be pre-allocated and
+				 *               initialised.
 				 * @param[out] c The output. Must be pre-allocated.
 				 *
 				 * \warning Passing invalid pointers will result in UB.
 				 */
-				static void apply( const left_type * __restrict__ const a,
+				static void apply(
+					const left_type * __restrict__ const a,
 					const right_type * __restrict__ const b,
 					result_type * __restrict__ const c
 				) {
@@ -672,7 +751,10 @@ namespace grb {
 				 *
 				 * \warning Passing invalid pointers will result in UB.
 				 */
-				static void foldr( const left_type * __restrict__ const a, result_type * __restrict__ const c ) {
+				static void foldr(
+					const left_type * __restrict__ const a,
+					result_type * __restrict__ const c
+				) {
 					GRB_UTIL_IGNORE_MAYBE_UNINITIALIZED // this is a (too) broad suppression--
 					                                    // see internal issue 306 for rationale
 					*c += *a;
@@ -697,6 +779,7 @@ namespace grb {
 					*c += *b;
 					GRB_UTIL_RESTORE_WARNINGS
 				}
+
 			};
 			// [Example Base Operator Implementation]
 
@@ -783,7 +866,10 @@ namespace grb {
 				 * @param[in,out] c Pointer to the right-hand side input data. This also
 				 *                  dubs as the output memory area.
 				 */
-				static void foldr( const left_type * __restrict__ const a, result_type * __restrict__ const c ) {
+				static void foldr(
+					const left_type * __restrict__ const a,
+					result_type * __restrict__ const c
+				) {
 					*c *= *a;
 				}
 
@@ -794,9 +880,13 @@ namespace grb {
 				 *                  dubs as the output memory area.
 				 * @param[in]     b Pointer to the right-hand side input data.
 				 */
-				static void foldl( result_type * __restrict__ const c, const right_type * __restrict__ const b ) {
+				static void foldl(
+					result_type * __restrict__ const c,
+					const right_type * __restrict__ const b
+				) {
 					*c *= *b;
 				}
+
 			};
 
 			/**
@@ -814,9 +904,14 @@ namespace grb {
 			 * @tparam IN2 The right-hand input data type.
 			 * @tparam OUT The output data type.
 			 */
-			template< typename IN1, typename IN2, typename OUT, enum Backend implementation = config::default_backend >
+			template<
+				typename IN1, typename IN2, typename OUT,
+				enum Backend implementation = config::default_backend
+			>
 			class max {
+
 			public:
+
 				/** Alias to the left-hand input data type. */
 				typedef IN1 left_type;
 
@@ -849,13 +944,19 @@ namespace grb {
 				/**
 				 * Out-of-place application of the max operator.
 				 *
-				 * @param[in]  a The left-hand side input. Must be pre-allocated and initialised.
-				 * @param[in]  b The right-hand side input. Must be pre-allocated and initialised.
+				 * @param[in]  a The left-hand side input. Must be pre-allocated and
+				 *               initialised.
+				 * @param[in]  b The right-hand side input. Must be pre-allocated and
+				 *               initialised.
 				 * @param[out] c The output. Must be pre-allocated.
 				 *
 				 * At the end of the operation, \f$ c = \max\{a,b\} \f$.
 				 */
-				static void apply( const left_type * __restrict__ const a, const right_type * __restrict__ const b, result_type * __restrict__ const c ) {
+				static void apply(
+					const left_type * __restrict__ const a,
+					const right_type * __restrict__ const b,
+					result_type * __restrict__ const c
+				) {
 					if( *a < *b ) {
 						*c = static_cast< OUT >( *b );
 					} else {
@@ -870,7 +971,10 @@ namespace grb {
 				 * @param[in,out] c Pointer to the right-hand side input data. This also
 				 *                  dubs as the output memory area.
 				 */
-				static void foldr( const left_type * __restrict__ const a, result_type * __restrict__ const c ) {
+				static void foldr(
+					const left_type * __restrict__ const a,
+					result_type * __restrict__ const c
+				) {
 					if( *a > *c ) {
 						*c = *a;
 					}
@@ -883,11 +987,15 @@ namespace grb {
 				 *                  dubs as the output memory area.
 				 * @param[in]     b Pointer to the right-hand side input data.
 				 */
-				static void foldl( result_type * __restrict__ const c, const right_type * __restrict__ const b ) {
+				static void foldl(
+					result_type * __restrict__ const c,
+					const right_type * __restrict__ const b
+				) {
 					if( *b > *c ) {
 						*c = *b;
 					}
 				}
+
 			};
 
 			/**
@@ -905,9 +1013,14 @@ namespace grb {
 			 * @tparam IN2 The right-hand input data type.
 			 * @tparam OUT The output data type.
 			 */
-			template< typename IN1, typename IN2, typename OUT, enum Backend implementation = config::default_backend >
+			template<
+				typename IN1, typename IN2, typename OUT,
+				enum Backend implementation = config::default_backend
+			>
 			class min {
+
 			public:
+
 				/** Alias to the left-hand input data type. */
 				typedef IN1 left_type;
 
@@ -940,13 +1053,19 @@ namespace grb {
 				/**
 				 * Out-of-place application of the min operator.
 				 *
-				 * @param[in]  a The left-hand side input. Must be pre-allocated and initialised.
-				 * @param[in]  b The right-hand side input. Must be pre-allocated and initialised.
+				 * @param[in]  a The left-hand side input. Must be pre-allocated and
+				 *               initialised.
+				 * @param[in]  b The right-hand side input. Must be pre-allocated and
+				 *               initialised.
 				 * @param[out] c The output. Must be pre-allocated.
 				 *
 				 * At the end of the operation, \f$ c = \min\{a,b\} \f$.
 				 */
-				static void apply( const left_type * __restrict__ const a, const right_type * __restrict__ const b, result_type * __restrict__ const c ) {
+				static void apply(
+					const left_type * __restrict__ const a,
+					const right_type * __restrict__ const b,
+					result_type * __restrict__ const c
+				) {
 					if( *a > *b ) {
 						*c = static_cast< OUT >( *b );
 					} else {
@@ -961,7 +1080,10 @@ namespace grb {
 				 * @param[in,out] c Pointer to the right-hand side input data. This also
 				 *                  dubs as the output memory area.
 				 */
-				static void foldr( const left_type * __restrict__ const a, result_type * __restrict__ const c ) {
+				static void foldr(
+					const left_type * __restrict__ const a,
+					result_type * __restrict__ const c
+				) {
 					if( *a < *c ) {
 						*c = *a;
 					}
@@ -974,17 +1096,40 @@ namespace grb {
 				 *                  dubs as the output memory area.
 				 * @param[in]     b Pointer to the right-hand side input data.
 				 */
-				static void foldl( result_type * __restrict__ const c, const right_type * __restrict__ const b ) {
+				static void foldl(
+					result_type * __restrict__ const c,
+					const right_type * __restrict__ const b
+				) {
 					if( *b < *c ) {
 						*c = *b;
 					}
 				}
+
 			};
 
-			/** \todo add documentation */
-			template< typename IN1, typename IN2, typename OUT, enum Backend implementation = config::default_backend >
+			/**
+			 * Standard numerical subtraction operator.
+			 *
+			 * Assumes native availability of - on the given data types, or assumes
+			 * that the relevant operators are properly overloaded.
+			 *
+			 * Non-standard or non-matching data types, or non-standard (overloaded) -
+			 * operators, should be used with caution and may necessitate an explicit
+			 * definition as a GraphBLAS operator with the #is_associative and
+			 * #is_commutative fields, and others, set as required.
+			 *
+			 * @tparam IN1 The left-hand input data type.
+			 * @tparam IN2 The right-hand input data type.
+			 * @tparam OUT The output data type.
+			 */
+			template<
+				typename IN1, typename IN2, typename OUT,
+				enum Backend implementation = config::default_backend
+			>
 			class substract {
+
 			public:
+
 				/** Alias to the left-hand input data type. */
 				typedef IN1 left_type;
 
@@ -1017,13 +1162,19 @@ namespace grb {
 				/**
 				 * Out-of-place application of this operator.
 				 *
-				 * @param[in]  a The left-hand side input. Must be pre-allocated and initialised.
-				 * @param[in]  b The right-hand side input. Must be pre-allocated and initialised.
+				 * @param[in]  a The left-hand side input. Must be pre-allocated and
+				 *               initialised.
+				 * @param[in]  b The right-hand side input. Must be pre-allocated and
+				 *               initialised.
 				 * @param[out] c The output. Must be pre-allocated.
 				 *
 				 * At the end of the operation, \f$ c = \min\{a,b\} \f$.
 				 */
-				static void apply( const left_type * __restrict__ const a, const right_type * __restrict__ const b, result_type * __restrict__ const c ) {
+				static void apply(
+					const left_type * __restrict__ const a,
+					const right_type * __restrict__ const b,
+					result_type * __restrict__ const c
+				) {
 					*c = *a - *b;
 				}
 
@@ -1034,7 +1185,10 @@ namespace grb {
 				 * @param[in,out] c Pointer to the right-hand side input data. This also
 				 *                  dubs as the output memory area.
 				 */
-				static void foldr( const left_type * __restrict__ const a, result_type * __restrict__ const c ) {
+				static void foldr(
+					const left_type * __restrict__ const a,
+					result_type * __restrict__ const c
+				) {
 					*c = *a - *c;
 				}
 
@@ -1045,15 +1199,38 @@ namespace grb {
 				 *                  dubs as the output memory area.
 				 * @param[in]     b Pointer to the right-hand side input data.
 				 */
-				static void foldl( result_type * __restrict__ const c, const right_type * __restrict__ const b ) {
+				static void foldl(
+					result_type * __restrict__ const c,
+					const right_type * __restrict__ const b
+				) {
 					*c -= *b;
 				}
+
 			};
 
-			/** \todo add documentation */
-			template< typename IN1, typename IN2, typename OUT, enum Backend implementation = config::default_backend >
+			/**
+			 * Standard numerical division operator.
+			 *
+			 * Assumes native availability of / on the given data types, or assumes
+			 * that the relevant operators are properly overloaded.
+			 *
+			 * Non-standard or non-matching data types, or non-standard (overloaded) /
+			 * operators, should be used with caution and may necessitate an explicit
+			 * definition as a GraphBLAS operator with the #is_associative and
+			 * #is_commutative fields, and others, set as required.
+			 *
+			 * @tparam IN1 The left-hand input data type.
+			 * @tparam IN2 The right-hand input data type.
+			 * @tparam OUT The output data type.
+			 */
+			template<
+				typename IN1, typename IN2, typename OUT,
+				enum Backend implementation = config::default_backend
+			>
 			class divide {
+
 			public:
+
 				/** Alias to the left-hand input data type. */
 				typedef IN1 left_type;
 
@@ -1092,7 +1269,11 @@ namespace grb {
 				 *
 				 * At the end of the operation, \f$ c = a/b \f$.
 				 */
-				static void apply( const left_type * __restrict__ const a, const right_type * __restrict__ const b, result_type * __restrict__ const c ) {
+				static void apply(
+					const left_type * __restrict__ const a,
+					const right_type * __restrict__ const b,
+					result_type * __restrict__ const c
+				) {
 					*c = *a / *b;
 				}
 
@@ -1103,7 +1284,10 @@ namespace grb {
 				 * @param[in,out] c Pointer to the right-hand side input data. This also
 				 *                  dubs as the output memory area.
 				 */
-				static void foldr( const left_type * __restrict__ const a, result_type * __restrict__ const c ) {
+				static void foldr(
+					const left_type * __restrict__ const a,
+					result_type * __restrict__ const c
+				) {
 					*c = *a / *c;
 				}
 
@@ -1114,15 +1298,41 @@ namespace grb {
 				 *                  dubs as the output memory area.
 				 * @param[in]     b Pointer to the right-hand side input data.
 				 */
-				static void foldl( result_type * __restrict__ const c, const right_type * __restrict__ const b ) {
+				static void foldl(
+					result_type * __restrict__ const c,
+					const right_type * __restrict__ const b
+				) {
 					*c /= *b;
 				}
+
 			};
 
-			/** \todo add documentation */
-			template< typename IN1, typename IN2, typename OUT, enum Backend implementation = config::default_backend >
+			/**
+			 * Non-standard numerical division where the inputs are switched.
+			 *
+			 * I.e., if the left input is \f$ l \f$ and the right input is \f$ r \f$,
+			 * then this operator computes \f$ r / l \f$.
+			 *
+			 * Assumes native availability of / on the given data types, or assumes
+			 * that the relevant operators are properly overloaded.
+			 *
+			 * Non-standard or non-matching data types, or non-standard (overloaded) /
+			 * operators, should be used with caution and may necessitate an explicit
+			 * definition as a GraphBLAS operator with the #is_associative and
+			 * #is_commutative fields, and others, set as required.
+			 *
+			 * @tparam IN1 The left-hand input data type.
+			 * @tparam IN2 The right-hand input data type.
+			 * @tparam OUT The output data type.
+			 */
+			template<
+				typename IN1, typename IN2, typename OUT,
+				enum Backend implementation = config::default_backend
+			>
 			class divide_reverse {
+
 			public:
+
 				/** Alias to the left-hand input data type. */
 				typedef IN1 left_type;
 
@@ -1155,13 +1365,19 @@ namespace grb {
 				/**
 				 * Out-of-place application of this operator.
 				 *
-				 * @param[in]  a The left-hand side input. Must be pre-allocated and initialised.
-				 * @param[in]  b The right-hand side input. Must be pre-allocated and initialised.
+				 * @param[in]  a The left-hand side input. Must be pre-allocated and
+				 *               initialised.
+				 * @param[in]  b The right-hand side input. Must be pre-allocated and
+				 *               initialised.
 				 * @param[out] c The output. Must be pre-allocated.
 				 *
 				 * At the end of the operation, \f$ c = b/a \f$.
 				 */
-				static void apply( const left_type * __restrict__ const a, const right_type * __restrict__ const b, result_type * __restrict__ const c ) {
+				static void apply(
+					const left_type * __restrict__ const a,
+					const right_type * __restrict__ const b,
+					result_type * __restrict__ const c
+				) {
 					*c = *b / *a;
 				}
 
@@ -1172,7 +1388,10 @@ namespace grb {
 				 * @param[in,out] c Pointer to the right-hand side input data. This also
 				 *                  dubs as the output memory area.
 				 */
-				static void foldr( const left_type * __restrict__ const a, result_type * __restrict__ const c ) {
+				static void foldr(
+					const left_type * __restrict__ const a,
+					result_type * __restrict__ const c
+				) {
 					*c /= *a;
 				}
 
@@ -1183,15 +1402,28 @@ namespace grb {
 				 *                  dubs as the output memory area.
 				 * @param[in]     b Pointer to the right-hand side input data.
 				 */
-				static void foldl( result_type * __restrict__ const c, const right_type * __restrict__ const b ) {
+				static void foldl(
+					result_type * __restrict__ const c,
+					const right_type * __restrict__ const b
+				) {
 					*c = *b / *c;
 				}
+
 			};
 
-			/** \todo add documentation */
-			template< typename IN1, typename IN2, typename OUT, enum Backend implementation = config::default_backend >
+			/**
+			 * The equals operator.
+			 *
+			 * Assumes that the == operator for the given input types is defined.
+			 */
+			template<
+				typename IN1, typename IN2, typename OUT,
+				enum Backend implementation = config::default_backend
+			>
 			class equal {
+
 			public:
+
 				/** Alias to the left-hand input data type. */
 				typedef IN1 left_type;
 
@@ -1224,13 +1456,21 @@ namespace grb {
 				/**
 				 * Out-of-place application of this operator.
 				 *
-				 * @param[in]  a The left-hand side input. Must be pre-allocated and initialised.
-				 * @param[in]  b The right-hand side input. Must be pre-allocated and initialised.
+				 * @param[in]  a The left-hand side input. Must be pre-allocated and
+				 *               initialised.
+				 * @param[in]  b The right-hand side input. Must be pre-allocated and
+				 *               initialised.
 				 * @param[out] c The output. Must be pre-allocated.
 				 *
-				 * At the end of the operation, \f$ c = \min\{a,b\} \f$.
+				 * At the end of the operation, \f$ c \f$ will be set to
+				 * <tt>static_cast<result_type>(true)</tt> if \f$ a == b \f$, and to
+				 * <tt>static_cast<result_type>(false)</tt> otherwise.
 				 */
-				static void apply( const left_type * __restrict__ const a, const right_type * __restrict__ const b, result_type * __restrict__ const c ) {
+				static void apply(
+					const left_type * __restrict__ const a,
+					const right_type * __restrict__ const b,
+					result_type * __restrict__ const c
+				) {
 					if( *a == *b ) {
 						*c = static_cast< OUT >( true );
 					} else {
@@ -1245,7 +1485,10 @@ namespace grb {
 				 * @param[in,out] c Pointer to the right-hand side input data. This also
 				 *                  dubs as the output memory area.
 				 */
-				static void foldr( const left_type * __restrict__ const a, result_type * __restrict__ const c ) {
+				static void foldr(
+					const left_type * __restrict__ const a,
+					result_type * __restrict__ const c
+				) {
 					if( *a == *c ) {
 						*c = static_cast< result_type >( true );
 					} else {
@@ -1260,19 +1503,32 @@ namespace grb {
 				 *                  dubs as the output memory area.
 				 * @param[in]     b Pointer to the right-hand side input data.
 				 */
-				static void foldl( result_type * __restrict__ const c, const right_type * __restrict__ const b ) {
+				static void foldl(
+					result_type * __restrict__ const c,
+					const right_type * __restrict__ const b
+				) {
 					if( *b == *c ) {
 						*c = static_cast< result_type >( true );
 					} else {
 						*c = static_cast< result_type >( false );
 					}
 				}
+
 			};
 
-			/** \todo add documentation */
-			template< typename IN1, typename IN2, typename OUT, enum Backend implementation = config::default_backend >
+			/**
+			 * Standard not-equals operator.
+			 *
+			 * Assumes that the != operator is defined on the given input types.
+			 */
+			template<
+				typename IN1, typename IN2, typename OUT,
+				enum Backend implementation = config::default_backend
+			>
 			class not_equal {
+
 			public:
+
 				/** Alias to the left-hand input data type. */
 				typedef IN1 left_type;
 
@@ -1305,13 +1561,19 @@ namespace grb {
 				/**
 				 * Out-of-place application of this operator.
 				 *
-				 * @param[in]  a The left-hand side input. Must be pre-allocated and initialised.
-				 * @param[in]  b The right-hand side input. Must be pre-allocated and initialised.
+				 * @param[in]  a The left-hand side input. Must be pre-allocated and
+				 *               initialised.
+				 * @param[in]  b The right-hand side input. Must be pre-allocated and
+				 *               initialised.
 				 * @param[out] c The output. Must be pre-allocated.
 				 *
 				 * At the end of the operation, \f$ c = \min\{a,b\} \f$.
 				 */
-				static void apply( const left_type * __restrict__ const a, const right_type * __restrict__ const b, result_type * __restrict__ const c ) {
+				static void apply(
+					const left_type * __restrict__ const a,
+					const right_type * __restrict__ const b,
+					result_type * __restrict__ const c
+				) {
 					GRB_UTIL_IGNORE_MAYBE_UNINITIALIZED // this is a (too) broad suppression--
 					                                    // see internal issue 306 for rationale
 					if( *a != *b ) {
@@ -1329,7 +1591,10 @@ namespace grb {
 				 * @param[in,out] c Pointer to the right-hand side input data. This also
 				 *                  dubs as the output memory area.
 				 */
-				static void foldr( const left_type * __restrict__ const a, result_type * __restrict__ const c ) {
+				static void foldr(
+					const left_type * __restrict__ const a,
+					result_type * __restrict__ const c
+				) {
 					if( *a != *c ) {
 						*c = static_cast< result_type >( true );
 					} else {
@@ -1344,16 +1609,27 @@ namespace grb {
 				 *                  dubs as the output memory area.
 				 * @param[in]     b Pointer to the right-hand side input data.
 				 */
-				static void foldl( result_type * __restrict__ const c, const right_type * __restrict__ const b ) {
+				static void foldl(
+					result_type * __restrict__ const c,
+					const right_type * __restrict__ const b
+				) {
 					if( *b != *c ) {
 						*c = static_cast< result_type >( true );
 					} else {
 						*c = static_cast< result_type >( false );
 					}
 				}
+
 			};
 
-			/** \todo add documentation */
+			/**
+			 * A non-standard operator that returns any input that evaluates to
+			 * <tt>true</tt> when cast to a <tt>bool</tt>, \em or, in case that
+			 * no input evaluates <tt>true</tt>, returns any input.
+			 *
+			 * In case the input and output types are <tt>bool</tt>, this operator
+			 * corresponds to the classical logical or.
+			 */
 			template<
 				typename IN1, typename IN2, typename OUT,
 				enum Backend implementation = config::default_backend
@@ -1449,10 +1725,19 @@ namespace grb {
 
 			};
 
-			/** \todo add documentation */
-			template< typename IN1, typename IN2, typename OUT, enum Backend implementation = config::default_backend >
+			/**
+			 * The logical or operator, \f$ x \lor y \f$.
+			 *
+			 * Assumes that the || operator is defined on the given input types.
+			 */
+			template<
+				typename IN1, typename IN2, typename OUT,
+				enum Backend implementation = config::default_backend
+			>
 			class logical_or {
+
 			public:
+
 				/** Alias to the left-hand input data type. */
 				typedef IN1 left_type;
 
@@ -1485,13 +1770,19 @@ namespace grb {
 				/**
 				 * Out-of-place application of this operator.
 				 *
-				 * @param[in]  a The left-hand side input. Must be pre-allocated and initialised.
-				 * @param[in]  b The right-hand side input. Must be pre-allocated and initialised.
+				 * @param[in]  a The left-hand side input. Must be pre-allocated and
+				 *               initialised.
+				 * @param[in]  b The right-hand side input. Must be pre-allocated and
+				 *               initialised.
 				 * @param[out] c The output. Must be pre-allocated.
 				 *
 				 * At the end of the operation, \f$ c = \min\{a,b\} \f$.
 				 */
-				static void apply( const left_type * __restrict__ const a, const right_type * __restrict__ const b, result_type * __restrict__ const c ) {
+				static void apply(
+					const left_type * __restrict__ const a,
+					const right_type * __restrict__ const b,
+					result_type * __restrict__ const c
+				) {
 					printf( "Hello from mul\n" );
 					if( *a || *b ) {
 						*c = static_cast< OUT >( true );
@@ -1507,7 +1798,10 @@ namespace grb {
 				 * @param[in,out] c Pointer to the right-hand side input data. This also
 				 *                  dubs as the output memory area.
 				 */
-				static void foldr( const left_type * __restrict__ const a, result_type * __restrict__ const c ) {
+				static void foldr(
+					const left_type * __restrict__ const a,
+					result_type * __restrict__ const c
+				) {
 					if( *a || *c ) {
 						*c = static_cast< result_type >( true );
 					} else {
@@ -1522,7 +1816,10 @@ namespace grb {
 				 *                  dubs as the output memory area.
 				 * @param[in]     b Pointer to the right-hand side input data.
 				 */
-				static void foldl( result_type * __restrict__ const c, const right_type * __restrict__ const b ) {
+				static void foldl(
+					result_type * __restrict__ const c,
+					const right_type * __restrict__ const b
+				) {
 					if( *b || *c ) {
 						*c = static_cast< result_type >( true );
 					} else {
@@ -1531,10 +1828,19 @@ namespace grb {
 				}
 			};
 
-			/** \todo add documentation */
-			template< typename IN1, typename IN2, typename OUT, enum Backend implementation = config::default_backend >
+			/**
+			 * The logical-and operator, \f$ x \land y \f$.
+			 *
+			 * Assumes that the && operator is defined for the given input types.
+			 */
+			template<
+				typename IN1, typename IN2, typename OUT,
+				enum Backend implementation = config::default_backend
+			>
 			class logical_and {
+
 			public:
+
 				/** Alias to the left-hand input data type. */
 				typedef IN1 left_type;
 
@@ -1567,13 +1873,19 @@ namespace grb {
 				/**
 				 * Out-of-place application of this operator.
 				 *
-				 * @param[in]  a The left-hand side input. Must be pre-allocated and initialised.
-				 * @param[in]  b The right-hand side input. Must be pre-allocated and initialised.
+				 * @param[in]  a The left-hand side input. Must be pre-allocated and
+				 *               initialised.
+				 * @param[in]  b The right-hand side input. Must be pre-allocated and
+				 *               initialised.
 				 * @param[out] c The output. Must be pre-allocated.
 				 *
 				 * At the end of the operation, \f$ c = \min\{a,b\} \f$.
 				 */
-				static void apply( const left_type * __restrict__ const a, const right_type * __restrict__ const b, result_type * __restrict__ const c ) {
+				static void apply(
+					const left_type * __restrict__ const a,
+					const right_type * __restrict__ const b,
+					result_type * __restrict__ const c
+				) {
 					if( *a && *b ) {
 						*c = static_cast< OUT >( true );
 					} else {
@@ -1588,7 +1900,10 @@ namespace grb {
 				 * @param[in,out] c Pointer to the right-hand side input data. This also
 				 *                  dubs as the output memory area.
 				 */
-				static void foldr( const left_type * __restrict__ const a, result_type * __restrict__ const c ) {
+				static void foldr(
+					const left_type * __restrict__ const a,
+					result_type * __restrict__ const c
+				) {
 					if( *a && *c ) {
 						*c = static_cast< result_type >( true );
 					} else {
@@ -1603,7 +1918,10 @@ namespace grb {
 				 *                  dubs as the output memory area.
 				 * @param[in]     b Pointer to the right-hand side input data.
 				 */
-				static void foldl( result_type * __restrict__ const c, const right_type * __restrict__ const b ) {
+				static void foldl(
+					result_type * __restrict__ const c,
+					const right_type * __restrict__ const b
+				) {
 					GRB_UTIL_IGNORE_MAYBE_UNINITIALIZED // this is a (too) broad suppression--
 					                                    // see docs/Suppressions.md
 					if( *b && *c ) {
@@ -1615,8 +1933,16 @@ namespace grb {
 				}
 			};
 
-			/** \todo add documentation */
-			template< typename IN1, typename IN2, typename OUT, enum Backend implementation = config::default_backend >
+			/**
+			 * Absolute difference operator, \f$ |x-y| \f$.
+			 *
+			 * Assumes that the - and < operators are defined for the given input
+			 * types.
+			 */
+			template<
+				typename IN1, typename IN2, typename OUT,
+				enum Backend implementation = config::default_backend
+			>
 			class abs_diff {
 
 			public:
@@ -1652,13 +1978,19 @@ namespace grb {
 				/**
 				 * Out-of-place application of this operator.
 				 *
-				 * @param[in]  a The left-hand side input. Must be pre-allocated and initialised.
-				 * @param[in]  b The right-hand side input. Must be pre-allocated and initialised.
+				 * @param[in]  a The left-hand side input. Must be pre-allocated and
+				 *               initialised.
+				 * @param[in]  b The right-hand side input. Must be pre-allocated and
+				 *               initialised.
 				 * @param[out] c The output. Must be pre-allocated.
 				 *
 				 * At the end of the operation, \f$ c = \min\{a,b\} \f$.
 				 */
-				static void apply( const left_type * __restrict__ const a, const right_type * __restrict__ const b, result_type * __restrict__ const c ) {
+				static void apply(
+					const left_type * __restrict__ const a,
+					const right_type * __restrict__ const b,
+					result_type * __restrict__ const c
+				) {
 					if( *a < *b ) {
 						*c = static_cast< OUT >( *b - *a );
 					} else {
@@ -1673,7 +2005,10 @@ namespace grb {
 				 * @param[in,out] c Pointer to the right-hand side input data. This also
 				 *                  dubs as the output memory area.
 				 */
-				static void foldr( const left_type * __restrict__ const a, result_type * __restrict__ const c ) {
+				static void foldr(
+					const left_type * __restrict__ const a,
+					result_type * __restrict__ const c
+				) {
 					if( *a < *c ) {
 						*c -= *a;
 					} else {
@@ -1688,19 +2023,36 @@ namespace grb {
 				 *                  dubs as the output memory area.
 				 * @param[in]     b Pointer to the right-hand side input data.
 				 */
-				static void foldl( result_type * __restrict__ const c, const right_type * __restrict__ const b ) {
+				static void foldl(
+					result_type * __restrict__ const c,
+					const right_type * __restrict__ const b
+				) {
 					if( *b < *c ) {
 						*c -= *b;
 					} else {
 						*c = static_cast< OUT >( *b - *c );
 					}
 				}
+
 			};
 
-			/** \todo add documentation */
-			template< typename IN1, typename IN2, typename OUT, enum Backend implementation = config::default_backend >
+			/**
+			 * ReLU operator as commonly used in machine learning, except it is here
+			 * interpreted as a binary operator.
+			 *
+			 * The inputs to this binary function are assumed to be the threshold value
+			 * and the input signal.
+			 *
+			 * ReLU is in fact functionally equal to #grb::operators::min.
+			 */
+			template<
+				typename IN1, typename IN2, typename OUT,
+				enum Backend implementation = config::default_backend
+			>
 			class relu {
+
 			public:
+
 				/** Alias to the left-hand input data type. */
 				typedef IN1 left_type;
 
@@ -1733,8 +2085,10 @@ namespace grb {
 				/**
 				 * Out-of-place application of this operator.
 				 *
-				 * @param[in]  a The left-hand side input. Must be pre-allocated and initialised.
-				 * @param[in]  b The right-hand side input. Must be pre-allocated and initialised.
+				 * @param[in]  a The left-hand side input. Must be pre-allocated and
+				 *               initialised.
+				 * @param[in]  b The right-hand side input. Must be pre-allocated and
+				 *               initialised.
 				 * @param[out] c The output. Must be pre-allocated.
 				 *
 				 * At the end of the operation, \f$ c = ReLU\{a,b\} = \begin{cases}
@@ -1742,7 +2096,11 @@ namespace grb {
 				 *   b \text{, otherwise}
 				 * \end{cases}\f$.
 				 */
-				static void apply( const left_type * __restrict__ const a, const right_type * __restrict__ const b, result_type * __restrict__ const c ) {
+				static void apply(
+					const left_type * __restrict__ const a,
+					const right_type * __restrict__ const b,
+					result_type * __restrict__ const c
+				) {
 					if( *a < *b ) {
 						*c = static_cast< OUT >( *b );
 					} else {
@@ -1757,7 +2115,10 @@ namespace grb {
 				 * @param[in,out] c Pointer to the right-hand side input data. This also
 				 *                  dubs as the output memory area.
 				 */
-				static void foldr( const left_type * __restrict__ const a, result_type * __restrict__ const c ) {
+				static void foldr(
+					const left_type * __restrict__ const a,
+					result_type * __restrict__ const c
+				) {
 					if( *a > *c ) {
 						*c = *a;
 					}
@@ -1770,16 +2131,30 @@ namespace grb {
 				 *                  dubs as the output memory area.
 				 * @param[in]     b Pointer to the right-hand side input data.
 				 */
-				static void foldl( result_type * __restrict__ const c, const right_type * __restrict__ const b ) {
+				static void foldl(
+					result_type * __restrict__ const c,
+					const right_type * __restrict__ const b
+				) {
 					if( *b > *c ) {
 						*c = *b;
 					}
 				}
+
 			};
 
-			template< typename D1, typename D2, typename D3, enum Backend implementation = config::default_backend >
+			/**
+			 * Square difference operator: \f$ (x-y)^2 \f$.
+			 *
+			 * Assumes that the - and * operators are defined on the given input types.
+			 */
+			template<
+				typename D1, typename D2, typename D3,
+				enum Backend implementation = config::default_backend
+			>
 			class square_diff {
+
 			public:
+
 				typedef D1 left_type;
 				typedef D2 right_type;
 				typedef D3 result_type;
@@ -1789,29 +2164,48 @@ namespace grb {
 				static constexpr bool is_associative = false;
 				static constexpr bool is_commutative = true;
 
-				static void apply( const left_type * __restrict__ const a, const right_type * __restrict__ const b, result_type * __restrict__ const c ) {
+				static void apply(
+					const left_type * __restrict__ const a,
+					const right_type * __restrict__ const b,
+					result_type * __restrict__ const c
+				) {
 					*c = ( *a - *b ) * ( *a - *b );
 				}
 
-				static void foldr( const left_type * __restrict__ const a, result_type * __restrict__ const c ) {
+				static void foldr(
+					const left_type * __restrict__ const a,
+					result_type * __restrict__ const c
+				) {
 					*c = ( *a - *c ) * ( *a - *c );
 				}
 
-				static void foldl( const right_type * __restrict__ const b, result_type * __restrict__ const c ) {
+				static void foldl(
+					const right_type * __restrict__ const b,
+					result_type * __restrict__ const c
+				) {
 					*c = ( *c - *b ) * ( *c - *b );
 				}
+
 			};
 
 			/**
-			 * left operand of type IN1,
-			 * right operand of type IN2
-			 * result of type std::pair< IN1, IN2 >
+			 * Zips two inputs into a pair.
 			 *
-			 * for use together with argmin
+			 * @tparam IN1 Left operand type.
+			 * @tparam IN2 Right operand type.
+			 *
+			 * The result type is fixed at <tt>std::pair< IN1, IN2 ></tt>.
+			 *
+			 * May be used together with argmin and other operators defined on pairs.
 			 */
-			template< typename IN1, typename IN2, enum Backend implementation = config::default_backend >
+			template<
+				typename IN1, typename IN2,
+				enum Backend implementation = config::default_backend
+			>
 			class zip {
+
 			public:
+
 				typedef IN1 left_type;
 				typedef IN2 right_type;
 				typedef std::pair< IN1, IN2 > result_type;
@@ -1821,13 +2215,17 @@ namespace grb {
 				static constexpr bool is_associative = false;
 				static constexpr bool is_commutative = false;
 
-				static void apply( const left_type * __restrict__ const a, const right_type * __restrict__ const b, result_type * __restrict__ const c ) {
+				static void apply(
+					const left_type * __restrict__ const a,
+					const right_type * __restrict__ const b,
+					result_type * __restrict__ const c
+				) {
 					*c = std::make_pair( *a, *b );
 				}
 			};
 
 			/**
-			 * Compares the first argument of a pair
+			 * Whether the first argument of two given pairs compare equal.
 			 */
 			template<
 				typename IN1, typename IN2, typename OUT,
@@ -1849,8 +2247,10 @@ namespace grb {
 					/**
 					 * Out-of-place application of this operator.
 					 *
-					 * @param[in]  a The left-hand side input. Must be pre-allocated and initialised.
-					 * @param[in]  b The right-hand side input. Must be pre-allocated and initialised.
+					 * @param[in]  a The left-hand side input. Must be pre-allocated and
+					 *               initialised.
+					 * @param[in]  b The right-hand side input. Must be pre-allocated and
+					 *               initialised.
 					 * @param[out] c The output. Must be pre-allocated.
 					 *
 					 * At the end of the operation, \f$ c = a->first == b->first \f$.
@@ -1866,6 +2266,426 @@ namespace grb {
 							*c = static_cast< OUT >( false );
 						}
 					}
+
+			};
+
+			/**
+			 * The less-than operator.
+			 *
+			 * Assumes that the < operator for the given input types is defined.
+			 */
+			template<
+				typename IN1, typename IN2, typename OUT,
+				enum Backend implementation = config::default_backend
+			>
+			class lt {
+
+			public:
+
+				/** Alias to the left-hand input data type. */
+				typedef IN1 left_type;
+
+				/** Alias to the right-hand input data type. */
+				typedef IN2 right_type;
+
+				/** Alias to the output data type. */
+				typedef OUT result_type;
+
+				/** Whether this operator has an in-place foldl. */
+				static constexpr bool has_foldl = true;
+
+				/** Whether this operator has an in-place foldr. */
+				static constexpr bool has_foldr = true;
+
+				/**
+				 * Whether this operator is \em mathematically associative; that is,
+				 * associative when assuming equivalent data types for \a IN1, \a IN2,
+				 * and \a OUT, as well as assuming exact arithmetic, no overflows, etc.
+				 */
+				static constexpr bool is_associative = false;
+
+				/**
+				 * Whether this operator is \em mathematically commutative; that is,
+				 * commutative when assuming equivalent data types for \a IN1, \a IN2,
+				 * and \a OUT, as well as assuming exact arithmetic, no overflows, etc.
+				 */
+				static constexpr bool is_commutative = false;
+
+				/**
+				 * Out-of-place application of this operator.
+				 *
+				 * @param[in]  a The left-hand side input. Must be pre-allocated and
+				 *               initialised.
+				 * @param[in]  b The right-hand side input. Must be pre-allocated and
+				 *               initialised.
+				 * @param[out] c The output. Must be pre-allocated.
+				 *
+				 * At the end of the operation, \f$ c \f$ will be set to
+				 * <tt>static_cast<result_type>(true)</tt> if \f$ a < b \f$, and to
+				 * <tt>static_cast<result_type>(false)</tt> otherwise.
+				 */
+				static void apply(
+					const left_type * __restrict__ const a,
+					const right_type * __restrict__ const b,
+					result_type * __restrict__ const c
+				) {
+					if( *a < *b ) {
+						*c = static_cast< OUT >( true );
+					} else {
+						*c = static_cast< OUT >( false );
+					}
+				}
+
+				/**
+				 * In-place left-to-right folding.
+				 *
+				 * @param[in]     a Pointer to the left-hand side input data.
+				 * @param[in,out] c Pointer to the right-hand side input data. This also
+				 *                  dubs as the output memory area.
+				 */
+				static void foldr(
+					const left_type * __restrict__ const a,
+					result_type * __restrict__ const c
+				) {
+					if( *a < *c ) {
+						*c = static_cast< result_type >( true );
+					} else {
+						*c = static_cast< result_type >( false );
+					}
+				}
+
+				/**
+				 * In-place right-to-left folding.
+				 *
+				 * @param[in,out] c Pointer to the left-hand side input data. This also
+				 *                  dubs as the output memory area.
+				 * @param[in]     b Pointer to the right-hand side input data.
+				 */
+				static void foldl(
+					result_type * __restrict__ const c,
+					const right_type * __restrict__ const b
+				) {
+					if( *b < *c ) {
+						*c = static_cast< result_type >( true );
+					} else {
+						*c = static_cast< result_type >( false );
+					}
+				}
+
+			};
+
+			/**
+			 * The greater-than operator.
+			 *
+			 * Assumes that the > operator for the given input types is defined.
+			 */
+			template<
+				typename IN1, typename IN2, typename OUT,
+				enum Backend implementation = config::default_backend
+			>
+			class gt {
+
+			public:
+
+				/** Alias to the left-hand input data type. */
+				typedef IN1 left_type;
+
+				/** Alias to the right-hand input data type. */
+				typedef IN2 right_type;
+
+				/** Alias to the output data type. */
+				typedef OUT result_type;
+
+				/** Whether this operator has an in-place foldl. */
+				static constexpr bool has_foldl = true;
+
+				/** Whether this operator has an in-place foldr. */
+				static constexpr bool has_foldr = true;
+
+				/**
+				 * Whether this operator is \em mathematically associative; that is,
+				 * associative when assuming equivalent data types for \a IN1, \a IN2,
+				 * and \a OUT, as well as assuming exact arithmetic, no overflows, etc.
+				 */
+				static constexpr bool is_associative = false;
+
+				/**
+				 * Whether this operator is \em mathematically commutative; that is,
+				 * commutative when assuming equivalent data types for \a IN1, \a IN2,
+				 * and \a OUT, as well as assuming exact arithmetic, no overflows, etc.
+				 */
+				static constexpr bool is_commutative = false;
+
+				/**
+				 * Out-of-place application of this operator.
+				 *
+				 * @param[in]  a The left-hand side input. Must be pre-allocated and
+				 *               initialised.
+				 * @param[in]  b The right-hand side input. Must be pre-allocated and
+				 *               initialised.
+				 * @param[out] c The output. Must be pre-allocated.
+				 *
+				 * At the end of the operation, \f$ c \f$ will be set to
+				 * <tt>static_cast<result_type>(true)</tt> if \f$ a > b \f$, and to
+				 * <tt>static_cast<result_type>(false)</tt> otherwise.
+				 */
+				static void apply(
+					const left_type * __restrict__ const a,
+					const right_type * __restrict__ const b,
+					result_type * __restrict__ const c
+				) {
+					if( *a > *b ) {
+						*c = static_cast< OUT >( true );
+					} else {
+						*c = static_cast< OUT >( false );
+					}
+				}
+
+				/**
+				 * In-place left-to-right folding.
+				 *
+				 * @param[in]     a Pointer to the left-hand side input data.
+				 * @param[in,out] c Pointer to the right-hand side input data. This also
+				 *                  dubs as the output memory area.
+				 */
+				static void foldr(
+					const left_type * __restrict__ const a,
+					result_type * __restrict__ const c
+				) {
+					if( *a > *c ) {
+						*c = static_cast< result_type >( true );
+					} else {
+						*c = static_cast< result_type >( false );
+					}
+				}
+
+				/**
+				 * In-place right-to-left folding.
+				 *
+				 * @param[in,out] c Pointer to the left-hand side input data. This also
+				 *                  dubs as the output memory area.
+				 * @param[in]     b Pointer to the right-hand side input data.
+				 */
+				static void foldl(
+					result_type * __restrict__ const c,
+					const right_type * __restrict__ const b
+				) {
+					if( *b > *c ) {
+						*c = static_cast< result_type >( true );
+					} else {
+						*c = static_cast< result_type >( false );
+					}
+				}
+
+			};
+
+			/**
+			 * The less-than-or-equal operator.
+			 *
+			 * Assumes that the <= operator for the given input types is defined.
+			 */
+			template<
+				typename IN1, typename IN2, typename OUT,
+				enum Backend implementation = config::default_backend
+			>
+			class leq {
+
+			public:
+
+				/** Alias to the left-hand input data type. */
+				typedef IN1 left_type;
+
+				/** Alias to the right-hand input data type. */
+				typedef IN2 right_type;
+
+				/** Alias to the output data type. */
+				typedef OUT result_type;
+
+				/** Whether this operator has an in-place foldl. */
+				static constexpr bool has_foldl = true;
+
+				/** Whether this operator has an in-place foldr. */
+				static constexpr bool has_foldr = true;
+
+				/**
+				 * Whether this operator is \em mathematically associative; that is,
+				 * associative when assuming equivalent data types for \a IN1, \a IN2,
+				 * and \a OUT, as well as assuming exact arithmetic, no overflows, etc.
+				 */
+				static constexpr bool is_associative = false;
+
+				/**
+				 * Whether this operator is \em mathematically commutative; that is,
+				 * commutative when assuming equivalent data types for \a IN1, \a IN2,
+				 * and \a OUT, as well as assuming exact arithmetic, no overflows, etc.
+				 */
+				static constexpr bool is_commutative = false;
+
+				/**
+				 * Out-of-place application of this operator.
+				 *
+				 * @param[in]  a The left-hand side input. Must be pre-allocated and
+				 *               initialised.
+				 * @param[in]  b The right-hand side input. Must be pre-allocated and
+				 *               initialised.
+				 * @param[out] c The output. Must be pre-allocated.
+				 *
+				 * At the end of the operation, \f$ c \f$ will be set to
+				 * <tt>static_cast<result_type>(true)</tt> if \f$ a \leq b \f$, and to
+				 * <tt>static_cast<result_type>(false)</tt> otherwise.
+				 */
+				static void apply(
+					const left_type * __restrict__ const a,
+					const right_type * __restrict__ const b,
+					result_type * __restrict__ const c
+				) {
+					if( *a <= *b ) {
+						*c = static_cast< OUT >( true );
+					} else {
+						*c = static_cast< OUT >( false );
+					}
+				}
+
+				/**
+				 * In-place left-to-right folding.
+				 *
+				 * @param[in]     a Pointer to the left-hand side input data.
+				 * @param[in,out] c Pointer to the right-hand side input data. This also
+				 *                  dubs as the output memory area.
+				 */
+				static void foldr(
+					const left_type * __restrict__ const a,
+					result_type * __restrict__ const c
+				) {
+					if( *a <= *c ) {
+						*c = static_cast< result_type >( true );
+					} else {
+						*c = static_cast< result_type >( false );
+					}
+				}
+
+				/**
+				 * In-place right-to-left folding.
+				 *
+				 * @param[in,out] c Pointer to the left-hand side input data. This also
+				 *                  dubs as the output memory area.
+				 * @param[in]     b Pointer to the right-hand side input data.
+				 */
+				static void foldl(
+					result_type * __restrict__ const c,
+					const right_type * __restrict__ const b
+				) {
+					if( *b <= *c ) {
+						*c = static_cast< result_type >( true );
+					} else {
+						*c = static_cast< result_type >( false );
+					}
+				}
+
+			};
+
+			/**
+			 * The greater-than-or-equal operator.
+			 *
+			 * Assumes that the >= operator for the given input types is defined.
+			 */
+			template<
+				typename IN1, typename IN2, typename OUT,
+				enum Backend implementation = config::default_backend
+			>
+			class geq {
+
+			public:
+
+				/** Alias to the left-hand input data type. */
+				typedef IN1 left_type;
+
+				/** Alias to the right-hand input data type. */
+				typedef IN2 right_type;
+
+				/** Alias to the output data type. */
+				typedef OUT result_type;
+
+				/** Whether this operator has an in-place foldl. */
+				static constexpr bool has_foldl = true;
+
+				/** Whether this operator has an in-place foldr. */
+				static constexpr bool has_foldr = true;
+
+				/**
+				 * Whether this operator is \em mathematically associative; that is,
+				 * associative when assuming equivalent data types for \a IN1, \a IN2,
+				 * and \a OUT, as well as assuming exact arithmetic, no overflows, etc.
+				 */
+				static constexpr bool is_associative = false;
+
+				/**
+				 * Whether this operator is \em mathematically commutative; that is,
+				 * commutative when assuming equivalent data types for \a IN1, \a IN2,
+				 * and \a OUT, as well as assuming exact arithmetic, no overflows, etc.
+				 */
+				static constexpr bool is_commutative = false;
+
+				/**
+				 * Out-of-place application of this operator.
+				 *
+				 * @param[in]  a The left-hand side input. Must be pre-allocated and
+				 *               initialised.
+				 * @param[in]  b The right-hand side input. Must be pre-allocated and
+				 *               initialised.
+				 * @param[out] c The output. Must be pre-allocated.
+				 *
+				 * At the end of the operation, \f$ c \f$ will be set to
+				 * <tt>static_cast<result_type>(true)</tt> if \f$ a \geq b \f$, and to
+				 * <tt>static_cast<result_type>(false)</tt> otherwise.
+				 */
+				static void apply(
+					const left_type * __restrict__ const a,
+					const right_type * __restrict__ const b,
+					result_type * __restrict__ const c
+				) {
+					if( *a >= *b ) {
+						*c = static_cast< OUT >( true );
+					} else {
+						*c = static_cast< OUT >( false );
+					}
+				}
+
+				/**
+				 * In-place left-to-right folding.
+				 *
+				 * @param[in]     a Pointer to the left-hand side input data.
+				 * @param[in,out] c Pointer to the right-hand side input data. This also
+				 *                  dubs as the output memory area.
+				 */
+				static void foldr(
+					const left_type * __restrict__ const a,
+					result_type * __restrict__ const c
+				) {
+					if( *a >= *c ) {
+						*c = static_cast< result_type >( true );
+					} else {
+						*c = static_cast< result_type >( false );
+					}
+				}
+
+				/**
+				 * In-place right-to-left folding.
+				 *
+				 * @param[in,out] c Pointer to the left-hand side input data. This also
+				 *                  dubs as the output memory area.
+				 * @param[in]     b Pointer to the right-hand side input data.
+				 */
+				static void foldl(
+					result_type * __restrict__ const c,
+					const right_type * __restrict__ const b
+				) {
+					if( *b >= *c ) {
+						*c = static_cast< result_type >( true );
+					} else {
+						*c = static_cast< result_type >( false );
+					}
+				}
 
 			};
 
