@@ -760,7 +760,7 @@ namespace grb {
 						index = internal::getCoordinates( x ).asyncCopy(
 							internal::getCoordinates( y ), i );
 					} else {
-						index = start;
+						index = i;
 					}
 					if( !out_is_void && !in_is_void ) {
 						dst[ index ] = internal::setIndexOrValue< descr, OutputType >(
