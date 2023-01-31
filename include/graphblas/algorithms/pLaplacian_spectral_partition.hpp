@@ -239,9 +239,11 @@ namespace grb
             std::cout << "---------------------" << std::endl;
             std::cout << "Calculating eigenvecs" << std::endl;
             std::cout << "---------------------" << std::endl << std::endl;
-
+#ifdef DETERMINISTIC
+            arma_rng::set_seed_random(1234);
+#endif
              //generate sparse matrix
-            sp_mat A = sp_mat(n, n);
+            arma::sp_mat A = arma::sp_mat(n, n);
 
 
             vec eigval;
