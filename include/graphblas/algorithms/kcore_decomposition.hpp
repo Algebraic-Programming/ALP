@@ -14,6 +14,13 @@ namespace grb {
 		/**
 		 * The \f$ k \f$-core decomposition algorithm.
 		 *
+		 * \warning This algorithm is at an experimental stage -- there is no smoke
+		 *          test that evaluates this algorithm against a known correct ground
+		 *          truth. Therefore, regressions that affect correctness are
+		 *          possible. Use this algorithm with care. See also GitHub issue
+		 *          #160, to which furthermore also contributions would be warmly
+		 *          received.
+		 *
 		 * Divides the input matrix into subgraphs with a coreness level. The coreness
 		 * level \f$ k \f$ is defined as the largest subgraph in which each node has at
 		 * least \f$ k \f$ neighbors in the subgraph.
