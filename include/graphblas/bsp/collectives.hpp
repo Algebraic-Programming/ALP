@@ -98,14 +98,16 @@ namespace grb {
 		 * This function may place an alloc of \f$ P\mathit{sizeof}(IOType) \f$ bytes
 		 * if the internal buffer was not sufficiently large.
 		 */
-		template< Descriptor descr = descriptors::no_operation, typename Operator, typename IOType >
+		template<
+			Descriptor descr = descriptors::no_operation,
+			typename Operator, typename IOType
+		>
 		static RC allreduce( IOType &inout, const Operator &op = Operator() ) {
 			// this is the serial algorithm only
 			// TODO internal issue #19
 #ifdef _DEBUG
-			std::cout << "Entered grb::collectives< BSP1D >::allreduce with "
-						 "inout = "
-					  << inout << " and op = " << &op << std::endl;
+			std::cout << "Entered grb::collectives< BSP1D >::allreduce with inout = "
+				<< inout << " and op = " << &op << std::endl;
 #endif
 
 			// static sanity check
