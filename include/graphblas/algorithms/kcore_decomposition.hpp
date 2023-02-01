@@ -96,7 +96,7 @@ namespace grb {
 		 */
 		template<
 			Descriptor descr = descriptors::no_operation,
-			bool criticalSection = true,
+			bool criticalSection = false,
 			typename IOType, typename NZType
 		>
 		RC kcore_decomposition(
