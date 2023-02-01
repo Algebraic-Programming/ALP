@@ -2,8 +2,6 @@
 #ifndef _H_GRB_KCORE_DECOMPOSITION
 #define _H_GRB_KCORE_DECOMPOSITION
 
-//#define GRB_NO_NOOP_CHECKS
-
 #include <graphblas.hpp>
 
 
