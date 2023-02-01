@@ -123,7 +123,14 @@ void grbProgram( const struct input &data_in, struct output &out ) {
 	RC rc = SUCCESS;
 	if( out.rep == 0 ) {
 		timer.reset();
+#ifdef KCORE_VARIANT
+		rc = kcore_decomposition<
+				grb::descriptors::no_operation,
+				KCORE_VARIANT
+			>( L, core, d, t, u, st, k );
+#else
 		rc = kcore_decomposition( L, core, d, t, u, st, k );
+#endif
 
 		double single_time = timer.time();
 		if( rc != SUCCESS ) {
@@ -153,7 +160,14 @@ void grbProgram( const struct input &data_in, struct output &out ) {
 		timer.reset();
 		for( size_t i = 0; i < out.rep && rc == SUCCESS; ++i ) {
 			if( rc == SUCCESS ) {
+#ifdef KCORE_VARIANT
+				rc = kcore_decomposition<
+						grb::descriptors::no_operation,
+						KCORE_VARIANT
+					>( L, core, d, t, u, st, k );
+#else
 				rc = kcore_decomposition( L, core, d, t, u, st, k );
+#endif
 			}
 		}
 		time_taken = timer.time();
