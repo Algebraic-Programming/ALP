@@ -3671,7 +3671,7 @@ namespace grb {
 					// vectorised code
 					for( size_t b = start; b < end; ++b ) {
 #ifdef _H_GRB_REFERENCE_OMP_BLAS1
-						size_t i = start * block_size;
+						const size_t i = b * block_size;
 #endif
 						for( size_t k = 0; k < block_size; ++k ) {
 							const size_t index = i + k;
@@ -3736,8 +3736,9 @@ namespace grb {
 							(void) z_coors.joinUpdate( update );
 							asyncAssigns = 0;
 						}
-#endif
+#else
 						i += block_size;
+#endif
 					}
 #ifdef _H_GRB_REFERENCE_OMP_BLAS1
 					#pragma omp single nowait
