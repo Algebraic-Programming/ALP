@@ -289,6 +289,52 @@ namespace grb {
 		return foldl< descr >( x, y, empty_mask, monoid );
 	}
 
+	/** No implementation notes. */
+	template<
+		Descriptor descr = descriptors::no_operation,
+		class Operator,
+		typename IOType, typename Coords, typename InputType
+	>
+	RC foldr(
+		const InputType &alpha,
+		Vector< IOType, BSP1D, Coords > &y,
+		const Operator &op,
+		const Phase &phase = EXECUTE,
+		const typename std::enable_if< !grb::is_object< InputType >::value &&
+			grb::is_operator< Operator >::value, void
+		>::type * const = nullptr
+	) {
+		// static checks
+		NO_CAST_ASSERT( ( !(descr & descriptors::no_casting) ||
+			std::is_same< InputType, typename Operator::D1 >::value ), "grb::foldl",
+			"called with an input vector value type that does not match the first "
+			"domain of the given operator" );
+		NO_CAST_ASSERT( ( !(descr & descriptors::no_casting) ||
+			std::is_same< IOType, typename Operator::D2 >::value ), "grb::foldl",
+			"called with an I/O value type that does not match the second domain of "
+			"the given operator " );
+		NO_CAST_ASSERT( ( !(descr & descriptors::no_casting) ||
+			std::is_same< IOType, typename Operator::D3 >::value ), "grb::foldl",
+			"called with an I/O value type that does not match the third domain of "
+			"the given operator" );
+
+		// dynamic checks
+		const size_t n = size( y );
+		if( (descr & descriptors::dense) ) {
+			if( nnz( y ) < n ) {
+				return ILLEGAL;
+			}
+		}
+
+		// nonzero structure remains unchanged, so just dispatch
+		RC ret = foldr< descr >( alpha, internal::getLocal( y ), op, phase );
+		assert( ret == SUCCESS );
+		if( ret != SUCCESS ) {
+			ret = PANIC;
+		}
+		return ret;
+	}
+
 	/** \internal No implementation notes. */
 	template<
 		Descriptor descr = descriptors::no_operation, class Monoid,
@@ -329,6 +375,7 @@ namespace grb {
 		) {
 			return SUCCESS;
 		}
+
 		// simply delegate to reference implementation will yield correct result
 		RC ret = foldr< descr >( alpha, internal::getLocal( y ), monoid, phase );
 		if( !config::IMPLEMENTATION< BSP1D >::fixedVectorCapacities() ) {
@@ -440,9 +487,10 @@ namespace grb {
 			"the given operator" );
 
 		// dynamic checks
-		if( nnz( x ) < size( x ) ) {
-			// note: this illegal no matter whether the dense descriptor is given
-			return ILLEGAL;
+		if( descr & descriptors::dense ) {
+			if( nnz( x ) < size( x ) ) {
+				return ILLEGAL;
+			}
 		}
 
 		// nonzero structure remains unchanged, so just dispatch
@@ -456,7 +504,8 @@ namespace grb {
 
 	/** No implementation notes. */
 	template<
-		Descriptor descr = descriptors::no_operation, class Monoid,
+		Descriptor descr = descriptors::no_operation,
+		class Monoid,
 		typename IOType, typename Coords, typename InputType
 	>
 	RC foldl(
@@ -511,6 +560,166 @@ namespace grb {
 			if( ret == SUCCESS ) {
 				internal::setDense( x );
 			} else if( ret == FAILED ) {
+				const RC subrc = internal::updateNnz( x );
+				if( subrc != SUCCESS ) { ret = PANIC; }
+			}
+		}
+
+		// done
+		return ret;
+	}
+
+	/** No implementation notes. */
+	template<
+		Descriptor descr = descriptors::no_operation,
+		class Operator,
+		typename IOType, typename MaskType,
+		typename Coords, typename InputType
+	>
+	RC foldl(
+		Vector< IOType, BSP1D, Coords > &x,
+		Vector< MaskType, BSP1D, Coords > &mask,
+		const InputType &beta,
+		const Operator &op,
+		const Phase &phase = EXECUTE,
+		const typename std::enable_if< !grb::is_object< InputType >::value &&
+			grb::is_operator< Operator >::value, void
+		>::type * const = nullptr
+	) {
+		// static checks
+		NO_CAST_ASSERT( ( !(descr & descriptors::no_casting) ||
+			std::is_same< IOType, typename Operator::D1 >::value ), "grb::foldl",
+			"called with an I/O value type that does not match the first domain of "
+			"the given operator " );
+		NO_CAST_ASSERT( ( !(descr & descriptors::no_casting) ||
+			std::is_same< InputType, typename Operator::D2 >::value ), "grb::foldl",
+			"called with an input vector value type that does not match the second "
+			"domain of the given operator" );
+		NO_CAST_ASSERT( ( !(descr & descriptors::no_casting) ||
+			std::is_same< IOType, typename Operator::D3 >::value ), "grb::foldl",
+			"called with an I/O value type that does not match the third domain of "
+			"the given operator" );
+		NO_CAST_ASSERT( ( !(descr & descriptors::no_casting) ||
+			std::is_same< MaskType, bool >::value ), "grb::foldl",
+			"called with a mask value type that is not Boolean" );
+
+		// check trivial dispatch
+		if( size( mask ) == 0 ) {
+			return foldl< descr >( x, beta, op, phase );
+		}
+
+		// dynamic checks
+		const size_t n = size( x );
+		if( size( mask ) != n ) {
+			return MISMATCH;
+		}
+		if( (descr & descriptors::dense) ) {
+			if( nnz( x ) < n ) {
+				return ILLEGAL;
+			}
+			if( nnz( mask ) < n ) {
+				return ILLEGAL;
+			}
+		}
+
+		// nonzero structure remains unchanged, so just dispatch
+		RC ret = foldl< descr >( internal::getLocal( x ), internal::getLocal( mask ),
+			beta, op, phase );
+		assert( ret == SUCCESS );
+		if( ret != SUCCESS ) {
+			ret = PANIC;
+		}
+		return ret;
+	}
+
+	/** No implementation notes. */
+	template<
+		Descriptor descr = descriptors::no_operation,
+		class Monoid,
+		typename IOType, typename MaskType,
+		typename Coords, typename InputType
+	>
+	RC foldl(
+		Vector< IOType, BSP1D, Coords > &x,
+		Vector< MaskType, BSP1D, Coords > &mask,
+		const InputType &beta,
+		const Monoid &monoid,
+		const Phase &phase = EXECUTE,
+		const typename std::enable_if< !grb::is_object< InputType >::value &&
+			grb::is_monoid< Monoid >::value, void
+		>::type * const = nullptr
+	) {
+		// static checks
+		NO_CAST_ASSERT( ( !(descr & descriptors::no_casting) ||
+			std::is_same< IOType, typename Monoid::D1 >::value ), "grb::foldl",
+			"called with an I/O value type that does not match the first domain of "
+			"the given monoid" );
+		NO_CAST_ASSERT( ( !(descr & descriptors::no_casting) ||
+			std::is_same< InputType, typename Monoid::D2 >::value ), "grb::foldl",
+			"called with an input vector value type that does not match the second "
+			"domain of the given monoid" );
+		NO_CAST_ASSERT( ( !(descr & descriptors::no_casting) ||
+			std::is_same< IOType, typename Monoid::D3 >::value ), "grb::foldl",
+			"called with an I/O value type that does not match the third domain of "
+			"the given monoid" );
+		NO_CAST_ASSERT( ( !(descr & descriptors::no_casting) ||
+			std::is_same< MaskType, bool >::value ), "grb::foldl",
+			"called with a mask value type that is not Boolean" );
+
+		// check trivial dispatch
+		if( size( mask ) == 0 ) {
+			return foldl< descr >( x, beta, monoid, phase );
+		}
+
+		// dynamic checks
+		const size_t n = size( x );
+		if( size( mask ) != n ) {
+			return MISMATCH;
+		}
+		if( descr & descriptors::dense ) {
+			if( nnz( x ) < n ) {
+				return ILLEGAL;
+			}
+			if( nnz( mask ) < n ) {
+				return ILLEGAL;
+			}
+		}
+
+		// check for trivial resize
+		if( config::IMPLEMENTATION< BSP1D >::fixedVectorCapacities() &&
+			phase == RESIZE
+		) {
+			return SUCCESS;
+		}
+
+		// delegate
+		RC ret = foldl< descr >( internal::getLocal( x ), internal::getLocal( mask ),
+			beta, monoid, phase );
+		if( !config::IMPLEMENTATION< BSP1D >::fixedVectorCapacities() ) {
+			if( collectives< BSP1D >::allreduce(
+				ret, grb::operators::any_or< RC >()
+			) != SUCCESS ) {
+				return PANIC;
+			}
+		}
+
+		// handle try and execute
+		if( phase != RESIZE ) {
+			assert( phase == EXECUTE || phase == TRY );
+			if( ret == SUCCESS ) {
+				if( nnz( mask ) == n &&
+					(descr & descriptors::structural) &&
+					!(descr & descriptors::invert_mask)
+				) {
+					internal::setDense( x );
+				} else if( nnz( mask ) == 0 && (descr & descriptors::invert_mask) ) {
+					internal::setDense( x );
+				} else {
+					const RC subrc = internal::updateNnz( x );
+					if( subrc != SUCCESS ) { ret = PANIC; }
+				}
+			} else if( ret == FAILED ) {
+				assert( phase == TRY );
 				const RC subrc = internal::updateNnz( x );
 				if( subrc != SUCCESS ) { ret = PANIC; }
 			}
