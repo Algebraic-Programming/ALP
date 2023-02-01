@@ -79,9 +79,16 @@ namespace grb {
 		 *                         eWiseLambda-based implementation, while otherwise
 		 *                         a pure ALP/GraphBLAS implementation takes effect.
 		 *
-		 * \warning Setting criticalSection to <tt>true</tt> is not supported for the
-		 *          distributed-memory backends #grb::bsp1d and #grb::hybrid. Also for
-		 *          this reason <tt>false</tt> is the default.
+		 * \note In some non-exhaustive experiments, setting \a criticalSection to
+		 *       <tt>false</tt> leads to better performance on shared-memory parallel
+		 *       systems (using #grb::reference_omp).
+		 *
+		 * \warning Setting \a criticalSection to <tt>true</tt> is not supported for
+		 *          the distributed-memory backends #grb::bsp1d and #grb::hybrid; see
+		 *          the corresponding code comment in the below algorithm for details.
+		 *
+		 * For the above considerations, the default for \a criticalSection is
+		 * presently set to <tt>false</tt>.
 		 *
 		 * \parblock
 		 * \par Performance semantics
