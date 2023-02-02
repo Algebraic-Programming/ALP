@@ -60,15 +60,15 @@ of the LPF core library and its collectives library. The LPF library has its
 further dependences, which are all summarised on the LPF project page:
 
 * [Gitee](https://gitee.com/CSL-ALP/lpf);
-* [Github](https://github.com/Algebraic-Programming/LPF).
+* [GitHub](https://github.com/Algebraic-Programming/LPF).
 
-The dependence on LPF applies to compilation, linking, and run-time. Fulfulling
+The dependence on LPF applies to compilation, linking, and run-time. Fulfilling
 the dependence enables the `bsp1d` and `hybrid` ALP/GraphBLAS backends.
 
 ## Code documentation
 
 For generating the code documentations:
-* `doyxgen` reads code comments and generates the documentation;
+* `doxygen` reads code comments and generates the documentation;
 * `graphviz` generates various diagrams for inheritance, call paths, etc.;
 * `pdflatex` is required to build the PDF file out of the Latex generated
   documentation.
@@ -141,7 +141,7 @@ In more detail, the steps to follow are:
    the default command lines the tests script uses are likely wrong. In this
    case, please edit `tests/parse_env.sh` by searching for the MPI
    implementation you used, and uncomment the lines directly below each
-   occurance.
+   occurrence.
 
 8. (*Optional*) Issue `make -j unittests` to run an exhaustive set of unit
    tests. Please scan the output for any failed tests.
@@ -200,7 +200,7 @@ to set a configuration before building and installing ALP, and to keep the
 installation directories read-only so that configurations remain static.
 
 There exists one main configuration file that affects all ALP backends, while
-other configuration files only affect a specfic backend or only affect specific
+other configuration files only affect a specific backend or only affect specific
 classes of backends. The main configuration file is found in
 `<root>/include/graphblas/base/config.hpp`, which allows one to set the
 
@@ -241,7 +241,7 @@ users, and rather should concern ALP developers only.
 
 The file `include/graphblas/omp/config.hpp` contains some basic configuration
 parameters that affect any OpenMP-based backend. However, the configuration
-file does not contain any other user-modifiable setings, but rather contains
+file does not contain any other user-modifiable settings, but rather contains
 a) some utilities that OpenMP-based backends may rely on, and b) default
 that are derived from other settings described in the above. These settings
 should only be overridden with compelling and expert knowledge.
@@ -332,7 +332,7 @@ necessary changes to `tests/performance/performancetests.sh`.
 
 # Integrating ALP with applications
 
-There are several use cases in which ALP can be deployed and utilized, listed
+There are several use cases in which ALP can be deployed and utilised, listed
 in the following. These assume that the user has installed ALP/GraphBLAS in a
 dedicated directory via `make install`.
 
@@ -362,7 +362,7 @@ should use the parallel I/O mechanisms that ALP/GraphBLAS exposes to the ALP
 program itself.
 
 Output data is retrieved only from the user process with ID `0`, even if
-multiple user processes exist. Some implemenations or systems may require
+multiple user processes exist. Some implementations or systems may require
 sending back the output data to a calling process, even if there is only
 one user process. The data movement cost incurred should hence be considered
 linear in the byte size of `U`, and, similar to the input data broadcasting,
@@ -393,7 +393,8 @@ ALP/GraphBLAS, simply use
 ```bash
 grbcxx -b hybrid
 ```
-as the compiler command. To show all flags that the wrapper passes on, please use
+as the compiler command. To show all flags that the wrapper passes on, please
+use
 
 ```bash
 grbcxx -b hybrid --show
@@ -559,8 +560,9 @@ demonstrates the bug to the maintainers, either as an issue on or an email to:
 
 # Development in ALP
 
-Your contributions to ALP/GraphBLAS would be most welcome. Merge or Pull Requests
-(MRs/PRs) can be contributed via Gitee and GitHub. See above for the links.
+Your contributions to ALP/GraphBLAS would be most welcome. Merge or Pull
+Requests (MRs/PRs) can be contributed via Gitee and GitHub. See above for the
+links.
 
 For the complete development documentation, you should start from the
 [docs/README file](docs/README.md) and the related
@@ -596,10 +598,11 @@ following papers, as appropriate:
    [Bibtex](http://albert-jan.yzelman.net/BIBs/yzelman20.bib).
  - [Nonblocking execution in GraphBLAS](https://ieeexplore.ieee.org/document/9835271)
    by Aristeidis Mastoras, Sotiris Anagnostidis, and A. N. Yzelman
-   in IEEE International Parallel and Distributed Processing Symposium Workshops, 2022.
+   in IEEE International Parallel and Distributed Processing Symposium
+   Workshops, 2022.
    [Bibtex](http://albert-jan.yzelman.net/BIBs/mastoras22.bib).
  - [Design and implementation for nonblocking execution in GraphBLAS: tradeoffs and performance](https://dl.acm.org/doi/10.1145/3561652)
    by Aristeidis Mastoras, Sotiris Anagnostidis, and A. N. Yzelman
    in ACM Transactions on Architecture and Code Optimization 20(1), 2023.
-   [Bitex](http://albert-jan.yzelman.net/BIBs/mastoras22a.bib).
+   [Bibtex](http://albert-jan.yzelman.net/BIBs/mastoras22a.bib).
 

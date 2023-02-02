@@ -84,7 +84,7 @@ namespace grb {
 		 *       systems (using #grb::reference_omp).
 		 *
 		 * \warning Setting \a criticalSection to <tt>true</tt> is not supported for
-		 *          the distributed-memory backends #grb::bsp1d and #grb::hybrid; see
+		 *          the distributed-memory backends #grb::BSP1D and #grb::hybrid; see
 		 *          the corresponding code comment in the below algorithm for details.
 		 *
 		 * For the above considerations, the default for \a criticalSection is
