@@ -91,8 +91,8 @@ namespace grb {
 		 * Computes the index of the last parallel nonzero + 1 (i.e., exclusive).
 		 *
 		 * Local nonzeroes are thus in the range
-		 * 	[ compute_parallel_first_nonzero( num_nonzeroes ) ,
-		 * 		compute_parallel_last_nonzero( num_nonzeroes ) )
+		 *  [ compute_parallel_first_nonzero( num_nonzeroes ),
+		 *    compute_parallel_last_nonzero( num_nonzeroes ) ]
 		 */
 		template< typename T >
 		T compute_parallel_last_nonzero( const T num_nonzeroes ) {

@@ -198,6 +198,20 @@ for BACKEND in ${BACKENDS[@]}; do
 			fi
 			echo " "
 
+			echo ">>>      [x]           [ ]       Tests grb::Launcher on a K-core decomposition on the dataset"
+			echo "                                 EPA.mtx. The launcher is used in automatic mode and the I/O"
+			echo "                                 mode is sequential. The Launcher::exec called is with struct"
+			echo "                                 I/O with broadcast true. This launches the default k-core"
+			echo "                                 variant."
+			echo "Functional test executable: ${TEST_BIN_DIR}/kcore_decomposition_${BACKEND}"
+			if [ -f ${INPUT_DIR}/EPA.mtx ]; then
+				$runner ${TEST_BIN_DIR}/kcore_decomposition_${BACKEND} ${INPUT_DIR}/EPA.mtx direct 1 1 verification ${OUTPUT_VERIFICATION_DIR}/kcore_decomposition_eda_ref &> ${TEST_OUT_DIR}/kcore_decomposition_${BACKEND}_EPA_${P}_${T}.log
+				grep 'Test OK' ${TEST_OUT_DIR}/kcore_decomposition_${BACKEND}_EPA_${P}_${T}.log || printf 'Test FAILED.\n'
+			else
+				echo "Test DISABLED; dataset not found. Provide EPA.mtx in the ./datasets/ directory to enable."
+			fi
+			echo " "
+
 			TESTNAME=rndHermit256
 			if [ -f ${TEST_DATA_DIR}/${TESTNAME}.mtx ]; then
 				n=$(grep -v '^%' ${TEST_DATA_DIR}/${TESTNAME}.mtx | head -1 | awk '{print $1}' )
@@ -214,7 +228,7 @@ for BACKEND in ${BACKENDS[@]}; do
 				echo "Test DISABLED: ${TESTNAME}.mtx was not found. To enable, please provide ${TEST_DATA_DIR}/${TESTNAME}.mtx"
 			fi
 			echo " "
-			
+
 			echo ">>>      [x]           [ ]       Testing the BiCGstab algorithm for the 17361 x 17361 input"
 			echo "                                 matrix gyro_m.mtx. This test verifies against a ground-"
 			echo "                                 truth solution vector, the same as used for the earlier"
@@ -334,6 +348,20 @@ for BACKEND in ${BACKENDS[@]}; do
 			$runner ${TEST_BIN_DIR}/kmeans_${BACKEND} &> ${TEST_OUT_DIR}/kmeans_${BACKEND}_${P}_${T}.log
 			head -1 ${TEST_OUT_DIR}/kmeans_${BACKEND}_${P}_${T}.log
 			tail -1 ${TEST_OUT_DIR}/kmeans_${BACKEND}_${P}_${T}.log
+			echo " "
+
+			echo ">>>      [x]           [ ]       Tests grb::Launcher on a K-core decomposition on the dataset"
+			echo "                                 EPA.mtx. The launcher is used in automatic mode and the I/O"
+			echo "                                 mode is sequential. The Launcher::exec called is with struct"
+			echo "                                 I/O with broadcast true. This launches the k-core variant"
+			echo "                                 with critical sections."
+			echo "Functional test executable: ${TEST_BIN_DIR}/kcore_decomposition_critical_${BACKEND}"
+			if [ -f ${INPUT_DIR}/EPA.mtx ]; then
+				$runner ${TEST_BIN_DIR}/kcore_decomposition_critical_${BACKEND} ${INPUT_DIR}/EPA.mtx direct 1 1 verification ${OUTPUT_VERIFICATION_DIR}/kcore_decomposition_eda_ref &> ${TEST_OUT_DIR}/kcore_decomposition_critical_${BACKEND}_EPA_${P}_${T}.log
+				grep 'Test OK' ${TEST_OUT_DIR}/kcore_decomposition_critical_${BACKEND}_EPA_${P}_${T}.log || printf 'Test FAILED.\n'
+			else
+				echo "Test DISABLED; dataset not found. Provide EPA.mtx in the ./datasets/ directory to enable."
+			fi
 			echo " "
 
 		done

@@ -201,7 +201,7 @@ void build_matrix_and_check(
  *
  * @tparam T matrix value type
  * @tparam IterT type of the input iterator, which MUST have a \a - operator and
- * 	static methods \a IterT::make_begin and \a IterT::make_end
+ *               static methods \a IterT::make_begin and \a IterT::make_end
  *
  * @tparam implementation ALP backend
  *

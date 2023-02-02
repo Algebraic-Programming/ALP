@@ -57,15 +57,16 @@ namespace grb {
 		>
 		class left_assign :
 			public internal::Operator<
-				internal::left_assign< D1, D2, D3, implementation >
-			>
-		{
+			internal::left_assign< D1, D2, D3, implementation >
+		> {
+
 			public:
 
 				template< typename A, typename B, typename C, enum Backend D >
 				using GenericOperator = left_assign< A, B, C, D >;
 
 				left_assign() {}
+
 		};
 
 		/**
@@ -84,14 +85,15 @@ namespace grb {
 		class left_assign_if :
 			 public internal::Operator<
 					internal::left_assign_if< D1, D2, D3, implementation >
-			>
-		{
+		> {
+
 			public:
 
 				template< typename A, typename B, typename C, enum Backend D >
 				using GenericOperator = left_assign_if< A, B, C, D >;
 
 				left_assign_if() {}
+
 		};
 
 		/**
@@ -112,14 +114,15 @@ namespace grb {
 		>
 		class right_assign : public internal::Operator<
 				internal::right_assign< D1, D2, D3, implementation >
-			>
-		{
+		> {
+
 			public:
 
 				template< typename A, typename B, typename C, enum Backend D >
 				using GenericOperator = right_assign< A, B, C, D >;
 
 				right_assign() {}
+
 		};
 
 		/**
@@ -137,14 +140,15 @@ namespace grb {
 		>
 		class right_assign_if : public internal::Operator<
 				internal::right_assign_if< D1, D2, D3, implementation >
-			>
-		{
+		> {
+
 			public:
 
 				template< typename A, typename B, typename C, enum Backend D >
 				using GenericOperator = right_assign_if< A, B, C, D >;
 
 				right_assign_if() {}
+
 		};
 
 		/**
@@ -169,9 +173,8 @@ namespace grb {
 			enum Backend implementation = config::default_backend
 		>
 		class add : public internal::Operator<
-				internal::add< D1, D2, D3, implementation >
-			>
-		{
+			internal::add< D1, D2, D3, implementation >
+		> {
 
 			public:
 
@@ -203,9 +206,9 @@ namespace grb {
 			enum Backend implementation = config::default_backend
 		>
 		class mul : public internal::Operator<
-				internal::mul< D1, D2, D3, implementation >
-			>
-		{
+			internal::mul< D1, D2, D3, implementation >
+		> {
+
 			public:
 
 				template< typename A, typename B, typename C, enum Backend D >
@@ -236,9 +239,9 @@ namespace grb {
 			enum Backend implementation = config::default_backend
 		>
 		class max : public internal::Operator<
-				internal::max< D1, D2, D3, implementation >
-			>
-		{
+			internal::max< D1, D2, D3, implementation >
+		> {
+
 			public:
 
 				template< typename A, typename B, typename C, enum Backend D >
@@ -270,8 +273,8 @@ namespace grb {
 		>
 		class min : public internal::Operator<
 				internal::min< D1, D2, D3, implementation >
-			>
-		{
+		> {
+
 			public:
 
 				template< typename A, typename B, typename C, enum Backend D >
@@ -296,9 +299,9 @@ namespace grb {
 			enum Backend implementation = config::default_backend
 		>
 		class subtract : public internal::Operator<
-				internal::substract< D1, D2, D3, implementation >
-			>
-		{
+			internal::substract< D1, D2, D3, implementation >
+		> {
+
 			public:
 
 				template< typename A, typename B, typename C, enum Backend D >
@@ -324,8 +327,8 @@ namespace grb {
 		>
 		class divide : public internal::Operator<
 				internal::divide< D1, D2, D3, implementation >
-			>
-		{
+		> {
+
 			public:
 
 				template< typename A, typename B, typename C, enum Backend D >
@@ -349,8 +352,8 @@ namespace grb {
 		>
 		class divide_reverse : public internal::Operator<
 				internal::divide_reverse< D1, D2, D3, implementation >
-			>
-		{
+		> {
+
 			public:
 
 				template< typename A, typename B, typename C, enum Backend D >
@@ -375,8 +378,8 @@ namespace grb {
 		>
 		class equal : public internal::Operator<
 				internal::equal< D1, D2, D3, implementation >
-			>
-		{
+		> {
+
 			public:
 
 				template< typename A, typename B, typename C, enum Backend D >
@@ -400,9 +403,9 @@ namespace grb {
 			enum Backend implementation = config::default_backend
 		>
 		class not_equal : public internal::Operator<
-				internal::not_equal< D1, D2, D3, implementation >
-			>
-		{
+			internal::not_equal< D1, D2, D3, implementation >
+		> {
+
 			public:
 
 				template< typename A, typename B, typename C, enum Backend D >
@@ -429,9 +432,9 @@ namespace grb {
 			enum Backend implementation = config::default_backend
 		>
 		class any_or : public internal::Operator<
-				internal::any_or< D1, D2, D3, implementation >
-			>
-		{
+			internal::any_or< D1, D2, D3, implementation >
+		> {
+
 			public:
 
 				template< typename A, typename B, typename C, enum Backend D >
@@ -458,8 +461,7 @@ namespace grb {
 		>
 		class logical_or : public internal::Operator<
 				internal::logical_or< D1, D2, D3, implementation >
-			>
-		{
+		> {
 
 			public:
 
@@ -487,8 +489,8 @@ namespace grb {
 		>
 		class logical_and : public internal::Operator<
 				internal::logical_and< D1, D2, D3, implementation >
-			>
-		{
+		> {
+
 			public:
 
 				template< typename A, typename B, typename C, enum Backend D >
@@ -511,8 +513,8 @@ namespace grb {
 		>
 		class relu : public internal::Operator<
 				internal::relu< D1, D2, D3, implementation >
-			>
-		{
+		> {
+
 			public:
 
 				template< typename A, typename B, typename C, enum Backend D >
@@ -538,14 +540,15 @@ namespace grb {
 		>
 		class abs_diff : public internal::Operator<
 				internal::abs_diff< D1, D2, D3, implementation >
-			>
-		{
+		> {
+
 			public:
 
 				template< typename A, typename B, typename C, enum Backend D >
 				using GenericOperator = abs_diff< A, B, C, D >;
 
 				abs_diff() {}
+
 		};
 
 		/**
@@ -568,8 +571,11 @@ namespace grb {
 		 */
 		template< typename IType, typename VType >
 		class argmin : public internal::Operator< internal::argmin< IType, VType > > {
+
 			public:
+
 				argmin() {}
+
 		};
 
 		/**
@@ -592,8 +598,11 @@ namespace grb {
 		 */
 		template< typename IType, typename VType >
 		class argmax : public internal::Operator< internal::argmax< IType, VType > > {
+
 			public:
+
 				argmax() {}
+
 		};
 
 		/**
@@ -613,14 +622,15 @@ namespace grb {
 		>
 		class square_diff : public internal::Operator<
 				internal::square_diff< D1, D2, D3, implementation >
-			>
-		{
+		> {
+
 			public:
 
 				template< typename A, typename B, typename C, enum Backend D >
 				using GenericOperator = square_diff< A, B, C, D >;
 
 				square_diff() {}
+
 		};
 
 		/**
@@ -638,14 +648,15 @@ namespace grb {
 		>
 		class zip : public internal::Operator<
 				internal::zip< IN1, IN2, implementation >
-			>
-		{
+		> {
+
 			public:
 
 				template< typename A, typename B, enum Backend D >
 				using GenericOperator = zip< A, B, D >;
 
 				zip() {}
+
 		};
 
 		/**
@@ -660,20 +671,137 @@ namespace grb {
 		 *
 		 * The output domain must hence be \em castable from <tt>bool</tt>.
 		 */
- 		template<
+		template<
 			typename D1, typename D2 = D1, typename D3 = D2,
 			enum Backend implementation = config::default_backend
 		>
 		class equal_first : public internal::Operator<
 				internal::equal_first< D1, D2, D3, implementation >
-			>
-		{
+		> {
+
 			public:
 
 				template< typename A, typename B, typename C, enum Backend D >
 				using GenericOperator = equal_first< A, B, C, D >;
 
 				equal_first() {}
+
+		};
+
+		/**
+		 * This operation returns whether the left operand compares less-than the
+		 * right operand.
+		 *
+		 * Mathematical notation: \f$ \odot(x,y) \to x < y \f$.
+		 *
+		 * The result is cast from <tt>bool</tt> to \a D3.
+		 *
+		 * \warning This operator expects numerical types for \a D1, \a D2, and
+		 *          \a D3, or types that have the appropriate operator< overload
+		 *          available.
+		 */
+		template<
+			typename D1, typename D2 = D1, typename D3 = D2,
+			enum Backend implementation = config::default_backend
+		>
+		class less_than : public internal::Operator<
+				internal::lt< D1, D2, D3, implementation >
+		> {
+
+			public:
+
+				template< typename A, typename B, typename C, enum Backend D >
+				using GenericOperator = less_than< A, B, C, D >;
+
+				less_than() {}
+
+		};
+
+		/**
+		 * This operation returns whether the left operand compares less-than or equal
+		 * to the right operand.
+		 *
+		 * Mathematical notation: \f$ \odot(x,y) \to x \leq y \f$.
+		 *
+		 * The result is cast from <tt>bool</tt> to \a D3.
+		 *
+		 * \warning This operator expects numerical types for \a D1, \a D2, and
+		 *          \a D3, or types that have the appropriate operator<= overload
+		 *          available.
+		 */
+		template<
+			typename D1, typename D2 = D1, typename D3 = D2,
+			enum Backend implementation = config::default_backend
+		>
+		class leq : public internal::Operator<
+				internal::leq< D1, D2, D3, implementation >
+		> {
+
+			public:
+
+				template< typename A, typename B, typename C, enum Backend D >
+				using GenericOperator = leq< A, B, C, D >;
+
+				leq() {}
+
+		};
+
+		/**
+		 * This operation returns whether the left operand compares greater-than the
+		 * right operand.
+		 *
+		 * Mathematical notation: \f$ \odot(x,y) \to x > y \f$.
+		 *
+		 * The result is cast from <tt>bool</tt> to \a D3.
+		 *
+		 * \warning This operator expects numerical types for \a D1, \a D2, and
+		 *          \a D3, or types that have the appropriate operator> overload
+		 *          available.
+		 */
+		template<
+			typename D1, typename D2 = D1, typename D3 = D2,
+			enum Backend implementation = config::default_backend
+		>
+		class greater_than: public internal::Operator<
+				internal::gt< D1, D2, D3, implementation >
+		> {
+
+			public:
+
+				template< typename A, typename B, typename C, enum Backend D >
+				using GenericOperator = greater_than< A, B, C, D >;
+
+				greater_than() {}
+
+		};
+
+		/**
+		 * This operation returns whether the left operand compares greater-than or
+		 * equal to the right operand.
+		 *
+		 * Mathematical notation: \f$ \odot(x,y) \to x \geq y \f$.
+		 *
+		 * The result is cast from <tt>bool</tt> to \a D3.
+		 *
+		 * \warning This operator expects numerical types for \a D1, \a D2, and
+		 *          \a D3, or types that have the appropriate operator>= overload
+		 *          available.
+		 */
+		template<
+			typename D1, typename D2 = D1, typename D3 = D2,
+			enum Backend implementation = config::default_backend
+		>
+		class geq : public internal::Operator<
+				internal::geq< D1, D2, D3, implementation >
+		> {
+
+			public:
+
+				template< typename A, typename B, typename C, enum Backend D >
+				using GenericOperator = geq< A, B, C, D >;
+
+				geq() {}
+
 		};
 
 	} // namespace operators
@@ -792,6 +920,26 @@ namespace grb {
 
 	template< typename D1, typename D2, typename D3, enum Backend implementation >
 	struct is_operator< operators::equal_first< D1, D2, D3, implementation > > {
+		static const constexpr bool value = true;
+	};
+
+	template< typename D1, typename D2, typename D3, enum Backend implementation >
+	struct is_operator< operators::less_than< D1, D2, D3, implementation > > {
+		static const constexpr bool value = true;
+	};
+
+	template< typename D1, typename D2, typename D3, enum Backend implementation >
+	struct is_operator< operators::leq< D1, D2, D3, implementation > > {
+		static const constexpr bool value = true;
+	};
+
+	template< typename D1, typename D2, typename D3, enum Backend implementation >
+	struct is_operator< operators::greater_than< D1, D2, D3, implementation > > {
+		static const constexpr bool value = true;
+	};
+
+	template< typename D1, typename D2, typename D3, enum Backend implementation >
+	struct is_operator< operators::geq< D1, D2, D3, implementation > > {
 		static const constexpr bool value = true;
 	};
 

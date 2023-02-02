@@ -102,7 +102,7 @@ static inline bool checkSparse(
 		case MOST_SPARSE:
 			if( i != n/2 ) {
 				std::cerr << "Nonzero at position " << i << ", expected " << n/2 << "\n";
-				return false;		
+				return false;
 			}
 			break;
 		case TWO_ENTRIES:

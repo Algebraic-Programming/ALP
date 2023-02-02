@@ -81,14 +81,16 @@ namespace grb {
 		 * The argument \a div is optional. It will map to grb::operators::divide by
 		 * default.
 		 *
-		 * @returns SUCCESS  If the computation was successful.
-		 * @returns MISMATCH If the vector sizes do not match. The output
-		 *                   \a similarity is undefined.
-		 * @returns ILLEGAL  In case \a x is all zero, and/or when \a y is all zero.
-		 *                   The output \a similarity is undefined.
-		 * @returns PANIC    If an unrecoverable error has been encountered. The
-		 *                   output as well as the state of ALP/GraphBLAS is
-		 *                   undefined.
+		 * @returns #grb::SUCCESS  If the computation was successful.
+		 * @returns #grb::MISMATCH If the vector sizes do not match. The output
+		 *                         \a similarity is untouched -- the call to this
+		 *                         algorithm will have no other effects than returning
+		 *                         #grb::MISMATCH.
+		 * @returns #grb::ILLEGAL  In case \a x is all zero, and/or when \a y is all zero.
+		 *                         The output \a similarity is undefined.
+		 * @returns #grb::PANIC    If an unrecoverable error has been encountered. The
+		 *                         output as well as the state of ALP/GraphBLAS is
+		 *                         undefined.
 		 *
 		 * \par Performance semantics
 		 *
@@ -101,7 +103,8 @@ namespace grb {
 		 * performance semantics, with the exception of getters such as #grb::nnz, are
 		 * specific to the backend selected during compilation.
 		 */
-		template< Descriptor descr = descriptors::no_operation,
+		template<
+			Descriptor descr = descriptors::no_operation,
 			typename OutputType,
 			typename InputType1,
 			typename InputType2,
@@ -165,14 +168,14 @@ namespace grb {
 						const auto &mul = ring.getMultiplicativeOperator();
 						const auto &add = ring.getAdditiveOperator();
 						OutputType temp;
-						(void)grb::apply( temp, x[ i ], y[ i ], mul );
-						(void)grb::foldl( nominator, temp, add );
-						(void)grb::apply( temp, x[ i ], x[ i ], mul );
-						(void)grb::foldl( norm1, temp, add );
-						(void)grb::apply( temp, y[ i ], y[ i ], mul );
-						(void)grb::foldl( norm2, temp, add );
-					},
-					x, y );
+						(void) grb::apply( temp, x[ i ], y[ i ], mul );
+						(void) grb::foldl( nominator, temp, add );
+						(void) grb::apply( temp, x[ i ], x[ i ], mul );
+						(void) grb::foldl( norm1, temp, add );
+						(void) grb::apply( temp, y[ i ], y[ i ], mul );
+						(void) grb::foldl( norm2, temp, add );
+					}, x, y
+				);
 				denominator = sqrt( norm1 ) * sqrt( norm2 );
 			} else {
 				// cannot stream each vector once, stream each one twice instead using
