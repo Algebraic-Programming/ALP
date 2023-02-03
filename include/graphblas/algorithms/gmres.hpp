@@ -127,8 +127,8 @@ namespace grb {
 
 
 		/**
-		 * Solves a linear system \f$ b = Ax \f$ with \f$ x \f$ unknown
-		 * by the GMRES method on general fields.
+		 * Performes Arnoldi iterations in GMRES solver.
+		 * for a linear system \f$ b = Ax \f$ with \f$ x \f$ unknown
 		 *
 		 * Preconditioning is possible by providing
 		 * an initialised matrix \f$ M \f$ of matching size.
@@ -453,9 +453,102 @@ namespace grb {
 			}
 		}
 
-
-
-
+		/**
+		 * Solves a linear system \f$ b = Ax \f$ with \f$ x \f$ unknown
+		 * by the GMRES method on general fields.
+		 *
+		 * Preconditioning is possible by providing
+		 * an initialised matrix \f$ M \f$ of matching size.
+		 *
+		 * @tparam descr        The user descriptor
+		 * @tparam NonzeroType  The input/output vector/matrix nonzero type
+		 * @tparam ResidualType The type of the residual norm
+		 * @tparam Ring         The semiring under which to perform GMRES
+		 * @tparam Minus        The minus operator corresponding to the inverse of the
+		 *                      additive operator of the given \a Ring.
+		 * @tparam Divide       The division operator corresponding to the inverse of
+		 *                      the multiplicative operator of the given \a Ring.
+		 *
+		 * Valid descriptors to this algorithm are:
+		 *   -# descriptors::no_casting
+		 *   -# descriptors::transpose
+		 *
+		 * By default, i.e., if none of \a ring, \a minus, or \a divide (nor their
+		 * types) are explicitly provided by the user, the natural field on double
+		 * data types will be assumed.
+		 *
+		 * \note An abstraction of a field that encapsulates \a Ring, \a Minus, and
+		 *       \a Divide may be more appropriate. This will also naturally ensure
+		 *       that demands on domain types are met.
+		 *
+		 *
+		 * @param[in]     x              On input: an initial guess to the solution.
+		 * @param[in]     A              The (square) positive semi-definite system
+		 *                               matrix.
+		 * @param[in]     b              The known right-hand side in \f$ Ax = b \f$.
+		 *                               Must be structurally dense.
+		 *
+		 * If \a A is \f$ n \times n \f$, then \a x and \a b must have matching length
+		 * \f$ n \f$. The vector \a x furthermore must have a capacity of \f$ n \f$.
+		 *
+		 * GMRES algorithm inputs:
+		 *
+		 * @param[in]     max_iterations The maximum number of GMRES iterations.
+		 * @param[in]     n_restart      The number of GMRES restart iterations.
+		 * @param[in]     tol            The requested relative tolerance.
+		 * @param[in]	  no_preconditioning   Diables preconditioner.
+		 * @param[in]	  max_residual_norm    Iterations stop after
+		 *                                     max_residual_norm iterations.
+		 * @param[out]    iterations           Total number of interactions.
+		 * @param[out]    iterations_gmres     Number of GMRES interactions performed.
+		 * @param[out]    iterations_arnoldi   Number of Arnoldi interactions performed.
+		 * @param[out]    residual             Residual norm.
+		 * @param[out]    residual_relative    Relative residual norm.
+		 * @param[in,out] temp           A temporary vector of the same size as \a x.
+		 * @param[out]    Q              std::vector of length \a n_restart + 1.
+		 *                               Each element of Q is grb::Vector of size
+		 *                               \f$ n \f$. On output only fist \a n_restart
+		 *                               vectors have meaning.
+		 *
+		 * Additional outputs (besides \a x):
+		 *
+		 * The GMRES algorithm requires three workspace buffers with capacity \f$ n \f$:
+		 *
+		 * Finally, the algebraic structures over which the GMRES is executed are given:
+		 *
+		 * @param[in]     ring           The semiring under which to perform the GMRES.
+		 * @param[in]     minus          The inverse of the additive operator of
+		 *                               \a ring.
+		 * @param[in]     divide         The inverse of the multiplicative operator
+		 *                               of \a ring.
+		 *
+		 * This algorithm may return one of the following error codes:
+		 *
+		 * @returns #grb::SUCCESS  When the algorithm has converged to a solution
+		 *                         within the given \a max_iterations and \a tol.
+		 * @returns #grb::FAILED   When the algorithm did not converge within the
+		 *                         given \a max_iterations.
+		 * @returns #grb::ILLEGAL  When \a A is not square.
+		 * @returns #grb::MISMATCH When \a x or \a b does not match the size of \a A.
+		 * @returns #grb::ILLEGAL  When \a x does not have capacity \f$ n \f$.
+		 * @returns #grb::ILLEGAL  When at least one of the workspace vectors does not
+		 *                         have capacity \f$ n \f$.
+		 * @returns #grb::ILLEGAL  If \a tol is not strictly positive.
+		 * @returns #grb::PANIC    If an unrecoverable error has been encountered. The
+		 *                         output as well as the state of ALP/GraphBLAS is
+		 *                         undefined.
+		 *
+		 * \par Performance semantics
+		 *
+		 *   -# This function does not allocate nor free dynamic memory, nor shall it
+		 *      make any system calls.
+		 *
+		 * For performance semantics regarding work, inter-process data movement,
+		 * intra-process data movement, synchronisations, and memory use, please see
+		 * the specification of the ALP primitives this function relies on. These
+		 * performance semantics, with the exception of getters such as #grb::nnz, are
+		 * specific to the backend selected during compilation.
+		 */
 		template<
 			Descriptor descr = descriptors::no_operation,
 			typename NonzeroType,
@@ -483,6 +576,8 @@ namespace grb {
 			ResidualType &residual,
 			ResidualType &residual_relative,
 			grb::Vector< NonzeroType > &temp,
+			grb::Vector< NonzeroType > &temp2,
+			std::vector< NonzeroType > &Hmatrix,
 			const grb::Matrix< NonzeroType > &M = grb::Matrix< NonzeroType >( 0, 0 ),
 			const Ring &ring = Ring(),
 			const Minus &minus = Minus()
@@ -495,7 +590,6 @@ namespace grb {
 			NonzeroType bnorm = ring.template getZero< NonzeroType >();
 			rc = grb::set( temp, b );
 			if( grb::utils::is_complex< NonzeroType >::value ) {
-				Vector< NonzeroType > temp2( size( x ) );
 				rc = grb::set( temp2, zero );
 				rc = rc ? rc : grb::eWiseLambda(
 					[ &, temp ] ( const size_t i ) {
@@ -524,11 +618,6 @@ namespace grb {
 			}
 			std::cout << "\n";
 #endif
-
-			std::vector< NonzeroType > Hmatrix(
-				( n_restart + 1 ) * ( n_restart + 1 ),
-				zero
-			);
 
 			// gmres iterations
 			for( size_t gmres_iter = 0; gmres_iter < max_iterations; ++gmres_iter ) {
@@ -601,7 +690,6 @@ namespace grb {
 				rc = rc ? rc : grb::foldl( temp, b, minus );
 				NonzeroType residualnorm = zero;
 				if( grb::utils::is_complex< NonzeroType >::value ) {
-					Vector< NonzeroType > temp2( size( x ) );
 					rc = grb::set( temp2, zero );
 					rc = rc ? rc : grb::eWiseLambda(
 						[ &, temp ] ( const size_t i ) {

@@ -243,8 +243,7 @@ void grbProgram( const struct input &data_in, struct output &out ) {
 
 	grb::Matrix< ScalarType > A( n, n );
 	grb::Matrix< ScalarType > P( n, n );
-	grb::Vector< ScalarType > x( n ), b( n ), temp( n );
-	grb::set( temp, zero );
+	grb::Vector< ScalarType > x( n ), b( n ), temp( n ), temp2( n );;
 
 	// initialize Matrix A, P and RHS vector, set x = 0
 	if( data_in.generate_random ) {
@@ -348,6 +347,13 @@ void grbProgram( const struct input &data_in, struct output &out ) {
 	// inner iterations
 	for( size_t i_inner = 0; i_inner < data_in.rep; ++i_inner ) {
 
+		grb::set( temp, zero );
+		grb::set( temp2, zero );
+		std::vector< ScalarType > Hmatrix(
+			( data_in.gmres_restart + 1 ) * ( data_in.gmres_restart + 1 ),
+			zero
+		);
+
 		std::vector< grb::Vector< ScalarType > > Q;
 		for( size_t i = 0; i < data_in.gmres_restart + 1; ++i ) {
 			Q.push_back(x);
@@ -371,6 +377,8 @@ void grbProgram( const struct input &data_in, struct output &out ) {
 			out.residual,
 			out.residual_relative,
 			temp,
+			temp2,
+			Hmatrix,
 			P,
 			ring
 		);
