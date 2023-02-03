@@ -151,7 +151,7 @@ namespace grb {
 			const grb::Vector< IOType > &x,
 			const grb::Matrix< NonzeroType > &A,
 			const grb::Vector< InputType > &b,
-			std::vector< std::vector< NonzeroType > > &Hmatrix,
+			std::vector< NonzeroType > &Hmatrix,
 			std::vector< grb::Vector< NonzeroType > > &Q,
 			const size_t n_restart,
 			ResidualType tol,
@@ -261,9 +261,7 @@ namespace grb {
 			NonzeroType alpha;
 
 			// (re)set Hmatrix to zero
-			for( std::vector< NonzeroType > Hrow : Hmatrix ) {
-				std::fill( Hrow.begin(), Hrow.end(), zero );
-			}
+			std::fill( Hmatrix.begin(), Hmatrix.end(), zero );
 
 			//Q[:,0]=b-A.dot(x) ;
 			// temp = 0
@@ -309,14 +307,14 @@ namespace grb {
 			assert( ret == SUCCESS );
 
 			rho = sqrt( grb::utils::is_complex< IOType >::modulus( alpha ) );
-			Hmatrix[ 0 ][ 0 ] = rho;
+			Hmatrix[ 0 ] = rho;
 
 			tau = tol * rho;
 
 			size_t k = 0;
 			while( ( rho > tau ) && ( k < n_restart ) ) {
 				// alpha = r' * r;
-				alpha = Hmatrix[ k ][ k ];
+				alpha = Hmatrix[ k * ( n_restart + 1 ) + k ];
 
 				if( std::abs( alpha ) < tol ) {
 					break;
@@ -351,17 +349,17 @@ namespace grb {
 
 				for( size_t j = 0; j < std::min( k, n_restart ); j++ ) {
 					//H[j,k]=Q[:,j].dot(Q[:,k])
-					Hmatrix[ k ][ j ] = zero;
+					Hmatrix[ k * ( n_restart + 1 ) + j ] = zero;
 					if( grb::utils::is_complex< IOType >::value ) {
 						ret = ret ? ret : grb::eWiseLambda( [&,Q]( const size_t i ) {
 							temp[ i ] = grb::utils::is_complex< IOType >::conjugate( Q[ j ] [ i ] );
 						},
 							temp
 						);
-						ret = ret ? ret : grb::dot< descr_dense >( Hmatrix[ k ][ j ], Q[ k ], temp, ring );
+						ret = ret ? ret : grb::dot< descr_dense >( Hmatrix[ k * ( n_restart + 1 ) + j ], Q[ k ], temp, ring );
 					}
 					else {
-						ret = ret ? ret : grb::dot< descr_dense >( Hmatrix[ k ][ j ], Q[ k ], Q[ j ], ring );
+						ret = ret ? ret : grb::dot< descr_dense >( Hmatrix[ k * ( n_restart + 1 ) + j ], Q[ k ], Q[ j ], ring );
 					}
 					assert( ret == SUCCESS );
 
@@ -369,7 +367,7 @@ namespace grb {
 					grb::RC ret = grb::set( temp, zero );
 					assert( ret == SUCCESS );
 
-					NonzeroType alpha1 = Hmatrix[ k ][ j ];
+					NonzeroType alpha1 = Hmatrix[ k * ( n_restart + 1 ) + j ];
 					ret = ret ? ret : grb::eWiseMul< descr_dense >( temp, alpha1, Q[ j ], ring );
 					assert( ret == SUCCESS );
 
@@ -395,7 +393,9 @@ namespace grb {
 				assert( ret == SUCCESS );
 
 				//H[k,k]=rho
-				Hmatrix[ k ][ k ] = sqrt( grb::utils::is_complex< IOType >::modulus( alpha ) ) ;
+				Hmatrix[ k * ( n_restart + 1 ) + k ] = sqrt(
+					grb::utils::is_complex< IOType >::modulus( alpha )
+				) ;
 
 			}
 

@@ -204,11 +204,11 @@ template<
 	typename DimensionType
 >
 void hessolve(
-	std::vector< std::vector< NonzeroType > > &H,
+	std::vector< NonzeroType > &H,
 	const DimensionType n,
 	const DimensionType &kspspacesize
 ) {
-	std::vector< NonzeroType > rhs = H[ 0 ];
+	std::vector< NonzeroType > rhs( H.begin(),  H.begin() + n );
 
 	size_t n_ksp = std::min( kspspacesize, n - 1 );
 
@@ -217,8 +217,8 @@ void hessolve(
 		NonzeroType a, b, c, s;
 
 		// a,b=H[i:i+2,i]
-		a = H[ i + 1 ][ i ];
-		b = H[ i + 1 ][ i + 1 ];
+		a = H[ ( i + 1 ) * n + i ];
+		b = H[ ( i + 1 ) * n + i + 1 ];
 		// tmp1=sqrt(norm(a)**2+norm(b)**2)
 		NonzeroType tmp1 = std::sqrt(
 			std::norm( a ) +
@@ -239,12 +239,12 @@ void hessolve(
 		// for k in range(i,n):
 		for( size_t k = i; k < n_ksp; ++k ) {
 			// tmp2       =   s * H[i+1,k]
-			tmp2 = s * H[ k + 1 ][ i + 1 ];
+			tmp2 = s * H[ ( k + 1 ) * n + i + 1 ];
 			// H[i+1,k] = -conjugate(s) * H[i,k] + c * H[i+1,k]
-			H[ k + 1 ][ i + 1 ] = - grb::utils::is_complex< NonzeroType >::conjugate( s )
-				* H[ k + 1 ][ i ] + c * H[ k + 1 ][ i + 1 ];
+			H[ ( k + 1 ) * n + i + 1 ] = - grb::utils::is_complex< NonzeroType >::conjugate( s )
+				* H[ ( k + 1 ) * n + i ] + c * H[ ( k + 1 ) * n + i + 1 ];
 			// H[i,k]   = c * H[i,k] + tmp2
-			H[ k + 1 ][ i ] = c * H[ k + 1 ][ i ] + tmp2;
+			H[ ( k + 1 ) * n + i ] = c * H[ ( k + 1 ) * n + i ] + tmp2;
 		}
 
 		// tmp3 = rhs[i]
@@ -271,16 +271,16 @@ void hessolve(
 		// for j in range(i+1,n):
 		for( size_t j = i + 1; j < n_ksp; ++j ) {
 			// rhs[i]=rhs[i]-rhs[j]*H[i,j]
-			rhs[ i ] = rhs[ i ] - rhs[ j ] * H[ j + 1 ][ i ];
+			rhs[ i ] = rhs[ i ] - rhs[ j ] * H[ ( j + 1 ) * n + i ];
 		}
 		// rhs[i]=rhs[i]/H[i,i]
-		if( std::abs( H[ i + 1 ][ i ] ) < TOL ) {
+		if( std::abs( H[ ( i + 1 ) * n + i ] ) < TOL ) {
 			std::cout << "---> small number in hessolve\n";
 		}
-		rhs[ i ] = rhs[ i ] / H[ i + 1 ][ i ];
+		rhs[ i ] = rhs[ i ] / H[ ( i + 1 ) * n + i ];
 	}
 
-	H[ 0 ] = rhs;
+	std::copy( rhs.begin(), rhs.end(), H.begin() );
 }
 
 void grbProgram( const struct input &data_in, struct output &out ) {
@@ -484,9 +484,9 @@ void grbProgram( const struct input &data_in, struct output &out ) {
 		out.residual_relative = std::norm( one );
 		grb::set( x, zero );
 
-		std::vector< std::vector< ScalarType > > Hmatrix(
-			data_in.gmres_restart + 1 ,
-			std::vector< ScalarType >( data_in.gmres_restart + 1, zero )
+		std::vector< ScalarType > Hmatrix(
+			( data_in.gmres_restart + 1 ) * ( data_in.gmres_restart + 1 ),
+			zero
 		);
 		std::vector< grb::Vector< ScalarType > > Q;
 		for( size_t i = 0; i < data_in.gmres_restart + 1; ++i ) {
@@ -536,10 +536,10 @@ void grbProgram( const struct input &data_in, struct output &out ) {
 			hessolve( Hmatrix, data_in.gmres_restart + 1, kspspacesize );
 			// update x
 			for( size_t i = 0; i < kspspacesize; ++i ) {
-				rc = rc ? rc : grb::eWiseMul( x, Hmatrix[ 0 ][ i ], Q [ i ], ring );
+				rc = rc ? rc : grb::eWiseMul( x, Hmatrix[ i ], Q [ i ], ring );
 #ifdef DEBUG
 				if( rc != grb::SUCCESS ) {
-					std::cout << "grb::eWiseMul( x, Hmatrix[ 0 ][ " << i << " ], Q [ " << i << " ], ring ); failed\n";
+					std::cout << "grb::eWiseMul( x, Hmatrix[ " << i << " ], Q [ " << i << " ], ring ); failed\n";
 				}
 #endif
 			}
