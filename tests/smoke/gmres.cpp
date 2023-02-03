@@ -75,10 +75,8 @@ struct output {
 	double residual_relative;
 	grb::utils::TimerResults times;
 	double time_gmres;
-	double time_x_update;
 	double time_preamble;
 	double time_io;
-	double time_residual;
 	PinnedVector< ScalarType > pinnedVector;
 };
 
@@ -193,103 +191,11 @@ RC make_matrices(
 	return rc;
 }
 
-/**
- * Solves the  least linear square problem defined by vector H[1:n] x =  H[ 0 ],
- * using Givens rotations and backsubstitution. The results is stored in H[ 0 ],
- * which is sused to update GMRES solution, vector x.
- * \todo: Replace by ALP/Dense calls once available.
- */
-template<
-	typename NonzeroType,
-	typename DimensionType
->
-void hessolve(
-	std::vector< NonzeroType > &H,
-	const DimensionType n,
-	const DimensionType &kspspacesize
-) {
-	std::vector< NonzeroType > rhs( H.begin(),  H.begin() + n );
-
-	size_t n_ksp = std::min( kspspacesize, n - 1 );
-
-	// for i in range(n):
-	for( size_t i = 0; i < n_ksp; ++i ) {
-		NonzeroType a, b, c, s;
-
-		// a,b=H[i:i+2,i]
-		a = H[ ( i + 1 ) * n + i ];
-		b = H[ ( i + 1 ) * n + i + 1 ];
-		// tmp1=sqrt(norm(a)**2+norm(b)**2)
-		NonzeroType tmp1 = std::sqrt(
-			std::norm( a ) +
-			std::norm( b )
-		);
-		c = grb::utils::is_complex< NonzeroType >::modulus( a ) / tmp1 ;
-		if( std::norm( a ) != 0 ) {
-			// s = a / std::norm(a) * std::conj(b) / tmp1;
-			s = a / grb::utils::is_complex< ScalarType >::modulus( a )
-				* grb::utils::is_complex< NonzeroType >::conjugate( b ) / tmp1;
-		}
-		else {
-			// s = std::conj(b) / tmp1;
-			s = grb::utils::is_complex< NonzeroType >::conjugate( b ) / tmp1;
-		}
-
-		NonzeroType tmp2;
-		// for k in range(i,n):
-		for( size_t k = i; k < n_ksp; ++k ) {
-			// tmp2       =   s * H[i+1,k]
-			tmp2 = s * H[ ( k + 1 ) * n + i + 1 ];
-			// H[i+1,k] = -conjugate(s) * H[i,k] + c * H[i+1,k]
-			H[ ( k + 1 ) * n + i + 1 ] = - grb::utils::is_complex< NonzeroType >::conjugate( s )
-				* H[ ( k + 1 ) * n + i ] + c * H[ ( k + 1 ) * n + i + 1 ];
-			// H[i,k]   = c * H[i,k] + tmp2
-			H[ ( k + 1 ) * n + i ] = c * H[ ( k + 1 ) * n + i ] + tmp2;
-		}
-
-		// tmp3 = rhs[i]
-		NonzeroType tmp3;
-		tmp3 = rhs[ i ];
-		// rhs[i] =  c * tmp3 + s * rhs[i+1]
-		rhs[ i ]  =  c * tmp3 + s * rhs[ i + 1 ] ;
-		// rhs[i+1]  =  -conjugate(s) * tmp3 + c * rhs[i+1]
-		rhs[ i + 1 ]  =  - grb::utils::is_complex< NonzeroType >::conjugate( s )
-			* tmp3 + c * rhs[ i + 1 ];
-	}
-
-#ifdef _DEBUG
-	std::cout << "hessolve rhs vector before inversion, vector = ";
-	for( size_t k = 0; k < n_ksp; ++k ) {
-		std::cout << rhs[ k ] << " ";
-	}
-	std::cout << "\n";
-#endif
-
-	// for i in range(n-1,-1,-1):
-	for( size_t m = 0; m < n_ksp; ++m ) {
-	 	size_t i = n_ksp - 1 - m;
-		// for j in range(i+1,n):
-		for( size_t j = i + 1; j < n_ksp; ++j ) {
-			// rhs[i]=rhs[i]-rhs[j]*H[i,j]
-			rhs[ i ] = rhs[ i ] - rhs[ j ] * H[ ( j + 1 ) * n + i ];
-		}
-		// rhs[i]=rhs[i]/H[i,i]
-		if( std::abs( H[ ( i + 1 ) * n + i ] ) < TOL ) {
-			std::cout << "---> small number in hessolve\n";
-		}
-		rhs[ i ] = rhs[ i ] / H[ ( i + 1 ) * n + i ];
-	}
-
-	std::copy( rhs.begin(), rhs.end(), H.begin() );
-}
-
 void grbProgram( const struct input &data_in, struct output &out ) {
 	out.rc = 1;
 	out.time_gmres = 0;
-	out.time_x_update = 0;
 	out.time_preamble = 0;
 	out.time_io = 0;
-	out.time_residual = 0;
 	out.iterations_gmres = 0;
 	out.iterations_arnoldi = 0;
 	out.iterations = 0;
@@ -439,190 +345,42 @@ void grbProgram( const struct input &data_in, struct output &out ) {
 		timer.reset();
 	}
 
-	// get RHS vector norm
-	ScalarType bnorm = zero;
-	rc = grb::set( temp, b );
-	if( grb::utils::is_complex< ScalarType >::value ) {
-		Vector< ScalarType > temp2( n );
-		rc = grb::set( temp2, zero );
-		rc = rc ? rc : grb::eWiseLambda(
-			[ &, temp ] ( const size_t i ) {
-				temp2[ i ] = grb::utils::is_complex< ScalarType >::conjugate( temp [ i ] );
-			}, temp
-		);
-		rc = rc ? rc : grb::dot( bnorm, temp, temp2, ring );
-	} else {
-		rc = rc ? rc : grb::dot( bnorm, temp, temp, ring );
-	}
-	bnorm =std::sqrt( bnorm );
-
-#ifdef DEBUG
-	std::cout << "RHS norm = " << std::abs( bnorm ) << " \n";
-
-	out.pinnedVector = PinnedVector< ScalarType >( b, SEQUENTIAL );
-	std::cout << "RHS vector = ";
-	for( size_t k = 0; k < 10; ++k ) {
-		const ScalarType &nonzeroValue = out.pinnedVector.getNonzeroValue( k );
-		std::cout << nonzeroValue << " ";
-	}
-	std::cout << " ...  ";
-	for( size_t k = n - 10; k < n; ++k ) {
-		const ScalarType &nonzeroValue = out.pinnedVector.getNonzeroValue( k );
-		std::cout << nonzeroValue << " ";
-	}
-	std::cout << "\n";
-#endif
-	out.time_preamble += timer.time();
-	timer.reset();
-
-	// todo: this loop (GMRES iterations with x vector update) shoud be moved into gmres() call
-	// after hessolve is implemented (and used) in ALP
-
 	// inner iterations
 	for( size_t i_inner = 0; i_inner < data_in.rep; ++i_inner ) {
-		out.residual = std::abs( bnorm );
-		out.residual_relative = std::norm( one );
-		grb::set( x, zero );
 
-		std::vector< ScalarType > Hmatrix(
-			( data_in.gmres_restart + 1 ) * ( data_in.gmres_restart + 1 ),
-			zero
-		);
 		std::vector< grb::Vector< ScalarType > > Q;
 		for( size_t i = 0; i < data_in.gmres_restart + 1; ++i ) {
 			Q.push_back(x);
 		}
-		size_t kspspacesize = 0;
+		grb::set( x, zero );
 
-		// gmres iterations
-		for( size_t gmres_iter = 0; gmres_iter < data_in.max_iterations; ++gmres_iter ) {
-			(void) ++out.iterations;
-			timer.reset();
-			(void) ++out.iterations_gmres;
-			kspspacesize = 0;
-			if( data_in.no_preconditioning ) {
-#ifdef DEBUG
-				std::cout << "Call gmres without preconditioner.\n";
-#endif
-				rc = rc ? rc : gmres(
-					x, A, b,
-					Hmatrix, Q,
-					data_in.gmres_restart, TOL,
-					kspspacesize,
-					temp
-				);
-			} else {
-#ifdef DEBUG
-				std::cout << "Call gmres with preconditioner.\n";
-#endif
-				rc = rc ? rc : gmres(
-					x, A, b,
-					Hmatrix, Q,
-					data_in.gmres_restart, TOL,
-					kspspacesize,
-					temp,
-					P
-				);
-			}
-#ifdef DEBUG
-			if( rc == grb::SUCCESS ) {
-				std::cout << "gmres iteration finished successfully, kspspacesize = " << kspspacesize << "  \n";
-			}
-#endif
-			out.iterations_arnoldi += kspspacesize;
-			out.time_gmres += timer.time();
-			timer.reset();
-
-			hessolve( Hmatrix, data_in.gmres_restart + 1, kspspacesize );
-			// update x
-			for( size_t i = 0; i < kspspacesize; ++i ) {
-				rc = rc ? rc : grb::eWiseMul( x, Hmatrix[ i ], Q [ i ], ring );
-#ifdef DEBUG
-				if( rc != grb::SUCCESS ) {
-					std::cout << "grb::eWiseMul( x, Hmatrix[ " << i << " ], Q [ " << i << " ], ring ); failed\n";
-				}
-#endif
-			}
-
-			out.time_x_update += timer.time();
-			timer.reset();
-
-#ifdef DEBUG
-			if( rc == grb::SUCCESS ) {
-				std::cout << "vector x updated successfully\n";
-				out.pinnedVector = PinnedVector< ScalarType >( x, SEQUENTIAL );
-				std::cout << "x vector = ";
-				for( size_t k = 0; k < 10; ++k ) {
-					const ScalarType &nonzeroValue = out.pinnedVector.getNonzeroValue( k );
-					std::cout << nonzeroValue << " ";
-				}
-				std::cout << " ...  ";
-				for( size_t k = n-10; k < n; ++k ) {
-					const ScalarType &nonzeroValue = out.pinnedVector.getNonzeroValue( k );
-					std::cout << nonzeroValue << " ";
-				}
-				std::cout << "\n";
-			}
-#endif
-
-			// calculate residual
-			rc = rc ? rc : grb::set( temp, zero );
-			rc = rc ? rc : grb::mxv( temp, A, x, ring );
-			rc = rc ? rc : grb::foldl( temp, b, minus );
-			ScalarType residualnorm = zero;
-			if( grb::utils::is_complex< ScalarType >::value ) {
-				Vector< ScalarType > temp2( n );
-				rc = grb::set( temp2, zero );
-				rc = rc ? rc : grb::eWiseLambda(
-					[ &, temp ] ( const size_t i ) {
-						temp2[ i ] = grb::utils::is_complex< ScalarType >::conjugate( temp [ i ] );
-					}, temp
-				);
-				rc = rc ? rc : grb::dot( residualnorm, temp, temp2, ring );
-			} else {
-				rc = rc ? rc : grb::dot( residualnorm, temp, temp, ring );
-			}
-			if( rc != grb::SUCCESS ) {
-				std::cout << "Residual norm not calculated properly.\n";
-			}
-			residualnorm = std::sqrt( residualnorm );
-
-			out.residual = std::abs( residualnorm );
-			out.residual_relative = out.residual / std::abs( bnorm );
-
-#ifdef DEBUG
-			std::cout << "Residual norm = " << out.residual << " \n";
-			std::cout << "Residual norm (relative) = " << out.residual_relative << " \n";
-#endif
-
-			out.time_residual += timer.time();
-			timer.reset();
-
-			if( out.residual_relative < data_in.max_residual_norm ) {
-#ifdef DEBUG
-				std::cout << "Convergence reached\n";
-#endif
-				break;
-			}
-		} // gmres iterations
-
-		out.pinnedVector = PinnedVector< ScalarType >( x, SEQUENTIAL );
-
+		out.time_preamble += timer.time();
 		timer.reset();
 
-		out.time_io += timer.time();
-		timer.reset();
+		rc = rc ? rc : grb::algorithms::gmres(
+			x, A, b,
+			Q,
+			data_in.gmres_restart,
+			data_in.max_iterations,
+			data_in.no_preconditioning,
+			data_in.max_residual_norm,
+			data_in.tol,
+			out.iterations,
+			out.iterations_gmres,
+			out.iterations_arnoldi,
+			out.residual,
+			out.residual_relative,
+			temp,
+			P,
+			ring
+		);
 
-		out.times.io += out.time_io;
-		out.times.useful += out.time_x_update + out.time_gmres;
-		out.times.postamble += out.time_residual;
-		out.times.preamble += out.time_preamble;
+		out.time_gmres += timer.time();
+		timer.reset();
 
 		if( i_inner + 1 > data_in.rep ) {
 			std::cout << "Residual norm = " << out.residual << " \n";
 			std::cout << "Residual norm (relative) = " << out.residual_relative << " \n";
-			std::cout << "X update time = " << out.time_x_update << "\n";
-			std::cout << "Residual time = " << out.time_residual << "\n";
 			std::cout << "IO time = " << out.time_io << "\n";
 			std::cout << "GMRES iterations = " << out.iterations_gmres << "\n";
 			std::cout << "Arnoldi iterations = " << out.iterations_arnoldi << "\n";
@@ -631,6 +389,11 @@ void grbProgram( const struct input &data_in, struct output &out ) {
 		}
 
 	} // inner iterations
+
+	out.times.postamble += timer.time();
+	out.times.useful += out.time_gmres;
+	out.times.io += out.time_io;
+	out.times.preamble += out.time_preamble;
 
 	if( rc == grb::SUCCESS ) {
 		out.rc = 0;

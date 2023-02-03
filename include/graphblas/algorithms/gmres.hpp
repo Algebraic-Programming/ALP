@@ -34,6 +34,99 @@ namespace grb {
 	namespace algorithms {
 
 		/**
+		 * Solves the  least linear square problem defined by vector H[1:n] x =  H[ 0 ],
+		 * using Givens rotations and backsubstitution. The results is stored in H[ 0 ],
+		 * which is sused to update GMRES solution, vector x.
+		 * \todo: Replace by ALP/Dense calls once available.
+		 */
+		template<
+			typename NonzeroType,
+			typename DimensionType,
+			typename ResidualType
+			>
+		void hessolve(
+			std::vector< NonzeroType > &H,
+			const DimensionType n,
+			const DimensionType &kspspacesize,
+			const ResidualType tol
+		) {
+			std::vector< NonzeroType > rhs( H.begin(),  H.begin() + n );
+
+			size_t n_ksp = std::min( kspspacesize, n - 1 );
+
+			// for i in range(n):
+			for( size_t i = 0; i < n_ksp; ++i ) {
+				NonzeroType a, b, c, s;
+
+				// a,b=H[i:i+2,i]
+				a = H[ ( i + 1 ) * n + i ];
+				b = H[ ( i + 1 ) * n + i + 1 ];
+				// tmp1=sqrt(norm(a)**2+norm(b)**2)
+				NonzeroType tmp1 = std::sqrt(
+					std::norm( a ) +
+					std::norm( b )
+				);
+				c = grb::utils::is_complex< NonzeroType >::modulus( a ) / tmp1 ;
+				if( std::norm( a ) != 0 ) {
+					// s = a / std::norm(a) * std::conj(b) / tmp1;
+					s = a / grb::utils::is_complex< NonzeroType >::modulus( a )
+						* grb::utils::is_complex< NonzeroType >::conjugate( b ) / tmp1;
+				}
+				else {
+					// s = std::conj(b) / tmp1;
+					s = grb::utils::is_complex< NonzeroType >::conjugate( b ) / tmp1;
+				}
+
+				NonzeroType tmp2;
+				// for k in range(i,n):
+				for( size_t k = i; k < n_ksp; ++k ) {
+					// tmp2       =   s * H[i+1,k]
+					tmp2 = s * H[ ( k + 1 ) * n + i + 1 ];
+					// H[i+1,k] = -conjugate(s) * H[i,k] + c * H[i+1,k]
+					H[ ( k + 1 ) * n + i + 1 ] = - grb::utils::is_complex< NonzeroType >::conjugate( s )
+						* H[ ( k + 1 ) * n + i ] + c * H[ ( k + 1 ) * n + i + 1 ];
+					// H[i,k]   = c * H[i,k] + tmp2
+					H[ ( k + 1 ) * n + i ] = c * H[ ( k + 1 ) * n + i ] + tmp2;
+				}
+
+				// tmp3 = rhs[i]
+				NonzeroType tmp3;
+				tmp3 = rhs[ i ];
+				// rhs[i] =  c * tmp3 + s * rhs[i+1]
+				rhs[ i ]  =  c * tmp3 + s * rhs[ i + 1 ] ;
+				// rhs[i+1]  =  -conjugate(s) * tmp3 + c * rhs[i+1]
+				rhs[ i + 1 ]  =  - grb::utils::is_complex< NonzeroType >::conjugate( s )
+					* tmp3 + c * rhs[ i + 1 ];
+			}
+
+#ifdef _DEBUG
+			std::cout << "hessolve rhs vector before inversion, vector = ";
+			for( size_t k = 0; k < n_ksp; ++k ) {
+				std::cout << rhs[ k ] << " ";
+			}
+			std::cout << "\n";
+#endif
+
+			// for i in range(n-1,-1,-1):
+			for( size_t m = 0; m < n_ksp; ++m ) {
+				size_t i = n_ksp - 1 - m;
+				// for j in range(i+1,n):
+				for( size_t j = i + 1; j < n_ksp; ++j ) {
+					// rhs[i]=rhs[i]-rhs[j]*H[i,j]
+					rhs[ i ] = rhs[ i ] - rhs[ j ] * H[ ( j + 1 ) * n + i ];
+				}
+				// rhs[i]=rhs[i]/H[i,i]
+				if( std::abs( H[ ( i + 1 ) * n + i ] ) < tol ) {
+					std::cout << "---> small number in hessolve\n";
+				}
+				rhs[ i ] = rhs[ i ] / H[ ( i + 1 ) * n + i ];
+			}
+
+			std::copy( rhs.begin(), rhs.end(), H.begin() );
+		}
+
+
+		/**
 		 * Solves a linear system \f$ b = Ax \f$ with \f$ x \f$ unknown
 		 * by the GMRES method on general fields.
 		 *
@@ -41,10 +134,8 @@ namespace grb {
 		 * an initialised matrix \f$ M \f$ of matching size.
 		 *
 		 * @tparam descr        The user descriptor
-		 * @tparam IOType       The input/output vector nonzero type
-		 * @tparam ResidualType The type of the residual
-		 * @tparam NonzeroType  The matrix nonzero type
-		 * @tparam InputType    The right-hand side vector nonzero type
+		 * @tparam NonzeroType  The input/output vector/matrix nonzero type
+		 * @tparam ResidualType The type of the residual norm
 		 * @tparam Ring         The semiring under which to perform GMRES
 		 * @tparam Minus        The minus operator corresponding to the inverse of the
 		 *                      additive operator of the given \a Ring.
@@ -136,27 +227,25 @@ namespace grb {
 		 */
 		template<
 			Descriptor descr = descriptors::no_operation,
-			typename IOType,
-			typename ResidualType,
 			typename NonzeroType,
-			typename InputType,
+			typename ResidualType,
 			class Ring = Semiring<
-				grb::operators::add< IOType >, grb::operators::mul< IOType >,
+				grb::operators::add< NonzeroType >, grb::operators::mul< NonzeroType >,
 				grb::identities::zero, grb::identities::one
 			>,
-			class Minus = operators::subtract< IOType >,
-			class Divide = operators::divide< IOType >
+			class Minus = operators::subtract< NonzeroType >,
+			class Divide = operators::divide< NonzeroType >
 		>
-		grb::RC gmres(
-			const grb::Vector< IOType > &x,
+		grb::RC gmres_step(
+			const grb::Vector< NonzeroType > &x,
 			const grb::Matrix< NonzeroType > &A,
-			const grb::Vector< InputType > &b,
+			const grb::Vector< NonzeroType > &b,
 			std::vector< NonzeroType > &Hmatrix,
 			std::vector< grb::Vector< NonzeroType > > &Q,
 			const size_t n_restart,
 			ResidualType tol,
 			size_t &iterations,
-			grb::Vector< IOType > &temp,
+			grb::Vector< NonzeroType > &temp,
 			const grb::Matrix< NonzeroType > &M = grb::Matrix< NonzeroType >( 0, 0 ),
 			const Ring &ring = Ring(),
 			const Minus &minus = Minus(),
@@ -166,51 +255,7 @@ namespace grb {
 			static_assert( std::is_floating_point< ResidualType >::value,
 				"Can only use the GMRES algorithm with floating-point residual "
 				"types." );
-			static_assert(
-				!( descr & descriptors::no_casting ) ||
-				(
-					std::is_same< IOType, ResidualType >::value &&
-					std::is_same< IOType, NonzeroType >::value &&
-					std::is_same< IOType, InputType >::value
-				),
-				"One or more of the provided containers have differing element types "
-				"while the no-casting descriptor has been supplied"
-			);
-			static_assert(
-				!( descr & descriptors::no_casting ) ||
-				(
-					std::is_same< NonzeroType, typename Ring::D1 >::value &&
-					std::is_same< IOType, typename Ring::D2 >::value &&
-					std::is_same< InputType, typename Ring::D3 >::value &&
-					std::is_same< InputType, typename Ring::D4 >::value
-				),
-				"no_casting descriptor was set, but semiring has incompatible domains "
-				"with the given containers."
-			);
-			static_assert(
-				!( descr & descriptors::no_casting ) ||
-				(
-					std::is_same< InputType, typename Minus::D1 >::value &&
-					std::is_same< InputType, typename Minus::D2 >::value &&
-					std::is_same< InputType, typename Minus::D3 >::value
-				),
-				"no_casting descriptor was set, but given minus operator has "
-				"incompatible domains with the given containers."
-			);
-			static_assert(
-				!( descr & descriptors::no_casting ) ||
-				(
-					std::is_same< ResidualType, typename Divide::D1 >::value &&
-					std::is_same< ResidualType, typename Divide::D2 >::value &&
-					std::is_same< ResidualType, typename Divide::D3 >::value
-				),
-				"no_casting descriptor was set, but given divide operator has "
-				"incompatible domains with the given tolerance type."
-			);
-			static_assert(
-				std::is_floating_point< ResidualType >::value,
-				"Require floating-point residual type."
-			);
+
 
 			bool useprecond = false;
 			if( ( nrows( M ) != 0 ) && ( ncols( M ) != 0 ) ) {
@@ -295,9 +340,9 @@ namespace grb {
 
 			//rho=norm(Q[:,0])
 			alpha = zero;
-			if( grb::utils::is_complex< IOType >::value ) {
+			if( grb::utils::is_complex< NonzeroType >::value ) {
 				ret = ret ? ret : grb::eWiseLambda( [&,Q]( const size_t i ) {
-					temp[ i ] = grb::utils::is_complex< IOType >::conjugate( Q[ 0 ] [ i ] );
+					temp[ i ] = grb::utils::is_complex< NonzeroType >::conjugate( Q[ 0 ] [ i ] );
 					}, temp
 				);
 				ret = ret ? ret : grb::dot< descr_dense >( alpha, temp, Q[ 0 ], ring );
@@ -306,7 +351,7 @@ namespace grb {
 			}
 			assert( ret == SUCCESS );
 
-			rho = sqrt( grb::utils::is_complex< IOType >::modulus( alpha ) );
+			rho = sqrt( grb::utils::is_complex< NonzeroType >::modulus( alpha ) );
 			Hmatrix[ 0 ] = rho;
 
 			tau = tol * rho;
@@ -350,9 +395,9 @@ namespace grb {
 				for( size_t j = 0; j < std::min( k, n_restart ); j++ ) {
 					//H[j,k]=Q[:,j].dot(Q[:,k])
 					Hmatrix[ k * ( n_restart + 1 ) + j ] = zero;
-					if( grb::utils::is_complex< IOType >::value ) {
+					if( grb::utils::is_complex< NonzeroType >::value ) {
 						ret = ret ? ret : grb::eWiseLambda( [&,Q]( const size_t i ) {
-							temp[ i ] = grb::utils::is_complex< IOType >::conjugate( Q[ j ] [ i ] );
+							temp[ i ] = grb::utils::is_complex< NonzeroType >::conjugate( Q[ j ] [ i ] );
 						},
 							temp
 						);
@@ -378,12 +423,12 @@ namespace grb {
 
 				//rho=norm(Q[:,k])
 				alpha = zero;
-				if( grb::utils::is_complex< IOType >::value ) {
+				if( grb::utils::is_complex< NonzeroType >::value ) {
 					grb::RC ret = grb::set( temp, zero );
 					assert( ret == SUCCESS );
 
 					ret = ret ? ret : grb::eWiseLambda( [&,Q,k]( const size_t i ) {
-						temp[ i ] = grb::utils::is_complex< IOType >::conjugate( Q[ k ] [ i ] );
+						temp[ i ] = grb::utils::is_complex< NonzeroType >::conjugate( Q[ k ] [ i ] );
 					}, temp
 						);
 					ret = ret ? ret : grb::dot< descr_dense >( alpha, temp, Q[ k ], ring );
@@ -394,7 +439,7 @@ namespace grb {
 
 				//H[k,k]=rho
 				Hmatrix[ k * ( n_restart + 1 ) + k ] = sqrt(
-					grb::utils::is_complex< IOType >::modulus( alpha )
+					grb::utils::is_complex< NonzeroType >::modulus( alpha )
 				) ;
 
 			}
@@ -406,6 +451,189 @@ namespace grb {
 			} else {
 				return SUCCESS;
 			}
+		}
+
+
+
+
+		template<
+			Descriptor descr = descriptors::no_operation,
+			typename NonzeroType,
+			typename ResidualType,
+			class Ring = Semiring<
+				grb::operators::add< NonzeroType >, grb::operators::mul< NonzeroType >,
+				grb::identities::zero, grb::identities::one
+			>,
+			class Minus = operators::subtract< NonzeroType >,
+			class Divide = operators::divide< NonzeroType >
+		>
+		grb::RC gmres(
+			grb::Vector< NonzeroType > &x,
+			const grb::Matrix< NonzeroType > &A,
+			const grb::Vector< NonzeroType > &b,
+			std::vector< grb::Vector< NonzeroType > > &Q,
+			const size_t n_restart,
+			const size_t max_iterations,
+			const bool no_preconditioning,
+			const ResidualType max_residual_norm,
+			const ResidualType tol,
+			size_t &iterations,
+			size_t &iterations_gmres,
+			size_t &iterations_arnoldi,
+			ResidualType &residual,
+			ResidualType &residual_relative,
+			grb::Vector< NonzeroType > &temp,
+			const grb::Matrix< NonzeroType > &M = grb::Matrix< NonzeroType >( 0, 0 ),
+			const Ring &ring = Ring(),
+			const Minus &minus = Minus()
+		) {
+
+			grb::RC rc = grb::SUCCESS;
+			const ResidualType zero = ring.template getZero< ResidualType >();
+
+			// get RHS vector norm
+			NonzeroType bnorm = ring.template getZero< NonzeroType >();
+			rc = grb::set( temp, b );
+			if( grb::utils::is_complex< NonzeroType >::value ) {
+				Vector< NonzeroType > temp2( size( x ) );
+				rc = grb::set( temp2, zero );
+				rc = rc ? rc : grb::eWiseLambda(
+					[ &, temp ] ( const size_t i ) {
+						temp2[ i ] = grb::utils::is_complex< NonzeroType >::conjugate( temp [ i ] );
+					}, temp
+				);
+				rc = rc ? rc : grb::dot( bnorm, temp, temp2, ring );
+			} else {
+				rc = rc ? rc : grb::dot( bnorm, temp, temp, ring );
+			}
+			bnorm =std::sqrt( bnorm );
+
+#ifdef DEBUG
+			std::cout << "RHS norm = " << std::abs( bnorm ) << " \n";
+
+			PinnedVector< NonzeroType > pinnedVector( b, SEQUENTIAL );
+			std::cout << "RHS vector = ";
+			for( size_t k = 0; k < 10; ++k ) {
+				const NonzeroType &nonzeroValue = pinnedVector.getNonzeroValue( k );
+				std::cout << nonzeroValue << " ";
+			}
+			std::cout << " ...  ";
+			for( size_t k = n - 10; k < n; ++k ) {
+				const NonzeroType &nonzeroValue = pinnedVector.getNonzeroValue( k );
+				std::cout << nonzeroValue << " ";
+			}
+			std::cout << "\n";
+#endif
+
+			std::vector< NonzeroType > Hmatrix(
+				( n_restart + 1 ) * ( n_restart + 1 ),
+				zero
+			);
+
+			// gmres iterations
+			for( size_t gmres_iter = 0; gmres_iter < max_iterations; ++gmres_iter ) {
+				(void) ++iterations;
+				(void) ++iterations_gmres;
+				size_t kspspacesize = 0;
+				if( no_preconditioning ) {
+#ifdef DEBUG
+					std::cout << "Call gmres without preconditioner.\n";
+#endif
+					rc = rc ? rc : gmres_step(
+						x, A, b,
+						Hmatrix, Q,
+						n_restart, tol,
+						kspspacesize,
+						temp
+					);
+				} else {
+#ifdef DEBUG
+					std::cout << "Call gmres with preconditioner.\n";
+#endif
+					rc = rc ? rc : gmres_step(
+						x, A, b,
+						Hmatrix, Q,
+						n_restart, tol,
+						kspspacesize,
+						temp,
+						M
+					);
+				}
+#ifdef DEBUG
+				if( rc == grb::SUCCESS ) {
+					std::cout << "gmres iteration finished successfully, kspspacesize = " << kspspacesize << "  \n";
+				}
+#endif
+				iterations_arnoldi += kspspacesize;
+
+				hessolve( Hmatrix, n_restart + 1, kspspacesize, tol );
+				// update x
+				for( size_t i = 0; i < kspspacesize; ++i ) {
+					rc = rc ? rc : grb::eWiseMul( x, Hmatrix[ i ], Q[ i ], ring );
+#ifdef DEBUG
+					if( rc != grb::SUCCESS ) {
+						std::cout << "grb::eWiseMul( x, Hmatrix[ " << i << " ], Q [ " << i << " ], ring ); failed\n";
+					}
+#endif
+				}
+
+#ifdef DEBUG
+				if( rc == grb::SUCCESS ) {
+					std::cout << "vector x updated successfully\n";
+					PinnedVector< NonzeroType > pinnedVector( x, SEQUENTIAL );
+					std::cout << "x vector = ";
+					for( size_t k = 0; k < 10; ++k ) {
+						const NonzeroType &nonzeroValue = pinnedVector.getNonzeroValue( k );
+						std::cout << nonzeroValue << " ";
+					}
+					std::cout << " ...  ";
+					for( size_t k = n-10; k < n; ++k ) {
+						const NonzeroType &nonzeroValue = pinnedVector.getNonzeroValue( k );
+						std::cout << nonzeroValue << " ";
+					}
+					std::cout << "\n";
+				}
+#endif
+
+				// calculate residual
+				rc = rc ? rc : grb::set( temp, zero );
+				rc = rc ? rc : grb::mxv( temp, A, x, ring );
+				rc = rc ? rc : grb::foldl( temp, b, minus );
+				NonzeroType residualnorm = zero;
+				if( grb::utils::is_complex< NonzeroType >::value ) {
+					Vector< NonzeroType > temp2( size( x ) );
+					rc = grb::set( temp2, zero );
+					rc = rc ? rc : grb::eWiseLambda(
+						[ &, temp ] ( const size_t i ) {
+							temp2[ i ] = grb::utils::is_complex< NonzeroType >::conjugate( temp [ i ] );
+						}, temp
+					);
+					rc = rc ? rc : grb::dot( residualnorm, temp, temp2, ring );
+				} else {
+					rc = rc ? rc : grb::dot( residualnorm, temp, temp, ring );
+				}
+				if( rc != grb::SUCCESS ) {
+					std::cout << "Residual norm not calculated properly.\n";
+				}
+				residualnorm = std::sqrt( residualnorm );
+
+				residual = std::abs( residualnorm );
+				residual_relative = residual / std::abs( bnorm );
+
+#ifdef DEBUG
+				std::cout << "Residual norm = " << residual << " \n";
+				std::cout << "Residual norm (relative) = " << residual_relative << " \n";
+#endif
+
+				if( residual_relative < max_residual_norm ) {
+#ifdef DEBUG
+					std::cout << "Convergence reached\n";
+#endif
+					break;
+				}
+			} // gmres iterations
+
+			return rc;
 		}
 
 	} // namespace algorithms
