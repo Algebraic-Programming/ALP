@@ -950,6 +950,9 @@ namespace alp {
 			!alp::is_object< IOType >::value && !alp::is_object< InputType >::value && alp::is_monoid< Monoid >::value
 		> * const = nullptr
 	) {
+#ifdef _DEBUG
+		std::cout << "Called alp::foldl (scalar-to-matrix, monoid, reference)" << std::endl;
+#endif
 		// static sanity checks
 		NO_CAST_OP_ASSERT(
 			( !( descr & descriptors::no_casting ) || std::is_same< typename Monoid::D1, IOType >::value ),
@@ -992,6 +995,9 @@ namespace alp {
 			!alp::is_object< IOType >::value && !alp::is_object< InputType >::value && alp::is_operator< Operator >::value
 		> * const = nullptr
 	) {
+#ifdef _DEBUG
+		std::cout << "Called alp::foldl (scalar-to-matrix, operator, reference)" << std::endl;
+#endif
 		// static sanity checks
 		NO_CAST_OP_ASSERT(
 			( !( descr & descriptors::no_casting ) || std::is_same< typename Operator::D1, IOType >::value ),

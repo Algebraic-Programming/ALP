@@ -41,6 +41,15 @@
  #define _ALP_BACKEND reference
 #endif
 
+// if the user did not define _ALP_SECONDARY_BACKEND, set it to the default
+// sequential implementation. This setting may be used by other backends for
+// backend-specific purposes. For example, a parallel backend may use this
+// setting to constrol to which sequential backend it dispatches sequential
+// work.
+#ifndef _ALP_SECONDARY_BACKEND
+ #define _ALP_SECONDARY_BACKEND reference
+#endif
+
 /**
  * The main GraphBLAS namespace.
  *

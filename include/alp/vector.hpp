@@ -30,6 +30,9 @@
 #ifdef _ALP_WITH_REFERENCE
  #include <alp/reference/vector.hpp>
 #endif
+#ifdef _ALP_WITH_OMP
+ #include <alp/omp/vector.hpp>
+#endif
 
 // specify default only if requested during compilation
 #ifdef _ALP_BACKEND
