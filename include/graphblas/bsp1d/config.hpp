@@ -138,6 +138,7 @@ namespace grb {
 				static constexpr bool isNonblockingExecution() {
 					return IMPLEMENTATION< _GRB_BSP1D_BACKEND >::isNonblockingExecution();
 				}
+
 		};
 
 		/** @} */

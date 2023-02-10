@@ -141,7 +141,6 @@ for BACKEND in ${BACKENDS[@]}; do
 				echo ">>>      [x]           [ ]       Tests HPCG on a small matrix"
 				echo "Functional test executable: ${TEST_BIN_DIR}/hpcg_${BACKEND}"
 				bash -c "$runner ${TEST_BIN_DIR}/hpcg_${BACKEND} 2>&1 | sed -e '1p' -e '/===/!d' > ${TEST_OUT_DIR}/hpcg_${BACKEND}_${P}_${T}.log"
-				head -1 ${TEST_OUT_DIR}/hpcg_${BACKEND}_${P}_${T}.log
 				grep 'Test OK' ${TEST_OUT_DIR}/hpcg_${BACKEND}_${P}_${T}.log || echo "Test FAILED"
 			fi
 			echo " "

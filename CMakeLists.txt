@@ -52,7 +52,7 @@ endif()
 option( WITH_REFERENCE_BACKEND "With Reference backend" ON )
 option( WITH_OMP_BACKEND "With OMP backend" ON )
 option( WITH_HYPERDAGS_BACKEND "With Hyperdags backend" ON )
-option( WITH_NONBLOCKING_BACKEND "With Nonblocking backend" YES )
+option( WITH_NONBLOCKING_BACKEND "With Nonblocking backend" ON )
 option( WITH_NUMA "With NUMA support" ON )
 option( LPF_INSTALL_PATH "Path to the LPF tools for the BSP1D and Hybrid backends" OFF )
 # the following options depend on LPF_INSTALL_PATH being set

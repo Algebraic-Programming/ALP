@@ -259,7 +259,7 @@ CURRENT_DIR="$(pwd)"
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"
 
 # CONFIGURE CMAKE BUILDING INFRASTRUCTURE
-if [[ "${reference}" == "yes" || "${lpf}" == "yes" ]]; then
+if [[ "${reference}" == "yes" || "${lpf}" == "yes" || "${nonblocking}" == "yes" ]]; then
 	BUILD_DIR="${CURRENT_DIR}"
 
 	printf "Checking for cmake..."
@@ -323,6 +323,9 @@ the current directory before invocation or confirm the deletion of its content w
 	fi
 	if [[ "${hyperdags}" == "yes" ]]; then
 		CMAKE_OPTS+=" -DWITH_HYPERDAGS_USING=${hyperdags_using}"
+	fi
+	if [[ "${nonblocking}" == "no" ]]; then
+		CMAKE_OPTS+=" -DWITH_NONBLOCKING_BACKEND=OFF"
 	fi
 	if [[ "${lpf}" == "yes" ]]; then
 		CMAKE_OPTS+=" -DLPF_INSTALL_PATH='${ABSOLUTE_LPF_INSTALL_PATH}'"

@@ -231,7 +231,6 @@ namespace grb {
 		friend uintptr_t getID( const Vector< InputType, reference, Coords > & );
 
 		friend class PinnedVector< D, reference >;
-		friend class PinnedVector< D, nonblocking >;
 
 		friend class PinnedVector< D, BSP1D >;
 
