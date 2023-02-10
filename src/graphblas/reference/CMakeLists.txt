@@ -27,98 +27,13 @@ assert_valid_variables( SHMEM_BACKEND_INSTALL_DIR
 	REFERENCE_SELECTION_DEFS REFERENCE_OMP_SELECTION_DEFS
 )
 
-assert_defined_targets( backend_flags )
-
-### CONSUMABLE TARGETS
-### i.e. targets with the default backend already set in the compilation interface:
-### if you import one of them, than it is already selected as a backend
-
-if( WITH_REFERENCE_BACKEND )
-
-	## reference static
-	if( ${CMAKE_VERSION} VERSION_GREATER_EQUAL "3.19.0" )
-		# with CMake 3.19 or higher interface targets can inherit output properties like filename;
-		# hence, just do that and link the relevant libraries as interface dependencies
-		add_library( backend_reference_static INTERFACE )
-		target_link_libraries( backend_reference_static INTERFACE backend_shmem_static )
-		target_link_libraries( backend_reference_static INTERFACE backend_reference_headers )
-	else()
-		# otherwise, we must create a dedicated binary
-		make_reference_target( backend_reference_static STATIC "reference" )
-		target_link_libraries( backend_reference_static PUBLIC backend_reference_headers )
-		add_dependencies( libs backend_reference_static )
-	endif()
-	# add the suitable definitions for backend selection for users' targets to get them automatically
-	target_compile_definitions( backend_reference_static INTERFACE "${REFERENCE_SELECTION_DEFS}" )
-
-	install( TARGETS backend_reference_static
-		EXPORT GraphBLASTargets
-		ARCHIVE DESTINATION "${SHMEM_BACKEND_INSTALL_DIR}"
-	)
-
-	## reference shared
-	if( ${CMAKE_VERSION} VERSION_GREATER_EQUAL "3.19.0" )
-		add_library( backend_reference_shared INTERFACE )
-		target_link_libraries( backend_reference_shared INTERFACE backend_shmem_shared )
-		target_link_libraries( backend_reference_shared INTERFACE backend_reference_headers )
-	else()
-		make_reference_target( backend_reference_shared SHARED "reference" )
-		target_link_libraries( backend_reference_shared PUBLIC backend_reference_headers )
-		add_dependencies( libs backend_reference_shared )
-	endif()
-	target_compile_definitions( backend_reference_shared INTERFACE "${REFERENCE_SELECTION_DEFS}" )
-
-	install( TARGETS backend_reference_shared
-		EXPORT GraphBLASTargets
-		LIBRARY DESTINATION "${SHMEM_BACKEND_INSTALL_DIR}"
-	)
-
-	# this is an alias for add_grb_executables() to select the backend to link against
-	# DO NOT CHANGE THE ALIAS NAME!
-	add_library( "${REFERENCE_BACKEND_DEFAULT_NAME}" ALIAS backend_reference_static )
-
-endif( WITH_REFERENCE_BACKEND )
+assert_defined_variables( backend_reference_srcs )
 
 
-if( WITH_OMP_BACKEND )
-
-	## reference_omp static
-	if( ${CMAKE_VERSION} VERSION_GREATER_EQUAL "3.19.0" )
-		add_library( backend_reference_omp_static INTERFACE )
-		target_link_libraries( backend_reference_omp_static INTERFACE backend_shmem_static )
-		target_link_libraries( backend_reference_omp_static INTERFACE backend_reference_omp_headers )
-	else()
-		make_reference_target( backend_reference_omp_static STATIC "reference_omp" )
-		target_link_libraries( backend_reference_omp_static PUBLIC backend_reference_omp_headers )
-		add_dependencies( libs backend_reference_omp_static )
-	endif()
-	target_compile_definitions( backend_reference_omp_static INTERFACE "${REFERENCE_OMP_SELECTION_DEFS}" )
-
-	install( TARGETS backend_reference_omp_static
-		EXPORT GraphBLASTargets
-		ARCHIVE DESTINATION "${SHMEM_BACKEND_INSTALL_DIR}"
-	)
-
-	## reference_omp shared
-	if( ${CMAKE_VERSION} VERSION_GREATER_EQUAL "3.19.0" )
-		add_library( backend_reference_omp_shared INTERFACE )
-		target_link_libraries( backend_reference_omp_shared INTERFACE backend_shmem_shared )
-		target_link_libraries( backend_reference_omp_shared INTERFACE backend_reference_omp_headers )
-	else()
-		make_reference_target( backend_reference_omp_shared SHARED "reference_omp" )
-		target_link_libraries( backend_reference_omp_shared PUBLIC backend_reference_omp_headers )
-		add_dependencies( libs backend_reference_omp_shared )
-	endif()
-	target_compile_definitions( backend_reference_omp_shared INTERFACE "${REFERENCE_OMP_SELECTION_DEFS}" )
-
-	install( TARGETS backend_reference_omp_shared
-		EXPORT GraphBLASTargets
-		LIBRARY DESTINATION "${SHMEM_BACKEND_INSTALL_DIR}"
-	)
-
-	# this is an alias for add_grb_executables() to select the backend to link against
-	# DO NOT CHANGE THE ALIAS NAME!
-	add_library( "${REFERENCE_OMP_BACKEND_DEFAULT_NAME}" ALIAS backend_reference_omp_static )
-
-endif( WITH_OMP_BACKEND )
+set( backend_reference_srcs ${backend_reference_srcs}
+	${CMAKE_CURRENT_SOURCE_DIR}/init.cpp
+	${CMAKE_CURRENT_SOURCE_DIR}/config.cpp
+	${CMAKE_CURRENT_SOURCE_DIR}/io.cpp
+	PARENT_SCOPE
+)
 

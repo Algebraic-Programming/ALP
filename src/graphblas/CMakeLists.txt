@@ -67,25 +67,34 @@ install( TARGETS alp_utils_dynamic
 # target to compile all backend libraries
 add_custom_target( libs ALL )
 
-# these sources are common to all backends, although some are in reference
+# the sources common to all single-process (aka shmem) backends
 set( backend_reference_srcs
 	${CMAKE_CURRENT_SOURCE_DIR}/descriptors.cpp
 	${CMAKE_CURRENT_SOURCE_DIR}/rc.cpp
-	${CMAKE_CURRENT_SOURCE_DIR}/reference/init.cpp
-	${CMAKE_CURRENT_SOURCE_DIR}/reference/config.cpp
-	${CMAKE_CURRENT_SOURCE_DIR}/reference/io.cpp
 )
 
-# append the source files for the nonblocking backend
-if( WITH_NONBLOCKING_BACKEND )
-	list( APPEND backend_reference_srcs
-		${CMAKE_CURRENT_SOURCE_DIR}/nonblocking/init.cpp
-		${CMAKE_CURRENT_SOURCE_DIR}/nonblocking/analytic_model.cpp
-		${CMAKE_CURRENT_SOURCE_DIR}/nonblocking/pipeline.cpp
-		${CMAKE_CURRENT_SOURCE_DIR}/nonblocking/lazy_evaluation.cpp
-		${CMAKE_CURRENT_SOURCE_DIR}/nonblocking/io.cpp
-	)
+# the only source file common to all BSP-based backends
+set( backend_bsp_srcs
+	${CMAKE_CURRENT_SOURCE_DIR}/bsp/collectives.cpp
+)
+
+# include only selected backends
+if( WITH_REFERENCE_BACKEND OR WITH_OMP_BACKEND )
+	add_subdirectory( reference )
 endif()
+
+if( WITH_HYPERDAGS_BACKEND )
+	add_subdirectory( hyperdags )
+endif()
+
+if( WITH_NONBLOCKING_BACKEND )
+	add_subdirectory( nonblocking )
+endif()
+
+if( WITH_BSP1D_BACKEND OR WITH_HYBRID_BACKEND )
+	add_subdirectory( bsp1d )
+endif()
+
 
 # macro to create a target for the shared memory library, with all minimal properties
 #
@@ -123,7 +132,7 @@ endmacro( make_reference_target )
 ### but storing only the minimum interface definitions (e.g. no OMP);
 ### no default backend is set!
 
-if( ${CMAKE_VERSION} VERSION_GREATER_EQUAL "3.19.0" )
+if( WITH_REFERENCE_BACKEND OR WITH_REFERENCE_OMP_BACKEND OR WITH_NONBLOCKING_BACKEND )
 
 	# alias target for basic propagation of headers and definitions
 	# from existing header target, which depends on the enabled backends;
@@ -159,27 +168,6 @@ if( ${CMAKE_VERSION} VERSION_GREATER_EQUAL "3.19.0" )
 
 	add_dependencies( libs backend_shmem_static )
 	add_dependencies( libs backend_shmem_shared )
-endif()
 
-
-# the only source file common to all BSP-based backends
-set( backend_bsp_srcs
-	${CMAKE_CURRENT_SOURCE_DIR}/bsp/collectives.cpp
-)
-
-if( WITH_REFERENCE_BACKEND OR WITH_OMP_BACKEND )
-	add_subdirectory( reference )
-endif()
-
-if( WITH_HYPERDAGS_BACKEND )
-	add_subdirectory( hyperdags )
-endif()
-
-if( WITH_NONBLOCKING_BACKEND )
-	add_subdirectory( nonblocking )
-endif()
-
-if( WITH_BSP1D_BACKEND OR WITH_HYBRID_BACKEND )
-	add_subdirectory( bsp1d )
 endif()
 

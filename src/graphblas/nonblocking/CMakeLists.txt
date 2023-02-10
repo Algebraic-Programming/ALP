@@ -25,52 +25,15 @@ assert_valid_variables( SHMEM_BACKEND_INSTALL_DIR
 	NONBLOCKING_BACKEND_DEFAULT_NAME NONBLOCKING_SELECTION_DEFS
 )
 
-assert_defined_targets( backend_flags )
+assert_defined_variables( backend_reference_srcs )
 
 
-### CONSUMABLE TARGETS
-### i.e. targets with the default backend already set in the compilation interface:
-### if you import one of them, than it is already selected as a backend
-
-if( WITH_NONBLOCKING_BACKEND )
-
-	## nonblocking static
-	if( ${CMAKE_VERSION} VERSION_GREATER_EQUAL "3.19.0" )
-		add_library( backend_nonblocking_static INTERFACE )
-		target_link_libraries( backend_nonblocking_static INTERFACE backend_shmem_static )
-		target_link_libraries( backend_nonblocking_static INTERFACE backend_nonblocking_headers )
-	else()
-		make_reference_target( backend_nonblocking_static STATIC "nonblocking" )
-		target_link_libraries( backend_nonblocking_static PUBLIC backend_nonblocking_headers )
-		add_dependencies( libs backend_nonblocking_static )
-	endif()
-	target_compile_definitions( backend_nonblocking_static INTERFACE "${NONBLOCKING_SELECTION_DEFS}" )
-
-	install( TARGETS backend_nonblocking_static
-		EXPORT GraphBLASTargets
-		ARCHIVE DESTINATION "${SHMEM_BACKEND_INSTALL_DIR}"
-	)
-
-	## nonblocking shared
-	if( ${CMAKE_VERSION} VERSION_GREATER_EQUAL "3.19.0" )
-		add_library( backend_nonblocking_shared INTERFACE )
-		target_link_libraries( backend_nonblocking_shared INTERFACE backend_shmem_shared )
-		target_link_libraries( backend_nonblocking_shared INTERFACE backend_nonblocking_headers )
-	else()
-		make_reference_target( backend_nonblocking_shared SHARED "nonblocking" )
-		target_link_libraries( backend_nonblocking_shared PUBLIC backend_nonblocking_headers )
-		add_dependencies( libs backend_nonblocking_shared )
-	endif()
-	target_compile_definitions( backend_nonblocking_shared INTERFACE "${NONBLOCKING_SELECTION_DEFS}" )
-
-	install( TARGETS backend_nonblocking_shared
-		EXPORT GraphBLASTargets
-		LIBRARY DESTINATION "${SHMEM_BACKEND_INSTALL_DIR}"
-	)
-
-	# this is an alias for add_grb_executables() to select the backend to link against
-	# DO NOT CHANGE THE ALIAS NAME!
-	add_library( "${NONBLOCKING_BACKEND_DEFAULT_NAME}" ALIAS backend_nonblocking_static )
-
-endif( WITH_NONBLOCKING_BACKEND )
+set( backend_reference_srcs ${backend_reference_srcs}
+	${CMAKE_CURRENT_SOURCE_DIR}/init.cpp
+	${CMAKE_CURRENT_SOURCE_DIR}/analytic_model.cpp
+	${CMAKE_CURRENT_SOURCE_DIR}/pipeline.cpp
+	${CMAKE_CURRENT_SOURCE_DIR}/lazy_evaluation.cpp
+	${CMAKE_CURRENT_SOURCE_DIR}/io.cpp
+	PARENT_SCOPE
+)
 

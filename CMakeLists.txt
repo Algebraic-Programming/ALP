@@ -198,7 +198,7 @@ set( WITH_HYPERDAGS_BACKEND_HEADERS OFF )
 
 # activate headers based on requested backends
 if( WITH_REFERENCE_BACKEND OR WITH_BSP1D_BACKEND OR WITH_NONBLOCKING_BACKEND )
-	# both reference and bsp1d backends need reference headers
+	# reference, bsp1d and nonblocking backends need reference headers
 	set( WITH_REFERENCE_BACKEND_HEADERS ON )
 endif()
 

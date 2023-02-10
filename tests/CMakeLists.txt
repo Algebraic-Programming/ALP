@@ -21,6 +21,109 @@ assert_valid_variables( ALP_UTILS_SRC_PATH AVAILABLE_BACKENDS DATASETS_DIR TESTS
 assert_defined_variables( GNN_DATASET_PATH WITH_BSP1D_BACKEND WITH_HYBRID_BACKEND )
 
 
+### CONSUMABLE TARGETS
+### i.e. targets with the default backend already set in the compilation interface:
+### if you import one of them, than it is already selected as a backend
+
+if( WITH_REFERENCE_BACKEND )
+
+	assert_defined_targets( backend_shmem_static )
+
+	## reference static
+	add_library( backend_reference_static INTERFACE )
+	target_link_libraries( backend_reference_static INTERFACE backend_shmem_static )
+	target_link_libraries( backend_reference_static INTERFACE backend_reference_headers )
+	# add the suitable definitions for backend selection for users' targets to get them automatically
+	target_compile_definitions( backend_reference_static INTERFACE "${REFERENCE_SELECTION_DEFS}" )
+
+	install( TARGETS backend_reference_static
+		EXPORT GraphBLASTargets
+		ARCHIVE DESTINATION "${SHMEM_BACKEND_INSTALL_DIR}"
+	)
+
+	## reference shared
+	add_library( backend_reference_shared INTERFACE )
+	target_link_libraries( backend_reference_shared INTERFACE backend_shmem_shared )
+	target_link_libraries( backend_reference_shared INTERFACE backend_reference_headers )
+	target_compile_definitions( backend_reference_shared INTERFACE "${REFERENCE_SELECTION_DEFS}" )
+
+	install( TARGETS backend_reference_shared
+		EXPORT GraphBLASTargets
+		LIBRARY DESTINATION "${SHMEM_BACKEND_INSTALL_DIR}"
+	)
+
+	# this is an alias for add_grb_executables() to select the backend to link against
+	# DO NOT CHANGE THE ALIAS NAME!
+	add_library( "${REFERENCE_BACKEND_DEFAULT_NAME}" ALIAS backend_reference_static )
+
+endif( WITH_REFERENCE_BACKEND )
+
+
+if( WITH_OMP_BACKEND )
+
+	assert_defined_targets( backend_shmem_static )
+
+	## reference_omp static
+	add_library( backend_reference_omp_static INTERFACE )
+	target_link_libraries( backend_reference_omp_static INTERFACE backend_shmem_static )
+	target_link_libraries( backend_reference_omp_static INTERFACE backend_reference_omp_headers )
+	target_compile_definitions( backend_reference_omp_static INTERFACE "${REFERENCE_OMP_SELECTION_DEFS}" )
+
+	install( TARGETS backend_reference_omp_static
+		EXPORT GraphBLASTargets
+		ARCHIVE DESTINATION "${SHMEM_BACKEND_INSTALL_DIR}"
+	)
+
+	## reference_omp shared
+	add_library( backend_reference_omp_shared INTERFACE )
+	target_link_libraries( backend_reference_omp_shared INTERFACE backend_shmem_shared )
+	target_link_libraries( backend_reference_omp_shared INTERFACE backend_reference_omp_headers )
+	target_compile_definitions( backend_reference_omp_shared INTERFACE "${REFERENCE_OMP_SELECTION_DEFS}" )
+
+	install( TARGETS backend_reference_omp_shared
+		EXPORT GraphBLASTargets
+		LIBRARY DESTINATION "${SHMEM_BACKEND_INSTALL_DIR}"
+	)
+
+	# this is an alias for add_grb_executables() to select the backend to link against
+	# DO NOT CHANGE THE ALIAS NAME!
+	add_library( "${REFERENCE_OMP_BACKEND_DEFAULT_NAME}" ALIAS backend_reference_omp_static )
+
+endif( WITH_OMP_BACKEND )
+
+
+if( WITH_NONBLOCKING_BACKEND )
+
+	assert_defined_targets( backend_shmem_static )
+
+	## nonblocking static
+	add_library( backend_nonblocking_static INTERFACE )
+	target_link_libraries( backend_nonblocking_static INTERFACE backend_shmem_static )
+	target_link_libraries( backend_nonblocking_static INTERFACE backend_nonblocking_headers )
+	target_compile_definitions( backend_nonblocking_static INTERFACE "${NONBLOCKING_SELECTION_DEFS}" )
+
+	install( TARGETS backend_nonblocking_static
+		EXPORT GraphBLASTargets
+		ARCHIVE DESTINATION "${SHMEM_BACKEND_INSTALL_DIR}"
+	)
+
+	## nonblocking shared
+	add_library( backend_nonblocking_shared INTERFACE )
+	target_link_libraries( backend_nonblocking_shared INTERFACE backend_shmem_shared )
+	target_link_libraries( backend_nonblocking_shared INTERFACE backend_nonblocking_headers )
+	target_compile_definitions( backend_nonblocking_shared INTERFACE "${NONBLOCKING_SELECTION_DEFS}" )
+
+	install( TARGETS backend_nonblocking_shared
+		EXPORT GraphBLASTargets
+		LIBRARY DESTINATION "${SHMEM_BACKEND_INSTALL_DIR}"
+	)
+
+	# this is an alias for add_grb_executables() to select the backend to link against
+	# DO NOT CHANGE THE ALIAS NAME!
+	add_library( "${NONBLOCKING_BACKEND_DEFAULT_NAME}" ALIAS backend_nonblocking_static )
+
+endif( WITH_NONBLOCKING_BACKEND )
+
 
 # library with utilities for tests, to be used optionally
 # i.e. NOT linked by default
