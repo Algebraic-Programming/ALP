@@ -15,7 +15,11 @@
  * limitations under the License.
  */
 
-/*
+/**
+ * @file
+ *
+ * Defines the nonblocking level-2 parameters
+ *
  * @author Aristeidis Mastoras
  * @date 16th of May, 2022
  */
@@ -153,7 +157,9 @@ namespace grb {
 			const Vector< InputType1, nonblocking, Coords > &source_vector,
 			const InputType1 * __restrict__ const &source,
 			const size_t &source_range,
-			const internal::Compressed_Storage< InputType2, RowColType, NonzeroType > &matrix,
+			const internal::Compressed_Storage<
+				InputType2, RowColType, NonzeroType
+			> &matrix,
 			const Vector< InputType3, nonblocking, Coords > &mask_vector,
 			const InputType3 * __restrict__ const &mask,
 			const Vector< InputType4, nonblocking, Coords > &source_mask_vector,
@@ -178,7 +184,9 @@ namespace grb {
 			// check whether we should compute output here
 			if( masked ) {
 				if( already_dense_mask_vector ) {
-					if( !internal::getCoordinates( mask_vector ).template mask< descr >( destination_index, mask ) ) {
+					if( !internal::getCoordinates( mask_vector ).template
+						mask< descr >( destination_index, mask )
+					) {
 #ifdef _DEBUG
 						std::cout << "Masks says to skip processing destination index " <<
 							destination_index << "\n";
@@ -186,7 +194,9 @@ namespace grb {
 						return;
 					}
 				} else {
-					if( !local_mask_vector.template mask< descr >( destination_index - lower_bound, mask ) ) {
+					if( !local_mask_vector.template
+						mask< descr >( destination_index - lower_bound, mask )
+					) {
 #ifdef _DEBUG
 						std::cout << "Masks says to skip processing destination index " <<
 							destination_index << "\n";
@@ -197,35 +207,43 @@ namespace grb {
 			}
 
 			// take shortcut, if possible
-			if( grb::has_immutable_nonzeroes< AdditiveMonoid >::value
-					&& ( already_dense_destination_vector || local_destination_vector.assigned( destination_index - lower_bound ) )
-					&& destination_element != add.template getIdentity< IOType >() ) {
+			if( grb::has_immutable_nonzeroes< AdditiveMonoid >::value && (
+					already_dense_destination_vector ||
+					local_destination_vector.assigned( destination_index - lower_bound )
+				) && destination_element != add.template getIdentity< IOType >()
+			) {
 				return;
 			}
 
 			// start output
-			typename AdditiveMonoid::D3 output = add.template getIdentity< typename AdditiveMonoid::D3 >();
+			typename AdditiveMonoid::D3 output =
+				add.template getIdentity< typename AdditiveMonoid::D3 >();
 			bool set = false;
 
 			// if we need to add identity, do so first:
 			if( add_identity ) {
-				const size_t id_location = src_global_to_local( dst_local_to_global( destination_index ) );
-				// the SpMV primitive may access non-local elements, and thus referring to the input vector by using local coordinates is incorrect
-				// the input vector of an SpMV cannot be updated, i.e., written, by another primitive executed in the same pipeline with the current SpMV
-				// therefore, in the current design, it's safe to use global coordinates for the input vector
-				if( ( !input_masked || internal::getCoordinates( source_mask_vector ).template mask< descr >( id_location, source_mask ) )
-						&& id_location < source_range ) {
+				const size_t id_location = src_global_to_local( dst_local_to_global(
+					destination_index ) );
+				// the SpMV primitive may access non-local elements, and thus referring to
+				// the input vector by using local coordinates is incorrect
+				// the input vector of an SpMV cannot be updated, i.e., written, by another
+				// primitive executed in the same pipeline with the current SpMV
+				// therefore, in the current design, it's safe to use global coordinates for
+				// the input vector
+				if( ( !input_masked ||
+						internal::getCoordinates( source_mask_vector ).template
+							mask< descr >( id_location, source_mask )
+					) && id_location < source_range
+				) {
 					if( dense_hint || internal::getCoordinates( source_vector ).assigned( id_location ) ) {
 						typename AdditiveMonoid::D1 temp;
-						internal::CopyOrApplyWithIdentity
-								<
-									!left_handed, typename AdditiveMonoid::D1, InputType1, One
-								>::set( temp, source_vector[ id_location ], mul );
-						internal::CopyOrApplyWithIdentity
-								<
-									false, typename AdditiveMonoid::D3, typename AdditiveMonoid::D1,
-									AdditiveMonoid::template Identity
-								>::set( output, temp, add );
+						internal::CopyOrApplyWithIdentity<
+								!left_handed, typename AdditiveMonoid::D1, InputType1, One
+							>::set( temp, source_vector[ id_location ], mul );
+						internal::CopyOrApplyWithIdentity<
+								false, typename AdditiveMonoid::D3, typename AdditiveMonoid::D1,
+								AdditiveMonoid::template Identity
+							>::set( output, temp, add );
 						set = true;
 					}
 				}
@@ -240,15 +258,25 @@ namespace grb {
 				<< ". Input matrix has " << ( matrix.col_start[ destination_index + 1 ] -
 					matrix.col_start[ destination_index ] ) << " nonzeroes.\n";
 #endif
-			for( size_t k = matrix.col_start[ destination_index ]; rc == SUCCESS && k < static_cast< size_t >( matrix.col_start[ destination_index + 1 ] ); ++k ) {
+			for(
+				size_t k = matrix.col_start[ destination_index ];
+				rc == SUCCESS &&
+					k < static_cast< size_t >( matrix.col_start[ destination_index + 1 ] );
+				++k
+			) {
 				// declare multiplication output field
-				typename Multiplication::D3 result = add.template getIdentity< typename AdditiveMonoid::D3 >();
+				typename Multiplication::D3 result =
+					add.template getIdentity< typename AdditiveMonoid::D3 >();
 				// get source index
 				const size_t source_index = matrix.row_index[ k ];
 				// check mask
-				if( input_masked && !internal::getCoordinates( source_mask_vector ).template mask< descr >( source_index, source_mask ) ) {
+				if( input_masked &&
+					!internal::getCoordinates( source_mask_vector ).template
+						mask< descr >( source_index, source_mask )
+				) {
 #ifdef _DEBUG
-					std::cout << "\t vxm_gather: skipping source index " << source_index << " due to input mask\n";
+					std::cout << "\t vxm_gather: skipping source index " << source_index
+						<< " due to input mask\n";
 #endif
 					continue;
 				}
@@ -263,49 +291,58 @@ namespace grb {
 					}
 				}
 				// get nonzero
-				typedef typename std::conditional< left_handed, typename Multiplication::D2, typename Multiplication::D1 >::type RingNonzeroType;
-				const RingNonzeroType nonzero = matrix.template getValue( k, One< RingNonzeroType >::value() );
+				typedef typename std::conditional<
+					left_handed,
+					typename Multiplication::D2,
+					typename Multiplication::D1
+				>::type RingNonzeroType;
+				const RingNonzeroType nonzero =
+					matrix.template getValue( k, One< RingNonzeroType >::value() );
 #ifdef _DEBUG
 				std::cout << "\t vxm_gather: interpreted nonzero is " << nonzero << ", "
-					<< "which is the " << k << "-th nonzero and has source index " << source_index << "\n";
+					<< "which is the " << k << "-th nonzero and has source index "
+					<< source_index << "\n";
 #endif
 				// check if we use source element or whether we use its index value instead
-				typedef typename std::conditional< left_handed, typename Multiplication::D1, typename Multiplication::D2 >::type SourceType;
-				const SourceType apply_source = internal::ValueOrIndex
-														<
-															descr, SourceType, InputType1
-														>::getFromArray( source, src_local_to_global, source_index );
+				typedef typename std::conditional<
+					left_handed,
+					typename Multiplication::D1,
+					typename Multiplication::D2
+				>::type SourceType;
+				const SourceType apply_source = internal::ValueOrIndex<
+					descr, SourceType, InputType1
+				>::getFromArray( source, src_local_to_global, source_index );
 #ifdef _DEBUG
 				if( use_index ) {
-					std::cout << "\t vxm_gather (use_index descriptor): "
-						"apply( output, matrix nonzero, vector nonzero, * ) = "
-						"apply( ";
+					std::cout << "\t vxm_gather (use_index descriptor): apply( output, matrix "
+						<< "nonzero, vector nonzero, * ) = apply( ";
 				} else {
-					std::cout << "\t vxm_gather: "
-						"apply( output, matrix nonzero, vector nonzero, * ) = "
-						"apply( ";
+					std::cout << "\t vxm_gather: apply( output, matrix nonzero, vector "
+						<< "nonzero, * ) = apply( ";
 				}
 				std::cout << " output, " << nonzero << ", "  << source << ", * )\n";
 #endif
 				//multiply
-				internal::leftOrRightHandedMul	
-						<
-							left_handed, typename Multiplication::D3,
-							SourceType, RingNonzeroType, Multiplication
-						>::mul( result, apply_source, nonzero, mul );
+				internal::leftOrRightHandedMul<
+					left_handed, typename Multiplication::D3,
+					SourceType, RingNonzeroType, Multiplication
+				>::mul( result, apply_source, nonzero, mul );
 #ifdef _DEBUG
 				std::cout << "\t vxm_gather: output (this nonzero) = " << result << "\n";
 #endif
 
 				// accumulate
 #ifdef _DEBUG
-				std::cout << "\t vxm_gather: foldr( " << result << ", " << output << ", + );\n";
+				std::cout << "\t vxm_gather: foldr( " << result << ", " << output
+					<< ", + );\n";
 #endif
 				rc = foldr( result, output, add.getOperator() );
 #ifdef _DEBUG
-				std::cout << "\t vxm_gather: output (sum at destination) = " << output << "\n";
+				std::cout << "\t vxm_gather: output (sum at destination) = " << output
+					<< "\n";
 #endif
 				set = true;
+
 				// sanity check (but apply cannot fail)
 				assert( rc == SUCCESS );
 			}
@@ -319,7 +356,8 @@ namespace grb {
 				std::cout << "\t vxm_gather: local contribution to this output element at "
 					<< "index " << destination_index << " will be " << output << " and this "
 					<< "is an unset value.\n";
-				if( already_dense_destination_vector || local_destination_vector.assigned( destination_index - lower_bound )
+				if( already_dense_destination_vector ||
+					local_destination_vector.assigned( destination_index - lower_bound )
 				) {
 					std::cout << "\t(old value " << destination_element << " will remain "
 						<< "unmodified.)\n";
@@ -334,7 +372,9 @@ namespace grb {
 #ifdef _DEBUG
 				std::cout << "\taccumulating " << output << " into output vector...\n";
 #endif
-				if( already_dense_destination_vector || local_destination_vector.assign( destination_index - lower_bound ) ) {
+				if( already_dense_destination_vector ||
+					local_destination_vector.assign( destination_index - lower_bound )
+				) {
 #ifdef _DEBUG
 					std::cout << "\tfoldl( " << destination_element << ", " << output << ", "
 					       << "add.getOperator() );, destination_element = ";
@@ -357,6 +397,7 @@ namespace grb {
 			}
 		}
 
+#if 0 //TODO remove?
 		template<
 			Descriptor descr,
 			bool input_dense,
@@ -393,6 +434,7 @@ namespace grb {
 		) {
 
 		}
+#endif
 
 		template<
 			Descriptor descr,
@@ -466,7 +508,8 @@ namespace grb {
 
 #ifdef _DEBUG
 			const auto s = spmd< nonblocking >::pid();
-			std::cout << s << ": nonblocking vxm called with a " << descriptors::toString( descr ) << "\n";
+			std::cout << s << ": nonblocking vxm called with a "
+				<< descriptors::toString( descr ) << "\n";
 #endif
 
 			// get input and output vector sizes
@@ -490,8 +533,9 @@ namespace grb {
 
 			// check density
 			if( descr & descriptors::dense ) {
-				// it's safe to check the number of nonzeroes for the input vector and its mask
-				// since both of them are read-only in the current design for nonblocking execution
+				// it's safe to check the number of nonzeroes for the input vector and its
+				// mask since both of them are read-only in the current design for
+				// nonblocking execution
 				if( nnz( v ) < size( v ) ) {
 #ifdef _DEBUG
 					std::cout << "\t Dense descriptor given but input vector was sparse\n";
@@ -509,8 +553,9 @@ namespace grb {
 
 			// check mask
 			if( masked ) {
-				if( (transposed && internal::getCoordinates( mask ).size() != nrows( A ) )
-					|| ( !transposed && internal::getCoordinates( mask ).size() != ncols( A ) ) ) {
+				if( (transposed && internal::getCoordinates( mask ).size() != nrows( A ) ) ||
+					( !transposed && internal::getCoordinates( mask ).size() != ncols( A ) )
+				) {
 #ifdef _DEBUG
 					std::cout << "Mismatch of mask size ( "
 						<< internal::getCoordinates( mask ).size() << " ) versus matrix rows "
@@ -534,41 +579,56 @@ namespace grb {
 			IOType * __restrict__ const y = internal::getRaw( u );
 
 			// check for illegal arguments
-			if( !(descr & descriptors::safe_overlap) && reinterpret_cast< const void * >( y ) == reinterpret_cast< const void * >( x ) ) {
-				std::cerr << "Warning: grb::internal::vxm_generic called with overlapping input and output vectors.\n";
+			if( !(descr & descriptors::safe_overlap) &&
+				reinterpret_cast< const void * >( y ) ==
+					reinterpret_cast< const void * >( x )
+			) {
+				std::cerr << "Warning: grb::internal::vxm_generic called with overlapping "
+					<< "input and output vectors.\n";
 				return OVERLAP;
 			}
-			if( masked && (reinterpret_cast<const void*>(y) == reinterpret_cast<const void*>(z)) ) {
-				std::cerr << "Warning: grb::internal::vxm_generic called with overlapping mask and output vectors.\n";
+			if( masked && (reinterpret_cast<const void*>(y) ==
+				reinterpret_cast<const void*>(z))
+			) {
+				std::cerr << "Warning: grb::internal::vxm_generic called with overlapping "
+					<< "mask and output vectors.\n";
 				return OVERLAP;
 			}
 
 #ifdef _DEBUG
 			std::cout << s << ": performing SpMV / SpMSpV using an " << nrows( A )
-				<< " by " << ncols( A ) << " matrix holding " << nnz( A ) << " nonzeroes.\n";
+				<< " by " << ncols( A ) << " matrix holding " << nnz( A )
+				<< " nonzeroes.\n";
 #endif
 
-			// in the current design for nonblocking execution, the input vectors of vxm_generic
-			// cannot be overwritten by another stage of the same pipeline, and therefore, it's
-			// safe to rely on the global coordinates of the input vectors, as they are read-only
-			// this property is of special importance when handling matrices of size "m" x "n"
-			// since the mismatch between "m" and "n" requires special handling for the local
-			// coordinates of the input vectors, the current design relies on the size of the
-			// output vector which should match the sizes of all other vectors in the pipeline
-			// the size of the input vector does not have to match the size of the other vectors
-			// as long as the input vectors are read-only
+			// in the current design for nonblocking execution, the input vectors of
+			// vxm_generic // cannot be overwritten by another stage of the same
+			// pipeline, and therefore, it's safe to rely on the global coordinates of
+			// the input vectors, as they are read-only this property is of special
+			// importance when handling matrices of size "m" x "n" since the mismatch
+			// between "m" and "n" requires special handling for the local coordinates of
+			// the input vectors, the current design relies on the size of the output
+			// vector which should match the sizes of all other vectors in the pipeline
+			// the size of the input vector does not have to match the size of the other
+			// vectors as long as the input vectors are read-only
 
 			constexpr const bool dense_descr = descr & descriptors::dense;
 
-			internal::Pipeline::stage_type func = [&u, &mask, &v, &v_mask, &A, &add, &mul, row_l2g, row_g2l, col_l2g, col_g2l, y, x, z, vm
+			internal::Pipeline::stage_type func = [
+				&u, &mask, &v, &v_mask, &A, &add, &mul,
+				row_l2g, row_g2l, col_l2g, col_g2l,
+				y, x, z, vm
 #ifdef _DEBUG
-, s
+				, s
 #endif
-			]
-							( internal::Pipeline &pipeline, const size_t lower_bound, const size_t upper_bound ) {
+			] (
+				internal::Pipeline &pipeline,
+				const size_t lower_bound, const size_t upper_bound
+			) {
 #ifdef _NONBLOCKING_DEBUG
 				#pragma omp critical
-				std::cout << "\t\tExecution of stage vxm_generic in the range(" << lower_bound << ", " << upper_bound << ")" << std::endl;
+				std::cout << "\t\tExecution of stage vxm_generic in the range("
+					<< lower_bound << ", " << upper_bound << ")" << std::endl;
 #endif
 				(void) pipeline;
 
@@ -579,7 +639,8 @@ namespace grb {
 				size_t local_mask_nz = local_n;
 
 #ifdef GRB_ALREADY_DENSE_OPTIMIZATION
-				const bool already_dense_vectors = dense_descr || pipeline.allAlreadyDenseVectors();
+				const bool already_dense_vectors = dense_descr ||
+					pipeline.allAlreadyDenseVectors();
 #else
 				constexpr const bool already_dense_vectors = dense_descr;
 #endif
@@ -589,23 +650,27 @@ namespace grb {
 
 				if( !already_dense_vectors ) {
 #ifdef GRB_ALREADY_DENSE_OPTIMIZATION
-					already_dense_output = pipeline.containsAlreadyDenseVector( &internal::getCoordinates( u ) );
+					already_dense_output = pipeline.containsAlreadyDenseVector(
+						&internal::getCoordinates( u ) );
 					if( !already_dense_output ) {
 #else
 						already_dense_output = false;
 #endif
-						local_u = internal::getCoordinates( u ).asyncSubset( lower_bound, upper_bound );
+						local_u = internal::getCoordinates( u ).asyncSubset( lower_bound,
+							upper_bound );
 #ifdef GRB_ALREADY_DENSE_OPTIMIZATION
 					}
 #endif
 					if( masked ) {
 #ifdef GRB_ALREADY_DENSE_OPTIMIZATION
-						already_dense_output_mask = pipeline.containsAlreadyDenseVector( &internal::getCoordinates( mask ) );
+						already_dense_output_mask = pipeline.containsAlreadyDenseVector(
+							&internal::getCoordinates( mask ) );
 						if( !already_dense_output_mask ) {
 #else
 							already_dense_output_mask = false;
 #endif
-							local_mask = internal::getCoordinates( mask ).asyncSubset( lower_bound, upper_bound );
+							local_mask = internal::getCoordinates( mask ).asyncSubset( lower_bound,
+								upper_bound );
 							local_mask_nz = local_mask.nonzeroes();
 #ifdef GRB_ALREADY_DENSE_OPTIMIZATION
 						}
@@ -631,20 +696,18 @@ namespace grb {
 
 						for( size_t i = lower_bound; i < upper_bound; i++ ) {
 #ifdef GRB_BOOLEAN_DISPATCHER
-							boolean_dispatcher_vxm_inner_kernel_gather
-										<
+							boolean_dispatcher_vxm_inner_kernel_gather<
 #else
-							vxm_inner_kernel_gather
-										<
+							vxm_inner_kernel_gather<
 #endif
-											descr, masked, input_masked, left_handed, One
-										>(
-											already_dense_output, already_dense_output_mask,
-											rc, lower_bound, local_u, local_mask,
-											u, y[ i ], i, v, x, nrows( A ), internal::getCRS( A ),
-											mask, z, v_mask, vm,
-											add, mul, row_l2g, col_l2g, col_g2l
-										);
+									descr, masked, input_masked, left_handed, One
+								>(
+									already_dense_output, already_dense_output_mask,
+									rc, lower_bound, local_u, local_mask,
+									u, y[ i ], i, v, x, nrows( A ), internal::getCRS( A ),
+									mask, z, v_mask, vm, add, mul,
+									row_l2g, col_l2g, col_g2l
+								);
 						}
 
 					} else {
@@ -652,31 +715,33 @@ namespace grb {
 						std::cout << s << ": in masked CRS variant (gather). Mask has "
 							<< local_mask_nz << " nonzeroes and size " << local_n << ":\n";
 						for( size_t k = 0; k < local_mask_nz; ++k ) {
-							std::cout << " " << ( ( already_dense_output_mask ? k : local_mask.index( k ) ) + lower_bound );
+							std::cout << " "
+							<< ( ( already_dense_output_mask ? k : local_mask.index( k ) ) +
+								lower_bound );
 						}
 						std::cout << "\n";
 #endif
 						assert( masked );
 
 						for( size_t k = 0; k < local_mask_nz; ++k ) {
-							const size_t i = ( already_dense_output_mask ? k : local_mask.index( k ) ) + lower_bound;
+							const size_t i =
+								( already_dense_output_mask ? k : local_mask.index( k ) ) +
+								lower_bound;
 							assert( i < nrows(A) );
 
 #ifdef GRB_BOOLEAN_DISPATCHER
-							boolean_dispatcher_vxm_inner_kernel_gather
-									<
+							boolean_dispatcher_vxm_inner_kernel_gather<
 #else
-							vxm_inner_kernel_gather
-									<
+							vxm_inner_kernel_gather<
 #endif
-										descr, false, input_masked, left_handed, One
-									>(
-										already_dense_output, already_dense_output_mask,
-										rc, lower_bound, local_u, local_mask,
-										u, y[ i ], i, v, x, nrows( A ), internal::getCRS( A ),
-										mask, z, v_mask, vm,
-										add, mul, row_l2g, col_l2g, col_g2l
-									);
+									descr, false, input_masked, left_handed, One
+								>(
+									already_dense_output, already_dense_output_mask,
+									rc, lower_bound, local_u, local_mask,
+									u, y[ i ], i, v, x, nrows( A ), internal::getCRS( A ),
+									mask, z, v_mask, vm, add, mul,
+									row_l2g, col_l2g, col_g2l
+								);
 						}
 					}
 					// end compute u=vA^T
@@ -699,20 +764,18 @@ namespace grb {
 
 						for( size_t j = lower_bound; j < upper_bound; j++ ) {
 #ifdef GRB_BOOLEAN_DISPATCHER
-							boolean_dispatcher_vxm_inner_kernel_gather
-									<
+							boolean_dispatcher_vxm_inner_kernel_gather<
 #else
-							vxm_inner_kernel_gather
-									<
+							vxm_inner_kernel_gather<
 #endif
-										descr, masked, input_masked, left_handed, One
-									>(
-										already_dense_output, already_dense_output_mask,
-										rc, lower_bound, local_u, local_mask,
-										u, y[ j ], j, v, x, nrows( A ), internal::getCCS( A ),
-										mask, z, v_mask, vm,
-										add, mul, row_l2g, row_g2l, col_l2g
-									);
+									descr, masked, input_masked, left_handed, One
+								>(
+									already_dense_output, already_dense_output_mask,
+									rc, lower_bound, local_u, local_mask,
+									u, y[ j ], j, v, x, nrows( A ), internal::getCCS( A ),
+									mask, z, v_mask, vm, add, mul,
+									row_l2g, row_g2l, col_l2g
+								);
 						}
 					} else {
 						// loop only over the nonzero masks (can still be done in parallel!)
@@ -722,22 +785,21 @@ namespace grb {
 						assert( masked );
 
 						for( size_t k = 0; k < local_mask_nz; ++k ) {
-							const size_t j = ( already_dense_output_mask ? k : local_mask.index( k ) ) + lower_bound;
+							const size_t j =
+								( already_dense_output_mask ? k : local_mask.index( k ) ) + lower_bound;
 #ifdef GRB_BOOLEAN_DISPATCHER
-							boolean_dispatcher_vxm_inner_kernel_gather
-									<
+							boolean_dispatcher_vxm_inner_kernel_gather<
 #else
-							vxm_inner_kernel_gather
-									<
+							vxm_inner_kernel_gather<
 #endif
-										descr, masked, input_masked, left_handed, One
-									>(
-										already_dense_output, already_dense_output_mask,
-										rc, lower_bound, local_u, local_mask,
-										u, y[ j ], j, v, x, nrows( A ), internal::getCCS( A ),
-										mask, z, v_mask, vm,
-										add, mul, row_l2g, row_g2l, col_l2g
-									);
+									descr, masked, input_masked, left_handed, One
+								>(
+									already_dense_output, already_dense_output_mask,
+									rc, lower_bound, local_u, local_mask,
+									u, y[ j ], j, v, x, nrows( A ), internal::getCCS( A ),
+									mask, z, v_mask, vm, add, mul,
+									row_l2g, row_g2l, col_l2g
+								);
 						}
 					}
 					// end computing u=vA
@@ -747,22 +809,31 @@ namespace grb {
 #else
 				if( !already_dense_vectors ) {
 #endif
-					internal::getCoordinates( u ).asyncJoinSubset( local_u, lower_bound, upper_bound );
+					internal::getCoordinates( u ).asyncJoinSubset( local_u, lower_bound,
+						upper_bound );
 				}
 
 				return rc;
 			};
 
-			// since the local coordinates are never used for the input vector and the input mask
-			// they are added only for verification of legal usage of the dense descriptor
-			ret = ret ? ret : internal::le.addStage( std::move( func ), internal::Opcode::BLAS2_VXM_GENERIC,
+			// since the local coordinates are never used for the input vector and the
+			// input mask they are added only for verification of legal usage of the
+			// dense descriptor
+			ret = ret ? ret : internal::le.addStage(
+					std::move( func ),
+					internal::Opcode::BLAS2_VXM_GENERIC,
 					size( u ), sizeof( IOType ), dense_descr, true,
-					&u, nullptr,
-					&internal::getCoordinates( u ), nullptr,
-					&v, masked ? &mask : nullptr, input_masked ? &v_mask : nullptr, nullptr,
-					&internal::getCoordinates( v ), masked ? &internal::getCoordinates( mask ) : nullptr,
-					input_masked ? &internal::getCoordinates( v_mask ) : nullptr, nullptr,
-					&A );
+					&u, nullptr, &internal::getCoordinates( u ), nullptr,
+					&v,
+					masked ? &mask : nullptr,
+					input_masked ? &v_mask : nullptr,
+					nullptr,
+					&internal::getCoordinates( v ),
+					masked ? &internal::getCoordinates( mask ) : nullptr,
+					input_masked ? &internal::getCoordinates( v_mask ) : nullptr,
+					nullptr,
+					&A
+				);
 
 #ifdef _NONBLOCKING_DEBUG
 			std::cout << "\t\tStage added to a pipeline: vxm_generic" << std::endl;
@@ -824,18 +895,19 @@ namespace grb {
 		const AdditiveMonoid &add = AdditiveMonoid(),
 		const MultiplicativeOperator &mul = MultiplicativeOperator(),
 		const Phase &phase = EXECUTE,
-		const typename std::enable_if< grb::is_monoid< AdditiveMonoid >::value &&
+		const typename std::enable_if<
+			grb::is_monoid< AdditiveMonoid >::value &&
 			grb::is_operator< MultiplicativeOperator >::value &&
 			!grb::is_object< IOType >::value &&
 			!grb::is_object< InputType1 >::value &&
 			!grb::is_object< InputType2 >::value &&
 			!grb::is_object< InputType3 >::value &&
 			!std::is_same< InputType2, void >::value,
-			void
-		>::type * const = nullptr
+		void >::type * const = nullptr
 	) {
 		const grb::Vector< bool, nonblocking, Coords > empty_mask( 0 );
-		return vxm< descr, true, false >( u, mask, v, empty_mask, A, add, mul, phase );
+		return vxm< descr, true, false >( u, mask, v, empty_mask, A, add, mul,
+			phase );
 	}
 
 	template<
@@ -862,97 +934,93 @@ namespace grb {
 		const Ring &ring = Ring(),
 		const Phase &phase = EXECUTE,
 		const typename std::enable_if<
-			grb::is_semiring< Ring >::value, void
-		>::type * const = nullptr
+			grb::is_semiring< Ring >::value,
+		void >::type * const = nullptr
 	) {
 		constexpr bool left_sided = true;
 		if( output_may_be_masked && size( v_mask ) == 0 && size( mask ) > 0 ) {
 
-			return internal::vxm_generic
-							<
-								descr, true, false, left_sided, true, Ring::template One
-							>(
-								u, mask, v, v_mask, A,
-								ring.getAdditiveMonoid(), ring.getMultiplicativeOperator(),
-								phase,
-								[]( const size_t i ) {
-									return i;
-								},
-								[]( const size_t i ) {
-									return i;
-								},
-								[]( const size_t i ) {
-									return i;
-								},
-								[]( const size_t i ) {
-									return i;
-								}
-							);
+			return internal::vxm_generic<
+					descr, true, false, left_sided, true, Ring::template One
+				>(
+					u, mask, v, v_mask, A,
+					ring.getAdditiveMonoid(), ring.getMultiplicativeOperator(),
+					phase,
+					[]( const size_t i ) {
+						return i;
+					},
+					[]( const size_t i ) {
+						return i;
+					},
+					[]( const size_t i ) {
+						return i;
+					},
+					[]( const size_t i ) {
+						return i;
+					}
+				);
 		} else if( input_may_be_masked && size( mask ) == 0 && size( v_mask ) > 0 ) {
-			return internal::vxm_generic
-							<
-								descr, false, true, left_sided, true, Ring::template One
-							>(
-								u, mask, v, v_mask, A,
-								ring.getAdditiveMonoid(), ring.getMultiplicativeOperator(),
-								phase,
-								[]( const size_t i ) {
-									return i;
-								},
-								[]( const size_t i ) {
-									return i;
-								},
-								[]( const size_t i ) {
-									return i;
-								},
-								[]( const size_t i ) {
-									return i;
-								}
-							);
+			return internal::vxm_generic<
+					descr, false, true, left_sided, true, Ring::template One
+				>(
+					u, mask, v, v_mask, A,
+					ring.getAdditiveMonoid(), ring.getMultiplicativeOperator(),
+					phase,
+					[]( const size_t i ) {
+						return i;
+					},
+					[]( const size_t i ) {
+						return i;
+					},
+					[]( const size_t i ) {
+						return i;
+					},
+					[]( const size_t i ) {
+						return i;
+					}
+				);
 		} else if( output_may_be_masked && input_may_be_masked && size( mask ) > 0 && size( v_mask ) > 0 ) {
-			return internal::vxm_generic
-							<
-								descr, true, true, left_sided, true, Ring::template One
-							>(
-								u, mask, v, v_mask, A,
-								ring.getAdditiveMonoid(), ring.getMultiplicativeOperator(),
-								phase,
-								[]( const size_t i ) {
-									return i;
-								},
-								[]( const size_t i ) {
-									return i;
-								},
-								[]( const size_t i ) {
-									return i;
-								},
-								[]( const size_t i ) {
-									return i;
-								}
-							);
+			return internal::vxm_generic<
+					descr, true, true, left_sided, true, Ring::template One
+				>(
+					u, mask, v, v_mask, A,
+					ring.getAdditiveMonoid(), ring.getMultiplicativeOperator(),
+					phase,
+					[]( const size_t i ) {
+						return i;
+					},
+					[]( const size_t i ) {
+						return i;
+					},
+					[]( const size_t i ) {
+						return i;
+					},
+					[]( const size_t i ) {
+						return i;
+					}
+				);
 		} else {
 			assert( size( mask ) == 0 );
 			assert( size( v_mask ) == 0 );
-			return internal::vxm_generic
-							<
-								descr, false, false, left_sided, true, Ring::template One
-							>(
-								u, mask, v, v_mask, A,
-								ring.getAdditiveMonoid(), ring.getMultiplicativeOperator(),
-								phase,
-								[]( const size_t i ) {
-									return i;
-								},
-								[]( const size_t i ) {
-									return i;
-								},
-								[]( const size_t i ) {
-									return i;
-								},
-								[]( const size_t i ) {
-									return i;
-								}
-							);
+			return internal::vxm_generic<
+					descr, false, false, left_sided, true, Ring::template One
+				>(
+					u, mask, v, v_mask, A,
+					ring.getAdditiveMonoid(), ring.getMultiplicativeOperator(),
+					phase,
+					[]( const size_t i ) {
+						return i;
+					},
+					[]( const size_t i ) {
+						return i;
+					},
+					[]( const size_t i ) {
+						return i;
+					},
+					[]( const size_t i ) {
+						return i;
+					}
+				);
 		}
 	}
 
@@ -978,7 +1046,8 @@ namespace grb {
 		>::type * const = nullptr
 	) {
 		const Vector< bool, nonblocking, Coords > empty_mask( 0 );
-		return vxm< descr, false, false >( u, empty_mask, v, empty_mask, A, ring, phase );
+		return vxm< descr, false, false >( u, empty_mask, v, empty_mask, A, ring,
+			phase );
 	}
 
 	template<
@@ -1006,11 +1075,12 @@ namespace grb {
 			!grb::is_object< IOType >::value &&
 			!grb::is_object< InputType1 >::value &&
 			!grb::is_object< InputType2 >::value &&
-			!std::is_same< InputType2, void >::value, void
-		>::type * const = nullptr
+			!std::is_same< InputType2, void >::value,
+		void >::type * const = nullptr
 	) {
 		const Vector< bool, nonblocking, Coords > empty_mask( 0 );
-		return vxm< descr, false, false >( u, empty_mask, v, empty_mask, A, add, mul, phase );
+		return vxm< descr, false, false >( u, empty_mask, v, empty_mask, A, add, mul,
+			phase );
 	}
 
 	template<
@@ -1025,7 +1095,8 @@ namespace grb {
 		typename InputType2 = typename Ring::D2,
 		typename InputType3 = bool
 	>
-	RC mxv( Vector< IOType, nonblocking, Coords > &u,
+	RC mxv(
+		Vector< IOType, nonblocking, Coords > &u,
 		const Vector< InputType3, nonblocking, Coords > &mask,
 		const Matrix< InputType2, nonblocking, RIT, CIT, NIT > &A,
 		const Vector< InputType1, nonblocking, Coords > &v,
@@ -1063,98 +1134,98 @@ namespace grb {
 		const Ring &ring,
 		const Phase &phase = EXECUTE,
 		const typename std::enable_if<
-			grb::is_semiring< Ring >::value, void
-		>::type * const = nullptr
+			grb::is_semiring< Ring >::value,
+		void >::type * const = nullptr
 	) {
 		constexpr Descriptor new_descr = descr ^ descriptors::transpose_matrix;
 		constexpr bool left_sided = false;
 		if( output_may_be_masked && ( size( v_mask ) == 0 && size( mask ) > 0 ) ) {
 
-			return internal::vxm_generic
-							<
-								new_descr, true, false, left_sided, true, Ring::template One
-							>(
-								u, mask, v, v_mask, A,
-								ring.getAdditiveMonoid(), ring.getMultiplicativeOperator(),
-								phase,
-								[]( const size_t i ) {
-									return i;
-								},
-								[]( const size_t i ) {
-									return i;
-								},
-								[]( const size_t i ) {
-									return i;
-								},
-								[]( const size_t i ) {
-									return i;
-								}
-							);
-		} else if( input_may_be_masked && ( size( mask ) == 0 && size( v_mask ) > 0 ) ) {
-			return internal::vxm_generic
-							<
-								new_descr, false, true, left_sided, true, Ring::template One
-							>(
-								u, mask, v, v_mask, A,
-								ring.getAdditiveMonoid(), ring.getMultiplicativeOperator(),
-								phase,
-								[]( const size_t i ) {
-									return i;
-								},
-								[]( const size_t i ) {
-									return i;
-								},
-								[]( const size_t i ) {
-									return i;
-								},
-								[]( const size_t i ) {
-									return i;
-								}
-							);
-		} else if( output_may_be_masked && input_may_be_masked && size( mask ) > 0 && size( v_mask ) > 0 ) {
-			return internal::vxm_generic
-							<
-								new_descr, true, true, left_sided, true, Ring::template One
-							>(
-								u, mask, v, v_mask, A,
-								ring.getAdditiveMonoid(), ring.getMultiplicativeOperator(),
-								phase,
-								[]( const size_t i ) {
-									return i;
-								},
-								[]( const size_t i ) {
-									return i;
-								},
-								[]( const size_t i ) {
-									return i;
-								},
-								[]( const size_t i ) {
-									return i;
-								}
-							);
+			return internal::vxm_generic<
+					new_descr, true, false, left_sided, true, Ring::template One
+				>(
+					u, mask, v, v_mask, A,
+					ring.getAdditiveMonoid(), ring.getMultiplicativeOperator(),
+					phase,
+					[]( const size_t i ) {
+						return i;
+					},
+					[]( const size_t i ) {
+						return i;
+					},
+					[]( const size_t i ) {
+						return i;
+					},
+					[]( const size_t i ) {
+						return i;
+					}
+				);
+		} else if( input_may_be_masked && ( size( mask ) == 0 &&
+			size( v_mask ) > 0 )
+		) {
+			return internal::vxm_generic<
+					new_descr, false, true, left_sided, true, Ring::template One
+				>(
+					u, mask, v, v_mask, A,
+					ring.getAdditiveMonoid(), ring.getMultiplicativeOperator(),
+					phase,
+					[]( const size_t i ) {
+						return i;
+					},
+					[]( const size_t i ) {
+						return i;
+					},
+					[]( const size_t i ) {
+						return i;
+					},
+					[]( const size_t i ) {
+						return i;
+					}
+				);
+		} else if( output_may_be_masked && input_may_be_masked && size( mask ) > 0 &&
+			size( v_mask ) > 0
+		) {
+			return internal::vxm_generic<
+					new_descr, true, true, left_sided, true, Ring::template One
+				>(
+					u, mask, v, v_mask, A,
+					ring.getAdditiveMonoid(), ring.getMultiplicativeOperator(),
+					phase,
+					[]( const size_t i ) {
+						return i;
+					},
+					[]( const size_t i ) {
+						return i;
+					},
+					[]( const size_t i ) {
+						return i;
+					},
+					[]( const size_t i ) {
+						return i;
+					}
+				);
 		} else {
 			assert( size( mask ) == 0 );
 			assert( size( v_mask ) == 0 );
-			return internal::vxm_generic
-							<
-								new_descr, false, false, left_sided, true, Ring::template One
-							>(
-								u, mask, v, v_mask, A,
-								ring.getAdditiveMonoid(), ring.getMultiplicativeOperator(),
-								phase,
-								[]( const size_t i ) {
-									return i;
-								},
-								[]( const size_t i ) {
-									return i;
-								},
-								[]( const size_t i ) {
-									return i;
-								},
-								[]( const size_t i ) {
-									return i;
-								}
-							);
+			return internal::vxm_generic<
+					new_descr, false, false, left_sided, true, Ring::template One
+				>(
+					u, mask, v, v_mask, A,
+					ring.getAdditiveMonoid(), ring.getMultiplicativeOperator(),
+					phase,
+					[]( const size_t i ) {
+						return i;
+					},
+					[]( const size_t i ) {
+						return i;
+					},
+					[]( const size_t i ) {
+						return i;
+					},
+					[]( const size_t i ) {
+						return i;
+					}
+				);
 		}
 	}
 
@@ -1176,11 +1247,12 @@ namespace grb {
 		const Ring &ring,
 		const Phase &phase = EXECUTE,
 		const typename std::enable_if<
-			grb::is_semiring< Ring >::value, void
-		>::type * const = nullptr
+			grb::is_semiring< Ring >::value,
+		void >::type * const = nullptr
 	) {
 		const Vector< bool, nonblocking, Coords > empty_mask( 0 );
-		return mxv< descr, false, false >( u, empty_mask, A, v, empty_mask, ring, phase );
+		return mxv< descr, false, false >( u, empty_mask, A, v, empty_mask, ring,
+			phase );
 	}
 
 	template<
@@ -1208,11 +1280,12 @@ namespace grb {
 			!grb::is_object< IOType >::value &&
 			!grb::is_object< InputType1 >::value &&
 			!grb::is_object< InputType2 >::value &&
-			!std::is_same< InputType2, void >::value, void
-		>::type * const = nullptr
+			!std::is_same< InputType2, void >::value,
+		void >::type * const = nullptr
 	) {
 		const Vector< bool, nonblocking, Coords > empty_mask( 0 );
-		return mxv< descr, false, false >( u, empty_mask, A, v, empty_mask, add, mul, phase );
+		return mxv< descr, false, false >( u, empty_mask, A, v, empty_mask, add, mul,
+			phase );
 	}
 
 	template<
@@ -1248,91 +1321,89 @@ namespace grb {
 			!grb::is_object< InputType2 >::value &&
 			!grb::is_object< InputType3 >::value &&
 			!grb::is_object< InputType4 >::value &&
-			!std::is_same< InputType2, void >::value, void
-		>::type * const = nullptr
+			!std::is_same< InputType2, void >::value,
+		void >::type * const = nullptr
 	) {
 		static_assert( !(descr & descriptors::add_identity), "Cannot add an "
 			"identity if no concept of `one' is known. Suggested fix: use a semiring "
 			"instead." );
 		constexpr bool left_sided = true;
 		if( output_may_be_masked && size( v_mask ) == 0 && size( mask ) > 0 ) {
-			return internal::vxm_generic
-							<
-								descr, true, false, left_sided, false, AdditiveMonoid::template Identity
-							>(
-								u, mask, v, v_mask, A, add, mul, phase,
-								[]( const size_t i ) {
-									return i;
-								},
-								[]( const size_t i ) {
-									return i;
-								},
-								[]( const size_t i ) {
-									return i;
-								},
-								[]( const size_t i ) {
-									return i;
-								}
-							);
+			return internal::vxm_generic<
+					descr, true, false, left_sided, false, AdditiveMonoid::template Identity
+				>(
+					u, mask, v, v_mask, A, add, mul, phase,
+					[]( const size_t i ) {
+						return i;
+					},
+					[]( const size_t i ) {
+						return i;
+					},
+					[]( const size_t i ) {
+						return i;
+					},
+					[]( const size_t i ) {
+						return i;
+					}
+				);
 		} else if( input_may_be_masked && size( v_mask ) > 0 && size( mask ) == 0 ) {
-			return internal::vxm_generic
-							<
-								descr, false, true, left_sided, false, AdditiveMonoid::template Identity
-							>(
-								u, mask, v, v_mask, A, add, mul, phase,
-								[]( const size_t i ) {
-									return i;
-								},
-								[]( const size_t i ) {
-									return i;
-								},
-								[]( const size_t i ) {
-									return i;
-								},
-								[]( const size_t i ) {
-									return i;
-								}
-							);
-		} else if( output_may_be_masked && input_may_be_masked && size( mask ) > 0 && size( v_mask ) > 0 ) {
-			return internal::vxm_generic
-							<
-								descr, true, true, left_sided, false, AdditiveMonoid::template Identity
-							>(
-								u, mask, v, v_mask, A, add, mul, phase,
-								[]( const size_t i ) {
-									return i;
-								},
-								[]( const size_t i ) {
-									return i;
-								},
-								[]( const size_t i ) {
-									return i;
-								},
-								[]( const size_t i ) {
-									return i;
-								}
-							);
+			return internal::vxm_generic<
+					descr, false, true, left_sided, false, AdditiveMonoid::template Identity
+				>(
+					u, mask, v, v_mask, A, add, mul, phase,
+					[]( const size_t i ) {
+						return i;
+					},
+					[]( const size_t i ) {
+						return i;
+					},
+					[]( const size_t i ) {
+						return i;
+					},
+					[]( const size_t i ) {
+						return i;
+					}
+				);
+		} else if( output_may_be_masked && input_may_be_masked && size( mask ) > 0 &&
+			size( v_mask ) > 0
+		) {
+			return internal::vxm_generic<
+					descr, true, true, left_sided, false, AdditiveMonoid::template Identity
+				>(
+					u, mask, v, v_mask, A, add, mul, phase,
+					[]( const size_t i ) {
+						return i;
+					},
+					[]( const size_t i ) {
+						return i;
+					},
+					[]( const size_t i ) {
+						return i;
+					},
+					[]( const size_t i ) {
+						return i;
+					}
+				);
 		} else {
 			assert( size( mask ) == 0 );
 			assert( size( v_mask ) == 0 );
-			return internal::vxm_generic
-							<
-								descr, false, false, left_sided, false, AdditiveMonoid::template Identity
-							>(
-								u, mask, v, v_mask, A, add, mul, phase,
-								[]( const size_t i ) {
-									return i;
-								},
-								[]( const size_t i ) {
-									return i;
-								},
-								[]( const size_t i ) {
-									return i;
-								},
-								[]( const size_t i ) {
-									return i;
-								}
-							);
+			return internal::vxm_generic<
+					descr, false, false, left_sided, false, AdditiveMonoid::template Identity
+				>(
+					u, mask, v, v_mask, A, add, mul, phase,
+					[]( const size_t i ) {
+						return i;
+					},
+					[]( const size_t i ) {
+						return i;
+					},
+					[]( const size_t i ) {
+						return i;
+					},
+					[]( const size_t i ) {
+						return i;
+					}
+				);
 		}
 	}
 
@@ -1369,8 +1440,8 @@ namespace grb {
 			!grb::is_object< InputType2 >::value &&
 			!grb::is_object< InputType3 >::value &&
 			!grb::is_object< InputType4 >::value &&
-			!std::is_same< InputType2, void >::value, void
-		>::type * const = nullptr
+			!std::is_same< InputType2, void >::value,
+		void >::type * const = nullptr
 	) {
 		static_assert( !(descr & descriptors::add_identity), "Cannot add an identity "
 			"if no concept of `1' is known. Suggested fix: use a semiring "
@@ -1378,86 +1449,87 @@ namespace grb {
 		constexpr Descriptor new_descr = descr ^ descriptors::transpose_matrix;
 		constexpr bool left_sided = false;
 		if( output_may_be_masked && size( v_mask ) == 0 && size( mask ) > 0 ) {
-			return internal::vxm_generic
-							<
-								new_descr, true, false, left_sided, false, AdditiveMonoid::template Identity
-							>(
-								u, mask, v, v_mask, A, add, mul, phase,
-								[]( const size_t i ) {
-									return i;
-								},
-								[]( const size_t i ) {
-									return i;
-								},
-								[]( const size_t i ) {
-									return i;
-								},
-								[]( const size_t i ) {
-									return i;
-								}
-							);
-		} else if( input_may_be_masked && size( mask ) == 0 && size( v_mask ) > 0 ) {
-			return internal::vxm_generic
-							<
-								new_descr, false, true, left_sided, false, AdditiveMonoid::template Identity
-							>(
-								u, mask, v, v_mask, A, add, mul, phase,
-								[]( const size_t i ) {
-									return i;
-								},
-								[]( const size_t i ) {
-									return i;
-								},
-								[]( const size_t i ) {
-									return i;
-								},
-								[]( const size_t i ) {
-									return i;
-								}
-							);
-		} else if( output_may_be_masked && input_may_be_masked && size( mask ) > 0 && size( v_mask ) > 0 ) {
-			return internal::vxm_generic
-							<
-								new_descr, true, true, left_sided, false, AdditiveMonoid::template Identity
-							>(
-								u, mask, v, v_mask, A, add, mul, phase,
-								[]( const size_t i ) {
-									return i;
-								},
-								[]( const size_t i ) {
-									return i;
-								},
-								[]( const size_t i ) {
-									return i;
-								},
-								[]( const size_t i ) {
-									return i;
-								}
-							);
+			return internal::vxm_generic<
+					new_descr, true, false, left_sided, false, AdditiveMonoid::template Identity
+				>(
+					u, mask, v, v_mask, A, add, mul, phase,
+					[]( const size_t i ) {
+						return i;
+					},
+					[]( const size_t i ) {
+						return i;
+					},
+					[]( const size_t i ) {
+						return i;
+					},
+					[]( const size_t i ) {
+						return i;
+					}
+				);
+		} else if( input_may_be_masked && size( mask ) == 0 &&
+			size( v_mask ) > 0
+		) {
+			return internal::vxm_generic<
+					new_descr, false, true, left_sided, false, AdditiveMonoid::template Identity
+				>(
+					u, mask, v, v_mask, A, add, mul, phase,
+					[]( const size_t i ) {
+						return i;
+					},
+					[]( const size_t i ) {
+						return i;
+					},
+					[]( const size_t i ) {
+						return i;
+					},
+					[]( const size_t i ) {
+						return i;
+					}
+				);
+		} else if( output_may_be_masked && input_may_be_masked && size( mask ) > 0 &&
+			size( v_mask ) > 0
+		) {
+			return internal::vxm_generic<
+					new_descr, true, true, left_sided, false, AdditiveMonoid::template Identity
+				>(
+					u, mask, v, v_mask, A, add, mul, phase,
+					[]( const size_t i ) {
+						return i;
+					},
+					[]( const size_t i ) {
+						return i;
+					},
+					[]( const size_t i ) {
+						return i;
+					},
+					[]( const size_t i ) {
+						return i;
+					}
+				);
 		} else {
 			assert( size( mask ) == 0 );
 			assert( size( v_mask ) == 0 );
-			return internal::vxm_generic
-							<
-								new_descr, false, false, left_sided, false, AdditiveMonoid::template Identity
-							>(
-								u, mask, v, v_mask, A, add, mul, phase,
-								[]( const size_t i ) {
-									return i;
-								},
-								[]( const size_t i ) {
-									return i;
-								},
-								[]( const size_t i ) {
-									return i;
-								},
-								[]( const size_t i ) {
-									return i;
-								}
-							);
+			return internal::vxm_generic<
+					new_descr, false, false, left_sided, false, AdditiveMonoid::template Identity
+				>(
+					u, mask, v, v_mask, A, add, mul, phase,
+					[]( const size_t i ) {
+						return i;
+					},
+					[]( const size_t i ) {
+						return i;
+					},
+					[]( const size_t i ) {
+						return i;
+					},
+					[]( const size_t i ) {
+						return i;
+					}
+				);
 		}
 	}
 
+#if 0 //TODO remove?
 	namespace internal {
 
 		template<
@@ -1475,6 +1547,7 @@ namespace grb {
 
 		}
 	}
+#endif
 
 	template<
 		class ActiveDistribution,
@@ -1490,10 +1563,10 @@ namespace grb {
 		const size_t s,
 		const size_t P
 	) {
-		( void )f;
-		( void )A;
-		( void )s;
-		( void )P;
+		(void) f;
+		(void) A ;
+		(void) s;
+		(void) P;
 		return UNSUPPORTED;
 	}
 
@@ -1513,9 +1586,9 @@ namespace grb {
 		const Vector< DataType2, nonblocking, Coords > &x,
 		Args... args
 	) {
-		( void )f;
-		( void )A;
-		( void )x;
+		(void) f;
+		(void) A;
+		(void) x;
 		return UNSUPPORTED;
 	}
 

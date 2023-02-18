@@ -15,7 +15,11 @@
  * limitations under the License.
  */
 
-/*
+/**
+ * @file
+ *
+ * Allocator functions for the nonblocking backend
+ *
  * @author Aristeidis Mastoras
  * @date 16th of May, 2022
  */
@@ -40,10 +44,12 @@ namespace grb {
 			class Allocator< nonblocking > {
 
 				private:
+
 					/** Prevent initialisation. */
 					Allocator();
 
 				public:
+
 					/** Refer to the standard allocation mechanism. */
 					typedef AllocatorFunctions< reference > functions;
 

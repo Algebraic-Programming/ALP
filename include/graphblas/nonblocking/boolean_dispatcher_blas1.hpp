@@ -15,7 +15,11 @@
  * limitations under the License.
  */
 
-/*
+/**
+ * @file
+ *
+ * Dispatcher functions for the level-1 primitives.
+ *
  * @author Aristeidis Mastoras
  * @date 24th of October, 2022
  */
@@ -86,39 +90,35 @@ namespace grb {
 		) {
 			if( already_dense_input_to_fold ) {
 				if( already_dense_mask ) {
-					return internal::fold_from_vector_to_scalar_vectorDriven
-									<
-										descr, masked, left, true, true
-									>(
-										thread_local_output, lower_bound, upper_bound,
-										local_to_fold, local_mask, to_fold, mask, monoid
-									);
+					return internal::fold_from_vector_to_scalar_vectorDriven<
+							descr, masked, left, true, true
+						>(
+							thread_local_output, lower_bound, upper_bound,
+							local_to_fold, local_mask, to_fold, mask, monoid
+						);
 				} else {
-					return internal::fold_from_vector_to_scalar_vectorDriven
-									<
-										descr, masked, left, true, false
-									>(
-										thread_local_output, lower_bound, upper_bound,
-										local_to_fold, local_mask, to_fold, mask, monoid
-									);
+					return internal::fold_from_vector_to_scalar_vectorDriven<
+							descr, masked, left, true, false
+						>(
+							thread_local_output, lower_bound, upper_bound,
+							local_to_fold, local_mask, to_fold, mask, monoid
+						);
 				}
 			} else {
 				if( already_dense_mask ) {
-					return internal::fold_from_vector_to_scalar_vectorDriven
-									<
-										descr, masked, left, false, true
-									>(
-										thread_local_output, lower_bound, upper_bound,
-										local_to_fold, local_mask, to_fold, mask, monoid
-									);
+					return internal::fold_from_vector_to_scalar_vectorDriven<
+							descr, masked, left, false, true
+						>(
+							thread_local_output, lower_bound, upper_bound,
+							local_to_fold, local_mask, to_fold, mask, monoid
+						);
 				} else {
-					return internal::fold_from_vector_to_scalar_vectorDriven
-									<
-										descr, masked, left, false, false
-									>(
-										thread_local_output, lower_bound, upper_bound,
-										local_to_fold, local_mask, to_fold, mask, monoid
-									);
+					return internal::fold_from_vector_to_scalar_vectorDriven<
+							descr, masked, left, false, false
+						>(
+							thread_local_output, lower_bound, upper_bound,
+							local_to_fold, local_mask, to_fold, mask, monoid
+						);
 				}
 			}
 		}
@@ -166,39 +166,35 @@ namespace grb {
 		) {
 			if( already_dense_input_to_fold ) {
 				if( already_dense_mask ) {
-					return internal::fold_from_vector_to_scalar_maskDriven
-									<
-										descr, left, true, true
-									>(
-										thread_local_output, lower_bound, upper_bound,
-										local_to_fold, local_mask, to_fold, mask, monoid
-									);
+					return internal::fold_from_vector_to_scalar_maskDriven<
+							descr, left, true, true
+						>(
+							thread_local_output, lower_bound, upper_bound,
+							local_to_fold, local_mask, to_fold, mask, monoid
+						);
 				} else {
-					return internal::fold_from_vector_to_scalar_maskDriven
-									<
-										descr, left, true, false
-									>(
-										thread_local_output, lower_bound, upper_bound,
-										local_to_fold, local_mask, to_fold, mask, monoid
-									);
+					return internal::fold_from_vector_to_scalar_maskDriven<
+							descr, left, true, false
+						>(
+							thread_local_output, lower_bound, upper_bound,
+							local_to_fold, local_mask, to_fold, mask, monoid
+						);
 				}
 			} else {
 				if( already_dense_mask ) {
-					return internal::fold_from_vector_to_scalar_maskDriven
-									<
-										descr, left, false, true
-									>(
-										thread_local_output, lower_bound, upper_bound,
-										local_to_fold, local_mask, to_fold, mask, monoid
-									);
+					return internal::fold_from_vector_to_scalar_maskDriven<
+							descr, left, false, true
+						>(
+							thread_local_output, lower_bound, upper_bound,
+							local_to_fold, local_mask, to_fold, mask, monoid
+						);
 				} else {
-					return internal::fold_from_vector_to_scalar_maskDriven
-									<
-										descr, left, false, false
-									>(
-										thread_local_output, lower_bound, upper_bound,
-										local_to_fold, local_mask, to_fold, mask, monoid
-									);
+					return internal::fold_from_vector_to_scalar_maskDriven<
+							descr, left, false, false
+						>(
+							thread_local_output, lower_bound, upper_bound,
+							local_to_fold, local_mask, to_fold, mask, monoid
+						);
 				}
 			}
 		}
@@ -248,39 +244,35 @@ namespace grb {
 		) {
 			if( already_dense_input_to_fold ) {
 				if( already_dense_mask ) {
-					return internal::fold_from_vector_to_scalar_fullLoopSparse
-									<
-										descr, masked, left, true, true
-									>(
-										thread_local_output, lower_bound, upper_bound,
-										local_to_fold, local_mask, to_fold, mask, monoid
-									);
+					return internal::fold_from_vector_to_scalar_fullLoopSparse<
+							descr, masked, left, true, true
+						>(
+							thread_local_output, lower_bound, upper_bound,
+							local_to_fold, local_mask, to_fold, mask, monoid
+						);
 				} else {
-					return internal::fold_from_vector_to_scalar_fullLoopSparse
-									<
-										descr, masked, left, true, false
-									>(
-										thread_local_output, lower_bound, upper_bound,
-										local_to_fold, local_mask, to_fold, mask, monoid
-									);
+					return internal::fold_from_vector_to_scalar_fullLoopSparse<
+							descr, masked, left, true, false
+						>(
+							thread_local_output, lower_bound, upper_bound,
+							local_to_fold, local_mask, to_fold, mask, monoid
+						);
 				}
 			} else {
 				if( already_dense_mask ) {
-					return internal::fold_from_vector_to_scalar_fullLoopSparse
-									<
-										descr, masked, left, false, true
-									>(
-										thread_local_output, lower_bound, upper_bound,	
-										local_to_fold, local_mask, to_fold, mask, monoid
-									);
+					return internal::fold_from_vector_to_scalar_fullLoopSparse<
+							descr, masked, left, false, true
+						>(
+							thread_local_output, lower_bound, upper_bound,	
+							local_to_fold, local_mask, to_fold, mask, monoid
+						);
 				} else {
-					return internal::fold_from_vector_to_scalar_fullLoopSparse
-									<
-										descr, masked, left, false, false
-									>(
-										thread_local_output, lower_bound, upper_bound,
-										local_to_fold, local_mask, to_fold, mask, monoid
-									);
+					return internal::fold_from_vector_to_scalar_fullLoopSparse<
+							descr, masked, left, false, false
+						>(
+							thread_local_output, lower_bound, upper_bound,
+							local_to_fold, local_mask, to_fold, mask, monoid
+						);
 				}
 			}
 		}
@@ -336,43 +328,39 @@ namespace grb {
 		) {
 			if( already_dense_output ) {
 				if( already_dense_mask ) {
-					return internal::fold_from_scalar_to_vector_generic
-									<
-										descr, left, sparse, masked, monoid,
-										true, true
-									>(
-										lower_bound, upper_bound, local_vector, local_mask_ptr,
-										vector, mask, scalar, op, phase
-									);
+					return internal::fold_from_scalar_to_vector_generic<
+							descr, left, sparse, masked, monoid,
+							true, true
+						>(
+							lower_bound, upper_bound, local_vector, local_mask_ptr,
+							vector, mask, scalar, op, phase
+						);
 				} else {
-					return internal::fold_from_scalar_to_vector_generic
-									<
-										descr, left, sparse, masked, monoid,
-										true, false
-									>(
-										lower_bound, upper_bound, local_vector, local_mask_ptr,
-										vector, mask, scalar, op, phase
-									);
+					return internal::fold_from_scalar_to_vector_generic<
+							descr, left, sparse, masked, monoid,
+							true, false
+						>(
+							lower_bound, upper_bound, local_vector, local_mask_ptr,
+							vector, mask, scalar, op, phase
+						);
 				}
 			} else {
 				if( already_dense_mask ) {
-					return internal::fold_from_scalar_to_vector_generic
-									<
-										descr, left, sparse, masked, monoid,
-										false, true
-									>(
-										lower_bound, upper_bound, local_vector, local_mask_ptr,
-										vector, mask, scalar, op, phase
-									);
+					return internal::fold_from_scalar_to_vector_generic<
+							descr, left, sparse, masked, monoid,
+							false, true
+						>(
+							lower_bound, upper_bound, local_vector, local_mask_ptr,
+							vector, mask, scalar, op, phase
+						);
 				} else {
-					return internal::fold_from_scalar_to_vector_generic
-									<
-										descr, left, sparse, masked, monoid,
-										false, false
-									>(
-										lower_bound, upper_bound, local_vector, local_mask_ptr,
-										vector, mask, scalar, op, phase
-									);
+					return internal::fold_from_scalar_to_vector_generic<
+							descr, left, sparse, masked, monoid,
+							false, false
+						>(
+							lower_bound, upper_bound, local_vector, local_mask_ptr,
+							vector, mask, scalar, op, phase
+						);
 				}
 			}
 		}
@@ -433,85 +421,77 @@ namespace grb {
 			if( already_dense_output ) {
 				if( already_dense_input_to_fold ) {
 					if( already_dense_mask ) {
-						return internal::fold_from_vector_to_vector_generic
-										<
-											descr, left, sparse, masked, monoid,
-											true, true, true
-										>(
-											lower_bound, upper_bound, local_fold_into, local_m_ptr,
-											local_to_fold, fold_into, m, to_fold, op, phase
-										);
+						return internal::fold_from_vector_to_vector_generic<
+								descr, left, sparse, masked, monoid,
+								true, true, true
+							>(
+								lower_bound, upper_bound, local_fold_into, local_m_ptr,
+								local_to_fold, fold_into, m, to_fold, op, phase
+							);
 					} else {
-						return internal::fold_from_vector_to_vector_generic
-										<
-											descr, left, sparse, masked, monoid,
-											true, true, false
-										>(
-											lower_bound, upper_bound, local_fold_into, local_m_ptr,
-											local_to_fold, fold_into, m, to_fold, op, phase
-										);
+						return internal::fold_from_vector_to_vector_generic<
+								descr, left, sparse, masked, monoid,
+								true, true, false
+							>(
+								lower_bound, upper_bound, local_fold_into, local_m_ptr,
+								local_to_fold, fold_into, m, to_fold, op, phase
+							);
 					}
 				} else {
 					if( already_dense_mask ) {
-						return internal::fold_from_vector_to_vector_generic
-										<
-											descr, left, sparse, masked, monoid,
-											true, false, true
-										>(
-											lower_bound, upper_bound, local_fold_into, local_m_ptr,
-											local_to_fold, fold_into, m, to_fold, op, phase
-										);
+						return internal::fold_from_vector_to_vector_generic<
+								descr, left, sparse, masked, monoid,
+								true, false, true
+							>(
+								lower_bound, upper_bound, local_fold_into, local_m_ptr,
+								local_to_fold, fold_into, m, to_fold, op, phase
+							);
 					} else {
-						return internal::fold_from_vector_to_vector_generic
-										<
-											descr, left, sparse, masked, monoid,
-											true, false, false
-										>(
-											lower_bound, upper_bound, local_fold_into, local_m_ptr,
-											local_to_fold, fold_into, m, to_fold, op, phase
-										);
+						return internal::fold_from_vector_to_vector_generic<
+								descr, left, sparse, masked, monoid,
+								true, false, false
+							>(
+								lower_bound, upper_bound, local_fold_into, local_m_ptr,
+								local_to_fold, fold_into, m, to_fold, op, phase
+							);
 					}
 				}
 			} else {
 				if( already_dense_input_to_fold ) {
 					if( already_dense_mask ) {
-						return internal::fold_from_vector_to_vector_generic
-										<
-											descr, left, sparse, masked, monoid,
-											false, true, true
-										>(
-											lower_bound, upper_bound, local_fold_into, local_m_ptr,
-											local_to_fold, fold_into, m, to_fold, op, phase
-										);
+						return internal::fold_from_vector_to_vector_generic<
+								descr, left, sparse, masked, monoid,
+								false, true, true
+							>(
+								lower_bound, upper_bound, local_fold_into, local_m_ptr,
+								local_to_fold, fold_into, m, to_fold, op, phase
+							);
 					} else {
-						return internal::fold_from_vector_to_vector_generic
-										<
-											descr, left, sparse, masked, monoid,
-											false, true, false
-										>(
-											lower_bound, upper_bound, local_fold_into, local_m_ptr,
-											local_to_fold, fold_into, m, to_fold, op, phase
-										);
+						return internal::fold_from_vector_to_vector_generic<
+								descr, left, sparse, masked, monoid,
+								false, true, false
+							>(
+								lower_bound, upper_bound, local_fold_into, local_m_ptr,
+								local_to_fold, fold_into, m, to_fold, op, phase
+							);
 					}
 				} else {
 					if( already_dense_mask ) {
-						return internal::fold_from_vector_to_vector_generic
-										<
-											descr, left, sparse, masked, monoid,
-											false, false, true
-										>(
-											lower_bound, upper_bound, local_fold_into, local_m_ptr,
-											local_to_fold, fold_into, m, to_fold, op, phase
-										);
+						return internal::fold_from_vector_to_vector_generic<
+								descr, left, sparse, masked, monoid,
+								false, false, true
+							>(
+								lower_bound, upper_bound, local_fold_into, local_m_ptr,
+								local_to_fold, fold_into, m, to_fold, op, phase
+							);
 					} else {
-						return internal::fold_from_vector_to_vector_generic
-										<
-											descr, left, sparse, masked, monoid,
-											false, false, false
-										>(
-											lower_bound, upper_bound, local_fold_into, local_m_ptr,
-											local_to_fold, fold_into, m, to_fold, op, phase
-										);
+						return internal::fold_from_vector_to_vector_generic<
+								descr, left, sparse, masked, monoid,
+								false, false, false
+							>(
+								lower_bound, upper_bound, local_fold_into, local_m_ptr,
+								local_to_fold, fold_into, m, to_fold, op, phase
+							);
 					}
 				}
 			}
@@ -568,31 +548,39 @@ namespace grb {
 		) {
 			if( already_dense_input_x ) {
 				if( already_dense_input_y ) {
-					return internal::dense_apply_generic
-									<
-										left_scalar, right_scalar, left_sparse, right_sparse, descr, OP,
-										true, true
-									>( lower_bound, upper_bound, local_x, local_y, z_vector, x_wrapper, y_wrapper, op );
+					return internal::dense_apply_generic<
+							left_scalar, right_scalar, left_sparse, right_sparse, descr, OP,
+							true, true
+						>(
+							lower_bound, upper_bound,
+							local_x, local_y, z_vector, x_wrapper, y_wrapper, op
+						);
 				} else {
-					return internal::dense_apply_generic
-									<
-										left_scalar, right_scalar, left_sparse, right_sparse, descr, OP,
-										true, true
-									>( lower_bound, upper_bound, local_x, local_y, z_vector, x_wrapper, y_wrapper, op );
+					return internal::dense_apply_generic<
+							left_scalar, right_scalar, left_sparse, right_sparse, descr, OP,
+							true, true
+						>(
+							lower_bound, upper_bound,
+							local_x, local_y, z_vector, x_wrapper, y_wrapper, op
+						);
 				}
 			} else {
 				if( already_dense_input_y ) {
-					return internal::dense_apply_generic
-									<
-										left_scalar, right_scalar, left_sparse, right_sparse, descr, OP,
-										true, true
-									>( lower_bound, upper_bound, local_x, local_y, z_vector, x_wrapper, y_wrapper, op );
+					return internal::dense_apply_generic<
+							left_scalar, right_scalar, left_sparse, right_sparse, descr, OP,
+							true, true
+						>(
+							lower_bound, upper_bound,
+							local_x, local_y, z_vector, x_wrapper, y_wrapper, op
+						);
 				} else {
-					return internal::dense_apply_generic
-									<
-										left_scalar, right_scalar, left_sparse, right_sparse, descr, OP,
-										true, true
-									>( lower_bound, upper_bound, local_x, local_y, z_vector, x_wrapper, y_wrapper, op );
+					return internal::dense_apply_generic<
+							left_scalar, right_scalar, left_sparse, right_sparse, descr, OP,
+							true, true
+						>(
+							lower_bound, upper_bound,
+							local_x, local_y, z_vector, x_wrapper, y_wrapper, op
+						);
 				}
 			}
 		}
@@ -659,85 +647,79 @@ namespace grb {
 			if( already_dense_mask ) {
 				if( already_dense_input_x ) {
 					if( already_dense_input_y ) {
-						return internal::sparse_apply_generic
-										<
-											masked, monoid, x_scalar, y_scalar, descr, OP,
-											true, true, true
-										> (
-											lower_bound, upper_bound, local_z, local_mask_ptr, local_x, local_y,
-											z_vector, mask_vector, x_wrapper, y_wrapper, op
-										);
+						return internal::sparse_apply_generic<
+								masked, monoid, x_scalar, y_scalar, descr, OP,
+								true, true, true
+							> (
+								lower_bound, upper_bound, local_z, local_mask_ptr, local_x, local_y,
+								z_vector, mask_vector, x_wrapper, y_wrapper, op
+							);
 					} else {
-						return internal::sparse_apply_generic
-										<
-											masked, monoid, x_scalar, y_scalar, descr, OP,
-											true, true, false
-										> (
-											lower_bound, upper_bound, local_z, local_mask_ptr, local_x, local_y,
-											z_vector, mask_vector, x_wrapper, y_wrapper, op
-										);
+						return internal::sparse_apply_generic<
+								masked, monoid, x_scalar, y_scalar, descr, OP,
+								true, true, false
+							> (
+								lower_bound, upper_bound, local_z, local_mask_ptr, local_x, local_y,
+								z_vector, mask_vector, x_wrapper, y_wrapper, op
+							);
 					}
 				} else {
 					if( already_dense_input_y ) {
-						return internal::sparse_apply_generic
-										<
-											masked, monoid, x_scalar, y_scalar, descr, OP,
-											true, false, true
-										> (
-											lower_bound, upper_bound, local_z, local_mask_ptr, local_x, local_y,
-											z_vector, mask_vector, x_wrapper, y_wrapper, op
-										);
+						return internal::sparse_apply_generic<
+								masked, monoid, x_scalar, y_scalar, descr, OP,
+								true, false, true
+							> (
+								lower_bound, upper_bound,
+								local_z, local_mask_ptr, local_x, local_y,
+								z_vector, mask_vector, x_wrapper, y_wrapper, op
+							);
 					} else {
-						return internal::sparse_apply_generic
-										<
-											masked, monoid, x_scalar, y_scalar, descr, OP,
-											true, false, false
-										> (
-											lower_bound, upper_bound, local_z, local_mask_ptr, local_x, local_y,
-											z_vector, mask_vector, x_wrapper, y_wrapper, op
-										);
+						return internal::sparse_apply_generic<
+								masked, monoid, x_scalar, y_scalar, descr, OP,
+								true, false, false
+							> (
+								lower_bound, upper_bound, local_z, local_mask_ptr, local_x, local_y,
+								z_vector, mask_vector, x_wrapper, y_wrapper, op
+							);
 					}
 				}
 			} else {
 				if( already_dense_input_x ) {
 					if( already_dense_input_y ) {
-						return internal::sparse_apply_generic
-										<
-											masked, monoid, x_scalar, y_scalar, descr, OP,
-											false, true, true
-										> (
-											lower_bound, upper_bound, local_z, local_mask_ptr, local_x, local_y,
-											z_vector, mask_vector, x_wrapper, y_wrapper, op
-										);
+						return internal::sparse_apply_generic<
+								masked, monoid, x_scalar, y_scalar, descr, OP,
+								false, true, true
+							> (
+								lower_bound, upper_bound,
+								local_z, local_mask_ptr, local_x, local_y,
+								z_vector, mask_vector, x_wrapper, y_wrapper, op
+							);
 					} else {
-						return internal::sparse_apply_generic
-										<
-											masked, monoid, x_scalar, y_scalar, descr, OP,
-											false, true, false
-										> (
-											lower_bound, upper_bound, local_z, local_mask_ptr, local_x, local_y,
-											z_vector, mask_vector, x_wrapper, y_wrapper, op
-										);
+						return internal::sparse_apply_generic<
+								masked, monoid, x_scalar, y_scalar, descr, OP,
+								false, true, false
+							> (
+								lower_bound, upper_bound, local_z, local_mask_ptr, local_x, local_y,
+								z_vector, mask_vector, x_wrapper, y_wrapper, op
+							);
 					}
 				} else {
 					if( already_dense_input_y ) {
-						return internal::sparse_apply_generic
-										<
-											masked, monoid, x_scalar, y_scalar, descr, OP,
-											false, false, true
-										> (
-											lower_bound, upper_bound, local_z, local_mask_ptr, local_x, local_y,
-											z_vector, mask_vector, x_wrapper, y_wrapper, op
-										);
+						return internal::sparse_apply_generic<
+								masked, monoid, x_scalar, y_scalar, descr, OP,
+								false, false, true
+							> (
+								lower_bound, upper_bound, local_z, local_mask_ptr, local_x, local_y,
+								z_vector, mask_vector, x_wrapper, y_wrapper, op
+							);
 					} else {
-						return internal::sparse_apply_generic
-										<
-											masked, monoid, x_scalar, y_scalar, descr, OP,
-											false, false, false
-										> (
-											lower_bound, upper_bound, local_z, local_mask_ptr, local_x, local_y,
-											z_vector, mask_vector, x_wrapper, y_wrapper, op
-										);
+						return internal::sparse_apply_generic<
+								masked, monoid, x_scalar, y_scalar, descr, OP,
+								false, false, false
+							> (
+								lower_bound, upper_bound, local_z, local_mask_ptr, local_x, local_y,
+								z_vector, mask_vector, x_wrapper, y_wrapper, op
+							);
 					}
 				}
 			}
@@ -814,85 +796,84 @@ namespace grb {
 			if( already_dense_mask ) {
 				if( already_dense_input_x ) {
 					if( already_dense_input_y ) {
-						return internal::masked_apply_generic
-										<
-											left_scalar, right_scalar, left_sparse, right_sparse, descr, OP,
-											true, true, true
-										>(
-											lower_bound, upper_bound, local_z, local_mask, local_x, local_y,
-											z_vector, mask_vector, x_wrapper, y_wrapper, op, left_identity, right_identity
-										);
+						return internal::masked_apply_generic<
+								left_scalar, right_scalar, left_sparse, right_sparse, descr, OP,
+								true, true, true
+							>(
+								lower_bound, upper_bound, local_z, local_mask, local_x, local_y,
+								z_vector, mask_vector, x_wrapper, y_wrapper, op, left_identity, right_identity
+							);
 					} else {
-						return internal::masked_apply_generic
-										<
-											left_scalar, right_scalar, left_sparse, right_sparse, descr, OP,
-											true, true, false
-										>(
-											lower_bound, upper_bound, local_z, local_mask, local_x, local_y,
-											z_vector, mask_vector, x_wrapper, y_wrapper, op, left_identity, right_identity
-										);
+						return internal::masked_apply_generic<
+								left_scalar, right_scalar, left_sparse, right_sparse, descr, OP,
+								true, true, false
+							>(
+								lower_bound, upper_bound, local_z, local_mask, local_x, local_y,
+								z_vector, mask_vector, x_wrapper, y_wrapper,
+								op, left_identity, right_identity
+							);
 					}
 				} else {
 					if( already_dense_input_y ) {
-						return internal::masked_apply_generic
-										<
-											left_scalar, right_scalar, left_sparse, right_sparse, descr, OP,
-											true, false, true
-										>(
-											lower_bound, upper_bound, local_z, local_mask, local_x, local_y,
-											z_vector, mask_vector, x_wrapper, y_wrapper, op, left_identity, right_identity
-										);
+						return internal::masked_apply_generic<
+								left_scalar, right_scalar, left_sparse, right_sparse, descr, OP,
+								true, false, true
+							>(
+								lower_bound, upper_bound, local_z, local_mask, local_x, local_y,
+								z_vector, mask_vector, x_wrapper, y_wrapper,
+								op, left_identity, right_identity
+							);
 					} else {
-						return internal::masked_apply_generic
-										<
-											left_scalar, right_scalar, left_sparse, right_sparse, descr, OP,
-											true, false, false
-										>(
-											lower_bound, upper_bound, local_z, local_mask, local_x, local_y,
-											z_vector, mask_vector, x_wrapper, y_wrapper, op, left_identity, right_identity
-										);
+						return internal::masked_apply_generic<
+								left_scalar, right_scalar, left_sparse, right_sparse, descr, OP,
+								true, false, false
+							>(
+								lower_bound, upper_bound, local_z, local_mask, local_x, local_y,
+								z_vector, mask_vector, x_wrapper, y_wrapper,
+								op, left_identity, right_identity
+							);
 					}
 				}
 			} else {
 				if( already_dense_input_x ) {
 					if( already_dense_input_y ) {
-						return internal::masked_apply_generic
-										<
-											left_scalar, right_scalar, left_sparse, right_sparse, descr, OP,
-											false, true, true
-										>(
-											lower_bound, upper_bound, local_z, local_mask, local_x, local_y,
-											z_vector, mask_vector, x_wrapper, y_wrapper, op, left_identity, right_identity
-										);
+						return internal::masked_apply_generic<
+								left_scalar, right_scalar, left_sparse, right_sparse, descr, OP,
+								false, true, true
+							>(
+								lower_bound, upper_bound, local_z, local_mask, local_x, local_y,
+								z_vector, mask_vector, x_wrapper, y_wrapper,
+								op, left_identity, right_identity
+							);
 					} else {
-						return internal::masked_apply_generic
-										<
-											left_scalar, right_scalar, left_sparse, right_sparse, descr, OP,
-											false, true, false
-										>(
-											lower_bound, upper_bound, local_z, local_mask, local_x, local_y,
-											z_vector, mask_vector, x_wrapper, y_wrapper, op, left_identity, right_identity
-										);
+						return internal::masked_apply_generic<
+								left_scalar, right_scalar, left_sparse, right_sparse, descr, OP,
+								false, true, false
+							>(
+								lower_bound, upper_bound, local_z, local_mask, local_x, local_y,
+								z_vector, mask_vector, x_wrapper, y_wrapper,
+								op, left_identity, right_identity
+							);
 					}
 				} else {
 					if( already_dense_input_y ) {
-						return internal::masked_apply_generic
-										<
-											left_scalar, right_scalar, left_sparse, right_sparse, descr, OP,
-											false, false, true
-										>(
-											lower_bound, upper_bound, local_z, local_mask, local_x, local_y,
-											z_vector, mask_vector, x_wrapper, y_wrapper, op, left_identity, right_identity
-										);
+						return internal::masked_apply_generic<
+								left_scalar, right_scalar, left_sparse, right_sparse, descr, OP,
+								false, false, true
+							>(
+								lower_bound, upper_bound, local_z, local_mask, local_x, local_y,
+								z_vector, mask_vector, x_wrapper, y_wrapper,
+								op, left_identity, right_identity
+							);
 					} else {
-						return internal::masked_apply_generic
-										<
-											left_scalar, right_scalar, left_sparse, right_sparse, descr, OP,
-											false, false, false
-										>(
-											lower_bound, upper_bound, local_z, local_mask, local_x, local_y,
-											z_vector, mask_vector, x_wrapper, y_wrapper, op, left_identity, right_identity
-										);
+						return internal::masked_apply_generic<
+								left_scalar, right_scalar, left_sparse, right_sparse, descr, OP,
+								false, false, false
+							>(
+								lower_bound, upper_bound, local_z, local_mask, local_x, local_y,
+								z_vector, mask_vector, x_wrapper, y_wrapper,
+								op, left_identity, right_identity
+							);
 					}
 				}
 			}
@@ -972,85 +953,77 @@ namespace grb {
 					if( already_dense_input_a ) {
 						if( already_dense_input_x ) {
 							if( already_dense_input_y ) {
-								return internal::sparse_eWiseMulAdd_maskDriven
-												<
-													descr, a_scalar, x_scalar, y_scalar, y_zero,
-													true, true, true, true, true
-												>(
-													lower_bound, upper_bound, local_z, local_m, local_a, local_x, local_y,
-													z_vector, m_vector, a_wrapper, x_wrapper, y_wrapper, ring
-												);
+								return internal::sparse_eWiseMulAdd_maskDriven<
+										descr, a_scalar, x_scalar, y_scalar, y_zero,
+										true, true, true, true, true
+									>(
+										lower_bound, upper_bound, local_z, local_m, local_a, local_x, local_y,
+										z_vector, m_vector, a_wrapper, x_wrapper, y_wrapper, ring
+									);
 							} else {
-								return internal::sparse_eWiseMulAdd_maskDriven
-												<
-													descr, a_scalar, x_scalar, y_scalar, y_zero,
-													true, true, true, true, false
-												>(
-													lower_bound, upper_bound, local_z, local_m, local_a, local_x, local_y,
-													z_vector, m_vector, a_wrapper, x_wrapper, y_wrapper, ring
-												);
+								return internal::sparse_eWiseMulAdd_maskDriven<
+										descr, a_scalar, x_scalar, y_scalar, y_zero,
+										true, true, true, true, false
+									>(
+										lower_bound, upper_bound, local_z, local_m, local_a, local_x, local_y,
+										z_vector, m_vector, a_wrapper, x_wrapper, y_wrapper, ring
+									);
 							}
 						} else {
 							if( already_dense_input_y ) {
-								return internal::sparse_eWiseMulAdd_maskDriven
-												<
-													descr, a_scalar, x_scalar, y_scalar, y_zero,
-													true, true, true, false, true
-												>(
-													lower_bound, upper_bound, local_z, local_m, local_a, local_x, local_y,
-													z_vector, m_vector, a_wrapper, x_wrapper, y_wrapper, ring
-												);
+								return internal::sparse_eWiseMulAdd_maskDriven<
+										descr, a_scalar, x_scalar, y_scalar, y_zero,
+										true, true, true, false, true
+									>(
+										lower_bound, upper_bound, local_z, local_m, local_a, local_x, local_y,
+										z_vector, m_vector, a_wrapper, x_wrapper, y_wrapper, ring
+									);
 							} else {
-								return internal::sparse_eWiseMulAdd_maskDriven
-												<
-													descr, a_scalar, x_scalar, y_scalar, y_zero,
-													true, true, true, false, false
-												>(
-													lower_bound, upper_bound, local_z, local_m, local_a, local_x, local_y,
-													z_vector, m_vector, a_wrapper, x_wrapper, y_wrapper, ring
-												);
+								return internal::sparse_eWiseMulAdd_maskDriven<
+										descr, a_scalar, x_scalar, y_scalar, y_zero,
+										true, true, true, false, false
+									>(
+										lower_bound, upper_bound, local_z, local_m, local_a, local_x, local_y,
+										z_vector, m_vector, a_wrapper, x_wrapper, y_wrapper, ring
+									);
 							}
 						}
 					} else {
 						if( already_dense_input_x ) {
 							if( already_dense_input_y ) {
-								return internal::sparse_eWiseMulAdd_maskDriven
-												<
-													descr, a_scalar, x_scalar, y_scalar, y_zero,
-													true, true, false, true, true
-												>(
-													lower_bound, upper_bound, local_z, local_m, local_a, local_x, local_y,
-													z_vector, m_vector, a_wrapper, x_wrapper, y_wrapper, ring
-												);
+								return internal::sparse_eWiseMulAdd_maskDriven<
+										descr, a_scalar, x_scalar, y_scalar, y_zero,
+										true, true, false, true, true
+									>(
+										lower_bound, upper_bound, local_z, local_m, local_a, local_x, local_y,
+										z_vector, m_vector, a_wrapper, x_wrapper, y_wrapper, ring
+									);
 							} else {
-								return internal::sparse_eWiseMulAdd_maskDriven
-												<
-													descr, a_scalar, x_scalar, y_scalar, y_zero,
-													true, true, false, true, false
-												>(
-													lower_bound, upper_bound, local_z, local_m, local_a, local_x, local_y,
-													z_vector, m_vector, a_wrapper, x_wrapper, y_wrapper, ring
-												);
+								return internal::sparse_eWiseMulAdd_maskDriven<
+										descr, a_scalar, x_scalar, y_scalar, y_zero,
+										true, true, false, true, false
+									>(
+										lower_bound, upper_bound, local_z, local_m, local_a, local_x, local_y,
+										z_vector, m_vector, a_wrapper, x_wrapper, y_wrapper, ring
+									);
 							}
 						} else {
 							if( already_dense_input_y ) {
-								return internal::sparse_eWiseMulAdd_maskDriven
-												<
-													descr, a_scalar, x_scalar, y_scalar, y_zero,
-													true, true, false, false, true
-												>(
-													lower_bound, upper_bound, local_z, local_m, local_a, local_x, local_y,
-													z_vector, m_vector, a_wrapper, x_wrapper, y_wrapper, ring
-												);
+								return internal::sparse_eWiseMulAdd_maskDriven<
+										descr, a_scalar, x_scalar, y_scalar, y_zero,
+										true, true, false, false, true
+									>(
+										lower_bound, upper_bound, local_z, local_m, local_a, local_x, local_y,
+										z_vector, m_vector, a_wrapper, x_wrapper, y_wrapper, ring
+									);
 							} else {
-								return internal::sparse_eWiseMulAdd_maskDriven
-												<
-													descr, a_scalar, x_scalar, y_scalar, y_zero,
-													true, true, false, false, false
-												>(
-													lower_bound, upper_bound, local_z, local_m, local_a, local_x, local_y,
-													z_vector, m_vector, a_wrapper, x_wrapper, y_wrapper, ring
-												);
+								return internal::sparse_eWiseMulAdd_maskDriven<
+										descr, a_scalar, x_scalar, y_scalar, y_zero,
+										true, true, false, false, false
+									>(
+										lower_bound, upper_bound, local_z, local_m, local_a, local_x, local_y,
+										z_vector, m_vector, a_wrapper, x_wrapper, y_wrapper, ring
+									);
 							}
 						}
 					}
@@ -1058,85 +1031,77 @@ namespace grb {
 					if( already_dense_input_a ) {
 						if( already_dense_input_x ) {
 							if( already_dense_input_y ) {
-								return internal::sparse_eWiseMulAdd_maskDriven
-												<
-													descr, a_scalar, x_scalar, y_scalar, y_zero,
-													true, false, true, true, true
-												>(
-													lower_bound, upper_bound, local_z, local_m, local_a, local_x, local_y,
-													z_vector, m_vector, a_wrapper, x_wrapper, y_wrapper, ring
-												);
+								return internal::sparse_eWiseMulAdd_maskDriven<
+										descr, a_scalar, x_scalar, y_scalar, y_zero,
+										true, false, true, true, true
+									>(
+										lower_bound, upper_bound, local_z, local_m, local_a, local_x, local_y,
+										z_vector, m_vector, a_wrapper, x_wrapper, y_wrapper, ring
+									);
 							} else {
-								return internal::sparse_eWiseMulAdd_maskDriven
-												<
-													descr, a_scalar, x_scalar, y_scalar, y_zero,
-													true, false, true, true, false
-												>(
-													lower_bound, upper_bound, local_z, local_m, local_a, local_x, local_y,
-													z_vector, m_vector, a_wrapper, x_wrapper, y_wrapper, ring
-												);
+								return internal::sparse_eWiseMulAdd_maskDriven<
+										descr, a_scalar, x_scalar, y_scalar, y_zero,
+										true, false, true, true, false
+									>(
+										lower_bound, upper_bound, local_z, local_m, local_a, local_x, local_y,
+										z_vector, m_vector, a_wrapper, x_wrapper, y_wrapper, ring
+									);
 							}
 						} else {
 							if( already_dense_input_y ) {
-								return internal::sparse_eWiseMulAdd_maskDriven
-												<
-													descr, a_scalar, x_scalar, y_scalar, y_zero,
-													true, false, true, false, true
-												>(
-													lower_bound, upper_bound, local_z, local_m, local_a, local_x, local_y,
-													z_vector, m_vector, a_wrapper, x_wrapper, y_wrapper, ring
-												);
+								return internal::sparse_eWiseMulAdd_maskDriven<
+										descr, a_scalar, x_scalar, y_scalar, y_zero,
+										true, false, true, false, true
+									>(
+										lower_bound, upper_bound, local_z, local_m, local_a, local_x, local_y,
+										z_vector, m_vector, a_wrapper, x_wrapper, y_wrapper, ring
+									);
 							} else {
-								return internal::sparse_eWiseMulAdd_maskDriven
-												<
-													descr, a_scalar, x_scalar, y_scalar, y_zero,
-													true, false, true, false, false
-												>(
-													lower_bound, upper_bound, local_z, local_m, local_a, local_x, local_y,
-													z_vector, m_vector, a_wrapper, x_wrapper, y_wrapper, ring
-												);
+								return internal::sparse_eWiseMulAdd_maskDriven<
+										descr, a_scalar, x_scalar, y_scalar, y_zero,
+										true, false, true, false, false
+									>(
+										lower_bound, upper_bound, local_z, local_m, local_a, local_x, local_y,
+										z_vector, m_vector, a_wrapper, x_wrapper, y_wrapper, ring
+									);
 							}
 						}
 					} else {
 						if( already_dense_input_x ) {
 							if( already_dense_input_y ) {
-								return internal::sparse_eWiseMulAdd_maskDriven
-												<
-													descr, a_scalar, x_scalar, y_scalar, y_zero,
-													true, false, false, true, true
-												>(
-													lower_bound, upper_bound, local_z, local_m, local_a, local_x, local_y,
-													z_vector, m_vector, a_wrapper, x_wrapper, y_wrapper, ring
-												);
+								return internal::sparse_eWiseMulAdd_maskDriven<
+										descr, a_scalar, x_scalar, y_scalar, y_zero,
+										true, false, false, true, true
+									>(
+										lower_bound, upper_bound, local_z, local_m, local_a, local_x, local_y,
+										z_vector, m_vector, a_wrapper, x_wrapper, y_wrapper, ring
+									);
 							} else {
-								return internal::sparse_eWiseMulAdd_maskDriven
-												<
-													descr, a_scalar, x_scalar, y_scalar, y_zero,
-													true, false, false, true, false
-												>(
-													lower_bound, upper_bound, local_z, local_m, local_a, local_x, local_y,
-													z_vector, m_vector, a_wrapper, x_wrapper, y_wrapper, ring
-												);
+								return internal::sparse_eWiseMulAdd_maskDriven<
+										descr, a_scalar, x_scalar, y_scalar, y_zero,
+										true, false, false, true, false
+									>(
+										lower_bound, upper_bound, local_z, local_m, local_a, local_x, local_y,
+										z_vector, m_vector, a_wrapper, x_wrapper, y_wrapper, ring
+									);
 							}
 						} else {
 							if( already_dense_input_y ) {
-								return internal::sparse_eWiseMulAdd_maskDriven
-												<
-													descr, a_scalar, x_scalar, y_scalar, y_zero,
-													true, false, false, false, true
-												>(
-													lower_bound, upper_bound, local_z, local_m, local_a, local_x, local_y,
-													z_vector, m_vector, a_wrapper, x_wrapper, y_wrapper, ring
-												);
+								return internal::sparse_eWiseMulAdd_maskDriven<
+										descr, a_scalar, x_scalar, y_scalar, y_zero,
+										true, false, false, false, true
+									>(
+										lower_bound, upper_bound, local_z, local_m, local_a, local_x, local_y,
+										z_vector, m_vector, a_wrapper, x_wrapper, y_wrapper, ring
+									);
 							} else {
-								return internal::sparse_eWiseMulAdd_maskDriven
-												<
-													descr, a_scalar, x_scalar, y_scalar, y_zero,
-													true, false, false, false, false
-												>(
-													lower_bound, upper_bound, local_z, local_m, local_a, local_x, local_y,
-													z_vector, m_vector, a_wrapper, x_wrapper, y_wrapper, ring
-												);
+								return internal::sparse_eWiseMulAdd_maskDriven<
+										descr, a_scalar, x_scalar, y_scalar, y_zero,
+										true, false, false, false, false
+									>(
+										lower_bound, upper_bound, local_z, local_m, local_a, local_x, local_y,
+										z_vector, m_vector, a_wrapper, x_wrapper, y_wrapper, ring
+									);
 							}
 						}
 					}
@@ -1146,83 +1111,76 @@ namespace grb {
 					if( already_dense_input_a ) {
 						if( already_dense_input_x ) {
 							if( already_dense_input_y ) {
-								return internal::sparse_eWiseMulAdd_maskDriven
-												<
-													descr, a_scalar, x_scalar, y_scalar, y_zero,
-													false, true, true, true, true
-												>(
-													lower_bound, upper_bound, local_z, local_m, local_a, local_x, local_y,
-													z_vector, m_vector, a_wrapper, x_wrapper, y_wrapper, ring
-												);
+								return internal::sparse_eWiseMulAdd_maskDriven<
+										descr, a_scalar, x_scalar, y_scalar, y_zero,
+										false, true, true, true, true
+									>(
+										lower_bound, upper_bound, local_z, local_m, local_a, local_x, local_y,
+										z_vector, m_vector, a_wrapper, x_wrapper, y_wrapper, ring
+									);
 							} else {
-								return internal::sparse_eWiseMulAdd_maskDriven
-												<
-													descr, a_scalar, x_scalar, y_scalar, y_zero,
-													false, true, true, true, false
-												>(
-													lower_bound, upper_bound, local_z, local_m, local_a, local_x, local_y,
-													z_vector, m_vector, a_wrapper, x_wrapper, y_wrapper, ring
-												);
+								return internal::sparse_eWiseMulAdd_maskDriven<
+										descr, a_scalar, x_scalar, y_scalar, y_zero,
+										false, true, true, true, false
+									>(
+										lower_bound, upper_bound, local_z, local_m, local_a, local_x, local_y,
+										z_vector, m_vector, a_wrapper, x_wrapper, y_wrapper, ring
+									);
 							}
 						} else {
 							if( already_dense_input_y ) {
-								return internal::sparse_eWiseMulAdd_maskDriven
-												<
-													descr, a_scalar, x_scalar, y_scalar, y_zero,
-													false, true, true, false, true
-												>(
-													lower_bound, upper_bound, local_z, local_m, local_a, local_x, local_y,
-													z_vector, m_vector, a_wrapper, x_wrapper, y_wrapper, ring
-												);
+								return internal::sparse_eWiseMulAdd_maskDriven<
+										descr, a_scalar, x_scalar, y_scalar, y_zero,
+										false, true, true, false, true
+									>(
+										lower_bound, upper_bound, local_z, local_m, local_a, local_x, local_y,
+										z_vector, m_vector, a_wrapper, x_wrapper, y_wrapper, ring
+									);
 							} else {
-								return internal::sparse_eWiseMulAdd_maskDriven
-												<
-													descr, a_scalar, x_scalar, y_scalar, y_zero,
-													false, true, true, false, false
-												>(
-													lower_bound, upper_bound, local_z, local_m, local_a, local_x, local_y,
-													z_vector, m_vector, a_wrapper, x_wrapper, y_wrapper, ring
-												);
+								return internal::sparse_eWiseMulAdd_maskDriven<
+										descr, a_scalar, x_scalar, y_scalar, y_zero,
+										false, true, true, false, false
+									>(
+										lower_bound, upper_bound, local_z, local_m, local_a, local_x, local_y,
+											z_vector, m_vector, a_wrapper, x_wrapper, y_wrapper, ring
+									);
 							}
 						}
 					} else {
 						if( already_dense_input_x ) {
 							if( already_dense_input_y ) {
-								return internal::sparse_eWiseMulAdd_maskDriven
-												<
-													descr, a_scalar, x_scalar, y_scalar, y_zero,
-													false, true, false, true, true
-												>(
-													lower_bound, upper_bound, local_z, local_m, local_a, local_x, local_y,
-													z_vector, m_vector, a_wrapper, x_wrapper, y_wrapper, ring
-												);
+								return internal::sparse_eWiseMulAdd_maskDriven<
+										descr, a_scalar, x_scalar, y_scalar, y_zero,
+										false, true, false, true, true
+									>(
+										lower_bound, upper_bound, local_z, local_m, local_a, local_x, local_y,
+										z_vector, m_vector, a_wrapper, x_wrapper, y_wrapper, ring
+									);
 							} else {
-								return internal::sparse_eWiseMulAdd_maskDriven
-												<
-													descr, a_scalar, x_scalar, y_scalar, y_zero,
-													false, true, false, true, false
-												>(
-													lower_bound, upper_bound, local_z, local_m, local_a, local_x, local_y,
-													z_vector, m_vector, a_wrapper, x_wrapper, y_wrapper, ring
-												);
+								return internal::sparse_eWiseMulAdd_maskDriven<
+										descr, a_scalar, x_scalar, y_scalar, y_zero,
+										false, true, false, true, false
+									>(
+										lower_bound, upper_bound, local_z, local_m, local_a, local_x, local_y,
+										z_vector, m_vector, a_wrapper, x_wrapper, y_wrapper, ring
+									);
 							}
 						} else {
 							if( already_dense_input_y ) {
 								return internal::sparse_eWiseMulAdd_maskDriven<
-													descr, a_scalar, x_scalar, y_scalar, y_zero,
-													false, true, false, false, true
-												>( lower_bound, upper_bound, local_z, local_m, local_a, local_x, local_y,
-													z_vector, m_vector, a_wrapper, x_wrapper, y_wrapper, ring
-												);
+										descr, a_scalar, x_scalar, y_scalar, y_zero,
+										false, true, false, false, true
+									>( lower_bound, upper_bound, local_z, local_m, local_a, local_x, local_y,
+										z_vector, m_vector, a_wrapper, x_wrapper, y_wrapper, ring
+									);
 							} else {
-								return internal::sparse_eWiseMulAdd_maskDriven
-												<
-													descr, a_scalar, x_scalar, y_scalar, y_zero,
-													false, true, false, false, false
-												>(
-													lower_bound, upper_bound, local_z, local_m, local_a, local_x, local_y,
-													z_vector, m_vector, a_wrapper, x_wrapper, y_wrapper, ring
-												);
+								return internal::sparse_eWiseMulAdd_maskDriven<
+										descr, a_scalar, x_scalar, y_scalar, y_zero,
+										false, true, false, false, false
+									>(
+										lower_bound, upper_bound, local_z, local_m, local_a, local_x, local_y,
+										z_vector, m_vector, a_wrapper, x_wrapper, y_wrapper, ring
+									);
 							}
 						}
 					}
@@ -1230,85 +1188,77 @@ namespace grb {
 					if( already_dense_input_a ) {
 						if( already_dense_input_x ) {
 							if( already_dense_input_y ) {
-								return internal::sparse_eWiseMulAdd_maskDriven
-												<
-													descr, a_scalar, x_scalar, y_scalar, y_zero,
-													false, false, true, true, true
-												>(
-													lower_bound, upper_bound, local_z, local_m, local_a, local_x, local_y,
-													z_vector, m_vector, a_wrapper, x_wrapper, y_wrapper, ring
-												);
+								return internal::sparse_eWiseMulAdd_maskDriven<
+										descr, a_scalar, x_scalar, y_scalar, y_zero,
+										false, false, true, true, true
+									>(
+										lower_bound, upper_bound, local_z, local_m, local_a, local_x, local_y,
+										z_vector, m_vector, a_wrapper, x_wrapper, y_wrapper, ring
+									);
 							} else {
-								return internal::sparse_eWiseMulAdd_maskDriven
-												<
-													descr, a_scalar, x_scalar, y_scalar, y_zero,
-													false, false, true, true, false
-												>(
-													lower_bound, upper_bound, local_z, local_m, local_a, local_x, local_y,
-													z_vector, m_vector, a_wrapper, x_wrapper, y_wrapper, ring
-												);
+								return internal::sparse_eWiseMulAdd_maskDriven<
+										descr, a_scalar, x_scalar, y_scalar, y_zero,
+										false, false, true, true, false
+									>(
+										lower_bound, upper_bound, local_z, local_m, local_a, local_x, local_y,
+										z_vector, m_vector, a_wrapper, x_wrapper, y_wrapper, ring
+									);
 							}
 						} else {
 							if( already_dense_input_y ) {
-								return internal::sparse_eWiseMulAdd_maskDriven
-												<
-													descr, a_scalar, x_scalar, y_scalar, y_zero,
-													false, false, true, false, true
-												>(
-													lower_bound, upper_bound, local_z, local_m, local_a, local_x, local_y,
-													z_vector, m_vector, a_wrapper, x_wrapper, y_wrapper, ring
-												);
+								return internal::sparse_eWiseMulAdd_maskDriven<
+										descr, a_scalar, x_scalar, y_scalar, y_zero,
+										false, false, true, false, true
+									>(
+										lower_bound, upper_bound, local_z, local_m, local_a, local_x, local_y,
+										z_vector, m_vector, a_wrapper, x_wrapper, y_wrapper, ring
+									);
 							} else {
-								return internal::sparse_eWiseMulAdd_maskDriven
-												<
-													descr, a_scalar, x_scalar, y_scalar, y_zero,
-													false, false, true, false, false
-												>(
-													lower_bound, upper_bound, local_z, local_m, local_a, local_x, local_y,
-													z_vector, m_vector, a_wrapper, x_wrapper, y_wrapper, ring
-												);
+								return internal::sparse_eWiseMulAdd_maskDriven<
+										descr, a_scalar, x_scalar, y_scalar, y_zero,
+										false, false, true, false, false
+									>(
+										lower_bound, upper_bound, local_z, local_m, local_a, local_x, local_y,
+										z_vector, m_vector, a_wrapper, x_wrapper, y_wrapper, ring
+									);
 							}
 						}
 					} else {
 						if( already_dense_input_x ) {
 							if( already_dense_input_y ) {
-								return internal::sparse_eWiseMulAdd_maskDriven
-												<
-													descr, a_scalar, x_scalar, y_scalar, y_zero,
-													false, false, false, true, true
-												>(
-													lower_bound, upper_bound, local_z, local_m, local_a, local_x, local_y,
-													z_vector, m_vector, a_wrapper, x_wrapper, y_wrapper, ring
-												);
+								return internal::sparse_eWiseMulAdd_maskDriven<
+										descr, a_scalar, x_scalar, y_scalar, y_zero,
+										false, false, false, true, true
+									>(
+										lower_bound, upper_bound, local_z, local_m, local_a, local_x, local_y,
+										z_vector, m_vector, a_wrapper, x_wrapper, y_wrapper, ring
+									);
 							} else {
-								return internal::sparse_eWiseMulAdd_maskDriven
-												<
-													descr, a_scalar, x_scalar, y_scalar, y_zero,
-													false, false, false, true, false
-												>(
-													lower_bound, upper_bound, local_z, local_m, local_a, local_x, local_y,
-													z_vector, m_vector, a_wrapper, x_wrapper, y_wrapper, ring
-												);
+								return internal::sparse_eWiseMulAdd_maskDriven<
+										descr, a_scalar, x_scalar, y_scalar, y_zero,
+										false, false, false, true, false
+									>(
+										lower_bound, upper_bound, local_z, local_m, local_a, local_x, local_y,
+										z_vector, m_vector, a_wrapper, x_wrapper, y_wrapper, ring
+									);
 							}
 						} else {
 							if( already_dense_input_y ) {
-								return internal::sparse_eWiseMulAdd_maskDriven
-												<
-													descr, a_scalar, x_scalar, y_scalar, y_zero,
-													false, false, false, false, true
-												>(
-													lower_bound, upper_bound, local_z, local_m, local_a, local_x, local_y,
-													z_vector, m_vector, a_wrapper, x_wrapper, y_wrapper, ring
-												);
+								return internal::sparse_eWiseMulAdd_maskDriven<
+										descr, a_scalar, x_scalar, y_scalar, y_zero,
+										false, false, false, false, true
+									>(
+										lower_bound, upper_bound, local_z, local_m, local_a, local_x, local_y,
+										z_vector, m_vector, a_wrapper, x_wrapper, y_wrapper, ring
+									);
 							} else {
-								return internal::sparse_eWiseMulAdd_maskDriven
-												<
-													descr, a_scalar, x_scalar, y_scalar, y_zero,
-													false, false, false, false, false
-												>(
-													lower_bound, upper_bound, local_z, local_m, local_a, local_x, local_y,
-													z_vector, m_vector, a_wrapper, x_wrapper, y_wrapper, ring
-												);
+								return internal::sparse_eWiseMulAdd_maskDriven<
+										descr, a_scalar, x_scalar, y_scalar, y_zero,
+										false, false, false, false, false
+									>(
+										lower_bound, upper_bound, local_z, local_m, local_a, local_x, local_y,
+										z_vector, m_vector, a_wrapper, x_wrapper, y_wrapper, ring
+									);
 							}
 						}
 					}
@@ -1392,85 +1342,77 @@ namespace grb {
 					if( already_dense_input_a ) {
 						if( already_dense_input_x ) {
 							if( already_dense_input_y ) {
-								return internal::twoPhase_sparse_eWiseMulAdd_mulDriven
-												<
-													descr, masked, x_scalar, y_scalar, y_zero, mulSwitched,
-													true, true, true, true, true
-												>(
-													lower_bound, upper_bound, local_z, local_m, local_a, local_x, local_y,
-													z_vector, m_vector, a_vector, x_wrapper, y_wrapper, ring
-												);
+								return internal::twoPhase_sparse_eWiseMulAdd_mulDriven<
+										descr, masked, x_scalar, y_scalar, y_zero, mulSwitched,
+										true, true, true, true, true
+									>(
+										lower_bound, upper_bound, local_z, local_m, local_a, local_x, local_y,
+										z_vector, m_vector, a_vector, x_wrapper, y_wrapper, ring
+									);
 							} else {
-								return internal::twoPhase_sparse_eWiseMulAdd_mulDriven
-												<
-													descr, masked, x_scalar, y_scalar, y_zero, mulSwitched,
-													true, true, true, true, false
-												>(
-													lower_bound, upper_bound, local_z, local_m, local_a, local_x, local_y,
-													z_vector, m_vector, a_vector, x_wrapper, y_wrapper, ring
-												);
+								return internal::twoPhase_sparse_eWiseMulAdd_mulDriven<
+										descr, masked, x_scalar, y_scalar, y_zero, mulSwitched,
+										true, true, true, true, false
+									>(
+										lower_bound, upper_bound, local_z, local_m, local_a, local_x, local_y,
+										z_vector, m_vector, a_vector, x_wrapper, y_wrapper, ring
+									);
 							}
 						} else {
 							if( already_dense_input_y ) {
-								return internal::twoPhase_sparse_eWiseMulAdd_mulDriven
-												<
-													descr, masked, x_scalar, y_scalar, y_zero, mulSwitched,
-													true, true, true, false, true
-												>(
-													lower_bound, upper_bound, local_z, local_m, local_a, local_x, local_y,
-													z_vector, m_vector, a_vector, x_wrapper, y_wrapper, ring
-												);
+								return internal::twoPhase_sparse_eWiseMulAdd_mulDriven<
+										descr, masked, x_scalar, y_scalar, y_zero, mulSwitched,
+										true, true, true, false, true
+									>(
+										lower_bound, upper_bound, local_z, local_m, local_a, local_x, local_y,
+										z_vector, m_vector, a_vector, x_wrapper, y_wrapper, ring
+									);
 							} else {
-								return internal::twoPhase_sparse_eWiseMulAdd_mulDriven
-												<
-													descr, masked, x_scalar, y_scalar, y_zero, mulSwitched,
-													true, true, true, false, false
-												>(
-													lower_bound, upper_bound, local_z, local_m, local_a, local_x, local_y,
-													z_vector, m_vector, a_vector, x_wrapper, y_wrapper, ring
-												);
+								return internal::twoPhase_sparse_eWiseMulAdd_mulDriven<
+										descr, masked, x_scalar, y_scalar, y_zero, mulSwitched,
+										true, true, true, false, false
+									>(
+										lower_bound, upper_bound, local_z, local_m, local_a, local_x, local_y,
+										z_vector, m_vector, a_vector, x_wrapper, y_wrapper, ring
+									);
 							}
 						}
 					} else {
 						if( already_dense_input_x ) {
 							if( already_dense_input_y ) {
-								return internal::twoPhase_sparse_eWiseMulAdd_mulDriven
-												<
-													descr, masked, x_scalar, y_scalar, y_zero, mulSwitched,
-													true, true, false, true, true
-												>(
-													lower_bound, upper_bound, local_z, local_m, local_a, local_x, local_y,
-													z_vector, m_vector, a_vector, x_wrapper, y_wrapper, ring
-												);
+								return internal::twoPhase_sparse_eWiseMulAdd_mulDriven<
+										descr, masked, x_scalar, y_scalar, y_zero, mulSwitched,
+										true, true, false, true, true
+									>(
+										lower_bound, upper_bound, local_z, local_m, local_a, local_x, local_y,
+										z_vector, m_vector, a_vector, x_wrapper, y_wrapper, ring
+									);
 							} else {
-								return internal::twoPhase_sparse_eWiseMulAdd_mulDriven
-												<
-													descr, masked, x_scalar, y_scalar, y_zero, mulSwitched,
-													true, true, false, true, false
-												>(
-													lower_bound, upper_bound, local_z, local_m, local_a, local_x, local_y,
-													z_vector, m_vector, a_vector, x_wrapper, y_wrapper, ring
-												);
+								return internal::twoPhase_sparse_eWiseMulAdd_mulDriven<
+										descr, masked, x_scalar, y_scalar, y_zero, mulSwitched,
+										true, true, false, true, false
+									>(
+										lower_bound, upper_bound, local_z, local_m, local_a, local_x, local_y,
+										z_vector, m_vector, a_vector, x_wrapper, y_wrapper, ring
+									);
 							}
 						} else {
 							if( already_dense_input_y ) {
-								return internal::twoPhase_sparse_eWiseMulAdd_mulDriven
-												<
-													descr, masked, x_scalar, y_scalar, y_zero, mulSwitched,
-													true, true, false, false, true
-												>(
-													lower_bound, upper_bound, local_z, local_m, local_a, local_x, local_y,
-													z_vector, m_vector, a_vector, x_wrapper, y_wrapper, ring
-												);
+								return internal::twoPhase_sparse_eWiseMulAdd_mulDriven<
+										descr, masked, x_scalar, y_scalar, y_zero, mulSwitched,
+										true, true, false, false, true
+									>(
+										lower_bound, upper_bound, local_z, local_m, local_a, local_x, local_y,
+										z_vector, m_vector, a_vector, x_wrapper, y_wrapper, ring
+									);
 							} else {
-								return internal::twoPhase_sparse_eWiseMulAdd_mulDriven
-												<
-													descr, masked, x_scalar, y_scalar, y_zero, mulSwitched,
-													true, true, false, false, false
-												>(
-													lower_bound, upper_bound, local_z, local_m, local_a, local_x, local_y,
-													z_vector, m_vector, a_vector, x_wrapper, y_wrapper, ring
-												);
+								return internal::twoPhase_sparse_eWiseMulAdd_mulDriven<
+										descr, masked, x_scalar, y_scalar, y_zero, mulSwitched,
+										true, true, false, false, false
+									>(
+										lower_bound, upper_bound, local_z, local_m, local_a, local_x, local_y,
+										z_vector, m_vector, a_vector, x_wrapper, y_wrapper, ring
+									);
 							}
 						}
 					}
@@ -1478,85 +1420,77 @@ namespace grb {
 					if( already_dense_input_a ) {
 						if( already_dense_input_x ) {
 							if( already_dense_input_y ) {
-								return internal::twoPhase_sparse_eWiseMulAdd_mulDriven
-												<
-													descr, masked, x_scalar, y_scalar, y_zero, mulSwitched,
-													true, false, true, true, true
-												>(
-													lower_bound, upper_bound, local_z, local_m, local_a, local_x, local_y,
-													z_vector, m_vector, a_vector, x_wrapper, y_wrapper, ring
-												);
+								return internal::twoPhase_sparse_eWiseMulAdd_mulDriven<
+										descr, masked, x_scalar, y_scalar, y_zero, mulSwitched,
+										true, false, true, true, true
+									>(
+										lower_bound, upper_bound, local_z, local_m, local_a, local_x, local_y,
+										z_vector, m_vector, a_vector, x_wrapper, y_wrapper, ring
+									);
 							} else {
-								return internal::twoPhase_sparse_eWiseMulAdd_mulDriven
-												<
-													descr, masked, x_scalar, y_scalar, y_zero, mulSwitched,
-													true, false, true, true, false
-												>(
-													lower_bound, upper_bound, local_z, local_m, local_a, local_x, local_y,
-													z_vector, m_vector, a_vector, x_wrapper, y_wrapper, ring
-												);
+								return internal::twoPhase_sparse_eWiseMulAdd_mulDriven<
+										descr, masked, x_scalar, y_scalar, y_zero, mulSwitched,
+										true, false, true, true, false
+									>(
+										lower_bound, upper_bound, local_z, local_m, local_a, local_x, local_y,
+										z_vector, m_vector, a_vector, x_wrapper, y_wrapper, ring
+									);
 							}
 						} else {
 							if( already_dense_input_y ) {
-								return internal::twoPhase_sparse_eWiseMulAdd_mulDriven
-												<
-													descr, masked, x_scalar, y_scalar, y_zero, mulSwitched,
-													true, false, true, false, true
-												>(
-													lower_bound, upper_bound, local_z, local_m, local_a, local_x, local_y,
-													z_vector, m_vector, a_vector, x_wrapper, y_wrapper, ring
-												);
+								return internal::twoPhase_sparse_eWiseMulAdd_mulDriven<
+										descr, masked, x_scalar, y_scalar, y_zero, mulSwitched,
+										true, false, true, false, true
+									>(
+										lower_bound, upper_bound, local_z, local_m, local_a, local_x, local_y,
+										z_vector, m_vector, a_vector, x_wrapper, y_wrapper, ring
+									);
 							} else {
-								return internal::twoPhase_sparse_eWiseMulAdd_mulDriven
-												<
-													descr, masked, x_scalar, y_scalar, y_zero, mulSwitched,
-													true, false, true, false, false
-												>(
-													lower_bound, upper_bound, local_z, local_m, local_a, local_x, local_y,
-													z_vector, m_vector, a_vector, x_wrapper, y_wrapper, ring
-												);
+								return internal::twoPhase_sparse_eWiseMulAdd_mulDriven<
+										descr, masked, x_scalar, y_scalar, y_zero, mulSwitched,
+										true, false, true, false, false
+									>(
+										lower_bound, upper_bound, local_z, local_m, local_a, local_x, local_y,
+										z_vector, m_vector, a_vector, x_wrapper, y_wrapper, ring
+									);
 							}
 						}
 					} else {
 						if( already_dense_input_x ) {
 							if( already_dense_input_y ) {
-								return internal::twoPhase_sparse_eWiseMulAdd_mulDriven
-												<
-													descr, masked, x_scalar, y_scalar, y_zero, mulSwitched,
-													true, false, false, true, true
-												>(
-													lower_bound, upper_bound, local_z, local_m, local_a, local_x, local_y,
-													z_vector, m_vector, a_vector, x_wrapper, y_wrapper, ring
-												);
+								return internal::twoPhase_sparse_eWiseMulAdd_mulDriven<
+										descr, masked, x_scalar, y_scalar, y_zero, mulSwitched,
+										true, false, false, true, true
+									>(
+										lower_bound, upper_bound, local_z, local_m, local_a, local_x, local_y,
+										z_vector, m_vector, a_vector, x_wrapper, y_wrapper, ring
+									);
 							} else {
-								return internal::twoPhase_sparse_eWiseMulAdd_mulDriven
-												<
-													descr, masked, x_scalar, y_scalar, y_zero, mulSwitched,
-													true, false, false, true, false
-												>(
-													lower_bound, upper_bound, local_z, local_m, local_a, local_x, local_y,
-													z_vector, m_vector, a_vector, x_wrapper, y_wrapper, ring
-												);
+								return internal::twoPhase_sparse_eWiseMulAdd_mulDriven<
+										descr, masked, x_scalar, y_scalar, y_zero, mulSwitched,
+										true, false, false, true, false
+									>(
+										lower_bound, upper_bound, local_z, local_m, local_a, local_x, local_y,
+										z_vector, m_vector, a_vector, x_wrapper, y_wrapper, ring
+									);
 							}
 						} else {
 							if( already_dense_input_y ) {
-								return internal::twoPhase_sparse_eWiseMulAdd_mulDriven
-												<
-													descr, masked, x_scalar, y_scalar, y_zero, mulSwitched,
-													true, false, false, false, true
-												>(
-													lower_bound, upper_bound, local_z, local_m, local_a, local_x, local_y,
-													z_vector, m_vector, a_vector, x_wrapper, y_wrapper, ring
-												);
+								return internal::twoPhase_sparse_eWiseMulAdd_mulDriven<
+										descr, masked, x_scalar, y_scalar, y_zero, mulSwitched,
+										true, false, false, false, true
+									>(
+										lower_bound, upper_bound, local_z, local_m, local_a, local_x, local_y,
+										z_vector, m_vector, a_vector, x_wrapper, y_wrapper, ring
+									);
 							} else {
-								return internal::twoPhase_sparse_eWiseMulAdd_mulDriven
-												<
-													descr, masked, x_scalar, y_scalar, y_zero, mulSwitched,
-													true, false, false, false, false
-												>(
-													lower_bound, upper_bound, local_z, local_m, local_a, local_x, local_y,
-													z_vector, m_vector, a_vector, x_wrapper, y_wrapper, ring
-												);
+								return internal::twoPhase_sparse_eWiseMulAdd_mulDriven<
+										descr, masked, x_scalar, y_scalar, y_zero, mulSwitched,
+										true, false, false, false, false
+									>(
+										lower_bound, upper_bound, local_z, local_m, local_a, local_x, local_y,
+										z_vector, m_vector, a_vector, x_wrapper, y_wrapper, ring
+									);
 							}
 						}
 					}
@@ -1566,85 +1500,77 @@ namespace grb {
 					if( already_dense_input_a ) {
 						if( already_dense_input_x ) {
 							if( already_dense_input_y ) {
-								return internal::twoPhase_sparse_eWiseMulAdd_mulDriven
-												<
-													descr, masked, x_scalar, y_scalar, y_zero, mulSwitched,
-													false, true, true, true, true
-												>(
-													lower_bound, upper_bound, local_z, local_m, local_a, local_x, local_y,
-													z_vector, m_vector, a_vector, x_wrapper, y_wrapper, ring
-												);
+								return internal::twoPhase_sparse_eWiseMulAdd_mulDriven<
+										descr, masked, x_scalar, y_scalar, y_zero, mulSwitched,
+										false, true, true, true, true
+									>(
+										lower_bound, upper_bound, local_z, local_m, local_a, local_x, local_y,
+										z_vector, m_vector, a_vector, x_wrapper, y_wrapper, ring
+									);
 							} else {
-								return internal::twoPhase_sparse_eWiseMulAdd_mulDriven
-												<
-													descr, masked, x_scalar, y_scalar, y_zero, mulSwitched,
-													false, true, true, true, false
-												>(
-													lower_bound, upper_bound, local_z, local_m, local_a, local_x, local_y,
-													z_vector, m_vector, a_vector, x_wrapper, y_wrapper, ring
-												);
+								return internal::twoPhase_sparse_eWiseMulAdd_mulDriven<
+										descr, masked, x_scalar, y_scalar, y_zero, mulSwitched,
+										false, true, true, true, false
+									>(
+										lower_bound, upper_bound, local_z, local_m, local_a, local_x, local_y,
+										z_vector, m_vector, a_vector, x_wrapper, y_wrapper, ring
+									);
 							}
 						} else {
 							if( already_dense_input_y ) {
-								return internal::twoPhase_sparse_eWiseMulAdd_mulDriven
-												<
-													descr, masked, x_scalar, y_scalar, y_zero, mulSwitched,
-													false, true, true, false, true
-												>(
-													lower_bound, upper_bound, local_z, local_m, local_a, local_x, local_y,
-													z_vector, m_vector, a_vector, x_wrapper, y_wrapper, ring
-												);
+								return internal::twoPhase_sparse_eWiseMulAdd_mulDriven<
+										descr, masked, x_scalar, y_scalar, y_zero, mulSwitched,
+										false, true, true, false, true
+									>(
+										lower_bound, upper_bound, local_z, local_m, local_a, local_x, local_y,
+										z_vector, m_vector, a_vector, x_wrapper, y_wrapper, ring
+									);
 							} else {
-								return internal::twoPhase_sparse_eWiseMulAdd_mulDriven
-												<
-													descr, masked, x_scalar, y_scalar, y_zero, mulSwitched,
-													false, true, true, false, false
-												>(
-													lower_bound, upper_bound, local_z, local_m, local_a, local_x, local_y,
-													z_vector, m_vector, a_vector, x_wrapper, y_wrapper, ring
-												);
+								return internal::twoPhase_sparse_eWiseMulAdd_mulDriven<
+										descr, masked, x_scalar, y_scalar, y_zero, mulSwitched,
+										false, true, true, false, false
+									>(
+										lower_bound, upper_bound, local_z, local_m, local_a, local_x, local_y,
+										z_vector, m_vector, a_vector, x_wrapper, y_wrapper, ring
+									);
 							}
 						}
 					} else {
 						if( already_dense_input_x ) {
 							if( already_dense_input_y ) {
-								return internal::twoPhase_sparse_eWiseMulAdd_mulDriven
-												<
-													descr, masked, x_scalar, y_scalar, y_zero, mulSwitched,
-													false, true, false, true, true
-												>(
-													lower_bound, upper_bound, local_z, local_m, local_a, local_x, local_y,
-													z_vector, m_vector, a_vector, x_wrapper, y_wrapper, ring
-												);
+								return internal::twoPhase_sparse_eWiseMulAdd_mulDriven<
+										descr, masked, x_scalar, y_scalar, y_zero, mulSwitched,
+										false, true, false, true, true
+									>(
+										lower_bound, upper_bound, local_z, local_m, local_a, local_x, local_y,
+										z_vector, m_vector, a_vector, x_wrapper, y_wrapper, ring
+									);
 							} else {
-								return internal::twoPhase_sparse_eWiseMulAdd_mulDriven
-												<
-													descr, masked, x_scalar, y_scalar, y_zero, mulSwitched,
-													false, true, false, true, false
-												>(
-													lower_bound, upper_bound, local_z, local_m, local_a, local_x, local_y,
-													z_vector, m_vector, a_vector, x_wrapper, y_wrapper, ring
-												);
+								return internal::twoPhase_sparse_eWiseMulAdd_mulDriven<
+										descr, masked, x_scalar, y_scalar, y_zero, mulSwitched,
+										false, true, false, true, false
+									>(
+										lower_bound, upper_bound, local_z, local_m, local_a, local_x, local_y,
+										z_vector, m_vector, a_vector, x_wrapper, y_wrapper, ring
+									);
 							}
 						} else {
 							if( already_dense_input_y ) {
-								return internal::twoPhase_sparse_eWiseMulAdd_mulDriven
-												<
-													descr, masked, x_scalar, y_scalar, y_zero, mulSwitched,
-													false, true, false, false, true
-												>(
-													lower_bound, upper_bound, local_z, local_m, local_a, local_x, local_y,
-													z_vector, m_vector, a_vector, x_wrapper, y_wrapper, ring
-												);
+								return internal::twoPhase_sparse_eWiseMulAdd_mulDriven<
+										descr, masked, x_scalar, y_scalar, y_zero, mulSwitched,
+										false, true, false, false, true
+									>(
+										lower_bound, upper_bound, local_z, local_m, local_a, local_x, local_y,
+										z_vector, m_vector, a_vector, x_wrapper, y_wrapper, ring
+									);
 							} else {
-								return internal::twoPhase_sparse_eWiseMulAdd_mulDriven
-												<
-													descr, masked, x_scalar, y_scalar, y_zero, mulSwitched,
-													false, true, false, false, false
-												>(
-													lower_bound, upper_bound, local_z, local_m, local_a, local_x, local_y,
-													z_vector, m_vector, a_vector, x_wrapper, y_wrapper, ring
-												);
+								return internal::twoPhase_sparse_eWiseMulAdd_mulDriven<
+										descr, masked, x_scalar, y_scalar, y_zero, mulSwitched,
+										false, true, false, false, false
+									>(
+										lower_bound, upper_bound, local_z, local_m, local_a, local_x, local_y,
+										z_vector, m_vector, a_vector, x_wrapper, y_wrapper, ring
+									);
 							}
 						}
 					}
@@ -1652,85 +1578,77 @@ namespace grb {
 					if( already_dense_input_a ) {
 						if( already_dense_input_x ) {
 							if( already_dense_input_y ) {
-								return internal::twoPhase_sparse_eWiseMulAdd_mulDriven
-												<
-													descr, masked, x_scalar, y_scalar, y_zero, mulSwitched,
-													false, false, true, true, true
-												>(
-													lower_bound, upper_bound, local_z, local_m, local_a, local_x, local_y,
-													z_vector, m_vector, a_vector, x_wrapper, y_wrapper, ring
-												);
+								return internal::twoPhase_sparse_eWiseMulAdd_mulDriven<
+										descr, masked, x_scalar, y_scalar, y_zero, mulSwitched,
+										false, false, true, true, true
+									>(
+										lower_bound, upper_bound, local_z, local_m, local_a, local_x, local_y,
+										z_vector, m_vector, a_vector, x_wrapper, y_wrapper, ring
+									);
 							} else {
-								return internal::twoPhase_sparse_eWiseMulAdd_mulDriven
-												<
-													descr, masked, x_scalar, y_scalar, y_zero, mulSwitched,
-													false, false, true, true, false
-												>(
-													lower_bound, upper_bound, local_z, local_m, local_a, local_x, local_y,
-													z_vector, m_vector, a_vector, x_wrapper, y_wrapper, ring
-												);
+								return internal::twoPhase_sparse_eWiseMulAdd_mulDriven<
+										descr, masked, x_scalar, y_scalar, y_zero, mulSwitched,
+										false, false, true, true, false
+									>(
+										lower_bound, upper_bound, local_z, local_m, local_a, local_x, local_y,
+										z_vector, m_vector, a_vector, x_wrapper, y_wrapper, ring
+									);
 							}
 						} else {
 							if( already_dense_input_y ) {
-								return internal::twoPhase_sparse_eWiseMulAdd_mulDriven
-												<
-													descr, masked, x_scalar, y_scalar, y_zero, mulSwitched,
-													false, false, true, false, true
-												>(
-													lower_bound, upper_bound, local_z, local_m, local_a, local_x, local_y,
-													z_vector, m_vector, a_vector, x_wrapper, y_wrapper, ring
-												);
+								return internal::twoPhase_sparse_eWiseMulAdd_mulDriven<
+										descr, masked, x_scalar, y_scalar, y_zero, mulSwitched,
+										false, false, true, false, true
+									>(
+										lower_bound, upper_bound, local_z, local_m, local_a, local_x, local_y,
+										z_vector, m_vector, a_vector, x_wrapper, y_wrapper, ring
+									);
 							} else {
-								return internal::twoPhase_sparse_eWiseMulAdd_mulDriven
-												<
-													descr, masked, x_scalar, y_scalar, y_zero, mulSwitched,
-													false, false, true, false, false
-												>(
-													lower_bound, upper_bound, local_z, local_m, local_a, local_x, local_y,
-													z_vector, m_vector, a_vector, x_wrapper, y_wrapper, ring
-												);
+								return internal::twoPhase_sparse_eWiseMulAdd_mulDriven<
+										descr, masked, x_scalar, y_scalar, y_zero, mulSwitched,
+										false, false, true, false, false
+									>(
+										lower_bound, upper_bound, local_z, local_m, local_a, local_x, local_y,
+										z_vector, m_vector, a_vector, x_wrapper, y_wrapper, ring
+									);
 							}
 						}
 					} else {
 						if( already_dense_input_x ) {
 							if( already_dense_input_y ) {
-								return internal::twoPhase_sparse_eWiseMulAdd_mulDriven
-												<
-													descr, masked, x_scalar, y_scalar, y_zero, mulSwitched,
-													false, false, false, true, true
-												>(
-													lower_bound, upper_bound, local_z, local_m, local_a, local_x, local_y,
-													z_vector, m_vector, a_vector, x_wrapper, y_wrapper, ring
-												);
+								return internal::twoPhase_sparse_eWiseMulAdd_mulDriven<
+										descr, masked, x_scalar, y_scalar, y_zero, mulSwitched,
+										false, false, false, true, true
+									>(
+										lower_bound, upper_bound, local_z, local_m, local_a, local_x, local_y,
+										z_vector, m_vector, a_vector, x_wrapper, y_wrapper, ring
+									);
 							} else {
-								return internal::twoPhase_sparse_eWiseMulAdd_mulDriven
-												<
-													descr, masked, x_scalar, y_scalar, y_zero, mulSwitched,
-													false, false, false, true, false
-												>(
-													lower_bound, upper_bound, local_z, local_m, local_a, local_x, local_y,
-													z_vector, m_vector, a_vector, x_wrapper, y_wrapper, ring
-												);
+								return internal::twoPhase_sparse_eWiseMulAdd_mulDriven<
+										descr, masked, x_scalar, y_scalar, y_zero, mulSwitched,
+										false, false, false, true, false
+									>(
+										lower_bound, upper_bound, local_z, local_m, local_a, local_x, local_y,
+										z_vector, m_vector, a_vector, x_wrapper, y_wrapper, ring
+									);
 							}
 						} else {
 							if( already_dense_input_y ) {
-								return internal::twoPhase_sparse_eWiseMulAdd_mulDriven
-												<
-													descr, masked, x_scalar, y_scalar, y_zero, mulSwitched,
-													false, false, false, false, true
-												>(
-													lower_bound, upper_bound, local_z, local_m, local_a, local_x, local_y,
-													z_vector, m_vector, a_vector, x_wrapper, y_wrapper, ring
-												);
+								return internal::twoPhase_sparse_eWiseMulAdd_mulDriven<
+										descr, masked, x_scalar, y_scalar, y_zero, mulSwitched,
+										false, false, false, false, true
+									>(
+										lower_bound, upper_bound, local_z, local_m, local_a, local_x, local_y,
+										z_vector, m_vector, a_vector, x_wrapper, y_wrapper, ring
+									);
 							} else {
-								return internal::twoPhase_sparse_eWiseMulAdd_mulDriven
-												<
-													descr, masked, x_scalar, y_scalar, y_zero, mulSwitched,
-													false, false, false, false, false
-												>(
-													lower_bound, upper_bound, local_z, local_m, local_a, local_x, local_y,
-													z_vector, m_vector, a_vector, x_wrapper, y_wrapper, ring
-												);
+								return internal::twoPhase_sparse_eWiseMulAdd_mulDriven<
+										descr, masked, x_scalar, y_scalar, y_zero, mulSwitched,
+										false, false, false, false, false
+									>(
+										lower_bound, upper_bound, local_z, local_m, local_a, local_x, local_y,
+										z_vector, m_vector, a_vector, x_wrapper, y_wrapper, ring
+									);
 							}
 						}
 					}
@@ -1785,39 +1703,35 @@ namespace grb {
 		) {
 			if( already_dense_input_x ) {
 				if( already_dense_input_y ) {
-					return internal::sparse_dot_generic
-									<
-										descr, true, true
-									>(
-										thread_local_output, lower_bound, upper_bound, local_x, local_y,
-										x, y, local_nz, addMonoid, anyOp
-									);
+					return internal::sparse_dot_generic<
+							descr, true, true
+						>(
+							thread_local_output, lower_bound, upper_bound, local_x, local_y,
+							x, y, local_nz, addMonoid, anyOp
+						);
 				} else {
-					return internal::sparse_dot_generic
-									<
-										descr, true, false
-									>(
-										thread_local_output, lower_bound, upper_bound, local_x, local_y,
-										x, y, local_nz, addMonoid, anyOp
-									);
+					return internal::sparse_dot_generic<
+							descr, true, false
+						>(
+							thread_local_output, lower_bound, upper_bound, local_x, local_y,
+							x, y, local_nz, addMonoid, anyOp
+						);
 				}
 			} else {
 				if( already_dense_input_y ) {
-					return internal::sparse_dot_generic
-									<
-										descr, false, true
-									>(
-										thread_local_output, lower_bound, upper_bound, local_x, local_y,
-										x, y, local_nz, addMonoid, anyOp
-									);
+					return internal::sparse_dot_generic<
+							descr, false, true
+						>(
+							thread_local_output, lower_bound, upper_bound, local_x, local_y,
+							x, y, local_nz, addMonoid, anyOp
+						);
 				} else {
-					return internal::sparse_dot_generic
-									<
-										descr, false, false
-									>(
-										thread_local_output, lower_bound, upper_bound, local_x, local_y,
-										x, y, local_nz, addMonoid, anyOp
-									);
+					return internal::sparse_dot_generic<
+							descr, false, false
+						>(
+							thread_local_output, lower_bound, upper_bound, local_x, local_y,
+							x, y, local_nz, addMonoid, anyOp
+						);
 				}
 			}
 		}

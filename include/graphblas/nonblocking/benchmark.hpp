@@ -15,7 +15,11 @@
  * limitations under the License.
  */
 
-/*
+/**
+ * @file
+ *
+ * Nonblocking implementation of the benchmarker.
+ *
  * @author Aristeidis Mastoras
  * @date 16th of May, 2022
  */
@@ -31,7 +35,11 @@
 
 namespace grb {
 
-	/** The Benchmarker class is based on that of the reference backend */
+	/**
+	 * The Benchmarker class is based on that of the reference backend
+	 *
+	 * \internal The public API simply wraps the reference Benchmarker.
+	 */
 	template< enum EXEC_MODE mode >
 	class Benchmarker< mode, nonblocking > {
 
@@ -39,35 +47,40 @@ namespace grb {
 
 			Benchmarker< mode, reference > ref;
 
+
 		public:
 
-			Benchmarker( size_t process_id = 0,			// user process ID
-				size_t nprocs = 1,						// total number of user processes
-				std::string hostname = "localhost",		// one of the user process hostnames
-				std::string port = "0"					// a free port at hostname
-				)
-				: ref(process_id, nprocs, hostname, port)
-				{}
+			Benchmarker(
+				size_t process_id = 0,
+				size_t nprocs = 1,
+				std::string hostname = "localhost",
+				std::string port = "0"
+			) :
+				ref(process_id, nprocs, hostname, port)
+			{}
 
 			template< typename U >
-			RC exec( void ( *grb_program )( const void *, const size_t, U & ),
+			RC exec(
+				void ( *grb_program )( const void *, const size_t, U & ),
 				const void * data_in, const size_t in_size,
 				U &data_out,
 				const size_t inner, const size_t outer,
 				const bool broadcast = false
 			) const {
-
-				return ref.exec(grb_program, data_in, in_size, data_out, inner, outer, broadcast);
+				return ref.exec(
+					grb_program, data_in, in_size, data_out, inner, outer, broadcast
+				);
 			}
 
 			template< typename T, typename U >
-			RC exec( void ( *grb_program )( const T &, U & ),	// user GraphBLAS program
-				const T & data_in, U &data_out,					// input & output data
+			RC exec(
+				void ( *grb_program )( const T &, U & ),
+				const T &data_in, U &data_out,
 				const size_t inner,
 				const size_t outer,
 				const bool broadcast = false
 			) {
-				return ref.exec(grb_program, data_in, data_out, inner, outer, broadcast);
+				return ref.exec( grb_program, data_in, data_out, inner, outer, broadcast );
 			}
 
 	};

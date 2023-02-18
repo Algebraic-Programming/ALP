@@ -15,7 +15,11 @@
  * limitations under the License.
  */
 
-/*
+/**
+ * @file
+ *
+ * Dispatchers for the nonblocking i/o primitives.
+ *
  * @author Aristeidis Mastoras
  * @date 24th of October, 2022
  */
@@ -82,59 +86,52 @@ namespace grb {
 			if( loop_over_vector_length ) {
 				if( already_dense_mask ) {
 					if( mask_is_dense ) {
-						return internal::masked_set
-										<
-											descr, true, true, true
-										>( lower_bound, upper_bound, local_x, local_mask, x, m, val );
+						return internal::masked_set<
+								descr, true, true, true
+							>( lower_bound, upper_bound, local_x, local_mask, x, m, val );
 					} else {
-						return internal::masked_set
-										<
-											descr, true, true, false
-										>( lower_bound, upper_bound, local_x, local_mask, x, m, val );
+						return internal::masked_set<
+								descr, true, true, false
+							>( lower_bound, upper_bound, local_x, local_mask, x, m, val );
 					}
 				} else {
 					if( mask_is_dense ) {
-						return internal::masked_set
-										<
-											descr, true, false, true
-										>( lower_bound, upper_bound, local_x, local_mask, x, m, val );
+						return internal::masked_set<
+								descr, true, false, true
+							>( lower_bound, upper_bound, local_x, local_mask, x, m, val );
 					} else {
-						return internal::masked_set
-										<
-											descr, true, false, false
-										>( lower_bound, upper_bound, local_x, local_mask, x, m, val );
+						return internal::masked_set<
+								descr, true, false, false
+							>( lower_bound, upper_bound, local_x, local_mask, x, m, val );
 					}
 				}
 			} else {
 				if( already_dense_mask ) {
 					if( mask_is_dense ) {
-						return internal::masked_set
-										<
-											descr, false, true, true
-										>( lower_bound, upper_bound, local_x, local_mask, x, m, val );
+						return internal::masked_set<
+								descr, false, true, true
+							>( lower_bound, upper_bound, local_x, local_mask, x, m, val );
 					} else {
-						return internal::masked_set
-										<
-											descr, false, true, false
-										>( lower_bound, upper_bound, local_x, local_mask, x, m, val );
+						return internal::masked_set<
+								descr, false, true, false
+							>( lower_bound, upper_bound, local_x, local_mask, x, m, val );
 					}
 				} else {
 					if( mask_is_dense ) {
-						return internal::masked_set
-										<
-											descr, false, false, true
-										>( lower_bound, upper_bound, local_x, local_mask, x, m, val );
+						return internal::masked_set<
+								descr, false, false, true
+							>( lower_bound, upper_bound, local_x, local_mask, x, m, val );
 					} else {
-						return internal::masked_set
-										<	
-											descr, false, false, false
-										>( lower_bound, upper_bound, local_x, local_mask, x, m, val );
+						return internal::masked_set<	
+								descr, false, false, false
+							>( lower_bound, upper_bound, local_x, local_mask, x, m, val );
 					}
 				}
 			}
 		}
 
-		template< Descriptor descr,
+		template<
+			Descriptor descr,
 			bool out_is_void,
 			bool in_is_void,
 			bool sparse,
@@ -173,31 +170,27 @@ namespace grb {
 		) {
 			if( already_dense_vectors ) {
 				if( already_dense_input ) {
-					return internal::set_generic
-									<
-										descr, out_is_void, in_is_void, sparse,
-										true, true
-									>( lower_bound, upper_bound, local_x, local_y, x, y );
+					return internal::set_generic<
+							descr, out_is_void, in_is_void, sparse,
+							true, true
+						>( lower_bound, upper_bound, local_x, local_y, x, y );
 				} else {
-					return internal::set_generic
-									<
-										descr, out_is_void, in_is_void, sparse,
-										true, false
-									>( lower_bound, upper_bound, local_x, local_y, x, y );
+					return internal::set_generic<
+							descr, out_is_void, in_is_void, sparse,
+							true, false
+						>( lower_bound, upper_bound, local_x, local_y, x, y );
 				}
 			} else {
 				if( already_dense_input ) {
-					return internal::set_generic
-									<
-										descr, out_is_void, in_is_void, sparse,
-										false, true
-									>( lower_bound, upper_bound, local_x, local_y, x, y );
+					return internal::set_generic<
+							descr, out_is_void, in_is_void, sparse,
+							false, true
+						>( lower_bound, upper_bound, local_x, local_y, x, y );
 				} else {
-					return internal::set_generic
-									<
-										descr, out_is_void, in_is_void, sparse,
-										false, false
-									>( lower_bound, upper_bound, local_x, local_y, x, y );
+					return internal::set_generic<
+							descr, out_is_void, in_is_void, sparse,
+							false, false
+						>( lower_bound, upper_bound, local_x, local_y, x, y );
 				}
 			}
 		}
@@ -253,61 +246,53 @@ namespace grb {
 				if( already_dense_input_y ) {
 					if( already_dense_mask ) {
 						if( mask_is_dense ) {
-							return internal::masked_set
-											<
-												descr, out_is_void, in_is_void,
-												true, true, true, true
-											>( lower_bound, upper_bound, local_x, local_mask, local_y, x, mask, y );
+							return internal::masked_set<
+									descr, out_is_void, in_is_void,
+									true, true, true, true
+								>( lower_bound, upper_bound, local_x, local_mask, local_y, x, mask, y );
 						} else {
-							return internal::masked_set
-											<
-												descr, out_is_void, in_is_void,
-												true, true, true, false
-											>( lower_bound, upper_bound, local_x, local_mask, local_y, x, mask, y );
+							return internal::masked_set<
+									descr, out_is_void, in_is_void,
+									true, true, true, false
+								>( lower_bound, upper_bound, local_x, local_mask, local_y, x, mask, y );
 						}
 					} else {
 						if( mask_is_dense ) {
-							return internal::masked_set
-											<
-												descr, out_is_void, in_is_void,
-												true, true, false, true
-											>( lower_bound, upper_bound, local_x, local_mask, local_y, x, mask, y );
+							return internal::masked_set<
+									descr, out_is_void, in_is_void,
+									true, true, false, true
+								>( lower_bound, upper_bound, local_x, local_mask, local_y, x, mask, y );
 						} else {
-							return internal::masked_set
-											<
-												descr, out_is_void, in_is_void,
-												true, true, false, false
-											>( lower_bound, upper_bound, local_x, local_mask, local_y, x, mask, y );
+							return internal::masked_set<
+									descr, out_is_void, in_is_void,
+									true, true, false, false
+								>( lower_bound, upper_bound, local_x, local_mask, local_y, x, mask, y );
 						}
 					}
 				} else {
 					if( already_dense_mask ) {
 						if( mask_is_dense ) {
-							return internal::masked_set
-											<
-												descr, out_is_void, in_is_void,
-												true, false, true, true
-											>( lower_bound, upper_bound, local_x, local_mask, local_y, x, mask, y );
+							return internal::masked_set<
+									descr, out_is_void, in_is_void,
+									true, false, true, true
+								>( lower_bound, upper_bound, local_x, local_mask, local_y, x, mask, y );
 						} else {
-							return internal::masked_set
-											<
-												descr, out_is_void, in_is_void,
-												true, false, true, false
-											>( lower_bound, upper_bound, local_x, local_mask, local_y, x, mask, y );
+							return internal::masked_set<
+									descr, out_is_void, in_is_void,
+									true, false, true, false
+								>( lower_bound, upper_bound, local_x, local_mask, local_y, x, mask, y );
 						}
 					} else {
 						if( mask_is_dense ) {
-							return internal::masked_set
-											<
-												descr, out_is_void, in_is_void,
-												true, false, false, true
-											>( lower_bound, upper_bound, local_x, local_mask, local_y, x, mask, y );
+							return internal::masked_set<
+									descr, out_is_void, in_is_void,
+									true, false, false, true
+								>( lower_bound, upper_bound, local_x, local_mask, local_y, x, mask, y );
 						} else {
-							return internal::masked_set
-											<
-												descr, out_is_void, in_is_void,
-												true, false, false, false
-											>( lower_bound, upper_bound, local_x, local_mask, local_y, x, mask, y );
+							return internal::masked_set<
+									descr, out_is_void, in_is_void,
+									true, false, false, false
+								>( lower_bound, upper_bound, local_x, local_mask, local_y, x, mask, y );
 						}
 					}
 				}
@@ -315,61 +300,53 @@ namespace grb {
 				if( already_dense_input_y ) {
 					if( already_dense_mask ) {
 						if( mask_is_dense ) {
-							return internal::masked_set
-											<
-												descr, out_is_void, in_is_void,
-												false, true, true, true
-											>( lower_bound, upper_bound, local_x, local_mask, local_y, x, mask, y );
+							return internal::masked_set<
+									descr, out_is_void, in_is_void,
+									false, true, true, true
+								>( lower_bound, upper_bound, local_x, local_mask, local_y, x, mask, y );
 						} else {
-							return internal::masked_set
-											<
-												descr, out_is_void, in_is_void,
-												false, true, true, false
-											>( lower_bound, upper_bound, local_x, local_mask, local_y, x, mask, y );
+							return internal::masked_set<
+									descr, out_is_void, in_is_void,
+									false, true, true, false
+								>( lower_bound, upper_bound, local_x, local_mask, local_y, x, mask, y );
 						}
 					} else {
 						if( mask_is_dense ) {
-							return internal::masked_set
-											<
-												descr, out_is_void, in_is_void,
-												false, true, false, true
-											>( lower_bound, upper_bound, local_x, local_mask, local_y, x, mask, y );
+							return internal::masked_set<
+									descr, out_is_void, in_is_void,
+									false, true, false, true
+								>( lower_bound, upper_bound, local_x, local_mask, local_y, x, mask, y );
 						} else {
-							return internal::masked_set
-											<
-												descr, out_is_void, in_is_void,
-												false, true, false, false
-											>( lower_bound, upper_bound, local_x, local_mask, local_y, x, mask, y );
+							return internal::masked_set<
+									descr, out_is_void, in_is_void,
+									false, true, false, false
+								>( lower_bound, upper_bound, local_x, local_mask, local_y, x, mask, y );
 						}
 					}
 				} else {
 					if( already_dense_mask ) {
 						if( mask_is_dense ) {
-							return internal::masked_set
-											<
-												descr, out_is_void, in_is_void,
-												false, false, true, true
-											>( lower_bound, upper_bound, local_x, local_mask, local_y, x, mask, y );
+							return internal::masked_set<
+									descr, out_is_void, in_is_void,
+									false, false, true, true
+								>( lower_bound, upper_bound, local_x, local_mask, local_y, x, mask, y );
 						} else {
-							return internal::masked_set
-											<
-												descr, out_is_void, in_is_void,
-												false, false, true, false
-											>( lower_bound, upper_bound, local_x, local_mask, local_y, x, mask, y );
+							return internal::masked_set<
+									descr, out_is_void, in_is_void,
+									false, false, true, false
+								>( lower_bound, upper_bound, local_x, local_mask, local_y, x, mask, y );
 						}
 					} else {
 						if( mask_is_dense ) {
-							return internal::masked_set
-											<
-												descr, out_is_void, in_is_void,
-												false, false, false, true
-											>( lower_bound, upper_bound, local_x, local_mask, local_y, x, mask, y );
+							return internal::masked_set<
+									descr, out_is_void, in_is_void,
+									false, false, false, true
+								>( lower_bound, upper_bound, local_x, local_mask, local_y, x, mask, y );
 						} else {
-							return internal::masked_set
-											<
-												descr, out_is_void, in_is_void,
-												false, false, false, false
-											>( lower_bound, upper_bound, local_x, local_mask, local_y, x, mask, y );
+							return internal::masked_set<
+									descr, out_is_void, in_is_void,
+									false, false, false, false
+								>( lower_bound, upper_bound, local_x, local_mask, local_y, x, mask, y );
 						}
 					}
 				}

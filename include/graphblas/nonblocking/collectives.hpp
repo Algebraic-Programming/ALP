@@ -15,7 +15,11 @@
  * limitations under the License.
  */
 
-/*
+/**
+ * @file
+ *
+ * Collectives implementation for the nonblocking backend.
+ *
  * @author Aristeidis Mastoras
  * @date 16th of May, 2022
  */
@@ -38,29 +42,45 @@ namespace grb {
 	class collectives< nonblocking > {
 
 		private:
+
 			/** Disallow instantiation of this class. */
 			collectives() {}
 
+
 		public:
 
-			template< Descriptor descr = descriptors::no_operation, class Operator, typename IOType >
+			template<
+				Descriptor descr = descriptors::no_operation,
+				class Operator, typename IOType
+			>
 			static RC allreduce( IOType &inout, const Operator op = Operator() ) {
-					return collectives< reference >::allreduce< descr, Operator, IOType >(inout, op);
+				return collectives< reference >::allreduce< descr, Operator, IOType >(
+					inout, op );
 			}
 
-			template< Descriptor descr = descriptors::no_operation, class Operator, typename IOType >
-			static RC reduce( IOType &inout, const size_t root = 0, const Operator op = Operator() ) {
-					return collectives< reference >::reduce< descr, Operator, IOType >(inout, root, op);
+			template<
+				Descriptor descr = descriptors::no_operation,
+				class Operator, typename IOType
+			>
+			static RC reduce(
+				IOType &inout, const size_t root = 0, const Operator op = Operator()
+			) {
+				return collectives< reference >::reduce< descr, Operator, IOType >( inout,
+					root, op );
 			}
 
 			template< typename IOType >
 			static RC broadcast( IOType &inout, const size_t root = 0 ) {
-					return collectives< reference >::broadcast< IOType >(inout, root);
+				return collectives< reference >::broadcast< IOType >( inout, root );
 			}
 
 			template< Descriptor descr = descriptors::no_operation, typename IOType >
-			static RC broadcast( IOType * inout, const size_t size, const size_t root = 0 ) {
-					return collectives< reference >::broadcast< descr, IOType >(inout, size, root);
+			static RC broadcast(
+				IOType * inout, const size_t size,
+				const size_t root = 0
+			) {
+				return collectives< reference >::broadcast< descr, IOType >( inout, size,
+					root );
 			}
 
 	}; // end class `collectives< nonblocking >'

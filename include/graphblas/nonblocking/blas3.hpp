@@ -15,7 +15,11 @@
  * limitations under the License.
  */
 
-/*
+/**
+ * @file
+ *
+ * Implements the level-3 primitives for the nonblocking backend
+ *
  * @author Aristeidis Mastoras
  * @date 16th of May, 2022
  */
@@ -92,20 +96,21 @@ namespace grb {
 			const Monoid &monoid,
 			const MulMonoid &mulMonoid,
 			const Phase &phase,
-			const typename std::enable_if< !grb::is_object< OutputType >::value &&
+			const typename std::enable_if<
+				!grb::is_object< OutputType >::value &&
 				!grb::is_object< InputType1 >::value && !
 				grb::is_object< InputType2 >::value &&
 				grb::is_operator< Operator >::value &&
 				grb::is_monoid< Monoid >::value,
 			void >::type * const = nullptr
 		) {
-			( void )C;
-			( void )A;
-			( void )B;
-			( void )oper;
-			( void )monoid;
-			( void )mulMonoid;
-			( void )phase;
+			(void) C;
+			(void) A;
+			(void) B;
+			(void) oper;
+			(void) monoid;
+			(void) mulMonoid;
+			(void) phase;
 			return UNSUPPORTED;
 		}
 
@@ -134,11 +139,11 @@ namespace grb {
 			grb::is_semiring< Semiring >::value,
 		void >::type * const = nullptr
 	) {
-		( void )C;
-		( void )A;
-		( void )B;
-		( void )ring;
-		( void )phase;
+		(void) C;
+		(void) A;
+		(void) B;
+		(void) ring;
+		(void) phase;
 		return UNSUPPORTED;
 	}
 
@@ -168,12 +173,12 @@ namespace grb {
 			grb::is_monoid< Monoid >::value,
 		void >::type * const = nullptr
 	) {
-		( void )C;
-		( void )A;
-		( void )B;
-		( void )addM;
-		( void )mulOp;
-		( void )phase;
+		(void) C;
+		(void) A;
+		(void) B;
+		(void) addM;
+		(void) mulOp;
+		(void) phase;
 		return UNSUPPORTED;
 	}
 
@@ -195,11 +200,11 @@ namespace grb {
 			const Vector< InputType3, nonblocking, Coords > &z,
 			const Phase &phase
 		) {
-			( void )A;
-			( void )x;
-			( void )y;
-			( void )z;
-			( void )phase;
+			(void) A;
+			(void) x;
+			(void) y;
+			(void) z;
+			(void) phase;
 			return UNSUPPORTED;
 		}
 
@@ -220,11 +225,11 @@ namespace grb {
 		const Vector< InputType3, nonblocking, Coords > &z,
 		const Phase &phase = EXECUTE
 	) {
-		( void )A;
-		( void )x;
-		( void )y;
-		( void )z;
-		( void )phase;
+		(void) A;
+		(void) x;
+		(void) y;
+		(void) z;
+		(void) phase;
 		return UNSUPPORTED;
 	}
 
@@ -240,10 +245,10 @@ namespace grb {
 		const Vector< InputType2, nonblocking, Coords > &y,
 		const Phase &phase = EXECUTE
 	) {
-		( void )A;
-		( void )x;
-		( void )y;
-		( void )phase;
+		(void) A;
+		(void) x;
+		(void) y;
+		(void) phase;
 		return UNSUPPORTED;
 	}
 
@@ -269,11 +274,11 @@ namespace grb {
 			void
 		>::type * const = nullptr
 	) {
-		( void )A;
-		( void )u;
-		( void )v;
-		( void )mul;
-		( void )phase;
+		(void) A;
+		(void) u;
+		(void) v;
+		(void) mul;
+		(void) phase;
 		return UNSUPPORTED;
 	}
 
@@ -302,12 +307,12 @@ namespace grb {
 				grb::is_operator< Operator >::value,
 			void >::type * const = nullptr
 		) {
-			( void )C;
-			( void )A;
-			( void )B;
-			( void )oper;
-			( void )mulMonoid;
-			( void )phase;
+			(void) C;
+			(void) A;
+			(void) B;
+			(void) oper;
+			(void) mulMonoid;
+			(void) phase;
 			return UNSUPPORTED;
 		}
 
@@ -332,11 +337,11 @@ namespace grb {
 			grb::is_monoid< MulMonoid >::value,
 		void >::type * const = nullptr
 	) {
-		( void )C;
-		( void )A;
-		( void )B;
-		( void )mulmono;
-		( void )phase;
+		(void) C;
+		(void) A;
+		(void) B;
+		(void) mulmono;
+		(void) phase;
 		return UNSUPPORTED;
 	}
 
@@ -359,11 +364,11 @@ namespace grb {
 			grb::is_operator< Operator >::value,
 		void >::type * const = nullptr
 	) {
-		( void )C;
-		( void )A;
-		( void )B;
-		( void )mulOp;
-		( void )phase;
+		(void) C;
+		(void) A;
+		(void) B;
+		(void) mulOp;
+		(void) phase;
 		return UNSUPPORTED;
 	}
 

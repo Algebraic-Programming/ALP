@@ -15,7 +15,11 @@
  * limitations under the License.
  */
 
-/*
+/**
+ * @file
+ *
+ * Dispatchers for the level-2 primitives
+ *
  * @author Aristeidis Mastoras
  * @date 24th of October, 2022
  */
@@ -70,7 +74,9 @@ namespace grb {
 			const Vector< InputType1, nonblocking, Coords > &source_vector,
 			const InputType1 * __restrict__ const &source,
 			const size_t &source_range,
-			const internal::Compressed_Storage< InputType2, RowColType, NonzeroType > &matrix,
+			const internal::Compressed_Storage<
+				InputType2, RowColType, NonzeroType
+			> &matrix,
 			const Vector< InputType3, nonblocking, Coords > &mask_vector,
 			const InputType3 * __restrict__ const &mask,
 			const Vector< InputType4, nonblocking, Coords > &source_mask_vector,
@@ -112,7 +118,9 @@ namespace grb {
 			const Vector< InputType1, nonblocking, Coords > &source_vector,
 			const InputType1 * __restrict__ const &source,
 			const size_t &source_range,
-			const internal::Compressed_Storage< InputType2, RowColType, NonzeroType > &matrix,
+			const internal::Compressed_Storage<
+				InputType2, RowColType, NonzeroType
+			> &matrix,
 			const Vector< InputType3, nonblocking, Coords > &mask_vector,
 			const InputType3 * __restrict__ const &mask,
 			const Vector< InputType4, nonblocking, Coords > &source_mask_vector,
@@ -125,55 +133,51 @@ namespace grb {
 		) {
 			if( already_dense_destination_vector ) {
 				if( already_dense_mask_vector ) {
-					return internal::vxm_inner_kernel_gather
-									<
-										descr, masked, input_masked, left_handed, One,
-										true, true
-									>(
-										rc, lower_bound, local_destination_vector, local_mask_vector,
-										destination_vector, destination_element, destination_index,
-										source_vector, source, source_range, matrix, mask_vector, mask,
-										source_mask_vector, source_mask, add, mul,
-										src_local_to_global, src_global_to_local, dst_local_to_global
-									);
+					return internal::vxm_inner_kernel_gather<
+							descr, masked, input_masked, left_handed, One,
+							true, true
+						>(
+							rc, lower_bound, local_destination_vector, local_mask_vector,
+							destination_vector, destination_element, destination_index,
+							source_vector, source, source_range, matrix, mask_vector, mask,
+							source_mask_vector, source_mask, add, mul,
+								src_local_to_global, src_global_to_local, dst_local_to_global
+						);
 				} else {
-					return internal::vxm_inner_kernel_gather
-									<
-										descr, masked, input_masked, left_handed, One,
-										true, false
-									>(
-										rc, lower_bound, local_destination_vector, local_mask_vector,
-										destination_vector, destination_element, destination_index,
-										source_vector, source, source_range, matrix, mask_vector, mask,
-										source_mask_vector, source_mask, add, mul,
-										src_local_to_global, src_global_to_local, dst_local_to_global
-									);
+					return internal::vxm_inner_kernel_gather<
+							descr, masked, input_masked, left_handed, One,
+							true, false
+						>(
+							rc, lower_bound, local_destination_vector, local_mask_vector,
+							destination_vector, destination_element, destination_index,
+							source_vector, source, source_range, matrix, mask_vector, mask,
+							source_mask_vector, source_mask, add, mul,
+							src_local_to_global, src_global_to_local, dst_local_to_global
+						);
 				}
 			} else {
 				if( already_dense_mask_vector ) {
-					return internal::vxm_inner_kernel_gather
-									<
-										descr, masked, input_masked, left_handed, One,
-										false, true
-									>(
-										rc, lower_bound, local_destination_vector, local_mask_vector,
-										destination_vector, destination_element, destination_index,
-										source_vector, source, source_range, matrix, mask_vector, mask,
-										source_mask_vector, source_mask, add, mul,
-										src_local_to_global, src_global_to_local, dst_local_to_global
-									);
+					return internal::vxm_inner_kernel_gather<
+							descr, masked, input_masked, left_handed, One,
+							false, true
+						>(
+							rc, lower_bound, local_destination_vector, local_mask_vector,
+							destination_vector, destination_element, destination_index,
+							source_vector, source, source_range, matrix, mask_vector, mask,
+							source_mask_vector, source_mask, add, mul,
+							src_local_to_global, src_global_to_local, dst_local_to_global
+						);
 				} else {
-					return internal::vxm_inner_kernel_gather
-									<
-										descr, masked, input_masked, left_handed, One,
-										false, false
-									>(
-										rc, lower_bound, local_destination_vector, local_mask_vector,
-										destination_vector, destination_element, destination_index,
-										source_vector, source, source_range, matrix, mask_vector, mask,
-										source_mask_vector, source_mask, add, mul,
-										src_local_to_global, src_global_to_local, dst_local_to_global
-									);
+					return internal::vxm_inner_kernel_gather<
+							descr, masked, input_masked, left_handed, One,
+							false, false
+						>(
+							rc, lower_bound, local_destination_vector, local_mask_vector,
+							destination_vector, destination_element, destination_index,
+							source_vector, source, source_range, matrix, mask_vector, mask,
+							source_mask_vector, source_mask, add, mul,
+							src_local_to_global, src_global_to_local, dst_local_to_global
+						);
 				}
 			}
 		}

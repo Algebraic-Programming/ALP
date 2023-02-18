@@ -15,7 +15,11 @@
  * limitations under the License.
  */
 
-/*
+/**
+ * @file
+ *
+ * Configurations for the nonblocking backend
+ *
  * @author Aristeidis Mastoras
  * @date 16th of May, 2022
  */
@@ -30,30 +34,63 @@ namespace grb {
 
 	namespace internal {
 
+		/**
+		 * The analytic model used for automatic chunk size selection and for
+		 * automatic number of threads selection.
+		 */
 		class AnalyticModel {
 
 			private:
 
-				size_t size_of_data_type;		// the size of the data type of the containers (may vary between different containers)
-									// the current design uses the maximum size of all used data types
-				size_t size_of_vector;			// the size of the containers accessed in the pipeline
-				size_t num_accessed_vectors;		// the number of vectors accessed in the pipeline
+				/**
+				 * The size of the data type of the containers (may vary between different
+				 * containers). The current design uses the maximum size of all used data
+				 * types.
+				 */
+				size_t size_of_data_type;
 
-				size_t num_threads;			// the number of threads selected by the analytic model
-				size_t tile_size;			// the tile size selected by the analytic model
-				size_t num_tiles;			// the number of total tiles that result from the selected tile size
+				/**
+				 * The size of the containers accessed in the pipeline.
+				 */
+				size_t size_of_vector;
+
+				/**
+				 * The number of vectors accessed in the pipeline.
+				 */
+				size_t num_accessed_vectors;
+
+				/**
+				 * The number of threads selected by the analytic model.
+				 */
+				size_t num_threads;
+
+				/**
+				 * The tile size selected by the analytic model.
+				 */
+				size_t tile_size;
+
+				/**
+				 * The number of total tiles that result from the selected tile size.
+				 */
+				size_t num_tiles;
 
 
 			public:
 
 				AnalyticModel();
-				AnalyticModel( const size_t data_type_size, const size_t vector_size, const size_t accessed_vectors );
+				AnalyticModel(
+					const size_t data_type_size,
+					const size_t vector_size,
+					const size_t accessed_vectors
+				);
 				size_t getVectorsSize() const;
 				size_t getNumThreads() const;
 				size_t getTileSize() const;
 				size_t getNumTiles() const;
 				void computePerformanceParameters();
+
 		};
+
 	}
 }
 
