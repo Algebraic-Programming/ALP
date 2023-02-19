@@ -15,7 +15,10 @@
  * limitations under the License.
  */
 
-/*
+/**
+ * @file
+ *
+ * Coordinates for the nonblocking backend
  * @author Aristeidis Mastoras
  * @date 16th of May, 2022
  */
@@ -43,6 +46,7 @@
 #include <graphblas/nonblocking/analytic_model.hpp>
 
 #include "config.hpp"
+
 
 namespace grb {
 
@@ -110,7 +114,8 @@ namespace grb {
 				}
 
 				static inline size_t parbufSize( const size_t n ) noexcept {
-					return config::IMPLEMENTATION< nonblocking >::vectorBufferSize( n ) * sizeof( StackType );
+					return config::IMPLEMENTATION< nonblocking >::vectorBufferSize( n ) *
+						sizeof( StackType );
 				}
 
 				static inline size_t bufferSize( const size_t dim ) noexcept {
@@ -142,13 +147,17 @@ namespace grb {
 					assert( this != &x );
 				}
 
-				inline Coordinates< nonblocking > & operator=( const Coordinates< nonblocking > &other ) {
+				inline Coordinates< nonblocking > & operator=(
+					const Coordinates< nonblocking > &other
+				) {
 					Coordinates replace( other );
 					*this = std::move( replace );
 					return *this;
 				}
 
-				inline Coordinates< nonblocking > & operator=( Coordinates< nonblocking > &&x ) noexcept {
+				inline Coordinates< nonblocking > & operator=(
+					Coordinates< nonblocking > &&x
+				) noexcept {
 					assert( this != &x );
 					_assigned = x._assigned;
 					_stack = x._stack;
@@ -255,16 +264,18 @@ namespace grb {
 						}
 					}
 
-					// the counter of initial nonzeroes in the local stack is stored in the buffer immediately before the local stack
+					// the counter of initial nonzeroes in the local stack is stored in the
+					// buffer immediately before the local stack
 					StackType * __restrict__ local_nnzs = _stack - 1;
 
-					// the counter for the local stack must be set to zero
-					// such that the number of new nonzeroes will be set to _n by asyncJoinSubset
-					// and joinSubset will update the global stack based on the local_new_nnzs counter
-					// the global stack has become empty and _assigned = false
-					// so the local coordinates of this tile must be added in the global stack from scratch
-					// regardless whether this tile was already dense or not as it is hard to know
-					// which part of the global stack contains the coordinates of this tile
+					// the counter for the local stack must be set to zero such that the number
+					// of new nonzeroes will be set to _n by asyncJoinSubset and joinSubset
+					// will update the global stack based on the local_new_nnzs counter the
+					// global stack has become empty and _assigned = false so the local
+					// coordinates of this tile must be added in the global stack from scratch
+					// regardless whether this tile was already dense or not as it is hard to
+					// know which part of the global stack contains the coordinates of this
+					// tile
 					*local_nnzs = 0;
 				}
 
@@ -276,8 +287,9 @@ namespace grb {
 							assert( maybe_invalid || _n < _cap );
 							assert( !maybe_invalid || _n <= _cap );
 
-							// searching for the not already assigned elements and add them to the local stack
-							// such that joinSubset will add to the global stack only those elements that are not already assigned
+							// searching for the not already assigned elements and add them to the
+							// local stack such that joinSubset will add to the global stack only
+							// those elements that are not already assigned
 							for( size_t i = 0; i < _cap; ++i ) {
 								if( !_assigned[ i ] ) {
 									_assigned[ i ] = true;
@@ -339,15 +351,16 @@ namespace grb {
 					}
 					_n = 0;
 
-					// the counter of initial nonzeroes in the local stack is stored in the buffer immediately before the local stack
+					// the counter of initial nonzeroes in the local stack is stored in the
+					// buffer immediately before the local stack
 					StackType * __restrict__ local_nnzs = _stack - 1;
 
-					// the counter for the local stack must be set to zero such that any new assigned element will be written to the global stack
+					// the counter for the local stack must be set to zero such that any new
+					// assigned element will be written to the global stack
 					*local_nnzs = 0;
 				}
 
 				inline void reset_global_nnz_counter() noexcept {
-
 					_n = 0;
 				}
 
@@ -397,7 +410,8 @@ namespace grb {
 					const size_t num_tiles = analytic_model.getNumTiles();
 
 					assert( num_tiles > 0 );
-					assert( num_tiles <= config::IMPLEMENTATION< nonblocking >::maxBufferTiles( _cap ) );
+					assert( num_tiles <= config::IMPLEMENTATION< nonblocking >::maxBufferTiles(
+						_cap ) );
 					assert( _buf >= 4 * num_tiles );
 
 					local_buffer.resize( analytic_model.getNumTiles() );
@@ -425,8 +439,10 @@ namespace grb {
 				 * @param[in] upper_bound     The end index of the contiguous subset
 				 *                            (exclusive).
 				 */
-				void asyncSubsetInit( const size_t lower_bound, const size_t upper_bound ) noexcept {
-
+				void asyncSubsetInit(
+					const size_t lower_bound,
+					const size_t upper_bound
+				) noexcept {
 					if( _cap == 0 ) {
 						return;
 					}
@@ -464,7 +480,9 @@ namespace grb {
 				 * @returns A Coordinates instance that only supports sequential
 				 *          (synchronous) updates as well as all queries.
 				 */
-				Coordinates< nonblocking > asyncSubset( const size_t lower_bound, const size_t upper_bound ) const noexcept {
+				Coordinates< nonblocking > asyncSubset(
+					const size_t lower_bound, const size_t upper_bound
+				) const noexcept {
 					assert(_cap > 0);
 
 					const size_t tile_id = lower_bound / analytic_model.getTileSize();
@@ -475,7 +493,8 @@ namespace grb {
 					Coordinates< nonblocking > ret;
 					assert( upper_bound - lower_bound <= analytic_model.getTileSize() );
 
-					ret.set( _assigned + lower_bound, true, local_stack, upper_bound - lower_bound, false );
+					ret.set( _assigned + lower_bound, true, local_stack,
+						upper_bound - lower_bound, false );
 
 					// the number of new nonzeroes is used to determine the total number
 					// of nonzeroes for the given local coordinates, since some of the
@@ -494,10 +513,13 @@ namespace grb {
 				 * to the global coordinate structure via a call to #joinSubset, which will
 				 * furthermore set the related tile to inactive.
 				 */
-				void asyncJoinSubset( const Coordinates< nonblocking > &subset, const size_t lower_bound, const size_t upper_bound ) {
+				void asyncJoinSubset(
+					const Coordinates< nonblocking > &subset,
+					const size_t lower_bound, const size_t upper_bound
+				) {
 					assert( _cap > 0 );
 
-					( void )upper_bound;
+					(void) upper_bound;
 
 					const size_t tile_id = lower_bound / analytic_model.getTileSize();
 
@@ -529,12 +551,15 @@ namespace grb {
 
 					const size_t num_tiles = analytic_model.getNumTiles();
 
-					// takes into accout the size of data for each iteration of the prefix sum computation
-					// which is used to determine the number of parallel task that should be used
-					// such that the data of each parallel task fit in the L1 cache
-					constexpr size_t size_of_data = sizeof( pref_sum[0] ) + sizeof( local_new_nnzs[0] );
+					// takes into accout the size of data for each iteration of the prefix sum
+					// computation which is used to determine the number of parallel task that
+					// should be used such that the data of each parallel task fit in the L1
+					// cache
+					constexpr size_t size_of_data = sizeof( pref_sum[0] ) +
+						sizeof( local_new_nnzs[0] );
 
-					// make use of the analytic model to estimate a proper number of threads and a tile size
+					// make use of the analytic model to estimate a proper number of threads
+					// and a tile size
 					AnalyticModel am( size_of_data, num_tiles, 1 );
 					am.computePerformanceParameters();
 
@@ -542,8 +567,9 @@ namespace grb {
 					const size_t prefix_sum_tile_size = am.getTileSize();
 					const size_t prefix_sum_num_tiles = am.getNumTiles();
 
-					// make a run-time decision to choose between sequential and parallel prefix sum implementation
-					// the sequential prefix sum implementation is more efficient for a small number of tiles
+					// make a run-time decision to choose between sequential and parallel
+					// prefix sum implementation the sequential prefix sum implementation is
+					// more efficient for a small number of tiles
 					if( num_tiles < prefix_sum_tile_size ) {
 						// sequential computation of the prefix sum
 						pref_sum[ 0 ] = _n + local_new_nnzs[ 0 ];
@@ -560,10 +586,11 @@ namespace grb {
 							for( size_t id = 0; id < prefix_sum_num_tiles; id++ ) {
 
 								size_t lower, upper;
-								config::OMP::localRange( lower, upper, 0, num_tiles, prefix_sum_tile_size, id, prefix_sum_num_tiles );
+								config::OMP::localRange( lower, upper, 0, num_tiles,
+									prefix_sum_tile_size, id, prefix_sum_num_tiles );
 
-								// the number of threads used for parallel computation must not exceed num_tiles
-								// otherwise the code below results in data races
+								// the number of threads used for parallel computation must not exceed
+								// num_tiles, otherwise the code below results in data races
 								assert( id <= num_tiles );
 								assert( id < prefix_sum_num_tiles - 1 || upper == num_tiles );
 								assert( lower <= upper );
@@ -574,14 +601,18 @@ namespace grb {
 									pref_sum[ i ] = pref_sum[ i - 1 ] + local_new_nnzs[ i ];
 								}
 
-								// each thread stores the prefix sum of its last element in local_prefix_sum
-								// the memory location is specified by the identifier of the thread to avoid data races
+								// each thread stores the prefix sum of its last element in
+								// local_prefix_sum
+								// the memory location is specified by the identifier of the thread to
+								// avoid data races
 								local_prefix_sum[ id ] = pref_sum[ upper - 1 ];
 							}
 
-							// here, there is an implicit barrier that ensures all threads have already written the local prefix sum for each parallel task
+							// here, there is an implicit barrier that ensures all threads have
+							// already written the local prefix sum for each parallel task
 
-							// a single threads computes the prefix sum for the last element of each thread
+							// a single threads computes the prefix sum for the last element of each
+							// thread
 							#pragma omp single
 							{
 								for( size_t i = 1; i < prefix_sum_num_tiles; i++ ) {
@@ -593,7 +624,8 @@ namespace grb {
 							for(size_t id = 0; id < prefix_sum_num_tiles; id++ ) {
 
 								size_t lower, upper;
-								config::OMP::localRange( lower, upper, 0, num_tiles, prefix_sum_tile_size, id, prefix_sum_num_tiles );
+								config::OMP::localRange( lower, upper, 0, num_tiles,
+									prefix_sum_tile_size, id, prefix_sum_num_tiles );
 
 								// the first thread (id=0) needs to add only the number of nonzeroes(_n)
 								const size_t acc = _n + ( ( id > 0 ) ? local_prefix_sum[ id - 1 ] : 0 );

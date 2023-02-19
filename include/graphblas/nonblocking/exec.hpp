@@ -15,7 +15,11 @@
  * limitations under the License.
  */
 
-/*
+/**
+ * @file
+ *
+ * Implements the launcher for the nonblocking backend.
+ *
  * @author Aristeidis Mastoras
  * @date 16th of May, 2022
  */
@@ -36,18 +40,24 @@ namespace grb {
 	class Launcher< mode, nonblocking > {
 
 		private:
+
 			Launcher< mode, reference > ref;
 
 		public:
-			/** This implementation only accepts a single user process. It ignores \a hostname and \a port. */
-			Launcher( const size_t process_id = 0,        // user process ID
-				const size_t nprocs = 1,                  // total number of user processes
-				const std::string hostname = "localhost", // one of the user process hostnames
-				const std::string port = "0"              // a free port at hostname
+
+			/**
+			 * This implementation only accepts a single user process. It ignores
+			 * \a hostname and \a port.
+			 */
+			Launcher(
+				const size_t process_id = 0,
+				const size_t nprocs = 1,
+				const std::string hostname = "localhost",
+				const std::string port = "0"
 			) {
 				// ignore hostname and port
-				(void)hostname;
-				(void)port;
+				(void) hostname;
+				(void) port;
 				// sanity checks
 				if( nprocs != 1 ) {
 					throw std::invalid_argument( "Total number of user processes must be "
@@ -76,8 +86,9 @@ namespace grb {
 
 			/** exec is based on that of the reference backend */
 			template< typename T, typename U >
-			RC exec( void ( *grb_program )( const T &, U & ), // user GraphBLAS program
-				const T &data_in, U &data_out,            // input & output data
+			RC exec(
+				void ( *grb_program )( const T &, U & ),
+				const T &data_in, U &data_out,
 				const bool broadcast = false
 			) {
 				return ref.exec( grb_program, data_in, data_out, broadcast );
