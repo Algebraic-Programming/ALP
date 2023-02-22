@@ -56,8 +56,8 @@ namespace grb {
 			static_assert( std::is_copy_assignable< AdaptorType >::value,
 				"AdaptorType must be copy-assignable" );
 
-			typedef decltype( std::declval< AdaptorType >()( *std::declval< InnerIterType >() ) ) reference;
-			typedef typename std::decay< reference >::type value_type;
+			typedef typename std::decay< decltype( *std::declval< AdaptorType >()( *std::declval< InnerIterType >() ) ) >::type value_type;
+			typedef value_type & reference;
 			typedef value_type * pointer;
 			typedef const value_type * const_pointer;
 			typedef typename std::iterator_traits< InnerIterType >::iterator_category iterator_category;
@@ -129,9 +129,9 @@ namespace grb {
 
 			bool operator==( const SelfType & o ) const { return ! operator!=( o ); }
 
-			reference operator*() { return adaptor( *iter ); }
+			reference operator*() { return *adaptor( *iter ); }
 
-			const reference operator*() const { return adaptor( *iter ); }
+			const reference operator*() const { return *adaptor( *iter ); }
 
 			pointer operator->() { return adaptor( *iter ); }
 
