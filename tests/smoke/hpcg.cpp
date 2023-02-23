@@ -24,28 +24,25 @@
  * benchmark impementation in https://github.com/hpcg-benchmark/hpcg.
  */
 
+#include <algorithm>
+#include <array>
 #include <cassert>
 #include <cmath>
 #include <cstdlib>
-#include <iostream>
-#include <memory>
-#include <type_traits>
-#include <algorithm>
-#include <array>
 #include <cstring>
 #include <iomanip>
+#include <iostream>
 #include <locale>
+#include <memory>
+#include <type_traits>
 
 #include <graphblas.hpp>
-
+#include <graphblas/algorithms/hpcg/system_building_utils.hpp>
+#include <graphblas/algorithms/multigrid/multigrid_building_utils.hpp>
+#include <graphblas/algorithms/multigrid/multigrid_cg.hpp>
+#include <graphblas/algorithms/multigrid/multigrid_v_cycle.hpp>
 #include <graphblas/algorithms/multigrid/red_black_gauss_seidel.hpp>
 #include <graphblas/algorithms/multigrid/single_matrix_coarsener.hpp>
-#include <graphblas/algorithms/multigrid/multigrid_v_cycle.hpp>
-#include <graphblas/algorithms/multigrid/multigrid_cg.hpp>
-
-#include <graphblas/algorithms/multigrid/multigrid_building_utils.hpp>
-#include <graphblas/algorithms/hpcg/system_building_utils.hpp>
-
 #include <graphblas/utils/Timer.hpp>
 #include <graphblas/utils/telemetry/Telemetry.hpp>
 
@@ -83,7 +80,7 @@ struct HPCGTypes {
 	using NonzeroType = value_t;
 	using InputType = value_t;
 	using ResidualType = value_t;
-	using Ring = Semiring< grb::operators::add< NonzeroType >, grb::operators::mul< NonzeroType >,
+	using Ring = Semiring< grb::operators::add< NonzeroType >,grb::operators::mul< NonzeroType >,
 		grb::identities::zero, grb::identities::one >;
 	using Minus = operators::subtract< NonzeroType >;
 	using Divide = operators::divide< NonzeroType >;
@@ -139,8 +136,8 @@ using hpcg_runner_t = MultiGridCGRunner< HPCGTypes, mg_runner_t, hpcg_controller
 using hpcg_data_t = typename hpcg_runner_t::HPCGInputType;
 
 struct dotter : grb::utils::telemetry::OutputStreamLazy {
-	const grb::Vector< IOType > &v;
-	dotter( const grb::Vector< IOType > &_v ) : v( _v ) {}
+	const grb::Vector< IOType > & v;
+	dotter( const grb::Vector< IOType > & _v ) : v( _v ) {}
 	ResidualType operator()() const {
 		Ring ring;
 		ResidualType r = 0;
@@ -154,10 +151,10 @@ static inline DBGStream & operator<<( DBGStream & stream, const grb::Vector< IOT
 	return stream << dotter( v );
 }
 
-static const IOType io_zero = Ring(). template getZero< IOType >();
-static const NonzeroType nz_zero = Ring(). template getZero< NonzeroType >();
-static const InputType input_zero = Ring(). template getZero< InputType >();
-static const ResidualType residual_zero = Ring(). template getZero< ResidualType >();
+static const IOType io_zero = Ring().template getZero< IOType >();
+static const NonzeroType nz_zero = Ring().template getZero< NonzeroType >();
+static const InputType input_zero = Ring().template getZero< InputType >();
+static const ResidualType residual_zero = Ring().template getZero< ResidualType >();
 
 static constexpr size_t MAX_CSV_PATH_LENGTH = 255;
 
@@ -202,14 +199,12 @@ struct output {
 };
 
 #ifdef HPCG_PRINT_SYSTEM
-static void print_system(
-	const std::vector< std::unique_ptr< mg_data_t > > &system_levels,
-	const std::vector< std::unique_ptr< coarsening_data_t > > &coarsener_levels
-) {
+static void print_system( const std::vector< std::unique_ptr< mg_data_t > > & system_levels,
+	const std::vector< std::unique_ptr< coarsening_data_t > > & coarsener_levels ) {
 	assert( spmd<>::nprocs() == 1 ); // distributed printin of system not implemented
 	print_matrix( system_levels[ 0 ]->A, 70, "A" );
 	for( size_t i = 0; i < coarsener_levels.size(); i++ ) {
-		print_matrix( coarsener_levels[i ] ->coarsening_matrix, 50, "COARSENING MATRIX" );
+		print_matrix( coarsener_levels[ i ]->coarsening_matrix, 50, "COARSENING MATRIX" );
 		print_matrix( system_levels[ i + 1 ]->A, 50, "COARSER SYSTEM MATRIX" );
 	}
 }
@@ -233,7 +228,7 @@ static void allocate_system_structures( std::vector< std::unique_ptr< mg_data_t 
 ) {
 	grb::utils::Timer timer;
 
-	hpcg_data_t *data = new hpcg_data_t( mg_sizes[ 0 ] );
+	hpcg_data_t * data = new hpcg_data_t( mg_sizes[ 0 ] );
 	cg_system_data = std::unique_ptr< hpcg_data_t >( data );
 	logger << "allocating data for the MultiGrid simulation...";
 	timer.reset();
@@ -247,25 +242,29 @@ static void allocate_system_structures( std::vector< std::unique_ptr< mg_data_t 
 	grb::RC rc = data->init_vectors( io_zero );
 	ASSERT_RC_SUCCESS( rc );
 	std::for_each( system_levels.begin(), system_levels.end(),
-		[]( std::unique_ptr< mg_data_t > &s) { ASSERT_RC_SUCCESS( s->init_vectors( io_zero ) ); } );
+		[]( std::unique_ptr< mg_data_t > & s ) {
+		ASSERT_RC_SUCCESS( s->init_vectors( io_zero ) );
+	} );
 	std::for_each( coarsener_levels.begin(), coarsener_levels.end(),
-		[]( std::unique_ptr< coarsening_data_t > &s) { ASSERT_RC_SUCCESS( s->init_vectors( io_zero ) ); } );
+		[]( std::unique_ptr< coarsening_data_t > & s ) {
+		ASSERT_RC_SUCCESS( s->init_vectors( io_zero ) );
+	} );
 	std::for_each( smoother_levels.begin(), smoother_levels.end(),
-		[]( std::unique_ptr< smoothing_data_t > &s) { ASSERT_RC_SUCCESS( s->init_vectors( io_zero ) ); } );
+		[]( std::unique_ptr< smoothing_data_t > & s ) {
+		ASSERT_RC_SUCCESS( s->init_vectors( io_zero ) );
+	} );
 	time = timer.time();
 	logger << " time (ms) " << time << std::endl;
 }
-
 
 /**
  * Builds and initializes a 3D system for an HPCG simulation according to the given 3D system sizes.
  * It allocates the data structures and populates them according to the algorithms chosen for HPCG.
  */
-static void build_3d_system(
-	std::vector< std::unique_ptr< mg_data_t > > &system_levels,
-	std::vector< std::unique_ptr< coarsening_data_t > > &coarsener_levels,
-	std::vector< std::unique_ptr< smoothing_data_t > > &smoother_levels,
-	std::unique_ptr< hpcg_data_t > &cg_system_data,
+static void build_3d_system( std::vector< std::unique_ptr< mg_data_t > > & system_levels,
+	std::vector< std::unique_ptr< coarsening_data_t > > & coarsener_levels,
+	std::vector< std::unique_ptr< smoothing_data_t > > & smoother_levels,
+	std::unique_ptr< hpcg_data_t > & cg_system_data,
 	const simulation_input & in,
 	const mg_controller_t & tt,
 	DistStream & logger
@@ -274,10 +273,8 @@ static void build_3d_system(
 	using builder_t = grb::algorithms::HPCGSystemBuilder< DIMS, coord_t, NonzeroType >;
 	grb::utils::Timer timer;
 
-	HPCGSystemParams< DIMS, NonzeroType > params = {
-		{ in.nx, in.ny, in.nz }, HALO_RADIUS, SYSTEM_DIAG_VALUE, SYSTEM_NON_DIAG_VALUE,
-			PHYS_SYSTEM_SIZE_MIN, in.max_coarsening_levels, 2
-	};
+	HPCGSystemParams< DIMS, NonzeroType > params = { { in.nx, in.ny, in.nz }, HALO_RADIUS,
+		SYSTEM_DIAG_VALUE, SYSTEM_NON_DIAG_VALUE, PHYS_SYSTEM_SIZE_MIN, in.max_coarsening_levels, 2 };
 
 	std::vector< builder_t > mg_generators;
 	logger << "building HPCG generators for " << ( in.max_coarsening_levels + 1 ) << " levels...";
@@ -286,39 +283,43 @@ static void build_3d_system(
 	hpcg_build_multigrid_generators( params, mg_generators );
 	double time = timer.time();
 	logger << " time (ms) " << time << std::endl;
-	logger << "built HPCG generators for " << mg_generators.size()
-		<< " levels" << std::endl;
+	logger << "built HPCG generators for " << mg_generators.size() << " levels" << std::endl;
 
 	// extract the size for each level
 	std::vector< size_t > mg_sizes;
-	std::transform( mg_generators.cbegin(), mg_generators.cend(), std::back_inserter( mg_sizes  ),
-		[] ( const builder_t &b ) { return b.system_size(); } );
+	std::transform( mg_generators.cbegin(), mg_generators.cend(), std::back_inserter( mg_sizes ),
+		[]( const builder_t & b ) {
+		return b.system_size();
+	} );
 	// given the sizes, allocate the data structures for all the inputs of the algorithms
-	allocate_system_structures( system_levels, coarsener_levels, smoother_levels, cg_system_data, mg_sizes, tt, logger );
+	allocate_system_structures( system_levels, coarsener_levels, smoother_levels,
+		cg_system_data, mg_sizes, tt, logger );
 	assert( mg_generators.size() == system_levels.size() );
 	assert( mg_generators.size() == smoother_levels.size() );
 	assert( mg_generators.size() - 1 == coarsener_levels.size() ); // coarsener acts between two levels
 
 	// for each grid level, populate the data structures according to the specific algorithm
 	// and track the time for diagnostics purposes
-	for( size_t i = 0; i < mg_generators.size(); i++) {
+	for( size_t i = 0; i < mg_generators.size(); i++ ) {
 		logger << "SYSTEM LEVEL " << i << std::endl;
-		auto& sizes = mg_generators[ i ].get_generator().get_sizes();
+		auto & sizes = mg_generators[ i ].get_generator().get_sizes();
 		logger << " sizes: ";
 		for( size_t s = 0; s < DIMS - 1; s++ ) {
-			logger <<sizes[ s ] << " x ";
+			logger << sizes[ s ] << " x ";
 		}
 		logger << sizes[ DIMS - 1 ] << std::endl;
 		logger << " populating system matrix: ";
 		timer.reset();
-		grb::RC rc = hpcg_populate_system_matrix( mg_generators[ i ], system_levels.at(i)->A, logger );
+		grb::RC rc = hpcg_populate_system_matrix( mg_generators[ i ],
+			system_levels.at( i )->A, logger );
 		time = timer.time();
 		ASSERT_RC_SUCCESS( rc );
 		logger << " time (ms) " << time << std::endl;
 
 		logger << " populating smoothing data: ";
 		timer.reset();
-		rc = hpcg_populate_smoothing_data( mg_generators[ i ], *smoother_levels[ i ], logger );
+		rc = hpcg_populate_smoothing_data( mg_generators[ i ], *smoother_levels[ i ],
+			logger );
 		time = timer.time();
 		ASSERT_RC_SUCCESS( rc );
 		logger << " time (ms) " << time << std::endl;
@@ -326,10 +327,12 @@ static void build_3d_system(
 		if( i > 0 ) {
 			logger << " populating coarsening data: ";
 			timer.reset();
-			if( !in.use_average_coarsener ) {
-				rc = hpcg_populate_coarsener( mg_generators[ i - 1 ], mg_generators[ i ], *coarsener_levels[ i - 1 ] );
+			if( ! in.use_average_coarsener ) {
+				rc = hpcg_populate_coarsener( mg_generators[ i - 1 ], mg_generators[ i ],
+					*coarsener_levels[ i - 1 ] );
 			} else {
-				rc = hpcg_populate_coarsener_avg( mg_generators[ i - 1 ], mg_generators[ i ], *coarsener_levels[ i - 1 ] );
+				rc = hpcg_populate_coarsener_avg( mg_generators[ i - 1 ], mg_generators[ i ],
+					*coarsener_levels[ i - 1 ] );
 			}
 			time = timer.time();
 			ASSERT_RC_SUCCESS( rc );
@@ -337,7 +340,6 @@ static void build_3d_system(
 		}
 	}
 }
-
 
 /**
  * Main test, building an HPCG problem and running the simulation closely following the
@@ -400,9 +402,9 @@ void grbProgram( const simulation_input & in, struct output & out ) {
 	}
 #endif
 
-	Matrix< NonzeroType > &A = mg_runner.system_levels[ 0 ]->A;
-	Vector< IOType > &x = hpcg_state->x;
-	Vector< NonzeroType > &b = hpcg_state->b;
+	Matrix< NonzeroType > & A = mg_runner.system_levels[ 0 ]->A;
+	Vector< IOType > & x = hpcg_state->x;
+	Vector< NonzeroType > & b = hpcg_state->b;
 
 	RC rc = SUCCESS;
 	// set vectors as from standard HPCG benchmark
@@ -420,7 +422,7 @@ void grbProgram( const simulation_input & in, struct output & out ) {
 
 	out.times.preamble = timer.time();
 
-	mg_data_t &grid_base = *mg_runner.system_levels[ 0 ];
+	mg_data_t & grid_base = *mg_runner.system_levels[ 0 ];
 
 	// do a cold run to warm the system up
 	logger << TEXT_HIGHLIGHT << "beginning cold run..." << std::endl;
@@ -471,7 +473,7 @@ void grbProgram( const simulation_input & in, struct output & out ) {
 	out.times.useful /= static_cast< double >( in.inner_test_repetitions );
 
 	logger << TEXT_HIGHLIGHT << "repetitions,average time (ms): " << out.inner_test_repetitions
-				<< ", " << out.times.useful << std::endl;
+		<< ", " << out.times.useful << std::endl;
 	std::cout.imbue( old_locale );
 
 	// start postamble
@@ -490,10 +492,10 @@ void grbProgram( const simulation_input & in, struct output & out ) {
 	out.times.postamble = timer.time();
 
 	// write measurements into CSV files
-	if ( in.hpcg_log ) {
+	if( in.hpcg_log ) {
 		hpcg_csv.write_to_file( in.hpcg_csv.data() );
 	}
-	if ( in.mg_log ) {
+	if( in.mg_log ) {
 		mg_csv.write_to_file( in.mg_csv.data() );
 	}
 }
@@ -514,16 +516,18 @@ int main( int argc, char ** argv ) {
 	thcout << "System size x: " << sim_in.nx << std::endl;
 	thcout << "System size y: " << sim_in.ny << std::endl;
 	thcout << "System size z: " << sim_in.nz << std::endl;
-	thcout << "Coarsener: " << (sim_in.use_average_coarsener ? "average" : "single point sampler" ) << std::endl;
+	thcout << "Coarsener: " << ( sim_in.use_average_coarsener ? "average" :
+		"single point sampler" ) << std::endl;
 	thcout << "System max coarsening levels " << sim_in.max_coarsening_levels << std::endl;
 	thcout << "Test repetitions: " << sim_in.inner_test_repetitions << std::endl;
 	thcout << "Max iterations: " << sim_in.max_iterations << std::endl;
-	thcout << "Direct launch: " << std::boolalpha << sim_in.evaluation_run << std::noboolalpha << std::endl;
-	thcout << "No conditioning: " << std::boolalpha << sim_in.no_preconditioning << std::noboolalpha << std::endl;
+	thcout << "Direct launch: " << std::boolalpha << sim_in.evaluation_run
+		<< std::noboolalpha << std::endl;
+	thcout << "No conditioning: " << std::boolalpha << sim_in.no_preconditioning
+		<< std::noboolalpha << std::endl;
 	thcout << "Smoother steps: " << sim_in.smoother_steps << std::endl;
 	thcout << "Test outer iterations: " << test_outer_iterations << std::endl;
 	thcout << "Maximum norm for residual: " << max_diff_norm << std::endl;
-
 
 	// the output struct
 	struct output out;
@@ -543,10 +547,11 @@ int main( int argc, char ** argv ) {
 		// compute number of inner repetitions to achieve at least 1s duration
 		sim_in.inner_test_repetitions = static_cast< size_t >( 1000.0 / out.times.useful ) + 1;
 		thcout << "Evaluation run" << std::endl
-			<< "  computed residual: " << out.cg_out.norm_residual << std::endl
-			<< "  iterations: " << out.cg_out.iterations << std::endl
-			<< "  time taken (ms): " << out.times.useful << std::endl
-			<< "  deduced inner repetitions for 1s duration: " << sim_in.inner_test_repetitions << std::endl;
+				<< "  computed residual: " << out.cg_out.norm_residual << std::endl
+				<< "  iterations: " << out.cg_out.iterations << std::endl
+				<< "  time taken (ms): " << out.times.useful << std::endl
+				<< "  deduced inner repetitions for 1s duration: " << sim_in.inner_test_repetitions
+				<< std::endl;
 	}
 
 	// launch full benchmark
@@ -556,18 +561,19 @@ int main( int argc, char ** argv ) {
 	ASSERT_RC_SUCCESS( rc );
 	ASSERT_RC_SUCCESS( out.error_code );
 	thcout << "completed successfully!" << std::endl
-		<< "  final residual: " << out.cg_out.norm_residual << std::endl
-		<< "  solver iterations: " << out.cg_out.iterations << std::endl
-		<< "  total time (ms): " << out.times.useful << std::endl;
+		   << "  final residual: " << out.cg_out.norm_residual << std::endl
+		   << "  solver iterations: " << out.cg_out.iterations << std::endl
+		   << "  total time (ms): " << out.times.useful << std::endl;
 
 	// check result vector, stored inside a pinned vector
 	ASSERT_TRUE( out.pinnedVector );
-	const PinnedVector< double > &solution = *out.pinnedVector;
+	const PinnedVector< double > & solution = *out.pinnedVector;
 	ASSERT_EQ( solution.size(), sim_in.nx * sim_in.ny * sim_in.nz );
 
 	// check norm of solution w.r.t. expected solution (i.e. vector of all 1)
 	double diff_norm = sqrt( out.square_norm_diff );
-	thcout << "Norm of difference vector: |<exact solution> - <actual solution>| = " << diff_norm << std::endl;
+	thcout << "Norm of difference vector: |<exact solution> - <actual solution>| = "
+		<< diff_norm << std::endl;
 	ASSERT_LT( diff_norm, max_diff_norm );
 
 	thcout << "Test OK" << std::endl;
@@ -576,15 +582,10 @@ int main( int argc, char ** argv ) {
 
 static const char * const empty = "";
 
-static void parse_arguments(
-	simulation_input & sim_in,
-	size_t & outer_iterations,
-	double & max_diff_norm,
-	int argc,
-	char ** argv
-) {
+static void parse_arguments( simulation_input & sim_in, size_t & outer_iterations,
+	double & max_diff_norm, int argc, char ** argv ) {
 	argument_parser parser;
-	const char * hpcg_csv, * mg_csv;
+	const char *hpcg_csv, *mg_csv;
 
 	parser.add_optional_argument( "--nx", sim_in.nx, PHYS_SYSTEM_SIZE_DEF, "physical system size along x" )
 		.add_optional_argument( "--ny", sim_in.ny, PHYS_SYSTEM_SIZE_DEF, "physical system size along y" )
@@ -598,18 +599,17 @@ static void parse_arguments(
 			"test repetitions with complete initialization" )
 		.add_optional_argument( "--max-cg-iterations", sim_in.max_iterations, MAX_ITERATIONS_DEF,
 			"maximum number of CG iterations" )
-		.add_optional_argument( "--max-difference-norm", max_diff_norm, MAX_NORM,
-			"maximum acceptable norm |<exact solution> - <actual solution>| (does NOT limit "
-			"the execution of the algorithm)" )
+		.add_optional_argument( "--max-difference-norm", max_diff_norm, MAX_NORM, "maximum acceptable"
+			" norm |<exact solution> - <actual solution>| (does NOT limit the execution of the algorithm)" )
 		.add_optional_argument( "--smoother-steps", sim_in.smoother_steps, SMOOTHER_STEPS_DEF,
 			"number of pre/post-smoother steps; 0 disables smoothing" )
 		.add_option( "--evaluation-run", sim_in.evaluation_run, false,
 			"launch single run directly, without benchmarker (ignore repetitions)" )
 		.add_option( "--no-preconditioning", sim_in.no_preconditioning, false,
 			"do not apply pre-conditioning via multi-grid V cycle" )
-		.add_optional_argument( "--hpcg-csv", hpcg_csv , empty,
+		.add_optional_argument( "--hpcg-csv", hpcg_csv, empty,
 			"file for HPCG run measurements (overwrites any previous)" )
-		.add_optional_argument( "--mg-csv", mg_csv , empty,
+		.add_optional_argument( "--mg-csv", mg_csv, empty,
 			"file for Multigrid run measurements (overwrites any previous)" )
 		.add_option( "--use-average-coarsener", sim_in.use_average_coarsener, false,
 			"coarsen by averaging instead of by sampling a single point (slower, but more accurate)" );
@@ -634,18 +634,18 @@ static void parse_arguments(
 	const size_t max_system_divider = 1 << sim_in.max_coarsening_levels;
 	for( size_t s : { sim_in.nx, sim_in.ny, sim_in.nz } ) {
 		std::lldiv_t div_res = std::div( static_cast< long long >( s ), static_cast< long long >( max_system_divider ) );
-		if ( div_res.rem != 0) {
-			std::cerr << "ERROR: system size " << s << " cannot be coarsened "
-				<< sim_in.max_coarsening_levels << " times because it is not exactly divisible" << std::endl;
+		if( div_res.rem != 0 ) {
+			std::cerr << "ERROR: system size " << s << " cannot be coarsened " << sim_in.max_coarsening_levels
+				<< " times because it is not exactly divisible" << std::endl;
 			std::exit( -1 );
 		}
-		if ( div_res.quot < static_cast< long long >( PHYS_SYSTEM_SIZE_MIN ) ) {
-			std::cerr << "ERROR: system size " << s << " cannot be coarsened "
-				<< sim_in.max_coarsening_levels << " times because it is too small" << std::endl;
+		if( div_res.quot < static_cast< long long >( PHYS_SYSTEM_SIZE_MIN ) ) {
+			std::cerr << "ERROR: system size " << s << " cannot be coarsened " << sim_in.max_coarsening_levels
+				<< " times because it is too small" << std::endl;
 			std::exit( -1 );
 		}
-		if ( div_res.quot % 2 != 0 ) {
-			std::cerr << "ERROR: the coarsest size " << div_res.rem << " is not a multiple of 2" << std::endl;
+		if( div_res.quot % 2 != 0 ) {
+			std::cerr << "ERROR: the coarsest size " << div_res.rem << " is not even" << std::endl;
 			std::exit( -1 );
 		}
 	}
@@ -653,7 +653,7 @@ static void parse_arguments(
 	// check output CSVs
 	size_t len = std::strlen( hpcg_csv );
 	if( ( sim_in.hpcg_log = len > 0 ) ) {
-		if ( len > MAX_CSV_PATH_LENGTH ) {
+		if( len > MAX_CSV_PATH_LENGTH ) {
 			std::cerr << "HPCG CSV file name is too long!" << std::endl;
 			std::exit( -1 );
 		}
@@ -661,7 +661,7 @@ static void parse_arguments(
 	}
 	len = std::strlen( mg_csv );
 	if( ( sim_in.mg_log = len > 0 ) ) {
-		if ( len > MAX_CSV_PATH_LENGTH ) {
+		if( len > MAX_CSV_PATH_LENGTH ) {
 			std::cerr << "HPCG CSV file name is too long!" << std::endl;
 			std::exit( -1 );
 		}

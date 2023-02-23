@@ -24,11 +24,11 @@
 #ifndef _H_GRB_ALGORITHMS_MULTIGRID_NDIM_VECTOR
 #define _H_GRB_ALGORITHMS_MULTIGRID_NDIM_VECTOR
 
+#include <algorithm>
+#include <cstddef>
+#include <type_traits>
 #include <utility>
 #include <vector>
-#include <type_traits>
-#include <cstddef>
-#include <algorithm>
 
 #include "linearized_ndim_system.hpp"
 
@@ -64,8 +64,8 @@ namespace grb {
 					"the stored type is not default constructible" );
 				static_assert( std::is_integral< SizeType >::value, "SizeType must be integral" );
 
-				using ConstDomainVectorReference =
-					typename LinearizedNDimSystem< SizeType, InternalVectorType >::ConstVectorReference;
+				using ConstDomainVectorReference = typename LinearizedNDimSystem< SizeType,
+					InternalVectorType >::ConstVectorReference;
 				using ConstDomainVectorStorageType = typename InternalVectorType::ConstVectorStorageType;
 				using DomainIterator = typename LinearizedNDimSystem< SizeType, InternalVectorType >::Iterator;
 				using Selftype = NDimVector< DataType, SizeType, InternalVectorType >;
@@ -77,9 +77,10 @@ namespace grb {
 				 * and number of dimensions equal to the range distance; the data values are
 				 * \b not initialized.
 				 */
-				template< typename IterT > NDimVector( IterT begin, IterT end) :
-					_linearizer( begin, end )
-				{
+				template< typename IterT > NDimVector(
+					IterT begin,
+					IterT end
+				) : _linearizer( begin, end ) {
 					this->data = new DataType[ _linearizer.system_size() ];
 				}
 
@@ -88,26 +89,25 @@ namespace grb {
 				 * and number of dimensions equal to \p _sizes.size(); the data values are
 				 * \b not initialized.
 				 */
-				NDimVector( const std::vector< size_t > &_sizes ) :
+				NDimVector( const std::vector< size_t > & _sizes ) :
 					NDimVector( _sizes.cbegin(), _sizes.cend() ) {}
 
-				NDimVector( const Selftype& original ):
+				NDimVector( const Selftype & original ) :
 					_linearizer( original._linearizer ),
-				    data( new DataType[ original.data_size() ] )
+					data( new DataType[ original.data_size() ] )
 				{
 					std::copy_n( original.data, original.data_size(), this->data );
 				}
 
-				NDimVector( Selftype&& original ) noexcept:
-					_linearizer( std::move( original._linearizer ) )
-				{
+				NDimVector( Selftype && original ) noexcept :
+					_linearizer( std::move( original._linearizer ) ) {
 					this->data = original.data;
 					original.data = nullptr;
 				}
 
-				Selftype& operator=( const Selftype &original ) = delete;
+				Selftype & operator=( const Selftype & original ) = delete;
 
-				Selftype& operator=( Selftype &&original ) = delete;
+				Selftype & operator=( Selftype && original ) = delete;
 
 				~NDimVector() {
 					this->clean_mem();
@@ -131,7 +131,7 @@ namespace grb {
 				 * Access the data element at N-dimension coordinate given by the iterable
 				 * \p coordinates.
 				 */
-				inline DataType& at( ConstDomainVectorReference coordinates ) {
+				inline DataType & at( ConstDomainVectorReference coordinates ) {
 					return this->data[ this->get_coordinate( coordinates.storage() ) ];
 				}
 
@@ -139,7 +139,7 @@ namespace grb {
 				 * Const-access the data element at N-dimension coordinate given by the iterable
 				 * \p coordinates.
 				 */
-				inline const DataType& at( ConstDomainVectorReference coordinates ) const {
+				inline const DataType & at( ConstDomainVectorReference coordinates ) const {
 					return this->data[ this->get_coordinate( coordinates.storage() ) ];
 				}
 
@@ -147,7 +147,7 @@ namespace grb {
 				 * Access the data element at N-dimension coordinate given by the vector
 				 * storage object \p coordinates.
 				 */
-				inline DataType& at( ConstDomainVectorStorageType coordinates ) {
+				inline DataType & at( ConstDomainVectorStorageType coordinates ) {
 					return this->data[ this->get_coordinate( coordinates ) ];
 				}
 
@@ -155,7 +155,7 @@ namespace grb {
 				 * Const-access the data element at N-dimension coordinate given by the vector
 				 * storage object \p coordinates.
 				 */
-				inline const DataType& at( ConstDomainVectorStorageType coordinates ) const {
+				inline const DataType & at( ConstDomainVectorStorageType coordinates ) const {
 					return this->data[ this->get_coordinate( coordinates ) ];
 				}
 
@@ -177,7 +177,7 @@ namespace grb {
 
 			private:
 				const LinearizedNDimSystem< SizeType, InternalVectorType > _linearizer;
-				DataType* data;
+				DataType * data;
 
 				inline size_t get_coordinate( ConstDomainVectorStorageType coordinates ) const {
 					return this->_linearizer.ndim_to_linear( coordinates );
@@ -188,14 +188,14 @@ namespace grb {
 				}
 
 				void clean_mem() {
-					if ( this->data == nullptr ) {
+					if( this->data == nullptr ) {
 						delete[] this->data;
 					}
 				}
 			};
 
 		} // namespace multigrid
-	} // namespace utils
+	}     // namespace utils
 } // namespace grb
 
 #endif // _H_GRB_ALGORITHMS_MULTIGRID_NDIM_VECTOR

@@ -24,12 +24,11 @@
 #ifndef _H_GRB_ALGORITHMS_HPCG_DATA
 #define _H_GRB_ALGORITHMS_HPCG_DATA
 
-#include <vector>
 #include <cstddef>
+#include <vector>
 
 #include <graphblas.hpp>
 #include <graphblas/utils/telemetry/Stopwatch.hpp>
-
 
 namespace grb {
 
@@ -61,8 +60,8 @@ namespace grb {
 			const size_t level;           ///< level of the grid (0 for the finest physical system)
 			const size_t system_size;     ///< size of the system, i.e. side of the #A system matrix
 			grb::Matrix< NonzeroType > A; ///< system matrix
-			grb::Vector< IOType > z; ///< multi-grid solution
-			grb::Vector< IOType > r; ///< residual
+			grb::Vector< IOType > z;      ///< multi-grid solution
+			grb::Vector< IOType > r;      ///< residual
 
 			/**
 			 * Construct a new multigrid data object from level information and system size.
@@ -98,4 +97,3 @@ namespace grb {
 } // namespace grb
 
 #endif // _H_GRB_ALGORITHMS_HPCG_DATA
-

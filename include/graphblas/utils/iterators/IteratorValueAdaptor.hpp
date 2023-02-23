@@ -56,7 +56,8 @@ namespace grb {
 			static_assert( std::is_copy_assignable< AdaptorType >::value,
 				"AdaptorType must be copy-assignable" );
 
-			typedef typename std::decay< decltype( *std::declval< AdaptorType >()( *std::declval< InnerIterType >() ) ) >::type value_type;
+			typedef typename std::decay<
+				decltype( *std::declval< AdaptorType >()( *std::declval< InnerIterType >() ) )>::type value_type;
 			typedef value_type & reference;
 			typedef value_type * pointer;
 			typedef const value_type * const_pointer;
@@ -96,8 +97,7 @@ namespace grb {
 			 *
 			 * @param _iter the underlying iterator, to be moved
 			 */
-			IteratorValueAdaptor(
-				typename std::enable_if< std::is_default_constructible< AdaptorType >::value,
+			IteratorValueAdaptor( typename std::enable_if< std::is_default_constructible< AdaptorType >::value,
 				InnerIterType && >::type _iter
 			) :
 				iter( std::move( _iter ) ),

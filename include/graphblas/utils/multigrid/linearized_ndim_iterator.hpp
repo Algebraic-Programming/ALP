@@ -24,12 +24,11 @@
 #ifndef _H_GRB_ALGORITHMS_MULTIGRID_NDIM_ITERATOR
 #define _H_GRB_ALGORITHMS_MULTIGRID_NDIM_ITERATOR
 
-#include <cstddef>
 #include <algorithm>
+#include <cstddef>
+#include <limits>
 #include <stdexcept>
 #include <type_traits>
-#include <limits>
-#include <cstddef>
 
 #include <graphblas/utils/iterators/utils.hpp>
 
@@ -63,7 +62,7 @@ namespace grb {
 			public:
 				using VectorType = InternalVectorType;
 				using LinNDimSysType = LinearizedNDimSystem< SizeType, VectorType >;
-				using ConstVectorReference = const VectorType&;
+				using ConstVectorReference = const VectorType &;
 				using SelfType = LinearizedNDimIterator< SizeType, InternalVectorType >;
 
 				/**
@@ -73,7 +72,7 @@ namespace grb {
 				 */
 				struct NDimPoint {
 				private:
-					const LinNDimSysType* system; // pointer because of copy assignment
+					const LinNDimSysType * system; // pointer because of copy assignment
 					VectorType coords;
 
 				public:
@@ -81,18 +80,15 @@ namespace grb {
 
 					NDimPoint() = delete;
 
-					NDimPoint( const NDimPoint& ) = default;
+					NDimPoint( const NDimPoint & ) = default;
 
-					NDimPoint( NDimPoint&& ) = delete;
+					NDimPoint( NDimPoint && ) = delete;
 
-					NDimPoint( const LinNDimSysType& _system ) noexcept :
-						system( &_system ),
-						coords( _system.dimensions() )
-					{
+					NDimPoint( const LinNDimSysType & _system ) noexcept : system( &_system ), coords( _system.dimensions() ) {
 						std::fill_n( this->coords.begin(), _system.dimensions(), 0 );
 					}
 
-					NDimPoint& operator=( const NDimPoint& ) = default;
+					NDimPoint & operator=( const NDimPoint & ) = default;
 
 					inline ConstVectorReference get_position() const {
 						return coords;
@@ -106,8 +102,8 @@ namespace grb {
 				// interface for std::random_access_iterator
 				using iterator_category = std::random_access_iterator_tag;
 				using value_type = NDimPoint;
-				using pointer = const value_type*;
-				using reference = const value_type&;
+				using pointer = const value_type *;
+				using reference = const value_type &;
 				using difference_type = signed long;
 
 				/**
@@ -118,9 +114,7 @@ namespace grb {
 				 * If \p _system is not a valid object anymore, all iterators created from it are also
 				 * not valid.
 				 */
-				LinearizedNDimIterator( const LinNDimSysType &_system ) noexcept :
-					_p( _system )
-				{}
+				LinearizedNDimIterator( const LinNDimSysType & _system ) noexcept : _p( _system ) {}
 
 				/**
 				 * Construct a new LinearizedNDimIterator object from the original LinNDimSysType
@@ -132,7 +126,8 @@ namespace grb {
 				 * not valid.
 				 */
 				template< typename IterT > LinearizedNDimIterator(
-					const LinNDimSysType &_system, IterT begin
+					const LinNDimSysType & _system,
+					IterT begin
 				) noexcept :
 					_p( _system )
 				{
@@ -141,10 +136,9 @@ namespace grb {
 
 				LinearizedNDimIterator() = delete;
 
-				LinearizedNDimIterator( const SelfType &original ):
-					_p( original._p ) {}
+				LinearizedNDimIterator( const SelfType & original ) : _p( original._p ) {}
 
-				SelfType& operator=( const SelfType &original ) = default;
+				SelfType & operator=( const SelfType & original ) = default;
 
 				~LinearizedNDimIterator() {}
 
@@ -156,7 +150,7 @@ namespace grb {
 					bool rewind = true;
 					// rewind only the first N-1 coordinates
 					for( size_t i = 0; i < this->_p.system->dimensions() - 1 && rewind; i++ ) {
-						SizeType& coord = this->_p.coords[ i ];
+						SizeType & coord = this->_p.coords[ i ];
 						// must rewind dimension if we wrap-around
 						SizeType plus = coord + 1;
 						rewind = plus >= this->_p.system->get_sizes()[ i ];
@@ -180,7 +174,7 @@ namespace grb {
 				SelfType & operator+=( size_t offset ) {
 					size_t linear = _p.get_linear_position() + offset;
 					if( linear > _p.system->system_size() ) {
-						throw std::invalid_argument("increment is too large");
+						throw std::invalid_argument( "increment is too large" );
 					}
 					if( offset == 1 ) {
 						return operator++();
@@ -194,10 +188,9 @@ namespace grb {
 				 *
 				 * It throws if the result cannot be stored as a difference_type variable.
 				 */
-				difference_type operator-( const SelfType &other ) const {
+				difference_type operator-( const SelfType & other ) const {
 					return grb::utils::compute_signed_distance< difference_type, SizeType >(
 						_p.get_linear_position(), other._p.get_linear_position() );
-
 				}
 
 				reference operator*() const {
@@ -208,16 +201,16 @@ namespace grb {
 					return &( this->_p );
 				}
 
-				bool operator!=( const SelfType &o ) const {
+				bool operator!=( const SelfType & o ) const {
 					const size_t dims = this->_p.system->dimensions();
 					if( dims != o._p.system->dimensions() ) {
-						throw std::invalid_argument("system sizes do not match");
+						throw std::invalid_argument( "system sizes do not match" );
 					}
 					bool equal = true;
-					for( size_t i =0; i < dims && equal; i++) {
-						equal &= ( this->_p.coords[i] == o._p.coords[i] );
+					for( size_t i = 0; i < dims && equal; i++ ) {
+						equal &= ( this->_p.coords[ i ] == o._p.coords[ i ] );
 					}
-					return !equal;
+					return ! equal;
 				}
 
 				/**
@@ -225,7 +218,7 @@ namespace grb {
 				 *
 				 * Its implementation depending on the logic in operator++.
 				 */
-				static SelfType make_system_end_iterator( const LinNDimSysType &_system ) {
+				static SelfType make_system_end_iterator( const LinNDimSysType & _system ) {
 					// fill with 0s
 					SelfType iter( _system );
 					size_t last = iter->system->dimensions() - 1;
@@ -239,7 +232,7 @@ namespace grb {
 			};
 
 		} // namespace multigrid
-	} // namespace utils
+	}     // namespace utils
 } // namespace grb
 
 #endif // _H_GRB_ALGORITHMS_MULTIGRID_NDIM_ITERATOR

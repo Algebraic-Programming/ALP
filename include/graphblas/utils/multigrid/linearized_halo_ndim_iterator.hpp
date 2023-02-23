@@ -25,16 +25,15 @@
 #define _H_GRB_ALGORITHMS_MULTIGRID_LINEARIZED_HALO_NDIM_ITERATOR
 
 #include <cstddef>
-#include <vector>
 #include <iterator>
 #include <limits>
-#include <cstddef>
+#include <vector>
 
 #include <graphblas/utils/iterators/utils.hpp>
 
-#include "linearized_ndim_system.hpp"
 #include "array_vector_storage.hpp"
 #include "linearized_ndim_iterator.hpp"
+#include "linearized_ndim_system.hpp"
 
 namespace grb {
 	namespace utils {
@@ -100,10 +99,8 @@ namespace grb {
 			 * @tparam SizeType type of coordinates and of sizes (must be large enough to describe the size
 			 * of the system along each direction)
 			 */
-			template<
-				size_t DIMS,
-				typename SizeType
-			> class LinearizedHaloNDimIterator {
+			template< size_t DIMS, typename SizeType >
+			class LinearizedHaloNDimIterator {
 
 				using SystemType = LinearizedHaloNDimSystem< DIMS, SizeType >;
 				using VectorType = ArrayVectorStorage< DIMS, SizeType >;
@@ -120,14 +117,13 @@ namespace grb {
 				 */
 				struct HaloNDimElement {
 				private:
-
 					// for linearization
-					const SystemType* _system;
+					const SystemType * _system;
 
 					// for iteration
 					VectorIteratorType _element_iter; // coordinates iterator
 
-					VectorType _neighbor; //the current neighbor
+					VectorType _neighbor; // the current neighbor
 					SizeType _position;
 
 				public:
@@ -135,11 +131,11 @@ namespace grb {
 
 					HaloNDimElement() = delete;
 
-					HaloNDimElement( const HaloNDimElement& ) = default;
+					HaloNDimElement( const HaloNDimElement & ) = default;
 
-					HaloNDimElement( HaloNDimElement&& ) = delete;
+					HaloNDimElement( HaloNDimElement && ) = delete;
 
-					HaloNDimElement( const SystemType& system ) noexcept :
+					HaloNDimElement( const SystemType & system ) noexcept :
 						_system( &system ),
 						_element_iter( system ),
 						_neighbor( DIMS ),
@@ -148,7 +144,7 @@ namespace grb {
 						std::fill_n( this->_neighbor.begin(), DIMS, 0 );
 					}
 
-					HaloNDimElement& operator=( const HaloNDimElement& ) = default;
+					HaloNDimElement & operator=( const HaloNDimElement & ) = default;
 
 					/**
 					 * Get the element as vector coordinates.
@@ -189,8 +185,8 @@ namespace grb {
 				// interface for std::random_access_iterator
 				using iterator_category = std::random_access_iterator_tag;
 				using value_type = HaloNDimElement;
-				using pointer = const HaloNDimElement*;
-				using reference = const HaloNDimElement&;
+				using pointer = const HaloNDimElement *;
+				using reference = const HaloNDimElement &;
 				using difference_type = signed long;
 
 				LinearizedHaloNDimIterator() = delete;
@@ -203,7 +199,7 @@ namespace grb {
 				 *
 				 * IF \p system is not valid anymore, then also \c this is not.
 				 */
-				LinearizedHaloNDimIterator( const SystemType& system ) noexcept :
+				LinearizedHaloNDimIterator( const SystemType & system ) noexcept :
 					_point( system ),
 					_neighbors_subspace( DIMS, system.halo() + 1 ),
 					_neighbors_start( DIMS ),
@@ -217,7 +213,7 @@ namespace grb {
 
 				SelfType & operator=( const SelfType & ) = default;
 
-				bool operator!=( const SelfType &other ) const {
+				bool operator!=( const SelfType & other ) const {
 					return this->_point._position != other._point._position; // use linear coordinate
 				}
 
@@ -226,7 +222,7 @@ namespace grb {
 				}
 
 				pointer operator->() const {
-					return &(this->_point);
+					return &( this->_point );
 				}
 
 				/**
@@ -243,10 +239,10 @@ namespace grb {
 				 * Does \b not advance the element, which should be done manually via #next_element().
 				 */
 				void next_neighbour() {
-					if( !has_more_neighbours() ) {
-						throw std::out_of_range("the current element has no more neighbors");
+					if( ! has_more_neighbours() ) {
+						throw std::out_of_range( "the current element has no more neighbors" );
 					}
-					++(this->_neighbor_iter);
+					++( this->_neighbor_iter );
 					this->on_neighbor_iter_update();
 					this->_point._position++;
 				}
@@ -255,20 +251,19 @@ namespace grb {
 				 * Tells whether the system has more elements.
 				 */
 				bool has_more_elements() const {
-					return this->_point.get_element_linear() != (this->_point._system)->base_system_size();
+					return this->_point.get_element_linear() != ( this->_point._system )->base_system_size();
 				}
 
 				/**
 				 * Moves \c this to point to the next element, setting the neighbor as the first one.
 				 */
 				void next_element() {
-					if( !has_more_elements() ) {
-						throw std::out_of_range("the system has no more elements");
+					if( ! has_more_elements() ) {
+						throw std::out_of_range( "the system has no more elements" );
 					}
 					size_t num_neighbours = this->_neighbors_subspace.system_size();
-					size_t neighbour_position_offset =
-						this->_neighbors_subspace.ndim_to_linear( this->_neighbor_iter->get_position() );
-					++(this->_point._element_iter);
+					size_t neighbour_position_offset = this->_neighbors_subspace.ndim_to_linear( this->_neighbor_iter->get_position() );
+					++( this->_point._element_iter );
 					this->on_element_advance();
 					this->_point._position -= neighbour_position_offset;
 					this->_point._position += num_neighbours;
@@ -278,9 +273,9 @@ namespace grb {
 				 * Moves \c this to point to the next neighbor, also advancing the element if needed.
 				 */
 				SelfType & operator++() noexcept {
-					++(this->_neighbor_iter);
-					if( !has_more_neighbours() ) {
-						++(this->_point._element_iter);
+					++( this->_neighbor_iter );
+					if( ! has_more_neighbours() ) {
+						++( this->_point._element_iter );
 						this->on_element_advance();
 
 					} else {
@@ -302,7 +297,7 @@ namespace grb {
 						throw std::range_error( "neighbor linear value beyond system" );
 					}
 					VectorType final_element( DIMS );
-					size_t neighbor_index = (this->_point._system->neighbour_linear_to_element( final_position, final_element ));
+					size_t neighbor_index = ( this->_point._system->neighbour_linear_to_element( final_position, final_element ) );
 
 					this->_point._element_iter = VectorIteratorType( *this->_point._system, final_element.cbegin() );
 					this->_point._position = final_position;
@@ -323,9 +318,8 @@ namespace grb {
 				 *
 				 * It throws if the result cannot be stored as a difference_type variable.
 				 */
-				difference_type operator-( const SelfType &other ) const {
-					return grb::utils::compute_signed_distance< difference_type, SizeType >(
-						_point.get_position(), other._point.get_position() );
+				difference_type operator-( const SelfType & other ) const {
+					return grb::utils::compute_signed_distance< difference_type, SizeType >( _point.get_position(), other._point.get_position() );
 				}
 
 				/**
@@ -333,7 +327,7 @@ namespace grb {
 				 *
 				 * The implementation depends on the logic of operator++.
 				 */
-				static SelfType make_system_end_iterator( const SystemType& system ) {
+				static SelfType make_system_end_iterator( const SystemType & system ) {
 					SelfType result( system );
 					// go to the very first point outside of space
 					result._point._element_iter = VectorIteratorType::make_system_end_iterator( system );
@@ -355,8 +349,7 @@ namespace grb {
 				 */
 				inline void on_neighbor_iter_update() {
 					for( size_t i = 0; i < DIMS; i++ ) {
-						this->_point._neighbor[i] = this->_neighbors_start[i]
-							+ this->_neighbor_iter->get_position()[i];
+						this->_point._neighbor[ i ] = this->_neighbors_start[ i ] + this->_neighbor_iter->get_position()[ i ];
 					}
 				}
 
@@ -367,11 +360,7 @@ namespace grb {
 				void on_element_update() {
 					// reset everything
 					VectorType neighbors_range( DIMS );
-					this->_point._system->compute_neighbors_range(
-						this->_point._element_iter->get_position(),
-						this->_neighbors_start,
-						neighbors_range
-					);
+					this->_point._system->compute_neighbors_range( this->_point._element_iter->get_position(), this->_neighbors_start, neighbors_range );
 					// re-target _neighbors_subspace
 					this->_neighbors_subspace.retarget( neighbors_range );
 				}
@@ -391,7 +380,7 @@ namespace grb {
 			};
 
 		} // namespace multigrid
-	} // namespace utils
+	}     // namespace utils
 } // namespace grb
 
 #endif // _H_GRB_ALGORITHMS_MULTIGRID_LINEARIZED_HALO_NDIM_ITERATOR

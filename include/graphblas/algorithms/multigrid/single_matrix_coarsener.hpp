@@ -24,8 +24,8 @@
 #ifndef _H_GRB_ALGORITHMS_HPCG_SINGLE_MATRIX_COARSENER
 #define _H_GRB_ALGORITHMS_HPCG_SINGLE_MATRIX_COARSENER
 
-#include <vector>
 #include <memory>
+#include <vector>
 
 #include <graphblas.hpp>
 
@@ -52,7 +52,10 @@ namespace grb {
 			 * @param[in] _finer_size  size of the finer system, i.e. size of external objects \b before coarsening
 			 * @param[in] coarser_size size of the current system, i.e. size \b after coarsening
 			 */
-			CoarseningData( size_t _finer_size, size_t coarser_size ) :
+			CoarseningData(
+				size_t _finer_size,
+				size_t coarser_size
+			) :
 				coarsening_matrix( coarser_size, _finer_size ),
 				Ax_finer( _finer_size ) {}
 
@@ -89,8 +92,7 @@ namespace grb {
 			/**
 			 * Data to coarsen each level, from finer to coarser.
 			 */
-			std::vector< std::unique_ptr< grb::algorithms::CoarseningData< IOType,
-				NonzeroType > > > coarsener_levels;
+			std::vector< std::unique_ptr< grb::algorithms::CoarseningData< IOType, NonzeroType > > > coarsener_levels;
 			Ring ring;
 			Minus minus;
 
@@ -100,12 +102,12 @@ namespace grb {
 			 * \p coarser (the coarser system).
 			 */
 			inline grb::RC coarsen_residual(
-				const MultiGridInputType &finer,
-				MultiGridInputType &coarser
+				const MultiGridInputType & finer,
+				MultiGridInputType & coarser
 			) {
 				// first compute the residual
-				CoarseningData< IOType, NonzeroType > &coarsener = *coarsener_levels[ finer.level ];
-				grb::RC ret = grb::set< descr >( coarsener.Ax_finer, ring. template getZero< IOType >() );
+				CoarseningData< IOType, NonzeroType > & coarsener = *coarsener_levels[ finer.level ];
+				grb::RC ret = grb::set< descr >( coarsener.Ax_finer, ring.template getZero< IOType >() );
 				ret = ret ? ret : grb::mxv< descr >( coarsener.Ax_finer, finer.A, finer.z, ring );
 
 				return ret ? ret : compute_coarsening( finer.r, coarser.r, coarsener );
@@ -116,8 +118,8 @@ namespace grb {
 			 * into the finer solution.
 			 */
 			inline grb::RC prolong_solution(
-				const MultiGridInputType &coarser,
-				MultiGridInputType &finer
+				const MultiGridInputType & coarser,
+				MultiGridInputType & finer
 			) {
 				return compute_prolongation( coarser.z, finer.z, *coarsener_levels[ finer.level ] );
 			}
@@ -136,7 +138,7 @@ namespace grb {
 			 */
 			grb::RC compute_coarsening(
 				const grb::Vector< IOType > & r_fine, // fine residual
-				grb::Vector< IOType > & r_coarse, // fine residual
+				grb::Vector< IOType > & r_coarse, // coarse residual
 				CoarseningData< IOType, NonzeroType > & coarsening_data
 			) {
 				RC ret = SUCCESS;
@@ -171,13 +173,15 @@ namespace grb {
 				RC ret = SUCCESS;
 				// actual refining, from  *coarsening_data->syztem_size == nrows(*coarsening_data->A) / 8
 				// to nrows(z_fine)
-				ret = ret ? ret : grb::set< descr >( coarsening_data.Ax_finer, ring.template getZero< IOType >() );
+				ret = ret ? ret : grb::set< descr >( coarsening_data.Ax_finer,
+					ring.template getZero< IOType >() );
 
 				ret = ret ? ret : grb::mxv< descr | grb::descriptors::transpose_matrix >(
 					coarsening_data.Ax_finer, coarsening_data.coarsening_matrix, z_coarse, ring );
 				assert( ret == SUCCESS );
 
-				ret = ret ? ret : grb::foldl< descr >( z_fine, coarsening_data.Ax_finer, ring.getAdditiveMonoid() ); // z_fine += Ax_finer;
+				ret = ret ? ret : grb::foldl< descr >( z_fine, coarsening_data.Ax_finer,
+					ring.getAdditiveMonoid() ); // z_fine += Ax_finer;
 				assert( ret == SUCCESS );
 				return ret;
 			}

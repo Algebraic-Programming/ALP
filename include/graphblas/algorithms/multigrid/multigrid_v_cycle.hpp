@@ -26,16 +26,17 @@
 #define _H_GRB_ALGORITHMS_MULTIGRID_V_CYCLE
 
 #include <cassert>
-#include <vector>
-#include <type_traits>
 #include <memory>
+#include <type_traits>
 #include <utility>
+#include <vector>
 
 #include <graphblas.hpp>
 #include <graphblas/utils/iterators/IteratorValueAdaptor.hpp>
 #include <graphblas/utils/telemetry/OutputStream.hpp>
 
 #include "multigrid_data.hpp"
+
 
 namespace grb {
 	namespace algorithms {
@@ -57,8 +58,7 @@ namespace grb {
 		 * @tparam Minus the minus operator for subtractions
 		 * @tparam descr descriptors with statically-known data for computation and containers
 		 */
-		template<
-			typename MGTypes,
+		template< typename MGTypes,
 			typename MGSmootherType,
 			typename CoarsenerType,
 			typename TelControllerType,
@@ -83,63 +83,60 @@ namespace grb {
 				"cannot construct the Minus operator with default values" );
 
 			// check the interface between HPCG and MG match
-			static_assert( std::is_base_of< typename MGSmootherType::SmootherInputType,
-				MultiGridInputType >::value, "input type of the Smoother kernel must match the input from Multi-Grid" );
+			static_assert( std::is_base_of< typename MGSmootherType::SmootherInputType, MultiGridInputType >::value,
+				"input type of the Smoother kernel must match the input from Multi-Grid" );
 
 			MGSmootherType & smoother_runner; ///< object to run the smoother
 			CoarsenerType & coarsener_runner; ///< object to run the coarsener
 			DbgOutputStreamType dbg_logger;
 
 			std::vector< std::unique_ptr< MultiGridInputType > > system_levels; ///< levels of the grid (finest first)
-			Ring ring; ///< algebraic ring
-			Minus minus; ///< minus operator
+			Ring ring;                                                          ///< algebraic ring
+			Minus minus;                                                        ///< minus operator
 
 			// operator to extract the reference out of an std::unique_ptr object
 			struct __extractor {
-				MultiGridInputType* operator()(
-					typename std::vector< std::unique_ptr< MultiGridInputType > >::reference &ref
-				) {
+				MultiGridInputType * operator()(
+					typename std::vector< std::unique_ptr< MultiGridInputType > >::reference & ref ) {
 					return ref.get();
 				}
 
-				const MultiGridInputType* operator()(
-					typename std::vector< std::unique_ptr< MultiGridInputType > >::const_reference &ref
-				) const {
+				const MultiGridInputType * operator()(
+					typename std::vector< std::unique_ptr< MultiGridInputType > >::const_reference & ref ) const {
 					return ref.get();
 				}
 			};
 
 			using __unique_ptr_extractor = grb::utils::IteratorValueAdaptor<
-				typename std::vector< std::unique_ptr< MultiGridInputType > >::iterator,
-				__extractor
-			>;
+				typename std::vector< std::unique_ptr< MultiGridInputType > >::iterator, __extractor >;
 
 			/**
 			 * Construct a new MultiGridRunner object by moving in the state of the pre-built
 			 * smoother and coarsener.
 			 */
 			MultiGridRunner(
-				MGSmootherType &_smoother_runner,
-				CoarsenerType &_coarsener_runner
-			) : smoother_runner( _smoother_runner ),
-				coarsener_runner(  _coarsener_runner )
+				MGSmootherType & _smoother_runner,
+				CoarsenerType & _coarsener_runner
+			) :
+				smoother_runner( _smoother_runner ),
+				coarsener_runner( _coarsener_runner )
 			{
 				static_assert( std::is_default_constructible< DbgOutputStreamType >::value );
 			}
 
 			MultiGridRunner(
-				MGSmootherType &_smoother_runner,
-				CoarsenerType &_coarsener_runner,
+				MGSmootherType & _smoother_runner,
+				CoarsenerType & _coarsener_runner,
 				DbgOutputStreamType & _dbg_logger
-			) : smoother_runner( _smoother_runner ),
-				coarsener_runner(  _coarsener_runner ),
-				dbg_logger( _dbg_logger )
-			{}
+			) :
+				smoother_runner( _smoother_runner ),
+				coarsener_runner( _coarsener_runner ),
+				dbg_logger( _dbg_logger ) {}
 
 			/**
 			 * Operator to invoke a full multi-grid run starting from the given level.
 			 */
-			inline grb::RC operator()( MultiGridInputType &system ) {
+			inline grb::RC operator()( MultiGridInputType & system ) {
 				return this->operator()( __unique_ptr_extractor( system_levels.begin() += system.level ),
 					__unique_ptr_extractor( system_levels.end() ) );
 			}
@@ -172,17 +169,6 @@ namespace grb {
 			 * Failuers of GraphBLAS operations are handled by immediately stopping the execution
 			 * and returning the failure code.
 			 *
-			 * @tparam descr descriptor for static information
-			 * @tparam IOType type of result and intermediate vectors used during computation
-			 * @tparam NonzeroType type of matrix values
-			 * @tparam MGSysIterType type of the iterator across grid levels
-			 * @tparam MGSmootherType type of the smoother runner, with prescribed methods for the various
-			 *  smoothing steps
-			 * @tparam CoarsenerType type of the coarsener runner, with prescribed methods for coarsening
-			 *  and prolongation
-			 * @tparam Ring the ring of algebraic operators zero-values
-			 * @tparam Minus the minus operator for subtractions
-			 *
 			 * @param mgiter_begin iterator pointing to the current level of the multi-grid
 			 * @param mgiter_end end iterator, indicating the end of the recursion
 			 * @param smoother callable object to invoke the smoothing steps
@@ -198,16 +184,16 @@ namespace grb {
 			) {
 				RC ret = SUCCESS;
 				assert( mgiter_begin != mgiter_end );
-				MultiGridInputType &finer_system = *mgiter_begin;
+				MultiGridInputType & finer_system = *mgiter_begin;
 				++mgiter_begin;
 
 				dbg_logger << "mg BEGINNING {" << std::endl;
 
 				// clean destination vector
-				ret = ret ? ret : grb::set< descr >( finer_system.z, ring. template getZero< IOType >() );
+				ret = ret ? ret : grb::set< descr >( finer_system.z, ring.template getZero< IOType >() );
 				dbg_logger << ">>> initial r: " << finer_system.r << std::endl;
 
-				if( !( mgiter_begin != mgiter_end ) ) {
+				if( ! ( mgiter_begin != mgiter_end ) ) {
 					// compute one round of Gauss Seidel and return
 					ret = ret ? ret : smoother_runner.nonrecursive_smooth( finer_system );
 					assert( ret == SUCCESS );
@@ -215,7 +201,7 @@ namespace grb {
 					dbg_logger << "} mg END" << std::endl;
 					return ret;
 				}
-				MultiGridInputType &coarser_system = *mgiter_begin;
+				MultiGridInputType & coarser_system = *mgiter_begin;
 
 				// pre-smoother
 				ret = ret ? ret : smoother_runner.pre_smooth( finer_system );
@@ -241,7 +227,6 @@ namespace grb {
 
 				return ret;
 			}
-
 		};
 
 	} // namespace algorithms

@@ -24,11 +24,10 @@
 #ifndef _H_GRB_ALGORITHMS_MULTIGRID_NDIM_SYSTEM
 #define _H_GRB_ALGORITHMS_MULTIGRID_NDIM_SYSTEM
 
-#include <cstddef>
 #include <algorithm>
-#include <vector>
-#include <type_traits>
 #include <cstddef>
+#include <type_traits>
+#include <vector>
 
 namespace grb {
 	namespace utils {
@@ -48,11 +47,11 @@ namespace grb {
 				typename InternalVectorType
 			> class NDimSystem {
 			public:
-				static_assert( std::is_integral< SizeType >::value, "SizeType must be an integral type");
+				static_assert( std::is_integral< SizeType >::value, "SizeType must be an integral type" );
 
 				using VectorType = InternalVectorType;
-				using VectorReference = VectorType&;
-				using ConstVectorReference = const VectorType&;
+				using VectorReference = VectorType &;
+				using ConstVectorReference = const VectorType &;
 				using SelfType = NDimSystem< SizeType, InternalVectorType >;
 
 				/**
@@ -66,9 +65,8 @@ namespace grb {
 				 * @param begin range begin
 				 * @param end end of range
 				 */
-				template< typename IterType > NDimSystem( IterType begin, IterType end) noexcept :
-					_sizes( std::distance( begin, end ) )
-				{
+				template< typename IterType >
+				NDimSystem( IterType begin, IterType end ) noexcept : _sizes( std::distance( begin, end ) ) {
 					std::copy( begin, end, this->_sizes.begin() );
 				}
 
@@ -76,16 +74,14 @@ namespace grb {
 				 * Construct a new NDimSystem object from an std::vector<>, taking its values
 				 * as system sizes and its length as number of dimensions.
 				 */
-				NDimSystem( const std::vector< size_t > &_sizes ) noexcept :
+				NDimSystem( const std::vector< size_t > & _sizes ) noexcept :
 					SelfType( _sizes.cbegin(), _sizes.cend() ) {}
 
 				/**
 				 * Construct a new NDimSystem object of dimensions \p dimensions
 				 *  and with all sizes initialized to \p max_size
 				 */
-				NDimSystem( size_t _dimensions, size_t max_size ) noexcept :
-					_sizes( _dimensions )
-				{
+				NDimSystem( size_t _dimensions, size_t max_size ) noexcept : _sizes( _dimensions ) {
 					std::fill_n( this->_sizes.begin(), _dimensions, max_size );
 				}
 
@@ -95,9 +91,9 @@ namespace grb {
 
 				NDimSystem( SelfType && ) = delete;
 
-				SelfType & operator=( const SelfType &original ) = default;
+				SelfType & operator=( const SelfType & original ) = default;
 
-				SelfType & operator=( SelfType &&original ) = delete;
+				SelfType & operator=( SelfType && original ) = delete;
 
 				inline size_t dimensions() const noexcept {
 					return _sizes.dimensions();
@@ -116,7 +112,7 @@ namespace grb {
 			};
 
 		} // namespace multigrid
-	} // namespace utils
+	}     // namespace utils
 } // namespace grb
 
 #endif // _H_GRB_ALGORITHMS_MULTIGRID_NDIM_SYSTEM

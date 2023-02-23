@@ -15,9 +15,11 @@
  * limitations under the License.
  */
 
-/*
- * @author Alberto Scolari
- * @date 14th February, 2023
+/**
+ * @file OutputStream.hpp
+ * @author Alberto Scolari (alberto.scolar@huawei.com)
+ *
+ * Definition for the OutputStream class.
  */
 
 #ifndef _H_GRB_UTILS_TELEMETRY_OUTPUT_STREAM
@@ -34,7 +36,12 @@ namespace grb {
 	namespace utils {
 		namespace telemetry {
 
+			/**
+			 * SFINAE-based class to check whether the type \p T can be input to an std::ostream
+			 * via the \a << operator.
+			 */
 			template< typename T > struct is_ostream_input {
+			private:
 
 				template< typename U > static constexpr bool is_input(
 					typename std::enable_if< std::is_same<
@@ -49,13 +56,22 @@ namespace grb {
 					return false;
 				}
 
+			public:
 				static constexpr bool value = is_input< T >( nullptr );
 			};
 
-			class OutputStreamLazy {
-				constexpr char operator()() const { return '\0'; }
-			};
-
+			/**
+			 * Telemetry-controllable output stream with basic interface, based on the \a << operator.
+			 *
+			 * It accepts in input any type \a std::ostream accepts. In addition, it also accepts
+			 * the internl #OutputStreamLazy<RetType> type, which marks callable objects and allows
+			 * lazy evaluation of their result if the telemetry is active; if not, the object is
+			 * not called, avoiding runtime costs. This functionality allows paying time and memory
+			 * costs of computation only if really needed.
+			 *
+			 * @tparam TelControllerType type of the telemetry controller
+			 * @tparam enabled whether telemetry is enabled for this type
+			 */
 			template<
 				typename TelControllerType,
 				bool enabled = TelControllerType::enabled
@@ -63,64 +79,77 @@ namespace grb {
 			public:
 				using self_t = OutputStream< TelControllerType, enabled >;
 
-				OutputStream() = default;
+				using base_t = TelemetryBase< TelControllerType, enabled >;
 
-				OutputStream( const TelControllerType & _tt, std::ostream & _out ) :
-					TelemetryBase< TelControllerType, enabled >( _tt )
-				{
-					( void ) _out;
+				/**
+				 * Marker object to indicate that the stored callable object is to be called
+				 * in a lazy way, i.e., only if output is active.
+				 *
+				 * @tparam RetType return type of the collable object, to be printed
+				 */
+				template< typename RetType > class OutputStreamLazy {
+
+					const std::function< RetType() > f;
+
+				public:
+					static_assert( is_ostream_input< RetType >::value );
+
+					template< class F > OutputStreamLazy( F&& _f ) : f( std::forward< F >( _f ) ) {}
+
+					RetType operator()() const { return f(); }
+				};
+
+				/**
+				 * Convenience function to create an #OutputStreamLazy<RetType> object from
+				 * a callable one, inferring all template parameters automatically.
+				 *
+				 * @tparam CallableType type of the given callable object
+				 * @tparam RetType return type of the callable object, to be printed
+				 * @param f callable object
+				 * @return OutputStreamLazy< RetType > object marking lazy evaluation for printing
+				 */
+				template<
+					typename CallableType,
+					typename RetType = decltype( std::declval< CallableType >()() )
+				> static OutputStreamLazy< RetType > makeLazy( CallableType&& f ) {
+					static_assert( is_ostream_input< RetType >::value );
+					return OutputStreamLazy< RetType >( std::forward< CallableType >( f ) );
 				}
 
-				OutputStream( const self_t & _out ) = default;
-
-				OutputStream & operator=( const self_t & _out ) = delete;
-
-				template< typename T > inline typename std::enable_if<
-					is_ostream_input< T >::value,
-				self_t & >::type operator<<( T&& v ) {
-					( void ) v;
-					return *this;
-				}
-
-				inline self_t & operator<<( std::ostream& (*func)( std::ostream& ) ) {
-					( void ) func;
-					return *this;
-				}
-
-				template< class F > inline typename std::enable_if<
-					is_ostream_input< decltype( std::declval< F >()() ) >::value
-					&& std::is_base_of< OutputStreamLazy, F >::value,
-				self_t & >::type operator<<( F&& fun ) {
-					( void ) fun;
-					return *this;
-				}
-			};
-
-			template< typename TelControllerType > class OutputStream< TelControllerType, true > :
-				public TelemetryBase< TelControllerType, true > {
-			public:
-				using self_t = OutputStream< TelControllerType, true >;
-
-				using base_t = TelemetryBase< TelControllerType, true >;
-
-				OutputStream( const TelControllerType & _tt, std::ostream & _out ) :
-					TelemetryBase< TelControllerType, true >( _tt ),
+				/**
+				 * Construct a new Output Stream object from a telemetry controller \p -tt
+				 * and an output stream \p _out (usually \a std::cout)
+				 */
+				OutputStream(
+					const TelControllerType & _tt,
+					std::ostream & _out
+				) :
+					TelemetryBase< TelControllerType, enabled >( _tt ),
 					out( _out )
 				{}
 
+				/**
+				 * Copy constructor.
+				 */
 				OutputStream( const self_t & _outs ) = default;
 
 				OutputStream & operator=( const self_t & _out ) = delete;
 
-				template< typename T > inline typename std::enable_if<
-					is_ostream_input< T >::value,
-				self_t & >::type operator<<( T&& v ) {
+				/**
+				 * Stream input operator, enabled for all types std::ostream supports.
+				 */
+				template< typename T > inline typename std::enable_if< is_ostream_input< T >::value,
+					self_t & >::type operator<<( T&& v ) {
 					if ( this->is_active() ) {
 						out << std::forward< T >( v );
 					}
 					return *this;
 				}
 
+				/**
+				 * Specialization of the \a << operator for stream manipulators, to support
+				 * \a std::endl and similar manipulators.
+				 */
 				inline self_t & operator<<( std::ostream& (*func)( std::ostream& ) ) {
 					if ( this->is_active() ) {
 						out << func;
@@ -128,10 +157,24 @@ namespace grb {
 					return *this;
 				}
 
+				/**
+				 * Specialization of the \a << operator for lazy evaluation of callable objects.
+				 *
+				 * A callable object can be wrapped into an #OutputStreamLazy<F> object in order
+				 * to be called only if necessary, i.e., only if the stream \a this is active.
+				 * In this case, the internal callable object is called, its result is materialized
+				 * and sent into the stream.
+				 *
+				 * To conveniently instantiate an #OutputStreamLazy<F> to pass to this operator,
+				 * see #makeLazy(CallableType&&).
+				 *
+				 * @tparam F type of the callable object
+				 * @param fun callable object
+				 * @return self_t & the stream itself
+				 */
 				template< class F > inline typename std::enable_if<
-					is_ostream_input< decltype( std::declval< F >()() ) >::value
-					&& std::is_base_of< OutputStreamLazy, F >::value,
-				self_t & >::type operator<<( F&& fun ) {
+					is_ostream_input< decltype( std::declval< OutputStreamLazy< F > >()() ) >::value,
+				self_t & >::type operator<<( const OutputStreamLazy< F >& fun ) {
 					if ( this->is_active() ) {
 						out << fun();
 					}
@@ -142,9 +185,69 @@ namespace grb {
 				std::ostream & out;
 			};
 
+			/**
+			 * Template specialization of OutputStream<TelControllerType,enabled>
+			 * for deactivated telemetry: no information is stored, no output produced.
+			 */
+			template<
+				typename TelControllerType
+			> class OutputStream< TelControllerType, false > :
+				public TelemetryBase< TelControllerType, false > {
+			public:
+				using self_t = OutputStream< TelControllerType, false >;
+
+
+				template< typename RetType > struct OutputStreamLazy {
+
+					static_assert( is_ostream_input< RetType >::value );
+
+					template< class F > OutputStreamLazy( F&& ) {}
+
+					constexpr char operator()() const { return '\0'; }
+				};
+
+				template<
+					typename CallableType,
+					typename RetType = decltype( std::declval< CallableType >()() )
+				> static OutputStreamLazy< RetType > makeLazy( CallableType&& f ) {
+					static_assert( is_ostream_input< RetType >::value );
+					return OutputStreamLazy< RetType >( std::forward< CallableType >( f ) );
+				}
+
+				OutputStream() = default;
+
+				OutputStream( const TelControllerType & _tt, std::ostream & ) :
+					TelemetryBase< TelControllerType, false >( _tt ) {}
+
+				OutputStream( const self_t & _out ) = default;
+
+				OutputStream & operator=( const self_t & _out ) = delete;
+
+				inline self_t & operator<<( std::ostream& (*)( std::ostream& ) ) {
+					return *this;
+				}
+
+				/**
+				 * All-capturing implementation for the input stream operator, printing nothing.
+				 *
+				 * This operator is convenient especially for debugging cases.
+				 * In case of "normal" stream types used with custom data types, the user
+				 * must extend them manually to print the custom data type. If the user uses a
+				 * deactivated stream (for example as a default template parameter to disable
+				 * logging by default), she needs not extend it for custom types in order
+				 * to make it compile, which is especially nonsensical when the output is deactivated.
+				*/
+				template< typename T > self_t & operator<<( T&& ) {
+					return *this;
+				}
+			};
+
+			/// Always active output stream, mainly for debugging purposes.
+			using OutputStreamOn = OutputStream< TelemetryControllerAlwaysOn, true >;
+
+			/// Always inactive output stream
 			using OutputStreamOff = OutputStream< TelemetryControllerAlwaysOff, false >;
 
-			using OutputStreamOn = OutputStream< TelemetryControllerAlwaysOn, true >;
 		}
 	}
 }

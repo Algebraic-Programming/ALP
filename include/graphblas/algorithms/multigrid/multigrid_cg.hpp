@@ -36,11 +36,10 @@
 #include <utility>
 
 #include <graphblas.hpp>
-#include <graphblas/utils/telemetry/Timeable.hpp>
 #include <graphblas/utils/telemetry/OutputStream.hpp>
+#include <graphblas/utils/telemetry/Timeable.hpp>
 
 #include "multigrid_data.hpp"
-
 
 namespace grb {
 	namespace algorithms {
@@ -87,8 +86,8 @@ namespace grb {
 		/**
 		 * Structure for the output information of a CG run.
 		 */
-		template < typename ResidualType > struct CGOutInfo {
-			size_t iterations; ///< number of iterations performed
+		template< typename ResidualType > struct CGOutInfo {
+			size_t iterations;          ///< number of iterations performed
 			ResidualType norm_residual; ///< norm of the final residual
 		};
 
@@ -134,15 +133,15 @@ namespace grb {
 			static_assert( std::is_move_constructible< MultiGridRunnerType >::value,
 				"cannot construct the Multi-Grid runner by move" );
 
-			Ring ring; ///< algebraic ring to be used
-			Minus minus; ///< minus operator to be used
-			bool with_preconditioning = true; ///<  whether preconditioning is enabled
-			size_t max_iterations = 10; ///< max number of allowed iterations for CG: after that, the solver is halted
-									///< and the result achieved so far returned
-			ResidualType tolerance = ring. template getZero< ResidualType >(); ///< ratio between initial residual and current residual that halts the solver
-										///< if reached, for the solution is to be considered "good enough"
+			Ring ring;                                                        ///< algebraic ring to be used
+			Minus minus;                                                      ///< minus operator to be used
+			bool with_preconditioning = true;                                 ///<  whether preconditioning is enabled
+			size_t max_iterations = 10;                                       ///< max number of allowed iterations for CG: after that, the solver is halted
+			                                                                  ///< and the result achieved so far returned
+			ResidualType tolerance = ring.template getZero< ResidualType >(); ///< ratio between initial residual and current residual that halts the solver
+			                                                                  ///< if reached, for the solution is to be considered "good enough"
 
-			MultiGridRunnerType &mg_runner;
+			MultiGridRunnerType & mg_runner;
 			DbgOutputStreamType dbg_logger;
 
 			/**
@@ -169,8 +168,7 @@ namespace grb {
 			) :
 				grb::utils::telemetry::Timeable< TelControllerType >( tt ),
 				mg_runner( _mg_runner ),
-				dbg_logger( _dbg_logger )
-			{}
+				dbg_logger( _dbg_logger ) {}
 
 			/**
 			 * Functional operator to invoke a full CG-MG computation.
@@ -181,9 +179,9 @@ namespace grb {
 			 * @return grb::RC indicating the success or the error occurred
 			 */
 			inline grb::RC operator()(
-				typename MultiGridRunnerType::MultiGridInputType &grid_base,
-				MultiGridCGData< IOType, NonzeroType, InputType > &cg_data,
-				CGOutInfo< ResidualType > &out_info
+				typename MultiGridRunnerType::MultiGridInputType & grid_base,
+				MultiGridCGData< IOType, NonzeroType, InputType > & cg_data,
+				CGOutInfo< ResidualType > & out_info
 			) {
 				this->start();
 				grb::RC ret = multigrid_conjugate_gradient( cg_data, grid_base, out_info );
@@ -209,17 +207,17 @@ namespace grb {
 			 * @return grb::RC SUCCESS in case of succesful run
 			 */
 			grb::RC multigrid_conjugate_gradient(
-				HPCGInputType &cg_data,
-				typename MultiGridRunnerType::MultiGridInputType &grid_base,
-				CGOutInfo< ResidualType > &out_info
+				HPCGInputType & cg_data,
+				typename MultiGridRunnerType::MultiGridInputType & grid_base,
+				CGOutInfo< ResidualType > & out_info
 			) {
-				const grb::Matrix< NonzeroType > &A = grid_base.A; // system matrix
-				grb::Vector< IOType > &r = grid_base.r;  // residual vector
-				grb::Vector< IOType > &z = grid_base.z;  // pre-conditioned residual vector
-				grb::Vector< IOType > &x = cg_data.x; // initial (and final) solution
-				const grb::Vector< InputType > &b = cg_data.b; // right-side value
-				grb::Vector< IOType > &p = cg_data.p;  // direction vector
-				grb::Vector< IOType > &Ap = cg_data.u; // temp vector
+				const grb::Matrix< NonzeroType > & A = grid_base.A; // system matrix
+				grb::Vector< IOType > & r = grid_base.r;            // residual vector
+				grb::Vector< IOType > & z = grid_base.z;            // pre-conditioned residual vector
+				grb::Vector< IOType > & x = cg_data.x;              // initial (and final) solution
+				const grb::Vector< InputType > & b = cg_data.b;     // right-side value
+				grb::Vector< IOType > & p = cg_data.p;              // direction vector
+				grb::Vector< IOType > & Ap = cg_data.u;             // temp vector
 				grb::RC ret = SUCCESS;
 
 				const IOType io_zero = ring.template getZero< IOType >();
@@ -329,12 +327,10 @@ namespace grb {
 					++iter;
 					out_info.iterations = iter;
 					out_info.norm_residual = norm_residual;
-				} while( iter < max_iterations &&
-					norm_residual / norm_residual_initial > tolerance && ret == SUCCESS );
+				} while( iter < max_iterations && norm_residual / norm_residual_initial > tolerance && ret == SUCCESS );
 
 				return ret;
 			}
-
 		};
 
 	} // namespace algorithms

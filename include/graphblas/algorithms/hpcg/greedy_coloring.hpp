@@ -24,8 +24,8 @@
 #ifndef _H_GRB_ALGORITHMS_HPCG_GREEDY_COLORING
 #define _H_GRB_ALGORITHMS_HPCG_GREEDY_COLORING
 
-#include <vector>
 #include <cstddef>
+#include <vector>
 
 #include <graphblas/utils/multigrid/linearized_halo_ndim_system.hpp>
 
@@ -75,16 +75,15 @@ namespace grb {
 			typename CoordType,
 			bool lowest_color_first = true
 		> void hpcg_greedy_color_ndim_system(
-			const grb::utils::multigrid::LinearizedHaloNDimSystem< DIMS, CoordType > &system,
-			std::vector< CoordType > &row_colors,
-			std::vector< CoordType > &color_counters,
+			const grb::utils::multigrid::LinearizedHaloNDimSystem< DIMS, CoordType > & system,
+			std::vector< CoordType > & row_colors,
+			std::vector< CoordType > & color_counters,
 			bool reorder_rows_per_color = false
 		) {
-
 			CoordType nrows = system.system_size();
 			row_colors.insert( row_colors.begin(), nrows, nrows ); // value `nrows' means `uninitialized'; initialized colors go from 0 to nrow-1
 			CoordType totalColors = 1;
-			row_colors[0] = 0; // first point gets color 0
+			row_colors[ 0 ] = 0; // first point gets color 0
 
 			// Finds colors in a greedy (a likely non-optimal) fashion.
 			typename grb::utils::multigrid::LinearizedHaloNDimSystem< DIMS, CoordType >::Iterator begin = system.begin();
@@ -106,9 +105,9 @@ namespace grb {
 					if( curCol < curRow ) {
 						assert( row_colors[ curCol ] < nrows ); // if curCol < curRow, curCol has already a color assigned
 						std::vector< bool >::reference color_is_assigned = assigned[ row_colors[ curCol ] ];
-						if( !color_is_assigned ) {
+						if( ! color_is_assigned ) {
 							// count how many colors are already assigned
-							(void) currentlyAssigned++;
+							(void)currentlyAssigned++;
 						}
 						// track which colors are assigned
 						color_is_assigned = true;
@@ -122,7 +121,7 @@ namespace grb {
 					if( lowest_color_first ) {
 						// here, assign colors greedily starting from the lowest available one
 						for( CoordType j = 0; j < totalColors; ++j ) {
-							if( !assigned[ j ] ) {
+							if( ! assigned[ j ] ) {
 								// if no neighbor with this color, use it for this row
 								row_colors[ curRow ] = j;
 								break;
@@ -132,7 +131,7 @@ namespace grb {
 						// here, assign colors greedily starting from the highest available one
 						for( CoordType j = totalColors; j > 0; --j ) {
 							CoordType color = j - 1;
-							if( !assigned[ color ] ) {
+							if( ! assigned[ color ] ) {
 								// if no neighbor with this color, use it for this row
 								row_colors[ curRow ] = color;
 								break;
@@ -143,7 +142,7 @@ namespace grb {
 					assert( row_colors[ curRow ] == nrows );
 					if( row_colors[ curRow ] == nrows ) {
 						row_colors[ curRow ] = totalColors;
-						(void) totalColors++;
+						(void)totalColors++;
 					} else {
 						assert( 0 ); // should never get here
 					}
@@ -153,7 +152,7 @@ namespace grb {
 
 #ifdef _DEBUG
 			std::cout << "assigned colors: " << totalColors << " [ <row> -> <color>]\n";
-			for( size_t i = 0; i < row_colors.size(); i++ ){
+			for( size_t i = 0; i < row_colors.size(); i++ ) {
 				std::cout << i << " -> " << row_colors[ i ] << ", ";
 			}
 			std::cout << std::endl;
@@ -162,21 +161,21 @@ namespace grb {
 			// count number of vertices per color
 			color_counters.insert( color_counters.begin(), totalColors, 0 );
 			for( CoordType i = 0; i < nrows; ++i ) {
-				(void) color_counters[ row_colors[ i ] ]++;
+				(void)color_counters[ row_colors[ i ] ]++;
 			}
 
-			if( !reorder_rows_per_color ) {
+			if( ! reorder_rows_per_color ) {
 				return;
 			}
 
 			// form in-place prefix scan
 			CoordType old = 0, old0;
 			for( CoordType i = 1; i < totalColors; ++i ) {
-				old0 = color_counters[i];
-				color_counters[i] = color_counters[i-1] + old;
+				old0 = color_counters[ i ];
+				color_counters[ i ] = color_counters[ i - 1 ] + old;
 				old = old0;
 			}
-			color_counters[0] = 0;
+			color_counters[ 0 ] = 0;
 
 			// translate `colors' into a permutation
 			for( CoordType i = 0; i < nrows; ++i ) {

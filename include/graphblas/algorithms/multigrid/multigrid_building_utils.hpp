@@ -24,9 +24,9 @@
 #ifndef _H_GRB_ALGORITHMS_MULTIGRID_BUILDING_UTILS
 #define _H_GRB_ALGORITHMS_MULTIGRID_BUILDING_UTILS
 
-#include <vector>
-#include <memory>
 #include <cstddef>
+#include <memory>
+#include <vector>
 
 namespace grb {
 	namespace algorithms {
@@ -81,7 +81,7 @@ namespace grb {
 				throw std::invalid_argument( "at least one size should be available" );
 			}
 			size_t finer_size = mg_sizes[ 0 ];
-			system_levels.emplace_back( new MGInfoType( tt, 0, finer_size ) ); // create main system
+			system_levels.emplace_back( new MGInfoType( tt, 0, finer_size ) );  // create main system
 			smoother_levels.emplace_back( new SmootherInfoType( finer_size ) ); // create smoother for main
 			for( size_t i = 1; i < mg_sizes.size(); i++ ) {
 				size_t coarser_size = mg_sizes[ i ];

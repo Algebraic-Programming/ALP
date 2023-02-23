@@ -24,9 +24,8 @@
 #ifndef _H_GRB_ALGORITHMS_MULTIGRID_DYNAMIC_VECTOR_STORAGE
 #define _H_GRB_ALGORITHMS_MULTIGRID_DYNAMIC_VECTOR_STORAGE
 
-#include <cstddef>
-#include <cstddef>
 #include <algorithm>
+#include <cstddef>
 
 namespace grb {
 	namespace utils {
@@ -43,7 +42,7 @@ namespace grb {
 			template< typename DataType > class DynamicVectorStorage {
 
 				size_t _dimensions;
-				DataType* _storage;
+				DataType * _storage;
 
 				void clean() {
 					if( this->_storage != nullptr ) {
@@ -53,47 +52,46 @@ namespace grb {
 
 			public:
 				// iterator fields
-				using reference = DataType&;
-				using const_reference = const DataType&;
-				using iterator = DataType*;
-				using const_iterator = const DataType*;
-				using pointer = DataType*;
-				using const_pointer = const DataType*;
+				using reference = DataType &;
+				using const_reference = const DataType &;
+				using iterator = DataType *;
+				using const_iterator = const DataType *;
+				using pointer = DataType *;
+				using const_pointer = const DataType *;
 
-				using VectorStorageType = DataType*;
-				using ConstVectorStorageType = DataType*;
+				using VectorStorageType = DataType *;
+				using ConstVectorStorageType = DataType *;
 				using SelfType = DynamicVectorStorage< DataType >;
 
-				DynamicVectorStorage( size_t __dimensions ):
-					_dimensions( __dimensions ) {
+				DynamicVectorStorage( size_t __dimensions ) : _dimensions( __dimensions ) {
 					if( __dimensions == 0 ) {
-						throw std::invalid_argument("dimensions cannot be 0");
+						throw std::invalid_argument( "dimensions cannot be 0" );
 					}
 					this->_storage = new DataType[ __dimensions ];
 				}
 
 				DynamicVectorStorage() = delete;
 
-				DynamicVectorStorage( const SelfType &o ):
+				DynamicVectorStorage( const SelfType & o ) :
 					_dimensions( o._dimensions ),
 					_storage( new DataType[ o._dimensions ] )
 				{
 					std::copy_n( o._storage, o._dimensions, this->_storage );
 				}
 
-				DynamicVectorStorage( SelfType &&o ) = delete;
+				DynamicVectorStorage( SelfType && o ) = delete;
 
-				SelfType& operator=( const SelfType &original ) {
+				SelfType & operator=( const SelfType & original ) {
 					if( original._dimensions != this->_dimensions ) {
 						this->clean();
-						this->_storage = new DataType[ original._dimensions];
+						this->_storage = new DataType[ original._dimensions ];
 					}
 					this->_dimensions = original._dimensions;
 					std::copy_n( original._storage, original._dimensions, this->_storage );
 					return *this;
 				}
 
-				SelfType& operator=( SelfType &&original ) = delete;
+				SelfType & operator=( SelfType && original ) = delete;
 
 				~DynamicVectorStorage() {
 					this->clean();
@@ -136,7 +134,7 @@ namespace grb {
 				}
 
 				inline reference operator[]( size_t pos ) {
-					return *( this->_storage + pos);
+					return *( this->_storage + pos );
 				}
 
 				inline const_reference operator[]( size_t pos ) const {
@@ -145,7 +143,7 @@ namespace grb {
 			};
 
 		} // namespace multigrid
-	} // namespace utils
+	}     // namespace utils
 } // namespace grb
 
 #endif // _H_GRB_ALGORITHMS_MULTIGRID_DYNAMIC_VECTOR_STORAGE

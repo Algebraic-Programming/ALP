@@ -37,8 +37,8 @@
 
 #include "array_vector_storage.hpp"
 #include "linearized_halo_ndim_system.hpp"
-#include "linearized_ndim_system.hpp"
 #include "linearized_ndim_iterator.hpp"
+#include "linearized_ndim_system.hpp"
 
 namespace grb {
 	namespace utils {
@@ -67,11 +67,9 @@ namespace grb {
 				typename CoordType,
 				typename ValueType,
 				typename ValueCallable
-			>
-			struct HaloMatrixGeneratorIterator {
+			> struct HaloMatrixGeneratorIterator {
 
-				static_assert( std::is_copy_constructible< ValueCallable >::value,
-					"ValueCallable must be copy-constructible" );
+				static_assert( std::is_copy_constructible< ValueCallable >::value, "ValueCallable must be copy-constructible" );
 
 				using RowIndexType = CoordType; ///< numeric type of rows
 				using ColumnIndexType = CoordType;
@@ -84,23 +82,26 @@ namespace grb {
 					friend SelfType;
 
 					HaloPoint(
-						const ValueCallable &value_producer,
+						const ValueCallable & value_producer,
 						RowIndexType i,
 						ColumnIndexType j
 					) noexcept :
 						_value_producer( value_producer ),
 						_i( i ),
-						_j( j )
-					{}
+						_j( j ) {}
 
 					HaloPoint( const HaloPoint & ) = default;
 
 					HaloPoint & operator=( const HaloPoint & ) = default;
 
-					inline RowIndexType i() const { return _i; }
-					inline ColumnIndexType j() const { return _j; }
+					inline RowIndexType i() const {
+						return _i;
+					}
+					inline ColumnIndexType j() const {
+						return _j;
+					}
 					inline ValueType v() const {
-						return _value_producer( _i, _j);
+						return _value_producer( _i, _j );
 					}
 
 				private:
@@ -126,8 +127,8 @@ namespace grb {
 				 * @param non_diag value to emit outside the diagonal
 				 */
 				HaloMatrixGeneratorIterator(
-					const LinearSystemType &system,
-					const ValueCallable &value_producer
+					const LinearSystemType & system,
+					const ValueCallable & value_producer
 				) noexcept :
 					_val( value_producer, 0, 0 ),
 					_lin_system( &system ),
@@ -150,7 +151,7 @@ namespace grb {
 				 * @return HaloMatrixGeneratorIterator<DIMS, T>& \c this object, with the updated state
 				 */
 				SelfType & operator++() noexcept {
-					(void) ++_sys_iter;
+					(void)++_sys_iter;
 					update_coords();
 					return *this;
 				}
@@ -161,7 +162,7 @@ namespace grb {
 					return *this;
 				}
 
-				difference_type operator-( const SelfType &other ) const {
+				difference_type operator-( const SelfType & other ) const {
 					return this->_sys_iter - other._sys_iter;
 				}
 
@@ -172,7 +173,7 @@ namespace grb {
 				 * @return true of the row or the column is different between \p o and \c this
 				 * @return false if both row and column of \p o and \c this are equal
 				 */
-				bool operator!=( const SelfType &o ) const {
+				bool operator!=( const SelfType & o ) const {
 					return this->_sys_iter != o._sys_iter;
 				}
 
@@ -183,7 +184,7 @@ namespace grb {
 				 * @return true of the row or the column is different between \p o and \c this
 				 * @return false if both row and column of \p o and \c this are equal
 				 */
-				bool operator==( const SelfType &o ) const {
+				bool operator==( const SelfType & o ) const {
 					return ! operator!=( o );
 				}
 
@@ -227,7 +228,7 @@ namespace grb {
 
 			private:
 				value_type _val;
-				const LinearSystemType *_lin_system;
+				const LinearSystemType * _lin_system;
 				Iterator _sys_iter;
 
 				void update_coords() {
@@ -237,7 +238,7 @@ namespace grb {
 			};
 
 		} // namespace multigrid
-	} // namespace utils
+	}     // namespace utils
 } // namespace grb
 
 #endif // _H_GRB_ALGORITHMS_MULTIGRID_HALO_MATRIX_GENRATOR_ITERATOR

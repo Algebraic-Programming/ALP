@@ -24,17 +24,16 @@
 #ifndef _H_GRB_ALGORITHMS_MULTIGRID_NDIM_SYSTEM_LINEARIZER
 #define _H_GRB_ALGORITHMS_MULTIGRID_NDIM_SYSTEM_LINEARIZER
 
-#include <cstddef>
 #include <algorithm>
-#include <vector>
-#include <utility>
-#include <stdexcept>
 #include <cassert>
-#include <string>
 #include <cstddef>
+#include <stdexcept>
+#include <string>
+#include <utility>
+#include <vector>
 
-#include "ndim_system.hpp"
 #include "linearized_ndim_iterator.hpp"
+#include "ndim_system.hpp"
 
 namespace grb {
 	namespace utils {
@@ -60,9 +59,9 @@ namespace grb {
 			template<
 				typename SizeType,
 				typename InternalVectorType
-			> class LinearizedNDimSystem: public NDimSystem< SizeType, InternalVectorType > {
+			> class LinearizedNDimSystem : public NDimSystem< SizeType, InternalVectorType > {
 			public:
-				static_assert( std::is_integral< SizeType >::value, "SizeType must be an integral type");
+				static_assert( std::is_integral< SizeType >::value, "SizeType must be an integral type" );
 
 				using BaseType = NDimSystem< SizeType, InternalVectorType >;
 				using SelfType = LinearizedNDimSystem< SizeType, InternalVectorType >;
@@ -78,32 +77,39 @@ namespace grb {
 				 * where each iterator's position stores the size along each dimension; example:
 				 * *begin is the size along dimension 0, *(++begin) is the size along dimension 1 ...
 				 */
-				template< typename IterT > LinearizedNDimSystem( IterT begin, IterT end) noexcept :
+				template< typename IterT >
+				LinearizedNDimSystem(
+					IterT begin,
+					IterT end
+				) noexcept :
 					BaseType( begin, end ),
 					_offsets( std::distance( begin, end ) )
 				{
-					this->_system_size = compute_range_product( begin, end, this->_offsets.begin() ) ;
+					this->_system_size = compute_range_product( begin, end, this->_offsets.begin() );
 				}
 
 				/**
 				 * Construct a new LinearizedNDimSystem object with dimensions \p _sizes.size()
 				 * and sizes stored in \p _sizes.
 				 */
-				LinearizedNDimSystem( const std::vector< size_t > &_sizes ) noexcept :
+				LinearizedNDimSystem( const std::vector< size_t > & _sizes ) noexcept :
 					LinearizedNDimSystem( _sizes.cbegin(), _sizes.cend() ) {}
 
 				/**
 				 * Construct a new LinearizedNDimSystem object with \p _dimensions dimensions
 				 * and sizes all equal to \p max_value.
 				 */
-				LinearizedNDimSystem( size_t _dimensions, size_t _size ) noexcept :
+				LinearizedNDimSystem(
+					size_t _dimensions,
+					size_t _size
+				) noexcept :
 					BaseType( _dimensions, _size ),
 					_offsets( _dimensions ),
 					_system_size( _dimensions )
 				{
 					SizeType v = 1;
-					for( size_t i =0; i < _dimensions; i++ ) {
-						this->_offsets[i] = v;
+					for( size_t i = 0; i < _dimensions; i++ ) {
+						this->_offsets[ i ] = v;
 						v *= _size;
 					}
 					this->_system_size = v;
@@ -111,19 +117,21 @@ namespace grb {
 
 				LinearizedNDimSystem() = delete;
 
-				LinearizedNDimSystem( const SelfType &original ) = default;
+				LinearizedNDimSystem( const SelfType & original ) = default;
 
-				LinearizedNDimSystem( SelfType &&original ) noexcept:
-					BaseType( std::move(original) ), _offsets( std::move( original._offsets ) ),
-					_system_size( original._system_size ) {
-						original._system_size = 0;
+				LinearizedNDimSystem( SelfType && original ) noexcept :
+					BaseType( std::move( original ) ),
+					_offsets( std::move( original._offsets ) ),
+					_system_size( original._system_size )
+				{
+					original._system_size = 0;
 				}
 
 				~LinearizedNDimSystem() {}
 
-				SelfType& operator=( const SelfType & ) = default;
+				SelfType & operator=( const SelfType & ) = default;
 
-				SelfType& operator=( SelfType &&original ) = delete;
+				SelfType & operator=( SelfType && original ) = delete;
 
 				/**
 				 * Computes the size of the system, i.e. its number of elements;
@@ -147,15 +155,18 @@ namespace grb {
 				 * @param[in] linear linear index
 				 * @param[out] output output vector \p linear corresponds to
 				 */
-				void linear_to_ndim( size_t linear, VectorReference output ) const {
+				void linear_to_ndim(
+					size_t linear,
+					VectorReference output
+				) const {
 					if( linear > this->_system_size ) {
 						throw std::range_error( "linear value beyond system" );
 					}
 					for( size_t _i = this->_offsets.dimensions(); _i > 0; _i-- ) {
 						const size_t dim = _i - 1;
-						const size_t coord = linear / this->_offsets[dim];
-						output[dim] = coord;
-						linear -= ( coord * this->_offsets[dim] );
+						const size_t coord = linear / this->_offsets[ dim ];
+						output[ dim ] = coord;
+						linear -= ( coord * this->_offsets[ dim ] );
 					}
 					assert( linear == 0 );
 				}
@@ -165,7 +176,7 @@ namespace grb {
 				 * a const reference to \p InternalVectorType and checks whether each value in the input
 				 * vector \p ndim_vector is within the system sizes (otherwise it throws).
 				 */
-				size_t ndim_to_linear_check( ConstVectorReference ndim_vector) const {
+				size_t ndim_to_linear_check( ConstVectorReference ndim_vector ) const {
 					return this->ndim_to_linear_check( ndim_vector.storage() );
 				}
 
@@ -178,7 +189,7 @@ namespace grb {
 				size_t ndim_to_linear_check( ConstVectorStorageType ndim_vector ) const {
 					size_t linear = 0;
 					for( size_t i = 0; i < this->dimensions(); i++ ) {
-						if( ndim_vector[i] >= this->get_sizes()[i] ) {
+						if( ndim_vector[ i ] >= this->get_sizes()[ i ] ) {
 							throw std::invalid_argument( "input vector beyond system sizes" );
 						}
 					}
@@ -190,7 +201,7 @@ namespace grb {
 				 * a const reference to \p InternalVectorType but does not check whether each value in the input
 				 * vector \p ndim_vector is within the system sizes.
 				 */
-				size_t ndim_to_linear( ConstVectorReference ndim_vector) const {
+				size_t ndim_to_linear( ConstVectorReference ndim_vector ) const {
 					return this->ndim_to_linear( ndim_vector.storage() );
 				}
 
@@ -202,7 +213,7 @@ namespace grb {
 				size_t ndim_to_linear( ConstVectorStorageType ndim_vector ) const {
 					size_t linear = 0;
 					for( size_t i = 0; i < this->dimensions(); i++ ) {
-						linear += this->_offsets[i] * ndim_vector[i];
+						linear += this->_offsets[ i ] * ndim_vector[ i ];
 					}
 					return linear;
 				}
@@ -215,12 +226,13 @@ namespace grb {
 				 */
 				void retarget( ConstVectorReference _new_sizes ) {
 					if( _new_sizes.dimensions() != this->_sizes.dimensions() ) {
-						throw std::invalid_argument("new system must have same dimensions as previous: new "
-							+ std::to_string( _new_sizes.dimensions() ) + ", old "
-							+ std::to_string( this->_sizes.dimensions() ) );
+						throw std::invalid_argument(
+							"new system must have same dimensions as previous: new " + std::to_string( _new_sizes.dimensions() )
+								+ ", old " + std::to_string( this->_sizes.dimensions() ) );
 					}
 					this->_sizes = _new_sizes; // copy
-					this->_system_size = compute_range_product( _new_sizes.begin(), _new_sizes.end(), this->_offsets.begin() ) ;
+					this->_system_size = compute_range_product( _new_sizes.begin(), _new_sizes.end(),
+						this->_offsets.begin() );
 				}
 
 				/**
@@ -254,7 +266,11 @@ namespace grb {
 				template<
 					typename IterIn,
 					typename IterOut
-				> static size_t compute_range_product( IterIn in_begin, IterIn in_end, IterOut out_begin ) {
+				> static size_t compute_range_product(
+					IterIn in_begin,
+					IterIn in_end,
+					IterOut out_begin
+				) {
 					size_t prod = 1;
 					for( ; in_begin != in_end; ++in_begin, ++out_begin ) {
 						*out_begin = prod;
@@ -265,7 +281,7 @@ namespace grb {
 			};
 
 		} // namespace multigrid
-	} // namespace utils
+	}     // namespace utils
 } // namespace grb
 
 #endif // _H_GRB_ALGORITHMS_MULTIGRID_NDIM_SYSTEM_LINEARIZER

@@ -15,13 +15,15 @@
  * limitations under the License.
  */
 
-/*
- * @author Alberto Scolari
- * @date 14th February, 2023
+/**
+ * @file Timeable.hpp
+ * @author Alberto Scolari (alberto.scolar@huawei.com)
+ *
+ * Definition for the Timeable class.
  */
 
-#ifndef _H_GRB_UTILS_TIMEABLE
-#define _H_GRB_UTILS_TIMEABLE
+#ifndef _H_GRB_UTILS_TELEMETRY_TIMEABLE
+#define _H_GRB_UTILS_TELEMETRY_TIMEABLE
 
 #include "Stopwatch.hpp"
 
@@ -29,6 +31,14 @@ namespace grb {
 	namespace utils {
 		namespace telemetry {
 
+			/**
+			 * Facility for inheriting classes that want to time interal operations:
+			 * this class provides protected methods to measure elapsed time and public methods to expose
+			 * elapsed time and allow resetting the internal elapsed time.
+			 *
+			 * @tparam TelControllerType type of telemetry controller
+			 * @tparam enabled whether telemetry is enabled
+			 */
 			template<
 				typename TelControllerType,
 				bool enabled = TelControllerType::enabled
@@ -44,23 +54,41 @@ namespace grb {
 
 				Timeable& operator=( const self_t & ) = delete;
 
+				/**
+				 * Get the elapsed time, in nanoseconds.
+				 */
 				constexpr inline duration_nano_t getElapsedNano() const {
 					return static_cast< duration_nano_t >( 0 );
 				}
 
+				/**
+				 * Reset the internal value of elapsed time.
+				 */
 				constexpr inline duration_nano_t reset() {
 					return static_cast< duration_nano_t >( 0 );
 				}
 
 			protected:
+
+				/**
+				 * Starts measuring the elapsed time.
+				 */
 				inline void start() {}
 
+				/**
+				 * Stops measuring elapsed time.
+				 */
 				constexpr inline duration_nano_t stop() {
 					return static_cast< duration_nano_t >( 0 );
 				}
 
 			};
 
+			/**
+			 * Implementation of Timeable for enabled telemetry.
+			 *
+			 * @tparam TelControllerType type of telemetry controller.
+			 */
 			template< typename TelControllerType > class Timeable< TelControllerType, true > {
 			public:
 				using self_t = Timeable< TelControllerType, true >;
@@ -98,4 +126,4 @@ namespace grb {
 	}
 }
 
-#endif // _H_GRB_UTILS_TIMEABLE
+#endif // _H_GRB_UTILS_TELEMETRY_TIMEABLE

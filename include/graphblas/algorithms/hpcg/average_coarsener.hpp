@@ -24,12 +24,12 @@
 #ifndef _H_GRB_ALGORITHMS_AVERAGE_COARSENER
 #define _H_GRB_ALGORITHMS_AVERAGE_COARSENER
 
-#include <cstddef>
 #include <array>
-#include <iterator>
-#include <stdexcept>
 #include <cmath>
+#include <cstddef>
+#include <iterator>
 #include <numeric>
+#include <stdexcept>
 
 #include <graphblas/utils/multigrid/array_vector_storage.hpp>
 #include <graphblas/utils/multigrid/linearized_ndim_system.hpp>
@@ -87,16 +87,21 @@ namespace grb {
 				) noexcept :
 					_i( i ),
 					_j( j ),
-					_value( value )
-				{}
+					_value( value ) {}
 
 				_ValueGenerator( const _ValueGenerator & ) = default;
 
 				_ValueGenerator & operator=( const _ValueGenerator & ) = default;
 
-				inline RowIndexType i() const { return _i; }
-				inline ColumnIndexType j() const { return _j; }
-				inline ValueType v() const { return _value; }
+				inline RowIndexType i() const {
+					return _i;
+				}
+				inline ColumnIndexType j() const {
+					return _j;
+				}
+				inline ValueType v() const {
+					return _value;
+				}
 
 			private:
 				RowIndexType _i;
@@ -108,12 +113,12 @@ namespace grb {
 			using iterator_category = std::random_access_iterator_tag;
 			using value_type = _ValueGenerator;
 			using pointer = const value_type;
-			using reference = const value_type&;
+			using reference = const value_type &;
 			using difference_type = typename LinearSystemIterType::difference_type;
 
-			AverageGeneratorIterator( const SelfType &o ) = default;
+			AverageGeneratorIterator( const SelfType & o ) = default;
 
-			AverageGeneratorIterator( SelfType &&o ) = default;
+			AverageGeneratorIterator( SelfType && o ) = default;
 
 			SelfType & operator=( const SelfType & ) = default;
 
@@ -123,11 +128,11 @@ namespace grb {
 			 * Advances \c this by 1 in constant time.
 			 */
 			SelfType & operator++() noexcept {
-				(void) ++_subspace_iter;
+				(void)++_subspace_iter;
 				size_t subspace_position = _subspace_iter->get_linear_position();
 				// std::cout << "subspace_position " << subspace_position << std::endl;
 				if( subspace_position == _num_neighbors ) {
-					(void) ++_sys_iter;
+					(void)++_sys_iter;
 					_subspace_iter = _finer_subspace->begin();
 				}
 				update_coords();
@@ -150,21 +155,21 @@ namespace grb {
 			/**
 			 * Computes the difference between \c this and \p o as integer.
 			 */
-			difference_type operator-( const SelfType &o ) const {
+			difference_type operator-( const SelfType & o ) const {
 				return this->_sys_iter - o._sys_iter;
 			}
 
 			/**
 			 * Returns whether \c this and \p o differ.
 			 */
-			bool operator!=( const SelfType &o ) const {
+			bool operator!=( const SelfType & o ) const {
 				return this->_sys_iter != o._sys_iter;
 			}
 
 			/**
 			 * Returns whether \c this and \p o are equal.
 			 */
-			bool operator==( const SelfType &o ) const {
+			bool operator==( const SelfType & o ) const {
 				return ! this->operator!=( o );
 			}
 
@@ -198,9 +203,9 @@ namespace grb {
 			}
 
 		private:
-			const LinearSystemType *_lin_sys;
-			const LinearSystemType *_finer_subspace;
-			const ArrayType *_steps;
+			const LinearSystemType * _lin_sys;
+			const LinearSystemType * _finer_subspace;
+			const ArrayType * _steps;
 			CoordType _num_neighbors;
 			LinearSystemIterType _sys_iter;
 			LinearSystemIterType _subspace_iter;
@@ -217,9 +222,9 @@ namespace grb {
 			 * @param steps ratios per dimension between finer and coarser system
 			 */
 			AverageGeneratorIterator(
-				const LinearSystemType &system,
-				const LinearSystemType &finer_subspace,
-				const ArrayType &steps
+				const LinearSystemType & system,
+				const LinearSystemType & finer_subspace,
+				const ArrayType & steps
 			) noexcept :
 				_lin_sys( &system ),
 				_finer_subspace( &finer_subspace ),
@@ -246,7 +251,7 @@ namespace grb {
 				ColumnIndexType s = 1;
 				for( size_t i = 0; i < DIMS; i++ ) {
 					finer += s * _subspace_iter->get_position()[ i ];
-					s *= (*_steps)[ i ];
+					s *= ( *_steps )[ i ];
 					finer += s * _sys_iter->get_position()[ i ];
 					s *= _lin_sys->get_sizes()[ i ];
 				}
@@ -280,8 +285,8 @@ namespace grb {
 			 * otherwise an exception is raised.
 			 */
 			AverageCoarsenerBuilder(
-				const ArrayType &_finer_sizes,
-				const ArrayType &_coarser_sizes
+				const ArrayType & _finer_sizes,
+				const ArrayType & _coarser_sizes
 			) :
 				system( _coarser_sizes.begin(), _coarser_sizes.end() ),
 				_finer_subspace( _coarser_sizes.cbegin(), _coarser_sizes.cend() ),
@@ -291,10 +296,8 @@ namespace grb {
 					// finer size MUST be an exact multiple of coarser_size
 					std::ldiv_t ratio = std::ldiv( _finer_sizes[ i ], _coarser_sizes[ i ] );
 					if( ratio.quot < 2 || ratio.rem != 0 ) {
-						throw std::invalid_argument(
-							std::string( "finer size of dimension " ) + std::to_string( i ) +
-							std::string( "is not an exact multiple of coarser size" )
-						);
+						throw std::invalid_argument( std::string( "finer size of dimension " )
+							+ std::to_string( i ) + std::string( "is not an exact multiple of coarser size" ) );
 					}
 					steps[ i ] = ratio.quot;
 				}
@@ -338,10 +341,9 @@ namespace grb {
 				grb::utils::multigrid::ArrayVectorStorage< DIMS, CoordType > > system;
 			grb::utils::multigrid::LinearizedNDimSystem< CoordType,
 				grb::utils::multigrid::ArrayVectorStorage< DIMS, CoordType > > _finer_subspace;
-
-			grb::utils::multigrid::ArrayVectorStorage< DIMS, CoordType > steps; ///< array of steps, i.e. how much each column coordinate (finer system) must be
-			//// incremented when incrementing the row coordinates; is is the ration between
-			//// #finer_sizes and row_generator#physical_sizes
+			grb::utils::multigrid::ArrayVectorStorage< DIMS, CoordType > steps;///< array of steps, i.e. how much each column coordinate (finer system) must be
+																				//// incremented when incrementing the row coordinates; is is the ration between
+			                                                                    //// #finer_sizes and row_generator#physical_sizes
 		};
 
 	} // namespace algorithms

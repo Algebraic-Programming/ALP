@@ -25,10 +25,10 @@
 #ifndef _H_GRB_ALGORITHMS_MULTIGRID_ARRAY_VECTOR_STORAGE
 #define _H_GRB_ALGORITHMS_MULTIGRID_ARRAY_VECTOR_STORAGE
 
-#include <array>
-#include <stdexcept>
 #include <algorithm>
+#include <array>
 #include <cstddef>
+#include <stdexcept>
 
 namespace grb {
 	namespace utils {
@@ -46,11 +46,10 @@ namespace grb {
 			template<
 				size_t DIMS,
 				typename DataType
-			> class ArrayVectorStorage: public std::array< DataType, DIMS > {
+			> class ArrayVectorStorage : public std::array< DataType, DIMS > {
 			public:
-
-				using VectorStorageType = std::array< DataType, DIMS >&;
-				using ConstVectorStorageType = const std::array< DataType, DIMS >&;
+				using VectorStorageType = std::array< DataType, DIMS > &;
+				using ConstVectorStorageType = const std::array< DataType, DIMS > &;
 				using SelfType = ArrayVectorStorage< DIMS, DataType >;
 
 				/**
@@ -62,25 +61,25 @@ namespace grb {
 				ArrayVectorStorage( size_t _dimensions ) {
 					static_assert( DIMS > 0, "cannot allocate 0-sized array" );
 					if( _dimensions != DIMS ) {
-						throw std::invalid_argument("given dimensions must match the type dimensions");
+						throw std::invalid_argument( "given dimensions must match the type dimensions" );
 					}
 				}
 
 				ArrayVectorStorage() = delete;
 
 				// only copy constructor/assignment, since there's no external storage
-				ArrayVectorStorage( const SelfType &o ) noexcept {
+				ArrayVectorStorage( const SelfType & o ) noexcept {
 					std::copy_n( o.cbegin(), DIMS, this->begin() );
 				}
 
-				ArrayVectorStorage( SelfType &&o ) = delete;
+				ArrayVectorStorage( SelfType && o ) = delete;
 
-				SelfType& operator=( const SelfType &original ) noexcept {
+				SelfType & operator=( const SelfType & original ) noexcept {
 					std::copy_n( original.begin(), DIMS, this->begin() );
 					return *this;
 				}
 
-				SelfType & operator=( SelfType &&original ) = delete;
+				SelfType & operator=( SelfType && original ) = delete;
 
 				/**
 				 * Returns the geometrical dimensions of this vector, i.e. of the
@@ -106,7 +105,7 @@ namespace grb {
 			};
 
 		} // namespace multigrid
-	} // namespace utils
+	}     // namespace utils
 } // namespace grb
 
 #endif // _H_GRB_ALGORITHMS_MULTIGRID_ARRAY_VECTOR_STORAGE

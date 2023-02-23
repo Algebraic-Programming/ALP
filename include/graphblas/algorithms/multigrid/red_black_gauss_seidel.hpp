@@ -38,8 +38,8 @@ namespace grb {
 		 */
 		template< typename IOType > struct SmootherData {
 
-			grb::Vector< IOType > A_diagonal; ///< vector with the diagonal of #A
-			grb::Vector< IOType > smoother_temp; ///< for smoother's intermediate results
+			grb::Vector< IOType > A_diagonal;               ///< vector with the diagonal of #A
+			grb::Vector< IOType > smoother_temp;            ///< for smoother's intermediate results
 			std::vector< grb::Vector< bool > > color_masks; ///< for color masks
 
 			/**
@@ -59,7 +59,6 @@ namespace grb {
 			}
 		};
 
-
 		/**
 		 * Runner object for the RBGS smoother, with multiple methods for each type of smoothing step:
 		 * pre-, post- and non-recursive, as invoked during a full run of a multi-grid V-cycle.
@@ -70,7 +69,7 @@ namespace grb {
 		 * @tparam TelControllerType telemetry controller to (de)activate time tracing within passed MultiGridData objects
 		 * @tparam descr descriptors with statically-known data for computation and containers
 		 */
-		template <
+		template<
 			class SmootherTypes,
 			typename TelControllerType,
 			Descriptor descr = descriptors::no_operation
@@ -83,27 +82,25 @@ namespace grb {
 			using SmootherInputType = MultiGridData< IOType, NonzeroType, TelControllerType >; ///< external input structure
 			using SmootherDataType = SmootherData< IOType >; ///< smoothing information and temporary variables (per MG level)
 
-			size_t presmoother_steps = 1UL; ///< number of pre-smoother steps
-			size_t postsmoother_steps = 1UL;  ///< number of post-smoother steps
-			size_t non_recursive_smooth_steps = 1UL;  ///< number of smoother steps for the last grid level
-			std::vector< std::unique_ptr< SmootherDataType > > levels;  ///< for each grid level,
-				///< the smoothing data (finest first)
-			Ring ring;  ///< the algebraic ring
+			size_t presmoother_steps = 1UL;                            ///< number of pre-smoother steps
+			size_t postsmoother_steps = 1UL;                           ///< number of post-smoother steps
+			size_t non_recursive_smooth_steps = 1UL;                   ///< number of smoother steps for the last grid level
+			std::vector< std::unique_ptr< SmootherDataType > > levels; ///< for each grid level,
+			                                                           ///< the smoothing data (finest first)
+			Ring ring;                                                 ///< the algebraic ring
 
 			static_assert( std::is_default_constructible< Ring >::value,
 				"cannot construct the Ring operator with default values" );
 
-
-
-			inline grb::RC pre_smooth( SmootherInputType& data ) {
+			inline grb::RC pre_smooth( SmootherInputType & data ) {
 				return run_smoother( data, presmoother_steps );
 			}
 
-			inline grb::RC post_smooth( SmootherInputType& data ) {
+			inline grb::RC post_smooth( SmootherInputType & data ) {
 				return run_smoother( data, postsmoother_steps );
 			}
 
-			inline grb::RC nonrecursive_smooth( SmootherInputType& data ) {
+			inline grb::RC nonrecursive_smooth( SmootherInputType & data ) {
 				return run_smoother( data, non_recursive_smooth_steps );
 			}
 
@@ -116,12 +113,12 @@ namespace grb {
 			 * smoother performs all smoothing steps the same way.
 			 */
 			grb::RC run_smoother(
-				SmootherInputType &data,
+				SmootherInputType & data,
 				const size_t smoother_steps
 			) {
 				RC ret = SUCCESS;
 
-				SmootherDataType &smoothing_info = *( levels.at( data.level ).get() );
+				SmootherDataType & smoothing_info = *( levels.at( data.level ).get() );
 
 				data.sm_stopwatch.start();
 				for( size_t i = 0; i < smoother_steps && ret == SUCCESS; i++ ) {
@@ -145,8 +142,8 @@ namespace grb {
 			 *  unsuccessful operation otherwise
 			 */
 			grb::RC red_black_gauss_seidel_single_step(
-				SmootherInputType &data,
-				SmootherDataType &smoothing_info,
+				SmootherInputType & data,
+				SmootherDataType & smoothing_info,
 				size_t color
 			) {
 				const grb::Matrix< NonzeroType > & A = data.A;
@@ -168,16 +165,16 @@ namespace grb {
 				// z[mask] = r[mask] - smoother_temp[mask] + z[mask] .* diagonal[mask]
 				// z[mask] = z[maks] ./ diagonal[mask]
 				ret = ret ? ret :
-					grb::eWiseLambda(
-						[ &z, &r, &smoother_temp, &color_mask, &A_diagonal ]( const size_t i ) {
-							// if the mask was properly initialized, the check on the mask value is unnecessary;
-							// if( color_mask[ i ] ) {
-							IOType d = A_diagonal[ i ];
-							IOType v = r[ i ] - smoother_temp[ i ] + z[ i ] * d;
-							z[ i ] = v / d;
-							// }
-						},
-						color_mask, z, r, smoother_temp, A_diagonal );
+                            grb::eWiseLambda(
+								[ &z, &r, &smoother_temp, &color_mask, &A_diagonal ]( const size_t i ) {
+									// if the mask was properly initialized, the check on the mask value is unnecessary;
+					                // if( color_mask[ i ] ) {
+									IOType d = A_diagonal[ i ];
+									IOType v = r[ i ] - smoother_temp[ i ] + z[ i ] * d;
+									z[ i ] = v / d;
+									// }
+								},
+								color_mask, z, r, smoother_temp, A_diagonal );
 				assert( ret == SUCCESS );
 				return ret;
 			}
@@ -197,32 +194,31 @@ namespace grb {
 			 *                          unsuccessful operation otherwise
 			 */
 			grb::RC red_black_gauss_seidel(
-				SmootherInputType &data,
-				SmootherDataType &smoothing_info
+				SmootherInputType & data,
+				SmootherDataType & smoothing_info
 			) {
 				RC ret = SUCCESS;
 				// zero the temp output just once, assuming proper masking avoids
 				// interference among different colors
 				ret = ret ? ret : grb::set< descr >( smoothing_info.smoother_temp,
-					ring. template getZero< IOType >() );
+					ring.template getZero< IOType >() );
 
 				// forward step
 				for( size_t color = 0; color < smoothing_info.color_masks.size(); ++color ) {
 					ret = red_black_gauss_seidel_single_step( data, smoothing_info, color );
 				}
 				ret = ret ? ret : grb::set< descr >( smoothing_info.smoother_temp,
-					ring. template getZero< IOType >() );
+					ring.template getZero< IOType >() );
 
 				// backward step
 				for( size_t color = smoothing_info.color_masks.size(); color > 0; --color ) {
 					ret = red_black_gauss_seidel_single_step( data, smoothing_info, color - 1 );
-
 				}
 				return ret;
 			}
 		};
 
-	}     // namespace algorithms
+	} // namespace algorithms
 } // namespace grb
 
 #endif // H_GRB_ALGORITHMS_RED_BLACK_GAUSS_SEIDEL

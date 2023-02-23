@@ -16,8 +16,8 @@
  */
 
 /**
- * @author Alberto Scolari
- * @date 1st March, 2023
+ * @file TelemetryController.hpp
+ * @author Alberto Scolari (alberto.scolar@huawei.com)
  *
  * This file defines the basic functionalities for <b>Telemetry Controllers</b>, i.e.,
  * objects that enable/disable telemetry at compile-time and runtime.
@@ -102,67 +102,22 @@ namespace grb {
 			 * field, possibly "short-circuiting" when #enabled is \a false. This implementation does
 			 * exactly this, disabling telemetry at compile-time and ignoring any runtime information.
 			 *
-			 * @tparam en whether telemetry is enabled (\p en = \a true has a dedicated template specialization)
+			 * Copy semantics is not available, because a controller stores just one piece of information
+			 * (whether it is active) and a copy would essentially behave as a new object.
+			 * Therefore, users should rather create new controllers themselves or pass around references
+			 * to the same controller, in order to centralize control via a single controller object.
+			 *
+			 * Also move semantics is not available, since an "empty" controller makes no sense.
+			 *
+			 * This implementation assumes \p en = \a true, because a specialization for
+			 * \p en = \a false exists (hence #enabled is set as \a true at compile-time).
+			 *
+			 * @tparam en whether telemetry is enabled (\p en = \a false has a
+			 * dedicated template specialization)
 			 */
 			template< bool en > class TelemetryControllerBase {
 			public:
 				using self_t = TelemetryControllerBase< en >;
-
-				/**
-				 * Construct a new Telemetry Controller Base object with runtime information.
-				 *
-				 * HEre, runtime information is ignored, as this implementation disables any telemetry.
-				 *
-				 * @param _enabled whether telemetry is runtime-enabled (ignored here)
-				 */
-				TelemetryControllerBase( bool _enabled ) {
-					(void) _enabled;
-				}
-
-				TelemetryControllerBase() = delete;
-
-				TelemetryControllerBase( const self_t & ) = delete;
-
-				TelemetryControllerBase& operator=( const self_t & ) = delete;
-
-				/**
-				 * Whether telemetry is runtime-active.
-				 *
-				 * @return true never here
-				 * @return false always
-				 */
-				constexpr bool inline is_active() const { return false; }
-
-				/**
-				 * Set the active status of the telemetry controller.
-				 *
-				 * This \a disabled implementation ignores the input \p _active.
-				 */
-				void inline set_active( bool _active ) {
-					( void ) _active;
-				}
-
-				/**
-				 * Whether telemetry is compile-time active (never here).
-				 */
-				static constexpr bool enabled = false;
-			};
-
-			/**
-			 * Convenience definition fo an always-off telemetry controller.
-			 */
-			using TelemetryControllerAlwaysOff = TelemetryControllerBase< false >;
-
-			/**
-			 * Template specialization for compile-time enabled telemetry, which
-			 * can be controlled at runtime.
-			 *
-			 * The controller is \b enabled by default, and its \a active status can be controlled
-			 * at runtime via the constructor and the #set_active(bool) method.
-			 */
-			template<> class TelemetryControllerBase< true > {
-			public:
-				using self_t = TelemetryControllerBase< true >;
 
 				/**
 				 * Construct a new Telemetry oCntroller Base object, specifying the \a active state.
@@ -201,6 +156,60 @@ namespace grb {
 			};
 
 			/**
+			 * Template specialization for compile-time disabled telemetry,
+			 * whose functionalities are all disabled.
+			 *
+			 * The controller is \b disabled by default, and modifications to
+			 * its \a active status are ignored.
+			 */
+			template< > class TelemetryControllerBase< false > {
+			public:
+				using self_t = TelemetryControllerBase< false >;
+
+				/**
+				 * Construct a new Telemetry Controller Base object with runtime information.
+				 *
+				 * Here, runtime information is ignored, as this implementation disables any telemetry.
+				 *
+				 * @param _enabled whether telemetry is runtime-enabled (ignored here)
+				 */
+				TelemetryControllerBase( bool _enabled ) {
+					(void) _enabled;
+				}
+
+				TelemetryControllerBase() = delete;
+
+				TelemetryControllerBase( const self_t & ) = delete;
+
+				TelemetryControllerBase& operator=( const self_t & ) = delete;
+
+				/**
+				 * Whether telemetry is runtime-active.
+				 *
+				 * @return true never here
+				 * @return false always
+				 */
+				constexpr bool inline is_active() const { return false; }
+
+				/**
+				 * Set the active status of the telemetry controller.
+				 *
+				 * This \a disabled implementation ignores the input \p _active.
+				 */
+				void inline set_active( bool ) {}
+
+				/**
+				 * Whether telemetry is compile-time active (never here).
+				 */
+				static constexpr bool enabled = false;
+			};
+
+			/**
+			 * Convenience definition fo an always-off telemetry controller.
+			 */
+			using TelemetryControllerAlwaysOff = TelemetryControllerBase< false >;
+
+			/**
 			 * Always active controller, useful especially for prototyping scenarios.
 			 */
 			class TelemetryControllerAlwaysOn {
@@ -225,9 +234,7 @@ namespace grb {
 				 *
 				 * This \a disabled implementation ignores the input \p _active.
 				 */
-				void inline set_active( bool _active ) {
-					( void ) _active;
-				}
+				void inline set_active( bool ) {}
 
 				/**
 				 * Whether telemetry is compile-time active (here always).
@@ -294,15 +301,17 @@ namespace grb {
  * This declaration requires the declaration of an associated controller enabler type, which controls
  * whether the controller is enabled at compile-time; the controller is by default \b deactivated.
  */
-#define DEFINE_TELEMETRY_CONTROLLER( name ) 																\
-	class __TELEMETRY_CONTROLLER_ENABLER_NAME( name ) {};												\
-	using name = class __TELEMETRY_CONTROLLER_NAME( name ) :												\
-		public grb::utils::telemetry::TelemetryControllerBase<											\
-			grb::utils::telemetry::is_controller_enabled< __TELEMETRY_CONTROLLER_ENABLER_NAME( name ) >() > {	\
-	public:																							\
-		using base_t = grb::utils::telemetry::TelemetryControllerBase<									\
-			grb::utils::telemetry::is_controller_enabled< __TELEMETRY_CONTROLLER_ENABLER_NAME( name ) >() >;	\
-		__TELEMETRY_CONTROLLER_NAME( name )( bool _enabled ) : base_t( _enabled ) {}						\
+#define DEFINE_TELEMETRY_CONTROLLER( name ) 											\
+	class __TELEMETRY_CONTROLLER_ENABLER_NAME( name ) {};								\
+	using name = class __TELEMETRY_CONTROLLER_NAME( name ) :							\
+		public grb::utils::telemetry::TelemetryControllerBase<							\
+			grb::utils::telemetry::is_controller_enabled<								\
+				__TELEMETRY_CONTROLLER_ENABLER_NAME( name ) >() > {						\
+	public:																				\
+		using base_t = grb::utils::telemetry::TelemetryControllerBase<					\
+			grb::utils::telemetry::is_controller_enabled<								\
+				__TELEMETRY_CONTROLLER_ENABLER_NAME( name ) >() >;						\
+		__TELEMETRY_CONTROLLER_NAME( name )( bool _enabled ) : base_t( _enabled ) {}	\
 	};
 
 /**
@@ -311,9 +320,9 @@ namespace grb {
  * Once enabled, it can be runtime activated.
  */
 #define ENABLE_TELEMETRY_CONTROLLER( name ) class __TELEMETRY_CONTROLLER_ENABLER_NAME( name );	\
-	namespace grb { namespace utils { namespace telemetry {						\
-		template<> constexpr bool is_controller_enabled<								\
-			__TELEMETRY_CONTROLLER_ENABLER_NAME( name ) >() { return true; } 		\
+	namespace grb { namespace utils { namespace telemetry {										\
+		template<> constexpr bool is_controller_enabled<										\
+			__TELEMETRY_CONTROLLER_ENABLER_NAME( name ) >() { return true; } 					\
 	} } }
 
 #endif // _H_GRB_UTILS_TELEMETRY_TELEMETRY_CONTROLLER

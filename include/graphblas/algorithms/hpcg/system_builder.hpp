@@ -34,14 +34,13 @@
 #include <array>
 #include <cstddef>
 #include <initializer_list>
+#include <iterator>
 #include <numeric>
 #include <stdexcept>
 #include <string>
 #include <type_traits>
 #include <utility>
 #include <vector>
-#include <cstddef>
-#include <iterator>
 
 #include <graphblas/utils/multigrid/halo_matrix_generator_iterator.hpp>
 
@@ -73,8 +72,11 @@ namespace grb {
 
 				HPCGDiagGenerator & operator=( const HPCGDiagGenerator & ) = default;
 
-				inline ValueType operator()( const CoordType &i, const CoordType &j ) const noexcept {
-					return j == i ? _diag: _non_diag;
+				inline ValueType operator()(
+					const CoordType & i,
+					const CoordType & j
+				) const noexcept {
+					return j == i ? _diag : _non_diag;
 				}
 
 				ValueType _diag;
@@ -82,8 +84,8 @@ namespace grb {
 			};
 
 			using HaloSystemType = grb::utils::multigrid::LinearizedHaloNDimSystem< DIMS, CoordType >;
-			using Iterator = grb::utils::multigrid::HaloMatrixGeneratorIterator< DIMS, CoordType,
-				ValueType, HPCGDiagGenerator >;
+			using Iterator = grb::utils::multigrid::HaloMatrixGeneratorIterator< DIMS,
+				CoordType, ValueType, HPCGDiagGenerator >;
 
 			/**
 			 * Construct a new HPCGSystemBuilder object from the data of the physical system.
@@ -94,7 +96,7 @@ namespace grb {
 			 * @param non_diag value outside the diagonal, for element-element interaction
 			 */
 			HPCGSystemBuilder(
-				const std::array< CoordType, DIMS > &sizes,
+				const std::array< CoordType, DIMS > & sizes,
 				CoordType halo,
 				ValueType diag,
 				ValueType non_diag
@@ -116,9 +118,11 @@ namespace grb {
 
 			HPCGSystemBuilder( HPCGSystemBuilder< DIMS, CoordType, ValueType > && ) = default;
 
-			HPCGSystemBuilder< DIMS, CoordType, ValueType > & operator=( const HPCGSystemBuilder< DIMS, CoordType, ValueType > & ) = default;
+			HPCGSystemBuilder< DIMS, CoordType, ValueType > & operator=(
+				const HPCGSystemBuilder< DIMS, CoordType, ValueType > & ) = default;
 
-			HPCGSystemBuilder< DIMS, CoordType, ValueType > & operator=( HPCGSystemBuilder< DIMS, CoordType, ValueType > && ) = default;
+			HPCGSystemBuilder< DIMS, CoordType, ValueType > & operator=(
+				HPCGSystemBuilder< DIMS, CoordType, ValueType > && ) = default;
 
 			/**
 			 * Number of elements of the mesh.
@@ -175,4 +179,3 @@ namespace grb {
 } // namespace grb
 
 #endif // _H_GRB_ALGORITHMS_HPCG_SYSTEM_BUILDER
-
