@@ -141,16 +141,15 @@ namespace grb {
 		template <
 			size_t DIMS,
 			typename CoordType,
-			typename NonzeroType
+			typename NonzeroType,
+			typename Logger
 		> grb::RC hpcg_populate_system_matrix(
 			const grb::algorithms::HPCGSystemBuilder< DIMS, CoordType, NonzeroType > &system_generator,
-			grb::Matrix< NonzeroType > &M
+			grb::Matrix< NonzeroType > &M,
+			Logger & logger
 		) {
-			const size_t pid = spmd<>::pid();
 
-			if( pid == 0) {
-				std::cout << "- generating system matrix...";
-			}
+			logger << "- generating system matrix...";
 			typename grb::algorithms::HPCGSystemBuilder< DIMS, CoordType, NonzeroType >::Iterator begin(
 				system_generator.make_begin_iterator() );
 			typename grb::algorithms::HPCGSystemBuilder< DIMS, CoordType, NonzeroType >::Iterator end(
@@ -421,24 +420,20 @@ namespace grb {
 		template<
 			size_t DIMS,
 			typename CoordType,
-			typename NonzeroType
+			typename NonzeroType,
+			typename Logger
 		> grb::RC hpcg_populate_smoothing_data(
 			const grb::algorithms::HPCGSystemBuilder< DIMS, CoordType, NonzeroType > &system_generator,
-			SmootherData< NonzeroType > &smoothing_info
+			SmootherData< NonzeroType > &smoothing_info,
+			Logger & logger
 		) {
-			const size_t pid = spmd<>::pid();
-
 			grb::RC rc = set( smoothing_info.A_diagonal, system_generator.get_diag_value() );
 			if( rc != grb::SUCCESS ) {
-				if( pid == 0 ) {
-					std::cout << "error: " << __LINE__ << std::endl;
-				}
+				logger << "error: " << __LINE__ << std::endl;
 				return rc;
 			}
 
-			if( pid == 0 ) {
-				std::cout << "- running coloring heuristics...";
-			}
+			logger << "- running coloring heuristics...";
 			std::vector< CoordType > colors, color_counters;
 			hpcg_greedy_color_ndim_system( system_generator.get_generator(), colors, color_counters );
 			std::vector< std::vector< CoordType > > per_color_rows;
@@ -446,15 +441,11 @@ namespace grb {
 			colors.clear();
 			colors.shrink_to_fit();
 			if( rc != grb::SUCCESS ) {
-				if( pid == 0 ) {
-					std::cout << "error: " << __LINE__ << std::endl;
-				}
+				logger << "error: " << __LINE__ << std::endl;
 				return rc;
 			}
-			if( pid == 0 ) {
-				std::cout <<"- found " << color_counters.size() << " colors,"
-					<< " generating color masks...";
-			}
+			logger <<"- found " << color_counters.size() << " colors,"
+				<< " generating color masks...";
 			return internal::hpcg_build_static_color_masks( system_generator.system_size(),
 				per_color_rows, smoothing_info.color_masks );
 		}

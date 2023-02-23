@@ -28,6 +28,7 @@
 #include <cstddef>
 
 #include <graphblas.hpp>
+#include <graphblas/utils/telemetry/Stopwatch.hpp>
 
 
 namespace grb {
@@ -49,9 +50,12 @@ namespace grb {
 		 */
 		template<
 			typename IOType,
-			typename NonzeroType
+			typename NonzeroType,
+			typename TelTokenType
 		> struct MultiGridData {
 
+			grb::utils::telemetry::Stopwatch< TelTokenType > mg_stopwatch;
+			grb::utils::telemetry::Stopwatch< TelTokenType > sm_stopwatch;
 			const size_t level; ///< level of the grid (0 for the finest physical system)
 			const size_t system_size; ///< size of the system, i.e. side of the #A system matrix
 			grb::Matrix< NonzeroType > A; ///< system matrix
@@ -62,9 +66,12 @@ namespace grb {
 			 * Construct a new multigrid data object from level information and system size.
 			 */
 			MultiGridData(
+				const TelTokenType & _tt,
 				size_t _level,
 				size_t sys_size
 			) :
+				mg_stopwatch( _tt ),
+				sm_stopwatch( _tt ),
 				level( _level ),
 				system_size( sys_size ),
 				A( sys_size, sys_size ),
@@ -72,9 +79,10 @@ namespace grb {
 				r( sys_size ) {}
 
 			// for safety, disable copy semantics
-			MultiGridData( const MultiGridData< IOType, NonzeroType > & o ) = delete;
+			MultiGridData( const MultiGridData< IOType, NonzeroType, TelTokenType > & o ) = delete;
 
-			MultiGridData<IOType, NonzeroType > & operator=( const MultiGridData< IOType, NonzeroType > & ) = delete;
+			MultiGridData<IOType, NonzeroType, TelTokenType > & operator=(
+				const MultiGridData< IOType, NonzeroType, TelTokenType > & ) = delete;
 
 			grb::RC init_vectors( IOType zero ) {
 				grb::RC rc = grb::set( z, zero );

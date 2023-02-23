@@ -21,12 +21,12 @@
  * Utilities to allocate data for an entire multi-grid simulation.
  */
 
+#ifndef _H_GRB_ALGORITHMS_MULTIGRID_BUILDING_UTILS
+#define _H_GRB_ALGORITHMS_MULTIGRID_BUILDING_UTILS
+
 #include <vector>
 #include <memory>
 #include <cstddef>
-
-#ifndef _H_GRB_ALGORITHMS_MULTIGRID_BUILDING_UTILS
-#define _H_GRB_ALGORITHMS_MULTIGRID_BUILDING_UTILS
 
 namespace grb {
 	namespace algorithms {
@@ -66,18 +66,20 @@ namespace grb {
 		template<
 			typename MGInfoType,
 			typename CoarsenerInfoType,
-			typename SmootherInfoType
+			typename SmootherInfoType,
+			typename TelTokenType
 		> void multigrid_allocate_data(
-			const std::vector< size_t > &mg_sizes,
 			std::vector< std::unique_ptr< MGInfoType > > &system_levels,
 			std::vector< std::unique_ptr< CoarsenerInfoType > > &coarsener_levels,
-			std::vector< std::unique_ptr< SmootherInfoType > > &smoother_levels
+			std::vector< std::unique_ptr< SmootherInfoType > > &smoother_levels,
+			const std::vector< size_t > &mg_sizes,
+			const TelTokenType & tt
 		) {
 			if( mg_sizes.size() == 0 ) {
 				throw std::invalid_argument( "at least one size should be available" );
 			}
 			size_t finer_size = mg_sizes[ 0 ];
-			system_levels.emplace_back( new MGInfoType( 0, finer_size ) ); // create main system
+			system_levels.emplace_back( new MGInfoType( tt, 0, finer_size ) ); // create main system
 			smoother_levels.emplace_back( new SmootherInfoType( finer_size ) ); // create smoother for main
 			for( size_t i = 1; i < mg_sizes.size(); i++ ) {
 				size_t coarser_size = mg_sizes[ i ];
@@ -85,7 +87,7 @@ namespace grb {
 					throw std::invalid_argument( "system sizes not monotonically decreasing" );
 				}
 				coarsener_levels.emplace_back( new CoarsenerInfoType( finer_size, coarser_size ) );
-				system_levels.emplace_back( new MGInfoType( i, coarser_size ) );
+				system_levels.emplace_back( new MGInfoType( tt, i, coarser_size ) );
 				smoother_levels.emplace_back( new SmootherInfoType( coarser_size ) );
 				finer_size = coarser_size;
 			}

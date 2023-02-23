@@ -16,6 +16,12 @@
  */
 
 /**
+ * @dir include/graphblas/algorithms/hpcg
+ * This folder contains the code specific to the HPCG benchmark implementation: generation of the physical system,
+ * generation of the single point coarsener and coloring algorithm.
+ */
+
+/**
  * @file system_builders.hpp
  * @author Alberto Scolari (alberto.scolari@huawei.com)
  * Utilities to build the system matrix for an HPCG simulation in a generic number of dimensions.
