@@ -35,7 +35,7 @@ namespace grb {
 	namespace algorithms {
 
 		/**
-		 * Structure storing the data for the coarsener
+		 * Structure storing the data for the coarsener.
 		 */
 		template<
 			typename IOType,
@@ -76,6 +76,7 @@ namespace grb {
 			Descriptor descr = descriptors::no_operation
 		> struct SingleMatrixCoarsener {
 
+			// algebraic types
 			using IOType = typename CoarsenerTypes::IOType;
 			using NonzeroType = typename CoarsenerTypes::NonzeroType;
 			using Ring = typename CoarsenerTypes::Ring;
@@ -132,13 +133,14 @@ namespace grb {
 			 * The coarsening information are stored inside \p CoarseningData.
 			 *
 			 * @param[in] r_fine fine residual vector
+			 * @param[out] r_coarse coarse residual vector, the output
 			 * @param[in,out] coarsening_data \ref MultiGridData data structure storing the information for coarsening
 			 * @return grb::RC::SUCCESS if the algorithm could correctly terminate, the error code of the first
 			 *                          unsuccessful operation otherwise
 			 */
 			grb::RC compute_coarsening(
-				const grb::Vector< IOType > & r_fine, // fine residual
-				grb::Vector< IOType > & r_coarse, // coarse residual
+				const grb::Vector< IOType > & r_fine,
+				grb::Vector< IOType > & r_coarse,
 				CoarseningData< IOType, NonzeroType > & coarsening_data
 			) {
 				RC ret = SUCCESS;
@@ -160,6 +162,7 @@ namespace grb {
 			 *
 			 * For prolongation, this function uses the matrix \p coarsening_data.coarsening_matrix by transposing it.
 			 *
+			 * @param[out] z_coarse input solution vector, to be coarsened
 			 * @param[out] z_fine the solution vector to store the prolonged solution into
 			 * @param[in,out] coarsening_data information for coarsening
 			 * @return grb::RC::SUCCESS if the algorithm could correctly terminate, the error code of the first

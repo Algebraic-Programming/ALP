@@ -100,14 +100,13 @@ namespace grb {
 		 * The \p MultiGridrunnerType must implement a functional interface whose input (from CG)
 		 * is the structure with the system information for one level of the grid.
 		 *
-		 * @tparam IOType type of result and intermediate vectors used during computation
-		 * @tparam NonzeroType type of matrix values
-		 * @tparam InputType type of values of the right-hand side vector b
-		 * @tparam ResidualType type of the residual norm
+		 * @tparam MGCGTypes types container for algebraic information (IOType, NonzeroType,
+		 * 	InputType, ResidualType, Ring, Minus)
 		 * @tparam MultiGridrunnerType type for the multi-grid runner object
-		 * @tparam Ring algebraic ring type
-		 * @tparam Minus minus operator
 		 * @tparam descr descriptors with statically-known data for computation and containers
+		 * @tparam DbgOutputStreamType type for the debugging stream, i.e. the stream to trace simulation
+		 * 	results alongside execution; the default type #grb::utils::telemetry::OutputStreamOff disables
+		 * 	all output at compile time
 		 */
 		template<
 			typename MGCGTypes,
@@ -117,12 +116,14 @@ namespace grb {
 			typename DbgOutputStreamType = grb::utils::telemetry::OutputStreamOff
 		> struct MultiGridCGRunner : public grb::utils::telemetry::Timeable< TelControllerType > {
 
+			// algebraic types
 			using IOType = typename MGCGTypes::IOType;
 			using NonzeroType = typename MGCGTypes::NonzeroType;
 			using InputType = typename MGCGTypes::InputType;
 			using ResidualType = typename MGCGTypes::ResidualType;
 			using Ring = typename MGCGTypes::Ring;
 			using Minus = typename MGCGTypes::Minus;
+			// input types for simulation (CG and MG)
 			using HPCGInputType = MultiGridCGData< IOType, NonzeroType, InputType >;
 			using MGRunnerType = MultiGridRunnerType;
 
@@ -141,14 +142,13 @@ namespace grb {
 			ResidualType tolerance = ring.template getZero< ResidualType >(); ///< ratio between initial residual and current residual that halts the solver
 			                                                                  ///< if reached, for the solution is to be considered "good enough"
 
-			MultiGridRunnerType & mg_runner;
-			DbgOutputStreamType dbg_logger;
+			MultiGridRunnerType & mg_runner; ///< runner object for MG
+			DbgOutputStreamType dbg_logger; ///< logger to trace execution
 
 			/**
-			 * Construct a new MultiGridCGRunner object by moving the required MG runner.
+			 * Construct a new MultiGridCGRunner object with the required MG runner.
 			 *
-			 * Moving the state of the MG is safer in that it avoids use-after-free issues,
-			 * as the state of the MG runner is managed automatically with this object.
+			 * The debug logger is unavailable.
 			 */
 			MultiGridCGRunner(
 				const TelControllerType & tt,
@@ -161,6 +161,10 @@ namespace grb {
 				static_assert( std::is_default_constructible< DbgOutputStreamType >::value );
 			}
 
+			/**
+			 * Construct a new MultiGridCGRunner object with the required MG runner and
+			 * 	the user-given debug logger.
+			 */
 			MultiGridCGRunner(
 				const TelControllerType & tt,
 				MultiGridRunnerType & _mg_runner,
@@ -199,7 +203,6 @@ namespace grb {
 			 *
 			 * Failures of GraphBLAS operations are handled by immediately stopping the execution and by returning
 			 * the failure code.
-			 *
 			 *
 			 * @param cg_data data for the CG solver only
 			 * @param grid_base base (i.e., finer) level of the multi-grid, with the information of the physical system
@@ -327,7 +330,8 @@ namespace grb {
 					++iter;
 					out_info.iterations = iter;
 					out_info.norm_residual = norm_residual;
-				} while( iter < max_iterations && norm_residual / norm_residual_initial > tolerance && ret == SUCCESS );
+				} while( iter < max_iterations && norm_residual / norm_residual_initial > tolerance
+					&& ret == SUCCESS );
 
 				return ret;
 			}

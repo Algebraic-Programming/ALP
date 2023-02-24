@@ -61,6 +61,7 @@ namespace grb {
 		 * @tparam DIMS dimensions of the system
 		 * @tparam CoordType type of the coordinates
 		 * @tparam lower_color_first start greedy assignment of colors from lowest first
+		 *
 		 * @param[in] system generator for an \p DIMS - dimesional system with halo
 		 * @param[out] row_colors if \p reorder_rows_per_color is false, stores the color of each row;
 		 * 	if \p reorder_rows_per_color is true, stores the new position of each row, so that rows

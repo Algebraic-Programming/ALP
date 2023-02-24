@@ -48,17 +48,17 @@ namespace grb {
 		 * It is built by transferring into it the state of both the smoother and the coarsener,
 		 * in order to avoid use-after-free issues.
 		 *
+		 * @tparam MGTypes types container for algebraic information (IOType, NonzeroType, Ring, Minus)
 		 * @tparam MGSmootherType type of the smoother runner, with prescribed methods for the various
 		 *  smoothing steps
 		 * @tparam CoarsenerType type of the coarsener runner, with prescribed methods for coarsening
-		 * @tparam IOType type of result and intermediate vectors used during computation
-		 * @tparam NonzeroType type of matrix values
-		 *  and prolongation
-		 * @tparam Ring the ring of algebraic operators and zero values
-		 * @tparam Minus the minus operator for subtractions
 		 * @tparam descr descriptors with statically-known data for computation and containers
+		 * @tparam DbgOutputStreamType type for the debugging stream, i.e. the stream to trace simulation
+		 * 	results alongside execution; the default type #grb::utils::telemetry::OutputStreamOff disables
+		 * 	all output at compile time
 		 */
-		template< typename MGTypes,
+		template<
+			typename MGTypes,
 			typename MGSmootherType,
 			typename CoarsenerType,
 			typename TelControllerType,
@@ -88,7 +88,7 @@ namespace grb {
 
 			MGSmootherType & smoother_runner; ///< object to run the smoother
 			CoarsenerType & coarsener_runner; ///< object to run the coarsener
-			DbgOutputStreamType dbg_logger;
+			DbgOutputStreamType dbg_logger;   ///< logger to trace execution
 
 			std::vector< std::unique_ptr< MultiGridInputType > > system_levels; ///< levels of the grid (finest first)
 			Ring ring;                                                          ///< algebraic ring
@@ -113,6 +113,8 @@ namespace grb {
 			/**
 			 * Construct a new MultiGridRunner object by moving in the state of the pre-built
 			 * smoother and coarsener.
+			 *
+			 * The debug logger is deactivated.
 			 */
 			MultiGridRunner(
 				MGSmootherType & _smoother_runner,
@@ -124,6 +126,10 @@ namespace grb {
 				static_assert( std::is_default_constructible< DbgOutputStreamType >::value );
 			}
 
+			/**
+			 * Construct a new MultiGridRunner object by moving in the state of the pre-built
+			 * smoother and coarsener and with a user-given debug logger.
+			 */
 			MultiGridRunner(
 				MGSmootherType & _smoother_runner,
 				CoarsenerType & _coarsener_runner,
@@ -141,6 +147,9 @@ namespace grb {
 					__unique_ptr_extractor( system_levels.end() ) );
 			}
 
+			/**
+			 * Operator to invoke a multi-grid run among given levels.
+			 */
 			inline grb::RC operator()(
 				__unique_ptr_extractor begin,
 				const __unique_ptr_extractor end
@@ -171,10 +180,6 @@ namespace grb {
 			 *
 			 * @param mgiter_begin iterator pointing to the current level of the multi-grid
 			 * @param mgiter_end end iterator, indicating the end of the recursion
-			 * @param smoother callable object to invoke the smoothing steps
-			 * @param coarsener callable object to coarsen and prolong (between current and coarser grid levels)
-			 * @param ring the ring to perform the operations on
-			 * @param minus the \f$ - \f$ operator for vector subtractions
 			 * @return grb::RC if the algorithm could correctly terminate, the error code of the first
 			 *  unsuccessful operation otherwise
 			 */

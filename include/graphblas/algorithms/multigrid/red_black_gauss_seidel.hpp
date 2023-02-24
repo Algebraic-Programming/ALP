@@ -75,6 +75,7 @@ namespace grb {
 			Descriptor descr = descriptors::no_operation
 		> struct RedBlackGSSmootherRunner {
 
+			// algebraic types
 			using IOType = typename SmootherTypes::IOType;
 			using NonzeroType = typename SmootherTypes::NonzeroType;
 			using Ring = typename SmootherTypes::Ring;
@@ -132,12 +133,8 @@ namespace grb {
 			/**
 			 * Runs a single step of Red-Black Gauss-Seidel for a specific color.
 			 *
-			 * @param[in] A the system matrix
-			 * @param[in] A_diagonal a vector storing the diagonal elements of \p A
-			 * @param[in] r the residual
-			 * @param[in,out] z the initial solution to start from, and where the smoothed solution is stored to
-			 * @param[out] smoother_temp a vector for temporary values
-			 * @param[in] color_mask the mask of colors to filter the rows to smooth
+			 * @param[in,out] data structure with external containers, corresponsign to an MG level: vector to smooth, system matrix, residual
+			 * @param[in,out] smoothing_info smoothing-specific information: temporary vectors, color masks
 			 * @return grb::RC::SUCCESS if the algorithm could correctly terminate, the error code of the first
 			 *  unsuccessful operation otherwise
 			 */
@@ -189,7 +186,8 @@ namespace grb {
 			 * and no check is performed to ensure these assumptions hold. Hence, it is up to user logic
 			 * to pass correct coloring information. Otherwise, \b no guarantees hold on the result.
 			 *
-			 * @param[in,out] data structure with the data of a single grid level
+			 * @param[in,out] data structure with external containers, corresponsign to an MG level: vector to smooth, system matrix, residual
+			 * @param[in,out] smoothing_info smoothing-specific information: temporary vectors, color masks
 			 * @return grb::RC::SUCCESS if the algorithm could correctly terminate, the error code of the first
 			 *                          unsuccessful operation otherwise
 			 */

@@ -135,6 +135,7 @@ using hpcg_runner_t = MultiGridCGRunner< HPCGTypes, mg_runner_t, hpcg_controller
 	hpcg_desc, DBGStream >;
 using hpcg_data_t = typename hpcg_runner_t::HPCGInputType;
 
+// allow DBGStream to print grb::Vector's in a lazy way (i.e., no code generated if deactivated)
 struct dotter : grb::utils::telemetry::OutputStreamLazy {
 	const grb::Vector< IOType > & v;
 	dotter( const grb::Vector< IOType > & _v ) : v( _v ) {}
@@ -151,16 +152,16 @@ static inline DBGStream & operator<<( DBGStream & stream, const grb::Vector< IOT
 	return stream << dotter( v );
 }
 
+// various algebraic zeros
 static const IOType io_zero = Ring().template getZero< IOType >();
 static const NonzeroType nz_zero = Ring().template getZero< NonzeroType >();
 static const InputType input_zero = Ring().template getZero< InputType >();
 static const ResidualType residual_zero = Ring().template getZero< ResidualType >();
 
+// input/output structure (serializable for distributed execution),
+// with the parameters for the HPCG simulation
 static constexpr size_t MAX_CSV_PATH_LENGTH = 255;
 
-/**
- * Container for the parameters for the HPCG simulation.
- */
 struct simulation_input {
 	// physical parameters for the multi-grid
 	size_t nx, ny, nz;
@@ -186,9 +187,6 @@ struct simulation_input {
 	simulation_input( const simulation_input & ) = default;
 };
 
-/**
- * Container for test outputs.
- */
 struct output {
 	RC error_code = SUCCESS;
 	size_t inner_test_repetitions = 0;
@@ -199,6 +197,7 @@ struct output {
 };
 
 #ifdef HPCG_PRINT_SYSTEM
+// routine to print the system matrices
 static void print_system( const std::vector< std::unique_ptr< mg_data_t > > & system_levels,
 	const std::vector< std::unique_ptr< coarsening_data_t > > & coarsener_levels ) {
 	assert( spmd<>::nprocs() == 1 ); // distributed printin of system not implemented
@@ -218,7 +217,8 @@ static void print_system( const std::vector< std::unique_ptr< mg_data_t > > & sy
  * This routine is algorithm-agnositc, as long as the constructors of the data types meet the requirements
  * explained in \ref multigrid_allocate_data().
  */
-static void allocate_system_structures( std::vector< std::unique_ptr< mg_data_t > > & system_levels,
+static void allocate_system_structures(
+	std::vector< std::unique_ptr< mg_data_t > > & system_levels,
 	std::vector< std::unique_ptr< coarsening_data_t > > & coarsener_levels,
 	std::vector< std::unique_ptr< smoothing_data_t > > & smoother_levels,
 	std::unique_ptr< hpcg_data_t > & cg_system_data,
@@ -261,7 +261,8 @@ static void allocate_system_structures( std::vector< std::unique_ptr< mg_data_t 
  * Builds and initializes a 3D system for an HPCG simulation according to the given 3D system sizes.
  * It allocates the data structures and populates them according to the algorithms chosen for HPCG.
  */
-static void build_3d_system( std::vector< std::unique_ptr< mg_data_t > > & system_levels,
+static void build_3d_system(
+	std::vector< std::unique_ptr< mg_data_t > > & system_levels,
 	std::vector< std::unique_ptr< coarsening_data_t > > & coarsener_levels,
 	std::vector< std::unique_ptr< smoothing_data_t > > & smoother_levels,
 	std::unique_ptr< hpcg_data_t > & cg_system_data,
@@ -354,7 +355,6 @@ void grbProgram( const simulation_input & in, struct output & out ) {
 	dist_controller_t dist( pid == 0 );
 	// separate thousands when printing integers
 	class IntegerSeparation : public std::numpunct< char > {
-		// protected:
 		char do_thousands_sep() const override {
 			return '\'';
 		}
@@ -379,7 +379,7 @@ void grbProgram( const simulation_input & in, struct output & out ) {
 	dbg_controller_t dbg_controller( pid == 0 );
 	DBGStream dbg_stream( dbg_controller, std::cout );
 
-	// define the main HPCG runner and initialize the options of its components
+	// define the main runners and initialize the options of its components
 	coarsener_runner_t coarsener;
 	smoother_runner_t smoother;
 	smoother.presmoother_steps = smoother.postsmoother_steps = in.smoother_steps;
@@ -406,12 +406,15 @@ void grbProgram( const simulation_input & in, struct output & out ) {
 	Vector< IOType > & x = hpcg_state->x;
 	Vector< NonzeroType > & b = hpcg_state->b;
 
-	RC rc = SUCCESS;
 	// set vectors as from standard HPCG benchmark
-	set( x, 1.0 );
-	set( b, nz_zero );
+	RC rc = set( x, 1.0 );
+	ASSERT_RC_SUCCESS( rc );
+	rc = set( b, nz_zero );
+	ASSERT_RC_SUCCESS( rc );
 	rc = grb::mxv( b, A, x, Ring() );
-	set( x, io_zero );
+	ASSERT_RC_SUCCESS( rc );
+	rc = set( x, io_zero );
+	ASSERT_RC_SUCCESS( rc );
 
 #ifdef HPCG_PRINT_SYSTEM
 	if( pid == 0 ) {
@@ -474,11 +477,12 @@ void grbProgram( const simulation_input & in, struct output & out ) {
 
 	logger << TEXT_HIGHLIGHT << "repetitions,average time (ms): " << out.inner_test_repetitions
 		<< ", " << out.times.useful << std::endl;
+	// restore previous output options
 	std::cout.imbue( old_locale );
 
 	// start postamble
 	timer.reset();
-	// set error code
+	// set error code to caller
 	out.error_code = rc;
 
 	grb::set( b, 1.0 );
@@ -521,9 +525,9 @@ int main( int argc, char ** argv ) {
 	thcout << "System max coarsening levels " << sim_in.max_coarsening_levels << std::endl;
 	thcout << "Test repetitions: " << sim_in.inner_test_repetitions << std::endl;
 	thcout << "Max iterations: " << sim_in.max_iterations << std::endl;
-	thcout << "Direct launch: " << std::boolalpha << sim_in.evaluation_run
+	thcout << "Is evaluation run: " << std::boolalpha << sim_in.evaluation_run
 		<< std::noboolalpha << std::endl;
-	thcout << "No conditioning: " << std::boolalpha << sim_in.no_preconditioning
+	thcout << "Conditioning: " << std::boolalpha << !sim_in.no_preconditioning
 		<< std::noboolalpha << std::endl;
 	thcout << "Smoother steps: " << sim_in.smoother_steps << std::endl;
 	thcout << "Test outer iterations: " << test_outer_iterations << std::endl;
@@ -650,7 +654,7 @@ static void parse_arguments( simulation_input & sim_in, size_t & outer_iteration
 		}
 	}
 
-	// check output CSVs
+	// check output CSV file names
 	size_t len = std::strlen( hpcg_csv );
 	if( ( sim_in.hpcg_log = len > 0 ) ) {
 		if( len > MAX_CSV_PATH_LENGTH ) {

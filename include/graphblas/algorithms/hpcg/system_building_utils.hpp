@@ -167,6 +167,7 @@ namespace grb {
 		 * @tparam DIMS number of dimensions
 		 * @tparam CoordType type storing the coordinates and the sizes
 		 * @tparam NonzeroType type of the nonzero
+		 *
 		 * @param finer_system_generator object generating the finer system
 		 * @param coarser_system_generator object generating the finer system
 		 * @param coarsener structure with the matrix to populate
@@ -256,8 +257,7 @@ namespace grb {
 			 * @param[out] per_color_rows for each position \a i it stores an std::vector with all rows
 			 *  of color \a i inside \p row_colors
 			 */
-			template< typename CoordType >
-			void hpcg_split_rows_by_color(
+			template< typename CoordType > void hpcg_split_rows_by_color(
 				const std::vector< CoordType > & row_colors,
 				size_t num_colors, std::vector< std::vector< CoordType > > & per_color_rows
 			) {
@@ -276,10 +276,7 @@ namespace grb {
 			 *
 			 * @tparam CoordType type of the internal coordinate
 			 */
-			template< typename CoordType >
-			struct true_iter {
-
-				// static const bool __TRUE;
+			template< typename CoordType > struct true_iter {
 
 				using self_t = true_iter< CoordType >;
 				using iterator_category = std::random_access_iterator_tag;
