@@ -80,6 +80,7 @@ namespace grb {
 			using NonzeroType = typename SmootherTypes::NonzeroType;
 			using Ring = typename SmootherTypes::Ring;
 			using Minus = typename SmootherTypes::Minus;
+			using Divide = typename SmootherTypes::Divide;
 			using SmootherInputType = MultiGridData< IOType, NonzeroType, TelControllerType >; ///< external input structure
 			using SmootherDataType = SmootherData< IOType >; ///< smoothing information and temporary variables (per MG level)
 
@@ -89,6 +90,8 @@ namespace grb {
 			std::vector< std::unique_ptr< SmootherDataType > > levels; ///< for each grid level,
 			                                                           ///< the smoothing data (finest first)
 			Ring ring;                                                 ///< the algebraic ring
+			Minus minus;
+			Divide divide;
 
 			static_assert( std::is_default_constructible< Ring >::value,
 				"cannot construct the Ring operator with default values" );
@@ -161,17 +164,31 @@ namespace grb {
 				// Replace below with masked calls:
 				// z[mask] = r[mask] - smoother_temp[mask] + z[mask] .* diagonal[mask]
 				// z[mask] = z[maks] ./ diagonal[mask]
+
+// by default use foldl()'s, although eWiseLambda() might be more performing
+// TODO: leave this choice for future experimentation
+#if defined(RBGS_EWL)
+				Ring & ri = ring;
+				Minus & mi = minus;
+				Divide & di = divide;
+
 				ret = ret ? ret :
                             grb::eWiseLambda(
-								[ &z, &r, &smoother_temp, &color_mask, &A_diagonal ]( const size_t i ) {
-									// if the mask was properly initialized, the check on the mask value is unnecessary;
-					                // if( color_mask[ i ] ) {
+								[ &z, &r, &smoother_temp, &color_mask, &A_diagonal , &ri, &mi, &di ]( const size_t i ) {
 									IOType d = A_diagonal[ i ];
-									IOType v = r[ i ] - smoother_temp[ i ] + z[ i ] * d;
-									z[ i ] = v / d;
-									// }
+									IOType v;
+									ri.getMultiplicativeOperator().apply( z[ i ], d, v  );
+									ri.getAdditiveOperator().apply( v, r[ i ], v  );
+									mi.apply( v, smoother_temp[ i ], v );
+									di.apply( v, d, z[ i ] );
 								},
 								color_mask, z, r, smoother_temp, A_diagonal );
+#else
+				grb::foldl( z, color_mask, A_diagonal, ring.getMultiplicativeOperator() );
+				grb::foldl( z, color_mask, smoother_temp, minus );
+				grb::foldl( z, color_mask, r, ring.getAdditiveOperator() );
+				grb::foldl( z, color_mask, A_diagonal, divide );
+#endif
 				assert( ret == SUCCESS );
 				return ret;
 			}
