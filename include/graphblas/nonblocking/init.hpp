@@ -15,7 +15,12 @@
  * limitations under the License.
  */
 
-/*
+/**
+ * @file
+ *
+ * Provides the initialisation and finalisation routines for the nonblocking
+ * backend.
+ *
  * @author Aristeidis Mastoras
  * @date 16th of May, 2022
  */

@@ -15,7 +15,11 @@
  * limitations under the License.
  */
 
-/*
+/**
+ * @file
+ *
+ * Provides the I/O primitives for the nonblocking backend.
+ *
  * @author Aristeidis Mastoras
  * @date 16th of May, 2022
  */
@@ -125,7 +129,9 @@ namespace grb {
 	}
 
 	template< typename InputType, typename RIT, typename CIT, typename NIT >
-	RC clear( Matrix< InputType, nonblocking, RIT, CIT, NIT > &A ) noexcept {
+	RC clear(
+		Matrix< InputType, nonblocking, RIT, CIT, NIT > &A
+	) noexcept {
 		return clear( internal::getRefMatrix( A ) );
 	}
 
@@ -212,50 +218,62 @@ namespace grb {
 
 		constexpr const bool dense_descr = descr & descriptors::dense;
 
-		internal::Pipeline::stage_type func = [&x, toCopy, raw]
-						( internal::Pipeline &pipeline, size_t lower_bound, size_t upper_bound ) {
+		internal::Pipeline::stage_type func = [&x, toCopy, raw] (
+			internal::Pipeline &pipeline,
+			size_t lower_bound, size_t upper_bound
+		) {
 #ifdef _NONBLOCKING_DEBUG
 			#pragma omp critical
-			std::cout << "\t\tExecution of stage set(x, val) in the range(" << lower_bound << ", " << upper_bound << ")" << std::endl;
+			std::cout << "\t\tExecution of stage set(x, val) in the range("
+				<< lower_bound << ", " << upper_bound << ")" << std::endl;
 #endif
 
 #ifdef GRB_ALREADY_DENSE_OPTIMIZATION
-			const bool already_dense_vectors = dense_descr || pipeline.allAlreadyDenseVectors();
+			const bool already_dense_vectors = dense_descr ||
+				pipeline.allAlreadyDenseVectors();
 #else
-			( void )pipeline;
+			(void) pipeline;
 			constexpr const bool already_dense_vectors = dense_descr;
 #endif
 
 			if( !already_dense_vectors ) {
 #ifdef GRB_ALREADY_DENSE_OPTIMIZATION
-				bool already_dense_output = pipeline.containsAlreadyDenseVector( &internal::getCoordinates( x ) );
+				bool already_dense_output = pipeline.containsAlreadyDenseVector(
+					&internal::getCoordinates( x ) );
 				if( !already_dense_output ) {
 #endif
-					Coords local_x = internal::getCoordinates( x ).asyncSubset( lower_bound, upper_bound );
+					Coords local_x = internal::getCoordinates( x ).asyncSubset( lower_bound,
+						upper_bound );
 
 					local_x.local_assignAllNotAlreadyAssigned();
 					assert( local_x.nonzeroes() == local_x.size() );
 
-					internal::getCoordinates( x ).asyncJoinSubset( local_x, lower_bound, upper_bound );
+					internal::getCoordinates( x ).asyncJoinSubset( local_x, lower_bound,
+						upper_bound );
 #ifdef GRB_ALREADY_DENSE_OPTIMIZATION
 				}
 #endif
 			}
 
 			for( size_t i = lower_bound; i < upper_bound; i++ ) {
-				raw[ i ] = internal::template ValueOrIndex< descr, DataType, DataType >::getFromScalar( toCopy, i );
+				raw[ i ] = internal::template ValueOrIndex<
+						descr, DataType, DataType
+					>::getFromScalar( toCopy, i );
 			}
 
 			return SUCCESS;
 		};
 
-		ret = ret ? ret : internal::le.addStage( std::move( func ), internal::Opcode::IO_SET_SCALAR,
+		ret = ret ? ret : internal::le.addStage(
+				std::move( func ),
+				internal::Opcode::IO_SET_SCALAR,
 				n, sizeof( DataType ), dense_descr, true,
 				&x, nullptr,
 				&internal::getCoordinates( x ), nullptr,
 				nullptr, nullptr, nullptr, nullptr,
 				nullptr, nullptr, nullptr, nullptr,
-				nullptr );
+				nullptr
+			);
 
 #ifdef _NONBLOCKING_DEBUG
 		std::cout << "\t\tStage added to a pipeline: SET(x, val)" << std::endl;
@@ -301,32 +319,43 @@ namespace grb {
 			if( loop_over_vector_length ) {
 				std::cout << "\t using loop of size n (the vector length)\n";
 			} else {
-				std::cout << "\t using loop of size nz (the number of nonzeroes in the vector)\n";
+				std::cout << "\t using loop of size nz (the number of nonzeroes in the "
+					<< "vector)\n";
 			}
 #endif
 
 			const size_t local_n = upper_bound - lower_bound;
-			const size_t local_mask_nz = already_dense_mask ? local_n : local_mask.nonzeroes();
+			const size_t local_mask_nz = already_dense_mask
+				? local_n
+				: local_mask.nonzeroes();
 
-			const size_t local_size_n = loop_over_vector_length ? local_x.size() : local_mask_nz;
+			const size_t local_size_n = loop_over_vector_length
+				? local_x.size()
+				: local_mask_nz;
 
 			for( size_t k = 0; k < local_size_n; ++k ) {
 
-				const size_t index = ( ( loop_over_vector_length || already_dense_mask ) ? k : local_mask.index( k ) ) + lower_bound;
+				const size_t index = ( ( loop_over_vector_length || already_dense_mask )
+					? k
+					: local_mask.index( k ) ) + lower_bound;
 				assert( index < internal::getCoordinates( x ).size() );
 				if( already_dense_mask ) {
 					if( !internal::getCoordinates( m ).template mask< descr >( index, m_p ) ) {
 						continue;
 					}
 				} else {
-					if( !local_mask.template mask< descr >( index - lower_bound, m_p + lower_bound ) ) {
+					if( !local_mask.template mask< descr >(
+						index - lower_bound, m_p + lower_bound
+					) ) {
 						continue;
 					}
 				}
 				if( !mask_is_dense ) {
 					(void) local_x.assign( index - lower_bound );
 				}
-				raw[ index ] = internal::ValueOrIndex< descr, DataType, DataType >::getFromScalar( toCopy, index );
+				raw[ index ] = internal::ValueOrIndex<
+						descr, DataType, DataType
+					>::getFromScalar( toCopy, index );
 			}
 
 			return SUCCESS;
@@ -379,14 +408,19 @@ namespace grb {
 		RC ret = SUCCESS;
 
 		constexpr const bool dense_descr = descr & descriptors::dense;
-		constexpr const bool dense_mask = dense_descr && (descr & descriptors::structural) && !(descr & descriptors::invert_mask);
+		constexpr const bool dense_mask = dense_descr &&
+			(descr & descriptors::structural) &&
+			!(descr & descriptors::invert_mask);
 
 		// then source is a pattern vector, just copy its pattern
-		internal::Pipeline::stage_type func = [&x, &m, val]
-						( internal::Pipeline &pipeline, size_t lower_bound, size_t upper_bound ) {
+		internal::Pipeline::stage_type func = [&x, &m, val] (
+			internal::Pipeline &pipeline,
+			size_t lower_bound, size_t upper_bound
+		) {
 #ifdef _NONBLOCKING_DEBUG
 			#pragma omp critical
-			std::cout << "\t\tExecution of stage set(x, m, val) in the range(" << lower_bound << ", " << upper_bound << ")" << std::endl;
+			std::cout << "\t\tExecution of stage set(x, m, val) in the range("
+				<< lower_bound << ", " << upper_bound << ")" << std::endl;
 #endif
 			RC rc = SUCCESS;
 
@@ -397,7 +431,8 @@ namespace grb {
 			size_t local_x_nz = local_n;
 
 #ifdef GRB_ALREADY_DENSE_OPTIMIZATION
-			const bool already_dense_vectors = dense_descr || pipeline.allAlreadyDenseVectors();
+			const bool already_dense_vectors = dense_descr ||
+				pipeline.allAlreadyDenseVectors();
 #else
 			constexpr const bool already_dense_vectors = dense_descr;
 #endif
@@ -407,9 +442,11 @@ namespace grb {
 			const bool mask_is_dense = (descr & descriptors::structural) &&
 				!(descr & descriptors::invert_mask) && already_dense_vectors;
 
-			// for out-of-place operations with a mask and a scalar input, whether the output is dense or not depends on the mask
+			// for out-of-place operations with a mask and a scalar input, whether the
+			// output is dense or not depends on the mask
 			if( !mask_is_dense ) {
-				local_x = internal::getCoordinates( x ).asyncSubset( lower_bound, upper_bound );
+				local_x = internal::getCoordinates( x ).asyncSubset( lower_bound,
+					upper_bound );
 				local_x_nz = local_x.nonzeroes();
 				if( dense_descr && local_x_nz < local_n ) {
 					return ILLEGAL;
@@ -418,12 +455,14 @@ namespace grb {
 
 			if( !already_dense_vectors ) {
 #ifdef GRB_ALREADY_DENSE_OPTIMIZATION
-				already_dense_mask = pipeline.containsAlreadyDenseVector( &internal::getCoordinates( m ) );
+				already_dense_mask = pipeline.containsAlreadyDenseVector(
+					&internal::getCoordinates( m ) );
 				if( !already_dense_mask ) {
 #else
 				already_dense_mask = false;
 #endif
-					local_mask = internal::getCoordinates( m ).asyncSubset( lower_bound, upper_bound );
+					local_mask = internal::getCoordinates( m ).asyncSubset( lower_bound,
+						upper_bound );
 #ifdef GRB_ALREADY_DENSE_OPTIMIZATION
 				}
 #endif
@@ -437,40 +476,46 @@ namespace grb {
 					pipeline.markMaybeSparseVector( &internal::getCoordinates( x ) );
 #endif
 					if( dense_descr ) {
-						pipeline.markMaybeSparseDenseDescriptorVerification( &internal::getCoordinates( x ) );
+						pipeline.markMaybeSparseDenseDescriptorVerification(
+							&internal::getCoordinates( x ) );
 					}
 				}
 			}
 
-			const bool loop_over_vector_length = ( descr & descriptors::invert_mask ) || ( 4 * local_mask.nonzeroes() > 3 * local_mask.size() );
+			const bool loop_over_vector_length = ( descr & descriptors::invert_mask ) ||
+				( 4 * local_mask.nonzeroes() > 3 * local_mask.size() );
 
 #ifdef GRB_BOOLEAN_DISPATCHER
-			rc = internal::boolean_dispatcher_masked_set
-						<
+			rc = internal::boolean_dispatcher_masked_set<
 #else
-			rc = internal::masked_set
-						<
+			rc = internal::masked_set<
 #endif
-							descr, DataType, MaskType, T, Coords
-						>(
-							loop_over_vector_length, already_dense_mask, mask_is_dense,
-							lower_bound, upper_bound, local_x, local_mask, x, m, val
-					 	);
+					descr, DataType, MaskType, T, Coords
+				>(
+					loop_over_vector_length,
+					already_dense_mask, mask_is_dense,
+					lower_bound, upper_bound,
+					local_x, local_mask, x, m, val
+			 	);
 
 			if( !mask_is_dense ) {
-				internal::getCoordinates( x ).asyncJoinSubset( local_x, lower_bound, upper_bound );
+				internal::getCoordinates( x ).asyncJoinSubset( local_x, lower_bound,
+					upper_bound );
 			}
 
 			return rc;
 		};
 
-		ret = ret ? ret : internal::le.addStage( std::move( func ), internal::Opcode::IO_SET_MASKED_SCALAR,
-				sizex, sizeof( DataType ), dense_descr, dense_mask,
-				&x, nullptr,
-				&internal::getCoordinates( x ), nullptr,
+		ret = ret ? ret : internal::le.addStage(
+				std::move( func ),
+				internal::Opcode::IO_SET_MASKED_SCALAR,
+				sizex, sizeof( DataType ),
+				dense_descr, dense_mask,
+				&x, nullptr, &internal::getCoordinates( x ), nullptr,
 				&m, nullptr, nullptr, nullptr,
 				&internal::getCoordinates( m ), nullptr, nullptr, nullptr,
-				nullptr );
+				nullptr
+			);
 
 #ifdef _NONBLOCKING_DEBUG
 		std::cout << "\t\tStage added to a pipeline: set(x, m, val)" << std::endl;
@@ -489,8 +534,10 @@ namespace grb {
 		const T val,
 		const size_t i,
 		const Phase &phase = EXECUTE,
-		const typename std::enable_if< !grb::is_object< DataType >::value &&
-			!grb::is_object< T >::value, void >::type * const = nullptr
+		const typename std::enable_if<
+				!grb::is_object< DataType >::value &&
+				!grb::is_object< T >::value, void
+			>::type * const = nullptr
 	) {
 		internal::le.execution( &x );
 
@@ -553,7 +600,9 @@ namespace grb {
 			const Vector< InputType, nonblocking, Coords > &y
 		) {
 			const size_t local_n = upper_bound - lower_bound;
-			const size_t local_y_nz = already_dense_input ? local_n : local_y.nonzeroes();
+			const size_t local_y_nz = already_dense_input
+				? local_n
+				: local_y.nonzeroes();
 
 			OutputType * __restrict__ const dst = internal::getRaw( x );
 			const InputType * __restrict__ const src = internal::getRaw( y );
@@ -573,12 +622,15 @@ namespace grb {
 					}
 #endif
 					for( size_t i = 0; i < local_y_nz; ++i ) {
-						const size_t index = ( ( already_dense_input ) ? i : local_y.index( i ) ) + lower_bound;
+						const size_t index = ( ( already_dense_input )
+							? i
+							: local_y.index( i ) ) + lower_bound;
 						if( !already_dense_vectors ) {
 							(void) local_x.assign( index - lower_bound );
 						}
 						if( !out_is_void && !in_is_void ) {
-							dst[ index ] = internal::setIndexOrValue< descr, OutputType >( index, src[ index ] );
+							dst[ index ] = internal::setIndexOrValue< descr, OutputType >( index,
+								src[ index ] );
 						}
 					}
 				}
@@ -652,11 +704,14 @@ namespace grb {
 
 		constexpr bool dense_descr = descr & descriptors::dense;
 
-		internal::Pipeline::stage_type func = [&x, &y]
-						( internal::Pipeline &pipeline, size_t lower_bound, size_t upper_bound ) {
+		internal::Pipeline::stage_type func = [&x, &y] (
+			internal::Pipeline &pipeline,
+			size_t lower_bound, size_t upper_bound
+		) {
 #ifdef _NONBLOCKING_DEBUG
 			#pragma omp critical
-			std::cout << "\t\tExecution of stage set(x, y) in the range(" << lower_bound << ", " << upper_bound << ")" << std::endl;
+			std::cout << "\t\tExecution of stage set(x, y) in the range("
+				<< lower_bound << ", " << upper_bound << ")" << std::endl;
 #endif
 			RC rc = SUCCESS;
 
@@ -666,24 +721,28 @@ namespace grb {
 			bool sparse = false;
 
 #ifdef GRB_ALREADY_DENSE_OPTIMIZATION
-			const bool already_dense_vectors = dense_descr || pipeline.allAlreadyDenseVectors();
+			const bool already_dense_vectors = dense_descr ||
+				pipeline.allAlreadyDenseVectors();
 #else
-			( void )pipeline;
+			(void) pipeline;
 			constexpr const bool already_dense_vectors = dense_descr;
 #endif
 
 			bool already_dense_input = true;
 
 			if( !already_dense_vectors ) {
-				local_x = internal::getCoordinates( x ).asyncSubset( lower_bound, upper_bound );
+				local_x = internal::getCoordinates( x ).asyncSubset( lower_bound,
+					upper_bound );
 
 #ifdef GRB_ALREADY_DENSE_OPTIMIZATION
-				already_dense_input = pipeline.containsAlreadyDenseVector( &internal::getCoordinates( y ) );
+				already_dense_input = pipeline.containsAlreadyDenseVector(
+					&internal::getCoordinates( y ) );
 				if( !already_dense_input ) {
 #else
 				already_dense_input = false;
 #endif
-					local_y = internal::getCoordinates( y ).asyncSubset( lower_bound, upper_bound );
+					local_y = internal::getCoordinates( y ).asyncSubset( lower_bound,
+						upper_bound );
 					local_y_nz = local_y.nonzeroes();
 					if( local_y_nz < local_n ) {
 						sparse = true;
@@ -709,50 +768,51 @@ namespace grb {
 				}
 
 #ifdef GRB_BOOLEAN_DISPATCHER
-				rc = internal::boolean_dispatcher_set_generic
-							<
+				rc = internal::boolean_dispatcher_set_generic<
 #else
-				rc = internal::set_generic
-							<
+				rc = internal::set_generic<
 #endif
-								descr, out_is_void, in_is_void, true
-							>(
-								already_dense_vectors, already_dense_input,
-								lower_bound, upper_bound, local_x, local_y, x, y
-							);
+						descr, out_is_void, in_is_void, true
+					>(
+						already_dense_vectors, already_dense_input,
+						lower_bound, upper_bound,
+						local_x, local_y, x, y
+					);
 			} else {
 				if( !already_dense_vectors ) {
 					local_x.local_assignAll();
 				}
 
 #ifdef GRB_BOOLEAN_DISPATCHER
-				rc = internal::boolean_dispatcher_set_generic
-							<
+				rc = internal::boolean_dispatcher_set_generic<
 #else
-				rc = internal::set_generic
-							<
+				rc = internal::set_generic<
 #endif
-								descr, out_is_void, in_is_void, false
-							>(
-								already_dense_vectors, already_dense_input,
-								lower_bound, upper_bound, local_x, local_y, x, y
-							);
+						descr, out_is_void, in_is_void, false
+					>(
+						already_dense_vectors, already_dense_input,
+						lower_bound, upper_bound,
+						local_x, local_y, x, y
+					);
 			}
 
 			if( !already_dense_vectors ) {
-				internal::getCoordinates( x ).asyncJoinSubset( local_x, lower_bound, upper_bound );
+				internal::getCoordinates( x ).asyncJoinSubset( local_x, lower_bound,
+					upper_bound );
 			}
 
 			return rc;
 		};
 
-		ret = ret ? ret : internal::le.addStage( std::move( func ), internal::Opcode::IO_SET_VECTOR,
+		ret = ret ? ret : internal::le.addStage(
+				std::move( func ),
+				internal::Opcode::IO_SET_VECTOR,
 				n, sizeof( OutputType ), dense_descr, true,
-				&x, nullptr,
-				&internal::getCoordinates( x ), nullptr,
+				&x, nullptr, &internal::getCoordinates( x ), nullptr,
 				&y, nullptr, nullptr, nullptr,
 				&internal::getCoordinates( y ), nullptr, nullptr, nullptr,
-				nullptr );
+				nullptr
+			);
 
 #ifdef _NONBLOCKING_DEBUG
 		std::cout << "\t\tStage added to a pipeline: set(x, y)" << std::endl;
@@ -794,35 +854,47 @@ namespace grb {
 			const Vector< InputType, nonblocking, Coords > &y
 		) {
 			const size_t local_n = upper_bound - lower_bound;
-			const size_t local_y_nz = already_dense_input_y ? local_n : local_y.nonzeroes();
-			const size_t local_mask_nz = already_dense_mask ? local_n : local_mask.nonzeroes();
+			const size_t local_y_nz = already_dense_input_y
+				? local_n
+				: local_y.nonzeroes();
+			const size_t local_mask_nz = already_dense_mask
+				? local_n
+				: local_mask.nonzeroes();
 
 			const size_t n = loop_over_y ? local_y_nz : local_mask_nz;
 
 			for( size_t k = 0; k < n; ++k ) {
-				const size_t i = ( loop_over_y ? ( already_dense_input_y ? k : local_y.index( k ) ) : ( already_dense_mask ? k : local_mask.index( k ) ) ) + lower_bound;
+				const size_t i = ( loop_over_y
+						? ( already_dense_input_y ? k : local_y.index( k ) )
+						: ( already_dense_mask ? k : local_mask.index( k ) )
+					) + lower_bound;
 				if( already_dense_mask ) {
-					if( !internal::getCoordinates( mask ).template mask< descr >( i, internal::getRaw( mask ) ) ) {
+					if( !internal::getCoordinates( mask ).template mask< descr >(
+						i, internal::getRaw( mask )
+					) ) {
 						continue;
 					}
 				} else {
-					if( !local_mask.template mask< descr >( i - lower_bound, internal::getRaw( mask ) + lower_bound ) ) {
+					if( !local_mask.template mask< descr >(
+						i - lower_bound, internal::getRaw( mask ) + lower_bound
+					) ) {
 						continue;
 					}
 				}
-				if( loop_over_y || already_dense_input_y || local_y.assigned( i - lower_bound ) ) {
+				if( loop_over_y || already_dense_input_y ||
+					local_y.assigned( i - lower_bound )
+				) {
 					if( !out_is_void && !in_is_void ) {
 						if( !mask_is_dense ) {
 							(void) local_x.assign( i - lower_bound );
 						}
-						internal::getRaw( x )[ i ] = internal::ValueOrIndex
-															<
-																descr, OutputType, InputType
-															>::getFromArray(
-																internal::getRaw( y ),
-																[] (const size_t i) {return i;},
-																i
-															);
+						internal::getRaw( x )[ i ] = internal::ValueOrIndex<
+								descr, OutputType, InputType
+							>::getFromArray(
+								internal::getRaw( y ),
+								[] (const size_t i) {return i;},
+								i
+							);
 					}
 				}
 			}
@@ -843,7 +915,8 @@ namespace grb {
 		const Vector< MaskType, nonblocking, Coords > &mask,
 		const Vector< InputType, nonblocking, Coords > &y,
 		const Phase &phase = EXECUTE,
-		const typename std::enable_if< !grb::is_object< OutputType >::value &&
+		const typename std::enable_if<
+			!grb::is_object< OutputType >::value &&
 			!grb::is_object< MaskType >::value &&
 			!grb::is_object< InputType >::value,
 		void >::type * const = nullptr
@@ -899,13 +972,18 @@ namespace grb {
 		RC ret = SUCCESS;
 
 		constexpr const bool dense_descr = descr & descriptors::dense;
-		constexpr const bool dense_mask = dense_descr && (descr & descriptors::structural) && !(descr & descriptors::invert_mask);
+		constexpr const bool dense_mask = dense_descr &&
+			(descr & descriptors::structural) &&
+			!(descr & descriptors::invert_mask);
 
-		internal::Pipeline::stage_type func = [&x, &mask, &y]
-						( internal::Pipeline &pipeline, size_t lower_bound, size_t upper_bound ) {
+		internal::Pipeline::stage_type func = [&x, &mask, &y] (
+			internal::Pipeline &pipeline,
+			size_t lower_bound, size_t upper_bound
+		) {
 #ifdef _NONBLOCKING_DEBUG
 			#pragma omp critical
-			std::cout << "\t\tExecution of stage set(x, mask, y) in the range(" << lower_bound << ", " << upper_bound << ")" << std::endl;
+			std::cout << "\t\tExecution of stage set(x, mask, y) in the range("
+				<< lower_bound << ", " << upper_bound << ")" << std::endl;
 #endif
 			RC rc = SUCCESS;
 
@@ -916,7 +994,8 @@ namespace grb {
 			size_t local_y_nz = local_n;
 
 #ifdef GRB_ALREADY_DENSE_OPTIMIZATION
-			const bool already_dense_vectors = dense_descr || pipeline.allAlreadyDenseVectors();
+			const bool already_dense_vectors = dense_descr ||
+				pipeline.allAlreadyDenseVectors();
 #else
 			constexpr const bool already_dense_vectors = dense_descr;
 #endif
@@ -929,7 +1008,8 @@ namespace grb {
 				!(descr & descriptors::invert_mask) && already_dense_vectors;
 
 			if( !mask_is_dense ) {
-				local_x = internal::getCoordinates( x ).asyncSubset( lower_bound, upper_bound );
+				local_x = internal::getCoordinates( x ).asyncSubset( lower_bound,
+					upper_bound );
 				local_x_nz = local_x.nonzeroes();
 				if( dense_descr && local_x_nz < local_n ) {
 					return ILLEGAL;
@@ -938,22 +1018,26 @@ namespace grb {
 
 			if( !already_dense_vectors ) {
 #ifdef GRB_ALREADY_DENSE_OPTIMIZATION
-				already_dense_mask = pipeline.containsAlreadyDenseVector( &internal::getCoordinates( mask ) );
+				already_dense_mask = pipeline.containsAlreadyDenseVector(
+					&internal::getCoordinates( mask ) );
 				if( !already_dense_mask ) {
 #else
 					already_dense_mask = false;
 #endif
-					local_mask = internal::getCoordinates( mask ).asyncSubset( lower_bound, upper_bound );
+					local_mask = internal::getCoordinates( mask ).asyncSubset( lower_bound,
+						upper_bound );
 					local_mask_nz = local_mask.nonzeroes();
 #ifdef GRB_ALREADY_DENSE_OPTIMIZATION
 				}
 
-				already_dense_input_y = pipeline.containsAlreadyDenseVector( &internal::getCoordinates( y ) );
+				already_dense_input_y = pipeline.containsAlreadyDenseVector(
+					&internal::getCoordinates( y ) );
 				if( !already_dense_input_y ) {
 #else
 				already_dense_input_y = false;
 #endif
-					local_y = internal::getCoordinates( y ).asyncSubset( lower_bound, upper_bound );
+					local_y = internal::getCoordinates( y ).asyncSubset( lower_bound,
+						upper_bound );
 					local_y_nz = local_y.nonzeroes();
 #ifdef GRB_ALREADY_DENSE_OPTIMIZATION
 				}
@@ -968,41 +1052,48 @@ namespace grb {
 					pipeline.markMaybeSparseVector( &internal::getCoordinates( x ) );
 #endif
 					if( dense_descr ) {
-						pipeline.markMaybeSparseDenseDescriptorVerification( &internal::getCoordinates( x ) );
+						pipeline.markMaybeSparseDenseDescriptorVerification(
+							&internal::getCoordinates( x ) );
 					}
 				}
 			}
 
 			// choose optimal loop size
-			const bool loop_over_y = (descr & descriptors::invert_mask) || ( local_y_nz < local_mask_nz );
+			const bool loop_over_y = (descr & descriptors::invert_mask) ||
+				( local_y_nz < local_mask_nz );
 
 #ifdef GRB_BOOLEAN_DISPATCHER
-			rc = internal::boolean_dispatcher_masked_set
-						<
+			rc = internal::boolean_dispatcher_masked_set<
 #else
-			rc = internal::masked_set
-						<
+			rc = internal::masked_set<
 #endif
-							descr, out_is_void, in_is_void
-						>(
-							loop_over_y, already_dense_input_y, already_dense_mask, mask_is_dense,
-							lower_bound, upper_bound, local_x, local_mask, local_y, x, mask, y
-						);
+					descr, out_is_void, in_is_void
+				>(
+					loop_over_y,
+					already_dense_input_y, already_dense_mask, mask_is_dense,
+					lower_bound, upper_bound,
+					local_x, local_mask, local_y,
+					x, mask, y
+				);
 
 			if( !mask_is_dense ) {
-				internal::getCoordinates( x ).asyncJoinSubset( local_x, lower_bound, upper_bound );
+				internal::getCoordinates( x ).asyncJoinSubset( local_x, lower_bound,
+					upper_bound );
 			}
 
 			return rc;
 		};
 
-		ret = ret ? ret : internal::le.addStage( std::move( func ), internal::Opcode::IO_SET_MASKED_VECTOR,
+		ret = ret ? ret : internal::le.addStage(
+				std::move( func ),
+				internal::Opcode::IO_SET_MASKED_VECTOR,
 				size, sizeof( OutputType ), dense_descr, dense_mask,
-				&x, nullptr,
-				&internal::getCoordinates( x ), nullptr,
+				&x, nullptr, &internal::getCoordinates( x ), nullptr,
 				&mask, &y, nullptr, nullptr,
-				&internal::getCoordinates( mask ), &internal::getCoordinates( y ), nullptr, nullptr,
-				nullptr );
+				&internal::getCoordinates( mask ), &internal::getCoordinates( y ),
+				nullptr, nullptr,
+				nullptr
+			);
 
 #ifdef _NONBLOCKING_DEBUG
 		std::cout << "\t\tStage added to a pipeline: set(x, mask, y)" << std::endl;
@@ -1024,9 +1115,9 @@ namespace grb {
 			const Matrix< InputType1, nonblocking > &A,
 			const InputType2 * __restrict__ id = nullptr
 		) noexcept {
-			( void )C;
-			( void )A;
-			( void )id;
+			(void) C;
+			(void) A;
+			(void) id;
 			return UNSUPPORTED;
 		}
 
@@ -1042,9 +1133,9 @@ namespace grb {
 		const Matrix< InputType, nonblocking > &A,
 		const Phase &phase = EXECUTE
 	) noexcept {
-		( void )C;
-		( void )A;
-		( void )phase;
+		(void) C;
+		(void) A;
+		(void) phase;
 		return UNSUPPORTED;
 	}
 
@@ -1060,10 +1151,10 @@ namespace grb {
 		const InputType2 &val,
 		const Phase &phase = EXECUTE
 	) noexcept {
-		( void )C;
-		( void )A;
-		( void )val;
-		( void )phase;
+		(void) C;
+		(void) A;
+		(void) val;
+		(void) phase;
 		return UNSUPPORTED;
 	}
 
@@ -1079,21 +1170,23 @@ namespace grb {
 		fwd_iterator start,
 		const fwd_iterator end,
 		const IOMode mode,
-		const Dup & dup = Dup()
+		const Dup &dup = Dup()
 	) {
 		// static sanity check
-		NO_CAST_ASSERT( ( !( descr & descriptors::no_casting ) ||
-			std::is_same< InputType, decltype( *std::declval< fwd_iterator >() ) >::value ),
+		NO_CAST_ASSERT( ( !( descr & descriptors::no_casting ) || std::is_same<
+					InputType, decltype( *std::declval< fwd_iterator >() )
+				>::value ),
 			"grb::buildVector (nonblocking implementation)",
 			"Input iterator does not match output vector type while no_casting "
-			"descriptor was set" );
+			"descriptor was set"
+		);
 
-		// in the sequential nonblocking implementation, the number of user processes always equals 1
-		// therefore the sequential and parallel modes are equivalent
+		// in the sequential nonblocking implementation, the number of user processes
+		// always equals 1 therefore the sequential and parallel modes are equivalent
 #ifndef NDEBUG
 		assert( mode == SEQUENTIAL || mode == PARALLEL );
 #else
-		(void)mode;
+		(void) mode;
 #endif
 
 		// declare temporary to meet delegate signature
@@ -1123,23 +1216,25 @@ namespace grb {
 		internal::le.execution( &x );
 
 		// static sanity check
-		NO_CAST_ASSERT( ( !( descr & descriptors::no_casting ) ||
-			std::is_same< InputType, decltype( *std::declval< fwd_iterator2 >() ) >::value ||
-			std::is_integral< decltype( *std::declval< fwd_iterator1 >() ) >::value ),
-			"grb::buildVector (nonblocking implementation)",
+		NO_CAST_ASSERT( ( !( descr & descriptors::no_casting ) || std::is_same<
+					InputType, decltype( *std::declval< fwd_iterator2 >() )
+				>::value ||
+				std::is_integral< decltype( *std::declval< fwd_iterator1 >() ) >::value
+			), "grb::buildVector (nonblocking implementation)",
 			"At least one input iterator has incompatible value types while "
 			"no_casting descriptor was set" );
 
-		// in the sequential nonblocking implementation, the number of user processes always equals 1
-		// therefore the sequential and parallel modes are equivalent
+		// in the sequential nonblocking implementation, the number of user processes
+		// always equals 1 therefore the sequential and parallel modes are equivalent
 #ifndef NDEBUG
 		assert( mode == SEQUENTIAL || mode == PARALLEL );
 #else
-		(void)mode;
+		(void) mode;
 #endif
 
 		// call the private member function that provides this functionality
-		return x.template build< descr >( dup, ind_start, ind_end, val_start, val_end );
+		return x.template build< descr >( dup, ind_start, ind_end, val_start, val_end
+			);
 	}
 
 	/** buildMatrixUnique is based on that of the reference backend */
@@ -1157,7 +1252,8 @@ namespace grb {
 		const fwd_iterator end,
 		const IOMode mode
 	) {
-		return buildMatrixUnique< descr, InputType, RIT, CIT, NIT, fwd_iterator >( internal::getRefMatrix(A), start, end, mode );
+		return buildMatrixUnique< descr, InputType, RIT, CIT, NIT, fwd_iterator >(
+			internal::getRefMatrix(A), start, end, mode );
 	}
 
 	template<
