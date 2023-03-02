@@ -332,8 +332,8 @@ namespace grb {
 					matrix.col_start[ destination_index + 1 ] );
 				const size_t nzsz = static_cast< size_t >( nz );
 				assert( rc == SUCCESS );
-				assert( col_off < nzsz );
-				assert( col_off_p1 < nzsz );
+				assert( col_off <= nzsz );
+				assert( col_off_p1 <= nzsz );
 			}
 
 			// check whether we should compute output here
