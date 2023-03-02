@@ -324,9 +324,17 @@ namespace grb {
 #ifdef _DEBUG
 			constexpr bool use_index = descr & descriptors::use_index;
 #endif
-			assert( rc == SUCCESS );
-			assert( matrix.col_start[ destination_index ] <= nz );
-			assert( matrix.col_start[ destination_index + 1 ] <= nz );
+			// some assertions that are safe, signed- and width-wise
+			{
+				const size_t col_off = static_cast< size_t >(
+					matrix.col_start[ destination_index ] );
+				const size_t col_off_p1 = static_cast< size_t >(
+					matrix.col_start[ destination_index + 1 ] );
+				const size_t nzsz = static_cast< size_t >( nz );
+				assert( rc == SUCCESS );
+				assert( col_off < nzsz );
+				assert( col_off_p1 < nzsz );
+			}
 
 			// check whether we should compute output here
 			if( masked ) {
