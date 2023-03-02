@@ -66,22 +66,22 @@ namespace grb {
 		 *
 		 * It stores the information to smooth each level of the grid, to be initalized separately.
 		 *
-		 * @tparam IOType type of result and intermediate vectors used during computation
-		 * @tparam NonzeroType type of matrix values
-		 * @tparam Ring the ring of algebraic operators
+		 * @tparam SmootherTypes container of algebraic tyoes for the smoother (IOType, NonzeroType, Ring)
+		 * @tparam TelControllerType telemetry controller to (de)activate time tracing within passed MultiGridData objects
 		 * @tparam descr descriptors with statically-known data for computation and containers
 		 */
 		template <
 			class SmootherTypes,
-			typename TelTokenType,
+			typename TelControllerType,
 			Descriptor descr = descriptors::no_operation
 		> struct RedBlackGSSmootherRunner {
 
 			using IOType = typename SmootherTypes::IOType;
 			using NonzeroType = typename SmootherTypes::NonzeroType;
 			using Ring = typename SmootherTypes::Ring;
-			using SmootherInputType = MultiGridData< IOType, NonzeroType, TelTokenType >;
-			using SmootherDataType = SmootherData< IOType >;
+			using Minus = typename SmootherTypes::Minus;
+			using SmootherInputType = MultiGridData< IOType, NonzeroType, TelControllerType >; ///< external input structure
+			using SmootherDataType = SmootherData< IOType >; ///< smoothing information and temporary variables (per MG level)
 
 			size_t presmoother_steps = 1UL; ///< number of pre-smoother steps
 			size_t postsmoother_steps = 1UL;  ///< number of post-smoother steps

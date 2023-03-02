@@ -69,7 +69,7 @@ namespace grb {
 		 */
 		template<
 			class CoarsenerTypes,
-			typename TelTokenType,
+			typename TelControllerType,
 			Descriptor descr = descriptors::no_operation
 		> struct SingleMatrixCoarsener {
 
@@ -77,8 +77,9 @@ namespace grb {
 			using NonzeroType = typename CoarsenerTypes::NonzeroType;
 			using Ring = typename CoarsenerTypes::Ring;
 			using Minus = typename CoarsenerTypes::Minus;
-			using MultiGridInputType = MultiGridData< IOType, NonzeroType, TelTokenType >;
-			using CoarseningDataType = CoarseningData< IOType, NonzeroType >;
+
+			using MultiGridInputType = MultiGridData< IOType, NonzeroType, TelControllerType >; ///< input data from MG
+			using CoarseningDataType = CoarseningData< IOType, NonzeroType >; ///< internal data with coarsening information
 
 			static_assert( std::is_default_constructible< Ring >::value,
 				"cannot construct the Ring with default values" );

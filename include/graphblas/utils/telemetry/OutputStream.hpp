@@ -57,16 +57,16 @@ namespace grb {
 			};
 
 			template<
-				typename TelTokenType,
-				bool enabled = TelTokenType::enabled
-			> class OutputStream : public TelemetryBase< TelTokenType, enabled > {
+				typename TelControllerType,
+				bool enabled = TelControllerType::enabled
+			> class OutputStream : public TelemetryBase< TelControllerType, enabled > {
 			public:
-				using self_t = OutputStream< TelTokenType, enabled >;
+				using self_t = OutputStream< TelControllerType, enabled >;
 
 				OutputStream() = default;
 
-				OutputStream( const TelTokenType & _tt, std::ostream & _out ) :
-					TelemetryBase< TelTokenType, enabled >( _tt )
+				OutputStream( const TelControllerType & _tt, std::ostream & _out ) :
+					TelemetryBase< TelControllerType, enabled >( _tt )
 				{
 					( void ) _out;
 				}
@@ -96,15 +96,15 @@ namespace grb {
 				}
 			};
 
-			template< typename TelTokenType > class OutputStream< TelTokenType, true > :
-				public TelemetryBase< TelTokenType, true > {
+			template< typename TelControllerType > class OutputStream< TelControllerType, true > :
+				public TelemetryBase< TelControllerType, true > {
 			public:
-				using self_t = OutputStream< TelTokenType, true >;
+				using self_t = OutputStream< TelControllerType, true >;
 
-				using base_t = TelemetryBase< TelTokenType, true >;
+				using base_t = TelemetryBase< TelControllerType, true >;
 
-				OutputStream( const TelTokenType & _tt, std::ostream & _out ) :
-					TelemetryBase< TelTokenType, true >( _tt ),
+				OutputStream( const TelControllerType & _tt, std::ostream & _out ) :
+					TelemetryBase< TelControllerType, true >( _tt ),
 					out( _out )
 				{}
 
@@ -142,9 +142,9 @@ namespace grb {
 				std::ostream & out;
 			};
 
-			using OutputStreamOff = OutputStream< TelemetryTokenAlwaysOff, false >;
+			using OutputStreamOff = OutputStream< TelemetryControllerAlwaysOff, false >;
 
-			using OutputStreamOn = OutputStream< TelemetryTokenAlwaysOn, true >;
+			using OutputStreamOn = OutputStream< TelemetryControllerAlwaysOn, true >;
 		}
 	}
 }

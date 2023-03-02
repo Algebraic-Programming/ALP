@@ -23,7 +23,7 @@
 #ifndef _H_GRB_UTILS_TELEMETRY_TELEMETRY
 #define _H_GRB_UTILS_TELEMETRY_TELEMETRY
 
-#include "TelemetryToken.hpp"
+#include "TelemetryController.hpp"
 #include "Stopwatch.hpp"
 #include "Timeable.hpp"
 #include "CSVWriter.hpp"

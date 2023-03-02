@@ -47,17 +47,19 @@ namespace grb {
 		 * @tparam IOType Type of values of the vectors for intermediate results
 		 * @tparam NonzeroType Type of the values stored inside the system matrix \p A
 		 *                     and the coarsening matrix #Ax_finer
+		 * @tparam TelControllerType type of the controller for telemetry, to compile-time (de)activate
+		 * 	the (mg_sm)_stopwatches
 		 */
 		template<
 			typename IOType,
 			typename NonzeroType,
-			typename TelTokenType
+			typename TelControllerType
 		> struct MultiGridData {
 
-			grb::utils::telemetry::Stopwatch< TelTokenType > mg_stopwatch;
-			grb::utils::telemetry::Stopwatch< TelTokenType > sm_stopwatch;
-			const size_t level; ///< level of the grid (0 for the finest physical system)
-			const size_t system_size; ///< size of the system, i.e. side of the #A system matrix
+			grb::utils::telemetry::Stopwatch< TelControllerType > mg_stopwatch; ///< stopwatch to measure the execution time in MG
+			grb::utils::telemetry::Stopwatch< TelControllerType > sm_stopwatch; ///< stopwatch to measure the execution time in the smoother
+			const size_t level;           ///< level of the grid (0 for the finest physical system)
+			const size_t system_size;     ///< size of the system, i.e. side of the #A system matrix
 			grb::Matrix< NonzeroType > A; ///< system matrix
 			grb::Vector< IOType > z; ///< multi-grid solution
 			grb::Vector< IOType > r; ///< residual
@@ -66,7 +68,7 @@ namespace grb {
 			 * Construct a new multigrid data object from level information and system size.
 			 */
 			MultiGridData(
-				const TelTokenType & _tt,
+				const TelControllerType & _tt,
 				size_t _level,
 				size_t sys_size
 			) :
@@ -79,10 +81,10 @@ namespace grb {
 				r( sys_size ) {}
 
 			// for safety, disable copy semantics
-			MultiGridData( const MultiGridData< IOType, NonzeroType, TelTokenType > & o ) = delete;
+			MultiGridData( const MultiGridData< IOType, NonzeroType, TelControllerType > & o ) = delete;
 
-			MultiGridData<IOType, NonzeroType, TelTokenType > & operator=(
-				const MultiGridData< IOType, NonzeroType, TelTokenType > & ) = delete;
+			MultiGridData< IOType, NonzeroType, TelControllerType > & operator=(
+					const MultiGridData< IOType, NonzeroType, TelControllerType > & ) = delete;
 
 			grb::RC init_vectors( IOType zero ) {
 				grb::RC rc = grb::set( z, zero );

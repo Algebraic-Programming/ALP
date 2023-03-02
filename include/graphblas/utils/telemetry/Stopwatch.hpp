@@ -48,19 +48,12 @@ namespace grb {
 				static inline duration_float_t nano2Sec( duration_nano_t nano ) {
 					return static_cast< duration_float_t >( nano ) / 1000000000UL;
 				}
-
 			};
 
-			template<
-				typename TelTokenType,
-				bool enabled = TelTokenType::enabled
-			> class Stopwatch:
-				public StopwatchBase, public TelemetryBase< TelTokenType, enabled > {
+			template< typename TelControllerType, bool enabled = TelControllerType::enabled >
+			class Stopwatch : public StopwatchBase, public TelemetryBase< TelControllerType, enabled > {
 			public:
-				Stopwatch( const TelTokenType & tt ) :
-					StopwatchBase(),
-					TelemetryBase< TelTokenType, enabled >( tt )
-					{}
+				Stopwatch( const TelControllerType & tt ) : StopwatchBase(), TelemetryBase< TelControllerType, enabled >( tt ) {}
 
 				Stopwatch( const Stopwatch & ) = default;
 
@@ -79,11 +72,8 @@ namespace grb {
 				}
 			};
 
-
-			template<
-				typename TelTokenType
-			> class Stopwatch< TelTokenType, true >:
-				public StopwatchBase, public TelemetryBase< TelTokenType, true > {
+			template< typename TelControllerType >
+			class Stopwatch< TelControllerType, true > : public StopwatchBase, public TelemetryBase< TelControllerType, true > {
 
 				typedef typename std::chrono::high_resolution_clock clock_t;
 
@@ -96,23 +86,19 @@ namespace grb {
 				time_point_t beginning;
 
 			public:
-				Stopwatch( const TelTokenType & tt ) :
-					StopwatchBase(),
-					TelemetryBase< TelTokenType, true >( tt ),
-					elapsedTime( duration_t::zero() )
-					{}
+				Stopwatch( const TelControllerType & tt ) : StopwatchBase(), TelemetryBase< TelControllerType, true >( tt ), elapsedTime( duration_t::zero() ) {}
 
 				Stopwatch( const Stopwatch & s ) = default;
 
 				inline void start() {
-					if ( this->is_active() ) {
+					if( this->is_active() ) {
 						beginning = clock_t::now();
 					}
 				}
 
 				inline duration_nano_t stop() {
 					duration_nano_t count = 0;
-					if ( this->is_active() ) {
+					if( this->is_active() ) {
 						time_point_t end = clock_t::now();
 						duration_t d = end - beginning;
 						count = d.count();
@@ -123,7 +109,7 @@ namespace grb {
 
 				inline duration_nano_t reset() {
 					duration_t r = duration_t::zero();
-					if ( this->is_active() ) {
+					if( this->is_active() ) {
 						r = elapsedTime;
 						elapsedTime = duration_t::zero();
 					}
@@ -135,9 +121,9 @@ namespace grb {
 				}
 			};
 
-			using StaticStopwatch = Stopwatch< TelemetryTokenAlwaysOn, true >;
-		}
-	}
-}
+			using StaticStopwatch = Stopwatch< TelemetryControllerAlwaysOn, true >;
+		} // namespace telemetry
+	}     // namespace utils
+} // namespace grb
 
 #endif // _H_GRB_UTILS_TELEMETRY_STOPWATCH

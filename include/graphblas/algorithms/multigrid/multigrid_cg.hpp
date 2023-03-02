@@ -113,10 +113,10 @@ namespace grb {
 		template<
 			typename MGCGTypes,
 			typename MultiGridRunnerType,
-			typename TelTokenType,
+			typename TelControllerType,
 			Descriptor descr = descriptors::no_operation,
 			typename DbgOutputStreamType = grb::utils::telemetry::OutputStreamOff
-		> struct MultiGridCGRunner : public grb::utils::telemetry::Timeable< TelTokenType > {
+		> struct MultiGridCGRunner : public grb::utils::telemetry::Timeable< TelControllerType > {
 
 			using IOType = typename MGCGTypes::IOType;
 			using NonzeroType = typename MGCGTypes::NonzeroType;
@@ -152,10 +152,10 @@ namespace grb {
 			 * as the state of the MG runner is managed automatically with this object.
 			 */
 			MultiGridCGRunner(
-				const TelTokenType & tt,
-				MultiGridRunnerType &_mg_runner
+				const TelControllerType & tt,
+				MultiGridRunnerType & _mg_runner
 			) :
-				grb::utils::telemetry::Timeable< TelTokenType >( tt ),
+				grb::utils::telemetry::Timeable< TelControllerType >( tt ),
 				mg_runner( _mg_runner ),
 				dbg_logger()
 			{
@@ -163,11 +163,11 @@ namespace grb {
 			}
 
 			MultiGridCGRunner(
-				const TelTokenType & tt,
+				const TelControllerType & tt,
 				MultiGridRunnerType & _mg_runner,
 				DbgOutputStreamType & _dbg_logger
 			) :
-				grb::utils::telemetry::Timeable< TelTokenType >( tt ),
+				grb::utils::telemetry::Timeable< TelControllerType >( tt ),
 				mg_runner( _mg_runner ),
 				dbg_logger( _dbg_logger )
 			{}

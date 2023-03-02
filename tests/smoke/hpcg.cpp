@@ -99,39 +99,43 @@ using coord_t = size_t;
 
 constexpr Descriptor hpcg_desc = descriptors::dense;
 
-DECLARE_TELEMETRY_TOKEN( DistOut )
-ACTIVATE_TOKEN( DistOut )
-using dist_token_t = TELEMETRY_TOKEN_TYPE( DistOut );
-using DistStream = grb::utils::telemetry::OutputStream< dist_token_t >;
+// telemetry control: controllers and output stream types for telemetry
+// they can be (de)activated at compile-time by (un)commenting the respective ENABLE_TELEMETRY_CONTROLLER() macro
+ENABLE_TELEMETRY_CONTROLLER( dist_controller_t )
+DEFINE_TELEMETRY_CONTROLLER( dist_controller_t )
+using DistStream = grb::utils::telemetry::OutputStream< dist_controller_t >;
 
-DECLARE_TELEMETRY_TOKEN( HPCGTelemetry )
-ACTIVATE_TOKEN( HPCGTelemetry )
-using hpcg_token_t = TELEMETRY_TOKEN_TYPE( HPCGTelemetry );
+ENABLE_TELEMETRY_CONTROLLER( hpcg_controller_t )
+DEFINE_TELEMETRY_CONTROLLER( hpcg_controller_t )
 
-DECLARE_TELEMETRY_TOKEN( MGTelemetry )
-ACTIVATE_TOKEN( MGTelemetry )
-using mg_token_t = TELEMETRY_TOKEN_TYPE( MGTelemetry );
+ENABLE_TELEMETRY_CONTROLLER( mg_controller_t )
+DEFINE_TELEMETRY_CONTROLLER( mg_controller_t )
 
-DECLARE_TELEMETRY_TOKEN( DBGToken )
-// ACTIVATE_TOKEN( DBGToken )
-using dbg_token_t = TELEMETRY_TOKEN_TYPE( DBGToken );
-using DBGStream = grb::utils::telemetry::OutputStream< dbg_token_t >;
+// ENABLE_TELEMETRY_CONTROLLER( dbg_controller_t )
+DEFINE_TELEMETRY_CONTROLLER( dbg_controller_t )
+using DBGStream = grb::utils::telemetry::OutputStream< dbg_controller_t >;
 
 using duration_t = utils::telemetry::duration_nano_t;
-using hpcg_csv_t = utils::telemetry::CSVWriter< hpcg_token_t, hpcg_token_t::enabled, size_t, duration_t >;
-using mg_csv_t = utils::telemetry::CSVWriter< mg_token_t, mg_token_t::enabled, size_t, size_t, duration_t, duration_t >;
+using hpcg_csv_t = utils::telemetry::CSVWriter< hpcg_controller_t, hpcg_controller_t::enabled,
+	size_t, duration_t >;
+using mg_csv_t = utils::telemetry::CSVWriter< mg_controller_t, mg_controller_t::enabled,
+	size_t, size_t, duration_t, duration_t >;
 
 // assembled types for simulation runners and input/output structures
-using smoother_runner_t = grb::algorithms::RedBlackGSSmootherRunner< HPCGTypes, mg_token_t, hpcg_desc >;
+using smoother_runner_t = grb::algorithms::RedBlackGSSmootherRunner< HPCGTypes,
+	mg_controller_t, hpcg_desc >;
 using smoothing_data_t = typename smoother_runner_t::SmootherDataType;
 
-using coarsener_runner_t = grb::algorithms::SingleMatrixCoarsener< HPCGTypes, mg_token_t, hpcg_desc >;
+using coarsener_runner_t = grb::algorithms::SingleMatrixCoarsener< HPCGTypes,
+	mg_controller_t, hpcg_desc >;
 using coarsening_data_t = typename coarsener_runner_t::CoarseningDataType;
 
-using mg_runner_t = MultiGridRunner< HPCGTypes, smoother_runner_t, coarsener_runner_t, mg_token_t, hpcg_desc, DBGStream >;
+using mg_runner_t = MultiGridRunner< HPCGTypes, smoother_runner_t, coarsener_runner_t,
+	mg_controller_t, hpcg_desc, DBGStream >;
 using mg_data_t = typename mg_runner_t::MultiGridInputType;
 
-using hpcg_runner_t = MultiGridCGRunner< HPCGTypes, mg_runner_t, hpcg_token_t, hpcg_desc, DBGStream >;
+using hpcg_runner_t = MultiGridCGRunner< HPCGTypes, mg_runner_t, hpcg_controller_t,
+	hpcg_desc, DBGStream >;
 using hpcg_data_t = typename hpcg_runner_t::HPCGInputType;
 
 struct dotter : grb::utils::telemetry::OutputStreamLazy {
@@ -219,32 +223,12 @@ static void print_system(
  * This routine is algorithm-agnositc, as long as the constructors of the data types meet the requirements
  * explained in \ref multigrid_allocate_data().
  */
-template< typename T > T static next_pow_2( T n ) {
-	static_assert( std::is_integral< T >::value, "Integral required." );
-	--n;
-	n |= ( n >> 1 );
-	for( unsigned i = 1; i <= sizeof( T ) * 4; i *= 2 ) {
-		const unsigned shift = static_cast< T >( 1U ) << i;
-		n |= ( n >> shift );
-	}
-	return n + 1;
-}
-
-/**
- * Allocates the data structure input to the various simulation steps (CG, multi-grid, coarsening, smoothing)
- * for each level of the multi-grid. The input is the vector of system sizes \p mg_sizes, with sizes in
- * monotonically \b decreasing order (finest system first).
- *
- * This routine is algorithm-agnositc, as long as the constructors of the data types meet the requirements
- * explained in \ref multigrid_allocate_data().
- */
-static void allocate_system_structures(
-	std::vector< std::unique_ptr< mg_data_t > > &system_levels,
-	std::vector< std::unique_ptr< coarsening_data_t > > &coarsener_levels,
-	std::vector< std::unique_ptr< smoothing_data_t > > &smoother_levels,
-	std::unique_ptr< hpcg_data_t > &cg_system_data,
-	const std::vector< size_t > &mg_sizes,
-	const mg_token_t & mg_token,
+static void allocate_system_structures( std::vector< std::unique_ptr< mg_data_t > > & system_levels,
+	std::vector< std::unique_ptr< coarsening_data_t > > & coarsener_levels,
+	std::vector< std::unique_ptr< smoothing_data_t > > & smoother_levels,
+	std::unique_ptr< hpcg_data_t > & cg_system_data,
+	const std::vector< size_t > & mg_sizes,
+	const mg_controller_t & mg_controller,
 	DistStream & logger
 ) {
 	grb::utils::Timer timer;
@@ -253,7 +237,7 @@ static void allocate_system_structures(
 	cg_system_data = std::unique_ptr< hpcg_data_t >( data );
 	logger << "allocating data for the MultiGrid simulation...";
 	timer.reset();
-	multigrid_allocate_data( system_levels, coarsener_levels, smoother_levels, mg_sizes, mg_token );
+	multigrid_allocate_data( system_levels, coarsener_levels, smoother_levels, mg_sizes, mg_controller );
 	double time = timer.time();
 	logger << " time (ms) " << time << std::endl;
 
@@ -283,7 +267,7 @@ static void build_3d_system(
 	std::vector< std::unique_ptr< smoothing_data_t > > &smoother_levels,
 	std::unique_ptr< hpcg_data_t > &cg_system_data,
 	const simulation_input & in,
-	const mg_token_t & tt,
+	const mg_controller_t & tt,
 	DistStream & logger
 ) {
 	constexpr size_t DIMS = 3;
@@ -364,13 +348,19 @@ void grbProgram( const simulation_input & in, struct output & out ) {
 	const size_t pid = spmd<>::pid();
 	grb::utils::Timer timer;
 
-	dist_token_t dist( pid == 0 );
-	class MyNumPunct : public std::numpunct<char> {
-	// protected:
-		char do_thousands_sep() const override { return '\''; }
-		std::string do_grouping() const override { return "\03"; }
+	// standard logger: active only on master node
+	dist_controller_t dist( pid == 0 );
+	// separate thousands when printing integers
+	class IntegerSeparation : public std::numpunct< char > {
+		// protected:
+		char do_thousands_sep() const override {
+			return '\'';
+		}
+		std::string do_grouping() const override {
+			return "\03";
+		}
 	};
-	std::locale old_locale = std::cout.imbue( std::locale( std::cout.getloc(), new MyNumPunct ) );
+	std::locale old_locale = std::cout.imbue( std::locale( std::cout.getloc(), new IntegerSeparation ) );
 	DistStream logger( dist, std::cout );
 
 	logger << "beginning input generation..." << std::endl;
@@ -378,13 +368,14 @@ void grbProgram( const simulation_input & in, struct output & out ) {
 	// wrap hpcg_data inside a unique_ptr to forget about cleaning chores
 	std::unique_ptr< hpcg_data_t > hpcg_state;
 
-	// log HPCG by default on master
-	hpcg_token_t hpcg_token( pid == 0 );
-	// log Mg and smoother only if the user requested it
-	mg_token_t mg_token( pid == 0 && in.mg_log );
+	// measure HPCG execution time by default on master
+	hpcg_controller_t hpcg_controller( pid == 0 );
+	// measure MG and smoother only if the user requested it
+	mg_controller_t mg_controller( pid == 0 && in.mg_log );
 
-	dbg_token_t dbg_token( pid == 0 );
-	DBGStream dbg_stream( dbg_token, std::cout );
+	// trace execution of CG and MG only on master
+	dbg_controller_t dbg_controller( pid == 0 );
+	DBGStream dbg_stream( dbg_controller, std::cout );
 
 	// define the main HPCG runner and initialize the options of its components
 	coarsener_runner_t coarsener;
@@ -392,13 +383,14 @@ void grbProgram( const simulation_input & in, struct output & out ) {
 	smoother.presmoother_steps = smoother.postsmoother_steps = in.smoother_steps;
 	smoother.non_recursive_smooth_steps = 1UL;
 	mg_runner_t mg_runner( smoother, coarsener, dbg_stream );
-	hpcg_runner_t hpcg_runner( hpcg_token, mg_runner, dbg_stream );
+	hpcg_runner_t hpcg_runner( hpcg_controller, mg_runner, dbg_stream );
 	hpcg_runner.tolerance = residual_zero;
 	hpcg_runner.with_preconditioning = ! in.no_preconditioning;
 
 	timer.reset();
 	// build the entire multi-grid system
-	build_3d_system( mg_runner.system_levels, coarsener.coarsener_levels, smoother.levels, hpcg_state, in, mg_token, logger );
+	build_3d_system( mg_runner.system_levels, coarsener.coarsener_levels, smoother.levels,
+		hpcg_state, in, mg_controller, logger );
 	double input_duration = timer.time();
 	logger << "input generation time (ms): " << input_duration << std::endl;
 
@@ -445,8 +437,9 @@ void grbProgram( const simulation_input & in, struct output & out ) {
 	out.inner_test_repetitions = 0;
 	out.times.useful = 0.0;
 
-	hpcg_csv_t hpcg_csv( hpcg_token, { "repetition", "time" } );
-	mg_csv_t mg_csv( mg_token, { "repetition", "level", "mg time", "smoother time" } );
+	// initialize CSV writers (if activated)
+	hpcg_csv_t hpcg_csv( hpcg_controller, { "repetition", "time" } );
+	mg_csv_t mg_csv( mg_controller, { "repetition", "level", "mg time", "smoother time" } );
 
 	// do benchmark
 	for( size_t i = 0; i < in.inner_test_repetitions; ++i ) {

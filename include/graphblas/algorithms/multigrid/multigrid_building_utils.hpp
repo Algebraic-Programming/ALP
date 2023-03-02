@@ -56,24 +56,26 @@ namespace grb {
 		 *  the coarser system matrix (in this order)
 		 * @tparam SmootherInfoType type holding the information for the smoother;
 		 *  its constructor must take in input the size of the system matrix for that level
+		 * @tparam TelControllerType telemetry controller type, to (de)activate time measurement at compile-time
 		 *
 		 * @param mg_sizes sizes of the system matrix for each level of the multi-grid
 		 * @param system_levels system data (system matrix, residual, solution, ...) for each level
 		 * @param coarsener_levels at position \a i of this vector, data to coarsen from level \a i
 		 *  (system size \p mg_sizes [i] ) to level \a i+1 (system size \p mg_sizes [i+1] )
 		 * @param smoother_levels smoother data for each level
+		 * @param tt telemetry controller to control time tracing
 		 */
 		template<
 			typename MGInfoType,
 			typename CoarsenerInfoType,
 			typename SmootherInfoType,
-			typename TelTokenType
+			typename TelControllerType
 		> void multigrid_allocate_data(
-			std::vector< std::unique_ptr< MGInfoType > > &system_levels,
-			std::vector< std::unique_ptr< CoarsenerInfoType > > &coarsener_levels,
-			std::vector< std::unique_ptr< SmootherInfoType > > &smoother_levels,
-			const std::vector< size_t > &mg_sizes,
-			const TelTokenType & tt
+			std::vector< std::unique_ptr< MGInfoType > > & system_levels,
+			std::vector< std::unique_ptr< CoarsenerInfoType > > & coarsener_levels,
+			std::vector< std::unique_ptr< SmootherInfoType > > & smoother_levels,
+			const std::vector< size_t > & mg_sizes,
+			const TelControllerType & tt
 		) {
 			if( mg_sizes.size() == 0 ) {
 				throw std::invalid_argument( "at least one size should be available" );

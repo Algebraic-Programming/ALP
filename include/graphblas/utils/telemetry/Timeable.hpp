@@ -30,13 +30,13 @@ namespace grb {
 		namespace telemetry {
 
 			template<
-				typename TelTokenType,
-				bool enabled = TelTokenType::enabled
+				typename TelControllerType,
+				bool enabled = TelControllerType::enabled
 			> class Timeable {
 			public:
-				using self_t = Timeable< TelTokenType, enabled >;
+				using self_t = Timeable< TelControllerType, enabled >;
 
-				Timeable( const TelTokenType & tt ) {
+				Timeable( const TelControllerType & tt ) {
 					(void) tt;
 				}
 
@@ -61,11 +61,11 @@ namespace grb {
 
 			};
 
-			template< typename TelTokenType > class Timeable< TelTokenType, true > {
+			template< typename TelControllerType > class Timeable< TelControllerType, true > {
 			public:
-				using self_t = Timeable< TelTokenType, true >;
+				using self_t = Timeable< TelControllerType, true >;
 
-				Timeable( const TelTokenType & tt ) : swatch( tt ) {}
+				Timeable( const TelControllerType & tt ) : swatch( tt ) {}
 
 				Timeable( const self_t & ) = default;
 
@@ -89,10 +89,10 @@ namespace grb {
 				}
 
 			private:
-				Stopwatch< TelTokenType > swatch;
+				Stopwatch< TelControllerType > swatch;
 			};
 
-			using StaticTimeable = Timeable< TelemetryTokenAlwaysOn, true >;
+			using StaticTimeable = Timeable< TelemetryControllerAlwaysOn, true >;
 
 		}
 	}

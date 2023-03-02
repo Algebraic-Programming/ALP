@@ -17,31 +17,37 @@
 
 /*
  * @author Alberto Scolari
- * @date 14th February, 2023
+ * @date 1st March, 2023
  */
 
 #ifndef _H_GRB_UTILS_TELEMETRY_TELEMETRY_BASE
 #define _H_GRB_UTILS_TELEMETRY_TELEMETRY_BASE
 
-#include "TelemetryToken.hpp"
+#include "TelemetryController.hpp"
 
 namespace grb {
 	namespace utils {
 		namespace telemetry {
 
+			/**
+			 *
+			 *
+			 * @tparam TelControllerType
+			 * @tparam enabled
+			 */
 			template<
-				typename TelTokenType,
-				bool enabled = TelTokenType::enabled
+				typename TelControllerType,
+				bool enabled = TelControllerType::enabled
 			> class TelemetryBase {
 			public:
-				static_assert( is_telemetry_token< TelTokenType >::value,
-					"type TelTokenType does not implement Telemetry Token interface" );
+				static_assert( is_telemetry_controller< TelControllerType >::value,
+					"type TelControllerType does not implement Telemetry Controller interface" );
 
-				using self_t = TelemetryBase< TelTokenType, enabled >;
+				using self_t = TelemetryBase< TelControllerType, enabled >;
 
 				TelemetryBase() = default;
 
-				TelemetryBase( const TelTokenType & tt ) {
+				TelemetryBase( const TelControllerType & tt ) {
 					( void ) tt;
 				}
 
@@ -54,35 +60,35 @@ namespace grb {
 
 
 			template<
-				typename TelTokenType
-			> class TelemetryBase< TelTokenType, true > {
+				typename TelControllerType
+			> class TelemetryBase< TelControllerType, true > {
 
-				const TelTokenType & telemetry_token;
+				const TelControllerType & telemetry_Controller;
 
 			public:
-				static_assert( is_telemetry_token< TelTokenType >::value,
-					"type TelTokenType does not implement Telemetry Token interface" );
+				static_assert( is_telemetry_controller< TelControllerType >::value,
+					"type TelControllerType does not implement Telemetry Controller interface" );
 
-				using self_t = TelemetryBase< TelTokenType, true >;
+				using self_t = TelemetryBase< TelControllerType, true >;
 
-				TelemetryBase( const TelTokenType & tt ): telemetry_token( tt ) {}
+				TelemetryBase( const TelControllerType & tt ): telemetry_Controller( tt ) {}
 
-				TelemetryBase( const self_t & tb ) : telemetry_token( tb.telemetry_token ) {}
+				TelemetryBase( const self_t & tb ) : telemetry_Controller( tb.telemetry_Controller ) {}
 
 				self_t & operator=( const self_t & ) = delete;
 
-				bool is_active() const { return telemetry_token.is_active(); }
+				bool is_active() const { return telemetry_Controller.is_active(); }
 			};
 
 			// always actibe base, especially for prototyping scenarios
-			template<> class TelemetryBase< TelemetryTokenAlwaysOn, true > {
+			template<> class TelemetryBase< TelemetryControllerAlwaysOn, true > {
 			public:
-				static_assert( is_telemetry_token< TelemetryTokenAlwaysOn >::value,
-					"type TelTokenType does not implement Telemetry Token interface" );
+				static_assert( is_telemetry_controller< TelemetryControllerAlwaysOn >::value,
+					"type TelControllerType does not implement Telemetry Controller interface" );
 
-				using self_t = TelemetryBase< TelemetryTokenAlwaysOn, true >;
+				using self_t = TelemetryBase< TelemetryControllerAlwaysOn, true >;
 
-				TelemetryBase( const TelemetryTokenAlwaysOn & tt ) { (void) tt; }
+				TelemetryBase( const TelemetryControllerAlwaysOn & tt ) { (void) tt; }
 
 				TelemetryBase( const self_t & tb ) = default;
 

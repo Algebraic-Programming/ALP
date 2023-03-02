@@ -61,17 +61,19 @@ namespace grb {
 			typename MGTypes,
 			typename MGSmootherType,
 			typename CoarsenerType,
-			typename TelTokenType,
+			typename TelControllerType,
 			Descriptor descr = descriptors::no_operation,
 			typename DbgOutputStreamType = grb::utils::telemetry::OutputStreamOff
 		> struct MultiGridRunner {
 
-			using self_t = MultiGridRunner< MGTypes, MGSmootherType, CoarsenerType, TelTokenType, descr >;
+			using self_t = MultiGridRunner< MGTypes, MGSmootherType, CoarsenerType, TelControllerType, descr >;
+			// algebraic types
 			using IOType = typename MGTypes::IOType;
 			using NonzeroType = typename MGTypes::NonzeroType;
 			using Ring = typename MGTypes::Ring;
 			using Minus = typename MGTypes::Minus;
-			using MultiGridInputType = MultiGridData< IOType, NonzeroType, TelTokenType >;
+			using MultiGridInputType = MultiGridData< IOType, NonzeroType, TelControllerType >;
+			// runners
 			using SmootherRunnerType = MGSmootherType;
 			using CoarsenerRunnerType = CoarsenerType;
 
