@@ -5052,7 +5052,7 @@ namespace grb {
 #endif
 						local_mask = internal::getCoordinates( mask ).asyncSubset( lower_bound,
 							upper_bound );
-						local_mask_nz = local_mask.nonzeroes()
+						local_mask_nz = local_mask.nonzeroes();
 #ifdef GRB_ALREADY_DENSE_OPTIMIZATION
 					}
 
