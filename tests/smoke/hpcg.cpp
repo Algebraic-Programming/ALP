@@ -43,7 +43,6 @@
 #include <graphblas/algorithms/multigrid/multigrid_v_cycle.hpp>
 #include <graphblas/algorithms/multigrid/red_black_gauss_seidel.hpp>
 #include <graphblas/algorithms/multigrid/single_matrix_coarsener.hpp>
-#include <graphblas/utils/Timer.hpp>
 #include <graphblas/utils/telemetry/Telemetry.hpp>
 
 #include <utils/argument_parser.hpp>
@@ -135,10 +134,14 @@ using hpcg_runner_t = MultiGridCGRunner< HPCGTypes, mg_runner_t, hpcg_controller
 	hpcg_desc, DBGStream >;
 using hpcg_data_t = typename hpcg_runner_t::HPCGInputType;
 
+// Stopwatch type, to measure various setup phases
+using Stw = utils::telemetry::ActiveStopwatch;
+
+
 // allow DBGStream to print grb::Vector's in a lazy way (i.e., no code generated if deactivated)
-struct dotter : grb::utils::telemetry::OutputStreamLazy {
+struct dotter  {
 	const grb::Vector< IOType > & v;
-	dotter( const grb::Vector< IOType > & _v ) : v( _v ) {}
+
 	ResidualType operator()() const {
 		Ring ring;
 		ResidualType r = 0;
@@ -149,7 +152,7 @@ struct dotter : grb::utils::telemetry::OutputStreamLazy {
 
 static inline DBGStream & operator<<( DBGStream & stream, const grb::Vector< IOType > & v ) {
 	stream << std::setprecision( 7 );
-	return stream << dotter( v );
+	return stream << DBGStream::makeLazy( dotter{ v } );
 }
 
 // various algebraic zeros
@@ -226,19 +229,17 @@ static void allocate_system_structures(
 	const mg_controller_t & mg_controller,
 	DistStream & logger
 ) {
-	grb::utils::Timer timer;
+	Stw timer;
 
 	hpcg_data_t * data = new hpcg_data_t( mg_sizes[ 0 ] );
 	cg_system_data = std::unique_ptr< hpcg_data_t >( data );
 	logger << "allocating data for the MultiGrid simulation...";
-	timer.reset();
+	timer.start();
 	multigrid_allocate_data( system_levels, coarsener_levels, smoother_levels, mg_sizes, mg_controller );
-	double time = timer.time();
-	logger << " time (ms) " << time << std::endl;
+	logger << " time (ms) " << Stw::nano2Milli( timer.restart() ) << std::endl;
 
 	// zero all vectors
 	logger << "zeroing all vectors...";
-	timer.reset();
 	grb::RC rc = data->init_vectors( io_zero );
 	ASSERT_RC_SUCCESS( rc );
 	std::for_each( system_levels.begin(), system_levels.end(),
@@ -253,8 +254,7 @@ static void allocate_system_structures(
 		[]( std::unique_ptr< smoothing_data_t > & s ) {
 		ASSERT_RC_SUCCESS( s->init_vectors( io_zero ) );
 	} );
-	time = timer.time();
-	logger << " time (ms) " << time << std::endl;
+	logger << " time (ms) " << Stw::nano2Milli( timer.stop() ) << std::endl;
 }
 
 /**
@@ -272,18 +272,17 @@ static void build_3d_system(
 ) {
 	constexpr size_t DIMS = 3;
 	using builder_t = grb::algorithms::HPCGSystemBuilder< DIMS, coord_t, NonzeroType >;
-	grb::utils::Timer timer;
+	Stw timer;
 
 	HPCGSystemParams< DIMS, NonzeroType > params = { { in.nx, in.ny, in.nz }, HALO_RADIUS,
 		SYSTEM_DIAG_VALUE, SYSTEM_NON_DIAG_VALUE, PHYS_SYSTEM_SIZE_MIN, in.max_coarsening_levels, 2 };
 
 	std::vector< builder_t > mg_generators;
 	logger << "building HPCG generators for " << ( in.max_coarsening_levels + 1 ) << " levels...";
-	timer.reset();
+	timer.start();
 	// construct the builder_t generator for each grid level, which depends on the system physics
 	hpcg_build_multigrid_generators( params, mg_generators );
-	double time = timer.time();
-	logger << " time (ms) " << time << std::endl;
+	logger << " time (ms) " << Stw::nano2Milli( timer.stop() ) << std::endl;
 	logger << "built HPCG generators for " << mg_generators.size() << " levels" << std::endl;
 
 	// extract the size for each level
@@ -310,24 +309,21 @@ static void build_3d_system(
 		}
 		logger << sizes[ DIMS - 1 ] << std::endl;
 		logger << " populating system matrix: ";
-		timer.reset();
+		timer.start();
 		grb::RC rc = hpcg_populate_system_matrix( mg_generators[ i ],
 			system_levels.at( i )->A, logger );
-		time = timer.time();
 		ASSERT_RC_SUCCESS( rc );
-		logger << " time (ms) " << time << std::endl;
+		logger << " time (ms) " << Stw::nano2Milli( timer.restart() ) << std::endl;
 
 		logger << " populating smoothing data: ";
-		timer.reset();
 		rc = hpcg_populate_smoothing_data( mg_generators[ i ], *smoother_levels[ i ],
 			logger );
-		time = timer.time();
+		logger << " time (ms) " << Stw::nano2Milli( timer.stop() ) << std::endl;
 		ASSERT_RC_SUCCESS( rc );
-		logger << " time (ms) " << time << std::endl;
 
 		if( i > 0 ) {
 			logger << " populating coarsening data: ";
-			timer.reset();
+			timer.start();
 			if( ! in.use_average_coarsener ) {
 				rc = hpcg_populate_coarsener( mg_generators[ i - 1 ], mg_generators[ i ],
 					*coarsener_levels[ i - 1 ] );
@@ -335,9 +331,8 @@ static void build_3d_system(
 				rc = hpcg_populate_coarsener_avg( mg_generators[ i - 1 ], mg_generators[ i ],
 					*coarsener_levels[ i - 1 ] );
 			}
-			time = timer.time();
+			logger << " time (ms) " << Stw::nano2Milli( timer.stop() ) << std::endl;
 			ASSERT_RC_SUCCESS( rc );
-			logger << " time (ms) " << time << std::endl;
 		}
 	}
 }
@@ -349,7 +344,7 @@ static void build_3d_system(
 void grbProgram( const simulation_input & in, struct output & out ) {
 	// get user process ID
 	const size_t pid = spmd<>::pid();
-	grb::utils::Timer timer;
+	Stw timer;
 
 	// standard logger: active only on master node
 	dist_controller_t dist( pid == 0 );
@@ -389,12 +384,11 @@ void grbProgram( const simulation_input & in, struct output & out ) {
 	hpcg_runner.tolerance = residual_zero;
 	hpcg_runner.with_preconditioning = ! in.no_preconditioning;
 
-	timer.reset();
+	timer.start();
 	// build the entire multi-grid system
 	build_3d_system( mg_runner.system_levels, coarsener.coarsener_levels, smoother.levels,
 		hpcg_state, in, mg_controller, logger );
-	double input_duration = timer.time();
-	logger << "input generation time (ms): " << input_duration << std::endl;
+	logger << "input generation time (ms): " << Stw::nano2Milli( timer.restart() ) << std::endl;
 
 #ifdef HPCG_PRINT_SYSTEM
 	if( pid == 0 ) {
@@ -423,18 +417,16 @@ void grbProgram( const simulation_input & in, struct output & out ) {
 	}
 #endif
 
-	out.times.preamble = timer.time();
+	out.times.preamble = Stw::nano2Milli( timer.restart() );
 
 	mg_data_t & grid_base = *mg_runner.system_levels[ 0 ];
 
 	// do a cold run to warm the system up
 	logger << TEXT_HIGHLIGHT << "beginning cold run..." << std::endl;
 	hpcg_runner.max_iterations = 1;
-	timer.reset();
 	rc = hpcg_runner( grid_base, *hpcg_state, out.cg_out );
-	double iter_duration = timer.time();
+	logger << " time (ms): " << Stw::nano2Milli( timer.restart() ) << std::endl;
 	ASSERT_RC_SUCCESS( rc );
-	logger << " time (ms): " << iter_duration << std::endl;
 
 	// restore CG options to user-given values
 	hpcg_runner.max_iterations = in.max_iterations;
@@ -445,16 +437,14 @@ void grbProgram( const simulation_input & in, struct output & out ) {
 	// initialize CSV writers (if activated)
 	hpcg_csv_t hpcg_csv( hpcg_controller, { "repetition", "time" } );
 	mg_csv_t mg_csv( mg_controller, { "repetition", "level", "mg time", "smoother time" } );
+	timer.reset();
 
 	// do benchmark
 	for( size_t i = 0; i < in.inner_test_repetitions; ++i ) {
 		rc = set( x, io_zero );
 		ASSERT_RC_SUCCESS( rc );
 		logger << TEXT_HIGHLIGHT << "beginning iteration: " << i << std::endl;
-		timer.reset();
 		rc = hpcg_runner( grid_base, *hpcg_state, out.cg_out );
-		iter_duration = timer.time();
-		out.times.useful += iter_duration;
 		ASSERT_RC_SUCCESS( rc );
 		hpcg_csv.add_line( i, hpcg_runner.getElapsedNano() );
 		logger << "repetition,duration (ns): " << hpcg_csv.last_line() << std::endl;
@@ -468,6 +458,8 @@ void grbProgram( const simulation_input & in, struct output & out ) {
 
 		out.inner_test_repetitions++;
 	}
+	timer.stop();
+	out.times.useful += Stw::nano2Milli( timer.getElapsedNano() );
 	if( in.evaluation_run ) {
 		// get maximum execution time among processes
 		rc = collectives<>::reduce( out.times.useful, 0, operators::max< double >() );
@@ -481,7 +473,7 @@ void grbProgram( const simulation_input & in, struct output & out ) {
 	std::cout.imbue( old_locale );
 
 	// start postamble
-	timer.reset();
+	timer.restart();
 	// set error code to caller
 	out.error_code = rc;
 
@@ -493,7 +485,6 @@ void grbProgram( const simulation_input & in, struct output & out ) {
 	// output
 	out.pinnedVector.reset( new PinnedVector< NonzeroType >( x, SEQUENTIAL ) );
 	// finish timing
-	out.times.postamble = timer.time();
 
 	// write measurements into CSV files
 	if( in.hpcg_log ) {
@@ -502,6 +493,7 @@ void grbProgram( const simulation_input & in, struct output & out ) {
 	if( in.mg_log ) {
 		mg_csv.write_to_file( in.mg_csv.data() );
 	}
+	out.times.postamble = Stw::nano2Milli( timer.stop() );
 }
 
 #define thcout ( std::cout << TEXT_HIGHLIGHT )
