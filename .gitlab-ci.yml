@@ -1,4 +1,8 @@
-image: gcc:9.3
+default:
+  tags:
+    - docker
+  image: ${CI_REGISTRY}/${CI_PROJECT_PATH}/lpf-ubuntu-20.04-gcc
+
 
 stages:
   - build-and-secrets
@@ -114,14 +118,9 @@ stages:
 # Main testing on Ubuntu, all branches
 
 build_test:
-  image: gcc:9.3
-  tags:
-    - docker
   stage: build-and-secrets
-  before_script:
-    - apt update && apt -y install make cmake libnuma-dev coreutils
   script:
-    - mkdir -p install build && cd ./build && ../bootstrap.sh --prefix=../install && make -j$(nproc) build_tests_all
+    - mkdir -p install build && cd ./build && ../bootstrap.sh --prefix=../install --with-lpf=${LPF_PATH} && make -j$(nproc) build_tests_all
     - strip -s $(find tests/unit/ -type f -executable -print) $(find tests/smoke/ -type f -executable -print) $(find tests/performance/ -type f -executable -print)
   artifacts:
     paths:
@@ -135,23 +134,13 @@ build_test:
 
 
 build_debug2_tests:
-  image: gcc:9.3
-  tags:
-    - docker
   stage: debug-build
-  before_script:
-    - apt update && apt -y install make cmake libnuma-dev coreutils
   script:
     - mkdir -p install build && cd build && cmake -DCMAKE_INSTALL_PREFIX=../install -DCMAKE_CXX_FLAGS=-D_DEBUG -DCMAKE_C_FLAGS=-D_DEBUG -DCMAKE_BUILD_TYPE=Debug ../ && make -j$(nproc) build_tests_all
 
 
 build_debugrelease_tests:
-  image: gcc:9.3
-  tags:
-    - docker
   stage: build-and-secrets
-  before_script:
-    - apt update && apt -y install make cmake libnuma-dev coreutils
   script:
     - mkdir -p install build && cd build && cmake -DCMAKE_INSTALL_PREFIX=../install -DCMAKE_CXX_FLAGS=-D_DEBUG -DCMAKE_C_FLAGS=-D_DEBUG -DCMAKE_BUILD_TYPE=Release ../ && make -j$(nproc) build_tests_all
   only:
@@ -165,8 +154,6 @@ build_debugrelease_tests:
 #
 # clang_linter:
 #   image: ubuntu:20.04
-#   tags:
-#     - docker
 #   stage: build-and-secrets
 #   before_script:
 #     - export DEBIAN_FRONTEND=noninteractive
@@ -179,44 +166,27 @@ build_debugrelease_tests:
 
 
 tests_unit:
-  tags:
-    - docker
   stage: test-and-install
-  before_script:
-    - apt update && apt -y install make cmake libnuma-dev coreutils
   script:
     - cd ./build && make -j$(nproc) tests_unit &> unittests.log
     - ../tests/summarise.sh unittests.log
 
 
 tests_smoke:
-  tags:
-    - docker
   stage: test-and-install
-  before_script:
-    - apt update && apt -y install make cmake libnuma-dev coreutils
   script:
     - cd ./build && make -j$(nproc) tests_smoke &> smoketests.log
     - ../tests/summarise.sh smoketests.log
 
 
 test_installation:
-  tags:
-    - docker
   stage: test-and-install
-  before_script:
-    - apt update && apt -y install make cmake libnuma-dev coreutils
   script:
     - cd ./build && make -j$(nproc) install
 
 
 build_debug:
-  image: gcc:9.3
-  tags:
-    - docker
   stage: debug-build
-  before_script:
-    - apt update && apt -y install make cmake libnuma-dev coreutils
   script:
     - rm -rf build install && mkdir -p install build && cd ./build && ../bootstrap.sh --prefix=../install --debug-build && make -j$(nproc) && make -j$(nproc) build_tests_all
   artifacts:
@@ -229,32 +199,20 @@ build_debug:
 
 
 test_smoke_debug:
-  image: gcc:9.3
-  tags:
-    - docker
   stage: debug-test
-  before_script:
-    - apt update && apt -y install make cmake libnuma-dev coreutils
   script:
     - cd ./build && make -j$(nproc) smoketests &> smoketests.log
     - ../tests/summarise.sh smoketests.log
 
 
 test_install_debug:
-  image: gcc:9.3
-  tags:
-    - docker
   stage: debug-test
-  before_script:
-    - apt update && apt -y install make cmake libnuma-dev coreutils
   script:
     - cd ./build && make -j$(nproc) install
 
 
 gitleaks:
   stage: build-and-secrets
-  tags:
-    - docker
   image:
     name: "zricethezav/gitleaks:v8.0.6"
     entrypoint: [""]
@@ -264,12 +222,7 @@ gitleaks:
 ## Additional tests specific to main branches only
 
 tests_performance:
-   image: gcc:9.3
-   tags:
-     - docker
    stage: test-and-install
-   before_script:
-     - apt update && apt -y install make cmake libnuma-dev coreutils
    script:
      - cd ./build && make -j$(nproc) performancetests &> performancetests.log
      - ../tests/summarise.sh performancetests.log tests/performance/output/benchmarks tests/performance/output/scaling
@@ -280,12 +233,7 @@ tests_performance:
 
 
 tests_unit_debug:
-   image: gcc:9.3
-   tags:
-     - docker
    stage: debug-test
-   before_script:
-     - apt update && apt -y install make cmake libnuma-dev coreutils
    script:
      - cd ./build && make -j$(nproc) unittests &> unittests.log
      - ../tests/summarise.sh unittests.log
