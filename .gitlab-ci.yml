@@ -13,6 +13,25 @@ stages:
   - centos-test-and-install
 
 
+variables:
+  IS_MAIN_PIPELINE: "no"
+
+workflow:
+  rules:
+  # the following rules trigger after new commits are merged on master, develop or a version/rc branch
+    - if: $CI_COMMIT_BRANCH == "master"
+      variables:
+        IS_MAIN_PIPELINE: "yes"
+    - if: $CI_COMMIT_BRANCH == "develop"
+      variables:
+        IS_MAIN_PIPELINE: "yes"
+    - if: $CI_COMMIT_BRANCH =~ /^v.*-rc.*$/
+      variables:
+        IS_MAIN_PIPELINE: "yes"
+# trigger pipeline in any case
+    - when: always
+
+
 # Build / test / install on CentOS 8, only for main branches
 
 #build_centos_8:
@@ -119,8 +138,11 @@ stages:
 
 build_test:
   stage: build-and-secrets
+  rules:
   script:
-    - mkdir -p install build && cd ./build && ../bootstrap.sh --prefix=../install --with-lpf=${LPF_PATH} && make -j$(nproc) build_tests_all
+# if we are on master develop or v/-rc branch (or attempting to merge onto them), then also trigger LPF-related tests
+    - if [ "${IS_MAIN_PIPELINE}" == "yes" ]; then LPF_SWITCH="--with-lpf=${LPF_PATH}"; fi
+    - mkdir -p install build && cd ./build && ../bootstrap.sh ${LPF_SWITCH} --prefix=../install --with-datasets=${ALP_DATASETS} && make -j$(nproc) build_tests_all
     - strip -s $(find tests/unit/ -type f -executable -print) $(find tests/smoke/ -type f -executable -print) $(find tests/performance/ -type f -executable -print)
   artifacts:
     paths:
@@ -137,16 +159,18 @@ build_debug2_tests:
   stage: debug-build
   script:
     - mkdir -p install build && cd build && cmake -DCMAKE_INSTALL_PREFIX=../install -DCMAKE_CXX_FLAGS=-D_DEBUG -DCMAKE_C_FLAGS=-D_DEBUG -DCMAKE_BUILD_TYPE=Debug ../ && make -j$(nproc) build_tests_all
+  dependencies: []
 
 
 build_debugrelease_tests:
   stage: build-and-secrets
   script:
     - mkdir -p install build && cd build && cmake -DCMAKE_INSTALL_PREFIX=../install -DCMAKE_CXX_FLAGS=-D_DEBUG -DCMAKE_C_FLAGS=-D_DEBUG -DCMAKE_BUILD_TYPE=Release ../ && make -j$(nproc) build_tests_all
-  only:
-    - master
-    - develop
-    - /^v.*-rc.*$/
+  rules:
+    - if: $IS_MAIN_PIPELINE == "yes"
+      when: on_success
+    - when: never
+  dependencies: []
 
 
 # linting is currently disabled since clang-format is not mature enough
@@ -170,6 +194,7 @@ tests_unit:
   script:
     - cd ./build && make -j$(nproc) tests_unit &> unittests.log
     - ../tests/summarise.sh unittests.log
+  dependencies: [build_test]
 
 
 tests_smoke:
@@ -177,18 +202,20 @@ tests_smoke:
   script:
     - cd ./build && make -j$(nproc) tests_smoke &> smoketests.log
     - ../tests/summarise.sh smoketests.log
-
+  dependencies: [build_test]
 
 test_installation:
   stage: test-and-install
   script:
     - cd ./build && make -j$(nproc) install
+  dependencies: [build_test]
 
 
-build_debug:
+build_test_debug:
   stage: debug-build
   script:
-    - rm -rf build install && mkdir -p install build && cd ./build && ../bootstrap.sh --prefix=../install --debug-build && make -j$(nproc) && make -j$(nproc) build_tests_all
+    - mkdir -p install build && cd ./build && ../bootstrap.sh --prefix=../install --with-datasets=${ALP_DATASETS} --debug-build && make -j$(nproc) && make -j$(nproc) build_tests_all
+    - strip -s $(find tests/unit/ -type f -executable -print) $(find tests/smoke/ -type f -executable -print) $(find tests/performance/ -type f -executable -print)
   artifacts:
     paths:
       - build/
@@ -196,6 +223,7 @@ build_debug:
       - build/**/*.o
       - build/**/*.o.d
     expire_in: 43 minutes
+  dependencies: []
 
 
 test_smoke_debug:
@@ -203,12 +231,13 @@ test_smoke_debug:
   script:
     - cd ./build && make -j$(nproc) smoketests &> smoketests.log
     - ../tests/summarise.sh smoketests.log
-
+  dependencies: [build_test_debug]
 
 test_install_debug:
   stage: debug-test
   script:
     - cd ./build && make -j$(nproc) install
+  dependencies: [build_test_debug]
 
 
 gitleaks:
@@ -222,23 +251,24 @@ gitleaks:
 ## Additional tests specific to main branches only
 
 tests_performance:
-   stage: test-and-install
-   script:
-     - cd ./build && make -j$(nproc) performancetests &> performancetests.log
-     - ../tests/summarise.sh performancetests.log tests/performance/output/benchmarks tests/performance/output/scaling
-   only:
-     - master
-     - develop
-     - /^v.*-rc.*$/
+  stage: test-and-install
+  script:
+    - cd ./build && make -j$(nproc) performancetests &> performancetests.log
+    - ../tests/summarise.sh performancetests.log tests/performance/output/benchmarks tests/performance/output/scaling
+  rules:
+    - if: $IS_MAIN_PIPELINE == "yes"
+      when: on_success
+    - when: never
+  dependencies: [build_test]
 
 
 tests_unit_debug:
-   stage: debug-test
-   script:
-     - cd ./build && make -j$(nproc) unittests &> unittests.log
-     - ../tests/summarise.sh unittests.log
-   only:
-     - master
-     - develop
-     - /^v.*-rc.*$/
-
+  stage: debug-test
+  script:
+    - cd ./build && make -j$(nproc) unittests &> unittests.log
+    - ../tests/summarise.sh unittests.log
+  rules:
+    - if: $IS_MAIN_PIPELINE == "yes"
+      when: on_success
+    - when: never
+  dependencies: [build_test_debug]
