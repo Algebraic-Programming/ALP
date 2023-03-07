@@ -15,7 +15,11 @@
  * limitations under the License.
  */
 
-/*
+/**
+ * @file
+ *
+ * Provides the nonblocking vector.
+ *
  * @author Aristeidis Mastoras
  * @date 16th of May, 2022
  */
@@ -107,7 +111,8 @@ namespace grb {
 
 namespace grb {
 
-	// forward declaration of backend-local matrix specialization for vector's friends
+	// forward declaration of backend-local matrix specialization for vector's
+	// friends
 	template< typename D, typename RIT, typename CIT, typename NIT >
 	class Matrix< D, nonblocking, RIT, CIT, NIT >;
 
@@ -220,7 +225,10 @@ namespace grb {
 			internal::Coordinates<
 				config::IMPLEMENTATION< backend >::coordinatesBackend()
 			>
-		> internal::wrapRawVector( const size_t n, const ValueType *__restrict__ const raw );
+		> internal::wrapRawVector(
+			const size_t n,
+			const ValueType *__restrict__ const raw
+		);
 
 		/* *********************
 		 Auxiliary backend friends
@@ -339,8 +347,8 @@ namespace grb {
 
 				// catch trivial case: memory areas are passed explicitly
 				if( raw_in != nullptr || assigned_in != nullptr || buffer_in != nullptr ) {
-					// raw_in and assigned_in must both be NULL or both be non-NULL in a call to
-					// grb::Vector::initialize (nonblocking).
+					// raw_in and assigned_in must both be NULL or both be non-NULL in a call
+					// to grb::Vector::initialize (nonblocking).
 					assert( !( raw_in == nullptr ||
 							assigned_in == nullptr ||
 							buffer_in == nullptr
@@ -514,7 +522,8 @@ namespace grb {
 			/**
 			 * \internal Internal constructor that wraps around an existing raw dense
 			 *           vector. This constructor results in a dense vector whose
-			 *           structure is immutable. Any invalid use incurs UB; use with care.
+			 *           structure is immutable. Any invalid use incurs UB; use with
+			 *           care.
 			 */
 			Vector( const size_t n, D *__restrict__ const raw ) : _raw( raw ) {
 #ifdef _DEBUG
@@ -780,15 +789,16 @@ namespace grb {
 				 * that are proportional to \a nz.
 				 *
 				 * In the case of the #grb::reference_omp backend, the critical work path
-				 * length is \f$ \Theta( n ) + T \f$, where \f$ T \f$ is the number of OpenMP
-				 * threads that are active. This assumes that memory allocation is a scalable
-				 * operation (while in reality the complexity of allocation is, of course,
-				 * undefined).
+				 * length is \f$ \Theta( n ) + T \f$, where \f$ T \f$ is the number of
+				 * OpenMP threads that are active. This assumes that memory allocation is a
+				 * scalable operation (while in reality the complexity of allocation is, of
+				 * course, undefined).
 				 * \endparblock
 				 */
 				Vector( const size_t n, const size_t nz ) : _raw( nullptr ) {
 
-					// pipeline execution is not required here as this is a grb::Vector declaration
+					// pipeline execution is not required here as this is a grb::Vector
+					// declaration
 #ifdef _DEBUG
 					std::cerr << "In Vector< nonblocking >::Vector( size_t, size_t ) "
 						<< "constructor\n";
@@ -807,8 +817,8 @@ namespace grb {
 				 */
 				Vector( const size_t n ): Vector( n, n ) {
 
-					// pipeline execution is not required here as this is a grb::Vector declaration
-
+					// pipeline execution is not required here as this is a grb::Vector
+					// declaration
 #ifdef _DEBUG
 					std::cerr << "In Vector< nonblocking >::Vector( size_t ) constructor\n";
 #endif
@@ -828,17 +838,16 @@ namespace grb {
 				 * @throws runtime_error If the call to grb::set fails, the error code is
 				 *                       caught and thrown.
 				 */
-				Vector( const Vector< D, nonblocking, MyCoordinates > &x ) : _raw( nullptr ) {
-
+				Vector( const Vector< D, nonblocking, MyCoordinates > &x ) :
+					_raw( nullptr )
+				{
 					if( internal::getCoordinates( x ).size() > 0 ) {
 						internal::le.execution( &x );
 					}
-
 #ifdef _DEBUG
-					std::cout << "In Vector< nonblocking > copy-constructor. Copy source has ID "
-						<< x._id << "\n";
+					std::cout << "In Vector< nonblocking > copy-constructor. Copy source has "
+						<< "ID " << x._id << "\n";
 #endif
-
 					initialize(
 						nullptr, nullptr, nullptr, false, nullptr,
 						size( x ), capacity( x )
@@ -868,8 +877,8 @@ namespace grb {
 					}
 
 #ifdef _DEBUG
-					std::cout << "Vector (nonblocking) move-constructor called. Moving from ID "
-						<< x._id << "\n";
+					std::cout << "Vector (nonblocking) move-constructor called. Moving from "
+						<< "ID " << x._id << "\n";
 #endif
 
 					// copy and move
@@ -913,7 +922,8 @@ namespace grb {
 #endif
 
 					if( size( x ) != size( *this ) ) {
-						throw std::invalid_argument( "Can only copy-assign from equal-size vectors" );
+						throw std::invalid_argument( "Can only copy-assign from equal-size "
+							"vectors" );
 					}
 					const auto rc = set( *this, x );
 					if( rc != grb::SUCCESS ) {
@@ -933,16 +943,13 @@ namespace grb {
 				Vector< D, nonblocking, MyCoordinates > & operator=(
 					Vector< D, nonblocking, MyCoordinates > &&x
 				) noexcept {
-
 					if( internal::getCoordinates( x ).size() > 0 ) {
 						internal::le.execution( &x );
 					}
-
 #ifdef _DEBUG
 					std::cout << "Vector (nonblocking) move-assignment called: move " << x._id
 						<< " into " << _id << "\n";
 #endif
-
 					_id = x._id;
 					_remove_id = x._remove_id;
 					_raw = x._raw;
@@ -962,7 +969,8 @@ namespace grb {
 				 */
 				~Vector() {
 #ifdef _DEBUG
-					std::cout << "In ~Vector (nonblocking) of container ID " << _id << std::endl;
+					std::cout << "In ~Vector (nonblocking) of container ID " << _id
+						<< std::endl;
 #endif
 					if( internal::getCoordinates( *this ).size() > 0 ) {
 						internal::le.execution( this );
@@ -1038,7 +1046,6 @@ namespace grb {
 				ConstIterator< spmd_backend > cend(
 					const size_t s = 0, const size_t P = 1
 				) const {
-
 					if( internal::getCoordinates( *this ).size() > 0 ) {
 						internal::le.execution( this );
 					}
@@ -1069,7 +1076,7 @@ namespace grb {
 					const nnz_iterator nnz_end,
 					const Dup &dup = Dup()
 				) {
-					(void)dup;
+					(void) dup;
 
 					// compile-time sanity checks
 					NO_CAST_ASSERT( ( !(descr & descriptors::no_casting) ||
@@ -1186,11 +1193,9 @@ namespace grb {
 				 */
 				template< typename T >
 				RC nnz( T &nnz ) const {
-
 					if( internal::getCoordinates( *this ).size() > 0 ) {
 						internal::le.execution( this );
 					}
-
 					nnz = _coordinates.nonzeroes();
 					return SUCCESS;
 				}
@@ -1198,7 +1203,7 @@ namespace grb {
 				/**
 				 * Non-standard data accessor for debug purposes.
 				 *
-				 * \warning Do not use this fucntion.
+				 * \warning Do not use this function.
 				 *
 				 * The user promises to never write to this data when GraphBLAS can operate
 				 * on it. The user understands that data read out may be subject to incoming

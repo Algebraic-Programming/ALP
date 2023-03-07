@@ -45,11 +45,13 @@ namespace grb {
 
 		private:
 
+			/** \internal Reuse reference benchmarker. */
 			Benchmarker< mode, reference > ref;
 
 
 		public:
 
+			/** \internal Mirror reference constructor. */
 			Benchmarker(
 				size_t process_id = 0,
 				size_t nprocs = 1,
@@ -59,6 +61,7 @@ namespace grb {
 				ref(process_id, nprocs, hostname, port)
 			{}
 
+			/** \internal Mirror reference exec. */
 			template< typename U >
 			RC exec(
 				void ( *grb_program )( const void *, const size_t, U & ),
@@ -72,6 +75,7 @@ namespace grb {
 				);
 			}
 
+			/** \internal Mirror reference exec. */
 			template< typename T, typename U >
 			RC exec(
 				void ( *grb_program )( const T &, U & ),

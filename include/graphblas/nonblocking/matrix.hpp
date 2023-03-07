@@ -14,7 +14,11 @@
  * limitations under the License.
  */
 
-/*
+/**
+ * @file
+ *
+ * Provides the nonblocking matrix container.
+ *
  * @author Aristeidis Mastoras
  * @date 16th of May, 2022
  */
@@ -22,7 +26,6 @@
 #ifndef _H_GRB_NONBLOCKING_MATRIX
 #define _H_GRB_NONBLOCKING_MATRIX
 
-#include <numeric> //std::accumulate
 #include <sstream> //std::stringstream
 #include <algorithm>
 #include <functional>
@@ -60,10 +63,12 @@ namespace grb {
 	namespace internal {
 
 		template< typename DataType, typename RIT, typename CIT, typename NIT >
-		Matrix< DataType, reference, RIT, CIT, NIT >& getRefMatrix( Matrix< DataType, nonblocking, RIT, CIT, NIT > &A ) noexcept;
+		Matrix< DataType, reference, RIT, CIT, NIT >& getRefMatrix(
+			Matrix< DataType, nonblocking, RIT, CIT, NIT > &A ) noexcept;
 
 		template< typename DataType, typename RIT, typename CIT, typename NIT >
-		const Matrix< DataType, reference, RIT, CIT, NIT >& getRefMatrix( const Matrix< DataType, nonblocking, RIT, CIT, NIT > &A ) noexcept;
+		const Matrix< DataType, reference, RIT, CIT, NIT >& getRefMatrix(
+			const Matrix< DataType, nonblocking, RIT, CIT, NIT > &A ) noexcept;
 
 		template< typename D, typename RIT, typename CIT, typename NIT >
 		const size_t & getNonzeroCapacity(
@@ -128,14 +133,17 @@ namespace grb {
 			typename RowColType, typename NonzeroType,
 			typename Coords
 		>
-		void vxm_inner_kernel_scatter( RC &rc,
+		void vxm_inner_kernel_scatter(
+			RC &rc,
 			Vector< IOType, nonblocking, Coords > &destination_vector,
 			IOType * __restrict__ const &destination,
 			const size_t &destination_range,
 			const Vector< InputType1, nonblocking, Coords > &source_vector,
 			const InputType1 * __restrict__ const &source,
 			const size_t &source_index,
-			const internal::Compressed_Storage< InputType2, RowColType, NonzeroType > &matrix,
+			const internal::Compressed_Storage<
+				InputType2, RowColType, NonzeroType
+			> &matrix,
 			const Vector< InputType3, nonblocking, Coords > &mask_vector,
 			const InputType3 * __restrict__ const &mask,
 			const AdditiveMonoid &add,
@@ -170,13 +178,19 @@ namespace grb {
 	} // namespace internal
 
 	template< typename DataType, typename RIT, typename CIT, typename NIT >
-	size_t nrows( const Matrix< DataType, nonblocking, RIT, CIT, NIT > & ) noexcept;
+	size_t nrows(
+		const Matrix< DataType, nonblocking, RIT, CIT, NIT > &
+	) noexcept;
 
 	template< typename DataType, typename RIT, typename CIT, typename NIT >
-	size_t ncols( const Matrix< DataType, nonblocking, RIT, CIT, NIT > & ) noexcept;
+	size_t ncols(
+		const Matrix< DataType, nonblocking, RIT, CIT, NIT > &
+	) noexcept;
 
 	template< typename DataType, typename RIT, typename CIT, typename NIT >
-	size_t nnz( const Matrix< DataType, nonblocking, RIT, CIT, NIT > & ) noexcept;
+	size_t nnz(
+		const Matrix< DataType, nonblocking, RIT, CIT, NIT > &
+	) noexcept;
 
 	template< typename InputType, typename RIT, typename CIT, typename NIT >
 	RC clear( Matrix< InputType, nonblocking, RIT, CIT, NIT > & ) noexcept;
@@ -224,10 +238,15 @@ namespace grb {
 			"Cannot create an ALP matrix of ALP objects!" );
 
 		template< typename DataType, typename RIT, typename CIT, typename NIT >
-		friend Matrix< DataType, reference, RIT, CIT, NIT > & internal::getRefMatrix( Matrix< DataType, nonblocking, RIT, CIT, NIT > &A ) noexcept;
+		friend Matrix< DataType, reference, RIT, CIT, NIT > & internal::getRefMatrix(
+			Matrix< DataType, nonblocking, RIT, CIT, NIT > &A
+		) noexcept;
 
 		template< typename DataType, typename RIT, typename CIT, typename NIT >
-		friend const Matrix< DataType, reference, RIT, CIT, NIT > & internal::getRefMatrix( const Matrix< DataType, nonblocking, RIT, CIT, NIT > &A ) noexcept;
+		friend const Matrix< DataType, reference, RIT, CIT, NIT > &
+		internal::getRefMatrix(
+			const Matrix< DataType, nonblocking, RIT, CIT, NIT > &A
+		) noexcept;
 
 
 		/* *********************
@@ -423,10 +442,11 @@ namespace grb {
 				char *__restrict__ const buf1 = nullptr,
 				char *__restrict__ const buf2 = nullptr,
 				D *__restrict__ const buf3 = nullptr
-			) : ref( _values, _column_indices, _offset_array, _m, _n, _cap, buf1, buf2, buf3 )
-			{
-
-			}
+			) : ref(
+				_values, _column_indices, _offset_array,
+				_m, _n, _cap,
+				buf1, buf2, buf3
+			) {}
 
 			void moveFromOther( self_type &&other ) {
 				ref.moveFromOther( std::move( other.ref ) );
@@ -458,29 +478,36 @@ namespace grb {
 			/** @see Matrix::value_type */
 			typedef D value_type;
 
-			Matrix( const size_t rows, const size_t columns, const size_t nz ) : ref( rows, columns, nz )
-			{
-
-			}
+			Matrix(
+				const size_t rows, const size_t columns, const size_t nz
+			) : ref( rows, columns, nz )
+			{}
 
 			Matrix( const size_t rows, const size_t columns ) : ref( rows, columns )
-			{
+			{}
 
-			}
-
-			Matrix( const Matrix< D, nonblocking, RowIndexType, ColIndexType, NonzeroIndexType > &other ) : ref( other.ref )
+			/**
+			 * \internal
+			 * \todo See below code comment
+			 * \endinternal
+			 */
+			Matrix(
+				const Matrix<
+					D, nonblocking, RowIndexType, ColIndexType, NonzeroIndexType
+				> &other ) : ref( other.ref )
 			{
-				//TODO: the pipeline should be executed once level-3 primitives are implemented
-				// in the current implementation matrices may be used only as the input of SpMV
+				//TODO: the pipeline should be executed once level-3 primitives are
+				//      implemented. In the current implementation matrices may be used only
+				//      as the input of SpMV
 			}
 
 			Matrix( self_type &&other ) noexcept : ref( std::move( other.ref ) ) {
-				//TODO: the pipeline should be executed once level-3 primitives are implemented
-				// in the current implementation matrices may be used only as the input of SpMV
+				//TODO: the pipeline should be executed once level-3 primitives are
+				//      implemented. In the current implementation matrices may be used only
+				//      as the input of SpMV
 			}
 
 			self_type& operator=( self_type &&other ) noexcept {
-
 				ref = std::move( other.ref );
 				return *this;
 			}
@@ -497,7 +524,6 @@ namespace grb {
 				const IOMode mode = PARALLEL,
 				const size_t s = 0, const size_t P = 1
 			) const {
-
 				return ref.begin( mode, s, P );
 			}
 
@@ -510,7 +536,6 @@ namespace grb {
 				const IOMode mode = PARALLEL,
 				const size_t s = 0, const size_t P = 1
 			) const {
-
 				return ref.end( mode, s, P );
 			}
 
@@ -522,7 +547,6 @@ namespace grb {
 			>::template ConstIterator< ActiveDistribution > cbegin(
 				const IOMode mode = PARALLEL
 			) const {
-
 				return ref.cbegin( mode );
 			}
 
@@ -534,7 +558,6 @@ namespace grb {
 			>::template ConstIterator< ActiveDistribution > cend(
 				const IOMode mode = PARALLEL
 			) const {
-
 				return ref.cend( mode );
 			}
 
@@ -547,24 +570,26 @@ namespace grb {
 		static const constexpr bool value = true;
 	};
 
-
 	//internal getters implementation
 	namespace internal {
 
 		template< typename DataType, typename RIT, typename CIT, typename NIT >
-		inline Matrix< DataType, reference, RIT, CIT, NIT >& getRefMatrix( Matrix< DataType, nonblocking, RIT, CIT, NIT > &A ) noexcept {
+		inline Matrix< DataType, reference, RIT, CIT, NIT >& getRefMatrix(
+			Matrix< DataType, nonblocking, RIT, CIT, NIT > &A
+		) noexcept {
 			return (A.ref);
 		}
 
 		template< typename DataType, typename RIT, typename CIT, typename NIT >
-		inline const Matrix< DataType, reference, RIT, CIT, NIT >& getRefMatrix( const Matrix< DataType, nonblocking, RIT, CIT, NIT > &A ) noexcept {
+		inline const Matrix< DataType, reference, RIT, CIT, NIT >& getRefMatrix(
+			const Matrix< DataType, nonblocking, RIT, CIT, NIT > &A
+		) noexcept {
 			return (A.ref);
 		}
 
 	} //end ``grb::internal'' namespace
 
 } // namespace grb
-
 
 #endif // end ``_H_GRB_NONBLOCKING_MATRIX''
 

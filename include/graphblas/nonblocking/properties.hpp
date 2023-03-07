@@ -15,7 +15,11 @@
  * limitations under the License.
  */
 
-/*
+/**
+ * @file
+ *
+ * Collects the nonblocking backend properties.
+ *
  * @author Aristeidis Mastoras
  * @date 16th of May, 2022
  */

@@ -15,7 +15,11 @@
  * limitations under the License.
  */
 
-/*
+/**
+ * @file
+ *
+ * Provides the SPMD functions for the nonblocking backend.
+ *
  * @author Aristeidis Mastoras
  * @date 16th of May, 2022
  */
@@ -36,18 +40,22 @@ namespace grb {
 
 		public:
 
+			/** Refers back to the reference backend */
 			static inline size_t nprocs() noexcept {
 				return spmd< reference >::nprocs();
 			}
 
+			/** Refers back to the reference backend */
 			static inline size_t pid() noexcept {
 				return spmd< reference >::pid();
 			}
 
+			/** Refers back to the reference backend */
 			static RC sync( const size_t msgs_in = 0, const size_t msgs_out = 0 ) noexcept {
 				return spmd< reference >::sync( msgs_in, msgs_out );
 			}
 
+			/** Refers back to the reference backend */
 			static RC barrier() noexcept {
 				return spmd< reference >::barrier();
 			}

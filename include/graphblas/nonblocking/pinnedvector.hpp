@@ -39,18 +39,29 @@ namespace grb {
 
 	}
 
-	/** The PinnedVector class is based on that of the reference backend */
+	/**
+	 * The PinnedVector class is based on that of the reference backend.
+	 *
+	 * \internal There is some code duplication with the reference PinnedVector.
+	 *           At present, it is unclear if this can be reduced.
+	 */
 	template< typename IOType >
 	class PinnedVector< IOType, nonblocking > {
 
 		private:
 
+			/** Essentially a shared pointer into the nonzero values */
 			utils::AutoDeleter< IOType > _raw_deleter;
 
+			/** Essentially a shared pointer into the SPA's stack. */
 			utils::AutoDeleter< char > _stack_deleter;
 
+			/** The shared nonzero values */
 			IOType * _buffered_values;
 
+			/**
+			 * The shared coordinates, on which only stack-based accesses are performed.
+			 */
 			internal::Coordinates<
 				config::IMPLEMENTATION< nonblocking >::coordinatesBackend()
 			> _buffered_coordinates;
@@ -58,8 +69,10 @@ namespace grb {
 
 		public:
 
+			/** Constructs an empty pinned vector. */
 			PinnedVector() : _buffered_values( nullptr ) {}
 
+			/** Constructs a pinning of \a x */
 			PinnedVector(
 				const Vector< IOType, nonblocking, internal::Coordinates<
 					config::IMPLEMENTATION< nonblocking >::coordinatesBackend()
@@ -76,9 +89,11 @@ namespace grb {
 				_buffered_values = x._raw;
 				_buffered_coordinates = x._coordinates;
 
-				(void)mode;
+				// The nonblocking backend is always single process, so the mode is unused.
+				(void) mode;
 			}
 
+			/** \internal No implementation details */
 			inline size_t size() const noexcept {
 #ifndef NDEBUG
 				if( _buffered_coordinates.size() == 0 ) {
@@ -88,6 +103,7 @@ namespace grb {
 				return _buffered_coordinates.size();
 			}
 
+			/** \internal No implementation details */
 			inline size_t nonzeroes() const noexcept {
 #ifndef NDEBUG
 				if( _buffered_coordinates.size() == 0 ) {
@@ -97,6 +113,7 @@ namespace grb {
 				return _buffered_coordinates.nonzeroes();
 			}
 
+			/** \internal No implementation details */
 			template< typename OutputType = IOType >
 			inline OutputType getNonzeroValue(
 				const size_t k,
@@ -114,6 +131,7 @@ namespace grb {
 				}
 			}
 
+			/** \internal No implementation details */
 			inline IOType getNonzeroValue(
 				const size_t k
 			) const noexcept {
@@ -125,6 +143,7 @@ namespace grb {
 				return _buffered_values[ index ];
 			}
 
+			/** \internal No implementation details */
 			inline size_t getNonzeroIndex(
 				const size_t k
 			) const noexcept {
