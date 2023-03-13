@@ -561,7 +561,6 @@ namespace grb {
 					// make use of the analytic model to estimate a proper number of threads
 					// and a tile size
 					AnalyticModel am( size_of_data, num_tiles, 1 );
-					am.computePerformanceParameters();
 
 					const size_t nthreads = am.getNumThreads();
 					const size_t prefix_sum_tile_size = am.getTileSize();

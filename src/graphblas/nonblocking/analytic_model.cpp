@@ -32,27 +32,6 @@ AnalyticModel::AnalyticModel() {
 
 AnalyticModel::AnalyticModel( const size_t data_type_size, const size_t vector_size, const size_t accessed_vectors )
 						: size_of_data_type( data_type_size ), size_of_vector( vector_size ), num_accessed_vectors( accessed_vectors ) {
-
-}
-
-size_t AnalyticModel::getVectorsSize() const {
-	return size_of_vector;
-}
-
-size_t AnalyticModel::getNumThreads() const {
-	return num_threads;
-}
-
-size_t AnalyticModel::getTileSize() const {
-	return tile_size;
-}
-
-size_t AnalyticModel::getNumTiles() const {
-	return num_tiles;
-}
-
-void AnalyticModel::computePerformanceParameters()
-{
 	size_t tile_size_estimation;
 
 	num_threads = grb::config::IMPLEMENTATION< nonblocking >::numThreads();
@@ -97,5 +76,21 @@ void AnalyticModel::computePerformanceParameters()
 		// It adjusts the number of threads when there are not enough tiles to utilize all cores.
 		num_threads = ( num_threads < num_tiles ) ? num_threads : num_tiles;
 	}
+}
+
+size_t AnalyticModel::getVectorsSize() const {
+	return size_of_vector;
+}
+
+size_t AnalyticModel::getNumThreads() const {
+	return num_threads;
+}
+
+size_t AnalyticModel::getTileSize() const {
+	return tile_size;
+}
+
+size_t AnalyticModel::getNumTiles() const {
+	return num_tiles;
 }
 

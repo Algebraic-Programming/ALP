@@ -35,7 +35,7 @@ namespace grb {
 	namespace internal {
 
 		/**
-		 * The analytic model used for automatic chunk size selection and for
+		 * The analytic model used for automatic tile size selection and for
 		 * automatic number of threads selection.
 		 */
 		class AnalyticModel {
@@ -77,17 +77,41 @@ namespace grb {
 
 			public:
 
+				/**
+				 * The default constructor.
+				 */
 				AnalyticModel();
+
+				/**
+				 * The parameterized constructor.
+				 */
 				AnalyticModel(
 					const size_t data_type_size,
 					const size_t vector_size,
 					const size_t accessed_vectors
 				);
+
+				/**
+				 * A getter function that returns the size of the containers.
+				 */
 				size_t getVectorsSize() const;
+
+				/**
+				 * A getter function that returns the number of threads selected by
+				 * the analytic model.
+				 */
 				size_t getNumThreads() const;
+
+				/**
+				 * A getter function that returns the tile size selected by the
+				 * analytic model.
+				 */
 				size_t getTileSize() const;
+
+				/**
+				 * A getter function that returns the number of tiles.
+				 */
 				size_t getNumTiles() const;
-				void computePerformanceParameters();
 
 		};
 

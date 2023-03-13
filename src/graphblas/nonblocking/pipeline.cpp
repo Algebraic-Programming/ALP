@@ -600,7 +600,6 @@ grb::RC Pipeline::execution()
 
 	// make use of the analytic model to estimate a proper number of threads and a tile size
 	AnalyticModel am( size_of_data_type, containers_size, num_accessed_vectors );
-	am.computePerformanceParameters();
 
 	const size_t nthreads = am.getNumThreads();
 	const size_t tile_size = am.getTileSize();
