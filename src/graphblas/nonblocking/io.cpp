@@ -15,7 +15,11 @@
  * limitations under the License.
  */
 
-/*
+/**
+ * @file
+ *
+ * Implements the grb::wait for the nonblocking backend.
+ *
  * @author Aristeidis Mastoras
  * @date 16th of May, 2022
  */

@@ -15,7 +15,11 @@
  * limitations under the License.
  */
 
-/*
+/**
+ * @file
+ *
+ * Implements the analytic model used during nonblocking execution.
+ *
  * @author Aristeidis Mastoras
  * @date 16th of May, 2022
  */
