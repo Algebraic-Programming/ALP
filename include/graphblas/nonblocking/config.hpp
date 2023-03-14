@@ -34,7 +34,7 @@
 namespace grb {
 
 	/**
-	 * \defgroup nonblockingConfiug Configuration of the nonblocking backend 
+	 * \defgroup nonblockingConfiug Configuration of the nonblocking backend
 	 * \ingroup config
 	 *
 	 * Groups all definitions and documentations corresponding to the

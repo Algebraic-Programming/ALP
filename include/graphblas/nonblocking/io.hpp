@@ -496,7 +496,7 @@ namespace grb {
 					already_dense_mask, mask_is_dense,
 					lower_bound, upper_bound,
 					local_x, local_mask, x, m, val
-			 	);
+				);
 
 			if( !mask_is_dense ) {
 				internal::getCoordinates( x ).asyncJoinSubset( local_x, lower_bound,

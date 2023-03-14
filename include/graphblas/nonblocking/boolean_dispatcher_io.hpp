@@ -122,7 +122,7 @@ namespace grb {
 								descr, false, false, true
 							>( lower_bound, upper_bound, local_x, local_mask, x, m, val );
 					} else {
-						return internal::masked_set<	
+						return internal::masked_set<
 								descr, false, false, false
 							>( lower_bound, upper_bound, local_x, local_mask, x, m, val );
 					}

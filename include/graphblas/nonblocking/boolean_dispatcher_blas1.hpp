@@ -69,7 +69,7 @@ namespace grb {
 
 		template<
 			Descriptor descr,
-			bool masked,	
+			bool masked,
 			bool left,
 			class Monoid,
 			typename InputType,
@@ -263,7 +263,7 @@ namespace grb {
 					return internal::fold_from_vector_to_scalar_fullLoopSparse<
 							descr, masked, left, false, true
 						>(
-							thread_local_output, lower_bound, upper_bound,	
+							thread_local_output, lower_bound, upper_bound,
 							local_to_fold, local_mask, to_fold, mask, monoid
 						);
 				} else {

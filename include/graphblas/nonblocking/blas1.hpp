@@ -4688,7 +4688,7 @@ namespace grb {
 						(void) local_z.assign( i - lower_bound );
 						const InputType1 x_e = left_scalar
 							? x_wrapper.getValue()
-							: ( 
+							: (
 								(!left_sparse || already_dense_input_x ||
 									local_x.assigned( i - lower_bound ) )
 									? *(x_p + i)
@@ -4787,7 +4787,7 @@ namespace grb {
 						upper_bound );
 
 #ifdef GRB_ALREADY_DENSE_OPTIMIZATION
-					already_dense_input_x = pipeline.containsAlreadyDenseVector( 
+					already_dense_input_x = pipeline.containsAlreadyDenseVector(
 						&internal::getCoordinates( x ) );
 					if( !already_dense_input_x ) {
 #else
@@ -8889,7 +8889,7 @@ namespace grb {
 	template<
 		Descriptor descr = descriptors::no_operation,
 		class Ring,
-		typename InputType1, 
+		typename InputType1,
 		typename InputType2,
 		typename InputType3,
 		typename OutputType,

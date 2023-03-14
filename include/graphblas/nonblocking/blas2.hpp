@@ -1259,7 +1259,7 @@ namespace grb {
 		Descriptor descr = descriptors::no_operation,
 		class AdditiveMonoid,
 		class MultiplicativeOperator,
-		typename IOType, 
+		typename IOType,
 		typename InputType1,
 		typename InputType2,
 		typename RIT,
