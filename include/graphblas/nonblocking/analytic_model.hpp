@@ -80,7 +80,7 @@ namespace grb {
 				/**
 				 * The default constructor.
 				 */
-				AnalyticModel();
+				AnalyticModel() noexcept;
 
 				/**
 				 * The parameterized constructor.
@@ -89,29 +89,29 @@ namespace grb {
 					const size_t data_type_size,
 					const size_t vector_size,
 					const size_t accessed_vectors
-				);
+				) noexcept;
 
 				/**
 				 * A getter function that returns the size of the containers.
 				 */
-				size_t getVectorsSize() const;
+				size_t getVectorsSize() const noexcept;
 
 				/**
 				 * A getter function that returns the number of threads selected by
 				 * the analytic model.
 				 */
-				size_t getNumThreads() const;
+				size_t getNumThreads() const noexcept;
 
 				/**
 				 * A getter function that returns the tile size selected by the
 				 * analytic model.
 				 */
-				size_t getTileSize() const;
+				size_t getTileSize() const noexcept;
 
 				/**
 				 * A getter function that returns the number of tiles.
 				 */
-				size_t getNumTiles() const;
+				size_t getNumTiles() const noexcept;
 
 		};
 
