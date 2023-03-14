@@ -33,8 +33,12 @@
 
 using namespace grb::internal;
 
-Pipeline::Pipeline()
-{
+Pipeline::Pipeline() {
+	constexpr const size_t initial_container_cap =
+		config::PIPELINE::max_containers;
+	constexpr const size_t initial_stage_cap = config::PIPELINE::max_depth;
+	constexpr const size_t initial_chunk_cap = config::PIPELINE::max_chunks;
+
 	// an initially empty pipeline does not contain any primitive
 	contains_out_of_place_primitive = false;
 
@@ -44,13 +48,47 @@ Pipeline::Pipeline()
 	size_of_data_type = 0;
 
 	// reserve sufficient memory to avoid dynamic memory allocation at run-time
-	stages.reserve( 1 << 6 );
-	opcodes.reserve( 1 << 16 );
-	lower_bound.reserve( 1 << 16 );
-	upper_bound.reserve( 1 << 16 );
-	input_output_intersection.reserve( 1 << 6 );
+	stages.reserve( initial_stage_cap );
+	opcodes.reserve( initial_stage_cap );
+	lower_bound.reserve( initial_chunk_cap );
+	upper_bound.reserve( initial_chunk_cap );
+	input_output_intersection.reserve( initial_container_cap );
 
-	//TODO: avoid dynamic memory allocation for the std::sets
+	// the below looped-insert-then-clear simulates a reserve and can be reasonably
+	// expected to work for an optimised STL implementation. However, it would be
+	// nicer if we had our own set container that supports a guaranteed reserve(),
+	// as this simulation might not always work as expected.
+	for( size_t i = 0; i < initial_container_cap; ++i ) {
+		void * const dummy = reinterpret_cast< void * >( i );
+		Coordinates< nonblocking > * const dumCoor =
+			reinterpret_cast< Coordinates< nonblocking > * >( i );
+#ifdef GRB_ALREADY_DENSE_OPTIMIZATION
+		const Coordinates< nonblocking > * const dumCCoor =
+			reinterpret_cast< const Coordinates< nonblocking > * >( i );
+#endif
+		accessed_coordinates.insert( dumCoor );
+		input_vectors.insert( dummy );
+		output_vectors.insert( dummy );
+		vxm_input_vectors.insert( dummy );
+		input_matrices.insert( dummy );
+		out_of_place_output_coordinates.insert( dumCoor );
+#ifdef GRB_ALREADY_DENSE_OPTIMIZATION
+		already_dense_coordinates.insert( dumCCoor );
+#endif
+		dense_descr_coordinates.insert( dumCoor );
+	}
+	accessed_coordinates.clear();
+	input_vectors.clear();
+	output_vectors.clear();
+	vxm_input_vectors.clear();
+	input_matrices.clear();
+	out_of_place_output_coordinates.clear();
+#ifdef GRB_ALREADY_DENSE_OPTIMIZATION
+	already_dense_coordinates.clear();
+#endif
+	dense_descr_coordinates.clear();
+
+	no_warning_emitted_yet = true;
 }
 
 Pipeline::Pipeline( const Pipeline &pipeline ) :
@@ -64,7 +102,8 @@ Pipeline::Pipeline( const Pipeline &pipeline ) :
 #ifdef GRB_ALREADY_DENSE_OPTIMIZATION
 	already_dense_coordinates( pipeline.already_dense_coordinates ),
 #endif
-	dense_descr_coordinates( pipeline.dense_descr_coordinates )
+	dense_descr_coordinates( pipeline.dense_descr_coordinates ),
+	no_warning_emitted_yet( pipeline.no_warning_emitted_yet )
 {
 	contains_out_of_place_primitive = pipeline.contains_out_of_place_primitive;
 	containers_size = pipeline.containers_size;
@@ -87,7 +126,8 @@ Pipeline::Pipeline( Pipeline &&pipeline ) noexcept :
 #ifdef GRB_ALREADY_DENSE_OPTIMIZATION
 	already_dense_coordinates( std::move( pipeline.already_dense_coordinates ) ),
 #endif
-	dense_descr_coordinates( std::move( pipeline.dense_descr_coordinates ) )
+	dense_descr_coordinates( std::move( pipeline.dense_descr_coordinates ) ),
+	no_warning_emitted_yet( pipeline.no_warning_emitted_yet )
 {
 	contains_out_of_place_primitive = pipeline.contains_out_of_place_primitive;
 	containers_size = pipeline.containers_size;
@@ -118,6 +158,7 @@ Pipeline &Pipeline::operator=( const Pipeline &pipeline ) {
 	already_dense_coordinates = pipeline.already_dense_coordinates;
 #endif
 	dense_descr_coordinates = pipeline.dense_descr_coordinates;
+	no_warning_emitted_yet = pipeline.no_warning_emitted_yet;
 
 	// no action is requred regarding the input_output_intersection that is only
 	// used temporarily during the pipeline execution
@@ -144,6 +185,7 @@ Pipeline &Pipeline::operator=( Pipeline &&pipeline ) {
 	already_dense_coordinates = std::move( pipeline.already_dense_coordinates );
 #endif
 	dense_descr_coordinates = std::move( pipeline.dense_descr_coordinates );
+	no_warning_emitted_yet = pipeline.no_warning_emitted_yet;
 
 	// no action is requred regarding the input_output_intersection that is only
 	// used temporarily during the pipeline execution
@@ -153,6 +195,39 @@ Pipeline &Pipeline::operator=( Pipeline &&pipeline ) {
 	pipeline.size_of_data_type = 0;
 
 	return *this;
+}
+
+void Pipeline::warnIfExceeded() {
+	if( no_warning_emitted_yet && config::PIPELINE::warn_if_exceeded ) {
+		if( stages.size() > config::PIPELINE::max_depth ||
+			opcodes.size() > config::PIPELINE::max_depth
+		) {
+			std::cerr << "Warning: the number of pipeline stages has been increased "
+				<< "past the initial reserved number of stages\n";
+		}
+		if( accessed_coordinates.size() > config::PIPELINE::max_containers ||
+			input_vectors.size() > config::PIPELINE::max_containers ||
+			output_vectors.size() > config::PIPELINE::max_containers ||
+			vxm_input_vectors.size() > config::PIPELINE::max_containers ||
+			input_matrices.size() > config::PIPELINE::max_containers ||
+			out_of_place_output_coordinates.size() > config::PIPELINE::max_containers ||
+#ifdef GRB_ALREADY_DENSE_OPTIMIZATION
+			already_dense_coordinates.size() > config::PIPELINE::max_containers ||
+#endif
+			dense_descr_coordinates.size() > config::PIPELINE::max_containers
+		) {
+			std::cerr << "Warning: the number of pipeline containers has increased past "
+				<< "the initial number of reserved containers.\n";
+		}
+		if( lower_bound.size() > config::PIPELINE::max_chunks ||
+			upper_bound.size() > config::PIPELINE::max_chunks ||
+			input_output_intersection.size() > config::PIPELINE::max_chunks
+		) {
+			std::cerr << "Warning: the number of pipeline chunks has increased past the "
+				<< "initial number of reserved chunks.\n";
+		}
+		no_warning_emitted_yet = false;
+	}
 }
 
 #ifdef GRB_ALREADY_DENSE_OPTIMIZATION
@@ -383,6 +458,8 @@ void Pipeline::addStage(
 			}
 		}
 	}
+
+	warnIfExceeded();
 }
 
 void Pipeline::addeWiseLambdaStage(
@@ -428,6 +505,8 @@ void Pipeline::addeWiseLambdaStage(
 				const_cast< Coordinates< nonblocking > * >( coor_a_ptr ) );
 		}
 	}
+
+	warnIfExceeded();
 }
 
 bool Pipeline::accessesInputVector( const void * const vector ) const {
@@ -580,6 +659,8 @@ void Pipeline::merge( Pipeline &pipeline ) {
 
 	// no action is requred regarding the input_output_intersection that is only
 	// used temporarily during the pipeline execution
+
+	warnIfExceeded();
 }
 
 void Pipeline::clear() {

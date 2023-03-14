@@ -45,6 +45,57 @@ namespace grb {
 
 	namespace config {
 
+		/**
+		 * Configuration parameters relating to the pipeline data structure.
+		 */
+		class PIPELINE {
+
+			public:
+
+				/**
+				 * Pipelines are constructed with default space for this many containers.
+				 *
+				 * The default is such that each underlying set used by the pipeline
+				 * representation takes less than one kB space.
+				 *
+				 * Pipelines could exceed this maximum number of containers. If this
+				 * happens, then if #grb::config::PIPELINE::warn_if_exceeded_capacity is
+				 * configured <tt>true</tt>, a warning will be output to the standard error
+				 * stream.
+				 */
+				static constexpr const size_t max_containers = 16;
+
+				/**
+				 * Pipelines are constructed with default space for this many stages.
+				 *
+				 * Pipelines could exceed this number of stages. If this happens, then if
+				 * #grb::config::PIPELINE::warn_if_exceeded_capacity is configured
+				 * <tt>true</tt>, a warning will be output to the standard error stream.
+				 */
+				static constexpr const size_t max_depth = 64;
+
+				/**
+				 * Pipelines are constructed with default space for this many chunks.
+				 *
+				 * Pipelines could exceed this number of chunks. If this happens, then if
+				 *
+				 * #grb::config::PIPELINE::warn_if_exceeded_capacity is configured
+				 * <tt>true</tt>, a warning will be output to the standard error stream.
+				 */
+				static constexpr const size_t max_chunks = 1 << 16;
+
+				/**
+				 * Emit a warning to standard error stream if the default pipeline
+				 * capacities are exceeded.
+				 */
+				static constexpr bool warn_if_exceeded = true;
+
+		};
+
+		/**
+		 * Configuration parameters relating to the analytic model employed by the
+		 * nonblocking backend.
+		 */
 		class ANALYTIC_MODEL {
 
 			public:
@@ -65,15 +116,17 @@ namespace grb {
 				static constexpr double L1_CACHE_USAGE_PERCENTAGE = 0.98;
 
 				/**
-				 * It determines whether the tile size is automatically selected by the
-				 * analytic model or it is manually selected by the user with the
+				 * Determines whether the tile size is automatically selected by the
+				 * analytic model or whether it is manually selected by the user with the
 				 * environment variable GRB_NONBLOCKING_TILE_SIZE.
 				 */
 				static bool manual_tile_size;
 
 				/**
 				 * The tile size that is manually selected by the user and is initialized in
-				 * init.cpp.
+				 * init.cpp. This variable is only set when the GRB_NONBLOCKING_TILE_SIZE
+				 * environment variable is defined, and if so, this variable equal its
+				 * content.
 				 */
 				static size_t manual_fixed_tile_size;
 
@@ -82,6 +135,7 @@ namespace grb {
 				 * with the environment variable OMP_NUM_THREADS.
 				 */
 				static size_t num_threads;
+
 		};
 
 		/**

@@ -114,6 +114,7 @@ namespace grb {
 						RC( Pipeline &, const size_t, const size_t )
 					> stage_type;
 
+
 			private:
 
 				size_t containers_size;
@@ -181,10 +182,30 @@ namespace grb {
 				 */
 				std::set< Coordinates< nonblocking > * > dense_descr_coordinates;
 
+				/**
+				 * Whether a warning on container capacities increased beyond their initial
+				 * capacities has been emitted.
+				 */
+				bool no_warning_emitted_yet;
+
+				/**
+				 * Function that checks if current container capacities have exceeded their
+				 * initial capacity.
+				 */
+				void warnIfExceeded();
+
 
 			public:
 
+				/**
+				 * Constructs a pipeline with given initial container, stage, and chunk
+				 * capacities.
+				 *
+				 * If during pipeline construction these initial capacities are exceeded, a
+				 * warning may be emitted (see #grb::config::PIPELINE::warn_if_exceeded).
+				 */
 				Pipeline();
+
 				Pipeline( const Pipeline &pipeline );
 				Pipeline( Pipeline &&pipeline ) noexcept;
 
