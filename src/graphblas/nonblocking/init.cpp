@@ -52,10 +52,10 @@ grb::RC grb::init< grb::nonblocking >(
 	// made at run-time by the analytic model and may differ for different
 	// pipelines.
 	const char *t = getenv( "GRB_NONBLOCKING_TILE_SIZE" );
-	std::stringstream cppstr( t );
 	if( t != nullptr ) {
 		config::ANALYTIC_MODEL::manual_tile_size = true;
 		try {
+			std::stringstream cppstr( t );
 			cppstr >> config::ANALYTIC_MODEL::manual_fixed_tile_size;
 		} catch( ... ) {
 			std::cerr << "Warning: could not parse contents of the "
