@@ -324,6 +324,7 @@ namespace grb {
 #ifdef _DEBUG
 			constexpr bool use_index = descr & descriptors::use_index;
 #endif
+#ifndef NDEBUG
 			// some assertions that are safe, signed- and width-wise
 			{
 				const size_t col_off = static_cast< size_t >(
@@ -335,6 +336,7 @@ namespace grb {
 				assert( col_off <= nzsz );
 				assert( col_off_p1 <= nzsz );
 			}
+#endif
 
 			// check whether we should compute output here
 			if( masked ) {
