@@ -56,7 +56,7 @@ namespace grb {
 				 * How many independent pipelines any ALP algorithm may concurrently expose.
 				 *
 				 * The number of pipelines could exceed this maximum number. If this
-				 * happens, then if #grb::config::PIPELINE::warn_if_exceeded_capacity is
+				 * happens, and if #grb::config::PIPELINE::warn_if_exceeded_capacity is
 				 * configured <tt>true</tt>, a warning will be output to the standard error
 				 * stream.
 				 */
@@ -69,7 +69,7 @@ namespace grb {
 				 * representation takes less than one kB space.
 				 *
 				 * Pipelines could exceed this maximum number of containers. If this
-				 * happens, then if #grb::config::PIPELINE::warn_if_exceeded_capacity is
+				 * happens, and if #grb::config::PIPELINE::warn_if_exceeded_capacity is
 				 * configured <tt>true</tt>, a warning will be output to the standard error
 				 * stream.
 				 */
@@ -78,21 +78,21 @@ namespace grb {
 				/**
 				 * Pipelines are constructed with default space for this many stages.
 				 *
-				 * Pipelines could exceed this number of stages. If this happens, then if
+				 * Pipelines could exceed this number of stages. If this happens, and if
 				 * #grb::config::PIPELINE::warn_if_exceeded_capacity is configured
 				 * <tt>true</tt>, a warning will be output to the standard error stream.
 				 */
-				static constexpr const size_t max_depth = 64;
+				static constexpr const size_t max_depth = 16;
 
 				/**
-				 * Pipelines are constructed with default space for this many chunks.
+				 * Pipelines are constructed with default space for this many tiles.
 				 *
-				 * Pipelines could exceed this number of chunks. If this happens, then if
+				 * Pipelines could exceed this number of tiles. If this happens, and if
 				 *
 				 * #grb::config::PIPELINE::warn_if_exceeded_capacity is configured
 				 * <tt>true</tt>, a warning will be output to the standard error stream.
 				 */
-				static constexpr const size_t max_chunks = 1 << 16;
+				static constexpr const size_t max_tiles = 1 << 16;
 
 				/**
 				 * Emit a warning to standard error stream if the default pipeline

@@ -37,7 +37,7 @@ Pipeline::Pipeline() {
 	constexpr const size_t initial_container_cap =
 		config::PIPELINE::max_containers;
 	constexpr const size_t initial_stage_cap = config::PIPELINE::max_depth;
-	constexpr const size_t initial_chunk_cap = config::PIPELINE::max_chunks;
+	constexpr const size_t initial_tile_cap = config::PIPELINE::max_tiles;
 
 	// an initially empty pipeline does not contain any primitive
 	contains_out_of_place_primitive = false;
@@ -50,8 +50,8 @@ Pipeline::Pipeline() {
 	// reserve sufficient memory to avoid dynamic memory allocation at run-time
 	stages.reserve( initial_stage_cap );
 	opcodes.reserve( initial_stage_cap );
-	lower_bound.reserve( initial_chunk_cap );
-	upper_bound.reserve( initial_chunk_cap );
+	lower_bound.reserve( initial_tile_cap );
+	upper_bound.reserve( initial_tile_cap );
 	input_output_intersection.reserve( initial_container_cap );
 
 	// the below looped-insert-then-clear simulates a reserve and can be reasonably
@@ -219,12 +219,12 @@ void Pipeline::warnIfExceeded() {
 			std::cerr << "Warning: the number of pipeline containers has increased past "
 				<< "the initial number of reserved containers.\n";
 		}
-		if( lower_bound.size() > config::PIPELINE::max_chunks ||
-			upper_bound.size() > config::PIPELINE::max_chunks ||
-			input_output_intersection.size() > config::PIPELINE::max_chunks
+		if( lower_bound.size() > config::PIPELINE::max_tiles ||
+			upper_bound.size() > config::PIPELINE::max_tiles ||
+			input_output_intersection.size() > config::PIPELINE::max_tiles
 		) {
-			std::cerr << "Warning: the number of pipeline chunks has increased past the "
-				<< "initial number of reserved chunks.\n";
+			std::cerr << "Warning: the number of pipeline tiles has increased past the "
+				<< "initial number of reserved tiles.\n";
 		}
 		no_warning_emitted_yet = false;
 	}

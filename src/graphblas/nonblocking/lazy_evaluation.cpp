@@ -44,8 +44,8 @@ namespace grb {
 LazyEvaluation::LazyEvaluation() : warn_if_exceeded( true ) {
 	// 32 elements should be sufficient to avoid dynamic memory allocation for the
 	// pipelines built at run-time
-	pipelines.reserve( config::PIPELINE::max_pipelines );
-	shared_data_pipelines.reserve( config::PIPELINE::max_pipelines );
+	pipelines.resize( config::PIPELINE::max_pipelines );
+	shared_data_pipelines.resize( config::PIPELINE::max_pipelines );
 }
 
 void LazyEvaluation::checkIfExceeded() noexcept {

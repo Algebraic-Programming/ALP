@@ -198,7 +198,7 @@ namespace grb {
 			public:
 
 				/**
-				 * Constructs a pipeline with given initial container, stage, and chunk
+				 * Constructs a pipeline with given initial container, stage, and tile
 				 * capacities.
 				 *
 				 * If during pipeline construction these initial capacities are exceeded, a
