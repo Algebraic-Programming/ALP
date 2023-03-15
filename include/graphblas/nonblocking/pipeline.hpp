@@ -335,8 +335,11 @@ namespace grb {
 				RC verifyDenseDescriptor();
 
 				RC execution();
+
 		};
+
 	}
+
 }
 
 #endif //end `_H_GRB_NONBLOCKING_PIPELINE'

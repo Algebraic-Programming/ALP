@@ -53,6 +53,16 @@ namespace grb {
 			public:
 
 				/**
+				 * How many independent pipelines any ALP algorithm may concurrently expose.
+				 *
+				 * The number of pipelines could exceed this maximum number. If this
+				 * happens, then if #grb::config::PIPELINE::warn_if_exceeded_capacity is
+				 * configured <tt>true</tt>, a warning will be output to the standard error
+				 * stream.
+				 */
+				static constexpr const size_t max_pipelines = 4;
+
+				/**
 				 * Pipelines are constructed with default space for this many containers.
 				 *
 				 * The default is such that each underlying set used by the pipeline

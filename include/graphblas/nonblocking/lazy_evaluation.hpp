@@ -51,6 +51,21 @@ namespace grb {
 				/** Stores the pipelines that share data with the new stage. */
 				std::vector< std::vector< Pipeline >::iterator > shared_data_pipelines;
 
+				/**
+				 * Makes sure any warnings related to exceeding the initial number of
+				 * pipelines are printed only once.
+				 */
+				bool warn_if_exceeded;
+
+				/**
+				 * Checks if the number of pipelines has been exceeded past the initial
+				 * number of pipelines.
+				 *
+				 * The initial number is configurable via the following configuration
+				 * field: #grb::config::PIPELINE::max_pipelines.
+				 */
+				void checkIfExceeded() noexcept;
+
 
 			public:
 

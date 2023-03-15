@@ -41,11 +41,21 @@ namespace grb {
 
 }
 
-LazyEvaluation::LazyEvaluation() {
+LazyEvaluation::LazyEvaluation() : warn_if_exceeded( true ) {
 	// 32 elements should be sufficient to avoid dynamic memory allocation for the
 	// pipelines built at run-time
-	pipelines.reserve( 1 << 6 );
-	shared_data_pipelines.reserve( 1 << 6 );
+	pipelines.reserve( config::PIPELINE::max_pipelines );
+	shared_data_pipelines.reserve( config::PIPELINE::max_pipelines );
+}
+
+void LazyEvaluation::checkIfExceeded() noexcept {
+	if( warn_if_exceeded && config::PIPELINE::warn_if_exceeded ) {
+		if( pipelines.size() > config::PIPELINE::max_pipelines ) {
+			std::cerr << "Warning: the number of pipelines has exceeded the configured "
+				<< "initial capacity.\n";
+		}
+		warn_if_exceeded = false;
+	}
 }
 
 grb::RC LazyEvaluation::addStage(
@@ -358,6 +368,8 @@ grb::RC LazyEvaluation::addStage(
 		}
 	}
 
+	checkIfExceeded();
+
 	return ret;
 }
 
@@ -484,6 +496,8 @@ grb::RC LazyEvaluation::addeWiseLambdaStage(
 			all_vectors_ptr, coor_a_ptr
 		);
 	}
+
+	checkIfExceeded();
 
 	return ret;
 }
