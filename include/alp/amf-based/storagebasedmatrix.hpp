@@ -133,22 +133,6 @@ namespace alp {
 		template< typename DerivedMatrix >
 		std::pair< size_t, size_t > dims( const MatrixBase< DerivedMatrix > & A ) noexcept;
 
-		template<
-			typename MatrixType,
-			std::enable_if_t< internal::is_storage_based< MatrixType >::value > * = nullptr
-		>
-		size_t getStorageDimensions( const MatrixType &A ) noexcept;
-
-		template< typename MatrixType,
-			std::enable_if_t< is_matrix< MatrixType>::value > * = nullptr
-		>
-		bool getInitialized( const MatrixType &A ) noexcept;
-
-		template< typename MatrixType,
-			std::enable_if_t< is_matrix< MatrixType>::value > * = nullptr
-		>
-		void setInitialized( MatrixType &, const bool ) noexcept;
-
 		/**
 		 * Matrix container specialization
 		 * Implements both original containers and views on containers.
@@ -316,7 +300,7 @@ namespace alp {
 		/** Get the reference to the AMF of a storage-based matrix */
 		template<
 			typename MatrixType,
-			std::enable_if_t< internal::is_storage_based< MatrixType >::value > * = nullptr
+			std::enable_if_t< internal::is_storage_based< MatrixType >::value > *
 		>
 		const typename MatrixType::amf_type &getAmf( const MatrixType &A ) noexcept {
 			return A.getAmf();
@@ -326,7 +310,7 @@ namespace alp {
 
 	template<
 		typename MatrixType,
-		std::enable_if_t< internal::is_storage_based< MatrixType >::value > * = nullptr
+		std::enable_if_t< internal::is_storage_based< MatrixType >::value > *
 	>
 	size_t internal::getStorageDimensions( const MatrixType &A ) noexcept {
 		static_assert( is_storage_based< MatrixType >::value, "getStorageDimensions supported only for storage-based containers.");

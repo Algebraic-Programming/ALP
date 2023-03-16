@@ -81,8 +81,10 @@ namespace alp {
 		const Matrix< InputType2, InputStructure2, Density::Dense, InputView2, InputImfR2, InputImfC2, reference > & A,
 		const Ring & ring = Ring(),
 		const std::enable_if_t< alp::is_semiring< Ring >::value > * const = NULL ) {
-		const Vector< bool, structures::General, Density::Dense, view::Original< void >, imf::Id, imf::Id, reference > empty_mask( 0 );
-		return vxm< descr, true, false >( u, mask, v, empty_mask, A, ring );
+		// const Vector< bool, structures::General, Density::Dense, view::Original< void >, imf::Id, imf::Id, reference > empty_mask( 0 );
+		// return vxm< descr, true, false >( u, mask, v, empty_mask, A, ring );
+		throw std::runtime_error( "Needs an implementation." );
+		return SUCCESS;
 	}
 
 	/** \internal Delegates to fully masked variant */
@@ -106,8 +108,10 @@ namespace alp {
 			! alp::is_object< InputType1 >::value && ! alp::is_object< InputType2 >::value && ! alp::is_object< InputType3 >::value && ! std::is_same< InputType2, void >::value
 		> * const = NULL 
 	) {
-		const alp::Vector< bool, structures::General, Density::Dense, view::Original< void >, imf::Id, imf::Id, reference > empty_mask( 0 );
-		return vxm< descr, true, false >( u, mask, v, empty_mask, A, add, mul );
+		// const alp::Vector< bool, structures::General, Density::Dense, view::Original< void >, imf::Id, imf::Id, reference > empty_mask( 0 );
+		// return vxm< descr, true, false >( u, mask, v, empty_mask, A, add, mul );
+		throw std::runtime_error( "Needs an implementation." );
+		return SUCCESS;
 	}
 
 	/** \internal Delegates to vxm_generic. */
@@ -145,8 +149,10 @@ namespace alp {
 		const Matrix< InputType2, InputStructure2, Density::Dense, InputView2, InputImfR2, InputImfC2, reference > & A,
 		const Ring & ring = Ring(),
 		const std::enable_if_t< alp::is_semiring< Ring >::value > * const = NULL ) {
-		const Vector< bool, structures::General, Density::Dense, view::Original< void >, imf::Id, imf::Id, reference > empty_mask( 0 );
-		return vxm< descr, false, false >( u, empty_mask, v, empty_mask, A, ring );
+		// const Vector< bool, structures::General, Density::Dense, view::Original< void >, imf::Id, imf::Id, reference > empty_mask( 0 );
+		// return vxm< descr, false, false >( u, empty_mask, v, empty_mask, A, ring );
+		throw std::runtime_error( "Needs an implementation." );
+		return SUCCESS;
 	}
 
 	/** \internal Delegates to fully masked version */
@@ -167,8 +173,10 @@ namespace alp {
 			! alp::is_object< InputType1 >::value && ! alp::is_object< InputType2 >::value && ! std::is_same< InputType2, void >::value
 		> * const = NULL 
 	) {
-		const alp::Vector< bool, structures::General, Density::Dense, view::Original< void >, imf::Id, imf::Id, reference > empty_mask( 0 );
-		return vxm< descr, false, false >( u, empty_mask, v, empty_mask, A, add, mul );
+		// const alp::Vector< bool, structures::General, Density::Dense, view::Original< void >, imf::Id, imf::Id, reference > empty_mask( 0 );
+		// return vxm< descr, false, false >( u, empty_mask, v, empty_mask, A, add, mul );
+		throw std::runtime_error( "Needs an implementation." );
+		return SUCCESS;
 	}
 
 	/** \internal Delegates to fully masked version */
@@ -186,8 +194,10 @@ namespace alp {
 		const Vector< InputType1, InputStructure1, Density::Dense, InputView1, InputImfR1, InputImfC1, reference > & v,
 		const Ring & ring,
 		const std::enable_if_t< alp::is_semiring< Ring >::value > * const = NULL ) {
-		const Vector< bool, structures::General, Density::Dense, view::Original< void >, imf::Id, imf::Id, reference > empty_mask( 0 );
-		return mxv< descr, true, false >( u, mask, A, v, empty_mask, ring );
+		// const Vector< bool, structures::General, Density::Dense, view::Original< void >, imf::Id, imf::Id, reference > empty_mask( 0 );
+		// return mxv< descr, true, false >( u, mask, A, v, empty_mask, ring );
+		throw std::runtime_error( "Needs an implementation." );
+		return SUCCESS;
 	}
 
 	/** \internal Delegates to vxm_generic */
@@ -229,8 +239,10 @@ namespace alp {
 		const Ring & ring,
 		const std::enable_if_t< alp::is_semiring< Ring >::value > * const = NULL 
 	) {
-		const Vector< bool, structures::General, Density::Dense, view::Original< void >, imf::Id, imf::Id, reference > empty_mask( 0 );
-		return mxv< descr, false, false >( u, empty_mask, A, v, empty_mask, ring );
+		// const Vector< bool, structures::General, Density::Dense, view::Original< void >, imf::Id, imf::Id, reference > empty_mask( 0 );
+		// return mxv< descr, false, false >( u, empty_mask, A, v, empty_mask, ring );
+		throw std::runtime_error( "Needs an implementation." );
+		return SUCCESS;
 	}
 
 	/** \internal Delegates to fully masked version */
@@ -251,8 +263,10 @@ namespace alp {
 			! alp::is_object< InputType1 >::value && ! alp::is_object< InputType2 >::value && ! std::is_same< InputType2, void >::value
 		> * const = NULL 
 	) {
-		const alp::Vector< bool, structures::General, Density::Dense, view::Original< void >, imf::Id, imf::Id, reference > empty_mask( 0 );
-		return mxv< descr, false, false >( u, empty_mask, A, v, empty_mask, add, mul );
+		// const alp::Vector< bool, structures::General, Density::Dense, view::Original< void >, imf::Id, imf::Id, reference > empty_mask( 0 );
+		// return mxv< descr, false, false >( u, empty_mask, A, v, empty_mask, add, mul );
+		throw std::runtime_error( "Needs an implementation." );
+		return SUCCESS;
 	}
 
 	/**
@@ -344,7 +358,7 @@ namespace alp {
 			typename DataType, typename Structure, typename View, typename ImfR, typename ImfC,
 			std::enable_if_t<
 				BandIndex >= std::tuple_size< typename Structure::band_intervals >::value
-			> * = nullptr
+			> *
 		>
 		RC eWiseLambda(
 			const Func f,
