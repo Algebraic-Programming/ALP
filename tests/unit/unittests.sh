@@ -566,22 +566,21 @@ for MODE in debug ndebug; do
 					continue
 				fi
 
-				if [ "$BACKEND" != "nonblocking" ]; then
-					echo ">>>      [x]           [ ]       Testing BLAS3 grb::mxm (unmasked) on simple matrices"
-					echo "                                 of size 100 x 100 using the (+,*) semiring over"
-					echo "                                 doubles"
-					$runner ${TEST_BIN_DIR}/mxm_${MODE}_${BACKEND} &> ${TEST_OUT_DIR}/mxm_${MODE}_${BACKEND}_${P}_${T}.log
-					head -1 ${TEST_OUT_DIR}/mxm_${MODE}_${BACKEND}_${P}_${T}.log
-					grep 'Test OK' ${TEST_OUT_DIR}/mxm_${MODE}_${BACKEND}_${P}_${T}.log || echo "Test FAILED"
-					echo " "
+				echo ">>>      [x]           [ ]       Testing BLAS3 grb::mxm (unmasked) on simple matrices"
+				echo "                                 of size 100 x 100 using the (+,*) semiring over"
+				echo "                                 doubles"
+				$runner ${TEST_BIN_DIR}/mxm_${MODE}_${BACKEND} &> ${TEST_OUT_DIR}/mxm_${MODE}_${BACKEND}_${P}_${T}.log
+				head -1 ${TEST_OUT_DIR}/mxm_${MODE}_${BACKEND}_${P}_${T}.log
+				grep 'Test OK' ${TEST_OUT_DIR}/mxm_${MODE}_${BACKEND}_${P}_${T}.log || echo "Test FAILED"
+				echo " "
 
+				if [ "$BACKEND" != "nonblocking" ]; then
 					echo ">>>      [x]           [ ]       Testing grb::outer on a small matrix"
 					$runner ${TEST_BIN_DIR}/outer_${MODE}_${BACKEND} &> ${TEST_OUT_DIR}/outer_${MODE}_${BACKEND}_${P}_${T}.log
 					head -1 ${TEST_OUT_DIR}/outer_${MODE}_${BACKEND}_${P}_${T}.log
 					grep 'Test OK' ${TEST_OUT_DIR}/outer_${MODE}_${BACKEND}_${P}_${T}.log || echo "Test FAILED"
 					echo " "
 				else
-					echo "The test ${TEST_BIN_DIR}/mxm_${MODE}_${BACKEND} has been disabled for the nonblocking backend."
 					echo "The test ${TEST_BIN_DIR}/outer_${MODE}_${BACKEND} has been disabled for the nonblocking backend."
 					echo
 				fi

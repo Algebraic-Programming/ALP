@@ -151,7 +151,7 @@ add_grb_executables( muladd muladd.cpp
 )
 
 add_grb_executables( mxm mxm.cpp
-	BACKENDS reference reference_omp hyperdags #nonblocking #bsp1d hybrid
+	BACKENDS reference reference_omp hyperdags nonblocking #bsp1d hybrid
 )
 
 add_grb_executables( parserTest utilParserTest.cpp

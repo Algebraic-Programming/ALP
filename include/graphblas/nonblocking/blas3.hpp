@@ -104,14 +104,18 @@ namespace grb {
 				grb::is_monoid< Monoid >::value,
 			void >::type * const = nullptr
 		) {
-			(void) C;
-			(void) A;
-			(void) B;
-			(void) oper;
-			(void) monoid;
-			(void) mulMonoid;
-			(void) phase;
-			return UNSUPPORTED;
+			// nonblocking execution is not supported
+			// first, execute any computation that is not completed
+			le.execution();
+
+			// second, delegate to the reference backend
+			return internal::mxm_generic<
+						allow_void, descr, MulMonoid, OutputType,
+						InputType1, InputType2, RIT, CIT, NIT, Operator, Monoid
+					>(
+						getRefMatrix( C ), getRefMatrix( A ), getRefMatrix( B ),
+						oper, monoid, mulMonoid, phase
+					);
 		}
 
 	} // end namespace grb::internal
@@ -139,12 +143,33 @@ namespace grb {
 			grb::is_semiring< Semiring >::value,
 		void >::type * const = nullptr
 	) {
-		(void) C;
-		(void) A;
-		(void) B;
-		(void) ring;
-		(void) phase;
-		return UNSUPPORTED;
+		// static checks
+		NO_CAST_ASSERT( ( !(descr & descriptors::no_casting) ||
+				std::is_same< typename Semiring::D1, InputType1 >::value
+			), "grb::mxm",
+			"called with a prefactor input matrix A that does not match the first "
+			"domain of the given operator" );
+		NO_CAST_ASSERT( ( !(descr & descriptors::no_casting) ||
+				std::is_same< typename Semiring::D2, InputType2 >::value ), "grb::mxm",
+			"called with a postfactor input matrix B that does not match the "
+			"second domain of the given operator" );
+		NO_CAST_ASSERT( ( !(descr & descriptors::no_casting) ||
+				std::is_same< typename Semiring::D4, OutputType >::value
+			), "grb::mxm",
+			"called with an output matrix C that does not match the output domain "
+			"of the given operator" );
+
+#ifdef _DEBUG
+		std::cout << "In grb::mxm (reference, unmasked, semiring)\n";
+#endif
+
+		return internal::mxm_generic< true, descr >(
+			C, A, B,
+			ring.getMultiplicativeOperator(),
+			ring.getAdditiveMonoid(),
+			ring.getMultiplicativeMonoid(),
+			phase
+		);
 	}
 
 	template<
@@ -173,13 +198,47 @@ namespace grb {
 			grb::is_monoid< Monoid >::value,
 		void >::type * const = nullptr
 	) {
-		(void) C;
-		(void) A;
-		(void) B;
-		(void) addM;
-		(void) mulOp;
-		(void) phase;
-		return UNSUPPORTED;
+		// static checks
+		NO_CAST_ASSERT( ( !(descr & descriptors::no_casting) ||
+				std::is_same< typename Operator::D1, InputType1 >::value
+			), "grb::mxm",
+			"called with a prefactor input matrix A that does not match the first "
+			"domain of the given multiplication operator" );
+		NO_CAST_ASSERT( ( !(descr & descriptors::no_casting) ||
+				std::is_same< typename Operator::D2, InputType2 >::value
+			), "grb::mxm",
+			"called with a postfactor input matrix B that does not match the first "
+			"domain of the given multiplication operator" );
+		NO_CAST_ASSERT( ( !(descr & descriptors::no_casting) ||
+				std::is_same< typename Operator::D3, OutputType >::value ),
+			"grb::mxm",
+			"called with an output matrix C that does not match the output domain "
+			"of the given multiplication operator" );
+		NO_CAST_ASSERT( ( !(descr & descriptors::no_casting) ||
+				std::is_same< typename Monoid::D1, typename Operator::D3 >::value
+			), "grb::mxm",
+			"the output domain of the multiplication operator does not match the "
+			"first domain of the given addition monoid" );
+		NO_CAST_ASSERT( ( !(descr & descriptors::no_casting) ||
+				std::is_same< typename Monoid::D2, OutputType >::value
+			), "grb::mxm",
+			"the second domain of the given addition monoid does not match the "
+			"type of the output matrix C" );
+		NO_CAST_ASSERT( ( !(descr & descriptors::no_casting) ||
+				std::is_same< typename Monoid::D3, OutputType >::value
+			), "grb::mxm",
+			"the output type of the given addition monoid does not match the type "
+			"of the output matrix C" );
+		static_assert( ( !(
+				std::is_same< InputType1, void >::value ||
+				std::is_same< InputType2, void >::value
+			) ),
+			"grb::mxm: the operator-monoid version of mxm cannot be used if either "
+			"of the input matrices is a pattern matrix (of type void)" );
+
+		return internal::mxm_generic< false, descr >(
+			C, A, B, mulOp, addM, Monoid(), phase
+		);
 	}
 
 	namespace internal {
