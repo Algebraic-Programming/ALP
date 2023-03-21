@@ -264,22 +264,16 @@ namespace grb {
 			Vector< D, nonblocking, MyCoordinates > & operator=(
 				const Vector< D, nonblocking, MyCoordinates > &x
 			) {
-				if( internal::getCoordinates( x ).size() > 0 ) {
-					internal::le.execution( &x );
+				const auto rc = set( *this, x );
+				if( rc != grb::SUCCESS ) {
+					throw std::runtime_error( grb::toString( rc ) );
 				}
-
-				Vector< D, nonblocking, MyCoordinates > replace( x );
-				*this = std::move( replace );
 				return *this;
 			}
 
 			Vector< D, nonblocking, MyCoordinates > & operator=(
 				Vector< D, nonblocking, MyCoordinates > &&x
 			) noexcept {
-				if( internal::getCoordinates( x ).size() > 0 ) {
-					internal::le.execution( &x );
-				}
-
 				ref = std::move( x.ref );
 				return *this;
 			}
