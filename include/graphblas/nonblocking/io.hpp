@@ -1115,10 +1115,12 @@ namespace grb {
 			const Matrix< InputType1, nonblocking > &A,
 			const InputType2 * __restrict__ id = nullptr
 		) noexcept {
-			(void) C;
-			(void) A;
-			(void) id;
-			return UNSUPPORTED;
+			// nonblocking execution is not supported
+			// first, execute any computation that is not completed
+			grb::internal::le.execution();
+
+			// second, delegate to the reference backend
+			return set< A_is_mask, descr, OutputType, InputType1, InputType2 >( internal::getRefMatrix( C ), internal::getRefMatrix( A ), id );
 		}
 
 	} // end namespace internal::grb
@@ -1133,10 +1135,32 @@ namespace grb {
 		const Matrix< InputType, nonblocking > &A,
 		const Phase &phase = EXECUTE
 	) noexcept {
-		(void) C;
-		(void) A;
-		(void) phase;
-		return UNSUPPORTED;
+		static_assert( std::is_same< OutputType, void >::value ||
+			!std::is_same< InputType, void >::value,
+			"grb::set cannot interpret an input pattern matrix without a "
+			"semiring or a monoid. This interpretation is needed for "
+			"writing the non-pattern matrix output. Possible solutions: 1) "
+			"use a (monoid-based) foldl / foldr, 2) use a masked set, or "
+			"3) change the output of grb::set to a pattern matrix also." );
+#ifdef _DEBUG
+		std::cout << "Called grb::set (matrix-to-matrix, nonblocking)" << std::endl;
+#endif
+		// static checks
+		NO_CAST_ASSERT( ( !(descr & descriptors::no_casting) ||
+				std::is_same< InputType, OutputType >::value
+			), "grb::set",
+			"called with non-matching value types" );
+
+		// dynamic checks
+		assert( phase != TRY );
+
+		// delegate
+		if( phase == RESIZE ) {
+			return resize( C, nnz( A ) );
+		} else {
+			assert( phase == EXECUTE );
+			return internal::set< false, descr >( C, A );
+		}
 	}
 
 	template<
@@ -1151,11 +1175,33 @@ namespace grb {
 		const InputType2 &val,
 		const Phase &phase = EXECUTE
 	) noexcept {
-		(void) C;
-		(void) A;
-		(void) val;
-		(void) phase;
-		return UNSUPPORTED;
+		static_assert( !std::is_same< OutputType, void >::value,
+			"internal::grb::set (masked set to value): cannot have a pattern "
+			"matrix as output" );
+#ifdef _DEBUG
+		std::cout << "Called grb::set (matrix-to-value-masked, nonblocking)\n";
+#endif
+		// static checks
+		NO_CAST_ASSERT( ( !(descr & descriptors::no_casting) ||
+				std::is_same< InputType2, OutputType >::value
+			), "grb::set",
+			"called with non-matching value types"
+		);
+
+		// dynamic checks
+		assert( phase != TRY );
+
+		// delegate
+		if( phase == RESIZE ) {
+			return resize( C, nnz( A ) );
+		} else {
+			assert( phase == EXECUTE );
+			if( std::is_same< OutputType, void >::value ) {
+				return internal::set< false, descr >( C, A );
+			} else {
+				return internal::set< true, descr >( C, A, &val );
+			}
+		}
 	}
 
 	template<
@@ -1172,28 +1218,7 @@ namespace grb {
 		const IOMode mode,
 		const Dup &dup = Dup()
 	) {
-		// static sanity check
-		NO_CAST_ASSERT( ( !( descr & descriptors::no_casting ) || std::is_same<
-					InputType, decltype( *std::declval< fwd_iterator >() )
-				>::value ),
-			"grb::buildVector (nonblocking implementation)",
-			"Input iterator does not match output vector type while no_casting "
-			"descriptor was set"
-		);
-
-		// in the sequential nonblocking implementation, the number of user processes
-		// always equals 1 therefore the sequential and parallel modes are equivalent
-#ifndef NDEBUG
-		assert( mode == SEQUENTIAL || mode == PARALLEL );
-#else
-		(void) mode;
-#endif
-
-		// declare temporary to meet delegate signature
-		const fwd_iterator start_pos = start;
-
-		// do delegate
-		return x.template build< descr >( dup, start_pos, end, start );
+		return buildVector< descr, InputType, fwd_iterator, Coords, Dup >( internal::getRefVector( x ), start, end, mode, dup );
 	}
 
 	template<
@@ -1214,27 +1239,7 @@ namespace grb {
 		const Dup &dup = Dup()
 	) {
 		internal::le.execution( &x );
-
-		// static sanity check
-		NO_CAST_ASSERT( ( !( descr & descriptors::no_casting ) || std::is_same<
-					InputType, decltype( *std::declval< fwd_iterator2 >() )
-				>::value ||
-				std::is_integral< decltype( *std::declval< fwd_iterator1 >() ) >::value
-			), "grb::buildVector (nonblocking implementation)",
-			"At least one input iterator has incompatible value types while "
-			"no_casting descriptor was set" );
-
-		// in the sequential nonblocking implementation, the number of user processes
-		// always equals 1 therefore the sequential and parallel modes are equivalent
-#ifndef NDEBUG
-		assert( mode == SEQUENTIAL || mode == PARALLEL );
-#else
-		(void) mode;
-#endif
-
-		// call the private member function that provides this functionality
-		return x.template build< descr >( dup, ind_start, ind_end, val_start, val_end
-			);
+		return buildVector< descr, InputType, fwd_iterator1, fwd_iterator2, Coords, Dup >( internal::getRefVector( x ), ind_start, ind_end, val_start, val_end, mode, dup );
 	}
 
 	/** buildMatrixUnique is based on that of the reference backend */
@@ -1252,8 +1257,7 @@ namespace grb {
 		const fwd_iterator end,
 		const IOMode mode
 	) {
-		return buildMatrixUnique< descr, InputType, RIT, CIT, NIT, fwd_iterator >(
-			internal::getRefMatrix(A), start, end, mode );
+		return buildMatrixUnique< descr, InputType, RIT, CIT, NIT, fwd_iterator >( internal::getRefMatrix(A), start, end, mode );
 	}
 
 	template<
@@ -1261,13 +1265,7 @@ namespace grb {
 		typename Coords
 	>
 	uintptr_t getID( const Vector< InputType, nonblocking, Coords > &x ) {
-		assert( grb::size( x ) != 0 );
-		const uintptr_t ret = x._id;
-#ifdef _DEBUG
-		std::cerr << "In grb::getID (nonblocking, vector).\n"
-			<< "\t returning deterministic ID " << ret << "\n";
-#endif
-		return ret;
+		return getID( internal::getRefVector( x ) );
 	}
 
 	template<>

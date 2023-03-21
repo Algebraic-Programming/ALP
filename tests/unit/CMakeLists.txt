@@ -87,7 +87,7 @@ add_grb_executables( ewiseapply ewiseapply.cpp
 )
 
 add_grb_executables( eWiseMatrix eWiseMatrix.cpp
-	BACKENDS reference reference_omp bsp1d hybrid hyperdags #nonblocking
+	BACKENDS reference reference_omp bsp1d hybrid hyperdags nonblocking
 )
 
 add_grb_executables( collectives_blas0 auto_launcher.cpp
@@ -201,11 +201,11 @@ add_grb_executables( vmx vmx.cpp
 )
 
 add_grb_executables( zip zip.cpp
-	BACKENDS reference reference_omp bsp1d hybrid hyperdags #nonblocking
+	BACKENDS reference reference_omp bsp1d hybrid hyperdags nonblocking
 )
 
 add_grb_executables( copyVoidMatrices copyVoidMatrices.cpp
-	BACKENDS reference reference_omp bsp1d hybrid hyperdags
+	BACKENDS reference reference_omp bsp1d hybrid hyperdags nonblocking
 )
 
 add_grb_executables( masked_muladd masked_muladd.cpp
@@ -229,7 +229,7 @@ add_grb_executables( stdMatrix stdMatrix.cpp
 )
 
 add_grb_executables( eWiseApply_matrix eWiseApply_matrix.cpp
-	BACKENDS reference reference_omp bsp1d hybrid hyperdags #nonblocking
+	BACKENDS reference reference_omp bsp1d hybrid hyperdags nonblocking
 )
 
 add_grb_executables( eWiseApplyMatrixReference eWiseApplyMatrixReference.cpp
@@ -237,7 +237,7 @@ add_grb_executables( eWiseApplyMatrixReference eWiseApplyMatrixReference.cpp
 )
 
 add_grb_executables( outer outer.cpp
-	BACKENDS reference reference_omp hyperdags #nonblocking
+	BACKENDS reference reference_omp hyperdags nonblocking
 )
 
 add_grb_executables( mxv mxv.cpp

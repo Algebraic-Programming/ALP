@@ -84,10 +84,10 @@ namespace grb {
 					internal::le.execution( &x );
 				}
 
-				_raw_deleter = x._raw_deleter;
-				_stack_deleter = x._buffer_deleter;
-				_buffered_values = x._raw;
-				_buffered_coordinates = x._coordinates;
+				_raw_deleter = internal::getRefVector(x)._raw_deleter;
+				_stack_deleter = internal::getRefVector(x)._buffer_deleter;
+				_buffered_values = internal::getRefVector(x)._raw;
+				_buffered_coordinates = internal::getRefVector(x)._coordinates;
 
 				// The nonblocking backend is always single process, so the mode is unused.
 				(void) mode;

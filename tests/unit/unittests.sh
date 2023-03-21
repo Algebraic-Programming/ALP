@@ -526,39 +526,31 @@ for MODE in debug ndebug; do
 				grep 'Test OK' ${TEST_OUT_DIR}/buildMatrixUnique_${MODE}_${BACKEND}_${P}_${T}.log || echo "Test FAILED"
 				echo " "
 
-				if [ "$BACKEND" != "nonblocking" ]; then
-					echo ">>>      [x]           [ ]       Testing grb::eWiseLambda (matrices)"
-					$runner ${TEST_BIN_DIR}/eWiseMatrix_${MODE}_${BACKEND} &> ${TEST_OUT_DIR}/eWiseMatrix_${MODE}_${BACKEND}_${P}_${T}.log
-					head -1 ${TEST_OUT_DIR}/eWiseMatrix_${MODE}_${BACKEND}_${P}_${T}.log
-					grep 'Test OK' ${TEST_OUT_DIR}/eWiseMatrix_${MODE}_${BACKEND}_${P}_${T}.log || echo "Test FAILED"
-					echo " "
+				echo ">>>      [x]           [ ]       Testing grb::eWiseApply using + on matrices"
+				$runner ${TEST_BIN_DIR}/eWiseApply_matrix_${MODE}_${BACKEND} &> ${TEST_OUT_DIR}/eWiseApply_matrix_${MODE}_${BACKEND}_${P}_${T}
+				head -1 ${TEST_OUT_DIR}/eWiseApply_matrix_${MODE}_${BACKEND}_${P}_${T}
+				grep 'Test OK' ${TEST_OUT_DIR}/eWiseApply_matrix_${MODE}_${BACKEND}_${P}_${T} || echo "Test FAILED"
+				echo " "
 
-					echo ">>>      [x]           [ ]       Testing grb::eWiseApply using + on matrices"
-					$runner ${TEST_BIN_DIR}/eWiseApply_matrix_${MODE}_${BACKEND} &> ${TEST_OUT_DIR}/eWiseApply_matrix_${MODE}_${BACKEND}_${P}_${T}
-					head -1 ${TEST_OUT_DIR}/eWiseApply_matrix_${MODE}_${BACKEND}_${P}_${T}
-					grep 'Test OK' ${TEST_OUT_DIR}/eWiseApply_matrix_${MODE}_${BACKEND}_${P}_${T} || echo "Test FAILED"
-					echo " "
+				echo ">>>      [x]           [ ]       Testing grb::eWiseLambda (matrices)"
+				$runner ${TEST_BIN_DIR}/eWiseMatrix_${MODE}_${BACKEND} &> ${TEST_OUT_DIR}/eWiseMatrix_${MODE}_${BACKEND}_${P}_${T}.log
+				head -1 ${TEST_OUT_DIR}/eWiseMatrix_${MODE}_${BACKEND}_${P}_${T}.log
+				grep 'Test OK' ${TEST_OUT_DIR}/eWiseMatrix_${MODE}_${BACKEND}_${P}_${T}.log || echo "Test FAILED"
+				echo " "
 
-					echo ">>>      [x]           [ ]       Testing grb::zip on two vectors of doubles and"
-					echo "                                 ints of size 10 000 000."
-					$runner ${TEST_BIN_DIR}/zip_${MODE}_${BACKEND} 10000000 &> ${TEST_OUT_DIR}/zip_large_${MODE}_${BACKEND}_${P}_${T}
-					head -1 ${TEST_OUT_DIR}/zip_large_${MODE}_${BACKEND}_${P}_${T}
-					grep 'Test OK' ${TEST_OUT_DIR}/zip_large_${MODE}_${BACKEND}_${P}_${T} || echo "Test FAILED"
-					echo " "
+				echo ">>>      [x]           [ ]       Testing grb::zip on two vectors of doubles and"
+				echo "                                 ints of size 10 000 000."
+				$runner ${TEST_BIN_DIR}/zip_${MODE}_${BACKEND} 10000000 &> ${TEST_OUT_DIR}/zip_large_${MODE}_${BACKEND}_${P}_${T}
+				head -1 ${TEST_OUT_DIR}/zip_large_${MODE}_${BACKEND}_${P}_${T}
+				grep 'Test OK' ${TEST_OUT_DIR}/zip_large_${MODE}_${BACKEND}_${P}_${T} || echo "Test FAILED"
+				echo " "
 
-					echo ">>>      [x]           [ ]       Testing copy-constructor of square pattern matrices"
-					echo "                                 of size 1003."
-					$runner ${TEST_BIN_DIR}/copyVoidMatrices_${MODE}_${BACKEND} 1003 &> ${TEST_OUT_DIR}/copyVoidMatrices_${MODE}_${BACKEND}_${P}_${T}
-					head -1 ${TEST_OUT_DIR}/copyVoidMatrices_${MODE}_${BACKEND}_${P}_${T}
-					grep 'Test OK' ${TEST_OUT_DIR}/copyVoidMatrices_${MODE}_${BACKEND}_${P}_${T} || echo "Test FAILED"
-					echo " "
-				else
-					echo "The test ${TEST_BIN_DIR}/eWiseMatrix_${MODE}_${BACKEND} has been disabled for the nonblocking backend."
-					echo "The test ${TEST_BIN_DIR}/eWiseApply_matrix_${MODE}_${BACKEND} has been disabled for the nonblocking backend."
-					echo "The test ${TEST_BIN_DIR}/zip_${MODE}_${BACKEND} has been disabled for the nonblocking backend."
-					echo "The test ${TEST_BIN_DIR}/copyVoidMatrices_${MODE}_${BACKEND} has been disabled for the nonblocking backend."
-					echo
-				fi
+				echo ">>>      [x]           [ ]       Testing copy-constructor of square pattern matrices"
+				echo "                                 of size 1003."
+				$runner ${TEST_BIN_DIR}/copyVoidMatrices_${MODE}_${BACKEND} 1003 &> ${TEST_OUT_DIR}/copyVoidMatrices_${MODE}_${BACKEND}_${P}_${T}
+				head -1 ${TEST_OUT_DIR}/copyVoidMatrices_${MODE}_${BACKEND}_${P}_${T}
+				grep 'Test OK' ${TEST_OUT_DIR}/copyVoidMatrices_${MODE}_${BACKEND}_${P}_${T} || echo "Test FAILED"
+				echo " "
 
 				if [ "$BACKEND" = "bsp1d" ] || [ "$BACKEND" = "hybrid" ]; then
 					echo "Additional standardised unit tests not yet supported for the ${BACKEND} backend."
@@ -574,16 +566,11 @@ for MODE in debug ndebug; do
 				grep 'Test OK' ${TEST_OUT_DIR}/mxm_${MODE}_${BACKEND}_${P}_${T}.log || echo "Test FAILED"
 				echo " "
 
-				if [ "$BACKEND" != "nonblocking" ]; then
-					echo ">>>      [x]           [ ]       Testing grb::outer on a small matrix"
-					$runner ${TEST_BIN_DIR}/outer_${MODE}_${BACKEND} &> ${TEST_OUT_DIR}/outer_${MODE}_${BACKEND}_${P}_${T}.log
-					head -1 ${TEST_OUT_DIR}/outer_${MODE}_${BACKEND}_${P}_${T}.log
-					grep 'Test OK' ${TEST_OUT_DIR}/outer_${MODE}_${BACKEND}_${P}_${T}.log || echo "Test FAILED"
-					echo " "
-				else
-					echo "The test ${TEST_BIN_DIR}/outer_${MODE}_${BACKEND} has been disabled for the nonblocking backend."
-					echo
-				fi
+				echo ">>>      [x]           [ ]       Testing grb::outer on a small matrix"
+				$runner ${TEST_BIN_DIR}/outer_${MODE}_${BACKEND} &> ${TEST_OUT_DIR}/outer_${MODE}_${BACKEND}_${P}_${T}.log
+				head -1 ${TEST_OUT_DIR}/outer_${MODE}_${BACKEND}_${P}_${T}.log
+				grep 'Test OK' ${TEST_OUT_DIR}/outer_${MODE}_${BACKEND}_${P}_${T}.log || echo "Test FAILED"
+				echo " "
 
 				echo ">>>      [x]           [ ]       Testing vector times matrix using the normal (+,*)"
 				echo "                                 semiring over integers on a diagonal matrix"

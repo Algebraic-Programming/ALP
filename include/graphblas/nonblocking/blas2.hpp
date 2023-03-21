@@ -1563,11 +1563,12 @@ namespace grb {
 		const size_t s,
 		const size_t P
 	) {
-		(void) f;
-		(void) A ;
-		(void) s;
-		(void) P;
-		return UNSUPPORTED;
+		// nonblocking execution is not supported
+		// first, execute any computation that is not completed
+		internal::le.execution();
+
+		// second, delegate to the reference backend
+		return eWiseLambda< ActiveDistribution, Func, DataType, RIT, CIT, NIT >(f, internal::getRefMatrix( A ), s, P );
 	}
 
 	template<
@@ -1586,10 +1587,15 @@ namespace grb {
 		const Vector< DataType2, nonblocking, Coords > &x,
 		Args... args
 	) {
-		(void) f;
-		(void) A;
-		(void) x;
-		return UNSUPPORTED;
+		// do size checking
+		if( !( size( x ) == nrows( A ) || size( x ) == ncols( A ) ) ) {
+			std::cerr << "Mismatching dimensions: given vector of size " << size( x )
+				<< " has nothing to do with either matrix dimension (" << nrows( A )
+				<< " nor " << ncols( A ) << ").\n";
+			return MISMATCH;
+		}
+
+		return eWiseLambda( f, A, args... );
 	}
 
 	/** @} */
