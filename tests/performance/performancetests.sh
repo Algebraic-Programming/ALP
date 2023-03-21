@@ -374,7 +374,9 @@ if [ -z "$EXPTYPE" ] || ! [ "$EXPTYPE" == "KERNEL" ]; then
 			    # BSP1D otherwise is never used for a performance test; hybrid(1D)
 			    # should be used instead.
 		fi
-		if [ "$BACKEND" = "reference_omp" ] ; then
+		if [ "$BACKEND" = "reference_omp" ]; then
+			T=${MAX_THREADS}
+		elif [ "$BACKEND" = "nonblocking" ]; then
 			T=${MAX_THREADS}
 		elif [ "$BACKEND" = "hybrid" ]; then
 			T=$((MAX_THREADS/NUM_SOCKETS))
@@ -396,7 +398,7 @@ if [ -z "$EXPTYPE" ] || ! [ "$EXPTYPE" == "KERNEL" ]; then
 				runner="${runner} ${MPI_PASS_ENV} ${LPFRUN_PASSTHROUGH}OMP_NUM_THREADS=${T} ${MPI_BINDING_ARGS}"
 			fi
 		fi
-		if [ "$BACKEND" = "reference_omp" ]; then
+		if [ "$BACKEND" = "reference_omp" ] || [ "$BACKEND" = "nonblocking" ]; then
 			export OMP_NUM_THREADS=${T}
 		fi
 

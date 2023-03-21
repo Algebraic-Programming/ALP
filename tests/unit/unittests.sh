@@ -104,7 +104,9 @@ for MODE in debug ndebug; do
 		else
 			Ps=( 1 )
 		fi
-		if [ "$BACKEND" = "reference_omp" ] ; then
+		if [ "$BACKEND" = "reference_omp" ]; then
+			Pt=( 1 2 ${MAX_THREADS} )
+		elif [ "$BACKEND" = "nonblocking" ]; then
 			Pt=( 1 2 ${MAX_THREADS} )
 		elif [ "$BACKEND" = "hybrid" ]; then
 			MTDS=$((MAX_THREADS/7))
