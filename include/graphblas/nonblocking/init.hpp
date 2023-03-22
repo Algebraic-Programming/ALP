@@ -46,7 +46,7 @@ namespace grb {
 		 * When <tt>true</tt>, calling a fake nonblocking primitive for a first time
 		 * will emit a warning to the standard error stream.
 		 */
-		bool nonblocking_warn_if_not_native;
+		extern bool nonblocking_warn_if_not_native;
 
 	}
 
