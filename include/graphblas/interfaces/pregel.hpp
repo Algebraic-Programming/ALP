@@ -769,7 +769,7 @@ namespace grb {
 								&in,
 								&out,
 								&program,
-								&step,
+								step,
 								&data
 							]( const size_t i ) {
 								// create Pregel struct
