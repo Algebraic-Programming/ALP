@@ -40,6 +40,16 @@ namespace grb {
 	template<>
 	RC finalize< nonblocking >();
 
+	namespace internal {
+
+		/**
+		 * When <tt>true</tt>, calling a fake nonblocking primitive for a first time
+		 * will emit a warning to the standard error stream.
+		 */
+		bool nonblocking_warn_if_not_native;
+
+	}
+
 } // namespace grb
 
 #endif //``end _H_GRB_NONBLOCKING_INIT''

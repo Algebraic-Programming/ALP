@@ -163,6 +163,15 @@ namespace grb {
 		std::cout << "In grb::mxm (nonblocking, unmasked, semiring)\n";
 #endif
 
+		if( internal::nonblocking_warn_if_not_native &&
+			config::PIPELINE::warn_if_not_native
+		) {
+			std::cerr << "Warning: mxm (nonblocking, unmasked, semiring) currently "
+				<< "delegates to a blocking implementation\n"
+				<< "         Further similar such warnings will be suppressed.\n";
+			internal::nonblocking_warn_if_not_native = false;
+		}
+
 		return internal::mxm_generic< true, descr >(
 			C, A, B,
 			ring.getMultiplicativeOperator(),
@@ -236,6 +245,15 @@ namespace grb {
 			"grb::mxm: the operator-monoid version of mxm cannot be used if either "
 			"of the input matrices is a pattern matrix (of type void)" );
 
+		if( internal::nonblocking_warn_if_not_native &&
+			config::PIPELINE::warn_if_not_native
+		) {
+			std::cerr << "Warning: mxm (nonblocking, unmasked, monoid-op) currently "
+				<< "delegates to a blocking implementation\n"
+				<< "         Further similar such warnings will be suppressed.\n";
+			internal::nonblocking_warn_if_not_native = false;
+		}
+
 		return internal::mxm_generic< false, descr >(
 			C, A, B, mulOp, addM, Monoid(), phase
 		);
@@ -259,13 +277,24 @@ namespace grb {
 			const Vector< InputType3, nonblocking, Coords > &z,
 			const Phase &phase
 		) {
+			if( internal::nonblocking_warn_if_not_native &&
+				config::PIPELINE::warn_if_not_native
+			) {
+				std::cerr << "Warning: zip (matrix<-vector<-vector<-vector, nonblocking) "
+					<< "currently delegates to a blocking implementation.\n"
+					<< "         Further similar such warnings will be suppressed.\n";
+				internal::nonblocking_warn_if_not_native = false;
+			}
+
 			// nonblocking execution is not supported
 			// first, execute any computation that is not completed
 			le.execution();
 
 			// second, delegate to the reference backend
 			return matrix_zip_generic<
-					descr, matrix_is_void, OutputType, InputType1, InputType2, InputType3, Coords
+					descr, matrix_is_void,
+					OutputType, InputType1, InputType2, InputType3,
+					Coords
 				>(
 					getRefMatrix( A ), getRefVector( x ), getRefVector( y ), getRefVector( z ),
 					phase
@@ -383,12 +412,27 @@ namespace grb {
 			void
 		>::type * const = nullptr
 	) {
+		if( internal::nonblocking_warn_if_not_native &&
+			config::PIPELINE::warn_if_not_native
+		) {
+			std::cerr << "Warning: outer (nonblocking) currently delegates to a "
+				<< "blocking implementation.\n"
+				<< "         Further similar such warnings will be suppressed.\n";
+			internal::nonblocking_warn_if_not_native = false;
+		}
+
 		// nonblocking execution is not supported
 		// first, execute any computation that is not completed
 		internal::le.execution();
 
 		// second, delegate to the reference backend
-		return outer< descr, InputType1, InputType2, OutputType, Coords, Operator >( internal::getRefMatrix( A ), internal::getRefVector( u ), internal::getRefVector( v ), mul, phase );
+		return outer<
+				descr, InputType1, InputType2, OutputType, Coords, Operator
+			>(
+				internal::getRefMatrix( A ),
+				internal::getRefVector( u ), internal::getRefVector( v ),
+				mul, phase
+			);
 	}
 
 	namespace internal {
@@ -416,12 +460,26 @@ namespace grb {
 				grb::is_operator< Operator >::value,
 			void >::type * const = nullptr
 		) {
+			if( internal::nonblocking_warn_if_not_native &&
+				config::PIPELINE::warn_if_not_native
+			) {
+				std::cerr << "Warning: eWiseApply (nonblocking) currently delegates to a "
+					<< "blocking implementation.\n"
+					<< "         Further similar such warnings will be suppressed.\n";
+				internal::nonblocking_warn_if_not_native = false;
+			}
+
 			// nonblocking execution is not supported
 			// first, execute any computation that is not completed
 			le.execution();
 
 			// second, delegate to the reference backend
-			return eWiseApply_matrix_generic< allow_void, descr, MulMonoid, OutputType, InputType1, InputType2, Operator >( getRefMatrix( C ), getRefMatrix( A ), getRefMatrix( B ), oper, mulMonoid, phase );
+			return eWiseApply_matrix_generic<
+					allow_void, descr, MulMonoid, OutputType, InputType1, InputType2, Operator
+				>(
+					getRefMatrix( C ), getRefMatrix( A ), getRefMatrix( B ),
+					oper, mulMonoid, phase
+				);
 		}
 
 	} // namespace internal

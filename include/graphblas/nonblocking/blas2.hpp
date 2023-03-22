@@ -1563,6 +1563,15 @@ namespace grb {
 		const size_t s,
 		const size_t P
 	) {
+		if( internal::nonblocking_warn_if_not_native &&
+			config::PIPELINE::warn_if_not_native
+		) {
+			std::cerr << "Warning: eWiseLambda (nonblocking, matrix variant) currently "
+				<< "delegates to a blocking implementation.\n"
+				<< "         Further similar such warnings will be suppressed.\n";
+			internal::nonblocking_warn_if_not_native = false;
+		}
+
 		// nonblocking execution is not supported
 		// first, execute any computation that is not completed
 		internal::le.execution();

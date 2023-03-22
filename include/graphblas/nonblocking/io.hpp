@@ -1115,12 +1115,22 @@ namespace grb {
 			const Matrix< InputType1, nonblocking > &A,
 			const InputType2 * __restrict__ id = nullptr
 		) noexcept {
+			if( internal::nonblocking_warn_if_not_native &&
+				config::PIPELINE::warn_if_not_native
+			) {
+				std::cerr << "Warning: set (matrix copy, nonblocking) currently delegates "
+					<< "to a blocking implementation.\n"
+					<< "         Further similar such warnings will be suppressed.\n";
+				internal::nonblocking_warn_if_not_native = false;
+			}
+
 			// nonblocking execution is not supported
 			// first, execute any computation that is not completed
 			grb::internal::le.execution();
 
 			// second, delegate to the reference backend
-			return set< A_is_mask, descr, OutputType, InputType1, InputType2 >( internal::getRefMatrix( C ), internal::getRefMatrix( A ), id );
+			return set< A_is_mask, descr, OutputType, InputType1, InputType2 >(
+				internal::getRefMatrix( C ), internal::getRefMatrix( A ), id );
 		}
 
 	} // end namespace internal::grb
@@ -1218,7 +1228,8 @@ namespace grb {
 		const IOMode mode,
 		const Dup &dup = Dup()
 	) {
-		return buildVector< descr, InputType, fwd_iterator, Coords, Dup >( internal::getRefVector( x ), start, end, mode, dup );
+		return buildVector< descr, InputType, fwd_iterator, Coords, Dup >(
+			internal::getRefVector( x ), start, end, mode, dup );
 	}
 
 	template<
@@ -1239,7 +1250,12 @@ namespace grb {
 		const Dup &dup = Dup()
 	) {
 		internal::le.execution( &x );
-		return buildVector< descr, InputType, fwd_iterator1, fwd_iterator2, Coords, Dup >( internal::getRefVector( x ), ind_start, ind_end, val_start, val_end, mode, dup );
+		return buildVector<
+				descr, InputType, fwd_iterator1, fwd_iterator2, Coords, Dup
+			>(
+				internal::getRefVector( x ), ind_start, ind_end, val_start, val_end,
+				mode, dup
+			);
 	}
 
 	/** buildMatrixUnique is based on that of the reference backend */
@@ -1257,7 +1273,9 @@ namespace grb {
 		const fwd_iterator end,
 		const IOMode mode
 	) {
-		return buildMatrixUnique< descr, InputType, RIT, CIT, NIT, fwd_iterator >( internal::getRefMatrix(A), start, end, mode );
+		return buildMatrixUnique<
+				descr, InputType, RIT, CIT, NIT, fwd_iterator
+			>( internal::getRefMatrix(A), start, end, mode );
 	}
 
 	template<

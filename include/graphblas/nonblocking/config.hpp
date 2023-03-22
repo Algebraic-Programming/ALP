@@ -100,6 +100,12 @@ namespace grb {
 				 */
 				static constexpr bool warn_if_exceeded = true;
 
+				/**
+				 * When <tt>true</tt>, calling a fake nonblocking primitive for a first time
+				 * will emit a warning to the standard error stream.
+				 */
+				static constexpr bool warn_if_not_native = true;
+
 		};
 
 		/**
