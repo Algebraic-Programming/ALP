@@ -800,7 +800,7 @@ namespace grb {
 								std::cout << "Vertex " << i << " sends out message " << out[ i ]
 									<< "\n";
 #endif
-							}, activeVertices, vertex_state, in, out, outdegrees, haltVotes
+							}, activeVertices, vertex_state, in, out, outdegrees, haltVotes, indegrees, IDs
 						);
 
 						// increment counter

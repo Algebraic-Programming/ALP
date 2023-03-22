@@ -358,7 +358,7 @@ namespace grb {
 						foldl( p[ i ], tmp, minus );
 						foldr( beta, p[ i ], semiring.getMultiplicativeOperator() );
 						foldr( r[ i ], p[ i ], semiring.getAdditiveOperator() );
-					}, v, b
+					}, v, p, r
 				);
 
 				// v = Ap
