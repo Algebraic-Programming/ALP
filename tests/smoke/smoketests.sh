@@ -338,7 +338,7 @@ for BACKEND in ${BACKENDS[@]}; do
 			fi
 			echo " "
 
-			if [ "$BACKEND" = "bsp1d" ] || [ "$BACKEND" = "hybrid" ] || [ "$BACKEND" = "nonblocking" ]; then
+			if [ "$BACKEND" = "bsp1d" ] || [ "$BACKEND" = "hybrid" ]; then
 				echo "Additional standardised smoke tests not yet supported for the ${BACKEND} backend"
 				echo
 				continue
