@@ -281,6 +281,9 @@ namespace grb {
 			Vector< D, nonblocking, MyCoordinates > & operator=(
 				Vector< D, nonblocking, MyCoordinates > &&x
 			) noexcept {
+				if( internal::getCoordinates( x ).size() > 0 ) {
+					internal::le.execution( &x );
+				}
 				ref = std::move( x.ref );
 				return *this;
 			}
