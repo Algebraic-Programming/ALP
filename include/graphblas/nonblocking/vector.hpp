@@ -154,10 +154,12 @@ namespace grb {
 		) noexcept;
 
 		template< typename D, typename C >
-		inline Vector< D, reference, C >& getRefVector( Vector< D, nonblocking, C > &x ) noexcept;
+		inline Vector< D, reference, C >& getRefVector(
+			Vector< D, nonblocking, C > &x ) noexcept;
 
 		template< typename D, typename C >
-		inline const Vector< D, reference, C >& getRefVector( const Vector< D, nonblocking, C > &x ) noexcept;
+		inline const Vector< D, reference, C >& getRefVector(
+			const Vector< D, nonblocking, C > &x ) noexcept;
 
 	} // namespace internal
 
@@ -183,9 +185,11 @@ namespace grb {
 		friend const D * internal::getRaw< D, MyCoordinates >(
 			const Vector< D, nonblocking, MyCoordinates > & x ) noexcept;
 
-		friend Vector< D, reference, MyCoordinates > & internal::getRefVector<>( Vector< D, nonblocking, MyCoordinates > &x ) noexcept;
+		friend Vector< D, reference, MyCoordinates > & internal::getRefVector<>(
+			Vector< D, nonblocking, MyCoordinates > &x ) noexcept;
 
-		friend const Vector< D, reference, MyCoordinates > & internal::getRefVector<>( const Vector< D, nonblocking, MyCoordinates > &x ) noexcept;
+		friend const Vector< D, reference, MyCoordinates > & internal::getRefVector<>(
+			const Vector< D, nonblocking, MyCoordinates > &x ) noexcept;
 
 		/* *********************
 		        IO friends
@@ -213,12 +217,11 @@ namespace grb {
 			 */
 			typedef D & lambda_reference;
 
-			typedef typename Vector< D, reference, MyCoordinates >::const_iterator const_iterator;
+			typedef typename Vector< D, reference, MyCoordinates >::const_iterator
+				const_iterator;
 
 
-			Vector( const size_t n, const size_t nz ) : ref( n, nz ) {
-
-			}
+			Vector( const size_t n, const size_t nz ) : ref( n, nz ) {}
 
 			Vector( const size_t n ) : Vector( n, n ) {
 
@@ -231,12 +234,15 @@ namespace grb {
 
 			Vector() : Vector( 0 ) {}
 
-			Vector( const Vector< D, nonblocking, MyCoordinates > &x ) : ref( size( x.ref ), capacity( x.ref ) )
+			Vector( const Vector< D, nonblocking, MyCoordinates > &x ) :
+				ref( size( x.ref ), capacity( x.ref ) )
 			{
-				// full delegation to the copy constructor of the reference backend is impossible
-				// since the pipeline must be executed before the copy constructor
-				// instead a parameterized constructor of the reference backend is invoked to perform the
-				// necessary initialization as the initialize method is not defined for the nonblocking backend
+				// full delegation to the copy constructor of the reference backend is
+				// impossible since the pipeline must be executed before the copy
+				// constructor
+				// instead a parameterized constructor of the reference backend is invoked
+				// to perform the necessary initialization as the initialize method is not
+				// defined for the nonblocking backend
 				if( internal::getCoordinates( x ).size() > 0 ) {
 					internal::le.execution( &x );
 				}
@@ -245,9 +251,10 @@ namespace grb {
 				// once the execution of any required pipeline is completed
 				// the set primitive initializes the vector for this copy constructor
 				if( size( x ) > 0 ) {
-					const auto rc = set( *this, x );
+					const RC rc = set( *this, x );
 					if( rc != SUCCESS ) {
-						throw std::runtime_error( "grb::set inside copy-constructor: " + toString( rc ) );
+						throw std::runtime_error( "grb::set inside copy-constructor: "
+							+ toString( rc ) );
 					}
 				}
 			}
@@ -264,7 +271,7 @@ namespace grb {
 			Vector< D, nonblocking, MyCoordinates > & operator=(
 				const Vector< D, nonblocking, MyCoordinates > &x
 			) {
-				const auto rc = set( *this, x );
+				const RC rc = set( *this, x );
 				if( rc != grb::SUCCESS ) {
 					throw std::runtime_error( grb::toString( rc ) );
 				}
@@ -342,7 +349,8 @@ namespace grb {
 				const nnz_iterator nnz_end,
 				const Dup &dup = Dup()
 			) {
-				return ref.build( mask.ref, accum, ind_start, ind_end, nnz_start, nnz_end, dup );
+				return ref.build( mask.ref, accum, ind_start, ind_end, nnz_start, nnz_end,
+					dup );
 			}
 
 			template<
@@ -442,12 +450,16 @@ namespace grb {
 		}
 
 		template< typename D, typename C >
-		inline Vector< D, reference, C >& getRefVector( Vector< D, nonblocking, C > &x ) noexcept {
+		inline Vector< D, reference, C >& getRefVector(
+			Vector< D, nonblocking, C > &x
+		) noexcept {
 			return x.ref;
 		}
 
 		template< typename D, typename C >
-		inline const Vector< D, reference, C >& getRefVector( const Vector< D, nonblocking, C > &x ) noexcept {
+		inline const Vector< D, reference, C >& getRefVector(
+			const Vector< D, nonblocking, C > &x
+		) noexcept {
 			return x.ref;
 		}
 
