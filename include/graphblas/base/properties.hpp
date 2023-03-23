@@ -29,40 +29,69 @@
 namespace grb {
 
 	/**
-	 * Collection of various properties on the given GraphBLAS backend.
+	 * Collection of various properties on the given ALP/GraphBLAS \a backend.
 	 *
-	 * @tparam implementation The implementation of which to access its properties.
+	 * @tparam backend The backend of which to access its properties.
 	 *
 	 * The properties collected here are meant to be compile-time constants that
-	 * provide insight in what features the back-end supports.
+	 * provide insight in what features the given \a backend supports. ALP user
+	 * code may rely on the properties specified herein. All ALP backends must
+	 * define all properties here specified.
+	 *
+	 * The default template class shall be empty in order to ensure implementing
+	 * backends must specialise this class, while also making sure no backend may
+	 * accidentally implicitly and erroneously propagate global defaults.
 	 */
-	template< enum Backend implementation >
+	template< enum Backend backend >
 	class Properties {
+
+#ifdef __DOXYGEN__
 
 		public:
 
 			/**
-			 * Whether a non-GraphBLAS object captured by a lambda-function and passed to
-			 * grb::eWiseLambda can be written to.
+			 * Whether a scalar, non-ALP/GraphBLAS object, may be captured by and written
+			 * to by a lambda function that is passed to #grb::eWiseLambda.
 			 *
-			 * If the implementation backend is fully Single Program, Multiple Data
-			 * (SPMD), then this is expected to be legal and result in user-process local
-			 * updates. This function would thus return \a true.
+			 * Typically, if the \a backend is shared-memory parallel, this function
+			 * would return <tt>false</tt>. Purely Single Program, Multiple Data (SPMD)
+			 * backends over distributed memory, including simple sequential backends,
+			 * would have this property return <tt>true</tt>.
 			 *
-			 * If the implementaiton backend is parallel but supports only a single user
-			 * processes, i.e., for a \em data-centric backend, writing to a shared
-			 * object results in race conditions and thus is technically impossible. This
-			 * function would thus return \a false.
-			 *
-			 * @return A boolean \a true if and only if capturing a non-GraphBLAS object
-			 *         inside a lambda-function for write access, and passing it to
-			 *         grb::eWiseLambda would yield valid user process local results. If
-			 *         not, \a false is returned instead.
+			 * Notably, hybrid SPMD + OpenMP backends (e.g., #grb::hybrid), are not pure
+			 * SPMD and as such would return <tt>false</tt>.
 			 *
 			 * @see grb::eWiseLambda()
 			 */
-			static constexpr bool writableCaptured = true;
+			static constexpr const bool writableCaptured = true;
 
+			/**
+			 * Whether the given \a backend supports blocking execution or is, instead,
+			 * non-blocking.
+			 *
+			 * In blocking execution mode, any ALP/GraphBLAS primitive, when it returns,
+			 * is guaranteed to have completed the requested computation.
+			 *
+			 * If a given \a backend has this property <tt>true</tt> then the
+			 * #isNonblockingExecution property must read <tt>false</tt>, and vice versa.
+			 */
+			static constexpr const bool isBlockingExecution = true;
+
+			/**
+			 * Whether the given \a backend is non-blocking or is, instead, blocking.
+			 *
+			 * In non-blocking execution mode, any ALP/GraphBLAS primitive, on return,
+			 * \em may in fact \em not have completed the requested computation.
+			 *
+			 * Non-blocking execution thus allows for the lazy evaluation of an ALP
+			 * code, which, in turn, allows for cross-primitive optimisations to be
+			 * automatically applied.
+			 *
+			 * If a given \a backend has this property <tt>true</tt> then the
+			 * #isBlockingExecution property must read <tt>false</tt>, and vice versa.
+			 */
+			static constexpr const bool isNonblockingExecution = !isBlockingExecution;
+#endif
 		};
 
 } // namespace grb
