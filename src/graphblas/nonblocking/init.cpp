@@ -34,8 +34,7 @@
 #include <sstream>
 
 
-bool grb::internal::nonblocking_warn_if_not_native =
-	grb::config::PIPELINE::warn_if_not_native;
+bool grb::internal::nonblocking_warn_if_not_native = true;
 
 bool grb::config::ANALYTIC_MODEL::manual_tile_size = false;
 size_t grb::config::ANALYTIC_MODEL::manual_fixed_tile_size =
