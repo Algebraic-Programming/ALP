@@ -34,19 +34,18 @@
 #include <sstream>
 
 
-bool grb::internal::nonblocking_warn_if_not_native = true;
-
-bool grb::config::ANALYTIC_MODEL::manual_tile_size = false;
-size_t grb::config::ANALYTIC_MODEL::manual_fixed_tile_size =
-	grb::config::IMPLEMENTATION< nonblocking >::analyticModelMinimumTileSize();
-size_t grb::config::ANALYTIC_MODEL::num_threads = grb::config::OMP::threads();
+bool grb::internal::NONBLOCKING::warn_if_not_native = true;
+bool grb::internal::NONBLOCKING::manual_tile_size = false;
+size_t grb::internal::NONBLOCKING::manual_fixed_tile_size =
+	grb::config::ANALYTIC_MODEL::MIN_TILE_SIZE;
+size_t grb::internal::NONBLOCKING::num_threads = grb::config::OMP::threads();
 
 template<>
 grb::RC grb::init< grb::nonblocking >(
 	const size_t s, const size_t P, void * const data
 ) {
 	// It initializes the maximum number of threads used by the analytic model.
-	config::ANALYTIC_MODEL::num_threads = config::OMP::threads();
+	internal::NONBLOCKING::num_threads = config::OMP::threads();
 
 	// If the environment variable GRB_NONBLOCKING_TILE_SIZE is set, a fixed
 	// tile size is used for all pipelines built during the nonblocking execution.
@@ -55,29 +54,29 @@ grb::RC grb::init< grb::nonblocking >(
 	// pipelines.
 	const char *t = getenv( "GRB_NONBLOCKING_TILE_SIZE" );
 	if( t != nullptr ) {
-		config::ANALYTIC_MODEL::manual_tile_size = true;
+		grb::internal::NONBLOCKING::manual_tile_size = true;
 		try {
 			std::stringstream cppstr( t );
-			cppstr >> config::ANALYTIC_MODEL::manual_fixed_tile_size;
+			cppstr >> grb::internal::NONBLOCKING::manual_fixed_tile_size;
 		} catch( ... ) {
 			std::cerr << "Warning: could not parse contents of the "
 				<< "GRB_NONBLOCKING_TILE_SIZE environment variable; ignoring it instead.\n";
-			config::ANALYTIC_MODEL::manual_tile_size = false;
+			grb::internal::NONBLOCKING::manual_tile_size = false;
 		}
 	} else {
-		config::ANALYTIC_MODEL::manual_tile_size = false;
+		grb::internal::NONBLOCKING::manual_tile_size = false;
 	}
 
 	std::cerr << "Info: grb::init (nonblocking) called. OpenMP is set to utilise "
-		<< config::ANALYTIC_MODEL::num_threads << " threads and the tile size for "
-		<< "nonblocking execution is chosen " << (
-				config::ANALYTIC_MODEL::manual_tile_size
+		<< grb::internal::NONBLOCKING::num_threads << " threads and the tile size "
+		<< "for nonblocking execution is chosen " << (
+				grb::internal::NONBLOCKING::manual_tile_size
 					? "manually"
 					: "automatically.\n"
 			);
-	if( config::ANALYTIC_MODEL::manual_tile_size ) {
+	if( grb::internal::NONBLOCKING::manual_tile_size ) {
 		std::cerr << " and is equal to "
-			<< config::ANALYTIC_MODEL::manual_fixed_tile_size << "." << std::endl;
+			<< grb::internal::NONBLOCKING::manual_fixed_tile_size << "." << std::endl;
 	}
 
 	return grb::init< grb::reference >( s, P, data );

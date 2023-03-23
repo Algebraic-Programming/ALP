@@ -34,18 +34,19 @@
 
 #include <stddef.h> //size_t
 #include <assert.h>
-#include <string.h> //memcpy
-#include <omp.h>
 
-#include <graphblas/backends.hpp>
 #include <graphblas/rc.hpp>
-#include <graphblas/base/coordinates.hpp>
+#include <graphblas/backends.hpp>
 #include <graphblas/descriptors.hpp>
-#include <graphblas/utils.hpp>
-#include <graphblas/reference/config.hpp>
-#include <graphblas/nonblocking/analytic_model.hpp>
 
-#include "config.hpp"
+#include <graphblas/utils.hpp>
+
+#include <graphblas/base/coordinates.hpp>
+
+#include <graphblas/reference/config.hpp>
+
+#include <graphblas/nonblocking/init.hpp>
+#include <graphblas/nonblocking/analytic_model.hpp>
 
 
 namespace grb {
@@ -114,8 +115,7 @@ namespace grb {
 				}
 
 				static inline size_t parbufSize( const size_t n ) noexcept {
-					return config::IMPLEMENTATION< nonblocking >::vectorBufferSize( n ) *
-						sizeof( StackType );
+					return internal::NONBLOCKING::vectorBufferSize( n ) * sizeof( StackType );
 				}
 
 				static inline size_t bufferSize( const size_t dim ) noexcept {
@@ -210,7 +210,7 @@ namespace grb {
 					// initialise
 					_n = 0;
 					_cap = dim;
-					_buf = config::IMPLEMENTATION< nonblocking >::vectorBufferSize( _cap );
+					_buf = internal::NONBLOCKING::vectorBufferSize( _cap );
 
 					// and initialise _assigned (but only if necessary)
 					if( dim > 0 && !arr_initialized ) {
@@ -410,8 +410,7 @@ namespace grb {
 					const size_t num_tiles = analytic_model.getNumTiles();
 
 					assert( num_tiles > 0 );
-					assert( num_tiles <= config::IMPLEMENTATION< nonblocking >::maxBufferTiles(
-						_cap ) );
+					assert( num_tiles <= internal::NONBLOCKING::maxBufferTiles( _cap ) );
 					assert( _buf >= 4 * num_tiles );
 
 					local_buffer.resize( analytic_model.getNumTiles() );
@@ -429,7 +428,7 @@ namespace grb {
 				 * Initialises a Coordinate instance that refers to a subset of this
 				 * coordinates instance. Multiple disjoint subsets may be retrieved
 				 * and concurrently updated, up to a maximum of tiles given by
-				 *   #config::IMPLEMENTATION<>::maxBufferTiles().
+				 *   #internal::NONBLOCKING::maxBufferTiles().
 				 *
 				 * Subsets must be contiguous. If one thread calls this function, all
 				 * other threads must make a matching call.

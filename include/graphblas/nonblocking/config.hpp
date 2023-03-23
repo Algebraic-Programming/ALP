@@ -122,35 +122,14 @@ namespace grb {
 				 *
 				 * A tile size that is set manually may be smaller than MIN_TILE_SIZE.
 				 */
-				static constexpr size_t MIN_TILE_SIZE = 512;
+				static constexpr const size_t MIN_TILE_SIZE = 512;
 
 				/**
 				 * The L1 cache size is assumed to be a bit smaller than the actual size to
 				 * take into account any data that may be stored in cache and are not
 				 * considered by the analytic model, e.g., matrices for the current design.
 				 */
-				static constexpr double L1_CACHE_USAGE_PERCENTAGE = 0.98;
-
-				/**
-				 * Determines whether the tile size is automatically selected by the
-				 * analytic model or whether it is manually selected by the user with the
-				 * environment variable GRB_NONBLOCKING_TILE_SIZE.
-				 */
-				static bool manual_tile_size;
-
-				/**
-				 * The tile size that is manually selected by the user and is initialized in
-				 * init.cpp. This variable is only set when the GRB_NONBLOCKING_TILE_SIZE
-				 * environment variable is defined, and if so, this variable equal its
-				 * content.
-				 */
-				static size_t manual_fixed_tile_size;
-
-				/**
-				 * The maximum number of threads available in the system that may be set
-				 * with the environment variable OMP_NUM_THREADS.
-				 */
-				static size_t num_threads;
+				static constexpr const double L1_CACHE_USAGE_PERCENTAGE = 0.98;
 
 		};
 
@@ -171,42 +150,6 @@ namespace grb {
 				static constexpr bool isNonblockingExecution() {
 					return true;
 				}
-
-				/**
-				 * The minimum tile size that may be used by the analytic model.
-				 */
-				static constexpr size_t analyticModelMinimumTileSize() {
-					return ANALYTIC_MODEL::MIN_TILE_SIZE;
-				}
-
-				/**
-				 * The percentage of the L1 cache size that is used by the analytic model.
-				 */
-				static constexpr double analyticModelL1CacheUsagePercentage() {
-					return ANALYTIC_MODEL::L1_CACHE_USAGE_PERCENTAGE;
-				}
-
-				/**
-				 * Whether the tile size is manually set by the user or not.
-				 */
-				static bool isManualTileSize() {
-					return ANALYTIC_MODEL::manual_tile_size;
-				}
-
-				/**
-				 * The tile size that is manually selected by the user.
-				 */
-				static size_t manualFixedTileSize() {
-					return ANALYTIC_MODEL::manual_fixed_tile_size;
-				}
-
-				/**
-				 * The maximum number of threads available in the system.
-				 */
-				static size_t numThreads() {
-					return ANALYTIC_MODEL::num_threads;
-				}
-
 				/**
 				 * A private memory segment shall never be accessed by threads other than
 				 * the thread who allocates it. Therefore we choose aligned mode here.
@@ -236,43 +179,6 @@ namespace grb {
 				 */
 				static constexpr bool fixedVectorCapacities() {
 					return true;
-				}
-
-				/**
-				 * The number of individual buffers that a vector should be able to
-				 * concurrently maintain.
-				 *
-				 * @param[in] n The vector size.
-				 *
-				 * @returns The number of individual buffers that should be supported.
-				 */
-				static inline size_t maxBufferTiles( const size_t n ) {
-					return n;
-				}
-
-				/**
-				 * Helper function that computes the effective buffer size for a vector
-				 * of \a n elements by taking into account the space required for storing
-				 * the local stack size, the number of new nonzeroes, and the offset used
-				 * for the prefix-sum algorithm
-				 *
-				 * @param[in] n The size of the vector.
-				 * @param[in] T The maximum number of tiles that need be supported.
-				 *
-				 * @returns The buffer size given the vector size, maximum number of
-				 *          tiles, and the requested configuration.
-				 */
-				static inline size_t vectorBufferSize( const size_t n ) {
-					const size_t T = maxBufferTiles( n );
-					size_t ret = n;
-
-					// +1 for storing the local stack size
-					// +1 for storing the number of new nonzeroes
-					// +1 for storing the offset used for the prefix-sum algorithm
-					ret += 3 * T;
-					ret = std::max( 4 * T, ret );
-
-					return ret;
 				}
 
 		};

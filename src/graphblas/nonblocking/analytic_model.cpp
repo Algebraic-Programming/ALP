@@ -24,7 +24,7 @@
  * @date 16th of May, 2022
  */
 
-#include <graphblas.hpp>
+#include <graphblas/nonblocking/init.hpp>
 #include <graphblas/nonblocking/analytic_model.hpp>
 
 
@@ -43,10 +43,10 @@ AnalyticModel::AnalyticModel(
 {
 	size_t tile_size_estimation;
 
-	num_threads = grb::config::IMPLEMENTATION< nonblocking >::numThreads();
+	num_threads = grb::internal::NONBLOCKING::numThreads();
 
 	const bool manual_choice =
-		grb::config::IMPLEMENTATION< nonblocking >::isManualTileSize();
+		grb::internal::NONBLOCKING::isManualTileSize();
 
 	if ( !manual_choice ) {
 		// It automatically determines the tile size and the number of threads.
@@ -54,11 +54,9 @@ AnalyticModel::AnalyticModel(
 		// execution of different pipelines.
 		constexpr size_t l1_cache_size = grb::config::MEMORY::l1_cache_size();
 		constexpr size_t min_tile_size =
-			grb::config::IMPLEMENTATION< nonblocking >::analyticModelMinimumTileSize();
+			grb::config::ANALYTIC_MODEL::MIN_TILE_SIZE;
 		constexpr double l1_cache_usage_percentage =
-			grb::config::IMPLEMENTATION<
-				nonblocking
-			>::analyticModelL1CacheUsagePercentage();
+			grb::config::ANALYTIC_MODEL::L1_CACHE_USAGE_PERCENTAGE;
 
 		// A tile size estimation based on the data that fit in L1 cache.
 		const size_t cache_based_tile_size =
@@ -84,7 +82,7 @@ AnalyticModel::AnalyticModel(
 		// A fixed tile size and number of threads is used for the execution of all
 		// pipelines.
 		tile_size_estimation =
-			grb::config::IMPLEMENTATION< nonblocking >::manualFixedTileSize();
+			grb::internal::NONBLOCKING::isManualTileSize();
 	}
 
 	// It ensures that the tile size does not exceed the size of vectors.

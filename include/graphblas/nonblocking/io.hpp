@@ -1115,13 +1115,13 @@ namespace grb {
 			const Matrix< InputType1, nonblocking > &A,
 			const InputType2 * __restrict__ id = nullptr
 		) noexcept {
-			if( internal::nonblocking_warn_if_not_native &&
+			if( internal::NONBLOCKING::warn_if_not_native &&
 				config::PIPELINE::warn_if_not_native
 			) {
 				std::cerr << "Warning: set (matrix copy, nonblocking) currently delegates "
 					<< "to a blocking implementation.\n"
 					<< "         Further similar such warnings will be suppressed.\n";
-				internal::nonblocking_warn_if_not_native = false;
+				internal::NONBLOCKING::warn_if_not_native = false;
 			}
 
 			// nonblocking execution is not supported

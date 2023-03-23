@@ -163,13 +163,13 @@ namespace grb {
 		std::cout << "In grb::mxm (nonblocking, unmasked, semiring)\n";
 #endif
 
-		if( internal::nonblocking_warn_if_not_native &&
+		if( internal::NONBLOCKING::warn_if_not_native &&
 			config::PIPELINE::warn_if_not_native
 		) {
 			std::cerr << "Warning: mxm (nonblocking, unmasked, semiring) currently "
 				<< "delegates to a blocking implementation\n"
 				<< "         Further similar such warnings will be suppressed.\n";
-			internal::nonblocking_warn_if_not_native = false;
+			internal::NONBLOCKING::warn_if_not_native = false;
 		}
 
 		return internal::mxm_generic< true, descr >(
@@ -245,13 +245,13 @@ namespace grb {
 			"grb::mxm: the operator-monoid version of mxm cannot be used if either "
 			"of the input matrices is a pattern matrix (of type void)" );
 
-		if( internal::nonblocking_warn_if_not_native &&
+		if( internal::NONBLOCKING::warn_if_not_native &&
 			config::PIPELINE::warn_if_not_native
 		) {
 			std::cerr << "Warning: mxm (nonblocking, unmasked, monoid-op) currently "
 				<< "delegates to a blocking implementation\n"
 				<< "         Further similar such warnings will be suppressed.\n";
-			internal::nonblocking_warn_if_not_native = false;
+			internal::NONBLOCKING::warn_if_not_native = false;
 		}
 
 		return internal::mxm_generic< false, descr >(
@@ -277,13 +277,13 @@ namespace grb {
 			const Vector< InputType3, nonblocking, Coords > &z,
 			const Phase &phase
 		) {
-			if( internal::nonblocking_warn_if_not_native &&
+			if( internal::NONBLOCKING::warn_if_not_native &&
 				config::PIPELINE::warn_if_not_native
 			) {
 				std::cerr << "Warning: zip (matrix<-vector<-vector<-vector, nonblocking) "
 					<< "currently delegates to a blocking implementation.\n"
 					<< "         Further similar such warnings will be suppressed.\n";
-				internal::nonblocking_warn_if_not_native = false;
+				internal::NONBLOCKING::warn_if_not_native = false;
 			}
 
 			// nonblocking execution is not supported
@@ -412,13 +412,13 @@ namespace grb {
 			void
 		>::type * const = nullptr
 	) {
-		if( internal::nonblocking_warn_if_not_native &&
+		if( internal::NONBLOCKING::warn_if_not_native &&
 			config::PIPELINE::warn_if_not_native
 		) {
 			std::cerr << "Warning: outer (nonblocking) currently delegates to a "
 				<< "blocking implementation.\n"
 				<< "         Further similar such warnings will be suppressed.\n";
-			internal::nonblocking_warn_if_not_native = false;
+			internal::NONBLOCKING::warn_if_not_native = false;
 		}
 
 		// nonblocking execution is not supported
@@ -460,13 +460,13 @@ namespace grb {
 				grb::is_operator< Operator >::value,
 			void >::type * const = nullptr
 		) {
-			if( internal::nonblocking_warn_if_not_native &&
+			if( internal::NONBLOCKING::warn_if_not_native &&
 				config::PIPELINE::warn_if_not_native
 			) {
 				std::cerr << "Warning: eWiseApply (nonblocking) currently delegates to a "
 					<< "blocking implementation.\n"
 					<< "         Further similar such warnings will be suppressed.\n";
-				internal::nonblocking_warn_if_not_native = false;
+				internal::NONBLOCKING::warn_if_not_native = false;
 			}
 
 			// nonblocking execution is not supported
