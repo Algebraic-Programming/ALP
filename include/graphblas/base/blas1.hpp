@@ -3363,7 +3363,12 @@ namespace grb {
 	 *          from \em i will result in undefined behaviour.
 	 *
 	 * All vectors captured by \a f must furthermore all be given as additional
-	 * (variadic) arguments to this primitive.
+	 * (variadic) arguments to this primitive. Captured vectors can only be used
+	 * for dereferencing elements at a given position \em i; any other use invokes
+	 * undefined behaviour.
+	 *
+	 * \warning In particular, captured vectors may not be passed to other
+	 *          ALP/GraphBLAS primitives \em within \a f.
 	 *
 	 * This primitive will execute \a f on all indices where the first given such
 	 * vector argument has nonzeroes. All other indices \em i will be ignored.
