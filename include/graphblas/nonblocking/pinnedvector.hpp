@@ -15,7 +15,11 @@
  * limitations under the License.
  */
 
-/*
+/**
+ * @file
+ *
+ * PinnedVector implementation of the nonblocking backend.
+ *
  * @author Aristeidis Mastoras
  * @date 16th of May, 2022
  */

@@ -171,7 +171,7 @@ namespace grb {
 			const std::function< size_t( size_t ) > &dst_local_to_global
 		) {
 #ifndef _DEBUG
-			( void )destination_vector;
+			(void) destination_vector;
 #endif
 			constexpr bool add_identity = descr & descriptors::add_identity;
 			constexpr bool dense_hint = descr & descriptors::dense;
@@ -396,45 +396,6 @@ namespace grb {
 				}
 			}
 		}
-
-#if 0 //TODO remove?
-		template<
-			Descriptor descr,
-			bool input_dense,
-			bool output_dense,
-			bool masked,
-			bool left_handed,
-			bool using_semiring,
-			template< typename > class One,
-			typename IOType,
-			class AdditiveMonoid,
-			class Multiplication,
-			typename InputType1,
-			typename InputType2,
-			typename InputType3,
-			typename RowColType,
-			typename NonzeroType,
-			typename Coords
-		>
-		inline void vxm_inner_kernel_scatter(
-			RC &rc,
-			Vector< IOType, nonblocking, Coords > &destination_vector,
-			IOType * __restrict__ const &destination,
-			const size_t &destination_range,
-			const Vector< InputType1, nonblocking, Coords > &source_vector,
-			const InputType1 * __restrict__ const &source,
-			const size_t &source_index,
-			const internal::Compressed_Storage< InputType2, RowColType, NonzeroType > &matrix,
-			const Vector< InputType3, nonblocking, Coords > &mask_vector,
-			const InputType3 * __restrict__ const &mask,
-			const AdditiveMonoid &add,
-			const Multiplication &mul,
-			const std::function< size_t( size_t ) > &src_local_to_global,
-			const std::function< size_t( size_t ) > &dst_global_to_local
-		) {
-
-		}
-#endif
 
 		template<
 			Descriptor descr,
@@ -1577,7 +1538,8 @@ namespace grb {
 		internal::le.execution();
 
 		// second, delegate to the reference backend
-		return eWiseLambda< ActiveDistribution, Func, DataType, RIT, CIT, NIT >(f, internal::getRefMatrix( A ), s, P );
+		return eWiseLambda< ActiveDistribution, Func, DataType, RIT, CIT, NIT >(
+			f, internal::getRefMatrix( A ), s, P );
 	}
 
 	template<
