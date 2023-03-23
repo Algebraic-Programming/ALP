@@ -3347,53 +3347,89 @@ namespace grb {
 	}
 
 	/**
-	 * Executes an arbitrary element-wise user-defined function \a f using any
-	 * number of vectors of equal length, following the nonzero pattern of the
-	 * given vector \a x.
+	 * Executes an arbitrary element-wise user-defined function \a f on any number
+	 * of vectors of equal length.
 	 *
-	 * The user-defined function is passed as a lambda which can capture, at
-	 * the very least, other instances of type grb::Vector. Use of this function
-	 * is preferable whenever multiple element-wise operations are requested that
-	 * use one or more identical input vectors. Performing the computation one
-	 * after the other in blocking mode would require the same vector to be
-	 * streamed multiple times, while with this function the operations can be
-	 * fused explicitly instead.
+	 * \warning This is a relatively advanced function. It is recommended to read
+	 *          this specifications and its warnings before using it, or to instead
+	 *          exclusively only use the other primitives in \ref BLAS1.
 	 *
-	 * It shall always be legal to capture non-GraphBLAS objects for read access
-	 * only. It shall \em not be legal to capture instances of type grb::Matrix
-	 * for read and/or write access.
+	 * The vectors touched by \a f can be accessed in a read-only or a read/write
+	 * fashion. The function \a f must be parametrised in a global index \em i, and
+	 * \a f is only allowed to access elements of the captured vectors <em>on that
+	 * specific index</em>.
 	 *
-	 * If grb::Properties::writableCaptured evaluates true then captured
-	 * non-GraphBLAS objects can also be written to, not just read from. The
-	 * captured variable is, however, completely local to the calling user process
-	 * only-- it will not be synchronised between user processes.
-	 * As a rule of thumb, data-centric ALP/GraphBLAS implementations \em cannot
-	 * support this and will thus have grb::Properties::writableCaptured evaluate
-	 * to false. A portable ALP/GraphBLAS algorithm should provide a different code
-	 * path to handle this case (or not rely on #grb::eWiseLambda).
-	 * When it is legal to write to captured scalar, this function can, e.g., be
-	 * used to perform reduction-like operations on any number of equally sized
-	 * input vectors.  This would be preferable to a chained number of calls to
-	 * grb::dot in case where some vectors are shared between subsequent calls,
-	 * for example; the shared vectors are streamed only once using this lambda-
-	 * enabled function.
+	 * \warning Any attempt to access a vector element at a position differing
+	 *          from \em i will result in undefined behaviour.
 	 *
-	 * \warning The lambda shall only be executed on the data local to the user
-	 *          process calling this function! This is different from the various
-	 *          fold functions, or grb::dot, in that the semantics of those
-	 *          functions always end with a globally synchronised result. To
-	 *          achieve the same effect with user-defined lambdas, the users
-	 *          should manually prescribe how to combine the local results into
-	 *          global ones, for instance, by a subsequent call to
-	 *          grb::collectives<>::allreduce.
+	 * All vectors captured by \a f must furthermore all be given as additional
+	 * (variadic) arguments to this primitive.
+	 *
+	 * This primitive will execute \a f on all indices where the first given such
+	 * vector argument has nonzeroes. All other indices \em i will be ignored.
+	 *
+	 * \warning Therefore, for containers of which \a f references the \em i-th
+	 *          element, must indeed have a nonzero at position \em i or otherwise
+	 *          undefined behaviour is invoked.
+	 *
+	 * This primitive hence allows a user to implement any level-1 like BLAS
+	 * functionality over any number of input/output vectors, and also allows to
+	 * compute multiple level-1 (like) BLAS functionalities as a single pass over
+	 * the involved containers.
+	 *
+	 * \note Since the introduction of the nonblocking backend, rewriting \a f in
+	 *       terms of native ALP/GraphBLAS primitives no longer implies performance
+	 *       penalties (when compiling for the nonblocking backend)-- rather, the
+	 *       nonblocking backend is likely to do better than manually fusing
+	 *       multiple level-1 like operations using this primitive, especially when
+	 *       the captured vectors are small relative to the private caches on the
+	 *       target architecture.
+	 *
+	 * The function \a f may also capture scalars for read-only access.
+	 *
+	 * \note As a convention, consider always passing scalars by value, since
+	 *       otherwise the compilation of your code with a non-blocking backend
+	 *       may (likely) result in data races.
+	 *
+	 * If #grb::Properties<>::writableCaptured evaluates <tt>true</tt> then
+	 * captured scalars may also safely be written to, instead of requiring to be
+	 * read-only.
+	 *
+	 * \note This is useful for fusing reductions within other level-1 like
+	 *       operations.
+	 *
+	 * \warning If updating scalars using this primitive, be aware that the
+	 *          updates are local to the current user process only.
+	 *
+	 * \note If, after execution of this primitive, an updated scalar is expected
+	 *       to be synchronised across all user processes, see the
+	 *       #grb::collectives<> interface.
+	 *
+	 * \note As a rule of thumb, parallel GraphBLAS implementations, due to being
+	 *       data-centric, \em cannot support writeable scalar captures and will
+	 *       have #grb::Properties<>::writableCaptured evaluate to <tt>false</tt>.
+	 *
+	 * \note A portable ALP/GraphBLAS algorithm should therefore either not rely on
+	 *       read/write captured scalars passed to this primitive, \em or provide
+	 *       different code paths to handle the two cases of the
+	 *       #grb::Properties<>::writableCaptured backend property.
+	 *
+	 * \note If the above sounds too tedious, consider rewriting \a f in terms of
+	 *       native ALP/GraphBLAS functions, with the scalar reductions performed by
+	 *       the scalar variants of #grb::foldl and #grb::foldr, e.g.
+	 *
+	 * \warning When compiling with a blocking backend, rewriting \a f in terms of
+	 *          native GraphBLAS primitives typically results in a slowdown due to
+	 *          this primitive naturally fusing potentially multiple operations
+	 *          together (which was the original motivation of Yzelman et al., 2020
+	 *          for introducing this primitive. Rewriting \a f into a (sequence of)
+	 *          native GraphBLAS primtives does \em not carry a performance when
+	 *          compiling with a nonblocking backend, however.
 	 *
 	 * \note This is an addition to the GraphBLAS C specification. It is alike
-	 *       user-defined operators, monoids, and semirings, except it allows
-	 *       execution on arbitrarily many inputs and arbitrarily many outputs.
-	 *       It is intended for programmers to take control over what is fused
-	 *       when and how. The #grb::nonblocking backend attempts to automate the
-	 *       application of such fusion opportunities without the user's explicit
-	 *       involvement.
+	 *       user-defined operators, monoids, and semirings, except that this
+	 *       primitive allows execution on arbitrarily many inputs and arbitrarily
+	 *       many outputs.
 	 *
 	 * @tparam Func the user-defined lambda function type.
 	 * @tparam DataType the type of the user-supplied vector example.
@@ -3422,9 +3458,9 @@ namespace grb {
 	 * \note These are passed using variadic arguments and so can contain any
 	 *       number of containers of type #grb::Vector.
 	 *
-	 * \note In future ALP/GraphBLAS implementations, apart from performing
-	 *       dimension checking, may also require data redistribution in case
-	 *       different vectors may be distributed differently.
+	 * \note Distributed-memory ALP/GraphBLAS backends, apart from performing
+	 *       dimension checking, may also require data redistribution in case that
+	 *       different vectors are distributed differently.
 	 *
 	 * \warning Using a #grb::Vector inside a lambda passed to this function while
 	 *          not passing that same vector into its variadic argument list, will
@@ -3438,6 +3474,10 @@ namespace grb {
 	 * @return #grb::SUCCESS  When the lambda is successfully executed.
 	 * @return #grb::MISMATCH When two or more vectors passed to \a args are not of
 	 *                        equal length.
+	 * @return #grb::PANIC    When ALP/GraphBLAS has encountered an unrecoverable
+	 *                        error. The state of ALP becomes undefined after
+	 *                        having returned this error code, and users can only
+	 *                        attempt to exit the application gracefully.
 	 *
 	 * \parblock
 	 * \par Example.
@@ -3483,9 +3523,11 @@ namespace grb {
 	 * grb::dot( alpha, x, y, ring );
 	 * \endcode
 	 *
-	 * The version using the lambdas, however, is expected to execute
-	 * faster as both \a x and \a y are streamed only once, while the
-	 * latter code may stream both vectors twice.
+	 * If the latter code block is compiled using a blocking ALP/GraphBLAS backend,
+	 * the version using the lambdas is expected to execute faster as both \a x and
+	 * \a y are streamed only once, while the latter code may stream both vectors
+	 * twice. This performance difference disappears when compiling the latter code
+	 * block using a nonblocking backend instead.
 	 * \endparblock
 	 *
 	 * \warning The following code is invalid:
@@ -3504,15 +3546,16 @@ namespace grb {
 	 *          Only a Vector::lambda_reference to position exactly equal to \a i
 	 *          may be used within this function.
 	 *
-	 * \warning Captured scalars will be local to the user process executing the
-	 *          lambda. To retrieve the global dot product, an allreduce must
-	 *          explicitly be called.
-	 *
 	 * @see Vector::operator[]()
 	 * @see Vector::lambda_reference
 	 *
-	 * \todo Revise specification regarding recent changes on phases, performance
-	 *       semantics, and capacities.
+	 * \par Performance semantics
+	 * Each backend must define performance semantics for this primitive. It is
+	 * expected that the defined performance semantics depend on the given lambda
+	 * function \a f, the size of the containers passed into this primitive, as
+	 * well as how many containers are passed into this primitive.
+	 *
+	 * @see perfSemantics
 	 */
 	template<
 		typename Func,
