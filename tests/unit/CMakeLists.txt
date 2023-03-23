@@ -265,6 +265,13 @@ add_grb_executables( pinnedVector pinnedVector.cpp
 	BACKENDS reference reference_omp bsp1d hybrid hyperdags nonblocking
 )
 
+# the below targets test successfully when they compile -- they do not need to
+# be executed successfully as part of the unit test suite.
+
+add_grb_executables( properties static_asserts/properties.cpp
+	BACKENDS reference reference_omp bsp1d hybrid hyperdags nonblocking
+)
+
 # targets to list and build the test for this category
 get_property( unit_tests_list GLOBAL PROPERTY tests_category_unit )
 add_custom_target( "list_tests_category_unit"
