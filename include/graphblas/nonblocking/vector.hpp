@@ -199,6 +199,7 @@ namespace grb {
 
 
 		private:
+
 			Vector< D, reference, MyCoordinates > ref;
 
 
