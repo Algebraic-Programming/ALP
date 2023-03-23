@@ -350,19 +350,25 @@ for BACKEND in ${BACKENDS[@]}; do
 			tail -1 ${TEST_OUT_DIR}/kmeans_${BACKEND}_${P}_${T}.log
 			echo " "
 
-			echo ">>>      [x]           [ ]       Tests grb::Launcher on a K-core decomposition on the dataset"
-			echo "                                 EPA.mtx. The launcher is used in automatic mode and the I/O"
-			echo "                                 mode is sequential. The Launcher::exec called is with struct"
-			echo "                                 I/O with broadcast true. This launches the k-core variant"
-			echo "                                 with critical sections."
-			echo "Functional test executable: ${TEST_BIN_DIR}/kcore_decomposition_critical_${BACKEND}"
-			if [ -f ${INPUT_DIR}/EPA.mtx ]; then
-				$runner ${TEST_BIN_DIR}/kcore_decomposition_critical_${BACKEND} ${INPUT_DIR}/EPA.mtx direct 1 1 verification ${OUTPUT_VERIFICATION_DIR}/kcore_decomposition_eda_ref &> ${TEST_OUT_DIR}/kcore_decomposition_critical_${BACKEND}_EPA_${P}_${T}.log
-				grep 'Test OK' ${TEST_OUT_DIR}/kcore_decomposition_critical_${BACKEND}_EPA_${P}_${T}.log || printf 'Test FAILED.\n'
-			else
-				echo "Test DISABLED; dataset not found. Provide EPA.mtx in the ./datasets/ directory to enable."
+			if [ "$BACKEND" = "reference_omp" ] || [ "$BACKEND" = "reference" ]; then
+				echo "Non-standard reference- and reference-omp specific smoke tests:"
+				echo " "
+				echo ">>>      [x]           [ ]       Tests grb::Launcher on a K-core decomposition on the dataset"
+				echo "                                 EPA.mtx. The launcher is used in automatic mode and the I/O"
+				echo "                                 mode is sequential. The Launcher::exec called is with struct"
+				echo "                                 I/O with broadcast true. This launches the k-core variant"
+				echo "                                 that employs critical sections. This is a non-ALP-compliant"
+				echo "                                 implementation that furthermore assumes an OpenMP-based"
+				echo "                                 backend."
+				echo "Functional test executable: ${TEST_BIN_DIR}/kcore_decomposition_critical_${BACKEND}"
+				if [ -f ${INPUT_DIR}/EPA.mtx ]; then
+					$runner ${TEST_BIN_DIR}/kcore_decomposition_critical_${BACKEND} ${INPUT_DIR}/EPA.mtx direct 1 1 verification ${OUTPUT_VERIFICATION_DIR}/kcore_decomposition_eda_ref &> ${TEST_OUT_DIR}/kcore_decomposition_critical_${BACKEND}_EPA_${P}_${T}.log
+					grep 'Test OK' ${TEST_OUT_DIR}/kcore_decomposition_critical_${BACKEND}_EPA_${P}_${T}.log || printf 'Test FAILED.\n'
+				else
+					echo "Test DISABLED; dataset not found. Provide EPA.mtx in the ./datasets/ directory to enable."
+				fi
+				echo " "
 			fi
-			echo " "
 
 		done
 	done

@@ -160,7 +160,7 @@ add_grb_executables( small_pagerank ../unit/auto_launcher.cpp
 
 add_grb_executables( kcore_decomposition_critical kcore_decomposition.cpp
 	ADDITIONAL_LINK_LIBRARIES test_utils_headers
-	BACKENDS reference reference_omp hyperdags
+	BACKENDS reference reference_omp
 	COMPILE_DEFINITIONS KCORE_VARIANT=true
 )
 
