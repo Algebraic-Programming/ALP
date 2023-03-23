@@ -23,15 +23,15 @@
 
 using namespace grb;
 
-template< Backend backend = grb::config::default_backend >
 static grb::RC dense_tests(
 	grb::Vector< double > &dst,
 	grb::Vector< double > &src
 ) {
-	// for the subtests that return ILLEGAL due to incorrect usage of the dense descriptor
-	// in the case of nonblocking execution, the ouput vector may be modified due to side effects
-	// therefore, for some of the subtests below, the ouput vector is reset and the additional checks are disabled
-	constexpr bool nonblocking_execution = grb::config::IMPLEMENTATION< backend >::isNonblockingExecution();
+	// for the subtests that return ILLEGAL due to incorrect usage of the dense
+	// descriptor and in the case of nonblocking execution, the output vector may
+	// be modified due to side effects. Therefore, for some of the subtests below,
+	// the ouput vector is reset while some additional checks are disabled
+	constexpr bool nonblocking_execution = Properties<>::isNonblockingExecution;
 
 	assert( size( dst ) == size( src ) );
 	grb::Vector< bool > full_mask( size( dst ) ), one_mask( size( dst ) );

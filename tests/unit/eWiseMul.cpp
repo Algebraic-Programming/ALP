@@ -23,16 +23,17 @@
 
 using namespace grb;
 
-template< Backend backend = grb::config::default_backend >
 void grb_program( const size_t &n, RC &rc ) {
-	// for the subtests that return ILLEGAL due to incorrect usage of the dense descriptor
-	// in the case of nonblocking execution, the ouput vector is reset due to side effects
-	constexpr bool nonblocking_execution = grb::config::IMPLEMENTATION< backend >::isNonblockingExecution();
+	// for the subtests that return ILLEGAL due to incorrect usage of the dense
+	// descriptor in the case of nonblocking execution, the ouput vector must be
+	// reset in order to cope with side effects
+	constexpr bool nonblocking_execution = Properties<>::isNonblockingExecution;
 
 	Semiring<
 		operators::add< double >, operators::mul< double >,
 		identities::zero, identities::one
 	> ring;
+
 	// repeatedly used containers
 	Vector< bool > even_mask( n ), odd_mask( n );
 	Vector< size_t > temp( n );

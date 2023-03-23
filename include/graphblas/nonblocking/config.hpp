@@ -134,22 +134,18 @@ namespace grb {
 		};
 
 		/**
+		 * \internal
 		 * Implementation-dependent configuration parameters for the \a nonblocking
 		 * backend
 		 *
 		 * @see grb::config::IMPLEMENTATION
+		 * \endinternal
 		 */
 		template<>
 		class IMPLEMENTATION< nonblocking > {
 
 			public:
 
-				/**
-				 * The selected backend performs nonblocking execution.
-				 */
-				static constexpr bool isNonblockingExecution() {
-					return true;
-				}
 				/**
 				 * A private memory segment shall never be accessed by threads other than
 				 * the thread who allocates it. Therefore we choose aligned mode here.

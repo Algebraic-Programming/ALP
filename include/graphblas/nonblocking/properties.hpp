@@ -37,8 +37,18 @@ namespace grb {
 	class Properties< nonblocking > {
 
 		public:
-			/** No implementation notes. */
-			constexpr static bool writableCaptured = false;
+
+			/**
+			 * This is a shared-memory parallel implementation and therefore captured
+			 * scalars cannot be written to without causing data races.
+			 */
+			static constexpr const bool writableCaptured = false;
+
+			/** This is a nonblocking backend. */
+			static constexpr const bool isBlockingExecution = false;
+
+			/** This is a nonblocking backend. */
+			static constexpr const bool isNonblockingExecution = true;
 
 	};
 
