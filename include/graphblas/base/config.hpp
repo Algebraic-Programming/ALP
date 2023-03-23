@@ -346,16 +346,67 @@ namespace grb {
 
 		/**
 		 * \internal
-		 * Configuration parameters that may depend on the backend.
+		 * Collects a series of implementation choices corresponding to some given
+		 * \a backend.
 		 *
-		 * Empty by default so to ensure no-one implicitly relies on implicit
-		 * defaults.
+		 * These implementation choices are useful for \em compositional backends;
+		 * i.e., backends that rely on a nested sub-backend for functionality. To
+		 * facilitate composability, backends are required to provide the functions
+		 * specified herein.
 		 *
-		 * \ingroup config
+		 * \note An example is the #grb::hybrid backend relying on either the
+		 *       #grb::reference or the #grb::reference_omp backend.
+		 *
+		 * The default class declaration is declared empty to ensure no one backend
+		 * implicitly relies on global defaults. Every backend therefore must
+		 * specialise this class and implement the documented functions.
+		 *
+		 * ALP user code is \em not supposed to rely on the implementation details
+		 * this class gathers.
+		 *
+		 * \note For properties of a backend that may (also) affect ALP user code,
+		 *       see #grb::config::PROPERTIES.
+		 *
 		 * \endinternal
 		 */
-		template< grb::Backend implementation = default_backend >
-		class IMPLEMENTATION {};
+		template< grb::Backend backend = default_backend >
+		class IMPLEMENTATION {
+#ifdef __DOXYGEN
+			public:
+
+				/**
+				 * Defines how a memory region that will not be accessed by threads other
+				 * than the allocating thread, should be allocated.
+				 */
+				static constexpr ALLOC_MODE defaultAllocMode();
+
+				/**
+				 * Defines how a memory region that may be accessed by thread other than
+				 * the allocating thread, should be allocated.
+				 */
+				static constexpr ALLOC_MODE sharedAllocMode();
+
+				/**
+				 * Whether the selected backend implements blocking or nonblocking
+				 * execution; in the former case, <tt>false</tt> is returned while in the
+				 * latter case, <tt>true</tt> is returned instead.
+				 */
+				static constexpr bool isNonblockingExecution();
+
+				/**
+				 * Whether the selected backend implements vectors as having fixed
+				 * capacities.
+				 *
+				 * \note The only legal fixed capacity a functional ALP/GraphBLAS backend
+				 *       may provide is one that is equal to its size.
+				 *
+				 * \note A backend backed by a sparse accumulator (SPA) will typically have
+				 *       fixed vector capacities, whereas one based on sets or other types
+				 *       of tree structures will typically have dynamic vector capacities.
+				 */
+				static constexpr bool fixedVectorCapacities();
+#endif
+		};
 
 		/**
 		 * What data type should be used to store row indices.
