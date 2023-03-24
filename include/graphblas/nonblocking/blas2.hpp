@@ -18,7 +18,7 @@
 /**
  * @file
  *
- * Defines the nonblocking level-2 parameters
+ * Defines the nonblocking level-2 primitives
  *
  * @author Aristeidis Mastoras
  * @date 16th of May, 2022
@@ -1489,26 +1489,6 @@ namespace grb {
 				);
 		}
 	}
-
-#if 0 //TODO remove?
-	namespace internal {
-
-		template<
-			typename DataType,
-			typename RIT,
-			typename CIT,
-			typename NIT,
-			typename fwd_iterator
-		>
-		void addToCRS(
-			const Matrix< DataType, nonblocking, RIT, CIT, NIT > &A,
-			const fwd_iterator start,
-			const fwd_iterator end
-		) {
-
-		}
-	}
-#endif
 
 	template<
 		class ActiveDistribution,

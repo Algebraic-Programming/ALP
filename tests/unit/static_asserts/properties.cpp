@@ -20,7 +20,7 @@
 int main() {
 	constexpr const bool b  = grb::Properties<>::isBlockingExecution;
 	constexpr const bool nb = grb::Properties<>::isNonblockingExecution;
-	static_assert( b == !nb && (b || nb),
+	static_assert( b == !nb,
 		"A backend must either be blocking or nonblocking" );
 	return 0;
 }

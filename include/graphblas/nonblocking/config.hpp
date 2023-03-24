@@ -98,13 +98,13 @@ namespace grb {
 				 * Emit a warning to standard error stream if the default pipeline
 				 * capacities are exceeded.
 				 */
-				static constexpr bool warn_if_exceeded = true;
+				static constexpr const bool warn_if_exceeded = true;
 
 				/**
 				 * When <tt>true</tt>, calling a fake nonblocking primitive for a first time
 				 * will emit a warning to the standard error stream.
 				 */
-				static constexpr bool warn_if_not_native = true;
+				static constexpr const bool warn_if_not_native = true;
 
 		};
 
