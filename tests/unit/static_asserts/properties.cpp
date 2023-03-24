@@ -22,6 +22,9 @@ int main() {
 	constexpr const bool nb = grb::Properties<>::isNonblockingExecution;
 	static_assert( b == !nb,
 		"A backend must either be blocking or nonblocking" );
+	// A backend must define the writableCaptured property
+	constexpr const bool w  = grb::Properties<>::writableCaptured;
+	(void) w;
 	return 0;
 }
 
