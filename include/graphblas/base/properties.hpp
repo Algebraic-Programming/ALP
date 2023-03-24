@@ -15,7 +15,11 @@
  * limitations under the License.
  */
 
-/*
+/**
+ * @file
+ *
+ * Provides a mechanism for inspecting properties of various backends
+ *
  * @author A. N. Yzelman
  * @date 5th of May 2017
  */
@@ -41,6 +45,8 @@ namespace grb {
 	 * The default template class shall be empty in order to ensure implementing
 	 * backends must specialise this class, while also making sure no backend may
 	 * accidentally implicitly and erroneously propagate global defaults.
+	 *
+	 * \ingroup backends
 	 */
 	template< enum Backend backend >
 	class Properties {
