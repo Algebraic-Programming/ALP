@@ -147,6 +147,10 @@ void grb_program( const size_t &n, RC &rc ) {
 	if( rc != SUCCESS ) { return; }
 	if( nonblocking_execution ) {
 		rc = rc ? rc : clear( out );
+		if( rc != SUCCESS ) {
+			std::cerr << " unexpected failure of grb::clear( out )\n";
+			rc = FAILED;
+		}
 	}
 
 	std::cout << "\b\b 5: ";
@@ -162,6 +166,10 @@ void grb_program( const size_t &n, RC &rc ) {
 	if( rc != SUCCESS ) { return; }
 	if( nonblocking_execution ) {
 		rc = rc ? rc : set( left, 1 );
+		if( rc != SUCCESS ) {
+			std::cerr << " unexpected failure of grb::set( left, 1)\n";
+			rc = FAILED;
+		}
 	}
 
 	std::cout << "\b\b 6: ";
@@ -177,6 +185,10 @@ void grb_program( const size_t &n, RC &rc ) {
 	if( rc != SUCCESS ) { return; }
 	if( nonblocking_execution ) {
 		rc = rc ? rc : set( left, 1 );
+		if( rc != SUCCESS ) {
+			std::cerr << " unexpected failure of grb::set( left, 1)\n";
+			rc = FAILED;
+		}
 	}
 
 	std::cout << "\b\b 7: ";
@@ -193,6 +205,10 @@ void grb_program( const size_t &n, RC &rc ) {
 	if( rc != SUCCESS ) { return; }
 	if( nonblocking_execution ) {
 		rc = rc ? rc : set( right, 2 );
+		if( rc != SUCCESS ) {
+			std::cerr << " unexpected failure of grb::set( right, 2)\n";
+			rc = FAILED;
+		}
 	}
 
 	std::cout << "\b\b 8: ";
@@ -208,6 +224,10 @@ void grb_program( const size_t &n, RC &rc ) {
 	if( rc != SUCCESS ) { return; }
 	if( nonblocking_execution ) {
 		rc = rc ? rc : set( left, 1 );
+		if( rc != SUCCESS ) {
+			std::cerr << " unexpected failure of grb::set( left, 1)\n";
+			rc = FAILED;
+		}
 	}
 
 	std::cout << "\b\b 9: ";
@@ -223,6 +243,10 @@ void grb_program( const size_t &n, RC &rc ) {
 	if( rc != SUCCESS ) { return; }
 	if( nonblocking_execution ) {
 		rc = rc ? rc : set( left, 1 );
+		if( rc != SUCCESS ) {
+			std::cerr << " unexpected failure of grb::set( left, 1)\n";
+			rc = FAILED;
+		}
 	}
 
 	// test sparse unmasked
