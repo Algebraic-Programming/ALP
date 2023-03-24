@@ -17,6 +17,7 @@
 
 #include <graphblas.hpp>
 
+
 int main() {
 	constexpr const bool b  = grb::Properties<>::isBlockingExecution;
 	constexpr const bool nb = grb::Properties<>::isNonblockingExecution;
