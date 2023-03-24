@@ -54,7 +54,10 @@ namespace grb {
 
 		/**
 		 * This class collects configuration parameters that are specific to the
-		 * #grb::BSP1D and #grb::hybrid backends
+		 * #grb::BSP1D and #grb::hybrid backends.
+		 *
+		 * \note The full set of implementation details are only visible within the
+		 *       developer documentation.
 		 *
 		 * \ingroup bsp1d
 		 */
@@ -113,7 +116,7 @@ namespace grb {
 				 * backend this function is \em not <tt>constexpr</tt>.
 				 *
 				 * \warning This function does assume that the number of processes does not
-				 *          change over the life time of a single application.
+				 *          change over the life time of an ALP context.
 				 *
 				 * \note While the above may seem a reasonably safe assumption, the use of
 				 *       the launcher in #MANUAL mode may, in fact, make this a realistic
@@ -130,13 +133,6 @@ namespace grb {
 				 */
 				static constexpr Backend coordinatesBackend() {
 					return IMPLEMENTATION< _GRB_BSP1D_BACKEND >::coordinatesBackend();
-				}
-
-				/**
-				 * The selected backend may perform nonblocking execution depending on the underlying backend.
-				 */
-				static constexpr bool isNonblockingExecution() {
-					return IMPLEMENTATION< _GRB_BSP1D_BACKEND >::isNonblockingExecution();
 				}
 
 		};

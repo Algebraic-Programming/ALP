@@ -345,7 +345,6 @@ namespace grb {
 		};
 
 		/**
-		 * \internal
 		 * Collects a series of implementation choices corresponding to some given
 		 * \a backend.
 		 *
@@ -354,48 +353,62 @@ namespace grb {
 		 * facilitate composability, backends are required to provide the functions
 		 * specified herein.
 		 *
-		 * \note An example is the #grb::hybrid backend relying on either the
-		 *       #grb::reference or the #grb::reference_omp backend.
+		 * \note An example are the #grb::BSP1D and #grb::hybrid backends, that both
+		 *       share the exact same code, relying on either the #grb::reference or
+		 *       the #grb::reference_omp backend, respectively.
+		 *
+		 * \note The user documentation does not list all required fields; for a
+		 *       complete overview, see the developer documentation instead.
 		 *
 		 * The default class declaration is declared empty to ensure no one backend
 		 * implicitly relies on global defaults. Every backend therefore must
-		 * specialise this class and implement the documented functions.
+		 * specialise this class and implement the specified functions.
 		 *
-		 * ALP user code is \em not supposed to rely on the implementation details
-		 * this class gathers.
+		 * \warning Portable ALP user code does not rely on the implementation details
+		 *          gathered in this class.
 		 *
 		 * \note For properties of a backend that may (also) affect ALP user code,
-		 *       see #grb::config::PROPERTIES.
+		 *       see #grb::Properties.
 		 *
-		 * \endinternal
+		 * The user documentation only documents the settings that could be useful to
+		 * modify.
+		 *
+		 * \warning Modifying the documented functions should be done with care.
+		 *
+		 * \warning Any such modifications typically requires rebuilding the ALP
+		 *          library itself.
+		 *
+		 * \note For viewing all implementation choices, please see the developer
+		 *       documentation.
+		 *
+		 * \ingroup config
 		 */
 		template< grb::Backend backend = default_backend >
 		class IMPLEMENTATION {
-#ifdef __DOXYGEN
+#ifdef __DOXYGEN__
 			public:
 
 				/**
-				 * Defines how a memory region that will not be accessed by threads other
+				 * Defines how private memory regions are allocated.
+				 *
+				 * @returns how a memory region that will not be accessed by threads other
 				 * than the allocating thread, should be allocated.
 				 */
 				static constexpr ALLOC_MODE defaultAllocMode();
 
 				/**
-				 * Defines how a memory region that may be accessed by thread other than
+				 * Defines how shared memory regions are allocated.
+				 *
+				 * @returns how a memory region that may be accessed by thread other than
 				 * the allocating thread, should be allocated.
 				 */
 				static constexpr ALLOC_MODE sharedAllocMode();
 
 				/**
-				 * Whether the selected backend implements blocking or nonblocking
-				 * execution; in the former case, <tt>false</tt> is returned while in the
-				 * latter case, <tt>true</tt> is returned instead.
-				 */
-				static constexpr bool isNonblockingExecution();
-
-				/**
-				 * Whether the selected backend implements vectors as having fixed
-				 * capacities.
+				 * \internal
+				 * @returns whether the selected backend implements vectors as having fixed
+				 * capacities. This is \em not a configuration choice for most backends,
+				 * but rather a fixed consequence of design choices.
 				 *
 				 * \note The only legal fixed capacity a functional ALP/GraphBLAS backend
 				 *       may provide is one that is equal to its size.
@@ -403,6 +416,7 @@ namespace grb {
 				 * \note A backend backed by a sparse accumulator (SPA) will typically have
 				 *       fixed vector capacities, whereas one based on sets or other types
 				 *       of tree structures will typically have dynamic vector capacities.
+				 * \endinternal
 				 */
 				static constexpr bool fixedVectorCapacities();
 #endif

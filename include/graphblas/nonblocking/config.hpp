@@ -34,11 +34,11 @@
 namespace grb {
 
 	/**
-	 * \defgroup nonblockingConfiug Configuration of the nonblocking backend
+	 * \defgroup nonblockingConfig Nonblocking backend configuration
+	 *
 	 * \ingroup config
 	 *
-	 * Groups all definitions and documentations corresponding to the
-	 * #grb::nonblocking backend.
+	 * All configuration parameters for the #grb::nonblocking backend.
 	 *
 	 * @{
 	 */
@@ -47,6 +47,8 @@ namespace grb {
 
 		/**
 		 * Configuration parameters relating to the pipeline data structure.
+		 *
+		 * \ingroup nonblockingConfig
 		 */
 		class PIPELINE {
 
@@ -56,9 +58,8 @@ namespace grb {
 				 * How many independent pipelines any ALP algorithm may concurrently expose.
 				 *
 				 * The number of pipelines could exceed this maximum number. If this
-				 * happens, and if #grb::config::PIPELINE::warn_if_exceeded_capacity is
-				 * configured <tt>true</tt>, a warning will be output to the standard error
-				 * stream.
+				 * happens, and if #grb::config::PIPELINE::warn_if_exceeded is configured
+				 * <tt>true</tt>, a warning will be output to the standard error stream.
 				 */
 				static constexpr const size_t max_pipelines = 4;
 
@@ -69,9 +70,8 @@ namespace grb {
 				 * representation takes less than one kB space.
 				 *
 				 * Pipelines could exceed this maximum number of containers. If this
-				 * happens, and if #grb::config::PIPELINE::warn_if_exceeded_capacity is
-				 * configured <tt>true</tt>, a warning will be output to the standard error
-				 * stream.
+				 * happens, and if #grb::config::PIPELINE::warn_if_exceeded is configured
+				 * <tt>true</tt>, a warning will be output to the standard error stream.
 				 */
 				static constexpr const size_t max_containers = 16;
 
@@ -79,8 +79,8 @@ namespace grb {
 				 * Pipelines are constructed with default space for this many stages.
 				 *
 				 * Pipelines could exceed this number of stages. If this happens, and if
-				 * #grb::config::PIPELINE::warn_if_exceeded_capacity is configured
-				 * <tt>true</tt>, a warning will be output to the standard error stream.
+				 * #grb::config::PIPELINE::warn_if_exceeded is configured <tt>true</tt>, a
+				 * warning will be output to the standard error stream.
 				 */
 				static constexpr const size_t max_depth = 16;
 
@@ -89,8 +89,8 @@ namespace grb {
 				 *
 				 * Pipelines could exceed this number of tiles. If this happens, and if
 				 *
-				 * #grb::config::PIPELINE::warn_if_exceeded_capacity is configured
-				 * <tt>true</tt>, a warning will be output to the standard error stream.
+				 * #grb::config::PIPELINE::warn_if_exceeded is configured <tt>true</tt>, a
+				 * warning will be output to the standard error stream.
 				 */
 				static constexpr const size_t max_tiles = 1 << 16;
 
@@ -111,6 +111,8 @@ namespace grb {
 		/**
 		 * Configuration parameters relating to the analytic model employed by the
 		 * nonblocking backend.
+		 *
+		 * \ingroup nonblockingConfig
 		 */
 		class ANALYTIC_MODEL {
 
@@ -134,12 +136,19 @@ namespace grb {
 		};
 
 		/**
-		 * \internal
 		 * Implementation-dependent configuration parameters for the \a nonblocking
-		 * backend
+		 * backend.
+		 *
+		 * \note The user documentation only specifies the fields that under some
+		 *       circumstances may benefit from a user adapting it. For viewing all
+		 *       fields, please see the developer documentation.
+		 *
+		 * \note Adapting the fields should be done with care and may require
+		 *       re-compilation and re-installation of the ALP framework.
+		 *
+		 * \ingroup nonblockingConfig
 		 *
 		 * @see grb::config::IMPLEMENTATION
-		 * \endinternal
 		 */
 		template<>
 		class IMPLEMENTATION< nonblocking > {
@@ -163,15 +172,22 @@ namespace grb {
 				}
 
 				/**
+				 * \internal
 				 * By default, use the coordinates of the selected backend.
+				 *
+				 * \note This is an extension that may, at some later stage, be used for
+				 *       composability with the #grb::bsp1d and #grb::hybrid backends.
+				 * \endinternal
 				 */
 				static constexpr Backend coordinatesBackend() {
 					return nonblocking;
 				}
 
 				/**
+				 * \internal
 				 * Whether the backend has vector capacities always fixed to their
 				 * defaults.
+				 * \endinternal
 				 */
 				static constexpr bool fixedVectorCapacities() {
 					return true;

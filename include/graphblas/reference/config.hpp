@@ -124,7 +124,15 @@ namespace grb {
 		 * This class collects configuration parameters that are specific to the
 		 * #grb::reference backend. It details both configurations that could
 		 * be modified by end users, as well as configurations that are sensible
-		 * only to ALP developers.
+		 * only to ALP developers; the full specification hence is only available
+		 * within the developer documentation.
+		 *
+		 * \internal
+		 * This class extends the base implementation API with some fields that
+		 * facilitate composability between the #grb::reference and the
+		 * #grb::reference_omp backends on the one hand, and the #grb::bsp1d and the
+		 * #grb::hybrid backends on the other.
+		 * \endinternal
 		 *
 		 * \ingroup reference
 		 */
@@ -174,20 +182,21 @@ namespace grb {
 					return reference;
 				}
 
-				/**
-				 * The selected backend does not perform nonblocking execution.
-				 */
-				static constexpr bool isNonblockingExecution() {
-					return false;
-				}
-
 		};
 
 		/**
 		 * This class collects configuration parameters that are specific to the
 		 * #grb::reference_omp backend. It details both configurations that could
 		 * be modified by end users, as well as configurations that are sensible
-		 * only to ALP developers.
+		 * only to ALP developers; the full specification hence is only available
+		 * within the developer documentation.
+		 *
+		 * \internal
+		 * This class extends the base implementation API with some fields that
+		 * facilitate composability between the #grb::reference and the
+		 * #grb::reference_omp backends on the one hand, and the #grb::bsp1d and the
+		 * #grb::hybrid backends on the other.
+		 * \endinternal
 		 *
 		 * \ingroup reference
 		 */
@@ -271,13 +280,6 @@ namespace grb {
 				 */
 				static constexpr Backend coordinatesBackend() {
 					return reference_omp;
-				}
-
-				/**
-				 * The selected backend does not perform nonblocking execution.
-				 */
-				static constexpr bool isNonblockingExecution() {
-					return false;
 				}
 
 				/**

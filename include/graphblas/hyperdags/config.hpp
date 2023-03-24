@@ -38,30 +38,63 @@ namespace grb {
 
 	namespace config {
 
+		/**
+		 * The implementation details of the #grb::hyperdag backend.
+		 *
+		 * Since the HyperDAGs backend simply intercepts primitive calls and relies
+		 * on a second backend for its functional execution, this class simply
+		 * delegates all fields to that underlying backend.
+		 *
+		 * \note The user documentation only specifies the fields that under some
+		 *       circumstances may benefit from a user adapting it. For viewing all
+		 *       fields, please see the developer documentation.
+		 *
+		 * \note Adapting the fields should be done with care and may require
+		 *       re-compilation and re-installation of the ALP framework.
+		 */
 		template<>
 		class IMPLEMENTATION< hyperdags > {
 
 			public:
 
-				// propagate the defaults of the underlying backend
-
+				/**
+				 * @returns The default allocation policy for private memory regions of the
+				 *          underlying backend.
+				 */
 				static constexpr ALLOC_MODE defaultAllocMode() {
 					return IMPLEMENTATION< _GRB_WITH_HYPERDAGS_USING >::defaultAllocMode();
 				}
 
+				/**
+				 * @returns The default allocation policy for shared memory regions of the
+				 *          underlying backend.
+				 */
 				static constexpr ALLOC_MODE sharedAllocMode() {
 					return IMPLEMENTATION< _GRB_WITH_HYPERDAGS_USING >::sharedAllocMode();
 				}
 
+				/**
+				 * \internal
+				 * @returns The default vector coordinates instance of the underlying
+				 *          backend.
+				 *
+				 * \note This is an extension for compatability with the reference and BSP1D
+				 *       backends.
+				 * \endinternal
+				 */
 				static constexpr Backend coordinatesBackend() {
 					return IMPLEMENTATION< _GRB_WITH_HYPERDAGS_USING >::coordinatesBackend();
 				}
 
 				/**
-				 * The selected backend may perform nonblocking execution depending on the underlying backend.
+				 * \internal
+				 * @returns The fixed vector capacity property of the underlying
+				 *          implementation.
+				 * \endinternal
 				 */
-				static constexpr bool isNonblockingExecution() {
-					return IMPLEMENTATION< _GRB_WITH_HYPERDAGS_USING >::isNonblockingExecution();
+				static constexpr bool fixedVectorCapacities() {
+					return IMPLEMENTATION< _GRB_WITH_HYPERDAGS_USING >::
+						fixedVectorCapacities();
 				}
 
 		};
