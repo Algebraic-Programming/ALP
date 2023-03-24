@@ -3396,9 +3396,8 @@ namespace grb {
 	 *       otherwise the compilation of your code with a non-blocking backend
 	 *       may (likely) result in data races.
 	 *
-	 * If #grb::Properties<>::writableCaptured evaluates <tt>true</tt> then
-	 * captured scalars may also safely be written to, instead of requiring to be
-	 * read-only.
+	 * If #grb::Properties::writableCaptured evaluates <tt>true</tt> then captured
+	 * scalars may also safely be written to, instead of requiring to be read-only.
 	 *
 	 * \note This is useful for fusing reductions within other level-1 like
 	 *       operations.
@@ -3407,17 +3406,16 @@ namespace grb {
 	 *          updates are local to the current user process only.
 	 *
 	 * \note If, after execution of this primitive, an updated scalar is expected
-	 *       to be synchronised across all user processes, see the
-	 *       #grb::collectives<> interface.
+	 *       to be synchronised across all user processes, see #grb::collectives.
 	 *
 	 * \note As a rule of thumb, parallel GraphBLAS implementations, due to being
 	 *       data-centric, \em cannot support writeable scalar captures and will
-	 *       have #grb::Properties<>::writableCaptured evaluate to <tt>false</tt>.
+	 *       have #grb::Properties::writableCaptured evaluate to <tt>false</tt>.
 	 *
 	 * \note A portable ALP/GraphBLAS algorithm should therefore either not rely on
 	 *       read/write captured scalars passed to this primitive, \em or provide
 	 *       different code paths to handle the two cases of the
-	 *       #grb::Properties<>::writableCaptured backend property.
+	 *       #grb::Properties::writableCaptured backend property.
 	 *
 	 * \note If the above sounds too tedious, consider rewriting \a f in terms of
 	 *       native ALP/GraphBLAS functions, with the scalar reductions performed by
