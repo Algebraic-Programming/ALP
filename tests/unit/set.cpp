@@ -268,6 +268,7 @@ static grb::RC dense_tests(
 	if( nonblocking_execution ) {
 		ret = grb::set( dst, 0 );
 	} else {
+		ret = SUCCESS;
 		if( nnz( dst ) != size( dst ) ) {
 			std::cerr << " expected " << size( dst ) << ", got " << nnz( dst ) << "\n";
 			ret = FAILED;
@@ -354,6 +355,7 @@ static grb::RC dense_tests(
 	if( nonblocking_execution ) {
 		ret = grb::set( dst, 0 );
 	} else {
+		ret = SUCCESS;
 		if( nnz( dst ) != size( dst ) ) {
 			std::cerr << " expected " << size( dst ) << ", got " << nnz( dst ) << "\n";
 			ret = FAILED;
