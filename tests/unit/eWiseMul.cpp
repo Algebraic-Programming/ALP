@@ -146,7 +146,7 @@ void grb_program( const size_t &n, RC &rc ) {
 	}
 	if( rc != SUCCESS ) { return; }
 	if( nonblocking_execution ) {
-		rc = rc ? rc : clear( out );
+		rc = clear( out );
 		if( rc != SUCCESS ) {
 			std::cerr << " unexpected failure of grb::clear( out )\n";
 			return;
@@ -165,7 +165,7 @@ void grb_program( const size_t &n, RC &rc ) {
 	}
 	if( rc != SUCCESS ) { return; }
 	if( nonblocking_execution ) {
-		rc = rc ? rc : set( left, 1 );
+		rc = set( left, 1 );
 		if( rc != SUCCESS ) {
 			std::cerr << " unexpected failure of grb::set( left, 1)\n";
 			return;
@@ -184,7 +184,7 @@ void grb_program( const size_t &n, RC &rc ) {
 	}
 	if( rc != SUCCESS ) { return; }
 	if( nonblocking_execution ) {
-		rc = rc ? rc : set( left, 1 );
+		rc = set( left, 1 );
 		if( rc != SUCCESS ) {
 			std::cerr << " unexpected failure of grb::set( left, 1)\n";
 			return;
@@ -204,7 +204,7 @@ void grb_program( const size_t &n, RC &rc ) {
 	}
 	if( rc != SUCCESS ) { return; }
 	if( nonblocking_execution ) {
-		rc = rc ? rc : set( right, 2 );
+		rc = set( right, 2 );
 		if( rc != SUCCESS ) {
 			std::cerr << " unexpected failure of grb::set( right, 2)\n";
 			return;
@@ -223,7 +223,7 @@ void grb_program( const size_t &n, RC &rc ) {
 	}
 	if( rc != SUCCESS ) { return; }
 	if( nonblocking_execution ) {
-		rc = rc ? rc : set( left, 1 );
+		rc = set( left, 1 );
 		if( rc != SUCCESS ) {
 			std::cerr << " unexpected failure of grb::set( left, 1)\n";
 			return;
@@ -242,7 +242,7 @@ void grb_program( const size_t &n, RC &rc ) {
 	}
 	if( rc != SUCCESS ) { return; }
 	if( nonblocking_execution ) {
-		rc = rc ? rc : set( left, 1 );
+		rc = set( left, 1 );
 		if( rc != SUCCESS ) {
 			std::cerr << " unexpected failure of grb::set( left, 1)\n";
 			return;

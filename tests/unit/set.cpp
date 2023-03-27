@@ -265,8 +265,6 @@ static grb::RC dense_tests(
 		std::cerr << " expected ILLEGAL, got " << toString( ret ) << "\n";
 		return FAILED;
 	}
-	ret = SUCCESS;
-
 	if( nonblocking_execution ) {
 		ret = grb::set( dst, 0 );
 	} else {
@@ -282,7 +280,6 @@ static grb::RC dense_tests(
 			}
 		}
 	}
-
 	if( ret != SUCCESS ) { return ret; }
 
 	std::cerr << "\b 13:";
@@ -354,8 +351,6 @@ static grb::RC dense_tests(
 		std::cerr << " expected ILLEGAL, got " << toString( ret ) << "\n";
 		return FAILED;
 	}
-	ret = SUCCESS;
-
 	if( nonblocking_execution ) {
 		ret = grb::set( dst, 0 );
 	} else {
@@ -371,7 +366,6 @@ static grb::RC dense_tests(
 			}
 		}
 	}
-
 	if( ret != SUCCESS ) { return ret; }
 
 	std::cerr << "\b 17:";
@@ -497,10 +491,8 @@ void grb_program( const size_t &n, grb::RC &rc ) {
 
 	// test set into cleared
 	rc = grb::clear( dst );
-	if( rc == SUCCESS ) {
-		rc = grb::set( dst, src );
-		rc = rc ? rc : grb::wait( dst );
-	}
+	rc = rc ? rc : grb::set( dst, src );
+	rc = rc ? rc : grb::wait( dst );
 	if( rc != SUCCESS ) {
 		std::cerr << "\t Set-into-cleared FAILED with error code "
 			<< grb::toString( rc ) << "\n";
@@ -525,10 +517,8 @@ void grb_program( const size_t &n, grb::RC &rc ) {
 
 	// test masked set
 	rc = grb::setElement( src, 0, n / 2 );
-	if( rc == SUCCESS ) {
-		rc = grb::set( dst, src, src );
-		rc = rc ? rc : grb::wait( dst );
-	}
+	rc = rc ? rc : grb::set( dst, src, src );
+	rc = rc ? rc : grb::wait( dst );
 	if( rc != SUCCESS ) {
 		std::cerr << "\t Masked-set FAILED with error code "
 			<< grb::toString( rc ) << "\n";
@@ -590,13 +580,9 @@ void grb_program( const size_t &n, grb::RC &rc ) {
 
 	// test sparse mask set
 	rc = grb::clear( src );
-	if( rc == SUCCESS ) {
-		rc = grb::setElement( src, 1.5, n / 2 );
-	}
-	if( rc == SUCCESS ) {
-		rc = grb::set( dst, src, src );
-		rc = rc ? rc : grb::wait( dst );
-	}
+	rc = rc ? rc : grb::setElement( src, 1.5, n / 2 );
+	rc = rc ? rc : grb::set( dst, src, src );
+	rc = rc ? rc : grb::wait( dst );
 	if( rc != SUCCESS ) {
 		std::cerr << "\t Sparse-mask set FAILED with error code "
 			<< grb::toString( rc ) << "\n";
@@ -659,14 +645,10 @@ void grb_program( const size_t &n, grb::RC &rc ) {
 	}
 
 	// test sparse mask set to scalar
-	rc = grb::clear( src );
-	if( rc == SUCCESS ) {
-		rc = grb::setElement( src, 1.5, n / 2 );
-	}
-	if( rc == SUCCESS ) {
-		rc = grb::set( dst, src, 3.0 );
-		rc = rc ? rc : grb::wait( dst );
-	}
+	rc = rc ? rc : grb::clear( src );
+	rc = rc ? rc : grb::setElement( src, 1.5, n / 2 );
+	rc = rc ? rc : grb::set( dst, src, 3.0 );
+	rc = rc ? rc : grb::wait( dst );
 	if( rc != SUCCESS ) {
 		std::cerr << "\t Sparse-mask set to scalar FAILED with error code "
 			<< grb::toString( rc ) << "\n";
