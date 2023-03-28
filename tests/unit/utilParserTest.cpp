@@ -20,9 +20,12 @@
 #include "graphblas/utils/parser.hpp"
 
 int main( int argc, char ** argv ) {
-	(void)argc;
 	std::cout << "Functional test executable: " << argv[ 0 ] << "\n";
-	grb::utils::MatrixFileReader< double, unsigned short int > west( "datasets/west0497.mtx" );
+	if( argc != 2 ) {
+		std::cout << "please, give path to west0497.mtx" << std::endl;
+		std::exit( 1 );
+	}
+	grb::utils::MatrixFileReader< double, unsigned short int > west( argv[ 1 ] );
 	int ret = 0;
 	if( west.m() != 497 ) {
 		std::cerr << "west0497 has 497 rows, not " << west.m() << std::endl;

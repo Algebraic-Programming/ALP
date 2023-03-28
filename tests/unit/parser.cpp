@@ -197,15 +197,19 @@ bool readEdges(
  #include "graphblas/utils/parser.hpp"
 
 int main( int argc, char ** argv ) {
-	(void)argc;
 	std::cout << "Functional test executable: " << argv[ 0 ] << "\n";
+	if( argc != 2 ) {
+		std::cout << "please, give path to cit-HepTh.txt" << std::endl;
+		std::exit( 1 );
+	}
 	int ret = 0;
 
 	// a naive storage of the input matrix
 	std::map< size_t, std::set< size_t > > A;
 
 	// use utils parser
-	grb::utils::MatrixFileReader< void > citHepTh( "datasets/cit-HepTh.txt", false, true );
+	const char * const dataset_file = argv[ 1 ];
+	grb::utils::MatrixFileReader< void > citHepTh( dataset_file , false, true );
 
 	// fill A
 	for( const auto & nz : citHepTh ) {
@@ -226,7 +230,7 @@ int main( int argc, char ** argv ) {
 	// use direct parser
 	size_t nz, *I, *J, n;
 	n = 27770;
-	const bool rc = readEdges( "datasets/cit-HepTh.txt", true, &n, &nz, &I, &J, NULL );
+	const bool rc = readEdges( dataset_file, true, &n, &nz, &I, &J, NULL );
 	if( ! rc ) {
 		std::cerr << "Error in use of direct parser.\n";
 		ret = 1;
@@ -240,7 +244,7 @@ int main( int argc, char ** argv ) {
 	/* The below tests for automatic derivation of number of vertices, but this is not supported by the SNAP data files
 	 * n = SIZE_MAX;
 	const bool rc2 = readEdges(
-	    "datasets/cit-HepTh.txt", true, &n,
+	    dataset_file, true, &n,
 	    &nz, &I, &J, NULL
 	);
 	if( !rc2 ) {
@@ -284,7 +288,7 @@ int main( int argc, char ** argv ) {
 	}
 
 	// use non-maximal util parser
-	grb::utils::MatrixFileReader< void > citHepTh2( "datasets/cit-HepTh.txt", false, true );
+	grb::utils::MatrixFileReader< void > citHepTh2( dataset_file, false, true );
 
 	if( citHepTh.filename() != citHepTh2.filename() || citHepTh.m() != citHepTh2.m() ||
 		citHepTh.n() != citHepTh2.n() || citHepTh.nz() != citHepTh2.nz() ||

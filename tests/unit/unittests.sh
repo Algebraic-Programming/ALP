@@ -49,7 +49,7 @@ for MODE in debug ndebug; do
 
 	echo ">>>      [x]           [ ]       Tests the built-in parser on the west0497 MatrixMarket file"
 	if [ -f ${INPUT_DIR}/west0497.mtx ]; then
-		${TEST_BIN_DIR}/parserTest_${MODE} 2> ${TEST_OUT_DIR}/parserTest_${MODE}.err 1> ${TEST_OUT_DIR}/parserTest_${MODE}.out
+		${TEST_BIN_DIR}/parserTest_${MODE} ${INPUT_DIR}/west0497.mtx 2> ${TEST_OUT_DIR}/parserTest_${MODE}.err 1> ${TEST_OUT_DIR}/parserTest_${MODE}.out
 		head -1 ${TEST_OUT_DIR}/parserTest_${MODE}.out
 		grep 'Test OK' ${TEST_OUT_DIR}/parserTest_${MODE}.out || echo "Test FAILED"
 	else
@@ -60,7 +60,7 @@ for MODE in debug ndebug; do
 	echo ">>>      [x]           [ ]       Tests the built-in parser (in graphblas/utils/parser.hpp)"
 	echo "                                 versus the parser in tests/parser.cpp on cit-HepTh.txt."
 	if [ -f ${INPUT_DIR}/cit-HepTh.txt ]; then
-		${TEST_BIN_DIR}/compareParserTest_${MODE} &> ${TEST_OUT_DIR}/compareParserTest_${MODE}
+		${TEST_BIN_DIR}/compareParserTest_${MODE} ${INPUT_DIR}/cit-HepTh.txt &> ${TEST_OUT_DIR}/compareParserTest_${MODE}
 		head -1 ${TEST_OUT_DIR}/compareParserTest_${MODE}
 		tail -2 ${TEST_OUT_DIR}/compareParserTest_${MODE}
 	else
