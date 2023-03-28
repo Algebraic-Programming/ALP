@@ -353,6 +353,7 @@ void grbProgram( const struct input &data_in, struct output &out ) {
 			( data_in.gmres_restart + 1 ) * ( data_in.gmres_restart + 1 ),
 			zero
 		);
+		std::vector< ScalarType > temp3( n, 0 );
 
 		std::vector< grb::Vector< ScalarType > > Q;
 		for( size_t i = 0; i < data_in.gmres_restart + 1; ++i ) {
@@ -363,25 +364,29 @@ void grbProgram( const struct input &data_in, struct output &out ) {
 		out.time_preamble += timer.time();
 		timer.reset();
 
-		rc = rc ? rc : grb::algorithms::gmres(
-			x, A, b,
-			Q,
-			data_in.gmres_restart,
-			data_in.max_iterations,
-			data_in.no_preconditioning,
-			data_in.max_residual_norm,
-			data_in.tol,
-			out.iterations,
-			out.iterations_gmres,
-			out.iterations_arnoldi,
-			out.residual,
-			out.residual_relative,
-			temp,
-			temp2,
-			Hmatrix,
-			P,
-			ring
-		);
+		if( data_in.no_preconditioning ) {
+			rc = rc ? rc : grb::algorithms::gmres(
+				x, A, b,
+				data_in.gmres_restart, data_in.max_iterations,
+				data_in.max_residual_norm, data_in.tol,
+				out.iterations, out.iterations_gmres, out.iterations_arnoldi,
+				out.residual, out.residual_relative,
+				Q, Hmatrix,
+				temp, temp2, temp3,
+				ring
+			);
+		} else {
+			rc = rc ? rc : grb::algorithms::preconditioned_gmres(
+				x, P, A, b,
+				data_in.gmres_restart, data_in.max_iterations,
+				data_in.max_residual_norm, data_in.tol,
+				out.iterations, out.iterations_gmres, out.iterations_arnoldi,
+				out.residual, out.residual_relative,
+				Q, Hmatrix,
+				temp, temp2, temp3,
+				ring
+			);
+		}
 
 		out.time_gmres += timer.time();
 		timer.reset();
