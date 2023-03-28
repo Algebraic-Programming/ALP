@@ -31,6 +31,9 @@
 #ifdef _GRB_WITH_HYPERDAGS
  #include <graphblas/hyperdags/blas1.hpp>
 #endif
+#ifdef _GRB_WITH_NONBLOCKING
+ #include "graphblas/nonblocking/blas1.hpp"
+#endif
 #ifdef _GRB_WITH_BANSHEE
  #include <graphblas/banshee/blas1.hpp>
 #endif

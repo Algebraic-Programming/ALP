@@ -24,10 +24,16 @@
 using namespace grb;
 
 void grb_program( const size_t &n, RC &rc ) {
+	// for the subtests that return ILLEGAL due to incorrect usage of the dense
+	// descriptor in the case of nonblocking execution, the ouput vector must be
+	// reset in order to cope with side effects
+	constexpr bool nonblocking_execution = Properties<>::isNonblockingExecution;
+
 	Semiring<
 		operators::add< double >, operators::mul< double >,
 		identities::zero, identities::one
 	> ring;
+
 	// repeatedly used containers
 	Vector< bool > even_mask( n ), odd_mask( n );
 	Vector< size_t > temp( n );
@@ -139,6 +145,14 @@ void grb_program( const size_t &n, RC &rc ) {
 		rc = SUCCESS;
 	}
 	if( rc != SUCCESS ) { return; }
+	if( nonblocking_execution ) {
+		rc = clear( out );
+		if( rc != SUCCESS ) {
+			std::cerr << " unexpected failure of grb::clear( out )\n";
+			return;
+		}
+	}
+
 	std::cout << "\b\b 5: ";
 	rc = eWiseMul< descriptors::dense >( left, out, right, ring );
 	rc = rc ? rc : wait();
@@ -150,6 +164,14 @@ void grb_program( const size_t &n, RC &rc ) {
 		rc = SUCCESS;
 	}
 	if( rc != SUCCESS ) { return; }
+	if( nonblocking_execution ) {
+		rc = set( left, 1 );
+		if( rc != SUCCESS ) {
+			std::cerr << " unexpected failure of grb::set( left, 1)\n";
+			return;
+		}
+	}
+
 	std::cout << "\b\b 6: ";
 	rc = eWiseMul< descriptors::dense >( left, right, out, ring );
 	rc = rc ? rc : wait();
@@ -161,6 +183,14 @@ void grb_program( const size_t &n, RC &rc ) {
 		rc = SUCCESS;
 	}
 	if( rc != SUCCESS ) { return; }
+	if( nonblocking_execution ) {
+		rc = set( left, 1 );
+		if( rc != SUCCESS ) {
+			std::cerr << " unexpected failure of grb::set( left, 1)\n";
+			return;
+		}
+	}
+
 	std::cout << "\b\b 7: ";
 	rc = clear( left );
 	rc = rc ? rc : eWiseMul< descriptors::dense >( right, left, out, ring );
@@ -173,6 +203,14 @@ void grb_program( const size_t &n, RC &rc ) {
 		rc = SUCCESS;
 	}
 	if( rc != SUCCESS ) { return; }
+	if( nonblocking_execution ) {
+		rc = set( right, 2 );
+		if( rc != SUCCESS ) {
+			std::cerr << " unexpected failure of grb::set( right, 2)\n";
+			return;
+		}
+	}
+
 	std::cout << "\b\b 8: ";
 	rc = eWiseMul< descriptors::dense >( left, right, out, ring );
 	rc = rc ? rc : wait();
@@ -184,6 +222,14 @@ void grb_program( const size_t &n, RC &rc ) {
 		rc = SUCCESS;
 	}
 	if( rc != SUCCESS ) { return; }
+	if( nonblocking_execution ) {
+		rc = set( left, 1 );
+		if( rc != SUCCESS ) {
+			std::cerr << " unexpected failure of grb::set( left, 1)\n";
+			return;
+		}
+	}
+
 	std::cout << "\b\b 9: ";
 	rc = eWiseMul< descriptors::dense >( left, out, right, ring );
 	rc = rc ? rc : wait();
@@ -195,6 +241,13 @@ void grb_program( const size_t &n, RC &rc ) {
 		rc = SUCCESS;
 	}
 	if( rc != SUCCESS ) { return; }
+	if( nonblocking_execution ) {
+		rc = set( left, 1 );
+		if( rc != SUCCESS ) {
+			std::cerr << " unexpected failure of grb::set( left, 1)\n";
+			return;
+		}
+	}
 
 	// test sparse unmasked
 	std::cout << "\b\b 10: ";

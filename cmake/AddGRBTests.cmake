@@ -31,9 +31,6 @@ assert_valid_variables( ALL_BACKENDS AVAILABLE_BACKENDS TEST_CATEGORIES
 
 # create variables to store tests against each backend
 foreach( b ${AVAILABLE_BACKENDS} )
-	if( NOT TARGET "backend_${b}" )
-		message( FATAL_ERROR "Needed target backend_${b} does not exist!" )
-	endif()
 	define_property( GLOBAL PROPERTY tests_backend_${b} BRIEF_DOCS "${b} tests" FULL_DOCS "tests for backend ${b}" )
 endforeach()
 

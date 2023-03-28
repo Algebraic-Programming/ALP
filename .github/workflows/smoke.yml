@@ -35,3 +35,8 @@ jobs:
       working-directory: ${{github.workspace}}/build
       run: ../tests/summarise.sh smoketests.log
 
+    - name: DumpLogOnFailure
+      if: failure()
+      working-directory: ${{github.workspace}}/build
+      run: cat smoketests.log
+

@@ -232,6 +232,8 @@ namespace grb {
 
 		friend class PinnedVector< D, reference >;
 
+		friend class PinnedVector< D, nonblocking >;
+
 		friend class PinnedVector< D, BSP1D >;
 
 		template< typename ValueType, Backend backend >

@@ -93,26 +93,26 @@ int main( int argc, char ** argv ) {
 	}
 
 	// check contents of x
-	const int * __restrict__ const xraw = x.raw();
-	for( size_t i = 0; !error && i < 15; ++i ) {
-		if( !grb::utils::equals( data1[ i ], xraw[ i ] ) ) {
+	for( const std::pair< size_t, int > &pair : x ) {
+		if( !grb::utils::equals( data1[ pair.first ], pair.second ) ) {
 			std::cerr << "Initialisation error: vector x, "
-				<< "element at position " << i << ": "
-				<< xraw[ i ] << " does not equal "
-				<< data1[ i ] << "." << std::endl;
+				<< "element at position " << pair.first << ": "
+				<< pair.second << " does not equal "
+				<< data1[ pair.first ] << "." << std::endl;
 			error = 20;
+			break;
 		}
 	}
 
 	// check contents of y
-	const int * __restrict__ const against = y.raw();
-	for( size_t i = 0; !error && i < 15; ++i ) {
-		if( !grb::utils::equals( 0, against[ i ] ) ) {
+	for( const std::pair< size_t, int > &pair : y ) {
+		if( !grb::utils::equals( 0, pair.second ) ) {
 			std::cerr << "Initialisation error: vector y, "
-			       << "element at position " << i << ": "
-			       << "0 does not equal " << against [ i ]
+			       << "element at position " << pair.first << ": "
+			       << "0 does not equal " << pair.second
 			       << "." << std::endl;
 			error = 6;
+			break;
 		}
 	}
 
@@ -142,12 +142,13 @@ int main( int argc, char ** argv ) {
 	}
 
 	// check
-	for( size_t i = 0; !error && i < 15; ++i ) {
-		if( !grb::utils::equals( chk[ i ], against[ i ] ) ) {
+	for( const std::pair< size_t, int > &pair : y ) {
+		if( !grb::utils::equals( chk[ pair.first ], pair.second ) ) {
 			std::cerr << "Output vector element mismatch at position "
-				<< i << ": " << chk[ 1 ] << "does not equal "
-				<< against[ i ] << "." << std::endl;
+				<< pair.first << ": " << chk[ pair.first ] << "does not equal "
+				<< pair.second << "." << std::endl;
 			error = 9;
+			break;
 		}
 	}
 

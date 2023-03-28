@@ -352,13 +352,13 @@ namespace grb {
 
 				// p = r + beta ( p - omega * v )
 				ret = ret ? ret : eWiseLambda(
-					[&r,&beta,&p,&v,&omega,&semiring,&minus] (const size_t i) {
+					[&r,beta,&p,&v,omega,&semiring,&minus] (const size_t i) {
 						InputType tmp;
 						apply( tmp, omega, v[i], semiring.getMultiplicativeOperator() );
 						foldl( p[ i ], tmp, minus );
 						foldr( beta, p[ i ], semiring.getMultiplicativeOperator() );
 						foldr( r[ i ], p[ i ], semiring.getAdditiveOperator() );
-					}, v, b
+					}, v, p, r
 				);
 
 				// v = Ap

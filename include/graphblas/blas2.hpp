@@ -34,7 +34,10 @@
  #include <graphblas/reference/blas2.hpp>
 #endif
 #ifdef _GRB_WITH_HYPERDAGS
-#include <graphblas/hyperdags/blas2.hpp>
+ #include <graphblas/hyperdags/blas2.hpp>
+#endif
+#ifdef _GRB_WITH_NONBLOCKING
+ #include "graphblas/nonblocking/blas2.hpp"
 #endif
 #ifdef _GRB_WITH_BANSHEE
  #include <graphblas/banshee/blas2.hpp>

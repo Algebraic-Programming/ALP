@@ -303,7 +303,9 @@
  *      registers (ISSR). Written by Dan Iorga in collaboration with ETHZ. This
  *      backend is outdated, but, last tested, remained functional.
  *
- * The #grb::Backend enum lists all backends known to ALP.
+ * The #grb::Backend enum lists all backends known to ALP. Properties of a
+ * backend that may affect more advanced user code are collected in
+ * #grb::Properties.
  *
  * @author A. N. Yzelman, Huawei Technologies Switzerland AG (2020-current)
  * @}

@@ -33,13 +33,15 @@
 #ifdef _GRB_WITH_HYPERDAGS
  #include <graphblas/hyperdags/collectives.hpp>
 #endif
+#ifdef _GRB_WITH_NONBLOCKING
+ #include "graphblas/nonblocking/collectives.hpp"
+#endif
 #ifdef _GRB_WITH_LPF
  #include <graphblas/bsp/collectives.hpp>
 #endif
 #ifdef _GRB_WITH_BANSHEE
  #include <graphblas/banshee/collectives.hpp>
 #endif
-
 
 // specify default only if requested during compilation
 #ifdef _GRB_BACKEND

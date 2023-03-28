@@ -21,8 +21,8 @@
 # and definitions to compile against each backend, but MUST explicitly
 # set a default backend (if they want to do so).
 #
-assert_defined_variables( REFERENCE_INCLUDE_DEFS REFERENCE_OMP_INCLUDE_DEFS LPF_INCLUDE_DEFS
-	WITH_REFERENCE_BACKEND_HEADERS WITH_OMP_BACKEND_HEADERS WITH_BSP1D_BACKEND WITH_HYBRID_BACKEND
+assert_defined_variables( REFERENCE_INCLUDE_DEFS REFERENCE_OMP_INCLUDE_DEFS NONBLOCKING_INCLUDE_DEFS LPF_INCLUDE_DEFS
+	WITH_REFERENCE_BACKEND_HEADERS WITH_OMP_BACKEND_HEADERS WITH_NONBLOCKING_BACKEND WITH_BSP1D_BACKEND WITH_HYBRID_BACKEND
 	HYPERDAGS_INCLUDE_DEFS WITH_HYPERDAGS_BACKEND_HEADERS WITH_HYPERDAGS_BACKEND
 )
 assert_valid_variables( INCLUDE_INSTALL_DIR NO_NUMA_DEF )
@@ -42,7 +42,7 @@ set( HEADERS_REGEX ".+\.(hpp|h|hxx|hh|h\\+\\+)$" )
 # to avoid flaky acrobatics with regex or glob expressions, copy main files directly
 install( FILES "graphblas.hpp" DESTINATION "${INCLUDE_INSTALL_DIR}" )
 set( root_files
-	"graphblas.hpp" "graphblas/backends.hpp" "graphblas/benchmark.hpp"
+	"graphblas/backends.hpp" "graphblas/benchmark.hpp"
 	"graphblas/blas0.hpp" "graphblas/blas1.hpp" "graphblas/blas2.hpp"
 	"graphblas/blas3.hpp" "graphblas/collectives.hpp" "graphblas/config.hpp"
 	"graphblas/coordinates.hpp" "graphblas/descriptors.hpp" "graphblas/distribution.hpp"
@@ -137,7 +137,6 @@ if( WITH_OMP_BACKEND_HEADERS )
 		FILES_MATCHING REGEX "${HEADERS_REGEX}"
 	)
 	install( TARGETS backend_reference_omp_headers EXPORT GraphBLASTargets )
-
 endif()
 
 if( WITH_HYPERDAGS_BACKEND )
@@ -149,6 +148,22 @@ if( WITH_HYPERDAGS_BACKEND )
 		DESTINATION "${GRB_INCLUDE_INSTALL_DIR}/hyperdags"
 		FILES_MATCHING REGEX "${HEADERS_REGEX}"
 	)
+endif()
+
+if( WITH_NONBLOCKING_BACKEND )
+	add_library( backend_nonblocking_headers INTERFACE )
+	# the nonblocking backend depends on the reference backend
+	target_link_libraries( backend_nonblocking_headers INTERFACE backend_reference_headers )
+	target_link_libraries( backend_nonblocking_headers INTERFACE OpenMP::OpenMP_CXX )
+	target_compile_definitions( backend_nonblocking_headers INTERFACE
+		"${NONBLOCKING_INCLUDE_DEFS}"
+	)
+
+	install( DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/graphblas/nonblocking/"
+		DESTINATION "${GRB_INCLUDE_INSTALL_DIR}/nonblocking"
+		FILES_MATCHING REGEX "${HEADERS_REGEX}"
+	)
+	install( TARGETS backend_nonblocking_headers EXPORT GraphBLASTargets )
 endif()
 
 if( WITH_BSP1D_BACKEND OR WITH_HYBRID_BACKEND )

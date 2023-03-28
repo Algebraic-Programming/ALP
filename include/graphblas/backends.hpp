@@ -67,6 +67,12 @@ namespace grb {
 		hyperdags,
 
 		/**
+		 * The threaded nonblocking implementation. Supports fast operations with both
+		 * sparse and dense vectors. This backend is currently under development.
+		 */
+		nonblocking,
+
+		/**
 		 * \internal
 		 * A shared-memory parallel distribution based on a row-wise 1D block-cyclic
 		 * data distribution using shared vector data.

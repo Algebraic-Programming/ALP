@@ -345,17 +345,82 @@ namespace grb {
 		};
 
 		/**
-		 * \internal
-		 * Configuration parameters that may depend on the backend.
+		 * Collects a series of implementation choices corresponding to some given
+		 * \a backend.
 		 *
-		 * Empty by default so to ensure no-one implicitly relies on implicit
-		 * defaults.
+		 * These implementation choices are useful for \em compositional backends;
+		 * i.e., backends that rely on a nested sub-backend for functionality. To
+		 * facilitate composability, backends are required to provide the functions
+		 * specified herein.
+		 *
+		 * \note An example are the #grb::BSP1D and #grb::hybrid backends, that both
+		 *       share the exact same code, relying on either the #grb::reference or
+		 *       the #grb::reference_omp backend, respectively.
+		 *
+		 * \note The user documentation does not list all required fields; for a
+		 *       complete overview, see the developer documentation instead.
+		 *
+		 * The default class declaration is declared empty to ensure no one backend
+		 * implicitly relies on global defaults. Every backend therefore must
+		 * specialise this class and implement the specified functions.
+		 *
+		 * \warning Portable ALP user code does not rely on the implementation details
+		 *          gathered in this class.
+		 *
+		 * \note For properties of a backend that may (also) affect ALP user code,
+		 *       see #grb::Properties.
+		 *
+		 * The user documentation only documents the settings that could be useful to
+		 * modify.
+		 *
+		 * \warning Modifying the documented functions should be done with care.
+		 *
+		 * \warning Any such modifications typically requires rebuilding the ALP
+		 *          library itself.
+		 *
+		 * \note For viewing all implementation choices, please see the developer
+		 *       documentation.
 		 *
 		 * \ingroup config
-		 * \endinternal
 		 */
-		template< grb::Backend implementation = default_backend >
-		class IMPLEMENTATION {};
+		template< grb::Backend backend = default_backend >
+		class IMPLEMENTATION {
+#ifdef __DOXYGEN__
+			public:
+
+				/**
+				 * Defines how private memory regions are allocated.
+				 *
+				 * @returns how a memory region that will not be accessed by threads other
+				 * than the allocating thread, should be allocated.
+				 */
+				static constexpr ALLOC_MODE defaultAllocMode();
+
+				/**
+				 * Defines how shared memory regions are allocated.
+				 *
+				 * @returns how a memory region that may be accessed by thread other than
+				 * the allocating thread, should be allocated.
+				 */
+				static constexpr ALLOC_MODE sharedAllocMode();
+
+				/**
+				 * \internal
+				 * @returns whether the selected backend implements vectors as having fixed
+				 * capacities. This is \em not a configuration choice for most backends,
+				 * but rather a fixed consequence of design choices.
+				 *
+				 * \note The only legal fixed capacity a functional ALP/GraphBLAS backend
+				 *       may provide is one that is equal to its size.
+				 *
+				 * \note A backend backed by a sparse accumulator (SPA) will typically have
+				 *       fixed vector capacities, whereas one based on sets or other types
+				 *       of tree structures will typically have dynamic vector capacities.
+				 * \endinternal
+				 */
+				static constexpr bool fixedVectorCapacities();
+#endif
+		};
 
 		/**
 		 * What data type should be used to store row indices.

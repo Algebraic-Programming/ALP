@@ -23,6 +23,7 @@
 #ifndef _H_GRB_TAGS
 #define _H_GRB_TAGS
 
+
 namespace grb {
 
 	/**
@@ -63,3 +64,4 @@ namespace grb {
 } // namespace grb
 
 #endif
+
