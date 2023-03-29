@@ -4733,6 +4733,19 @@ namespace grb {
 			grb::is_operator< OP >::value, void
 		>::type * const = nullptr
 	) {
+		// static checks
+		NO_CAST_OP_ASSERT( ( !(descr & descriptors::no_casting) ||
+			std::is_same< typename OP::D1, InputType1 >::value ), "grb::eWiseApply",
+			"called with a left-hand input element type that does not match the "
+			"first domain of the given operator" );
+		NO_CAST_OP_ASSERT( ( !(descr & descriptors::no_casting) ||
+			std::is_same< typename OP::D2, InputType2 >::value ), "grb::eWiseApply",
+			"called with a right-hand input element type that does not match the "
+			"second domain of the given operator" );
+		NO_CAST_OP_ASSERT( ( !(descr & descriptors::no_casting) ||
+			std::is_same< typename OP::D3, OutputType >::value ), "grb::eWiseApply",
+			"called with an output element type that does not match the "
+			"third domain of the given operator" );
 #ifdef _DEBUG
 		std::cout << "In eWiseApply ([T1]<-[T2]<-T3), operator variant\n";
 #endif
@@ -4909,6 +4922,19 @@ namespace grb {
 			grb::is_operator< OP >::value, void
 		>::type * const = nullptr
 	) {
+		// static checks
+		NO_CAST_OP_ASSERT( ( !(descr & descriptors::no_casting) ||
+			std::is_same< typename OP::D1, InputType1 >::value ), "grb::eWiseApply",
+			"called with a left-hand input element type that does not match the "
+			"first domain of the given operator" );
+		NO_CAST_OP_ASSERT( ( !(descr & descriptors::no_casting) ||
+			std::is_same< typename OP::D2, InputType2 >::value ), "grb::eWiseApply",
+			"called with a right-hand input element type that does not match the "
+			"second domain of the given operator" );
+		NO_CAST_OP_ASSERT( ( !(descr & descriptors::no_casting) ||
+			std::is_same< typename OP::D3, OutputType >::value ), "grb::eWiseApply",
+			"called with an output element type that does not match the "
+			"third domain of the given operator" );
 #ifdef _DEBUG
 		std::cout << "In eWiseApply ([T1]<-T2<-T3), operator variant\n";
 #endif
@@ -5015,6 +5041,19 @@ namespace grb {
 			void
 		>::type * const = nullptr
 	) {
+		// static checks
+		NO_CAST_OP_ASSERT( ( !(descr & descriptors::no_casting) ||
+			std::is_same< typename Monoid::D1, InputType1 >::value ), "grb::eWiseApply",
+			"called with a left-hand input element type that does not match the "
+			"first domain of the given monoid" );
+		NO_CAST_OP_ASSERT( ( !(descr & descriptors::no_casting) ||
+			std::is_same< typename Monoid::D2, InputType2 >::value ), "grb::eWiseApply",
+			"called with a right-hand input element type that does not match the "
+			"second domain of the given monoid" );
+		NO_CAST_OP_ASSERT( ( !(descr & descriptors::no_casting) ||
+			std::is_same< typename Monoid::D3, OutputType >::value ), "grb::eWiseApply",
+			"called with an output element type that does not match the "
+			"third domain of the given monoid" );
 #ifdef _DEBUG
 		std::cout << "In eWiseApply ([T1]<-T2<-T3), monoid variant\n";
 #endif
@@ -5091,6 +5130,22 @@ namespace grb {
 			void
 		>::type * const = nullptr
 	) {
+		// static checks
+		NO_CAST_OP_ASSERT( ( !(descr & descriptors::no_casting) ||
+			std::is_same< typename OP::D1, InputType1 >::value ), "grb::eWiseApply",
+			"called with a left-hand input element type that does not match the "
+			"first domain of the given operator" );
+		NO_CAST_OP_ASSERT( ( !(descr & descriptors::no_casting) ||
+			std::is_same< typename OP::D2, InputType2 >::value ), "grb::eWiseApply",
+			"called with a right-hand input element type that does not match the "
+			"second domain of the given operator" );
+		NO_CAST_OP_ASSERT( ( !(descr & descriptors::no_casting) ||
+			std::is_same< typename OP::D3, OutputType >::value ), "grb::eWiseApply",
+			"called with an output element type that does not match the "
+			"third domain of the given operator" );
+		NO_CAST_OP_ASSERT( ( !(descr & descriptors::no_casting) ||
+			std::is_same< bool, MaskType >::value ), "grb::eWiseApply",
+			"called with an output mask element type that is not Boolean " );
 #ifdef _DEBUG
 		std::cout << "In masked eWiseApply ([T1]<-[T2]<-T3, using operator)\n";
 #endif
@@ -5288,6 +5343,19 @@ namespace grb {
 			void
 		>::type * const = nullptr
 	) {
+		// static checks
+		NO_CAST_OP_ASSERT( ( !(descr & descriptors::no_casting) ||
+			std::is_same< typename Monoid::D1, InputType1 >::value ), "grb::eWiseApply",
+			"called with a left-hand input element type that does not match the "
+			"first domain of the given monoid" );
+		NO_CAST_OP_ASSERT( ( !(descr & descriptors::no_casting) ||
+			std::is_same< typename Monoid::D2, InputType2 >::value ), "grb::eWiseApply",
+			"called with a right-hand input element type that does not match the "
+			"second domain of the given monoid" );
+		NO_CAST_OP_ASSERT( ( !(descr & descriptors::no_casting) ||
+			std::is_same< typename Monoid::D3, OutputType >::value ), "grb::eWiseApply",
+			"called with an output element type that does not match the "
+			"third domain of the given monoid" );
 #ifdef _DEBUG
 		std::cout << "In unmasked eWiseApply ([T1]<-[T2]<-[T3], using monoid)\n";
 #endif
@@ -5449,6 +5517,19 @@ namespace grb {
 			void
 		>::type * const = nullptr
 	) {
+		// static checks
+		NO_CAST_OP_ASSERT( ( !(descr & descriptors::no_casting) ||
+			std::is_same< typename Monoid::D1, InputType1 >::value ), "grb::eWiseApply",
+			"called with a left-hand input element type that does not match the "
+			"first domain of the given monoid" );
+		NO_CAST_OP_ASSERT( ( !(descr & descriptors::no_casting) ||
+			std::is_same< typename Monoid::D2, InputType2 >::value ), "grb::eWiseApply",
+			"called with a right-hand input element type that does not match the "
+			"second domain of the given monoid" );
+		NO_CAST_OP_ASSERT( ( !(descr & descriptors::no_casting) ||
+			std::is_same< typename Monoid::D3, OutputType >::value ), "grb::eWiseApply",
+			"called with an output element type that does not match the "
+			"third domain of the given monoid" );
 #ifdef _DEBUG
 		std::cout << "In unmasked eWiseApply ([T1]<-T2<-[T3], using monoid)\n";
 #endif
@@ -5604,6 +5685,19 @@ namespace grb {
 				grb::is_monoid< Monoid >::value,
 			void >::type * const = nullptr
 	) {
+		// static checks
+		NO_CAST_OP_ASSERT( ( !(descr & descriptors::no_casting) ||
+			std::is_same< typename Monoid::D1, InputType1 >::value ), "grb::eWiseApply",
+			"called with a left-hand input element type that does not match the "
+			"first domain of the given monoid" );
+		NO_CAST_OP_ASSERT( ( !(descr & descriptors::no_casting) ||
+			std::is_same< typename Monoid::D2, InputType2 >::value ), "grb::eWiseApply",
+			"called with a right-hand input element type that does not match the "
+			"second domain of the given monoid" );
+		NO_CAST_OP_ASSERT( ( !(descr & descriptors::no_casting) ||
+			std::is_same< typename Monoid::D3, OutputType >::value ), "grb::eWiseApply",
+			"called with an output element type that does not match the "
+			"third domain of the given monoid" );
 #ifdef _DEBUG
 		std::cout << "In unmasked eWiseApply ([T1]<-[T2]<-T3, using monoid)\n";
 #endif
@@ -5765,6 +5859,22 @@ namespace grb {
 			void
 		>::type * const = nullptr
 	) {
+		// static checks
+		NO_CAST_OP_ASSERT( ( !(descr & descriptors::no_casting) ||
+			std::is_same< typename Monoid::D1, InputType1 >::value ), "grb::eWiseApply",
+			"called with a left-hand input element type that does not match the "
+			"first domain of the given monoid" );
+		NO_CAST_OP_ASSERT( ( !(descr & descriptors::no_casting) ||
+			std::is_same< typename Monoid::D2, InputType2 >::value ), "grb::eWiseApply",
+			"called with a right-hand input element type that does not match the "
+			"second domain of the given monoid" );
+		NO_CAST_OP_ASSERT( ( !(descr & descriptors::no_casting) ||
+			std::is_same< typename Monoid::D3, OutputType >::value ), "grb::eWiseApply",
+			"called with an output element type that does not match the "
+			"third domain of the given monoid" );
+		NO_CAST_OP_ASSERT( ( !(descr & descriptors::no_casting) ||
+			std::is_same< bool, MaskType >::value ), "grb::eWiseApply",
+			"called with an output mask element type that is not Boolean " );
 #ifdef _DEBUG
 		std::cout << "In masked eWiseApply ([T1]<-[T2]<-[T3], using monoid)\n";
 #endif
@@ -6020,6 +6130,22 @@ namespace grb {
 				grb::is_monoid< Monoid >::value,
 			void >::type * const = nullptr
 	) {
+		// static checks
+		NO_CAST_OP_ASSERT( ( !(descr & descriptors::no_casting) ||
+			std::is_same< typename Monoid::D1, InputType1 >::value ), "grb::eWiseApply",
+			"called with a left-hand input element type that does not match the "
+			"first domain of the given monoid" );
+		NO_CAST_OP_ASSERT( ( !(descr & descriptors::no_casting) ||
+			std::is_same< typename Monoid::D2, InputType2 >::value ), "grb::eWiseApply",
+			"called with a right-hand input element type that does not match the "
+			"second domain of the given monoid" );
+		NO_CAST_OP_ASSERT( ( !(descr & descriptors::no_casting) ||
+			std::is_same< typename Monoid::D3, OutputType >::value ), "grb::eWiseApply",
+			"called with an output element type that does not match the "
+			"third domain of the given monoid" );
+		NO_CAST_OP_ASSERT( ( !(descr & descriptors::no_casting) ||
+			std::is_same< bool, MaskType >::value ), "grb::eWiseApply",
+			"called with an output mask element type that is not Boolean " );
 #ifdef _DEBUG
 		std::cout << "In masked eWiseApply ([T1]<-T2<-[T3], using monoid)\n";
 #endif
@@ -6203,6 +6329,22 @@ namespace grb {
 			void
 		>::type * const = nullptr
 	) {
+		// static checks
+		NO_CAST_OP_ASSERT( ( !(descr & descriptors::no_casting) ||
+			std::is_same< typename Monoid::D1, InputType1 >::value ), "grb::eWiseApply",
+			"called with a left-hand input element type that does not match the "
+			"first domain of the given monoid" );
+		NO_CAST_OP_ASSERT( ( !(descr & descriptors::no_casting) ||
+			std::is_same< typename Monoid::D2, InputType2 >::value ), "grb::eWiseApply",
+			"called with a right-hand input element type that does not match the "
+			"second domain of the given monoid" );
+		NO_CAST_OP_ASSERT( ( !(descr & descriptors::no_casting) ||
+			std::is_same< typename Monoid::D3, OutputType >::value ), "grb::eWiseApply",
+			"called with an output element type that does not match the "
+			"third domain of the given monoid" );
+		NO_CAST_OP_ASSERT( ( !(descr & descriptors::no_casting) ||
+			std::is_same< bool, MaskType >::value ), "grb::eWiseApply",
+			"called with an output mask element type that is not Boolean " );
 #ifdef _DEBUG
 		std::cout << "In masked eWiseApply ([T1]<-[T2]<-T3, using monoid)\n";
 #endif
@@ -6382,6 +6524,19 @@ namespace grb {
 			void
 		>::type * const = nullptr
 	) {
+		// static checks
+		NO_CAST_OP_ASSERT( ( !(descr & descriptors::no_casting) ||
+			std::is_same< typename OP::D1, InputType1 >::value ), "grb::eWiseApply",
+			"called with a left-hand input element type that does not match the "
+			"first domain of the given operator" );
+		NO_CAST_OP_ASSERT( ( !(descr & descriptors::no_casting) ||
+			std::is_same< typename OP::D2, InputType2 >::value ), "grb::eWiseApply",
+			"called with a right-hand input element type that does not match the "
+			"second domain of the given operator" );
+		NO_CAST_OP_ASSERT( ( !(descr & descriptors::no_casting) ||
+			std::is_same< typename OP::D3, OutputType >::value ), "grb::eWiseApply",
+			"called with an output element type that does not match the "
+			"third domain of the given operator" );
 #ifdef _DEBUG
 		std::cout << "In eWiseApply ([T1]<-T2<-[T3]), operator variant\n";
 #endif
@@ -6559,6 +6714,22 @@ namespace grb {
 			void
 		>::type * const = nullptr
 	) {
+		// static checks
+		NO_CAST_OP_ASSERT( ( !(descr & descriptors::no_casting) ||
+			std::is_same< typename OP::D1, InputType1 >::value ), "grb::eWiseApply",
+			"called with a left-hand input element type that does not match the "
+			"first domain of the given operator" );
+		NO_CAST_OP_ASSERT( ( !(descr & descriptors::no_casting) ||
+			std::is_same< typename OP::D2, InputType2 >::value ), "grb::eWiseApply",
+			"called with a right-hand input element type that does not match the "
+			"second domain of the given operator" );
+		NO_CAST_OP_ASSERT( ( !(descr & descriptors::no_casting) ||
+			std::is_same< typename OP::D3, OutputType >::value ), "grb::eWiseApply",
+			"called with an output element type that does not match the "
+			"third domain of the given operator" );
+		NO_CAST_OP_ASSERT( ( !(descr & descriptors::no_casting) ||
+			std::is_same< bool, MaskType >::value ), "grb::eWiseApply",
+			"called with an output mask element type that is not Boolean " );
 #ifdef _DEBUG
 		std::cout << "In masked eWiseApply ([T1]<-T2<-[T3], operator variant)\n";
 #endif
@@ -6752,6 +6923,19 @@ namespace grb {
 			void
 		>::type * const = nullptr
 	) {
+		// static checks
+		NO_CAST_OP_ASSERT( ( !(descr & descriptors::no_casting) ||
+			std::is_same< typename OP::D1, InputType1 >::value ), "grb::eWiseApply",
+			"called with a left-hand input element type that does not match the "
+			"first domain of the given operator" );
+		NO_CAST_OP_ASSERT( ( !(descr & descriptors::no_casting) ||
+			std::is_same< typename OP::D2, InputType2 >::value ), "grb::eWiseApply",
+			"called with a right-hand input element type that does not match the "
+			"second domain of the given operator" );
+		NO_CAST_OP_ASSERT( ( !(descr & descriptors::no_casting) ||
+			std::is_same< typename OP::D3, OutputType >::value ), "grb::eWiseApply",
+			"called with an output element type that does not match the "
+			"third domain of the given operator" );
 #ifdef _DEBUG
 		std::cout << "In eWiseApply ([T1]<-[T2]<-[T3]), operator variant\n";
 #endif
@@ -6955,6 +7139,22 @@ namespace grb {
 			void
 		>::type * const = nullptr
 	) {
+		// static checks
+		NO_CAST_OP_ASSERT( ( !(descr & descriptors::no_casting) ||
+			std::is_same< typename OP::D1, InputType1 >::value ), "grb::eWiseApply",
+			"called with a left-hand input element type that does not match the "
+			"first domain of the given operator" );
+		NO_CAST_OP_ASSERT( ( !(descr & descriptors::no_casting) ||
+			std::is_same< typename OP::D2, InputType2 >::value ), "grb::eWiseApply",
+			"called with a right-hand input element type that does not match the "
+			"second domain of the given operator" );
+		NO_CAST_OP_ASSERT( ( !(descr & descriptors::no_casting) ||
+			std::is_same< typename OP::D3, OutputType >::value ), "grb::eWiseApply",
+			"called with an output element type that does not match the "
+			"third domain of the given operator" );
+		NO_CAST_OP_ASSERT( ( !(descr & descriptors::no_casting) ||
+			std::is_same< bool, MaskType >::value ), "grb::eWiseApply",
+			"called with an output mask element type that is not Boolean " );
 #ifdef _DEBUG
 		std::cout << "In masked eWiseApply ([T1]<-[T2]<-[T3], using operator)\n";
 #endif
