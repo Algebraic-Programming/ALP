@@ -15,7 +15,11 @@
  * limitations under the License.
  */
 
-/*
+/**
+ * @file
+ *
+ * Provides the level-1 primitives for the reference backend
+ *
  * @author A. N. Yzelman
  * @date 5th of December 2016
  */
@@ -4085,6 +4089,63 @@ namespace grb {
 	}
 
 	/**
+	 * Computes \f$ z = \alpha \odot \beta \f$, out of place, masked operator
+	 * version.
+	 *
+	 * \todo Performance semantics
+	 */
+	template<
+		Descriptor descr = descriptors::no_operation,
+		class OP,
+		typename OutputType, typename MaskType,
+		typename InputType1, typename InputType2,
+		typename Coords
+	>
+	RC eWiseApply(
+		Vector< OutputType, reference, Coords > &z,
+		const Vector< MaskType, reference, Coords > &mask,
+		const InputType1 alpha,
+		const InputType2 beta,
+		const OP &op = OP(),
+		const Phase &phase = EXECUTE,
+		const typename std::enable_if<
+			!grb::is_object< OutputType >::value &&
+			!grb::is_object< InputType1 >::value &&
+			!grb::is_object< InputType2 >::value &&
+			grb::is_operator< OP >::value, void
+		>::type * const = nullptr
+	) {
+#ifdef _DEBUG
+		std::cout << "In masked eWiseApply ([T1]<-T2<-T3), operator variant\n";
+#endif
+		// check trivial dispatch
+		if( size( mask ) == 0 ) {
+			return eWiseApply< descr >( z, alpha, beta, op, phase );
+		}
+
+		// dynamic checks
+		if( size( mask ) != size( z ) ) {
+			return MISMATCH;
+		}
+		if( (descr & descriptors::dense) &&
+			( nnz( z ) < size( z ) || nnz( mask ) < size( mask ) )
+		) {
+			return ILLEGAL;
+		}
+
+		// check trivial dispatch
+		if( phase == RESIZE ) {
+			return SUCCESS;
+		}
+		assert( phase == EXECUTE );
+
+		typename OP::D3 val;
+		RC ret = apply< descr >( val, alpha, beta, op );
+		ret = ret ? ret : set< descr >( z, mask, val );
+		return ret;
+	}
+
+	/**
 	 * Computes \f$ z = \alpha \odot \beta \f$, out of place, monoid version.
 	 *
 	 * \todo Add performance semantics
@@ -4113,6 +4174,40 @@ namespace grb {
 #endif
 		// simply delegate to operator variant
 		return eWiseApply< descr >( z, alpha, beta, monoid.getOperator(), phase );
+	}
+
+	/**
+	 * Computes \f$ z = \alpha \odot \beta \f$, out of place, monoid version.
+	 *
+	 * \todo Add performance semantics
+	 */
+	template<
+		Descriptor descr = descriptors::no_operation,
+		class Monoid,
+		typename OutputType, typename MaskType,
+		typename InputType1, typename InputType2,
+		typename Coords
+	>
+	RC eWiseApply(
+		Vector< OutputType, reference, Coords > &z,
+		const Vector< MaskType, reference, Coords > &mask,
+		const InputType1 alpha,
+		const InputType2 beta,
+		const Monoid &monoid = Monoid(),
+		const Phase &phase = EXECUTE,
+		const typename std::enable_if<
+			!grb::is_object< OutputType >::value &&
+			!grb::is_object< InputType1 >::value &&
+			!grb::is_object< InputType2 >::value &&
+			grb::is_monoid< Monoid >::value, void
+		>::type * const = nullptr
+	) {
+#ifdef _DEBUG
+		std::cout << "In masked eWiseApply ([T1]<-T2<-T3), monoid variant\n";
+#endif
+		// simply delegate to operator variant
+		return eWiseApply< descr >( z, mask, alpha, beta, monoid.getOperator(),
+			phase );
 	}
 
 	/**
