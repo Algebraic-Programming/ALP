@@ -232,6 +232,90 @@ namespace grb {
 	}
 
 	/**
+	 * Computes \f$ z = \alpha \odot \beta \f$, out of place, operator and masked
+	 * version.
+	 *
+	 * @tparam descr      The descriptor to be used. Equal to
+	 *                    descriptors::no_operation if left unspecified.
+	 * @tparam OP         The operator to use.
+	 * @tparam InputType1 The value type of the left-hand vector.
+	 * @tparam InputType2 The value type of the right-hand scalar.
+	 * @tparam OutputType The value type of the ouput vector.
+	 * @tparam MaskType   The value type of the output mask vector.
+	 *
+	 * @param[out]  z   The output vector.
+	 * @param[in]  mask The ouptut mask.
+	 * @param[in] alpha The left-hand input scalar.
+	 * @param[in]  beta The right-hand input scalar.
+	 * @param[in]   op  The operator \f$ \odot \f$.
+	 * @param[in] phase  The #grb::Phase the call should execute. Optional; the
+	 *                   default parameter is #grb::EXECUTE.
+	 *
+	 * Specialisation scalar inputs, operator version. A call to this function
+	 * (with #grb::EXECUTE for \a phase) is equivalent to the following code:
+	 *
+	 * \code
+	 * typename OP::D3 tmp;
+	 * grb::apply( tmp, x, y, op );
+	 * grb::set( z, tmp );
+	 * \endcode
+	 *
+	 * @return #grb::SUCCESS  On successful completion of this call.
+	 * @return #grb::FAILED   If \a phase is #grb::EXECUTE, indicates that the
+	 *                        capacity of \a z was insufficient. The output vector
+	 *                        \a z is cleared, and the call to this function has no
+	 *                        further effects.
+	 * @return #grb::OUTOFMEM If \a phase is #grb::RESIZE, indicates an
+	 *                        out-of-memory exception. The call to this function
+	 *                        shall have no other effects beyond returning this
+	 *                        error code; the previous state of \a z is retained.
+	 * @return #grb::PANIC    A general unmitigable error has been encountered. If
+	 *                        returned, ALP enters an undefined state and the user
+	 *                        program is encouraged to exit as quickly as possible.
+	 *
+	 * \par Performance semantics
+	 * Each backend must define performance semantics for this primitive.
+	 *
+	 * @see perfSemantics
+	 */
+	template<
+		Descriptor descr = descriptors::no_operation,
+		class OP, enum Backend backend,
+		typename OutputType, typename MaskType,
+		typename InputType1, typename InputType2,
+		typename Coords
+	>
+	RC eWiseApply(
+		Vector< OutputType, backend, Coords > &z,
+		const Vector< MaskType, backend, Coords > &mask,
+		const InputType1 alpha,
+		const InputType2 beta,
+		const OP &op = OP(),
+		const Phase &phase = EXECUTE,
+		const typename std::enable_if<
+			!grb::is_object< OutputType >::value &&
+			!grb::is_object< InputType1 >::value &&
+			!grb::is_object< InputType2 >::value &&
+			grb::is_operator< OP >::value, void
+		>::type * const = nullptr
+	) {
+#ifdef _DEBUG
+		std::cout << "In masked eWiseApply ([T1]<-T2<-T3), operator, base\n";
+#endif
+#ifndef NDEBUG
+		const bool should_not_call_eWiseApplyOpAMSS_base = false;
+		assert( should_not_call_eWiseApplyOpAMSS_base );
+#endif
+		(void) z;
+		(void) mask;
+		(void) alpha;
+		(void) beta;
+		(void) op;
+		(void) phase;
+		return UNSUPPORTED;
+	}
+
+	/**
 	 * Computes \f$ z = \alpha \odot \beta \f$, out of place, monoid version.
 	 *
 	 * @tparam descr      The descriptor to be used. Equal to
@@ -302,6 +386,90 @@ namespace grb {
 		assert( should_not_call_eWiseApplyMonASS_base );
 #endif
 		(void) z;
+		(void) alpha;
+		(void) beta;
+		(void) monoid;
+		(void) phase;
+		return UNSUPPORTED;
+	}
+
+	/**
+	 * Computes \f$ z = \alpha \odot \beta \f$, out of place, masked monoid
+	 * version.
+	 *
+	 * @tparam descr      The descriptor to be used. Equal to
+	 *                    descriptors::no_operation if left unspecified.
+	 * @tparam Monoid     The monoid to use.
+	 * @tparam InputType1 The value type of the left-hand vector.
+	 * @tparam InputType2 The value type of the right-hand scalar.
+	 * @tparam OutputType The value type of the ouput vector.
+	 * @tparam MaskType   The value type of the output mask vector.
+	 *
+	 * @param[out]  z    The output vector.
+	 * @param[in]  mask  The output mask.
+	 * @param[in]  alpha The left-hand input scalar.
+	 * @param[in]  beta  The right-hand input scalar.
+	 * @param[in] monoid The monoid with underlying operator \f$ \odot \f$.
+	 * @param[in] phase  The #grb::Phase the call should execute. Optional; the
+	 *                   default parameter is #grb::EXECUTE.
+	 *
+	 * Specialisation scalar inputs, monoid version. A call to this function
+	 * (with #grb::EXECUTE for \a phase) is equivalent to the following code:
+	 *
+	 * \code
+	 * typename OP::D3 tmp;
+	 * grb::apply( tmp, x, y, monoid.getOperator() );
+	 * grb::set( z, tmp );
+	 * \endcode
+	 *
+	 * @return #grb::SUCCESS  On successful completion of this call.
+	 * @return #grb::FAILED   If \a phase is #grb::EXECUTE, indicates that the
+	 *                        capacity of \a z was insufficient. The output vector
+	 *                        \a z is cleared, and the call to this function has no
+	 *                        further effects.
+	 * @return #grb::OUTOFMEM If \a phase is #grb::RESIZE, indicates an
+	 *                        out-of-memory exception. The call to this function
+	 *                        shall have no other effects beyond returning this
+	 *                        error code; the previous state of \a z is retained.
+	 * @return #grb::PANIC    A general unmitigable error has been encountered. If
+	 *                        returned, ALP enters an undefined state and the user
+	 *                        program is encouraged to exit as quickly as possible.
+	 *
+	 * \par Performance semantics
+	 * Each backend must define performance semantics for this primitive.
+	 *
+	 * @see perfSemantics
+	 */
+	template<
+		Descriptor descr = descriptors::no_operation,
+		class Monoid, enum Backend backend,
+		typename OutputType, typename MaskType,
+		typename InputType1, typename InputType2,
+		typename Coords
+	>
+	RC eWiseApply(
+		Vector< OutputType, backend, Coords > &z,
+		const Vector< MaskType, backend, Coords > &mask,
+		const InputType1 alpha,
+		const InputType2 beta,
+		const Monoid &monoid = Monoid(),
+		const Phase &phase = EXECUTE,
+		const typename std::enable_if<
+			!grb::is_object< OutputType >::value &&
+			!grb::is_object< InputType1 >::value &&
+			!grb::is_object< InputType2 >::value &&
+			grb::is_monoid< Monoid >::value, void
+		>::type * const = nullptr
+	) {
+#ifdef _DEBUG
+		std::cout << "In masked eWiseApply ([T1]<-T2<-T3), monoid, base\n";
+#endif
+#ifndef NDEBUG
+		const bool should_not_call_eWiseApplyMonAMSS_base = false;
+		assert( should_not_call_eWiseApplyMonAMSS_base );
+#endif
+		(void) z;
+		(void) mask;
 		(void) alpha;
 		(void) beta;
 		(void) monoid;
