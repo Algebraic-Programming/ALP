@@ -56,22 +56,23 @@ void grb_program( const size_t &n, grb::RC &rc ) {
 	}
 
 	grb::Monoid< grb::operators::add< double >, grb::identities::zero > plusM;
+	unsigned int test = 1;
 
 	// test operator versions first, dense vectors only, without masks
-	// [double] <- [double] <- double (OP, no mask)
-	rc = grb::eWiseApply( out, left, 0.25, plusM.getOperator() );
+	// [double] <- double <- double (OP, no mask)
+	rc = grb::eWiseApply( out, 0.25, 0.25, plusM.getOperator() );
 	assert( rc == grb::SUCCESS );
 	if( rc == grb::SUCCESS ) {
 		if( grb::nnz( out ) != grb::size( out ) ) {
-			std::cerr << "\tunexpected number of nonzeroes ( " << grb::nnz( out ) << " ), "
-				<< "expected " << grb::size( out ) << " ) at subtest 1\n";
+			std::cerr << "\tunexpected number of nonzeroes ( " << grb::nnz( out )
+				<< "), expected " << grb::size( out ) << " ) at subtest " << test << "\n";
 			rc = grb::FAILED;
 		}
 		for( const auto &pair : out ) {
-			if( pair.second != 1.75 ) {
-				std::cerr << "\tunexpected entry ( " << pair.first << ", "
-					<< pair.second << " ); expected ( " << pair.first << ", 1.75 ) "
-					<< "at subtest 1\n";
+			if( pair.second != 0.5 ) {
+				std::cerr << "\tunexpected entry ( " << pair.first << ", " << pair.second
+					<< " ); expected ( " << pair.first << ", 0.5 ) at subtest " << test
+					<< "\n";
 				rc = grb::FAILED;
 			}
 		}
@@ -81,6 +82,32 @@ void grb_program( const size_t &n, grb::RC &rc ) {
 	} else {
 		return;
 	}
+	(void) ++test;
+
+	// [double] <- [double] <- double (OP, no mask)
+	rc = grb::eWiseApply( out, left, 0.25, plusM.getOperator() );
+	assert( rc == grb::SUCCESS );
+	if( rc == grb::SUCCESS ) {
+		if( grb::nnz( out ) != grb::size( out ) ) {
+			std::cerr << "\tunexpected number of nonzeroes ( " << grb::nnz( out ) << " ), "
+				<< "expected " << grb::size( out ) << " ) at subtest " << test << "\n";
+			rc = grb::FAILED;
+		}
+		for( const auto &pair : out ) {
+			if( pair.second != 1.75 ) {
+				std::cerr << "\tunexpected entry ( " << pair.first << ", "
+					<< pair.second << " ); expected ( " << pair.first << ", 1.75 ) "
+					<< "at subtest " << test << "1\n";
+				rc = grb::FAILED;
+			}
+		}
+		if( rc == grb::FAILED ) {
+			return;
+		}
+	} else {
+		return;
+	}
+	(void) ++test;
 
 	// [double] <- double <- [double] (OP, no mask)
 	rc = grb::eWiseApply( out, 0.25, left, plusM.getOperator() );
@@ -88,13 +115,14 @@ void grb_program( const size_t &n, grb::RC &rc ) {
 	if( rc == grb::SUCCESS ) {
 		if( grb::nnz( out ) != grb::size( out ) ) {
 			std::cerr << "\tunexpected number of nonzeroes ( " << grb::nnz( out ) << ", "
-				<< "expected " << grb::size( out ) << " ) at subtest 2\n";
+				<< "expected " << grb::size( out ) << " ) at subtest " << test << "\n";
 			rc = grb::FAILED;
 		}
 		for( const auto pair : out ) {
 			if( pair.second != 1.75 ) {
 				std::cerr << "\tunexpected entry ( " << pair.first << ", " << pair.second
-					<< "; expected ( " << pair.first << ", 1.75 ) at subtest 2\n";
+					<< "; expected ( " << pair.first << ", 1.75 ) at subtest " << test
+					<< "\n";
 				rc = grb::FAILED;
 			}
 		}
@@ -104,6 +132,7 @@ void grb_program( const size_t &n, grb::RC &rc ) {
 	} else {
 		return;
 	}
+	(void) ++test;
 
 	// [double] <- [double] <- [double] (OP, no mask)
 	rc = grb::eWiseApply( out, left, left, plusM.getOperator() );
@@ -111,13 +140,14 @@ void grb_program( const size_t &n, grb::RC &rc ) {
 	if( rc == grb::SUCCESS ) {
 		if( grb::nnz( out ) != grb::size( out ) ) {
 			std::cerr << "\tunexpected number of nonzeroes ( " << grb::nnz( out ) << ", "
-				<< "expected " << grb::size( out ) << " ) at subtest 3\n";
+				<< "expected " << grb::size( out ) << " ) at subtest " << test << "\n";
 			rc = grb::FAILED;
 		}
 		for( const auto &pair : out ) {
 			if( pair.second != static_cast< double >( 3 ) ) {
 				std::cerr << "\tunexpected entry ( " << pair.first << ", " << pair.second
-					<< "; expected ( " << pair.first << ", 3 ) at subtest 3\n";
+					<< "; expected ( " << pair.first << ", 3 ) at subtest " << test
+					<< "\n";
 				rc = grb::FAILED;
 			}
 		}
@@ -127,28 +157,61 @@ void grb_program( const size_t &n, grb::RC &rc ) {
 	} else {
 		return;
 	}
+	(void) ++test;
 
 	// operator versions, dense vectors only, with masks
+	// [double] <- double <- double (OP, masked)
+	rc = grb::eWiseApply( out, mask, 0.25, 0.25, plusM.getOperator() );
+	assert( rc == grb::SUCCESS );
+	if( rc == grb::SUCCESS ) {
+		if( grb::nnz( out ) != grb::nnz( mask ) ) {
+			std::cerr << "\tunexpected number of nonzeroes ( " << grb::nnz( out )
+				<< " != " << grb::nnz( mask ) << " ) at subtest " << test << "\n";
+			rc = grb::FAILED;
+		}
+		for( const auto &pair : out ) {
+			if( pair.first < n / 2 ) {
+				if( pair.second != 0.5 ) {
+					std::cerr << "\tunexpected entry ( " << pair.first << ", " << pair.second
+						<< " ); expected ( " << pair.first << ", 0.5 ) at subtest " << test
+						<< "\n";
+					rc = grb::FAILED;
+				}
+			} else {
+				std::cerr << "\tunexpected entry ( " << pair.first << ", " << pair.second
+					<< " ); expected no entry at this position at subtest " << test << "\n";
+				rc = grb::FAILED;
+			}
+			if( rc == grb::FAILED ) {
+				return;
+			}
+		}
+	} else {
+		return;
+	}
+	(void) ++test;
+
 	// [double] <- [double] <- double (OP, masked)
 	rc = grb::eWiseApply( out, mask, left, 0.25, plusM.getOperator() );
 	assert( rc == grb::SUCCESS );
 	if( rc == grb::SUCCESS ) {
 		if( grb::nnz( out ) != grb::nnz( mask ) ) {
 			std::cerr << "\tunexpected number of nonzeroes ( " << grb::nnz( out )
-				<< " != " << grb::nnz( mask ) << " ) at subtest 4\n";
+				<< " != " << grb::nnz( mask ) << " ) at subtest " << test << "\n";
 			rc = grb::FAILED;
 		}
 		for( const auto &pair : out ) {
 			if( pair.first < n / 2 ) {
 				if( pair.second != 1.75 ) {
 					std::cerr << "\tunexpected entry ( " << pair.first << ", " << pair.second
-						<< " ); expected ( " << pair.first << ", 1.75 ) at subtest 4\n";
+						<< " ); expected ( " << pair.first << ", 1.75 ) at subtest " << test
+						<< "\n";
 					rc = grb::FAILED;
 					return;
 				}
 			} else {
 				std::cerr << "\tunexpected entry ( " << pair.first << ", " << pair.second
-					<< " ); expected this index to be empty) at subtest 4\n";
+					<< " ); expected no entry at this index at subtest " << test << "\n";
 				rc = grb::FAILED;
 			}
 		}
@@ -158,6 +221,7 @@ void grb_program( const size_t &n, grb::RC &rc ) {
 	} else {
 		return;
 	}
+	(void) ++test;
 
 	// [double] <- double <- [double] (OP, masked)
 	rc = grb::eWiseApply( out, mask, 0.25, left, plusM.getOperator() );
@@ -165,19 +229,20 @@ void grb_program( const size_t &n, grb::RC &rc ) {
 	if( rc == grb::SUCCESS ) {
 		if( grb::nnz( out ) != grb::nnz( mask ) ) {
 			std::cerr << "\tunexpected number of nonzeroes ( " << grb::nnz( out )
-				<< " != " << grb::nnz( mask ) << " ) at subtest 5\n";
+				<< " != " << grb::nnz( mask ) << " ) at subtest " << test << "\n";
 			rc = grb::FAILED;
 		}
 		for( const auto &pair : out ) {
 			if( pair.first < n / 2 ) {
 				if( pair.second != 1.75 ) {
 					std::cerr << "\tunexpected entry ( " << pair.first << ", " << pair.second
-						<< "; expected ( " << pair.first << ", 1.75 ) at subtest 5\n";
+						<< "; expected ( " << pair.first << ", 1.75 ) at subtest " << test
+						<< "\n";
 					rc = grb::FAILED;
 				}
 			} else {
 				std::cerr << "\tunexpected entry ( " << pair.first << ", " << pair.second
-					<< "; expected this index to be empty) at subtest 5\n";
+					<< "; expected this index to be empty) at subtest " << test << "\n";
 				rc = grb::FAILED;
 			}
 		}
@@ -187,6 +252,7 @@ void grb_program( const size_t &n, grb::RC &rc ) {
 	} else {
 		return;
 	}
+	(void) ++test;
 
 	// [double] <- [double] <- [double] (OP, masked)
 	rc = grb::eWiseApply( out, mask, left, left, plusM.getOperator() );
@@ -194,19 +260,20 @@ void grb_program( const size_t &n, grb::RC &rc ) {
 	if( rc == grb::SUCCESS ) {
 		if( grb::nnz( out ) != grb::nnz( mask ) ) {
 			std::cerr << "\tunexpected number of nonzeroes ( " << grb::nnz( out )
-				<< " != " << grb::nnz( mask ) << " ) at subtest 6\n";
+				<< " != " << grb::nnz( mask ) << " ) at subtest " << test << "\n";
 			rc = grb::FAILED;
 		}
 		for( const auto &pair : out ) {
 			if( pair.first < n / 2 ) {
 				if( pair.second != static_cast< double >( 3 ) ) {
 					std::cerr << "\tunexpected entry ( " << pair.first << ", " << pair.second
-						<< "; expected ( " << pair.first << ", 3 ) at subtest 6\n";
+						<< "; expected ( " << pair.first << ", 3 ) at subtest " << test
+						<< "\n";
 					rc = grb::FAILED;
 				}
 			} else {
 				std::cerr << "\tunexpected entry ( " << pair.first << ", " << pair.second
-					<< "; expected this index to be empty) at subtest 6\n";
+					<< "; expected this index to be empty) at subtest " << test << "\n";
 				rc = grb::FAILED;
 			}
 		}
@@ -216,21 +283,48 @@ void grb_program( const size_t &n, grb::RC &rc ) {
 	} else {
 		return;
 	}
+	(void) ++test;
 
 	// monoid version, dense vectors, unmasked
+	// [double] <- double <- double (Monoid, no mask)
+	rc = grb::eWiseApply( out, 0.25, 0.25, plusM );
+	assert( rc == grb::SUCCESS );
+	if( rc == grb::SUCCESS ) {
+		if( grb::nnz( out ) != grb::size( out ) ) {
+			std::cerr << "\tunexpected number of nonzeroes ( " << grb::nnz( out ) << ", "
+				<< "expected " << grb::size( out ) << " ) at subtest " << test << "\n";
+			rc = grb::FAILED;
+		}
+		for( const auto &pair : out ) {
+			if( pair.second != 0.5 ) {
+				std::cerr << "\tunexpected entry ( " << pair.first << ", " << pair.second
+					<< " ); expected ( " << pair.first << ", 0.5 ) at subtest " << test
+					<< "\n";
+				rc = grb::FAILED;
+			}
+		}
+		if( rc == grb::FAILED ) {
+			return;
+		}
+	} else {
+		return;
+	}
+	(void) ++test;
+
 	// [double] <- [double] <- double (Monoid, no mask)
 	rc = grb::eWiseApply( out, left, 0.25, plusM );
 	assert( rc == grb::SUCCESS );
 	if( rc == grb::SUCCESS ) {
 		if( grb::nnz( out ) != grb::size( out ) ) {
 			std::cerr << "\tunexpected number of nonzeroes ( " << grb::nnz( out ) << ", "
-				<< "expected " << grb::size( out ) << " ) at subtest 7\n";
+				<< "expected " << grb::size( out ) << " ) at subtest " << test << "\n";
 			rc = grb::FAILED;
 		}
 		for( const auto &pair : out ) {
 			if( pair.second != 1.75 ) {
 				std::cerr << "\tunexpected entry ( " << pair.first << ", " << pair.second
-					<< "; expected ( " << pair.first << ", 1.75 ) at subtest 7\n";
+					<< "; expected ( " << pair.first << ", 1.75 ) at subtest " << test
+					<< "\n";
 				rc = grb::FAILED;
 			}
 		}
@@ -240,6 +334,7 @@ void grb_program( const size_t &n, grb::RC &rc ) {
 	} else {
 		return;
 	}
+	(void) ++test;
 
 	// [double] <- double <- [double] (Monoid, no mask)
 	rc = grb::eWiseApply( out, 0.25, left, plusM );
@@ -247,13 +342,14 @@ void grb_program( const size_t &n, grb::RC &rc ) {
 	if( rc == grb::SUCCESS ) {
 		if( grb::nnz( out ) != grb::size( out ) ) {
 			std::cerr << "\tunexpected number of nonzeroes ( " << grb::nnz( out ) << ", "
-				<< "expected " << grb::size( out ) << " ) at subtest 8\n";
+				<< "expected " << grb::size( out ) << " ) at subtest " << test << "\n";
 			rc = grb::FAILED;
 		}
 		for( const auto &pair : out ) {
 			if( pair.second != 1.75 ) {
 				std::cerr << "\tunexpected entry ( " << pair.first << ", " << pair.second
-					<< "; expected ( " << pair.first << ", 1.75 ) at subtest 8\n";
+					<< "; expected ( " << pair.first << ", 1.75 ) at subtest " << test
+					<< "\n";
 				rc = grb::FAILED;
 			}
 		}
@@ -263,6 +359,7 @@ void grb_program( const size_t &n, grb::RC &rc ) {
 	} else {
 		return;
 	}
+	(void) ++test;
 
 	// [double] <- [double] <- [double] (Monoid, no mask)
 	rc = grb::eWiseApply( out, left, left, plusM );
@@ -270,13 +367,13 @@ void grb_program( const size_t &n, grb::RC &rc ) {
 	if( rc == grb::SUCCESS ) {
 		if( grb::nnz( out ) != grb::size( out ) ) {
 			std::cerr << "\tunexpected number of nonzeroes ( " << grb::nnz( out )
-				<< ", expected " << grb::size( out ) << " ) at subtest 9\n";
+				<< ", expected " << grb::size( out ) << " ) at subtest " << test << "\n";
 			rc = grb::FAILED;
 		}
 		for( const auto &pair : out ) {
 			if( pair.second != static_cast< double >( 3 ) ) {
 				std::cerr << "\tunexpected entry ( " << pair.first << ", " << pair.second
-					<< "; expected ( " << pair.first << ", 3 ) at subtest 9\n";
+					<< "; expected ( " << pair.first << ", 3 ) at subtest " << test << "\n";
 				rc = grb::FAILED;
 			}
 		}
@@ -286,10 +383,11 @@ void grb_program( const size_t &n, grb::RC &rc ) {
 	} else {
 		return;
 	}
+	(void) ++test;
 
 	// monoid versions, dense vectors, with masks
-	// [double] <- [double] <- double (Monoid, masked)
-	rc = grb::eWiseApply( out, mask, left, 0.25, plusM );
+	// [double] <- double <- double (Monoid, masked)
+	rc = grb::eWiseApply( out, mask, 0.25, 0.25, plusM );
 	assert( rc == grb::SUCCESS );
 	if( rc == grb::SUCCESS ) {
 		if( grb::nnz( out ) != grb::nnz( mask ) ) {
@@ -299,14 +397,14 @@ void grb_program( const size_t &n, grb::RC &rc ) {
 		}
 		for( const auto &pair : out ) {
 			if( pair.first < n / 2 ) {
-				if( pair.second != 1.75 ) {
+				if( pair.second != .5 ) {
 					std::cerr << "\tunexpected entry ( " << pair.first << ", " << pair.second
-						<< "; expected ( " << pair.first << ", 1.75 ) at subtest 10\n";
+						<< "; expected ( " << pair.first << ", 0.5 ) at subtest " << test << "\n";
 					rc = grb::FAILED;
 				}
 			} else {
 				std::cerr << "\tunexpected entry ( " << pair.first << ", " << pair.second
-					<< "; expected this index to be empty) at subtest 10\n";
+					<< "; expected this index to be empty) at subtest " << test << "\n";
 				rc = grb::FAILED;
 			}
 		}
@@ -316,6 +414,38 @@ void grb_program( const size_t &n, grb::RC &rc ) {
 	} else {
 		return;
 	}
+	(void) ++test;
+
+	// [double] <- [double] <- double (Monoid, masked)
+	rc = grb::eWiseApply( out, mask, left, 0.25, plusM );
+	assert( rc == grb::SUCCESS );
+	if( rc == grb::SUCCESS ) {
+		if( grb::nnz( out ) != grb::nnz( mask ) ) {
+			std::cerr << "\tunexpected number of nonzeroes ( " << grb::nnz( out )
+				<< " != " << grb::nnz( mask ) << " ) at subtest " << test << "\n";
+			rc = grb::FAILED;
+		}
+		for( const auto &pair : out ) {
+			if( pair.first < n / 2 ) {
+				if( pair.second != 1.75 ) {
+					std::cerr << "\tunexpected entry ( " << pair.first << ", " << pair.second
+						<< "; expected ( " << pair.first << ", 1.75 ) at subtest " << test
+						<< "\n";
+					rc = grb::FAILED;
+				}
+			} else {
+				std::cerr << "\tunexpected entry ( " << pair.first << ", " << pair.second
+					<< "; expected this index to be empty) at subtest " << test << "\n";
+				rc = grb::FAILED;
+			}
+		}
+		if( rc == grb::FAILED ) {
+			return;
+		}
+	} else {
+		return;
+	}
+	(void) ++test;
 
 	// [double] <- double <- [double] (Monoid, masked)
 	rc = grb::eWiseApply( out, mask, 0.25, left, plusM );
@@ -323,19 +453,20 @@ void grb_program( const size_t &n, grb::RC &rc ) {
 	if( rc == grb::SUCCESS ) {
 		if( grb::nnz( out ) != grb::nnz( mask ) ) {
 			std::cerr << "\tunexpected number of nonzeroes ( " << grb::nnz( out )
-				<< " != " << grb::nnz( mask ) << " ) at subtest 11\n";
+				<< " != " << grb::nnz( mask ) << " ) at subtest " << test << "\n";
 			rc = grb::FAILED;
 		}
 		for( const auto &pair : out ) {
 			if( pair.first < n / 2 ) {
 				if( pair.second != 1.75 ) {
 					std::cerr << "\tunexpected entry ( " << pair.first << ", " << pair.second
-						<< "; expected ( " << pair.first << ", 1.75 ) at subtest 11\n";
+						<< "; expected ( " << pair.first << ", 1.75 ) at subtest " << test
+						<< "11\n";
 					rc = grb::FAILED;
 				}
 			} else {
 				std::cerr << "\tunexpected entry ( " << pair.first << ", " << pair.second
-					<< "; expected this index to be empty) at subtest 11\n";
+					<< "; expected this index to be empty) at subtest " << test << "\n";
 				rc = grb::FAILED;
 			}
 		}
@@ -345,6 +476,7 @@ void grb_program( const size_t &n, grb::RC &rc ) {
 	} else {
 		return;
 	}
+	(void) ++test;
 
 	// [double] <- [double] <- [double] (Monoid, masked)
 	rc = grb::eWiseApply( out, mask, left, left, plusM );
@@ -352,19 +484,20 @@ void grb_program( const size_t &n, grb::RC &rc ) {
 	if( rc == grb::SUCCESS ) {
 		if( grb::nnz( out ) != grb::nnz( mask ) ) {
 			std::cerr << "\tunexpected number of nonzeroes ( " << grb::nnz( out )
-				<< " != " << grb::nnz( mask ) << " ) at subtest 12\n";
+				<< " != " << grb::nnz( mask ) << " ) at subtest " << test << "\n";
 			rc = grb::FAILED;
 		}
 		for( const auto &pair : out ) {
 			if( pair.first < n / 2 ) {
 				if( pair.second != static_cast< double >( 3 ) ) {
 					std::cerr << "\tunexpected entry ( " << pair.first << ", " << pair.second
-						<< "; expected ( " << pair.first << ", 3 ) at subtest 12\n";
+						<< "; expected ( " << pair.first << ", 3 ) at subtest " << test
+						<< "\n";
 					rc = grb::FAILED;
 				}
 			} else {
 				std::cerr << "\tunexpected entry ( " << pair.first << ", " << pair.second
-					<< "; expected this index to be empty) at subtest 12\n";
+					<< "; expected this index to be empty) at subtest " << test << "\n";
 				rc = grb::FAILED;
 			}
 		}
@@ -374,6 +507,7 @@ void grb_program( const size_t &n, grb::RC &rc ) {
 	} else {
 		return;
 	}
+	(void) ++test;
 
 	// monoid version, sparse vectors, unmasked
 	// [double] <- [double] <- double (Monoid, no mask)
@@ -382,20 +516,22 @@ void grb_program( const size_t &n, grb::RC &rc ) {
 	if( rc == grb::SUCCESS ) {
 		if( grb::nnz( out ) != grb::size( out ) ) {
 			std::cerr << "\tunexpected number of nonzeroes ( " << grb::nnz( out ) << ", "
-				<< "expected " << grb::size( out ) << " ) at subtest 13\n";
+				<< "expected " << grb::size( out ) << " ) at subtest " << test << "\n";
 			rc = grb::FAILED;
 		}
 		for( const auto &pair : out ) {
 			if( pair.first % 2 == 0 ) {
 				if( pair.second != 0.5 ) {
 					std::cerr << "\tunexpected entry ( " << pair.first << ", " << pair.second
-						<< "; expected ( " << pair.first << ", 0.5 ) at subtest 13\n";
+						<< "; expected ( " << pair.first << ", 0.5 ) at subtest " << test
+						<< "\n";
 					rc = grb::FAILED;
 				}
 			} else {
 				if( pair.second != 0.25 ) {
 					std::cerr << "\tunexpected entry ( " << pair.first << ", " << pair.second
-						<< "; expected ( " << pair.first << ", 0.25 ) at subtest 13\n";
+						<< "; expected ( " << pair.first << ", 0.25 ) at subtest " << test
+						<< "\n";
 					rc = grb::FAILED;
 				}
 			}
@@ -406,6 +542,7 @@ void grb_program( const size_t &n, grb::RC &rc ) {
 	} else {
 		return;
 	}
+	(void) ++test;
 
 	// [double] <- double <- [double] (Monoid, no mask)
 	rc = grb::eWiseApply( out, 0.25, right, plusM );
@@ -413,20 +550,22 @@ void grb_program( const size_t &n, grb::RC &rc ) {
 	if( rc == grb::SUCCESS ) {
 		if( grb::nnz( out ) != grb::size( out ) ) {
 			std::cerr << "\tunexpected number of nonzeroes ( " << grb::nnz( out ) << " ), "
-				<< "expected " << grb::size( out ) << " ) at subtest 14\n";
+				<< "expected " << grb::size( out ) << " ) at subtest " << test << "\n";
 			rc = grb::FAILED;
 		}
 		for( const auto &pair : out ) {
 			if( pair.first % 2 == 0 ) {
 				if( pair.second != 0.5 ) {
 					std::cerr << "\tunexpected entry ( " << pair.first << ", " << pair.second
-						<< " ); expected ( " << pair.first << ", 0.5 ) at subtest 14\n";
+						<< " ); expected ( " << pair.first << ", 0.5 ) at subtest " << test
+						<< "\n";
 					rc = grb::FAILED;
 				}
 			} else {
 				if( pair.second != 0.25 ) {
 					std::cerr << "\tunexpected entry ( " << pair.first << ", " << pair.second
-						<< " ); expected ( " << pair.first << ", 0.25 ) at subtest 14\n";
+						<< " ); expected ( " << pair.first << ", 0.25 ) at subtest " << test
+						<< "\n";
 					rc = grb::FAILED;
 				}
 			}
@@ -437,6 +576,7 @@ void grb_program( const size_t &n, grb::RC &rc ) {
 	} else {
 		return;
 	}
+	(void) ++test;
 
 	// [double] <- [double] <- [double] (Monoid, no mask)
 	rc = grb::eWiseApply( out, left, right, plusM );
@@ -444,20 +584,22 @@ void grb_program( const size_t &n, grb::RC &rc ) {
 	if( rc == grb::SUCCESS ) {
 		if( grb::nnz( out ) != grb::size( out ) ) {
 			std::cerr << "\tunexpected number of nonzeroes ( " << grb::nnz( out ) << " ), "
-				<< "expected " << grb::size( out ) << " ) at subtest 15\n";
+				<< "expected " << grb::size( out ) << " ) at subtest " << test << "\n";
 			rc = grb::FAILED;
 		}
 		for( const auto pair : out ) {
 			if( pair.first % 2 == 0 ) {
 				if( pair.second != static_cast< double >( 1.75 ) ) {
 					std::cerr << "\tunexpected entry ( " << pair.first << ", " << pair.second
-						<< " ); expected ( " << pair.first << ", 1.75 ) at subtest 15\n";
+						<< " ); expected ( " << pair.first << ", 1.75 ) at subtest " << test
+						<< "\n";
 					rc = grb::FAILED;
 				}
 			} else {
 				if( pair.second != static_cast< double >( 1.5 ) ) {
 					std::cerr << "\tunexpected entry ( " << pair.first << ", " << pair.second
-						<< " ); expected ( " << pair.first << ", 1.5 ) at subtest 15\n";
+						<< " ); expected ( " << pair.first << ", 1.5 ) at subtest " << test
+						<< "\n";
 					rc = grb::FAILED;
 				}
 			}
@@ -468,6 +610,7 @@ void grb_program( const size_t &n, grb::RC &rc ) {
 	} else {
 		return;
 	}
+	(void) ++test;
 
 	// [double] <- [double] <- [double] (Monoid, no mask)
 	rc = grb::eWiseApply( out, right, left, plusM );
@@ -475,20 +618,22 @@ void grb_program( const size_t &n, grb::RC &rc ) {
 	if( rc == grb::SUCCESS ) {
 		if( grb::nnz( out ) != grb::size( right ) ) {
 			std::cerr << "\tunexpected number of nonzeroes ( " << grb::nnz( out ) << ", "
-				<< "expected " << grb::size( right ) << " ) at subtest 16\n";
+				<< "expected " << grb::size( right ) << " ) at subtest " << test << "\n";
 			rc = grb::FAILED;
 		}
 		for( const auto &pair : out ) {
 			if( pair.first % 2 == 0 ) {
 				if( pair.second != static_cast< double >( 1.75 ) ) {
 					std::cerr << "\tunexpected entry ( " << pair.first << ", " << pair.second
-						<< "; expected ( " << pair.first << ", 1.75 ) at subtest 16\n";
+						<< "; expected ( " << pair.first << ", 1.75 ) at subtest " << test
+						<< "\n";
 					rc = grb::FAILED;
 				}
 			} else {
 				if( pair.second != static_cast< double >( 1.5 ) ) {
 					std::cerr << "\tunexpected entry ( " << pair.first << ", " << pair.second
-						<< "; expected ( " << pair.first << ", 1.5 ) at subtest 16\n";
+						<< "; expected ( " << pair.first << ", 1.5 ) at subtest " << test
+						<< "\n";
 					rc = grb::FAILED;
 				}
 			}
@@ -499,6 +644,7 @@ void grb_program( const size_t &n, grb::RC &rc ) {
 	} else {
 		return;
 	}
+	(void) ++test;
 
 	// [double] <- [double] <- [double] (Monoid, no mask)
 	rc = grb::eWiseApply( out, right, right, plusM );
@@ -506,19 +652,19 @@ void grb_program( const size_t &n, grb::RC &rc ) {
 	if( rc == grb::SUCCESS ) {
 		if( grb::nnz( out ) != grb::nnz( right ) ) {
 			std::cerr << "\tunexpected number of nonzeroes ( " << grb::nnz( out ) << ", "
-				<< "expected " << grb::nnz( right ) << " ) at subtest 17\n";
+				<< "expected " << grb::nnz( right ) << " ) at subtest " << test << "\n";
 			rc = grb::FAILED;
 		}
 		for( const auto &pair : out ) {
 			if( pair.first % 2 == 0 ) {
 				if( pair.second != static_cast< double >( .5 ) ) {
 					std::cerr << "\tunexpected entry ( " << pair.first << ", " << pair.second
-						<< "; expected ( " << pair.first << ", 0.5 ) at subtest 17\n";
+						<< "; expected ( " << pair.first << ", 0.5 ) at subtest " << test << "\n";
 					rc = grb::FAILED;
 				}
 			} else {
 				std::cerr << "\tunexpected entry ( " << pair.first << ", " << pair.second
-					<< "; expected nothing at this entry) at subtest 17\n";
+					<< "; expected nothing at this entry) at subtest " << test << "\n";
 				rc = grb::FAILED;
 			}
 		}
@@ -528,6 +674,7 @@ void grb_program( const size_t &n, grb::RC &rc ) {
 	} else {
 		return;
 	}
+	(void) ++test;
 
 	// monoid version, sparse vectors, with masks
 	// [double] <- [double] <- double (Monoid, masked)
@@ -536,7 +683,8 @@ void grb_program( const size_t &n, grb::RC &rc ) {
 	if( rc == grb::SUCCESS ) {
 		if( grb::nnz( out ) != grb::size( out ) / 2 ) {
 			std::cerr << "\tunexpected number of nonzeroes ( " << grb::nnz( out ) << ", "
-			       << "expected " << grb::size( out ) / 2 << " ) at subtest 18\n";
+			       << "expected " << grb::size( out ) / 2 << " ) at subtest " << test
+			       << "\n";
 			rc = grb::FAILED;
 		}
 		for( const auto &pair : out ) {
@@ -544,19 +692,21 @@ void grb_program( const size_t &n, grb::RC &rc ) {
 				if( pair.first % 2 == 0 ) {
 					if( pair.second != 0.5 ) {
 						std::cerr << "\tunexpected entry ( " << pair.first << ", " << pair.second
-							<< "; expected ( " << pair.first << ", 0.5 ) at subtest 18\n";
+							<< "; expected ( " << pair.first << ", 0.5 ) at subtest " << test
+							<< "\n";
 						rc = grb::FAILED;
 					}
 				} else {
 					if( pair.second != 0.25 ) {
 						std::cerr << "\tunexpected entry ( " << pair.first << ", " << pair.second
-							<< "; expected ( " << pair.first << ", 0.25 ) at subtest 18\n";
+							<< "; expected ( " << pair.first << ", 0.25 ) at subtest " << test
+							<< "\n";
 						rc = grb::FAILED;
 					}
 				}
 			} else {
 				std::cerr << "\tunexpected entry ( " << pair.first << ", " << pair.second
-					<< "; expected nothing at this index) at subtest 18\n";
+					<< "; expected nothing at this index) at subtest " << test << "\n";
 				rc = grb::FAILED;
 			}
 		}
@@ -566,6 +716,7 @@ void grb_program( const size_t &n, grb::RC &rc ) {
 	} else {
 		return;
 	}
+	(void) ++test;
 
 	// [double] <- double <- [double] (Monoid, masked)
 	rc = grb::eWiseApply( out, mask, 0.25, right, plusM );
@@ -573,7 +724,7 @@ void grb_program( const size_t &n, grb::RC &rc ) {
 	if( rc == grb::SUCCESS ) {
 		if( grb::nnz( out ) != grb::size( out ) / 2 ) {
 			std::cerr << "\tunexpected number of nonzeroes ( " << grb::nnz( out ) << ", "
-				<< "expected " << grb::size( out ) / 2 << " ) at subtest 19\n";
+				<< "expected " << grb::size( out ) / 2 << " ) at subtest " << test << "\n";
 			rc = grb::FAILED;
 		}
 		for( const auto &pair : out ) {
@@ -581,19 +732,21 @@ void grb_program( const size_t &n, grb::RC &rc ) {
 				if( pair.first % 2 == 0 ) {
 					if( pair.second != 0.5 ) {
 						std::cerr << "\tunexpected entry ( " << pair.first << ", " << pair.second
-							<< "; expected ( " << pair.first << ", 0.5 ) at subtest 19\n";
+							<< "; expected ( " << pair.first << ", 0.5 ) at subtest " << test
+							<< "\n";
 						rc = grb::FAILED;
 					}
 				} else {
 					if( pair.second != 0.25 ) {
 						std::cerr << "\tunexpected entry ( " << pair.first << ", " << pair.second
-							<< "; expected ( " << pair.first << ", 0.25 ) at subtest 19\n";
+							<< "; expected ( " << pair.first << ", 0.25 ) at subtest " << test
+							<< "\n";
 						rc = grb::FAILED;
 					}
 				}
 			} else {
 				std::cerr << "\tunexpected entry ( " << pair.first << ", " << pair.second
-					<< "; expected nothing at this index) at subtest 19\n";
+					<< "; expected nothing at this index) at subtest " << test << "\n";
 				rc = grb::FAILED;
 			}
 		}
@@ -603,6 +756,7 @@ void grb_program( const size_t &n, grb::RC &rc ) {
 	} else {
 		return;
 	}
+	(void) ++test;
 
 	// [double] <- [double] <- [double] (Monoid, masked)
 	rc = grb::eWiseApply( out, mask, left, right, plusM );
@@ -610,7 +764,7 @@ void grb_program( const size_t &n, grb::RC &rc ) {
 	if( rc == grb::SUCCESS ) {
 		if( grb::nnz( out ) != grb::size( out ) / 2 ) {
 			std::cerr << "\tunexpected number of nonzeroes ( " << grb::nnz( out ) << ", "
-				<< "expected " << grb::size( out ) / 2 << " ) at subtest 20\n";
+				<< "expected " << grb::size( out ) / 2 << " ) at subtest " << test << "\n";
 			rc = grb::FAILED;
 		}
 		for( const auto &pair : out ) {
@@ -618,19 +772,21 @@ void grb_program( const size_t &n, grb::RC &rc ) {
 				if( pair.first % 2 == 0 ) {
 					if( pair.second != static_cast< double >( 1.75 ) ) {
 						std::cerr << "\tunexpected entry ( " << pair.first << ", " << pair.second
-							<< "; expected ( " << pair.first << ", 1.75 ) at subtest 20\n";
+							<< "; expected ( " << pair.first << ", 1.75 ) at subtest " << test
+							<< "\n";
 						rc = grb::FAILED;
 					}
 				} else {
 					if( pair.second != static_cast< double >( 1.5 ) ) {
 						std::cerr << "\tunexpected entry ( " << pair.first << ", " << pair.second
-							<< "; expected ( " << pair.first << ", 1.5 ) at subtest 20\n";
+							<< "; expected ( " << pair.first << ", 1.5 ) at subtest " << test
+							<< "\n";
 						rc = grb::FAILED;
 					}
 				}
 			} else {
 				std::cerr << "\tunexpected entry ( " << pair.first << ", " << pair.second
-					<< "; expected nothing at this index) at subtest 20\n";
+					<< "; expected nothing at this index) at subtest " << test << "\n";
 				rc = grb::FAILED;
 			}
 		}
@@ -640,6 +796,7 @@ void grb_program( const size_t &n, grb::RC &rc ) {
 	} else {
 		return;
 	}
+	(void) ++test;
 
 	// [double] <- [double] <- [double] (Monoid, masked)
 	rc = grb::eWiseApply( out, mask, right, left, plusM );
@@ -647,7 +804,7 @@ void grb_program( const size_t &n, grb::RC &rc ) {
 	if( rc == grb::SUCCESS ) {
 		if( grb::nnz( out ) != grb::size( right ) / 2 ) {
 			std::cerr << "\tunexpected number of nonzeroes ( " << grb::nnz( out ) << ", "
-				<< "expected " << grb::size( right ) / 2 << " ) at subtest 21\n";
+				<< "expected " << grb::size( right ) / 2 << " ) at subtest " << test << "\n";
 			rc = grb::FAILED;
 		}
 		for( const auto &pair : out ) {
@@ -655,19 +812,21 @@ void grb_program( const size_t &n, grb::RC &rc ) {
 				if( pair.first % 2 == 0 ) {
 					if( pair.second != static_cast< double >( 1.75 ) ) {
 						std::cerr << "\tunexpected entry ( " << pair.first << ", " << pair.second
-							<< "; expected ( " << pair.first << ", 1.75 ) at subtest 21\n";
+							<< "; expected ( " << pair.first << ", 1.75 ) at subtest " << test
+							<< "\n";
 						rc = grb::FAILED;
 					}
 				} else {
 					if( pair.second != static_cast< double >( 1.5 ) ) {
 						std::cerr << "\tunexpected entry ( " << pair.first << ", " << pair.second
-							<< "; expected ( " << pair.first << ", 1.5 ) at subtest 21\n";
+							<< "; expected ( " << pair.first << ", 1.5 ) at subtest " << test
+							<< "\n";
 						rc = grb::FAILED;
 					}
 				}
 			} else {
 				std::cerr << "\tunexpected entry ( " << pair.first << ", " << pair.second
-					<< "; expected nothing at this index) at subtest 21\n";
+					<< "; expected nothing at this index) at subtest " << test << "\n";
 				rc = grb::FAILED;
 			}
 		}
@@ -677,6 +836,7 @@ void grb_program( const size_t &n, grb::RC &rc ) {
 	} else {
 		return;
 	}
+	(void) ++test;
 
 	// [double] <- [double] <- [double] (Monoid, masked)
 	rc = grb::eWiseApply( out, mask, right, right, plusM );
@@ -686,7 +846,7 @@ void grb_program( const size_t &n, grb::RC &rc ) {
 		const size_t expected = grb::nnz( right ) / 2 + (halfIsOdd ? 1 : 0);
 		if( grb::nnz( out ) != expected ) {
 			std::cerr << "\tunexpected number of nonzeroes ( " << grb::nnz( out ) << ", "
-				<< "expected " << expected << " ) at subtest 22\n";
+				<< "expected " << expected << " ) at subtest " << test << "\n";
 			rc = grb::FAILED;
 		}
 		for( const auto &pair : out ) {
@@ -694,17 +854,18 @@ void grb_program( const size_t &n, grb::RC &rc ) {
 				if( pair.first % 2 == 0 ) {
 					if( pair.second != static_cast< double >( .5 ) ) {
 						std::cerr << "\tunexpected entry ( " << pair.first << ", " << pair.second
-							<< " ), expected ( " << pair.first << ", 0.5 ) at subtest 22\n";
+							<< " ), expected ( " << pair.first << ", 0.5 ) at subtest " << test
+							<< "\n";
 						rc = grb::FAILED;
 					}
 				} else {
 					std::cerr << "\tunexpected entry ( " << pair.first << ", " << pair.second
-						<< " ), expected nothing at this entry at subtest 22\n";
+						<< " ), expected nothing at this entry at subtest " << test << "\n";
 					rc = grb::FAILED;
 				}
 			} else {
 				std::cerr << "\tunexpected entry ( " << pair.first << ", " << pair.second
-					<< " ), expected nothing at this index at subtest 22\n";
+					<< " ), expected nothing at this index at subtest " << test << "\n";
 				rc = grb::FAILED;
 			}
 		}
@@ -714,6 +875,7 @@ void grb_program( const size_t &n, grb::RC &rc ) {
 	} else {
 		return;
 	}
+	(void) ++test;
 
 	// [double] <- [double] <- [double] (Monoid, masked)
 	rc = clear( right );
@@ -723,6 +885,12 @@ void grb_program( const size_t &n, grb::RC &rc ) {
 	rc = rc ? rc : setElement( right, 3.14, n-1 );
 	rc = rc ? rc : setElement( left,  1.0, n-1 );
 	rc = rc ? rc : setElement( left, -1.0, 0 );
+	rc = rc ? rc : grb::wait();
+	if( rc != grb::SUCCESS ) {
+		std::cerr << "\tre-initialisation for further tests with sparse vectors "
+			<< "FAILED\n";
+		return;
+	}
 	rc = eWiseApply( out, mask, left, right, plusM );
 	assert( n % 2 == 0 );
 	assert( rc == grb::SUCCESS );
@@ -730,20 +898,21 @@ void grb_program( const size_t &n, grb::RC &rc ) {
 		const size_t expect = 1;
 		if( grb::nnz( out ) != expect ) {
 			std::cerr << "\tunexpected number of nonzeroes ( " << grb::nnz( out ) << ", "
-				<< "), expected " << expect << " ) at subtest 23\n";
+				<< "), expected " << expect << " ) at subtest " << test << "\n";
 			rc = grb::FAILED;
 		}
 		for( const auto &pair : out ) {
 			if( pair.first == 0 ) {
 				if( pair.second != 1.17 ) {
 					std::cerr << "\tunexpected entry ( " << pair.first << ", " << pair.second
-						<< " ), expected ( " << pair.first << ", 1.17 ) at subtest 23\n";
+						<< " ), expected ( " << pair.first << ", 1.17 ) at subtest " << test
+						<< "\n";
 					rc = grb::FAILED;
 				}
 			} else {
 				std::cerr << "\tunexpected entry ( " << pair.first << ", " << pair.second
 					<< " ), expected ( " << pair.first << ", " << (n/2) << " ) "
-					<< "at subtest 23\n";
+					<< "at subtest " << test << "\n";
 				rc = grb::FAILED;
 			}
 		}
@@ -753,6 +922,7 @@ void grb_program( const size_t &n, grb::RC &rc ) {
 	} else {
 		return;
 	}
+	(void) ++test;
 
 	// [double] <- [double] <- [double] (Monoid, no mask)
 	rc = grb::eWiseApply( out, left, right, plusM );
@@ -760,31 +930,34 @@ void grb_program( const size_t &n, grb::RC &rc ) {
 	if( rc == grb::SUCCESS ) {
 		if( grb::nnz( out ) != 3 ) {
 			std::cerr << "\tunexpected number of nonzeroes ( " << grb::nnz( out ) << ", "
-				<< "expected " << 3 << " ) at subtest 24\n";
+				<< "expected " << 3 << " ) at subtest " << test << "\n";
 			rc = grb::FAILED;
 		}
 		for( const auto &pair : out ) {
 			if( pair.first == 0 ) {
 				if( pair.second != 1.17 ) {
 					std::cerr << "\tunexpected entry ( " << pair.first << ", " << pair.second
-						<< " ), expected ( " << pair.first << ", 1.17 ) at subtest 24\n";
+						<< " ), expected ( " << pair.first << ", 1.17 ) at subtest " << test
+						<< "\n";
 					rc = grb::FAILED;
 				}
 			} else if( pair.first == n / 2 ) {
 				if( pair.second != 2.0 ) {
 					std::cerr << "\tunexpected entry ( " << pair.first << ", " << pair.second
-						<< " ), expected ( " << pair.first << ", 2.0 ) at subtest 24\n";
+						<< " ), expected ( " << pair.first << ", 2.0 ) at subtest " << test
+						<< "\n";
 					rc = grb::FAILED;
 				}
 			} else if( pair.first == n - 1 ) {
 				if( !grb::utils::equals( pair.second, 4.14, 1 ) ) {
 					std::cerr << "\tunexpected entry ( " << pair.first << ", " << pair.second
-						<< " ), expected ( " << pair.first << ", 4.14 ) at subtest 24\n";
+						<< " ), expected ( " << pair.first << ", 4.14 ) at subtest " << test
+						<< "\n";
 					rc = grb::FAILED;
 				}
 			} else {
 				std::cerr << "\tunexpected entry ( " << pair.first << ", " << pair.second
-					<< ", expected nothing at this index at subtest 24\n";
+					<< ", expected nothing at this index at subtest " << test << "\n";
 				rc = grb::FAILED;
 			}
 		}
@@ -794,6 +967,7 @@ void grb_program( const size_t &n, grb::RC &rc ) {
 	} else {
 		return;
 	}
+	(void) ++test;
 
 	// those were all variants:)
 }
