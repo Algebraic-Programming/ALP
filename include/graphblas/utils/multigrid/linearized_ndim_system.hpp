@@ -226,9 +226,9 @@ namespace grb {
 				 */
 				void retarget( ConstVectorReference _new_sizes ) {
 					if( _new_sizes.dimensions() != this->_sizes.dimensions() ) {
-						throw std::invalid_argument(
-							"new system must have same dimensions as previous: new " + std::to_string( _new_sizes.dimensions() )
-								+ ", old " + std::to_string( this->_sizes.dimensions() ) );
+						throw std::invalid_argument( "new system must have same dimensions as previous: new "
+						+ std::to_string( _new_sizes.dimensions() ) + ", old "
+						+ std::to_string( this->_sizes.dimensions() ) );
 					}
 					this->_sizes = _new_sizes; // copy
 					this->_system_size = compute_range_product( _new_sizes.begin(), _new_sizes.end(),

@@ -55,13 +55,15 @@ namespace grb {
 			typename TelControllerType
 		> struct MultiGridData {
 
-			grb::utils::telemetry::Stopwatch< TelControllerType > mg_stopwatch; ///< stopwatch to measure the execution time in MG
-			grb::utils::telemetry::Stopwatch< TelControllerType > sm_stopwatch; ///< stopwatch to measure the execution time in the smoother
-			const size_t level;           ///< level of the grid (0 for the finest physical system)
-			const size_t system_size;     ///< size of the system, i.e. side of the #A system matrix
+			grb::utils::telemetry::Stopwatch< TelControllerType > mg_stopwatch; ///< stopwatch
+			///< to measure the execution time in MG
+			grb::utils::telemetry::Stopwatch< TelControllerType > sm_stopwatch; ///< stopwatch
+			///< to measure the execution time in the smoother
+			const size_t level; ///< level of the grid (0 for the finest physical system)
+			const size_t system_size; ///< size of the system, i.e. side of the #A system matrix
 			grb::Matrix< NonzeroType > A; ///< system matrix
-			grb::Vector< IOType > z;      ///< multi-grid solution
-			grb::Vector< IOType > r;      ///< residual
+			grb::Vector< IOType > z; ///< multi-grid solution
+			grb::Vector< IOType > r; ///< residual
 
 			/**
 			 * Construct a new multigrid data object from level information and system size.

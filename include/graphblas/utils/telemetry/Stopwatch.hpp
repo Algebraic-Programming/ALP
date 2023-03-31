@@ -96,7 +96,8 @@ namespace grb {
 
 				typedef typename std::chrono::high_resolution_clock::time_point time_point_t;
 
-				duration_t elapsedTime; ///< measured elapsed time so far, i.e., accumulated time periods between successive calls to #start() and #stop()
+				duration_t elapsedTime; ///< measured elapsed time so far, i.e.,
+				///< accumulated time periods between successive calls to #start() and #stop()
 
 				time_point_t beginning; ///< time instant of last call to #start()
 

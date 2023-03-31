@@ -262,7 +262,8 @@ namespace grb {
 						throw std::out_of_range( "the system has no more elements" );
 					}
 					size_t num_neighbours = this->_neighbors_subspace.system_size();
-					size_t neighbour_position_offset = this->_neighbors_subspace.ndim_to_linear( this->_neighbor_iter->get_position() );
+					size_t neighbour_position_offset =
+						this->_neighbors_subspace.ndim_to_linear( this->_neighbor_iter->get_position() );
 					++( this->_point._element_iter );
 					this->on_element_advance();
 					this->_point._position -= neighbour_position_offset;
@@ -297,7 +298,8 @@ namespace grb {
 						throw std::range_error( "neighbor linear value beyond system" );
 					}
 					VectorType final_element( DIMS );
-					size_t neighbor_index = ( this->_point._system->neighbour_linear_to_element( final_position, final_element ) );
+					size_t neighbor_index =
+						this->_point._system->neighbour_linear_to_element( final_position, final_element );
 
 					this->_point._element_iter = VectorIteratorType( *this->_point._system, final_element.cbegin() );
 					this->_point._position = final_position;
@@ -319,7 +321,8 @@ namespace grb {
 				 * It throws if the result cannot be stored as a difference_type variable.
 				 */
 				difference_type operator-( const SelfType & other ) const {
-					return grb::utils::compute_signed_distance< difference_type, SizeType >( _point.get_position(), other._point.get_position() );
+					return grb::utils::compute_signed_distance< difference_type, SizeType >( _point.get_position(),
+						other._point.get_position() );
 				}
 
 				/**
@@ -349,7 +352,8 @@ namespace grb {
 				 */
 				inline void on_neighbor_iter_update() {
 					for( size_t i = 0; i < DIMS; i++ ) {
-						this->_point._neighbor[ i ] = this->_neighbors_start[ i ] + this->_neighbor_iter->get_position()[ i ];
+						this->_point._neighbor[ i ] = this->_neighbors_start[ i ]
+							+ this->_neighbor_iter->get_position()[ i ];
 					}
 				}
 
@@ -360,7 +364,8 @@ namespace grb {
 				void on_element_update() {
 					// reset everything
 					VectorType neighbors_range( DIMS );
-					this->_point._system->compute_neighbors_range( this->_point._element_iter->get_position(), this->_neighbors_start, neighbors_range );
+					this->_point._system->compute_neighbors_range( this->_point._element_iter->get_position(),
+						this->_neighbors_start, neighbors_range );
 					// re-target _neighbors_subspace
 					this->_neighbors_subspace.retarget( neighbors_range );
 				}

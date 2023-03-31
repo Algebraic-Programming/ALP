@@ -276,7 +276,8 @@ namespace grb {
 					size_t halo,
 					NDimVector< SizeType, SizeType, DynamicVectorStorage< SizeType > > & config_neighbors
 				) {
-					using it_type = typename NDimVector< SizeType, SizeType, DynamicVectorStorage< SizeType > >::DomainIterator;
+					using it_type = typename NDimVector< SizeType, SizeType,
+						DynamicVectorStorage< SizeType > >::DomainIterator;
 					it_type end = config_neighbors.domain_end();
 					for( it_type it = config_neighbors.domain_begin(); it != end; ++it ) {
 						size_t res = 1;
@@ -300,9 +301,9 @@ namespace grb {
 				 *   face slabs or inner slabs)
 				 *  - dimension 1 (y axis) moves along "rows" within each slab, whose total number of neighbors
 				 *	  depends on whether the row is at the extreme sides (top or bottom of the face) or inside;
-				 *   in turn, each type of slab has different geometry (face slabs comprise mesh corners, edges and faces,
-				 *   while inner slabs comprise edges, faces and inner elements), thus resulting in 2*2 different
-				 *   configurations of dimension-1 total neighbors
+				 *   in turn, each type of slab has different geometry (face slabs comprise mesh corners, edges and
+				 * 	 faces, while inner slabs comprise edges, faces and inner elements), thus resulting in
+				 *   2*2 different configurations of dimension-1 total neighbors
 				 *  - dimension 0 (x axis) moves along "column" elements within each row, where the first (or last)
 				 *   column has a different number of neighbors than the inner ones; here again are two configuration
 				 *   for each dimension-1 configuration, leading to a total of 8 dimension-1 configurations
@@ -478,7 +479,8 @@ namespace grb {
 							halo_max_neighs = neighbors.at( halo_coords_begin );
 						}
 #ifdef _DEBUG
-						std::cout << "- initial halo - neighbour " << neighbor_linear << std::endl << "\th " << h << std::endl << "\thalo : ";
+						std::cout << "- initial halo - neighbour " << neighbor_linear
+							<< std::endl << "\th " << h << std::endl << "\thalo : ";
 						print_sequence( halo_coords_begin, halo_coords_end ) << std::endl;
 						std::cout << "\thalo_max_neighs " << halo_max_neighs << std::endl;
 #endif

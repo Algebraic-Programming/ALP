@@ -629,7 +629,8 @@ static void parse_arguments( simulation_input & sim_in, size_t & outer_iteration
 	// check sizes
 	const size_t max_system_divider = 1 << sim_in.max_coarsening_levels;
 	for( size_t s : { sim_in.nx, sim_in.ny, sim_in.nz } ) {
-		std::lldiv_t div_res = std::div( static_cast< long long >( s ), static_cast< long long >( max_system_divider ) );
+		std::lldiv_t div_res = std::div( static_cast< long long >( s ),
+			static_cast< long long >( max_system_divider ) );
 		if( div_res.rem != 0 ) {
 			std::cerr << "ERROR: system size " << s << " cannot be coarsened " << sim_in.max_coarsening_levels
 				<< " times because it is not exactly divisible" << std::endl;

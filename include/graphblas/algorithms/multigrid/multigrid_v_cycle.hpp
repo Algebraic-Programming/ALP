@@ -91,8 +91,8 @@ namespace grb {
 			DbgOutputStreamType dbg_logger;   ///< logger to trace execution
 
 			std::vector< std::unique_ptr< MultiGridInputType > > system_levels; ///< levels of the grid (finest first)
-			Ring ring;                                                          ///< algebraic ring
-			Minus minus;                                                        ///< minus operator
+			Ring ring; ///< algebraic ring
+			Minus minus; ///< minus operator
 
 			// operator to extract the reference out of an std::unique_ptr object
 			struct __extractor {

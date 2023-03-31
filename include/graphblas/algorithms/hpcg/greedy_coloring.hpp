@@ -82,7 +82,8 @@ namespace grb {
 			bool reorder_rows_per_color = false
 		) {
 			CoordType nrows = system.system_size();
-			row_colors.insert( row_colors.begin(), nrows, nrows ); // value `nrows' means `uninitialized'; initialized colors go from 0 to nrow-1
+			// value `nrows' means `uninitialized'; initialized colors go from 0 to nrow-1
+			row_colors.insert( row_colors.begin(), nrows, nrows );
 			CoordType totalColors = 1;
 			row_colors[ 0 ] = 0; // first point gets color 0
 

@@ -81,15 +81,17 @@ namespace grb {
 			using Ring = typename SmootherTypes::Ring;
 			using Minus = typename SmootherTypes::Minus;
 			using Divide = typename SmootherTypes::Divide;
-			using SmootherInputType = MultiGridData< IOType, NonzeroType, TelControllerType >; ///< external input structure
-			using SmootherDataType = SmootherData< IOType >; ///< smoothing information and temporary variables (per MG level)
+			using SmootherInputType = MultiGridData< IOType, NonzeroType, TelControllerType >; ///< external
+			///< input structure
+			using SmootherDataType = SmootherData< IOType >; ///< smoothing information
+			///< and temporary variables (per MG level)
 
-			size_t presmoother_steps = 1UL;                            ///< number of pre-smoother steps
-			size_t postsmoother_steps = 1UL;                           ///< number of post-smoother steps
-			size_t non_recursive_smooth_steps = 1UL;                   ///< number of smoother steps for the last grid level
+			size_t presmoother_steps = 1UL; ///< number of pre-smoother steps
+			size_t postsmoother_steps = 1UL; ///< number of post-smoother steps
+			size_t non_recursive_smooth_steps = 1UL; ///< number of smoother steps for the last grid level
 			std::vector< std::unique_ptr< SmootherDataType > > levels; ///< for each grid level,
-			                                                           ///< the smoothing data (finest first)
-			Ring ring;                                                 ///< the algebraic ring
+			///< the smoothing data (finest first)
+			Ring ring; ///< the algebraic ring
 			Minus minus;
 			Divide divide;
 
@@ -136,7 +138,8 @@ namespace grb {
 			/**
 			 * Runs a single step of Red-Black Gauss-Seidel for a specific color.
 			 *
-			 * @param[in,out] data structure with external containers, corresponsign to an MG level: vector to smooth, system matrix, residual
+			 * @param[in,out] data structure with external containers, corresponsign to an MG level:
+			 * 	vector to smooth, system matrix, residual
 			 * @param[in,out] smoothing_info smoothing-specific information: temporary vectors, color masks
 			 * @return grb::RC::SUCCESS if the algorithm could correctly terminate, the error code of the first
 			 *  unsuccessful operation otherwise
@@ -174,7 +177,8 @@ namespace grb {
 
 				ret = ret ? ret :
                             grb::eWiseLambda(
-								[ &z, &r, &smoother_temp, &color_mask, &A_diagonal , &ri, &mi, &di ]( const size_t i ) {
+								[ &z, &r, &smoother_temp, &color_mask, &A_diagonal ,
+									&ri, &mi, &di ]( const size_t i ) {
 									IOType d = A_diagonal[ i ];
 									IOType v;
 									ri.getMultiplicativeOperator().apply( z[ i ], d, v  );
@@ -203,7 +207,8 @@ namespace grb {
 			 * and no check is performed to ensure these assumptions hold. Hence, it is up to user logic
 			 * to pass correct coloring information. Otherwise, \b no guarantees hold on the result.
 			 *
-			 * @param[in,out] data structure with external containers, corresponsign to an MG level: vector to smooth, system matrix, residual
+			 * @param[in,out] data structure with external containers, corresponsign to an MG level:
+			 * 	vector to smooth, system matrix, residual
 			 * @param[in,out] smoothing_info smoothing-specific information: temporary vectors, color masks
 			 * @return grb::RC::SUCCESS if the algorithm could correctly terminate, the error code of the first
 			 *                          unsuccessful operation otherwise

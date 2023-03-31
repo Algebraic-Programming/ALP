@@ -84,7 +84,10 @@ namespace grb {
 
 					NDimPoint( NDimPoint && ) = delete;
 
-					NDimPoint( const LinNDimSysType & _system ) noexcept : system( &_system ), coords( _system.dimensions() ) {
+					NDimPoint( const LinNDimSysType & _system ) noexcept :
+						system( &_system ),
+						coords( _system.dimensions() )
+					{
 						std::fill_n( this->coords.begin(), _system.dimensions(), 0 );
 					}
 

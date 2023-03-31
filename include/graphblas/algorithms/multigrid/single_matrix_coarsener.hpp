@@ -83,7 +83,8 @@ namespace grb {
 			using Minus = typename CoarsenerTypes::Minus;
 
 			using MultiGridInputType = MultiGridData< IOType, NonzeroType, TelControllerType >; ///< input data from MG
-			using CoarseningDataType = CoarseningData< IOType, NonzeroType >; ///< internal data with coarsening information
+			using CoarseningDataType = CoarseningData< IOType, NonzeroType >; ///< internal data
+			///< with coarsening information
 
 			static_assert( std::is_default_constructible< Ring >::value,
 				"cannot construct the Ring with default values" );

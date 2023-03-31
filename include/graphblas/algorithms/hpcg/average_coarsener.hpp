@@ -341,9 +341,11 @@ namespace grb {
 				grb::utils::multigrid::ArrayVectorStorage< DIMS, CoordType > > system;
 			grb::utils::multigrid::LinearizedNDimSystem< CoordType,
 				grb::utils::multigrid::ArrayVectorStorage< DIMS, CoordType > > _finer_subspace;
-			grb::utils::multigrid::ArrayVectorStorage< DIMS, CoordType > steps;///< array of steps, i.e. how much each column coordinate (finer system) must be
-																				//// incremented when incrementing the row coordinates; is is the ration between
-			                                                                    //// #finer_sizes and row_generator#physical_sizes
+			///
+			/// array of steps, i.e. how much each column coordinate (finer system) must be
+			/// incremented when incrementing the row coordinates; it is the ratio between
+			//// #finer_sizes and row_generator#physical_sizes
+			grb::utils::multigrid::ArrayVectorStorage< DIMS, CoordType > steps;
 		};
 
 	} // namespace algorithms

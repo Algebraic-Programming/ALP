@@ -134,14 +134,14 @@ namespace grb {
 			static_assert( std::is_move_constructible< MultiGridRunnerType >::value,
 				"cannot construct the Multi-Grid runner by move" );
 
-			Ring ring;                                                        ///< algebraic ring to be used
-			Minus minus;                                                      ///< minus operator to be used
-			bool with_preconditioning = true;                                 ///<  whether preconditioning is enabled
-			size_t max_iterations = 10;                                       ///< max number of allowed iterations for CG: after that, the solver is halted
-			                                                                  ///< and the result achieved so far returned
-			ResidualType tolerance = ring.template getZero< ResidualType >(); ///< ratio between initial residual and current residual that halts the solver
-			                                                                  ///< if reached, for the solution is to be considered "good enough"
-
+			Ring ring; ///< algebraic ring to be used
+			Minus minus; ///< minus operator to be used
+			bool with_preconditioning = true; ///<  whether preconditioning is enabled
+			size_t max_iterations = 10; ///< max number of allowed iterations for CG:
+			///< after that, the solver is halted and the result achieved so far returned
+			ResidualType tolerance = ring.template getZero< ResidualType >(); ///< ratio
+			///< between initial residual and current residual that halts the solver
+			///< if reached, for the solution is to be considered "good enough"
 			MultiGridRunnerType & mg_runner; ///< runner object for MG
 			DbgOutputStreamType dbg_logger; ///< logger to trace execution
 

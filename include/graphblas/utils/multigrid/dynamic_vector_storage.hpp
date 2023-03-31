@@ -32,8 +32,9 @@ namespace grb {
 		namespace multigrid {
 
 			/**
-			 * Array with fixed size (i.e. decided at object creation) allocated on the heap with an interface compliant
-			 * to what other classes in the geometry namespace expect, like storage() and dimensions() methods.
+			 * Array with fixed size (i.e. decided at object creation) allocated on the heap
+			 * with an interface compliant to what other classes in the geometry namespace expect,
+			 * like storage() and dimensions() methods.
 			 *
 			 * It describes a vector of dimensions #dimensions().
 			 *

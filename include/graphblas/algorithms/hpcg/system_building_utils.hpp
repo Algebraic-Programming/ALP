@@ -365,7 +365,8 @@ namespace grb {
 					std::vector< size_t >::const_iterator begin = rows.cbegin();
 					std::vector< size_t >::const_iterator end = rows.cend();
 					// partition_iteration_range( rows.size(), begin, end );
-					grb::RC rc = grb::buildVectorUnique( output_mask, begin, end, true_iter< size_t >( 0 ), true_iter< size_t >( rows.size() ), IOMode::SEQUENTIAL );
+					grb::RC rc = grb::buildVectorUnique( output_mask, begin, end,
+						true_iter< size_t >( 0 ), true_iter< size_t >( rows.size() ), IOMode::SEQUENTIAL );
 					if( rc != SUCCESS ) {
 						std::cerr << "error while creating output mask for color " << i << ": " << toString( rc ) << std::endl;
 						return rc;
@@ -434,7 +435,8 @@ namespace grb {
 			}
 			logger << "- found " << color_counters.size() << " colors,"
 				   << " generating color masks...";
-			return internal::hpcg_build_static_color_masks( system_generator.system_size(), per_color_rows, smoothing_info.color_masks );
+			return internal::hpcg_build_static_color_masks( system_generator.system_size(),
+				per_color_rows, smoothing_info.color_masks );
 		}
 
 	} // namespace algorithms

@@ -69,7 +69,8 @@ namespace grb {
 				typename ValueCallable
 			> struct HaloMatrixGeneratorIterator {
 
-				static_assert( std::is_copy_constructible< ValueCallable >::value, "ValueCallable must be copy-constructible" );
+				static_assert( std::is_copy_constructible< ValueCallable >::value,
+					"ValueCallable must be copy-constructible" );
 
 				using RowIndexType = CoordType; ///< numeric type of rows
 				using ColumnIndexType = CoordType;
@@ -145,8 +146,9 @@ namespace grb {
 				 * Increments the iterator by moving coordinates to the next (row, column) to iterate on.
 				 *
 				 * This operator internally increments the columns coordinates until wrap-around, when it increments
-				 * the row coordinates and resets the column coordinates to the first possible columns; this column coordinate
-				 * depends on the row coordinates according to the dimensions iteration order and on the parameter \p halo.
+				 * the row coordinates and resets the column coordinates to the first possible columns;
+				 * this column coordinate depends on the row coordinates according to the dimensions
+				 * iteration order and on the parameter \p halo.
 				 *
 				 * @return HaloMatrixGeneratorIterator<DIMS, T>& \c this object, with the updated state
 				 */
