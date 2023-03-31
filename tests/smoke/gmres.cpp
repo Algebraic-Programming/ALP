@@ -94,8 +94,24 @@ std::complex< BaseScalarType > random_value< std::complex< BaseScalarType > >() 
         return std::complex< BaseScalarType >( re, im );
 }
 
+ScalarType sqrt_generic( ScalarType x ) {
+	//return std::sqrt( x );
+	//return( pow( x, 0.5 ) );
+
+	//test Quake sqrt
+	double y = x;
+	double x2 = y * 0.5;
+	size_t * ip = reinterpret_cast< size_t * >( &y );
+	*ip = 0x5fe6eb50c7b537a9 - ( *ip / 2 );
+	y = y * ( 1.5 - x2 * y * y  );   // 1st iteration
+	y = y * ( 1.5 - x2 * y * y  );   // 2nd iteration
+	y = y * ( 1.5 - x2 * y * y  );   // 3nd iteration
+	y = y * ( 1.5 - x2 * y * y  );   // 4nd iteration
+	return 1./y;
+}
+
 /**
- * Generate random lienar problem matrix data (A) and
+ * Generate random linear problem matrix data (A) and
  * the corresponding preconditioner matrix data (P).
  */
 template< typename NonzeroType, typename DimensionType >
@@ -212,6 +228,7 @@ void grbProgram( const struct input &data_in, struct output &out ) {
 		grb::identities::zero, grb::identities::one
 	> ring;
 	operators::subtract< ScalarType > minus;
+	operators::divide< ScalarType > divide;
 	const ScalarType zero = ring.template getZero< ScalarType >();
 	const ScalarType one = ring.template getOne< ScalarType >();
 
@@ -364,6 +381,7 @@ void grbProgram( const struct input &data_in, struct output &out ) {
 		out.time_preamble += timer.time();
 		timer.reset();
 
+		const std::function< ScalarType( ScalarType ) > &my_sqrt = sqrt_generic;
 		if( data_in.no_preconditioning ) {
 			rc = rc ? rc : grb::algorithms::gmres(
 				x, A, b,
@@ -373,7 +391,7 @@ void grbProgram( const struct input &data_in, struct output &out ) {
 				out.residual, out.residual_relative,
 				Q, Hmatrix,
 				temp, temp2, temp3,
-				ring
+				ring, minus, divide, my_sqrt
 			);
 		} else {
 			rc = rc ? rc : grb::algorithms::preconditioned_gmres(
@@ -384,7 +402,7 @@ void grbProgram( const struct input &data_in, struct output &out ) {
 				out.residual, out.residual_relative,
 				Q, Hmatrix,
 				temp, temp2, temp3,
-				ring
+				ring, minus, divide, my_sqrt
 			);
 		}
 

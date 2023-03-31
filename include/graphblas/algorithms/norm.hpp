@@ -43,6 +43,11 @@ namespace grb {
 
 	namespace algorithms {
 
+		template< typename OutputType, typename InputType >
+		OutputType std_sqrt( InputType x ) {
+			return( static_cast< OutputType >( std::sqrt( x ) ) );
+		};
+
 		/**
 		 * Provides a generic implementation of the 2-norm computation.
 		 *
@@ -76,13 +81,14 @@ namespace grb {
 		RC norm2( OutputType &x,
 			const Vector< InputType, backend, Coords > &y,
 			const Ring &ring = Ring(),
+			const std::function< OutputType( InputType ) > sqrtX = std_sqrt< OutputType, InputType >,
 			const typename std::enable_if<
 				std::is_floating_point< OutputType >::value,
 			void >::type * const = nullptr
 		) {
 			RC ret = grb::dot< descr >( x, y, y, ring );
 			if( ret == SUCCESS ) {
-				x = sqrt( x );
+				x = sqrtX( x );
 			}
 			return ret;
 		}

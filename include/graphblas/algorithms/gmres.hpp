@@ -29,10 +29,11 @@
 
 #include <cstdio>
 #include <complex>
+#include <functional> //function
 
 #include <graphblas.hpp>
+#include <graphblas/algorithms/norm.hpp>
 #include <graphblas/utils/iscomplex.hpp>
-
 
 namespace grb {
 
@@ -72,7 +73,8 @@ namespace grb {
 			const DimensionType n,
 			const DimensionType &kspspacesize,
 			const ResidualType tol,
-			std::vector< NonzeroType > &rhs
+			std::vector< NonzeroType > &rhs,
+			const std::function< NonzeroType( NonzeroType ) > &sqrtX = std_sqrt< NonzeroType, NonzeroType >
 		) {
 			if( n < 1 ) {
 				return ILLEGAL;
@@ -117,7 +119,7 @@ namespace grb {
 				b = H[ ( i + 1 ) * n + i + 1 ];
 
 				// tmp1=sqrt(norm(a)**2+norm(b)**2)
-				NonzeroType tmp1 = std::sqrt( std::norm( a ) +
+				NonzeroType tmp1 = sqrtX( std::norm( a ) +
 					std::norm( b ) );
 				c = grb::utils::is_complex< NonzeroType >::modulus( a ) / tmp1 ;
 				if( std::norm( a ) != 0 ) {
@@ -313,7 +315,8 @@ namespace grb {
 				const grb::Matrix< NonzeroType > &M = grb::Matrix< NonzeroType >( 0, 0 ),
 				const Ring &ring = Ring(),
 				const Minus &minus = Minus(),
-				const Divide &divide = Divide()
+				const Divide &divide = Divide(),
+				const std::function< NonzeroType( NonzeroType ) > &sqrtX = std_sqrt< NonzeroType, NonzeroType >
 			) {
 				// static checks
 				static_assert( std::is_floating_point< ResidualType >::value,
@@ -395,7 +398,7 @@ namespace grb {
 				}
 				assert( ret == SUCCESS );
 
-				rho = sqrt( grb::utils::is_complex< NonzeroType >::modulus( alpha ) );
+				rho = sqrtX( grb::utils::is_complex< NonzeroType >::modulus( alpha ) );
 				Hmatrix[ 0 ] = rho;
 
 				tau = tol * rho;
@@ -491,7 +494,7 @@ namespace grb {
 
 					//H[k,k]=rho
 					Hmatrix[ k * ( n_restart + 1 ) + k ] =
-						sqrt( grb::utils::is_complex< NonzeroType >::modulus( alpha ) );
+						sqrtX( grb::utils::is_complex< NonzeroType >::modulus( alpha ) );
 				}
 
 				iterations += k;
@@ -534,8 +537,10 @@ namespace grb {
 				grb::Vector< NonzeroType > &temp2,
 				std::vector< NonzeroType > &temp3,
 				const grb::Matrix< NonzeroType > &M,
-				const Ring &ring,
-				const Minus &minus
+				const Ring &ring = Ring(),
+				const Minus &minus = Minus(),
+				const Divide &divide = Divide(),
+				const std::function< NonzeroType( NonzeroType ) > &sqrtX = std_sqrt< NonzeroType, NonzeroType >
 			) {
 				grb::RC rc = grb::SUCCESS;
 				const ResidualType zero = ring.template getZero< ResidualType >();
@@ -635,9 +640,9 @@ namespace grb {
 						);
 					rc = rc ? rc : grb::dot( bnorm, temp, temp2, ring );
 				} else {
-					rc = rc ? rc : grb::dot( bnorm, temp, temp, ring );
+					rc = rc ? rc : grb::algorithms::norm2( bnorm, temp, ring, sqrtX );  /////// tmp solution
 				}
-				bnorm = std::sqrt( bnorm );
+				//bnorm = sqrtX( bnorm );
 
 #ifdef DEBUG
 				{
@@ -674,7 +679,7 @@ namespace grb {
 						std::cerr << "Error: residual norm not calculated properly.\n";
 						return rc;
 					}
-					residualnorm = std::sqrt( residualnorm );
+					residualnorm = sqrtX( residualnorm );
 					residual = std::abs( residualnorm );
 					residual_relative = residual / std::abs( bnorm );
 					if( residual_relative < max_residual_norm ) {
@@ -698,7 +703,8 @@ namespace grb {
 							Hmatrix, Q,
 							n_restart, tol,
 							kspspacesize,
-							temp
+							temp, grb::Matrix< NonzeroType >( 0, 0 ),
+							ring, minus, divide, sqrtX
 						);
 					} else {
 #ifdef DEBUG
@@ -709,8 +715,8 @@ namespace grb {
 							Hmatrix, Q,
 							n_restart, tol,
 							kspspacesize,
-							temp,
-							M
+							temp, M,
+							ring, minus, divide, sqrtX
 						);
 					}
 #ifdef DEBUG
@@ -781,7 +787,7 @@ namespace grb {
 						std::cerr << "Error: residual norm not calculated properly.\n";
 						return rc;
 					}
-					residualnorm = std::sqrt( residualnorm );
+					residualnorm = sqrtX( residualnorm );
 					residual = std::abs( residualnorm );
 					residual_relative = residual / std::abs( bnorm );
 
@@ -932,7 +938,9 @@ namespace grb {
 			grb::Vector< NonzeroType > &temp2,
 			std::vector< NonzeroType > &temp3,
 			const Ring &ring = Ring(),
-			const Minus &minus = Minus()
+			const Minus &minus = Minus(),
+			const Divide &divide = Divide(),
+			const std::function< NonzeroType( NonzeroType ) > &sqrtX = std_sqrt< NonzeroType, NonzeroType >
 		) {
 			grb::Matrix< NonzeroType > dummy( 0, 0 );
 			return internal::gmres_dispatch< descr, true >(
@@ -943,7 +951,7 @@ namespace grb {
 					residual, residual_relative,
 					Q, Hmatrix, temp, temp2, temp3,
 					dummy,
-					ring, minus
+					ring, minus, divide, sqrtX
 				);
 		}
 
@@ -979,7 +987,9 @@ namespace grb {
 			grb::Vector< NonzeroType > &temp2,
 			std::vector< NonzeroType > &temp3,
 			const Ring &ring = Ring(),
-			const Minus &minus = Minus()
+			const Minus &minus = Minus(),
+			const Divide &divide = Divide(),
+			const std::function< NonzeroType( NonzeroType ) > &sqrtX = std_sqrt< NonzeroType, NonzeroType >
 		) {
 			return internal::gmres_dispatch< descr, false >(
 					x, A, b,
@@ -989,7 +999,7 @@ namespace grb {
 					residual, residual_relative,
 					Q, Hmatrix, temp, temp2, temp3,
 					M,
-					ring, minus
+					ring, minus, divide, sqrtX
 				);
 		}
 
