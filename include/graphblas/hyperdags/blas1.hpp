@@ -1038,6 +1038,209 @@ namespace grb {
 	>
 	RC eWiseApply(
 		Vector< OutputType, hyperdags, Coords > &z,
+		const InputType1 alpha,
+		const InputType2 beta,
+		const OP &op = OP(),
+		const Phase &phase = EXECUTE,
+		const typename std::enable_if<
+			!grb::is_object< OutputType >::value
+			&& !grb::is_object< InputType1 >::value
+			&& !grb::is_object< InputType2 >::value
+			&& grb::is_operator< OP >::value,
+		void >::type * const = nullptr
+	) {
+		const RC ret = eWiseApply< descr >(
+			internal::getVector(z), alpha, beta,
+			op, phase
+		);
+		if( ret != SUCCESS ) { return ret; }
+		if( phase != EXECUTE ) { return ret; }
+		if( size( internal::getVector(z) ) == 0 ) { return ret; }
+		internal::hyperdags::generator.addSource(
+			internal::hyperdags::SCALAR,
+			&alpha
+		);
+		internal::hyperdags::generator.addSource(
+			internal::hyperdags::SCALAR,
+			&beta
+		);
+		std::array< const void *, 2 > sourcesP{ &alpha, &beta };
+		std::array< uintptr_t, 1 > sourcesC{
+			getID( internal::getVector(z) )
+		};
+		std::array< uintptr_t, 1 > destinations{ getID( internal::getVector(z) ) };
+		internal::hyperdags::generator.addOperation(
+			internal::hyperdags::EWISEAPPLY_VECTOR_ALPHA_BETA_OP,
+			sourcesP.begin(), sourcesP.end(),
+			sourcesC.begin(), sourcesC.end(),
+			destinations.begin(), destinations.end()
+		);
+		return ret;
+	}
+
+	template<
+		Descriptor descr = descriptors::no_operation, class Monoid,
+		typename OutputType,
+		typename InputType1, typename InputType2,
+		typename Coords
+	>
+	RC eWiseApply(
+		Vector< OutputType, hyperdags, Coords > &z,
+		const InputType1 alpha,
+		const InputType2 beta,
+		const Monoid &monoid = Monoid(),
+		const Phase &phase = EXECUTE,
+		const typename std::enable_if<
+			!grb::is_object< OutputType >::value &&
+			!grb::is_object< InputType1 >::value &&
+			!grb::is_object< InputType2 >::value &&
+			grb::is_monoid< Monoid >::value,
+		void >::type * const = nullptr
+	) {
+		const RC ret = eWiseApply< descr >(
+			internal::getVector(z), alpha, beta,
+			monoid, phase
+		);
+		if( ret != SUCCESS ) { return ret; }
+		if( phase != EXECUTE ) { return ret; }
+		internal::hyperdags::generator.addSource(
+			internal::hyperdags::SCALAR,
+			&alpha
+		);
+		internal::hyperdags::generator.addSource(
+			internal::hyperdags::SCALAR,
+			&beta
+		);
+		std::array< const void *, 2 > sourcesP{ &alpha, &beta };
+		std::array< uintptr_t, 1 > sourcesC{
+			getID( internal::getVector(z) )
+		};
+		std::array< uintptr_t, 1 > destinations{ getID( internal::getVector(z) ) };
+		internal::hyperdags::generator.addOperation(
+			internal::hyperdags::EWISEAPPLY_VECTOR_ALPHA_BETA_MONOID,
+			sourcesP.begin(), sourcesP.end(),
+			sourcesC.begin(), sourcesC.end(),
+			destinations.begin(), destinations.end()
+		);
+		return ret;
+	}
+
+	template<
+		Descriptor descr = descriptors::no_operation, class OP,
+		typename OutputType, typename MaskType,
+		typename InputType1, typename InputType2,
+		typename Coords
+	>
+	RC eWiseApply(
+		Vector< OutputType, hyperdags, Coords > &z,
+		const Vector< MaskType, hyperdags, Coords > &mask,
+		const InputType1 alpha,
+		const InputType2 beta,
+		const OP &op = OP(),
+		const Phase &phase = EXECUTE,
+		const typename std::enable_if<
+			!grb::is_object< OutputType >::value
+			&& !grb::is_object< InputType1 >::value
+			&& !grb::is_object< InputType2 >::value
+			&& grb::is_operator< OP >::value,
+		void >::type * const = nullptr
+	) {
+		if( size( internal::getVector(mask) ) == 0 ) {
+			return eWiseApply< descr >( z, alpha, beta, op, phase );
+		}
+		const RC ret = eWiseApply< descr >(
+			internal::getVector(z), internal::getVector(mask),
+			alpha, beta,
+			op, phase
+		);
+		if( ret != SUCCESS ) { return ret; }
+		if( phase != EXECUTE ) { return ret; }
+		if( size( internal::getVector(z) ) == 0 ) { return ret; }
+		internal::hyperdags::generator.addSource(
+			internal::hyperdags::SCALAR,
+			&alpha
+		);
+		internal::hyperdags::generator.addSource(
+			internal::hyperdags::SCALAR,
+			&beta
+		);
+		std::array< const void *, 2 > sourcesP{ &alpha, &beta };
+		std::array< uintptr_t, 1 > sourcesC{
+			getID( internal::getVector(z) )
+		};
+		std::array< uintptr_t, 1 > destinations{
+			getID( internal::getVector(z) )
+		};
+		internal::hyperdags::generator.addOperation(
+			internal::hyperdags::EWISEAPPLY_VECTOR_MASK_ALPHA_BETA_OP,
+			sourcesP.begin(), sourcesP.end(),
+			sourcesC.begin(), sourcesC.end(),
+			destinations.begin(), destinations.end()
+		);
+		return ret;
+	}
+
+	template<
+		Descriptor descr = descriptors::no_operation, class Monoid,
+		typename OutputType, typename MaskType,
+		typename InputType1, typename InputType2,
+		typename Coords
+	>
+	RC eWiseApply(
+		Vector< OutputType, hyperdags, Coords > &z,
+		const Vector< MaskType, hyperdags, Coords > &mask,
+		const InputType1 alpha,
+		const InputType2 beta,
+		const Monoid &monoid = Monoid(),
+		const Phase &phase = EXECUTE,
+		const typename std::enable_if<
+			!grb::is_object< OutputType >::value &&
+			!grb::is_object< MaskType >::value &&
+			!grb::is_object< InputType1 >::value &&
+			!grb::is_object< InputType2 >::value &&
+			grb::is_monoid< Monoid >::value,
+		void >::type * const = nullptr
+	) {
+		if( size( internal::getVector(mask) ) == 0 ) {
+			return eWiseApply< descr >( z, alpha, beta, monoid, phase );
+		}
+		const RC ret = eWiseApply< descr >(
+			internal::getVector(z), internal::getVector(mask),
+			alpha, beta,
+			monoid, phase
+		);
+		if( ret != SUCCESS ) { return ret; }
+		if( phase != EXECUTE ) { return ret; }
+		internal::hyperdags::generator.addSource(
+			internal::hyperdags::SCALAR,
+			&alpha
+		);
+		internal::hyperdags::generator.addSource(
+			internal::hyperdags::SCALAR,
+			&beta
+		);
+		std::array< const void *, 2 > sourcesP{ &alpha, &beta };
+		std::array< uintptr_t, 2 > sourcesC{
+			getID( internal::getVector(mask) ),
+			getID( internal::getVector(z) )
+		};
+		std::array< uintptr_t, 1 > destinations{ getID( internal::getVector(z) ) };
+		internal::hyperdags::generator.addOperation(
+			internal::hyperdags::EWISEAPPLY_VECTOR_MASK_ALPHA_BETA_MONOID,
+			sourcesP.begin(), sourcesP.end(),
+			sourcesC.begin(), sourcesC.end(),
+			destinations.begin(), destinations.end()
+		);
+		return ret;
+	}
+
+	template<
+		Descriptor descr = descriptors::no_operation, class OP,
+		typename OutputType, typename InputType1, typename InputType2,
+		typename Coords
+	>
+	RC eWiseApply(
+		Vector< OutputType, hyperdags, Coords > &z,
 		const Vector< InputType1, hyperdags, Coords > &x,
 		const InputType2 beta,
 		const OP &op = OP(),
@@ -1067,7 +1270,7 @@ namespace grb {
 		};
 		std::array< uintptr_t, 1 > destinations{ getID( internal::getVector(z) ) };
 		internal::hyperdags::generator.addOperation(
-			internal::hyperdags::EWISEAPPLY_VECTOR_BETA,
+			internal::hyperdags::EWISEAPPLY_VECTOR_VECTOR_BETA_OP,
 			sourcesP.begin(), sourcesP.end(),
 			sourcesC.begin(), sourcesC.end(),
 			destinations.begin(), destinations.end()
@@ -1110,7 +1313,7 @@ namespace grb {
 		};
 		std::array< uintptr_t, 1 > destinations{ getID( internal::getVector(z) ) };
 		internal::hyperdags::generator.addOperation(
-			internal::hyperdags::EWISEAPPLY_VECTOR_VECTOR,
+			internal::hyperdags::EWISEAPPLY_VECTOR_ALPHA_VECTOR_OP,
 			sourcesP.begin(), sourcesP.end(),
 			sourcesC.begin(), sourcesC.end(),
 			destinations.begin(), destinations.end()
@@ -1161,7 +1364,7 @@ namespace grb {
 		};
 		std::array< uintptr_t, 1 > destinations{ getID( internal::getVector(z) ) };
 		internal::hyperdags::generator.addOperation(
-			internal::hyperdags::EWISEAPPLY_VECTOR_VECTOR_BETA,
+			internal::hyperdags::EWISEAPPLY_VECTOR_MASK_VECTOR_BETA_MONOID,
 			sourcesP.begin(), sourcesP.end(),
 			sourcesC.begin(), sourcesC.end(),
 			destinations.begin(), destinations.end()
@@ -1211,7 +1414,7 @@ namespace grb {
 		};
 		std::array< uintptr_t, 1 > destinations{ getID( internal::getVector(z) ) };
 		internal::hyperdags::generator.addOperation(
-			internal::hyperdags::EWISEAPPLY_VECTOR_VECTOR_VECTOR_BETA,
+			internal::hyperdags::EWISEAPPLY_VECTOR_MASK_VECTOR_BETA_OP,
 			sourcesP.begin(), sourcesP.end(),
 			sourcesC.begin(), sourcesC.end(),
 			destinations.begin(), destinations.end()
@@ -1262,7 +1465,7 @@ namespace grb {
 		};
 		std::array< uintptr_t, 1 > destinations{ getID( internal::getVector(z) ) };
 		internal::hyperdags::generator.addOperation(
-			internal::hyperdags::EWISEAPPLY_VECTOR_VECTOR_ALPHA_VECTOR,
+			internal::hyperdags::EWISEAPPLY_VECTOR_MASK_ALPHA_VECTOR_MONOID,
 			sourcesP.begin(), sourcesP.end(),
 			sourcesC.begin(), sourcesC.end(),
 			destinations.begin(), destinations.end()
@@ -1312,7 +1515,7 @@ namespace grb {
 		};
 		std::array< uintptr_t, 1 > destinations{ getID( internal::getVector(z) ) };
 		internal::hyperdags::generator.addOperation(
-			internal::hyperdags::EWISEAPPLY_VECTOR_VECTOR_ALPHA_VECTOR_OP,
+			internal::hyperdags::EWISEAPPLY_VECTOR_MASK_ALPHA_VECTOR_OP,
 			sourcesP.begin(), sourcesP.end(),
 			sourcesC.begin(), sourcesC.end(),
 			destinations.begin(), destinations.end()
@@ -1405,7 +1608,7 @@ namespace grb {
 		};
 		std::array< uintptr_t, 1 > destinations{ getID( internal::getVector(z) ) };
 		internal::hyperdags::generator.addOperation(
-			internal::hyperdags::EWISEAPPLY_VECTOR_SCALAR_MONOID,
+			internal::hyperdags::EWISEAPPLY_VECTOR_VECTOR_BETA_MONOID,
 			sourcesP.begin(), sourcesP.end(),
 			sourcesC.begin(), sourcesC.end(),
 			destinations.begin(), destinations.end()
@@ -1450,7 +1653,7 @@ namespace grb {
 		};
 		std::array< uintptr_t, 1 > destinations{ getID( internal::getVector(z) ) };
 		internal::hyperdags::generator.addOperation(
-			internal::hyperdags::EWISEAPPLY_SCALAR_VECTOR_MONOID,
+			internal::hyperdags::EWISEAPPLY_VECTOR_ALPHA_VECTOR_MONOID,
 			sourcesP.begin(), sourcesP.end(),
 			sourcesC.begin(), sourcesC.end(),
 			destinations.begin(), destinations.end()
