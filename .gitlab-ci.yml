@@ -3,16 +3,6 @@ default:
     - docker
   image: ${CI_REGISTRY}/${CI_PROJECT_PATH}/lpf-ubuntu-20.04-gcc
 
-
-# stages:
-#   - build-and-secrets
-#   - test-and-install
-#   - debug-build
-#   - debug-test
-#   - centos-build-and-debug
-#   - centos-test-and-install
-
-
 variables:
   IS_MAIN_PIPELINE: "no"
 
@@ -28,25 +18,24 @@ workflow:
     - if: $CI_COMMIT_BRANCH =~ /^v.*-rc.*$/
       variables:
         IS_MAIN_PIPELINE: "yes"
-# trigger pipeline in any case
-    - when: always
+    - when: always  # trigger pipeline in any case
+
 
 
 # Build / test / install on CentOS 8, only for main branches
 
 #build_centos_8:
 #  image: centos:8
-#  tags:
-#    - docker
-#  stage: centos-build-and-debug
+#  needs: []
+#  rules:
+#    - if: $IS_MAIN_PIPELINE == "yes"
+#      when: on_success
+#    - when: never
 #  before_script:
 #    - yum -y update && yum -y groupinstall "Development Tools" && yum -y install make autoconf cmake numactl-devel
 #  script:
 #    - rm -rf build install && mkdir -p install build && cd ./build && ../bootstrap.sh --prefix=../install && make -j$(nproc) && make -j$(nproc) build_tests_all
-#  only:
-#    - master
-#    - develop
-#    - /^v.*-rc.*$/
+#    - strip -s $(find tests/unit/ -type f -executable -print) $(find tests/smoke/ -type f -executable -print) $(find tests/performance/ -type f -executable -print)
 #  artifacts:
 #    paths:
 #      - build/
@@ -58,86 +47,75 @@ workflow:
 
 #build_debug_centos_8:
 #  image: centos:8
-#  tags:
-#    - docker
-#  stage: centos-build-and-debug
+#  needs: []
 #  before_script:
 #    - yum -y update && yum -y groupinstall "Development Tools" && yum -y install make autoconf cmake numactl-devel
 #  script:
 #    - mkdir -p install build && cd ./build && ../bootstrap.sh --prefix=../install --debug-build && make -j$(nproc) && make -j$(nproc) build_tests_all
-#  only:
-#    - master
-#    - develop
-#    - /^v.*-rc.*$/
+#  rules:
+#    - if: $IS_MAIN_PIPELINE == "yes"
+#      when: on_success
+#    - when: never
 
 
 #test_centos_8_unit:
 #  image: centos:8
-#  tags:
-#    - docker
-#  stage: centos-test-and-install
+#  needs: [build_centos_8]
+#  rules:
+#    - if: $IS_MAIN_PIPELINE == "yes"
+#      when: on_success
+#    - when: never
 #  before_script:
 #    - yum -y update && yum -y groupinstall "Development Tools" && yum -y install make autoconf cmake numactl-devel
 #  script:
 #    - cd ./build && make -j$(nproc) tests_unit &> unittests.log
 #    - ../tests/summarise.sh unittests.log
-#  only:
-#    - master
-#    - develop
-#    - /^v.*-rc.*$/
 
 
 #test_centos_8_smoke:
 #  image: centos:8
-#  tags:
-#    - docker
-#  stage: centos-test-and-install
+#  needs: [build_centos_8]
+#  rules:
+#    - if: $IS_MAIN_PIPELINE == "yes"
+#      when: on_success
+#    - when: never
 #  before_script:
 #    - yum -y update && yum -y groupinstall "Development Tools" && yum -y install make autoconf cmake numactl-devel
 #  script:
 #    - cd ./build && make -j$(nproc) tests_smoke &> smoketests.log
 #    - ../tests/summarise.sh smoketests.log
-#  only:
-#    - master
-#    - develop
-#    - /^v.*-rc.*$/
 
 
 #test_centos_8_performance:
-#   image: centos:8
-#   tags:
-#     - docker
-#   stage: centos-test-and-install
-#   before_script:
-#     - yum -y update && yum -y groupinstall "Development Tools" && yum -y install make autoconf cmake numactl-devel
-#   script:
-#     - cd ./build &&  make -j$(nproc) tests_performance &> performancetests.log
-#     - ../tests/summarise.sh performancetests.log tests/performance/output/benchmarks tests/performance/output/scaling
-#   only:
-#     - master
-#     - develop
-#     - /^v.*-rc.*$/
+#  image: centos:8
+#  needs: [build_centos_8]
+#  rules:
+#    - if: $IS_MAIN_PIPELINE == "yes"
+#      when: on_success
+#    - when: never
+#  before_script:
+#    - yum -y update && yum -y groupinstall "Development Tools" && yum -y install make autoconf cmake numactl-devel
+#  script:
+#    - cd ./build &&  make -j$(nproc) tests_performance &> performancetests.log
+#    - ../tests/summarise.sh performancetests.log tests/performance/output/benchmarks tests/performance/output/scaling
 
 
 #test_centos_8_installation:
 #  image: centos:8
-#  tags:
-#    - docker
-#  stage: centos-test-and-install
+#  needs: [build_centos_8]
+#  rules:
+#    - if: $IS_MAIN_PIPELINE == "yes"
+#      when: on_success
+#    - when: never
 #  before_script:
 #    - yum -y update && yum -y groupinstall "Development Tools" && yum -y install make autoconf cmake numactl-devel
 #  script:
 #    - cd ./build && make -j$(nproc) install
-#  only:
-#    - master
-#    - develop
-#    - /^v.*-rc.*$/
 
 
 # Main testing on Ubuntu, all branches
 
 build_test:
-  # stage: build-and-secrets
   needs: []
   script:
 # if we are on master develop or v/-rc branch (or attempting to merge onto them), then also trigger LPF-related tests
@@ -155,63 +133,56 @@ build_test:
     expire_in: 80 minutes
 
 
-build_debug2_tests:
-  # stage: debug-build
+build_tests_build_type_debug_sym_debug:
   needs: []
   script:
     - mkdir -p install build && cd build && cmake -DCMAKE_INSTALL_PREFIX=../install -DCMAKE_CXX_FLAGS=-D_DEBUG -DCMAKE_C_FLAGS=-D_DEBUG -DCMAKE_BUILD_TYPE=Debug ../ && make -j$(nproc) build_tests_all
 
 
-build_debugrelease_tests:
-  # stage: build-and-secrets
-  needs: []
-  script:
-    - mkdir -p install build && cd build && cmake -DCMAKE_INSTALL_PREFIX=../install -DCMAKE_CXX_FLAGS=-D_DEBUG -DCMAKE_C_FLAGS=-D_DEBUG -DCMAKE_BUILD_TYPE=Release ../ && make -j$(nproc) build_tests_all
+build_tests_sym_debug:
   rules:
     - if: $IS_MAIN_PIPELINE == "yes"
       when: on_success
     - when: never
+  needs: []
+  script:
+    - mkdir -p install build && cd build && cmake -DCMAKE_INSTALL_PREFIX=../install -DCMAKE_CXX_FLAGS=-D_DEBUG -DCMAKE_C_FLAGS=-D_DEBUG -DCMAKE_BUILD_TYPE=Release ../ && make -j$(nproc) build_tests_all
 
 
 # linting is currently disabled since clang-format is not mature enough
 # and leads to weirdnesses and instabilities; we may reactivate it in future
 #
 # clang_linter:
-#   image: ubuntu:20.04
-#   stage: build-and-secrets
-#   before_script:
-#     - export DEBIAN_FRONTEND=noninteractive
-#     - apt update && apt install -y clang-format-11 git-core coreutils
-#   script:
-#     - tools/clang-format-linter.sh -i --lint-whole-grb
-#     - files="$(git status -s)"
-#     - if [[ ! -z "${files}" ]]; then echo "The following files do not abide by the official code style, you may use tools/clang-format-linter.sh to format them"; echo "${files[@]}"; else echo 'All files formatted correctly'; fi
-#     - if [[ ! -z "${files}" ]]; then exit 0; fi
+#  needs: [build_centos_8]
+#  before_script:
+#    - export DEBIAN_FRONTEND=noninteractive
+#    - apt update && apt install -y clang-format-11 git-core coreutils
+#  script:
+#    - tools/clang-format-linter.sh -i --lint-whole-grb
+#    - files="$(git status -s)"
+#    - if [[ ! -z "${files}" ]]; then echo "The following files do not abide by the official code style, you may use tools/clang-format-linter.sh to format them"; echo "${files[@]}"; else echo 'All files formatted correctly'; fi
+#    - if [[ ! -z "${files}" ]]; then exit 0; fi
 
 
 tests_unit:
-  # stage: test-and-install
   needs: [build_test]
   script:
     - cd ./build && make -j$(nproc) tests_unit &> unittests.log
     - ../tests/summarise.sh unittests.log
 
 tests_smoke:
-  # stage: test-and-install
   needs: [build_test]
   script:
     - cd ./build && make -j$(nproc) tests_smoke &> smoketests.log
     - ../tests/summarise.sh smoketests.log
 
 test_installation:
-  # stage: test-and-install
   needs: [build_test]
   script:
     - cd ./build && make -j$(nproc) install
 
 
-build_test_debug:
-  # stage: debug-build
+build_test_build_type_debug:
   needs: []
   script:
     - mkdir -p install build && cd ./build && ../bootstrap.sh --prefix=../install --with-datasets=${ALP_DATASETS} --debug-build && make -j$(nproc) && make -j$(nproc) build_tests_all
@@ -224,21 +195,18 @@ build_test_debug:
       - build/**/*.o.d
     expire_in: 43 minutes
 
-test_smoke_debug:
-  # stage: debug-test
-  needs: [build_test_debug]
+test_smoke_build_type_debug:
+  needs: [build_test_build_type_debug]
   script:
     - cd ./build && make -j$(nproc) smoketests &> smoketests.log
     - ../tests/summarise.sh smoketests.log
 
-test_install_debug:
-  # stage: debug-test
-  needs: [build_test_debug]
+test_installation_build_type_debug:
+  needs: [build_test_build_type_debug]
   script:
     - cd ./build && make -j$(nproc) install
 
 gitleaks:
-  # stage: build-and-secrets
   needs: []
   image:
     name: "zricethezav/gitleaks:v8.0.6"
@@ -249,23 +217,21 @@ gitleaks:
 ## Additional tests specific to main branches only
 
 tests_performance:
-  # stage: test-and-install
+  rules:
+    - if: $IS_MAIN_PIPELINE == "yes"
+      when: on_success
+    - when: never
   needs: [build_test]
   script:
     - cd ./build && make -j$(nproc) performancetests &> performancetests.log
     - ../tests/summarise.sh performancetests.log tests/performance/output/benchmarks tests/performance/output/scaling
+
+tests_unit_build_type_debug:
   rules:
     - if: $IS_MAIN_PIPELINE == "yes"
       when: on_success
     - when: never
-
-tests_unit_debug:
-  # stage: debug-test
-  needs: [build_test_debug]
+  needs: [build_test_build_type_debug]
   script:
     - cd ./build && make -j$(nproc) unittests &> unittests.log
     - ../tests/summarise.sh unittests.log
-  rules:
-    - if: $IS_MAIN_PIPELINE == "yes"
-      when: on_success
-    - when: never
