@@ -312,7 +312,7 @@ namespace grb {
 		NO_CAST_ASSERT( ( !(descr & descriptors::no_casting) ||
 			std::is_same< IOType, typename Operator::D2 >::value ), "grb::foldl",
 			"called with an I/O value type that does not match the second domain of "
-			"the given operator " );
+			"the given operator" );
 		NO_CAST_ASSERT( ( !(descr & descriptors::no_casting) ||
 			std::is_same< IOType, typename Operator::D3 >::value ), "grb::foldl",
 			"called with an I/O value type that does not match the third domain of "
@@ -420,7 +420,7 @@ namespace grb {
 		NO_CAST_ASSERT( ( !(descr & descriptors::no_casting) ||
 			std::is_same< IOType, typename Operator::D2 >::value ), "grb::foldr",
 			"called with an I/O value type that does not match the second domain of "
-			"the given operator " );
+			"the given operator" );
 		NO_CAST_ASSERT( ( !(descr & descriptors::no_casting) ||
 			std::is_same< InputType, typename Operator::D1 >::value ), "grb::foldr",
 			"called with an input vector value type that does not match the first "
@@ -476,7 +476,7 @@ namespace grb {
 		NO_CAST_ASSERT( ( !(descr & descriptors::no_casting) ||
 			std::is_same< IOType, typename Operator::D1 >::value ), "grb::foldl",
 			"called with an I/O value type that does not match the first domain of "
-			"the given operator " );
+			"the given operator" );
 		NO_CAST_ASSERT( ( !(descr & descriptors::no_casting) ||
 			std::is_same< InputType, typename Operator::D2 >::value ), "grb::foldl",
 			"called with an input vector value type that does not match the second "
@@ -590,7 +590,7 @@ namespace grb {
 		NO_CAST_ASSERT( ( !(descr & descriptors::no_casting) ||
 			std::is_same< IOType, typename Operator::D1 >::value ), "grb::foldl",
 			"called with an I/O value type that does not match the first domain of "
-			"the given operator " );
+			"the given operator" );
 		NO_CAST_ASSERT( ( !(descr & descriptors::no_casting) ||
 			std::is_same< InputType, typename Operator::D2 >::value ), "grb::foldl",
 			"called with an input vector value type that does not match the second "
@@ -751,7 +751,7 @@ namespace grb {
 		NO_CAST_ASSERT( ( !(descr & descriptors::no_casting) ||
 			std::is_same< IOType, typename Operator::D1 >::value ), "grb::foldl",
 			"called with an I/O value type that does not match the first domain of "
-			"the given operator " );
+			"the given operator" );
 		NO_CAST_ASSERT( ( !(descr & descriptors::no_casting) ||
 			std::is_same< InputType, typename Operator::D2 >::value ), "grb::foldl",
 			"called with an input vector value type that does not match the second "
@@ -1047,11 +1047,292 @@ namespace grb {
 	>
 	RC eWiseApply(
 		Vector< OutputType, BSP1D, Coords > &z,
+		const InputType1 alpha,
+		const InputType2 beta,
+		const Operator &op,
+		const Phase &phase = EXECUTE,
+		const typename std::enable_if<
+			!grb::is_object< OutputType >::value &&
+			!grb::is_object< InputType1 >::value &&
+			!grb::is_object< InputType2 >::value &&
+			grb::is_operator< Operator >::value, void
+		>::type * const = nullptr
+	) {
+#ifdef _DEBUG
+		std::cerr << "In BSP1D unmasked eWiseApply (operator-based), "
+			"[T1]<-T2<-T3\n";
+#endif
+		// static checks
+		NO_CAST_ASSERT( ( !(descr & descriptors::no_casting) ||
+				std::is_same< InputType1, typename Operator::D1 >::value ),
+			"grb::eWiseApply",
+			"called with a left-hand input scalar type that does not match the "
+			"first domain of the given operator" );
+		NO_CAST_ASSERT( ( !(descr & descriptors::no_casting) ||
+				std::is_same< InputType2, typename Operator::D2 >::value ),
+			"grb::eWiseApply",
+			"called with a right-hand input scalar type that does not match the second "
+			"domain of the given operator" );
+		NO_CAST_ASSERT( ( !(descr & descriptors::no_casting) ||
+				std::is_same< OutputType, typename Operator::D3 >::value ),
+			"grb::eWiseApply",
+			"called with an output value type that does not match the third domain of "
+			"the given operator" );
+
+		// catch trivial resize
+		if( config::IMPLEMENTATION< BSP1D >::fixedVectorCapacities() &&
+			phase == RESIZE
+		) {
+			return SUCCESS;
+		}
+
+		// delegate to set
+		OutputType temp;
+		RC ret = apply< descr >( temp, alpha, beta, op );
+		ret = ret ? ret : set< descr >( z, temp, phase );
+
+		// done
+		return ret;
+	}
+
+	/** \internal No communication necessary, output is guaranteed dense. */
+	template<
+		Descriptor descr = descriptors::no_operation,
+		class Operator,
+		typename OutputType, typename MaskType,
+		typename InputType1, typename InputType2,
+		typename Coords
+	>
+	RC eWiseApply(
+		Vector< OutputType, BSP1D, Coords > &z,
+		const Vector< MaskType, BSP1D, Coords > &mask,
+		const InputType1 alpha,
+		const InputType2 beta,
+		const Operator &op,
+		const Phase &phase = EXECUTE,
+		const typename std::enable_if<
+			!grb::is_object< OutputType >::value &&
+			!grb::is_object< MaskType >::value &&
+			!grb::is_object< InputType1 >::value &&
+			!grb::is_object< InputType2 >::value &&
+			grb::is_operator< Operator >::value, void
+		>::type * const = nullptr
+	) {
+#ifdef _DEBUG
+		std::cerr << "In BSP1D masked eWiseApply (operator-based), "
+			"[T1]<-T2<-T3\n";
+#endif
+		// static checks
+		NO_CAST_ASSERT( ( !(descr & descriptors::no_casting) ||
+				std::is_same< InputType1, typename Operator::D1 >::value ),
+			"grb::eWiseApply",
+			"called with a left-hand input scalar type that does not match the "
+			"first domain of the given operator" );
+		NO_CAST_ASSERT( ( !(descr & descriptors::no_casting) ||
+				std::is_same< InputType2, typename Operator::D2 >::value ),
+			"grb::eWiseApply",
+			"called with a right-hand input scalar type that does not match the second "
+			"domain of the given operator" );
+		NO_CAST_ASSERT( ( !(descr & descriptors::no_casting) ||
+				std::is_same< OutputType, typename Operator::D3 >::value ),
+			"grb::eWiseApply",
+			"called with an output value type that does not match the third domain of "
+			"the given operator" );
+		NO_CAST_ASSERT( ( !(descr & descriptors::no_casting) ||
+				std::is_same< bool, MaskType >::value ), "grb::eWiseApply",
+			"called with an output mask value type that is not bool" );
+
+		// dynamic checks
+		const size_t n = size( z );
+		if( (descr & descriptors::dense) && nnz( mask ) != n ) {
+			return ILLEGAL;
+		}
+		if( (descr & descriptors::dense) && nnz( z ) != n ) {
+			return ILLEGAL;
+		}
+		if( size( mask ) != n ) {
+			return MISMATCH;
+		}
+		if( capacity( z ) < n && phase == EXECUTE ) {
+			return FAILED;
+		}
+
+		// catch trivial resize
+		if( config::IMPLEMENTATION< BSP1D >::fixedVectorCapacities() &&
+			phase == RESIZE
+		) {
+			return SUCCESS;
+		}
+
+		// delegate to set
+		OutputType temp;
+		RC ret = apply< descr >( temp, alpha, beta, op );
+		ret = ret ? ret : set< descr >( z, mask, temp, phase );
+
+		// done
+		return ret;
+	}
+
+	/** \internal No communication necessary, output is guaranteed dense. */
+	template<
+		Descriptor descr = descriptors::no_operation,
+		class Monoid,
+		typename OutputType,
+		typename InputType1, typename InputType2,
+		typename Coords
+	>
+	RC eWiseApply(
+		Vector< OutputType, BSP1D, Coords > &z,
+		const InputType1 alpha,
+		const InputType2 beta,
+		const Monoid &monoid,
+		const Phase &phase = EXECUTE,
+		const typename std::enable_if<
+			!grb::is_object< OutputType >::value &&
+			!grb::is_object< InputType1 >::value &&
+			!grb::is_object< InputType2 >::value &&
+			grb::is_monoid< Monoid >::value, void
+		>::type * const = nullptr
+	) {
+#ifdef _DEBUG
+		std::cerr << "In BSP1D unmasked eWiseApply (monoid-based), "
+			"[T1]<-T2<-T3\n";
+#endif
+		// static checks
+		NO_CAST_ASSERT( ( !(descr & descriptors::no_casting) ||
+				std::is_same< InputType1, typename Monoid::D1 >::value ),
+			"grb::eWiseApply",
+			"called with a left-hand input scalar type that does not match the "
+			"first domain of the given monoid" );
+		NO_CAST_ASSERT( ( !(descr & descriptors::no_casting) ||
+				std::is_same< InputType2, typename Monoid::D2 >::value ),
+			"grb::eWiseApply",
+			"called with a right-hand input scalar type that does not match the second "
+			"domain of the given monoid" );
+		NO_CAST_ASSERT( ( !(descr & descriptors::no_casting) ||
+				std::is_same< OutputType, typename Monoid::D3 >::value ),
+			"grb::eWiseApply",
+			"called with an output value type that does not match the third domain of "
+			"the given monoid" );
+
+		// dynamic checks
+		const size_t n = size( z );
+		if( (descr & descriptors::dense) && nnz( z ) != n ) {
+			return ILLEGAL;
+		}
+		if( capacity( z ) < n && phase == EXECUTE ) {
+			return FAILED;
+		}
+
+		// catch trivial resize
+		if( config::IMPLEMENTATION< BSP1D >::fixedVectorCapacities() &&
+			phase == RESIZE
+		) {
+			return SUCCESS;
+		}
+
+		// delegate to set
+		OutputType temp;
+		RC ret = apply< descr >( temp, alpha, beta, monoid.getOperator() );
+		ret = ret ? ret : set< descr >( z, temp, phase );
+
+		// done
+		return ret;
+	}
+
+	/** \internal No communication necessary, output is guaranteed dense. */
+	template<
+		Descriptor descr = descriptors::no_operation,
+		class Monoid,
+		typename OutputType, typename MaskType,
+		typename InputType1, typename InputType2,
+		typename Coords
+	>
+	RC eWiseApply(
+		Vector< OutputType, BSP1D, Coords > &z,
+		const Vector< MaskType, BSP1D, Coords > &mask,
+		const InputType1 alpha,
+		const InputType2 beta,
+		const Monoid &monoid,
+		const Phase &phase = EXECUTE,
+		const typename std::enable_if<
+			!grb::is_object< OutputType >::value &&
+			!grb::is_object< MaskType >::value &&
+			!grb::is_object< InputType1 >::value &&
+			!grb::is_object< InputType2 >::value &&
+			grb::is_monoid< Monoid >::value, void
+		>::type * const = nullptr
+	) {
+#ifdef _DEBUG
+		std::cerr << "In BSP1D masked eWiseApply (monoid-based), "
+			"[T1]<-T2<-T3\n";
+#endif
+		// static checks
+		NO_CAST_ASSERT( ( !(descr & descriptors::no_casting) ||
+				std::is_same< InputType1, typename Monoid::D1 >::value ),
+			"grb::eWiseApply",
+			"called with a left-hand input scalar type that does not match the "
+			"first domain of the given monoid" );
+		NO_CAST_ASSERT( ( !(descr & descriptors::no_casting) ||
+				std::is_same< InputType2, typename Monoid::D2 >::value ),
+			"grb::eWiseApply",
+			"called with a right-hand input scalar type that does not match the second "
+			"domain of the given monoid" );
+		NO_CAST_ASSERT( ( !(descr & descriptors::no_casting) ||
+				std::is_same< OutputType, typename Monoid::D3 >::value ),
+			"grb::eWiseApply",
+			"called with an output value type that does not match the third domain of "
+			"the given monoid" );
+		NO_CAST_ASSERT( ( !(descr & descriptors::no_casting) ||
+				std::is_same< bool, MaskType >::value ), "grb::eWiseApply",
+			"called with an output mask value type that is not bool" );
+
+		// dynamic checks
+		const size_t n = size( z );
+		if( (descr & descriptors::dense) && nnz( mask ) != n ) {
+			return ILLEGAL;
+		}
+		if( (descr & descriptors::dense) && nnz( z ) != n ) {
+			return ILLEGAL;
+		}
+		if( size( mask ) != n ) {
+			return MISMATCH;
+		}
+		if( capacity( z ) < n && phase == EXECUTE ) {
+			return FAILED;
+		}
+
+		// catch trivial resize
+		if( config::IMPLEMENTATION< BSP1D >::fixedVectorCapacities() &&
+			phase == RESIZE
+		) {
+			return SUCCESS;
+		}
+
+		// delegate to set
+		OutputType temp;
+		RC ret = apply< descr >( temp, alpha, beta, monoid.getOperator() );
+		ret = ret ? ret : set< descr >( z, mask, temp, phase );
+
+		// done
+		return ret;
+	}
+
+	/** \internal No communication necessary, output is guaranteed dense. */
+	template<
+		Descriptor descr = descriptors::no_operation,
+		class Operator,
+		typename OutputType, typename InputType1, typename InputType2,
+		typename Coords
+	>
+	RC eWiseApply(
+		Vector< OutputType, BSP1D, Coords > &z,
 		const Vector< InputType1, BSP1D, Coords > &x,
 		const InputType2 beta,
 		const Operator &op,
 		const Phase &phase = EXECUTE,
-		const typename std::enable_if< !grb::is_object< OutputType >::value &&
+		const typename std::enable_if<
+			!grb::is_object< OutputType >::value &&
 			!grb::is_object< InputType1 >::value &&
 			!grb::is_object< InputType2 >::value &&
 			grb::is_operator< Operator >::value, void
@@ -1067,7 +1348,7 @@ namespace grb {
 				std::is_same< InputType1, typename Operator::D1 >::value ),
 			"grb::eWiseApply",
 			"called with a left-hand input vector value type that does not match the "
-			"first domain of the given operator " );
+			"first domain of the given operator" );
 		NO_CAST_ASSERT( ( !(descr & descriptors::no_casting) ||
 				std::is_same< InputType2, typename Operator::D2 >::value ),
 			"grb::eWiseApply",
@@ -1141,7 +1422,8 @@ namespace grb {
 		const Vector< InputType2, BSP1D, Coords > &y,
 		const Operator &op,
 		const Phase &phase = EXECUTE,
-		const typename std::enable_if< !grb::is_object< OutputType >::value &&
+		const typename std::enable_if<
+			!grb::is_object< OutputType >::value &&
 			!grb::is_object< InputType1 >::value &&
 			!grb::is_object< InputType2 >::value &&
 			grb::is_operator< Operator >::value,
@@ -1156,7 +1438,7 @@ namespace grb {
 			std::is_same< InputType1, typename Operator::D1 >::value ),
 			"grb::eWiseApply",
 			"called with a left-hand input vector value type that does not match the "
-			"first domain of the given operator " );
+			"first domain of the given operator" );
 		NO_CAST_ASSERT( ( !(descr & descriptors::no_casting) ||
 			std::is_same< InputType2, typename Operator::D2 >::value ),
 			"grb::eWiseApply",
@@ -1233,7 +1515,8 @@ namespace grb {
 		const Vector< InputType2, BSP1D, Coords > &y,
 		const Operator &op,
 		const Phase &phase = EXECUTE,
-		const typename std::enable_if< !grb::is_object< OutputType >::value &&
+		const typename std::enable_if<
+			!grb::is_object< OutputType >::value &&
 			!grb::is_object< InputType1 >::value &&
 			!grb::is_object< InputType2 >::value &&
 			grb::is_operator< Operator >::value,
@@ -1248,7 +1531,7 @@ namespace grb {
 			std::is_same< InputType1, typename Operator::D1 >::value ),
 			"grb::eWiseApply",
 			"called with a left-hand input vector value type that does not match the "
-			"first domain of the given operator " );
+			"first domain of the given operator" );
 		NO_CAST_ASSERT( ( !(descr & descriptors::no_casting) ||
 			std::is_same< InputType2, typename Operator::D2 >::value ),
 			"grb::eWiseApply",
@@ -1347,7 +1630,8 @@ namespace grb {
 		const Vector< InputType2, BSP1D, Coords > &y,
 		const Operator &op,
 		const Phase &phase = EXECUTE,
-		const typename std::enable_if< !grb::is_object< OutputType >::value &&
+		const typename std::enable_if<
+			!grb::is_object< OutputType >::value &&
 			!grb::is_object< MaskType >::value &&
 			!grb::is_object< InputType1 >::value &&
 			!grb::is_object< InputType2 >::value &&
@@ -1363,7 +1647,7 @@ namespace grb {
 			std::is_same< InputType1, typename Operator::D1 >::value ),
 			"grb::eWiseApply",
 			"called with a left-hand input vector value type that does not match the "
-			"first domain of the given operator " );
+			"first domain of the given operator" );
 		NO_CAST_ASSERT( ( !(descr & descriptors::no_casting) ||
 			std::is_same< InputType2, typename Operator::D2 >::value ),
 			"grb::eWiseApply",
@@ -1447,7 +1731,8 @@ namespace grb {
 		const InputType2 beta,
 		const Operator &op,
 		const Phase &phase = EXECUTE,
-		const typename std::enable_if< !grb::is_object< OutputType >::value &&
+		const typename std::enable_if<
+			!grb::is_object< OutputType >::value &&
 			!grb::is_object< MaskType >::value &&
 			!grb::is_object< InputType1 >::value &&
 			!grb::is_object< InputType2 >::value &&
@@ -1463,7 +1748,7 @@ namespace grb {
 			std::is_same< InputType1, typename Operator::D1 >::value ),
 			"grb::eWiseApply",
 			"called with a left-hand input vector value type that does not match the "
-			"first domain of the given operator " );
+			"first domain of the given operator" );
 		NO_CAST_ASSERT( ( !(descr & descriptors::no_casting) ||
 			std::is_same< InputType2, typename Operator::D2 >::value ),
 			"grb::eWiseApply",
@@ -1548,7 +1833,8 @@ namespace grb {
 		const Vector< InputType2, BSP1D, Coords > &y,
 		const Operator &op,
 		const Phase &phase = EXECUTE,
-		const typename std::enable_if< !grb::is_object< OutputType >::value &&
+		const typename std::enable_if<
+			!grb::is_object< OutputType >::value &&
 			!grb::is_object< MaskType >::value &&
 			!grb::is_object< InputType1 >::value &&
 			!grb::is_object< InputType2 >::value &&
@@ -1564,7 +1850,7 @@ namespace grb {
 			std::is_same< InputType1, typename Operator::D1 >::value ),
 			"grb::eWiseApply",
 			"called with a left-hand input vector value type that does not match the "
-			"first domain of the given operator " );
+			"first domain of the given operator" );
 		NO_CAST_ASSERT( ( !(descr & descriptors::no_casting) ||
 			std::is_same< InputType2, typename Operator::D2 >::value ),
 			"grb::eWiseApply",
@@ -1657,7 +1943,8 @@ namespace grb {
 		const InputType2 beta,
 		const Monoid &monoid,
 		const Phase &phase = EXECUTE,
-		const typename std::enable_if< !grb::is_object< OutputType >::value &&
+		const typename std::enable_if<
+			!grb::is_object< OutputType >::value &&
 			!grb::is_object< InputType1 >::value &&
 			!grb::is_object< InputType2 >::value &&
 			grb::is_monoid< Monoid >::value,
@@ -1748,7 +2035,8 @@ namespace grb {
 		const Vector< InputType2, BSP1D, Coords > &y,
 		const Monoid &monoid,
 		const Phase &phase = EXECUTE,
-		const typename std::enable_if< !grb::is_object< OutputType >::value &&
+		const typename std::enable_if<
+			!grb::is_object< OutputType >::value &&
 			!grb::is_object< InputType1 >::value &&
 			!grb::is_object< InputType2 >::value &&
 			grb::is_monoid< Monoid >::value,
@@ -1841,7 +2129,8 @@ namespace grb {
 		const Vector< InputType2, BSP1D, Coords > &y,
 		const Monoid &monoid,
 		const Phase &phase = EXECUTE,
-		const typename std::enable_if< !grb::is_object< OutputType >::value &&
+		const typename std::enable_if<
+			!grb::is_object< OutputType >::value &&
 			!grb::is_object< InputType1 >::value &&
 			!grb::is_object< InputType2 >::value &&
 			grb::is_monoid< Monoid >::value,
@@ -1943,7 +2232,8 @@ namespace grb {
 		const Vector< InputType2, BSP1D, Coords > &y,
 		const Monoid &monoid,
 		const Phase &phase = EXECUTE,
-		const typename std::enable_if< !grb::is_object< OutputType >::value &&
+		const typename std::enable_if<
+			!grb::is_object< OutputType >::value &&
 			!grb::is_object< MaskType >::value &&
 			!grb::is_object< InputType1 >::value &&
 			!grb::is_object< InputType2 >::value &&
@@ -2043,7 +2333,8 @@ namespace grb {
 		const InputType2 beta,
 		const Monoid &monoid,
 		const Phase &phase = EXECUTE,
-		const typename std::enable_if< !grb::is_object< OutputType >::value &&
+		const typename std::enable_if<
+			!grb::is_object< OutputType >::value &&
 			!grb::is_object< MaskType >::value &&
 			!grb::is_object< InputType1 >::value &&
 			!grb::is_object< InputType2 >::value &&
@@ -2149,7 +2440,8 @@ namespace grb {
 		const Vector< InputType2, BSP1D, Coords > &y,
 		const Monoid &monoid,
 		const Phase &phase = EXECUTE,
-		const typename std::enable_if< !grb::is_object< OutputType >::value &&
+		const typename std::enable_if<
+			!grb::is_object< OutputType >::value &&
 			!grb::is_object< MaskType >::value &&
 			!grb::is_object< InputType1 >::value &&
 			!grb::is_object< InputType2 >::value &&
