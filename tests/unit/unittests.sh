@@ -204,8 +204,8 @@ for MODE in debug ndebug; do
 				echo " "
 
 				echo ">>>      [x]           [ ]       Testing grb::eWiseApply using (+,0) on vectors"
-				echo "                                 of doubles of size 101."
-				$runner ${TEST_BIN_DIR}/ewiseapply_${MODE}_${BACKEND} 101 &> ${TEST_OUT_DIR}/ewiseapply_${MODE}_${BACKEND}_${P}_${T}
+				echo "                                 of doubles of size 100."
+				$runner ${TEST_BIN_DIR}/ewiseapply_${MODE}_${BACKEND} 100 &> ${TEST_OUT_DIR}/ewiseapply_${MODE}_${BACKEND}_${P}_${T}
 				head -1 ${TEST_OUT_DIR}/ewiseapply_${MODE}_${BACKEND}_${P}_${T}
 				grep 'Test OK' ${TEST_OUT_DIR}/ewiseapply_${MODE}_${BACKEND}_${P}_${T} || echo "Test FAILED"
 				echo " "
