@@ -4968,6 +4968,7 @@ namespace grb {
 		const Phase &phase = EXECUTE,
 		const typename std::enable_if<
 			!grb::is_object< OutputType >::value &&
+			!grb::is_object< MaskType >::value &&
 			!grb::is_object< InputType1 >::value &&
 			!grb::is_object< InputType2 >::value &&
 			grb::is_operator< OP >::value, void
@@ -5077,6 +5078,7 @@ namespace grb {
 		const Phase &phase = EXECUTE,
 		const typename std::enable_if<
 			!grb::is_object< OutputType >::value &&
+			!grb::is_object< MaskType >::value &&
 			!grb::is_object< InputType1 >::value &&
 			!grb::is_object< InputType2 >::value &&
 			grb::is_monoid< Monoid >::value, void
