@@ -69,8 +69,9 @@ uniformity. An informal summary of the main points follow:
    implementation starts (i.e., two empty lines after any comments, macro
    guards, and includes before the first line of code).
 
-Rules are enforced by their exceptions; for example, rule #3 could be viewed as
-a specific exception to rule #8. Less obvious exceptions include:
+As the saying goes, exceptions prove the rules. For example, rule #3 could be
+viewed as a specific exception to rule #8. Exceptions that are not
+self-contained in the above set include:
 
 1. one long program line under rule #7 may be arbitrarily spread over two lines
    even if it runs counter rule #3-- but not if it would spread over more than
