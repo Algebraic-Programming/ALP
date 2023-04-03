@@ -77,10 +77,12 @@ self-contained in the above set include:
    even if it runs counter rule #3-- but not if it would spread over more than
    two lines;
 
-2. OpenMP pragmas ignore rule #6;
+2. OpenMP pragmas may ignore rule #6-- they may follow regular tab-based
+   indentation instead;
 
 3. the 80-character limit is not strictly enforced. For example, an OpenMP macro
-   of 83 characters on a single line is better readable than one split over two;
+   of 83 characters on a single line is better readable than when split over
+   two;
 
 4. brackets in code bodies that limit the scope of some of the declaration
    within the body, may, contrary to rule #3, appear alone on a single line.
@@ -88,11 +90,11 @@ self-contained in the above set include:
 
 ## Code style by examples:
 
-- `if( `, not `if (`;
+- `if( ... ) {`, not `if (...) {` or any other variant;
 
-- lines should never end in tabs or spaces;
+- lines should never end with white space (tab or space characters);
 
-- `if( x == 5 )` instead of `if( x==5 )`;
+- `if( x == 5 ) {` instead of `if( x==5 ) {`;
 
 - only write `<<` or `>>` when doing bit shifts, never for nested templates;
 
@@ -104,12 +106,12 @@ if( ... ) {
 }
 ```
 
+- the following is correct w.r.t. vertical spacing;
+
 ```
 /*
  * copyright info
  */
-
-- the following is correct w.r.t. vertical spacing;
 
 /**
  * @file
@@ -167,14 +169,17 @@ script.
 
 ## Clang linter
 
-To apply these rules, the directory `tools` contains the script
-`clang-format-linter.sh` that formats (*lint*, in Unix jargon) the code
-accordingly, based on the `clang-format` tool. Version 11 or higher is requested
-for the settings to be applied; if you want to use a different version, you can
-alias it in Bash before invoking `tools/clang-format-linter.sh`, which otherwise
-directly calls the command `clang-format-11`.
+To automatically and approximately correctly check whether code style rules are
+followed properly, the directory `tools` contains the script
+`clang-format-linter.sh` that formats (*lints*, in Unix jargon) the source code,
+based on the `clang-format` tool.
 
-This tools is available in the standard repositories of the main Linux
+Version 11 or higher of the tool is required. If you want to use a different
+version, you can alias it in Bash before invoking
+`tools/clang-format-linter.sh`, which otherwise directly calls the command
+`clang-format-11`.
+
+This tools is available in the standard repositories of all main Linux
 distributions: for example, in Ubuntu you can install it with
 `apt-get install clang-format-11`.
 
@@ -183,6 +188,7 @@ To list the script parameters, simply type
 ```bash
 tools/clang-format-linter.sh -h
 ```
+
 For example, to lint the file `tests/add15d.cpp` and see the lint'ed code on the
 standard output, type
 
@@ -263,5 +269,59 @@ Some major rules on code quality includes:
 # Building and Testing infrastructure
 
 To modify it, you should refer to the
-[dedicated documentation](Build_and_test_infra.md).
+[dedicated documentation](Build_and_test_infra.md). To use the build and test
+infrastructure, see the [main README](../README.md).
+
+
+## Testing before committing
+
+A careful committer may wish to run smoke or unit tests before committing to the
+main repository. Such developers may wish to take note of the script contained
+in the tests directory, `tests/summarise.sh`, which may be used to quickly
+analyse a test log file: it summarises how many tests have passed, how many have
+been skipped, and how many have failed.
+
+Additionally, if at least one test has failed, or if none of the tests have
+succeeded (indicating perhaps a build error), then the entire log will be
+`cat`ted.
+
+A common use is to, in one terminal, execute:
+
+```
+$ cd build
+$ make -j88 smoketests &> smoketests.log
+```
+
+While in another, and while the above command is running, to execute:
+
+```
+$ cd build
+$ watch ../tests/summarise.sh smoketests.log
+```
+
+The second terminal then gives ``live'' feedback on the progress of the tests.
+
+## Continuous integration
+
+GitHub actions have been deployed to run smoke tests using both performance and
+debug flags. These tests are run on standard images that do not include the
+the datasets that some smoke tests require -- those tests are hence skipped.
+
+An internal CI to the Computing Systems Lab at the Huawei Zurich Research Center
+exists, but can only be triggered by its employees. This CI also performs unit
+tests. At present, however, it also does *not* employ images that have the
+required data sets embedded or accessible.
+
+The `develop` and `master` branches are tested by the internal CI on a regular
+schedule, in addition to being triggered on every push, and run a more
+comprehensive combination of test suites and compilation (debug/release) flags.
+Also release candidate branches (i.e., branches with names that match the wild-
+card expression `*-rc*`) are subject to the same more extensive test suite.
+
+All CI tests at present skip tests that require data sets, and therefore
+developers are suggested to not skip running local tests, at least once before
+flagging a merge request as ready and requesting a review. Even if at some
+point the CI does provide datasets, the practice of developers self-checking MRs
+is recommended as it naturally also induces greater robustness across compilers
+and distributions.
 
