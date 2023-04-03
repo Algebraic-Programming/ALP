@@ -125,38 +125,53 @@ std::string grb::internal::hyperdags::toString(
 		case NCOLS:
 			return "ncols( matrix )";
 
-		case EWISEAPPLY_VECTOR_VECTOR:
-			return "eWiseApply( vector, vector, vector, scalar, monoid)";
+		case EWISEAPPLY_VECTOR_ALPHA_BETA_OP:
+			return "eWiseApply( vector, scalar, scalar, operation)";
 
-		case EWISEAPPLY_VECTOR_BETA:
+		case EWISEAPPLY_VECTOR_ALPHA_VECTOR_OP:
 			return "eWiseApply( vector, scalar, vector, operation)";
 
-		case EWISEAPPLY_VECTOR_VECTOR_BETA:
-			return "eWiseApply( vector, vector, vector, scalar, monoid)";
+		case EWISEAPPLY_VECTOR_VECTOR_BETA_OP:
+			return "eWiseApply( vector, vector, scalar, operation)";
 
-		case EWISEAPPLY_VECTOR_VECTOR_VECTOR_BETA:
-			return "eWiseApply( vector, vector, vector, scalar, operation)";
+		case EWISEAPPLY_VECTOR_VECTOR_VECTOR_OP:
+			return "eWiseApply( vector, vector, vector, operation)";
 
-		case EWISEAPPLY_VECTOR_VECTOR_ALPHA_VECTOR:
-			return "eWiseApply( vector, vector, scalar, vector, monoid)";
+		case EWISEAPPLY_VECTOR_MASK_ALPHA_BETA_OP:
+			return "eWiseApply( vector, vector, scalar, scalar, operation)";
 
-		case EWISEAPPLY_VECTOR_VECTOR_ALPHA_VECTOR_OP:
+		case EWISEAPPLY_VECTOR_MASK_ALPHA_VECTOR_OP:
 			return "eWiseApply( vector, vector, scalar, vector, operation)";
+
+		case EWISEAPPLY_VECTOR_MASK_VECTOR_BETA_OP:
+			return "eWiseApply( vector, vector, vector, scalar, operation)";
 
 		case EWISEAPPLY_VECTOR_MASK_VECTOR_VECTOR_OP:
 			return "eWiseApply( vector, vector, vector, vector, operation)";
 
-		case EWISEAPPLY_VECTOR_SCALAR_MONOID:
-			return "eWiseApply( vector, vector, scalar, monoid)";
+		case EWISEAPPLY_VECTOR_ALPHA_BETA_MONOID:
+			return "eWiseApply( vector, scalar, scalar, monoid)";
 
-		case EWISEAPPLY_SCALAR_VECTOR_MONOID:
+		case EWISEAPPLY_VECTOR_ALPHA_VECTOR_MONOID:
 			return "eWiseApply( vector, scalar, vector, monoid)";
 
-		case EWISEAPPLY_VECTOR_MASK_VECTOR_VECTOR_MONOID:
-			return "eWiseApply( vector, vector, vector, vector, monoid)";
+		case EWISEAPPLY_VECTOR_VECTOR_BETA_MONOID:
+			return "eWiseApply( vector, vector, scalar, monoid)";
 
 		case EWISEAPPLY_VECTOR_VECTOR_VECTOR_MONOID:
 			return "eWiseApply( vector, vector, vector, monoid)";
+
+		case EWISEAPPLY_VECTOR_MASK_ALPHA_BETA_MONOID:
+			return "eWiseApply( vector, vector, scalar, scalar, monoid)";
+
+		case EWISEAPPLY_VECTOR_MASK_ALPHA_VECTOR_MONOID:
+			return "eWiseApply( vector, vector, scalar, vector, monoid)";
+
+		case EWISEAPPLY_VECTOR_MASK_VECTOR_BETA_MONOID:
+			return "eWiseApply( vector, vector, vector, scalar, monoid)";
+
+		case EWISEAPPLY_VECTOR_MASK_VECTOR_VECTOR_MONOID:
+			return "eWiseApply( vector, vector, vector, vector, monoid)";
 
 		case EWISE_MUL_ADD:
 			return "eWiseMulAdd( vector, vector, vector, vector, vector, ring )";
