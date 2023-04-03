@@ -1043,10 +1043,10 @@ namespace grb {
 		const OP &op = OP(),
 		const Phase &phase = EXECUTE,
 		const typename std::enable_if<
-			!grb::is_object< OutputType >::value
-			&& !grb::is_object< InputType1 >::value
-			&& !grb::is_object< InputType2 >::value
-			&& grb::is_operator< OP >::value,
+			!grb::is_object< OutputType >::value &&
+			!grb::is_object< InputType1 >::value &&
+			!grb::is_object< InputType2 >::value &&
+			grb::is_operator< OP >::value,
 		void >::type * const = nullptr
 	) {
 		const RC ret = eWiseApply< descr >(
@@ -1139,10 +1139,11 @@ namespace grb {
 		const OP &op = OP(),
 		const Phase &phase = EXECUTE,
 		const typename std::enable_if<
-			!grb::is_object< OutputType >::value
-			&& !grb::is_object< InputType1 >::value
-			&& !grb::is_object< InputType2 >::value
-			&& grb::is_operator< OP >::value,
+			!grb::is_object< OutputType >::value &&
+			!grb::is_object< MaskType >::value &&
+			!grb::is_object< InputType1 >::value &&
+			!grb::is_object< InputType2 >::value &&
+			grb::is_operator< OP >::value,
 		void >::type * const = nullptr
 	) {
 		if( size( internal::getVector(mask) ) == 0 ) {
