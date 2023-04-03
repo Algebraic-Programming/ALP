@@ -43,9 +43,9 @@ uniformity. An informal summary of the main points follow:
    delimiters are the last, resp., first characters on every line-- i.e., the
    commonly accepted indentation pattern;
 
-3. none of `;`, `<`, `(`, `{`, if within code bodies, should appear alone on a
-   single line-- while if the opening delimiters like `<` follows a keyword it
-   should do so immediately, without intermediate spaces;
+3. none of `;`, `<`, `(`, `{` should appear alone on a single line-- while if
+   the opening delimiters like `<` follows a keyword it should do so
+   immediately, without intermediate spaces;
 
 4. when a closing delimiter is far (in a vertical space sense) from its opening
    pair, it should be followed by a comment that documents what it closes;
@@ -70,18 +70,19 @@ uniformity. An informal summary of the main points follow:
    guards, and includes before the first line of code).
 
 Rules are enforced by their exceptions; for example, rule #3 could be viewed as
-a specific exception to rule #8.
+a specific exception to rule #8. Less obvious exceptions include:
 
-Less obvious exceptions include
-
-1. one long program line under rule #6 may be arbitrarily spread over two lines
+1. one long program line under rule #7 may be arbitrarily spread over two lines
    even if it runs counter rule #3-- but not if it would spread over more than
    two lines;
 
-2. OpenMP pragmas may ignore rule #5;
+2. OpenMP pragmas ignore rule #6;
 
 3. the 80-character limit is not strictly enforced. For example, an OpenMP macro
-   of 83 characters on a single line is better readable than one split over two.
+   of 83 characters on a single line is better readable than one split over two;
+
+4. brackets in code bodies that limit the scope of some of the declaration
+   within the body, may, contrary to rule #3, appear alone on a single line.
 
 
 ## Code style by examples:
@@ -134,6 +135,26 @@ namespace alp {
 
 // note an empty line follows
 
+```
+
+- encapsulation using curly bracket delimitors that both appear on a single
+  line:
+
+```
+void f( ... ) {
+	// some code block dubbed "A"
+	// ...
+	// end code block A
+	size_t ret;
+	{
+		// some code block with ields and containers that are used *solely* for
+		// for computing ret
+		// ...
+		ret = ...;
+	}
+	// some code that uses ret as well as fields, containers, and anything else
+	// that was defined in code block A
+}
 ```
 
 
