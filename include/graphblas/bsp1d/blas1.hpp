@@ -1079,6 +1079,15 @@ namespace grb {
 			"called with an output value type that does not match the third domain of "
 			"the given operator" );
 
+		// dynamic checks
+		const size_t n = size( z );
+		if( (descr & descriptors::dense) && nnz( z ) != n ) {
+			return ILLEGAL;
+		}
+		if( capacity( z ) < n && phase == EXECUTE ) {
+			return FAILED;
+		}
+
 		// catch trivial resize
 		if( config::IMPLEMENTATION< BSP1D >::fixedVectorCapacities() &&
 			phase == RESIZE
@@ -1095,7 +1104,7 @@ namespace grb {
 		return ret;
 	}
 
-	/** \internal No communication necessary, output is guaranteed dense. */
+	/** \internal Delegates to masked set. */
 	template<
 		Descriptor descr = descriptors::no_operation,
 		class Operator,
@@ -1240,7 +1249,7 @@ namespace grb {
 		return ret;
 	}
 
-	/** \internal No communication necessary, output is guaranteed dense. */
+	/** \internal Delegates to masked set. */
 	template<
 		Descriptor descr = descriptors::no_operation,
 		class Monoid,
@@ -1430,8 +1439,7 @@ namespace grb {
 		void >::type * const = nullptr
 	) {
 #ifdef _DEBUG
-		std::cerr << "In BSP1D unmasked eWiseApply (operator-based), "
-					 "[T1]<-T2<-[T3]\n";
+		std::cerr << "In BSP1D unmasked eWiseApply (operator-based), T1]<-T2<-[T3]\n";
 #endif
 		// static checks
 		NO_CAST_ASSERT( ( !(descr & descriptors::no_casting) ||
