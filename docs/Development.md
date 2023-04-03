@@ -16,21 +16,63 @@ limitations under the License.
 </pre>
 
 
-# Development of ALP
+# ALP Development Style Guide
 
-This document introduces the reader to the development of ALP.
+This document introduces the reader to the development style of ALP.
 
 ALP is written in C++11 and is mainly composed of header files with largely
 templated data structures and operations. This allows both
 
 1. strict compile-time checking of the data types and of the algebraic
 abstractions (typically encoded as template parameters: see the
-[Semiring class](include/graphblas/semiring.hpp) for an example)
+[Semiring class](include/graphblas/semiring.hpp) for an example);
 
-2. specialized code generation, increasing performance
+2. specialised code generation, increasing performance.
+
+Common patterns include SFINAE and in particular its combination with
+(algebraic) type traits, as well as copious use of `static_assert` and
+`constexpr`. The choice of ANSI C++11 is to balance the benefits of these more
+modern C++ constructs with the typical reluctance of applying the latest and
+greatest in software development tooling within production codes.
+
+Given that this is a template library, there are both rigid code styles as well
+as more rigid coding patterns to ensure the overall quality of the template
+library-- these are detailed in their respecive sections. This document also
+includes a brief description of code style tools included with the repository,
+as well as a section on the use of the available build and test infrastructure.
+
+First, however, this section concludes with some brief comments on the overall
+code structure.
+
+## Encapsulation
+
+Template code that should not be exposed to ALP programmers (i.e., users of the
+ALP programming interface) should be encapsulated in an internal namespace such
+as, e.g., `grb::internal`. Non-templated code that should not be exposed to ALP
+programmers should be defined within `.cpp` files. Only functionality that is
+called by templated code should be exported during compilation of the ALP
+libraries that ALP programmers would link against. All code that may be used by
+ALP programmers should be documented thoroughly.
+
+## Utilities
+
+Utility functions that could be useful by ALP programmers and not just by ALP
+developers, should unambiguously be housed in the `./include/graphblas/utils`
+directory, with the interfaces made availble through the corresponding
+`grb::utils` namespace. These functionalities should therefore and ideally *not*
+be included in an internal namespace.
+
+## Test utilities
+
+Utility functions that are *only* useful for ALP unit, smoke, and/or performance
+tests should unambiguously be housed in the `./tests/utils` directory. It should
+never be included with code functionalities for ALP programmers. These
+functionalities should never be included with the template library, neither as a
+header that could be invoked by ALP programmers, nor within an internal
+namespace or within an internal `.cpp` file.
 
 
-## Code style and guidelines
+# Code style guidelines
 
 ALP follows certain code style rules in order to ensure readability and
 uniformity. An informal summary of the main points follow:
@@ -253,9 +295,9 @@ source file in the current directory, including source files in a subdirectory
 to the current path.
 
 
-# Code quality
+# Coding patterns for general code quality
 
-Some major rules on code quality includes:
+Some major coding rules for maintaining high code quality include:
 
 1. files always display the copyright and license header, and documents the
    initial author information and date of file creation;
