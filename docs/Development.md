@@ -67,7 +67,13 @@ uniformity. An informal summary of the main points follow:
 
 9. files always end with an empty line, and includes two empty lines before
    implementation starts (i.e., two empty lines after any comments, macro
-   guards, and includes before the first line of code).
+   guards, and includes before the first line of code);
+
+10. Classes and types use the CamelCase naming format, variables of any kind
+    (static, constexpr, global, or members) use camelCase, while constants of
+    any kind (static const, global const, constexpr const, etc.) use CAMELCASE.
+    Names shall furthermore be both self-descriptive and short. Namespaces are
+    camelcase.
 
 As the saying goes, exceptions prove the rules. For example, rule #3 could be
 viewed as a specific exception to rule #8. Exceptions that are not
@@ -98,7 +104,8 @@ self-contained in the above set include:
 
 - only write `<<` or `>>` when doing bit shifts, never for nested templates;
 
-- the following is correct, not a single line, nor without curly brackets;
+- the following is correct. It would *not* be correct to put the whole block on
+  a single line, nor would it be correct to write it without any curly brackets;
 
 ```
 if( ... ) {
@@ -125,7 +132,7 @@ if( ... ) {
 #ifndef MACRO_GUARD
 #define MACRO_GUARD
 
-// note two empty lines follow:
+// note that two empty lines follow:
 
 
 namespace alp {
@@ -136,7 +143,7 @@ namespace alp {
 
 #endif
 
-// note an empty line follows
+// note that one empty line follows:
 
 ```
 
@@ -259,18 +266,22 @@ Some major rules on code quality includes:
 3. do not use `using` in a way that leaks to user code;
 
 4. separate includes by their source -- e.g., a group of STL includes followed
-   by utility header includes;
+   by a group of internal utility header includes, and so on;
 
-5. code documentation uses doxygen format;
+5. code documentation uses doxygen format, and in particular the Javadoc style;
 
-6. use `constexpr` fields or functions in favour of any pre-processor macros.
+6. use `constexpr` fields or functions in favour of any pre-processor macros,
+   and avoid global constants, especially those that leak to user code;
+
+7. performance parameters are never hardcoded but instead embedded (and
+   documented!) into the applicable `config.hpp` file.
 
 
 # Building and Testing infrastructure
 
+To use the build and test infrastructure, see the [main README](../README.md).
 To modify it, you should refer to the
-[dedicated documentation](Build_and_test_infra.md). To use the build and test
-infrastructure, see the [main README](../README.md).
+[dedicated documentation](Build_and_test_infra.md).
 
 
 ## Testing before committing
@@ -283,7 +294,7 @@ been skipped, and how many have failed.
 
 Additionally, if at least one test has failed, or if none of the tests have
 succeeded (indicating perhaps a build error), then the entire log will be
-`cat`ted.
+`cat`-ted.
 
 A common use is to, in one terminal, execute:
 
@@ -309,19 +320,19 @@ the datasets that some smoke tests require -- those tests are hence skipped.
 
 An internal CI to the Computing Systems Lab at the Huawei Zurich Research Center
 exists, but can only be triggered by its employees. This CI also performs unit
-tests. At present, however, it also does *not* employ images that have the
-required data sets embedded or accessible.
+tests, in addition to smoke tests. At present, however, it also does *not*
+employ images that have the required data sets embedded or accessible.
 
 The `develop` and `master` branches are tested by the internal CI on a regular
 schedule, in addition to being triggered on every push, and run a more
 comprehensive combination of test suites and compilation (debug/release) flags.
-Also release candidate branches (i.e., branches with names that match the wild-
-card expression `*-rc*`) are subject to the same more extensive test suite.
+Also release candidate branches (i.e., branches with names that match the
+wild-card expression `*-rc*`) are subject to the same more extensive test suite.
 
 All CI tests at present skip tests that require data sets, and therefore
-developers are suggested to not skip running local tests, at least once before
-flagging a merge request as ready and requesting a review. Even if at some
-point the CI does provide datasets, the practice of developers self-checking MRs
-is recommended as it naturally also induces greater robustness across compilers
-and distributions.
+developers are suggested to not skip running local tests manually, at least once
+before flagging a merge request as ready and requesting a review. Even if at
+some point the CI does provide datasets, the practice of developers
+self-checking MRs is recommended as it naturally also induces greater robustness
+across compilers and distributions.
 
