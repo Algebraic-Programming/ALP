@@ -170,13 +170,14 @@ namespace grb {
 	 * @param[in] phase  The #grb::Phase the call should execute. Optional; the
 	 *                   default parameter is #grb::EXECUTE.
 	 *
-	 * Specialisation scalar inputs, operator version. A call to this function
-	 * (with #grb::EXECUTE for \a phase) is equivalent to the following code:
+	 * Specialisation scalar inputs, unmasked operator version.
+	 *
+	 * A call to this function is equivalent to the following code:
 	 *
 	 * \code
 	 * typename OP::D3 tmp;
 	 * grb::apply( tmp, x, y, op );
-	 * grb::set( z, tmp );
+	 * grb::set( z, tmp, phase );
 	 * \endcode
 	 *
 	 * @return #grb::SUCCESS  On successful completion of this call.
@@ -252,13 +253,14 @@ namespace grb {
 	 * @param[in] phase  The #grb::Phase the call should execute. Optional; the
 	 *                   default parameter is #grb::EXECUTE.
 	 *
-	 * Specialisation scalar inputs, operator version. A call to this function
-	 * (with #grb::EXECUTE for \a phase) is equivalent to the following code:
+	 * Specialisation scalar inputs, masked operator version.
+	 *
+	 * A call to this function is equivalent to the following code:
 	 *
 	 * \code
 	 * typename OP::D3 tmp;
 	 * grb::apply( tmp, x, y, op );
-	 * grb::set( z, tmp );
+	 * grb::set( z, mask, tmp, phase );
 	 * \endcode
 	 *
 	 * @return #grb::SUCCESS  On successful completion of this call.
@@ -334,13 +336,14 @@ namespace grb {
 	 * @param[in] phase  The #grb::Phase the call should execute. Optional; the
 	 *                   default parameter is #grb::EXECUTE.
 	 *
-	 * Specialisation scalar inputs, monoid version. A call to this function
-	 * (with #grb::EXECUTE for \a phase) is equivalent to the following code:
+	 * Specialisation scalar inputs, unmasked monoid version.
+	 *
+	 * A call to this function is equivalent to the following code:
 	 *
 	 * \code
 	 * typename OP::D3 tmp;
 	 * grb::apply( tmp, x, y, monoid.getOperator() );
-	 * grb::set( z, tmp );
+	 * grb::set( z, tmp, phase );
 	 * \endcode
 	 *
 	 * @return #grb::SUCCESS  On successful completion of this call.
@@ -416,13 +419,14 @@ namespace grb {
 	 * @param[in] phase  The #grb::Phase the call should execute. Optional; the
 	 *                   default parameter is #grb::EXECUTE.
 	 *
-	 * Specialisation scalar inputs, monoid version. A call to this function
-	 * (with #grb::EXECUTE for \a phase) is equivalent to the following code:
+	 * Specialisation for scalar inputs, masked monoid version.
+	 *
+	 * A call to this function is equivalent to the following code:
 	 *
 	 * \code
 	 * typename OP::D3 tmp;
-	 * grb::apply( tmp, x, y, monoid.getOperator() );
-	 * grb::set( z, tmp );
+	 * grb::apply( tmp, alpha, beta, monoid.getOperator() );
+	 * grb::set( z, mask, tmp, phase );
 	 * \endcode
 	 *
 	 * @return #grb::SUCCESS  On successful completion of this call.
