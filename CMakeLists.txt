@@ -27,7 +27,7 @@
 cmake_minimum_required( VERSION 3.13 )
 
 set( MAJORVERSION 0 )
-set( MINORVERSION 6 )
+set( MINORVERSION 7 )
 set( BUGVERSION 0 )
 set( VERSION "${MAJORVERSION}.${MINORVERSION}.${BUGVERSION}" )
 
