@@ -152,6 +152,57 @@ void spr_up(const size_t n, const T alpha, const T *x, T *ap) {
 
 }
 
+template < typename T >
+void test_spr( const size_t n ) {
+
+	bool test = true;
+
+	const T alpha = 2.;
+
+	std::vector< T > 
+		x( n ), ap( n * ( n + 1 ) / 2 );
+
+#ifdef DEBUG
+	std::vector< T > 
+		ap_test( n * ( n + 1 ) / 2 );
+#endif
+
+		std::cout << "\nTest SPR...";
+
+		stdvec_build( x, 1., 1. );
+		stdvec_build( ap, 1., 1. );
+
+	#ifdef PRINT_VECS
+		std::cout << "\nalpha: " << alpha << std::endl;
+		stdvec_print_matrix( "x", x, 1, n, n );
+		stdvec_print_matrix( "PRE ap", ap, 1, PACKED_SIZE( n ), PACKED_SIZE( n ) );
+	#endif
+
+		spr_up( n, alpha, &( x[0] ), &( ap[0] ) );
+
+	#ifdef PRINT_VECS
+		stdvec_print_matrix( "POST ap", ap, 1, PACKED_SIZE( n ), PACKED_SIZE( n ) );
+	#endif 
+
+	#ifdef DEBUG
+		stdvec_build( ap_test, 1., 1. );
+
+	#ifdef PRINT_VECS
+		stdvec_print_matrix( "PRE ap_test", ap_test, 1, PACKED_SIZE( n ), PACKED_SIZE( n ) );
+	#endif 
+
+		cblas_dspr( CblasRowMajor, CblasUpper, n, alpha, &( x[0] ), 1, &( ap_test[0] ) );
+
+	#ifdef PRINT_VECS
+		stdvec_print_matrix( "POST ap_test", ap_test, 1, PACKED_SIZE( n ), PACKED_SIZE( n ) );
+	#endif 
+
+		test = stdvec_diff_matrix( ap, 1, ap.size(), ap.size(), ap_test, ap_test.size() );
+	#endif
+		std::cout << ( test ? "OK." : "KO." ) << std::endl;
+
+}
+
 /**
  * BLAS 2 spr2: Computes rank-1 update of a symmetric matrix \a A stored in upper 
  *             packed format: \f$ A = A + \alpha x y^T + \alpha y x^T  \f$.
@@ -184,6 +235,61 @@ void spr2_up(const size_t n, const T alpha, const T *x, const T *y, T *ap) {
 	}
 
 }
+
+template < typename T >
+void test_spr2( const size_t n ) {
+
+	bool test = true;
+
+	const T alpha = 2.;
+
+	std::vector< T > 
+		x( n ), y( n ), ap( n * ( n + 1 ) / 2 );
+
+#ifdef DEBUG
+	std::vector< T > 
+		ap_test( n * ( n + 1 ) / 2 );
+#endif
+
+
+	std::cout << "\nTest SPR2...";
+
+	stdvec_build( x, 1., 1. );
+	stdvec_build( y, 1., 1. );
+	stdvec_build( ap, 1., 1. );
+
+#ifdef PRINT_VECS
+	std::cout << "\nalpha: " << alpha << std::endl;
+	stdvec_print_matrix( "x", x, 1, n, n );
+	stdvec_print_matrix( "y", y, 1, n, n );
+	stdvec_print_matrix( "PRE ap", ap, 1, PACKED_SIZE( n ), PACKED_SIZE( n ) );
+#endif
+
+	spr2_up( n, alpha, &( x[0] ), &( y[0] ), &( ap[0] ));
+
+#ifdef PRINT_VECS
+	stdvec_print_matrix( "POST ap", ap, 1, PACKED_SIZE( n ), PACKED_SIZE( n ) );
+#endif 
+
+#ifdef DEBUG
+	stdvec_build( ap_test, 1., 1. );
+
+#ifdef PRINT_VECS
+	stdvec_print_matrix( "PRE ap_test", ap_test, 1, PACKED_SIZE( n ), PACKED_SIZE( n ) );
+#endif 
+
+	cblas_dspr2( CblasRowMajor, CblasUpper, n, alpha, &( x[0] ), 1, &( y[0] ), 1, &( ap_test[0] ) );
+
+#ifdef PRINT_VECS
+	stdvec_print_matrix( "POST ap_test", ap_test, 1, PACKED_SIZE( n ), PACKED_SIZE( n ) );
+#endif 
+
+	test = stdvec_diff_matrix( ap, 1, ap.size(), ap.size(), ap_test, ap_test.size() );
+#endif
+	std::cout << ( test ? "OK." : "KO." ) << std::endl;
+
+}
+
 
 /**
  * BLAS 3 syrk: Computes rank-k update (not transposed) of a symmetric matrix 
@@ -218,6 +324,54 @@ void syrk_up_ntrans_negscal(const size_t n, const size_t k, const T *A, T *C) {
 		}
 	}
 
+}
+
+template < typename T >
+void test_syrk_downdate( const size_t n, const size_t k ) {
+
+	bool test = true;
+
+	std::vector< T > 
+		A( n * k ), C( n * n );
+
+#ifdef DEBUG
+	std::vector< T > 
+		C_test( n * n );
+#endif
+
+	std::cout << "\nTest SYRK (downdate)...";
+
+	stdvec_build_matrix( A, n, k, k, 0., 1., 1. );
+	stdvec_build_matrix< T, UPSY >( C, n, n, n, 0., 1., 1. );
+
+#ifdef PRINT_VECS
+	std::cout << "\n";
+	stdvec_print_matrix( "A", A, n, k, k );
+	stdvec_print_matrix( "PRE C", C, n, n, n );
+#endif
+
+	syrk_up_ntrans_negscal( n, k, &( A[0] ), &( C[0] ) );
+
+#ifdef PRINT_VECS
+	stdvec_print_matrix( "POST C", C, n, n, n );
+#endif
+
+#ifdef DEBUG
+	stdvec_build_matrix< T, UPSY >( C_test, n, n, n, 0., 1., 1. );
+
+#ifdef PRINT_VECS
+	stdvec_print_matrix( "PRE C_test", C_test, n, n, n );
+#endif
+
+	cblas_dsyrk( CblasRowMajor, CblasUpper, CblasNoTrans, n, k, -1., &( A[0] ), k, 1, &( C_test[0] ), n );
+
+#ifdef PRINT_VECS
+	stdvec_print_matrix( "POST C_test", C_test, n, n, n );
+#endif
+
+	test = stdvec_diff_matrix< T, UPSY >( C, n, n, n, C_test, n );
+#endif
+	std::cout << ( test ? "OK." : "KO." ) << std::endl;
 }
 
 /**
@@ -266,166 +420,71 @@ void syrk_up_ntrans(const size_t n, const size_t k, const T alpha, const T *A, c
 
 }
 
-#define FLOAT double
+template < typename T >
+void test_syrk( const size_t n, const size_t k, const size_t lda, const size_t ldc ) {
+
+	bool test = true;
+
+	const T alpha = 2.;
+	const T beta = 2.;
+
+	std::vector< T > 
+		A_wld( n * lda ), C_wld( n * ldc );
+
+#ifdef DEBUG
+	std::vector< T > 
+		C_wld_test( n * ldc );
+#endif
+
+	std::cout << "\nTest SYRK...";
+
+	stdvec_build_matrix( A_wld, n, k, lda, 0., 1., 1. );
+	stdvec_build_matrix< T, UPSY >( C_wld, n, n, ldc, 0., 1., 1. );
+
+#ifdef PRINT_VECS
+	std::cout << "\nalpha: " << alpha << std::endl;
+	std::cout << "beta: " << beta << std::endl;
+	stdvec_print_matrix( "A_wld", A_wld, n, k, lda );
+	stdvec_print_matrix( "PRE C_wld", C_wld, n, n, ldc );
+#endif
+
+	syrk_up_ntrans( n, k, alpha, &( A_wld[0] ), lda, beta, &( C_wld[0] ), ldc );
+
+#ifdef PRINT_VECS
+	stdvec_print_matrix( "POST C_wld", C_wld, n, n, ldc );
+#endif
+
+#ifdef DEBUG
+	stdvec_build_matrix< T, UPSY >( C_wld_test, n, n, ldc, 0., 1., 1. );
+
+#ifdef PRINT_VECS
+	stdvec_print_matrix( "PRE C_wld_test", C_wld_test, n, n, ldc );
+#endif
+
+	cblas_dsyrk( CblasRowMajor, CblasUpper, CblasNoTrans, n, k, alpha, &( A_wld[0] ), lda, beta, &( C_wld_test[0] ), ldc );
+
+#ifdef PRINT_VECS
+	stdvec_print_matrix( "POST C_wld_test", C_wld_test, n, n, ldc );
+#endif
+
+	test = stdvec_diff_matrix< T, UPSY >( C_wld, n, n, ldc, C_wld_test, ldc );
+#endif
+	std::cout << ( test ? "OK." : "KO." ) << std::endl;
+}
+
 
 int main( int argc, char ** argv ) {
 
 	const size_t n = 6;
 	const size_t k = 3;
-	const size_t ld = 2 * n;
+	const size_t lda = 2 * k, ldc = 2 * n;
 
-	const FLOAT alpha = 2.;
-	const FLOAT beta = 2.;
+#define FLOAT double
 
-	bool test = true;
-
-	std::vector< FLOAT > 
-		x( n ), y( n ), ap( n * ( n + 1 ) / 2 ), 
-		A( n * k ), A_wld( n * ld ), C( n * n ), C_wld( n * ld );
-
-#ifdef DEBUG
-	std::vector< FLOAT > 
-		ap_test( n * ( n + 1 ) / 2 ), C_test( n * n ), C_wld_test( n * ld );
-#endif
-
-	std::cout << "\nTest SPR...";
-
-	stdvec_build( x, 1., 1. );
-	stdvec_build( ap, 1., 1. );
-
-#ifdef PRINT_VECS
-	std::cout << "\nalpha: " << alpha << std::endl;
-	stdvec_print_matrix( "x", x, 1, n, n );
-	stdvec_print_matrix( "PRE ap", ap, 1, PACKED_SIZE( n ), PACKED_SIZE( n ) );
-#endif
-
-	spr_up( n, alpha, &( x[0] ), &( ap[0] ) );
-
-#ifdef PRINT_VECS
-	stdvec_print_matrix( "POST ap", ap, 1, PACKED_SIZE( n ), PACKED_SIZE( n ) );
-#endif 
-
-#ifdef DEBUG
-	stdvec_build( ap_test, 1., 1. );
-
-#ifdef PRINT_VECS
-	stdvec_print_matrix( "PRE ap_test", ap_test, 1, PACKED_SIZE( n ), PACKED_SIZE( n ) );
-#endif 
-
-	cblas_dspr( CblasRowMajor, CblasUpper, n, alpha, &( x[0] ), 1, &( ap_test[0] ) );
-
-#ifdef PRINT_VECS
-	stdvec_print_matrix( "POST ap_test", ap_test, 1, PACKED_SIZE( n ), PACKED_SIZE( n ) );
-#endif 
-
-	test = stdvec_diff_matrix( ap, 1, ap.size(), ap.size(), ap_test, ap_test.size() );
-#endif
-	std::cout << ( test ? "OK." : "KO." ) << std::endl;
-
-
-	std::cout << "\nTest SPR2...";
-
-	stdvec_build( y, 1., 1. );
-	stdvec_build( ap, 1., 1. );
-
-#ifdef PRINT_VECS
-	std::cout << "\nalpha: " << alpha << std::endl;
-	stdvec_print_matrix( "x", x, 1, n, n );
-	stdvec_print_matrix( "y", y, 1, n, n );
-	stdvec_print_matrix( "PRE ap", ap, 1, PACKED_SIZE( n ), PACKED_SIZE( n ) );
-#endif
-
-	spr2_up( n, alpha, &( x[0] ), &( y[0] ), &( ap[0] ));
-
-#ifdef PRINT_VECS
-	stdvec_print_matrix( "POST ap", ap, 1, PACKED_SIZE( n ), PACKED_SIZE( n ) );
-#endif 
-
-#ifdef DEBUG
-	stdvec_build( ap_test, 1., 1. );
-
-#ifdef PRINT_VECS
-	stdvec_print_matrix( "PRE ap_test", ap_test, 1, PACKED_SIZE( n ), PACKED_SIZE( n ) );
-#endif 
-
-	cblas_dspr2( CblasRowMajor, CblasUpper, n, alpha, &( x[0] ), 1, &( y[0] ), 1, &( ap_test[0] ) );
-
-#ifdef PRINT_VECS
-	stdvec_print_matrix( "POST ap_test", ap_test, 1, PACKED_SIZE( n ), PACKED_SIZE( n ) );
-#endif 
-
-	test = stdvec_diff_matrix( ap, 1, ap.size(), ap.size(), ap_test, ap_test.size() );
-#endif
-	std::cout << ( test ? "OK." : "KO." ) << std::endl;
-
-	std::cout << "\nTest SYRK (downdate)...";
-
-	stdvec_build_matrix( A, n, k, k, 0., 1., 1. );
-	stdvec_build_matrix< FLOAT, UPSY >( C, n, n, n, 0., 1., 1. );
-
-#ifdef PRINT_VECS
-	std::cout << "\n";
-	stdvec_print_matrix( "A", A, n, k, k );
-	stdvec_print_matrix( "PRE C", C, n, n, n );
-#endif
-
-	syrk_up_ntrans_negscal( n, k, &( A[0] ), &( C[0] ) );
-
-#ifdef PRINT_VECS
-	stdvec_print_matrix( "POST C", C, n, n, n );
-#endif
-
-#ifdef DEBUG
-	stdvec_build_matrix< FLOAT, UPSY >( C_test, n, n, n, 0., 1., 1. );
-
-#ifdef PRINT_VECS
-	stdvec_print_matrix( "PRE C_test", C_test, n, n, n );
-#endif
-
-	cblas_dsyrk( CblasRowMajor, CblasUpper, CblasNoTrans, n, k, -1., &( A[0] ), k, 1, &( C_test[0] ), n );
-
-#ifdef PRINT_VECS
-	stdvec_print_matrix( "POST C_test", C_test, n, n, n );
-#endif
-
-	test = stdvec_diff_matrix< FLOAT, UPSY >( C, n, n, n, C_test, n );
-#endif
-	std::cout << ( test ? "OK." : "KO." ) << std::endl;
-
-	std::cout << "\nTest SYRK...";
-
-	stdvec_build_matrix( A_wld, n, k, ld, 0., 1., 1. );
-	stdvec_build_matrix< FLOAT, UPSY >( C_wld, n, n, ld, 0., 1., 1. );
-
-#ifdef PRINT_VECS
-	std::cout << "\nalpha: " << alpha << std::endl;
-	std::cout << "beta: " << beta << std::endl;
-	stdvec_print_matrix( "A_wld", A_wld, n, k, ld );
-	stdvec_print_matrix( "PRE C_wld", C_wld, n, n, ld );
-#endif
-
-	syrk_up_ntrans( n, k, alpha, &( A_wld[0] ), ld, beta, &( C_wld[0] ), ld );
-
-#ifdef PRINT_VECS
-	stdvec_print_matrix( "POST C_wld", C_wld, n, n, ld );
-#endif
-
-#ifdef DEBUG
-	stdvec_build_matrix< FLOAT, UPSY >( C_wld_test, n, n, ld, 0., 1., 1. );
-
-#ifdef PRINT_VECS
-	stdvec_print_matrix( "PRE C_wld_test", C_wld_test, n, n, ld );
-#endif
-
-	cblas_dsyrk( CblasRowMajor, CblasUpper, CblasNoTrans, n, k, alpha, &( A_wld[0] ), ld, beta, &( C_wld_test[0] ), ld );
-
-#ifdef PRINT_VECS
-	stdvec_print_matrix( "POST C_wld_test", C_wld_test, n, n, ld );
-#endif
-
-	test = stdvec_diff_matrix< FLOAT, UPSY >( C_wld, n, n, ld, C_wld_test, ld );
-#endif
-	std::cout << ( test ? "OK." : "KO." ) << std::endl;
+	test_spr< FLOAT >( n );
+	test_spr2< FLOAT >( n );
+	test_syrk_downdate< FLOAT >( n, k );
+	test_syrk< FLOAT >( n, k, lda, ldc );
 
 	return 0;
 }
