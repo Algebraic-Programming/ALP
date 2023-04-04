@@ -74,7 +74,7 @@ namespace grb {
 			const DimensionType &kspspacesize,
 			const ResidualType tol,
 			std::vector< NonzeroType > &rhs,
-			const std::function< NonzeroType( NonzeroType ) > &sqrtX = std_sqrt< NonzeroType, NonzeroType >
+			const std::function< ResidualType( ResidualType ) > &sqrtX = std_sqrt< ResidualType, ResidualType >
 		) {
 			if( n < 1 ) {
 				return ILLEGAL;
@@ -316,7 +316,7 @@ namespace grb {
 				const Ring &ring = Ring(),
 				const Minus &minus = Minus(),
 				const Divide &divide = Divide(),
-				const std::function< NonzeroType( NonzeroType ) > &sqrtX = std_sqrt< NonzeroType, NonzeroType >
+				const std::function< ResidualType( ResidualType ) > &sqrtX = std_sqrt< ResidualType, ResidualType >
 			) {
 				// static checks
 				static_assert( std::is_floating_point< ResidualType >::value,
@@ -540,10 +540,16 @@ namespace grb {
 				const Ring &ring = Ring(),
 				const Minus &minus = Minus(),
 				const Divide &divide = Divide(),
-				const std::function< NonzeroType( NonzeroType ) > &sqrtX = std_sqrt< NonzeroType, NonzeroType >
+				const std::function< ResidualType( ResidualType ) > &sqrtX = std_sqrt< ResidualType, ResidualType >
 			) {
 				grb::RC rc = grb::SUCCESS;
 				const ResidualType zero = ring.template getZero< ResidualType >();
+				Semiring<
+					grb::operators::add< ResidualType >, grb::operators::mul< ResidualType >,
+					grb::identities::zero, grb::identities::one
+				> ring_real;
+				grb::Vector< ResidualType > temp_real( grb::size( x ) );
+				rc = rc ? rc : grb::set( temp_real, zero );
 
 				// dynamic checks
 				{
@@ -629,24 +635,21 @@ namespace grb {
 				residual = residual_relative = 0;
 
 				// get RHS vector norm
-				NonzeroType bnorm = ring.template getZero< NonzeroType >();
-				rc = grb::set( temp, b );
+				ResidualType bnorm = zero;
 				if( grb::utils::is_complex< NonzeroType >::value ) {
-					rc = grb::set( temp2, zero );
-					rc = rc ? rc : grb::eWiseLambda( [ &temp2, &temp ] ( const size_t i ) {
-							temp2[ i ] = grb::utils::is_complex< NonzeroType >::conjugate(
-								temp[ i ] );
-							}, temp
+					rc = rc ? rc : grb::eWiseLambda( [ &b, &temp_real ] ( const size_t i ) {
+							temp_real[ i ] = grb::utils::is_complex< NonzeroType >::modulus( b[ i ] );
+							}, temp_real
 						);
-					rc = rc ? rc : grb::dot( bnorm, temp, temp2, ring );
+					rc = rc ? rc : grb::algorithms::norm2( bnorm, temp_real, ring_real, sqrtX );
+					//residualnorm = sqrtX( grb::utils::is_complex< NonzeroType >::modulus( residualnorm ) );
 				} else {
-					rc = rc ? rc : grb::algorithms::norm2( bnorm, temp, ring, sqrtX );  /////// tmp solution
+					rc = rc ? rc : grb::algorithms::norm2( bnorm, b, ring, sqrtX );
 				}
-				//bnorm = sqrtX( bnorm );
 
 #ifdef DEBUG
 				{
-					std::cout << "RHS norm = " << std::abs( bnorm ) << " \n";
+					std::cout << "RHS norm = " << bnorm << " \n";
 					PinnedVector< NonzeroType > pinnedVector( b, SEQUENTIAL );
 					std::cout << "RHS vector = ";
 					for( size_t k = 0; k < 10; ++k ) {
@@ -662,26 +665,24 @@ namespace grb {
 				}
 #endif
 				// guard against a trivial call
-				NonzeroType residualnorm = zero;
+				ResidualType residualnorm = ring.template getZero< ResidualType >();
 				if( max_iterations == 0 ) {
 					if( grb::utils::is_complex< NonzeroType >::value ) {
-						rc = grb::set( temp2, zero );
-						rc = rc ? rc : grb::eWiseLambda( [ &temp2, &temp ] ( const size_t i ) {
-								temp2[ i ] = grb::utils::is_complex< NonzeroType >::conjugate(
-									temp[ i ] );
-								}, temp
-							);
-						rc = rc ? rc : grb::dot( residualnorm, temp, temp2, ring );
+						rc = rc ? rc : grb::eWiseLambda( [ &b, &temp_real ] ( const size_t i ) {
+							temp_real[ i ] = grb::utils::is_complex< NonzeroType >::modulus( b[ i ] );
+							}, temp_real
+						);
+						rc = rc ? rc : grb::algorithms::norm2( residualnorm, temp_real, ring_real, sqrtX );
+						//residualnorm = sqrtX( grb::utils::is_complex< NonzeroType >::modulus( residualnorm ) );
 					} else {
-						rc = rc ? rc : grb::dot( residualnorm, temp, temp, ring );
+						rc = rc ? rc : grb::algorithms::norm2( residualnorm, b, ring, sqrtX );
 					}
 					if( rc != grb::SUCCESS ) {
 						std::cerr << "Error: residual norm not calculated properly.\n";
 						return rc;
 					}
-					residualnorm = sqrtX( residualnorm );
-					residual = std::abs( residualnorm );
-					residual_relative = residual / std::abs( bnorm );
+					residual = residualnorm;
+					residual_relative = residual / bnorm;
 					if( residual_relative < max_residual_norm ) {
 						return rc;
 					} else {
@@ -773,23 +774,21 @@ namespace grb {
 					rc = rc ? rc : grb::foldl( temp, b, minus );
 					residualnorm = zero;
 					if( grb::utils::is_complex< NonzeroType >::value ) {
-						rc = grb::set( temp2, zero );
-						rc = rc ? rc : grb::eWiseLambda( [ &temp2, &temp ] ( const size_t i ) {
-								temp2[ i ] = grb::utils::is_complex< NonzeroType >::conjugate(
-									temp[ i ] );
-								}, temp
-							);
-						rc = rc ? rc : grb::dot( residualnorm, temp, temp2, ring );
+						rc = rc ? rc : grb::eWiseLambda( [ &temp, &temp_real ] ( const size_t i ) {
+							temp_real[ i ] = grb::utils::is_complex< NonzeroType >::norm( temp[ i ] );
+							}, temp_real
+						);
+						rc = rc ? rc : grb::foldl( residualnorm, temp_real, ring_real.getAdditiveMonoid() );
+						residualnorm = sqrtX( residualnorm );
 					} else {
-						rc = rc ? rc : grb::dot( residualnorm, temp, temp, ring );
+						rc = rc ? rc : grb::algorithms::norm2( residualnorm, temp, ring );
 					}
 					if( rc != grb::SUCCESS ) {
 						std::cerr << "Error: residual norm not calculated properly.\n";
 						return rc;
 					}
-					residualnorm = sqrtX( residualnorm );
 					residual = std::abs( residualnorm );
-					residual_relative = residual / std::abs( bnorm );
+					residual_relative = residual / bnorm;
 
 #ifdef DEBUG
 					std::cout << "Residual norm = " << residual << " \n";
@@ -940,7 +939,7 @@ namespace grb {
 			const Ring &ring = Ring(),
 			const Minus &minus = Minus(),
 			const Divide &divide = Divide(),
-			const std::function< NonzeroType( NonzeroType ) > &sqrtX = std_sqrt< NonzeroType, NonzeroType >
+			const std::function< ResidualType( ResidualType ) > &sqrtX = std_sqrt< ResidualType, ResidualType >
 		) {
 			grb::Matrix< NonzeroType > dummy( 0, 0 );
 			return internal::gmres_dispatch< descr, true >(
@@ -989,7 +988,7 @@ namespace grb {
 			const Ring &ring = Ring(),
 			const Minus &minus = Minus(),
 			const Divide &divide = Divide(),
-			const std::function< NonzeroType( NonzeroType ) > &sqrtX = std_sqrt< NonzeroType, NonzeroType >
+			const std::function< ResidualType( ResidualType ) > &sqrtX = std_sqrt< ResidualType, ResidualType >
 		) {
 			return internal::gmres_dispatch< descr, false >(
 					x, A, b,

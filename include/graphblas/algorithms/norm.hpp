@@ -81,14 +81,15 @@ namespace grb {
 		RC norm2( OutputType &x,
 			const Vector< InputType, backend, Coords > &y,
 			const Ring &ring = Ring(),
-			const std::function< OutputType( InputType ) > sqrtX = std_sqrt< OutputType, InputType >,
-			const typename std::enable_if<
-				std::is_floating_point< OutputType >::value,
-			void >::type * const = nullptr
+			const std::function< OutputType( OutputType ) > sqrtX = std_sqrt< OutputType, OutputType >// ,
+			// const typename std::enable_if_t<
+			// 	std::is_floating_point< OutputType >::value,
+			// void > * const = nullptr
 		) {
-			RC ret = grb::dot< descr >( x, y, y, ring );
+			InputType yyt = ring.template getZero< InputType >();
+			RC ret = grb::dot< descr >( yyt, y, y, ring );
 			if( ret == SUCCESS ) {
-				x = sqrtX( x );
+				x += sqrtX( grb::utils::is_complex< InputType >::modulus( yyt ) );
 			}
 			return ret;
 		}

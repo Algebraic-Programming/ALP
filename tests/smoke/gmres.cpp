@@ -94,20 +94,20 @@ std::complex< BaseScalarType > random_value< std::complex< BaseScalarType > >() 
         return std::complex< BaseScalarType >( re, im );
 }
 
-ScalarType sqrt_generic( ScalarType x ) {
+BaseScalarType sqrt_generic( BaseScalarType x ) {
 	//return std::sqrt( x );
-	//return( pow( x, 0.5 ) );
+	return( pow( x, 0.5 ) );
 
-	//test Quake sqrt
-	double y = x;
-	double x2 = y * 0.5;
-	size_t * ip = reinterpret_cast< size_t * >( &y );
-	*ip = 0x5fe6eb50c7b537a9 - ( *ip / 2 );
-	y = y * ( 1.5 - x2 * y * y  );   // 1st iteration
-	y = y * ( 1.5 - x2 * y * y  );   // 2nd iteration
-	y = y * ( 1.5 - x2 * y * y  );   // 3nd iteration
-	y = y * ( 1.5 - x2 * y * y  );   // 4nd iteration
-	return 1./y;
+	// //test Quake sqrt
+	// double y = x;
+	// double x2 = y * 0.5;
+	// size_t * ip = reinterpret_cast< size_t * >( &y );
+	// *ip = 0x5fe6eb50c7b537a9 - ( *ip / 2 );
+	// y = y * ( 1.5 - x2 * y * y  );   // 1st iteration
+	// y = y * ( 1.5 - x2 * y * y  );   // 2nd iteration
+	// y = y * ( 1.5 - x2 * y * y  );   // 3nd iteration
+	// y = y * ( 1.5 - x2 * y * y  );   // 4nd iteration
+	// return 1./y;
 }
 
 /**
@@ -381,7 +381,7 @@ void grbProgram( const struct input &data_in, struct output &out ) {
 		out.time_preamble += timer.time();
 		timer.reset();
 
-		const std::function< ScalarType( ScalarType ) > &my_sqrt = sqrt_generic;
+		const std::function< BaseScalarType( BaseScalarType ) > &my_sqrt = sqrt_generic;
 		if( data_in.no_preconditioning ) {
 			rc = rc ? rc : grb::algorithms::gmres(
 				x, A, b,

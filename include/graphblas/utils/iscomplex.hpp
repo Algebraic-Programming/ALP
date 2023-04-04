@@ -74,6 +74,13 @@ namespace grb {
 					return x;
 				}
 
+				/**
+				 * @returns The absolute value squared of a given value.
+				 */
+				static C norm( const C &x ) noexcept {
+					return x;
+				}
+
 		};
 
 		/** \internal The specialisation for std::complex types. */
@@ -87,6 +94,9 @@ namespace grb {
 				}
 				static T modulus( const std::complex< T > &x ) {
 					return std::abs( x );
+				}
+				static T norm( const std::complex< T > &x ) {
+					return std::norm( x );
 				}
 		};
 
