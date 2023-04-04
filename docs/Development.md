@@ -25,15 +25,16 @@ templated data structures and operations. This allows both
 
 1. strict compile-time checking of the data types and of the algebraic
 abstractions (typically encoded as template parameters: see the
-[Semiring class](include/graphblas/semiring.hpp) for an example);
+[Semiring class](../include/graphblas/semiring.hpp) for an example);
 
 2. specialised code generation, increasing performance.
 
-Common patterns include SFINAE and in particular its combination with
-(algebraic) type traits, as well as copious use of `static_assert` and
-`constexpr`. The choice of ANSI C++11 is to balance the benefits of these more
-modern C++ constructs with the typical reluctance of applying the latest and
-greatest in software development tooling within production codes.
+Common patterns include [SFINAE](https://de.wikipedia.org/wiki/Substitution_failure_is_not_an_error)
+and in particular its combination with (algebraic) type traits, as well as
+copious use of `static_assert` and `constexpr`. The choice of ANSI C++11 is to
+balance the benefits of these more modern C++ constructs with the typical
+reluctance of applying the latest and greatest in software development tooling
+within production codes.
 
 Given that this is a template library, there are both rigid code styles as well
 as more rigid coding patterns to ensure the overall quality of the template
@@ -57,7 +58,7 @@ ALP programmers should be documented thoroughly.
 ## Utilities
 
 Utility functions that could be useful by ALP programmers and not just by ALP
-developers, should unambiguously be housed in the `./include/graphblas/utils`
+developers, should unambiguously be housed in the `include/graphblas/utils`
 directory, with the interfaces made availble through the corresponding
 `grb::utils` namespace. These functionalities should therefore and ideally *not*
 be included in an internal namespace.
@@ -65,7 +66,7 @@ be included in an internal namespace.
 ## Test utilities
 
 Utility functions that are *only* useful for ALP unit, smoke, and/or performance
-tests should unambiguously be housed in the `./tests/utils` directory. It should
+tests should unambiguously be housed in the `tests/utils` directory. It should
 never be included with code functionalities for ALP programmers. These
 functionalities should never be included with the template library, neither as a
 header that could be invoked by ALP programmers, nor within an internal
@@ -75,9 +76,9 @@ namespace or within an internal `.cpp` file.
 # Code style guidelines
 
 ALP follows certain code style rules in order to ensure readability and
-uniformity. An informal summary of the main points follow:
+uniformity. An informal summary of the main points follows:
 
-1. alignment uses spaces while indentation uses tabs;
+1. alignment uses **spaces** while indentation uses **tabs**;
 
 2. indentation is increased after a line break that does not end with `;`,
    increased after a line break with an unterminated `<`, `(` or `{` and
@@ -149,7 +150,7 @@ self-contained in the above set include:
 - the following is correct. It would *not* be correct to put the whole block on
   a single line, nor would it be correct to write it without any curly brackets;
 
-```
+```c++
 if( ... ) {
 	return SUCCESS;
 }
@@ -157,7 +158,7 @@ if( ... ) {
 
 - the following is correct w.r.t. vertical spacing;
 
-```
+```c++
 /*
  * copyright info
  */
@@ -192,7 +193,7 @@ namespace alp {
 - encapsulation using curly bracket delimitors that both appear on a single
   line:
 
-```
+```c++
 void f( ... ) {
 	// some code block dubbed "A"
 	// ...
@@ -305,12 +306,15 @@ Some major coding rules for maintaining high code quality include:
 2. limit the use of macros and in particular, never leak macro definitions to
    user code;
 
-3. do not use `using` in a way that leaks to user code;
+3. do not use `using` in a way that leaks to user code; in particular, **never**
+   use it in headers;
 
 4. separate includes by their source -- e.g., a group of STL includes followed
    by a group of internal utility header includes, and so on;
 
-5. code documentation uses doxygen format, and in particular the Javadoc style;
+5. code documentation uses [doxygen](https://www.doxygen.nl/) format, and in
+   particular the [Javadoc](https://www.doxygen.nl/manual/docblocks.html#cppblock)
+   style;
 
 6. use `constexpr` fields or functions in favour of any pre-processor macros,
    and avoid global constants, especially those that leak to user code;
@@ -340,14 +344,14 @@ succeeded (indicating perhaps a build error), then the entire log will be
 
 A common use is to, in one terminal, execute:
 
-```
+```bash
 $ cd build
 $ make -j88 smoketests &> smoketests.log
 ```
 
 While in another, and while the above command is running, to execute:
 
-```
+```bash
 $ cd build
 $ watch ../tests/summarise.sh smoketests.log
 ```
@@ -374,7 +378,7 @@ wild-card expression `*-rc*`) are subject to the same more extensive test suite.
 All CI tests at present skip tests that require data sets, and therefore
 developers are suggested to not skip running local tests manually, at least once
 before flagging a merge request as ready and requesting a review. Even if at
-some point the CI does provide datasets, the practice of developers
+some point the CI does provide data sets, the practice of developers
 self-checking MRs is recommended as it naturally also induces greater robustness
 across compilers and distributions.
 
