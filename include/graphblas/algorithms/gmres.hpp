@@ -349,7 +349,6 @@ namespace grb {
 #endif
 
 				ResidualType rho, tau;
-				NonzeroType alpha;
 
 				// (re)set Hmatrix to zero
 				std::fill( Hmatrix.begin(), Hmatrix.end(), zero );
@@ -385,20 +384,20 @@ namespace grb {
 				}
 
 				//rho = norm(Q[:,0])
-				alpha = zero;
 				if( grb::utils::is_complex< NonzeroType >::value ) {
-					ret = ret ? ret : grb::eWiseLambda( [&temp,&Q]( const size_t i ) {
+					ret = ret ? ret : grb::eWiseLambda( [ &temp, &Q ]( const size_t i ) {
 						temp[ i ] = grb::utils::is_complex< NonzeroType >::conjugate(
 							Q[ 0 ][ i ] );
 						}, temp, Q[ 0 ]
 					);
+					NonzeroType alpha = zero;
 					ret = ret ? ret : grb::dot< descr_dense >( alpha, temp, Q[ 0 ], ring );
+					rho = sqrtX( grb::utils::is_complex< NonzeroType >::modulus( alpha ) );
 				} else {
-					ret = ret ? ret : grb::dot< descr_dense >( alpha, Q[ 0 ], Q[ 0 ], ring );
+					ret = ret ? ret : grb::algorithms::norm2( rho, Q[ 0 ], ring );
 				}
 				assert( ret == SUCCESS );
 
-				rho = sqrtX( grb::utils::is_complex< NonzeroType >::modulus( alpha ) );
 				Hmatrix[ 0 ] = rho;
 
 				tau = tol * rho;
@@ -406,14 +405,13 @@ namespace grb {
 				size_t k = 0;
 				while( ( rho > tau ) && ( k < n_restart ) ) {
 					// alpha = r' * r;
-					alpha = Hmatrix[ k * ( n_restart + 1 ) + k ];
 
-					if( std::abs( alpha ) < tol ) {
+					if( std::abs( Hmatrix[ k * ( n_restart + 1 ) + k ] ) < tol ) {
 						break;
 					}
 
 					// Q[k] = Q[k] / alpha
-					ret = ret ? ret : grb::foldl( Q[ k ], alpha, divide );
+					ret = ret ? ret : grb::foldl( Q[ k ], Hmatrix[ k * ( n_restart + 1 ) + k ], divide );
 					assert( ret == SUCCESS );
 
 					// Q[k+1]=0
@@ -443,7 +441,7 @@ namespace grb {
 						//H[j,k]=Q[:,j].dot(Q[:,k])
 						Hmatrix[ k * ( n_restart + 1 ) + j ] = zero;
 						if( grb::utils::is_complex< NonzeroType >::value ) {
-							ret = ret ? ret : grb::eWiseLambda( [&temp,&Q,j]( const size_t i ) {
+							ret = ret ? ret : grb::eWiseLambda( [ &temp, &Q, j ]( const size_t i ) {
 									temp[ i ] = grb::utils::is_complex< NonzeroType >::conjugate(
 										Q[ j ][ i ] );
 								}, temp, Q[ j ]
@@ -476,25 +474,25 @@ namespace grb {
 					} // while
 
 					//rho=norm(Q[:,k])
-					alpha = zero;
 					if( grb::utils::is_complex< NonzeroType >::value ) {
 						grb::RC ret = grb::set( temp, zero );
 						assert( ret == SUCCESS );
 
-						ret = ret ? ret : grb::eWiseLambda( [&temp,&Q,k]( const size_t i ) {
+						ret = ret ? ret : grb::eWiseLambda( [ &temp, &Q, k ]( const size_t i ) {
 								temp[ i ] = grb::utils::is_complex< NonzeroType >::conjugate(
 									Q[ k ][ i ] );
 								}, temp, Q[ k ]
 							);
+						NonzeroType alpha = zero;
 						ret = ret ? ret : grb::dot< descr_dense >( alpha, temp, Q[ k ], ring );
+						rho = sqrtX( grb::utils::is_complex< NonzeroType >::modulus( alpha ) );
 					} else {
-						ret = ret ? ret : grb::dot< descr_dense >( alpha, Q[ k ], Q[ k ], ring );
+						ret = ret ? ret : grb::algorithms::norm2( rho, Q[ k ], ring );
 					}
 					assert( ret == SUCCESS );
 
 					//H[k,k]=rho
-					Hmatrix[ k * ( n_restart + 1 ) + k ] =
-						sqrtX( grb::utils::is_complex< NonzeroType >::modulus( alpha ) );
+					Hmatrix[ k * ( n_restart + 1 ) + k ] = rho;
 				}
 
 				iterations += k;
@@ -543,13 +541,8 @@ namespace grb {
 				const std::function< ResidualType( ResidualType ) > &sqrtX = std_sqrt< ResidualType, ResidualType >
 			) {
 				grb::RC rc = grb::SUCCESS;
+				constexpr const Descriptor descr_dense = descr | descriptors::dense;
 				const ResidualType zero = ring.template getZero< ResidualType >();
-				Semiring<
-					grb::operators::add< ResidualType >, grb::operators::mul< ResidualType >,
-					grb::identities::zero, grb::identities::one
-				> ring_real;
-				grb::Vector< ResidualType > temp_real( grb::size( x ) );
-				rc = rc ? rc : grb::set( temp_real, zero );
 
 				// dynamic checks
 				{
@@ -637,12 +630,14 @@ namespace grb {
 				// get RHS vector norm
 				ResidualType bnorm = zero;
 				if( grb::utils::is_complex< NonzeroType >::value ) {
-					rc = rc ? rc : grb::eWiseLambda( [ &b, &temp_real ] ( const size_t i ) {
-							temp_real[ i ] = grb::utils::is_complex< NonzeroType >::modulus( b[ i ] );
-							}, temp_real
-						);
-					rc = rc ? rc : grb::algorithms::norm2( bnorm, temp_real, ring_real, sqrtX );
-					//residualnorm = sqrtX( grb::utils::is_complex< NonzeroType >::modulus( residualnorm ) );
+					rc = rc ? rc : grb::eWiseLambda( [ &temp, &b ]( const size_t i ) {
+						temp[ i ] = grb::utils::is_complex< NonzeroType >::conjugate(
+							b[ i ] );
+						}, temp, b
+					);
+					NonzeroType alpha = zero;
+					rc = rc ? rc : grb::dot< descr_dense >( alpha, temp, b, ring );
+					bnorm = sqrtX( grb::utils::is_complex< NonzeroType >::modulus( alpha ) );
 				} else {
 					rc = rc ? rc : grb::algorithms::norm2( bnorm, b, ring, sqrtX );
 				}
@@ -668,12 +663,14 @@ namespace grb {
 				ResidualType residualnorm = ring.template getZero< ResidualType >();
 				if( max_iterations == 0 ) {
 					if( grb::utils::is_complex< NonzeroType >::value ) {
-						rc = rc ? rc : grb::eWiseLambda( [ &b, &temp_real ] ( const size_t i ) {
-							temp_real[ i ] = grb::utils::is_complex< NonzeroType >::modulus( b[ i ] );
-							}, temp_real
+						rc = rc ? rc : grb::eWiseLambda( [ &temp, &b ]( const size_t i ) {
+							temp[ i ] = grb::utils::is_complex< NonzeroType >::conjugate(
+								b[ i ] );
+							}, temp, b
 						);
-						rc = rc ? rc : grb::algorithms::norm2( residualnorm, temp_real, ring_real, sqrtX );
-						//residualnorm = sqrtX( grb::utils::is_complex< NonzeroType >::modulus( residualnorm ) );
+						NonzeroType alpha = zero;
+						rc = rc ? rc : grb::dot< descr_dense >( alpha, temp, b, ring );
+						residualnorm = sqrtX( grb::utils::is_complex< NonzeroType >::modulus( alpha ) );
 					} else {
 						rc = rc ? rc : grb::algorithms::norm2( residualnorm, b, ring, sqrtX );
 					}
@@ -774,12 +771,14 @@ namespace grb {
 					rc = rc ? rc : grb::foldl( temp, b, minus );
 					residualnorm = zero;
 					if( grb::utils::is_complex< NonzeroType >::value ) {
-						rc = rc ? rc : grb::eWiseLambda( [ &temp, &temp_real ] ( const size_t i ) {
-							temp_real[ i ] = grb::utils::is_complex< NonzeroType >::norm( temp[ i ] );
-							}, temp_real
+						rc = rc ? rc : grb::eWiseLambda( [ &temp, &temp2 ]( const size_t i ) {
+							temp2[ i ] = grb::utils::is_complex< NonzeroType >::conjugate(
+								temp[ i ] );
+							}, temp, temp2
 						);
-						rc = rc ? rc : grb::foldl( residualnorm, temp_real, ring_real.getAdditiveMonoid() );
-						residualnorm = sqrtX( residualnorm );
+						NonzeroType alpha = zero;
+						rc = rc ? rc : grb::dot< descr_dense >( alpha, temp2, temp, ring );
+						residualnorm = sqrtX( grb::utils::is_complex< NonzeroType >::modulus( alpha ) );
 					} else {
 						rc = rc ? rc : grb::algorithms::norm2( residualnorm, temp, ring );
 					}

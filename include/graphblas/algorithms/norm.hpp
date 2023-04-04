@@ -81,10 +81,10 @@ namespace grb {
 		RC norm2( OutputType &x,
 			const Vector< InputType, backend, Coords > &y,
 			const Ring &ring = Ring(),
-			const std::function< OutputType( OutputType ) > sqrtX = std_sqrt< OutputType, OutputType >// ,
-			// const typename std::enable_if_t<
-			// 	std::is_floating_point< OutputType >::value,
-			// void > * const = nullptr
+			const std::function< OutputType( OutputType ) > sqrtX = std_sqrt< OutputType, OutputType >,
+			const typename std::enable_if<
+				std::is_floating_point< OutputType >::value,
+			void >::type * = nullptr
 		) {
 			InputType yyt = ring.template getZero< InputType >();
 			RC ret = grb::dot< descr >( yyt, y, y, ring );
