@@ -38,7 +38,7 @@ within production codes.
 
 Given that this is a template library, there are both rigid code styles as well
 as more rigid coding patterns to ensure the overall quality of the template
-library-- these are detailed in their respecive sections. This document also
+library-- these are detailed in their respective sections. This document also
 includes a brief description of code style tools included with the repository,
 as well as a section on the use of the available build and test infrastructure.
 
@@ -59,7 +59,7 @@ ALP programmers should be documented thoroughly.
 
 Utility functions that could be useful by ALP programmers and not just by ALP
 developers, should unambiguously be housed in the `include/graphblas/utils`
-directory, with the interfaces made availble through the corresponding
+directory, with the interfaces made available through the corresponding
 `grb::utils` namespace. These functionalities should therefore and ideally *not*
 be included in an internal namespace.
 
@@ -98,7 +98,7 @@ uniformity. An informal summary of the main points follows:
    keyword and the `:`;
 
 6. indentation of pre-processor code (macros) uses spaces, not tabs, and ignores
-   tab-based identation;
+   tab-based indentation;
 
 7. a single line has maximum length of about 80 characters, not including
    indentation, and never ends with white spaces (space characters or tab
@@ -190,7 +190,7 @@ namespace alp {
 
 ```
 
-- encapsulation using curly bracket delimitors that both appear on a single
+- encapsulation using curly bracket delimiters that both appear on a single
   line:
 
 ```c++
@@ -239,7 +239,7 @@ To list the script parameters, simply type
 tools/clang-format-linter.sh -h
 ```
 
-For example, to lint the file `tests/add15d.cpp` and see the lint'ed code on the
+For example, to lint the file `tests/add15d.cpp` and see the linted code on the
 standard output, type
 
 ```bash
@@ -306,8 +306,8 @@ Some major coding rules for maintaining high code quality include:
 2. limit the use of macros and in particular, never leak macro definitions to
    user code;
 
-3. do not use `using` in a way that leaks to user code; in particular, **never**
-   use it in headers;
+3. do not use `using` in a way that leaks to user code-- in particular,
+   never use it in headers;
 
 4. separate includes by their source -- e.g., a group of STL includes followed
    by a group of internal utility header includes, and so on;
@@ -366,8 +366,8 @@ the datasets that some smoke tests require -- those tests are hence skipped.
 
 An internal CI to the Computing Systems Lab at the Huawei Zurich Research Center
 exists, but can only be triggered by its employees. This CI also performs unit
-tests, in addition to smoke tests. At present, however, it also does *not*
-employ images that have the required data sets embedded or accessible.
+tests, in addition to smoke tests. At present, however, it too does *not* employ
+images that have the required dataset embedded or accessible.
 
 The `develop` and `master` branches are tested by the internal CI on a regular
 schedule, in addition to being triggered on every push, and run a more
