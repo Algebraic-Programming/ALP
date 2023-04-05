@@ -28,14 +28,15 @@
 #
 
 assert_valid_variables( TEST_CATEGORIES )
-assert_defined_variables( COMMON_COMPILE_DEFINITIONS COMMON_COMPILE_OPTIONS
-	WITH_NUMA ADDITIONAL_BACKEND_DEFINITIONS ADDITIONAL_BACKEND_OPTIONS
+assert_defined_variables( 
+	COMMON_COMPILE_DEFINITIONS COMMON_COMPILE_OPTIONS COMMON_COMPILE_LIBRARIES 
+	WITH_NUMA ADDITIONAL_BACKEND_DEFINITIONS ADDITIONAL_BACKEND_OPTIONS 
 	ADDITIONAL_TEST_DEFINITIONS ADDITIONAL_TEST_OPTIONS
 	TEST_PERFORMANCE_DEFINITIONS TEST_PERFORMANCE_OPTIONS
 )
 
-# allow only Relase and Debug
-set( CMAKE_CONFIGURATION_TYPES "Release;Debug" CACHE STRING
+# allow only Relase, Debug and Coverage
+set( CMAKE_CONFIGURATION_TYPES "Release;Debug;Coverage" CACHE STRING
 	"Add the configurations that we need" FORCE
 )
 
@@ -60,29 +61,50 @@ endif()
 set( COMMON_OPTS "-g" "-Wall" "-Wextra" )
 
 # cache variable to allow manual tweaks from CMake cache
-set_valid_cache_string( COMMON_DEFS_Release "${COMMON_COMPILE_DEFINITIONS}" ""
-	"common Release definitions"
+set_valid_cache_string( COMMON_DEFS_Release "${COMMON_COMPILE_DEFINITIONS}" 
+	"" "common Release definitions"
 )
-set_valid_cache_string( COMMON_DEFS_Debug "${COMMON_COMPILE_DEFINITIONS}" ""
-	"common Debug definitions"
+set_valid_cache_string( COMMON_DEFS_Debug "${COMMON_COMPILE_DEFINITIONS}" 
+	"" "common Debug definitions"
 )
-set_valid_cache_string( COMMON_OPTS_Release "${COMMON_COMPILE_OPTIONS}" "${COMMON_OPTS}"
-	"common Release options"
+set_valid_cache_string( COMMON_DEFS_Coverage "${COMMON_COMPILE_DEFINITIONS}" 
+	"" "common Coverage definitions"
+)
+set_valid_cache_string( COMMON_OPTS_Release "${COMMON_COMPILE_OPTIONS}" 
+	"${COMMON_OPTS}" "common Release options"
 )
 set_valid_cache_string( COMMON_OPTS_Debug "${COMMON_COMPILE_OPTIONS}"
 	"${COMMON_OPTS};-fno-omit-frame-pointer" "common Debug options"
+)
+set_valid_cache_string( COMMON_OPTS_Coverage "${COMMON_COMPILE_OPTIONS}"
+	"${COMMON_OPTS};-fprofile-arcs;-ftest-coverage" "common Coverage options" 
+)
+set_valid_cache_string( COMMON_LIBS_Release "${COMMON_COMPILE_LIBRARIES}" 
+	"${COMMON_LIBS}" "common Release libraries"
+)
+set_valid_cache_string( COMMON_LIBS_Debug "${COMMON_COMPILE_LIBRARIES}"
+	"${COMMON_LIBS}" "common Debug libraries"
+)
+set_valid_cache_string( COMMON_LIBS_Coverage "${COMMON_COMPILE_LIBRARIES}"
+	"${COMMON_LIBS};gcov" "common Coverage libraries" 
 )
 
 add_library( common_flags INTERFACE )
 target_compile_definitions( common_flags INTERFACE
 	"$<$<CONFIG:Release>:${COMMON_DEFS_Release}>"
 	"$<$<CONFIG:Debug>:${COMMON_DEFS_Debug}>"
+	"$<$<CONFIG:Coverage>:${COMMON_DEFS_Coverage}>"
 )
 target_compile_options( common_flags INTERFACE
 	"$<$<CONFIG:Release>:${COMMON_OPTS_Release}>"
 	"$<$<CONFIG:Debug>:${COMMON_OPTS_Debug}>"
+	"$<$<CONFIG:Coverage>:${COMMON_OPTS_Coverage}>"
 )
-
+target_link_libraries( common_flags INTERFACE
+	"$<$<CONFIG:Release>:${COMMON_LIBS_Release}>"
+	"$<$<CONFIG:Debug>:${COMMON_LIBS_Debug}>"
+	"$<$<CONFIG:Coverage>:${COMMON_LIBS_Coverage}>"
+)
 
 ## defaults performance options for all targets (backends and tests)
 
@@ -90,28 +112,36 @@ set( COMMON_PERF_DEFS_Release "NDEBUG" )
 set( COMMON_PERF_OPTS_Release "-O3" "-march=native" "-mtune=native" "-funroll-loops" )
 set( COMMON_PERF_DEFS_Debug "" )
 set( COMMON_PERF_OPTS_Debug "-O0" )
+set( COMMON_PERF_DEFS_Coverage "" )
+set( COMMON_PERF_OPTS_Coverage "-O0")
 
 ### COMPILATION FLAGS FOR BACKENDS
 
 append_if_valid( _BACKEND_DEFS_Release "${COMMON_PERF_DEFS_Release}" "${ADDITIONAL_BACKEND_DEFINITIONS}" )
 append_if_valid( _BACKEND_DEFS_Debug "${COMMON_PERF_DEFS_Debug}" "${ADDITIONAL_BACKEND_DEFINITIONS}" )
+append_if_valid( _BACKEND_DEFS_Coverage "${COMMON_PERF_DEFS_Coverage}" "${ADDITIONAL_BACKEND_DEFINITIONS}" )
 append_if_valid( _BACKEND_OPTS_Release "${COMMON_PERF_OPTS_Release}" "${ADDITIONAL_BACKEND_OPTIONS}" )
 append_if_valid( _BACKEND_OPTS_Debug "${COMMON_PERF_OPTS_Debug}" "${ADDITIONAL_BACKEND_OPTIONS}" )
+append_if_valid( _BACKEND_OPTS_Coverage "${COMMON_PERF_OPTS_Coverage}" "${ADDITIONAL_BACKEND_OPTIONS}" )
 
 # cache variable to allow manual tweaks form CMake cache
 set( BACKEND_DEFS_Release "${_BACKEND_DEFS_Release}" CACHE STRING "backend Release definitions" )
 set( BACKEND_DEFS_Debug "${_BACKEND_DEFS_Debug}" CACHE STRING "backend Debug definitions" )
+set( BACKEND_DEFS_Coverage "${_BACKEND_DEFS_Coverage}" CACHE STRING "backend Coverage definitions" )
 set( BACKEND_OPTS_Release "${_BACKEND_OPTS_Release}" CACHE STRING "backend Release options" )
 set( BACKEND_OPTS_Debug "${_BACKEND_OPTS_Debug}" CACHE STRING "backend Debug options" )
+set( BACKEND_OPTS_Coverage "${_BACKEND_OPTS_Coverage}" CACHE STRING "backend Coverage options" )
 
 add_library( backend_flags INTERFACE )
 target_compile_definitions( backend_flags INTERFACE
 	"$<$<CONFIG:Release>:${BACKEND_DEFS_Release}>"
 	"$<$<CONFIG:Debug>:${BACKEND_DEFS_Debug}>"
+	"$<$<CONFIG:Coverage>:${BACKEND_DEFS_Coverage}>"
 )
 target_compile_options( backend_flags INTERFACE
 	"$<$<CONFIG:Release>:${BACKEND_OPTS_Release}>"
 	"$<$<CONFIG:Debug>:${BACKEND_OPTS_Debug}>"
+	"$<$<CONFIG:Coverage>:${BACKEND_OPTS_Coverage}>"
 )
 target_link_libraries( backend_flags INTERFACE common_flags )
 
@@ -133,11 +163,17 @@ set_valid_cache_string( TEST_DEFAULT_DEFS_Release "${ADDITIONAL_TEST_DEFINITIONS
 set_valid_cache_string( TEST_DEFAULT_DEFS_Debug "${ADDITIONAL_TEST_DEFINITIONS}" ""
 	"default Debug definitions for tests"
 )
+set_valid_cache_string( TEST_DEFAULT_DEFS_Coverage "${ADDITIONAL_TEST_DEFINITIONS}" ""
+	"default Coverage definitions for tests"
+)
 set_valid_cache_string( TEST_DEFAULT_OPTS_Release "${ADDITIONAL_TEST_OPTIONS}" ""
 	"default Release options for tests"
 )
 set_valid_cache_string( TEST_DEFAULT_OPTS_Debug "${ADDITIONAL_TEST_OPTIONS}" ""
 	"default Debug options for tests"
+)
+set_valid_cache_string( TEST_DEFAULT_OPTS_Coverage "${ADDITIONAL_TEST_OPTIONS}" ""
+	"default Coverage options for tests"
 )
 
 set_valid_cache_string( TEST_DEFAULT_PERF_DEFS_Release "${TEST_PERFORMANCE_DEFINITIONS}"
@@ -146,11 +182,17 @@ set_valid_cache_string( TEST_DEFAULT_PERF_DEFS_Release "${TEST_PERFORMANCE_DEFIN
 set_valid_cache_string( TEST_DEFAULT_PERF_DEFS_Debug "${TEST_PERFORMANCE_DEFINITIONS}"
 	"${COMMON_PERF_DEFS_Debug}" "default performance Debug definitions for tests"
 )
+set_valid_cache_string( TEST_DEFAULT_PERF_DEFS_Coverage "${TEST_PERFORMANCE_DEFINITIONS}"
+	"${COMMON_PERF_DEFS_Coverage}" "default performance Coverage definitions for tests"
+)
 set_valid_cache_string( TEST_DEFAULT_PERF_OPTS_Release "${TEST_PERFORMANCE_OPTIONS}"
 	"${COMMON_PERF_OPTS_Release}" "default performance Release options for tests"
 )
 set_valid_cache_string( TEST_DEFAULT_PERF_OPTS_Debug "${TEST_PERFORMANCE_OPTIONS}"
 	"${COMMON_PERF_OPTS_Debug}" "default performance Debug options for tests"
+)
+set_valid_cache_string( TEST_DEFAULT_PERF_OPTS_Coverage "${TEST_PERFORMANCE_OPTIONS}"
+	"${COMMON_PERF_OPTS_Coverage}" "default performance Coverage options for tests"
 )
 
 add_library( test_default_flags INTERFACE )
@@ -158,16 +200,20 @@ target_link_libraries( test_default_flags INTERFACE common_flags )
 target_compile_definitions( test_default_flags INTERFACE
 	"$<$<CONFIG:Release>:${TEST_DEFAULT_DEFS_Release}>"
 	"$<$<CONFIG:Debug>:${TEST_DEFAULT_DEFS_Debug}>"
+	"$<$<CONFIG:Coverage>:${TEST_DEFAULT_DEFS_Coverage}>"
 
 	"$<$<CONFIG:Release>:${TEST_DEFAULT_PERF_DEFS_Release}>"
 	"$<$<CONFIG:Debug>:${TEST_DEFAULT_PERF_DEFS_Debug}>"
+	"$<$<CONFIG:Coverage>:${TEST_DEFAULT_PERF_DEFS_Coverage}>"
 )
 target_compile_options( test_default_flags INTERFACE
 	"$<$<CONFIG:Release>:${TEST_DEFAULT_OPTS_Release}>"
 	"$<$<CONFIG:Debug>:${TEST_DEFAULT_OPTS_Debug}>"
+	"$<$<CONFIG:Coverage>:${TEST_DEFAULT_OPTS_Coverage}>"
 
 	"$<$<CONFIG:Release>:${TEST_DEFAULT_PERF_OPTS_Release}>"
 	"$<$<CONFIG:Debug>:${TEST_DEFAULT_PERF_OPTS_Debug}>"
+	"$<$<CONFIG:Coverage>:${TEST_DEFAULT_PERF_OPTS_Coverage}>"
 )
 
 # list of categories with default test settings: at the beginning, all of them
@@ -248,11 +294,17 @@ set_valid_cache_string( TEST_unit_ndebug_DEFS_Release "${ADDITIONAL_TEST_DEFINIT
 set_valid_cache_string( TEST_unit_ndebug_DEFS_Debug "${ADDITIONAL_TEST_DEFINITIONS}" ""
 	"Debug definitions for category unit, mode ndebug"
 )
+set_valid_cache_string( TEST_unit_ndebug_DEFS_Coverage "${ADDITIONAL_TEST_DEFINITIONS}" ""
+	"Coverage definitions for category unit, mode ndebug"
+)
 set_valid_cache_string( TEST_unit_ndebug_OPTS_Release "${ADDITIONAL_TEST_OPTIONS}" ""
 	"Release options for category unit, mode ndebug"
 )
 set_valid_cache_string( TEST_unit_ndebug_OPTS_Debug "${ADDITIONAL_TEST_OPTIONS}" ""
 	"Debug options for category unit, mode ndebug"
+)
+set_valid_cache_string( TEST_unit_ndebug_OPTS_Coverage "${ADDITIONAL_TEST_OPTIONS}" ""
+	"Coverage options for category unit, mode ndebug"
 )
 set( TEST_unit_ndebug_PERF_DEFS_Release "${COMMON_PERF_DEFS_Release}" CACHE STRING
 	"Release definitions for category unit, mode debug "
@@ -260,11 +312,17 @@ set( TEST_unit_ndebug_PERF_DEFS_Release "${COMMON_PERF_DEFS_Release}" CACHE STRI
 set( TEST_unit_ndebug_PERF_DEFS_Debug "${COMMON_PERF_DEFS_Release}" CACHE STRING
 	"Debug definitions for category unit, mode debug "
 )
+set( TEST_unit_ndebug_PERF_DEFS_Coverage "${COMMON_PERF_DEFS_Release}" CACHE STRING
+	"Coverage definitions for category unit, mode debug "
+)
 set( TEST_unit_ndebug_PERF_OPTS_Release "${COMMON_PERF_OPTS_Release}" CACHE STRING
 	"Release options for category unit, mode debug "
 )
 set( TEST_unit_ndebug_PERF_OPTS_Debug "${COMMON_PERF_OPTS_Release}" CACHE STRING
 	"Debug options for category unit, mode debug "
+)
+set( TEST_unit_ndebug_PERF_OPTS_Coverage "${COMMON_PERF_OPTS_Release}" CACHE STRING
+	"Coverage options for category unit, mode debug "
 )
 add_category_flags( "unit" MODE ndebug )
 
@@ -274,11 +332,17 @@ set_valid_cache_string( TEST_unit_debug_DEFS_Release "${ADDITIONAL_TEST_DEFINITI
 set_valid_cache_string( TEST_unit_debug_DEFS_Debug "${ADDITIONAL_TEST_DEFINITIONS}" ""
 	"Debug definitions for category unit, mode debug"
 )
+set_valid_cache_string( TEST_unit_debug_DEFS_Coverage "${ADDITIONAL_TEST_DEFINITIONS}" ""
+	"Coverage definitions for category unit, mode debug"
+)
 set_valid_cache_string( TEST_unit_debug_OPTS_Release "${ADDITIONAL_TEST_OPTIONS}" ""
 	"Release options for category unit, mode debug"
 )
 set_valid_cache_string( TEST_unit_debug_OPTS_Debug "${ADDITIONAL_TEST_OPTIONS}" ""
 	"Debug options for category unit, mode debug"
+)
+set_valid_cache_string( TEST_unit_debug_OPTS_Coverage "${ADDITIONAL_TEST_OPTIONS}" ""
+	"Coverage options for category unit, mode debug"
 )
 set( TEST_unit_debug_PERF_DEFS_Release "${COMMON_PERF_DEFS_Debug}" CACHE STRING
 	"Release performance definitions for category unit, mode debug"
@@ -286,11 +350,17 @@ set( TEST_unit_debug_PERF_DEFS_Release "${COMMON_PERF_DEFS_Debug}" CACHE STRING
 set( TEST_unit_debug_PERF_DEFS_Debug "${COMMON_PERF_DEFS_Debug}" CACHE STRING
 	"Debug performance definitions for category unit, mode debug"
 )
+set( TEST_unit_debug_PERF_DEFS_Coverage "${COMMON_PERF_DEFS_Debug}" CACHE STRING
+	"Coverage performance definitions for category unit, mode debug"
+)
 set( TEST_unit_debug_PERF_OPTS_Release "${COMMON_PERF_OPTS_Debug}" CACHE STRING
 	"Release options definitions for category unit, mode debug"
 )
 set( TEST_unit_debug_PERF_OPTS_Debug "${COMMON_PERF_OPTS_Debug}" CACHE STRING
 	"Debug options definitions for category unit, mode debug"
+)
+set( TEST_unit_debug_PERF_OPTS_Coverage "${COMMON_PERF_OPTS_Debug}" CACHE STRING
+	"Coverage options definitions for category unit, mode debug"
 )
 add_category_flags( "unit" MODE debug )
 

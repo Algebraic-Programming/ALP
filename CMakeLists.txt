@@ -78,6 +78,10 @@ option( COMMON_COMPILE_OPTIONS
 	"Compilation options for BOTH backends and tests; they override the defaults"
 	OFF
 )
+option( COMMON_COMPILE_LIBRARIES
+	"Linked libraries for BOTH backends and tests; they override the defaults"
+	OFF
+)
 option( ADDITIONAL_BACKEND_DEFINITIONS
 	"Compilation definitions added to default definitions (or common definitions, \
 if set) of backends only; they are ALWAYS APPENDED and never override the defaults"
@@ -247,6 +251,8 @@ include( AddGRBInstall )
 
 # compilation flags for all targets
 include( CompileFlags )
+
+#include(CodeCoverage)
 
 if( WITH_BSP1D_BACKEND OR WITH_HYBRID_BACKEND )
 	# required to create targets against LPF (provides dedicated functions)
