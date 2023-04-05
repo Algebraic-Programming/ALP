@@ -18,7 +18,7 @@
 /**
  * @file
  *
- * Contains the configuration parameters for the HyperDAGs backend.
+ * Contains the configuration parameters for the HyperDAGs backend
  *
  * @author A. N. Yzelman
  * @date 31st of January 2022.

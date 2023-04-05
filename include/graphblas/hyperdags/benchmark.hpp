@@ -15,11 +15,14 @@
  * limitations under the License.
  */
 
-/*
+/**
+ * @file
+ *
+ * Provides the Benchmarker for the HyperDAGs backend
+ *
  * @author A. Karanasiou
- * @date 11 of May, 2022
+ * @date 11th of May, 2022
  */
-
 
 #ifndef _H_GRB_HYPERDAGS_BENCH
 #define _H_GRB_HYPERDAGS_BENCH

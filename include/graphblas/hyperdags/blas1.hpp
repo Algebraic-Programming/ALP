@@ -15,7 +15,11 @@
  * limitations under the License.
  */
 
-/*
+/**
+ * @file
+ *
+ * Provides the "level-1" primitives for the HyperDAGs backend
+ *
  * @author A. N. Yzelman
  * @date 31st of January, 2022
  */
@@ -26,6 +30,8 @@
 #include <graphblas/vector.hpp>
 
 #include <graphblas/hyperdags/init.hpp>
+
+#include <array>
 
 
 namespace grb {

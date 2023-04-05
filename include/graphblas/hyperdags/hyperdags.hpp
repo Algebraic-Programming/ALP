@@ -15,7 +15,11 @@
  * limitations under the License.
  */
 
-/*
+/**
+ * @file
+ *
+ * Provides mechanisms to track HyperDAG representations of ALP programs
+ *
  * @author A. N. Yzelman
  * @date 1st of February, 2022
  */

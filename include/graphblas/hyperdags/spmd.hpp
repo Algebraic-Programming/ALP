@@ -15,7 +15,11 @@
  * limitations under the License.
  */
 
-/*
+/**
+ * @file
+ *
+ * Provides the SPMD API for the HyperDAGs backend
+ *
  * @author A. Karanasiou
  * @date 15th of March 2022
  */

@@ -15,7 +15,13 @@
  * limitations under the License.
  */
 
-/*
+/**
+ * @file
+ *
+ * Provides the collectives API for the HyperDAGs backend
+ *
+ * Copies the reference implementation
+ *
  * @author A. N. Yzelman & J. M. Nash
  * @date 12th of April, 2017
  */
