@@ -119,17 +119,18 @@ namespace grb {
 				b = H[ ( i + 1 ) * n + i + 1 ];
 
 				// tmp1=sqrt(norm(a)**2+norm(b)**2)
-				NonzeroType tmp1 = sqrtX( std::norm( a ) +
-					std::norm( b ) );
-				c = grb::utils::is_complex< NonzeroType >::modulus( a ) / tmp1 ;
-				if( std::norm( a ) != 0 ) {
+				ResidualType a_mod = grb::utils::is_complex< NonzeroType >::modulus( a );
+				ResidualType b_mod = grb::utils::is_complex< NonzeroType >::modulus( b );
+				NonzeroType b_conj = grb::utils::is_complex< NonzeroType >::conjugate( b );
+				NonzeroType tmp1 = sqrtX( a_mod * a_mod + b_mod * b_mod );
+				c = a_mod / tmp1 ;
+				if( a_mod != 0 ) {
 					// s = a / std::norm(a) * std::conj(b) / tmp1;
-					s = a / grb::utils::is_complex< NonzeroType >::modulus( a ) *
-						grb::utils::is_complex< NonzeroType >::conjugate( b ) / tmp1;
+					s = a / a_mod *	b_conj / tmp1;
 				}
 				else {
 					// s = std::conj(b) / tmp1;
-					s = grb::utils::is_complex< NonzeroType >::conjugate( b ) / tmp1;
+					s = b_conj / tmp1;
 				}
 
 				NonzeroType tmp2;
@@ -176,7 +177,7 @@ namespace grb {
 					rhs[ i ] = rhs[ i ] - rhs[ j ] * H[ ( j + 1 ) * n + i ];
 				}
 				// rhs[i]=rhs[i]/H[i,i]
-				if( std::abs( H[ ( i + 1 ) * n + i ] ) < tol ) {
+				if( grb::utils::is_complex< NonzeroType >::modulus( H[ ( i + 1 ) * n + i ] ) < tol ) {
 					std::cerr << "Warning: small number in algorithms::hessolve\n";
 				}
 				rhs[ i ] = rhs[ i ] / H[ ( i + 1 ) * n + i ];
@@ -396,7 +397,7 @@ namespace grb {
 				while( ( rho > tau ) && ( k < n_restart ) ) {
 					// alpha = r' * r;
 
-					if( std::abs( Hmatrix[ k * ( n_restart + 1 ) + k ] ) < tol ) {
+					if( grb::utils::is_complex< NonzeroType >::modulus( Hmatrix[ k * ( n_restart + 1 ) + k ] ) < tol ) {
 						break;
 					}
 
@@ -608,14 +609,12 @@ namespace grb {
 				}
 #endif
 				// guard against a trivial call
-				ResidualType residualnorm = ring.template getZero< ResidualType >();
 				if( max_iterations == 0 ) {
-					rc = rc ? rc : grb::algorithms::norm2< descr_dense >( residualnorm, b, ring, sqrtX );
+					rc = rc ? rc : grb::algorithms::norm2< descr_dense >( residual, b, ring, sqrtX );
 					if( rc != grb::SUCCESS ) {
 						std::cerr << "Error: residual norm not calculated properly.\n";
 						return rc;
 					}
-					residual = residualnorm;
 					residual_relative = residual / bnorm;
 					if( residual_relative < max_residual_norm ) {
 						return rc;
@@ -706,13 +705,11 @@ namespace grb {
 					rc = grb::set( temp, zero );
 					rc = rc ? rc : grb::mxv( temp, A, x, ring );
 					rc = rc ? rc : grb::foldl( temp, b, minus );
-					residualnorm = zero;
-					rc = rc ? rc : grb::algorithms::norm2< descr_dense >( residualnorm, temp, ring, sqrtX );
+					rc = rc ? rc : grb::algorithms::norm2< descr_dense >( residual, temp, ring, sqrtX );
 					if( rc != grb::SUCCESS ) {
 						std::cerr << "Error: residual norm not calculated properly.\n";
 						return rc;
 					}
-					residual = std::abs( residualnorm );
 					residual_relative = residual / bnorm;
 
 #ifdef DEBUG
