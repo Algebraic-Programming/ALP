@@ -143,34 +143,10 @@ namespace grb {
 		RC norm2( OutputType &x,
 			const Vector< InputType, backend, Coords > &y,
 			const Ring &ring = Ring(),
-			const std::function< OutputType( OutputType ) > sqrtX = std_sqrt< OutputType, OutputType >// ,
-			// const typename std::enable_if<
-			// 	std::is_floating_point< OutputType >::value,
-			// void >::type * = nullptr
-		) {
-			InputType yyt = ring.template getZero< InputType >();
-			RC ret = grb::dot< descr >(
-				yyt, y, y, ring.getAdditiveMonoid(), ring.getMultiplicativeOperator()
-			);
-			if( ret == SUCCESS ) {
-				x += sqrtX( grb::utils::is_complex< InputType >::modulus( yyt ) );
-			}
-			return ret;
-		}
-
-
-		template<
-			Descriptor descr = descriptors::no_operation, class Ring,
-			typename InputType, typename OutputType,
-			Backend backend, typename Coords
-		>
-		RC norm2_cmplx( OutputType &x,
-			const Vector< InputType, backend, Coords > &y,
-			const Ring &ring = Ring(),
-			const std::function< OutputType( OutputType ) > sqrtX = std_sqrt< OutputType, OutputType >// ,
-			// const typename std::enable_if<
-			// 	std::is_floating_point< OutputType >::value,
-			// void >::type * = nullptr
+			const std::function< OutputType( OutputType ) > sqrtX = std_sqrt< OutputType, OutputType >,
+			const typename std::enable_if<
+				std::is_floating_point< OutputType >::value,
+			void >::type * = nullptr
 		) {
 
 			InputType yyt = ring.template getZero< InputType >();
