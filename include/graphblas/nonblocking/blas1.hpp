@@ -4515,7 +4515,10 @@ namespace grb {
 						assert( index < local_n + lower_bound );
 						if( mask_b[ k ] ) {
 							(void) local_z.assign( index - lower_bound );
-							*( z_p + index ) = z_b[ k ];
+							GRB_UTIL_IGNORE_MAYBE_UNINITIALIZED // This is only triggered with
+							*( z_p + index ) = z_b[ k ];        // mask_b[ k ], which in the above
+							GRB_UTIL_RESTORE_WARNINGS           // loop also triggeres initialising
+							                                    // z_b[ k ]
 						}
 					}
 

@@ -67,3 +67,18 @@ if( mask_b[ t ] ) {
 	GRB_UTIL_RESTORE_WARNINGS            // if mask_b is true
 ```
 
+6. `include/graphblas/nonblocking/blas1.hpp`, masked_apply_generic:
+```
+for( size_t k = 0; k < block_size; ++k ) {
+	const size_t index = i + k;
+	assert( index < local_n + lower_bound );
+	if( mask_b[ k ] ) {
+		(void) local_z.assign( index - lower_bound );
+		GRB_UTIL_IGNORE_MAYBE_UNINITIALIZED // This is only triggered with
+		*( z_p + index ) = z_b[ k ];        // mask_b[ k ], which in the above
+		GRB_UTIL_RESTORE_WARNINGS           // loop also triggeres initialising
+		                                    // z_b[ k ]
+	}
+}
+```
+
