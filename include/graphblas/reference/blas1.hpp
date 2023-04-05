@@ -3332,7 +3332,16 @@ namespace grb {
 						}
 #endif
 						if( x_scalar || y_scalar || chk_coors.assigned( index ) ) {
-							rc = apply( z_p[ index ], x_p[ index ], y_p[ index ], op );
+							// if exactly one of the inputs is a scalar, then the other input is a
+							// vector and we are looping over the nonzeroes of that vector
+							// if both inputs are vectors, then the last condition means we are
+							// iterating over a position where both vectors overlap
+							rc = apply(
+									z_p[ index ],
+									x_scalar ? *x_p : x_p[ index ],
+									y_scalar ? *y_p : y_p[ index ],
+									op
+								);
 						} else if( monoid ) {
 							if( swap ) {
 								z_p[ index ] = x_scalar ?
