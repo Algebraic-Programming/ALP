@@ -126,8 +126,8 @@ self-contained in the above set include:
    even if it runs counter rule #3-- but not if it would spread over more than
    two lines;
 
-2. OpenMP pragmas may ignore rule #6-- they may follow regular tab-based
-   indentation instead;
+2. OpenMP pragmas and compiler warning suppressions may ignore rule #6-- they
+   may follow regular tab-based indentation instead;
 
 3. the 80-character limit is not strictly enforced. For example, an OpenMP macro
    of 83 characters on a single line is better readable than when split over
