@@ -142,7 +142,11 @@ namespace grb {
 
 		template<
 			typename D,
+#ifndef _H_GRB_REFERENCE_OMP_VECTOR
 			Backend backend = config::default_backend
+#else
+			Backend backend
+#endif
 		>
 		grb::Vector<
 			D, backend,
@@ -155,7 +159,11 @@ namespace grb {
 
 		template<
 			typename D,
+#ifndef _H_GRB_REFERENCE_OMP_VECTOR
 			Backend backend = config::default_backend
+#else
+			Backend backend
+#endif
 		>
 		const grb::Vector<
 			D, backend,
