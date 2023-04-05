@@ -15,7 +15,11 @@
  * limitations under the License.
  */
 
-/*
+/**
+ * @file
+ *
+ * Provides allocators for the hyperdags backend
+ *
  * @author A. N. Yzelman
  * @date 31st of January, 2022
  */

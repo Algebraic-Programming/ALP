@@ -18,7 +18,7 @@
 /**
  * @file
  *
- * Collects the hyperdags backend properties.
+ * Collects the hyperdags backend properties
  *
  * @author A. N. Yzelman
  * @date 23rd of March, 2023

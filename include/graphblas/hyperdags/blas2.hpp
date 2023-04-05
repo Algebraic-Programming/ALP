@@ -15,10 +15,10 @@
  * limitations under the License.
  */
 
-/*
+/**
  * @file
  *
- * Implements the BLAS-2 API for the hypergraphs backend.
+ * Implements the BLAS-2 API for the hypergraphs backend
  *
  * @author A. Karanasiou
  * @date 3rd of March, 2022
@@ -30,6 +30,8 @@
 #include <graphblas/matrix.hpp>
 
 #include <graphblas/hyperdags/init.hpp>
+
+#include <array>
 
 
 namespace grb {

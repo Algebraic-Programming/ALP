@@ -15,7 +15,11 @@
  * limitations under the License.
  */
 
-/*
+/**
+ * @file
+ *
+ * Provides initialisers for the HyperDAGs backend
+ *
  * @author A. N. Yzelman
  * @date 31st of January, 2022
  */

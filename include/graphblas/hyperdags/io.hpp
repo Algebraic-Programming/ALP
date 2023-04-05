@@ -15,12 +15,18 @@
  * limitations under the License.
  */
 
-/*
+/**
+ * @file
+ *
+ * Provides the I/O primitives for the HyperDAGs backend
+ *
  * @author A. Karanasiou
  * @date 3rd of March 2022
  */
 
 #include <graphblas/config.hpp>
+
+#include <array>
 
 
 namespace grb {

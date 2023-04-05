@@ -18,7 +18,7 @@
 /**
  * @file
  *
- * Contains the hyperdags implementations for the PinnedVector class.
+ * Contains the hyperdags implementations for the PinnedVector class
  *
  * @author A. Karanasiou
  * @date August 17, 2022

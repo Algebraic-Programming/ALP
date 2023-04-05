@@ -15,7 +15,11 @@
  * limitations under the License.
  */
 
-/*
+/**
+ * @file
+ *
+ * Provides the matrix container for the HyperDAGs backend
+ *
  * @author A. Karanasiou
  * @date 3rd of March, 2022
  */
