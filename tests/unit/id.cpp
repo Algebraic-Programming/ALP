@@ -15,7 +15,9 @@
  * limitations under the License.
  */
 
+#include <array>
 #include <iostream>
+
 #include <graphblas.hpp>
 
 
