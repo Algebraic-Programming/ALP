@@ -140,12 +140,12 @@ add_grb_executables( conjugate_gradient_complex conjugate_gradient.cpp
 )
 
 add_grb_executables( gmres gmres.cpp
-	BACKENDS reference reference_omp
+	BACKENDS reference reference_omp bsp1d hybrid hyperdags nonblocking
 	ADDITIONAL_LINK_LIBRARIES test_utils_headers
 )
 
 add_grb_executables( gmres_complex gmres.cpp
-	BACKENDS reference reference_omp
+	BACKENDS reference reference_omp bsp1d hybrid hyperdags nonblocking
 	ADDITIONAL_LINK_LIBRARIES test_utils_headers
 	COMPILE_DEFINITIONS _GMRES_COMPLEX
 )
