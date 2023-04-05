@@ -430,24 +430,12 @@ namespace grb {
 					for( size_t j = 0; j < std::min( k, n_restart ); j++ ) {
 						//H[j,k]=Q[:,j].dot(Q[:,k])
 						Hmatrix[ k * ( n_restart + 1 ) + j ] = zero;
-						if( grb::utils::is_complex< NonzeroType >::value ) {
-							ret = ret ? ret : grb::eWiseLambda( [ &temp, &Q, j ]( const size_t i ) {
-									temp[ i ] = grb::utils::is_complex< NonzeroType >::conjugate(
-										Q[ j ][ i ] );
-								}, temp, Q[ j ]
-							);
-							ret = ret ? ret : grb::dot< descr_dense >(
-									Hmatrix[ k * ( n_restart + 1 ) + j ],
-									Q[ k ], temp,
-									ring
-								);
-						} else {
-							ret = ret ? ret : grb::dot< descr_dense >(
-									Hmatrix[ k * ( n_restart + 1 ) + j ],
-									Q[ k ], Q[ j ],
-									ring
-								);
-						}
+						ret = ret ? ret : grb::dot< descr_dense >(
+							Hmatrix[ k * ( n_restart + 1 ) + j ],
+							Q[ k ], Q[ j ],
+							ring.getAdditiveMonoid(),
+							conjuagte_mul< NonzeroType, NonzeroType, NonzeroType >()
+						);
 						assert( ret == SUCCESS );
 
 						//Q[:,k]=Q[:,k]-H[j,k]*Q[:,i]
