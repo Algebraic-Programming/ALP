@@ -384,17 +384,11 @@ namespace grb {
 				}
 
 				//rho = norm(Q[:,0])
+				rho = zero;
 				if( grb::utils::is_complex< NonzeroType >::value ) {
-					ret = ret ? ret : grb::eWiseLambda( [ &temp, &Q ]( const size_t i ) {
-						temp[ i ] = grb::utils::is_complex< NonzeroType >::conjugate(
-							Q[ 0 ][ i ] );
-						}, temp, Q[ 0 ]
-					);
-					NonzeroType alpha = zero;
-					ret = ret ? ret : grb::dot< descr_dense >( alpha, temp, Q[ 0 ], ring );
-					rho = sqrtX( grb::utils::is_complex< NonzeroType >::modulus( alpha ) );
+					ret = ret ? ret : grb::algorithms::norm2_cmplx( rho, Q[ 0 ], ring, sqrtX );
 				} else {
-					ret = ret ? ret : grb::algorithms::norm2( rho, Q[ 0 ], ring );
+					ret = ret ? ret : grb::algorithms::norm2( rho, Q[ 0 ], ring, sqrtX );
 				}
 				assert( ret == SUCCESS );
 
@@ -474,20 +468,11 @@ namespace grb {
 					} // while
 
 					//rho=norm(Q[:,k])
+					rho = zero;
 					if( grb::utils::is_complex< NonzeroType >::value ) {
-						grb::RC ret = grb::set( temp, zero );
-						assert( ret == SUCCESS );
-
-						ret = ret ? ret : grb::eWiseLambda( [ &temp, &Q, k ]( const size_t i ) {
-								temp[ i ] = grb::utils::is_complex< NonzeroType >::conjugate(
-									Q[ k ][ i ] );
-								}, temp, Q[ k ]
-							);
-						NonzeroType alpha = zero;
-						ret = ret ? ret : grb::dot< descr_dense >( alpha, temp, Q[ k ], ring );
-						rho = sqrtX( grb::utils::is_complex< NonzeroType >::modulus( alpha ) );
+						ret = ret ? ret : grb::algorithms::norm2_cmplx( rho, Q[ k ], ring, sqrtX );
 					} else {
-						ret = ret ? ret : grb::algorithms::norm2( rho, Q[ k ], ring );
+						ret = ret ? ret : grb::algorithms::norm2( rho, Q[ k ], ring, sqrtX );
 					}
 					assert( ret == SUCCESS );
 
@@ -630,14 +615,7 @@ namespace grb {
 				// get RHS vector norm
 				ResidualType bnorm = zero;
 				if( grb::utils::is_complex< NonzeroType >::value ) {
-					rc = rc ? rc : grb::eWiseLambda( [ &temp, &b ]( const size_t i ) {
-						temp[ i ] = grb::utils::is_complex< NonzeroType >::conjugate(
-							b[ i ] );
-						}, temp, b
-					);
-					NonzeroType alpha = zero;
-					rc = rc ? rc : grb::dot< descr_dense >( alpha, temp, b, ring );
-					bnorm = sqrtX( grb::utils::is_complex< NonzeroType >::modulus( alpha ) );
+					rc = rc ? rc : grb::algorithms::norm2_cmplx( bnorm, b, ring, sqrtX );
 				} else {
 					rc = rc ? rc : grb::algorithms::norm2( bnorm, b, ring, sqrtX );
 				}
@@ -663,14 +641,7 @@ namespace grb {
 				ResidualType residualnorm = ring.template getZero< ResidualType >();
 				if( max_iterations == 0 ) {
 					if( grb::utils::is_complex< NonzeroType >::value ) {
-						rc = rc ? rc : grb::eWiseLambda( [ &temp, &b ]( const size_t i ) {
-							temp[ i ] = grb::utils::is_complex< NonzeroType >::conjugate(
-								b[ i ] );
-							}, temp, b
-						);
-						NonzeroType alpha = zero;
-						rc = rc ? rc : grb::dot< descr_dense >( alpha, temp, b, ring );
-						residualnorm = sqrtX( grb::utils::is_complex< NonzeroType >::modulus( alpha ) );
+						rc = rc ? rc : grb::algorithms::norm2_cmplx( residualnorm, b, ring, sqrtX );
 					} else {
 						rc = rc ? rc : grb::algorithms::norm2( residualnorm, b, ring, sqrtX );
 					}
@@ -771,16 +742,9 @@ namespace grb {
 					rc = rc ? rc : grb::foldl( temp, b, minus );
 					residualnorm = zero;
 					if( grb::utils::is_complex< NonzeroType >::value ) {
-						rc = rc ? rc : grb::eWiseLambda( [ &temp, &temp2 ]( const size_t i ) {
-							temp2[ i ] = grb::utils::is_complex< NonzeroType >::conjugate(
-								temp[ i ] );
-							}, temp, temp2
-						);
-						NonzeroType alpha = zero;
-						rc = rc ? rc : grb::dot< descr_dense >( alpha, temp2, temp, ring );
-						residualnorm = sqrtX( grb::utils::is_complex< NonzeroType >::modulus( alpha ) );
+						rc = rc ? rc : grb::algorithms::norm2_cmplx( residualnorm, temp, ring, sqrtX );
 					} else {
-						rc = rc ? rc : grb::algorithms::norm2( residualnorm, temp, ring );
+						rc = rc ? rc : grb::algorithms::norm2( residualnorm, temp, ring, sqrtX );
 					}
 					if( rc != grb::SUCCESS ) {
 						std::cerr << "Error: residual norm not calculated properly.\n";

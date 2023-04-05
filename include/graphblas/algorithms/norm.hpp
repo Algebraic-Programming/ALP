@@ -36,10 +36,72 @@
 
 #include <graphblas.hpp>
 
+//#include "../base/internalops.hpp"
+
+
 #include <cmath> // for std::sqrt
 
 
 namespace grb {
+
+	namespace internal {
+
+		template<
+			typename IN1, typename IN2, typename OUT,
+			enum Backend implementation = config::default_backend
+		>
+		class conjuagte_mul {
+
+			public:
+
+				typedef IN1 left_type;
+				typedef IN2 right_type;
+				typedef OUT result_type;
+
+				static constexpr bool has_foldl = false;
+				static constexpr bool has_foldr = false;
+				static constexpr bool is_associative = false;
+				static constexpr bool is_commutative = false;
+
+				/**
+				 * Out-of-place application of the multiplication c = a * b.
+				 *
+				 * @param[in]  a Pointer to the left-hand side input. Must be initialised.
+				 * @param[in]  b Pointer to the right-hand side input. Must be initialised.
+				 * @param[out] c Pointer to where to compute the output.
+				 *
+				 * \warning All pointers must be valid or UB occurs.
+				 */
+				static void apply(
+						const IN1 * __restrict__ const a,
+						const IN2 * __restrict__ const b,
+						OUT * __restrict__ const c
+				) {
+					*c = *a * grb::utils::is_complex< IN2 >::conjugate( *b );
+				}
+		};
+	}
+
+	template<
+		typename IN1, typename IN2, typename OUT,
+		enum Backend implementation = config::default_backend
+	>
+	class conjuagte_mul : public operators::internal::Operator<
+		internal::conjuagte_mul< IN1, IN2, OUT, implementation >
+	> {
+
+	public:
+
+		template< typename A, typename B, typename C, enum Backend D >
+		using GenericOperator = internal::conjuagte_mul< A, B, C, D >;
+		conjuagte_mul() {}
+	};
+
+
+	template< typename D1, typename D2, typename D3, enum Backend implementation >
+	struct is_operator< conjuagte_mul< D1, D2, D3, implementation > > {
+		static const constexpr bool value = true;
+	};
 
 	namespace algorithms {
 
@@ -81,13 +143,42 @@ namespace grb {
 		RC norm2( OutputType &x,
 			const Vector< InputType, backend, Coords > &y,
 			const Ring &ring = Ring(),
-			const std::function< OutputType( OutputType ) > sqrtX = std_sqrt< OutputType, OutputType >,
-			const typename std::enable_if<
-				std::is_floating_point< OutputType >::value,
-			void >::type * = nullptr
+			const std::function< OutputType( OutputType ) > sqrtX = std_sqrt< OutputType, OutputType >// ,
+			// const typename std::enable_if<
+			// 	std::is_floating_point< OutputType >::value,
+			// void >::type * = nullptr
 		) {
 			InputType yyt = ring.template getZero< InputType >();
-			RC ret = grb::dot< descr >( yyt, y, y, ring );
+			RC ret = grb::dot< descr >(
+				yyt, y, y, ring.getAdditiveMonoid(), ring.getMultiplicativeOperator()
+			);
+			if( ret == SUCCESS ) {
+				x += sqrtX( grb::utils::is_complex< InputType >::modulus( yyt ) );
+			}
+			return ret;
+		}
+
+
+		template<
+			Descriptor descr = descriptors::no_operation, class Ring,
+			typename InputType, typename OutputType,
+			Backend backend, typename Coords
+		>
+		RC norm2_cmplx( OutputType &x,
+			const Vector< InputType, backend, Coords > &y,
+			const Ring &ring = Ring(),
+			const std::function< OutputType( OutputType ) > sqrtX = std_sqrt< OutputType, OutputType >// ,
+			// const typename std::enable_if<
+			// 	std::is_floating_point< OutputType >::value,
+			// void >::type * = nullptr
+		) {
+
+			InputType yyt = ring.template getZero< InputType >();
+
+			RC ret = grb::dot< descr >(
+				yyt, y, y, ring.getAdditiveMonoid(),
+				conjuagte_mul< InputType, InputType, InputType >()
+			);
 			if( ret == SUCCESS ) {
 				x += sqrtX( grb::utils::is_complex< InputType >::modulus( yyt ) );
 			}
