@@ -644,5 +644,5 @@ papers, as appropriate.
 
  - [Humble Heroes](http://albert-jan.yzelman.net/PDFs/yzelman22-pp.pdf)
    by A. N. Yzelman (2022). Pre-print.
-   [Bibtex](http://albert-jan.yzelman.net/BIBs/yzelman22.bib)
+   [Bibtex](http://albert-jan.yzelman.net/BIBs/yzelman22.bib).
 
