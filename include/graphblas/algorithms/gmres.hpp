@@ -497,7 +497,6 @@ namespace grb {
 				std::vector< grb::Vector< NonzeroType > > &Q,
 				std::vector< NonzeroType > &Hmatrix,
 				grb::Vector< NonzeroType > &temp,
-				grb::Vector< NonzeroType > &temp2,
 				std::vector< NonzeroType > &temp3,
 				const grb::Matrix< NonzeroType > &M,
 				const Ring &ring = Ring(),
@@ -574,11 +573,6 @@ namespace grb {
 					if( grb::size( temp ) < n || grb::capacity( temp ) < n ) {
 						std::cerr << "Error: provided temp workspace vector is not of the correct "
 							<< "length and/or capacity.\n";
-						return ILLEGAL;
-					}
-					if( grb::size( temp2 ) < n || grb::capacity( temp2 ) < n ) {
-						std::cerr << "Error: provided temp2 workspace vector is not of the "
-							<< "correct length and/or capacity.\n";
 						return ILLEGAL;
 					}
 					if( temp3.size() < n ) {
@@ -865,7 +859,6 @@ namespace grb {
 			std::vector< grb::Vector< NonzeroType > > &Q,
 			std::vector< NonzeroType > &Hmatrix,
 			grb::Vector< NonzeroType > &temp,
-			grb::Vector< NonzeroType > &temp2,
 			std::vector< NonzeroType > &temp3,
 			const Ring &ring = Ring(),
 			const Minus &minus = Minus(),
@@ -879,7 +872,7 @@ namespace grb {
 					max_residual_norm, tol,
 					iterations, iterations_gmres, iterations_arnoldi,
 					residual, residual_relative,
-					Q, Hmatrix, temp, temp2, temp3,
+					Q, Hmatrix, temp, temp3,
 					dummy,
 					ring, minus, divide, sqrtX
 				);
@@ -914,7 +907,6 @@ namespace grb {
 			std::vector< grb::Vector< NonzeroType > > &Q,
 			std::vector< NonzeroType > &Hmatrix,
 			grb::Vector< NonzeroType > &temp,
-			grb::Vector< NonzeroType > &temp2,
 			std::vector< NonzeroType > &temp3,
 			const Ring &ring = Ring(),
 			const Minus &minus = Minus(),
@@ -927,7 +919,7 @@ namespace grb {
 					max_residual_norm, tol,
 					iterations, iterations_gmres, iterations_arnoldi,
 					residual, residual_relative,
-					Q, Hmatrix, temp, temp2, temp3,
+					Q, Hmatrix, temp, temp3,
 					M,
 					ring, minus, divide, sqrtX
 				);
