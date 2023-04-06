@@ -219,6 +219,8 @@ grb::RC LazyEvaluation::addStage(
 			}
 		}
 	}
+	
+	//add data dependency analysis for matrices
 
 #ifdef _DEBUG
 	if( !(
