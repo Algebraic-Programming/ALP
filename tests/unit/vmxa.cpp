@@ -88,12 +88,12 @@ void alpProgram( const grb::RC &rc_in, int &error ) {
 	}
 
 	// check
-	const double * __restrict__ const against = y.raw();
-	for( size_t i = 0; i < 15; ++i ) {
-		if( !grb::utils::equals( chk[ i ], against[ i ], 1 ) ) {
-			std::cerr << "Output vector element mismatch at position " << i << ": "
-				<< chk[ i ] << " does not equal " << against[ i ] << ".\n";
+	for( const std::pair< size_t, double > &pair : y ) {
+		if( !grb::utils::equals( chk[ pair.first ], pair.second, 1 ) ) {
+			std::cerr << "Output vector element mismatch at position " << pair.first << ": "
+				<< chk[ pair.first ] << " does not equal " << pair.second << ".\n";
 			error = 8;
+			break;
 		}
 	}
 

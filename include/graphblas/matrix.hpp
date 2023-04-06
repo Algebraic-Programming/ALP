@@ -15,9 +15,9 @@
  * limitations under the License.
  */
 
-/*
+/**
  * @author A. N. Yzelman
- * @date 10 of August
+ * @date 10 of August, 2016
  */
 
 #ifndef _H_GRB_MATRIX
@@ -29,6 +29,12 @@
 // now include all specialisations contained in the backend directories:
 #ifdef _GRB_WITH_REFERENCE
  #include <graphblas/reference/matrix.hpp>
+#endif
+#ifdef _GRB_WITH_HYPERDAGS
+ #include <graphblas/hyperdags/matrix.hpp>
+#endif
+#ifdef _GRB_WITH_NONBLOCKING
+ #include "graphblas/nonblocking/matrix.hpp"
 #endif
 #ifdef _GRB_WITH_LPF
  #include <graphblas/bsp1d/matrix.hpp>
@@ -51,3 +57,4 @@ namespace grb {
 #endif
 
 #endif // end ``_H_GRB_MATRIX''
+

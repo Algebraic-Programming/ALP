@@ -337,11 +337,17 @@ namespace grb {
 
 			/** No implementation notes. */
 			template< typename U >
-			RC exec( void ( *grb_program )( const void *, const size_t, U & ),
+			RC exec(
+				void ( *grb_program )( const void *, const size_t, U & ),
 				const void * data_in, const size_t in_size,
 				U &data_out,
 				const bool broadcast = false
 			) const {
+				// check input arguments
+				if( in_size > 0 && data_in == nullptr ) {
+					return ILLEGAL;
+				}
+
 				// prepare args
 				lpf_func_t fargs[ 2 ];
 				lpf_args_t args;
@@ -364,8 +370,9 @@ namespace grb {
 
 			/** No implementation notes. */
 			template< typename T, typename U >
-			RC exec( void ( *grb_program )( const T &, U & ), // user GraphBLAS program
-				const T &data_in, U &data_out,            // input & output data
+			RC exec(
+				void ( *grb_program )( const T &, U & ), // user GraphBLAS program
+				const T &data_in, U &data_out,           // input & output data
 				const bool broadcast = false
 			) {
 				// prepare args
@@ -451,14 +458,13 @@ namespace grb {
 			 * @throws runtime_error    When the requested launcher group
 			 *                          could not be created.
 			 */
-			Launcher( const size_t process_id = 0,            // user process ID
+			Launcher(
+				const size_t process_id = 0,              // user process ID
 				const size_t nprocs = 1,                  // total number of user processes
 				const std::string hostname = "localhost", // one of the process' hostnames
 				const std::string port = "0",             // a free port at hostname
 				const bool is_mpi_inited = false
-			) : _s( process_id ),
-				_P( nprocs ), _hostname( hostname ), _port( port )
-			{
+			) : _s( process_id ), _P( nprocs ), _hostname( hostname ), _port( port ) {
 				// sanity check
 				if( nprocs == 0 ) {
 					throw std::invalid_argument( "Total number of user processes must be "
@@ -556,6 +562,11 @@ namespace grb {
 				U &data_out,
 				const bool broadcast = false
 			) const {
+				// check input arguments
+				if( in_size > 0 && data_in == nullptr ) {
+					return ILLEGAL;
+				}
+
 				// prepare args
 				lpf_func_t fargs[ 2 ];
 				lpf_args_t args;
@@ -587,8 +598,9 @@ namespace grb {
 
 			/** No implementation notes. */
 			template< typename T, typename U >
-			RC exec( void ( *grb_program )( const T &, U & ), // user GraphBLAS program
-				const T &data_in, U &data_out,            // input & output data
+			RC exec(
+				void ( *grb_program )( const T &, U & ), // user GraphBLAS program
+				const T &data_in, U &data_out,           // input & output data
 				const bool broadcast = false
 			) {
 				// prepare args

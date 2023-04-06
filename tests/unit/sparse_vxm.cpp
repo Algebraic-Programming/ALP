@@ -138,7 +138,7 @@ static enum grb::RC checkResult( const grb::Vector< double > &left, const grb::V
 		ret = grb::eWiseLambda( [ &diff, &right ]( const size_t i ) {
 				diff[ i ] = std::abs( diff[ i ] - right[ i ] );
 			},
-			right
+			right, diff
 		);
 	}
 	std::cout << "Difference vector (" << nnz( diff ) << "/" << size( diff ) << ") reads:\n";

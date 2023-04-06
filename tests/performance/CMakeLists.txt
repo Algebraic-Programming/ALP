@@ -58,23 +58,38 @@ add_grb_executables( dot-openmp dot.cpp $<TARGET_OBJECTS:bench_kernels_omp>
 
 add_grb_executables( scaling scaling.cpp
 	../unit/parser.cpp
-	BACKENDS reference reference_omp bsp1d hybrid
+	BACKENDS reference reference_omp bsp1d hybrid hyperdags nonblocking
 )
 
 add_grb_executables( driver_knn ../smoke/knn.cpp
 	../unit/parser.cpp
-	BACKENDS reference reference_omp bsp1d hybrid
+	BACKENDS reference reference_omp bsp1d hybrid hyperdags nonblocking
 )
 
 add_grb_executables( driver_simple_pagerank
 	../smoke/simple_pagerank.cpp
-	BACKENDS reference reference_omp bsp1d hybrid
+	BACKENDS reference reference_omp bsp1d hybrid hyperdags nonblocking
 	ADDITIONAL_LINK_LIBRARIES test_utils_headers
 )
 
 add_grb_executables( driver_label ../smoke/label.cpp
 	../unit/parser.cpp
-	BACKENDS reference reference_omp bsp1d hybrid
+	BACKENDS reference reference_omp bsp1d hybrid hyperdags nonblocking
+	ADDITIONAL_LINK_LIBRARIES test_utils_headers
+)
+
+add_grb_executables( driver_spmv spmv.cpp
+	BACKENDS reference reference_omp bsp1d hybrid hyperdags nonblocking
+	ADDITIONAL_LINK_LIBRARIES test_utils_headers
+)
+
+add_grb_executables( driver_spmspv spmspv.cpp
+	BACKENDS reference reference_omp bsp1d hybrid hyperdags nonblocking
+	ADDITIONAL_LINK_LIBRARIES test_utils_headers
+)
+
+add_grb_executables( driver_spmspm spmspm.cpp
+	BACKENDS reference reference_omp bsp1d hybrid hyperdags nonblocking
 	ADDITIONAL_LINK_LIBRARIES test_utils_headers
 )
 

@@ -44,7 +44,7 @@
 #include "vector.hpp"
 
 #ifdef _DEBUG
-#include "spmd.hpp"
+ #include "spmd.hpp"
 #endif
 
 #define NO_CAST_ASSERT( x, y, z )                                          \
@@ -257,6 +257,7 @@ namespace grb {
 		 * @param[in]     source_range  The number of elements in \a source.
 		 * @param[in]     matrix        A view of the sparsity pattern and nonzeroes
 		 *                              (if applicable) of the input matrix.
+		 * @param[in]     nz            The number of nonzeroes in the matrix.
 		 * @param[in]     mask_vector   A view of the mask vector. If \a masked is
 		 *                              \a true, the dimensions must match that of
 		 *                              \a destination_vector.
@@ -303,8 +304,10 @@ namespace grb {
 			const Vector< InputType1, reference, Coords > &source_vector,
 			const InputType1 * __restrict__ const &source,
 			const size_t &source_range,
-			const internal::Compressed_Storage< InputType2, RowColType, NonzeroType >
-				&matrix,
+			const internal::Compressed_Storage<
+					InputType2, RowColType, NonzeroType
+				> &matrix,
+			const size_t &nz,
 			const Vector< InputType3, reference, Coords > &mask_vector,
 			const InputType3 * __restrict__ const &mask,
 			const Vector< InputType4, reference, Coords > &source_mask_vector,
@@ -321,7 +324,19 @@ namespace grb {
 #ifdef _DEBUG
 			constexpr bool use_index = descr & descriptors::use_index;
 #endif
-			assert( rc == SUCCESS );
+#ifndef NDEBUG
+			// some assertions that are safe, signed- and width-wise
+			{
+				const size_t col_off = static_cast< size_t >(
+					matrix.col_start[ destination_index ] );
+				const size_t col_off_p1 = static_cast< size_t >(
+					matrix.col_start[ destination_index + 1 ] );
+				const size_t nzsz = static_cast< size_t >( nz );
+				assert( rc == SUCCESS );
+				assert( col_off <= nzsz );
+				assert( col_off_p1 <= nzsz );
+			}
+#endif
 
 			// check whether we should compute output here
 			if( masked ) {
@@ -345,6 +360,7 @@ namespace grb {
 			}
 
 			// start output
+			const auto &src_coordinates = internal::getCoordinates( source_vector );
 			typename AdditiveMonoid::D3 output =
 				add.template getIdentity< typename AdditiveMonoid::D3 >();
 			bool set = false;
@@ -359,9 +375,7 @@ namespace grb {
 							mask< descr >( id_location, source_mask )
 					) && id_location < source_range
 				) {
-					if( dense_hint ||
-						internal::getCoordinates( source_vector ).assigned( id_location )
-					) {
+					if( dense_hint || src_coordinates.assigned( id_location ) ) {
 						typename AdditiveMonoid::D1 temp;
 						internal::CopyOrApplyWithIdentity<
 							!left_handed, typename AdditiveMonoid::D1, InputType1, One
@@ -409,12 +423,33 @@ namespace grb {
 				}
 				// check for sparsity at source
 				if( !dense_hint ) {
-					if( !internal::getCoordinates( source_vector ).assigned( source_index ) ) {
+					if( config::PREFETCHING< reference >::enabled() ) {
+						size_t dist = k + 2 * config::PREFETCHING< reference >::distance();
+						if( dist < nz ) {
+							const size_t prefetch_target_assigned = matrix.row_index[ dist ];
+							src_coordinates.prefetch_assigned( prefetch_target_assigned );
+						}
+						dist -= config::PREFETCHING< reference >::distance();
+						if( dist < nz ) {
+							const size_t prefetch_target_value = matrix.row_index[ dist ];
+							if( src_coordinates.assigned( prefetch_target_value ) ) {
+								src_coordinates.prefetch_value( prefetch_target_value, source );
+							}
+						}
+					}
+					if( !src_coordinates.assigned( source_index ) ) {
 #ifdef _DEBUG
 						std::cout << "\t vxm_gather: Skipping out of computation with source "
 							<< "index " << source_index << " since it does not contain a nonzero\n";
 #endif
 						continue;
+					}
+				} else if( config::PREFETCHING< reference >::enabled() ) {
+					// prefetch nonzero
+					const size_t dist = k + config::PREFETCHING< reference >::distance();
+					if( dist < nz ) {
+						const size_t prefetch_target = matrix.row_index[ dist ];
+						src_coordinates.prefetch_value( prefetch_target, source );
 					}
 				}
 				// get nonzero
@@ -1010,11 +1045,11 @@ namespace grb {
 					"overlapping input and output vectors.\n";
 				return OVERLAP;
 			}
-			/*if( masked && (reinterpret_cast<const void*>(y) == reinterpret_cast<const void*>(z)) ) {
+			if( masked && (reinterpret_cast<const void*>(y) == reinterpret_cast<const void*>(z)) ) {
 				std::cerr << "Warning: grb::internal::vxm_generic called with "
 					"overlapping mask and output vectors.\n";
 				return OVERLAP;
-			}*/
+			}
 
 #ifdef _DEBUG
 			std::cout << s << ": performing SpMV / SpMSpV using an " << nrows( A )
@@ -1205,7 +1240,8 @@ namespace grb {
 									local_update, asyncAssigns,
 #endif
 									u, y[ i ], i, v, x,
-									nrows( A ), internal::getCRS( A ), mask, z, v_mask, vm,
+									nrows( A ), internal::getCRS( A ), nnz( A ),
+									mask, z, v_mask, vm,
 									add, mul, row_l2g, col_l2g, col_g2l
 								);
 #ifdef _H_GRB_REFERENCE_OMP_BLAS2
@@ -1250,7 +1286,8 @@ namespace grb {
 									local_update, asyncAssigns,
 #endif
 									u, y[ i ], i, v, x,
-									nrows( A ), internal::getCRS( A ), mask, z, v_mask, vm,
+									nrows( A ), internal::getCRS( A ), nnz( A ),
+									mask, z, v_mask, vm,
 									add, mul, row_l2g, col_l2g, col_g2l
 								);
 #ifdef _H_GRB_REFERENCE_OMP_BLAS2
@@ -1412,8 +1449,8 @@ namespace grb {
 									local_update, asyncAssigns,
 #endif
 									u, y[ j ], j,
-									v, x, nrows( A ),
-									internal::getCCS( A ),
+									v, x,
+									nrows( A ), internal::getCCS( A ), nnz( A ),
 									mask, z, v_mask, vm,
 									add, mul,
 									row_l2g, row_g2l, col_l2g
@@ -1450,7 +1487,8 @@ namespace grb {
 									local_update, asyncAssigns,
 #endif
 									u, y[ j ], j, v, x,
-									nrows( A ), internal::getCCS( A ), mask, z, v_mask, vm,
+									nrows( A ), internal::getCCS( A ), nnz( A ),
+									mask, z, v_mask, vm,
 									add, mul, row_l2g, row_g2l, col_l2g
 								);
 #ifdef _H_GRB_REFERENCE_OMP_BLAS2
@@ -1732,7 +1770,58 @@ namespace grb {
 		return mxv< descr, true, false >( u, mask, A, v, empty_mask, ring, phase );
 	}
 
-	/** \internal Delegates to vxm_generic */
+	/**
+	 * \parblock
+	 * Performance semantics vary depending on whether a mask was provided, and on
+	 * whether the input vector is sparse or dense. If the input vector \f$ v \f$
+	 * is sparse, let \f$ J \f$ be its set of assigned indices. If a non-trivial
+	 * mask \f$ \mathit{mask} \f$ is given, let \f$ I \f$ be the set of indices for
+	 * which the corresponding \f$ \mathit{mask}_i \f$ evaluate <tt>true</tt>. Then:
+	 *   -# For the performance guarantee on the amount of work this function
+	 *      entails the following table applies:<br>
+	 *      \f$ \begin{tabular}{cccc}
+	 *           Masked & Dense input  & Sparse input \\
+	 *           \noalign{\smallskip}
+	 *           no  & $\Theta(2\mathit{nnz}(A))$      & $\Theta(2\mathit{nnz}(A_{:,J}))$ \\
+	 *           yes & $\Theta(2\mathit{nnz}(A_{I,:})$ & $\Theta(\min\{2\mathit{nnz}(A_{I,:}),2\mathit{nnz}(A_{:,J})\})$
+	 *          \end{tabular}. \f$
+	 *   -# For the amount of data movements, the following table applies:<br>
+	 *      \f$ \begin{tabular}{cccc}
+	 *           Masked & Dense input  & Sparse input \\
+	 *           \noalign{\smallskip}
+	 *           no  & $\Theta(\mathit{nnz}(A)+\min\{m,n\}+m+n)$                         & $\Theta(\mathit{nnz}(A_{:,J}+\min\{m,2|J|\}+|J|)+\mathcal{O}(2m)$ \\
+	 *           yes & $\Theta(\mathit{nnz}(A_{I,:})+\min\{|I|,n\}+2|I|)+\mathcal{O}(n)$ &
+	 * $\Theta(\min\{\Theta(\mathit{nnz}(A_{I,:})+\min\{|I|,n\}+2|I|)+\mathcal{O}(n),\mathit{nnz}(A_{:,J}+\min\{m,|J|\}+2|J|)+\mathcal{O}(2m))$ \end{tabular}. \f$
+	 *   -# A call to this function under no circumstance will allocate nor free
+	 *      dynamic memory.
+	 *   -# A call to this function under no circumstance will make system calls.
+	 * The above performance bounds may be changed by the following desciptors:
+	 *   * #descriptors::invert_mask: replaces \f$ \Theta(|I|) \f$ data movement
+	 *     costs with a \f$ \mathcal{O}(2m) \f$ cost instead, or a
+	 *     \f$ \mathcal{O}(m) \f$ cost if #descriptors::structural was defined as
+	 *     well (see below). In other words, implementations are not required to
+	 *     implement inverted operations efficiently (\f$ 2\Theta(m-|I|) \f$ data
+	 *     movements would be optimal but costs another \f$ \Theta(m) \f$ memory
+	 *     to maintain).
+	 *   * #descriptors::structural: removes \f$ \Theta(|I|) \f$ data movement
+	 *     costs as the mask values need no longer be touched.
+	 *   * #descriptors::add_identity: adds, at most, the costs of grb::foldl
+	 *     (on vectors) to all performance metrics.
+	 *   * #descriptors::use_index: removes \f$ \Theta(n) \f$ or
+	 *     \f$ \Theta(|J|) \f$ data movement costs as the input vector values need
+	 *     no longer be touched.
+	 *   * #descriptors::in_place (see also above): turns \f$ \mathcal{O}(2m) \f$
+	 *     data movements into \f$ \mathcal{O}(m) \f$ instead; i.e., it halves the
+	 *     amount of data movements for writing the output.
+	 *   * #descriptors::dense: the input, output, and mask vectors are assumed to
+	 *     be dense. This allows the implementation to skip checks or other code
+	 *     blocks related to handling of sparse vectors. This may result in use of
+	 *     unitialised memory if any of the provided vectors were, in fact,
+	 *     sparse.
+	 * \endparblock
+	 *
+	 * \internal Delegates to vxm_generic
+	 */
 	template<
 		Descriptor descr = descriptors::no_operation,
 		bool output_may_be_masked = true,

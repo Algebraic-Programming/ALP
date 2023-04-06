@@ -27,13 +27,19 @@
 #include "base/spmd.hpp"
 
 #ifdef _GRB_WITH_REFERENCE
-#include "graphblas/reference/spmd.hpp"
+ #include "graphblas/reference/spmd.hpp"
+#endif
+#ifdef _GRB_WITH_HYPERDAGS
+ #include <graphblas/hyperdags/spmd.hpp>
+#endif
+#ifdef _GRB_WITH_NONBLOCKING
+ #include "graphblas/nonblocking/spmd.hpp"
 #endif
 #ifdef _GRB_WITH_LPF
-#include "graphblas/bsp1d/spmd.hpp"
+ #include "graphblas/bsp1d/spmd.hpp"
 #endif
 #ifdef _GRB_WITH_BANSHEE
-#include "graphblas/banshee/spmd.hpp"
+ #include "graphblas/banshee/spmd.hpp"
 #endif
 
 // specify default only if requested during compilation
@@ -45,3 +51,4 @@ namespace grb {
 #endif
 
 #endif // end _H_GRB_SPMD
+

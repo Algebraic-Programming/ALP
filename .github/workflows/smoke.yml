@@ -1,5 +1,5 @@
 
-name: smoke-tests
+name: release-smoke-tests
 
 on: [push]
 
@@ -34,4 +34,9 @@ jobs:
     - name: Check
       working-directory: ${{github.workspace}}/build
       run: ../tests/summarise.sh smoketests.log
+
+    - name: DumpLogOnFailure
+      if: failure()
+      working-directory: ${{github.workspace}}/build
+      run: cat smoketests.log
 

@@ -27,7 +27,7 @@
 cmake_minimum_required( VERSION 3.13 )
 
 set( MAJORVERSION 0 )
-set( MINORVERSION 6 )
+set( MINORVERSION 7 )
 set( BUGVERSION 0 )
 set( VERSION "${MAJORVERSION}.${MINORVERSION}.${BUGVERSION}" )
 
@@ -51,6 +51,8 @@ endif()
 # to choose backends and dependencies
 option( WITH_REFERENCE_BACKEND "With Reference backend" ON )
 option( WITH_OMP_BACKEND "With OMP backend" ON )
+option( WITH_HYPERDAGS_BACKEND "With Hyperdags backend" ON )
+option( WITH_NONBLOCKING_BACKEND "With Nonblocking backend" ON )
 option( WITH_NUMA "With NUMA support" ON )
 option( LPF_INSTALL_PATH "Path to the LPF tools for the BSP1D and Hybrid backends" OFF )
 # the following options depend on LPF_INSTALL_PATH being set
@@ -61,6 +63,9 @@ LPF_INSTALL_PATH set)" ON LPF_INSTALL_PATH OFF
 cmake_dependent_option( WITH_HYBRID_BACKEND "Also build the Hybrid backend \
 (needs LPF_INSTALL_PATH set)" ON LPF_INSTALL_PATH OFF
 )
+# other dependent options
+cmake_dependent_option( WITH_HYPERDAGS_BACKEND "Building the Hyperdags backend needs \
+	WITH_HYPERDAGS_USING set" ON WITH_HYPERDAGS_USING OFF )
 # to customize build flags for either backends or tests
 option( COMMON_COMPILE_DEFINITIONS
 	"Compilation definitions for BOTH backends and tests; they override the defaults"
@@ -117,6 +122,7 @@ endif()
 
 if( NOT WITH_REFERENCE_BACKEND AND
 	NOT WITH_OMP_BACKEND AND
+	NOT WITH_NONBLOCKING_BACKEND AND
 	NOT WITH_BSP1D_BACKEND AND
 	NOT WITH_HYBRID_BACKEND )
 	message( FATAL_ERROR "At least one backend should be enabled")
@@ -188,11 +194,16 @@ endif()
 # by default no headers are built
 set( WITH_REFERENCE_BACKEND_HEADERS OFF )
 set( WITH_OMP_BACKEND_HEADERS OFF )
+set( WITH_HYPERDAGS_BACKEND_HEADERS OFF )
 
 # activate headers based on requested backends
-if( WITH_REFERENCE_BACKEND OR WITH_BSP1D_BACKEND )
-	# both reference and bsp1d backends need reference headers
+if( WITH_REFERENCE_BACKEND OR WITH_BSP1D_BACKEND OR WITH_NONBLOCKING_BACKEND )
+	# reference, bsp1d and nonblocking backends need reference headers
 	set( WITH_REFERENCE_BACKEND_HEADERS ON )
+endif()
+
+if( WITH_HYPERDAGS_BACKEND )
+	set( WITH_HYPERDAGS_BACKEND_HEADERS ON )
 endif()
 
 if( WITH_OMP_BACKEND OR WITH_HYBRID_BACKEND )
@@ -218,13 +229,28 @@ add_subdirectory( examples )
 
 ### DOXYGEN DOCUMENTATION GENERATION
 
-set( DOCS_DIR "${PROJECT_SOURCE_DIR}/docs/code" )
+set( DOCS_DIR "${PROJECT_SOURCE_DIR}/docs/developer" )
 add_custom_command( OUTPUT "${DOCS_DIR}"
-	COMMAND bash -c "if [[ ! -d docs/code ]]; then doxygen docs/doxy.conf &> doxygen.log; fi"
+	COMMAND bash -c "doxygen docs/doxy.conf &> doxygen-developer.log;"
 	WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}"
 	DEPENDS "${PROJECT_SOURCE_DIR}/docs/doxy.conf"
 	COMMENT "producing code documentation in ${DOCS_DIR}"
 	VERBATIM
 	#USES_TERMINAL
 )
-add_custom_target( docs DEPENDS "${DOCS_DIR}" )
+add_custom_target( devdocs DEPENDS "${DOCS_DIR}" )
+
+set( PUBLIC_DOCS_DIR "${PROJECT_SOURCE_DIR}/docs/user" )
+add_custom_command( OUTPUT "${PUBLIC_DOCS_DIR}"
+	COMMAND bash -c "doxygen docs/user.conf &> doxygen-user.log;"
+	WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}"
+	DEPENDS "${PROJECT_SOURCE_DIR}/docs/user.conf"
+	COMMENT "producing public code documentation in ${PUBLIC_DOCS_DIR}"
+	VERBATIM
+)
+add_custom_target( userdocs DEPENDS "${PUBLIC_DOCS_DIR}" )
+add_custom_target( docs )
+add_dependencies( docs userdocs devdocs )
+
+message( "Compiling with the following backends: ${AVAILABLE_BACKENDS}\n" )
+

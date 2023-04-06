@@ -69,7 +69,7 @@ for BACKEND in ${BACKENDS[@]}; do
 	else
 		Ps=( 1 )
 	fi
-	if [ "$BACKEND" = "reference_omp" ] ; then
+	if [ "$BACKEND" = "reference_omp" ] || [ "$BACKEND" = "nonblocking" ]; then
 		Pt=( ${MAX_THREADS} )
 	elif [ "$BACKEND" = "hybrid" ]; then
 		MTDS=$((MAX_THREADS/2))
@@ -94,7 +94,7 @@ for BACKEND in ${BACKENDS[@]}; do
 			elif [ "${BACKEND}" = "hybrid" ]; then
 				runner="${runner} ${MPI_PASS_ENV} ${LPFRUN_PASSTHROUGH}OMP_NUM_THREADS=${T}"
 				runner="${runner} ${BIND_PROCESSES_TO_MULTIPLE_HW_THREADS}${T}"
-			elif [ "$BACKEND" = "reference_omp" ]; then
+			elif [ "$BACKEND" = "reference_omp" ] || [ "$BACKEND" = "nonblocking" ]; then
 				export OMP_NUM_THREADS=${T}
 			fi
 
@@ -126,7 +126,7 @@ for BACKEND in ${BACKENDS[@]}; do
 				$runner ${TEST_BIN_DIR}/knn_${BACKEND} 4 ${INPUT_DIR}/facebook_combined.txt direct 1 1 &> ${TEST_OUT_DIR}/knn_${BACKEND}_${P}_${T}_facebook.log
 				head -1 ${TEST_OUT_DIR}/knn_${BACKEND}_${P}_${T}_facebook.log
 				if grep -q "Test OK" ${TEST_OUT_DIR}/knn_${BACKEND}_${P}_${T}_facebook.log; then
-					(grep -q "Neighbourhood size is 499" ${TEST_OUT_DIR}/knn_${BACKEND}_${P}_${T}_facebook.log && printf "Test OK\n\n") || (printf "Test FAILED (verification error)\n")
+					(grep -q "Neighbourhood size is 421" ${TEST_OUT_DIR}/knn_${BACKEND}_${P}_${T}_facebook.log && printf "Test OK\n\n") || (printf "Test FAILED (verification error)\n")
 				else
 					printf "Test FAILED\n"
 				fi
@@ -135,10 +135,14 @@ for BACKEND in ${BACKENDS[@]}; do
 			fi
 			echo " "
 
-			echo ">>>      [x]           [ ]       Tests HPCG on a small matrix"
-			bash -c "$runner ${TEST_BIN_DIR}/hpcg_${BACKEND} &> ${TEST_OUT_DIR}/hpcg_${BACKEND}_${P}_${T}.log"
-			head -1 ${TEST_OUT_DIR}/hpcg_${BACKEND}_${P}_${T}.log
-			grep 'Test OK' ${TEST_OUT_DIR}/hpcg_${BACKEND}_${P}_${T}.log || echo "Test FAILED"
+			if [ "${GITHUB_ACTIONS}" = true ] && [ "${BACKEND}" = "hyperdags" ]; then
+				echo "Test DISABLED; GitHub runner does not have enough memory for this test"
+			else
+				echo ">>>      [x]           [ ]       Tests HPCG on a small matrix"
+				echo "Functional test executable: ${TEST_BIN_DIR}/hpcg_${BACKEND}"
+				bash -c "$runner ${TEST_BIN_DIR}/hpcg_${BACKEND} 2>&1 | sed -e '1p' -e '/===/!d' > ${TEST_OUT_DIR}/hpcg_${BACKEND}_${P}_${T}.log"
+				grep 'Test OK' ${TEST_OUT_DIR}/hpcg_${BACKEND}_${P}_${T}.log || echo "Test FAILED"
+			fi
 			echo " "
 
 			echo ">>>      [x]           [ ]       Tests an automatically launching version of the simple pagerank"
@@ -194,11 +198,25 @@ for BACKEND in ${BACKENDS[@]}; do
 			fi
 			echo " "
 
+			echo ">>>      [x]           [ ]       Tests grb::Launcher on a K-core decomposition on the dataset"
+			echo "                                 EPA.mtx. The launcher is used in automatic mode and the I/O"
+			echo "                                 mode is sequential. The Launcher::exec called is with struct"
+			echo "                                 I/O with broadcast true. This launches the default k-core"
+			echo "                                 variant."
+			echo "Functional test executable: ${TEST_BIN_DIR}/kcore_decomposition_${BACKEND}"
+			if [ -f ${INPUT_DIR}/EPA.mtx ]; then
+				$runner ${TEST_BIN_DIR}/kcore_decomposition_${BACKEND} ${INPUT_DIR}/EPA.mtx direct 1 1 verification ${OUTPUT_VERIFICATION_DIR}/kcore_decomposition_eda_ref &> ${TEST_OUT_DIR}/kcore_decomposition_${BACKEND}_EPA_${P}_${T}.log
+				grep 'Test OK' ${TEST_OUT_DIR}/kcore_decomposition_${BACKEND}_EPA_${P}_${T}.log || printf 'Test FAILED.\n'
+			else
+				echo "Test DISABLED; dataset not found. Provide EPA.mtx in the ./datasets/ directory to enable."
+			fi
+			echo " "
+
 			TESTNAME=rndHermit256
 			if [ -f ${TEST_DATA_DIR}/${TESTNAME}.mtx ]; then
 				n=$(grep -v '^%' ${TEST_DATA_DIR}/${TESTNAME}.mtx | head -1 | awk '{print $1}' )
 				m=$(grep -v '^%' ${TEST_DATA_DIR}/${TESTNAME}.mtx | head -1 | awk '{print $2}' )
-				echo ">>>      [x]           [ ]       Testing the conjugate gradient complex  algorithm for the input"
+				echo ">>>      [x]           [ ]       Testing the conjugate gradient complex algorithm for the input"
 				echo "                                 matrix (${n}x${m}) taken from ${TESTNAME}.mtx. This test"
 				echo "                                 verifies against a ground-truth solution vector. The test"
 				echo "                                 employs the grb::Launcher in automatic mode. It uses"
@@ -210,7 +228,7 @@ for BACKEND in ${BACKENDS[@]}; do
 				echo "Test DISABLED: ${TESTNAME}.mtx was not found. To enable, please provide ${TEST_DATA_DIR}/${TESTNAME}.mtx"
 			fi
 			echo " "
-			
+
 			echo ">>>      [x]           [ ]       Testing the BiCGstab algorithm for the 17361 x 17361 input"
 			echo "                                 matrix gyro_m.mtx. This test verifies against a ground-"
 			echo "                                 truth solution vector, the same as used for the earlier"
@@ -264,6 +282,62 @@ for BACKEND in ${BACKENDS[@]}; do
 				echo " "
 			done
 
+			echo ">>>      [x]           [ ]       Testing the Pregel PageRank-like algorithm using a global"
+			echo "                                 stopping criterion. Verifies via a simple regression test in"
+			echo "                                 number of rounds required."
+			if [ -f ${INPUT_DIR}/west0497.mtx ]; then
+				$runner ${TEST_BIN_DIR}/pregel_pagerank_global_${BACKEND} ${INPUT_DIR}/west0497.mtx direct 1 1 &> ${TEST_OUT_DIR}/pregel_pagerank_global_west0497_${BACKEND}_${P}_${T}.log
+				head -1 ${TEST_OUT_DIR}/pregel_pagerank_global_west0497_${BACKEND}_${P}_${T}.log
+				if ! grep -q 'Test OK' ${TEST_OUT_DIR}/pregel_pagerank_global_west0497_${BACKEND}_${P}_${T}.log; then
+					echo "Test FAILED"
+				elif ! grep -q '56 iterations to converge' ${TEST_OUT_DIR}/pregel_pagerank_global_west0497_${BACKEND}_${P}_${T}.log; then
+					echo "Verification FAILED"
+					echo "Test FAILED"
+				else
+					echo "Test OK"
+				fi
+			else
+				echo "Test DISABLED: west0497.mtx was not found. To enable, please provide ${INPUT_DIR}/west0497.mtx"
+			fi
+			echo " "
+
+			echo ">>>      [x]           [ ]       Testing the Pregel PageRank-like algorithm using a vertex-local"
+			echo "                                 stopping criterion. Verifies via a simple regression test in"
+			echo "                                 number of rounds required."
+			if [ -f ${INPUT_DIR}/west0497.mtx ]; then
+				$runner ${TEST_BIN_DIR}/pregel_pagerank_local_${BACKEND} ${INPUT_DIR}/west0497.mtx direct 1 1 &> ${TEST_OUT_DIR}/pregel_pagerank_local_west0497_${BACKEND}_${P}_${T}.log
+				head -1 ${TEST_OUT_DIR}/pregel_pagerank_local_west0497_${BACKEND}_${P}_${T}.log
+				if ! grep -q 'Test OK' ${TEST_OUT_DIR}/pregel_pagerank_local_west0497_${BACKEND}_${P}_${T}.log; then
+					echo "Test FAILED"
+				elif ! grep -q '47 iterations to converge' ${TEST_OUT_DIR}/pregel_pagerank_local_west0497_${BACKEND}_${P}_${T}.log; then
+					echo "Verification FAILED"
+					echo "Test FAILED"
+				else
+					echo "Test OK"
+				fi
+			else
+				echo "Test DISABLED: west0497.mtx was not found. To enable, please provide ${INPUT_DIR}/west0497.mtx"
+			fi
+			echo " "
+
+			echo ">>>      [x]           [ ]       Testing the Pregel connected components algorithm. Verifies"
+			echo "                                 using a simple regression test in number of rounds required."
+			if [ -f ${INPUT_DIR}/west0497.mtx ]; then
+				$runner ${TEST_BIN_DIR}/pregel_connected_components_${BACKEND} ${INPUT_DIR}/west0497.mtx direct 1 1 &> ${TEST_OUT_DIR}/pregel_connected_components_west0497_${BACKEND}_${P}_${T}.log
+				head -1 ${TEST_OUT_DIR}/pregel_connected_components_west0497_${BACKEND}_${P}_${T}.log
+				if ! grep -q 'Test OK' ${TEST_OUT_DIR}/pregel_connected_components_west0497_${BACKEND}_${P}_${T}.log; then
+					echo "Test FAILED"
+				elif ! grep -q '11 iterations to converge' ${TEST_OUT_DIR}/pregel_connected_components_west0497_${BACKEND}_${P}_${T}.log; then
+					echo "Verification FAILED"
+					echo "Test FAILED"
+				else
+					echo "Test OK"
+				fi
+			else
+				echo "Test DISABLED: west0497.mtx was not found. To enable, please provide ${INPUT_DIR}/west0497.mtx"
+			fi
+			echo " "
+
 			if [ "$BACKEND" = "bsp1d" ] || [ "$BACKEND" = "hybrid" ]; then
 				echo "Additional standardised smoke tests not yet supported for the ${BACKEND} backend"
 				echo
@@ -275,6 +349,26 @@ for BACKEND in ${BACKENDS[@]}; do
 			head -1 ${TEST_OUT_DIR}/kmeans_${BACKEND}_${P}_${T}.log
 			tail -1 ${TEST_OUT_DIR}/kmeans_${BACKEND}_${P}_${T}.log
 			echo " "
+
+			if [ "$BACKEND" = "reference_omp" ] || [ "$BACKEND" = "reference" ]; then
+				echo "Non-standard reference- and reference-omp specific smoke tests:"
+				echo " "
+				echo ">>>      [x]           [ ]       Tests grb::Launcher on a K-core decomposition on the dataset"
+				echo "                                 EPA.mtx. The launcher is used in automatic mode and the I/O"
+				echo "                                 mode is sequential. The Launcher::exec called is with struct"
+				echo "                                 I/O with broadcast true. This launches the k-core variant"
+				echo "                                 that employs critical sections. This is a non-ALP-compliant"
+				echo "                                 implementation that furthermore assumes an OpenMP-based"
+				echo "                                 backend."
+				echo "Functional test executable: ${TEST_BIN_DIR}/kcore_decomposition_critical_${BACKEND}"
+				if [ -f ${INPUT_DIR}/EPA.mtx ]; then
+					$runner ${TEST_BIN_DIR}/kcore_decomposition_critical_${BACKEND} ${INPUT_DIR}/EPA.mtx direct 1 1 verification ${OUTPUT_VERIFICATION_DIR}/kcore_decomposition_eda_ref &> ${TEST_OUT_DIR}/kcore_decomposition_critical_${BACKEND}_EPA_${P}_${T}.log
+					grep 'Test OK' ${TEST_OUT_DIR}/kcore_decomposition_critical_${BACKEND}_EPA_${P}_${T}.log || printf 'Test FAILED.\n'
+				else
+					echo "Test DISABLED; dataset not found. Provide EPA.mtx in the ./datasets/ directory to enable."
+				fi
+				echo " "
+			fi
 
 		done
 	done

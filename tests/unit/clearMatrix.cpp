@@ -1,4 +1,3 @@
-
 /*
  *   Copyright 2021 Huawei Technologies Co., Ltd.
  *
@@ -22,6 +21,7 @@
 
 #include <graphblas.hpp>
 
+
 using namespace grb;
 
 void grb_program( const size_t &n, grb::RC &rc ) {
@@ -29,9 +29,12 @@ void grb_program( const size_t &n, grb::RC &rc ) {
 	grb::Vector< double > vector( n );
 	rc = grb::set< grb::descriptors::use_index >( vector, 0 );
 	if( rc == SUCCESS ) {
-		auto converter = grb::utils::makeVectorToMatrixConverter< double >( vector, []( const size_t &ind, const double &val ) {
-			return std::make_pair( std::make_pair( ind, ind ), val );
-		} );
+		auto converter = grb::utils::makeVectorToMatrixConverter< double >(
+			vector,
+			[]( const size_t &ind, const double &val ) {
+				return std::make_pair( std::make_pair( ind, ind ), val );
+			}
+		);
 		auto start = converter.begin();
 		auto end = converter.end();
 		rc = grb::buildMatrixUnique( diag, start, end, PARALLEL );
@@ -51,7 +54,8 @@ void grb_program( const size_t &n, grb::RC &rc ) {
 	}
 
 	if( grb::nnz( diag ) != 0 ) {
-		std::cerr << "\t unexpected number of nonzeroes in matrix ( " << grb::nnz( diag ) << " ), expected 0\n";
+		std::cerr << "\t unexpected number of nonzeroes in matrix "
+			<< "( " << grb::nnz( diag ) << " ), expected 0\n";
 		rc = FAILED;
 	}
 
@@ -87,8 +91,8 @@ int main( int argc, char ** argv ) {
 	}
 	if( printUsage ) {
 		std::cerr << "Usage: " << argv[ 0 ] << " [n]\n";
-		std::cerr << "  -n (optional, default is 100): an even integer, the "
-					 "test size.\n";
+		std::cerr << "  -n (optional, default is 100): an even integer, "
+			<< "the test size.\n";
 		return 1;
 	}
 
@@ -96,13 +100,15 @@ int main( int argc, char ** argv ) {
 	grb::Launcher< AUTOMATIC > launcher;
 	grb::RC out;
 	if( launcher.exec( &grb_program, in, out, true ) != SUCCESS ) {
-		std::cerr << "Launching test FAILED\n";
+		std::cerr << "Launching test FAILED\n" << std::endl;
 		return 255;
 	}
 	if( out != SUCCESS ) {
-		std::cerr << "Test FAILED (" << grb::toString( out ) << ")" << std::endl;
+		std::cerr << std::flush;
+		std::cout << "Test FAILED (" << grb::toString( out ) << ")\n" << std::endl;
 	} else {
-		std::cout << "Test OK" << std::endl;
+		std::cout << "Test OK\n" << std::endl;
 	}
 	return 0;
 }
+

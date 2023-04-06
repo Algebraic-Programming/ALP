@@ -35,29 +35,40 @@
 #include <graphblas/utils/autodeleter.hpp>
 
 namespace grb {
+
 	namespace utils {
+
 		namespace internal {
 
 			// template< enum Backend implementation = config::default_backend >
 			// class Allocator;
 
 		} // namespace internal
+
 	}     // namespace utils
+
 } // namespace grb
 
 // include available allocator implementations:
 #ifdef _GRB_WITH_REFERENCE
-#include "graphblas/reference/alloc.hpp"
+ #include "graphblas/reference/alloc.hpp"
+#endif
+#ifdef _GRB_WITH_HYPERDAGS
+ #include "graphblas/hyperdags/alloc.hpp"
+#endif
+#ifdef _GRB_WITH_NONBLOCKING
+ #include "graphblas/nonblocking/alloc.hpp"
 #endif
 #ifdef _GRB_WITH_LPF
-#include "graphblas/bsp1d/alloc.hpp"
+ #include "graphblas/bsp1d/alloc.hpp"
 #endif
 #ifdef _GRB_WITH_BANSHEE
-#include "graphblas/banshee/alloc.hpp"
+ #include "graphblas/banshee/alloc.hpp"
 #endif
 
 // define user API:
 namespace grb {
+
 	namespace utils {
 
 		/**
@@ -146,3 +157,4 @@ namespace grb {
 } // namespace grb
 
 #endif
+

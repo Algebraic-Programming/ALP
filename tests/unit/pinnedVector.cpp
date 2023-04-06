@@ -102,7 +102,7 @@ static inline bool checkSparse(
 		case MOST_SPARSE:
 			if( i != n/2 ) {
 				std::cerr << "Nonzero at position " << i << ", expected " << n/2 << "\n";
-				return false;		
+				return false;
 			}
 			break;
 		case TWO_ENTRIES:
@@ -135,7 +135,7 @@ static inline bool checkSparse(
 
 template< typename T >
 void grbProgram( const struct input< T > &in, struct output< T > &out ) {
-	// create container 
+	// create container
 	constexpr const size_t zero = 0;
 	Vector< T > empty( zero ), nonempty( n ), zero_cap( n, zero );
 	srand( 15124 );

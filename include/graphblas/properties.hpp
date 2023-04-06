@@ -28,13 +28,19 @@
 
 // now include all specialisations contained in the backend directories:
 #ifdef _GRB_WITH_REFERENCE
-#include <graphblas/reference/properties.hpp>
+ #include <graphblas/reference/properties.hpp>
+#endif
+#ifdef _GRB_WITH_HYPERDAGS
+ #include <graphblas/hyperdags/properties.hpp>
+#endif
+#ifdef _GRB_WITH_NONBLOCKING
+ #include "graphblas/nonblocking/properties.hpp"
 #endif
 #ifdef _GRB_WITH_LPF
-#include <graphblas/bsp1d/properties.hpp>
+ #include <graphblas/bsp1d/properties.hpp>
 #endif
 #ifdef _GRB_WITH_BANSHEE
-#include <graphblas/banshee/properties.hpp>
+ #include <graphblas/banshee/properties.hpp>
 #endif
 
 // specify default only if requested during compilation
@@ -46,3 +52,4 @@ namespace grb {
 #endif
 
 #endif // end ``_H_GRB_PROPERTIES''
+

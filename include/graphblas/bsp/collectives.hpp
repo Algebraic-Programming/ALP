@@ -98,14 +98,16 @@ namespace grb {
 		 * This function may place an alloc of \f$ P\mathit{sizeof}(IOType) \f$ bytes
 		 * if the internal buffer was not sufficiently large.
 		 */
-		template< Descriptor descr = descriptors::no_operation, typename Operator, typename IOType >
+		template<
+			Descriptor descr = descriptors::no_operation,
+			typename Operator, typename IOType
+		>
 		static RC allreduce( IOType &inout, const Operator &op = Operator() ) {
 			// this is the serial algorithm only
 			// TODO internal issue #19
 #ifdef _DEBUG
-			std::cout << "Entered grb::collectives< BSP1D >::allreduce with "
-						 "inout = "
-					  << inout << " and op = " << &op << std::endl;
+			std::cout << "Entered grb::collectives< BSP1D >::allreduce with inout = "
+				<< inout << " and op = " << &op << std::endl;
 #endif
 
 			// static sanity check
@@ -303,6 +305,17 @@ namespace grb {
 		 *                      On output at non-root processes: the value at root.
 		 *
 		 * \parblock
+		 * \par Performance semantics: common
+		 * Whether system calls will happen depends on the LPF engine compiled with,
+		 * as does whether buffer space is proportional to the payload size is
+		 * required. In principle, when using a fabric like Inifiband and when using
+		 * the LPF ibverbs engine, the intended IB zero-copy behaviour is attained.
+		 *
+		 * All below variants in any backend shall not result in dynamic memory
+		 * allocations.
+		 * \endparblock
+		 *
+		 * \parblock
 		 * \par Performance semantics: serial
 		 * -# Problem size N: \f$ \mathit{sizeof}(\mathit{IOType}) \f$
 		 * -# local work: \f$ 0 \f$ ;
@@ -310,20 +323,21 @@ namespace grb {
 		 * -# BSP cost: \f$ NPg + l \f$;
 		 * \endparblock
 		 *
-		 * \par Performance semantics: two hase
+		 * \parblock
+		 * \par Performance semantics: two phase
 		 * -# Problem size N: \f$ \mathit{sizeof}(\mathit{IOType}) \f$
 		 * -# local work: \f$ 0 \f$ ;
 		 * -# transferred bytes: \f$ 2N \f$ ;
 		 * -# BSP cost: \f$ 2(Ng + l) \f$;
 		 * \endparblock
 		 *
+		 * \parblock
 		 * \par Performance semantics: two level tree
 		 * -# Problem size N: \f$ \mathit{sizeof}(\mathit{IOType}) \f$
 		 * -# local work: \f$ 0 \f$ ;
 		 * -# transferred bytes: \f$ 2\sqrt{P}N \f$ ;
 		 * -# BSP cost: \f$ 2(\sqrt{P}Ng + l) \f$;
 		 * \endparblock
-		 *
 		 */
 		template< typename IOType >
 		static RC broadcast( IOType & inout, const lpf_pid_t root = 0 ) {

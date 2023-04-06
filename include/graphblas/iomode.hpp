@@ -15,13 +15,19 @@
  * limitations under the License.
  */
 
-/*
+/**
+ * @file
+ *
+ * Defines the various I/O modes a user could employ with ALP data ingestion
+ * or extraction.
+ *
  * @author A. N. Yzelman
  * @date 21st of February, 2017
  */
 
 #ifndef _H_GRB_IOMODE
 #define _H_GRB_IOMODE
+
 
 namespace grb {
 
@@ -86,8 +92,7 @@ namespace grb {
 		PARALLEL
 	};
 
-	/** @} */
-
 } // namespace grb
 
 #endif // end ``_H_GRB_IOMODE''
+

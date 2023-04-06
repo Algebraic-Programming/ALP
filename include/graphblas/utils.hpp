@@ -15,7 +15,11 @@
  * limitations under the License.
  */
 
-/*
+/**
+ * @file
+ *
+ * Implements some utilities that may be useful outside of the ALP context also.
+ *
  * @author A. N. Yzelman
  * @date 8th of August, 2016
  */
@@ -36,14 +40,17 @@
 namespace grb {
 
 	/**
-	 * Some utility classes used that may be used throughout this GraphBLAS
-	 * implementation.
+	 * Utility functions and classes used throughout the ALP implementation that
+	 * could be useful outside of ALP also.
 	 *
+	 * \internal
 	 * Utilities that rely on external libraries or system calls should \em not be
 	 * added here-- those should reside in their own compilation units so that
 	 * backends can decide on an individual basis whether or not to include them.
-	 * This is especially useful when writing a backend for an architecture without
+	 *
+	 * This is especially important considering backends for architectures without
 	 * extensive coverage of standard extensions or libraries.
+	 * \endinternal
 	 */
 	namespace utils {
 
@@ -240,24 +247,32 @@ namespace grb {
 		}
 
 		/**
-		 * A sizeof that is safe w.r.t. void types.
+		 * A sizeof that is safe with respect to <tt>void</tt> types.
 		 *
+		 * The byte size of <tt>void</tt> types returns zero. The byte size of any
+		 * other type <tt>T</tt> returns <tt>sizeof(T)</tt>.
 		 */
 		template< typename T >
 		class SizeOf {
+
 			public:
+
 				/**
 				 * If \a T is <tt>void</tt>, this value equals 0 and
 				 * equal to <tt>sizeof(T)</tt> otherwise.
 				 */
 				static constexpr const size_t value = sizeof( T );
+
 		};
 
 		/** \internal void-specialisation of the above class */
 		template<>
 		class SizeOf< void > {
+
 			public:
+
 				static constexpr const size_t value = 0;
+
 		};
 
 		/**

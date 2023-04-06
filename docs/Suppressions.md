@@ -48,46 +48,37 @@ if( masked ) {
 ```
 
 4. `include/graphblas/base/internalops.hpp`, multiple sources:
-- mul::apply, add::apply, add::foldl, equal::apply, not_equal::apply.
+- mul::apply, add::apply, add::foldl, equal::apply, not_equal::apply, and
+  logical_and::foldl.
 
 These are indirectly caused by the following calls:
 - `include/graphblas/blas0.hpp`, apply;
 - `include/graphblas/reference/blas1.hpp`, dot_generic, masked_apply_generic,
-  and sparse_apply_generic.
+  sparse_apply_generic, and fold_from_vector_to_scalar_generic.
 
 These are all OK to suppress since the reads are masked.
 
-5. `include/graphblas/reference/blas1.hpp`, fold_from_vector_to_scalar_generic:
-```
-GRB_UTIL_IGNORE_MAYBE_UNINITIALIZED // the below code ensures to set local
-IOType local;                       // whenever our local block is
-GRB_UTIL_RESTORE_WARNINGS           // non-empty
-if( end > 0 ) {
-	if( i < end ) {
-		local = static_cast< IOType >( internal::getRaw( to_fold )[ i ] );
-	} else {
-		local = static_cast< IOType >( internal::getRaw( to_fold )[ 0 ] );
-	}
-}
-```
-and
-```
-if( root == s ) {
-	// then I should be non-empty
-	assert( !empty );
-	// set global value to locally computed value
-	GRB_UTIL_IGNORE_MAYBE_UNINITIALIZED // one is only root if the local
-	global = local;                     // chunk is non-empty, in which case
-	GRB_UTIL_RESTORE_WARNINGS           // local will be initialised (above)
-	}
-```
-
-6. `include/graphblas/reference/blas1.hpp`, masked_apply_generic:
+5. `include/graphblas/reference/blas1.hpp`, masked_apply_generic:
 ```
 if( mask_b[ t ] ) {
 	// ...
 	GRB_UTIL_IGNORE_MAYBE_UNINITIALIZED  // z_b is computed from x_b and
 	*( z_p + indices[ t ] ) = z_b[ t ];  // y_b, which are both initialised
 	GRB_UTIL_RESTORE_WARNINGS            // if mask_b is true
+```
+
+6. `include/graphblas/nonblocking/blas1.hpp`, masked_apply_generic:
+```
+for( size_t k = 0; k < block_size; ++k ) {
+	const size_t index = i + k;
+	assert( index < local_n + lower_bound );
+	if( mask_b[ k ] ) {
+		(void) local_z.assign( index - lower_bound );
+		GRB_UTIL_IGNORE_MAYBE_UNINITIALIZED // This is only triggered with
+		*( z_p + index ) = z_b[ k ];        // mask_b[ k ], which in the above
+		GRB_UTIL_RESTORE_WARNINGS           // loop also triggeres initialising
+		                                    // z_b[ k ]
+	}
+}
 ```
 

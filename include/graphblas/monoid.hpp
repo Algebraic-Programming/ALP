@@ -15,7 +15,11 @@
  * limitations under the License.
  */
 
-/*
+/**
+ * @file
+ *
+ * Provides an ALP monoid.
+ *
  * @author A. N. Yzelman
  * @date 15 March, 2016
  */
@@ -37,12 +41,7 @@
 #include <graphblas/ops.hpp>
 #include <graphblas/type_traits.hpp>
 
-/**
- * The main Sparse Library namespace.
- *
- * All classes, enums, constants, and functions are declared in this namespace.
- * This source file only contains testing code outside this namespace.
- */
+
 namespace grb {
 
 	/**
@@ -65,6 +64,7 @@ namespace grb {
 			"one of its input domains" );
 
 	public:
+
 		/** The left-hand side input domain. */
 		typedef typename _OP::D1 D1;
 
@@ -81,7 +81,9 @@ namespace grb {
 		template< typename IdentityType >
 		using Identity = _ID< IdentityType >;
 
+
 	private:
+
 		/**
 		 * The underlying binary operator.
 		 *
@@ -136,3 +138,4 @@ namespace grb {
 } // namespace grb
 
 #endif
+

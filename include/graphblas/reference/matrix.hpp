@@ -46,8 +46,6 @@
 #include <graphblas/utils/autodeleter.hpp>
 #include <graphblas/utils/DMapper.hpp>
 #include <graphblas/type_traits.hpp>
-
-#include <graphblas/algorithms/hpcg/ndim_matrix_builders.hpp>
 #include <graphblas/utils/iterators/utils.hpp>
 
 #include "NonzeroWrapper.hpp"
@@ -1362,9 +1360,9 @@ namespace grb {
 					sizes[ 3 ] = internal::Coordinates< reference >::bufferSize( cols );
 					sizes[ 4 ] = rows * internal::SizeOf< D >::value;
 					sizes[ 5 ] = cols * internal::SizeOf< D >::value;
+					CRS.getStartAllocSize( &( sizes[ 6 ] ), rows );
+					CCS.getStartAllocSize( &( sizes[ 7 ] ), cols );
 					if( cap_in > 0 ) {
-						CRS.getStartAllocSize( &( sizes[ 6 ] ), rows );
-						CCS.getStartAllocSize( &( sizes[ 7 ] ), cols );
 						CRS.getAllocSize( &(sizes[ 8 ]), cap_in );
 						CCS.getAllocSize( &(sizes[ 10 ]), cap_in );
 					} else {
@@ -1578,7 +1576,7 @@ namespace grb {
 				char * alloc[ 4 ] = { nullptr, nullptr, nullptr, nullptr };
 				size_t sizes[ 4 ];
 				// cache old allocation data
-				size_t old_sizes[ 4 ];
+				size_t old_sizes[ 4 ] = { 0, 0, 0, 0 };
 				size_t freed = 0;
 				if( cap > 0 ) {
 					CRS.getAllocSize( &( old_sizes[ 0 ] ), cap );
@@ -1634,8 +1632,7 @@ namespace grb {
 				return SUCCESS;
 			}
 
-
-			/** 
+			/**
 			 * @see Matrix::buildMatrixUnique.
 			 *
 			 * This dispatcher calls the sequential or the parallel implementation based
@@ -1957,7 +1954,8 @@ namespace grb {
 				Matrix( other.m, other.n, other.cap )
 			{
 #ifdef _DEBUG
-				std::cerr << "In grb::Matrix (reference) copy-constructor\n";
+				std::cerr << "In grb::Matrix (reference) copy-constructor\n"
+					<< "\t source matrix has " << other.nz << " nonzeroes\n";
 #endif
 				nz = other.nz;
 
@@ -1968,7 +1966,7 @@ namespace grb {
 				#pragma omp parallel
 #endif
 				{
-					size_t range = CRS.copyFromRange( nz, n );
+					size_t range = CRS.copyFromRange( nz, m );
 #ifdef _H_GRB_REFERENCE_OMP_MATRIX
 					size_t start, end;
 					config::OMP::localRange( start, end, 0, range );
@@ -1976,14 +1974,14 @@ namespace grb {
 					const size_t start = 0;
 					size_t end = range;
 #endif
-					CRS.copyFrom( other.CRS, nz, n, start, end );
-					range = CCS.copyFromRange( nz, m );
+					CRS.copyFrom( other.CRS, nz, m, start, end );
+					range = CCS.copyFromRange( nz, n );
 #ifdef _H_GRB_REFERENCE_OMP_MATRIX
 					config::OMP::localRange( start, end, 0, range );
 #else
 					end = range;
 #endif
-					CCS.copyFrom( other.CCS, nz, m, start, end );
+					CCS.copyFrom( other.CCS, nz, n, start, end );
 				}
 			}
 

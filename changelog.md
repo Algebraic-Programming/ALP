@@ -1,4 +1,128 @@
 
+Version 0.7.0
+=============
+
+This is a summary of changes. For full details, see the publicly available Git
+history prior to the v0.7 tag.
+
+Highlights:
+
+ 1. This release re-implements the nonblocking ALP/GraphBLAS backend by Mastoras
+    et al. (GrAPL/IPDPSW '22, TACO '23) on the latest ALP code base. The use of
+    the nonblocking backend for some algorithms results in multiple-factor
+    speedups versus standard blocking execution as well as versus external
+    industry-standard frameworks. This includes Eigen, which, like nonblocking
+    ALP/GraphBLAS, perform cross-operation fusion. Simply compile your ALP
+    programs using `grbcxx -b nonblocking`, and enjoy the speedups!
+
+ 2. We also introduce a new programming interface to the ALP software stack that
+    allows vertex-centric programming in addition to programming using
+    generalised sparse linear algebra. This new interface, ALP/Pregel,
+    translates vertex-centric programs to standard ALP/GraphBLAS primitives
+    during compilation, and thus benefits of all automatic optimisations
+    included with the ALP software stack.
+
+ 3. Support for software prefetching during `vxm` and `mxv` has been added to
+    the `reference` and `reference_omp` backends. Since optimal prefetch
+    settings and its overall effectiveness relies strongly on 1) the structure
+    of the sparse matrices and graphs considered as well as on 2) the algorithms
+    used on those data, this new feature is turned off by default. To use it,
+    please enable it via `include/graphblas/reference/config.hpp` and tune the
+    there-defined prefetch distances.
+
+ 4. Finally, this release includes another new backend, the `hyperdags` backend.
+    A program compiled with this backend will, after execution, dump a HyperDAG
+    representation of the ALP computations that the program executed.
+
+Changes to the specification:
+
+ 1. Any ALP primitive with ALP container output now takes a Phase argument.
+
+ 2. Clarify that the use of the `dense` descriptor also implies that the output
+    containers on entry must be dense. This applies also for out-of-place
+    primitives.
+
+Algorithms:
+ - [new] a vertex-centric PageRank-like algorithm implemented on top of the new
+   ALP/Pregel has been added;
+ - [new] a vertex-centric algorithm for strongly connected components on
+   undirected graphs implemented on top of ALP/Pregel has been added;
+ - [new] the algebraic k-core decomposition algorithm by Li et al. (HPEC '21)
+   has been added;
+ - [bug] the mpv algorithm performed one too many iterations, while all
+   associated tests used an ALP/GraphBLAS baseline-- v0.7 now instead verifies
+   against external ground truths;
+ - [bug] the label propagation algorithm relied on a bugged implementation of
+   `grb::set`, now fixed, while it now and when possible relies on `std::swap`
+   instead of performing explicit and expensive copies;
+ - [bug] the CG algorithm returned `SUCCESS` even it failed to converge within
+   the given number of maximum iterations.
+
+Operators:
+ - [new] v0.7 (re-)introduces the four less-than(-or-equal) and
+   greater-than(-or-equal) operators;
+
+All backends:
+ - [bug] fixed the behaviour of ALP containers under copy-assignment and
+   copy-construction;
+ - [bug] all variants of `foldl` and `foldr` previously could erroneously return
+   `ILLEGAL` in the presence of sparse vectors and/or masks;
+ - [bug] several primitives would not return `ILLEGAL` in the presence of the
+   `dense` descriptor when faced with sparse containers;
+ - [bug] all backends missed the implementation of at least one `eWiseMul`
+   variant;
+ - [bug] all backends missed the implementation of at least two `eWiseApply`
+   variants where both inputs are scalar;
+ - [feature] improved `_DEBUG` tracing and code style throughout.
+
+Reference and reference_omp backends:
+ - [bug] overlap detection of the output and output mask was erroneously
+   disabled for the `vxm` and `mxv` primitives, herewith fixed;
+ - [bug] `foldl` and `foldr` previously have employed unexpected casting
+   behaviour;
+ - [bug] multiple copy-assignment of the same vector could fail;
+ - [bug] the vector<-scalar<-vector `eWiseApply` using operators was in-place;
+ - [bug] the `eWiseApply` using sparse vector inputs and/or masks could in some
+   rare cases depending on structure and vector lengths generate incorrect
+   output;
+ - [bug] the implementation of the vector `grb::set` where the output container
+   was not already dense was in-place, while out-of-place semantics were
+   defined;
+ - [bug] the output-masked `eWiseMul` was bugged in the case where one of the
+   inputs was scalar;
+ - [bug] matrix containers with initial requested capacity zero could attempt
+   to access uninitialised memory, including even after a successful subsequent
+   `resize`;
+ - [performance] `foldl` and `foldr` using sparse vectors and/or masks were
+   previously not always following asymptotically optimal behaviour;
+ - [performance] `set` previously did not exploit information such as whether
+   the `dense` descriptor was present, whether vectors need only touch
+   coordinate data to generate correct output, or whether it never needs to
+   touch coordinate data;
+ - [performance] `eWiseApply` detects more cases of trivial operations on empty
+   vectors, and completes those faster;
+ - [performance] optimised `eWiseMul` with scalar inputs.
+
+BSP1D and hybrid backends:
+ - [bug] the output-masked `vxm` and various `foldl` and `foldr` were missing;
+ - [bug] copy-assignment operator for vectors was missing.
+
+Testing, development, and documentation:
+ - the unit test suite has been hardened to detect all aforementioned bugs;
+ - outdated documentation was revised-- in particular, all user-facing
+   documentation has been checked and can now be generated via the new make
+   target `make userdocs`;
+ - developer documentation is now built via `make devdocs`, while the older
+   `make docs` target now builds both the user and developer documentation;
+ - new developers can now enjoy an updated developer guide;
+ - the test suite now prints an error when the automatic detection of the number
+   of sockets fails, and then auto-selects one instead of zero (which caused the
+   test scripts to fail);
+ - added performance tests for the sparse matrix--vector, sparse matrix--sparse
+   vector, and sparse matrix--sparse matrix multiplication kernels;
+ - improved both the GitHub and internal CI scripts.
+
+
 Version 0.6.0
 =============
 
@@ -8,7 +132,7 @@ history prior to the v0.6 tag.
 Highlights and changes to the specification:
  - Deprecated `grb::init` and `grb::finalize` in favour of grb::Launcher.
    Existing code should migrate to using the Launcher as any later release may
-   remove the now-deprecated primtives.
+   remove the now-deprecated primitives.
  - If you wish to rely on ALP/GraphBLAS for more standard sparse linear
    algebra but if you cannot, or do not wish to, adapt your existing sources
    to the C++ ALP/GraphBLAS API, then v0.6 onwards generates libraries that
@@ -70,7 +194,7 @@ Reference and reference_omp backends:
    properly updated.
  - Bugfix: the OpenMP `schedule( static, chunk_size )` has a dynamic (run-time)
    component that was not intended.
- - Bugifx: some OpenMP `schedule( dynamic, chunk_size )` operate on regular
+ - Bugfix: some OpenMP `schedule( dynamic, chunk_size )` operate on regular
    loops and should employ a static schedule instead.
 
 BSP1D backend:
@@ -198,7 +322,7 @@ BSP1D and hybrid backends:
    declared as part of BSP1D friend declarations. Curiously, many compilers
    accepted the previous erroneous code.
  - Bugfix: empty BSP1D containers could previously leave process-local matrices
-   unitialised.
+   uninitialised.
 
 Reference and reference_omp backends:
  - Bugfix: matrix construction did not use the `alloc.hpp` mechanisms. This
@@ -207,7 +331,7 @@ Reference and reference_omp backends:
 
 All backends:
  - Bugfix: `grb::Launcher` (as well as the benchmarker) did not always properly
-   finalize the ALP/GraphBLAS context after exec completed. This caused some
+   finalise the ALP/GraphBLAS context after exec completed. This caused some
    memory to not be properly freed on program exits.
  - Bugfix: the out-of-place versions of `grb::operators::{argmin,argmax}` were
    incorrect. All code within the repository was unaffected by this bug. The
@@ -224,7 +348,7 @@ Version 0.4.1
  - The CG algorithm assumed out-of-place behaviour of grb::dot, while the
    specification since v0.1 defines it to be in-place. Implementations of
    grb::dot were erroneously out-of-place until v0.4, but the CG algorithm
-   was errouneously not updated. This hotfix rectifies this.
+   was erroneously not updated. This hotfix rectifies this.
 
 
 Version 0.4.0
@@ -276,36 +400,46 @@ Version 0.3.0
 =============
 
 Reference and reference_omp backends:
- - Fixed issue where grb::set, grb::vxm, and grb::mxv could fail for more exotic data types.
- - Fixed issue that prevented std::move on matrices, both from assignment and construction.
+ - Fixed issue where grb::set, grb::vxm, and grb::mxv could fail for more
+   exotic data types.
+ - Fixed issue that prevented std::move on matrices, both from assignment and
+   construction.
  - Optimised masked grb::set to now reach optimal complexity in all cases.
  - Optimised grb::eWiseLambda over matrices to avoid atomics.
 
 BSP1D backend:
- - Fixed issue where iterating over empty matrices could fail in the BSP1D backend.
- - Fixed issue in BSP1D backend that caused dynamic allocations where they were not allowed.
- - Fixed issue where the automatic-mode launcher and benchmarker could, in rare cases, fail.
+ - Fixed issue where iterating over empty matrices could fail in the BSP1D
+   backend.
+ - Fixed issue in BSP1D backend that caused dynamic allocations where they were
+   not allowed.
+ - Fixed issue where the automatic-mode launcher and benchmarker could, in rare
+   cases, fail.
  - Fixed issue where, under rare conditions, the stack-based combine could fail.
- - Fixed performance bug in the BSP1D backend causing spurious calls to lpf_sync.
+ - Fixed performance bug in the BSP1D backend causing spurious calls to
+   lpf_sync.
 
 Level-3 functionality, all backends:
  - Fixed issue where a masked set-to-value on matrices would fail.
- - Fixed issue where mxm could work with unitialised values when more exotic semirings are used.
- - Fixed issue that prevented std::move on matrices, both from assignment and construction.
+ - Fixed issue where mxm could work with uninitialised values when more exotic
+   semirings are used.
+ - Fixed issue that prevented std::move on matrices, both from assignment and
+   construction.
  - New level-3 function: eWiseApply.
 
 (Note that the interface of level-3 functionality remains experimental.)
 
 Algorithms and utilities:
- - Fixed issue where MatrixFileReader would store unitialised values when reading pattern matrices.
+ - Fixed issue where MatrixFileReader would store uninitialised values when
+   reading pattern matrices.
  - Updated the sparse neural network inference algorithm.
  - New algorithm added: spy.
 
 Others:
  - Fixed issue where a `make clean` would miss some object files.
- - Added new unit and performance tests, including those for detecting the above-described bug
-   fixes and added functionality.
- - Documentation update in line with the upcoming revision of the C++ GraphBLAS paper.
+ - Added new unit and performance tests, including those for detecting the
+   above-described bug fixes and added functionality.
+ - Documentation update in line with the upcoming revision of the C++ GraphBLAS
+   paper.
  - Added some missing documentation.
  - Code style fixes and some dead code removal.
 
@@ -313,7 +447,8 @@ Others:
 Version 0.2.0
 =============
 
-Fix some issues in the Banshee backend that appeared after refactoring for the 0.1.0 release.
+Fix some issues in the Banshee backend that appeared after refactoring for the
+0.1.0 release.
 
 Removes --deps option from ./configure as it was no longer used.
 

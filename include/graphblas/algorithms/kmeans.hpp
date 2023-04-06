@@ -15,7 +15,12 @@
  * limitations under the License.
  */
 
-/*
+/**
+ * @file
+ *
+ * Implements k-means. The state of the algorithms defined within are
+ * \em experimental.
+ *
  * @author Verner Vlacic
  */
 
@@ -40,8 +45,8 @@ namespace grb {
 		 * @param[in,out] K k by m matrix containing the current k means as row vectors
 		 * @param[in]     X m by n matrix containing the n points to be classified as
 		 *                  column vectors
-		 * @param[in]    op coordinatewise distance operator, squared difference by
-		 *                  default
+		 * @param[in] dist_op Coordinatewise distance operator, squared difference by
+		 *                    default
 		 *
 		 * \todo more efficient implementation using Walker's alias method
 		 *
@@ -52,14 +57,20 @@ namespace grb {
 			typename IOType = double,
 			class Operator = operators::square_diff< IOType, IOType, IOType >
 		>
-		RC kpp_initialisation( Matrix< IOType > &K, const Matrix< IOType > &X,
+		RC kpp_initialisation(
+			Matrix< IOType > &K,
+			const Matrix< IOType > &X,
 			const Operator &dist_op = Operator()
 		) {
 			// declare monoids and semirings
 			Monoid< grb::operators::add< IOType >, grb::identities::zero > add_monoid;
-			Monoid< grb::operators::min< IOType >, grb::identities::infinity > min_monoid;
+			Monoid<
+				grb::operators::min< IOType >,
+				grb::identities::infinity
+			> min_monoid;
 			Semiring<
-				grb::operators::add< IOType >, grb::operators::right_assign_if< bool, IOType, IOType >,
+				grb::operators::add< IOType >,
+				grb::operators::right_assign_if< bool, IOType, IOType >,
 				grb::identities::zero, grb::identities::logical_true
 			> pattern_sum;
 
@@ -117,23 +128,30 @@ namespace grb {
 
 				ret = ret ? ret : grb::setElement( col_select, true, i );
 
-				ret = ret ? ret : grb::vxm< grb::descriptors::transpose_matrix >( selected, col_select, X, pattern_sum );
+				ret = ret ? ret : grb::vxm< grb::descriptors::transpose_matrix >(
+					selected, col_select, X, pattern_sum );
 
-				ret = ret ? ret : grb::vxm( selected_distances, selected, X, add_monoid, dist_op );
+				ret = ret ? ret : grb::vxm( selected_distances, selected, X, add_monoid,
+					dist_op );
 
-				ret = ret ? ret : grb::foldl( min_distances, selected_distances, min_monoid );
+				ret = ret ? ret : grb::foldl( min_distances, selected_distances,
+					min_monoid );
 
-				// TODO the remaining part of the loop should be replaced with the alias algorithm
+				// TODO the remaining part of the loop should be replaced with the alias
+				//      algorithm
 
 				IOType range = add_monoid.template getIdentity< IOType >();
 				ret = ret ? ret : grb::foldl( range, min_distances, add_monoid );
 
 				double sample = -1;
 				if( ret == SUCCESS ) {
-					const size_t seed = std::chrono::system_clock::now().time_since_epoch().count();
-					std::default_random_engine generator( seed );
-					std::uniform_real_distribution< double > uniform( 0, 1 );
-					sample = uniform( generator );
+					{
+						const size_t seed =
+							std::chrono::system_clock::now().time_since_epoch().count();
+						std::default_random_engine generator( seed );
+						std::uniform_real_distribution< double > uniform( 0, 1 );
+						sample = uniform( generator );
+					}
 					ret = grb::collectives<>::broadcast( sample, 0 );
 				}
 				assert( sample >= 0 );
@@ -152,7 +170,8 @@ namespace grb {
 				}
 			}
 
-			// create the matrix K by selecting the columns of X indexed by selected_indices
+			// create the matrix K by selecting the columns of X indexed by
+			// selected_indices
 
 			// declare pattern matrix
 			Matrix< void > M( k, n );
@@ -164,7 +183,8 @@ namespace grb {
 						return std::make_pair( ind, val );
 					}
 				);
-				ret = grb::buildMatrixUnique( M, converter.begin(), converter.end(), PARALLEL );
+				ret = grb::buildMatrixUnique( M, converter.begin(), converter.end(),
+					PARALLEL );
 			}
 
 			ret = ret ? ret : grb::mxm< descriptors::transpose_right >( K, M, X,
@@ -182,23 +202,27 @@ namespace grb {
 		/**
 		 * The kmeans iteration given an initialisation
 		 *
-		 * @param[in,out] K k by m matrix containing the current k means as row vectors
+		 * @param[in,out] K k by m matrix containing the current k means as row
+		 *                  vectors
 		 * @param[in] clusters_and_distances Vector containing the class and distance
 		 *                                   to centroid for each point
 		 * @param[in] X m by n matrix containing the n points to be classified as
 		 *              column vectors
 		 * @param[in] max_iter Maximum number of iterations
-		 * @param[in] op Coordinatewise distance operator, squared difference by
-		 *               default
+		 * @param[in] dist_op Coordinatewise distance operator, squared difference by
+		 *                    default
 		 *
+		 * \internal
 		 * \todo expand documentation
+		 * \endeinternal
 		 */
 		template<
 			Descriptor descr = descriptors::no_operation,
 			typename IOType = double,
 			class Operator = operators::square_diff< IOType, IOType, IOType >
 		>
-		RC kmeans_iteration( Matrix< IOType > &K,
+		RC kmeans_iteration(
+			Matrix< IOType > &K,
 			Vector< std::pair< size_t, IOType > > &clusters_and_distances,
 			const Matrix< IOType > &X,
 			const size_t max_iter = 1000,
@@ -221,16 +245,19 @@ namespace grb {
 			> comparison_monoid;
 
 			Semiring<
-				grb::operators::add< IOType >, grb::operators::right_assign_if< bool, IOType, IOType >,
+				grb::operators::add< IOType >,
+				grb::operators::right_assign_if< bool, IOType, IOType >,
 				grb::identities::zero, grb::identities::logical_true
 			> pattern_sum;
 
 			Semiring<
-				grb::operators::add< size_t >, grb::operators::right_assign_if< size_t, size_t, size_t >,
+				grb::operators::add< size_t >,
+				grb::operators::right_assign_if< size_t, size_t, size_t >,
 				grb::identities::zero, grb::identities::logical_true
 			> pattern_count;
 
-			// runtime sanity checks: the row dimension of X should match the column dimension of K
+			// runtime sanity checks: the row dimension of X should match the column
+			// dimension of K
 			if( ncols( K ) != nrows( X ) ) {
 				return MISMATCH;
 			}
@@ -274,12 +301,12 @@ namespace grb {
 			bool converged;
 
 			do {
-				++iter;
+				(void) ++iter;
 
-				ret = ret ? ret : grb::set( clusters_and_distances_prev, clusters_and_distances );
+				ret = ret ? ret : grb::set( clusters_and_distances_prev,
+					clusters_and_distances );
 
-				ret = ret ? ret : mxm( Dist, K, X, add_monoid, dist_op,
-					RESIZE );
+				ret = ret ? ret : mxm( Dist, K, X, add_monoid, dist_op, RESIZE );
 				ret = ret ? ret : mxm( Dist, K, X, add_monoid, dist_op );
 
 				ret = ret ? ret : vxm( clusters_and_distances, labels, Dist, argmin_monoid,
@@ -287,15 +314,15 @@ namespace grb {
 
 				auto converter = grb::utils::makeVectorToMatrixConverter<
 					void, indexIOType
-				>(
+				> (
 					clusters_and_distances,
-					[]( const size_t & ind, const indexIOType & pair ) {
+					[]( const size_t &ind, const indexIOType &pair ) {
 						return std::make_pair( pair.first, ind );
 					}
 				);
 
-				ret = ret ? ret : grb::buildMatrixUnique( M,
-					converter.begin(), converter.end(), PARALLEL );
+				ret = ret ? ret : grb::buildMatrixUnique( M, converter.begin(),
+					converter.end(), PARALLEL );
 
 				ret = ret ? ret : grb::mxm< descriptors::transpose_right >( K_aux, M, X,
 					pattern_sum, RESIZE );

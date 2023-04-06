@@ -15,7 +15,7 @@
  * limitations under the License.
  */
 
-/*
+/**
  * @author A. N. Yzelman
  * @date 10th of August, 2016
  */
@@ -30,6 +30,12 @@
 // now include all specialisations contained in the backend directories:
 #ifdef _GRB_WITH_REFERENCE
  #include <graphblas/reference/vector.hpp>
+#endif
+#ifdef _GRB_WITH_HYPERDAGS
+ #include <graphblas/hyperdags/vector.hpp>
+#endif
+#ifdef _GRB_WITH_NONBLOCKING
+ #include "graphblas/nonblocking/vector.hpp"
 #endif
 #ifdef _GRB_WITH_LPF
  #include <graphblas/bsp1d/vector.hpp>

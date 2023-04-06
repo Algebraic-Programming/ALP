@@ -28,13 +28,19 @@
 
 // include template specialisations
 #ifdef _GRB_WITH_REFERENCE
-#include "graphblas/reference/exec.hpp"
+ #include "graphblas/reference/exec.hpp"
+#endif
+#ifdef _GRB_WITH_HYPERDAGS
+ #include "graphblas/hyperdags/exec.hpp"
+#endif
+#ifdef _GRB_WITH_NONBLOCKING
+ #include "graphblas/nonblocking/exec.hpp"
 #endif
 #ifdef _GRB_WITH_LPF
-#include "graphblas/bsp1d/exec.hpp"
+ #include "graphblas/bsp1d/exec.hpp"
 #endif
 #ifdef _GRB_WITH_BANSHEE
-#include "graphblas/banshee/exec.hpp"
+ #include "graphblas/banshee/exec.hpp"
 #endif
 
 #ifdef _GRB_BACKEND
@@ -45,3 +51,4 @@ namespace grb {
 #endif
 
 #endif // end ``_H_GRB_EXEC''
+

@@ -38,8 +38,14 @@ echo "Info: script called with the following arguments: ${DATASETTORUN} ${EXPTYP
 #number of sockets of machine
 if [[ -z ${NUM_SOCKETS} ]]; then
 	NUM_SOCKETS=`grep -i "physical id" /proc/cpuinfo | sort -u | wc -l`
+	echo "Info: number of sockets detected is ${NUM_SOCKETS}"
 fi
-echo "Info: number of sockets detected is ${NUM_SOCKETS}"
+if [ "${NUM_SOCKETS}" -eq "0" ]; then
+	echo "Warning: failed to auto-detect the number of sockets, assuming 1;"
+	echo "         if incorrect, please set NUM_SOCKETS manually."
+	NUM_SOCKETS=1
+fi
+echo "Info: selected number of sockets is ${NUM_SOCKETS}"
 
 if [[ -z ${MAX_PROCESSES} ]]; then
 	echo "Info: MAX_PROCESSES was not set. Will set it equal to the number of sockets."
@@ -64,8 +70,11 @@ fi
 DATASETS=(west0497.mtx facebook_combined.txt cit-HepTh.txt com-amazon.ungraph.txt com-youtube.ungraph.txt cit-Patents.txt com-orkut.ungraph.txt)
 DATASET_MODES=(direct direct indirect indirect indirect indirect indirect)
 DATASET_SIZES=(497 4039 27770 334863 1134890 3774768 3072441)
-KNN4SOLS=(118 499 2805 1 64 1 1048907)
-KNN6SOLS=(357 547 5176 1 246 1 1453447)
+KNN4SOLS=(59 421 1138 1 32 1 609122)
+KNN6SOLS=(238 526 4189 1 181 1 1268035)
+
+#the following datasets are used for benchmarking SpMV, SpMSpV, and SpMSpM
+MULTIPLICATION_DATASETS=(west0497.mtx fidap037.mtx cavity17.mtx s3rmt3m3.mtx bloweybq.mtx bcsstk17.mtx Pres_Poisson.mtx gyro_m.mtx memplus.mtx lhr34.mtx bcsstk32.mtx vanbody.mtx s3dkt3m2.mtx G2_circuit.mtx Stanford.mtx coPapersCiteseer.mtx bundle_adj.mtx Stanford_Berkeley.mtx apache2.mtx Emilia_923.mtx ldoor.mtx ecology2.mtx Serena.mtx cage14.mtx G3_circuit.mtx wikipedia-20051105.mtx wikipedia-20061104.mtx Freescale1.mtx wikipedia-20070206.mtx Queen_4147.mtx cage15.mtx adaptive.mtx rgg_n_2_24_s0.mtx uk-2002.mtx road_usa.mtx MOLIERE_2016.mtx europe_osm.mtx twitter.mtx com-Friendster.mtx)
 
 #which command to use to run a GraphBLAS program
 LPF=yes
@@ -195,7 +204,11 @@ function runScalingTest()
 {
 	local runner=$1
 	local backend=$2
-	local DATASETS=( 1000 1000000 10000000 )
+	if [ "${backend}" = "hyperdags" ]; then
+		local DATASETS=( 1000 )
+	else
+		local DATASETS=( 1000 1000000 10000000 )
+	fi
 	local TESTS=(1 2 3 4)
 
 	for ((d=0;d<${#DATASETS[@]};++d));
@@ -267,6 +280,81 @@ runOtherBenchMarkTests()
 	echo >> ${TEST_OUT_DIR}/benchmarks
 }
 
+runMultiplicationKernels()
+{
+	local runner=$1
+	local backend=$2
+	local dataSet=$3
+	local parseMode=$4
+	local i=$5
+
+	# the check for the matrices existence is assumed to have already passed
+
+	if [ -z "$EXPTYPE" ] || [ "$EXPTYPE" == "SPMV" ]; then
+
+		# ---------------------------------------------------------------------
+		# spmv
+		echo ">>>      [ ]           [x]       Testing spmv using ${dataSet} dataset, $backend backend."
+		echo
+		$runner ${TEST_BIN_DIR}/driver_spmv_${backend} ${INPUT_DIR}/${dataSet} ${parseMode} &> ${TEST_OUT_DIR}/driver_spmv_${backend}_${dataSet}
+		head -1 ${TEST_OUT_DIR}/driver_spmv_${backend}_${dataSet}
+		if grep -q "Test OK" ${TEST_OUT_DIR}/driver_spmv_${backend}_${dataSet}; then
+			printf "Test OK\n\n"
+		else
+			printf "Test FAILED\n\n"
+		fi
+		echo "$backend spmv using the ${dataSet} dataset" >> ${TEST_OUT_DIR}/benchmarks
+		egrep 'Avg|Std' ${TEST_OUT_DIR}/driver_spmv_${backend}_${dataSet} >> ${TEST_OUT_DIR}/benchmarks
+		echo >> ${TEST_OUT_DIR}/benchmarks
+
+	fi
+
+	if [ -z "$EXPTYPE" ] || [ "$EXPTYPE" == "SPMSPV" ]; then
+
+		# ---------------------------------------------------------------------
+		# spmspv
+		echo ">>>      [ ]           [x]       Testing spmspv using ${dataSet} dataset, $backend backend."
+		echo
+		$runner ${TEST_BIN_DIR}/driver_spmspv_${backend} ${INPUT_DIR}/${dataSet} ${parseMode} &> ${TEST_OUT_DIR}/driver_spmspv_${backend}_${dataSet}
+		head -1 ${TEST_OUT_DIR}/driver_spmspv_${backend}_${dataSet}
+		if grep -q "Test OK" ${TEST_OUT_DIR}/driver_spmspv_${backend}_${dataSet}; then
+			printf "Test OK\n\n"
+		else
+			printf "Test FAILED\n\n"
+		fi
+		echo "$backend spmspv using the ${dataSet} dataset" >> ${TEST_OUT_DIR}/benchmarks
+		egrep 'Avg|Std' ${TEST_OUT_DIR}/driver_spmspv_${backend}_${dataSet} >> ${TEST_OUT_DIR}/benchmarks
+		echo >> ${TEST_OUT_DIR}/benchmarks
+
+	fi
+
+	if [ -z "$EXPTYPE" ] || [ "$EXPTYPE" == "SPMSPM" ]; then
+
+		# ---------------------------------------------------------------------
+		# spmspm
+		echo ">>>      [ ]           [x]       Testing spmspm using ${dataSet} dataset, $backend backend."
+		echo
+		if [ "$BACKEND" = "bsp1d" ] || [ "$BACKEND" = "hybrid" ]; then
+			echo "Test DISABLED: no sparse level-3 operations recommended for 1D distributions."
+			echo " "
+		elif [ "$i" -gt "14" ]; then
+			echo "Tests DISABLED: by default, long-running sparse matrix--sparse matrix multiplications are disabled (skipping dataset ${dataSet})."
+			echo " "
+		else
+			$runner ${TEST_BIN_DIR}/driver_spmspm_${backend} ${INPUT_DIR}/${dataSet} ${INPUT_DIR}/${dataSet} ${parseMode} &> ${TEST_OUT_DIR}/driver_spmspm_${backend}_${dataSet}
+			head -1 ${TEST_OUT_DIR}/driver_spmspm_${backend}_${dataSet}
+			if grep -q "Test OK" ${TEST_OUT_DIR}/driver_spmspm_${backend}_${dataSet}; then
+				printf "Test OK\n\n"
+			else
+				printf "Test FAILED\n\n"
+			fi
+			echo "$backend spmspm using the ${dataSet} dataset" >> ${TEST_OUT_DIR}/benchmarks
+			egrep 'Avg|Std' ${TEST_OUT_DIR}/driver_spmspm_${backend}_${dataSet} >> ${TEST_OUT_DIR}/benchmarks
+			echo >> ${TEST_OUT_DIR}/benchmarks
+		fi
+	fi
+}
+
 # end helper functions
 
 if [ -z "$EXPTYPE" ] || ! [ "$EXPTYPE" == "KERNEL" ]; then
@@ -286,7 +374,9 @@ if [ -z "$EXPTYPE" ] || ! [ "$EXPTYPE" == "KERNEL" ]; then
 			    # BSP1D otherwise is never used for a performance test; hybrid(1D)
 			    # should be used instead.
 		fi
-		if [ "$BACKEND" = "reference_omp" ] ; then
+		if [ "$BACKEND" = "reference_omp" ]; then
+			T=${MAX_THREADS}
+		elif [ "$BACKEND" = "nonblocking" ]; then
 			T=${MAX_THREADS}
 		elif [ "$BACKEND" = "hybrid" ]; then
 			T=$((MAX_THREADS/NUM_SOCKETS))
@@ -308,7 +398,7 @@ if [ -z "$EXPTYPE" ] || ! [ "$EXPTYPE" == "KERNEL" ]; then
 				runner="${runner} ${MPI_PASS_ENV} ${LPFRUN_PASSTHROUGH}OMP_NUM_THREADS=${T} ${MPI_BINDING_ARGS}"
 			fi
 		fi
-		if [ "$BACKEND" = "reference_omp" ]; then
+		if [ "$BACKEND" = "reference_omp" ] || [ "$BACKEND" = "nonblocking" ]; then
 			export OMP_NUM_THREADS=${T}
 		fi
 
@@ -332,6 +422,11 @@ if [ -z "$EXPTYPE" ] || ! [ "$EXPTYPE" == "KERNEL" ]; then
 
 		for ((i=0;i<${#DATASETS[@]};++i));
 		do
+			if [ "$BACKEND" = "hyperdags" ] && [ "$i" -gt "0" ]; then
+				echo "Info: hyperdags performance tests run only on the smallest dataset"
+				echo " "
+				break
+			fi
 			if [ ! -z "$DATASETTORUN" ] && [ "$DATASETTORUN" != "${DATASETS[i]}" ]; then
 				continue
 			fi
@@ -345,7 +440,8 @@ if [ -z "$EXPTYPE" ] || ! [ "$EXPTYPE" == "KERNEL" ]; then
 
 			# test for file
 			if [ ! -f ${INPUT_DIR}/${DATASET} ]; then
-				echo "Warning: dataset/${DATASET} not found. Provide the dataset to enable performance tests with it."
+				echo ">>>      [x]           [x]       Test algorithms using ${DATASET} dataset, ${BACKEND} backend."
+				echo "Tests DISABLED: dataset/${DATASET} not found. Provide the dataset to enable performance tests with it."
 				echo " "
 				continue
 			fi
@@ -356,10 +452,14 @@ if [ -z "$EXPTYPE" ] || ! [ "$EXPTYPE" == "KERNEL" ]; then
 				# k-NN k=4
 				runKNNBenchMarkTests "$runner" "$BACKEND" 4 "$DATASET" "$PARSE_MODE" "$PARSE_SIZE" "$KNN4SOL"
 
-				# ---------------------------------------------------------------------
-				# k-NN k=6
-				runKNNBenchMarkTests "$runner" "$BACKEND" 6 "$DATASET" "$PARSE_MODE" "$PARSE_SIZE" "$KNN6SOL"
-
+				if [ "$BACKEND" = "hyperdags" ]; then
+					echo "Info: 6-NN is skipped for the hyperdags backend"
+					echo " "
+				else
+					# ---------------------------------------------------------------------
+					# k-NN k=6
+					runKNNBenchMarkTests "$runner" "$BACKEND" 6 "$DATASET" "$PARSE_MODE" "$PARSE_SIZE" "$KNN6SOL"
+				fi
 			fi
 			if [ -z "$EXPTYPE" ] || [ "$EXPTYPE" == "LABEL" ]; then
 
@@ -375,6 +475,35 @@ if [ -z "$EXPTYPE" ] || ! [ "$EXPTYPE" == "KERNEL" ]; then
 				runOtherBenchMarkTests "$runner" "$BACKEND" "$DATASET" "$PARSE_MODE" 0 "simple_pagerank"
 
 			fi
+		done
+
+		for ((i=0;i<${#MULTIPLICATION_DATASETS[@]};++i));
+		do
+			if [ ! -z "$DATASETTORUN" ] && [ "$DATASETTORUN" != "${MULTIPLICATION_DATASETS[i]}" ]; then
+				continue
+			fi
+
+			if [ "$BACKEND" = "hyperdags" ] && [ "$i" -gt "0" ]; then
+				echo "Info: hyperdags performance tests run only on the smallest dataset"
+				echo " "
+				break
+			fi
+
+			# initialise parameters
+			DATASET=${MULTIPLICATION_DATASETS[i]}
+			PARSE_MODE=direct
+
+			# test for file
+			if [ ! -f ${INPUT_DIR}/${DATASET} ]; then
+				echo ">>>      [ ]           [x]       Test multiplication kernels using ${DATASET} dataset,"
+				echo "                                 ${BACKEND} backend."
+				echo "Tests DISABLED: dataset/${DATASET} not found. Provide the dataset to enable performance tests with it."
+				echo " "
+				continue
+			fi
+
+			runMultiplicationKernels "$runner" "$BACKEND" "$DATASET" "$PARSE_MODE" "$i"
+
 		done
 
 	done

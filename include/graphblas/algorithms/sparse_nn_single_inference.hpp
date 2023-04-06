@@ -15,7 +15,11 @@
  * limitations under the License.
  */
 
-/*
+/**
+ * @file
+ *
+ * Implements (non-batched) sparse neural network inference.
+ *
  * @author Aristeidis Mastoras
  */
 
@@ -24,6 +28,7 @@
 
 #include <limits>
 #include <graphblas.hpp>
+
 
 namespace grb {
 
@@ -216,8 +221,6 @@ namespace grb {
 		 * inference proceeds:
 		 *
 		 * @param[in] relu The non-linear ReLU function to apply element-wise.
-		 * @param[in] min  Operator used for thresholding. Maximum feature value
-		 *                 is hard-coded to 32, as per the GraphChallenge.
 		 * @param[in] ring The semiring under which to perform the inference.
 		 *
 		 * The default algebraic structures are standard \a relu (i.e., max), \a min

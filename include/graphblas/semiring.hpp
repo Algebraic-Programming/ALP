@@ -15,7 +15,11 @@
  * limitations under the License.
  */
 
-/*
+/**
+ * @file
+ *
+ * Provides an ALP semiring
+ *
  * @author A. N. Yzelman
  * @date 15th of March, 2016
  */
@@ -27,9 +31,7 @@
 #include <graphblas/monoid.hpp>
 #include <graphblas/ops.hpp>
 
-/**
- * The main ALP/GraphBLAS namespace.
- */
+
 namespace grb {
 
 	/**

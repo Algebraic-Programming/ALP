@@ -37,7 +37,7 @@ extern "C" {
  *
  * See the SparseBLAS paper for the full specification.
  *
- * This implementation at present does not support the #blas_conj_trans type.
+ * This implementation at present does not support <tt>blas_conj_trans</tt>.
  */
 enum blas_trans_type {
 	blas_no_trans = 0,
@@ -269,7 +269,7 @@ int EXTBLAS_dusm_open( const blas_sparse_matrix A );
  * The given matrix must be opened for read-out, and must not have been closed
  * in the mean time.
  *
- * @param[out] val The value of the retrieved nonzero.
+ * @param[out] value The value of the retrieved nonzero.
  * @param[out] row The row coordinate of the retrieved nonzero.
  * @param[out] col The column coordinate of the retrieved nonzero.
  *

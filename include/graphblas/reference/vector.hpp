@@ -142,7 +142,11 @@ namespace grb {
 
 		template<
 			typename D,
+#ifndef _H_GRB_REFERENCE_OMP_VECTOR
 			Backend backend = config::default_backend
+#else
+			Backend backend
+#endif
 		>
 		grb::Vector<
 			D, backend,
@@ -155,7 +159,11 @@ namespace grb {
 
 		template<
 			typename D,
+#ifndef _H_GRB_REFERENCE_OMP_VECTOR
 			Backend backend = config::default_backend
+#else
+			Backend backend
+#endif
 		>
 		const grb::Vector<
 			D, backend,
@@ -231,6 +239,8 @@ namespace grb {
 		friend uintptr_t getID( const Vector< InputType, reference, Coords > & );
 
 		friend class PinnedVector< D, reference >;
+
+		friend class PinnedVector< D, nonblocking >;
 
 		friend class PinnedVector< D, BSP1D >;
 
@@ -651,7 +661,8 @@ namespace grb {
 				 * given container. If it is equal, this iterator will be set to its end
 				 * position.
 				 */
-				ConstIterator( const Vector< D, reference, MyCoordinates > &in,
+				ConstIterator(
+					const Vector< D, reference, MyCoordinates > &in,
 					size_t initial = 0,
 					size_t processID = 0, size_t numProcesses = 1
 				) noexcept :
@@ -860,7 +871,8 @@ namespace grb {
 			 */
 			Vector( const Vector< D, reference, MyCoordinates > &x ) : _raw( nullptr ) {
 #ifdef _DEBUG
-				std::cout << "In Vector< reference > copy-constructor\n";
+				std::cout << "In Vector< reference > copy-constructor. Copy source has ID "
+					<< x._id << "\n";
 #endif
 				initialize(
 					nullptr, nullptr, nullptr, false, nullptr,
@@ -885,6 +897,10 @@ namespace grb {
 			 * @see Vector for the user-level specfication.
 			 */
 			Vector( Vector< D, reference, MyCoordinates > &&x ) noexcept {
+#ifdef _DEBUG
+				std::cout << "Vector (reference) move-constructor called. Moving from ID "
+					<< x._id << "\n";
+#endif
 				// copy and move
 				_id = x._id;
 				_remove_id = x._remove_id;
@@ -900,19 +916,50 @@ namespace grb {
 				x._raw = nullptr;
 			}
 
-			/** Copy-constructor. */
+			/**
+			 * Copy-constructor.
+			 *
+			 * A call to this operator has the same performance semantics as a call to
+			 * #grb::set.
+			 *
+			 * \warning Relies on #grb::set. Any errors #grb::set would normally return,
+			 *          will, through this constructor, be thrown as standard C++
+			 *          exceptions instead.
+			 *
+			 * \internal Dispatches to #grb::set.
+			 */
 			Vector< D, reference, MyCoordinates > & operator=(
 				const Vector< D, reference, MyCoordinates > &x
-			) noexcept {
-				Vector< D, reference, MyCoordinates > replace( x );
-				*this = std::move( replace );
+			) {
+#ifdef _DEBUG
+				std::cout << "Vector (reference) copy-assignment called: copy " << x._id
+					<< " into " << _id << "\n";
+#endif
+				if( size( x ) != size( *this ) ) {
+					throw std::invalid_argument( "Can only copy-assign from equal-size vectors" );
+				}
+				const auto rc = set( *this, x );
+				if( rc != grb::SUCCESS ) {
+					throw std::runtime_error( grb::toString( rc ) );
+				}
 				return *this;
 			}
 
-			/** Assign-from-temporary. */
+			/**
+			 * Assign-from-temporary.
+			 *
+			 * A call to this operator has \f$ \mathcal{O}(1) \f$ performance semantics
+			 * in work and intra-process data movement. It has no costs in inter-process
+			 * data movement nor in inter-process synchronisations. No system calls shall
+			 * be made.
+			 */
 			Vector< D, reference, MyCoordinates > & operator=(
 				Vector< D, reference, MyCoordinates > &&x
 			) noexcept {
+#ifdef _DEBUG
+				std::cout << "Vector (reference) move-assignment called: move " << x._id
+					<< " into " << _id << "\n";
+#endif
 				_id = x._id;
 				_remove_id = x._remove_id;
 				_raw = x._raw;

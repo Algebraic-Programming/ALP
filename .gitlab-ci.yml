@@ -30,7 +30,7 @@ stages:
 #    exclude:
 #      - build/**/*.o
 #      - build/**/*.o.d
-#    expire_in: 30 minutes
+#    expire_in: 80 minutes
 
 
 #build_debug_centos_8:
@@ -122,13 +122,16 @@ build_test:
     - apt update && apt -y install make cmake libnuma-dev coreutils
   script:
     - mkdir -p install build && cd ./build && ../bootstrap.sh --prefix=../install && make -j$(nproc) build_tests_all
+    - strip -s $(find tests/unit/ -type f -executable -print) $(find tests/smoke/ -type f -executable -print) $(find tests/performance/ -type f -executable -print)
   artifacts:
     paths:
       - build/
     exclude:
       - build/**/*.o
       - build/**/*.o.d
-    expire_in: 30 minutes
+      - build/**/CMakeFiles
+      - build/**/*.dir
+    expire_in: 80 minutes
 
 
 build_debug2_tests:
@@ -222,7 +225,7 @@ build_debug:
     exclude:
       - build/**/*.o
       - build/**/*.o.d
-    expire_in: 30 minutes
+    expire_in: 43 minutes
 
 
 test_smoke_debug:

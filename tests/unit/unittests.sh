@@ -104,7 +104,9 @@ for MODE in debug ndebug; do
 		else
 			Ps=( 1 )
 		fi
-		if [ "$BACKEND" = "reference_omp" ] ; then
+		if [ "$BACKEND" = "reference_omp" ]; then
+			Pt=( 1 2 ${MAX_THREADS} )
+		elif [ "$BACKEND" = "nonblocking" ]; then
 			Pt=( 1 2 ${MAX_THREADS} )
 		elif [ "$BACKEND" = "hybrid" ]; then
 			MTDS=$((MAX_THREADS/7))
@@ -195,16 +197,17 @@ for MODE in debug ndebug; do
 				echo " "
 
 				echo ">>>      [x]           [ ]       Testing grb::eWiseApply using (+,0) on vectors"
+				echo "                                 of doubles of size 14."
+				$runner ${TEST_BIN_DIR}/ewiseapply_${MODE}_${BACKEND} 14 &> ${TEST_OUT_DIR}/ewiseapply_small_${MODE}_${BACKEND}_${P}_${T}
+				head -1 ${TEST_OUT_DIR}/ewiseapply_small_${MODE}_${BACKEND}_${P}_${T}
+				grep 'Test OK' ${TEST_OUT_DIR}/ewiseapply_small_${MODE}_${BACKEND}_${P}_${T} || echo "Test FAILED"
+				echo " "
+
+				echo ">>>      [x]           [ ]       Testing grb::eWiseApply using (+,0) on vectors"
 				echo "                                 of doubles of size 100."
 				$runner ${TEST_BIN_DIR}/ewiseapply_${MODE}_${BACKEND} 100 &> ${TEST_OUT_DIR}/ewiseapply_${MODE}_${BACKEND}_${P}_${T}
 				head -1 ${TEST_OUT_DIR}/ewiseapply_${MODE}_${BACKEND}_${P}_${T}
 				grep 'Test OK' ${TEST_OUT_DIR}/ewiseapply_${MODE}_${BACKEND}_${P}_${T} || echo "Test FAILED"
-				echo " "
-
-				echo ">>>      [x]           [ ]       Testing grb::eWiseApply using + on matrices"
-				$runner ${TEST_BIN_DIR}/eWiseApply_matrix_${MODE}_${BACKEND} &> ${TEST_OUT_DIR}/eWiseApply_matrix_${MODE}_${BACKEND}_${P}_${T}
-				head -1 ${TEST_OUT_DIR}/eWiseApply_matrix_${MODE}_${BACKEND}_${P}_${T}
-				grep 'Test OK' ${TEST_OUT_DIR}/eWiseApply_matrix_${MODE}_${BACKEND}_${P}_${T} || echo "Test FAILED"
 				echo " "
 
 				echo ">>>      [x]           [ ]       Testing grb::eWiseApply using (+,0) on vectors"
@@ -212,13 +215,6 @@ for MODE in debug ndebug; do
 				$runner ${TEST_BIN_DIR}/ewiseapply_${MODE}_${BACKEND} 10000000 &> ${TEST_OUT_DIR}/ewiseapply_large_${MODE}_${BACKEND}_${P}_${T}
 				head -1 ${TEST_OUT_DIR}/ewiseapply_large_${MODE}_${BACKEND}_${P}_${T}
 				grep 'Test OK' ${TEST_OUT_DIR}/ewiseapply_large_${MODE}_${BACKEND}_${P}_${T} || echo "Test FAILED"
-				echo " "
-
-				echo ">>>      [x]           [ ]       Testing grb::zip on two vectors of doubles and"
-				echo "                                 ints of size 10 000 000."
-				$runner ${TEST_BIN_DIR}/zip_${MODE}_${BACKEND} 10000000 &> ${TEST_OUT_DIR}/zip_large_${MODE}_${BACKEND}_${P}_${T}
-				head -1 ${TEST_OUT_DIR}/zip_large_${MODE}_${BACKEND}_${P}_${T}
-				grep 'Test OK' ${TEST_OUT_DIR}/zip_large_${MODE}_${BACKEND}_${P}_${T} || echo "Test FAILED"
 				echo " "
 
 				echo ">>>      [x]           [x]       Testing grb::foldl and grb::foldr reducing dense"
@@ -298,6 +294,13 @@ for MODE in debug ndebug; do
 				grep 'Test OK' ${TEST_OUT_DIR}/matrixIterator_${MODE}_${BACKEND}_${P}_${T}.log || echo "Test FAILED"
 				echo " "
 
+				echo ">>>      [x]           [ ]       Testing double-assignment of ALP/GraphBLAS containers, i.e.,"
+				echo "                                 assigning one container another one (a=b), twice in a row."
+				$runner ${TEST_BIN_DIR}/doubleAssign_${MODE}_${BACKEND} 1337 &> ${TEST_OUT_DIR}/doubleAssign_${MODE}_${BACKEND}_${P}_${T}.log
+				head -1 ${TEST_OUT_DIR}/doubleAssign_${MODE}_${BACKEND}_${P}_${T}.log
+				grep -i 'test ok' ${TEST_OUT_DIR}/doubleAssign_${MODE}_${BACKEND}_${P}_${T}.log || echo "Test FAILED"
+				echo " "
+
 				echo ">>>      [x]           [ ]       Testing copy and move constructors and assignment"
 				echo "                                 of the const_iterator of grb::Vector< double > of"
 				echo "                                 length 10 000 000."
@@ -306,6 +309,19 @@ for MODE in debug ndebug; do
 				grep 'Test OK' ${TEST_OUT_DIR}/copyAndAssignVectorIterator_${MODE}_${BACKEND}_${P}_${T}.log || echo "Test FAILED"
 				echo " "
 
+				echo ">>>      [x]           [ ]       Testing grb::eWiseMul on a vector of"
+				echo "                                 doubles of size 100."
+				$runner ${TEST_BIN_DIR}/eWiseMul_${MODE}_${BACKEND} 100 &> ${TEST_OUT_DIR}/eWiseMul_${MODE}_${BACKEND}_${P}_${T}
+				head -1 ${TEST_OUT_DIR}/eWiseMul_${MODE}_${BACKEND}_${P}_${T}
+				grep 'Test OK' ${TEST_OUT_DIR}/eWiseMul_${MODE}_${BACKEND}_${P}_${T} || echo "Test FAILED"
+				echo " "
+
+				echo ">>>      [x]           [ ]       Testing grb::eWiseMul on a vector of"
+				echo "                                 doubles of size 100002."
+				$runner ${TEST_BIN_DIR}/eWiseMul_${MODE}_${BACKEND} 100002 &> ${TEST_OUT_DIR}/eWiseMul_large_${MODE}_${BACKEND}_${P}_${T}
+				head -1 ${TEST_OUT_DIR}/eWiseMul_large_${MODE}_${BACKEND}_${P}_${T}
+				grep 'Test OK' ${TEST_OUT_DIR}/eWiseMul_large_${MODE}_${BACKEND}_${P}_${T} || echo "Test FAILED"
+				echo " "
 
 				echo ">>>      [x]           [ ]       Testing grb::eWiseMulAdd on a vector of"
 				echo "                                 doubles of size 7 000 000."
@@ -352,21 +368,21 @@ for MODE in debug ndebug; do
 				echo " "
 
 				echo ">>>      [x]           [ ]       Testing grb::argmin"
-				$runner ${TEST_BIN_DIR}/argmin_${MODE}_${BACKEND} 2> ${TEST_OUT_DIR}/argmin_${MODE}_${BACKEND}_${P}_${T}.err
+				$runner ${TEST_BIN_DIR}/argmin_${MODE}_${BACKEND} 2> ${TEST_OUT_DIR}/argmin_${MODE}_${BACKEND}_${P}_${T}.err 1> ${TEST_OUT_DIR}/argmin_${MODE}_${BACKEND}_${P}_${T}.log
+				head -1 ${TEST_OUT_DIR}/argmin_${MODE}_${BACKEND}_${P}_${T}.log
+				grep "Test OK" ${TEST_OUT_DIR}/argmin_${MODE}_${BACKEND}_${P}_${T}.log || echo "Test FAILED"
 				echo " "
 
 				echo ">>>      [x]           [ ]       Testing grb::argmax"
-				$runner ${TEST_BIN_DIR}/argmax_${MODE}_${BACKEND} 2> ${TEST_OUT_DIR}/argmax_${MODE}_${BACKEND}_${P}_${T}.err
+				$runner ${TEST_BIN_DIR}/argmax_${MODE}_${BACKEND} 2> ${TEST_OUT_DIR}/argmax_${MODE}_${BACKEND}_${P}_${T}.err 1> ${TEST_OUT_DIR}/argmax_${MODE}_${BACKEND}_${P}_${T}.log
+				head -1 ${TEST_OUT_DIR}/argmax_${MODE}_${BACKEND}_${P}_${T}.log
+				grep "Test OK" ${TEST_OUT_DIR}/argmax_${MODE}_${BACKEND}_${P}_${T}.log || echo "Test FAILED"
 				echo " "
 
 				echo ">>>      [x]           [ ]       Testing grb::set (matrices)"
-				$runner ${TEST_BIN_DIR}/matrixSet_${MODE}_${BACKEND} 2> ${TEST_OUT_DIR}/matrixSet_${MODE}_${BACKEND}_${P}_${T}.err
-				echo " "
-
-				echo ">>>      [x]           [ ]       Testing grb::eWiseLambda (matrices)"
-				$runner ${TEST_BIN_DIR}/eWiseMatrix_${MODE}_${BACKEND} &> ${TEST_OUT_DIR}/eWiseMatrix_${MODE}_${BACKEND}_${P}_${T}.log
-				head -1 ${TEST_OUT_DIR}/eWiseMatrix_${MODE}_${BACKEND}_${P}_${T}.log
-				grep 'Test OK' ${TEST_OUT_DIR}/eWiseMatrix_${MODE}_${BACKEND}_${P}_${T}.log || echo "Test FAILED"
+				$runner ${TEST_BIN_DIR}/matrixSet_${MODE}_${BACKEND} 2> ${TEST_OUT_DIR}/matrixSet_${MODE}_${BACKEND}_${P}_${T}.err 1> ${TEST_OUT_DIR}/matrixSet_${MODE}_${BACKEND}_${P}_${T}.log
+				head -1 ${TEST_OUT_DIR}/matrixSet_${MODE}_${BACKEND}_${P}_${T}.log
+				echo "Test OK" ${TEST_OUT_DIR}/matrixSet_${MODE}_${BACKEND}_${P}_${T}.log || echo "Test FAILED"
 				echo " "
 
 				echo ">>>      [x]           [ ]       Tests the \`level-0' grb::collectives"
@@ -512,8 +528,34 @@ for MODE in debug ndebug; do
 				grep 'Test OK' ${TEST_OUT_DIR}/buildMatrixUnique_${MODE}_${BACKEND}_${P}_${T}.log || echo "Test FAILED"
 				echo " "
 
+				echo ">>>      [x]           [ ]       Testing grb::eWiseApply using + on matrices"
+				$runner ${TEST_BIN_DIR}/eWiseApply_matrix_${MODE}_${BACKEND} &> ${TEST_OUT_DIR}/eWiseApply_matrix_${MODE}_${BACKEND}_${P}_${T}
+				head -1 ${TEST_OUT_DIR}/eWiseApply_matrix_${MODE}_${BACKEND}_${P}_${T}
+				grep 'Test OK' ${TEST_OUT_DIR}/eWiseApply_matrix_${MODE}_${BACKEND}_${P}_${T} || echo "Test FAILED"
+				echo " "
+
+				echo ">>>      [x]           [ ]       Testing grb::eWiseLambda (matrices)"
+				$runner ${TEST_BIN_DIR}/eWiseMatrix_${MODE}_${BACKEND} &> ${TEST_OUT_DIR}/eWiseMatrix_${MODE}_${BACKEND}_${P}_${T}.log
+				head -1 ${TEST_OUT_DIR}/eWiseMatrix_${MODE}_${BACKEND}_${P}_${T}.log
+				grep 'Test OK' ${TEST_OUT_DIR}/eWiseMatrix_${MODE}_${BACKEND}_${P}_${T}.log || echo "Test FAILED"
+				echo " "
+
+				echo ">>>      [x]           [ ]       Testing grb::zip on two vectors of doubles and"
+				echo "                                 ints of size 10 000 000."
+				$runner ${TEST_BIN_DIR}/zip_${MODE}_${BACKEND} 10000000 &> ${TEST_OUT_DIR}/zip_large_${MODE}_${BACKEND}_${P}_${T}
+				head -1 ${TEST_OUT_DIR}/zip_large_${MODE}_${BACKEND}_${P}_${T}
+				grep 'Test OK' ${TEST_OUT_DIR}/zip_large_${MODE}_${BACKEND}_${P}_${T} || echo "Test FAILED"
+				echo " "
+
+				echo ">>>      [x]           [ ]       Testing copy-constructor of square pattern matrices"
+				echo "                                 of size 1003."
+				$runner ${TEST_BIN_DIR}/copyVoidMatrices_${MODE}_${BACKEND} 1003 &> ${TEST_OUT_DIR}/copyVoidMatrices_${MODE}_${BACKEND}_${P}_${T}
+				head -1 ${TEST_OUT_DIR}/copyVoidMatrices_${MODE}_${BACKEND}_${P}_${T}
+				grep 'Test OK' ${TEST_OUT_DIR}/copyVoidMatrices_${MODE}_${BACKEND}_${P}_${T} || echo "Test FAILED"
+				echo " "
+
 				if [ "$BACKEND" = "bsp1d" ] || [ "$BACKEND" = "hybrid" ]; then
-					echo "Additional standardised unit tests not yet supported for the ${BACKEND} backend"
+					echo "Additional standardised unit tests not yet supported for the ${BACKEND} backend."
 					echo
 					continue
 				fi
@@ -535,12 +577,18 @@ for MODE in debug ndebug; do
 				echo ">>>      [x]           [ ]       Testing vector times matrix using the normal (+,*)"
 				echo "                                 semiring over integers on a diagonal matrix"
 				echo " "
-				$runner ${TEST_BIN_DIR}/vmx_${MODE}_${BACKEND} 2> ${TEST_OUT_DIR}/vmx_${MODE}_${BACKEND}_${P}_${T}.err
+				$runner ${TEST_BIN_DIR}/vmx_${MODE}_${BACKEND} 2> ${TEST_OUT_DIR}/vmx_${MODE}_${BACKEND}_${P}_${T}.err 1> ${TEST_OUT_DIR}/vmx_${MODE}_${BACKEND}_${P}_${T}.log
+				head -1 ${TEST_OUT_DIR}/vmx_${MODE}_${BACKEND}_${P}_${T}.log
+				grep 'Test OK' ${TEST_OUT_DIR}/vmx_${MODE}_${BACKEND}_${P}_${T}.log || echo "Test FAILED"
+				echo " "
 
 				echo ">>>      [x]           [ ]       Testing vector times matrix using a (*,+) semiring over"
 				echo "                                 doubles on a diagonal matrix"
 				echo " "
-				$runner ${TEST_BIN_DIR}/vmxa_${MODE}_${BACKEND} 2> ${TEST_OUT_DIR}/vmxa_${MODE}_${BACKEND}_${P}_${T}.err
+				$runner ${TEST_BIN_DIR}/vmxa_${MODE}_${BACKEND} 2> ${TEST_OUT_DIR}/vmxa_${MODE}_${BACKEND}_${P}_${T}.err 1> ${TEST_OUT_DIR}/vmxa_${MODE}_${BACKEND}_${P}_${T}.log
+				head -1 ${TEST_OUT_DIR}/vmxa_${MODE}_${BACKEND}_${P}_${T}.log
+				grep 'Test OK' ${TEST_OUT_DIR}/vmxa_${MODE}_${BACKEND}_${P}_${T}.log || echo "Test FAILED"
+				echo " "
 
 				echo ">>>      [x]           [ ]       Testing vector times matrix using the number (+,*)"
 				echo "                                 semiring over integers on a diagonal 15x15 matrix. Each"

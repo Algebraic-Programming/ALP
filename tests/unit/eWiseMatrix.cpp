@@ -57,7 +57,7 @@ void grb_program( const size_t &n, grb::RC &rc ) {
 		return;
 	}
 	rc = grb::eWiseLambda(
-		[]( const size_t i, const size_t j, unsigned int & v ) {
+		[]( const size_t i, const size_t j, unsigned int &v ) {
 			(void)i;
 			(void)j;
 			v -= 1;

@@ -15,7 +15,9 @@
  * limitations under the License.
  */
 
+#include <array>
 #include <iostream>
+
 #include <graphblas.hpp>
 
 
@@ -81,7 +83,7 @@ void grb_program1( const struct input &in, struct output &out ) {
 	const size_t threeID = grb::getID( three ); out.IDs[ 2 ] = threeID;
 	if( threeID != grb::getID( three ) ) {
 		std::cerr << "\t two calls to getID on the same container produce different "
-			<< "IDs (III)\n";
+			<< "IDs (III): " << threeID << " vs. " << grb::getID( three ) << "\n";
 		rc = grb::FAILED;
 		return;
 	}

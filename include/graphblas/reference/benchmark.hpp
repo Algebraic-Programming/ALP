@@ -30,29 +30,44 @@
 
 namespace grb {
 
+	/**
+	 * \internal
+	 * Implementation inherits from #grb::internal::BenchmarkerBase and
+	 * #grb::Launcher (reference).
+	 * \endinternal
+	 */
 	template< enum EXEC_MODE mode >
 	class Benchmarker< mode, reference > :
 		protected Launcher< mode, reference >, protected internal::BenchmarkerBase
 	{
 
 		public:
-			Benchmarker( size_t process_id = 0,         // user process ID
-				size_t nprocs = 1,                  // total number of user processes
+
+			/** \internal Delegates to #grb::Launcher (reference) constructor. */
+			Benchmarker(
+				const size_t process_id = 0,        // user process ID
+				const size_t nprocs = 1,            // total number of user processes
 				std::string hostname = "localhost", // one of the user process hostnames
 				std::string port = "0"              // a free port at hostname
-				) :
-				Launcher< mode, reference >( process_id, nprocs, hostname, port ) {}
+			) : Launcher< mode, reference >( process_id, nprocs, hostname, port ) {}
 
+			/** \internal No implementation notes. */
 			template< typename U >
-			RC exec( void ( *grb_program )( const void *, const size_t, U & ),
+			RC exec(
+				void ( *grb_program )( const void *, const size_t, U & ),
 				const void * data_in, const size_t in_size,
 				U &data_out,
 				const size_t inner, const size_t outer,
 				const bool broadcast = false
 			) const {
-				(void)broadcast; // value doesn't matter for a single user process
+				(void) broadcast; // value doesn't matter for a single user process
+				// catch illegal argument
+				if( in_size > 0 && data_in == nullptr ) {
+					return ILLEGAL;
+				}
 				// initialise GraphBLAS
 				RC ret = grb::init();
+
 				// call graphBLAS algo
 				if( ret == SUCCESS ) {
 					benchmark< U >( grb_program, data_in, in_size, data_out, inner, outer, 0 );
@@ -66,15 +81,16 @@ namespace grb {
 				return ret;
 			}
 
-			/** No implementation notes. */
+			/** \internal No implementation notes. */
 			template< typename T, typename U >
-			RC exec( void ( *grb_program )( const T &, U & ), // user GraphBLAS program
-				const T & data_in, U &data_out, // input & output data
+			RC exec(
+				void ( *grb_program )( const T &, U & ), // user GraphBLAS program
+				const T &data_in, U &data_out, // input & output data
 				const size_t inner,
 				const size_t outer,
 				const bool broadcast = false
 			) {
-				(void)broadcast; // value doesn't matter for a single user process
+				(void) broadcast; // value doesn't matter for a single user process
 				// initialise GraphBLAS
 				RC ret = grb::init();
 				// call graphBLAS algo
