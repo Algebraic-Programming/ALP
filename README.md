@@ -43,7 +43,7 @@ Those backends generate:
 All backends perform automatically generate vectorised programs, amongst other
 automatically-applied optimisations.
 
-The ALP/GraphBLAS and ALP/Dense interfaces are enabled for all backends, while
+The ALP/GraphBLAS and ALP/Pregel interfaces are enabled for all backends, while
 the standard Sparse BLAS APIs only allow for the efficient support of the
 sequential and shared-memory parallel backends.
 
@@ -210,7 +210,7 @@ and lists technical papers.
 - [Debugging](#debugging)
 - [Development in ALP](#development-in-alp)
 - [Acknowledgements](#acknowledgements)
-- [Citing ALP, ALP/GraphBLAS, and ALP/Pregel](#citing-alp)
+- [Citing ALP, ALP/GraphBLAS, and ALP/Pregel](#citing-alp-alpgraphblas-and-alppregel)
 
 
 # Configuration
@@ -644,5 +644,5 @@ papers, as appropriate.
 
  - [Humble Heroes](http://albert-jan.yzelman.net/PDFs/yzelman22-pp.pdf)
    by A. N. Yzelman (2022). Pre-print.
-   [Bibtex](http://albert-jan.yzelman.net/BIBs/yzelman22.bib)
+   [Bibtex](http://albert-jan.yzelman.net/BIBs/yzelman22.bib).
 
