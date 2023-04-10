@@ -33,8 +33,8 @@
  * _DEBUG. If the code is compiled with _DEBUG, the debugging information for
  * the nonblocking backend is enabled as well.
  */
-#if !defined(_NONBLOCKING_DEBUG) && defined(_DEBUG)
- #define _NONBLOCKING_DEBUG
+#if ! defined( _NONBLOCKING_DEBUG ) && defined( _DEBUG )
+#define _NONBLOCKING_DEBUG
 #endif
 
 /**
@@ -62,15 +62,14 @@
  */
 #define GRB_BOOLEAN_DISPATCHER
 
-#include <vector>
-#include <set>
 #include <algorithm>
 #include <functional>
+#include <set>
+#include <vector>
 
 #include <graphblas/backends.hpp>
 
 #include "coordinates.hpp"
-
 
 namespace grb {
 
@@ -97,7 +96,8 @@ namespace grb {
 			BLAS1_ZIP,
 			BLAS1_UNZIP,
 
-			BLAS2_VXM_GENERIC
+			BLAS2_VXM_GENERIC,
+			BLAS3_MXM_GENERIC
 		};
 
 		/**
@@ -105,242 +105,235 @@ namespace grb {
 		 */
 		class Pipeline {
 
-			public:
+		public:
+			// The pipeline is passed by reference such that an out-of-place operation
+			// can disable the dense descriptor and remove the coordinates of the empty
+			// vector from the list.
+			typedef std::function< RC( Pipeline &, const size_t, const size_t ) > stage_type;
 
-				// The pipeline is passed by reference such that an out-of-place operation
-				// can disable the dense descriptor and remove the coordinates of the empty
-				// vector from the list.
-				typedef std::function<
-						RC( Pipeline &, const size_t, const size_t )
-					> stage_type;
+		private:
+			size_t containers_size;
+			size_t size_of_data_type;
+			std::vector< stage_type > stages;
+			std::vector< Opcode > opcodes;
 
+			std::set< Coordinates< nonblocking > * > accessed_coordinates;
+			std::set< const void * > input_vectors;
+			std::set< const void * > output_vectors;
+			std::set< const void * > vxm_input_vectors;
 
-			private:
+			/**
+			 * The following vectors are used temporarily by the execution method.
+			 * They are declared as members of the class to pre-allocate memory once.
+			 */
+			std::vector< size_t > lower_bound;
+			std::vector< size_t > upper_bound;
+			std::vector< const void * > input_output_intersection;
 
-				size_t containers_size;
-				size_t size_of_data_type;
-				std::vector< stage_type > stages;
-				std::vector< Opcode > opcodes;
+			/**
+			 * In the current implementation that supports level-1 and level-2
+			 * operations, pointers to the input matrices are used only for triggering
+			 * the pipeline execution, e.g., in the destructor of the class Matrix.
+			 * \todo Once level-3 operations are supported, they will be used in a
+			 *       similar way as vectors.
+			 */
+			std::set< const void * > input_matrices;
 
-				std::set< Coordinates< nonblocking > * > accessed_coordinates;
-				std::set< const void * > input_vectors;
-				std::set< const void * > output_vectors;
-				std::set< const void * > vxm_input_vectors;
+			// for BLAS3
+			std::set< const void * > input_matrices_blas3;
+			std::set< const void * > mxm_input_matrices_left;
+			std::set< const void * > mxm_input_matrices_right;
+			std::set< const void * > output_matrices;
+			std::vector< const void * > input_output_intersection_blas3;
 
-				/**
-				 * The following vectors are used temporarily by the execution method.
-				 * They are declared as members of the class to pre-allocate memory once.
-				 */
-				std::vector< size_t > lower_bound;
-				std::vector< size_t > upper_bound;
-				std::vector< const void * > input_output_intersection;
+			/**
+			 * Indicates that the pipeline contains an out-of-place operation, which
+			 * may clear the output vector and break any guarantees of already dense
+			 * vectors.
+			 */
+			bool contains_out_of_place_primitive;
 
-				/**
-				 * In the current implementation that supports level-1 and level-2
-				 * operations, pointers to the input matrices are used only for triggering
-				 * the pipeline execution, e.g., in the destructor of the class Matrix.
-				 * \todo Once level-3 operations are supported, they will be used in a
-				 *       similar way as vectors.
-				 */
-				std::set< const void * > input_matrices;
+			/**
+			 * Stores the set of output vectors of the out-of-place operations executed
+			 * in the pipeline. It's used by the execution method to ensure that an
+			 * already dense vector will remain dense after the execution of the
+			 * pipeline, i.e., the vector is not the output of an out-of-place
+			 * operation.
+			 */
+			std::set< const Coordinates< nonblocking > * > out_of_place_output_coordinates;
 
-				/**
-				 * Indicates that the pipeline contains an out-of-place operation, which
-				 * may clear the output vector and break any guarantees of already dense
-				 * vectors.
-				 */
-				bool contains_out_of_place_primitive;
-
-				/**
-				 * Stores the set of output vectors of the out-of-place operations executed
-				 * in the pipeline. It's used by the execution method to ensure that an
-				 * already dense vector will remain dense after the execution of the
-				 * pipeline, i.e., the vector is not the output of an out-of-place
-				 * operation.
-				 */
-				std::set< const Coordinates< nonblocking > * >
-					out_of_place_output_coordinates;
-
-				/**
-				 * Indicates that all the vectors are already dense before the execution
-				 * of the pipeline, and thus enabling runtime optimizations.
-				 */
-				bool all_already_dense_vectors;
+			/**
+			 * Indicates that all the vectors are already dense before the execution
+			 * of the pipeline, and thus enabling runtime optimizations.
+			 */
+			bool all_already_dense_vectors;
 #ifdef GRB_ALREADY_DENSE_OPTIMIZATION
-				/**
-				 * Maintains the coordinates of vectors that are already dense to enable
-				 * optimizations.
-				 * The set is built explicitly before the execution of the pipeline in the
-				 * execution method.
-				 */
-				std::set< const Coordinates< nonblocking > * > already_dense_coordinates;
+			/**
+			 * Maintains the coordinates of vectors that are already dense to enable
+			 * optimizations.
+			 * The set is built explicitly before the execution of the pipeline in the
+			 * execution method.
+			 */
+			std::set< const Coordinates< nonblocking > * > already_dense_coordinates;
 #endif
-				/**
-				 * This set of vectors is used for the verification for correct usage of the
-				 * dense descriptor that takes place after the execution of the pipeline.
-				 * The set is built when stages are added into the pipeline.
-				 */
-				std::set< Coordinates< nonblocking > * > dense_descr_coordinates;
+			/**
+			 * This set of vectors is used for the verification for correct usage of the
+			 * dense descriptor that takes place after the execution of the pipeline.
+			 * The set is built when stages are added into the pipeline.
+			 */
+			std::set< Coordinates< nonblocking > * > dense_descr_coordinates;
 
-				/**
-				 * Whether a warning on container capacities increased beyond their initial
-				 * capacities has been emitted.
-				 */
-				bool no_warning_emitted_yet;
+			/**
+			 * Whether a warning on container capacities increased beyond their initial
+			 * capacities has been emitted.
+			 */
+			bool no_warning_emitted_yet;
 
-				/**
-				 * Function that checks if current container capacities have exceeded their
-				 * initial capacity.
-				 */
-				void warnIfExceeded();
+			/**
+			 * Function that checks if current container capacities have exceeded their
+			 * initial capacity.
+			 */
+			void warnIfExceeded();
 
+		public:
+			/**
+			 * Constructs a pipeline with given initial container, stage, and tile
+			 * capacities.
+			 *
+			 * If during pipeline construction these initial capacities are exceeded, a
+			 * warning may be emitted (see #grb::config::PIPELINE::warn_if_exceeded).
+			 */
+			Pipeline();
 
-			public:
+			Pipeline( const Pipeline & pipeline );
+			Pipeline( Pipeline && pipeline ) noexcept;
 
-				/**
-				 * Constructs a pipeline with given initial container, stage, and tile
-				 * capacities.
-				 *
-				 * If during pipeline construction these initial capacities are exceeded, a
-				 * warning may be emitted (see #grb::config::PIPELINE::warn_if_exceeded).
-				 */
-				Pipeline();
-
-				Pipeline( const Pipeline &pipeline );
-				Pipeline( Pipeline &&pipeline ) noexcept;
-
-				Pipeline &operator=( const Pipeline &pipeline );
-				Pipeline &operator=( Pipeline &&pipeline );
-
-#ifdef GRB_ALREADY_DENSE_OPTIMIZATION
-				bool allAlreadyDenseVectors() const;
-#endif
-				bool empty() const;
-
-				typename std::vector< stage_type >::iterator pbegin();
-				typename std::vector< stage_type >::iterator pend();
-				typename std::set< Coordinates< nonblocking > * >::iterator vbegin();
-				typename std::set< Coordinates< nonblocking > * >::iterator vend();
-
-				size_t accessedCoordinatesSize() const;
-				size_t getNumStages() const;
-				size_t getContainersSize() const;
-
-				/**
-				 * @param[in]  func   The lambda function executed by this operation (stage)
-				 * @param[in]  opcode The operation code used as an identifier
-				 * @param[in]  n      The size of the containers handled by this operation
-				 * @param[in]  data_type_size The size of the data used in this operation
-				 *                         required by the analytic model
-				 * @param[in]  dense_descr Indicates that all vectors are dense before the
-				 *                         execution of the operation. Used for the
-				 *                         already dense optimization and the dense
-				 *                         descriptor verification.
-				 * @param[in]  dense_mask  Used only by the masked out-of-place operations.
-				 * @param[out] output_vector_ptr A pointer to the output vector, equal to
-				 *                         nullptr for operations that return a scalar.
-				 * @param[out] output_aux_vector_ptr A pointer to the second output vector,
-				 *                         equal to nullptr except for the unzip operation.
-				 * @param[out] coor_output_ptr A pointer to the coordinates of the output.
-				 * @param[out] coor_output_aux_ptr A pointer to the coordinates of the
-				 *                         second output.
-				 * @param[in]  input_a_ptr A pointer to the first input vector, it may be
-				 *                         equal to nullptr if the input is a scalar.
-				 * @param[in]  input_b_ptr A pointer to the second input vector, equal to
-				 *                         nullptr if a second input does not exist.
-				 * @param[in]  input_c_ptr A pointer to the third input vector, equal to
-				 *                         nullptr if a third input does not exist.
-				 * @param[in]  input_d_ptr A pointer to the fourth input vector, equal to
-				 *                         nullptr if a fourth input does not exist.
-				 * @param[in]  coor_a_ptr  A pointer to the coordinates of the first input
-				 *                         vector, it may be equal to nullptr if the input
-				 *                         is a scalar.
-				 * @param[in]  coor_b_ptr  A pointer to the coordinates of the second input
-				 *                         vector, equal to nullptr if a second input does
-				 *                         not exist.
-				 * @param[in]  coor_c_ptr  A pointer to the coordinates of the third input
-				 *                         vector, equal to nullptr if a third input does
-				 *                         not exist.
-				 * @param[in]  coor_d_ptr  A pointer to the coordinates of the fourth input
-				 *                         vector, equal to nullptr if a fourth input does
-				 *                         not exist.
-				 *
-				 * \todo in the current implementation:
-				 *
-				 * @param[in]  input_matrix A pointer to the input matrix of SpMV.
-				 */
-				void addStage(
-					const stage_type &&func,
-					const Opcode opcode,
-					const size_t n,
-					const size_t data_type_size,
-					const bool dense_descr,
-					const bool dense_mask,
-					void * const output_vector_ptr,
-					void * const output_aux_vector_ptr,
-					Coordinates< nonblocking > * const coor_output_ptr,
-					Coordinates< nonblocking > * const coor_output_aux_ptr,
-					const void * const input_a_ptr,
-					const void * const input_b_ptr,
-					const void * const input_c_ptr,
-					const void * const input_d_ptr,
-					const Coordinates< nonblocking > * const coor_a_ptr,
-					const Coordinates< nonblocking > * const coor_b_ptr,
-					const Coordinates< nonblocking > * const coor_c_ptr,
-					const Coordinates< nonblocking > * const coor_d_ptr,
-					const void * const input_matrix
-				);
-
-				void addeWiseLambdaStage(
-					const stage_type &&func,
-					const Opcode opcode,
-					const size_t n,
-					const size_t data_type_size,
-					const bool dense_descr,
-					std::vector< const void * > all_vectors_ptr,
-					const Coordinates< nonblocking > * const coor_a_ptr
-				);
-
-				bool accessesInputVector( const void * const vector ) const;
-				bool accessesOutputVector( const void * const vector ) const;
-				bool accessesVector( const void * const vector ) const;
-				bool accessesMatrix( const void * const matrix ) const;
-
-				bool overwritesVXMInputVectors( const void * const output_vector_ptr )
-					const;
+			Pipeline & operator=( const Pipeline & pipeline );
+			Pipeline & operator=( Pipeline && pipeline );
 
 #ifdef GRB_ALREADY_DENSE_OPTIMIZATION
-				bool emptyAlreadyDenseVectors() const;
-				bool containsAlreadyDenseVector(
-					const Coordinates< nonblocking > * const vector_ptr
-				) const;
-				void markMaybeSparseVector(
-					const Coordinates< nonblocking > * const vector_ptr
-				);
+			bool allAlreadyDenseVectors() const;
 #endif
-				void markMaybeSparseDenseDescriptorVerification(
-					Coordinates< nonblocking > * const vector_ptr
-				);
+			bool empty() const;
 
-				bool outOfPlaceOutput(
-					const Coordinates< nonblocking > * const vector_ptr
-				);
+			typename std::vector< stage_type >::iterator pbegin();
+			typename std::vector< stage_type >::iterator pend();
+			typename std::set< Coordinates< nonblocking > * >::iterator vbegin();
+			typename std::set< Coordinates< nonblocking > * >::iterator vend();
 
-				void merge( Pipeline &pipeline );
+			size_t accessedCoordinatesSize() const;
+			size_t getNumStages() const;
+			size_t getContainersSize() const;
 
-				void clear();
+			/**
+			 * @param[in]  func   The lambda function executed by this operation (stage)
+			 * @param[in]  opcode The operation code used as an identifier
+			 * @param[in]  n      The size of the containers handled by this operation
+			 * @param[in]  data_type_size The size of the data used in this operation
+			 *                         required by the analytic model
+			 * @param[in]  dense_descr Indicates that all vectors are dense before the
+			 *                         execution of the operation. Used for the
+			 *                         already dense optimization and the dense
+			 *                         descriptor verification.
+			 * @param[in]  dense_mask  Used only by the masked out-of-place operations.
+			 * @param[out] output_vector_ptr A pointer to the output vector, equal to
+			 *                         nullptr for operations that return a scalar.
+			 * @param[out] output_aux_vector_ptr A pointer to the second output vector,
+			 *                         equal to nullptr except for the unzip operation.
+			 * @param[out] coor_output_ptr A pointer to the coordinates of the output.
+			 * @param[out] coor_output_aux_ptr A pointer to the coordinates of the
+			 *                         second output.
+			 * @param[in]  input_a_ptr A pointer to the first input vector, it may be
+			 *                         equal to nullptr if the input is a scalar.
+			 * @param[in]  input_b_ptr A pointer to the second input vector, equal to
+			 *                         nullptr if a second input does not exist.
+			 * @param[in]  input_c_ptr A pointer to the third input vector, equal to
+			 *                         nullptr if a third input does not exist.
+			 * @param[in]  input_d_ptr A pointer to the fourth input vector, equal to
+			 *                         nullptr if a fourth input does not exist.
+			 * @param[in]  coor_a_ptr  A pointer to the coordinates of the first input
+			 *                         vector, it may be equal to nullptr if the input
+			 *                         is a scalar.
+			 * @param[in]  coor_b_ptr  A pointer to the coordinates of the second input
+			 *                         vector, equal to nullptr if a second input does
+			 *                         not exist.
+			 * @param[in]  coor_c_ptr  A pointer to the coordinates of the third input
+			 *                         vector, equal to nullptr if a third input does
+			 *                         not exist.
+			 * @param[in]  coor_d_ptr  A pointer to the coordinates of the fourth input
+			 *                         vector, equal to nullptr if a fourth input does
+			 *                         not exist.
+			 *
+			 * \todo in the current implementation:
+			 *
+			 * @param[in]  input_matrix A pointer to the input matrix of SpMV.
+			 */
+			void addStage( const stage_type && func,
+				const Opcode opcode,
+				const size_t n,
+				const size_t data_type_size,
+				const bool dense_descr,
+				const bool dense_mask,
+				void * const output_vector_ptr,
+				void * const output_aux_vector_ptr,
+				Coordinates< nonblocking > * const coor_output_ptr,
+				Coordinates< nonblocking > * const coor_output_aux_ptr,
+				const void * const input_a_ptr,
+				const void * const input_b_ptr,
+				const void * const input_c_ptr,
+				const void * const input_d_ptr,
+				const Coordinates< nonblocking > * const coor_a_ptr,
+				const Coordinates< nonblocking > * const coor_b_ptr,
+				const Coordinates< nonblocking > * const coor_c_ptr,
+				const Coordinates< nonblocking > * const coor_d_ptr,
+				const void * const input_matrix,
+				const void * const input_matrix_A,
+				const void * const input_matrix_B,
+				void * output_matrix_C );
+
+			void addeWiseLambdaStage( const stage_type && func,
+				const Opcode opcode,
+				const size_t n,
+				const size_t data_type_size,
+				const bool dense_descr,
+				std::vector< const void * > all_vectors_ptr,
+				const Coordinates< nonblocking > * const coor_a_ptr );
+
+			bool accessesInputVector( const void * const vector ) const;
+			bool accessesOutputVector( const void * const vector ) const;
+			bool accessesVector( const void * const vector ) const;
+			bool accessesMatrix( const void * const matrix ) const;
+
+			bool overwritesVXMInputVectors( const void * const output_vector_ptr ) const;
+
+			// for BLAS3
+			bool accessesInputMatrix( const void * const matrix ) const;
+			bool accessesOutputMatrix( const void * const matrix ) const;
+			bool overwritesMXMLeftInputMatrices( const void * const matrix ) const;
+			bool overwritesMXMRightInputMatrices( const void * const matrix ) const;
+
 #ifdef GRB_ALREADY_DENSE_OPTIMIZATION
-				void buildAlreadyDenseVectors();
+			bool emptyAlreadyDenseVectors() const;
+			bool containsAlreadyDenseVector( const Coordinates< nonblocking > * const vector_ptr ) const;
+			void markMaybeSparseVector( const Coordinates< nonblocking > * const vector_ptr );
 #endif
-				RC verifyDenseDescriptor();
+			void markMaybeSparseDenseDescriptorVerification( Coordinates< nonblocking > * const vector_ptr );
 
-				RC execution();
+			bool outOfPlaceOutput( const Coordinates< nonblocking > * const vector_ptr );
 
+			void merge( Pipeline & pipeline );
+
+			void clear();
+#ifdef GRB_ALREADY_DENSE_OPTIMIZATION
+			void buildAlreadyDenseVectors();
+#endif
+			RC verifyDenseDescriptor();
+
+			RC execution();
 		};
 
-	}
+	} // namespace internal
 
-}
+} // namespace grb
 
-#endif //end `_H_GRB_NONBLOCKING_PIPELINE'
-
+#endif // end `_H_GRB_NONBLOCKING_PIPELINE'

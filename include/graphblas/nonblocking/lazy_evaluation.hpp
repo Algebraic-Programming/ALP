@@ -32,7 +32,6 @@
 #include "coordinates.hpp"
 #include "pipeline.hpp"
 
-
 namespace grb {
 
 	namespace internal {
@@ -43,130 +42,126 @@ namespace grb {
 		 */
 		class LazyEvaluation {
 
-			private:
+		private:
+			/** Multiple pipelines may be maintained at any time. */
+			std::vector< Pipeline > pipelines;
 
-				/** Multiple pipelines may be maintained at any time. */
-				std::vector< Pipeline > pipelines;
+			/** Stores the pipelines that share data with the new stage. */
+			std::vector< std::vector< Pipeline >::iterator > shared_data_pipelines;
 
-				/** Stores the pipelines that share data with the new stage. */
-				std::vector< std::vector< Pipeline >::iterator > shared_data_pipelines;
+			/**
+			 * Makes sure any warnings related to exceeding the initial number of
+			 * pipelines are printed only once.
+			 */
+			bool warn_if_exceeded;
 
-				/**
-				 * Makes sure any warnings related to exceeding the initial number of
-				 * pipelines are printed only once.
-				 */
-				bool warn_if_exceeded;
+			/**
+			 * Checks if the number of pipelines has been exceeded past the initial
+			 * number of pipelines.
+			 *
+			 * The initial number is configurable via the following configuration
+			 * field: #grb::config::PIPELINE::max_pipelines.
+			 */
+			void checkIfExceeded() noexcept;
 
-				/**
-				 * Checks if the number of pipelines has been exceeded past the initial
-				 * number of pipelines.
-				 *
-				 * The initial number is configurable via the following configuration
-				 * field: #grb::config::PIPELINE::max_pipelines.
-				 */
-				void checkIfExceeded() noexcept;
+		public:
+			/** Default constructor. */
+			LazyEvaluation();
 
+			/**
+			 * Adds a stage to an automatically determined pipeline.
+			 *
+			 * The following parameters are mandatory:
+			 *
+			 * @param[in]  func                     The function to be added.
+			 * @param[in]  opcode                   The corresponding opcode.
+			 * @param[in]  n                        The pipeline size.
+			 * @param[in]  data_type_size           The output byte size.
+			 * @param[in]  dense_descr              Whether the op is dense.
+			 * @param[in]  dense_mask               Whether the mask is dense.
+			 *
+			 * The following parameters are optional and could be <tt>nullptr</tt> if
+			 * not required:
+			 *
+			 * @param[out] output_container_ptr     Pointer to the output container.
+			 * @param[out] output_aux_container_ptr Pointer to another output.
+			 * @param[out] coor_output_ptr          Pointer to the coordinates that
+			 *                                      correspond to
+			 *                                      \a output_container_ptr
+			 * @param[out] coor_output_aux_ptr      Pointer to the coordinates that
+			 *                                      correspond to
+			 *                                      \a output_aux_container_ptr
+			 * @param[in]  input_a_ptr              Pointer to a first input container.
+			 * @param[in]  input_b_ptr              Pointer to a second such container.
+			 * @param[in]  input_c_ptr              Pointer to a third such container.
+			 * @param[in]  input_d_ptr              Pointer to a fourth such container.
+			 * @param[in]  coor_a_ptr               Pointer to coordinates that
+			 *                                      correspond to \a input_a_ptr.
+			 * @param[in]  coor_b_ptr               Pointer to coordinates that
+			 *                                      correspond to \a input_b_ptr.
+			 * @param[in]  coor_c_ptr               Pointer to coordinates that
+			 *                                      correspond to \a input_c_ptr.
+			 * @param[in]  coor_d_ptr               Pointer to coordinates that
+			 *                                      correspond to \a input_d_ptr.
+			 * @param[in]  input_matrix             Pointer to an input matrix.
+			 */
+			RC addStage( const Pipeline::stage_type && func,
+				const Opcode opcode,
+				const size_t n,
+				const size_t data_type_size,
+				const bool dense_descr,
+				const bool dense_mask,
+				void * const output_container_ptr,
+				void * const output_aux_container_ptr,
+				Coordinates< nonblocking > * const coor_output_ptr,
+				Coordinates< nonblocking > * const coor_output_aux_ptr,
+				const void * const input_a_ptr,
+				const void * const input_b_ptr,
+				const void * const input_c_ptr,
+				const void * const input_d_ptr,
+				const Coordinates< nonblocking > * const coor_a_ptr,
+				const Coordinates< nonblocking > * const coor_b_ptr,
+				const Coordinates< nonblocking > * const coor_c_ptr,
+				const Coordinates< nonblocking > * const coor_d_ptr,
+				const void * const input_matrix,
+				const void * const input_matrix_A,
+				const void * const input_matrix_B,
+				void * output_matrix_C );
 
-			public:
+			/**
+			 * Adds an eWiseLambda stage to an automatically-determined pipeline.
+			 *
+			 * The following parameters are mandatory:
+			 *
+			 * @param[in] func               The function to be added.
+			 * @param[in] opcode             The corresponding opcode.
+			 * @param[in] n                  The pipeline size.
+			 * @param[in] data_type_size     The output byte size.
+			 * @param[in] dense_descr        Whether the op is dense.
+			 * @param[in] all_containers_ptr A container of all ALP containers that the
+			 *                               \a func reads \em or writes
+			 * @param[in] coor_a_ptr         A container of all coordinates that
+			 *                               correspond to those in
+			 *                               \a all_containers_ptr
+			 */
+			RC addeWiseLambdaStage( const Pipeline::stage_type && func,
+				const Opcode opcode,
+				const size_t n,
+				const size_t data_type_size,
+				const bool dense_descr,
+				std::vector< const void * > all_containers_ptr,
+				const Coordinates< nonblocking > * const coor_a_ptr );
 
-				/** Default constructor. */
-				LazyEvaluation();
+			/**
+			 * Executes the pipeline necessary to generate the output of the given
+			 * \a container.
+			 */
+			RC execution( const void * container );
 
-				/**
-				 * Adds a stage to an automatically determined pipeline.
-				 *
-				 * The following parameters are mandatory:
-				 *
-				 * @param[in]  func                     The function to be added.
-				 * @param[in]  opcode                   The corresponding opcode.
-				 * @param[in]  n                        The pipeline size.
-				 * @param[in]  data_type_size           The output byte size.
-				 * @param[in]  dense_descr              Whether the op is dense.
-				 * @param[in]  dense_mask               Whether the mask is dense.
-				 *
-				 * The following parameters are optional and could be <tt>nullptr</tt> if
-				 * not required:
-				 *
-				 * @param[out] output_container_ptr     Pointer to the output container.
-				 * @param[out] output_aux_container_ptr Pointer to another output.
-				 * @param[out] coor_output_ptr          Pointer to the coordinates that
-				 *                                      correspond to
-				 *                                      \a output_container_ptr
-				 * @param[out] coor_output_aux_ptr      Pointer to the coordinates that
-				 *                                      correspond to
-				 *                                      \a output_aux_container_ptr
-				 * @param[in]  input_a_ptr              Pointer to a first input container.
-				 * @param[in]  input_b_ptr              Pointer to a second such container.
-				 * @param[in]  input_c_ptr              Pointer to a third such container.
-				 * @param[in]  input_d_ptr              Pointer to a fourth such container.
-				 * @param[in]  coor_a_ptr               Pointer to coordinates that
-				 *                                      correspond to \a input_a_ptr.
-				 * @param[in]  coor_b_ptr               Pointer to coordinates that
-				 *                                      correspond to \a input_b_ptr.
-				 * @param[in]  coor_c_ptr               Pointer to coordinates that
-				 *                                      correspond to \a input_c_ptr.
-				 * @param[in]  coor_d_ptr               Pointer to coordinates that
-				 *                                      correspond to \a input_d_ptr.
-				 * @param[in]  input_matrix             Pointer to an input matrix.
-				 */
-				RC addStage(
-					const Pipeline::stage_type &&func,
-					const Opcode opcode,
-					const size_t n,
-					const size_t data_type_size,
-					const bool dense_descr,
-					const bool dense_mask,
-					void * const output_container_ptr,
-					void * const output_aux_container_ptr,
-					Coordinates< nonblocking > * const coor_output_ptr,
-					Coordinates< nonblocking > * const coor_output_aux_ptr,
-					const void * const input_a_ptr,
-					const void * const input_b_ptr,
-					const void * const input_c_ptr,
-					const void * const input_d_ptr,
-					const Coordinates< nonblocking > * const coor_a_ptr,
-					const Coordinates< nonblocking > * const coor_b_ptr,
-					const Coordinates< nonblocking > * const coor_c_ptr,
-					const Coordinates< nonblocking > * const coor_d_ptr,
-					const void * const input_matrix
-				);
-
-				/**
-				 * Adds an eWiseLambda stage to an automatically-determined pipeline.
-				 *
-				 * The following parameters are mandatory:
-				 *
-				 * @param[in] func               The function to be added.
-				 * @param[in] opcode             The corresponding opcode.
-				 * @param[in] n                  The pipeline size.
-				 * @param[in] data_type_size     The output byte size.
-				 * @param[in] dense_descr        Whether the op is dense.
-				 * @param[in] all_containers_ptr A container of all ALP containers that the
-				 *                               \a func reads \em or writes
-				 * @param[in] coor_a_ptr         A container of all coordinates that
-				 *                               correspond to those in
-				 *                               \a all_containers_ptr
-				 */
-				RC addeWiseLambdaStage(
-					const Pipeline::stage_type &&func,
-					const Opcode opcode,
-					const size_t n,
-					const size_t data_type_size,
-					const bool dense_descr,
-					std::vector< const void * > all_containers_ptr,
-					const Coordinates< nonblocking > * const coor_a_ptr
-				);
-
-				/**
-				 * Executes the pipeline necessary to generate the output of the given
-				 * \a container.
-				 */
-				RC execution( const void *container );
-
-				/**
-				 * Executes all pipelines.
-				 */
-				RC execution();
+			/**
+			 * Executes all pipelines.
+			 */
+			RC execution();
 
 		}; // end class LazyEvaluation
 
@@ -174,5 +169,4 @@ namespace grb {
 
 } // end namespace grb
 
-#endif //end `_H_GRB_NONBLOCKING_LAZY_EVALUATION'
-
+#endif // end `_H_GRB_NONBLOCKING_LAZY_EVALUATION'

@@ -24,18 +24,15 @@
  * @date 16th of May, 2022
  */
 
-#include <graphblas/config.hpp>
 #include <graphblas/backends.hpp>
-
-#include <graphblas/nonblocking/pipeline.hpp>
+#include <graphblas/config.hpp>
 #include <graphblas/nonblocking/analytic_model.hpp>
-
+#include <graphblas/nonblocking/pipeline.hpp>
 
 using namespace grb::internal;
 
 Pipeline::Pipeline() {
-	constexpr const size_t initial_container_cap =
-		config::PIPELINE::max_containers;
+	constexpr const size_t initial_container_cap = config::PIPELINE::max_containers;
 	constexpr const size_t initial_stage_cap = config::PIPELINE::max_depth;
 	constexpr const size_t initial_tile_cap = config::PIPELINE::max_tiles;
 
@@ -60,11 +57,9 @@ Pipeline::Pipeline() {
 	// as this simulation might not always work as expected.
 	for( size_t i = 0; i < initial_container_cap; ++i ) {
 		void * const dummy = reinterpret_cast< void * >( i );
-		Coordinates< nonblocking > * const dumCoor =
-			reinterpret_cast< Coordinates< nonblocking > * >( i );
+		Coordinates< nonblocking > * const dumCoor = reinterpret_cast< Coordinates< nonblocking > * >( i );
 #ifdef GRB_ALREADY_DENSE_OPTIMIZATION
-		const Coordinates< nonblocking > * const dumCCoor =
-			reinterpret_cast< const Coordinates< nonblocking > * >( i );
+		const Coordinates< nonblocking > * const dumCCoor = reinterpret_cast< const Coordinates< nonblocking > * >( i );
 #endif
 		accessed_coordinates.insert( dumCoor );
 		input_vectors.insert( dummy );
@@ -72,6 +67,12 @@ Pipeline::Pipeline() {
 		vxm_input_vectors.insert( dummy );
 		input_matrices.insert( dummy );
 		out_of_place_output_coordinates.insert( dumCoor );
+		// for BLAS3
+		input_matrices_blas3.insert( dummy );
+		mxm_input_matrices_left.insert( dummy );
+		mxm_input_matrices_right.insert( dummy );
+		output_matrices.insert( dummy );
+		input_output_intersection_blas3.reserve( initial_container_cap );
 #ifdef GRB_ALREADY_DENSE_OPTIMIZATION
 		already_dense_coordinates.insert( dumCCoor );
 #endif
@@ -83,6 +84,12 @@ Pipeline::Pipeline() {
 	vxm_input_vectors.clear();
 	input_matrices.clear();
 	out_of_place_output_coordinates.clear();
+
+	// for BLAS3
+	input_matrices_blas3.clear();
+	mxm_input_matrices_left.clear();
+	mxm_input_matrices_right.clear();
+	output_matrices.clear();
 #ifdef GRB_ALREADY_DENSE_OPTIMIZATION
 	already_dense_coordinates.clear();
 #endif
@@ -91,20 +98,15 @@ Pipeline::Pipeline() {
 	no_warning_emitted_yet = true;
 }
 
-Pipeline::Pipeline( const Pipeline &pipeline ) :
-	stages( pipeline.stages ), opcodes( pipeline.opcodes),
-	accessed_coordinates( pipeline.accessed_coordinates ),
-	input_vectors( pipeline.input_vectors ),
-	output_vectors( pipeline.output_vectors ),
-	vxm_input_vectors( pipeline.vxm_input_vectors ),
-	input_matrices( pipeline.input_matrices ),
-	out_of_place_output_coordinates( pipeline.out_of_place_output_coordinates ),
+Pipeline::Pipeline( const Pipeline & pipeline ) :
+	stages( pipeline.stages ), opcodes( pipeline.opcodes ), accessed_coordinates( pipeline.accessed_coordinates ), input_vectors( pipeline.input_vectors ), output_vectors( pipeline.output_vectors ),
+	vxm_input_vectors( pipeline.vxm_input_vectors ), input_matrices( pipeline.input_matrices ), out_of_place_output_coordinates( pipeline.out_of_place_output_coordinates ),
+	input_matrices_blas3( pipeline.input_matrices_blas3 ), mxm_input_matrices_left( pipeline.mxm_input_matrices_left ), mxm_input_matrices_right( pipeline.mxm_input_matrices_right ),
+	output_matrices( pipeline.output_matrices ),
 #ifdef GRB_ALREADY_DENSE_OPTIMIZATION
 	already_dense_coordinates( pipeline.already_dense_coordinates ),
 #endif
-	dense_descr_coordinates( pipeline.dense_descr_coordinates ),
-	no_warning_emitted_yet( pipeline.no_warning_emitted_yet )
-{
+	dense_descr_coordinates( pipeline.dense_descr_coordinates ), no_warning_emitted_yet( pipeline.no_warning_emitted_yet ) {
 	contains_out_of_place_primitive = pipeline.contains_out_of_place_primitive;
 	containers_size = pipeline.containers_size;
 	size_of_data_type = pipeline.size_of_data_type;
@@ -113,22 +115,16 @@ Pipeline::Pipeline( const Pipeline &pipeline ) :
 	// used temporarily during the pipeline execution
 }
 
-Pipeline::Pipeline( Pipeline &&pipeline ) noexcept :
-	stages( std::move( pipeline.stages ) ),
-	opcodes( std::move( pipeline.opcodes ) ),
-	accessed_coordinates( std::move( pipeline.accessed_coordinates ) ),
-	input_vectors( std::move( pipeline.input_vectors ) ),
-	output_vectors( std::move( pipeline.output_vectors ) ),
-	vxm_input_vectors( std::move( pipeline.vxm_input_vectors ) ),
-	input_matrices( std::move( pipeline.input_matrices ) ),
-	out_of_place_output_coordinates(
-		std::move( pipeline.out_of_place_output_coordinates ) ),
+Pipeline::Pipeline( Pipeline && pipeline ) noexcept :
+	stages( std::move( pipeline.stages ) ), opcodes( std::move( pipeline.opcodes ) ), accessed_coordinates( std::move( pipeline.accessed_coordinates ) ),
+	input_vectors( std::move( pipeline.input_vectors ) ), output_vectors( std::move( pipeline.output_vectors ) ), vxm_input_vectors( std::move( pipeline.vxm_input_vectors ) ),
+	input_matrices( std::move( pipeline.input_matrices ) ), out_of_place_output_coordinates( std::move( pipeline.out_of_place_output_coordinates ) ),
+	input_matrices_blas3( std::move( pipeline.input_matrices_blas3 ) ), mxm_input_matrices_left( std::move( pipeline.mxm_input_matrices_left ) ),
+	mxm_input_matrices_right( std::move( pipeline.mxm_input_matrices_right ) ), output_matrices( std::move( pipeline.output_matrices ) ),
 #ifdef GRB_ALREADY_DENSE_OPTIMIZATION
 	already_dense_coordinates( std::move( pipeline.already_dense_coordinates ) ),
 #endif
-	dense_descr_coordinates( std::move( pipeline.dense_descr_coordinates ) ),
-	no_warning_emitted_yet( pipeline.no_warning_emitted_yet )
-{
+	dense_descr_coordinates( std::move( pipeline.dense_descr_coordinates ) ), no_warning_emitted_yet( pipeline.no_warning_emitted_yet ) {
 	contains_out_of_place_primitive = pipeline.contains_out_of_place_primitive;
 	containers_size = pipeline.containers_size;
 	size_of_data_type = pipeline.size_of_data_type;
@@ -141,7 +137,7 @@ Pipeline::Pipeline( Pipeline &&pipeline ) noexcept :
 	pipeline.size_of_data_type = 0;
 }
 
-Pipeline &Pipeline::operator=( const Pipeline &pipeline ) {
+Pipeline & Pipeline::operator=( const Pipeline & pipeline ) {
 	contains_out_of_place_primitive = pipeline.contains_out_of_place_primitive;
 	containers_size = pipeline.containers_size;
 	size_of_data_type = pipeline.size_of_data_type;
@@ -154,6 +150,13 @@ Pipeline &Pipeline::operator=( const Pipeline &pipeline ) {
 	vxm_input_vectors = pipeline.vxm_input_vectors;
 	input_matrices = pipeline.input_matrices;
 	out_of_place_output_coordinates = pipeline.out_of_place_output_coordinates;
+
+	// for BLAS3
+	input_matrices_blas3 = pipeline.input_matrices_blas3;
+	mxm_input_matrices_left = pipeline.mxm_input_matrices_left;
+	mxm_input_matrices_right = pipeline.mxm_input_matrices_right;
+	output_matrices = pipeline.output_matrices;
+
 #ifdef GRB_ALREADY_DENSE_OPTIMIZATION
 	already_dense_coordinates = pipeline.already_dense_coordinates;
 #endif
@@ -166,7 +169,7 @@ Pipeline &Pipeline::operator=( const Pipeline &pipeline ) {
 	return *this;
 }
 
-Pipeline &Pipeline::operator=( Pipeline &&pipeline ) {
+Pipeline & Pipeline::operator=( Pipeline && pipeline ) {
 	contains_out_of_place_primitive = pipeline.contains_out_of_place_primitive;
 	containers_size = pipeline.containers_size;
 	size_of_data_type = pipeline.size_of_data_type;
@@ -179,8 +182,14 @@ Pipeline &Pipeline::operator=( Pipeline &&pipeline ) {
 	output_vectors = std::move( pipeline.output_vectors );
 	vxm_input_vectors = std::move( pipeline.vxm_input_vectors );
 	input_matrices = std::move( pipeline.input_matrices );
-	out_of_place_output_coordinates =
-		std::move( pipeline.out_of_place_output_coordinates );
+	out_of_place_output_coordinates = std::move( pipeline.out_of_place_output_coordinates );
+
+	// for BLAS3
+	input_matrices_blas3 = std::move( pipeline.input_matrices_blas3 );
+	mxm_input_matrices_left = std::move( pipeline.mxm_input_matrices_left );
+	mxm_input_matrices_right = std::move( pipeline.mxm_input_matrices_right );
+	output_matrices = std::move( pipeline.output_matrices );
+
 #ifdef GRB_ALREADY_DENSE_OPTIMIZATION
 	already_dense_coordinates = std::move( pipeline.already_dense_coordinates );
 #endif
@@ -199,32 +208,23 @@ Pipeline &Pipeline::operator=( Pipeline &&pipeline ) {
 
 void Pipeline::warnIfExceeded() {
 	if( no_warning_emitted_yet && config::PIPELINE::warn_if_exceeded ) {
-		if( stages.size() > config::PIPELINE::max_depth ||
-			opcodes.size() > config::PIPELINE::max_depth
-		) {
+		if( stages.size() > config::PIPELINE::max_depth || opcodes.size() > config::PIPELINE::max_depth ) {
 			std::cerr << "Warning: the number of pipeline stages has been increased "
-				<< "past the initial reserved number of stages\n";
+					  << "past the initial reserved number of stages\n";
 		}
-		if( accessed_coordinates.size() > config::PIPELINE::max_containers ||
-			input_vectors.size() > config::PIPELINE::max_containers ||
-			output_vectors.size() > config::PIPELINE::max_containers ||
-			vxm_input_vectors.size() > config::PIPELINE::max_containers ||
-			input_matrices.size() > config::PIPELINE::max_containers ||
+		if( accessed_coordinates.size() > config::PIPELINE::max_containers || input_vectors.size() > config::PIPELINE::max_containers || output_vectors.size() > config::PIPELINE::max_containers ||
+			vxm_input_vectors.size() > config::PIPELINE::max_containers || input_matrices.size() > config::PIPELINE::max_containers ||
 			out_of_place_output_coordinates.size() > config::PIPELINE::max_containers ||
 #ifdef GRB_ALREADY_DENSE_OPTIMIZATION
 			already_dense_coordinates.size() > config::PIPELINE::max_containers ||
 #endif
-			dense_descr_coordinates.size() > config::PIPELINE::max_containers
-		) {
+			dense_descr_coordinates.size() > config::PIPELINE::max_containers ) {
 			std::cerr << "Warning: the number of pipeline containers has increased past "
-				<< "the initial number of reserved containers.\n";
+					  << "the initial number of reserved containers.\n";
 		}
-		if( lower_bound.size() > config::PIPELINE::max_tiles ||
-			upper_bound.size() > config::PIPELINE::max_tiles ||
-			input_output_intersection.size() > config::PIPELINE::max_tiles
-		) {
+		if( lower_bound.size() > config::PIPELINE::max_tiles || upper_bound.size() > config::PIPELINE::max_tiles || input_output_intersection.size() > config::PIPELINE::max_tiles ) {
 			std::cerr << "Warning: the number of pipeline tiles has increased past the "
-				<< "initial number of reserved tiles.\n";
+					  << "initial number of reserved tiles.\n";
 		}
 		no_warning_emitted_yet = false;
 	}
@@ -248,13 +248,11 @@ typename std::vector< Pipeline::stage_type >::iterator Pipeline::pend() {
 	return stages.end();
 }
 
-typename std::set< Coordinates< grb::nonblocking > * >::iterator
-Pipeline::vbegin() {
+typename std::set< Coordinates< grb::nonblocking > * >::iterator Pipeline::vbegin() {
 	return accessed_coordinates.begin();
 }
 
-typename std::set< Coordinates< grb::nonblocking > * >::iterator
-Pipeline::vend() {
+typename std::set< Coordinates< grb::nonblocking > * >::iterator Pipeline::vend() {
 	return accessed_coordinates.end();
 }
 
@@ -270,22 +268,29 @@ size_t Pipeline::getContainersSize() const {
 	return containers_size;
 }
 
-void Pipeline::addStage(
-		const Pipeline::stage_type &&func, const Opcode opcode,
-		const size_t n, const size_t data_type_size,
-		const bool dense_descr, const bool dense_mask,
-		void * const output_vector_ptr, void * const output_aux_vector_ptr,
-		Coordinates< nonblocking > * const coor_output_ptr,
-		Coordinates< nonblocking > * const coor_output_aux_ptr,
-		const void * const input_a_ptr, const void * const input_b_ptr,
-		const void * const input_c_ptr, const void * const input_d_ptr,
-		const Coordinates< nonblocking > * const coor_a_ptr,
-		const Coordinates< nonblocking > * const coor_b_ptr,
-		const Coordinates< nonblocking > * const coor_c_ptr,
-		const Coordinates< nonblocking > * const coor_d_ptr,
-		const void * const input_matrix
-) {
-	assert( stages.size() != 0 || containers_size == 0);
+void Pipeline::addStage( const Pipeline::stage_type && func,
+	const Opcode opcode,
+	const size_t n,
+	const size_t data_type_size,
+	const bool dense_descr,
+	const bool dense_mask,
+	void * const output_vector_ptr,
+	void * const output_aux_vector_ptr,
+	Coordinates< nonblocking > * const coor_output_ptr,
+	Coordinates< nonblocking > * const coor_output_aux_ptr,
+	const void * const input_a_ptr,
+	const void * const input_b_ptr,
+	const void * const input_c_ptr,
+	const void * const input_d_ptr,
+	const Coordinates< nonblocking > * const coor_a_ptr,
+	const Coordinates< nonblocking > * const coor_b_ptr,
+	const Coordinates< nonblocking > * const coor_c_ptr,
+	const Coordinates< nonblocking > * const coor_d_ptr,
+	const void * const input_matrix,
+	const void * const input_matrix_A,
+	const void * const input_matrix_B,
+	void * output_matrix_C ) {
+	assert( stages.size() != 0 || containers_size == 0 );
 
 	if( stages.size() == 0 ) {
 		containers_size = n;
@@ -294,7 +299,7 @@ void Pipeline::addStage(
 	// the size of containers and the data type should match
 	assert( containers_size == n );
 
-	//TODO (internal issue 617): does the size of data matches for all containers?
+	// TODO (internal issue 617): does the size of data matches for all containers?
 
 	// pipelines may consist of primitives that operate on different data types,
 	// e.g., double and bool the analytic model should take into account the
@@ -368,52 +373,70 @@ void Pipeline::addStage(
 	// update all the sets of the pipeline by adding the entries of the new stage
 	if( coor_a_ptr != nullptr ) {
 		if( dense_descr ) {
-			dense_descr_coordinates.insert(
-				const_cast< Coordinates< nonblocking > * >( coor_a_ptr ) );
+			dense_descr_coordinates.insert( const_cast< Coordinates< nonblocking > * >( coor_a_ptr ) );
 		} else {
-			accessed_coordinates.insert(
-				const_cast< Coordinates< nonblocking > * >( coor_a_ptr ) );
+			accessed_coordinates.insert( const_cast< Coordinates< nonblocking > * >( coor_a_ptr ) );
 		}
 	}
 
 	if( coor_b_ptr != nullptr ) {
 		if( dense_descr ) {
-			dense_descr_coordinates.insert(
-				const_cast< internal::Coordinates< nonblocking > * >( coor_b_ptr ) );
+			dense_descr_coordinates.insert( const_cast< internal::Coordinates< nonblocking > * >( coor_b_ptr ) );
 		} else {
-			accessed_coordinates.insert(
-				const_cast< internal::Coordinates< nonblocking > * >( coor_b_ptr ) );
+			accessed_coordinates.insert( const_cast< internal::Coordinates< nonblocking > * >( coor_b_ptr ) );
 		}
 	}
 
 	if( coor_c_ptr != nullptr ) {
 		if( dense_descr ) {
-			dense_descr_coordinates.insert(
-				const_cast< internal::Coordinates<nonblocking > * >( coor_c_ptr ) );
+			dense_descr_coordinates.insert( const_cast< internal::Coordinates< nonblocking > * >( coor_c_ptr ) );
 		} else {
-			accessed_coordinates.insert(
-				const_cast< internal::Coordinates< nonblocking > * >( coor_c_ptr ) );
+			accessed_coordinates.insert( const_cast< internal::Coordinates< nonblocking > * >( coor_c_ptr ) );
 		}
 	}
 
 	if( coor_d_ptr != nullptr ) {
 		if( dense_descr ) {
-			dense_descr_coordinates.insert(
-				const_cast< internal::Coordinates< nonblocking > * >( coor_d_ptr ) );
+			dense_descr_coordinates.insert( const_cast< internal::Coordinates< nonblocking > * >( coor_d_ptr ) );
 		} else {
-			accessed_coordinates.insert(
-				const_cast< internal::Coordinates< nonblocking > * >( coor_d_ptr ) );
+			accessed_coordinates.insert( const_cast< internal::Coordinates< nonblocking > * >( coor_d_ptr ) );
+		}
+	}
+
+	// FOR BLAS3
+	// special treatment for an SpMSpM operation as the input must not be overwritten
+	// by another stage of the pipeline
+
+	if( output_matrix_C != nullptr ) {
+		output_matrices.insert( output_matrix_C );
+	}
+
+	if( opcode == Opcode::BLAS3_MXM_GENERIC ) {
+
+		if( input_matrix_A != nullptr ) {
+			input_matrices_blas3.insert( input_matrix_A );
+			mxm_input_matrices_left.insert( input_matrix_A );
+		}
+
+		if( input_matrix_B != nullptr ) {
+			input_matrices_blas3.insert( input_matrix_B );
+			mxm_input_matrices_right.insert( input_matrix_B );
+		}
+
+	} else {
+		if( input_matrix_A != nullptr ) {
+			input_matrices_blas3.insert( input_matrix_A );
+		}
+
+		if( input_matrix_B != nullptr ) {
+			input_matrices_blas3.insert( input_matrix_B );
 		}
 	}
 
 	// keep track of out-of-place operations that may make a dense vector sparse
 	// such operations disable potential optimizations for already dense vectors
-	if( opcode == Opcode::BLAS1_EWISEAPPLY ||
-		opcode == Opcode::BLAS1_MASKED_EWISEAPPLY ||
-		opcode == Opcode::IO_SET_MASKED_SCALAR ||
-		opcode == Opcode::IO_SET_VECTOR ||
-		opcode == Opcode::IO_SET_MASKED_VECTOR
-	) {
+	if( opcode == Opcode::BLAS1_EWISEAPPLY || opcode == Opcode::BLAS1_MASKED_EWISEAPPLY || opcode == Opcode::IO_SET_MASKED_SCALAR || opcode == Opcode::IO_SET_VECTOR ||
+		opcode == Opcode::IO_SET_MASKED_VECTOR ) {
 		// the output of these specific primitives cannot be nullptr
 
 		if( dense_descr ) {
@@ -423,11 +446,7 @@ void Pipeline::addStage(
 		// when the dense descriptor is not provided or the operation is masked
 		// there is no guarantee that an already dense vector will remain dense
 		// therefore, the pipeline is marked to disable the already dense optimization
-		if( !dense_descr || ( !dense_mask && (
-			opcode == Opcode::BLAS1_MASKED_EWISEAPPLY ||
-			opcode == Opcode::IO_SET_MASKED_SCALAR ||
-			opcode == Opcode::IO_SET_MASKED_VECTOR
-		) ) ) {
+		if( ! dense_descr || ( ! dense_mask && ( opcode == Opcode::BLAS1_MASKED_EWISEAPPLY || opcode == Opcode::IO_SET_MASKED_SCALAR || opcode == Opcode::IO_SET_MASKED_VECTOR ) ) ) {
 			contains_out_of_place_primitive = true;
 			out_of_place_output_coordinates.insert( coor_output_ptr );
 			accessed_coordinates.insert( coor_output_ptr );
@@ -462,16 +481,16 @@ void Pipeline::addStage(
 	warnIfExceeded();
 }
 
-void Pipeline::addeWiseLambdaStage(
-	const Pipeline::stage_type &&func, const Opcode opcode,
-	const size_t n, const size_t data_type_size,
+void Pipeline::addeWiseLambdaStage( const Pipeline::stage_type && func,
+	const Opcode opcode,
+	const size_t n,
+	const size_t data_type_size,
 	const bool dense_descr,
 	std::vector< const void * > all_vectors_ptr,
-	const Coordinates< nonblocking > * const coor_a_ptr
-) {
-	(void) data_type_size;
+	const Coordinates< nonblocking > * const coor_a_ptr ) {
+	(void)data_type_size;
 
-	assert( stages.size() != 0 || containers_size == 0);
+	assert( stages.size() != 0 || containers_size == 0 );
 
 	if( stages.size() == 0 ) {
 		containers_size = n;
@@ -489,20 +508,16 @@ void Pipeline::addeWiseLambdaStage(
 	opcodes.push_back( opcode );
 
 	// add all vectors accessed by eWiseLambda as output vectors
-	for( std::vector< const void *>::iterator it =
-		all_vectors_ptr.begin(); it != all_vectors_ptr.end(); ++it
-	) {
+	for( std::vector< const void * >::iterator it = all_vectors_ptr.begin(); it != all_vectors_ptr.end(); ++it ) {
 		output_vectors.insert( *it );
 	}
 
 	// add the coordinates for the single vector
 	if( coor_a_ptr != nullptr ) {
 		if( dense_descr ) {
-			dense_descr_coordinates.insert(
-				const_cast< Coordinates< nonblocking > * >( coor_a_ptr ) );
+			dense_descr_coordinates.insert( const_cast< Coordinates< nonblocking > * >( coor_a_ptr ) );
 		} else {
-			accessed_coordinates.insert(
-				const_cast< Coordinates< nonblocking > * >( coor_a_ptr ) );
+			accessed_coordinates.insert( const_cast< Coordinates< nonblocking > * >( coor_a_ptr ) );
 		}
 	}
 
@@ -518,39 +533,47 @@ bool Pipeline::accessesOutputVector( const void * const vector ) const {
 }
 
 bool Pipeline::accessesVector( const void * const vector ) const {
-	return (input_vectors.find( vector ) != input_vectors.end()) ||
-		(output_vectors.find( vector ) != output_vectors.end());
+	return ( input_vectors.find( vector ) != input_vectors.end() ) || ( output_vectors.find( vector ) != output_vectors.end() );
 }
 
 bool Pipeline::accessesMatrix( const void * const matrix ) const {
 	return ( input_matrices.find( matrix ) != input_matrices.end() );
 }
 
-bool Pipeline::overwritesVXMInputVectors(
-	const void * const output_vector_ptr
-) const {
+bool Pipeline::overwritesVXMInputVectors( const void * const output_vector_ptr ) const {
 	return vxm_input_vectors.find( output_vector_ptr ) != vxm_input_vectors.end();
 }
+
+// for BLAS3
+bool Pipeline::accessesInputMatrix( const void * const matrix ) const {
+	return input_matrices_blas3.find( matrix ) != input_matrices_blas3.end();
+}
+
+bool Pipeline::accessesOutputMatrix( const void * const matrix ) const {
+	return output_matrices.find( matrix ) != output_matrices.end();
+}
+
+bool Pipeline::overwritesMXMLeftInputMatrices( const void * const matrix ) const {
+	return mxm_input_matrices_left.find( matrix ) != mxm_input_matrices_left.end();
+}
+
+bool Pipeline::overwritesMXMRightInputMatrices( const void * const matrix ) const {
+	return mxm_input_matrices_right.find( matrix ) != mxm_input_matrices_right.end();
+}
+// finish BLAS3
 
 #ifdef GRB_ALREADY_DENSE_OPTIMIZATION
 bool Pipeline::emptyAlreadyDenseVectors() const {
 	return already_dense_coordinates.empty();
 }
 
-bool Pipeline::containsAlreadyDenseVector(
-	const Coordinates< nonblocking > * const vector_ptr
-) const {
-	return already_dense_coordinates.find( vector_ptr ) !=
-		already_dense_coordinates.end();
+bool Pipeline::containsAlreadyDenseVector( const Coordinates< nonblocking > * const vector_ptr ) const {
+	return already_dense_coordinates.find( vector_ptr ) != already_dense_coordinates.end();
 }
 
-void Pipeline::markMaybeSparseVector(
-	const Coordinates< nonblocking > * const vector_ptr
-) {
+void Pipeline::markMaybeSparseVector( const Coordinates< nonblocking > * const vector_ptr ) {
 	// the vector should be marked sparse only if it has not already been marked
-	if( already_dense_coordinates.find( vector_ptr ) !=
-		already_dense_coordinates.end()
-	) {
+	if( already_dense_coordinates.find( vector_ptr ) != already_dense_coordinates.end() ) {
 		// when this method is invoked by an out-of-place primitive
 		// disable a potentially enabled dense descriptor
 		all_already_dense_vectors = false;
@@ -560,29 +583,21 @@ void Pipeline::markMaybeSparseVector(
 }
 #endif
 
-void Pipeline::markMaybeSparseDenseDescriptorVerification(
-	Coordinates< nonblocking > * const vector_ptr
-) {
-	if( dense_descr_coordinates.find( vector_ptr ) !=
-		dense_descr_coordinates.end()
-	) {
+void Pipeline::markMaybeSparseDenseDescriptorVerification( Coordinates< nonblocking > * const vector_ptr ) {
+	if( dense_descr_coordinates.find( vector_ptr ) != dense_descr_coordinates.end() ) {
 		dense_descr_coordinates.erase( vector_ptr );
 	}
 }
 
-bool Pipeline::outOfPlaceOutput(
-	const internal::Coordinates< nonblocking > * const vector_ptr
-) {
-	if( out_of_place_output_coordinates.find( vector_ptr ) !=
-		out_of_place_output_coordinates.end()
-	) {
+bool Pipeline::outOfPlaceOutput( const internal::Coordinates< nonblocking > * const vector_ptr ) {
+	if( out_of_place_output_coordinates.find( vector_ptr ) != out_of_place_output_coordinates.end() ) {
 		return true;
 	}
 
 	return false;
 }
 
-void Pipeline::merge( Pipeline &pipeline ) {
+void Pipeline::merge( Pipeline & pipeline ) {
 	// if any of the pipelines contains an out-of-place primitive, the merged
 	// pipeline contains as well
 	if( pipeline.contains_out_of_place_primitive ) {
@@ -598,46 +613,38 @@ void Pipeline::merge( Pipeline &pipeline ) {
 	assert( containers_size == pipeline.containers_size );
 
 	// add all the stages into the pipeline by maintaining the relative order
-	for(
-		std::vector< stage_type >::iterator st = pipeline.stages.begin();
-		st != pipeline.stages.end(); st++
-	) {
+	for( std::vector< stage_type >::iterator st = pipeline.stages.begin(); st != pipeline.stages.end(); st++ ) {
 		stages.push_back( std::move( *st ) );
 	}
 
 	// add all the opcodes into the pipeline by maintaining the relative order
-	for(
-		std::vector< Opcode >::iterator ot = pipeline.opcodes.begin();
-		ot != pipeline.opcodes.end(); ot++
-	) {
+	for( std::vector< Opcode >::iterator ot = pipeline.opcodes.begin(); ot != pipeline.opcodes.end(); ot++ ) {
 		opcodes.push_back( *ot );
 	}
 
 	// update all the sets of the pipeline by adding the entries of the new stage
-	accessed_coordinates.insert(
-		pipeline.accessed_coordinates.begin(), pipeline.accessed_coordinates.end() );
+	accessed_coordinates.insert( pipeline.accessed_coordinates.begin(), pipeline.accessed_coordinates.end() );
 
 	input_vectors.insert( pipeline.input_vectors.begin(), pipeline.input_vectors.end() );
 
-	output_vectors.insert(
-		pipeline.output_vectors.begin(), pipeline.output_vectors.end() );
+	output_vectors.insert( pipeline.output_vectors.begin(), pipeline.output_vectors.end() );
 
-	vxm_input_vectors.insert(
-		pipeline.vxm_input_vectors.begin(), pipeline.vxm_input_vectors.end() );
+	vxm_input_vectors.insert( pipeline.vxm_input_vectors.begin(), pipeline.vxm_input_vectors.end() );
 
-	input_matrices.insert(
-		pipeline.input_matrices.begin(), pipeline.input_matrices.end() );
+	input_matrices.insert( pipeline.input_matrices.begin(), pipeline.input_matrices.end() );
 
-	out_of_place_output_coordinates.insert(
-		pipeline.out_of_place_output_coordinates.begin(),
-		pipeline.out_of_place_output_coordinates.end()
-	);
+	out_of_place_output_coordinates.insert( pipeline.out_of_place_output_coordinates.begin(), pipeline.out_of_place_output_coordinates.end() );
+
+	// for BLAS3
+	input_matrices_blas3.insert( pipeline.input_matrices_blas3.begin(), pipeline.input_matrices_blas3.end() );
+	mxm_input_matrices_left.insert( pipeline.mxm_input_matrices_left.begin(), pipeline.mxm_input_matrices_left.end() );
+	mxm_input_matrices_right.insert( pipeline.mxm_input_matrices_right.begin(), pipeline.mxm_input_matrices_right.end() );
+	output_matrices.insert( pipeline.output_matrices.begin(), pipeline.output_matrices.end() );
+
 #ifdef GRB_ALREADY_DENSE_OPTIMIZATION
-	already_dense_coordinates.insert( pipeline.already_dense_coordinates.begin(),
-		pipeline.already_dense_coordinates.end() );
+	already_dense_coordinates.insert( pipeline.already_dense_coordinates.begin(), pipeline.already_dense_coordinates.end() );
 #endif
-	dense_descr_coordinates.insert( pipeline.dense_descr_coordinates.begin(),
-		pipeline.dense_descr_coordinates.end() );
+	dense_descr_coordinates.insert( pipeline.dense_descr_coordinates.begin(), pipeline.dense_descr_coordinates.end() );
 
 	// clear all the sets of the pipeline to mark it as inactive
 	pipeline.contains_out_of_place_primitive = false;
@@ -652,6 +659,13 @@ void Pipeline::merge( Pipeline &pipeline ) {
 	pipeline.vxm_input_vectors.clear();
 	pipeline.input_matrices.clear();
 	pipeline.out_of_place_output_coordinates.clear();
+
+	// for BLAS3
+	pipeline.input_matrices_blas3.clear();
+	pipeline.mxm_input_matrices_left.clear();
+	pipeline.mxm_input_matrices_right.clear();
+	pipeline.output_matrices.clear();
+
 #ifdef GRB_ALREADY_DENSE_OPTIMIZATION
 	pipeline.already_dense_coordinates.clear();
 #endif
@@ -679,6 +693,14 @@ void Pipeline::clear() {
 	input_matrices.clear();
 	input_output_intersection.clear();
 	out_of_place_output_coordinates.clear();
+
+	// for BLAS3
+	input_matrices_blas3.clear();
+	mxm_input_matrices_left.clear();
+	mxm_input_matrices_right.clear();
+	output_matrices.clear();
+	input_output_intersection_blas3.clear();
+
 #ifdef GRB_ALREADY_DENSE_OPTIMIZATION
 	already_dense_coordinates.clear();
 #endif
@@ -693,11 +715,7 @@ void Pipeline::buildAlreadyDenseVectors() {
 	// "accessed_coordinates" is usually empty except for the output of an
 	// out-of-place operation that is always added in the set of
 	// "accessed_coordinates" regardless the dense descriptor
-	for(
-		std::set< Coordinates< nonblocking > * >::iterator it =
-			dense_descr_coordinates.begin();
-		it != dense_descr_coordinates.end(); ++it
-	) {
+	for( std::set< Coordinates< nonblocking > * >::iterator it = dense_descr_coordinates.begin(); it != dense_descr_coordinates.end(); ++it ) {
 		if( ( *it )->isDense() ) {
 			already_dense_coordinates.insert( *it );
 		} else {
@@ -705,11 +723,7 @@ void Pipeline::buildAlreadyDenseVectors() {
 		}
 	}
 
-	for(
-		std::set< Coordinates< nonblocking > * >::iterator it =
-			accessed_coordinates.begin();
-		it != accessed_coordinates.end(); ++it
-	) {
+	for( std::set< Coordinates< nonblocking > * >::iterator it = accessed_coordinates.begin(); it != accessed_coordinates.end(); ++it ) {
 		if( ( *it )->isDense() ) {
 			already_dense_coordinates.insert( *it );
 		} else {
@@ -721,9 +735,7 @@ void Pipeline::buildAlreadyDenseVectors() {
 
 grb::RC Pipeline::verifyDenseDescriptor() {
 #ifdef _NONBLOCKING_DEBUG
-	std::cout << "dense descriptor verification using "
-		<< dense_descr_coordinates.size()
-		<< " accessed vector(s) in the executed pipeline" << std::endl;
+	std::cout << "dense descriptor verification using " << dense_descr_coordinates.size() << " accessed vector(s) in the executed pipeline" << std::endl;
 #endif
 
 	// the coordinates for all vectors that are accessed in a primitive with the
@@ -741,12 +753,8 @@ grb::RC Pipeline::verifyDenseDescriptor() {
 	//
 	// this is a case that the dense descriptor may be used illegally, but the
 	// following code cannot catch it
-	for(
-		std::set< Coordinates<nonblocking > * >::iterator it =
-			dense_descr_coordinates.begin();
-		it != dense_descr_coordinates.end(); ++it
-	) {
-		if( !( *it )->isDense() ) {
+	for( std::set< Coordinates< nonblocking > * >::iterator it = dense_descr_coordinates.begin(); it != dense_descr_coordinates.end(); ++it ) {
+		if( ! ( *it )->isDense() ) {
 			return ILLEGAL;
 		}
 	}
@@ -772,29 +780,34 @@ grb::RC Pipeline::execution() {
 
 	// compute the intersection of the input and output vectors that should be
 	// subtracted from the number of accessed vectors
-	std::set_intersection(
-		input_vectors.begin(), input_vectors.end(),
-		output_vectors.begin(), output_vectors.end(),
-		std::back_inserter( input_output_intersection )
-	);
+	std::set_intersection( input_vectors.begin(), input_vectors.end(), output_vectors.begin(), output_vectors.end(), std::back_inserter( input_output_intersection ) );
 
-	const size_t num_accessed_vectors = input_vectors.size() +
-		output_vectors.size() - input_output_intersection.size();
+	const size_t num_accessed_vectors = input_vectors.size() + output_vectors.size() - input_output_intersection.size();
 
-	assert( num_accessed_vectors > 0 );
+	// assert( num_accessed_vectors > 0 );
+
+	// for BLAS3
+	// compute the intersection of the input and output matrices that should be
+	// subtracted from the number of accessed matrices
+	std::set_intersection( input_matrices_blas3.begin(), input_matrices_blas3.end(), output_matrices.begin(), output_matrices.end(), std::back_inserter( input_output_intersection_blas3 ) );
+	const size_t num_accessed_matrices = input_matrices_blas3.size() + output_matrices.size() - input_output_intersection_blas3.size();
+	// we check that containers are non-zero capacity.
+	bool num_accessed_vectors_matrices = ( num_accessed_vectors > 0 ) || ( num_accessed_matrices > 0 );
+	assert( num_accessed_vectors_matrices );
+
+	const size_t num_accessed_containers = num_accessed_matrices;
+	// finishes BLAS3
 
 	// make use of the analytic model to estimate a proper number of threads and a
 	// tile size
-	AnalyticModel am( size_of_data_type, containers_size, num_accessed_vectors );
+	AnalyticModel am( size_of_data_type, containers_size, num_accessed_containers );
 
 	const size_t nthreads = am.getNumThreads();
 	const size_t tile_size = am.getTileSize();
 	const size_t num_tiles = am.getNumTiles();
 
 #ifdef _NONBLOCKING_DEBUG
-	std::cout << std::endl << "Analytic Model: threads(" << nthreads
-		<< "), tile_size(" << tile_size << "), num_tiles(" << num_tiles
-		<< ")" << std::endl;
+	std::cout << std::endl << "Analytic Model: threads(" << nthreads << "), tile_size(" << tile_size << "), num_tiles(" << num_tiles << ")" << std::endl;
 #endif
 
 #ifdef GRB_ALREADY_DENSE_OPTIMIZATION
@@ -804,27 +817,18 @@ grb::RC Pipeline::execution() {
 #else
 	all_already_dense_vectors = true;
 
-	for(
-		std::set< internal::Coordinates< nonblocking > * >::iterator vt =
-			vbegin();
-		vt != vend(); ++vt
-	) {
-		if( (**vt).isDense() == false ) {
+	for( std::set< internal::Coordinates< nonblocking > * >::iterator vt = vbegin(); vt != vend(); ++vt ) {
+		if( ( **vt ).isDense() == false ) {
 			all_already_dense_vectors = false;
 		}
 	}
 #endif
 
 #ifdef _NONBLOCKING_DEBUG
-	std::cout << std::endl << "Pipeline execution: stages(" << stages.size()
-		<< "), accessed vectors(" << num_accessed_vectors
-		<< "), accessed coordinates(" << accessed_coordinates.size()
-		<< "), input vectors(" << input_vectors.size()
-		<< "), output vectors(" << output_vectors.size()
-		<< "), size of vectors(" << containers_size
-		<< "), threads(" << nthreads
-		<< "), tile size(" << tile_size
-		<< ")" << std::endl;
+	std::cout << std::endl
+			  << "Pipeline execution: stages(" << stages.size() << "), accessed vectors(" << num_accessed_vectors << "), accessed coordinates(" << accessed_coordinates.size() << "), input vectors("
+			  << input_vectors.size() << "), output vectors(" << output_vectors.size() << "), size of vectors(" << containers_size << "), threads(" << nthreads << "), tile size(" << tile_size << ")"
+			  << std::endl;
 #endif
 
 	lower_bound.resize( num_tiles );
@@ -833,52 +837,39 @@ grb::RC Pipeline::execution() {
 	// if all vectors are already dense and there is no out-of-place operation to
 	// make them sparse we avoid paying the overhead for updating the coordinates
 	// for the output vectors
-	if( all_already_dense_vectors && !contains_out_of_place_primitive ) {
+	if( all_already_dense_vectors && ! contains_out_of_place_primitive ) {
 		// each thread should receive an identifier during the execution of the loop
 
 #ifndef GRB_ALREADY_DENSE_OPTIMIZATION
-		for(
-			std::set< internal::Coordinates< nonblocking > * >::iterator vt = vbegin();
-			vt != vend(); ++vt
-		) {
-			if ( (**vt).size() != getContainersSize() ) {
+		for( std::set< internal::Coordinates< nonblocking > * >::iterator vt = vbegin(); vt != vend(); ++vt ) {
+			if( ( **vt ).size() != getContainersSize() ) {
 				continue;
 			}
 
-			(**vt).localCoordinatesInit( am );
+			( **vt ).localCoordinatesInit( am );
 		}
 #endif
 
-		#pragma omp parallel for schedule(dynamic) num_threads(nthreads)
+#pragma omp parallel for schedule( dynamic ) num_threads( nthreads )
 		for( size_t tile_id = 0; tile_id < num_tiles; ++tile_id ) {
 
 			// compute the lower and upper bounds
-			config::OMP::localRange(
-				lower_bound[ tile_id ], upper_bound[ tile_id ],
-				0, containers_size, tile_size, tile_id, num_tiles
-			);
+			config::OMP::localRange( lower_bound[ tile_id ], upper_bound[ tile_id ], 0, containers_size, tile_size, tile_id, num_tiles );
 			assert( lower_bound[ tile_id ] <= upper_bound[ tile_id ] );
 
 #ifndef GRB_ALREADY_DENSE_OPTIMIZATION
-			for(
-				std::set< internal::Coordinates< nonblocking > * >::iterator vt = vbegin();
-				vt != vend(); ++vt
-			) {
-				if ( (**vt).size() != getContainersSize() ) {
+			for( std::set< internal::Coordinates< nonblocking > * >::iterator vt = vbegin(); vt != vend(); ++vt ) {
+				if( ( **vt ).size() != getContainersSize() ) {
 					continue;
 				}
 
-				(**vt).asyncSubsetInit( lower_bound[ tile_id ], upper_bound[ tile_id ] );
+				( **vt ).asyncSubsetInit( lower_bound[ tile_id ], upper_bound[ tile_id ] );
 			}
 #endif
 
 			RC local_ret = SUCCESS;
-			for( std::vector< stage_type >::iterator pt = pbegin();
-				pt != pend(); ++pt
-			) {
-				local_ret = local_ret
-					? local_ret
-					: (*pt)( *this, lower_bound[ tile_id ], upper_bound[ tile_id ] );
+			for( std::vector< stage_type >::iterator pt = pbegin(); pt != pend(); ++pt ) {
+				local_ret = local_ret ? local_ret : ( *pt )( *this, lower_bound[ tile_id ], upper_bound[ tile_id ] );
 			}
 			if( local_ret != SUCCESS ) {
 				ret = local_ret;
@@ -888,73 +879,56 @@ grb::RC Pipeline::execution() {
 
 		bool initialized_coordinates = false;
 
-		for(
-			std::set< internal::Coordinates< nonblocking > * >::iterator vt = vbegin();
-			vt != vend(); ++vt
-		) {
+		for( std::set< internal::Coordinates< nonblocking > * >::iterator vt = vbegin(); vt != vend(); ++vt ) {
 
-			if ( (**vt).size() != getContainersSize() ) {
+			if( ( **vt ).size() != getContainersSize() ) {
 				continue;
 			}
 
 #ifdef GRB_ALREADY_DENSE_OPTIMIZATION
-			if( (**vt).isDense() && (
-				!contains_out_of_place_primitive || !outOfPlaceOutput( *vt )
-			) ) {
+			if( ( **vt ).isDense() && ( ! contains_out_of_place_primitive || ! outOfPlaceOutput( *vt ) ) ) {
 				continue;
 			}
 #endif
-			(**vt).localCoordinatesInit( am );
+			( **vt ).localCoordinatesInit( am );
 		}
 
-		#pragma omp parallel for schedule(dynamic) num_threads(nthreads)
+#pragma omp parallel for schedule( dynamic ) num_threads( nthreads )
 		for( size_t tile_id = 0; tile_id < num_tiles; ++tile_id ) {
 
-			config::OMP::localRange(
-				lower_bound[ tile_id ], upper_bound[ tile_id ],
-				0, containers_size, tile_size, tile_id, num_tiles
-			);
+			config::OMP::localRange( lower_bound[ tile_id ], upper_bound[ tile_id ], 0, containers_size, tile_size, tile_id, num_tiles );
 			assert( lower_bound[ tile_id ] <= upper_bound[ tile_id ] );
 
-			for(
-				std::set< internal::Coordinates< nonblocking > * >::iterator vt = vbegin();
-				vt != vend(); ++vt
-			) {
+			for( std::set< internal::Coordinates< nonblocking > * >::iterator vt = vbegin(); vt != vend(); ++vt ) {
 
 				// skip the initialization of coordinates of different size, which may
 				// happen only for the input of vxm_generic as it's read-only for the
 				// current design
 				// namely, no stage of the same pipeline can overwrite it
-				if ( (**vt).size() != getContainersSize() ) {
+				if( ( **vt ).size() != getContainersSize() ) {
 					continue;
 				}
 
 #ifdef GRB_ALREADY_DENSE_OPTIMIZATION
-				if( (**vt).isDense() && (
-					!contains_out_of_place_primitive || !outOfPlaceOutput( *vt )
-				) ) {
+				if( ( **vt ).isDense() && ( ! contains_out_of_place_primitive || ! outOfPlaceOutput( *vt ) ) ) {
 					continue;
 				}
 #endif
 
-				(**vt).asyncSubsetInit( lower_bound[ tile_id ], upper_bound[ tile_id ] );
+				( **vt ).asyncSubsetInit( lower_bound[ tile_id ], upper_bound[ tile_id ] );
 				initialized_coordinates = true;
 			}
 		}
 
-		// even if only one vector is sparse, we cannot reuse memory because the first
-		// two arguments that we pass to the lambda functions determine whether we
-		// reuse memory or not and they cannot vary for different vectors
-		#pragma omp parallel for schedule(dynamic) num_threads(nthreads)
+// even if only one vector is sparse, we cannot reuse memory because the first
+// two arguments that we pass to the lambda functions determine whether we
+// reuse memory or not and they cannot vary for different vectors
+#pragma omp parallel for schedule( dynamic ) num_threads( nthreads )
 		for( size_t tile_id = 0; tile_id < num_tiles; ++tile_id ) {
 
 			RC local_ret = SUCCESS;
-			for( std::vector< stage_type >::iterator pt = pbegin();
-				pt != pend(); ++pt
-			) {
-				local_ret = local_ret
-					? local_ret
-					: (*pt)( *this, lower_bound[ tile_id ], upper_bound[ tile_id ] );
+			for( std::vector< stage_type >::iterator pt = pbegin(); pt != pend(); ++pt ) {
+				local_ret = local_ret ? local_ret : ( *pt )( *this, lower_bound[ tile_id ], upper_bound[ tile_id ] );
 			}
 			if( local_ret != SUCCESS ) {
 				ret = local_ret;
@@ -968,56 +942,45 @@ grb::RC Pipeline::execution() {
 			// _buffer
 			// the computation for different vectors may run in parallel but is not
 			// preferred to avoid high overhead
-			for(
-				std::set< internal::Coordinates< nonblocking > * >::iterator vt = vbegin();
-				vt != vend(); ++vt
-			) {
+			for( std::set< internal::Coordinates< nonblocking > * >::iterator vt = vbegin(); vt != vend(); ++vt ) {
 
 				// skip as done for the initialization
-				if ( (**vt).size() != getContainersSize() ) {
+				if( ( **vt ).size() != getContainersSize() ) {
 					continue;
 				}
 
 #ifdef GRB_ALREADY_DENSE_OPTIMIZATION
 				// skip as done for the initialization
-				if( (**vt).isDense() && (
-					!contains_out_of_place_primitive || !outOfPlaceOutput( *vt )
-				) ) {
+				if( ( **vt ).isDense() && ( ! contains_out_of_place_primitive || ! outOfPlaceOutput( *vt ) ) ) {
 					continue;
 				}
 #endif
 
-				if( (**vt).newNonZeroes() ) {
+				if( ( **vt ).newNonZeroes() ) {
 					new_nnz = true;
-					(**vt).prefixSumComputation();
+					( **vt ).prefixSumComputation();
 				}
 			}
 
 			if( new_nnz ) {
-				#pragma omp parallel for schedule(dynamic) num_threads(nthreads)
+#pragma omp parallel for schedule( dynamic ) num_threads( nthreads )
 				for( size_t tile_id = 0; tile_id < num_tiles; ++tile_id ) {
-					for(
-						std::set< internal::Coordinates< nonblocking > * >::iterator vt =
-							vbegin();
-						vt != vend(); ++vt
-					) {
+					for( std::set< internal::Coordinates< nonblocking > * >::iterator vt = vbegin(); vt != vend(); ++vt ) {
 
 						// skip as done for the initialization
-						if ( (**vt).size() != getContainersSize() ) {
+						if( ( **vt ).size() != getContainersSize() ) {
 							continue;
 						}
 
 #ifdef GRB_ALREADY_DENSE_OPTIMIZATION
 						// skip as done for the initialization
-						if( (**vt).isDense() && (
-							!contains_out_of_place_primitive || !outOfPlaceOutput( *vt )
-						) ) {
+						if( ( **vt ).isDense() && ( ! contains_out_of_place_primitive || ! outOfPlaceOutput( *vt ) ) ) {
 							continue;
 						}
 #endif
 
-						if( (**vt).newNonZeroes() ) {
-							(**vt).joinSubset( lower_bound[ tile_id ], upper_bound[ tile_id ] );
+						if( ( **vt ).newNonZeroes() ) {
+							( **vt ).joinSubset( lower_bound[ tile_id ], upper_bound[ tile_id ] );
 						}
 					}
 				}
@@ -1031,7 +994,7 @@ grb::RC Pipeline::execution() {
 #ifdef _NONBLOCKING_DEBUG
 	if( ret == ILLEGAL ) {
 		std::cerr << "error in pipeline execution: the dense descriptor was "
-			<< "illegally used" << std::endl;
+				  << "illegally used" << std::endl;
 	}
 #endif
 
@@ -1039,4 +1002,3 @@ grb::RC Pipeline::execution() {
 
 	return ret;
 }
-
