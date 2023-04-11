@@ -61,7 +61,6 @@ class input {
 		bool direct = true;
 		size_t rep_outer = grb::config::BENCHMARKING::outer();
 		BaseScalarType tol = TOL;
-		BaseScalarType max_residual_norm = TOL;
 		size_t gmres_restart = 10;
 };
 
@@ -72,7 +71,6 @@ struct output {
 	size_t iterations_arnoldi;
 	size_t iterations_gmres;
 	double residual;
-	double residual_relative;
 	grb::utils::TimerResults times;
 	double time_gmres;
 	double time_preamble;
@@ -385,9 +383,9 @@ void grbProgram( const struct input &data_in, struct output &out ) {
 			rc = rc ? rc : grb::algorithms::gmres(
 				x, A, b,
 				data_in.gmres_restart, data_in.max_iterations,
-				data_in.max_residual_norm, data_in.tol,
+				data_in.tol,
 				out.iterations, out.iterations_gmres, out.iterations_arnoldi,
-				out.residual, out.residual_relative,
+				out.residual,
 				Q, Hmatrix,
 				temp, temp3,
 				ring, minus, divide, my_sqrt
@@ -396,9 +394,9 @@ void grbProgram( const struct input &data_in, struct output &out ) {
 			rc = rc ? rc : grb::algorithms::preconditioned_gmres(
 				x, P, A, b,
 				data_in.gmres_restart, data_in.max_iterations,
-				data_in.max_residual_norm, data_in.tol,
+				data_in.tol,
 				out.iterations, out.iterations_gmres, out.iterations_arnoldi,
-				out.residual, out.residual_relative,
+				out.residual,
 				Q, Hmatrix,
 				temp, temp3,
 				ring, minus, divide, my_sqrt
@@ -410,7 +408,6 @@ void grbProgram( const struct input &data_in, struct output &out ) {
 
 		if( i_inner + 1 > data_in.rep ) {
 			std::cout << "Residual norm = " << out.residual << " \n";
-			std::cout << "Residual norm (relative) = " << out.residual_relative << " \n";
 			std::cout << "IO time = " << out.time_io << "\n";
 			std::cout << "GMRES iterations = " << out.iterations_gmres << "\n";
 			std::cout << "Arnoldi iterations = " << out.iterations_arnoldi << "\n";
@@ -446,7 +443,6 @@ void printhelp( char *progname ) {
 	std::cout << "                              can only be used when --matA-fname is present\n";
 	std::cout << "     --rhs-fname  STR         RHS vector filename, where vector elements are stored line-by-line\n";
 	std::cout << "     --tol  DBL               convergence tolerance within GMRES, default 1.e-9\n";
-	std::cout << "     --max-residual-norm  DBL max residual norm, default 1.e-9\n";
 	std::cout << "     --no-preconditioning     disable pre-conditioning\n";
 	std::cout << "     --no-direct              disable direct addressing\n";
 	std::cout << "Examples\n";
@@ -558,15 +554,6 @@ bool parse_arguments(
 			}
 #ifdef DEBUG
 			std::cout << " set: tol = " << in.tol << "\n";
-#endif
-		} else if( std::string( argv[ i ] ) == std::string( "--max-residual-norm" ) ) {
-			std::stringstream s( argv[ ++i ] );
-			if( !( s >> in.max_residual_norm ) ){
-				std::cerr << "error parsing: " << argv[ i ] << "\n";
-				return false;
-			}
-#ifdef DEBUG
-			std::cout << " set: max_residual_norm = " << in.max_residual_norm << "\n";
 #endif
 		} else if( std::string( argv[ i ] ) == std::string( "--no-preconditioning" ) ) {
 			in.no_preconditioning = true;

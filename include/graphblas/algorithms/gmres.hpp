@@ -360,7 +360,7 @@ namespace grb {
 				std::vector< NonzeroType > &Hmatrix,
 				std::vector< grb::Vector< NonzeroType > > &Q,
 				const size_t n_restart,
-				ResidualType tol,
+				const ResidualType tol,
 				size_t &iterations,
 				grb::Vector< NonzeroType > &temp,
 				const grb::Matrix< NonzeroType > &M = grb::Matrix< NonzeroType >( 0, 0 ),
@@ -534,13 +534,11 @@ namespace grb {
 				const grb::Vector< NonzeroType > &b,
 				const size_t n_restart,
 				const size_t max_iterations,
-				const ResidualType max_residual_norm,
 				const ResidualType tol,
 				size_t &iterations,
 				size_t &iterations_gmres,
 				size_t &iterations_arnoldi,
 				ResidualType &residual,
-				ResidualType &residual_relative,
 				std::vector< grb::Vector< NonzeroType > > &Q,
 				std::vector< NonzeroType > &Hmatrix,
 				grb::Vector< NonzeroType > &temp,
@@ -585,11 +583,6 @@ namespace grb {
 					if( n_restart == 0 && max_iterations > 0 ) {
 						return ILLEGAL;
 					}
-					if( max_residual_norm <= zero ) {
-						std::cerr << "Error: max residual norm to GMRES must be strictly "
-							<< "positive\n";
-						return ILLEGAL;
-					}
 					if( tol <= zero ) {
 						std::cerr << "Error: tolerance input to GMRES must be strictly positive\n";
 						return ILLEGAL;
@@ -631,7 +624,7 @@ namespace grb {
 
 				// no side effects: set initial values to outputs only after error checking
 				iterations = iterations_gmres = iterations_arnoldi = 0;
-				residual = residual_relative = 0;
+				residual = 0;
 
 				// get RHS vector norm
 				ResidualType bnorm = zero;
@@ -659,8 +652,7 @@ namespace grb {
 					rc = rc ? rc : grb::algorithms::norm2< descr_dense >( residual, b, ring, sqrtX );
 					assert( rc == grb::SUCCESS );
 
-					residual_relative = residual / bnorm;
-					if( residual_relative < max_residual_norm ) {
+					if( residual <= tol * bnorm ) {
 						return rc;
 					} else {
 						return FAILED;
@@ -747,14 +739,11 @@ namespace grb {
 					rc = rc ? rc : grb::algorithms::norm2< descr_dense >( residual, temp, ring, sqrtX );
 					assert( rc == grb::SUCCESS );
 
-					residual_relative = residual / bnorm;
-
 #ifdef DEBUG
 					std::cout << "Residual norm = " << residual << " \n";
-					std::cout << "Residual norm (relative) = " << residual_relative << " \n";
 #endif
 
-					if( residual_relative < max_residual_norm ) {
+					if( residual <= tol * bnorm ) {
 #ifdef DEBUG
 						std::cout << "Convergence reached\n";
 #endif
@@ -762,7 +751,7 @@ namespace grb {
 					}
 				} // gmres iterations
 
-				if( rc == SUCCESS && residual_relative > max_residual_norm ) {
+				if( rc == SUCCESS && residual > tol  * bnorm ) {
 					return FAILED;
 				} else {
 					return rc;
@@ -814,13 +803,10 @@ namespace grb {
 		 * @param[in]     n_restart      The number of GMRES restart iterations.
 		 * @param[in]     tol            The requested relative tolerance.
 		 * @param[in]	  no_preconditioning   Diables preconditioner.
-		 * @param[in]	  max_residual_norm    Iterations stop after
-		 *                                     max_residual_norm iterations.
 		 * @param[out]    iterations           Total number of interactions.
 		 * @param[out]    iterations_gmres     Number of GMRES interactions performed.
 		 * @param[out]    iterations_arnoldi   Number of Arnoldi interactions performed.
 		 * @param[out]    residual             Residual norm.
-		 * @param[out]    residual_relative    Relative residual norm.
 		 * @param[in,out] temp           A temporary vector of the same size as \a x.
 		 * @param[out]    Q              std::vector of length \a n_restart + 1.
 		 *                               Each element of Q is grb::Vector of size
@@ -883,13 +869,11 @@ namespace grb {
 			const grb::Vector< NonzeroType > &b,
 			const size_t n_restart,
 			const size_t max_iterations,
-			const ResidualType max_residual_norm,
 			const ResidualType tol,
 			size_t &iterations,
 			size_t &iterations_gmres,
 			size_t &iterations_arnoldi,
 			ResidualType &residual,
-			ResidualType &residual_relative,
 			std::vector< grb::Vector< NonzeroType > > &Q,
 			std::vector< NonzeroType > &Hmatrix,
 			grb::Vector< NonzeroType > &temp,
@@ -903,9 +887,9 @@ namespace grb {
 			return internal::gmres_dispatch< descr, true >(
 					x, A, b,
 					n_restart, max_iterations,
-					max_residual_norm, tol,
+					tol,
 					iterations, iterations_gmres, iterations_arnoldi,
-					residual, residual_relative,
+					residual,
 					Q, Hmatrix, temp, temp3,
 					dummy,
 					ring, minus, divide, sqrtX
@@ -931,13 +915,11 @@ namespace grb {
 			const grb::Vector< NonzeroType > &b,
 			const size_t n_restart,
 			const size_t max_iterations,
-			const ResidualType max_residual_norm,
 			const ResidualType tol,
 			size_t &iterations,
 			size_t &iterations_gmres,
 			size_t &iterations_arnoldi,
 			ResidualType &residual,
-			ResidualType &residual_relative,
 			std::vector< grb::Vector< NonzeroType > > &Q,
 			std::vector< NonzeroType > &Hmatrix,
 			grb::Vector< NonzeroType > &temp,
@@ -950,9 +932,9 @@ namespace grb {
 			return internal::gmres_dispatch< descr, false >(
 					x, A, b,
 					n_restart, max_iterations,
-					max_residual_norm, tol,
+					tol,
 					iterations, iterations_gmres, iterations_arnoldi,
-					residual, residual_relative,
+					residual,
 					Q, Hmatrix, temp, temp3,
 					M,
 					ring, minus, divide, sqrtX
