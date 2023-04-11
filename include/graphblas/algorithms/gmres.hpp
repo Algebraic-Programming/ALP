@@ -66,16 +66,27 @@ namespace grb {
 		template<
 			typename NonzeroType,
 			typename DimensionType,
-			typename ResidualType
+			typename ResidualType,
+			class Ring = Semiring<
+				grb::operators::add< NonzeroType >, grb::operators::mul< NonzeroType >,
+				grb::identities::zero, grb::identities::one
+			>,
+			class Minus = operators::subtract< NonzeroType >,
+			class Divide = operators::divide< NonzeroType >
 		>
-		RC hessolve(
+		grb::RC hessolve(
 			std::vector< NonzeroType > &H,
 			const DimensionType n,
 			const DimensionType &kspspacesize,
 			const ResidualType tol,
 			std::vector< NonzeroType > &rhs,
+			const Ring &ring = Ring(),
+			const Minus &minus = Minus(),
+			const Divide &divide = Divide(),
 			const std::function< ResidualType( ResidualType ) > &sqrtX = std_sqrt< ResidualType, ResidualType >
 		) {
+			RC rc = grb::SUCCESS;
+
 			if( n < 1 ) {
 				return ILLEGAL;
 			}
@@ -112,52 +123,89 @@ namespace grb {
 
 			// for i in range(n):
 			for( size_t i = 0; i < n_ksp; ++i ) {
-				NonzeroType a, b, c, s;
+				// Givens rotation parameters
+				NonzeroType c, s;
 
-				// a, b = H[ i:i+2, i ]
-				a = H[ ( i + 1 ) * n + i ];
-				b = H[ ( i + 1 ) * n + i + 1 ];
+				// this scope is is using real ring
+				{
+					Semiring<
+						grb::operators::add< ResidualType >, grb::operators::mul< ResidualType >,
+						grb::identities::zero, grb::identities::one
+					> ring_rtype;
 
-				// tmp1=sqrt(norm(a)**2+norm(b)**2)
-				ResidualType a_mod = grb::utils::is_complex< NonzeroType >::modulus( a );
-				ResidualType b_mod = grb::utils::is_complex< NonzeroType >::modulus( b );
-				NonzeroType b_conj = grb::utils::is_complex< NonzeroType >::conjugate( b );
-				NonzeroType tmp1 = sqrtX( a_mod * a_mod + b_mod * b_mod );
-				c = a_mod / tmp1 ;
-				if( a_mod != 0 ) {
-					// s = a / std::norm(a) * std::conj(b) / tmp1;
-					s = a / a_mod *	b_conj / tmp1;
+					// a, b = H[ i:i+2, i ]
+					NonzeroType a = H[ ( i + 1 ) * n + i ];
+					NonzeroType b = H[ ( i + 1 ) * n + i + 1 ];
+
+					ResidualType a_mod = grb::utils::is_complex< NonzeroType >::modulus( a );
+					ResidualType b_mod = grb::utils::is_complex< NonzeroType >::modulus( b );
+					NonzeroType b_conj = grb::utils::is_complex< NonzeroType >::conjugate( b );
+					ResidualType a_mod2 = a_mod;
+					ResidualType b_mod2 = b_mod;
+					rc = rc ? rc : grb::foldl( a_mod2, a_mod, ring_rtype.getMultiplicativeOperator() );
+					rc = rc ? rc : grb::foldl( b_mod2, b_mod, ring_rtype.getMultiplicativeOperator() );
+
+					// tmp1=sqrt(norm(a)**2+norm(b)**2)
+					ResidualType tmp1 = a_mod2;
+					rc = rc ? rc : grb::foldl( tmp1, b_mod2, ring_rtype.getAdditiveOperator() );
+					tmp1 = sqrtX( tmp1 );
+
+					//c = a_mod / tmp1 ;
+					c = a_mod;
+					rc = rc ? rc : grb::foldl( c, tmp1, divide );
+					if( a_mod != 0 ) {
+						// s = a / std::norm(a) * std::conj(b) / tmp1;
+						s = a;
+						rc = rc ? rc : grb::foldl( s, a_mod, divide );
+						rc = rc ? rc : grb::foldl( s, b_conj, ring.getMultiplicativeOperator() );
+						rc = rc ? rc : grb::foldl( s, tmp1, divide );
+					}
+					else {
+						// s = std::conj(b) / tmp1;
+						s = b_conj;
+						rc = rc ? rc : grb::foldl( s, tmp1, divide );
+					}
 				}
-				else {
-					// s = std::conj(b) / tmp1;
-					s = b_conj / tmp1;
-				}
 
-				NonzeroType tmp2;
 				// for k in range(i,n):
 				for( size_t k = i; k < n_ksp; ++k ) {
 					// tmp2 = s * H[ i+1, k ]
-					tmp2 = s * H[ ( k + 1 ) * n + i + 1 ];
+					NonzeroType tmp2 = H[ ( k + 1 ) * n + i + 1 ];
+					rc = rc ? rc : grb::foldl( tmp2, s, ring.getMultiplicativeOperator() );
 
 					// H[i+1,k] = -conjugate(s) * H[i,k] + c * H[i+1,k]
-					H[ ( k + 1 ) * n + i + 1 ] = c * H[ ( k + 1 ) * n + i + 1 ] -
-						grb::utils::is_complex< NonzeroType >::conjugate( s ) *
-						H[ ( k + 1 ) * n + i ];
+					NonzeroType tmp4 = H[ ( k + 1 ) * n + i ];
+					rc = rc ? rc : grb::foldl( H[ ( k + 1 ) * n + i + 1 ], c, ring.getMultiplicativeOperator() );
+					rc = rc ? rc : grb::foldl(
+						tmp4,
+						grb::utils::is_complex< NonzeroType >::conjugate( s ),
+						ring.getMultiplicativeOperator()
+					);
+					rc = rc ? rc : grb::foldl( H[ ( k + 1 ) * n + i + 1 ], tmp4, minus );
 
 					// H[i,k]   = c * H[i,k] + tmp2
-					H[ ( k + 1 ) * n + i ] = c * H[ ( k + 1 ) * n + i ] + tmp2;
+					rc = rc ? rc : grb::foldl( H[ ( k + 1 ) * n + i ], c, ring.getMultiplicativeOperator() );
+					rc = rc ? rc : grb::foldl( H[ ( k + 1 ) * n + i ], tmp2, ring.getAdditiveOperator() );
 				}
 
 				// tmp3 = rhs[i]
-				NonzeroType tmp3;
-				tmp3 = rhs[ i ];
+				NonzeroType tmp3 = rhs[ i ];
+				NonzeroType tmp5 = rhs[ i + 1 ];
 
 				// rhs[i] =  c * tmp3 + s * rhs[i+1]
-				rhs[ i ]  =  c * tmp3 + s * rhs[ i + 1 ];
+				rc = rc ? rc : grb::foldl( rhs[ i ], c, ring.getMultiplicativeOperator() );
+				rc = rc ? rc : grb::foldl( tmp5, s, ring.getMultiplicativeOperator() );
+				rc = rc ? rc : grb::foldl( rhs[ i ], tmp5, ring.getAdditiveOperator() );
+
 
 				// rhs[i+1]  =  -conjugate(s) * tmp3 + c * rhs[i+1]
-				rhs[ i + 1 ] = c * rhs[ i + 1 ] -
-					grb::utils::is_complex< NonzeroType >::conjugate( s ) * tmp3;
+				rc = rc ? rc : grb::foldl( rhs[ i + 1 ], c, ring.getMultiplicativeOperator() );
+				rc = rc ? rc : grb::foldl(
+					tmp3,
+					grb::utils::is_complex< NonzeroType >::conjugate( s ),
+					ring.getMultiplicativeOperator()
+				);
+				rc = rc ? rc : grb::foldl( rhs[ i + 1 ], tmp3, minus );
 			}
 
 #ifdef _DEBUG
@@ -174,13 +222,15 @@ namespace grb {
 				// for j in range(i+1,n):
 				for( size_t j = i + 1; j < n_ksp; ++j ) {
 					// rhs[i]=rhs[i]-rhs[j]*H[i,j]
-					rhs[ i ] = rhs[ i ] - rhs[ j ] * H[ ( j + 1 ) * n + i ];
+					NonzeroType tmp6 = rhs[ j ];
+					rc = rc ? rc : grb::foldl( tmp6, H[ ( j + 1 ) * n + i ], ring.getMultiplicativeOperator() );
+					rc = rc ? rc : grb::foldl( rhs[ i ], tmp6, minus );
 				}
 				// rhs[i]=rhs[i]/H[i,i]
 				if( grb::utils::is_complex< NonzeroType >::modulus( H[ ( i + 1 ) * n + i ] ) < tol ) {
 					std::cerr << "Warning: small number in algorithms::hessolve\n";
 				}
-				rhs[ i ] = rhs[ i ] / H[ ( i + 1 ) * n + i ];
+				rc = rc ? rc : grb::foldl( rhs[ i ], H[ ( i + 1 ) * n + i ], divide );
 			}
 
 			// H = rhs
@@ -189,7 +239,7 @@ namespace grb {
 			}
 
 			// done
-			return SUCCESS;
+			return rc;
 		}
 
 		namespace internal {
@@ -666,7 +716,11 @@ namespace grb {
 
 					iterations_arnoldi += kspspacesize;
 
-					rc = hessolve( Hmatrix, n_restart + 1, kspspacesize, tol, temp3 );
+					rc = rc ? rc : hessolve( Hmatrix, n_restart + 1, kspspacesize, tol, temp3 );
+					if( rc != grb::SUCCESS ) {
+						std::cerr << "Error: hessolve failed.\n";
+						return rc;
+					}
 
 					// update x
 					for( size_t i = 0; rc == grb::SUCCESS && i < kspspacesize; ++i ) {
