@@ -95,17 +95,6 @@ std::complex< BaseScalarType > random_value< std::complex< BaseScalarType > >() 
 BaseScalarType sqrt_generic( BaseScalarType x ) {
 	//return std::sqrt( x );
 	return( pow( x, 0.5 ) );
-
-	// //test Quake sqrt
-	// double y = x;
-	// double x2 = y * 0.5;
-	// size_t * ip = reinterpret_cast< size_t * >( &y );
-	// *ip = 0x5fe6eb50c7b537a9 - ( *ip / 2 );
-	// y = y * ( 1.5 - x2 * y * y  );   // 1st iteration
-	// y = y * ( 1.5 - x2 * y * y  );   // 2nd iteration
-	// y = y * ( 1.5 - x2 * y * y  );   // 3nd iteration
-	// y = y * ( 1.5 - x2 * y * y  );   // 4nd iteration
-	// return 1./y;
 }
 
 /**
