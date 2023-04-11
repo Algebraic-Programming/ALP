@@ -513,11 +513,7 @@ namespace grb {
 
 				iterations += k;
 
-				if( ret != SUCCESS ) {
-					return FAILED;
-				} else {
-					return SUCCESS;
-				}
+				return ret;
 			}
 
 			template<
@@ -661,10 +657,8 @@ namespace grb {
 				// guard against a trivial call
 				if( max_iterations == 0 ) {
 					rc = rc ? rc : grb::algorithms::norm2< descr_dense >( residual, b, ring, sqrtX );
-					if( rc != grb::SUCCESS ) {
-						std::cerr << "Error: residual norm not calculated properly.\n";
-						return rc;
-					}
+					assert( rc == grb::SUCCESS );
+
 					residual_relative = residual / bnorm;
 					if( residual_relative < max_residual_norm ) {
 						return rc;
@@ -709,28 +703,22 @@ namespace grb {
 							<< kspspacesize << "  \n";
 					}
 #endif
-					if( rc != grb::SUCCESS ) {
-						std::cerr << "Error: gmres_step failed.\n";
-						return rc;
-					}
+					assert( rc == grb::SUCCESS );
 
 					iterations_arnoldi += kspspacesize;
 
-					rc = rc ? rc : hessolve( Hmatrix, n_restart + 1, kspspacesize, tol, temp3 );
-					if( rc != grb::SUCCESS ) {
-						std::cerr << "Error: hessolve failed.\n";
-						return rc;
-					}
+					rc = rc ? rc : hessolve(
+						Hmatrix, n_restart + 1, kspspacesize, tol, temp3,
+						ring, minus, divide, sqrtX
+					);
+					assert( rc == grb::SUCCESS );
+
 
 					// update x
 					for( size_t i = 0; rc == grb::SUCCESS && i < kspspacesize; ++i ) {
 						rc = rc ? rc : grb::eWiseMul( x, Hmatrix[ i ], Q[ i ], ring );
-#ifdef DEBUG
-						if( rc != grb::SUCCESS ) {
-							std::cout << "grb::eWiseMul( x, Hmatrix[ " << i << " ], Q [ " << i
-								<< " ], ring ); failed\n";
-						}
-#endif
+						assert( rc == grb::SUCCESS );
+
 					}
 
 #ifdef DEBUG
@@ -750,20 +738,15 @@ namespace grb {
 						std::cout << "\n";
 					}
 #endif
-					if( rc != grb::SUCCESS ) {
-						std::cerr << "Error: update solution vector failed.\n";
-						return rc;
-					}
+
 
 					// calculate residual
 					rc = grb::set( temp, zero );
 					rc = rc ? rc : grb::mxv( temp, A, x, ring );
 					rc = rc ? rc : grb::foldl( temp, b, minus );
 					rc = rc ? rc : grb::algorithms::norm2< descr_dense >( residual, temp, ring, sqrtX );
-					if( rc != grb::SUCCESS ) {
-						std::cerr << "Error: residual norm not calculated properly.\n";
-						return rc;
-					}
+					assert( rc == grb::SUCCESS );
+
 					residual_relative = residual / bnorm;
 
 #ifdef DEBUG
