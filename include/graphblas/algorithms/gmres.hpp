@@ -40,12 +40,18 @@ namespace grb {
 	namespace algorithms {
 
 		/**
-		 * Solves the least linear square problem defined by the vector
-		 * \f$ H[1:n] \f$, which is to solve for \f$ x \f$ the following equation:
+		 * Solves the least linear square problem of size \a n - 1,
+		 * defined by the equation \f$ A x =  b, \f$ where the \f$ A \f$ is an
+		 * upper Hessenberg matrix of size \a n x \a kspspacesize,
+		 * and the vector \f$ b \f$, of length \a n,
+		 * has only the first element nonzero. The solution vector \f$ x \f$ is
+		 * of length \a kspspacesize.
+		 * The algorithm first performs Givens rotations in order to reduce
+		 * the upper Hessenberg matrix to upper rectangular form. After that, using
+		 * the back-substitution, the final solution \f$ x \f$ is calculated.
+		 * The matrix \f$ A \f$ and the vector \f$ b \f$ are stored in \a H,
+		 * and the output vector \f$ x \f$ is copied into \a vecx.
 		 *
-		 * \f$ H[1:n] x =  H[ 0 ], \f$
-		 *
-		 * using Givens rotations and back-substitution.
 		 *
 		 * @tparam NonzeroType  The input/output vector/matrix nonzero type
 		 * @tparam ResidualType The type of the residual norm
@@ -57,13 +63,25 @@ namespace grb {
 		 *
 		 *
 		 * @param[in,out] H              std::vector of length \a n x \a n
-		 *                               used to store temporary data.
-		 * @param[in,out] rhs            std::vector of length \a n
-		 *                               used to store temporary data.
-		 * The results are stored in H[ 0 ], which is used to update the GMRES
-		 * solution vector.
+		 *                               used to store the vector \f$ b \f$
+		 *                               (first \a n elements of \a H ) and
+		 *                               the matrix \f$ A \f$ ( remaining elements
+		 *                               of \a H ) in a row-major orientation.
+		 *                               On input only fist \a kspspacesize
+		 *                               columns of \f$ A \f$ have meaning.
+		 *                               On output \a H is overwritten.
+		 * @param[out]    vecx            std::vector of length \a n
+		 *                               stores the solution \f$ x \f$.
+		 *                               On input \a vecx is ignored.
+		 *                               On output only fist \a kspspacesize
+		 *                               elements have meaning.
+		 *                               \a vecx is used to update the GMRES
+		 *                               solution vector.
 		 *
-		 * @param[in] n                  dimension of \a H and \a rhs, and
+		 * \note The algorithm can do an inplace update of vector  \f$ b \f$ without
+		 * the need to copy soluition into \a vecx.
+		 *
+		 * @param[in] n                  dimension of \a H and \a vecx, and
 		 *                               maximal size of Kyrilov subspace.
 		 * @param[in] kspspacesize       size of Kyrilov subspace.
 		 *
@@ -92,9 +110,9 @@ namespace grb {
 		 *                         square problem successfully.
 		 * @returns #grb::ILLEGAL  When the size of \a H smaller than \f$ n \times n \f$
 		 * @returns #grb::ILLEGAL  When \a kspspacesize is not in the interval
-		 *                         \f$ \left[  1, n  \right] \f$
+		 *                         \f$ \left[  1, n  \right> \f$
 		 * @returns #grb::ILLEGAL  If \a tol is not strictly positive.
-		 * @returns #grb::MISMATCH When \rhs size in is smaller or equal to \f$ n \f$.
+		 * @returns #grb::MISMATCH When \a vecx size in is smaller or equal to \f$ n \f$.
 		 * @returns #grb::PANIC    If an unrecoverable error has been encountered. The
 		 *                         output as well as the state of ALP/GraphBLAS is
 		 *                         undefined.
@@ -135,7 +153,7 @@ namespace grb {
 			const DimensionType n,
 			const DimensionType &kspspacesize,
 			const ResidualType tol,
-			std::vector< NonzeroType > &rhs,
+			std::vector< NonzeroType > &vecx,
 			const Ring &ring = Ring(),
 			const Minus &minus = Minus(),
 			const Divide &divide = Divide(),
@@ -156,23 +174,23 @@ namespace grb {
 			if( kspspacesize < 1 ) {
 				return ILLEGAL;
 			}
-			if( kspspacesize > n ) {
+			if( kspspacesize >= n ) {
 				return ILLEGAL;
 			}
 			if( tol <= 0 ) {
 				return ILLEGAL;
 			}
-			if( rhs.size() <= n ) {
-				std::cerr << "Error: algorithms::hessolve requires a given workspace rhs "
+			if( vecx.size() <= n ) {
+				std::cerr << "Error: algorithms::hessolve requires a given workspace vecx "
 					<< "that has a number of entries greater-than or equal-to the given "
-					<< "parameter n. However, " << rhs.size() << " is strictly smaller-than "
+					<< "parameter n. However, " << vecx.size() << " is strictly smaller-than "
 					<< "or equal-to " << n << ".\n";
 				return MISMATCH;
 			}
 
-			// rhs = H
+			// vecx = H
 			for( size_t i = 0; i < n; ++i ) {
-				rhs[ i ] = H[ i ];
+				vecx[ i ] = H[ i ];
 			}
 
 			size_t n_ksp = std::min( kspspacesize, n - 1 );
@@ -244,30 +262,30 @@ namespace grb {
 					rc = rc ? rc : grb::foldl( H[ ( k + 1 ) * n + i ], tmp2, ring.getAdditiveOperator() );
 				}
 
-				// tmp3 = rhs[i]
-				NonzeroType tmp3 = rhs[ i ];
-				NonzeroType tmp5 = rhs[ i + 1 ];
+				// tmp3 = vecx[i]
+				NonzeroType tmp3 = vecx[ i ];
+				NonzeroType tmp5 = vecx[ i + 1 ];
 
-				// rhs[i] =  c * tmp3 + s * rhs[i+1]
-				rc = rc ? rc : grb::foldl( rhs[ i ], c, ring.getMultiplicativeOperator() );
+				// vecx[i] =  c * tmp3 + s * vecx[i+1]
+				rc = rc ? rc : grb::foldl( vecx[ i ], c, ring.getMultiplicativeOperator() );
 				rc = rc ? rc : grb::foldl( tmp5, s, ring.getMultiplicativeOperator() );
-				rc = rc ? rc : grb::foldl( rhs[ i ], tmp5, ring.getAdditiveOperator() );
+				rc = rc ? rc : grb::foldl( vecx[ i ], tmp5, ring.getAdditiveOperator() );
 
 
-				// rhs[i+1]  =  -conjugate(s) * tmp3 + c * rhs[i+1]
-				rc = rc ? rc : grb::foldl( rhs[ i + 1 ], c, ring.getMultiplicativeOperator() );
+				// vecx[i+1]  =  -conjugate(s) * tmp3 + c * vecx[i+1]
+				rc = rc ? rc : grb::foldl( vecx[ i + 1 ], c, ring.getMultiplicativeOperator() );
 				rc = rc ? rc : grb::foldl(
 					tmp3,
 					grb::utils::is_complex< NonzeroType >::conjugate( s ),
 					ring.getMultiplicativeOperator()
 				);
-				rc = rc ? rc : grb::foldl( rhs[ i + 1 ], tmp3, minus );
+				rc = rc ? rc : grb::foldl( vecx[ i + 1 ], tmp3, minus );
 			}
 
 #ifdef _DEBUG
-			std::cout << "hessolve rhs vector before inversion, vector = ";
+			std::cout << "hessolve vecx vector before back-substitution, vector = ";
 			for( size_t k = 0; k < n_ksp; ++k ) {
-				std::cout << rhs[ k ] << " ";
+				std::cout << vecx[ k ] << " ";
 			}
 			std::cout << "\n";
 #endif
@@ -277,21 +295,21 @@ namespace grb {
 				size_t i = n_ksp - 1 - m;
 				// for j in range(i+1,n):
 				for( size_t j = i + 1; j < n_ksp; ++j ) {
-					// rhs[i]=rhs[i]-rhs[j]*H[i,j]
-					NonzeroType tmp6 = rhs[ j ];
+					// vecx[i]=vecx[i]-vecx[j]*H[i,j]
+					NonzeroType tmp6 = vecx[ j ];
 					rc = rc ? rc : grb::foldl( tmp6, H[ ( j + 1 ) * n + i ], ring.getMultiplicativeOperator() );
-					rc = rc ? rc : grb::foldl( rhs[ i ], tmp6, minus );
+					rc = rc ? rc : grb::foldl( vecx[ i ], tmp6, minus );
 				}
-				// rhs[i]=rhs[i]/H[i,i]
+				// vecx[i]=vecx[i]/H[i,i]
 				if( grb::utils::is_complex< NonzeroType >::modulus( H[ ( i + 1 ) * n + i ] ) < tol ) {
 					std::cerr << "Warning: small number in algorithms::hessolve\n";
 				}
-				rc = rc ? rc : grb::foldl( rhs[ i ], H[ ( i + 1 ) * n + i ], divide );
+				rc = rc ? rc : grb::foldl( vecx[ i ], H[ ( i + 1 ) * n + i ], divide );
 			}
 
-			// H = rhs
+			// H = vecx
 			for( size_t i = 0; i < n; ++i ) {
-				H[ i ] = rhs[ i ];
+				H[ i ] = vecx[ i ];
 			}
 
 			// done

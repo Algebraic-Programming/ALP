@@ -80,7 +80,7 @@ namespace grb {
 					*c = *a * grb::utils::is_complex< IN2 >::conjugate( *b );
 				}
 		};
-	}
+	} // namespace internal
 
 	template<
 		typename IN1, typename IN2, typename OUT,
@@ -123,17 +123,11 @@ namespace grb {
 		 *
 		 * @param[out] x The 2-norm of \a y. The input value of \a x will be ignored.
 		 * @param[in]  y The vector to compute the norm of.
-		 * @param[in] ring The Semiring under which the 2-norm is to be computed.
+		 * @param[in] ring  The Semiring under which the 2-norm is to be computed.
+		 * @param[in] sqrtX The square root function which operates on real data
+		 *                  type, as both input and output. If not explicitly
+		 *                  provided, the std::sqrt() is used.
 		 *
-		 * \warning This function computes \a x out-of-place. This is contrary to
-		 *          standard ALP/GraphBLAS functions that are always in-place.
-		 *
-		 * \warning A \a ring is not sufficient for computing a two-norm. This
-		 *          implementation assumes the standard <tt>sqrt</tt> function
-		 *          must be applied on the result of a dot-product of \a y with
-		 *          itself under the supplied semiring.
-		 *
-		 * \todo Make sqrt an argument to this function.
 		 */
 		template<
 			Descriptor descr = descriptors::no_operation, class Ring,
@@ -156,7 +150,15 @@ namespace grb {
 				conjuagte_mul< InputType, InputType, InputType >()
 			);
 			if( ret == SUCCESS ) {
-				x += sqrtX( grb::utils::is_complex< InputType >::modulus( yyt ) );
+				Semiring<
+					grb::operators::add< OutputType >, grb::operators::mul< OutputType >,
+					grb::identities::zero, grb::identities::one
+				> ring_rtype;
+				ret = ret ? ret : grb::foldl(
+					x,
+					sqrtX( grb::utils::is_complex< InputType >::modulus( yyt ) ),
+					ring_rtype.getAdditiveOperator()
+				);
 			}
 			return ret;
 		}
