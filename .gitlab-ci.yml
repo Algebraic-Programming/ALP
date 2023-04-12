@@ -284,5 +284,8 @@ build_test_gcc_versions:
         - CXX_COMPILER: g++
           CC_COMPILER: gcc
           VER: [9,10,11,12]
+        # - CXX_COMPILER: clang++
+        #   CC_COMPILER: clang
+        #   VER: [11,12,13,14]
   script:
     - mkdir -p install build && cd ./build && CXX=${CXX_COMPILER}-${VER} CC=${CC_COMPILER}-${VER} ../bootstrap.sh --prefix=../install --with-datasets=${ALP_DATASETS} --with-lpf=${LPF_BASE_PATH}/build_mpich_${CC_COMPILER}_${VER}/install && make -j$(nproc) build_tests_all
