@@ -269,3 +269,20 @@ test_installation_lpf:
   needs: [build_test_lpf]
   script:
     - cd ./build && make -j$(nproc) install
+
+## Additional jobs to build againt multiple compilers (on main branches only)
+
+build_test_gcc_versions:
+  rules:
+    - if: $IS_MAIN_PIPELINE == "yes"
+      when: on_success
+    - when: never
+  image: ${CI_REGISTRY}/${CI_PROJECT_PATH}/lpf-ubuntu-22.04-gcc-clang
+  needs: []
+  parallel:
+      matrix:
+        - CXX_COMPILER: g++
+          CC_COMPILER: gcc
+          VER: [9,10,11,12]
+  script:
+    - mkdir -p install build && cd ./build && CXX=${CXX_COMPILER}-${VER} CC=${CC_COMPILER}-${VER} ../bootstrap.sh --prefix=../install --with-datasets=${ALP_DATASETS} --with-lpf=${LPF_BASE_PATH}/build_mpich_${CC_COMPILER}_${VER}/install && make -j$(nproc) build_tests_all
