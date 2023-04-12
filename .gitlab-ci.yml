@@ -21,7 +21,6 @@ workflow:
     - when: always  # trigger pipeline in any case
 
 
-
 # Build / test / install on CentOS 8, only for main branches
 
 #build_centos_8:
@@ -118,9 +117,7 @@ workflow:
 build_test:
   needs: []
   script:
-# if we are on master develop or v/-rc branch (or attempting to merge onto them), then also trigger LPF-related tests
-    - if [ "${IS_MAIN_PIPELINE}" == "yes" ]; then LPF_SWITCH="--with-lpf=${LPF_PATH}"; fi
-    - mkdir -p install build && cd ./build && ../bootstrap.sh ${LPF_SWITCH} --prefix=../install --with-datasets=${ALP_DATASETS} && make -j$(nproc) build_tests_all
+    - mkdir -p install build && cd ./build && ../bootstrap.sh --prefix=../install --with-datasets=${ALP_DATASETS} && make -j$(nproc) build_tests_all
     - strip -s $(find tests/unit/ -type f -executable -print) $(find tests/smoke/ -type f -executable -print) $(find tests/performance/ -type f -executable -print)
   artifacts:
     paths:
@@ -146,7 +143,7 @@ build_tests_sym_debug:
     - when: never
   needs: []
   script:
-    - mkdir -p install build && cd build && cmake -DCMAKE_INSTALL_PREFIX=../install -DCMAKE_CXX_FLAGS=-D_DEBUG -DCMAKE_C_FLAGS=-D_DEBUG -DCMAKE_BUILD_TYPE=Release ../ && make -j$(nproc) build_tests_all
+    - mkdir -p install build && cd build && cmake -DCMAKE_INSTALL_PREFIX=../install -DCMAKE_CXX_FLAGS=-D_DEBUG -DCMAKE_C_FLAGS=-D_DEBUG -DLPF_INSTALL_PATH=${LPF_PATH} -DCMAKE_BUILD_TYPE=Release ../ && make -j$(nproc) build_tests_all
 
 
 tests_unit:
@@ -220,3 +217,55 @@ tests_unit_build_type_debug:
   script:
     - cd ./build && make -j$(nproc) unittests &> unittests.log
     - ../tests/summarise.sh unittests.log
+
+
+## Additional tests for LPF (on main branches only)
+
+build_test_lpf:
+  rules:
+    - if: $IS_MAIN_PIPELINE == "yes"
+      when: always
+    - when: never
+  needs: []
+  script:
+# if we are on master develop or v/-rc branch (or attempting to merge onto them), build only LPF-related tests
+    - mkdir -p install build && cd ./build && ../bootstrap.sh --with-lpf=${LPF_PATH} --no-nonblocking --no-reference --no-hyperdags --prefix=../install --with-datasets=${ALP_DATASETS} && make -j$(nproc) build_tests_all
+    - strip -s $(find tests/unit/ -type f -executable -print) $(find tests/smoke/ -type f -executable -print) $(find tests/performance/ -type f -executable -print)
+  artifacts:
+    paths:
+      - build/
+    exclude:
+      - build/**/*.o
+      - build/**/*.o.d
+      - build/**/CMakeFiles
+      - build/**/*.dir
+    expire_in: 80 minutes
+
+tests_unit_lpf:
+  rules:
+    - if: $IS_MAIN_PIPELINE == "yes"
+      when: on_success
+    - when: never
+  needs: [build_test_lpf]
+  script:
+    - cd ./build && make -j$(nproc) tests_unit &> unittests.log
+    - ../tests/summarise.sh unittests.log
+
+tests_smoke_lpf:
+  rules:
+    - if: $IS_MAIN_PIPELINE == "yes"
+      when: on_success
+    - when: never
+  needs: [build_test_lpf]
+  script:
+    - cd ./build && make -j$(nproc) tests_smoke &> smoketests.log
+    - ../tests/summarise.sh smoketests.log
+
+test_installation_lpf:
+  rules:
+    - if: $IS_MAIN_PIPELINE == "yes"
+      when: on_success
+    - when: never
+  needs: [build_test_lpf]
+  script:
+    - cd ./build && make -j$(nproc) install
