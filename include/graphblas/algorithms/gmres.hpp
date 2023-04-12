@@ -47,8 +47,68 @@ namespace grb {
 		 *
 		 * using Givens rotations and back-substitution.
 		 *
+		 * @tparam NonzeroType  The input/output vector/matrix nonzero type
+		 * @tparam ResidualType The type of the residual norm
+		 * @tparam Ring         The semiring under which to perform GMRES
+		 * @tparam Minus        The minus operator corresponding to the inverse of the
+		 *                      additive operator of the given \a Ring.
+		 * @tparam Divide       The division operator corresponding to the inverse of
+		 *                      the multiplicative operator of the given \a Ring.
+		 *
+		 *
+		 * @param[in,out] H              std::vector of length \a n x \a n
+		 *                               used to store temporary data.
+		 * @param[in,out] rhs            std::vector of length \a n
+		 *                               used to store temporary data.
 		 * The results are stored in H[ 0 ], which is used to update the GMRES
 		 * solution vector.
+		 *
+		 * @param[in] n                  dimension of \a H and \a rhs, and
+		 *                               maximal size of Kyrilov subspace.
+		 * @param[in] kspspacesize       size of Kyrilov subspace.
+		 *
+		 * The algebraic structures over which the GMRES is executed:
+		 *
+		 * @param[in]     ring           The semiring under which to perform the GMRES.
+		 * @param[in]     minus          The inverse of the additive operator of
+		 *                               \a ring.
+		 * @param[in]     divide         The inverse of the multiplicative operator
+		 *                               of \a ring.
+		 *
+		 * Additional algebraic structure used by norm2 primitive:
+		 *
+		 * @param[in]     sqrtX         The square root (inverse of the square),
+		 *                              not necessarily closed operation
+		 *                              on fields which describe vector norms.
+		 *                              i.e. for complex field sqrtX maps
+		 *                              real numbers to real numbers.
+		 *                              If not provided explicitly the std::sqrt()
+		 *                              is used if possible, if not, a compile time
+		 *                              error is raised.
+		 *
+		 * This algorithm may return one of the following error codes:
+		 *
+		 * @returns #grb::SUCCESS  When the algorithm has solved the least linear
+		 *                         square problem successfully.
+		 * @returns #grb::ILLEGAL  When the size of \a H smaller than \f$ n \times n \f$
+		 * @returns #grb::ILLEGAL  When \a kspspacesize is not in the interval
+		 *                         \f$ \left[  1, n  \right] \f$
+		 * @returns #grb::ILLEGAL  If \a tol is not strictly positive.
+		 * @returns #grb::MISMATCH When \rhs size in is smaller or equal to \f$ n \f$.
+		 * @returns #grb::PANIC    If an unrecoverable error has been encountered. The
+		 *                         output as well as the state of ALP/GraphBLAS is
+		 *                         undefined.
+		 *
+		 * \par Performance semantics
+		 *
+		 *   -# This function does not allocate nor free dynamic memory, nor shall it
+		 *      make any system calls.
+		 *
+		 * For performance semantics regarding work, inter-process data movement,
+		 * intra-process data movement, synchronisations, and memory use, please see
+		 * the specification of the ALP primitives this function relies on. These
+		 * performance semantics, with the exception of getters such as #grb::nnz, are
+		 * specific to the backend selected during compilation.
 		 *
 		 * \todo Replace by ALP/Dense calls once available. At present, this
 		 *       implementation performs dense computations using standard STL
@@ -86,11 +146,11 @@ namespace grb {
 			if( n < 1 ) {
 				return ILLEGAL;
 			}
-			if( H.size() <= n ) {
+			if( H.size() < ( n * n ) ) {
 				std::cerr << "Error: algorithms::hessolve requires input parameter H to "
-					<< "have a number of entries greater-than the given parameter n. "
-					<< "However, " << H.size() << " is smaller-than or equal-to "
-					<< n << ".\n";
+					<< "have a number of entries greater-than n^2. "
+					<< "However, " << H.size() << " is smaller-than "
+					  << ( n * n ) << ".\n";
 				return ILLEGAL;
 			}
 			if( kspspacesize < 1 ) {
@@ -599,10 +659,10 @@ namespace grb {
 							return ILLEGAL;
 						}
 					}
-					if( Hmatrix.size() <= n_restart ) {
+					if( Hmatrix.size() < ( ( n_restart + 1 ) * ( n_restart + 1 ) ) ) {
 						std::cerr << "Error: expected (n_restart + 1)^2 entries in H ("
-							<< ((n_restart+1)*(n_restart+1)) << "), but only " << Hmatrix.size()
-							<< " were given.\n";
+							<< ( ( n_restart + 1 ) * ( n_restart + 1 ) ) << "), but only "
+							<< Hmatrix.size() << " were given.\n";
 						// FIXME H should become a structured matrix and this code should return
 						//       MISMATCH if dimension check fails, once ALP/Dense is up
 						return ILLEGAL;
