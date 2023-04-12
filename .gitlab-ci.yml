@@ -149,21 +149,6 @@ build_tests_sym_debug:
     - mkdir -p install build && cd build && cmake -DCMAKE_INSTALL_PREFIX=../install -DCMAKE_CXX_FLAGS=-D_DEBUG -DCMAKE_C_FLAGS=-D_DEBUG -DCMAKE_BUILD_TYPE=Release ../ && make -j$(nproc) build_tests_all
 
 
-# linting is currently disabled since clang-format is not mature enough
-# and leads to weirdnesses and instabilities; we may reactivate it in future
-#
-# clang_linter:
-#  needs: [build_centos_8]
-#  before_script:
-#    - export DEBIAN_FRONTEND=noninteractive
-#    - apt update && apt install -y clang-format-11 git-core coreutils
-#  script:
-#    - tools/clang-format-linter.sh -i --lint-whole-grb
-#    - files="$(git status -s)"
-#    - if [[ ! -z "${files}" ]]; then echo "The following files do not abide by the official code style, you may use tools/clang-format-linter.sh to format them"; echo "${files[@]}"; else echo 'All files formatted correctly'; fi
-#    - if [[ ! -z "${files}" ]]; then exit 0; fi
-
-
 tests_unit:
   needs: [build_test]
   script:
