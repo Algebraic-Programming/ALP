@@ -82,7 +82,7 @@ AnalyticModel::AnalyticModel(
 		// A fixed tile size and number of threads is used for the execution of all
 		// pipelines.
 		tile_size_estimation =
-			grb::internal::NONBLOCKING::isManualTileSize();
+			grb::internal::NONBLOCKING::manualFixedTileSize();
 	}
 
 	// It ensures that the tile size does not exceed the size of vectors.
