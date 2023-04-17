@@ -232,7 +232,7 @@ namespace grb {
 					}
 				}
 
-				inline bool assign( const size_t i ) noexcept {
+				inline bool assign( const size_t i ) noexcept {		
 					if( _n == _cap ) {
 						return true;
 					}
@@ -247,6 +247,7 @@ namespace grb {
 					} else {
 						return true;
 					}
+					
 				}
 
 				template< bool maybe_invalid = false >

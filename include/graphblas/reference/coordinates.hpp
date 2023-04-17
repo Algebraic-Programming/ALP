@@ -339,6 +339,7 @@ namespace grb {
 				) noexcept {
 					// catch trivial case
 					if( arr == nullptr || buf == nullptr ) {
+						std::cout << "trivial case for set coordinates" << std::endl;
 						assert( arr == nullptr );
 						assert( buf == nullptr );
 						assert( dim == 0 );
@@ -376,7 +377,12 @@ namespace grb {
 #endif
 					);
 					// and initialise _assigned (but only if necessary)
-					if( dim > 0 && !arr_initialized ) {
+
+					std::cout << "value of _cap " << _cap << std::endl;
+					std::cout << "value of _buf " << _buf << std::endl;
+					std::cout << "size of _assigned " << sizeof( _assigned ) << std::endl;
+
+					if( dim > 0 && ! arr_initialized ) {
 #ifdef _H_GRB_REFERENCE_OMP_COORDINATES
 						#pragma omp parallel
 						{

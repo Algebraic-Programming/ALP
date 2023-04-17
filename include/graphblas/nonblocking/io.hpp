@@ -74,7 +74,10 @@ namespace grb {
 
 	template< typename InputType, typename RIT, typename CIT, typename NIT >
 	uintptr_t getID( const Matrix< InputType, nonblocking, RIT, CIT, NIT > &A ) {
-		return getID( internal::getRefMatrix( A ) );
+		assert( nrows(A) > 0 );
+		assert( ncols(A) > 0 );
+		return A.id;
+		// return getID( internal::getRefMatrix( A ) );
 	}
 
 	template< typename DataType, typename Coords >
@@ -86,14 +89,16 @@ namespace grb {
 	size_t nrows(
 		const Matrix< InputType, nonblocking, RIT, CIT, NIT > &A
 	) noexcept {
-		return nrows( internal::getRefMatrix( A ) );
+		return A.m;
+		//return nrows( internal::getRefMatrix( A ) );
 	}
 
 	template< typename InputType, typename RIT, typename CIT, typename NIT >
 	size_t ncols(
 		const Matrix< InputType, nonblocking, RIT, CIT, NIT > &A
 	) noexcept {
-		return ncols( internal::getRefMatrix( A ) );
+		return A.n;
+		//return ncols( internal::getRefMatrix( A ) );
 	}
 
 	template< typename DataType, typename Coords >
@@ -106,7 +111,8 @@ namespace grb {
 	size_t nnz(
 		const Matrix< InputType, nonblocking, RIT, CIT, NIT > &A
 	) noexcept {
-		return nnz( internal::getRefMatrix( A ) );
+		return A.nz;
+		//return nnz( internal::getRefMatrix( A ) );
 	}
 
 	template< typename DataType, typename Coords >
@@ -118,7 +124,8 @@ namespace grb {
 	size_t capacity(
 		const Matrix< DataType, nonblocking, RIT, CIT, NIT > &A
 	) noexcept {
-		return capacity( internal::getRefMatrix( A ) );
+		return internal::getNonzeroCapacity( A );
+		//return capacity( internal::getRefMatrix( A ) );
 	}
 
 	template< typename DataType, typename Coords >
@@ -132,7 +139,8 @@ namespace grb {
 	RC clear(
 		Matrix< InputType, nonblocking, RIT, CIT, NIT > &A
 	) noexcept {
-		return clear( internal::getRefMatrix( A ) );
+		return A.clear();
+		//return clear( internal::getRefMatrix( A ) );
 	}
 
 	template<
@@ -179,7 +187,39 @@ namespace grb {
 		Matrix< InputType, nonblocking, RIT, CIT, NIT > &A,
 		const size_t new_nz
 	) noexcept {
-		return resize( internal::getRefMatrix( A ), new_nz );
+		//return resize( internal::getRefMatrix( A ), new_nz );
+#ifdef _DEBUG
+		std::cerr << "In grb::resize (matrix, reference)\n"
+			<< "\t matrix is " << nrows(A) << " by " << ncols(A) << "\n"
+			<< "\t requested capacity is " << new_nz << "\n";
+#endif
+		RC ret = clear( A );
+		if( ret != SUCCESS ) { return ret; }
+
+		const size_t m = nrows( A );
+		const size_t n = ncols( A );
+		// catch trivial case
+		if( m == 0 || n == 0 ) {
+			return SUCCESS;
+		}
+		// catch illegal input
+		if( new_nz / m > n ||
+			new_nz / n > m ||
+			(new_nz / m == n && (new_nz % m > 0)) ||
+			(new_nz / n == m && (new_nz % n > 0))
+		) {
+#ifdef _DEBUG
+			std::cerr << "\t requesting higher capacity than could be stored in a "
+				<< "matrix of the current size\n";
+#endif
+			return ILLEGAL;
+		}
+
+		// delegate
+		ret = A.resize( new_nz );
+
+		// done
+		return ret;		
 	}
 
 	template<
@@ -1124,6 +1164,101 @@ namespace grb {
 				internal::NONBLOCKING::warn_if_not_native = false;
 			}
 
+#ifdef _DEBUG
+			std::cout << "Called grb::set (matrices, reference), execute phase\n";
+#endif
+			// static checks
+			NO_CAST_ASSERT(
+				( !( descr & descriptors::no_casting ) ||
+				( !A_is_mask && std::is_same< InputType1, OutputType >::value ) ),
+				"internal::grb::set", "called with non-matching value types"
+			);
+			NO_CAST_ASSERT( ( !( descr & descriptors::no_casting ) ||
+				( A_is_mask && std::is_same< InputType2, OutputType >::value ) ),
+				"internal::grb::set", "Called with non-matching value types"
+			);
+
+			// run-time checks
+			const size_t m = nrows( A );
+			const size_t n = ncols( A );
+			if( nrows( C ) != m ) {
+				return MISMATCH;
+			}
+			if( ncols( C ) != n ) {
+				return MISMATCH;
+			}
+			if( A_is_mask ) {
+				assert( id != NULL );
+			}
+
+			// catch trivial cases
+			if( m == 0 || n == 0 ) {
+				return SUCCESS;
+			}
+			const size_t nz = nnz( A );
+			if( nz == 0 ) {
+#ifdef _DEBUG
+				std::cout << "\t input matrix has no nonzeroes, "
+					<< "simply clearing output matrix...\n";
+#endif
+				return clear( C );
+			}
+			if( nz > capacity( C ) ) {
+#ifdef _DEBUG
+				std::cout << "\t output matrix does not have sufficient capacity to "
+					<< "complete requested operation\n";
+#endif
+				const RC clear_rc = clear( C );
+				if( clear_rc != SUCCESS ) {
+					return PANIC;
+				} else {
+					return FAILED;
+				}
+			}
+
+#ifdef _H_GRB_REFERENCE_OMP_IO
+			#pragma omp parallel
+#endif
+			{
+				size_t range = internal::getCRS( C ).copyFromRange( nz, m );
+#ifdef _H_GRB_REFERENCE_OMP_IO
+				size_t start, end;
+				config::OMP::localRange( start, end, 0, range );
+#else
+				const size_t start = 0;
+				size_t end = range;
+#endif
+				if( A_is_mask ) {
+					internal::getCRS( C ).template copyFrom< true >(
+						internal::getCRS( A ), nz, m, start, end, id
+					);
+				} else {
+					internal::getCRS( C ).template copyFrom< false >(
+						internal::getCRS( A ), nz, m, start, end
+					);
+				}
+				range = internal::getCCS( C ).copyFromRange( nz, n );
+#ifdef _H_GRB_REFERENCE_OMP_IO
+				config::OMP::localRange( start, end, 0, range );
+#else
+				end = range;
+#endif
+				if( A_is_mask ) {
+					internal::getCCS( C ).template copyFrom< true >(
+						internal::getCCS( A ), nz, n, start, end, id
+					);
+				} else {
+					internal::getCCS( C ).template copyFrom< false >(
+						internal::getCCS( A ), nz, n, start, end
+					);
+				}
+			}
+			internal::setCurrentNonzeroes( C, nz );
+
+			// done
+			return SUCCESS;
+						
+			/*
 			// nonblocking execution is not supported
 			// first, execute any computation that is not completed
 			grb::internal::le.execution();
@@ -1131,6 +1266,7 @@ namespace grb {
 			// second, delegate to the reference backend
 			return set< A_is_mask, descr, OutputType, InputType1, InputType2 >(
 				internal::getRefMatrix( C ), internal::getRefMatrix( A ), id );
+			*/
 		}
 
 	} // end namespace internal::grb
@@ -1273,9 +1409,20 @@ namespace grb {
 		const fwd_iterator end,
 		const IOMode mode
 	) {
+		/*
 		return buildMatrixUnique<
 				descr, InputType, RIT, CIT, NIT, fwd_iterator
 			>( internal::getRefMatrix(A), start, end, mode );
+		*/
+		// parallel or sequential mode are equivalent for reference implementation
+		assert( mode == PARALLEL || mode == SEQUENTIAL );
+#ifdef NDEBUG
+		(void)mode;
+#endif
+#ifdef _DEBUG
+		std::cout << "buildMatrixUnique (reference) called, delegating to matrix class\n";
+#endif
+		return A.template buildMatrixUnique< descr >( start, end, mode );
 	}
 
 	template<

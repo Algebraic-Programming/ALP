@@ -140,11 +140,9 @@ namespace grb {
 			std::set< const void * > input_matrices;
 
 			// for BLAS3
-			std::set< const void * > input_matrices_blas3;
-			std::set< const void * > mxm_input_matrices_left;
 			std::set< const void * > mxm_input_matrices_right;
 			std::set< const void * > output_matrices;
-			std::vector< const void * > input_output_intersection_blas3;
+			std::vector< const void * > input_output_intersection_matrix;
 
 			/**
 			 * Indicates that the pipeline contains an out-of-place operation, which
@@ -266,7 +264,7 @@ namespace grb {
 			 *
 			 * \todo in the current implementation:
 			 *
-			 * @param[in]  input_matrix A pointer to the input matrix of SpMV.
+			 * @param[in]  input_matrix_A A pointer to the input matrix of SpMV.
 			 */
 			void addStage( const stage_type && func,
 				const Opcode opcode,
@@ -286,7 +284,6 @@ namespace grb {
 				const Coordinates< nonblocking > * const coor_b_ptr,
 				const Coordinates< nonblocking > * const coor_c_ptr,
 				const Coordinates< nonblocking > * const coor_d_ptr,
-				const void * const input_matrix,
 				const void * const input_matrix_A,
 				const void * const input_matrix_B,
 				void * output_matrix_C );
@@ -302,14 +299,13 @@ namespace grb {
 			bool accessesInputVector( const void * const vector ) const;
 			bool accessesOutputVector( const void * const vector ) const;
 			bool accessesVector( const void * const vector ) const;
-			bool accessesMatrix( const void * const matrix ) const;
+			//bool accessesMatrix( const void * const matrix ) const;
 
 			bool overwritesVXMInputVectors( const void * const output_vector_ptr ) const;
 
 			// for BLAS3
 			bool accessesInputMatrix( const void * const matrix ) const;
 			bool accessesOutputMatrix( const void * const matrix ) const;
-			bool overwritesMXMLeftInputMatrices( const void * const matrix ) const;
 			bool overwritesMXMRightInputMatrices( const void * const matrix ) const;
 
 #ifdef GRB_ALREADY_DENSE_OPTIMIZATION

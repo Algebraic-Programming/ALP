@@ -54,8 +54,8 @@
 #include <graphblas/utils/alloc.hpp>
 #include <graphblas/utils/autodeleter.hpp>
 
-#include <graphblas/reference/compressed_storage.hpp>
-
+//#include <graphblas/reference/compressed_storage.hpp>
+#include "compressed_storage.hpp"
 #include "coordinates.hpp"
 #include "spmd.hpp"
 #include "lazy_evaluation.hpp"
@@ -429,28 +429,32 @@ namespace grb {
 		inline internal::Compressed_Storage< D, RIT, NIT > & getCRS(
 			Matrix< D, nonblocking, RIT, CIT, NIT > &A
 		) noexcept {
-			return getCRS( A.ref );
+			return A.CRS;
+			//return getCRS( A.ref );
 		}
 
 		template< typename D, typename RIT, typename CIT, typename NIT >
 		inline const internal::Compressed_Storage< D, RIT, NIT > & getCRS(
 			const Matrix< D, nonblocking, RIT, CIT, NIT > &A
 		) noexcept {
-			return getCRS( A.ref );
+			return A.CRS;
+			//return getCRS( A.ref );
 		}
 
 		template< typename D, typename RIT, typename CIT, typename NIT >
 		inline internal::Compressed_Storage< D, CIT, NIT > & getCCS(
 			Matrix< D, nonblocking, RIT, CIT, NIT > &A
 		) noexcept {
-			return getCCS( A.ref );
+			return A.CCS;
+			//return getCCS( A.ref );
 		}
 
 		template< typename D, typename RIT, typename CIT, typename NIT >
 		inline const internal::Compressed_Storage< D, CIT, NIT > & getCCS(
 			const Matrix< D, nonblocking, RIT, CIT, NIT > &A
 		) noexcept {
-			return getCCS( A.ref );
+			return A.CCS;
+			//return getCCS( A.ref );
 		}
 
 		template< typename D, typename C >

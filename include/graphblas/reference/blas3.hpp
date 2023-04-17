@@ -142,11 +142,17 @@ namespace grb {
 			internal::getMatrixBuffers( arr, buf, valbuf, 1, C );
 			config::NonzeroIndexType * C_col_index = internal::template
 				getReferenceBuffer< typename config::NonzeroIndexType >( n + 1 );
-
+			
+			//std::cout << "size of col_index " << sizeof(C_col_index)<< std::endl;
+			//std::cout << "size of reference_bufsize " << reference_bufsize<< std::endl;
+			//size_t size = *(&C_col_index + 1) - C_col_index;
+			//std::cout << "size of reference_bufsize " << sizeof(double) << std::endl;
+			
 			// initialisations
 			internal::Coordinates< reference > coors;
+			std::cout << "call to set() coordinates" << std::endl;
 			coors.set( arr, false, buf, n );
-
+		
 			if( !crs_only ) {
 #ifdef _H_GRB_REFERENCE_OMP_BLAS3
 				#pragma omp parallel
@@ -229,6 +235,7 @@ namespace grb {
 				}
 			}
 
+			/*
 			// prefix sum for C_col_index,
 			// set CCS_raw.col_start to all zero
 #ifndef NDEBUG
@@ -248,7 +255,7 @@ namespace grb {
 				assert( CCS_raw.col_start[ n ] == nzc );
 			}
 #endif
-
+			*/
 #ifndef NDEBUG
 			const size_t old_nzc = nzc;
 #endif
@@ -301,11 +308,13 @@ namespace grb {
 					C_raw.row_index[ nzc ] = j;
 					C_raw.setValue( nzc, valbuf[ j ] );
 					// update CCS
+					/*
 					if( !crs_only ) {
 						const size_t CCS_index = C_col_index[ j ]++ + CCS_raw.col_start[ j ];
 						CCS_raw.row_index[ CCS_index ] = i;
 						CCS_raw.setValue( CCS_index, valbuf[ j ] );
 					}
+					*/
 					// update count
 					(void) ++nzc;
 				}
@@ -313,12 +322,14 @@ namespace grb {
 			}
 
 #ifndef NDEBUG
+/*
 			if( !crs_only ) {
 				for( size_t j = 0; j < n; ++j ) {
 					assert( CCS_raw.col_start[ j + 1 ] - CCS_raw.col_start[ j ] ==
 						C_col_index[ j ] );
 				}
 			}
+*/			
 			assert( nzc == old_nzc );
 #endif
 

@@ -28,7 +28,6 @@
 #define _H_GRB_NONBLOCKING_BLAS3
 
 #include <type_traits> //for std::enable_if
-
 #include <omp.h>
 
 #include <graphblas/base/blas3.hpp>
@@ -95,6 +94,9 @@ namespace grb {
 			const typename std::enable_if< ! grb::is_object< OutputType >::value && ! grb::is_object< InputType1 >::value && ! grb::is_object< InputType2 >::value &&
 					grb::is_operator< Operator >::value && grb::is_monoid< Monoid >::value,
 				void >::type * const = nullptr ) {
+			
+			le.execution();
+
 			/*
 	// nonblocking execution is not supported
 	// first, execute any computation that is not completed
@@ -106,7 +108,6 @@ namespace grb {
 		*/
 
 			/*
-
 			for BLAS3
 			This implementation is based upon the implementation of mxm_generic in the reference backend
 			IDEA: use same implementation of the one presented in the reference backend. We know that such an implementation
@@ -137,6 +138,8 @@ namespace grb {
 				"Cannot (presently) transpose B "
 				"and force the use of CRS" );
 
+			RC ret = SUCCESS;
+
 			// run-time checks
 			const size_t m = grb::nrows( C );
 			const size_t n = grb::ncols( C );
@@ -159,7 +162,6 @@ namespace grb {
 			char * buf = nullptr;
 			OutputType * valbuf = nullptr;
 			internal::getMatrixBuffers( arr, buf, valbuf, 1, C );
-			config::NonzeroIndexType * C_col_index = internal::template getReferenceBuffer< typename config::NonzeroIndexType >( n + 1 );
 
 			// initialisations
 			internal::Coordinates< reference > coors;
@@ -173,83 +175,76 @@ namespace grb {
 				C_raw.col_start[ 0 ] = 0;
 			}
 
-			constexpr const bool dense_descr = descr & descriptors::dense;
-			//  lambda function to be added into the pipeline
-			internal::Pipeline::stage_type func = [ &A, &B, &C, &oper, &monoid, &mulMonoid, &phase, &m, &n, &m_A, &k, &k_B, &n_B, &A_raw, &B_raw, &C_raw, &CCS_raw, &arr, &buf, &valbuf, &C_col_index,
-													  &coors, &nzc ]( internal::Pipeline & pipeline, const size_t lower_bound, const size_t upper_bound ) {
-				// COMMENT: this is not actually computed in mxm since we pass phase = Execute.
-				// What is this function for?
-				// if crs_only, then the below implements its resize phase
-				// if not crs_only, then the below is both crucial for the resize phase,
-				// as well as for enabling the insertions of output values in the output CCS
-				if( ( crs_only && phase == RESIZE ) || ! crs_only ) {
-					for( size_t i = lower_bound; i < upper_bound; ++i ) {
-						// coors is passed to every thread, this would generate data races. USE A LOCK HERE
-						coors.clear();
-						for( auto k = A_raw.col_start[ i ]; k < A_raw.col_start[ i + 1 ]; ++k ) {
-							const size_t k_col = A_raw.row_index[ k ];
-							for( auto l = B_raw.col_start[ k_col ]; l < B_raw.col_start[ k_col + 1 ]; ++l ) {
-								const size_t l_col = B_raw.row_index[ l ];
-								if( ! coors.assign( l_col ) ) {
-									(void)++nzc;
-									if( ! crs_only ) {
-										(void)++CCS_raw.col_start[ l_col + 1 ];
-									}
+			// if crs_only, then the below implements its resize phase
+			// if not crs_only, then the below is both crucial for the resize phase,
+			// as well as for enabling the insertions of output values in the output CCS
+			if( (crs_only && phase == RESIZE) || !crs_only ) {
+				for( size_t i = 0; i < m; ++i ) {
+					coors.clear();
+					for( auto k = A_raw.col_start[ i ]; k < A_raw.col_start[ i + 1 ]; ++k ) {
+						const size_t k_col = A_raw.row_index[ k ];
+						for(
+							auto l = B_raw.col_start[ k_col ];
+							l < B_raw.col_start[ k_col + 1 ];
+							++l
+						) {
+							const size_t l_col = B_raw.row_index[ l ];
+							if( !coors.assign( l_col ) ) {
+								(void) ++nzc;
+								if( !crs_only ) {
+									(void) ++CCS_raw.col_start[ l_col + 1 ];
 								}
 							}
 						}
-						if( crs_only && phase == RESIZE ) {
-							// we are using an auxialiary CRS that we cannot resize ourselves
-							// instead, we update the offset array only
-							C_raw.col_start[ i + 1 ] = nzc;
-						}
+					}
+					if( crs_only && phase == RESIZE ) {
+						// we are using an auxialiary CRS that we cannot resize ourselves
+						// instead, we update the offset array only
+						C_raw.col_start[ i + 1 ] = nzc;
 					}
 				}
+			}
 
-				if( phase == RESIZE ) {
-					if( ! crs_only ) {
-						// do final resize
-						const RC ret = grb::resize( C, nzc );
-						return ret;
-					} else {
-						return SUCCESS;
-					}
+			if( phase == RESIZE ) {
+				if( !crs_only ) {
+					// do final resize
+					const RC ret = grb::resize( C, nzc );
+					return ret;
+				} else {
+					// we are using an auxiliary CRS that we cannot resize
+					// instead, we updated the offset array in the above and can now exit
+					return SUCCESS;
 				}
+			}
 
-				// computational phase
-				assert( phase == EXECUTE );
-				if( grb::capacity( C ) < nzc ) {
-#ifdef _DEBUG
-					std::cerr << "\t not enough capacity to execute requested operation\n";
-#endif
-					const RC clear_rc = grb::clear( C );
-					if( clear_rc != SUCCESS ) {
-						return PANIC;
-					} else {
-						return FAILED;
-					}
-				}
 
-				// prefix sum for C_col_index,
-				// set CCS_raw.col_start to all zero
-#ifndef NDEBUG
-				if( ! crs_only ) {
-					assert( CCS_raw.col_start[ 0 ] == 0 );
-				}
-#endif
-				C_col_index[ 0 ] = 0;
-				for( size_t j = 1; j < n; ++j ) {
-					if( ! crs_only ) {
-						CCS_raw.col_start[ j + 1 ] += CCS_raw.col_start[ j ];
-					}
-					C_col_index[ j ] = 0;
-				}
-#ifndef NDEBUG
-				if( ! crs_only ) {
-					assert( CCS_raw.col_start[ n ] == nzc );
-				}
-#endif
+			// ------- finishes RESIZING PHASE			
+			/// here
+			//  lambda function to be added into the pipeline
+			internal::Pipeline::stage_type func = [ &A, &B, &C, oper, monoid, mulMonoid, phase ]( internal::Pipeline & pipeline, const size_t lower_bound, const size_t upper_bound ) {
+				(void)pipeline;
+				const size_t n = grb::ncols( C );
+				const auto & A_raw = ! trans_left ? internal::getCRS( A ) : internal::getCCS( A );
+				const auto & B_raw = ! trans_right ? internal::getCRS( B ) : internal::getCCS( B );
+				auto & C_raw = internal::getCRS( C );
+				auto & CCS_raw = internal::getCCS( C );
 
+				char * arr = nullptr;
+				char * buf = nullptr;
+				OutputType * valbuf = nullptr;
+				internal::getMatrixBuffers( arr, buf, valbuf, 1, C );
+
+				// initialisations
+				internal::Coordinates< nonblocking > coors;
+				coors.set( arr, false, buf, n );
+
+				// symbolic phase (counting sort, step 1)
+				size_t nzc = getCurrentNonzeroes( C ); // output nonzero count
+				if( crs_only && phase == RESIZE ) {
+					// we are using an auxialiary CRS that we cannot resize ourselves
+					// instead, we update the offset array only
+					C_raw.col_start[ 0 ] = 0;
+				}
 #ifndef NDEBUG
 				const size_t old_nzc = nzc;
 #endif
@@ -286,60 +281,49 @@ namespace grb {
 						// update CRS
 						C_raw.row_index[ nzc ] = j;
 						C_raw.setValue( nzc, valbuf[ j ] );
-						// update CCS
-						if( ! crs_only ) {
-							const size_t CCS_index = C_col_index[ j ]++ + CCS_raw.col_start[ j ];
-							CCS_raw.row_index[ CCS_index ] = i;
-							CCS_raw.setValue( CCS_index, valbuf[ j ] );
-						}
-						// update count
 						(void)++nzc;
 					}
+					
 					C_raw.col_start[ i + 1 ] = nzc;
 				}
 
 #ifndef NDEBUG
-				if( ! crs_only ) {
-					for( size_t j = 0; j < n; ++j ) {
-						assert( CCS_raw.col_start[ j + 1 ] - CCS_raw.col_start[ j ] == C_col_index[ j ] );
-					}
-				}
 				assert( nzc == old_nzc );
 #endif
-
-				// set final number of nonzeroes in output matrix
 				internal::setCurrentNonzeroes( C, nzc );
+				std::cout << "-------- nzc: " << nzc << ", " << lower_bound << std::endl;
 
-				// done
 				return SUCCESS;
 			}; // end lambda function
 
-			// Add function into a pipeline
-			RC ret;
+			// Add function into a pipeline			
 			ret = ret ? ret :
 						internal::le.addStage( std::move( func ),
 							// name of operation
 							internal::Opcode::BLAS3_MXM_GENERIC,
-							// size of output matrix
-							getNonzeroCapacity( &C ),
+							// size of output matrix, HOW WE TILE, DIVIDE ITERATION SPACE
+							nrows(C),
 							// size of data type in matrix C
 							sizeof( OutputType ),
 							// dense_descr
-							dense_descr,
+							true,
 							// dense_mask
 							true,
-							// output vector
+							// output vectors pointers
 							nullptr, nullptr,
 							// coordinates output vectors
 							nullptr, nullptr,
-							// input pointers
+							// input vectors pointers
 							nullptr, nullptr, nullptr, nullptr,
 							// coordinates of input vectors
-							nullptr, nullptr,
-							// input_matrix
-							nullptr, nullptr, nullptr,
+							nullptr, nullptr,nullptr, nullptr,
 							// matrices for mxm
 							&A, &B, &C );
+
+			le.execution();
+			// set final number of nonzeroes in output matrix
+			
+
 			return ret;
 		}
 
@@ -367,13 +351,14 @@ namespace grb {
 #ifdef _DEBUG
 		std::cout << "In grb::mxm (nonblocking, unmasked, semiring)\n";
 #endif
-
+		/*
 		if( internal::NONBLOCKING::warn_if_not_native && config::PIPELINE::warn_if_not_native ) {
 			std::cerr << "Warning: mxm (nonblocking, unmasked, semiring) currently "
 					  << "delegates to a blocking implementation\n"
 					  << "         Further similar such warnings will be suppressed.\n";
 			internal::NONBLOCKING::warn_if_not_native = false;
 		}
+		*/
 
 		return internal::mxm_generic< true, descr >( C, A, B, ring.getMultiplicativeOperator(), ring.getAdditiveMonoid(), ring.getMultiplicativeMonoid(), phase );
 	}
@@ -410,13 +395,14 @@ namespace grb {
 		static_assert( ( ! ( std::is_same< InputType1, void >::value || std::is_same< InputType2, void >::value ) ),
 			"grb::mxm: the operator-monoid version of mxm cannot be used if either "
 			"of the input matrices is a pattern matrix (of type void)" );
-
+		/*
 		if( internal::NONBLOCKING::warn_if_not_native && config::PIPELINE::warn_if_not_native ) {
 			std::cerr << "Warning: mxm (nonblocking, unmasked, monoid-op) currently "
 					  << "delegates to a blocking implementation\n"
 					  << "         Further similar such warnings will be suppressed.\n";
 			internal::NONBLOCKING::warn_if_not_native = false;
 		}
+		*/
 
 		return internal::mxm_generic< false, descr >( C, A, B, mulOp, addM, Monoid(), phase );
 	}
@@ -435,14 +421,21 @@ namespace grb {
 						  << "         Further similar such warnings will be suppressed.\n";
 				internal::NONBLOCKING::warn_if_not_native = false;
 			}
-
+			/*
 			// nonblocking execution is not supported
 			// first, execute any computation that is not completed
 			le.execution();
 
 			// second, delegate to the reference backend
 			return matrix_zip_generic< descr, matrix_is_void, OutputType, InputType1, InputType2, InputType3, Coords >(
-				getRefMatrix( A ), getRefVector( x ), getRefVector( y ), getRefVector( z ), phase );
+			    getRefMatrix( A ), getRefVector( x ), getRefVector( y ), getRefVector( z ), phase );
+			*/
+			(void)A;
+			(void)x;
+			(void)y;
+			(void)z;
+			(void)phase;
+			return UNSUPPORTED;
 		}
 
 	} // namespace internal
@@ -453,61 +446,77 @@ namespace grb {
 		const Vector< InputType2, nonblocking, Coords > & y,
 		const Vector< InputType3, nonblocking, Coords > & z,
 		const Phase & phase = EXECUTE ) {
+		/*
 		static_assert( ! ( descr & descriptors::no_casting ) || std::is_integral< InputType1 >::value,
-			"grb::zip (two vectors to matrix) called "
-			"using non-integral left-hand vector elements" );
+		    "grb::zip (two vectors to matrix) called "
+		    "using non-integral left-hand vector elements" );
 		static_assert( ! ( descr & descriptors::no_casting ) || std::is_integral< InputType2 >::value,
-			"grb::zip (two vectors to matrix) called "
-			"using non-integral right-hand vector elements" );
+		    "grb::zip (two vectors to matrix) called "
+		    "using non-integral right-hand vector elements" );
 		static_assert( ! ( descr & descriptors::no_casting ) || std::is_same< OutputType, InputType3 >::value,
-			"grb::zip (two vectors to matrix) called "
-			"with differing vector nonzero and output matrix domains" );
+		    "grb::zip (two vectors to matrix) called "
+		    "with differing vector nonzero and output matrix domains" );
 
 		const size_t n = grb::size( x );
 		const size_t nz = grb::nnz( x );
 		const RC ret = grb::clear( A );
 		if( ret != SUCCESS ) {
-			return ret;
+		    return ret;
 		}
 		if( n != grb::size( y ) ) {
-			return MISMATCH;
+		    return MISMATCH;
 		}
 		if( n != grb::size( z ) ) {
-			return MISMATCH;
+		    return MISMATCH;
 		}
 		if( nz != grb::nnz( y ) ) {
-			return ILLEGAL;
+		    return ILLEGAL;
 		}
 		if( nz != grb::nnz( z ) ) {
-			return ILLEGAL;
+		    return ILLEGAL;
 		}
 
 		return internal::matrix_zip_generic< descr, false >( A, x, y, z, phase );
+		*/
+		(void)A;
+		(void)x;
+		(void)y;
+		(void)z;
+		(void)phase;
+		return UNSUPPORTED;
 	}
 
 	template< Descriptor descr = descriptors::no_operation, typename InputType1, typename InputType2, typename Coords >
 	RC zip( Matrix< void, nonblocking > & A, const Vector< InputType1, nonblocking, Coords > & x, const Vector< InputType2, nonblocking, Coords > & y, const Phase & phase = EXECUTE ) {
+		/*
 		static_assert( ! ( descr & descriptors::no_casting ) || std::is_integral< InputType1 >::value,
-			"grb::zip (two vectors to void matrix) called using non-integral "
-			"left-hand vector elements" );
+		    "grb::zip (two vectors to void matrix) called using non-integral "
+		    "left-hand vector elements" );
 		static_assert( ! ( descr & descriptors::no_casting ) || std::is_integral< InputType2 >::value,
-			"grb::zip (two vectors to void matrix) called using non-integral "
-			"right-hand vector elements" );
+		    "grb::zip (two vectors to void matrix) called using non-integral "
+		    "right-hand vector elements" );
 
 		const size_t n = grb::size( x );
 		const size_t nz = grb::nnz( x );
 		const RC ret = grb::clear( A );
 		if( ret != SUCCESS ) {
-			return ret;
+		    return ret;
 		}
 		if( n != grb::size( y ) ) {
-			return MISMATCH;
+		    return MISMATCH;
 		}
 		if( nz != grb::nnz( y ) ) {
-			return ILLEGAL;
+		    return ILLEGAL;
 		}
 
 		return internal::matrix_zip_generic< descr, true >( A, x, y, x, phase );
+		*/
+
+		(void)A;
+		(void)x;
+		(void)y;
+		(void)phase;
+		return UNSUPPORTED;
 	}
 
 	template< Descriptor descr = descriptors::no_operation, typename InputType1, typename InputType2, typename OutputType, typename Coords, class Operator >
@@ -518,11 +527,12 @@ namespace grb {
 		const Phase & phase = EXECUTE,
 		const typename std::enable_if< grb::is_operator< Operator >::value && ! grb::is_object< InputType1 >::value && ! grb::is_object< InputType2 >::value && ! grb::is_object< OutputType >::value,
 			void >::type * const = nullptr ) {
+		/*
 		if( internal::NONBLOCKING::warn_if_not_native && config::PIPELINE::warn_if_not_native ) {
-			std::cerr << "Warning: outer (nonblocking) currently delegates to a "
-					  << "blocking implementation.\n"
-					  << "         Further similar such warnings will be suppressed.\n";
-			internal::NONBLOCKING::warn_if_not_native = false;
+		    std::cerr << "Warning: outer (nonblocking) currently delegates to a "
+		              << "blocking implementation.\n"
+		              << "         Further similar such warnings will be suppressed.\n";
+		    internal::NONBLOCKING::warn_if_not_native = false;
 		}
 
 		// nonblocking execution is not supported
@@ -531,6 +541,13 @@ namespace grb {
 
 		// second, delegate to the reference backend
 		return outer< descr, InputType1, InputType2, OutputType, Coords, Operator >( internal::getRefMatrix( A ), internal::getRefVector( u ), internal::getRefVector( v ), mul, phase );
+		*/
+		(void)A;
+		(void)u;
+		(void)v;
+		(void)mul;
+		(void)phase;
+		return UNSUPPORTED;
 	}
 
 	namespace internal {
@@ -545,11 +562,12 @@ namespace grb {
 			const typename std::enable_if< ! grb::is_object< OutputType >::value && ! grb::is_object< InputType1 >::value && ! grb::is_object< InputType2 >::value &&
 					grb::is_operator< Operator >::value,
 				void >::type * const = nullptr ) {
+			/*
 			if( internal::NONBLOCKING::warn_if_not_native && config::PIPELINE::warn_if_not_native ) {
-				std::cerr << "Warning: eWiseApply (nonblocking) currently delegates to a "
-						  << "blocking implementation.\n"
-						  << "         Further similar such warnings will be suppressed.\n";
-				internal::NONBLOCKING::warn_if_not_native = false;
+			    std::cerr << "Warning: eWiseApply (nonblocking) currently delegates to a "
+			              << "blocking implementation.\n"
+			              << "         Further similar such warnings will be suppressed.\n";
+			    internal::NONBLOCKING::warn_if_not_native = false;
 			}
 
 			// nonblocking execution is not supported
@@ -558,7 +576,15 @@ namespace grb {
 
 			// second, delegate to the reference backend
 			return eWiseApply_matrix_generic< allow_void, descr, MulMonoid, OutputType, InputType1, InputType2, Operator >(
-				getRefMatrix( C ), getRefMatrix( A ), getRefMatrix( B ), oper, mulMonoid, phase );
+			    getRefMatrix( C ), getRefMatrix( A ), getRefMatrix( B ), oper, mulMonoid, phase );
+			*/
+			(void)C;
+			(void)A;
+			(void)B;
+			(void)oper;
+			(void)mulMonoid;
+			(void)phase;
+			return UNSUPPORTED;
 		}
 
 	} // namespace internal
@@ -571,22 +597,30 @@ namespace grb {
 		const Phase phase = EXECUTE,
 		const typename std::enable_if< ! grb::is_object< OutputType >::value && ! grb::is_object< InputType1 >::value && ! grb::is_object< InputType2 >::value && grb::is_monoid< MulMonoid >::value,
 			void >::type * const = nullptr ) {
-		// static checks
-		NO_CAST_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename MulMonoid::D1, InputType1 >::value ), "grb::eWiseApply (nonblocking, matrix <- matrix x matrix, monoid)",
-			"called with a prefactor input matrix A that does not match the first "
-			"domain of the monoid operator" );
-		NO_CAST_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename MulMonoid::D2, InputType2 >::value ), "grb::eWiseApply (nonblocking, matrix <- matrix x matrix, monoid)",
-			"called with a postfactor input matrix B that does not match the "
-			"second domain of the monoid operator" );
-		NO_CAST_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename MulMonoid::D3, OutputType >::value ), "grb::eWiseApply (nonblocking, matrix <- matrix x matrix, monoid)",
-			"called with an output matrix C that does not match the output domain "
-			"of the monoid operator" );
+		/*
+// static checks
+NO_CAST_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename MulMonoid::D1, InputType1 >::value ), "grb::eWiseApply (nonblocking, matrix <- matrix x matrix, monoid)",
+	"called with a prefactor input matrix A that does not match the first "
+	"domain of the monoid operator" );
+NO_CAST_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename MulMonoid::D2, InputType2 >::value ), "grb::eWiseApply (nonblocking, matrix <- matrix x matrix, monoid)",
+	"called with a postfactor input matrix B that does not match the "
+	"second domain of the monoid operator" );
+NO_CAST_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename MulMonoid::D3, OutputType >::value ), "grb::eWiseApply (nonblocking, matrix <- matrix x matrix, monoid)",
+	"called with an output matrix C that does not match the output domain "
+	"of the monoid operator" );
 
 #ifdef _DEBUG
-		std::cout << "In grb::eWiseApply_matrix_generic (nonblocking, monoid)\n";
+std::cout << "In grb::eWiseApply_matrix_generic (nonblocking, monoid)\n";
 #endif
 
-		return internal::eWiseApply_matrix_generic< true, descr >( C, A, B, mulmono.getOperator(), mulmono, phase );
+return internal::eWiseApply_matrix_generic< true, descr >( C, A, B, mulmono.getOperator(), mulmono, phase );
+*/
+		(void)C;
+		(void)A;
+		(void)B;
+		(void)mulmono;
+		(void)phase;
+		return UNSUPPORTED;
 	}
 
 	template< Descriptor descr = grb::descriptors::no_operation, typename OutputType, typename InputType1, typename InputType2, class Operator >
@@ -597,23 +631,31 @@ namespace grb {
 		const Phase phase = EXECUTE,
 		const typename std::enable_if< ! grb::is_object< OutputType >::value && ! grb::is_object< InputType1 >::value && ! grb::is_object< InputType2 >::value && grb::is_operator< Operator >::value,
 			void >::type * const = nullptr ) {
-		// static checks
-		NO_CAST_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename Operator::D1, InputType1 >::value ), "grb::eWiseApply (nonblocking, matrix <- matrix x matrix, operator)",
-			"called with a prefactor input matrix A that does not match the first "
-			"domain of the given multiplication operator" );
-		NO_CAST_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename Operator::D2, InputType2 >::value ), "grb::eWiseApply (nonblocking, matrix <- matrix x matrix, operator)",
-			"called with a postfactor input matrix B that does not match the first "
-			"domain of the given multiplication operator" );
-		NO_CAST_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename Operator::D3, OutputType >::value ), "grb::eWiseApply (nonblocking, matrix <- matrix x matrix, operator)",
-			"called with an output matrix C that does not match the output domain "
-			"of the given multiplication operator" );
-		static_assert( ( ! ( std::is_same< InputType1, void >::value || std::is_same< InputType2, void >::value ) ),
-			"grb::eWiseApply (nonblocking, matrix <- matrix x matrix, operator): "
-			"the operator version of eWiseApply cannot be used if either of the "
-			"input matrices is a pattern matrix (of type void)" );
+		/*
+// static checks
+NO_CAST_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename Operator::D1, InputType1 >::value ), "grb::eWiseApply (nonblocking, matrix <- matrix x matrix, operator)",
+	"called with a prefactor input matrix A that does not match the first "
+	"domain of the given multiplication operator" );
+NO_CAST_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename Operator::D2, InputType2 >::value ), "grb::eWiseApply (nonblocking, matrix <- matrix x matrix, operator)",
+	"called with a postfactor input matrix B that does not match the first "
+	"domain of the given multiplication operator" );
+NO_CAST_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename Operator::D3, OutputType >::value ), "grb::eWiseApply (nonblocking, matrix <- matrix x matrix, operator)",
+	"called with an output matrix C that does not match the output domain "
+	"of the given multiplication operator" );
+static_assert( ( ! ( std::is_same< InputType1, void >::value || std::is_same< InputType2, void >::value ) ),
+	"grb::eWiseApply (nonblocking, matrix <- matrix x matrix, operator): "
+	"the operator version of eWiseApply cannot be used if either of the "
+	"input matrices is a pattern matrix (of type void)" );
 
-		typename grb::Monoid< grb::operators::mul< double >, grb::identities::one > dummyMonoid;
-		return internal::eWiseApply_matrix_generic< false, descr >( C, A, B, mulOp, dummyMonoid, phase );
+typename grb::Monoid< grb::operators::mul< double >, grb::identities::one > dummyMonoid;
+return internal::eWiseApply_matrix_generic< false, descr >( C, A, B, mulOp, dummyMonoid, phase );
+*/
+		(void)C;
+		(void)A;
+		(void)B;
+		(void)mulOp;
+		(void)phase;
+		return UNSUPPORTED;
 	}
 
 } // namespace grb

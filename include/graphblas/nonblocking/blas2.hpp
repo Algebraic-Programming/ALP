@@ -37,8 +37,9 @@
 #include <graphblas/internalops.hpp>
 #include <graphblas/ops.hpp>
 
-#include <graphblas/reference/compressed_storage.hpp>
+//#include <graphblas/reference/compressed_storage.hpp>
 
+#include "compressed_storage.hpp"
 #include "coordinates.hpp"
 #include "forward.hpp"
 #include "matrix.hpp"
@@ -1518,8 +1519,11 @@ namespace grb {
 		internal::le.execution();
 
 		// second, delegate to the reference backend
+		//return eWiseLambda< ActiveDistribution, Func, DataType, RIT, CIT, NIT >(
+		//	f, internal::getRefMatrix( A ), s, P );
+
 		return eWiseLambda< ActiveDistribution, Func, DataType, RIT, CIT, NIT >(
-			f, internal::getRefMatrix( A ), s, P );
+			f,  A, s, P );
 	}
 
 	template<

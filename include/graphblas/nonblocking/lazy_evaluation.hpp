@@ -123,7 +123,6 @@ namespace grb {
 				const Coordinates< nonblocking > * const coor_b_ptr,
 				const Coordinates< nonblocking > * const coor_c_ptr,
 				const Coordinates< nonblocking > * const coor_d_ptr,
-				const void * const input_matrix,
 				const void * const input_matrix_A,
 				const void * const input_matrix_B,
 				void * output_matrix_C );

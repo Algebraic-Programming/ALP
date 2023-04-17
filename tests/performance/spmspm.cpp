@@ -172,9 +172,21 @@ void grbProgram( const struct input &data_in, struct output &out ) {
 
 		grb::utils::Timer subtimer;
 		subtimer.reset();
+		std::cout << "before resize "<< std::endl;
+		size_t nzc = grb::capacity( C );
+		std::cout << "capacity of C before resize "<< nzc << std::endl;
 		rc = rc ? rc : grb::mxm( C, A, B, ring, RESIZE );
+		nzc = grb::capacity( C );
+		std::cout << "capacity of C after resize "<< nzc << std::endl;
+
 		assert( rc == SUCCESS );
+
+		std::cout << "before execute "<< std::endl;
 		rc = rc ? rc : grb::mxm( C, A, B, ring );
+		std::cout << "after execute "<< std::endl;
+		nzc = grb::capacity( C );
+		std::cout << "capacity of C after execute "<< nzc << std::endl;
+
 		assert( rc == SUCCESS );
 		double single_time = subtimer.time();
 

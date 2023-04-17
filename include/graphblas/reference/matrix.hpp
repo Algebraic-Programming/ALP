@@ -1360,8 +1360,10 @@ namespace grb {
 					sizes[ 3 ] = internal::Coordinates< reference >::bufferSize( cols );
 					sizes[ 4 ] = rows * internal::SizeOf< D >::value;
 					sizes[ 5 ] = cols * internal::SizeOf< D >::value;
+
 					CRS.getStartAllocSize( &( sizes[ 6 ] ), rows );
 					CCS.getStartAllocSize( &( sizes[ 7 ] ), cols );
+
 					if( cap_in > 0 ) {
 						CRS.getAllocSize( &(sizes[ 8 ]), cap_in );
 						CCS.getAllocSize( &(sizes[ 10 ]), cap_in );
@@ -1449,6 +1451,7 @@ namespace grb {
 					CRS.replace( alloc[ 2 ], alloc[ 3 ] );
 					CCS.replace( alloc[ 4 ], alloc[ 5 ] );
 				}
+
 			}
 
 			/** Implements a move. */

@@ -51,6 +51,9 @@ Pipeline::Pipeline() {
 	upper_bound.reserve( initial_tile_cap );
 	input_output_intersection.reserve( initial_container_cap );
 
+	//for BLAS3
+	input_output_intersection_matrix.reserve( initial_container_cap );
+
 	// the below looped-insert-then-clear simulates a reserve and can be reasonably
 	// expected to work for an optimised STL implementation. However, it would be
 	// nicer if we had our own set container that supports a guaranteed reserve(),
@@ -67,12 +70,11 @@ Pipeline::Pipeline() {
 		vxm_input_vectors.insert( dummy );
 		input_matrices.insert( dummy );
 		out_of_place_output_coordinates.insert( dumCoor );
+		
 		// for BLAS3
-		input_matrices_blas3.insert( dummy );
-		mxm_input_matrices_left.insert( dummy );
 		mxm_input_matrices_right.insert( dummy );
 		output_matrices.insert( dummy );
-		input_output_intersection_blas3.reserve( initial_container_cap );
+		
 #ifdef GRB_ALREADY_DENSE_OPTIMIZATION
 		already_dense_coordinates.insert( dumCCoor );
 #endif
@@ -86,8 +88,6 @@ Pipeline::Pipeline() {
 	out_of_place_output_coordinates.clear();
 
 	// for BLAS3
-	input_matrices_blas3.clear();
-	mxm_input_matrices_left.clear();
 	mxm_input_matrices_right.clear();
 	output_matrices.clear();
 #ifdef GRB_ALREADY_DENSE_OPTIMIZATION
@@ -101,7 +101,7 @@ Pipeline::Pipeline() {
 Pipeline::Pipeline( const Pipeline & pipeline ) :
 	stages( pipeline.stages ), opcodes( pipeline.opcodes ), accessed_coordinates( pipeline.accessed_coordinates ), input_vectors( pipeline.input_vectors ), output_vectors( pipeline.output_vectors ),
 	vxm_input_vectors( pipeline.vxm_input_vectors ), input_matrices( pipeline.input_matrices ), out_of_place_output_coordinates( pipeline.out_of_place_output_coordinates ),
-	input_matrices_blas3( pipeline.input_matrices_blas3 ), mxm_input_matrices_left( pipeline.mxm_input_matrices_left ), mxm_input_matrices_right( pipeline.mxm_input_matrices_right ),
+	mxm_input_matrices_right( pipeline.mxm_input_matrices_right ),
 	output_matrices( pipeline.output_matrices ),
 #ifdef GRB_ALREADY_DENSE_OPTIMIZATION
 	already_dense_coordinates( pipeline.already_dense_coordinates ),
@@ -119,7 +119,6 @@ Pipeline::Pipeline( Pipeline && pipeline ) noexcept :
 	stages( std::move( pipeline.stages ) ), opcodes( std::move( pipeline.opcodes ) ), accessed_coordinates( std::move( pipeline.accessed_coordinates ) ),
 	input_vectors( std::move( pipeline.input_vectors ) ), output_vectors( std::move( pipeline.output_vectors ) ), vxm_input_vectors( std::move( pipeline.vxm_input_vectors ) ),
 	input_matrices( std::move( pipeline.input_matrices ) ), out_of_place_output_coordinates( std::move( pipeline.out_of_place_output_coordinates ) ),
-	input_matrices_blas3( std::move( pipeline.input_matrices_blas3 ) ), mxm_input_matrices_left( std::move( pipeline.mxm_input_matrices_left ) ),
 	mxm_input_matrices_right( std::move( pipeline.mxm_input_matrices_right ) ), output_matrices( std::move( pipeline.output_matrices ) ),
 #ifdef GRB_ALREADY_DENSE_OPTIMIZATION
 	already_dense_coordinates( std::move( pipeline.already_dense_coordinates ) ),
@@ -152,8 +151,6 @@ Pipeline & Pipeline::operator=( const Pipeline & pipeline ) {
 	out_of_place_output_coordinates = pipeline.out_of_place_output_coordinates;
 
 	// for BLAS3
-	input_matrices_blas3 = pipeline.input_matrices_blas3;
-	mxm_input_matrices_left = pipeline.mxm_input_matrices_left;
 	mxm_input_matrices_right = pipeline.mxm_input_matrices_right;
 	output_matrices = pipeline.output_matrices;
 
@@ -185,8 +182,6 @@ Pipeline & Pipeline::operator=( Pipeline && pipeline ) {
 	out_of_place_output_coordinates = std::move( pipeline.out_of_place_output_coordinates );
 
 	// for BLAS3
-	input_matrices_blas3 = std::move( pipeline.input_matrices_blas3 );
-	mxm_input_matrices_left = std::move( pipeline.mxm_input_matrices_left );
 	mxm_input_matrices_right = std::move( pipeline.mxm_input_matrices_right );
 	output_matrices = std::move( pipeline.output_matrices );
 
@@ -286,10 +281,10 @@ void Pipeline::addStage( const Pipeline::stage_type && func,
 	const Coordinates< nonblocking > * const coor_b_ptr,
 	const Coordinates< nonblocking > * const coor_c_ptr,
 	const Coordinates< nonblocking > * const coor_d_ptr,
-	const void * const input_matrix,
 	const void * const input_matrix_A,
 	const void * const input_matrix_B,
 	void * output_matrix_C ) {
+
 	assert( stages.size() != 0 || containers_size == 0 );
 
 	if( stages.size() == 0 ) {
@@ -320,6 +315,11 @@ void Pipeline::addStage( const Pipeline::stage_type && func,
 	if( output_aux_vector_ptr != nullptr ) {
 		output_vectors.insert( output_aux_vector_ptr );
 	}
+	
+	// for BLAS3
+	if( output_matrix_C != nullptr ) {
+		output_matrices.insert( output_matrix_C );
+	}
 
 	// special treatment for an SpMV operation as the input must not be overwritten
 	// by another stage of the pipeline
@@ -349,10 +349,23 @@ void Pipeline::addStage( const Pipeline::stage_type && func,
 		// a pointer to an input matrix may be passed only by an SpMV operation
 		// TODO once level-3 operations are supported, the following code should be
 		//      moved
-		if( input_matrix != nullptr ) {
-			input_matrices.insert( input_matrix );
+		if( input_matrix_A != nullptr ) {
+			input_matrices.insert( input_matrix_A );
 		}
-	} else {
+	}
+	// FOR BLAS3, mxm operation 
+	else if(opcode == Opcode::BLAS3_MXM_GENERIC)
+	{
+		if( input_matrix_A != nullptr ) {
+			input_matrices.insert( input_matrix_A );
+		}
+
+		if( input_matrix_B != nullptr ) {
+			input_matrices.insert( input_matrix_B );
+			mxm_input_matrices_right.insert( input_matrix_B );
+		}
+	}
+	else {
 		if( input_a_ptr != nullptr ) {
 			input_vectors.insert( input_a_ptr );
 		}
@@ -367,6 +380,14 @@ void Pipeline::addStage( const Pipeline::stage_type && func,
 
 		if( input_d_ptr != nullptr ) {
 			input_vectors.insert( input_d_ptr );
+		}
+		// for BLAS3
+		if( input_matrix_A != nullptr ) {
+			input_matrices.insert( input_matrix_A );
+		}
+
+		if( input_matrix_B != nullptr ) {
+			input_matrices.insert( input_matrix_B );	
 		}
 	}
 
@@ -400,36 +421,6 @@ void Pipeline::addStage( const Pipeline::stage_type && func,
 			dense_descr_coordinates.insert( const_cast< internal::Coordinates< nonblocking > * >( coor_d_ptr ) );
 		} else {
 			accessed_coordinates.insert( const_cast< internal::Coordinates< nonblocking > * >( coor_d_ptr ) );
-		}
-	}
-
-	// FOR BLAS3
-	// special treatment for an SpMSpM operation as the input must not be overwritten
-	// by another stage of the pipeline
-
-	if( output_matrix_C != nullptr ) {
-		output_matrices.insert( output_matrix_C );
-	}
-
-	if( opcode == Opcode::BLAS3_MXM_GENERIC ) {
-
-		if( input_matrix_A != nullptr ) {
-			input_matrices_blas3.insert( input_matrix_A );
-			mxm_input_matrices_left.insert( input_matrix_A );
-		}
-
-		if( input_matrix_B != nullptr ) {
-			input_matrices_blas3.insert( input_matrix_B );
-			mxm_input_matrices_right.insert( input_matrix_B );
-		}
-
-	} else {
-		if( input_matrix_A != nullptr ) {
-			input_matrices_blas3.insert( input_matrix_A );
-		}
-
-		if( input_matrix_B != nullptr ) {
-			input_matrices_blas3.insert( input_matrix_B );
 		}
 	}
 
@@ -536,25 +527,23 @@ bool Pipeline::accessesVector( const void * const vector ) const {
 	return ( input_vectors.find( vector ) != input_vectors.end() ) || ( output_vectors.find( vector ) != output_vectors.end() );
 }
 
-bool Pipeline::accessesMatrix( const void * const matrix ) const {
-	return ( input_matrices.find( matrix ) != input_matrices.end() );
-}
+/*This function is replace by Pipeline::accessesInputMatrix. Both do the same*/
+//bool Pipeline::accessesMatrix( const void * const matrix ) const {
+//	return ( input_matrices.find( matrix ) != input_matrices.end() );
+//}
 
 bool Pipeline::overwritesVXMInputVectors( const void * const output_vector_ptr ) const {
 	return vxm_input_vectors.find( output_vector_ptr ) != vxm_input_vectors.end();
 }
 
 // for BLAS3
-bool Pipeline::accessesInputMatrix( const void * const matrix ) const {
-	return input_matrices_blas3.find( matrix ) != input_matrices_blas3.end();
+bool Pipeline::accessesInputMatrix( const void * const matrix ) const
+{
+	return input_matrices.find( matrix ) != input_matrices.end();
 }
 
 bool Pipeline::accessesOutputMatrix( const void * const matrix ) const {
 	return output_matrices.find( matrix ) != output_matrices.end();
-}
-
-bool Pipeline::overwritesMXMLeftInputMatrices( const void * const matrix ) const {
-	return mxm_input_matrices_left.find( matrix ) != mxm_input_matrices_left.end();
 }
 
 bool Pipeline::overwritesMXMRightInputMatrices( const void * const matrix ) const {
@@ -636,8 +625,6 @@ void Pipeline::merge( Pipeline & pipeline ) {
 	out_of_place_output_coordinates.insert( pipeline.out_of_place_output_coordinates.begin(), pipeline.out_of_place_output_coordinates.end() );
 
 	// for BLAS3
-	input_matrices_blas3.insert( pipeline.input_matrices_blas3.begin(), pipeline.input_matrices_blas3.end() );
-	mxm_input_matrices_left.insert( pipeline.mxm_input_matrices_left.begin(), pipeline.mxm_input_matrices_left.end() );
 	mxm_input_matrices_right.insert( pipeline.mxm_input_matrices_right.begin(), pipeline.mxm_input_matrices_right.end() );
 	output_matrices.insert( pipeline.output_matrices.begin(), pipeline.output_matrices.end() );
 
@@ -661,8 +648,6 @@ void Pipeline::merge( Pipeline & pipeline ) {
 	pipeline.out_of_place_output_coordinates.clear();
 
 	// for BLAS3
-	pipeline.input_matrices_blas3.clear();
-	pipeline.mxm_input_matrices_left.clear();
 	pipeline.mxm_input_matrices_right.clear();
 	pipeline.output_matrices.clear();
 
@@ -695,11 +680,9 @@ void Pipeline::clear() {
 	out_of_place_output_coordinates.clear();
 
 	// for BLAS3
-	input_matrices_blas3.clear();
-	mxm_input_matrices_left.clear();
 	mxm_input_matrices_right.clear();
 	output_matrices.clear();
-	input_output_intersection_blas3.clear();
+	input_output_intersection_matrix.clear();
 
 #ifdef GRB_ALREADY_DENSE_OPTIMIZATION
 	already_dense_coordinates.clear();
@@ -789,26 +772,31 @@ grb::RC Pipeline::execution() {
 	// for BLAS3
 	// compute the intersection of the input and output matrices that should be
 	// subtracted from the number of accessed matrices
-	std::set_intersection( input_matrices_blas3.begin(), input_matrices_blas3.end(), output_matrices.begin(), output_matrices.end(), std::back_inserter( input_output_intersection_blas3 ) );
-	const size_t num_accessed_matrices = input_matrices_blas3.size() + output_matrices.size() - input_output_intersection_blas3.size();
+	std::set_intersection( input_matrices.begin(), input_matrices.end(), output_matrices.begin(), output_matrices.end(), std::back_inserter( input_output_intersection_matrix ) );
+	const size_t num_accessed_matrices = input_matrices.size() + output_matrices.size() - input_output_intersection_matrix.size();
+	
 	// we check that containers are non-zero capacity.
-	bool num_accessed_vectors_matrices = ( num_accessed_vectors > 0 ) || ( num_accessed_matrices > 0 );
-	assert( num_accessed_vectors_matrices );
-
-	const size_t num_accessed_containers = num_accessed_matrices;
+	assert( ( num_accessed_vectors > 0 ) || ( num_accessed_matrices > 0 ) );
+	const size_t num_accessed_vectors_matrices = std::max(num_accessed_vectors, num_accessed_matrices);
+	std::cout << "NUMBER OF ACCESSED CONTAINERS: " << num_accessed_vectors_matrices << std::endl;
+	std::cout << "SIZE OF INPUT MATRIX A " << sizeof(*input_matrices.begin()) << std::endl;
 	// finishes BLAS3
 
 	// make use of the analytic model to estimate a proper number of threads and a
 	// tile size
-	AnalyticModel am( size_of_data_type, containers_size, num_accessed_containers );
-
+	AnalyticModel am( size_of_data_type, containers_size, num_accessed_vectors );
+    
 	const size_t nthreads = am.getNumThreads();
 	const size_t tile_size = am.getTileSize();
-	const size_t num_tiles = am.getNumTiles();
-
-#ifdef _NONBLOCKING_DEBUG
+	const size_t num_tiles = am.getNumTiles();	
+/*
+	const size_t nthreads = 1;
+	const size_t tile_size = containers_size;
+	const size_t num_tiles = 1;
+*/
+//#ifdef _NONBLOCKING_DEBUG
 	std::cout << std::endl << "Analytic Model: threads(" << nthreads << "), tile_size(" << tile_size << "), num_tiles(" << num_tiles << ")" << std::endl;
-#endif
+//#endif
 
 #ifdef GRB_ALREADY_DENSE_OPTIMIZATION
 	// build the set of already dense vectors that will be used for optimizations
@@ -870,6 +858,7 @@ grb::RC Pipeline::execution() {
 			RC local_ret = SUCCESS;
 			for( std::vector< stage_type >::iterator pt = pbegin(); pt != pend(); ++pt ) {
 				local_ret = local_ret ? local_ret : ( *pt )( *this, lower_bound[ tile_id ], upper_bound[ tile_id ] );
+				//std::cout << "this is being executed for all_already_dense_vectors " << std::endl;
 			}
 			if( local_ret != SUCCESS ) {
 				ret = local_ret;
@@ -928,7 +917,8 @@ grb::RC Pipeline::execution() {
 
 			RC local_ret = SUCCESS;
 			for( std::vector< stage_type >::iterator pt = pbegin(); pt != pend(); ++pt ) {
-				local_ret = local_ret ? local_ret : ( *pt )( *this, lower_bound[ tile_id ], upper_bound[ tile_id ] );
+				local_ret = local_ret ? local_ret : ( *pt )( *this, lower_bound[ tile_id ], upper_bound[ tile_id ] );				
+				//std::cout << "this is being executed for NOT all_already_dense_vectors " << std::endl;
 			}
 			if( local_ret != SUCCESS ) {
 				ret = local_ret;
