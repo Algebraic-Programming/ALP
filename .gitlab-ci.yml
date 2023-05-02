@@ -21,6 +21,9 @@ workflow:
     - when: always  # trigger pipeline in any case
 
 
+.strip_symbols: &strip_symbols
+  - strip -s $(find tests/unit/ -type f -executable -print) $(find tests/smoke/ -type f -executable -print) $(find tests/performance/ -type f -executable -print)
+
 # Build / test / install on CentOS 8, only for main branches
 
 #build_centos_8:
@@ -34,7 +37,7 @@ workflow:
 #    - yum -y update && yum -y groupinstall "Development Tools" && yum -y install make autoconf cmake numactl-devel
 #  script:
 #    - rm -rf build install && mkdir -p install build && cd ./build && ../bootstrap.sh --prefix=../install && make -j$(nproc) && make -j$(nproc) build_tests_all
-#    - strip -s $(find tests/unit/ -type f -executable -print) $(find tests/smoke/ -type f -executable -print) $(find tests/performance/ -type f -executable -print)
+#    - *strip_symbols
 #  artifacts:
 #    paths:
 #      - build/
@@ -118,7 +121,7 @@ build_test:
   needs: []
   script:
     - mkdir -p install build && cd ./build && ../bootstrap.sh --prefix=../install --with-datasets=${ALP_DATASETS} && make -j$(nproc) build_tests_all
-    - strip -s $(find tests/unit/ -type f -executable -print) $(find tests/smoke/ -type f -executable -print) $(find tests/performance/ -type f -executable -print)
+    - *strip_symbols
   artifacts:
     paths:
       - build/
@@ -130,7 +133,7 @@ build_test:
     expire_in: 80 minutes
 
 
-build_tests_build_type_debug_sym_debug:
+build_tests_buildtype_debug_sym_debug:
   needs: []
   script:
     - mkdir -p install build && cd build && cmake -DCMAKE_INSTALL_PREFIX=../install -DCMAKE_CXX_FLAGS=-D_DEBUG -DCMAKE_C_FLAGS=-D_DEBUG -DCMAKE_BUILD_TYPE=Debug ../ && make -j$(nproc) build_tests_all
@@ -164,11 +167,11 @@ test_installation:
     - cd ./build && make -j$(nproc) install
 
 
-build_test_build_type_debug:
+build_test_buildtype_debug:
   needs: []
   script:
     - mkdir -p install build && cd ./build && ../bootstrap.sh --prefix=../install --with-datasets=${ALP_DATASETS} --debug-build && make -j$(nproc) && make -j$(nproc) build_tests_all
-    - strip -s $(find tests/unit/ -type f -executable -print) $(find tests/smoke/ -type f -executable -print) $(find tests/performance/ -type f -executable -print)
+    - *strip_symbols
   artifacts:
     paths:
       - build/
@@ -178,13 +181,13 @@ build_test_build_type_debug:
     expire_in: 43 minutes
 
 test_smoke_build_type_debug:
-  needs: [build_test_build_type_debug]
+  needs: [build_test_buildtype_debug]
   script:
     - cd ./build && make -j$(nproc) smoketests &> smoketests.log
     - ../tests/summarise.sh smoketests.log
 
 test_installation_build_type_debug:
-  needs: [build_test_build_type_debug]
+  needs: [build_test_buildtype_debug]
   script:
     - cd ./build && make -j$(nproc) install
 
@@ -208,12 +211,12 @@ tests_performance:
     - cd ./build && make -j$(nproc) performancetests &> performancetests.log
     - ../tests/summarise.sh performancetests.log tests/performance/output/benchmarks tests/performance/output/scaling
 
-tests_unit_build_type_debug:
+tests_unit_buildtype_debug:
   rules:
     - if: $IS_MAIN_PIPELINE == "yes"
       when: on_success
     - when: never
-  needs: [build_test_build_type_debug]
+  needs: [build_test_buildtype_debug]
   script:
     - cd ./build && make -j$(nproc) unittests &> unittests.log
     - ../tests/summarise.sh unittests.log
@@ -228,9 +231,9 @@ build_test_lpf:
     - when: never
   needs: []
   script:
-# if we are on master develop or v/-rc branch (or attempting to merge onto them), build only LPF-related tests
+# build only LPF-related tests
     - mkdir -p install build && cd ./build && ../bootstrap.sh --with-lpf=${LPF_PATH} --no-nonblocking --no-reference --no-hyperdags --prefix=../install --with-datasets=${ALP_DATASETS} && make -j$(nproc) build_tests_all
-    - strip -s $(find tests/unit/ -type f -executable -print) $(find tests/smoke/ -type f -executable -print) $(find tests/performance/ -type f -executable -print)
+    - *strip_symbols
   artifacts:
     paths:
       - build/
