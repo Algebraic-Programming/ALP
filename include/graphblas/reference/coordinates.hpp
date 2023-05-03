@@ -197,7 +197,7 @@ namespace grb {
 #else
 						   1
 #endif
-					) * sizeof( StackType );
+					) * sizeof( StackType );				
 				}
 
 				/**
@@ -215,9 +215,16 @@ namespace grb {
 					//    1. the stack
 					//    2. parallel updates to that stack
 					//    3. parallel prefix sums over stack sizes
+					
+					//std::cout << "---from coordinates.hpp ->bufferSize()" << std::endl;
+					//std::cout << "size of StackType = " << sizeof( StackType ) << std::endl;
+					//std::cout << "size of ArrayType = " << sizeof( ArrayType ) << std::endl;
 					size_t ret = stackSize( dim );
+					//std::cout << "size of stackSize = " << stackSize( dim ) << std::endl;
 					ret += parbufSize( dim );
+					//std::cout << "size of parbufSize = " << parbufSize( dim ) << std::endl;
 					ret += prefixbufSize();
+					//std::cout << "size of prefixbufSize = " << prefixbufSize() << std::endl;					
 					return ret;
 				}
 
@@ -339,7 +346,6 @@ namespace grb {
 				) noexcept {
 					// catch trivial case
 					if( arr == nullptr || buf == nullptr ) {
-						std::cout << "trivial case for set coordinates" << std::endl;
 						assert( arr == nullptr );
 						assert( buf == nullptr );
 						assert( dim == 0 );
@@ -378,14 +384,17 @@ namespace grb {
 					);
 					// and initialise _assigned (but only if necessary)
 
+					/*
 					std::cout << "value of _cap " << _cap << std::endl;
-					std::cout << "value of _buf " << _buf << std::endl;
-					std::cout << "size of _assigned " << sizeof( _assigned ) << std::endl;
+					std::cout << "value of _buf " << _buf << std::endl;					
+					*/
 
+					
 					if( dim > 0 && ! arr_initialized ) {
 #ifdef _H_GRB_REFERENCE_OMP_COORDINATES
 						#pragma omp parallel
 						{
+							std::cout << "parallel set has been called" << std::endl;
 							size_t start, end;
 							config::OMP::localRange( start, end, 0, dim );
 #else
@@ -398,7 +407,14 @@ namespace grb {
 #ifdef _H_GRB_REFERENCE_OMP_COORDINATES
 						}
 #endif
+						
 					}
+					/*
+					std::cout << "from coordinates.hpp -> set()\n";
+					std::cout << "address of _assigned = " << reinterpret_cast<void *>(_assigned) << std::endl;
+					std::cout << "address of _stack = " << reinterpret_cast<void *>(_stack) << std::endl;	
+					std::cout << "address of _buffer = " << reinterpret_cast<void *>(_buffer) << std::endl;					
+					*/						
 				}
 
 				/**
@@ -1507,7 +1523,7 @@ namespace grb {
 				 *
 				 * This function may be called on instances with any (other) state.
 				 */
-				inline void clear() noexcept {
+				inline void clear() noexcept {					
 					if( _n == _cap ) {
 #ifndef NDEBUG
 						if( _assigned == nullptr && _cap > 0 ) {

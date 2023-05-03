@@ -169,25 +169,17 @@ void grbProgram( const struct input &data_in, struct output &out ) {
 	// time a single call
 	{
 		Matrix< double > C( l, n );
-
+		
+		
 		grb::utils::Timer subtimer;
 		subtimer.reset();
-		std::cout << "before resize "<< std::endl;
-		size_t nzc = grb::capacity( C );
-		std::cout << "capacity of C before resize "<< nzc << std::endl;
 		rc = rc ? rc : grb::mxm( C, A, B, ring, RESIZE );
-		nzc = grb::capacity( C );
-		std::cout << "capacity of C after resize "<< nzc << std::endl;
-
 		assert( rc == SUCCESS );
-
-		std::cout << "before execute "<< std::endl;
-		rc = rc ? rc : grb::mxm( C, A, B, ring );
-		std::cout << "after execute "<< std::endl;
-		nzc = grb::capacity( C );
-		std::cout << "capacity of C after execute "<< nzc << std::endl;
-
+		std::cout << "-----------************-----------" <<std::endl;
+		std::cout << "-----------FIRST CALL TO MXM STARTS-----------" <<std::endl;
+		rc = rc ? rc : grb::mxm( C, A, B, ring );		
 		assert( rc == SUCCESS );
+		std::cout << "-----------FIRST CALL TO MXM ENDS-----------" <<std::endl;
 		double single_time = subtimer.time();
 
 		if( rc != SUCCESS ) {
@@ -237,10 +229,15 @@ void grbProgram( const struct input &data_in, struct output &out ) {
 	timer.reset();
 
 #ifndef NDEBUG
+	
 	rc = rc ? rc : grb::mxm( C, A, B, ring, RESIZE );
 	assert( rc == SUCCESS );
+	
+	std::cout << "-----------************-----------" <<std::endl;
+	std::cout << "-----------SECOND CALL TO MXM-----------" <<std::endl;
 	rc = rc ? rc : grb::mxm( C, A, B, ring );
 	assert( rc == SUCCESS );
+	std::cout << "-----------************-----------" <<std::endl;
 #else
 	(void) grb::mxm( C, A, B, ring, RESIZE );
 	(void) grb::mxm( C, A, B, ring );
@@ -365,7 +362,9 @@ int main( int argc, char ** argv ) {
 	// set standard exit code
 	grb::RC rc = SUCCESS;
 
+
 	// launch estimator (if requested)
+	std::cout << "laucher estimator starts " << std::endl; 
 	if( in.rep == 0 ) {
 		grb::Launcher< AUTOMATIC > launcher;
 		rc = launcher.exec( &grbProgram, in, out, true );
@@ -378,7 +377,7 @@ int main( int argc, char ** argv ) {
 			return 6;
 		}
 	}
-
+	std::cout << "laucher benchmark starts " << std::endl; 
 	// launch benchmark
 	if( rc == SUCCESS ) {
 		grb::Benchmarker< AUTOMATIC > benchmarker;
@@ -389,6 +388,7 @@ int main( int argc, char ** argv ) {
 			<< grb::toString( rc ) << std::endl;
 		return 8;
 	}
+	
 
 	std::cout << "Error code is " << out.error_code << ".\n";
 

@@ -187,7 +187,6 @@ namespace grb {
 		Matrix< InputType, nonblocking, RIT, CIT, NIT > &A,
 		const size_t new_nz
 	) noexcept {
-		//return resize( internal::getRefMatrix( A ), new_nz );
 #ifdef _DEBUG
 		std::cerr << "In grb::resize (matrix, reference)\n"
 			<< "\t matrix is " << nrows(A) << " by " << ncols(A) << "\n"

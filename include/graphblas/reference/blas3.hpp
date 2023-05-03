@@ -149,8 +149,7 @@ namespace grb {
 			//std::cout << "size of reference_bufsize " << sizeof(double) << std::endl;
 			
 			// initialisations
-			internal::Coordinates< reference > coors;
-			std::cout << "call to set() coordinates" << std::endl;
+			internal::Coordinates< reference > coors;			
 			coors.set( arr, false, buf, n );
 		
 			if( !crs_only ) {

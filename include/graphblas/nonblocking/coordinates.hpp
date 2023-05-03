@@ -180,7 +180,8 @@ namespace grb {
 				void set(
 					void * const arr, bool arr_initialized,
 					void * const buf, const size_t dim, bool parallel = true
-				) noexcept {
+				) noexcept {			
+				
 					// catch trivial case
 					if( arr == nullptr || buf == nullptr ) {
 						assert( arr == nullptr );
@@ -219,7 +220,9 @@ namespace grb {
 							#pragma omp parallel
 							{
 								size_t start, end;
+								
 								config::OMP::localRange( start, end, 0, dim );
+								std::cout << "local range : " << start << ", " << end << std::endl;
 								for( size_t i = start; i < end; ++i ) {
 									_assigned[ i ] = false;
 								}
@@ -230,6 +233,7 @@ namespace grb {
 							}
 						}
 					}
+
 				}
 
 				inline bool assign( const size_t i ) noexcept {		
@@ -305,7 +309,7 @@ namespace grb {
 				}
 
 				inline void clear() noexcept {
-
+					
 					if( _n == _cap ) {
 #ifndef NDEBUG
 						if( _assigned == nullptr && _cap > 0 ) {
@@ -330,7 +334,7 @@ namespace grb {
 							}
 						}
 					}
-					_n = 0;
+					_n = 0;					
 				}
 
 				inline void local_clear() noexcept {

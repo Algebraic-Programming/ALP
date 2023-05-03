@@ -1367,6 +1367,12 @@ namespace grb {
 					if( cap_in > 0 ) {
 						CRS.getAllocSize( &(sizes[ 8 ]), cap_in );
 						CCS.getAllocSize( &(sizes[ 10 ]), cap_in );
+						/*
+						std::cout << "outputs from matrix.hpp" << std::endl;
+						std::cout << "value of cap_in = " << cap_in << std::endl;
+						std::cout << "value of CRS.getStartAllocSize = " << sizes[ 6 ] << std::endl;
+						std::cout << "value of CRS.getAllocSize = " << sizes[ 8 ] << std::endl;
+						*/
 					} else {
 						sizes[ 8 ] = sizes[ 9 ] = sizes[ 10 ] = sizes[ 11 ] = 0;
 					}
@@ -1387,6 +1393,32 @@ namespace grb {
 						alloc[ 4 ], sizes[ 10 ], true, _deleter[ 4 ],
 						alloc[ 5 ], sizes[ 11 ], true, _deleter[ 5 ]
 					);
+					//print sizes of SPA structure
+					/*
+					std::cout << "number of rows = " << rows << ", number of cols = " << cols << std::endl;
+					std::cout << "information of the CRS format" << std::endl;					
+					std::cout << "size of (start offset) alloc[ 0 ] = " << sizes[ 6 ] << std::endl;
+					std::cout << "address of alloc[ 0 ] = " << reinterpret_cast<void *>(alloc[ 0 ]) << std::endl;
+
+					std::cout << "size of (value array) alloc[ 2 ] = " << sizes[ 8 ] << std::endl;
+					std::cout << "address of (value array) alloc[ 2 ] = " << reinterpret_cast<void *>(alloc[ 2 ]) << std::endl;
+
+					std::cout << "size of (index array) alloc[ 3 ] = " << sizes[ 9 ] << std::endl;
+					std::cout << "address of (index array) alloc[ 3 ] = " << reinterpret_cast<void *>(alloc[ 3 ]) << std::endl;
+					
+					std::cout << "information of the column-wise SPA" << std::endl;
+					std::cout << "size of coorArr[1] = "  <<sizes[ 1 ] << std::endl;
+					std::cout << "address of coorArr[1] = " << reinterpret_cast<void *>(coorArr[1])  << std::endl;
+
+					std::cout << "size of coorBuf[ 1 ] = " << sizes[ 3 ] << std::endl;
+					std::cout << "address of coorBuf[1] = " << reinterpret_cast<void *>(coorBuf[1]) << std::endl;	
+
+					// remember below that valbuf[ 1 ] = reinterpret_cast< D * >( alloc[ 7 ] );
+					std::cout << "size of valbuf[ 1 ] = " << sizes[ 5 ]<< std::endl;
+					std::cout << "address of valbuf[ 1 ] = " <<  reinterpret_cast<void *>(alloc[ 7 ])<< std::endl;
+					
+					std::cout << "----xxxXXXxxx-----" << std::endl;
+					*/
 				} else {
 					const size_t sizes[ 2 ] = {
 						rows * internal::SizeOf< D >::value,
@@ -1450,8 +1482,10 @@ namespace grb {
 					CCS.replaceStart( alloc[ 1 ] );
 					CRS.replace( alloc[ 2 ], alloc[ 3 ] );
 					CCS.replace( alloc[ 4 ], alloc[ 5 ] );
-				}
 
+					
+					
+				}
 			}
 
 			/** Implements a move. */
@@ -1556,7 +1590,7 @@ namespace grb {
 			}
 
 			/** @see grb::resize() */
-			RC resize( const size_t nonzeroes ) {
+			RC resize( const size_t nonzeroes ) {				
 				// check for trivial case
 				if( m == 0 || n == 0 || nonzeroes == 0 ) {
 					// simply do not do anything and return

@@ -778,13 +778,11 @@ grb::RC Pipeline::execution() {
 	// we check that containers are non-zero capacity.
 	assert( ( num_accessed_vectors > 0 ) || ( num_accessed_matrices > 0 ) );
 	const size_t num_accessed_vectors_matrices = std::max(num_accessed_vectors, num_accessed_matrices);
-	std::cout << "NUMBER OF ACCESSED CONTAINERS: " << num_accessed_vectors_matrices << std::endl;
-	std::cout << "SIZE OF INPUT MATRIX A " << sizeof(*input_matrices.begin()) << std::endl;
 	// finishes BLAS3
 
 	// make use of the analytic model to estimate a proper number of threads and a
 	// tile size
-	AnalyticModel am( size_of_data_type, containers_size, num_accessed_vectors );
+	AnalyticModel am( size_of_data_type, containers_size, 1 );
     
 	const size_t nthreads = am.getNumThreads();
 	const size_t tile_size = am.getTileSize();
@@ -794,9 +792,9 @@ grb::RC Pipeline::execution() {
 	const size_t tile_size = containers_size;
 	const size_t num_tiles = 1;
 */
-//#ifdef _NONBLOCKING_DEBUG
+#ifdef _NONBLOCKING_DEBUG
 	std::cout << std::endl << "Analytic Model: threads(" << nthreads << "), tile_size(" << tile_size << "), num_tiles(" << num_tiles << ")" << std::endl;
-//#endif
+#endif
 
 #ifdef GRB_ALREADY_DENSE_OPTIMIZATION
 	// build the set of already dense vectors that will be used for optimizations

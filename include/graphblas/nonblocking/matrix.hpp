@@ -55,10 +55,6 @@
 
 #include "forward.hpp"
 
-//added for BLAS3
-#include<graphblas/reference/NonzeroWrapper.hpp>
-
-
 namespace grb {	
 
 	namespace internal {
@@ -458,9 +454,9 @@ namespace grb {
 		 */
 		void initialize( const uintptr_t * const id_in, const size_t rows, const size_t cols, const size_t cap_in ) {
 #ifdef _DEBUG
-			std::cerr << "\t in Matrix< reference >::initialize...\n"
+			std::cerr << "\t in Matrix< nonblocking >::initialize...\n"
 					  << "\t\t matrix size " << rows << " by " << cols << "\n"
-					  << "\t\t requested capacity " << cap_in << "\n";
+					  << "\t\t requested capacity " << cap_in << "\n";				  
 #endif
 
 			// dynamic checks
@@ -684,6 +680,7 @@ namespace grb {
 		}
 		*/
 		RC resize( const size_t nonzeroes ) {
+			std::cout << "NONBLOCKING/matrix.hpp - > resize() has been called " << std :: endl;
 			// check for trivial case
 			if( m == 0 || n == 0 || nonzeroes == 0 ) {
 				// simply do not do anything and return
@@ -884,16 +881,16 @@ namespace grb {
 		// Matrix( const size_t rows, const size_t columns, const size_t nz ) : ref( rows, columns, nz ) {}
 		Matrix( const size_t rows, const size_t columns, const size_t nz ) : Matrix() {
 #ifdef _DEBUG
-			std::cout << "In grb::Matrix constructor (reference, with requested "
+			std::cout << "In grb::Matrix constructor (nonblocking, with requested "
 					  << "capacity)\n";
-#endif
+#endif			
 			initialize( nullptr, rows, columns, nz );
 		}
 
 		// Matrix( const size_t rows, const size_t columns ) : ref( rows, columns ) {}
 		Matrix( const size_t rows, const size_t columns ) : Matrix( rows, columns, std::max( rows, columns ) ) {
 #ifdef _DEBUG
-			std::cout << "In grb::Matrix constructor (reference, default capacity)\n";
+			std::cout << "In grb::Matrix constructor (nonblocking, default capacity)\n";
 #endif
 		}
 
@@ -923,7 +920,7 @@ namespace grb {
 		 */
 		Matrix( const Matrix< D, nonblocking, RowIndexType, ColIndexType, NonzeroIndexType > & other ) : Matrix( other.m, other.n, other.cap ) {
 #ifdef _DEBUG
-			std::cerr << "In grb::Matrix (reference) copy-constructor\n"
+			std::cerr << "In grb::Matrix (nonblocking) copy-constructor\n"
 					  << "\t source matrix has " << other.nz << " nonzeroes\n";
 #endif
 			nz = other.nz;

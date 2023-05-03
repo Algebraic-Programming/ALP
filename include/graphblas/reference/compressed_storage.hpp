@@ -718,7 +718,7 @@ namespace grb {
 				 */
 				void getAllocSize( size_t * sizes, const size_t nonzeroes ) {
 					*sizes++ = nonzeroes * sizeof( D );   // values array
-					*sizes++ = nonzeroes * sizeof( IND ); // index array
+					*sizes++ = nonzeroes * sizeof( IND ); // index array	
 				}
 
 				/**
@@ -730,7 +730,7 @@ namespace grb {
 				 * @param[in]  dim_size The size of the major dimension.
 				 */
 				void getStartAllocSize( size_t * size, const size_t dim_size ) {
-					*size = ( dim_size + 1 ) * sizeof( SIZE );
+					*size = ( dim_size + 1 ) * sizeof( SIZE );					
 				}
 
 				/**
@@ -774,8 +774,8 @@ namespace grb {
 				 * @param[in]  k  Where to store the given nonzero value.
 				 * @param[in] val Which value to store.
 				 */
-				inline void setValue( const size_t k, const D & val ) noexcept {
-					values[ k ] = val;
+				inline void setValue( const size_t k, const D & val ) noexcept {					
+					values[ k ] = val;					
 				}
 
 		};
@@ -917,6 +917,7 @@ namespace grb {
 #ifdef _DEBUG
 							std::cout << "Iterator constructor (pattern specialisation) called\n";
 #endif
+							std::cout << "compressed storage from REFERENCE" << std::endl;
 							if( _nz == 0 || _m == 0 || _n == 0 || end ) {
 								row = m;
 								return;

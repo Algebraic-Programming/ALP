@@ -32,9 +32,13 @@
 
 #include <graphblas/base/blas3.hpp>
 #include <graphblas/utils/iterators/MatrixVectorIterator.hpp>
+#include <graphblas/nonblocking/analytic_model.hpp>
 
 #include "io.hpp"
 #include "matrix.hpp"
+#include <tuple>
+#include <algorithm>
+#include <numeric>
 
 #define NO_CAST_ASSERT( x, y, z )                                              \
 	static_assert( x,                                                          \
@@ -73,6 +77,30 @@ namespace grb {
 
 	namespace internal {
 
+		// helper function use to count the number of nonzeros
+		bool coordinates_assign_resize_mxm(const size_t i, std::vector<bool> assigned_vector)		
+		{
+			if (!assigned_vector[i])
+			{
+				assigned_vector[i] = true;				
+				return false;
+			}
+			else
+			{
+				return true;
+			}
+		}
+		
+		// std::tuple < tile*, lower, upper, nnz_local >
+		template< typename OutputType,
+			typename RIT,
+			typename CIT,
+			typename NIT >
+		bool sortByLowerBound_tuple(const std::tuple< Matrix<OutputType, nonblocking, RIT, CIT, NIT>*, size_t, size_t, size_t >& tile1, std::tuple< Matrix<OutputType, nonblocking, RIT, CIT, NIT>*, size_t, size_t, size_t >& tile2)
+		{
+			return ( std::get< 1 >( tile1 ) < std::get< 1 >( tile2 ) );
+		}
+
 		template< bool allow_void,
 			Descriptor descr,
 			class MulMonoid,
@@ -95,7 +123,7 @@ namespace grb {
 					grb::is_operator< Operator >::value && grb::is_monoid< Monoid >::value,
 				void >::type * const = nullptr ) {
 			
-			le.execution();
+			//le.execution();
 
 			/*
 	// nonblocking execution is not supported
@@ -118,6 +146,8 @@ namespace grb {
 			Assumption: we use the CSR format only
 			*/
 
+			le.execution();	
+
 			static_assert( allow_void || ( ! ( std::is_same< InputType1, void >::value || std::is_same< InputType2, void >::value ) ),
 				"grb::mxm_generic: the operator-monoid version of mxm cannot be "
 				"used if either of the input matrices is a pattern matrix (of type "
@@ -138,8 +168,6 @@ namespace grb {
 				"Cannot (presently) transpose B "
 				"and force the use of CRS" );
 
-			RC ret = SUCCESS;
-
 			// run-time checks
 			const size_t m = grb::nrows( C );
 			const size_t n = grb::ncols( C );
@@ -154,154 +182,247 @@ namespace grb {
 			}
 
 			const auto & A_raw = ! trans_left ? internal::getCRS( A ) : internal::getCCS( A );
-			const auto & B_raw = ! trans_right ? internal::getCRS( B ) : internal::getCCS( B );
-			auto & C_raw = internal::getCRS( C );
-			auto & CCS_raw = internal::getCCS( C );
+			const auto & B_raw = ! trans_right ? internal::getCRS( B ) : internal::getCCS( B );				
 
-			char * arr = nullptr;
-			char * buf = nullptr;
-			OutputType * valbuf = nullptr;
-			internal::getMatrixBuffers( arr, buf, valbuf, 1, C );
+			RC ret = SUCCESS;
 
-			// initialisations
-			internal::Coordinates< reference > coors;
-			coors.set( arr, false, buf, n );
+			// global counter of nnz in the output matrix
+			size_t nzc_global = 0;
+			// store the nnz for each tile
+			std::vector< size_t > nnz_tile;
 
-			// symbolic phase (counting sort, step 1)
-			size_t nzc = 0; // output nonzero count
-			if( crs_only && phase == RESIZE ) {
-				// we are using an auxialiary CRS that we cannot resize ourselves
-				// instead, we update the offset array only
-				C_raw.col_start[ 0 ] = 0;
-			}
+			// this vector stores pointers to tiles (so far these are matrix objects)
+			using tile_type = Matrix< OutputType, nonblocking, RIT, CIT, NIT >;			
 
-			// if crs_only, then the below implements its resize phase
-			// if not crs_only, then the below is both crucial for the resize phase,
-			// as well as for enabling the insertions of output values in the output CCS
-			if( (crs_only && phase == RESIZE) || !crs_only ) {
-				for( size_t i = 0; i < m; ++i ) {
-					coors.clear();
-					for( auto k = A_raw.col_start[ i ]; k < A_raw.col_start[ i + 1 ]; ++k ) {
-						const size_t k_col = A_raw.row_index[ k ];
-						for(
-							auto l = B_raw.col_start[ k_col ];
-							l < B_raw.col_start[ k_col + 1 ];
-							++l
-						) {
-							const size_t l_col = B_raw.row_index[ l ];
-							if( !coors.assign( l_col ) ) {
-								(void) ++nzc;
-								if( !crs_only ) {
-									(void) ++CCS_raw.col_start[ l_col + 1 ];
+			// using tuples to store
+			std::vector< std::tuple<tile_type*, size_t, size_t, size_t> > tiles_tuples;
+
+			// lambda function of resize phase
+			internal::Pipeline::stage_type func = [ &A, &B, &A_raw, &B_raw, &nnz_tile, &nzc_global, &tiles_tuples,oper, monoid, mulMonoid, phase](
+													  internal::Pipeline & pipeline, const size_t lower_bound, const size_t upper_bound ) {
+
+				(void)pipeline;
+				/*****************RESIZE PHASE *****************/
+				const size_t m = grb::ncols( A );
+				const size_t n = grb::ncols( B );
+
+				// stores the number of nonzeros for each tile
+				size_t nzc_local = 0;
+
+				// stores the indices of the nonzeros
+				std::set< std::pair< size_t, size_t > > indices;
+				std::pair< size_t, size_t > element;
+
+				/**
+				 * Reference backend implementation: when we create matrix C, there are 9 arrays corresponding to it,
+				 * 6 that come from the formats CRS and CCS. The remaining 3 come from the SPA data structure. Memory is
+				 * allocated in matrix.hpp::initialize(). A SPA consists of coorArr, coorBuf, valBuf.
+				 * For matrix C, when we call internal::getMatrixBuffers( arr, buf, valbuf, 1, C ), the pointers arr, buf, valbuf
+				 * point to coorArr, coorBuf, valBuf (SPA), respectively.
+				 * In coordinates.hpp, there are 3 important pointers: _stack, _assigned, and _buffer.
+				 * When we call coors.set( arr, false, buf, n ), _assigned points to arr, and _buffer to buf.
+				 * This means that for matrix C, we access its SPA by using coors. Even if we create an independent coors object
+				 * for each tile, each coors will point to the same memory locations. These causes data races.
+				 *
+				 * Solution: during the resize phase, we just need the _assigned vector; then we can
+				 * emulate the assign() function by using a simplified version on a tile-local boolen vector.
+				 * We have no need to create a coordinates object for each tile during this phase.
+				 *
+				 */
+
+				std::vector< bool > _local_assigned( n );
+
+				// symbolic phase (counting sort, step 1)
+				if( ( crs_only && phase == RESIZE ) || ! crs_only ) {
+					for( size_t i = lower_bound; i < upper_bound; ++i ) {
+						// clear coordinates
+						std::fill( _local_assigned.begin(), _local_assigned.end(), false );
+						for( auto k = A_raw.col_start[ i ]; k < A_raw.col_start[ i + 1 ]; ++k ) {
+
+							auto val_A = A_raw.getValue( k, mulMonoid.template getIdentity< typename Operator::D1 >() );
+							const size_t k_col = A_raw.row_index[ k ];
+							for( auto l = B_raw.col_start[ k_col ]; l < B_raw.col_start[ k_col + 1 ]; ++l ) {
+								const size_t l_col = B_raw.row_index[ l ];
+								auto val_B = B_raw.getValue( l, mulMonoid.template getIdentity< typename Operator::D2 >() );
+
+								// we emulute what coordinates do in the resize phase. We need only to keep track of assigned values in
+								// current active row
+								if( false == _local_assigned[ l_col ] ) {
+									_local_assigned[ l_col ] = true;
+									++nzc_local;
+								}
+
+								if( ( val_A * val_B > 0 ) || ( val_A * val_B < 0 ) ) {
+									element.first = i;
+									element.second = l_col;
+
+									if( indices.find( element ) == indices.end() ) {
+										indices.insert( element );
+									}
+								}
+
+								if( crs_only && phase == RESIZE ) {
+									// we are using an auxialiary CRS that we cannot resize ourselves
+									// instead, we update the offset array only
+									//C_raw.col_start[ i + 1 ] = nzc_local;
 								}
 							}
 						}
 					}
-					if( crs_only && phase == RESIZE ) {
-						// we are using an auxialiary CRS that we cannot resize ourselves
-						// instead, we update the offset array only
-						C_raw.col_start[ i + 1 ] = nzc;
+				}
+			
+				// we update the vector of tiles, vector of nnz, and vector of bounds. Only one thread can write into
+				// these at a time
+				// create tile					
+				auto tile = new tile_type( upper_bound - lower_bound, n, nzc_local );				
+
+				#pragma omp critical
+				{
+					// after counting the number of nonzeros for each, we create the corresponding tiles and
+					//  push them into the vector tiles. Tiles are of type Matrix
+					int thread_id = omp_get_thread_num();																										
+					
+					// add local nnz into vector of nnz
+					nnz_tile.push_back( indices.size() );
+					
+					//using tuple
+					tiles_tuples.push_back(std::make_tuple(tile, lower_bound, upper_bound, nzc_local));					
+					
+					// update global nnz
+					nzc_global += nzc_local;
+
+				}
+
+				// COMMENT: still keep this condition if RESIZE phase only?
+				/*
+				if( phase == RESIZE ) {
+					if( !crs_only ) {
+						// do final resize
+						const RC ret = grb::resize( C, nzc_global );
+						return ret;
+					} else {
+						// we are using an auxiliary CRS that we cannot resize
+						// instead, we updated the offset array in the above and can now exit
+						return SUCCESS;
 					}
 				}
-			}
-
-			if( phase == RESIZE ) {
-				if( !crs_only ) {
-					// do final resize
-					const RC ret = grb::resize( C, nzc );
-					return ret;
-				} else {
-					// we are using an auxiliary CRS that we cannot resize
-					// instead, we updated the offset array in the above and can now exit
-					return SUCCESS;
+				*/
+											
+				// COMMENT: how to perform this safety check? nzc_global may not be fully computed
+				/* nzc_global is updated in parallel
+				assert( phase == EXECUTE );
+				if( grb::capacity( C ) < nzc_global ) {
+#ifdef _DEBUG
+				std::cerr << "\t not enough capacity to execute requested operation\n";
+#endif
+					const RC clear_rc = grb::clear( C );
+					if( clear_rc != SUCCESS ) {
+						return PANIC;
+					} else {
+						return FAILED;
+					}
 				}
-			}
+				*/
 
+				/*****************COMPUTATIONAL PHASE *****************/
+				size_t old_nzc_local = nzc_local;
+				nzc_local = 0;
 
-			// ------- finishes RESIZING PHASE			
-			/// here
-			//  lambda function to be added into the pipeline
-			internal::Pipeline::stage_type func = [ &A, &B, &C, oper, monoid, mulMonoid, phase ]( internal::Pipeline & pipeline, const size_t lower_bound, const size_t upper_bound ) {
-				(void)pipeline;
-				const size_t n = grb::ncols( C );
-				const auto & A_raw = ! trans_left ? internal::getCRS( A ) : internal::getCCS( A );
-				const auto & B_raw = ! trans_right ? internal::getCRS( B ) : internal::getCCS( B );
-				auto & C_raw = internal::getCRS( C );
-				auto & CCS_raw = internal::getCCS( C );
+				//get CRS format of current tile
+				auto & C_raw = internal::getCRS( *tile );
+				C_raw.col_start[ 0 ] = 0;
 
+				// for each tile we create its correspoding coordinates
 				char * arr = nullptr;
 				char * buf = nullptr;
 				OutputType * valbuf = nullptr;
-				internal::getMatrixBuffers( arr, buf, valbuf, 1, C );
+				internal::getMatrixBuffers( arr, buf, valbuf, 1, *tile );
+				config::NonzeroIndexType * C_col_index = internal::template
+				getReferenceBuffer< typename config::NonzeroIndexType >( n + 1 );
 
-				// initialisations
-				internal::Coordinates< nonblocking > coors;
+				// initialize coordinates from reference backend
+				internal::Coordinates< reference > coors;				
 				coors.set( arr, false, buf, n );
 
-				// symbolic phase (counting sort, step 1)
-				size_t nzc = getCurrentNonzeroes( C ); // output nonzero count
-				if( crs_only && phase == RESIZE ) {
-					// we are using an auxialiary CRS that we cannot resize ourselves
-					// instead, we update the offset array only
-					C_raw.col_start[ 0 ] = 0;
-				}
-#ifndef NDEBUG
-				const size_t old_nzc = nzc;
-#endif
-				// use previously computed CCS offset array to update CCS during the
-				// computational phase
-				nzc = 0;
-				C_raw.col_start[ 0 ] = 0;
+				size_t index_col_start = 0;
+
 				for( size_t i = lower_bound; i < upper_bound; ++i ) {
 					coors.clear();
 					for( auto k = A_raw.col_start[ i ]; k < A_raw.col_start[ i + 1 ]; ++k ) {
 						const size_t k_col = A_raw.row_index[ k ];
-						for( auto l = B_raw.col_start[ k_col ]; l < B_raw.col_start[ k_col + 1 ]; ++l ) {
+						for( auto l = B_raw.col_start[ k_col ];
+							l < B_raw.col_start[ k_col + 1 ];
+							++l
+						) {
 							const size_t l_col = B_raw.row_index[ l ];
 #ifdef _DEBUG
-							std::cout << "\t A( " << i << ", " << k_col << " ) = " << A_raw.getValue( k, mulMonoid.template getIdentity< typename Operator::D1 >() ) << " will be multiplied with B( "
-									  << k_col << ", " << l_col << " ) = " << B_raw.getValue( l, mulMonoid.template getIdentity< typename Operator::D2 >() ) << " to accumulate into C( " << i << ", "
-									  << l_col << " )\n";
+							std::cout << "\t A( " << i << ", " << k_col << " ) = "
+								<< A_raw.getValue( k,
+									mulMonoid.template getIdentity< typename Operator::D1 >() )
+								<< " will be multiplied with B( " << k_col << ", " << l_col << " ) = "
+								<< B_raw.getValue( l,
+									mulMonoid.template getIdentity< typename Operator::D2 >() )
+								<< " to accumulate into C( " << i << ", " << l_col << " )\n";
 #endif
-							if( ! coors.assign( l_col ) ) {
+							if( !coors.assign( l_col ) ) {
 								valbuf[ l_col ] = monoid.template getIdentity< OutputType >();
-								(void)grb::apply( valbuf[ l_col ], A_raw.getValue( k, mulMonoid.template getIdentity< typename Operator::D1 >() ),
-									B_raw.getValue( l, mulMonoid.template getIdentity< typename Operator::D2 >() ), oper );
+								(void) grb::apply( valbuf[ l_col ],
+									A_raw.getValue( k,
+										mulMonoid.template getIdentity< typename Operator::D1 >() ),
+									B_raw.getValue( l,
+										mulMonoid.template getIdentity< typename Operator::D2 >() ),
+									oper );
 							} else {
 								OutputType temp = monoid.template getIdentity< OutputType >();
-								(void)grb::apply( temp, A_raw.getValue( k, mulMonoid.template getIdentity< typename Operator::D1 >() ),
-									B_raw.getValue( l, mulMonoid.template getIdentity< typename Operator::D2 >() ), oper );
-								(void)grb::foldl( valbuf[ l_col ], temp, monoid.getOperator() );
+								(void) grb::apply( temp,
+									A_raw.getValue( k,
+										mulMonoid.template getIdentity< typename Operator::D1 >() ),
+									B_raw.getValue( l,
+										mulMonoid.template getIdentity< typename Operator::D2 >() ),
+									oper );
+								(void) grb::foldl( valbuf[ l_col ], temp, monoid.getOperator() );
 							}
 						}
 					}
+					
+					// Update of CRS of current tile
+					//std::cout << "coors.nonzeroes(): " << coors.nonzeroes() << std :: endl;
+
 					for( size_t k = 0; k < coors.nonzeroes(); ++k ) {
-						assert( nzc < old_nzc );
+						assert( nzc_local < old_nzc_local );
 						const size_t j = coors.index( k );
 						// update CRS
-						C_raw.row_index[ nzc ] = j;
-						C_raw.setValue( nzc, valbuf[ j ] );
-						(void)++nzc;
+						C_raw.row_index[ nzc_local ] = j;
+						C_raw.setValue( nzc_local, valbuf[ j ] );
+						// update CCS. We do not use CCS
+						/*
+						if( !crs_only ) {
+							const size_t CCS_index = C_col_index[ j ]++ + CCS_raw.col_start[ j ];
+							CCS_raw.row_index[ CCS_index ] = i;
+							CCS_raw.setValue( CCS_index, valbuf[ j ] );
+						}
+						*/
+						// update count
+						(void) ++nzc_local;
 					}
 					
-					C_raw.col_start[ i + 1 ] = nzc;
+					//update the row pointer array 
+					C_raw.col_start[ index_col_start + 1 ] = nzc_local;
+					index_col_start++;
 				}
 
-#ifndef NDEBUG
-				assert( nzc == old_nzc );
-#endif
-				internal::setCurrentNonzeroes( C, nzc );
-				std::cout << "-------- nzc: " << nzc << ", " << lower_bound << std::endl;
+				assert( old_nzc_local == nzc_local );
 
-				return SUCCESS;
-			}; // end lambda function
+				// set final number of nonzeroes in tile of output matrix
+				internal::setCurrentNonzeroes( *tile, nzc_local );
 
-			// Add function into a pipeline			
-			ret = ret ? ret :
-						internal::le.addStage( std::move( func ),
+				return SUCCESS;				
+			};							
+			
+			ret = ret ? ret : internal::le.addStage( std::move( func ),
 							// name of operation
 							internal::Opcode::BLAS3_MXM_GENERIC,
-							// size of output matrix, HOW WE TILE, DIVIDE ITERATION SPACE
+							// size of output matrix
 							nrows(C),
 							// size of data type in matrix C
 							sizeof( OutputType ),
@@ -319,12 +440,104 @@ namespace grb {
 							nullptr, nullptr,nullptr, nullptr,
 							// matrices for mxm
 							&A, &B, &C );
-
-			le.execution();
-			// set final number of nonzeroes in output matrix
 			
+			le.execution();
+			
+			std::cout << "AFTER EXECUTION OF PIPELINE" <<std::endl;
+			
+			/****************************************/
+			/* resize of  output matrix C */ 
+			/****************************************/
+			// This resizes the CRS/CCS of C. We check that the capacity of C is the same as the total of new zeros nzc_global
+			ret = grb::resize( C, nzc_global );
+			// set final number of nonzeroes in output matrix
+			//internal::setCurrentNonzeroes( C, nzc_global );
+									
+			/****************************************/
+			/* update CRS format of output matrix C */ 
+			/****************************************/		
+
+			//order tuple of tiles in ascending order depending of lower bound			
+			std::sort( tiles_tuples.begin(), tiles_tuples.end(), internal::sortByLowerBound_tuple< OutputType,RIT,CIT,NIT >);
+			// this vectores stores the nnz for each tile after ordering (based on lower bound)
+			std::vector< size_t > ordered_local_nnz( tiles_tuples.size() );			
+			// partial sums of nnz in each tile			
+			std::vector< size_t > partial_sum_nnz( tiles_tuples.size() );
+			std::partial_sum( ordered_local_nnz.begin(), ordered_local_nnz.end()-1, partial_sum_nnz.begin()+1 );
+				
+			// update of global C.col_start
+			// C_raw holds the CRS of global matrix C
+			auto& C_raw = internal::getCRS( C );			
+
+			for( size_t i = 0; i < tiles_tuples.size(); ++i ) {
+				// CRS of current tile 
+				auto & tile_CRS = internal::getCRS( *std::get< 0 >( tiles_tuples[ i ] ) );				
+				// lower bound of current tile
+				size_t tile_lower_bound = std::get< 1 >( tiles_tuples[ i ] );
+				// lower bound of current tile
+				size_t tile_lower_upper = std::get< 2 >( tiles_tuples[ i ] );
+
+				//std::cout << "value of partial sum = " << partial_sum_nnz[ i ] << std::endl;
+				// actual update of C_raw from each tile CRS.col_start
+				for( size_t k = tile_lower_bound ; k < tile_lower_upper + 1 ; ++k ) {
+					C_raw.col_start[ k ] = tile_CRS.col_start[ k - tile_lower_bound] + partial_sum_nnz[ i ];
+				}
+			}
+			std::cout << "UPDATE OF C.COL_START HAS FINISHED" << std::endl;
+
+			/****************************************/
+			/* UPDATE C_raw.values and C_raw.row_index */ 
+			/****************************************/			
+
+			auto & tile_CRS = internal::getCRS( *std::get< 0 >( tiles_tuples[ 0 ] ) );
+			size_t nnz_current = std::get<3>(tiles_tuples[0]);
+						
+			for( size_t k = 0; k < nnz_current; ++k ) {
+				C_raw.setValue( k , tile_CRS.values[ k ]);				
+				C_raw.row_index[ k ] = tile_CRS.row_index[k ];
+			}
+			
+			/*
+			for( size_t i = 0; i < tiles_tuples.size(); i++ ) {
+				// CRS of current tile 
+				auto & tile_CRS = internal::getCRS( *std::get< 0 >( tiles_tuples[ i ] ) );
+				size_t nnz_tile = std::get< 3 >( tiles_tuples[ i ] );
+				std::cout << "tile " << i+1 <<std::endl;
+
+				sum_nnz += nnz_tile;
+
+				for (size_t k = current_nnz; k < sum_nnz; ++k)
+				{
+					C_raw.values[ k ] = tile_CRS.values[ k - nnz_tile ];
+					C_raw.row_index[ k ] = tile_CRS.row_index[ k - nnz_tile ];
+					current_nnz += nnz_tile;
+				}
+			}
+			*/
+			
+			/*
+			for( size_t k = 0; k < 100; ++k ) {
+				std::cout << C_raw.values[ k ] << ", ";
+			}			
+			std::cout << std::endl;						
+			*/
+
+			/****************************************/
+			/* DELETE DYNAMIC MEMORY OF FOR TILES */		
+			// These correspond to the tiles, first element in the vector of tuples
+			for (size_t i = 0; i < tiles_tuples.size(); i++) 
+			{
+				delete std::get< 0 >( tiles_tuples[ i ] );				
+			}
+							
+			//tiles_tuples.clear();			
+			
+			// special case for last tile since it has fewer columns that the others			
+
+			std::cout << "EXECUTION FINISHED"<<std::endl;			
 
 			return ret;
+
 		}
 
 	} // namespace internal
