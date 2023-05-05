@@ -358,6 +358,11 @@ coverage_unittests:
   artifacts:
     paths:
       - COVERAGE_${CI_JOB_ID}.json
+  only:
+    - master
+    - develop
+    - /^v.*-rc.*$/
+    - merge_requests
 
 cobertura_coverage_report:
   rules:
@@ -377,6 +382,11 @@ cobertura_coverage_report:
       coverage_report:
         coverage_format: cobertura
         path: coverage.xml
+  only:
+    - master
+    - develop
+    - /^v.*-rc.*$/
+    - merge_requests
 
 
 ## GitLab Pages update job
