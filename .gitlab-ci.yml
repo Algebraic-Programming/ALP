@@ -354,6 +354,7 @@ build_coverage:
     - make -j$(nproc) coverage
   dependencies: []
   artifacts:
+    name: "JobArtifact_${CI_BUILD_REF_NAME}_${CI_BUILD_ID}"
     paths:
-      - build/coverage
+      - build
     expire_in: 2 weeks
