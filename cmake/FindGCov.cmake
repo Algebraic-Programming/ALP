@@ -1,5 +1,5 @@
 #
-#   Copyright 2021 Huawei Technologies Co., Ltd.
+#   Copyright 2023 Huawei Technologies Co., Ltd.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -15,39 +15,49 @@
 #
 
 #[===================================================================[
-Find gcov program inside the standard system directories
+Find gcov compiler support by compiling a test program with coverage flags
 
 Read-only output variables:
-  GCOV_PATH
-	Points to the gcov binary.
+  GCov_COMPILES
+	Whether a simple C++ binary compiles with coverage options.
 
-creates a target Gcov::Gcov to link against libgcov
+creates a target Gcov::Gcov to link against libgcov and with the necessary
+compile flags
 #]===================================================================]
 
-# documentation of find_path() https://cmake.org/cmake/help/latest/command/find_path.html
-# documentation of find_library() https://cmake.org/cmake/help/latest/command/find_library.html
-
-if(NOT CMAKE_COMPILER_IS_GNUCC )
+if( NOT CMAKE_COMPILER_IS_GNUCC )
 	message( FATAL_ERROR "GNU compiler is required to enable coverage" )
 endif()
 
-find_program( GCOV_PATH gcov )
+set( GCOV_COMPILE_FLAGS -fprofile-arcs -ftest-coverage )
+set( GCOV_LIBNAME gcov )
 
-# if the listed variables are set to existing paths, set the GCov_FOUND variable
-# if not and the REQUIRED option was given when calling this find_module(),
-# raise an error (some components were not found and we need all of them)
+# try compiling a basic application with GCov flags to see if the compiler supports it
+try_compile( GCov_COMPILES "${CMAKE_BINARY_DIR}"
+	SOURCES "${CMAKE_SOURCE_DIR}/cmake/simple.cpp"
+	LINK_LIBRARIES "${GCOV_LIBNAME}"
+	CMAKE_FLAGS -DCMAKE_CXX_FLAGS:STRING="${GCOV_COMPILE_FLAGS};-O0"
+)
+
+string( REPLACE "." ";" VERSION_LIST ${CMAKE_CXX_COMPILER_VERSION} )
+list( GET VERSION_LIST 0 CXX_COMPILER_VERSION_MAJOR )
+
+find_program( GCOV_EXECUTABLE NAMES gcov-${CXX_COMPILER_VERSION_MAJOR} gcov REQUIRED )
+
+
 include( FindPackageHandleStandardArgs )
-find_package_handle_standard_args( GCov REQUIRED_VARS GCOV_PATH )
+find_package_handle_standard_args( GCov REQUIRED_VARS GCov_COMPILES GCOV_EXECUTABLE )
 
 # if we found the library, create a dedicated target with all needed information
 if( GCov_FOUND )
-	# do not show these variables as cached ones
-	mark_as_advanced( GCOV_PATH )
-
 	add_library ( GCov::GCov INTERFACE IMPORTED )
-	# set its properties to the appropiate locations, for both headers and binaries
+
+	# do not look for the exact path of libgcov.a, since this depends on the compiler
+	# (each GCC version ships its own); just pass the "-lgcov" flag during linking,
+	# since CMake invokes CMAKE_C[XX]_COMPILER also for linking
 	set_target_properties( GCov::GCov
 		PROPERTIES
-		IMPORTED_LIBNAME gcov
+		IMPORTED_LIBNAME "${GCOV_LIBNAME}"
+		INTERFACE_COMPILE_OPTIONS "${GCOV_COMPILE_FLAGS}"
 	)
 endif()

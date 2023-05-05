@@ -245,13 +245,18 @@ include( AddGRBVars )
 # here, add information for wrappers generated during installation
 include( AddGRBInstall )
 
-# compilation flags for all targets
-include( CompileFlags )
-
 if( WITH_BSP1D_BACKEND OR WITH_HYBRID_BACKEND )
 	# required to create targets against LPF (provides dedicated functions)
 	include( AddLPFTargets )
 endif()
+
+# Coverage flags
+if( CMAKE_BUILD_TYPE STREQUAL "Coverage")
+	include( Coverage )
+endif()
+
+# compilation flags for all targets
+include( CompileFlags )
 
 ### BACKEND HEADERS
 
@@ -295,7 +300,6 @@ add_subdirectory( examples )
 ### COVERAGE REPORT GENERATION
 
 if( CMAKE_BUILD_TYPE STREQUAL "Coverage")
-	include( Coverage )
 	create_coverage_command( "coverage_json" "coverage.json"  "--json-pretty" )
 	create_coverage_command( "coverage_xml" "coverage.xml"  "--xml-pretty" )
 	create_coverage_command( "coverage_cobertura" "coverage.xml"  "--xml-pretty" )

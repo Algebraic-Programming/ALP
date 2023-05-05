@@ -96,7 +96,7 @@ set( COMMON_PERF_OPTS_Release "-O3" "-march=native" "-mtune=native" "-funroll-lo
 set( COMMON_PERF_DEFS_Debug "" )
 set( COMMON_PERF_OPTS_Debug "-O0" )
 set( COMMON_PERF_DEFS_Coverage "" )
-set( COMMON_PERF_OPTS_Coverage "-O1" "-fno-inline" "-fno-inline-small-functions" "-fno-default-inline")
+set( COMMON_PERF_OPTS_Coverage "-O1" "-fno-inline" "-fno-inline-small-functions" "-fno-default-inline" )
 
 ### COMPILATION FLAGS FOR BACKENDS
 
@@ -107,7 +107,7 @@ append_if_valid( _BACKEND_OPTS_Release "${COMMON_PERF_OPTS_Release}" "${ADDITION
 append_if_valid( _BACKEND_OPTS_Debug "${COMMON_PERF_OPTS_Debug}" "${ADDITIONAL_BACKEND_OPTIONS}" )
 append_if_valid( _BACKEND_OPTS_Coverage "${COMMON_PERF_OPTS_Coverage}" "${ADDITIONAL_BACKEND_OPTIONS}" )
 
-# cache variable to allow manual tweaks form CMake cache
+# cache variable to allow manual tweaks from CMake cache
 set( BACKEND_DEFS_Release "${_BACKEND_DEFS_Release}" CACHE STRING "backend Release definitions" )
 set( BACKEND_DEFS_Debug "${_BACKEND_DEFS_Debug}" CACHE STRING "backend Debug definitions" )
 set( BACKEND_DEFS_Coverage "${_BACKEND_DEFS_Coverage}" CACHE STRING "backend Coverage definitions" )
@@ -128,6 +128,11 @@ target_compile_options( backend_flags INTERFACE
 )
 target_link_libraries( backend_flags INTERFACE common_flags )
 
+if( CMAKE_BUILD_TYPE STREQUAL Coverage )
+	get_target_property( COMMON_OPTS_EXTRA GCov::GCov INTERFACE_COMPILE_OPTIONS )
+	get_target_property( COMMON_DEFS_EXTRA GCov::GCov INTERFACE_COMPILE_DEFINITIONS )
+endif()
+
 install( TARGETS common_flags backend_flags
 	EXPORT GraphBLASTargets
 )
@@ -139,7 +144,6 @@ install( TARGETS common_flags backend_flags
 # corresponding pattern for targets:
 #   test_{default,category[_mode]}[_perf]_flags
 
-# cache variable to allow manual tweaks form CMake cache
 set_valid_string( TEST_DEFAULT_DEFS_Release "${ADDITIONAL_TEST_DEFINITIONS}" "" )
 set_valid_string( TEST_DEFAULT_DEFS_Debug "${ADDITIONAL_TEST_DEFINITIONS}" "" )
 set_valid_string( TEST_DEFAULT_DEFS_Coverage "${ADDITIONAL_TEST_DEFINITIONS}" "" )
@@ -284,7 +288,7 @@ set( TEST_unit_ndebug_PERF_OPTS_Coverage "${COMMON_PERF_OPTS_Release}" CACHE STR
 	"Coverage options for category unit, mode ndebug "
 )
 add_category_flags( "unit" MODE ndebug )
-	
+
 if( NOT CMAKE_BUILD_TYPE STREQUAL Coverage )
 	set_valid_string( TEST_unit_debug_DEFS_Release "${ADDITIONAL_TEST_DEFINITIONS}" "" )
 	set_valid_string( TEST_unit_debug_DEFS_Debug "${ADDITIONAL_TEST_DEFINITIONS}" "" )
@@ -312,8 +316,7 @@ if( NOT CMAKE_BUILD_TYPE STREQUAL Coverage )
 		"Coverage options definitions for category unit, mode debug"
 	)
 	add_category_flags( "unit" MODE debug )
-
-endif() 
+endif()
 
 # for categories with no specific options, set default:
 # - modes with same name as category
@@ -363,8 +366,18 @@ endforeach()
 
 list( JOIN default_categories ", " cats )
 message( "default test flags (categories: ${cats})")
-message( "  common definitions: ${TEST_DEFAULT_DEFS_${CMAKE_BUILD_TYPE}}")
-message( "  common options: ${TEST_DEFAULT_OPTS_${CMAKE_BUILD_TYPE}}")
+
+set( test_defs ${TEST_DEFAULT_DEFS_${CMAKE_BUILD_TYPE}} )
+if( COMMON_DEFS_EXTRA )
+	list( APPEND test_defs ${COMMON_DEFS_EXTRA} )
+endif()
+message( "  common definitions: ${test_defs}")
+
+set( test_opts ${TEST_DEFAULT_OPTS_${CMAKE_BUILD_TYPE}} )
+if( COMMON_OPTS_EXTRA )
+	list( APPEND test_opts ${COMMON_OPTS_EXTRA} )
+endif()
+message( "  common options: ${test_opts}")
 message( "  performance definitions: ${TEST_DEFAULT_PERF_DEFS_${CMAKE_BUILD_TYPE}}")
 message( "  performance options: ${TEST_DEFAULT_PERF_OPTS_${CMAKE_BUILD_TYPE}}")
 
