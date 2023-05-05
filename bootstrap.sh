@@ -306,7 +306,7 @@ the current directory before invocation or confirm the deletion of its content w
 				exit -1
 			fi
 			echo "Deleting the content of \"${BUILD_DIR}\"..."
-			rm -rf "'${BUILD_DIR}'/*"
+			find "${BUILD_DIR}/" -mindepth 1 -maxdepth 1 -exec rm -rf {} +
 			echo
 		fi
 		echo "*** CONFIGURING CMake inside \"${BUILD_DIR}\" ***"
@@ -318,7 +318,7 @@ the current directory before invocation or confirm the deletion of its content w
 	if [[ "${debug_build}" == "yes" && "${coverage_build}" == "yes" ]]; then
 		>&2 echo "Error: Debug and Coverage build can not be selected simulteanously"
 		exit 1
-	fi		
+	fi
 
 	if [[ "${debug_build}" == "yes" ]]; then
 		CMAKE_OPTS+=" -DCMAKE_BUILD_TYPE=Debug"
