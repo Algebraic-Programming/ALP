@@ -332,8 +332,8 @@ build_coverage:
     - rm -rf build install 
     - mkdir -p install build && cd build
     - ../bootstrap.sh --prefix=../install --coverage-build && make -j$(nproc) 
-    - make -j$(nproc) all
     - make -j$(nproc) unittests
+    - make -j$(nproc) coverage 
   artifacts:
     paths:
       - build/coverage
