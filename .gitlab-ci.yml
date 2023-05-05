@@ -322,38 +322,102 @@ build_test_gcc_versions:
       --with-lpf=${LPF_BASE_PATH}/build_mpich_${CC_COMPILER}_${VER}/install &&
       make -j$(nproc) build_tests_all
 
-## Coverage build + units-tests
+# Coverage build + units-tests
 
-build_coverage:
+.coverage_job: &coverage_job
+  - read -a backends_array <<< "$BACKENDS"
+  - echo "-- HYPERDAGS=${backends_array[0]}"
+  - echo "-- REFERENCE=${backends_array[1]}"
+  - echo "-- REFERENCE_OMP=${backends_array[2]}"
+  - echo "-- NONBLOCKING=${backends_array[3]}"
+  - echo "-- HYPERDAGS_USING=${backends_array[4]}"
+
+  - rm -rf build install build && mkdir -p install build && cd build
+  - cmake -DCMAKE_INSTALL_PREFIX='../install' -DCMAKE_BUILD_TYPE=Coverage
+    -DWITH_HYPERDAGS_BACKEND=${backends_array[0]}
+    -DWITH_REFERENCE_BACKEND=${backends_array[1]}
+    -DWITH_OMP_BACKEND=${backends_array[2]}
+    -DWITH_NONBLOCKING_BACKEND=${backends_array[3]}
+    -DWITH_HYPERDAGS_USING=${backends_array[4]} ..
+  - make -j$(nproc) unittests
+
+  - gcovr --json
+    --exclude-unreachable-branches
+    --print-summary
+    --exclude-directories "/usr/*"
+    --root ${CI_PROJECT_DIR}
+    --output ${CI_PROJECT_DIR}/COVERAGE_${CI_BUILD_ID}.json
+
+reference_omp_coverage:
   rules:
     - if: COVERAGE_ENABLED == "yes"
-  parallel:
-    matrix:
-      # ________: HYPERDAGS  REFERENCE  REFERENCE_OMP  NONBLOCKING  HYPERDAGS_USING
-      - BACKENDS: OFF        ON         ON             OFF          NA                 # REFERENCE+OMP
-      - BACKENDS: ON         OFF        ON             OFF          reference          # HYPERDAGS (reference)
-      - BACKENDS: OFF        OFF        OFF            ON           NA                 # NONBLOCKING
+  needs: [build_test_lpf]
+  variables:
+    BACKENDS: OFF ON ON OFF NA
   script:
-    - read -a backends_array <<< "$BACKENDS"
-    - echo "-- HYPERDAGS=${backends_array[0]}"
-    - echo "-- REFERENCE=${backends_array[1]}"
-    - echo "-- REFERENCE_OMP=${backends_array[2]}"
-    - echo "-- NONBLOCKING=${backends_array[3]}"
-    - echo "-- HYPERDAGS_USING=${backends_array[4]}"
-
-    - rm -rf build install build && mkdir -p install build && cd build
-    - cmake -DCMAKE_INSTALL_PREFIX='../install' -DCMAKE_BUILD_TYPE=Coverage
-      -DWITH_HYPERDAGS_BACKEND=${backends_array[0]}
-      -DWITH_REFERENCE_BACKEND=${backends_array[1]}
-      -DWITH_OMP_BACKEND=${backends_array[2]}
-      -DWITH_NONBLOCKING_BACKEND=${backends_array[3]}
-      -DWITH_HYPERDAGS_USING=${backends_array[4]} ..
-
-    - make -j$(nproc) unittests
-    - make -j$(nproc) coverage
-  dependencies: []
+    - *coverage_job
   artifacts:
-    name: "JobArtifact_${CI_BUILD_REF_NAME}_${CI_BUILD_ID}"
     paths:
-      - .
+      - COVERAGE_${CI_BUILD_ID}.json
+
+nonblocking_coverage:
+  rules:
+    - if: COVERAGE_ENABLED == "yes"
+  needs: [build_test_lpf]
+  variables:
+    BACKENDS: OFF OFF OFF ON NA
+  script:
+    - *coverage_job
+  artifacts:
+    paths:
+      - COVERAGE_${CI_BUILD_ID}.json
+
+hyperdags_reference_coverage:
+  rules:
+    - if: COVERAGE_ENABLED == "yes"
+  needs: [build_test_lpf]
+  variables:
+    BACKENDS: ON OFF ON OFF reference
+  script:
+    - *coverage_job
+  artifacts:
+    paths:
+      - COVERAGE_${CI_BUILD_ID}.json
+
+cobertura_coverage_report:
+  rules:
+    - if: COVERAGE_ENABLED == "yes"
+  needs: [reference_omp_coverage, nonblocking_coverage, hyperdags_reference_coverage]
+  script:
+    - gcovr
+      --add-tracefile "COVERAGE_*.json"
+      --xml-pretty
+      --print-summary
+      --root ${CI_PROJECT_DIR}
+      --output coverage.xml
+  coverage: /^\s*lines:\s*\d+.\d+\%/
+  artifacts:
+    name: ${CI_JOB_NAME}-${CI_COMMIT_REF_NAME}-${CI_COMMIT_SHA}
     expire_in: 2 weeks
+    reports:
+      coverage_report:
+        coverage_format: cobertura
+        path: coverage.xml
+
+## GitLab Pages update job
+
+pages:
+  rules:
+    - if: $CI_COMMIT_BRANCH == "develop" && COVERAGE_ENABLED == "yes"
+  needs: [reference_omp_coverage, nonblocking_coverage, hyperdags_reference_coverage]
+  script:
+    - mkdir -p public
+    - gcovr 
+      --add-tracefile "COVERAGE_*.json" 
+      --html-details 
+      --print-summary
+      --root ${CI_PROJECT_DIR}
+      --output public/index.html 
+  artifacts:
+    paths:
+      - public
