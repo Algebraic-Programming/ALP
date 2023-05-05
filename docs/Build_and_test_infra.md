@@ -863,7 +863,10 @@ By doing so, you enable the _-fprofile-arcs_ and _-ftest-coverage_ flags.
 
 Available commands:
   - `make coverage_json`: generates _coverage/coverage.json_
-  - `make coverage_cobertura`: generates _coverage/coverage.xml_
+  - `make coverage_xml`: generates _coverage/coverage.xml_
+  - `make coverage_cobertura`: alias for `make coverage_xml`
+  - `make coverage_csv`: generates _coverage/coverage.csv_
+  - `make coverage_coveralls`: generates _coverage/coveralls.json_
   - `make coverage_html`: generates _coverage/index.html_
   - `make coverage`: alias for `make coverage_html`
 
