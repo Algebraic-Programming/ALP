@@ -261,7 +261,6 @@ macro( add_category_flags category )
 	target_link_libraries( ${__tgt_name} INTERFACE common_flags )
 endmacro( add_category_flags )
 
-
 set_valid_string( TEST_unit_ndebug_DEFS_Release "${ADDITIONAL_TEST_DEFINITIONS}" "" )
 set_valid_string( TEST_unit_ndebug_DEFS_Debug "${ADDITIONAL_TEST_DEFINITIONS}" "" )
 set_valid_string( TEST_unit_ndebug_DEFS_Coverage "${ADDITIONAL_TEST_DEFINITIONS}" "" )
@@ -269,13 +268,15 @@ set_valid_string( TEST_unit_ndebug_OPTS_Release "${ADDITIONAL_TEST_OPTIONS}" "" 
 set_valid_string( TEST_unit_ndebug_OPTS_Debug "${ADDITIONAL_TEST_OPTIONS}" "" )
 set_valid_string( TEST_unit_ndebug_OPTS_Coverage "${ADDITIONAL_TEST_OPTIONS}" "" )
 
+# custom modes test the same code, just with different compilation flags
+# hence, they have dedicated performance flags
 set( TEST_unit_ndebug_PERF_DEFS_Release "${COMMON_PERF_DEFS_Release}" CACHE STRING
 	"Release definitions for category unit, mode ndebug "
 )
-set( TEST_unit_ndebug_PERF_DEFS_Debug "${COMMON_PERF_DEFS_Release}" CACHE STRING
+set( TEST_unit_ndebug_PERF_DEFS_Debug "${COMMON_PERF_DEFS_Debug}" CACHE STRING
 	"Debug definitions for category unit, mode ndebug "
 )
-set( TEST_unit_ndebug_PERF_DEFS_Coverage "${COMMON_PERF_DEFS_Release}" CACHE STRING
+set( TEST_unit_ndebug_PERF_DEFS_Coverage "${COMMON_PERF_DEFS_Coverage}" CACHE STRING
 	"Coverage definitions for category unit, mode ndebug "
 )
 set( TEST_unit_ndebug_PERF_OPTS_Release "${COMMON_PERF_OPTS_Release}" CACHE STRING
@@ -284,7 +285,9 @@ set( TEST_unit_ndebug_PERF_OPTS_Release "${COMMON_PERF_OPTS_Release}" CACHE STRI
 set( TEST_unit_ndebug_PERF_OPTS_Debug "${COMMON_PERF_OPTS_Release}" CACHE STRING
 	"Debug options for category unit, mode ndebug "
 )
-set( TEST_unit_ndebug_PERF_OPTS_Coverage "${COMMON_PERF_OPTS_Release}" CACHE STRING
+# coverage options are special, in that they must allow tracing execution: hence use
+# dedicated flags
+set( TEST_unit_ndebug_PERF_OPTS_Coverage "${COMMON_PERF_OPTS_Coverage}" CACHE STRING
 	"Coverage options for category unit, mode ndebug "
 )
 add_category_flags( "unit" MODE ndebug )
@@ -312,7 +315,7 @@ if( NOT CMAKE_BUILD_TYPE STREQUAL Coverage )
 	set( TEST_unit_debug_PERF_OPTS_Debug "${COMMON_PERF_OPTS_Debug}" CACHE STRING
 		"Debug options definitions for category unit, mode debug"
 	)
-	set( TEST_unit_debug_PERF_OPTS_Coverage "${COMMON_PERF_OPTS_Debug}" CACHE STRING
+	set( TEST_unit_debug_PERF_OPTS_Coverage "${COMMON_PERF_OPTS_Coverage}" CACHE STRING
 		"Coverage options definitions for category unit, mode debug"
 	)
 	add_category_flags( "unit" MODE debug )
