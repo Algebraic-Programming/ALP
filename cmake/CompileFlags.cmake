@@ -96,7 +96,7 @@ set( COMMON_PERF_OPTS_Release "-O3" "-march=native" "-mtune=native" "-funroll-lo
 set( COMMON_PERF_DEFS_Debug "" )
 set( COMMON_PERF_OPTS_Debug "-O0" )
 set( COMMON_PERF_DEFS_Coverage "" )
-set( COMMON_PERF_OPTS_Coverage "-O2")
+set( COMMON_PERF_OPTS_Coverage "-O1" "-fno-inline" "-fno-inline-small-functions" "-fno-default-inline")
 
 ### COMPILATION FLAGS FOR BACKENDS
 
