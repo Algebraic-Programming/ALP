@@ -24,6 +24,12 @@ variables:
       - "yes"
       - "no"
     description: "Enable compilation using multiple compilers"
+  COVERAGE_ENABLED:
+    value: "no"
+    options:
+      - "yes"
+      - "no"
+    description: "Enable coverage build"
 
 workflow:
   rules:
@@ -33,16 +39,19 @@ workflow:
         EXTRA_TESTS_ENABLED: "yes"
         LPF_TESTS_ENABLED: "yes"
         MULTIPLE_COMPILERS_ENABLED: "yes"
+        COVERAGE_ENABLED: "yes"
     - if: $CI_COMMIT_BRANCH == "develop"
       variables:
         EXTRA_TESTS_ENABLED: "yes"
         LPF_TESTS_ENABLED: "yes"
         MULTIPLE_COMPILERS_ENABLED: "yes"
+        COVERAGE_ENABLED: "yes"
     - if: $CI_COMMIT_BRANCH =~ /^v.*-rc.*$/
       variables:
         EXTRA_TESTS_ENABLED: "yes"
         LPF_TESTS_ENABLED: "yes"
         MULTIPLE_COMPILERS_ENABLED: "yes"
+        COVERAGE_ENABLED: "no"
     # "manual" execution strategies are allowed to force run
     - if: $CI_PIPELINE_SOURCE != "merge_request_event" && $CI_PIPELINE_SOURCE != "push"
     # do not run pipeline if the merge request is draft (case insensitive) and execution was automatically invoked
@@ -312,3 +321,22 @@ build_test_gcc_versions:
       --prefix=../install --with-datasets=${ALP_DATASETS}
       --with-lpf=${LPF_BASE_PATH}/build_mpich_${CC_COMPILER}_${VER}/install &&
       make -j$(nproc) build_tests_all
+
+## Coverage build + units-tests
+
+build_coverage:
+  rules:
+    - if: COVERAGE_ENABLED == "yes"
+  needs: [build_test]
+  script:
+    - rm -rf build install 
+    - mkdir -p install build && cd build
+    - ../bootstrap.sh --prefix=../install --coverage-build && make -j$(nproc) 
+    - make -j$(nproc) all
+    - make -j$(nproc) unittests
+  artifacts:
+    paths:
+      - build/coverage
+    exclude:
+      - build/**/*.o
+      - build/**/*.o.d
