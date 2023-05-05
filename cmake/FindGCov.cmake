@@ -15,11 +15,11 @@
 #
 
 #[===================================================================[
-Find libgcov inside the standard system directories
+Find gcov program inside the standard system directories
 
 Read-only output variables:
-  GCOV_PATH, GENINFO_PATH, GENHTML_PATH
-	Points to the gcov, geninfo and genhtml binaries.
+  GCOV_PATH
+	Points to the gcov binary.
 
 creates a target Gcov::Gcov to link against libgcov
 #]===================================================================]
@@ -32,21 +32,17 @@ if(NOT CMAKE_COMPILER_IS_GNUCC )
 endif()
 
 find_program( GCOV_PATH gcov )
-find_program( GENINFO_PATH geninfo )
-find_program( GENHTML_PATH genhtml )
 
 # if the listed variables are set to existing paths, set the GCov_FOUND variable
 # if not and the REQUIRED option was given when calling this find_module(),
 # raise an error (some components were not found and we need all of them)
 include( FindPackageHandleStandardArgs )
-find_package_handle_standard_args( GCov
-	REQUIRED_VARS GCOV_PATH GENINFO_PATH GENHTML_PATH
-)
+find_package_handle_standard_args( GCov REQUIRED_VARS GCOV_PATH )
 
 # if we found the library, create a dedicated target with all needed information
 if( GCov_FOUND )
 	# do not show these variables as cached ones
-	mark_as_advanced( GCOV_PATH GENINFO_PATH GENHTML_PATH )
+	mark_as_advanced( GCOV_PATH )
 
 	add_library ( GCov::GCov INTERFACE IMPORTED )
 	# set its properties to the appropiate locations, for both headers and binaries

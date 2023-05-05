@@ -295,39 +295,10 @@ add_subdirectory( examples )
 ### COVERAGE REPORT GENERATION
 
 if( CMAKE_BUILD_TYPE STREQUAL "Coverage")
-	# Check if the compiler id is GNU
-	find_package( GCov REQUIRED )	
-	set( COVERAGE_REPORT_DIR "${PROJECT_BINARY_DIR}/coverage" )
-	string(JOIN + _COVERAGE_TITLE "GraphBLAS_${VERSION}" ${AVAILABLE_TEST_BACKENDS})
-	file( MAKE_DIRECTORY "${COVERAGE_REPORT_DIR}" )
-	add_custom_command( OUTPUT "${COVERAGE_REPORT_DIR}"
-		COMMAND ${GENINFO_PATH} .
-				--rc lcov_branch_coverage=1
-				--base-directory .
-				--exclude "/usr/*"
-				--output-filename coverage/coverage.info
-		COMMAND ${GENHTML_PATH} --prefix ${PROJECT_SOURCE_DIR}
-				--title "${_COVERAGE_TITLE}"
-				--show-details
-				--legend
-				--branch-coverage
-				--demangle-cpp
-				--output-directory coverage
-				coverage/coverage.info
-		COMMAND echo --> Generated report: ${COVERAGE_REPORT_DIR}/index.html <--
-		WORKING_DIRECTORY "${PROJECT_BINARY_DIR}"
-		COMMENT "producing coverage report in ${COVERAGE_REPORT_DIR}"
-		VERBATIM
-	)
-	add_custom_target( coverage DEPENDS "${COVERAGE_REPORT_DIR}" )
-
-	add_custom_target( clean_coverage
-		COMMAND find "coverage" -delete -mindepth 1
-		COMMAND find . -name "*.gcno" -delete
-		COMMAND find . -name "*.gcda" -delete
-		WORKING_DIRECTORY "${PROJECT_BINARY_DIR}"
-		COMMENT "cleaning coverage-related in ${COVERAGE_REPORT_DIR}"
-	)
+	include( Coverage )
+	create_coverage_command( "coverage_json" "coverage.json"  "--json-pretty" )
+	create_coverage_command( "coverage_cobertura" "coverage.xml"  "--xml-pretty" )
+	create_coverage_command( "coverage_html" "coverage.html"  "--html-details" )
 endif()
 
 
