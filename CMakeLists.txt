@@ -296,13 +296,24 @@ add_subdirectory( examples )
 
 if( CMAKE_BUILD_TYPE STREQUAL "Coverage")
 	# Check if the compiler id is GNU
-	find_package( GCov REQUIRED )
-
+	find_package( GCov REQUIRED )	
 	set( COVERAGE_REPORT_DIR "${PROJECT_BINARY_DIR}/coverage" )
+	string(JOIN + _COVERAGE_TITLE "GraphBLAS_${VERSION}" ${AVAILABLE_TEST_BACKENDS})
 	file( MAKE_DIRECTORY "${COVERAGE_REPORT_DIR}" )
 	add_custom_command( OUTPUT "${COVERAGE_REPORT_DIR}"
-		COMMAND ${GENINFO_PATH} . --base-directory . --output-filename coverage/coverage.info
-		COMMAND ${GENHTML_PATH} --prefix ${PROJECT_SOURCE_DIR} --demangle-cpp coverage/coverage.info -o coverage
+		COMMAND ${GENINFO_PATH} .
+				--rc lcov_branch_coverage=1
+				--base-directory .
+				--exclude "/usr/*"
+				--output-filename coverage/coverage.info
+		COMMAND ${GENHTML_PATH} --prefix ${PROJECT_SOURCE_DIR}
+				--title "${_COVERAGE_TITLE}"
+				--show-details
+				--legend
+				--branch-coverage
+				--demangle-cpp
+				--output-directory coverage
+				coverage/coverage.info
 		COMMAND echo --> Generated report: ${COVERAGE_REPORT_DIR}/index.html <--
 		WORKING_DIRECTORY "${PROJECT_BINARY_DIR}"
 		COMMENT "producing coverage report in ${COVERAGE_REPORT_DIR}"
