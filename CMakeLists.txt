@@ -301,12 +301,10 @@ add_subdirectory( examples )
 
 if( CMAKE_BUILD_TYPE STREQUAL "Coverage")
 	create_coverage_command( "coverage_json" "coverage.json"  "--json-pretty" )
-	create_coverage_command( "coverage_xml" "coverage.xml"  "--xml-pretty" )
 	create_coverage_command( "coverage_cobertura" "coverage.xml"  "--xml-pretty" )
 	create_coverage_command( "coverage_csv" "coverage.csv"  "--csv" )
 	create_coverage_command( "coverage_coveralls" "coveralls.json"  "--coveralls" )
 	create_coverage_command( "coverage_html" "index.html"  "--html-details" )
-	create_coverage_command( "coverage" "index.html"  "--html-details" )
 endif()
 
 

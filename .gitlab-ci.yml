@@ -330,7 +330,7 @@ coverage_unittests:
   needs: [build_test_lpf]
   parallel:
     matrix:
-      # ________: HYPERDAGS  REFERENCE  REFERENCE_OMP  NONBLOCKING  
+      # ________: HYPERDAGS  REFERENCE  REFERENCE_OMP  NONBLOCKING
       - BACKENDS: OFF        ON         OFF            OFF          # REFERENCE
       - BACKENDS: OFF        OFF        ON             OFF          # REFERENCE_OMP
       - BACKENDS: ON         OFF        OFF            OFF          # HYPERDAGS (reference_omp)
@@ -349,8 +349,9 @@ coverage_unittests:
       -DWITH_OMP_BACKEND=${backends_array[2]}
       -DWITH_NONBLOCKING_BACKEND=${backends_array[3]} ..
     - make -j$(nproc) unittests
-
-    - gcovr --json
+# for each job (i.e., each backend), generate a separate JSON to me merged later
+# (gcovr merges only JSON files)
+    - python3 -m gcovr --json
       --print-summary
       --exclude-directories "/usr/*"
       --root ${CI_PROJECT_DIR}
@@ -369,7 +370,8 @@ cobertura_coverage_report:
     - if: COVERAGE_ENABLED == "yes"
   needs: [coverage_unittests]
   script:
-    - gcovr --xml-pretty
+# merge JSON files from multiple backends into single Cobertura report for the CI
+    - python3 -m gcovr --xml-pretty
       --add-tracefile "COVERAGE_*.json"
       --print-summary
       --root ${CI_PROJECT_DIR}
@@ -397,13 +399,14 @@ pages:
   needs: [coverage_unittests]
   script:
     - mkdir -p public
-    - gcovr --html-details 
-      --add-tracefile "COVERAGE_*.json" 
+# merge JSON files from multiple backends into HTML page(s) to export
+    - python3 -m gcovr --html-details
+      --add-tracefile "COVERAGE_*.json"
       --print-summary
       --sort-percentage
       --html-title "Branch ${CI_COMMIT_BRANCH}, commit ${CI_COMMIT_SHA}"
       --root ${CI_PROJECT_DIR}
-      --output public/index.html 
+      --output public/index.html
   artifacts:
     paths:
       - public

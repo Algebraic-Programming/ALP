@@ -20,10 +20,9 @@ find_package( Gcovr REQUIRED )
 set( COVERAGE_REPORT_DIR "${PROJECT_BINARY_DIR}/coverage" )
 string( JOIN + _COVERAGE_TITLE "GraphBLAS_${VERSION}" ${AVAILABLE_TEST_BACKENDS} )
 file( MAKE_DIRECTORY "${COVERAGE_REPORT_DIR}" )
-message( STATUS "COVERAGE_REPORT_DIR: ${COVERAGE_REPORT_DIR}" )
+message( STATUS "Directory of coverage reports: ${COVERAGE_REPORT_DIR}" )
 
 function( create_coverage_command command_name output_file output_switch )
-    message( STATUS "COVERAGE_REPORT_DIR: ${COVERAGE_REPORT_DIR}" )
     add_custom_target( ${command_name}
 		COMMAND ${GCOV_COMMAND} ${output_switch}
             --gcov-executable ${GCOV_EXECUTABLE}
@@ -42,7 +41,7 @@ function( create_coverage_command command_name output_file output_switch )
 	)
 endfunction()
 
-add_custom_target( clean_coverage
+add_custom_target( coverage_clean
     COMMAND find "coverage" -mindepth 1 -delete
     COMMAND find . -name "*.gcno" -delete
     COMMAND find . -name "*.gcda" -delete

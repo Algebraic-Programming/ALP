@@ -39,11 +39,13 @@ try_compile( GCov_COMPILES "${CMAKE_BINARY_DIR}"
 	CMAKE_FLAGS -DCMAKE_CXX_FLAGS:STRING="${GCOV_COMPILE_FLAGS};-O0"
 )
 
+# get major number of g++ compiler
 string( REPLACE "." ";" VERSION_LIST ${CMAKE_CXX_COMPILER_VERSION} )
 list( GET VERSION_LIST 0 CXX_COMPILER_VERSION_MAJOR )
 
+# look for the gcov utility of the specific gcc version we are using
+# if none, look for the generic one named "gcov"
 find_program( GCOV_EXECUTABLE NAMES gcov-${CXX_COMPILER_VERSION_MAJOR} gcov REQUIRED )
-
 
 include( FindPackageHandleStandardArgs )
 find_package_handle_standard_args( GCov REQUIRED_VARS GCov_COMPILES GCOV_EXECUTABLE )
