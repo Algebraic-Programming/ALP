@@ -32,6 +32,7 @@ limitations under the License.
     - [6. Add the backend name to the relevant tests](#6-add-the-backend-name-to-the-relevant-tests)
 - [Test Categories and modes](#test-categories-and-modes)
 - [Reproducible Builds](#reproducible-builds)
+- [The coverage infrastructure](#the-coverage-infrastructure)
 
 # Introduction to ALP/GraphBLAS Building and Testing Infrastructure:
 
@@ -794,6 +795,7 @@ if( WITH_EXAMPLE_BACKEND )
     add_dependencies( examples sp_example )
 endif()
 ```
+
 # Test Categories and modes
 
 Tests are grouped in *categories* according to what they test:
@@ -845,3 +847,21 @@ provide all needed dependencies and tools.
 Indeed, the file [`.gitlab-ci.yml`](../.gitlab-ci.yml) describes the CI jobs
 that internally test ALP/GraphBLAS via [GitLab](https://about.gitlab.com/),
 which is available [open source](https://about.gitlab.com/install/).
+
+# The coverage infrastructure
+
+Coverage is made possible with __gcov__/__lcov__,  simply by using the _Coverage_ build mode.
+This build mode allows you to generate coverage results for any executed program, including tests.
+
+Note that the coverage is only implemented in the CMake infrastructure, and not on the old Makefile infrastructure.
+
+To enable the coverage, simply swith to the _Coverage_ build mode by:
+- using `bootstrap.sh` with `--coverage-build`
+- using cmake with `-DCMAKE_BUILD_MODE=Coverage` 
+
+By doing so, you enable the _-fprofile-arcs_ and _-ftest-coverage_ flags.
+
+The `make coverage` command will generate a new _coverage_ folder with a _coverage.info_ file (lcov format) and an HTML report. This report will use any _.gcda_ files generated during execution(s) of any program/test.
+To clean a coverage report, you can use the `make clean_coverage` command.
+
+Note about the unit-tests: the _Coverage_ build mode disables the compilation of _debug_ mode tests.

@@ -15,25 +15,19 @@
 #
 
 #[===================================================================[
-Find libnuma inside the standard system directories
+Find libgcov inside the standard system directories
 
 Read-only output variables:
-  NUMA_FOUND
-	Indicates that the library has been found.
+  GCOV_PATH, GENINFO_PATH, GENHTML_PATH
+	Points to the gcov, geninfo and genhtml binaries.
 
-  NUMA_INCLUDE_DIR
-	Points to the libnuma include directory.
-make
-  NUMA_LIBRARY
-	Points to the libnuma that can be passed to target_link_libararies.
-
-creates a target Numa::Numa to link against libnuma
+creates a target Gcov::Gcov to link against libgcov
 #]===================================================================]
 
 # documentation of find_path() https://cmake.org/cmake/help/latest/command/find_path.html
 # documentation of find_library() https://cmake.org/cmake/help/latest/command/find_library.html
 
-if(NOT CMAKE_CXX_COMPILER_ID STREQUAL "GNU" )
+if(NOT CMAKE_COMPILER_IS_GNUCC )
 	message( FATAL_ERROR "GNU compiler is required to enable coverage" )
 endif()
 
@@ -54,13 +48,6 @@ if( GCov_FOUND )
 	# do not show these variables as cached ones
 	mark_as_advanced( GCOV_PATH GENINFO_PATH GENHTML_PATH )
 
-	# create an imported target, i.e. a target NOT built internally, as from
-	# https://cmake.org/cmake/help/latest/command/add_library.html#imported-libraries
-	# this way, depending targets may link against libnuma with target_link_libraries(),
-	# as if it was an internal target
-	# UNKNOWN tells CMake to inspect the library type (static or shared)
-	# e.g., if you compiled your own static libnuma and injected it via NUMA_ROOT
-	# it will work out without changes
 	add_library ( GCov::GCov INTERFACE IMPORTED )
 	# set its properties to the appropiate locations, for both headers and binaries
 	set_target_properties( GCov::GCov
