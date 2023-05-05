@@ -81,6 +81,7 @@ the location where LPF is installed"
 	echo "                                        clashes with --no-hyperdags"
 	echo "  --no-nonblocking                    - disables the nonblocking backend"
 	echo "  --debug-build                       - build the project with debug options (tests will run much slower!)"
+	echo "  --coverage-build                    - build the project for coverage (using gcov)"
 	echo "  --generator=<value>                 - set the generator for CMake (otherwise use CMake's default)"
 	echo "  --show                              - show generation commands instead of running them"
 	echo "  --delete-files                      - delete files in the current directory without asking for confirmation"
@@ -107,6 +108,7 @@ LPF_INSTALL_PATH=
 BANSHEE_PATH=
 SNITCH_PATH=
 debug_build=no
+coverage_build=no
 generator=
 delete_files=no
 DATASETS_PATH=
@@ -171,6 +173,9 @@ or assume default paths (--with-lpf)"
 			;;
 	--debug-build)
 			debug_build=yes
+			;;
+	--coverage-build)
+			coverage_build=yes
 			;;
 	--generator=*)
 			generator="${arg#--generator=}"
@@ -312,7 +317,10 @@ the current directory before invocation or confirm the deletion of its content w
 	CMAKE_OPTS="-DCMAKE_INSTALL_PREFIX='${ABSOLUTE_PREFIX}'"
 
 	if [[ "${debug_build}" == "yes" ]]; then
+		echo "ici"
 		CMAKE_OPTS+=" -DCMAKE_BUILD_TYPE=Debug"
+	elif [[ "${coverage_build}" == "yes" ]]; then
+		CMAKE_OPTS+=" -DCMAKE_BUILD_TYPE=Coverage"
 	else
 		CMAKE_OPTS+=" -DCMAKE_BUILD_TYPE=Release"
 	fi
