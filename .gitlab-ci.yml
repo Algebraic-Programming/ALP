@@ -327,16 +327,33 @@ build_test_gcc_versions:
 build_coverage:
   rules:
     - if: COVERAGE_ENABLED == "yes"
-  needs: [build_test]
+  parallel:
+    matrix:
+      # ________: HYPERDAGS  REFERENCE  REFERENCE_OMP  NONBLOCKING  HYPERDAGS_USING
+      - BACKENDS: OFF        ON         OFF            OFF          NA                 # REFERENCE
+      - BACKENDS: OFF        OFF        ON             OFF          NA                 # REFERENCE_OMP
+      - BACKENDS: ON         OFF        OFF            OFF          reference_omp      # HYPERDAGS (reference_omp)
+      - BACKENDS: OFF        OFF        OFF            ON           NA                 # NONBLOCKING
   script:
-    - rm -rf build install 
-    - mkdir -p install build && cd build
-    - ../bootstrap.sh --prefix=../install --coverage-build && make -j$(nproc) 
+    - read -a backends_array <<< "$BACKENDS"
+    - echo "-- HYPERDAGS=${backends_array[0]}"
+    - echo "-- REFERENCE=${backends_array[1]}"
+    - echo "-- REFERENCE_OMP=${backends_array[2]}"
+    - echo "-- NONBLOCKING=${backends_array[3]}"
+    - echo "-- HYPERDAGS_USING=${backends_array[4]}"
+
+    - rm -rf build install build && mkdir -p install build && cd build
+    - cmake -DCMAKE_INSTALL_PREFIX='../install' -DCMAKE_BUILD_TYPE=Coverage
+      -DWITH_HYPERDAGS_BACKEND=${backends_array[0]}
+      -DWITH_REFERENCE_BACKEND=${backends_array[1]}
+      -DWITH_OMP_BACKEND=${backends_array[2]}
+      -DWITH_NONBLOCKING_BACKEND=${backends_array[3]}
+      -DWITH_HYPERDAGS_USING=${backends_array[4]} ..
+
     - make -j$(nproc) unittests
-    - make -j$(nproc) coverage 
+    - make -j$(nproc) coverage
+  dependencies: []
   artifacts:
     paths:
       - build/coverage
-    exclude:
-      - build/**/*.o
-      - build/**/*.o.d
+    expire_in: 2 weeks
