@@ -317,7 +317,6 @@ the current directory before invocation or confirm the deletion of its content w
 	CMAKE_OPTS="-DCMAKE_INSTALL_PREFIX='${ABSOLUTE_PREFIX}'"
 
 	if [[ "${debug_build}" == "yes" ]]; then
-		echo "ici"
 		CMAKE_OPTS+=" -DCMAKE_BUILD_TYPE=Debug"
 	elif [[ "${coverage_build}" == "yes" ]]; then
 		CMAKE_OPTS+=" -DCMAKE_BUILD_TYPE=Coverage"

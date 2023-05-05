@@ -78,10 +78,6 @@ option( COMMON_COMPILE_OPTIONS
 	"Compilation options for BOTH backends and tests; they override the defaults"
 	OFF
 )
-option( COMMON_COMPILE_LIBRARIES
-	"Linked libraries for BOTH backends and tests; they override the defaults"
-	OFF
-)
 option( ADDITIONAL_BACKEND_DEFINITIONS
 	"Compilation definitions added to default definitions (or common definitions, \
 if set) of backends only; they are ALWAYS APPENDED and never override the defaults"
@@ -298,22 +294,22 @@ add_subdirectory( examples )
 
 ### COVERAGE REPORT GENERATION
 
-if( "${CMAKE_BUILD_TYPE}" STREQUAL "Coverage")
+if( CMAKE_BUILD_TYPE STREQUAL "Coverage")
 	# Check if the compiler id is GNU
-	if(NOT "${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU" )
-		message( FATAL_ERROR "GNU compiler is required to perform coverage" )
-	endif()
+	find_package( GCov REQUIRED )
 
 	set( COVERAGE_REPORT_DIR "${PROJECT_BINARY_DIR}/coverage" )
+	file( MAKE_DIRECTORY "${COVERAGE_REPORT_DIR}" )
 	add_custom_command( OUTPUT "${COVERAGE_REPORT_DIR}"
-		COMMAND bash -c "mkdir -p coverage \
-						&& geninfo . --base-directory . --output-filename coverage/coverage.info \
-						&& genhtml --prefix ${PROJECT_SOURCE_DIR} --demangle-cpp coverage/coverage.info -o coverage"
+		COMMAND ${GENINFO_PATH} . --base-directory . --output-filename coverage/coverage.info
+		COMMAND ${GENHTML_PATH} --prefix ${PROJECT_SOURCE_DIR} --demangle-cpp coverage/coverage.info -o coverage
+		COMMAND echo --> Generated report: ${COVERAGE_REPORT_DIR}/index.html <--
 		WORKING_DIRECTORY "${PROJECT_BINARY_DIR}"
 		COMMENT "producing coverage report in ${COVERAGE_REPORT_DIR}"
 		VERBATIM
 	)
 	add_custom_target( coverage DEPENDS "${COVERAGE_REPORT_DIR}" )
+
 endif()
 
 

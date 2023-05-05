@@ -85,11 +85,11 @@ function( set_valid out_name first second )
 	endif()
 endfunction( set_valid )
 
-# set in cache first string if valid, otherwise second
-function( set_valid_cache_string out_name first second docstring )
+# set first string if valid, otherwise second
+function( set_valid_string out_name first second )
 	if( first )
 		set( ${out_name} "${first}" PARENT_SCOPE )
 	else()
 		set( ${out_name} "${second}" PARENT_SCOPE )
 	endif()
-endfunction( set_valid_cache_string )
+endfunction( set_valid_string )
