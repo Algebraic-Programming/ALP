@@ -80,8 +80,7 @@ the location where LPF is installed"
 	echo "                                        optional; default value is reference"
 	echo "                                        clashes with --no-hyperdags"
 	echo "  --no-nonblocking                    - disables the nonblocking backend"
-	echo "  --debug-build                       - build the project with debug options (tests will run much slower!)"
-	echo "  --coverage-build                    - build the project for coverage (using gcov)"
+	echo "  --[debug | coverage]-build          - build the project with debug | coverage options (tests will run much slower!)"
 	echo "  --generator=<value>                 - set the generator for CMake (otherwise use CMake's default)"
 	echo "  --show                              - show generation commands instead of running them"
 	echo "  --delete-files                      - delete files in the current directory without asking for confirmation"
@@ -315,6 +314,11 @@ the current directory before invocation or confirm the deletion of its content w
 	fi
 
 	CMAKE_OPTS="-DCMAKE_INSTALL_PREFIX='${ABSOLUTE_PREFIX}'"
+
+	if [[ "${debug_build}" == "yes" && "${coverage_build}" == "yes" ]]; then
+		>&2 echo "Error: Debug and Coverage build can not be selected simulteanously"
+		exit 1
+	fi		
 
 	if [[ "${debug_build}" == "yes" ]]; then
 		CMAKE_OPTS+=" -DCMAKE_BUILD_TYPE=Debug"
