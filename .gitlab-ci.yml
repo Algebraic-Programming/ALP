@@ -322,7 +322,7 @@ build_test_gcc_versions:
       --with-lpf=${LPF_BASE_PATH}/build_mpich_${CC_COMPILER}_${VER}/install &&
       make -j$(nproc) build_tests_all
 
-# Coverage build + units-tests
+# Coverage build + tests for each backend
 
 coverage_unittests:
   rules:
