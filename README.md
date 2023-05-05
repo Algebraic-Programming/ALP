@@ -98,6 +98,10 @@ For generating the code documentations:
 * `pdflatex` is required to build the PDF file out of the Latex generated
   documentation.
 
+## Code coverage
+
+For code/test coverage, a native implementation is available using the CMake infrastructure, using `gcovr` and `gcov`/`lcov`.
+
 
 # Very quick start
 
@@ -193,20 +197,35 @@ system targets, how to integrate ALP programs into applications, debugging, and
 contribute to ALP development. Finally, this README acknowledges contributors
 and lists technical papers.
 
+- [Minimal requirements](#minimal-requirements)
+  - [Compilation](#compilation)
+  - [Linking and run-time](#linking-and-run-time)
+- [Optional dependences](#optional-dependences)
+  - [Distributed-memory auto-parallelisation](#distributed-memory-auto-parallelisation)
+  - [Code documentation](#code-documentation)
+  - [Code coverage](#code-coverage)
+- [Very quick start](#very-quick-start)
+- [Quick start](#quick-start)
+- [Additional Contents](#additional-contents)
 - [Configuration](#configuration)
+  - [Reference and reference\_omp backends](#reference-and-reference_omp-backends)
+  - [OpenMP backends](#openmp-backends)
+  - [LPF backends](#lpf-backends)
+  - [Utilities](#utilities)
+  - [Others](#others)
 - [Overview of the main Makefile targets](#overview-of-the-main-makefile-targets)
 - [Automated performance testing](#automated-performance-testing)
 - [Integrating ALP with applications](#integrating-alp-with-applications)
-	- [Running ALP programs as standalone executables](#running-alp-programs-as-standalone-executables)
-		- [Implementation](#implementation)
-		- [Compilation](#compilation-1)
-		- [Linking](#linking)
-		- [Running](#running)
-		- [Threading](#threading)
-	- [Running parallel ALP programs from existing parallel contexts](#running-parallel-alp-programs-from-existing-parallel-contexts)
-		- [Implementation](#implementation-1)
-		- [Running](#running-1)
-	- [Integrating ALP within your coding project](#integrating-alp-within-your-coding-project)
+  - [Running ALP programs as standalone executables](#running-alp-programs-as-standalone-executables)
+    - [Implementation](#implementation)
+    - [Compilation](#compilation-1)
+    - [Linking](#linking)
+    - [Running](#running)
+    - [Threading](#threading)
+  - [Running parallel ALP programs from existing parallel contexts](#running-parallel-alp-programs-from-existing-parallel-contexts)
+    - [Implementation](#implementation-1)
+    - [Running](#running-1)
+  - [Integrating ALP within your coding project](#integrating-alp-within-your-coding-project)
 - [Debugging](#debugging)
 - [Development in ALP](#development-in-alp)
 - [Acknowledgements](#acknowledgements)
