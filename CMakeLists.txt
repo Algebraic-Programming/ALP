@@ -310,6 +310,13 @@ if( CMAKE_BUILD_TYPE STREQUAL "Coverage")
 	)
 	add_custom_target( coverage DEPENDS "${COVERAGE_REPORT_DIR}" )
 
+	add_custom_target( clean_coverage
+		COMMAND find "coverage" -delete -mindepth 1
+		COMMAND find . -name "*.gcno" -delete
+		COMMAND find . -name "*.gcda" -delete
+		WORKING_DIRECTORY "${PROJECT_BINARY_DIR}"
+		COMMENT "cleaning coverage-related in ${COVERAGE_REPORT_DIR}"
+	)
 endif()
 
 
