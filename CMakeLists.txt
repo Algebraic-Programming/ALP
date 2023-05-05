@@ -68,7 +68,6 @@ LPF_INSTALL_PATH set)" ON LPF_INSTALL_PATH OFF
 cmake_dependent_option( WITH_HYBRID_BACKEND "Also build the Hybrid backend \
 (needs LPF_INSTALL_PATH set)" ON LPF_INSTALL_PATH OFF
 )
-
 # to customize build flags for either backends or tests
 option( COMMON_COMPILE_DEFINITIONS
 	"Compilation definitions for BOTH backends and tests; they override the defaults"
