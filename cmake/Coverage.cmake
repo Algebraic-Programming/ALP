@@ -1,11 +1,13 @@
 find_package( GCov REQUIRED )
 find_package( Python3 REQUIRED )
 execute_process(
-    COMMAND gcovr --help
+    COMMAND ${Python3_EXECUTABLE} -m gcovr --help
     RESULT_VARIABLE GCOVR_FOUND
+    OUTPUT_QUIET
+    ERROR_QUIET
 )
 if( NOT GCOVR_FOUND STREQUAL "0" )
-    message( FATAL_ERROR "gcovr not installed, install it with ${Python_EXECUTABLE} -m pip install gcovr" )
+    message( FATAL_ERROR "gcovr not installed, install it with ${Python3_EXECUTABLE} -m pip install gcovr" )
 endif()
 
 set( COVERAGE_REPORT_DIR "${PROJECT_BINARY_DIR}/coverage" )
@@ -17,7 +19,7 @@ function( create_coverage_command command_name output_file output_switch )
     message( STATUS "COVERAGE_REPORT_DIR: ${COVERAGE_REPORT_DIR}" )
     add_custom_target( ${command_name}
         COMMAND echo ${COVERAGE_REPORT_DIR}/${output_file}
-		COMMAND gcovr ${output_switch}
+		COMMAND ${Python3_EXECUTABLE} -m gcovr ${output_switch}
 			--sort-percentage
 			--print-summary
             --html-title ${_COVERAGE_TITLE}
