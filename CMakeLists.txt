@@ -297,6 +297,28 @@ add_subdirectory( tests )
 
 add_subdirectory( examples )
 
+
+### COVERAGE REPORT GENERATION
+
+if( "${CMAKE_BUILD_TYPE}" STREQUAL "Coverage")
+	# Check if the compiler id is GNU
+	if(NOT "${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU" )
+		message( FATAL_ERROR "GNU compiler is required to perform coverage" )
+	endif()
+
+	set( COVERAGE_REPORT_DIR "${PROJECT_BINARY_DIR}/coverage" )
+	add_custom_command( OUTPUT "${COVERAGE_REPORT_DIR}"
+		COMMAND bash -c "mkdir -p coverage \
+						&& geninfo . --base-directory . --output-filename coverage/coverage.info \
+						&& genhtml --demangle-cpp coverage/coverage.info -o coverage"
+		WORKING_DIRECTORY "${PROJECT_BINARY_DIR}"
+		COMMENT "producing coverage report in ${COVERAGE_REPORT_DIR}"
+		VERBATIM
+	)
+	add_custom_target( coverage DEPENDS "${COVERAGE_REPORT_DIR}" )
+endif()
+
+
 ### DOXYGEN DOCUMENTATION GENERATION
 
 set( DOCS_DIR "${PROJECT_SOURCE_DIR}/docs/developer" )
