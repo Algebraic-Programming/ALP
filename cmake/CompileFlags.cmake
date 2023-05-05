@@ -258,7 +258,6 @@ macro( add_category_flags category )
 endmacro( add_category_flags )
 
 
-
 set_valid_string( TEST_unit_ndebug_DEFS_Release "${ADDITIONAL_TEST_DEFINITIONS}" "" )
 set_valid_string( TEST_unit_ndebug_DEFS_Debug "${ADDITIONAL_TEST_DEFINITIONS}" "" )
 set_valid_string( TEST_unit_ndebug_DEFS_Coverage "${ADDITIONAL_TEST_DEFINITIONS}" "" )
@@ -267,51 +266,54 @@ set_valid_string( TEST_unit_ndebug_OPTS_Debug "${ADDITIONAL_TEST_OPTIONS}" "" )
 set_valid_string( TEST_unit_ndebug_OPTS_Coverage "${ADDITIONAL_TEST_OPTIONS}" "" )
 
 set( TEST_unit_ndebug_PERF_DEFS_Release "${COMMON_PERF_DEFS_Release}" CACHE STRING
-	"Release definitions for category unit, mode debug "
+	"Release definitions for category unit, mode ndebug "
 )
 set( TEST_unit_ndebug_PERF_DEFS_Debug "${COMMON_PERF_DEFS_Release}" CACHE STRING
-	"Debug definitions for category unit, mode debug "
+	"Debug definitions for category unit, mode ndebug "
 )
 set( TEST_unit_ndebug_PERF_DEFS_Coverage "${COMMON_PERF_DEFS_Release}" CACHE STRING
-	"Coverage definitions for category unit, mode debug "
+	"Coverage definitions for category unit, mode ndebug "
 )
 set( TEST_unit_ndebug_PERF_OPTS_Release "${COMMON_PERF_OPTS_Release}" CACHE STRING
-	"Release options for category unit, mode debug "
+	"Release options for category unit, mode ndebug "
 )
 set( TEST_unit_ndebug_PERF_OPTS_Debug "${COMMON_PERF_OPTS_Release}" CACHE STRING
-	"Debug options for category unit, mode debug "
+	"Debug options for category unit, mode ndebug "
 )
 set( TEST_unit_ndebug_PERF_OPTS_Coverage "${COMMON_PERF_OPTS_Release}" CACHE STRING
-	"Coverage options for category unit, mode debug "
+	"Coverage options for category unit, mode ndebug "
 )
 add_category_flags( "unit" MODE ndebug )
+	
+if( NOT CMAKE_BUILD_TYPE STREQUAL Coverage )
+	set_valid_string( TEST_unit_debug_DEFS_Release "${ADDITIONAL_TEST_DEFINITIONS}" "" )
+	set_valid_string( TEST_unit_debug_DEFS_Debug "${ADDITIONAL_TEST_DEFINITIONS}" "" )
+	set_valid_string( TEST_unit_debug_DEFS_Coverage "${ADDITIONAL_TEST_DEFINITIONS}" "" )
+	set_valid_string( TEST_unit_debug_OPTS_Release "${ADDITIONAL_TEST_OPTIONS}" "" )
+	set_valid_string( TEST_unit_debug_OPTS_Debug "${ADDITIONAL_TEST_OPTIONS}" "" )
+	set_valid_string( TEST_unit_debug_OPTS_Coverage "${ADDITIONAL_TEST_OPTIONS}" "" )
 
-set_valid_string( TEST_unit_debug_DEFS_Release "${ADDITIONAL_TEST_DEFINITIONS}" "" )
-set_valid_string( TEST_unit_debug_DEFS_Debug "${ADDITIONAL_TEST_DEFINITIONS}" "" )
-set_valid_string( TEST_unit_debug_DEFS_Coverage "${ADDITIONAL_TEST_DEFINITIONS}" "" )
-set_valid_string( TEST_unit_debug_OPTS_Release "${ADDITIONAL_TEST_OPTIONS}" "" )
-set_valid_string( TEST_unit_debug_OPTS_Debug "${ADDITIONAL_TEST_OPTIONS}" "" )
-set_valid_string( TEST_unit_debug_OPTS_Coverage "${ADDITIONAL_TEST_OPTIONS}" "" )
+	set( TEST_unit_debug_PERF_DEFS_Release "${COMMON_PERF_DEFS_Debug}" CACHE STRING
+		"Release performance definitions for category unit, mode debug"
+	)
+	set( TEST_unit_debug_PERF_DEFS_Debug "${COMMON_PERF_DEFS_Debug}" CACHE STRING
+		"Debug performance definitions for category unit, mode debug"
+	)
+	set( TEST_unit_debug_PERF_DEFS_Coverage "${COMMON_PERF_DEFS_Debug}" CACHE STRING
+		"Coverage performance definitions for category unit, mode debug"
+	)
+	set( TEST_unit_debug_PERF_OPTS_Release "${COMMON_PERF_OPTS_Debug}" CACHE STRING
+		"Release options definitions for category unit, mode debug"
+	)
+	set( TEST_unit_debug_PERF_OPTS_Debug "${COMMON_PERF_OPTS_Debug}" CACHE STRING
+		"Debug options definitions for category unit, mode debug"
+	)
+	set( TEST_unit_debug_PERF_OPTS_Coverage "${COMMON_PERF_OPTS_Debug}" CACHE STRING
+		"Coverage options definitions for category unit, mode debug"
+	)
+	add_category_flags( "unit" MODE debug )
 
-set( TEST_unit_debug_PERF_DEFS_Release "${COMMON_PERF_DEFS_Debug}" CACHE STRING
-	"Release performance definitions for category unit, mode debug"
-)
-set( TEST_unit_debug_PERF_DEFS_Debug "${COMMON_PERF_DEFS_Debug}" CACHE STRING
-	"Debug performance definitions for category unit, mode debug"
-)
-set( TEST_unit_debug_PERF_DEFS_Coverage "${COMMON_PERF_DEFS_Debug}" CACHE STRING
-	"Coverage performance definitions for category unit, mode debug"
-)
-set( TEST_unit_debug_PERF_OPTS_Release "${COMMON_PERF_OPTS_Debug}" CACHE STRING
-	"Release options definitions for category unit, mode debug"
-)
-set( TEST_unit_debug_PERF_OPTS_Debug "${COMMON_PERF_OPTS_Debug}" CACHE STRING
-	"Debug options definitions for category unit, mode debug"
-)
-set( TEST_unit_debug_PERF_OPTS_Coverage "${COMMON_PERF_OPTS_Debug}" CACHE STRING
-	"Coverage options definitions for category unit, mode debug"
-)
-add_category_flags( "unit" MODE debug )
+endif() 
 
 # for categories with no specific options, set default:
 # - modes with same name as category
