@@ -330,9 +330,8 @@ build_coverage:
   parallel:
     matrix:
       # ________: HYPERDAGS  REFERENCE  REFERENCE_OMP  NONBLOCKING  HYPERDAGS_USING
-      - BACKENDS: OFF        ON         OFF            OFF          NA                 # REFERENCE
-      - BACKENDS: OFF        OFF        ON             OFF          NA                 # REFERENCE_OMP
-      - BACKENDS: ON         OFF        OFF            OFF          reference_omp      # HYPERDAGS (reference_omp)
+      - BACKENDS: OFF        ON         ON             OFF          NA                 # REFERENCE+OMP
+      - BACKENDS: ON         OFF        ON             OFF          reference          # HYPERDAGS (reference)
       - BACKENDS: OFF        OFF        OFF            ON           NA                 # NONBLOCKING
   script:
     - read -a backends_array <<< "$BACKENDS"
@@ -356,5 +355,5 @@ build_coverage:
   artifacts:
     name: "JobArtifact_${CI_BUILD_REF_NAME}_${CI_BUILD_ID}"
     paths:
-      - build
+      - .
     expire_in: 2 weeks
