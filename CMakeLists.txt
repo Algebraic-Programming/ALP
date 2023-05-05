@@ -252,8 +252,6 @@ include( AddGRBInstall )
 # compilation flags for all targets
 include( CompileFlags )
 
-#include(CodeCoverage)
-
 if( WITH_BSP1D_BACKEND OR WITH_HYBRID_BACKEND )
 	# required to create targets against LPF (provides dedicated functions)
 	include( AddLPFTargets )
@@ -310,7 +308,7 @@ if( "${CMAKE_BUILD_TYPE}" STREQUAL "Coverage")
 	add_custom_command( OUTPUT "${COVERAGE_REPORT_DIR}"
 		COMMAND bash -c "mkdir -p coverage \
 						&& geninfo . --base-directory . --output-filename coverage/coverage.info \
-						&& genhtml --demangle-cpp coverage/coverage.info -o coverage"
+						&& genhtml --prefix ${PROJECT_SOURCE_DIR} --demangle-cpp coverage/coverage.info -o coverage"
 		WORKING_DIRECTORY "${PROJECT_BINARY_DIR}"
 		COMMENT "producing coverage report in ${COVERAGE_REPORT_DIR}"
 		VERBATIM

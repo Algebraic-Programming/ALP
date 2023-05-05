@@ -113,7 +113,7 @@ set( COMMON_PERF_OPTS_Release "-O3" "-march=native" "-mtune=native" "-funroll-lo
 set( COMMON_PERF_DEFS_Debug "" )
 set( COMMON_PERF_OPTS_Debug "-O0" )
 set( COMMON_PERF_DEFS_Coverage "" )
-set( COMMON_PERF_OPTS_Coverage "-O0")
+set( COMMON_PERF_OPTS_Coverage "-O2")
 
 ### COMPILATION FLAGS FOR BACKENDS
 
