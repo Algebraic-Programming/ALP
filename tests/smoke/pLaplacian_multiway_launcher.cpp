@@ -161,7 +161,7 @@ void grbProgram( const struct input & data_in, struct output & out ) {
 	// 	A.load( file_c, coord_ascii );
 	// 	//A = A.tail_rows( A.n_rows - 1 );
 	// 	//A = A.tail_cols( A.n_cols - 1 );
-    //     //sp_mat B = A.t()*A;
+	//     //sp_mat B = A.t()*A;
 
 	// 	vec eigval;
 	// 	mat eigvec;
@@ -379,3 +379,4 @@ int main( int argc, char ** argv ) {
 	// done
 	return 0;
 }
+
