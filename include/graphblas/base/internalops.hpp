@@ -1784,7 +1784,6 @@ namespace grb {
 						const right_type * __restrict__ const b,
 						result_type * __restrict__ const c
 					) {
-						printf( "Hello from mul\n" );
 						if( *a || *b ) {
 							*c = static_cast< OUT >( true );
 						} else {
