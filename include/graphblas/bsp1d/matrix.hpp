@@ -318,6 +318,16 @@ namespace grb {
 
 		public:
 
+			/** @see Matrix::value_type */
+			typedef D value_type;
+
+			/** The iterator type over matrices of this type. */
+			typedef typename internal::Compressed_Storage<
+				D, RowIndexType, NonzeroIndexType
+			>::template ConstIterator<
+				internal::Distribution< BSP1D >
+			> const_iterator;
+
 			/**
 			 * Matrix constructor.
 			 *
