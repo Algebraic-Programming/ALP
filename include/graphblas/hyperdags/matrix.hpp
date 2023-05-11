@@ -108,6 +108,16 @@ namespace grb {
 
 		public:
 
+			/** @see Matrix::value_type */
+			typedef T value_type;
+
+			/** The iterator type over matrices of this type. */
+			typedef typename internal::Compressed_Storage<
+				T, grb::config::RowIndexType, grb::config::NonzeroIndexType
+			>::template ConstIterator< internal::Distribution<
+				_GRB_WITH_HYPERDAGS_USING> 
+			> const_iterator;
+
 			/** \internal Base constructor, no capacity */
 			Matrix( const size_t rows, const size_t columns ) :
 				matrix( rows, columns )
