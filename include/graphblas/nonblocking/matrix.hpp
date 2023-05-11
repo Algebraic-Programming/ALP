@@ -478,6 +478,13 @@ namespace grb {
 			/** @see Matrix::value_type */
 			typedef D value_type;
 
+			/** The iterator type over matrices of this type. */
+			typedef typename internal::Compressed_Storage<
+				D, RowIndexType, NonzeroIndexType
+			>::template ConstIterator<
+				internal::Distribution< reference >
+			> const_iterator;
+
 			Matrix(
 				const size_t rows, const size_t columns, const size_t nz
 			) : ref( rows, columns, nz )
