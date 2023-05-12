@@ -242,6 +242,204 @@ namespace grb {
 		return ret == SUCCESS ? UNSUPPORTED : ret;
 	}
 
+
+	/**
+	 * Computes \f$ C = A \odot B \f$, out of place, monoid variant.
+	 *
+	 * Calculates the element-wise operation on one scalar to elements of one
+	 * matrix, \f$ C = A \odot B \f$, using the given monoid's operator. 
+	 * The input and output matrices must be of same dimension.
+	 *
+	 * Any old entries of \a C will be removed after a successful call to this
+	 * primitive.
+	 *
+	 * After a successful call to this primitive, the nonzero structure of \a C
+	 * will match that of the union of \a A and \a B. An implementing backend may
+	 * skip processing rows \a i and columns \a j that are not in the union of the nonzero
+	 * structure of \a A and \a B.
+	 * 
+	 * \note When applying element-wise operators on sparse matrices using
+	 *       semirings, there is a difference between interpreting missing 
+	 * 		 values as an annihilating identity or as a neutral identity-- 
+	 *       intuitively, such identities are known as `zero' or `one',
+	 * 		 respectively. As a consequence, this functionality is provided by
+	 * 		 #grb::eWiseApply depending on whether a monoid or operator
+	 *       is provided:
+	 *        - #grb::eWiseApply using monoids (neutral),
+	 *        - #grb::eWiseApply using operators (annihilating).
+	 *
+	 * @tparam descr      The descriptor to be used. Optional; the default is
+	 *                    #grb::descriptors::no_operation.
+	 * @tparam Monoid     The monoid to use.
+	 * @tparam InputType1 The value type of the left-hand matrix.
+	 * @tparam InputType2 The value type of the right-hand matrix.
+	 * @tparam OutputType The value type of the ouput matrix.
+	 *
+	 * @param[out]  C    The output matrix.
+	 * @param[in]   A    The left-hand input matrix.
+	 * @param[in]   B    The right-hand input matrix.
+	 * @param[in] monoid The monoid structure containing \f$ \odot \f$.
+	 * @param[in] phase  The #grb::Phase the call should execute. 
+	 * 					 Optional; the default parameter is #grb::EXECUTE.
+	 *
+	 * @return #grb::SUCCESS  On successful completion of this call.
+	 * @return #grb::MISMATCH Whenever the dimensions of \a x, \a y and \a z do
+	 * 						  not match. All input data containers are left 
+	 * 						  untouched if this exit code is returned; it will
+	 *  					  be as though this call was never made.
+	 * @return #grb::FAILED   If \a phase is #grb::EXECUTE, indicates that the
+	 *                        capacity of \a z was insufficient. The output 
+	 * 						  matrix \a z is cleared, and the call to this 
+	 * 						  function has no further effects.
+	 * @return #grb::OUTOFMEM If \a phase is #grb::RESIZE, indicates an
+	 *                        out-of-memory exception. The call to this
+	 * 						  function shall have no other effects beyond 
+	 * 						  returning this error code; the previous state of
+	 *  					  \a z is retained.
+	 * @return #grb::PANIC    A general unmitigable error has been encountered.
+	 * 						  If returned, ALP enters an undefined state and
+	 * 						  the user program is encouraged to exit as quickly
+	 *              		  as possible.
+	 *
+	 * \par Performance semantics
+	 * Each backend must define performance semantics for this primitive.
+	 *
+	 * @see perfSemantics
+	 */
+	template<
+		Descriptor descr = descriptors::no_operation,
+		typename OutputType,
+		typename InputType1,
+		typename InputType2,
+		Backend backend, 
+		class Monoid
+	>
+	RC eWiseApply(
+		Matrix< OutputType, backend > &C,
+		const Matrix< InputType1, backend > &A,
+		const Matrix< InputType2, backend > &B,
+		const Monoid &monoid,
+		const Phase phase = EXECUTE,
+		const typename std::enable_if< !grb::is_object< OutputType >::value &&
+			!grb::is_object< InputType1 >::value &&
+			!grb::is_object< InputType2 >::value &&
+			grb::is_monoid< Monoid >::value,
+		void >::type * const = nullptr
+	) {
+		(void) C;
+		(void) A;
+		(void) B;
+		(void) phase;
+#ifdef _DEBUG
+		std::cerr << "Selected backend does not implement grb::eWiseApply\n";
+#endif
+#ifndef NDEBUG
+		const bool selected_backend_does_not_support_ewiseapply = false;
+		assert( selected_backend_does_not_support_ewiseapply );
+#endif
+		const RC ret = grb::clear( A );
+		return ret == SUCCESS ? UNSUPPORTED : ret;
+	}
+
+
+	/**
+	 * Computes \f$ C = A \odot B \f$, out of place, operator variant.
+	 *
+	 * Calculates the element-wise operation on one scalar to elements of one
+	 * matrix, \f$ C = A \odot B \f$, using the given operator. The input and
+	 * output matrices must be of same dimension.
+	 *
+	 * Any old entries of \a C will be removed after a successful call to this
+	 * primitive.
+	 *
+	 * After a successful call to this primitive, the nonzero structure of \a C
+	 * will match that of the intersection of \a A and \a B. An implementing 
+	 * backend may skip processing rows \a i and columns \a j that are not 
+	 * in the intersection of the nonzero structure of \a A and \a B.
+	 *
+	 * \note When applying element-wise operators on sparse matrices using
+	 *       semirings, there is a difference between interpreting missing 
+	 * 		 values as an annihilating identity or as a neutral identity-- 
+	 *       intuitively, such identities are known as `zero' or `one',
+	 * 		 respectively. As a consequence, this functionality is provided by
+	 * 		 #grb::eWiseApply depending on whether a monoid or operator
+	 *       is provided:
+	 *        - #grb::eWiseApply using monoids (neutral),
+	 *        - #grb::eWiseApply using operators (annihilating).
+	 *
+	 * @tparam descr      The descriptor to be used. Optional; the default is
+	 *                    #grb::descriptors::no_operation.
+	 * @tparam Operator   The operator to use.
+	 * @tparam InputType1 The value type of the left-hand matrix.
+	 * @tparam InputType2 The value type of the right-hand matrix.
+	 * @tparam OutputType The value type of the ouput matrix.
+	 *
+	 * @param[out]  C      The output matrix.
+	 * @param[in]   A      The left-hand input matrix.
+	 * @param[in]   B      The right-hand input matrix.
+	 * @param[in]   op 	   The operator.
+	 * @param[in]   phase  The #grb::Phase the call should execute. 
+	 * 					   Optional; the default parameter is #grb::EXECUTE.
+	 *
+	 * @return #grb::SUCCESS  On successful completion of this call.
+	 * @return #grb::MISMATCH Whenever the dimensions of \a x, \a y and \a z do
+	 * 						  not match. All input data containers are left 
+	 * 						  untouched if this exit code is returned; it will
+	 *  					  be as though this call was never made.
+	 * @return #grb::FAILED   If \a phase is #grb::EXECUTE, indicates that the
+	 *                        capacity of \a z was insufficient. The output 
+	 * 						  matrix \a z is cleared, and the call to this 
+	 * 						  function has no further effects.
+	 * @return #grb::OUTOFMEM If \a phase is #grb::RESIZE, indicates an
+	 *                        out-of-memory exception. The call to this
+	 * 						  function shall have no other effects beyond 
+	 * 						  returning this error code; the previous state of
+	 *  					  \a z is retained.
+	 * @return #grb::PANIC    A general unmitigable error has been encountered.
+	 * 						  If returned, ALP enters an undefined state and
+	 * 						  the user program is encouraged to exit as quickly
+	 *              		  as possible.
+	 *
+	 * \par Performance semantics
+	 * Each backend must define performance semantics for this primitive.
+	 *
+	 * @see perfSemantics
+	 */
+	template<
+		Descriptor descr = grb::descriptors::no_operation,
+		typename OutputType,
+		typename InputType1,
+		typename InputType2,
+		Backend backend, 
+		class Operator
+	>
+	RC eWiseApply(
+		Matrix< OutputType, backend > &C,
+		const Matrix< InputType1, backend > &A,
+		const Matrix< InputType2, backend > &B,
+		const Operator &op,
+		const Phase phase = EXECUTE,
+		const typename std::enable_if< !grb::is_object< OutputType >::value &&
+			!grb::is_object< InputType1 >::value &&
+			!grb::is_object< InputType2 >::value &&
+			grb::is_operator< Operator >::value,
+		void >::type * const = nullptr
+	) {
+		(void) C;
+		(void) A;
+		(void) B;
+		(void) phase;
+#ifdef _DEBUG
+		std::cerr << "Selected backend does not implement grb::eWiseApply\n";
+#endif
+#ifndef NDEBUG
+		const bool selected_backend_does_not_support_ewiseapply	= false;
+		assert( selected_backend_does_not_support_ewiseapply );
+#endif
+		const RC ret = grb::clear( A );
+		return ret == SUCCESS ? UNSUPPORTED : ret;
+	}
+
 	/**
 	 * @}
 	 */
