@@ -291,6 +291,10 @@ namespace grb {
 					rcut += (to_add_2 - to_add) /static_cast< double >( grb::nnz( *(cluster_indic[ i ]) ) );
 				}
 
+				for ( size_t i = 0; i < k; ++i ) {
+					delete cluster_indic[i];
+				}
+
 				return SUCCESS;
 			}
 
@@ -472,6 +476,10 @@ namespace grb {
 					rcut += to_add /sizes[ i ];
 
 					cluster_cuts[ i ] = to_add /sizes[ i ];
+				}
+
+                for ( size_t i = 0; i < k; ++i ) {
+					delete cluster_indic[i];
 				}
 
 				return SUCCESS;

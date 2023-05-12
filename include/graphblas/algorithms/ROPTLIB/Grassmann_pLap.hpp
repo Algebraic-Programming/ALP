@@ -118,6 +118,7 @@ namespace ROPTLIB
             //Skip if already calculated
             if(mats[l]) return;
 
+
             grb::Vector<double> u = *(this->Columns[l]);
 
             grb::set(*(UiUj[l]), W);
@@ -228,16 +229,38 @@ namespace ROPTLIB
             for (size_t i = 0; i < k; ++i)
             {
                 Columns[i] = new grb::Vector<double>(n);
+                grb::set(*Columns[i], 0);
+
                 Etax[i] = new grb::Vector<double>(n);
+                grb::set(*Etax[i], 0);
+
                 Res[i] = new grb::Vector<double>(n);
+                grb::set(*Res[i], 0);
+
                 Prev[i] = new grb::Vector<double>(n);
+                grb::set(*Prev[i], 0);
+
                 Diag[i] = new grb::Vector<double>(n);
-   				UiUj[ i ] = new grb::Matrix< double >( n, n,  grb::nnz( W ));
-   				Hess[ i ] = new grb::Matrix< double >( n, n,  grb::nnz( W ));
+                grb::set(*Diag[i], 0);
+
+   				UiUj[i] = new grb::Matrix< double >( n, n,  grb::nnz( W ));
+   				Hess[i] = new grb::Matrix< double >( n, n,  grb::nnz( W ));
             }
         }
 
-        virtual ~Grass_pLap() {}
+        virtual ~Grass_pLap() {
+            for (size_t i = 0; i < k; ++i)
+            {
+                delete Columns[i];
+                delete Etax[i];
+                delete Res[i];
+                delete Prev[i];
+                delete Diag[i];
+   				delete UiUj[i];
+   				delete Hess[i];
+            }            
+        }
+
         // Objective function, p-norm
         virtual double f(const ROPTLIB::Variable &x) const
         {
