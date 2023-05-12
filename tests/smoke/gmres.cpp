@@ -15,6 +15,14 @@
  * limitations under the License.
  */
 
+/**
+ * Test GMRES solver on randomly gnerated data.
+ * @file gmres.cpp
+ * @author Denis Jelovina (denis.jelovina@huawei.com)
+ *
+ * @date 2023-05-12
+ */
+
 #include <exception>
 #include <iostream>
 #include <iterator>
@@ -167,7 +175,7 @@ RC make_matrices(
 	Matrix< ScalarType > &P,
 	const size_t &n,
 	const size_t &nz_per_row
-){
+) {
 	RC rc = SUCCESS;
 
 	{
@@ -188,8 +196,12 @@ RC make_matrices(
 			MatPvecj,
 			MatPvecv
 		);
-		rc = rc ? rc : buildMatrixUnique( A, MatAveci.begin(), MatAvecj.begin(), MatAvecv.begin(), MatAveci.size(), SEQUENTIAL );
-		rc = rc ? rc : buildMatrixUnique( P, MatPveci.begin(), MatPvecj.begin(), MatPvecv.begin(), MatPveci.size(), SEQUENTIAL );
+		rc = rc ? rc : buildMatrixUnique(
+			A, MatAveci.begin(), MatAvecj.begin(), MatAvecv.begin(), MatAveci.size(), SEQUENTIAL
+		);
+		rc = rc ? rc : buildMatrixUnique(
+			P, MatPveci.begin(), MatPvecj.begin(), MatPvecv.begin(), MatPveci.size(), SEQUENTIAL
+		);
 	}
 	return rc;
 }
@@ -295,7 +307,9 @@ void grbProgram( const struct input &data_in, struct output &out ) {
 				std::cerr << " matrix in " << data_in.precond_filename << " file, is not rectangular!";
 				rc = grb::ILLEGAL;
 			} else if( parser_precond.n() != n ) {
-				std::cerr << " Preconditioner P("<< parser_precond.n() << ") mast have same dimensions as matrix A(" << n << ") !\n";
+				std::cerr << " Preconditioner P("
+					  << parser_precond.n() << ") mast have same dimensions as matrix A("
+					  << n << ") !\n";
 				rc = grb::ILLEGAL;
 			}
 			rc = rc ? rc : buildMatrixUnique(

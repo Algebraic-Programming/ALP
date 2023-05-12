@@ -25,7 +25,6 @@
 
 #include <complex>
 
-
 namespace grb {
 
 	namespace utils {
@@ -46,6 +45,11 @@ namespace grb {
 		 */
 		template< typename C >
 		class is_complex {
+
+			static_assert(
+				std::is_floating_point< C >::value,
+				"is_complex: C is not a floating point type"
+			);
 
 			public:
 
@@ -71,21 +75,28 @@ namespace grb {
 				 *          or the given value if \a C is not complex.
 				 */
 				static C modulus( const C &x ) noexcept {
-					return x;
+					return( x > 0 ? x : -x );
 				}
 
 				/**
 				 * @returns The absolute value squared of a given value.
 				 */
 				static C norm( const C &x ) noexcept {
-					return x;
+					return x * x;
 				}
 
 		};
 
 		/** \internal The specialisation for std::complex types. */
 		template< typename T >
-		class is_complex< std::complex< T > > {
+		class is_complex< std::complex< T > >
+		{
+
+			static_assert(
+				std::is_floating_point< T >::value,
+				"is_complex: T is not a floating point type"
+			);
+
 			public:
 				typedef T type;
 				static constexpr const bool value = true;
@@ -98,6 +109,7 @@ namespace grb {
 				static T norm( const std::complex< T > &x ) {
 					return std::norm( x );
 				}
+
 		};
 
 

@@ -36,9 +36,6 @@
 
 #include <graphblas.hpp>
 
-//#include "../base/internalops.hpp"
-
-
 #include <cmath> // for std::sqrt
 
 
@@ -50,7 +47,7 @@ namespace grb {
 			typename IN1, typename IN2, typename OUT,
 			enum Backend implementation = config::default_backend
 		>
-		class conjuagte_mul {
+		class conjugate_mul {
 
 			public:
 
@@ -86,20 +83,20 @@ namespace grb {
 		typename IN1, typename IN2, typename OUT,
 		enum Backend implementation = config::default_backend
 	>
-	class conjuagte_mul : public operators::internal::Operator<
-		internal::conjuagte_mul< IN1, IN2, OUT, implementation >
+	class conjugate_mul : public operators::internal::Operator<
+		internal::conjugate_mul< IN1, IN2, OUT, implementation >
 	> {
 
 	public:
 
 		template< typename A, typename B, typename C, enum Backend D >
-		using GenericOperator = internal::conjuagte_mul< A, B, C, D >;
-		conjuagte_mul() {}
+		using GenericOperator = internal::conjugate_mul< A, B, C, D >;
+		conjugate_mul() {}
 	};
 
 
 	template< typename D1, typename D2, typename D3, enum Backend implementation >
-	struct is_operator< conjuagte_mul< D1, D2, D3, implementation > > {
+	struct is_operator< conjugate_mul< D1, D2, D3, implementation > > {
 		static const constexpr bool value = true;
 	};
 
@@ -147,7 +144,7 @@ namespace grb {
 
 			RC ret = grb::dot< descr >(
 				yyt, y, y, ring.getAdditiveMonoid(),
-				conjuagte_mul< InputType, InputType, InputType >()
+				conjugate_mul< InputType, InputType, InputType >()
 			);
 			if( ret == SUCCESS ) {
 				Semiring<
