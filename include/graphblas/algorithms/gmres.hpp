@@ -550,7 +550,7 @@ namespace grb {
 							Hmatrix[ k * ( n_restart + 1 ) + j ],
 							Q[ k ], Q[ j ],
 							ring.getAdditiveMonoid(),
-							conjugate_mul< NonzeroType, NonzeroType, NonzeroType >()
+							grb::operators::conjugate_mul< NonzeroType, NonzeroType, NonzeroType >()
 						);
 						assert( ret == SUCCESS );
 

@@ -24,6 +24,7 @@
 #define _H_GRB_INTERNAL_OPERATORS_BASE
 
 #include <graphblas/utils/suppressions.h>
+#include <graphblas/utils/iscomplex.hpp>
 
 #include <type_traits>
 #include <utility>
@@ -2690,6 +2691,77 @@ namespace grb {
 						}
 					}
 
+			};
+
+			/**
+			 * Conjugate-multiply operator: conjugates rhs operand before multiplication.
+			 *
+			 * Assumes native availability * on the given data types, or assumes
+			 * the relevant operators are properly overloaded, and uses conjugate()
+			 * from is_complex.
+			 *
+			 * No assumptions about associativity and commutativity.
+			 *
+			 *
+			 * @tparam IN1 The left-hand input data type.
+			 * @tparam IN2 The right-hand input data type.
+			 * @tparam OUT The output data type.
+			 */
+			template<
+				typename IN1, typename IN2, typename OUT,
+				enum Backend implementation = config::default_backend
+			>
+			class conjugate_mul {
+
+				public:
+
+					/** Alias to the left-hand input data type. */
+					typedef IN1 left_type;
+
+					/** Alias to the right-hand input data type. */
+					typedef IN2 right_type;
+
+					/** Alias to the output data type. */
+					typedef OUT result_type;
+
+					/** Whether this operator has an in-place foldl. */
+					static constexpr bool has_foldl = false;
+
+					/** Whether this operator has an in-place foldr. */
+					static constexpr bool has_foldr = false;
+
+					/**
+					 * Whether this operator is \em mathematically associative; that is,
+					 * associative when assuming equivalent data types for \a IN1, \a IN2,
+					 * and \a OUT, as well as assuming exact arithmetic, no overflows, etc.
+					 */
+					static constexpr bool is_associative = false;
+
+					/**
+					 * Whether this operator is \em mathematically commutative; that is,
+					 * commutative when assuming equivalent data types for \a IN1, \a IN2,
+					 * and \a OUT, as well as assuming exact arithmetic, no overflows, etc.
+					 */
+					static constexpr bool is_commutative = false;
+
+					/**
+					 * Out-of-place application of this operator.
+					 *
+					 * @param[in]  a The left-hand side input. Must be pre-allocated and
+					 *               initialised.
+					 * @param[in]  b The right-hand side input. Must be pre-allocated and
+					 *               initialised.
+					 * @param[out] c The output. Must be pre-allocated.
+					 *
+					 * At the end of the operation, \f$ c = \conjugate_mul\{a,b\} \f$.
+					 */
+					static void apply(
+						const IN1 * __restrict__ const a,
+						const IN2 * __restrict__ const b,
+						OUT * __restrict__ const c
+					) {
+						*c = *a * grb::utils::is_complex< IN2 >::conjugate( *b );
+					}
 			};
 
 			/**

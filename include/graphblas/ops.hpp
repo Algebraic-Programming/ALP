@@ -804,6 +804,29 @@ namespace grb {
 
 		};
 
+
+		/**
+		 * Conjugate-multiply operator: conjugates rhs operand before multiplication.
+		 *
+		 * Mathematical notation: \f$ \odot(x,y) \to x * y^* \f$.
+		 *
+		 */
+		template<
+			typename IN1, typename IN2, typename OUT,
+			enum Backend implementation = config::default_backend
+			>
+		class conjugate_mul : public operators::internal::Operator<
+			internal::conjugate_mul< IN1, IN2, OUT, implementation >
+			> {
+
+		public:
+
+			template< typename A, typename B, typename C, enum Backend D >
+			using GenericOperator = internal::conjugate_mul< A, B, C, D >;
+			conjugate_mul() {}
+		};
+
+
 	} // namespace operators
 
 	template< typename D1, typename D2, typename D3, enum Backend implementation >
@@ -940,6 +963,11 @@ namespace grb {
 
 	template< typename D1, typename D2, typename D3, enum Backend implementation >
 	struct is_operator< operators::geq< D1, D2, D3, implementation > > {
+		static const constexpr bool value = true;
+	};
+
+	template< typename D1, typename D2, typename D3, enum Backend implementation >
+	struct is_operator< operators::conjugate_mul< D1, D2, D3, implementation > > {
 		static const constexpr bool value = true;
 	};
 
