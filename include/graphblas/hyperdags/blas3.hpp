@@ -40,11 +40,10 @@ namespace grb {
 	template<
 		Descriptor descr = descriptors::no_operation,
 		typename OutputType, typename InputType1, typename InputType2,
-		typename RIT, typename CIT, typename NIT,
 		class MulMonoid
 	>
 	RC eWiseApply(
-		Matrix< OutputType, hyperdags, RIT, CIT, NIT > &C,
+		Matrix< OutputType, hyperdags > &C,
 		const Matrix< InputType1, hyperdags > &A,
 		const Matrix< InputType2, hyperdags > &B,
 		const MulMonoid &mulmono,
@@ -83,13 +82,12 @@ namespace grb {
 	template<
 		Descriptor descr = grb::descriptors::no_operation,
 		typename OutputType, typename InputType1, typename InputType2,
-		typename RIT, typename CIT, typename NIT,
 		class Operator
 	>
 	RC eWiseApply(
-		Matrix< OutputType, hyperdags, RIT, CIT, NIT > &C,
-		const Matrix< InputType1, hyperdags, RIT, CIT, NIT > &A,
-		const Matrix< InputType2, hyperdags, RIT, CIT, NIT > &B,
+		Matrix< OutputType, hyperdags > &C,
+		const Matrix< InputType1, hyperdags > &A,
+		const Matrix< InputType2, hyperdags > &B,
 		const Operator &mulOp,
 		const Phase phase = EXECUTE,
 		const typename std::enable_if<
