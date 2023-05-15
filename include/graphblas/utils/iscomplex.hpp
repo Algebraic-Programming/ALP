@@ -100,12 +100,15 @@ namespace grb {
 			public:
 				typedef T type;
 				static constexpr const bool value = true;
+
 				static std::complex< T > conjugate( const std::complex< T > &x ) {
 					return std::conj( x );
 				}
+
 				static T modulus( const std::complex< T > &x ) {
 					return std::abs( x );
 				}
+
 				static T norm( const std::complex< T > &x ) {
 					return std::norm( x );
 				}
