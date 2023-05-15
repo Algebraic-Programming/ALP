@@ -245,9 +245,11 @@ namespace grb {
 				grb::vxm( degs, ones, W, pattern_sum );
 
 				// cluster indicators for the computation of the ratio cut
-				std::vector< grb::Vector< bool > * > cluster_indic( k );
+				std::vector< grb::Vector< bool > * > cluster_indic;
+                cluster_indic.resize(k);
 				for ( size_t i = 0; i < k; ++i ) {
-					cluster_indic[ i ] = new grb::Vector< bool >( n );
+					cluster_indic[i] = new grb::Vector< bool >( n );
+                    grb::set(*cluster_indic[i], false);
 				}
 
 				// parallelise this once we have random-access iterators
