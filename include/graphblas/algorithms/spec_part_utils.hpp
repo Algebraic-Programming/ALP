@@ -247,10 +247,8 @@ namespace grb {
 				// cluster indicators for the computation of the ratio cut
 				std::vector< grb::Vector< bool > * > cluster_indic;
                 cluster_indic.resize(k);
-				for ( size_t i = 0; i < k; ++i ) {
+				for ( size_t i = 0; i < k; ++i )
 					cluster_indic[i] = new grb::Vector< bool >( n );
-                    grb::set(*cluster_indic[i], false);
-				}
 
 				// parallelise this once we have random-access iterators
 				for ( const auto &pair : x ) {
@@ -294,6 +292,8 @@ namespace grb {
 				}
 
 				for ( size_t i = 0; i < k; ++i ) {
+                    // without this set get a memory leak, possibly a graphblas bug
+                    grb::set(*cluster_indic[i], false);
 					delete cluster_indic[i];
 				}
 
