@@ -244,21 +244,7 @@ int main( int argc, char ** argv ) {
 		printUsage = true;
 	}
 	if( argc == 2 ) {
-		size_t read;
-		std::istringstream ss( argv[ 1 ] );
-		if( ! ( ss >> read ) ) {
-			std::cerr << "Error parsing first argument\n";
-			printUsage = true;
-		} else if( ! ss.eof() ) {
-			std::cerr << "Error parsing first argument\n";
-			printUsage = true;
-		} else if( read % 2 != 0 ) {
-			std::cerr << "Given value for n is odd\n";
-			printUsage = true;
-		} else {
-			// all OK
-			in = read;
-		}
+		in = std::atol( argv[ 1 ] );
 	}
 	if( printUsage ) {
 		std::cerr << "Usage: " << argv[ 0 ] << " [n]\n";
