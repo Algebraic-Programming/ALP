@@ -442,6 +442,306 @@ namespace grb {
 		return ret == SUCCESS ? UNSUPPORTED : ret;
 	}
 
+
+	/**
+	 * Reduces, or \em folds, a matrix into a scalar.
+	 *
+	 * Reduction takes place according a monoid \f$ (\oplus,1) \f$, where
+	 * \f$ \oplus:\ D_1 \times D_2 \to D_3 \f$ with associated identities
+	 * \f$ 1_k in D_k \f$. Usually, \f$ D_k \subseteq D_3, 1 \leq k < 3 \f$,
+	 * though other more exotic structures may be envisioned (and used).
+	 *
+	 * Let \f$ x_0 = 1 \f$ and let
+	 * \f$ x_{i+1} = \begin{cases}
+	 *   x_i \oplus y_i\text{ if }y_i\text{ is nonzero and }m_i\text{ evaluates true}
+	 *   x_i\text{ otherwise}
+	 * \end{cases},\f$
+	 * for all \f$ i \in \{ 0, 1, \ldots, n-1 \} \f$.
+	 *
+	 * \note Per this definition, the folding happens in a right-to-left direction.
+	 *       If another direction is wanted, which may have use in cases where
+	 *       \f$ D_1 \f$ differs from \f$ D_2 \f$, then either a monoid with those
+	 *       operator domains switched may be supplied, or #grb::foldr may be used
+	 *       instead.
+	 *
+	 * After a successfull call, \a x will be equal to \f$ x_n \f$.
+	 *
+	 * Note that the operator \f$ \oplus \f$ must be associative since it is part
+	 * of a monoid. This algebraic property is exploited when parallelising the
+	 * requested operation. The identity is required when parallelising over
+	 * multiple user processes.
+	 *
+	 * \warning In so doing, the order of the evaluation of the reduction operation
+	 *          should not be expected to be a serial, right-to-left, evaluation of
+	 *          the computation chain.
+	 *
+	 * @tparam descr     The descriptor to be used (descriptors::no_operation if
+	 *                   left unspecified).
+	 * @tparam Monoid    The monoid to use for reduction.
+	 * @tparam InputType The type of the elements in the supplied ALP/GraphBLAS
+	 *                   matrix \a y.
+	 * @tparam IOType    The type of the output scalar \a x.
+	 * @tparam MaskType  The type of the elements in the supplied ALP/GraphBLAS
+	 *                   matrix \a mask.
+	 *
+	 * @param[out]   x   The result of the reduction.
+	 * @param[in]    A   Any ALP/GraphBLAS matrix.
+	 * @param[in]  mask  Any ALP/GraphBLAS matrix.
+	 * @param[in] monoid The monoid under which to perform this reduction.
+	 *
+	 * @return grb::SUCCESS  When the call completed successfully.
+	 * @return grb::MISMATCH If a \a mask was not empty and does not have size
+	 *                       equal to \a y.
+	 * @return grb::ILLEGAL  If the provided input matrix \a y was not dense, while
+	 *                       #grb::descriptors::dense was given.
+	 *
+	 * @see grb::foldl provides similar in-place functionality.
+	 * @see grb::eWiseApply provides out-of-place semantics.
+	 *
+	 * \parblock
+	 * \par Valid descriptors
+	 * grb::descriptors::no_operation, grb::descriptors::no_casting,
+	 * grb::descriptors::dense, grb::descriptors::invert_mask,
+	 * grb::descriptors::structural, grb::descriptors::structural_complement
+	 *
+	 * \note Invalid descriptors will be ignored.
+	 *
+	 * If grb::descriptors::no_casting is given, then 1) the first domain of
+	 * \a monoid must match \a IOType, 2) the second domain of \a op must match
+	 * \a InputType, 3) the third domain must match \a IOType, and 4) the element type
+	 * of \a mask must be <tt>bool</tt>. If one of these is not true, the code
+	 * shall not compile.
+	 * \endparblock
+	 *
+	 * \par Performance semantics
+	 * Each backend must define performance semantics for this primitive.
+	 *
+	 * @see perfSemantics
+	 */
+	template<
+		Descriptor descr = descriptors::no_operation,
+		class Monoid,
+		typename InputType, typename IOType, typename MaskType,
+		Backend backend
+	>
+	RC foldr(
+		IOType &x,
+		const Matrix< InputType, backend > &A,
+		const Matrix< MaskType, backend > &mask,
+		const Monoid &monoid = Monoid(),
+		const typename std::enable_if< !grb::is_object< IOType >::value &&
+			!grb::is_object< InputType >::value &&
+			!grb::is_object< MaskType >::value &&
+			grb::is_monoid< Monoid >::value, void
+		>::type * const = nullptr
+	) {
+#ifndef NDEBUG
+		const bool should_not_call_base_scalar_masked_matrix_foldr = false;
+		assert( should_not_call_base_scalar_masked_matrix_foldr );
+#endif
+		(void) A;
+		(void) x;
+		(void) mask;
+		(void) monoid;
+		return UNSUPPORTED;
+	}
+
+	/**
+	 * Reduces, or \em folds, a matrix into a scalar. 
+	 * Right-to-left unmasked variant.
+	 * 
+	 * Please see the masked grb::foldr variant for a full description.
+	 * 
+	 * @tparam descr     The descriptor to be used (descriptors::no_operation if
+	 *                   left unspecified).
+	 * @tparam Operator  The operator to use for reduction.
+	 * @tparam InputType The type of the elements in the supplied ALP/GraphBLAS
+	 *                   matrix \a y.
+	 * @tparam IOType    The type of the output scalar \a x.
+	 *
+	 * @param[out]   x     The result of the reduction.
+	 * @param[in]    A     Any ALP/GraphBLAS matrix.
+	 * @param[in] operator The operator used for reduction.
+	 *
+	 * @return grb::SUCCESS  When the call completed successfully.
+	 * @return grb::ILLEGAL  If the provided input matrix \a y was not dense, while
+	 *                       #grb::descriptors::dense was given.
+	 */
+	template<
+		Descriptor descr = descriptors::no_operation,
+		class Operator,
+		typename InputType, typename IOType,
+		Backend backend
+	>
+	RC foldr(
+		IOType &x,
+		const Matrix< InputType, backend > &A,
+		const Operator &op,
+		const typename std::enable_if< !grb::is_object< IOType >::value &&
+			!grb::is_object< InputType >::value &&
+			grb::is_operator< Operator >::value, void
+		>::type * const = nullptr
+	) {
+#ifndef NDEBUG
+		const bool should_not_call_base_scalar_unmasked_matrix_foldr = false;
+		assert( should_not_call_base_scalar_unmasked_matrix_foldr );
+#endif
+		(void) A;
+		(void) x;
+		(void) op;
+		return UNSUPPORTED;
+	}
+
+
+	/**
+	 * Reduces, or \em folds, a matrix into a scalar.
+	 *
+	 * Reduction takes place according a monoid \f$ (\oplus,1) \f$, where
+	 * \f$ \oplus:\ D_1 \times D_2 \to D_3 \f$ with associated identities
+	 * \f$ 1_k in D_k \f$. Usually, \f$ D_k \subseteq D_3, 1 \leq k < 3 \f$,
+	 * though other more exotic structures may be envisioned (and used).
+	 *
+	 * Let \f$ x_0 = 1 \f$ and let
+	 * \f$ x_{i+1} = \begin{cases}
+	 *   x_i \oplus y_i\text{ if }y_i\text{ is nonzero and }m_i\text{ evaluates true}
+	 *   x_i\text{ otherwise}
+	 * \end{cases},\f$
+	 * for all \f$ i \in \{ 0, 1, \ldots, n-1 \} \f$.
+	 *
+	 * \note Per this definition, the folding happens in a left-to-right direction.
+	 *       If another direction is wanted, which may have use in cases where
+	 *       \f$ D_1 \f$ differs from \f$ D_2 \f$, then either a monoid with those
+	 *       operator domains switched may be supplied, or #grb::foldr may be used
+	 *       instead.
+	 *
+	 * After a successfull call, \a x will be equal to \f$ x_n \f$.
+	 *
+	 * Note that the operator \f$ \oplus \f$ must be associative since it is part
+	 * of a monoid. This algebraic property is exploited when parallelising the
+	 * requested operation. The identity is required when parallelising over
+	 * multiple user processes.
+	 *
+	 * \warning In so doing, the order of the evaluation of the reduction operation
+	 *          should not be expected to be a serial, left-to-right, evaluation of
+	 *          the computation chain.
+	 *
+	 * @tparam descr     The descriptor to be used (descriptors::no_operation if
+	 *                   left unspecified).
+	 * @tparam Monoid    The monoid to use for reduction.
+	 * @tparam InputType The type of the elements in the supplied ALP/GraphBLAS
+	 *                   matrix \a y.
+	 * @tparam IOType    The type of the output scalar \a x.
+	 * @tparam MaskType  The type of the elements in the supplied ALP/GraphBLAS
+	 *                   matrix \a mask.
+	 *
+	 * @param[out]   x   The result of the reduction.
+	 * @param[in]    A   Any ALP/GraphBLAS matrix.
+	 * @param[in]  mask  Any ALP/GraphBLAS matrix.
+	 * @param[in] monoid The monoid under which to perform this reduction.
+	 *
+	 * @return grb::SUCCESS  When the call completed successfully.
+	 * @return grb::MISMATCH If a \a mask was not empty and does not have size
+	 *                       equal to \a y.
+	 * @return grb::ILLEGAL  If the provided input matrix \a y was not dense, while
+	 *                       #grb::descriptors::dense was given.
+	 *
+	 * @see grb::foldr provides similar in-place functionality.
+	 * @see grb::eWiseApply provides out-of-place semantics.
+	 *
+	 * \parblock
+	 * \par Valid descriptors
+	 * grb::descriptors::no_operation, grb::descriptors::no_casting,
+	 * grb::descriptors::dense, grb::descriptors::invert_mask,
+	 * grb::descriptors::structural, grb::descriptors::structural_complement
+	 *
+	 * \note Invalid descriptors will be ignored.
+	 *
+	 * If grb::descriptors::no_casting is given, then 1) the first domain of
+	 * \a monoid must match \a InputType, 2) the second domain of \a op must match
+	 * \a IOType, 3) the third domain must match \a IOType, and 4) the element type
+	 * of \a mask must be <tt>bool</tt>. If one of these is not true, the code
+	 * shall not compile.
+	 * \endparblock
+	 *
+	 * \par Performance semantics
+	 * Each backend must define performance semantics for this primitive.
+	 *
+	 * @see perfSemantics
+	 */
+	template<
+		Descriptor descr = descriptors::no_operation,
+		class Monoid,
+		typename InputType, typename IOType, typename MaskType,
+		Backend backend
+	>
+	RC foldl(
+		IOType &x,
+		const Matrix< InputType, backend > &A,
+		const Matrix< MaskType, backend > &mask,
+		const Monoid &monoid = Monoid(),
+		const typename std::enable_if< !grb::is_object< IOType >::value &&
+			!grb::is_object< InputType >::value &&
+			!grb::is_object< MaskType >::value &&
+			grb::is_monoid< Monoid >::value, void
+		>::type * const = nullptr
+	) {
+#ifndef NDEBUG
+		const bool should_not_call_base_scalar_matrix_foldl = false;
+		assert( should_not_call_base_scalar_matrix_foldl );
+#endif
+		(void) A;
+		(void) x;
+		(void) mask;
+		(void) monoid;
+		return UNSUPPORTED;
+	}
+
+	/**
+	 * Reduces, or \em folds, a matrix into a scalar. 
+	 * Left-to-right unmasked variant.
+	 * 
+	 * Please see the masked grb::foldl variant for a full description.
+	 * 
+	 * @tparam descr     The descriptor to be used (descriptors::no_operation if
+	 *                   left unspecified).
+	 * @tparam Operator  The operator to use for reduction.
+	 * @tparam InputType The type of the elements in the supplied ALP/GraphBLAS
+	 *                   matrix \a y.
+	 * @tparam IOType    The type of the output scalar \a x.
+	 *
+	 * @param[out]   x     The result of the reduction.
+	 * @param[in]    A     Any ALP/GraphBLAS matrix.
+	 * @param[in] operator The operator used for reduction.
+	 *
+	 * @return grb::SUCCESS  When the call completed successfully.
+	 * @return grb::ILLEGAL  If the provided input matrix \a y was not dense, while
+	 *                       #grb::descriptors::dense was given.
+	 */
+	template<
+		Descriptor descr = descriptors::no_operation,
+		class Operator,
+		typename InputType, typename IOType,
+		Backend backend
+	>
+	RC foldl(
+		IOType &x,
+		const Matrix< InputType, backend > &A,
+		const Operator &op,
+		const typename std::enable_if< !grb::is_object< IOType >::value &&
+			!grb::is_object< InputType >::value &&
+			grb::is_operator< Operator >::value, void
+		>::type * const = nullptr
+	) {
+#ifndef NDEBUG
+		const bool should_not_call_base_scalar_unmasked_matrix_foldl = false;
+		assert( should_not_call_base_scalar_unmasked_matrix_foldl );
+#endif
+		(void) A;
+		(void) x;
+		(void) op;
+		return UNSUPPORTED;
+	}
+
 	/**
 	 * @}
 	 */
