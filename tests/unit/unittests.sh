@@ -390,6 +390,12 @@ for MODE in ${MODES}; do
 				echo "Test OK" ${TEST_OUT_DIR}/matrixSet_${MODE}_${BACKEND}_${P}_${T}.log || echo "Test FAILED"
 				echo " "
 
+				echo ">>>      [x]           [ ]       Testing grb::foldl+r (scalar, matrix, [mask], monoid)"
+				$runner ${TEST_BIN_DIR}/fold_matrix_to_scalar_${MODE}_${BACKEND} 2> ${TEST_OUT_DIR}/fold_matrix_to_scalar_${MODE}_${BACKEND}_${P}_${T}.err 1> ${TEST_OUT_DIR}/fold_matrix_to_scalar_${MODE}_${BACKEND}_${P}_${T}.log
+				head -1 ${TEST_OUT_DIR}/fold_matrix_to_scalar_${MODE}_${BACKEND}_${P}_${T}.log
+				echo "Test OK" ${TEST_OUT_DIR}/fold_matrix_to_scalar_${MODE}_${BACKEND}_${P}_${T}.log || echo "Test FAILED"
+				echo " "
+
 				echo ">>>      [x]           [ ]       Tests the \`level-0' grb::collectives"
 				echo "Functional test executable: ${TEST_BIN_DIR}/collectives_blas0_${MODE}_${BACKEND}"
 				$runner ${TEST_BIN_DIR}/collectives_blas0_${MODE}_${BACKEND} ${P} &> ${TEST_OUT_DIR}/collectives_blas0_${MODE}_${BACKEND}_${P}_${T}.log
