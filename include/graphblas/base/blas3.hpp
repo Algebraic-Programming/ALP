@@ -569,17 +569,17 @@ namespace grb {
 	 */
 	template<
 		Descriptor descr = descriptors::no_operation,
-		class Operator,
+		class Monoid,
 		typename InputType, typename IOType,
 		Backend backend
 	>
 	RC foldr(
 		IOType &x,
 		const Matrix< InputType, backend > &A,
-		const Operator &op,
+		const Monoid &monoid,
 		const typename std::enable_if< !grb::is_object< IOType >::value &&
 			!grb::is_object< InputType >::value &&
-			grb::is_operator< Operator >::value, void
+			grb::is_monoid< Monoid >::value, void
 		>::type * const = nullptr
 	) {
 #ifndef NDEBUG
@@ -588,7 +588,7 @@ namespace grb {
 #endif
 		(void) A;
 		(void) x;
-		(void) op;
+		(void) monoid;
 		return UNSUPPORTED;
 	}
 
@@ -719,17 +719,18 @@ namespace grb {
 	 */
 	template<
 		Descriptor descr = descriptors::no_operation,
-		class Operator,
+		class Monoid,
 		typename InputType, typename IOType,
 		Backend backend
 	>
 	RC foldl(
 		IOType &x,
 		const Matrix< InputType, backend > &A,
-		const Operator &op,
-		const typename std::enable_if< !grb::is_object< IOType >::value &&
+		const Monoid &monoid,
+		const typename std::enable_if< 
+			!grb::is_object< IOType >::value &&
 			!grb::is_object< InputType >::value &&
-			grb::is_operator< Operator >::value, void
+			grb::is_monoid< Monoid >::value, void
 		>::type * const = nullptr
 	) {
 #ifndef NDEBUG
@@ -738,7 +739,7 @@ namespace grb {
 #endif
 		(void) A;
 		(void) x;
-		(void) op;
+		(void) monoid;
 		return UNSUPPORTED;
 	}
 
