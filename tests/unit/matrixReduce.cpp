@@ -43,8 +43,6 @@ constexpr bool PRINT_TIMERS = false;
 constexpr bool SKIP_FOLDL = false;
 constexpr bool SKIP_FOLDR = false;
 
-using nz_t = float;
-
 template< typename T, typename V, class Monoid >
 RC foldl_test( const char * test_label, const char * test_description, const grb::Matrix< V > & A, T initial, T expected, const Monoid & monoid ) {
 	if( SKIP_FOLDL )
@@ -103,132 +101,126 @@ RC foldLR_test( const char * test_label, const char * test_description, const gr
 	return rc ? rc : foldr_test( test_label, test_description, A, initial, expected, monoid );
 }
 
-void grb_program( const long & n, grb::RC & rc ) {
-	// Build an identity matrix
-	Matrix< nz_t > I( n, n );
-	std::vector< size_t > I_rows( n ), I_cols( n );
-	std::vector< nz_t > I_vals( n, 1 );
-	std::iota( I_rows.begin(), I_rows.end(), 0 );
-	std::iota( I_cols.begin(), I_cols.end(), 0 );
-	buildMatrixUnique( I, I_rows.data(), I_cols.data(), I_vals.data(), n, PARALLEL );
+void grb_program( const grb::Matrix< float > & I, grb::RC & rc ) {
+	const long n = grb::nnz( I );
 
 	/**    Test case 1:
-	 *  A simple additive reduction with the same types for the nnzs and the reduction result.
+	 *  A simple additive reduction with the same types for the nzs and the reduction result.
 	 *  * Initial value is 0
 	 *  * Expected result: n
 	 */
-	rc = foldLR_test( "1", "A simple reduction(+) with the same types for the nnzs and the reduction result.", I, (nz_t)0, (nz_t)n, Monoid< operators::add< nz_t >, identities::zero >() );
+	rc = foldLR_test( "1", "A simple reduction(+) with the same types for the nzs and the reduction result.", I, (float)0, (float)n, Monoid< operators::add< float >, identities::zero >() );
 	if( rc )
 		return;
 
 	/**     Test case 2:
-	 *  A simple additive reduction with the same types for the nnzs and the reduction result.
+	 *  A simple additive reduction with the same types for the nzs and the reduction result.
 	 *  * Initial value is n
 	 *  * Expected result: 2*n
 	 */
-	rc = foldLR_test( "2", "A simple reduction(+) with the same types for the nnzs and the reduction result.", I, (nz_t)n, (nz_t)( 2 * n ), Monoid< operators::add< nz_t >, identities::zero >() );
+	rc = foldLR_test( "2", "A simple reduction(+) with the same types for the nzs and the reduction result.", I, (float)n, (float)( 2 * n ), Monoid< operators::add< float >, identities::zero >() );
 	if( rc )
 		return;
 
 	/**     Test case 3:
-	 *  A simple additive reduction with different types for the nnzs and the reduction result (size_t <- size_t + float).
+	 *  A simple additive reduction with different types for the nzs and the reduction result (size_t <- size_t + float).
 	 *  * Initial value is 0
 	 *  * Expected result: n
 	 */
-	rc = foldl_test( "3", "A simple reduction(+) with different types for the nnzs and the reduction result (int <- int * float).", I, (size_t)0, (size_t)n,
-		Monoid< operators::add< size_t, nz_t, size_t >, identities::zero >() );
+	rc = foldl_test( "3", "A simple reduction(+) with different types for the nzs and the reduction result (int <- int * float).", I, (size_t)0, (size_t)n,
+		Monoid< operators::add< size_t, float, size_t >, identities::zero >() );
 	if( rc )
 		return;
-	rc = foldr_test( "3", "A simple reduction(+) with different types for the nnzs and the reduction result (int <- int * float).", I, (size_t)0, (size_t)n,
-		Monoid< operators::add< nz_t, size_t, size_t >, identities::zero >() );
+	rc = foldr_test( "3", "A simple reduction(+) with different types for the nzs and the reduction result (int <- int * float).", I, (size_t)0, (size_t)n,
+		Monoid< operators::add< float, size_t, size_t >, identities::zero >() );
 	if( rc )
 		return;
 
 	/**     Test case 4:
-	 *  A simple additive reduction with different types for the nnzs and the reduction result (size_t <- size_t + float).
+	 *  A simple additive reduction with different types for the nzs and the reduction result (size_t <- size_t + float).
 	 *  * Initial value is n
 	 *  * Expected result: 2*n
 	 */
-	rc = foldl_test( "4", "A simple reduction(+) with different types for the nnzs and the reduction result (int <- int * float).", I, (size_t)n, (size_t)( 2 * n ),
-		Monoid< operators::add< size_t, nz_t, size_t >, identities::zero >() );
+	rc = foldl_test( "4", "A simple reduction(+) with different types for the nzs and the reduction result (int <- int * float).", I, (size_t)n, (size_t)( 2 * n ),
+		Monoid< operators::add< size_t, float, size_t >, identities::zero >() );
 	if( rc )
 		return;
-	rc = foldr_test( "4", "A simple reduction(+) with different types for the nnzs and the reduction result (int <- int * float).", I, (size_t)n, (size_t)( 2 * n ),
-		Monoid< operators::add< nz_t, size_t, size_t >, identities::zero >() );
+	rc = foldr_test( "4", "A simple reduction(+) with different types for the nzs and the reduction result (int <- int * float).", I, (size_t)n, (size_t)( 2 * n ),
+		Monoid< operators::add< float, size_t, size_t >, identities::zero >() );
 	if( rc )
 		return;
 
 	/**     Test case 5:
-	 * A simple multiplicative reduction with the same types for the nnzs and the reduction result.
+	 * A simple multiplicative reduction with the same types for the nzs and the reduction result.
 	 * * Initial value is 0
 	 * * Expected result: 0
 	 */
-	rc = foldLR_test( "5", "A simple reduction(*) with the same types for the nnzs and the reduction result.", I, (nz_t)0, (nz_t)0, Monoid< operators::mul< nz_t >, identities::one >() );
+	rc = foldLR_test( "5", "A simple reduction(*) with the same types for the nzs and the reduction result.", I, (float)0, (float)0, Monoid< operators::mul< float >, identities::one >() );
 	if( rc )
 		return;
 
 	/**     Test case 6:
-	 * A simple multiplicative reduction with the same types for the nnzs and the reduction result.
+	 * A simple multiplicative reduction with the same types for the nzs and the reduction result.
 	 * * Initial value is 1
 	 * * Expected result: 1
 	 */
-	rc = foldLR_test( "6", "A simple reduction(*) with the same types for the nnzs and the reduction result.", I, (nz_t)1, (nz_t)1, Monoid< operators::mul< nz_t >, identities::one >() );
+	rc = foldLR_test( "6", "A simple reduction(*) with the same types for the nzs and the reduction result.", I, (float)1, (float)1, Monoid< operators::mul< float >, identities::one >() );
 	if( rc )
 		return;
 
 	/**     Test case 7:
-	 * A simple multiplicative reduction with different types for the nnzs and the reduction result (size_t <- size_t * float).
+	 * A simple multiplicative reduction with different types for the nzs and the reduction result (size_t <- size_t * float).
 	 * * Initial value is 0
 	 * * Expected result: 0
 	 */
-	rc = foldl_test( "7", "A simple reduction(*) with different types for the nnzs and the reduction result (int <- int * float).", I, (size_t)0, (size_t)0,
-		Monoid< operators::mul< size_t, nz_t, size_t >, identities::one >() );
+	rc = foldl_test( "7", "A simple reduction(*) with different types for the nzs and the reduction result (int <- int * float).", I, (size_t)0, (size_t)0,
+		Monoid< operators::mul< size_t, float, size_t >, identities::one >() );
 	if( rc )
 		return;
-	rc = foldr_test( "7", "A simple reduction(*) with different types for the nnzs and the reduction result (int <- int * float).", I, (size_t)0, (size_t)0,
-		Monoid< operators::mul< nz_t, size_t, size_t >, identities::one >() );
+	rc = foldr_test( "7", "A simple reduction(*) with different types for the nzs and the reduction result (int <- int * float).", I, (size_t)0, (size_t)0,
+		Monoid< operators::mul< float, size_t, size_t >, identities::one >() );
 	if( rc )
 		return;
 
 	/**     Test case 8:
-	 * A simple multiplicative reduction with different types for the nnzs and the reduction result (size_t <- size_t * float).
+	 * A simple multiplicative reduction with different types for the nzs and the reduction result (size_t <- size_t * float).
 	 * * Initial value is 1
 	 * * Expected result: 1
 	 */
-	rc = foldl_test( "8", "A simple reduction(*) with different types for the nnzs and the reduction result (int <- int * float).", I, (size_t)1, (size_t)1,
-		Monoid< operators::mul< size_t, nz_t, size_t >, identities::one >() );
+	rc = foldl_test( "8", "A simple reduction(*) with different types for the nzs and the reduction result (int <- int * float).", I, (size_t)1, (size_t)1,
+		Monoid< operators::mul< size_t, float, size_t >, identities::one >() );
 	if( rc )
 		return;
-	rc = foldr_test( "8", "A simple reduction(*) with different types for the nnzs and the reduction result (int <- int * float).", I, (size_t)1, (size_t)1,
-		Monoid< operators::mul< nz_t, size_t, size_t >, identities::one >() );
+	rc = foldr_test( "8", "A simple reduction(*) with different types for the nzs and the reduction result (int <- int * float).", I, (size_t)1, (size_t)1,
+		Monoid< operators::mul< float, size_t, size_t >, identities::one >() );
 	if( rc )
 		return;
 
 	/**     Test case 9:
-	 * A simple binary equal reduction with different types for the nnzs and the reduction result (bool <- bool == float).
+	 * A simple binary equal reduction with different types for the nzs and the reduction result (bool <- bool == float).
 	 * * Initial value is true
 	 * * Expected result: true
 	 */
-	rc = foldl_test( "9", "A simple reduction(==) with different types for the nnzs and the reduction result (bool <- bool == float).", I, (bool)true, (bool)true,
-		Monoid< operators::equal< bool, nz_t, bool >, identities::logical_true >() );
+	rc = foldl_test( "9", "A simple reduction(==) with different types for the nzs and the reduction result (bool <- bool == float).", I, (bool)true, (bool)true,
+		Monoid< operators::equal< bool, float, bool >, identities::logical_true >() );
 	if( rc )
 		return;
-	rc = foldr_test( "9", "A simple reduction(==) with different types for the nnzs and the reduction result (bool <- bool == float).", I, (bool)true, (bool)true,
-		Monoid< operators::equal< nz_t, bool, bool >, identities::logical_true >() );
+	rc = foldr_test( "9", "A simple reduction(==) with different types for the nzs and the reduction result (bool <- bool == float).", I, (bool)true, (bool)true,
+		Monoid< operators::equal< float, bool, bool >, identities::logical_true >() );
 	if( rc )
 		return;
 
 	/**     Test case 10:
-	 * A simple binary logical_or reduction with different types for the nnzs and the reduction result (bool <- bool || float).
+	 * A simple binary logical_or reduction with different types for the nzs and the reduction result (bool <- bool || float).
 	 * * Initial value is false
 	 * * Expected result: true
 	 */
-	rc = foldl_test( "10", "A simple reduction(||) with different types for the nnzs and the reduction result (bool <- bool || float).", I, (bool)false, (bool)true,
-		Monoid< operators::logical_or< bool, nz_t, bool >, identities::logical_false >() );
+	rc = foldl_test( "10", "A simple reduction(||) with different types for the nzs and the reduction result (bool <- bool || float).", I, (bool)false, (bool)true,
+		Monoid< operators::logical_or< bool, float, bool >, identities::logical_false >() );
 	if( rc )
 		return;
-	rc = foldr_test( "10", "A simple reduction(||) with different types for the nnzs and the reduction result (bool <- bool || float).", I, (bool)false, (bool)true,
-		Monoid< operators::logical_or< nz_t, bool, bool >, identities::logical_false >() );
+	rc = foldr_test( "10", "A simple reduction(||) with different types for the nzs and the reduction result (bool <- bool || float).", I, (bool)false, (bool)true,
+		Monoid< operators::logical_or< float, bool, bool >, identities::logical_false >() );
 	if( rc )
 		return;
 }
@@ -236,14 +228,14 @@ void grb_program( const long & n, grb::RC & rc ) {
 int main( int argc, char ** argv ) {
 	// defaults
 	bool printUsage = false;
-	size_t in = 10;
+	size_t n = 10;
 
 	// error checking
 	if( argc > 2 ) {
 		printUsage = true;
 	}
 	if( argc == 2 ) {
-		in = std::atol( argv[ 1 ] );
+		n = std::atol( argv[ 1 ] );
 	}
 	if( printUsage ) {
 		std::cerr << "Usage: " << argv[ 0 ] << " [n]\n";
@@ -254,14 +246,97 @@ int main( int argc, char ** argv ) {
 
 	std::cout << "This is functional test " << argv[ 0 ] << "\n";
 	grb::Launcher< AUTOMATIC > launcher;
-	grb::RC out = RC::SUCCESS;
-	if( launcher.exec( &grb_program, (long)in, out, true ) != SUCCESS ) {
-		std::cerr << "Launching test FAILED\n";
-		return 255;
+	grb::RC rc = RC::SUCCESS;
+
+	if( ! rc ) { // Build an identity square-matrix
+		Matrix< float > I( n, n );
+		std::vector< size_t > I_rows( n ), I_cols( n );
+		std::vector< float > I_vals( n, 1.f );
+		std::iota( I_rows.begin(), I_rows.end(), 0 );
+		std::iota( I_cols.begin(), I_cols.end(), 0 );
+		buildMatrixUnique( I, I_rows.data(), I_cols.data(), I_vals.data(), I_vals.size(), PARALLEL );
+		std::cout << "-- Running test 01: Identity square matrix of size n = " << n << std::endl;
+		if( launcher.exec( &grb_program, I, rc, true ) != SUCCESS ) {
+			std::cerr << "Launching test 01 FAILED\n";
+			return 255;
+		}
+		std::cout << std::endl;
 	}
-	if( out != SUCCESS ) {
-		std::cout << "Test FAILED (" << grb::toString( out ) << ")" << std::endl;
-		return out;
+
+	if( ! rc ) { // Build a square-matrix with n 1s on the first row
+		Matrix< float > I( n, n );
+		std::vector< size_t > I_rows( n, 0 ), I_cols( n );
+		std::vector< float > I_vals( n, 1.f );
+		std::iota( I_cols.begin(), I_cols.end(), 0 );
+		buildMatrixUnique( I, I_rows.data(), I_cols.data(), I_vals.data(), I_vals.size(), PARALLEL );
+		std::cout << "-- Running test 02: Square matrix of size n = " << n << ", with n 1s on the first row" << std::endl;
+		if( launcher.exec( &grb_program, I, rc, true ) != SUCCESS ) {
+			std::cerr << "Launching test 02 FAILED\n";
+			return 255;
+		}
+		std::cout << std::endl;
+	}
+
+	if( ! rc ) { // Build a square-matrix with n 1s on the first column
+		Matrix< float > I( n, n );
+		std::vector< size_t > I_rows( n ), I_cols( n, 0 );
+		std::vector< float > I_vals( n, 1.f );
+		std::iota( I_rows.begin(), I_rows.end(), 0 );
+		buildMatrixUnique( I, I_rows.data(), I_cols.data(), I_vals.data(), I_vals.size(), PARALLEL );
+		std::cout << "-- Running test 03: Square matrix of size n = " << n << ", with n 1s on the first column" << std::endl;
+		if( launcher.exec( &grb_program, I, rc, true ) != SUCCESS ) {
+			std::cerr << "Launching test 03 FAILED\n";
+			return 255;
+		}
+		std::cout << std::endl;
+	}
+
+	if( ! rc ) { // Building a square-matrix with n 1s on the first row and column
+		Matrix< float > I( n, n );
+		std::vector< size_t > I_rows( 2 * n - 1, 0 ), I_cols( 2 * n - 1, 0 );
+		std::vector< float > I_vals( 2 * n - 1, 1.f );
+		std::iota( I_rows.begin() + n, I_rows.end(), 1 );
+		std::iota( I_cols.begin() + n, I_cols.end(), 1 );
+		buildMatrixUnique( I, I_rows.data(), I_cols.data(), I_vals.data(), I_vals.size(), PARALLEL );
+		std::cout << "-- Running test 04: Square matrix of size n = " << n << ", with n 1s on the first row and column" << std::endl;
+		if( launcher.exec( &grb_program, I, rc, true ) != SUCCESS ) {
+			std::cerr << "Launching test 04 FAILED\n";
+			return 255;
+		}
+		std::cout << std::endl;
+	}
+
+	if( ! rc ) { // Building a [1 row, n columns] matrix filled with 1s
+		Matrix< float > I( 1, n );
+		std::vector< size_t > I_rows( n, 0 ), I_cols( n, 0 );
+		std::vector< float > I_vals( n, 1.f );
+		std::iota( I_cols.begin(), I_cols.end(), 0 );
+		buildMatrixUnique( I, I_rows.data(), I_cols.data(), I_vals.data(), I_vals.size(), PARALLEL );
+		std::cout << "-- Running test 05: [1-row, n = " << n << " columns] matrix, filled with 1s" << std::endl;
+		if( launcher.exec( &grb_program, I, rc, true ) != SUCCESS ) {
+			std::cerr << "Launching test 04 FAILED\n";
+			return 255;
+		}
+		std::cout << std::endl;
+	}
+
+	if( ! rc ) { // Building a [n rows, 1 column] matrix filled with 1s
+		Matrix< float > I( n, 1 );
+		std::vector< size_t > I_rows( n, 0 ), I_cols( n, 0 );
+		std::vector< float > I_vals( n, 1.f );
+		std::iota( I_rows.begin(), I_rows.end(), 0 );
+		buildMatrixUnique( I, I_rows.data(), I_cols.data(), I_vals.data(), I_vals.size(), PARALLEL );
+		std::cout << "-- Running test 06: [n = " << n << " rows, 1 column] matrix, filled with 1s" << std::endl;
+		if( launcher.exec( &grb_program, I, rc, true ) != SUCCESS ) {
+			std::cerr << "Launching test 06 FAILED\n";
+			return 255;
+		}
+		std::cout << std::endl;
+	}
+
+	if( rc != SUCCESS ) {
+		std::cout << "Test FAILED (" << grb::toString( rc ) << ")" << std::endl;
+		return rc;
 	} else {
 		std::cout << "Test OK" << std::endl;
 		return 0;
