@@ -918,24 +918,6 @@ namespace grb {
 
 	namespace internal {
 
-#ifdef _DEBUG
-#ifndef _DEBUG_THREADSAFE_PRINT
-#define _DEBUG_THREADSAFE_PRINT
-		//TODO: Shall and will be removed ;)
-		void debug_threadsafe_print( const std::string &str ) {
-#if defined(_H_GRB_REFERENCE_OMP_BLAS3)
-	#pragma omp critical
-			{
-				std::cout << "[T" << omp_get_thread_num(); << "] - " << str;
-			}
-#else
-			std::cout << str;
-#endif
-		}
-#endif
-#endif
-
-		
 		template<
 			Descriptor descr = descriptors::no_operation,
 			class Monoid,
@@ -946,7 +928,6 @@ namespace grb {
 			const Matrix< InputType, reference > &A,
 			const Monoid &monoid
 		) {
-
 #ifdef _DEBUG
 			std::cout << "In grb::internal::foldl_unmasked_generic\n";
 #endif
@@ -961,35 +942,48 @@ namespace grb {
 			auto local_x = identity;
 
 #ifdef _H_GRB_REFERENCE_OMP_BLAS3
-	#pragma omp parallel default(none) shared(A_raw, x, rc, std::cout) firstprivate(local_x, local_rc, m, op, identity) 
+	#pragma omp parallel default(none) shared(A_raw, x, rc, std::cout) firstprivate(local_x, local_rc, m, op, identity)
 #endif
 			{
+				size_t start, end;
 #ifdef _H_GRB_REFERENCE_OMP_BLAS3
-	#pragma omp	for schedule(static)
+				config::OMP::localRange( start, end, A_raw.col_start[ 0 ], A_raw.col_start[ m ] );
+#else
+				start = A_raw.col_start[ 0 ];
+				end = A_raw.col_start[ m ];
 #endif
-				for( size_t i = 0; i < m; ++i ) {
-					const size_t k_begin = A_raw.col_start[ i ];
-					const size_t k_end = A_raw.col_start[ i + 1 ];
-					for( size_t k = k_begin; k < k_end; ++k ) {
-						const InputType a = A_raw.getValue( k, identity);
-
+				for( size_t k = start; k < end; ++k ) {
+					const InputType a = A_raw.getValue( k, identity);
 #ifdef _DEBUG
-						debug_threadsafe_print( "A( " + std::to_string( i ) + ", " + std::to_string( k ) + " ) = " + std::to_string( a ) + "\n" );		
-						auto x_before = local_x;	
-#endif
-						local_rc = local_rc ? local_rc : grb::foldl( local_x, a, op );
-
-#ifdef _DEBUG
-						debug_threadsafe_print( "Computing: local_x = op(" + std::to_string( x_before ) + ", " + std::to_string( a ) + ") = " + std::to_string( local_x ) + "\n" );
-#endif
+					const std::string str( "A( " + std::to_string( k ) + " ) = " + std::to_string( a ) + "\n" );
+#if defined(_H_GRB_REFERENCE_OMP_BLAS3)
+	#pragma omp critical
+					{
+						std::cout << "[T" << omp_get_thread_num() << "] - " << str;
 					}
+#else
+					std::cout << str;
+#endif
+					auto x_before = local_x;
+#endif
+					local_rc = local_rc ? local_rc : grb::foldl( local_x, a, op );
+#ifdef _DEBUG
+					const std::string str2( "Computing: local_x = op(" + std::to_string( x_before ) + ", " + std::to_string( a ) + ") = " + std::to_string( local_x ) + "\n" );
+#if defined(_H_GRB_REFERENCE_OMP_BLAS3)
+	#pragma omp critical
+					{
+						std::cout << "[T" << omp_get_thread_num() << "] - " << str2;
+					}
+#else
+					std::cout << str2;
+#endif
+#endif
 				}
-			
 
 #ifdef _H_GRB_REFERENCE_OMP_BLAS3
 	#pragma omp critical
 #endif
-				{	
+				{
 #ifdef _DEBUG
 					auto x_before = x;
 #endif
@@ -1001,7 +995,6 @@ namespace grb {
 				}
 			}
 
-#undef _DEBUG
 			return rc;
 		}
 
@@ -1015,6 +1008,7 @@ namespace grb {
 			const Matrix< InputType, reference > &A,
 			const Monoid &monoid
 		) {
+
 #ifdef _DEBUG
 			std::cout << "In grb::internal::foldr_unmasked_generic\n";
 #endif
@@ -1029,47 +1023,59 @@ namespace grb {
 			auto local_x = identity;
 
 #ifdef _H_GRB_REFERENCE_OMP_BLAS3
-	#pragma omp parallel default(none) shared(A_raw, x, rc, std::cout) firstprivate(local_x, local_rc, m, op, identity) 
+	#pragma omp parallel default(none) shared(A_raw, x, rc, std::cout) firstprivate(local_x, local_rc, m, op, identity)
 #endif
 			{
+				size_t start, end;
 #ifdef _H_GRB_REFERENCE_OMP_BLAS3
-	#pragma omp	for schedule(static)
+				config::OMP::localRange( start, end, A_raw.col_start[ 0 ], A_raw.col_start[ m ] );
+#else
+				start = A_raw.col_start[ 0 ];
+				end = A_raw.col_start[ m ];
 #endif
-				for( size_t i = 0; i < m; ++i ) {
-					const size_t k_begin = A_raw.col_start[ i ];
-					const size_t k_end = A_raw.col_start[ i + 1 ];
-					for( size_t k = k_begin; k < k_end; ++k ) {
-						const InputType a = A_raw.getValue( k, identity);
-
+				for( size_t k = start; k < end; ++k ) {
+					const InputType a = A_raw.getValue( k, identity);
 #ifdef _DEBUG
-						debug_threadsafe_print( "A( " + std::to_string( i ) + ", " + std::to_string( k ) + " ) = " + std::to_string( a ) + "\n" );		
-						auto x_before = local_x;	
-#endif
-						local_rc = local_rc ? local_rc : grb::foldr( a, local_x, op );
-
-#ifdef _DEBUG
-						debug_threadsafe_print( "Computing: local_x = op(" + std::to_string( a ) + ", " + std::to_string( x_before ) + ") = " + std::to_string( local_x ) + "\n" );
-#endif
+					const std::string str( "A( " + std::to_string( k ) + " ) = " + std::to_string( a ) + "\n" );
+#if defined(_H_GRB_REFERENCE_OMP_BLAS3)
+	#pragma omp critical
+					{
+						std::cout << "[T" << omp_get_thread_num() << "] - " << str;
 					}
+#else
+					std::cout << str;
+#endif
+					auto x_before = local_x;
+#endif
+					local_rc = local_rc ? local_rc : grb::foldr( a, local_x, op );
+#ifdef _DEBUG
+					const std::string str2( "Computing: local_x = op(" + std::to_string( x_before ) + ", " + std::to_string( a ) + ") = " + std::to_string( local_x ) + "\n" );
+#if defined(_H_GRB_REFERENCE_OMP_BLAS3)
+	#pragma omp critical
+					{
+						std::cout << "[T" << omp_get_thread_num() << "] - " << str2;
+					}
+#else
+					std::cout << str2;
+#endif
+#endif
 				}
-			
 
 #ifdef _H_GRB_REFERENCE_OMP_BLAS3
 	#pragma omp critical
 #endif
-				{	
+				{
 #ifdef _DEBUG
 					auto x_before = x;
 #endif
 					local_rc = local_rc ? local_rc : grb::foldr( local_x, x, op );
 #ifdef _DEBUG
-					std::cout << "Computing x: op(" << local_x << ", " << x_before << ") = " << x << std::endl;
+					std::cout << "Computing x: op(" << x_before << ", " << local_x << ") = " << x << std::endl;
 #endif
 					rc = rc ? rc : local_rc;
 				}
 			}
-
-#undef _DEBUG
+		
 			return rc;
 		}
 
@@ -1533,7 +1539,7 @@ namespace grb {
 	template<
 		Descriptor descr = descriptors::no_operation,
 		class Monoid,
-		typename InputType, typename IOType	
+		typename InputType, typename IOType
 	>
 	RC foldr(
 		IOType &x,
@@ -1587,7 +1593,7 @@ namespace grb {
 		const Matrix< InputType, reference > &A,
 		const Matrix< MaskType, reference > &mask,
 		const Monoid &monoid,
-		const typename std::enable_if< 
+		const typename std::enable_if<
 			!grb::is_object< IOType >::value &&
 			!grb::is_object< InputType >::value &&
 			!grb::is_object< MaskType >::value &&
@@ -1630,13 +1636,13 @@ namespace grb {
 	template<
 		Descriptor descr = descriptors::no_operation,
 		class Monoid,
-		typename InputType, typename IOType	
+		typename InputType, typename IOType
 	>
 	RC foldl(
 		IOType &x,
 		const Matrix< InputType, reference > &A,
 		const Monoid &monoid,
-		const typename std::enable_if< 
+		const typename std::enable_if<
 			!grb::is_object< IOType >::value &&
 			!grb::is_object< InputType >::value &&
 			grb::is_monoid< Monoid >::value, void
@@ -1692,4 +1698,3 @@ namespace grb {
 #endif
 
 #endif // ``_H_GRB_REFERENCE_BLAS3''
-
