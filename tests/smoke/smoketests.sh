@@ -366,6 +366,23 @@ for BACKEND in ${BACKENDS[@]}; do
 			fi
 			echo " "
 
+			echo ">>>      [x]           [ ]       Testing the Triangle couting algorithm."
+			if [ -f ${INPUT_DIR}/dwt_59.mtx ]; then
+				$runner ${TEST_BIN_DIR}/triangle_count_${BACKEND} ${INPUT_DIR}/dwt_59.mtx 30 &> ${TEST_OUT_DIR}/triangle_count_dwt_59_${BACKEND}_${P}_${T}.log
+				head -1 ${TEST_OUT_DIR}/triangle_count_dwt_59_${BACKEND}_${P}_${T}.log
+				if ! grep -q 'Test OK' ${TEST_OUT_DIR}/triangle_count_dwt_59_${BACKEND}_${P}_${T}.log; then
+					echo "Test FAILED"
+				elif ! grep -q '11 iterations to converge' ${TEST_OUT_DIR}/triangle_count_dwt_59_${BACKEND}_${P}_${T}.log; then
+					echo "Verification FAILED"
+					echo "Test FAILED"
+				else
+					echo "Test OK"
+				fi
+			else
+				echo "Test DISABLED: dwt_59.mtx was not found. To enable, please provide ${INPUT_DIR}/dwt_59.mtx"
+			fi
+			echo " "
+
 			if [ "$BACKEND" = "bsp1d" ] || [ "$BACKEND" = "hybrid" ]; then
 				echo "Additional standardised smoke tests not yet supported for the ${BACKEND} backend"
 				echo
