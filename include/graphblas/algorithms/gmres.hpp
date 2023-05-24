@@ -40,82 +40,76 @@ namespace grb {
 	namespace algorithms {
 
 		/**
-		 * Solves the least linear square problem of size \a n - 1,
-		 * defined by the equation \f$ A x =  b, \f$ where the \f$ A \f$ is an
-		 * upper Hessenberg matrix of size \a n x \a kspspacesize,
-		 * and the vector \f$ b \f$, of length \a n,
-		 * has only the first element nonzero. The solution vector \f$ x \f$ is
+		 * Solves the least linear square problem of size \a n - 1, defined by the
+		 * equation \f$ A x =  b, \f$ where the \f$ A \f$ is an upper-Hessenberg
+		 * matrix of size \a n x \a kspspacesize, and the vector \f$ b \f$, of length
+		 * \a n, has only the first element nonzero. The solution vector \f$ x \f$ is
 		 * of length \a kspspacesize.
-		 * The algorithm first performs Givens rotations in order to reduce
-		 * the upper Hessenberg matrix to upper rectangular form. After that, using
-		 * the back-substitution, the final solution \f$ x \f$ is calculated.
+		 *
+		 * The algorithm first performs Givens rotations in order to reduce the upper
+		 * Hessenberg matrix to upper rectangular form. After that, using
+		 * back-substitution, the final solution \f$ x \f$ is calculated.
+		 *
 		 * The matrix \f$ A \f$ and the vector \f$ b \f$ are stored in \a H,
 		 * and the output vector \f$ x \f$ is copied into \a vecx.
 		 *
-		 *
-		 * @tparam NonzeroType  The input/output vector/matrix nonzero type
-		 * @tparam ResidualType The type of the residual norm
-		 * @tparam Ring         The semiring under which to perform GMRES
+		 * @tparam NonzeroType  The input/output vector/matrix nonzero type.
+		 * @tparam ResidualType The type of the residual norm.
+		 * @tparam Ring         The semiring under which to perform GMRES.
 		 * @tparam Minus        The minus operator corresponding to the inverse of the
 		 *                      additive operator of the given \a Ring.
 		 * @tparam Divide       The division operator corresponding to the inverse of
 		 *                      the multiplicative operator of the given \a Ring.
 		 *
 		 *
-		 * @param[in,out] H              std::vector of length \a n x \a n
-		 *                               used to store the vector \f$ b \f$
-		 *                               (first \a n elements of \a H ) and
-		 *                               the matrix \f$ A \f$ ( remaining elements
-		 *                               of \a H ) in a row-major orientation.
-		 *                               On input only fist \a kspspacesize
-		 *                               columns of \f$ A \f$ have meaning.
-		 *                               On output \a H is overwritten.
-		 * @param[out]    vecx            std::vector of length \a n
-		 *                               stores the solution \f$ x \f$.
-		 *                               On input \a vecx is ignored.
-		 *                               On output only fist \a kspspacesize
-		 *                               elements have meaning.
-		 *                               \a vecx is used to update the GMRES
-		 *                               solution vector.
+		 * @param[in,out] H    std::vector of length \a n x \a n used to store the
+		 *                     vector \f$ b \f$ (first \a n elements of \a H ) and
+		 *                     the matrix \f$ A \f$ ( remaining elements of \a H )
+		 *                     in a row-major orientation. On input only the first
+		 *                     \a kspspacesize columns of \f$ A \f$ have meaning. On
+		 *                     output, \a H is overwritten.
+		 * @param[out]    vecx std::vector of length \a n that stores the solution
+		 *                     \f$ x \f$. On input \a vecx is ignored. On output only
+		 *                     the first \a kspspacesize elements have meaning. It is
+		 *                     used to update the GMRES solution vector.
 		 *
-		 * \note The algorithm can do an inplace update of vector  \f$ b \f$ without
-		 * the need to copy soluition into \a vecx.
+		 * \note The algorithm can do an in-place update of the vector \f$ b \f$
+		 * without the need to copy the solution into \a vecx.
 		 *
-		 * @param[in] n                  dimension of \a H and \a vecx, and
-		 *                               maximal size of Kyrilov subspace.
-		 * @param[in] kspspacesize       size of Kyrilov subspace.
+		 * @param[in] n             The dimension of \a H and \a vecx, and the maximum
+		 *                          size of the Krylov subspace.
+		 * @param[in] kspspacesize  The size of Krylov subspace.
 		 *
 		 * The algebraic structures over which the GMRES is executed:
 		 *
-		 * @param[in]     ring           The semiring under which to perform the GMRES.
-		 * @param[in]     minus          The inverse of the additive operator of
-		 *                               \a ring.
-		 * @param[in]     divide         The inverse of the multiplicative operator
-		 *                               of \a ring.
+		 * @param[in]     ring   The semiring under which to perform the GMRES.
+		 * @param[in]     minus  The inverse of the additive operator of \a ring.
+		 * @param[in]     divide The inverse of the multiplicative operator of
+		 *                       \a ring.
 		 *
 		 * Additional algebraic structure used by norm2 primitive:
 		 *
-		 * @param[in]     sqrtX         The square root (inverse of the square),
-		 *                              not necessarily closed operation
-		 *                              on fields which describe vector norms.
-		 *                              i.e. for complex field sqrtX maps
-		 *                              real numbers to real numbers.
-		 *                              If not provided explicitly the std::sqrt()
-		 *                              is used if possible, if not, a compile time
-		 *                              error is raised.
+		 * @param[in]     sqrtX  The square root (inverse of the square), not
+		 *                       necessarily closed operation on fields which describe
+		 *                       vector norms. I.e. for complex field sqrtX maps real
+		 *                       numbers to real numbers. If not provided explicitly
+		 *                       the std::sqrt() is used if possible, if not, a
+		 *                       compile time error is raised.
 		 *
 		 * This algorithm may return one of the following error codes:
 		 *
 		 * @returns #grb::SUCCESS  When the algorithm has solved the least linear
 		 *                         square problem successfully.
-		 * @returns #grb::ILLEGAL  When the size of \a H smaller than \f$ n \times n \f$
+		 * @returns #grb::ILLEGAL  When the size of \a H is smaller than
+		 *                         \f$ n \times n \f$.
 		 * @returns #grb::ILLEGAL  When \a kspspacesize is not in the interval
-		 *                         \f$ \left[  1, n  \right> \f$
+		 *                         \f$ \left[  1, n  \right> \f$.
 		 * @returns #grb::ILLEGAL  If \a tol is not strictly positive.
-		 * @returns #grb::MISMATCH When \a vecx size in is smaller or equal to \f$ n \f$.
+		 * @returns #grb::MISMATCH When \a vecx size in is smaller or equal to
+		 *                         \f$ n \f$.
 		 * @returns #grb::PANIC    If an unrecoverable error has been encountered. The
-		 *                         output as well as the state of ALP/GraphBLAS is
-		 *                         undefined.
+		 *                         output as well as the state of ALP/GraphBLAS then
+		 *                         becomes undefined.
 		 *
 		 * \par Performance semantics
 		 *
@@ -135,7 +129,6 @@ namespace grb {
 		 * \todo The below code does not use any algebraic annotations. It may be
 		 *       sensible to hold the required modifications until ALP/Dense is
 		 *       available, however.
-		 *
 		 */
 		template<
 			typename NonzeroType,
@@ -157,7 +150,8 @@ namespace grb {
 			const Ring &ring = Ring(),
 			const Minus &minus = Minus(),
 			const Divide &divide = Divide(),
-			const std::function< ResidualType( ResidualType ) > &sqrtX = std_sqrt< ResidualType, ResidualType >
+			const std::function< ResidualType( ResidualType ) > &sqrtX =
+				std_sqrt< ResidualType, ResidualType >
 		) {
 			RC rc = grb::SUCCESS;
 
@@ -216,12 +210,15 @@ namespace grb {
 					NonzeroType b_conj = grb::utils::is_complex< NonzeroType >::conjugate( b );
 					ResidualType a_mod2 = a_mod;
 					ResidualType b_mod2 = b_mod;
-					rc = rc ? rc : grb::foldl( a_mod2, a_mod, ring_rtype.getMultiplicativeOperator() );
-					rc = rc ? rc : grb::foldl( b_mod2, b_mod, ring_rtype.getMultiplicativeOperator() );
+					rc = rc ? rc : grb::foldl( a_mod2, a_mod,
+						ring_rtype.getMultiplicativeOperator() );
+					rc = rc ? rc : grb::foldl( b_mod2, b_mod,
+						ring_rtype.getMultiplicativeOperator() );
 
-					// tmp1=sqrt(norm(a)**2+norm(b)**2)
+					// tmp1 = sqrt(norm(a)**2+norm(b)**2)
 					ResidualType tmp1 = a_mod2;
-					rc = rc ? rc : grb::foldl( tmp1, b_mod2, ring_rtype.getAdditiveOperator() );
+					rc = rc ? rc : grb::foldl( tmp1, b_mod2,
+						ring_rtype.getAdditiveOperator() );
 					tmp1 = sqrtX( tmp1 );
 
 					//c = a_mod / tmp1 ;
@@ -233,8 +230,7 @@ namespace grb {
 						rc = rc ? rc : grb::foldl( s, a_mod, divide );
 						rc = rc ? rc : grb::foldl( s, b_conj, ring.getMultiplicativeOperator() );
 						rc = rc ? rc : grb::foldl( s, tmp1, divide );
-					}
-					else {
+					} else {
 						// s = std::conj(b) / tmp1;
 						s = b_conj;
 						rc = rc ? rc : grb::foldl( s, tmp1, divide );
@@ -249,7 +245,8 @@ namespace grb {
 
 					// H[i+1,k] = -conjugate(s) * H[i,k] + c * H[i+1,k]
 					NonzeroType tmp4 = H[ ( k + 1 ) * n + i ];
-					rc = rc ? rc : grb::foldl( H[ ( k + 1 ) * n + i + 1 ], c, ring.getMultiplicativeOperator() );
+					rc = rc ? rc : grb::foldl( H[ ( k + 1 ) * n + i + 1 ], c,
+						ring.getMultiplicativeOperator() );
 					rc = rc ? rc : grb::foldl(
 						tmp4,
 						grb::utils::is_complex< NonzeroType >::conjugate( s ),
@@ -258,8 +255,10 @@ namespace grb {
 					rc = rc ? rc : grb::foldl( H[ ( k + 1 ) * n + i + 1 ], tmp4, minus );
 
 					// H[i,k]   = c * H[i,k] + tmp2
-					rc = rc ? rc : grb::foldl( H[ ( k + 1 ) * n + i ], c, ring.getMultiplicativeOperator() );
-					rc = rc ? rc : grb::foldl( H[ ( k + 1 ) * n + i ], tmp2, ring.getAdditiveOperator() );
+					rc = rc ? rc : grb::foldl( H[ ( k + 1 ) * n + i ], c,
+						ring.getMultiplicativeOperator() );
+					rc = rc ? rc : grb::foldl( H[ ( k + 1 ) * n + i ], tmp2,
+						ring.getAdditiveOperator() );
 				}
 
 				// tmp3 = vecx[i]
@@ -295,13 +294,16 @@ namespace grb {
 				size_t i = n_ksp - 1 - m;
 				// for j in range(i+1,n):
 				for( size_t j = i + 1; j < n_ksp; ++j ) {
-					// vecx[i]=vecx[i]-vecx[j]*H[i,j]
+					// vecx[i] = vecx[i]-vecx[j]*H[i,j]
 					NonzeroType tmp6 = vecx[ j ];
-					rc = rc ? rc : grb::foldl( tmp6, H[ ( j + 1 ) * n + i ], ring.getMultiplicativeOperator() );
+					rc = rc ? rc : grb::foldl( tmp6, H[ ( j + 1 ) * n + i ],
+						ring.getMultiplicativeOperator() );
 					rc = rc ? rc : grb::foldl( vecx[ i ], tmp6, minus );
 				}
-				// vecx[i]=vecx[i]/H[i,i]
-				if( grb::utils::is_complex< NonzeroType >::modulus( H[ ( i + 1 ) * n + i ] ) < tol ) {
+				// vecx[i] = vecx[i]/H[i,i]
+				if( grb::utils::is_complex< NonzeroType >::modulus( H[ ( i + 1 ) * n + i ] )
+					< tol
+				) {
 					std::cerr << "Warning: small number in algorithms::hessolve\n";
 				}
 				rc = rc ? rc : grb::foldl( vecx[ i ], H[ ( i + 1 ) * n + i ], divide );
@@ -322,15 +324,15 @@ namespace grb {
 			 * Performs Arnoldi iterations for a GMRES solving of a linear system
 			 * \f$ b = Ax \f$ with \f$ x \f$ unknown.
 			 *
-			 * Preconditioning is possible by providing an initialised matrix \f$ M \f$ of
-			 * matching size.
+			 * Preconditioning is possible by providing an initialised matrix \f$ M \f$
+			 * of matching size.
 			 *
 			 * @tparam descr        The user descriptor
 			 * @tparam NonzeroType  The input/output vector/matrix nonzero type
 			 * @tparam ResidualType The type of the residual norm
 			 * @tparam Ring         The semiring under which to perform GMRES
-			 * @tparam Minus        The minus operator corresponding to the inverse of the
-			 *                      additive operator of the given \a Ring.
+			 * @tparam Minus        The minus operator corresponding to the inverse of
+			 *                      the additive operator of the given \a Ring.
 			 * @tparam Divide       The division operator corresponding to the inverse of
 			 *                      the multiplicative operator of the given \a Ring.
 			 *
@@ -348,64 +350,61 @@ namespace grb {
 			 *
 			 * Arnoldi algorithm inputs:
 			 *
-			 * @param[in]     x              vector gnerating Krylov subspace,
-			 *                               note: \a x is not updated here.
-			 * @param[in]     M              The (square) preconditioning matrix.
-			 * @param[in]     A              The (square) indefinite system matrix.
-			 *                               matrix gnerating Krylov subspace.
-			 * @param[in]     b              The known right-hand side in \f$ Ax = b \f$.
-			 *                               Must be structurally dense.
+			 * @param[in]     x  vector gnerating Krylov subspace,
+			 *                   note: \a x is not updated here.
+			 * @param[in]     M  The (square) preconditioning matrix.
+			 * @param[in]     A  The (square) indefinite system matrix.
+			 *                   matrix gnerating Krylov subspace.
+			 * @param[in]     b  The known right-hand side in \f$ Ax = b \f$.
+			 *                   Must be structurally dense.
 			 *
-			 * If \a A is \f$ n \times n \f$, then \a x and \a b must have matching length
-			 * \f$ n \f$. The vector \a x furthermore must have a capacity of \f$ n \f$.
-			 * Matrix \a M must be ether \f$ n \times n \f$ (preconditioning enabled) or
-			 * \f$ 0 \times 0 \f$ (preconditioning disabled) shape matrix.
+			 * If \a A is \f$ n \times n \f$, then \a x and \a b must have matching
+			 * length \f$ n \f$. The vector \a x furthermore must have a capacity of
+			 * \f$ n \f$. The matrix \a M must be of size either \f$ n \times n \f$
+			 * (preconditioning enabled), or \f$ 0 \times 0 \f$ (preconditioning
+			 * disabled).
 			 *
 			 * Additional Arnoldi algorithm inputs:
 			 *
-			 * @param[in]     n_restart      The number of GMRES restart iterations,
-			 *                               i.e. maximal size of Kyrilov subspaces.
-			 * @param[in]     tol            The requested relative residual tolerance.
+			 * @param[in]     n_restart  The number of GMRES restart iterations, i.e.,
+			 *                           maximal size of Krylov subspaces.
+			 * @param[in]     tol        The requested relative residual tolerance.
 			 *
 			 * Arnoldi algorithm outputs:
 			 *
-			 * @param[out]    iterations     The number of iterations the algorithm has
-			 *                               performed, i.e. actual size of the Kyrilov
-			 *                               subspace.
-			 * @param[out]    HMatrix        Upper-Hessenberg matrix of size \a n_restart x
-			 *                               \a n_restart with row-major orientation.
-			 *                               On output only fist \a iterations
-			 *                               columns and \a iterations rows have meaning.
-			 * @param[out]    Q              std::vector of length \a n_restart + 1.
-			 *                               Each element of Q is grb::Vector of size
-			 *                               \f$ n \f$. On output only fist \a iterations
-			 *                               vectors have meaning.
+			 * @param[out]    iterations The number of iterations the algorithm has
+			 *                           performed, i.e. actual size of the Krylov
+			 *                           subspace.
+			 * @param[out]    HMatrix    Upper-Hessenberg matrix of size \a n_restart x
+			 *                           \a n_restart with row-major orientation. On
+			 *                           output only fist \a iterations columns and
+			 *                           \a iterations rows have meaning.
+			 * @param[out]    Q          std::vector of length \a n_restart + 1. Each
+			 *                           element of Q is grb::Vector of size \f$ n \f$.
+			 *                           On output only fist \a iterations vectors have
+			 *                           meaning.
 			 *
 			 * Additional outputs:
 			 *
 			 * The Arnoldi algorithm requires one workspace buffer:
 			 *
-			 * @param[in,out] temp           A temporary vector of the same size as \a x.
+			 * @param[in,out] temp A temporary vector of the same size as \a x.
 			 *
 			 * Finally, the algebraic structures over which the GMRES is executed are given:
 			 *
-			 * @param[in]     ring           The semiring under which to perform the GMRES.
-			 * @param[in]     minus          The inverse of the additive operator of
-			 *                               \a ring.
-			 * @param[in]     divide         The inverse of the multiplicative operator
-			 *                               of \a ring.
+			 * @param[in]     ring   The semiring under which to perform the GMRES.
+			 * @param[in]     minus  The inverse of the additive operator of \a ring.
+			 * @param[in]     divide The inverse of the multiplicative operator of
+			 *                       \a ring.
 			 *
 			 * Additional algebraic structure used by norm2 primitive:
 			 *
-			 * @param[in]     sqrtX         The square root (inverse of the square),
-			 *                              not necessarily closed operation
-			 *                              on fields which describe vector norms.
-			 *                              i.e. for complex field sqrtX maps
-			 *                              real numbers to real numbers.
-			 *                              If not provided explicitly the std::sqrt()
-			 *                              is used if possible, if not, a compile time
-			 *                              error is raised.
-			 *
+			 * @param[in]     sqrtX  The square root (inverse of the square), not
+			 *                       necessarily closed operation on fields which
+			 *                       describe vector norms. E.g., for complex fields,
+			 *                       \a sqrtX maps real numbers to real numbers. If not
+			 *                       provided explicitly the std::sqrt() is used if
+			 *                       possible, if not, a compile time error is raised.
 			 */
 			template<
 				Descriptor descr = descriptors::no_operation,
@@ -432,12 +431,12 @@ namespace grb {
 				const Ring &ring = Ring(),
 				const Minus &minus = Minus(),
 				const Divide &divide = Divide(),
-				const std::function< ResidualType( ResidualType ) > &sqrtX = std_sqrt< ResidualType, ResidualType >
+				const std::function< ResidualType( ResidualType ) > &sqrtX =
+					std_sqrt< ResidualType, ResidualType >
 			) {
 				// static checks
 				static_assert( std::is_floating_point< ResidualType >::value,
-					"Can only use the Arnoldi algorithm with floating-point residual "
-					"types." );
+					"Can only use the Arnoldi algorithm with floating-point residual types." );
 
 				bool useprecond = false;
 				if( (nrows( M ) != 0) && (ncols( M ) != 0) ) {
@@ -480,7 +479,8 @@ namespace grb {
 
 				// Q[ 0 ] = b - temp;
 				ret = ret ? ret : grb::set< descr_dense >( Q[ 0 ], zero );
-				ret = ret ? ret : grb::foldl< descr_dense >( Q[ 0 ], b, ring.getAdditiveMonoid() );
+				ret = ret ? ret : grb::foldl< descr_dense >( Q[ 0 ], b,
+					ring.getAdditiveMonoid() );
 				assert( nnz( Q[ 0 ] ) == n );
 				assert( nnz( temp ) == n );
 				ret = ret ? ret : grb::foldl< descr_dense >( Q[ 0 ], temp, minus );
@@ -501,7 +501,8 @@ namespace grb {
 
 				//rho = norm(Q[:,0])
 				rho = zero;
-				ret = ret ? ret : grb::algorithms::norm2< descr_dense >( rho, Q[ 0 ], ring, sqrtX );
+				ret = ret ? ret : grb::algorithms::norm2< descr_dense >( rho, Q[ 0 ], ring,
+					sqrtX );
 				assert( ret == SUCCESS );
 
 				Hmatrix[ 0 ] = rho;
@@ -512,19 +513,23 @@ namespace grb {
 				while( ( rho > tau ) && ( k < n_restart ) ) {
 					// alpha = r' * r;
 
-					if( grb::utils::is_complex< NonzeroType >::modulus( Hmatrix[ k * ( n_restart + 1 ) + k ] ) < tol ) {
+					if( grb::utils::is_complex< NonzeroType >::modulus(
+							Hmatrix[ k * ( n_restart + 1 ) + k ]
+						) < tol
+					) {
 						break;
 					}
 
 					// Q[k] = Q[k] / alpha
-					ret = ret ? ret : grb::foldl< descr_dense >( Q[ k ], Hmatrix[ k * ( n_restart + 1 ) + k ], divide );
+					ret = ret ? ret : grb::foldl< descr_dense >( Q[ k ],
+						Hmatrix[ k * ( n_restart + 1 ) + k ], divide );
 					assert( ret == SUCCESS );
 
-					// Q[k+1]=0
+					// Q[k+1] = 0
 					ret = ret ? ret : grb::set< descr_dense >( Q[ k + 1 ], zero );
 					assert( ret == SUCCESS );
 
-					// Q[k+1]= A * Q[k+1]
+					// Q[k+1] = A * Q[k+1]
 					ret = ret ? ret : grb::mxv< descr_dense >( Q[ k + 1 ], A, Q[ k ], ring );
 					assert( ret == SUCCESS );
 
@@ -544,7 +549,7 @@ namespace grb {
 					(void) ++k;
 
 					for( size_t j = 0; j < std::min( k, n_restart ); j++ ) {
-						//H[j,k]=Q[:,j].dot(Q[:,k])
+						//H[j,k] = Q[:,j].dot(Q[:,k])
 						Hmatrix[ k * ( n_restart + 1 ) + j ] = zero;
 						ret = ret ? ret : grb::dot< descr_dense >(
 							Hmatrix[ k * ( n_restart + 1 ) + j ],
@@ -554,7 +559,7 @@ namespace grb {
 						);
 						assert( ret == SUCCESS );
 
-						//Q[:,k]=Q[:,k]-H[j,k]*Q[:,i]
+						//Q[:,k] = Q[:,k]-H[j,k]*Q[:,i]
 						grb::RC ret = grb::set< descr_dense >( temp, zero );
 						assert( ret == SUCCESS );
 
@@ -567,12 +572,13 @@ namespace grb {
 						assert( ret == SUCCESS );
 					} // while
 
-					//alpha=norm(Q[:,k])
+					//alpha = norm(Q[:,k])
 					ResidualType alpha = zero;
-					ret = ret ? ret : grb::algorithms::norm2< descr_dense >( alpha, Q[ k ], ring, sqrtX );
+					ret = ret ? ret : grb::algorithms::norm2< descr_dense >( alpha, Q[ k ],
+						ring, sqrtX );
 					assert( ret == SUCCESS );
 
-					//H[k,k]=alpha
+					//H[k,k] = alpha
 					Hmatrix[ k * ( n_restart + 1 ) + k ] = alpha;
 				}
 
@@ -589,7 +595,6 @@ namespace grb {
 			 *    - calls \a hessolve in order to solve linear least squares problem
 			 *    - updates the solution \a x
 			 *    - calculates the residual norm and checks the result convergence
-			 *
 			 */
 			template<
 				Descriptor descr = descriptors::no_operation,
@@ -622,7 +627,8 @@ namespace grb {
 				const Ring &ring = Ring(),
 				const Minus &minus = Minus(),
 				const Divide &divide = Divide(),
-				const std::function< ResidualType( ResidualType ) > &sqrtX = std_sqrt< ResidualType, ResidualType >
+				const std::function< ResidualType( ResidualType ) > &sqrtX =
+					std_sqrt< ResidualType, ResidualType >
 			) {
 				grb::RC rc = grb::SUCCESS;
 				constexpr const Descriptor descr_dense = descr | descriptors::dense;
@@ -659,7 +665,8 @@ namespace grb {
 						return ILLEGAL;
 					}
 					if( tol <= zero ) {
-						std::cerr << "Error: tolerance input to GMRES must be strictly positive\n";
+						std::cerr << "Error: tolerance input to GMRES must be strictly"
+						       << "positive\n";
 						return ILLEGAL;
 					}
 
@@ -703,7 +710,8 @@ namespace grb {
 
 				// get RHS vector norm
 				ResidualType bnorm = zero;
-				rc = rc ? rc : grb::algorithms::norm2< descr_dense >( bnorm, b, ring, sqrtX );
+				rc = rc ? rc : grb::algorithms::norm2< descr_dense >( bnorm, b, ring,
+					sqrtX );
 
 #ifdef DEBUG
 				{
@@ -724,7 +732,8 @@ namespace grb {
 #endif
 				// guard against a trivial call
 				if( max_iterations == 0 ) {
-					rc = rc ? rc : grb::algorithms::norm2< descr_dense >( residual, b, ring, sqrtX );
+					rc = rc ? rc : grb::algorithms::norm2< descr_dense >( residual, b, ring,
+						sqrtX );
 					assert( rc == grb::SUCCESS );
 
 					if( residual <= tol * bnorm ) {
@@ -767,7 +776,7 @@ namespace grb {
 #ifdef DEBUG
 					if( rc == grb::SUCCESS ) {
 						std::cout << "gmres iteration finished successfully, kspspacesize = "
-							<< kspspacesize << "  \n";
+							<< kspspacesize << "\n";
 					}
 #endif
 					assert( rc == grb::SUCCESS );
@@ -783,7 +792,8 @@ namespace grb {
 
 					// update x
 					for( size_t i = 0; rc == grb::SUCCESS && i < kspspacesize; ++i ) {
-						rc = rc ? rc : grb::eWiseMul< descr_dense >( x, Hmatrix[ i ], Q[ i ], ring );
+						rc = rc ? rc : grb::eWiseMul< descr_dense >( x, Hmatrix[ i ], Q[ i ],
+							ring );
 						assert( rc == grb::SUCCESS );
 
 					}
@@ -806,12 +816,12 @@ namespace grb {
 					}
 #endif
 
-
 					// calculate residual
 					rc = grb::set< descr_dense >( temp, zero );
 					rc = rc ? rc : grb::mxv< descr_dense >( temp, A, x, ring );
 					rc = rc ? rc : grb::foldl< descr_dense >( temp, b, minus );
-					rc = rc ? rc : grb::algorithms::norm2< descr_dense >( residual, temp, ring, sqrtX );
+					rc = rc ? rc : grb::algorithms::norm2< descr_dense >( residual, temp, ring,
+						sqrtX );
 					assert( rc == grb::SUCCESS );
 
 #ifdef DEBUG
@@ -842,22 +852,22 @@ namespace grb {
 		 * Explicit preconditioning is possible by providing an initialised matrix
 		 * \f$ M \f$ of matching size.
 		 *
-		 * @tparam descr        The user descriptor
-		 * @tparam NonzeroType  The input/output vector/matrix nonzero type
-		 * @tparam ResidualType The type of the residual norm
-		 * @tparam Ring         The semiring under which to perform GMRES
+		 * @tparam descr        The user descriptor.
+		 * @tparam NonzeroType  The input/output vector/matrix nonzero type.
+		 * @tparam ResidualType The type of the residual norm.
+		 * @tparam Ring         The semiring under which to perform GMRES.
 		 * @tparam Minus        The minus operator corresponding to the inverse of the
 		 *                      additive operator of the given \a Ring.
 		 * @tparam Divide       The division operator corresponding to the inverse of
 		 *                      the multiplicative operator of the given \a Ring.
 		 *
 		 * Valid descriptors to this algorithm are:
-		 *   -# descriptors::no_casting
-		 *   -# descriptors::transpose
+		 *   -# descriptors::no_casting,
+		 *   -# descriptors::transpose.
 		 *
 		 * By default, i.e., if none of \a ring, \a minus, \a divide or \a sqrtX
-		 * (nor their types) are explicitly provided by the user, the natural field
-		 * on double data types will be assumed.
+		 * (nor their types) are explicitly provided by the user, the natural field on
+		 * double data types will be assumed.
 		 *
 		 * \note An abstraction of a field that encapsulates \a Ring, \a Minus, and
 		 *       \a Divide may be more appropriate. This will also naturally ensure
@@ -865,10 +875,10 @@ namespace grb {
 		 *
 		 * GMRES algorithm inputs:
 		 *
-		 * @param[in,out] x              On input: an initial guess to the solution.
-		 * @param[in]     A              The (square) indefinite system matrix.
-		 * @param[in]     b              The known right-hand side in \f$ Ax = b \f$.
-		 *                               Must be structurally dense.
+		 * @param[in,out] x On input: an initial guess to the solution.
+		 * @param[in]     A The (square) indefinite system matrix.
+		 * @param[in]     b The known right-hand side in \f$ Ax = b \f$. Must be
+		 *                  structurally dense.
 		 *
 		 * If \a A is \f$ n \times n \f$, then \a x and \a b must have matching length
 		 * \f$ n \f$. The vector \a x furthermore must have a capacity of \f$ n \f$.
@@ -876,47 +886,43 @@ namespace grb {
 		 * Additional GMRES algorithm inputs:
 		 *
 		 * @param[in]     max_iterations The maximum number of GMRES iterations.
-		 * @param[in]     n_restart      The number of GMRES restart iterations,
-		 *                               i.e. maximal size of Kyrilov subspaces.
+		 * @param[in]     n_restart      The number of GMRES restart iterations, i.e.,
+		 *                               the maximum size of the Krylov subspace.
 		 * @param[in]     tol            The requested relative residual tolerance.
 		 *
 		 * Additional outputs (besides \a x):
 		 *
-		 * @param[out]    iterations           Total number of interactions performed.
-		 * @param[out]    iterations_gmres     Number of GMRES interactions performed.
-		 * @param[out]    iterations_arnoldi   Number of Arnoldi interactions performed.
-		 * @param[out]    residual             Residual norm.
+		 * @param[out]    iterations         Total number of interactions performed.
+		 * @param[out]    iterations_gmres   Number of GMRES interactions performed.
+		 * @param[out]    iterations_arnoldi Number of Arnoldi interactions performed.
+		 * @param[out]    residual           Residual norm.
 		 *
 		 * The GMRES algorithm requires four workspace buffers:
 		 *
-		 * @param[in,out] Q              std::vector of length \a n_restart + 1.
-		 *                               Each element of Q is grb::Vector of size
-		 *                               \f$ n \f$. On output only fist \a n_restart
-		 *                               vectors have meaning.
-		 * @param[in,out] temp           A temporary vector of the same size as \a x.
-		 * @param[in,out] Hmatrix        std::vector of length \a n_restart x
-		 *                               \a n_restart used to store temporary data.
-		 * @param[in,out] temp3          std::vector of length \a n_restart
-		 *                               used to store temporary data.
+		 * @param[in,out] Q       std::vector of length \a n_restart + 1. Each element
+		 *                        of Q is grb::Vector of size \f$ n \f$. On output
+		 *                        only fist \a n_restart vectors have meaning.
+		 * @param[in,out] temp    A temporary vector of the same size as \a x.
+		 * @param[in,out] Hmatrix std::vector of length \a n_restart x \a n_restart
+		 *                        used to store temporary data.
+		 * @param[in,out] temp3   std::vector of length \a n_restart used to store
+		 *                        temporary data.
 		 *
-		 * Finally, the algebraic structures over which the GMRES is executed are given:
+		 * Finally, the algebraic structures over which the GMRES is executed are
+		 * given:
 		 *
-		 * @param[in]     ring           The semiring under which to perform the GMRES.
-		 * @param[in]     minus          The inverse of the additive operator of
-		 *                               \a ring.
-		 * @param[in]     divide         The inverse of the multiplicative operator
-		 *                               of \a ring.
+		 * @param[in] ring   The semiring under which to perform the GMRES.
+		 * @param[in] minus  The inverse of the additive operator of \a ring.
+		 * @param[in] divide The inverse of the multiplicative operator of \a ring.
 		 *
 		 * Additional algebraic structure used by norm2 primitive:
 		 *
-		 * @param[in]     sqrtX         The square root (inverse of the square),
-		 *                              not necessarily closed operation
-		 *                              on fields which describe vector norms.
-		 *                              i.e. for complex field sqrtX maps
-		 *                              real numbers to real numbers.
-		 *                              If not provided explicitly the std::sqrt()
-		 *                              is used if possible, if not, a compile time
-		 *                              error is raised.
+		 * @param[in] sqrtX  The square root (inverse of the square), not necessarily
+		 *                   a closed operation on fields which describe vector norms.
+		 *                   E.g., for complex field sqrtX maps real numbers to real
+		 *                   numbers. If not provided explicitly the std::sqrt() is
+		 *                   used is used if possible; if not, a compile time error is
+		 *                   raised.
 		 *
 		 * This algorithm may return one of the following error codes:
 		 *
@@ -974,7 +980,8 @@ namespace grb {
 			const Ring &ring = Ring(),
 			const Minus &minus = Minus(),
 			const Divide &divide = Divide(),
-			const std::function< ResidualType( ResidualType ) > &sqrtX = std_sqrt< ResidualType, ResidualType >
+			const std::function< ResidualType( ResidualType ) > &sqrtX =
+				std_sqrt< ResidualType, ResidualType >
 		) {
 			grb::Matrix< NonzeroType > dummy( 0, 0 );
 			return internal::gmres_dispatch< descr, true >(
@@ -993,21 +1000,21 @@ namespace grb {
 		 * Solves a linear system \f$ b = Ax \f$ with \f$ x \f$ unknown using the
 		 * Generalised Minimal Residual (GMRES) method on general fields.
 		 *
-		 * Explicit preconditioning is enabled, using an initialised matrix
-		 * \f$ M \f$ of matching size.
+		 * Explicit preconditioning is enabled, using an initialised matrix \f$ M \f$
+		 * of matching size.
 		 *
-		 * @tparam descr        The user descriptor
-		 * @tparam NonzeroType  The input/output vector/matrix nonzero type
-		 * @tparam ResidualType The type of the residual norm
-		 * @tparam Ring         The semiring under which to perform GMRES
+		 * @tparam descr        The user descriptor.
+		 * @tparam NonzeroType  The input/output vector/matrix nonzero type.
+		 * @tparam ResidualType The type of the residual norm.
+		 * @tparam Ring         The semiring under which to perform GMRES.
 		 * @tparam Minus        The minus operator corresponding to the inverse of the
 		 *                      additive operator of the given \a Ring.
 		 * @tparam Divide       The division operator corresponding to the inverse of
 		 *                      the multiplicative operator of the given \a Ring.
 		 *
 		 * Valid descriptors to this algorithm are:
-		 *   -# descriptors::no_casting
-		 *   -# descriptors::transpose
+		 *   -# descriptors::no_casting,
+		 *   -# descriptors::transpose.
 		 *
 		 * By default, i.e., if none of \a ring, \a minus, \a divide or \a sqrtX
 		 * (nor their types) are explicitly provided by the user, the natural field
@@ -1019,60 +1026,55 @@ namespace grb {
 		 *
 		 * GMRES algorithm inputs:
 		 *
-		 * @param[in,out] x              On input: an initial guess to the solution.
-		 * @param[in]     M              The (square) preconditioning matrix.
-		 * @param[in]     A              The (square) indefinite system matrix.
-		 * @param[in]     b              The known right-hand side in \f$ Ax = b \f$.
-		 *                               Must be structurally dense.
+		 * @param[in,out] x On input: an initial guess to the solution.
+		 * @param[in]     M The (square) preconditioning matrix.
+		 * @param[in]     A The (square) indefinite system matrix.
+		 * @param[in]     b The known right-hand side in \f$ Ax = b \f$. Must be
+		 *                  structurally dense.
 		 *
 		 * If \a A is \f$ n \times n \f$, then \a x and \a b must have matching length
 		 * \f$ n \f$. The vector \a x furthermore must have a capacity of \f$ n \f$.
-		 * Matrix \a M must be \f$ n \times n \f$ shape matrix.
+		 * The matrix \a M must be an \f$ n \times n \f$ square matrix.
 		 *
 		 * Additional GMRES algorithm inputs:
 		 *
 		 * @param[in]     max_iterations The maximum number of GMRES iterations.
-		 * @param[in]     n_restart      The number of GMRES restart iterations,
-		 *                               i.e. maximal size of Kyrilov subspaces.
+		 * @param[in]     n_restart      The number of GMRES restart iterations, i.e.,
+		 *                               the maximum size of the Krylov subspace.
 		 * @param[in]     tol            The requested relative residual tolerance.
 		 *
 		 * Additional outputs (besides \a x):
 		 *
-		 * @param[out]    iterations           Total number of interactions performed.
-		 * @param[out]    iterations_gmres     Number of GMRES interactions performed.
-		 * @param[out]    iterations_arnoldi   Number of Arnoldi interactions performed.
-		 * @param[out]    residual             Residual norm.
+		 * @param[out]    iterations         Total number of interactions performed.
+		 * @param[out]    iterations_gmres   Number of GMRES interactions performed.
+		 * @param[out]    iterations_arnoldi Number of Arnoldi interactions performed.
+		 * @param[out]    residual           The residual norm.
 		 *
 		 * The GMRES algorithm requires four workspace buffers:
 		 *
-		 * @param[in,out] Q              std::vector of length \a n_restart + 1.
-		 *                               Each element of Q is grb::Vector of size
-		 *                               \f$ n \f$. On output only fist \a n_restart
-		 *                               vectors have meaning.
-		 * @param[in,out] temp           A temporary vector of the same size as \a x.
-		 * @param[in,out] Hmatrix        std::vector of length \a n_restart x
-		 *                               \a n_restart used to store temporary data.
-		 * @param[in,out] temp3          std::vector of length \a n_restart
-		 *                               used to store temporary data.
+		 * @param[in,out] Q       std::vector of length \a n_restart + 1. Each element
+		 *                        of Q is grb::Vector of size \f$ n \f$. On output
+		 *                        only fist \a n_restart vectors have meaning.
+		 * @param[in,out] temp    A temporary vector of the same size as \a x.
+		 * @param[in,out] Hmatrix std::vector of length \a n_restart x \a n_restart
+		 *                        used to store temporary data.
+		 * @param[in,out] temp3   std::vector of length \a n_restart used to store
+		 *                        temporary data.
 		 *
-		 * Finally, the algebraic structures over which the GMRES is executed are given:
+		 * Finally, the algebraic structures over which the GMRES is executed are
+		 * given:
 		 *
-		 * @param[in]     ring           The semiring under which to perform the GMRES.
-		 * @param[in]     minus          The inverse of the additive operator of
-		 *                               \a ring.
-		 * @param[in]     divide         The inverse of the multiplicative operator
-		 *                               of \a ring.
+		 * @param[in] ring   The semiring under which to perform the GMRES.
+		 * @param[in] minus  The inverse of the additive operator of \a ring.
+		 * @param[in] divide The inverse of the multiplicative operator of \a ring.
 		 *
 		 * Additional algebraic structure used by norm2 primitive:
 		 *
-		 * @param[in]     sqrtX         The square root (inverse of the square),
-		 *                              not necessarily closed operation
-		 *                              on fields which describe vector norms.
-		 *                              i.e. for complex field sqrtX maps
-		 *                              real numbers to real numbers.
-		 *                              If not provided explicitly the std::sqrt()
-		 *                              is used if possible, if not, a compile time
-		 *                              error is raised.
+		 * @param[in] sqrtX  The square root (inverse of the square), not necessarily
+		 *                   a closed operation on fields which describe vector norms.
+		 *                   E.g., for complex field sqrtX maps real numbers to real
+		 *                   numbers. If not provided explicitly the std::sqrt() is
+		 *                   used if possible, if not, a compile time error is raised.
 		 *
 		 * This algorithm may return one of the following error codes:
 		 *
@@ -1081,8 +1083,8 @@ namespace grb {
 		 * @returns #grb::FAILED   When the algorithm did not converge within the
 		 *                         given \a max_iterations.
 		 * @returns #grb::ILLEGAL  When \a A is not square.
-		 * @returns #grb::MISMATCH When \a x or \a b or \a M does not match the
-		 *                         size of \a A.
+		 * @returns #grb::MISMATCH When \a x or \a b or \a M does not match the size
+		 *                         of \a A.
 		 * @returns #grb::ILLEGAL  When \a x does not have capacity \f$ n \f$.
 		 * @returns #grb::ILLEGAL  When at least one of the workspace vectors does not
 		 *                         have capacity \f$ n \f$.
@@ -1132,7 +1134,8 @@ namespace grb {
 			const Ring &ring = Ring(),
 			const Minus &minus = Minus(),
 			const Divide &divide = Divide(),
-			const std::function< ResidualType( ResidualType ) > &sqrtX = std_sqrt< ResidualType, ResidualType >
+			const std::function< ResidualType( ResidualType ) > &sqrtX =
+				std_sqrt< ResidualType, ResidualType >
 		) {
 			return internal::gmres_dispatch< descr, false >(
 					x, A, b,
