@@ -77,8 +77,8 @@ namespace grb {
 		 * For return codes, exception behaviour, performance semantics, template
 		 * and non-template arguments, @see grb::dot.
 		 *
-		 * @param[out]  x   The 2-norm of \a y. The input value of \a x will be
-		 *                  ignored.
+		 * @param[in,out] x On successful execution of this algorithm, on output,
+		 *                  the 2-norm of \a y will have been added to \a x.
 		 * @param[in]   y   The vector to compute the norm of.
 		 * @param[in] ring  The Semiring under which the 2-norm is to be computed.
 		 * @param[in] sqrtX The square root function which operates on real data
@@ -90,7 +90,8 @@ namespace grb {
 			typename InputType, typename OutputType,
 			Backend backend, typename Coords
 		>
-		RC norm2( OutputType &x,
+		RC norm2(
+			OutputType &x,
 			const Vector< InputType, backend, Coords > &y,
 			const Ring &ring = Ring(),
 			const std::function< OutputType( OutputType ) > sqrtX =
@@ -100,20 +101,16 @@ namespace grb {
 			void >::type * = nullptr
 		) {
 			InputType yyt = ring.template getZero< InputType >();
-
 			RC ret = grb::dot< descr >(
 				yyt, y, y, ring.getAdditiveMonoid(),
 				grb::operators::conjugate_mul< InputType, InputType, InputType >()
 			);
 			if( ret == SUCCESS ) {
-				Semiring<
-					grb::operators::add< OutputType >, grb::operators::mul< OutputType >,
-					grb::identities::zero, grb::identities::one
-				> ring_rtype;
+				grb::operators::add< OutputType > foldOp;
 				ret = ret ? ret : grb::foldl(
 					x,
 					sqrtX( grb::utils::is_complex< InputType >::modulus( yyt ) ),
-					ring_rtype.getAdditiveOperator()
+					foldOp
 				);
 			}
 			return ret;
