@@ -2694,21 +2694,25 @@ namespace grb {
 			};
 
 			/**
-			 * Conjugate-multiply operator: conjugates rhs operand before multiplication.
+			 * Conjugate-multiply operator.
+			 *
+			 * @tparam conj_left Whether to conjugate the left or right input operand
+			 *                   prior to multiplication. Optional; default is
+			 *                   <tt>false</tt> (right-handed input is conjugated).
 			 *
 			 * Assumes native availability * on the given data types, or assumes
-			 * the relevant operators are properly overloaded, and uses conjugate()
-			 * from is_complex.
-			 *
-			 * No assumptions about associativity and commutativity.
-			 *
+			 * the relevant operators are properly overloaded.
 			 *
 			 * @tparam IN1 The left-hand input data type.
 			 * @tparam IN2 The right-hand input data type.
 			 * @tparam OUT The output data type.
+			 *
+			 * Uses conjugate() from #grb::utils::is_complex, which means this operator
+			 * also works for non-complex types (in which case conjugation translates to
+			 * a no-op).
 			 */
 			template<
-				typename IN1, typename IN2, typename OUT,
+				typename IN1, typename IN2, typename OUT, bool conj_left = false,
 				enum Backend implementation = config::default_backend
 			>
 			class conjugate_mul {
@@ -2725,24 +2729,24 @@ namespace grb {
 					typedef OUT result_type;
 
 					/** Whether this operator has an in-place foldl. */
-					static constexpr bool has_foldl = false;
+					static constexpr bool has_foldl = true;
 
 					/** Whether this operator has an in-place foldr. */
-					static constexpr bool has_foldr = false;
+					static constexpr bool has_foldr = true;
 
 					/**
 					 * Whether this operator is \em mathematically associative; that is,
 					 * associative when assuming equivalent data types for \a IN1, \a IN2,
 					 * and \a OUT, as well as assuming exact arithmetic, no overflows, etc.
 					 */
-					static constexpr bool is_associative = false;
+					static constexpr bool is_associative = true;
 
 					/**
 					 * Whether this operator is \em mathematically commutative; that is,
 					 * commutative when assuming equivalent data types for \a IN1, \a IN2,
 					 * and \a OUT, as well as assuming exact arithmetic, no overflows, etc.
 					 */
-					static constexpr bool is_commutative = false;
+					static constexpr bool is_commutative = true;
 
 					/**
 					 * Out-of-place application of this operator.
@@ -2762,6 +2766,23 @@ namespace grb {
 					) {
 						*c = *a * grb::utils::is_complex< IN2 >::conjugate( *b );
 					}
+
+					static void foldr(
+						const IN1 * __restrict__ const a,
+						OUT * __restrict__ const c
+					) {
+						// implicit casting of c to type IN2 via is_complex:
+						*c = *a * grb::utils::is_complex< IN2 >::conjugate( *c );
+					}
+
+					static void foldl(
+						OUT *__restrict__ const c,
+						const IN2 *__restrict__ const b
+					) {
+						*c = static_cast< IN1 >( c ) *
+							grb::utils::is_complex< IN2 >::conjugate( *b );
+					}
+
 			};
 
 			/**
