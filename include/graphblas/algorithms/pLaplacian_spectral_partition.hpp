@@ -336,6 +336,7 @@ namespace grb
 			// Initialize timers
 			grb::utils::Timer timer;
 			double io_time = 0, grb_time = 0, grbropt_time = 0, kmeans_time = 0, prob_time = 0, exec_time = 0;
+            size_t ropt_to_grb_count = 0, grb_to_ropt_count= 0, f_eval_count = 0, grad_eval_count = 0, hessian_eval_count = 0;
 
 			//p = p / factor;
 			do
@@ -381,15 +382,15 @@ namespace grb
 				RNewtonSolver->OutputGap = 10;
 				if (p == 2)
 				{
-					RNewtonSolver->Max_Iteration = 100;
+					RNewtonSolver->Max_Iteration = 100; //2;//100;
 				}
 				else
 				{
-					RNewtonSolver->Max_Iteration = 20;
+					RNewtonSolver->Max_Iteration = 20; //2;// 20;
 				}
 				RNewtonSolver->Minstepsize = 1e-10;
-				RNewtonSolver->Max_Inner_Iter = 1000;
-				RNewtonSolver->Tolerance = 1e-6;
+				RNewtonSolver->Max_Inner_Iter = 1000; //3;//1000;
+				RNewtonSolver->Tolerance = 1e-6;//1; //1e-6;
 				// RNewtonSolver->Stop_Criterion = 1;
 				//RNewtonSolver->CheckParams();
 				grbropt_time =+ timer.time();
@@ -410,6 +411,12 @@ namespace grb
 				io_time += Prob.getIOtime();
 				grb_time += Prob.getGRBtime();
 				grbropt_time += timer.time();
+
+                ropt_to_grb_count += Prob.get_ropt_to_grb_count();
+                grb_to_ropt_count += Prob.get_grb_to_ropt_count();
+                f_eval_count += Prob.get_f_eval_count();
+                grad_eval_count += Prob.get_grad_eval_count();
+                hessian_eval_count += Prob.get_hessian_eval_count();
 
 
 				// std::cout << "----------------------" << std::endl;
@@ -483,6 +490,8 @@ namespace grb
 			}
 
 			grb::buildMatrixUnique(X, I, J, OptPtr, n * k, SEQUENTIAL);
+            delete[] I;
+            delete[] J;
 
 			//io_time += timer.time();
 
@@ -550,6 +559,12 @@ namespace grb
 			std::cout << "exclusive Newon time (msec) = " << exec_time - io_time - grb_time << std::endl;
 			std::cout << "total time (msec) = " << grbropt_time + kmeans_time + exec_time + prob_time  << std::endl;
 
+            std::cout << std::endl;
+            std::cout << "Number of ropt to grb conversions = " << ropt_to_grb_count << std::endl;
+            std::cout << "Number of grb to ropt conversions = " << grb_to_ropt_count << std::endl;
+            std::cout << "Number of functional evaluations = " << f_eval_count << std::endl;
+            std::cout << "Number of gradient evaluations = " << grad_eval_count << std::endl;
+            std::cout << "Number of hessian x vector evaluations = " << hessian_eval_count << std::endl;
 
 			return SUCCESS;
 		} //end RC pLaplacian_bisection

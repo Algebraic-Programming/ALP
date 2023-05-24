@@ -56,12 +56,14 @@ namespace ROPTLIB
 
         mutable grb::utils::Timer timer;
         mutable double io_time = 0, grb_time = 0, ropttgrb = 0, grbtropt = 0, hessT=0, gradT=0, fT=0;
+        mutable size_t ropt_to_grb_count = 0, grb_to_ropt_count = 0, f_eval_count = 0, grad_eval_count = 0, hessian_eval_count = 0;
 
         // function that converts a ROPTLIB nxk matrix to k graphblas vectors of length n
         void ROPTLIBtoGRB(
             const ROPTLIB::Variable &x,
             std::vector<grb::Vector<double> *> &grb_x) const
         {
+            ropt_to_grb_count++;
             timer.reset();
             grb::RC rc = grb::SUCCESS;
 
@@ -99,6 +101,7 @@ namespace ROPTLIB
             const std::vector<grb::Vector<double> *> &grb_x,
             ROPTLIB::Element *result) const
         {
+            grb_to_ropt_count++;
             timer.reset();
             double *resPtr = result->ObtainWriteEntireData();
 
@@ -274,6 +277,7 @@ namespace ROPTLIB
             // Evaluating the objective function in graphblas //
             // ============================================== //
 
+            f_eval_count++;
             timer.reset();
             double result = 0;
             //clear();
@@ -335,6 +339,7 @@ namespace ROPTLIB
         {
 
             // convert to k Graphblas vectors
+            
             timer.reset();
             ROPTLIBtoGRB(x, Columns);
         // DEBUG OUTPUT
@@ -356,6 +361,7 @@ namespace ROPTLIB
             // Evaluating the euclidean gradient in graphblas //
             // ============================================== //
 
+            grad_eval_count++;
             timer.reset();
             for (size_t l = 0; l < k; ++l)
             {
@@ -530,6 +536,7 @@ namespace ROPTLIB
             io_time += timer.time();
 
             // evaluate hessian*vector in graphblas
+            hessian_eval_count++;
             timer.reset();
             
 
@@ -603,6 +610,31 @@ namespace ROPTLIB
             //std::cout << "R2G: " << ropttgrb << ", G2R" << grbtropt << std::endl; 
             //std::cout << "f: " << fT << ", grad: " << gradT << ", hess: " << hessT << std::endl; 
             return grb_time;
+        }
+
+        double get_ropt_to_grb_count()
+        {
+            return ropt_to_grb_count;
+        }
+
+        double get_grb_to_ropt_count()
+        {
+            return grb_to_ropt_count;
+        }
+
+        double get_f_eval_count()
+        {
+            return f_eval_count;
+        }
+
+        double get_grad_eval_count()
+        {
+            return grad_eval_count;
+        }
+
+        double get_hessian_eval_count()
+        {
+            return hessian_eval_count;
         }
     };
 
