@@ -50,6 +50,10 @@ namespace grb {
 		 * @tparam OutputType The output type of the square-root operation.
 		 * @tparam InputType The input type of the square-root operation.
 		 *
+		 * @param[in] x The value to take the square root of.
+		 *
+		 * @returns The square root of \a x, cast to \a OutputType.
+		 *
 		 * Relies on the standard std::sqrt implementation. If this is not available
 		 * for \a InputType, the use of this operation will result in a compile-time
 		 * error.
@@ -58,7 +62,7 @@ namespace grb {
 		 * default to algorithms that depend on it.
 		 */
 		template< typename OutputType, typename InputType >
-		OutputType std_sqrt( InputType x ) {
+		OutputType std_sqrt( const InputType x ) {
 			return( static_cast< OutputType >( std::sqrt( x ) ) );
 		};
 
