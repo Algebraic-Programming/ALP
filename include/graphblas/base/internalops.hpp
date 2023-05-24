@@ -2764,23 +2764,37 @@ namespace grb {
 						const IN2 * __restrict__ const b,
 						OUT * __restrict__ const c
 					) {
-						*c = *a * grb::utils::is_complex< IN2 >::conjugate( *b );
+						if( conj_left ) {
+							*c = grb::utils::is_complex< IN1 >::conjugate( *a ) * *b;
+						} else {
+							*c = *a * grb::utils::is_complex< IN2 >::conjugate( *b );
+						}
 					}
 
 					static void foldr(
 						const IN1 * __restrict__ const a,
 						OUT * __restrict__ const c
 					) {
-						// implicit casting of c to type IN2 via is_complex:
-						*c = *a * grb::utils::is_complex< IN2 >::conjugate( *c );
+						if( conj_left ) {
+							*c = grb::utils::is_complex< IN1 >::conjugate( *a ) *
+								static_cast< IN2 >( *c );
+						} else {
+							// implicit casting of c to type IN2 via is_complex:
+							*c = *a * grb::utils::is_complex< IN2 >::conjugate( *c );
+						}
 					}
 
 					static void foldl(
 						OUT *__restrict__ const c,
 						const IN2 *__restrict__ const b
 					) {
-						*c = static_cast< IN1 >( c ) *
-							grb::utils::is_complex< IN2 >::conjugate( *b );
+						if( conj_left ) {
+							// implicit casting of c to type IN1 via is_complex:
+							*c = grb::utils::is_complex< IN1 >::conjugate( *c ) * *b;
+						} else {
+							*c = static_cast< IN1 >( *c ) *
+								grb::utils::is_complex< IN2 >::conjugate( *b );
+						}
 					}
 
 			};
