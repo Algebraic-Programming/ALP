@@ -85,6 +85,10 @@ add_grb_executables( ewiseapply ewiseapply.cpp
 	BACKENDS reference reference_omp bsp1d hybrid hyperdags nonblocking
 )
 
+add_grb_executables( eWiseApplyMatrix_variants eWiseApplyMatrix_variants.cpp
+	BACKENDS reference reference_omp bsp1d hybrid hyperdags nonblocking
+)
+
 add_grb_executables( eWiseMatrix eWiseMatrix.cpp
 	BACKENDS reference reference_omp bsp1d hybrid hyperdags nonblocking
 )
