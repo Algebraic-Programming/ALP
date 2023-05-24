@@ -54,25 +54,27 @@ constexpr BaseScalarType TOL = 1.e-9;
 using namespace grb;
 using namespace algorithms;
 
-class input {
-	public:
-		bool generate_random = true;
-		size_t rep = grb::config::BENCHMARKING::inner();
-		size_t max_iterations = 1;
-		size_t n = 0;
-		size_t nz_per_row = 10;
-		std::string filename = "";
-		std::string precond_filename = "";
-		std::string rhs_filename = "";
-		bool rhs = false;
-		bool no_preconditioning = false;
-		bool direct = true;
-		size_t rep_outer = grb::config::BENCHMARKING::outer();
-		BaseScalarType tol = TOL;
-		size_t gmres_restart = 10;
+struct input {
+
+	bool generate_random = true;
+	size_t rep = grb::config::BENCHMARKING::inner();
+	size_t max_iterations = 1;
+	size_t n = 0;
+	size_t nz_per_row = 10;
+	std::string filename = "";
+	std::string precond_filename = "";
+	std::string rhs_filename = "";
+	bool rhs = false;
+	bool no_preconditioning = false;
+	bool direct = true;
+	size_t rep_outer = grb::config::BENCHMARKING::outer();
+	BaseScalarType tol = TOL;
+	size_t gmres_restart = 10;
+
 };
 
 struct output {
+
 	int rc;
 	size_t rep;
 	size_t iterations;
@@ -88,13 +90,13 @@ struct output {
 
 template< typename T > T random_value();
 
-template<>
-BaseScalarType random_value< BaseScalarType >() {
+template<> BaseScalarType
+random_value< BaseScalarType >() {
         return static_cast< BaseScalarType >( rand() ) / RAND_MAX;
 }
 
-template<>
-std::complex< BaseScalarType > random_value< std::complex< BaseScalarType > >() {
+template<> std::complex< BaseScalarType >
+random_value< std::complex< BaseScalarType > >() {
         const BaseScalarType re = random_value< BaseScalarType >();
         const BaseScalarType im = random_value< BaseScalarType >();
         return std::complex< BaseScalarType >( re, im );
@@ -197,10 +199,12 @@ RC make_matrices(
 			MatPvecv
 		);
 		rc = rc ? rc : buildMatrixUnique(
-			A, MatAveci.begin(), MatAvecj.begin(), MatAvecv.begin(), MatAveci.size(), SEQUENTIAL
+			A, MatAveci.begin(), MatAvecj.begin(), MatAvecv.begin(), MatAveci.size(),
+			SEQUENTIAL
 		);
 		rc = rc ? rc : buildMatrixUnique(
-			P, MatPveci.begin(), MatPvecj.begin(), MatPvecv.begin(), MatPveci.size(), SEQUENTIAL
+			P, MatPveci.begin(), MatPvecj.begin(), MatPvecv.begin(), MatPveci.size(),
+			SEQUENTIAL
 		);
 	}
 	return rc;
@@ -239,13 +243,14 @@ void grbProgram( const struct input &data_in, struct output &out ) {
 		grb::utils::MatrixFileReader<
 			ScalarType,
 			std::conditional<
-				( sizeof( grb::config::RowIndexType ) > sizeof( grb::config::ColIndexType ) ),
+				(sizeof( grb::config::RowIndexType ) > sizeof( grb::config::ColIndexType )),
 				grb::config::RowIndexType,
 				grb::config::ColIndexType
 			>::type
 		> parser( data_in.filename, data_in.direct );
 		if( parser.m() != parser.n() ) {
-			std::cerr << " matrix in " << data_in.filename << " file, is not rectangular!";
+			std::cerr << " matrix in " << data_in.filename
+				<< " file, is not rectangular!";
 			rc = grb::ILLEGAL;
 		}
 		n = parser.n();
@@ -274,7 +279,7 @@ void grbProgram( const struct input &data_in, struct output &out ) {
 		grb::utils::MatrixFileReader<
 			ScalarType,
 			std::conditional<
-				( sizeof( grb::config::RowIndexType ) > sizeof( grb::config::ColIndexType ) ),
+				(sizeof( grb::config::RowIndexType ) > sizeof( grb::config::ColIndexType )),
 			grb::config::RowIndexType,
 			grb::config::ColIndexType
 			>::type
@@ -287,24 +292,27 @@ void grbProgram( const struct input &data_in, struct output &out ) {
 		);
 #ifdef DEBUG
 		if( rc == grb::SUCCESS ) {
-			std::cout << "Matrix A built from " << data_in.filename << "file successfully\n";
+			std::cout << "Matrix A built from " << data_in.filename
+				<< "file successfully\n";
 		}
 #endif
 		// read preconditioner P from file
 		if( !data_in.no_preconditioning ) {
 #ifdef DEBUG
-			std::cout << "Reading preconditioning matrix from " << data_in.precond_filename << " file \n";
+			std::cout << "Reading preconditioning matrix from "
+				<< data_in.precond_filename << " file \n";
 #endif
 			grb::utils::MatrixFileReader<
 				ScalarType,
 				std::conditional<
-					( sizeof( grb::config::RowIndexType ) > sizeof( grb::config::ColIndexType ) ),
+					(sizeof( grb::config::RowIndexType ) > sizeof( grb::config::ColIndexType )),
 					grb::config::RowIndexType,
 					grb::config::ColIndexType
 				>::type
 			> parser_precond( data_in.precond_filename, data_in.direct );
 			if( parser_precond.m() != parser_precond.n() ) {
-				std::cerr << " matrix in " << data_in.precond_filename << " file, is not rectangular!";
+				std::cerr << " matrix in " << data_in.precond_filename
+					<< " file, is not rectangular!";
 				rc = grb::ILLEGAL;
 			} else if( parser_precond.n() != n ) {
 				std::cerr << " Preconditioner P("
@@ -320,7 +328,8 @@ void grbProgram( const struct input &data_in, struct output &out ) {
 			);
 #ifdef DEBUG
 			if( rc == grb::SUCCESS ) {
-				std::cout << "Matrix P built from " << data_in.precond_filename << "file successfully\n";
+				std::cout << "Matrix P built from " << data_in.precond_filename
+					<< "file successfully\n";
 			}
 #endif
 		}
@@ -346,7 +355,8 @@ void grbProgram( const struct input &data_in, struct output &out ) {
 			}
 			inFile.close(); // cloose input file
 
-			rc = rc ? rc : grb::buildVector( b, buffer.begin(), buffer.end(), SEQUENTIAL );
+			rc = rc ? rc : grb::buildVector( b, buffer.begin(), buffer.end(),
+				SEQUENTIAL );
 			if( rc != SUCCESS ) {
 				std::cout << "RHS vector: buildVector failed!\n ";
 			}
@@ -381,7 +391,9 @@ void grbProgram( const struct input &data_in, struct output &out ) {
 		out.time_preamble += timer.time();
 		timer.reset();
 
-		const std::function< BaseScalarType( BaseScalarType ) > &my_sqrt = sqrt_generic;
+		const std::function< BaseScalarType( BaseScalarType ) > &my_sqrt =
+			sqrt_generic;
+
 		if( data_in.no_preconditioning ) {
 			rc = rc ? rc : grb::algorithms::gmres(
 				x, A, b,
@@ -415,7 +427,8 @@ void grbProgram( const struct input &data_in, struct output &out ) {
 			std::cout << "GMRES iterations = " << out.iterations_gmres << "\n";
 			std::cout << "Arnoldi iterations = " << out.iterations_arnoldi << "\n";
 			std::cout << "GMRES time = " << out.time_gmres << "\n";
-			std::cout << "GMRES time per iteration  = " << out.time_gmres / out.iterations_gmres << "\n";
+			std::cout << "GMRES time per iteration  = "
+				<< out.time_gmres / out.iterations_gmres << "\n";
 		}
 
 	} // inner iterations
@@ -432,23 +445,23 @@ void grbProgram( const struct input &data_in, struct output &out ) {
 
 void printhelp( char *progname ) {
 	std::cout << " Use: \n";
-	std::cout << "     --n INT                  random generated matrix size, default 0\n";
-	std::cout << "                              cannot be used with --matA-fname\n";
-	std::cout << "     --nz-per-row INT         numer of nz per row in a random generated matrix, defaiult  10\n";
-	std::cout << "                              can only be used when --n is present\n";
-	std::cout << "     --test-rep  INT          consecutive test inner algorithm repetitions, default 1\n";
-	std::cout << "     --test-outer-rep  INT    consecutive test outer (including IO) algorithm repetitions, default 1\n";
-	std::cout << "     --gmres-restart INT      gmres restart (max size of KSP space), default 10\n";
-	std::cout << "     --max-gmres-iter INT     maximum number of GMRES iterations, default 1\n";
-	std::cout << "     --matA-fname STR         matrix A filename in matrix market format\n";
-	std::cout << "                              cannot be used with --n\n";
-	std::cout << "     --matP-fname STR         preconditioning matrix P filename in matrix market format\n";
-	std::cout << "                              can only be used when --matA-fname is present\n";
-	std::cout << "     --rhs-fname  STR         RHS vector filename, where vector elements are stored line-by-line\n";
-	std::cout << "     --tol  DBL               convergence tolerance within GMRES, default 1.e-9\n";
-	std::cout << "     --no-preconditioning     disable pre-conditioning\n";
-	std::cout << "     --no-direct              disable direct addressing\n";
-	std::cout << "Examples\n";
+	std::cout << "     --n INT              random generated matrix size, default 0\n";
+	std::cout << "                          cannot be used with --matA-fname\n";
+	std::cout << "     --nz-per-row INT     numer of nz per row in a random generated matrix, defaiult  10\n";
+	std::cout << "                          can only be used when --n is present\n";
+	std::cout << "     --test-rep INT       consecutive test inner algorithm repetitions, default 1\n";
+	std::cout << "     --test-outer-rep INT consecutive test outer (including IO) algorithm repetitions, default 1\n";
+	std::cout << "     --gmres-restart INT  gmres restart (max size of KSP space), default 10\n";
+	std::cout << "     --max-gmres-iter INT maximum number of GMRES iterations, default 1\n";
+	std::cout << "     --matA-fname STR     matrix A filename in matrix market format\n";
+	std::cout << "                          cannot be used with --n\n";
+	std::cout << "     --matP-fname STR     preconditioning matrix P filename in matrix market format\n";
+	std::cout << "                          can only be used when --matA-fname is present\n";
+	std::cout << "     --rhs-fname STR      RHS vector filename, where vector elements are stored line-by-line\n";
+	std::cout << "     --tol DBL            convergence tolerance within GMRES, default 1.e-9\n";
+	std::cout << "     --no-preconditioning disable pre-conditioning\n";
+	std::cout << "     --no-direct          disable direct addressing\n";
+	std::cout << "\nExamples\n";
 	std::cout << "\n";
 	std::cout << "         " << progname << " --n 100 --gmres-restart 50 \n";
 	std::cout << "\n";
@@ -463,7 +476,8 @@ bool parse_arguments(
 	for( int i = 1; i < argc; ++i ){
 		if( std::string( argv[ i ] ) == std::string( "--n" ) ) {
 			if( in.filename != std::string( "" ) ){
-				std::cerr << " input matrix fname already given, cannot use --matA-fname with --n flag\n";
+				std::cerr << " input matrix fname already given, cannot use --matA-fname "
+					<< "with --n flag\n";
 				return false;
 			}
 			std::stringstream s( argv[ ++i ] );
@@ -518,7 +532,8 @@ bool parse_arguments(
 #endif
 		} else if( std::string( argv[ i ] ) == std::string( "--matA-fname" ) ) {
 			if( in.n != 0 ){
-				std::cerr << "randomly generated matrix already requested, cannot use --matA-fname with --n flag\n";
+				std::cerr << "randomly generated matrix already requested, cannot use "
+					<< "--matA-fname with --n flag\n";
 				return false;
 			}
 			std::stringstream s( argv[ ++i ] );
@@ -558,7 +573,9 @@ bool parse_arguments(
 #ifdef DEBUG
 			std::cout << " set: tol = " << in.tol << "\n";
 #endif
-		} else if( std::string( argv[ i ] ) == std::string( "--no-preconditioning" ) ) {
+		} else if(
+			std::string( argv[ i ] ) == std::string( "--no-preconditioning" )
+		) {
 			in.no_preconditioning = true;
 #ifdef DEBUG
 			std::cout << " set: no_preconditioning = " << in.no_preconditioning << "\n";
@@ -574,10 +591,14 @@ bool parse_arguments(
 		}
 	}
 
-	if( in.precond_filename == std::string( "" ) && in.filename != std::string( "" ) ) {
+	if( in.precond_filename == std::string( "" ) &&
+		in.filename != std::string( "" )
+	) {
 		in.no_preconditioning = true;
 	}
-	if( in.precond_filename != std::string( "" ) && in.filename == std::string( "" ) ) {
+	if( in.precond_filename != std::string( "" ) &&
+		in.filename == std::string( "" )
+	) {
 		std::cerr << " --matP-fname can be used only if --matA-fname is present";
 		return false;
 	}
