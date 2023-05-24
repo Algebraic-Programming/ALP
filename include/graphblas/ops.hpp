@@ -804,28 +804,80 @@ namespace grb {
 
 		};
 
-
 		/**
-		 * Conjugate-multiply operator: conjugates rhs operand before multiplication.
+		 * Conjugate-multiply operator that conjugates the left- or right-hand operand
+		 * before multiplication.
 		 *
-		 * Mathematical notation: \f$ \odot(x,y) \to x * y^* \f$.
+		 * @tparam conj_left Whether to conjugate the left-hand operand.
 		 *
+		 * If \a conj_left is <tt>false</tt>, then the right-hand operand will be
+		 * conjugated instead.
+		 *
+		 * Mathematical notation: \f$ \odot(x,y) \to x^* * y \f$ if \a conj_left is
+		 * <tt>true</tt>, and \f$ \odot(x,y) \to x * y^* \f$ otherwise.
 		 */
 		template<
-			typename IN1, typename IN2, typename OUT,
+			typename IN1, typename IN2, typename OUT, bool conj_left,
 			enum Backend implementation = config::default_backend
-			>
+		>
 		class conjugate_mul : public operators::internal::Operator<
-			internal::conjugate_mul< IN1, IN2, OUT, implementation >
-			> {
+			internal::conjugate_mul< IN1, IN2, OUT, conj_left, implementation >
+		> {
 
-		public:
+			public:
 
-			template< typename A, typename B, typename C, enum Backend D >
-			using GenericOperator = internal::conjugate_mul< A, B, C, D >;
-			conjugate_mul() {}
+				template< typename A, typename B, typename C, bool D, enum Backend E >
+				using GenericOperator = conjugate_mul< A, B, C, D, E >;
+
+				conjugate_mul() {}
+
 		};
 
+		/**
+		 * Conjugate-multiply operator that conjugates the right-hand operand before
+		 * multiplication.
+		 *
+		 * Mathematical notation: \f$ \odot(x,y) \to x * y^* \f$.
+		 */
+		template<
+			typename IN1, typename IN2 = IN1, typename OUT = IN2,
+			enum Backend implementation = config::default_backend
+		>
+		class conjugate_right_mul : public operators::internal::Operator<
+			internal::conjugate_mul< IN1, IN2, OUT, false, implementation >
+		> {
+
+			public:
+
+				template< typename A, typename B, typename C, enum Backend D >
+				using GenericOperator = conjugate_right_mul< A, B, C, D >;
+
+				conjugate_right_mul() {}
+
+		};
+
+		/**
+		 * Conjugate-multiply operator that conjugates the left-hand operand before
+		 * multiplication.
+		 *
+		 * Mathematical notation: \f$ \odot(x,y) \to x^* * y \f$.
+		 */
+		template<
+			typename IN1, typename IN2 = IN1, typename OUT = IN2,
+			enum Backend implementation = config::default_backend
+		>
+		class conjugate_left_mul : public operators::internal::Operator<
+			internal::conjugate_mul< IN1, IN2, OUT, true, implementation >
+		> {
+
+			public:
+
+				template< typename A, typename B, typename C, enum Backend D >
+				using GenericOperator = conjugate_left_mul< A, B, C, D >;
+
+				conjugate_left_mul() {}
+
+		};
 
 	} // namespace operators
 
@@ -966,8 +1018,27 @@ namespace grb {
 		static const constexpr bool value = true;
 	};
 
+	template<
+		typename D1, typename D2, typename D3,
+		bool cl, enum Backend implementation
+	>
+	struct is_operator<
+		operators::conjugate_mul< D1, D2, D3, cl, implementation >
+	> {
+		static const constexpr bool value = true;
+	};
+
 	template< typename D1, typename D2, typename D3, enum Backend implementation >
-	struct is_operator< operators::conjugate_mul< D1, D2, D3, implementation > > {
+	struct is_operator<
+		operators::conjugate_left_mul< D1, D2, D3, implementation >
+	> {
+		static const constexpr bool value = true;
+	};
+
+	template< typename D1, typename D2, typename D3, enum Backend implementation >
+	struct is_operator<
+		operators::conjugate_right_mul< D1, D2, D3, implementation >
+	> {
 		static const constexpr bool value = true;
 	};
 

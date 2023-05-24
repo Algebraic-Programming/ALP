@@ -103,7 +103,7 @@ namespace grb {
 			InputType yyt = ring.template getZero< InputType >();
 			RC ret = grb::dot< descr >(
 				yyt, y, y, ring.getAdditiveMonoid(),
-				grb::operators::conjugate_mul< InputType, InputType, InputType >()
+				grb::operators::conjugate_right_mul< InputType >()
 			);
 			if( ret == SUCCESS ) {
 				grb::operators::add< OutputType > foldOp;
