@@ -2739,14 +2739,18 @@ namespace grb {
 					 * associative when assuming equivalent data types for \a IN1, \a IN2,
 					 * and \a OUT, as well as assuming exact arithmetic, no overflows, etc.
 					 */
-					static constexpr bool is_associative = false;
+					static constexpr bool is_associative =
+						!grb::utils::is_complex< IN1 >::value &&
+						!grb::utils::is_complex< IN2 >::value;
 
 					/**
 					 * Whether this operator is \em mathematically commutative; that is,
 					 * commutative when assuming equivalent data types for \a IN1, \a IN2,
 					 * and \a OUT, as well as assuming exact arithmetic, no overflows, etc.
 					 */
-					static constexpr bool is_commutative = false;
+					static constexpr bool is_commutative =
+						!grb::utils::is_complex< IN1 >::value &&
+						!grb::utils::is_complex< IN2 >::value;
 
 					/**
 					 * Out-of-place application of this operator.
