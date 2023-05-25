@@ -815,6 +815,36 @@ namespace grb {
 		 *
 		 * Mathematical notation: \f$ \odot(x,y) \to x^* * y \f$ if \a conj_left is
 		 * <tt>true</tt>, and \f$ \odot(x,y) \to x * y^* \f$ otherwise.
+		 *
+		 * \par Associativity and commutativity
+		 * \parblock
+		 *
+		 * In general, this operator is not associative nor commutative. This operator
+		 * is anti-commutative with respect to conjugation.
+		 *
+		 * If the input domains \a IN1 and \a IN2 are not complex, then this operator
+		 * is both associative and commutative. The algebraic type system takes this
+		 * into account automatically.
+		 *
+		 * If <tt>conj_left</tt> is true, \a IN1 is complex, \a IN2 is non-complex,
+		 * \em and \a OUT is non-complex, then this operator is both associative and
+		 * commutative in the generalised sense where casting a complex number to a
+		 * non-complex domain is interpreted as taking the norm of the complex number.
+		 *
+		 * This also applies when <tt>conj_left</tt> is false, \a IN1 is non-complex,
+		 * \a IN2 is complex, and \a OUT is non-complex.
+		 *
+		 * Since this rather non-standard notion of associativity and commutativity
+		 * assumes a casting behaviour that is not standard in C++, the algebraic type
+		 * system does \em not consider the above two combinations of template
+		 * arguments when deriving associativity and commutativity properties.
+		 *
+		 * \endparblock
+		 *
+		 * @see conjugate_left_mul  An alias of this operator with \a conj_left
+		 *                          <tt>true</tt>.
+		 * @see conjugate_right_mul An alias of this operator with \a conj_left
+		 *                          <tt>false</tt>.
 		 */
 		template<
 			typename IN1, typename IN2, typename OUT, bool conj_left,
@@ -838,6 +868,28 @@ namespace grb {
 		 * multiplication.
 		 *
 		 * Mathematical notation: \f$ \odot(x,y) \to x * y^* \f$.
+		 *
+		 * \par Associativity and commutativity
+		 * \parblock
+		 *
+		 * In general, this operator is not associative nor commutative. This operator
+		 * is anti-commutative with respect to conjugation.
+		 *
+		 * If the input domains \a IN1 and \a IN2 are not complex, then this operator
+		 * is both associative and commutative. The algebraic type system takes this
+		 * into account automatically.
+		 *
+		 * If \a IN1 is non-complex, \a IN2 is complex, \em and \a OUT is non-complex,
+		 * then this operator is both associative and commutative in the generalised
+		 * sense where casting a complex number to a non-complex domain is interpreted
+		 * as taking the norm of the complex number.
+		 *
+		 * Since this rather non-standard notion of associativity and commutativity
+		 * assumes a casting behaviour that is not standard in C++, the algebraic type
+		 * system does \em not consider the above combination of template arguments
+		 * when deriving the associativity and commutativity properties.
+		 *
+		 * \endparblock
 		 */
 		template<
 			typename IN1, typename IN2 = IN1, typename OUT = IN2,
@@ -861,6 +913,28 @@ namespace grb {
 		 * multiplication.
 		 *
 		 * Mathematical notation: \f$ \odot(x,y) \to x^* * y \f$.
+		 *
+		 * \par Associativity and commutativity
+		 * \parblock
+		 *
+		 * In general, this operator is not associative nor commutative. This operator
+		 * is anti-commutative with respect to conjugation.
+		 *
+		 * If the input domains \a IN1 and \a IN2 are not complex, then this operator
+		 * is both associative and commutative. The algebraic type system takes this
+		 * into account automatically.
+		 *
+		 * If \a IN1 is complex, \a IN2 is non-complex, \em and \a OUT is non-complex,
+		 * then this operator is both associative and commutative in the generalised
+		 * sense where casting a complex number to a non-complex domain is interpreted
+		 * as taking the norm of the complex number.
+		 *
+		 * Since this rather non-standard notion of associativity and commutativity
+		 * assumes a casting behaviour that is not standard in C++, the algebraic type
+		 * system does \em not consider the above combination of template arguments
+		 * when deriving associativity and commutativity properties.
+		 *
+		 * \endparblock
 		 */
 		template<
 			typename IN1, typename IN2 = IN1, typename OUT = IN2,
