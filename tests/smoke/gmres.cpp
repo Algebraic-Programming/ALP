@@ -42,6 +42,7 @@
 #include <graphblas/algorithms/gmres.hpp>
 #include <graphblas/utils/Timer.hpp>
 #include <graphblas/utils/parser.hpp>
+
 #include <utils/output_verification.hpp>
 
 
@@ -359,7 +360,7 @@ void grbProgram( const struct input &data_in, struct output &out ) {
 					break;
 				};
 			}
-			inFile.close(); // cloose input file
+			inFile.close(); // close input file
 
 			rc = rc ? rc : grb::buildVector( b, buffer.begin(), buffer.end(),
 				SEQUENTIAL );
