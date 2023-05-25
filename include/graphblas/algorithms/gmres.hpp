@@ -76,25 +76,27 @@ namespace grb {
 		 * \note The algorithm can do an in-place update of the vector \f$ b \f$
 		 * without the need to copy the solution into \a vecx.
 		 *
-		 * @param[in] n             The dimension of \a H and \a vecx, and the maximum
-		 *                          size of the Krylov subspace.
-		 * @param[in] kspspacesize  The size of Krylov subspace.
+		 * @param[in] tol          The requested relative residual tolerance. Must be
+		 *                         strictly positive.
+		 * @param[in] n            The dimension of \a H and \a vecx, and the maximum
+		 *                         size of the Krylov subspace.
+		 * @param[in] kspspacesize The size of Krylov subspace.
 		 *
 		 * The algebraic structures over which the GMRES is executed:
 		 *
-		 * @param[in]     ring   The semiring under which to perform the GMRES.
-		 * @param[in]     minus  The inverse of the additive operator of \a ring.
-		 * @param[in]     divide The inverse of the multiplicative operator of
-		 *                       \a ring.
+		 * @param[in] ring   The semiring under which to perform the GMRES.
+		 * @param[in] minus  The inverse of the additive operator of \a ring.
+		 * @param[in] divide The inverse of the multiplicative operator of
+		 *                   \a ring.
 		 *
 		 * Additional algebraic structure used by norm2 primitive:
 		 *
-		 * @param[in]     sqrtX  The square root (inverse of the square), not
-		 *                       necessarily closed operation on fields which describe
-		 *                       vector norms. I.e. for complex field sqrtX maps real
-		 *                       numbers to real numbers. If not provided explicitly
-		 *                       the std::sqrt() is used if possible, if not, a
-		 *                       compile time error is raised.
+		 * @param[in] sqrtX  The square root (inverse of the square), not necessarily
+		 *                   a closed operation on fields which describe vector norms.
+		 *                   E.g., for a complex field, \a sqrtX maps real numbers to
+		 *                   real numbers. If not provided explicitly, the std::sqrt()
+		 *                   is used if possible, and if not, a compile time error is
+		 *                   raised.
 		 *
 		 * This algorithm may return one of the following error codes:
 		 *
