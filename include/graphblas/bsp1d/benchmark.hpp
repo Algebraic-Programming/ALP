@@ -130,11 +130,18 @@ void _grb_bench_spmd( lpf_t ctx, lpf_pid_t s, lpf_pid_t P, lpf_args_t args ) {
 	assert( args.f_size == 2 );
 	// retrieve benchmarking functions
 	typedef void ( *grb_func_t )( const T &, U & );
-	typedef void ( *bench_func_t )( void ( *grb_program )( const T &, U & ), const T &, U &, size_t, size_t, lpf_pid_t );
-	bench_func_t bench_program = reinterpret_cast< bench_func_t >( args.f_symbols[ 0 ] );
+	typedef void ( *bench_func_t )(
+			void ( *grb_program )( const T &, U & ),
+			const T &, U &,
+			size_t, size_t, lpf_pid_t
+		);
+	bench_func_t bench_program =
+		reinterpret_cast< bench_func_t >( args.f_symbols[ 0 ] );
 	grb_func_t grb_program = reinterpret_cast< grb_func_t >( args.f_symbols[ 1 ] );
 	// execute benchmark
-	( *bench_program )( grb_program, data_in, data_out, input.inner, input.outer, s );
+	( *bench_program )(
+			grb_program, data_in, data_out, input.inner, input.outer, s
+		);
 
 	// close GraphBLAS context and done!
 	if( grb::finalize() != grb::SUCCESS ) {
@@ -431,11 +438,20 @@ namespace grb {
 
 		public:
 
+			/**
+			 * \internal
+			 * @param[in] process_id    User process ID
+			 * @param[in] nproces       Total number of user processes
+			 * @param[in] hostname      One of the process' hostname
+			 * @param[in] port          A free port at \a hostname
+			 * @param[in] is_mpi_inited Whether MPI is already initialised
+			 * \endinternal
+			 */
 			Benchmarker(
-				const size_t process_id = 0,              // user process ID
-				const size_t nprocs = 1,                  // total number of user processes
-				const std::string hostname = "localhost", // one of the process' hostnames
-				const std::string port = "0",             // a free port at hostname
+				const size_t process_id = 0,
+				const size_t nprocs = 1,
+				const std::string hostname = "localhost",
+				const std::string port = "0",
 				const bool is_mpi_inited = false
 			) : Launcher< mode, BSP1D >(
 				process_id, nprocs, hostname, port, is_mpi_inited
