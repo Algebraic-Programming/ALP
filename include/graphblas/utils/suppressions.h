@@ -37,6 +37,10 @@
   _Pragma( "GCC diagnostic push" ) ;\
   _Pragma( "GCC diagnostic ignored \"-Wmaybe-uninitialized\"" );\
 
+ #define GRB_UTIL_IGNORE_STRING_TRUNCATION \
+  _Pragma( "GCC diagnostic push" );\
+  _Pragma( "GCC diagnostic ignored \"-Wstringop-truncation\"" );\
+
  #define GRB_UTIL_IGNORE_CLASS_MEMACCESS \
   _Pragma( "GCC diagnostic push" ) ;\
   _Pragma( "GCC diagnostic ignored \"-Wclass-memaccess\"" );\
@@ -47,6 +51,8 @@
 #else
  // here are empty default macros
  #define GRB_UTIL_IGNORE_MAYBE_UNINITIALIZED
+ #define GRB_UTIL_IGNORE_STRING_TRUNCATION
+ #define GRB_UTIL_IGNORE_CLASS_MEMACCESS
  #define GRB_UTIL_RESTORE_WARNINGS
 #endif
 

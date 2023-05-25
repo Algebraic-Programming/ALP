@@ -804,6 +804,181 @@ namespace grb {
 
 		};
 
+		/**
+		 * Conjugate-multiply operator that conjugates the left- or right-hand operand
+		 * before multiplication.
+		 *
+		 * @tparam conj_left Whether to conjugate the left-hand operand.
+		 *
+		 * If \a conj_left is <tt>false</tt>, then the right-hand operand will be
+		 * conjugated instead.
+		 *
+		 * Mathematical notation: \f$ \odot(x,y) \to x^* * y \f$ if \a conj_left is
+		 * <tt>true</tt>, and \f$ \odot(x,y) \to x * y^* \f$ otherwise.
+		 *
+		 * \par Associativity and commutativity
+		 * \parblock
+		 *
+		 * In general, this operator is not associative nor commutative. This operator
+		 * is anti-commutative with respect to conjugation.
+		 *
+		 * If the input domains \a IN1 and \a IN2 are not complex, then this operator
+		 * is both associative and commutative. The algebraic type system takes this
+		 * into account automatically.
+		 *
+		 * If \a conj_left is <tt>true</tt>, \a IN1 is complex, \a IN2 is non-complex,
+		 * \em and \a OUT is non-complex, then this operator is both associative and
+		 * commutative in the generalised sense where casting a complex number to a
+		 * non-complex domain is interpreted as taking the norm of the complex number.
+		 *
+		 * This also applies when \a conj_left is <tt>false</tt>, \a IN1 is
+		 * non-complex, \a IN2 is complex, and \a OUT is non-complex.
+		 *
+		 * Since this rather non-standard notion of associativity and commutativity
+		 * assumes a casting behaviour that is not standard in C++, the algebraic type
+		 * system does \em not consider the above two combinations of template
+		 * arguments when deriving associativity and commutativity properties.
+		 *
+		 * \endparblock
+		 *
+		 * \par Other identities
+		 * \parblock
+		 *
+		 * If \a conj_left is <tt>true</tt>, the following property holds:
+		 * \f$ (a \odot b) \odot c = ( c \odot b ) \odot a. \f$
+		 *
+		 * If \a conj_left is <tt>false</tt>, the following property holds instead:
+		 * \f$ a \odot ( b \odot c ) = c \odot ( b \odot a ). \f$
+		 *
+		 * These properties are currently not exposed by the algebraic type system,
+		 * and (thus) not used by the framework.
+		 *
+		 * \endparblock
+		 *
+		 * @see conjugate_left_mul  An alias of this operator with \a conj_left
+		 *                          <tt>true</tt>.
+		 * @see conjugate_right_mul An alias of this operator with \a conj_left
+		 *                          <tt>false</tt>.
+		 */
+		template<
+			typename IN1, typename IN2, typename OUT, bool conj_left,
+			enum Backend implementation = config::default_backend
+		>
+		class conjugate_mul : public operators::internal::Operator<
+			internal::conjugate_mul< IN1, IN2, OUT, conj_left, implementation >
+		> {
+
+			public:
+
+				template< typename A, typename B, typename C, bool D, enum Backend E >
+				using GenericOperator = conjugate_mul< A, B, C, D, E >;
+
+				conjugate_mul() {}
+
+		};
+
+		/**
+		 * Conjugate-multiply operator that conjugates the right-hand operand before
+		 * multiplication.
+		 *
+		 * Mathematical notation: \f$ \odot(x,y) \to x * y^* \f$.
+		 *
+		 * \par Associativity and commutativity
+		 * \parblock
+		 *
+		 * In general, this operator is not associative nor commutative. This operator
+		 * is anti-commutative with respect to conjugation.
+		 *
+		 * If the input domains \a IN1 and \a IN2 are not complex, then this operator
+		 * is both associative and commutative. The algebraic type system takes this
+		 * into account automatically.
+		 *
+		 * If \a IN1 is non-complex, \a IN2 is complex, \em and \a OUT is non-complex,
+		 * then this operator is both associative and commutative in the generalised
+		 * sense where casting a complex number to a non-complex domain is interpreted
+		 * as taking the norm of the complex number.
+		 *
+		 * Since this rather non-standard notion of associativity and commutativity
+		 * assumes a casting behaviour that is not standard in C++, the algebraic type
+		 * system does \em not consider the above combination of template arguments
+		 * when deriving the associativity and commutativity properties.
+		 *
+		 * \endparblock
+		 *
+		 * \par Other identities
+		 *
+		 * The following holds: \f$ a \odot ( b \odot c ) = c \odot ( b \odot a ). \f$
+		 * This property is currently not exposed by the algebraic type system, and
+		 * (thus) not used by the framework.
+		 */
+		template<
+			typename IN1, typename IN2 = IN1, typename OUT = IN2,
+			enum Backend implementation = config::default_backend
+		>
+		class conjugate_right_mul : public operators::internal::Operator<
+			internal::conjugate_mul< IN1, IN2, OUT, false, implementation >
+		> {
+
+			public:
+
+				template< typename A, typename B, typename C, enum Backend D >
+				using GenericOperator = conjugate_right_mul< A, B, C, D >;
+
+				conjugate_right_mul() {}
+
+		};
+
+		/**
+		 * Conjugate-multiply operator that conjugates the left-hand operand before
+		 * multiplication.
+		 *
+		 * Mathematical notation: \f$ \odot(x,y) \to x^* * y \f$.
+		 *
+		 * \par Associativity and commutativity
+		 * \parblock
+		 *
+		 * In general, this operator is not associative nor commutative. This operator
+		 * is anti-commutative with respect to conjugation.
+		 *
+		 * If the input domains \a IN1 and \a IN2 are not complex, then this operator
+		 * is both associative and commutative. The algebraic type system takes this
+		 * into account automatically.
+		 *
+		 * If \a IN1 is complex, \a IN2 is non-complex, \em and \a OUT is non-complex,
+		 * then this operator is both associative and commutative in the generalised
+		 * sense where casting a complex number to a non-complex domain is interpreted
+		 * as taking the norm of the complex number.
+		 *
+		 * Since this rather non-standard notion of associativity and commutativity
+		 * assumes a casting behaviour that is not standard in C++, the algebraic type
+		 * system does \em not consider the above combination of template arguments
+		 * when deriving associativity and commutativity properties.
+		 *
+		 * \endparblock
+		 *
+		 * \par Other identities
+		 *
+		 * The following holds: \f$ ( a \odot b ) \odot c = ( c \odot b ) \odot a. \f$
+		 * This property is currently not exposed by the algebraic type system, and
+		 * (thus) not used by the framework.
+		 */
+		template<
+			typename IN1, typename IN2 = IN1, typename OUT = IN2,
+			enum Backend implementation = config::default_backend
+		>
+		class conjugate_left_mul : public operators::internal::Operator<
+			internal::conjugate_mul< IN1, IN2, OUT, true, implementation >
+		> {
+
+			public:
+
+				template< typename A, typename B, typename C, enum Backend D >
+				using GenericOperator = conjugate_left_mul< A, B, C, D >;
+
+				conjugate_left_mul() {}
+
+		};
+
 	} // namespace operators
 
 	template< typename D1, typename D2, typename D3, enum Backend implementation >
@@ -940,6 +1115,30 @@ namespace grb {
 
 	template< typename D1, typename D2, typename D3, enum Backend implementation >
 	struct is_operator< operators::geq< D1, D2, D3, implementation > > {
+		static const constexpr bool value = true;
+	};
+
+	template<
+		typename D1, typename D2, typename D3,
+		bool cl, enum Backend implementation
+	>
+	struct is_operator<
+		operators::conjugate_mul< D1, D2, D3, cl, implementation >
+	> {
+		static const constexpr bool value = true;
+	};
+
+	template< typename D1, typename D2, typename D3, enum Backend implementation >
+	struct is_operator<
+		operators::conjugate_left_mul< D1, D2, D3, implementation >
+	> {
+		static const constexpr bool value = true;
+	};
+
+	template< typename D1, typename D2, typename D3, enum Backend implementation >
+	struct is_operator<
+		operators::conjugate_right_mul< D1, D2, D3, implementation >
+	> {
 		static const constexpr bool value = true;
 	};
 
