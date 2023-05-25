@@ -23,16 +23,19 @@
  * @date 2023-05-12
  */
 
-#include <exception>
+#include <string>
+#include <vector>
+#include <fstream>
+#include <sstream>
 #include <iostream>
 #include <iterator>
-#include <fstream>
-#include <string>
-#include <sstream>
-#include <vector>
+#include <exception>
+
 #ifdef _GMRES_COMPLEX
  #include <complex>
 #endif
+
+#include <assert.h>
 #include <inttypes.h>
 
 #include <graphblas.hpp>
@@ -41,6 +44,8 @@
 #include <graphblas/utils/parser.hpp>
 #include <utils/output_verification.hpp>
 
+
+#define MAX_FN_SIZE 255
 
 using BaseScalarType = double;
 #ifdef _GMRES_COMPLEX
@@ -61,9 +66,9 @@ struct input {
 	size_t max_iterations = 1;
 	size_t n = 0;
 	size_t nz_per_row = 10;
-	std::string filename = "";
-	std::string precond_filename = "";
-	std::string rhs_filename = "";
+	char filename[ MAX_FN_SIZE ];
+	char precond_filename[ MAX_FN_SIZE ];
+	char rhs_filename[ MAX_FN_SIZE ];
 	bool rhs = false;
 	bool no_preconditioning = false;
 	bool direct = true;
@@ -86,6 +91,7 @@ struct output {
 	double time_preamble;
 	double time_io;
 	PinnedVector< ScalarType > pinnedVector;
+
 };
 
 template< typename T > T random_value();
@@ -473,9 +479,12 @@ bool parse_arguments(
 	int argc,
 	char **argv
 ) {
+	std::fill( in.filename, in.filename + MAX_FN_SIZE, '\0' );
+	std::fill( in.precond_filename, in.precond_filename + MAX_FN_SIZE, '\0' );
+	std::fill( in.rhs_filename, in.rhs_filename + MAX_FN_SIZE, '\0' );
 	for( int i = 1; i < argc; ++i ){
 		if( std::string( argv[ i ] ) == std::string( "--n" ) ) {
-			if( in.filename != std::string( "" ) ){
+			if( std::strlen( in.filename ) != 0 ) {
 				std::cerr << " input matrix fname already given, cannot use --matA-fname "
 					<< "with --n flag\n";
 				return false;
@@ -536,8 +545,10 @@ bool parse_arguments(
 					<< "--matA-fname with --n flag\n";
 				return false;
 			}
-			std::stringstream s( argv[ ++i ] );
-			if( !( s >> in.filename ) ){
+			GRB_UTIL_IGNORE_STRING_TRUNCATION
+			(void) std::strncpy( in.filename, argv[ ++i ], MAX_FN_SIZE );
+			GRB_UTIL_RESTORE_WARNINGS
+			if( in.filename[ MAX_FN_SIZE - 1 ] != '\0' ) {
 				std::cerr << "error parsing: " << argv[ i ] << "\n";
 				return false;
 			}
@@ -546,8 +557,10 @@ bool parse_arguments(
 			std::cout << " set: filename = " << in.filename << "\n";
 #endif
 		} else if( std::string( argv[ i ] ) == std::string( "--matP-fname" ) ) {
-			std::stringstream s( argv[ ++i ] );
-			if( !( s >> in.precond_filename ) ){
+			GRB_UTIL_IGNORE_STRING_TRUNCATION
+			(void) std::strncpy( in.precond_filename, argv[ ++i ], MAX_FN_SIZE );
+			GRB_UTIL_RESTORE_WARNINGS
+			if( in.precond_filename[ MAX_FN_SIZE - 1 ] != '\0' ) {
 				std::cerr << "error parsing: " << argv[ i ] << "\n";
 				return false;
 			}
@@ -555,8 +568,10 @@ bool parse_arguments(
 			std::cout << " set: precond_filename = " << in.precond_filename << "\n";
 #endif
 		} else if( std::string( argv[ i ] ) == std::string( "--rhs-fname" ) ) {
-			std::stringstream s( argv[ ++i ] );
-			if( !( s >> in.rhs_filename ) ){
+			GRB_UTIL_IGNORE_STRING_TRUNCATION
+			(void) std::strncpy( in.rhs_filename, argv[ ++i ], MAX_FN_SIZE );
+			GRB_UTIL_RESTORE_WARNINGS
+			if( in.rhs_filename[ MAX_FN_SIZE - 1 ] != '\0' ) {
 				std::cerr << "error parsing: " << argv[ i ] << "\n";
 				return false;
 			}
@@ -591,19 +606,18 @@ bool parse_arguments(
 		}
 	}
 
-	if( in.precond_filename == std::string( "" ) &&
-		in.filename != std::string( "" )
-	) {
+	assert( in.filename[ MAX_FN_SIZE - 1 ] == '\0' );
+	assert( in.rhs_filename[ MAX_FN_SIZE - 1 ] == '\0' );
+	assert( in.precond_filename[ MAX_FN_SIZE - 1 ] == '\0' );
+
+	if( std::strlen( in.precond_filename ) > 0 && std::strlen( in.filename ) > 0 ) {
 		in.no_preconditioning = true;
 	}
-	if( in.precond_filename != std::string( "" ) &&
-		in.filename == std::string( "" )
-	) {
+	if( std::strlen( in.precond_filename ) > 0 && std::strlen( in.filename ) == 0 ) {
 		std::cerr << " --matP-fname can be used only if --matA-fname is present";
 		return false;
 	}
-
-	if( in.n == 0 && in.filename == std::string( "" ) ) {
+	if( in.n == 0 && std::strlen( in.filename ) == 0 ) {
 		std::cerr << "No input!\n";
 		return false;
 	}
