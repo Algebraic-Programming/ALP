@@ -107,6 +107,12 @@ add_grb_executables( graphchallenge_nn_single_inference graphchallenge_nn_single
 	ADDITIONAL_LINK_LIBRARIES test_utils_headers
 )
 
+
+add_grb_executables( graphchallenge_nn_multi_inference graphchallenge_nn_multi_inference.cpp
+	BACKENDS reference reference_omp bsp1d hybrid hyperdags nonblocking
+	ADDITIONAL_LINK_LIBRARIES test_utils_headers
+)
+
 add_grb_executables( simple_pagerank simple_pagerank.cpp
 	BACKENDS reference reference_omp bsp1d hybrid hyperdags nonblocking
 	ADDITIONAL_LINK_LIBRARIES test_utils_headers
