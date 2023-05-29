@@ -16,6 +16,7 @@
  */
 
 #include <iostream>
+#include <stdexcept>
 
 #include "graphblas/utils/parser.hpp"
 
@@ -25,63 +26,69 @@ int main( int argc, char ** argv ) {
 		std::cout << "please, give path to west0497.mtx" << std::endl;
 		std::exit( 1 );
 	}
-	grb::utils::MatrixFileReader< double, unsigned short int > west( argv[ 1 ] );
+
 	int ret = 0;
-	if( west.m() != 497 ) {
-		std::cerr << "west0497 has 497 rows, not " << west.m() << std::endl;
+	try {
+		grb::utils::MatrixFileReader< double, unsigned short int > west( argv[ 1 ] );
+		if( west.m() != 497 ) {
+			std::cerr << "west0497 has 497 rows, not " << west.m() << std::endl;
+			ret = 1;
+		}
+		if( west.n() != 497 ) {
+			std::cerr << "west0497 has 497 columns, not " << west.n() << std::endl;
+			ret = 2;
+		}
+		if( west.nz() != 1727 ) {
+			std::cerr << "west0497 has 1727 nonzeroes, not " << west.nz() << std::endl;
+			ret = 3;
+		}
+		if( west.isPattern() == true ) {
+			std::cerr << "west0497 is not a pattern matrix, yet it is detected to "
+						"be one."
+					<< std::endl;
+			ret = 4;
+		}
+		if( west.isSymmetric() == true ) {
+			std::cerr << "west0497 is not a symmetric matrix, yet it is detected "
+						"to be one."
+					<< std::endl;
+			ret = 5;
+		}
+		if( west.usesDirectAddressing() == false ) {
+			std::cerr << "west0497 should be read with direct addressing, not an "
+						"indirect one."
+					<< std::endl;
+			ret = 6;
+		}
+		size_t count = 0;
+		for( auto nonzero : west ) {
+			(void)nonzero;
+			++count;
+		}
+		if( count != west.nz() ) {
+			std::cerr << "Iterator does not contain " << west.nz() << " nonzeroes. It instead iterated over " << count << " nonzeroes." << std::endl;
+			ret = 7;
+		}
+		auto base_it = west.begin( grb::SEQUENTIAL, []( double & val ) {
+			val = 1;
+		} );
+		count = 0;
+		size_t count_converted = 0;
+		for( ; base_it != west.end(); ++base_it ) {
+			count_converted += static_cast< size_t >( ( *base_it ).second );
+			++count;
+		}
+		if( count != west.nz() ) {
+			std::cerr << "Iterator (non-auto) does not contain " << west.nz() << " nonzeroes. It instead iterated over " << count << " nonzeroes." << std::endl;
+			ret = 8;
+		}
+		if( count != count_converted ) {
+			std::cerr << "Reader converter failed." << std::endl;
+			ret = 9;
+		}
+	} catch( std::runtime_error & e ) {
+		std::cout << "Caught exception: " << e.what() << std::endl;
 		ret = 1;
-	}
-	if( west.n() != 497 ) {
-		std::cerr << "west0497 has 497 columns, not " << west.n() << std::endl;
-		ret = 2;
-	}
-	if( west.nz() != 1727 ) {
-		std::cerr << "west0497 has 1727 nonzeroes, not " << west.nz() << std::endl;
-		ret = 3;
-	}
-	if( west.isPattern() == true ) {
-		std::cerr << "west0497 is not a pattern matrix, yet it is detected to "
-					 "be one."
-				  << std::endl;
-		ret = 4;
-	}
-	if( west.isSymmetric() == true ) {
-		std::cerr << "west0497 is not a symmetric matrix, yet it is detected "
-					 "to be one."
-				  << std::endl;
-		ret = 5;
-	}
-	if( west.usesDirectAddressing() == false ) {
-		std::cerr << "west0497 should be read with direct addressing, not an "
-					 "indirect one."
-				  << std::endl;
-		ret = 6;
-	}
-	size_t count = 0;
-	for( auto nonzero : west ) {
-		(void)nonzero;
-		++count;
-	}
-	if( count != west.nz() ) {
-		std::cerr << "Iterator does not contain " << west.nz() << " nonzeroes. It instead iterated over " << count << " nonzeroes." << std::endl;
-		ret = 7;
-	}
-	auto base_it = west.begin( grb::SEQUENTIAL, []( double & val ) {
-		val = 1;
-	} );
-	count = 0;
-	size_t count_converted = 0;
-	for( ; base_it != west.end(); ++base_it ) {
-		count_converted += static_cast< size_t >( ( *base_it ).second );
-		++count;
-	}
-	if( count != west.nz() ) {
-		std::cerr << "Iterator (non-auto) does not contain " << west.nz() << " nonzeroes. It instead iterated over " << count << " nonzeroes." << std::endl;
-		ret = 8;
-	}
-	if( count != count_converted ) {
-		std::cerr << "Reader converter failed." << std::endl;
-		ret = 9;
 	}
 
 	if( ret == 0 ) {
