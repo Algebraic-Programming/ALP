@@ -238,8 +238,12 @@ namespace grb
 			std::cout << "Calculating eigenvecs" << std::endl;
 			std::cout << "---------------------" << std::endl << std::endl;
 #ifdef DETERMINISTIC
-			arma_rng::set_seed_random(1234);
+			arma_rng::set_seed(1234);
 #endif
+
+            // do armadillo stage with max num threads
+            //omp_set_num_threads(1);
+
 			//generate sparse matrix
 			arma::sp_mat A = arma::sp_mat(n, n);
 			{
@@ -301,6 +305,7 @@ namespace grb
 			opts.maxiter = 10000;
 			opts.tol     = 1e-5;
 			// find the k smallest eigvals/eigvecs
+
 			std::cout << "\tcalling Armadillo Eigensolver..." << std::endl;
 			arma::eigs_sym(eigval, eigvec, A, k, "sm", opts);
 			std::cout << "-------------" << std::endl;
@@ -312,6 +317,9 @@ namespace grb
 			{
 				temp[i] = eigvec[i]; // Use the input at p = 2 as initial guess
 			}
+
+            // do armadillo stage with max num threads
+            //omp_set_num_threads(2);
 
 			//std::cin.get();
 
@@ -379,7 +387,7 @@ namespace grb
 				//RNewtonSolver->StopPtr = &StoppingCriterion;
 				RNewtonSolver->Verbose = ROPTLIB::ITERRESULT;
 				RNewtonSolver->LineSearch_LS = ROPTLIB::LSSM_ARMIJO;
-				RNewtonSolver->OutputGap = 10;
+				RNewtonSolver->OutputGap = 1;
 				if (p == 2)
 				{
 					RNewtonSolver->Max_Iteration = 100; //2;//100;
@@ -389,7 +397,7 @@ namespace grb
 					RNewtonSolver->Max_Iteration = 20; //2;// 20;
 				}
 				RNewtonSolver->Minstepsize = 1e-10;
-				RNewtonSolver->Max_Inner_Iter = 1000; //3;//1000;
+				RNewtonSolver->Max_Inner_Iter = 200; //3;//1000;
 				RNewtonSolver->Tolerance = 1e-6;//1; //1e-6;
 				// RNewtonSolver->Stop_Criterion = 1;
 				//RNewtonSolver->CheckParams();

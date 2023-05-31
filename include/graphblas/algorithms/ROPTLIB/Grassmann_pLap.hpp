@@ -77,7 +77,7 @@ namespace ROPTLIB
                     std::cout << "Result: " << grb::toString(rc)<<std::endl;
                     std::cin.get();
                 }
-                
+
                 //Check if the vectors are updated
                 if(grb_x == Columns){
 
@@ -90,7 +90,6 @@ namespace ROPTLIB
                     }
                     grb::set(*(Prev[i]), *(grb_x[i]));
                 }
-
             }
 
             ropttgrb += timer.time();
@@ -121,7 +120,6 @@ namespace ROPTLIB
             //Skip if already calculated
             if(mats[l]) return;
 
-
             grb::Vector<double> u = *(this->Columns[l]);
 
             grb::set(*(UiUj[l]), W);
@@ -143,16 +141,23 @@ namespace ROPTLIB
             double s = 0;
             
             // for each elem v do |v|^p
-            powMat(l, BUF, this->p);	
+            powMat(l, BUF, this->p, Hess_approx_thresh);	
             
             grb::set( vec_aux, 0 );
 
             //Multiply wheights
             // v_ij *= w_ij
             grb::eWiseApply(BUF, BUF, W, reals_ring.getMultiplicativeOperator());
+
             //Sum all rows and cols
             grb::vxm(vec_aux, ones, BUF, reals_ring);
-            grb::dot(s, vec_aux, ones, reals_ring);
+
+            //THIS PRIMITIVE SINGLE-THREADED!!
+            int thr = omp_get_num_threads();
+            omp_set_num_threads(1);
+            //grb::dot(s, vec_aux, ones, reals_ring);
+            grb::foldl( s, vec_aux, reals_ring.getAdditiveMonoid() ); 
+            omp_set_num_threads(thr);
 
             return s;
         }
@@ -174,7 +179,7 @@ namespace ROPTLIB
         //For a vector u do norm to the power of p, ||u||^p
         double pPowSum(const size_t l) const
         {
-          
+
             //working with orthonormal columns
             if (p == 2.0)
                 return 1.0;
@@ -186,8 +191,13 @@ namespace ROPTLIB
                           { vec_aux[i] = std::pow(std::fabs(vec_aux[i]), this->p); },
                           vec_aux);
             //Sum all values
-            grb::foldl( s, vec_aux, reals_ring.getAdditiveMonoid() );
 
+            //THIS PRIMITIVE SINGLE-THREADED!!
+            int thr = omp_get_num_threads();
+            omp_set_num_threads(1);
+            grb::foldl( s, vec_aux, reals_ring.getAdditiveMonoid() ); //CULPRIT!
+            omp_set_num_threads(thr);
+            
             return s;
         }
 
@@ -266,10 +276,13 @@ namespace ROPTLIB
 
         // Objective function, p-norm
         virtual double f(const ROPTLIB::Variable &x) const
-        {
+        {   
+            
+
             // convert to k Graphblas vectors
             timer.reset();
             ROPTLIBtoGRB(x, Columns);
+            
 
             io_time += timer.time();
 
@@ -311,6 +324,7 @@ namespace ROPTLIB
             //     }
             //     std::cout << std::endl;
             // }
+
             return result;
         }
 
@@ -337,11 +351,13 @@ namespace ROPTLIB
             const ROPTLIB::Variable &x,
             ROPTLIB::Element *result) const
         {
-
+            
             // convert to k Graphblas vectors
             
             timer.reset();
             ROPTLIBtoGRB(x, Columns);
+
+            
         // DEBUG OUTPUT
             // for (size_t l = 0; l < k; ++l)
             // {
@@ -391,8 +407,11 @@ namespace ROPTLIB
 				},
 				BUF );
 
+                
+
                 grb::eWiseApply(BUF, BUF, W, reals_ring.getMultiplicativeOperator());
 
+                
         // DEBUG OUTPUT
                  //Print the entries of the resulting matrix Wphiu
                 // for ( size_t i=0; i<n; ++i) {
@@ -406,7 +425,7 @@ namespace ROPTLIB
                 // }
                 //std::cin.get();
                 //End Print
-
+                
                 grb::set(vec, 0);
                 grb::vxm<grb::descriptors::transpose_matrix>(vec, ones, BUF, reals_ring);
 
@@ -447,7 +466,10 @@ namespace ROPTLIB
                 // std::cin.get();
 
                 //Update and save Hessian for later 
+                
+
                 calculateHessian(l);
+
             }
             grb_time += timer.time();
             gradT += timer.time();
@@ -515,7 +537,7 @@ namespace ROPTLIB
             ROPTLIB::Element *result) const
         {
             //std::cout << "Hessian CALLED\n";
-			
+            
             // convert to k Graphblas vectors
             timer.reset();
 
@@ -535,6 +557,8 @@ namespace ROPTLIB
             ROPTLIBtoGRB(etax, Etax);
             io_time += timer.time();
 
+            
+
             // evaluate hessian*vector in graphblas
             hessian_eval_count++;
             timer.reset();
@@ -551,11 +575,16 @@ namespace ROPTLIB
                 grb::vxm(vec, *(Etax[l]), *(Hess[l]), reals_ring);
                 // vec2 = diag.*etax 
                 grb::eWiseApply(vec2, *(Diag[l]), *(Etax[l]), reals_ring.getMultiplicativeOperator());
+
                 // res = (diag.*etax) - (etax*H)
                 grb::eWiseApply(*(Res[l]), vec2, vec, grb::operators::subtract<double>());
+
+                //int thr = omp_get_num_threads();
+                //omp_set_num_threads(1);
                 // res = ((diag.*etax) - (etax*H)) * factor
-                grb::eWiseApply(*(Res[l]), *(Res[l]), facs[l], reals_ring.getMultiplicativeOperator());
-           
+                grb::foldl(*(Res[l]), facs[l], reals_ring.getMultiplicativeOperator());
+                //omp_set_num_threads(thr);
+
             // FOR POSSIBLE USE IN FUTURE
             // Scale with constant eigenvector
                 // double s;
@@ -569,6 +598,7 @@ namespace ROPTLIB
             hessT += timer.time();
 
             timer.reset();
+
             GRBtoROPTLIB(Res, result);
 
         // DEBUG OUTPUT
