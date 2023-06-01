@@ -20,11 +20,14 @@
 
 #include "graphblas/utils/parser.hpp"
 
+
 int main( int argc, char ** argv ) {
 	std::cout << "Functional test executable: " << argv[ 0 ] << "\n";
+
 	if( argc != 2 ) {
-		std::cout << "please, give path to west0497.mtx" << std::endl;
-		std::exit( 1 );
+		std::cerr << "please, give path to west0497.mtx" << std::endl;
+		std::cout << "Test FAILED" << std::endl;
+		return 255;
 	}
 
 	int ret = 0;
@@ -43,21 +46,18 @@ int main( int argc, char ** argv ) {
 			ret = 3;
 		}
 		if( west.isPattern() == true ) {
-			std::cerr << "west0497 is not a pattern matrix, yet it is detected to "
-						"be one."
-					<< std::endl;
+			std::cerr << "west0497 is not a pattern matrix, yet it is detected to be "
+				<< "a pattern matrix." << std::endl;
 			ret = 4;
 		}
 		if( west.isSymmetric() == true ) {
-			std::cerr << "west0497 is not a symmetric matrix, yet it is detected "
-						"to be one."
-					<< std::endl;
+			std::cerr << "west0497 is not a symmetric matrix, yet it is detected to be "
+				<< "to be symmetric." << std::endl;
 			ret = 5;
 		}
 		if( west.usesDirectAddressing() == false ) {
-			std::cerr << "west0497 should be read with direct addressing, not an "
-						"indirect one."
-					<< std::endl;
+			std::cerr << "west0497 should be read with direct addressing, not using "
+				<< "indirect addressing." << std::endl;
 			ret = 6;
 		}
 		size_t count = 0;
@@ -66,35 +66,40 @@ int main( int argc, char ** argv ) {
 			++count;
 		}
 		if( count != west.nz() ) {
-			std::cerr << "Iterator does not contain " << west.nz() << " nonzeroes. It instead iterated over " << count << " nonzeroes." << std::endl;
+			std::cerr << "Iterator does not contain " << west.nz() << " nonzeroes. "
+				<< "It instead iterated over " << count << " nonzeroes." << std::endl;
 			ret = 7;
 		}
-		auto base_it = west.begin( grb::SEQUENTIAL, []( double & val ) {
+		auto base_it = west.begin( grb::SEQUENTIAL, []( double &val ) {
 			val = 1;
 		} );
 		count = 0;
 		size_t count_converted = 0;
 		for( ; base_it != west.end(); ++base_it ) {
 			count_converted += static_cast< size_t >( ( *base_it ).second );
-			++count;
+			(void) ++count;
 		}
 		if( count != west.nz() ) {
-			std::cerr << "Iterator (non-auto) does not contain " << west.nz() << " nonzeroes. It instead iterated over " << count << " nonzeroes." << std::endl;
+			std::cerr << "Iterator (non-auto) does not contain " << west.nz()
+				<< " nonzeroes. It instead iterated over " << count
+				<< " nonzeroes." << std::endl;
 			ret = 8;
 		}
 		if( count != count_converted ) {
 			std::cerr << "Reader converter failed." << std::endl;
 			ret = 9;
 		}
-	} catch( std::runtime_error & e ) {
+	} catch( std::runtime_error &e ) {
 		std::cout << "Caught exception: " << e.what() << std::endl;
-		ret = 1;
+		ret = 10;
 	}
 
+	std::cerr << std::flush;
 	if( ret == 0 ) {
-		std::cout << "Test OK.\n" << std::endl;
+		std::cout << "Test OK\n" << std::endl;
 	} else {
-		std::cout << "Test FAILED.\n" << std::endl;
+		std::cout << "Test FAILED\n" << std::endl;
 	}
 	return ret;
 }
+
