@@ -344,16 +344,17 @@ int main( int argc, char ** argv ) {
 		}
  #endif
 
-	} catch( std::runtime_error & e ) {
+	} catch( std::runtime_error &e ) {
 		std::cout << "Caught exception: " << e.what() << std::endl;
 		ret = 1;
 	}
 
 	// done
+	std::cerr << std::flush;
 	if( ret == 0 ) {
-		std::cout << "Test OK.\n" << std::endl;
+		std::cout << "Test OK\n" << std::endl;
 	} else {
-		std::cout << "Test FAILED.\n" << std::endl;
+		std::cout << "Test FAILED\n" << std::endl;
 	}
 	return ret;
 }
