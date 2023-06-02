@@ -20,9 +20,16 @@ workflow:
     - if: $CI_COMMIT_BRANCH =~ /^v.*-rc.*$/
       variables:
         IS_MAIN_PIPELINE: "yes"
-    - when: always  # trigger pipeline in any case
+  # rules to avoid duplicate pipelines on merge requests
+    # run if the pipeline comes from a merge request
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+    # do not run when the commit has a branch name associated and this branch is associated to an MR
+    - if: $CI_COMMIT_BRANCH && $CI_OPEN_MERGE_REQUESTS
+      when: never
+    # run when the commit has a branch name associated
+    - if: $CI_COMMIT_BRANCH
 
-
+# factored out command to strip symbols from test binaries
 .strip_symbols: &strip_symbols
   - strip -s $(find tests/unit/ -type f -executable -print) $(find tests/smoke/ -type f -executable -print) $(find tests/performance/ -type f -executable -print)
 
