@@ -153,15 +153,15 @@ namespace ROPTLIB
             grb::vxm(vec_aux, ones, BUF, reals_ring);
 
             //THIS PRIMITIVE SINGLE-THREADED!!
-            int thr;
-            #pragma omp parallel
-			{
-                thr = omp_get_num_threads();
-            }
-            omp_set_num_threads(1);
+            // int thr;
+            // #pragma omp parallel
+			// {
+            //     thr = omp_get_num_threads();
+            // }
+            // omp_set_num_threads(1);
             //grb::dot(s, vec_aux, ones, reals_ring);
             grb::foldl( s, vec_aux, reals_ring.getAdditiveMonoid() ); 
-            omp_set_num_threads(thr);
+            // omp_set_num_threads(thr);
 
             return s;
         }
@@ -197,14 +197,14 @@ namespace ROPTLIB
             //Sum all values
 
             //THIS PRIMITIVE SINGLE-THREADED!!
-            int thr;
-            #pragma omp parallel
-			{
-                thr = omp_get_num_threads();
-            }
-            omp_set_num_threads(1);
+            // int thr;
+            // #pragma omp parallel
+			// {
+            //     thr = omp_get_num_threads();
+            // }
+            // omp_set_num_threads(1);
             grb::foldl( s, vec_aux, reals_ring.getAdditiveMonoid() ); //CULPRIT!
-            omp_set_num_threads(thr);
+            // omp_set_num_threads(thr);
             
             return s;
         }
