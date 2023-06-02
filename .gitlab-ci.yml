@@ -1,3 +1,5 @@
+# default settings based on standard Docker image for reproducible build:
+# see https://github.com/Algebraic-Programming/ReproducibleBuilds
 default:
   tags:
     - docker
