@@ -150,6 +150,45 @@ namespace grb {
 		template< typename D >
 		RC bfs_steps( size_t & total_steps, const Matrix< D > & A, size_t root ) {
 			grb::RC rc = grb::RC::SUCCESS;
+
+			total_steps = ULONG_MAX;
+			const size_t nvertices = grb::nrows( A );
+			std::cout << "Running BFS from " << root << " on " << nvertices << " vertices." << std::endl;
+			grb::Vector< bool > x( nvertices ), y( nvertices );
+			grb::set( x, false );
+			grb::setElement( x, true, root );
+			grb::set( y, x );
+
+			utils::printSparseMatrix( A, "A" );
+
+			grb::Semiring< grb::operators::logical_or< bool >, grb::operators::logical_and< bool >, grb::identities::logical_false, grb::identities::logical_true > bool_semiring;
+			grb::Monoid< grb::operators::logical_and< bool >, grb::identities::logical_true > bool_monoid;
+
+			for( size_t depth = 0; depth < nvertices; depth++ ) {
+				rc = rc ? rc : grb::vxm( y, x, A, bool_semiring, grb::Phase::RESIZE );
+				rc = rc ? rc : grb::vxm( y, x, A, bool_semiring, grb::Phase::EXECUTE );
+
+				utils::debugPrint( "-- Depth " + std::to_string( depth + 1 ) + ":\n" );
+				utils::printSparseVector( x, "x" );
+				utils::printSparseVector( y, "y" );
+
+				bool all_visited = true;
+				rc = rc ? rc : grb::foldl( all_visited, y, bool_monoid );
+
+				if( all_visited ) {
+					// If all vertices are discovered, stop
+					utils::debugPrint( "Took " + std::to_string( depth + 1 ) + " steps to discover all of the " + std::to_string( nvertices ) + " vertices.\n" );
+					total_steps = depth + 1;
+					return rc;
+				}
+
+				std::swap( x, y );
+			}
+
+			// Maximum number of iteration passed, not every vertex has been discovered
+			utils::debugPrint( "A full exploration is not possible on this graph. "
+							   "Some vertices are not reachable from the given root: " +
+				std::to_string( root ) + "\n" );
 			return rc;
 		}
 
