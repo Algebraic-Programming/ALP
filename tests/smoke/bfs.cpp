@@ -39,7 +39,7 @@ struct input_t {
 	grb::Matrix< T > A;
 	size_t root;
 	size_t expected_total_steps;
-	bool test_steps_per_vertex;
+	bool steps_per_vertex;
 	grb::Vector< size_t > expected_steps_per_vertex;
 };
 
@@ -67,17 +67,19 @@ void grbProgram( const input_t< T > & input, output_t & output ) {
 		output.rc = grb::RC::FAILED;
 	}
 
-	timer.reset();
-	grb::Vector< size_t > steps_per_vertex( grb::nrows( input.A ) );
-	output.rc = output.rc ? output.rc : grb::algorithms::bfs_steps_per_vertex( total_steps, steps_per_vertex, input.A, input.root );
-	timer.reset();
+	if( input.steps_per_vertex ) {
+		timer.reset();
+		grb::Vector< size_t > steps_per_vertex( grb::nrows( input.A ) );
+		output.rc = output.rc ? output.rc : grb::algorithms::bfs_steps_per_vertex( total_steps, steps_per_vertex, input.A, input.root );
+		timer.reset();
 
-	// Check steps_per_vertex by comparing it with the expected one
-	if( std::equal( input.expected_steps_per_vertex.cbegin(), input.expected_steps_per_vertex.cend(), steps_per_vertex.cbegin() ) ) {
-		std::cout << "SUCCESS: steps_per_vertex is correct" << std::endl;
-	} else {
-		std::cerr << "FAILED: steps_per_vertex is incorrect" << std::endl;
-		output.rc = grb::RC::FAILED;
+		// Check steps_per_vertex by comparing it with the expected one
+		if( std::equal( input.expected_steps_per_vertex.cbegin(), input.expected_steps_per_vertex.cend(), steps_per_vertex.cbegin() ) ) {
+			std::cout << "SUCCESS: steps_per_vertex is correct" << std::endl;
+		} else {
+			std::cerr << "FAILED: steps_per_vertex is incorrect" << std::endl;
+			output.rc = grb::RC::FAILED;
+		}
 	}
 }
 
@@ -252,6 +254,33 @@ int main( int argc, char ** argv ) {
 		std::cout << std::endl;
 	}
 
+	/** Given matrix in input **/
+	if( test_on_file ) {
+		std::cout << "-- Running test on file " << file_to_test << std::endl;
+
+		// Read matrix from file as a pattern matrix (i.e. no values)
+		grb::utils::MatrixFileReader< void > reader( file_to_test, false, true );
+		size_t r = reader.n(), c = reader.m();
+		grb::Matrix< void > A( r, c );
+		grb::RC rc_build = buildMatrixUnique( A, reader.cbegin( grb::IOMode::SEQUENTIAL ), reader.cend( grb::IOMode::SEQUENTIAL ), grb::IOMode::PARALLEL );
+		if( rc_build != grb::RC::SUCCESS ) {
+			std::cerr << "ERROR during buildMatrixUnique of the pattern matrix: rc = " << rc_build << std::endl;
+			return 1;
+		}
+
+		std::cout << "Matrix read successfully" << std::endl;
+		// TODO: Find a way to ask the steps_per_vertex to the user
+		input_t< void > input { A, 0, expected_file_triangles, false, { 0 } };
+		output_t output;
+		grb::RC bench_rc = benchmarker.exec( &grbProgram, input, output, niterations, 1 );
+		if( bench_rc ) {
+			std::cerr << "ERROR during execution of file " << file_to_test << ": rc = " << bench_rc << std::endl;
+			return bench_rc;
+		} else if( output.rc ) {
+			std::cerr << "Test failed: rc = " << output.rc << std::endl;
+			return output.rc;
+		}
+	}
 
 	std::cout << "Test OK" << std::endl;
 
