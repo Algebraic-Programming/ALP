@@ -219,6 +219,39 @@ int main( int argc, char ** argv ) {
 		std::cout << std::endl;
 	}
 
+	/** Matrix A4:
+	 *
+	 * Schema:
+	 *  0 ----- 1
+	 *        / |
+	 *      /   |
+	 *    /     |
+	 *  2 ----- 3
+	 *
+	 * => 3 step(s) to reach all nodes, but contains a cycle, root = 0
+	 */
+	{ // Directed version, pattern matrix
+		std::cout << "-- Running test on A4 (directed, pattern, one cycle)" << std::endl;
+		size_t expected_total_steps = 3;
+		size_t root = 0;
+		grb::Matrix< void > A( 4, 4 );
+		std::vector< size_t > A_rows { { 0, 1, 2, 3 } };
+		std::vector< size_t > A_cols { { 1, 3, 1, 2 } };
+		grb::buildMatrixUnique( A, A_rows.data(), A_cols.data(), A_rows.size(), grb::IOMode::PARALLEL );
+		std::vector< size_t > expected_steps_per_vertex { 0, 1, 3, 2 };
+		input_t< void > input { A, root, expected_total_steps, true, stdVectorToGrbVector( expected_steps_per_vertex ) };
+		output_t output;
+		grb::RC bench_rc = benchmarker.exec( &grbProgram, input, output, niterations, 1 );
+		if( bench_rc ) {
+			std::cerr << "ERROR during execution: rc = " << bench_rc << std::endl;
+			return bench_rc;
+		} else if( output.rc ) {
+			std::cerr << "Test failed: rc = " << output.rc << std::endl;
+			return output.rc;
+		}
+		std::cout << std::endl;
+	}
+
 
 	std::cout << "Test OK" << std::endl;
 
