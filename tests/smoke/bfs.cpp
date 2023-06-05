@@ -39,7 +39,7 @@ struct input_t {
 	grb::Matrix< T > A;
 	size_t root;
 	size_t expected_total_steps;
-	bool steps_per_vertex;
+	bool compute_steps_per_vertex;
 	grb::Vector< size_t > expected_steps_per_vertex;
 };
 
@@ -53,13 +53,18 @@ template< typename T >
 void grbProgram( const input_t< T > & input, output_t & output ) {
 	std::cout << std::endl << "Running BFS" << std::endl;
 	grb::utils::Timer timer;
-	size_t total_steps = 0;
+	size_t total_steps = ULONG_MAX;
+	grb::Vector< size_t > steps_per_vertex( grb::nrows( input.A ), 0UL );
 
 	timer.reset();
-	output.rc = output.rc ? output.rc : grb::algorithms::bfs_steps( total_steps, input.A, input.root );
+	if( input.compute_steps_per_vertex ) {
+		grb::resize( steps_per_vertex, grb::nrows( input.A ) );
+		output.rc = output.rc ? output.rc : grb::algorithms::bfs( input.A, input.root, total_steps, steps_per_vertex );
+	} else {
+		output.rc = output.rc ? output.rc : grb::algorithms::bfs( input.A, input.root, total_steps );
+	}
 	timer.reset();
 
-	// TODO: Add check for steps_per_vertex
 	if( total_steps <= input.expected_total_steps ) {
 		std::cout << "SUCCESS: total_steps = " << total_steps << " is correct" << std::endl;
 	} else {
@@ -67,12 +72,7 @@ void grbProgram( const input_t< T > & input, output_t & output ) {
 		output.rc = grb::RC::FAILED;
 	}
 
-	if( input.steps_per_vertex ) {
-		timer.reset();
-		grb::Vector< size_t > steps_per_vertex( grb::nrows( input.A ) );
-		output.rc = output.rc ? output.rc : grb::algorithms::bfs_steps_per_vertex( total_steps, steps_per_vertex, input.A, input.root );
-		timer.reset();
-
+	if( input.compute_steps_per_vertex ) {
 		// Check steps_per_vertex by comparing it with the expected one
 		if( std::equal( input.expected_steps_per_vertex.cbegin(), input.expected_steps_per_vertex.cend(), steps_per_vertex.cbegin() ) ) {
 			std::cout << "SUCCESS: steps_per_vertex is correct" << std::endl;
