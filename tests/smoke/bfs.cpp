@@ -78,6 +78,10 @@ void grbProgram( const input_t< T > & input, output_t & output ) {
 			std::cout << "SUCCESS: steps_per_vertex is correct" << std::endl;
 		} else {
 			std::cerr << "FAILED: steps_per_vertex is incorrect" << std::endl;
+			std::cerr << "steps_per_vertex != expected_steps_per_vertex" << std::endl;
+			for( size_t i = 0; i < grb::nrows( input.A ); i++ ) 
+				std::cerr << std::string(3, ' ') << steps_per_vertex[ i ] << " | " << input.expected_steps_per_vertex[ i ] << std::endl;
+			
 			output.rc = grb::RC::FAILED;
 		}
 	}
@@ -109,9 +113,9 @@ int main( int argc, char ** argv ) {
 	 *  |     \
 	 *  2       3
 	 *
-	 * => 1 step(s) to reach all nodes, root = 0
+	 * => 1 step(s) to reach all nodes
 	 */
-	{ // Directed version, pattern matrix
+	{ // Directed version, pattern matrix, root = 0
 		std::cout << "-- Running test on A1 (directed, non-pattern)" << std::endl;
 		size_t expected_total_steps = 1;
 		size_t root = 0;
@@ -136,15 +140,17 @@ int main( int argc, char ** argv ) {
 	/** Matrix A2:
 	 *
 	 * Schema:
-	 *  0 ----- 1
+	 *  0 ----- 2 ----- 3
 	 *  |
 	 *  |
 	 *  |
-	 *  2 ----- 3
+	 *  1 
 	 *
-	 * => 2 step(s) to reach all nodes, root = 0
 	 */
-	{ // Directed version, pattern matrix
+	{ /*
+	   * Directed version, pattern matrix, root = 0
+	   * => 2 step(s) to reach all nodes
+	   */
 		std::cout << "-- Running test on A2 (directed, pattern)" << std::endl;
 		size_t expected_total_steps = 2;
 		size_t root = 0;
@@ -169,24 +175,23 @@ int main( int argc, char ** argv ) {
 	/** Matrix A3:
 	 *
 	 * Schema:
-	 *  0 ----- 1
-	 *          |
-	 *          |
-	 *          |
-	 *  2 ----- 3
+	 * 
+	 *  0 ----- 1 ----- 2 ----- 3
 	 *
-	 * => 3 step(s) to reach all nodes, root = 0
 	 */
-	{ // Directed version, non-pattern matrix
+	{ /*
+	   * Directed version, non-pattern matrix, root = 0
+	   * => 3 step(s) to reach all nodes
+	   */
 		std::cout << "-- Running test on A3 (directed, non-pattern: int)" << std::endl;
 		size_t expected_total_steps = 3;
 		size_t root = 0;
 		grb::Matrix< int > A( 4, 4 );
-		std::vector< size_t > A_rows { { 0, 1, 3 } };
-		std::vector< size_t > A_cols { { 1, 3, 2 } };
+		std::vector< size_t > A_rows { { 0, 1, 2 } };
+		std::vector< size_t > A_cols { { 1, 2, 3 } };
 		std::vector< int > A_values( A_rows.size(), 1 );
 		grb::buildMatrixUnique( A, A_rows.data(), A_cols.data(), A_values.data(), A_values.size(), grb::IOMode::PARALLEL );
-		std::vector< size_t > expected_steps_per_vertex { 0, 1, 3, 2 };
+		std::vector< size_t > expected_steps_per_vertex { 0, 1, 2, 3 };
 		input_t< int > input { A, root, expected_total_steps, true, stdVectorToGrbVector( expected_steps_per_vertex ) };
 		output_t output;
 		grb::RC bench_rc = benchmarker.exec( &grbProgram, input, output, niterations, 1 );
@@ -199,15 +204,42 @@ int main( int argc, char ** argv ) {
 		}
 		std::cout << std::endl;
 	}
-	{ // Directed version, pattern matrix
+	{ /*
+	   * Directed version, pattern matrix, root = 0
+	   * => 3 step(s) to reach all nodes
+	   */
 		std::cout << "-- Running test on A3 (directed, pattern)" << std::endl;
 		size_t expected_total_steps = 3;
 		size_t root = 0;
 		grb::Matrix< void > A( 4, 4 );
-		std::vector< size_t > A_rows { { 0, 1, 3 } };
-		std::vector< size_t > A_cols { { 1, 3, 2 } };
+		std::vector< size_t > A_rows { { 0, 1, 2 } };
+		std::vector< size_t > A_cols { { 1, 2, 3 } };
 		grb::buildMatrixUnique( A, A_rows.data(), A_cols.data(), A_rows.size(), grb::IOMode::PARALLEL );
-		std::vector< size_t > expected_steps_per_vertex { 0, 1, 3, 2 };
+		std::vector< size_t > expected_steps_per_vertex { 0, 1, 2, 3 };
+		input_t< void > input { A, root, expected_total_steps, true, stdVectorToGrbVector( expected_steps_per_vertex ) };
+		output_t output;
+		grb::RC bench_rc = benchmarker.exec( &grbProgram, input, output, niterations, 1 );
+		if( bench_rc ) {
+			std::cerr << "ERROR during execution: rc = " << bench_rc << std::endl;
+			return bench_rc;
+		} else if( output.rc ) {
+			std::cerr << "Test failed: rc = " << output.rc << std::endl;
+			return output.rc;
+		}
+		std::cout << std::endl;
+	}
+	{ /*
+	   * Directed version, pattern matrix, root = 3
+	   * => impossible to reach all nodes
+	   */
+		std::cout << "-- Running test on A3 (directed, pattern)" << std::endl;
+		size_t expected_total_steps = ULONG_MAX;
+		size_t root = 3;
+		grb::Matrix< void > A( 4, 4 );
+		std::vector< size_t > A_rows { { 0, 1, 2 } };
+		std::vector< size_t > A_cols { { 1, 2, 3 } };
+		grb::buildMatrixUnique( A, A_rows.data(), A_cols.data(), A_rows.size(), grb::IOMode::PARALLEL );
+		std::vector< size_t > expected_steps_per_vertex { ULONG_MAX, ULONG_MAX, ULONG_MAX, 0 };
 		input_t< void > input { A, root, expected_total_steps, true, stdVectorToGrbVector( expected_steps_per_vertex ) };
 		output_t output;
 		grb::RC bench_rc = benchmarker.exec( &grbProgram, input, output, niterations, 1 );
@@ -230,9 +262,12 @@ int main( int argc, char ** argv ) {
 	 *    /     |
 	 *  2 ----- 3
 	 *
-	 * => 3 step(s) to reach all nodes, but contains a cycle, root = 0
+	 * Note: Contains one cycle
 	 */
-	{ // Directed version, pattern matrix
+	{ /*
+	   * Directed version, pattern matrix, root = 0
+	   * => 3 step(s) to reach all nodes
+	   */
 		std::cout << "-- Running test on A4 (directed, pattern, one cycle)" << std::endl;
 		size_t expected_total_steps = 3;
 		size_t root = 0;
