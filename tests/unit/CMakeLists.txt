@@ -272,6 +272,10 @@ add_grb_executables( properties static_asserts/properties.cpp
 	BACKENDS reference reference_omp bsp1d hybrid hyperdags nonblocking
 )
 
+add_grb_executables( tutorial tutorial.cpp
+	BACKENDS reference
+)
+
 # targets to list and build the test for this category
 get_property( unit_tests_list GLOBAL PROPERTY tests_category_unit )
 add_custom_target( "list_tests_category_unit"
