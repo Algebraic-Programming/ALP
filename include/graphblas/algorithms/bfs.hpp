@@ -24,8 +24,8 @@
  * @date: May 26th, 2023
  */
 
-#ifndef _H_GRB_TRIANGLE_ENUMERATION
-#define _H_GRB_TRIANGLE_ENUMERATION
+#ifndef _H_GRB_BFS
+#define _H_GRB_BFS
 
 #include <climits>
 #include <numeric>
@@ -231,4 +231,4 @@ namespace grb {
 
 } // namespace grb
 
-#endif // _H_GRB_TRIANGLE_ENUMERATION
+#endif // _H_GRB_BFS
