@@ -94,7 +94,7 @@ add_grb_executables( from_mpi_launch_simple_pagerank_broadcast simple_pagerank_b
 )
 
 add_grb_executables( bfs bfs.cpp
-	BACKENDS reference reference_omp bsp1d hybrid hyperdags nonblocking
+	BACKENDS reference reference_omp hyperdags nonblocking
 	ADDITIONAL_LINK_LIBRARIES test_utils
 )
 

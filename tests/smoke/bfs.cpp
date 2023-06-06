@@ -34,13 +34,15 @@ grb::Vector< size_t > stdVectorToGrbVector( const std::vector< size_t > & in ) {
 	return out;
 }
 
-template< typename T = void >
+template< typename T >
 struct input_t {
 	grb::Matrix< T > A;
 	size_t root;
-	size_t expected_total_steps;
-	bool compute_steps_per_vertex;
-	grb::Vector< size_t > expected_steps_per_vertex;
+	size_t expected_max_level;
+	bool compute_levels;
+	const grb::Vector< size_t > & expected_levels;
+	bool compute_parents;
+	const grb::Vector< size_t > & expected_parents;
 };
 
 struct output_t {
@@ -50,40 +52,39 @@ struct output_t {
 };
 
 template< typename T >
-void grbProgram( const input_t< T > & input, output_t & output ) {
+void grbProgram( const struct input_t< T > & input, struct output_t & output ) {
 	std::cout << std::endl << "Running BFS" << std::endl;
 	grb::utils::Timer timer;
-	size_t total_steps = ULONG_MAX;
-	grb::Vector< size_t > steps_per_vertex( grb::nrows( input.A ), 0UL );
+	size_t max_level;
+	grb::Vector< size_t > levels( grb::nrows( input.A ), 0UL ), parents( grb::nrows( input.A ), 0UL );
 
 	timer.reset();
-	if( input.compute_steps_per_vertex ) {
-		grb::resize( steps_per_vertex, grb::nrows( input.A ) );
-		output.rc = output.rc ? output.rc : grb::algorithms::bfs( input.A, input.root, total_steps, steps_per_vertex );
-	} else {
-		output.rc = output.rc ? output.rc : grb::algorithms::bfs( input.A, input.root, total_steps );
-	}
+	output.rc = output.rc ? output.rc : grb::algorithms::bfs( input.A, input.root, max_level, input.compute_levels, levels, input.compute_parents, parents );
 	timer.reset();
 
-	if( total_steps <= input.expected_total_steps ) {
-		std::cout << "SUCCESS: total_steps = " << total_steps << " is correct" << std::endl;
+	if( max_level <= input.expected_max_level ) {
+		std::cout << "SUCCESS: max_level = " << max_level << " is correct" << std::endl;
 	} else {
-		std::cerr << "FAILED: expected maximum " << input.expected_total_steps << " total_steps but got " << total_steps << std::endl;
+		std::cerr << "FAILED: expected maximum " << input.expected_max_level << " max_level but got " << max_level << std::endl;
 		output.rc = grb::RC::FAILED;
+		return;
 	}
 
-	if( input.compute_steps_per_vertex ) {
-		// Check steps_per_vertex by comparing it with the expected one
-		if( std::equal( input.expected_steps_per_vertex.cbegin(), input.expected_steps_per_vertex.cend(), steps_per_vertex.cbegin() ) ) {
-			std::cout << "SUCCESS: steps_per_vertex is correct" << std::endl;
+	if( input.compute_levels ) {
+		// Check levels by comparing it with the expected one
+		if( std::equal( input.expected_levels.cbegin(), input.expected_levels.cend(), levels.cbegin() ) ) {
+			std::cout << "SUCCESS: expected_levels is correct" << std::endl;
 		} else {
-			std::cerr << "FAILED: steps_per_vertex is incorrect" << std::endl;
-			std::cerr << "steps_per_vertex != expected_steps_per_vertex" << std::endl;
+			std::cerr << "FAILED: levels is incorrect" << std::endl;
+			std::cerr << "levels != expected_levels" << std::endl;
 			for( size_t i = 0; i < grb::nrows( input.A ); i++ )
-				std::cerr << std::string( 3, ' ' ) << steps_per_vertex[ i ] << " | " << input.expected_steps_per_vertex[ i ] << std::endl;
-
+				std::cerr << std::string( 3, ' ' ) << levels[ i ] << " | " << input.expected_levels[ i ] << std::endl;
 			output.rc = grb::RC::FAILED;
+			return;
 		}
+	}
+	if( input.compute_parents ) {
+		// TODO:
 	}
 }
 
@@ -96,15 +97,17 @@ int main( int argc, char ** argv ) {
 	std::cout << "Test executable: " << argv[ 0 ] << std::endl;
 
 	// Check if we are testing on a file
-	if( argc != 1 && argc != 3 ) {
-		std::cerr << "Usage: \n\t" << argv[ 0 ] << " [ <graph_path> <expected_triangle_count> ]" << std::endl;
+	if( argc != 1 && argc != 4 ) {
+		std::cerr << "Usage: \n\t" << argv[ 0 ] << " [ <graph_path> <root> <expected_max_level> ]" << std::endl;
 		return 1;
 	}
-	bool test_on_file = argc == 3;
-	std::string file_to_test( test_on_file ? argv[ 1 ] : "" );
-	size_t expected_file_triangles = test_on_file ? std::stoul( argv[ 2 ] ) : 0;
+	bool test_on_file = ( argc == 4 );
 
 	if( test_on_file ) { // Test on a file
+		std::string file_to_test( argv[ 1 ] );
+		size_t root = std::stoul( argv[ 2 ] );
+		size_t expected_max_level = std::stoul( argv[ 3 ] );
+
 		std::cout << "-- Running test on file " << file_to_test << std::endl;
 
 		// Read matrix from file as a pattern matrix (i.e. no values)
@@ -118,10 +121,9 @@ int main( int argc, char ** argv ) {
 		}
 
 		std::cout << "Matrix read successfully" << std::endl;
-		// TODO: Find a way to ask the steps_per_vertex to the user
-		input_t< void > input { A, 0, expected_file_triangles, false, { 0 } };
+		input_t< void > input { A, root, expected_max_level, false, { 0 }, false, { 0 } };
 		output_t output;
-		grb::RC bench_rc = benchmarker.exec( &grbProgram, input, output, niterations, 1 );
+		grb::RC bench_rc = benchmarker.exec( &grbProgram, input, output, niterations, 1, true );
 		if( bench_rc ) {
 			std::cerr << "ERROR during execution of file " << file_to_test << ": rc = " << bench_rc << std::endl;
 			return bench_rc;
@@ -144,16 +146,16 @@ int main( int argc, char ** argv ) {
 		 */
 		{ // Directed version, pattern matrix, root = 0
 			std::cout << "-- Running test on A1 (directed, non-pattern)" << std::endl;
-			size_t expected_total_steps = 1;
+			size_t expected_max_level = 1;
 			size_t root = 0;
 			grb::Matrix< void > A( 4, 4 );
 			std::vector< size_t > A_rows { { 0, 0, 0 } };
 			std::vector< size_t > A_cols { { 1, 2, 3 } };
 			grb::buildMatrixUnique( A, A_rows.data(), A_cols.data(), A_rows.size(), grb::IOMode::PARALLEL );
-			std::vector< size_t > expected_steps_per_vertex { 0, 1, 1, 1 };
-			input_t< void > input { A, root, expected_total_steps, true, stdVectorToGrbVector( expected_steps_per_vertex ) };
+			std::vector< size_t > expected_levels { 0, 1, 1, 1 };
+			input_t< void > input { A, root, expected_max_level, true, stdVectorToGrbVector( expected_levels ), false, { 0 } };
 			output_t output;
-			grb::RC bench_rc = benchmarker.exec( &grbProgram, input, output, niterations, 1 );
+			grb::RC bench_rc = benchmarker.exec( &grbProgram, input, output, niterations, 1, true );
 			if( bench_rc ) {
 				std::cerr << "ERROR during execution: rc = " << bench_rc << std::endl;
 				return bench_rc;
@@ -179,16 +181,17 @@ int main( int argc, char ** argv ) {
 		   * => 2 step(s) to reach all nodes
 		   */
 			std::cout << "-- Running test on A2 (directed, pattern)" << std::endl;
-			size_t expected_total_steps = 2;
+			size_t expected_max_level = 2;
 			size_t root = 0;
 			grb::Matrix< void > A( 4, 4 );
 			std::vector< size_t > A_rows { { 0, 0, 2 } };
 			std::vector< size_t > A_cols { { 1, 2, 3 } };
 			grb::buildMatrixUnique( A, A_rows.data(), A_cols.data(), A_rows.size(), grb::IOMode::PARALLEL );
-			std::vector< size_t > expected_steps_per_vertex { 0, 1, 1, 2 };
-			input_t< void > input { A, root, expected_total_steps, true, stdVectorToGrbVector( expected_steps_per_vertex ) };
+			std::vector< size_t > expected_levels { 0, 1, 1, 2 };
+			std::vector< size_t > expected_parents { 0, 0, 0, 2 };
+			input_t< void > input { A, root, expected_max_level, true, stdVectorToGrbVector( expected_levels ), false, stdVectorToGrbVector( expected_parents ) };
 			output_t output;
-			grb::RC bench_rc = benchmarker.exec( &grbProgram, input, output, niterations, 1 );
+			grb::RC bench_rc = benchmarker.exec( &grbProgram, input, output, niterations, 1, true );
 			if( bench_rc ) {
 				std::cerr << "ERROR during execution: rc = " << bench_rc << std::endl;
 				return bench_rc;
@@ -211,17 +214,18 @@ int main( int argc, char ** argv ) {
 		   * => 3 step(s) to reach all nodes
 		   */
 			std::cout << "-- Running test on A3 (directed, non-pattern: int)" << std::endl;
-			size_t expected_total_steps = 3;
+			size_t expected_max_level = 3;
 			size_t root = 0;
 			grb::Matrix< int > A( 4, 4 );
 			std::vector< size_t > A_rows { { 0, 1, 2 } };
 			std::vector< size_t > A_cols { { 1, 2, 3 } };
 			std::vector< int > A_values( A_rows.size(), 1 );
 			grb::buildMatrixUnique( A, A_rows.data(), A_cols.data(), A_values.data(), A_values.size(), grb::IOMode::PARALLEL );
-			std::vector< size_t > expected_steps_per_vertex { 0, 1, 2, 3 };
-			input_t< int > input { A, root, expected_total_steps, true, stdVectorToGrbVector( expected_steps_per_vertex ) };
+			std::vector< size_t > expected_levels { 0, 1, 2, 3 };
+			std::vector< size_t > expected_parents { 0, 0, 1, 2 };
+			input_t< int > input { A, root, expected_max_level, true, stdVectorToGrbVector( expected_levels ), false, stdVectorToGrbVector( expected_parents ) };
 			output_t output;
-			grb::RC bench_rc = benchmarker.exec( &grbProgram, input, output, niterations, 1 );
+			grb::RC bench_rc = benchmarker.exec( &grbProgram, input, output, niterations, 1, true );
 			if( bench_rc ) {
 				std::cerr << "ERROR during execution: rc = " << bench_rc << std::endl;
 				return bench_rc;
@@ -236,16 +240,17 @@ int main( int argc, char ** argv ) {
 		   * => 3 step(s) to reach all nodes
 		   */
 			std::cout << "-- Running test on A3 (directed, pattern)" << std::endl;
-			size_t expected_total_steps = 3;
+			size_t expected_max_level = 3;
 			size_t root = 0;
 			grb::Matrix< void > A( 4, 4 );
 			std::vector< size_t > A_rows { { 0, 1, 2 } };
 			std::vector< size_t > A_cols { { 1, 2, 3 } };
 			grb::buildMatrixUnique( A, A_rows.data(), A_cols.data(), A_rows.size(), grb::IOMode::PARALLEL );
-			std::vector< size_t > expected_steps_per_vertex { 0, 1, 2, 3 };
-			input_t< void > input { A, root, expected_total_steps, true, stdVectorToGrbVector( expected_steps_per_vertex ) };
+			std::vector< size_t > expected_levels { 0, 1, 2, 3 };
+			std::vector< size_t > expected_parents { 0, 0, 1, 2 };
+			input_t< void > input { A, root, expected_max_level, true, stdVectorToGrbVector( expected_levels ), false, stdVectorToGrbVector( expected_parents ) };
 			output_t output;
-			grb::RC bench_rc = benchmarker.exec( &grbProgram, input, output, niterations, 1 );
+			grb::RC bench_rc = benchmarker.exec( &grbProgram, input, output, niterations, 1, true );
 			if( bench_rc ) {
 				std::cerr << "ERROR during execution: rc = " << bench_rc << std::endl;
 				return bench_rc;
@@ -260,16 +265,17 @@ int main( int argc, char ** argv ) {
 		   * => impossible to reach all nodes
 		   */
 			std::cout << "-- Running test on A3 (directed, pattern)" << std::endl;
-			size_t expected_total_steps = ULONG_MAX;
+			size_t expected_max_level = ULONG_MAX;
 			size_t root = 3;
 			grb::Matrix< void > A( 4, 4 );
 			std::vector< size_t > A_rows { { 0, 1, 2 } };
 			std::vector< size_t > A_cols { { 1, 2, 3 } };
 			grb::buildMatrixUnique( A, A_rows.data(), A_cols.data(), A_rows.size(), grb::IOMode::PARALLEL );
-			std::vector< size_t > expected_steps_per_vertex { ULONG_MAX, ULONG_MAX, ULONG_MAX, 0 };
-			input_t< void > input { A, root, expected_total_steps, true, stdVectorToGrbVector( expected_steps_per_vertex ) };
+			std::vector< size_t > expected_levels { ULONG_MAX, ULONG_MAX, ULONG_MAX, 0 };
+			std::vector< size_t > expected_parents { ULONG_MAX, ULONG_MAX, ULONG_MAX, 3 };
+			input_t< void > input { A, root, expected_max_level, true, stdVectorToGrbVector( expected_levels ), false, stdVectorToGrbVector( expected_parents ) };
 			output_t output;
-			grb::RC bench_rc = benchmarker.exec( &grbProgram, input, output, niterations, 1 );
+			grb::RC bench_rc = benchmarker.exec( &grbProgram, input, output, niterations, 1, true );
 			if( bench_rc ) {
 				std::cerr << "ERROR during execution: rc = " << bench_rc << std::endl;
 				return bench_rc;
@@ -296,16 +302,17 @@ int main( int argc, char ** argv ) {
 		   * => 3 step(s) to reach all nodes
 		   */
 			std::cout << "-- Running test on A4 (directed, pattern, one cycle)" << std::endl;
-			size_t expected_total_steps = 3;
+			size_t expected_max_level = 3;
 			size_t root = 0;
 			grb::Matrix< void > A( 4, 4 );
 			std::vector< size_t > A_rows { { 0, 1, 2, 3 } };
 			std::vector< size_t > A_cols { { 1, 3, 1, 2 } };
 			grb::buildMatrixUnique( A, A_rows.data(), A_cols.data(), A_rows.size(), grb::IOMode::PARALLEL );
-			std::vector< size_t > expected_steps_per_vertex { 0, 1, 3, 2 };
-			input_t< void > input { A, root, expected_total_steps, true, stdVectorToGrbVector( expected_steps_per_vertex ) };
+			std::vector< size_t > expected_levels { 0, 1, 3, 2 };
+			std::vector< size_t > expected_parents { 0, 0, 3, 1 };
+			input_t< void > input { A, root, expected_max_level, true, stdVectorToGrbVector( expected_levels ), false, stdVectorToGrbVector( expected_parents ) };
 			output_t output;
-			grb::RC bench_rc = benchmarker.exec( &grbProgram, input, output, niterations, 1 );
+			grb::RC bench_rc = benchmarker.exec( &grbProgram, input, output, niterations, 1, true );
 			if( bench_rc ) {
 				std::cerr << "ERROR during execution: rc = " << bench_rc << std::endl;
 				return bench_rc;

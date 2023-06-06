@@ -126,17 +126,29 @@ namespace grb {
 			void printSparseVector( const grb::Vector< D > & v, const std::string & name ) {
 				(void)v;
 				(void)name;
-
 #ifdef _DEBUG
 				grb::wait( v );
 				std::cout << "Vector \"" << name << "\" (" << grb::size( v ) << "):" << std::endl << "[  ";
 				if( grb::size( v ) > 50 ) {
 					std::cout << "too large to print " << std::endl;
+				} else if( grb::nnz( v ) <= 0 ) {
+					for( size_t i = 0; i < grb::size( v ); i++ )
+						std::cout << "_ ";
 				} else {
-					for( const std::pair< size_t, D > & pair : v )
-						std::cout << pair.second << " ";
-					std::cout << " ]" << std::endl;
+					size_t nnz_idx = 0;
+					auto it = v.cbegin();
+					for( size_t i = 0; i < grb::size( v ); i++ ) {
+						if( nnz_idx < grb::nnz( v ) && i == it->first ) {
+							std::cout << it->second << " ";
+							nnz_idx++;
+							if( nnz_idx < grb::nnz( v ) )
+								++it;
+						} else {
+							std::cout << "_ ";
+						}
+					}
 				}
+				std::cout << " ]" << std::endl;
 #endif
 			}
 
@@ -147,66 +159,68 @@ namespace grb {
 			}
 		} // namespace utils
 
-		template< typename D, bool compute_steps_per_vertex = true >
-		grb::RC bfs( const Matrix< D > & A, size_t root, size_t & total_steps, grb::Vector< size_t > & steps_per_vertex ) {
+		template< typename D >
+		grb::RC bfs( const Matrix< D > & A, size_t root, size_t & max_level, bool compute_levels, grb::Vector< size_t > & levels, bool compute_parents, grb::Vector< size_t > & parents ) {
 			grb::RC rc = grb::RC::SUCCESS;
 			const size_t nvertices = grb::nrows( A );
 
 			std::cout << "Running BFS from " << root << " on " << nvertices << " vertices." << std::endl;
 
-			total_steps = ULONG_MAX;
-			grb::Vector< bool > x( nvertices ), y( nvertices );
+			max_level = std::numeric_limits< size_t >::max();
+			grb::Vector< bool > x( nvertices, nvertices ), y( nvertices, nvertices );
 			grb::set( x, false );
 			grb::setElement( x, true, root );
 			grb::set( y, x );
 
 			utils::printSparseMatrix( A, "A" );
-			utils::printSparseVector( x, "X - initial" );
-			utils::printSparseVector( y, "Y - initial" );
+			utils::printSparseVector( x, "x" );
 
-			if( compute_steps_per_vertex ) {
-				// Fill the steps_per_vertex vector with ULONG_MAX, except for the root vertex which is set to 0
-				grb::resize( steps_per_vertex, nvertices );
-				grb::set( steps_per_vertex, ULONG_MAX, grb::Phase::EXECUTE );
-				grb::setElement( steps_per_vertex, 0UL, root );
-				utils::printSparseVector( steps_per_vertex, "steps_per_vertex" );
+			if( compute_levels ) {
+				grb::resize( levels, nvertices );
+				grb::set( levels, std::numeric_limits< size_t >::max() );
+				grb::setElement( levels, 0UL, root );
+				utils::printSparseVector( levels, "levels" );
+			}
+			if( compute_parents ) {
+				grb::resize( parents, nvertices );
+				grb::set( parents, std::numeric_limits< size_t >::max() );
+				grb::setElement( parents, root, root );
+				utils::printSparseVector( parents, "parents" );
+				// TODO:
 			}
 
-			for( size_t depth = 0; depth < nvertices; depth++ ) {
+			for( size_t level = 0; level < nvertices; level++ ) {
+				utils::debugPrint( "** Level " + std::to_string( level ) + ":\n" );
 
-				{ // Multiply the current frontier by the adjacency matrix
-					grb::Semiring< grb::operators::logical_or< bool >, grb::operators::logical_and< bool >, grb::identities::logical_false, grb::identities::logical_true > bool_semiring;
-					rc = rc ? rc : grb::vxm( y, x, A, bool_semiring, grb::Phase::RESIZE );
-					rc = rc ? rc : grb::vxm( y, x, A, bool_semiring, grb::Phase::EXECUTE );
+				// Multiply the current frontier by the adjacency matrix
+				grb::Semiring< grb::operators::logical_or< bool >, grb::operators::logical_and< bool >, grb::identities::logical_false, grb::identities::logical_true > bool_semiring;
+				rc = rc ? rc : grb::vxm( y, x, A, bool_semiring, grb::Phase::RESIZE );
+				rc = rc ? rc : grb::vxm( y, x, A, bool_semiring, grb::Phase::EXECUTE );
+
+				utils::printSparseVector( x, "x " );
+				utils::printSparseVector( y, "y" );
+
+				if( compute_levels ) { // Assign the current level to the newly discovered vertices only
+					grb::eWiseLambda(
+						[ &levels, &y, level ]( const size_t i ) {
+							if( y[ i ] )
+								levels[ i ] = std::min( levels[ i ], level + 1 );
+						},
+						levels, y );
+					utils::printSparseVector( levels, "levels" );
+				}
+				if( compute_parents ) {
+					// TODO:
 				}
 
-				utils::debugPrint( "-- Depth " + std::to_string( depth ) + ":\n" );
-				utils::printSparseVector( x, "X " );
-				utils::printSparseVector( y, "Y" );
-
-				if( compute_steps_per_vertex ) { // Assign the current depth to the newly discovered vertices only
-					// This block is identical to the commented eWiseApply below
-					grb::Semiring< grb::operators::left_assign_if< size_t >, grb::operators::min< size_t >, grb::identities::infinity, grb::identities::infinity > min_semiring;
-					grb::eWiseMul( steps_per_vertex, y, depth + 1, steps_per_vertex, min_semiring, grb::Phase::EXECUTE );
-					// grb::eWiseLambda(
-					// 	[ &steps_per_vertex, &y, depth ]( const size_t i ) {
-					// 		if( y[ i ] )
-					// 			steps_per_vertex[ i ] = std::min( steps_per_vertex[ i ], depth + 1 );
-					// 	},
-					// 	steps_per_vertex, y );
-					utils::printSparseVector( steps_per_vertex, "steps_per_vertex" );
-				}
-
-				{ // Check if all vertices have been discovered, equivalent of an std::all on the frontier
-					bool all_visited = true;
-					rc = rc ? rc : grb::foldl( all_visited, y, grb::Monoid< grb::operators::logical_and< bool >, grb::identities::logical_true >() );
-
-					if( all_visited ) {
-						// If all vertices are discovered, stop
-						utils::debugPrint( "Took " + std::to_string( depth + 1 ) + " steps to discover all of the " + std::to_string( nvertices ) + " vertices.\n" );
-						total_steps = depth + 1;
-						return rc;
-					}
+				// Check if all vertices have been discovered, equivalent of an std::all on the frontier
+				bool all_visited = true;
+				rc = rc ? rc : grb::foldl( all_visited, y, grb::Monoid< grb::operators::logical_and< bool >, grb::identities::logical_true >() );
+				if( all_visited ) {
+					// If all vertices are discovered, stop
+					utils::debugPrint( "Explored " + std::to_string( level + 1 ) + " levels to discover all of the " + std::to_string( nvertices ) + " vertices.\n" );
+					max_level = level + 1;
+					return rc;
 				}
 
 				// Swap the frontier, avoid a copy
@@ -222,9 +236,9 @@ namespace grb {
 		}
 
 		template< typename D >
-		grb::RC bfs( const Matrix< D > & A, size_t root, size_t & total_steps ) {
-			grb::Vector< size_t > steps_per_vertex( 0 );
-			return bfs< D, false >( A, root, total_steps, steps_per_vertex );
+		grb::RC bfs( const Matrix< D > & A, size_t root, size_t & max_level ) {
+			grb::Vector< size_t > unusued_vec( 0 );
+			return bfs( A, root, max_level, false, unusued_vec, false, unusued_vec );
 		}
 
 	} // namespace algorithms
