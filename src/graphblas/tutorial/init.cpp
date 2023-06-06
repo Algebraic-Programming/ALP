@@ -17,33 +17,23 @@
 
 /*
  * @author A. N. Yzelman
- * @date 21st of February, 2017
+ * @date 2nd of February, 2017
  */
 
-#ifndef _H_GRB_IO
-#define _H_GRB_IO
+#include <graphblas/reference/init.hpp>
 
-#include "base/io.hpp"
+#include <graphblas/utils/alloc.hpp>
 
-// now include all specialisations contained in the backend directories:
-#ifdef _GRB_WITH_REFERENCE
- #include <graphblas/reference/io.hpp>
-#endif
-#ifdef _GRB_WITH_HYPERDAGS
- #include <graphblas/hyperdags/io.hpp>
-#endif
-#ifdef _GRB_WITH_NONBLOCKING
- #include "graphblas/nonblocking/io.hpp"
-#endif
-#ifdef _GRB_WITH_LPF
- #include <graphblas/bsp1d/io.hpp>
-#endif
-#ifdef _GRB_WITH_BANSHEE
- #include <graphblas/banshee/io.hpp>
-#endif
-#ifdef _GRB_WITH_TUTORIAL
- #include <graphblas/tutorial/io.hpp>
+#ifndef _GRB_NO_LIBNUMA
+ #include <numa.h> //numa_set_localalloc
 #endif
 
-#endif // end ``_H_GRB_IO''
+template<>
+grb::RC grb::init< grb::tutorial >( const size_t s, const size_t P, void * const data ) {
+	return grb::init< grb::reference>( s, P, data );
+}
 
+template<>
+grb::RC grb::finalize< grb::tutorial >() {
+	return grb::finalize<reference>();
+}

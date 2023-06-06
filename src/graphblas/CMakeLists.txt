@@ -95,6 +95,10 @@ if( WITH_BSP1D_BACKEND OR WITH_HYBRID_BACKEND )
 	add_subdirectory( bsp1d )
 endif()
 
+if( WITH_TUTORIAL_BACKEND )
+	add_subdirectory( tutorial )
+endif()
+
 
 # macro to create a target for the shared memory library, with all minimal properties
 #
@@ -132,7 +136,7 @@ endmacro( make_reference_target )
 ### but storing only the minimum interface definitions (e.g. no OMP);
 ### no default backend is set!
 
-if( WITH_REFERENCE_BACKEND OR WITH_REFERENCE_OMP_BACKEND OR WITH_NONBLOCKING_BACKEND )
+if( WITH_REFERENCE_BACKEND OR WITH_REFERENCE_OMP_BACKEND OR WITH_NONBLOCKING_BACKEND OR WITH_TUTORIAL_BACKEND )
 
 	# alias target for basic propagation of headers and definitions
 	# from existing header target, which depends on the enabled backends;
@@ -149,6 +153,10 @@ if( WITH_REFERENCE_BACKEND OR WITH_REFERENCE_OMP_BACKEND OR WITH_NONBLOCKING_BAC
 	if( WITH_NONBLOCKING_BACKEND )
 		target_link_libraries( backend_shmem_static PRIVATE ${backend_nonblocking_headers} )
 	endif()
+	target_link_libraries( backend_shmem_static PRIVATE ${backend_shmem_base_headers} )
+	if( WITH_TUTORIAL_BACKEND )
+		target_link_libraries( backend_shmem_static PRIVATE ${backend_nonblocking_headers} )
+	endif()
 	# this is the actual binary file, i.e. the one to be installed
 	install( TARGETS backend_shmem_static
 		EXPORT GraphBLASTargets
@@ -161,6 +169,9 @@ if( WITH_REFERENCE_BACKEND OR WITH_REFERENCE_OMP_BACKEND OR WITH_NONBLOCKING_BAC
 	if( WITH_NONBLOCKING_BACKEND )
 		target_link_libraries( backend_shmem_shared PRIVATE ${backend_nonblocking_headers} )
 	endif()
+	if( WITH_TUTORIAL_BACKEND )
+		target_link_libraries( backend_shmem_shared PRIVATE ${backend_nonblocking_headers} )
+	endif()
 	install( TARGETS backend_shmem_shared
 		EXPORT GraphBLASTargets
 		LIBRARY DESTINATION "${SHMEM_BACKEND_INSTALL_DIR}"
@@ -170,4 +181,6 @@ if( WITH_REFERENCE_BACKEND OR WITH_REFERENCE_OMP_BACKEND OR WITH_NONBLOCKING_BAC
 	add_dependencies( libs backend_shmem_shared )
 
 endif()
+
+
 

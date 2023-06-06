@@ -235,8 +235,33 @@ namespace grb {
 			const IOMode, const Dup &
 		);
 
+		template<
+			Descriptor, typename InputType,
+			typename fwd_iterator,
+			typename Coords, class Dup
+		>
+		friend RC buildVector(
+			Vector< InputType, tutorial, Coords > &, fwd_iterator, const fwd_iterator,
+			const IOMode, const Dup &
+		);
+
+		template<
+			Descriptor descr, typename InputType,
+			typename fwd_iterator1, typename fwd_iterator2,
+			typename Coords, class Dup
+		>
+		friend RC buildVector(
+			Vector< InputType, tutorial, Coords > &,
+			fwd_iterator1, const fwd_iterator1,
+			fwd_iterator2, const fwd_iterator2,
+			const IOMode, const Dup &
+		);
+
 		template< typename InputType, typename Coords >
 		friend uintptr_t getID( const Vector< InputType, reference, Coords > & );
+
+		template< typename InputType, typename Coords >
+		friend uintptr_t getID( const Vector< InputType, tutorial, Coords > & );
 
 		friend class PinnedVector< D, reference >;
 

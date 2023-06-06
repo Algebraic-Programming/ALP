@@ -124,6 +124,38 @@ if( WITH_NONBLOCKING_BACKEND )
 
 endif( WITH_NONBLOCKING_BACKEND )
 
+if( TUTORIAL_BACKEND_DEFAULT_NAME )
+
+	assert_defined_targets( backend_shmem_static )
+
+	## nonblocking static
+	add_library( backend_tutorial_static INTERFACE )
+	target_link_libraries( backend_tutorial_static INTERFACE backend_shmem_static )
+	target_link_libraries( backend_tutorial_static INTERFACE backend_tutorial_headers )
+	target_compile_definitions( backend_tutorial_static INTERFACE "${TUTORIAL_SELECTION_DEFS}" )
+
+	install( TARGETS backend_tutorial_static
+		EXPORT GraphBLASTargets
+		ARCHIVE DESTINATION "${SHMEM_BACKEND_INSTALL_DIR}"
+	)
+
+	## nonblocking shared
+	add_library( backend_tutorial_shared INTERFACE )
+	target_link_libraries( backend_tutorial_shared INTERFACE backend_shmem_shared )
+	target_link_libraries( backend_tutorial_shared INTERFACE backend_nonblocking_headers )
+	target_compile_definitions( backend_tutorial_shared INTERFACE "${NONBLTUTORIAL_SELECTION_DEFSOCKING_SELECTION_DEFS}" )
+
+	install( TARGETS backend_tutorial_shared
+		EXPORT GraphBLASTargets
+		LIBRARY DESTINATION "${SHMEM_BACKEND_INSTALL_DIR}"
+	)
+
+	# this is an alias for add_grb_executables() to select the backend to link against
+	# DO NOT CHANGE THE ALIAS NAME!
+	add_library( "${TUTORIAL_BACKEND_DEFAULT_NAME}" ALIAS backend_tutorial_static )
+
+endif( TUTORIAL_BACKEND_DEFAULT_NAME )
+
 
 # library with utilities for tests, to be used optionally
 # i.e. NOT linked by default

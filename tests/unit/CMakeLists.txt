@@ -273,7 +273,7 @@ add_grb_executables( properties static_asserts/properties.cpp
 )
 
 add_grb_executables( tutorial tutorial.cpp
-	BACKENDS reference
+	BACKENDS reference tutorial
 )
 
 # targets to list and build the test for this category

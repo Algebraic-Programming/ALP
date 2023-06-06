@@ -22,7 +22,7 @@
 #
 
 assert_defined_variables( WITH_REFERENCE_BACKEND WITH_OMP_BACKEND WITH_NONBLOCKING_BACKEND
-	WITH_BSP1D_BACKEND WITH_HYBRID_BACKEND
+	WITH_BSP1D_BACKEND WITH_HYBRID_BACKEND WITH_TUTORIAL_BACKEND
 )
 
 ### STANDARD TARGET NAMES
@@ -33,6 +33,7 @@ set( BSP1D_BACKEND_DEFAULT_NAME "backend_bsp1d" )
 set( HYBRID_BACKEND_DEFAULT_NAME "backend_hybrid" )
 set( HYPERDAGS_BACKEND_DEFAULT_NAME "backend_hyperdags" )
 set( NONBLOCKING_BACKEND_DEFAULT_NAME "backend_nonblocking" )
+set( TUTORIAL_BACKEND_DEFAULT_NAME "backend_tutorial" )
 
 ### COMPILER DEFINITIONS FOR HEADERS INCLUSION AND FOR BACKEND SELECTION
 
@@ -42,6 +43,7 @@ set( REFERENCE_OMP_INCLUDE_DEFS "_GRB_WITH_OMP" )
 set( HYPERDAGS_INCLUDE_DEFS "_GRB_WITH_HYPERDAGS" )
 set( NONBLOCKING_INCLUDE_DEFS "_GRB_WITH_NONBLOCKING" )
 set( LPF_INCLUDE_DEFS "_GRB_WITH_LPF" )
+set( TUTORIAL_INCLUDE_DEFS "_GRB_WITH_TUTORIAL" )
 
 # compiler definitions to select a backend
 set( REFERENCE_SELECTION_DEFS "_GRB_BACKEND=reference" )
@@ -59,12 +61,13 @@ set( HYBRID_SELECTION_DEFS
 		"_GRB_BACKEND=BSP1D"
 		"_GRB_BSP1D_BACKEND=reference_omp"
 )
+set( TUTORIAL_SELECTION_DEFS "_GRB_BACKEND=tutorial" )
 
 # definition to set if not depending on libnuma
 set( NO_NUMA_DEF "_GRB_NO_LIBNUMA" )
 
 ### **ALL** BACKENDS, EVEN IF NOT ENABLED BY USER
-set( ALL_BACKENDS "reference" "reference_omp" "hyperdags" "nonblocking" "bsp1d" "hybrid" )
+set( ALL_BACKENDS "reference" "reference_omp" "hyperdags" "nonblocking" "bsp1d" "hybrid" "tutorial" )
 
 # list of user-enabled backends, for tests and wrapper scripts (do not change!)
 set( AVAILABLE_BACKENDS "" )
@@ -97,6 +100,10 @@ endif()
 
 if( WITH_HYBRID_BACKEND )
 	list( APPEND AVAILABLE_BACKENDS "hybrid" )
+endif()
+
+if( WITH_TUTORIAL_BACKEND )
+	list( APPEND AVAILABLE_BACKENDS "tutorial" )
 endif()
 
 # add your own here!

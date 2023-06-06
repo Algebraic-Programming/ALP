@@ -44,6 +44,9 @@
 #ifdef _GRB_WITH_BANSHEE
  #include "graphblas/banshee/config.hpp"
 #endif
+#ifdef _GRB_WITH_TUTORIAL
+ #include "graphblas/tutorial/config.hpp"
+#endif
 
 #endif // end ``_H_GRB_CONFIG''
 

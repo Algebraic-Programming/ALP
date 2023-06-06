@@ -17,33 +17,21 @@
 
 /*
  * @author A. N. Yzelman
- * @date 21st of February, 2017
+ * @date 29th of March, 2022
  */
 
-#ifndef _H_GRB_IO
-#define _H_GRB_IO
+#include <graphblas.hpp>
 
-#include "base/io.hpp"
 
-// now include all specialisations contained in the backend directories:
-#ifdef _GRB_WITH_REFERENCE
- #include <graphblas/reference/io.hpp>
-#endif
-#ifdef _GRB_WITH_HYPERDAGS
- #include <graphblas/hyperdags/io.hpp>
-#endif
-#ifdef _GRB_WITH_NONBLOCKING
- #include "graphblas/nonblocking/io.hpp"
-#endif
-#ifdef _GRB_WITH_LPF
- #include <graphblas/bsp1d/io.hpp>
-#endif
-#ifdef _GRB_WITH_BANSHEE
- #include <graphblas/banshee/io.hpp>
-#endif
-#ifdef _GRB_WITH_TUTORIAL
- #include <graphblas/tutorial/io.hpp>
-#endif
+namespace grb {
 
-#endif // end ``_H_GRB_IO''
+	/**
+	 * \internal This is a blocking implementation, so wait is a no-op.
+	 */
+	template<>
+	RC wait< tutorial >() {
+		return SUCCESS;
+	}
+
+}
 

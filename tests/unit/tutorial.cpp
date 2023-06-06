@@ -35,13 +35,10 @@ int main( int argc, char ** argv ) {
 
 	grb::Launcher< grb::AUTOMATIC > launcher;
 	grb::RC out;
-	if( launcher.exec( &grb_program, in, out, true ) != grb::SUCCESS ) {
-		std::cerr << "Launching test FAILED\n";
-		return 255;
-	}
+	grb_program( in, out );
 	if( out != grb::SUCCESS ) {
 		std::cerr << std::flush;
-		std::cout << "Test FAILED (" << grb::toString( out ) << ")" << std::endl;
+		std::cout << "Test FAILED" << std::endl;
 	} else {
 		std::cout << "Test OK" << std::endl;
 	}

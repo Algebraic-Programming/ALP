@@ -40,6 +40,9 @@
 #ifdef _GRB_WITH_LPF
  #include <graphblas/bsp1d/blas1.hpp>
 #endif
+#ifdef _GRB_WITH_TUTORIAL
+ #include <graphblas/tutorial/blas1.hpp>
+#endif
 
 #endif // end ``_H_GRB_BLAS1''
 

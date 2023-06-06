@@ -214,7 +214,12 @@ namespace grb {
 		 *       selectable.
 		 * \endinternal
 		 */
-		banshee_ssr
+		banshee_ssr,
+
+		/**
+		 * Backend for tutorial purposes
+		 */
+		tutorial
 
 	};
 

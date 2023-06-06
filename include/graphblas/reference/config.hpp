@@ -97,7 +97,7 @@ namespace grb {
 		class PREFETCHING {
 
 			// guard against unintended use
-			static_assert( backend == reference || backend == reference_omp,
+			static_assert( backend == reference || backend == reference_omp || backend == tutorial,
 				"Instantiating for non-reference backend" );
 
 			public:

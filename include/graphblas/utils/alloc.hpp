@@ -65,6 +65,9 @@ namespace grb {
 #ifdef _GRB_WITH_BANSHEE
  #include "graphblas/banshee/alloc.hpp"
 #endif
+#ifdef _GRB_WITH_TUTORIAL
+ #include "graphblas/tutorial/alloc.hpp"
+#endif
 
 // define user API:
 namespace grb {

@@ -195,6 +195,19 @@ if( WITH_HYBRID_BACKEND )
 	install( TARGETS backend_hybrid_headers EXPORT GraphBLASTargets )
 endif()
 
+if( WITH_TUTORIAL_BACKEND )
+	add_library( backend_tutorial_headers INTERFACE )
+	# tutorial headers depend on reference
+	target_link_libraries( backend_tutorial_headers INTERFACE backend_reference_headers )
+	target_compile_definitions( backend_tutorial_headers INTERFACE "${TUTORIAL_INCLUDE_DEFS}" )
+
+	install( TARGETS backend_tutorial_headers EXPORT GraphBLASTargets )
+	install( DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/graphblas/tutorial/"
+		DESTINATION "${GRB_INCLUDE_INSTALL_DIR}/tutorial"
+		FILES_MATCHING REGEX "${HEADERS_REGEX}"
+	)
+endif()
+
 # this target lists the algorithms implemented on top of the generic functionalities,
 # hence it depends only on backend_headers_nodefs
 add_library( algorithms INTERFACE )
