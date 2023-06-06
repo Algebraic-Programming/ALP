@@ -18,19 +18,20 @@ limitations under the License.
 
 - [Introduction to ALP/GraphBLAS Building and Testing Infrastructure:](#introduction-to-alpgraphblas-building-and-testing-infrastructure)
 - [The Building Infrastructure](#the-building-infrastructure)
-	- [Generation via the `bootstrap.sh` script](#generation-via-the-bootstrap-script)
-		- [Direct Generation via `cmake`](#direct-generation-via-cmake)
-		- [CMake Build Options, Types and Flags](#cmake-build-options-types-and-flags)
-	- [Naming conventions for targets](#naming-conventions-for-targets)
-	- [Adding a new test](#adding-a-new-test)
-	- [Adding a new backend](#adding-a-new-backend)
-		- [1. Add the related project options](#1-add-the-related-project-options)
-		- [2. Add the backend-specific variables](#2-add-the-backend-specific-variables)
-		- [3. Add the information to generate installation wrappers](#3-add-the-information-to-generate-installation-wrappers)
-		- [4. Add the headers target](#4-add-the-headers-target)
-		- [5. Add the binary target](#5-add-the-binary-target)
-		- [6. Add the backend name to the relevant tests](#6-add-the-backend-name-to-the-relevant-tests)
-- [The testing infrastructure](#the-testing-infrastructure)
+  - [Generation via the `bootstrap.sh` script](#generation-via-the-bootstrapsh-script)
+    - [Direct Generation via `cmake`](#direct-generation-via-cmake)
+    - [CMake Build Options, Types and Flags](#cmake-build-options-types-and-flags)
+  - [Naming conventions for targets](#naming-conventions-for-targets)
+  - [Adding a new test](#adding-a-new-test)
+  - [Adding a new backend](#adding-a-new-backend)
+    - [1. Add the related project options](#1-add-the-related-project-options)
+    - [2. Add the backend-specific variables](#2-add-the-backend-specific-variables)
+    - [3. Add the information to generate installation wrappers](#3-add-the-information-to-generate-installation-wrappers)
+    - [4. Add the headers target](#4-add-the-headers-target)
+    - [5. Add the binary target](#5-add-the-binary-target)
+    - [6. Add the backend name to the relevant tests](#6-add-the-backend-name-to-the-relevant-tests)
+- [Test Categories and modes](#test-categories-and-modes)
+- [Reproducible Builds](#reproducible-builds)
 
 # Introduction to ALP/GraphBLAS Building and Testing Infrastructure:
 
@@ -121,6 +122,8 @@ systems) and `Ninja` -- for more information, see
 runs of the script
 * `--delete-files` deletes all files in the current directory without asking for
 confirmation; it is iseful, for example, for scripted builds
+* `--with-datasets=<path/>` allows passing the path to the directory with the
+  datasets required to run some tests (otherwise skipped)
 * `--help` shows all available options and skips directory checks.
 
 For a dry run, just add the `--show` option to inspect the building command on
@@ -784,22 +787,7 @@ if( WITH_EXAMPLE_BACKEND )
     add_dependencies( examples sp_example )
 endif()
 ```
-# The testing infrastructure
-
-Tests are run via dedicated scripts in the project root, which invoke the
-specific test binaries.
-This solution deals with the complexity of testing ALP/GraphBLAS, whose
-different backends require different execution targets (shared-memory and a
-distributed system with an MPI or LPF launcher).
-
-These scripts are able to run tests compiled both via the previous Makefile
-infrastructure and via the new CMake one.
-
-In both cases, these scripts should be invoked via the corresponding
-`make` targets inside the build directory (e.g., `make unittests`): this
-invocation takes care of passing the scripts the relevant parameters (location
-of binaries, available backends, datasets location, output paths, ...) and, as
-usual, shows their output in the `stdout`.
+# Test Categories and modes
 
 Tests are grouped in *categories* according to what they test:
 
@@ -831,3 +819,22 @@ The various compilation flags and modes are defined and documented in the
 [CompileFlags.cmake file](../cmake/CompileFlags.cmake).
 During configuration this file generates a report with all compilation flags for
 the various target types and categories/modes.
+
+# Reproducible Builds
+To ease building and deploying ALP/GraphBLAS, dedicated Docker images can be
+built from the `Dockerfile`s in the *ALP/ReproducibleBuild* repository
+
+https://github.com/Algebraic-Programming/ReproducibleBuilds
+
+The images built from these files represent the standard build environment used
+by most ALP/GraphBLAS developers and contain all necessary dependencies to build
+*all* ALP/GraphBLAS backends and tests, including the necessary input datasets.
+You may refer to the
+[README](https://github.com/Algebraic-Programming/ReproducibleBuilds#readme) for
+more information about the content and how to build the images.
+
+The same images can be used for a Continuous Integration (CI) setup, as they
+provide all needed dependencies and tools.
+Indeed, the file [`.gitlab-ci.yml`](../.gitlab-ci.yml) describes the CI jobs
+that internally test ALP/GraphBLAS via [GitLab](https://about.gitlab.com/),
+which is available [open source](https://about.gitlab.com/install/).

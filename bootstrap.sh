@@ -73,6 +73,7 @@ print_help() {
 the location where LPF is installed"
 	echo "  --with-banshee=<path/>              - path to the the tools to compile the banshee backend"
 	echo "  --with-snitch=<path/>               - path to the tools for Snitch support within the banshee backend"
+	echo "  --with-datasets=<path/>             - path to the main testing datasets (use tools/downloadDatasets.sh to download)"
 	echo "  --no-reference                      - disables the reference and reference_omp backends"
 	echo "  --no-hyperdags                      - disables the hyperdags backend"
 	echo "  --with-hyperdags-using=<backend>    - uses the given backend reference for HyperDAG generation"
@@ -108,6 +109,7 @@ SNITCH_PATH=
 debug_build=no
 generator=
 delete_files=no
+DATASETS_PATH=
 
 if [[ "$#" -lt 1 ]]; then
 	echo "No argument given, at least --prefix=<path/to/install/directory/> is mandatory"
@@ -150,6 +152,9 @@ or assume default paths (--with-lpf)"
 	--with-snitch=*)
 			SNITCH_PATH="${arg#--with-snitch=}"
 			banshee=yes
+			;;
+	--with-datasets=*)
+			DATASETS_PATH="${arg#--with-datasets=}"
 			;;
 	--no-reference)
 			reference=no
@@ -245,6 +250,9 @@ if [[ "${lpf}" == "yes" ]]; then
 	fi
 fi
 
+if [[ ! -z "${DATASETS_PATH}" ]]; then
+	DATASETS_PATH="$(realpath -e -q "${DATASETS_PATH/#\~/$HOME}")"
+fi
 
 if [[ "${banshee}" == "yes" ]]; then
 	ABSOLUTE_BANSHEE_PATH="$(realpath -e -q "${BANSHEE_PATH/#\~/$HOME}")"
@@ -309,9 +317,11 @@ the current directory before invocation or confirm the deletion of its content w
 		CMAKE_OPTS+=" -DCMAKE_BUILD_TYPE=Release"
 	fi
 
-	DATASETS_DIR="${CURRENT_DIR}/datasets"
-	if [[ -d "${DATASETS_DIR}" ]]; then
-		CMAKE_OPTS+=" -DDATASETS_DIR='${DATASETS_DIR}'"
+	DEFAULT_DATASETS_DIR="${CURRENT_DIR}/datasets"
+	if [[ ! -z "${DATASETS_PATH}" ]]; then
+		CMAKE_OPTS+=" -DDATASETS_DIR='${DATASETS_PATH}'"
+	elif [[ -d "${DEFAULT_DATASETS_DIR}" ]]; then
+		CMAKE_OPTS+=" -DDATASETS_DIR='${DEFAULT_DATASETS_DIR}'"
 	fi
 	# GNN_DATASET_PATH is not needed, because unittests.sh sets a default
 

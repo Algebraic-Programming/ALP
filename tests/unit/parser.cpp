@@ -20,6 +20,7 @@
 #include <iostream>
 #include <map>
 #include <sstream>
+#include <stdexcept>
 
 #include "graphblas/SynchronizedNonzeroIterator.hpp"
 
@@ -197,152 +198,179 @@ bool readEdges(
  #include "graphblas/utils/parser.hpp"
 
 int main( int argc, char ** argv ) {
-	(void)argc;
 	std::cout << "Functional test executable: " << argv[ 0 ] << "\n";
+
+	if( argc != 2 ) {
+		std::cerr << "please, give path to cit-HepTh.txt" << std::endl;
+		std::cout << "Test FAILED" << std::endl;
+		return 255;
+	}
+
 	int ret = 0;
 
 	// a naive storage of the input matrix
 	std::map< size_t, std::set< size_t > > A;
 
 	// use utils parser
-	grb::utils::MatrixFileReader< void > citHepTh( "datasets/cit-HepTh.txt", false, true );
+	try {
+		const char * const dataset_file = argv[ 1 ];
+		grb::utils::MatrixFileReader< void > citHepTh( dataset_file , false, true );
 
-	// fill A
-	for( const auto & nz : citHepTh ) {
-		// try to find row in A
-		auto row = A.find( nz.first );
-		if( row == A.end() ) {
-			// if not found, add new row with this nonzero
-			// as sole content
-			std::set< size_t > initial;
-			initial.insert( nz.second );
-			A[ nz.first ] = initial;
-		} else {
-			// add this nonzero to the row found
-			row->second.insert( nz.second );
+		// fill A
+		for( const auto & nz : citHepTh ) {
+			// try to find row in A
+			auto row = A.find( nz.first );
+			if( row == A.end() ) {
+				// if not found, add new row with this nonzero
+				// as sole content
+				std::set< size_t > initial;
+				initial.insert( nz.second );
+				A[ nz.first ] = initial;
+			} else {
+				// add this nonzero to the row found
+				row->second.insert( nz.second );
+			}
 		}
-	}
 
-	// use direct parser
-	size_t nz, *I, *J, n;
-	n = 27770;
-	const bool rc = readEdges( "datasets/cit-HepTh.txt", true, &n, &nz, &I, &J, NULL );
-	if( ! rc ) {
-		std::cerr << "Error in use of direct parser.\n";
-		ret = 1;
-	}
-	// check nonzero count
-	if( nz != citHepTh.nz() ) {
-		std::cerr << "Direct parser nz count does not match util parser.\n";
-		ret = 2;
-	}
-
-	/* The below tests for automatic derivation of number of vertices, but this is not supported by the SNAP data files
-	 * n = SIZE_MAX;
-	const bool rc2 = readEdges(
-	    "datasets/cit-HepTh.txt", true, &n,
-	    &nz, &I, &J, NULL
-	);
-	if( !rc2 ) {
-	    std::cerr << "Error in use of direct parser.\n";
-	    ret = 3;
-	}
-	//check vertex count
-	if( n != 27770 ) {
-	    std::cerr << "Direct parser could not derive correctly the number of vertices: returned " << n << " instead of 27770.\n";
-	    ret = 4;
-	}
-	//check nonzero count
-	if( nz != citHepTh.nz() ) {
-	    std::cerr << "Direct parser nz count does not match util parser.\n";
-	    ret = 5;
-	}*/
-
-	// check synchronised iterator
-	auto synced_it = grb::internal::makeSynchronized( I, J, I + nz, J + nz );
-	for( size_t k = 0; ret == 0 && k < nz; ++k, ++synced_it ) {
-		if( I[ k ] != synced_it.i() ) {
-			std::cerr << "Synchronised file iterator has mismatching row indices at position "
-				<< k << ": read " << synced_it.i() << " instead of " << I[ k ] << "\n";
-			ret = 10;
+		// use direct parser
+		size_t nz, *I, *J, n;
+		n = 27770;
+		const bool rc = readEdges( dataset_file, true, &n, &nz, &I, &J, NULL );
+		if( ! rc ) {
+			std::cerr << "Error in use of direct parser.\n";
+			ret = 1;
 		}
-		if( J[ k ] != synced_it.j() ) {
-			std::cerr << "Synchronised file iterator has mismatching column indices at position "
-				<< k << ": read " << synced_it.j() << " instead of " << J[ k ] << "\n";
-			ret = 11;
+		// check nonzero count
+		if( nz != citHepTh.nz() ) {
+			std::cerr << "Direct parser nz count does not match util parser.\n";
+			ret = 2;
 		}
-	}
-	// another nonzero count test
-	nz = 0;
-	for( const auto &row : A ) {
-		nz += row.second.size();
-	}
-	if( nz != citHepTh.nz() ) {
-		std::cerr << "Util parsers imported into std::map< size_t, std::set< size_t > > "
-			<< "changes nonzero count ( " << nz << " versus " << citHepTh.nz() << " ).\n";
-		ret = 20;
-	}
 
-	// use non-maximal util parser
-	grb::utils::MatrixFileReader< void > citHepTh2( "datasets/cit-HepTh.txt", false, true );
-
-	if( citHepTh.filename() != citHepTh2.filename() || citHepTh.m() != citHepTh2.m() ||
-		citHepTh.n() != citHepTh2.n() || citHepTh.nz() != citHepTh2.nz() ||
-		citHepTh.isPattern() != citHepTh2.isPattern() ||
-		citHepTh.isSymmetric() != citHepTh2.isSymmetric() ||
-		citHepTh.usesDirectAddressing() != citHepTh2.usesDirectAddressing()
-	) {
-		std::cerr << "Inferred matrix properties do not match explicitly given matrix properties.\n";
-		ret = 30;
-	}
-
-	// check contents
-	if( citHepTh.rowMap().size() != citHepTh2.rowMap().size() ) {
-		std::cerr << "Inferred matrix and explicit matrix row maps are not of equal size ("
-			<< citHepTh.rowMap().size() << " vs. " << citHepTh2.rowMap().size() << ").\n";
-		ret = 33;
-	};
-	if( citHepTh.colMap().size() != citHepTh2.colMap().size() ) {
-		std::cerr << "Inferred matrix and explicit matrix col maps are not of equal size ("
-			<< citHepTh.colMap().size() << " vs. " << citHepTh2.colMap().size() << ").\n";
-		ret = 36;
-	};
-
-	nz = 0;
-	for( const auto &nonzero : citHepTh2 ) {
-		(void)nonzero;
-		++nz;
-	}
-	if( nz != citHepTh.nz() ) {
-		std::cerr << "Inferred matrix does not contain all nonzeroes "
-			<< "found in the explicit matrix.\n";
-		ret = 40;
-	}
-
- // the below test is incorrect since reordering of input changes indirect mappig
- #if 0
-	//check whether all nonzeroes are here
-	for( size_t i = 0; i < nz; ++i ) {
-		const auto row = A.find( I[ i ] );
-		if( row == A.end() ) {
-			std::cerr << "Row " << I[i] << " not found in util-parsed matrix.\n";
+		/* The below tests for automatic derivation of number of vertices, but this is
+		 * not supported by the SNAP data files
+		n = SIZE_MAX;
+		const bool rc2 = readEdges(
+			dataset_file, true, &n,
+			&nz, &I, &J, NULL
+		);
+		if( !rc2 ) {
+			std::cerr << "Error in use of direct parser.\n";
 			ret = 3;
-			break;
 		}
-		const auto col = row->second.find( J[ i ] );
-		if( col == row->second.end() ) {
-			std::cerr << "Nonzero at (" << I[i] << ", " << J[i] << ") not found in util-parsed matrix.\n";
+		//check vertex count
+		if( n != 27770 ) {
+			std::cerr << "Direct parser could not derive correctly the number of "
+				<< "vertices: returned " << n << " instead of 27770.\n";
 			ret = 4;
-			break;
 		}
-	}
+		//check nonzero count
+		if( nz != citHepTh.nz() ) {
+			std::cerr << "Direct parser nz count does not match util parser.\n";
+			ret = 5;
+		}
+		*/
+
+		// check synchronised iterator
+		auto synced_it = grb::internal::makeSynchronized( I, J, I + nz, J + nz );
+		for( size_t k = 0; ret == 0 && k < nz; ++k, ++synced_it ) {
+			if( I[ k ] != synced_it.i() ) {
+				std::cerr << "Synchronised file iterator has mismatching row indices at "
+					<< "position " << k << ": read " << synced_it.i() << " instead of "
+					<< I[ k ] << "\n";
+				ret = 10;
+			}
+			if( J[ k ] != synced_it.j() ) {
+				std::cerr << "Synchronised file iterator has mismatching column indices at "
+					<< "position " << k << ": read " << synced_it.j() << " instead of "
+					<< J[ k ] << "\n";
+				ret = 11;
+			}
+		}
+		// another nonzero count test
+		nz = 0;
+		for( const auto &row : A ) {
+			nz += row.second.size();
+		}
+		if( nz != citHepTh.nz() ) {
+			std::cerr << "Util parsers imported into std::map< size_t, std::set< size_t > > "
+				<< "changes nonzero count ( " << nz << " versus " << citHepTh.nz()
+				<< " ).\n";
+			ret = 20;
+		}
+
+		// use non-maximal util parser
+		grb::utils::MatrixFileReader< void > citHepTh2( dataset_file, false, true );
+
+		if(
+			citHepTh.filename() != citHepTh2.filename() ||
+			citHepTh.m() != citHepTh2.m() ||
+			citHepTh.n() != citHepTh2.n() || citHepTh.nz() != citHepTh2.nz() ||
+			citHepTh.isPattern() != citHepTh2.isPattern() ||
+			citHepTh.isSymmetric() != citHepTh2.isSymmetric() ||
+			citHepTh.usesDirectAddressing() != citHepTh2.usesDirectAddressing()
+		) {
+			std::cerr << "Inferred matrix properties do not match explicitly given "
+				<< "matrix properties.\n";
+			ret = 30;
+		}
+
+		// check contents
+		if( citHepTh.rowMap().size() != citHepTh2.rowMap().size() ) {
+			std::cerr << "Inferred matrix and explicit matrix row maps are not of equal "
+				<< "size (" << citHepTh.rowMap().size() << " vs. "
+				<< citHepTh2.rowMap().size() << ").\n";
+			ret = 33;
+		};
+		if( citHepTh.colMap().size() != citHepTh2.colMap().size() ) {
+			std::cerr << "Inferred matrix and explicit matrix col maps are not of equal "
+				<< "size (" << citHepTh.colMap().size() << " vs. "
+				<< citHepTh2.colMap().size() << ").\n";
+			ret = 36;
+		};
+
+		nz = 0;
+		for( const auto &nonzero : citHepTh2 ) {
+			(void) nonzero;
+			(void) ++nz;
+		}
+		if( nz != citHepTh.nz() ) {
+			std::cerr << "Inferred matrix does not contain all nonzeroes "
+				<< "found in the explicit matrix.\n";
+			ret = 40;
+		}
+
+ // the below test is incorrect since reordering of input changes indirect
+ // mapping
+ #if 0
+		//check whether all nonzeroes are here
+		for( size_t i = 0; i < nz; ++i ) {
+			const auto row = A.find( I[ i ] );
+			if( row == A.end() ) {
+				std::cerr << "Row " << I[i] << " not found in util-parsed matrix.\n";
+				ret = 3;
+				break;
+			}
+			const auto col = row->second.find( J[ i ] );
+			if( col == row->second.end() ) {
+				std::cerr << "Nonzero at (" << I[i] << ", " << J[i] << ") not found in "
+					<< "util-parsed matrix.\n";
+				ret = 4;
+				break;
+			}
+		}
  #endif
 
+	} catch( std::runtime_error &e ) {
+		std::cerr << "Caught exception: " << e.what() << std::endl;
+		ret = 50;
+	}
+
 	// done
+	std::cerr << std::flush;
 	if( ret == 0 ) {
-		std::cout << "Test OK.\n" << std::endl;
+		std::cout << "Test OK\n" << std::endl;
 	} else {
-		std::cout << "Test FAILED.\n" << std::endl;
+		std::cout << "Test FAILED\n" << std::endl;
 	}
 	return ret;
 }

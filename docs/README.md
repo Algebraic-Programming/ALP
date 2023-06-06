@@ -23,7 +23,9 @@ limitations under the License.
 * the [Development Guidelines](Development.md) to read about ALP/GraphBLAS'
 development philosophy and work with its codebase
 * the
-[guide to the current Building and Testing Infrastructure](Build_and_test_infra.md)
+[guide to the Building and Testing Infrastructure](Build_and_test_infra.md)
+* the
+[guide to run Tests](Run_tests.md)
 * the code documentation, generated via Doxygen through the building
 infrastructure (`make docs`) and available in the subdirectory `code`
 * the
