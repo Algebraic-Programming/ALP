@@ -29,6 +29,7 @@
 
 #include <climits>
 #include <numeric>
+#include <stack>
 #include <vector>
 
 #include <graphblas/utils/iterators/NonzeroIterator.hpp>
@@ -128,7 +129,7 @@ namespace grb {
 				(void)name;
 #ifdef _DEBUG
 				grb::wait( v );
-				std::cout << "Vector \"" << name << "\" (" << grb::size( v ) << "):" << std::endl << "[  ";
+				std::cout << "  [  ";
 				if( grb::size( v ) > 50 ) {
 					std::cout << "too large to print " << std::endl;
 				} else if( grb::nnz( v ) <= 0 ) {
@@ -148,7 +149,28 @@ namespace grb {
 						}
 					}
 				}
-				std::cout << " ]" << std::endl;
+				std::cout << " ]  -  "
+						  << "Vector \"" << name << "\" (" << grb::size( v ) << ")" << std::endl;
+#endif
+			}
+
+			template< typename T >
+			void printStack( const std::stack< T > & stack, const std::string & name ) {
+				(void)stack;
+				(void)name;
+#ifdef _DEBUG
+				std::cout << "  [  ";
+				if( stack.size() > 50 ) {
+					std::cout << "too large to print " << std::endl;
+				} else {
+					auto tmp = stack;
+					for( size_t i = 0; i < stack.size(); i++ ) {
+						std::cout << tmp.top() << " ";
+						tmp.pop();
+					}
+				}
+				std::cout << " ]  -  "
+						  << "Stack \"" << name << "\" (" << stack.size() << ")" << std::endl;
 #endif
 			}
 
@@ -160,34 +182,25 @@ namespace grb {
 		} // namespace utils
 
 		template< typename D >
-		grb::RC bfs( const Matrix< D > & A, size_t root, size_t & max_level, bool compute_levels, grb::Vector< size_t > & levels, bool compute_parents, grb::Vector< size_t > & parents ) {
+		grb::RC bfs_levels( const Matrix< D > & A, size_t root, size_t & max_level, grb::Vector< size_t > & levels ) {
 			grb::RC rc = grb::RC::SUCCESS;
 			const size_t nvertices = grb::nrows( A );
 
-			std::cout << "Running BFS from " << root << " on " << nvertices << " vertices." << std::endl;
+			std::cout << std::endl << "==== Running BFS (levels) from root " << root << " on " << nvertices << " vertices ====" << std::endl;
 
 			max_level = std::numeric_limits< size_t >::max();
-			grb::Vector< bool > x( nvertices, nvertices ), y( nvertices, nvertices );
-			grb::set( x, false );
-			grb::setElement( x, true, root );
-			grb::set( y, x );
+			grb::Vector< bool > x( nvertices ), y( nvertices );
+			rc = rc ? rc : grb::set( x, false );
+			rc = rc ? rc : grb::setElement( x, true, root );
+			rc = rc ? rc : grb::set( y, x );
 
 			utils::printSparseMatrix( A, "A" );
 			utils::printSparseVector( x, "x" );
 
-			if( compute_levels ) {
-				grb::resize( levels, nvertices );
-				grb::set( levels, std::numeric_limits< size_t >::max() );
-				grb::setElement( levels, 0UL, root );
-				utils::printSparseVector( levels, "levels" );
-			}
-			if( compute_parents ) {
-				grb::resize( parents, nvertices );
-				grb::set( parents, std::numeric_limits< size_t >::max() );
-				grb::setElement( parents, root, root );
-				utils::printSparseVector( parents, "parents" );
-				// TODO:
-			}
+			rc = rc ? rc : grb::resize( levels, nvertices );
+			rc = rc ? rc : grb::set( levels, std::numeric_limits< size_t >::max() );
+			rc = rc ? rc : grb::setElement( levels, 0UL, root );
+			utils::printSparseVector( levels, "levels" );
 
 			for( size_t level = 0; level < nvertices; level++ ) {
 				utils::debugPrint( "** Level " + std::to_string( level ) + ":\n" );
@@ -197,21 +210,18 @@ namespace grb {
 				rc = rc ? rc : grb::vxm( y, x, A, bool_semiring, grb::Phase::RESIZE );
 				rc = rc ? rc : grb::vxm( y, x, A, bool_semiring, grb::Phase::EXECUTE );
 
-				utils::printSparseVector( x, "x " );
+				utils::printSparseVector( x, "x" );
 				utils::printSparseVector( y, "y" );
 
-				if( compute_levels ) { // Assign the current level to the newly discovered vertices only
-					grb::eWiseLambda(
-						[ &levels, &y, level ]( const size_t i ) {
-							if( y[ i ] )
-								levels[ i ] = std::min( levels[ i ], level + 1 );
-						},
-						levels, y );
-					utils::printSparseVector( levels, "levels" );
-				}
-				if( compute_parents ) {
-					// TODO:
-				}
+				// Assign the current level to the newly discovered vertices only
+				rc = rc ? rc :
+						  grb::eWiseLambda(
+							  [ &levels, &y, level ]( const size_t i ) {
+								  if( y[ i ] )
+									  levels[ i ] = std::min( levels[ i ], level + 1 );
+							  },
+							  levels, y );
+				utils::printSparseVector( levels, "levels" );
 
 				// Check if all vertices have been discovered, equivalent of an std::all on the frontier
 				bool all_visited = true;
@@ -236,9 +246,88 @@ namespace grb {
 		}
 
 		template< typename D >
-		grb::RC bfs( const Matrix< D > & A, size_t root, size_t & max_level ) {
-			grb::Vector< size_t > unusued_vec( 0 );
-			return bfs( A, root, max_level, false, unusued_vec, false, unusued_vec );
+		grb::RC bfs_parents( const Matrix< D > & A, size_t root, size_t & max_level, grb::Vector< long > & parents ) {
+			grb::RC rc = grb::RC::SUCCESS;
+			const size_t nvertices = grb::nrows( A );
+
+			std::cout << std::endl << "==== Running BFS (parents) from root " << root << " on " << nvertices << " vertices ====" << std::endl;
+
+			utils::printSparseMatrix( A, "A" );
+
+			max_level = std::numeric_limits< size_t >::max();
+			grb::Vector< bool > x( nvertices ), y( nvertices );
+			rc = rc ? rc : grb::set( x, false );
+			rc = rc ? rc : grb::set( y, false );
+
+			utils::printSparseVector( x, "x" );
+			utils::printSparseVector( y, "y" );
+
+			rc = rc ? rc : grb::resize( parents, nvertices );
+			grb::set( parents, -1L );
+			grb::setElement( parents, root, root );
+			utils::printSparseVector( parents, "parents" );
+
+			std::vector< size_t > visited;
+			visited.reserve( nvertices );
+			std::stack< size_t > to_visit_current_level, to_visit_next_level;
+			to_visit_current_level.push( root );
+			utils::printStack( to_visit_current_level, "to_visit_current_level" );
+
+			for( size_t level = 0; level < nvertices; level++ ) {
+				utils::debugPrint( "** Level " + std::to_string( level ) + ":\n" );
+
+				grb::Semiring< grb::operators::logical_or< bool >, grb::operators::logical_and< bool >, grb::identities::logical_false, grb::identities::logical_true > bool_semiring;
+
+				do {
+					size_t visiting = to_visit_current_level.top();
+					to_visit_current_level.pop();
+					visited.push_back( visiting );
+					utils::debugPrint( "  Visiting " + std::to_string( visiting ) + "\n" );
+					assert( std::find( visited.begin(), visited.end(), visiting ) != visited.end() );
+
+					grb::set( x, false );
+					grb::setElement( x, true, visiting );
+					utils::printSparseVector( x, "x" );
+					grb::set( y, false );
+
+					// Multiply the current frontier by the adjacency matrix
+					rc = rc ? rc : grb::vxm( y, x, A, bool_semiring, grb::Phase::RESIZE );
+					rc = rc ? rc : grb::vxm( y, x, A, bool_semiring, grb::Phase::EXECUTE );
+					utils::printSparseVector( y, "y" );
+
+					// Assign the current level to the newly discovered vertices only
+					rc = rc ? rc :
+							  grb::eWiseLambda(
+								  [ &parents, y, visiting ]( const size_t i ) {
+									  if( y[ i ] )
+										  parents[ i ] = parents[ i ] < 0L ? visiting : parents[ i ];
+								  },
+								  parents, y );
+					utils::printSparseVector( parents, "parents" );
+
+					// Add the newly discovered vertices to the frontier
+					for( std::pair< size_t, bool > pair : y )
+						if( pair.second && std::find( visited.begin(), visited.end(), pair.first ) == visited.end() )
+							to_visit_next_level.push( pair.first );
+					utils::printStack( to_visit_next_level, "to_visit_next_level" );
+				} while( ! to_visit_current_level.empty() );
+
+				if( to_visit_next_level.empty() ) {
+					// If all vertices are discovered, stop
+					utils::debugPrint( "Explored " + std::to_string( level + 1 ) + " levels to discover all of the " + std::to_string( nvertices ) + " vertices.\n" );
+					max_level = level;
+					return rc;
+				}
+
+				std::swap( to_visit_current_level, to_visit_next_level );
+			}
+
+			// Maximum number of iteration passed, not every vertex has been discovered
+			utils::debugPrint( "A full exploration is not possible on this graph. "
+							   "Some vertices are not reachable from the given root: " +
+				std::to_string( root ) + "\n" );
+
+			return rc;
 		}
 
 	} // namespace algorithms
