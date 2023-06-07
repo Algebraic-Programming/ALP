@@ -155,22 +155,19 @@ namespace grb {
 			}
 
 			template< typename T >
-			void printStack( const std::stack< T > & stack, const std::string & name ) {
-				(void)stack;
+			void printStdVector( const std::vector< T > & vector, const std::string & name ) {
+				(void)vector;
 				(void)name;
 #ifdef _DEBUG
 				std::cout << "  [  ";
-				if( stack.size() > 50 ) {
+				if( vector.size() > 50 ) {
 					std::cout << "too large to print " << std::endl;
 				} else {
-					auto tmp = stack;
-					for( size_t i = 0; i < stack.size(); i++ ) {
-						std::cout << tmp.top() << " ";
-						tmp.pop();
-					}
+					for( const T & e : vector )
+						std::cout << e << " ";
 				}
 				std::cout << " ]  -  "
-						  << "Stack \"" << name << "\" (" << stack.size() << ")" << std::endl;
+						  << "Vector \"" << name << "\" (" << vector.size() << ")" << std::endl;
 #endif
 			}
 
@@ -267,23 +264,19 @@ namespace grb {
 			grb::setElement( parents, root, root );
 			utils::printSparseVector( parents, "parents" );
 
-			std::vector< size_t > visited;
-			visited.reserve( nvertices );
-			std::stack< size_t > to_visit_current_level, to_visit_next_level;
-			to_visit_current_level.push( root );
-			utils::printStack( to_visit_current_level, "to_visit_current_level" );
+			std::vector< bool > visited( nvertices, false );
+			std::vector< size_t > to_visit_current_level, to_visit_next_level;
+			to_visit_current_level.push_back( root );
+			utils::printStdVector( to_visit_current_level, "to_visit_current_level" );
 
 			for( size_t level = 0; level < nvertices; level++ ) {
 				utils::debugPrint( "** Level " + std::to_string( level ) + ":\n" );
 
-				grb::Semiring< grb::operators::logical_or< bool >, grb::operators::logical_and< bool >, grb::identities::logical_false, grb::identities::logical_true > bool_semiring;
+				const grb::Semiring< grb::operators::logical_or< bool >, grb::operators::logical_and< bool >, grb::identities::logical_false, grb::identities::logical_true > bool_semiring;
 
-				do {
-					size_t visiting = to_visit_current_level.top();
-					to_visit_current_level.pop();
-					visited.push_back( visiting );
+				for( size_t visiting : to_visit_current_level ) {
+					visited[ visiting ] = true;
 					utils::debugPrint( "  Visiting " + std::to_string( visiting ) + "\n" );
-					assert( std::find( visited.begin(), visited.end(), visiting ) != visited.end() );
 
 					grb::set( x, false );
 					grb::setElement( x, true, visiting );
@@ -296,21 +289,17 @@ namespace grb {
 					utils::printSparseVector( y, "y" );
 
 					// Assign the current level to the newly discovered vertices only
-					rc = rc ? rc :
-							  grb::eWiseLambda(
-								  [ &parents, y, visiting ]( const size_t i ) {
-									  if( y[ i ] )
-										  parents[ i ] = parents[ i ] < 0L ? visiting : parents[ i ];
-								  },
-								  parents, y );
+					const grb::Semiring<grb::operators::right_assign_if<size_t>, grb::operators::max<size_t>, grb::identities::zero, grb::identities::negative_infinity> assign_if_semiring;
+					rc = rc ? rc : grb::eWiseAdd( parents, y, parents, visiting, assign_if_semiring, grb::Phase::RESIZE );
+					rc = rc ? rc : grb::eWiseAdd( parents, y, parents, visiting, assign_if_semiring, grb::Phase::EXECUTE );
 					utils::printSparseVector( parents, "parents" );
 
 					// Add the newly discovered vertices to the frontier
 					for( std::pair< size_t, bool > pair : y )
-						if( pair.second && std::find( visited.begin(), visited.end(), pair.first ) == visited.end() )
-							to_visit_next_level.push( pair.first );
-					utils::printStack( to_visit_next_level, "to_visit_next_level" );
-				} while( ! to_visit_current_level.empty() );
+						if( pair.second && ! visited[ pair.first ] )
+							to_visit_next_level.push_back( pair.first );
+					utils::printStdVector( to_visit_next_level, "to_visit_next_level" );
+				}
 
 				if( to_visit_next_level.empty() ) {
 					// If all vertices are discovered, stop
@@ -320,6 +309,7 @@ namespace grb {
 				}
 
 				std::swap( to_visit_current_level, to_visit_next_level );
+				to_visit_next_level.clear();
 			}
 
 			// Maximum number of iteration passed, not every vertex has been discovered
