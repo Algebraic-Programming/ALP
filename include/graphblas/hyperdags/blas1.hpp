@@ -2603,6 +2603,392 @@ namespace grb {
 	}
 
 	template<
+		Descriptor descr = descriptors::no_operation,
+		class Ring,
+		typename OutputType, typename InputType1, typename InputType2,
+		typename Coords
+	>
+	RC eWiseAdd(
+		Vector< OutputType, hyperdags, Coords > &z,
+		const Vector< InputType1, hyperdags, Coords > &x,
+		const Vector< InputType2, hyperdags, Coords > &y,
+		const Ring &ring = Ring(),
+		const Phase &phase = EXECUTE,
+		const typename std::enable_if< !grb::is_object< OutputType >::value &&
+			!grb::is_object< InputType1 >::value &&
+			!grb::is_object< InputType2 >::value &&
+			grb::is_semiring< Ring >::value, void
+		>::type * const = nullptr
+	) {
+		const RC ret = eWiseAdd< descr >(
+			internal::getVector(z), internal::getVector(x), internal::getVector(y),
+			ring, phase
+		);
+		if( ret != SUCCESS ) { return ret; }
+		if( phase != EXECUTE ) { return ret; }
+		if( size( internal::getVector(x) ) == 0 ) { return ret; }
+		std::array< const void *, 0 > sourcesP{};
+		std::array< uintptr_t, 3 > sourcesC{
+			getID( internal::getVector(x) ),
+			getID( internal::getVector(y) ),
+			getID( internal::getVector(z) )
+		};
+		std::array< uintptr_t, 1 > destinations{ getID( internal::getVector(z) ) };
+		internal::hyperdags::generator.addOperation(
+			internal::hyperdags::EWISEADD_VECTOR_VECTOR_VECTOR_RING,
+			sourcesP.begin(), sourcesP.end(),
+			sourcesC.begin(), sourcesC.end(),
+			destinations.begin(), destinations.end()
+		);
+		return ret;
+	}
+
+	template<
+		Descriptor descr = descriptors::no_operation,
+		class Ring,
+		typename InputType1, typename InputType2, typename OutputType,
+		typename Coords
+	>
+	RC eWiseAdd(
+		Vector< OutputType, hyperdags, Coords > &z,
+		const InputType1 alpha,
+		const Vector< InputType2, hyperdags, Coords > &y,
+		const Ring &ring = Ring(),
+		const Phase &phase = EXECUTE,
+		const typename std::enable_if< !grb::is_object< OutputType >::value &&
+			!grb::is_object< InputType1 >::value &&
+			!grb::is_object< InputType2 >::value &&
+			grb::is_semiring< Ring >::value, void
+		>::type * const = nullptr
+	) {
+		const RC ret = eWiseAdd< descr >(
+			internal::getVector(z),
+			alpha, internal::getVector(y),
+			ring, phase
+		);
+		if( ret != SUCCESS ) { return ret; }
+		if( phase != EXECUTE ) { return ret; }
+		if( size( internal::getVector(y) ) == 0 ) { return ret; }
+		internal::hyperdags::generator.addSource(
+			internal::hyperdags::SCALAR,
+			&alpha
+		);
+		std::array< const void *, 1 > sourcesP{ &alpha };
+		std::array< uintptr_t, 2 > sourcesC{
+			getID( internal::getVector(y) ),
+			getID( internal::getVector(z) )
+		};
+		std::array< uintptr_t, 1 > destinations{ getID( internal::getVector(z) ) };
+		internal::hyperdags::generator.addOperation(
+			internal::hyperdags::EWISEADD_VECTOR_ALPHA_VECTOR_RING,
+			sourcesP.begin(), sourcesP.end(),
+			sourcesC.begin(), sourcesC.end(),
+			destinations.begin(), destinations.end()
+		);
+		return ret;
+	}
+
+	template<
+		Descriptor descr = descriptors::no_operation,
+		class Ring, 
+		typename InputType1, typename InputType2, typename OutputType,
+		typename Coords
+	>
+	RC eWiseAdd(
+		Vector< OutputType, hyperdags, Coords > &z,
+		const Vector< InputType1, hyperdags, Coords > &x,
+		const InputType2 beta,
+		const Ring &ring = Ring(),
+		const Phase &phase = EXECUTE,
+		const typename std::enable_if< !grb::is_object< OutputType >::value &&
+			!grb::is_object< InputType1 >::value &&
+			!grb::is_object< InputType2 >::value &&
+			grb::is_semiring< Ring >::value, void
+		>::type * const = nullptr
+	) {
+		const RC ret = eWiseAdd< descr >(
+			internal::getVector(z),
+			internal::getVector(x), 
+			beta,
+			ring, phase
+		);
+		if( ret != SUCCESS ) { return ret; }
+		if( phase != EXECUTE ) { return ret; }
+		if( size( internal::getVector(x) ) == 0 ) { return ret; }
+		internal::hyperdags::generator.addSource(
+			internal::hyperdags::SCALAR,
+			&beta
+		);
+		std::array< const void *, 1 > sourcesP{ &beta };
+		std::array< uintptr_t, 2 > sourcesC{
+			getID( internal::getVector(x) ),
+			getID( internal::getVector(z) )
+		};
+		std::array< uintptr_t, 1 > destinations{ getID( internal::getVector(z) ) };
+		internal::hyperdags::generator.addOperation(
+			internal::hyperdags::EWISEADD_VECTOR_VECTOR_BETA_RING,
+			sourcesP.begin(), sourcesP.end(),
+			sourcesC.begin(), sourcesC.end(),
+			destinations.begin(), destinations.end()
+		);
+		return ret;
+	}
+
+	template<
+		Descriptor descr = descriptors::no_operation,
+		class Ring,
+		typename InputType1, typename InputType2, typename OutputType,
+		typename Coords
+	>
+	RC eWiseAdd(
+		Vector< OutputType, hyperdags, Coords > &z,
+		const InputType1 alpha,
+		const InputType2 beta,
+		const Ring &ring = Ring(),
+		const Phase &phase = EXECUTE,
+		const typename std::enable_if< !grb::is_object< OutputType >::value &&
+			!grb::is_object< InputType1 >::value &&
+			!grb::is_object< InputType2 >::value &&
+			grb::is_semiring< Ring >::value, void
+		>::type * const = nullptr
+	) {
+		const RC ret = eWiseAdd< descr >(
+			internal::getVector(z),
+			alpha, beta,
+			ring, phase
+		);
+		if( ret != SUCCESS ) { return ret; }
+		if( phase != EXECUTE ) { return ret; }
+		internal::hyperdags::generator.addSource(
+			internal::hyperdags::SCALAR,
+			&alpha
+		);
+		internal::hyperdags::generator.addSource(
+			internal::hyperdags::SCALAR,
+			&beta
+		);
+		std::array< const void *, 2 > sourcesP{ &alpha, &beta };
+		std::array< uintptr_t, 1 > sourcesC{
+			getID( internal::getVector(z) )
+		};
+		std::array< uintptr_t, 1 > destinations{ getID( internal::getVector(z) ) };
+		internal::hyperdags::generator.addOperation(
+			internal::hyperdags::EWISEADD_VECTOR_ALPHA_BETA_RING,
+			sourcesP.begin(), sourcesP.end(),
+			sourcesC.begin(), sourcesC.end(),
+			destinations.begin(), destinations.end()
+		);
+		return ret;
+	}
+
+	template<
+		Descriptor descr = descriptors::no_operation,
+		class Ring,
+		typename OutputType, typename MaskType,
+		typename InputType1, typename InputType2,
+		typename Coords
+	>
+	RC eWiseAdd(
+		Vector< OutputType, hyperdags, Coords > &z,
+		const Vector< MaskType, hyperdags, Coords > &m,
+		const Vector< InputType1, hyperdags, Coords > &x,
+		const Vector< InputType2, hyperdags, Coords > &y,
+		const Ring &ring = Ring(),
+		const Phase &phase = EXECUTE,
+		const typename std::enable_if< !grb::is_object< OutputType >::value &&
+			!grb::is_object< InputType1 >::value &&
+			!grb::is_object< InputType2 >::value &&
+			grb::is_semiring< Ring >::value, void
+		>::type * const = nullptr
+	) {
+		if( size( internal::getVector(m) ) == 0 ) {
+			return eWiseAdd< descr >( z, x, y, ring, phase );
+		}
+		const RC ret = eWiseAdd< descr >(
+			internal::getVector(z),
+			internal::getVector(m), 
+			internal::getVector(x), 
+			internal::getVector(y),
+			ring, phase
+		);
+		if( ret != SUCCESS ) { return ret; }
+		if( phase != EXECUTE ) { return ret; }
+		std::array< const void *, 0 > sourcesP{};
+		std::array< uintptr_t, 4 > sourcesC{
+			getID( internal::getVector(m) ),
+			getID( internal::getVector(x) ),
+			getID( internal::getVector(y) ),
+			getID( internal::getVector(z) )
+		};
+		std::array< uintptr_t, 1 > destinations{ getID( internal::getVector(z) ) };
+			internal::hyperdags::generator.addOperation(
+			internal::hyperdags::EWISEADD_VECTOR_VECTOR_VECTOR_VECTOR_RING,
+			sourcesP.begin(), sourcesP.end(),
+			sourcesC.begin(), sourcesC.end(),
+			destinations.begin(), destinations.end()
+		);
+		return ret;
+	}
+
+	template<
+		Descriptor descr = descriptors::no_operation,
+		class Ring,
+		typename InputType1, typename InputType2,
+		typename OutputType, typename MaskType,
+		typename Coords
+	>
+	RC eWiseAdd(
+		Vector< OutputType, hyperdags, Coords > &z,
+		const Vector< MaskType, hyperdags, Coords > &m,
+		const InputType1 alpha,
+		const Vector< InputType2, hyperdags, Coords > &y,
+		const Ring &ring = Ring(),
+		const Phase &phase = EXECUTE,
+		const typename std::enable_if< !grb::is_object< OutputType >::value &&
+			!grb::is_object< InputType1 >::value &&
+			!grb::is_object< InputType2 >::value &&
+			grb::is_semiring< Ring >::value, void
+		>::type * const = nullptr
+	) {
+		if( size( internal::getVector(m) ) == 0 ) {
+			return eWiseAdd< descr >( z, alpha, y, ring, phase );
+		}
+		const RC ret = eWiseAdd< descr >(
+			internal::getVector(z), 
+			internal::getVector(m),
+			alpha, 
+			internal::getVector(y),
+			ring, phase
+		);
+		if( ret != SUCCESS ) { return ret; }
+		if( phase != EXECUTE ) { return ret; }
+		internal::hyperdags::generator.addSource(
+			internal::hyperdags::SCALAR,
+			&alpha
+		);
+		std::array< const void *, 1 > sourcesP{ &alpha };
+		std::array< uintptr_t, 3 > sourcesC{
+			getID( internal::getVector(m) ),
+			getID( internal::getVector(y) ),
+			getID( internal::getVector(z) )
+		};
+		std::array< uintptr_t, 1 > destinations{ getID( internal::getVector(z) ) };
+			internal::hyperdags::generator.addOperation(
+			internal::hyperdags::EWISEADD_VECTOR_VECTOR_ALPHA_VECTOR_RING,
+			sourcesP.begin(), sourcesP.end(),
+			sourcesC.begin(), sourcesC.end(),
+			destinations.begin(), destinations.end()
+		);
+		return ret;
+	}
+
+	template<
+		Descriptor descr = descriptors::no_operation,
+		class Ring,
+		typename InputType1, typename InputType2,
+		typename OutputType, typename MaskType,
+		typename Coords
+	>
+	RC eWiseAdd(
+		Vector< OutputType, hyperdags, Coords > &z,
+		const Vector< MaskType, hyperdags, Coords > &m,
+		const Vector< InputType1, hyperdags, Coords > &x,
+		const InputType2 beta,
+		const Ring &ring = Ring(),
+		const Phase &phase = EXECUTE,
+		const typename std::enable_if< !grb::is_object< OutputType >::value &&
+			!grb::is_object< InputType1 >::value &&
+			!grb::is_object< InputType2 >::value &&
+			grb::is_semiring< Ring >::value, void
+		>::type * const = nullptr
+	) {
+		if( size( internal::getVector(m) ) == 0 ) {
+			return eWiseAdd< descr >( z, x, beta, ring, phase );
+		}
+		const RC ret = eWiseAdd< descr >(
+			internal::getVector(z), 
+			internal::getVector(m),
+			internal::getVector(x), 
+			beta,
+			ring, phase
+		);
+		if( ret != SUCCESS ) { return ret; }
+		if( phase != EXECUTE ) { return ret; }
+		internal::hyperdags::generator.addSource(
+			internal::hyperdags::SCALAR,
+			&beta
+		);
+		std::array< const void *, 1 > sourcesP{ &beta };
+		std::array< uintptr_t, 3 > sourcesC{
+			getID( internal::getVector(m) ),
+			getID( internal::getVector(x) ),
+			getID( internal::getVector(z) )
+		};
+		std::array< uintptr_t, 1 > destinations{ getID( internal::getVector(z) ) };
+			internal::hyperdags::generator.addOperation(
+			internal::hyperdags::EWISEADD_VECTOR_VECTOR_VECTOR_BETA_RING,
+			sourcesP.begin(), sourcesP.end(),
+			sourcesC.begin(), sourcesC.end(),
+			destinations.begin(), destinations.end()
+		);
+		return ret;
+	}
+
+	template<
+		Descriptor descr = descriptors::no_operation,
+		class Ring,
+		typename InputType1, typename InputType2,
+		typename OutputType, typename MaskType,
+		typename Coords
+	>
+	RC eWiseAdd(
+		Vector< OutputType, hyperdags, Coords > &z,
+		const Vector< MaskType, hyperdags, Coords > &m,
+		const InputType1 alpha,
+		const InputType2 beta,
+		const Ring &ring = Ring(),
+		const Phase &phase = EXECUTE,
+		const typename std::enable_if< !grb::is_object< OutputType >::value &&
+			!grb::is_object< InputType1 >::value &&
+			!grb::is_object< InputType2 >::value &&
+			grb::is_semiring< Ring >::value, void
+		>::type * const = nullptr
+	) {
+		if( size( internal::getVector(m) ) == 0 ) {
+			return eWiseAdd< descr >( z, alpha, beta, ring, phase );
+		}
+		const RC ret = eWiseAdd< descr >(
+			internal::getVector(z), 
+			internal::getVector(m),
+			alpha, beta,
+			ring, phase
+		);
+		if( ret != SUCCESS ) { return ret; }
+		if( phase != EXECUTE ) { return ret; }
+		internal::hyperdags::generator.addSource(
+			internal::hyperdags::SCALAR,
+			&alpha
+		);
+		internal::hyperdags::generator.addSource(
+			internal::hyperdags::SCALAR,
+			&beta
+		);
+		std::array< const void *, 2 > sourcesP{ &alpha, &beta };
+		std::array< uintptr_t, 2 > sourcesC{
+			getID( internal::getVector(m) ),
+			getID( internal::getVector(z) )
+		};
+		std::array< uintptr_t, 1 > destinations{ getID( internal::getVector(z) ) };
+			internal::hyperdags::generator.addOperation(
+			internal::hyperdags::EWISEADD_VECTOR_VECTOR_ALPHA_BETA_RING,
+			sourcesP.begin(), sourcesP.end(),
+			sourcesC.begin(), sourcesC.end(),
+			destinations.begin(), destinations.end()
+		);
+		return ret;
+	}
+
+	template<
 		Descriptor descr = descriptors::no_operation, class Ring,
 		typename InputType1, typename InputType2, typename OutputType,
 		typename Coords

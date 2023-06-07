@@ -326,6 +326,30 @@ std::string grb::internal::hyperdags::toString(
 		case FOLDR_VECTOR_VECTOR_VECTOR_MONOID:
 			return "foldr( vector, vector, vector, monoid)";
 
+		case EWISEADD_VECTOR_VECTOR_VECTOR_RING:
+			return "eWiseAdd( vector, vector, vector, ring )";
+
+		case EWISEADD_VECTOR_ALPHA_VECTOR_RING:
+			return "eWiseAdd( vector, scalar, vector, ring )";
+
+		case EWISEADD_VECTOR_VECTOR_BETA_RING:
+			return "eWiseAdd( vector, vector, scalar, ring )";
+		
+		case EWISEADD_VECTOR_ALPHA_BETA_RING:
+			return "eWiseAdd( vector, scalar, scalar, ring )";
+		
+		case EWISEADD_VECTOR_VECTOR_VECTOR_VECTOR_RING:
+			return "eWiseAdd( vector, vector, vector, vector, ring )";
+		
+		case EWISEADD_VECTOR_VECTOR_ALPHA_VECTOR_RING:
+			return "eWiseAdd( vector, vector, scalar, vector, ring )";
+
+		case EWISEADD_VECTOR_VECTOR_VECTOR_BETA_RING:
+			return "eWiseAdd( vector, vector, vector, scalar, ring )";
+		
+		case EWISEADD_VECTOR_VECTOR_ALPHA_BETA_RING:
+			return "eWiseAdd( vector, vector, scalar, scalar, ring )";
+
 		case EWISEMUL_VECTOR_VECTOR_VECTOR_RING:
 			return "eWiseMul( vector, vector, vector )";
 
