@@ -296,6 +296,12 @@ for BACKEND in ${BACKENDS[@]}; do
 			fi
 			echo " "
 
+			echo ">>>      [x]           [ ]       Testing the Single-Source Shortest Path algorithm"
+			$runner ${TEST_BIN_DIR}/sssp_${BACKEND} &> ${TEST_OUT_DIR}/sssp_${BACKEND}_${P}_${T}.log
+			head -1 ${TEST_OUT_DIR}/sssp_${BACKEND}_${P}_${T}.log
+			grep 'Test OK' ${TEST_OUT_DIR}/sssp_${BACKEND}_${P}_${T}.log || echo "Test FAILED"
+			echo " "
+
 			for ((i=0;i<${#LABELTEST_SIZES[@]};++i));
 			do
 				LABELTEST_SIZE=${LABELTEST_SIZES[i]}

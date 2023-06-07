@@ -174,9 +174,20 @@ namespace grb {
 			}
 		} // namespace utils
 
-		template< typename D >
-		grb::RC sssp( const Matrix< D > & A, size_t root, grb::Vector< size_t > & distances ) {
+		template< 
+			typename D,
+			typename std::enable_if< std::is_arithmetic< D >::value, int >::type = 0
+		>
+		grb::RC sssp( const Matrix< D > & A, size_t root, grb::Vector< D > & distances ) {
 			grb::RC rc = grb::RC::SUCCESS;
+
+			// Resize the output vector and fill it with -1, except for the root node which is set to 0
+			rc = rc ? rc : grb::resize( distances, grb::nrows( A ) );
+			rc = rc ? rc : grb::set( distances, -1L );
+			rc = rc ? rc : grb::setElement( distances, root, 0 );
+
+			
+
 			return rc;
 		}
 
