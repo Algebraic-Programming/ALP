@@ -52,6 +52,11 @@ endif()
 option( WITH_REFERENCE_BACKEND "With Reference backend" ON )
 option( WITH_OMP_BACKEND "With OMP backend" ON )
 option( WITH_HYPERDAGS_BACKEND "With Hyperdags backend" ON )
+if( WITH_HYPERDAGS_BACKEND )
+	if ( NOT DEFINED WITH_HYPERDAGS_USING )
+		set( WITH_HYPERDAGS_USING "reference" )
+	endif()
+endif()
 option( WITH_NONBLOCKING_BACKEND "With Nonblocking backend" ON )
 option( WITH_NUMA "With NUMA support" ON )
 option( LPF_INSTALL_PATH "Path to the LPF tools for the BSP1D and Hybrid backends" OFF )
@@ -63,9 +68,7 @@ LPF_INSTALL_PATH set)" ON LPF_INSTALL_PATH OFF
 cmake_dependent_option( WITH_HYBRID_BACKEND "Also build the Hybrid backend \
 (needs LPF_INSTALL_PATH set)" ON LPF_INSTALL_PATH OFF
 )
-# other dependent options
-cmake_dependent_option( WITH_HYPERDAGS_BACKEND "Building the Hyperdags backend needs \
-	WITH_HYPERDAGS_USING set" ON WITH_HYPERDAGS_USING OFF )
+
 # to customize build flags for either backends or tests
 option( COMMON_COMPILE_DEFINITIONS
 	"Compilation definitions for BOTH backends and tests; they override the defaults"
@@ -148,8 +151,43 @@ endif()
 if( WITH_HYBRID_BACKEND )
 	list( APPEND AVAILABLE_TEST_BACKENDS "hybrid" )
 endif()
-message( STATUS "AVAILABLE_TEST_BACKENDS: ${AVAILABLE_TEST_BACKENDS}" )
 
+# Enabling reference(+omp) backend if bsp1d is active
+if( WITH_BSP1D_BACKEND )
+	set( WITH_REFERENCE_BACKEND ON )
+	set( WITH_OMP_BACKEND ON )
+	message( STATUS "Enabling compilation of reference backend: required by bsp1d" )
+endif()
+
+# Enabling reference(+omp) backend if hybrid is active
+if( WITH_HYBRID_BACKEND )
+	set( WITH_OMP_BACKEND ON )
+	set( WITH_OMP_BACKEND ON )
+	message( STATUS "Enabling compilation of reference_omp backend: required by hybrid" )
+endif()
+
+# Enabling reference(+omp) backend if non-blocking is active
+if( WITH_NONBLOCKING_BACKEND )
+	set( WITH_REFERENCE_BACKEND ON )
+	set( WITH_OMP_BACKEND ON )
+	message( STATUS "Enabling compilation of reference backend: required by nonblocking" )
+endif()
+
+# Enabling backend required by hyperdags (if not)
+if( WITH_HYPERDAGS_BACKEND )
+	if( WITH_HYPERDAGS_USING STREQUAL "reference" )
+		set( WITH_REFERENCE_BACKEND ON )
+		message( STATUS "Enabling reference backend for hyperdags" )
+	elseif(WITH_HYPERDAGS_USING STREQUAL "reference_omp" )
+		set( WITH_OMP_BACKEND ON )
+		message( STATUS "Enabling reference_omp backend for hyperdags" )
+	elseif(WITH_HYPERDAGS_USING STREQUAL "nonblocking" )
+		set( WITH_NONBLOCKING_BACKEND ON )
+		message( STATUS "Enabling non-blocking backend for hyperdags" )
+	else()
+		message( FATAL_ERROR "Unrecognised backend for hyperdags: ${WITH_HYPERDAGS_USING}.\nAvailable options: reference, reference_omp, nonblocking" )
+	endif()
+endif()
 
 # set LPF_INSTALL_PATH as FILEPATH inside the cache
 if( LPF_INSTALL_PATH )
