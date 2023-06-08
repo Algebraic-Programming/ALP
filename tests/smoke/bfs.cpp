@@ -35,13 +35,40 @@ grb::Vector< T > stdToGrbVector( const std::vector< T > & in ) {
 	return out;
 }
 
+template< typename D >
+void printSparseVector( const grb::Vector< D > & v, const std::string & name ) {
+	grb::wait( v );
+	std::cout << "  [  ";
+	if( grb::size( v ) > 50 ) {
+		std::cout << "too large to print " << std::endl;
+	} else if( grb::nnz( v ) <= 0 ) {
+		for( size_t i = 0; i < grb::size( v ); i++ )
+			std::cout << "_ ";
+	} else {
+		size_t nnz_idx = 0;
+		auto it = v.cbegin();
+		for( size_t i = 0; i < grb::size( v ); i++ ) {
+			if( nnz_idx < grb::nnz( v ) && i == it->first ) {
+				std::cout << it->second << " ";
+				nnz_idx++;
+				if( nnz_idx < grb::nnz( v ) )
+					++it;
+			} else {
+				std::cout << "_ ";
+			}
+		}
+	}
+	std::cout << " ]  -  "
+			  << "Vector \"" << name << "\" (" << grb::size( v ) << ")" << std::endl;
+}
+
 template< typename T >
 struct input_t {
 	grb::Matrix< T > A;
 	size_t root;
-	size_t expected_max_level;
+	long expected_max_level;
 	bool compute_levels;
-	const grb::Vector< size_t > & expected_levels;
+	const grb::Vector< long > & expected_levels;
 	bool compute_parents;
 	const grb::Vector< long > & expected_parents;
 };
@@ -56,16 +83,16 @@ template< typename T >
 void grbProgram( const struct input_t< T > & input, struct output_t & output ) {
 	std::cout << std::endl << "Running BFS" << std::endl;
 	grb::utils::Timer timer;
-	size_t max_level;
+	long max_level;
 
 	if( input.compute_levels ) {
-	    grb::Vector< size_t > levels( grb::nrows( input.A ) );
+	    grb::Vector< long > levels( grb::nrows( input.A ) );
 
 		timer.reset();
 		output.rc = output.rc ? output.rc : grb::algorithms::bfs_levels( input.A, input.root, max_level, levels );
 		timer.reset();
 
-		if( max_level <= input.expected_max_level ) {
+		if( max_level == input.expected_max_level ) {
 			std::cout << "SUCCESS: max_level = " << max_level << " is correct" << std::endl;
 		} else {
 			std::cerr << "FAILED: expected maximum " << input.expected_max_level << " max_level but got " << max_level << std::endl;
@@ -79,8 +106,8 @@ void grbProgram( const struct input_t< T > & input, struct output_t & output ) {
 		} else {
 			std::cerr << "FAILED: levels is incorrect" << std::endl;
 			std::cerr << "levels != expected_levels" << std::endl;
-			for( size_t i = 0; i < grb::nrows( input.A ); i++ )
-				std::cerr << std::string( 3, ' ' ) << levels[ i ] << " | " << input.expected_levels[ i ] << std::endl;
+			printSparseVector( levels, "levels" );
+			printSparseVector( input.expected_levels, "expected_levels" );
 			output.rc = grb::RC::FAILED;
 			return;
 		}
@@ -93,7 +120,7 @@ void grbProgram( const struct input_t< T > & input, struct output_t & output ) {
 		output.rc = output.rc ? output.rc : grb::algorithms::bfs_parents( input.A, input.root, max_level, parents );
 		timer.reset();
 
-		if( max_level <= input.expected_max_level ) {
+		if( max_level == input.expected_max_level ) {
 			std::cout << "SUCCESS: max_level = " << max_level << " is correct" << std::endl;
 		} else {
 			std::cerr << "FAILED: expected maximum " << input.expected_max_level << " max_level but got " << max_level << std::endl;
@@ -133,7 +160,7 @@ int main( int argc, char ** argv ) {
 	if( test_on_file ) { // Test on a file
 		std::string file_to_test( argv[ 1 ] );
 		size_t root = std::stoul( argv[ 2 ] );
-		size_t expected_max_level = std::stoul( argv[ 3 ] );
+		long expected_max_level = std::stol( argv[ 3 ] );
 
 		std::cout << "-- Running test on file " << file_to_test << std::endl;
 
@@ -148,7 +175,7 @@ int main( int argc, char ** argv ) {
 		}
 
 		std::cout << "Matrix read successfully" << std::endl;
-		input_t< void > input { A, root, expected_max_level, false, { 0 }, false, { 0 } };
+		input_t< void > input { A, root, expected_max_level, false, { 0L }, false, { 0L } };
 		output_t output;
 		grb::RC bench_rc = benchmarker.exec( &grbProgram, input, output, niterations, 1, true );
 		if( bench_rc ) {
@@ -174,12 +201,12 @@ int main( int argc, char ** argv ) {
 		{ // Directed version, pattern matrix, root = 0
 			size_t root = 0;
 			std::cout << "-- Running test on A1 (directed, non-pattern, root " + std::to_string(root) + ")" << std::endl;
-			size_t expected_max_level = 1;
+			long expected_max_level = 1;
 			grb::Matrix< void > A( 4, 4 );
 			std::vector< size_t > A_rows { { 0, 0, 0 } };
 			std::vector< size_t > A_cols { { 1, 2, 3 } };
 			grb::buildMatrixUnique( A, A_rows.data(), A_cols.data(), A_rows.size(), grb::IOMode::PARALLEL );
-			std::vector< size_t > expected_levels { 0, 1, 1, 1 };
+			std::vector< long > expected_levels { 0, 1, 1, 1 };
             std::vector< long > expected_parents { 0, 0, 0, 0 };
 			input_t< void > input { A, root, expected_max_level, true, stdToGrbVector( expected_levels ), true, stdToGrbVector( expected_parents ) };
 			output_t output;
@@ -210,12 +237,12 @@ int main( int argc, char ** argv ) {
 		   */
 			size_t root = 0;
 			std::cout << "-- Running test on A2 (directed, pattern, root " + std::to_string(root) + ")" << std::endl;
-			size_t expected_max_level = 2;
+			long expected_max_level = 2;
 			grb::Matrix< void > A( 4, 4 );
 			std::vector< size_t > A_rows { { 0, 0, 2 } };
 			std::vector< size_t > A_cols { { 1, 2, 3 } };
 			grb::buildMatrixUnique( A, A_rows.data(), A_cols.data(), A_rows.size(), grb::IOMode::PARALLEL );
-			std::vector< size_t > expected_levels { 0, 1, 1, 2 };
+			std::vector< long > expected_levels { 0, 1, 1, 2 };
 			std::vector< long > expected_parents { 0, 0, 0, 2 };
 			input_t< void > input { A, root, expected_max_level, true, stdToGrbVector( expected_levels ), true, stdToGrbVector( expected_parents ) };
 			output_t output;
@@ -243,13 +270,13 @@ int main( int argc, char ** argv ) {
 		   */
 			size_t root = 0;
 			std::cout << "-- Running test on A3 (directed, non-pattern: int, root " + std::to_string(root) + ")" << std::endl;
-			size_t expected_max_level = 3;
+			long expected_max_level = 3;
 			grb::Matrix< int > A( 4, 4 );
 			std::vector< size_t > A_rows { { 0, 1, 2 } };
 			std::vector< size_t > A_cols { { 1, 2, 3 } };
 			std::vector< int > A_values( A_rows.size(), 1 );
 			grb::buildMatrixUnique( A, A_rows.data(), A_cols.data(), A_values.data(), A_values.size(), grb::IOMode::PARALLEL );
-			std::vector< size_t > expected_levels { 0, 1, 2, 3 };
+			std::vector< long > expected_levels { 0, 1, 2, 3 };
 			std::vector< long > expected_parents { 0, 0, 1, 2 };
 			input_t< int > input { A, root, expected_max_level, true, stdToGrbVector( expected_levels ), true, stdToGrbVector( expected_parents ) };
 			output_t output;
@@ -269,12 +296,12 @@ int main( int argc, char ** argv ) {
 		   */
 			size_t root = 0;
 			std::cout << "-- Running test on A3 (directed, pattern, root " + std::to_string(root) + ")" << std::endl;
-			size_t expected_max_level = 3;
+			long expected_max_level = 3;
 			grb::Matrix< void > A( 4, 4 );
 			std::vector< size_t > A_rows { { 0, 1, 2 } };
 			std::vector< size_t > A_cols { { 1, 2, 3 } };
 			grb::buildMatrixUnique( A, A_rows.data(), A_cols.data(), A_rows.size(), grb::IOMode::PARALLEL );
-			std::vector< size_t > expected_levels { 0, 1, 2, 3 };
+			std::vector< long > expected_levels { 0, 1, 2, 3 };
 			std::vector< long > expected_parents { 0, 0, 1, 2 };
 			input_t< void > input { A, root, expected_max_level, true, stdToGrbVector( expected_levels ), true, stdToGrbVector( expected_parents ) };
 			output_t output;
@@ -294,14 +321,15 @@ int main( int argc, char ** argv ) {
 		   */
 			size_t root = 3;
 			std::cout << "-- Running test on A3 (directed, pattern, root " + std::to_string(root) + ")" << std::endl;
-			size_t expected_max_level = ULONG_MAX;
+			long expected_max_level = -1;
 			grb::Matrix< void > A( 4, 4 );
 			std::vector< size_t > A_rows { { 0, 1, 2 } };
 			std::vector< size_t > A_cols { { 1, 2, 3 } };
 			grb::buildMatrixUnique( A, A_rows.data(), A_cols.data(), A_rows.size(), grb::IOMode::PARALLEL );
-			std::vector< size_t > expected_levels { ULONG_MAX, ULONG_MAX, ULONG_MAX, 0 };
+			grb::Vector< long > expected_levels( A_rows.size() );
+			grb::setElement(expected_levels, 0, root);
 			std::vector< long > expected_parents { -1, -1, -1, 3 };
-			input_t< void > input { A, root, expected_max_level, true, stdToGrbVector( expected_levels ), true, stdToGrbVector( expected_parents ) };
+			input_t< void > input { A, root, expected_max_level, true, expected_levels, true, stdToGrbVector( expected_parents ) };
 			output_t output;
 			grb::RC bench_rc = benchmarker.exec( &grbProgram, input, output, niterations, 1, true );
 			if( bench_rc ) {
@@ -331,12 +359,12 @@ int main( int argc, char ** argv ) {
 		   */
 			size_t root = 0;
 			std::cout << "-- Running test on A4 (directed, pattern, one cycle, root " + std::to_string(root) + ")" << std::endl;
-			size_t expected_max_level = 3;
+			long expected_max_level = 3;
 			grb::Matrix< void > A( 4, 4 );
 			std::vector< size_t > A_rows { { 0, 1, 2, 3 } };
 			std::vector< size_t > A_cols { { 1, 3, 1, 2 } };
 			grb::buildMatrixUnique( A, A_rows.data(), A_cols.data(), A_rows.size(), grb::IOMode::PARALLEL );
-			std::vector< size_t > expected_levels { 0, 1, 3, 2 };
+			std::vector< long > expected_levels { 0, 1, 3, 2 };
 			std::vector< long > expected_parents { 0, 0, 3, 1 };
 			input_t< void > input { A, root, expected_max_level, true, stdToGrbVector( expected_levels ), true, stdToGrbVector( expected_parents ) };
 			output_t output;

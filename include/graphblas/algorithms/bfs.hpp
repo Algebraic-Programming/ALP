@@ -178,51 +178,49 @@ namespace grb {
 			}
 		} // namespace utils
 
-		template< typename D >
-		grb::RC bfs_levels( const Matrix< D > & A, size_t root, size_t & max_level, grb::Vector< size_t > & levels ) {
+		template< typename D = void, typename T = long >
+		grb::RC bfs_levels(
+			const Matrix< D > & A,
+			size_t root,
+			T & max_level,
+			grb::Vector< T > & levels,
+			const std::enable_if< std::is_arithmetic< T >::value && std::is_signed< T >::value > * const = nullptr )
+		{
 			grb::RC rc = grb::RC::SUCCESS;
 			const size_t nvertices = grb::nrows( A );
 
 			std::cout << std::endl << "==== Running BFS (levels) from root " << root << " on " << nvertices << " vertices ====" << std::endl;
 
-			max_level = std::numeric_limits< size_t >::max();
+			max_level = static_cast< T >( -1 );
 			grb::Vector< bool > x( nvertices ), y( nvertices );
-			rc = rc ? rc : grb::set( x, false );
 			rc = rc ? rc : grb::setElement( x, true, root );
-			rc = rc ? rc : grb::set( y, x );
 
 			utils::printSparseMatrix( A, "A" );
 			utils::printSparseVector( x, "x" );
 
 			rc = rc ? rc : grb::resize( levels, nvertices );
-			rc = rc ? rc : grb::set( levels, std::numeric_limits< size_t >::max() );
-			rc = rc ? rc : grb::setElement( levels, 0UL, root );
+			//rc = rc ? rc : grb::set( levels, static_cast< T >( -1 ) );
+			rc = rc ? rc : grb::setElement( levels, static_cast< T >( 0 ), root );
 			utils::printSparseVector( levels, "levels" );
 
 			for( size_t level = 0; level < nvertices; level++ ) {
 				utils::debugPrint( "** Level " + std::to_string( level ) + ":\n" );
 
 				// Multiply the current frontier by the adjacency matrix
+				utils::printSparseVector( x, "x" );
 				grb::Semiring< grb::operators::logical_or< bool >, grb::operators::logical_and< bool >, grb::identities::logical_false, grb::identities::logical_true > bool_semiring;
 				rc = rc ? rc : grb::vxm( y, x, A, bool_semiring, grb::Phase::RESIZE );
 				rc = rc ? rc : grb::vxm( y, x, A, bool_semiring, grb::Phase::EXECUTE );
-
-				utils::printSparseVector( x, "x" );
 				utils::printSparseVector( y, "y" );
 
 				// Assign the current level to the newly discovered vertices only
-				rc = rc ? rc :
-						  grb::eWiseLambda(
-							  [ &levels, &y, level ]( const size_t i ) {
-								  if( y[ i ] )
-									  levels[ i ] = std::min( levels[ i ], level + 1 );
-							  },
-							  levels, y );
+				const grb::Monoid<grb::operators::min< T >, grb::identities::infinity > min_monoid;
+				rc = rc ? rc : grb::foldl( levels, y, level + 1, min_monoid, grb::Phase::RESIZE );
+				rc = rc ? rc : grb::foldl( levels, y, level + 1, min_monoid, grb::Phase::EXECUTE );
 				utils::printSparseVector( levels, "levels" );
 
 				// Check if all vertices have been discovered, equivalent of an std::all on the frontier
-				bool all_visited = true;
-				rc = rc ? rc : grb::foldl( all_visited, y, grb::Monoid< grb::operators::logical_and< bool >, grb::identities::logical_true >() );
+				bool all_visited = grb::nnz( levels ) == nvertices;
 				if( all_visited ) {
 					// If all vertices are discovered, stop
 					utils::debugPrint( "Explored " + std::to_string( level + 1 ) + " levels to discover all of the " + std::to_string( nvertices ) + " vertices.\n" );
@@ -243,9 +241,10 @@ namespace grb {
 		}
 
 		template< typename D = void, typename T = long >
-		grb::RC bfs_parents( const Matrix< D > & A,
-			const size_t root,
-			size_t & max_level,
+		grb::RC bfs_parents(
+			const Matrix< D > & A,
+			size_t root,
+			T & max_level,
 			grb::Vector< T > & parents,
 			const std::enable_if< std::is_arithmetic< T >::value && std::is_signed< T >::value, void > * const = nullptr ) {
 			grb::RC rc = grb::RC::SUCCESS;
@@ -255,7 +254,7 @@ namespace grb {
 
 			utils::printSparseMatrix( A, "A" );
 
-			max_level = std::numeric_limits< T >::max();
+			max_level = static_cast< T >( -1 );
 			grb::Vector< bool > x( nvertices ), y( nvertices );
 			utils::printSparseVector( x, "x" );
 			utils::printSparseVector( y, "y" );
@@ -309,10 +308,15 @@ namespace grb {
 
 				if( to_visit_next_level.empty() ) {
 					// If all vertices are discovered, stop
-					utils::debugPrint( "Explored " + std::to_string( level ) + " levels to discover all of the " + std::to_string( nvertices ) + " vertices.\n" );
-					max_level = level;
-					return rc;
-				}
+					bool not_all_discovered = false;
+					rc = rc ? rc : grb::foldl( not_all_discovered, not_visited, grb::Monoid<grb::operators::logical_or<bool>, grb::identities::logical_false>() );
+					if( !not_all_discovered ) {
+						utils::debugPrint( "Explored " + std::to_string( level ) + " levels to discover all of the " + std::to_string( nvertices ) + " vertices.\n" );
+						max_level = level;
+						break;
+					}
+					
+                }
 
 				std::swap( to_visit_current_level, to_visit_next_level );
 				to_visit_next_level.clear();
