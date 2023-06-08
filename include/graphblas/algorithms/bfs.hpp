@@ -242,8 +242,12 @@ namespace grb {
 			return rc;
 		}
 
-		template< typename D >
-		grb::RC bfs_parents( const Matrix< D > & A, size_t root, size_t & max_level, grb::Vector< long > & parents ) {
+		template< typename D = void, typename T = long >
+		grb::RC bfs_parents( const Matrix< D > & A,
+			const size_t root,
+			size_t & max_level,
+			grb::Vector< T > & parents,
+			const std::enable_if< std::is_arithmetic< T >::value && std::is_signed< T >::value, void > * const = nullptr ) {
 			grb::RC rc = grb::RC::SUCCESS;
 			const size_t nvertices = grb::nrows( A );
 
@@ -251,59 +255,61 @@ namespace grb {
 
 			utils::printSparseMatrix( A, "A" );
 
-			max_level = std::numeric_limits< size_t >::max();
+			max_level = std::numeric_limits< T >::max();
 			grb::Vector< bool > x( nvertices ), y( nvertices );
-			rc = rc ? rc : grb::set( x, false );
-			rc = rc ? rc : grb::set( y, false );
-
 			utils::printSparseVector( x, "x" );
 			utils::printSparseVector( y, "y" );
 
 			rc = rc ? rc : grb::resize( parents, nvertices );
-			grb::set( parents, -1L );
-			grb::setElement( parents, root, root );
+			rc = rc ? rc : grb::set( parents, static_cast< T >( -1 ) );
+			rc = rc ? rc : grb::setElement( parents, root, root );
 			utils::printSparseVector( parents, "parents" );
 
-			std::vector< bool > visited( nvertices, false );
+			grb::Vector< bool > not_visited( nvertices );
+			rc = rc ? rc : grb::set( not_visited, true );
 			std::vector< size_t > to_visit_current_level, to_visit_next_level;
+			to_visit_next_level.reserve( nvertices );
+			to_visit_current_level.reserve( nvertices );
 			to_visit_current_level.push_back( root );
 			utils::printStdVector( to_visit_current_level, "to_visit_current_level" );
 
 			for( size_t level = 0; level < nvertices; level++ ) {
 				utils::debugPrint( "** Level " + std::to_string( level ) + ":\n" );
 
-				const grb::Semiring< grb::operators::logical_or< bool >, grb::operators::logical_and< bool >, grb::identities::logical_false, grb::identities::logical_true > bool_semiring;
-
 				for( size_t visiting : to_visit_current_level ) {
-					visited[ visiting ] = true;
 					utils::debugPrint( "  Visiting " + std::to_string( visiting ) + "\n" );
+					rc = rc ? rc : grb::setElement( not_visited, false, visiting );
+					utils::printSparseVector( not_visited, "not_visited" );
 
-					grb::set( x, false );
-					grb::setElement( x, true, visiting );
+
+					// Explore from the current vertex only
+					rc = rc ? rc : grb::setElement( x, true, visiting ); // Explore from the current vertex only
 					utils::printSparseVector( x, "x" );
-					grb::set( y, false );
-
-					// Multiply the current frontier by the adjacency matrix
-					rc = rc ? rc : grb::vxm( y, x, A, bool_semiring, grb::Phase::RESIZE );
-					rc = rc ? rc : grb::vxm( y, x, A, bool_semiring, grb::Phase::EXECUTE );
+					rc = rc ? rc : grb::resize( y, 0 ); // Necessary as vxm is in-place
+					// Masking vxm to only explore non-explored vertices
+					const grb::Semiring< grb::operators::logical_or< bool >, grb::operators::logical_and< bool >, grb::identities::logical_false, grb::identities::logical_true > bool_semiring;
+					rc = rc ? rc : grb::vxm( y, not_visited, x, A, bool_semiring, grb::Phase::RESIZE );
+					rc = rc ? rc : grb::vxm( y, not_visited, x, A, bool_semiring, grb::Phase::EXECUTE );
+					rc = rc ? rc : grb::setElement( x, false, visiting ); // Reset the current vertex to false
 					utils::printSparseVector( y, "y" );
 
 					// Assign the current level to the newly discovered vertices only
-					const grb::Semiring<grb::operators::right_assign_if<size_t>, grb::operators::max<size_t>, grb::identities::zero, grb::identities::negative_infinity> assign_if_semiring;
-					rc = rc ? rc : grb::eWiseAdd( parents, y, parents, visiting, assign_if_semiring, grb::Phase::RESIZE );
-					rc = rc ? rc : grb::eWiseAdd( parents, y, parents, visiting, assign_if_semiring, grb::Phase::EXECUTE );
+					const grb::Monoid< grb::operators::max< T >, grb::identities::negative_infinity > max_monoid;
+					rc = rc ? rc : grb::foldl( parents, y, visiting, max_monoid, grb::Phase::RESIZE );
+					rc = rc ? rc : grb::foldl( parents, y, visiting, max_monoid, grb::Phase::EXECUTE );
 					utils::printSparseVector( parents, "parents" );
 
-					// Add the newly discovered vertices to the frontier
+					// Add the newly discovered vertices to the stack
+					// Optimisation possible if an operator::index was available
 					for( std::pair< size_t, bool > pair : y )
-						if( pair.second && ! visited[ pair.first ] )
+						if( pair.second )
 							to_visit_next_level.push_back( pair.first );
 					utils::printStdVector( to_visit_next_level, "to_visit_next_level" );
 				}
 
 				if( to_visit_next_level.empty() ) {
 					// If all vertices are discovered, stop
-					utils::debugPrint( "Explored " + std::to_string( level + 1 ) + " levels to discover all of the " + std::to_string( nvertices ) + " vertices.\n" );
+					utils::debugPrint( "Explored " + std::to_string( level ) + " levels to discover all of the " + std::to_string( nvertices ) + " vertices.\n" );
 					max_level = level;
 					return rc;
 				}
