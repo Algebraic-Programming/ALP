@@ -128,6 +128,29 @@ if( NOT WITH_REFERENCE_BACKEND AND
 	message( FATAL_ERROR "At least one backend should be enabled")
 endif()
 
+# Adding backends for tests only
+set( AVAILABLE_TEST_BACKENDS "" )
+if( WITH_REFERENCE_BACKEND )
+	list( APPEND AVAILABLE_TEST_BACKENDS "reference" )
+endif()
+if( WITH_OMP_BACKEND )
+	list( APPEND AVAILABLE_TEST_BACKENDS "reference_omp" )
+endif()
+if( WITH_HYPERDAGS_BACKEND )
+	list( APPEND AVAILABLE_TEST_BACKENDS "hyperdags" )
+endif()
+if( WITH_NONBLOCKING_BACKEND )
+	list( APPEND AVAILABLE_TEST_BACKENDS "nonblocking" )
+endif()
+if( WITH_BSP1D_BACKEND )
+	list( APPEND AVAILABLE_TEST_BACKENDS "bsp1d" )
+endif()
+if( WITH_HYBRID_BACKEND )
+	list( APPEND AVAILABLE_TEST_BACKENDS "hybrid" )
+endif()
+message( STATUS "AVAILABLE_TEST_BACKENDS: ${AVAILABLE_TEST_BACKENDS}" )
+
+
 # set LPF_INSTALL_PATH as FILEPATH inside the cache
 if( LPF_INSTALL_PATH )
 	set( LPF_INSTALL_PATH "${LPF_INSTALL_PATH}" CACHE FILEPATH "Path to LPF installation" FORCE )
@@ -252,5 +275,6 @@ add_custom_target( userdocs DEPENDS "${PUBLIC_DOCS_DIR}" )
 add_custom_target( docs )
 add_dependencies( docs userdocs devdocs )
 
-message( "Compiling with the following backends: ${AVAILABLE_BACKENDS}\n" )
+message( "Tests enabled for backends: ${AVAILABLE_TEST_BACKENDS}" )
+message( "Enabled backend targets: ${AVAILABLE_BACKENDS}\n" )
 

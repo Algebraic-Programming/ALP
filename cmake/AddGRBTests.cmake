@@ -24,13 +24,13 @@ if( DEFINED __ADDGRBTESTS_CMAKE_ )
 	set( __ADDGRBTESTS_CMAKE_ TRUE CACHE INTERNAL "once-only inclusion file checker" FORCE )
 endif()
 
-assert_valid_variables( ALL_BACKENDS AVAILABLE_BACKENDS TEST_CATEGORIES
+assert_valid_variables( ALL_BACKENDS AVAILABLE_TEST_BACKENDS TEST_CATEGORIES
 	#TESTS_EXE_OUTPUT_DIR
 	ALP_UTILS_LIBRARY_OUTPUT_NAME )
 
 
 # create variables to store tests against each backend
-foreach( b ${AVAILABLE_BACKENDS} )
+foreach( b ${AVAILABLE_TEST_BACKENDS} )
 	define_property( GLOBAL PROPERTY tests_backend_${b} BRIEF_DOCS "${b} tests" FULL_DOCS "tests for backend ${b}" )
 endforeach()
 
@@ -186,7 +186,7 @@ endfunction( add_grb_executable_custom )
 #
 # The backend name must correspond to one of the backends available in ${ALL_BACKENDS},
 # otherwise an error occurs; since not all backends may be enabled, only targets
-# to be built against backends stored in ${AVAILABLE_BACKENDS} are actually built.
+# to be built against backends stored in ${AVAILABLE_TEST_BACKENDS} are actually built.
 #
 function( add_grb_executables testName )
 	if( NOT testName )
@@ -230,7 +230,7 @@ specify the category of all tests in the file via the TEST_CATEGORY variable" )
 		if( NOT ${back} IN_LIST ALL_BACKENDS  )
 			message( FATAL_ERROR "no backend named ${back}; existing backends are ${ALL_BACKENDS}")
 		endif()
-		if( NOT ${back} IN_LIST AVAILABLE_BACKENDS )
+		if( NOT ${back} IN_LIST AVAILABLE_TEST_BACKENDS )
 			continue()
 		endif()
 		if( NOT TARGET "backend_${back}" )
