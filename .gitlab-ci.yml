@@ -6,28 +6,37 @@ default:
   image: ${CI_REGISTRY}/${CI_PROJECT_PATH}/lpf-ubuntu-20.04-gcc
 
 variables:
-  IS_MAIN_PIPELINE: "no"
+  EXTRA_TESTS_ENABLED: "no" # enable extra tests: build with debug symbols, performance tests
+  LPF_TESTS_ENABLED: "no" # enable LPF-based tests
+  MULTIPLE_COMPILERS_ENABLED: "no" # enable compiling against multiple compilers
 
 workflow:
   rules:
-  # the following rules trigger after new commits are merged on master, develop or a version/rc branch
+  # run all jobs if a commit is merged on master, develop or a version/rc branch
     - if: $CI_COMMIT_BRANCH == "master"
       variables:
-        IS_MAIN_PIPELINE: "yes"
+        EXTRA_TESTS_ENABLED: "yes"
+        LPF_TESTS_ENABLED: "yes"
+        MULTIPLE_COMPILERS_ENABLED: "yes"
     - if: $CI_COMMIT_BRANCH == "develop"
       variables:
-        IS_MAIN_PIPELINE: "yes"
+        EXTRA_TESTS_ENABLED: "yes"
+        LPF_TESTS_ENABLED: "yes"
+        MULTIPLE_COMPILERS_ENABLED: "yes"
     - if: $CI_COMMIT_BRANCH =~ /^v.*-rc.*$/
       variables:
-        IS_MAIN_PIPELINE: "yes"
-  # rules to avoid duplicate pipelines on merge requests
+        EXTRA_TESTS_ENABLED: "yes"
+        LPF_TESTS_ENABLED: "yes"
+        MULTIPLE_COMPILERS_ENABLED: "yes"
+    # "manual" execution strategies are allowed to force run
+    - if: $CI_PIPELINE_SOURCE != "merge_request_event" && $CI_PIPELINE_SOURCE != "push"
+    # do not run pipeline if the merge request is draft (case insensitive) and execution was automatically auomatic
+    - if: $CI_MERGE_REQUEST_TITLE =~ /^draft:/i && ($CI_PIPELINE_SOURCE == "push" || $CI_PIPELINE_SOURCE == "merge_request_event")
+      when: never
     # run if the pipeline comes from a merge request
     - if: $CI_PIPELINE_SOURCE == "merge_request_event"
-    # do not run when the commit has a branch name associated and this branch is associated to an MR
-    - if: $CI_COMMIT_BRANCH && $CI_OPEN_MERGE_REQUESTS
-      when: never
-    # run when the commit has a branch name associated
-    - if: $CI_COMMIT_BRANCH
+    # default: don't run
+
 
 # factored out command to strip symbols from test binaries
 .strip_symbols: &strip_symbols
@@ -39,7 +48,7 @@ workflow:
 #  image: centos:8
 #  needs: []
 #  rules:
-#    - if: $IS_MAIN_PIPELINE == "yes"
+#    - if: $EXTRA_TESTS_ENABLED == "yes"
 #      when: on_success
 #    - when: never
 #  before_script:
@@ -64,7 +73,7 @@ workflow:
 #  script:
 #    - mkdir -p install build && cd ./build && ../bootstrap.sh --prefix=../install --debug-build && make -j$(nproc) && make -j$(nproc) build_tests_all
 #  rules:
-#    - if: $IS_MAIN_PIPELINE == "yes"
+#    - if: $EXTRA_TESTS_ENABLED == "yes"
 #      when: on_success
 #    - when: never
 
@@ -73,7 +82,7 @@ workflow:
 #  image: centos:8
 #  needs: [build_centos_8]
 #  rules:
-#    - if: $IS_MAIN_PIPELINE == "yes"
+#    - if: $EXTRA_TESTS_ENABLED == "yes"
 #      when: on_success
 #    - when: never
 #  before_script:
@@ -87,7 +96,7 @@ workflow:
 #  image: centos:8
 #  needs: [build_centos_8]
 #  rules:
-#    - if: $IS_MAIN_PIPELINE == "yes"
+#    - if: $EXTRA_TESTS_ENABLED == "yes"
 #      when: on_success
 #    - when: never
 #  before_script:
@@ -101,7 +110,7 @@ workflow:
 #  image: centos:8
 #  needs: [build_centos_8]
 #  rules:
-#    - if: $IS_MAIN_PIPELINE == "yes"
+#    - if: $EXTRA_TESTS_ENABLED == "yes"
 #      when: on_success
 #    - when: never
 #  before_script:
@@ -115,7 +124,7 @@ workflow:
 #  image: centos:8
 #  needs: [build_centos_8]
 #  rules:
-#    - if: $IS_MAIN_PIPELINE == "yes"
+#    - if: $EXTRA_TESTS_ENABLED == "yes"
 #      when: on_success
 #    - when: never
 #  before_script:
@@ -150,7 +159,7 @@ build_tests_buildtype_debug_sym_debug:
 
 build_tests_sym_debug:
   rules:
-    - if: $IS_MAIN_PIPELINE == "yes"
+    - if: $EXTRA_TESTS_ENABLED == "yes"
       when: on_success
     - when: never
   needs: []
@@ -212,7 +221,7 @@ gitleaks:
 
 tests_performance:
   rules:
-    - if: $IS_MAIN_PIPELINE == "yes"
+    - if: $EXTRA_TESTS_ENABLED == "yes"
       when: on_success
     - when: never
   needs: [build_test]
@@ -222,7 +231,7 @@ tests_performance:
 
 tests_unit_buildtype_debug:
   rules:
-    - if: $IS_MAIN_PIPELINE == "yes"
+    - if: $EXTRA_TESTS_ENABLED == "yes"
       when: on_success
     - when: never
   needs: [build_test_buildtype_debug]
@@ -235,7 +244,7 @@ tests_unit_buildtype_debug:
 
 build_test_lpf:
   rules:
-    - if: $IS_MAIN_PIPELINE == "yes"
+    - if: $LPF_TESTS_ENABLED == "yes"
       when: always
     - when: never
   needs: []
@@ -255,7 +264,7 @@ build_test_lpf:
 
 tests_unit_lpf:
   rules:
-    - if: $IS_MAIN_PIPELINE == "yes"
+    - if: $LPF_TESTS_ENABLED == "yes"
       when: on_success
     - when: never
   needs: [build_test_lpf]
@@ -265,7 +274,7 @@ tests_unit_lpf:
 
 tests_smoke_lpf:
   rules:
-    - if: $IS_MAIN_PIPELINE == "yes"
+    - if: $LPF_TESTS_ENABLED == "yes"
       when: on_success
     - when: never
   needs: [build_test_lpf]
@@ -275,7 +284,7 @@ tests_smoke_lpf:
 
 test_installation_lpf:
   rules:
-    - if: $IS_MAIN_PIPELINE == "yes"
+    - if: $LPF_TESTS_ENABLED == "yes"
       when: on_success
     - when: never
   needs: [build_test_lpf]
@@ -286,7 +295,7 @@ test_installation_lpf:
 
 build_test_gcc_versions:
   rules:
-    - if: $IS_MAIN_PIPELINE == "yes"
+    - if: $MULTIPLE_COMPILERS_ENABLED == "yes"
       when: on_success
     - when: never
   image: ${CI_REGISTRY}/${CI_PROJECT_PATH}/lpf-ubuntu-22.04-gcc-clang
