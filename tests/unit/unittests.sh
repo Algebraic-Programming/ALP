@@ -20,69 +20,74 @@
 TESTS_ROOT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )"/../ &> /dev/null && pwd )"
 source ${TESTS_ROOT_DIR}/parse_env.sh
 
-for MODE in debug ndebug; do
+REFERENCE_COUNT=$(echo ${BACKENDS[@]} | grep -o "reference" | wc -l)
+
+for MODE in ndebug debug; do
 
 	echo "****************************************************************************************"
 	echo "      FUNCTIONAL    PERFORMANCE                       DESCRIPTION      "
 	echo "----------------------------------------------------------------------------------------"
 	echo " "
 
-	echo ">>>      [x]           [ ]       Testing grb::utils::equals over floats and doubles"
-	${TEST_BIN_DIR}/equals_${MODE} &> ${TEST_OUT_DIR}/equals_${MODE}.log
-	head -1 ${TEST_OUT_DIR}/equals_${MODE}.log
-	grep 'Test OK' ${TEST_OUT_DIR}/equals_${MODE}.log || echo "Test FAILED"
-	echo " "
-
-	echo ">>>      [x]           [ ]       Testing numerical addition operator over doubles"
-	${TEST_BIN_DIR}/add15d_${MODE}
-
-	echo ">>>      [x]           [ ]       Testing numerical addition operator over a mixed field"
-	echo "                                 (double, integers, and floats)"
-	${TEST_BIN_DIR}/add15m_${MODE}
-
-	echo ">>>      [x]           [ ]       Testing numerical multiplication operator over integers"
-	${TEST_BIN_DIR}/mul15i_${MODE}
-
-	echo ">>>      [x]           [ ]       Testing numerical multiplication operator over a mixed"
-	echo "                                 field (double, integers, and floats)"
-	${TEST_BIN_DIR}/mul15m_${MODE}
-
-	echo ">>>      [x]           [ ]       Tests the built-in parser on the west0497 MatrixMarket file"
-	if [ -f ${INPUT_DIR}/west0497.mtx ]; then
-		${TEST_BIN_DIR}/parserTest_${MODE} ${INPUT_DIR}/west0497.mtx 2> ${TEST_OUT_DIR}/parserTest_${MODE}.err 1> ${TEST_OUT_DIR}/parserTest_${MODE}.out
-		head -1 ${TEST_OUT_DIR}/parserTest_${MODE}.out
-		grep 'Test OK' ${TEST_OUT_DIR}/parserTest_${MODE}.out || echo "Test FAILED"
-	else
-		echo "Test DISABLED: west0497.mtx was not found. To enable, please provide ${INPUT_DIR}/west0497.mtx"
-	fi
-	echo " "
-
-	echo ">>>      [x]           [ ]       Tests the built-in parser (in graphblas/utils/parser.hpp)"
-	echo "                                 versus the parser in tests/parser.cpp on cit-HepTh.txt."
-	if [ -f ${INPUT_DIR}/cit-HepTh.txt ]; then
-		${TEST_BIN_DIR}/compareParserTest_${MODE} ${INPUT_DIR}/cit-HepTh.txt &> ${TEST_OUT_DIR}/compareParserTest_${MODE}
-		head -1 ${TEST_OUT_DIR}/compareParserTest_${MODE}
-		tail -2 ${TEST_OUT_DIR}/compareParserTest_${MODE}
-	else
-		echo "Test DISABLED: cit-HepTh was not found. To enable, please provide the dataset within ${INPUT_DIR}/cit-HepTh.txt"
+	# run only if the reference backend is present
+	if [[ "${REFERENCE_COUNT}" -gt "0" ]]; then
+		echo ">>>      [x]           [ ]       Testing grb::utils::equals over floats and doubles"
+		${TEST_BIN_DIR}/equals_${MODE} &> ${TEST_OUT_DIR}/equals_${MODE}.log
+		head -1 ${TEST_OUT_DIR}/equals_${MODE}.log
+		grep 'Test OK' ${TEST_OUT_DIR}/equals_${MODE}.log || echo "Test FAILED"
 		echo " "
-	fi
 
-	echo ">>>      [x]           [ ]       Tests the built-in high-performance parser (in"
-	echo "                                 include/graphblas/utils/parser.h &"
-	echo "                                  src/graphblas/utils/parser.c) on dwt_59.mtx"
-	echo "                                 Parameters: P=1, no hyperthreads (half the available threads),"
-	echo "                                 block size = 128k, buffer size = 8M"
-	if [ -f ${INPUT_DIR}/dwt_59.mtx ]; then
-		echo "Functional test executable: ${TEST_BIN_DIR}/hpparser_${MODE}"
-		${TEST_BIN_DIR}/hpparser_${MODE} 1 ${MAX_THREADS} 131072 8388608 ${INPUT_DIR}/dwt_59.mtx 1 &> ${TEST_OUT_DIR}/hpparser_${MODE}
-		echo "[ 0, *] nrow =           59, ncol =           59, nnnz =          163
+		echo ">>>      [x]           [ ]       Testing numerical addition operator over doubles"
+		${TEST_BIN_DIR}/add15d_${MODE}
+
+		echo ">>>      [x]           [ ]       Testing numerical addition operator over a mixed field"
+		echo "                                 (double, integers, and floats)"
+		${TEST_BIN_DIR}/add15m_${MODE}
+
+		echo ">>>      [x]           [ ]       Testing numerical multiplication operator over integers"
+		${TEST_BIN_DIR}/mul15i_${MODE}
+
+		echo ">>>      [x]           [ ]       Testing numerical multiplication operator over a mixed"
+		echo "                                 field (double, integers, and floats)"
+		${TEST_BIN_DIR}/mul15m_${MODE}
+
+		echo ">>>      [x]           [ ]       Tests the built-in parser on the west0497 MatrixMarket file"
+		if [ -f ${INPUT_DIR}/west0497.mtx ]; then
+			${TEST_BIN_DIR}/parserTest_${MODE} ${INPUT_DIR}/west0497.mtx 2> ${TEST_OUT_DIR}/parserTest_${MODE}.err 1> ${TEST_OUT_DIR}/parserTest_${MODE}.out
+			head -1 ${TEST_OUT_DIR}/parserTest_${MODE}.out
+			grep 'Test OK' ${TEST_OUT_DIR}/parserTest_${MODE}.out || echo "Test FAILED"
+		else
+			echo "Test DISABLED: west0497.mtx was not found. To enable, please provide ${INPUT_DIR}/west0497.mtx"
+		fi
+		echo " "
+
+		echo ">>>      [x]           [ ]       Tests the built-in parser (in graphblas/utils/parser.hpp)"
+		echo "                                 versus the parser in tests/parser.cpp on cit-HepTh.txt."
+		if [ -f ${INPUT_DIR}/cit-HepTh.txt ]; then
+			${TEST_BIN_DIR}/compareParserTest_${MODE} ${INPUT_DIR}/cit-HepTh.txt &> ${TEST_OUT_DIR}/compareParserTest_${MODE}
+			head -1 ${TEST_OUT_DIR}/compareParserTest_${MODE}
+			tail -2 ${TEST_OUT_DIR}/compareParserTest_${MODE}
+		else
+			echo "Test DISABLED: cit-HepTh was not found. To enable, please provide the dataset within ${INPUT_DIR}/cit-HepTh.txt"
+			echo " "
+		fi
+
+		echo ">>>      [x]           [ ]       Tests the built-in high-performance parser (in"
+		echo "                                 include/graphblas/utils/parser.h &"
+		echo "                                  src/graphblas/utils/parser.c) on dwt_59.mtx"
+		echo "                                 Parameters: P=1, no hyperthreads (half the available threads),"
+		echo "                                 block size = 128k, buffer size = 8M"
+		if [ -f ${INPUT_DIR}/dwt_59.mtx ]; then
+			echo "Functional test executable: ${TEST_BIN_DIR}/hpparser_${MODE}"
+			${TEST_BIN_DIR}/hpparser_${MODE} 1 ${MAX_THREADS} 131072 8388608 ${INPUT_DIR}/dwt_59.mtx 1 &> ${TEST_OUT_DIR}/hpparser_${MODE}
+			echo "[ 0, *] nrow =           59, ncol =           59, nnnz =          163
 [ 0, *] offb =          564, fsiz =         1494, offe =         1493
 [ *, *] ntot =          163" > ${TEST_OUT_DIR}/hpparser.chk
-		(diff ${TEST_OUT_DIR}/hpparser_${MODE} ${TEST_OUT_DIR}/hpparser.chk && printf "Test OK.\n\n") || printf "Test FAILED.\n\n"
-	else
-		echo "Test DISABLED: dwt_59.mtx was not found. To enable, please provide ${INPUT_DIR}/dwt_59.mtx"
-		echo " "
+			(diff ${TEST_OUT_DIR}/hpparser_${MODE} ${TEST_OUT_DIR}/hpparser.chk && printf "Test OK.\n\n") || printf "Test FAILED.\n\n"
+		else
+			echo "Test DISABLED: dwt_59.mtx was not found. To enable, please provide ${INPUT_DIR}/dwt_59.mtx"
+			echo " "
+		fi
 	fi
 
 	for BACKEND in ${BACKENDS[@]}; do
@@ -659,6 +664,12 @@ for MODE in debug ndebug; do
 				${LPFRUN} -np 3 ${TEST_BIN_DIR}/vxm_${MODE}_bsp1d ${INPUT_DIR}/west0497.mtx &> ${TEST_OUT_DIR}/vxm_${MODE}_bsp1d.west0497.P3
 				${LPFRUN} -np 4 ${TEST_BIN_DIR}/vxm_${MODE}_bsp1d ${INPUT_DIR}/west0497.mtx &> ${TEST_OUT_DIR}/vxm_${MODE}_bsp1d.west0497.P4
 				head -1 ${TEST_OUT_DIR}/vxm_${MODE}_bsp1d.west0497.P4
+				if [[ ! -f ${TEST_OUT_DIR}/vxm_${MODE}_reference_1_1.west0497 ]]; then
+					# if golden output file not present, materialize it
+					${TEST_BIN_DIR}/vxm_${MODE}_reference ${INPUT_DIR}/west0497.mtx &> ${TEST_OUT_DIR}/vxm_${MODE}_reference_1_1.west0497
+					head -1 ${TEST_OUT_DIR}/vxm_${MODE}_reference_1_1.west0497
+					grep 'Test OK' ${TEST_OUT_DIR}/vxm_${MODE}_reference_1_1.west0497 || echo "Test FAILED"
+				fi
 				(grep -q 'Test OK' ${TEST_OUT_DIR}/vxm_${MODE}_reference_1_1.west0497 && grep -q 'Test OK' ${TEST_OUT_DIR}/vxm_${MODE}_bsp1d.west0497.P1 && grep -q 'Test OK' ${TEST_OUT_DIR}/vxm_${MODE}_bsp1d.west0497.P2 && grep -q 'Test OK' ${TEST_OUT_DIR}/vxm_${MODE}_bsp1d.west0497.P3 && grep -q 'Test OK' ${TEST_OUT_DIR}/vxm_${MODE}_bsp1d.west0497.P4 && printf "Test OK.\n") || printf "Test FAILED.\n"
 				cat ${TEST_OUT_DIR}/vxm_${MODE}_reference_1_1.west0497 | grep '^[0-9][0-9]* [ ]*[-]*[0-9]' | sort -n > ${TEST_OUT_DIR}/vxm_${MODE}.west0497.chk
 				cat ${TEST_OUT_DIR}/vxm_${MODE}_bsp1d.west0497.P1 | grep '^[0-9][0-9]* [ ]*[-]*[0-9]' | sort -n  > ${TEST_OUT_DIR}/vxm_${MODE}_bsp1d.west0497.P1.chk
@@ -684,6 +695,12 @@ for MODE in debug ndebug; do
 				${LPFRUN} -np 3 ${TEST_BIN_DIR}/mxv_${MODE}_bsp1d ${INPUT_DIR}/west0497.mtx &> ${TEST_OUT_DIR}/mxv_${MODE}_bsp1d.west0497.P3
 				${LPFRUN} -np 4 ${TEST_BIN_DIR}/mxv_${MODE}_bsp1d ${INPUT_DIR}/west0497.mtx &> ${TEST_OUT_DIR}/mxv_${MODE}_bsp1d.west0497.P4
 				head -1 ${TEST_OUT_DIR}/mxv_${MODE}_bsp1d.west0497.P4
+				if [[ ! -f ${TEST_OUT_DIR}/mxv_${MODE}_reference_1_1.west0497 ]]; then
+					# if golden output file not present, materialize it
+					${TEST_BIN_DIR}/mxv_${MODE}_reference ${INPUT_DIR}/west0497.mtx &> ${TEST_OUT_DIR}/mxv_${MODE}_reference_1_1.west0497
+					head -1 ${TEST_OUT_DIR}/mxv_${MODE}_reference_1_1.west0497
+					grep 'Test OK' ${TEST_OUT_DIR}/mxv_${MODE}_reference_1_1.west0497 || echo "Test FAILED"
+				fi
 				(grep -q 'Test OK' ${TEST_OUT_DIR}/mxv_${MODE}_reference_1_1.west0497 && grep -q 'Test OK' ${TEST_OUT_DIR}/mxv_${MODE}_bsp1d.west0497.P1 && grep -q 'Test OK' ${TEST_OUT_DIR}/mxv_${MODE}_bsp1d.west0497.P2 && grep -q 'Test OK' ${TEST_OUT_DIR}/mxv_${MODE}_bsp1d.west0497.P3 && grep -q 'Test OK' ${TEST_OUT_DIR}/mxv_${MODE}_bsp1d.west0497.P4 && printf "Test OK.\n") || printf "Test FAILED.\n"
 				cat ${TEST_OUT_DIR}/mxv_${MODE}_reference_1_1.west0497 | grep '^[0-9][0-9]* [ ]*[-]*[0-9]' | sort -n > ${TEST_OUT_DIR}/mxv_${MODE}.west0497.chk
 				cat ${TEST_OUT_DIR}/mxv_${MODE}_bsp1d.west0497.P1 | grep '^[0-9][0-9]* [ ]*[-]*[0-9]' | sort -n  > ${TEST_OUT_DIR}/mxv_${MODE}_bsp1d.west0497.P1.chk
