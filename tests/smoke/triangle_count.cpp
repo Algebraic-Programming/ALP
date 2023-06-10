@@ -127,13 +127,18 @@ void grbProgram( const input & data_in, output & out ) {
 		}
 		// Build A from A_pattern, filled with static_cast< IntegerType>( 1 )
 		std::vector< size_t > rows, cols;
-		std::vector< IntegerType > values( nnz( A_pattern ), static_cast< IntegerType >( 1 ) );
 		rows.reserve( nnz( A_pattern ) );
 		cols.reserve( nnz( A_pattern ) );
 		for( const std::pair< size_t, size_t > p : A_pattern ) {
+			// FIXME: this is a workaround while waiting for a masked version of mxm
+			if( p.first == p.second ) {
+				continue;
+			}
+			
 			rows.push_back( p.first );
 			cols.push_back( p.second );
 		}
+		std::vector< IntegerType > values( rows.size(), static_cast< IntegerType >( 1 ) );
 		buildMatrixUnique( A, rows.data(), cols.data(), values.data(), values.size(), IOMode::SEQUENTIAL );
 	}
 	out.times.io = timer.time();
