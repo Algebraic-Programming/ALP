@@ -919,17 +919,20 @@ namespace grb {
 	namespace internal {
 
 		template<
+			bool masked,
 			Descriptor descr = descriptors::no_operation,
 			class Monoid,
-			typename InputType, typename IOType
+			typename InputType, typename IOType, typename MaskType
 		>
-		RC foldl_unmasked_generic(
+		RC foldl_generic(
 			IOType &x,
 			const Matrix< InputType, reference > &A,
+			const Matrix< MaskType, reference > &mask,
 			const Monoid &monoid
 		) {
+			(void) mask;
 #ifdef _DEBUG
-			std::cout << "In grb::internal::foldl_unmasked_generic\n";
+			std::cout << "In grb::internal::foldl_generic\n";
 #endif
 			RC rc = SUCCESS;
 
@@ -999,18 +1002,20 @@ namespace grb {
 		}
 
 		template<
+			bool masked,
 			Descriptor descr = descriptors::no_operation,
 			class Monoid,
-			typename InputType, typename IOType
+			typename InputType, typename IOType, typename MaskType
 		>
-		RC foldr_unmasked_generic(
+		RC foldr_generic(
 			IOType &x,
 			const Matrix< InputType, reference > &A,
+			const Matrix< MaskType, reference > &mask,
 			const Monoid &monoid
 		) {
-
+			(void) mask;
 #ifdef _DEBUG
-			std::cout << "In grb::internal::foldr_unmasked_generic\n";
+			std::cout << "In grb::internal::foldr_generic\n";
 #endif
 			RC rc = SUCCESS;
 
@@ -1578,8 +1583,9 @@ namespace grb {
 		std::cout << "In grb::foldr (reference, matrix, op)\n";
 #endif
 
-		return internal::foldr_unmasked_generic(
-			x, A, monoid
+		Matrix< void, reference > empty_mask( nrows( A ), ncols( A ) );
+		return internal::foldr_generic< false, descr, Monoid, InputType, IOType, void >(
+			x, A, empty_mask, monoid
 		);
 	}
 
@@ -1676,8 +1682,9 @@ namespace grb {
 		std::cout << "In grb::foldl (reference, matrix, monoid)\n";
 #endif
 
-		return internal::foldl_unmasked_generic(
-			x, A, monoid
+		Matrix< void, reference > empty_mask( nrows( A ), ncols( A ) );
+		return internal::foldl_generic< false, descr, Monoid, InputType, IOType, void >(
+			x, A, empty_mask, monoid
 		);
 	}
 
