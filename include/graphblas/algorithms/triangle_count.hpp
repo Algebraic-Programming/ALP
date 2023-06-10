@@ -35,7 +35,7 @@
 
 #include <graphblas.hpp>
 
-constexpr bool Debug = true;
+constexpr bool Debug = false;
 
 namespace grb {
 
@@ -46,7 +46,7 @@ namespace grb {
 			template< class Iterator >
 			void printSparseMatrixIterator( size_t rows, size_t cols, Iterator begin, Iterator end, const std::string & name = "", std::ostream & os = std::cout ) {
 				std::cout << "Matrix \"" << name << "\" (" << rows << "x" << cols << "):" << std::endl << "[" << std::endl;
-				if( rows > 1000 || cols > 1000 ) {
+				if( rows > 100 || cols > 100 ) {
 					os << "   Matrix too large to print" << std::endl;
 				} else {
 					// os.precision( 3 );
