@@ -930,9 +930,10 @@ namespace grb {
 			const Matrix< MaskType, reference > &mask,
 			const Monoid &monoid
 		) {
-			(void) mask;
+
 #ifdef _DEBUG
-			std::cout << "In grb::internal::foldl_generic\n";
+			std::cout << "In grb::internal::foldl_generic( reference, masked = "
+				<< ( masked ? "true" : "false" ) << " )" << std::endl;
 #endif
 			RC rc = SUCCESS;
 
@@ -940,47 +941,111 @@ namespace grb {
 			const auto& op = monoid.getOperator();
 
 			const auto &A_raw = internal::getCRS( A );
+			const auto &mask_raw = internal::getCRS( mask );
 			const size_t m = nrows( A );
+			const size_t n = ncols( A );
+			const size_t mask_k_increment = masked ? 1 : 0;
+
+			// Check mask dimensions
+			if( masked && ( m != nrows(mask) || n != ncols(mask) ) ) {
+#ifdef _DEBUG
+				std::cout << "Mask dimensions do not match input matrix dimensions\n";
+#endif
+				return MISMATCH;
+			}
+
 			RC local_rc = rc;
 			auto local_x = identity;
 
 #ifdef _H_GRB_REFERENCE_OMP_BLAS3
-	#pragma omp parallel default(none) shared(A_raw, x, rc, std::cout) firstprivate(local_x, local_rc, m, op, identity)
+	#pragma omp parallel default(none) shared(A_raw, mask_raw, x, rc, std::cout) firstprivate(local_x, local_rc, m, op, identity)
 #endif
 			{
-				size_t start, end;
+				size_t start_row, end_row;
 #ifdef _H_GRB_REFERENCE_OMP_BLAS3
-				config::OMP::localRange( start, end, A_raw.col_start[ 0 ], A_raw.col_start[ m ] );
+				config::OMP::localRange( start_row, end_row, 0, m );
 #else
-				start = A_raw.col_start[ 0 ];
-				end = A_raw.col_start[ m ];
+				start_row = 0;
+				end_row = m;
 #endif
-				for( size_t k = start; k < end; ++k ) {
-					const InputType a = A_raw.getValue( k, identity);
+				for( size_t i = start_row; i < end_row; ++i ) {
+					size_t mask_k = mask_raw.col_start[ i ];
+					for( size_t k = A_raw.col_start[ i ]; k < A_raw.col_start[ i + 1 ]; ++k ) {
+						const size_t k_col = A_raw.row_index[ k ];
+						if( masked ) {
+							// Increment the mask pointer until we find the right column, or an higher one
+							while( mask_raw.row_index[ mask_k ] < k_col && mask_k < mask_raw.col_start[ i + 1 ] ) {
 #ifdef _DEBUG
-					const std::string str( "A( " + std::to_string( k ) + " ) = " + std::to_string( a ) + "\n" );
+								const std::string skip_str( "Skipping masked coordinate: ( " + std::to_string( i ) + ";" + std::to_string( mask_raw.row_index[ mask_k ] ) + " )\n" );
 #if defined(_H_GRB_REFERENCE_OMP_BLAS3)
 	#pragma omp critical
-					{
-						std::cout << "[T" << omp_get_thread_num() << "] - " << str;
-					}
+								{
+									std::cout << "[T" << omp_get_thread_num() << "] - " << skip_str;
+								}
 #else
-					std::cout << str;
+								std::cout << skip_str;
 #endif
-					auto x_before = local_x;
 #endif
-					local_rc = local_rc ? local_rc : grb::foldl( local_x, a, op );
+								mask_k += mask_k_increment;
+							}
+							// if there is no value for this coordinate, skip it
+							if( mask_raw.row_index[ mask_k ] != k_col ) {
 #ifdef _DEBUG
-					const std::string str2( "Computing: local_x = op(" + std::to_string( x_before ) + ", " + std::to_string( a ) + ") = " + std::to_string( local_x ) + "\n" );
+								const std::string skip_str2( "Skipped masked coordinate: ( " + std::to_string( i ) + ";" + std::to_string( mask_raw.row_index[ mask_k ] ) + " )\n" );
 #if defined(_H_GRB_REFERENCE_OMP_BLAS3)
 	#pragma omp critical
-					{
-						std::cout << "[T" << omp_get_thread_num() << "] - " << str2;
-					}
+								{
+									std::cout << "[T" << omp_get_thread_num() << "] - " << skip_str2;
+								}
 #else
-					std::cout << str2;
+								std::cout << skip_str2;
 #endif
 #endif
+								continue;
+							}
+
+#ifdef _DEBUG
+							const std::string str( "Mask( " + std::to_string( i ) + ";" + std::to_string( mask_raw.row_index[ mask_k ] ) + " )\n" );
+#if defined(_H_GRB_REFERENCE_OMP_BLAS3)
+	#pragma omp critical
+							{
+								std::cout << "[T" << omp_get_thread_num() << "] - " << str;
+							}
+#else
+							std::cout << str;
+#endif
+#endif
+						}
+
+						// Increment the mask pointer in order to skip the next while loop (best case)
+						mask_k += mask_k_increment;
+
+						const InputType a_val = A_raw.getValue( k, identity );
+#ifdef _DEBUG
+						const std::string str( "A( " + std::to_string( i ) + ";" + std::to_string( k_col ) + " ) = " + std::to_string( a_val ) + "\n" );
+#if defined(_H_GRB_REFERENCE_OMP_BLAS3)
+	#pragma omp critical
+						{
+							std::cout << "[T" << omp_get_thread_num() << "] - " << str;
+						}
+#else
+						std::cout << str;
+#endif
+						auto x_before = local_x;
+#endif
+						local_rc = local_rc ? local_rc : grb::foldl( local_x, a_val, op );
+#ifdef _DEBUG
+						const std::string str2( "Computing: local_x = op(" + std::to_string( x_before ) + ", " + std::to_string( a_val ) + ") = " + std::to_string( local_x ) + "\n" );
+#if defined(_H_GRB_REFERENCE_OMP_BLAS3)
+	#pragma omp critical
+						{
+							std::cout << "[T" << omp_get_thread_num() << "] - " << str2;
+						}
+#else
+						std::cout << str2;
+#endif
+#endif
+					}
 				}
 
 #ifdef _H_GRB_REFERENCE_OMP_BLAS3
@@ -1013,9 +1078,10 @@ namespace grb {
 			const Matrix< MaskType, reference > &mask,
 			const Monoid &monoid
 		) {
-			(void) mask;
+
 #ifdef _DEBUG
-			std::cout << "In grb::internal::foldr_generic\n";
+			std::cout << "In grb::internal::foldr_generic( reference, masked = "
+				<< ( masked ? "true" : "false" ) << " )" << std::endl;
 #endif
 			RC rc = SUCCESS;
 
@@ -1023,47 +1089,111 @@ namespace grb {
 			const auto& op = monoid.getOperator();
 
 			const auto &A_raw = internal::getCRS( A );
+			const auto &mask_raw = internal::getCRS( mask );
 			const size_t m = nrows( A );
+			const size_t n = ncols( A );
+			const size_t mask_k_increment = masked ? 1 : 0;
+
+			// Check mask dimensions
+			if( masked && ( m != nrows(mask) || n != ncols(mask) ) ) {
+#ifdef _DEBUG
+				std::cout << "Mask dimensions do not match input matrix dimensions\n";
+#endif
+				return MISMATCH;
+			}
+
 			RC local_rc = rc;
 			auto local_x = identity;
 
 #ifdef _H_GRB_REFERENCE_OMP_BLAS3
-	#pragma omp parallel default(none) shared(A_raw, x, rc, std::cout) firstprivate(local_x, local_rc, m, op, identity)
+	#pragma omp parallel default(none) shared(A_raw, mask_raw, x, rc, std::cout) firstprivate(local_x, local_rc, m, op, identity)
 #endif
 			{
-				size_t start, end;
+				size_t start_row, end_row;
 #ifdef _H_GRB_REFERENCE_OMP_BLAS3
-				config::OMP::localRange( start, end, A_raw.col_start[ 0 ], A_raw.col_start[ m ] );
+				config::OMP::localRange( start_row, end_row, 0, m );
 #else
-				start = A_raw.col_start[ 0 ];
-				end = A_raw.col_start[ m ];
+				start_row = 0;
+				end_row = m;
 #endif
-				for( size_t k = start; k < end; ++k ) {
-					const InputType a = A_raw.getValue( k, identity);
+				for( size_t i = start_row; i < end_row; ++i ) {
+					size_t mask_k = mask_raw.col_start[ i ];
+					for( size_t k = A_raw.col_start[ i ]; k < A_raw.col_start[ i + 1 ]; ++k ) {
+						const size_t k_col = A_raw.row_index[ k ];
+						if( masked ) {
+							// Increment the mask pointer until we find the right column, or an higher one
+							while( mask_raw.row_index[ mask_k ] < k_col && mask_k < mask_raw.col_start[ i + 1 ] ) {
 #ifdef _DEBUG
-					const std::string str( "A( " + std::to_string( k ) + " ) = " + std::to_string( a ) + "\n" );
+								const std::string skip_str( "Skipping masked coordinate: ( " + std::to_string( i ) + ";" + std::to_string( mask_raw.row_index[ mask_k ] ) + " )\n" );
 #if defined(_H_GRB_REFERENCE_OMP_BLAS3)
 	#pragma omp critical
-					{
-						std::cout << "[T" << omp_get_thread_num() << "] - " << str;
-					}
+								{
+									std::cout << "[T" << omp_get_thread_num() << "] - " << skip_str;
+								}
 #else
-					std::cout << str;
+								std::cout << skip_str;
 #endif
-					auto x_before = local_x;
 #endif
-					local_rc = local_rc ? local_rc : grb::foldr( a, local_x, op );
+								mask_k += mask_k_increment;
+							}
+							// if there is no value for this coordinate, skip it
+							if( mask_raw.row_index[ mask_k ] != k_col ) {
 #ifdef _DEBUG
-					const std::string str2( "Computing: local_x = op(" + std::to_string( x_before ) + ", " + std::to_string( a ) + ") = " + std::to_string( local_x ) + "\n" );
+								const std::string skip_str2( "Skipped masked coordinate: ( " + std::to_string( i ) + ";" + std::to_string( mask_raw.row_index[ mask_k ] ) + " )\n" );
 #if defined(_H_GRB_REFERENCE_OMP_BLAS3)
 	#pragma omp critical
-					{
-						std::cout << "[T" << omp_get_thread_num() << "] - " << str2;
-					}
+								{
+									std::cout << "[T" << omp_get_thread_num() << "] - " << skip_str2;
+								}
 #else
-					std::cout << str2;
+								std::cout << skip_str2;
 #endif
 #endif
+								continue;
+							}
+
+#ifdef _DEBUG
+							const std::string str( "Mask( " + std::to_string( i ) + ";" + std::to_string( mask_raw.row_index[ mask_k ] ) + " )\n" );
+#if defined(_H_GRB_REFERENCE_OMP_BLAS3)
+	#pragma omp critical
+							{
+								std::cout << "[T" << omp_get_thread_num() << "] - " << str;
+							}
+#else
+							std::cout << str;
+#endif
+#endif
+						}
+
+						// Increment the mask pointer in order to skip the next while loop (best case)
+						mask_k += mask_k_increment;
+
+						const InputType a_val = A_raw.getValue( k, identity );
+#ifdef _DEBUG
+						const std::string str( "A( " + std::to_string( i ) + ";" + std::to_string( k_col ) + " ) = " + std::to_string( a_val ) + "\n" );
+#if defined(_H_GRB_REFERENCE_OMP_BLAS3)
+	#pragma omp critical
+						{
+							std::cout << "[T" << omp_get_thread_num() << "] - " << str;
+						}
+#else
+						std::cout << str;
+#endif
+						auto x_before = local_x;
+#endif
+						local_rc = local_rc ? local_rc : grb::foldr( a_val, local_x, op );
+#ifdef _DEBUG
+						const std::string str2( "Computing: local_x = op(" + std::to_string( a_val ) + ", " + std::to_string( x_before ) + ") = " + std::to_string( local_x ) + "\n" );
+#if defined(_H_GRB_REFERENCE_OMP_BLAS3)
+	#pragma omp critical
+						{
+							std::cout << "[T" << omp_get_thread_num() << "] - " << str2;
+						}
+#else
+						std::cout << str2;
+#endif
+#endif
+					}
 				}
 
 #ifdef _H_GRB_REFERENCE_OMP_BLAS3
@@ -1075,12 +1205,12 @@ namespace grb {
 #endif
 					local_rc = local_rc ? local_rc : grb::foldr( local_x, x, op );
 #ifdef _DEBUG
-					std::cout << "Computing x: op(" << x_before << ", " << local_x << ") = " << x << std::endl;
+					std::cout << "Computing x: op(" << local_x << ", " << x_before << ") = " << x << std::endl;
 #endif
 					rc = rc ? rc : local_rc;
 				}
 			}
-		
+
 			return rc;
 		}
 
@@ -1511,34 +1641,35 @@ namespace grb {
 	) {
 		// static checks
 		static_assert( !std::is_same< InputType, void >::value,
-			"grb::foldr ( reference, IOType <- op( IOType, InputType ): "
+			"grb::foldr ( reference, IOType <- op( InputType, IOType ): "
 			"the operator version of foldr cannot be used if the "
 			"input matrix is a pattern matrix (of type void)"
 		);
 		static_assert( !std::is_same< IOType, void >::value,
-			"grb::foldr ( reference, IOType <- op( IOType, InputType ): "
+			"grb::foldr ( reference, IOType <- op( InputType, IOType ): "
 			"the operator version of foldr cannot be used if the "
 			"result is of type void"
 		);
-		static_assert( (std::is_same< typename Monoid::D1, IOType >::value),
-			"grb::foldr ( reference, IOType <- op( IOType, InputType ): "
+		static_assert( (std::is_same< typename Monoid::D1, InputType >::value),
+			"grb::foldr ( reference, IOType <- op( InputType, IOType ): "
 			"called with a prefactor input type that does not match the first domain of the given operator"
 		);
-		static_assert( (std::is_same< typename Monoid::D2, InputType >::value),
-			"grb::foldr ( reference, IOType <- op( IOType, InputType ): "
+		static_assert( (std::is_same< typename Monoid::D2, IOType >::value),
+			"grb::foldr ( reference, IOType <- op( InputType, IOType ): "
 			"called with a postfactor input type that does not match the first domain of the given operator"
 		);
 		static_assert( (std::is_same< typename Monoid::D3, IOType >::value),
-			"grb::foldr ( reference, IOType <- op( IOType, InputType ): "
+			"grb::foldr ( reference, IOType <- op( InputType, IOType ): "
 			"called with an output type that does not match the output domain of the given operator"
 		);
 
 #ifdef _DEBUG
 		std::cout << "In grb::foldr (reference,  mask, matrix, monoid)\n";
 #endif
-		// TODO: implement foldr with mask
 
-		return UNSUPPORTED;
+		return internal::foldr_generic< true, descr, Monoid, InputType, IOType, MaskType >(
+			x, A, mask, monoid
+		);
 	}
 
 	template<
@@ -1608,25 +1739,25 @@ namespace grb {
 	) {
 		// static checks
 		static_assert( !std::is_same< InputType, void >::value,
-			"grb::foldl ( reference, IOType <- op( InputType, IOType ): "
+			"grb::foldl ( reference, IOType <- op( IOType, InputType ): "
 			"the operator version of foldl cannot be used if the "
 			"input matrix is a pattern matrix (of type void)"
 		);
 		static_assert( !std::is_same< IOType, void >::value,
-			"grb::foldl ( reference, IOType <- op( InputType, IOType ): "
+			"grb::foldl ( reference, IOType <- op( IOType, InputType ): "
 			"the operator version of foldl cannot be used if the "
 			"result is of type void"
 		);
 		static_assert( (std::is_same< typename Monoid::D1, IOType >::value),
-			"grb::foldl ( reference, IOType <- op( InputType, IOType ): "
+			"grb::foldl ( reference, IOType <- op( IOType, InputType ): "
 			"called with a prefactor input type that does not match the first domain of the given operator"
 		);
 		static_assert( (std::is_same< typename Monoid::D2, InputType >::value),
-			"grb::foldl ( reference, IOType <- op( InputType, IOType ): "
+			"grb::foldl ( reference, IOType <- op( IOType, InputType ): "
 			"called with a postfactor input type that does not match the first domain of the given operator"
 		);
 		static_assert( (std::is_same< typename Monoid::D3, IOType >::value),
-			"grb::foldl ( reference, IOType <- op( InputType, IOType ): "
+			"grb::foldl ( reference, IOType <- op( IOType, InputType ): "
 			"called with an output type that does not match the output domain of the given operator"
 		);
 
@@ -1634,9 +1765,9 @@ namespace grb {
 		std::cout << "In grb::foldl (reference, mask, matrix, monoid)\n";
 #endif
 
-		// TODO: implement foldl with mask
-
-		return UNSUPPORTED;
+		return internal::foldl_generic< true, descr, Monoid, InputType, IOType, MaskType >(
+			x, A, mask, monoid
+		);
 	}
 
 	template<
@@ -1656,25 +1787,25 @@ namespace grb {
 	) {
 		// static checks
 		static_assert( !std::is_same< InputType, void >::value,
-			"grb::foldl ( reference, IOType <- op( InputType, IOType ): "
+			"grb::foldl ( reference, IOType <- op( IOType, InputType ): "
 			"the operator version of foldl cannot be used if the "
 			"input matrix is a pattern matrix (of type void)"
 		);
 		static_assert( !std::is_same< IOType, void >::value,
-			"grb::foldl ( reference, IOType <- op( InputType, IOType ): "
+			"grb::foldl ( reference, IOType <- op( IOType, InputType ): "
 			"the operator version of foldl cannot be used if the "
 			"result is of type void"
 		);
 		static_assert( (std::is_same< typename Monoid::D1, IOType >::value),
-			"grb::foldl ( reference, IOType <- op( InputType, IOType ): "
+			"grb::foldl ( reference, IOType <- op( IOType, InputType ): "
 			"called with a prefactor input type that does not match the first domain of the given operator"
 		);
 		static_assert( (std::is_same< typename Monoid::D2, InputType >::value),
-			"grb::foldl ( reference, IOType <- op( InputType, IOType ): "
+			"grb::foldl ( reference, IOType <- op( IOType, InputType ): "
 			"called with a postfactor input type that does not match the first domain of the given operator"
 		);
 		static_assert( (std::is_same< typename Monoid::D3, IOType >::value),
-			"grb::foldl ( reference, IOType <- op( InputType, IOType ): "
+			"grb::foldl ( reference, IOType <- op( IOType, InputType ): "
 			"called with an output type that does not match the output domain of the given operator"
 		);
 
