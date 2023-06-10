@@ -138,6 +138,14 @@ void grbProgram( const input & data_in, output & out ) {
 	}
 	out.times.io = timer.time();
 
+	// Check that the input matrix does not contains self-loops
+	for( const auto & p : A ) {
+		if( p.first.first == p.first.second ) {
+			std::cerr << "Failure: input matrix contains self-loops." << std::endl;
+			return;
+		}
+	}
+
 
 	timer.reset();
 	// Allocate the buffers
