@@ -27,6 +27,7 @@
 #ifndef _H_GRB_TRIANGLE_ENUMERATION
 #define _H_GRB_TRIANGLE_ENUMERATION
 
+#include <map>
 #include <numeric>
 #include <vector>
 
@@ -34,24 +35,16 @@
 
 #include <graphblas.hpp>
 
-constexpr bool DEBUG = false;
+constexpr bool Debug = true;
 
 namespace grb {
 
 	namespace algorithms {
 
 		namespace utils {
-			template< typename D >
-			bool is_diagonal_null( const grb::Matrix< D > & A ) {
-				return std::count_if( A.cbegin(), A.cend(), []( const std::pair< std::pair< size_t, size_t >, D > & e ) {
-					return e.first.first == e.first.second && e.second != static_cast< D >( 0 );
-				} ) == 0;
-			}
 
 			template< class Iterator >
 			void printSparseMatrixIterator( size_t rows, size_t cols, Iterator begin, Iterator end, const std::string & name = "", std::ostream & os = std::cout ) {
-				if( ! DEBUG )
-					return;
 				std::cout << "Matrix \"" << name << "\" (" << rows << "x" << cols << "):" << std::endl << "[" << std::endl;
 				if( rows > 1000 || cols > 1000 ) {
 					os << "   Matrix too large to print" << std::endl;
@@ -75,27 +68,19 @@ namespace grb {
 				os << "]" << std::endl;
 			}
 
-			template< typename D >
+			template< bool debug, typename D >
 			void printSparseMatrix( const grb::Matrix< D > & mat, const std::string & name = "", std::ostream & os = std::cout ) {
+				if( ! debug )
+					return;
 				grb::wait( mat );
 				printSparseMatrixIterator( grb::nrows( mat ), grb::ncols( mat ), mat.cbegin(), mat.cend(), name, os );
 			}
 
-			void debugPrint( const std::string & msg, std::ostream & os = std::cout ) {
-				if( ! DEBUG )
+			template< bool debug >
+			void printf( const std::string & msg, std::ostream & os = std::cout ) {
+				if( ! debug )
 					return;
 				os << msg;
-			}
-
-			template< typename D >
-			bool tryGet( const grb::Matrix< D > & A, size_t i, size_t j, D & val ) {
-				auto found = std::find_if( A.cbegin(), A.cend(), [ i, j ]( const std::pair< std::pair< size_t, size_t >, D > & a ) {
-					return a.first.first == i && a.first.second == j;
-				} );
-				if( found == A.cend() )
-					return false;
-				val = ( *found ).second;
-				return true;
 			}
 		} // namespace utils
 
@@ -232,281 +217,78 @@ namespace grb {
 				return rc;
 			}
 
-			template< typename InputType1, typename InputType2, typename OutputType >
-			RC _eWiseMul( Matrix< OutputType > & C,
-				const Matrix< InputType1 > & A,
-				const Matrix< InputType2 > & B,
-				const typename std::enable_if< ! grb::is_object< OutputType >::value && ! grb::is_object< InputType1 >::value && ! grb::is_object< InputType2 >::value >::type * const = nullptr ) {
-				grb::wait( A );
-				grb::wait( B );
-				grb::wait( C );
-				RC rc = grb::eWiseApply( C, A, B, grb::operators::mul< InputType1, InputType2, OutputType >(), RESIZE );
-				return rc ? rc : grb::eWiseApply( C, A, B, grb::operators::mul< InputType1, InputType2, OutputType >(), EXECUTE );
-			}
-
-			/**
-			 * @brief Reduce operation over a matrix.
-			 *
-			 * @tparam D         The type of the matrix.
-			 * @param A          The matrix to reduce.
-			 * @param result     The result of the reduction. Initial value taken from here.
-			 * @param op         The binary operator to use.
-			 * @return grb::RC   Returns #grb::SUCCESS upon succesful completion.
-			 */
-			template< typename D, typename T, typename Func >
-			grb::RC matrixReduce( const grb::Matrix< D > & A, T & result, const Func op ) {
-				std::pair< std::pair< size_t, size_t >, T > init = std::make_pair( std::make_pair( 0ul, 0ul ), result );
-				std::pair< std::pair< size_t, size_t >, T > accumulator = std::accumulate(
-					A.cbegin(), A.cend(), init, [ op ]( const std::pair< std::pair< size_t, size_t >, T > & a, const std::pair< std::pair< size_t, size_t >, D > & b ) {
-						return std::make_pair( a.first, op( a.second, b.second ) );
-					} );
-				grb::wait( A );
-				result = accumulator.second;
-				return grb::RC::SUCCESS;
-			}
-
-			template< typename D, typename T >
-			grb::RC matrixSumReduce( const grb::Matrix< D > & A, T & result ) {
-				return matrixReduce( A, result, []( T a, D b ) -> T {
-					return a + b;
-				} );
-			}
-
-			template< Descriptor descr = descriptors::no_operation, typename OutputType, typename InputType1, typename InputType2, class Semiring >
-			RC _mxm( Matrix< OutputType > & C, const Matrix< InputType1 > & A, const Matrix< InputType2 > & B, const Semiring & ring ) {
-				grb::wait( A );
-				grb::wait( B );
-				grb::wait( C );
-				auto rc = mxm< descr >( C, A, B, ring, RESIZE );
-				return rc ? rc : mxm< descr >( C, A, B, ring, EXECUTE );
-			}
-
 		} // namespace
 
-		enum class TriangleCountAlgorithm { Burkhardt, Cohen, Sandia_LL, Sandia_UU, Sandia_LUT, Sandia_ULT };
+		enum class TriangleCountAlgorithm { Burkhardt, Cohen, Sandia_TT };
 
-		template< typename D >
-		RC triangle_count_burkhardt( size_t & u, const Matrix< D > & A ) {
-			static_assert( std::is_integral< D >::value, "Type D must be integral" );
+		std::map< TriangleCountAlgorithm, std::string > TriangleCountAlgorithmNames = { { TriangleCountAlgorithm::Burkhardt, "Burkhardt" }, { TriangleCountAlgorithm::Cohen, "Cohen" },
+			{ TriangleCountAlgorithm::Sandia_TT, "Sandia_TT" } };
+
+		template< Descriptor descr = descriptors::no_operation, typename D, typename I, typename J, class Semiring, class MulMonoid, class SumMonoid >
+		RC triangle_count_generic( size_t & count,
+			Matrix< D, grb::config::default_backend, I, J > & MXM_out,
+			const Matrix< D, grb::config::default_backend, I, J > & MXM_lhs,
+			const Matrix< D, grb::config::default_backend, I, J > & MXM_rhs,
+			Matrix< D, grb::config::default_backend, I, J > & EWA_out,
+			const Matrix< D, grb::config::default_backend, I, J > & EWA_rhs,
+			const D div_factor,
+			const Semiring mxm_semiring = Semiring(),
+			const MulMonoid ewiseapply_monoid = MulMonoid(),
+			const SumMonoid sumreduce_monoid = SumMonoid() ) {
 			RC rc = RC::SUCCESS;
 
-			utils::printSparseMatrix( A, "A" );
-			size_t rows = nrows( A ), cols = ncols( A );
+			rc = ( &MXM_out == &MXM_lhs ) ? RC::ILLEGAL : rc;
+			rc = ( &MXM_out == &MXM_rhs ) ? RC::ILLEGAL : rc;
 
-			// Compute B = A^2
-			const Semiring< grb::operators::add< D >, grb::operators::mul< D >, grb::identities::zero, grb::identities::one > semiring;
-			Matrix< D > B( rows, cols );
+			// Compute MXM_out = Mlhs * Mrhs
+			utils::printSparseMatrix< Debug >( MXM_lhs, "MXM_lhs" );
+			utils::printSparseMatrix< Debug >( MXM_rhs, "MXM_rhs" );
+			rc = rc ? rc : mxm< descr >( MXM_out, MXM_lhs, MXM_rhs, mxm_semiring, Phase::RESIZE );
+			rc = rc ? rc : mxm< descr >( MXM_out, MXM_lhs, MXM_rhs, mxm_semiring, Phase::EXECUTE );
+			utils::printSparseMatrix< Debug >( MXM_out, "MXM_out = mxm( MXM_lhs, MXM_rhs )" );
 
-			// FIXME: A-squared is not working
-			_mxm< descriptors::transpose_right >( B, A, A, semiring );
-			utils::printSparseMatrix( B, "A^2" );
+			// Compute MXM_out .*= EWA_rhs
+			utils::printSparseMatrix< Debug >( EWA_rhs, "EWA_rhs" );
 
-			// Compute C = A .* B
-			Matrix< D > C( rows, cols );
-			_eWiseMul( C, A, B );
-			utils::printSparseMatrix( C, "(A^2) .* A" );
+			// FIXME: Replace by a foldl( Matrix[in,out], Matrix[in], Monoid ) - not implemented yet
+			// Will then become:
+			// rc = rc ? rc : eWiseApply< descr >( MXM_out, MXM_out, EWA_rhs, ewiseapply_monoid, Phase::RESIZE );
+			// rc = rc ? rc : eWiseApply< descr >( MXM_out, MXM_out, EWA_rhs, ewiseapply_monoid, Phase::EXECUTE );
+			// Instead of:
+			rc = rc ? rc : eWiseApply< descr >( EWA_out, MXM_out, EWA_rhs, ewiseapply_monoid, Phase::RESIZE );
+			rc = rc ? rc : eWiseApply< descr >( EWA_out, MXM_out, EWA_rhs, ewiseapply_monoid, Phase::EXECUTE );
+			utils::printSparseMatrix< Debug >( EWA_out, "EWA_out = ewiseapply( MXM_out, EWA_rhs )" );
 
-			D tmpU = static_cast< D >( 0 );
-			matrixSumReduce( C, tmpU );
-			utils::debugPrint( "sum (sum ((L * U) .* A)) = " + std::to_string( tmpU ) + "\n" );
+			// Compute a sum reduction over <EWA_out> in <count>
+			count = 0;
+			rc = rc ? rc : foldl< descr >( count, EWA_out, sumreduce_monoid );
+			utils::printf< Debug >( "count = foldl(EWA_out) = " + std::to_string( count ) + "\n" );
 
-			tmpU /= 6;
-			utils::debugPrint( "sum (sum ((L * U) .* A)) / 6 = " + std::to_string( tmpU ) + "\n" );
+			// Apply the div_factor to the reduction result
+			count /= div_factor;
+			utils::printf< Debug >( "count = count / div_factor = " + std::to_string( count ) + "\n" );
 
-			u = (size_t)tmpU;
-
-			// done
-			return rc;
-		}
-
-		template< typename D >
-		RC triangle_count_cohen( size_t & u, const Matrix< D > & A ) {
-			static_assert( std::is_integral< D >::value, "Type D must be integral" );
-			RC rc = RC::SUCCESS;
-
-			utils::printSparseMatrix( A, "A" );
-			size_t rows = nrows( A ), cols = ncols( A );
-
-			// Split A into L (lower) and U (upper) triangular matrices
-			Matrix< D > L( rows, cols ), U( rows, cols );
-			rc = rc ? rc : trilu( A, L, U );
-			utils::printSparseMatrix( L, "L" );
-			utils::printSparseMatrix( U, "U" );
-
-			// Compute B = L * U
-			Semiring< operators::add< D >, operators::mul< D >, identities::zero, identities::one > semiring;
-			Matrix< D > B( rows, cols, nnz( A ) );
-			_mxm( B, L, U, semiring );
-			utils::printSparseMatrix( B, "L * U" );
-
-			// Compute C = B .* A
-			Matrix< D > C( rows, cols );
-			_eWiseMul( C, B, A );
-			utils::printSparseMatrix( C, "(L * U) .* A" );
-
-			D tmpU = static_cast< D >( 0 );
-			matrixSumReduce( C, tmpU );
-			utils::debugPrint( "sum (sum ((L * U) .* A)) = " + std::to_string( tmpU ) + "\n" );
-
-			tmpU /= 2;
-			utils::debugPrint( "sum (sum ((L * U) .* A)) / 2 = " + std::to_string( tmpU ) + "\n" );
-
-			u = (size_t)tmpU;
-
-			// done
-			return rc;
-		}
-
-		template< typename D >
-		RC triangle_count_sandia_ll( size_t & u, const Matrix< D > & A ) {
-			static_assert( std::is_integral< D >::value, "Type D must be integral" );
-			RC rc = RC::SUCCESS;
-
-			utils::printSparseMatrix( A, "A" );
-			size_t rows = nrows( A ), cols = ncols( A );
-
-			// Split A into L (lower) and U (upper) triangular matrices
-			Matrix< D > L( rows, cols ), _( rows, cols );
-			rc = rc ? rc : trilu( A, L, _ );
-			utils::printSparseMatrix( L, "L" );
-
-			// Compute B = L * L
-			Semiring< operators::add< D >, operators::mul< D >, identities::zero, identities::one > semiring;
-			Matrix< D > B( rows, cols, nnz( A ) );
-			_mxm( B, L, L, semiring );
-			utils::printSparseMatrix( B, "L * L" );
-
-			// Compute C = L .* B
-			Matrix< D > C( rows, cols );
-			_eWiseMul( C, B, L );
-			utils::printSparseMatrix( C, "(L * L) .* L" );
-
-			D tmpU = static_cast< D >( 0 );
-			matrixSumReduce( C, tmpU );
-			utils::debugPrint( "sum (sum ((L * L) .* L)) = " + std::to_string( tmpU ) + "\n" );
-
-			u = (size_t)tmpU;
-
-			// done
-			return rc;
-		}
-
-		template< typename D >
-		RC triangle_count_sandia_uu( size_t & u, const Matrix< D > & A ) {
-			static_assert( std::is_integral< D >::value, "Type D must be integral" );
-			RC rc = RC::SUCCESS;
-
-			utils::printSparseMatrix( A, "A" );
-			size_t rows = nrows( A ), cols = ncols( A );
-
-			// Split A into L (lower) and U (upper) triangular matrices
-			Matrix< D > _( rows, cols ), U( rows, cols );
-			rc = rc ? rc : trilu( A, _, U );
-			utils::printSparseMatrix( U, "U" );
-
-			// Compute B = U * U
-			Semiring< operators::add< D >, operators::mul< D >, identities::zero, identities::one > semiring;
-			Matrix< D > B( rows, cols, nnz( A ) );
-			_mxm( B, U, U, semiring );
-			utils::printSparseMatrix( B, "U * U" );
-
-			// Compute C = U .* B
-			Matrix< D > C( rows, cols );
-			_eWiseMul( C, B, U );
-			utils::printSparseMatrix( C, "(U * U) .* U" );
-
-			D tmpU = static_cast< D >( 0 );
-			matrixSumReduce( C, tmpU );
-			utils::debugPrint( "sum (sum ((U * U) .* U)) = " + std::to_string( tmpU ) + "\n" );
-
-			u = (size_t)tmpU;
-
-			// done
-			return rc;
-		}
-
-		template< typename D >
-		RC triangle_count_sandia_lut( size_t & u, const Matrix< D > & A ) {
-			static_assert( std::is_integral< D >::value, "Type D must be integral" );
-			RC rc = RC::SUCCESS;
-
-			utils::printSparseMatrix( A, "A" );
-			size_t rows = nrows( A ), cols = ncols( A );
-
-			// Split A into L (lower) and U (upper) triangular matrices
-			Matrix< D > L( rows, cols ), U( rows, cols );
-			rc = rc ? rc : trilu( A, L, U );
-			utils::printSparseMatrix( L, "L" );
-			utils::printSparseMatrix( U, "U" );
-
-			// Compute B = L * U
-			Semiring< operators::add< D >, operators::mul< D >, identities::zero, identities::one > semiring;
-			Matrix< D > B( rows, cols, nnz( A ) );
-			_mxm< descriptors::transpose_right >( B, L, U, semiring );
-			utils::printSparseMatrix( B, "L * U" );
-
-			// Compute C = L .* B
-			Matrix< D > C( rows, cols );
-			_eWiseMul( C, B, L );
-			utils::printSparseMatrix( C, "(L * U) .* L" );
-
-			D tmpU = static_cast< D >( 0 );
-			matrixSumReduce( C, tmpU );
-			utils::debugPrint( "sum (sum ((L * U) .* L)) = " + std::to_string( tmpU ) + "\n" );
-
-			u = (size_t)tmpU;
-
-			// done
-			return rc;
-		}
-
-		template< typename D >
-		RC triangle_count_sandia_ult( size_t & u, const Matrix< D > & A ) {
-			static_assert( std::is_integral< D >::value, "Type D must be integral" );
-			RC rc = RC::SUCCESS;
-
-			utils::printSparseMatrix( A, "A" );
-			size_t rows = nrows( A ), cols = ncols( A );
-
-			// Split A into L (lower) and U (upper) triangular matrices
-			Matrix< D > L( rows, cols ), U( rows, cols );
-			rc = rc ? rc : trilu( A, L, U );
-			utils::printSparseMatrix( L, "L" );
-			utils::printSparseMatrix( U, "U" );
-
-			// Compute B = U * L
-			Semiring< operators::add< D >, operators::mul< D >, identities::zero, identities::one > semiring;
-			Matrix< D > B( rows, cols, nnz( A ) );
-			_mxm( B, U, L, semiring );
-			utils::printSparseMatrix( B, "U * L" );
-
-			// Compute C = U .* B
-			Matrix< D > C( rows, cols );
-			_eWiseMul( C, B, U );
-			utils::printSparseMatrix( C, "(L * U) .* U" );
-
-			D tmpU = static_cast< D >( 0 );
-			matrixSumReduce( C, tmpU );
-			utils::debugPrint( "sum (sum ((L * U) .* U)) = " + std::to_string( tmpU ) + "\n" );
-
-			u = (size_t)tmpU;
-
-			// done
 			return rc;
 		}
 
 		/**
 		 * Given a graph, indicates how many triangles are contained within.
 		 *
-		 * This implementation is based on the masked matrix multiplication kernel.
+		 * @tparam D 				The type of the matrix non-zero values.
 		 *
-		 * @param[out]    n    The number of triangles. Any prior contents will be ignored.
-		 * @param[in]     A    The input graph.
+		 * @param[out]    count     The number of triangles.
+		 * 						    Any prior contents will be ignored.
+		 * @param[in]     A         The input graph.
+		 * @param[in,out] MXM_out    Buffer matrix with the same dimensions as the input
+		 * 							graph. Any prior contents will be ignored.
+		 * @param[in] L 		Lower triangular matrix of the input graph (optional)
+		 * @param[in] U 		Lower triangular matrix of the input graph (optional)
 		 *
 		 *
 		 * @returns #grb::SUCCESS  When the computation completes successfully.
-		 * @returns #grb::MISMATCH ?
-		 * @returns #grb::ILLEGAL  ?
+		 * @returns #grb::MISMATCH If the dimensions of the input matrices/buffers
+		 * 						   are incompatible.
+		 * @returns #grb::ILLEGAL  If the given algorithm does not exist.
 		 * @returns #grb::PANIC    If an unrecoverable error has been encountered. The
 		 *                         output as well as the state of ALP/GraphBLAS is
 		 *                         undefined.
@@ -522,64 +304,95 @@ namespace grb {
 		 * performance semantics, with the exception of getters such as #grb::nnz, are
 		 * specific to the backend selected during compilation.
 		 */
-		template< typename D >
-		RC triangle_count( TriangleCountAlgorithm Algo, size_t & u, const Matrix< D > & A_constant ) {
-			auto A = A_constant;
+		template< Descriptor descr = descriptors::no_operation,
+			typename D,
+			typename I,
+			typename J,
+			class Semiring = grb::Semiring< operators::add< D >, operators::mul< D >, identities::zero, identities::one >,
+			class MulMonoid = grb::Monoid< grb::operators::mul< D >, identities::one >,
+			class SumMonoid = grb::Monoid< operators::add< size_t, D, size_t >, identities::zero > >
+		RC triangle_count( const TriangleCountAlgorithm algo,
+			size_t & count,
+			const Matrix< D, grb::config::default_backend, I, J > & A,
+			Matrix< D, grb::config::default_backend, I, J > & MXM_out,
+			Matrix< D, grb::config::default_backend, I, J > & EWA_out,
+			Matrix< D, grb::config::default_backend, I, J > & L = { 0, 0 },
+			Matrix< D, grb::config::default_backend, I, J > & U = { 0, 0 } ) {
 			// Static assertions
 			static_assert( std::is_integral< D >::value, "Type D must be integral" );
-			// Dynamic assertions
-			if( grb::nrows( A ) != grb::ncols( A ) ) {
-				std::cerr << "A must be square" << std::endl;
-				return RC::ILLEGAL;
+
+			// Sanity checks
+			if( nrows( A ) != ncols( A ) ) {
+				std::cerr << "Matrix A must be square" << std::endl;
+				return RC::MISMATCH;
 			}
-			if( ! utils::is_diagonal_null( A ) ) {
-				// Create a mask with null values on the diagonal, and ones everywhere else
-				grb::Matrix< D > M( grb::nrows( A ), grb::ncols( A ) );
-				size_t nnz_mask = grb::nrows( A ) * grb::ncols( A ) - grb::nrows( A );
-				std::vector< size_t > I(nnz_mask), J( nnz_mask );
-				std::vector< D > V( nnz_mask, static_cast< D >(1) );
-				for( size_t i = 0, k = 0; i < grb::nrows( A ); ++i ) {
-					for( size_t j = 0; j < grb::ncols( A ); ++j ) {
-						if( i == j ) continue;
-						I[k] = i;
-						J[k] = j;
-						++k;
-					}
+			if( ncols( L ) != nrows( L ) ) {
+				std::cerr << "Matrix L must be square" << std::endl;
+				return RC::MISMATCH;
+			}
+			if( nrows( A ) != ncols( L ) ) {
+				std::cerr << "Matrices A and L must have the same dimensions" << std::endl;
+				return RC::MISMATCH;
+			}
+			if( ncols( U ) != nrows( U ) ) {
+				std::cerr << "Matrix U must be square" << std::endl;
+				return RC::MISMATCH;
+			}
+			if( nrows( A ) != ncols( U ) ) {
+				std::cerr << "Matrices A and U must have the same dimensions" << std::endl;
+				return RC::MISMATCH;
+			}
+			if( ncols( MXM_out ) != nrows( MXM_out ) ) {
+				std::cerr << "Matrix MXM_out must be square" << std::endl;
+				return RC::MISMATCH;
+			}
+			if( nrows( A ) != ncols( MXM_out ) ) {
+				std::cerr << "Matrices A and MXM_out must have the same dimensions" << std::endl;
+				return RC::MISMATCH;
+			}
+			if( ncols( EWA_out ) != nrows( EWA_out ) ) {
+				std::cerr << "Matrix EWA_out must be square" << std::endl;
+				return RC::MISMATCH;
+			}
+			if( nrows( A ) != ncols( EWA_out ) ) {
+				std::cerr << "Matrices A and EWA_out must have the same dimensions" << std::endl;
+				return RC::MISMATCH;
+			}
+
+			// Dispatch to the appropriate algorithm
+			switch( algo ) {
+				case TriangleCountAlgorithm::Burkhardt: {
+					return triangle_count_generic< descr | descriptors::transpose_right, D, I, J, Semiring, MulMonoid, SumMonoid >( count, MXM_out, A, A, EWA_out, A, 6 );
 				}
 
-				buildMatrixUnique( M, I.data(), J.data(), V.data(), V.size(), grb::IOMode::PARALLEL );
-				// Multiply A with the mask
-				Semiring< operators::add< D >, operators::mul< D >, identities::zero, identities::one > semiring;
-				utils::printSparseMatrix( A, "A before diagonal annihilation" );
-				utils::printSparseMatrix( M, "Mask" );
-				_eWiseMul( A, A_constant, M );
-				utils::printSparseMatrix( A, "A after diagonal annihilation" );
-				assert( utils::is_diagonal_null( A ) );
+				case TriangleCountAlgorithm::Cohen: {
+					trilu( A, L, U );
+					if( nrows( L ) + ncols( L ) == 0 ) {
+						std::cerr << "Matrix L must be provided for the Cohen algorithm" << std::endl;
+						return RC::MISMATCH;
+					} else if( nrows( U ) + ncols( U ) == 0 ) {
+						std::cerr << "Matrix U must be provided for the Cohen algorithm" << std::endl;
+						return RC::MISMATCH;
+					}
+					return triangle_count_generic< descr, D, I, J, Semiring, MulMonoid, SumMonoid >( count, MXM_out, L, U, EWA_out,  A, 2 );
+				}
+
+				case TriangleCountAlgorithm::Sandia_TT: {
+					trilu( A, L, U );
+					if( ( nrows( U ) == 0 || ncols( U ) == 0 ) && ( nrows( L ) == 0 || ncols( L ) == 0 ) ) {
+						std::cerr << "Matrix L or U must be provided for the Sandia_TT algorithm" << std::endl;
+						return RC::MISMATCH;
+					}
+					const Matrix< D, grb::config::default_backend, I, J > & T = ( nrows( U ) == 0 || ncols( U ) == 0 ) ? L : U;
+					return triangle_count_generic< descr, D, I, J, Semiring, MulMonoid, SumMonoid >( count, MXM_out, T, T, EWA_out, T, 1 );
+				}
+
+				default:
+					std::cerr << "Unknown TriangleCountAlgorithm enum value" << std::endl;
+					return RC::ILLEGAL;
 			}
 
-			switch( Algo ) {
-				case TriangleCountAlgorithm::Burkhardt:
-					utils::debugPrint( "-- Burkhardt\n" );
-					return triangle_count_burkhardt( u, A );
-				case TriangleCountAlgorithm::Cohen:
-					utils::debugPrint( "-- Cohen\n" );
-					return triangle_count_cohen( u, A );
-				case TriangleCountAlgorithm::Sandia_LL:
-					utils::debugPrint( "-- Sandia LL\n" );
-					return triangle_count_sandia_ll( u, A );
-				case TriangleCountAlgorithm::Sandia_UU:
-					utils::debugPrint( "-- Sandia UU\n" );
-					return triangle_count_sandia_uu( u, A );
-				case TriangleCountAlgorithm::Sandia_LUT:
-					utils::debugPrint( "-- Sandia LUT\n" );
-					return triangle_count_sandia_lut( u, A );
-				case TriangleCountAlgorithm::Sandia_ULT:
-					utils::debugPrint( "-- Sandia ULT\n" );
-					return triangle_count_sandia_ult( u, A );
-				default:
-					utils::debugPrint( "-- Unknown\n", std::cerr );
-					return RC::FAILED;
-			}
+			return RC::SUCCESS;
 		}
 
 	} // namespace algorithms
