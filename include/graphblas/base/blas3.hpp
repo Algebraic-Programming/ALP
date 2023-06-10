@@ -484,10 +484,11 @@ namespace grb {
 	 * @tparam MaskType  The type of the elements in the supplied ALP/GraphBLAS
 	 *                   matrix \a mask.
 	 *
-	 * @param[out]   x   The result of the reduction.
-	 * @param[in]    A   Any ALP/GraphBLAS matrix.
-	 * @param[in]  mask  Any ALP/GraphBLAS matrix.
-	 * @param[in] monoid The monoid under which to perform this reduction.
+	 * @param[in, out] x   The result of the reduction.
+	 * 					   Prior value will be considered.
+	 * @param[in]    A     Any ALP/GraphBLAS matrix.
+	 * @param[in]  mask    Any ALP/GraphBLAS matrix.
+	 * @param[in] monoid   The monoid under which to perform this reduction.
 	 *
 	 * @return grb::SUCCESS  When the call completed successfully.
 	 * @return grb::MISMATCH If a \a mask was not empty and does not have size
@@ -559,8 +560,9 @@ namespace grb {
 	 *                   matrix \a y.
 	 * @tparam IOType    The type of the output scalar \a x.
 	 *
-	 * @param[out]   x     The result of the reduction.
-	 * @param[in]    A     Any ALP/GraphBLAS matrix.
+	 * @param[in, out] x   The result of the reduction.
+	 * 					   Prior value will be considered.
+	 * @param[in]      A   Any ALP/GraphBLAS matrix.
 	 * @param[in] operator The operator used for reduction.
 	 *
 	 * @return grb::SUCCESS  When the call completed successfully.
@@ -603,27 +605,27 @@ namespace grb {
 	 *
 	 * Let \f$ x_0 = 1 \f$ and let
 	 * \f$ x_{i+1} = \begin{cases}
-	 *   x_i \oplus y_i\text{ if }y_i\text{ is nonzero and }m_i\text{ evaluates true}
-	 *   x_i\text{ otherwise}
+	 *   x_i \oplus y_i\text{ if }y_i\text{ is nonzero and }
+	 * 	 m_i\text{ evaluates true}x_i\text{ otherwise}
 	 * \end{cases},\f$
 	 * for all \f$ i \in \{ 0, 1, \ldots, n-1 \} \f$.
 	 *
-	 * \note Per this definition, the folding happens in a left-to-right direction.
-	 *       If another direction is wanted, which may have use in cases where
-	 *       \f$ D_1 \f$ differs from \f$ D_2 \f$, then either a monoid with those
-	 *       operator domains switched may be supplied, or #grb::foldr may be used
-	 *       instead.
+	 * \note Per this definition, the folding happens in a left-to-right
+	 * 		 direction. If another direction is wanted, which may have use in
+	 *  	 cases where \f$ D_1 \f$ differs from \f$ D_2 \f$, then either a
+	 * 		 monoid with those operator domains switched may be supplied, or
+	 * 		 #grb::foldr may be used instead.
 	 *
 	 * After a successfull call, \a x will be equal to \f$ x_n \f$.
 	 *
-	 * Note that the operator \f$ \oplus \f$ must be associative since it is part
-	 * of a monoid. This algebraic property is exploited when parallelising the
-	 * requested operation. The identity is required when parallelising over
+	 * Note that the operator \f$ \oplus \f$ must be associative since it is
+	 * part of a monoid. This algebraic property is exploited when parallelising
+	 * the requested operation. The identity is required when parallelising over
 	 * multiple user processes.
 	 *
-	 * \warning In so doing, the order of the evaluation of the reduction operation
-	 *          should not be expected to be a serial, left-to-right, evaluation of
-	 *          the computation chain.
+	 * \warning In so doing, the order of the evaluation of the reduction
+	 * 			operation should not be expected to be a serial, left-to-right,
+	 * 			evaluation of the computation chain.
 	 *
 	 * @tparam descr     The descriptor to be used (descriptors::no_operation if
 	 *                   left unspecified).
@@ -634,16 +636,17 @@ namespace grb {
 	 * @tparam MaskType  The type of the elements in the supplied ALP/GraphBLAS
 	 *                   matrix \a mask.
 	 *
-	 * @param[out]   x   The result of the reduction.
-	 * @param[in]    A   Any ALP/GraphBLAS matrix.
-	 * @param[in]  mask  Any ALP/GraphBLAS matrix.
-	 * @param[in] monoid The monoid under which to perform this reduction.
+	 * @param[in, out] x  The result of the reduction. 
+	 * 					  Prior value will be considered.
+	 * @param[in] A       Any ALP/GraphBLAS matrix.
+	 * @param[in] mask    Any ALP/GraphBLAS matrix.
+	 * @param[in] monoid  The monoid under which to perform this reduction.
 	 *
 	 * @return grb::SUCCESS  When the call completed successfully.
 	 * @return grb::MISMATCH If a \a mask was not empty and does not have size
-	 *                       equal to \a y.
-	 * @return grb::ILLEGAL  If the provided input matrix \a y was not dense, while
-	 *                       #grb::descriptors::dense was given.
+	 *                       equal to \a A.
+	 * @return grb::ILLEGAL  If the provided input matrix \a A was not dense,
+	 * 						 while #grb::descriptors::dense was given.
 	 *
 	 * @see grb::foldr provides similar in-place functionality.
 	 * @see grb::eWiseApply provides out-of-place semantics.
@@ -657,10 +660,10 @@ namespace grb {
 	 * \note Invalid descriptors will be ignored.
 	 *
 	 * If grb::descriptors::no_casting is given, then 1) the first domain of
-	 * \a monoid must match \a InputType, 2) the second domain of \a op must match
-	 * \a IOType, 3) the third domain must match \a IOType, and 4) the element type
-	 * of \a mask must be <tt>bool</tt>. If one of these is not true, the code
-	 * shall not compile.
+	 * \a monoid must match \a InputType, 2) the second domain of \a op must
+	 * match \a IOType, 3) the third domain must match \a IOType, and 4) the
+	 * element type of \a mask must be <tt>bool</tt>. If one of these is not
+	 * true, the code shall not compile.
 	 * \endparblock
 	 *
 	 * \par Performance semantics
@@ -709,7 +712,8 @@ namespace grb {
 	 *                   matrix \a y.
 	 * @tparam IOType    The type of the output scalar \a x.
 	 *
-	 * @param[out]   x     The result of the reduction.
+	 * @param[in, out] x   The result of the reduction.
+	 * 					   Prior value will be considered.
 	 * @param[in]    A     Any ALP/GraphBLAS matrix.
 	 * @param[in] operator The operator used for reduction.
 	 *
