@@ -30,8 +30,8 @@ workflow:
         MULTIPLE_COMPILERS_ENABLED: "yes"
     # "manual" execution strategies are allowed to force run
     - if: $CI_PIPELINE_SOURCE != "merge_request_event" && $CI_PIPELINE_SOURCE != "push"
-    # do not run pipeline if the merge request is draft (case insensitive) and execution was automatically auomatic
-    - if: $CI_MERGE_REQUEST_TITLE =~ /^draft:/i && ($CI_PIPELINE_SOURCE == "push" || $CI_PIPELINE_SOURCE == "merge_request_event")
+    # do not run pipeline if the merge request is draft (case insensitive) and execution was automatically invoked
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TITLE =~ /^draft:/i
       when: never
     # run if the pipeline comes from a merge request
     - if: $CI_PIPELINE_SOURCE == "merge_request_event"
