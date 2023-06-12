@@ -50,7 +50,6 @@ workflow:
 #  rules:
 #    - if: $EXTRA_TESTS_ENABLED == "yes"
 #      when: on_success
-#    - when: never
 #  before_script:
 #    - yum -y update && yum -y groupinstall "Development Tools" && yum -y install make autoconf cmake numactl-devel
 #  script:
@@ -75,7 +74,6 @@ workflow:
 #  rules:
 #    - if: $EXTRA_TESTS_ENABLED == "yes"
 #      when: on_success
-#    - when: never
 
 
 #test_centos_8_unit:
@@ -84,7 +82,6 @@ workflow:
 #  rules:
 #    - if: $EXTRA_TESTS_ENABLED == "yes"
 #      when: on_success
-#    - when: never
 #  before_script:
 #    - yum -y update && yum -y groupinstall "Development Tools" && yum -y install make autoconf cmake numactl-devel
 #  script:
@@ -98,7 +95,6 @@ workflow:
 #  rules:
 #    - if: $EXTRA_TESTS_ENABLED == "yes"
 #      when: on_success
-#    - when: never
 #  before_script:
 #    - yum -y update && yum -y groupinstall "Development Tools" && yum -y install make autoconf cmake numactl-devel
 #  script:
@@ -112,7 +108,6 @@ workflow:
 #  rules:
 #    - if: $EXTRA_TESTS_ENABLED == "yes"
 #      when: on_success
-#    - when: never
 #  before_script:
 #    - yum -y update && yum -y groupinstall "Development Tools" && yum -y install make autoconf cmake numactl-devel
 #  script:
@@ -126,7 +121,6 @@ workflow:
 #  rules:
 #    - if: $EXTRA_TESTS_ENABLED == "yes"
 #      when: on_success
-#    - when: never
 #  before_script:
 #    - yum -y update && yum -y groupinstall "Development Tools" && yum -y install make autoconf cmake numactl-devel
 #  script:
@@ -161,7 +155,6 @@ build_tests_sym_debug:
   rules:
     - if: $EXTRA_TESTS_ENABLED == "yes"
       when: on_success
-    - when: never
   needs: []
   script:
     - mkdir -p install build && cd build && cmake -DCMAKE_INSTALL_PREFIX=../install -DCMAKE_CXX_FLAGS=-D_DEBUG -DCMAKE_C_FLAGS=-D_DEBUG -DLPF_INSTALL_PATH=${LPF_PATH} -DCMAKE_BUILD_TYPE=Release ../ && make -j$(nproc) build_tests_all
@@ -223,7 +216,6 @@ tests_performance:
   rules:
     - if: $EXTRA_TESTS_ENABLED == "yes"
       when: on_success
-    - when: never
   needs: [build_test]
   script:
     - cd ./build && make -j$(nproc) performancetests &> performancetests.log
@@ -233,7 +225,6 @@ tests_unit_buildtype_debug:
   rules:
     - if: $EXTRA_TESTS_ENABLED == "yes"
       when: on_success
-    - when: never
   needs: [build_test_buildtype_debug]
   script:
     - cd ./build && make -j$(nproc) unittests &> unittests.log
@@ -245,8 +236,6 @@ tests_unit_buildtype_debug:
 build_test_lpf:
   rules:
     - if: $LPF_TESTS_ENABLED == "yes"
-      when: always
-    - when: never
   needs: []
   script:
 # build only LPF-related tests
@@ -266,7 +255,6 @@ tests_unit_lpf:
   rules:
     - if: $LPF_TESTS_ENABLED == "yes"
       when: on_success
-    - when: never
   needs: [build_test_lpf]
   script:
     - cd ./build && make -j$(nproc) tests_unit &> unittests.log
@@ -276,7 +264,6 @@ tests_smoke_lpf:
   rules:
     - if: $LPF_TESTS_ENABLED == "yes"
       when: on_success
-    - when: never
   needs: [build_test_lpf]
   script:
     - cd ./build && make -j$(nproc) tests_smoke &> smoketests.log
@@ -286,7 +273,6 @@ test_installation_lpf:
   rules:
     - if: $LPF_TESTS_ENABLED == "yes"
       when: on_success
-    - when: never
   needs: [build_test_lpf]
   script:
     - cd ./build && make -j$(nproc) install
@@ -297,7 +283,6 @@ build_test_gcc_versions:
   rules:
     - if: $MULTIPLE_COMPILERS_ENABLED == "yes"
       when: on_success
-    - when: never
   image: ${CI_REGISTRY}/${CI_PROJECT_PATH}/lpf-ubuntu-22.04-gcc-clang
   needs: []
   parallel:
