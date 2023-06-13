@@ -296,6 +296,30 @@ for BACKEND in ${BACKENDS[@]}; do
 			fi
 			echo " "
 
+			echo ">>>      [x]           [ ]       Testing the Sparse Neural Network algorithm for the GraphChallenge"
+			echo "                                 dataset (neurons=1024, layers=120, offset=294) taken from"
+			echo "                                 ${GNN_DATASET_PATH} and using thresholding 32."
+			if [ -d ${GNN_DATASET_PATH} ]; then
+				$runner ${TEST_BIN_DIR}/graphchallenge_nn_multi_inference_${BACKEND} ${GNN_DATASET_PATH} 1024 120 294 1 32 indirect 1 1 verification ${OUTPUT_VERIFICATION_DIR}/graphchallenge_nn_out_1024_120_294_32_threshold_ref &> ${TEST_OUT_DIR}/graphchallenge_nn_multi_inference_${BACKEND}_${P}_${T}.log
+				head -1 ${TEST_OUT_DIR}/graphchallenge_nn_multi_inference_${BACKEND}_${P}_${T}.log
+				grep 'Test OK' ${TEST_OUT_DIR}/graphchallenge_nn_multi_inference_${BACKEND}_${P}_${T}.log || echo "Test FAILED"
+			else
+				echo "Test DISABLED: ${GNN_DATASET_PATH} was not found. To enable, please provide the dataset."
+			fi
+			echo " "
+
+			echo ">>>      [x]           [ ]       Testing the Sparse Neural Network algorithm for the GraphChallenge"
+			echo "                                 dataset (neurons=1024, layers=120, offset=294) taken from"
+			echo "                                 ${GNN_DATASET_PATH} and without using thresholding."
+			if [ -d ${GNN_DATASET_PATH} ]; then
+				$runner ${TEST_BIN_DIR}/graphchallenge_nn_multi_inference_${BACKEND} ${GNN_DATASET_PATH} 1024 120 294 0 0 indirect 1 1 verification ${OUTPUT_VERIFICATION_DIR}/graphchallenge_nn_out_1024_120_294_no_threshold_ref &> ${TEST_OUT_DIR}/graphchallenge_nn_multi_inference_${BACKEND}_${P}_${T}.log
+				head -1 ${TEST_OUT_DIR}/graphchallenge_nn_multi_inference_${BACKEND}_${P}_${T}.log
+				grep 'Test OK' ${TEST_OUT_DIR}/graphchallenge_nn_multi_inference_${BACKEND}_${P}_${T}.log || echo "Test FAILED"
+			else
+				echo "Test DISABLED: ${GNN_DATASET_PATH} was not found. To enable, please provide the dataset."
+			fi
+			echo " "
+
 			for ((i=0;i<${#LABELTEST_SIZES[@]};++i));
 			do
 				LABELTEST_SIZE=${LABELTEST_SIZES[i]}

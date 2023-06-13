@@ -189,19 +189,16 @@ void grbProgram( const struct input & data_in, struct output & out ) {
 		return;
 	}
 
-	// Fill biases
-	std::vector< grb::Vector< nz_type > > biases( data_in.layers, { grb::nrows( L.back() ) } );
-	for( auto & e : biases ) {
-		nz_type value = data_in.neurons == 1024 ? -0.30 : data_in.neurons == 4096 ? -0.35 : data_in.neurons == 16384 ? -0.40 : data_in.neurons == 65536 ? -0.45 : 0.0;
-		grb::set( e, value, grb::Phase::RESIZE );
-		grb::set( e, value, grb::Phase::EXECUTE );
-	}
 	if( data_in.neurons != 1024 && data_in.neurons != 4096 && data_in.neurons != 16384 && data_in.neurons != 65536 ) {
 		std::cerr << "Failure: the number of neurons does not correspond to a "
 					 "known dataset"
 				  << std::endl;
 		return;
 	}
+
+	// Fill biases
+	nz_type value = data_in.neurons == 1024 ? -0.30 : data_in.neurons == 4096 ? -0.35 : data_in.neurons == 16384 ? -0.40 : data_in.neurons == 65536 ? -0.45 : 0.0;
+	std::vector< std::vector< nz_type > > biases( data_in.layers, { grb::nrows( L.back() ), value } );
 
 	// get the name of the input files for the vector correct
 	std::ostringstream oss;
@@ -216,8 +213,6 @@ void grbProgram( const struct input & data_in, struct output & out ) {
 	assert( data_in.neurons == parser.n() );
 	n = parser.n();
 	m = parser.m();
-
-	
 
 	// load into GraphBLAS
 	out.result = std::make_shared< grb::Matrix< nz_type > >( grb::Matrix< nz_type >( m, n ) );
@@ -246,13 +241,19 @@ void grbProgram( const struct input & data_in, struct output & out ) {
 
 	// by default, copy input requested repetitions to output repititions performed
 	out.rep = data_in.rep;
+
+	grb::Matrix< nz_type > temp( grb::nrows( *out.result ), grb::ncols( *out.result ) );
+	std::vector< size_t > identity_coords( std::min( grb::nrows( temp ), grb::ncols( temp ) ), 0 );
+	std::iota( identity_coords.begin(), identity_coords.end(), 0 );
+	std::vector< nz_type > identity_values( identity_coords.size(), 1.0 );
+	rc = grb::buildMatrixUnique( temp, identity_coords.data(), identity_coords.data(), identity_values.data(), identity_coords.size(), PARALLEL );
 	// time a single call
 	if( out.rep == 0 ) {
 		timer.reset();
 		if( data_in.thresholded )
-			rc = sparse_nn_multi_inference( *out.result, Lvin, L, biases, data_in.threshold );
+			rc = sparse_nn_multi_inference( *out.result, Lvin, L, biases, data_in.threshold, temp );
 		else
-			rc = sparse_nn_multi_inference( *out.result, Lvin, L, biases );
+			rc = sparse_nn_multi_inference( *out.result, Lvin, L, biases, temp );
 
 		double single_time = timer.time();
 		if( rc != SUCCESS ) {
@@ -279,9 +280,9 @@ void grbProgram( const struct input & data_in, struct output & out ) {
 		timer.reset();
 		for( size_t i = 0; i < out.rep && rc == SUCCESS; ++i ) {
 			if( data_in.thresholded )
-				rc = rc ? rc : sparse_nn_multi_inference( *out.result, Lvin, L, biases, data_in.threshold );
+				rc = sparse_nn_multi_inference( *out.result, Lvin, L, biases, data_in.threshold, temp );
 			else
-				rc = rc ? rc : sparse_nn_multi_inference( *out.result, Lvin, L, biases );
+				rc = sparse_nn_multi_inference( *out.result, Lvin, L, biases, temp );
 		}
 		time_taken = timer.time();
 		if( rc == SUCCESS ) {
@@ -349,7 +350,7 @@ int main( int argc, char ** argv ) {
 	}
 	strcpy( in.dataset_path, argv[ 1 ] );
 
-		// get the number of neurons
+	// get the number of neurons
 	in.neurons = atoi( argv[ 2 ] );
 
 	// get the number of layers

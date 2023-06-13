@@ -18,9 +18,11 @@
 /**
  * @file
  *
- * Implements (non-batched) sparse neural network inference.
+ * Implements (non-batched) sparse neural network multi-inference.
  *
- * @author Aristeidis Mastoras
+ * @authors
+ * 		- Aristeidis Mastoras
+ *		- Benjamin Lozes
  */
 
 #ifndef _H_GRB_ALGORITHMS_SPARSE_NN_MULTI_INFERENCE
@@ -31,11 +33,55 @@
 
 #include <graphblas.hpp>
 
+constexpr bool _Debug = false;
+
 namespace grb {
 
 	namespace algorithms {
 
 		namespace internal {
+
+			template< typename D, class Iterator >
+			void printSparseMatrixIterator( size_t rows, size_t cols, Iterator begin, Iterator end, const std::string & name = "", std::ostream & os = std::cout ) {
+				std::cout << "Matrix \"" << name << "\" (" << rows << "x" << cols << "):" << std::endl << "[" << std::endl;
+				const size_t limit = 20;
+				os.precision( 3 );
+				for( size_t y = 0; y < rows; y++ ) {
+					if( y > limit )
+						break;
+					if( y >= limit ) {
+						os << "   ...";
+					} else {
+						os << std::string( 3, ' ' );
+						for( size_t x = 0; x < cols; x++ ) {
+							if( x >= limit ) {
+								os << " ...";
+								break;
+							}
+
+							auto found_value = std::find_if( begin, end, [ y, x ]( const std::pair< std::pair< size_t, size_t >, D > & e ) {
+								return e.first.first == y && e.first.second == x;
+							} );
+							if( found_value != end )
+								os << std::scientific << found_value->second;
+							else
+								os << "__________";
+							os << " ";
+						}
+					}
+					os << std::endl;
+				}
+
+				os << "]" << std::endl;
+			}
+
+			template< bool Debug = _Debug, typename D >
+			void printSparseMatrix( const grb::Matrix< D > & mat, const std::string & name ) {
+				if( ! Debug )
+					return;
+				grb::wait( mat );
+				printSparseMatrixIterator< D >( grb::nrows( mat ), grb::ncols( mat ), mat.cbegin(), mat.cend(), name, std::cout );
+			}
 
 			/**
 			 * \internal
@@ -45,116 +91,126 @@ namespace grb {
 			 *                     inference shall be thresholded.
 			 * \endinternal
 			 */
-			template< Descriptor descr, bool thresholded, typename ThresholdType, typename IOType, typename WeightType, typename BiasType >
+			template< Descriptor descr = grb::descriptors::no_operation,
+				bool thresholded,
+				typename ThresholdType,
+				typename IOType,
+				typename WeightType,
+				typename BiasType,
+				class MinMonoid = Monoid< grb::operators::min< IOType >, grb::identities::infinity >,
+				class ReluMonoid = Monoid< grb::operators::relu< IOType >, grb::identities::negative_infinity >,
+				class Ring = Semiring< grb::operators::add< IOType >, grb::operators::mul< IOType >, grb::identities::zero, grb::identities::one > >
 			grb::RC sparse_nn_multi_inference( grb::Matrix< IOType > & Y_out,
 				const grb::Matrix< IOType > & Y_in,
-				const std::vector< grb::Matrix< WeightType > > & W,
-				const std::vector< grb::Vector< BiasType > > & biases,
-				const ThresholdType threshold ) {
+				const std::vector< grb::Matrix< WeightType > > & layers,
+				const std::vector< std::vector< BiasType > > & biases,
+				const ThresholdType threshold,
+				Matrix< IOType > & temp,
+				const ReluMonoid & relu = ReluMonoid(),
+				const MinMonoid & min = MinMonoid(),
+				const Ring & semiring = Ring() ) {
 				static_assert( ! ( descr & descriptors::no_casting ) || ( std::is_same< IOType, WeightType >::value && std::is_same< IOType, BiasType >::value ),
 					"Input containers have different domains even though the no_casting"
 					"descriptor was given" );
 
 				assert( grb::nrows( Y_in ) == grb::nrows( Y_out ) );
 				assert( grb::ncols( Y_in ) == grb::ncols( Y_out ) );
-				assert( W.size() == biases.size() );
-
-				const grb::Semiring< grb::operators::add< double >, grb::operators::mul< double >, grb::identities::zero, grb::identities::one > semiring;
+				assert( layers.size() == biases.size() );
 
 				grb::RC rc = SUCCESS;
 				std::cout.precision( 3 );
 				std::cout.setf( std::ios::fixed );
 				std::cout.setf( std::ios::showpos );
-				for( size_t l = 0; rc == SUCCESS && l < W.size(); ++l ) {
-					std::cout << "-- Layer " << l << std::endl;
 
-					// Y = Y * W[l]
-					rc = rc ? rc : mxm( Y_out, ( l == 0 ) ? Y_in : Y_out, W[ l ], semiring, grb::Phase::RESIZE );
-					assert( ! rc );
-					rc = rc ? rc : mxm( Y_out, ( l == 0 ) ? Y_in : Y_out, W[ l ], semiring, grb::Phase::EXECUTE );
-					assert( ! rc );
+				std::cout << "Y_out: " << grb::nrows( Y_out ) << "x" << grb::ncols( Y_out ) << std::endl;
+				std::cout << "Y_in: " << grb::nrows( Y_in ) << "x" << grb::ncols( Y_in ) << std::endl;
+				std::cout << "temp: " << grb::nrows( temp ) << "x" << grb::ncols( temp ) << std::endl;
+				//std::cout << "biases.back(): " << grb::nrows( biases.back() ) << "x" << grb::ncols( biases.back() ) << std::endl;
+				std::cout << "biases.back(): " << biases.back().size() << std::endl;
+				std::cout << "layers.back(): " << grb::nrows( layers.back() ) << "x" << grb::ncols( layers.back() ) << std::endl;
 
-					{
-						std::cout << "\tAfter weights -   First 10 nonzeroes of out are: ( ";
-						size_t k = 10;
-						for( const std::pair< std::pair< size_t, size_t >, double > & e : Y_out ) {
-							std::cout << e.second << " ";
-							if( --k <= 0 )
-								break;
+				/*
+MATLAB code:
+
+function Y = inferenceReLUvec (W, bias, Y0)
+	% Performs ReLU inference using input feature
+	% vector(s) Y0, DNN weights W, and constant bias
+	Y = Y0 ;
+	nlayers = length (W) ;
+	% Loop through each weight layer W{layer}
+	for layer = 1:nlayers
+		% Propagate through layer.
+		Z = Y * W{layer} ;
+		% Apply bias to non-zero entries.
+		Y = Z + (double(logical(Z)) .* bias {layer}) ;
+		% Threshold negative values.
+		Y (Y < 0) = 0 ;
+		% Threshold maximum values.
+		Y (Y > 32) = 32 ;
+	end
+				*/
+
+				// Y_out = Y_in;
+				for( size_t l = 0; l < layers.size(); l++ ) {
+					std::cout << "  -- Layer " << l << std::endl;
+
+					{ // Y_out = ( l==0 ? Y_in : Y_out ) * layers[l]
+						auto Y_out_copy = ( l == 0 ? Y_in : Y_out );
+						rc = grb::mxm( Y_out, Y_out_copy, layers[ l ], semiring, grb::Phase::RESIZE );
+						if( rc != grb::SUCCESS ) {
+							std::cerr << "grb::mxm( Y_out, Y_out_copy, layers[l], semiring, grb::Phase::RESIZE ) failed" << std::endl;
+							return rc;
 						}
-						std::cout << ")" << std::endl;
+						rc = grb::mxm( Y_out, Y_out_copy, layers[ l ], semiring, grb::Phase::EXECUTE );
+						if( rc != grb::SUCCESS ) {
+							std::cerr << "grb::mxm( Y_out, Y_out_copy, layers[l], semiring, grb::Phase::EXECUTE ) failed" << std::endl;
+							return rc;
+						}
+						printSparseMatrix( Y_out, "grb::mxm( Y_out, Y_out_copy, layers[l], semiring, grb::Phase::EXECUTE )" );
 					}
 
-					// Y(i,j) += biases[l] (j,j) for each Y(i,j)
-					rc = rc ? rc :
-							  grb::eWiseLambda(
-								  [ biases, l ]( const size_t i, const size_t j, IOType & e ) {
-									  (void)i;
-									  (void)j;
-									  e += biases[ l ][ j ];
-								  },
-								  Y_out );
-					assert( ! rc );
-					{
-						std::cout << "\tAfter biases -    First 10 nonzeroes of out are: ( ";
-						size_t k = 10;
-						for( const std::pair< std::pair< size_t, size_t >, double > & e : Y_out ) {
-							std::cout << e.second << " ";
-							if( --k <= 0 )
-								break;
+					{ // Y_out( i, j ) += Bias[ layer ] ( j, j ) for each Y_out( i, j )
+						rc = grb::eWiseLambda(
+							[ biases, l ]( const size_t i, const size_t j, IOType & y ) {
+								if(i == j)
+									y += biases[ l ][ i ];
+							},
+							Y_out );
+						if( rc != grb::SUCCESS ) {
+							std::cerr << "grb::fold( Y_out, biases[l], add ) failed" << std::endl;
+							return rc;
 						}
-						std::cout << ")" << std::endl;
+						printSparseMatrix( Y_out, "grb::fold( Y_out, biases[l], add )" );
 					}
 
-					// Delete strictly negative values
-					/** Note: Could be replaced by an eWiseApply(Matrix, Monoid) / eWiseApply(Matrix, scalar, BinaryOp)
-					 *  with grb::operators::max
-					 */
-					rc = rc ? rc :
-							  grb::eWiseLambda(
-								  []( const size_t i, const size_t j, IOType & e ) {
-									  (void)i;
-									  (void)j;
-									  e = ( e >= 0 ) ? e : static_cast< IOType >( 0 );
-								  },
-								  Y_out );
-					assert( ! rc );
-					{
-						std::cout << "\tAfter zeroes -    First 10 nonzeroes of out are: ( ";
-						size_t k = 10;
-						for( const std::pair< std::pair< size_t, size_t >, double > & e : Y_out ) {
-							std::cout << e.second << " ";
-							if( --k <= 0 )
-								break;
+					{ // Remove entries of Y_out that are negative
+						rc = grb::eWiseLambda(
+							[]( const size_t i, const size_t j, IOType & y ) {
+								(void)i;
+								(void)j;
+								y = y >= 0 ? y : 0;
+							},
+							Y_out );
+						if( rc != grb::SUCCESS ) {
+							std::cerr << "grb::fold( Y_out, 0, max ) failed" << std::endl;
+							return rc;
 						}
-						std::cout << ")" << std::endl;
+						printSparseMatrix( Y_out, "grb::fold( Y_out, 0, max )" );
 					}
 
-					// Threshold values
-					/** Note: Could be replaced by an eWiseApply(Matrix, Monoid) / eWiseApply(Matrix, scalar, BinaryOp)
-					 *  with grb::operators::min
-					 */
-					if( thresholded ) {
-						rc = rc ? rc :
-								  grb::eWiseLambda(
-									  [ threshold ]( const size_t i, const size_t j, IOType & e ) {
-										  (void)i;
-										  (void)j;
-										  if( e > threshold )
-											  e = static_cast< IOType >( threshold );
-									  },
-									  Y_out );
-						assert( ! rc );
-						{
-							std::cout << "\tAfter threshold - First 10 nonzeroes of out are: ( ";
-							size_t k = 10;
-							for( const std::pair< std::pair< size_t, size_t >, double > & e : Y_out ) {
-								std::cout << e.second << " ";
-								if( --k <= 0 )
-									break;
-							}
-							std::cout << ")" << std::endl;
+					if( thresholded ) { // threshold maximum values: Y_out (Y_out > threshold) = threshold
+						rc = grb::eWiseLambda(
+							[ threshold ]( const size_t i, const size_t j, IOType & y ) {
+								(void)i;
+								(void)j;
+								y = y <= threshold ? y : threshold;
+							},
+							Y_out );
+						if( rc != grb::SUCCESS ) {
+							std::cerr << "grb::fold( Y_out, threshold, min ) failed" << std::endl;
+							return rc;
 						}
+						printSparseMatrix( Y_out, "grb::fold( Y_out, threshold, min )" );
 					}
 				}
 
@@ -241,16 +297,16 @@ namespace grb {
 		 * performance semantics, with the exception of getters such as #grb::nnz, are
 		 * specific to the backend selected during compilation.
 		 */
-		template< Descriptor descr = descriptors::no_operation, typename IOType, typename WeightType, typename BiasType >
-		grb::RC sparse_nn_multi_inference( grb::Matrix< IOType > & Y,
-			const grb::Matrix< IOType > & Y0,
-			const std::vector< grb::Matrix< WeightType > > & W,
-			const std::vector< grb::Vector< BiasType > > & biases ) {
+		template< Descriptor descr = grb::descriptors::no_operation, typename IOType, typename WeightType, typename BiasType >
+		grb::RC sparse_nn_multi_inference( grb::Matrix< IOType > & Y_out,
+			const grb::Matrix< IOType > & Y_in,
+			const std::vector< grb::Matrix< WeightType > > & layers,
+			const std::vector< std::vector< BiasType > > & biases,
+			Matrix< IOType > & temp ) {
 			static_assert( ! ( descr & descriptors::no_casting ) || ( std::is_same< IOType, WeightType >::value && std::is_same< IOType, BiasType >::value ),
 				"Input containers have different domains even though the no_casting "
 				"descriptor was given" );
-			Monoid< grb::operators::min< IOType >, grb::identities::infinity > dummyTresholdMonoid;
-			return internal::sparse_nn_multi_inference< descr, false, double >( Y, Y0, W, biases, 0.0 );
+			return internal::sparse_nn_multi_inference< descr, false, IOType, WeightType, BiasType >( Y_out, Y_in, layers, biases, std::numeric_limits< IOType >::max(), temp );
 		}
 
 		/**
@@ -338,16 +394,18 @@ namespace grb {
 		 * performance semantics, with the exception of getters such as #grb::nnz, are
 		 * specific to the backend selected during compilation.
 		 */
-		template< Descriptor descr = descriptors::no_operation, typename IOType, typename WeightType, typename BiasType, typename ThresholdType = IOType >
-		grb::RC sparse_nn_multi_inference( grb::Matrix< IOType > & Y,
-			const grb::Matrix< IOType > & Y0,
-			const std::vector< grb::Matrix< WeightType > > & W,
-			const std::vector< grb::Vector< BiasType > > & biases,
-			const ThresholdType threshold ) {
+		template< Descriptor descr = grb::descriptors::no_operation, typename ThresholdType, typename IOType, typename WeightType, typename BiasType >
+		grb::RC sparse_nn_multi_inference( grb::Matrix< IOType > & Y_out,
+			const grb::Matrix< IOType > & Y_in,
+			const std::vector< grb::Matrix< WeightType > > & layers,
+			const std::vector< std::vector< BiasType > > & biases,
+			const ThresholdType threshold,
+			Matrix< IOType > & temp ) {
 			static_assert( ! ( descr & descriptors::no_casting ) || ( std::is_same< IOType, WeightType >::value && std::is_same< IOType, BiasType >::value ),
 				"Input containers have different domains even though the no_casting "
 				"descriptor was given" );
-			return internal::sparse_nn_multi_inference< descr, true >( Y, Y0, W, biases, threshold );
+			std::cerr << "sparse_nn_multi_inference< descr, true, ThresholdType, IOType, WeightType, BiasType >" << std::endl;
+			return internal::sparse_nn_multi_inference< descr, true, ThresholdType, WeightType, BiasType >( Y_out, Y_in, layers, biases, threshold, temp );
 		}
 
 	} // namespace algorithms
