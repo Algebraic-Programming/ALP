@@ -924,155 +924,7 @@ namespace grb {
 			class Monoid,
 			typename InputType, typename IOType, typename MaskType
 		>
-		RC foldl_generic(
-			IOType &x,
-			const Matrix< InputType, reference > &A,
-			const Matrix< MaskType, reference > &mask,
-			const Monoid &monoid
-		) {
-
-#ifdef _DEBUG
-			std::cout << "In grb::internal::foldl_generic( reference, masked = "
-				<< ( masked ? "true" : "false" ) << " )" << std::endl;
-#endif
-			RC rc = SUCCESS;
-
-			const auto& identity = monoid.template getIdentity< typename Monoid::D3 >();
-			const auto& op = monoid.getOperator();
-
-			const auto &A_raw = internal::getCRS( A );
-			const auto &mask_raw = internal::getCRS( mask );
-			const size_t m = nrows( A );
-			const size_t n = ncols( A );
-			const size_t mask_k_increment = masked ? 1 : 0;
-
-			// Check mask dimensions
-			if( masked && ( m != nrows(mask) || n != ncols(mask) ) ) {
-#ifdef _DEBUG
-				std::cout << "Mask dimensions do not match input matrix dimensions\n";
-#endif
-				return MISMATCH;
-			}
-
-			RC local_rc = rc;
-			auto local_x = identity;
-
-#ifdef _H_GRB_REFERENCE_OMP_BLAS3
-	#pragma omp parallel default(none) shared(A_raw, mask_raw, x, rc, std::cout) firstprivate(local_x, local_rc, m, op, identity)
-#endif
-			{
-				size_t start_row, end_row;
-#ifdef _H_GRB_REFERENCE_OMP_BLAS3
-				config::OMP::localRange( start_row, end_row, 0, m );
-#else
-				start_row = 0;
-				end_row = m;
-#endif
-				for( size_t i = start_row; i < end_row; ++i ) {
-					size_t mask_k = mask_raw.col_start[ i ];
-					for( size_t k = A_raw.col_start[ i ]; k < A_raw.col_start[ i + 1 ]; ++k ) {
-						const size_t k_col = A_raw.row_index[ k ];
-						if( masked ) {
-							// Increment the mask pointer until we find the right column, or an higher one
-							while( mask_raw.row_index[ mask_k ] < k_col && mask_k < mask_raw.col_start[ i + 1 ] ) {
-#ifdef _DEBUG
-								const std::string skip_str( "Skipping masked coordinate: ( " + std::to_string( i ) + ";" + std::to_string( mask_raw.row_index[ mask_k ] ) + " )\n" );
-#if defined(_H_GRB_REFERENCE_OMP_BLAS3)
-	#pragma omp critical
-								{
-									std::cout << "[T" << omp_get_thread_num() << "] - " << skip_str;
-								}
-#else
-								std::cout << skip_str;
-#endif
-#endif
-								mask_k += mask_k_increment;
-							}
-							// if there is no value for this coordinate, skip it
-							if( mask_raw.row_index[ mask_k ] != k_col ) {
-#ifdef _DEBUG
-								const std::string skip_str2( "Skipped masked coordinate: ( " + std::to_string( i ) + ";" + std::to_string( mask_raw.row_index[ mask_k ] ) + " )\n" );
-#if defined(_H_GRB_REFERENCE_OMP_BLAS3)
-	#pragma omp critical
-								{
-									std::cout << "[T" << omp_get_thread_num() << "] - " << skip_str2;
-								}
-#else
-								std::cout << skip_str2;
-#endif
-#endif
-								continue;
-							}
-
-#ifdef _DEBUG
-							const std::string str( "Mask( " + std::to_string( i ) + ";" + std::to_string( mask_raw.row_index[ mask_k ] ) + " )\n" );
-#if defined(_H_GRB_REFERENCE_OMP_BLAS3)
-	#pragma omp critical
-							{
-								std::cout << "[T" << omp_get_thread_num() << "] - " << str;
-							}
-#else
-							std::cout << str;
-#endif
-#endif
-						}
-
-						// Increment the mask pointer in order to skip the next while loop (best case)
-						mask_k += mask_k_increment;
-
-						const InputType a_val = A_raw.getValue( k, identity );
-#ifdef _DEBUG
-						const std::string str( "A( " + std::to_string( i ) + ";" + std::to_string( k_col ) + " ) = " + std::to_string( a_val ) + "\n" );
-#if defined(_H_GRB_REFERENCE_OMP_BLAS3)
-	#pragma omp critical
-						{
-							std::cout << "[T" << omp_get_thread_num() << "] - " << str;
-						}
-#else
-						std::cout << str;
-#endif
-						auto x_before = local_x;
-#endif
-						local_rc = local_rc ? local_rc : grb::foldl( local_x, a_val, op );
-#ifdef _DEBUG
-						const std::string str2( "Computing: local_x = op(" + std::to_string( x_before ) + ", " + std::to_string( a_val ) + ") = " + std::to_string( local_x ) + "\n" );
-#if defined(_H_GRB_REFERENCE_OMP_BLAS3)
-	#pragma omp critical
-						{
-							std::cout << "[T" << omp_get_thread_num() << "] - " << str2;
-						}
-#else
-						std::cout << str2;
-#endif
-#endif
-					}
-				}
-
-#ifdef _H_GRB_REFERENCE_OMP_BLAS3
-	#pragma omp critical
-#endif
-				{
-#ifdef _DEBUG
-					auto x_before = x;
-#endif
-					local_rc = local_rc ? local_rc : grb::foldl( x, local_x, op );
-#ifdef _DEBUG
-					std::cout << "Computing x: op(" << x_before << ", " << local_x << ") = " << x << std::endl;
-#endif
-					rc = rc ? rc : local_rc;
-				}
-			}
-
-			return rc;
-		}
-
-		template<
-			bool masked,
-			Descriptor descr = descriptors::no_operation,
-			class Monoid,
-			typename InputType, typename IOType, typename MaskType
-		>
-		RC foldr_generic(
+		RC fold_generic(
 			IOType &x,
 			const Matrix< InputType, reference > &A,
 			const Matrix< MaskType, reference > &mask,
@@ -1181,7 +1033,7 @@ namespace grb {
 #endif
 						auto x_before = local_x;
 #endif
-						local_rc = local_rc ? local_rc : grb::foldr( a_val, local_x, op );
+						local_rc = local_rc ? local_rc : grb::apply< descr >( local_x, local_x, a_val, op );
 #ifdef _DEBUG
 						const std::string str2( "Computing: local_x = op(" + std::to_string( a_val ) + ", " + std::to_string( x_before ) + ") = " + std::to_string( local_x ) + "\n" );
 #if defined(_H_GRB_REFERENCE_OMP_BLAS3)
@@ -1203,7 +1055,7 @@ namespace grb {
 #ifdef _DEBUG
 					auto x_before = x;
 #endif
-					local_rc = local_rc ? local_rc : grb::foldr( local_x, x, op );
+					local_rc = local_rc ? local_rc : grb::apply< descr >( x, x, local_x, op );
 #ifdef _DEBUG
 					std::cout << "Computing x: op(" << local_x << ", " << x_before << ") = " << x << std::endl;
 #endif
@@ -1667,7 +1519,7 @@ namespace grb {
 		std::cout << "In grb::foldr (reference,  mask, matrix, monoid)\n";
 #endif
 
-		return internal::foldr_generic< true, descr, Monoid, InputType, IOType, MaskType >(
+		return internal::fold_generic< true, descr, Monoid, InputType, IOType, MaskType >(
 			x, A, mask, monoid
 		);
 	}
@@ -1715,7 +1567,7 @@ namespace grb {
 #endif
 
 		Matrix< void, reference > empty_mask( nrows( A ), ncols( A ) );
-		return internal::foldr_generic< false, descr, Monoid, InputType, IOType, void >(
+		return internal::fold_generic< false, descr, Monoid, InputType, IOType, void >(
 			x, A, empty_mask, monoid
 		);
 	}
@@ -1765,7 +1617,7 @@ namespace grb {
 		std::cout << "In grb::foldl (reference, mask, matrix, monoid)\n";
 #endif
 
-		return internal::foldl_generic< true, descr, Monoid, InputType, IOType, MaskType >(
+		return internal::fold_generic< true, descr, Monoid, InputType, IOType, MaskType >(
 			x, A, mask, monoid
 		);
 	}
@@ -1814,7 +1666,7 @@ namespace grb {
 #endif
 
 		Matrix< void, reference > empty_mask( nrows( A ), ncols( A ) );
-		return internal::foldl_generic< false, descr, Monoid, InputType, IOType, void >(
+		return internal::fold_generic< false, descr, Monoid, InputType, IOType, void >(
 			x, A, empty_mask, monoid
 		);
 	}
