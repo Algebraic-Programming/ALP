@@ -930,7 +930,7 @@ namespace grb {
 			const Matrix< MaskType, reference > &mask,
 			const Monoid &monoid
 		) {
-
+#define _DEBUG
 #ifdef _DEBUG
 			std::cout << "In grb::internal::foldr_generic( reference, masked = "
 				<< ( masked ? "true" : "false" ) << " )" << std::endl;
@@ -1015,7 +1015,24 @@ namespace grb {
 							std::cout << str;
 #endif
 #endif
+							// Get mask value
+							if( not MaskHasValue< MaskType >( mask_raw, mask_k ).value ) {
+#ifdef _DEBUG
+								const std::string skip_str3( "Skipped masked value at: ( " + std::to_string( i ) + ";" + std::to_string( mask_raw.row_index[ mask_k ] ) + " )\n" );
+#if defined(_H_GRB_REFERENCE_OMP_BLAS3)
+	#pragma omp critical
+								{
+									std::cout << "[T" << omp_get_thread_num() << "] - " << skip_str3;
+								}
+#else
+								std::cout << skip_str3;
+#endif
+#endif
+								continue;
+							}
 						}
+
+						
 
 						// Increment the mask pointer in order to skip the next while loop (best case)
 						mask_k += mask_k_increment;
@@ -1062,7 +1079,7 @@ namespace grb {
 					rc = rc ? rc : local_rc;
 				}
 			}
-
+#undef _DEBUG
 			return rc;
 		}
 
