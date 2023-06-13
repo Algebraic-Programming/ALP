@@ -34,6 +34,7 @@
 #include "graphblas/descriptors.hpp"
 #include "graphblas/rc.hpp"
 #include "graphblas/type_traits.hpp"
+#include "graphblas/identities.hpp"
 
 #define NO_CAST_ASSERT( x, y, z )                                                  \
 	static_assert( x,                                                              \
@@ -601,6 +602,37 @@ namespace grb {
 						(void) grb::apply( out, in, identity, op );
 					}
 				}
+
+		};
+
+		template< typename MaskType >
+		struct MaskHasValue {
+
+			public:
+				template < Descriptor descr = descriptors::no_operation, typename MaskStruct >
+				MaskHasValue( const MaskStruct& mask_raw, const size_t k ) {
+						bool hasValue = mask_raw.getValue( k, identities::logical_false<MaskType>() );
+						if (descr & grb::descriptors::invert_mask) {
+							hasValue = !hasValue;
+						}
+						value = hasValue;
+					}
+
+				const bool value;
+		};
+
+		template<>
+		struct MaskHasValue< void > {
+
+			public:
+				template < Descriptor descr = descriptors::no_operation, typename MaskStruct >
+				MaskHasValue( const MaskStruct& mask_raw, const size_t k ) :
+				value(not (descr & grb::descriptors::invert_mask)){
+					(void) mask_raw;
+					(void) k;
+				}
+
+				const bool value;
 
 		};
 
