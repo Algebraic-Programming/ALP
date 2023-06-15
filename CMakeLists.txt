@@ -152,25 +152,22 @@ if( WITH_HYBRID_BACKEND )
 	list( APPEND AVAILABLE_TEST_BACKENDS "hybrid" )
 endif()
 
-# Enabling reference(+omp) backend if bsp1d is active
+# Enabling reference_omp backend if bsp1d is active
 if( WITH_BSP1D_BACKEND )
-	set( WITH_REFERENCE_BACKEND ON )
 	set( WITH_OMP_BACKEND ON )
-	message( STATUS "Enabling compilation of reference backend: required by bsp1d" )
+	message( STATUS "Enabling compilation of reference_omp backend: required by bsp1d" )
 endif()
 
-# Enabling reference(+omp) backend if hybrid is active
+# Enabling reference_omp backend if hybrid is active
 if( WITH_HYBRID_BACKEND )
-	set( WITH_OMP_BACKEND ON )
 	set( WITH_OMP_BACKEND ON )
 	message( STATUS "Enabling compilation of reference_omp backend: required by hybrid" )
 endif()
 
-# Enabling reference(+omp) backend if non-blocking is active
+# Enabling reference_omp backend if non-blocking is active
 if( WITH_NONBLOCKING_BACKEND )
-	set( WITH_REFERENCE_BACKEND ON )
 	set( WITH_OMP_BACKEND ON )
-	message( STATUS "Enabling compilation of reference backend: required by nonblocking" )
+	message( STATUS "Enabling compilation of reference_omp backend: required by nonblocking" )
 endif()
 
 # Enabling backend required by hyperdags (if not)
@@ -187,6 +184,12 @@ if( WITH_HYPERDAGS_BACKEND )
 	else()
 		message( FATAL_ERROR "Unrecognised backend for hyperdags: ${WITH_HYPERDAGS_USING}.\nAvailable options: reference, reference_omp, nonblocking" )
 	endif()
+endif()
+
+# Enabling reference backend if reference_omp is active
+if( WITH_OMP_BACKEND )
+	set( WITH_REFERENCE_BACKEND ON )
+	message( STATUS "Enabling compilation of reference backend: required by reference_omp" )
 endif()
 
 # set LPF_INSTALL_PATH as FILEPATH inside the cache
