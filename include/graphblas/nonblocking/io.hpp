@@ -138,7 +138,7 @@ namespace grb {
 	template< typename InputType, typename RIT, typename CIT, typename NIT >
 	RC clear(
 		Matrix< InputType, nonblocking, RIT, CIT, NIT > &A
-	) noexcept {
+	) noexcept {		
 		return A.clear();
 		//return clear( internal::getRefMatrix( A ) );
 	}
@@ -187,6 +187,7 @@ namespace grb {
 		Matrix< InputType, nonblocking, RIT, CIT, NIT > &A,
 		const size_t new_nz
 	) noexcept {
+		//internal::le.execution( &A );
 #ifdef _DEBUG
 		std::cerr << "In grb::resize (matrix, reference)\n"
 			<< "\t matrix is " << nrows(A) << " by " << ncols(A) << "\n"
@@ -1153,7 +1154,8 @@ namespace grb {
 			Matrix< OutputType, nonblocking > &C,
 			const Matrix< InputType1, nonblocking > &A,
 			const InputType2 * __restrict__ id = nullptr
-		) noexcept {
+		) noexcept {		
+			grb::internal::le.execution();	
 			if( internal::NONBLOCKING::warn_if_not_native &&
 				config::PIPELINE::warn_if_not_native
 			) {
@@ -1280,6 +1282,7 @@ namespace grb {
 		const Matrix< InputType, nonblocking > &A,
 		const Phase &phase = EXECUTE
 	) noexcept {
+		internal::le.execution( );
 		static_assert( std::is_same< OutputType, void >::value ||
 			!std::is_same< InputType, void >::value,
 			"grb::set cannot interpret an input pattern matrix without a "
@@ -1320,6 +1323,7 @@ namespace grb {
 		const InputType2 &val,
 		const Phase &phase = EXECUTE
 	) noexcept {
+		internal::le.execution( );
 		static_assert( !std::is_same< OutputType, void >::value,
 			"internal::grb::set (masked set to value): cannot have a pattern "
 			"matrix as output" );
@@ -1469,21 +1473,31 @@ namespace grb {
 		const Matrix< InputType, nonblocking > &A,
 		const Args &... args
 	) {
-		(void) A;
+		//(void) A;
 		//TODO: currently, matrices are read only and no action is required
 		//		once the level-3 primitives are implemented
 		//		the pipeline should be executed like for vectors
+		//return wait( args... );
+
+		RC ret = internal::le.execution( &A );
+		if( ret != SUCCESS ) {
+			return ret;
+		}
 		return wait( args... );
 	}
 
 	template< typename InputType >
 	RC wait( const Matrix< InputType, nonblocking > &A ) {
-		(void) A;
+		//(void) A;
 		//TODO: currently, matrices are read only and no action is required
 		//		once the level-3 primitives are implemented
 		//		the pipeline should be executed like for vectors
-		//return wait( args... );
-		return SUCCESS;
+		//return wait( args... );		
+		//return SUCCESS;
+
+		// bruno's modifications
+		//std::cout << "this RC wait has been called " << std::endl;
+		return internal::le.execution( &A );
 	}
 
 	/** @} */

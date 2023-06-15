@@ -2495,12 +2495,20 @@ namespace grb {
 				for( size_t i = m_start + 1; i < m_end; ++i ) {
 					A.CRS.col_start[ i ] = A.CRS.col_start[ i + 1 ];
 				}
+
+			
 #ifdef _H_GRB_REFERENCE_OMP_BLAS2
 				#pragma omp barrier
 #endif
 				if( m_start < m_end ) {
 					A.CRS.col_start[ m_start ] = tmp;
+					#pragma omp critical
+					{
+						std::cout << "m_start = " << m_start << ", m_end = " << m_end;
+						std::cout << " tmp = " << tmp << std::endl;
+					}
 				}
+				
 #ifdef _H_GRB_REFERENCE_OMP_BLAS2
 				#pragma omp barrier
 #endif
@@ -2674,9 +2682,9 @@ namespace grb {
 					std::cout << "\t elected chunk size for updating the CRS structure is "
 						<< chunkSize << "\n";
 				}
-#endif
-
+#endif							
 				// preamble
+				//std::cout << "preamble" << std::endl;
 				for(
 					size_t k = start;
 					k < std::min(
@@ -2710,12 +2718,14 @@ namespace grb {
 						A.CCS.row_index[ k ], j_start, A.CCS.values[ k ]
 					);
 					if( pos  == chunkSize ) {
+						std::cout << "internal::addToCRS called from preamble" << std::endl;
 						internal::addToCRS( A, nonzeroes, nonzeroes + chunkSize );
 						pos = 0;
 					}
 				}
 				// main loop
 				if( j_start != j_end ) {
+					//std::cout << "main loop" << std::endl;
 					for( size_t j = j_start + 1; j < j_end; ++j ) {
 						for(
 							size_t k = A.CCS.col_start[ j ];
@@ -2746,6 +2756,7 @@ namespace grb {
 								A.CCS.row_index[ k ], j, A.CCS.values[ k ]
 							);
 							if( pos == chunkSize ) {
+								std::cout << "internal::addToCRS called from main loop" << std::endl;
 								internal::addToCRS( A, nonzeroes, nonzeroes + chunkSize );
 								pos = 0;
 							}
@@ -2753,7 +2764,7 @@ namespace grb {
 					}
 				}
 				// postamble
-				assert( j_end <= A.n );
+				assert( j_end <= A.n );				
 				for( size_t k = A.CCS.col_start[ j_end ]; k < end; ++k ) {
 					// get row index
 					const size_t i = A.CCS.row_index[ k ];
@@ -2777,12 +2788,14 @@ namespace grb {
 						A.CCS.row_index[ k ], j_end, A.CCS.values[ k ]
 					);
 					if( pos == chunkSize ) {
+						std::cout << "internal::addToCRS called from postamble" << std::endl;
 						internal::addToCRS( A, nonzeroes, nonzeroes + chunkSize );
 						pos = 0;
 					}
 				}
 				// update CRS
 				if( pos > 0 ) {
+					std::cout << "pos > 0  is called " << ", pos = " << pos << std::endl;
 					internal::addToCRS( A, nonzeroes, nonzeroes + pos );
 					pos = 0;
 				}

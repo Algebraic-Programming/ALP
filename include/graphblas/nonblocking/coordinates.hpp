@@ -49,10 +49,9 @@
 #include <graphblas/nonblocking/init.hpp>
 #include <graphblas/nonblocking/analytic_model.hpp>
 
-
 namespace grb {
 
-	namespace internal {
+	namespace internal {		
 
 		/**
 		 * The Coordinates class is based on that of the reference backend.
@@ -92,7 +91,6 @@ namespace grb {
 
 				// the analytic model used during the execution of a pipeline
 				AnalyticModel analytic_model;
-
 
 			public:
 
@@ -221,8 +219,7 @@ namespace grb {
 							{
 								size_t start, end;
 								
-								config::OMP::localRange( start, end, 0, dim );
-								std::cout << "local range : " << start << ", " << end << std::endl;
+								config::OMP::localRange( start, end, 0, dim );								
 								for( size_t i = start; i < end; ++i ) {
 									_assigned[ i ] = false;
 								}
@@ -695,7 +692,7 @@ namespace grb {
 					}
 
 					local_new_nnzs[ tile_id ] = 0;
-				}
+				}				
 			};
 
 	} // namespace internal

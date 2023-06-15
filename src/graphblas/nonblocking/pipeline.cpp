@@ -29,6 +29,8 @@
 #include <graphblas/nonblocking/analytic_model.hpp>
 #include <graphblas/nonblocking/pipeline.hpp>
 
+//#include<graphblas/nonblocking/io.hpp>
+
 using namespace grb::internal;
 
 Pipeline::Pipeline() {
@@ -53,6 +55,8 @@ Pipeline::Pipeline() {
 
 	//for BLAS3
 	input_output_intersection_matrix.reserve( initial_container_cap );
+	count_nnz_local.reserve( initial_stage_cap );
+	prefix_sum_nnz_local.reserve( initial_stage_cap );
 
 	// the below looped-insert-then-clear simulates a reserve and can be reasonably
 	// expected to work for an optimised STL implementation. However, it would be
@@ -74,6 +78,7 @@ Pipeline::Pipeline() {
 		// for BLAS3
 		mxm_input_matrices_right.insert( dummy );
 		output_matrices.insert( dummy );
+		output_matrices_mask.insert( dummy );
 		
 #ifdef GRB_ALREADY_DENSE_OPTIMIZATION
 		already_dense_coordinates.insert( dumCCoor );
@@ -90,6 +95,7 @@ Pipeline::Pipeline() {
 	// for BLAS3
 	mxm_input_matrices_right.clear();
 	output_matrices.clear();
+	output_matrices_mask.clear();
 #ifdef GRB_ALREADY_DENSE_OPTIMIZATION
 	already_dense_coordinates.clear();
 #endif
@@ -102,7 +108,8 @@ Pipeline::Pipeline( const Pipeline & pipeline ) :
 	stages( pipeline.stages ), opcodes( pipeline.opcodes ), accessed_coordinates( pipeline.accessed_coordinates ), input_vectors( pipeline.input_vectors ), output_vectors( pipeline.output_vectors ),
 	vxm_input_vectors( pipeline.vxm_input_vectors ), input_matrices( pipeline.input_matrices ), out_of_place_output_coordinates( pipeline.out_of_place_output_coordinates ),
 	mxm_input_matrices_right( pipeline.mxm_input_matrices_right ),
-	output_matrices( pipeline.output_matrices ),
+	output_matrices( pipeline.output_matrices ), output_matrices_mask (pipeline.output_matrices_mask),
+	count_nnz_local(pipeline.count_nnz_local), prefix_sum_nnz_local(pipeline.prefix_sum_nnz_local),
 #ifdef GRB_ALREADY_DENSE_OPTIMIZATION
 	already_dense_coordinates( pipeline.already_dense_coordinates ),
 #endif
@@ -120,6 +127,8 @@ Pipeline::Pipeline( Pipeline && pipeline ) noexcept :
 	input_vectors( std::move( pipeline.input_vectors ) ), output_vectors( std::move( pipeline.output_vectors ) ), vxm_input_vectors( std::move( pipeline.vxm_input_vectors ) ),
 	input_matrices( std::move( pipeline.input_matrices ) ), out_of_place_output_coordinates( std::move( pipeline.out_of_place_output_coordinates ) ),
 	mxm_input_matrices_right( std::move( pipeline.mxm_input_matrices_right ) ), output_matrices( std::move( pipeline.output_matrices ) ),
+	output_matrices_mask( std::move(pipeline.output_matrices_mask)),
+	count_nnz_local(std::move(pipeline.count_nnz_local)), prefix_sum_nnz_local(std::move(pipeline.prefix_sum_nnz_local)),
 #ifdef GRB_ALREADY_DENSE_OPTIMIZATION
 	already_dense_coordinates( std::move( pipeline.already_dense_coordinates ) ),
 #endif
@@ -153,6 +162,9 @@ Pipeline & Pipeline::operator=( const Pipeline & pipeline ) {
 	// for BLAS3
 	mxm_input_matrices_right = pipeline.mxm_input_matrices_right;
 	output_matrices = pipeline.output_matrices;
+	output_matrices_mask = pipeline.output_matrices_mask;
+	count_nnz_local = pipeline.count_nnz_local;
+	prefix_sum_nnz_local = pipeline.prefix_sum_nnz_local;
 
 #ifdef GRB_ALREADY_DENSE_OPTIMIZATION
 	already_dense_coordinates = pipeline.already_dense_coordinates;
@@ -184,6 +196,9 @@ Pipeline & Pipeline::operator=( Pipeline && pipeline ) {
 	// for BLAS3
 	mxm_input_matrices_right = std::move( pipeline.mxm_input_matrices_right );
 	output_matrices = std::move( pipeline.output_matrices );
+	output_matrices_mask = std::move( pipeline.output_matrices_mask );
+	count_nnz_local = std::move( pipeline.count_nnz_local );
+	prefix_sum_nnz_local = std::move( pipeline.prefix_sum_nnz_local );
 
 #ifdef GRB_ALREADY_DENSE_OPTIMIZATION
 	already_dense_coordinates = std::move( pipeline.already_dense_coordinates );
@@ -243,6 +258,33 @@ typename std::vector< Pipeline::stage_type >::iterator Pipeline::pend() {
 	return stages.end();
 }
 
+// For mxm, count nonzeros in each tile, STARTS
+bool Pipeline::empty_count_mxm() const {
+	return count_nnz_local.empty();
+}
+
+typename std::vector< Pipeline::count_nnz_local_type >::iterator Pipeline::pbegin_count_mxm() {
+	return count_nnz_local.begin();
+}
+
+typename std::vector< Pipeline::count_nnz_local_type >::iterator Pipeline::pend_count_mxm() {
+	return count_nnz_local.end();
+}
+
+bool Pipeline::empty_prefix_sum_mxm() const {
+	return prefix_sum_nnz_local.empty();
+}
+
+typename std::vector< Pipeline::prefix_sum_nnz_mxm_type >::iterator Pipeline::pbegin_prefix_sum_mxm() {
+	return prefix_sum_nnz_local.begin();
+}
+
+typename std::vector< Pipeline::prefix_sum_nnz_mxm_type >::iterator Pipeline::pend_prefix_sum_mxm() {
+	return prefix_sum_nnz_local.end();
+}
+// For mxm, count nonzeros in each tile, ENDS
+
+
 typename std::set< Coordinates< grb::nonblocking > * >::iterator Pipeline::vbegin() {
 	return accessed_coordinates.begin();
 }
@@ -263,6 +305,8 @@ size_t Pipeline::getContainersSize() const {
 	return containers_size;
 }
 
+
+/*
 void Pipeline::addStage( const Pipeline::stage_type && func,
 	const Opcode opcode,
 	const size_t n,
@@ -283,7 +327,13 @@ void Pipeline::addStage( const Pipeline::stage_type && func,
 	const Coordinates< nonblocking > * const coor_d_ptr,
 	const void * const input_matrix_A,
 	const void * const input_matrix_B,
-	void * output_matrix_C ) {
+	void * const output_matrix_C
+	 ) {
+
+	//auto & m = getCRS( input_matrix_A );
+	// inputs const internal::Compressed_Storage< D, RowIndexType, NonzeroIndexType > * CRS_A_ptr,
+	//const auto * const CRS_A_ptr
+	//const Pipeline::count_nnz_local_type && count_nnz
 
 	assert( stages.size() != 0 || containers_size == 0 );
 
@@ -469,6 +519,292 @@ void Pipeline::addStage( const Pipeline::stage_type && func,
 		}
 	}
 
+	//count_nnz_local.push_back( std::move( count_nnz ) );
+
+	warnIfExceeded();
+}
+*/
+
+void Pipeline::addStage(
+		const Pipeline::stage_type &&func, const Opcode opcode,
+		const size_t n, const size_t data_type_size,
+		const bool dense_descr, const bool dense_mask,
+		void * const output_vector_ptr, void * const output_aux_vector_ptr,
+		Coordinates< nonblocking > * const coor_output_ptr,
+		Coordinates< nonblocking > * const coor_output_aux_ptr,
+		const void * const input_a_ptr, const void * const input_b_ptr,
+		const void * const input_c_ptr, const void * const input_d_ptr,
+		const Coordinates< nonblocking > * const coor_a_ptr,
+		const Coordinates< nonblocking > * const coor_b_ptr,
+		const Coordinates< nonblocking > * const coor_c_ptr,
+		const Coordinates< nonblocking > * const coor_d_ptr,
+		const void * const input_matrix
+) {
+	assert( stages.size() != 0 || containers_size == 0);
+
+	if( stages.size() == 0 ) {
+		containers_size = n;
+	}
+
+	// the size of containers and the data type should match
+	assert( containers_size == n );
+
+	//TODO (internal issue 617): does the size of data matches for all containers?
+
+	// pipelines may consist of primitives that operate on different data types,
+	// e.g., double and bool the analytic model should take into account the
+	// different data types and make a proper estimation an easy and perhaps
+	// temporary fix is to use the maximum size of the data types involved in a
+	// pipeline
+	if( data_type_size > size_of_data_type ) {
+		size_of_data_type = data_type_size;
+	}
+
+	stages.push_back( std::move( func ) );
+	opcodes.push_back( opcode );
+
+	if( output_vector_ptr != nullptr ) {
+		output_vectors.insert( output_vector_ptr );
+	}
+
+	if( output_aux_vector_ptr != nullptr ) {
+		output_vectors.insert( output_aux_vector_ptr );
+	}
+
+	// special treatment for an SpMV operation as the input must not be overwritten
+	// by another stage of the pipeline
+	if( opcode == Opcode::BLAS2_VXM_GENERIC ) {
+
+		if( input_a_ptr != nullptr ) {
+			input_vectors.insert( input_a_ptr );
+			vxm_input_vectors.insert( input_a_ptr );
+		}
+
+		if( input_b_ptr != nullptr ) {
+			input_vectors.insert( input_b_ptr );
+			vxm_input_vectors.insert( input_b_ptr );
+		}
+
+		if( input_c_ptr != nullptr ) {
+			input_vectors.insert( input_c_ptr );
+			vxm_input_vectors.insert( input_c_ptr );
+		}
+
+		if( input_d_ptr != nullptr ) {
+			input_vectors.insert( input_d_ptr );
+			vxm_input_vectors.insert( input_d_ptr );
+		}
+
+		// in the current implementation that supports level-1 and level-2 operations
+		// a pointer to an input matrix may be passed only by an SpMV operation
+		// TODO once level-3 operations are supported, the following code should be
+		//      moved
+		if( input_matrix != nullptr ) {
+			input_matrices.insert( input_matrix );
+		}
+	} else {
+		if( input_a_ptr != nullptr ) {
+			input_vectors.insert( input_a_ptr );
+		}
+
+		if( input_b_ptr != nullptr ) {
+			input_vectors.insert( input_b_ptr );
+		}
+
+		if( input_c_ptr != nullptr ) {
+			input_vectors.insert( input_c_ptr );
+		}
+
+		if( input_d_ptr != nullptr ) {
+			input_vectors.insert( input_d_ptr );
+		}
+	}
+
+	// update all the sets of the pipeline by adding the entries of the new stage
+	if( coor_a_ptr != nullptr ) {
+		if( dense_descr ) {
+			dense_descr_coordinates.insert(
+				const_cast< Coordinates< nonblocking > * >( coor_a_ptr ) );
+		} else {
+			accessed_coordinates.insert(
+				const_cast< Coordinates< nonblocking > * >( coor_a_ptr ) );
+		}
+	}
+
+	if( coor_b_ptr != nullptr ) {
+		if( dense_descr ) {
+			dense_descr_coordinates.insert(
+				const_cast< internal::Coordinates< nonblocking > * >( coor_b_ptr ) );
+		} else {
+			accessed_coordinates.insert(
+				const_cast< internal::Coordinates< nonblocking > * >( coor_b_ptr ) );
+		}
+	}
+
+	if( coor_c_ptr != nullptr ) {
+		if( dense_descr ) {
+			dense_descr_coordinates.insert(
+				const_cast< internal::Coordinates<nonblocking > * >( coor_c_ptr ) );
+		} else {
+			accessed_coordinates.insert(
+				const_cast< internal::Coordinates< nonblocking > * >( coor_c_ptr ) );
+		}
+	}
+
+	if( coor_d_ptr != nullptr ) {
+		if( dense_descr ) {
+			dense_descr_coordinates.insert(
+				const_cast< internal::Coordinates< nonblocking > * >( coor_d_ptr ) );
+		} else {
+			accessed_coordinates.insert(
+				const_cast< internal::Coordinates< nonblocking > * >( coor_d_ptr ) );
+		}
+	}
+
+	// keep track of out-of-place operations that may make a dense vector sparse
+	// such operations disable potential optimizations for already dense vectors
+	if( opcode == Opcode::BLAS1_EWISEAPPLY ||
+		opcode == Opcode::BLAS1_MASKED_EWISEAPPLY ||
+		opcode == Opcode::IO_SET_MASKED_SCALAR ||
+		opcode == Opcode::IO_SET_VECTOR ||
+		opcode == Opcode::IO_SET_MASKED_VECTOR
+	) {
+		// the output of these specific primitives cannot be nullptr
+
+		if( dense_descr ) {
+			dense_descr_coordinates.insert( coor_output_ptr );
+		}
+
+		// when the dense descriptor is not provided or the operation is masked
+		// there is no guarantee that an already dense vector will remain dense
+		// therefore, the pipeline is marked to disable the already dense optimization
+		if( !dense_descr || ( !dense_mask && (
+			opcode == Opcode::BLAS1_MASKED_EWISEAPPLY ||
+			opcode == Opcode::IO_SET_MASKED_SCALAR ||
+			opcode == Opcode::IO_SET_MASKED_VECTOR
+		) ) ) {
+			contains_out_of_place_primitive = true;
+			out_of_place_output_coordinates.insert( coor_output_ptr );
+			accessed_coordinates.insert( coor_output_ptr );
+		}
+
+		// TODO: once UNZIP is complete
+		// the second output is always nullptr for the out-of-place primitives that
+		// are handled here
+		// however, once we have the complete implementation of unzip (which handles
+		// sparsity) then need to consider the second output here
+	} else {
+
+		// check the first output
+		if( coor_output_ptr != nullptr ) {
+			if( dense_descr ) {
+				dense_descr_coordinates.insert( coor_output_ptr );
+			} else {
+				accessed_coordinates.insert( coor_output_ptr );
+			}
+		}
+
+		// check the second output
+		if( coor_output_aux_ptr != nullptr ) {
+			if( dense_descr ) {
+				dense_descr_coordinates.insert( coor_output_aux_ptr );
+			} else {
+				accessed_coordinates.insert( coor_output_aux_ptr );
+			}
+		}
+	}
+
+	warnIfExceeded();
+}
+
+void Pipeline::addStageLevel3( const Pipeline::stage_type && func,
+	const Opcode opcode,
+	const size_t n,
+	const size_t data_type_size,
+	const bool dense_descr,
+	const bool dense_mask,
+	const void * const input_matrix_A,
+	const void * const input_matrix_B,
+	void * const output_matrix_C,
+	const void * const output_matrix_C_mask,
+	const Pipeline::count_nnz_local_type && count_nonzeros,
+	const Pipeline::prefix_sum_nnz_mxm_type && prefix_sum_nnz ) {
+
+	(void)dense_descr;
+	(void)dense_mask;
+	
+	assert( stages.size() != 0 || containers_size == 0 );
+
+	if( stages.size() == 0 ) {
+		containers_size = n;
+	}
+
+	// the size of containers and the data type should match
+	assert( containers_size == n );
+
+	// TODO (internal issue 617): does the size of data matches for all containers?
+
+	// pipelines may consist of primitives that operate on different data types,
+	// e.g., double and bool the analytic model should take into account the
+	// different data types and make a proper estimation an easy and perhaps
+	// temporary fix is to use the maximum size of the data types involved in a
+	// pipeline
+	if( data_type_size > size_of_data_type ) {
+		size_of_data_type = data_type_size;
+	}
+
+	// add lambda function into pipeline
+	stages.push_back( std::move( func ) );
+	opcodes.push_back( opcode );
+
+	// add output matrix
+	if( output_matrix_C != nullptr ) {
+		output_matrices.insert( output_matrix_C );
+	}
+
+	// add output matrix mask
+	if( output_matrix_C_mask != nullptr ) {
+		output_matrices.insert( output_matrix_C_mask );
+	}
+
+	// For mxm, add input matrices
+	if( opcode == Opcode::BLAS3_MXM_GENERIC ) {
+		// add left-hand matrix
+		if( input_matrix_A != nullptr ) {
+			input_matrices.insert( input_matrix_A );
+		}
+
+		// add right-hand matrix. This must be fully available for mxm
+		if( input_matrix_B != nullptr ) {
+			input_matrices.insert( input_matrix_B );
+			mxm_input_matrices_right.insert( input_matrix_B );
+		}
+
+		// add lambda function to count nonzeros before computing mxm
+		count_nnz_local.push_back( std::move( count_nonzeros ) );
+
+		// add lambda function to perform prefix sum on the local nonzeros before computing mxm
+		prefix_sum_nnz_local.push_back( std::move( prefix_sum_nnz ) );
+	}
+	else
+	{
+		// So far, this is done for the eWiseApply operation on matrices
+		// add left-hand matrix
+		if( input_matrix_A != nullptr ) {
+			input_matrices.insert( input_matrix_A );
+		}
+		// add right-hand matrix. This must be fully available
+		if( input_matrix_B != nullptr ) {
+			input_matrices.insert( input_matrix_B );			
+		}
+
+		// add lambda function to count nonzeros before computing mxm
+		count_nnz_local.push_back( std::move( count_nonzeros ) );
+
+		// add lambda function to perform prefix sum on the local nonzeros before computing mxm
+		prefix_sum_nnz_local.push_back( std::move( prefix_sum_nnz ) );
+	}
+
 	warnIfExceeded();
 }
 
@@ -536,7 +872,7 @@ bool Pipeline::overwritesVXMInputVectors( const void * const output_vector_ptr )
 	return vxm_input_vectors.find( output_vector_ptr ) != vxm_input_vectors.end();
 }
 
-// for BLAS3
+// for BLAS3, mxm
 bool Pipeline::accessesInputMatrix( const void * const matrix ) const
 {
 	return input_matrices.find( matrix ) != input_matrices.end();
@@ -549,7 +885,7 @@ bool Pipeline::accessesOutputMatrix( const void * const matrix ) const {
 bool Pipeline::overwritesMXMRightInputMatrices( const void * const matrix ) const {
 	return mxm_input_matrices_right.find( matrix ) != mxm_input_matrices_right.end();
 }
-// finish BLAS3
+// finish BLAS3, mxm
 
 #ifdef GRB_ALREADY_DENSE_OPTIMIZATION
 bool Pipeline::emptyAlreadyDenseVectors() const {
@@ -606,10 +942,21 @@ void Pipeline::merge( Pipeline & pipeline ) {
 		stages.push_back( std::move( *st ) );
 	}
 
+	// add all lambda functions to count nnz in each tile of mxm into the pipeline by maintaining the relative order
+	for( std::vector< count_nnz_local_type >::iterator st = pipeline.count_nnz_local.begin(); st != pipeline.count_nnz_local.end(); st++ ) {
+		count_nnz_local.push_back( std::move( *st ) );
+	}
+
+	// add all lambda functions to compute prefix sum in each tile of mxm into the pipeline by maintaining the relative order
+	for( std::vector< prefix_sum_nnz_mxm_type >::iterator st = pipeline.prefix_sum_nnz_local.begin(); st != pipeline.prefix_sum_nnz_local.end(); st++ ) {
+		prefix_sum_nnz_local.push_back( std::move( *st ) );
+	}
+
 	// add all the opcodes into the pipeline by maintaining the relative order
 	for( std::vector< Opcode >::iterator ot = pipeline.opcodes.begin(); ot != pipeline.opcodes.end(); ot++ ) {
 		opcodes.push_back( *ot );
 	}
+
 
 	// update all the sets of the pipeline by adding the entries of the new stage
 	accessed_coordinates.insert( pipeline.accessed_coordinates.begin(), pipeline.accessed_coordinates.end() );
@@ -627,6 +974,7 @@ void Pipeline::merge( Pipeline & pipeline ) {
 	// for BLAS3
 	mxm_input_matrices_right.insert( pipeline.mxm_input_matrices_right.begin(), pipeline.mxm_input_matrices_right.end() );
 	output_matrices.insert( pipeline.output_matrices.begin(), pipeline.output_matrices.end() );
+	output_matrices_mask.insert( pipeline.output_matrices_mask.begin(), pipeline.output_matrices_mask.end() );
 
 #ifdef GRB_ALREADY_DENSE_OPTIMIZATION
 	already_dense_coordinates.insert( pipeline.already_dense_coordinates.begin(), pipeline.already_dense_coordinates.end() );
@@ -650,6 +998,8 @@ void Pipeline::merge( Pipeline & pipeline ) {
 	// for BLAS3
 	pipeline.mxm_input_matrices_right.clear();
 	pipeline.output_matrices.clear();
+	pipeline.count_nnz_local.clear();
+	pipeline.prefix_sum_nnz_local.clear();
 
 #ifdef GRB_ALREADY_DENSE_OPTIMIZATION
 	pipeline.already_dense_coordinates.clear();
@@ -683,6 +1033,8 @@ void Pipeline::clear() {
 	mxm_input_matrices_right.clear();
 	output_matrices.clear();
 	input_output_intersection_matrix.clear();
+	count_nnz_local.clear();
+	prefix_sum_nnz_local.clear();
 
 #ifdef GRB_ALREADY_DENSE_OPTIMIZATION
 	already_dense_coordinates.clear();
@@ -748,6 +1100,14 @@ grb::RC Pipeline::verifyDenseDescriptor() {
 grb::RC Pipeline::execution() {
 	RC ret = SUCCESS;
 
+	
+	std::cout << " -------xxxx Pipeline::execution() starts xxxx------- " << std::endl;
+	/*
+	std::cout << "number of stages in pipeline = " << stages.size() << std::endl;
+	std::cout << "size of mxm_input_matrices_right = " << mxm_input_matrices_right.size() << std::endl;
+	std::cout << "size of output_matrices = " << output_matrices.size() << std::endl;
+	std::cout << "size of input_matrices = " << input_matrices.size() << std::endl;	
+	*/
 	// if the pipeline is empty, nothing needs to be executed
 	if( pbegin() == pend() ) {
 		return ret;
@@ -767,7 +1127,7 @@ grb::RC Pipeline::execution() {
 
 	const size_t num_accessed_vectors = input_vectors.size() + output_vectors.size() - input_output_intersection.size();
 
-	// assert( num_accessed_vectors > 0 );
+	assert( num_accessed_vectors > 0 );
 
 	// for BLAS3
 	// compute the intersection of the input and output matrices that should be
@@ -783,18 +1143,20 @@ grb::RC Pipeline::execution() {
 	// make use of the analytic model to estimate a proper number of threads and a
 	// tile size
 	AnalyticModel am( size_of_data_type, containers_size, 1 );
-    
+    	
 	const size_t nthreads = am.getNumThreads();
 	const size_t tile_size = am.getTileSize();
 	const size_t num_tiles = am.getNumTiles();	
+
 /*
 	const size_t nthreads = 1;
 	const size_t tile_size = containers_size;
 	const size_t num_tiles = 1;
 */
-#ifdef _NONBLOCKING_DEBUG
-	std::cout << std::endl << "Analytic Model: threads(" << nthreads << "), tile_size(" << tile_size << "), num_tiles(" << num_tiles << ")" << std::endl;
-#endif
+
+//#ifdef _NONBLOCKING_DEBUG
+	std::cout << std::endl << "Analytic Model: threads(" << nthreads << "), tile_size(" << tile_size << "), num_tiles(" << num_tiles << ")"  << ", container size = " << containers_size<< std::endl;
+//#endif
 
 #ifdef GRB_ALREADY_DENSE_OPTIMIZATION
 	// build the set of already dense vectors that will be used for optimizations
@@ -823,7 +1185,10 @@ grb::RC Pipeline::execution() {
 	// if all vectors are already dense and there is no out-of-place operation to
 	// make them sparse we avoid paying the overhead for updating the coordinates
 	// for the output vectors
+
 	if( all_already_dense_vectors && ! contains_out_of_place_primitive ) {
+
+		//std::cout << "xxxxxxxxxxxxxxxxx IN all_already_dense_vectors xxxxxxxxxxxxxxxxx" << std::endl;
 		// each thread should receive an identifier during the execution of the loop
 
 #ifndef GRB_ALREADY_DENSE_OPTIMIZATION
@@ -835,6 +1200,50 @@ grb::RC Pipeline::execution() {
 			( **vt ).localCoordinatesInit( am );
 		}
 #endif
+
+/*Before executing the pipeline, we count the nnz for each tile and for each matrix*/
+// count the nnz in the output matrix
+//std::cout << "----------COMPUTATION OF LAMBDAS COUNT HAS STARTED----------" << std::endl;
+//std::cout << "count_nnz_local.size() = " << count_nnz_local.size() << std::endl;
+#pragma omp parallel for schedule( dynamic ) num_threads( nthreads )
+
+		for( size_t tile_id = 0; tile_id < num_tiles; ++tile_id) {
+			// compute the lower and upper bounds
+			config::OMP::localRange( lower_bound[ tile_id ], upper_bound[ tile_id ], 0, containers_size, tile_size, tile_id, num_tiles );
+			assert( lower_bound[ tile_id ] <= upper_bound[ tile_id ] );			
+			RC local_ret = SUCCESS;		
+			
+			// for each tile, we count the number of nonzeros. Here we execute all lambdas corresponding to counting
+			//  nnz in each tile 
+			for( std::vector< count_nnz_local_type >::iterator pt = pbegin_count_mxm(); pt != pend_count_mxm(); ++pt ) {
+				local_ret = local_ret ? local_ret : ( *pt )( lower_bound[ tile_id ], upper_bound[ tile_id ]);											
+			}
+		
+			if( local_ret != SUCCESS ) {
+				ret = local_ret;
+			}
+		}
+
+//std::cout << "----------COMPUTATION OF LAMBDAS COUNT HAS FINISHED----------" << std::endl;
+
+#pragma omp barrier
+
+//std::cout << "----------COMPUTATION OF LAMBDAS PREFIX HAS STARTED----------" << std::endl;
+// computation of prefix sum
+//std::cout << "prefix_sum_nnz_local.size() = " << prefix_sum_nnz_local.size() << std::endl;
+
+		RC local_ret = SUCCESS;
+
+		// we compute the prefix sum for each matrix
+		for( std::vector< prefix_sum_nnz_mxm_type >::iterator pt = pbegin_prefix_sum_mxm(); pt != pend_prefix_sum_mxm(); ++pt ) {
+			local_ret = local_ret ? local_ret : ( *pt )();
+		}
+
+		if( local_ret != SUCCESS ) {
+			ret = local_ret;
+		}
+
+//std::cout << "----------COMPUTATION OF LAMBDAS PREFIX HAS FINISHED----------" << std::endl;
 
 #pragma omp parallel for schedule( dynamic ) num_threads( nthreads )
 		for( size_t tile_id = 0; tile_id < num_tiles; ++tile_id ) {
@@ -863,7 +1272,7 @@ grb::RC Pipeline::execution() {
 			}
 		}
 	} else {
-
+		
 		bool initialized_coordinates = false;
 
 		for( std::set< internal::Coordinates< nonblocking > * >::iterator vt = vbegin(); vt != vend(); ++vt ) {
@@ -893,7 +1302,7 @@ grb::RC Pipeline::execution() {
 				// current design
 				// namely, no stage of the same pipeline can overwrite it
 				if( ( **vt ).size() != getContainersSize() ) {
-					continue;
+					continue;					
 				}
 
 #ifdef GRB_ALREADY_DENSE_OPTIMIZATION
@@ -987,6 +1396,8 @@ grb::RC Pipeline::execution() {
 #endif
 
 	clear();
+
+	std::cout << "-------xxxx Pipeline::execution() ends xxxx-------" << std::endl;
 
 	return ret;
 }

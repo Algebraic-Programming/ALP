@@ -83,7 +83,7 @@ AnalyticModel::AnalyticModel(
 		// pipelines.
 		tile_size_estimation =
 			grb::internal::NONBLOCKING::manualFixedTileSize();
-		std::cout << "tile prestimation: " << tile_size_estimation << std::endl;
+			//std::cout << "tile prestimation: " << tile_size_estimation << std::endl;
 	}
 
 	// It ensures that the tile size does not exceed the size of vectors.

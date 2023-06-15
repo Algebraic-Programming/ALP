@@ -54,8 +54,8 @@
 #include <graphblas/utils/alloc.hpp>
 #include <graphblas/utils/autodeleter.hpp>
 
-//#include <graphblas/reference/compressed_storage.hpp>
-#include "compressed_storage.hpp"
+#include <graphblas/reference/compressed_storage.hpp>
+
 #include "coordinates.hpp"
 #include "spmd.hpp"
 #include "lazy_evaluation.hpp"
@@ -456,6 +456,8 @@ namespace grb {
 			return A.CCS;
 			//return getCCS( A.ref );
 		}
+
+		
 
 		template< typename D, typename C >
 		inline Vector< D, reference, C >& getRefVector(

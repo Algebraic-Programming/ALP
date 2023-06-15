@@ -59,7 +59,409 @@
 
 namespace grb {
 
-	namespace internal {
+	namespace internal {		
+
+			template< bool allow_void,
+			Descriptor descr,
+			bool output_masked,
+			class MulMonoid,
+			typename OutputType, typename InputType1, typename InputType2,
+			typename RIT, typename CIT, typename NIT,
+			typename maskType,
+			class Operator,
+			class Monoid>
+		RC mxm_masked_generic( Matrix< OutputType, reference, RIT, CIT, NIT > & C,
+			const Matrix< maskType, reference, RIT, CIT, NIT > & C_mask,
+			const Matrix< InputType1, reference, RIT, CIT, NIT > & A,
+			const Matrix< InputType2, reference, RIT, CIT, NIT > & B,
+			const Operator & oper,
+			const Monoid & monoid,
+			const MulMonoid & mulMonoid,
+			const Phase & phase,
+			const typename std::enable_if< 
+				! grb::is_object< OutputType >::value && 
+				! grb::is_object< InputType1 >::value && 
+				! grb::is_object< InputType2 >::value &&
+				! grb::is_object< maskType >::value &&
+				grb::is_operator< Operator >::value && 
+				grb::is_monoid< Monoid >::value,
+				void >::type * const = nullptr ) {
+
+			static_assert( allow_void || ( ! ( std::is_same< InputType1, void >::value || std::is_same< InputType2, void >::value ) ),
+				"grb::mxm_generic: the operator-monoid version of mxm cannot be "
+				"used if either of the input matrices is a pattern matrix (of type "
+				"void)" );
+
+#ifdef _DEBUG
+			std::cout << "In grb::internal::mxm_masked_generic (reference, masked)\n";
+#endif
+
+			// get whether the matrices should be transposed prior to execution
+			constexpr bool trans_left = descr & descriptors::transpose_left;
+			constexpr bool trans_right = descr & descriptors::transpose_right;
+
+			// get whether we are required to stick to CRS
+			constexpr bool crs_only = descr & descriptors::force_row_major;
+
+			// static checks
+			static_assert( ! ( crs_only && trans_left ),
+				"Cannot (presently) transpose A "
+				"and force the use of CRS" );
+			static_assert( ! ( crs_only && trans_right ),
+				"Cannot (presently) transpose B "
+				"and force the use of CRS" );
+
+			// run-time checks
+			const size_t m = grb::nrows( C );
+			const size_t n = grb::ncols( C );
+			const size_t m_A = ! trans_left ? grb::nrows( A ) : grb::ncols( A );
+			const size_t k = ! trans_left ? grb::ncols( A ) : grb::nrows( A );
+			const size_t k_B = ! trans_right ? grb::nrows( B ) : grb::ncols( B );
+			const size_t n_B = ! trans_right ? grb::ncols( B ) : grb::nrows( B );
+
+			const size_t m_C_mask = grb::nrows( C_mask );
+			const size_t n_C_mask = grb::ncols( C_mask);
+
+			assert( phase != TRY );
+
+			if( m != m_A || k != k_B || n != n_B ) {
+				return MISMATCH;
+			}			
+
+			//check that mask of C has the same dimensions of C
+			if(m != m_C_mask || n != n_C_mask ){
+				return MISMATCH;
+			}
+			
+			/*
+			//check that if output_masked is true, C_mask has to be different from nullptr
+			if ( output_masked && (C_mask == nullptr) )
+			{
+			    return ILLEGAL;
+			}
+			*/
+
+			// read data from matrices 
+			const auto &A_raw = !trans_left
+				? internal::getCRS( A )
+				: internal::getCCS( A );
+			const auto &B_raw = !trans_right
+				? internal::getCRS( B )
+				: internal::getCCS( B );
+			auto &C_raw = internal::getCRS( C );
+			auto &CCS_raw = internal::getCCS( C );			
+
+			char * arr = nullptr;
+			char * buf = nullptr;
+			OutputType * valbuf = nullptr;
+			internal::getMatrixBuffers( arr, buf, valbuf, 1, C );
+			config::NonzeroIndexType * C_col_index = internal::template
+				getReferenceBuffer< typename config::NonzeroIndexType >( n + 1 );
+
+			// initialisations
+			internal::Coordinates< reference > coors;
+			coors.set( arr, false, buf, n );
+
+
+			//read data from C_mask
+			const auto &C_mask_raw = !trans_left
+				? internal::getCRS( C_mask )
+				: internal::getCCS( C_mask );
+
+			char * arr_mask = nullptr;
+			char * buf_mask = nullptr;
+			OutputType * valbuf_mask = nullptr;
+			internal::getMatrixBuffers( arr_mask, buf_mask, valbuf_mask, 1, C_mask );
+			internal::Coordinates< reference > coors_mask;
+			coors_mask.set( arr_mask, false, buf_mask, n );
+
+			if( !crs_only ) {
+#ifdef _H_GRB_REFERENCE_OMP_BLAS3
+				#pragma omp parallel
+				{
+					size_t start, end;
+					config::OMP::localRange( start, end, 0, n + 1 );
+#else
+					const size_t start = 0;
+					const size_t end = n + 1;
+#endif
+					for( size_t j = start; j < end; ++j ) {
+						CCS_raw.col_start[ j ] = 0;
+					}
+#ifdef _H_GRB_REFERENCE_OMP_BLAS3
+				}
+#endif
+			}
+			// end initialisations
+			
+			// symbolic phase (counting sort, step 1)
+			size_t nzc = 0; // output nonzero count
+			size_t nzc_mask = 0;			
+			if( crs_only && phase == RESIZE ) {
+				// we are using an auxialiary CRS that we cannot resize ourselves
+				// instead, we update the offset array only
+				C_raw.col_start[ 0 ] = 0;
+			}
+			
+			// if crs_only, then the below implements its resize phase
+			// if not crs_only, then the below is both crucial for the resize phase,
+			// as well as for enabling the insertions of output values in the output CCS
+			if( (crs_only && phase == RESIZE) || !crs_only ) {				
+				for( size_t i = 0; i < m; ++i ) {
+
+					// we traverse C_mask to find column indices of nonzero elements
+					coors_mask.clear();				
+					for( auto k = C_mask_raw.col_start[ i ]; k < C_mask_raw.col_start[ i + 1 ]; ++k ) {						
+						const size_t k_col = C_mask_raw.row_index[ k ];						
+						if( ! coors_mask.assign( k_col ) ) {
+							(void)++nzc_mask;
+						}
+					}
+					// read column indices of nonzeros in coors_mask and copy them into nonzero_indices_mask
+					unsigned int nonzero_indices_mask[coors_mask.nonzeroes()]; 
+					const size_t offset =0;
+					coors_mask.packValues( nonzero_indices_mask, offset, nullptr,nullptr );
+
+					//sort of nonzero_indices_mask
+					std::sort(nonzero_indices_mask, nonzero_indices_mask + coors_mask.nonzeroes());
+
+					// check column indices of nonzeros int current row i of C = AB
+					coors.clear();
+					for( auto k = A_raw.col_start[ i ]; k < A_raw.col_start[ i + 1 ]; ++k ) {
+						const size_t k_col = A_raw.row_index[ k ];
+						for(
+							auto l = B_raw.col_start[ k_col ];
+							l < B_raw.col_start[ k_col + 1 ];
+							++l
+						) {							
+							const size_t l_col = B_raw.row_index[ l ];
+
+							//search column indices that are common to the mask and to C
+							// use binary search on sorted nonzero_indices_mask. STL implementation							
+							bool found = std::binary_search( nonzero_indices_mask, nonzero_indices_mask + coors_mask.nonzeroes(), l_col, []( const int & a, const int & b ) {
+								return a < b;
+							} );
+
+							if( found ) {
+								if( ! coors.assign( l_col ) ) {
+									(void)++nzc;
+									if( ! crs_only ) {
+										(void)++CCS_raw.col_start[ l_col + 1 ];
+									}
+								}								
+							}
+							
+							/*
+							// basic implementation
+							// we find if C_mask(i, l_col) is assigned. We do not consider explicitly the value in the mask
+							size_t mask_row_start = C_mask_raw.col_start[i];
+							size_t mask_row_end = C_mask_raw.col_start[ i + 1 ];
+
+							bool maskNonZero = false;
+
+							for( size_t h = mask_row_start; h < mask_row_end; ++h ) {
+								const size_t l_col_mask = C_mask_raw.row_index[ h ];
+								if( l_col_mask == l_col ) {
+									maskNonZero = true; // Found a non-zero element at position (i, j)
+								}
+							}
+							// basic implementation finishes
+
+							
+							// Use binary search to find where the mask is nonzero at the same position C(i, l_col)
+							size_t left = mask_row_start;
+    						size_t right = mask_row_end - 1;
+							
+							while( left <= right ) {
+								size_t mid = ( left + right ) / 2;
+								size_t col_index = C_mask_raw.row_index[ mid ];
+
+								if( col_index == l_col ) {
+									maskNonZero= true; // Found a non-zero element at position (i, j)
+								} else if( col_index < l_col ) {
+									left = mid + 1;
+								} else {
+									right = mid - 1;
+								}
+							}
+							
+						
+							if (maskNonZero)
+							{
+								if(  !coors.assign( l_col )  )
+								{
+									(void) ++nzc;
+									if( !crs_only ) {
+										(void) ++CCS_raw.col_start[ l_col + 1 ];
+									}
+								}
+							}	
+							*/				
+														
+						}						
+					}										
+
+					if( crs_only && phase == RESIZE ) {
+						// we are using an auxialiary CRS that we cannot resize ourselves
+						// instead, we update the offset array only
+						C_raw.col_start[ i + 1 ] = nzc;
+					}
+				}
+			}
+			
+			if( phase == RESIZE ) {
+				if( !crs_only ) {
+					// do final resize
+					const RC ret = grb::resize( C, nzc );					
+					return ret;
+				} else {
+					// we are using an auxiliary CRS that we cannot resize
+					// instead, we updated the offset array in the above and can now exit
+					return SUCCESS;
+				}
+			}
+
+			// computational phase
+			assert( phase == EXECUTE );
+			if( grb::capacity( C ) < nzc ) {
+#ifdef _DEBUG
+				std::cerr << "\t not enough capacity to execute requested operation\n";
+#endif
+				const RC clear_rc = grb::clear( C );
+				if( clear_rc != SUCCESS ) {
+					return PANIC;
+				} else {
+					return FAILED;
+				}
+			}
+
+
+			// prefix sum for C_col_index,
+			// set CCS_raw.col_start to all zero
+#ifndef NDEBUG
+			if( !crs_only ) {
+				assert( CCS_raw.col_start[ 0 ] == 0 );
+			}
+#endif
+			C_col_index[ 0 ] = 0;
+			for( size_t j = 1; j < n; ++j ) {
+				if( !crs_only ) {
+					CCS_raw.col_start[ j + 1 ] += CCS_raw.col_start[ j ];
+				}
+				C_col_index[ j ] = 0;
+			}
+#ifndef NDEBUG
+			if( !crs_only ) {
+				assert( CCS_raw.col_start[ n ] == nzc );
+			}
+#endif
+
+#ifndef NDEBUG
+			const size_t old_nzc = nzc;
+#endif
+			// use previously computed CCS offset array to update CCS during the
+			// computational phase
+			nzc = 0;
+			C_raw.col_start[ 0 ] = 0;
+			for( size_t i = 0; i < m; ++i ) {
+
+				// we traverse C_mask to find column indices of nonzero elements
+				coors_mask.clear();
+				for( auto k = C_mask_raw.col_start[ i ]; k < C_mask_raw.col_start[ i + 1 ]; ++k ) {
+					const size_t k_col = C_mask_raw.row_index[ k ];
+					if( ! coors_mask.assign( k_col ) ) {
+						(void)++nzc_mask;
+					}
+				}
+				// read column indices of nonzeros in coors_mask and copy them into nonzero_indices_mask
+				unsigned int nonzero_indices_mask[ coors_mask.nonzeroes() ];
+				const size_t offset = 0;
+				coors_mask.packValues( nonzero_indices_mask, offset, nullptr, nullptr );
+
+				// sort of nonzero_indices_mask
+				std::sort( nonzero_indices_mask, nonzero_indices_mask + coors_mask.nonzeroes() );
+
+				coors.clear();
+				for( auto k = A_raw.col_start[ i ]; k < A_raw.col_start[ i + 1 ]; ++k ) {
+					const size_t k_col = A_raw.row_index[ k ];
+					for( auto l = B_raw.col_start[ k_col ];
+						l < B_raw.col_start[ k_col + 1 ];
+						++l
+					) {
+						const size_t l_col = B_raw.row_index[ l ];
+#ifdef _DEBUG
+						std::cout << "\t A( " << i << ", " << k_col << " ) = "
+							<< A_raw.getValue( k,
+								mulMonoid.template getIdentity< typename Operator::D1 >() )
+							<< " will be multiplied with B( " << k_col << ", " << l_col << " ) = "
+							<< B_raw.getValue( l,
+								mulMonoid.template getIdentity< typename Operator::D2 >() )
+							<< " to accumulate into C( " << i << ", " << l_col << " )\n";
+#endif
+						// search column indices that are common to the mask and to C
+						//  use binary search on sorted nonzero_indices_mask. STL implementation
+						bool found = std::binary_search( nonzero_indices_mask, nonzero_indices_mask + coors_mask.nonzeroes(), l_col, []( const int & a, const int & b ) {
+							return a < b;
+						} );
+
+						if( found ) {
+							if( !coors.assign( l_col ) ) {
+								valbuf[ l_col ] = monoid.template getIdentity< OutputType >();
+								(void) grb::apply( valbuf[ l_col ],
+									A_raw.getValue( k,
+										mulMonoid.template getIdentity< typename Operator::D1 >() ),
+									B_raw.getValue( l,
+										mulMonoid.template getIdentity< typename Operator::D2 >() ),
+									oper );
+							} else {
+								OutputType temp = monoid.template getIdentity< OutputType >();
+								(void) grb::apply( temp,
+									A_raw.getValue( k,
+										mulMonoid.template getIdentity< typename Operator::D1 >() ),
+									B_raw.getValue( l,
+										mulMonoid.template getIdentity< typename Operator::D2 >() ),
+									oper );
+								(void) grb::foldl( valbuf[ l_col ], temp, monoid.getOperator() );
+							}
+						}											
+					}
+				}
+
+				for( size_t k = 0; k < coors.nonzeroes(); ++k ) {
+					assert( nzc < old_nzc );
+					const size_t j = coors.index( k );
+					// update CRS
+					C_raw.row_index[ nzc ] = j;
+					C_raw.setValue( nzc, valbuf[ j ] );					
+					// update CCS
+					if( !crs_only ) {
+						const size_t CCS_index = C_col_index[ j ]++ + CCS_raw.col_start[ j ];
+						CCS_raw.row_index[ CCS_index ] = i;
+						CCS_raw.setValue( CCS_index, valbuf[ j ] );
+					}
+					// update count
+					(void) ++nzc;
+				}
+				C_raw.col_start[ i + 1 ] = nzc;
+			}
+
+#ifndef NDEBUG
+			if( !crs_only ) {
+				for( size_t j = 0; j < n; ++j ) {
+					assert( CCS_raw.col_start[ j + 1 ] - CCS_raw.col_start[ j ] ==
+						C_col_index[ j ] );
+				}
+			}
+			assert( nzc == old_nzc );
+#endif
+
+			// set final number of nonzeroes in output matrix
+			internal::setCurrentNonzeroes( C, nzc );
+
+			// done
+			return SUCCESS;
+			
+		}						
 
 		/**
 		 * \internal general mxm implementation that all mxm variants refer to
@@ -114,6 +516,8 @@ namespace grb {
 			static_assert( !(crs_only && trans_right), "Cannot (presently) transpose B "
 				"and force the use of CRS" );
 
+			std::cout << "(mxm_generic) matrix ID = " << grb::getID(C) << std::endl;
+
 			// run-time checks
 			const size_t m = grb::nrows( C );
 			const size_t n = grb::ncols( C );
@@ -142,16 +546,11 @@ namespace grb {
 			internal::getMatrixBuffers( arr, buf, valbuf, 1, C );
 			config::NonzeroIndexType * C_col_index = internal::template
 				getReferenceBuffer< typename config::NonzeroIndexType >( n + 1 );
-			
-			//std::cout << "size of col_index " << sizeof(C_col_index)<< std::endl;
-			//std::cout << "size of reference_bufsize " << reference_bufsize<< std::endl;
-			//size_t size = *(&C_col_index + 1) - C_col_index;
-			//std::cout << "size of reference_bufsize " << sizeof(double) << std::endl;
-			
+
 			// initialisations
-			internal::Coordinates< reference > coors;			
+			internal::Coordinates< reference > coors;
 			coors.set( arr, false, buf, n );
-		
+
 			if( !crs_only ) {
 #ifdef _H_GRB_REFERENCE_OMP_BLAS3
 				#pragma omp parallel
@@ -181,7 +580,7 @@ namespace grb {
 			// if crs_only, then the below implements its resize phase
 			// if not crs_only, then the below is both crucial for the resize phase,
 			// as well as for enabling the insertions of output values in the output CCS
-			if( (crs_only && phase == RESIZE) || !crs_only ) {
+			if( (crs_only && phase == RESIZE) || !crs_only ) {				
 				for( size_t i = 0; i < m; ++i ) {
 					coors.clear();
 					for( auto k = A_raw.col_start[ i ]; k < A_raw.col_start[ i + 1 ]; ++k ) {
@@ -204,14 +603,64 @@ namespace grb {
 						// we are using an auxialiary CRS that we cannot resize ourselves
 						// instead, we update the offset array only
 						C_raw.col_start[ i + 1 ] = nzc;
-					}
+					}					
 				}
 			}
 
+			
 			if( phase == RESIZE ) {
 				if( !crs_only ) {
-					// do final resize
+					// do final resize					
 					const RC ret = grb::resize( C, nzc );
+					std::cout << "matrix ID = " << grb::getID( C ) << ", internal::getNonzeroCapacity (after resize mxm)= " << internal::getNonzeroCapacity(C) << std::endl;					
+					
+					nzc = 0;
+					// once C holds enough capacity to store all nonzeros, we prepare the arrays CRS -> row_indices and col_start
+					// this basically consists of repeating the resize step
+					//auto& C_raw = internal::getCRS( C );
+
+					C_raw.col_start[ 0 ] = 0; 
+
+					for( size_t i = 0; i < m; ++i ) {
+						coors.clear();
+						for( auto k = A_raw.col_start[ i ]; k < A_raw.col_start[ i + 1 ]; ++k ) {
+							const size_t k_col = A_raw.row_index[ k ];
+							for( auto l = B_raw.col_start[ k_col ]; l < B_raw.col_start[ k_col + 1 ]; ++l ) {
+								const size_t l_col = B_raw.row_index[ l ];								
+								if( !coors.assign( l_col ) )
+								{
+									//
+								}
+							}
+						}
+
+						for( size_t k = 0; k < coors.nonzeroes(); ++k ) {
+							const size_t j = coors.index( k );
+							// update CRS
+							C_raw.row_index[ nzc ] = j;
+							// update count
+							(void)++nzc;
+						}
+						// update CRS -> col_start
+						C_raw.col_start[ i + 1 ] = nzc;											
+					}
+
+					/*
+					
+					std::cout << "row pointers of C " << std::endl;
+					for( size_t i = 0; i < grb::nrows( C ) + 1; i++ ) {
+						std::cout << C_raw.col_start[ i ] << ",";
+					}
+					std::cout << std::endl;
+
+					std::cout << "col indices C " << std::endl;
+					for( size_t i = 0; i < internal::getNonzeroCapacity( C ); i++ ) {
+						std::cout << C_raw.row_index[ i ] << ",";
+					}
+					std::cout << std::endl;
+					*/
+					
+					
 					return ret;
 				} else {
 					// we are using an auxiliary CRS that we cannot resize
@@ -234,7 +683,6 @@ namespace grb {
 				}
 			}
 
-			/*
 			// prefix sum for C_col_index,
 			// set CCS_raw.col_start to all zero
 #ifndef NDEBUG
@@ -254,7 +702,7 @@ namespace grb {
 				assert( CCS_raw.col_start[ n ] == nzc );
 			}
 #endif
-			*/
+
 #ifndef NDEBUG
 			const size_t old_nzc = nzc;
 #endif
@@ -262,9 +710,9 @@ namespace grb {
 			// computational phase
 			nzc = 0;
 			C_raw.col_start[ 0 ] = 0;
-			for( size_t i = 0; i < m; ++i ) {
+			for( size_t i = 0; i < m; i++ ) {
 				coors.clear();
-				for( auto k = A_raw.col_start[ i ]; k < A_raw.col_start[ i + 1 ]; ++k ) {
+				for( auto k = A_raw.col_start[ i ]; k < A_raw.col_start[ i + 1 ]; k++ ) {
 					const size_t k_col = A_raw.row_index[ k ];
 					for( auto l = B_raw.col_start[ k_col ];
 						l < B_raw.col_start[ k_col + 1 ];
@@ -300,20 +748,18 @@ namespace grb {
 						}
 					}
 				}
-				for( size_t k = 0; k < coors.nonzeroes(); ++k ) {
+				for( size_t k = 0; k < coors.nonzeroes(); k++ ) {
 					assert( nzc < old_nzc );
 					const size_t j = coors.index( k );
 					// update CRS
 					C_raw.row_index[ nzc ] = j;
-					C_raw.setValue( nzc, valbuf[ j ] );
+					C_raw.setValue( nzc, valbuf[ j ] );			
 					// update CCS
-					/*
 					if( !crs_only ) {
 						const size_t CCS_index = C_col_index[ j ]++ + CCS_raw.col_start[ j ];
 						CCS_raw.row_index[ CCS_index ] = i;
 						CCS_raw.setValue( CCS_index, valbuf[ j ] );
 					}
-					*/
 					// update count
 					(void) ++nzc;
 				}
@@ -321,14 +767,12 @@ namespace grb {
 			}
 
 #ifndef NDEBUG
-/*
 			if( !crs_only ) {
 				for( size_t j = 0; j < n; ++j ) {
 					assert( CCS_raw.col_start[ j + 1 ] - CCS_raw.col_start[ j ] ==
 						C_col_index[ j ] );
 				}
 			}
-*/			
 			assert( nzc == old_nzc );
 #endif
 
@@ -340,6 +784,56 @@ namespace grb {
 		}
 
 	} // end namespace grb::internal
+
+	template<
+		Descriptor descr = descriptors::no_operation,
+		typename OutputType, typename InputType1, typename InputType2,
+		typename RIT, typename CIT, typename NIT, typename maskType,
+		class Semiring
+	>
+	RC mxm_masked(
+		Matrix< OutputType, reference, RIT, CIT, NIT > & C,
+		const Matrix< maskType, reference, RIT, CIT, NIT > & C_mask,
+		const Matrix< InputType1, reference, RIT, CIT, NIT > & A,
+		const Matrix< InputType2, reference, RIT, CIT, NIT > & B,
+		const Semiring &ring = Semiring(),
+		const Phase &phase = EXECUTE,
+		const typename std::enable_if<
+			!grb::is_object< OutputType >::value &&
+			!grb::is_object< InputType1 >::value &&
+			!grb::is_object< InputType2 >::value &&
+			!grb::is_object< maskType >::value &&
+			grb::is_semiring< Semiring >::value,
+		void >::type * const = nullptr
+	) {
+		// static checks
+		NO_CAST_ASSERT( ( !(descr & descriptors::no_casting) ||
+				std::is_same< typename Semiring::D1, InputType1 >::value
+			), "grb::mxm",
+			"called with a prefactor input matrix A that does not match the first "
+			"domain of the given operator" );
+		NO_CAST_ASSERT( ( !(descr & descriptors::no_casting) ||
+				std::is_same< typename Semiring::D2, InputType2 >::value ), "grb::mxm",
+			"called with a postfactor input matrix B that does not match the "
+			"second domain of the given operator" );
+		NO_CAST_ASSERT( ( !(descr & descriptors::no_casting) ||
+				std::is_same< typename Semiring::D4, OutputType >::value
+			), "grb::mxm",
+			"called with an output matrix C that does not match the output domain "
+			"of the given operator" );
+
+#ifdef _DEBUG
+		std::cout << "In grb::mxm (reference, unmasked, semiring)\n";
+#endif
+
+		return internal::mxm_masked_generic< true, descr, true >(
+			C, C_mask, A, B,
+			ring.getMultiplicativeOperator(),
+			ring.getAdditiveMonoid(),
+			ring.getMultiplicativeMonoid(),
+			phase
+		);
+	}
 
 	/**
 	 * \internal grb::mxm, semiring version.
@@ -916,6 +1410,172 @@ namespace grb {
 
 	namespace internal {
 
+		template<
+			bool masked,
+			Descriptor descr = descriptors::no_operation,
+			class Monoid,
+			typename InputType, typename IOType, typename MaskType
+		>
+		RC fold_generic(
+			IOType &x,
+			const Matrix< InputType, reference > &A,
+			const Matrix< MaskType, reference > &mask,
+			const Monoid &monoid
+		) {
+//#define _DEBUG
+#ifdef _DEBUG
+			std::cout << "In grb::internal::foldr_generic( reference, masked = "
+				<< ( masked ? "true" : "false" ) << " )" << std::endl;
+#endif
+			RC rc = SUCCESS;
+
+			const auto& identity = monoid.template getIdentity< typename Monoid::D3 >();
+			const auto& op = monoid.getOperator();
+
+			const auto &A_raw = internal::getCRS( A );
+			const auto &mask_raw = internal::getCRS( mask );
+			const size_t m = nrows( A );
+			const size_t n = ncols( A );
+			const size_t mask_k_increment = masked ? 1 : 0;
+
+			// Check mask dimensions
+			if( masked && ( m != nrows(mask) || n != ncols(mask) ) ) {
+#ifdef _DEBUG
+				std::cout << "Mask dimensions do not match input matrix dimensions\n";
+#endif
+				return MISMATCH;
+			}
+
+			RC local_rc = rc;
+			auto local_x = identity;
+
+#ifdef _H_GRB_REFERENCE_OMP_BLAS3
+	#pragma omp parallel default(none) shared(A_raw, mask_raw, x, rc, std::cout) firstprivate(local_x, local_rc, m, op, identity)
+#endif
+			{
+				size_t start_row, end_row;
+#ifdef _H_GRB_REFERENCE_OMP_BLAS3
+				config::OMP::localRange( start_row, end_row, 0, m );
+#else
+				start_row = 0;
+				end_row = m;
+#endif
+				for( size_t i = start_row; i < end_row; ++i ) {
+					size_t mask_k = mask_raw.col_start[ i ];
+					for( size_t k = A_raw.col_start[ i ]; k < A_raw.col_start[ i + 1 ]; ++k ) {
+						const size_t k_col = A_raw.row_index[ k ];
+						if( masked ) {
+							// Increment the mask pointer until we find the right column, or an higher one
+							while( mask_raw.row_index[ mask_k ] < k_col && mask_k < mask_raw.col_start[ i + 1 ] ) {
+#ifdef _DEBUG
+								const std::string skip_str( "Skipping masked coordinate: ( " + std::to_string( i ) + ";" + std::to_string( mask_raw.row_index[ mask_k ] ) + " )\n" );
+#if defined(_H_GRB_REFERENCE_OMP_BLAS3)
+	#pragma omp critical
+								{
+									std::cout << "[T" << omp_get_thread_num() << "] - " << skip_str;
+								}
+#else
+								std::cout << skip_str;
+#endif
+#endif
+								mask_k += mask_k_increment;
+							}
+							// if there is no value for this coordinate, skip it
+							if( mask_raw.row_index[ mask_k ] != k_col ) {
+#ifdef _DEBUG
+								const std::string skip_str2( "Skipped masked coordinate: ( " + std::to_string( i ) + ";" + std::to_string( mask_raw.row_index[ mask_k ] ) + " )\n" );
+#if defined(_H_GRB_REFERENCE_OMP_BLAS3)
+	#pragma omp critical
+								{
+									std::cout << "[T" << omp_get_thread_num() << "] - " << skip_str2;
+								}
+#else
+								std::cout << skip_str2;
+#endif
+#endif
+								continue;
+							}
+
+#ifdef _DEBUG
+							const std::string str( "Mask( " + std::to_string( i ) + ";" + std::to_string( mask_raw.row_index[ mask_k ] ) + " )\n" );
+#if defined(_H_GRB_REFERENCE_OMP_BLAS3)
+	#pragma omp critical
+							{
+								std::cout << "[T" << omp_get_thread_num() << "] - " << str;
+							}
+#else
+							std::cout << str;
+#endif
+#endif
+							// Get mask value
+							if( not MaskHasValue< MaskType >( mask_raw, mask_k ).value ) {
+#ifdef _DEBUG
+								const std::string skip_str3( "Skipped masked value at: ( " + std::to_string( i ) + ";" + std::to_string( mask_raw.row_index[ mask_k ] ) + " )\n" );
+#if defined(_H_GRB_REFERENCE_OMP_BLAS3)
+	#pragma omp critical
+								{
+									std::cout << "[T" << omp_get_thread_num() << "] - " << skip_str3;
+								}
+#else
+								std::cout << skip_str3;
+#endif
+#endif
+								continue;
+							}
+						}
+
+						
+
+						// Increment the mask pointer in order to skip the next while loop (best case)
+						mask_k += mask_k_increment;
+
+						const InputType a_val = A_raw.getValue( k, identity );
+#ifdef _DEBUG
+						const std::string str( "A( " + std::to_string( i ) + ";" + std::to_string( k_col ) + " ) = " + std::to_string( a_val ) + "\n" );
+#if defined(_H_GRB_REFERENCE_OMP_BLAS3)
+	#pragma omp critical
+						{
+							std::cout << "[T" << omp_get_thread_num() << "] - " << str;
+						}
+#else
+						std::cout << str;
+#endif
+						auto x_before = local_x;
+#endif
+						local_rc = local_rc ? local_rc : grb::apply< descr >( local_x, local_x, a_val, op );
+#ifdef _DEBUG
+						//const std::string str2( "Computing: local_x = op(" + std::to_string( a_val ) + ", " + std::to_string( x_before ) + ") = " + std::to_string( local_x ) + "\n" );
+#if defined(_H_GRB_REFERENCE_OMP_BLAS3)
+	#pragma omp critical
+						{
+							std::cout << "[T" << omp_get_thread_num() << "] - " << str2;
+						}
+#else
+						std::cout << str2;
+#endif
+#endif
+					}
+				}
+
+#ifdef _H_GRB_REFERENCE_OMP_BLAS3
+	#pragma omp critical
+#endif
+				{
+#ifdef _DEBUG
+					auto x_before = x;
+#endif
+					local_rc = local_rc ? local_rc : grb::apply< descr >( x, x, local_x, op );
+#ifdef _DEBUG
+					std::cout << "Computing x: op(" << local_x << ", " << x_before << ") = " << x << std::endl;
+#endif
+					rc = rc ? rc : local_rc;
+				}
+			}
+#undef _DEBUG
+			return rc;
+		}
+
+
 		/**
 		 * \internal general elementwise matrix application that all eWiseApply
 		 *           variants refer to.
@@ -977,6 +1637,8 @@ namespace grb {
 			if( m != m_A || m != m_B || n != n_A || n != n_B ) {
 				return MISMATCH;
 			}
+
+			std::cout << "(eWise_generic) matrix ID = " << grb::getID(C) << std::endl;
 
 			const auto &A_raw = !trans_left ?
 				internal::getCRS( A ) :
@@ -1050,6 +1712,7 @@ namespace grb {
 			// symbolic phase
 			if( phase == RESIZE ) {
 				for( size_t i = 0; i < m; ++i ) {
+					//std::cout << nzc << ",";
 					coors1.clear();
 					for( size_t k = A_raw.col_start[ i ]; k < A_raw.col_start[ i + 1 ]; ++k ) {
 						const size_t k_col = A_raw.row_index[ k ];
@@ -1061,9 +1724,13 @@ namespace grb {
 							(void)++nzc;
 						}
 					}
+					
 				}
+				std::cout << std::endl;
 
 				const RC ret = grb::resize( C, nzc );
+
+				std::cout << "matrix ID = " << grb::getID( C ) << ", internal::getNonzeroCapacity (after resize eWise)= " << internal::getNonzeroCapacity(C) << std::endl;										
 				if( ret != SUCCESS ) {
 					return ret;
 				}
@@ -1089,6 +1756,7 @@ namespace grb {
 							(void) ++CCS_raw.col_start[ l_col + 1 ];
 						}
 					}
+					
 				}
 
 				// check capacity
@@ -1180,6 +1848,9 @@ namespace grb {
 						(void)++nzc;
 					}
 					C_raw.col_start[ i + 1 ] = nzc;
+
+					
+
 #ifdef _DEBUG
 					std::cout << "\n";
 #endif
@@ -1191,6 +1862,7 @@ namespace grb {
 				}
 #endif
 
+				//std::cout << "after computational phase, nzc = " << nzc << std::endl;
 				// set final number of nonzeroes in output matrix
 				internal::setCurrentNonzeroes( C, nzc );
 			}
@@ -1313,6 +1985,202 @@ namespace grb {
 		);
 	}
 
+	template<
+		Descriptor descr = descriptors::no_operation,
+		class Monoid,
+		typename InputType, typename IOType, typename MaskType
+	>
+	RC foldr(
+		IOType &x,
+		const Matrix< InputType, reference > &A,
+		const Matrix< MaskType, reference > &mask,
+		const Monoid &monoid = Monoid(),
+		const typename std::enable_if< !grb::is_object< IOType >::value &&
+			!grb::is_object< InputType >::value &&
+			!grb::is_object< MaskType >::value &&
+			grb::is_monoid< Monoid >::value, void
+		>::type * const = nullptr
+	) {
+		// static checks
+		static_assert( !std::is_same< InputType, void >::value,
+			"grb::foldr ( reference, IOType <- op( InputType, IOType ): "
+			"the operator version of foldr cannot be used if the "
+			"input matrix is a pattern matrix (of type void)"
+		);
+		static_assert( !std::is_same< IOType, void >::value,
+			"grb::foldr ( reference, IOType <- op( InputType, IOType ): "
+			"the operator version of foldr cannot be used if the "
+			"result is of type void"
+		);
+		static_assert( (std::is_same< typename Monoid::D1, InputType >::value),
+			"grb::foldr ( reference, IOType <- op( InputType, IOType ): "
+			"called with a prefactor input type that does not match the first domain of the given operator"
+		);
+		static_assert( (std::is_same< typename Monoid::D2, IOType >::value),
+			"grb::foldr ( reference, IOType <- op( InputType, IOType ): "
+			"called with a postfactor input type that does not match the first domain of the given operator"
+		);
+		static_assert( (std::is_same< typename Monoid::D3, IOType >::value),
+			"grb::foldr ( reference, IOType <- op( InputType, IOType ): "
+			"called with an output type that does not match the output domain of the given operator"
+		);
+
+#ifdef _DEBUG
+		std::cout << "In grb::foldr (reference,  mask, matrix, monoid)\n";
+#endif
+
+		return internal::fold_generic< true, descr, Monoid, InputType, IOType, MaskType >(
+			x, A, mask, monoid
+		);
+	}
+
+	template<
+		Descriptor descr = descriptors::no_operation,
+		class Monoid,
+		typename InputType, typename IOType
+	>
+	RC foldr(
+		IOType &x,
+		const Matrix< InputType, reference > &A,
+		const Monoid &monoid,
+		const typename std::enable_if< !grb::is_object< IOType >::value &&
+			!grb::is_object< InputType >::value &&
+			grb::is_monoid< Monoid >::value, void
+		>::type * const = nullptr
+	) {
+		// static checks
+		static_assert( !std::is_same< InputType, void >::value,
+			"grb::foldr ( reference, IOType <- op( IOType, InputType ): "
+			"the operator version of foldr cannot be used if the "
+			"input matrix is a pattern matrix (of type void)"
+		);
+		static_assert( !std::is_same< IOType, void >::value,
+			"grb::foldr ( reference, IOType <- op( IOType, InputType ): "
+			"the operator version of foldr cannot be used if the "
+			"result is of type void"
+		);
+		static_assert( (std::is_same< typename Monoid::D1, InputType >::value),
+			"grb::foldr ( reference, IOType <- op( IOType, InputType ): "
+			"called with a prefactor input type that does not match the first domain of the given operator"
+		);
+		static_assert( (std::is_same< typename Monoid::D2, IOType >::value),
+			"grb::foldr ( reference, IOType <- op( IOType, InputType ): "
+			"called with a postfactor input type that does not match the first domain of the given operator"
+		);
+		static_assert( (std::is_same< typename Monoid::D3, IOType >::value),
+			"grb::foldr ( reference, IOType <- op( IOType, InputType ): "
+			"called with an output type that does not match the output domain of the given operator"
+		);
+
+#ifdef _DEBUG
+		std::cout << "In grb::foldr (reference, matrix, op)\n";
+#endif
+
+		Matrix< void, reference > empty_mask( nrows( A ), ncols( A ) );
+		return internal::fold_generic< false, descr, Monoid, InputType, IOType, void >(
+			x, A, empty_mask, monoid
+		);
+	}
+
+	template<
+		Descriptor descr = descriptors::no_operation,
+		class Monoid,
+		typename InputType, typename IOType, typename MaskType
+	>
+	RC foldl(
+		IOType &x,
+		const Matrix< InputType, reference > &A,
+		const Matrix< MaskType, reference > &mask,
+		const Monoid &monoid,
+		const typename std::enable_if<
+			!grb::is_object< IOType >::value &&
+			!grb::is_object< InputType >::value &&
+			!grb::is_object< MaskType >::value &&
+			grb::is_monoid< Monoid >::value, void
+		>::type * const = nullptr
+	) {
+		// static checks
+		static_assert( !std::is_same< InputType, void >::value,
+			"grb::foldl ( reference, IOType <- op( IOType, InputType ): "
+			"the operator version of foldl cannot be used if the "
+			"input matrix is a pattern matrix (of type void)"
+		);
+		static_assert( !std::is_same< IOType, void >::value,
+			"grb::foldl ( reference, IOType <- op( IOType, InputType ): "
+			"the operator version of foldl cannot be used if the "
+			"result is of type void"
+		);
+		static_assert( (std::is_same< typename Monoid::D1, IOType >::value),
+			"grb::foldl ( reference, IOType <- op( IOType, InputType ): "
+			"called with a prefactor input type that does not match the first domain of the given operator"
+		);
+		static_assert( (std::is_same< typename Monoid::D2, InputType >::value),
+			"grb::foldl ( reference, IOType <- op( IOType, InputType ): "
+			"called with a postfactor input type that does not match the first domain of the given operator"
+		);
+		static_assert( (std::is_same< typename Monoid::D3, IOType >::value),
+			"grb::foldl ( reference, IOType <- op( IOType, InputType ): "
+			"called with an output type that does not match the output domain of the given operator"
+		);
+
+#ifdef _DEBUG
+		std::cout << "In grb::foldl (reference, mask, matrix, monoid)\n";
+#endif
+
+		return internal::fold_generic< true, descr, Monoid, InputType, IOType, MaskType >(
+			x, A, mask, monoid
+		);
+	}
+
+	template<
+		Descriptor descr = descriptors::no_operation,
+		class Monoid,
+		typename InputType, typename IOType
+	>
+	RC foldl(
+		IOType &x,
+		const Matrix< InputType, reference > &A,
+		const Monoid &monoid,
+		const typename std::enable_if<
+			!grb::is_object< IOType >::value &&
+			!grb::is_object< InputType >::value &&
+			grb::is_monoid< Monoid >::value, void
+		>::type * const = nullptr
+	) {
+		// static checks
+		static_assert( !std::is_same< InputType, void >::value,
+			"grb::foldl ( reference, IOType <- op( IOType, InputType ): "
+			"the operator version of foldl cannot be used if the "
+			"input matrix is a pattern matrix (of type void)"
+		);
+		static_assert( !std::is_same< IOType, void >::value,
+			"grb::foldl ( reference, IOType <- op( IOType, InputType ): "
+			"the operator version of foldl cannot be used if the "
+			"result is of type void"
+		);
+		static_assert( (std::is_same< typename Monoid::D1, IOType >::value),
+			"grb::foldl ( reference, IOType <- op( IOType, InputType ): "
+			"called with a prefactor input type that does not match the first domain of the given operator"
+		);
+		static_assert( (std::is_same< typename Monoid::D2, InputType >::value),
+			"grb::foldl ( reference, IOType <- op( IOType, InputType ): "
+			"called with a postfactor input type that does not match the first domain of the given operator"
+		);
+		static_assert( (std::is_same< typename Monoid::D3, IOType >::value),
+			"grb::foldl ( reference, IOType <- op( IOType, InputType ): "
+			"called with an output type that does not match the output domain of the given operator"
+		);
+
+#ifdef _DEBUG
+		std::cout << "In grb::foldl (reference, matrix, monoid)\n";
+#endif
+
+		Matrix< void, reference > empty_mask( nrows( A ), ncols( A ) );
+		return internal::fold_generic< false, descr, Monoid, InputType, IOType, void >(
+			x, A, empty_mask, monoid
+		);
+	}
+
 } // namespace grb
 
 #undef NO_CAST_ASSERT
@@ -1329,4 +2197,3 @@ namespace grb {
 #endif
 
 #endif // ``_H_GRB_REFERENCE_BLAS3''
-

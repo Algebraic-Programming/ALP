@@ -105,7 +105,8 @@ namespace grb {
 			 *                                      correspond to \a input_d_ptr.
 			 * @param[in]  input_matrix             Pointer to an input matrix.
 			 */
-			RC addStage( const Pipeline::stage_type && func,
+			RC addStage(
+				const Pipeline::stage_type &&func,
 				const Opcode opcode,
 				const size_t n,
 				const size_t data_type_size,
@@ -123,10 +124,41 @@ namespace grb {
 				const Coordinates< nonblocking > * const coor_b_ptr,
 				const Coordinates< nonblocking > * const coor_c_ptr,
 				const Coordinates< nonblocking > * const coor_d_ptr,
+				const void * const input_matrix
+			);
+
+
+			/**
+			 * Adds a stage to an automatically determined pipeline. This is for 
+			 * Level 3 operations
+			 *
+			 * The following parameters are mandatory:
+			 *
+			 * @param[in]  func                     The function to be added.
+			 * @param[in]  opcode                   The corresponding opcode.
+			 * @param[in]  n                        The pipeline size.
+			 * @param[in]  data_type_size           The output byte size.
+			 * @param[in]  dense_descr              Whether the op is dense.
+			 * @param[in]  dense_mask               Whether the mask is dense.
+			 *                                      correspond to \a input_d_ptr.
+			 * @param[in]  input_matrix_A           Pointer to first input of C = AB
+			 * @param[in]  input_matrix_B           Pointer to second input of C = AB
+			 * @param[out]  input_matrix_B          Pointer to output matrix C = AB
+			 * @param[out]  count_nonzeros          function to count the nnz in each tile of C = AB
+			 */
+			RC addStageLevel3( const Pipeline::stage_type && func,
+				const Opcode opcode,
+				const size_t n,
+				const size_t data_type_size,
+				const bool dense_descr,
+				const bool dense_mask,			
 				const void * const input_matrix_A,
 				const void * const input_matrix_B,
-				void * output_matrix_C );
-
+				void * const output_matrix_C, 
+				const void * const output_matrix_C_mask,
+				const Pipeline::count_nnz_local_type && count_nonzeros,
+				const Pipeline::prefix_sum_nnz_mxm_type && prefix_sum_nnz);
+			
 			/**
 			 * Adds an eWiseLambda stage to an automatically-determined pipeline.
 			 *

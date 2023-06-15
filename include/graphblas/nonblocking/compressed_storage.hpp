@@ -24,7 +24,7 @@
 #define _H_GRB_REFERENCE_COMPRESSED_STORAGE
 
 #include <cstring> //std::memcpy
-
+#include<omp.h>
 
 namespace grb {
 
@@ -44,9 +44,9 @@ namespace grb {
 		 * The matrix dimension must be encodeable in \a IND. The number of nonzeroes
 		 * must be encodeable in \a SIZE.
 		 */
-		template< typename D, typename IND, typename SIZE >
-		class Compressed_Storage {
 
+		template< typename D, typename IND, typename SIZE >
+		class Compressed_Storage {			
 			private:
 
 				/** Point to our own type. */
@@ -194,6 +194,7 @@ namespace grb {
 								<< "with storage " << ( &_storage ) << ", "
 								<< "m " << _m << ", n " << _n << ", and end " << end << ".\n";
 #endif
+							//std::cout << "compressed storage from nonblocking" << std::endl;
 							if( _nz == 0 || _m == 0 || _n == 0 || end ) {
 								row = m;
 								return;
@@ -718,7 +719,7 @@ namespace grb {
 				 */
 				void getAllocSize( size_t * sizes, const size_t nonzeroes ) {
 					*sizes++ = nonzeroes * sizeof( D );   // values array
-					*sizes++ = nonzeroes * sizeof( IND ); // index array	
+					*sizes++ = nonzeroes * sizeof( IND ); // index array
 				}
 
 				/**
@@ -730,7 +731,7 @@ namespace grb {
 				 * @param[in]  dim_size The size of the major dimension.
 				 */
 				void getStartAllocSize( size_t * size, const size_t dim_size ) {
-					*size = ( dim_size + 1 ) * sizeof( SIZE );					
+					*size = ( dim_size + 1 ) * sizeof( SIZE );
 				}
 
 				/**
@@ -775,7 +776,7 @@ namespace grb {
 				 * @param[in] val Which value to store.
 				 */
 				inline void setValue( const size_t k, const D & val ) noexcept {					
-					values[ k ] = val;					
+					values[ k ] = val;
 				}
 
 		};
@@ -916,7 +917,7 @@ namespace grb {
 						{
 #ifdef _DEBUG
 							std::cout << "Iterator constructor (pattern specialisation) called\n";
-#endif							
+#endif
 							if( _nz == 0 || _m == 0 || _n == 0 || end ) {
 								row = m;
 								return;

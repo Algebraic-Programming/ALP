@@ -97,7 +97,10 @@ namespace grb {
 			BLAS1_UNZIP,
 
 			BLAS2_VXM_GENERIC,
-			BLAS3_MXM_GENERIC
+			BLAS2_EWISELAMBDA,
+			BLAS3_MXM_GENERIC,
+			BLAS3_SCALAR_REDUCTION,
+			BLAS3_EWISEAPPLY_GENERIC			
 		};
 
 		/**
@@ -110,6 +113,8 @@ namespace grb {
 			// can disable the dense descriptor and remove the coordinates of the empty
 			// vector from the list.
 			typedef std::function< RC( Pipeline &, const size_t, const size_t ) > stage_type;
+			typedef std::function< RC( const size_t, const size_t ) > count_nnz_local_type;
+			typedef std::function< RC( ) > prefix_sum_nnz_mxm_type;
 
 		private:
 			size_t containers_size;
@@ -142,7 +147,10 @@ namespace grb {
 			// for BLAS3
 			std::set< const void * > mxm_input_matrices_right;
 			std::set< const void * > output_matrices;
+			std::set< const void * > output_matrices_mask;
 			std::vector< const void * > input_output_intersection_matrix;
+			std::vector< count_nnz_local_type > count_nnz_local;
+			std::vector< prefix_sum_nnz_mxm_type > prefix_sum_nnz_local;
 
 			/**
 			 * Indicates that the pipeline contains an out-of-place operation, which
@@ -284,9 +292,38 @@ namespace grb {
 				const Coordinates< nonblocking > * const coor_b_ptr,
 				const Coordinates< nonblocking > * const coor_c_ptr,
 				const Coordinates< nonblocking > * const coor_d_ptr,
+				const void * const input_matrix);
+			
+			/**
+			 * Adds a stage to an automatically determined pipeline. This is for 
+			 * Level 3 operations
+			 *
+			 * The following parameters are mandatory:
+			 *
+			 * @param[in]  func                     The function to be added.
+			 * @param[in]  opcode                   The corresponding opcode.
+			 * @param[in]  n                        The pipeline size.
+			 * @param[in]  data_type_size           The output byte size.
+			 * @param[in]  dense_descr              Whether the op is dense.
+			 * @param[in]  dense_mask               Whether the mask is dense.
+			 *                                      correspond to \a input_d_ptr.
+			 * @param[in]  input_matrix_A           Pointer to first input of C = AB
+			 * @param[in]  input_matrix_B           Pointer to second input of C = AB
+			 * @param[out]  input_matrix_B          Pointer to output matrix C = AB
+			 * @param[out]  count_nonzeros          function to count the nnz in each tile of C = AB
+			 */
+			void addStageLevel3( const Pipeline::stage_type && func,
+				const Opcode opcode,
+				const size_t n,
+				const size_t data_type_size,
+				const bool dense_descr,
+				const bool dense_mask,			
 				const void * const input_matrix_A,
 				const void * const input_matrix_B,
-				void * output_matrix_C );
+				void * const output_matrix_C, 
+				const void * const output_matrix_C_mask,
+				const Pipeline::count_nnz_local_type && count_nonzeros,
+				const Pipeline::prefix_sum_nnz_mxm_type && prefix_sum_nnz);
 
 			void addeWiseLambdaStage( const stage_type && func,
 				const Opcode opcode,
@@ -307,6 +344,15 @@ namespace grb {
 			bool accessesInputMatrix( const void * const matrix ) const;
 			bool accessesOutputMatrix( const void * const matrix ) const;
 			bool overwritesMXMRightInputMatrices( const void * const matrix ) const;
+
+			// functions and types for counting nonzeros in each tile of mxm
+			bool empty_count_mxm() const;
+			typename std::vector< count_nnz_local_type >::iterator pbegin_count_mxm();
+			typename std::vector< count_nnz_local_type >::iterator pend_count_mxm();
+
+			bool empty_prefix_sum_mxm() const;
+			typename std::vector< prefix_sum_nnz_mxm_type >::iterator pbegin_prefix_sum_mxm();
+			typename std::vector< prefix_sum_nnz_mxm_type >::iterator pend_prefix_sum_mxm();										
 
 #ifdef GRB_ALREADY_DENSE_OPTIMIZATION
 			bool emptyAlreadyDenseVectors() const;

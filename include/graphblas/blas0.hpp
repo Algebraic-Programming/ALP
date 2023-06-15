@@ -604,6 +604,37 @@ namespace grb {
 
 		};
 
+		template< typename MaskType >
+		struct MaskHasValue {
+
+			public:
+				template < Descriptor descr = descriptors::no_operation, typename MaskStruct >
+				MaskHasValue( const MaskStruct& mask_raw, const size_t k ) {
+						bool hasValue = mask_raw.getValue( k, identities::logical_false<MaskType>() );
+						if (descr & grb::descriptors::invert_mask) {
+							hasValue = !hasValue;
+						}
+						value = hasValue;
+					}
+
+				const bool value;
+		};
+
+		template<>
+		struct MaskHasValue< void > {
+
+			public:
+				template < Descriptor descr = descriptors::no_operation, typename MaskStruct >
+				MaskHasValue( const MaskStruct& mask_raw, const size_t k ) :
+				value(not (descr & grb::descriptors::invert_mask)){
+					(void) mask_raw;
+					(void) k;
+				}
+
+				const bool value;
+
+		};
+
 	} // namespace internal
 
 } // namespace grb

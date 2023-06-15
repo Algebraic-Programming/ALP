@@ -56,27 +56,21 @@ void LazyEvaluation::checkIfExceeded() noexcept {
 	}
 }
 
-grb::RC LazyEvaluation::addStage( const Pipeline::stage_type && func,
-	Opcode opcode,
-	const size_t n,
-	const size_t data_type_size,
-	const bool dense_descr,
-	const bool dense_mask,
-	void * const output_vector_ptr,
-	void * const output_aux_vector_ptr,
+grb::RC LazyEvaluation::addStage(
+	const Pipeline::stage_type &&func, Opcode opcode,
+	const size_t n, const size_t data_type_size,
+	const bool dense_descr, const bool dense_mask,
+	void * const output_vector_ptr, void * const output_aux_vector_ptr,
 	Coordinates< nonblocking > * const coor_output_ptr,
 	Coordinates< nonblocking > * const coor_output_aux_ptr,
-	const void * const input_a_ptr,
-	const void * const input_b_ptr,
-	const void * const input_c_ptr,
-	const void * const input_d_ptr,
+	const void * const input_a_ptr, const void * const input_b_ptr,
+	const void * const input_c_ptr, const void * const input_d_ptr,
 	const Coordinates< nonblocking > * const coor_a_ptr,
 	const Coordinates< nonblocking > * const coor_b_ptr,
 	const Coordinates< nonblocking > * const coor_c_ptr,
 	const Coordinates< nonblocking > * const coor_d_ptr,
-	const void * const input_matrix_A,
-	const void * const input_matrix_B,
-	void * output_matrix_C ) {
+	const void * const input_matrix
+) {
 	RC ret = SUCCESS;
 
 	// ensure that nothing is left from previous stages
@@ -88,7 +82,10 @@ grb::RC LazyEvaluation::addStage( const Pipeline::stage_type && func,
 		//       account for data dependence analysis
 
 		// search for pipelines with shared data
-		for( std::vector< Pipeline >::iterator pt = pipelines.begin(); pt != pipelines.end(); pt++ ) {
+		for(
+			std::vector< Pipeline >::iterator pt = pipelines.begin();
+			pt != pipelines.end(); pt++
+		) {
 
 			if( ( *pt ).empty() ) {
 				continue;
@@ -97,21 +94,21 @@ grb::RC LazyEvaluation::addStage( const Pipeline::stage_type && func,
 			bool shared_data_found = false;
 			bool pipeline_executed = false;
 
-			if( ( *pt ).accessesInputVector( output_vector_ptr ) ) {
+			if( (*pt).accessesInputVector( output_vector_ptr ) ) {
 				if( ( *pt ).overwritesVXMInputVectors( output_vector_ptr ) ) {
 					ret = ret ? ret : ( *pt ).execution();
 					pipeline_executed = true;
 				} else {
 					shared_data_found = true;
 				}
-			} else if( ( *pt ).accessesOutputVector( output_vector_ptr ) ) {
+			} else if( (*pt).accessesOutputVector( output_vector_ptr ) ) {
 				shared_data_found = true;
 			}
 
 			// it doesn't matter if any shared data found already
 			// it's still possibe that the pipeline has to be executed to avoid
 			// overwriting the input vectors of SpMV
-			if( ! pipeline_executed ) {
+			if( !pipeline_executed ) {
 
 				// first we check for shared data with the write-access vectors for
 				// efficiency and only later we check for read-only vectors that don't
@@ -119,29 +116,335 @@ grb::RC LazyEvaluation::addStage( const Pipeline::stage_type && func,
 				if( ( *pt ).accessesOutputVector( input_a_ptr ) ) {
 					ret = ret ? ret : ( *pt ).execution();
 					pipeline_executed = true;
-				} else if( ! shared_data_found && ( *pt ).accessesInputVector( input_a_ptr ) ) {
+				} else if( !shared_data_found &&
+					( *pt ).accessesInputVector( input_a_ptr )
+				) {
 					shared_data_found = true;
 				}
 
-				if( ! pipeline_executed ) {
+				if( !pipeline_executed ) {
 					if( input_b_ptr != nullptr ) {
 						if( ( *pt ).accessesOutputVector( input_b_ptr ) ) {
 							ret = ret ? ret : ( *pt ).execution();
 							pipeline_executed = true;
-						} else if( ! shared_data_found && ( *pt ).accessesInputVector( input_b_ptr ) ) {
+						} else if( !shared_data_found &&
+							( *pt ).accessesInputVector( input_b_ptr )
+						) {
 							shared_data_found = true;
 						}
 					}
 
-					if( ! pipeline_executed ) {
+					if( !pipeline_executed ) {
 						if( input_c_ptr != nullptr ) {
 							if( ( *pt ).accessesOutputVector( input_c_ptr ) ) {
 								ret = ret ? ret : ( *pt ).execution();
 								pipeline_executed = true;
-							} else if( ! shared_data_found && ( *pt ).accessesInputVector( input_c_ptr ) ) {
+							} else if( !shared_data_found &&
+								( *pt ).accessesInputVector( input_c_ptr )
+							) {
 								shared_data_found = true;
 							}
 						}
+					}
+				}
+			}
+
+			if( !pipeline_executed && shared_data_found ) {
+				shared_data_pipelines.push_back( pt );
+			}
+		}
+	}  else {
+		for(
+			std::vector< Pipeline >::iterator pt = pipelines.begin();
+			pt != pipelines.end(); pt++
+		) {
+
+			if( ( *pt ).empty() ) {
+				continue;
+			}
+
+			bool shared_data_found = false;
+			bool pipeline_executed = false;
+
+			if( output_vector_ptr != nullptr ) {
+				if( (*pt).accessesInputVector( output_vector_ptr ) ) {
+					if( ( *pt ).overwritesVXMInputVectors( output_vector_ptr ) ) {
+						ret = ret ? ret : ( *pt ).execution();
+						pipeline_executed = true;
+					} else {
+						shared_data_found = true;
+					}
+				} else if( (*pt).accessesOutputVector( output_vector_ptr ) ) {
+					shared_data_found = true;
+				}
+			}
+
+			if( !pipeline_executed ) {
+
+				if( opcode == Opcode::BLAS1_UNZIP ) {
+					// it doesn't matter if have already found shared data
+					// it's still necessary to execute the pipeline if the second output of
+					// unzip overwrites any of the the input vectors of SpMV
+
+					// check the second output
+					if( (*pt).accessesInputVector( output_aux_vector_ptr ) ) {
+						if( ( *pt ).overwritesVXMInputVectors( output_aux_vector_ptr ) ) {
+							ret = ret ? ret : ( *pt ).execution();
+							pipeline_executed = true;
+						} else {
+							shared_data_found = true;
+						}
+					} else if( (*pt).accessesOutputVector( output_aux_vector_ptr ) ) {
+						shared_data_found = true;
+					}
+				}
+
+				if( !pipeline_executed ) {
+					if( !shared_data_found ) {
+						if( ( input_a_ptr != nullptr && (*pt).accessesVector( input_a_ptr ) ) ||
+							( input_b_ptr != nullptr && (*pt).accessesVector( input_b_ptr ) ) ||
+							( input_c_ptr != nullptr && (*pt).accessesVector( input_c_ptr ) ) ||
+							( input_d_ptr != nullptr && (*pt).accessesVector( input_d_ptr ) )
+						) {
+							shared_data_found = true;
+						}
+					}
+
+					if( shared_data_found ) {
+						shared_data_pipelines.push_back( pt );
+					}
+				}
+			}
+		}
+	}
+
+#ifdef _DEBUG
+	if( !(
+		opcode == Opcode::IO_SET_SCALAR || opcode == Opcode::IO_SET_MASKED_SCALAR ||
+		opcode == Opcode::IO_SET_VECTOR || opcode == Opcode::IO_SET_MASKED_VECTOR ||
+		opcode == Opcode::BLAS1_FOLD_VECTOR_SCALAR_GENERIC ||
+		opcode == Opcode::BLAS1_FOLD_SCALAR_VECTOR_GENERIC ||
+		opcode == Opcode::BLAS1_FOLD_MASKED_SCALAR_VECTOR_GENERIC ||
+		opcode == Opcode::BLAS1_FOLD_VECTOR_VECTOR_GENERIC ||
+		opcode == Opcode::BLAS1_FOLD_MASKED_VECTOR_VECTOR_GENERIC ||
+		opcode == Opcode::BLAS1_EWISEAPPLY ||
+		opcode == Opcode::BLAS1_MASKED_EWISEAPPLY ||
+		opcode == Opcode::BLAS1_EWISEMULADD_DISPATCH ||
+		opcode == Opcode::BLAS1_DOT_GENERIC ||
+		opcode == Opcode::BLAS1_EWISELAMBDA || opcode == Opcode::BLAS1_EWISEMAP ||
+		opcode == Opcode::BLAS1_ZIP || opcode == Opcode::BLAS1_UNZIP ||
+		opcode == Opcode::BLAS2_VXM_GENERIC
+	) ) {
+		std::cerr << "error:Data Dependence Analysis has not been implemented for "
+			<< "the operation with code " << static_cast< unsigned int >( opcode )
+			<< std::endl;
+		exit( 1 );
+	}
+
+	for(
+		std::vector< std::vector< Pipeline >::iterator >::iterator st =
+			shared_data_pipelines.begin();
+		st != shared_data_pipelines.end(); st++
+	) {
+		if( (*(*st)).getContainersSize() != n ) {
+			std::cerr << "error:Data Dependence Analysis detected data-dependent "
+				<< "operations on vectors of different size" << std::endl;
+			exit( 1 );
+		}
+	}
+#endif
+
+	// after executing all the pipelines with which the current stage shares data
+	// and these data dependences do not allow this stage to be inserted into such
+	// a pipeline we know that we can now merge all the remaining pipelines with
+	// which the current stage shares data an then add the current stage at the end
+	// of the new pipeline for efficiency, we consider the three following cases
+	if( shared_data_pipelines.empty() ) {
+		// if none of the current pipelines shares any data, the stage is added in a
+		// new pipeline
+
+		Pipeline *empty_pipeline = nullptr;
+
+		for(
+			std::vector< Pipeline >::iterator pt = pipelines.begin();
+			pt != pipelines.end(); pt++
+		) {
+
+			if( ( *pt ).empty() ) {
+				empty_pipeline = &( *pt );
+				break;
+			}
+		}
+
+		if( empty_pipeline != nullptr ) {
+			( *empty_pipeline).addStage(
+				std::move( func ), opcode,
+				n, data_type_size, dense_descr, dense_mask,
+				output_vector_ptr, output_aux_vector_ptr,
+				coor_output_ptr, coor_output_aux_ptr,
+				input_a_ptr, input_b_ptr, input_c_ptr, input_d_ptr,
+				coor_a_ptr, coor_b_ptr, coor_c_ptr, coor_d_ptr,
+				input_matrix
+			);
+
+			// we always execute the pipeline when a scalar is returned
+			if( output_vector_ptr == nullptr ) {
+				ret = ret ? ret : ( *empty_pipeline ).execution();
+			}
+		} else {
+			Pipeline pipeline;
+
+			pipeline.addStage(
+				std::move( func ), opcode,
+				n, data_type_size, dense_descr, dense_mask,
+				output_vector_ptr, output_aux_vector_ptr,
+				coor_output_ptr, coor_output_aux_ptr,
+				input_a_ptr, input_b_ptr, input_c_ptr, input_d_ptr,
+				coor_a_ptr, coor_b_ptr, coor_c_ptr, coor_d_ptr,
+				input_matrix
+			);
+
+			// we always execute the pipeline when a scalar is returned
+			if( output_vector_ptr == nullptr ) {
+				ret = ret ? ret : pipeline.execution();
+			} else {
+				pipelines.push_back( std::move( pipeline ) );
+				// pipelines.emplace_back( Pipeline() );
+			}
+		}
+	} else if ( shared_data_pipelines.size() == 1 ) {
+
+		std::vector< Pipeline >::iterator ptr = ( *(shared_data_pipelines.begin()) );
+
+		// the stage is added in the current pipeline which may be empty if it
+		// overwrites the input of SpMV
+		// it is not necessary to deallocate/release this pipeline
+		( *ptr ).addStage(
+			std::move( func ), opcode,
+			n, data_type_size, dense_descr, dense_mask,
+			output_vector_ptr, output_aux_vector_ptr,
+			coor_output_ptr, coor_output_aux_ptr,
+			input_a_ptr, input_b_ptr, input_c_ptr, input_d_ptr,
+			coor_a_ptr, coor_b_ptr, coor_c_ptr, coor_d_ptr,
+			input_matrix
+		);
+
+		// we always execute the pipeline when a scalar is returned
+		if( output_vector_ptr == nullptr ) {
+			ret = ret ? ret : ( *ptr ).execution();
+		}
+	} else {
+
+		// all pipelines with which the current pipelines shares data will be merged
+		// under the first pipeline
+		std::vector< Pipeline >::iterator union_pipeline =
+			( *(shared_data_pipelines.begin()) );
+
+		for(
+			std::vector< std::vector< Pipeline >::iterator >::iterator st =
+				++shared_data_pipelines.begin();
+			st != shared_data_pipelines.end(); st++
+		) {
+			( *union_pipeline ).merge( *( *st ) );
+		}
+
+		// the stage is added in the merged pipeline
+		// it is not necessary to deallocate/release this pipeline
+		( *union_pipeline ).addStage(
+			std::move( func ), opcode,
+			n, data_type_size, dense_descr, dense_mask,
+			output_vector_ptr, output_aux_vector_ptr,
+			coor_output_ptr, coor_output_aux_ptr,
+			input_a_ptr, input_b_ptr, input_c_ptr, input_d_ptr,
+			coor_a_ptr, coor_b_ptr, coor_c_ptr, coor_d_ptr,
+			input_matrix
+		);
+
+		// we always execute the pipeline when a scalar is returned
+		if( output_vector_ptr == nullptr ) {
+			ret = ret ? ret : ( *union_pipeline ).execution();
+		}
+	}
+
+	checkIfExceeded();
+
+	return ret;
+}
+
+grb::RC LazyEvaluation::addStageLevel3( const Pipeline::stage_type && func,
+	const Opcode opcode,
+	const size_t n,
+	const size_t data_type_size,
+	const bool dense_descr,
+	const bool dense_mask,
+	const void * const input_matrix_A,
+	const void * const input_matrix_B,
+	void * const output_matrix_C,
+	const void * const output_matrix_C_mask,
+	const Pipeline::count_nnz_local_type && count_nonzeros,
+	const Pipeline::prefix_sum_nnz_mxm_type && prefix_sum_nnz
+){
+	
+	RC ret = SUCCESS;
+
+	// ensure that nothing is left from previous stages
+	shared_data_pipelines.clear();
+
+	// Data dependency analysis for matrix-matrix product C = AB.
+	if (opcode == Opcode::BLAS3_MXM_GENERIC)
+	{
+		// iterate over all pipelines
+		for( std::vector< Pipeline >::iterator pt = pipelines.begin(); pt != pipelines.end(); pt++ ) {
+
+			// empty pipeline
+			if( ( *pt ).empty() ) {
+				continue;
+			}
+
+			bool shared_data_found = false;
+			bool pipeline_executed = false;
+
+			// first, we check if output matrix C overwrites the right input of another mxm operation
+			// in the same pipeline. There are two cases to analyze
+			// 		if matrix C is the left hand side of another mxm operation: P = C*Q. In this case,
+			// 		C is not needed to be fully available. We have data shared
+			// 		if matrix C is the right hand side of another mxm operation: P = Q*C.
+			// 		In this case, C must be fully computed. Execute pipeline
+
+			if( output_matrix_C != nullptr ) {
+				// check that output matrix C is the input of another operation
+				if( ( *pt ).accessesInputMatrix( output_matrix_C ) ) {
+					// check that output matrix C is the right input of another mxm operation
+					if( ( *pt ).overwritesMXMRightInputMatrices( output_matrix_C ) ) {
+						ret = ret ? ret : ( *pt ).execution();
+						pipeline_executed = true;
+					} else {						
+						shared_data_found = true;
+					}
+				} else if( ( *pt ).accessesOutputMatrix( output_matrix_C ) ) {
+					shared_data_found = true;
+				}
+			}
+
+			// we now check both INPUT matrices of C = AB
+			// it doesn't matter if any shared data found already
+			// it's still possibe that the pipeline has to be executed to avoid overwriting the right input of another mxm
+
+			if( ! pipeline_executed ) {
+
+				// first we check matrix B, which must be fully available for C = AB
+				if( ( *pt ).accessesOutputMatrix( input_matrix_B ) ) {
+					ret = ret ? ret : ( *pt ).execution();
+					pipeline_executed = true;
+				} else if( ! shared_data_found ) {
+					if( ( *pt ).accessesInputMatrix( input_matrix_B ) ) {						
+						shared_data_found = true;
+					}
+				}
+
+				if( ! pipeline_executed ) {
+					if( ( *pt ).accessesInputMatrix( input_matrix_A ) || ( *pt ).accessesOutputMatrix( input_matrix_A ) ) {
+						shared_data_found = true;
 					}
 				}
 			}
@@ -150,10 +453,8 @@ grb::RC LazyEvaluation::addStage( const Pipeline::stage_type && func,
 				shared_data_pipelines.push_back( pt );
 			}
 		}
-	} 
-	// FOR BLAS3
-	// Data dependency analysis for matrix-matrix product C = AB.
-	else if (opcode == Opcode::BLAS3_MXM_GENERIC)
+	}
+	else
 	{
 		// iterate over all pipelines
 		for( std::vector< Pipeline >::iterator pt = pipelines.begin(); pt != pipelines.end(); pt++ ) {
@@ -192,124 +493,15 @@ grb::RC LazyEvaluation::addStage( const Pipeline::stage_type && func,
 			// it doesn't matter if any shared data found already
 			// it's still possibe that the pipeline has to be executed to avoid overwriting the right input of another mxm
 
-			if( ! pipeline_executed ) {
+			if( ! pipeline_executed ) {			
 
-				// first we check matrix B, which must be fully available for C = AB
-				if( ( *pt ).accessesOutputMatrix( input_matrix_B ) ) {
-					ret = ret ? ret : ( *pt ).execution();
-					pipeline_executed = true;
-				} else if( ! shared_data_found ) {
-					if( ( *pt ).accessesInputMatrix( input_matrix_B )|| ( *pt ).overwritesMXMRightInputMatrices( input_matrix_B ) ) {
+				if (!shared_data_found){
+					if( ( input_matrix_A != nullptr && ( *pt ).accessesInputMatrix( input_matrix_A ) ) ||
+						( input_matrix_A != nullptr && ( *pt ).accessesOutputMatrix( input_matrix_A ) ) ||
+						( input_matrix_B != nullptr && ( *pt ).accessesInputMatrix( input_matrix_B ) ) || 
+						( input_matrix_B != nullptr && ( *pt ).accessesOutputMatrix( input_matrix_B ) )
+					) {
 						shared_data_found = true;
-					}
-				}
-
-				if( ! pipeline_executed ) {
-					if( ( *pt ).accessesInputMatrix( input_matrix_A ) || ( *pt ).accessesOutputMatrix( input_matrix_A ) || ( *pt ).accessesInputMatrix( input_matrix_A ) ||
-						( *pt ).overwritesMXMRightInputMatrices( input_matrix_A ) ) {
-						shared_data_found = true;
-					}
-				}
-			}
-
-			if( ! pipeline_executed && shared_data_found ) {
-				shared_data_pipelines.push_back( pt );
-			}
-		}
-	}
-	else {
-		for( std::vector< Pipeline >::iterator pt = pipelines.begin(); pt != pipelines.end(); pt++ ) {
-
-			if( ( *pt ).empty() ) {
-				continue;
-			}
-
-			bool shared_data_found = false;
-			bool pipeline_executed = false;
-
-			if( output_vector_ptr != nullptr ) {
-				if( ( *pt ).accessesInputVector( output_vector_ptr ) ) {
-					if( ( *pt ).overwritesVXMInputVectors( output_vector_ptr ) ) {
-						ret = ret ? ret : ( *pt ).execution();
-						pipeline_executed = true;
-					} else {
-						shared_data_found = true;
-					}
-				} else if( ( *pt ).accessesOutputVector( output_vector_ptr ) ) {
-					shared_data_found = true;
-				}
-			}
-
-			if( ! pipeline_executed ) {
-
-				if( opcode == Opcode::BLAS1_UNZIP ) {
-					// it doesn't matter if have already found shared data
-					// it's still necessary to execute the pipeline if the second output of
-					// unzip overwrites any of the the input vectors of SpMV
-
-					// check the second output
-					if( ( *pt ).accessesInputVector( output_aux_vector_ptr ) ) {
-						if( ( *pt ).overwritesVXMInputVectors( output_aux_vector_ptr ) ) {
-							ret = ret ? ret : ( *pt ).execution();
-							pipeline_executed = true;
-						} else {
-							shared_data_found = true;
-						}
-					} else if( ( *pt ).accessesOutputVector( output_aux_vector_ptr ) ) {
-						shared_data_found = true;
-					}
-				}
-
-				if( ! pipeline_executed ) {
-					if( ! shared_data_found ) {
-						if( ( input_a_ptr != nullptr && ( *pt ).accessesVector( input_a_ptr ) ) || ( input_b_ptr != nullptr && ( *pt ).accessesVector( input_b_ptr ) ) ||
-							( input_c_ptr != nullptr && ( *pt ).accessesVector( input_c_ptr ) ) || ( input_d_ptr != nullptr && ( *pt ).accessesVector( input_d_ptr ) ) ) {
-							shared_data_found = true;
-						}
-					}
-
-					if( shared_data_found ) {
-						shared_data_pipelines.push_back( pt );
-					}
-				}
-			}
-		}
-	}
-
-	//for non mxm operations. To be included in else case. Not needed for mxm
-	/*
-	for( std::vector< Pipeline >::iterator pt = pipelines.begin(); pt != pipelines.end(); pt++ ) {
-
-			if( ( *pt ).empty() ) {
-				continue;
-			}
-
-			bool shared_data_found = false;
-			bool pipeline_executed = false;
-
-			if( output_matrix_C != nullptr ) {
-				if( ( *pt ).overwritesMXMRightInputMatrices( output_matrix_C ) ) {
-					// If matrix C is the right input of another mxm operation in the pipeline,
-					// we execute the pipeline since C must be full available
-					ret = ret ? ret : ( *pt ).execution();
-					pipeline_executed = true;
-				} else if( ( *pt ).overwritesMXMLeftInputMatrices( output_matrix_C ) || ( *pt ).accessesInputMatrix( output_matrix_C ) || ( *pt ).accessesOutputMatrix( output_matrix_C ) ) {
-					shared_data_found = true;
-				}
-			}
-
-			if( ! pipeline_executed ) {
-				if( ! shared_data_found ) {
-					if( ( input_matrix_A != nullptr && ( *pt ).accessesOutputMatrix( input_matrix_A ) ) || ( input_matrix_A != nullptr && ( *pt ).overwritesMXMLeftInputMatrices( input_matrix_A ) ) ||
-						( input_matrix_A != nullptr && ( *pt ).overwritesMXMRightInputMatrices( input_matrix_A ) ) ) {
-						shared_data_found = true;
-					}
-					if( ! shared_data_found ) {
-						if( ( input_matrix_B != nullptr && ( *pt ).accessesOutputMatrix( input_matrix_B ) ) ||
-							( input_matrix_B != nullptr && ( *pt ).overwritesMXMLeftInputMatrices( input_matrix_B ) ) ||
-							( input_matrix_B != nullptr && ( *pt ).overwritesMXMRightInputMatrices( input_matrix_B ) ) ) {
-							shared_data_found = true;
-						}
 					}
 				}
 
@@ -318,8 +510,8 @@ grb::RC LazyEvaluation::addStage( const Pipeline::stage_type && func,
 				}
 			}
 		}
-		*/
-	
+	}
+
 #ifdef _DEBUG
 	if( ! ( opcode == Opcode::IO_SET_SCALAR || opcode == Opcode::IO_SET_MASKED_SCALAR || opcode == Opcode::IO_SET_VECTOR || opcode == Opcode::IO_SET_MASKED_VECTOR ||
 			opcode == Opcode::BLAS1_FOLD_VECTOR_SCALAR_GENERIC || opcode == Opcode::BLAS1_FOLD_SCALAR_VECTOR_GENERIC || opcode == Opcode::BLAS1_FOLD_MASKED_SCALAR_VECTOR_GENERIC ||
@@ -339,7 +531,6 @@ grb::RC LazyEvaluation::addStage( const Pipeline::stage_type && func,
 		}
 	}
 #endif
-
 	// after executing all the pipelines with which the current stage shares data
 	// and these data dependences do not allow this stage to be inserted into such
 	// a pipeline we know that we can now merge all the remaining pipelines with
@@ -360,27 +551,28 @@ grb::RC LazyEvaluation::addStage( const Pipeline::stage_type && func,
 		}
 
 		if( empty_pipeline != nullptr ) {
-			( *empty_pipeline )
-				.addStage( std::move( func ), opcode, n, data_type_size, dense_descr, dense_mask, output_vector_ptr, output_aux_vector_ptr, coor_output_ptr, coor_output_aux_ptr, input_a_ptr,
-					input_b_ptr, input_c_ptr, input_d_ptr, coor_a_ptr, coor_b_ptr, coor_c_ptr, coor_d_ptr, input_matrix_A, input_matrix_B, output_matrix_C );
+			( *empty_pipeline ).addStageLevel3( std::move( func ), opcode, n, data_type_size, dense_descr, dense_mask, input_matrix_A, input_matrix_B, output_matrix_C, output_matrix_C_mask, std::move(count_nonzeros), std::move(prefix_sum_nnz) );
 
+			
 			// we always execute the pipeline when a scalar is returned
-			if( output_vector_ptr == nullptr ) {
+			if( output_matrix_C == nullptr ) {
 				ret = ret ? ret : ( *empty_pipeline ).execution();
 			}
+			
 		} else {
 			Pipeline pipeline;
 
-			pipeline.addStage( std::move( func ), opcode, n, data_type_size, dense_descr, dense_mask, output_vector_ptr, output_aux_vector_ptr, coor_output_ptr, coor_output_aux_ptr, input_a_ptr,
-				input_b_ptr, input_c_ptr, input_d_ptr, coor_a_ptr, coor_b_ptr, coor_c_ptr, coor_d_ptr, input_matrix_A, input_matrix_B, output_matrix_C );
+			pipeline.addStageLevel3( std::move( func ), opcode, n, data_type_size, dense_descr, dense_mask, input_matrix_A, input_matrix_B, output_matrix_C, output_matrix_C_mask, std::move(count_nonzeros), std::move(prefix_sum_nnz) );
 
 			// we always execute the pipeline when a scalar is returned
-			if( output_vector_ptr == nullptr ) {
+			if( output_matrix_C == nullptr ) {
 				ret = ret ? ret : pipeline.execution();
 			} else {
 				pipelines.push_back( std::move( pipeline ) );
-				// pipelines.emplace_back( Pipeline() );
+				pipelines.emplace_back( Pipeline() );
 			}
+			
+			pipelines.push_back( std::move( pipeline ) );
 		}
 	} else if( shared_data_pipelines.size() == 1 ) {
 
@@ -389,13 +581,13 @@ grb::RC LazyEvaluation::addStage( const Pipeline::stage_type && func,
 		// the stage is added in the current pipeline which may be empty if it
 		// overwrites the input of SpMV
 		// it is not necessary to deallocate/release this pipeline
-		( *ptr ).addStage( std::move( func ), opcode, n, data_type_size, dense_descr, dense_mask, output_vector_ptr, output_aux_vector_ptr, coor_output_ptr, coor_output_aux_ptr, input_a_ptr,
-			input_b_ptr, input_c_ptr, input_d_ptr, coor_a_ptr, coor_b_ptr, coor_c_ptr, coor_d_ptr, input_matrix_A, input_matrix_B, output_matrix_C );
-
+		( *ptr ).addStageLevel3( std::move( func ), opcode, n, data_type_size, dense_descr, dense_mask, input_matrix_A, input_matrix_B, output_matrix_C, output_matrix_C_mask, std::move(count_nonzeros), std::move(prefix_sum_nnz) );
+		
 		// we always execute the pipeline when a scalar is returned
-		if( output_vector_ptr == nullptr ) {
+		if( output_matrix_C == nullptr ) {
 			ret = ret ? ret : ( *ptr ).execution();
 		}
+		
 	} else {
 
 		// all pipelines with which the current pipelines shares data will be merged
@@ -408,14 +600,14 @@ grb::RC LazyEvaluation::addStage( const Pipeline::stage_type && func,
 
 		// the stage is added in the merged pipeline
 		// it is not necessary to deallocate/release this pipeline
-		( *union_pipeline )
-			.addStage( std::move( func ), opcode, n, data_type_size, dense_descr, dense_mask, output_vector_ptr, output_aux_vector_ptr, coor_output_ptr, coor_output_aux_ptr, input_a_ptr, input_b_ptr,
-				input_c_ptr, input_d_ptr, coor_a_ptr, coor_b_ptr, coor_c_ptr, coor_d_ptr, input_matrix_A, input_matrix_B, output_matrix_C );
+		( *union_pipeline ).addStageLevel3( std::move( func ), opcode, n, data_type_size, dense_descr, dense_mask, input_matrix_A, input_matrix_B, output_matrix_C, output_matrix_C_mask, std::move(count_nonzeros), std::move(prefix_sum_nnz) );
 
+		
 		// we always execute the pipeline when a scalar is returned
-		if( output_vector_ptr == nullptr ) {
+		if( output_matrix_C == nullptr ) {
 			ret = ret ? ret : ( *union_pipeline ).execution();
 		}
+		
 	}
 
 	checkIfExceeded();
@@ -525,7 +717,8 @@ grb::RC LazyEvaluation::execution( const void * const container ) {
 
 		// a single pipeline is executed, and in the case of returning an error, it
 		// is handled correctly
-		if( ( *pt ).accessesVector( container ) || ( *pt ).accessesInputMatrix( container ) ) {
+		if( ( *pt ).accessesVector( container ) || ( *pt ).accessesInputMatrix( container ) || (*pt).accessesOutputMatrix(container) ) {
+			std::cout << "LazyEvaluation::execution HAS BEEN CALLED" << std::endl;			
 			rc = ( *pt ).execution();
 			break;
 		}
