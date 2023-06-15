@@ -39,11 +39,15 @@
 
 using namespace grb;
 
-constexpr bool PRINT_TIMERS = false;
+using NzType = double;
+
+
+constexpr bool PRINT_TIMERS = true;
 constexpr bool SKIP_FOLDL = false;
 constexpr bool SKIP_FOLDR = false;
 constexpr bool SKIP_UNMASKED = false;
 constexpr bool SKIP_MASKED = false;
+constexpr size_t ITERATIONS = 100;
 
 template< typename T, typename V, class Monoid >
 RC foldl_test( const char * test_label, const char * test_description, const grb::Matrix< V > & A, const grb::Matrix< void > & mask, T initial, T expected, const Monoid & monoid ) {
@@ -54,9 +58,12 @@ RC foldl_test( const char * test_label, const char * test_description, const grb
 	if( rc == RC::SUCCESS && ! SKIP_UNMASKED ) { // Unmasked
 		T value = initial;
 		auto start_chrono = std::chrono::high_resolution_clock::now();
-		foldl( value, A, monoid );
+		for( size_t _ = 0; _ < ITERATIONS; _++ ) {
+			value = initial;
+			foldl( value, A, monoid );
+		}
 		auto end_chrono = std::chrono::high_resolution_clock::now();
-		auto duration = std::chrono::duration_cast< std::chrono::nanoseconds >( end_chrono - start_chrono );
+		auto duration = std::chrono::duration_cast< std::chrono::nanoseconds >( end_chrono - start_chrono ) / ITERATIONS;
 		if( PRINT_TIMERS )
 			std::cout << "foldl (unmasked) \"" << test_label << "\" took " << duration.count() << " ns" << std::endl;
 
@@ -76,9 +83,12 @@ RC foldl_test( const char * test_label, const char * test_description, const grb
 	if( rc == RC::SUCCESS && ! SKIP_MASKED ) { // Masked
 		T value = initial;
 		auto start_chrono = std::chrono::high_resolution_clock::now();
-		foldl( value, A, mask, monoid );
+		for( size_t _ = 0; _ < ITERATIONS; _++ ) {
+			value = initial;
+			foldl( value, A, mask, monoid );
+		}
 		auto end_chrono = std::chrono::high_resolution_clock::now();
-		auto duration = std::chrono::duration_cast< std::chrono::nanoseconds >( end_chrono - start_chrono );
+		auto duration = std::chrono::duration_cast< std::chrono::nanoseconds >( end_chrono - start_chrono ) / ITERATIONS;
 		if( PRINT_TIMERS )
 			std::cout << "foldl (masked) \"" << test_label << "\" took " << duration.count() << " ns" << std::endl;
 
@@ -104,12 +114,15 @@ RC foldr_test( const char * test_label, const char * test_description, const grb
 		return RC::SUCCESS;
 	RC rc = RC::SUCCESS;
 
-	if( rc == RC::SUCCESS ) { // Unmasked
+	if( rc == RC::SUCCESS && ! SKIP_UNMASKED ) { // Unmasked
 		T value = initial;
 		auto start_chrono = std::chrono::high_resolution_clock::now();
-		foldr( value, A, monoid );
+		for( size_t _ = 0; _ < ITERATIONS; _++ ) {
+			value = initial;
+			foldr( value, A, monoid );
+		}
 		auto end_chrono = std::chrono::high_resolution_clock::now();
-		auto duration = std::chrono::duration_cast< std::chrono::nanoseconds >( end_chrono - start_chrono );
+		auto duration = std::chrono::duration_cast< std::chrono::nanoseconds >( end_chrono - start_chrono ) / ITERATIONS;
 		if( PRINT_TIMERS )
 			std::cout << "foldr (unmasked) \"" << test_label << "\" took " << duration.count() << " ns" << std::endl;
 
@@ -126,12 +139,15 @@ RC foldr_test( const char * test_label, const char * test_description, const grb
 		rc = rc ? rc : ( value == expected ? RC::SUCCESS : RC::FAILED );
 	}
 
-	if( rc == RC::SUCCESS ) { // Masked
+	if( rc == RC::SUCCESS && ! SKIP_MASKED ) { // Masked
 		T value = initial;
 		auto start_chrono = std::chrono::high_resolution_clock::now();
-		foldr( value, A, mask, monoid );
+		for( size_t _ = 0; _ < ITERATIONS; _++ ) {
+			value = initial;
+			foldr( value, A, mask, monoid );
+		}
 		auto end_chrono = std::chrono::high_resolution_clock::now();
-		auto duration = std::chrono::duration_cast< std::chrono::nanoseconds >( end_chrono - start_chrono );
+		auto duration = std::chrono::duration_cast< std::chrono::nanoseconds >( end_chrono - start_chrono ) / ITERATIONS;
 		if( PRINT_TIMERS )
 			std::cout << "foldr (masked) \"" << test_label << "\" took " << duration.count() << " ns" << std::endl;
 
@@ -158,12 +174,12 @@ RC foldLR_test( const char * test_label, const char * test_description, const gr
 }
 
 struct input {
-	const grb::Matrix< float > & A;
+	const grb::Matrix< NzType > & A;
 	const grb::Matrix< void > & mask;
 };
 
 void grb_program( const input & in, grb::RC & rc ) {
-	const grb::Matrix< float > & I = in.A;
+	const grb::Matrix< NzType > & I = in.A;
 	const grb::Matrix< void > & mask = in.mask;
 
 	const long n = grb::nnz( I );
@@ -174,7 +190,7 @@ void grb_program( const input & in, grb::RC & rc ) {
 	 *  * Expected unmasked result: n
 	 *  * Expected masked result: 0
 	 */
-	rc = foldLR_test( "1", "A simple reduction(+) with the same types for the nzs and the reduction result.", I, mask, (float)0, (float)n, Monoid< operators::add< float >, identities::zero >() );
+	rc = foldLR_test( "1", "A simple reduction(+) with the same types for the nzs and the reduction result.", I, mask, (NzType)0, (NzType)n, Monoid< operators::add< NzType >, identities::zero >() );
 	if( rc )
 		return;
 	return;
@@ -185,35 +201,35 @@ void grb_program( const input & in, grb::RC & rc ) {
 	 *  * Expected result: 2*n
 	 */
 	rc = foldLR_test(
-		"2", "A simple reduction(+) with the same types for the nzs and the reduction result.", I, mask, (float)n, (float)( 2 * n ), Monoid< operators::add< float >, identities::zero >() );
+		"2", "A simple reduction(+) with the same types for the nzs and the reduction result.", I, mask, (NzType)n, (NzType)( 2 * n ), Monoid< operators::add< NzType >, identities::zero >() );
 	if( rc )
 		return;
 
 	/**     Test case 3:
-	 *  A simple additive reduction with different types for the nzs and the reduction result (int <- int + float).
+	 *  A simple additive reduction with different types for the nzs and the reduction result (int <- int + NzType).
 	 *  * Initial value is 0
 	 *  * Expected result: n
 	 */
-	rc = foldl_test( "3", "A simple reduction(+) with different types for the nzs and the reduction result (int <- int + float).", I, mask, (int)0, (int)n,
-		Monoid< operators::add< int, float, int >, identities::zero >() );
+	rc = foldl_test( "3", "A simple reduction(+) with different types for the nzs and the reduction result (int <- int + NzType).", I, mask, (int)0, (int)n,
+		Monoid< operators::add< int, NzType, int >, identities::zero >() );
 	if( rc )
 		return;
-	rc = foldr_test( "3", "A simple reduction(+) with different types for the nzs and the reduction result (int <- float + int).", I, mask, (int)0, (int)n,
-		Monoid< operators::add< float, int, int >, identities::zero >() );
+	rc = foldr_test( "3", "A simple reduction(+) with different types for the nzs and the reduction result (int <- NzType + int).", I, mask, (int)0, (int)n,
+		Monoid< operators::add< NzType, int, int >, identities::zero >() );
 	if( rc )
 		return;
 
 	/**     Test case 4:
-	 *  A simple additive reduction with different types for the nzs and the reduction result (int <- int + float).
+	 *  A simple additive reduction with different types for the nzs and the reduction result (int <- int + NzType).
 	 *  * Initial value is n
 	 *  * Expected result: 2*n
 	 */
-	rc = foldl_test( "4", "A simple reduction(+) with different types for the nzs and the reduction result (int <- int + float).", I, mask, (int)n, (int)( 2 * n ),
-		Monoid< operators::add< int, float, int >, identities::zero >() );
+	rc = foldl_test( "4", "A simple reduction(+) with different types for the nzs and the reduction result (int <- int + NzType).", I, mask, (int)n, (int)( 2 * n ),
+		Monoid< operators::add< int, NzType, int >, identities::zero >() );
 	if( rc )
 		return;
-	rc = foldr_test( "4", "A simple reduction(+) with different types for the nzs and the reduction result (int <- float + int).", I, mask, (int)n, (int)( 2 * n ),
-		Monoid< operators::add< float, int, int >, identities::zero >() );
+	rc = foldr_test( "4", "A simple reduction(+) with different types for the nzs and the reduction result (int <- NzType + int).", I, mask, (int)n, (int)( 2 * n ),
+		Monoid< operators::add< NzType, int, int >, identities::zero >() );
 	if( rc )
 		return;
 
@@ -222,7 +238,7 @@ void grb_program( const input & in, grb::RC & rc ) {
 	 * * Initial value is 0
 	 * * Expected result: 0
 	 */
-	rc = foldLR_test( "5", "A simple reduction(*) with the same types for the nzs and the reduction result.", I, mask, (float)0, (float)0, Monoid< operators::mul< float >, identities::one >() );
+	rc = foldLR_test( "5", "A simple reduction(*) with the same types for the nzs and the reduction result.", I, mask, (NzType)0, (NzType)0, Monoid< operators::mul< NzType >, identities::one >() );
 	if( rc )
 		return;
 
@@ -231,63 +247,63 @@ void grb_program( const input & in, grb::RC & rc ) {
 	 * * Initial value is 1
 	 * * Expected result: 1
 	 */
-	rc = foldLR_test( "6", "A simple reduction(*) with the same types for the nzs and the reduction result.", I, mask, (float)1, (float)1, Monoid< operators::mul< float >, identities::one >() );
+	rc = foldLR_test( "6", "A simple reduction(*) with the same types for the nzs and the reduction result.", I, mask, (NzType)1, (NzType)1, Monoid< operators::mul< NzType >, identities::one >() );
 	if( rc )
 		return;
 
 	/**     Test case 7:
-	 * A simple multiplicative reduction with different types for the nzs and the reduction result (size_t <- size_t * float).
+	 * A simple multiplicative reduction with different types for the nzs and the reduction result (size_t <- size_t * NzType).
 	 * * Initial value is 0
 	 * * Expected result: 0
 	 */
-	rc = foldl_test( "7", "A simple reduction(*) with different types for the nzs and the reduction result (int <- int * float).", I, mask, (size_t)0, (size_t)0,
-		Monoid< operators::mul< size_t, float, size_t >, identities::one >() );
+	rc = foldl_test( "7", "A simple reduction(*) with different types for the nzs and the reduction result (int <- int * NzType).", I, mask, (size_t)0, (size_t)0,
+		Monoid< operators::mul< size_t, NzType, size_t >, identities::one >() );
 	if( rc )
 		return;
-	rc = foldr_test( "7", "A simple reduction(*) with different types for the nzs and the reduction result (int <- int * float).", I, mask, (size_t)0, (size_t)0,
-		Monoid< operators::mul< float, size_t, size_t >, identities::one >() );
+	rc = foldr_test( "7", "A simple reduction(*) with different types for the nzs and the reduction result (int <- int * NzType).", I, mask, (size_t)0, (size_t)0,
+		Monoid< operators::mul< NzType, size_t, size_t >, identities::one >() );
 	if( rc )
 		return;
 
 	/**     Test case 8:
-	 * A simple multiplicative reduction with different types for the nzs and the reduction result (size_t <- size_t * float).
+	 * A simple multiplicative reduction with different types for the nzs and the reduction result (size_t <- size_t * NzType).
 	 * * Initial value is 1
 	 * * Expected result: 1
 	 */
-	rc = foldl_test( "8", "A simple reduction(*) with different types for the nzs and the reduction result (int <- int * float).", I, mask, (size_t)1, (size_t)1,
-		Monoid< operators::mul< size_t, float, size_t >, identities::one >() );
+	rc = foldl_test( "8", "A simple reduction(*) with different types for the nzs and the reduction result (int <- int * NzType).", I, mask, (size_t)1, (size_t)1,
+		Monoid< operators::mul< size_t, NzType, size_t >, identities::one >() );
 	if( rc )
 		return;
-	rc = foldr_test( "8", "A simple reduction(*) with different types for the nzs and the reduction result (int <- int * float).", I, mask, (size_t)1, (size_t)1,
-		Monoid< operators::mul< float, size_t, size_t >, identities::one >() );
+	rc = foldr_test( "8", "A simple reduction(*) with different types for the nzs and the reduction result (int <- int * NzType).", I, mask, (size_t)1, (size_t)1,
+		Monoid< operators::mul< NzType, size_t, size_t >, identities::one >() );
 	if( rc )
 		return;
 
 	/**     Test case 9:
-	 * A simple binary equal reduction with different types for the nzs and the reduction result (bool <- bool == float).
+	 * A simple binary equal reduction with different types for the nzs and the reduction result (bool <- bool == NzType).
 	 * * Initial value is true
 	 * * Expected result: true
 	 */
-	rc = foldl_test( "9", "A simple reduction(==) with different types for the nzs and the reduction result (bool <- bool == float).", I, mask, (bool)true, (bool)true,
-		Monoid< operators::equal< bool, float, bool >, identities::logical_true >() );
+	rc = foldl_test( "9", "A simple reduction(==) with different types for the nzs and the reduction result (bool <- bool == NzType).", I, mask, (bool)true, (bool)true,
+		Monoid< operators::equal< bool, NzType, bool >, identities::logical_true >() );
 	if( rc )
 		return;
-	rc = foldr_test( "9", "A simple reduction(==) with different types for the nzs and the reduction result (bool <- bool == float).", I, mask, (bool)true, (bool)true,
-		Monoid< operators::equal< float, bool, bool >, identities::logical_true >() );
+	rc = foldr_test( "9", "A simple reduction(==) with different types for the nzs and the reduction result (bool <- bool == NzType).", I, mask, (bool)true, (bool)true,
+		Monoid< operators::equal< NzType, bool, bool >, identities::logical_true >() );
 	if( rc )
 		return;
 
 	/**     Test case 10:
-	 * A simple binary logical_or reduction with different types for the nzs and the reduction result (bool <- bool || float).
+	 * A simple binary logical_or reduction with different types for the nzs and the reduction result (bool <- bool || NzType).
 	 * * Initial value is false
 	 * * Expected result: true
 	 */
-	rc = foldl_test( "10", "A simple reduction(||) with different types for the nzs and the reduction result (bool <- bool || float).", I, mask, (bool)false, (bool)true,
-		Monoid< operators::logical_or< bool, float, bool >, identities::logical_false >() );
+	rc = foldl_test( "10", "A simple reduction(||) with different types for the nzs and the reduction result (bool <- bool || NzType).", I, mask, (bool)false, (bool)true,
+		Monoid< operators::logical_or< bool, NzType, bool >, identities::logical_false >() );
 	if( rc )
 		return;
-	rc = foldr_test( "10", "A simple reduction(||) with different types for the nzs and the reduction result (bool <- bool || float).", I, mask, (bool)false, (bool)true,
-		Monoid< operators::logical_or< float, bool, bool >, identities::logical_false >() );
+	rc = foldr_test( "10", "A simple reduction(||) with different types for the nzs and the reduction result (bool <- bool || NzType).", I, mask, (bool)false, (bool)true,
+		Monoid< operators::logical_or< NzType, bool, bool >, identities::logical_false >() );
 	if( rc )
 		return;
 }
@@ -316,9 +332,9 @@ int main( int argc, char ** argv ) {
 	grb::RC rc = RC::SUCCESS;
 
 	if( ! rc ) { // Identity square-matrix
-		Matrix< float > I( n, n );
+		Matrix< NzType > I( n, n );
 		std::vector< size_t > I_rows( n ), I_cols( n );
-		std::vector< float > I_vals( n, 1.f );
+		std::vector< NzType > I_vals( n, 1.f );
 		std::iota( I_rows.begin(), I_rows.end(), 0 );
 		std::iota( I_cols.begin(), I_cols.end(), 0 );
 		buildMatrixUnique( I, I_rows.data(), I_cols.data(), I_vals.data(), I_vals.size(), PARALLEL );
@@ -329,13 +345,13 @@ int main( int argc, char ** argv ) {
 			std::cerr << "Launching test 01 FAILED\n";
 			return 255;
 		}
-		std::cout << std::endl;
+		std::cout << std::endl << std::flush;
 	}
 
 	if( ! rc ) { // Build a square-matrix with n 1s on the first row
-		Matrix< float > I( n, n );
+		Matrix< NzType > I( n, n );
 		std::vector< size_t > I_rows( n, 0 ), I_cols( n );
-		std::vector< float > I_vals( n, 1.f );
+		std::vector< NzType > I_vals( n, 1.f );
 		std::iota( I_cols.begin(), I_cols.end(), 0 );
 		buildMatrixUnique( I, I_rows.data(), I_cols.data(), I_vals.data(), I_vals.size(), PARALLEL );
 		Matrix< void > mask( n, n );
@@ -345,13 +361,13 @@ int main( int argc, char ** argv ) {
 			std::cerr << "Launching test 02 FAILED\n";
 			return 255;
 		}
-		std::cout << std::endl;
+		std::cout << std::endl << std::flush;
 	}
 
 	if( ! rc ) { // Square-matrix with n 1s on the first column
-		Matrix< float > I( n, n );
+		Matrix< NzType > I( n, n );
 		std::vector< size_t > I_rows( n ), I_cols( n, 0 );
-		std::vector< float > I_vals( n, 1.f );
+		std::vector< NzType > I_vals( n, 1.f );
 		std::iota( I_rows.begin(), I_rows.end(), 0 );
 		buildMatrixUnique( I, I_rows.data(), I_cols.data(), I_vals.data(), I_vals.size(), PARALLEL );
 		Matrix< void > mask( n, n );
@@ -361,13 +377,13 @@ int main( int argc, char ** argv ) {
 			std::cerr << "Launching test 03 FAILED\n";
 			return 255;
 		}
-		std::cout << std::endl;
+		std::cout << std::endl << std::flush;
 	}
 
 	if( ! rc ) { // Building a square-matrix with n 1s on the first row and column
-		Matrix< float > I( n, n );
+		Matrix< NzType > I( n, n );
 		std::vector< size_t > I_rows( 2 * n - 1, 0 ), I_cols( 2 * n - 1, 0 );
-		std::vector< float > I_vals( 2 * n - 1, 1.f );
+		std::vector< NzType > I_vals( 2 * n - 1, 1.f );
 		std::iota( I_rows.begin() + n, I_rows.end(), 1 );
 		std::iota( I_cols.begin(), I_cols.begin() + n, 0 );
 		buildMatrixUnique( I, I_rows.data(), I_cols.data(), I_vals.data(), I_vals.size(), PARALLEL );
@@ -378,13 +394,13 @@ int main( int argc, char ** argv ) {
 			std::cerr << "Launching test 04 FAILED\n";
 			return 255;
 		}
-		std::cout << std::endl;
+		std::cout << std::endl << std::flush;
 	}
 
 	if( ! rc ) { // Building a [1 row, n columns] matrix filled with 1s
-		Matrix< float > I( 1, n );
+		Matrix< NzType > I( 1, n );
 		std::vector< size_t > I_rows( n, 0 ), I_cols( n, 0 );
-		std::vector< float > I_vals( n, 1.f );
+		std::vector< NzType > I_vals( n, 1.f );
 		std::iota( I_cols.begin(), I_cols.end(), 0 );
 		buildMatrixUnique( I, I_rows.data(), I_cols.data(), I_vals.data(), I_vals.size(), PARALLEL );
 		Matrix< void > mask( 1, n );
@@ -394,13 +410,13 @@ int main( int argc, char ** argv ) {
 			std::cerr << "Launching test 04 FAILED\n";
 			return 255;
 		}
-		std::cout << std::endl;
+		std::cout << std::endl << std::flush;
 	}
 
 	if( ! rc ) { // Building a [n rows, 1 column] matrix filled with 1s
-		Matrix< float > I( n, 1 );
+		Matrix< NzType > I( n, 1 );
 		std::vector< size_t > I_rows( n, 0 ), I_cols( n, 0 );
-		std::vector< float > I_vals( n, 1.f );
+		std::vector< NzType > I_vals( n, 1.f );
 		std::iota( I_rows.begin(), I_rows.end(), 0 );
 		buildMatrixUnique( I, I_rows.data(), I_cols.data(), I_vals.data(), I_vals.size(), PARALLEL );
 		Matrix< void > mask( n, 1 );
@@ -410,7 +426,7 @@ int main( int argc, char ** argv ) {
 			std::cerr << "Launching test 06 FAILED\n";
 			return 255;
 		}
-		std::cout << std::endl;
+		std::cout << std::endl << std::flush;
 	}
 
 	if( rc != SUCCESS ) {
