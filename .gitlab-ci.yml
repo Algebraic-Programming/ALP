@@ -6,9 +6,24 @@ default:
   image: ${CI_REGISTRY}/${CI_PROJECT_PATH}/lpf-ubuntu-20.04-gcc
 
 variables:
-  EXTRA_TESTS_ENABLED: "no" # enable extra tests: build with debug symbols, performance tests
-  LPF_TESTS_ENABLED: "no" # enable LPF-based tests
-  MULTIPLE_COMPILERS_ENABLED: "no" # enable compiling against multiple compilers
+  EXTRA_TESTS_ENABLED:
+    value: "no"
+    options:
+      - "yes"
+      - "no"
+    description: "Enable extra tests: build with debug symbols, performance tests"
+  LPF_TESTS_ENABLED: 
+    value: "no"
+    options:
+      - "yes"
+      - "no"
+    description: "Enable LPF-based tests"
+  MULTIPLE_COMPILERS_ENABLED:
+    value: "no"
+    options:
+      - "yes"
+      - "no"
+    description: "Enable compilation using multiple compilers"
 
 workflow:
   rules:
