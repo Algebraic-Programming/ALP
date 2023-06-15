@@ -599,7 +599,8 @@ void grbProgram( const void *, const size_t, int &error ) {
 			{ 77, 70 },
 			{ 130, 139 },
 			{ 146, 5376 }
-			// { 1463, 5376 } // MPI in CI has issues with this size
+			// { 1463, 5376 } // MPI in CI has issues with this size:
+							  // GitHub issue https://github.com/Algebraic-Programming/ALP/issues/201
 		};
 		MAIN_LOG( "==== Testing dense matrices" << std::endl );
 		for( const std::array< size_t, 2 > &mat_size : matr_sizes ) {
