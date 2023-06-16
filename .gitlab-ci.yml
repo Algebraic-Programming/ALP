@@ -12,7 +12,7 @@ variables:
       - "yes"
       - "no"
     description: "Enable extra tests: build with debug symbols, performance tests"
-  LPF_TESTS_ENABLED: 
+  LPF_TESTS_ENABLED:
     value: "no"
     options:
       - "yes"
@@ -324,10 +324,10 @@ build_test_gcc_versions:
 
 # Coverage build + tests for each backend
 
-coverage_unittests:
+coverage_matrix:
   rules:
-    - if: COVERAGE_ENABLED == "yes"
-  needs: [build_test_lpf]
+    - if: $COVERAGE_ENABLED == "yes"
+  needs: [build_test]
   parallel:
     matrix:
       # ________: HYPERDAGS  REFERENCE  REFERENCE_OMP  NONBLOCKING
@@ -342,7 +342,7 @@ coverage_unittests:
     - echo "-- REFERENCE_OMP=${backends_array[2]}"
     - echo "-- NONBLOCKING=${backends_array[3]}"
 
-    - rm -rf build install build && mkdir -p install build && cd build
+    - rm -rf build install && mkdir -p install build && cd build
     - cmake -DCMAKE_INSTALL_PREFIX='../install' -DCMAKE_BUILD_TYPE=Coverage
       -DWITH_HYPERDAGS_BACKEND=${backends_array[0]}
       -DWITH_REFERENCE_BACKEND=${backends_array[1]}
@@ -359,16 +359,11 @@ coverage_unittests:
   artifacts:
     paths:
       - COVERAGE_${CI_JOB_ID}.json
-  only:
-    - master
-    - develop
-    - /^v.*-rc.*$/
-    - merge_requests
 
 cobertura_coverage_report:
   rules:
-    - if: COVERAGE_ENABLED == "yes"
-  needs: [coverage_unittests]
+    - if: $COVERAGE_ENABLED == "yes"
+  needs: [coverage_matrix]
   script:
 # merge JSON files from multiple backends into single Cobertura report for the CI
     - python3 -m gcovr --xml-pretty
@@ -384,19 +379,14 @@ cobertura_coverage_report:
       coverage_report:
         coverage_format: cobertura
         path: coverage.xml
-  only:
-    - master
-    - develop
-    - /^v.*-rc.*$/
-    - merge_requests
 
 
 ## GitLab Pages update job
 
 pages:
   rules:
-    - if: $CI_COMMIT_BRANCH == "develop" && COVERAGE_ENABLED == "yes"
-  needs: [coverage_unittests]
+    - if: $CI_COMMIT_BRANCH == "develop" && $COVERAGE_ENABLED == "yes"
+  needs: [coverage_matrix]
   script:
     - mkdir -p public
 # merge JSON files from multiple backends into HTML page(s) to export
