@@ -74,7 +74,6 @@ workflow:
 #  image: centos:8
 #  rules:
 #    - if: $EXTRA_TESTS_ENABLED == "yes"
-#      when: on_success
 #  before_script:
 #    - yum -y update && yum -y groupinstall "Development Tools" && yum -y install make autoconf cmake numactl-devel
 #  script:
@@ -97,7 +96,6 @@ workflow:
 #    - mkdir -p install build && cd ./build && ../bootstrap.sh --prefix=../install --debug-build && make -j$(nproc) && make -j$(nproc) build_tests_all
 #  rules:
 #    - if: $EXTRA_TESTS_ENABLED == "yes"
-#      when: on_success
 
 
 #test_centos_8_unit:
@@ -105,7 +103,6 @@ workflow:
 #  needs: [build_centos_8]
 #  rules:
 #    - if: $EXTRA_TESTS_ENABLED == "yes"
-#      when: on_success
 #  before_script:
 #    - yum -y update && yum -y groupinstall "Development Tools" && yum -y install make autoconf cmake numactl-devel
 #  script:
@@ -118,7 +115,6 @@ workflow:
 #  needs: [build_centos_8]
 #  rules:
 #    - if: $EXTRA_TESTS_ENABLED == "yes"
-#      when: on_success
 #  before_script:
 #    - yum -y update && yum -y groupinstall "Development Tools" && yum -y install make autoconf cmake numactl-devel
 #  script:
@@ -131,7 +127,6 @@ workflow:
 #  needs: [build_centos_8]
 #  rules:
 #    - if: $EXTRA_TESTS_ENABLED == "yes"
-#      when: on_success
 #  before_script:
 #    - yum -y update && yum -y groupinstall "Development Tools" && yum -y install make autoconf cmake numactl-devel
 #  script:
@@ -144,7 +139,6 @@ workflow:
 #  needs: [build_centos_8]
 #  rules:
 #    - if: $EXTRA_TESTS_ENABLED == "yes"
-#      when: on_success
 #  before_script:
 #    - yum -y update && yum -y groupinstall "Development Tools" && yum -y install make autoconf cmake numactl-devel
 #  script:
