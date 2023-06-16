@@ -29,7 +29,7 @@ variables:
     options:
       - "yes"
       - "no"
-    description: "Enable coverage build"
+    description: "Execute coverage build and tests, then exports XML and HTML reports"
   GENERATE_COVERAGE_PAGES:
     value: "no"
     options:
@@ -382,16 +382,13 @@ cobertura_coverage_report:
         coverage_format: cobertura
         path: coverage.xml
 
-
-## GitLab Pages update job
-
-pages:
+html_coverage_report:
   rules:
-    - if: $GENERATE_COVERAGE_PAGES == "yes"
+    - if: $COVERAGE_ENABLED == "yes" || $GENERATE_COVERAGE_PAGES == "yes"
   needs: [coverage_matrix]
   script:
     - mkdir -p public
-# merge JSON files from multiple backends into HTML page(s) to export
+# merge JSON files from multiple backends into single HTNL report for the CI
     - python3 -m gcovr --html-details
       --add-tracefile "COVERAGE_*.json"
       --print-summary
@@ -399,6 +396,19 @@ pages:
       --html-title "Branch ${CI_COMMIT_BRANCH}, commit ${CI_COMMIT_SHA}"
       --root ${CI_PROJECT_DIR}
       --output public/index.html
+  artifacts:
+    expire_in: 4 weeks
+    paths: 
+      - public
+
+## GitLab Pages update job
+
+pages:
+  rules:
+    - if: $GENERATE_COVERAGE_PAGES == "yes"
+  needs: [html_coverage_report]
+  script:
+    - mkdir -p public
   artifacts:
     paths:
       - public
