@@ -168,7 +168,7 @@ build_test:
       - build/**/*.o.d
       - build/**/CMakeFiles
       - build/**/*.dir
-    expire_in: 80 minutes
+    expire_in: 2 hours
 
 
 build_tests_buildtype_debug_sym_debug:
@@ -215,7 +215,7 @@ build_test_buildtype_debug:
     exclude:
       - build/**/*.o
       - build/**/*.o.d
-    expire_in: 43 minutes
+    expire_in: 2 hours
 
 test_smoke_build_type_debug:
   needs: [build_test_buildtype_debug]
