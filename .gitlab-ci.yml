@@ -30,6 +30,12 @@ variables:
       - "yes"
       - "no"
     description: "Enable coverage build"
+  GENERATE_COVERAGE_PAGES:
+    value: "no"
+    options:
+      - "yes"
+      - "no"
+    description: "Generate coverage report for Gitlab Pages"
 
 workflow:
   rules:
@@ -46,12 +52,12 @@ workflow:
         LPF_TESTS_ENABLED: "yes"
         MULTIPLE_COMPILERS_ENABLED: "yes"
         COVERAGE_ENABLED: "yes"
+        GENERATE_COVERAGE_PAGES: "yes"
     - if: $CI_COMMIT_BRANCH =~ /^v.*-rc.*$/
       variables:
         EXTRA_TESTS_ENABLED: "yes"
         LPF_TESTS_ENABLED: "yes"
         MULTIPLE_COMPILERS_ENABLED: "yes"
-        COVERAGE_ENABLED: "no"
     # "manual" execution strategies are allowed to force run
     - if: $CI_PIPELINE_SOURCE != "merge_request_event" && $CI_PIPELINE_SOURCE != "push"
     # do not run pipeline if the merge request is draft (case insensitive) and execution was automatically invoked
@@ -59,6 +65,8 @@ workflow:
       when: never
     # run if the pipeline comes from a merge request
     - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+      variables:
+        COVERAGE_ENABLED: "yes"
     # default: don't run
 
 
@@ -320,7 +328,7 @@ build_test_gcc_versions:
 
 coverage_matrix:
   rules:
-    - if: $COVERAGE_ENABLED == "yes"
+    - if: $COVERAGE_ENABLED == "yes" || $GENERATE_COVERAGE_PAGES == "yes"
   needs: [build_test]
   parallel:
     matrix:
@@ -356,7 +364,7 @@ coverage_matrix:
 
 cobertura_coverage_report:
   rules:
-    - if: $COVERAGE_ENABLED == "yes"
+    - if: $COVERAGE_ENABLED == "yes" || $GENERATE_COVERAGE_PAGES == "yes"
   needs: [coverage_matrix]
   script:
 # merge JSON files from multiple backends into single Cobertura report for the CI
@@ -379,7 +387,7 @@ cobertura_coverage_report:
 
 pages:
   rules:
-    - if: $CI_COMMIT_BRANCH == "develop" && $COVERAGE_ENABLED == "yes"
+    - if: $GENERATE_COVERAGE_PAGES == "yes"
   needs: [coverage_matrix]
   script:
     - mkdir -p public
