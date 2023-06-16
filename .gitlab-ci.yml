@@ -93,7 +93,7 @@ workflow:
 #    exclude:
 #      - build/**/*.o
 #      - build/**/*.o.d
-#    expire_in: 80 minutes
+#    expire_in: 2 hours
 
 
 #build_debug_centos_8:
@@ -274,7 +274,7 @@ build_test_lpf:
       - build/**/*.o.d
       - build/**/CMakeFiles
       - build/**/*.dir
-    expire_in: 80 minutes
+    expire_in: 2 hours
 
 tests_unit_lpf:
   rules:
