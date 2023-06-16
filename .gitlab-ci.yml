@@ -6,42 +6,66 @@ default:
   image: ${CI_REGISTRY}/${CI_PROJECT_PATH}/lpf-ubuntu-20.04-gcc
 
 variables:
-  IS_MAIN_PIPELINE: "no"
+  EXTRA_TESTS_ENABLED:
+    value: "no"
+    options:
+      - "yes"
+      - "no"
+    description: "Enable extra tests: build with debug symbols, performance tests"
+  LPF_TESTS_ENABLED: 
+    value: "no"
+    options:
+      - "yes"
+      - "no"
+    description: "Enable LPF-based tests"
+  MULTIPLE_COMPILERS_ENABLED:
+    value: "no"
+    options:
+      - "yes"
+      - "no"
+    description: "Enable compilation using multiple compilers"
 
 workflow:
   rules:
-  # the following rules trigger after new commits are merged on master, develop or a version/rc branch
+  # run all jobs if a commit is merged on master, develop or a version/rc branch
     - if: $CI_COMMIT_BRANCH == "master"
       variables:
-        IS_MAIN_PIPELINE: "yes"
+        EXTRA_TESTS_ENABLED: "yes"
+        LPF_TESTS_ENABLED: "yes"
+        MULTIPLE_COMPILERS_ENABLED: "yes"
     - if: $CI_COMMIT_BRANCH == "develop"
       variables:
-        IS_MAIN_PIPELINE: "yes"
+        EXTRA_TESTS_ENABLED: "yes"
+        LPF_TESTS_ENABLED: "yes"
+        MULTIPLE_COMPILERS_ENABLED: "yes"
     - if: $CI_COMMIT_BRANCH =~ /^v.*-rc.*$/
       variables:
-        IS_MAIN_PIPELINE: "yes"
-  # rules to avoid duplicate pipelines on merge requests
+        EXTRA_TESTS_ENABLED: "yes"
+        LPF_TESTS_ENABLED: "yes"
+        MULTIPLE_COMPILERS_ENABLED: "yes"
+    # "manual" execution strategies are allowed to force run
+    - if: $CI_PIPELINE_SOURCE != "merge_request_event" && $CI_PIPELINE_SOURCE != "push"
+    # do not run pipeline if the merge request is draft (case insensitive) and execution was automatically invoked
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event" && $CI_MERGE_REQUEST_TITLE =~ /^draft:/i
+      when: never
     # run if the pipeline comes from a merge request
     - if: $CI_PIPELINE_SOURCE == "merge_request_event"
-    # do not run when the commit has a branch name associated and this branch is associated to an MR
-    - if: $CI_COMMIT_BRANCH && $CI_OPEN_MERGE_REQUESTS
-      when: never
-    # run when the commit has a branch name associated
-    - if: $CI_COMMIT_BRANCH
+    # default: don't run
+
 
 # factored out command to strip symbols from test binaries
 .strip_symbols: &strip_symbols
-  - strip -s $(find tests/unit/ -type f -executable -print) $(find tests/smoke/ -type f -executable -print) $(find tests/performance/ -type f -executable -print)
+  - strip -s $(find tests/unit/ -type f -executable -print)
+    $(find tests/smoke/ -type f -executable -print)
+    $(find tests/performance/ -type f -executable -print)
 
 # Build / test / install on CentOS 8, only for main branches
 
 #build_centos_8:
 #  image: centos:8
-#  needs: []
 #  rules:
-#    - if: $IS_MAIN_PIPELINE == "yes"
+#    - if: $EXTRA_TESTS_ENABLED == "yes"
 #      when: on_success
-#    - when: never
 #  before_script:
 #    - yum -y update && yum -y groupinstall "Development Tools" && yum -y install make autoconf cmake numactl-devel
 #  script:
@@ -58,24 +82,21 @@ workflow:
 
 #build_debug_centos_8:
 #  image: centos:8
-#  needs: []
 #  before_script:
 #    - yum -y update && yum -y groupinstall "Development Tools" && yum -y install make autoconf cmake numactl-devel
 #  script:
 #    - mkdir -p install build && cd ./build && ../bootstrap.sh --prefix=../install --debug-build && make -j$(nproc) && make -j$(nproc) build_tests_all
 #  rules:
-#    - if: $IS_MAIN_PIPELINE == "yes"
+#    - if: $EXTRA_TESTS_ENABLED == "yes"
 #      when: on_success
-#    - when: never
 
 
 #test_centos_8_unit:
 #  image: centos:8
 #  needs: [build_centos_8]
 #  rules:
-#    - if: $IS_MAIN_PIPELINE == "yes"
+#    - if: $EXTRA_TESTS_ENABLED == "yes"
 #      when: on_success
-#    - when: never
 #  before_script:
 #    - yum -y update && yum -y groupinstall "Development Tools" && yum -y install make autoconf cmake numactl-devel
 #  script:
@@ -87,9 +108,8 @@ workflow:
 #  image: centos:8
 #  needs: [build_centos_8]
 #  rules:
-#    - if: $IS_MAIN_PIPELINE == "yes"
+#    - if: $EXTRA_TESTS_ENABLED == "yes"
 #      when: on_success
-#    - when: never
 #  before_script:
 #    - yum -y update && yum -y groupinstall "Development Tools" && yum -y install make autoconf cmake numactl-devel
 #  script:
@@ -101,9 +121,8 @@ workflow:
 #  image: centos:8
 #  needs: [build_centos_8]
 #  rules:
-#    - if: $IS_MAIN_PIPELINE == "yes"
+#    - if: $EXTRA_TESTS_ENABLED == "yes"
 #      when: on_success
-#    - when: never
 #  before_script:
 #    - yum -y update && yum -y groupinstall "Development Tools" && yum -y install make autoconf cmake numactl-devel
 #  script:
@@ -115,9 +134,8 @@ workflow:
 #  image: centos:8
 #  needs: [build_centos_8]
 #  rules:
-#    - if: $IS_MAIN_PIPELINE == "yes"
+#    - if: $EXTRA_TESTS_ENABLED == "yes"
 #      when: on_success
-#    - when: never
 #  before_script:
 #    - yum -y update && yum -y groupinstall "Development Tools" && yum -y install make autoconf cmake numactl-devel
 #  script:
@@ -127,9 +145,9 @@ workflow:
 # Main testing on Ubuntu, all branches
 
 build_test:
-  needs: []
   script:
-    - mkdir -p install build && cd ./build && ../bootstrap.sh --prefix=../install --with-datasets=${ALP_DATASETS} && make -j$(nproc) build_tests_all
+    - mkdir -p install build && cd ./build && ../bootstrap.sh --prefix=../install --with-datasets=${ALP_DATASETS}
+      && make -j$(nproc) build_tests_all
     - *strip_symbols
   artifacts:
     paths:
@@ -143,19 +161,18 @@ build_test:
 
 
 build_tests_buildtype_debug_sym_debug:
-  needs: []
   script:
-    - mkdir -p install build && cd build && cmake -DCMAKE_INSTALL_PREFIX=../install -DCMAKE_CXX_FLAGS=-D_DEBUG -DCMAKE_C_FLAGS=-D_DEBUG -DCMAKE_BUILD_TYPE=Debug ../ && make -j$(nproc) build_tests_all
+    - mkdir -p install build && cd build && cmake -DCMAKE_INSTALL_PREFIX=../install -DCMAKE_CXX_FLAGS=-D_DEBUG
+      -DCMAKE_C_FLAGS=-D_DEBUG -DCMAKE_BUILD_TYPE=Debug ../ && make -j$(nproc) build_tests_all
 
 
 build_tests_sym_debug:
   rules:
-    - if: $IS_MAIN_PIPELINE == "yes"
+    - if: $EXTRA_TESTS_ENABLED == "yes"
       when: on_success
-    - when: never
-  needs: []
   script:
-    - mkdir -p install build && cd build && cmake -DCMAKE_INSTALL_PREFIX=../install -DCMAKE_CXX_FLAGS=-D_DEBUG -DCMAKE_C_FLAGS=-D_DEBUG -DLPF_INSTALL_PATH=${LPF_PATH} -DCMAKE_BUILD_TYPE=Release ../ && make -j$(nproc) build_tests_all
+    - mkdir -p install build && cd build && cmake -DCMAKE_INSTALL_PREFIX=../install -DCMAKE_CXX_FLAGS=-D_DEBUG
+      -DCMAKE_C_FLAGS=-D_DEBUG -DLPF_INSTALL_PATH=${LPF_PATH} -DCMAKE_BUILD_TYPE=Release ../ && make -j$(nproc) build_tests_all
 
 
 tests_unit:
@@ -177,9 +194,9 @@ test_installation:
 
 
 build_test_buildtype_debug:
-  needs: []
   script:
-    - mkdir -p install build && cd ./build && ../bootstrap.sh --prefix=../install --with-datasets=${ALP_DATASETS} --debug-build && make -j$(nproc) && make -j$(nproc) build_tests_all
+    - mkdir -p install build && cd ./build && ../bootstrap.sh --prefix=../install --with-datasets=${ALP_DATASETS}
+      --debug-build && make -j$(nproc) && make -j$(nproc) build_tests_all
     - *strip_symbols
   artifacts:
     paths:
@@ -201,7 +218,6 @@ test_installation_build_type_debug:
     - cd ./build && make -j$(nproc) install
 
 gitleaks:
-  needs: []
   image:
     name: "zricethezav/gitleaks:v8.0.6"
     entrypoint: [""]
@@ -212,9 +228,8 @@ gitleaks:
 
 tests_performance:
   rules:
-    - if: $IS_MAIN_PIPELINE == "yes"
+    - if: $EXTRA_TESTS_ENABLED == "yes"
       when: on_success
-    - when: never
   needs: [build_test]
   script:
     - cd ./build && make -j$(nproc) performancetests &> performancetests.log
@@ -222,9 +237,8 @@ tests_performance:
 
 tests_unit_buildtype_debug:
   rules:
-    - if: $IS_MAIN_PIPELINE == "yes"
+    - if: $EXTRA_TESTS_ENABLED == "yes"
       when: on_success
-    - when: never
   needs: [build_test_buildtype_debug]
   script:
     - cd ./build && make -j$(nproc) unittests &> unittests.log
@@ -235,13 +249,11 @@ tests_unit_buildtype_debug:
 
 build_test_lpf:
   rules:
-    - if: $IS_MAIN_PIPELINE == "yes"
-      when: always
-    - when: never
-  needs: []
+    - if: $LPF_TESTS_ENABLED == "yes"
   script:
 # build only LPF-related tests
-    - mkdir -p install build && cd ./build && ../bootstrap.sh --with-lpf=${LPF_PATH} --no-nonblocking --no-reference --no-hyperdags --prefix=../install --with-datasets=${ALP_DATASETS} && make -j$(nproc) build_tests_all
+    - mkdir -p install build && cd ./build && ../bootstrap.sh --with-lpf=${LPF_PATH} --no-nonblocking --no-reference
+      --no-hyperdags --prefix=../install --with-datasets=${ALP_DATASETS} && make -j$(nproc) build_tests_all
     - *strip_symbols
   artifacts:
     paths:
@@ -255,9 +267,8 @@ build_test_lpf:
 
 tests_unit_lpf:
   rules:
-    - if: $IS_MAIN_PIPELINE == "yes"
+    - if: $LPF_TESTS_ENABLED == "yes"
       when: on_success
-    - when: never
   needs: [build_test_lpf]
   script:
     - cd ./build && make -j$(nproc) tests_unit &> unittests.log
@@ -265,9 +276,8 @@ tests_unit_lpf:
 
 tests_smoke_lpf:
   rules:
-    - if: $IS_MAIN_PIPELINE == "yes"
+    - if: $LPF_TESTS_ENABLED == "yes"
       when: on_success
-    - when: never
   needs: [build_test_lpf]
   script:
     - cd ./build && make -j$(nproc) tests_smoke &> smoketests.log
@@ -275,9 +285,8 @@ tests_smoke_lpf:
 
 test_installation_lpf:
   rules:
-    - if: $IS_MAIN_PIPELINE == "yes"
+    - if: $LPF_TESTS_ENABLED == "yes"
       when: on_success
-    - when: never
   needs: [build_test_lpf]
   script:
     - cd ./build && make -j$(nproc) install
@@ -286,11 +295,9 @@ test_installation_lpf:
 
 build_test_gcc_versions:
   rules:
-    - if: $IS_MAIN_PIPELINE == "yes"
+    - if: $MULTIPLE_COMPILERS_ENABLED == "yes"
       when: on_success
-    - when: never
   image: ${CI_REGISTRY}/${CI_PROJECT_PATH}/lpf-ubuntu-22.04-gcc-clang
-  needs: []
   parallel:
       matrix:
         - CXX_COMPILER: g++
@@ -300,4 +307,8 @@ build_test_gcc_versions:
         #   CC_COMPILER: clang
         #   VER: [11,12,13,14]
   script:
-    - mkdir -p install build && cd ./build && CXX=${CXX_COMPILER}-${VER} CC=${CC_COMPILER}-${VER} ../bootstrap.sh --prefix=../install --with-datasets=${ALP_DATASETS} --with-lpf=${LPF_BASE_PATH}/build_mpich_${CC_COMPILER}_${VER}/install && make -j$(nproc) build_tests_all
+    - mkdir -p install build && cd ./build &&
+      CXX=${CXX_COMPILER}-${VER} CC=${CC_COMPILER}-${VER} ../bootstrap.sh
+      --prefix=../install --with-datasets=${ALP_DATASETS}
+      --with-lpf=${LPF_BASE_PATH}/build_mpich_${CC_COMPILER}_${VER}/install &&
+      make -j$(nproc) build_tests_all

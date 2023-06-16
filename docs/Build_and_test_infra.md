@@ -509,14 +509,21 @@ by default when compiling executables, for example
 4. the variable `ALL_BACKENDS` lists all possible backends (even if not enabled)
 to detect potential configuration errors: therefore, you should always add the
 new backend to this variable; on the contrary, the variable `AVAILABLE_BACKENDS`
-lists only the backends actually configured to be built, depending on the user's
-inputs; you may add your backend with something like
+lists only the backends actually available in the building infrastructure, 
+depending on the user's inputs; you may add your backend with something like
 
     ```cmake
     if ( WITH_EXAMPLE_BACKEND )
     	list( APPEND AVAILABLE_BACKENDS "example" )
     endif()
     ```
+
+5. the variable `AVAILABLE_TEST_BACKENDS` lists all backends that were enabled
+and for which tests are built; usually it is a subset of `AVAILABLE_BACKENDS`, 
+which also contains backends pulled in as dependencies of user-chosen backends; 
+for example, if the user enables only the hyperdags backend, the reference
+backend is also listed in `AVAILABLE_BACKENDS`, while `AVAILABLE_TEST_BACKENDS`
+lists only hyperdags.
 
 For more details, you may see inside
 [`<ALP/GraphBLAS root>/cmake/AddGRBVars.cmake`](../cmake/AddGRBVars.cmake) how

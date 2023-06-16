@@ -24,13 +24,13 @@ if( DEFINED __ADDGRBTESTS_CMAKE_ )
 	set( __ADDGRBTESTS_CMAKE_ TRUE CACHE INTERNAL "once-only inclusion file checker" FORCE )
 endif()
 
-assert_valid_variables( ALL_BACKENDS AVAILABLE_BACKENDS TEST_CATEGORIES
+assert_valid_variables( ALL_BACKENDS AVAILABLE_TEST_BACKENDS TEST_CATEGORIES
 	#TESTS_EXE_OUTPUT_DIR
 	ALP_UTILS_LIBRARY_OUTPUT_NAME )
 
 
 # create variables to store tests against each backend
-foreach( b ${AVAILABLE_BACKENDS} )
+foreach( b ${AVAILABLE_TEST_BACKENDS} )
 	define_property( GLOBAL PROPERTY tests_backend_${b} BRIEF_DOCS "${b} tests" FULL_DOCS "tests for backend ${b}" )
 endforeach()
 
@@ -86,9 +86,10 @@ macro( __add_test_with_category test_prefix backend_name suffix sources libs def
 		set( __file_name "${test_prefix}${MODES_${mode}_suffix}" )
 		set( __target_name "test_${__file_name}" )
 		#set( __target_name "test_${test_prefix}_${category}${MODES_${mode}_suffix}" )
-		if( suffix )
-			string( APPEND __file_name "_" "${suffix}" )
-			string( APPEND __target_name "_" "${suffix}" )
+		set( _suffix "${suffix}" )
+		if( _suffix )
+			string( APPEND __file_name "_" "${_suffix}" )
+			string( APPEND __target_name "_" "${_suffix}" )
 		endif()
 
 		if( TARGET "${__target_name}" )
@@ -161,7 +162,6 @@ specify the category of all tests in the file via the TEST_CATEGORY variable" )
 	)
 endfunction( add_grb_executable_custom )
 
-
 #
 # add a GraphBLAS test to be compiled against one or more backends: for each backend,
 # it generates an executable target name test_<testName>_<backend name>
@@ -178,7 +178,6 @@ endfunction( add_grb_executable_custom )
 # at the end of the test name
 # COMPILE_DEFINITIONS: additional compile definitions
 # ADDITIONAL_LINK_LIBRARIES: additional libraries to link to each target
-# CATEGORIES: test categories (at least one is mandatory mandatory)
 #
 # The generated test name is also added to the list of per-backend tests,
 # namely tests_backend_<backend name> and is also added to the per-category
@@ -186,7 +185,7 @@ endfunction( add_grb_executable_custom )
 #
 # The backend name must correspond to one of the backends available in ${ALL_BACKENDS},
 # otherwise an error occurs; since not all backends may be enabled, only targets
-# to be built against backends stored in ${AVAILABLE_BACKENDS} are actually built.
+# to be built against backends stored in ${AVAILABLE_TEST_BACKENDS} are actually built.
 #
 function( add_grb_executables testName )
 	if( NOT testName )
@@ -200,7 +199,6 @@ function( add_grb_executables testName )
 		"BACKENDS"
 		"COMPILE_DEFINITIONS"
 		"ADDITIONAL_LINK_LIBRARIES"
-		"CATEGORIES"
 	)
 
 	set( args "SOURCES" "${ARGN}" )
@@ -208,16 +206,7 @@ function( add_grb_executables testName )
 		"${oneValueArgs}" "${multiValueArgs}" ${args}
 	)
 
-	if( NOT parsed_SOURCES )
-		message( FATAL_ERROR "no sources specified")
-	endif()
-	if( NOT parsed_BACKENDS )
-		message( FATAL_ERROR "no BACKENDS specified")
-	endif()
-	if( DEFINED parsed_CATEGORIES )
-		message( AUTHOR_WARNING "the flag CATEGORIES is deprecated and will be removed very soon; \
-specify the category of all tests in the file via the TEST_CATEGORY variable" )
-	endif()
+	assert_valid_variables( parsed_SOURCES parsed_BACKENDS )
 
 	list( LENGTH parsed_BACKENDS num_backends )
 	if( parsed_NO_BACKEND_NAME AND ( NOT num_backends EQUAL "1" ) )
@@ -227,15 +216,13 @@ specify the category of all tests in the file via the TEST_CATEGORY variable" )
 	set_valid( defs "${parsed_COMPILE_DEFINITIONS}" "" )
 
 	foreach( back ${parsed_BACKENDS} )
+		if( NOT ${back} IN_LIST AVAILABLE_TEST_BACKENDS )
+			continue()
+		endif()
 		if( NOT ${back} IN_LIST ALL_BACKENDS  )
 			message( FATAL_ERROR "no backend named ${back}; existing backends are ${ALL_BACKENDS}")
 		endif()
-		if( NOT ${back} IN_LIST AVAILABLE_BACKENDS )
-			continue()
-		endif()
-		if( NOT TARGET "backend_${back}" )
-			message( FATAL_ERROR "Target backend_${back} does not exist" )
-		endif()
+		assert_defined_targets( backend_${back} )
 
 		set( libs "backend_${back};alp_utils_static" )
 		append_if_valid( libs "${parsed_ADDITIONAL_LINK_LIBRARIES}" )
@@ -249,4 +236,42 @@ specify the category of all tests in the file via the TEST_CATEGORY variable" )
 		)
 	endforeach()
 endfunction( add_grb_executables )
+
+# force add executable even if the test backend is not enabled
+# useful for tests that produce a "golden output" for other tests;
+# for one backend only
+function( force_add_grb_executable testName )
+	if( NOT testName )
+		message( FATAL_ERROR "no test name specified")
+	endif()
+
+	set(options "" )
+	set(oneValueArgs "BACKEND" )
+	set(multiValueArgs
+		"SOURCES"
+		"COMPILE_DEFINITIONS"
+		"ADDITIONAL_LINK_LIBRARIES"
+	)
+
+	set( args "SOURCES" "${ARGN}" )
+	cmake_parse_arguments( parsed "${options}"
+		"${oneValueArgs}" "${multiValueArgs}" ${args}
+	)
+
+	assert_valid_variables( parsed_SOURCES parsed_BACKEND )
+
+	set_valid( defs "${parsed_COMPILE_DEFINITIONS}" "" )
+
+	if( NOT "${parsed_BACKEND}" IN_LIST ALL_BACKENDS  )
+		return()
+	endif()
+	assert_defined_targets( backend_${parsed_BACKEND} )
+
+	set( libs "backend_${parsed_BACKEND};alp_utils_static" )
+	append_if_valid( libs "${parsed_ADDITIONAL_LINK_LIBRARIES}" )
+
+	__add_test_with_category( "${testName}" "${parsed_BACKEND}" "${parsed_BACKEND}"
+		"${parsed_SOURCES}" "${libs}" "${defs}"
+	)
+endfunction()
 

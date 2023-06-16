@@ -17,7 +17,7 @@
 #
 # Main tests, which do not use the Launcher mechanism
 #
-assert_valid_variables( ALP_UTILS_SRC_PATH AVAILABLE_BACKENDS DATASETS_DIR TESTS_EXE_OUTPUT_DIR )
+assert_valid_variables( ALP_UTILS_SRC_PATH AVAILABLE_TEST_BACKENDS DATASETS_DIR TESTS_EXE_OUTPUT_DIR )
 assert_defined_variables( GNN_DATASET_PATH WITH_BSP1D_BACKEND WITH_HYBRID_BACKEND )
 
 
@@ -144,7 +144,7 @@ target_link_libraries( test_utils PUBLIC test_utils_headers )
 
 # SCRIPTS_COMMON_ARGS is used by underlying test categories
 set( SCRIPTS_COMMON_ARGS
-	"--backends" "\"${AVAILABLE_BACKENDS}\""
+	"--backends" "\"${AVAILABLE_TEST_BACKENDS}\""
 	"--input-dir" "\"${DATASETS_DIR}\""
 )
 
@@ -179,7 +179,7 @@ add_custom_target( "list_tests_categories"
 )
 
 # list available tests per backend
-foreach( b ${AVAILABLE_BACKENDS} )
+foreach( b ${AVAILABLE_TEST_BACKENDS} )
 	get_property( bt GLOBAL PROPERTY tests_backend_${b} )
 	add_custom_target( "list_tests_backend_${b}"
 		COMMAND echo "${bt}"

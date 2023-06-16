@@ -19,7 +19,6 @@
 # add_grb_executables and add_grb_executable_custom need this information
 set( TEST_CATEGORY "unit" )
 
-
 # list tests, without the CATEROR[IES,Y] keyword (it's now passed via TEST_CATEGORY)
 add_grb_executables( equals equals.cpp
 	BACKENDS reference NO_BACKEND_NAME
@@ -240,12 +239,20 @@ add_grb_executables( outer outer.cpp
 	BACKENDS reference reference_omp hyperdags nonblocking
 )
 
+# must generate the golden output for other tests
+force_add_grb_executable( mxv mxv.cpp
+	BACKEND reference
+)
 add_grb_executables( mxv mxv.cpp
-	BACKENDS reference reference_omp bsp1d hybrid hyperdags nonblocking
+	BACKENDS reference_omp bsp1d hybrid hyperdags nonblocking
 )
 
+# must generate the golden output for other tests
+force_add_grb_executable( vxm vxm.cpp
+	BACKEND reference
+)
 add_grb_executables( vxm vxm.cpp
-	BACKENDS reference reference_omp bsp1d hybrid hyperdags nonblocking
+	BACKENDS reference_omp bsp1d hybrid hyperdags nonblocking
 )
 
 add_grb_executables( capacity capacity.cpp
