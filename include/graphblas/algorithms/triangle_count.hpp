@@ -223,7 +223,10 @@ namespace grb {
 		//enum class TriangleCountAlgorithm { Burkhardt, Cohen, Sandia_TT };
 		enum class TriangleCountAlgorithm { Burkhardt, Cohen, Sandia_TT };
 
-		std::map< TriangleCountAlgorithm, std::string > TriangleCountAlgorithmNames = { { TriangleCountAlgorithm::Burkhardt, "Burkhardt" }, { TriangleCountAlgorithm::Cohen, "Cohen" },
+		//std::map< TriangleCountAlgorithm, std::string > TriangleCountAlgorithmNames = { { TriangleCountAlgorithm::Burkhardt, "Burkhardt" }, { TriangleCountAlgorithm::Cohen, "Cohen" },
+		//	{ TriangleCountAlgorithm::Sandia_TT, "Sandia_TT" } };
+
+		std::map< TriangleCountAlgorithm, std::string > TriangleCountAlgorithmNames = { { TriangleCountAlgorithm::Cohen, "Cohen" },
 			{ TriangleCountAlgorithm::Sandia_TT, "Sandia_TT" } };
 
 		template< Descriptor descr = descriptors::no_operation, typename D, typename I, typename J, class Semiring, class MulMonoid, class SumMonoid >
@@ -266,7 +269,7 @@ namespace grb {
 
 			// Compute a sum reduction over <EWA_out> in <count>
 			count = 0;
-			rc = rc ? rc : grb::internal::foldl( count, EWA_out, sumreduce_monoid );
+			rc = rc ? rc : grb::foldl( count, EWA_out, sumreduce_monoid );
 			utils::printf< Debug >( "count = foldl(EWA_out) = " + std::to_string( count ) + "\n" );
 
 			// Apply the div_factor to the reduction result

@@ -79,7 +79,8 @@ namespace grb {
 
 	namespace internal {
 
-		/*count the number of nonzeros in each tile of the output matrix C = AB*/
+		/*
+		//count the number of nonzeros in each tile of the output matrix C = AB
 		template< typename OutputType, typename InputType1, typename InputType2, typename RIT, typename CIT, typename NIT >
 		void count_NonZeros_Tile_MXM( Matrix< OutputType, nonblocking, RIT, CIT, NIT > & C,
 			const Matrix< InputType1, nonblocking, RIT, CIT, NIT > & A,
@@ -124,6 +125,7 @@ namespace grb {
 
 			// std::cout << "number of nnz in tile " << nnz_current_tile << std::endl;
 		}
+		*/
 
 		template< 
 			Descriptor descr = descriptors::no_operation, 
@@ -373,7 +375,7 @@ namespace grb {
 							// dense_mask
 							true,
 							// matrices for mxm
-							&A, nullptr, nullptr, std::move( func_count_nonzeros ), std::move( func_prefix_sum ) );
+							&A, nullptr, nullptr, nullptr, std::move( func_count_nonzeros ), std::move( func_prefix_sum ) );
 
 			// compute final accumulated result computed by each tile.
 			// we can do this since by this point the pipeline has been executed and array_reduced holds all its results
@@ -1015,6 +1017,7 @@ namespace grb {
 					// do final resize
 					// this will update cap of C to nzc
 					const RC ret = grb::resize( C, nzc );
+					std::cout << "matrix ID = " << grb::getID( C ) << ", internal::getNonzeroCapacity (after resize mxm)= " << grb::capacity(C) << std::endl;					
 #ifndef NDEBUG
 					const size_t old_nzc = nzc;
 #endif				
@@ -2119,8 +2122,7 @@ namespace grb {
 					//OutputType valbuf[ valbuf_elements ];		
 					*/
 					
-					const size_t coordinates_id = grb::config::OMP::current_thread_ID();
-					//const size_t coordinates_id = omp_get_thread_num() * config::CACHE_LINE_SIZE::value();
+					const size_t coordinates_id = grb::config::OMP::current_thread_ID();					
 					std::vector< char > arr1;
 					std::vector< char > buf1;
 					std::vector< InputType1 > valbuf1;
@@ -2141,7 +2143,6 @@ namespace grb {
 					internal::getCoordinatesTiles( arr, buf, valbuf, coordinates_id, C );
 					internal::Coordinates< reference > coors;
 					coors.set( static_cast< void * >( arr.data() ), false, static_cast< void * >( buf.data() ), n );	
-
 
 					for( size_t i = lower_bound; i < upper_bound; ++i ) {
 						coors1.clear();
@@ -2239,7 +2240,7 @@ namespace grb {
 								// dense_mask
 								true,
 								// matrices for mxm
-								&A, &B, &C, std::move( func_count_nonzeros ), std::move( func_prefix_sum ) );
+								&A, &B, &C, nullptr,std::move( func_count_nonzeros ), std::move( func_prefix_sum ) );
 			}
 			
 			// done

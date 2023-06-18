@@ -393,8 +393,7 @@ namespace grb {
 					if( dim > 0 && ! arr_initialized ) {
 #ifdef _H_GRB_REFERENCE_OMP_COORDINATES
 						#pragma omp parallel
-						{
-							std::cout << "parallel set has been called" << std::endl;
+						{							
 							size_t start, end;
 							config::OMP::localRange( start, end, 0, dim );
 #else

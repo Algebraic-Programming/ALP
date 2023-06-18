@@ -85,12 +85,6 @@ namespace grb {
 			return A.nnz_tiles;
 		}
 
-		template< typename D, typename RIT, typename CIT, typename NIT >
-		std::vector< size_t > & getNonzerosTiles(			
-			const grb::Matrix< D, nonblocking, RIT, CIT, NIT > &A
-		) noexcept {
-			return A.nnz_tiles;
-		}
 
 		template< typename D, typename RIT, typename CIT, typename NIT >
 		std::vector< size_t > & getPrefixSumTiles(
@@ -1110,11 +1104,6 @@ namespace grb {
 		template< typename InputType, typename RIT, typename CIT, typename NIT >
 		friend std::vector< size_t > & internal::getNonzerosTiles( 
 			grb::Matrix< InputType, nonblocking, RIT, CIT, NIT > & 
-		) noexcept;
-
-		template< typename InputType, typename RIT, typename CIT, typename NIT >
-		friend std::vector< size_t > & internal::getNonzerosTiles( 
-			const grb::Matrix< InputType, nonblocking, RIT, CIT, NIT > & 
 		) noexcept;
 
 		template< typename InputType, typename RIT, typename CIT, typename NIT >

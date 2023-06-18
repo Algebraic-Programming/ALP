@@ -379,24 +379,26 @@ void grbProgram( const struct input & data_in, struct output & out ) {
 	// WE USE THE SAME INPUT MATRIX A AS MASK
 	// B is mask and A is matrix
 	// computation of C = A^2
+	std::cout << "in mxm RESIZE" << std::endl;
 	grb::mxm(C, A, A,ring, RESIZE);
+	std::cout << "in mxm EXECUTE" << std::endl;
 	grb::mxm(C, A, A,ring);
 	//grb::wait(C);
 
-	
+	//std::cout << "in mxm masked RESIZE" << std::endl;
 	// computation of D = A^3
-	//grb::mxm_masked( D, B, C, A, ring, RESIZE );
-	//grb::mxm_masked( D, B, C, A, ring);
+	grb::mxm_masked( D, B, C, A, ring, RESIZE );
+	std::cout << "in mxm masked EXECUTE" << std::endl;
+	grb::mxm_masked( D, B, C, A, ring);
 	
-
-	/*
+	//std::cout << "in foldl " << std::endl;
 	//trace of D
 	double count = 0;
 	grb::foldl( count, D, monoid );
 
-	std::cout << "value of D = " << count / 6 << std::endl;
-	*/
-	
+	printf( "value of D = %lf \n", count / 6 );
+	//std::cout << "value of D = " << count / 6 << std::endl;
+
 	/*
 	auto &C_raw = internal::getCRS( C );
 	std::cout << "row pointers of C " << std::endl;
