@@ -68,7 +68,6 @@ LPF_INSTALL_PATH set)" ON LPF_INSTALL_PATH OFF
 cmake_dependent_option( WITH_HYBRID_BACKEND "Also build the Hybrid backend \
 (needs LPF_INSTALL_PATH set)" ON LPF_INSTALL_PATH OFF
 )
-
 # to customize build flags for either backends or tests
 option( COMMON_COMPILE_DEFINITIONS
 	"Compilation definitions for BOTH backends and tests; they override the defaults"
@@ -127,7 +126,8 @@ if( NOT WITH_REFERENCE_BACKEND AND
 	NOT WITH_OMP_BACKEND AND
 	NOT WITH_NONBLOCKING_BACKEND AND
 	NOT WITH_BSP1D_BACKEND AND
-	NOT WITH_HYBRID_BACKEND )
+	NOT WITH_HYBRID_BACKEND AND
+	NOT WITH_HYPERDAGS_BACKEND )
 	message( FATAL_ERROR "At least one backend should be enabled")
 endif()
 
@@ -245,13 +245,18 @@ include( AddGRBVars )
 # here, add information for wrappers generated during installation
 include( AddGRBInstall )
 
-# compilation flags for all targets
-include( CompileFlags )
-
 if( WITH_BSP1D_BACKEND OR WITH_HYBRID_BACKEND )
 	# required to create targets against LPF (provides dedicated functions)
 	include( AddLPFTargets )
 endif()
+
+# Coverage flags
+if( CMAKE_BUILD_TYPE STREQUAL "Coverage")
+	include( Coverage )
+endif()
+
+# compilation flags for all targets
+include( CompileFlags )
 
 ### BACKEND HEADERS
 
@@ -290,6 +295,18 @@ include( AddGRBTests )
 add_subdirectory( tests )
 
 add_subdirectory( examples )
+
+
+### COVERAGE REPORT GENERATION
+
+if( CMAKE_BUILD_TYPE STREQUAL "Coverage")
+	create_coverage_command( "coverage_json" "coverage.json"  "--json-pretty" )
+	create_coverage_command( "coverage_cobertura" "coverage.xml"  "--xml-pretty" )
+	create_coverage_command( "coverage_csv" "coverage.csv"  "--csv" )
+	create_coverage_command( "coverage_coveralls" "coveralls.json"  "--coveralls" )
+	create_coverage_command( "coverage_html" "index.html"  "--html-details" )
+endif()
+
 
 ### DOXYGEN DOCUMENTATION GENERATION
 

@@ -12,7 +12,7 @@ variables:
       - "yes"
       - "no"
     description: "Enable extra tests: build with debug symbols, performance tests"
-  LPF_TESTS_ENABLED: 
+  LPF_TESTS_ENABLED:
     value: "no"
     options:
       - "yes"
@@ -24,6 +24,18 @@ variables:
       - "yes"
       - "no"
     description: "Enable compilation using multiple compilers"
+  COVERAGE_ENABLED:
+    value: "no"
+    options:
+      - "yes"
+      - "no"
+    description: "Execute coverage build and tests, then exports XML and HTML reports"
+  GENERATE_COVERAGE_PAGES:
+    value: "no"
+    options:
+      - "yes"
+      - "no"
+    description: "Generate coverage report for Gitlab Pages"
 
 workflow:
   rules:
@@ -33,11 +45,14 @@ workflow:
         EXTRA_TESTS_ENABLED: "yes"
         LPF_TESTS_ENABLED: "yes"
         MULTIPLE_COMPILERS_ENABLED: "yes"
+        COVERAGE_ENABLED: "yes"
     - if: $CI_COMMIT_BRANCH == "develop"
       variables:
         EXTRA_TESTS_ENABLED: "yes"
         LPF_TESTS_ENABLED: "yes"
         MULTIPLE_COMPILERS_ENABLED: "yes"
+        COVERAGE_ENABLED: "yes"
+        GENERATE_COVERAGE_PAGES: "yes"
     - if: $CI_COMMIT_BRANCH =~ /^v.*-rc.*$/
       variables:
         EXTRA_TESTS_ENABLED: "yes"
@@ -50,6 +65,8 @@ workflow:
       when: never
     # run if the pipeline comes from a merge request
     - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+      variables:
+        COVERAGE_ENABLED: "yes"
     # default: don't run
 
 
@@ -65,7 +82,6 @@ workflow:
 #  image: centos:8
 #  rules:
 #    - if: $EXTRA_TESTS_ENABLED == "yes"
-#      when: on_success
 #  before_script:
 #    - yum -y update && yum -y groupinstall "Development Tools" && yum -y install make autoconf cmake numactl-devel
 #  script:
@@ -77,7 +93,7 @@ workflow:
 #    exclude:
 #      - build/**/*.o
 #      - build/**/*.o.d
-#    expire_in: 80 minutes
+#    expire_in: 2 hours
 
 
 #build_debug_centos_8:
@@ -88,7 +104,6 @@ workflow:
 #    - mkdir -p install build && cd ./build && ../bootstrap.sh --prefix=../install --debug-build && make -j$(nproc) && make -j$(nproc) build_tests_all
 #  rules:
 #    - if: $EXTRA_TESTS_ENABLED == "yes"
-#      when: on_success
 
 
 #test_centos_8_unit:
@@ -96,7 +111,6 @@ workflow:
 #  needs: [build_centos_8]
 #  rules:
 #    - if: $EXTRA_TESTS_ENABLED == "yes"
-#      when: on_success
 #  before_script:
 #    - yum -y update && yum -y groupinstall "Development Tools" && yum -y install make autoconf cmake numactl-devel
 #  script:
@@ -109,7 +123,6 @@ workflow:
 #  needs: [build_centos_8]
 #  rules:
 #    - if: $EXTRA_TESTS_ENABLED == "yes"
-#      when: on_success
 #  before_script:
 #    - yum -y update && yum -y groupinstall "Development Tools" && yum -y install make autoconf cmake numactl-devel
 #  script:
@@ -122,7 +135,6 @@ workflow:
 #  needs: [build_centos_8]
 #  rules:
 #    - if: $EXTRA_TESTS_ENABLED == "yes"
-#      when: on_success
 #  before_script:
 #    - yum -y update && yum -y groupinstall "Development Tools" && yum -y install make autoconf cmake numactl-devel
 #  script:
@@ -135,7 +147,6 @@ workflow:
 #  needs: [build_centos_8]
 #  rules:
 #    - if: $EXTRA_TESTS_ENABLED == "yes"
-#      when: on_success
 #  before_script:
 #    - yum -y update && yum -y groupinstall "Development Tools" && yum -y install make autoconf cmake numactl-devel
 #  script:
@@ -157,7 +168,7 @@ build_test:
       - build/**/*.o.d
       - build/**/CMakeFiles
       - build/**/*.dir
-    expire_in: 80 minutes
+    expire_in: 2 hours
 
 
 build_tests_buildtype_debug_sym_debug:
@@ -204,7 +215,7 @@ build_test_buildtype_debug:
     exclude:
       - build/**/*.o
       - build/**/*.o.d
-    expire_in: 43 minutes
+    expire_in: 2 hours
 
 test_smoke_build_type_debug:
   needs: [build_test_buildtype_debug]
@@ -263,7 +274,7 @@ build_test_lpf:
       - build/**/*.o.d
       - build/**/CMakeFiles
       - build/**/*.dir
-    expire_in: 80 minutes
+    expire_in: 2 hours
 
 tests_unit_lpf:
   rules:
@@ -312,3 +323,92 @@ build_test_gcc_versions:
       --prefix=../install --with-datasets=${ALP_DATASETS}
       --with-lpf=${LPF_BASE_PATH}/build_mpich_${CC_COMPILER}_${VER}/install &&
       make -j$(nproc) build_tests_all
+
+# Coverage build + tests for each backend
+
+coverage_matrix:
+  rules:
+    - if: $COVERAGE_ENABLED == "yes" || $GENERATE_COVERAGE_PAGES == "yes"
+  needs: [build_test]
+  parallel:
+    matrix:
+      # ________: HYPERDAGS  REFERENCE  REFERENCE_OMP  NONBLOCKING
+      - BACKENDS: OFF        ON         OFF            OFF          # REFERENCE
+      - BACKENDS: OFF        OFF        ON             OFF          # REFERENCE_OMP
+      - BACKENDS: ON         OFF        OFF            OFF          # HYPERDAGS (reference_omp)
+      - BACKENDS: OFF        OFF        OFF            ON           # NONBLOCKING
+  script:
+    - read -a backends_array <<< "$BACKENDS"
+    - echo "-- HYPERDAGS=${backends_array[0]}"
+    - echo "-- REFERENCE=${backends_array[1]}"
+    - echo "-- REFERENCE_OMP=${backends_array[2]}"
+    - echo "-- NONBLOCKING=${backends_array[3]}"
+
+    - rm -rf build install && mkdir -p install build && cd build
+    - cmake -DCMAKE_INSTALL_PREFIX='../install' -DCMAKE_BUILD_TYPE=Coverage
+      -DWITH_HYPERDAGS_BACKEND=${backends_array[0]}
+      -DWITH_REFERENCE_BACKEND=${backends_array[1]}
+      -DWITH_OMP_BACKEND=${backends_array[2]}
+      -DWITH_NONBLOCKING_BACKEND=${backends_array[3]} ..
+    - make -j$(nproc) unittests
+# for each job (i.e., each backend), generate a separate JSON to me merged later
+# (gcovr merges only JSON files)
+    - python3 -m gcovr --json
+      --print-summary
+      --exclude-directories "/usr/*"
+      --root ${CI_PROJECT_DIR}
+      --output ${CI_PROJECT_DIR}/COVERAGE_${CI_JOB_ID}.json
+  artifacts:
+    paths:
+      - COVERAGE_${CI_JOB_ID}.json
+
+cobertura_coverage_report:
+  rules:
+    - if: $COVERAGE_ENABLED == "yes" || $GENERATE_COVERAGE_PAGES == "yes"
+  needs: [coverage_matrix]
+  script:
+# merge JSON files from multiple backends into single Cobertura report for the CI
+    - python3 -m gcovr --xml-pretty
+      --add-tracefile "COVERAGE_*.json"
+      --print-summary
+      --root ${CI_PROJECT_DIR}
+      --output coverage.xml
+  coverage: /^\s*lines:\s*\d+.\d+\%/
+  artifacts:
+    name: ${CI_JOB_NAME}-${CI_COMMIT_REF_NAME}-${CI_COMMIT_SHA}
+    expire_in: 4 weeks
+    reports:
+      coverage_report:
+        coverage_format: cobertura
+        path: coverage.xml
+
+html_coverage_report:
+  rules:
+    - if: $COVERAGE_ENABLED == "yes" || $GENERATE_COVERAGE_PAGES == "yes"
+  needs: [coverage_matrix]
+  script:
+    - mkdir -p public
+# merge JSON files from multiple backends into single HTNL report for the CI
+    - python3 -m gcovr --html-details
+      --add-tracefile "COVERAGE_*.json"
+      --print-summary
+      --sort-percentage
+      --html-title "Branch ${CI_COMMIT_BRANCH}, commit ${CI_COMMIT_SHA}"
+      --root ${CI_PROJECT_DIR}
+      --output public/index.html
+  artifacts:
+    expire_in: 4 weeks
+    paths: 
+      - public
+
+## GitLab Pages update job
+
+pages:
+  rules:
+    - if: $GENERATE_COVERAGE_PAGES == "yes"
+  needs: [html_coverage_report]
+  script:
+    - mkdir -p public
+  artifacts:
+    paths:
+      - public

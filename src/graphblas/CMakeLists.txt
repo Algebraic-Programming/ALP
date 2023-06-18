@@ -132,7 +132,7 @@ endmacro( make_reference_target )
 ### but storing only the minimum interface definitions (e.g. no OMP);
 ### no default backend is set!
 
-if( WITH_REFERENCE_BACKEND OR WITH_REFERENCE_OMP_BACKEND OR WITH_NONBLOCKING_BACKEND )
+if( WITH_REFERENCE_BACKEND OR WITH_OMP_BACKEND OR WITH_NONBLOCKING_BACKEND )
 
 	# alias target for basic propagation of headers and definitions
 	# from existing header target, which depends on the enabled backends;

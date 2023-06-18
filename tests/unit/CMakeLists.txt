@@ -290,6 +290,13 @@ add_custom_target( "build_tests_category_unit"
 	DEPENDS "${unit_tests_list}"
 )
 
+
+foreach( mode ${MODES_unit} )
+	# Removing the prefix
+	string( SUBSTRING "${MODES_${mode}_suffix}" 1 -1 __mode )
+	list( APPEND __MODES "${__mode}" )
+endforeach()
+
 # target to run the tests in this category by calling the appropriate runner
 add_custom_target( tests_unit
 	COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/unittests.sh
@@ -298,6 +305,7 @@ add_custom_target( tests_unit
 		"--test-out-dir" "\"${CMAKE_CURRENT_BINARY_DIR}/output\""
 		"--output-verification-dir" "\"${CMAKE_CURRENT_SOURCE_DIR}/output_verification\""
 		"--test-data-dir" "\"${CMAKE_CURRENT_SOURCE_DIR}/test_data\""
+		"--modes" "\"${__MODES}\""
 
 	WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}"
 	DEPENDS build_tests_category_unit # add dependency on this target

@@ -32,6 +32,7 @@ limitations under the License.
     - [6. Add the backend name to the relevant tests](#6-add-the-backend-name-to-the-relevant-tests)
 - [Test Categories and modes](#test-categories-and-modes)
 - [Reproducible Builds](#reproducible-builds)
+- [The coverage infrastructure](#the-coverage-infrastructure)
 
 # Introduction to ALP/GraphBLAS Building and Testing Infrastructure:
 
@@ -181,6 +182,7 @@ To control the backends to build, the following options are available:
 otherwise `OFF`)
 * `WITH_HYBRID_BACKEND` build the Hybrid backend (needs `LPF_INSTALL_PATH` set,
 otherwise `OFF`)
+* `WITH_NONBLOCKING_BACKEND` build the non-blocking backend (default: `ON`)
 
 When choosing, keep in mind that several constraints apply:
 
@@ -190,16 +192,20 @@ When choosing, keep in mind that several constraints apply:
 
 Passing incompatible options will cause error messages and the build to stop.
 
-The ALP/GraphBLAS building infrastructure currently supports  *Release* and
-*Debug* builds, on which several compilation flags depend that are defined by
-default in the [main CMakeLists.txt file](../CMakeLists.txt) inside the section
-`SETTINGS FOR COMPILATION`.
+The ALP/GraphBLAS building infrastructure currently supports  *Release*,
+*Debug* and *Coverage* builds, on which several compilation flags depend that
+are defined by default in the [main CMakeLists.txt file](../CMakeLists.txt)
+inside the section `SETTINGS FOR COMPILATION`.
 The build type can be chosen via the standard
 [CMAKE_BUILD_TYPE](https://cmake.org/cmake/help/latest/variable/CMAKE_BUILD_TYPE.html)
 option; if none is passed, *Release* is automatically set.
 In particular, *Release* optimizes all targets aggressively and disables non-
 mandatory sanity and run-time checks, which are enabled in the *Debug* build
 and can hence result in much slower code.
+Finally, the *Coverage* build type instruments backend and test binaries to
+extract coverage information after running them and, to this aim, may disable
+certain performance optimizations; for more information, see the
+[dedicated section](#the-coverage-infrastructure).
 
 The following options control compile definitions and options for backends and
 tests and are by default empty:
@@ -794,6 +800,7 @@ if( WITH_EXAMPLE_BACKEND )
     add_dependencies( examples sp_example )
 endif()
 ```
+
 # Test Categories and modes
 
 Tests are grouped in *categories* according to what they test:
@@ -845,3 +852,95 @@ provide all needed dependencies and tools.
 Indeed, the file [`.gitlab-ci.yml`](../.gitlab-ci.yml) describes the CI jobs
 that internally test ALP/GraphBLAS via [GitLab](https://about.gitlab.com/),
 which is available [open source](https://about.gitlab.com/install/).
+
+# The coverage infrastructure
+
+The *Coverage* build type stores coverage information into machine- or human-readable
+files after running one or more test binaries.
+These files can be directly read by users or can be consumed by tools to display
+the coverage information in a user-friendly interface, possibly integrated
+within a CI/CD infrastructure (e.g., GitHub or GitLab).
+
+The coverage infrastructure prescribes additional dependencies:
+* [gcov](https://gcc.gnu.org/onlinedocs/gcc/Gcov.html) to instrument the binary
+  during compilation; it usually comes together with a GNU C/C++ compiler, in
+  form of a compiler-specific library (`libgcov.a`) and a command-line tool
+  (e.g., `gcov-9` for `gcc-9`/`g++-9`)
+* [gcovr](https://gcovr.com/en/stable), a Python3 tool that translates gcov
+  traces to multiple formats; it can be installed via `pip` as `python3 -m pip install gcovr`
+  (on some distributions also via the package manager, e.g., `apt-get install gcovr`
+  -- though the first method is preferable as it provides a more up-to-date
+  version) and clearly requires
+* [Python3](https://www.python.org/), available in most Linux distributions
+  (e.g., `apt-get install python3`) or as [pre-built binary](https://github.com/indygreg/python-build-standalone/releases)
+  for many OSs and architectures
+  (e.g., https://github.com/indygreg/python-build-standalone/releases/download/20230116/cpython-3.11.1+20230116-x86_64_v4-unknown-linux-gnu-install_only.tar.gz)
+
+Note that because of the *gcov* dependency **only GCC is currently supported**
+as a compiler.
+Also note that the coverage infrastructure is implemented only in the CMake
+infrastructure.
+
+The Coverage build mode can be enabled in two ways:
+- if you use the `bootstrap.sh` script to generate the build infrastructure, you
+  can add the `--coverage-build` option on invocation
+- if you directly use CMake, with `-DCMAKE_BUILD_MODE=Coverage`
+
+By doing so:
+* all binary targets are compiled with the *-fprofile-arcs* and *-ftest-coverage*
+  flags to enable tracing: these cause the creation of `.gcno` and `.gcda` files
+  in the directory each binary runs in that store exection traces
+* performance optimizations for *all* targets are much more restrictive than for
+  other build types, preventing any aggressive optimization (`-O1`) and especially
+  inlining in order to gather accurate coverage information
+* because of these restrictions, multiple modes for a test category are not useful
+  anymore (the flags are the same, and numerical precision is not being tested),
+  so only one mode is enabled: for example, only the *ndebug* mode is enabled
+  for unit tests
+* a new folder is created inside the build directory named `coverage`, where
+  coverage reports are stored
+
+Note that, because of **very limited** performance optimizations, tests may run
+*much* slower than in release.
+
+Selecting the coverage build type adds several `make` targets to produce coverage
+information; these are:
+* `coverage_json`: generates *coverage/coverage.json*
+* `coverage_cobertura`: generates *coverage/coverage.xml*
+* `coverage_csv`: generates *coverage/coverage.csv*
+* `coverage_coveralls`: generates *coverage/coveralls.json*
+* `coverage_html`: generates *coverage/index.html*
+
+These targets correspond to the output formats
+[gcovr can generate](https://gcovr.com/en/stable/output/index.html).
+
+These commands will use any  `.gcno` and `.gcda` files generated during
+execution(s) of any program/test.
+To clean a coverage report and all coverage information generated during the
+execution of the binaries, you can use the `make coverage_clean` command; to
+clean only the generated report, simply clean the content of the `coverage`
+folder.
+Hence, a typical workflow to extract coverage information is:
+1. configure with coverage build type, e.g.:
+    ```bash
+    mkdir build
+    cd build
+    ../bootstrap.sh --prefix=./install --coverage-build
+    ```
+2. build and run one or more tests as usual, e.g.:
+    ```bash
+    make unittests -j$(nproc)
+    ```
+3. parse coverage information to produce a report, e.g., a human-readable HTML
+  report
+    ```bash
+    make coverage_html
+    ```
+1. read the HTML report with, e.g., a browser:
+    ```bash
+    xdg-open coverage/index.html
+    ```
+2. clean coverage information and report:
+    ```bash
+    make coverage_clean
+    ```

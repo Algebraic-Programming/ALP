@@ -22,7 +22,7 @@ source ${TESTS_ROOT_DIR}/parse_env.sh
 
 REFERENCE_COUNT=$(echo ${BACKENDS[@]} | grep -o "reference" | wc -l)
 
-for MODE in ndebug debug; do
+for MODE in ${MODES}; do
 
 	echo "****************************************************************************************"
 	echo "      FUNCTIONAL    PERFORMANCE                       DESCRIPTION      "

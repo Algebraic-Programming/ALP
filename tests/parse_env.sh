@@ -7,6 +7,9 @@ fi
 
 SCRIPT_NAME="$0"
 
+# Default modes
+MODES="ndebug debug"
+
 function print_synopsis() {
 	echo "SYNOPSIS: ${SCRIPT_NAME} [OPTIONS] <file(s)...>"
 	echo " OPTIONS:"
@@ -22,6 +25,7 @@ function print_synopsis() {
 	echo "  --manual-run-args LPF engine arguments for manual run"
 	echo "  --output-verification-dir directory with golden output for test verification"
 	echo "  --test-data-dir directory with original data used for tests"
+	echo "  --modes (space-separated) modes for the unit-tests, default: $MODES"
 }
 
 function check_dir() {
@@ -109,6 +113,10 @@ do
 			OUTPUT_VERIFICATION_DIR="$(realpath "$2")"
 			shift 2
 			;;
+		--modes)
+			MODES=("$2")
+			shift 2
+			;;
 		--*)
 			echo -e "unknown option '$1' inside"
 			echo "---"
@@ -134,6 +142,10 @@ if [[ -z "${TEST_OUT_DIR}" ]]; then
 fi
 if [[ -z "${BACKENDS}" ]]; then
 	echo "no argument for --backends"
+	exit 1
+fi
+if [[ -z "${MODES}" ]]; then
+	echo "no argument for --modes"
 	exit 1
 fi
 

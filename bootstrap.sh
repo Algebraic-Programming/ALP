@@ -80,7 +80,7 @@ the location where LPF is installed"
 	echo "                                        optional; default value is reference"
 	echo "                                        clashes with --no-hyperdags"
 	echo "  --no-nonblocking                    - disables the nonblocking backend"
-	echo "  --debug-build                       - build the project with debug options (tests will run much slower!)"
+	echo "  --[debug | coverage]-build          - build the project with debug | coverage options (tests will run much slower!)"
 	echo "  --generator=<value>                 - set the generator for CMake (otherwise use CMake's default)"
 	echo "  --show                              - show generation commands instead of running them"
 	echo "  --delete-files                      - delete files in the current directory without asking for confirmation"
@@ -107,6 +107,7 @@ LPF_INSTALL_PATH=
 BANSHEE_PATH=
 SNITCH_PATH=
 debug_build=no
+coverage_build=no
 generator=
 delete_files=no
 DATASETS_PATH=
@@ -171,6 +172,9 @@ or assume default paths (--with-lpf)"
 			;;
 	--debug-build)
 			debug_build=yes
+			;;
+	--coverage-build)
+			coverage_build=yes
 			;;
 	--generator=*)
 			generator="${arg#--generator=}"
@@ -302,7 +306,7 @@ the current directory before invocation or confirm the deletion of its content w
 				exit -1
 			fi
 			echo "Deleting the content of \"${BUILD_DIR}\"..."
-			rm -rf "'${BUILD_DIR}'/*"
+			find "${BUILD_DIR}/" -mindepth 1 -maxdepth 1 -exec rm -rf {} +
 			echo
 		fi
 		echo "*** CONFIGURING CMake inside \"${BUILD_DIR}\" ***"
@@ -311,8 +315,15 @@ the current directory before invocation or confirm the deletion of its content w
 
 	CMAKE_OPTS="-DCMAKE_INSTALL_PREFIX='${ABSOLUTE_PREFIX}'"
 
+	if [[ "${debug_build}" == "yes" && "${coverage_build}" == "yes" ]]; then
+		>&2 echo "Error: Debug and Coverage build can not be selected simulteanously"
+		exit 1
+	fi
+
 	if [[ "${debug_build}" == "yes" ]]; then
 		CMAKE_OPTS+=" -DCMAKE_BUILD_TYPE=Debug"
+	elif [[ "${coverage_build}" == "yes" ]]; then
+		CMAKE_OPTS+=" -DCMAKE_BUILD_TYPE=Coverage"
 	else
 		CMAKE_OPTS+=" -DCMAKE_BUILD_TYPE=Release"
 	fi
