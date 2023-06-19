@@ -384,9 +384,9 @@ void grbProgram( const struct input & data_in, struct output & out ) {
 
 	std::cout << "in mxm masked RESIZE" << std::endl;
 	// computation of D = A^3
-	grb::mxm( D, C, A, ring, RESIZE );
+	grb::mxm_masked( D, C, A, ring, RESIZE );
 	std::cout << "in mxm masked EXECUTE" << std::endl;
-	grb::mxm( D, C, A, ring);
+	grb::mxm_masked( D, C, A, ring);
 	
 	//std::cout << "in foldl " << std::endl;
 	//trace of D
