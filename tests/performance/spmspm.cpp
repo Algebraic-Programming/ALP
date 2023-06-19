@@ -155,8 +155,6 @@ void grbProgram( const struct input & data_in, struct output & out ) {
 	// time a single call
 	{
 		Matrix< double > C( l, n );
-		Matrix< double > D( l, n );
-		Matrix< double > E( l, n );
 
 		grb::utils::Timer subtimer;
 		subtimer.reset();
@@ -210,8 +208,8 @@ void grbProgram( const struct input & data_in, struct output & out ) {
 	}
 
 	// allocate output for benchmark
-	Matrix< double > C( n, n);
-	Matrix< double > D( n, n );
+	Matrix< double > C( l, n);
+	Matrix< double > D( l, n );
 	//Matrix< double > E( n, n );	
 
 	// that was the preamble
@@ -382,14 +380,13 @@ void grbProgram( const struct input & data_in, struct output & out ) {
 	std::cout << "in mxm RESIZE" << std::endl;
 	grb::mxm(C, A, A,ring, RESIZE);
 	std::cout << "in mxm EXECUTE" << std::endl;
-	grb::mxm(C, A, A,ring);
-	//grb::wait(C);
+	grb::mxm(C, A, A,ring);	
 
-	//std::cout << "in mxm masked RESIZE" << std::endl;
+	std::cout << "in mxm masked RESIZE" << std::endl;
 	// computation of D = A^3
-	grb::mxm_masked( D, B, C, A, ring, RESIZE );
+	grb::mxm( D, C, A, ring, RESIZE );
 	std::cout << "in mxm masked EXECUTE" << std::endl;
-	grb::mxm_masked( D, B, C, A, ring);
+	grb::mxm( D, C, A, ring);
 	
 	//std::cout << "in foldl " << std::endl;
 	//trace of D
