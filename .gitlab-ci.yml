@@ -347,6 +347,7 @@ coverage_matrix:
       -DWITH_REFERENCE_BACKEND=${backends_array[1]}
       -DWITH_OMP_BACKEND=${backends_array[2]}
       -DWITH_NONBLOCKING_BACKEND=${backends_array[3]} ..
+    - make -j$(nproc)
     - make -j$(nproc) unittests
 # for each job (i.e., each backend), generate a separate JSON to me merged later
 # (gcovr merges only JSON files)
