@@ -340,7 +340,9 @@ coverage_matrix:
     - echo "-- NONBLOCKING=${backends_array[3]}"
 
     - rm -rf build install && mkdir -p install build && cd build
-    - cmake -DCMAKE_INSTALL_PREFIX='../install' -DCMAKE_BUILD_TYPE=Coverage
+    - cmake -DCMAKE_INSTALL_PREFIX='../install' 
+      -DCMAKE_BUILD_TYPE=Coverage
+      -DDATASETS_DIR=${ALP_DATASETS}
       -DWITH_HYPERDAGS_BACKEND=${backends_array[0]}
       -DWITH_REFERENCE_BACKEND=${backends_array[1]}
       -DWITH_OMP_BACKEND=${backends_array[2]}
