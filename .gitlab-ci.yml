@@ -279,7 +279,8 @@ build_test_lpf:
 tests_unit_lpf:
   rules:
     - if: $LPF_TESTS_ENABLED == "yes"
-      when: on_success
+  tags:
+    - high-core # LPF requires a lot of cores
   needs: [build_test_lpf]
   script:
     - cd ./build && make -j$(nproc) tests_unit &> unittests.log
