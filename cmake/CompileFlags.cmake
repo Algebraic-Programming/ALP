@@ -71,7 +71,7 @@ set_valid_string( COMMON_OPTS_Debug "${COMMON_COMPILE_OPTIONS}"
 	"${COMMON_OPTS};-fno-omit-frame-pointer"
 )
 set_valid_string( COMMON_OPTS_Coverage "${COMMON_COMPILE_OPTIONS}"
-	"${COMMON_OPTS};-fprofile-arcs;-ftest-coverage"
+	"${COMMON_OPTS};-fprofile-arcs;-ftest-coverage;-fprofile-update=atomic"
 )
 
 add_library( common_flags INTERFACE )
