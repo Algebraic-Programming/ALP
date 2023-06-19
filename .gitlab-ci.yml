@@ -358,6 +358,7 @@ coverage_matrix:
   artifacts:
     paths:
       - COVERAGE_${CI_JOB_ID}.json
+    expire_in: 4 weeks
 
 cobertura_coverage_report:
   rules:
