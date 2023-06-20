@@ -86,7 +86,7 @@ add_grb_executables( ewiseapply ewiseapply.cpp
 )
 
 add_grb_executables( tril tril.cpp
-	BACKENDS reference reference_omp
+	BACKENDS reference reference_omp hyperdags
 )
 
 add_grb_executables( eWiseMatrix eWiseMatrix.cpp
