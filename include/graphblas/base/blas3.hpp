@@ -472,12 +472,13 @@ namespace grb {
 		Descriptor descr = descriptors::no_operation,
 		typename InputType,
 		typename OutputType,
-		typename RIT, typename CIT, typename NIT,
-		Backend backend
+		typename RIT_L, typename CIT_L, typename NIT_L,
+		typename RIT_A, typename CIT_A, typename NIT_A,
+		Backend implementation
 	>
 	RC tril(
-		Matrix< OutputType, backend, RIT, CIT, NIT > &L,
-		const Matrix< InputType, backend, RIT, CIT, NIT > &A,
+		Matrix< OutputType, implementation, RIT_L, CIT_L, NIT_L > & L,
+		const Matrix< InputType, implementation, RIT_A, CIT_A, NIT_A > & A,
 		const long int k,
 		const Phase &phase = Phase::EXECUTE,
 		const typename std::enable_if<
@@ -512,12 +513,13 @@ namespace grb {
 		Descriptor descr = descriptors::no_operation,
 		typename InputType,
 		typename OutputType,
-		typename RIT, typename CIT, typename NIT,
-		Backend backend
+		typename RIT_L, typename CIT_L, typename NIT_L,
+		typename RIT_A, typename CIT_A, typename NIT_A,
+		Backend implementation
 	>
 	RC tril(
-		Matrix< OutputType, backend, RIT, CIT, NIT > &L,
-		const Matrix< InputType, backend, RIT, CIT, NIT > &A,
+		Matrix< OutputType, implementation, RIT_L, CIT_L, NIT_L > & L,
+		const Matrix< InputType, implementation, RIT_A, CIT_A, NIT_A > & A,
 		const Phase &phase = Phase::EXECUTE,
 		const typename std::enable_if<
 			!grb::is_object< OutputType >::value &&

@@ -346,14 +346,22 @@ namespace grb {
 	 * \internal Dispatches to internal::tril_generic
 	 */
 
-	template< Descriptor descr = descriptors::no_operation, typename InputType, typename OutputType, typename RIT, typename CIT, typename NIT >
-	RC tril( Matrix< OutputType, hyperdags, RIT, CIT, NIT > & L,
-		const Matrix< InputType, hyperdags, RIT, CIT, NIT > & A,
+	template<
+		Descriptor descr = descriptors::no_operation,
+		typename InputType, typename OutputType,
+		typename RIT_L, typename CIT_L, typename NIT_L,
+		typename RIT_A, typename CIT_A, typename NIT_A
+	>
+	RC tril(
+		Matrix< OutputType, hyperdags, RIT_L, CIT_L, NIT_L > & L,
+		const Matrix< InputType, hyperdags, RIT_A, CIT_A, NIT_A > & A,
 		const long int k,
 		const Phase & phase = Phase::EXECUTE,
-		const typename std::enable_if< ! grb::is_object< OutputType >::value && ! grb::is_object< InputType >::value && std::is_convertible< InputType, OutputType >::value >::type * const =
-			nullptr ) {
-		
+		const typename std::enable_if< 
+			! grb::is_object< OutputType >::value && 
+			! grb::is_object< InputType >::value && 
+			std::is_convertible< InputType, OutputType >::value 
+			>::type * const = nullptr ) {
 #ifdef _DEBUG
 		std::cerr << "In grb::tril (hyperdags)\n";
 #endif
@@ -386,14 +394,22 @@ namespace grb {
 	 * This primitive is strictly equivalent to calling grb::tril( L, A, 0, phase ).
 	 * see grb::tril( L, A, k, phase ) for full description.
 	 */
-	template< Descriptor descr = descriptors::no_operation, typename InputType, typename OutputType, typename RIT, typename CIT, typename NIT >
-	RC tril( Matrix< OutputType, hyperdags, RIT, CIT, NIT > & L,
-		const Matrix< InputType, hyperdags, RIT, CIT, NIT > & A,
+	template<
+		Descriptor descr = descriptors::no_operation,
+		typename InputType, typename OutputType,
+		typename RIT_L, typename CIT_L, typename NIT_L,
+		typename RIT_A, typename CIT_A, typename NIT_A
+	>
+	RC tril( 
+		Matrix< OutputType, hyperdags, RIT_L, CIT_L, NIT_L > & L,
+		const Matrix< InputType, hyperdags, RIT_A, CIT_A, NIT_A > & A,
 		const Phase & phase = Phase::EXECUTE,
-		const typename std::enable_if< ! grb::is_object< OutputType >::value && ! grb::is_object< InputType >::value && std::is_convertible< InputType, OutputType >::value >::type * const =
-			nullptr ) {
+		const typename std::enable_if< 
+			! grb::is_object< OutputType >::value && 
+			! grb::is_object< InputType >::value && 
+			std::is_convertible< InputType, OutputType >::value 
+			>::type * const = nullptr ) {
 		return tril< descr >( L, A, 0, phase );
-		
 	}
 
 } // end namespace grb
