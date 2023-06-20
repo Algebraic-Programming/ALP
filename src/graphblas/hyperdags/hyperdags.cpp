@@ -391,6 +391,9 @@ std::string grb::internal::hyperdags::toString(
 
 		case FOLDR_SCALAR_MATRIX_MONOID:
 			return "foldr( scalar, matrix, monoid )";
+			
+		case TRIL_MATRIX:
+			return "tril( matrix, matrix )";
 
 	}
 	assert( false );
