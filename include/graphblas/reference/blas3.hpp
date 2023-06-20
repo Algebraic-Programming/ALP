@@ -1402,8 +1402,18 @@ namespace grb {
 			return SUCCESS;
 		}
 
-		template< Descriptor descr, typename OutputType, typename InputType, typename RIT, typename CIT, typename NIT >
-		RC tril_generic( Matrix< OutputType, reference, RIT, CIT, NIT > & L, const Matrix< InputType, reference, RIT, CIT, NIT > & A, const long int k, const Phase & phase ) {
+		template<
+			Descriptor descr = descriptors::no_operation,
+			typename InputType, typename OutputType,
+			typename RIT_L, typename CIT_L, typename NIT_L,
+			typename RIT_A, typename CIT_A, typename NIT_A
+		>
+		RC tril_generic(
+			Matrix< OutputType, reference, RIT_L, CIT_L, NIT_L > & L,
+			const Matrix< InputType, reference, RIT_A, CIT_A, NIT_A > & A,
+			const long int k,
+			const Phase & phase ) {
+
 			const size_t m = descr & descriptors::transpose_matrix ? ncols( A ) : nrows( A );
 			const size_t n = descr & descriptors::transpose_matrix ? nrows( A ) : ncols( A );
 
@@ -1435,17 +1445,17 @@ namespace grb {
 				std::cout << "RESIZE phase: resize( L, " << nzc << " )\n";
 #endif
 				return resize( L, nzc );
-			} 
+			}
 
 			if( phase == Phase::EXECUTE ) {
 
 				const auto & L_crs_raw = internal::getCRS( L );
 				const auto & L_ccs_raw = internal::getCCS( L );
 				const size_t nzc = capacity( L );
-				
+
 				L_crs_raw.col_start[ 0 ] = 0;
 				L_ccs_raw.col_start[ 0 ] = 0;
-				
+
 				// Prefix sum computation into L.CRS.col_start
 #ifdef _H_GRB_REFERENCE_OMP_BLAS3
 #pragma omp parallel for simd default( none ) shared( A_raw, L_crs_raw, L_ccs_raw ) firstprivate( k, m )
@@ -1852,23 +1862,34 @@ namespace grb {
 	 *
 	 * \internal Dispatches to internal::tril_generic
 	 */
-	template< Descriptor descr = descriptors::no_operation, typename InputType, typename OutputType, typename RIT, typename CIT, typename NIT >
-	RC tril( Matrix< OutputType, reference, RIT, CIT, NIT > & L,
-		const Matrix< InputType, reference, RIT, CIT, NIT > & A,
+	template<
+		Descriptor descr = descriptors::no_operation,
+		typename InputType, typename OutputType,
+		typename RIT_L, typename CIT_L, typename NIT_L,
+		typename RIT_A, typename CIT_A, typename NIT_A
+	>
+	RC tril(
+		Matrix< OutputType, reference, RIT_L, CIT_L, NIT_L > & L,
+		const Matrix< InputType, reference, RIT_A, CIT_A, NIT_A > & A,
 		const long int k,
 		const Phase & phase = Phase::EXECUTE,
-		const typename std::enable_if< ! grb::is_object< OutputType >::value && ! grb::is_object< InputType >::value && std::is_convertible< InputType, OutputType >::value >::type * const =
-			nullptr ) {
-		(void)L;
-		(void)A;
-		(void)phase;
+		const typename std::enable_if<
+			! grb::is_object< OutputType >::value &&
+			! grb::is_object< InputType >::value &&
+			std::is_convertible< InputType, OutputType >::value
+		>::type * const = nullptr ) {
+
 #ifdef _DEBUG
 		std::cerr << "In grb::tril (reference)\n";
 #endif
 
 		// Static checks
-		NO_CAST_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< InputType, OutputType >::value ), "grb::tril (reference)",
-			"input matrix and output matrix are incompatible for implicit casting" );
+		NO_CAST_ASSERT(
+			(   not ( descr & descriptors::no_casting )
+				|| std::is_same< InputType, OutputType >::value
+			), "grb::tril (reference)",
+			"input matrix and output matrix are incompatible for implicit casting"
+		);
 
 		return internal::tril_generic< descr >( L, A, k, phase );
 	}
@@ -1879,14 +1900,20 @@ namespace grb {
 	 * This primitive is strictly equivalent to calling grb::tril( L, A, 0, phase ).
 	 * see grb::tril( L, A, k, phase ) for full description.
 	 */
-	template< Descriptor descr = descriptors::no_operation, typename InputType, typename OutputType, typename RIT, typename CIT, typename NIT >
-	RC tril( Matrix< OutputType, reference, RIT, CIT, NIT > & L,
-		const Matrix< InputType, reference, RIT, CIT, NIT > & A,
+	template<
+		Descriptor descr = descriptors::no_operation,
+		typename InputType, typename OutputType,
+		typename RIT_L, typename CIT_L, typename NIT_L,
+		typename RIT_A, typename CIT_A, typename NIT_A
+	>
+	RC tril(
+		Matrix< OutputType, reference, RIT_L, CIT_L, NIT_L > & L,
+		const Matrix< InputType, reference, RIT_A, CIT_A, NIT_A > & A,
 		const Phase & phase = Phase::EXECUTE,
 		const typename std::enable_if< ! grb::is_object< OutputType >::value && ! grb::is_object< InputType >::value && std::is_convertible< InputType, OutputType >::value >::type * const =
 			nullptr ) {
 		return tril< descr >( L, A, 0, phase );
-		
+
 	}
 
 } // namespace grb
