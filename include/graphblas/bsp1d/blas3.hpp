@@ -111,12 +111,16 @@ namespace grb {
 	/** \internal Simply delegates to process-local backend */
 	template<
 		Descriptor descr = descriptors::no_operation,
+		class MulMonoid,
 		typename OutputType, typename InputType1, typename InputType2,
-		class MulMonoid
+		typename RIT, typename CIT, typename NIT,
+		typename RIT1, typename CIT1, typename NIT1,
+		typename RIT2, typename CIT2, typename NIT2
 	>
-	RC eWiseApply( Matrix< OutputType, BSP1D > &C,
-		const Matrix< InputType1, BSP1D > &A,
-		const Matrix< InputType2, BSP1D > &B,
+	RC eWiseApply(
+		Matrix< OutputType, BSP1D, RIT, CIT, NIT > &C,
+		const Matrix< InputType1, BSP1D, RIT1, CIT1, NIT1 > &A,
+		const Matrix< InputType2, BSP1D, RIT2, CIT2, NIT2 > &B,
 		const MulMonoid &mul,
 		const Phase phase = EXECUTE,
 		const typename std::enable_if< !grb::is_object< OutputType >::value &&
@@ -154,12 +158,16 @@ namespace grb {
 	/** \internal Simply delegates to process-local backend */
 	template<
 		Descriptor descr = descriptors::no_operation,
+		class Operator,
 		typename OutputType, typename InputType1, typename InputType2,
-		class Operator
+		typename RIT, typename CIT, typename NIT,
+		typename RIT1, typename CIT1, typename NIT1,
+		typename RIT2, typename CIT2, typename NIT2
 	>
-	RC eWiseApply( Matrix< OutputType, BSP1D > &C,
-		const Matrix< InputType1, BSP1D > &A,
-		const Matrix< InputType2, BSP1D > &B,
+	RC eWiseApply(
+		Matrix< OutputType, BSP1D, RIT, CIT, NIT > &C,
+		const Matrix< InputType1, BSP1D, RIT1, CIT1, NIT1 > &A,
+		const Matrix< InputType2, BSP1D, RIT2, CIT2, NIT2 > &B,
 		const Operator &op,
 		const Phase phase = EXECUTE,
 		const typename std::enable_if< !grb::is_object< OutputType >::value &&

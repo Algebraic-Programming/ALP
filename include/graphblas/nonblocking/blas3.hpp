@@ -440,16 +440,16 @@ namespace grb {
 		template<
 			bool allow_void,
 			Descriptor descr,
-			class MulMonoid,
-			typename OutputType,
-			typename InputType1,
-			typename InputType2,
-			class Operator
+			class MulMonoid, class Operator,
+			typename OutputType, typename InputType1, typename InputType2,
+			typename RIT, typename CIT, typename NIT,
+			typename RIT1, typename CIT1, typename NIT1,
+			typename RIT2, typename CIT2, typename NIT2
 		>
 		RC eWiseApply_matrix_generic(
-			Matrix< OutputType, nonblocking > &C,
-			const Matrix< InputType1, nonblocking > &A,
-			const Matrix< InputType2, nonblocking > &B,
+			Matrix< OutputType, nonblocking, RIT, CIT, NIT > &C,
+			const Matrix< InputType1, nonblocking, RIT1, CIT1, NIT1 > &A,
+			const Matrix< InputType2, nonblocking, RIT2, CIT2, NIT2 > &B,
 			const Operator &oper,
 			const MulMonoid &mulMonoid,
 			const Phase &phase,
@@ -475,7 +475,8 @@ namespace grb {
 
 			// second, delegate to the reference backend
 			return eWiseApply_matrix_generic<
-					allow_void, descr, MulMonoid, OutputType, InputType1, InputType2, Operator
+					allow_void, descr, 
+					MulMonoid, Operator
 				>(
 					getRefMatrix( C ), getRefMatrix( A ), getRefMatrix( B ),
 					oper, mulMonoid, phase
@@ -486,15 +487,16 @@ namespace grb {
 
 	template<
 		Descriptor descr = descriptors::no_operation,
-		typename OutputType,
-		typename InputType1,
-		typename InputType2,
-		class MulMonoid
+		class MulMonoid,
+		typename OutputType, typename InputType1, typename InputType2,
+		typename RIT, typename CIT, typename NIT,
+		typename RIT1, typename CIT1, typename NIT1,
+		typename RIT2, typename CIT2, typename NIT2
 	>
 	RC eWiseApply(
-		Matrix< OutputType, nonblocking > &C,
-		const Matrix< InputType1, nonblocking > &A,
-		const Matrix< InputType2, nonblocking > &B,
+		Matrix< OutputType, nonblocking, RIT, CIT, NIT > &C,
+		const Matrix< InputType1, nonblocking, RIT1, CIT1, NIT1 > &A,
+		const Matrix< InputType2, nonblocking, RIT2, CIT2, NIT2 > &B,
 		const MulMonoid &mulmono,
 		const Phase phase = EXECUTE,
 		const typename std::enable_if< !grb::is_object< OutputType >::value &&
@@ -534,15 +536,16 @@ namespace grb {
 
 	template<
 		Descriptor descr = grb::descriptors::no_operation,
-		typename OutputType,
-		typename InputType1,
-		typename InputType2,
-		class Operator
+		class Operator,
+		typename OutputType, typename InputType1, typename InputType2,
+		typename RIT, typename CIT, typename NIT,
+		typename RIT1, typename CIT1, typename NIT1,
+		typename RIT2, typename CIT2, typename NIT2
 	>
 	RC eWiseApply(
-		Matrix< OutputType, nonblocking > &C,
-		const Matrix< InputType1, nonblocking > &A,
-		const Matrix< InputType2, nonblocking > &B,
+		Matrix< OutputType, nonblocking, RIT, CIT, NIT > &C,
+		const Matrix< InputType1, nonblocking, RIT1, CIT1, NIT1 > &A,
+		const Matrix< InputType2, nonblocking, RIT2, CIT2, NIT2 > &B,
 		const Operator &mulOp,
 		const Phase phase = EXECUTE,
 		const typename std::enable_if< !grb::is_object< OutputType >::value &&
