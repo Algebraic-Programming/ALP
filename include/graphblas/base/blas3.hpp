@@ -242,29 +242,28 @@ namespace grb {
 		return ret == SUCCESS ? UNSUPPORTED : ret;
 	}
 
-
 	/**
 	 * Computes \f$ C = A \odot B \f$, out of place, monoid variant.
 	 *
 	 * Calculates the element-wise operation on one scalar to elements of one
-	 * matrix, \f$ C = A \odot B \f$, using the given monoid's operator. 
-	 * The input and output matrices must be of same dimension.
+	 * matrix, \f$ C = A \odot B \f$, using the given monoid's operator. The input
+	 * and output matrices must be of same dimension.
 	 *
 	 * Any old entries of \a C will be removed after a successful call to this
-	 * primitive.
+	 * primitive; that is, this is an out-of-place primitive.
 	 *
 	 * After a successful call to this primitive, the nonzero structure of \a C
 	 * will match that of the union of \a A and \a B. An implementing backend may
-	 * skip processing rows \a i and columns \a j that are not in the union of the nonzero
-	 * structure of \a A and \a B.
-	 * 
+	 * skip processing rows \a i and columns \a j that are not in the union of the
+	 * nonzero structure of \a A and \a B.
+	 *
 	 * \note When applying element-wise operators on sparse matrices using
-	 *       semirings, there is a difference between interpreting missing 
-	 * 		 values as an annihilating identity or as a neutral identity-- 
+	 *       semirings, there is a difference between interpreting missing
+	 *       values as an annihilating identity or as a neutral identity--
 	 *       intuitively, such identities are known as `zero' or `one',
-	 * 		 respectively. As a consequence, this functionality is provided by
-	 * 		 #grb::eWiseApply depending on whether a monoid or operator
-	 *       is provided:
+	 *       respectively. As a consequence, this functionality is provided by
+	 *       #grb::eWiseApply depending on whether a monoid or operator is
+	 *       provided:
 	 *        - #grb::eWiseApply using monoids (neutral),
 	 *        - #grb::eWiseApply using operators (annihilating).
 	 *
@@ -279,29 +278,28 @@ namespace grb {
 	 * @param[in]   A    The left-hand input matrix.
 	 * @param[in]   B    The right-hand input matrix.
 	 * @param[in] monoid The monoid structure containing \f$ \odot \f$.
-	 * @param[in] phase  The #grb::Phase the call should execute. 
-	 * 					 Optional; the default parameter is #grb::EXECUTE.
+	 * @param[in] phase  The #grb::Phase the call should execute. Optional; the
+	 *                   default parameter is #grb::EXECUTE.
 	 *
 	 * @return #grb::SUCCESS  On successful completion of this call.
 	 * @return #grb::MISMATCH Whenever the dimensions of \a x, \a y and \a z do
-	 * 						  not match. All input data containers are left 
-	 * 						  untouched if this exit code is returned; it will
-	 *  					  be as though this call was never made.
+	 *                        not match. All input data containers are left
+	 *                        untouched if this exit code is returned; it will be
+	 *                        as though this call was never made.
 	 * @return #grb::FAILED   If \a phase is #grb::EXECUTE, indicates that the
-	 *                        capacity of \a z was insufficient. The output 
-	 * 						  matrix \a z is cleared, and the call to this 
-	 * 						  function has no further effects.
+	 *                        capacity of \a z was insufficient. The output matrix
+	 *                        \a z is cleared, and the call to this function has
+	 *                        no further effects.
 	 * @return #grb::OUTOFMEM If \a phase is #grb::RESIZE, indicates an
-	 *                        out-of-memory exception. The call to this
-	 * 						  function shall have no other effects beyond 
-	 * 						  returning this error code; the previous state of
-	 *  					  \a z is retained.
-	 * @return #grb::PANIC    A general unmitigable error has been encountered.
-	 * 						  If returned, ALP enters an undefined state and
-	 * 						  the user program is encouraged to exit as quickly
-	 *              		  as possible.
+	 *                        out-of-memory exception. The call to this function
+	 *                        shall have no other effects beyond *returning this
+	 *                        error code; the previous state of \a z is retained.
+	 * @return #grb::PANIC    A general unmitigable error has been encountered. If
+	 *                        returned, ALP enters an undefined state and the user
+	 *                        program is encouraged to exit as quickly as possible.
 	 *
 	 * \par Performance semantics
+	 *
 	 * Each backend must define performance semantics for this primitive.
 	 *
 	 * @see perfSemantics
@@ -311,7 +309,7 @@ namespace grb {
 		typename OutputType,
 		typename InputType1,
 		typename InputType2,
-		Backend backend, 
+		Backend backend,
 		class Monoid
 	>
 	RC eWiseApply(
@@ -320,7 +318,8 @@ namespace grb {
 		const Matrix< InputType2, backend > &B,
 		const Monoid &monoid,
 		const Phase phase = EXECUTE,
-		const typename std::enable_if< !grb::is_object< OutputType >::value &&
+		const typename std::enable_if<
+			!grb::is_object< OutputType >::value &&
 			!grb::is_object< InputType1 >::value &&
 			!grb::is_object< InputType2 >::value &&
 			grb::is_monoid< Monoid >::value,
@@ -341,7 +340,6 @@ namespace grb {
 		return ret == SUCCESS ? UNSUPPORTED : ret;
 	}
 
-
 	/**
 	 * Computes \f$ C = A \odot B \f$, out of place, operator variant.
 	 *
@@ -350,20 +348,20 @@ namespace grb {
 	 * output matrices must be of same dimension.
 	 *
 	 * Any old entries of \a C will be removed after a successful call to this
-	 * primitive.
+	 * primitive; that is, this primitive is out-of-place.
 	 *
 	 * After a successful call to this primitive, the nonzero structure of \a C
-	 * will match that of the intersection of \a A and \a B. An implementing 
-	 * backend may skip processing rows \a i and columns \a j that are not 
-	 * in the intersection of the nonzero structure of \a A and \a B.
+	 * will match that of the intersection of \a A and \a B. An implementing
+	 * backend may skip processing rows \a i and columns \a j that are not in the
+	 * intersection of the nonzero structure of \a A and \a B.
 	 *
 	 * \note When applying element-wise operators on sparse matrices using
-	 *       semirings, there is a difference between interpreting missing 
-	 * 		 values as an annihilating identity or as a neutral identity-- 
+	 *       semirings, there is a difference between interpreting missing
+	 *       values as an annihilating identity or as a neutral identity--
 	 *       intuitively, such identities are known as `zero' or `one',
-	 * 		 respectively. As a consequence, this functionality is provided by
-	 * 		 #grb::eWiseApply depending on whether a monoid or operator
-	 *       is provided:
+	 *       respectively. As a consequence, this functionality is provided by
+	 *       #grb::eWiseApply depending on whether a monoid or operator is
+	 *       provided:
 	 *        - #grb::eWiseApply using monoids (neutral),
 	 *        - #grb::eWiseApply using operators (annihilating).
 	 *
@@ -377,30 +375,29 @@ namespace grb {
 	 * @param[out]  C      The output matrix.
 	 * @param[in]   A      The left-hand input matrix.
 	 * @param[in]   B      The right-hand input matrix.
-	 * @param[in]   op 	   The operator.
-	 * @param[in]   phase  The #grb::Phase the call should execute. 
-	 * 					   Optional; the default parameter is #grb::EXECUTE.
+	 * @param[in]   op     The operator.
+	 * @param[in]   phase  The #grb::Phase the call should execute. Optional; the
+	 *                     default parameter is #grb::EXECUTE.
 	 *
 	 * @return #grb::SUCCESS  On successful completion of this call.
 	 * @return #grb::MISMATCH Whenever the dimensions of \a x, \a y and \a z do
-	 * 						  not match. All input data containers are left 
-	 * 						  untouched if this exit code is returned; it will
-	 *  					  be as though this call was never made.
+	 *                        not match. All input data containers are left
+	 *                        untouched if this exit code is returned; it will be
+	 *                        be as though this call was never made.
 	 * @return #grb::FAILED   If \a phase is #grb::EXECUTE, indicates that the
-	 *                        capacity of \a z was insufficient. The output 
-	 * 						  matrix \a z is cleared, and the call to this 
-	 * 						  function has no further effects.
+	 *                        capacity of \a z was insufficient. The output
+	 *                        matrix \a z is cleared, and the call to this function
+	 *                        has no further effects.
 	 * @return #grb::OUTOFMEM If \a phase is #grb::RESIZE, indicates an
-	 *                        out-of-memory exception. The call to this
-	 * 						  function shall have no other effects beyond 
-	 * 						  returning this error code; the previous state of
-	 *  					  \a z is retained.
-	 * @return #grb::PANIC    A general unmitigable error has been encountered.
-	 * 						  If returned, ALP enters an undefined state and
-	 * 						  the user program is encouraged to exit as quickly
-	 *              		  as possible.
+	 *                        out-of-memory exception. The call to this function
+	 *                        shall have no other effects beyond returning this
+	 *                        error code; the previous state of \a z is retained.
+	 * @return #grb::PANIC    A general unmitigable error has been encountered. If
+	 *                        returned, ALP enters an undefined state and the user
+	 *                        program is encouraged to exit as quickly as possible.
 	 *
 	 * \par Performance semantics
+	 *
 	 * Each backend must define performance semantics for this primitive.
 	 *
 	 * @see perfSemantics
@@ -410,7 +407,7 @@ namespace grb {
 		typename OutputType,
 		typename InputType1,
 		typename InputType2,
-		Backend backend, 
+		Backend backend,
 		class Operator
 	>
 	RC eWiseApply(
