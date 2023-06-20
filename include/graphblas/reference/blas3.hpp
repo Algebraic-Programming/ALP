@@ -1402,6 +1402,121 @@ namespace grb {
 			return SUCCESS;
 		}
 
+		template< Descriptor descr, typename OutputType, typename InputType, typename RIT, typename CIT, typename NIT >
+		RC tril_generic( Matrix< OutputType, reference, RIT, CIT, NIT > & L, const Matrix< InputType, reference, RIT, CIT, NIT > & A, const long int k, const Phase & phase ) {
+			const size_t m = descr & descriptors::transpose_matrix ? ncols( A ) : nrows( A );
+			const size_t n = descr & descriptors::transpose_matrix ? nrows( A ) : ncols( A );
+
+			// Run-time checks
+			if( m != nrows( L ) || n != ncols( L ) ) {
+				return RC::MISMATCH;
+			}
+
+#ifdef _DEBUG
+			std::cout << "In grb::internal::tril_generic( reference )\n";
+#endif
+			const auto & A_raw = descr & descriptors::transpose_matrix ? internal::getCCS( A ) : internal::getCRS( A );
+
+			if( phase == Phase::RESIZE ) {
+				size_t nzc = 0;
+#ifdef _H_GRB_REFERENCE_OMP_BLAS3
+#pragma omp parallel for reduction( + : nzc ) default( none ) shared( A_raw ) firstprivate( k, m )
+#endif
+				for( size_t i = 0; i < m; ++i ) {
+					for( size_t A_k = A_raw.col_start[ i ]; A_k < A_raw.col_start[ i + 1 ]; ++A_k ) {
+						const size_t A_j = A_raw.row_index[ A_k ];
+						// If the value is in the lower triangle, increment the count
+						if( A_j <= i + k ) {
+							nzc += 1;
+						}
+					}
+				}
+#ifdef _DEBUG
+				std::cout << "RESIZE phase: resize( L, " << nzc << " )\n";
+#endif
+				return resize( L, nzc );
+			} 
+
+			if( phase == Phase::EXECUTE ) {
+
+				const auto & L_crs_raw = internal::getCRS( L );
+				const auto & L_ccs_raw = internal::getCCS( L );
+				const size_t nzc = capacity( L );
+				
+				L_crs_raw.col_start[ 0 ] = 0;
+				L_ccs_raw.col_start[ 0 ] = 0;
+				
+				// Prefix sum computation into L.CRS.col_start
+#ifdef _H_GRB_REFERENCE_OMP_BLAS3
+#pragma omp parallel for simd default( none ) shared( A_raw, L_crs_raw, L_ccs_raw ) firstprivate( k, m )
+#endif
+				for( size_t i = 0; i < m; i++ ) {
+					size_t cumul = 0UL;
+					for( size_t A_k = A_raw.col_start[ i ]; A_k < A_raw.col_start[ i + 1 ]; ++A_k ) {
+						const size_t A_j = A_raw.row_index[ A_k ];
+						// If the value is in the lower triangle, increment the sum
+						if( A_j > i + k ) {
+							continue;
+						}
+						cumul += 1;
+					}
+					L_crs_raw.col_start[ i + 1 ] = cumul;
+				}
+
+				// Apply the prefix sum
+				for( size_t i = 1; i <= m; i++ ) {
+					L_crs_raw.col_start[ i ] += L_crs_raw.col_start[ i - 1 ];
+					L_ccs_raw.col_start[ i ] = L_crs_raw.col_start[ i ];
+				}
+
+				// Check if the number of nonzeros is greater than the capacity
+				if( L_crs_raw.col_start[ m ] > nzc ) {
+#ifdef _DEBUG
+					std::cout << "EXECUTE phase: detected insufficient capacity for requested operation.\n"
+							  << "Requested " << L_crs_raw.col_start[ m ] << " nonzeros, but capacity is " << nzc << "\n";
+#endif
+					return RC::MISMATCH;
+				}
+
+#ifdef _H_GRB_REFERENCE_OMP_BLAS3
+#pragma omp parallel default( none ) shared( A_raw, L_crs_raw, L_ccs_raw ) firstprivate( k, m )
+#endif
+				{
+					size_t start_row = 0;
+					size_t end_row = m;
+#ifdef _H_GRB_REFERENCE_OMP_BLAS3
+					config::OMP::localRange( start_row, end_row, 0, m );
+#endif
+					// Update the CRS and CCS row indices and values
+					for( size_t i = start_row; i < end_row; i++ ) {
+						size_t L_k = L_crs_raw.col_start[ i ];
+						for( size_t A_k = A_raw.col_start[ i ]; A_k < A_raw.col_start[ i + 1 ]; ++A_k ) {
+							const size_t A_j = A_raw.row_index[ A_k ];
+							// If the value is in the upper triangle, skip it
+							if( A_j > i + k ) {
+								continue;
+							}
+
+							L_crs_raw.row_index[ L_k ] = A_j;
+							L_crs_raw.values[ L_k ] = A_raw.values[ A_k ];
+							L_ccs_raw.row_index[ L_k ] = i;
+							L_ccs_raw.values[ L_k ] = A_raw.values[ A_k ];
+							L_k += 1;
+						}
+					}
+				}
+
+#ifdef _DEBUG
+				std::cout << "EXECUTE phase: setCurrentNonzeroes( L, " << nzc << " )\n";
+#endif
+				internal::setCurrentNonzeroes( L, nzc );
+
+				return RC::SUCCESS;
+			}
+
+			return RC::SUCCESS;;
+		}
+
 	} // namespace internal
 
 	/**
@@ -1723,6 +1838,56 @@ namespace grb {
 		);
 	}
 
+
+	/**
+	 * Return the lower triangular portion of a matrix, below the k-th diagonal.
+	 *
+	 * @param[out] L       The lower triangular portion of \a A, below the k-th
+	 * 					   diagonal.
+	 * @param[in]  A       Any ALP/GraphBLAS matrix.
+	 * @param[in]  k       The diagonal above which to zero out \a A.
+	 * @param[in]  phase   The #grb::Phase in which the primitive is to proceed.
+	 *
+	 * \internal Pattern matrices are allowed
+	 *
+	 * \internal Dispatches to internal::tril_generic
+	 */
+	template< Descriptor descr = descriptors::no_operation, typename InputType, typename OutputType, typename RIT, typename CIT, typename NIT >
+	RC tril( Matrix< OutputType, reference, RIT, CIT, NIT > & L,
+		const Matrix< InputType, reference, RIT, CIT, NIT > & A,
+		const long int k,
+		const Phase & phase = Phase::EXECUTE,
+		const typename std::enable_if< ! grb::is_object< OutputType >::value && ! grb::is_object< InputType >::value && std::is_convertible< InputType, OutputType >::value >::type * const =
+			nullptr ) {
+		(void)L;
+		(void)A;
+		(void)phase;
+#ifdef _DEBUG
+		std::cerr << "In grb::tril (reference)\n";
+#endif
+
+		// Static checks
+		NO_CAST_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< InputType, OutputType >::value ), "grb::tril (reference)",
+			"input matrix and output matrix are incompatible for implicit casting" );
+
+		return internal::tril_generic< descr >( L, A, k, phase );
+	}
+
+	/**
+	 * Return the lower triangular portion of a matrix, below main diagonal.
+	 *
+	 * This primitive is strictly equivalent to calling grb::tril( L, A, 0, phase ).
+	 * see grb::tril( L, A, k, phase ) for full description.
+	 */
+	template< Descriptor descr = descriptors::no_operation, typename InputType, typename OutputType, typename RIT, typename CIT, typename NIT >
+	RC tril( Matrix< OutputType, reference, RIT, CIT, NIT > & L,
+		const Matrix< InputType, reference, RIT, CIT, NIT > & A,
+		const Phase & phase = Phase::EXECUTE,
+		const typename std::enable_if< ! grb::is_object< OutputType >::value && ! grb::is_object< InputType >::value && std::is_convertible< InputType, OutputType >::value >::type * const =
+			nullptr ) {
+		return tril< descr >( L, A, 0, phase );
+		
+	}
 
 } // namespace grb
 
