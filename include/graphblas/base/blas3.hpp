@@ -676,6 +676,92 @@ namespace grb {
 	}
 
 	/**
+	 * Return the lower triangular portion of a matrix, below the k-th diagonal.
+	 *
+	 * @tparam descr      The descriptor to be used (descriptors::no_operation
+	 * 					  if left unspecified).
+	 * @tparam InputType  The type of the elements in the supplied ALP/GraphBLAS
+	 *                    matrix \a A.
+	 * @tparam OutputType The type of the elements in the supplied ALP/GraphBLAS
+	 *                    matrix \a L.
+	 *
+	 * @param[out] L       The lower triangular portion of \a A, below the k-th
+	 * 					   diagonal.
+	 * @param[in]  A       Any ALP/GraphBLAS matrix.
+	 * @param[in]  k       The diagonal above which to zero out \a A.
+	 * @param[in]  phase   The #grb::Phase in which the primitive is to proceed.
+	 *
+	 * @return grb::SUCCESS  When the call completed successfully.
+	 * @return grb::MISMATCH If the dimensions of \a L and \a A do not match.
+	 *
+ 	 * \parblock
+	 * \par Allowed descriptors
+	 * - transpose_matrix: Consider A^T instead of A.
+	 * - no_casting: If the types of \a L and \a A differ, the primitive
+	 * 				 will fail.
+	 * \endparblock
+	 */
+	template<
+		Descriptor descr = descriptors::no_operation,
+		typename InputType,
+		typename OutputType,
+		typename RIT, typename CIT, typename NIT,
+		Backend backend
+	>
+	RC tril(
+		Matrix< OutputType, backend, RIT, CIT, NIT > &L,
+		const Matrix< InputType, backend, RIT, CIT, NIT > &A,
+		const long int k,
+		const Phase &phase = Phase::EXECUTE,
+		const typename std::enable_if<
+			!grb::is_object< OutputType >::value &&
+			!grb::is_object< InputType >::value &&
+			std::is_convertible< InputType, OutputType >::value
+		>::type * const = nullptr
+	) {
+		(void) L;
+		(void) A;
+		(void) phase;
+#ifdef _DEBUG
+		std::cerr << "Selected backend does not implement grb::tril()\n";
+#endif
+#ifndef NDEBUG
+		const bool selected_backend_does_not_support_tril = false;
+		assert( selected_backend_does_not_support_tril );
+#endif
+		const RC ret = grb::clear( A );
+		return ret == SUCCESS ? UNSUPPORTED : ret;
+	}
+
+	/**
+	 * Return the lower triangular portion of a matrix,
+	 * below main diagonal (excluded).
+	 *
+	 * This primitive is strictly equivalent to calling
+	 * grb::tril( L, A, 0, phase ).
+	 * see grb::tril( L, A, k, phase ) for full description.
+	 */
+	template<
+		Descriptor descr = descriptors::no_operation,
+		typename InputType,
+		typename OutputType,
+		typename RIT, typename CIT, typename NIT,
+		Backend backend
+	>
+	RC tril(
+		Matrix< OutputType, backend, RIT, CIT, NIT > &L,
+		const Matrix< InputType, backend, RIT, CIT, NIT > &A,
+		const Phase &phase = Phase::EXECUTE,
+		const typename std::enable_if<
+			!grb::is_object< OutputType >::value &&
+			!grb::is_object< InputType >::value &&
+			std::is_convertible< InputType, OutputType >::value
+		>::type * const = nullptr
+	) {
+		return tril< descr >( L, A, 0, phase );
+	}
+
+	/**
 	 * @}
 	 */
 
