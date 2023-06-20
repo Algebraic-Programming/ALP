@@ -380,6 +380,9 @@ std::string grb::internal::hyperdags::toString(
 		case GETID_MATRIX:
 			return "getID( matrix )";
 
+		case TRIL_MATRIX:
+			return "tril( matrix, matrix )";
+
 	}
 	assert( false );
 	return "unknown operation";
