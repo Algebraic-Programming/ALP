@@ -498,11 +498,13 @@ namespace grb {
 
 				FOLDR_SCALAR_MATRIX_MONOID,
 
-				TRIL_MATRIX
+				TRIL_MATRIX,
+
+				TRIU_MATRIX
 			};
 
 			/** \internal How many operation vertex types exist. */
-			const constexpr size_t numOperationVertexTypes = 111;
+			const constexpr size_t numOperationVertexTypes = 112;
 
 			/** \internal An array of all operation vertex types. */
 			const constexpr enum OperationVertexType
@@ -618,7 +620,8 @@ namespace grb {
 				FOLDL_SCALAR_MATRIX_MONOID,
 				FOLDR_SCALAR_MATRIX_MASK_MONOID,
 				FOLDR_SCALAR_MATRIX_MONOID,
-				TRIL_MATRIX
+				TRIL_MATRIX,
+				TRIU_MATRIX
 			};
 
 			/** \internal @returns The operation vertex type as a string. */
