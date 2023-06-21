@@ -89,6 +89,10 @@ add_grb_executables( tril tril.cpp
 	BACKENDS reference reference_omp hyperdags
 )
 
+add_grb_executables( triu triu.cpp
+	BACKENDS reference reference_omp hyperdags
+)
+
 add_grb_executables( eWiseMatrix eWiseMatrix.cpp
 	BACKENDS reference reference_omp bsp1d hybrid hyperdags nonblocking
 )

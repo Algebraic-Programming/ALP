@@ -208,11 +208,19 @@ for MODE in ${MODES}; do
 				grep 'Test OK' ${TEST_OUT_DIR}/ewiseapply_small_${MODE}_${BACKEND}_${P}_${T} || echo "Test FAILED"
 				echo " "
 
-				echo ">>>      [x]           [ ]       Testing grb::tril on matrices of doubles of size 100."
-				$runner ${TEST_BIN_DIR}/tril_${MODE}_${BACKEND} 14 &> ${TEST_OUT_DIR}/tril_${MODE}_${BACKEND}_${P}_${T}
-				head -1 ${TEST_OUT_DIR}/tril_${MODE}_${BACKEND}_${P}_${T}
-				grep 'Test OK' ${TEST_OUT_DIR}/tril_${MODE}_${BACKEND}_${P}_${T} || echo "Test FAILED"
-				echo " "
+				if [ "$BACKEND" = "reference" ] || [ "$BACKEND" = "reference_omp" ]|| [ "$BACKEND" = "hyperdags" ]; then
+					echo ">>>      [x]           [ ]       Testing grb::tril"
+					$runner ${TEST_BIN_DIR}/tril_${MODE}_${BACKEND} &> ${TEST_OUT_DIR}/tril_${MODE}_${BACKEND}_${P}_${T}
+					head -1 ${TEST_OUT_DIR}/tril_${MODE}_${BACKEND}_${P}_${T}
+					grep 'Test OK' ${TEST_OUT_DIR}/tril_${MODE}_${BACKEND}_${P}_${T} || echo "Test FAILED"
+					echo " "
+
+					echo ">>>      [x]           [ ]       Testing grb::triu"
+					$runner ${TEST_BIN_DIR}/triu_${MODE}_${BACKEND} &> ${TEST_OUT_DIR}/triu_${MODE}_${BACKEND}_${P}_${T}
+					head -1 ${TEST_OUT_DIR}/triu_${MODE}_${BACKEND}_${P}_${T}
+					grep 'Test OK' ${TEST_OUT_DIR}/triu_${MODE}_${BACKEND}_${P}_${T} || echo "Test FAILED"
+					echo " "
+				fi
 
 				echo ">>>      [x]           [ ]       Testing grb::eWiseApply using (+,0) on vectors"
 				echo "                                 of doubles of size 100."
