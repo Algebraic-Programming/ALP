@@ -332,6 +332,172 @@ namespace grb {
 		return ret;
 	}
 
+	template<
+		Descriptor descr = descriptors::no_operation,
+		class Monoid,
+		typename InputType, typename IOType, typename MaskType,
+		typename RIT_A, typename CIT_A, typename NIT_A,
+		typename RIT_M, typename CIT_M, typename NIT_M
+	>
+	RC foldr(
+		IOType &x,
+		const Matrix< InputType, hyperdags, RIT_A, CIT_A, NIT_A > &A,
+		const Matrix< MaskType, hyperdags, RIT_M, CIT_M, NIT_M > &mask,
+		const Monoid &monoid = Monoid(),
+		const typename std::enable_if< !grb::is_object< IOType >::value &&
+			!grb::is_object< InputType >::value &&
+			!grb::is_object< MaskType >::value &&
+			grb::is_monoid< Monoid >::value, void
+		>::type * const = nullptr
+	) {
+#ifdef _DEBUG
+		std::cout << "In grb::foldr (hyperdags, mask, matrix, monoid)\n";
+#endif
+
+		const RC ret = foldr< descr, Monoid >(
+			x, A, mask, monoid
+		);
+		if( ret != SUCCESS ) { return ret; }
+		if( nrows( A ) == 0 || ncols( A ) == 0 ) { return ret; }
+		std::array< const void *, 0 > sourcesP{};
+		std::array< uintptr_t, 2 > sourcesC{
+			getID( internal::getMatrix(A) ),
+			getID( internal::getMatrix(mask) )
+		};
+		std::array< uintptr_t, 0 > destinations{};
+		// NOTE scalar output is ignored
+		// std::array< uintptr_t, 1 > destinations{ &x };
+		internal::hyperdags::generator.addOperation(
+			internal::hyperdags::FOLDR_SCALAR_MATRIX_MASK_MONOID,
+			sourcesP.begin(), sourcesP.end(),
+			sourcesC.begin(), sourcesC.end(),
+			destinations.begin(), destinations.end()
+		);
+		return ret;
+	}
+
+	template<
+		Descriptor descr = descriptors::no_operation,
+		class Monoid,
+		typename InputType, typename IOType,
+		typename RIT, typename CIT, typename NIT
+	>
+	RC foldr(
+		IOType &x,
+		const Matrix< InputType, hyperdags, RIT, CIT, NIT > &A,
+		const Monoid &monoid,
+		const typename std::enable_if< !grb::is_object< IOType >::value &&
+			!grb::is_object< InputType >::value &&
+			grb::is_monoid< Monoid >::value, void
+		>::type * const = nullptr
+	) {
+#ifdef _DEBUG
+		std::cout << "In grb::foldr (hyperdags, matrix, monoid)\n";
+#endif
+
+		const RC ret = foldr< descr, Monoid >(
+			x, A, monoid
+		);
+		if( ret != SUCCESS ) { return ret; }
+		if( nrows( A ) == 0 || ncols( A ) == 0 ) { return ret; }
+		std::array< const void *, 0 > sourcesP{};
+		std::array< uintptr_t, 1 > sourcesC{ getID( internal::getMatrix(A) ) };
+		std::array< uintptr_t, 0 > destinations{};
+		// NOTE scalar output is ignored
+		// std::array< uintptr_t, 1 > destinations{ &x };
+		internal::hyperdags::generator.addOperation(
+			internal::hyperdags::FOLDR_SCALAR_MATRIX_MONOID,
+			sourcesP.begin(), sourcesP.end(),
+			sourcesC.begin(), sourcesC.end(),
+			destinations.begin(), destinations.end()
+		);
+		return ret;
+	}
+
+	template<
+		Descriptor descr = descriptors::no_operation,
+		class Monoid,
+		typename InputType, typename IOType, typename MaskType,
+		typename RIT_A, typename CIT_A, typename NIT_A,
+		typename RIT_M, typename CIT_M, typename NIT_M
+	>
+	RC foldl(
+		IOType &x,
+		const Matrix< InputType, hyperdags, RIT_A, CIT_A, NIT_A > &A,
+		const Matrix< MaskType, hyperdags, RIT_M, CIT_M, NIT_M > &mask,
+		const Monoid &monoid,
+		const typename std::enable_if<
+			!grb::is_object< IOType >::value &&
+			!grb::is_object< InputType >::value &&
+			!grb::is_object< MaskType >::value &&
+			grb::is_monoid< Monoid >::value, void
+		>::type * const = nullptr
+	) {
+		#ifdef _DEBUG
+		std::cout << "In grb::foldl (hyperdags, mask, matrix, monoid)\n";
+#endif
+
+		const RC ret = foldl< descr, Monoid >(
+			x, A, mask, monoid
+		);
+		if( ret != SUCCESS ) { return ret; }
+		if( nrows( A ) == 0 || ncols( A ) == 0 ) { return ret; }
+		std::array< const void *, 0 > sourcesP{};
+		std::array< uintptr_t, 2 > sourcesC{
+			getID( internal::getMatrix(A) ),
+			getID( internal::getMatrix(mask) )
+		};
+		std::array< uintptr_t, 0 > destinations{};
+		// NOTE scalar output is ignored
+		// std::array< uintptr_t, 1 > destinations{ &x };
+		internal::hyperdags::generator.addOperation(
+			internal::hyperdags::FOLDL_SCALAR_MATRIX_MASK_MONOID,
+			sourcesP.begin(), sourcesP.end(),
+			sourcesC.begin(), sourcesC.end(),
+			destinations.begin(), destinations.end()
+		);
+		return ret;
+	}
+
+	template<
+		Descriptor descr = descriptors::no_operation,
+		class Monoid,
+		typename InputType, typename IOType,
+		typename RIT, typename CIT, typename NIT
+	>
+	RC foldl(
+		IOType &x,
+		const Matrix< InputType, hyperdags, RIT, CIT, NIT > &A,
+		const Monoid &monoid,
+		const typename std::enable_if<
+			!grb::is_object< IOType >::value &&
+			!grb::is_object< InputType >::value &&
+			grb::is_monoid< Monoid >::value, void
+		>::type * const = nullptr
+	) {
+#ifdef _DEBUG
+		std::cout << "In grb::foldl (hyperdags, matrix, monoid)\n";
+#endif
+
+		const RC ret = foldl< descr, Monoid >(
+			x, A, monoid
+		);
+		if( ret != SUCCESS ) { return ret; }
+		if( nrows( A ) == 0 || ncols( A ) == 0 ) { return ret; }
+		std::array< const void *, 0 > sourcesP{};
+		std::array< uintptr_t, 1 > sourcesC{ getID( internal::getMatrix(A) ) };
+		std::array< uintptr_t, 0 > destinations{};
+		// NOTE scalar output is ignored
+		// std::array< uintptr_t, 1 > destinations{ &x };
+		internal::hyperdags::generator.addOperation(
+			internal::hyperdags::FOLDL_SCALAR_MATRIX_MONOID,
+			sourcesP.begin(), sourcesP.end(),
+			sourcesC.begin(), sourcesC.end(),
+			destinations.begin(), destinations.end()
+		);
+		return ret;
+	}
+
 } // end namespace grb
 
 #endif
