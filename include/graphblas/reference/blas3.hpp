@@ -67,22 +67,26 @@ namespace grb {
 		template<
 			bool allow_void,
 			Descriptor descr,
+			class Monoid,
+			class Operator,
 			class MulMonoid,
 			typename OutputType, typename InputType1, typename InputType2,
-			typename RIT, typename CIT, typename NIT,
-			class Operator, class Monoid
+			typename RIT1, typename CIT1, typename NIT1,
+			typename RIT2, typename CIT2, typename NIT2,
+			typename RIT3, typename CIT3, typename NIT3
 		>
 		RC mxm_generic(
-			Matrix< OutputType, reference, RIT, CIT, NIT > &C,
-			const Matrix< InputType1, reference, RIT, CIT, NIT > &A,
-			const Matrix< InputType2, reference, RIT, CIT, NIT > &B,
+			Matrix< OutputType, reference, RIT1, CIT1, NIT1 > &C,
+			const Matrix< InputType1, reference, RIT2, CIT2, NIT2 > &A,
+			const Matrix< InputType2, reference, RIT3, CIT3, NIT3 > &B,
 			const Operator &oper,
 			const Monoid &monoid,
 			const MulMonoid &mulMonoid,
 			const Phase &phase,
-			const typename std::enable_if< !grb::is_object< OutputType >::value &&
-				!grb::is_object< InputType1 >::value && !
-				grb::is_object< InputType2 >::value &&
+			const typename std::enable_if<
+				!grb::is_object< OutputType >::value &&
+				!grb::is_object< InputType1 >::value &&
+				!grb::is_object< InputType2 >::value &&
 				grb::is_operator< Operator >::value &&
 				grb::is_monoid< Monoid >::value,
 			void >::type * const = nullptr
@@ -338,13 +342,15 @@ namespace grb {
 	template<
 		Descriptor descr = descriptors::no_operation,
 		typename OutputType, typename InputType1, typename InputType2,
-		typename RIT, typename CIT, typename NIT,
+		typename RIT1, typename CIT1, typename NIT1,
+		typename RIT2, typename CIT2, typename NIT2,
+		typename RIT3, typename CIT3, typename NIT3,
 		class Semiring
 	>
 	RC mxm(
-		Matrix< OutputType, reference, RIT, CIT, NIT > &C,
-		const Matrix< InputType1, reference, RIT, CIT, NIT > &A,
-		const Matrix< InputType2, reference, RIT, CIT, NIT > &B,
+		Matrix< OutputType, reference, RIT1, CIT1, NIT1 > &C,
+		const Matrix< InputType1, reference, RIT2, CIT2, NIT2 > &A,
+		const Matrix< InputType2, reference, RIT3, CIT3, NIT3 > &B,
 		const Semiring &ring = Semiring(),
 		const Phase &phase = EXECUTE,
 		const typename std::enable_if<
@@ -390,13 +396,15 @@ namespace grb {
 	template<
 		Descriptor descr = grb::descriptors::no_operation,
 		typename OutputType, typename InputType1, typename InputType2,
-		typename RIT, typename CIT, typename NIT,
+		typename RIT1, typename CIT1, typename NIT1,
+		typename RIT2, typename CIT2, typename NIT2,
+		typename RIT3, typename CIT3, typename NIT3,
 		class Operator, class Monoid
 	>
 	RC mxm(
-		Matrix< OutputType, reference, RIT, CIT, NIT > &C,
-		const Matrix< InputType1, reference, RIT, CIT, NIT > &A,
-		const Matrix< InputType2, reference, RIT, CIT, NIT > &B,
+		Matrix< OutputType, reference, RIT1, CIT1, NIT1 > &C,
+		const Matrix< InputType1, reference, RIT2, CIT2, NIT2 > &A,
+		const Matrix< InputType2, reference, RIT3, CIT3, NIT3 > &B,
 		const Monoid &addM,
 		const Operator &mulOp,
 		const Phase &phase = EXECUTE,
@@ -449,7 +457,6 @@ namespace grb {
 		return internal::mxm_generic< false, descr >(
 			C, A, B, mulOp, addM, Monoid(), phase
 		);
-
 	}
 
 	namespace internal {
@@ -459,10 +466,11 @@ namespace grb {
 			bool matrix_is_void,
 			typename OutputType, typename InputType1,
 			typename InputType2, typename InputType3,
+			typename RIT, typename CIT, typename NIT,
 			typename Coords
 		>
 		RC matrix_zip_generic(
-			Matrix< OutputType, reference > &A,
+			Matrix< OutputType, reference, RIT, CIT, NIT > &A,
 			const Vector< InputType1, reference, Coords > &x,
 			const Vector< InputType2, reference, Coords > &y,
 			const Vector< InputType3, reference, Coords > &z,
@@ -709,10 +717,11 @@ namespace grb {
 		Descriptor descr = descriptors::no_operation,
 		typename OutputType, typename InputType1,
 		typename InputType2, typename InputType3,
+		typename RIT, typename CIT, typename NIT,
 		typename Coords
 	>
 	RC zip(
-		Matrix< OutputType, reference > &A,
+		Matrix< OutputType, reference, RIT, CIT, NIT > &A,
 		const Vector< InputType1, reference, Coords > &x,
 		const Vector< InputType2, reference, Coords > &y,
 		const Vector< InputType3, reference, Coords > &z,
@@ -756,10 +765,11 @@ namespace grb {
 	template<
 		Descriptor descr = descriptors::no_operation,
 		typename InputType1, typename InputType2,
+		typename RIT, typename CIT, typename NIT,
 		typename Coords
 	>
 	RC zip(
-		Matrix< void, reference > &A,
+		Matrix< void, reference, RIT, CIT, NIT > &A,
 		const Vector< InputType1, reference, Coords > &x,
 		const Vector< InputType2, reference, Coords > &y,
 		const Phase &phase = EXECUTE
@@ -799,21 +809,23 @@ namespace grb {
 	 */
 	template<
 		Descriptor descr = descriptors::no_operation,
+		class Operator,
 		typename InputType1, typename InputType2, typename OutputType,
-		typename Coords, class Operator
+		typename Coords,
+		typename RIT, typename CIT, typename NIT
 	>
-	RC outer( Matrix< OutputType, reference > &A,
+	RC outer(
+		Matrix< OutputType, reference, RIT, CIT, NIT > &A,
 		const Vector< InputType1, reference, Coords > &u,
 		const Vector< InputType2, reference, Coords > &v,
 		const Operator &mul = Operator(),
 		const Phase &phase = EXECUTE,
 		const typename std::enable_if<
 			grb::is_operator< Operator >::value &&
-				!grb::is_object< InputType1 >::value &&
-				!grb::is_object< InputType2 >::value &&
-				!grb::is_object< OutputType >::value,
-			void
-		>::type * const = nullptr
+			!grb::is_object< InputType1 >::value &&
+			!grb::is_object< InputType2 >::value &&
+			!grb::is_object< OutputType >::value,
+			void >::type * const = nullptr
 	) {
 		// static checks
 		NO_CAST_ASSERT( ( !(descr & descriptors::no_casting) ||

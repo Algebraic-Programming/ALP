@@ -87,14 +87,16 @@ namespace grb {
 	template<
 		Descriptor descr = descriptors::no_operation,
 		typename OutputType, typename InputType1, typename InputType2,
-		typename CIT, typename RIT, typename NIT,
+		typename CIT1, typename RIT1, typename NIT1,
+		typename CIT2, typename RIT2, typename NIT2,
+		typename CIT3, typename RIT3, typename NIT3,
 		class Semiring,
 		Backend backend
 	>
 	RC mxm(
-		Matrix< OutputType, backend, CIT, RIT, NIT > &C,
-		const Matrix< InputType1, backend, CIT, RIT, NIT > &A,
-		const Matrix< InputType2, backend, CIT, RIT, NIT > &B,
+		Matrix< OutputType, backend, CIT1, RIT1, NIT1 > &C,
+		const Matrix< InputType1, backend, CIT2, RIT2, NIT2 > &A,
+		const Matrix< InputType2, backend, CIT3, RIT3, NIT3 > &B,
 		const Semiring &ring = Semiring(),
 		const Phase &phase = EXECUTE
 	) {
@@ -418,7 +420,8 @@ namespace grb {
 		const Matrix< InputType2, backend, RIT2, CIT2, NIT2 > &B,
 		const Operator &op,
 		const Phase phase = EXECUTE,
-		const typename std::enable_if< !grb::is_object< OutputType >::value &&
+		const typename std::enable_if<
+			!grb::is_object< OutputType >::value &&
 			!grb::is_object< InputType1 >::value &&
 			!grb::is_object< InputType2 >::value &&
 			grb::is_operator< Operator >::value,
