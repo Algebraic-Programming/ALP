@@ -490,6 +490,7 @@ namespace grb {
 	) {
 		(void) L;
 		(void) A;
+		(void) k;
 		(void) phase;
 #ifdef _DEBUG
 		std::cerr << "Selected backend does not implement grb::tril()\n";
@@ -530,6 +531,97 @@ namespace grb {
 		>::type * const = nullptr
 	) {
 		return tril< descr >( L, A, 0, phase );
+	}
+
+	/**
+	 * Return the upper triangular portion of a matrix, strictly above the k-th 
+	 * diagonal (excluded).
+	 *
+	 * @tparam descr      The descriptor to be used (descriptors::no_operation
+	 * 					  if left unspecified).
+	 * @tparam InputType  The type of the elements in the supplied ALP/GraphBLAS
+	 *                    matrix \a A.
+	 * @tparam OutputType The type of the elements in the supplied ALP/GraphBLAS
+	 *                    matrix \a U.
+	 *
+	 * @param[out] U       The upper triangular portion of \a A, strictly above 
+	 * 					   the k-th diagonal.
+	 * @param[in]  A       Any ALP/GraphBLAS matrix.
+	 * @param[in]  k       The diagonal above which to zero out \a A.
+	 * @param[in]  phase   The #grb::Phase in which the primitive is to proceed.
+	 *
+	 * @return grb::SUCCESS  When the call completed successfully.
+	 * @return grb::MISMATCH If the dimensions of \a U and \a A do not match.
+	 *
+ 	 * \parblock
+	 * \par Allowed descriptors
+	 * - transpose_matrix: Consider A^T instead of A.
+	 * - no_casting: If the types of \a T and \a A differ, the primitive
+	 * 				 will fail.
+	 * \endparblock
+	 */
+	template<
+		Descriptor descr = descriptors::no_operation,
+		typename InputType,
+		typename OutputType,
+		typename RIT_U, typename CIT_U, typename NIT_U,
+		typename RIT_A, typename CIT_A, typename NIT_A,
+		Backend implementation
+	>
+	RC triu(
+		Matrix< OutputType, implementation, RIT_U, CIT_U, NIT_U > & U,
+		const Matrix< InputType, implementation, RIT_A, CIT_A, NIT_A > & A,
+		const long int k,
+		const Phase &phase = Phase::EXECUTE,
+		const typename std::enable_if<
+			!grb::is_object< OutputType >::value &&
+			!grb::is_object< InputType >::value &&
+			std::is_convertible< InputType, OutputType >::value
+		>::type * const = nullptr
+	) {
+		(void) U;
+		(void) A;
+		(void) k;
+		(void) phase;
+#ifdef _DEBUG
+		std::cerr << "Selected backend does not implement grb::triu()\n";
+#endif
+#ifndef NDEBUG
+		const bool selected_backend_does_not_support_triu = false;
+		assert( selected_backend_does_not_support_triu );
+#endif
+		const RC ret = grb::clear( A );
+		return ret == SUCCESS ? UNSUPPORTED : ret;
+	}
+
+	/**
+	 * Return the upper triangular portion of a matrix,
+	 * strictly above main diagonal (excluded).
+	 *
+	 * This primitive is strictly equivalent to calling
+	 * grb::triu( U, A, 0, phase ) 
+	 * 
+	 * see grb::triu( U, A, k, phase ) for full description.
+	 */
+	template<
+		Descriptor descr = descriptors::no_operation,
+		typename InputType,
+		typename OutputType,
+		typename RIT_U, typename CIT_U, typename NIT_U,
+		typename RIT_A, typename CIT_A, typename NIT_A,
+		Backend implementation
+	>
+	RC triu(
+		Matrix< OutputType, implementation, RIT_U, CIT_U, NIT_U > & U,
+		const Matrix< InputType, implementation, RIT_A, CIT_A, NIT_A > & A,
+		const Phase &phase = Phase::EXECUTE,
+		const typename std::enable_if<
+			!grb::is_object< OutputType >::value &&
+			!grb::is_object< InputType >::value &&
+			std::is_convertible< InputType, OutputType >::value
+		>::type * const = nullptr
+	) {
+		return triu< descr >( U, A, 0, phase );
 	}
 
 	/**
