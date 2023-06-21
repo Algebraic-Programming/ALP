@@ -277,7 +277,7 @@ build_test_lpf:
 .tests_unit_lpf:
   needs: [build_test_lpf]
   script:
-    - cd ./build && make -j$(nproc) tests_unit | tee unittests.log
+    - cd ./build && make -j$(nproc) tests_unit &> unittests.log
     - ../tests/summarise.sh unittests.log
 
 # this job triggers in internal CI, where LPF tests run better on runners
