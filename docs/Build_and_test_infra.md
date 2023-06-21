@@ -835,6 +835,7 @@ During configuration this file generates a report with all compilation flags for
 the various target types and categories/modes.
 
 # Reproducible Builds
+
 To ease building and deploying ALP/GraphBLAS, dedicated Docker images can be
 built from the `Dockerfile`s in the *ALP/ReproducibleBuild* repository
 
@@ -852,6 +853,9 @@ provide all needed dependencies and tools.
 Indeed, the file [`.gitlab-ci.yml`](../.gitlab-ci.yml) describes the CI jobs
 that internally test ALP/GraphBLAS via [GitLab](https://about.gitlab.com/),
 which is available [open source](https://about.gitlab.com/install/).
+
+The here described image and CI pipeline are confirmed to work with x86 runners
+with 24 virtual CPU cores and 32GB RAM.
 
 # The coverage infrastructure
 

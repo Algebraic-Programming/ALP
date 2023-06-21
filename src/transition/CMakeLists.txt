@@ -20,43 +20,46 @@
 
 assert_defined_variables( WITH_REFERENCE_BACKEND WITH_OMP_BACKEND )
 
-add_library( sparseblas_static STATIC
-	${CMAKE_CURRENT_SOURCE_DIR}/sparseblas.cpp
-)
+if( WITH_REFERENCE_BACKEND )
+	add_library( sparseblas_static STATIC
+		${CMAKE_CURRENT_SOURCE_DIR}/sparseblas.cpp
+	)
 
-set_target_properties( sparseblas_static PROPERTIES
-	OUTPUT_NAME "sparseblas"
-	ARCHIVE_OUTPUT_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/shmem"
-)
+	set_target_properties( sparseblas_static PROPERTIES
+		OUTPUT_NAME "sparseblas"
+		ARCHIVE_OUTPUT_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/shmem"
+	)
 
-target_link_libraries( sparseblas_static PUBLIC backend_reference transition )
+	target_link_libraries( sparseblas_static PUBLIC backend_reference transition )
 
-target_link_libraries( sparseblas_static PRIVATE backend_flags )
+	target_link_libraries( sparseblas_static PRIVATE backend_flags )
 
-add_dependencies( libs sparseblas_static )
+	add_dependencies( libs sparseblas_static )
 
-install( TARGETS sparseblas_static
-	EXPORT GraphBLASTargets
-	ARCHIVE DESTINATION "${SHMEM_BACKEND_INSTALL_DIR}"
-)
+	install( TARGETS sparseblas_static
+		EXPORT GraphBLASTargets
+		ARCHIVE DESTINATION "${SHMEM_BACKEND_INSTALL_DIR}"
+	)
+endif( WITH_REFERENCE_BACKEND )
 
-add_library( sparseblas_omp_static STATIC
-	${CMAKE_CURRENT_SOURCE_DIR}/sparseblas.cpp
-)
+if( WITH_OMP_BACKEND )
+	add_library( sparseblas_omp_static STATIC
+		${CMAKE_CURRENT_SOURCE_DIR}/sparseblas.cpp
+	)
 
-set_target_properties( sparseblas_omp_static PROPERTIES
-	OUTPUT_NAME "sparseblas_omp"
-	ARCHIVE_OUTPUT_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/shmem"
-)
+	set_target_properties( sparseblas_omp_static PROPERTIES
+		OUTPUT_NAME "sparseblas_omp"
+		ARCHIVE_OUTPUT_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/shmem"
+	)
 
-target_link_libraries( sparseblas_omp_static PUBLIC backend_reference_omp transition )
+	target_link_libraries( sparseblas_omp_static PUBLIC backend_reference_omp transition )
 
-target_link_libraries( sparseblas_omp_static PRIVATE backend_flags )
+	target_link_libraries( sparseblas_omp_static PRIVATE backend_flags )
 
-add_dependencies( libs sparseblas_omp_static )
+	add_dependencies( libs sparseblas_omp_static )
 
-install( TARGETS sparseblas_omp_static
-	EXPORT GraphBLASTargets
-	ARCHIVE DESTINATION "${SHMEM_BACKEND_INSTALL_DIR}"
-)
-
+	install( TARGETS sparseblas_omp_static
+		EXPORT GraphBLASTargets
+		ARCHIVE DESTINATION "${SHMEM_BACKEND_INSTALL_DIR}"
+	)
+endif()
