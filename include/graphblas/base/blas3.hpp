@@ -499,7 +499,7 @@ namespace grb {
 		const bool selected_backend_does_not_support_tril = false;
 		assert( selected_backend_does_not_support_tril );
 #endif
-		const RC ret = grb::clear( A );
+		const RC ret = grb::clear( L );
 		return ret == SUCCESS ? UNSUPPORTED : ret;
 	}
 
@@ -590,7 +590,7 @@ namespace grb {
 		const bool selected_backend_does_not_support_triu = false;
 		assert( selected_backend_does_not_support_triu );
 #endif
-		const RC ret = grb::clear( A );
+		const RC ret = grb::clear( U );
 		return ret == SUCCESS ? UNSUPPORTED : ret;
 	}
 
