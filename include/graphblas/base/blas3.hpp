@@ -676,7 +676,8 @@ namespace grb {
 	}
 
 	/**
-	 * Return the lower triangular portion of a matrix, below the k-th diagonal.
+	 * Return the lower triangular portion of a matrix, strictly below the k-th 
+	 * diagonal (excluded).
 	 *
 	 * @tparam descr      The descriptor to be used (descriptors::no_operation
 	 * 					  if left unspecified).
@@ -685,8 +686,8 @@ namespace grb {
 	 * @tparam OutputType The type of the elements in the supplied ALP/GraphBLAS
 	 *                    matrix \a L.
 	 *
-	 * @param[out] L       The lower triangular portion of \a A, below the k-th
-	 * 					   diagonal.
+	 * @param[out] L       The lower triangular portion of \a A, strictly below
+	 * 					   the k-th diagonal.
 	 * @param[in]  A       Any ALP/GraphBLAS matrix.
 	 * @param[in]  k       The diagonal above which to zero out \a A.
 	 * @param[in]  phase   The #grb::Phase in which the primitive is to proceed.
@@ -736,10 +737,11 @@ namespace grb {
 
 	/**
 	 * Return the lower triangular portion of a matrix,
-	 * below main diagonal (excluded).
+	 * strictly below main diagonal (excluded).
 	 *
 	 * This primitive is strictly equivalent to calling
 	 * grb::tril( L, A, 0, phase ).
+	 * 
 	 * see grb::tril( L, A, k, phase ) for full description.
 	 */
 	template<
