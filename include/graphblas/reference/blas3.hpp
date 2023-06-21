@@ -953,7 +953,8 @@ namespace grb {
 			const auto& identity = monoid.template getIdentity< typename Monoid::D3 >();
 			const auto& op = monoid.getOperator();
 
-			const auto &A_raw = internal::getCRS( A );
+			const auto &A_raw = descr & grb::descriptors::transpose_matrix ?
+				internal::getCCS( A ) : internal::getCRS( A );
 			const size_t A_nnz = nnz( A );
 			if( grb::nnz( A ) == 0 ) {
 				x = identity;
@@ -1020,13 +1021,21 @@ namespace grb {
 			const auto& identity = monoid.template getIdentity< typename Monoid::D3 >();
 			const auto& op = monoid.getOperator();
 
-			const auto &A_raw = internal::getCRS( A );
-			const auto &mask_raw = internal::getCRS( mask );
-			const size_t m = nrows( A );
-			const size_t n = ncols( A );
+			const auto &A_raw = descr & grb::descriptors::transpose_left ?
+				internal::getCCS( A ) : internal::getCRS( A );
+			const auto &mask_raw = descr & grb::descriptors::transpose_right ?
+				internal::getCCS( mask ) : internal::getCRS( mask );
+			const size_t m = descr & grb::descriptors::transpose_right ?
+				ncols( A ) : nrows( A );
+			const size_t n = descr & grb::descriptors::transpose_right ?
+				nrows( A ) : ncols( A );
+			const size_t m_mask = descr & grb::descriptors::transpose_left ?
+				ncols( mask ) : nrows( mask );
+			const size_t n_mask = descr & grb::descriptors::transpose_left ?
+				nrows( mask ) : ncols( mask );
 
 			// Check mask dimensions
-			if( m != nrows(mask) || n != ncols(mask) ) {
+			if( m != m_mask || n != n_mask ) {
 				_DEBUG_THREADESAFE_PRINT( "Mask dimensions do not match input matrix dimensions\n" );
 				return MISMATCH;
 			}
@@ -1060,7 +1069,7 @@ namespace grb {
 						}
 
 						// Get mask value
-						if( not MaskHasValue< MaskType >( mask_raw, mask_k ).value ) {
+						if( MaskHasValue< MaskType >( mask_raw, mask_k ).value ) {
 							_DEBUG_THREADESAFE_PRINT( "Skipped masked value at: ( " + std::to_string( i ) + ";" + std::to_string( mask_raw.row_index[ mask_k ] ) + " )\n" );
 							continue;
 						}
