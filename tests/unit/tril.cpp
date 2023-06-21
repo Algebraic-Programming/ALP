@@ -24,7 +24,7 @@ using namespace grb;
 
 template< class Iterator >
 void printSparseMatrixIterator( size_t rows, size_t cols, Iterator begin, Iterator end, const std::string & name = "", std::ostream & os = std::cout ) {
-	if( rows < 64 || cols > 64 ) {
+	if( rows > 64 || cols > 64 ) {
 		return;
 	}
 	std::cout << "Matrix \"" << name << "\" (" << rows << "x" << cols << "):" << std::endl << "[" << std::endl;
