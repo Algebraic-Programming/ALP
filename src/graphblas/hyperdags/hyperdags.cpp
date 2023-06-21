@@ -395,6 +395,9 @@ std::string grb::internal::hyperdags::toString(
 		case TRIL_MATRIX:
 			return "tril( matrix, matrix )";
 
+		case TRIU_MATRIX:
+			return "triu( matrix, matrix )";
+
 	}
 	assert( false );
 	return "unknown operation";
