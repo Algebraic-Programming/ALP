@@ -523,12 +523,14 @@ namespace grb {
 		Descriptor descr = descriptors::no_operation,
 		class Monoid,
 		typename InputType, typename IOType, typename MaskType,
+		typename RIT_A, typename CIT_A, typename NIT_A,
+		typename RIT_M, typename CIT_M, typename NIT_M,
 		Backend backend
 	>
 	RC foldr(
 		IOType &x,
-		const Matrix< InputType, backend > &A,
-		const Matrix< MaskType, backend > &mask,
+		const Matrix< InputType, backend, RIT_A, CIT_A, NIT_A > &A,
+		const Matrix< MaskType, backend, RIT_M, CIT_M, NIT_M > &mask,
 		const Monoid &monoid = Monoid(),
 		const typename std::enable_if< !grb::is_object< IOType >::value &&
 			!grb::is_object< InputType >::value &&
@@ -573,11 +575,12 @@ namespace grb {
 		Descriptor descr = descriptors::no_operation,
 		class Monoid,
 		typename InputType, typename IOType,
+		typename RIT, typename CIT, typename NIT,
 		Backend backend
 	>
 	RC foldr(
 		IOType &x,
-		const Matrix< InputType, backend > &A,
+		const Matrix< InputType, backend, RIT, CIT, NIT > &A,
 		const Monoid &monoid,
 		const typename std::enable_if< !grb::is_object< IOType >::value &&
 			!grb::is_object< InputType >::value &&
@@ -675,12 +678,14 @@ namespace grb {
 		Descriptor descr = descriptors::no_operation,
 		class Monoid,
 		typename InputType, typename IOType, typename MaskType,
+		typename RIT_A, typename CIT_A, typename NIT_A,
+		typename RIT_M, typename CIT_M, typename NIT_M,
 		Backend backend
 	>
 	RC foldl(
 		IOType &x,
-		const Matrix< InputType, backend > &A,
-		const Matrix< MaskType, backend > &mask,
+		const Matrix< InputType, backend, RIT_A, CIT_A, NIT_A > &A,
+		const Matrix< MaskType, backend, RIT_M, CIT_M, NIT_M > &mask,
 		const Monoid &monoid = Monoid(),
 		const typename std::enable_if< !grb::is_object< IOType >::value &&
 			!grb::is_object< InputType >::value &&
@@ -725,11 +730,12 @@ namespace grb {
 		Descriptor descr = descriptors::no_operation,
 		class Monoid,
 		typename InputType, typename IOType,
+		typename RIT, typename CIT, typename NIT,
 		Backend backend
 	>
 	RC foldl(
 		IOType &x,
-		const Matrix< InputType, backend > &A,
+		const Matrix< InputType, backend, RIT, CIT, NIT > &A,
 		const Monoid &monoid,
 		const typename std::enable_if< 
 			!grb::is_object< IOType >::value &&
