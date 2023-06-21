@@ -1107,12 +1107,13 @@ namespace grb {
 			bool A_is_mask,
 			Descriptor descr,
 			typename OutputType,
-			typename InputType1,
-			typename InputType2 = const OutputType
+			typename InputType1, typename InputType2 = const OutputType,
+			typename RIT1, typename CIT1, typename NIT1,
+			typename RIT2, typename CIT2, typename NIT2
 		>
 		RC set(
-			Matrix< OutputType, nonblocking > &C,
-			const Matrix< InputType1, nonblocking > &A,
+			Matrix< OutputType, nonblocking, RIT1, CIT1, NIT1 > &C,
+			const Matrix< InputType1, nonblocking, RIT2, CIT2, NIT2 > &A,
 			const InputType2 * __restrict__ id = nullptr
 		) noexcept {
 			if( internal::NONBLOCKING::warn_if_not_native &&
@@ -1137,12 +1138,13 @@ namespace grb {
 
 	template<
 		Descriptor descr = descriptors::no_operation,
-		typename OutputType,
-		typename InputType
+		typename OutputType, typename InputType,
+		typename RIT1, typename CIT1, typename NIT1,
+		typename RIT2, typename CIT2, typename NIT2
 	>
 	RC set(
-		Matrix< OutputType, nonblocking > &C,
-		const Matrix< InputType, nonblocking > &A,
+		Matrix< OutputType, nonblocking, RIT1, CIT1, NIT1 > &C,
+		const Matrix< InputType, nonblocking, RIT2, CIT2, NIT2 > &A,
 		const Phase &phase = EXECUTE
 	) noexcept {
 		static_assert( std::is_same< OutputType, void >::value ||
@@ -1175,13 +1177,13 @@ namespace grb {
 
 	template<
 		Descriptor descr = descriptors::no_operation,
-		typename OutputType,
-		typename InputType1,
-		typename InputType2
+		typename OutputType, typename InputType1, typename InputType2,
+		typename RIT1, typename CIT1, typename NIT1,
+		typename RIT2, typename CIT2, typename NIT2
 	>
 	RC set(
-		Matrix< OutputType, nonblocking > &C,
-		const Matrix< InputType1, nonblocking > &A,
+		Matrix< OutputType, nonblocking, RIT1, CIT1, NIT1 > &C,
+		const Matrix< InputType1, nonblocking, RIT2, CIT2, NIT2 > &A,
 		const InputType2 &val,
 		const Phase &phase = EXECUTE
 	) noexcept {
@@ -1317,10 +1319,11 @@ namespace grb {
 	/** \internal Dispatch to base wait implementation */
 	template<
 		typename InputType,
+		typename RIT, typename CIT, typename NIT,
 		typename... Args
 	>
 	RC wait(
-		const Matrix< InputType, nonblocking > &A,
+		const Matrix< InputType, nonblocking, RIT, CIT, NIT > &A,
 		const Args &... args
 	) {
 		(void) A;
@@ -1330,7 +1333,7 @@ namespace grb {
 		return wait( args... );
 	}
 
-	template< typename InputType >
+	template< typename InputType, typename RIT, typename CIT, typename NIT >
 	RC wait( const Matrix< InputType, nonblocking > &A ) {
 		(void) A;
 		//TODO: currently, matrices are read only and no action is required

@@ -456,7 +456,7 @@ namespace grb {
 
 			// second, delegate to the reference backend
 			return eWiseApply_matrix_generic<
-					allow_void, descr, 
+					allow_void, descr,
 					MulMonoid, Operator
 				>(
 					getRefMatrix( C ), getRefMatrix( A ), getRefMatrix( B ),

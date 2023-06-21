@@ -449,12 +449,13 @@ namespace grb {
 		typename InputType2 = typename Ring::D2,
 		typename InputType3 = bool,
 		typename InputType4 = bool,
+		typename RIT, typename CIT, typename NIT,
 		typename Coords
 	>
 	RC mxv(
 		Vector< IOType, BSP1D, Coords > &u,
 		const Vector< InputType3, BSP1D, Coords > &mask,
-		const Matrix< InputType2, BSP1D > &A,
+		const Matrix< InputType2, BSP1D, RIT, CIT, NIT > &A,
 		const Vector< InputType1, BSP1D, Coords > &v,
 		const Ring &ring = Ring(),
 		const Phase &phase = EXECUTE,
