@@ -501,17 +501,18 @@ namespace grb {
 	 *
 	 * \parblock
 	 * \par Valid descriptors
-	 * grb::descriptors::no_operation, grb::descriptors::no_casting,
-	 * grb::descriptors::dense, grb::descriptors::invert_mask,
-	 * grb::descriptors::structural, grb::descriptors::structural_complement
+	 * - descriptors::no_operation: the default descriptor.
+	 * - descriptors::no_casting: the first domain of
+	 * 	 	\a monoid must match \a InputType, the second domain of \a op
+	 * 		match \a IOType, the third domain must match \a IOType.
+	 * - descriptors::transpose_left: A^T will be considered instead 
+	 * 	 	of \a A.
+	 * - descriptors::transpose_right: mask^T will be considered 
+	 * 	 	instead of \a mask.
+	 * - descriptors::invert_mask: Not supported yet.
 	 *
 	 * \note Invalid descriptors will be ignored.
 	 *
-	 * If grb::descriptors::no_casting is given, then 1) the first domain of
-	 * \a monoid must match \a IOType, 2) the second domain of \a op must match
-	 * \a InputType, 3) the third domain must match \a IOType, and 4) the element type
-	 * of \a mask must be <tt>bool</tt>. If one of these is not true, the code
-	 * shall not compile.
 	 * \endparblock
 	 *
 	 * \par Performance semantics
@@ -570,6 +571,19 @@ namespace grb {
 	 * @return grb::SUCCESS  When the call completed successfully.
 	 * @return grb::ILLEGAL  If the provided input matrix \a y was not dense, while
 	 *                       #grb::descriptors::dense was given.
+	 * 
+	 * \parblock
+	 * \par Valid descriptors
+	 * - descriptors::no_operation: the default descriptor.
+	 * - descriptors::no_casting: the first domain of
+	 * 	 	\a monoid must match \a InputType, the second domain of \a op
+	 * 		match \a IOType, the third domain must match \a IOType.
+	 * - descriptors::transpose_matrix: A^T will be considered instead 
+	 * 	 	of \a A.
+	 *
+	 * \note Invalid descriptors will be ignored.
+	 *
+	 * \endparblock
 	 */
 	template<
 		Descriptor descr = descriptors::no_operation,
@@ -656,17 +670,19 @@ namespace grb {
 	 *
 	 * \parblock
 	 * \par Valid descriptors
-	 * grb::descriptors::no_operation, grb::descriptors::no_casting,
-	 * grb::descriptors::dense, grb::descriptors::invert_mask,
-	 * grb::descriptors::structural, grb::descriptors::structural_complement
+	 * - descriptors::no_operation: the default descriptor.
+	 * - descriptors::no_casting: the first domain of
+	 * 	 	\a monoid must match \a InputType, the second domain of \a op
+	 * 		match \a IOType, the third domain must match \a IOType, and the
+	 *   	element type of \a mask must be <tt>bool</tt>. 
+	 * - descriptors::transpose_left: A^T will be considered instead 
+	 * 	 	of \a A.
+	 * - descriptors::transpose_right: mask^T will be considered 
+	 * 	 	instead of \a mask.
+	 * - descriptors::invert_mask: Not supported yet.
 	 *
 	 * \note Invalid descriptors will be ignored.
 	 *
-	 * If grb::descriptors::no_casting is given, then 1) the first domain of
-	 * \a monoid must match \a InputType, 2) the second domain of \a op must
-	 * match \a IOType, 3) the third domain must match \a IOType, and 4) the
-	 * element type of \a mask must be <tt>bool</tt>. If one of these is not
-	 * true, the code shall not compile.
 	 * \endparblock
 	 *
 	 * \par Performance semantics
@@ -725,6 +741,20 @@ namespace grb {
 	 * @return grb::SUCCESS  When the call completed successfully.
 	 * @return grb::ILLEGAL  If the provided input matrix \a y was not dense, while
 	 *                       #grb::descriptors::dense was given.
+	 * 
+	 * \parblock
+	 * \par Valid descriptors
+	 * - descriptors::no_operation: the default descriptor.
+	 * - descriptors::no_casting: the first domain of
+	 * 	 	\a monoid must match \a InputType, the second domain of \a op
+	 * 		match \a IOType, the third domain must match \a IOType.
+	 * - descriptors::transpose_matrix: A^T will be considered instead 
+	 * 	 	of \a A.
+	 *
+	 * \note Invalid descriptors will be ignored.
+	 *
+	 * \endparblock
+	 * 
 	 */
 	template<
 		Descriptor descr = descriptors::no_operation,
