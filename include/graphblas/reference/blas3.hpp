@@ -1403,12 +1403,13 @@ namespace grb {
 		}
 
 		template<
+			bool upper,
 			Descriptor descr = descriptors::no_operation,
 			typename InputType, typename OutputType,
 			typename RIT_L, typename CIT_L, typename NIT_L,
 			typename RIT_A, typename CIT_A, typename NIT_A
 		>
-		RC tril_generic(
+		RC trilu_generic(
 			Matrix< OutputType, reference, RIT_L, CIT_L, NIT_L > & L,
 			const Matrix< InputType, reference, RIT_A, CIT_A, NIT_A > & A,
 			const long int k,
@@ -1423,7 +1424,7 @@ namespace grb {
 			}
 
 #ifdef _DEBUG
-			std::cout << "In grb::internal::tril_generic( reference )\n";
+			std::cout << "In grb::internal::trilu_generic( reference )\n";
 #endif
 			const auto & A_raw = descr & descriptors::transpose_matrix ? internal::getCCS( A ) : internal::getCRS( A );
 
@@ -1433,12 +1434,16 @@ namespace grb {
 #pragma omp parallel for reduction( + : nzc ) default( none ) shared( A_raw ) firstprivate( k, m )
 #endif
 				for( size_t i = 0; i < m; ++i ) {
-					for( size_t A_k = A_raw.col_start[ i ]; A_k < A_raw.col_start[ i + 1 ]; ++A_k ) {
-						const size_t A_j = A_raw.row_index[ A_k ];
-						// If the value is in the lower triangle, increment the count
-						if( A_j <= i + k ) {
-							nzc += 1;
+					for( auto A_k = A_raw.col_start[ i ]; A_k < A_raw.col_start[ i + 1 ]; ++A_k ) {
+						const auto A_j = A_raw.row_index[ A_k ];
+						// If the value is in the appropriate triangle, skip it
+						if( not upper && A_j > i + k ) {
+							continue;
+						} 
+						if( upper && A_j < i - k ) {
+							continue;
 						}
+						nzc += 1;
 					}
 				}
 #ifdef _DEBUG
@@ -1462,10 +1467,13 @@ namespace grb {
 #endif
 				for( size_t i = 0; i < m; i++ ) {
 					size_t cumul = 0UL;
-					for( size_t A_k = A_raw.col_start[ i ]; A_k < A_raw.col_start[ i + 1 ]; ++A_k ) {
-						const size_t A_j = A_raw.row_index[ A_k ];
-						// If the value is in the lower triangle, increment the sum
-						if( A_j > i + k ) {
+					for( auto A_k = A_raw.col_start[ i ]; A_k < A_raw.col_start[ i + 1 ]; ++A_k ) {
+						const auto A_j = A_raw.row_index[ A_k ];
+						// If the value is in the appropriate triangle, skip it
+						if( not upper && A_j > i + k ) {
+							continue;
+						} 
+						if( upper && A_j < i - k ) {
 							continue;
 						}
 						cumul += 1;
@@ -1499,11 +1507,14 @@ namespace grb {
 #endif
 					// Update the CRS and CCS row indices and values
 					for( size_t i = start_row; i < end_row; i++ ) {
-						size_t L_k = L_crs_raw.col_start[ i ];
-						for( size_t A_k = A_raw.col_start[ i ]; A_k < A_raw.col_start[ i + 1 ]; ++A_k ) {
-							const size_t A_j = A_raw.row_index[ A_k ];
-							// If the value is in the upper triangle, skip it
-							if( A_j > i + k ) {
+						auto L_k = L_crs_raw.col_start[ i ];
+						for( auto A_k = A_raw.col_start[ i ]; A_k < A_raw.col_start[ i + 1 ]; ++A_k ) {
+							const auto A_j = A_raw.row_index[ A_k ];
+							// If the value is in the appropriate triangle, skip it
+							if( not upper && A_j > i + k ) {
+								continue;
+							} 
+							if( upper && A_j < i - k ) {
 								continue;
 							}
 
@@ -1850,17 +1861,18 @@ namespace grb {
 
 
 	/**
-	 * Return the lower triangular portion of a matrix, below the k-th diagonal.
+	 * Return the lower triangular portion of a matrix, strictly below 
+	 * the k-th diagonal.
 	 *
-	 * @param[out] L       The lower triangular portion of \a A, below the k-th
-	 * 					   diagonal.
+	 * @param[out] L       The lower triangular portion of \a A, strictly
+	 * 					   below the k-th diagonal.
 	 * @param[in]  A       Any ALP/GraphBLAS matrix.
 	 * @param[in]  k       The diagonal above which to zero out \a A.
 	 * @param[in]  phase   The #grb::Phase in which the primitive is to proceed.
 	 *
 	 * \internal Pattern matrices are allowed
 	 *
-	 * \internal Dispatches to internal::tril_generic
+	 * \internal Dispatches to internal::trilu_generic
 	 */
 	template<
 		Descriptor descr = descriptors::no_operation,
@@ -1873,29 +1885,29 @@ namespace grb {
 		const Matrix< InputType, reference, RIT_A, CIT_A, NIT_A > & A,
 		const long int k,
 		const Phase & phase = Phase::EXECUTE,
-		const typename std::enable_if<
-			! grb::is_object< OutputType >::value &&
-			! grb::is_object< InputType >::value &&
-			std::is_convertible< InputType, OutputType >::value
-		>::type * const = nullptr ) {
-
+		const typename std::enable_if< 
+			not grb::is_object< OutputType >::value && 
+			not grb::is_object< InputType >::value && 
+			std::is_convertible< InputType, OutputType >::value 
+		>::type * const = nullptr ) 
+	{
 #ifdef _DEBUG
 		std::cerr << "In grb::tril (reference)\n";
 #endif
 
 		// Static checks
-		NO_CAST_ASSERT(
-			(   not ( descr & descriptors::no_casting )
-				|| std::is_same< InputType, OutputType >::value
-			), "grb::tril (reference)",
+		NO_CAST_ASSERT( 
+			( not ( descr & descriptors::no_casting ) || 
+			std::is_same< InputType, OutputType >::value ), 
+			"grb::tril (reference)",
 			"input matrix and output matrix are incompatible for implicit casting"
 		);
 
-		return internal::tril_generic< descr >( L, A, k, phase );
+		return internal::trilu_generic< false, descr >( L, A, k, phase );
 	}
 
 	/**
-	 * Return the lower triangular portion of a matrix, below main diagonal.
+	 * Return the lower triangular portion of a matrix, strictly below main diagonal.
 	 *
 	 * This primitive is strictly equivalent to calling grb::tril( L, A, 0, phase ).
 	 * see grb::tril( L, A, k, phase ) for full description.
@@ -1910,10 +1922,85 @@ namespace grb {
 		Matrix< OutputType, reference, RIT_L, CIT_L, NIT_L > & L,
 		const Matrix< InputType, reference, RIT_A, CIT_A, NIT_A > & A,
 		const Phase & phase = Phase::EXECUTE,
-		const typename std::enable_if< ! grb::is_object< OutputType >::value && ! grb::is_object< InputType >::value && std::is_convertible< InputType, OutputType >::value >::type * const =
-			nullptr ) {
+		const typename std::enable_if< 
+			not grb::is_object< OutputType >::value && 
+			not grb::is_object< InputType >::value && 
+			std::is_convertible< InputType, OutputType >::value 
+		>::type * const = nullptr )
+	{
 		return tril< descr >( L, A, 0, phase );
+	}
 
+	/**
+	 * Return the upper triangular portion of a matrix, strictly above 
+	 * the k-th diagonal.
+	 *
+	 * @param[out] U       The upper triangular portion of \a A, strictly 
+	 * 					   above the k-th diagonal.
+	 * @param[in]  A       Any ALP/GraphBLAS matrix.
+	 * @param[in]  k       The diagonal above which to zero out \a A.
+	 * @param[in]  phase   The #grb::Phase in which the primitive is to proceed.
+	 *
+	 * \internal Pattern matrices are allowed
+	 *
+	 * \internal Dispatches to internal::trilu_generic
+	 */
+	template< 
+		Descriptor descr = descriptors::no_operation, 
+		typename InputType, typename OutputType, 
+		typename RIT_U, typename CIT_U, typename NIT_U, 
+		typename RIT_A, typename CIT_A, typename NIT_A
+	>
+	RC triu(
+		Matrix< OutputType, reference, RIT_U, CIT_U, NIT_U > & U,
+		const Matrix< InputType, reference, RIT_A, CIT_A, NIT_A > & A,
+		const long int k,
+		const Phase & phase = Phase::EXECUTE,
+		const typename std::enable_if< 
+			not grb::is_object< OutputType >::value && 
+			not grb::is_object< InputType >::value && 
+			std::is_convertible< InputType, OutputType >::value 
+		>::type * const = nullptr )
+	{
+#ifdef _DEBUG
+		std::cerr << "In grb::triu (reference)\n";
+#endif
+
+		// Static checks
+		NO_CAST_ASSERT( 
+			( not ( descr & descriptors::no_casting ) || 
+			std::is_same< InputType, OutputType >::value ), 
+			"grb::triu (reference)",
+			"input matrix and output matrix are incompatible for implicit casting"
+		);
+
+		// Add descriptors::transpose_matrix to descr
+		return internal::trilu_generic< true, descr >( U, A, k, phase );
+	}
+
+	/**
+	 * Return the upper triangular portion of a matrix, stricly above the main diagonal.
+	 *
+	 * This primitive is strictly equivalent to calling grb::triu( L, A, 0, phase ).
+	 * see grb::triu( L, A, k, phase ) for full description.
+	 */
+	template< 
+		Descriptor descr = descriptors::no_operation, 
+		typename InputType, typename OutputType, 
+		typename RIT_U, typename CIT_U, typename NIT_U, 
+		typename RIT_A, typename CIT_A, typename NIT_A
+	>
+	RC triu(
+		Matrix< OutputType, reference, RIT_U, CIT_U, NIT_U > & U,
+		const Matrix< InputType, reference, RIT_A, CIT_A, NIT_A > & A,
+		const Phase & phase = Phase::EXECUTE,
+		const typename std::enable_if< 
+			not grb::is_object< OutputType >::value && 
+			not grb::is_object< InputType >::value && 
+			std::is_convertible< InputType, OutputType >::value 
+		>::type * const = nullptr )
+	{
+		return triu< descr >( U, A, 0, phase );
 	}
 
 } // namespace grb
