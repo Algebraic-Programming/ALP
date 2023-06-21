@@ -22,20 +22,56 @@
 
 using namespace grb;
 
+template< class Iterator >
+void printSparseMatrixIterator( size_t rows, size_t cols, Iterator begin, Iterator end, const std::string & name = "", std::ostream & os = std::cout ) {
+	if( rows < 64 || cols > 64 ) {
+		return;
+	}
+	std::cout << "Matrix \"" << name << "\" (" << rows << "x" << cols << "):" << std::endl << "[" << std::endl;
+	// os.precision( 3 );
+	for( size_t y = 0; y < rows; y++ ) {
+		os << std::string( 3, ' ' );
+		for( size_t x = 0; x < cols; x++ ) {
+			auto nnz_val = std::find_if( begin, end, [ y, x ]( const typename std::iterator_traits< Iterator >::value_type & a ) {
+				return a.first.first == y && a.first.second == x;
+			} );
+			if( nnz_val != end )
+				os << std::fixed << ( *nnz_val ).second;
+			else
+				os << '_';
+			os << " ";
+		}
+		os << std::endl;
+	}
+	os << "]" << std::endl;
+}
+
 template< typename D >
-RC is_lower_triangle( const grb::Matrix< D > & L ) {
+void printSparseMatrix( const grb::Matrix< D > & mat, const std::string & name = "", std::ostream & os = std::cout ) {
+	grb::wait( mat );
+	printSparseMatrixIterator( grb::nrows( mat ), grb::ncols( mat ), mat.cbegin(), mat.cend(), name, os );
+}
+
+template< typename D, Descriptor descr = descriptors::no_operation >
+D compute_value( size_t i, size_t j ) {
+	return descr & descriptors::transpose_matrix ? i + 2 * j : 2 * i + j;
+}
+
+template< Descriptor descr = descriptors::no_operation, typename D >
+RC check_obtained( const grb::Matrix< D > & L ) {
 	for( const auto & triple : L ) {
 		const size_t & i = triple.first.first;
 		const size_t & j = triple.first.second;
 		const size_t & v = triple.second;
 		if( i < j ) {
 			std::cout << "Unexpected entry at position ( " << i << ", " << j << " ) "
-					  << "-- only expected entries on the diagonal\n";
+					  << "-- only expected entries on the lower triangular part\n";
 			return RC::FAILED;
 		}
-		if( v != 2 ) {
+		const D expected_value = compute_value< D, descr >( i, j );
+		if( v != expected_value ) {
 			std::cout << "Unexpected value at position ( " << i << ", " << j << " ) "
-					  << "-- expected 2, found " << v << "\n";
+					  << "-- expected " << expected_value << ", found " << v << "\n";
 			return RC::FAILED;
 		}
 	}
@@ -55,43 +91,48 @@ void grb_program( const size_t & n, grb::RC & rc ) {
 	for( size_t k = 0; k < n; ++k ) {
 		I[ k ] = k % 3 == 0 ? k : k - 1;
 		J[ k ] = std::rand() % n;
-		V[ k ] = 2;
+		V[ k ] = compute_value< int >( I[ k ], J[ k ] );
 	}
 	assert( not grb::buildMatrixUnique( A, I, J, V, n, SEQUENTIAL ) );
 
 	{ // Mixed-domain matrix, should be successful
+		printSparseMatrix( A, "A" );
 		rc = grb::tril( L_A, A, Phase::RESIZE );
 		rc = rc ? rc : grb::tril( L_A, A, Phase::EXECUTE );
+		printSparseMatrix( L_A, "L_A" );
 
 		if( rc != SUCCESS ) {
 			std::cerr << "Error on test: mixed-domain matrix" << std::endl;
 			std::cerr << "Error on executing: " << grb::toString( rc ) << std::endl;
 			return;
 		}
-		rc = is_lower_triangle( L_A );
+		rc = check_obtained( L_A );
 		if( rc != SUCCESS ) {
 			std::cerr << "Error on test: mixed-domain matrix" << std::endl;
-			std::cerr << "Error on result, not a lower-triangle" << std::endl;
+			std::cerr << "Error on result, incorrect result" << std::endl;
 			return;
 		}
+		std::cout << std::flush << " -- Test passed: mixed-domain matrix" << std::flush << std::endl;
 	}
 	{ // Transpose_matrix descriptor, should be successful
+		printSparseMatrix( A, "A" );
 		rc = grb::tril< descriptors::transpose_matrix >( L_At, A, Phase::RESIZE );
 		rc = rc ? rc : grb::tril< descriptors::transpose_matrix >( L_At, A, Phase::EXECUTE );
+		printSparseMatrix( L_At, "L_At" );
 
 		if( rc != SUCCESS ) {
-			std::cerr << "Error on test: Transpose_matrix descriptor" << std::endl;
+			std::cerr << "Error on test: transpose_matrix descriptor" << std::endl;
 			std::cerr << "Error on executing: " << grb::toString( rc ) << std::endl;
 			return;
 		}
-		rc = is_lower_triangle< size_t >( L_At );
+		rc = check_obtained< descriptors::transpose_matrix >( L_At );
 		if( rc != SUCCESS ) {
-			std::cerr << "Error on test: Transpose_matrix descriptor" << std::endl;
-			std::cerr << "Error on result, not a lower-triangle" << std::endl;
+			std::cerr << "Error on test: transpose_matrix descriptor" << std::endl;
+			std::cerr << "Error on result, incorrect result" << std::endl;
 			return;
 		}
+		std::cout << std::flush << " -- Test passed: transpose_matrix descriptor" << std::flush << std::endl;
 	}
-	
 }
 
 int main( int argc, char ** argv ) {
