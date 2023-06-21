@@ -939,11 +939,12 @@ namespace grb {
 		template<
 			Descriptor descr = descriptors::no_operation,
 			class Monoid,
-			typename InputType, typename IOType, typename MaskType
+			typename InputType, typename IOType, typename MaskType,
+			typename RIT, typename CIT, typename NIT
 		>
 		RC fold_unmasked_generic(
 			IOType &x,
-			const Matrix< InputType, reference > &A,
+			const Matrix< InputType, reference, RIT, CIT, NIT > &A,
 			const Monoid &monoid
 		) {
 			_DEBUG_THREADESAFE_PRINT( "In grb::internal::foldr_unmasked_generic( reference )\n" );
@@ -1003,12 +1004,14 @@ namespace grb {
 		template<
 			Descriptor descr = descriptors::no_operation,
 			class Monoid,
-			typename InputType, typename IOType, typename MaskType
+			typename InputType, typename IOType, typename MaskType,
+			typename RIT_A, typename CIT_A, typename NIT_A,
+			typename RIT_M, typename CIT_M, typename NIT_M
 		>
 		RC fold_masked_generic(
 			IOType &x,
-			const Matrix< InputType, reference > &A,
-			const Matrix< MaskType, reference > &mask,
+			const Matrix< InputType, reference, RIT_A, CIT_A, NIT_A > &A,
+			const Matrix< MaskType, reference, RIT_M, CIT_M, NIT_M > &mask,
 			const Monoid &monoid
 		) {
 			_DEBUG_THREADESAFE_PRINT( "In grb::internal::foldr_masked_generic( reference )\n" );
@@ -1040,10 +1043,10 @@ namespace grb {
 #ifdef _H_GRB_REFERENCE_OMP_BLAS3
 				config::OMP::localRange( start_row, end_row, 0, m );
 #endif
-				for( size_t i = start_row; i < end_row; ++i ) {
-					size_t mask_k = mask_raw.col_start[ i ];
-					for( size_t k = A_raw.col_start[ i ]; k < A_raw.col_start[ i + 1 ]; ++k ) {
-						const size_t k_col = A_raw.row_index[ k ];
+				for( auto i = start_row; i < end_row; ++i ) {
+					auto mask_k = mask_raw.col_start[ i ];
+					for( auto k = A_raw.col_start[ i ]; k < A_raw.col_start[ i + 1 ]; ++k ) {
+						auto k_col = A_raw.row_index[ k ];
 
 						// Increment the mask pointer until we find the right column, or an higher one
 						while( mask_raw.row_index[ mask_k ] < k_col && mask_k < mask_raw.col_start[ i + 1 ] ) {
@@ -1504,12 +1507,14 @@ namespace grb {
 	template<
 		Descriptor descr = descriptors::no_operation,
 		class Monoid,
-		typename InputType, typename IOType, typename MaskType
+		typename InputType, typename IOType, typename MaskType,
+		typename RIT_A, typename CIT_A, typename NIT_A,
+		typename RIT_M, typename CIT_M, typename NIT_M
 	>
 	RC foldr(
 		IOType &x,
-		const Matrix< InputType, reference > &A,
-		const Matrix< MaskType, reference > &mask,
+		const Matrix< InputType, reference, RIT_A, CIT_A, NIT_A > &A,
+		const Matrix< MaskType, reference, RIT_M, CIT_M, NIT_M > &mask,
 		const Monoid &monoid = Monoid(),
 		const typename std::enable_if< !grb::is_object< IOType >::value &&
 			!grb::is_object< InputType >::value &&
@@ -1553,11 +1558,12 @@ namespace grb {
 	template<
 		Descriptor descr = descriptors::no_operation,
 		class Monoid,
-		typename InputType, typename IOType
+		typename InputType, typename IOType,
+		typename RIT, typename CIT, typename NIT
 	>
 	RC foldr(
 		IOType &x,
-		const Matrix< InputType, reference > &A,
+		const Matrix< InputType, reference, RIT, CIT, NIT > &A,
 		const Monoid &monoid,
 		const typename std::enable_if< !grb::is_object< IOType >::value &&
 			!grb::is_object< InputType >::value &&
@@ -1600,12 +1606,14 @@ namespace grb {
 	template<
 		Descriptor descr = descriptors::no_operation,
 		class Monoid,
-		typename InputType, typename IOType, typename MaskType
+		typename InputType, typename IOType, typename MaskType,
+		typename RIT_A, typename CIT_A, typename NIT_A,
+		typename RIT_M, typename CIT_M, typename NIT_M
 	>
 	RC foldl(
 		IOType &x,
-		const Matrix< InputType, reference > &A,
-		const Matrix< MaskType, reference > &mask,
+		const Matrix< InputType, reference, RIT_A, CIT_A, NIT_A > &A,
+		const Matrix< MaskType, reference, RIT_M, CIT_M, NIT_M > &mask,
 		const Monoid &monoid,
 		const typename std::enable_if<
 			!grb::is_object< IOType >::value &&
@@ -1650,11 +1658,12 @@ namespace grb {
 	template<
 		Descriptor descr = descriptors::no_operation,
 		class Monoid,
-		typename InputType, typename IOType
+		typename InputType, typename IOType,
+		typename RIT, typename CIT, typename NIT
 	>
 	RC foldl(
 		IOType &x,
-		const Matrix< InputType, reference > &A,
+		const Matrix< InputType, reference, RIT, CIT, NIT > &A,
 		const Monoid &monoid,
 		const typename std::enable_if<
 			!grb::is_object< IOType >::value &&
