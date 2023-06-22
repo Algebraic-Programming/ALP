@@ -20,13 +20,26 @@
 
 int main() {
 	typedef grb::Matrix< double > MatrixType;
+	typedef grb::Matrix< void > VMatrixType;
+	static_assert( std::is_same< double, typename MatrixType::value_type >::value,
+		"Matrix has unexpected value type" );
+	static_assert( std::is_same< void, typename VMatrixType::value_type >::value,
+		"Void matrix has unexpected value type" );
 	static_assert( std::is_same<
 			std::pair<
 				std::pair< const size_t, const size_t >,
-				const MatrixType::value_type
+				const typename MatrixType::value_type
 			>,
-			std::iterator_traits< typename MatrixType::const_iterator >::value_type
+			typename std::iterator_traits<
+					typename MatrixType::const_iterator
+				>::value_type
 		>::value, "Matrix iterator has an unexpected value type" );
+	static_assert( std::is_same<
+			std::pair< const size_t, const size_t >,
+			typename std::iterator_traits<
+					typename VMatrixType::const_iterator
+				>::value_type
+		>::value, "Void matrix iterator has an unexpected value type" );
 	return 0;
 }
 
