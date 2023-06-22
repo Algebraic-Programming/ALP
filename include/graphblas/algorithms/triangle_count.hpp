@@ -84,154 +84,31 @@ namespace grb {
 			}
 		} // namespace utils
 
-		namespace {
-
-			template< typename Iterator >
-			class ConditionalIterator : public std::iterator< std::input_iterator_tag, typename std::iterator_traits< Iterator >::value_type > {
-
-			public:
-				typedef typename std::iterator_traits< Iterator >::value_type value_type;
-				typedef typename std::iterator_traits< Iterator >::pointer pointer;
-				typedef typename std::iterator_traits< Iterator >::reference reference;
-				typedef typename std::iterator_traits< Iterator >::iterator_category iterator_category;
-				typedef typename std::iterator_traits< Iterator >::difference_type difference_type;
-
-				ConditionalIterator( std::function< bool( typename Iterator::value_type ) > func, Iterator it, Iterator endbound ) : _iterator( it ), _endbound( endbound ), _condition( func ) {
-					while( _iterator != _endbound && ! _condition( *_iterator ) )
-						++( *this );
-				}
-
-				ConditionalIterator( const ConditionalIterator & other ) : _iterator( other._iterator ), _endbound( other._endbound ), _condition( other._condition ) {}
-
-				// Overload the dereference operator
-				value_type operator*() const {
-					return *_iterator;
-				}
-
-				// Overload the arrow operator
-				value_type operator->() const {
-					return *_iterator;
-				}
-
-				// Overload the increment operator
-				ConditionalIterator & operator++() {
-					do
-						++_iterator;
-					while( _iterator != _endbound && ! _condition( *_iterator ) );
-					return *this;
-				}
-
-				// Overload the inequality operator
-				bool operator!=( const ConditionalIterator & other ) const {
-					return _iterator != other._iterator;
-				}
-
-				// Overload the equality operator
-				bool operator==( const ConditionalIterator & other ) const {
-					return _iterator == other._iterator;
-				}
-
-			private:
-				Iterator _iterator, _endbound;
-				std::function< bool( typename Iterator::value_type ) > _condition;
-			};
-
-			template< typename D >
-			class MatrixConditionalAccessor {
-				typedef ConditionalIterator< typename grb::Matrix< D >::const_iterator > iterator_type;
-
-			public:
-				MatrixConditionalAccessor( const std::function< bool( std::pair< std::pair< size_t, size_t >, D > ) > & f, const grb::Matrix< D > & A ) :
-					_begin( f, A.cbegin(), A.cend() ), _end( f, A.cend(), A.cend() ) {}
-
-				MatrixConditionalAccessor( const MatrixConditionalAccessor & other ) = delete;
-
-				MatrixConditionalAccessor & operator=( const MatrixConditionalAccessor & other ) = delete;
-
-				virtual ~MatrixConditionalAccessor() {}
-
-				iterator_type cbegin() const {
-					return _begin;
-				}
-
-				iterator_type begin() const {
-					return cbegin();
-				}
-
-				iterator_type cend() const {
-					return _end;
-				}
-
-				iterator_type end() const {
-					return cend();
-				}
-
-			private:
-				iterator_type _begin, _end;
-			};
-
-			template< typename D >
-			class LUMatrixAccessor {
-			public:
-				LUMatrixAccessor( const grb::Matrix< D > & A ) :
-					_lower(
-						[]( const std::pair< std::pair< size_t, size_t >, D > & a ) {
-							return a.first.first > a.first.second;
-						},
-						A ),
-					_upper(
-						[]( const std::pair< std::pair< size_t, size_t >, D > & a ) {
-							return a.first.first < a.first.second;
-						},
-						A ) {}
-
-				MatrixConditionalAccessor< D > & lower() {
-					return _lower;
-				}
-
-				MatrixConditionalAccessor< D > & upper() {
-					return _upper;
-				}
-
-			private:
-				MatrixConditionalAccessor< D > _lower, _upper;
-			};
-
-			template< typename D, typename I, typename J >
-			grb::RC trilu( const grb::Matrix< D, grb::config::default_backend, I, J > & A,
-				grb::Matrix< D, grb::config::default_backend, I, J > & L,
-				grb::Matrix< D, grb::config::default_backend, I, J > & U ) {
-				//
-				grb::RC rc = grb::RC::SUCCESS;
-
-				// Create the custom accessor
-				grb::wait( A );
-				LUMatrixAccessor< D > luAccesor( A );
-
-				// Create the lower and upper matrices from the accessor
-				const std::vector< std::pair< std::pair< I, J >, D > > nnzs_lower( luAccesor.lower().cbegin(), luAccesor.lower().cend() );
-				grb::buildMatrixUnique( L, grb::utils::makeNonzeroIterator< I, J, D >( nnzs_lower.cbegin() ), grb::utils::makeNonzeroIterator< I, J, D >( nnzs_lower.cend() ), IOMode::PARALLEL );
-				const std::vector< std::pair< std::pair< I, J >, D > > nnzs_upper( luAccesor.upper().cbegin(), luAccesor.upper().cend() );
-				grb::buildMatrixUnique( U, grb::utils::makeNonzeroIterator< I, J, D >( nnzs_upper.cbegin() ), grb::utils::makeNonzeroIterator< I, J, D >( nnzs_upper.cend() ), IOMode::PARALLEL );
-
-				return rc;
-			}
-
-		} // namespace
-
 		enum class TriangleCountAlgorithm { Burkhardt, Cohen, Sandia_TT };
 
 		std::map< TriangleCountAlgorithm, std::string > TriangleCountAlgorithmNames = { { TriangleCountAlgorithm::Burkhardt, "Burkhardt" }, { TriangleCountAlgorithm::Cohen, "Cohen" },
 			{ TriangleCountAlgorithm::Sandia_TT, "Sandia_TT" } };
 
-		template< Descriptor descr = descriptors::no_operation, typename D, typename I, typename J, class Semiring, class MulMonoid, class SumMonoid >
-		RC triangle_count_generic( size_t & count,
-			Matrix< D, grb::config::default_backend, I, J > & MXM_out,
-			const Matrix< D, grb::config::default_backend, I, J > & MXM_lhs,
-			const Matrix< D, grb::config::default_backend, I, J > & MXM_rhs,
-			Matrix< D, grb::config::default_backend, I, J > & EWA_out,
-			const Matrix< D, grb::config::default_backend, I, J > & EWA_rhs,
-			const D div_factor,
+		template<
+			class Semiring, class MulMonoid, class SumMonoid,
+			Descriptor descr_mxm = descriptors::no_operation,
+			Descriptor descr_ewa = descriptors::no_operation,
+			Descriptor descr_reduce = descriptors::no_operation,
+			typename D1, typename RIT1, typename CIT1, typename NIT1,
+			typename D2, typename RIT2, typename CIT2, typename NIT2,
+			typename D3, typename RIT3, typename CIT3, typename NIT3,
+			typename D4, typename RIT4, typename CIT4, typename NIT4,
+			typename D5, typename RIT5, typename CIT5, typename NIT5,
+			typename D6
+		>
+		RC triangle_count_generic(
+			size_t & count,
+			Matrix< D1, grb::config::default_backend, RIT1, CIT1, NIT1 > & MXM_out,
+			const Matrix< D2, grb::config::default_backend, RIT2, CIT2, NIT2 > & MXM_lhs,
+			const Matrix< D3, grb::config::default_backend, RIT3, CIT3, NIT3 > & MXM_rhs,
+			Matrix< D4, grb::config::default_backend, RIT4, CIT4, NIT4 > & EWA_out,
+			const Matrix< D5, grb::config::default_backend, RIT5, CIT5, NIT5 > & EWA_rhs,
+			const D6 div_factor,
 			const Semiring mxm_semiring = Semiring(),
 			const MulMonoid ewiseapply_monoid = MulMonoid(),
 			const SumMonoid sumreduce_monoid = SumMonoid() ) {
@@ -243,8 +120,8 @@ namespace grb {
 			// Compute MXM_out = Mlhs * Mrhs
 			utils::printSparseMatrix< Debug >( MXM_lhs, "MXM_lhs" );
 			utils::printSparseMatrix< Debug >( MXM_rhs, "MXM_rhs" );
-			rc = rc ? rc : mxm< descr >( MXM_out, MXM_lhs, MXM_rhs, mxm_semiring, Phase::RESIZE );
-			rc = rc ? rc : mxm< descr >( MXM_out, MXM_lhs, MXM_rhs, mxm_semiring, Phase::EXECUTE );
+			rc = rc ? rc : mxm< descr_mxm >( MXM_out, MXM_lhs, MXM_rhs, mxm_semiring, Phase::RESIZE );
+			rc = rc ? rc : mxm< descr_mxm >( MXM_out, MXM_lhs, MXM_rhs, mxm_semiring, Phase::EXECUTE );
 			utils::printSparseMatrix< Debug >( MXM_out, "MXM_out = mxm( MXM_lhs, MXM_rhs )" );
 
 			// Compute MXM_out .*= EWA_rhs
@@ -252,16 +129,16 @@ namespace grb {
 
 			// FIXME: Replace by a foldl( Matrix[in,out], Matrix[in], Monoid ) - not implemented yet
 			// Will then become:
-			// rc = rc ? rc : eWiseApply< descr >( MXM_out, MXM_out, EWA_rhs, ewiseapply_monoid, Phase::RESIZE );
-			// rc = rc ? rc : eWiseApply< descr >( MXM_out, MXM_out, EWA_rhs, ewiseapply_monoid, Phase::EXECUTE );
+			// rc = rc ? rc : eWiseApply< descr_ewa >( MXM_out, MXM_out, EWA_rhs, ewiseapply_monoid, Phase::RESIZE );
+			// rc = rc ? rc : eWiseApply< descr_ewa >( MXM_out, MXM_out, EWA_rhs, ewiseapply_monoid, Phase::EXECUTE );
 			// Instead of:
-			rc = rc ? rc : eWiseApply< descr >( EWA_out, MXM_out, EWA_rhs, ewiseapply_monoid, Phase::RESIZE );
-			rc = rc ? rc : eWiseApply< descr >( EWA_out, MXM_out, EWA_rhs, ewiseapply_monoid, Phase::EXECUTE );
+			rc = rc ? rc : eWiseApply< descr_ewa >( EWA_out, MXM_out, EWA_rhs, ewiseapply_monoid, Phase::RESIZE );
+			rc = rc ? rc : eWiseApply< descr_ewa >( EWA_out, MXM_out, EWA_rhs, ewiseapply_monoid, Phase::EXECUTE );
 			utils::printSparseMatrix< Debug >( EWA_out, "EWA_out = ewiseapply( MXM_out, EWA_rhs )" );
 
 			// Compute a sum reduction over <EWA_out> in <count>
-			count = 0;
-			rc = rc ? rc : foldl< descr >( count, EWA_out, sumreduce_monoid );
+			count = static_cast< size_t >( 0 );
+			rc = rc ? rc : foldl< descr_reduce >( count, EWA_out, sumreduce_monoid );
 			utils::printf< Debug >( "count = foldl(EWA_out) = " + std::to_string( count ) + "\n" );
 
 			// Apply the div_factor to the reduction result
@@ -304,22 +181,26 @@ namespace grb {
 		 * performance semantics, with the exception of getters such as #grb::nnz, are
 		 * specific to the backend selected during compilation.
 		 */
-		template< Descriptor descr = descriptors::no_operation,
-			typename D,
-			typename I,
-			typename J,
-			class Semiring = grb::Semiring< operators::add< D >, operators::mul< D >, identities::zero, identities::one >,
-			class MulMonoid = grb::Monoid< grb::operators::mul< D >, identities::one >,
-			class SumMonoid = grb::Monoid< operators::add< size_t, D, size_t >, identities::zero > >
-		RC triangle_count( const TriangleCountAlgorithm algo,
+		template<
+			Descriptor descr = descriptors::no_operation,
+			typename D1, typename RIT1, typename CIT1, typename NIT1,
+			typename D2, typename RIT2, typename CIT2, typename NIT2,
+			typename D3, typename RIT3, typename CIT3, typename NIT3,
+			typename D4, typename RIT4, typename CIT4, typename NIT4,
+			class Semiring = grb::Semiring< operators::add< D1 >, operators::mul< D1 >, identities::zero, identities::one >,
+			class MulMonoid = grb::Monoid< grb::operators::mul< D1 >, identities::one >,
+			class SumMonoid = grb::Monoid< operators::add< size_t, D1, size_t >, identities::zero > >
+		RC triangle_count(
+			const TriangleCountAlgorithm algo,
 			size_t & count,
-			const Matrix< D, grb::config::default_backend, I, J > & A,
-			Matrix< D, grb::config::default_backend, I, J > & MXM_out,
-			Matrix< D, grb::config::default_backend, I, J > & EWA_out,
-			Matrix< D, grb::config::default_backend, I, J > & L = { 0, 0 },
-			Matrix< D, grb::config::default_backend, I, J > & U = { 0, 0 } ) {
+			const Matrix< D1, grb::config::default_backend, RIT1, CIT1, NIT1 > & A,
+			Matrix< D2, grb::config::default_backend, RIT2, CIT2, NIT2 > & MXM_out,
+			Matrix< D3, grb::config::default_backend, RIT3, CIT3, NIT3 > & EWA_out,
+			Matrix< D4, grb::config::default_backend, RIT4, CIT4, NIT4 > & L = { 0, 0 },
+			Matrix< D4, grb::config::default_backend, RIT4, CIT4, NIT4 > & U = { 0, 0 }
+		) {
 			// Static assertions
-			static_assert( std::is_integral< D >::value, "Type D must be integral" );
+			static_assert( std::is_integral< D1 >::value, "Type D1 must be integral" );
 
 			// Sanity checks
 			if( nrows( A ) != ncols( A ) ) {
@@ -362,29 +243,37 @@ namespace grb {
 			// Dispatch to the appropriate algorithm
 			switch( algo ) {
 				case TriangleCountAlgorithm::Burkhardt: {
-					return triangle_count_generic< descr | descriptors::transpose_right, D, I, J, Semiring, MulMonoid, SumMonoid >( count, MXM_out, A, A, EWA_out, A, 6 );
+					return triangle_count_generic<
+						Semiring, MulMonoid, SumMonoid,
+						descr | descriptors::transpose_right
+					>( count, MXM_out, A, A, EWA_out, A, 6UL );
 				}
 
 				case TriangleCountAlgorithm::Cohen: {
-					trilu( A, L, U );
-					if( nrows( L ) + ncols( L ) == 0 ) {
+					if( nrows( L ) == 0 || ncols( L ) == 0 ) {
 						std::cerr << "Matrix L must be provided for the Cohen algorithm" << std::endl;
 						return RC::MISMATCH;
-					} else if( nrows( U ) + ncols( U ) == 0 ) {
+					}
+					if( nrows( U ) == 0 || ncols( U ) == 0 ) {
 						std::cerr << "Matrix U must be provided for the Cohen algorithm" << std::endl;
 						return RC::MISMATCH;
 					}
-					return triangle_count_generic< descr, D, I, J, Semiring, MulMonoid, SumMonoid >( count, MXM_out, L, U, EWA_out,  A, 2 );
+
+					return triangle_count_generic<
+						Semiring, MulMonoid, SumMonoid
+					>( count, MXM_out, L, U, EWA_out,  A, 2UL );
 				}
 
 				case TriangleCountAlgorithm::Sandia_TT: {
-					trilu( A, L, U );
 					if( ( nrows( U ) == 0 || ncols( U ) == 0 ) && ( nrows( L ) == 0 || ncols( L ) == 0 ) ) {
 						std::cerr << "Matrix L or U must be provided for the Sandia_TT algorithm" << std::endl;
 						return RC::MISMATCH;
 					}
-					const Matrix< D, grb::config::default_backend, I, J > & T = ( nrows( U ) == 0 || ncols( U ) == 0 ) ? L : U;
-					return triangle_count_generic< descr, D, I, J, Semiring, MulMonoid, SumMonoid >( count, MXM_out, T, T, EWA_out, T, 1 );
+
+					const Matrix< D4, grb::config::default_backend, RIT4, CIT4, NIT4 > & T = ( nrows( U ) == 0 || ncols( U ) == 0 ) ? L : U;
+					return triangle_count_generic<
+						Semiring, MulMonoid, SumMonoid
+					>( count, MXM_out, T, T, EWA_out, T, 1UL );
 				}
 
 				default:
