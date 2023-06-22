@@ -151,7 +151,6 @@ void grbProgram( const input & data_in, output & out ) {
 		}
 	}
 
-
 	timer.reset();
 	// Allocate the buffers
 	Matrix< IntegerType > buffer( n, n );
@@ -159,7 +158,10 @@ void grbProgram( const input & data_in, output & out ) {
 	Matrix< IntegerType > L( n, n );
 	Matrix< IntegerType > U( n, n );
 	// Split A into L and U
-	// TODO:
+	grb::tril( L, A, Phase::RESIZE );
+	grb::triu( U, A, Phase::RESIZE );
+	grb::tril( L, A, Phase::EXECUTE );
+	grb::triu( U, A, Phase::EXECUTE );
 	out.times.preamble = timer.time();
 
 	timer.reset();
