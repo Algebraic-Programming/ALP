@@ -122,14 +122,14 @@ namespace grb {
 		Descriptor descr = descriptors::no_operation,
 		class MulMonoid,
 		typename OutputType, typename InputType1, typename InputType2,
-		typename RIT, typename CIT, typename NIT,
 		typename RIT1, typename CIT1, typename NIT1,
-		typename RIT2, typename CIT2, typename NIT2
+		typename RIT2, typename CIT2, typename NIT2,
+		typename RIT3, typename CIT3, typename NIT3
 	>
 	RC eWiseApply(
-		Matrix< OutputType, BSP1D, RIT, CIT, NIT > &C,
-		const Matrix< InputType1, BSP1D, RIT1, CIT1, NIT1 > &A,
-		const Matrix< InputType2, BSP1D, RIT2, CIT2, NIT2 > &B,
+		Matrix< OutputType, BSP1D, RIT1, CIT1, NIT1 > &C,
+		const Matrix< InputType1, BSP1D, RIT2, CIT2, NIT2 > &A,
+		const Matrix< InputType2, BSP1D, RIT3, CIT3, NIT3 > &B,
 		const MulMonoid &mul,
 		const Phase phase = EXECUTE,
 		const typename std::enable_if<
@@ -170,14 +170,14 @@ namespace grb {
 		Descriptor descr = descriptors::no_operation,
 		class Operator,
 		typename OutputType, typename InputType1, typename InputType2,
-		typename RIT, typename CIT, typename NIT,
 		typename RIT1, typename CIT1, typename NIT1,
-		typename RIT2, typename CIT2, typename NIT2
+		typename RIT2, typename CIT2, typename NIT2,
+		typename RIT3, typename CIT3, typename NIT3
 	>
 	RC eWiseApply(
-		Matrix< OutputType, BSP1D, RIT, CIT, NIT > &C,
-		const Matrix< InputType1, BSP1D, RIT1, CIT1, NIT1 > &A,
-		const Matrix< InputType2, BSP1D, RIT2, CIT2, NIT2 > &B,
+		Matrix< OutputType, BSP1D, RIT1, CIT1, NIT1 > &C,
+		const Matrix< InputType1, BSP1D, RIT2, CIT2, NIT2 > &A,
+		const Matrix< InputType2, BSP1D, RIT3, CIT3, NIT3 > &B,
 		const Operator &op,
 		const Phase phase = EXECUTE,
 		const typename std::enable_if<

@@ -423,14 +423,14 @@ namespace grb {
 			Descriptor descr,
 			class MulMonoid, class Operator,
 			typename OutputType, typename InputType1, typename InputType2,
-			typename RIT, typename CIT, typename NIT,
 			typename RIT1, typename CIT1, typename NIT1,
-			typename RIT2, typename CIT2, typename NIT2
+			typename RIT2, typename CIT2, typename NIT2,
+			typename RIT3, typename CIT3, typename NIT3
 		>
 		RC eWiseApply_matrix_generic(
-			Matrix< OutputType, nonblocking, RIT, CIT, NIT > &C,
-			const Matrix< InputType1, nonblocking, RIT1, CIT1, NIT1 > &A,
-			const Matrix< InputType2, nonblocking, RIT2, CIT2, NIT2 > &B,
+			Matrix< OutputType, nonblocking, RIT1, CIT1, NIT1 > &C,
+			const Matrix< InputType1, nonblocking, RIT2, CIT2, NIT2 > &A,
+			const Matrix< InputType2, nonblocking, RIT3, CIT3, NIT3 > &B,
 			const Operator &oper,
 			const MulMonoid &mulMonoid,
 			const Phase &phase,
@@ -470,14 +470,14 @@ namespace grb {
 		Descriptor descr = descriptors::no_operation,
 		class MulMonoid,
 		typename OutputType, typename InputType1, typename InputType2,
-		typename RIT, typename CIT, typename NIT,
 		typename RIT1, typename CIT1, typename NIT1,
-		typename RIT2, typename CIT2, typename NIT2
+		typename RIT2, typename CIT2, typename NIT2,
+		typename RIT3, typename CIT3, typename NIT3
 	>
 	RC eWiseApply(
-		Matrix< OutputType, nonblocking, RIT, CIT, NIT > &C,
-		const Matrix< InputType1, nonblocking, RIT1, CIT1, NIT1 > &A,
-		const Matrix< InputType2, nonblocking, RIT2, CIT2, NIT2 > &B,
+		Matrix< OutputType, nonblocking, RIT1, CIT1, NIT1 > &C,
+		const Matrix< InputType1, nonblocking, RIT2, CIT2, NIT2 > &A,
+		const Matrix< InputType2, nonblocking, RIT3, CIT3, NIT3 > &B,
 		const MulMonoid &mulmono,
 		const Phase phase = EXECUTE,
 		const typename std::enable_if< !grb::is_object< OutputType >::value &&
@@ -519,14 +519,14 @@ namespace grb {
 		Descriptor descr = grb::descriptors::no_operation,
 		class Operator,
 		typename OutputType, typename InputType1, typename InputType2,
-		typename RIT, typename CIT, typename NIT,
 		typename RIT1, typename CIT1, typename NIT1,
-		typename RIT2, typename CIT2, typename NIT2
+		typename RIT2, typename CIT2, typename NIT2,
+		typename RIT3, typename CIT3, typename NIT3
 	>
 	RC eWiseApply(
-		Matrix< OutputType, nonblocking, RIT, CIT, NIT > &C,
-		const Matrix< InputType1, nonblocking, RIT1, CIT1, NIT1 > &A,
-		const Matrix< InputType2, nonblocking, RIT2, CIT2, NIT2 > &B,
+		Matrix< OutputType, nonblocking, RIT1, CIT1, NIT1 > &C,
+		const Matrix< InputType1, nonblocking, RIT2, CIT2, NIT2 > &A,
+		const Matrix< InputType2, nonblocking, RIT3, CIT3, NIT3 > &B,
 		const Operator &mulOp,
 		const Phase phase = EXECUTE,
 		const typename std::enable_if< !grb::is_object< OutputType >::value &&

@@ -335,11 +335,11 @@ namespace grb {
 	template<
 		Descriptor descr = descriptors::no_operation,
 		typename OutputType, typename InputType,
-		typename RIT, typename CIT, typename NIT,
+		typename RIT1, typename CIT1, typename NIT1,
 		typename RIT2, typename CIT2, typename NIT2
 	>
 	RC set(
-		Matrix< OutputType, hyperdags, RIT, CIT, NIT > &C,
+		Matrix< OutputType, hyperdags, RIT1, CIT1, NIT1 > &C,
 		const Matrix< InputType, hyperdags, RIT2, CIT2, NIT2 > &A,
 		const Phase &phase = EXECUTE
 	) {
@@ -367,11 +367,11 @@ namespace grb {
 	template<
 		Descriptor descr = descriptors::no_operation,
 		typename OutputType, typename InputType1, typename InputType2,
-		typename RIT, typename CIT, typename NIT,
+		typename RIT1, typename CIT1, typename NIT1,
 		typename RIT2, typename CIT2, typename NIT2
 	>
 	RC set(
-		Matrix< OutputType, hyperdags, RIT, CIT, NIT > &C,
+		Matrix< OutputType, hyperdags, RIT1, CIT1, NIT1 > &C,
 		const Matrix< InputType1, hyperdags, RIT2, CIT2, NIT2 > &A,
 		const InputType2 &val,
 		const Phase &phase = EXECUTE
