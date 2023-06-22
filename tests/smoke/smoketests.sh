@@ -373,9 +373,6 @@ for BACKEND in ${BACKENDS[@]}; do
 					head -1 ${TEST_OUT_DIR}/triangle_count_dwt_59_${BACKEND}_${P}_${T}.log
 					if ! grep -q 'Test OK' ${TEST_OUT_DIR}/triangle_count_dwt_59_${BACKEND}_${P}_${T}.log; then
 						echo "Test FAILED"
-					elif ! grep -q '11 iterations to converge' ${TEST_OUT_DIR}/triangle_count_dwt_59_${BACKEND}_${P}_${T}.log; then
-						echo "Verification FAILED"
-						echo "Test FAILED"
 					else
 						echo "Test OK"
 					fi
@@ -389,9 +386,6 @@ for BACKEND in ${BACKENDS[@]}; do
 					$runner ${TEST_BIN_DIR}/triangle_count_${BACKEND} ${INPUT_DIR}/gyro_m.mtx direct 598470 1 1 &> ${TEST_OUT_DIR}/triangle_count_gyro_m_${BACKEND}_${P}_${T}.log
 					head -1 ${TEST_OUT_DIR}/triangle_count_gyro_m_${BACKEND}_${P}_${T}.log
 					if ! grep -q 'Test OK' ${TEST_OUT_DIR}/triangle_count_gyro_m_${BACKEND}_${P}_${T}.log; then
-						echo "Test FAILED"
-					elif ! grep -q '11 iterations to converge' ${TEST_OUT_DIR}/triangle_count_gyro_m_${BACKEND}_${P}_${T}.log; then
-						echo "Verification FAILED"
 						echo "Test FAILED"
 					else
 						echo "Test OK"
