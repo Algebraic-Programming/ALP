@@ -39,14 +39,16 @@ namespace grb {
 
 	template<
 		Descriptor descr = descriptors::no_operation,
+		class MulMonoid,
 		typename OutputType, typename InputType1, typename InputType2,
 		typename RIT, typename CIT, typename NIT,
-		class MulMonoid
+		typename RIT1, typename CIT1, typename NIT1,
+		typename RIT2, typename CIT2, typename NIT2
 	>
 	RC eWiseApply(
 		Matrix< OutputType, hyperdags, RIT, CIT, NIT > &C,
-		const Matrix< InputType1, hyperdags > &A,
-		const Matrix< InputType2, hyperdags > &B,
+		const Matrix< InputType1, hyperdags, RIT1, CIT1, NIT1 > &A,
+		const Matrix< InputType2, hyperdags, RIT2, CIT2, NIT2 > &B,
 		const MulMonoid &mulmono,
 		const Phase phase = EXECUTE,
 		const typename std::enable_if<
@@ -82,14 +84,16 @@ namespace grb {
 
 	template<
 		Descriptor descr = grb::descriptors::no_operation,
+		class Operator,
 		typename OutputType, typename InputType1, typename InputType2,
 		typename RIT, typename CIT, typename NIT,
-		class Operator
+		typename RIT1, typename CIT1, typename NIT1,
+		typename RIT2, typename CIT2, typename NIT2
 	>
 	RC eWiseApply(
 		Matrix< OutputType, hyperdags, RIT, CIT, NIT > &C,
-		const Matrix< InputType1, hyperdags, RIT, CIT, NIT > &A,
-		const Matrix< InputType2, hyperdags, RIT, CIT, NIT > &B,
+		const Matrix< InputType1, hyperdags, RIT1, CIT1, NIT1 > &A,
+		const Matrix< InputType2, hyperdags, RIT2, CIT2, NIT2 > &B,
 		const Operator &mulOp,
 		const Phase phase = EXECUTE,
 		const typename std::enable_if<

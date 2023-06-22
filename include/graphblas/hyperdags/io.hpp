@@ -103,10 +103,11 @@ namespace grb {
 
 	template<
 		Descriptor descr = descriptors::no_operation,
-		typename InputType, typename fwd_iterator
+		typename InputType, typename RIT, typename CIT, typename NIT,
+		typename fwd_iterator
 	>
 	RC buildMatrixUnique(
-		Matrix< InputType, hyperdags > &A,
+		Matrix< InputType, hyperdags, RIT, CIT, NIT > &A,
 		fwd_iterator start,
 		const fwd_iterator end,
 		const IOMode mode
@@ -334,11 +335,12 @@ namespace grb {
 	template<
 		Descriptor descr = descriptors::no_operation,
 		typename OutputType, typename InputType,
-		typename RIT, typename CIT, typename NIT
+		typename RIT1, typename CIT1, typename NIT1,
+		typename RIT2, typename CIT2, typename NIT2
 	>
 	RC set(
-		Matrix< OutputType, hyperdags, RIT, CIT, NIT > &C,
-		const Matrix< InputType, hyperdags, RIT, CIT, NIT > &A,
+		Matrix< OutputType, hyperdags, RIT1, CIT1, NIT1 > &C,
+		const Matrix< InputType, hyperdags, RIT2, CIT2, NIT2 > &A,
 		const Phase &phase = EXECUTE
 	) {
 		const RC ret = set< descr >(
@@ -365,11 +367,12 @@ namespace grb {
 	template<
 		Descriptor descr = descriptors::no_operation,
 		typename OutputType, typename InputType1, typename InputType2,
-		typename RIT, typename CIT, typename NIT
+		typename RIT1, typename CIT1, typename NIT1,
+		typename RIT2, typename CIT2, typename NIT2
 	>
 	RC set(
-		Matrix< OutputType, hyperdags, RIT, CIT, NIT > &C,
-		const Matrix< InputType1, hyperdags, RIT, CIT, NIT > &A,
+		Matrix< OutputType, hyperdags, RIT1, CIT1, NIT1 > &C,
+		const Matrix< InputType1, hyperdags, RIT2, CIT2, NIT2 > &A,
 		const InputType2 &val,
 		const Phase &phase = EXECUTE
 	) {
@@ -440,13 +443,13 @@ namespace grb {
 		return size (internal::getVector(x));
 	}
 
-	template< typename InputType >
-	size_t nrows( const Matrix< InputType, hyperdags > &A ) noexcept {
+	template< typename InputType, typename RIT, typename CIT, typename NIT >
+	size_t nrows( const Matrix< InputType, hyperdags, RIT, CIT, NIT > &A ) noexcept {
 		return nrows(internal::getMatrix(A));
 	}
 
-	template< typename InputType >
-	size_t ncols( const Matrix< InputType, hyperdags > &A ) noexcept {
+	template< typename InputType, typename RIT, typename CIT, typename NIT >
+	size_t ncols( const Matrix< InputType, hyperdags, RIT, CIT, NIT > &A ) noexcept {
 		return ncols(internal::getMatrix(A));
 	}
 
@@ -455,8 +458,8 @@ namespace grb {
 		return capacity(internal::getVector( x ));
 	}
 
-	template< typename DataType >
-	size_t capacity( const Matrix< DataType, hyperdags > &A ) noexcept {
+	template< typename DataType, typename RIT, typename CIT, typename NIT >
+	size_t capacity( const Matrix< DataType, hyperdags, RIT, CIT, NIT > &A ) noexcept {
 		return capacity(internal::getMatrix( A ));
 	}
 
@@ -465,8 +468,8 @@ namespace grb {
 		return nnz( internal::getVector( x ) );
 	}
 
-	template< typename InputType >
-	size_t nnz( const Matrix< InputType, hyperdags > &A ) noexcept {
+	template< typename InputType, typename RIT, typename CIT, typename NIT >
+	size_t nnz( const Matrix< InputType, hyperdags, RIT, CIT, NIT > &A ) noexcept {
 		return nnz(internal::getMatrix(A));
 	}
 
@@ -475,8 +478,8 @@ namespace grb {
 		return getID(internal::getVector( x ));
 	}
 
-	template< typename InputType >
-	uintptr_t getID( const Matrix< InputType, hyperdags > &A ) {
+	template< typename InputType, typename RIT, typename CIT, typename NIT >
+	uintptr_t getID( const Matrix< InputType, hyperdags, RIT, CIT, NIT > &A ) {
 		return getID(internal::getMatrix( A ));
 	}
 
@@ -506,9 +509,9 @@ namespace grb {
 		return ret;
 	}
 
-	template< typename InputType >
+	template< typename InputType, typename RIT, typename CIT, typename NIT >
 	RC resize(
-		Matrix< InputType, hyperdags > &A,
+		Matrix< InputType, hyperdags, RIT, CIT, NIT > &A,
 		const size_t new_nz
 	) noexcept {
 		const RC ret = resize( internal::getMatrix(A), new_nz );
@@ -549,9 +552,12 @@ namespace grb {
 	}
 
 	/** \internal Dispatch to base wait implementation */
-	template< typename InputType, typename... Args >
+	template<
+		typename InputType, typename RIT, typename CIT, typename NIT,
+		typename... Args
+	>
 	RC wait(
-		const Matrix< InputType, hyperdags > &A,
+		const Matrix< InputType, hyperdags, RIT, CIT, NIT > &A,
 		const Args &... args
 	) {
 		(void) A;

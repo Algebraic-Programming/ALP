@@ -784,7 +784,8 @@ namespace grb {
 		typename RIT, typename CIT, typename NIT
 	>
 	RC resize(
-		Matrix< InputType, backend, RIT, CIT, NIT > &A, const size_t new_nz
+		Matrix< InputType, backend, RIT, CIT, NIT > &A,
+		const size_t new_nz
 	) noexcept {
 #ifndef NDEBUG
 		const bool should_not_call_base_matrix_resize = false;
@@ -1327,14 +1328,14 @@ namespace grb {
 	 */
 	template<
 		Descriptor descr = descriptors::no_operation,
-		typename InputType,
+		typename InputType, typename RIT, typename CIT, typename NIT,
 		typename fwd_iterator1 = const size_t * __restrict__,
 		typename fwd_iterator2 = const size_t * __restrict__,
 		typename fwd_iterator3 = const InputType * __restrict__,
 		Backend implementation = config::default_backend
 	>
 	RC buildMatrixUnique(
-		Matrix< InputType, implementation > &A,
+		Matrix< InputType, implementation, RIT, CIT, NIT > &A,
 		fwd_iterator1 I, const fwd_iterator1 I_end,
 		fwd_iterator2 J, const fwd_iterator2 J_end,
 		fwd_iterator3 V, const fwd_iterator3 V_end,
@@ -1359,14 +1360,14 @@ namespace grb {
 	 */
 	template<
 		Descriptor descr = descriptors::no_operation,
-		typename InputType,
+		typename InputType, typename RIT, typename CIT, typename NIT,
 		typename fwd_iterator1 = const size_t * __restrict__,
 		typename fwd_iterator2 = const size_t * __restrict__,
 		typename fwd_iterator3 = const InputType * __restrict__,
 		Backend implementation = config::default_backend
 	>
 	RC buildMatrixUnique(
-		Matrix< InputType, implementation > &A,
+		Matrix< InputType, implementation, RIT, CIT, NIT > &A,
 		fwd_iterator1 I, fwd_iterator2 J, fwd_iterator3 V,
 		const size_t nz, const IOMode mode
 	) {

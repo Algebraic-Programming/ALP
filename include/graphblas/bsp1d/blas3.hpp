@@ -40,9 +40,12 @@ namespace grb {
 		 * cleared.
 		 * \endinternal
 		 */
-		template< typename DataType, Backend backend >
+		template<
+			typename DataType, Backend backend,
+			typename RIT, typename CIT, typename NIT
+		>
 		RC checkGlobalErrorStateOrClear(
-			Matrix< DataType, backend > &A,
+			Matrix< DataType, backend, RIT, CIT, NIT > &A,
 			const RC local_rc
 		) noexcept {
 			RC global_rc = local_rc;
@@ -67,11 +70,15 @@ namespace grb {
 	// of the use of the above internal convenience function
 
 	/** \internal No implementation details; simply delegates */
-	template< Descriptor descr = descriptors::no_operation,
-		typename DataType1, typename DataType2 >
+	template<
+		Descriptor descr = descriptors::no_operation,
+		typename DataType1, typename DataType2,
+		typename RIT1, typename CIT1, typename NIT1,
+		typename RIT2, typename CIT2, typename NIT2
+	>
 	RC set(
-		Matrix< DataType1, BSP1D > &out,
-		const Matrix< DataType2, BSP1D > &in,
+		Matrix< DataType1, BSP1D, RIT1, CIT1, NIT1 > &out,
+		const Matrix< DataType2, BSP1D, RIT2, CIT2, NIT2 > &in,
 		const Phase &phase = EXECUTE
 	) noexcept {
 		assert( phase != TRY );
@@ -88,11 +95,13 @@ namespace grb {
 	/** \internal Simply delegates to process-local backend. */
 	template<
 		Descriptor descr = descriptors::no_operation,
-		typename DataType1, typename DataType2, typename DataType3
+		typename DataType1, typename DataType2, typename DataType3,
+		typename RIT1, typename CIT1, typename NIT1,
+		typename RIT2, typename CIT2, typename NIT2
 	>
 	RC set(
-		Matrix< DataType1, BSP1D > &out,
-		const Matrix< DataType2, BSP1D > &mask,
+		Matrix< DataType1, BSP1D, RIT1, CIT1, NIT1 > &out,
+		const Matrix< DataType2, BSP1D, RIT2, CIT2, NIT2 > &mask,
 		const DataType3 &val,
 		const Phase &phase = EXECUTE
 	) noexcept {
@@ -111,15 +120,20 @@ namespace grb {
 	/** \internal Simply delegates to process-local backend */
 	template<
 		Descriptor descr = descriptors::no_operation,
+		class MulMonoid,
 		typename OutputType, typename InputType1, typename InputType2,
-		class MulMonoid
+		typename RIT1, typename CIT1, typename NIT1,
+		typename RIT2, typename CIT2, typename NIT2,
+		typename RIT3, typename CIT3, typename NIT3
 	>
-	RC eWiseApply( Matrix< OutputType, BSP1D > &C,
-		const Matrix< InputType1, BSP1D > &A,
-		const Matrix< InputType2, BSP1D > &B,
+	RC eWiseApply(
+		Matrix< OutputType, BSP1D, RIT1, CIT1, NIT1 > &C,
+		const Matrix< InputType1, BSP1D, RIT2, CIT2, NIT2 > &A,
+		const Matrix< InputType2, BSP1D, RIT3, CIT3, NIT3 > &B,
 		const MulMonoid &mul,
 		const Phase phase = EXECUTE,
-		const typename std::enable_if< !grb::is_object< OutputType >::value &&
+		const typename std::enable_if<
+			!grb::is_object< OutputType >::value &&
 			!grb::is_object< InputType1 >::value &&
 			!grb::is_object< InputType2 >::value &&
 			grb::is_monoid< MulMonoid >::value,
@@ -154,17 +168,22 @@ namespace grb {
 	/** \internal Simply delegates to process-local backend */
 	template<
 		Descriptor descr = descriptors::no_operation,
+		class Operator,
 		typename OutputType, typename InputType1, typename InputType2,
-		class Operator
+		typename RIT1, typename CIT1, typename NIT1,
+		typename RIT2, typename CIT2, typename NIT2,
+		typename RIT3, typename CIT3, typename NIT3
 	>
-	RC eWiseApply( Matrix< OutputType, BSP1D > &C,
-		const Matrix< InputType1, BSP1D > &A,
-		const Matrix< InputType2, BSP1D > &B,
+	RC eWiseApply(
+		Matrix< OutputType, BSP1D, RIT1, CIT1, NIT1 > &C,
+		const Matrix< InputType1, BSP1D, RIT2, CIT2, NIT2 > &A,
+		const Matrix< InputType2, BSP1D, RIT3, CIT3, NIT3 > &B,
 		const Operator &op,
 		const Phase phase = EXECUTE,
-		const typename std::enable_if< !grb::is_object< OutputType >::value &&
-			!grb::is_object< InputType1 >::value && !
-			grb::is_object< InputType2 >::value &&
+		const typename std::enable_if<
+			!grb::is_object< OutputType >::value &&
+			!grb::is_object< InputType1 >::value &&
+			!grb::is_object< InputType2 >::value &&
 			grb::is_operator< Operator >::value,
 		void >::type * const = nullptr
 	) {

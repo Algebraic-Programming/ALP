@@ -262,7 +262,8 @@ namespace grb {
 	 */
 	template< typename InputType, typename RIT, typename CIT, typename NIT >
 	RC resize(
-		Matrix< InputType, reference, RIT, CIT, NIT > &A, const size_t new_nz
+		Matrix< InputType, reference, RIT, CIT, NIT > &A,
+		const size_t new_nz
 	) noexcept {
 #ifdef _DEBUG
 		std::cerr << "In grb::resize (matrix, reference)\n"
@@ -969,11 +970,13 @@ namespace grb {
 			bool A_is_mask,
 			Descriptor descr,
 			typename OutputType, typename InputType1,
-			typename InputType2 = const OutputType
+			typename InputType2 = const OutputType,
+			typename RIT1, typename CIT1, typename NIT1,
+			typename RIT2, typename CIT2, typename NIT2
 		>
 		RC set(
-			Matrix< OutputType, reference > &C,
-			const Matrix< InputType1, reference > &A,
+			Matrix< OutputType, reference, RIT1, CIT1, NIT1 > &C,
+			const Matrix< InputType1, reference, RIT2, CIT2, NIT2 > &A,
 			const InputType2 * __restrict__ id = nullptr
 		) noexcept {
 #ifdef _DEBUG
@@ -1000,7 +1003,7 @@ namespace grb {
 				return MISMATCH;
 			}
 			if( A_is_mask ) {
-				assert( id != NULL );
+				assert( id != nullptr );
 			}
 
 			// catch trivial cases
@@ -1075,11 +1078,13 @@ namespace grb {
 
 	template<
 		Descriptor descr = descriptors::no_operation,
-		typename OutputType, typename InputType
+		typename OutputType, typename InputType,
+		typename RIT1, typename CIT1, typename NIT1,
+		typename RIT2, typename CIT2, typename NIT2
 	>
 	RC set(
-		Matrix< OutputType, reference > &C,
-		const Matrix< InputType, reference > &A,
+		Matrix< OutputType, reference, RIT1, CIT1, NIT1 > &C,
+		const Matrix< InputType, reference, RIT2, CIT2, NIT2 > &A,
 		const Phase &phase = EXECUTE
 	) noexcept {
 		static_assert( std::is_same< OutputType, void >::value ||
@@ -1112,11 +1117,13 @@ namespace grb {
 
 	template<
 		Descriptor descr = descriptors::no_operation,
-		typename OutputType, typename InputType1, typename InputType2
+		typename OutputType, typename InputType1, typename InputType2,
+		typename RIT1, typename CIT1, typename NIT1,
+		typename RIT2, typename CIT2, typename NIT2
 	>
 	RC set(
-		Matrix< OutputType, reference > &C,
-		const Matrix< InputType1, reference > &A,
+		Matrix< OutputType, reference, RIT1, CIT1, NIT1 > &C,
+		const Matrix< InputType1, reference, RIT2, CIT2, NIT2 > &A,
 		const InputType2 &val,
 		const Phase &phase = EXECUTE
 	) noexcept {
@@ -1260,11 +1267,13 @@ namespace grb {
 	 *      processes.
 	 * \endparblock
 	 */
-	template< Descriptor descr = descriptors::no_operation,
+	template<
+		Descriptor descr = descriptors::no_operation,
 		typename InputType, typename fwd_iterator, typename Coords,
 		class Dup = operators::right_assign< InputType >
 	>
-	RC buildVector( Vector< InputType, reference, Coords > &x,
+	RC buildVector(
+		Vector< InputType, reference, Coords > &x,
 		fwd_iterator start, const fwd_iterator end,
 		const IOMode mode, const Dup & dup = Dup()
 	) {
@@ -1280,7 +1289,7 @@ namespace grb {
 #ifndef NDEBUG
 		assert( mode == SEQUENTIAL || mode == PARALLEL );
 #else
-		(void)mode;
+		(void) mode;
 #endif
 
 		// declare temporary to meet delegate signature
@@ -1445,7 +1454,8 @@ namespace grb {
 		typename InputType, typename fwd_iterator1, typename fwd_iterator2,
 		typename Coords, class Dup = operators::right_assign< InputType >
 	>
-	RC buildVector( Vector< InputType, reference, Coords > &x,
+	RC buildVector(
+		Vector< InputType, reference, Coords > &x,
 		fwd_iterator1 ind_start, const fwd_iterator1 ind_end,
 		fwd_iterator2 val_start, const fwd_iterator2 val_end,
 		const IOMode mode,
@@ -1593,9 +1603,12 @@ namespace grb {
 	}
 
 	/** \internal Dispatch to base wait implementation */
-	template< typename InputType, typename... Args >
+	template<
+		typename InputType, typename RIT, typename CIT, typename NIT,
+		 typename... Args
+	>
 	RC wait(
-		const Matrix< InputType, reference > &A,
+		const Matrix< InputType, reference, RIT, CIT, NIT > &A,
 		const Args &... args
 	) {
 		(void) A;
