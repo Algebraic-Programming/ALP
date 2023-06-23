@@ -318,6 +318,12 @@ namespace grb {
 
 		public:
 
+			/** @see Matrix::value_type */
+			typedef D value_type;
+
+			/** The iterator type over matrices of this type. */
+			typedef typename LocalMatrix::const_iterator const_iterator;
+
 			/**
 			 * Matrix constructor.
 			 *

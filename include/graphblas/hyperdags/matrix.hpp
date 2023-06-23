@@ -108,6 +108,12 @@ namespace grb {
 
 		public:
 
+			/** @see Matrix::value_type */
+			typedef T value_type;
+
+			/** The iterator type over matrices of this type. */
+			typedef typename MyMatrixType::const_iterator const_iterator;
+
 			/** \internal Base constructor, no capacity */
 			Matrix( const size_t rows, const size_t columns ) :
 				matrix( rows, columns )
