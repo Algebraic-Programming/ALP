@@ -443,6 +443,184 @@ namespace grb {
 	}
 
 	/**
+	 * Scales, or \em folds, a matrix into a matrix, using a constant scalar.
+	 *
+	 * @tparam descr     The descriptor to be used (descriptors::no_operation if
+	 *                   left unspecified).
+	 * @tparam Operator  The operator to use for scaling.
+	 * @tparam IOType    The type of the elements in the input and output
+	 * 					 ALP/GraphBLAS matrix \a A.
+	 * @tparam MaskType  The type of the elements in the supplied ALP/GraphBLAS
+	 *                   matrix \a mask.
+	 * @tparam InputType The type of the input scalar \a x.
+	 *
+	 * @param[in,out] A     Any ALP/GraphBLAS matrix, which will be scaled.
+	 * 					    Prior value will be considered.
+	 * @param[in]     mask  Any ALP/GraphBLAS matrix.
+	 * @param[in]     x	    The input scalat to scale with.    
+	 * @param[in]     op    The monoid under which to perform this scaling.
+	 *
+	 * @return grb::SUCCESS  When the call completed successfully.
+	 * @return grb::MISMATCH If a \a mask was not empty and does not have size
+	 *                       equal to \a A.
+	 *
+	 * @see grb::foldr provides similar in-place functionality.
+	 * @see grb::eWiseApply provides out-of-place semantics.
+	 *
+	 * \parblock
+	 * \par Valid descriptors
+	 * - descriptors::no_operation: the default descriptor.
+	 * - descriptors::no_casting: the first domain of
+	 * 	 	\a op must match \a IOType, the second domain of \a op
+	 * 		match \a InputType, the third domain must match \a IOType.
+	 * - descriptors::transpose_right: mask^T will be considered 
+	 * 	 	instead of \a mask.
+	 * - descriptors::invert_mask: Not supported yet.
+	 *
+	 * \note Invalid descriptors will be ignored.
+	 *
+	 * \endparblock
+	 *
+	 * \par Performance semantics
+	 * Each backend must define performance semantics for this primitive.
+	 *
+	 * @see perfSemantics
+	 */
+	template<
+		Descriptor descr = descriptors::no_operation,
+		class Operator,
+		typename IOType, typename MaskType, typename InputType, 
+		typename RIT_A, typename CIT_A, typename NIT_A,
+		typename RIT_M, typename CIT_M, typename NIT_M,
+		Backend backend
+	>
+	RC foldl(
+		Matrix< IOType, backend, RIT_A, CIT_A, NIT_A > &A,
+		const Matrix< MaskType, backend, RIT_M, CIT_M, NIT_M > &mask,
+		const InputType &x,
+		const Operator &op = Operator(),
+		const typename std::enable_if< 
+			!grb::is_object< IOType >::value &&
+			!grb::is_object< InputType >::value &&
+			!grb::is_object< MaskType >::value &&
+			grb::is_operator< Operator >::value, void
+		>::type * const = nullptr
+	) {
+#ifndef NDEBUG
+		const bool should_not_call_base_masked_matrix_scalar_foldl = false;
+		assert( should_not_call_base_masked_matrix_scalar_foldl );
+#endif
+		(void) A;
+		(void) x;
+		(void) mask;
+		(void) op;
+		return UNSUPPORTED;
+	}
+
+	/**
+	 * Scales, or \em folds, a matrix into a matrix, using a constant scalar. 
+	 * Left-to-right unmasked variant.
+	 * 
+	 * Please see the masked grb::foldl variant for a full description.
+	 */
+	template<
+		Descriptor descr = descriptors::no_operation,
+		class Operator,
+		typename IOType, typename InputType, 
+		typename RIT, typename CIT, typename NIT,
+		Backend backend
+	>
+	RC foldl(
+		Matrix< IOType, backend, RIT, CIT, NIT > &A,
+		const InputType &x,
+		const Operator &op = Operator(),
+		const typename std::enable_if< 
+			!grb::is_object< IOType >::value &&
+			!grb::is_object< InputType >::value &&
+			grb::is_operator< Operator >::value, void
+		>::type * const = nullptr
+	) {
+#ifndef NDEBUG
+		const bool should_not_call_base_unmasked_matrix_scalar_foldl = false;
+		assert( should_not_call_base_unmasked_matrix_scalar_foldl );
+#endif
+		(void) A;
+		(void) x;
+		(void) op;
+		return UNSUPPORTED;
+	}
+
+	/**
+	 * Scales, or \em folds, a matrix into a matrix, using a constant scalar. 
+	 * Right-to-left masked variant.
+	 * 
+	 * Please see the masked grb::foldl variant for a full description.
+	 */
+	template<
+		Descriptor descr = descriptors::no_operation,
+		class Operator,
+		typename IOType, typename MaskType, typename InputType, 
+		typename RIT_A, typename CIT_A, typename NIT_A,
+		typename RIT_M, typename CIT_M, typename NIT_M,
+		Backend backend
+	>
+	RC foldr(
+		Matrix< IOType, backend, RIT_A, CIT_A, NIT_A > &A,
+		const Matrix< MaskType, backend, RIT_M, CIT_M, NIT_M > &mask,
+		const InputType &x,
+		const Operator &op = Operator(),
+		const typename std::enable_if< 
+			!grb::is_object< IOType >::value &&
+			!grb::is_object< InputType >::value &&
+			!grb::is_object< MaskType >::value &&
+			grb::is_operator< Operator >::value, void
+		>::type * const = nullptr
+	) {
+#ifndef NDEBUG
+		const bool should_not_call_base_masked_matrix_scalar_foldr = false;
+		assert( should_not_call_base_masked_matrix_scalar_foldr );
+#endif
+		(void) A;
+		(void) x;
+		(void) mask;
+		(void) op;
+		return UNSUPPORTED;
+	}
+
+	/**
+	 * Scales, or \em folds, a matrix into a matrix, using a constant scalar. 
+	 * Right-to-left unmasked variant.
+	 * 
+	 * Please see the masked grb::foldl variant for a full description.
+	 */
+	template<
+		Descriptor descr = descriptors::no_operation,
+		class Operator,
+		typename IOType, typename InputType, 
+		typename RIT, typename CIT, typename NIT,
+		Backend backend
+	>
+	RC foldr(
+		Matrix< IOType, backend, RIT, CIT, NIT > &A,
+		const InputType &x,
+		const Operator &op = Operator(),
+		const typename std::enable_if< 
+			!grb::is_object< IOType >::value &&
+			!grb::is_object< InputType >::value &&
+			grb::is_operator< Operator >::value, void
+		>::type * const = nullptr
+	) {
+#ifndef NDEBUG
+		const bool should_not_call_base_unmasked_matrix_scalar_foldr = false;
+		assert( should_not_call_base_unmasked_matrix_scalar_foldr );
+#endif
+		(void) A;
+		(void) x;
+		(void) op;
+		return UNSUPPORTED;
+	}
+
+	/**
 	 * @}
 	 */
 
