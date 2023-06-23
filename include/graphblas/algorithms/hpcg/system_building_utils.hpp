@@ -243,7 +243,7 @@ namespace grb {
 			CoarseningData< IOType, NonzeroType > & coarsener
 		) {
 			return hpcg_populate_coarsener_any_builder<
-			grb::algorithms::AverageCoarsenerBuilder< DIMS, CoordType, NonzeroType > >(
+			grb::algorithms::hpcg::AverageCoarsenerBuilder< DIMS, CoordType, NonzeroType > >(
 				finer_system_generator, coarser_system_generator, coarsener );
 		}
 
