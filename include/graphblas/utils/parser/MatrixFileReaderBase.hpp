@@ -135,11 +135,13 @@ namespace grb {
 							} else if( line.substr( 33, 7 ) == "complex" ) {
 								properties._complex = true;
 								offset = 7;
+							} else if( line.substr( 33, 7 ) == "integer" ) {
+								offset = 7;
 							} else if( line.substr( 33, 4 ) == "real" ) {
 								offset = 4;
 							} else {
 								throw std::runtime_error( "This parser only understands pattern, "
-									"real, or complex matrices." );
+									"real, integer, or complex matrices." );
 							}
 #ifndef NDEBUG
 							if( properties._pattern ) {
