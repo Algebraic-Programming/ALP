@@ -611,14 +611,14 @@ namespace grb {
 			public:
 				template < Descriptor descr = descriptors::no_operation, typename MaskStruct >
 				MaskHasValue( const MaskStruct& mask_raw, const size_t k ) {
-						bool hasValue = mask_raw.getValue( k, identities::logical_false<MaskType>() );
+						bool hasValue = (bool) mask_raw.values[ k ];
 						if (descr & grb::descriptors::invert_mask) {
 							hasValue = !hasValue;
 						}
 						value = hasValue;
 					}
 
-				const bool value;
+				bool value;
 		};
 
 		template<>
