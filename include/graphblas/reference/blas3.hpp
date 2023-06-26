@@ -1018,6 +1018,10 @@ namespace grb {
 			_DEBUG_THREADESAFE_PRINT( "In grb::internal::foldr_masked_generic( reference )\n" );
 			RC rc = SUCCESS;
 
+			if( grb::nnz( mask ) == 0 ) {
+				return rc;
+			}
+
 			const auto& identity = monoid.template getIdentity< typename Monoid::D3 >();
 			const auto& op = monoid.getOperator();
 
@@ -1025,13 +1029,13 @@ namespace grb {
 				internal::getCCS( A ) : internal::getCRS( A );
 			const auto &mask_raw = descr & grb::descriptors::transpose_right ?
 				internal::getCCS( mask ) : internal::getCRS( mask );
-			const size_t m = descr & grb::descriptors::transpose_right ?
+			const size_t m = descr & grb::descriptors::transpose_left ?
 				ncols( A ) : nrows( A );
-			const size_t n = descr & grb::descriptors::transpose_right ?
+			const size_t n = descr & grb::descriptors::transpose_left ?
 				nrows( A ) : ncols( A );
-			const size_t m_mask = descr & grb::descriptors::transpose_left ?
+			const size_t m_mask = descr & grb::descriptors::transpose_right ?
 				ncols( mask ) : nrows( mask );
-			const size_t n_mask = descr & grb::descriptors::transpose_left ?
+			const size_t n_mask = descr & grb::descriptors::transpose_right ?
 				nrows( mask ) : ncols( mask );
 
 			// Check mask dimensions
@@ -1057,26 +1061,19 @@ namespace grb {
 					for( auto k = A_raw.col_start[ i ]; k < A_raw.col_start[ i + 1 ]; ++k ) {
 						auto k_col = A_raw.row_index[ k ];
 
-						// Increment the mask pointer until we find the right column, or an higher one
-						while( mask_raw.row_index[ mask_k ] < k_col && mask_k < mask_raw.col_start[ i + 1 ] ) {
-							_DEBUG_THREADESAFE_PRINT( "Skipping masked coordinate: ( " + std::to_string( i ) + ";" + std::to_string( mask_raw.row_index[ mask_k ] ) + " )\n" );
+						// Increment the mask pointer until we find the right column, or a lower column (since the storage withing a row is sorted in a descending order)
+						while( mask_k < mask_raw.col_start[ i + 1 ] && mask_raw.row_index[ mask_k ] > k_col  ) {
+							_DEBUG_THREADESAFE_PRINT( "NEquals masked coordinate: ( " + std::to_string( i ) + ";" + std::to_string( mask_raw.row_index[ mask_k ] ) + " )\n" );
 							mask_k++;
 						}
-						// if there is no value for this coordinate, skip it
-						if( mask_raw.row_index[ mask_k ] != k_col ) {
-							_DEBUG_THREADESAFE_PRINT( "Skipped masked coordinate: ( " + std::to_string( i ) + ";" + std::to_string( mask_raw.row_index[ mask_k ] ) + " )\n" );
+							
+						if( mask_raw.row_index[ mask_k ] < k_col || not MaskHasValue< MaskType >( mask_raw, mask_k ).value ) {
+							mask_k++;
+							_DEBUG_THREADESAFE_PRINT( "Skip masked value at: ( " + std::to_string( i ) + ";" + std::to_string( mask_raw.row_index[ mask_k ] ) + " )\n" );
 							continue;
 						}
 
-						// Get mask value
-						if( MaskHasValue< MaskType >( mask_raw, mask_k ).value ) {
-							_DEBUG_THREADESAFE_PRINT( "Skipped masked value at: ( " + std::to_string( i ) + ";" + std::to_string( mask_raw.row_index[ mask_k ] ) + " )\n" );
-							continue;
-						}
-
-						// Increment the mask pointer in order to skip the next while loop (best case)
-						mask_k++;
-
+						_DEBUG_THREADESAFE_PRINT( "Found masked value at: ( " + std::to_string( i ) + ";" + std::to_string( mask_raw.row_index[ mask_k ] ) + " )\n" );
 						// Get A value
 						const InputType a_val = A_raw.getValue( k, identity );
 						_DEBUG_THREADESAFE_PRINT( "A( " + std::to_string( i ) + ";" + std::to_string( k_col ) + " ) = " + std::to_string( a_val ) + "\n" );
@@ -1084,7 +1081,7 @@ namespace grb {
 						// Compute the fold for this coordinate
 						auto local_x_before = local_x;
 						local_rc = local_rc ? local_rc : grb::apply< descr >( local_x, local_x_before, a_val, op );
-						_DEBUG_THREADESAFE_PRINT( "Computing: local_x = op(" + std::to_string( a_val ) + ", " + std::to_string( local_x_before ) + ") = " + std::to_string( local_x ) + "\n" );
+						_DEBUG_THREADESAFE_PRINT( "Computing: local_x = op(" + std::to_string( a_val ) + ", " + std::to_string( local_x_before ) + ") = " + std::to_string( local_x ) + "\n" );	
 					}
 				}
 
