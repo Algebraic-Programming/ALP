@@ -1230,7 +1230,7 @@ namespace grb {
 			typename RIT, typename CIT, typename NIT
 		>
 		RC scale_unmasked_generic(
-			const Matrix< IOType, reference, RIT, CIT, NIT > &A,
+			Matrix< IOType, reference, RIT, CIT, NIT > &A,
 			const InputType &x,
 			const Operator &op = Operator()
 		) {
@@ -1284,7 +1284,7 @@ namespace grb {
 			typename RIT_M, typename CIT_M, typename NIT_M
 		>
 		RC scale_masked_generic(
-			const Matrix< IOType, reference, RIT_A, CIT_A, NIT_A > &A,
+			Matrix< IOType, reference, RIT_A, CIT_A, NIT_A > &A,
 			const Matrix< MaskType, reference, RIT_M, CIT_M, NIT_M > &mask,
 			const InputType &x,
 			const Operator &op = Operator()
@@ -1329,28 +1329,21 @@ namespace grb {
 					for( auto k = A_crs_raw.col_start[ i ]; k < A_crs_raw.col_start[ i + 1 ]; ++k ) {
 						auto k_col = A_crs_raw.row_index[ k ];
 
-						// Increment the mask pointer until we find the right column, or an higher one
-						while( mask_raw.row_index[ mask_k ] < k_col && mask_k < mask_raw.col_start[ i + 1 ] ) {
-							_DEBUG_THREADESAFE_PRINT( "Skipping masked coordinate: ( " + std::to_string( i ) + ";" + std::to_string( mask_raw.row_index[ mask_k ] ) + " )\n" );
+						// Increment the mask pointer until we find the right column, or a lower column (since the storage withing a row is sorted in a descending order)
+						while( mask_k < mask_raw.col_start[ i + 1 ] && mask_raw.row_index[ mask_k ] > k_col  ) {
+							_DEBUG_THREADESAFE_PRINT( "NEquals masked coordinate: ( " + std::to_string( i ) + ";" + std::to_string( mask_raw.row_index[ mask_k ] ) + " )\n" );
 							mask_k++;
 						}
-						// if there is no value for this coordinate, skip it
-						if( mask_raw.row_index[ mask_k ] != k_col ) {
-							_DEBUG_THREADESAFE_PRINT( "Skipped masked coordinate: ( " + std::to_string( i ) + ";" + std::to_string( mask_raw.row_index[ mask_k ] ) + " )\n" );
+							
+						if( mask_raw.row_index[ mask_k ] < k_col || not MaskHasValue< MaskType >( mask_raw, mask_k ).value ) {
+							mask_k++;
+							_DEBUG_THREADESAFE_PRINT( "Skip masked value at: ( " + std::to_string( i ) + ";" + std::to_string( mask_raw.row_index[ mask_k ] ) + " )\n" );
 							continue;
 						}
 
-						// Get mask value
-						if( not MaskHasValue< MaskType >( mask_raw, mask_k ).value ) {
-							_DEBUG_THREADESAFE_PRINT( "Skipped masked value at: ( " + std::to_string( i ) + ";" + std::to_string( mask_raw.row_index[ mask_k ] ) + " )\n" );
-							continue;
-						}
-
-						// Increment the mask pointer in order to skip the next while loop (best case)
-						mask_k++;
-
+						_DEBUG_THREADESAFE_PRINT( "Found masked value at: ( " + std::to_string( i ) + ";" + std::to_string( mask_raw.row_index[ mask_k ] ) + " )\n" );
 						// Get A value
-						const IOType a_val_before = A_crs_raw.values[ k ];
+						const auto a_val_before = A_crs_raw.values[ k ];
 						_DEBUG_THREADESAFE_PRINT( "A( " + std::to_string( i ) + ";" + std::to_string( k_col ) + " ) = " + std::to_string( a_val_before ) + "\n" );
 						// Compute the fold for this coordinate
 						local_rc = local_rc ? local_rc : grb::apply< descr >( A_crs_raw.values[ k ], a_val_before, x, op );
