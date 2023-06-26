@@ -1292,6 +1292,10 @@ namespace grb {
 			_DEBUG_THREADESAFE_PRINT( "In grb::internal::scale_masked_generic( reference )\n" );
 			RC rc = SUCCESS;
 
+			if(grb::nnz(mask) == 0) {
+				return rc;
+			}
+
 			const auto &A_crs_raw = internal::getCRS( A );
 			const auto &A_ccs_raw = internal::getCCS( A );
 			const auto &mask_raw = descr & grb::descriptors::transpose_right ?

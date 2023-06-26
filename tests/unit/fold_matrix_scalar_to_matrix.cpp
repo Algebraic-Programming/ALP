@@ -105,6 +105,7 @@ struct input {
 	const grb::Matrix< M > & mask;
 	const S scalar;
 	const grb::Matrix< T > & expected;
+	const bool skip_masked, skip_unmasked;
 	const OpFoldl & opFoldl;
 	const OpFoldr & opFoldr = OpFoldr();
 
@@ -114,10 +115,13 @@ struct input {
 		const grb::Matrix< M > & mask,
 		const S scalar,
 		const grb::Matrix< T > & expected,
+		bool skip_masked = false,
+		bool skip_unmasked = false,
 		const OpFoldl & opFoldl = OpFoldl(),
 		const OpFoldr & opFoldr = OpFoldr() ) :
 		test_label( test_label ),
-		test_description( test_description ), initial( initial ), mask( mask ), scalar( scalar ), expected( expected ), opFoldl( opFoldl ), opFoldr( opFoldr ) {}
+		test_description( test_description ), initial( initial ), mask( mask ), scalar( scalar ), expected( expected ), skip_masked( skip_masked ), skip_unmasked( skip_unmasked ), opFoldl( opFoldl ),
+		opFoldr( opFoldr ) {}
 };
 
 template< typename T, typename M, typename S, class OpFoldl, class OpFoldr >
@@ -127,7 +131,7 @@ void grb_program( const input< T, M, S, OpFoldl, OpFoldr > & in, grb::RC & rc ) 
 	printSparseMatrix( in.initial, "initial" );
 	printSparseMatrix( in.expected, "expected" );
 
-	if( not SKIP_FOLDL && not SKIP_UNMASKED && rc == RC::SUCCESS ) { // Unmasked foldl
+	if( not in.skip_unmasked && not SKIP_FOLDL && not SKIP_UNMASKED && rc == RC::SUCCESS ) { // Unmasked foldl
 		grb::Matrix< T > result = in.initial;
 		foldl( result, in.scalar, in.opFoldl );
 		std::cout << "foldl (unmasked) \"" << in.test_label << "\": ";
@@ -139,7 +143,7 @@ void grb_program( const input< T, M, S, OpFoldl, OpFoldr > & in, grb::RC & rc ) 
 		printSparseMatrix( result, "foldl (unmasked) result" );
 	}
 
-	if( not SKIP_FOLDL && not SKIP_MASKED && rc == RC::SUCCESS ) { // Masked foldl
+	if( not in.skip_masked && not SKIP_FOLDL && not SKIP_MASKED && rc == RC::SUCCESS ) { // Masked foldl
 		grb::Matrix< T > result = in.initial;
 		foldl( result, in.mask, in.scalar, in.opFoldl );
 		std::cout << "foldl (masked) \"" << in.test_label << "\": ";
@@ -151,7 +155,7 @@ void grb_program( const input< T, M, S, OpFoldl, OpFoldr > & in, grb::RC & rc ) 
 		printSparseMatrix( result, "foldl (masked) result" );
 	}
 
-	if( not SKIP_FOLDR && not SKIP_UNMASKED && rc == RC::SUCCESS ) { // Unmasked foldr
+	if( not in.skip_unmasked && not SKIP_FOLDR && not SKIP_UNMASKED && rc == RC::SUCCESS ) { // Unmasked foldr
 		grb::Matrix< T > result = in.initial;
 		foldr( result, in.scalar, in.opFoldr );
 		std::cout << "foldr (unmasked) \"" << in.test_label << "\": ";
@@ -163,7 +167,7 @@ void grb_program( const input< T, M, S, OpFoldl, OpFoldr > & in, grb::RC & rc ) 
 		printSparseMatrix( result, "foldr (unmasked) result" );
 	}
 
-	if( not SKIP_FOLDR && not SKIP_MASKED && rc == RC::SUCCESS ) { // Masked foldr
+	if( not in.skip_masked && not SKIP_FOLDR && not SKIP_MASKED && rc == RC::SUCCESS ) { // Masked foldr
 		grb::Matrix< T > result = in.initial;
 		foldr( result, in.mask, in.scalar, in.opFoldr );
 		std::cout << "foldr (masked) \"" << in.test_label << "\": ";
@@ -201,14 +205,6 @@ int main( int argc, char ** argv ) {
 
 	if( ! rc ) { // Identity square * 2
 		const int k = 2;
-		const std::string label( "Test 01" );
-		const std::string description( "Initial: Identity int [" + std::to_string( n ) + ";" + std::to_string( n ) +
-			"]\n"
-			"Mask: Identity void matrix.\n"
-			"k = 2\n"
-			"Operator: mul\n"
-			"Expected: Identity int [" +
-			std::to_string( n ) + ";" + std::to_string( n ) + "] * 2" );
 		// Initial matrix
 		Matrix< int > initial( n, n );
 		std::vector< size_t > initial_rows( n ), initial_cols( n );
@@ -216,20 +212,57 @@ int main( int argc, char ** argv ) {
 		std::iota( initial_rows.begin(), initial_rows.end(), 0 );
 		std::iota( initial_cols.begin(), initial_cols.end(), 0 );
 		buildMatrixUnique( initial, initial_rows.data(), initial_cols.data(), initial_values.data(), initial_values.size(), SEQUENTIAL );
-		// Mask
-		Matrix< void > mask( n, n );
-		buildMatrixUnique( mask, initial_rows.data(), initial_cols.data(), initial_rows.size(), SEQUENTIAL );
-		// Expected matrix
-		Matrix< int > expected( n, n );
-		std::vector< int > expected_values( n, 2 );
-		buildMatrixUnique( expected, initial_rows.data(), initial_cols.data(), expected_values.data(), expected_values.size(), SEQUENTIAL );
-		std::cout << "-- Running " << label << " --" << std::endl;
-		input< int, void, int, grb::operators::mul< int >, grb::operators::mul< int > > in { label.c_str(), description.c_str(), initial, mask, k, expected };
-		if( launcher.exec( &grb_program, in, rc, true ) != SUCCESS ) {
-			std::cerr << "Launching " << label << " failed" << std::endl;
-			return 255;
+
+		{
+			const std::string label( "Test 01" );
+			const std::string description( "Initial: Identity int [" + std::to_string( n ) + ";" + std::to_string( n ) +
+				"]\n"
+				"Mask: Identity void matrix (matching the input).\n"
+				"k = 2\n"
+				"Operator: mul\n"
+				"Expected: Identity int [" +
+				std::to_string( n ) + ";" + std::to_string( n ) + "] * 2" );
+			// Mask (matching the input matrix)
+			Matrix< void > mask( n, n );
+			buildMatrixUnique( mask, initial_rows.data(), initial_cols.data(), initial_rows.size(), SEQUENTIAL );
+			// Expected matrix
+			Matrix< int > expected( n, n );
+			std::vector< int > expected_values( n, 2 );
+			buildMatrixUnique( expected, initial_rows.data(), initial_cols.data(), expected_values.data(), expected_values.size(), SEQUENTIAL );
+
+			std::cout << "-- Running " << label << " --" << std::endl;
+			input< int, void, int, grb::operators::mul< int >, grb::operators::mul< int > > in { label.c_str(), description.c_str(), initial, mask, k, expected };
+			if( launcher.exec( &grb_program, in, rc, true ) != SUCCESS ) {
+				std::cerr << "Launching " << label << " failed" << std::endl;
+				return 255;
+			}
+			std::cout << std::endl << std::flush;
 		}
-		std::cout << std::endl << std::flush;
+
+		{
+			const std::string label( "Test 02" );
+			const std::string description( "Initial: Identity int [" + std::to_string( n ) + ";" + std::to_string( n ) +
+				"]\n"
+				"Mask: Identity void matrix (empty).\n"
+				"k = 2\n"
+				"Operator: mul\n"
+				"Expected: Identity int [" +
+				std::to_string( n ) + ";" + std::to_string( n ) + "]" );
+			// Mask (matching the input matrix)
+			Matrix< void > mask( n, n );
+			buildMatrixUnique( mask, initial_rows.data(), initial_cols.data(), 0, SEQUENTIAL );
+			// Expected matrix
+			Matrix< int > expected( n, n );
+			buildMatrixUnique( expected, initial_rows.data(), initial_cols.data(), initial_values.data(), initial_values.size(), SEQUENTIAL );
+
+			std::cout << "-- Running " << label << " --" << std::endl;
+			input< int, void, int, grb::operators::mul< int >, grb::operators::mul< int > > in { label.c_str(), description.c_str(), initial, mask, k, expected, false, true };
+			if( launcher.exec( &grb_program, in, rc, true ) != SUCCESS ) {
+				std::cerr << "Launching " << label << " failed" << std::endl;
+				return 255;
+			}
+			std::cout << std::endl << std::flush;
+		}
 	}
 
 	if( rc != SUCCESS ) {
