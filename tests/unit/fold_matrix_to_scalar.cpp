@@ -41,21 +41,67 @@ using namespace grb;
 
 using NzType = double;
 
-
-constexpr bool PRINT_TIMERS = true;
 constexpr bool SKIP_FOLDL = false;
 constexpr bool SKIP_FOLDR = false;
 constexpr bool SKIP_UNMASKED = false;
 constexpr bool SKIP_MASKED = false;
-constexpr size_t ITERATIONS = 100;
+// Benchmarking
+constexpr bool PRINT_TIMERS = false;
+constexpr size_t ITERATIONS = 1;
 
-template< typename T, typename V, class Monoid >
-RC foldl_test( const char * test_label, const char * test_description, const grb::Matrix< V > & A, const grb::Matrix< void > & mask, T initial, T expected, const Monoid & monoid ) {
+//#define _DEBUG
+
+template< class Iterator >
+void printSparseMatrixIterator( size_t rows, size_t cols, Iterator begin, Iterator end, const std::string & name = "", std::ostream & os = std::cout ) {
+#ifndef _DEBUG
+	return;
+#endif
+	std::cout << "Matrix \"" << name << "\" (" << rows << "x" << cols << "):" << std::endl << "[" << std::endl;
+	if( rows > 50 || cols > 50 ) {
+		os << "   Matrix too large to print" << std::endl;
+	} else {
+		// os.precision( 3 );
+		for( size_t y = 0; y < rows; y++ ) {
+			os << std::string( 3, ' ' );
+			for( size_t x = 0; x < cols; x++ ) {
+				auto nnz_val = std::find_if( begin, end, [ y, x ]( const typename std::iterator_traits< Iterator >::value_type & a ) {
+					return a.first.first == y && a.first.second == x;
+				} );
+				if( nnz_val != end )
+					os << std::fixed << ( *nnz_val ).second;
+				else
+					os << '_';
+				os << " ";
+			}
+			os << std::endl;
+		}
+	}
+	os << "]" << std::endl;
+	std::flush( os );
+}
+
+template< typename D >
+void printSparseMatrix( const grb::Matrix< D > & mat, const std::string & name = "", std::ostream & os = std::cout ) {
+	grb::wait( mat );
+	printSparseMatrixIterator( grb::nrows( mat ), grb::ncols( mat ), mat.cbegin(), mat.cend(), name, os );
+}
+
+
+template< typename T, typename V, typename M, class Monoid >
+RC foldl_test( const char * test_label,
+	const char * test_description,
+	const grb::Matrix< V > & A,
+	const grb::Matrix< M > & mask,
+	T initial,
+	T expected,
+	const Monoid & monoid,
+	bool skip_masked = false,
+	bool skip_unmasked = false ) {
 	if( SKIP_FOLDL )
 		return RC::SUCCESS;
 	RC rc = RC::SUCCESS;
 
-	if( rc == RC::SUCCESS && ! SKIP_UNMASKED ) { // Unmasked
+	if( not skip_unmasked && rc == RC::SUCCESS && ! SKIP_UNMASKED ) { // Unmasked
 		T value = initial;
 		auto start_chrono = std::chrono::high_resolution_clock::now();
 		for( size_t _ = 0; _ < ITERATIONS; _++ ) {
@@ -80,7 +126,7 @@ RC foldl_test( const char * test_label, const char * test_description, const grb
 		rc = rc ? rc : ( value == expected ? RC::SUCCESS : RC::FAILED );
 	}
 
-	if( rc == RC::SUCCESS && ! SKIP_MASKED ) { // Masked
+	if( not skip_masked && rc == RC::SUCCESS && ! SKIP_MASKED ) { // Masked
 		T value = initial;
 		auto start_chrono = std::chrono::high_resolution_clock::now();
 		for( size_t _ = 0; _ < ITERATIONS; _++ ) {
@@ -108,13 +154,21 @@ RC foldl_test( const char * test_label, const char * test_description, const grb
 	return rc;
 }
 
-template< typename T, typename V, class Monoid >
-RC foldr_test( const char * test_label, const char * test_description, const grb::Matrix< V > & A, const grb::Matrix< void > & mask, T initial, T expected, const Monoid & monoid ) {
+template< typename T, typename V, typename M, class Monoid >
+RC foldr_test( const char * test_label,
+	const char * test_description,
+	const grb::Matrix< V > & A,
+	const grb::Matrix< M > & mask,
+	T initial,
+	T expected,
+	const Monoid & monoid,
+	bool skip_masked = false,
+	bool skip_unmasked = false ) {
 	if( SKIP_FOLDR )
 		return RC::SUCCESS;
 	RC rc = RC::SUCCESS;
 
-	if( rc == RC::SUCCESS && ! SKIP_UNMASKED ) { // Unmasked
+	if( not skip_unmasked && rc == RC::SUCCESS && ! SKIP_UNMASKED ) { // Unmasked
 		T value = initial;
 		auto start_chrono = std::chrono::high_resolution_clock::now();
 		for( size_t _ = 0; _ < ITERATIONS; _++ ) {
@@ -139,7 +193,7 @@ RC foldr_test( const char * test_label, const char * test_description, const grb
 		rc = rc ? rc : ( value == expected ? RC::SUCCESS : RC::FAILED );
 	}
 
-	if( rc == RC::SUCCESS && ! SKIP_MASKED ) { // Masked
+	if( not skip_masked && rc == RC::SUCCESS && ! SKIP_MASKED ) { // Masked
 		T value = initial;
 		auto start_chrono = std::chrono::high_resolution_clock::now();
 		for( size_t _ = 0; _ < ITERATIONS; _++ ) {
@@ -167,20 +221,30 @@ RC foldr_test( const char * test_label, const char * test_description, const grb
 	return rc;
 }
 
-template< typename T, typename V, class Monoid >
-RC foldLR_test( const char * test_label, const char * test_description, const grb::Matrix< V > & A, const grb::Matrix< void > & mask, T initial, T expected, const Monoid & monoid ) {
-	RC rc = foldl_test( test_label, test_description, A, mask, initial, expected, monoid );
-	return rc ? rc : foldr_test( test_label, test_description, A, mask, initial, expected, monoid );
+template< typename T, typename V, typename M, class Monoid >
+RC foldLR_test( const char * test_label,
+	const char * test_description,
+	const grb::Matrix< V > & A,
+	const grb::Matrix< M > & mask,
+	T initial,
+	T expected,
+	const Monoid & monoid,
+	bool skip_masked = false,
+	bool skip_unmasked = false ) {
+	RC rc = foldl_test( test_label, test_description, A, mask, initial, expected, monoid, skip_masked, skip_unmasked );
+	return rc ? rc : foldr_test( test_label, test_description, A, mask, initial, expected, monoid, skip_masked, skip_unmasked );
 }
 
+template< typename T, typename M >
 struct input {
-	const grb::Matrix< NzType > & A;
-	const grb::Matrix< void > & mask;
+	const grb::Matrix< T > & A;
+	const grb::Matrix< M > & mask;
 };
 
-void grb_program( const input & in, grb::RC & rc ) {
-	const grb::Matrix< NzType > & I = in.A;
-	const grb::Matrix< void > & mask = in.mask;
+template< typename T, typename M >
+void grb_program( const input< T, M > & in, grb::RC & rc ) {
+	const grb::Matrix< T > & I = in.A;
+	const grb::Matrix< M > & mask = in.mask;
 
 	const long n = grb::nnz( I );
 
@@ -193,7 +257,6 @@ void grb_program( const input & in, grb::RC & rc ) {
 	rc = foldLR_test( "1", "A simple reduction(+) with the same types for the nzs and the reduction result.", I, mask, (NzType)0, (NzType)n, Monoid< operators::add< NzType >, identities::zero >() );
 	if( rc )
 		return;
-	return;
 
 	/**     Test case 2:
 	 *  A simple additive reduction with the same types for the nzs and the reduction result.
@@ -306,6 +369,34 @@ void grb_program( const input & in, grb::RC & rc ) {
 		Monoid< operators::logical_or< NzType, bool, bool >, identities::logical_false >() );
 	if( rc )
 		return;
+
+	/**     Test case 11:
+	 * Reduction with an empty mask.
+	 * * Initial value is 4
+	 * * Expected result: 4
+	 */
+	Matrix< void > empty_mask( grb::nrows( I ), grb::ncols( I ), 0 );
+	rc = foldLR_test( "11", "Reduction with an empty mask.", I, empty_mask, (NzType)4, (NzType)4, Monoid< operators::add< NzType >, identities::zero >(), false, true );
+	if( rc )
+		return;
+
+	/**     Test case 12:
+	 * Reduction with a dense mask.
+	 * * Initial value is 0
+	 * * Expected result: n
+	 */
+	Matrix< bool > dense_mask( grb::nrows( I ), grb::ncols( I ), grb::nrows( I ) * grb::ncols( I ) );
+	std::vector< size_t > rows( grb::nrows( I ) * grb::ncols( I ) ), cols( grb::nrows( I ) * grb::ncols( I ) );
+	for( size_t x = 0; x < grb::nrows( I ); x++ ) {
+		std::fill( rows.begin() + x * grb::ncols( I ), rows.begin() + ( x + 1 ) * grb::ncols( I ), x );
+		std::iota( cols.begin() + x * grb::ncols( I ), cols.begin() + ( x + 1 ) * grb::ncols( I ), 0 );
+	}
+	std::vector< int > dense_mask_vals( grb::nrows( I ) * grb::ncols( I ), 1 );
+	buildMatrixUnique( dense_mask, rows.data(), cols.data(), dense_mask_vals.data(), grb::nrows( I ) * grb::ncols( I ), SEQUENTIAL );
+	printSparseMatrix( dense_mask, "dense_mask" );
+	rc = foldLR_test( "11", "Reduction with a dense mask.", I, dense_mask, (NzType)0, (NzType)n, Monoid< operators::add< NzType >, identities::zero >(), false, true );
+	if( rc )
+		return;
 }
 
 int main( int argc, char ** argv ) {
@@ -341,7 +432,8 @@ int main( int argc, char ** argv ) {
 		Matrix< void > mask( n, n );
 		buildMatrixUnique( mask, I_rows.data(), I_cols.data(), I_rows.size(), PARALLEL );
 		std::cout << "-- Running test 01: Identity square matrix of size n = " << n << std::endl;
-		if( launcher.exec( &grb_program, { I, mask }, rc, true ) != SUCCESS ) {
+		input< NzType, void > input = { I, mask };
+		if( launcher.exec( &grb_program, input, rc, true ) != SUCCESS ) {
 			std::cerr << "Launching test 01 FAILED\n";
 			return 255;
 		}
@@ -357,7 +449,8 @@ int main( int argc, char ** argv ) {
 		Matrix< void > mask( n, n );
 		buildMatrixUnique( mask, I_rows.data(), I_cols.data(), I_rows.size(), PARALLEL );
 		std::cout << "-- Running test 02: Square matrix of size n = " << n << ", with n 1s on the first row" << std::endl;
-		if( launcher.exec( &grb_program, { I, mask }, rc, true ) != SUCCESS ) {
+		input< NzType, void > input = { I, mask };
+		if( launcher.exec( &grb_program, input, rc, true ) != SUCCESS ) {
 			std::cerr << "Launching test 02 FAILED\n";
 			return 255;
 		}
@@ -373,7 +466,8 @@ int main( int argc, char ** argv ) {
 		Matrix< void > mask( n, n );
 		buildMatrixUnique( mask, I_rows.data(), I_cols.data(), I_rows.size(), PARALLEL );
 		std::cout << "-- Running test 03: Square matrix of size n = " << n << ", with n 1s on the first column" << std::endl;
-		if( launcher.exec( &grb_program, { I, mask }, rc, true ) != SUCCESS ) {
+		input< NzType, void > input = { I, mask };
+		if( launcher.exec( &grb_program, input, rc, true ) != SUCCESS ) {
 			std::cerr << "Launching test 03 FAILED\n";
 			return 255;
 		}
@@ -390,7 +484,8 @@ int main( int argc, char ** argv ) {
 		Matrix< void > mask( n, n );
 		buildMatrixUnique( mask, I_rows.data(), I_cols.data(), I_rows.size(), PARALLEL );
 		std::cout << "-- Running test 04: Square matrix of size n = " << n << ", with n 1s on the first row and column" << std::endl;
-		if( launcher.exec( &grb_program, { I, mask }, rc, true ) != SUCCESS ) {
+		input< NzType, void > input = { I, mask };
+		if( launcher.exec( &grb_program, input, rc, true ) != SUCCESS ) {
 			std::cerr << "Launching test 04 FAILED\n";
 			return 255;
 		}
@@ -406,7 +501,8 @@ int main( int argc, char ** argv ) {
 		Matrix< void > mask( 1, n );
 		buildMatrixUnique( mask, I_rows.data(), I_cols.data(), I_rows.size(), PARALLEL );
 		std::cout << "-- Running test 05: [1-row, n = " << n << " columns] matrix, filled with 1s" << std::endl;
-		if( launcher.exec( &grb_program, { I, mask }, rc, true ) != SUCCESS ) {
+		input< NzType, void > input = { I, mask };
+		if( launcher.exec( &grb_program, input, rc, true ) != SUCCESS ) {
 			std::cerr << "Launching test 04 FAILED\n";
 			return 255;
 		}
@@ -422,7 +518,8 @@ int main( int argc, char ** argv ) {
 		Matrix< void > mask( n, 1 );
 		buildMatrixUnique( mask, I_rows.data(), I_cols.data(), I_rows.size(), PARALLEL );
 		std::cout << "-- Running test 06: [n = " << n << " rows, 1 column] matrix, filled with 1s" << std::endl;
-		if( launcher.exec( &grb_program, { I, mask }, rc, true ) != SUCCESS ) {
+		input< NzType, void > input = { I, mask };
+		if( launcher.exec( &grb_program, input, rc, true ) != SUCCESS ) {
 			std::cerr << "Launching test 06 FAILED\n";
 			return 255;
 		}
