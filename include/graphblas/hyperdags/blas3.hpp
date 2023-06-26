@@ -355,7 +355,7 @@ namespace grb {
 #endif
 
 		const RC ret = foldr< descr, Monoid >(
-			x, A, mask, monoid
+			x, internal::getMatrix( A ), internal::getMatrix( mask ), monoid
 		);
 		if( ret != SUCCESS ) { return ret; }
 		if( nrows( A ) == 0 || ncols( A ) == 0 ) { return ret; }
@@ -396,7 +396,7 @@ namespace grb {
 #endif
 
 		const RC ret = foldr< descr, Monoid >(
-			x, A, monoid
+			x, internal::getMatrix( A ), monoid
 		);
 		if( ret != SUCCESS ) { return ret; }
 		if( nrows( A ) == 0 || ncols( A ) == 0 ) { return ret; }
@@ -438,7 +438,7 @@ namespace grb {
 #endif
 
 		const RC ret = foldl< descr, Monoid >(
-			x, A, mask, monoid
+			x, internal::getMatrix( A ), internal::getMatrix( mask ), monoid
 		);
 		if( ret != SUCCESS ) { return ret; }
 		if( nrows( A ) == 0 || ncols( A ) == 0 ) { return ret; }
@@ -480,7 +480,7 @@ namespace grb {
 #endif
 
 		const RC ret = foldl< descr, Monoid >(
-			x, A, monoid
+			x, internal::getMatrix( A ), monoid
 		);
 		if( ret != SUCCESS ) { return ret; }
 		if( nrows( A ) == 0 || ncols( A ) == 0 ) { return ret; }
