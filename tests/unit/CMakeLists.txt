@@ -145,6 +145,10 @@ add_grb_executables( eWiseMul eWiseMul.cpp
 	BACKENDS reference reference_omp bsp1d hybrid hyperdags nonblocking
 )
 
+add_grb_executables( fold_matrix_to_matrix fold_matrix_to_matrix.cpp
+	BACKENDS reference reference_omp hyperdags bsp1d hybrid
+)
+
 add_grb_executables( muladd muladd.cpp
 	BACKENDS reference reference_omp bsp1d hybrid hyperdags nonblocking
 )
