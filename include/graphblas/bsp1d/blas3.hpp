@@ -205,6 +205,278 @@ namespace grb {
 		return internal::checkGlobalErrorStateOrClear( C, ret );
 	}
 
+	template<
+		Descriptor descr = descriptors::no_operation,
+		class Monoid,
+		typename InputType, typename IOType, typename MaskType,
+		typename RIT_A, typename CIT_A, typename NIT_A,
+		typename RIT_M, typename CIT_M, typename NIT_M
+	>
+	RC foldr(
+		IOType &x,
+		const Matrix< InputType, BSP1D, RIT_A, CIT_A, NIT_A > &A,
+		const Matrix< MaskType, BSP1D, RIT_M, CIT_M, NIT_M > &mask,
+		const Monoid &monoid = Monoid(),
+		const typename std::enable_if< !grb::is_object< IOType >::value &&
+			!grb::is_object< InputType >::value &&
+			!grb::is_object< MaskType >::value &&
+			grb::is_monoid< Monoid >::value, void
+		>::type * const = nullptr
+	) {
+		// static checks
+		static_assert( !std::is_same< InputType, void >::value,
+			"grb::foldr( BSP1D, IOType <- op( InputType, IOType ): "
+			"the operator version of foldr cannot be used if the "
+			"input matrix is a pattern matrix (of type void)"
+		);
+		static_assert( !std::is_same< IOType, void >::value,
+			"grb::foldr( BSP1D, IOType <- op( InputType, IOType ): "
+			"the operator version of foldr cannot be used if the "
+			"result is of type void"
+		);
+		static_assert( (std::is_same< typename Monoid::D1, InputType >::value),
+			"grb::foldr( BSP1D, IOType <- op( InputType, IOType ): "
+			"called with a prefactor input type that does not match the first domain of the given operator"
+		);
+		static_assert( (std::is_same< typename Monoid::D2, IOType >::value),
+			"grb::foldr( BSP1D, IOType <- op( InputType, IOType ): "
+			"called with a postfactor input type that does not match the first domain of the given operator"
+		);
+		static_assert( (std::is_same< typename Monoid::D3, IOType >::value),
+			"grb::foldr( BSP1D, IOType <- op( InputType, IOType ): "
+			"called with an output type that does not match the output domain of the given operator"
+		);
+
+#ifdef _DEBUG
+		std::cout << "In grb::foldr( BSP1D, matrix, mask, monoid )\n";
+#endif
+		RC rc = SUCCESS;
+
+		if( grb::nnz( A ) == 0 ) {
+			return rc;
+		}
+
+		// Do local folding
+		IOType local = monoid.template getIdentity< IOType >();
+		rc = foldr< descr >( local, internal::getLocal( A ), internal::getLocal( mask ), monoid );
+
+#ifdef _DEBUG
+		std::cout << "After process-local delegation, local value has become "
+			<< local << ". Entering allreduce..." << std::endl;
+#endif
+
+		// All-reduce using \a op
+		rc = rc ? rc : collectives< BSP1D >::allreduce< descr >( local, monoid.getOperator() );
+
+		// Accumulate end result
+		rc = rc ? rc : foldr( x, local, monoid.getOperator() );
+
+		return SUCCESS;
+	}
+
+	template<
+		Descriptor descr = descriptors::no_operation,
+		class Monoid,
+		typename InputType, typename IOType,
+		typename RIT, typename CIT, typename NIT
+	>
+	RC foldr(
+		IOType &x,
+		const Matrix< InputType, BSP1D, RIT, CIT, NIT > &A,
+		const Monoid &monoid,
+		const typename std::enable_if< !grb::is_object< IOType >::value &&
+			!grb::is_object< InputType >::value &&
+			grb::is_monoid< Monoid >::value, void
+		>::type * const = nullptr
+	) {
+		// static checks
+		static_assert( !std::is_same< InputType, void >::value,
+			"grb::foldr( BSP1D, IOType <- op( IOType, InputType ): "
+			"the operator version of foldr cannot be used if the "
+			"input matrix is a pattern matrix (of type void)"
+		);
+		static_assert( !std::is_same< IOType, void >::value,
+			"grb::foldr( BSP1D, IOType <- op( IOType, InputType ): "
+			"the operator version of foldr cannot be used if the "
+			"result is of type void"
+		);
+		static_assert( (std::is_same< typename Monoid::D1, InputType >::value),
+			"grb::foldr( BSP1D, IOType <- op( IOType, InputType ): "
+			"called with a prefactor input type that does not match the first domain of the given operator"
+		);
+		static_assert( (std::is_same< typename Monoid::D2, IOType >::value),
+			"grb::foldr( BSP1D, IOType <- op( IOType, InputType ): "
+			"called with a postfactor input type that does not match the first domain of the given operator"
+		);
+		static_assert( (std::is_same< typename Monoid::D3, IOType >::value),
+			"grb::foldr( BSP1D, IOType <- op( IOType, InputType ): "
+			"called with an output type that does not match the output domain of the given operator"
+		);
+
+#ifdef _DEBUG
+		std::cout << "In grb::foldr( BSP1D, matrix, monoid )\n";
+#endif
+		RC rc = SUCCESS;
+
+		if( grb::nnz( A ) == 0 ) {
+			return rc;
+		}
+
+		// Do local folding
+		IOType local = monoid.template getIdentity< IOType >();
+		rc = foldr< descr >( local, internal::getLocal( A ), monoid );
+
+#ifdef _DEBUG
+		std::cout << "After process-local delegation, local value has become "
+			<< local << ". Entering allreduce..." << std::endl;
+#endif
+
+		// All-reduce using \a op
+		rc = rc ? rc : collectives< BSP1D >::allreduce< descr >( local, monoid.getOperator() );
+
+		// Accumulate end result
+		rc = rc ? rc : foldr( x, local, monoid.getOperator() );
+
+		return SUCCESS;
+	}
+
+	template<
+		Descriptor descr = descriptors::no_operation,
+		class Monoid,
+		typename InputType, typename IOType, typename MaskType,
+		typename RIT_A, typename CIT_A, typename NIT_A,
+		typename RIT_M, typename CIT_M, typename NIT_M
+	>
+	RC foldl(
+		IOType &x,
+		const Matrix< InputType, BSP1D, RIT_A, CIT_A, NIT_A > &A,
+		const Matrix< MaskType, BSP1D, RIT_M, CIT_M, NIT_M > &mask,
+		const Monoid &monoid,
+		const typename std::enable_if<
+			!grb::is_object< IOType >::value &&
+			!grb::is_object< InputType >::value &&
+			!grb::is_object< MaskType >::value &&
+			grb::is_monoid< Monoid >::value, void
+		>::type * const = nullptr
+	) {
+		// static checks
+		static_assert( !std::is_same< InputType, void >::value,
+			"grb::foldl( BSP1D, IOType <- op( IOType, InputType ): "
+			"the operator version of foldl cannot be used if the "
+			"input matrix is a pattern matrix (of type void)"
+		);
+		static_assert( !std::is_same< IOType, void >::value,
+			"grb::foldl( BSP1D, IOType <- op( IOType, InputType ): "
+			"the operator version of foldl cannot be used if the "
+			"result is of type void"
+		);
+		static_assert( (std::is_same< typename Monoid::D1, IOType >::value),
+			"grb::foldl( BSP1D, IOType <- op( IOType, InputType ): "
+			"called with a prefactor input type that does not match the first domain of the given operator"
+		);
+		static_assert( (std::is_same< typename Monoid::D2, InputType >::value),
+			"grb::foldl( BSP1D, IOType <- op( IOType, InputType ): "
+			"called with a postfactor input type that does not match the first domain of the given operator"
+		);
+		static_assert( (std::is_same< typename Monoid::D3, IOType >::value),
+			"grb::foldl( BSP1D, IOType <- op( IOType, InputType ): "
+			"called with an output type that does not match the output domain of the given operator"
+		);
+
+#ifdef _DEBUG
+		std::cout << "In grb::foldl( BSP1D, matrix, mask, monoid )\n";
+#endif
+		RC rc = SUCCESS;
+
+		if( grb::nnz( A ) == 0 ) {
+			return rc;
+		}
+
+		// Do local folding
+		IOType local = monoid.template getIdentity< IOType >();
+		rc = foldl< descr >( local, internal::getLocal( A ), internal::getLocal( mask ), monoid );
+
+#ifdef _DEBUG
+		std::cout << "After process-local delegation, local value has become "
+			<< local << ". Entering allreduce..." << std::endl;
+#endif
+
+		// All-reduce using \a op
+		rc = rc ? rc : collectives< BSP1D >::allreduce< descr >( local, monoid.getOperator() );
+
+		// Accumulate end result
+		rc = rc ? rc : foldl( x, local, monoid.getOperator() );
+
+		return SUCCESS;
+	}
+
+	template<
+		Descriptor descr = descriptors::no_operation,
+		class Monoid,
+		typename InputType, typename IOType,
+		typename RIT, typename CIT, typename NIT
+	>
+	RC foldl(
+		IOType &x,
+		const Matrix< InputType, BSP1D, RIT, CIT, NIT > &A,
+		const Monoid &monoid,
+		const typename std::enable_if<
+			!grb::is_object< IOType >::value &&
+			!grb::is_object< InputType >::value &&
+			grb::is_monoid< Monoid >::value, void
+		>::type * const = nullptr
+	) {
+		// static checks
+		static_assert( !std::is_same< InputType, void >::value,
+			"grb::foldl( BSP1D, IOType <- op( IOType, InputType ): "
+			"the operator version of foldl cannot be used if the "
+			"input matrix is a pattern matrix (of type void)"
+		);
+		static_assert( !std::is_same< IOType, void >::value,
+			"grb::foldl( BSP1D, IOType <- op( IOType, InputType ): "
+			"the operator version of foldl cannot be used if the "
+			"result is of type void"
+		);
+		static_assert( (std::is_same< typename Monoid::D1, IOType >::value),
+			"grb::foldl( BSP1D, IOType <- op( IOType, InputType ): "
+			"called with a prefactor input type that does not match the first domain of the given operator"
+		);
+		static_assert( (std::is_same< typename Monoid::D2, InputType >::value),
+			"grb::foldl( BSP1D, IOType <- op( IOType, InputType ): "
+			"called with a postfactor input type that does not match the first domain of the given operator"
+		);
+		static_assert( (std::is_same< typename Monoid::D3, IOType >::value),
+			"grb::foldl( BSP1D, IOType <- op( IOType, InputType ): "
+			"called with an output type that does not match the output domain of the given operator"
+		);
+
+#ifdef _DEBUG
+		std::cout << "In grb::foldl( BSP1D, matrix, monoid )\n";
+#endif
+		RC rc = SUCCESS;
+
+		if( grb::nnz( A ) == 0 ) {
+			return rc;
+		}
+
+		// Do local folding
+		IOType local = monoid.template getIdentity< IOType >();
+		rc = foldl< descr >( local, internal::getLocal( A ), monoid );
+
+#ifdef _DEBUG
+		std::cout << "After process-local delegation, local value has become "
+			<< local << ". Entering allreduce..." << std::endl;
+#endif
+
+		// All-reduce using \a op
+		rc = rc ? rc : collectives< BSP1D >::allreduce< descr >( local, monoid.getOperator() );
+
+		// Accumulate end result
+		rc = rc ? rc : foldl( x, local, monoid.getOperator() );
+
+		return SUCCESS;
+	}
+
 } // namespace grb
 
 #endif

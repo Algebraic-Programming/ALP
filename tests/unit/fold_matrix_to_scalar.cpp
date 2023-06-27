@@ -238,6 +238,9 @@ template< typename T, typename M >
 struct input {
 	const grb::Matrix< T > & A;
 	const grb::Matrix< M > & mask;
+	
+	// Default constructor for distributed backends
+	input( const grb::Matrix< T > & A = {0,0}, const grb::Matrix< M > & mask = {0,0} ) : A( A ), mask( mask ) {}
 };
 
 template< typename T, typename M >
@@ -517,11 +520,11 @@ int main( int argc, char ** argv ) {
 		std::vector< NzType > I_vals( n, 1.f );
 		std::iota( I_rows.begin(), I_rows.end(), 0 );
 		std::iota( I_cols.begin(), I_cols.end(), 0 );
-		buildMatrixUnique( I, I_rows.data(), I_cols.data(), I_vals.data(), I_vals.size(), PARALLEL );
+		buildMatrixUnique( I, I_rows.data(), I_cols.data(), I_vals.data(), I_vals.size(), SEQUENTIAL );
 		Matrix< void > mask( n, n );
-		buildMatrixUnique( mask, I_rows.data(), I_cols.data(), I_rows.size(), PARALLEL );
+		buildMatrixUnique( mask, I_rows.data(), I_cols.data(), I_rows.size(), SEQUENTIAL );
 		std::cout << "-- Running test 01: Identity square matrix of size n = " << n << std::endl;
-		input< NzType, void > input = { I, mask };
+		input< NzType, void > input(I, mask);
 		if( launcher.exec( &grb_program, input, rc, true ) != SUCCESS ) {
 			std::cerr << "Launching test 01 FAILED\n";
 			return 255;
@@ -534,11 +537,11 @@ int main( int argc, char ** argv ) {
 		std::vector< size_t > I_rows( n, 0 ), I_cols( n );
 		std::vector< NzType > I_vals( n, 1.f );
 		std::iota( I_cols.begin(), I_cols.end(), 0 );
-		buildMatrixUnique( I, I_rows.data(), I_cols.data(), I_vals.data(), I_vals.size(), PARALLEL );
+		buildMatrixUnique( I, I_rows.data(), I_cols.data(), I_vals.data(), I_vals.size(), SEQUENTIAL );
 		Matrix< void > mask( n, n );
-		buildMatrixUnique( mask, I_rows.data(), I_cols.data(), I_rows.size(), PARALLEL );
+		buildMatrixUnique( mask, I_rows.data(), I_cols.data(), I_rows.size(), SEQUENTIAL );
 		std::cout << "-- Running test 02: Square matrix of size n = " << n << ", with n 1s on the first row" << std::endl;
-		input< NzType, void > input = { I, mask };
+		input< NzType, void > input(I, mask);
 		if( launcher.exec( &grb_program, input, rc, true ) != SUCCESS ) {
 			std::cerr << "Launching test 02 FAILED\n";
 			return 255;
@@ -555,7 +558,7 @@ int main( int argc, char ** argv ) {
 		Matrix< void > mask( n, n );
 		buildMatrixUnique( mask, I_rows.data(), I_cols.data(), I_rows.size(), PARALLEL );
 		std::cout << "-- Running test 03: Square matrix of size n = " << n << ", with n 1s on the first column" << std::endl;
-		input< NzType, void > input = { I, mask };
+		input< NzType, void > input(I, mask);
 		if( launcher.exec( &grb_program, input, rc, true ) != SUCCESS ) {
 			std::cerr << "Launching test 03 FAILED\n";
 			return 255;
@@ -569,11 +572,11 @@ int main( int argc, char ** argv ) {
 		std::vector< NzType > I_vals( 2 * n - 1, 1.f );
 		std::iota( I_rows.begin() + n, I_rows.end(), 1 );
 		std::iota( I_cols.begin(), I_cols.begin() + n, 0 );
-		buildMatrixUnique( I, I_rows.data(), I_cols.data(), I_vals.data(), I_vals.size(), PARALLEL );
+		buildMatrixUnique( I, I_rows.data(), I_cols.data(), I_vals.data(), I_vals.size(), SEQUENTIAL );
 		Matrix< void > mask( n, n );
-		buildMatrixUnique( mask, I_rows.data(), I_cols.data(), I_rows.size(), PARALLEL );
+		buildMatrixUnique( mask, I_rows.data(), I_cols.data(), I_rows.size(), SEQUENTIAL );
 		std::cout << "-- Running test 04: Square matrix of size n = " << n << ", with n 1s on the first row and column" << std::endl;
-		input< NzType, void > input = { I, mask };
+		input< NzType, void > input(I, mask);
 		if( launcher.exec( &grb_program, input, rc, true ) != SUCCESS ) {
 			std::cerr << "Launching test 04 FAILED\n";
 			return 255;
@@ -586,11 +589,11 @@ int main( int argc, char ** argv ) {
 		std::vector< size_t > I_rows( n, 0 ), I_cols( n, 0 );
 		std::vector< NzType > I_vals( n, 1.f );
 		std::iota( I_cols.begin(), I_cols.end(), 0 );
-		buildMatrixUnique( I, I_rows.data(), I_cols.data(), I_vals.data(), I_vals.size(), PARALLEL );
+		buildMatrixUnique( I, I_rows.data(), I_cols.data(), I_vals.data(), I_vals.size(), SEQUENTIAL );
 		Matrix< void > mask( 1, n );
-		buildMatrixUnique( mask, I_rows.data(), I_cols.data(), I_rows.size(), PARALLEL );
+		buildMatrixUnique( mask, I_rows.data(), I_cols.data(), I_rows.size(), SEQUENTIAL );
 		std::cout << "-- Running test 05: [1-row, n = " << n << " columns] matrix, filled with 1s" << std::endl;
-		input< NzType, void > input = { I, mask };
+		input< NzType, void > input(I, mask);
 		if( launcher.exec( &grb_program, input, rc, true ) != SUCCESS ) {
 			std::cerr << "Launching test 04 FAILED\n";
 			return 255;
@@ -603,11 +606,11 @@ int main( int argc, char ** argv ) {
 		std::vector< size_t > I_rows( n, 0 ), I_cols( n, 0 );
 		std::vector< NzType > I_vals( n, 1.f );
 		std::iota( I_rows.begin(), I_rows.end(), 0 );
-		buildMatrixUnique( I, I_rows.data(), I_cols.data(), I_vals.data(), I_vals.size(), PARALLEL );
+		buildMatrixUnique( I, I_rows.data(), I_cols.data(), I_vals.data(), I_vals.size(), SEQUENTIAL );
 		Matrix< void > mask( n, 1 );
-		buildMatrixUnique( mask, I_rows.data(), I_cols.data(), I_rows.size(), PARALLEL );
+		buildMatrixUnique( mask, I_rows.data(), I_cols.data(), I_rows.size(), SEQUENTIAL );
 		std::cout << "-- Running test 06: [n = " << n << " rows, 1 column] matrix, filled with 1s" << std::endl;
-		input< NzType, void > input = { I, mask };
+		input< NzType, void > input(I, mask);
 		if( launcher.exec( &grb_program, input, rc, true ) != SUCCESS ) {
 			std::cerr << "Launching test 06 FAILED\n";
 			return 255;
