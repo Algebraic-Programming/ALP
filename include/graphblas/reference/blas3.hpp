@@ -950,16 +950,26 @@ namespace grb {
 			_DEBUG_THREADESAFE_PRINT( "In grb::internal::foldr_unmasked_generic( reference )\n" );
 			RC rc = SUCCESS;
 
+			if( grb::nnz( A ) == 0 ) {
+				return rc;
+			}
+
+			if ( descr & descriptors::force_row_major && descr & descriptors::transpose_left ) {
+				_DEBUG_THREADESAFE_PRINT( "Masked fold with force_row_major and transpose_left is not supported\n" );
+				return RC::ILLEGAL;
+			}
+			if ( descr & descriptors::force_row_major && descr & descriptors::transpose_matrix ) {
+				_DEBUG_THREADESAFE_PRINT( "Masked fold with force_row_major and transpose_matrix is not supported\n" );
+				return RC::ILLEGAL;
+			}
+
 			const auto& identity = monoid.template getIdentity< typename Monoid::D3 >();
 			const auto& op = monoid.getOperator();
 
-			const auto &A_raw = descr & grb::descriptors::transpose_matrix ?
+			const auto &A_raw = (descr & grb::descriptors::transpose_matrix || descr & grb::descriptors::transpose_left ) ?
 				internal::getCCS( A ) : internal::getCRS( A );
 			const size_t A_nnz = nnz( A );
-			if( grb::nnz( A ) == 0 ) {
-				x = identity;
-				return rc;
-			}
+
 
 			RC local_rc = rc;
 			auto local_x = identity;
@@ -973,18 +983,18 @@ namespace grb {
 #ifdef _H_GRB_REFERENCE_OMP_BLAS3
 				config::OMP::localRange( start, end, 0, A_nnz );
 #endif
-				
+
 				for( size_t idx = start; idx < end; ++idx ) {
 					// Get A value
 					const InputType a_val = A_raw.values[ idx ];
 					_DEBUG_THREADESAFE_PRINT( "A.CRS.values[ " + std::to_string( idx ) + " ] = " + std::to_string( a_val ) + "\n" );
-				
+
 					// Compute the fold for this coordinate
 					auto local_x_before = local_x;
 					local_rc = local_rc ? local_rc : grb::apply< descr >( local_x, local_x_before, a_val, op );
 					_DEBUG_THREADESAFE_PRINT( "Computing: local_x = op(" + std::to_string( a_val ) + ", " + std::to_string( local_x_before ) + ") = " + std::to_string( local_x ) + "\n" );
 				}
-				
+
 
 #ifdef _H_GRB_REFERENCE_OMP_BLAS3
 	#pragma omp critical
@@ -1018,8 +1028,17 @@ namespace grb {
 			_DEBUG_THREADESAFE_PRINT( "In grb::internal::foldr_masked_generic( reference )\n" );
 			RC rc = SUCCESS;
 
-			if( grb::nnz( mask ) == 0 ) {
+			if( grb::nnz( mask ) == 0 || grb::nnz( A ) == 0 ) {
 				return rc;
+			}
+
+			if ( descr & descriptors::force_row_major && descr & descriptors::transpose_left ) {
+				_DEBUG_THREADESAFE_PRINT( "Masked fold with force_row_major and transpose_left is not supported\n" );
+				return RC::ILLEGAL;
+			}
+			if ( descr & descriptors::force_row_major && descr & descriptors::transpose_right ) {
+				_DEBUG_THREADESAFE_PRINT( "Masked fold with force_row_major and transpose_right is not supported\n" );
+				return RC::ILLEGAL;
 			}
 
 			const auto& identity = monoid.template getIdentity< typename Monoid::D3 >();
@@ -1066,7 +1085,7 @@ namespace grb {
 							_DEBUG_THREADESAFE_PRINT( "NEquals masked coordinate: ( " + std::to_string( i ) + ";" + std::to_string( mask_raw.row_index[ mask_k ] ) + " )\n" );
 							mask_k++;
 						}
-							
+
 						if( mask_raw.row_index[ mask_k ] < k_col || not MaskHasValue< MaskType >( mask_raw, mask_k ).value ) {
 							mask_k++;
 							_DEBUG_THREADESAFE_PRINT( "Skip masked value at: ( " + std::to_string( i ) + ";" + std::to_string( mask_raw.row_index[ mask_k ] ) + " )\n" );
@@ -1077,11 +1096,11 @@ namespace grb {
 						// Get A value
 						const InputType a_val = A_raw.getValue( k, identity );
 						_DEBUG_THREADESAFE_PRINT( "A( " + std::to_string( i ) + ";" + std::to_string( k_col ) + " ) = " + std::to_string( a_val ) + "\n" );
-						
+
 						// Compute the fold for this coordinate
 						auto local_x_before = local_x;
 						local_rc = local_rc ? local_rc : grb::apply< descr >( local_x, local_x_before, a_val, op );
-						_DEBUG_THREADESAFE_PRINT( "Computing: local_x = op(" + std::to_string( a_val ) + ", " + std::to_string( local_x_before ) + ") = " + std::to_string( local_x ) + "\n" );	
+						_DEBUG_THREADESAFE_PRINT( "Computing: local_x = op(" + std::to_string( a_val ) + ", " + std::to_string( local_x_before ) + ") = " + std::to_string( local_x ) + "\n" );
 					}
 				}
 
@@ -1530,30 +1549,30 @@ namespace grb {
 	) {
 		// static checks
 		static_assert( !std::is_same< InputType, void >::value,
-			"grb::foldr ( reference, IOType <- op( InputType, IOType ): "
+			"grb::foldr( reference, IOType <- op( InputType, IOType ): "
 			"the operator version of foldr cannot be used if the "
 			"input matrix is a pattern matrix (of type void)"
 		);
 		static_assert( !std::is_same< IOType, void >::value,
-			"grb::foldr ( reference, IOType <- op( InputType, IOType ): "
+			"grb::foldr( reference, IOType <- op( InputType, IOType ): "
 			"the operator version of foldr cannot be used if the "
 			"result is of type void"
 		);
 		static_assert( (std::is_same< typename Monoid::D1, InputType >::value),
-			"grb::foldr ( reference, IOType <- op( InputType, IOType ): "
+			"grb::foldr( reference, IOType <- op( InputType, IOType ): "
 			"called with a prefactor input type that does not match the first domain of the given operator"
 		);
 		static_assert( (std::is_same< typename Monoid::D2, IOType >::value),
-			"grb::foldr ( reference, IOType <- op( InputType, IOType ): "
+			"grb::foldr( reference, IOType <- op( InputType, IOType ): "
 			"called with a postfactor input type that does not match the first domain of the given operator"
 		);
 		static_assert( (std::is_same< typename Monoid::D3, IOType >::value),
-			"grb::foldr ( reference, IOType <- op( InputType, IOType ): "
+			"grb::foldr( reference, IOType <- op( InputType, IOType ): "
 			"called with an output type that does not match the output domain of the given operator"
 		);
 
 #ifdef _DEBUG
-		std::cout << "In grb::foldr (reference,  mask, matrix, monoid)\n";
+		std::cout << "In grb::foldr( reference, mask, matrix, monoid )\n";
 #endif
 
 		return internal::fold_masked_generic< descr, Monoid, InputType, IOType, MaskType >(
@@ -1578,30 +1597,30 @@ namespace grb {
 	) {
 		// static checks
 		static_assert( !std::is_same< InputType, void >::value,
-			"grb::foldr ( reference, IOType <- op( IOType, InputType ): "
+			"grb::foldr( reference, IOType <- op( InputType, IOType ): "
 			"the operator version of foldr cannot be used if the "
 			"input matrix is a pattern matrix (of type void)"
 		);
 		static_assert( !std::is_same< IOType, void >::value,
-			"grb::foldr ( reference, IOType <- op( IOType, InputType ): "
+			"grb::foldr( reference, IOType <- op( InputType, IOType ): "
 			"the operator version of foldr cannot be used if the "
 			"result is of type void"
 		);
 		static_assert( (std::is_same< typename Monoid::D1, InputType >::value),
-			"grb::foldr ( reference, IOType <- op( IOType, InputType ): "
+			"grb::foldr( reference, IOType <- op( InputType, IOType ): "
 			"called with a prefactor input type that does not match the first domain of the given operator"
 		);
 		static_assert( (std::is_same< typename Monoid::D2, IOType >::value),
-			"grb::foldr ( reference, IOType <- op( IOType, InputType ): "
+			"grb::foldr( reference, IOType <- op( InputType, IOType ): "
 			"called with a postfactor input type that does not match the first domain of the given operator"
 		);
 		static_assert( (std::is_same< typename Monoid::D3, IOType >::value),
-			"grb::foldr ( reference, IOType <- op( IOType, InputType ): "
+			"grb::foldr( reference, IOType <- op( InputType, IOType ): "
 			"called with an output type that does not match the output domain of the given operator"
 		);
 
 #ifdef _DEBUG
-		std::cout << "In grb::foldr (reference, matrix, op)\n";
+		std::cout << "In grb::foldr( reference, matrix, monoid )\n";
 #endif
 
 		return internal::fold_unmasked_generic< descr, Monoid, InputType, IOType, void >(
@@ -1630,30 +1649,30 @@ namespace grb {
 	) {
 		// static checks
 		static_assert( !std::is_same< InputType, void >::value,
-			"grb::foldl ( reference, IOType <- op( IOType, InputType ): "
+			"grb::foldl( reference, IOType <- op( IOType, InputType ): "
 			"the operator version of foldl cannot be used if the "
 			"input matrix is a pattern matrix (of type void)"
 		);
 		static_assert( !std::is_same< IOType, void >::value,
-			"grb::foldl ( reference, IOType <- op( IOType, InputType ): "
+			"grb::foldl( reference, IOType <- op( IOType, InputType ): "
 			"the operator version of foldl cannot be used if the "
 			"result is of type void"
 		);
 		static_assert( (std::is_same< typename Monoid::D1, IOType >::value),
-			"grb::foldl ( reference, IOType <- op( IOType, InputType ): "
+			"grb::foldl( reference, IOType <- op( IOType, InputType ): "
 			"called with a prefactor input type that does not match the first domain of the given operator"
 		);
 		static_assert( (std::is_same< typename Monoid::D2, InputType >::value),
-			"grb::foldl ( reference, IOType <- op( IOType, InputType ): "
+			"grb::foldl( reference, IOType <- op( IOType, InputType ): "
 			"called with a postfactor input type that does not match the first domain of the given operator"
 		);
 		static_assert( (std::is_same< typename Monoid::D3, IOType >::value),
-			"grb::foldl ( reference, IOType <- op( IOType, InputType ): "
+			"grb::foldl( reference, IOType <- op( IOType, InputType ): "
 			"called with an output type that does not match the output domain of the given operator"
 		);
 
 #ifdef _DEBUG
-		std::cout << "In grb::foldl (reference, mask, matrix, monoid)\n";
+		std::cout << "In grb::foldl( reference, mask, matrix, monoid )\n";
 #endif
 
 		return internal::fold_masked_generic< descr, Monoid, InputType, IOType, MaskType >(
@@ -1679,30 +1698,30 @@ namespace grb {
 	) {
 		// static checks
 		static_assert( !std::is_same< InputType, void >::value,
-			"grb::foldl ( reference, IOType <- op( IOType, InputType ): "
+			"grb::foldl( reference, IOType <- op( IOType, InputType ): "
 			"the operator version of foldl cannot be used if the "
 			"input matrix is a pattern matrix (of type void)"
 		);
 		static_assert( !std::is_same< IOType, void >::value,
-			"grb::foldl ( reference, IOType <- op( IOType, InputType ): "
+			"grb::foldl( reference, IOType <- op( IOType, InputType ): "
 			"the operator version of foldl cannot be used if the "
 			"result is of type void"
 		);
 		static_assert( (std::is_same< typename Monoid::D1, IOType >::value),
-			"grb::foldl ( reference, IOType <- op( IOType, InputType ): "
+			"grb::foldl( reference, IOType <- op( IOType, InputType ): "
 			"called with a prefactor input type that does not match the first domain of the given operator"
 		);
 		static_assert( (std::is_same< typename Monoid::D2, InputType >::value),
-			"grb::foldl ( reference, IOType <- op( IOType, InputType ): "
+			"grb::foldl( reference, IOType <- op( IOType, InputType ): "
 			"called with a postfactor input type that does not match the first domain of the given operator"
 		);
 		static_assert( (std::is_same< typename Monoid::D3, IOType >::value),
-			"grb::foldl ( reference, IOType <- op( IOType, InputType ): "
+			"grb::foldl( reference, IOType <- op( IOType, InputType ): "
 			"called with an output type that does not match the output domain of the given operator"
 		);
 
 #ifdef _DEBUG
-		std::cout << "In grb::foldl (reference, matrix, monoid)\n";
+		std::cout << "In grb::foldl( reference, matrix, monoid )\n";
 #endif
 
 		return internal::fold_unmasked_generic< descr, Monoid, InputType, IOType, void >(
