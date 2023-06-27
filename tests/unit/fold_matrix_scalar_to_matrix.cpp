@@ -109,12 +109,12 @@ struct input {
 	const OpFoldl & opFoldl;
 	const OpFoldr & opFoldr = OpFoldr();
 
-	input( const char * test_label,
-		const char * test_description,
-		const grb::Matrix< T > & initial,
-		const grb::Matrix< M > & mask,
-		const S scalar,
-		const grb::Matrix< T > & expected,
+	input( const char * test_label = "",
+		const char * test_description = "",
+		const grb::Matrix< T > & initial = {0,0},
+		const grb::Matrix< M > & mask = {0,0},
+		const S scalar = 0,
+		const grb::Matrix< T > & expected = {0,0},
 		bool skip_masked = false,
 		bool skip_unmasked = false,
 		const OpFoldl & opFoldl = OpFoldl(),
