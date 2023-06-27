@@ -49,7 +49,7 @@ constexpr bool SKIP_MASKED = false;
 constexpr bool PRINT_TIMERS = false;
 constexpr size_t ITERATIONS = 1;
 
-//#define _DEBUG
+// #define _DEBUG
 
 template< class Iterator >
 void printSparseMatrixIterator( size_t rows, size_t cols, Iterator begin, Iterator end, const std::string & name = "", std::ostream & os = std::cout ) {
@@ -85,7 +85,6 @@ void printSparseMatrix( const grb::Matrix< D > & mat, const std::string & name =
 	grb::wait( mat );
 	printSparseMatrixIterator( grb::nrows( mat ), grb::ncols( mat ), mat.cbegin(), mat.cend(), name, os );
 }
-
 
 template< typename T, typename V, typename M, class Monoid >
 RC foldl_test( const char * test_label,
@@ -254,149 +253,239 @@ void grb_program( const input< T, M > & in, grb::RC & rc ) {
 	 *  * Expected unmasked result: n
 	 *  * Expected masked result: 0
 	 */
-	rc = foldLR_test( "1", "A simple reduction(+) with the same types for the nzs and the reduction result.", I, mask, (NzType)0, (NzType)n, Monoid< operators::add< NzType >, identities::zero >() );
-	if( rc )
-		return;
+	{
+		rc = foldLR_test(
+			"1", "A simple reduction(+) with the same types for the nzs and the reduction result.", I, mask, (NzType)0, (NzType)n, Monoid< operators::add< NzType >, identities::zero >() );
+		if( rc )
+			return;
+	}
 
 	/**     Test case 2:
 	 *  A simple additive reduction with the same types for the nzs and the reduction result.
 	 *  * Initial value is n
 	 *  * Expected result: 2*n
 	 */
-	rc = foldLR_test(
-		"2", "A simple reduction(+) with the same types for the nzs and the reduction result.", I, mask, (NzType)n, (NzType)( 2 * n ), Monoid< operators::add< NzType >, identities::zero >() );
-	if( rc )
-		return;
+	{
+		rc = foldLR_test(
+			"2", "A simple reduction(+) with the same types for the nzs and the reduction result.", I, mask, (NzType)n, (NzType)( 2 * n ), Monoid< operators::add< NzType >, identities::zero >() );
+		if( rc )
+			return;
+	}
 
 	/**     Test case 3:
 	 *  A simple additive reduction with different types for the nzs and the reduction result (int <- int + NzType).
 	 *  * Initial value is 0
 	 *  * Expected result: n
 	 */
-	rc = foldl_test( "3", "A simple reduction(+) with different types for the nzs and the reduction result (int <- int + NzType).", I, mask, (int)0, (int)n,
-		Monoid< operators::add< int, NzType, int >, identities::zero >() );
-	if( rc )
-		return;
-	rc = foldr_test( "3", "A simple reduction(+) with different types for the nzs and the reduction result (int <- NzType + int).", I, mask, (int)0, (int)n,
-		Monoid< operators::add< NzType, int, int >, identities::zero >() );
-	if( rc )
-		return;
+	{
+		rc = foldl_test( "3", "A simple reduction(+) with different types for the nzs and the reduction result (int <- int + NzType).", I, mask, (int)0, (int)n,
+			Monoid< operators::add< int, NzType, int >, identities::zero >() );
+		if( rc )
+			return;
+		rc = foldr_test( "3", "A simple reduction(+) with different types for the nzs and the reduction result (int <- NzType + int).", I, mask, (int)0, (int)n,
+			Monoid< operators::add< NzType, int, int >, identities::zero >() );
+		if( rc )
+			return;
+	}
 
 	/**     Test case 4:
 	 *  A simple additive reduction with different types for the nzs and the reduction result (int <- int + NzType).
 	 *  * Initial value is n
 	 *  * Expected result: 2*n
 	 */
-	rc = foldl_test( "4", "A simple reduction(+) with different types for the nzs and the reduction result (int <- int + NzType).", I, mask, (int)n, (int)( 2 * n ),
-		Monoid< operators::add< int, NzType, int >, identities::zero >() );
-	if( rc )
-		return;
-	rc = foldr_test( "4", "A simple reduction(+) with different types for the nzs and the reduction result (int <- NzType + int).", I, mask, (int)n, (int)( 2 * n ),
-		Monoid< operators::add< NzType, int, int >, identities::zero >() );
-	if( rc )
-		return;
+	{
+		rc = foldl_test( "4", "A simple reduction(+) with different types for the nzs and the reduction result (int <- int + NzType).", I, mask, (int)n, (int)( 2 * n ),
+			Monoid< operators::add< int, NzType, int >, identities::zero >() );
+		if( rc )
+			return;
+		rc = foldr_test( "4", "A simple reduction(+) with different types for the nzs and the reduction result (int <- NzType + int).", I, mask, (int)n, (int)( 2 * n ),
+			Monoid< operators::add< NzType, int, int >, identities::zero >() );
+		if( rc )
+			return;
+	}
 
 	/**     Test case 5:
 	 * A simple multiplicative reduction with the same types for the nzs and the reduction result.
 	 * * Initial value is 0
 	 * * Expected result: 0
 	 */
-	rc = foldLR_test( "5", "A simple reduction(*) with the same types for the nzs and the reduction result.", I, mask, (NzType)0, (NzType)0, Monoid< operators::mul< NzType >, identities::one >() );
-	if( rc )
-		return;
+	{
+		rc = foldLR_test(
+			"5", "A simple reduction(*) with the same types for the nzs and the reduction result.", I, mask, (NzType)0, (NzType)0, Monoid< operators::mul< NzType >, identities::one >() );
+		if( rc )
+			return;
+	}
 
 	/**     Test case 6:
 	 * A simple multiplicative reduction with the same types for the nzs and the reduction result.
 	 * * Initial value is 1
 	 * * Expected result: 1
 	 */
-	rc = foldLR_test( "6", "A simple reduction(*) with the same types for the nzs and the reduction result.", I, mask, (NzType)1, (NzType)1, Monoid< operators::mul< NzType >, identities::one >() );
-	if( rc )
-		return;
+	{
+		rc = foldLR_test(
+			"6", "A simple reduction(*) with the same types for the nzs and the reduction result.", I, mask, (NzType)1, (NzType)1, Monoid< operators::mul< NzType >, identities::one >() );
+		if( rc )
+			return;
+	}
 
 	/**     Test case 7:
 	 * A simple multiplicative reduction with different types for the nzs and the reduction result (size_t <- size_t * NzType).
 	 * * Initial value is 0
 	 * * Expected result: 0
 	 */
-	rc = foldl_test( "7", "A simple reduction(*) with different types for the nzs and the reduction result (int <- int * NzType).", I, mask, (size_t)0, (size_t)0,
-		Monoid< operators::mul< size_t, NzType, size_t >, identities::one >() );
-	if( rc )
-		return;
-	rc = foldr_test( "7", "A simple reduction(*) with different types for the nzs and the reduction result (int <- int * NzType).", I, mask, (size_t)0, (size_t)0,
-		Monoid< operators::mul< NzType, size_t, size_t >, identities::one >() );
-	if( rc )
-		return;
+	{
+		rc = foldl_test( "7", "A simple reduction(*) with different types for the nzs and the reduction result (int <- int * NzType).", I, mask, (size_t)0, (size_t)0,
+			Monoid< operators::mul< size_t, NzType, size_t >, identities::one >() );
+		if( rc )
+			return;
+		rc = foldr_test( "7", "A simple reduction(*) with different types for the nzs and the reduction result (int <- int * NzType).", I, mask, (size_t)0, (size_t)0,
+			Monoid< operators::mul< NzType, size_t, size_t >, identities::one >() );
+		if( rc )
+			return;
+	}
 
 	/**     Test case 8:
 	 * A simple multiplicative reduction with different types for the nzs and the reduction result (size_t <- size_t * NzType).
 	 * * Initial value is 1
 	 * * Expected result: 1
 	 */
-	rc = foldl_test( "8", "A simple reduction(*) with different types for the nzs and the reduction result (int <- int * NzType).", I, mask, (size_t)1, (size_t)1,
-		Monoid< operators::mul< size_t, NzType, size_t >, identities::one >() );
-	if( rc )
-		return;
-	rc = foldr_test( "8", "A simple reduction(*) with different types for the nzs and the reduction result (int <- int * NzType).", I, mask, (size_t)1, (size_t)1,
-		Monoid< operators::mul< NzType, size_t, size_t >, identities::one >() );
-	if( rc )
-		return;
+	{
+		rc = foldl_test( "8", "A simple reduction(*) with different types for the nzs and the reduction result (int <- int * NzType).", I, mask, (size_t)1, (size_t)1,
+			Monoid< operators::mul< size_t, NzType, size_t >, identities::one >() );
+		if( rc )
+			return;
+		rc = foldr_test( "8", "A simple reduction(*) with different types for the nzs and the reduction result (int <- int * NzType).", I, mask, (size_t)1, (size_t)1,
+			Monoid< operators::mul< NzType, size_t, size_t >, identities::one >() );
+		if( rc )
+			return;
+	}
 
 	/**     Test case 9:
 	 * A simple binary equal reduction with different types for the nzs and the reduction result (bool <- bool == NzType).
 	 * * Initial value is true
 	 * * Expected result: true
 	 */
-	rc = foldl_test( "9", "A simple reduction(==) with different types for the nzs and the reduction result (bool <- bool == NzType).", I, mask, (bool)true, (bool)true,
-		Monoid< operators::equal< bool, NzType, bool >, identities::logical_true >() );
-	if( rc )
-		return;
-	rc = foldr_test( "9", "A simple reduction(==) with different types for the nzs and the reduction result (bool <- bool == NzType).", I, mask, (bool)true, (bool)true,
-		Monoid< operators::equal< NzType, bool, bool >, identities::logical_true >() );
-	if( rc )
-		return;
+	{
+		rc = foldl_test( "9", "A simple reduction(==) with different types for the nzs and the reduction result (bool <- bool == NzType).", I, mask, (bool)true, (bool)true,
+			Monoid< operators::equal< bool, NzType, bool >, identities::logical_true >() );
+		if( rc )
+			return;
+		rc = foldr_test( "9", "A simple reduction(==) with different types for the nzs and the reduction result (bool <- bool == NzType).", I, mask, (bool)true, (bool)true,
+			Monoid< operators::equal< NzType, bool, bool >, identities::logical_true >() );
+		if( rc )
+			return;
+	}
 
 	/**     Test case 10:
 	 * A simple binary logical_or reduction with different types for the nzs and the reduction result (bool <- bool || NzType).
 	 * * Initial value is false
 	 * * Expected result: true
 	 */
-	rc = foldl_test( "10", "A simple reduction(||) with different types for the nzs and the reduction result (bool <- bool || NzType).", I, mask, (bool)false, (bool)true,
-		Monoid< operators::logical_or< bool, NzType, bool >, identities::logical_false >() );
-	if( rc )
-		return;
-	rc = foldr_test( "10", "A simple reduction(||) with different types for the nzs and the reduction result (bool <- bool || NzType).", I, mask, (bool)false, (bool)true,
-		Monoid< operators::logical_or< NzType, bool, bool >, identities::logical_false >() );
-	if( rc )
-		return;
+	{
+		rc = foldl_test( "10", "A simple reduction(||) with different types for the nzs and the reduction result (bool <- bool || NzType).", I, mask, (bool)false, (bool)true,
+			Monoid< operators::logical_or< bool, NzType, bool >, identities::logical_false >() );
+		if( rc )
+			return;
+		rc = foldr_test( "10", "A simple reduction(||) with different types for the nzs and the reduction result (bool <- bool || NzType).", I, mask, (bool)false, (bool)true,
+			Monoid< operators::logical_or< NzType, bool, bool >, identities::logical_false >() );
+		if( rc )
+			return;
+	}
 
 	/**     Test case 11:
 	 * Reduction with an empty mask.
 	 * * Initial value is 4
 	 * * Expected result: 4
 	 */
-	Matrix< void > empty_mask( grb::nrows( I ), grb::ncols( I ), 0 );
-	rc = foldLR_test( "11", "Reduction with an empty mask.", I, empty_mask, (NzType)4, (NzType)4, Monoid< operators::add< NzType >, identities::zero >(), false, true );
-	if( rc )
-		return;
+	{
+		Matrix< void > empty_mask( grb::nrows( I ), grb::ncols( I ), 0 );
+		rc = foldLR_test( "11", "Reduction with an empty mask.", I, empty_mask, (NzType)4, (NzType)4, Monoid< operators::add< NzType >, identities::zero >(), false, true );
+		if( rc )
+			return;
+	}
 
 	/**     Test case 12:
-	 * Reduction with a dense mask.
+	 * Reduction with a dense void mask.
 	 * * Initial value is 0
 	 * * Expected result: n
 	 */
-	Matrix< bool > dense_mask( grb::nrows( I ), grb::ncols( I ), grb::nrows( I ) * grb::ncols( I ) );
-	std::vector< size_t > rows( grb::nrows( I ) * grb::ncols( I ) ), cols( grb::nrows( I ) * grb::ncols( I ) );
-	for( size_t x = 0; x < grb::nrows( I ); x++ ) {
-		std::fill( rows.begin() + x * grb::ncols( I ), rows.begin() + ( x + 1 ) * grb::ncols( I ), x );
-		std::iota( cols.begin() + x * grb::ncols( I ), cols.begin() + ( x + 1 ) * grb::ncols( I ), 0 );
+	{
+		Matrix< void > dense_mask( grb::nrows( I ), grb::ncols( I ), grb::nrows( I ) * grb::ncols( I ) );
+		std::vector< size_t > rows( grb::nrows( I ) * grb::ncols( I ) ), cols( grb::nrows( I ) * grb::ncols( I ) );
+		for( size_t x = 0; x < grb::nrows( I ); x++ ) {
+			std::fill( rows.begin() + x * grb::ncols( I ), rows.begin() + ( x + 1 ) * grb::ncols( I ), x );
+			std::iota( cols.begin() + x * grb::ncols( I ), cols.begin() + ( x + 1 ) * grb::ncols( I ), 0 );
+		}
+		buildMatrixUnique( dense_mask, rows.data(), cols.data(), grb::nrows( I ) * grb::ncols( I ), SEQUENTIAL );
+		rc = foldLR_test( "12", "Reduction with a dense void mask.", I, dense_mask, (NzType)0, (NzType)n, Monoid< operators::add< NzType >, identities::zero >(), false, true );
+		if( rc )
+			return;
 	}
-	std::vector< int > dense_mask_vals( grb::nrows( I ) * grb::ncols( I ), 1 );
-	buildMatrixUnique( dense_mask, rows.data(), cols.data(), dense_mask_vals.data(), grb::nrows( I ) * grb::ncols( I ), SEQUENTIAL );
-	printSparseMatrix( dense_mask, "dense_mask" );
-	rc = foldLR_test( "11", "Reduction with a dense mask.", I, dense_mask, (NzType)0, (NzType)n, Monoid< operators::add< NzType >, identities::zero >(), false, true );
-	if( rc )
-		return;
+
+	/**     Test case 13:
+	 * Reduction with a dense int mask.
+	 * * Initial value is 0
+	 * * Expected result: n
+	 */
+	{
+		Matrix< int > dense_mask( grb::nrows( I ), grb::ncols( I ), grb::nrows( I ) * grb::ncols( I ) );
+		std::vector< size_t > rows( grb::nrows( I ) * grb::ncols( I ) ), cols( grb::nrows( I ) * grb::ncols( I ) );
+		for( size_t x = 0; x < grb::nrows( I ); x++ ) {
+			std::fill( rows.begin() + x * grb::ncols( I ), rows.begin() + ( x + 1 ) * grb::ncols( I ), x );
+			std::iota( cols.begin() + x * grb::ncols( I ), cols.begin() + ( x + 1 ) * grb::ncols( I ), 0 );
+		}
+		std::vector< int > vals( grb::nrows( I ) * grb::ncols( I ), 1 );
+		buildMatrixUnique( dense_mask, rows.data(), cols.data(), vals.data(), vals.size(), SEQUENTIAL );
+		rc = foldLR_test( "13", "Reduction with a dense int mask.", I, dense_mask, (NzType)0, (NzType)n, Monoid< operators::add< NzType >, identities::zero >(), false, true );
+		if( rc )
+			return;
+	}
+
+	/**     Test case 14:
+	 * Reduction with a dense int mask, full of zero, except for the first nz.
+	 * * Initial value is 0
+	 * * Expected result: 1
+	 */
+	{
+		Matrix< int > dense_mask( grb::nrows( I ), grb::ncols( I ), grb::nrows( I ) * grb::ncols( I ) );
+		std::vector< size_t > rows( grb::nrows( I ) * grb::ncols( I ) ), cols( grb::nrows( I ) * grb::ncols( I ) );
+		for( size_t x = 0; x < grb::nrows( I ); x++ ) {
+			std::fill( rows.begin() + x * grb::ncols( I ), rows.begin() + ( x + 1 ) * grb::ncols( I ), x );
+			std::iota( cols.begin() + x * grb::ncols( I ), cols.begin() + ( x + 1 ) * grb::ncols( I ), 0 );
+		}
+		std::vector< int > vals( grb::nrows( I ) * grb::ncols( I ), 0 );
+		for( const auto e : I ) {
+			vals[ e.first.first * grb::ncols( I ) + e.first.second ] = 1;
+			break;
+		}
+		buildMatrixUnique( dense_mask, rows.data(), cols.data(), vals.data(), vals.size(), SEQUENTIAL );
+		rc = foldLR_test( "14", "Reduction with a dense int mask, matching only the first nz.", I, dense_mask, (NzType)0, (NzType)1, Monoid< operators::add< NzType >, identities::zero >(), false, true );
+		if( rc )
+			return;
+	}
+
+	/**     Test case 15:
+	 * Reduction with a dense int mask, full of zero, except for the last nz.
+	 * * Initial value is 0
+	 * * Expected result: 1
+	 */
+	{
+		Matrix< int > dense_mask( grb::nrows( I ), grb::ncols( I ), grb::nrows( I ) * grb::ncols( I ) );
+		std::vector< size_t > rows( grb::nrows( I ) * grb::ncols( I ) ), cols( grb::nrows( I ) * grb::ncols( I ) );
+		for( size_t x = 0; x < grb::nrows( I ); x++ ) {
+			std::fill( rows.begin() + x * grb::ncols( I ), rows.begin() + ( x + 1 ) * grb::ncols( I ), x );
+			std::iota( cols.begin() + x * grb::ncols( I ), cols.begin() + ( x + 1 ) * grb::ncols( I ), 0 );
+		}
+		std::vector< int > vals( grb::nrows( I ) * grb::ncols( I ), 0 );
+		size_t previous_idx = 0;
+		for( const auto e : I ) 
+			previous_idx = e.first.first * grb::ncols( I ) + e.first.second;
+		vals[ previous_idx ] = 1;
+		buildMatrixUnique( dense_mask, rows.data(), cols.data(), vals.data(), vals.size(), SEQUENTIAL );
+		rc = foldLR_test( "15", "Reduction with a dense int mask, matching only the last nz.", I, dense_mask, (NzType)0, (NzType)1, Monoid< operators::add< NzType >, identities::zero >(), false, true );
+		if( rc )
+			return;
+	}
 }
 
 int main( int argc, char ** argv ) {
