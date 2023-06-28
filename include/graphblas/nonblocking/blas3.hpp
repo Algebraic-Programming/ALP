@@ -571,6 +571,166 @@ namespace grb {
 		);
 	}
 
+	template<
+		Descriptor descr = descriptors::no_operation,
+		class Monoid,
+		typename IOType, typename MaskType, typename InputType,
+		typename RIT_A, typename CIT_A, typename NIT_A,
+		typename RIT_M, typename CIT_M, typename NIT_M,
+		typename RIT_B, typename CIT_B, typename NIT_B
+	>
+	RC foldl(
+		Matrix< IOType, nonblocking, RIT_A, CIT_A, NIT_A > &A,
+		const Matrix< MaskType, nonblocking, RIT_M, CIT_M, NIT_M > &mask,
+		const Matrix< InputType, nonblocking, RIT_B, CIT_B, NIT_B > &B,
+		const Monoid &monoid = Monoid(),
+		const typename std::enable_if<
+			!grb::is_object< IOType >::value &&
+			!grb::is_object< InputType >::value &&
+			!grb::is_object< MaskType >::value &&
+			grb::is_monoid< Monoid >::value, void
+		>::type * const = nullptr
+	) {
+		if( internal::NONBLOCKING::warn_if_not_native &&
+			config::PIPELINE::warn_if_not_native
+		) {
+			std::cerr << "Warning: foldl( nonblocking ) currently delegates to a "
+				<< "blocking implementation.\n"
+				<< "         Further similar such warnings will be suppressed.\n";
+			internal::NONBLOCKING::warn_if_not_native = false;
+		}
+
+		// nonblocking execution is not supported
+		// first, execute any computation that is not completed
+		internal::le.execution();
+
+		// second, delegate to the reference backend
+		return foldl< descr, Monoid	>(
+			internal::getRefMatrix( A ),
+			internal::getRefMatrix( mask ),
+			internal::getRefMatrix( B ),
+			monoid
+		);
+	}
+
+	template<
+		Descriptor descr = descriptors::no_operation,
+		class Monoid,
+		typename IOType, typename InputType,
+		typename RIT_A, typename CIT_A, typename NIT_A,
+		typename RIT_B, typename CIT_B, typename NIT_B
+	>
+	RC foldl(
+		Matrix< IOType, nonblocking, RIT_A, CIT_A, NIT_A > &A,
+		const Matrix< InputType, nonblocking, RIT_B, CIT_B, NIT_B > &B,
+		const Monoid &monoid = Monoid(),
+		const typename std::enable_if<
+			!grb::is_object< IOType >::value &&
+			!grb::is_object< InputType >::value &&
+			grb::is_monoid< Monoid >::value, void
+		>::type * const = nullptr
+	) {
+		if( internal::NONBLOCKING::warn_if_not_native &&
+			config::PIPELINE::warn_if_not_native
+		) {
+			std::cerr << "Warning: foldl( nonblocking ) currently delegates to a "
+				<< "blocking implementation.\n"
+				<< "         Further similar such warnings will be suppressed.\n";
+			internal::NONBLOCKING::warn_if_not_native = false;
+		}
+
+		// nonblocking execution is not supported
+		// first, execute any computation that is not completed
+		internal::le.execution();
+
+		// second, delegate to the reference backend
+		return foldl< descr, Monoid	>(
+			internal::getRefMatrix( A ),
+			internal::getRefMatrix( B ),
+			monoid
+		);
+	}
+
+	template<
+		Descriptor descr = descriptors::no_operation,
+		class Monoid,
+		typename IOType, typename MaskType, typename InputType,
+		typename RIT_A, typename CIT_A, typename NIT_A,
+		typename RIT_M, typename CIT_M, typename NIT_M,
+		typename RIT_B, typename CIT_B, typename NIT_B
+	>
+	RC foldr(
+		Matrix< IOType, nonblocking, RIT_A, CIT_A, NIT_A > &A,
+		const Matrix< MaskType, nonblocking, RIT_M, CIT_M, NIT_M > &mask,
+		const Matrix< InputType, nonblocking, RIT_B, CIT_B, NIT_B > &B,
+		const Monoid &monoid = Monoid(),
+		const typename std::enable_if<
+			!grb::is_object< IOType >::value &&
+			!grb::is_object< InputType >::value &&
+			!grb::is_object< MaskType >::value &&
+			grb::is_monoid< Monoid >::value, void
+		>::type * const = nullptr
+	) {
+		if( internal::NONBLOCKING::warn_if_not_native &&
+			config::PIPELINE::warn_if_not_native
+		) {
+			std::cerr << "Warning: foldr( nonblocking ) currently delegates to a "
+				<< "blocking implementation.\n"
+				<< "         Further similar such warnings will be suppressed.\n";
+			internal::NONBLOCKING::warn_if_not_native = false;
+		}
+
+		// nonblocking execution is not supported
+		// first, execute any computation that is not completed
+		internal::le.execution();
+
+		// second, delegate to the reference backend
+		return foldr< descr, Monoid	>(
+			internal::getRefMatrix( A ),
+			internal::getRefMatrix( mask ),
+			internal::getRefMatrix( B ),
+			monoid
+		);
+	}
+
+	template<
+		Descriptor descr = descriptors::no_operation,
+		class Monoid,
+		typename IOType, typename InputType,
+		typename RIT_A, typename CIT_A, typename NIT_A,
+		typename RIT_B, typename CIT_B, typename NIT_B
+	>
+	RC foldr(
+		Matrix< IOType, nonblocking, RIT_A, CIT_A, NIT_A > &A,
+		const Matrix< InputType, nonblocking, RIT_B, CIT_B, NIT_B > &B,
+		const Monoid &monoid = Monoid(),
+		const typename std::enable_if<
+			!grb::is_object< IOType >::value &&
+			!grb::is_object< InputType >::value &&
+			grb::is_monoid< Monoid >::value, void
+		>::type * const = nullptr
+	) {
+		if( internal::NONBLOCKING::warn_if_not_native &&
+			config::PIPELINE::warn_if_not_native
+		) {
+			std::cerr << "Warning: foldr( nonblocking ) currently delegates to a "
+				<< "blocking implementation.\n"
+				<< "         Further similar such warnings will be suppressed.\n";
+			internal::NONBLOCKING::warn_if_not_native = false;
+		}
+
+		// nonblocking execution is not supported
+		// first, execute any computation that is not completed
+		internal::le.execution();
+
+		// second, delegate to the reference backend
+		return foldr< descr, Monoid	>(
+			internal::getRefMatrix( A ),
+			internal::getRefMatrix( B ),
+			monoid
+		);
+	}
+
 } // namespace grb
 
 #undef NO_CAST_ASSERT
