@@ -184,13 +184,14 @@ function Y = inferenceReLUvec (W, bias, Y0)
 					}
 
 					{ // Remove entries of Y_out that are negative
-						rc = grb::eWiseLambda(
-							[]( const size_t i, const size_t j, IOType & y ) {
-								(void)i;
-								(void)j;
-								y = y >= 0 ? y : 0;
-							},
-							Y_out );
+						// rc = grb::eWiseLambda(
+						// 	[]( const size_t i, const size_t j, IOType & y ) {
+						// 		(void)i;
+						// 		(void)j;
+						// 		y = y >= 0 ? y : 0;
+						// 	},
+						// 	Y_out );
+						rc = foldl( Y_out, static_cast<IOType>(0), grb::operators::max< IOType >() );
 						if( rc != grb::SUCCESS ) {
 							std::cerr << "grb::fold( Y_out, 0, max ) failed" << std::endl;
 							return rc;
@@ -199,13 +200,14 @@ function Y = inferenceReLUvec (W, bias, Y0)
 					}
 
 					if( thresholded ) { // threshold maximum values: Y_out (Y_out > threshold) = threshold
-						rc = grb::eWiseLambda(
-							[ threshold ]( const size_t i, const size_t j, IOType & y ) {
-								(void)i;
-								(void)j;
-								y = y <= threshold ? y : threshold;
-							},
-							Y_out );
+						// rc = grb::eWiseLambda(
+						// 	[ threshold ]( const size_t i, const size_t j, IOType & y ) {
+						// 		(void)i;
+						// 		(void)j;
+						// 		y = y <= threshold ? y : threshold;
+						// 	},
+						// 	Y_out );
+						rc = foldl( Y_out, threshold, grb::operators::min< IOType, ThresholdType, IOType >() );
 						if( rc != grb::SUCCESS ) {
 							std::cerr << "grb::fold( Y_out, threshold, min ) failed" << std::endl;
 							return rc;
