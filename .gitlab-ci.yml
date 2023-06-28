@@ -188,7 +188,7 @@ workflow:
 build_test:
   script:
     - mkdir -p install build && cd ./build && ../bootstrap.sh --prefix=../install --with-datasets=${ALP_DATASETS}
-      && make -j$(nproc) build_tests_all
+    - make -j$(nproc) && make -j$(nproc) build_tests_all
     - *strip_symbols
   artifacts:
     paths:
@@ -201,10 +201,11 @@ build_test:
     expire_in: 2 hours
 
 
-build_tests_buildtype_debug_sym_debug:
+build_tests_build_type_debug_sym_debug:
   script:
     - mkdir -p install build && cd build && cmake -DCMAKE_INSTALL_PREFIX=../install -DCMAKE_CXX_FLAGS=-D_DEBUG
-      -DCMAKE_C_FLAGS=-D_DEBUG -DCMAKE_BUILD_TYPE=Debug ../ && make -j$(nproc) build_tests_all
+      -DCMAKE_C_FLAGS=-D_DEBUG -DCMAKE_BUILD_TYPE=Debug ../
+    - make -j$(nproc) && make -j$(nproc) build_tests_all
 
 
 build_tests_sym_debug:
@@ -212,23 +213,41 @@ build_tests_sym_debug:
     - if: $EXTRA_TESTS_ENABLED == "yes"
   script:
     - mkdir -p install build && cd build && cmake -DCMAKE_INSTALL_PREFIX=../install -DCMAKE_CXX_FLAGS=-D_DEBUG
-      -DCMAKE_C_FLAGS=-D_DEBUG -DLPF_INSTALL_PATH=${LPF_PATH} -DCMAKE_BUILD_TYPE=Release ../ && make -j$(nproc) build_tests_all
+      -DCMAKE_C_FLAGS=-D_DEBUG -DLPF_INSTALL_PATH=${LPF_PATH} -DCMAKE_BUILD_TYPE=Release ../
+    - make -j$(nproc) && make -j$(nproc) build_tests_all
 
 
-tests_unit:
-  needs: [build_test]
+# must specify CTEST_CATEGORY and CTEST_BACKEND to filter
+.ctests_run:
   script:
-    - cd ./build && make -j$(nproc) tests_unit &> unittests.log
-    - ../tests/summarise.sh unittests.log
+    - cd build
+    - cmake . # re-configure to update the available resources
+    - |
+      echo "CATEGORY: ${CTEST_CATEGORY}; BACKEND: ${CTEST_BACKEND}"
+    - ${CMAKE_RECENT}/ctest -L "mode:${CTEST_CATEGORY}" -L "backend:${CTEST_BACKEND}" --output-junit ${CTEST_CATEGORY}.xml
+      --output-on-failure || true
+    - python3 ${CI_PROJECT_DIR}/tools/ctest-junit-parse.py --categories ${CTEST_CATEGORY} --xmls-dir $(pwd)
+      --remove-successful-logs-from $(pwd)/tests
   artifacts:
-    paths: [ build/*.log ]
-    expire_in: 1 day
+    when: always
+    name: "${CTEST_CATEGORY}_failed_tests"
+    paths:
+      - build/tests/${CTEST_CATEGORY}/output/
+      - build/${CTEST_CATEGORY}.xml
+    reports:
+      junit: build/${CTEST_CATEGORY}.xml
+    expire_in: 1 week
 
-tests_smoke:
+
+default_tests_matrix:
   needs: [build_test]
-  script:
-    - cd ./build && make -j$(nproc) tests_smoke &> smoketests.log
-    - ../tests/summarise.sh smoketests.log
+  variables:
+    CTEST_BACKEND: ".*" # match all enabled backends
+  parallel:
+    matrix:
+      - CTEST_CATEGORY: [unit, smoke]
+  extends: .ctests_run
+
 
 test_installation:
   needs: [build_test]
@@ -236,7 +255,7 @@ test_installation:
     - cd ./build && make -j$(nproc) install
 
 
-build_test_buildtype_debug:
+build_test_build_type_debug:
   script:
     - mkdir -p install build && cd ./build && ../bootstrap.sh --prefix=../install --with-datasets=${ALP_DATASETS}
       --debug-build && make -j$(nproc) && make -j$(nproc) build_tests_all
@@ -249,16 +268,20 @@ build_test_buildtype_debug:
       - build/**/*.o.d
     expire_in: 2 hours
 
+
 test_smoke_build_type_debug:
-  needs: [build_test_buildtype_debug]
-  script:
-    - cd ./build && make -j$(nproc) smoketests &> smoketests.log
-    - ../tests/summarise.sh smoketests.log
+  needs: [build_test_build_type_debug]
+  variables:
+    CTEST_BACKEND: ".*" # match all enabled backends
+    CTEST_CATEGORY: smoke
+  extends: .ctests_run
+
 
 test_installation_build_type_debug:
-  needs: [build_test_buildtype_debug]
+  needs: [build_test_build_type_debug]
   script:
     - cd ./build && make -j$(nproc) install
+
 
 gitleaks:
   image:
@@ -295,20 +318,20 @@ tests_performance:
   rules:
     - if: $EXTRA_TESTS_ENABLED == "yes"
   needs: [build_test]
-  script:
-    - cd ./build && make -j$(nproc) performancetests &> performancetests.log
-    - ../tests/summarise.sh performancetests.log tests/performance/output/benchmarks tests/performance/output/scaling
+  variables:
+    CTEST_BACKEND: ".*" # match all enabled backends
+    CTEST_CATEGORY: "performance"
+  extends: .ctests_run
 
-tests_unit_buildtype_debug:
+
+tests_unit_build_type_debug:
   rules:
     - if: $EXTRA_TESTS_ENABLED == "yes"
-  needs: [build_test_buildtype_debug]
-  script:
-    - cd ./build && make -j$(nproc) unittests &> unittests.log
-    - ../tests/summarise.sh unittests.log
-  artifacts:
-    paths: [ build/*.log ]
-    expire_in: 1 day
+  needs: [build_test_build_type_debug]
+  variables:
+    CTEST_BACKEND: ".*" # match all enabled backends
+    CTEST_CATEGORY: "unit"
+  extends: .ctests_run
 
 
 ## Additional tests for LPF (on main branches only)
@@ -319,7 +342,8 @@ build_test_lpf:
   script:
 # build only LPF-related tests
     - mkdir -p install build && cd ./build && ../bootstrap.sh --with-lpf=${LPF_PATH} --no-nonblocking --no-reference
-      --no-hyperdags --prefix=../install --with-datasets=${ALP_DATASETS} && make -j$(nproc) build_tests_all
+      --no-hyperdags --prefix=../install --with-datasets=${ALP_DATASETS}
+    - make -j$(nproc) && make -j$(nproc) build_tests_all
     - *strip_symbols
   artifacts:
     paths:
@@ -331,15 +355,12 @@ build_test_lpf:
       - build/**/*.dir
     expire_in: 2 hours
 
-# common sections for  LPF unit tests
-.tests_unit_lpf:
+# common sections for  LPF unit tests: must specify CTEST_CATEGORY
+.tests_category_lpf:
   needs: [build_test_lpf]
-  script:
-    - cd ./build && make -j$(nproc) tests_unit &> unittests.log
-    - ../tests/summarise.sh unittests.log
-  artifacts:
-    paths: [ build/*.log ]
-    expire_in: 1 day
+  variables:
+    CTEST_BACKEND: "bsp1d|hybrid" # match bsp1d and hybrid backends
+  extends: .ctests_run
 
 # this job triggers in internal CI, where LPF tests run better on runners
 # with a given tag $LPF_PREFERRED_RUNNERS_TAG
@@ -349,22 +370,29 @@ tests_unit_lpf_preferred:
   tags:
     - docker
     - $LPF_PREFERRED_RUNNERS_TAG
-  extends: .tests_unit_lpf
+  variables:
+    CTEST_CATEGORY: "unit"
+  extends: .tests_category_lpf
+
 
 # if runners with a specific tag are not present, run this job
 # attention: it may timeout
 tests_unit_lpf_generic:
   rules:
     - if: $LPF_TESTS_ENABLED == "yes" && $LPF_PREFERRED_RUNNERS != "yes"
-  extends: .tests_unit_lpf
+  variables:
+    CTEST_CATEGORY: "unit"
+  extends: .tests_category_lpf
+
 
 tests_smoke_lpf:
   rules:
     - if: $LPF_TESTS_ENABLED == "yes"
   needs: [build_test_lpf]
-  script:
-    - cd ./build && make -j$(nproc) tests_smoke &> smoketests.log
-    - ../tests/summarise.sh smoketests.log
+  variables:
+    CTEST_CATEGORY: "smoke"
+  extends: .tests_category_lpf
+
 
 test_installation_lpf:
   rules:
@@ -372,6 +400,7 @@ test_installation_lpf:
   needs: [build_test_lpf]
   script:
     - cd ./build && make -j$(nproc) install
+
 
 ## Additional jobs to build againt multiple compilers (on main branches only)
 
@@ -393,6 +422,7 @@ build_test_gcc_versions:
       --prefix=../install --with-datasets=${ALP_DATASETS}
       --with-lpf=${LPF_BASE_PATH}/build_mpich_${CC_COMPILER}_${VER}/install &&
       make -j$(nproc) build_tests_all
+
 
 # Coverage build + tests for each backend
 
@@ -422,8 +452,8 @@ coverage_matrix:
       -DWITH_REFERENCE_BACKEND=${backends_array[1]}
       -DWITH_OMP_BACKEND=${backends_array[2]}
       -DWITH_NONBLOCKING_BACKEND=${backends_array[3]} ..
-    - make -j$(nproc)
-    - make -j$(nproc) unittests
+    - make -j$(nproc) build_tests_category_unit
+    - ${CMAKE_RECENT}/ctest -L "mode:unit" --output-on-failure || true # ignore not run tests (failing ones are detected in standard jobs)
 # for each job (i.e., each backend), generate a separate JSON to me merged later
 # (gcovr merges only JSON files)
     - python3 -m gcovr --json
@@ -435,6 +465,7 @@ coverage_matrix:
     paths:
       - COVERAGE_${CI_JOB_ID}.json
     expire_in: 4 weeks
+
 
 cobertura_coverage_report:
   rules:
@@ -456,6 +487,7 @@ cobertura_coverage_report:
         coverage_format: cobertura
         path: coverage.xml
 
+
 html_coverage_report:
   rules:
     - if: $COVERAGE_ENABLED == "yes" || $GENERATE_COVERAGE_PAGES == "yes"
@@ -474,6 +506,7 @@ html_coverage_report:
     expire_in: 4 weeks
     paths:
       - public
+
 
 ## GitLab Pages update job
 
