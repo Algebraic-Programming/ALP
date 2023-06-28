@@ -237,7 +237,6 @@ function runKNNBenchMarkTests()
 	local kValue=$3
 	local dataSet=$4
 	local parseMode=$5
-	local parseSize=$6
 	local nbhSize=$7
 
 	echo ">>>      [x]           [x]       Testing k-NN using ${dataSet} dataset, k=$kValue,"
@@ -262,7 +261,6 @@ runOtherBenchMarkTests()
 	local backend=$2
 	local dataSet=$3
 	local parseMode=$4
-	local parseSize=$5
 	local alg=$6
 
 
