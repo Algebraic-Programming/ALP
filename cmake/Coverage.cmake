@@ -18,7 +18,7 @@ find_package( GCov REQUIRED )
 find_package( Gcovr REQUIRED )
 
 set( COVERAGE_REPORT_DIR "${PROJECT_BINARY_DIR}/coverage" )
-string( JOIN + _COVERAGE_TITLE "GraphBLAS_${VERSION}" ${AVAILABLE_TEST_BACKENDS} )
+string( JOIN + _COVERAGE_TITLE "ALP_${VERSION}" ${AVAILABLE_TEST_BACKENDS} )
 file( MAKE_DIRECTORY "${COVERAGE_REPORT_DIR}" )
 message( STATUS "Directory of coverage reports: ${COVERAGE_REPORT_DIR}" )
 
@@ -40,6 +40,12 @@ function( create_coverage_command command_name output_file output_switch )
         COMMAND_EXPAND_LISTS
 	)
 endfunction()
+
+create_coverage_command( "coverage_json" "coverage.json"  "--json-pretty" )
+create_coverage_command( "coverage_cobertura" "coverage.xml"  "--xml-pretty" )
+create_coverage_command( "coverage_csv" "coverage.csv"  "--csv" )
+create_coverage_command( "coverage_coveralls" "coveralls.json"  "--coveralls" )
+create_coverage_command( "coverage_html" "index.html"  "--html-details" )
 
 add_custom_target( coverage_clean
     COMMAND find "coverage" -mindepth 1 -delete

@@ -112,7 +112,8 @@ add_grb_executables( fork_launcher fork_launcher.cpp
 	BACKENDS bsp1d NO_BACKEND_NAME
 )
 
-add_grb_executables_with_category( hpparser "" "" ${ALP_UTILS_SRC_PATH}/hpparser.c
+add_grb_executable_single( hpparser "" "" ${ALP_UTILS_SRC_PATH}/hpparser.c
+	BACKEND none
 	"backend_headers_nodefs;OpenMP::OpenMP_C"
 	"TEST_HPPARSER;_GNU_SOURCE;_DEBUG"
 )
@@ -274,16 +275,16 @@ add_grb_executables( outer outer.cpp
 )
 
 # must generate the golden output for other tests
-force_add_grb_executable( mxv mxv.cpp
-	BACKEND reference
+add_grb_executable_single( mxv mxv.cpp
+	BACKEND reference GOLDEN_TEST
 )
 add_grb_executables( mxv mxv.cpp
 	BACKENDS reference_omp bsp1d hybrid hyperdags nonblocking
 )
 
 # must generate the golden output for other tests
-force_add_grb_executable( vxm vxm.cpp
-	BACKEND reference
+add_grb_executable_single( vxm vxm.cpp
+	BACKEND reference GOLDEN_TEST
 )
 add_grb_executables( vxm vxm.cpp
 	BACKENDS reference_omp bsp1d hybrid hyperdags nonblocking

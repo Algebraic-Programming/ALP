@@ -32,30 +32,30 @@ for MODE in ${MODES}; do
 	# run only if the reference backend is present
 	if [[ "${REFERENCE_COUNT}" -gt "0" ]]; then
 		echo ">>>      [x]           [ ]       Testing grb::utils::equals over floats and doubles"
-		${TEST_BIN_DIR}/equals_${MODE} &> ${TEST_OUT_DIR}/equals_${MODE}.log
-		head -1 ${TEST_OUT_DIR}/equals_${MODE}.log
-		grep 'Test OK' ${TEST_OUT_DIR}/equals_${MODE}.log || echo "Test FAILED"
+		${TEST_BIN_DIR}/equals_${MODE}_reference &> ${TEST_OUT_DIR}/equals_${MODE}_reference.log
+		head -1 ${TEST_OUT_DIR}/equals_${MODE}_reference.log
+		grep 'Test OK' ${TEST_OUT_DIR}/equals_${MODE}_reference.log || echo "Test FAILED"
 		echo " "
 
 		echo ">>>      [x]           [ ]       Testing numerical addition operator over doubles"
-		${TEST_BIN_DIR}/add15d_${MODE}
+		${TEST_BIN_DIR}/add15d_${MODE}_reference
 
 		echo ">>>      [x]           [ ]       Testing numerical addition operator over a mixed field"
 		echo "                                 (double, integers, and floats)"
-		${TEST_BIN_DIR}/add15m_${MODE}
+		${TEST_BIN_DIR}/add15m_${MODE}_reference
 
 		echo ">>>      [x]           [ ]       Testing numerical multiplication operator over integers"
-		${TEST_BIN_DIR}/mul15i_${MODE}
+		${TEST_BIN_DIR}/mul15i_${MODE}_reference
 
 		echo ">>>      [x]           [ ]       Testing numerical multiplication operator over a mixed"
 		echo "                                 field (double, integers, and floats)"
-		${TEST_BIN_DIR}/mul15m_${MODE}
+		${TEST_BIN_DIR}/mul15m_${MODE}_reference
 
 		echo ">>>      [x]           [ ]       Tests the built-in parser on the west0497 MatrixMarket file"
 		if [ -f ${INPUT_DIR}/west0497.mtx ]; then
-			${TEST_BIN_DIR}/parserTest_${MODE} ${INPUT_DIR}/west0497.mtx 2> ${TEST_OUT_DIR}/parserTest_${MODE}.err 1> ${TEST_OUT_DIR}/parserTest_${MODE}.out
-			head -1 ${TEST_OUT_DIR}/parserTest_${MODE}.out
-			grep 'Test OK' ${TEST_OUT_DIR}/parserTest_${MODE}.out || echo "Test FAILED"
+			${TEST_BIN_DIR}/parserTest_${MODE}_reference ${INPUT_DIR}/west0497.mtx 2> ${TEST_OUT_DIR}/parserTest_${MODE}_reference.err 1> ${TEST_OUT_DIR}/parserTest_${MODE}_reference.out
+			head -1 ${TEST_OUT_DIR}/parserTest_${MODE}_reference.out
+			grep 'Test OK' ${TEST_OUT_DIR}/parserTest_${MODE}_reference.out || echo "Test FAILED"
 		else
 			echo "Test DISABLED: west0497.mtx was not found. To enable, please provide ${INPUT_DIR}/west0497.mtx"
 		fi
@@ -82,9 +82,9 @@ for MODE in ${MODES}; do
 		echo ">>>      [x]           [ ]       Tests the built-in parser (in graphblas/utils/parser.hpp)"
 		echo "                                 versus the parser in tests/parser.cpp on cit-HepTh.txt."
 		if [ -f ${INPUT_DIR}/cit-HepTh.txt ]; then
-			${TEST_BIN_DIR}/compareParserTest_${MODE} ${INPUT_DIR}/cit-HepTh.txt &> ${TEST_OUT_DIR}/compareParserTest_${MODE}
-			head -1 ${TEST_OUT_DIR}/compareParserTest_${MODE}
-			tail -2 ${TEST_OUT_DIR}/compareParserTest_${MODE}
+			${TEST_BIN_DIR}/compareParserTest_${MODE}_reference ${INPUT_DIR}/cit-HepTh.txt &> ${TEST_OUT_DIR}/compareParserTest_${MODE}_reference
+			head -1 ${TEST_OUT_DIR}/compareParserTest_${MODE}_reference
+			tail -2 ${TEST_OUT_DIR}/compareParserTest_${MODE}_reference
 		else
 			echo "Test DISABLED: cit-HepTh was not found. To enable, please provide the dataset within ${INPUT_DIR}/cit-HepTh.txt"
 			echo " "

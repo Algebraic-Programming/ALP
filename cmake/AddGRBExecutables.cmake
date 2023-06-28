@@ -1,5 +1,5 @@
 #
-#   Copyright 2021 Huawei Technologies Co., Ltd.
+#   Copyright 2023 Huawei Technologies Co., Ltd.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -49,40 +49,53 @@ macro( append_test_to_backend backend test )
 	set_property( GLOBAL APPEND PROPERTY tests_backend_${backend} "${test}" )
 endmacro()
 
-macro( make_test_names target_out_var filename_out_var test_name backend mode  )
-	set( ${filename_out_var} "${test_name}${MODES_${mode}_suffix}" )
-	set( ${target_out_var} "test_${${filename_out_var}}" )
-	set( __back "${backend}" )
-	if( __back )
-		string( APPEND ${filename_out_var} "_" "${__back}" )
-		string( APPEND ${target_out_var} "_" "${__back}" )
-	endif()
-endmacro( make_test_names )
-
 
 #
-# [internal!] creates a test target from passed information, also querying the mode(s)
-# defined for the given category
+# [internal!] returns the CMake target name for a test executable and the associated file name,
+# implementing the naming conventions of the test suite: all functionalities using these names
+# should use this function.
 # Arguments:
 #
-# test_prefix name of test from the user
-# backend_name name of backend (mandatory, even if not used for the file and target name)
-# suffix file name and category name suffix, either empty or with _<backend name>
-# sources source files
-# libs libraries to link (including backend)
-# defs definitions
-# no_perf_opt whether to exclude performance optimizations
+# target_name[out]: name of the variable to store the target name
+# exe_name[out]: name of the variable to store the executable name
+# test_name: user's name for the test executable
+# mode: mode to generate the name for
+# backend_name: name of backend (can be empty)
+#
+# The executable name exe_name is
+#   test_<test_name>_<mode>_<backend_name>
+# where _<mode> and _<backend_name> may be skipped if the respective strings are empty;
+# the corresponding target name is "test_${exe_name}"
+#
+function( __make_test_name target_name exe_name test_name mode backend )
+	set( file "${test_name}${MODES_${mode}_suffix}" )
+	if( backend )
+		string( APPEND file "-" "${backend}" )
+	endif()
+	set( ${exe_name} "${file}" PARENT_SCOPE )
+	set( ${target_name} "test_${file}" PARENT_SCOPE )
+endfunction( __make_test_name )
+
+
+#
+# [internal!] creates a test executable target from passed information, also querying
+# the mode(s) defined for the given category
+# Arguments:
+#
+# test_prefix: name of test from the user
+# backend_name: name of backend (can be empty)
+# sources: source files
+# libs: libraries to link (including backend)
+# defs: definitions
 #
 # For each mode in the given category, it generates a target as
-#   test_<test_prefix>_<mode>_<suffix>
-# where _<mode> and _<suffix> may be skipped if the respective strings are empty.
+#   test_<test_prefix>_<mode>_<backend_name>
+# where _<mode> and _<backend_name> may be skipped if the respective strings are empty.
 # Similarly, the compiled file name is called as the target, without test_ at the beginning
 #
-macro( add_grb_executables_with_category test_prefix backend_name suffix sources libs defs )
+function( __add_grb_executables_with_category test_prefix backend_name sources libs defs )
 
-	if( NOT TEST_CATEGORY )
-		message( FATAL_ERROR "variable TEST_CATEGORY not specified" )
-	endif()
+	assert_valid_variables( TEST_CATEGORY )
 	if( NOT "${TEST_CATEGORY}" IN_LIST TEST_CATEGORIES )
 		message( FATAL_ERROR "the category ${TEST_CATEGORY} is not among TEST_CATEGORIES: ${TEST_CATEGORIES}" )
 	endif()
@@ -90,57 +103,47 @@ macro( add_grb_executables_with_category test_prefix backend_name suffix sources
 
 	foreach( mode ${MODES_${category}} )
 
-		# set( __file_name "${test_prefix}${MODES_${mode}_suffix}" )
-		# set( __target_name "test_${__file_name}" )
-		# #set( __target_name "test_${test_prefix}_${category}${MODES_${mode}_suffix}" )
-		# if( suffix )
-		# 	string( APPEND __file_name "_" "${suffix}" )
-		# 	string( APPEND __target_name "_" "${suffix}" )
-		# endif()
-		# message( AUTHOR_WARNING "invoking
-		make_test_names( __target_name __file_name "${test_prefix}" "${suffix}" "${mode}" )
-
-		if( TARGET "${__target_name}" )
-			message( FATAL_ERROR "Target \"${__target_name}\" already exists!")
+		__make_test_name( full_target_name exe_name "${test_prefix}" "${mode}" "${backend_name}" )
+		if( TARGET "${full_target_name}" )
+			message( FATAL_ERROR "Target \"${full_target_name}\" already exists!")
 		endif()
-		# message( AUTHOR_WARNING "gor target name ${__target_name}" )
-		add_executable( "${__target_name}" EXCLUDE_FROM_ALL "${sources}" )
+		add_executable( "${full_target_name}" EXCLUDE_FROM_ALL "${sources}" )
 
-		set_target_properties( "${__target_name}" PROPERTIES
-			#RUNTIME_OUTPUT_DIRECTORY "${TESTS_EXE_OUTPUT_DIR}"
-			OUTPUT_NAME "${__file_name}" # use the bare test name, WITHOUT "test_" at the beginning
+		set_target_properties( "${full_target_name}" PROPERTIES
+			OUTPUT_NAME "${exe_name}" # use the bare test name, WITHOUT "test_" at the beginning
 		)
-		target_link_libraries( "${__target_name}" PRIVATE "${libs}" )
-		target_compile_definitions( "${__target_name}" PRIVATE "${defs}" )
-		target_link_libraries( "${__target_name}" PRIVATE test_${mode}_flags )
-		append_test_to_category( "${category}" "${__target_name}" )
-		set( __b "${backend_name}" )
-		if( __b )
-			append_test_to_backend( "${__b}" "${__target_name}" )
+		target_link_libraries( "${full_target_name}" PRIVATE "${libs}" )
+		target_compile_definitions( "${full_target_name}" PRIVATE "${defs}" )
+		target_link_libraries( "${full_target_name}" PRIVATE test_${mode}_flags )
+		append_test_to_category( "${category}" "${full_target_name}" )
+		if( backend_name )
+			append_test_to_backend( "${backend_name}" "${full_target_name}" )
 		endif()
 	endforeach()
-endmacro( add_grb_executables_with_category )
+endfunction( __add_grb_executables_with_category )
 
 #
-# add a GraphBLAS test to be compiled against one or more backends: for each backend,
-# it generates an executable target name test_<testName>_<backend name>
+# add a GraphBLAS executable to be compiled against one or more backends: for each backend,
+# it generates an executable target name test_<testName>_<mode>_<backend name>
 #
 # Syntax:
-# add_grb_tests( testName source1 [source2 ...]
-#   BACKENDS backend1 [backend2...] [NO_BACKEND_NAME]
+# add_grb_executables( testName source1 [source2 ...]
+#   BACKENDS backend1 [backend2...]
 #   COMPILE_DEFINITIONS def1 [def2...]
 #   ADDITIONAL_LINK_LIBRARIES lib1 [lib2...]
-#   CATEGORIES cat1 [cat2...]
 # )
 #
-# NO_BACKEND_NAME: if one only backend is selected, do not put its name
-# at the end of the test name
+# Arguments:
+#
+# testName: unique name, which is used to generate the test executable target
+# source1 [source2 ...]: sources to compile (at least one)
+# BACKENDS backend1 [backend2...]: backends to compile the executable against (at least one)
 # COMPILE_DEFINITIONS: additional compile definitions
 # ADDITIONAL_LINK_LIBRARIES: additional libraries to link to each target
 #
 # The generated test name is also added to the list of per-backend tests,
-# namely tests_backend_<backend name> and is also added to the per-category
-# tests lists, namely tests_category_<category>.
+# namely tests_backend_<backend name> and to the per-category tests lists,
+# namely tests_category_<category>.
 #
 # The backend name must correspond to one of the backends available in ${ALL_BACKENDS},
 # otherwise an error occurs; since not all backends may be enabled, only targets
@@ -151,7 +154,7 @@ function( add_grb_executables testName )
 		message( FATAL_ERROR "no test name specified")
 	endif()
 
-	set(options "NO_BACKEND_NAME" )
+	set(options "" )
 	set(oneValueArgs "" )
 	set(multiValueArgs
 		"SOURCES"
@@ -168,11 +171,16 @@ function( add_grb_executables testName )
 	assert_valid_variables( parsed_SOURCES parsed_BACKENDS )
 
 	list( LENGTH parsed_BACKENDS num_backends )
-	if( parsed_NO_BACKEND_NAME AND ( NOT num_backends EQUAL "1" ) )
-		message( FATAL_ERROR "NO_BACKEND_NAME can be used only with one backend listed")
-	endif()
 
-	set_valid( defs "${parsed_COMPILE_DEFINITIONS}" "" )
+	set_valid_string( defs "${parsed_COMPILE_DEFINITIONS}" "" )
+
+	if( "${parsed_BACKENDS}" STREQUAL "none" )
+		list( APPEND libs "alp_utils_static" "${parsed_ADDITIONAL_LINK_LIBRARIES}" )
+		__add_grb_executables_with_category( "${testName}" ""
+			"${parsed_SOURCES}" "${libs}" "${defs}"
+		)
+		return()
+	endif()
 
 	foreach( back ${parsed_BACKENDS} )
 		if( NOT ${back} IN_LIST AVAILABLE_TEST_BACKENDS )
@@ -186,51 +194,8 @@ function( add_grb_executables testName )
 		set( libs "backend_${back};alp_utils_static" )
 		append_if_valid( libs "${parsed_ADDITIONAL_LINK_LIBRARIES}" )
 
-		if( NOT parsed_NO_BACKEND_NAME )
-			set( suffix "${back}" )
-		endif()
-
-		add_grb_executables_with_category( "${testName}" "${back}" "${suffix}"
+		__add_grb_executables_with_category( "${testName}" "${back}"
 			"${parsed_SOURCES}" "${libs}" "${defs}"
 		)
 	endforeach()
 endfunction( add_grb_executables )
-
-# force add executable even if the test backend is not enabled
-# useful for tests that produce a "golden output" for other tests;
-# for one backend only
-function( force_add_grb_executable testName )
-	if( NOT testName )
-		message( FATAL_ERROR "no test name specified")
-	endif()
-
-	set(options "" )
-	set(oneValueArgs "BACKEND" )
-	set(multiValueArgs
-		"SOURCES"
-		"COMPILE_DEFINITIONS"
-		"ADDITIONAL_LINK_LIBRARIES"
-	)
-
-	set( args "SOURCES" "${ARGN}" )
-	cmake_parse_arguments( parsed "${options}"
-		"${oneValueArgs}" "${multiValueArgs}" ${args}
-	)
-
-	assert_valid_variables( parsed_SOURCES parsed_BACKEND )
-
-	set_valid( defs "${parsed_COMPILE_DEFINITIONS}" "" )
-
-	if( NOT "${parsed_BACKEND}" IN_LIST ALL_BACKENDS  )
-		return()
-	endif()
-	assert_defined_targets( backend_${parsed_BACKEND} )
-
-	set( libs "backend_${parsed_BACKEND};alp_utils_static" )
-	append_if_valid( libs "${parsed_ADDITIONAL_LINK_LIBRARIES}" )
-
-	__add_test_with_category( "${testName}" "${parsed_BACKEND}" "${parsed_BACKEND}"
-		"${parsed_SOURCES}" "${libs}" "${defs}"
-	)
-endfunction()
-

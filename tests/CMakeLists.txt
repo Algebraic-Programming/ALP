@@ -17,7 +17,7 @@
 #
 # Main tests, which do not use the Launcher mechanism
 #
-assert_valid_variables( ALP_UTILS_SRC_PATH AVAILABLE_TEST_BACKENDS DATASETS_DIR TESTS_EXE_OUTPUT_DIR )
+assert_valid_variables( ALP_UTILS_SRC_PATH AVAILABLE_TEST_BACKENDS DATASETS_DIR )
 assert_defined_variables( GNN_DATASET_PATH WITH_BSP1D_BACKEND WITH_HYBRID_BACKEND )
 
 
