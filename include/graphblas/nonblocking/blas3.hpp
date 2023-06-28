@@ -571,6 +571,126 @@ namespace grb {
 		);
 	}
 
+	template<
+		Descriptor descr = descriptors::no_operation,
+		class Operator,
+		typename IOType, typename MaskType, typename InputType, 
+		typename RIT_A, typename CIT_A, typename NIT_A,
+		typename RIT_M, typename CIT_M, typename NIT_M
+	>
+	RC foldl(
+		Matrix< IOType, nonblocking, RIT_A, CIT_A, NIT_A > &A,
+		const Matrix< MaskType, nonblocking, RIT_M, CIT_M, NIT_M > &mask,
+		const InputType &x,
+		const Operator &op = Operator(),
+		const typename std::enable_if< 
+			!grb::is_object< IOType >::value &&
+			!grb::is_object< InputType >::value &&
+			!grb::is_object< MaskType >::value &&
+			grb::is_operator< Operator >::value, void
+		>::type * const = nullptr
+	) {
+
+#ifdef _DEBUG
+		std::cout << "In grb::foldl( nonblocking, matrix, mask, scalar, op )\n";
+#endif
+		RC rc = SUCCESS;
+
+		if( grb::nnz( A ) == 0 ) {
+			return rc;
+		}
+
+		// Do local folding
+		rc = foldl< descr >( internal::getRefMatrix( A ), internal::getRefMatrix( mask ), x, op );		
+
+		return rc;
+	}
+
+	template<
+		Descriptor descr = descriptors::no_operation,
+		class Operator,
+		typename IOType, typename InputType, 
+		typename RIT, typename CIT, typename NIT
+	>
+	RC foldl(
+		Matrix< IOType, nonblocking, RIT, CIT, NIT > &A,
+		const InputType &x,
+		const Operator &op = Operator(),
+		const typename std::enable_if< 
+			!grb::is_object< IOType >::value &&
+			!grb::is_object< InputType >::value &&
+			grb::is_operator< Operator >::value, void
+		>::type * const = nullptr
+	) {
+
+#ifdef _DEBUG
+		std::cout << "In grb::foldl( nonblocking, matrix, scalar, op )\n";
+#endif
+		// nonblocking execution is not supported
+		// first, execute any computation that is not completed
+		internal::le.execution();
+
+		// second, delegate to the reference backend
+		return foldl< descr, Operator >( internal::getRefMatrix( A ), x, op );
+	}
+
+	template<
+		Descriptor descr = descriptors::no_operation,
+		class Operator,
+		typename IOType, typename MaskType, typename InputType, 
+		typename RIT_A, typename CIT_A, typename NIT_A,
+		typename RIT_M, typename CIT_M, typename NIT_M
+	>
+	RC foldr(
+		Matrix< IOType, nonblocking, RIT_A, CIT_A, NIT_A > &A,
+		const Matrix< MaskType, nonblocking, RIT_M, CIT_M, NIT_M > &mask,
+		const InputType &x,
+		const Operator &op = Operator(),
+		const typename std::enable_if< 
+			!grb::is_object< IOType >::value &&
+			!grb::is_object< InputType >::value &&
+			!grb::is_object< MaskType >::value &&
+			grb::is_operator< Operator >::value, void
+		>::type * const = nullptr
+	) {
+
+#ifdef _DEBUG
+		std::cout << "In grb::foldr( nonblocking, matrix, scalar, mask, op )\n";
+#endif
+		// nonblocking execution is not supported
+		// first, execute any computation that is not completed
+		internal::le.execution();
+
+		// second, delegate to the reference backend
+		return foldr< descr, Operator >( internal::getRefMatrix( A ), internal::getRefMatrix( mask ), x, op );
+	}
+
+	template<
+		Descriptor descr = descriptors::no_operation,
+		class Operator,
+		typename IOType, typename InputType, 
+		typename RIT, typename CIT, typename NIT
+	>
+	RC foldr(
+		Matrix< IOType, nonblocking, RIT, CIT, NIT > &A,
+		const InputType &x,
+		const Operator &op = Operator(),
+		const typename std::enable_if< 
+			!grb::is_object< IOType >::value &&
+			!grb::is_object< InputType >::value &&
+			grb::is_operator< Operator >::value, void
+		>::type * const = nullptr
+	) {
+#ifdef _DEBUG
+		std::cout << "In grb::foldr( nonblocking, matrix, scalar, op )\n";
+#endif
+		// nonblocking execution is not supported
+		// first, execute any computation that is not completed
+		internal::le.execution();
+
+		// second, delegate to the reference backend
+		return foldr< descr, Operator >( internal::getRefMatrix( A ), x, op );
+	}
 } // namespace grb
 
 #undef NO_CAST_ASSERT

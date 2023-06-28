@@ -222,14 +222,12 @@ for MODE in ${MODES}; do
 				grep 'Test OK' ${TEST_OUT_DIR}/ewiseapply_large_${MODE}_${BACKEND}_${P}_${T} || echo "Test FAILED"
 				echo " "
 
-				if [ "$BACKEND" != "nonblocking" ]; then 
-					echo ">>>      [x]           [x]       Testing grb::foldl and grb::foldr reducing sparse"
-					echo "                                 matrix in-place using operators."
-					$runner ${TEST_BIN_DIR}/fold_matrix_scalar_to_matrix_${MODE}_${BACKEND} &> ${TEST_OUT_DIR}/fold_matrix_scalar_to_matrix_${MODE}_${BACKEND}_${P}_${T}.log
-					head -1 ${TEST_OUT_DIR}/fold_matrix_scalar_to_matrix_${MODE}_${BACKEND}_${P}_${T}.log
-					grep 'Test OK' ${TEST_OUT_DIR}/fold_matrix_scalar_to_matrix_${MODE}_${BACKEND}_${P}_${T}.log || echo "Test FAILED"
-					echo " "
-				fi
+				echo ">>>      [x]           [x]       Testing grb::foldl and grb::foldr reducing sparse"
+				echo "                                 matrix in-place using operators."
+				$runner ${TEST_BIN_DIR}/fold_matrix_scalar_to_matrix_${MODE}_${BACKEND} &> ${TEST_OUT_DIR}/fold_matrix_scalar_to_matrix_${MODE}_${BACKEND}_${P}_${T}.log
+				head -1 ${TEST_OUT_DIR}/fold_matrix_scalar_to_matrix_${MODE}_${BACKEND}_${P}_${T}.log
+				grep 'Test OK' ${TEST_OUT_DIR}/fold_matrix_scalar_to_matrix_${MODE}_${BACKEND}_${P}_${T}.log || echo "Test FAILED"
+				echo " "
 
 				echo ">>>      [x]           [x]       Testing grb::foldl and grb::foldr reducing dense"
 				echo "                                 vectors into scalars using operators and monoids."
