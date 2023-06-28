@@ -43,7 +43,7 @@ using namespace grb;
 constexpr bool SKIP_FOLDL = false;
 constexpr bool SKIP_FOLDR = false;
 constexpr bool SKIP_UNMASKED = false;
-constexpr bool SKIP_MASKED = true; // Not implemented yet
+constexpr bool SKIP_MASKED = false; // Not implemented yet
 
 #define _DEBUG
 
@@ -129,6 +129,7 @@ void grb_program( const input< T, M, S, MonoidFoldl, MonoidFoldr > & in, grb::RC
 	rc = RC::SUCCESS;
 
 	printSparseMatrix( in.initial, "initial" );
+	printSparseMatrix( in.B, "B" );
 	printSparseMatrix( in.expected, "expected" );
 
 	if( not in.skip_unmasked && not SKIP_FOLDL && not SKIP_UNMASKED && rc == RC::SUCCESS ) { // Unmasked foldl

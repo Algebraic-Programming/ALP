@@ -1255,7 +1255,7 @@ namespace grb {
 
 			// Check mask dimensions
 			if( m != m_B || n != n_B ) {
-				_DEBUG_THREADESAFE_PRINT( "Mask dimensions do not match input matrix dimensions\n" );
+				_DEBUG_THREADESAFE_PRINT( "Dimensions of matrices do not match!\n" );
 				return MISMATCH;
 			}
 
@@ -1326,16 +1326,104 @@ namespace grb {
 			const Monoid &monoid = Monoid()
 		) {
 			_DEBUG_THREADESAFE_PRINT( "In grb::internal::fold_matrix_matrix_masked_generic( reference )\n" );
-			RC rc = UNSUPPORTED;
-			(void) A;
-			(void) mask;
-			(void) B;
-			(void) monoid;
+			RC rc = SUCCESS;
 
 			if( grb::nnz(mask) == 0 || grb::nnz(A) == 0 ) {
 				return rc;
 			}
 
+			const auto &A_crs_raw = internal::getCRS( A );
+			const auto &A_ccs_raw = internal::getCCS( A );
+			const auto &mask_raw = descr & grb::descriptors::transpose_left ?
+				internal::getCCS( mask ) : internal::getCRS( mask );
+			const auto &B_raw = descr & grb::descriptors::transpose_right ?
+				internal::getCCS( B ) : internal::getCRS( B );
+			const size_t m = nrows( A );
+			const size_t n = ncols( A );
+			const size_t m_mask = descr & grb::descriptors::transpose_left || descr & grb::descriptors::transpose_left ?
+				ncols( mask ) : nrows( mask );
+			const size_t n_mask = descr & grb::descriptors::transpose_left || descr & grb::descriptors::transpose_left ?
+				nrows( mask ) : ncols( mask );
+			const size_t m_B = descr & grb::descriptors::transpose_right || descr & grb::descriptors::transpose_matrix ?
+				ncols( B ) : nrows( B );
+			const size_t n_B = descr & grb::descriptors::transpose_right || descr & grb::descriptors::transpose_matrix ?
+				nrows( B ) : ncols( B );
+
+			// Check mask dimensions
+			if( m != m_B || n != n_B || m != m_mask || n != n_mask ) {
+				_DEBUG_THREADESAFE_PRINT( "Dimensions of matrices do not match!\n" );
+				return MISMATCH;
+			}
+
+			RC local_rc = rc;
+			const auto& op = monoid.getOperator();
+			const InputType B_identity = monoid.template getIdentity< InputType >();
+
+#ifdef _H_GRB_REFERENCE_OMP_BLAS3
+	#pragma omp parallel default(none) shared(A_crs_raw, A_ccs_raw, mask_raw, B_raw, rc, std::cout) firstprivate(local_rc, m, op, B_identity)
+#endif
+			{
+				size_t start_row = 0;
+				size_t end_row = m;
+#ifdef _H_GRB_REFERENCE_OMP_BLAS3
+				config::OMP::localRange( start_row, end_row, 0, m );
+#endif
+				for( auto i = start_row; i < end_row; ++i ) {
+					auto B_k = B_raw.col_start[ i ];
+					auto mask_k = mask_raw.col_start[ i ];
+					for( auto k = A_crs_raw.col_start[ i ]; k < A_crs_raw.col_start[ i + 1 ]; ++k ) {
+						auto k_col = A_crs_raw.row_index[ k ];
+
+						// Increment the pointer of mask until we find the right column, or a lower column (since the storage withing a row is sorted in a descending order)
+						while( mask_k < mask_raw.col_start[ i + 1 ] && mask_raw.row_index[ mask_k ] > k_col  ) {
+							_DEBUG_THREADESAFE_PRINT( "NEquals MASK coordinate: ( " + std::to_string( i ) + ";" + std::to_string( mask_raw.row_index[ mask_k ] ) + " )\n" );
+							mask_k++;
+						}
+							
+						if( mask_raw.row_index[ B_k ] != k_col ) {
+							mask_k++;
+							_DEBUG_THREADESAFE_PRINT( "Skip MASK value at: ( " + std::to_string( i ) + ";" + std::to_string( mask_raw.row_index[ B_k ] ) + " )\n" );
+							continue;
+						}
+
+						if( not MaskHasValue< MaskType >( mask_raw, mask_k ).value ) {
+							_DEBUG_THREADESAFE_PRINT( "Skip MASK value at: ( " + std::to_string( i ) + ";" + std::to_string( mask_raw.row_index[ B_k ] ) + " )\n" );
+							continue;
+						}
+
+						// Increment the pointer of B until we find the right column, or a lower column (since the storage withing a row is sorted in a descending order)
+						while( B_k < B_raw.col_start[ i + 1 ] && B_raw.row_index[ B_k ] > k_col  ) {
+							_DEBUG_THREADESAFE_PRINT( "NEquals B coordinate: ( " + std::to_string( i ) + ";" + std::to_string( B_raw.row_index[ B_k ] ) + " )\n" );
+							B_k++;
+						}
+
+						// Get B value (or identity if not found)
+						auto B_val = B_identity;
+						if( B_k < B_raw.col_start[ i + 1 ] && B_raw.row_index[ B_k ] == k_col ) {
+							_DEBUG_THREADESAFE_PRINT( "Found B value at: ( " + std::to_string( i ) + ";" + std::to_string( B_raw.row_index[ B_k ] ) + " )\n" );
+							B_val = B_raw.values[ B_k ];
+							B_k++;
+						} else {
+							_DEBUG_THREADESAFE_PRINT( "Not found B, using identity: ( " + std::to_string( i ) + ";" + std::to_string( k_col ) + " ) = " + std::to_string( B_val ) + "\n" );
+						}
+
+						// Get A value
+						const auto a_val_before = A_crs_raw.values[ k ];
+						_DEBUG_THREADESAFE_PRINT( "A( " + std::to_string( i ) + ";" + std::to_string( k_col ) + " ) = " + std::to_string( a_val_before ) + "\n" );
+						// Compute the fold for this coordinate
+						local_rc = local_rc ? local_rc : grb::apply< descr >( A_crs_raw.values[ k ], a_val_before, B_val, op );
+						local_rc = local_rc ? local_rc : grb::apply< descr >( A_ccs_raw.values[ k ], a_val_before, B_val, op );
+						_DEBUG_THREADESAFE_PRINT( "Computing: op(" + std::to_string( a_val_before ) + ", " + std::to_string( a_val_before ) + ") = " + std::to_string( A_ccs_raw.values[ k ] ) + "\n" );
+					}
+				}
+
+#ifdef _H_GRB_REFERENCE_OMP_BLAS3
+	#pragma omp critical
+#endif
+				{ // Reduction with the global return code
+					rc = rc ? rc : local_rc;
+				}
+			}
 			return rc;
 		}
 
