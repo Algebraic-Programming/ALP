@@ -205,6 +205,112 @@ namespace grb {
 		return internal::checkGlobalErrorStateOrClear( C, ret );
 	}
 
+	template<
+		Descriptor descr = descriptors::no_operation,
+		typename InputType, typename OutputType,
+		typename RIT_L, typename CIT_L, typename NIT_L,
+		typename RIT_A, typename CIT_A, typename NIT_A
+	>
+	RC tril(
+		Matrix< OutputType, BSP1D, RIT_L, CIT_L, NIT_L > & L,
+		const Matrix< InputType, BSP1D, RIT_A, CIT_A, NIT_A > & A,
+		const long int k,
+		const Phase & phase = Phase::EXECUTE,
+		const typename std::enable_if<
+			not grb::is_object< OutputType >::value &&
+			not grb::is_object< InputType >::value &&
+			std::is_convertible< InputType, OutputType >::value
+		>::type * const = nullptr )
+	{
+#ifdef _DEBUG
+		std::cerr << "In grb::tril (BSP1D)\n";
+#endif
+		assert( phase != TRY );
+		RC ret = tril< descr >(
+			internal::getLocal( L ),
+			internal::getLocal( A ),
+			k,
+			phase
+		);
+		if( phase == RESIZE ) {
+			return collectives<>::allreduce( ret, operators::any_or< RC >() ) == SUCCESS ? SUCCESS : PANIC;
+		}
+
+		return internal::checkGlobalErrorStateOrClear( L, ret );
+	}
+
+	template<
+		Descriptor descr = descriptors::no_operation,
+		typename InputType, typename OutputType,
+		typename RIT_L, typename CIT_L, typename NIT_L,
+		typename RIT_A, typename CIT_A, typename NIT_A
+	>
+	RC tril(
+		Matrix< OutputType, BSP1D, RIT_L, CIT_L, NIT_L > & L,
+		const Matrix< InputType, BSP1D, RIT_A, CIT_A, NIT_A > & A,
+		const Phase & phase = Phase::EXECUTE,
+		const typename std::enable_if<
+			not grb::is_object< OutputType >::value &&
+			not grb::is_object< InputType >::value &&
+			std::is_convertible< InputType, OutputType >::value
+		>::type * const = nullptr )
+	{
+		return tril< descr >( L, A, 0, phase );
+	}
+
+	template<
+		Descriptor descr = descriptors::no_operation,
+		typename InputType, typename OutputType,
+		typename RIT_U, typename CIT_U, typename NIT_U,
+		typename RIT_A, typename CIT_A, typename NIT_A
+	>
+	RC triu(
+		Matrix< OutputType, BSP1D, RIT_U, CIT_U, NIT_U > & U,
+		const Matrix< InputType, BSP1D, RIT_A, CIT_A, NIT_A > & A,
+		const long int k,
+		const Phase & phase = Phase::EXECUTE,
+		const typename std::enable_if<
+			not grb::is_object< OutputType >::value &&
+			not grb::is_object< InputType >::value &&
+			std::is_convertible< InputType, OutputType >::value
+		>::type * const = nullptr )
+	{
+#ifdef _DEBUG
+		std::cerr << "In grb::triu (BSP1D)\n";
+#endif
+		assert( phase != TRY );
+		RC ret = triu< descr >(
+			internal::getLocal( U ),
+			internal::getLocal( A ),
+			k,
+			phase
+		);
+		if( phase == RESIZE ) {
+			return collectives<>::allreduce( ret, operators::any_or< RC >() ) == SUCCESS ? SUCCESS : PANIC;
+		}
+
+		return internal::checkGlobalErrorStateOrClear( U, ret );
+	}
+
+	template<
+		Descriptor descr = descriptors::no_operation,
+		typename InputType, typename OutputType,
+		typename RIT_U, typename CIT_U, typename NIT_U,
+		typename RIT_A, typename CIT_A, typename NIT_A
+	>
+	RC triu(
+		Matrix< OutputType, BSP1D, RIT_U, CIT_U, NIT_U > & U,
+		const Matrix< InputType, BSP1D, RIT_A, CIT_A, NIT_A > & A,
+		const Phase & phase = Phase::EXECUTE,
+		const typename std::enable_if<
+			not grb::is_object< OutputType >::value &&
+			not grb::is_object< InputType >::value &&
+			std::is_convertible< InputType, OutputType >::value
+		>::type * const = nullptr )
+	{
+		return triu< descr >( U, A, 0, phase );
+	}
+
 } // namespace grb
 
 #endif
