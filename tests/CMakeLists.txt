@@ -20,6 +20,53 @@
 assert_valid_variables( ALP_UTILS_SRC_PATH AVAILABLE_TEST_BACKENDS DATASETS_DIR )
 assert_defined_variables( GNN_DATASET_PATH WITH_BSP1D_BACKEND WITH_HYBRID_BACKEND )
 
+set( TEST_RUNNER "${CMAKE_CURRENT_BINARY_DIR}/grb_test_runner.py" )
+set( BASH_RUNNER "${CMAKE_CURRENT_SOURCE_DIR}/validate_run.sh" )
+
+set( TESTS_EXE_OUTPUT_DIR "${PROJECT_BINARY_DIR}/tests" )
+find_package( Python3 REQUIRED COMPONENTS Interpreter )
+
+include( ProcessorCount )
+ProcessorCount( MAX_THREADS )
+include( AddGRBTests )
+
+set( MPI_IMPLEMENTATION "unknown" )
+
+if( MPI_FOUND )
+	execute_process(
+		COMMAND ${MPIEXEC_EXECUTABLE} -h
+		COMMAND grep -o -E "openmpi|OMPI|mpich"
+		COMMAND tail -n 1
+		COMMAND tr -d '\n'
+		RESULT_VARIABLE error_var OUTPUT_VARIABLE matched_mpi_impl
+	)
+	if( NOT error_var EQUAL "0" )
+		message( FATAL_ERROR "cannot get MPI implementation" )
+	endif()
+
+
+	if( matched_mpi_impl STREQUAL "mpich" )
+		set( MPI_IMPLEMENTATION "mpich" )
+	elseif( matched_mpi_impl STREQUAL "OMPI" )
+		set( MPI_IMPLEMENTATION "openmpi" )
+	elseif( matched_mpi_impl STREQUAL "openmpi" )
+		set( MPI_IMPLEMENTATION "openmpi" )
+	else()
+		message( FATAL_ERROR "unknown MPI implementation" )
+	endif()
+
+endif()
+
+configure_file( ${CMAKE_CURRENT_SOURCE_DIR}/grb_test_runner.py.in ${TEST_RUNNER} @ONLY )
+execute_process( COMMAND ${Python3_EXECUTABLE} -OO -m py_compile ${TEST_RUNNER}
+	OUTPUT_QUIET ERROR_QUIET RESULT_VARIABLE python_opt
+)
+
+if ( NOT python_opt EQUAL "0" )
+	message( FATAL_ERROR "cannot compile test runner" )
+else()
+	message( "compilation of test runner successful" )
+endif()
 
 ### CONSUMABLE TARGETS
 ### i.e. targets with the default backend already set in the compilation interface:
