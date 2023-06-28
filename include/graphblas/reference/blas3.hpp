@@ -57,20 +57,21 @@
 		"********************************************************************" \
 		"******************************\n" );
 
-#define OMP_CRITICAL _Pragma("omp critical")
-
-#ifndef _DEBUG_THREADESAFE_PRINT
+#ifndef _DEBUG_PRINT
 	#ifndef _DEBUG
-		#define _DEBUG_THREADESAFE_PRINT( msg )
+		#define _DEBUG_PRINT( msg )
 	#else
-		#ifdef _H_GRB_REFERENCE_OMP_BLAS3
-			#define _DEBUG_THREADESAFE_PRINT( msg ) \
-				OMP_CRITICAL \
-					{ \
-						std::cout << "[T" << omp_get_thread_num() << "] - " << msg << std::flush; \
-					}
+		#ifdef _GRB_WITH_OMP
+			#ifndef _GRB_DEBUG_CRITICAL_SECTION
+				#define _GRB_DEBUG_CRITICAL_SECTION _Pragma("omp critical(_GRB_DEBUG_CRITICAL_SECTION)")
+			#endif
+			#define _DEBUG_PRINT( msg ) \
+				_GRB_DEBUG_CRITICAL_SECTION \
+				{ \
+					std::cout << "[T" << omp_get_thread_num() << "] - " << msg << std::flush; \
+				}
 		#else
-			#define _DEBUG_THREADESAFE_PRINT( msg ) std::cout << msg << std::flush;
+			#define _DEBUG_PRINT( msg ) std::cout << msg << std::flush;
 		#endif
 	#endif
 #endif
@@ -939,7 +940,7 @@ namespace grb {
 		template<
 			Descriptor descr = descriptors::no_operation,
 			class Monoid,
-			typename InputType, typename IOType, typename MaskType,
+			typename InputType, typename IOType,
 			typename RIT, typename CIT, typename NIT
 		>
 		RC fold_unmasked_generic(
@@ -947,35 +948,33 @@ namespace grb {
 			const Matrix< InputType, reference, RIT, CIT, NIT > &A,
 			const Monoid &monoid
 		) {
-			_DEBUG_THREADESAFE_PRINT( "In grb::internal::foldr_unmasked_generic( reference )\n" );
+			_DEBUG_PRINT( "In grb::internal::foldr_unmasked_generic( reference )\n" );
 			RC rc = SUCCESS;
 
 			if( grb::nnz( A ) == 0 ) {
+				_DEBUG_PRINT( "The input matrix is empty, nothing to compute\n" );
 				return rc;
 			}
 
 			if ( descr & descriptors::force_row_major && descr & descriptors::transpose_left ) {
-				_DEBUG_THREADESAFE_PRINT( "Masked fold with force_row_major and transpose_left is not supported\n" );
+				_DEBUG_PRINT( "Masked fold with force_row_major and transpose_left is not supported\n" );
 				return RC::ILLEGAL;
 			}
 			if ( descr & descriptors::force_row_major && descr & descriptors::transpose_matrix ) {
-				_DEBUG_THREADESAFE_PRINT( "Masked fold with force_row_major and transpose_matrix is not supported\n" );
+				_DEBUG_PRINT( "Masked fold with force_row_major and transpose_matrix is not supported\n" );
 				return RC::ILLEGAL;
 			}
-
-			const auto& identity = monoid.template getIdentity< typename Monoid::D3 >();
-			const auto& op = monoid.getOperator();
 
 			const auto &A_raw = (descr & grb::descriptors::transpose_matrix || descr & grb::descriptors::transpose_left ) ?
 				internal::getCCS( A ) : internal::getCRS( A );
 			const size_t A_nnz = nnz( A );
 
-
+			const auto& op = monoid.getOperator();
 			RC local_rc = rc;
-			auto local_x = identity;
+			auto local_x = monoid.template getIdentity< typename Monoid::D3 >();
 
 #ifdef _H_GRB_REFERENCE_OMP_BLAS3
-	#pragma omp parallel default(none) shared(A_raw, x, rc, std::cout) firstprivate(local_x, local_rc, A_nnz, op, identity)
+	#pragma omp parallel default(none) shared(A_raw, x, rc, std::cout) firstprivate(local_x, local_rc, A_nnz, op)
 #endif
 			{
 				size_t start = 0;
@@ -987,12 +986,12 @@ namespace grb {
 				for( size_t idx = start; idx < end; ++idx ) {
 					// Get A value
 					const InputType a_val = A_raw.values[ idx ];
-					_DEBUG_THREADESAFE_PRINT( "A.CRS.values[ " + std::to_string( idx ) + " ] = " + std::to_string( a_val ) + "\n" );
+					_DEBUG_PRINT( "A.values[ " + std::to_string( idx ) + " ] = " + std::to_string( a_val ) + "\n" );
 
 					// Compute the fold for this coordinate
 					auto local_x_before = local_x;
 					local_rc = local_rc ? local_rc : grb::apply< descr >( local_x, local_x_before, a_val, op );
-					_DEBUG_THREADESAFE_PRINT( "Computing: local_x = op(" + std::to_string( a_val ) + ", " + std::to_string( local_x_before ) + ") = " + std::to_string( local_x ) + "\n" );
+					_DEBUG_PRINT( "Computing: local_x = op(" + std::to_string( a_val ) + ", " + std::to_string( local_x_before ) + ") = " + std::to_string( local_x ) + "\n" );
 				}
 
 
@@ -1002,9 +1001,7 @@ namespace grb {
 				{ // Reduction with the global result (critical section if OpenMP)
 					auto x_before = x;
 					local_rc = local_rc ? local_rc : grb::apply< descr >( x, x_before, local_x, op );
-#ifdef _DEBUG
-					std::cout << "Computing x: op(" << local_x << ", " << x_before << ") = " << x << std::endl;
-#endif
+					_DEBUG_PRINT( "Computing x: op(" + std::to_string( local_x ) + ", " + std::to_string( x_before ) + ") = " + std::to_string( x ) + "\n" );
 					rc = rc ? rc : local_rc;
 				}
 			}
@@ -1025,19 +1022,20 @@ namespace grb {
 			const Matrix< MaskType, reference, RIT_M, CIT_M, NIT_M > &mask,
 			const Monoid &monoid
 		) {
-			_DEBUG_THREADESAFE_PRINT( "In grb::internal::foldr_masked_generic( reference )\n" );
+			_DEBUG_PRINT( "In grb::internal::foldr_masked_generic( reference )\n" );
 			RC rc = SUCCESS;
 
 			if( grb::nnz( mask ) == 0 || grb::nnz( A ) == 0 ) {
+				_DEBUG_PRINT( "The mask and/or the input matrix are empty, nothing to compute\n" );
 				return rc;
 			}
 
 			if ( descr & descriptors::force_row_major && descr & descriptors::transpose_left ) {
-				_DEBUG_THREADESAFE_PRINT( "Masked fold with force_row_major and transpose_left is not supported\n" );
+				_DEBUG_PRINT( "Masked fold with force_row_major and transpose_left is not supported\n" );
 				return RC::ILLEGAL;
 			}
 			if ( descr & descriptors::force_row_major && descr & descriptors::transpose_right ) {
-				_DEBUG_THREADESAFE_PRINT( "Masked fold with force_row_major and transpose_right is not supported\n" );
+				_DEBUG_PRINT( "Masked fold with force_row_major and transpose_right is not supported\n" );
 				return RC::ILLEGAL;
 			}
 
@@ -1059,7 +1057,7 @@ namespace grb {
 
 			// Check mask dimensions
 			if( m != m_mask || n != n_mask ) {
-				_DEBUG_THREADESAFE_PRINT( "Mask dimensions do not match input matrix dimensions\n" );
+				_DEBUG_PRINT( "Mask dimensions do not match input matrix dimensions\n" );
 				return MISMATCH;
 			}
 
@@ -1082,25 +1080,24 @@ namespace grb {
 
 						// Increment the mask pointer until we find the right column, or a lower column (since the storage withing a row is sorted in a descending order)
 						while( mask_k < mask_raw.col_start[ i + 1 ] && mask_raw.row_index[ mask_k ] > k_col  ) {
-							_DEBUG_THREADESAFE_PRINT( "NEquals masked coordinate: ( " + std::to_string( i ) + ";" + std::to_string( mask_raw.row_index[ mask_k ] ) + " )\n" );
+							_DEBUG_PRINT( "NEquals masked coordinate: ( " + std::to_string( i ) + ";" + std::to_string( mask_raw.row_index[ mask_k ] ) + " )\n" );
 							mask_k++;
 						}
 
 						if( mask_raw.row_index[ mask_k ] < k_col || not MaskHasValue< MaskType >( mask_raw, mask_k ).value ) {
 							mask_k++;
-							_DEBUG_THREADESAFE_PRINT( "Skip masked value at: ( " + std::to_string( i ) + ";" + std::to_string( mask_raw.row_index[ mask_k ] ) + " )\n" );
+							_DEBUG_PRINT( "Skip masked value at: ( " + std::to_string( i ) + ";" + std::to_string( mask_raw.row_index[ mask_k ] ) + " )\n" );
 							continue;
 						}
 
-						_DEBUG_THREADESAFE_PRINT( "Found masked value at: ( " + std::to_string( i ) + ";" + std::to_string( mask_raw.row_index[ mask_k ] ) + " )\n" );
 						// Get A value
 						const InputType a_val = A_raw.getValue( k, identity );
-						_DEBUG_THREADESAFE_PRINT( "A( " + std::to_string( i ) + ";" + std::to_string( k_col ) + " ) = " + std::to_string( a_val ) + "\n" );
+						_DEBUG_PRINT( "A( " + std::to_string( i ) + ";" + std::to_string( k_col ) + " ) = " + std::to_string( a_val ) + "\n" );
 
 						// Compute the fold for this coordinate
 						auto local_x_before = local_x;
 						local_rc = local_rc ? local_rc : grb::apply< descr >( local_x, local_x_before, a_val, op );
-						_DEBUG_THREADESAFE_PRINT( "Computing: local_x = op(" + std::to_string( a_val ) + ", " + std::to_string( local_x_before ) + ") = " + std::to_string( local_x ) + "\n" );
+						_DEBUG_PRINT( "Computing: local_x = op(" + std::to_string( a_val ) + ", " + std::to_string( local_x_before ) + ") = " + std::to_string( local_x ) + "\n" );
 					}
 				}
 
@@ -1110,9 +1107,7 @@ namespace grb {
 				{ // Reduction with the global result (critical section if OpenMP)
 					auto x_before = x;
 					local_rc = local_rc ? local_rc : grb::apply< descr >( x, x_before, local_x, op );
-#ifdef _DEBUG
-					std::cout << "Computing x: op(" << local_x << ", " << x_before << ") = " << x << std::endl;
-#endif
+					_DEBUG_PRINT( "Computing x: op(" + std::to_string( local_x ) + ", " + std::to_string( x_before ) + ") = " + std::to_string( x ) + "\n" );
 					rc = rc ? rc : local_rc;
 				}
 			}
@@ -1472,7 +1467,6 @@ namespace grb {
 	 *
 	 * \internal Dispatches to internal::eWiseApply_matrix_generic
 	 */
-
 	template<
 		Descriptor descr = grb::descriptors::no_operation,
 		class Operator,
@@ -1564,7 +1558,7 @@ namespace grb {
 		);
 		static_assert( (std::is_same< typename Monoid::D2, IOType >::value),
 			"grb::foldr( reference, IOType <- op( InputType, IOType ): "
-			"called with a postfactor input type that does not match the first domain of the given operator"
+			"called with a postfactor input type that does not match the second domain of the given operator"
 		);
 		static_assert( (std::is_same< typename Monoid::D3, IOType >::value),
 			"grb::foldr( reference, IOType <- op( InputType, IOType ): "
@@ -1575,7 +1569,7 @@ namespace grb {
 		std::cout << "In grb::foldr( reference, mask, matrix, monoid )\n";
 #endif
 
-		return internal::fold_masked_generic< descr, Monoid, InputType, IOType, MaskType >(
+		return internal::fold_masked_generic< descr, Monoid >(
 			x, A, mask, monoid
 		);
 	}
@@ -1612,7 +1606,7 @@ namespace grb {
 		);
 		static_assert( (std::is_same< typename Monoid::D2, IOType >::value),
 			"grb::foldr( reference, IOType <- op( InputType, IOType ): "
-			"called with a postfactor input type that does not match the first domain of the given operator"
+			"called with a postfactor input type that does not match the second domain of the given operator"
 		);
 		static_assert( (std::is_same< typename Monoid::D3, IOType >::value),
 			"grb::foldr( reference, IOType <- op( InputType, IOType ): "
@@ -1623,7 +1617,7 @@ namespace grb {
 		std::cout << "In grb::foldr( reference, matrix, monoid )\n";
 #endif
 
-		return internal::fold_unmasked_generic< descr, Monoid, InputType, IOType, void >(
+		return internal::fold_unmasked_generic< descr, Monoid >(
 			x, A, monoid
 		);
 	}
@@ -1664,7 +1658,7 @@ namespace grb {
 		);
 		static_assert( (std::is_same< typename Monoid::D2, InputType >::value),
 			"grb::foldl( reference, IOType <- op( IOType, InputType ): "
-			"called with a postfactor input type that does not match the first domain of the given operator"
+			"called with a postfactor input type that does not match the second domain of the given operator"
 		);
 		static_assert( (std::is_same< typename Monoid::D3, IOType >::value),
 			"grb::foldl( reference, IOType <- op( IOType, InputType ): "
@@ -1675,7 +1669,7 @@ namespace grb {
 		std::cout << "In grb::foldl( reference, mask, matrix, monoid )\n";
 #endif
 
-		return internal::fold_masked_generic< descr, Monoid, InputType, IOType, MaskType >(
+		return internal::fold_masked_generic< descr, Monoid >(
 			x, A, mask, monoid
 		);
 	}
@@ -1713,7 +1707,7 @@ namespace grb {
 		);
 		static_assert( (std::is_same< typename Monoid::D2, InputType >::value),
 			"grb::foldl( reference, IOType <- op( IOType, InputType ): "
-			"called with a postfactor input type that does not match the first domain of the given operator"
+			"called with a postfactor input type that does not match the second domain of the given operator"
 		);
 		static_assert( (std::is_same< typename Monoid::D3, IOType >::value),
 			"grb::foldl( reference, IOType <- op( IOType, InputType ): "
@@ -1724,7 +1718,7 @@ namespace grb {
 		std::cout << "In grb::foldl( reference, matrix, monoid )\n";
 #endif
 
-		return internal::fold_unmasked_generic< descr, Monoid, InputType, IOType, void >(
+		return internal::fold_unmasked_generic< descr, Monoid >(
 			x, A, monoid
 		);
 	}
