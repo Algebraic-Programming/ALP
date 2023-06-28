@@ -126,7 +126,7 @@ add_grb_executables( matrixIterator matrixIterator.cpp
 )
 
 add_grb_executables( fold_matrix_to_scalar fold_matrix_to_scalar.cpp
-	BACKENDS reference reference_omp hyperdags bsp1d hybrid
+	BACKENDS reference reference_omp bsp1d hybrid hyperdags nonblocking
 )
 
 add_grb_executables( doubleAssign doubleAssign.cpp
