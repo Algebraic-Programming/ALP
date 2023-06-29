@@ -26,6 +26,7 @@
 
 #include <graphblas/base/blas3.hpp>
 #include <graphblas/utils/iterators/MatrixVectorIterator.hpp>
+#include <vector>
 
 #include "io.hpp"
 #include "matrix.hpp"
@@ -928,22 +929,20 @@ namespace grb {
 		 *                      \a allow_void is true; otherwise, will be ignored.
 		 * \endinternal
 		 */
-
 		template<
 			bool allow_void,
 			Descriptor descr,
-			class MulMonoid, class Operator,
+			class Operator,
 			typename OutputType, typename InputType1, typename InputType2,
 			typename RIT1, typename CIT1, typename NIT1,
 			typename RIT2, typename CIT2, typename NIT2,
 			typename RIT3, typename CIT3, typename NIT3
 		>
-		RC eWiseApply_matrix_generic(
+		RC eWiseApply_matrix_generic_intersection(
 			Matrix< OutputType, reference, RIT1, CIT1, NIT1 > &C,
 			const Matrix< InputType1, reference, RIT2, CIT2, NIT2 > &A,
 			const Matrix< InputType2, reference, RIT3, CIT3, NIT3 > &B,
 			const Operator &oper,
-			const MulMonoid &mulMonoid,
 			const Phase &phase,
 			const typename std::enable_if<
 				!grb::is_object< OutputType >::value &&
@@ -958,15 +957,14 @@ namespace grb {
 				     std::is_same< InputType1, void >::value ||
 				     std::is_same< InputType2, void >::value
 				) ),
-				"grb::internal::eWiseApply_matrix_generic: the non-monoid version of "
+				"grb::internal::eWiseApply_matrix_generic_intersection: the non-monoid version of "
 				"elementwise mxm can only be used if neither of the input matrices "
 				"is a pattern matrix (of type void)" );
 			assert( phase != TRY );
 
 #ifdef _DEBUG
-			std::cout << "In grb::internal::eWiseApply_matrix_generic\n";
+			std::cout << "In grb::internal::eWiseApply_matrix_generic_intersection\n";
 #endif
-
 			// get whether the matrices should be transposed prior to execution
 			constexpr bool trans_left = descr & descriptors::transpose_left;
 			constexpr bool trans_right = descr & descriptors::transpose_right;
@@ -991,31 +989,6 @@ namespace grb {
 				internal::getCCS( B );
 			auto &C_raw = internal::getCRS( C );
 			auto &CCS_raw = internal::getCCS( C );
-
-#ifdef _DEBUG
-			std::cout << "\t\t A offset array = { ";
-			for( size_t i = 0; i <= m_A; ++i ) {
-				std::cout << A_raw.col_start[ i ] << " ";
-			}
-			std::cout << "}\n";
-			for( size_t i = 0; i < m_A; ++i ) {
-				for( size_t k = A_raw.col_start[ i ]; k < A_raw.col_start[ i + 1 ]; ++k ) {
-					std::cout << "\t\t ( " << i << ", " << A_raw.row_index[ k ] << " ) = "
-						<< A_raw.getPrintValue( k ) << "\n";
-				}
-			}
-			std::cout << "\t\t B offset array = { ";
-			for( size_t j = 0; j <= m_B; ++j ) {
-				std::cout << B_raw.col_start[ j ] << " ";
-			}
-			std::cout << "}\n";
-			for( size_t j = 0; j < m_B; ++j ) {
-				for( size_t k = B_raw.col_start[ j ]; k < B_raw.col_start[ j + 1 ]; ++k ) {
-					std::cout << "\t\t ( " << B_raw.row_index[ k ] << ", " << j << " ) = "
-						<< B_raw.getPrintValue( k ) << "\n";
-				}
-			}
-#endif
 
 			// retrieve buffers
 			char * arr1, * arr2, * arr3, * buf1, * buf2, * buf3;
@@ -1146,11 +1119,9 @@ namespace grb {
 					for( size_t k = A_raw.col_start[ i ]; k < A_raw.col_start[ i + 1 ]; ++k ) {
 						const size_t k_col = A_raw.row_index[ k ];
 						coors1.assign( k_col );
-						valbuf[ k_col ] = A_raw.getValue( k,
-							mulMonoid.template getIdentity< typename Operator::D1 >() );
+						valbuf[ k_col ] = A_raw.values[ k ];
 #ifdef _DEBUG
-						std::cout << "A( " << i << ", " << k_col << " ) = " << A_raw.getValue( k,
-							mulMonoid.template getIdentity< typename Operator::D1 >() ) << ", ";
+						std::cout << "A( " << i << ", " << k_col << " ) = " << A_raw.values[ k ] << ", ";
 #endif
 					}
 #ifdef _DEBUG
@@ -1160,11 +1131,9 @@ namespace grb {
 						const size_t l_col = B_raw.row_index[ l ];
 						if( coors1.assigned( l_col ) ) {
 							coors2.assign( l_col );
-							(void)grb::apply( valbuf[ l_col ], valbuf[ l_col ], B_raw.getValue( l,
-								mulMonoid.template getIdentity< typename Operator::D2 >() ), oper );
+							(void)grb::apply( valbuf[ l_col ], valbuf[ l_col ], B_raw.values[ l ], oper );
 #ifdef _DEBUG
-							std::cout << "B( " << i << ", " << l_col << " ) = " << B_raw.getValue( l,
-								mulMonoid.template getIdentity< typename Operator::D2 >() )
+							std::cout << "B( " << i << ", " << l_col << " ) = " << B_raw.values[ l ]
 							<< " to yield C( " << i << ", " << l_col << " ), ";
 #endif
 						}
@@ -1190,6 +1159,278 @@ namespace grb {
 #endif
 				}
 
+#ifndef NDEBUG
+				for( size_t j = 0; j < n; ++j ) {
+					assert( CCS_raw.col_start[ j + 1 ] - CCS_raw.col_start[ j ] == C_col_index[ j ] );
+				}
+#endif
+
+				// set final number of nonzeroes in output matrix
+				internal::setCurrentNonzeroes( C, nzc );
+			}
+
+			// done
+			return SUCCESS;
+		}
+
+		/**
+		 * \internal general elementwise matrix application that all eWiseApply
+		 *           variants refer to.
+		 * @param[in] oper The operator corresponding to \a mulMonoid if
+		 *                 \a allow_void is true; otherwise, an arbitrary operator
+		 *                 under which to perform the eWiseApply.
+		 * @param[in] mulMonoid The monoid under which to perform the eWiseApply if
+		 *                      \a allow_void is true; otherwise, will be ignored.
+		 * \endinternal
+		 */
+		template<
+			bool allow_void,
+			Descriptor descr,
+			class Monoid,
+			typename OutputType, typename InputType1, typename InputType2,
+			typename RIT1, typename CIT1, typename NIT1,
+			typename RIT2, typename CIT2, typename NIT2,
+			typename RIT3, typename CIT3, typename NIT3
+		>
+		RC eWiseApply_matrix_generic_union(
+			Matrix< OutputType, reference, RIT1, CIT1, NIT1 > &C,
+			const Matrix< InputType1, reference, RIT2, CIT2, NIT2 > &A,
+			const Matrix< InputType2, reference, RIT3, CIT3, NIT3 > &B,
+			const Monoid &monoid,
+			const Phase &phase,
+			const typename std::enable_if<
+				!grb::is_object< OutputType >::value &&
+				!grb::is_object< InputType1 >::value &&
+				!grb::is_object< InputType2 >::value &&
+				grb::is_monoid< Monoid >::value,
+			void >::type * const = nullptr
+		) {
+
+			assert( !(descr & descriptors::force_row_major ) );
+			static_assert( allow_void ||
+				( !(
+				     std::is_same< InputType1, void >::value ||
+				     std::is_same< InputType2, void >::value
+				) ),
+				"grb::internal::eWiseApply_matrix_generic_union: the non-monoid version of "
+				"elementwise mxm can only be used if neither of the input matrices "
+				"is a pattern matrix (of type void)" );
+			assert( phase != TRY );
+#ifdef _DEBUG
+			std::cout << "In grb::internal::eWiseApply_matrix_generic_union\n";
+#endif
+			// get whether the matrices should be transposed prior to execution
+			constexpr bool trans_left = descr & descriptors::transpose_left;
+			constexpr bool trans_right = descr & descriptors::transpose_right;
+
+			// run-time checks
+			const size_t m = grb::nrows( C );
+			const size_t n = grb::ncols( C );
+			const size_t m_A = !trans_left ? grb::nrows( A ) : grb::ncols( A );
+			const size_t n_A = !trans_left ? grb::ncols( A ) : grb::nrows( A );
+			const size_t m_B = !trans_right ? grb::nrows( B ) : grb::ncols( B );
+			const size_t n_B = !trans_right ? grb::ncols( B ) : grb::nrows( B );
+
+			// Identities
+			const auto identity_A = monoid.template getIdentity< OutputType >();
+			const auto identity_B = monoid.template getIdentity< OutputType >();
+
+			if( m != m_A || m != m_B || n != n_A || n != n_B ) {
+				return MISMATCH;
+			}
+
+			const auto oper = monoid.getOperator();
+			const auto &A_raw = !trans_left ?
+				internal::getCRS( A ) :
+				internal::getCCS( A );
+			const auto &B_raw = !trans_right ?
+				internal::getCRS( B ) :
+				internal::getCCS( B );
+			auto &C_raw = internal::getCRS( C );
+			auto &CCS_raw = internal::getCCS( C );
+
+
+			// retrieve buffers
+			char * arr1, * arr2, * arr3, * buf1, * buf2, * buf3;
+			arr1 = arr2 = buf1 = buf2 = nullptr;
+			InputType1 * vbuf1 = nullptr;
+			InputType2 * vbuf2 = nullptr;
+			OutputType * valbuf = nullptr;
+			internal::getMatrixBuffers( arr1, buf1, vbuf1, 1, A );
+			internal::getMatrixBuffers( arr2, buf2, vbuf2, 1, B );
+			internal::getMatrixBuffers( arr3, buf3, valbuf, 1, C );
+			// end buffer retrieval
+
+			// initialisations
+			internal::Coordinates< reference > coors1, coors2;
+			coors1.set( arr1, false, buf1, n );
+			coors2.set( arr2, false, buf2, n );
+#ifdef _H_GRB_REFERENCE_OMP_BLAS3
+			#pragma omp parallel
+			{
+				size_t start, end;
+				config::OMP::localRange( start, end, 0, n + 1 );
+#else
+				const size_t start = 0;
+				const size_t end = n + 1;
+#endif
+				for( size_t j = start; j < end; ++j ) {
+					CCS_raw.col_start[ j ] = 0;
+				}
+#ifdef _H_GRB_REFERENCE_OMP_BLAS3
+			}
+#endif
+			// end initialisations
+
+			// nonzero count
+			size_t nzc = 0;
+
+			// symbolic phase
+			if( phase == RESIZE ) {
+				for( size_t i = 0; i < m; ++i ) {
+					coors1.clear();
+					for( size_t k = A_raw.col_start[ i ]; k < A_raw.col_start[ i + 1 ]; ++k ) {
+						const size_t k_col = A_raw.row_index[ k ];
+						coors1.assign( k_col );
+						(void)++nzc;
+					}
+					for( size_t l = B_raw.col_start[ i ]; l < B_raw.col_start[ i + 1 ]; ++l ) {
+						const size_t l_col = B_raw.row_index[ l ];
+						if( not coors1.assigned( l_col ) ) {
+							(void)++nzc;
+						}
+					}
+				}
+
+				const RC ret = grb::resize( C, nzc );
+#ifdef _DEBUG
+				std::cout << "grb::resize( C, " << nzc << " ) = " << ret << "\n";
+#endif
+				return ret;
+			}
+
+			// computational phase
+			if( phase == EXECUTE ) {
+				// retrieve additional buffer
+				config::NonzeroIndexType * const C_col_index = internal::template
+					getReferenceBuffer< typename config::NonzeroIndexType >( n + 1 );
+
+				// perform column-wise nonzero count
+				for( size_t i = 0; i < m; ++i ) {
+					coors1.clear();
+					for( size_t k = A_raw.col_start[ i ]; k < A_raw.col_start[ i + 1 ]; ++k ) {
+						const size_t k_col = A_raw.row_index[ k ];
+						coors1.assign( k_col );
+						(void) ++nzc;
+						(void) ++CCS_raw.col_start[ k_col + 1 ];
+					}
+					for( size_t l = B_raw.col_start[ i ]; l < B_raw.col_start[ i + 1 ]; ++l ) {
+						const size_t l_col = B_raw.row_index[ l ];
+						if( not coors1.assigned( l_col ) ) {
+							(void) ++nzc;
+							(void) ++CCS_raw.col_start[ l_col + 1 ];
+						}
+					}
+				}
+
+				// check capacity
+				if( nzc > capacity( C ) ) {
+#ifdef _DEBUG
+					std::cout << "\t detected insufficient capacity "
+						<< "for requested operation\n";
+#endif
+					const RC clear_rc = clear( C );
+					if( clear_rc != SUCCESS ) {
+						return PANIC;
+					} else {
+						return FAILED;
+					}
+				}
+
+				// prefix sum for CCS_raw.col_start
+				assert( CCS_raw.col_start[ 0 ] == 0 );
+				for( size_t j = 1; j < n; ++j ) {
+					CCS_raw.col_start[ j + 1 ] += CCS_raw.col_start[ j ];
+				}
+				assert( CCS_raw.col_start[ n ] == nzc );
+
+				// set C_col_index to all zero
+#ifdef _H_GRB_REFERENCE_OMP_BLAS3
+				#pragma omp parallel for simd 
+#endif
+				for( size_t j = 0; j < n; j++ ) {
+					C_col_index[ j ] = 0;
+				}
+
+
+				// do computations
+				std::vector< bool > columns( n, false );
+				size_t nzc = 0;
+				C_raw.col_start[ 0 ] = 0;
+				for( size_t i = 0; i < m; ++i ) {
+					std::fill( columns.begin(), columns.end(), false );
+
+#ifdef _DEBUG
+						std::cout << "  -- i: " << i << "\n";
+#endif
+
+					for( size_t k = A_raw.col_start[ i ]; k < A_raw.col_start[ i + 1 ]; ++k ) {
+						const size_t k_col = A_raw.row_index[ k ];
+						columns[ k_col ] = true;
+						valbuf[ k_col ] = A_raw.getValue( k, identity_A );
+#ifdef _DEBUG
+						std::cout << "Found A( " << i << ", " << k_col << " ) = " << A_raw.getValue( k, identity_A ) << "\n";
+#endif
+					}
+
+					for( size_t l = B_raw.col_start[ i ]; l < B_raw.col_start[ i + 1 ]; ++l ) {
+						const size_t l_col = B_raw.row_index[ l ];
+						if( columns[ l_col ] ) { // Intersection case
+							const auto valbuf_value_before = valbuf[ l_col ];
+							(void)grb::apply( valbuf[ l_col ], valbuf_value_before, B_raw.getValue( l, identity_B ), oper );
+#ifdef _DEBUG
+							std::cout << "Found intersection: B(" << i << ";" << l_col << ")=" << B_raw.getValue( l, identity_B )
+							<< "  &&  A(" << i << ";" << l_col << ")=" << valbuf_value_before
+							<< "  ==>  C(" << i << ";" << l_col << ")=" << valbuf[ l_col ] << "\n";
+#endif
+						} else { // Union case
+#ifdef _DEBUG
+							std::cout << "Found B( " << i << ", " << l_col << " ) = " << B_raw.getValue( l, identity_B ) << "\n";
+#endif
+							columns[ l_col ] = true;
+							valbuf[ l_col ] = B_raw.getValue( l, identity_B );
+						}
+					}
+
+					for( size_t j_unsigned = columns.size() ; j_unsigned > 0 ; j_unsigned-- ) {
+						const size_t j = j_unsigned - 1;
+						if( not columns[ j ] ) {
+							continue;
+						}
+						// update CRS
+						C_raw.row_index[ nzc ] = j;
+						C_raw.setValue( nzc, valbuf[ j ] );
+						// update CCS
+						C_col_index[ j ]++;
+						const size_t CCS_index =  CCS_raw.col_start[ j+1 ] - C_col_index[ j ];
+						CCS_raw.row_index[ CCS_index ] = i;
+						CCS_raw.setValue( CCS_index, valbuf[ j ] );
+						// update count
+						(void)++nzc;
+					}
+					C_raw.col_start[ i + 1 ] = nzc;
+				}
+
+#ifdef _DEBUG	
+				std::cout << "CCS_raw.col_start = [ ";
+				for( size_t j = 0; j <= n; ++j )
+					std::cout << CCS_raw.col_start[ j ] << " ";
+				std::cout << "]\n";
+				std::cout << "C_col_index =       [ ";
+				for( size_t j = 0; j < n; ++j )
+					std::cout << C_col_index[ j ] << " ";
+				std::cout << "]\n";
+#endif
 #ifndef NDEBUG
 				for( size_t j = 0; j < n; ++j ) {
 					assert( CCS_raw.col_start[ j + 1 ] - CCS_raw.col_start[ j ] == C_col_index[ j ] );
@@ -1257,8 +1498,8 @@ namespace grb {
 		std::cout << "In grb::eWiseApply_matrix_generic (reference, monoid)\n";
 #endif
 
-		return internal::eWiseApply_matrix_generic< true, descr >(
-			C, A, B, mulmono.getOperator(), mulmono, phase
+		return internal::eWiseApply_matrix_generic_union< true, descr >(
+			C, A, B, mulmono, phase
 		);
 	}
 
@@ -1317,12 +1558,8 @@ namespace grb {
 			"input matrices is a pattern matrix (of type void)"
 		);
 
-		typename grb::Monoid<
-			grb::operators::mul< double >,
-			grb::identities::one
-		> dummyMonoid;
-		return internal::eWiseApply_matrix_generic< false, descr >(
-			C, A, B, mulOp, dummyMonoid, phase
+		return internal::eWiseApply_matrix_generic_intersection< false, descr >(
+			C, A, B, mulOp, phase
 		);
 	}
 
