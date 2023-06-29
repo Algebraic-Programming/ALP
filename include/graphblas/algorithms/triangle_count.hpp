@@ -18,14 +18,14 @@
 /**
  * @file
  *
- * Implements the triangle counting and triangle enumeration algorithms.
+ * Implements the triangle counting algorithm, using different methods.
  *
  * @author B. Lozes
  * @date: May 10th, 2023
  */
 
-#ifndef _H_GRB_TRIANGLE_ENUMERATION
-#define _H_GRB_TRIANGLE_ENUMERATION
+#ifndef _H_GRB_TRIANGLE_COUNT
+#define _H_GRB_TRIANGLE_COUNT
 
 #include <map>
 #include <numeric>
@@ -288,4 +288,4 @@ namespace grb {
 
 } // namespace grb
 
-#endif // _H_GRB_TRIANGLE_ENUMERATION
+#endif // _H_GRB_TRIANGLE_COUNT
