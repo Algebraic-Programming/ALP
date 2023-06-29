@@ -182,7 +182,7 @@ add_grb_executables( kcore_decomposition kcore_decomposition.cpp
 
 add_grb_executables( triangle_count triangle_count.cpp
 	ADDITIONAL_LINK_LIBRARIES test_utils_headers
-	BACKENDS reference reference_omp hyperdags
+	BACKENDS reference reference_omp bsp1d hybrid hyperdags nonblocking
 )
 
 # targets to list and build the test for this category
