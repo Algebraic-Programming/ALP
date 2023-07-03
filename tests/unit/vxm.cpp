@@ -85,6 +85,7 @@ void grbProgram( const struct input &in, struct output &out ) {
 		std::cout << "%Global index \tValue\n";
 		std::cout << grb::size( y ) << "\n";
 	}
+	std::cout << std::flush;
 	for( size_t k = 0; k < P; ++k ) {
 		if( k == s ) {
 			for( const auto &pair : y ) {
@@ -92,6 +93,7 @@ void grbProgram( const struct input &in, struct output &out ) {
 				std::cout << index << " "
 					<< std::round( pair.second ) << "\n";
 			}
+			std::cout << std::flush;
 		}
 		grb::spmd<>::barrier();
 	}
