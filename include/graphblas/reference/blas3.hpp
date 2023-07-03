@@ -1274,16 +1274,19 @@ namespace grb {
 				for( auto i = start_row; i < end_row; ++i ) {
 					auto B_k = B_raw.col_start[ i ];
 					for( auto k = A_crs_raw.col_start[ i ]; k < A_crs_raw.col_start[ i + 1 ]; ++k ) {
-						auto k_col = A_crs_raw.row_index[ k ];
+						const auto j = A_crs_raw.row_index[ k ];
 
 						// Increment the mask pointer until we find the right column, or a lower column (since the storage withing a row is sorted in a descending order)
-						while( B_k < B_raw.col_start[ i + 1 ] && B_raw.row_index[ B_k ] > k_col  ) {
+						while( B_k < B_raw.col_start[ i + 1 ] && B_raw.row_index[ B_k ] > j  ) {
 							_DEBUG_THREADESAFE_PRINT( "NEquals B coordinate: ( " + std::to_string( i ) + ";" + std::to_string( B_raw.row_index[ B_k ] ) + " )\n" );
 							B_k++;
 						}
+						if( B_k >= B_raw.col_start[ i + 1 ] ) {
+							_DEBUG_THREADESAFE_PRINT( "Not value left in B for this column\n" );
+							break;
+						}
 							
-						if( B_raw.row_index[ B_k ] < k_col ) {
-							B_k++;
+						if( B_raw.row_index[ B_k ] != j ) {
 							_DEBUG_THREADESAFE_PRINT( "Skip B value at: ( " + std::to_string( i ) + ";" + std::to_string( B_raw.row_index[ B_k ] ) + " )\n" );
 							continue;
 						}
@@ -1293,7 +1296,7 @@ namespace grb {
 						_DEBUG_THREADESAFE_PRINT( "B( " + std::to_string( i ) + ";" + std::to_string( B_raw.row_index[ B_k ] ) + " ) = " + std::to_string( B_val ) + "\n" );
 						// Get A value
 						const auto a_val_before = A_crs_raw.values[ k ];
-						_DEBUG_THREADESAFE_PRINT( "A( " + std::to_string( i ) + ";" + std::to_string( k_col ) + " ) = " + std::to_string( a_val_before ) + "\n" );
+						_DEBUG_THREADESAFE_PRINT( "A( " + std::to_string( i ) + ";" + std::to_string( j ) + " ) = " + std::to_string( a_val_before ) + "\n" );
 						// Compute the fold for this coordinate
 						local_rc = local_rc ? local_rc : grb::apply< descr >( A_crs_raw.values[ k ], a_val_before, B_val, op );
 						local_rc = local_rc ? local_rc : grb::apply< descr >( A_ccs_raw.values[ k ], a_val_before, B_val, op );
@@ -1372,44 +1375,42 @@ namespace grb {
 					auto B_k = B_raw.col_start[ i ];
 					auto mask_k = mask_raw.col_start[ i ];
 					for( auto k = A_crs_raw.col_start[ i ]; k < A_crs_raw.col_start[ i + 1 ]; ++k ) {
-						auto k_col = A_crs_raw.row_index[ k ];
+						auto j = A_crs_raw.row_index[ k ];
 
 						// Increment the pointer of mask until we find the right column, or a lower column (since the storage withing a row is sorted in a descending order)
-						while( mask_k < mask_raw.col_start[ i + 1 ] && mask_raw.row_index[ mask_k ] > k_col  ) {
+						while( mask_k < mask_raw.col_start[ i + 1 ] && mask_raw.row_index[ mask_k ] > j  ) {
 							_DEBUG_THREADESAFE_PRINT( "NEquals MASK coordinate: ( " + std::to_string( i ) + ";" + std::to_string( mask_raw.row_index[ mask_k ] ) + " )\n" );
 							mask_k++;
 						}
-							
-						if( mask_raw.row_index[ B_k ] != k_col ) {
-							mask_k++;
-							_DEBUG_THREADESAFE_PRINT( "Skip MASK value at: ( " + std::to_string( i ) + ";" + std::to_string( mask_raw.row_index[ B_k ] ) + " )\n" );
-							continue;
+						if( mask_k >= mask_raw.col_start[ i + 1 ] ) {
+							_DEBUG_THREADESAFE_PRINT( "Not value left in mask for this column\n" );
+							break;
 						}
-
-						if( not MaskHasValue< MaskType >( mask_raw, mask_k ).value ) {
+							
+						if( mask_raw.row_index[ B_k ] != j || not MaskHasValue< MaskType >( mask_raw, mask_k ).value ) {
 							_DEBUG_THREADESAFE_PRINT( "Skip MASK value at: ( " + std::to_string( i ) + ";" + std::to_string( mask_raw.row_index[ B_k ] ) + " )\n" );
 							continue;
 						}
 
 						// Increment the pointer of B until we find the right column, or a lower column (since the storage withing a row is sorted in a descending order)
-						while( B_k < B_raw.col_start[ i + 1 ] && B_raw.row_index[ B_k ] > k_col  ) {
+						while( B_k < B_raw.col_start[ i + 1 ] && B_raw.row_index[ B_k ] > j  ) {
 							_DEBUG_THREADESAFE_PRINT( "NEquals B coordinate: ( " + std::to_string( i ) + ";" + std::to_string( B_raw.row_index[ B_k ] ) + " )\n" );
 							B_k++;
 						}
 
 						// Get B value (or identity if not found)
 						auto B_val = B_identity;
-						if( B_k < B_raw.col_start[ i + 1 ] && B_raw.row_index[ B_k ] == k_col ) {
+						if( B_k < B_raw.col_start[ i + 1 ] && B_raw.row_index[ B_k ] == j ) {
 							_DEBUG_THREADESAFE_PRINT( "Found B value at: ( " + std::to_string( i ) + ";" + std::to_string( B_raw.row_index[ B_k ] ) + " )\n" );
 							B_val = B_raw.values[ B_k ];
 							B_k++;
 						} else {
-							_DEBUG_THREADESAFE_PRINT( "Not found B, using identity: ( " + std::to_string( i ) + ";" + std::to_string( k_col ) + " ) = " + std::to_string( B_val ) + "\n" );
+							_DEBUG_THREADESAFE_PRINT( "Not found B, using identity: ( " + std::to_string( i ) + ";" + std::to_string( j ) + " ) = " + std::to_string( B_val ) + "\n" );
 						}
 
 						// Get A value
 						const auto a_val_before = A_crs_raw.values[ k ];
-						_DEBUG_THREADESAFE_PRINT( "A( " + std::to_string( i ) + ";" + std::to_string( k_col ) + " ) = " + std::to_string( a_val_before ) + "\n" );
+						_DEBUG_THREADESAFE_PRINT( "A( " + std::to_string( i ) + ";" + std::to_string( j ) + " ) = " + std::to_string( a_val_before ) + "\n" );
 						// Compute the fold for this coordinate
 						local_rc = local_rc ? local_rc : grb::apply< descr >( A_crs_raw.values[ k ], a_val_before, B_val, op );
 						local_rc = local_rc ? local_rc : grb::apply< descr >( A_ccs_raw.values[ k ], a_val_before, B_val, op );
