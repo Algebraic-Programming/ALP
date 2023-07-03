@@ -26,7 +26,6 @@
 
 #include <graphblas/base/blas3.hpp>
 #include <graphblas/utils/iterators/MatrixVectorIterator.hpp>
-#include <vector>
 
 #include "io.hpp"
 #include "matrix.hpp"
@@ -1109,7 +1108,7 @@ namespace grb {
 #ifdef _DEBUG
 						std::cout << "A( " + std::to_string( i ) + ";" + std::to_string( j ) + " ) = " + std::to_string( a_val ) + "\n";
 						std::cout << "B( " + std::to_string( i ) + ";" + std::to_string( j ) + " ) = " + std::to_string( b_val ) + "\n";
-						std::cerr << "C( " + std::to_string( i ) + ";" + std::to_string( C_crs_raw.row_index[ C_k ] ) + " ) = " + std::to_string( c_val ) + "\n";
+						std::cout << "C( " + std::to_string( i ) + ";" + std::to_string( C_crs_raw.row_index[ C_k ] ) + " ) = " + std::to_string( c_val ) + "\n";
 #endif
 						C_k += 1;
 					}
@@ -1316,12 +1315,10 @@ namespace grb {
 
 
 				// do computations
-				std::vector< bool > columns( n, false );
+				bool columns[ n ] = { false };
 				size_t nzc = 0;
 				C_raw.col_start[ 0 ] = 0;
 				for( size_t i = 0; i < m; ++i ) {
-					std::fill( columns.begin(), columns.end(), false );
-
 #ifdef _DEBUG
 						std::cout << "  -- i: " << i << "\n";
 #endif
@@ -1354,7 +1351,7 @@ namespace grb {
 						}
 					}
 
-					for( size_t j_unsigned = columns.size() ; j_unsigned > 0 ; j_unsigned-- ) {
+					for( size_t j_unsigned = n ; j_unsigned > 0 ; j_unsigned-- ) {
 						const size_t j = j_unsigned - 1;
 						if( not columns[ j ] ) {
 							continue;
@@ -1371,6 +1368,9 @@ namespace grb {
 						(void)++nzc;
 					}
 					C_raw.col_start[ i + 1 ] = nzc;
+
+					for(size_t i=0; i<n; i++)
+						columns[ i ] = false;
 				}
 
 #ifdef _DEBUG
