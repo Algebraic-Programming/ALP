@@ -1083,9 +1083,12 @@ namespace grb {
 							_DEBUG_PRINT( "NEquals masked coordinate: ( " + std::to_string( i ) + ";" + std::to_string( mask_raw.row_index[ mask_k ] ) + " )\n" );
 							mask_k++;
 						}
+						if( mask_k >= mask_raw.col_start[ i + 1 ] ) {
+							_DEBUG_PRINT( "No value left for this column\n" );
+							break;
+						}
 
 						if( mask_raw.row_index[ mask_k ] < k_col || not MaskHasValue< MaskType >( mask_raw, mask_k ).value ) {
-							mask_k++;
 							_DEBUG_PRINT( "Skip masked value at: ( " + std::to_string( i ) + ";" + std::to_string( mask_raw.row_index[ mask_k ] ) + " )\n" );
 							continue;
 						}
