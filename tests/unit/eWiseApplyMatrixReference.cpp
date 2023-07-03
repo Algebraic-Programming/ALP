@@ -22,8 +22,6 @@
 
 #include <graphblas.hpp>
 
-#define _DEBUG
-
 template< class Iterator >
 void printSparseMatrixIterator( size_t rows, size_t cols, Iterator begin, Iterator end, const std::string & name = "", std::ostream & os = std::cout ) {
 #ifndef _DEBUG
@@ -57,6 +55,45 @@ template< typename D >
 void printSparseMatrix( const grb::Matrix< D > & mat, const std::string & name = "", std::ostream & os = std::cout ) {
 	grb::wait( mat );
 	printSparseMatrixIterator( grb::nrows( mat ), grb::ncols( mat ), mat.cbegin(), mat.cend(), name, os );
+}
+
+template< class Storage, typename D >
+void printCompressedStorage( const Storage& storage, const grb::Matrix< D > & mat, std::ostream & os = std::cout ) {
+	os << "  row_index: [ ";
+	for( size_t i = 0; i < grb::nrows( mat ); ++i ) {
+		os << storage.row_index[ i ] << " ";
+	}
+	os << "]" << std::endl;
+	os << "  col_start: [ ";
+	for( size_t i = 0; i <= grb::nrows( mat ); ++i ) {
+		os << storage.col_start[ i ] << " ";
+	}
+	os << "]" << std::endl;
+	os << "  values:    [ ";
+	for( size_t i = 0; i < grb::nnz( mat ); ++i ) {
+		os << storage.values[ i ] << " ";
+	}
+	os << "]" << std::endl << std::flush;
+}
+
+template< typename D >
+void printCRS( const grb::Matrix< D > & mat, const std::string & label = "", std::ostream & os = std::cout ) {
+#ifndef _DEBUG
+	return;
+#endif
+	grb::wait( mat );
+	os << "CRS \"" << label << "\" (" << grb::nrows( mat ) << "x" << grb::ncols( mat ) << "):" << std::endl;
+	printCompressedStorage(  grb::internal::getCRS( mat ), mat, os );
+}
+
+template< typename D >
+void printCCS( const grb::Matrix< D > & mat, const std::string & label = "", std::ostream & os = std::cout ) {
+#ifndef _DEBUG
+	return;
+#endif
+	grb::wait( mat );
+	os << "CCS \"" << label << "\" (" << grb::nrows( mat ) << "x" << grb::ncols( mat ) << "):" << std::endl;
+	printCompressedStorage(  grb::internal::getCCS( mat ), mat, os );
 }
 
 // static data corresponding to small matrices
@@ -137,12 +174,22 @@ static const std::vector< int > V_C_union_A_pattern_B { 9, 1, 10, 11, 1, 12, 1, 
  */
 static const std::vector< size_t > I_C_union_A_pattern_B_pattern { 0, 0, 0, 1, 1, 2, 2, 2, 3, 3, 3 };
 static const std::vector< size_t > J_C_union_A_pattern_B_pattern { 0, 2, 3, 1, 2, 1, 2, 3, 0, 2, 3 };
-static const std::vector< int > V_C_union_A_pattern_B_pattern {    1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1 };
+static const std::vector< int > V_C_union_A_pattern_B_pattern { 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1 };
 
 // helper function to check internal data structures
 // of the reference backend
 template< typename T >
 void checkCRSandCCS( const grb::Matrix< T > & obtained, const grb::Matrix< T > & expected, grb::RC & rc ) {
+	printCRS( obtained, "obtained" );
+	printCRS( expected, "expected" );
+
+	if( grb::nnz( obtained ) != grb::nnz( expected ) ) {
+		std::cerr << "Error: unexpected number of non-zero entries; "
+				  << "expected " << grb::nnz( expected ) << ", "
+				  << "obtained " << grb::nnz( obtained ) << ".\n";
+		rc = grb::FAILED;
+	}
+
 	{ // check CRS output
 		const auto & crsObtained = grb::internal::getCRS( obtained );
 		const auto & crsExpected = grb::internal::getCRS( expected );
@@ -162,6 +209,9 @@ void checkCRSandCCS( const grb::Matrix< T > & obtained, const grb::Matrix< T > &
 			}
 		}
 	}
+
+	printCCS( obtained, "obtained" );
+	printCCS( expected, "expected" );
 
 	{ // check CCS output
 		const auto & ccsObtained = grb::internal::getCCS( obtained );
@@ -228,11 +278,16 @@ void grbProgram( const void *, const size_t, grb::RC & rc ) {
 	}
 
 	printSparseMatrix( A, "A" );
+	printCRS( A, "A" );
+	printCCS( A, "A" );
 	printSparseMatrix( B, "B" );
+	printCRS( B, "B" );
+	printCCS( B, "B" );
 
 	{ // test 1: compute with the monoid mxm_elementwise
 		std::cout << "\t Verifying the monoid version of mxm_elementwise, "
 				  << "A and B value matrices\n";
+		grb::clear( C );
 		rc = grb::eWiseApply( C, A, B, mulmono, grb::RESIZE );
 		rc = rc ? rc : grb::eWiseApply( C, A, B, mulmono );
 		printSparseMatrix( C, "eWiseApply( C, A, B, mulmono )" );
@@ -252,6 +307,7 @@ void grbProgram( const void *, const size_t, grb::RC & rc ) {
 	{ // test 2: compute with the monoid mxm_elementwise, A value matrix, B pattern matrix \n";
 		std::cout << "\t Verifying the monoid version of mxm_elementwise, "
 				  << "A value matrix, B pattern matrix\n";
+		grb::clear( C );
 		rc = grb::eWiseApply( C, A, B_pattern, mulmono, grb::RESIZE );
 		rc = rc ? rc : grb::eWiseApply( C, A, B_pattern, mulmono );
 		printSparseMatrix( C, "eWiseApply( C, A, B_pattern, mulmono )" );
@@ -271,6 +327,7 @@ void grbProgram( const void *, const size_t, grb::RC & rc ) {
 	{ // test 3: compute with the monoid mxm_elementwise, A pattern matrix, B value matrix \n";
 		std::cout << "\t Verifying the monoid version of mxm_elementwise, "
 				  << "A pattern matrix, B value matrix\n";
+		grb::clear( C );
 		rc = grb::eWiseApply( C, A_pattern, B, mulmono, grb::RESIZE );
 		rc = rc ? rc : grb::eWiseApply( C, A_pattern, B, mulmono );
 		printSparseMatrix( C, "eWiseApply( C, A_pattern, B, mulmono )" );
@@ -290,6 +347,7 @@ void grbProgram( const void *, const size_t, grb::RC & rc ) {
 	{ // test 4: compute with the monoid mxm_elementwise, A pattern matrix, B pattern matrix \n";
 		std::cout << "\t Verifying the monoid version of mxm_elementwise, "
 				  << "A pattern matrix, B pattern matrix\n";
+		grb::clear( C );
 		rc = grb::eWiseApply( C, A_pattern, B_pattern, mulmono, grb::RESIZE );
 		rc = rc ? rc : grb::eWiseApply( C, A_pattern, B_pattern, mulmono );
 		printSparseMatrix( C, "eWiseApply( C, A_pattern, B_pattern, mulmono )" );
@@ -298,7 +356,8 @@ void grbProgram( const void *, const size_t, grb::RC & rc ) {
 			return;
 		}
 		grb::Matrix< int > union_A_pattern_B_pattern( n, n );
-		grb::buildMatrixUnique( union_A_pattern_B_pattern, I_C_union_A_pattern_B_pattern.data(), J_C_union_A_pattern_B_pattern.data(), V_C_union_A_pattern_B_pattern.data(), I_C_union_A_pattern_B_pattern.size(), grb::SEQUENTIAL );
+		grb::buildMatrixUnique( union_A_pattern_B_pattern, I_C_union_A_pattern_B_pattern.data(), J_C_union_A_pattern_B_pattern.data(), V_C_union_A_pattern_B_pattern.data(),
+			I_C_union_A_pattern_B_pattern.size(), grb::SEQUENTIAL );
 		checkCRSandCCS( C, union_A_pattern_B_pattern, rc );
 
 		if( rc != grb::SUCCESS ) {
@@ -309,6 +368,7 @@ void grbProgram( const void *, const size_t, grb::RC & rc ) {
 	{ // test 5: compute with the operator mxm_elementwise (pattern matrices not allowed) \n";
 		std::cout << "\t Verifying the operator version of mxm_elementwise "
 				  << "(only value matrices)\n";
+		grb::clear( C );
 		rc = grb::eWiseApply( C, A, B, mulmono.getOperator(), grb::RESIZE );
 		rc = rc ? rc : grb::eWiseApply( C, A, B, mulmono.getOperator() );
 		printSparseMatrix( C, "eWiseApply( C, A, B, mulmono.getOperator() )" );
