@@ -1582,11 +1582,14 @@ namespace grb {
 				prefix_sum_tiles = std::move( prefix_nnz );				
 
 				// create a structure of coordinates for each thread
-				const size_t num_threads = grb::config::OMP::threads();				
+				const size_t num_threads = grb::config::OMP::threads() * config::CACHE_LINE_SIZE::value();				
 				auto vector_coordinates = std::vector< COORDINATES_COL_WISE >( num_threads );
 				coordinates_tiles_column = std::move(vector_coordinates);
-				for (size_t i = 0; i < coordinates_tiles_column.size(); i++)
-				{					
+
+				for (size_t i = 0; i < num_threads; i += config::CACHE_LINE_SIZE::value() )
+				{
+					//std::cout << "from matrix class "  << ", matrix id  = " << id << std::endl;
+					//std::cout << "i = " << i << std::endl;
 					const size_t coorArr_elements = internal::Coordinates< reference >::arraySize( cols );
 					const size_t coorBuf_elements = internal::Coordinates< reference >::bufferSize( cols );
 					const size_t valbuf_elements = cols;
@@ -1606,7 +1609,7 @@ namespace grb {
 				std::cout << "matrix id  = " << id;
 				std::cout << ", num_threads = " << num_threads << ", num_tiles = " << num_tiles;
 				std::cout << ", size of coordinates_tiles_column = " << coordinates_tiles_column.size() << std::endl;
-				*/	
+				*/
 			    
 			}
 

@@ -630,8 +630,9 @@ namespace grb {
 					// we retrieve information about the tiles
 					const size_t tile_size = grb::internal::NONBLOCKING::manualFixedTileSize();
 					const size_t tile_id = lower_bound / tile_size;
-			
-					const size_t coordinates_id = grb::config::OMP::current_thread_ID();
+								
+					const unsigned int coordinates_id =
+						omp_get_thread_num() * config::CACHE_LINE_SIZE::value();
 
 					std::vector< char > coorArr;
 					std::vector< char > coorBuf;
@@ -773,7 +774,9 @@ namespace grb {
 #endif
 					size_t nnz_local = previous_nnz;					
 					
-					const size_t coordinates_id = grb::config::OMP::current_thread_ID();
+					//const size_t coordinates_id = grb::config::OMP::current_thread_ID();
+					const unsigned int coordinates_id =
+						omp_get_thread_num() * config::CACHE_LINE_SIZE::value();			
 					std::vector< char > coorArr;
 					std::vector< char > coorBuf;
 					std::vector< OutputType > valbuf;
@@ -1194,8 +1197,9 @@ namespace grb {
 					coors.set( arr, false, buf, n );	
 					*/
 
-					//const size_t coordinates_id = omp_get_thread_num() * config::CACHE_LINE_SIZE::value();
-					const size_t coordinates_id = grb::config::OMP::current_thread_ID();
+					const unsigned int coordinates_id =
+						omp_get_thread_num() * config::CACHE_LINE_SIZE::value();					
+					//const size_t coordinates_id = grb::config::OMP::current_thread_ID();
 
 					std::vector< char > coorArr;
 					std::vector< char > coorBuf;
@@ -1394,7 +1398,9 @@ namespace grb {
 					coors.set( static_cast< void * >( coorArr.data() ), false, static_cast< void * >( coorBuf.data() ), n );
 					*/
 					
-					const size_t coordinates_id = grb::config::OMP::current_thread_ID();
+					//const size_t coordinates_id = grb::config::OMP::current_thread_ID();
+					const unsigned int coordinates_id =
+						omp_get_thread_num() * config::CACHE_LINE_SIZE::value();
 					std::vector< char > coorArr;
 					std::vector< char > coorBuf;
 					std::vector< OutputType > valbuf;
@@ -1484,12 +1490,6 @@ namespace grb {
 								// matrices for mxm
 								&A, &B, &C, nullptr, std::move( func_count_nonzeros ), std::move( func_prefix_sum ) );
 			}
-			
-			/*
-			std::cout << "number of nnz in C after resizing (using capacity()) =" << capacity( C ) << std::endl;
-			std::cout << "number of nnz in C after resizing (using nnz()) =" << nnz( C ) << std::endl;
-			std::cout << "number of nnz in C after resizing (using getCurrentNonzeroes()) =" << getCurrentNonzeroes(C)  << std::endl;
-			*/
 
 			return ret;
 		}
@@ -1939,8 +1939,9 @@ namespace grb {
 					coors1.set( arr1, false, buf1, n );
 					*/
 
-					const size_t coordinates_id = grb::config::OMP::current_thread_ID();
-					//const size_t coordinates_id = omp_get_thread_num() * config::CACHE_LINE_SIZE::value();
+					//const size_t coordinates_id = grb::config::OMP::current_thread_ID();
+					const unsigned int coordinates_id =
+						omp_get_thread_num() * config::CACHE_LINE_SIZE::value();
 					std::vector< char > arr1;
 					std::vector< char > buf1;
 					std::vector< OutputType > valbuf1;
@@ -2122,7 +2123,9 @@ namespace grb {
 					//OutputType valbuf[ valbuf_elements ];		
 					*/
 					
-					const size_t coordinates_id = grb::config::OMP::current_thread_ID();					
+					//const size_t coordinates_id = grb::config::OMP::current_thread_ID();					
+					const unsigned int coordinates_id =
+						omp_get_thread_num() * config::CACHE_LINE_SIZE::value();
 					std::vector< char > arr1;
 					std::vector< char > buf1;
 					std::vector< InputType1 > valbuf1;
