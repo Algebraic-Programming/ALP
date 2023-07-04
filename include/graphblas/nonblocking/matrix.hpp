@@ -1290,8 +1290,7 @@ namespace grb {
 			// this is a flag to verify if the nnz_tiles vector has been modified. 
 			// this vector is filled in for blas3 opearations that modified the sparsity pattern
 			// of a matrix
-			bool is_nnz_tiles_written;
-			
+			bool is_nnz_tiles_written;			
 			bool is_prefix_nnz_tiles_written;
 
 			/**
@@ -1382,7 +1381,7 @@ namespace grb {
 				const size_t cap_in
 			) {
 #ifdef _DEBUG
-				std::cerr << "\t in Matrix< reference >::initialize...\n"
+				std::cerr << "\t in Matrix< nonblocking >::initialize...\n"
 					<< "\t\t matrix size " << rows << " by " << cols << "\n"
 					<< "\t\t requested capacity " << cap_in << "\n";
 #endif
@@ -1573,18 +1572,17 @@ namespace grb {
 					num_tiles++;
 				}
 
-				/* nnz_tiles[tile_id] */
-				auto vector_nnz = std::vector< size_t >( num_tiles );
-				nnz_tiles = std::move(vector_nnz);
+				/* nnz_tiles[tile_id] */		
+				nnz_tiles = std::vector< size_t >( num_tiles );
 
 				/* prefix_sum_tiles[tile_id] */
-				auto prefix_nnz = std::vector< size_t >( num_tiles );
-				prefix_sum_tiles = std::move( prefix_nnz );				
+				prefix_sum_tiles= std::vector< size_t >( num_tiles );		
 
-				// create a structure of coordinates for each thread
-				const size_t num_threads = grb::config::OMP::threads() * config::CACHE_LINE_SIZE::value();				
-				auto vector_coordinates = std::vector< COORDINATES_COL_WISE >( num_threads );
-				coordinates_tiles_column = std::move(vector_coordinates);
+				// create a structure of coordinates for each thread		
+				//const size_t num_threads = grb::config::OMP::threads() * config::CACHE_LINE_SIZE::value();		
+				const size_t num_threads = grb::internal::NONBLOCKING::numThreads() * config::CACHE_LINE_SIZE::value();												
+				coordinates_tiles_column = std::vector< COORDINATES_COL_WISE >( num_threads );
+				//coordinates_tiles_column = std::move(vector_coordinates);
 
 				for (size_t i = 0; i < num_threads; i += config::CACHE_LINE_SIZE::value() )
 				{
@@ -1756,7 +1754,7 @@ namespace grb {
 
 				// do allocation
 				RC ret = utils::alloc(
-					"grb::Matrix< T, reference >::resize", description.str(),
+					"grb::Matrix< T, nonblocking >::resize", description.str(),
 					alloc[ 0 ], sizes[ 0 ], true, _deleter[ 2 ],
 					alloc[ 1 ], sizes[ 1 ], true, _deleter[ 3 ],
 					alloc[ 2 ], sizes[ 2 ], true, _deleter[ 4 ],
@@ -1779,7 +1777,7 @@ namespace grb {
 							freed += sizes[ i ];
 						}
 					}
-					if( config::MEMORY::report( "grb::Matrix< T, reference >::resize",
+					if( config::MEMORY::report( "grb::Matrix< T, nonblocking >::resize",
 						"freed (or will eventually free)", freed, false )
 					) {
 						std::cout << ", for " << cap << " nonzeroes "

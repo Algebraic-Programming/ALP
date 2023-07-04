@@ -145,7 +145,8 @@ namespace grb {
 			// this stores the result of the reduction operation
 			typename Monoid::D3 reduced = monoid.template getIdentity< typename Monoid::D3 >();
 			
-			size_t reduced_size = sysconf( _SC_NPROCESSORS_ONLN ) * config::CACHE_LINE_SIZE::value();
+			//size_t reduced_size = sysconf( _SC_NPROCESSORS_ONLN ) * config::CACHE_LINE_SIZE::value();
+			size_t reduced_size = grb::config::OMP::threads() * config::CACHE_LINE_SIZE::value();		
 			
 			// vector that stores the accumulated sum in each tile. This vector is used only by this primitive and then it
 			// does not have to exist after executing this primitive
@@ -154,7 +155,7 @@ namespace grb {
 			for( size_t i = 0; i < reduced_size; i += config::CACHE_LINE_SIZE::value() ) {
 				array_reduced[ i ] = monoid.template getIdentity< typename Monoid::D3 >();
 			}
-			
+
 			/*
 			// implementation accumulating using tiles ID			
 			typename Monoid::D3 reduced = monoid.template getIdentity< typename Monoid::D3 >();
@@ -163,8 +164,7 @@ namespace grb {
 			for( size_t i = 0; i < reduced_size; ++i ) {
 			    array_reduced[ i ] = monoid.template getIdentity< typename Monoid::D3 >();
 			}	
-			*/		
-			
+			*/					
 
 			// lambda  function to count the nnz in each tile
 			internal::Pipeline::count_nnz_local_type func_count_nonzeros = []( const size_t lower_bound, const size_t upper_bound ) {
@@ -191,7 +191,7 @@ namespace grb {
 				const size_t tile_id = lower_bound / tile_size;
 
 				unsigned int thread_id = omp_get_thread_num() * config::CACHE_LINE_SIZE::value();
-
+				
 				size_t previous_nnz;
 				size_t current_nnz;
 
@@ -209,16 +209,6 @@ namespace grb {
 					const InputType a = A_raw.getValue( i, monoid.template getIdentity< typename Monoid::D3 >() );
 					foldl( array_reduced[ thread_id ], a, monoid.getOperator() );					
 				}
-				
-
-				/*
-				// implementation accumulating using threads ID
-				for( size_t i = previous_nnz; i < current_nnz; ++i ) {
-					//const InputType a_val = A_raw.getValue( k, identity );
-					const InputType a_val = A_raw.getValue( i, identity );
-					grb::apply( array_reduced[ tile_id ], array_reduced[ tile_id ], a_val, op );					
-				}
-				*/
 
 				/*
 				#pragma omp critical
@@ -301,6 +291,8 @@ namespace grb {
 			typename Monoid::D3 reduced = monoid.template getIdentity< typename Monoid::D3 >();
 
 			size_t reduced_size = sysconf( _SC_NPROCESSORS_ONLN ) * config::CACHE_LINE_SIZE::value();
+
+			
 
 			// vector that stores the accumulated sum in each tile. This vector is used only by this primitive and then it
 			// does not have to exist after executing this primitive
@@ -469,15 +461,7 @@ namespace grb {
 			//check that mask of C has the same dimensions of C
 			if(m != m_C_mask || n != n_C_mask ){
 				return MISMATCH;
-			}
-			
-			/*
-			//check that if output_masked is true, C_mask has to be different from nullptr
-			if ( output_masked && (C_mask == nullptr) )
-			{
-			    return ILLEGAL;
-			}
-			*/
+			}			
 
 			// read data from matrices 
 			const auto &A_raw = !trans_left
@@ -523,6 +507,8 @@ namespace grb {
 			// if crs_only, then the below implements its resize phase
 			// if not crs_only, then the below is both crucial for the resize phase,
 			// as well as for enabling the insertions of output values in the output CCS
+
+			/*
 			if( (crs_only && phase == RESIZE) || !crs_only ) {				
 				for( size_t i = 0; i < m; ++i ) {
 
@@ -538,16 +524,17 @@ namespace grb {
 					}														
 				}
 			}
+			*/
 			
 			if( phase == RESIZE ) {
 				if( !crs_only ) {
-					// do final resize
-					std::cout << "value of nzc to pass to resize = " << nzc << std::endl;
+					// do final resize					
+					std::cout << "value of nzc to pass to resize = " << internal::getCurrentNonzeroes(C_mask) << std::endl;
 					// this will update cap of C to nzc
-					const RC ret = grb::resize( C, nzc );	
+					const RC ret = grb::resize( C, internal::getCurrentNonzeroes(C_mask) );	
 
 #ifndef NDEBUG
-					const size_t old_nzc = nzc;
+					const size_t old_nzc = internal::getCurrentNonzeroes(C_mask);
 #endif				
 					// set nzc to zero
 					nzc= 0;
@@ -565,9 +552,8 @@ namespace grb {
 							}
 						}
 						// read column indices of nonzeros in coors_mask and copy them into nonzero_indices_mask
-						unsigned int nonzero_indices_mask[coors_mask.nonzeroes()]; 
-						const size_t offset =0;
-						coors_mask.packValues( nonzero_indices_mask, offset, nullptr,nullptr );
+						unsigned int nonzero_indices_mask[coors_mask.nonzeroes()]; 						
+						coors_mask.packValues( nonzero_indices_mask, 0, nullptr,nullptr );
 
 						//sort of nonzero_indices_mask
 						std::sort(nonzero_indices_mask, nonzero_indices_mask + coors_mask.nonzeroes());
@@ -603,8 +589,7 @@ namespace grb {
 						}
 						// update CRS -> col_start
 						C_raw.col_start[ i + 1 ] = nzc;
-				}
-					
+					}					
 
 					return ret;
 				} else {
@@ -621,7 +606,7 @@ namespace grb {
 				internal::Pipeline::count_nnz_local_type func_count_nonzeros = [ &A, &B, &C, &C_mask ]( const size_t lower_bound, const size_t upper_bound ) {
 					
 					// output matrix C sizes
-					const size_t n = grb::ncols( B );					
+					const size_t n = grb::ncols( C );					
 					const auto & A_raw = internal::getCRS( A );
 					const auto & B_raw = internal::getCRS( B ) ;					
 					const auto & C_mask_raw = internal::getCRS( C_mask ) ;
@@ -656,15 +641,17 @@ namespace grb {
 						// we traverse C_mask to find column indices of nonzero elements
 						coors_mask.clear();				
 						for( auto k = C_mask_raw.col_start[ i ]; k < C_mask_raw.col_start[ i + 1 ]; ++k ) {						
-							const size_t k_col = C_mask_raw.row_index[ k ];						
-							if( ! coors_mask.assign( k_col ) ) {
+							const size_t k_col = C_mask_raw.row_index[ k ];
+							coors_mask.assign( k_col );
+							
+							//if( ! coors_mask.assign( k_col ) ) {
 								//(void)++nzc_mask;
-							}
+							//}
+
 						}
 						// read column indices of nonzeros in coors_mask and copy them into nonzero_indices_mask
-						unsigned int nonzero_indices_mask[coors_mask.nonzeroes()]; 
-						const size_t offset =0;
-						coors_mask.packValues( nonzero_indices_mask, offset, nullptr,nullptr );
+						unsigned int nonzero_indices_mask[coors_mask.nonzeroes()]; 						
+						coors_mask.packValues( nonzero_indices_mask, 0, nullptr,nullptr );
 
 						//sort of nonzero_indices_mask
 						std::sort(nonzero_indices_mask, nonzero_indices_mask + coors_mask.nonzeroes());
@@ -693,8 +680,7 @@ namespace grb {
 									}
 								}																																
 							}						
-						}						
-						
+						}												
 					}
 
 					// assign corresponding element tile_id of nnz_tiles_C					
@@ -1000,18 +986,13 @@ namespace grb {
 						for( auto l = B_raw.col_start[ k_col ]; l < B_raw.col_start[ k_col + 1 ]; ++l ) {
 							const size_t l_col = B_raw.row_index[ l ];
 							if( ! coors.assign( l_col ) ) {
-								(void)++nzc;
-								//if( ! crs_only ) {									
-								//	(void)++CCS_raw.col_start[ l_col + 1 ];
-								//}
+								(void)++nzc;								
 							}
 						}
-					}
-					if( crs_only && phase == RESIZE ) {
-						// we are using an auxialiary CRS that we cannot resize ourselves
-						// instead, we update the offset array only						
-						C_raw.col_start[ i + 1 ] = nzc;
-					}
+					}			
+
+					// update CRS -> col_start
+					C_raw.col_start[ i + 1 ] = nzc;
 				}
 			}
 						
@@ -1027,9 +1008,27 @@ namespace grb {
 					// set nzc to zero
 					nzc= 0;
 		
-					 //once C holds enough capacity to store nzc, we modify the elements of the arrays CRS -> row_indices and col_start
-					 // this basically consists of repeating the resize step
-					 //std::cout << "(mxm) matrix ID = " << grb::getID( C ) << ", internal::getNonzeroCapacity (after resize mxm)= " << internal::getNonzeroCapacity( C ) << std::endl;
+					//once C holds enough capacity to store nzc, we modify the elements of the arrays CRS -> row_indices and col_start
+					// this basically consists of repeating the resize step
+					//std::cout << "(mxm) matrix ID = " << grb::getID( C ) << ", internal::getNonzeroCapacity (after resize mxm)= " << internal::getNonzeroCapacity( C ) << std::endl;
+
+/*					
+					// we perform computations in parallel
+					
+					auto & nnz_tiles_C = internal::getNonzerosTiles( C );
+					const size_t num_tiles = nnz_tiles_C.size();
+					const size_t tile_size = grb::internal::NONBLOCKING::manualFixedTileSize();
+					const size_t nthreads = grb::internal::NONBLOCKING::numThreads();
+					size_t lower_bound[num_tiles];
+					size_t upper_bound[num_tiles];
+
+#pragma omp parallel for schedule( dynamic ) num_threads( nthreads )
+					for( size_t tile_id = 0; tile_id < num_tiles; ++tile_id) {						
+						config::OMP::localRange( lower_bound[ tile_id ], upper_bound[ tile_id ], 0, grb::nrows( C ), tile_size, tile_id, num_tiles );
+						assert( lower_bound[ tile_id ] <= upper_bound[ tile_id ] );
+						std::cout << "tile_id = " << tile_id << ", lower_bound = " << lower_bound[ tile_id ] << std::endl;
+					}
+*/					
 
 					for( size_t i = 0; i < m; ++i ) {
 						coors.clear();
@@ -1037,9 +1036,7 @@ namespace grb {
 							const size_t k_col = A_raw.row_index[ k ];
 							for( auto l = B_raw.col_start[ k_col ]; l < B_raw.col_start[ k_col + 1 ]; ++l ) {
 								const size_t l_col = B_raw.row_index[ l ];
-								if( ! coors.assign( l_col ) ) {
-									//
-								}
+								coors.assign( l_col );
 							}							
 						}
 
@@ -1051,32 +1048,8 @@ namespace grb {
 							(void)++nzc;
 						}
 						// update CRS -> col_start
-						C_raw.col_start[ i + 1 ] = nzc;
-						
+						//C_raw.col_start[ i + 1 ] = nzc;
 					}
-
-					/*
-					 for( size_t i = 0; i < m; ++i ) {
-						coors.clear();
-						for( auto k = A_raw.col_start[ i ]; k < A_raw.col_start[ i + 1 ]; ++k ) {
-							const size_t k_col = A_raw.row_index[ k ];
-							for( auto l = B_raw.col_start[ k_col ]; l < B_raw.col_start[ k_col + 1 ]; ++l ) {
-								const size_t l_col = B_raw.row_index[ l ];
-								coors.assign( l_col );
-							}
-						}
-
-						for( size_t k = 0; k < coors.nonzeroes(); k++ ) {
-							assert( nzc < old_nzc );
-							const size_t j = coors.index( k );
-							// update CRS -> row_index
-							C_raw.row_index[ nzc ] = j;																				
-							(void)++nzc;
-						}
-						// update CRS -> col_start
-						C_raw.col_start[ i + 1 ] = nzc;
-					}
-					*/
 
 #ifndef NDEBUG
 					assert( nzc == old_nzc );
@@ -1198,8 +1171,7 @@ namespace grb {
 					*/
 
 					const unsigned int coordinates_id =
-						omp_get_thread_num() * config::CACHE_LINE_SIZE::value();					
-					//const size_t coordinates_id = grb::config::OMP::current_thread_ID();
+						omp_get_thread_num() * config::CACHE_LINE_SIZE::value();										
 
 					std::vector< char > coorArr;
 					std::vector< char > coorBuf;
@@ -1249,6 +1221,7 @@ namespace grb {
 					for( size_t i = 1; i < prefix_sum_tiles_C.size(); i++ ) {
 						prefix_sum_tiles_C[ i ] = prefix_sum_tiles_C[ i - 1 ] + nnz_tiles_C[ i ];
 					}
+					
 					// update nnz of C
 					size_t total_nnz = 0;
 					for( size_t i = 0; i < nnz_tiles_C.size(); i++ ) {
