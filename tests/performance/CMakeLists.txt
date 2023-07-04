@@ -309,19 +309,10 @@ add_custom_target( "build_tests_category_performance"
 )
 
 # target to run the tests in this category by calling the appropriate runner
-add_custom_target( tests_performance
-	COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/performancetests.sh
-		${SCRIPTS_COMMON_ARGS}
-		"--test-bin-dir" "\"${CMAKE_CURRENT_BINARY_DIR}\""
-		"--test-out-dir" "\"${CMAKE_CURRENT_BINARY_DIR}/output\""
-
-	WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}"
-	DEPENDS build_tests_category_performance # add dependency on this target
-											 # to automatically build before running
-	COMMAND_EXPAND_LISTS
-	USES_TERMINAL
+add_custom_target( performancetests
+	COMMAND ${CMAKE_CTEST_COMMAND} -L "mode:performance" --output-on-failure
+	WORKING_DIRECTORY "${PROJECT_BINARY_DIR}"
+	DEPENDS build_tests_category_performance
 )
-
-add_custom_target( performancetests DEPENDS tests_performance )
-add_custom_target( perftests DEPENDS tests_performance )
+add_custom_target( perftests DEPENDS performancetests )
 

@@ -380,21 +380,8 @@ add_custom_target( "build_tests_category_smoke"
 )
 
 # target to run the tests in this category by calling the appropriate runner
-add_custom_target( tests_smoke
-	COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/smoketests.sh
-		${SCRIPTS_COMMON_ARGS}
-		"--test-bin-dir" "\"${CMAKE_CURRENT_BINARY_DIR}\""
-		"--test-out-dir" "\"${CMAKE_CURRENT_BINARY_DIR}/output\""
-		"--output-verification-dir" "\"${CMAKE_CURRENT_SOURCE_DIR}/output_verification\""
-		"--test-data-dir" "\"${CMAKE_CURRENT_SOURCE_DIR}/test_data\""
-
-	WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}"
-	DEPENDS build_tests_category_smoke # add dependency on this target
-	                                   # to automatically build before running
-	COMMAND_EXPAND_LISTS
-	USES_TERMINAL
+add_custom_target( smoketests
+	COMMAND ${CMAKE_CTEST_COMMAND} -L "mode:smoke" --output-on-failure
+	WORKING_DIRECTORY "${PROJECT_BINARY_DIR}"
+	DEPENDS build_tests_category_smoke
 )
-
-# custom target "smoketests" just to keep old naming
-add_custom_target( smoketests DEPENDS tests_smoke )
-
