@@ -23,31 +23,28 @@
 
 #include <graphblas.hpp>
 
-template< typename T >
-grb::Vector< T > stdToGrbVector( const std::vector< T > & in ) {
-	grb::Vector< T > out( in.size() );
-	for( size_t i = 0; i < in.size(); i++ )
-		grb::setElement( out, in[ i ], i );
-	return out;
-}
+using namespace grb;
+
+constexpr bool Verbose = false;
 
 template< typename D >
-void printSparseVector( const grb::Vector< D > & v, const std::string & name ) {
-	grb::wait( v );
+void printSparseVector( const Vector< D > & v, const std::string & name ) {
+	if( size( v ) > 50 ) {
+		return;
+	}
+	wait( v );
 	std::cout << "  [  ";
-	if( grb::size( v ) > 50 ) {
-		std::cout << "too large to print " << std::endl;
-	} else if( grb::nnz( v ) <= 0 ) {
-		for( size_t i = 0; i < grb::size( v ); i++ )
+	if( nnz( v ) <= 0 ) {
+		for( size_t i = 0; i < size( v ); i++ )
 			std::cout << "_ ";
 	} else {
 		size_t nnz_idx = 0;
 		auto it = v.cbegin();
-		for( size_t i = 0; i < grb::size( v ); i++ ) {
-			if( nnz_idx < grb::nnz( v ) && i == it->first ) {
+		for( size_t i = 0; i < size( v ); i++ ) {
+			if( nnz_idx < nnz( v ) && i == it->first ) {
 				std::cout << it->second << " ";
 				nnz_idx++;
-				if( nnz_idx < grb::nnz( v ) )
+				if( nnz_idx < nnz( v ) )
 					++it;
 			} else {
 				std::cout << "_ ";
@@ -55,368 +52,150 @@ void printSparseVector( const grb::Vector< D > & v, const std::string & name ) {
 		}
 	}
 	std::cout << " ]  -  "
-			  << "Vector \"" << name << "\" (" << grb::size( v ) << ")" << std::endl;
+			  << "Vector \"" << name << "\" (" << size( v ) << ")" << std::endl;
 }
 
-template< typename T >
 struct input_t {
-	grb::Matrix< T > A;
+	// Input file parameters
+	std::string filename;
+	bool direct;
+	// Algorithm parameters
+	algorithms::AlgorithmBFS algorithm;
 	size_t root;
 	bool expected_explored_all;
 	long expected_max_level;
-	bool compute_levels;
-	const grb::Vector< long > & expected_levels;
-	bool compute_parents;
-	const grb::Vector< long > & expected_parents;
+	bool verify = false;
+	const Vector< long > & expected_values; // Levels or parents depending on the selected algorithm
+
+	// Necessary for distributed backends
+	input_t( const std::string & filename = "",
+		bool direct = true,
+		algorithms::AlgorithmBFS algorithm = algorithms::AlgorithmBFS::LEVELS,
+		size_t root = 0,
+		bool expected_explored_all = true,
+		long expected_max_level = 0,
+		const Vector< long > & expected_values = { 0 } ) :
+		filename( filename ),
+		direct( direct ), algorithm( algorithm ), root( root ), expected_explored_all( expected_explored_all ), expected_max_level( expected_max_level ), expected_values( expected_values ) {}
 };
 
 struct output_t {
-	grb::RC rc = grb::RC::SUCCESS;
-	grb::utils::TimerResults times;
+	RC rc = RC::SUCCESS;
+	utils::TimerResults times;
 	size_t data_in_local;
 };
 
-template< typename T >
-void grbProgram( const struct input_t< T > & input, struct output_t & output ) {
-	grb::utils::Timer timer;
+void grbProgram( const struct input_t & input, struct output_t & output ) {
+	utils::Timer timer;
 	long max_level;
 	bool explored_all;
 
-	if( input.compute_levels ) {
-	    grb::Vector< long > levels( grb::nrows( input.A ) );
-
-		timer.reset();
-		output.rc = output.rc ? output.rc : grb::algorithms::bfs_levels( input.A, input.root, explored_all, max_level, levels );
-		timer.reset();
-
-		if( explored_all == input.expected_explored_all ) {
-            std::cout << "SUCCESS: explored_all = " << explored_all << " is correct" << std::endl;
-        } else {
-            std::cerr << "FAILED: expected explored_all = " << input.expected_explored_all << " but got " << explored_all << std::endl;
-            output.rc = grb::RC::FAILED;
-            return;
-        }
-
-		if( max_level == input.expected_max_level ) {
-			std::cout << "SUCCESS: max_level = " << max_level << " is correct" << std::endl;
-		} else {
-			std::cerr << "FAILED: expected max_level " << input.expected_max_level << " but got " << max_level << std::endl;
-			output.rc = grb::RC::FAILED;
-			return;
-		}
-
-		// Check levels by comparing it with the expected one
-		if( std::equal( input.expected_levels.cbegin(), input.expected_levels.cend(), levels.cbegin() ) ) {
-			std::cout << "SUCCESS: expected_levels is correct" << std::endl;
-		} else {
-			std::cerr << "FAILED: levels is incorrect" << std::endl;
-			std::cerr << "levels != expected_levels" << std::endl;
-			printSparseVector( levels, "levels" );
-			printSparseVector( input.expected_levels, "expected_levels" );
-			output.rc = grb::RC::FAILED;
-			return;
-		}
+	// Read matrix from file as a pattern matrix (i.e. no values)
+	timer.reset();
+	utils::MatrixFileReader< void > reader( input.filename, input.direct );
+	size_t r = reader.n(), c = reader.m();
+	assert( r == c );
+	Matrix< void > A( r, c );
+	output.rc = buildMatrixUnique( A, reader.cbegin( IOMode::SEQUENTIAL ), reader.cend( IOMode::SEQUENTIAL ), IOMode::SEQUENTIAL );
+	if( output.rc != RC::SUCCESS ) {
+		std::cerr << "ERROR during buildMatrixUnique of the pattern matrix: " << toString( output.rc ) << std::endl;
+		return;
 	}
+	output.times.io = timer.time();
 
-	if( input.compute_parents ) {
-		grb::Vector< long > parents( grb::nrows( input.A ) );
+	// Allocate output vector
+	timer.reset();
+	Vector< long > values( nrows( A ) );
+	output.times.preamble = timer.time();
 
-		timer.reset();
-		output.rc = output.rc ? output.rc : grb::algorithms::bfs_parents( input.A, input.root, explored_all, max_level, parents );
-		timer.reset();
+	// Run the BFS algorithm
+	timer.reset();
+	output.rc = output.rc ? output.rc : algorithms::bfs( input.algorithm, A, input.root, explored_all, max_level, values );
+	grb::wait();
+	output.times.useful = timer.time();
 
+	{ // Check the outputs
 		if( explored_all == input.expected_explored_all ) {
 			std::cout << "SUCCESS: explored_all = " << explored_all << " is correct" << std::endl;
 		} else {
 			std::cerr << "FAILED: expected explored_all = " << input.expected_explored_all << " but got " << explored_all << std::endl;
-			output.rc = grb::RC::FAILED;
-			return;
+			output.rc = output.rc ? output.rc : RC::FAILED;
 		}
 
-		if( max_level == input.expected_max_level ) {
+		if( max_level > 0 && max_level <= input.expected_max_level ) {
 			std::cout << "SUCCESS: max_level = " << max_level << " is correct" << std::endl;
 		} else {
 			std::cerr << "FAILED: expected max_level " << input.expected_max_level << " but got " << max_level << std::endl;
-			output.rc = grb::RC::FAILED;
-			return;
+			output.rc = output.rc ? output.rc : RC::FAILED;
 		}
 
 		// Check levels by comparing it with the expected one
-		if( std::equal( input.expected_parents.cbegin(), input.expected_parents.cend(), parents.cbegin() ) ) {
-			std::cout << "SUCCESS: expected_parents is correct" << std::endl;
-		} else {
-			std::cerr << "FAILED: parents is incorrect" << std::endl;
-			std::cerr << "parents != expected_parents" << std::endl;
-			printSparseVector( parents, "parents" );
-			printSparseVector( input.expected_parents, "expected_parents" );
-			output.rc = grb::RC::FAILED;
-			return;
+		if( input.verify && not std::equal( input.expected_values.cbegin(), input.expected_values.cend(), values.cbegin() ) ) {
+			std::cerr << "FAILED: values are incorrect" << std::endl;
+			std::cerr << "values != expected_values" << std::endl;
+			printSparseVector( values, "values" );
+			printSparseVector( input.expected_values, "expected_values" );
+			output.rc = output.rc ? output.rc : RC::FAILED;
 		}
+
+		if( output.rc == RC::SUCCESS && Verbose ) {
+			printSparseVector( values, "values" );
+		}	
 	}
 }
 
 int main( int argc, char ** argv ) {
 	(void)argc;
 	(void)argv;
-	constexpr size_t niterations = 1;
 
-	grb::Benchmarker< grb::EXEC_MODE::AUTOMATIC > benchmarker;
-	std::cout << "Test executable: " << argv[ 0 ] << std::endl;
+	size_t inner_iterations = 1, outer_iterations = 1;
+	Benchmarker< EXEC_MODE::AUTOMATIC > benchmarker;
 
-	// Check if we are testing on a file
-	if( argc != 1 && argc != 5 ) {
-		std::cerr << "Usage: \n\t" << argv[ 0 ] << " [ <graph_path> <root> <expected_explored_all> <expected_max_level> ]" << std::endl;
+	if( argc != 6 ) {
+		std::cerr << "Usage: \n\t" << argv[ 0 ] << " <graph_path> <direct|indirect> <root> <expected_explored_all> <expected_max_level> [ outer_iters=1 inner_iters=1 ]" << std::endl;
 		return 1;
 	}
-	bool test_on_file = ( argc == 5 );
+	std::cout << "Test executable: " << argv[ 0 ] << std::endl;
 
-	if( test_on_file ) { // Test on a file
-		std::string file_to_test( argv[ 1 ] );
-		size_t root = std::stoul( argv[ 2 ] );
-		bool expected_explored_all = std::stoi( argv[ 3 ] );
-		long expected_max_level = std::stol( argv[ 4 ] );
+	std::string file_to_test( argv[ 1 ] );
+	bool direct = ( std::string( argv[ 2 ] ) == "direct" );
+	size_t root = std::stoul( argv[ 3 ] );
+	bool expected_explored_all = std::stol( argv[ 4 ] ) > 0;
+	long expected_max_level = std::stol( argv[ 5 ] );
+	if( argc > 6 )
+		outer_iterations = std::stoul( argv[ 6 ] );
+	if( argc > 7 )
+		inner_iterations = std::stoul( argv[ 7 ] );
 
-		std::cout << "-- Running test on file " << file_to_test << std::endl;
-
-		// Read matrix from file as a pattern matrix (i.e. no values)
-		grb::utils::MatrixFileReader< void > reader( file_to_test, false, true );
-		size_t r = reader.n(), c = reader.m();
-		grb::Matrix< void > A( r, c );
-		grb::RC rc_build = buildMatrixUnique( A, reader.cbegin( grb::IOMode::SEQUENTIAL ), reader.cend( grb::IOMode::SEQUENTIAL ), grb::IOMode::PARALLEL );
-		if( rc_build != grb::RC::SUCCESS ) {
-			std::cerr << "ERROR during buildMatrixUnique of the pattern matrix: rc = " << rc_build << std::endl;
-			return 1;
-		}
-
-		std::cout << "Matrix read successfully" << std::endl;
-		input_t< void > input { A, root, expected_explored_all, expected_max_level, false, { 0L }, false, { 0L } };
+	{ // Run the test: AlgorithmBFS::LEVELS
+		std::cout << std::endl << "-- Running AlgorithmBFS::LEVELS on file " << file_to_test << std::endl;
+		input_t input( file_to_test, direct, algorithms::AlgorithmBFS::LEVELS, root, expected_explored_all, expected_max_level );
 		output_t output;
-		grb::RC bench_rc = benchmarker.exec( &grbProgram, input, output, niterations, 1, true );
-		if( bench_rc ) {
-			std::cerr << "ERROR during execution of file " << file_to_test << ": rc = " << bench_rc << std::endl;
-			return bench_rc;
-		} else if( output.rc ) {
-			std::cerr << "Test failed: rc = " << output.rc << std::endl;
+		RC rc = benchmarker.exec( &grbProgram, input, output, inner_iterations, outer_iterations, true );
+		if( rc ) {
+			std::cerr << "ERROR during execution: rc = " << toString( rc ) << std::endl;
+			return rc;
+		}
+		if( output.rc ) {
+			std::cerr << "Test failed: rc = " << toString( output.rc ) << std::endl;
 			return output.rc;
 		}
-	} else {
-
-		/** Matrix A1:
-		 *
-		 *  2 ───── 0 ───── 1
-		 *          │
-		 *          │
-		 *          │
-		 *          3
-		 */
-		{ /*
-           * Directed version, pattern matrix, root = 0
-           * => 1 step(s) to explore all nodes
-           */
-			size_t root = 0;
-			std::cout << "-- Running test on A1 (directed, non-pattern, root " + std::to_string(root) + ")" << std::endl;
-			bool expected_explored_all = true;
-			long expected_max_level = 1;
-			grb::Matrix< void > A( 4, 4 );
-			std::vector< size_t > A_rows { { 0, 0, 0 } };
-			std::vector< size_t > A_cols { { 1, 2, 3 } };
-			grb::buildMatrixUnique( A, A_rows.data(), A_cols.data(), A_rows.size(), grb::IOMode::PARALLEL );
-			std::vector< long > expected_levels { 0, 1, 1, 1 };
-            std::vector< long > expected_parents { 0, 0, 0, 0 };
-			input_t< void > input { A, root, expected_explored_all, expected_max_level, true, stdToGrbVector( expected_levels ), true, stdToGrbVector( expected_parents ) };
-			output_t output;
-			grb::RC bench_rc = benchmarker.exec( &grbProgram, input, output, niterations, 1, true );
-			if( bench_rc ) {
-				std::cerr << "ERROR during execution: rc = " << bench_rc << std::endl;
-				return bench_rc;
-			} else if( output.rc ) {
-				std::cerr << "Test failed: rc = " << output.rc << std::endl;
-				return output.rc;
-			}
-			std::cout << std::endl;
+	}
+	{ // Run the test: AlgorithmBFS::PARENTS
+		std::cout << std::endl << "-- Running AlgorithmBFS::PARENTS on file " << file_to_test << std::endl;
+		input_t input( file_to_test, direct, algorithms::AlgorithmBFS::PARENTS, root, expected_explored_all, expected_max_level );
+		output_t output;
+		RC rc = benchmarker.exec( &grbProgram, input, output, inner_iterations, outer_iterations, true );
+		if( rc ) {
+			std::cerr << "ERROR during execution: rc = " << toString( rc ) << std::endl;
+			return rc;
 		}
-
-		/** Matrix A2:
-		 *
-		 *  1 ───── 0 ───── 2 ───── 3
-		 */
-		{ /*
-		   * Directed version, pattern matrix, root = 0
-		   * => 2 step(s) to explore all nodes
-		   */
-			size_t root = 0;
-			std::cout << "-- Running test on A2 (directed, pattern, root " + std::to_string(root) + ")" << std::endl;
-			bool expected_explored_all = true;
-			long expected_max_level = 2;
-			grb::Matrix< void > A( 4, 4 );
-			std::vector< size_t > A_rows { { 0, 0, 2 } };
-			std::vector< size_t > A_cols { { 1, 2, 3 } };
-			grb::buildMatrixUnique( A, A_rows.data(), A_cols.data(), A_rows.size(), grb::IOMode::PARALLEL );
-			std::vector< long > expected_levels { 0, 1, 1, 2 };
-			std::vector< long > expected_parents { 0, 0, 0, 2 };
-			input_t< void > input { A, root, expected_explored_all, expected_max_level, true, stdToGrbVector( expected_levels ), true, stdToGrbVector( expected_parents ) };
-			output_t output;
-			grb::RC bench_rc = benchmarker.exec( &grbProgram, input, output, niterations, 1, true );
-			if( bench_rc ) {
-				std::cerr << "ERROR during execution: rc = " << bench_rc << std::endl;
-				return bench_rc;
-			} else if( output.rc ) {
-				std::cerr << "Test failed: rc = " << output.rc << std::endl;
-				return output.rc;
-			}
-			std::cout << std::endl;
-		}
-
-		/** Matrix A3:
-		 *
-		 *  0 ───── 1 ───── 2 ───── 3
-		 *  └───────────────────────┘
-		 */
-		{ /*
-		   * Directed version, non-pattern matrix, root = 0
-		   * => 3 step(s) to explore all nodes
-		   */
-			size_t root = 0;
-			std::cout << "-- Running test on A3 (directed, non-pattern: int, root " + std::to_string(root) + ")" << std::endl;
-			bool expected_explored_all = true;
-			long expected_max_level = 3;
-			grb::Matrix< int > A( 4, 4 );
-			std::vector< size_t > A_rows { { 0, 1, 2, 3 } };
-			std::vector< size_t > A_cols { { 1, 2, 3, 0 } };
-			std::vector< int > A_values( A_rows.size(), 1 );
-			grb::buildMatrixUnique( A, A_rows.data(), A_cols.data(), A_values.data(), A_values.size(), grb::IOMode::PARALLEL );
-			std::vector< long > expected_levels { 0, 1, 2, 3 };
-			std::vector< long > expected_parents { 0, 0, 1, 2 };
-			input_t< int > input { A, root, expected_explored_all, expected_max_level, true, stdToGrbVector( expected_levels ), true, stdToGrbVector( expected_parents ) };
-			output_t output;
-			grb::RC bench_rc = benchmarker.exec( &grbProgram, input, output, niterations, 1, true );
-			if( bench_rc ) {
-				std::cerr << "ERROR during execution: rc = " << bench_rc << std::endl;
-				return bench_rc;
-			} else if( output.rc ) {
-				std::cerr << "Test failed: rc = " << output.rc << std::endl;
-				return output.rc;
-			}
-			std::cout << std::endl;
-		}
-		{ /*
-		   * Undirected version, pattern matrix, root = 0
-		   * => 2 step(s) to explore all nodes
-		   */
-			size_t root = 0;
-			std::cout << "-- Running test on A3 (undirected, pattern, root " + std::to_string(root) + ")" << std::endl;
-			bool expected_explored_all = true;
-			long expected_max_level = 2;
-			grb::Matrix< void > A( 4, 4 );
-			std::vector< size_t > A_rows { { 0, 0, 1, 1, 2, 2, 3, 3 } };
-			std::vector< size_t > A_cols { { 3, 1, 0, 2, 1, 3, 2, 0 } };
-			grb::buildMatrixUnique( A, A_rows.data(), A_cols.data(), A_rows.size(), grb::IOMode::PARALLEL );
-			std::vector< long > expected_levels { 0, 1, 2, 1 };
-			std::vector< long > expected_parents { 0, 0, 3, 0 };
-			input_t< void > input { A, root, expected_explored_all, expected_max_level, true, stdToGrbVector( expected_levels ), true, stdToGrbVector( expected_parents ) };
-			output_t output;
-			grb::RC bench_rc = benchmarker.exec( &grbProgram, input, output, niterations, 1, true );
-			if( bench_rc ) {
-				std::cerr << "ERROR during execution: rc = " << bench_rc << std::endl;
-				return bench_rc;
-			} else if( output.rc ) {
-				std::cerr << "Test failed: rc = " << output.rc << std::endl;
-				return output.rc;
-			}
-			std::cout << std::endl;
-		}
-
-		/** Matrix A4:
-		 *
-		 *  0 ───── 1 ───── 3
-		 *  		│       │
-		 *          2 ──────┘
-		 */
-		{ /*
-		   * Directed version, pattern matrix, root = 0
-		   * => 3 step(s) to explore all nodes
-		   */
-			size_t root = 0;
-			std::cout << "-- Running test on A4 (directed, pattern, one cycle, root " + std::to_string(root) + ")" << std::endl;
-			bool expected_explored_all = true;
-			long expected_max_level = 3;
-			grb::Matrix< void > A( 4, 4 );
-			std::vector< size_t > A_rows { { 0, 1, 2, 3 } };
-			std::vector< size_t > A_cols { { 1, 2, 3, 1 } };
-			grb::buildMatrixUnique( A, A_rows.data(), A_cols.data(), A_rows.size(), grb::IOMode::PARALLEL );
-			std::vector< long > expected_levels { 0, 1, 2, 3 };
-			std::vector< long > expected_parents { 0, 0, 1, 2 };
-			input_t< void > input { A, root, expected_explored_all, expected_max_level, true, stdToGrbVector( expected_levels ), true, stdToGrbVector( expected_parents ) };
-			output_t output;
-			grb::RC bench_rc = benchmarker.exec( &grbProgram, input, output, niterations, 1, true );
-			if( bench_rc ) {
-				std::cerr << "ERROR during execution: rc = " << bench_rc << std::endl;
-				return bench_rc;
-			} else if( output.rc ) {
-				std::cerr << "Test failed: rc = " << output.rc << std::endl;
-				return output.rc;
-			}
-			std::cout << std::endl;
-		}
-		{ /*
-		   * Directed version, pattern matrix, root = 1
-		   * => Impossible to reach vertex 0
-		   */
-			size_t root = 1;
-			std::cout << "-- Running test on A4 (directed, pattern, root " + std::to_string(root) + ")" << std::endl;
-			bool expected_explored_all = false;
-			long expected_max_level = 2;
-			grb::Matrix< void > A( 4, 4 );
-			std::vector< size_t > A_rows { { 0, 1, 2, 3 } };
-			std::vector< size_t > A_cols { { 1, 2, 3, 1 } };
-			grb::buildMatrixUnique( A, A_rows.data(), A_cols.data(), A_rows.size(), grb::IOMode::PARALLEL );
-			std::vector< long > expected_levels { -1, 0, 1, 2 };
-			std::vector< long > expected_parents { -1, 1, 1, 2 };
-			input_t< void > input { A, root, expected_explored_all, expected_max_level, true, stdToGrbVector( expected_levels ), true, stdToGrbVector( expected_parents ) };
-			output_t output;
-			grb::RC bench_rc = benchmarker.exec( &grbProgram, input, output, niterations, 1, true );
-			if( bench_rc ) {
-				std::cerr << "ERROR during execution: rc = " << bench_rc << std::endl;
-				return bench_rc;
-			} else if( output.rc ) {
-				std::cerr << "Test failed: rc = " << output.rc << std::endl;
-				return output.rc;
-			}
-			std::cout << std::endl;
-		}
-
-		/** Matrix A5:
-		 *
-		 *  0 ───── 1 ──x── 2 ───── 3
-		 */
-		{ /*
-		   * Undirected version, pattern matrix, root = 0
-		   * => Impossible to reach vertices 2 and 3
-		   */
-			size_t root = 0;
-			std::cout << "-- Running test on A5 (undirected, pattern, root " + std::to_string(root) + ")" << std::endl;
-			bool expected_explored_all = false;
-			long expected_max_level = 1;
-			grb::Matrix< void > A( 4, 4 );
-			std::vector< size_t > A_rows { { 0, 1, 2, 3 } };
-			std::vector< size_t > A_cols { { 1, 0, 3, 2 } };
-			grb::buildMatrixUnique( A, A_rows.data(), A_cols.data(), A_rows.size(), grb::IOMode::PARALLEL );
-			std::vector< long > expected_levels { 0, 1, -1, -1 };
-			std::vector< long > expected_parents { 0, 0, -1, -1 };
-			input_t< void > input { A, root, expected_explored_all, expected_max_level, true, stdToGrbVector( expected_levels ), true, stdToGrbVector( expected_parents ) };
-			output_t output;
-			grb::RC bench_rc = benchmarker.exec( &grbProgram, input, output, niterations, 1, true );
-			if( bench_rc ) {
-				std::cerr << "ERROR during execution: rc = " << bench_rc << std::endl;
-				return bench_rc;
-			} else if( output.rc ) {
-				std::cerr << "Test failed: rc = " << output.rc << std::endl;
-				return output.rc;
-			}
-			std::cout << std::endl;
+		if( output.rc ) {
+			std::cerr << "Test failed: rc = " << toString( output.rc ) << std::endl;
+			return output.rc;
 		}
 	}
-	std::cout << "Test OK" << std::endl;
 
+	std::cout << "Test OK" << std::endl;
 	return 0;
 }

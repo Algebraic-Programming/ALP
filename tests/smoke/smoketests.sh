@@ -257,11 +257,16 @@ for BACKEND in ${BACKENDS[@]}; do
 			    echo " "
 			fi
 
-			echo ">>>      [x]           [ ]       Testing the BFS algorithm"
-			$runner ${TEST_BIN_DIR}/bfs_${BACKEND} &> ${TEST_OUT_DIR}/bfs_${BACKEND}_${P}_${T}.log
-			head -1 ${TEST_OUT_DIR}/bfs_${BACKEND}_${P}_${T}.log
-			grep 'Test OK' ${TEST_OUT_DIR}/bfs_${BACKEND}_${P}_${T}.log || echo "Test FAILED"
-			echo " "
+			echo ">>>      [x]           [ ]       Testing the BFS algorithms for the matrix west0497.mtx."
+			echo "                                 This test employs the grb::Launcher in automatic mode. It uses"
+			echo "                                 direct-mode file IO."
+			if [ -f ${INPUT_DIR}/west0497.mtx ] && [ "$BACKEND" != "bsp1d" ] && [ "$BACKEND" != "hybrid" ]; then
+				$runner ${TEST_BIN_DIR}/bfs_${BACKEND} ${INPUT_DIR}/west0497.mtx direct 0 0 5 &> ${TEST_OUT_DIR}/bfs_${BACKEND}_${P}_${T}.log
+				head -1 ${TEST_OUT_DIR}/bfs_${BACKEND}_${P}_${T}.log
+				grep 'Test OK' ${TEST_OUT_DIR}/bfs_${BACKEND}_${P}_${T}.log || echo "Test FAILED"
+			else
+				echo "Test DISABLED: west0497.mtx was not found. To enable, please provide ${INPUT_DIR}/west0497.mtx"
+			fi
 			
 			echo ">>>      [x]           [ ]       Testing the BiCGstab algorithm for the 17361 x 17361 input"
 			echo "                                 matrix gyro_m.mtx. This test verifies against a ground-"
