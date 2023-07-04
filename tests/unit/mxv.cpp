@@ -87,6 +87,7 @@ void grbProgram( const struct input &in, struct output &out ) {
 				const size_t index = pair.first;
 				std::cout << index << " " << pair.second << "\n";
 			}
+			std::cout << std::flush;
 		}
 		grb::spmd<>::barrier();
 	}
