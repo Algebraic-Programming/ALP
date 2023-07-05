@@ -497,7 +497,8 @@ namespace grb {
 			
 			// symbolic phase (counting sort, step 1)
 			size_t nzc = 0; // output nonzero count
-			size_t nzc_mask = 0;			
+			//size_t nzc_mask = 0;
+
 			//if( crs_only && phase == RESIZE ) {
 				// we are using an auxialiary CRS that we cannot resize ourselves
 				// instead, we update the offset array only
@@ -544,12 +545,11 @@ namespace grb {
 					for( size_t i = 0; i < m; ++i ) {
 
 						// we traverse C_mask to find column indices of nonzero elements
+						/*
 						coors_mask.clear();				
 						for( auto k = C_mask_raw.col_start[ i ]; k < C_mask_raw.col_start[ i + 1 ]; ++k ) {						
-							const size_t k_col = C_mask_raw.row_index[ k ];						
-							if( ! coors_mask.assign( k_col ) ) {
-								(void)++nzc_mask;
-							}
+							const size_t k_col = C_mask_raw.row_index[ k ];
+							coors_mask.assign( k_col );							
 						}
 						// read column indices of nonzeros in coors_mask and copy them into nonzero_indices_mask
 						unsigned int nonzero_indices_mask[coors_mask.nonzeroes()]; 						
@@ -557,6 +557,7 @@ namespace grb {
 
 						//sort of nonzero_indices_mask
 						std::sort(nonzero_indices_mask, nonzero_indices_mask + coors_mask.nonzeroes());
+						*/
 
 						// check column indices of nonzeros int current row i of C = AB
 						coors.clear();
@@ -570,14 +571,17 @@ namespace grb {
 								const size_t l_col = B_raw.row_index[ l ];
 
 								//search column indices that are common to the mask and to C
-								// use binary search on sorted nonzero_indices_mask. STL implementation							
-								bool found = std::binary_search( nonzero_indices_mask, nonzero_indices_mask + coors_mask.nonzeroes(), l_col, []( const int & a, const int & b ) {
-									return a < b;
-								} );
-								
-								if( found ) {
+								// use binary search on sorted nonzero_indices_mask. STL implementation																				
+								/*
+								if( std::binary_search( nonzero_indices_mask, nonzero_indices_mask + coors_mask.nonzeroes(), l_col, []( const int & a, const int & b ) { return a < b;}) ) {
 									coors.assign( l_col );
-								}																																
+								}
+								*/
+
+								if(i == l_col)																																
+								{
+									coors.assign( l_col );
+								}
 							}						
 						}
 						for( size_t k = 0; k < coors.nonzeroes(); k++ ) {
@@ -626,6 +630,7 @@ namespace grb {
 					internal::Coordinates< reference > coors;
 					coors.set( static_cast< void * >( coorArr.data() ), false, static_cast< void * >( coorBuf.data() ), n );
 
+					/*
 					// coordinates for mask
 					std::vector< char > coorArr_mask;
 					std::vector< char > coorBuf_mask;
@@ -633,21 +638,18 @@ namespace grb {
 					internal::getCoordinatesTiles( coorArr_mask, coorBuf_mask, valbuf_mask, coordinates_id, C_mask );
 					internal::Coordinates< reference > coors_mask;
 					coors_mask.set( static_cast< void * >( coorArr_mask.data() ), false, static_cast< void * >( coorBuf_mask.data() ), n );
+					*/
 
-					size_t nnz_current_tile = 0;				
-
+					size_t nnz_current_tile = 0;
+					
 					for( size_t i = lower_bound; i < upper_bound; ++i ) {
 
+						/*
 						// we traverse C_mask to find column indices of nonzero elements
 						coors_mask.clear();				
 						for( auto k = C_mask_raw.col_start[ i ]; k < C_mask_raw.col_start[ i + 1 ]; ++k ) {						
 							const size_t k_col = C_mask_raw.row_index[ k ];
-							coors_mask.assign( k_col );
-							
-							//if( ! coors_mask.assign( k_col ) ) {
-								//(void)++nzc_mask;
-							//}
-
+							coors_mask.assign( k_col );													
 						}
 						// read column indices of nonzeros in coors_mask and copy them into nonzero_indices_mask
 						unsigned int nonzero_indices_mask[coors_mask.nonzeroes()]; 						
@@ -655,6 +657,7 @@ namespace grb {
 
 						//sort of nonzero_indices_mask
 						std::sort(nonzero_indices_mask, nonzero_indices_mask + coors_mask.nonzeroes());
+						*/
 
 						// check column indices of nonzeros int current row i of C = AB
 						coors.clear();
@@ -668,19 +671,20 @@ namespace grb {
 								const size_t l_col = B_raw.row_index[ l ];
 
 								//search column indices that are common to the mask and to C
-								// use binary search on sorted nonzero_indices_mask. STL implementation							
-								bool found = std::binary_search( nonzero_indices_mask, nonzero_indices_mask + coors_mask.nonzeroes(), l_col, []( const int & a, const int & b ) {
-									return a < b;
-								} );
+								// use binary search on sorted nonzero_indices_mask. STL implementation	
+								/*
+								if( std::binary_search( nonzero_indices_mask, nonzero_indices_mask + coors_mask.nonzeroes(), l_col, []( const int & a, const int & b ) { return a < b;}) ) {
+									coors.assign( l_col );									
+								}
+								*/
 
-								if( found ) {
-									if( ! coors.assign( l_col ) )
-									{
-										++nnz_current_tile;
-									}
+								if(i == l_col)																																
+								{
+									coors.assign( l_col );
 								}																																
 							}						
-						}												
+						}
+						nnz_current_tile += coors.nonzeroes();
 					}
 
 					// assign corresponding element tile_id of nnz_tiles_C					
@@ -770,6 +774,7 @@ namespace grb {
 					internal::Coordinates< reference > coors;
 					coors.set( static_cast< void * >( coorArr.data() ), false, static_cast< void * >( coorBuf.data() ), n );
 
+					/*
 					// coordinates for mask
 					std::vector< char > coorArr_mask;
 					std::vector< char > coorBuf_mask;
@@ -777,16 +782,15 @@ namespace grb {
 					internal::getCoordinatesTiles( coorArr_mask, coorBuf_mask, valbuf_mask, coordinates_id, C_mask );
 					internal::Coordinates< reference > coors_mask;
 					coors_mask.set( static_cast< void * >( coorArr_mask.data() ), false, static_cast< void * >( coorBuf_mask.data() ), n );
+					*/					
 
 					for( size_t i = lower_bound; i < upper_bound; ++i ) {
-
+						/*
 						// we traverse C_mask to find column indices of nonzero elements
 						coors_mask.clear();
 						for( auto k = C_mask_raw.col_start[ i ]; k < C_mask_raw.col_start[ i + 1 ]; ++k ) {
 							const size_t k_col = C_mask_raw.row_index[ k ];
-							if( ! coors_mask.assign( k_col ) ) {
-								//(void)++nzc_mask;
-							}
+							coors_mask.assign( k_col );							
 						}
 						// read column indices of nonzeros in coors_mask and copy them into nonzero_indices_mask
 						unsigned int nonzero_indices_mask[ coors_mask.nonzeroes() ];
@@ -795,7 +799,8 @@ namespace grb {
 
 						// sort of nonzero_indices_mask
 						std::sort( nonzero_indices_mask, nonzero_indices_mask + coors_mask.nonzeroes() );
-
+						*/
+					
 						coors.clear();
 						for( auto k = A_raw.col_start[ i ]; k < A_raw.col_start[ i + 1 ]; ++k ) {
 							const size_t k_col = A_raw.row_index[ k ];
@@ -814,12 +819,11 @@ namespace grb {
 									<< " to accumulate into C( " << i << ", " << l_col << " )\n";
 		#endif
 								// search column indices that are common to the mask and to C
-								//  use binary search on sorted nonzero_indices_mask. STL implementation
-								bool found = std::binary_search( nonzero_indices_mask, nonzero_indices_mask + coors_mask.nonzeroes(), l_col, []( const int & a, const int & b ) {
-									return a < b;
-								} );
+								//  use binary search on sorted nonzero_indices_mask. STL implementation								
 
-								if( found ) {
+
+								//if( std::binary_search( nonzero_indices_mask, nonzero_indices_mask + coors_mask.nonzeroes(), l_col, []( const int & a, const int & b ) { return a < b;}) )
+								if(i == l_col){
 									if( !coors.assign( l_col ) ) {
 										valbuf[ l_col ] = monoid.template getIdentity< OutputType >();
 										(void) grb::apply( valbuf[ l_col ],
