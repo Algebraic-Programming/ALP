@@ -45,23 +45,36 @@ namespace grb
 	namespace algorithms
 	{
 
+		/**
+		 * Mandatory arguments:
+		 *
+		 * @param[in,out]   x  Vector corresponding to initial and final partition
+		 * @param[in]       A  Incidence matrix
+		 *
+		 * Optional arguments:
+		 *
+		 * @param[in]   b_max  Load-balancing parameter
+		 * @param[in]    beta  Final value of p is 1+exp(-beta)
+		 * @param[in]    conv  Convergence tolerance for the internal loop
+		 * @param[in] max_iter Maximum number of iterations for the external loop
+		 */
 		template <
 			typename IOType,
 			typename IntegerT
 		>
 		RC pLaplacian_bisection(
-			Vector<IOType> &x,             //Vector corresponding to initial and final partition
-			const Matrix<IntegerT> &A,     //Incidence matrix
-			const IOType b_max = 2,        //Load balancing parameter
-			const IOType beta = 2,         //Final value of p is 1+exp(-beta)
-			const IOType conv = 0.0000001, //convergence tolerance for the internal loop
-			const size_t max_iter = 1000   //number of iterations for the external loop
+			Vector< IOType > &x,
+			const Matrix< IntegerT > &A,
+			const IOType b_max = 2,
+			const IOType beta = 2,
+			const IOType conv = 0.0000001,
+			const size_t max_iter = 1000
 		) {
 
 			//RINGS AND MONOIDS
 
 			//declare the real mul/add ring
-			grb::Semiring<
+			Semiring<
 				grb::operators::add<IOType>,
 				grb::operators::mul<IOType>,
 				grb::identities::zero,
@@ -69,7 +82,7 @@ namespace grb
 			> reals_ring;
 
 			//declare the integer mul/add ring
-			grb::Semiring<
+			Semiring<
 				grb::operators::add<IntegerT>,
 				grb::operators::mul<IntegerT>,
 				grb::identities::zero,
@@ -77,7 +90,7 @@ namespace grb
 			> integers_ring;
 
 			//declare the oneNorm ring
-			grb::Semiring<
+			Semiring<
 				grb::operators::add<double>,
 				grb::operators::abs_diff<double>,
 				grb::identities::zero,
@@ -92,7 +105,8 @@ namespace grb
 			Vector<IntegerT> par(n);
 			spec_part_utils::general_rounding(par, x, 1, 0);
 			Vector<IOType> x_min(n);
-			set(x_min, x);
+			RC ret = set(x_min, x);
+			if( ret != SUCCESS ) { return ret; }
 
 			//compute initial ratio Cheeger cut of current estimate of eigenvector
 			IOType r_cheeg_min, r_cheeg;
@@ -105,7 +119,8 @@ namespace grb
 			//auxiliary variables for the computation of the gradient
 			Vector<IOType> aux_1(m), aux_2(n), aux_3(n), grad(n); //phi_p(Ax), phi_p(x), A^T phi_p(Ax), gradient
 			IOType aux_4, aux_5;                                  // x^T phi_p(x), x^T A^T phi_p(Ax)
-			set(grad, 0);                                         //to ensure grad is a dense vector
+			ret = set(grad, 0);                                   //to ensure grad is a dense vector
+			if( ret != SUCCESS ) { return ret; }
 
 			//external loop, evolving p
 			do
@@ -127,78 +142,99 @@ namespace grb
 					if (r_cheeg <= r_cheeg_min /*ratio Cheeger cut better than before*/
 					  && std::fabs(2 * p_norm(par, (bool)1, integers_ring.getAdditiveMonoid()) / static_cast<IOType>(n) - 1) < b_max)
 					{	                      //load balance constraint
-						grb::set(x_min, x);    //save best solution
-						r_cheeg_min = r_cheeg; //save best cheeger const so far
+						ret = grb::set(x_min, x); //save best solution
+						r_cheeg_min = r_cheeg;    //save best cheeger const so far
 					}
 
 					//compute auxiliary variables for the gradient
 
-					grb::set(aux_1, 0);
-					grb::mxv(aux_1, A, x, reals_ring);
+					ret = ret ? ret : grb::set(aux_1, 0);
+					ret = ret ? ret : grb::mxv(aux_1, A, x, reals_ring);
 					spec_part_utils::phi_p(aux_1, p);
 
-					grb::set(aux_2, x);
+					ret = ret ? ret : grb::set(aux_2, x);
 					spec_part_utils::phi_p(aux_2, p);
 
-					grb::set(aux_3, 0);
-					grb::mxv<grb::descriptors::transpose_matrix>(aux_3, A, aux_1, reals_ring);
+					ret = ret ? ret : grb::set(aux_3, 0);
+					ret = ret ? ret : grb::mxv<grb::descriptors::transpose_matrix>(aux_3, A, aux_1, reals_ring);
 
-					grb::dot(aux_4, x, aux_2, reals_ring);
+					ret = ret ? ret : grb::dot(aux_4, x, aux_2, reals_ring);
 
-					grb::dot(aux_5, x, aux_3, reals_ring);
+					ret = ret ? ret : grb::dot(aux_5, x, aux_3, reals_ring);
 
-					eWiseLambda([&grad, &aux_2, &aux_3, &aux_4, &aux_5, &p](const size_t i)
-								{ grad[i] = p * (aux_3[i] / aux_4 - (aux_5 / (aux_4 * aux_4)) * aux_2[i]); },
-								grad, aux_2, aux_3);
+					ret = ret ? ret : eWiseLambda([&grad, &aux_2, &aux_3, &aux_4, &aux_5, &p](const size_t i) {
+							grad[i] = p * (aux_3[i] / aux_4 - (aux_5 / (aux_4 * aux_4)) * aux_2[i]);
+						}, grad, aux_2, aux_3);
 
 					//LATER DO LINE SEARCH, NOW ONLY GRADIENT DESCENT
 
 					IOType alpha = 0.1; //GRADIENT DESCENT PARAMETER
 
-					eWiseLambda([&x, &grad, &alpha](const size_t i)
+					ret = ret ? ret : eWiseLambda([&x, &grad, &alpha](const size_t i)
 								{ x[i] = x[i] - alpha * grad[i]; },
 								x, grad);
 
-					//print current iteration
-					std::cout << "value of p: " << p << std::endl;
-					std::cout << "iteration " << iter << " of the external loop" << std::endl;
+					if( ret == SUCCESS ) {
+						//print current iteration
+						std::cout << "value of p: " << p << std::endl;
+						std::cout << "iteration " << iter << " of the external loop" << std::endl;
 
-					std::cout << "Current x: ";
-					for (const std::pair<size_t, IOType> &pair : x)
-					{
-						std::cout << pair.second << " ";
+						std::cout << "Current x: ";
+						for(const std::pair<size_t, IOType> &pair : x)
+						{
+							std::cout << pair.second << " ";
+						}
+						std::cout << std::endl;
+						std::cout << "rcheeg: " << r_cheeg << std::endl;
+						std::cout << "Current x_min: ";
+						for (const std::pair<size_t, IOType> &pair : x_min)
+						{
+							std::cout << pair.second << " ";
+						}
+						std::cout << std::endl;
+						std::cout << "rcheeg_min: " << r_cheeg_min << std::endl;
+
+						std::cout << "residual: " << residual << std::endl;
+						std::cout << std::endl;
+
+						//compute residual
+						ret = ret ? ret : dot<descriptors::dense>(residual, x, x_min, oneNormDiff);
 					}
-					std::cout << std::endl;
-					std::cout << "rcheeg: " << r_cheeg << std::endl;
-					std::cout << "Current x_min: ";
-					for (const std::pair<size_t, IOType> &pair : x_min)
-					{
-						std::cout << pair.second << " ";
-					}
-					std::cout << std::endl;
-					std::cout << "rcheeg_min: " << r_cheeg_min << std::endl;
 
-					std::cout << "residual: " << residual << std::endl;
-					std::cout << std::endl;
-
-					//compute residual
-					dot<descriptors::dense>(residual, x, x_min, oneNormDiff);
-
-				} while (residual > conv);
+				} while(residual > conv && ret == SUCCESS );
 
 				//reset x to current best
-				set(x, x_min);
+				ret = ret ? ret : set(x, x_min);
 
 				++iter;
 
-			} while (iter < max_iter);
+			} while(iter < max_iter && ret == SUCCESS );
 
-			return SUCCESS;
+			return ret;
 		} //end RC pLaplacian_bisection
 
+		/**
+		 * Mandatory arguments:
+		 *
+		 * @param[in,out] x vectors corresponding to the final clusters
+		 * @param[in]     W adjacency matrix
+		 *
+		 * Debug only:
+		 *
+		 * @param[in] V eigenvecs arma matrix
+		 *
+		 * Mandatory arguments:
+		 *
+		 * @param[in] k       Number of clusters
+		 * @param[in] final_p Final value of p
+		 * @param[in] factor  Factor for the reduction of p
+		 *
+		 * @param[in] kmeans_ortho_reps Repetitions of kmeans clustering with orthogonal initialisation
+		 * @param[in] kmeans_kpp_reps   Repetitions of kmeans clustering with k++ initialisation
+		 */
 		RC pLaplacian_multi(
 			Vector<size_t> &x,       //vectors corresponding to the final clusters
-			 const Matrix<double> &W, // adjacency matrix
+			const Matrix<double> &W, // adjacency matrix
 			// arma::Mat<double> &V,   // eigenvecs arma matrix (Debug only)
 			const size_t k,                      // number of clusters
 			const double final_p = 1.1,          //Final value of p
@@ -241,8 +277,9 @@ namespace grb
 			arma_rng::set_seed(1234);
 #endif
 
-            // do armadillo stage with max num threads
-            //omp_set_num_threads(1);
+			//For debugging:
+			// do armadillo stage with max num threads
+			//omp_set_num_threads(1);
 
 			//generate sparse matrix
 			arma::sp_mat A = arma::sp_mat(n, n);
@@ -318,8 +355,9 @@ namespace grb
 				temp[i] = eigvec[i]; // Use the input at p = 2 as initial guess
 			}
 
-            // do armadillo stage with max num threads
-            //omp_set_num_threads(2);
+			//For debugging:
+			//do armadillo stage with max num threads
+			//omp_set_num_threads(2);
 
 			//std::cin.get();
 
@@ -344,7 +382,7 @@ namespace grb
 			// Initialize timers
 			grb::utils::Timer timer;
 			double io_time = 0, grb_time = 0, grbropt_time = 0, kmeans_time = 0, prob_time = 0, exec_time = 0;
-            size_t ropt_to_grb_count = 0, grb_to_ropt_count= 0, f_eval_count = 0, grad_eval_count = 0, hessian_eval_count = 0;
+			size_t ropt_to_grb_count = 0, grb_to_ropt_count= 0, f_eval_count = 0, grad_eval_count = 0, hessian_eval_count = 0;
 
 			//p = p / factor;
 			do
@@ -420,12 +458,11 @@ namespace grb
 				grb_time += Prob.getGRBtime();
 				grbropt_time += timer.time();
 
-                ropt_to_grb_count += Prob.get_ropt_to_grb_count();
-                grb_to_ropt_count += Prob.get_grb_to_ropt_count();
-                f_eval_count += Prob.get_f_eval_count();
-                grad_eval_count += Prob.get_grad_eval_count();
-                hessian_eval_count += Prob.get_hessian_eval_count();
-
+				ropt_to_grb_count += Prob.get_ropt_to_grb_count();
+				grb_to_ropt_count += Prob.get_grb_to_ropt_count();
+				f_eval_count += Prob.get_f_eval_count();
+				grad_eval_count += Prob.get_grad_eval_count();
+				hessian_eval_count += Prob.get_hessian_eval_count();
 
 				// std::cout << "----------------------" << std::endl;
 				// std::cout << "solution at p:" << p << std::endl;
@@ -482,8 +519,9 @@ namespace grb
 			// KMEANS TEST END
 
 			// classify using the graphblas kmeans implementation
-			grb::resize(X, n * k);
-			grb::resize(K, k * k);
+			RC ret = grb::resize(X, n * k);
+			ret = ret ? ret : grb::resize(K, k * k);
+			if( ret != SUCCESS ) { return ret; }
 
 			size_t *I = new size_t[n * k];
 			size_t *J = new size_t[n * k];
@@ -497,84 +535,88 @@ namespace grb
 				J[i] = i % n;
 			}
 
-			grb::buildMatrixUnique(X, I, J, OptPtr, n * k, SEQUENTIAL);
-            delete[] I;
-            delete[] J;
+			ret = grb::buildMatrixUnique(X, I, J, OptPtr, n * k, SEQUENTIAL);
+			delete[] I;
+			delete[] J;
 
 			//io_time += timer.time();
 
 			timer.reset();
 
 			double best_rcut = std::numeric_limits<double>::max();
-			for (size_t i = 0; i < kmeans_ortho_reps + kmeans_kpp_reps; ++i)
+			for (size_t i = 0; i < kmeans_ortho_reps + kmeans_kpp_reps && ret == SUCCESS; ++i)
 			{
 
-				grb::clear(K);
+				ret = ret ? ret : grb::clear(K);
 
 				if (i < kmeans_ortho_reps)
 				{
-					grb::algorithms::korth_initialisation(K, X);
+					ret = ret ? ret : grb::algorithms::korth_initialisation(K, X);
 				}
 				else
 				{
-					grb::algorithms::kpp_initialisation(K, X);
+					ret = ret ? ret : grb::algorithms::kpp_initialisation(K, X);
 				}
 
-				grb::algorithms::kmeans_iteration(K, clusters_and_distances, X);
+				ret = ret ? ret : grb::algorithms::kmeans_iteration(K, clusters_and_distances, X);
 
 				double rcut = 0;
 				grb::Vector<size_t> x_temp(n);
 				for (const auto &pair : clusters_and_distances)
 				{
-					grb::setElement(x_temp, pair.second.first, pair.first);
+					// FIXME this does not parallelise
+					ret = ret ? ret : grb::setElement(x_temp, pair.second.first, pair.first);
 				}
 
-				grb::algorithms::spec_part_utils::RCut(rcut, W, x_temp, k);
+				ret = ret ? ret : grb::algorithms::spec_part_utils::RCut(rcut, W, x_temp, k);
 
 				// rcut could be zero in the degenerate case of only one cluster being populated
 				if (rcut > 0 && rcut < best_rcut)
 				{
 					best_rcut = rcut;
-					grb::set(x, x_temp);
+					ret = ret ? ret : grb::set(x, x_temp);
 				}
 			}
-		   // clusters = fin_cluster;
+			// clusters = fin_cluster;
 			kmeans_time += timer.time();
 
 			std::vector<size_t> cluster_sizes(k);
 			for (const auto &pair : x)
 			{
+				// FIXME this does not parallelise
 				++cluster_sizes[pair.second];
 			}
 
-			std::cout << "===========" << std::endl;
-			std::cout << "Statistics" << std::endl;
-			std::cout << "===========" << std::endl;
-			std::cout << "Final p_value:" << final_p << std::endl;
-			std::cout << "RCut value:" << best_rcut << std::endl;
+			if( ret == SUCCESS ) {
+				std::cout << "===========" << std::endl;
+				std::cout << "Statistics" << std::endl;
+				std::cout << "===========" << std::endl;
+				std::cout << "Final p_value:" << final_p << std::endl;
+				std::cout << "RCut value:" << best_rcut << std::endl;
 
-			for (size_t i = 0; i < k; ++i)
-			{
-				std::cout << "\t" << cluster_sizes[i] << " nodes in cluster " << i << std::endl;
+				for (size_t i = 0; i < k; ++i)
+				{
+					std::cout << "\t" << cluster_sizes[i] << " nodes in cluster " << i << std::endl;
+				}
+
+				std::cout << "conversion time (msec) = " << io_time << std::endl;
+				std::cout << "grb time (msec) = " << grb_time << std::endl;
+				std::cout << "misc time (msec) = " << grbropt_time << std::endl;
+				std::cout << "problem time (msec) = " << prob_time << std::endl;
+				std::cout << "execution time Newton (msec) = " << exec_time << std::endl;
+				std::cout << "kmeans time (msec) = " << kmeans_time << std::endl;
+				std::cout << "exclusive Newon time (msec) = " << exec_time - io_time - grb_time << std::endl;
+				std::cout << "total time (msec) = " << grbropt_time + kmeans_time + exec_time + prob_time  << std::endl;
+
+				std::cout << std::endl;
+				std::cout << "Number of ropt to grb conversions = " << ropt_to_grb_count << std::endl;
+				std::cout << "Number of grb to ropt conversions = " << grb_to_ropt_count << std::endl;
+				std::cout << "Number of functional evaluations = " << f_eval_count << std::endl;
+				std::cout << "Number of gradient evaluations = " << grad_eval_count << std::endl;
+				std::cout << "Number of hessian x vector evaluations = " << hessian_eval_count << std::endl;
 			}
 
-			std::cout << "conversion time (msec) = " << io_time << std::endl;
-			std::cout << "grb time (msec) = " << grb_time << std::endl;
-			std::cout << "misc time (msec) = " << grbropt_time << std::endl;
-			std::cout << "problem time (msec) = " << prob_time << std::endl;
-			std::cout << "execution time Newton (msec) = " << exec_time << std::endl;
-			std::cout << "kmeans time (msec) = " << kmeans_time << std::endl;
-			std::cout << "exclusive Newon time (msec) = " << exec_time - io_time - grb_time << std::endl;
-			std::cout << "total time (msec) = " << grbropt_time + kmeans_time + exec_time + prob_time  << std::endl;
-
-            std::cout << std::endl;
-            std::cout << "Number of ropt to grb conversions = " << ropt_to_grb_count << std::endl;
-            std::cout << "Number of grb to ropt conversions = " << grb_to_ropt_count << std::endl;
-            std::cout << "Number of functional evaluations = " << f_eval_count << std::endl;
-            std::cout << "Number of gradient evaluations = " << grad_eval_count << std::endl;
-            std::cout << "Number of hessian x vector evaluations = " << hessian_eval_count << std::endl;
-
-			return SUCCESS;
+			return ret;
 		} //end RC pLaplacian_bisection
 
 	} //end namespace algorithms
