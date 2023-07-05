@@ -228,7 +228,7 @@ int main( int argc, char ** argv ) {
 
 	// sanity check
 	if( argc < 6 || argc > 8 ) {
-		std::cout << "Usage: " << argv[ 0 ] << " <dataset> <direct/indirect> <weighted/unweighted> <out_filename> <eigen_filename> <num_clusters> " << std::endl;
+		std::cout << "Usage: " << argv[ 0 ] << " <dataset> <direct/indirect> <weighted/unweighted> <out_filename> <num_clusters> " << std::endl;
 		std::cout << " -------------------------------------------------------------------------------- " << std::endl;
 		// std::cout << "Usage: " << argv[0] << " <dataset> <direct/indirect> (inner iterations) (outer iterations)\n";
 		std::cout << "INPUT" << std::endl;
@@ -250,7 +250,7 @@ int main( int argc, char ** argv ) {
 	struct output out;
 
 	// get file name
-	(void)strncpy( in.filename, argv[ 1 ], 1023 );
+	(void) strncpy( in.filename, argv[ 1 ], 1023 );
 	in.filename[ 1023 ] = '\0';
 
 	// get direct or indirect addressing
