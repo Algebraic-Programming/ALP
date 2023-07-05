@@ -25,34 +25,25 @@
 
 using namespace grb;
 
-constexpr bool Verbose = false;
+template< typename T >
+bool verify_parents( const Matrix< void > & A, Vector< T > parents ) {
+	for( const std::pair< size_t, T > & e : parents ) {
+		if( e.second < 0 ) // Not found node
+			continue;
 
-template< typename D >
-void printSparseVector( const Vector< D > & v, const std::string & name ) {
-	if( size( v ) > 50 ) {
-		return;
-	}
-	wait( v );
-	std::cout << "  [  ";
-	if( nnz( v ) <= 0 ) {
-		for( size_t i = 0; i < size( v ); i++ )
-			std::cout << "_ ";
-	} else {
-		size_t nnz_idx = 0;
-		auto it = v.cbegin();
-		for( size_t i = 0; i < size( v ); i++ ) {
-			if( nnz_idx < nnz( v ) && i == it->first ) {
-				std::cout << it->second << " ";
-				nnz_idx++;
-				if( nnz_idx < nnz( v ) )
-					++it;
-			} else {
-				std::cout << "_ ";
-			}
+		if( ( (size_t)e.second ) == e.first ) // Root ndoe
+			continue;
+
+		bool ok = std::any_of( A.cbegin(), A.cend(), [ e ]( const std::pair< size_t, size_t > position ) {
+			return position.first == ( (size_t)e.second ) && position.second == e.first;
+		} );
+
+		if( not ok ) {
+			std::cerr << "ERROR: parent " << e.second << " of node " << e.first << " is not a valid edge" << std::endl;
+			return false;
 		}
 	}
-	std::cout << " ]  -  "
-			  << "Vector \"" << name << "\" (" << size( v ) << ")" << std::endl;
+	return true;
 }
 
 struct input_t {
@@ -108,11 +99,45 @@ void grbProgram( const struct input_t & input, struct output_t & output ) {
 	Vector< long > values( nrows( A ) );
 	output.times.preamble = timer.time();
 
-	// Run the BFS algorithm
-	timer.reset();
-	output.rc = output.rc ? output.rc : algorithms::bfs( input.algorithm, A, input.root, explored_all, max_level, values );
-	grb::wait();
-	output.times.useful = timer.time();
+	switch( input.algorithm ) {
+		case algorithms::AlgorithmBFS::LEVELS: {
+			// AlgorithmBFS::LEVELS specific allocations
+			timer.reset();
+			Vector< bool > x( nrows( A ), 1UL );
+			Vector< bool > y( nrows( A ), 0UL );
+			Vector< bool > not_visited( nrows( A ) );
+			output.times.preamble += timer.time();
+
+			// Run the algorithm
+			timer.reset();
+			output.rc = output.rc ? output.rc : algorithms::bfs_levels( A, input.root, explored_all, max_level, values, x, y, not_visited );
+			grb::wait();
+			output.times.useful = timer.time();
+
+			break;
+		}
+		case algorithms::AlgorithmBFS::PARENTS: {
+
+			// AlgorithmBFS::PARENTS specific allocations
+			timer.reset();
+			Vector< long > x( nrows( A ), 1UL );
+			Vector< long > y( nrows( A ), 0UL );
+			output.times.preamble += timer.time();
+
+			// Run the algorithm
+			timer.reset();
+			output.rc = output.rc ? output.rc : algorithms::bfs_parents( A, input.root, explored_all, max_level, values, x, y );
+			grb::wait();
+			output.times.useful = timer.time();
+
+			break;
+		}
+		default: {
+			std::cerr << "ERROR: unknown algorithm" << std::endl;
+			output.rc = RC::ILLEGAL;
+			return;
+		}
+	}
 
 	{ // Check the outputs
 		if( explored_all == input.expected_explored_all ) {
@@ -133,14 +158,13 @@ void grbProgram( const struct input_t & input, struct output_t & output ) {
 		if( input.verify && not std::equal( input.expected_values.cbegin(), input.expected_values.cend(), values.cbegin() ) ) {
 			std::cerr << "FAILED: values are incorrect" << std::endl;
 			std::cerr << "values != expected_values" << std::endl;
-			printSparseVector( values, "values" );
-			printSparseVector( input.expected_values, "expected_values" );
 			output.rc = output.rc ? output.rc : RC::FAILED;
 		}
 
-		if( output.rc == RC::SUCCESS && Verbose ) {
-			printSparseVector( values, "values" );
-		}	
+		if( output.rc == RC::SUCCESS && input.algorithm == algorithms::AlgorithmBFS::PARENTS ) {
+			bool correct = verify_parents( A, values );
+			std::cout << "CHECK - parents are correct is: " << std::to_string( correct ) << std::endl;
+		}
 	}
 }
 
@@ -168,7 +192,7 @@ int main( int argc, char ** argv ) {
 		inner_iterations = std::stoul( argv[ 7 ] );
 
 	{ // Run the test: AlgorithmBFS::LEVELS
-		std::cout << std::endl << "-- Running AlgorithmBFS::LEVELS on file " << file_to_test << std::endl;
+		std::cout << "-- Running AlgorithmBFS::LEVELS on file " << file_to_test << std::endl;
 		input_t input( file_to_test, direct, algorithms::AlgorithmBFS::LEVELS, root, expected_explored_all, expected_max_level );
 		output_t output;
 		RC rc = benchmarker.exec( &grbProgram, input, output, inner_iterations, outer_iterations, true );
@@ -182,7 +206,7 @@ int main( int argc, char ** argv ) {
 		}
 	}
 	{ // Run the test: AlgorithmBFS::PARENTS
-		std::cout << std::endl << "-- Running AlgorithmBFS::PARENTS on file " << file_to_test << std::endl;
+		std::cout << "-- Running AlgorithmBFS::PARENTS on file " << file_to_test << std::endl;
 		input_t input( file_to_test, direct, algorithms::AlgorithmBFS::PARENTS, root, expected_explored_all, expected_max_level );
 		output_t output;
 		RC rc = benchmarker.exec( &grbProgram, input, output, inner_iterations, outer_iterations, true );

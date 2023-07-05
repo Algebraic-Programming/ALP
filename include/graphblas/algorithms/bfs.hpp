@@ -36,7 +36,7 @@
 
 #include <graphblas.hpp>
 
-//#define BFS_DEBUG
+// #define BFS_DEBUG
 
 namespace grb {
 
@@ -53,7 +53,7 @@ namespace grb {
 				(void)os;
 
 #ifdef BFS_DEBUG
-				if( rows > 50 || cols > 50 ) {
+				if( rows > 64 || cols > 64 ) {
 					return;
 				}
 				std::cout << "Matrix \"" << name << "\" (" << rows << "x" << cols << "):" << std::endl << "[" << std::endl;
@@ -86,7 +86,7 @@ namespace grb {
 				(void)os;
 
 #ifdef BFS_DEBUG
-				if( rows > 50 || cols > 50 ) {
+				if( rows > 64 || cols > 64 ) {
 					return;
 				}
 				std::cout << "Matrix \"" << name << "\" (" << rows << "x" << cols << "):" << std::endl << "[" << std::endl;
@@ -134,7 +134,7 @@ namespace grb {
 				(void)v;
 				(void)name;
 #ifdef BFS_DEBUG
-				if( size( v ) > 50 ) {
+				if( size( v ) > 64 ) {
 					return;
 				}
 				wait( v );
@@ -166,7 +166,7 @@ namespace grb {
 				(void)vector;
 				(void)name;
 #ifdef BFS_DEBUG
-				if( vector.size() > 50 ) {
+				if( vector.size() > 64 ) {
 					return;
 				}
 				std::cout << " [ ";
@@ -198,61 +198,63 @@ namespace grb {
 		 * @tparam D Matrix values type
 		 * @tparam T Level type
 		 *
-		 * @param[in] A Matrix to explore
-		 * @param[in] root Root vertex from which to start the exploration
-		 * @param[out] explored_all Whether all vertices have been explored
-		 * @param[out] max_level Maximum level reached by the BFS algorithm
-		 * @param[out] levels Vector containing the level at which each vertex is reached
-		 * @param[in] not_find_value Value to use for vertices that have not been reached (default: -1)
-		 * @return SUCCESS A call to this function never fails.
+		 * @param[in]  A              Matrix to explore
+		 * @param[in]  root           Root vertex from which to start the exploration
+		 * @param[out] explored_all   Whether all vertices have been explored
+		 * @param[out] max_level      Maximum level reached by the BFS algorithm
+		 * @param[out] levels         Vector containing the lowest levels at which each vertex is reached.
+		 * 						      Needs to be pre-allocated with nrows(A) values.
+		 * @param[in]  x 		      Buffer vector, needs to be pre-allocated with 1 value.
+		 * @param[in]  y 		      Buffer vector, no pre-allocation needed.
+		 * @param[in]  not_visited    Buffer vector, needs to be pre-allocated with nrows(A) values.
+		 * @param[in]  max_iterations Max number of iterations to perform (default: -1, no limit)
 		 *
 		 * \parblock
 		 * \par Possible output values:
 		 * 	-# max_level: [0, nrows(A) - 1]
-		 * 	-# levels: [0, nrows(A) - 1] for reached vertices, <tt>not_find_value</tt> for unreached vertices
+		 * 	-# levels: [0, nrows(A) - 1] for each reached vertices, <tt>empty</tt> for unreached vertices
 		 * \endparblock
-		 *
-		 * \warning Level type <tt>T</tt> must be a signed integer type.
 		 *
 		 * \note Values of the matrix <tt>A</tt> are ignored, hence it is recommended to use a pattern matrix.
 		 */
-		template< typename D = void, typename T = long >
+		template< typename D = void, typename T = size_t >
 		RC bfs_levels( const Matrix< D > & A,
 			size_t root,
 			bool & explored_all,
 			T & max_level,
 			Vector< T > & levels,
-			const T not_find_value = static_cast< T >( -1 ),
-			const std::enable_if< std::is_integral< T >::value && std::is_signed< T >::value > * const = nullptr ) {
+			Vector< bool > & x,
+			Vector< bool > & y,
+			Vector< bool > & not_visited,
+			const long max_iterations = -1L,
+			const std::enable_if< std::is_integral< T >::value > * const = nullptr ) {
 			RC rc = RC::SUCCESS;
 			const size_t nvertices = nrows( A );
 
 			{
 				// Frontier vectors
-				Vector< bool > x( nvertices ), y( nvertices );
 				rc = rc ? rc : setElement( x, true, root );
 
 				utils::printSparseMatrix( A, "A" );
 				utils::printSparseVector( x, "x" );
 
 				// Output vector containing the minimum level at which each vertex is reached
-				rc = rc ? rc : resize( levels, nvertices );
 				rc = rc ? rc : setElement( levels, static_cast< T >( 0 ), root );
 				utils::printSparseVector( levels, "levels" );
 
 				// Vector of unvisited vertices
-				Vector< bool > not_visited( nvertices );
 				rc = rc ? rc : set( not_visited, true );
-				setElement( not_visited, false, root );
+				rc = rc ? rc : setElement( not_visited, false, root );
 
-				for( size_t level = 1; level <= nvertices; level++ ) {
+				size_t max_iter = max_iterations < 0 ? nvertices : max_iterations;
+				for( size_t level = 1; level <= max_iter; level++ ) {
 					utils::debugPrint( "** Level " + std::to_string( level ) + ":\n" );
 					max_level = level;
 
 					// Multiply the current frontier by the adjacency matrix
 					utils::printSparseVector( x, "x" );
 					utils::printSparseVector( not_visited, "not_visited" );
-					resize( y, 0UL );
+					rc = rc ? rc : resize( y, 0UL );
 					Semiring< operators::logical_or< bool >, operators::logical_and< bool >, identities::logical_false, identities::logical_true > bool_semiring;
 					rc = rc ? rc : vxm( y, not_visited, x, A, bool_semiring, Phase::RESIZE );
 					rc = rc ? rc : vxm( y, not_visited, x, A, bool_semiring, Phase::EXECUTE );
@@ -295,14 +297,6 @@ namespace grb {
 							   "Some vertices are not reachable from the given root: " +
 				std::to_string( root ) + "\n" );
 
-			// Fill missing values with -1
-			std::vector< bool > not_visited( nvertices, true );
-			for( const std::pair< size_t, T > & p : levels )
-				not_visited[ p.first ] = false;
-			for( size_t i = 0; i < nvertices; i++ )
-				if( not_visited[ i ] )
-					rc = rc ? rc : setElement( levels, not_find_value, i );
-
 			return rc;
 		}
 
@@ -311,15 +305,18 @@ namespace grb {
 		 * This version computes the parents of each vertex.
 		 *
 		 * @tparam D Matrix values type
-		 * @tparam T Level type
+		 * @tparam T Parent type
 		 *
-		 * @param[in] A Matrix to explore
-		 * @param[in] root Root vertex from which to start the exploration
-		 * @param[out] explored_all Whether all vertices have been explored
-		 * @param[out] max_level Maximum level reached by the BFS algorithm
-		 * @param[out] parenst Vector containing the parent from which each vertex is reached
-		 * @param[in] not_find_value Value to use for vertices that have not been reached (default: -1)
-		 * @return SUCCESS A call to this function never fails.
+		 * @param[in]  A              Matrix to explore
+		 * @param[in]  root           Root vertex from which to start the exploration
+		 * @param[out] explored_all   Whether all vertices have been explored
+		 * @param[out] max_level      Maximum level reached by the BFS algorithm
+		 * @param[out] parents        Vector containing the parent from which each vertex is reached.
+		 * 						      Needs to be pre-allocated with nrows(A) values.
+		 * @param[in]  x 		      Buffer vector, needs to be pre-allocated with 1 value.
+		 * @param[in]  y 		      Buffer vector, no pre-allocation needed.
+		 * @param[in]  max_iterations Max number of iterations to perform (default: -1, no limit)
+		 * @param[in]  not_find_value Value to use for vertices that have not been reached (default: -1)
 		 *
 		 * \parblock
 		 * \par Possible output values:
@@ -327,126 +324,85 @@ namespace grb {
 		 * 	-# parents: [0, nrows(A) - 1] for reached vertices, <tt>not_find_value</tt> for unreached vertices
 		 * \endparblock
 		 *
-		 * \warning Level type <tt>T</tt> must be a signed integer type.
+		 * \warning Parent type <tt>T</tt> must be a signed integer type.
 		 *
 		 * \note Values of the matrix <tt>A</tt> are ignored, hence it is recommended to use a pattern matrix.
 		 */
-		template< typename D = void, typename T = long >
+		template< 
+			typename D = void, 
+			typename T = long
+		>
 		RC bfs_parents( const Matrix< D > & A,
 			size_t root,
 			bool & explored_all,
 			T & max_level,
 			Vector< T > & parents,
+			Vector< T > & x,
+			Vector< T > & y,
+			const long max_iterations = -1L,
 			const T not_find_value = static_cast< T >( -1 ),
-			const std::enable_if< std::is_arithmetic< T >::value && std::is_signed< T >::value, void > * const = nullptr ) {
+			const std::enable_if< std::is_arithmetic< T >::value && std::is_signed<T>::value, void > * const = nullptr 
+		) {
 			RC rc = RC::SUCCESS;
 			const size_t nvertices = nrows( A );
 			utils::printSparseMatrix( A, "A" );
 
-			Vector< bool > x( nvertices ), y( nvertices );
+			assert( size( x ) == nvertices );
+			assert( size( y ) == nvertices );
+			assert( capacity( x ) >= 1 );
+			assert( capacity( y ) >= 0 );
+
+			rc = rc ? rc : setElement( x, root, root );
 			utils::printSparseVector( x, "x" );
 			utils::printSparseVector( y, "y" );
 
-			rc = rc ? rc : resize( parents, nvertices );
+			assert( size(parents) == nvertices );
+			assert( capacity(parents) >= nvertices );
 			rc = rc ? rc : set( parents, not_find_value );
 			rc = rc ? rc : setElement( parents, root, root );
 			utils::printSparseVector( parents, "parents" );
 
-			Vector< bool > not_visited( nvertices );
-			rc = rc ? rc : set( not_visited, true );
-			std::vector< size_t > to_visit_current_level, to_visit_next_level;
-			to_visit_next_level.reserve( nvertices );
-			to_visit_current_level.reserve( nvertices );
-			to_visit_current_level.push_back( root );
-			utils::printStdVector( to_visit_current_level, "to_visit_current_level" );
+			const Semiring< operators::min< T >, operators::add< T >, identities::infinity, identities::zero > semiring;
 
+			size_t max_iter = max_iterations < 0 ? nvertices : max_iterations;
 			max_level = 0;
-			for( size_t level = 1; level <= nvertices; level++ ) {
+			explored_all = false;
+			for( size_t level = 1; level <= max_iter; level++ ) {
+				max_level = level;
 				utils::debugPrint( "** Level " + std::to_string( level ) + ":\n" );
+				rc = rc ? rc : clear( y );
+				// utils::printSparseVector( x, "x - before indexing" );
+				rc = rc ? rc :
+						  eWiseLambda(
+							  [ &x ]( const size_t i ) {
+								  x[ i ] = i;
+							  },
+							  x );
+				utils::printSparseVector( x, "x - after indexing" );
 
-				bool discovered_one = false;
-				for( size_t visiting : to_visit_current_level ) {
-					if( not not_visited[ visiting ] )
-						continue;
+				rc = rc ? rc : vxm( y, x, A, semiring, Phase::RESIZE );
+				rc = rc ? rc : vxm( y, x, A, semiring, Phase::EXECUTE );
+				utils::printSparseVector( y, "y - after vxm" );
 
-					utils::debugPrint( "* Visiting " + std::to_string( visiting ) + "\n" );
-					rc = rc ? rc : setElement( not_visited, false, visiting );
-					utils::printSparseVector( not_visited, "not_visited" );
+				const Monoid< operators::max< T >, identities::negative_infinity > max_monoid;
+				rc = rc ? rc : foldl( parents, y, max_monoid, Phase::RESIZE );
+				rc = rc ? rc : foldl( parents, y, max_monoid, Phase::EXECUTE );
+				utils::printSparseVector( parents, "parents" );
 
-					// Explore from the current vertex only
-					rc = rc ? rc : setElement( x, true, visiting ); // Explore from the current vertex only
-					utils::printSparseVector( x, "x" );
-					rc = rc ? rc : clear( y );                      // Necessary as vxm is in-place
-					// Masking vxm to only explore non-explored vertices
-					const Semiring< operators::logical_or< bool >, operators::logical_and< bool >, identities::logical_false, identities::logical_true > bool_semiring;
-					rc = rc ? rc : vxm( y, not_visited, x, A, bool_semiring, Phase::RESIZE );
-					rc = rc ? rc : vxm( y, not_visited, x, A, bool_semiring, Phase::EXECUTE );
-					rc = rc ? rc : clear( x ); // Reset the current vertex to false
-					utils::printSparseVector( y, "y" );
+				const Monoid< operators::min< T >, identities::zero > all_assigned_monoid;
+				T min_parent = std::numeric_limits< T >::max();
+				rc = rc ? rc : foldl( min_parent, parents, all_assigned_monoid );
+				if( min_parent > not_find_value ) {
+					explored_all = true;
+					utils::debugPrint( "Explored " + std::to_string( max_level ) + " levels to discover all of the " + std::to_string( nvertices ) + " vertices.\n" );
+					break;
+				}			
 
-					// Assign the current level to the newly discovered vertices only
-					const Monoid< operators::max< T >, identities::negative_infinity > max_monoid;
-					rc = rc ? rc : foldl( parents, y, visiting, max_monoid, Phase::RESIZE );
-					rc = rc ? rc : foldl( parents, y, visiting, max_monoid, Phase::EXECUTE );
-					utils::printSparseVector( parents, "parents" );
-
-					// Add the newly discovered vertices to the stack
-					// Optimisation possible if an operator::index was available
-					for( std::pair< size_t, bool > pair : y ) {
-						if( pair.second && not_visited[ pair.first ] ) {
-							to_visit_next_level.push_back( pair.first );
-							discovered_one = true;
-						}
-					}
-					utils::printStdVector( to_visit_next_level, "to_visit_next_level" );
-				}
-
-				if(discovered_one) {
-					max_level++;
-				}
-
-				if( to_visit_next_level.empty() ) {
-					// If all vertices are discovered, stop
-					bool not_all_discovered = false;
-					rc = rc ? rc : foldl( not_all_discovered, not_visited, Monoid< operators::logical_or< bool >, identities::logical_false >() );
-					if( ! not_all_discovered ) { // If all vertices are discovered, stop
-						utils::debugPrint( "Explored " + std::to_string( level ) + " levels to discover all of the " + std::to_string( nvertices ) + " vertices.\n" );
-						explored_all = true;
-						break;
-					}
-					explored_all = false;
-				}
-
-				std::swap( to_visit_current_level, to_visit_next_level );
-				to_visit_next_level.clear();
+				std::swap( x, y );
 			}
-
-			// Maximum number of iteration passed, not every vertex has been discovered
-			utils::debugPrint( "A full exploration is not possible on this graph. "
-							   "Some vertices are not reachable from the given root: " +
-				std::to_string( root ) + "\n" );
+			
 
 			return rc;
-		}
-
-		template< typename D = void, typename T = long >
-		RC bfs( const AlgorithmBFS algorithm,
-			const Matrix< D > & A,
-			size_t root,
-			bool & explored_all,
-			T & max_level,
-			Vector< T > & values,
-			const T not_find_value = static_cast< T >( -1 ),
-			const std::enable_if< std::is_arithmetic< T >::value && std::is_signed< T >::value, void > * const = nullptr ) {
-			switch( algorithm ) {
-				case AlgorithmBFS::LEVELS:
-					return bfs_levels< D, T >( A, root, explored_all, max_level, values, not_find_value );
-				case AlgorithmBFS::PARENTS:
-					return bfs_parents< D, T >( A, root, explored_all, max_level, values, not_find_value );
-				default:
-					std::cerr << "Error: Unknown BFS algorithm" << std::endl;
-					return RC::ILLEGAL;
-			}
 		}
 
 	} // namespace algorithms
