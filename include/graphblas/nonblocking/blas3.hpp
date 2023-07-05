@@ -545,7 +545,7 @@ namespace grb {
 					for( size_t i = 0; i < m; ++i ) {
 
 						// we traverse C_mask to find column indices of nonzero elements
-						/*
+						
 						coors_mask.clear();				
 						for( auto k = C_mask_raw.col_start[ i ]; k < C_mask_raw.col_start[ i + 1 ]; ++k ) {						
 							const size_t k_col = C_mask_raw.row_index[ k ];
@@ -556,8 +556,7 @@ namespace grb {
 						coors_mask.packValues( nonzero_indices_mask, 0, nullptr,nullptr );
 
 						//sort of nonzero_indices_mask
-						std::sort(nonzero_indices_mask, nonzero_indices_mask + coors_mask.nonzeroes());
-						*/
+						std::sort(nonzero_indices_mask, nonzero_indices_mask + coors_mask.nonzeroes());						
 
 						// check column indices of nonzeros int current row i of C = AB
 						coors.clear();
@@ -571,17 +570,17 @@ namespace grb {
 								const size_t l_col = B_raw.row_index[ l ];
 
 								//search column indices that are common to the mask and to C
-								// use binary search on sorted nonzero_indices_mask. STL implementation																				
-								/*
+								// use binary search on sorted nonzero_indices_mask. STL implementation																												
 								if( std::binary_search( nonzero_indices_mask, nonzero_indices_mask + coors_mask.nonzeroes(), l_col, []( const int & a, const int & b ) { return a < b;}) ) {
 									coors.assign( l_col );
 								}
-								*/
-
+								
+								/*
 								if(i == l_col)																																
 								{
 									coors.assign( l_col );
 								}
+								*/
 							}						
 						}
 						for( size_t k = 0; k < coors.nonzeroes(); k++ ) {
@@ -629,8 +628,7 @@ namespace grb {
 					internal::getCoordinatesTiles( coorArr, coorBuf, valbuf, coordinates_id, C );
 					internal::Coordinates< reference > coors;
 					coors.set( static_cast< void * >( coorArr.data() ), false, static_cast< void * >( coorBuf.data() ), n );
-
-					/*
+					
 					// coordinates for mask
 					std::vector< char > coorArr_mask;
 					std::vector< char > coorBuf_mask;
@@ -638,13 +636,11 @@ namespace grb {
 					internal::getCoordinatesTiles( coorArr_mask, coorBuf_mask, valbuf_mask, coordinates_id, C_mask );
 					internal::Coordinates< reference > coors_mask;
 					coors_mask.set( static_cast< void * >( coorArr_mask.data() ), false, static_cast< void * >( coorBuf_mask.data() ), n );
-					*/
-
+					
 					size_t nnz_current_tile = 0;
 					
 					for( size_t i = lower_bound; i < upper_bound; ++i ) {
-
-						/*
+					
 						// we traverse C_mask to find column indices of nonzero elements
 						coors_mask.clear();				
 						for( auto k = C_mask_raw.col_start[ i ]; k < C_mask_raw.col_start[ i + 1 ]; ++k ) {						
@@ -656,8 +652,7 @@ namespace grb {
 						coors_mask.packValues( nonzero_indices_mask, 0, nullptr,nullptr );
 
 						//sort of nonzero_indices_mask
-						std::sort(nonzero_indices_mask, nonzero_indices_mask + coors_mask.nonzeroes());
-						*/
+						std::sort(nonzero_indices_mask, nonzero_indices_mask + coors_mask.nonzeroes());						
 
 						// check column indices of nonzeros int current row i of C = AB
 						coors.clear();
@@ -671,17 +666,17 @@ namespace grb {
 								const size_t l_col = B_raw.row_index[ l ];
 
 								//search column indices that are common to the mask and to C
-								// use binary search on sorted nonzero_indices_mask. STL implementation	
-								/*
+								// use binary search on sorted nonzero_indices_mask. STL implementation								
 								if( std::binary_search( nonzero_indices_mask, nonzero_indices_mask + coors_mask.nonzeroes(), l_col, []( const int & a, const int & b ) { return a < b;}) ) {
 									coors.assign( l_col );									
-								}
-								*/
-
+								}								
+						
+								/*
 								if(i == l_col)																																
 								{
 									coors.assign( l_col );
-								}																																
+								}
+								*/																																
 							}						
 						}
 						nnz_current_tile += coors.nonzeroes();
@@ -774,7 +769,7 @@ namespace grb {
 					internal::Coordinates< reference > coors;
 					coors.set( static_cast< void * >( coorArr.data() ), false, static_cast< void * >( coorBuf.data() ), n );
 
-					/*
+					
 					// coordinates for mask
 					std::vector< char > coorArr_mask;
 					std::vector< char > coorBuf_mask;
@@ -782,10 +777,10 @@ namespace grb {
 					internal::getCoordinatesTiles( coorArr_mask, coorBuf_mask, valbuf_mask, coordinates_id, C_mask );
 					internal::Coordinates< reference > coors_mask;
 					coors_mask.set( static_cast< void * >( coorArr_mask.data() ), false, static_cast< void * >( coorBuf_mask.data() ), n );
-					*/					
+									
 
 					for( size_t i = lower_bound; i < upper_bound; ++i ) {
-						/*
+						
 						// we traverse C_mask to find column indices of nonzero elements
 						coors_mask.clear();
 						for( auto k = C_mask_raw.col_start[ i ]; k < C_mask_raw.col_start[ i + 1 ]; ++k ) {
@@ -799,8 +794,7 @@ namespace grb {
 
 						// sort of nonzero_indices_mask
 						std::sort( nonzero_indices_mask, nonzero_indices_mask + coors_mask.nonzeroes() );
-						*/
-					
+											
 						coors.clear();
 						for( auto k = A_raw.col_start[ i ]; k < A_raw.col_start[ i + 1 ]; ++k ) {
 							const size_t k_col = A_raw.row_index[ k ];
@@ -820,10 +814,7 @@ namespace grb {
 		#endif
 								// search column indices that are common to the mask and to C
 								//  use binary search on sorted nonzero_indices_mask. STL implementation								
-
-
-								//if( std::binary_search( nonzero_indices_mask, nonzero_indices_mask + coors_mask.nonzeroes(), l_col, []( const int & a, const int & b ) { return a < b;}) )
-								if(i == l_col){
+								if( std::binary_search( nonzero_indices_mask, nonzero_indices_mask + coors_mask.nonzeroes(), l_col, []( const int & a, const int & b ) { return a < b;}) ){
 									if( !coors.assign( l_col ) ) {
 										valbuf[ l_col ] = monoid.template getIdentity< OutputType >();
 										(void) grb::apply( valbuf[ l_col ],
@@ -1014,25 +1005,7 @@ namespace grb {
 		
 					//once C holds enough capacity to store nzc, we modify the elements of the arrays CRS -> row_indices and col_start
 					// this basically consists of repeating the resize step
-					//std::cout << "(mxm) matrix ID = " << grb::getID( C ) << ", internal::getNonzeroCapacity (after resize mxm)= " << internal::getNonzeroCapacity( C ) << std::endl;
-
-/*					
-					// we perform computations in parallel
-					
-					auto & nnz_tiles_C = internal::getNonzerosTiles( C );
-					const size_t num_tiles = nnz_tiles_C.size();
-					const size_t tile_size = grb::internal::NONBLOCKING::manualFixedTileSize();
-					const size_t nthreads = grb::internal::NONBLOCKING::numThreads();
-					size_t lower_bound[num_tiles];
-					size_t upper_bound[num_tiles];
-
-#pragma omp parallel for schedule( dynamic ) num_threads( nthreads )
-					for( size_t tile_id = 0; tile_id < num_tiles; ++tile_id) {						
-						config::OMP::localRange( lower_bound[ tile_id ], upper_bound[ tile_id ], 0, grb::nrows( C ), tile_size, tile_id, num_tiles );
-						assert( lower_bound[ tile_id ] <= upper_bound[ tile_id ] );
-						std::cout << "tile_id = " << tile_id << ", lower_bound = " << lower_bound[ tile_id ] << std::endl;
-					}
-*/					
+					//std::cout << "(mxm) matrix ID = " << grb::getID( C ) << ", internal::getNonzeroCapacity (after resize mxm)= " << internal::getNonzeroCapacity( C ) << std::endl;					
 
 					for( size_t i = 0; i < m; ++i ) {
 						coors.clear();
@@ -1176,14 +1149,19 @@ namespace grb {
 
 					const unsigned int coordinates_id =
 						omp_get_thread_num() * config::CACHE_LINE_SIZE::value();										
-
+				
 					std::vector< char > coorArr;
 					std::vector< char > coorBuf;
 					std::vector< OutputType > valbuf;
+
 					internal::getCoordinatesTiles( coorArr, coorBuf, valbuf, coordinates_id, C );
 					internal::Coordinates< reference > coors;
-					coors.set( static_cast< void * >( coorArr.data() ), false, static_cast< void * >( coorBuf.data() ), n );					
+					coors.set( static_cast< void * >( coorArr.data() ), false, static_cast< void * >( coorBuf.data() ), n );
 
+					//char* coorArr_ptr;
+					//internal::getCoorArrThread( coordinates_id, coorArr_ptr, C );
+					//coors.set( coorArr_ptr , false, static_cast< void * >( coorBuf.data() ), n );
+				
 					size_t nnz_current_tile = 0;				
 
 					for( size_t i = lower_bound; i < upper_bound; ++i ) {											

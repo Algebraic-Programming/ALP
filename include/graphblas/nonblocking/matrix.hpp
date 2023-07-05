@@ -171,6 +171,16 @@ namespace grb {
 			valbuf = A.coordinates_tiles_column[coordinates_id].valbuf;
 		}
 
+		template< typename InputType, typename RIT, typename CIT, typename NIT >
+		void getCoorArrThread(
+			const size_t coordinates_id,
+			char*& coorArr,
+			const grb::Matrix< InputType, nonblocking, RIT, CIT, NIT > &A
+		) noexcept {		
+			std::vector<char>* coorArr_ptr = A.SPA_threads_column[coordinates_id].coorArr;
+			coorArr = coorArr_ptr->data();
+		}
+
 		template<
 			Descriptor descr,
 			bool input_dense, bool output_dense,
@@ -1131,6 +1141,12 @@ namespace grb {
 		) noexcept;
 
 		template< typename InputType, typename RIT, typename CIT, typename NIT >
+		friend void internal::getCoorArrThread( 
+			const size_t, 
+			char*&,
+			const grb::Matrix< InputType, nonblocking, RIT, CIT, NIT > & ) noexcept;
+
+		template< typename InputType, typename RIT, typename CIT, typename NIT >
 		friend uintptr_t getID(
 			const Matrix< InputType, nonblocking, RIT, CIT, NIT > &
 		);
@@ -1275,17 +1291,25 @@ namespace grb {
 
 			std::vector< size_t > prefix_sum_tiles;
 
-			size_t num_tiles;			
-
+			size_t num_tiles;
 			
-			struct COORDINATES_COL_WISE
-			{
+			struct COORDINATES_COL_WISE {
 				std::vector< D > valbuf;
 				std::vector< char > coorArr;
 				std::vector< char > coorBuf;
 			};
 
 			std::vector< COORDINATES_COL_WISE > coordinates_tiles_column;
+
+
+			struct SPA_COL_WISE
+			{
+				std::vector< D >* valbuf;
+				std::vector< char >* coorArr;
+				std::vector< char >* coorBuf;
+			};
+
+			std::vector< SPA_COL_WISE > SPA_threads_column;
 
 			// this is a flag to verify if the nnz_tiles vector has been modified. 
 			// this vector is filled in for blas3 opearations that modified the sparsity pattern
@@ -1594,9 +1618,9 @@ namespace grb {
 					std::vector< D > val( valbuf_elements );
 					std::vector< char > arr( coorArr_elements );
 					std::vector< char > buf( coorBuf_elements );
-					coordinates_tiles_column[ i ].valbuf = std::move( val );
-					coordinates_tiles_column[ i ].coorArr = std::move( arr );
-					coordinates_tiles_column[ i ].coorBuf = std::move( buf );
+					coordinates_tiles_column[ i ].valbuf =  val ;
+					coordinates_tiles_column[ i ].coorArr = arr ;
+					coordinates_tiles_column[ i ].coorBuf = buf ;
 				}
 		
 				is_nnz_tiles_written = false;
