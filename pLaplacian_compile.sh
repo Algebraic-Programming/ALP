@@ -82,7 +82,7 @@ fi
 echo "The compilation commands looks something like:"
 grbcxx --show -Iinclude/ -Itests/ -b reference_omp -O3 -DNDEBUG -funroll-loops -mtune=native -march=native tests/smoke/pLaplacian_multiway_launcher.cpp include/graphblas/algorithms/pLaplacian_spectral_partition.hpp -o pLaplacian_launcher_omp -lnuma ${EXTRA_FLAGS} -lropt -Wfatal-errors -larmadillo #-DDETERMINISTIC
 echo "Compiling valgrind version..."
-grbcxx  -Iinclude/ -Itests/ -b reference_omp -O0 -march=x86-64 -mtune=x86-64 -g tests/smoke/pLaplacian_multiway_launcher.cpp include/graphblas/algorithms/pLaplacian_spectral_partition.hpp -o pLaplacian_launcher_valgrind ${EXTRA_FLAGS} -lropt -Wfatal-errors -larmadillo #-DDETERMINISTIC
+grbcxx -Wall -Wextra -Iinclude/ -Itests/ -b reference_omp -O0 -march=native -mtune=native -g tests/smoke/pLaplacian_multiway_launcher.cpp include/graphblas/algorithms/pLaplacian_spectral_partition.hpp -o pLaplacian_launcher_valgrind ${EXTRA_FLAGS} -lropt -Wfatal-errors -larmadillo #-DDETERMINISTIC
 echo "Compiling parallel version..."
 grbcxx  -Iinclude/ -Itests/ -b reference_omp -O3 -DNDEBUG -funroll-loops -mtune=native -march=native tests/smoke/pLaplacian_multiway_launcher.cpp include/graphblas/algorithms/pLaplacian_spectral_partition.hpp -o pLaplacian_launcher_omp ${EXTRA_FLAGS} -lropt -Wfatal-errors -larmadillo #-DDETERMINISTIC
 echo "Compiling sequential version..."
