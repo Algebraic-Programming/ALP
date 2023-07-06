@@ -506,11 +506,15 @@ namespace grb {
 	 * - descriptors::no_casting: the first domain of
 	 * 	 	\a monoid must match \a InputType, the second domain of \a op
 	 * 		match \a IOType, the third domain must match \a IOType.
+	 * - descriptors::transpose_matrix: A^T will be considered 
+	 * 	 	instead of \a A (unmasked variant only).
 	 * - descriptors::transpose_left: A^T will be considered instead 
 	 * 	 	of \a A.
 	 * - descriptors::transpose_right: mask^T will be considered 
 	 * 	 	instead of \a mask.
-	 * - descriptors::invert_mask: Not supported yet.
+	 * - descriptors::structural: Any value stored in \a mask is considered
+	 * 		to be <tt>true</tt>.
+	 * - descriptors::add_identity: A+I will be considered instead of \a A.
 	 *
 	 * \note Invalid descriptors will be ignored.
 	 *

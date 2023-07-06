@@ -938,7 +938,7 @@ namespace grb {
 	namespace internal {
 
 		template<
-			Descriptor descr = descriptors::no_operation,
+			Descriptor descr,
 			class Monoid,
 			typename InputType, typename IOType,
 			typename RIT, typename CIT, typename NIT
@@ -1010,6 +1010,100 @@ namespace grb {
 		}
 
 		template<
+			Descriptor descr,
+			class Monoid,
+			typename InputType, typename IOType,
+			typename RIT, typename CIT, typename NIT
+		>
+		RC fold_add_identity_unmasked_generic(
+			IOType &x,
+			const Matrix< InputType, reference, RIT, CIT, NIT > &A,
+			const Monoid &monoid
+		) {
+			_DEBUG_PRINT( "In grb::internal::foldr_unmasked_generic( reference )\n" );
+			RC rc = SUCCESS;
+
+			if( grb::nnz( A ) == 0 ) {
+				_DEBUG_PRINT( "The input matrix is empty, nothing to compute\n" );
+				return rc;
+			}
+
+			if ( descr & descriptors::force_row_major && descr & descriptors::transpose_left ) {
+				_DEBUG_PRINT( "Masked fold with force_row_major and transpose_left is not supported\n" );
+				return RC::ILLEGAL;
+			}
+			if ( descr & descriptors::force_row_major && descr & descriptors::transpose_matrix ) {
+				_DEBUG_PRINT( "Masked fold with force_row_major and transpose_matrix is not supported\n" );
+				return RC::ILLEGAL;
+			}
+
+			const auto &A_raw = (descr & grb::descriptors::transpose_matrix || descr & grb::descriptors::transpose_left ) ?
+				internal::getCCS( A ) : internal::getCRS( A );
+			const size_t m = (descr & grb::descriptors::transpose_matrix || descr & grb::descriptors::transpose_left ) ?
+				ncols( A ) : nrows( A );
+			const size_t n = (descr & grb::descriptors::transpose_matrix || descr & grb::descriptors::transpose_left ) ?
+				nrows( A ) : ncols( A );
+
+			const auto& op = monoid.getOperator();
+			const auto& identity = monoid.template getIdentity< typename Monoid::D3 >();
+			RC local_rc = rc;
+			auto local_x = monoid.template getIdentity< typename Monoid::D3 >();
+
+#ifdef _H_GRB_REFERENCE_OMP_BLAS3
+	#pragma omp parallel default(none) shared(A_raw, x, rc, std::cout) firstprivate(local_x, local_rc, m, n, identity, op)
+#endif
+			{
+				size_t start = 0;
+				size_t end = m;
+#ifdef _H_GRB_REFERENCE_OMP_BLAS3
+				config::OMP::localRange( start, end, 0, m );
+#endif
+				auto k = A_raw.col_start[ start ];
+				for( auto i = start; i < end; ++i ) {
+					bool identity_element_computed = false;
+					for(; k < A_raw.col_start[ i + 1 ]; k++ ) {
+						const auto j = A_raw.row_index[ k ];
+						
+						// Check if the element in the main diagonal has been computed for this row
+						identity_element_computed |= ( ( descr & descriptors::add_identity ) && i == j );
+
+						// descriptors::add_identity logic
+						const InputType identity_increment = ( i == j ) ? static_cast<InputType>(1) : static_cast<InputType>(0);
+						_DEBUG_PRINT( "identity_increment = " + std::to_string( identity_increment ) + "\n" );
+
+						// Get A value
+						const InputType a_val = A_raw.getValue( k, identity );
+						_DEBUG_PRINT( "A.values[ " + std::to_string( i ) + ";" + std::to_string( j ) + " ] = " + std::to_string( a_val ) + "\n" );
+
+						// Compute the fold for this coordinate
+						const auto local_x_before = local_x;
+						local_rc = local_rc ? local_rc : grb::apply< descr >( local_x, local_x_before, a_val + identity_increment, op );
+						_DEBUG_PRINT( "Computing: local_x = op(" + std::to_string( a_val + identity_increment ) + ", " + std::to_string( local_x_before ) + ") = " + std::to_string( local_x ) + "\n" );
+					}
+					// If the element on the main diagonal was not present in the row, compute it manually
+					if( not identity_element_computed && i < n && i < m ) {
+						const auto local_x_before = local_x;
+						local_rc = local_rc ? local_rc : grb::apply< descr >( local_x, local_x_before, static_cast<InputType>(1), op );
+						_DEBUG_PRINT( "Computing identity: local_x = op(" + std::to_string( 1 ) + ", " + std::to_string( local_x_before ) + ") = " + std::to_string( local_x ) + "\n" );
+					}
+				}
+
+
+#ifdef _H_GRB_REFERENCE_OMP_BLAS3
+	#pragma omp critical
+#endif
+				{ // Reduction with the global result (critical section if OpenMP)
+					auto x_before = x;
+					local_rc = local_rc ? local_rc : grb::apply< descr >( x, x_before, local_x, op );
+					_DEBUG_PRINT( "Computing x: op(" + std::to_string( local_x ) + ", " + std::to_string( x_before ) + ") = " + std::to_string( x ) + "\n" );
+					rc = rc ? rc : local_rc;
+				}
+			}
+
+			return rc;
+		}
+
+		template<
 			Descriptor descr = descriptors::no_operation,
 			class Monoid,
 			typename InputType, typename IOType, typename MaskType,
@@ -1024,6 +1118,8 @@ namespace grb {
 		) {
 			_DEBUG_PRINT( "In grb::internal::foldr_masked_generic( reference )\n" );
 			RC rc = SUCCESS;
+
+			constexpr bool ignore_mask_values = descr & descriptors::structural;
 
 			if( grb::nnz( mask ) == 0 || grb::nnz( A ) == 0 ) {
 				_DEBUG_PRINT( "The mask and/or the input matrix are empty, nothing to compute\n" );
@@ -1065,7 +1161,7 @@ namespace grb {
 			auto local_x = identity;
 
 #ifdef _H_GRB_REFERENCE_OMP_BLAS3
-	#pragma omp parallel default(none) shared(A_raw, mask_raw, x, rc, std::cout) firstprivate(local_x, local_rc, m, op, identity)
+	#pragma omp parallel default(none) shared(A_raw, mask_raw, x, rc, std::cout) firstprivate(local_x, local_rc, m, n, op, identity)
 #endif
 			{
 				size_t start_row = 0;
@@ -1075,11 +1171,12 @@ namespace grb {
 #endif
 				for( auto i = start_row; i < end_row; ++i ) {
 					auto mask_k = mask_raw.col_start[ i ];
+					bool identity_element_computed = false;
 					for( auto k = A_raw.col_start[ i ]; k < A_raw.col_start[ i + 1 ]; ++k ) {
-						auto k_col = A_raw.row_index[ k ];
+						const auto j = A_raw.row_index[ k ];
 
 						// Increment the mask pointer until we find the right column, or a lower column (since the storage withing a row is sorted in a descending order)
-						while( mask_k < mask_raw.col_start[ i + 1 ] && mask_raw.row_index[ mask_k ] > k_col  ) {
+						while( mask_k < mask_raw.col_start[ i + 1 ] && mask_raw.row_index[ mask_k ] > j  ) {
 							_DEBUG_PRINT( "NEquals masked coordinate: ( " + std::to_string( i ) + ";" + std::to_string( mask_raw.row_index[ mask_k ] ) + " )\n" );
 							mask_k++;
 						}
@@ -1088,19 +1185,35 @@ namespace grb {
 							break;
 						}
 
-						if( mask_raw.row_index[ mask_k ] < k_col || not MaskHasValue< MaskType >( mask_raw, mask_k ).value ) {
+						if( mask_raw.row_index[ mask_k ] < j ) {
+							_DEBUG_PRINT( "Skip masked coordinate at: ( " + std::to_string( i ) + ";" + std::to_string( mask_raw.row_index[ mask_k ] ) + " )\n" );
+							continue;
+						}
+
+						if( not ignore_mask_values && not MaskHasValue< MaskType >( mask_raw, mask_k ).value ) {
 							_DEBUG_PRINT( "Skip masked value at: ( " + std::to_string( i ) + ";" + std::to_string( mask_raw.row_index[ mask_k ] ) + " )\n" );
 							continue;
 						}
 
+						identity_element_computed |= ( ( descr & descriptors::add_identity ) && i == j );
+
+						// descriptors::add_identity logic
+						const InputType identity_increment = (descr & descriptors::add_identity) && i == j ? static_cast<InputType>(1) : static_cast<InputType>(0);
+						_DEBUG_PRINT( "identity_increment = " + std::to_string( identity_increment ) + "\n" );
+
 						// Get A value
 						const InputType a_val = A_raw.getValue( k, identity );
-						_DEBUG_PRINT( "A( " + std::to_string( i ) + ";" + std::to_string( k_col ) + " ) = " + std::to_string( a_val ) + "\n" );
+						_DEBUG_PRINT( "A( " + std::to_string( i ) + ";" + std::to_string( j ) + " ) = " + std::to_string( a_val ) + "\n" );
 
 						// Compute the fold for this coordinate
 						auto local_x_before = local_x;
-						local_rc = local_rc ? local_rc : grb::apply< descr >( local_x, local_x_before, a_val, op );
-						_DEBUG_PRINT( "Computing: local_x = op(" + std::to_string( a_val ) + ", " + std::to_string( local_x_before ) + ") = " + std::to_string( local_x ) + "\n" );
+						local_rc = local_rc ? local_rc : grb::apply< descr >( local_x, local_x_before, a_val + identity_increment, op );
+						_DEBUG_PRINT( "Computing: local_x = op(" + std::to_string( a_val + identity_increment ) + ", " + std::to_string( local_x_before ) + ") = " + std::to_string( local_x ) + "\n" );
+					}
+					if( (descr & descriptors::add_identity) && not identity_element_computed && i < n && i < m ) {
+						const auto local_x_before = local_x;
+						local_rc = local_rc ? local_rc : grb::apply< descr >( local_x, local_x_before, static_cast<InputType>(1), op );
+						_DEBUG_PRINT( "Computing identity: local_x = op(" + std::to_string( 1 ) + ", " + std::to_string( local_x_before ) + ") = " + std::to_string( local_x ) + "\n" );
 					}
 				}
 
@@ -1620,6 +1733,12 @@ namespace grb {
 		std::cout << "In grb::foldr( reference, matrix, monoid )\n";
 #endif
 
+		if( descr & descriptors::add_identity ) {
+			return internal::fold_add_identity_unmasked_generic< descr, Monoid >(
+				x, A, monoid
+			);
+		}
+
 		return internal::fold_unmasked_generic< descr, Monoid >(
 			x, A, monoid
 		);
@@ -1719,7 +1838,13 @@ namespace grb {
 
 #ifdef _DEBUG
 		std::cout << "In grb::foldl( reference, matrix, monoid )\n";
-#endif
+#endif	
+
+		if( descr & descriptors::add_identity ) {
+			return internal::fold_add_identity_unmasked_generic< descr, Monoid >(
+				x, A, monoid
+			);
+		}
 
 		return internal::fold_unmasked_generic< descr, Monoid >(
 			x, A, monoid

@@ -86,7 +86,11 @@ void printSparseMatrix( const grb::Matrix< D > & mat, const std::string & name =
 	printSparseMatrixIterator( grb::nrows( mat ), grb::ncols( mat ), mat.cbegin(), mat.cend(), name, os );
 }
 
-template< typename T, typename V, typename M, class Monoid >
+
+template< 
+	Descriptor descr = descriptors::no_operation,
+	typename T, typename V, typename M, class Monoid 
+>
 RC foldl_test( const char * test_label,
 	const char * test_description,
 	const grb::Matrix< V > & A,
@@ -105,7 +109,7 @@ RC foldl_test( const char * test_label,
 		auto start_chrono = std::chrono::high_resolution_clock::now();
 		for( size_t _ = 0; _ < ITERATIONS; _++ ) {
 			value = initial;
-			foldl( value, A, monoid );
+			foldl<descr>( value, A, monoid );
 		}
 		auto end_chrono = std::chrono::high_resolution_clock::now();
 		auto duration = std::chrono::duration_cast< std::chrono::nanoseconds >( end_chrono - start_chrono ) / ITERATIONS;
@@ -130,7 +134,7 @@ RC foldl_test( const char * test_label,
 		auto start_chrono = std::chrono::high_resolution_clock::now();
 		for( size_t _ = 0; _ < ITERATIONS; _++ ) {
 			value = initial;
-			foldl( value, A, mask, monoid );
+			foldl<descr>( value, A, mask, monoid );
 		}
 		auto end_chrono = std::chrono::high_resolution_clock::now();
 		auto duration = std::chrono::duration_cast< std::chrono::nanoseconds >( end_chrono - start_chrono ) / ITERATIONS;
@@ -153,7 +157,11 @@ RC foldl_test( const char * test_label,
 	return rc;
 }
 
-template< typename T, typename V, typename M, class Monoid >
+
+template< 
+	Descriptor descr = descriptors::no_operation,
+	typename T, typename V, typename M, class Monoid 
+>
 RC foldr_test( const char * test_label,
 	const char * test_description,
 	const grb::Matrix< V > & A,
@@ -172,7 +180,7 @@ RC foldr_test( const char * test_label,
 		auto start_chrono = std::chrono::high_resolution_clock::now();
 		for( size_t _ = 0; _ < ITERATIONS; _++ ) {
 			value = initial;
-			foldr( value, A, monoid );
+			foldr<descr>( value, A, monoid );
 		}
 		auto end_chrono = std::chrono::high_resolution_clock::now();
 		auto duration = std::chrono::duration_cast< std::chrono::nanoseconds >( end_chrono - start_chrono ) / ITERATIONS;
@@ -197,7 +205,7 @@ RC foldr_test( const char * test_label,
 		auto start_chrono = std::chrono::high_resolution_clock::now();
 		for( size_t _ = 0; _ < ITERATIONS; _++ ) {
 			value = initial;
-			foldr( value, A, mask, monoid );
+			foldr<descr>( value, A, mask, monoid );
 		}
 		auto end_chrono = std::chrono::high_resolution_clock::now();
 		auto duration = std::chrono::duration_cast< std::chrono::nanoseconds >( end_chrono - start_chrono ) / ITERATIONS;
@@ -220,7 +228,10 @@ RC foldr_test( const char * test_label,
 	return rc;
 }
 
-template< typename T, typename V, typename M, class Monoid >
+template< 
+	Descriptor descr = descriptors::no_operation,
+	typename T, typename V, typename M, class Monoid 
+>
 RC foldLR_test( const char * test_label,
 	const char * test_description,
 	const grb::Matrix< V > & A,
@@ -230,8 +241,8 @@ RC foldLR_test( const char * test_label,
 	const Monoid & monoid,
 	bool skip_masked = false,
 	bool skip_unmasked = false ) {
-	RC rc = foldl_test( test_label, test_description, A, mask, initial, expected, monoid, skip_masked, skip_unmasked );
-	return rc ? rc : foldr_test( test_label, test_description, A, mask, initial, expected, monoid, skip_masked, skip_unmasked );
+	RC rc = foldl_test<descr>( test_label, test_description, A, mask, initial, expected, monoid, skip_masked, skip_unmasked );
+	return rc ? rc : foldr_test<descr>( test_label, test_description, A, mask, initial, expected, monoid, skip_masked, skip_unmasked );
 }
 
 template< typename T, typename M >
@@ -486,6 +497,24 @@ void grb_program( const input< T, M > & in, grb::RC & rc ) {
 		vals[ previous_idx ] = 1;
 		buildMatrixUnique( dense_mask, rows.data(), cols.data(), vals.data(), vals.size(), SEQUENTIAL );
 		rc = foldLR_test( "15", "Reduction with a dense int mask, matching only the last nz.", I, dense_mask, (NzType)0, (NzType)1, Monoid< operators::add< NzType >, identities::zero >(), false, true );
+		if( rc )
+			return;
+	}
+
+	/**     Test case 16:
+	 * Reduction with a dense void mask, with the descriptors::add_identity.
+	 * * Initial value is 0
+	 * * Expected result: 2*n
+	 */
+	{
+		Matrix< void > dense_mask( grb::nrows( I ), grb::ncols( I ), grb::nrows( I ) * grb::ncols( I ) );
+		std::vector< size_t > rows( grb::nrows( I ) * grb::ncols( I ) ), cols( grb::nrows( I ) * grb::ncols( I ) );
+		for( size_t x = 0; x < grb::nrows( I ); x++ ) {
+			std::fill( rows.begin() + x * grb::ncols( I ), rows.begin() + ( x + 1 ) * grb::ncols( I ), x );
+			std::iota( cols.begin() + x * grb::ncols( I ), cols.begin() + ( x + 1 ) * grb::ncols( I ), 0 );
+		}
+		buildMatrixUnique( dense_mask, rows.data(), cols.data(), rows.size(), SEQUENTIAL );
+		rc = foldLR_test<descriptors::add_identity>( "16", "Reduction with a dense void mask, with the descriptors::add_identity.", I, dense_mask, (NzType)0, (NzType)n + std::min( nrows( I ), ncols( I ) ), Monoid< operators::add< NzType >, identities::zero >(), false, false );
 		if( rc )
 			return;
 	}
