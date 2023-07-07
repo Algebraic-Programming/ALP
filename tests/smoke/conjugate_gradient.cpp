@@ -86,13 +86,12 @@ void grbProgram( const struct input &data_in, struct output &out ) {
 
 	// create local parser
 	grb::utils::MatrixFileReader< ScalarType,
-		std::conditional<
-			(
-				sizeof( grb::config::RowIndexType ) > sizeof( grb::config::ColIndexType )
-			),
-		grb::config::RowIndexType,
-		grb::config::ColIndexType >::type
-	> parser( data_in.filename, data_in.direct );
+			std::conditional<
+				(sizeof( grb::config::RowIndexType ) > sizeof( grb::config::ColIndexType )),
+				grb::config::RowIndexType,
+				grb::config::ColIndexType
+			>::type
+		> parser( data_in.filename, data_in.direct );
 	assert( parser.m() == parser.n() );
 	const size_t n = parser.n();
 	out.times.io = timer.time();
@@ -193,9 +192,7 @@ void grbProgram( const struct input &data_in, struct output &out ) {
 			}
 		}
 		const double time_taken = timer.time();
-		if( rc == SUCCESS ) {
-			out.times.useful = time_taken / static_cast< double >( out.rep );
-		}
+		out.times.useful = time_taken / static_cast< double >( out.rep );
 		// print timing at root process
 		if( grb::spmd<>::pid() == 0 ) {
 			std::cout << "Time taken for a " << out.rep << " "
