@@ -141,7 +141,7 @@ void grbProgram( const struct input & data_in, struct output & out ) {
 	// Load the arma-eigenvecs from a txt file (Debug file)
 	// std::ifstream file(data_in.eigfile);
 	// arma::Mat<double> V = load_mat<double>(file, "");
-	// file.close(); 
+	// file.close();
 	// V.load(data_in.eigfile, csv_ascii);
 	// std::cout << data_in.eigfile << std::endl;
 	// V.brief_print("EigVecs: ");
