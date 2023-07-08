@@ -622,6 +622,7 @@ namespace grb {
 					const unsigned int coordinates_id =
 						omp_get_thread_num() * config::CACHE_LINE_SIZE::value();
 
+					/*
 					std::vector< char > coorArr;
 					std::vector< char > coorBuf;
 					std::vector< OutputType > valbuf;
@@ -636,7 +637,25 @@ namespace grb {
 					internal::getCoordinatesTiles( coorArr_mask, coorBuf_mask, valbuf_mask, coordinates_id, C_mask );
 					internal::Coordinates< reference > coors_mask;
 					coors_mask.set( static_cast< void * >( coorArr_mask.data() ), false, static_cast< void * >( coorBuf_mask.data() ), n );
+					*/
 					
+					std::vector< char >* ptr_coorArr;
+					std::vector< char >* ptr_coorBuf;
+					std::vector< OutputType >* ptr_valbuf;
+
+					internal::getThreadsBuffers( ptr_coorArr, ptr_coorBuf, ptr_valbuf, coordinates_id, C );
+					internal::Coordinates< reference > coors;
+					coors.set( static_cast< void * >( ptr_coorArr->data() ), false, static_cast< void * > ( ptr_coorBuf->data() ), n );	
+
+					// coordinates for mask
+					std::vector< char >* ptr_coorArr_mask;
+					std::vector< char >* ptr_coorBuf_mask;
+					std::vector< OutputType >* ptr_valbuf_mask;
+
+					internal::getThreadsBuffers( ptr_coorArr_mask, ptr_coorBuf_mask, ptr_valbuf_mask, coordinates_id, C_mask );
+					internal::Coordinates< reference > coors_mask;
+					coors_mask.set( static_cast< void * >( ptr_coorArr_mask->data() ), false, static_cast< void * > ( ptr_coorBuf->data() ), n );
+													
 					size_t nnz_current_tile = 0;
 					
 					for( size_t i = lower_bound; i < upper_bound; ++i ) {
@@ -761,14 +780,15 @@ namespace grb {
 					
 					//const size_t coordinates_id = grb::config::OMP::current_thread_ID();
 					const unsigned int coordinates_id =
-						omp_get_thread_num() * config::CACHE_LINE_SIZE::value();			
+						omp_get_thread_num() * config::CACHE_LINE_SIZE::value();		
+					
+					/*
 					std::vector< char > coorArr;
 					std::vector< char > coorBuf;
 					std::vector< OutputType > valbuf;
 					internal::getCoordinatesTiles( coorArr, coorBuf, valbuf, coordinates_id, C );
 					internal::Coordinates< reference > coors;
 					coors.set( static_cast< void * >( coorArr.data() ), false, static_cast< void * >( coorBuf.data() ), n );
-
 					
 					// coordinates for mask
 					std::vector< char > coorArr_mask;
@@ -777,7 +797,25 @@ namespace grb {
 					internal::getCoordinatesTiles( coorArr_mask, coorBuf_mask, valbuf_mask, coordinates_id, C_mask );
 					internal::Coordinates< reference > coors_mask;
 					coors_mask.set( static_cast< void * >( coorArr_mask.data() ), false, static_cast< void * >( coorBuf_mask.data() ), n );
-									
+					*/	
+
+					std::vector< char >* ptr_coorArr;
+					std::vector< char >* ptr_coorBuf;
+					std::vector< OutputType >* ptr_valbuf;
+
+					internal::getThreadsBuffers( ptr_coorArr, ptr_coorBuf, ptr_valbuf, coordinates_id, C );
+					internal::Coordinates< reference > coors;
+					coors.set( static_cast< void * >( ptr_coorArr->data() ), false, static_cast< void * > ( ptr_coorBuf->data() ), n );
+					OutputType * valbuf = ptr_valbuf->data();
+
+					// coordinates for mask
+					std::vector< char >* ptr_coorArr_mask;
+					std::vector< char >* ptr_coorBuf_mask;
+					std::vector< OutputType >* ptr_valbuf_mask;
+
+					internal::getThreadsBuffers( ptr_coorArr_mask, ptr_coorBuf_mask, ptr_valbuf_mask, coordinates_id, C_mask );
+					internal::Coordinates< reference > coors_mask;
+					coors_mask.set( static_cast< void * >( ptr_coorArr_mask->data() ), false, static_cast< void * > ( ptr_coorBuf->data() ), n );								
 
 					for( size_t i = lower_bound; i < upper_bound; ++i ) {
 						
@@ -1084,57 +1122,8 @@ namespace grb {
 
 					// we retrieve information about the tiles
 					const size_t tile_size = grb::internal::NONBLOCKING::manualFixedTileSize();
-					const size_t tile_id = lower_bound / tile_size;
-
-					/*
-					#pragma omp critical
-					{					
-						 {
-							std::cout << "matrix ID = " << grb::getID( C ) << std::endl;
-							std::cout << "IN func_count_nonzeros " << std::endl;
-							std::cout << ", size of nnz_tiles = " << nnz_tiles_C.size();
-							std::cout << ", thread id = " << omp_get_thread_num() << ", TILE ID= " << tile_id;							
-							std::cout << std::endl;
-							
-							std::cout << "row pointers " << std::endl;
-							for( size_t i = 0; i < grb::nrows( C ) + 1; i++ ) {
-							    std::cout << C_raw.col_start[ i ] << ",";
-							}
-							std::cout << std::endl;
-
-							std::cout << "col indices" << std::endl;
-							for( size_t i = 0; i < internal::getNonzeroCapacity( C ); i++ ) {
-							    std::cout << C_raw.row_index[ i ] << ",";
-							}
-							std::cout << std::endl;
-
-							std::cout << "values " << std::endl;
-							for( size_t i = 0; i < internal::getNonzeroCapacity( C ); i++ ) {
-							    std::cout << C_raw.values[ i ] << ",";
-							}
-							std::cout << std::endl;
-							
-						}
-						// int thread_id = omp_get_thread_num();
-						//std::cout << "matrix ID = " << grb::getID( C );
-						//std::cout << ", TILE ID= " << tile_id << ", [" << lower_bound << ", " << upper_bound << "]" << ", nnz local = " << nnz_current_tile;
-						//std::cout << std::endl;
-					}	
-					*/				
-
-					/*
-					// we retrive the coordinates that are already store in matrices
-					const size_t num_threads = omp_get_num_threads();
-					const size_t num_tiles = nnz_tiles_C.size();
-					const size_t coordinates_id = ( num_threads < num_tiles ) ? omp_get_thread_num() : tile_id;
-					std::vector< char > coorArr;
-					std::vector< char > coorBuf;
-					std::vector< OutputType > valbuf;
-					internal::getCoordinatesTiles( coorArr, coorBuf, valbuf, coordinates_id, C );
-					internal::Coordinates< reference > coors;
-					coors.set( static_cast< void * >( coorArr.data() ), false, static_cast< void * >( coorBuf.data() ), n );
-					size_t nnz_current_tile = 0;
-					*/
+					const size_t tile_id = lower_bound / tile_size;				
+					
 					
 					/*
 					// THIS IMPLEMENTATION OF COORS WORKS BUT ALLOCATES MEMORY AT RUN TIME
@@ -1149,7 +1138,9 @@ namespace grb {
 
 					const unsigned int coordinates_id =
 						omp_get_thread_num() * config::CACHE_LINE_SIZE::value();										
-				
+
+					/*
+					// this allocates memory dynamically
 					std::vector< char > coorArr;
 					std::vector< char > coorBuf;
 					std::vector< OutputType > valbuf;
@@ -1157,10 +1148,25 @@ namespace grb {
 					internal::getCoordinatesTiles( coorArr, coorBuf, valbuf, coordinates_id, C );
 					internal::Coordinates< reference > coors;
 					coors.set( static_cast< void * >( coorArr.data() ), false, static_cast< void * >( coorBuf.data() ), n );
+					*/
+					
+					std::vector< char >* ptr_coorArr;
+					std::vector< char >* ptr_coorBuf;
+					std::vector< OutputType >* ptr_valbuf;
 
-					//char* coorArr_ptr;
-					//internal::getCoorArrThread( coordinates_id, coorArr_ptr, C );
-					//coors.set( coorArr_ptr , false, static_cast< void * >( coorBuf.data() ), n );
+					internal::getThreadsBuffers( ptr_coorArr, ptr_coorBuf, ptr_valbuf, coordinates_id, C );
+					internal::Coordinates< reference > coors;
+					coors.set( static_cast< void * >( ptr_coorArr->data() ), false, static_cast< void * > ( ptr_coorBuf->data() ), n );					
+
+					/*
+					// using the SPA from memory allocated using NUMA
+					char * arr = nullptr;
+					char * buf = nullptr;
+					OutputType * valbuf = nullptr;
+					internal::getThreadsBuffers( arr, buf, valbuf, coordinates_id, C );
+					internal::Coordinates< reference > coors;
+					coors.set( arr, false, valbuf, n );
+					*/
 				
 					size_t nnz_current_tile = 0;				
 
@@ -1170,11 +1176,10 @@ namespace grb {
 							const size_t k_col = A_raw.row_index[ k ];
 							for( auto l = B_raw.col_start[ k_col ]; l < B_raw.col_start[ k_col + 1 ]; ++l ) {
 								const size_t l_col = B_raw.row_index[ l ];
-								if( ! coors.assign( l_col ) ) {
-									(void)++nnz_current_tile;									
-								}
+								coors.assign( l_col );
 							}
-						}						
+						}
+						nnz_current_tile += coors.nonzeroes();													
 					}
 
 					// assign corresponding element tile_id of nnz_tiles_C					
@@ -1196,7 +1201,7 @@ namespace grb {
 						std::cout << val << ", ";
 					}
 					std::cout << std::endl;
-					*/
+					*/					
 
 					prefix_sum_tiles_C[ 0 ] = nnz_tiles_C[ 0 ];
 					// TODO: parallel prefix sum
@@ -1215,61 +1220,8 @@ namespace grb {
 					internal::setStatusPrefixTiles( C, true );
 
 					//std::cout << "internal::setCurrentNonzeroes(...), total_nnz = " << total_nnz << std::endl;
-
-					/*
-					// update CRS format of C. By this point, the prefix sum has been fully computed
-					const size_t n = grb::ncols( C );
-					// we retrieve information about the tiles
-					// TODO: analytic model for tile size
-					const size_t tile_size = grb::internal::NONBLOCKING::manualFixedTileSize();
-					const size_t tile_id = lower_bound / tile_size;
-
-					// we retrive the coordinates that are already store in matrices
-					const size_t num_threads = omp_get_num_threads();
-					const size_t num_tiles = nnz_tiles_C.size();
-					const size_t coordinates_id = ( num_threads < num_tiles ) ? omp_get_thread_num() : tile_id;
-					std::vector< char > coorArr;
-					std::vector< char > coorBuf;
-					std::vector< OutputType > valbuf;
-					internal::getCoordinatesTiles( coorArr, coorBuf, valbuf, coordinates_id, C );
-					internal::Coordinates< reference > coors;
-					coors.set( static_cast< void * >( coorArr.data() ), false, static_cast< void * >( coorBuf.data() ), n );
-
-					size_t previous_nnz;
-					// special case for first tile
-					if( 0 == tile_id ) {
-						previous_nnz = 0;
-					} else {
-						previous_nnz = prefix_sum_tiles_C[ tile_id - 1 ];
-					}
-
-					size_t nnz_local = previous_nnz;
-
-					for( size_t i = lower_bound; i < upper_bound; ++i ) {
-						coors.clear();
-						for( auto k = A_raw.col_start[ i ]; k < A_raw.col_start[ i + 1 ]; ++k ) {
-							const size_t k_col = A_raw.row_index[ k ];
-							for( auto l = B_raw.col_start[ k_col ]; l < B_raw.col_start[ k_col + 1 ]; ++l ) {
-								const size_t l_col = B_raw.row_index[ l ];
-								if( ! coors.assign( l_col ) ) {
-									// std::cout << "element assigned" << std::endl;
-								}
-							}
-						}
-
-						for( size_t k = 0; k < coors.nonzeroes(); k++ ) {
-							const size_t j = coors.index( k );
-							// update CRS
-							C_raw.row_index[ nnz_local ] = j;
-							// update count
-							(void)++nnz_local;
-						}
-						C_raw.col_start[ i + 1 ] = nnz_local;
-					}
-					*/
 				
 					/*
-
 					if( tile_id == 0)
 					{
 					    std::cout << "values of matrix after prefix sum MXM" << std::endl;
@@ -1338,30 +1290,20 @@ namespace grb {
 #ifndef NDEBUG
 					const size_t nnz_local_old = current_nnz - previous_nnz;
 #endif
-					size_t nnz_local = previous_nnz;
-
-					/*
-					// we retrive the coordinates that are already store in matrices
-					const size_t num_threads = omp_get_num_threads();
-					const size_t num_tiles = nnz_tiles_C.size();
-					const size_t coordinates_id = ( num_threads < num_tiles ) ? omp_get_thread_num() : tile_id;
-					std::vector< char > coorArr;
-					std::vector< char > coorBuf;
-					std::vector< OutputType > valbuf;
-					internal::getCoordinatesTiles( coorArr, coorBuf, valbuf, coordinates_id, C );
-					internal::Coordinates< reference > coors;
-					coors.set( static_cast< void * >( coorArr.data() ), false, static_cast< void * >( coorBuf.data() ), n );
-					*/
+					size_t nnz_local = previous_nnz;					
 					
 					//const size_t coordinates_id = grb::config::OMP::current_thread_ID();
 					const unsigned int coordinates_id =
-						omp_get_thread_num() * config::CACHE_LINE_SIZE::value();
-					std::vector< char > coorArr;
-					std::vector< char > coorBuf;
-					std::vector< OutputType > valbuf;
-					internal::getCoordinatesTiles( coorArr, coorBuf, valbuf, coordinates_id, C );
+						omp_get_thread_num() * config::CACHE_LINE_SIZE::value();					
+
+					std::vector< char >* ptr_coorArr;
+					std::vector< char >* ptr_coorBuf;
+					std::vector< OutputType >* ptr_valbuf;
+
+					internal::getThreadsBuffers( ptr_coorArr, ptr_coorBuf, ptr_valbuf, coordinates_id, C );
 					internal::Coordinates< reference > coors;
-					coors.set( static_cast< void * >( coorArr.data() ), false, static_cast< void * >( coorBuf.data() ), n );
+					coors.set( static_cast< void * >( ptr_coorArr->data() ), false, static_cast< void * > ( ptr_coorBuf->data() ), n );
+					OutputType * valbuf = ptr_valbuf->data();
 
 					/*
 					// THIS IMPLEMENTATION OF COORS WORKS BUT ALLOCATES MEMORY AT RUN TIME

@@ -161,6 +161,18 @@ namespace grb {
 		}
 
 		template< typename InputType, typename RIT, typename CIT, typename NIT >
+		void getThreadsBuffers(
+			std::vector< char > * &coorArr, std::vector< char > * &coorBuf, std::vector< InputType > * &valbuf,
+			const size_t coordinates_id,
+			const grb::Matrix< InputType, nonblocking, RIT, CIT, NIT > &A
+		) noexcept {
+			assert( coordinates_id < grb::internal::NONBLOCKING::numThreads() );			
+			coorArr =  A.SPA_threads_column[ coordinates_id ].coorArr_thread ;
+			coorBuf = A.SPA_threads_column[ coordinates_id ].coorBuf_thread ;
+			valbuf = A.SPA_threads_column[ coordinates_id ].valbuf_thread ;
+		}
+
+		template< typename InputType, typename RIT, typename CIT, typename NIT >
 		void getCoordinatesTiles(
 			std::vector< char >& coorArr, std::vector< char >& coorBuf, std::vector< InputType >& valbuf,
 			const size_t coordinates_id,
@@ -1132,6 +1144,15 @@ namespace grb {
 			const unsigned int,
 			const grb::Matrix< InputType, nonblocking, RIT, CIT, NIT > &
 		) noexcept;
+
+
+		template< typename InputType, typename RIT, typename CIT, typename NIT >
+		friend void internal::getThreadsBuffers(
+			std::vector< char > *&, std::vector< char > *&, std::vector< InputType > *&,
+			const size_t,
+			const grb::Matrix< InputType, nonblocking, RIT, CIT, NIT > &
+		) noexcept;
+
 		
 		template< typename InputType, typename RIT, typename CIT, typename NIT >
 		friend void internal::getCoordinatesTiles(
@@ -1301,15 +1322,26 @@ namespace grb {
 
 			std::vector< COORDINATES_COL_WISE > coordinates_tiles_column;
 
+			/*
+			struct SPA_COL_WISE
+			{				
+				char * __restrict__ coorArr_thread;
+				char * __restrict__ coorBuf_thread;
+				D * __restrict__ valbuf_thread;
+			};
+			*/
 
 			struct SPA_COL_WISE
-			{
-				std::vector< D >* valbuf;
-				std::vector< char >* coorArr;
-				std::vector< char >* coorBuf;
+			{				
+				std::vector< char >* __restrict__ coorArr_thread;
+				std::vector< char >* __restrict__ coorBuf_thread;
+				std::vector< D >* __restrict__ valbuf_thread;
 			};
 
 			std::vector< SPA_COL_WISE > SPA_threads_column;
+
+			std::vector< utils::AutoDeleter< char > > _deleter_SPA_threads;
+			std::vector< utils::AutoDeleter< char > > _local_deleter_SPA_threads;
 
 			// this is a flag to verify if the nnz_tiles vector has been modified. 
 			// this vector is filled in for blas3 opearations that modified the sparsity pattern
@@ -1434,6 +1466,10 @@ namespace grb {
 					nullptr, nullptr, nullptr, nullptr,
 					nullptr, nullptr, nullptr, nullptr
 				};
+
+				//RC alloc_ok_SPA_threads = SUCCESS;
+				//char * alloc_SPA_threads[ 1 ] = {nullptr};
+
 				if( !internal::template ensureReferenceBufsize< char >(
 					reqBufSize( rows, cols ) )
 				) {
@@ -1453,10 +1489,10 @@ namespace grb {
 					}
 					// get sizes of arrays that we need to allocate
 					size_t sizes[ 12 ];
-					sizes[ 0 ] = internal::Coordinates< nonblocking >::arraySize( rows );
-					sizes[ 1 ] = internal::Coordinates< nonblocking >::arraySize( cols );
-					sizes[ 2 ] = internal::Coordinates< nonblocking >::bufferSize( rows );
-					sizes[ 3 ] = internal::Coordinates< nonblocking >::bufferSize( cols );
+					sizes[ 0 ] = internal::Coordinates< reference >::arraySize( rows );
+					sizes[ 1 ] = internal::Coordinates< reference >::arraySize( cols );
+					sizes[ 2 ] = internal::Coordinates< reference >::bufferSize( rows );
+					sizes[ 3 ] = internal::Coordinates< reference >::bufferSize( cols );
 					sizes[ 4 ] = rows * internal::SizeOf< D >::value;
 					sizes[ 5 ] = cols * internal::SizeOf< D >::value;
 
@@ -1492,6 +1528,25 @@ namespace grb {
 						alloc[ 4 ], sizes[ 10 ], true, _deleter[ 4 ],
 						alloc[ 5 ], sizes[ 11 ], true, _deleter[ 5 ]
 					);
+
+					/*
+					// allocate required arrays for SPA of threads
+					const size_t num_threads = grb::internal::NONBLOCKING::numThreads() * config::CACHE_LINE_SIZE::value();
+					SPA_threads_column = std::vector< SPA_COL_WISE >( num_threads );
+					_deleter_SPA_threads = std::vector< utils::AutoDeleter< char > > ( num_threads);
+					_local_deleter_SPA_threads = std::vector< utils::AutoDeleter< char > > ( num_threads ); 				
+
+					for( size_t i = 0; i < num_threads; i += config::CACHE_LINE_SIZE::value() ) {						
+						alloc_ok_SPA_threads = utils::alloc(
+						"grb::Matrix< T, nonblocking >::Matrix()",
+						"initial capacity allocation for SPA of threads",							
+						SPA_threads_column[ i ].coorArr_thread, sizes[ 1 ], false, _local_deleter_SPA_threads[ i ],
+						SPA_threads_column[ i ].coorBuf_thread, sizes[ 3 ], false, _local_deleter_SPA_threads[ i + 1 ],
+						alloc_SPA_threads[0], sizes[ 5 ], false, _local_deleter_SPA_threads[ i + 2 ]
+						);							
+					}
+					*/
+
 					//print sizes of SPA structure
 					/*
 					std::cout << "number of rows = " << rows << ", number of cols = " << cols << std::endl;
@@ -1539,6 +1594,15 @@ namespace grb {
 				} else if( alloc_ok != SUCCESS ) {
 					throw std::runtime_error( toString( alloc_ok ) );
 				}
+
+				/*
+				// check allocation status for SPA of threads
+				if( alloc_ok_SPA_threads == OUTOFMEM ) {
+					throw std::runtime_error( "Could not allocate memory during grb::Matrix construction for SPA of threads" );
+				} else if( alloc_ok_SPA_threads != SUCCESS ) {
+					throw std::runtime_error( toString( alloc_ok_SPA_threads ) );
+				}
+				*/
 #ifdef _DEBUG
 				if( rows > 0 && cols > 0 ) {
 					std::cerr << "\t\t allocations for an " << m << " by " << n << " matrix "
@@ -1583,6 +1647,12 @@ namespace grb {
 					CCS.replace( alloc[ 4 ], alloc[ 5 ] );										
 				}
 
+				/*
+				for( size_t i = 0; i < grb::internal::NONBLOCKING::numThreads() * config::CACHE_LINE_SIZE::value(); i += config::CACHE_LINE_SIZE::value() ) {
+					SPA_threads_column[ i ].valbuf_thread = reinterpret_cast< D * >( alloc_SPA_threads[0] );										
+				}
+				*/
+
 				/**
 				 * Allocate memory to store the local number of nonzeros in each tile. We create an array of size equal
 				 * to the number of tiles the matrix is split into. Each element of this array is a unsigned array.
@@ -1602,11 +1672,10 @@ namespace grb {
 				/* prefix_sum_tiles[tile_id] */
 				prefix_sum_tiles= std::vector< size_t >( num_tiles );		
 
-				// create a structure of coordinates for each thread		
-				//const size_t num_threads = grb::config::OMP::threads() * config::CACHE_LINE_SIZE::value();		
+				// create a structure of coordinates for each thread							
 				const size_t num_threads = grb::internal::NONBLOCKING::numThreads() * config::CACHE_LINE_SIZE::value();												
-				coordinates_tiles_column = std::vector< COORDINATES_COL_WISE >( num_threads );
-				//coordinates_tiles_column = std::move(vector_coordinates);
+				coordinates_tiles_column = std::vector< COORDINATES_COL_WISE >( num_threads );				
+				SPA_threads_column = std::vector< SPA_COL_WISE >( num_threads );
 
 				for (size_t i = 0; i < num_threads; i += config::CACHE_LINE_SIZE::value() )
 				{
@@ -1621,11 +1690,15 @@ namespace grb {
 					coordinates_tiles_column[ i ].valbuf =  val ;
 					coordinates_tiles_column[ i ].coorArr = arr ;
 					coordinates_tiles_column[ i ].coorBuf = buf ;
+
+					SPA_threads_column[ i ].coorArr_thread = &coordinates_tiles_column[ i ].coorArr;
+					SPA_threads_column[ i ].coorBuf_thread = &coordinates_tiles_column[ i ].coorBuf;
+					SPA_threads_column[ i ].valbuf_thread = &coordinates_tiles_column[ i ].valbuf ;
 				}
-		
+
 				is_nnz_tiles_written = false;
 				is_prefix_nnz_tiles_written = false; 
-
+						
 				/*
 				std::cout << "from matrix class " << std::endl;
 				std::cout << "matrix id  = " << id;
