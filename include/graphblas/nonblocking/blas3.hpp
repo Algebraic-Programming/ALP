@@ -592,6 +592,16 @@ namespace grb {
 #ifdef _DEBUG
 		std::cout << "In grb::foldr( nonblocking, matrix, mask, monoid )\n";
 #endif
+
+		if( internal::NONBLOCKING::warn_if_not_native &&
+			config::PIPELINE::warn_if_not_native
+		) {
+			std::cerr << "Warning: grb::foldr( nonblocking, matrix, mask, monoid )"
+				<< " currently delegates to a blocking implementation\n"
+				<< "         Further similar such warnings will be suppressed.\n";
+			internal::NONBLOCKING::warn_if_not_native = false;
+		}
+
 		// nonblocking execution is not supported
 		// first, execute any computation that is not completed
 		internal::le.execution();
@@ -618,6 +628,16 @@ namespace grb {
 #ifdef _DEBUG
 		std::cout << "In grb::foldr( nonblocking, matrix, monoid )\n";
 #endif
+
+		if( internal::NONBLOCKING::warn_if_not_native &&
+			config::PIPELINE::warn_if_not_native
+		) {
+			std::cerr << "Warning: grb::foldr( nonblocking, matrix, monoid )"
+				<< " currently delegates to a blocking implementation\n"
+				<< "         Further similar such warnings will be suppressed.\n";
+			internal::NONBLOCKING::warn_if_not_native = false;
+		}
+
 		// nonblocking execution is not supported
 		// first, execute any computation that is not completed
 		internal::le.execution();
@@ -648,6 +668,16 @@ namespace grb {
 #ifdef _DEBUG
 		std::cout << "In grb::foldl( nonblocking, matrix, mask, monoid )\n";
 #endif
+
+		if( internal::NONBLOCKING::warn_if_not_native &&
+			config::PIPELINE::warn_if_not_native
+		) {
+			std::cerr << "Warning: grb::foldl( nonblocking, matrix, mask, monoid )"
+				<< " currently delegates to a blocking implementation\n"
+				<< "         Further similar such warnings will be suppressed.\n";
+			internal::NONBLOCKING::warn_if_not_native = false;
+		}
+
 		// nonblocking execution is not supported
 		// first, execute any computation that is not completed
 		internal::le.execution();
@@ -675,6 +705,15 @@ namespace grb {
 #ifdef _DEBUG
 		std::cout << "In grb::foldl( nonblocking, matrix, monoid )\n";
 #endif
+
+		if( internal::NONBLOCKING::warn_if_not_native &&
+			config::PIPELINE::warn_if_not_native
+		) {
+			std::cerr << "Warning: grb::foldl( nonblocking, matrix, monoid )"
+				<< " currently delegates to a blocking implementation\n"
+				<< "         Further similar such warnings will be suppressed.\n";
+			internal::NONBLOCKING::warn_if_not_native = false;
+		}
 		// nonblocking execution is not supported
 		// first, execute any computation that is not completed
 		internal::le.execution();

@@ -217,7 +217,8 @@ namespace grb {
 		const Matrix< InputType, BSP1D, RIT_A, CIT_A, NIT_A > &A,
 		const Matrix< MaskType, BSP1D, RIT_M, CIT_M, NIT_M > &mask,
 		const Monoid &monoid = Monoid(),
-		const typename std::enable_if< !grb::is_object< IOType >::value &&
+		const typename std::enable_if<
+			!grb::is_object< IOType >::value &&
 			!grb::is_object< InputType >::value &&
 			!grb::is_object< MaskType >::value &&
 			grb::is_monoid< Monoid >::value, void
@@ -250,11 +251,12 @@ namespace grb {
 #ifdef _DEBUG
 		std::cout << "In grb::foldr( BSP1D, matrix, mask, monoid )\n";
 #endif
-		RC rc = SUCCESS;
 
 		if( grb::nnz( A ) == 0 ) {
-			return rc;
+			return RC::SUCCESS;
 		}
+
+		RC rc = SUCCESS;
 
 		// Do local folding
 		IOType local = monoid.template getIdentity< IOType >();
@@ -271,7 +273,7 @@ namespace grb {
 		// Accumulate end result
 		rc = rc ? rc : foldr( x, local, monoid.getOperator() );
 
-		return SUCCESS;
+		return rc;
 	}
 
 	template<
@@ -316,11 +318,12 @@ namespace grb {
 #ifdef _DEBUG
 		std::cout << "In grb::foldr( BSP1D, matrix, monoid )\n";
 #endif
-		RC rc = SUCCESS;
 
 		if( grb::nnz( A ) == 0 ) {
-			return rc;
+			return RC::SUCCESS;
 		}
+
+		RC rc = SUCCESS;
 
 		// Do local folding
 		IOType local = monoid.template getIdentity< IOType >();
@@ -337,7 +340,7 @@ namespace grb {
 		// Accumulate end result
 		rc = rc ? rc : foldr( x, local, monoid.getOperator() );
 
-		return SUCCESS;
+		return rc;
 	}
 
 	template<
@@ -386,11 +389,12 @@ namespace grb {
 #ifdef _DEBUG
 		std::cout << "In grb::foldl( BSP1D, matrix, mask, monoid )\n";
 #endif
-		RC rc = SUCCESS;
 
 		if( grb::nnz( A ) == 0 ) {
-			return rc;
+			return RC::SUCESS;
 		}
+		
+		RC rc = SUCCESS;
 
 		// Do local folding
 		IOType local = monoid.template getIdentity< IOType >();
@@ -407,7 +411,7 @@ namespace grb {
 		// Accumulate end result
 		rc = rc ? rc : foldl( x, local, monoid.getOperator() );
 
-		return SUCCESS;
+		return rc;
 	}
 
 	template<
@@ -453,11 +457,12 @@ namespace grb {
 #ifdef _DEBUG
 		std::cout << "In grb::foldl( BSP1D, matrix, monoid )\n";
 #endif
-		RC rc = SUCCESS;
 
 		if( grb::nnz( A ) == 0 ) {
-			return rc;
+			return RC::SUCCESS;
 		}
+
+		RC rc = SUCCESS;
 
 		// Do local folding
 		IOType local = monoid.template getIdentity< IOType >();
@@ -474,7 +479,7 @@ namespace grb {
 		// Accumulate end result
 		rc = rc ? rc : foldl( x, local, monoid.getOperator() );
 
-		return SUCCESS;
+		return rc;
 	}
 
 } // namespace grb
