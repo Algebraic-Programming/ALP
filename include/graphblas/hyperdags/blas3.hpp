@@ -351,14 +351,14 @@ namespace grb {
 		>::type * const = nullptr
 	) {
 #ifdef _DEBUG
-		std::cout << "In grb::foldr (hyperdags, mask, matrix, monoid)\n";
+		std::cout << "In grb::foldr( hyperdags, mask, matrix, monoid )\n";
 #endif
 
 		if( nrows( A ) == 0 || ncols( A ) == 0 ) {
 #ifdef _DEBUG
 			std::cout << "Empty matrix, nothing to compute\n";
-#endif			
-			return RC::SUCCESS;
+#endif
+			return SUCCESS;
 		}
 
 		const RC ret = foldr< descr, Monoid >(
@@ -368,6 +368,7 @@ namespace grb {
 			return ret;
 		}
 
+		internal::hyperdags::generator.addSource( internal::hyperdags::SCALAR, &x );
 		std::array< const void *, 1 > sourcesP{ &x };
 		std::array< uintptr_t, 2 > sourcesC{
 			getID( internal::getMatrix(A) ),
@@ -401,14 +402,14 @@ namespace grb {
 		>::type * const = nullptr
 	) {
 #ifdef _DEBUG
-		std::cout << "In grb::foldr (hyperdags, matrix, monoid)\n";
+		std::cout << "In grb::foldr( hyperdags, matrix, monoid )\n";
 #endif
 
 		if( nrows( A ) == 0 || ncols( A ) == 0 ) {
 #ifdef _DEBUG
 			std::cout << "Empty matrix, nothing to compute\n";
-#endif			
-			return RC::SUCCESS;
+#endif
+			return SUCCESS;
 		}
 
 		const RC ret = foldr< descr, Monoid >(
@@ -418,6 +419,7 @@ namespace grb {
 			return ret;
 		}
 
+		internal::hyperdags::generator.addSource( internal::hyperdags::SCALAR, &x );
 		std::array< const void *, 1 > sourcesP{ &x };
 		std::array< uintptr_t, 1 > sourcesC{ getID( internal::getMatrix(A) ) };
 		std::array< uintptr_t, 0 > destinations{};
@@ -452,14 +454,14 @@ namespace grb {
 		>::type * const = nullptr
 	) {
 #ifdef _DEBUG
-		std::cout << "In grb::foldl (hyperdags, mask, matrix, monoid)\n";
+		std::cout << "In grb::foldl( hyperdags, mask, matrix, monoid )\n";
 #endif
 
 		if( nrows( A ) == 0 || ncols( A ) == 0 ) {
 #ifdef _DEBUG
 			std::cout << "Empty matrix, nothing to compute\n";
-#endif			
-			return RC::SUCCESS;
+#endif
+			return SUCCESS;
 		}
 
 		const RC ret = foldl< descr, Monoid >(
@@ -469,6 +471,7 @@ namespace grb {
 			return ret;
 		}
 
+		internal::hyperdags::generator.addSource( internal::hyperdags::SCALAR, &x );
 		std::array< const void *, 1 > sourcesP{ &x };
 		std::array< uintptr_t, 2 > sourcesC{
 			getID( internal::getMatrix(A) ),
@@ -503,14 +506,14 @@ namespace grb {
 		>::type * const = nullptr
 	) {
 #ifdef _DEBUG
-		std::cout << "In grb::foldl (hyperdags, matrix, monoid)\n";
+		std::cout << "In grb::foldl( hyperdags, matrix, monoid )\n";
 #endif
 
 		if( nrows( A ) == 0 || ncols( A ) == 0 ) {
 #ifdef _DEBUG
 			std::cout << "Empty matrix, nothing to compute\n";
-#endif			
-			return RC::SUCCESS;
+#endif
+			return SUCCESS;
 		}
 
 		const RC ret = foldl< descr, Monoid >(
@@ -520,6 +523,7 @@ namespace grb {
 			return ret;
 		}
 
+		internal::hyperdags::generator.addSource( internal::hyperdags::SCALAR, &x );
 		std::array< const void *, 1 > sourcesP{ &x };
 		std::array< uintptr_t, 1 > sourcesC{ getID( internal::getMatrix(A) ) };
 		std::array< uintptr_t, 0 > destinations{};
