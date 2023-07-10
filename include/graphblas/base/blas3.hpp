@@ -457,7 +457,7 @@ namespace grb {
 	 * @param[in,out] A     Any ALP/GraphBLAS matrix, which will be scaled.
 	 * 					    Prior value will be considered.
 	 * @param[in]     mask  Any ALP/GraphBLAS matrix.
-	 * @param[in]     x	    The input scalat to scale with.    
+	 * @param[in]     x	    The input scalat to scale with.
 	 * @param[in]     op    The monoid under which to perform this scaling.
 	 *
 	 * @return grb::SUCCESS  When the call completed successfully.
@@ -473,7 +473,7 @@ namespace grb {
 	 * - descriptors::no_casting: the first domain of
 	 * 	 	\a op must match \a IOType, the second domain of \a op
 	 * 		match \a InputType, the third domain must match \a IOType.
-	 * - descriptors::transpose_right: mask^T will be considered 
+	 * - descriptors::transpose_right: mask^T will be considered
 	 * 	 	instead of \a mask.
 	 * - descriptors::invert_mask: Not supported yet.
 	 *
@@ -489,7 +489,7 @@ namespace grb {
 	template<
 		Descriptor descr = descriptors::no_operation,
 		class Operator,
-		typename IOType, typename MaskType, typename InputType, 
+		typename IOType, typename MaskType, typename InputType,
 		typename RIT_A, typename CIT_A, typename NIT_A,
 		typename RIT_M, typename CIT_M, typename NIT_M,
 		Backend backend
@@ -499,7 +499,7 @@ namespace grb {
 		const Matrix< MaskType, backend, RIT_M, CIT_M, NIT_M > &mask,
 		const InputType &x,
 		const Operator &op = Operator(),
-		const typename std::enable_if< 
+		const typename std::enable_if<
 			!grb::is_object< IOType >::value &&
 			!grb::is_object< InputType >::value &&
 			!grb::is_object< MaskType >::value &&
@@ -518,15 +518,15 @@ namespace grb {
 	}
 
 	/**
-	 * Scales, or \em folds, a matrix into a matrix, using a constant scalar. 
+	 * Scales, or \em folds, a matrix into a matrix, using a constant scalar.
 	 * Left-to-right unmasked variant.
-	 * 
+	 *
 	 * Please see the masked grb::foldl variant for a full description.
 	 */
 	template<
 		Descriptor descr = descriptors::no_operation,
 		class Operator,
-		typename IOType, typename InputType, 
+		typename IOType, typename InputType,
 		typename RIT, typename CIT, typename NIT,
 		Backend backend
 	>
@@ -534,7 +534,7 @@ namespace grb {
 		Matrix< IOType, backend, RIT, CIT, NIT > &A,
 		const InputType &x,
 		const Operator &op = Operator(),
-		const typename std::enable_if< 
+		const typename std::enable_if<
 			!grb::is_object< IOType >::value &&
 			!grb::is_object< InputType >::value &&
 			grb::is_operator< Operator >::value, void
@@ -551,15 +551,15 @@ namespace grb {
 	}
 
 	/**
-	 * Scales, or \em folds, a matrix into a matrix, using a constant scalar. 
+	 * Scales, or \em folds, a matrix into a matrix, using a constant scalar.
 	 * Right-to-left masked variant.
-	 * 
+	 *
 	 * Please see the masked grb::foldl variant for a full description.
 	 */
 	template<
 		Descriptor descr = descriptors::no_operation,
 		class Operator,
-		typename IOType, typename MaskType, typename InputType, 
+		typename IOType, typename MaskType, typename InputType,
 		typename RIT_A, typename CIT_A, typename NIT_A,
 		typename RIT_M, typename CIT_M, typename NIT_M,
 		Backend backend
@@ -569,7 +569,7 @@ namespace grb {
 		const Matrix< MaskType, backend, RIT_M, CIT_M, NIT_M > &mask,
 		const InputType &x,
 		const Operator &op = Operator(),
-		const typename std::enable_if< 
+		const typename std::enable_if<
 			!grb::is_object< IOType >::value &&
 			!grb::is_object< InputType >::value &&
 			!grb::is_object< MaskType >::value &&
@@ -588,15 +588,15 @@ namespace grb {
 	}
 
 	/**
-	 * Scales, or \em folds, a matrix into a matrix, using a constant scalar. 
+	 * Scales, or \em folds, a matrix into a matrix, using a constant scalar.
 	 * Right-to-left unmasked variant.
-	 * 
+	 *
 	 * Please see the masked grb::foldl variant for a full description.
 	 */
 	template<
 		Descriptor descr = descriptors::no_operation,
 		class Operator,
-		typename IOType, typename InputType, 
+		typename IOType, typename InputType,
 		typename RIT, typename CIT, typename NIT,
 		Backend backend
 	>
@@ -604,7 +604,7 @@ namespace grb {
 		Matrix< IOType, backend, RIT, CIT, NIT > &A,
 		const InputType &x,
 		const Operator &op = Operator(),
-		const typename std::enable_if< 
+		const typename std::enable_if<
 			!grb::is_object< IOType >::value &&
 			!grb::is_object< InputType >::value &&
 			grb::is_operator< Operator >::value, void

@@ -111,7 +111,9 @@ namespace grb {
 			return resize( out, nnz( mask ) );
 		} else {
 			local_rc = grb::set< descr >(
-				internal::getLocal( out ), internal::getLocal( mask ), val
+				internal::getLocal( out ),
+				internal::getLocal( mask ),
+				val
 			);
 		}
 		return internal::checkGlobalErrorStateOrClear( out, local_rc );
@@ -148,7 +150,10 @@ namespace grb {
 				mul,
 				RESIZE
 			);
-			if( collectives<>::allreduce( ret, operators::any_or< RC >() ) != SUCCESS ) {
+			if( collectives<>::allreduce(
+					ret, operators::any_or< RC >()
+				) != SUCCESS )
+			{
 				return PANIC;
 			} else {
 				return ret;
@@ -157,7 +162,8 @@ namespace grb {
 			assert( phase == EXECUTE );
 			local_rc = eWiseApply< descr >(
 				internal::getLocal( C ),
-				internal::getLocal( A ), internal::getLocal( B ),
+				internal::getLocal( A ),
+				internal::getLocal( B ),
 				mul,
 				EXECUTE
 			);
@@ -190,12 +196,16 @@ namespace grb {
 		assert( phase != TRY );
 		RC ret = eWiseApply< descr >(
 			internal::getLocal( C ),
-			internal::getLocal( A ), internal::getLocal( B ),
+			internal::getLocal( A ),
+			internal::getLocal( B ),
 			op,
 			phase
 		);
 		if( phase == RESIZE ) {
-			if( collectives<>::allreduce( ret, operators::any_or< RC >() ) != SUCCESS ) {
+			if( collectives<>::allreduce(
+					ret, operators::any_or< RC >()
+				) != SUCCESS )
+			{
 				return PANIC;
 			} else {
 				return SUCCESS;
@@ -208,14 +218,14 @@ namespace grb {
 	template<
 		Descriptor descr = descriptors::no_operation,
 		class Operator,
-		typename IOType, typename MaskType, typename InputType, 
+		typename IOType, typename MaskType, typename InputType,
 		typename RIT, typename CIT, typename NIT
 	>
 	RC foldl(
 		Matrix< IOType, BSP1D, RIT, CIT, NIT > &A,
 		const InputType &x,
 		const Operator &op = Operator(),
-		const typename std::enable_if< 
+		const typename std::enable_if<
 			!grb::is_object< IOType >::value &&
 			!grb::is_object< InputType >::value &&
 			!grb::is_object< MaskType >::value &&
@@ -233,7 +243,11 @@ namespace grb {
 		}
 
 		// Do local folding
-		rc = foldl< descr >( internal::getLocal( A ), x, op );		
+		rc = foldl< descr >(
+			internal::getLocal( A ),
+			x,
+			op
+		);
 
 		return rc;
 	}
@@ -241,7 +255,7 @@ namespace grb {
 	template<
 		Descriptor descr = descriptors::no_operation,
 		class Operator,
-		typename IOType, typename MaskType, typename InputType, 
+		typename IOType, typename MaskType, typename InputType,
 		typename RIT_A, typename CIT_A, typename NIT_A,
 		typename RIT_M, typename CIT_M, typename NIT_M
 	>
@@ -250,7 +264,7 @@ namespace grb {
 		const Matrix< MaskType, BSP1D, RIT_M, CIT_M, NIT_M > &mask,
 		const InputType &x,
 		const Operator &op = Operator(),
-		const typename std::enable_if< 
+		const typename std::enable_if<
 			!grb::is_object< IOType >::value &&
 			!grb::is_object< InputType >::value &&
 			!grb::is_object< MaskType >::value &&
@@ -268,7 +282,12 @@ namespace grb {
 		}
 
 		// Do local folding
-		rc = foldl< descr >( internal::getLocal( A ), internal::getLocal( mask ), x, op );		
+		rc = foldl< descr >(
+			internal::getLocal( A ),
+			internal::getLocal( mask ),
+			x,
+			op
+		);
 
 		return rc;
 	}
@@ -276,7 +295,7 @@ namespace grb {
 	template<
 		Descriptor descr = descriptors::no_operation,
 		class Operator,
-		typename IOType, typename MaskType, typename InputType, 
+		typename IOType, typename MaskType, typename InputType,
 		typename RIT_A, typename CIT_A, typename NIT_A,
 		typename RIT_M, typename CIT_M, typename NIT_M
 	>
@@ -285,7 +304,7 @@ namespace grb {
 		const Matrix< MaskType, BSP1D, RIT_M, CIT_M, NIT_M > &mask,
 		const InputType &x,
 		const Operator &op = Operator(),
-		const typename std::enable_if< 
+		const typename std::enable_if<
 			!grb::is_object< IOType >::value &&
 			!grb::is_object< InputType >::value &&
 			!grb::is_object< MaskType >::value &&
@@ -303,7 +322,12 @@ namespace grb {
 		}
 
 		// Do local folding
-		rc = foldr< descr >( internal::getLocal( A ), internal::getLocal( mask ), x, op );		
+		rc = foldr< descr >(
+			internal::getLocal( A ),
+			internal::getLocal( mask ),
+			x,
+			op
+		);
 
 		return rc;
 	}
@@ -311,14 +335,14 @@ namespace grb {
 	template<
 		Descriptor descr = descriptors::no_operation,
 		class Operator,
-		typename IOType, typename InputType, 
+		typename IOType, typename InputType,
 		typename RIT, typename CIT, typename NIT
 	>
 	RC foldr(
 		Matrix< IOType, BSP1D, RIT, CIT, NIT > &A,
 		const InputType &x,
 		const Operator &op = Operator(),
-		const typename std::enable_if< 
+		const typename std::enable_if<
 			!grb::is_object< IOType >::value &&
 			!grb::is_object< InputType >::value &&
 			grb::is_operator< Operator >::value, void
@@ -334,7 +358,11 @@ namespace grb {
 		}
 
 		// Do local folding
-		rc = foldr< descr >( internal::getLocal( A ), x, op );		
+		rc = foldr< descr >(
+			internal::getLocal( A ),
+			x,
+			op
+		);
 
 		return rc;
 	}

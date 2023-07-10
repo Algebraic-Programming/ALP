@@ -48,11 +48,19 @@ constexpr bool SKIP_MASKED = false;
 #define _DEBUG
 
 template< class Iterator >
-void printSparseMatrixIterator( size_t rows, size_t cols, Iterator begin, Iterator end, const std::string & name = "", std::ostream & os = std::cout ) {
+void printSparseMatrixIterator( 
+	size_t rows, 
+	size_t cols, 
+	Iterator begin, 
+	Iterator end, 
+	const std::string & name = "", 
+	std::ostream & os = std::cout ) 
+{
 #ifndef _DEBUG
 	return;
 #endif
-	std::cout << "Matrix \"" << name << "\" (" << rows << "x" << cols << "):" << std::endl << "[" << std::endl;
+	std::cout << "Matrix \"" << name << "\" (" << rows << "x" << cols << "):" 
+			  << std::endl << "[" << std::endl;
 	if( rows > 50 || cols > 50 ) {
 		os << "   Matrix too large to print" << std::endl;
 	} else {
@@ -60,9 +68,14 @@ void printSparseMatrixIterator( size_t rows, size_t cols, Iterator begin, Iterat
 		for( size_t y = 0; y < rows; y++ ) {
 			os << std::string( 3, ' ' );
 			for( size_t x = 0; x < cols; x++ ) {
-				auto nnz_val = std::find_if( begin, end, [ y, x ]( const typename std::iterator_traits< Iterator >::value_type & a ) {
-					return a.first.first == y && a.first.second == x;
-				} );
+				auto nnz_val = std::find_if( 
+					begin, 
+					end, 
+					[ y, x ]( const typename std::iterator_traits< Iterator >::value_type & a ) 
+					{
+						return a.first.first == y && a.first.second == x;
+					} 
+				);
 				if( nnz_val != end )
 					os << std::fixed << ( *nnz_val ).second;
 				else
@@ -77,13 +90,20 @@ void printSparseMatrixIterator( size_t rows, size_t cols, Iterator begin, Iterat
 }
 
 template< typename D >
-void printSparseMatrix( const grb::Matrix< D > & mat, const std::string & name = "", std::ostream & os = std::cout ) {
+void printSparseMatrix( 
+	const grb::Matrix< D > & mat, 
+	const std::string & name = "", 
+	std::ostream & os = std::cout ) 
+{
 	grb::wait( mat );
 	printSparseMatrixIterator( grb::nrows( mat ), grb::ncols( mat ), mat.cbegin(), mat.cend(), name, os );
 }
 
 template< typename D >
-bool are_matrices_equals( const grb::Matrix< D > & A, const grb::Matrix< D > & B ) {
+bool are_matrices_equals( 
+	const grb::Matrix< D > & A, 
+	const grb::Matrix< D > & B )
+{
 	if( grb::nrows( A ) != grb::nrows( B ) || grb::ncols( A ) != grb::ncols( B ) )
 		return false;
 	grb::wait( A );
@@ -119,9 +139,16 @@ struct input {
 		bool skip_unmasked = false,
 		const OpFoldl & opFoldl = OpFoldl(),
 		const OpFoldr & opFoldr = OpFoldr() ) :
-		test_label( test_label ),
-		test_description( test_description ), initial( initial ), mask( mask ), scalar( scalar ), expected( expected ), skip_masked( skip_masked ), skip_unmasked( skip_unmasked ), opFoldl( opFoldl ),
-		opFoldr( opFoldr ) {}
+			test_label( test_label ),
+			test_description( test_description ), 
+			initial( initial ), 
+			mask( mask ), 
+			scalar( scalar ), 
+			expected( expected ),
+			skip_masked( skip_masked ), 
+			skip_unmasked( skip_unmasked ), 
+			opFoldl( opFoldl ),
+			opFoldr( opFoldr ) {}
 };
 
 template< typename T, typename M, typename S, class OpFoldl, class OpFoldr >
@@ -231,7 +258,9 @@ int main( int argc, char ** argv ) {
 			buildMatrixUnique( expected, initial_rows.data(), initial_cols.data(), expected_values.data(), expected_values.size(), SEQUENTIAL );
 
 			std::cout << "-- Running " << label << " --" << std::endl;
-			input< int, void, int, grb::operators::mul< int >, grb::operators::mul< int > > in { label.c_str(), description.c_str(), initial, mask, k, expected };
+			input< int, void, int, grb::operators::mul< int >, grb::operators::mul< int > > in { 
+				label.c_str(), description.c_str(), initial, mask, k, expected 
+			};
 			if( launcher.exec( &grb_program, in, rc, true ) != SUCCESS ) {
 				std::cerr << "Launching " << label << " failed" << std::endl;
 				return 255;
@@ -256,7 +285,9 @@ int main( int argc, char ** argv ) {
 			buildMatrixUnique( expected, initial_rows.data(), initial_cols.data(), initial_values.data(), initial_values.size(), SEQUENTIAL );
 
 			std::cout << "-- Running " << label << " --" << std::endl;
-			input< int, void, int, grb::operators::mul< int >, grb::operators::mul< int > > in { label.c_str(), description.c_str(), initial, mask, k, expected, false, true };
+			input< int, void, int, grb::operators::mul< int >, grb::operators::mul< int > > in { 
+				label.c_str(), description.c_str(), initial, mask, k, expected, false, true
+			};
 			if( launcher.exec( &grb_program, in, rc, true ) != SUCCESS ) {
 				std::cerr << "Launching " << label << " failed" << std::endl;
 				return 255;

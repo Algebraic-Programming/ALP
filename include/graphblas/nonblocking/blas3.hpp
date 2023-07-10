@@ -574,7 +574,7 @@ namespace grb {
 	template<
 		Descriptor descr = descriptors::no_operation,
 		class Operator,
-		typename IOType, typename MaskType, typename InputType, 
+		typename IOType, typename MaskType, typename InputType,
 		typename RIT_A, typename CIT_A, typename NIT_A,
 		typename RIT_M, typename CIT_M, typename NIT_M
 	>
@@ -583,7 +583,7 @@ namespace grb {
 		const Matrix< MaskType, nonblocking, RIT_M, CIT_M, NIT_M > &mask,
 		const InputType &x,
 		const Operator &op = Operator(),
-		const typename std::enable_if< 
+		const typename std::enable_if<
 			!grb::is_object< IOType >::value &&
 			!grb::is_object< InputType >::value &&
 			!grb::is_object< MaskType >::value &&
@@ -609,14 +609,14 @@ namespace grb {
 	template<
 		Descriptor descr = descriptors::no_operation,
 		class Operator,
-		typename IOType, typename InputType, 
+		typename IOType, typename InputType,
 		typename RIT, typename CIT, typename NIT
 	>
 	RC foldl(
 		Matrix< IOType, nonblocking, RIT, CIT, NIT > &A,
 		const InputType &x,
 		const Operator &op = Operator(),
-		const typename std::enable_if< 
+		const typename std::enable_if<
 			!grb::is_object< IOType >::value &&
 			!grb::is_object< InputType >::value &&
 			grb::is_operator< Operator >::value, void
@@ -637,7 +637,7 @@ namespace grb {
 	template<
 		Descriptor descr = descriptors::no_operation,
 		class Operator,
-		typename IOType, typename MaskType, typename InputType, 
+		typename IOType, typename MaskType, typename InputType,
 		typename RIT_A, typename CIT_A, typename NIT_A,
 		typename RIT_M, typename CIT_M, typename NIT_M
 	>
@@ -646,7 +646,7 @@ namespace grb {
 		const Matrix< MaskType, nonblocking, RIT_M, CIT_M, NIT_M > &mask,
 		const InputType &x,
 		const Operator &op = Operator(),
-		const typename std::enable_if< 
+		const typename std::enable_if<
 			!grb::is_object< IOType >::value &&
 			!grb::is_object< InputType >::value &&
 			!grb::is_object< MaskType >::value &&
@@ -668,14 +668,14 @@ namespace grb {
 	template<
 		Descriptor descr = descriptors::no_operation,
 		class Operator,
-		typename IOType, typename InputType, 
+		typename IOType, typename InputType,
 		typename RIT, typename CIT, typename NIT
 	>
 	RC foldr(
 		Matrix< IOType, nonblocking, RIT, CIT, NIT > &A,
 		const InputType &x,
 		const Operator &op = Operator(),
-		const typename std::enable_if< 
+		const typename std::enable_if<
 			!grb::is_object< IOType >::value &&
 			!grb::is_object< InputType >::value &&
 			grb::is_operator< Operator >::value, void
