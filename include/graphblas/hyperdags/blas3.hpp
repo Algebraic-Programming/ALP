@@ -354,12 +354,21 @@ namespace grb {
 		std::cout << "In grb::foldr (hyperdags, mask, matrix, monoid)\n";
 #endif
 
+		if( nrows( A ) == 0 || ncols( A ) == 0 ) {
+#ifdef _DEBUG
+			std::cout << "Empty matrix, nothing to compute\n";
+#endif			
+			return RC::SUCCESS;
+		}
+
 		const RC ret = foldr< descr, Monoid >(
 			x, internal::getMatrix( A ), internal::getMatrix( mask ), monoid
 		);
-		if( ret != SUCCESS ) { return ret; }
-		if( nrows( A ) == 0 || ncols( A ) == 0 ) { return ret; }
-		std::array< const void *, 0 > sourcesP{};
+		if( ret != SUCCESS ) {
+			return ret;
+		}
+
+		std::array< const void *, 1 > sourcesP{ &x };
 		std::array< uintptr_t, 2 > sourcesC{
 			getID( internal::getMatrix(A) ),
 			getID( internal::getMatrix(mask) )
@@ -395,12 +404,21 @@ namespace grb {
 		std::cout << "In grb::foldr (hyperdags, matrix, monoid)\n";
 #endif
 
+		if( nrows( A ) == 0 || ncols( A ) == 0 ) {
+#ifdef _DEBUG
+			std::cout << "Empty matrix, nothing to compute\n";
+#endif			
+			return RC::SUCCESS;
+		}
+
 		const RC ret = foldr< descr, Monoid >(
 			x, internal::getMatrix( A ), monoid
 		);
-		if( ret != SUCCESS ) { return ret; }
-		if( nrows( A ) == 0 || ncols( A ) == 0 ) { return ret; }
-		std::array< const void *, 0 > sourcesP{};
+		if( ret != SUCCESS ) {
+			return ret;
+		}
+
+		std::array< const void *, 1 > sourcesP{ &x };
 		std::array< uintptr_t, 1 > sourcesC{ getID( internal::getMatrix(A) ) };
 		std::array< uintptr_t, 0 > destinations{};
 		// NOTE scalar output is ignored
@@ -433,16 +451,25 @@ namespace grb {
 			grb::is_monoid< Monoid >::value, void
 		>::type * const = nullptr
 	) {
-		#ifdef _DEBUG
+#ifdef _DEBUG
 		std::cout << "In grb::foldl (hyperdags, mask, matrix, monoid)\n";
 #endif
+
+		if( nrows( A ) == 0 || ncols( A ) == 0 ) {
+#ifdef _DEBUG
+			std::cout << "Empty matrix, nothing to compute\n";
+#endif			
+			return RC::SUCCESS;
+		}
 
 		const RC ret = foldl< descr, Monoid >(
 			x, internal::getMatrix( A ), internal::getMatrix( mask ), monoid
 		);
-		if( ret != SUCCESS ) { return ret; }
-		if( nrows( A ) == 0 || ncols( A ) == 0 ) { return ret; }
-		std::array< const void *, 0 > sourcesP{};
+		if( ret != SUCCESS ) {
+			return ret;
+		}
+
+		std::array< const void *, 1 > sourcesP{ &x };
 		std::array< uintptr_t, 2 > sourcesC{
 			getID( internal::getMatrix(A) ),
 			getID( internal::getMatrix(mask) )
@@ -479,12 +506,21 @@ namespace grb {
 		std::cout << "In grb::foldl (hyperdags, matrix, monoid)\n";
 #endif
 
+		if( nrows( A ) == 0 || ncols( A ) == 0 ) {
+#ifdef _DEBUG
+			std::cout << "Empty matrix, nothing to compute\n";
+#endif			
+			return RC::SUCCESS;
+		}
+
 		const RC ret = foldl< descr, Monoid >(
 			x, internal::getMatrix( A ), monoid
 		);
-		if( ret != SUCCESS ) { return ret; }
-		if( nrows( A ) == 0 || ncols( A ) == 0 ) { return ret; }
-		std::array< const void *, 0 > sourcesP{};
+		if( ret != SUCCESS ) {
+			return ret;
+		}
+
+		std::array< const void *, 1 > sourcesP{ &x };
 		std::array< uintptr_t, 1 > sourcesC{ getID( internal::getMatrix(A) ) };
 		std::array< uintptr_t, 0 > destinations{};
 		// NOTE scalar output is ignored

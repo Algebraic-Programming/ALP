@@ -484,13 +484,13 @@ namespace grb {
 	 *                   matrix \a mask.
 	 *
 	 * @param[in, out] x   The result of the reduction.
-	 * 					   Prior value will be considered.
+	 *                     Prior value will be considered.
 	 * @param[in]      A   Any ALP/GraphBLAS matrix, will be reduced into \a x.
 	 * @param[in]   mask   Any ALP/GraphBLAS matrix, will mask the matrix \a A.
-	 * 					   Dimensions must match those of \a A.
+	 *                     Dimensions must match those of \a A.
 	 * @param[in] monoid   The monoid under which to perform this reduction.
-	 * 					   An identity element must be provided when using
-	 * 					   threads in order to perform the local reductions.
+	 * 	                   An identity element must be provided when using
+	 *                     threads in order to perform the local reductions.
 	 *
 	 * @return grb::SUCCESS  When the call completed successfully.
 	 * @return grb::MISMATCH If a \a mask was not empty and does not have size
@@ -506,11 +506,11 @@ namespace grb {
 	 * - descriptors::no_casting: the first domain of
 	 * 	 	\a monoid must match \a InputType, the second domain of \a op
 	 * 		match \a IOType, the third domain must match \a IOType.
-	 * - descriptors::transpose_matrix: A^T will be considered 
+	 * - descriptors::transpose_matrix: A^T will be considered
 	 * 	 	instead of \a A (unmasked variant only).
-	 * - descriptors::transpose_left: A^T will be considered instead 
+	 * - descriptors::transpose_left: A^T will be considered instead
 	 * 	 	of \a A.
-	 * - descriptors::transpose_right: mask^T will be considered 
+	 * - descriptors::transpose_right: mask^T will be considered
 	 * 	 	instead of \a mask.
 	 * - descriptors::structural: Any value stored in \a mask is considered
 	 * 		to be <tt>true</tt>.
@@ -538,7 +538,8 @@ namespace grb {
 		const Matrix< InputType, backend, RIT_A, CIT_A, NIT_A > &A,
 		const Matrix< MaskType, backend, RIT_M, CIT_M, NIT_M > &mask,
 		const Monoid &monoid = Monoid(),
-		const typename std::enable_if< !grb::is_object< IOType >::value &&
+		const typename std::enable_if<
+			!grb::is_object< IOType >::value &&
 			!grb::is_object< InputType >::value &&
 			!grb::is_object< MaskType >::value &&
 			grb::is_monoid< Monoid >::value, void
@@ -556,20 +557,20 @@ namespace grb {
 	}
 
 	/**
-	 * Reduces, or \em folds, a matrix into a scalar. 
+	 * Reduces, or \em folds, a matrix into a scalar.
 	 * Right-to-left unmasked variant.
-	 * 
+	 *
 	 * Please see the masked grb::foldr variant for a full description.
-	 * 
+	 *
 	 * \parblock
-	 * 
+	 *
 	 * \par Valid descriptors specific to this variant
-	 * - descriptors::transpose_matrix: A^T will be considered instead 
+	 * - descriptors::transpose_matrix: A^T will be considered instead
 	 * 	 	of \a A.
-	 * 
+	 *
 	 * \note See other valid descriptors in the masked variant.
 	 * \note Invalid descriptors will be ignored.
-	 * 
+	 *
 	 * \endparblock
 	 */
 	template<
@@ -583,7 +584,8 @@ namespace grb {
 		IOType &x,
 		const Matrix< InputType, backend, RIT, CIT, NIT > &A,
 		const Monoid &monoid,
-		const typename std::enable_if< !grb::is_object< IOType >::value &&
+		const typename std::enable_if<
+			!grb::is_object< IOType >::value &&
 			!grb::is_object< InputType >::value &&
 			grb::is_monoid< Monoid >::value, void
 		>::type * const = nullptr
@@ -598,11 +600,10 @@ namespace grb {
 		return UNSUPPORTED;
 	}
 
-
 	/**
-	 * Reduces, or \em folds, a matrix into a scalar. 
-	 * Left-to-right masked variant.
-	 * 
+	 * Reduces, or \em folds, a matrix into a scalar.
+	 * Left-to-right input-masked variant.
+	 *
 	 * Please see the masked grb::foldr variant for a full description.
 	 */
 	template<
@@ -618,7 +619,8 @@ namespace grb {
 		const Matrix< InputType, backend, RIT_A, CIT_A, NIT_A > &A,
 		const Matrix< MaskType, backend, RIT_M, CIT_M, NIT_M > &mask,
 		const Monoid &monoid = Monoid(),
-		const typename std::enable_if< !grb::is_object< IOType >::value &&
+		const typename std::enable_if<
+			!grb::is_object< IOType >::value &&
 			!grb::is_object< InputType >::value &&
 			!grb::is_object< MaskType >::value &&
 			grb::is_monoid< Monoid >::value, void
@@ -636,20 +638,20 @@ namespace grb {
 	}
 
 	/**
-	 * Reduces, or \em folds, a matrix into a scalar. 
+	 * Reduces, or \em folds, a matrix into a scalar.
 	 * Left-to-right unmasked variant.
-	 * 
+	 *
 	 * Please see the masked grb::foldr variant for a full description.
-	 * 
+	 *
 	 * \parblock
-	 * 
+	 *
 	 * \par Valid descriptors specific to this variant
-	 * - descriptors::transpose_matrix: A^T will be considered instead 
+	 * - descriptors::transpose_matrix: A^T will be considered instead
 	 * 	 	of \a A.
-	 * 
+	 *
 	 * \note See other valid descriptors in the masked variant.
 	 * \note Invalid descriptors will be ignored.
-	 * 
+	 *
 	 * \endparblock
 	 */
 	template<
@@ -663,7 +665,7 @@ namespace grb {
 		IOType &x,
 		const Matrix< InputType, backend, RIT, CIT, NIT > &A,
 		const Monoid &monoid,
-		const typename std::enable_if< 
+		const typename std::enable_if<
 			!grb::is_object< IOType >::value &&
 			!grb::is_object< InputType >::value &&
 			grb::is_monoid< Monoid >::value, void

@@ -57,24 +57,6 @@
 		"********************************************************************" \
 		"******************************\n" );
 
-#ifndef _DEBUG_PRINT
-	#ifndef _DEBUG
-		#define _DEBUG_PRINT( msg )
-	#else
-		#ifdef _GRB_WITH_OMP
-			#ifndef _GRB_DEBUG_CRITICAL_SECTION
-				#define _GRB_DEBUG_CRITICAL_SECTION _Pragma("omp critical(_GRB_DEBUG_CRITICAL_SECTION)")
-			#endif
-			#define _DEBUG_PRINT( msg ) \
-				_GRB_DEBUG_CRITICAL_SECTION \
-				{ \
-					std::cout << "[T" << omp_get_thread_num() << "] - " << msg << std::flush; \
-				}
-		#else
-			#define _DEBUG_PRINT( msg ) std::cout << msg << std::flush;
-		#endif
-	#endif
-#endif
 
 namespace grb {
 
@@ -948,33 +930,45 @@ namespace grb {
 			const Matrix< InputType, reference, RIT, CIT, NIT > &A,
 			const Monoid &monoid
 		) {
-			_DEBUG_PRINT( "In grb::internal::foldr_unmasked_generic( reference )\n" );
-			RC rc = SUCCESS;
+#ifdef _DEBUG
+			std::cout << "In grb::internal::fold_unmasked_generic( reference )\n" << std::flush;
+#endif
 
 			if( grb::nnz( A ) == 0 ) {
-				_DEBUG_PRINT( "The input matrix is empty, nothing to compute\n" );
-				return rc;
+#ifdef _DEBUG
+				std::cout << "The input matrix is empty, nothing to compute\n" << std::flush;
+#endif
+				return RC::SUCCESS;
 			}
 
-			if ( descr & descriptors::force_row_major && descr & descriptors::transpose_left ) {
-				_DEBUG_PRINT( "Masked fold with force_row_major and transpose_left is not supported\n" );
+			if( descr & descriptors::force_row_major && descr & descriptors::transpose_left ) {
+#ifdef _DEBUG
+				std::cout << "Masked fold with force_row_major and transpose_left is not supported\n" << std::flush;
+#endif
 				return RC::ILLEGAL;
 			}
-			if ( descr & descriptors::force_row_major && descr & descriptors::transpose_matrix ) {
-				_DEBUG_PRINT( "Masked fold with force_row_major and transpose_matrix is not supported\n" );
+			if( descr & descriptors::force_row_major && descr & descriptors::transpose_matrix ) {
+#ifdef _DEBUG
+				std::cout << "Masked fold with force_row_major and transpose_matrix is not supported\n" << std::flush;
+#endif
 				return RC::ILLEGAL;
 			}
 
-			const auto &A_raw = (descr & grb::descriptors::transpose_matrix || descr & grb::descriptors::transpose_left ) ?
-				internal::getCCS( A ) : internal::getCRS( A );
+			const auto &A_raw =
+				(descr & grb::descriptors::transpose_matrix || descr & grb::descriptors::transpose_left )
+				? internal::getCCS( A )
+				: internal::getCRS( A );
 			const size_t A_nnz = nnz( A );
 
-			const auto& op = monoid.getOperator();
+			const auto &op = monoid.getOperator();
+			RC rc = SUCCESS;
 			RC local_rc = rc;
 			auto local_x = monoid.template getIdentity< typename Monoid::D3 >();
 
 #ifdef _H_GRB_REFERENCE_OMP_BLAS3
-	#pragma omp parallel default(none) shared(A_raw, x, rc, std::cout) firstprivate(local_x, local_rc, A_nnz, op)
+	#pragma omp parallel default(none) \
+			shared(A_raw, x, rc, std::cout) \
+			firstprivate(local_x, local_rc, A_nnz, op)
 #endif
 			{
 				size_t start = 0;
@@ -986,12 +980,24 @@ namespace grb {
 				for( size_t idx = start; idx < end; ++idx ) {
 					// Get A value
 					const InputType a_val = A_raw.values[ idx ];
-					_DEBUG_PRINT( "A.values[ " + std::to_string( idx ) + " ] = " + std::to_string( a_val ) + "\n" );
+#ifdef _DEBUG
+					std::cout << "A.values[ " + std::to_string( idx )
+								+ " ] = " + std::to_string( a_val ) + "\n" << std::flush;
+#endif
 
 					// Compute the fold for this coordinate
 					auto local_x_before = local_x;
-					local_rc = local_rc ? local_rc : grb::apply< descr >( local_x, local_x_before, a_val, op );
-					_DEBUG_PRINT( "Computing: local_x = op(" + std::to_string( a_val ) + ", " + std::to_string( local_x_before ) + ") = " + std::to_string( local_x ) + "\n" );
+					local_rc = local_rc
+								? local_rc
+								: grb::apply< descr >(
+									local_x, local_x_before, a_val, op
+								);
+#ifdef _DEBUG
+					std::cout << "Computing: local_x = op("
+								+ std::to_string( a_val )
+								+ ", " + std::to_string( local_x_before )
+								+ ") = " + std::to_string( local_x ) + "\n" << std::flush;
+#endif
 				}
 
 
@@ -1000,8 +1006,16 @@ namespace grb {
 #endif
 				{ // Reduction with the global result (critical section if OpenMP)
 					auto x_before = x;
-					local_rc = local_rc ? local_rc : grb::apply< descr >( x, x_before, local_x, op );
-					_DEBUG_PRINT( "Computing x: op(" + std::to_string( local_x ) + ", " + std::to_string( x_before ) + ") = " + std::to_string( x ) + "\n" );
+					local_rc = local_rc
+								? local_rc
+								: grb::apply< descr >(
+									x, x_before, local_x, op
+								);
+#ifdef _DEBUG
+					std::cout << "Computing x: op(" + std::to_string( local_x )
+								+ ", " + std::to_string( x_before ) + ") = "
+								+ std::to_string( x ) + "\n" << std::flush;
+#endif
 					rc = rc ? rc : local_rc;
 				}
 			}
@@ -1020,37 +1034,53 @@ namespace grb {
 			const Matrix< InputType, reference, RIT, CIT, NIT > &A,
 			const Monoid &monoid
 		) {
-			_DEBUG_PRINT( "In grb::internal::foldr_unmasked_generic( reference )\n" );
-			RC rc = SUCCESS;
+#ifdef _DEBUG
+			std::cout << "In grb::internal::fold_add_identity_unmasked_generic( reference )\n" << std::flush;
+#endif
 
 			if( grb::nnz( A ) == 0 ) {
-				_DEBUG_PRINT( "The input matrix is empty, nothing to compute\n" );
-				return rc;
+#ifdef _DEBUG
+				std::cout << "The input matrix is empty, nothing to compute\n" << std::flush;
+#endif
+				return RC::SUCCESS;
 			}
 
-			if ( descr & descriptors::force_row_major && descr & descriptors::transpose_left ) {
-				_DEBUG_PRINT( "Masked fold with force_row_major and transpose_left is not supported\n" );
+			if( descr & descriptors::force_row_major && descr & descriptors::transpose_left ) {
+#ifdef _DEBUG
+				std::cout << "Masked fold with force_row_major and transpose_left is not supported\n" << std::flush;
+#endif
 				return RC::ILLEGAL;
 			}
-			if ( descr & descriptors::force_row_major && descr & descriptors::transpose_matrix ) {
-				_DEBUG_PRINT( "Masked fold with force_row_major and transpose_matrix is not supported\n" );
+			if( descr & descriptors::force_row_major && descr & descriptors::transpose_matrix ) {
+#ifdef _DEBUG
+				std::cout << "Masked fold with force_row_major and transpose_matrix is not supported\n" << std::flush;
+#endif
 				return RC::ILLEGAL;
 			}
 
-			const auto &A_raw = (descr & grb::descriptors::transpose_matrix || descr & grb::descriptors::transpose_left ) ?
-				internal::getCCS( A ) : internal::getCRS( A );
-			const size_t m = (descr & grb::descriptors::transpose_matrix || descr & grb::descriptors::transpose_left ) ?
-				ncols( A ) : nrows( A );
-			const size_t n = (descr & grb::descriptors::transpose_matrix || descr & grb::descriptors::transpose_left ) ?
-				nrows( A ) : ncols( A );
+			const auto &A_raw =
+				(descr & grb::descriptors::transpose_matrix || descr & grb::descriptors::transpose_left )
+				? internal::getCCS( A )
+				: internal::getCRS( A );
+			const size_t m =
+				(descr & grb::descriptors::transpose_matrix || descr & grb::descriptors::transpose_left )
+				? ncols( A )
+				: nrows( A );
+			const size_t n =
+				(descr & grb::descriptors::transpose_matrix || descr & grb::descriptors::transpose_left )
+				? nrows( A )
+				: ncols( A );
 
-			const auto& op = monoid.getOperator();
-			const auto& identity = monoid.template getIdentity< typename Monoid::D3 >();
+			const auto &op = monoid.getOperator();
+			const auto &identity = monoid.template getIdentity< typename Monoid::D3 >();
+			RC rc = SUCCESS;
 			RC local_rc = rc;
 			auto local_x = monoid.template getIdentity< typename Monoid::D3 >();
 
 #ifdef _H_GRB_REFERENCE_OMP_BLAS3
-	#pragma omp parallel default(none) shared(A_raw, x, rc, std::cout) firstprivate(local_x, local_rc, m, n, identity, op)
+	#pragma omp parallel default(none) \
+			 shared(A_raw, x, rc, std::cout) \
+			 firstprivate(local_x, local_rc, m, n, identity, op)
 #endif
 			{
 				size_t start = 0;
@@ -1063,28 +1093,66 @@ namespace grb {
 					bool identity_element_computed = false;
 					for(; k < A_raw.col_start[ i + 1 ]; k++ ) {
 						const auto j = A_raw.row_index[ k ];
-						
-						// Check if the element in the main diagonal has been computed for this row
-						identity_element_computed |= ( ( descr & descriptors::add_identity ) && i == j );
+
+						// Check if the element of the main diagonal has been touched in this row
+						identity_element_computed |= (
+								( descr & descriptors::add_identity )
+								&& i == j
+							);
 
 						// descriptors::add_identity logic
-						const InputType identity_increment = ( i == j ) ? static_cast<InputType>(1) : static_cast<InputType>(0);
-						_DEBUG_PRINT( "identity_increment = " + std::to_string( identity_increment ) + "\n" );
+						const InputType identity_increment = ( i == j )
+															? static_cast<InputType>(1)
+															: static_cast<InputType>(0);
+#ifdef _DEBUG
+						std::cout << "identity_increment = "
+									+ std::to_string( identity_increment )
+									+ "\n" << std::flush;
+#endif
 
 						// Get A value
 						const InputType a_val = A_raw.getValue( k, identity );
-						_DEBUG_PRINT( "A.values[ " + std::to_string( i ) + ";" + std::to_string( j ) + " ] = " + std::to_string( a_val ) + "\n" );
+#ifdef _DEBUG
+						std::cout << "A.values[ " + std::to_string( i )
+									+ ";" + std::to_string( j ) + " ] = "
+									+ std::to_string( a_val ) + "\n" << std::flush;
+#endif
 
 						// Compute the fold for this coordinate
 						const auto local_x_before = local_x;
-						local_rc = local_rc ? local_rc : grb::apply< descr >( local_x, local_x_before, a_val + identity_increment, op );
-						_DEBUG_PRINT( "Computing: local_x = op(" + std::to_string( a_val + identity_increment ) + ", " + std::to_string( local_x_before ) + ") = " + std::to_string( local_x ) + "\n" );
+						local_rc = local_rc
+									? local_rc
+									: grb::apply< descr >(
+										local_x,
+										local_x_before,
+										a_val + identity_increment,
+										op
+									);
+#ifdef _DEBUG
+						std::cout << "Computing: local_x = op("
+									+ std::to_string( a_val + identity_increment )
+									+ ", " + std::to_string( local_x_before )
+									+ ") = " + std::to_string( local_x ) + "\n" << std::flush;
+#endif
 					}
-					// If the element on the main diagonal was not present in the row, compute it manually
-					if( not identity_element_computed && i < n && i < m ) {
+					// If the element on the main diagonal was not present in the row,
+					// compute it manually
+					if( ! identity_element_computed && i < n && i < m ) {
 						const auto local_x_before = local_x;
-						local_rc = local_rc ? local_rc : grb::apply< descr >( local_x, local_x_before, static_cast<InputType>(1), op );
-						_DEBUG_PRINT( "Computing identity: local_x = op(" + std::to_string( 1 ) + ", " + std::to_string( local_x_before ) + ") = " + std::to_string( local_x ) + "\n" );
+						local_rc = local_rc
+									? local_rc
+									: grb::apply< descr >(
+										local_x,
+										local_x_before,
+										static_cast<InputType>(1),
+										op
+									);
+#ifdef _DEBUG
+						std::cout << "Computing identity: local_x = op("
+									+ std::to_string( 1 ) + ", "
+									+ std::to_string( local_x_before )
+									+ ") = " + std::to_string( local_x ) + "\n" << std::flush;
+#endif
 					}
 				}
 
@@ -1095,7 +1163,11 @@ namespace grb {
 				{ // Reduction with the global result (critical section if OpenMP)
 					auto x_before = x;
 					local_rc = local_rc ? local_rc : grb::apply< descr >( x, x_before, local_x, op );
-					_DEBUG_PRINT( "Computing x: op(" + std::to_string( local_x ) + ", " + std::to_string( x_before ) + ") = " + std::to_string( x ) + "\n" );
+#ifdef _DEBUG
+					std::cout << "Computing x: op(" + std::to_string( local_x )
+								+ ", " + std::to_string( x_before ) + ") = "
+								+ std::to_string( x ) + "\n" << std::flush;
+#endif
 					rc = rc ? rc : local_rc;
 				}
 			}
@@ -1116,27 +1188,38 @@ namespace grb {
 			const Matrix< MaskType, reference, RIT_M, CIT_M, NIT_M > &mask,
 			const Monoid &monoid
 		) {
-			_DEBUG_PRINT( "In grb::internal::foldr_masked_generic( reference )\n" );
-			RC rc = SUCCESS;
+			typedef typename std::conditional<
+						std::is_void< MaskType >::value, bool, MaskType
+					>::type MaskIdentityType;
+
+#ifdef _DEBUG
+			std::cout << "In grb::internal::fold_masked_generic( reference )\n" << std::flush;
+#endif
+
+			if( grb::nnz( mask ) == 0 || grb::nnz( A ) == 0 ) {
+#ifdef _DEBUG
+				std::cout << "The mask and/or the input matrix are empty, nothing to compute\n" << std::flush;
+#endif
+				return RC::SUCCESS;
+			}
+
+			if( descr & descriptors::force_row_major && descr & descriptors::transpose_left ) {
+#ifdef _DEBUG
+				std::cout << "Masked fold with force_row_major and transpose_left is not supported\n" << std::flush;
+#endif
+				return RC::ILLEGAL;
+			}
+			if( descr & descriptors::force_row_major && descr & descriptors::transpose_right ) {
+#ifdef _DEBUG
+				std::cout << "Masked fold with force_row_major and transpose_right is not supported\n" << std::flush;
+#endif
+				return RC::ILLEGAL;
+			}
 
 			constexpr bool ignore_mask_values = descr & descriptors::structural;
 
-			if( grb::nnz( mask ) == 0 || grb::nnz( A ) == 0 ) {
-				_DEBUG_PRINT( "The mask and/or the input matrix are empty, nothing to compute\n" );
-				return rc;
-			}
-
-			if ( descr & descriptors::force_row_major && descr & descriptors::transpose_left ) {
-				_DEBUG_PRINT( "Masked fold with force_row_major and transpose_left is not supported\n" );
-				return RC::ILLEGAL;
-			}
-			if ( descr & descriptors::force_row_major && descr & descriptors::transpose_right ) {
-				_DEBUG_PRINT( "Masked fold with force_row_major and transpose_right is not supported\n" );
-				return RC::ILLEGAL;
-			}
-
-			const auto& identity = monoid.template getIdentity< typename Monoid::D3 >();
-			const auto& op = monoid.getOperator();
+			const auto &identity = monoid.template getIdentity< typename Monoid::D3 >();
+			const auto &op = monoid.getOperator();
 
 			const auto &A_raw = descr & grb::descriptors::transpose_left ?
 				internal::getCCS( A ) : internal::getCRS( A );
@@ -1152,16 +1235,30 @@ namespace grb {
 				nrows( mask ) : ncols( mask );
 
 			// Check mask dimensions
+#ifdef _DEBUG
+			std::cout << "Mask dimensions: ( "
+						+ std::to_string( m_mask ) + ";"
+						+ std::to_string( n_mask ) + " )\n" << std::flush;
+#endif
+#ifdef _DEBUG
+			std::cout << "Input matrix dimensions: ( "
+						+ std::to_string( m ) + ";"
+						+ std::to_string( n ) + " )\n" << std::flush;
+#endif
 			if( m != m_mask || n != n_mask ) {
-				_DEBUG_PRINT( "Mask dimensions do not match input matrix dimensions\n" );
-				return MISMATCH;
+#ifdef _DEBUG
+				std::cout << "Mask dimensions do not match input matrix dimensions\n" << std::flush;
+#endif
+				return RC::MISMATCH;
 			}
 
+			RC rc = SUCCESS;
 			RC local_rc = rc;
 			auto local_x = identity;
-
 #ifdef _H_GRB_REFERENCE_OMP_BLAS3
-	#pragma omp parallel default(none) shared(A_raw, mask_raw, x, rc, std::cout) firstprivate(local_x, local_rc, m, n, op, identity)
+	#pragma omp parallel default(none) \
+			shared(A_raw, mask_raw, x, rc, std::cout) \
+			firstprivate(local_x, local_rc, m, n, op, identity)
 #endif
 			{
 				size_t start_row = 0;
@@ -1174,46 +1271,111 @@ namespace grb {
 					bool identity_element_computed = false;
 					for( auto k = A_raw.col_start[ i ]; k < A_raw.col_start[ i + 1 ]; ++k ) {
 						const auto j = A_raw.row_index[ k ];
-
-						// Increment the mask pointer until we find the right column, or a lower column (since the storage withing a row is sorted in a descending order)
-						while( mask_k < mask_raw.col_start[ i + 1 ] && mask_raw.row_index[ mask_k ] > j  ) {
-							_DEBUG_PRINT( "NEquals masked coordinate: ( " + std::to_string( i ) + ";" + std::to_string( mask_raw.row_index[ mask_k ] ) + " )\n" );
+						/* Increment the mask pointer until we find the right column,
+						* or a lower column  (since the storage withing a row
+						* is sorted in a descending order)
+						*/
+						while(
+							mask_k < mask_raw.col_start[ i + 1 ]
+							&& mask_raw.row_index[ mask_k ] > j
+						) {
+#ifdef _DEBUG
+						std::cout << "NEquals masked coordinate: ( "
+										+ std::to_string( i ) + ";"
+										+ std::to_string( mask_raw.row_index[ mask_k ] )
+										+ " )\n" << std::flush;
+#endif
 							mask_k++;
 						}
 						if( mask_k >= mask_raw.col_start[ i + 1 ] ) {
-							_DEBUG_PRINT( "No value left for this column\n" );
+#ifdef _DEBUG
+						std::cout << "No value left for this column\n" << std::flush;
+#endif
 							break;
 						}
 
 						if( mask_raw.row_index[ mask_k ] < j ) {
-							_DEBUG_PRINT( "Skip masked coordinate at: ( " + std::to_string( i ) + ";" + std::to_string( mask_raw.row_index[ mask_k ] ) + " )\n" );
+#ifdef _DEBUG
+							std::cout << "Skip masked coordinate at: ( "
+										+ std::to_string( i ) + ";"
+										+ std::to_string( mask_raw.row_index[ mask_k ] )
+										+ " )\n" << std::flush;
+#endif
 							continue;
 						}
 
-						if( not ignore_mask_values && not MaskHasValue< MaskType >( mask_raw, mask_k ).value ) {
-							_DEBUG_PRINT( "Skip masked value at: ( " + std::to_string( i ) + ";" + std::to_string( mask_raw.row_index[ mask_k ] ) + " )\n" );
+						bool mask_has_value = mask_raw.getValue(
+							mask_k,
+							identities::logical_true<MaskIdentityType>::value()
+						);
+						if( ! ignore_mask_values && !mask_has_value ) {
+#ifdef _DEBUG
+							std::cout << "Skip masked value at: ( "
+										+ std::to_string( i ) + ";"
+										+ std::to_string( mask_raw.row_index[ mask_k ] )
+										+ " )\n" << std::flush;
+#endif
 							continue;
 						}
 
 						identity_element_computed |= ( ( descr & descriptors::add_identity ) && i == j );
 
 						// descriptors::add_identity logic
-						const InputType identity_increment = (descr & descriptors::add_identity) && i == j ? static_cast<InputType>(1) : static_cast<InputType>(0);
-						_DEBUG_PRINT( "identity_increment = " + std::to_string( identity_increment ) + "\n" );
+						const InputType identity_increment = (descr & descriptors::add_identity) && ( i == j )
+															? static_cast<InputType>(1)
+															: static_cast<InputType>(0);
+#ifdef _DEBUG
+						std::cout << "identity_increment = "
+									+ std::to_string( identity_increment ) + "\n" << std::flush;
+#endif
 
 						// Get A value
-						const InputType a_val = A_raw.getValue( k, identity );
-						_DEBUG_PRINT( "A( " + std::to_string( i ) + ";" + std::to_string( j ) + " ) = " + std::to_string( a_val ) + "\n" );
+						const InputType a_val = A_raw.getValue(
+							k,
+							identity
+						);
+#ifdef _DEBUG
+						std::cout << "A( " + std::to_string( i )
+									+ ";" + std::to_string( j ) + " ) = "
+									+ std::to_string( a_val ) + "\n" << std::flush;
+#endif
 
 						// Compute the fold for this coordinate
 						auto local_x_before = local_x;
-						local_rc = local_rc ? local_rc : grb::apply< descr >( local_x, local_x_before, a_val + identity_increment, op );
-						_DEBUG_PRINT( "Computing: local_x = op(" + std::to_string( a_val + identity_increment ) + ", " + std::to_string( local_x_before ) + ") = " + std::to_string( local_x ) + "\n" );
+						local_rc = local_rc
+									? local_rc
+									: grb::apply< descr >(
+										local_x,
+										local_x_before, a_val + identity_increment,
+										op
+									);
+#ifdef _DEBUG
+						std::cout << "Computing: local_x = op("
+									+ std::to_string( a_val + identity_increment )
+									+ ", " + std::to_string( local_x_before ) + ") = "
+									+ std::to_string( local_x ) + "\n" << std::flush;
+#endif
 					}
-					if( (descr & descriptors::add_identity) && not identity_element_computed && i < n && i < m ) {
+					if( (descr & descriptors::add_identity)
+						&& ! identity_element_computed
+						&& i < n
+						&& i < m
+					) {
 						const auto local_x_before = local_x;
-						local_rc = local_rc ? local_rc : grb::apply< descr >( local_x, local_x_before, static_cast<InputType>(1), op );
-						_DEBUG_PRINT( "Computing identity: local_x = op(" + std::to_string( 1 ) + ", " + std::to_string( local_x_before ) + ") = " + std::to_string( local_x ) + "\n" );
+						local_rc = local_rc
+									? local_rc
+									: grb::apply< descr >(
+										local_x,
+										local_x_before,
+										static_cast<InputType>(1),
+										op
+									);
+#ifdef _DEBUG
+						std::cout << "Computing identity: local_x = op("
+									+ std::to_string( 1 )
+									+ ", " + std::to_string( local_x_before ) + ") = "
+									+ std::to_string( local_x ) + "\n" << std::flush;
+#endif
 					}
 				}
 
@@ -1223,7 +1385,11 @@ namespace grb {
 				{ // Reduction with the global result (critical section if OpenMP)
 					auto x_before = x;
 					local_rc = local_rc ? local_rc : grb::apply< descr >( x, x_before, local_x, op );
-					_DEBUG_PRINT( "Computing x: op(" + std::to_string( local_x ) + ", " + std::to_string( x_before ) + ") = " + std::to_string( x ) + "\n" );
+#ifdef _DEBUG
+					std::cout << "Computing x: op(" + std::to_string( local_x )
+								+ ", " + std::to_string( x_before ) + ") = "
+								+ std::to_string( x ) + "\n" << std::flush;
+#endif
 					rc = rc ? rc : local_rc;
 				}
 			}
@@ -1541,7 +1707,8 @@ namespace grb {
 		const Matrix< InputType2, reference, RIT3, CIT3, NIT3 > &B,
 		const MulMonoid &mulmono,
 		const Phase phase = EXECUTE,
-		const typename std::enable_if< !grb::is_object< OutputType >::value &&
+		const typename std::enable_if<
+			!grb::is_object< OutputType >::value &&
 			!grb::is_object< InputType1 >::value &&
 			!grb::is_object< InputType2 >::value &&
 			grb::is_monoid< MulMonoid >::value,
@@ -1597,7 +1764,8 @@ namespace grb {
 		const Matrix< InputType2, reference, RIT3, CIT3, NIT3 > &B,
 		const Operator &mulOp,
 		const Phase phase = EXECUTE,
-		const typename std::enable_if< !grb::is_object< OutputType >::value &&
+		const typename std::enable_if<
+			!grb::is_object< OutputType >::value &&
 			!grb::is_object< InputType1 >::value &&
 			!grb::is_object< InputType2 >::value &&
 			grb::is_operator< Operator >::value,
@@ -1651,7 +1819,8 @@ namespace grb {
 		const Matrix< InputType, reference, RIT_A, CIT_A, NIT_A > &A,
 		const Matrix< MaskType, reference, RIT_M, CIT_M, NIT_M > &mask,
 		const Monoid &monoid = Monoid(),
-		const typename std::enable_if< !grb::is_object< IOType >::value &&
+		const typename std::enable_if<
+			!grb::is_object< IOType >::value &&
 			!grb::is_object< InputType >::value &&
 			!grb::is_object< MaskType >::value &&
 			grb::is_monoid< Monoid >::value, void
@@ -1700,7 +1869,8 @@ namespace grb {
 		IOType &x,
 		const Matrix< InputType, reference, RIT, CIT, NIT > &A,
 		const Monoid &monoid,
-		const typename std::enable_if< !grb::is_object< IOType >::value &&
+		const typename std::enable_if<
+			!grb::is_object< IOType >::value &&
 			!grb::is_object< InputType >::value &&
 			grb::is_monoid< Monoid >::value, void
 		>::type * const = nullptr
@@ -1838,7 +2008,7 @@ namespace grb {
 
 #ifdef _DEBUG
 		std::cout << "In grb::foldl( reference, matrix, monoid )\n";
-#endif	
+#endif
 
 		if( descr & descriptors::add_identity ) {
 			return internal::fold_add_identity_unmasked_generic< descr, Monoid >(
