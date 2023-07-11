@@ -139,7 +139,9 @@ void grbProgram( const input & data_in, output & out ) {
 			cols.push_back( p.second );
 		}
 		std::vector< IntegerType > values( rows.size(), static_cast< IntegerType >( 1 ) );
-		buildMatrixUnique( A, rows.data(), cols.data(), values.data(), values.size(), IOMode::SEQUENTIAL );
+		assert( SUCCESS == 
+			buildMatrixUnique( A, rows.data(), cols.data(), values.data(), values.size(), IOMode::SEQUENTIAL )
+		);
 	}
 	out.times.io = timer.time();
 
