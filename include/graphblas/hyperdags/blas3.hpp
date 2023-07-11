@@ -351,6 +351,9 @@ namespace grb {
 			grb::is_operator< Operator >::value, void
 		>::type * const = nullptr
 	) {
+		if( nrows( A ) == 0 || ncols( A ) == 0 ) { return SUCCESS; }
+		if( nrows( mask ) == 0 || ncols( mask ) == 0 ) { return SUCCESS; }
+
 		const RC ret = foldl< descr >(
 			internal::getMatrix( A ),
 			internal::getMatrix( mask ),
@@ -358,9 +361,12 @@ namespace grb {
 			op
 		);
 		if( ret != SUCCESS ) { return ret; }
-		if( nrows( A ) == 0 || ncols( A ) == 0 ) { return ret; }
-		if( nrows( mask ) == 0 || ncols( mask ) == 0 ) { return ret; }
-		std::array< const void *, 0 > sourcesP{};
+
+		internal::hyperdags::generator.addSource(
+			internal::hyperdags::SCALAR,
+			&x
+		);
+		std::array< const void *, 1 > sourcesP{ &x };
 		std::array< uintptr_t, 2 > sourcesC{
 			getID( internal::getMatrix(A) ),
 			getID( internal::getMatrix(mask) )
@@ -374,6 +380,7 @@ namespace grb {
 			sourcesC.begin(), sourcesC.end(),
 			destinations.begin(), destinations.end()
 		);
+
 		return ret;
 	}
 
@@ -393,14 +400,20 @@ namespace grb {
 			grb::is_operator< Operator >::value, void
 		>::type * const = nullptr
 	) {
+		if( nrows( A ) == 0 || ncols( A ) == 0 ) { return SUCCESS; }
+
 		const RC ret = foldl< descr >(
 			internal::getMatrix( A ),
 			x,
 			op
 		);
 		if( ret != SUCCESS ) { return ret; }
-		if( nrows( A ) == 0 || ncols( A ) == 0 ) { return ret; }
-		std::array< const void *, 0 > sourcesP{};
+
+		internal::hyperdags::generator.addSource(
+			internal::hyperdags::SCALAR,
+			&x
+		);
+		std::array< const void *, 1 > sourcesP{ &x };
 		std::array< uintptr_t, 1 > sourcesC{
 			getID( internal::getMatrix(A) )
 		};
@@ -413,6 +426,7 @@ namespace grb {
 			sourcesC.begin(), sourcesC.end(),
 			destinations.begin(), destinations.end()
 		);
+
 		return ret;
 	}
 
@@ -435,6 +449,9 @@ namespace grb {
 			grb::is_operator< Operator >::value, void
 		>::type * const = nullptr
 	) {
+		if( nrows( A ) == 0 || ncols( A ) == 0 ) { return SUCCESS; }
+		if( nrows( mask ) == 0 || ncols( mask ) == 0 ) { return SUCCESS; }
+
 		const RC ret = foldr< descr >(
 			internal::getMatrix( A ),
 			internal::getMatrix( mask ),
@@ -442,9 +459,13 @@ namespace grb {
 			op
 		);
 		if( ret != SUCCESS ) { return ret; }
-		if( nrows( A ) == 0 || ncols( A ) == 0 ) { return ret; }
-		if( nrows( mask ) == 0 || ncols( mask ) == 0 ) { return ret; }
-		std::array< const void *, 0 > sourcesP{};
+
+
+		internal::hyperdags::generator.addSource(
+			internal::hyperdags::SCALAR,
+			&x
+		);
+		std::array< const void *, 1 > sourcesP{ &x };
 		std::array< uintptr_t, 2 > sourcesC{
 			getID( internal::getMatrix(A) ),
 			getID( internal::getMatrix(mask) )
@@ -458,6 +479,7 @@ namespace grb {
 			sourcesC.begin(), sourcesC.end(),
 			destinations.begin(), destinations.end()
 		);
+
 		return ret;
 	}
 
@@ -477,14 +499,20 @@ namespace grb {
 			grb::is_operator< Operator >::value, void
 		>::type * const = nullptr
 	) {
+		if( nrows( A ) == 0 || ncols( A ) == 0 ) { return SUCCESS; }
+
 		const RC ret = foldr< descr >(
 			internal::getMatrix( A ),
 			x,
 			op
 		);
 		if( ret != SUCCESS ) { return ret; }
-		if( nrows( A ) == 0 || ncols( A ) == 0 ) { return ret; }
-		std::array< const void *, 0 > sourcesP{};
+
+		internal::hyperdags::generator.addSource(
+			internal::hyperdags::SCALAR,
+			&x
+		);
+		std::array< const void *, 1 > sourcesP{ &x };
 		std::array< uintptr_t, 1 > sourcesC{
 			getID( internal::getMatrix(A) )
 		};
@@ -497,6 +525,7 @@ namespace grb {
 			sourcesC.begin(), sourcesC.end(),
 			destinations.begin(), destinations.end()
 		);
+
 		return ret;
 	}
 

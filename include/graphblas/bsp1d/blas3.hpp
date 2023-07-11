@@ -219,43 +219,6 @@ namespace grb {
 		Descriptor descr = descriptors::no_operation,
 		class Operator,
 		typename IOType, typename MaskType, typename InputType,
-		typename RIT, typename CIT, typename NIT
-	>
-	RC foldl(
-		Matrix< IOType, BSP1D, RIT, CIT, NIT > &A,
-		const InputType &x,
-		const Operator &op = Operator(),
-		const typename std::enable_if<
-			!grb::is_object< IOType >::value &&
-			!grb::is_object< InputType >::value &&
-			!grb::is_object< MaskType >::value &&
-			grb::is_operator< Operator >::value, void
-		>::type * const = nullptr
-	) {
-
-#ifdef _DEBUG
-		std::cout << "In grb::foldl( BSP1D, matrix, scalar, op )\n";
-#endif
-		RC rc = SUCCESS;
-
-		if( grb::nnz( A ) == 0 ) {
-			return rc;
-		}
-
-		// Do local folding
-		rc = foldl< descr >(
-			internal::getLocal( A ),
-			x,
-			op
-		);
-
-		return rc;
-	}
-
-	template<
-		Descriptor descr = descriptors::no_operation,
-		class Operator,
-		typename IOType, typename MaskType, typename InputType,
 		typename RIT_A, typename CIT_A, typename NIT_A,
 		typename RIT_M, typename CIT_M, typename NIT_M
 	>
@@ -275,21 +238,64 @@ namespace grb {
 #ifdef _DEBUG
 		std::cout << "In grb::foldl( BSP1D, matrix, mask, scalar, op )\n";
 #endif
-		RC rc = SUCCESS;
-
-		if( grb::nnz( A ) == 0 ) {
-			return rc;
+		if( nnz( A ) == 0 || nnz( mask) == 0 ) {
+#ifdef _DEBUG
+			std::cout << "Matrix / mask is empty, nothing to compute.\n";
+#endif
+			return SUCCESS;
 		}
 
 		// Do local folding
-		rc = foldl< descr >(
+		RC rc = foldl< descr >(
 			internal::getLocal( A ),
 			internal::getLocal( mask ),
 			x,
 			op
 		);
+		if( collectives<>::allreduce( rc, operators::any_or< RC >() ) != SUCCESS ) {
+			return PANIC;
+		}
+		return SUCCESS;
+	}
 
-		return rc;
+	template<
+		Descriptor descr = descriptors::no_operation,
+		class Operator,
+		typename IOType, typename MaskType, typename InputType,
+		typename RIT, typename CIT, typename NIT
+	>
+	RC foldl(
+		Matrix< IOType, BSP1D, RIT, CIT, NIT > &A,
+		const InputType &x,
+		const Operator &op = Operator(),
+		const typename std::enable_if<
+			!grb::is_object< IOType >::value &&
+			!grb::is_object< InputType >::value &&
+			!grb::is_object< MaskType >::value &&
+			grb::is_operator< Operator >::value, void
+		>::type * const = nullptr
+	) {
+
+#ifdef _DEBUG
+		std::cout << "In grb::foldl( BSP1D, matrix, scalar, op )\n";
+#endif
+		if( nnz( A ) == 0 ) {
+#ifdef _DEBUG
+			std::cout << "Matrix is empty, nothing to compute.\n";
+#endif
+			return SUCCESS;
+		}
+
+		// Do local folding
+		RC rc = foldl< descr >(
+			internal::getLocal( A ),
+			x,
+			op
+		);
+		if( collectives<>::allreduce( rc, operators::any_or< RC >() ) != SUCCESS ) {
+			return PANIC;
+		}
+		return SUCCESS;
 	}
 
 	template<
@@ -315,21 +321,24 @@ namespace grb {
 #ifdef _DEBUG
 		std::cout << "In grb::foldr( BSP1D, matrix, scalar, mask, op )\n";
 #endif
-		RC rc = SUCCESS;
-
-		if( grb::nnz( A ) == 0 ) {
-			return rc;
+		if( nnz( A ) == 0 || nnz( mask) == 0 ) {
+#ifdef _DEBUG
+			std::cout << "Matrix / mask is empty, nothing to compute.\n";
+#endif
+			return SUCCESS;
 		}
 
 		// Do local folding
-		rc = foldr< descr >(
+		RC rc = foldr< descr >(
 			internal::getLocal( A ),
 			internal::getLocal( mask ),
 			x,
 			op
 		);
-
-		return rc;
+		if( collectives<>::allreduce( rc, operators::any_or< RC >() ) != SUCCESS ) {
+			return PANIC;
+		}
+		return SUCCESS;
 	}
 
 	template<
@@ -351,20 +360,23 @@ namespace grb {
 #ifdef _DEBUG
 		std::cout << "In grb::foldr( BSP1D, matrix, scalar, op )\n";
 #endif
-		RC rc = SUCCESS;
-
-		if( grb::nnz( A ) == 0 ) {
-			return rc;
+		if( nnz( A ) == 0 ) {
+#ifdef _DEBUG
+			std::cout << "Matrix is empty, nothing to compute.\n";
+#endif
+			return SUCCESS;
 		}
 
 		// Do local folding
-		rc = foldr< descr >(
+		RC rc = foldr< descr >(
 			internal::getLocal( A ),
 			x,
 			op
 		);
-
-		return rc;
+		if( collectives<>::allreduce( rc, operators::any_or< RC >() ) != SUCCESS ) {
+			return PANIC;
+		}
+		return SUCCESS;
 	}
 
 } // namespace grb
