@@ -20,7 +20,7 @@
  *
  * Implements the triangle counting algorithm, using different methods.
  *
- * @author B. Lozes
+ * @author Benjamin Lozes
  * @date: May 10th, 2023
  */
 
@@ -35,59 +35,17 @@
 
 #include <graphblas.hpp>
 
-constexpr bool Debug = false;
-
 namespace grb {
 
 	namespace algorithms {
 
-		namespace utils {
-
-			template< class Iterator >
-			void printSparseMatrixIterator( size_t rows, size_t cols, Iterator begin, Iterator end, const std::string & name = "", std::ostream & os = std::cout ) {
-				std::cout << "Matrix \"" << name << "\" (" << rows << "x" << cols << "):" << std::endl << "[" << std::endl;
-				if( rows > 100 || cols > 100 ) {
-					os << "   Matrix too large to print" << std::endl;
-				} else {
-					// os.precision( 3 );
-					for( size_t y = 0; y < rows; y++ ) {
-						os << std::string( 3, ' ' );
-						for( size_t x = 0; x < cols; x++ ) {
-							auto nnz_val = std::find_if( begin, end, [ y, x ]( const typename std::iterator_traits< Iterator >::value_type & a ) {
-								return a.first.first == y && a.first.second == x;
-							} );
-							if( nnz_val != end )
-								os << std::fixed << ( *nnz_val ).second;
-							else
-								os << '_';
-							os << " ";
-						}
-						os << std::endl;
-					}
-				}
-				os << "]" << std::endl;
-			}
-
-			template< bool debug, typename D >
-			void printSparseMatrix( const grb::Matrix< D > & mat, const std::string & name = "", std::ostream & os = std::cout ) {
-				if( ! debug )
-					return;
-				grb::wait( mat );
-				printSparseMatrixIterator( grb::nrows( mat ), grb::ncols( mat ), mat.cbegin(), mat.cend(), name, os );
-			}
-
-			template< bool debug >
-			void printf( const std::string & msg, std::ostream & os = std::cout ) {
-				if( ! debug )
-					return;
-				os << msg;
-			}
-		} // namespace utils
-
 		enum class TriangleCountAlgorithm { Burkhardt, Cohen, Sandia_TT };
 
-		std::map< TriangleCountAlgorithm, std::string > TriangleCountAlgorithmNames = { { TriangleCountAlgorithm::Burkhardt, "Burkhardt" }, { TriangleCountAlgorithm::Cohen, "Cohen" },
-			{ TriangleCountAlgorithm::Sandia_TT, "Sandia_TT" } };
+		std::map< TriangleCountAlgorithm, std::string > TriangleCountAlgorithmNames = {
+			{ TriangleCountAlgorithm::Burkhardt, "Burkhardt" },
+			{ TriangleCountAlgorithm::Cohen, "Cohen" },
+			{ TriangleCountAlgorithm::Sandia_TT, "Sandia_TT" }
+		};
 
 		template<
 			class Semiring, class MulMonoid, class SumMonoid,
@@ -103,30 +61,27 @@ namespace grb {
 		>
 		RC triangle_count_generic(
 			size_t & count,
-			Matrix< D1, grb::config::default_backend, RIT1, CIT1, NIT1 > & MXM_out,
-			const Matrix< D2, grb::config::default_backend, RIT2, CIT2, NIT2 > & MXM_lhs,
-			const Matrix< D3, grb::config::default_backend, RIT3, CIT3, NIT3 > & MXM_rhs,
-			Matrix< D4, grb::config::default_backend, RIT4, CIT4, NIT4 > & EWA_out,
-			const Matrix< D5, grb::config::default_backend, RIT5, CIT5, NIT5 > & EWA_rhs,
+			Matrix< D1, config::default_backend, RIT1, CIT1, NIT1 > & MXM_out,
+			const Matrix< D2, config::default_backend, RIT2, CIT2, NIT2 > & MXM_lhs,
+			const Matrix< D3, config::default_backend, RIT3, CIT3, NIT3 > & MXM_rhs,
+			Matrix< D4, config::default_backend, RIT4, CIT4, NIT4 > & EWA_out,
+			const Matrix< D5, config::default_backend, RIT5, CIT5, NIT5 > & EWA_rhs,
 			const D6 div_factor,
 			const Semiring mxm_semiring = Semiring(),
 			const MulMonoid ewiseapply_monoid = MulMonoid(),
-			const SumMonoid sumreduce_monoid = SumMonoid() ) {
-			RC rc = RC::SUCCESS;
+			const SumMonoid sumreduce_monoid = SumMonoid()
+		) {
+			if( ( &MXM_out == &MXM_lhs ) || ( &MXM_out == &MXM_rhs ) ) {
+				return ILLEGAL;
+			}
 
-			rc = ( &MXM_out == &MXM_lhs ) ? RC::ILLEGAL : rc;
-			rc = ( &MXM_out == &MXM_rhs ) ? RC::ILLEGAL : rc;
+			RC rc = SUCCESS;
 
 			// Compute MXM_out = Mlhs * Mrhs
-			utils::printSparseMatrix< Debug >( MXM_lhs, "MXM_lhs" );
-			utils::printSparseMatrix< Debug >( MXM_rhs, "MXM_rhs" );
 			rc = rc ? rc : mxm< descr_mxm >( MXM_out, MXM_lhs, MXM_rhs, mxm_semiring, Phase::RESIZE );
 			rc = rc ? rc : mxm< descr_mxm >( MXM_out, MXM_lhs, MXM_rhs, mxm_semiring, Phase::EXECUTE );
-			utils::printSparseMatrix< Debug >( MXM_out, "MXM_out = mxm( MXM_lhs, MXM_rhs )" );
 
 			// Compute MXM_out .*= EWA_rhs
-			utils::printSparseMatrix< Debug >( EWA_rhs, "EWA_rhs" );
-
 			// FIXME: Replace by a foldl( Matrix[in,out], Matrix[in], Monoid ) - not implemented yet
 			// Will then become:
 			// rc = rc ? rc : eWiseApply< descr_ewa >( MXM_out, MXM_out, EWA_rhs, ewiseapply_monoid, Phase::RESIZE );
@@ -134,16 +89,13 @@ namespace grb {
 			// Instead of:
 			rc = rc ? rc : eWiseApply< descr_ewa >( EWA_out, MXM_out, EWA_rhs, ewiseapply_monoid, Phase::RESIZE );
 			rc = rc ? rc : eWiseApply< descr_ewa >( EWA_out, MXM_out, EWA_rhs, ewiseapply_monoid, Phase::EXECUTE );
-			utils::printSparseMatrix< Debug >( EWA_out, "EWA_out = ewiseapply( MXM_out, EWA_rhs )" );
 
-			// Compute a sum reduction over <EWA_out> in <count>
+			// Compute a sum reduction over <EWA_out> into <count>
 			count = static_cast< size_t >( 0 );
 			rc = rc ? rc : foldl< descr_reduce >( count, EWA_out, sumreduce_monoid );
-			utils::printf< Debug >( "count = foldl(EWA_out) = " + std::to_string( count ) + "\n" );
 
 			// Apply the div_factor to the reduction result
 			count /= div_factor;
-			utils::printf< Debug >( "count = count / div_factor = " + std::to_string( count ) + "\n" );
 
 			return rc;
 		}
@@ -187,17 +139,23 @@ namespace grb {
 			typename D2, typename RIT2, typename CIT2, typename NIT2,
 			typename D3, typename RIT3, typename CIT3, typename NIT3,
 			typename D4, typename RIT4, typename CIT4, typename NIT4,
-			class Semiring = grb::Semiring< operators::add< D1 >, operators::mul< D1 >, identities::zero, identities::one >,
-			class MulMonoid = grb::Monoid< grb::operators::mul< D1 >, identities::one >,
-			class SumMonoid = grb::Monoid< operators::add< size_t, D1, size_t >, identities::zero > >
+			class Semiring = Semiring< operators::add< D1 >,
+									   operators::mul< D1 >,
+									   identities::zero,
+									   identities::one >,
+			class MulMonoid = Monoid< operators::mul< D1 >, 
+									  identities::one >,
+			class SumMonoid = Monoid< operators::add< size_t, D1, size_t >, 
+									  identities::zero > 
+		>
 		RC triangle_count(
 			const TriangleCountAlgorithm algo,
 			size_t & count,
-			const Matrix< D1, grb::config::default_backend, RIT1, CIT1, NIT1 > & A,
-			Matrix< D2, grb::config::default_backend, RIT2, CIT2, NIT2 > & MXM_out,
-			Matrix< D3, grb::config::default_backend, RIT3, CIT3, NIT3 > & EWA_out,
-			Matrix< D4, grb::config::default_backend, RIT4, CIT4, NIT4 > & L = { 0, 0 },
-			Matrix< D4, grb::config::default_backend, RIT4, CIT4, NIT4 > & U = { 0, 0 }
+			const Matrix< D1, config::default_backend, RIT1, CIT1, NIT1 > & A,
+			Matrix< D2, config::default_backend, RIT2, CIT2, NIT2 > & MXM_out,
+			Matrix< D3, config::default_backend, RIT3, CIT3, NIT3 > & EWA_out,
+			Matrix< D4, config::default_backend, RIT4, CIT4, NIT4 > & L = { 0, 0 },
+			Matrix< D4, config::default_backend, RIT4, CIT4, NIT4 > & U = { 0, 0 }
 		) {
 			// Static assertions
 			static_assert( std::is_integral< D1 >::value, "Type D1 must be integral" );
@@ -205,39 +163,39 @@ namespace grb {
 			// Sanity checks
 			if( nrows( A ) != ncols( A ) ) {
 				std::cerr << "Matrix A must be square" << std::endl;
-				return RC::MISMATCH;
+				return MISMATCH;
 			}
 			if( ncols( L ) != nrows( L ) ) {
 				std::cerr << "Matrix L must be square" << std::endl;
-				return RC::MISMATCH;
+				return MISMATCH;
 			}
 			if( nrows( A ) != ncols( L ) ) {
 				std::cerr << "Matrices A and L must have the same dimensions" << std::endl;
-				return RC::MISMATCH;
+				return MISMATCH;
 			}
 			if( ncols( U ) != nrows( U ) ) {
 				std::cerr << "Matrix U must be square" << std::endl;
-				return RC::MISMATCH;
+				return MISMATCH;
 			}
 			if( nrows( A ) != ncols( U ) ) {
 				std::cerr << "Matrices A and U must have the same dimensions" << std::endl;
-				return RC::MISMATCH;
+				return MISMATCH;
 			}
 			if( ncols( MXM_out ) != nrows( MXM_out ) ) {
 				std::cerr << "Matrix MXM_out must be square" << std::endl;
-				return RC::MISMATCH;
+				return MISMATCH;
 			}
 			if( nrows( A ) != ncols( MXM_out ) ) {
 				std::cerr << "Matrices A and MXM_out must have the same dimensions" << std::endl;
-				return RC::MISMATCH;
+				return MISMATCH;
 			}
 			if( ncols( EWA_out ) != nrows( EWA_out ) ) {
 				std::cerr << "Matrix EWA_out must be square" << std::endl;
-				return RC::MISMATCH;
+				return MISMATCH;
 			}
 			if( nrows( A ) != ncols( EWA_out ) ) {
 				std::cerr << "Matrices A and EWA_out must have the same dimensions" << std::endl;
-				return RC::MISMATCH;
+				return MISMATCH;
 			}
 
 			// Dispatch to the appropriate algorithm
@@ -252,11 +210,11 @@ namespace grb {
 				case TriangleCountAlgorithm::Cohen: {
 					if( nrows( L ) == 0 || ncols( L ) == 0 ) {
 						std::cerr << "Matrix L must be provided for the Cohen algorithm" << std::endl;
-						return RC::MISMATCH;
+						return MISMATCH;
 					}
 					if( nrows( U ) == 0 || ncols( U ) == 0 ) {
 						std::cerr << "Matrix U must be provided for the Cohen algorithm" << std::endl;
-						return RC::MISMATCH;
+						return MISMATCH;
 					}
 
 					return triangle_count_generic<
@@ -267,10 +225,10 @@ namespace grb {
 				case TriangleCountAlgorithm::Sandia_TT: {
 					if( ( nrows( U ) == 0 || ncols( U ) == 0 ) && ( nrows( L ) == 0 || ncols( L ) == 0 ) ) {
 						std::cerr << "Matrix L or U must be provided for the Sandia_TT algorithm" << std::endl;
-						return RC::MISMATCH;
+						return MISMATCH;
 					}
 
-					const Matrix< D4, grb::config::default_backend, RIT4, CIT4, NIT4 > & T = ( nrows( U ) == 0 || ncols( U ) == 0 ) ? L : U;
+					const Matrix< D4, config::default_backend, RIT4, CIT4, NIT4 > & T = ( nrows( U ) == 0 || ncols( U ) == 0 ) ? L : U;
 					return triangle_count_generic<
 						Semiring, MulMonoid, SumMonoid
 					>( count, MXM_out, T, T, EWA_out, T, 1UL );
@@ -278,10 +236,10 @@ namespace grb {
 
 				default:
 					std::cerr << "Unknown TriangleCountAlgorithm enum value" << std::endl;
-					return RC::ILLEGAL;
+					return ILLEGAL;
 			}
 
-			return RC::SUCCESS;
+			return SUCCESS;
 		}
 
 	} // namespace algorithms
