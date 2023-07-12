@@ -928,53 +928,90 @@ namespace grb {
 		 *                      \a allow_void is true; otherwise, will be ignored.
 		 * \endinternal
 		 */
-		template< bool allow_void,
+		template<
+			bool allow_void,
 			Descriptor descr,
 			class Operator,
-			typename OutputType,
-			typename InputType1,
-			typename InputType2,
-			typename RIT1,
-			typename CIT1,
-			typename NIT1,
-			typename RIT2,
-			typename CIT2,
-			typename NIT2,
-			typename RIT3,
-			typename CIT3,
-			typename NIT3 >
-		RC eWiseApply_matrix_generic_intersection( Matrix< OutputType, reference, RIT1, CIT1, NIT1 > & C,
-			const Matrix< InputType1, reference, RIT2, CIT2, NIT2 > & A,
-			const Matrix< InputType2, reference, RIT3, CIT3, NIT3 > & B,
-			const Operator & oper,
-			const Phase & phase,
-			const typename std::enable_if< ! grb::is_object< OutputType >::value && ! grb::is_object< InputType1 >::value && ! grb::is_object< InputType2 >::value &&
-					grb::is_operator< Operator >::value,
-				void >::type * const = nullptr ) {
-			assert( ! ( descr & descriptors::force_row_major ) );
-			static_assert( allow_void || ( ! ( std::is_same< InputType1, void >::value || std::is_same< InputType2, void >::value ) ),
-				"grb::internal::eWiseApply_matrix_generic_intersection: the non-monoid version of "
-				"elementwise mxm can only be used if neither of the input matrices "
-				"is a pattern matrix (of type void)" );
+			typename OutputType, typename InputType1, typename InputType2,
+			typename RIT1, typename CIT1, typename NIT1,
+			typename RIT2, typename CIT2, typename NIT2,
+			typename RIT3, typename CIT3, typename NIT3
+		>
+		RC eWiseApply_matrix_generic_intersection(
+			Matrix< OutputType, reference, RIT1, CIT1, NIT1 > &C,
+			const Matrix< InputType1, reference, RIT2, CIT2, NIT2 > &A,
+			const Matrix< InputType2, reference, RIT3, CIT3, NIT3 > &B,
+			const Operator &oper,
+			const Phase &phase,
+			const typename std::enable_if<
+				!grb::is_object< OutputType >::value &&
+				!grb::is_object< InputType1 >::value &&
+				!grb::is_object< InputType2 >::value &&
+				grb::is_operator< Operator >::value,
+				void
+			>::type * const = nullptr
+		) {
+			assert( !( descr & descriptors::force_row_major ) );
+			static_assert( allow_void ||
+				( !(
+					std::is_same< InputType1, void >::value
+					|| std::is_same< InputType2, void >::value
+					)
+				),
+				"grb::internal::eWiseApply_matrix_generic_intersection: the non-monoid"
+				" version of elementwise mxm can only be used if neither of the input"
+				" matrices is a pattern matrix (of type void)" );
 			assert( phase != TRY );
+
+			// get whether the matrices should be transposed prior to execution
+			constexpr bool trans_left = descr & descriptors::transpose_left;
+			constexpr bool trans_right = descr & descriptors::transpose_right;
 
 #ifdef _DEBUG
 			std::cout << "In grb::internal::eWiseApply_matrix_generic_intersection\n";
 #endif
-			RC rc = SUCCESS;
 
 			if( grb::nnz( B ) == 0 || grb::nnz( A ) == 0 ) {
-				return rc;
+#ifdef _DEBUG
+			std::cout << "No nonzeros in input matrices, nothing to compute.\n";
+#endif
+				return SUCCESS;
 			}
 
-			const auto & A_raw = descr & grb::descriptors::transpose_left ? internal::getCCS( A ) : internal::getCRS( A );
-			const auto & B_raw = descr & grb::descriptors::transpose_right ? internal::getCCS( B ) : internal::getCRS( B );
-			const auto & C_crs_raw = internal::getCRS( C );
-			const auto & C_ccs_raw = internal::getCCS( C );
-			const size_t m_A = descr & grb::descriptors::transpose_left || descr & grb::descriptors::transpose_left ? ncols( A ) : nrows( A );
-			const size_t n_A = descr & grb::descriptors::transpose_left || descr & grb::descriptors::transpose_left ? nrows( A ) : ncols( A );
-			const size_t m_B = descr & grb::descriptors::transpose_right || descr & grb::descriptors::transpose_matrix ? ncols( B ) : nrows( B );
-			const size_t n_B = descr & grb::descriptors::transpose_right || descr & grb::descriptors::transpose_matrix ? nrows( B ) : ncols( B );
+			const auto &A_raw = trans_left
+								? internal::getCCS( A )
+								: internal::getCRS( A );
+			const size_t m_A = trans_left
+								? ncols( A )
+								: nrows( A );
+			const size_t n_A = trans_left
+								? nrows( A )
+								: ncols( A );
+			if( m_A == 0 || n_A == 0 ) {
+#ifdef _DEBUG
+			std::cout << "Matrix A is empty, nothing to compute.\n";
+#endif
+				return SUCCESS;
+			}
+
+			const auto &B_raw = trans_right
+								? internal::getCCS( B )
+								: internal::getCRS( B );
+			const size_t m_B = trans_right
+								? ncols( B )
+								: nrows( B );
+			const size_t n_B = trans_right
+								? nrows( B )
+								: ncols( B );
+			if( m_A == 0 || n_A == 0 ) {
+#ifdef _DEBUG
+			std::cout << "Matrix B is empty, nothing to compute.\n";
+#endif
+				return SUCCESS;
+			}
+
+			auto &C_crs_raw = internal::getCRS( C );
+			auto &C_ccs_raw = internal::getCCS( C );
 			const size_t m_C = nrows( C );
 			const size_t n_C = ncols( C );
 
@@ -986,17 +1023,27 @@ namespace grb {
 				return MISMATCH;
 			}
 
+			const auto A_identity = identities::zero< InputType1 >::value();
+			const auto B_identity = identities::zero< InputType2 >::value();
+
+			RC rc = SUCCESS;
 			if( phase == Phase::RESIZE ) {
 				size_t nzc = 0;
 #ifdef _H_GRB_REFERENCE_OMP_BLAS3
-#pragma omp parallel for reduction( + : nzc ) default( none ) shared( B_raw, A_raw ) firstprivate( m_A )
+#pragma omp parallel for reduction( + : nzc ) \
+				default( none ) shared( B_raw, A_raw ) \
+				firstprivate( m_A )
 #endif
 				for( size_t i = 0; i < m_A; ++i ) {
 					auto B_k = B_raw.col_start[ i ];
-					for( auto A_k = A_raw.col_start[ i ]; A_k < A_raw.col_start[ i + 1 ]; ++A_k ) {
+					const auto A_k_start = A_raw.col_start[ i ];
+					const auto A_k_end = A_raw.col_start[ i + 1 ];
+					for( auto A_k = A_k_start; A_k < A_k_end; ++A_k ) {
 						const auto j = A_raw.row_index[ A_k ];
 
-						while( B_k < B_raw.col_start[ i + 1 ] && B_raw.row_index[ B_k ] > j ) {
+						while(  B_k < B_raw.col_start[ i + 1 ]
+							    && B_raw.row_index[ B_k ] > j
+						) {
 							B_k++;
 						}
 						if( B_k >= B_raw.col_start[ i + 1 ] ) {
@@ -1008,7 +1055,7 @@ namespace grb {
 					}
 				}
 #ifdef _DEBUG
-				std::cout << "RESIZE phase: resize( C, " << nzc << " )\n";
+				std::cout << "resize( C, " << nzc << " )\n";
 #endif
 				return resize( C, nzc );
 			}
@@ -1024,10 +1071,14 @@ namespace grb {
 			for( size_t i = 0; i < m_A; i++ ) {
 				auto B_k = B_raw.col_start[ i ];
 				size_t cumul = 0UL;
-				for( auto A_k = A_raw.col_start[ i ]; A_k < A_raw.col_start[ i + 1 ]; ++A_k ) {
+				const auto A_k_start = A_raw.col_start[ i ];
+				const auto A_k_end = A_raw.col_start[ i + 1 ];
+				for( auto A_k = A_k_start; A_k < A_k_end; ++A_k ) {
 					const auto j = A_raw.row_index[ A_k ];
 
-					while( B_k < B_raw.col_start[ i + 1 ] && B_raw.row_index[ B_k ] > j ) {
+					while(  B_k < B_raw.col_start[ i + 1 ]
+						    && B_raw.row_index[ B_k ] > j
+					) {
 						B_k++;
 					}
 					if( B_k >= B_raw.col_start[ i + 1 ]) {
@@ -1040,8 +1091,8 @@ namespace grb {
 				C_crs_raw.col_start[ i + 1 ] = cumul;
 			}
 
-			// Print the CRS prefix sum
 #ifdef _DEBUG
+			// Print the CRS prefix sum
 			std::cout << "CRS prefix sum: ";
 			for( size_t i = 0; i <= m_A; i++ ) {
 				std::cout << C_crs_raw.col_start[ i ] << " ";
@@ -1058,21 +1109,25 @@ namespace grb {
 			// Check if the number of nonzeros is greater than the capacity
 			if( C_crs_raw.col_start[ m_A ] > nzc || C_ccs_raw.col_start[ m_A ] > nzc ) {
 #ifdef _DEBUG
-				std::cout << "EXECUTE phase: detected insufficient capacity for requested operation.\n"
-						  << "Requested " << C_crs_raw.col_start[ m_A ] << " nonzeros, but capacity is " << nzc << "\n";
+				std::cout << "Insufficient capacity detected for requested operation.\n"
+						  << "Requested " << C_crs_raw.col_start[ m_A ] << " nonzeros"
+						  << " but capacity is " << nzc << "\n";
 #endif
-				return RC::MISMATCH;
+				return MISMATCH;
 			}
 
 #ifdef _H_GRB_REFERENCE_OMP_BLAS3
 #pragma omp parallel for simd
 #endif
-			for( size_t i = 0; i < m_A; i++ )
+			for( size_t i = 0; i < m_A; i++ ) {
 				C_crs_raw.row_index[ i ] = C_ccs_raw.row_index[ i ] = 0;
+			}
 
 			RC local_rc = rc;
 #ifdef _H_GRB_REFERENCE_OMP_BLAS3
-#pragma omp parallel default( none ) shared( C_ccs_raw, C_crs_raw, A_raw, B_raw, rc, std::cout ) firstprivate( local_rc, m_A, oper )
+#pragma omp parallel default( none ) \
+			shared( C_ccs_raw, C_crs_raw, A_raw, B_raw, rc, std::cout ) \
+			firstprivate( local_rc, m_A, oper, A_identity, B_identity )
 #endif
 			{
 				size_t start_row = 0;
@@ -1081,12 +1136,17 @@ namespace grb {
 				config::OMP::localRange( start_row, end_row, 0, m_A );
 #endif
 
-				for( auto i = start_row; i < end_row; ++i ) {
+				for( size_t i = start_row; i < end_row; ++i ) {
 					auto B_k = B_raw.col_start[ i ];
 					auto C_k = C_crs_raw.col_start[ i ];
-					for( auto k = A_raw.col_start[ i ]; k < A_raw.col_start[ i + 1 ]; ++k ) {
-						const auto j = A_raw.row_index[ k ];
-						while( B_k < B_raw.col_start[ i + 1 ] && B_raw.row_index[ B_k ] > j ) {
+
+					const auto A_k_start = A_raw.col_start[ i ];
+					const auto A_k_end = A_raw.col_start[ i + 1 ];
+					for( auto A_k = A_k_start; A_k < A_k_end; ++A_k ) {
+						const auto j = A_raw.row_index[ A_k ];
+						while(  B_k < B_raw.col_start[ i + 1 ]
+							    && B_raw.row_index[ B_k ] > j
+						) {
 							B_k++;
 						}
 						if( B_k >= B_raw.col_start[ i + 1 ] ) {
@@ -1096,31 +1156,48 @@ namespace grb {
 							continue;
 						}
 
-						const auto a_val = A_raw.values[ k ];
-						const auto b_val = B_raw.values[ B_k ];
+						const InputType1 a_val = A_raw.getValue( A_k, A_identity );
+						const InputType2 b_val = B_raw.getValue( B_k, B_identity );
 						OutputType c_val;
-						local_rc = local_rc ? local_rc : grb::apply< descr >( c_val, a_val, b_val, oper );
+						local_rc = local_rc
+									? local_rc
+									: grb::apply< descr >( c_val, a_val, b_val, oper );
 
 						C_crs_raw.row_index[ C_k ] = j;
-						C_crs_raw.values[ C_k ] = c_val;
+						C_crs_raw.setValue( C_k, c_val );
 						C_ccs_raw.row_index[ C_k ] = i;
-						C_ccs_raw.values[ C_k ] = c_val;
+						C_ccs_raw.setValue( C_k, c_val );
 #ifdef _DEBUG
-						std::cout << "A( " + std::to_string( i ) + ";" + std::to_string( j ) + " ) = " + std::to_string( a_val ) + "\n";
-						std::cout << "B( " + std::to_string( i ) + ";" + std::to_string( j ) + " ) = " + std::to_string( b_val ) + "\n";
-						std::cout << "C( " + std::to_string( i ) + ";" + std::to_string( C_crs_raw.row_index[ C_k ] ) + " ) = " + std::to_string( c_val ) + "\n";
+						std::cout << "A( " + std::to_string( i ) + ";"
+									+ std::to_string( j ) + " ) = "
+									+ std::to_string( a_val ) + "\n";
+						std::cout << "B( " + std::to_string( i ) + ";"
+									+ std::to_string( j ) + " ) = "
+									+ std::to_string( b_val ) + "\n";
+						std::cout << "C.crs( " + std::to_string( i ) + ";"
+									+ std::to_string( j ) + " ) = "
+									+ std::to_string( c_val ) + "\n";
 #endif
 						C_k += 1;
 					}
 				}
+
+				if( local_rc != SUCCESS ) {
 #ifdef _H_GRB_REFERENCE_OMP_BLAS3
 #pragma omp critical
 #endif
-				{ rc = rc ? rc : local_rc; }
+					{ 
+						rc = rc ? rc : local_rc;
+					}
+				}	
 			}
 
+#ifdef _DEBUG
+			std::cout << "internal::setCurrentNonzeroes( C, "
+					  << C_crs_raw.col_start[ m_A ] << " )\n";
+#endif
 			internal::setCurrentNonzeroes( C, C_crs_raw.col_start[ m_A ] );
-			
+
 			return rc;
 		}
 
@@ -1163,9 +1240,9 @@ namespace grb {
 				     std::is_same< InputType1, void >::value ||
 				     std::is_same< InputType2, void >::value
 				) ),
-				"grb::internal::eWiseApply_matrix_generic_union: the non-monoid version of "
-				"elementwise mxm can only be used if neither of the input matrices "
-				"is a pattern matrix (of type void)" );
+				"grb::internal::eWiseApply_matrix_generic_union: the non-monoid"
+				" version of elementwise mxm can only be used if neither of the"
+				" input matrices is a pattern matrix (of type void)" );
 			assert( phase != TRY );
 #ifdef _DEBUG
 			std::cout << "In grb::internal::eWiseApply_matrix_generic_union\n";
@@ -1175,12 +1252,12 @@ namespace grb {
 			constexpr bool trans_right = descr & descriptors::transpose_right;
 
 			// run-time checks
-			const size_t m = grb::nrows( C );
-			const size_t n = grb::ncols( C );
-			const size_t m_A = !trans_left ? grb::nrows( A ) : grb::ncols( A );
-			const size_t n_A = !trans_left ? grb::ncols( A ) : grb::nrows( A );
-			const size_t m_B = !trans_right ? grb::nrows( B ) : grb::ncols( B );
-			const size_t n_B = !trans_right ? grb::ncols( B ) : grb::nrows( B );
+			const size_t m = nrows( C );
+			const size_t n = ncols( C );
+			const size_t m_A = !trans_left ? nrows( A ) : ncols( A );
+			const size_t n_A = !trans_left ? ncols( A ) : nrows( A );
+			const size_t m_B = !trans_right ? nrows( B ) : ncols( B );
+			const size_t n_B = !trans_right ? ncols( B ) : nrows( B );
 
 			// Identities
 			const auto identity_A = monoid.template getIdentity< OutputType >();
@@ -1243,12 +1320,12 @@ namespace grb {
 					for( size_t k = A_raw.col_start[ i ]; k < A_raw.col_start[ i + 1 ]; ++k ) {
 						const size_t k_col = A_raw.row_index[ k ];
 						coors1.assign( k_col );
-						(void)++nzc;
+						(void) ++nzc;
 					}
 					for( size_t l = B_raw.col_start[ i ]; l < B_raw.col_start[ i + 1 ]; ++l ) {
 						const size_t l_col = B_raw.row_index[ l ];
 						if( not coors1.assigned( l_col ) ) {
-							(void)++nzc;
+							(void) ++nzc;
 						}
 					}
 				}
@@ -1353,7 +1430,7 @@ namespace grb {
 
 					for( size_t j_unsigned = n ; j_unsigned > 0 ; j_unsigned-- ) {
 						const size_t j = j_unsigned - 1;
-						if( not columns[ j ] ) {
+						if( !columns[ j ] ) {
 							continue;
 						}
 						// update CRS
@@ -1369,8 +1446,9 @@ namespace grb {
 					}
 					C_raw.col_start[ i + 1 ] = nzc;
 
-					for(size_t i=0; i<n; i++)
+					for( size_t i = 0; i < n; i++ ) {
 						columns[ i ] = false;
+					}
 				}
 
 #ifdef _DEBUG
@@ -1390,6 +1468,9 @@ namespace grb {
 #endif
 
 				// set final number of nonzeroes in output matrix
+#ifdef _DEBUG
+				std::cout << "internal::setCurrentNonzeroes( C, " << nzc << " )\n";
+#endif
 				internal::setCurrentNonzeroes( C, nzc );
 			}
 
@@ -1447,7 +1528,7 @@ namespace grb {
 		);
 
 #ifdef _DEBUG
-		std::cout << "In grb::eWiseApply_matrix_generic (reference, monoid)\n";
+		std::cout << "In grb::eWiseApply_matrix_generic( reference, monoid )\n";
 #endif
 
 		return internal::eWiseApply_matrix_generic_union< true, descr >(
@@ -1509,6 +1590,9 @@ namespace grb {
 			"the operator version of eWiseApply cannot be used if either of the "
 			"input matrices is a pattern matrix (of type void)"
 		);
+#ifdef _DEBUG
+		std::cout << "In grb::eWiseApply_matrix_generic( reference, operator )\n";
+#endif
 
 		return internal::eWiseApply_matrix_generic_intersection< false, descr >(
 			C, A, B, mulOp, phase
