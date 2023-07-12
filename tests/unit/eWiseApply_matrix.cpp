@@ -23,23 +23,24 @@
 
 using namespace grb;
 
-void grb_program( const int &, grb::RC &rc ) {
+void grb_program( const size_t &n, grb::RC &rc ) {
 
 	// large non-square mixed-domain matrix check
 	{
-		grb::Matrix< char > A( 10000000, 2000000 );
-		grb::Matrix< float > B( 10000000, 2000000 );
-		grb::Matrix< size_t > C( 10000000, 2000000 );
-		size_t * I = new size_t[ 2000000 ];
-		size_t * J = new size_t[ 2000000 ];
-		char * V = new char[ 2000000 ];
-		for( size_t k = 0; k < 2000000; ++k ) {
-			I[ k ] = J[ k ] = k;
+		grb::Matrix< char > A( n, 2*n );
+		grb::Matrix< float > B( n, 2*n );
+		grb::Matrix< size_t > C( n, 2*n );
+		size_t * I = new size_t[ n ];
+		size_t * J = new size_t[ n ];
+		char * V = new char[ n ];
+		for( size_t k = 0; k < n; ++k ) {
+			I[ k ] = k;
+			J[ k ] = k+n;
 			V[ k ] = 2;
 		}
-		rc = grb::buildMatrixUnique( A, I, J, V, 2000000, SEQUENTIAL );
-		rc = rc ? rc : grb::buildMatrixUnique( B, I, J, V, 2000000, SEQUENTIAL );
-		rc = rc ? rc : grb::buildMatrixUnique( C, I, J, V, 2000000, SEQUENTIAL );
+		rc = grb::buildMatrixUnique( A, I, J, V, n, SEQUENTIAL );
+		rc = rc ? rc : grb::buildMatrixUnique( B, I, J, V, n, SEQUENTIAL );
+		rc = rc ? rc : grb::buildMatrixUnique( C, I, J, V, n, SEQUENTIAL );
 		rc = rc ? rc : grb::eWiseApply( C, A, B,
 			grb::operators::add< float, size_t, char >(), RESIZE );
 		rc = rc ? rc : grb::eWiseApply( C, A, B,
@@ -49,13 +50,14 @@ void grb_program( const int &, grb::RC &rc ) {
 				<< "mixed-domain matrix check\n";
 			return;
 		}
+		
 		for( const auto &triple : C ) {
-			const size_t &i = triple.first.first;
-			const size_t &j = triple.first.second;
-			const size_t &v = triple.second;
-			if( i != j ) {
-				std::cout << "Unexpected entry at position ( " << i << ", " << j << " ) "
-					<< "-- only expected entries on the diagonal\n";
+			const auto &i = triple.first.first;
+			const auto &j = triple.first.second;
+			const auto &v = triple.second;
+			if( j != i+n ) {
+				std::cout << "Unexpected entry at position ( " << i << ", " << i+n << " ) "
+					<< "-- only expected entries on the n-th diagonal\n";
 				rc = FAILED;
 			}
 			if( v != 4 ) {
@@ -74,15 +76,14 @@ void grb_program( const int &, grb::RC &rc ) {
 
 int main( int argc, char ** argv ) {
 	// defaults
-	bool printUsage = false;
-	int input = 0; // unused
+	size_t input = 1000; // unused
 
 	// error checking
 	if( argc > 1 ) {
-		printUsage = true;
+		input = std::strtoul( argv[ 1 ], nullptr, 10 );
 	}
-	if( printUsage ) {
-		std::cerr << "Usage: " << argv[ 0 ] << "\n";
+	if( argc > 2 ) {
+		std::cerr << "Usage: " << argv[ 0 ] << "[n]\n";
 		return 1;
 	}
 

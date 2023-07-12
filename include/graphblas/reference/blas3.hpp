@@ -1062,11 +1062,19 @@ namespace grb {
 
 			const size_t nzc = capacity( C );
 
+#ifdef _H_GRB_REFERENCE_OMP_BLAS3
+#pragma omp parallel for simd
+#endif
+			for( size_t i = 0; i <= n_A; i++ ) {
+				C_ccs_raw.col_start[ i ] = 0;
+			}
+
 			C_crs_raw.col_start[ 0 ] = 0;
-			C_ccs_raw.col_start[ 0 ] = 0;
 			// Prefix sum computation into L.CRS.col_start
 #ifdef _H_GRB_REFERENCE_OMP_BLAS3
-#pragma omp parallel for default( none ) shared( B_raw, A_raw, C_crs_raw, std::cout ) firstprivate( m_A )
+#pragma omp parallel for default( none ) \
+			shared( B_raw, A_raw, C_crs_raw, C_ccs_raw, std::cout ) \
+			firstprivate( m_A )
 #endif
 			for( size_t i = 0; i < m_A; i++ ) {
 				auto B_k = B_raw.col_start[ i ];
@@ -1086,6 +1094,7 @@ namespace grb {
 					}
 					if( B_raw.row_index[ B_k ] == j ) {
 						cumul += 1;
+						C_ccs_raw.col_start[ j + 1 ] += 1;
 					}
 				}
 				C_crs_raw.col_start[ i + 1 ] = cumul;
@@ -1093,9 +1102,15 @@ namespace grb {
 
 #ifdef _DEBUG
 			// Print the CRS prefix sum
-			std::cout << "CRS prefix sum: ";
+			std::cout << "before nCRS prefix sum: ";
 			for( size_t i = 0; i <= m_A; i++ ) {
 				std::cout << C_crs_raw.col_start[ i ] << " ";
+			}
+			std::cout << "\n";
+			// Print the CCS prefix sum
+			std::cout << "before nCCS prefix sum: ";
+			for( size_t i = 0; i <= n_A; i++ ) {
+				std::cout << C_ccs_raw.col_start[ i ] << " ";
 			}
 			std::cout << "\n";
 #endif
@@ -1103,31 +1118,41 @@ namespace grb {
 			// Apply the prefix sum
 			for( size_t i = 1; i <= m_A; i++ ) {
 				C_crs_raw.col_start[ i ] += C_crs_raw.col_start[ i - 1 ];
-				C_ccs_raw.col_start[ i ] = C_crs_raw.col_start[ i ];
+			}
+			for ( size_t i = 1; i <= n_A; i++ ) {
+				C_ccs_raw.col_start[ i ] += C_ccs_raw.col_start[ i - 1 ];
 			}
 
+#ifdef _DEBUG
+			// Print the CRS prefix sum
+			std::cout << "after nCRS prefix sum: ";
+			for( size_t i = 0; i <= m_A; i++ ) {
+				std::cout << C_crs_raw.col_start[ i ] << " ";
+			}
+			std::cout << "\n";
+			// Print the CCS prefix sum
+			std::cout << "after nCCS prefix sum: ";
+			for( size_t i = 0; i <= n_A; i++ ) {
+				std::cout << C_ccs_raw.col_start[ i ] << " ";
+			}
+			std::cout << "\n";
+#endif
+
 			// Check if the number of nonzeros is greater than the capacity
-			if( C_crs_raw.col_start[ m_A ] > nzc || C_ccs_raw.col_start[ m_A ] > nzc ) {
+			if( C_crs_raw.col_start[ m_A ] > nzc || C_ccs_raw.col_start[ n_A ] > nzc ) {
 #ifdef _DEBUG
 				std::cout << "Insufficient capacity detected for requested operation.\n"
-						  << "Requested " << C_crs_raw.col_start[ m_A ] << " nonzeros"
+						  << "Requested " << C_ccs_raw.col_start[ m_A ] << " nonzeros"
 						  << " but capacity is " << nzc << "\n";
 #endif
 				return MISMATCH;
 			}
 
-#ifdef _H_GRB_REFERENCE_OMP_BLAS3
-#pragma omp parallel for simd
-#endif
-			for( size_t i = 0; i < m_A; i++ ) {
-				C_crs_raw.row_index[ i ] = C_ccs_raw.row_index[ i ] = 0;
-			}
-
 			RC local_rc = rc;
 #ifdef _H_GRB_REFERENCE_OMP_BLAS3
 #pragma omp parallel default( none ) \
-			shared( C_ccs_raw, C_crs_raw, A_raw, B_raw, rc, std::cout ) \
-			firstprivate( local_rc, m_A, oper, A_identity, B_identity )
+				shared( C_ccs_raw, C_crs_raw, A_raw, B_raw, rc, std::cout ) \
+				firstprivate( local_rc, m_A, oper, A_identity, B_identity )
 #endif
 			{
 				size_t start_row = 0;
@@ -1144,6 +1169,7 @@ namespace grb {
 					const auto A_k_end = A_raw.col_start[ i + 1 ];
 					for( auto A_k = A_k_start; A_k < A_k_end; ++A_k ) {
 						const auto j = A_raw.row_index[ A_k ];
+
 						while(  B_k < B_raw.col_start[ i + 1 ]
 							    && B_raw.row_index[ B_k ] > j
 						) {
@@ -1165,8 +1191,9 @@ namespace grb {
 
 						C_crs_raw.row_index[ C_k ] = j;
 						C_crs_raw.setValue( C_k, c_val );
-						C_ccs_raw.row_index[ C_k ] = i;
-						C_ccs_raw.setValue( C_k, c_val );
+
+						C_ccs_raw.row_index[ C_ccs_raw.col_start[ j ] ] = i;
+						C_ccs_raw.setValue( C_ccs_raw.col_start[ j ], c_val );
 #ifdef _DEBUG
 						std::cout << "A( " + std::to_string( i ) + ";"
 									+ std::to_string( j ) + " ) = "
@@ -1174,7 +1201,7 @@ namespace grb {
 						std::cout << "B( " + std::to_string( i ) + ";"
 									+ std::to_string( j ) + " ) = "
 									+ std::to_string( b_val ) + "\n";
-						std::cout << "C.crs( " + std::to_string( i ) + ";"
+						std::cout << "C( " + std::to_string( i ) + ";"
 									+ std::to_string( j ) + " ) = "
 									+ std::to_string( c_val ) + "\n";
 #endif
