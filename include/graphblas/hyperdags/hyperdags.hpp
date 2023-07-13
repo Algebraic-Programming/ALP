@@ -33,6 +33,7 @@
 #include <ostream>
 #include <iostream>
 #include <type_traits>
+#include <cstdint>
 
 #include <assert.h>
 

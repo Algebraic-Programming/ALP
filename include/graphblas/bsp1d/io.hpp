@@ -1351,8 +1351,8 @@ namespace grb {
 			// a pipeline depth of 2 is sufficient.
 			constexpr size_t iteration_overlaps = 2;
 
-			const std::unique_ptr< size_t > first_nnz_per_thread(
-				new size_t[ num_threads * iteration_overlaps ]()
+			const std::unique_ptr< size_t[] > first_nnz_per_thread(
+				new size_t[ num_threads * iteration_overlaps ]
 			);
 			size_t * const first_nnz_per_thread_ptr = first_nnz_per_thread.get();
 			outgoing.resize( data.P );
