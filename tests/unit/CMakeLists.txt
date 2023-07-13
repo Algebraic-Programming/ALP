@@ -247,6 +247,10 @@ add_grb_executables( mxv mxv.cpp
 	BACKENDS reference_omp bsp1d hybrid hyperdags nonblocking
 )
 
+add_grb_executables( operator_logical_not operator_logical_not.cpp
+	BACKENDS reference reference_omp hyperdags nonblocking bsp1d hybrid
+)
+
 # must generate the golden output for other tests
 force_add_grb_executable( vxm vxm.cpp
 	BACKEND reference

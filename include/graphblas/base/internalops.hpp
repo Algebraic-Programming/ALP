@@ -39,8 +39,126 @@ namespace grb {
 
 	namespace operators {
 
+
+
 		/** Core implementations of the standard operators in #grb::operators. */
 		namespace internal {
+
+			/**
+			 * Standard negation operator.
+			 *
+			 * Assumes native availability of ! on the given data types or assumes that
+			 * the relevant operators are properly overloaded.
+			 *
+			 * @tparam Op The Operator class to negate.
+			 * 			Requires the following typedefs:
+			 * 			- \b D1: The left-hand input domain.
+			 * 			- \b D2: The right-hand input domain.
+			 * 			- \b D3: The output domain, must be convertible to bool.
+			 * 			- \b operator_type: The internal::operator type to negate.
+			 */
+			template<
+				class Op,
+				enum Backend implementation = config::default_backend
+			>
+			class logical_not {
+				public:
+
+					/** Alias to the left-hand input data type. */
+					typedef typename Op::D1 left_type;
+
+					/** Alias to the right-hand input data type. */
+					typedef typename Op::D2 right_type;
+
+					/** Alias to the output data type. */
+					typedef typename Op::D3 result_type;
+
+					/** Whether this operator has an inplace foldl. */
+					static constexpr bool has_foldl = Op::operator_type::has_foldl;
+
+					/** Whether this operator has an inplace foldr. */
+					static constexpr bool has_foldr = Op::operator_type::has_foldr;
+
+					/**
+					 * Whether this operator is \em mathematically associative; that is,
+					 * associative when assuming equivalent data types for \a IN1, \a IN2,
+					 * and \a OUT, as well as assuming exact arithmetic, no overflows, etc.
+					 */
+					static constexpr bool is_associative = Op::operator_type::is_associative;
+
+					/**
+					 * Whether this operator is \em mathematically commutative; that is,
+					 * commutative when assuming equivalent data types for \a IN1, \a IN2,
+					 * and \a OUT, as well as assuming exact arithmetic, no overflows, etc.
+					 */
+					static constexpr bool is_commutative = Op::operator_type::is_commutative;
+
+					/**
+					 * Out-of-place application of the operator.
+					 *
+					 * @param[in]  a The left-hand side input. Must be pre-allocated and
+					 *               initialised.
+					 * @param[in]  b The right-hand side input. Must be pre-allocated and
+					 *               initialised.
+					 * @param[out] c The output. Must be pre-allocated.
+					 */
+					static void apply(
+						const left_type * __restrict__ const a,
+						const right_type * __restrict__ const b,
+						result_type * __restrict__ const c,
+						const typename std::enable_if<
+							std::is_convertible< result_type, bool >::value,
+							void
+						>::type * = nullptr
+					) {
+
+						Op::operator_type::apply( a, b, c );
+						*c = !*c;
+
+					}
+
+					/**
+					 * In-place left-to-right folding.
+					 *
+					 * @param[in]     a Pointer to the left-hand side input data.
+					 * @param[in,out] c Pointer to the right-hand side input data. This also
+					 *                  dubs as the output memory area.
+					 */
+					static void foldr(
+						const left_type * __restrict__ const a,
+						result_type * __restrict__ const c,
+						const typename std::enable_if<
+							std::is_convertible< result_type, bool >::value,
+							void
+						>::type * = nullptr
+					) {
+
+						Op::operator_type::foldr( a, c );
+						*c = !*c;
+
+					}
+
+					/**
+					 * In-place right-to-left folding.
+					 *
+					 * @param[in,out] c Pointer to the left-hand side input data. This also
+					 *                  dubs as the output memory area.
+					 * @param[in]     b Pointer to the right-hand side input data.
+					 */
+					static void foldl(
+						result_type * __restrict__ const c,
+						const right_type * __restrict__ const b,
+						const typename std::enable_if<
+							std::is_convertible< result_type, bool >::value,
+							void
+						>::type * = nullptr
+					) {
+
+						Op::operator_type::foldl( c, b );
+						*c = !*c;
+
+					}
+			};
 
 			/**
 			 * Standard argmin operator.
@@ -4178,6 +4296,9 @@ namespace grb {
 
 					/** The output domain of this operator. */
 					typedef typename OperatorBase< OP >::D3 D3;
+
+					/** The type of the operator OP. */
+					typedef OP operator_type;
 
 					/**
 					 * Reduces a vector of type \a InputType into a value in \a IOType

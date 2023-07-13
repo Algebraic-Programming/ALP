@@ -40,6 +40,25 @@ namespace grb {
 	namespace operators {
 
 		/**
+		 * Standard negation operator.
+		 * 
+		 * Allows to wrap any operator and negate its result.
+		 */
+		template<
+			class Op,
+			enum Backend implementation = config::default_backend
+		>
+		class logical_not : public internal::Operator< internal::logical_not< Op > > {
+			public:
+
+				template< class A >
+				using GenericOperator = logical_not< A >;
+
+				logical_not() {}
+
+		};
+
+		/**
 		 * This operator discards all right-hand side input and simply copies the
 		 * left-hand side input to the output variable. It exposes the complete
 		 * interface detailed in grb::operators::internal::Operator. This operator
@@ -981,6 +1000,11 @@ namespace grb {
 
 	} // namespace operators
 
+	template< class Op >
+	struct is_operator< operators::logical_not< Op > > {
+		static const constexpr bool value = is_operator< Op >::value;
+	};
+
 	template< typename D1, typename D2, typename D3, enum Backend implementation >
 	struct is_operator< operators::left_assign_if< D1, D2, D3, implementation > > {
 		static const constexpr bool value = true;
@@ -1140,6 +1164,11 @@ namespace grb {
 		operators::conjugate_right_mul< D1, D2, D3, implementation >
 	> {
 		static const constexpr bool value = true;
+	};
+
+	template< class Op >
+	struct is_idempotent< operators::logical_not< Op >, void > {
+		static const constexpr bool value = is_idempotent< Op >::value;
 	};
 
 	template< typename D1, typename D2, typename D3 >

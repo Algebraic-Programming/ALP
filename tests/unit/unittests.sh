@@ -384,6 +384,12 @@ for MODE in ${MODES}; do
 				grep "Test OK" ${TEST_OUT_DIR}/argmax_${MODE}_${BACKEND}_${P}_${T}.log || echo "Test FAILED"
 				echo " "
 
+				echo ">>>      [x]           [ ]       Testing grb::operators::logical_not"
+				$runner ${TEST_BIN_DIR}/operator_logical_not_${MODE}_${BACKEND} 2> ${TEST_OUT_DIR}/operator_logical_not_${MODE}_${BACKEND}_${P}_${T}.err 1> ${TEST_OUT_DIR}/operator_logical_not_${MODE}_${BACKEND}_${P}_${T}.log
+				head -1 ${TEST_OUT_DIR}/operator_logical_not_${MODE}_${BACKEND}_${P}_${T}.log
+				grep "Test OK" ${TEST_OUT_DIR}/operator_logical_not_${MODE}_${BACKEND}_${P}_${T}.log || echo "Test FAILED"
+				echo " "
+
 				echo ">>>      [x]           [ ]       Testing grb::set (matrices)"
 				$runner ${TEST_BIN_DIR}/matrixSet_${MODE}_${BACKEND} 2> ${TEST_OUT_DIR}/matrixSet_${MODE}_${BACKEND}_${P}_${T}.err 1> ${TEST_OUT_DIR}/matrixSet_${MODE}_${BACKEND}_${P}_${T}.log
 				head -1 ${TEST_OUT_DIR}/matrixSet_${MODE}_${BACKEND}_${P}_${T}.log
