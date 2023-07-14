@@ -1237,6 +1237,15 @@ namespace grb {
 		static constexpr const bool value = OP::is_commutative();
 	};
 
+	template< typename OP >
+	struct is_lnegated< 
+		operators::logical_not< OP >,
+		typename std::enable_if< is_operator< OP >::value, void >::type
+	> {
+		static constexpr const bool value = true;
+	};
+
+
 	// internal type traits follow
 
 	namespace internal {

@@ -22,7 +22,7 @@
 
 using namespace grb;
 
-void grb_program( const size_t & n, grb::RC & rc ) {
+void grb_program( const size_t &n, grb::RC &rc ) {
 	(void)n;
 
 	{ // Test: logical_and< bool > just to make sure it works
@@ -75,9 +75,10 @@ int main( int argc, char ** argv ) {
 		return 255;
 	}
 	if( out != SUCCESS ) {
-		std::cerr << "Test FAILED (" << grb::toString( out ) << ")" << std::endl;
+		std::cerr << std::flush;
+		std::cout << "Test FAILED (" << grb::toString( out ) << ")\n" << std::flush;
 	} else {
-		std::cout << "Test OK" << std::endl;
+		std::cout << "Test OK\n" << std::flush;
 	}
 	return 0;
 }

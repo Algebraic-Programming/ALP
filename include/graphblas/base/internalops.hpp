@@ -39,8 +39,6 @@ namespace grb {
 
 	namespace operators {
 
-
-
 		/** Core implementations of the standard operators in #grb::operators. */
 		namespace internal {
 
@@ -55,13 +53,14 @@ namespace grb {
 			 * 			- \b D1: The left-hand input domain.
 			 * 			- \b D2: The right-hand input domain.
 			 * 			- \b D3: The output domain, must be convertible to bool.
-			 * 			- \b operator_type: The internal::operator type to negate.
+			 * 			- \b OperatorType: The internal::operator type to negate.
 			 */
 			template<
 				class Op,
 				enum Backend implementation = config::default_backend
 			>
 			class logical_not {
+
 				public:
 
 					/** Alias to the left-hand input data type. */
@@ -74,24 +73,26 @@ namespace grb {
 					typedef typename Op::D3 result_type;
 
 					/** Whether this operator has an inplace foldl. */
-					static constexpr bool has_foldl = Op::operator_type::has_foldl;
+					static constexpr bool has_foldl = Op::OperatorType::has_foldl;
 
 					/** Whether this operator has an inplace foldr. */
-					static constexpr bool has_foldr = Op::operator_type::has_foldr;
+					static constexpr bool has_foldr = Op::OperatorType::has_foldr;
 
 					/**
 					 * Whether this operator is \em mathematically associative; that is,
 					 * associative when assuming equivalent data types for \a IN1, \a IN2,
 					 * and \a OUT, as well as assuming exact arithmetic, no overflows, etc.
 					 */
-					static constexpr bool is_associative = Op::operator_type::is_associative;
+					static constexpr bool is_associative = is_lnegated< Op >::value 
+															? Op::OperatorType::is_associative
+															: false;
 
 					/**
 					 * Whether this operator is \em mathematically commutative; that is,
 					 * commutative when assuming equivalent data types for \a IN1, \a IN2,
 					 * and \a OUT, as well as assuming exact arithmetic, no overflows, etc.
 					 */
-					static constexpr bool is_commutative = Op::operator_type::is_commutative;
+					static constexpr bool is_commutative = Op::OperatorType::is_commutative;
 
 					/**
 					 * Out-of-place application of the operator.
@@ -111,10 +112,8 @@ namespace grb {
 							void
 						>::type * = nullptr
 					) {
-
-						Op::operator_type::apply( a, b, c );
+						Op::OperatorType::apply( a, b, c );
 						*c = !*c;
-
 					}
 
 					/**
@@ -132,10 +131,8 @@ namespace grb {
 							void
 						>::type * = nullptr
 					) {
-
-						Op::operator_type::foldr( a, c );
+						Op::OperatorType::foldr( a, c );
 						*c = !*c;
-
 					}
 
 					/**
@@ -153,10 +150,8 @@ namespace grb {
 							void
 						>::type * = nullptr
 					) {
-
-						Op::operator_type::foldl( c, b );
+						Op::OperatorType::foldl( c, b );
 						*c = !*c;
-
 					}
 			};
 
@@ -4298,7 +4293,7 @@ namespace grb {
 					typedef typename OperatorBase< OP >::D3 D3;
 
 					/** The type of the operator OP. */
-					typedef OP operator_type;
+					typedef OP OperatorType;
 
 					/**
 					 * Reduces a vector of type \a InputType into a value in \a IOType
