@@ -1789,7 +1789,7 @@ namespace grb {
 					 * @param[in]  b The right-hand side input. Must be pre-allocated and initialised.
 					 * @param[out] c The output. Must be pre-allocated.
 					 *
-					 * At the end of the operation, \f$ c = \min\{a,b\} \f$.
+					 * At the end of the operation, \f$ c = \any_or\{a,b\} \f$.
 					 */
 					static void apply(
 						const left_type * __restrict__ const a,
@@ -1841,7 +1841,7 @@ namespace grb {
 			};
 
 			/**
-			 * The logical or operator, \f$ x \lor y \f$.
+			 * The logical-or operator, \f$ x \lor y \f$.
 			 *
 			 * Assumes that the || operator is defined on the given input types.
 			 */
@@ -1891,7 +1891,7 @@ namespace grb {
 					 *               initialised.
 					 * @param[out] c The output. Must be pre-allocated.
 					 *
-					 * At the end of the operation, \f$ c = \min\{a,b\} \f$.
+					 * At the end of the operation, \f$ c = \or\{a,b\} \f$.
 					 */
 					static void apply(
 						const left_type * __restrict__ const a,
@@ -1935,6 +1935,109 @@ namespace grb {
 						const right_type * __restrict__ const b
 					) {
 						if( *b || *c ) {
+							*c = static_cast< result_type >( true );
+						} else {
+							*c = static_cast< result_type >( false );
+						}
+					}
+
+			};
+
+			/**
+			 * The logical-xor operator, \f$ x \lxor y \f$.
+			 *
+			 * Assumes that the xor operator is defined on the given input types.
+			 */
+			template<
+				typename IN1, typename IN2, typename OUT,
+				enum Backend implementation = config::default_backend
+			>
+			class logical_xor {
+
+				public:
+
+					/** Alias to the left-hand input data type. */
+					typedef IN1 left_type;
+
+					/** Alias to the right-hand input data type. */
+					typedef IN2 right_type;
+
+					/** Alias to the output data type. */
+					typedef OUT result_type;
+
+					/** Whether this operator has an in-place foldl. */
+					static constexpr bool has_foldl = true;
+
+					/** Whether this operator has an in-place foldr. */
+					static constexpr bool has_foldr = true;
+
+					/**
+					 * Whether this operator is \em mathematically associative; that is,
+					 * associative when assuming equivalent data types for \a IN1, \a IN2,
+					 * and \a OUT, as well as assuming exact arithmetic, no overflows, etc.
+					 */
+					static constexpr bool is_associative = true;
+
+					/**
+					 * Whether this operator is \em mathematically commutative; that is,
+					 * commutative when assuming equivalent data types for \a IN1, \a IN2,
+					 * and \a OUT, as well as assuming exact arithmetic, no overflows, etc.
+					 */
+					static constexpr bool is_commutative = true;
+
+					/**
+					 * Out-of-place application of this operator.
+					 *
+					 * @param[in]  a The left-hand side input. Must be pre-allocated and
+					 *               initialised.
+					 * @param[in]  b The right-hand side input. Must be pre-allocated and
+					 *               initialised.
+					 * @param[out] c The output. Must be pre-allocated.
+					 *
+					 * At the end of the operation, \f$ c = \xor\{a,b\} \f$.
+					 */
+					static void apply(
+						const left_type * __restrict__ const a,
+						const right_type * __restrict__ const b,
+						result_type * __restrict__ const c
+					) {
+						if( *a xor *b ) {
+							*c = static_cast< OUT >( true );
+						} else {
+							*c = static_cast< OUT >( false );
+						}
+					}
+
+					/**
+					 * In-place left-to-right folding.
+					 *
+					 * @param[in]     a Pointer to the left-hand side input data.
+					 * @param[in,out] c Pointer to the right-hand side input data. This also
+					 *                  dubs as the output memory area.
+					 */
+					static void foldr(
+						const left_type * __restrict__ const a,
+						result_type * __restrict__ const c
+					) {
+						if( *a xor *c ) {
+							*c = static_cast< result_type >( true );
+						} else {
+							*c = static_cast< result_type >( false );
+						}
+					}
+
+					/**
+					 * In-place right-to-left folding.
+					 *
+					 * @param[in,out] c Pointer to the left-hand side input data. This also
+					 *                  dubs as the output memory area.
+					 * @param[in]     b Pointer to the right-hand side input data.
+					 */
+					static void foldl(
+						result_type * __restrict__ const c,
+						const right_type * __restrict__ const b
+					) {
+						if( *b xor *c ) {
 							*c = static_cast< result_type >( true );
 						} else {
 							*c = static_cast< result_type >( false );
@@ -1994,7 +2097,7 @@ namespace grb {
 					 *               initialised.
 					 * @param[out] c The output. Must be pre-allocated.
 					 *
-					 * At the end of the operation, \f$ c = \min\{a,b\} \f$.
+					 * At the end of the operation, \f$ c = \and\{a,b\} \f$.
 					 */
 					static void apply(
 						const left_type * __restrict__ const a,

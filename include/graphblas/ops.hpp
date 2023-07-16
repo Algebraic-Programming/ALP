@@ -491,6 +491,34 @@ namespace grb {
 		};
 
 		/**
+		 * The logical xor.
+		 *
+		 * It returns <tt>true</tt> whenever one and one only of its inputs 
+		 * evaluate <tt>true</tt>, and returns <tt>false</tt> otherwise.
+		 *
+		 * If the output domain is not Boolean, then the returned value is
+		 * <tt>true</tt> or <tt>false</tt> cast to the output domain.
+		 *
+		 * \warning Thus both input domains and the output domain must be 
+		 * 		\em castable to <tt>bool</tt>.
+		 */
+		template<
+			typename D1, typename D2 = D1, typename D3 = D2,
+			enum Backend implementation = config::default_backend
+		>
+		class logical_xor : public internal::Operator<
+				internal::logical_xor< D1, D2, D3, implementation >
+		> {
+
+			public:
+
+				template< typename A, typename B, typename C, enum Backend D >
+				using GenericOperator = logical_xor< A, B, C, D >;
+
+				logical_xor() {}
+		};
+
+		/**
 		 * The logical and.
 		 *
 		 * It returns <tt>true</tt> when both of its inputs evaluate <tt>true</tt>,
@@ -1083,6 +1111,11 @@ namespace grb {
 	};
 
 	template< typename D1, typename D2, typename D3, enum Backend implementation >
+	struct is_operator< operators::logical_xor< D1, D2, D3, implementation > > {
+		static const constexpr bool value = true;
+	};
+
+	template< typename D1, typename D2, typename D3, enum Backend implementation >
 	struct is_operator< operators::logical_and< D1, D2, D3, implementation > > {
 		static const constexpr bool value = true;
 	};
@@ -1188,6 +1221,11 @@ namespace grb {
 
 	template< typename D1, typename D2, typename D3 >
 	struct is_idempotent< operators::logical_or< D1, D2, D3 >, void > {
+		static const constexpr bool value = true;
+	};
+
+	template< typename D1, typename D2, typename D3 >
+	struct is_idempotent< operators::logical_xor< D1, D2, D3 >, void > {
 		static const constexpr bool value = true;
 	};
 
