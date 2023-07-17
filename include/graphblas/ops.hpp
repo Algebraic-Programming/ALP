@@ -41,7 +41,7 @@ namespace grb {
 
 		/**
 		 * Standard negation operator.
-		 * 
+		 *
 		 * Allows to wrap any operator and negate its result.
 		 */
 		template<
@@ -303,7 +303,7 @@ namespace grb {
 		};
 
 		/**
-		 * Numerical substraction of two numbers.
+		 * Numerical subtraction of two numbers.
 		 *
 		 * Mathematical notation: \f$ \odot(x,y)\ \to\ x - y \f$.
 		 *
@@ -318,7 +318,7 @@ namespace grb {
 			enum Backend implementation = config::default_backend
 		>
 		class subtract : public internal::Operator<
-			internal::substract< D1, D2, D3, implementation >
+			internal::subtract< D1, D2, D3, implementation >
 		> {
 
 			public:
@@ -493,13 +493,13 @@ namespace grb {
 		/**
 		 * The logical xor.
 		 *
-		 * It returns <tt>true</tt> whenever one and one only of its inputs 
+		 * It returns <tt>true</tt> whenever one and one only of its inputs
 		 * evaluate <tt>true</tt>, and returns <tt>false</tt> otherwise.
 		 *
 		 * If the output domain is not Boolean, then the returned value is
 		 * <tt>true</tt> or <tt>false</tt> cast to the output domain.
 		 *
-		 * \warning Thus both input domains and the output domain must be 
+		 * \warning Thus both input domains and the output domain must be
 		 * 		\em castable to <tt>bool</tt>.
 		 */
 		template<

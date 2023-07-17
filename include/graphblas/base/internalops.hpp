@@ -1241,7 +1241,7 @@ namespace grb {
 				typename IN1, typename IN2, typename OUT,
 				enum Backend implementation = config::default_backend
 			>
-			class substract {
+			class subtract {
 
 				public:
 
@@ -4395,7 +4395,7 @@ namespace grb {
 					/** The output domain of this operator. */
 					typedef typename OperatorBase< OP >::D3 D3;
 
-					/** The type of the operator OP. */
+					/** The type of the internal::operator OP. */
 					typedef OP OperatorType;
 
 					/**

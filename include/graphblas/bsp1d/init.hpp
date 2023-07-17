@@ -315,7 +315,7 @@ namespace grb {
 			 * Decrements \a regs_taken.
 			 *
 			 * @param[in] count (Optional) The number of memslots that should be
-			 *                  substracted from \a regs_taken. Default is 1. Passing
+			 *                  subtracted from \a regs_taken. Default is 1. Passing
 			 *                  zero will turn a call to this function into a no-op.
 			 */
 			void signalMemslotReleased( const unsigned int count = 1 );
