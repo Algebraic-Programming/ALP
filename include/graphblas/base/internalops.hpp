@@ -56,7 +56,7 @@ namespace grb {
 			 * 			- \b OperatorType: The internal::operator type to negate.
 			 */
 			template<
-				class Op,
+				typename Op,
 				enum Backend implementation = config::default_backend
 			>
 			class logical_not {
@@ -83,9 +83,7 @@ namespace grb {
 					 * associative when assuming equivalent data types for \a IN1, \a IN2,
 					 * and \a OUT, as well as assuming exact arithmetic, no overflows, etc.
 					 */
-					static constexpr bool is_associative = is_lnegated< Op >::value 
-															? Op::OperatorType::is_associative
-															: false;
+					static constexpr bool is_associative = Op::OperatorType::is_associative;
 
 					/**
 					 * Whether this operator is \em mathematically commutative; that is,
@@ -3053,16 +3051,6 @@ namespace grb {
 					typedef typename OP::result_type D3;
 
 				public:
-
-					/** @return Whether this operator is mathematically associative. */
-					static constexpr bool is_associative() {
-						return OP::is_associative;
-					}
-
-					/** @return Whether this operator is mathematically commutative. */
-					static constexpr bool is_commutative() {
-						return OP::is_commutative;
-					}
 
 					/**
 					 * Straightforward application of this operator. Computes \f$ x \odot y \f$

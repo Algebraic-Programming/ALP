@@ -237,7 +237,7 @@ namespace grb {
 	 * \ingroup typeTraits
 	 */
 	template< typename T, typename = void >
-	struct is_lnegated {
+	struct is_logically_negated {
 
 		static_assert( is_operator< T >::value,
 			"Template argument should be an ALP binary operator." );

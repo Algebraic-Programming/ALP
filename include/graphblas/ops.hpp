@@ -48,7 +48,10 @@ namespace grb {
 			class Op,
 			enum Backend implementation = config::default_backend
 		>
-		class logical_not : public internal::Operator< internal::logical_not< Op > > {
+		class logical_not : public internal::Operator<
+			internal::logical_not< Op >
+		> {
+
 			public:
 
 				template< class A >
@@ -1264,7 +1267,7 @@ namespace grb {
 		OP,
 		typename std::enable_if< is_operator< OP >::value, void >::type
 	> {
-		static constexpr const bool value = OP::is_associative();
+		static constexpr const bool value = is_logically_negated<OP>::value ? false : OP::OperatorType::is_associative;
 	};
 
 	template< typename OP >
@@ -1272,17 +1275,16 @@ namespace grb {
 		OP,
 		typename std::enable_if< is_operator< OP >::value, void >::type
 	> {
-		static constexpr const bool value = OP::is_commutative();
+		static constexpr const bool value = OP::OperatorType::is_commutative;
 	};
 
 	template< typename OP >
-	struct is_lnegated< 
+	struct is_logically_negated<
 		operators::logical_not< OP >,
 		typename std::enable_if< is_operator< OP >::value, void >::type
 	> {
-		static constexpr const bool value = true;
+		static constexpr const bool value = not is_logically_negated< OP >::value;
 	};
-
 
 	// internal type traits follow
 

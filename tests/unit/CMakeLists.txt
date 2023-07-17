@@ -247,7 +247,7 @@ add_grb_executables( mxv mxv.cpp
 	BACKENDS reference_omp bsp1d hybrid hyperdags nonblocking
 )
 
-add_grb_executables( operator_logical_not operator_logical_not.cpp
+add_grb_executables( logical_operators logical_operators.cpp
 	BACKENDS reference reference_omp hyperdags nonblocking bsp1d hybrid
 )
 
