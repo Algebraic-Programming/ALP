@@ -215,6 +215,11 @@ add_grb_executables( spy spy.cpp
 	BACKENDS reference reference_omp hyperdags nonblocking
 )
 
+add_grb_executables( sssp_unit sssp.cpp
+	ADDITIONAL_LINK_LIBRARIES test_utils_headers
+	BACKENDS reference reference_omp bsp1d hybrid hyperdags nonblocking
+)
+
 add_grb_executables( dense_spmv dense_spmv.cpp
 	BACKENDS reference reference_omp bsp1d hybrid hyperdags nonblocking
 )

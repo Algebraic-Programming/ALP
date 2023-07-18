@@ -133,16 +133,18 @@ namespace grb {
 						std::cout << "_ ";
 				} else {
 					size_t nnz_idx = 0;
-					auto it = v.cbegin();
 					for( size_t i = 0; i < grb::size( v ); i++ ) {
-						if( nnz_idx < grb::nnz( v ) && i == it->first ) {
-							std::cout << it->second << " ";
-							nnz_idx++;
-							if( nnz_idx < grb::nnz( v ) )
-								++it;
-						} else {
-							std::cout << "_ ";
-						}
+						if( nnz_idx < grb::nnz( v ) ) {
+							auto found = std::find_if( v.cbegin(), v.cend(), [ i ]( const std::pair<size_t, D> & a ) {
+								return a.first == i;
+							} );
+							if( found != v.cend() ){
+								std::cout << std::showpos << found->second << " ";
+								nnz_idx++;
+								continue;
+							}
+						} 
+						std::cout << "__ ";
 					}
 				}
 				std::cout << " ]  -  "
@@ -174,19 +176,139 @@ namespace grb {
 			}
 		} // namespace utils
 
-		template< 
+		/**
+		 * Single-source-shortest-path (SSSP) algorithm.
+		 *
+		 * This version computes the minimum distance from the root to each vertex.
+		 *
+		 * @tparam D                Matrix values type
+		 * @tparam T                Distance type
+		 *
+		 *
+		 * @param[in]  A                  Matrix to explore
+		 * @param[in]  root               Root vertex from which to start the exploration
+		 * @param[out] explored_all       Whether all vertices have been explored
+		 * @param[out] max_level          Maximum level reached by the BFS algorithm
+		 * @param[out] distances          Vector containing the minumum distance to
+		 *                                reach each vertex.
+		 *                                Needs to be pre-allocated with nrows(A) values.
+		 * @param[in]  x                  Buffer vector, needs to be pre-allocated
+		 *                                with 1 value.
+		 * @param[in]  y                  Buffer vector, no pre-allocation needed.
+		 * @param[in]  max_iterations     Max number of iterations to perform
+		 *                                (default: -1, no limit)
+		 * @param[in]  not_find_distance  Distance to use for vertices that have
+		 *                                not been reached (default: -1)
+		 *
+		 * \parblock
+		 * \par Possible output values:
+		 *  -# max_level: [0, nrows(A) - 1]
+		 *  -# distances: - [0, nrows(A) - 1] for reached vertices,
+		 *                - <tt>not_find_distance</tt> for unreached vertices
+		 * \endparblock
+		 *
+		 * \warning Distance type <tt>T</tt> must be a signed integer type.
+		 *
+		 * \note The matrix <tt>A</tt> can be a pattern matrix, in which case
+		 *       the identity of the semiring is used as the weight of each edge.
+		 *
+		 * \note The distance to the root is set to zero.
+		 */
+		template<
+			Descriptor descr = descriptors::no_operation,
 			typename D,
-			typename std::enable_if< std::is_arithmetic< D >::value, int >::type = 0
+			typename T = long,
+			class MinAddSemiring = Semiring<
+				operators::min< T >,
+				operators::add< T >,
+				identities::infinity,
+				identities::zero
+			>,
+			class MaxMonoid = Monoid<
+				operators::max< T >,
+				identities::negative_infinity
+			>,
+			class MinNegativeMonoid = Monoid<
+				operators::min< T >,
+				identities::zero
+			>
 		>
-		grb::RC sssp( const Matrix< D > & A, size_t root, grb::Vector< D > & distances ) {
-			grb::RC rc = grb::RC::SUCCESS;
+		RC sssp(
+			const Matrix< D > &A,
+			size_t root,
+			bool &explored_all,
+			size_t &max_level,
+			Vector< T > &distances,
+			Vector< T > &x,
+			Vector< T > &y,
+			const long max_iterations = -1L,
+			const T not_find_distance = std::numeric_limits< T >::max(),
+			const MinAddSemiring semiring = MinAddSemiring(),
+			const MaxMonoid max_monoid = MaxMonoid(),
+			const MinNegativeMonoid min_negative_monoid = MinNegativeMonoid(),
+			const std::enable_if<
+				std::is_arithmetic< T >::value
+				&& is_semiring< MinAddSemiring >::value
+				&& is_monoid< MaxMonoid >::value
+				&& is_monoid< MinNegativeMonoid >::value,
+				void
+			> * const = nullptr
+		) {
+			RC rc = SUCCESS;
+			const size_t nvertices = nrows( A );
+			utils::printSparseMatrix( A, "A" );
+
+			assert( nrows( A ) == ncols( A ) );
+			assert( size( x ) == nvertices );
+			assert( size( y ) == nvertices );
+			assert( capacity( x ) >= 1 );
+			assert( capacity( y ) >= 0 );
 
 			// Resize the output vector and fill it with -1, except for the root node which is set to 0
-			rc = rc ? rc : grb::resize( distances, grb::nrows( A ) );
-			rc = rc ? rc : grb::set( distances, -1L );
-			rc = rc ? rc : grb::setElement( distances, root, 0 );
+			rc = rc ? rc : resize( distances, nrows( A ) );
+			rc = rc ? rc : set( distances, not_find_distance );
+			rc = rc ? rc : setElement( distances, root, static_cast< T >( 0 ) );
+			utils::printSparseVector( distances, "distances" );
 
-			
+			// Set x to the root node, initial distance is 0
+			rc = rc ? rc : setElement( x, static_cast< T >( 0 ), root );
+			utils::printSparseVector( x, "x" );
+			rc = rc ? rc : set( y, static_cast< T >( 0 ) );
+			utils::printSparseVector( y, "y" );
+
+			size_t max_iter = max_iterations < 0 ? nvertices : max_iterations;
+			max_level = 0;
+			explored_all = false;
+			for( size_t level = 1; level <= max_iter; level++ ) {
+#ifdef _DEBUG
+				std::cout << "** Level " << level << ":" << std::endl << std::flush;
+#endif
+				max_level = level;
+
+				rc = rc ? rc : clear( y );
+
+				utils::printSparseVector( x, "x" );
+				rc = rc ? rc : vxm< descr >( y, x, A, semiring, Phase::RESIZE );
+				rc = rc ? rc : vxm< descr >( y, x, A, semiring, Phase::EXECUTE );
+				utils::printSparseVector( y, "y" );
+
+				rc = rc ? rc : foldl( distances, y, y, operators::min< T >(), Phase::RESIZE );
+				rc = rc ? rc : foldl( distances, distances, y, operators::min< T >(), Phase::EXECUTE );
+				utils::printSparseVector( distances, "distances" );
+
+				T max_distance = 0;
+				rc = rc ? rc : foldl( max_distance, distances, max_monoid );
+				if( max_distance < not_find_distance ) {
+					explored_all = true;
+#ifdef _DEBUG
+					std::cout << "Explored " << level << " levels to discover all of the "
+								<< nvertices << " vertices.\n" << std::flush;
+#endif
+					break;
+				}
+
+				std::swap( x, y );
+			}
 
 			return rc;
 		}
