@@ -18,7 +18,11 @@
 /**
  * @file
  *
- * Implements Breadth-First Search (BFS) algorithms.
+ * Implements Breadth-First-Search (BFS) algorithm.
+ * 
+ * Two versions are provided:
+ * - bfs_levels: Computes the first level at which each vertex is reached.
+ * - bfs_parents: Computes (one of) the parents of each vertex.
  *
  * @author B. Lozes
  * @date: May 26th, 2023
@@ -36,7 +40,7 @@
 
 #include <graphblas.hpp>
 
-// #define BFS_DEBUG
+// #define _DEBUG
 
 namespace grb {
 
@@ -44,7 +48,14 @@ namespace grb {
 
 		namespace utils {
 			template< class Iterator >
-			void printSparseMatrixIterator( size_t rows, size_t cols, Iterator begin, Iterator end, const std::string & name = "", std::ostream & os = std::cout ) {
+			void printSparseMatrixIterator( 
+				size_t rows, 
+				size_t cols, 
+				Iterator begin, 
+				Iterator end, 
+				const std::string &name = "", 
+				std::ostream &os = std::cout 
+			) {
 				(void)rows;
 				(void)cols;
 				(void)begin;
@@ -52,7 +63,7 @@ namespace grb {
 				(void)name;
 				(void)os;
 
-#ifdef BFS_DEBUG
+#ifdef _DEBUG
 				if( rows > 64 || cols > 64 ) {
 					return;
 				}
@@ -61,7 +72,7 @@ namespace grb {
 				for( size_t y = 0; y < rows; y++ ) {
 					os << std::string( 6, ' ' );
 					for( size_t x = 0; x < cols; x++ ) {
-						auto nnz_val = std::find_if( begin, end, [ y, x ]( const typename std::iterator_traits< Iterator >::value_type & a ) {
+						auto nnz_val = std::find_if( begin, end, [ y, x ]( const typename std::iterator_traits< Iterator >::value_type &a ) {
 							return a.first.first == y && a.first.second == x;
 						} );
 						if( nnz_val != end )
@@ -77,7 +88,14 @@ namespace grb {
 			}
 
 			template< class Iterator >
-			void printSparsePatternMatrixIterator( size_t rows, size_t cols, Iterator begin, Iterator end, const std::string & name = "", std::ostream & os = std::cout ) {
+			void printSparsePatternMatrixIterator( 
+				size_t rows, 
+				size_t cols, 
+				Iterator begin, 
+				Iterator end, 
+				const std::string &name = "", 
+				std::ostream &os = std::cout
+			) {
 				(void)rows;
 				(void)cols;
 				(void)begin;
@@ -85,7 +103,7 @@ namespace grb {
 				(void)name;
 				(void)os;
 
-#ifdef BFS_DEBUG
+#ifdef _DEBUG
 				if( rows > 64 || cols > 64 ) {
 					return;
 				}
@@ -94,9 +112,14 @@ namespace grb {
 				for( size_t y = 0; y < rows; y++ ) {
 					os << std::string( 3, ' ' );
 					for( size_t x = 0; x < cols; x++ ) {
-						auto nnz_val = std::find_if( begin, end, [ y, x ]( const typename std::iterator_traits< Iterator >::value_type & a ) {
-							return a.first == y && a.second == x;
-						} );
+						auto nnz_val = std::find_if(
+							begin,
+							end, 
+							[ y, x ]( const typename std::iterator_traits< Iterator >::value_type &a ) 
+							{
+								return a.first == y && a.second == x;
+							} 
+						);
 						if( nnz_val != end )
 							os << "X";
 						else
@@ -110,30 +133,34 @@ namespace grb {
 			}
 
 			template< typename D >
-			void printSparseMatrix( const Matrix< D > & mat, const std::string & name ) {
+			void printSparseMatrix( const Matrix< D > &mat, const std::string &name ) {
 				(void)mat;
 				(void)name;
-#ifdef BFS_DEBUG
+#ifdef _DEBUG
 				wait( mat );
-				printSparseMatrixIterator( nrows( mat ), ncols( mat ), mat.cbegin(), mat.cend(), name, std::cout );
+				printSparseMatrixIterator(
+					nrows( mat ), ncols( mat ), mat.cbegin(), mat.cend(), name, std::cout
+				);
 #endif
 			}
 
 			template<>
-			void printSparseMatrix< void >( const Matrix< void > & mat, const std::string & name ) {
+			void printSparseMatrix< void >( const Matrix< void > &mat, const std::string &name ) {
 				(void)mat;
 				(void)name;
-#ifdef BFS_DEBUG
+#ifdef _DEBUG
 				wait( mat );
-				printSparsePatternMatrixIterator( nrows( mat ), ncols( mat ), mat.cbegin(), mat.cend(), name, std::cout );
+				printSparsePatternMatrixIterator( 
+					nrows( mat ), ncols( mat ), mat.cbegin(), mat.cend(), name, std::cout
+				);
 #endif
 			}
 
 			template< typename D >
-			void printSparseVector( const Vector< D > & v, const std::string & name ) {
+			void printSparseVector( const Vector< D > &v, const std::string &name ) {
 				(void)v;
 				(void)name;
-#ifdef BFS_DEBUG
+#ifdef _DEBUG
 				if( size( v ) > 64 ) {
 					return;
 				}
@@ -162,26 +189,18 @@ namespace grb {
 			}
 
 			template< typename T >
-			void printStdVector( const std::vector< T > & vector, const std::string & name ) {
+			void printStdVector( const std::vector< T > &vector, const std::string &name ) {
 				(void)vector;
 				(void)name;
-#ifdef BFS_DEBUG
+#ifdef _DEBUG
 				if( vector.size() > 64 ) {
 					return;
 				}
 				std::cout << " [ ";
-				for( const T & e : vector )
+				for( const T &e : vector )
 					std::cout << e << " ";
 				std::cout << "]  -  "
 						  << "Vector \"" << name << "\" (" << vector.size() << ")" << std::endl;
-#endif
-			}
-
-			void debugPrint( const std::string & msg, std::ostream & os = std::cout ) {
-				(void)msg;
-				(void)os;
-#ifdef BFS_DEBUG
-				os << msg;
 #endif
 			}
 		} // namespace utils
@@ -189,114 +208,151 @@ namespace grb {
 		/**
 		 * @brief Breadth-first search (BFS) algorithm.
 		 */
-		enum AlgorithmBFS { LEVELS, PARENTS };
+		enum BFS { LEVELS, PARENTS };
+
 
 		/**
 		 * Breadth-first search (BFS) algorithm.
 		 * This version computes the first level at which each vertex is reached.
 		 *
-		 * @tparam D Matrix values type
-		 * @tparam T Level type
+		 * @tparam D 				Matrix values type
+		 * @tparam T 				Level type
+		 * @tparam BoolSemiring 	Boolean semiring type
+		 * @tparam MinMonoid 		Minimum monoid type
+		 * @tparam SetFalseMonoid 	Assign to false monoid type
 		 *
-		 * @param[in]  A              Matrix to explore
-		 * @param[in]  root           Root vertex from which to start the exploration
-		 * @param[out] explored_all   Whether all vertices have been explored
-		 * @param[out] max_level      Maximum level reached by the BFS algorithm
-		 * @param[out] levels         Vector containing the lowest levels at which each vertex is reached.
-		 * 						      Needs to be pre-allocated with nrows(A) values.
-		 * @param[in]  x 		      Buffer vector, needs to be pre-allocated with 1 value.
-		 * @param[in]  y 		      Buffer vector, no pre-allocation needed.
-		 * @param[in]  not_visited    Buffer vector, needs to be pre-allocated with nrows(A) values.
-		 * @param[in]  max_iterations Max number of iterations to perform (default: -1, no limit)
+		 * @param[in]  A               Matrix to explore
+		 * @param[in]  root            Root vertex from which to start the exploration
+		 * @param[out] explored_all    Whether all vertices have been explored
+		 * @param[out] max_level       Maximum level reached by the BFS algorithm
+		 * @param[out] levels          Vector containing the lowest levels at which each vertex is reached.
+		 * 						       Needs to be pre-allocated with nrows(A) values.
+		 * @param[in]  x 		       Buffer vector, needs to be pre-allocated with 1 value.
+		 * @param[in]  y 		       Buffer vector, no pre-allocation needed.
+		 * @param[in]  not_visited     Buffer vector, needs to be pre-allocated with nrows(A) values.
+		 * @param[in]  max_iterations  Max number of iterations to perform (default: -1, no limit)
 		 *
 		 * \parblock
 		 * \par Possible output values:
 		 * 	-# max_level: [0, nrows(A) - 1]
-		 * 	-# levels: [0, nrows(A) - 1] for each reached vertices, <tt>empty</tt> for unreached vertices
+		 * 	-# levels: 	  [0, nrows(A) - 1] for each reached vertices,
+		 * 				  <tt>empty</tt> for unreached vertices
 		 * \endparblock
 		 *
-		 * \note Values of the matrix <tt>A</tt> are ignored, hence it is recommended to use a pattern matrix.
+		 * \note Values of the matrix <tt>A</tt> are ignored,
+		 * 		 hence it is recommended to use a pattern matrix.
 		 */
-		template< typename D = void, typename T = size_t >
-		RC bfs_levels( const Matrix< D > & A,
-			size_t root,
-			bool & explored_all,
-			T & max_level,
-			Vector< T > & levels,
-			Vector< bool > & x,
-			Vector< bool > & y,
-			Vector< bool > & not_visited,
+		template<
+			typename D = void,
+			typename T = size_t,
+			class BoolSemiring = Semiring<
+				operators::logical_or< bool >,
+				operators::logical_and< bool >,
+				identities::logical_false,
+				identities::logical_true
+			>,
+			class MinMonoid = Monoid<
+				operators::min< T >,
+				identities::infinity
+			>,
+			class SetFalseMonoid = Monoid<
+				operators::logical_nand< bool >, 
+				identities::logical_false
+			>
+		>
+		RC bfs_levels( 
+			const Matrix< D > &A,
+			const size_t root,
+			bool &explored_all,
+			T &max_level,
+			Vector< T > &levels,
+			Vector< bool > &x,
+			Vector< bool > &y,
+			Vector< bool > &not_visited,
 			const long max_iterations = -1L,
-			const std::enable_if< std::is_integral< T >::value > * const = nullptr ) {
-			RC rc = RC::SUCCESS;
+			const BoolSemiring bool_semiring = BoolSemiring(),
+			const MinMonoid min_monoid = MinMonoid(),
+			const SetFalseMonoid not_visited_monoid = SetFalseMonoid(),
+			const std::enable_if<
+				is_semiring< BoolSemiring >::value
+				&& is_monoid< MinMonoid >::value,
+				void
+			>* = nullptr
+		) {
+			max_level = 0;
+			explored_all = false;
+
+			RC rc = SUCCESS;
 			const size_t nvertices = nrows( A );
+			
+			// Frontier vectors
+			rc = rc ? rc : setElement( x, true, root );
 
-			{
-				// Frontier vectors
-				rc = rc ? rc : setElement( x, true, root );
+			utils::printSparseMatrix( A, "A" );
+			utils::printSparseVector( x, "x" );
 
-				utils::printSparseMatrix( A, "A" );
+			// Output vector containing the minimum level at which each vertex is reached
+			rc = rc ? rc : setElement( levels, static_cast< T >( 0 ), root );
+			utils::printSparseVector( levels, "levels" );
+
+			// Vector of unvisited vertices
+			rc = rc ? rc : set( not_visited, true );
+			rc = rc ? rc : setElement( not_visited, false, root );
+
+			size_t max_iter = max_iterations < 0 ? nvertices : max_iterations;
+			for( size_t level = 1; level <= max_iter; level++ ) {
+#ifdef _DEBUG
+				std::cout << "** Level " << level << ":" << std::endl << std::flush;
+#endif
+				// Multiply the current frontier by the adjacency matrix
 				utils::printSparseVector( x, "x" );
+				utils::printSparseVector( not_visited, "not_visited" );
+				rc = rc ? rc : clear( y );
+				rc = rc ? rc : vxm( y, not_visited, x, A, bool_semiring, Phase::RESIZE );
+				rc = rc ? rc : vxm( y, not_visited, x, A, bool_semiring, Phase::EXECUTE );
+				utils::printSparseVector( y, "y" );
 
-				// Output vector containing the minimum level at which each vertex is reached
-				rc = rc ? rc : setElement( levels, static_cast< T >( 0 ), root );
+				// Update not_visited vector
+				rc = rc ? rc : foldl( not_visited, y, not_visited_monoid, Phase::RESIZE );
+				rc = rc ? rc : foldl( not_visited, y, not_visited_monoid, Phase::EXECUTE );
+
+				// Assign the current level to the newly discovered vertices only
+				rc = rc ? rc : foldl( levels, y, level, min_monoid, Phase::RESIZE );
+				rc = rc ? rc : foldl( levels, y, level, min_monoid, Phase::EXECUTE );
 				utils::printSparseVector( levels, "levels" );
 
-				// Vector of unvisited vertices
-				rc = rc ? rc : set( not_visited, true );
-				rc = rc ? rc : setElement( not_visited, false, root );
-
-				size_t max_iter = max_iterations < 0 ? nvertices : max_iterations;
-				for( size_t level = 1; level <= max_iter; level++ ) {
-					utils::debugPrint( "** Level " + std::to_string( level ) + ":\n" );
+				// Check if all vertices have been discovered, equivalent of an std::all on the frontier
+				explored_all = nnz( levels ) == nvertices;
+				if( explored_all ) {
 					max_level = level;
-
-					// Multiply the current frontier by the adjacency matrix
-					utils::printSparseVector( x, "x" );
-					utils::printSparseVector( not_visited, "not_visited" );
-					rc = rc ? rc : resize( y, 0UL );
-					Semiring< operators::logical_or< bool >, operators::logical_and< bool >, identities::logical_false, identities::logical_true > bool_semiring;
-					rc = rc ? rc : vxm( y, not_visited, x, A, bool_semiring, Phase::RESIZE );
-					rc = rc ? rc : vxm( y, not_visited, x, A, bool_semiring, Phase::EXECUTE );
-					utils::printSparseVector( y, "y" );
-
-					// Update not_visited vector
-					for( const std::pair< size_t, bool > e : y ) {
-						if( e.second )
-							setElement( not_visited, false, e.first );
-					}
-
-					// Assign the current level to the newly discovered vertices only
-					const Monoid< operators::min< T >, identities::infinity > min_monoid;
-					rc = rc ? rc : foldl( levels, y, level, min_monoid, Phase::RESIZE );
-					rc = rc ? rc : foldl( levels, y, level, min_monoid, Phase::EXECUTE );
-					utils::printSparseVector( levels, "levels" );
-
-					// Check if all vertices have been discovered, equivalent of an std::all on the frontier
-					explored_all = nnz( levels ) == nvertices;
-					if( explored_all ) {
-						// If all vertices are discovered, stop
-						utils::debugPrint( "Explored " + std::to_string( level ) + " levels to discover all of the " + std::to_string( nvertices ) + " vertices.\n" );
-						return rc;
-					}
-					bool can_continue = nnz( y ) > 0;
-					if( ! can_continue ) {
-						max_level = level - 1;
-						// If no new vertices are discovered, stop
-						utils::debugPrint( "Explored " + std::to_string( level ) + " levels to discover " + std::to_string( nnz( levels ) ) + " vertices.\n" );
-						break;
-					}
-
-					// Swap the frontier, avoid a copy
-					std::swap( x, y );
+					// If all vertices are discovered, stop
+#ifdef _DEBUG
+					std::cout << "Explored " << level << " levels to discover all of the "
+								<< nvertices << " vertices.\n" << std::flush;
+#endif
+					return rc;
 				}
+				bool can_continue = nnz( y ) > 0;
+				if( !can_continue ) {
+					max_level = level - 1;
+					// If no new vertices are discovered, stop
+#ifdef _DEBUG
+					std::cout << "Explored " << level << " levels to discover "
+								<< nnz( levels ) << " vertices.\n" << std::flush;
+#endif
+					break;
+				}
+
+				// Swap the frontier, avoid a copy
+				std::swap( x, y );
 			}
 
 			// Maximum number of iteration passed, not every vertex has been discovered
-			utils::debugPrint( "A full exploration is not possible on this graph. "
-							   "Some vertices are not reachable from the given root: " +
-				std::to_string( root ) + "\n" );
-
+#ifdef _DEBUG
+			std::cout << "A full exploration is not possible on this graph. "
+						<< "Some vertices are not reachable from the given root: " 
+						<< root << std::endl << std::flush;
+#endif
 			return rc;
 		}
 
@@ -304,46 +360,77 @@ namespace grb {
 		 * Breadth-first search (BFS) algorithm.
 		 * This version computes the parents of each vertex.
 		 *
-		 * @tparam D Matrix values type
-		 * @tparam T Parent type
+		 * @tparam D                Matrix values type
+		 * @tparam T                Level type
+		 * @tparam MinAddSemiring   Boolean semiring type
+		 * @tparam MinMonoid        Minimum monoid type
 		 *
-		 * @param[in]  A              Matrix to explore
-		 * @param[in]  root           Root vertex from which to start the exploration
-		 * @param[out] explored_all   Whether all vertices have been explored
-		 * @param[out] max_level      Maximum level reached by the BFS algorithm
-		 * @param[out] parents        Vector containing the parent from which each vertex is reached.
-		 * 						      Needs to be pre-allocated with nrows(A) values.
-		 * @param[in]  x 		      Buffer vector, needs to be pre-allocated with 1 value.
-		 * @param[in]  y 		      Buffer vector, no pre-allocation needed.
-		 * @param[in]  max_iterations Max number of iterations to perform (default: -1, no limit)
-		 * @param[in]  not_find_value Value to use for vertices that have not been reached (default: -1)
+		 * @param[in]  A               Matrix to explore
+		 * @param[in]  root            Root vertex from which to start the exploration
+		 * @param[out] explored_all    Whether all vertices have been explored
+		 * @param[out] max_level       Maximum level reached by the BFS algorithm
+		 * @param[out] parents         Vector containing the parent from which each vertex is reached.
+		 *                             Needs to be pre-allocated with nrows(A) values.
+		 * @param[in]  x               Buffer vector, needs to be pre-allocated with 1 value.
+		 * @param[in]  y               Buffer vector, no pre-allocation needed.
+		 * @param[in]  max_iterations  Max number of iterations to perform 
+		 *                             (default: -1 <=> no limit)
+		 * @param[in]  not_find_value  Value to use for vertices that have 
+		 *                             not been reached (default: -1)
 		 *
 		 * \parblock
 		 * \par Possible output values:
-		 * 	-# max_level: [0, nrows(A) - 1]
-		 * 	-# parents: [0, nrows(A) - 1] for reached vertices, <tt>not_find_value</tt> for unreached vertices
+		 *  -# max_level: [0, nrows(A) - 1]
+		 *  -# parents:   [0, nrows(A) - 1] for reached vertices,
+		 *                <tt>not_find_value</tt> for unreached vertices
 		 * \endparblock
 		 *
 		 * \warning Parent type <tt>T</tt> must be a signed integer type.
 		 *
-		 * \note Values of the matrix <tt>A</tt> are ignored, hence it is recommended to use a pattern matrix.
+		 * \note Values of the matrix <tt>A</tt> are ignored,
+		 *       hence it is recommended to use a pattern matrix.
 		 */
-		template< 
-			typename D = void, 
-			typename T = long
+		template<
+			typename D = void,
+			typename T = long,
+			class MinAddSemiring = Semiring<
+				operators::min< T >,
+				operators::add< T >,
+				identities::infinity,
+				identities::zero
+			>,
+			class MaxMonoid = Monoid<
+				operators::max< T >,
+				identities::negative_infinity
+			>,
+			class MinNegativeMonoid = Monoid<
+				operators::min< T >,
+				identities::zero
+			>
 		>
-		RC bfs_parents( const Matrix< D > & A,
-			size_t root,
-			bool & explored_all,
-			T & max_level,
-			Vector< T > & parents,
-			Vector< T > & x,
-			Vector< T > & y,
+		RC bfs_parents( 
+			const Matrix< D > &A,
+			const size_t root,
+			bool &explored_all,
+			T &max_level,
+			Vector< T > &parents,
+			Vector< T > &x,
+			Vector< T > &y,
 			const long max_iterations = -1L,
 			const T not_find_value = static_cast< T >( -1 ),
-			const std::enable_if< std::is_arithmetic< T >::value && std::is_signed<T>::value, void > * const = nullptr 
+			const MinAddSemiring semiring = MinAddSemiring(),
+			const MaxMonoid max_monoid = MaxMonoid(),
+			const MinNegativeMonoid min_negative_monoid = MinNegativeMonoid(),
+			const std::enable_if<
+				std::is_arithmetic< T >::value
+				&& std::is_signed<T>::value
+				&& is_semiring< MinAddSemiring >::value
+				&& is_monoid< MaxMonoid >::value
+				&& is_monoid< MinNegativeMonoid >::value,
+				void
+			>* = nullptr
 		) {
-			RC rc = RC::SUCCESS;
+			RC rc = SUCCESS;
 			const size_t nvertices = nrows( A );
 			utils::printSparseMatrix( A, "A" );
 
@@ -362,45 +449,44 @@ namespace grb {
 			rc = rc ? rc : setElement( parents, root, root );
 			utils::printSparseVector( parents, "parents" );
 
-			const Semiring< operators::min< T >, operators::add< T >, identities::infinity, identities::zero > semiring;
-
 			size_t max_iter = max_iterations < 0 ? nvertices : max_iterations;
 			max_level = 0;
 			explored_all = false;
 			for( size_t level = 1; level <= max_iter; level++ ) {
+#ifdef _DEBUG
+					std::cout << "** Level " << level << ":" << std::endl << std::flush;
+#endif
 				max_level = level;
-				utils::debugPrint( "** Level " + std::to_string( level ) + ":\n" );
-				rc = rc ? rc : clear( y );
-				// utils::printSparseVector( x, "x - before indexing" );
-				rc = rc ? rc :
-						  eWiseLambda(
-							  [ &x ]( const size_t i ) {
-								  x[ i ] = i;
-							  },
-							  x );
-				utils::printSparseVector( x, "x - after indexing" );
 
+				rc = rc ? rc : clear( y );
+				rc = rc ? rc 
+						: eWiseLambda( [ &x ]( const size_t i ) {
+								  			x[ i ] = i;
+							  			}, x );
+				utils::printSparseVector( x, "x - after indexing" );
+			
 				rc = rc ? rc : vxm( y, x, A, semiring, Phase::RESIZE );
 				rc = rc ? rc : vxm( y, x, A, semiring, Phase::EXECUTE );
 				utils::printSparseVector( y, "y - after vxm" );
 
-				const Monoid< operators::max< T >, identities::negative_infinity > max_monoid;
 				rc = rc ? rc : foldl( parents, y, max_monoid, Phase::RESIZE );
 				rc = rc ? rc : foldl( parents, y, max_monoid, Phase::EXECUTE );
 				utils::printSparseVector( parents, "parents" );
 
-				const Monoid< operators::min< T >, identities::zero > all_assigned_monoid;
 				T min_parent = std::numeric_limits< T >::max();
-				rc = rc ? rc : foldl( min_parent, parents, all_assigned_monoid );
+				rc = rc ? rc : foldl( min_parent, parents, min_negative_monoid );
 				if( min_parent > not_find_value ) {
 					explored_all = true;
-					utils::debugPrint( "Explored " + std::to_string( max_level ) + " levels to discover all of the " + std::to_string( nvertices ) + " vertices.\n" );
+#ifdef _DEBUG
+					std::cout << "Explored " << level << " levels to discover all of the "
+								<< nvertices << " vertices.\n" << std::flush;
+#endif
 					break;
-				}			
+				}
 
+				// Swap the frontier, avoid a copy
 				std::swap( x, y );
 			}
-			
 
 			return rc;
 		}

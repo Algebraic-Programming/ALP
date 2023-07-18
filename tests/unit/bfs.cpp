@@ -25,8 +25,8 @@
 
 using namespace grb;
 
-grb::Vector< long > createGrbVector( const std::initializer_list< long > & in ) {
-	grb::Vector< long > out( in.size() );
+Vector< long > createGrbVector( const std::initializer_list< long > & in ) {
+	Vector< long > out( in.size() );
 	for( size_t i = 0; i < in.size(); i++ ) {
 		setElement( out, *( in.begin() + i ), i );
 	}
@@ -68,15 +68,27 @@ struct input_t {
 	const Vector< long > & expected_values;
 
 	// Necessary for distributed backends
-	input_t( const Matrix< void > & A = { 0, 0 }, size_t root = 0, bool expected_explored_all = true, long expected_max_level = 0, const Vector< long > & expected_values = { 0 } ) :
-		A( A ), root( root ), expected_explored_all( expected_explored_all ), expected_max_level( expected_max_level ), expected_values( expected_values ) {}
+	input_t(
+		const Matrix< void > & A = { 0, 0 },
+		size_t root = 0,
+		bool expected_explored_all = true,
+		long expected_max_level = 0,
+		const Vector< long > & expected_values = { 0 }
+	) : A( A ),
+		root( root ),
+		expected_explored_all( expected_explored_all ),
+		expected_max_level( expected_max_level ),
+		expected_values( expected_values ) {}
 };
 
 struct output_t {
-	RC rc = RC::SUCCESS;
+	RC rc = SUCCESS;
 };
 
-void grbProgram_BFS_Levels( const struct input_t & input, struct output_t & output ) {
+void grbProgram_BFS_Levels(
+	const struct input_t & input,
+	struct output_t & output
+) {
 	utils::Timer timer;
 	long max_level;
 	bool explored_all;
@@ -84,43 +96,53 @@ void grbProgram_BFS_Levels( const struct input_t & input, struct output_t & outp
 	// Allocate output vector
 	Vector< long > levels( nrows( input.A ) );
 	Vector< bool > x( nrows( input.A ), 1UL );
-	Vector< bool > y( nrows( input.A ), 0UL );
+	Vector< bool > y( nrows( input.A ) );
 	Vector< bool > not_visited( nrows( input.A ) );
 
 	// Run the BFS algorithm
-	output.rc = output.rc ? output.rc : algorithms::bfs_levels( input.A, input.root, explored_all, max_level, levels, x, y, not_visited );
-	wait();
+	grb::wait();
+	output.rc = output.rc
+				? output.rc
+				: algorithms::bfs_levels( input.A, input.root, explored_all, max_level, levels, x, y, not_visited );
+	grb::wait();
 
 	{ // Check the outputs
 		if( explored_all == input.expected_explored_all ) {
 			std::cout << "SUCCESS: explored_all = " << explored_all << " is correct" << std::endl;
 		} else {
-			std::cerr << "FAILED: expected explored_all = " << input.expected_explored_all << " but got " << explored_all << std::endl;
-			output.rc = RC::FAILED;
+			std::cerr << "FAILED: expected explored_all = "
+						<< input.expected_explored_all << " but got " << explored_all << std::endl;
+			output.rc = FAILED;
 			return;
 		}
 
 		if( max_level == input.expected_max_level ) {
 			std::cout << "SUCCESS: max_level = " << max_level << " is correct" << std::endl;
 		} else {
-			std::cerr << "FAILED: expected max_level " << input.expected_max_level << " but got " << max_level << std::endl;
-			output.rc = RC::FAILED;
+			std::cerr << "FAILED: expected max_level "
+						<< input.expected_max_level << " but got " << max_level << std::endl;
+			output.rc = FAILED;
 			return;
 		}
 
 		// Check levels by comparing it with the expected one
-		if( not std::equal( input.expected_values.cbegin(), input.expected_values.cend(), levels.cbegin() ) ) {
+		if(
+			!std::equal( input.expected_values.cbegin(), input.expected_values.cend(), levels.cbegin() )
+		) {
 			std::cerr << "FAILED: levels are incorrect" << std::endl;
 			std::cerr << "levels != expected_values" << std::endl;
 			printSparseVector( levels, "levels" );
 			printSparseVector( input.expected_values, "expected_values" );
-			output.rc = RC::FAILED;
+			output.rc = FAILED;
 			return;
 		}
 	}
 }
 
-void grbProgram_BFS_Parents( const struct input_t & input, struct output_t & output ) {
+void grbProgram_BFS_Parents(
+	const struct input_t & input,
+	struct output_t & output
+) {
 	utils::Timer timer;
 	long max_level;
 	bool explored_all;
@@ -131,33 +153,37 @@ void grbProgram_BFS_Parents( const struct input_t & input, struct output_t & out
 	Vector< long > y( nrows( input.A ), 0UL );
 
 	// Run the BFS algorithm
-	output.rc = output.rc ? output.rc : algorithms::bfs_parents( input.A, input.root, explored_all, max_level, parents, x, y );
-	wait();
+	output.rc = output.rc
+				? output.rc
+				: algorithms::bfs_parents( input.A, input.root, explored_all, max_level, parents, x, y );
+	grb::wait();
 
 	{ // Check the outputs
 		if( explored_all == input.expected_explored_all ) {
 			std::cout << "SUCCESS: explored_all = " << explored_all << " is correct" << std::endl;
 		} else {
-			std::cerr << "FAILED: expected explored_all = " << input.expected_explored_all << " but got " << explored_all << std::endl;
-			output.rc = RC::FAILED;
+			std::cerr << "FAILED: expected explored_all = " << input.expected_explored_all
+						<< " but got " << explored_all << std::endl;
+			output.rc = FAILED;
 			return;
 		}
 
 		if( max_level == input.expected_max_level ) {
 			std::cout << "SUCCESS: max_level = " << max_level << " is correct" << std::endl;
 		} else {
-			std::cerr << "FAILED: expected max_level " << input.expected_max_level << " but got " << max_level << std::endl;
-			output.rc = RC::FAILED;
+			std::cerr << "FAILED: expected max_level " << input.expected_max_level
+						<< " but got " << max_level << std::endl;
+			output.rc = FAILED;
 			return;
 		}
 
 		// Check parents by comparing it with the expected one
-		if( not std::equal( input.expected_values.cbegin(), input.expected_values.cend(), parents.cbegin() ) ) {
+		if( !std::equal( input.expected_values.cbegin(), input.expected_values.cend(), parents.cbegin() ) ) {
 			std::cerr << "FAILED: parents are incorrect" << std::endl;
 			std::cerr << "parents != expected_values" << std::endl;
 			printSparseVector( parents, "parents" );
 			printSparseVector( input.expected_values, "expected_values" );
-			output.rc = RC::FAILED;
+			output.rc = FAILED;
 			return;
 		}
 	}
@@ -168,7 +194,7 @@ int main( int argc, char ** argv ) {
 	(void)argv;
 
 	Launcher< EXEC_MODE::AUTOMATIC > launcher;
-	std::cout << "Test executable: " << argv[ 0 ] << std::endl;
+	std::cout << "Test executable: " << argv[ 0 ] << std::endl << std::flush;
 
 	/** Matrix A1:
 	 *
@@ -183,15 +209,18 @@ int main( int argc, char ** argv ) {
 	   * => 1 step(s) to explore all nodes
 	   */
 		size_t root = 0;
-		std::cout << "-- Running test on A1 (directed, non-pattern, root " + std::to_string( root ) + ")" << std::endl;
+		std::cout << "-- Running test on A1 (directed, non-pattern, root "
+					<< root << ")" << std::endl;
 		bool expected_explored_all = true;
 		long expected_max_level = 1;
 		Matrix< void > A( 4, 4 );
-		std::vector< size_t > A_rows { { 0, 0, 0 } };
-		std::vector< size_t > A_cols { { 1, 2, 3 } };
-		buildMatrixUnique( A, A_rows.data(), A_cols.data(), A_rows.size(), IOMode::SEQUENTIAL );
-		grb::Vector< long > expected_levels = createGrbVector( { 0, 1, 1, 1 } );
-		grb::Vector< long > expected_parents = createGrbVector( { 0, 0, 0, 0 } );
+		std::vector< size_t > A_rows { 0, 0, 0 };
+		std::vector< size_t > A_cols { 1, 2, 3 };
+		if( SUCCESS !=
+			buildMatrixUnique( A, A_rows.data(), A_cols.data(), A_rows.size(), SEQUENTIAL )
+		) { return FAILED; }
+		Vector< long > expected_levels = createGrbVector( { 0, 1, 1, 1 } );
+		Vector< long > expected_parents = createGrbVector( { 0, 0, 0, 0 } );
 
 		{ // Levels
 			input_t input( A, root, expected_explored_all, expected_max_level, expected_levels );
@@ -231,15 +260,18 @@ int main( int argc, char ** argv ) {
 	   * => 2 step(s) to explore all nodes
 	   */
 		size_t root = 0;
-		std::cout << "-- Running test on A2 (directed, pattern, root " + std::to_string( root ) + ")" << std::endl;
+		std::cout << "-- Running test on A2 (directed, pattern, root "
+					<< root << ")" << std::endl;
 		bool expected_explored_all = true;
 		long expected_max_level = 2;
 		Matrix< void > A( 4, 4 );
-		std::vector< size_t > A_rows { { 0, 0, 2 } };
-		std::vector< size_t > A_cols { { 1, 2, 3 } };
-		buildMatrixUnique( A, A_rows.data(), A_cols.data(), A_rows.size(), IOMode::SEQUENTIAL );
-		grb::Vector< long > expected_levels = createGrbVector( { 0, 1, 1, 2 } );
-		grb::Vector< long > expected_parents = createGrbVector( { 0, 0, 0, 2 } );
+		std::vector< size_t > A_rows { 0, 0, 2 };
+		std::vector< size_t > A_cols { 1, 2, 3 };
+		if( SUCCESS !=
+			buildMatrixUnique( A, A_rows.data(), A_cols.data(), A_rows.size(), SEQUENTIAL )
+		) { return FAILED; }
+		Vector< long > expected_levels = createGrbVector( { 0, 1, 1, 2 } );
+		Vector< long > expected_parents = createGrbVector( { 0, 0, 0, 2 } );
 
 		{ // Levels
 			input_t input(  A, root, expected_explored_all, expected_max_level, expected_levels );
@@ -280,15 +312,18 @@ int main( int argc, char ** argv ) {
 	   * => 3 step(s) to explore all nodes
 	   */
 		size_t root = 0;
-		std::cout << "-- Running test on A3 (directed, non-pattern: int, root " + std::to_string( root ) + ")" << std::endl;
+		std::cout << "-- Running test on A3 (directed, non-pattern: int, root "
+					<< root << ")" << std::endl;
 		bool expected_explored_all = true;
 		long expected_max_level = 3;
 		Matrix< void > A( 4, 4 );
-		std::vector< size_t > A_rows { { 0, 1, 2, 3 } };
-		std::vector< size_t > A_cols { { 1, 2, 3, 0 } };
-		buildMatrixUnique( A, A_rows.data(), A_cols.data(), A_rows.size(), IOMode::PARALLEL );
-		grb::Vector< long > expected_levels = createGrbVector( { 0, 1, 2, 3 } );
-		grb::Vector< long > expected_parents = createGrbVector( { 0, 0, 1, 2 } );
+		std::vector< size_t > A_rows { 0, 1, 2, 3 };
+		std::vector< size_t > A_cols { 1, 2, 3, 0 };
+		if( SUCCESS !=
+			buildMatrixUnique( A, A_rows.data(), A_cols.data(), A_rows.size(), SEQUENTIAL )
+		) { return FAILED; }
+		Vector< long > expected_levels = createGrbVector( { 0, 1, 2, 3 } );
+		Vector< long > expected_parents = createGrbVector( { 0, 0, 1, 2 } );
 
 		{ // Levels
 			input_t input( A, root, expected_explored_all, expected_max_level, expected_levels );
@@ -323,15 +358,18 @@ int main( int argc, char ** argv ) {
 	   * => 2 step(s) to explore all nodes
 	   */
 		size_t root = 0;
-		std::cout << "-- Running test on A3 (undirected, pattern, root " + std::to_string( root ) + ")" << std::endl;
+		std::cout << "-- Running test on A3 (undirected, pattern, root "
+					<< root << ")" << std::endl;
 		bool expected_explored_all = true;
 		long expected_max_level = 2;
 		Matrix< void > A( 4, 4 );
-		std::vector< size_t > A_rows { { 0, 0, 1, 1, 2, 2, 3, 3 } };
-		std::vector< size_t > A_cols { { 3, 1, 0, 2, 1, 3, 2, 0 } };
-		buildMatrixUnique( A, A_rows.data(), A_cols.data(), A_rows.size(), IOMode::PARALLEL );
-		grb::Vector< long > expected_levels = createGrbVector( { 0, 1, 2, 1 } );
-		grb::Vector< long > expected_parents = createGrbVector( { 1, 0, 1, 0 } );
+		std::vector< size_t > A_rows { 0, 0, 1, 1, 2, 2, 3, 3 };
+		std::vector< size_t > A_cols { 3, 1, 0, 2, 1, 3, 2, 0 };
+		if( SUCCESS !=
+			buildMatrixUnique( A, A_rows.data(), A_cols.data(), A_rows.size(), SEQUENTIAL )
+		) { return FAILED; }
+		Vector< long > expected_levels = createGrbVector( { 0, 1, 2, 1 } );
+		Vector< long > expected_parents = createGrbVector( { 1, 0, 1, 0 } );
 
 		{ // Levels
 			input_t input( A, root, expected_explored_all, expected_max_level, expected_levels );
@@ -373,15 +411,18 @@ int main( int argc, char ** argv ) {
 	   * => 3 step(s) to explore all nodes
 	   */
 		size_t root = 0;
-		std::cout << "-- Running test on A4 (directed, pattern, one cycle, root " + std::to_string( root ) + ")" << std::endl;
+		std::cout << "-- Running test on A4 (directed, pattern, one cycle, root "
+					<< root << ")" << std::endl;
 		bool expected_explored_all = true;
 		long expected_max_level = 3;
 		Matrix< void > A( 4, 4 );
-		std::vector< size_t > A_rows { { 0, 1, 2, 3 } };
-		std::vector< size_t > A_cols { { 1, 2, 3, 1 } };
-		buildMatrixUnique( A, A_rows.data(), A_cols.data(), A_rows.size(), IOMode::PARALLEL );
-		grb::Vector< long > expected_levels = createGrbVector( { 0, 1, 2, 3 } );
-		grb::Vector< long > expected_parents = createGrbVector( { 0, 0, 1, 2 } );
+		std::vector< size_t > A_rows { 0, 1, 2, 3 };
+		std::vector< size_t > A_cols { 1, 2, 3, 1 };
+		if( SUCCESS !=
+			buildMatrixUnique( A, A_rows.data(), A_cols.data(), A_rows.size(), SEQUENTIAL )
+		) { return FAILED; }
+		Vector< long > expected_levels = createGrbVector( { 0, 1, 2, 3 } );
+		Vector< long > expected_parents = createGrbVector( { 0, 0, 1, 2 } );
 
 		{ // Levels
 			input_t input( A, root, expected_explored_all, expected_max_level, expected_levels );
@@ -416,20 +457,23 @@ int main( int argc, char ** argv ) {
 	   * => Impossible to reach vertex 0
 	   */
 		size_t root = 1;
-		std::cout << "-- Running test on A4 (directed, pattern, root " + std::to_string( root ) + ")" << std::endl;
+		std::cout << "-- Running test on A4 (directed, pattern, root "
+					<< root << ")" << std::endl;
 		bool expected_explored_all = false;
-		
+
 		Matrix< void > A( 4, 4 );
-		std::vector< size_t > A_rows { { 0, 1, 2, 3 } };
-		std::vector< size_t > A_cols { { 1, 2, 3, 1 } };
-		buildMatrixUnique( A, A_rows.data(), A_cols.data(), A_rows.size(), IOMode::PARALLEL );
+		std::vector< size_t > A_rows { 0, 1, 2, 3  };
+		std::vector< size_t > A_cols { 1, 2, 3, 1  };
+		if( SUCCESS !=
+			buildMatrixUnique( A, A_rows.data(), A_cols.data(), A_rows.size(), SEQUENTIAL )
+		) { return FAILED; }
 
 		{ // Levels
 			long expected_max_level = 2;
-			grb::Vector< long > expected_levels( 4UL, 3UL );
-			grb::setElement( expected_levels, 0UL, 1UL );
-			grb::setElement( expected_levels, 1UL, 2UL );
-			grb::setElement( expected_levels, 2UL, 3UL );
+			Vector< long > expected_levels( 4UL, 3UL );
+			if( SUCCESS != setElement( expected_levels, 0UL, 1UL ) ) { return FAILED; }
+			if( SUCCESS != setElement( expected_levels, 1UL, 2UL ) ) { return FAILED; }
+			if( SUCCESS != setElement( expected_levels, 2UL, 3UL ) ) { return FAILED; }
 			input_t input( A, root, expected_explored_all, expected_max_level, expected_levels );
 			output_t output;
 			RC bench_rc = launcher.exec( &grbProgram_BFS_Levels, input, output );
@@ -445,7 +489,7 @@ int main( int argc, char ** argv ) {
 
 		{ // Parents
 			long expected_max_level = 4;
-			grb::Vector< long > expected_parents = createGrbVector( { -1, 3, 1, 2 } );
+			Vector< long > expected_parents = createGrbVector( { -1, 3, 1, 2 } );
 			input_t input( A, root, expected_explored_all, expected_max_level, expected_parents );
 			output_t output;
 			RC bench_rc = launcher.exec( &grbProgram_BFS_Parents, input, output );
@@ -469,19 +513,22 @@ int main( int argc, char ** argv ) {
 	   * => Impossible to reach vertices 2 and 3
 	   */
 		size_t root = 0;
-		std::cout << "-- Running test on A5 (undirected, pattern, root " + std::to_string( root ) + ")" << std::endl;
+		std::cout << "-- Running test on A5 (undirected, pattern, root "
+					<< root << ")" << std::endl;
 		bool expected_explored_all = false;
-		
+
 		Matrix< void > A( 4, 4 );
-		std::vector< size_t > A_rows { { 0, 1, 2, 3 } };
-		std::vector< size_t > A_cols { { 1, 0, 3, 2 } };
-		buildMatrixUnique( A, A_rows.data(), A_cols.data(), A_rows.size(), IOMode::PARALLEL );
+		std::vector< size_t > A_rows { 0, 1, 2, 3 };
+		std::vector< size_t > A_cols { 1, 0, 3, 2 };
+		if( SUCCESS !=
+			buildMatrixUnique( A, A_rows.data(), A_cols.data(), A_rows.size(), SEQUENTIAL )
+		) { return FAILED; }
 
 		{ // Levels
 			long expected_max_level = 1;
-			grb::Vector< long > expected_levels( 4UL, 2UL );
-			grb::setElement( expected_levels, 0UL, 0UL );
-			grb::setElement( expected_levels, 1UL, 1UL );
+			Vector< long > expected_levels( 4UL, 2UL );
+			if( SUCCESS != setElement( expected_levels, 0UL, 0UL ) ) { return FAILED; }
+			if( SUCCESS != setElement( expected_levels, 1UL, 1UL ) ) { return FAILED; }
 			input_t input( A, root, expected_explored_all, expected_max_level, expected_levels );
 			output_t output;
 			RC bench_rc = launcher.exec( &grbProgram_BFS_Levels, input, output );
@@ -497,7 +544,7 @@ int main( int argc, char ** argv ) {
 
 		{ // Parents
 			long expected_max_level = 4;
-			grb::Vector< long > expected_parents = createGrbVector( { 1, 0, -1, -1 } );
+			Vector< long > expected_parents = createGrbVector( { 1, 0, -1, -1 } );
 			input_t input( A, root, expected_explored_all, expected_max_level, expected_parents );
 			output_t output;
 			RC bench_rc = launcher.exec( &grbProgram_BFS_Parents, input, output );

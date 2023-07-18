@@ -261,11 +261,18 @@ for BACKEND in ${BACKENDS[@]}; do
 			echo "                                 This test employs the grb::Launcher in automatic mode. It uses"
 			echo "                                 direct-mode file IO."
 			if [ -f ${INPUT_DIR}/west0497.mtx ] && [ "$BACKEND" != "bsp1d" ] && [ "$BACKEND" != "hybrid" ]; then
-				$runner ${TEST_BIN_DIR}/bfs_${BACKEND} ${INPUT_DIR}/west0497.mtx direct 0 0 497 &> ${TEST_OUT_DIR}/bfs_${BACKEND}_${P}_${T}.log
-				head -1 ${TEST_OUT_DIR}/bfs_${BACKEND}_${P}_${T}.log
-				grep 'Test OK' ${TEST_OUT_DIR}/bfs_${BACKEND}_${P}_${T}.log || echo "Test FAILED"
+				$runner ${TEST_BIN_DIR}/bfs_${BACKEND} ${INPUT_DIR}/west0497.mtx direct 0 0 497 &> ${TEST_OUT_DIR}/bfs_west0497_${BACKEND}_${P}_${T}.log
+				head -1 ${TEST_OUT_DIR}/bfs_west0497_${BACKEND}_${P}_${T}.log
+				grep 'Test OK' ${TEST_OUT_DIR}/bfs_west0497_${BACKEND}_${P}_${T}.log || echo "Test FAILED"
 			else
 				echo "Test DISABLED: west0497.mtx was not found. To enable, please provide ${INPUT_DIR}/west0497.mtx"
+			fi
+			if [ -f ${INPUT_DIR}/dwt_59.mtx ] && [ "$BACKEND" != "bsp1d" ] && [ "$BACKEND" != "hybrid" ]; then
+				$runner ${TEST_BIN_DIR}/bfs_${BACKEND} ${INPUT_DIR}/dwt_59.mtx direct 0 1 13 &> ${TEST_OUT_DIR}/bfs_dwt_59_${BACKEND}_${P}_${T}.log
+				head -1 ${TEST_OUT_DIR}/bfs_dwt_59_${BACKEND}_${P}_${T}.log
+				grep 'Test OK' ${TEST_OUT_DIR}/bfs_dwt_59_${BACKEND}_${P}_${T}.log || echo "Test FAILED"
+			else
+				echo "Test DISABLED: dwt_59.mtx was not found. To enable, please provide ${INPUT_DIR}/dwt_59.mtx"
 			fi
 			
 			echo ">>>      [x]           [ ]       Testing the BiCGstab algorithm for the 17361 x 17361 input"

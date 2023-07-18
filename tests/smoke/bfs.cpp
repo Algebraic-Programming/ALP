@@ -34,12 +34,17 @@ bool verify_parents( const Matrix< void > & A, Vector< T > parents ) {
 		if( ( (size_t)e.second ) == e.first ) // Root ndoe
 			continue;
 
-		bool ok = std::any_of( A.cbegin(), A.cend(), [ e ]( const std::pair< size_t, size_t > position ) {
-			return position.first == ( (size_t)e.second ) && position.second == e.first;
-		} );
+		bool ok = std::any_of( 
+			A.cbegin(), 
+			A.cend(), 
+			[ e ]( const std::pair< size_t, size_t > pos ) {
+				return pos.first == ( (size_t)e.second ) && pos.second == e.first;
+			} 
+		);
 
 		if( not ok ) {
-			std::cerr << "ERROR: parent " << e.second << " of node " << e.first << " is not a valid edge" << std::endl;
+			std::cerr << "ERROR: parent " << e.second << " of node " 
+						<< e.first << " is not a valid edge" << std::endl;
 			return false;
 		}
 	}
@@ -51,7 +56,7 @@ struct input_t {
 	std::string filename;
 	bool direct;
 	// Algorithm parameters
-	algorithms::AlgorithmBFS algorithm;
+	algorithms::BFS algorithm;
 	size_t root;
 	bool expected_explored_all;
 	long expected_max_level;
@@ -61,13 +66,18 @@ struct input_t {
 	// Necessary for distributed backends
 	input_t( const std::string & filename = "",
 		bool direct = true,
-		algorithms::AlgorithmBFS algorithm = algorithms::AlgorithmBFS::LEVELS,
+		algorithms::BFS algorithm = algorithms::BFS::LEVELS,
 		size_t root = 0,
 		bool expected_explored_all = true,
 		long expected_max_level = 0,
 		const Vector< long > & expected_values = { 0 } ) :
-		filename( filename ),
-		direct( direct ), algorithm( algorithm ), root( root ), expected_explored_all( expected_explored_all ), expected_max_level( expected_max_level ), expected_values( expected_values ) {}
+			filename( filename ),
+			direct( direct ), 
+			algorithm( algorithm ), 
+			root( root ), 
+			expected_explored_all( expected_explored_all ), 
+			expected_max_level( expected_max_level ), 
+			expected_values( expected_values ) {}
 };
 
 struct output_t {
@@ -87,9 +97,12 @@ void grbProgram( const struct input_t & input, struct output_t & output ) {
 	size_t r = reader.n(), c = reader.m();
 	assert( r == c );
 	Matrix< void > A( r, c );
-	output.rc = buildMatrixUnique( A, reader.cbegin( IOMode::SEQUENTIAL ), reader.cend( IOMode::SEQUENTIAL ), IOMode::SEQUENTIAL );
+	output.rc = buildMatrixUnique( 
+		A, reader.cbegin( IOMode::SEQUENTIAL ), reader.cend( IOMode::SEQUENTIAL ), IOMode::SEQUENTIAL 
+	);
 	if( output.rc != RC::SUCCESS ) {
-		std::cerr << "ERROR during buildMatrixUnique of the pattern matrix: " << toString( output.rc ) << std::endl;
+		std::cerr << "ERROR during buildMatrixUnique of the pattern matrix: " 
+					<< toString( output.rc ) << std::endl;
 		return;
 	}
 	output.times.io = timer.time();
@@ -100,8 +113,8 @@ void grbProgram( const struct input_t & input, struct output_t & output ) {
 	output.times.preamble = timer.time();
 
 	switch( input.algorithm ) {
-		case algorithms::AlgorithmBFS::LEVELS: {
-			// AlgorithmBFS::LEVELS specific allocations
+		case algorithms::BFS::LEVELS: {
+			// BFS::LEVELS specific allocations
 			timer.reset();
 			Vector< bool > x( nrows( A ), 1UL );
 			Vector< bool > y( nrows( A ), 0UL );
@@ -110,15 +123,17 @@ void grbProgram( const struct input_t & input, struct output_t & output ) {
 
 			// Run the algorithm
 			timer.reset();
-			output.rc = output.rc ? output.rc : algorithms::bfs_levels( A, input.root, explored_all, max_level, values, x, y, not_visited );
+			output.rc = output.rc 
+						? output.rc 
+						: algorithms::bfs_levels( A, input.root, explored_all, max_level, values, x, y, not_visited );
 			grb::wait();
 			output.times.useful = timer.time();
 
 			break;
 		}
-		case algorithms::AlgorithmBFS::PARENTS: {
+		case algorithms::BFS::PARENTS: {
 
-			// AlgorithmBFS::PARENTS specific allocations
+			// BFS::PARENTS specific allocations
 			timer.reset();
 			Vector< long > x( nrows( A ), 1UL );
 			Vector< long > y( nrows( A ), 0UL );
@@ -126,7 +141,9 @@ void grbProgram( const struct input_t & input, struct output_t & output ) {
 
 			// Run the algorithm
 			timer.reset();
-			output.rc = output.rc ? output.rc : algorithms::bfs_parents( A, input.root, explored_all, max_level, values, x, y );
+			output.rc = output.rc 
+						? output.rc 
+						: algorithms::bfs_parents( A, input.root, explored_all, max_level, values, x, y );
 			grb::wait();
 			output.times.useful = timer.time();
 
@@ -143,25 +160,31 @@ void grbProgram( const struct input_t & input, struct output_t & output ) {
 		if( explored_all == input.expected_explored_all ) {
 			std::cout << "SUCCESS: explored_all = " << explored_all << " is correct" << std::endl;
 		} else {
-			std::cerr << "FAILED: expected explored_all = " << input.expected_explored_all << " but got " << explored_all << std::endl;
+			std::cerr << "FAILED: expected explored_all = " 
+						<< input.expected_explored_all << " but got " << explored_all << std::endl;
 			output.rc = output.rc ? output.rc : RC::FAILED;
 		}
 
 		if( max_level > 0 && max_level <= input.expected_max_level ) {
 			std::cout << "SUCCESS: max_level = " << max_level << " is correct" << std::endl;
 		} else {
-			std::cerr << "FAILED: expected max_level " << input.expected_max_level << " but got " << max_level << std::endl;
+			std::cerr << "FAILED: expected max_level " 
+						<< input.expected_max_level << " but got " << max_level << std::endl;
 			output.rc = output.rc ? output.rc : RC::FAILED;
 		}
 
 		// Check levels by comparing it with the expected one
-		if( input.verify && not std::equal( input.expected_values.cbegin(), input.expected_values.cend(), values.cbegin() ) ) {
+		if( input.verify 
+			&& not std::equal( input.expected_values.cbegin(), input.expected_values.cend(), values.cbegin() ) 
+		) {
 			std::cerr << "FAILED: values are incorrect" << std::endl;
 			std::cerr << "values != expected_values" << std::endl;
 			output.rc = output.rc ? output.rc : RC::FAILED;
 		}
 
-		if( output.rc == RC::SUCCESS && input.algorithm == algorithms::AlgorithmBFS::PARENTS ) {
+		if( output.rc == RC::SUCCESS 
+			&& input.algorithm == algorithms::BFS::PARENTS 
+		) {
 			bool correct = verify_parents( A, values );
 			std::cout << "CHECK - parents are correct is: " << std::to_string( correct ) << std::endl;
 		}
@@ -176,7 +199,9 @@ int main( int argc, char ** argv ) {
 	Benchmarker< EXEC_MODE::AUTOMATIC > benchmarker;
 
 	if( argc != 6 ) {
-		std::cerr << "Usage: \n\t" << argv[ 0 ] << " <graph_path> <direct|indirect> <root> <expected_explored_all> <expected_max_level> [ outer_iters=1 inner_iters=1 ]" << std::endl;
+		std::cerr << "Usage: \n\t" << argv[ 0 ] 
+					<< " <graph_path> <direct|indirect> <root> <expected_explored_all>" 
+					<< " <expected_max_level> [ outer_iters=1 inner_iters=1 ]" << std::endl;
 		return 1;
 	}
 	std::cout << "Test executable: " << argv[ 0 ] << std::endl;
@@ -191,9 +216,11 @@ int main( int argc, char ** argv ) {
 	if( argc > 7 )
 		inner_iterations = std::stoul( argv[ 7 ] );
 
-	{ // Run the test: AlgorithmBFS::LEVELS
-		std::cout << "-- Running AlgorithmBFS::LEVELS on file " << file_to_test << std::endl;
-		input_t input( file_to_test, direct, algorithms::AlgorithmBFS::LEVELS, root, expected_explored_all, expected_max_level );
+	{ // Run the test: BFS::LEVELS
+		std::cout << "-- Running BFS::LEVELS on file " << file_to_test << std::endl;
+		input_t input( 
+			file_to_test, direct, algorithms::BFS::LEVELS, root, expected_explored_all, expected_max_level 
+		);
 		output_t output;
 		RC rc = benchmarker.exec( &grbProgram, input, output, inner_iterations, outer_iterations, true );
 		if( rc ) {
@@ -205,9 +232,11 @@ int main( int argc, char ** argv ) {
 			return output.rc;
 		}
 	}
-	{ // Run the test: AlgorithmBFS::PARENTS
-		std::cout << "-- Running AlgorithmBFS::PARENTS on file " << file_to_test << std::endl;
-		input_t input( file_to_test, direct, algorithms::AlgorithmBFS::PARENTS, root, expected_explored_all, expected_max_level );
+	{ // Run the test: BFS::PARENTS
+		std::cout << "-- Running BFS::PARENTS on file " << file_to_test << std::endl;
+		input_t input( 
+			file_to_test, direct, algorithms::BFS::PARENTS, root, expected_explored_all, expected_max_level 
+		);
 		output_t output;
 		RC rc = benchmarker.exec( &grbProgram, input, output, inner_iterations, outer_iterations, true );
 		if( rc ) {
