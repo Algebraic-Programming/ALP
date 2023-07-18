@@ -17,14 +17,12 @@
 #include <exception>
 #include <iostream>
 #include <vector>
+#include <cinttypes>
 
-#include <inttypes.h>
-
+#include <graphblas.hpp>
 #include <graphblas/algorithms/sssp.hpp>
 #include <graphblas/utils/Timer.hpp>
 #include <graphblas/utils/parser.hpp>
-
-#include <graphblas.hpp>
 #include <utils/output_verification.hpp>
 
 using namespace grb;
@@ -43,12 +41,18 @@ struct input_t {
 	Matrix< T > A;
 	size_t root;
 	const Vector< T > & expected_distances;
+
+	// Empty constructor necessary for distributed backends
+	input_t( 
+		const Matrix<T>& A = {0,0},
+		size_t root = 0,
+		const Vector< T > & expected_distances = {0} 
+	) : A( A ), root( root ), expected_distances( expected_distances ) {}
 };
 
 struct output_t {
 	RC rc = SUCCESS;
 	utils::TimerResults times;
-	size_t data_in_local;
 };
 
 template< typename T >
@@ -83,17 +87,14 @@ void grbProgram( const struct input_t< T > & input, struct output_t & output ) {
 int main( int argc, char ** argv ) {
 	(void)argc;
 	(void)argv;
-	constexpr size_t niterations = 1;
 
-	grb::Benchmarker< grb::EXEC_MODE::AUTOMATIC > benchmarker;
+	Launcher< AUTOMATIC > launcher;
 	std::cout << "Test executable: " << argv[ 0 ] << std::endl;
 
-	// Check if we are testing on a file
-	if( argc != 1 && argc != 4 ) {
-		std::cerr << "Usage: \n\t" << argv[ 0 ] << " [ <graph_filepath> <root> <expected_distances_filepath> ]" << std::endl;
+	if( argc != 1 ) {
+		std::cerr << "Usage: \n\t" << argv[ 0 ] << std::endl;
 		return 1;
 	}
-	bool test_on_file = ( argc == 4 );
 
 	/** Matrix A0: Fully connected acyclic graph
 	 *
@@ -116,10 +117,10 @@ int main( int argc, char ** argv ) {
 		grb::buildMatrixUnique( A, A_rows.data(), A_cols.data(), A_values.data(), A_rows.size(), PARALLEL );
 		input_t< weight_t > input { A, root, stdToGrbVector( expected_distances ) };
 		output_t output;
-		RC bench_rc = benchmarker.exec( &grbProgram, input, output, niterations, 1, true );
-		if( bench_rc != SUCCESS ) {
-			std::cerr << "ERROR during execution: rc = " << bench_rc << std::endl;
-			return bench_rc;
+		RC rc = launcher.exec( &grbProgram, input, output, true );
+		if( rc != SUCCESS ) {
+			std::cerr << "ERROR during execution: rc = " << rc << std::endl;
+			return rc;
 		} else if( output.rc ) {
 			std::cerr << "Test failed: rc = " << output.rc << std::endl;
 			return output.rc;
@@ -148,10 +149,10 @@ int main( int argc, char ** argv ) {
 		grb::buildMatrixUnique( A, A_rows.data(), A_cols.data(), A_values.data(), A_rows.size(), PARALLEL );
 		input_t< weight_t > input { A, root, stdToGrbVector( expected_distances ) };
 		output_t output;
-		RC bench_rc = benchmarker.exec( &grbProgram, input, output, niterations, 1, true );
-		if( bench_rc != SUCCESS ) {
-			std::cerr << "ERROR during execution: rc = " << bench_rc << std::endl;
-			return bench_rc;
+		RC rc = launcher.exec( &grbProgram, input, output, true );
+		if( rc != SUCCESS ) {
+			std::cerr << "ERROR during execution: rc = " << rc << std::endl;
+			return rc;
 		} else if( output.rc ) {
 			std::cerr << "Test failed: rc = " << output.rc << std::endl;
 			return output.rc;
@@ -180,10 +181,10 @@ int main( int argc, char ** argv ) {
 		grb::buildMatrixUnique( A, A_rows.data(), A_cols.data(), A_values.data(), A_rows.size(), PARALLEL );
 		input_t< weight_t > input { A, root, stdToGrbVector( expected_distances ) };
 		output_t output;
-		RC bench_rc = benchmarker.exec( &grbProgram, input, output, niterations, 1, true );
-		if( bench_rc != SUCCESS ) {
-			std::cerr << "ERROR during execution: rc = " << bench_rc << std::endl;
-			return bench_rc;
+		RC rc = launcher.exec( &grbProgram, input, output, true );
+		if( rc != SUCCESS ) {
+			std::cerr << "ERROR during execution: rc = " << rc << std::endl;
+			return rc;
 		} else if( output.rc ) {
 			std::cerr << "Test failed: rc = " << output.rc << std::endl;
 			return output.rc;
@@ -209,10 +210,10 @@ int main( int argc, char ** argv ) {
 		grb::buildMatrixUnique( A, A_rows.data(), A_cols.data(), A_values.data(), A_rows.size(), PARALLEL );
 		input_t< weight_t > input { A, root, stdToGrbVector( expected_distances ) };
 		output_t output;
-		RC bench_rc = benchmarker.exec( &grbProgram, input, output, niterations, 1, true );
-		if( bench_rc != SUCCESS ) {
-			std::cerr << "ERROR during execution: rc = " << bench_rc << std::endl;
-			return bench_rc;
+		RC rc = launcher.exec( &grbProgram, input, output, true );
+		if( rc != SUCCESS ) {
+			std::cerr << "ERROR during execution: rc = " << rc << std::endl;
+			return rc;
 		} else if( output.rc ) {
 			std::cerr << "Test failed: rc = " << output.rc << std::endl;
 			return output.rc;
@@ -230,10 +231,10 @@ int main( int argc, char ** argv ) {
 		grb::buildMatrixUnique( A, A_rows.data(), A_cols.data(), A_values.data(), A_rows.size(), PARALLEL );
 		input_t< weight_t > input { A, root, stdToGrbVector( expected_distances ) };
 		output_t output;
-		RC bench_rc = benchmarker.exec( &grbProgram, input, output, niterations, 1, true );
-		if( bench_rc != SUCCESS ) {
-			std::cerr << "ERROR during execution: rc = " << bench_rc << std::endl;
-			return bench_rc;
+		RC rc = launcher.exec( &grbProgram, input, output, true );
+		if( rc != SUCCESS ) {
+			std::cerr << "ERROR during execution: rc = " << rc << std::endl;
+			return rc;
 		} else if( output.rc ) {
 			std::cerr << "Test failed: rc = " << output.rc << std::endl;
 			return output.rc;
