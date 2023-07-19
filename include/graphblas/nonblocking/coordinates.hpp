@@ -318,6 +318,12 @@ namespace grb {
 					}
 				}
 
+				template< bool maybe_invalid = false >
+				inline void assignAll( ) noexcept {
+					// Must be defined with the same name as the reference backend
+					return local_assignAllNotAlreadyAssigned< maybe_invalid >( );
+				}
+
 				inline void clear() noexcept {
 
 					if( _n == _cap ) {

@@ -255,7 +255,14 @@ namespace grb {
 			typedef typename Vector< D, reference, MyCoordinates >::const_iterator
 				const_iterator;
 
-			Vector( const size_t n, const size_t nz ) : ref( n, nz ) {}
+			Vector( const size_t n, const size_t nz ) : ref( n, nz ) {
+				// pipeline execution is not required here as this is a grb::Vector
+				// declaration
+#ifdef _DEBUG
+				std::cerr << "In Vector< nonblocking >::Vector( size_t, size_t )"
+					<< " constructor\n";				
+#endif
+			}
 
 			Vector( const size_t n ) : Vector( n, n ) {
 
@@ -263,6 +270,15 @@ namespace grb {
 				// declaration
 #ifdef _DEBUG
 				std::cerr << "In Vector< nonblocking >::Vector( size_t ) constructor\n";
+#endif
+			}
+
+			Vector( const std::initializer_list< D > vals )  : ref( vals ) {
+				// pipeline execution is not required here as this is a grb::Vector
+				// declaration
+#ifdef _DEBUG
+				std::cerr << "In Vector< nonblocking >::Vector( initializer_list )"
+					<< " constructor\n";				
 #endif
 			}
 
