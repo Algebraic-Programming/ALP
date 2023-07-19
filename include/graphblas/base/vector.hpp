@@ -237,6 +237,14 @@ namespace grb {
 			}
 
 			/**
+			 * Creates a dense ALP/GraphBLAS vector. This constructor takes an initializer
+			 * list of values that will be copied into this vector.
+			 */
+			Vector( const std::initializer_list< D > &vals ) {
+				(void) vals;
+			}
+
+			/**
 			 * Move constructor.
 			 *
 			 * This will make the new vector equal the given GraphBLAS vector while
