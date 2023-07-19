@@ -858,6 +858,24 @@ namespace grb {
 			}
 
 			/**
+			 * Creates a reference vector with given values.
+			 * This constructor takes an initializer list of values that will be copied.
+			 */
+			Vector( const std::initializer_list< D > vals )
+				: Vector( vals.size(), vals.size() )
+			{
+#ifdef _DEBUG
+				std::cerr << "In Vector< reference >::Vector( initializer_list )"
+					<< " constructor\n";
+#endif
+				size_t i = 0;
+				for( auto each : vals ) {
+					_raw[ i++ ] = each;
+				}
+				_coordinates.assignAll();
+			}
+
+			/**
 			 * The default constructor creates an empty vector and should never be
 			 * used explicitly.
 			 */
