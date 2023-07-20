@@ -79,9 +79,13 @@ void grb_program( const long &n, grb::RC &rc ) {
 		J[ k ] = std::rand() % n;
 		V[ k ] = compute_value< int >( I[ k ], J[ k ] );
 	}
-	assert( SUCCESS ==
+	if( SUCCESS !=
 		grb::buildMatrixUnique( A, I, J, V, n, SEQUENTIAL )
-	);
+	) {
+		std::cerr << "Error on test: building matrix" << std::endl;
+		rc = FAILED;
+		return;
+	}
 
 	{ // Mixed-domain matrix, should be successful
 		Matrix< size_t > U_A( n, n );
@@ -158,7 +162,7 @@ void grb_program( const long &n, grb::RC &rc ) {
 		std::cout << std::flush << " -- Test passed: transpose_matrix descriptor" << std::flush << std::endl;
 	}
 	{ // Overlap is forbidden, should return RC::OVERLAP
-		rc = grb::tril< descriptors::transpose_matrix >( A, A, Phase::RESIZE );
+		rc = grb::tril( A, A, Phase::RESIZE );
 
 		if( rc != RC::OVERLAP ) {
 			std::cerr << "Error on test: overlap, should return RC::OVERLAP" << std::endl;
@@ -234,9 +238,14 @@ void grb_program( const long &n, grb::RC &rc ) {
 			std::iota( I + i*n, I + (i+1)*n, 0 );
 			std::fill( J + i*n, J + (i+1)*n, i );
 		}
-		assert( SUCCESS ==
+		if( SUCCESS !=
 			buildMatrixUnique( A, I, J, V, n*n, SEQUENTIAL )
-		);
+		) {
+			std::cerr << "Error on test: building matrix in: "
+						<< "identity isolation using triu( tril ( A, 1 ), 1 )" << std::endl;
+			rc = FAILED;
+			return;
+		}
 		const long k = 0;
 		Matrix< size_t > U_A( n, n );
 		rc = grb::tril( U_A, A, k, Phase::RESIZE );
