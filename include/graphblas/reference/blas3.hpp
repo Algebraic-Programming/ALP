@@ -30,29 +30,6 @@
 #include "io.hpp"
 #include "matrix.hpp"
 
-#ifdef _H_GRB_REFERENCE_OMP_BLAS3
- #include <omp.h>
-#endif
-
-
-#define OMP_CRITICAL _Pragma("omp critical")
-
-#ifndef _DEBUG_THREADESAFE_PRINT
-	#ifndef _DEBUG
-		#define _DEBUG_THREADESAFE_PRINT( msg )
-	#else
-		#ifdef _H_GRB_REFERENCE_OMP_BLAS3
-			#define _DEBUG_THREADESAFE_PRINT( msg ) \
-				OMP_CRITICAL \
-					{ \
-						std::cout << "[T" << omp_get_thread_num() << "] - " << msg << std::flush; \
-					}
-		#else
-			#define _DEBUG_THREADESAFE_PRINT( msg ) std::cout << msg << std::flush;
-		#endif
-	#endif
-#endif
-
 #define NO_CAST_ASSERT( x, y, z )                                              \
 	static_assert( x,                                                          \
 		"\n\n"                                                                 \
@@ -1235,35 +1212,49 @@ namespace grb {
 			const Matrix< InputType, reference, RIT_B, CIT_B, NIT_B > &B,
 			const Monoid &monoid = Monoid()
 		) {
-			_DEBUG_THREADESAFE_PRINT( "In grb::internal::fold_matrix_matrix_unmasked_generic( reference )\n" );
-			RC rc = SUCCESS;
+#ifdef _DEBUG
+			std::cout << "In grb::internal::fold_matrix_matrix_unmasked_generic( reference )\n" << std::flush;
+#endif
 
-			if( grb::nnz(B) == 0 || grb::nnz(A) == 0 ) {
-				return rc;
+			if( nnz(B) == 0 || nnz(A) == 0 ) {
+#ifdef _DEBUG
+				std::cout << "One or the two matrices are empty, nothing to compute.\n" << std::flush;
+#endif
+				return SUCCESS;
 			}
 
 			const auto &A_crs_raw = internal::getCRS( A );
 			const auto &A_ccs_raw = internal::getCCS( A );
-			const auto &B_raw = descr & grb::descriptors::transpose_right ?
-				internal::getCCS( B ) : internal::getCRS( B );
+			const auto &B_raw = descr & grb::descriptors::transpose_right
+								? internal::getCCS( B )
+								: internal::getCRS( B );
 			const size_t m = nrows( A );
 			const size_t n = ncols( A );
-			const size_t m_B = descr & grb::descriptors::transpose_right || descr & grb::descriptors::transpose_matrix ?
-				ncols( B ) : nrows( B );
-			const size_t n_B = descr & grb::descriptors::transpose_right || descr & grb::descriptors::transpose_matrix ?
-				nrows( B ) : ncols( B );
+			const size_t m_B =
+				descr & grb::descriptors::transpose_right || descr & grb::descriptors::transpose_matrix
+					? ncols( B )
+					: nrows( B );
+			const size_t n_B =
+				descr & grb::descriptors::transpose_right || descr & grb::descriptors::transpose_matrix
+					? nrows( B )
+					: ncols( B );
 
 			// Check mask dimensions
 			if( m != m_B || n != n_B ) {
-				_DEBUG_THREADESAFE_PRINT( "Dimensions of matrices do not match!\n" );
+#ifdef _DEBUG
+							std::cout << "Dimensions of matrices do not match!\n" << std::flush;
+#endif
 				return MISMATCH;
 			}
 
+			RC rc = SUCCESS;
 			RC local_rc = rc;
-			const auto& op = monoid.getOperator();
+			const auto &op = monoid.getOperator();
 
 #ifdef _H_GRB_REFERENCE_OMP_BLAS3
-	#pragma omp parallel default(none) shared(A_crs_raw, A_ccs_raw, B_raw, rc, std::cout) firstprivate(local_rc, m, op)
+	#pragma omp parallel default(none) \
+				shared(A_crs_raw, A_ccs_raw, B_raw, rc, std::cout) \
+				firstprivate(local_rc, m, op)
 #endif
 			{
 				size_t start_row = 0;
@@ -1273,42 +1264,81 @@ namespace grb {
 #endif
 				for( auto i = start_row; i < end_row; ++i ) {
 					auto B_k = B_raw.col_start[ i ];
-					for( auto k = A_crs_raw.col_start[ i ]; k < A_crs_raw.col_start[ i + 1 ]; ++k ) {
+					const auto A_k_start = A_crs_raw.col_start[ i ];
+					const auto A_k_end = A_crs_raw.col_start[ i + 1 ];
+					for( auto k = A_k_start; k < A_k_end; ++k ) {
 						const auto j = A_crs_raw.row_index[ k ];
-
-						// Increment the mask pointer until we find the right column, or a lower column (since the storage withing a row is sorted in a descending order)
-						while( B_k < B_raw.col_start[ i + 1 ] && B_raw.row_index[ B_k ] > j  ) {
-							_DEBUG_THREADESAFE_PRINT( "NEquals B coordinate: ( " + std::to_string( i ) + ";" + std::to_string( B_raw.row_index[ B_k ] ) + " )\n" );
+						/* Increment the mask pointer until we find the right column,
+						* or a lower column  (since the storage withing a row
+						* is sorted in a descending order)
+						*/
+						while( B_k < B_raw.col_start[ i + 1 ] 
+							   && B_raw.row_index[ B_k ] > j
+						) {
 							B_k++;
 						}
+						// Check if we are out of values in B
 						if( B_k >= B_raw.col_start[ i + 1 ] ) {
-							_DEBUG_THREADESAFE_PRINT( "Not value left in B for this column\n" );
+#ifdef _DEBUG
+							std::cout << "Not value left in B for this column\n" << std::flush;
+#endif
 							break;
 						}
-							
+						// Check if we found the right column
 						if( B_raw.row_index[ B_k ] != j ) {
-							_DEBUG_THREADESAFE_PRINT( "Skip B value at: ( " + std::to_string( i ) + ";" + std::to_string( B_raw.row_index[ B_k ] ) + " )\n" );
+#ifdef _DEBUG
+							std::cout << "Skip B value at: ( " + std::to_string( i )
+										+ ";" + std::to_string( B_raw.row_index[ B_k ] )
+										+ " )\n" << std::flush;
+#endif				
 							continue;
 						}
 
-						const auto B_val = B_raw.values[ B_k ];
+						// Get B value
+						const auto B_val = B_raw.getValue(
+							B_k,
+							identities::zero< InputType >::value()
+						);
+#ifdef _DEBUG
+						std::cout << "B( " + std::to_string( i ) + ";"
+								+ std::to_string( B_raw.row_index[ B_k ] )
+								+ " ) = " + std::to_string( B_val ) + "\n" << std::flush;
+#endif
 
-						_DEBUG_THREADESAFE_PRINT( "B( " + std::to_string( i ) + ";" + std::to_string( B_raw.row_index[ B_k ] ) + " ) = " + std::to_string( B_val ) + "\n" );
 						// Get A value
 						const auto a_val_before = A_crs_raw.values[ k ];
-						_DEBUG_THREADESAFE_PRINT( "A( " + std::to_string( i ) + ";" + std::to_string( j ) + " ) = " + std::to_string( a_val_before ) + "\n" );
+#ifdef _DEBUG
+						std::cout << "A( " + std::to_string( i ) + ";"
+								+ std::to_string( j ) + " ) = "
+								+ std::to_string( a_val_before ) + "\n" << std::flush;
+#endif
+
 						// Compute the fold for this coordinate
-						local_rc = local_rc ? local_rc : grb::apply< descr >( A_crs_raw.values[ k ], a_val_before, B_val, op );
-						local_rc = local_rc ? local_rc : grb::apply< descr >( A_ccs_raw.values[ k ], a_val_before, B_val, op );
-						_DEBUG_THREADESAFE_PRINT( "Computing: op(" + std::to_string( a_val_before ) + ", " + std::to_string( a_val_before ) + ") = " + std::to_string( A_ccs_raw.values[ k ] ) + "\n" );
+						local_rc = local_rc
+									? local_rc
+									: apply< descr >(
+										A_crs_raw.values[ k ], a_val_before, B_val, op
+									);
+						local_rc = local_rc
+									? local_rc
+									: apply< descr >(
+										A_ccs_raw.values[ k ], a_val_before, B_val, op
+									);
+#ifdef _DEBUG
+						std::cout << "Computing: op(" + std::to_string( a_val_before )
+								+ ", " + std::to_string( a_val_before ) + ") = "
+								+ std::to_string( A_ccs_raw.values[ k ] ) + "\n" << std::flush;
+#endif
 					}
 				}
 
+				if( local_rc != SUCCESS ) {
 #ifdef _H_GRB_REFERENCE_OMP_BLAS3
 	#pragma omp critical
 #endif
-				{ // Reduction with the global return code
-					rc = rc ? rc : local_rc;
+					{ // Reduction with the global return code
+						rc = rc ? rc : local_rc;
+					}
 				}
 			}
 			return rc;
@@ -1328,42 +1358,65 @@ namespace grb {
 			const Matrix< InputType, reference, RIT_B, CIT_B, NIT_B > &B,
 			const Monoid &monoid = Monoid()
 		) {
-			_DEBUG_THREADESAFE_PRINT( "In grb::internal::fold_matrix_matrix_masked_generic( reference )\n" );
-			RC rc = SUCCESS;
+			typedef typename std::conditional<
+						std::is_void< MaskType >::value, bool, MaskType
+					>::type MaskIdentityType;
 
-			if( grb::nnz(mask) == 0 || grb::nnz(A) == 0 ) {
-				return rc;
+#ifdef _DEBUG
+			std::cout << "In grb::internal::fold_matrix_matrix_masked_generic( reference )\n" << std::flush;
+#endif
+
+			if( nnz(mask) == 0 || nnz(A) == 0 ) {
+				return SUCCESS;
 			}
 
-			const auto &A_crs_raw = internal::getCRS( A );
-			const auto &A_ccs_raw = internal::getCCS( A );
-			const auto &mask_raw = descr & grb::descriptors::transpose_left ?
-				internal::getCCS( mask ) : internal::getCRS( mask );
-			const auto &B_raw = descr & grb::descriptors::transpose_right ?
-				internal::getCCS( B ) : internal::getCRS( B );
+			// Descriptors aliases
+			constexpr bool transpose_left = descr & grb::descriptors::transpose_left;
+			constexpr bool transpose_right = descr & grb::descriptors::transpose_right;
+
+			auto &A_crs_raw = internal::getCRS( A );
+			auto &A_ccs_raw = internal::getCCS( A );
 			const size_t m = nrows( A );
 			const size_t n = ncols( A );
-			const size_t m_mask = descr & grb::descriptors::transpose_left || descr & grb::descriptors::transpose_left ?
-				ncols( mask ) : nrows( mask );
-			const size_t n_mask = descr & grb::descriptors::transpose_left || descr & grb::descriptors::transpose_left ?
-				nrows( mask ) : ncols( mask );
-			const size_t m_B = descr & grb::descriptors::transpose_right || descr & grb::descriptors::transpose_matrix ?
-				ncols( B ) : nrows( B );
-			const size_t n_B = descr & grb::descriptors::transpose_right || descr & grb::descriptors::transpose_matrix ?
-				nrows( B ) : ncols( B );
+
+			const auto &mask_raw = transpose_left 
+								? internal::getCCS( mask ) 
+								: internal::getCRS( mask );
+			const size_t m_mask = transpose_left 
+								? ncols( mask ) 
+								: nrows( mask );
+			const size_t n_mask = transpose_left 
+								? nrows( mask ) 
+								: ncols( mask );
+
+			const auto &B_raw = transpose_right 
+								? internal::getCCS( B ) 
+								: internal::getCRS( B );
+			const size_t m_B = transpose_right 
+								? ncols( B ) 
+								: nrows( B );
+			const size_t n_B = transpose_right 
+								? nrows( B ) 
+								: ncols( B );
 
 			// Check mask dimensions
 			if( m != m_B || n != n_B || m != m_mask || n != n_mask ) {
-				_DEBUG_THREADESAFE_PRINT( "Dimensions of matrices do not match!\n" );
+#ifdef _DEBUG
+				std::cout << "Dimensions of matrices do not match!\n" << std::flush;
+#endif
 				return MISMATCH;
 			}
 
+			RC rc = SUCCESS;
 			RC local_rc = rc;
-			const auto& op = monoid.getOperator();
+			const auto &op = monoid.getOperator();
+			const InputType A_identity = monoid.template getIdentity< IOType >();
 			const InputType B_identity = monoid.template getIdentity< InputType >();
 
 #ifdef _H_GRB_REFERENCE_OMP_BLAS3
-	#pragma omp parallel default(none) shared(A_crs_raw, A_ccs_raw, mask_raw, B_raw, rc, std::cout) firstprivate(local_rc, m, op, B_identity)
+	#pragma omp parallel default(none) \
+				shared(A_crs_raw, A_ccs_raw, mask_raw, B_raw, rc, std::cout) \
+				firstprivate(local_rc, m, op, A_identity, B_identity)
 #endif
 			{
 				size_t start_row = 0;
@@ -1374,55 +1427,100 @@ namespace grb {
 				for( auto i = start_row; i < end_row; ++i ) {
 					auto B_k = B_raw.col_start[ i ];
 					auto mask_k = mask_raw.col_start[ i ];
-					for( auto k = A_crs_raw.col_start[ i ]; k < A_crs_raw.col_start[ i + 1 ]; ++k ) {
-						auto j = A_crs_raw.row_index[ k ];
+					const auto A_k_start = A_crs_raw.col_start[ i ];
+					const auto A_k_end = A_crs_raw.col_start[ i + 1 ];
+					for( auto A_k = A_k_start; A_k < A_k_end; ++A_k ) {
+						const auto j = A_crs_raw.row_index[ A_k ];
 
-						// Increment the pointer of mask until we find the right column, or a lower column (since the storage withing a row is sorted in a descending order)
-						while( mask_k < mask_raw.col_start[ i + 1 ] && mask_raw.row_index[ mask_k ] > j  ) {
-							_DEBUG_THREADESAFE_PRINT( "NEquals MASK coordinate: ( " + std::to_string( i ) + ";" + std::to_string( mask_raw.row_index[ mask_k ] ) + " )\n" );
+						/* Increment the mask pointer until we find the right column,
+						* or a lower column  (since the storage withing a row
+						* is sorted in a descending order)
+						*/
+						while(
+							mask_k < mask_raw.col_start[ i + 1 ] && mask_raw.row_index[ mask_k ] > j 
+						) {
 							mask_k++;
 						}
 						if( mask_k >= mask_raw.col_start[ i + 1 ] ) {
-							_DEBUG_THREADESAFE_PRINT( "Not value left in mask for this column\n" );
+#ifdef _DEBUG
+							std::cout << "Not value left in <mask> for this column\n" << std::flush;
+#endif
 							break;
 						}
-							
-						if( mask_raw.row_index[ B_k ] != j || not MaskHasValue< MaskType >( mask_raw, mask_k ).value ) {
-							_DEBUG_THREADESAFE_PRINT( "Skip MASK value at: ( " + std::to_string( i ) + ";" + std::to_string( mask_raw.row_index[ B_k ] ) + " )\n" );
+
+						const bool mask_has_value = mask_raw.getValue(
+							mask_k,
+							identities::logical_true<MaskIdentityType>::value()
+						);
+						if( mask_raw.row_index[ B_k ] != j || !mask_has_value ) {
+#ifdef _DEBUG
+							std::cout << "Skip <mask> value at: ( " + std::to_string( i ) 
+										+ ";" + std::to_string( mask_raw.row_index[ B_k ] ) 
+										+ " )\n" << std::flush;
+#endif
 							continue;
 						}
 
-						// Increment the pointer of B until we find the right column, or a lower column (since the storage withing a row is sorted in a descending order)
-						while( B_k < B_raw.col_start[ i + 1 ] && B_raw.row_index[ B_k ] > j  ) {
-							_DEBUG_THREADESAFE_PRINT( "NEquals B coordinate: ( " + std::to_string( i ) + ";" + std::to_string( B_raw.row_index[ B_k ] ) + " )\n" );
+						/* Increment the mask pointer until we find the right column,
+						* or a lower column  (since the storage withing a row
+						* is sorted in a descending order)
+						*/
+						while( B_k < B_raw.col_start[ i + 1 ] 
+							   && B_raw.row_index[ B_k ] > j
+						) {
 							B_k++;
 						}
 
 						// Get B value (or identity if not found)
-						auto B_val = B_identity;
+						InputType B_val = B_identity;
 						if( B_k < B_raw.col_start[ i + 1 ] && B_raw.row_index[ B_k ] == j ) {
-							_DEBUG_THREADESAFE_PRINT( "Found B value at: ( " + std::to_string( i ) + ";" + std::to_string( B_raw.row_index[ B_k ] ) + " )\n" );
+#ifdef _DEBUG
+							std::cout << "Found B value at: ( " + std::to_string( i ) 
+										+ ";" + std::to_string( B_raw.row_index[ B_k ] ) 
+										+ " )\n" << std::flush;
+#endif
 							B_val = B_raw.values[ B_k ];
 							B_k++;
 						} else {
-							_DEBUG_THREADESAFE_PRINT( "Not found B, using identity: ( " + std::to_string( i ) + ";" + std::to_string( j ) + " ) = " + std::to_string( B_val ) + "\n" );
+#ifdef _DEBUG
+							std::cout << "Not found B, using identity: ( " 
+										+ std::to_string( i ) + ";" + std::to_string( j ) 
+										+ " ) = " + std::to_string( B_val ) + "\n" << std::flush;
+#endif
 						}
 
 						// Get A value
-						const auto a_val_before = A_crs_raw.values[ k ];
-						_DEBUG_THREADESAFE_PRINT( "A( " + std::to_string( i ) + ";" + std::to_string( j ) + " ) = " + std::to_string( a_val_before ) + "\n" );
+						const IOType A_val = A_crs_raw.getValue( A_k, A_identity );
+#ifdef _DEBUG
+						std::cout << "A( " + std::to_string( i ) + ";" 
+								+ std::to_string( j ) + " ) = " 
+								+ std::to_string( A_val ) + "\n" << std::flush;
+#endif
+
 						// Compute the fold for this coordinate
-						local_rc = local_rc ? local_rc : grb::apply< descr >( A_crs_raw.values[ k ], a_val_before, B_val, op );
-						local_rc = local_rc ? local_rc : grb::apply< descr >( A_ccs_raw.values[ k ], a_val_before, B_val, op );
-						_DEBUG_THREADESAFE_PRINT( "Computing: op(" + std::to_string( a_val_before ) + ", " + std::to_string( a_val_before ) + ") = " + std::to_string( A_ccs_raw.values[ k ] ) + "\n" );
+						IOType result;
+						local_rc = local_rc 
+									? local_rc 
+									: apply< descr >(
+										result, A_val, B_val, op
+									);
+						A_crs_raw.setValue( A_k, result );
+						A_ccs_raw.setValue( A_k, result );
+#ifdef _DEBUG
+						std::cout << "Computing: op(" + std::to_string( A_val ) 
+								+ ", " + std::to_string( B_val ) + ") = " 
+								+ std::to_string( result ) + "\n" << std::flush;
+#endif
 					}
 				}
 
+				if( local_rc != SUCCESS ){
 #ifdef _H_GRB_REFERENCE_OMP_BLAS3
 	#pragma omp critical
 #endif
-				{ // Reduction with the global return code
-					rc = rc ? rc : local_rc;
+					{ // Reduction with the global return code
+						rc = rc ? rc : local_rc;
+					}
 				}
 			}
 			return rc;
@@ -1553,7 +1651,7 @@ namespace grb {
 	template<
 		Descriptor descr = descriptors::no_operation,
 		class Monoid,
-		typename IOType, typename MaskType, typename InputType, 
+		typename IOType, typename MaskType, typename InputType,
 		typename RIT_A, typename CIT_A, typename NIT_A,
 		typename RIT_M, typename CIT_M, typename NIT_M,
 		typename RIT_B, typename CIT_B, typename NIT_B
@@ -1563,7 +1661,7 @@ namespace grb {
 		const Matrix< MaskType, reference, RIT_M, CIT_M, NIT_M > &mask,
 		const Matrix< InputType, reference, RIT_B, CIT_B, NIT_B > &B,
 		const Monoid &monoid = Monoid(),
-		const typename std::enable_if< 
+		const typename std::enable_if<
 			!grb::is_object< IOType >::value &&
 			!grb::is_object< InputType >::value &&
 			!grb::is_object< MaskType >::value &&
@@ -1601,7 +1699,7 @@ namespace grb {
 	template<
 		Descriptor descr = descriptors::no_operation,
 		class Monoid,
-		typename IOType, typename InputType, 
+		typename IOType, typename InputType,
 		typename RIT_A, typename CIT_A, typename NIT_A,
 		typename RIT_B, typename CIT_B, typename NIT_B
 	>
@@ -1609,7 +1707,7 @@ namespace grb {
 		Matrix< IOType, reference, RIT_A, CIT_A, NIT_A > &A,
 		const Matrix< InputType, reference, RIT_B, CIT_B, NIT_B > &B,
 		const Monoid &monoid = Monoid(),
-		const typename std::enable_if< 
+		const typename std::enable_if<
 			!grb::is_object< IOType >::value &&
 			!grb::is_object< InputType >::value &&
 			grb::is_monoid< Monoid >::value, void
@@ -1625,7 +1723,7 @@ namespace grb {
 			"grb::foldl ( reference, IOType <- op( IOType, InputType ): "
 			"called with a prefactor input type that does not match the first domain of the given operator"
 		);
-		static_assert( 
+		static_assert(
 						(std::is_same< typename Monoid::D2, InputType >::value),
 			"grb::foldr ( reference, IOType <- op( IOType, InputType ): "
 			"called with a prefactor input type that does not match the second domain of the given operator"
@@ -1647,7 +1745,7 @@ namespace grb {
 	template<
 		Descriptor descr = descriptors::no_operation,
 		class Monoid,
-		typename IOType, typename MaskType, typename InputType, 
+		typename IOType, typename MaskType, typename InputType,
 		typename RIT_A, typename CIT_A, typename NIT_A,
 		typename RIT_M, typename CIT_M, typename NIT_M,
 		typename RIT_B, typename CIT_B, typename NIT_B
@@ -1657,7 +1755,7 @@ namespace grb {
 		const Matrix< MaskType, reference, RIT_M, CIT_M, NIT_M > &mask,
 		const Matrix< InputType, reference, RIT_B, CIT_B, NIT_B > &B,
 		const Monoid &monoid = Monoid(),
-		const typename std::enable_if< 
+		const typename std::enable_if<
 			!grb::is_object< IOType >::value &&
 			!grb::is_object< InputType >::value &&
 			!grb::is_object< MaskType >::value &&
@@ -1695,7 +1793,7 @@ namespace grb {
 	template<
 		Descriptor descr = descriptors::no_operation,
 		class Monoid,
-		typename IOType, typename InputType, 
+		typename IOType, typename InputType,
 		typename RIT_A, typename CIT_A, typename NIT_A,
 		typename RIT_B, typename CIT_B, typename NIT_B
 	>
@@ -1703,7 +1801,7 @@ namespace grb {
 		Matrix< IOType, reference, RIT_A, CIT_A, NIT_A > &A,
 		const Matrix< InputType, reference, RIT_B, CIT_B, NIT_B > &B,
 		const Monoid &monoid = Monoid(),
-		const typename std::enable_if< 
+		const typename std::enable_if<
 			!grb::is_object< IOType >::value &&
 			!grb::is_object< InputType >::value &&
 			grb::is_monoid< Monoid >::value, void

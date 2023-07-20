@@ -16,7 +16,9 @@
  */
 
 /*
- * Tests for the foldl+r( Matrix<D>[in,out], T[in], Operator ) API call
+ * Tests for:
+ * - foldl+r( Matrix<D>[in,out], Matrix<D>[in], Monoid )
+ * - foldl+r( Matrix<D>[in,out], Mask[in], Matrix<D>[in], Monoid )
  *
  * @author Benjamin Lozes
  * @date 27/05/2023
@@ -45,49 +47,16 @@ constexpr bool SKIP_FOLDR = false;
 constexpr bool SKIP_UNMASKED = false;
 constexpr bool SKIP_MASKED = false; // Not implemented yet
 
-#define _DEBUG
-
-template< class Iterator >
-void printSparseMatrixIterator( size_t rows, size_t cols, Iterator begin, Iterator end, const std::string & name = "", std::ostream & os = std::cout ) {
-#ifndef _DEBUG
-	return;
-#endif
-	std::cout << "Matrix \"" << name << "\" (" << rows << "x" << cols << "):" << std::endl << "[" << std::endl;
-	if( rows > 50 || cols > 50 ) {
-		os << "   Matrix too large to print" << std::endl;
-	} else {
-		// os.precision( 3 );
-		for( size_t y = 0; y < rows; y++ ) {
-			os << std::string( 3, ' ' );
-			for( size_t x = 0; x < cols; x++ ) {
-				auto nnz_val = std::find_if( begin, end, [ y, x ]( const typename std::iterator_traits< Iterator >::value_type & a ) {
-					return a.first.first == y && a.first.second == x;
-				} );
-				if( nnz_val != end )
-					os << std::fixed << ( *nnz_val ).second;
-				else
-					os << '_';
-				os << " ";
-			}
-			os << std::endl;
-		}
-	}
-	os << "]" << std::endl;
-	std::flush( os );
-}
-
 template< typename D >
-void printSparseMatrix( const grb::Matrix< D > & mat, const std::string & name = "", std::ostream & os = std::cout ) {
-	grb::wait( mat );
-	printSparseMatrixIterator( grb::nrows( mat ), grb::ncols( mat ), mat.cbegin(), mat.cend(), name, os );
-}
+bool are_matrices_equals( 
+	const Matrix< D > & A, 
+	const Matrix< D > & B 
+) {
+	if( nrows( A ) != nrows( B ) || ncols( A ) != ncols( B ) ) { return false ; }
 
-template< typename D >
-bool are_matrices_equals( const grb::Matrix< D > & A, const grb::Matrix< D > & B ) {
-	if( grb::nrows( A ) != grb::nrows( B ) || grb::ncols( A ) != grb::ncols( B ) )
-		return false;
 	grb::wait( A );
 	grb::wait( B );
+	
 	std::vector< std::pair< std::pair< size_t, size_t >, D > > A_vec( A.cbegin(), A.cend() );
 	std::vector< std::pair< std::pair< size_t, size_t >, D > > B_vec( B.cbegin(), B.cend() );
 	return std::is_permutation( A_vec.cbegin(), A_vec.cend(), B_vec.cbegin() );
@@ -101,83 +70,120 @@ template< typename T, typename M, typename S, class MonoidFoldl, class MonoidFol
 struct input {
 	const char * test_label;
 	const char * test_description;
-	const grb::Matrix< T > & initial;
-	const grb::Matrix< M > & mask;
-	const grb::Matrix< T > & B;
-	const grb::Matrix< T > & expected;
+	const Matrix< T > & initial;
+	const Matrix< M > & mask;
+	const Matrix< T > & B;
+	const Matrix< T > & expected;
 	const bool skip_masked, skip_unmasked;
 	const MonoidFoldl & monoidFoldl;
 	const MonoidFoldr & monoidFoldr;
 
 	input( const char * test_label = "",
 		const char * test_description = "",
-		const grb::Matrix< T > & initial = { 0, 0 },
-		const grb::Matrix< M > & mask = { 0, 0 },
-		const grb::Matrix< T > & B = { 0, 0 },
-		const grb::Matrix< T > & expected = { 0, 0 },
+		const Matrix< T > & initial = { 0, 0 },
+		const Matrix< M > & mask = { 0, 0 },
+		const Matrix< T > & B = { 0, 0 },
+		const Matrix< T > & expected = { 0, 0 },
 		bool skip_masked = false,
 		bool skip_unmasked = false,
 		const MonoidFoldl & monoidFoldl = MonoidFoldl(),
 		const MonoidFoldr & monoidFoldr = MonoidFoldr() ) :
-		test_label( test_label ),
-		test_description( test_description ), initial( initial ), mask( mask ), B( B ), expected( expected ), skip_masked( skip_masked ), skip_unmasked( skip_unmasked ), monoidFoldl( monoidFoldl ),
-		monoidFoldr( monoidFoldr ) {}
+			test_label( test_label ),
+			test_description( test_description ),
+			initial( initial ),
+			mask( mask ),
+			B( B ),
+			expected( expected ),
+			skip_masked( skip_masked ),
+			skip_unmasked( skip_unmasked ),
+			monoidFoldl( monoidFoldl ),
+			monoidFoldr( monoidFoldr ) {}
 };
 
 template< typename T, typename M, typename S, class MonoidFoldl, class MonoidFoldr >
-void grb_program( const input< T, M, S, MonoidFoldl, MonoidFoldr > & in, grb::RC & rc ) {
-	rc = RC::SUCCESS;
+void grb_program(
+	const input< T, M, S, MonoidFoldl, MonoidFoldr > & in,
+	RC & rc
+) {
+	rc = SUCCESS;
 
-	printSparseMatrix( in.initial, "initial" );
-	printSparseMatrix( in.B, "B" );
-	printSparseMatrix( in.expected, "expected" );
+	 // Unmasked variant foldl
+	if( !in.skip_unmasked && !SKIP_FOLDL && !SKIP_UNMASKED && rc == SUCCESS ) {
+		std::cout << "foldl( unmasked ) \"" << in.test_label << "\": ";
 
-	if( not in.skip_unmasked && not SKIP_FOLDL && not SKIP_UNMASKED && rc == RC::SUCCESS ) { // Unmasked foldl
-		grb::Matrix< T > result = in.initial;
-		foldl( result, in.B, in.monoidFoldl );
-		std::cout << "foldl (unmasked) \"" << in.test_label << "\": ";
-		rc = rc ? rc : ( are_matrices_equals( result, in.expected ) ? RC::SUCCESS : RC::FAILED );
-		if( rc == RC::SUCCESS )
-			std::cout << "OK" << std::flush << std::endl;
-		else
-			std::cerr << "Failed" << std::endl << in.test_description << std::endl;
-		printSparseMatrix( result, "foldl (unmasked) result" );
+		Matrix< T > result = in.initial;
+		rc = rc ? rc : foldl( result, in.B, in.monoidFoldl );
+		if( rc == SUCCESS ) {
+			std::cout << "Execution OK" << std::flush << std::endl;
+		} else {
+			std::cerr << "Execution failed - " << std::endl << in.test_description << std::endl;
+		}
+		rc = rc ? rc : ( are_matrices_equals( result, in.expected ) ? SUCCESS : FAILED );
+		if( rc == SUCCESS ) {
+			std::cout << "Check OK" << std::flush << std::endl;
+		} else {
+			std::cerr << "Check failed - " << std::endl << in.test_description << std::endl;
+		}
 	}
 
-	if( not in.skip_masked && not SKIP_FOLDL && not SKIP_MASKED && rc == RC::SUCCESS ) { // Masked foldl
-		grb::Matrix< T > result = in.initial;
-		foldl( result, in.mask, in.B, in.monoidFoldl );
-		std::cout << "foldl (masked) \"" << in.test_label << "\": ";
-		rc = rc ? rc : ( are_matrices_equals( result, in.expected ) ? RC::SUCCESS : RC::FAILED );
-		if( rc == RC::SUCCESS )
-			std::cout << "OK" << std::endl;
-		else
-			std::cerr << "Failed" << std::endl << in.test_description << std::endl;
-		printSparseMatrix( result, "foldl (masked) result" );
+	// Masked variant foldl
+	if( !in.skip_masked && !SKIP_FOLDL && !SKIP_MASKED && rc == SUCCESS ) { 
+		std::cout << "foldl( masked ) \"" << in.test_label << "\": ";
+
+		Matrix< T > result = in.initial;
+		rc = rc ? rc : foldl( result, in.mask, in.B, in.monoidFoldl );
+		if( rc == SUCCESS ) {
+			std::cout << "Execution OK" << std::flush << std::endl;
+		} else {
+			std::cerr << "Execution failed - " << std::endl << in.test_description << std::endl;
+		}
+		
+		rc = rc ? rc : ( are_matrices_equals( result, in.expected ) ? SUCCESS : FAILED );
+		if( rc == SUCCESS ) {
+			std::cout << "Check OK" << std::flush << std::endl;
+		} else {
+			std::cerr << "Check failed - " << std::endl << in.test_description << std::endl;
+		}
 	}
 
-	if( not in.skip_unmasked && not SKIP_FOLDR && not SKIP_UNMASKED && rc == RC::SUCCESS ) { // Unmasked foldr
-		grb::Matrix< T > result = in.initial;
-		foldr( result, in.B, in.monoidFoldr );
-		std::cout << "foldr (unmasked) \"" << in.test_label << "\": ";
-		rc = rc ? rc : ( are_matrices_equals( result, in.expected ) ? RC::SUCCESS : RC::FAILED );
-		if( rc == RC::SUCCESS )
-			std::cout << "OK" << std::endl;
-		else
-			std::cerr << "Failed" << std::endl << in.test_description << std::endl;
-		printSparseMatrix( result, "foldr (unmasked) result" );
+	// Unmasked variant foldr
+	if( !in.skip_unmasked && !SKIP_FOLDR && !SKIP_UNMASKED && rc == SUCCESS ) { 
+		std::cout << "foldr( unmasked ) \"" << in.test_label << "\": ";
+
+		Matrix< T > result = in.initial;
+		rc = rc ? rc : foldr( result, in.B, in.monoidFoldr );
+		if( rc == SUCCESS ) {
+			std::cout << "Execution OK" << std::flush << std::endl;
+		} else {
+			std::cerr << "Execution failed - " << std::endl << in.test_description << std::endl;
+		}
+
+		rc = rc ? rc : ( are_matrices_equals( result, in.expected ) ? SUCCESS : FAILED );
+		if( rc == SUCCESS ) {
+			std::cout << "Check OK" << std::flush << std::endl;
+		} else {
+			std::cerr << "Check failed - " << std::endl << in.test_description << std::endl;
+		}
 	}
 
-	if( not in.skip_masked && not SKIP_FOLDR && not SKIP_MASKED && rc == RC::SUCCESS ) { // Masked foldr
-		grb::Matrix< T > result = in.initial;
-		foldr( result, in.mask, in.B, in.monoidFoldr );
-		std::cout << "foldr (masked) \"" << in.test_label << "\": ";
-		rc = rc ? rc : ( are_matrices_equals( result, in.expected ) ? RC::SUCCESS : RC::FAILED );
-		if( rc == RC::SUCCESS )
-			std::cout << "OK" << std::endl;
-		else
-			std::cerr << "Failed" << std::endl << in.test_description << std::endl;
-		printSparseMatrix( result, "foldr (masked) result" );
+	// Masked variant foldr
+	if( !in.skip_masked && !SKIP_FOLDR && !SKIP_MASKED && rc == SUCCESS ) {
+		std::cout << "foldr( masked ) \"" << in.test_label << "\": ";
+
+		Matrix< T > result = in.initial;
+		rc = rc ? rc : foldr( result, in.mask, in.B, in.monoidFoldr );
+		if( rc == SUCCESS ) {
+			std::cout << "Execution OK" << std::flush << std::endl;
+		} else {
+			std::cerr << "Execution failed - " << std::endl << in.test_description << std::endl;
+		}
+
+		rc = rc ? rc : ( are_matrices_equals( result, in.expected ) ? SUCCESS : FAILED );
+		if( rc == SUCCESS ) {
+			std::cout << "Check OK" << std::flush << std::endl;
+		} else {
+			std::cerr << "Check failed - " << std::endl << in.test_description << std::endl;
+		}
 	}
 }
 
@@ -202,30 +208,51 @@ int main( int argc, char ** argv ) {
 
 	std::cout << "This is functional test " << argv[ 0 ] << "\n";
 	grb::Launcher< AUTOMATIC > launcher;
-	grb::RC rc = RC::SUCCESS;
+	RC rc = SUCCESS;
 
 	// Identity matrix: I
 	Matrix< int > I( n, n );
 	std::vector< size_t > I_coords( n );
 	std::vector< int > I_vals( n, 1 );
 	std::iota( I_coords.begin(), I_coords.end(), 0 );
-	buildMatrixUnique( I, I_coords.data(), I_coords.data(), I_vals.data(), I_vals.size(), SEQUENTIAL );
+	assert( SUCCESS == 
+			buildMatrixUnique( I, I_coords.data(), I_coords.data(), I_vals.data(), I_vals.size(), SEQUENTIAL )
+	);
 
 	{ // Test 01:  I *. I -> I
 		const std::string label( "Test 01" );
-		const std::string description( "A: Identity int [" + std::to_string( n ) + ";" + std::to_string( n ) + "]\n" + "Mask: Identity void matrix (matching the input).\n" + "B: Identity int [" +
-			std::to_string( n ) + ";" + std::to_string( n ) + "]\n" + "Operator: mul\n" + "Expected: Identity int [" + std::to_string( n ) + ";" + std::to_string( n ) + "]" );
+		const std::string description( "A: Identity int [" + std::to_string( n ) + ";"
+										+ std::to_string( n ) + "]\n"
+										+ "Mask: Identity void matrix (matching the input).\n"
+										+ "B: Identity int [" + std::to_string( n ) + ";"
+										+ std::to_string( n ) + "]\n" + "Operator: mul\n"
+										 + "Expected: Identity int [" + std::to_string( n )
+										 + ";" + std::to_string( n ) + "]" );
 		// Mask: Pattern identity
 		Matrix< void > mask( n, n );
-		buildMatrixUnique( mask, I_coords.data(), I_coords.data(), I_coords.size(), SEQUENTIAL );
+		assert( SUCCESS == 
+			buildMatrixUnique( mask, I_coords.data(), I_coords.data(), I_coords.size(), SEQUENTIAL )
+		);
 		// B: Identity
 		Matrix< int > B = I;
 		// Expected matrix: Identity
 		Matrix< int > expected = I;
 		// Run test
 		std::cout << "-- Running " << label << " --" << std::endl;
-		input< int, void, int, grb::Monoid< grb::operators::mul< int >, grb::identities::one >, grb::Monoid< grb::operators::mul< int >, grb::identities::one > > in { label.c_str(),
-			description.c_str(), I, mask, B, expected };
+		input<
+			int,
+			void,
+			int,
+			Monoid< operators::mul< int >, identities::one >,
+			Monoid< operators::mul< int >, identities::one >
+		> in {
+			label.c_str(),
+			description.c_str(),
+			I,
+			mask,
+			B,
+			expected
+		};
 		if( launcher.exec( &grb_program, in, rc, true ) != SUCCESS ) {
 			std::cerr << "Launching " << label << " failed" << std::endl;
 			return 255;
@@ -235,21 +262,42 @@ int main( int argc, char ** argv ) {
 
 	{ // Test 01:  I +. I -> 2 * I
 		const std::string label( "Test 01" );
-		const std::string description( "A: Identity int [" + std::to_string( n ) + ";" + std::to_string( n ) + "]\n" + "Mask: Identity void matrix (matching the input).\n" + "B: Identity int [" +
-			std::to_string( n ) + ";" + std::to_string( n ) + "]\n" + "Operator: add\n" + "Expected: Identity int [" + std::to_string( n ) + ";" + std::to_string( n ) + "] * 2" );
+		const std::string description( "A: Identity int [" + std::to_string( n ) + ";"
+										+ std::to_string( n ) + "]\n"
+										+ "Mask: Identity void matrix (matching the input).\n"
+										+ "B: Identity int [" + std::to_string( n ) + ";"
+										+ std::to_string( n ) + "]\n" + "Operator: add\n"
+										+ "Expected: Identity int [" + std::to_string( n )
+										+ ";" + std::to_string( n ) + "] * 2" );
 		// Mask: Pattern identity
 		Matrix< void > mask( n, n );
-		buildMatrixUnique( mask, I_coords.data(), I_coords.data(), I_coords.size(), SEQUENTIAL );
+		assert( SUCCESS == 
+			buildMatrixUnique( mask, I_coords.data(), I_coords.data(), I_coords.size(), SEQUENTIAL )
+		);
 		// B: Identity
 		Matrix< int > B = I;
 		// Expected matrix: Identity * 2
 		Matrix< int > expected( n, n );
 		std::vector< int > expected_vals( n, 2 );
-		buildMatrixUnique( expected, I_coords.data(), I_coords.data(), expected_vals.data(), expected_vals.size(), SEQUENTIAL );
+		assert( SUCCESS == 
+			buildMatrixUnique( expected, I_coords.data(), I_coords.data(), expected_vals.data(), expected_vals.size(), SEQUENTIAL )
+		);
 		// Run test
 		std::cout << "-- Running " << label << " --" << std::endl;
-		input< int, void, int, grb::Monoid< grb::operators::add< int >, grb::identities::zero >, grb::Monoid< grb::operators::add< int >, grb::identities::zero > > in { label.c_str(),
-			description.c_str(), I, mask, B, expected };
+		input<
+			int,
+			void,
+			int,
+			Monoid< operators::add< int >, identities::zero >,
+			Monoid< operators::add< int >, identities::zero >
+		> in {
+			label.c_str(),
+			description.c_str(),
+			I,
+			mask,
+			B,
+			expected
+		};
 		if( launcher.exec( &grb_program, in, rc, true ) != SUCCESS ) {
 			std::cerr << "Launching " << label << " failed" << std::endl;
 			return 255;
