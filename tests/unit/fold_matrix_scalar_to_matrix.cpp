@@ -219,9 +219,13 @@ int main( int argc, char ** argv ) {
 		std::vector< int > initial_values( n, 1 );
 		std::iota( initial_rows.begin(), initial_rows.end(), 0 );
 		std::iota( initial_cols.begin(), initial_cols.end(), 0 );
-		assert( SUCCESS ==
+		if( SUCCESS !=
 			buildMatrixUnique( initial, initial_rows.data(), initial_cols.data(), initial_values.data(), initial_values.size(), SEQUENTIAL )
-		);
+		) {
+			std::cerr << "Building initial matrix failed" << std::endl;
+			rc = FAILED;
+			return 1;
+		}
 
 		{
 			const std::string label( "Test 01" );
