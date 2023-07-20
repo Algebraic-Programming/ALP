@@ -48,15 +48,15 @@ constexpr bool SKIP_UNMASKED = false;
 constexpr bool SKIP_MASKED = false; // Not implemented yet
 
 template< typename D >
-bool are_matrices_equals( 
-	const Matrix< D > & A, 
-	const Matrix< D > & B 
+bool are_matrices_equals(
+	const Matrix< D > & A,
+	const Matrix< D > & B
 ) {
 	if( nrows( A ) != nrows( B ) || ncols( A ) != ncols( B ) ) { return false ; }
 
 	grb::wait( A );
 	grb::wait( B );
-	
+
 	std::vector< std::pair< std::pair< size_t, size_t >, D > > A_vec( A.cbegin(), A.cend() );
 	std::vector< std::pair< std::pair< size_t, size_t >, D > > B_vec( B.cbegin(), B.cend() );
 	return std::is_permutation( A_vec.cbegin(), A_vec.cend(), B_vec.cbegin() );
@@ -127,7 +127,7 @@ void grb_program(
 	}
 
 	// Masked variant foldl
-	if( !in.skip_masked && !SKIP_FOLDL && !SKIP_MASKED && rc == SUCCESS ) { 
+	if( !in.skip_masked && !SKIP_FOLDL && !SKIP_MASKED && rc == SUCCESS ) {
 		std::cout << "foldl( masked ) \"" << in.test_label << "\": ";
 
 		Matrix< T > result = in.initial;
@@ -137,7 +137,7 @@ void grb_program(
 		} else {
 			std::cerr << "Execution failed - " << std::endl << in.test_description << std::endl;
 		}
-		
+
 		rc = rc ? rc : ( are_matrices_equals( result, in.expected ) ? SUCCESS : FAILED );
 		if( rc == SUCCESS ) {
 			std::cout << "Check OK" << std::flush << std::endl;
@@ -147,7 +147,7 @@ void grb_program(
 	}
 
 	// Unmasked variant foldr
-	if( !in.skip_unmasked && !SKIP_FOLDR && !SKIP_UNMASKED && rc == SUCCESS ) { 
+	if( !in.skip_unmasked && !SKIP_FOLDR && !SKIP_UNMASKED && rc == SUCCESS ) {
 		std::cout << "foldr( unmasked ) \"" << in.test_label << "\": ";
 
 		Matrix< T > result = in.initial;
@@ -215,9 +215,13 @@ int main( int argc, char ** argv ) {
 	std::vector< size_t > I_coords( n );
 	std::vector< int > I_vals( n, 1 );
 	std::iota( I_coords.begin(), I_coords.end(), 0 );
-	assert( SUCCESS == 
+	if( SUCCESS !=
 			buildMatrixUnique( I, I_coords.data(), I_coords.data(), I_vals.data(), I_vals.size(), SEQUENTIAL )
-	);
+	) {
+		std::cerr << "Error building identity matrix" << std::endl;
+		rc = FAILED;
+		return 1;
+	}
 
 	{ // Test 01:  I *. I -> I
 		const std::string label( "Test 01" );
@@ -230,7 +234,7 @@ int main( int argc, char ** argv ) {
 										 + ";" + std::to_string( n ) + "]" );
 		// Mask: Pattern identity
 		Matrix< void > mask( n, n );
-		assert( SUCCESS == 
+		assert( SUCCESS ==
 			buildMatrixUnique( mask, I_coords.data(), I_coords.data(), I_coords.size(), SEQUENTIAL )
 		);
 		// B: Identity
@@ -271,7 +275,7 @@ int main( int argc, char ** argv ) {
 										+ ";" + std::to_string( n ) + "] * 2" );
 		// Mask: Pattern identity
 		Matrix< void > mask( n, n );
-		assert( SUCCESS == 
+		assert( SUCCESS ==
 			buildMatrixUnique( mask, I_coords.data(), I_coords.data(), I_coords.size(), SEQUENTIAL )
 		);
 		// B: Identity
@@ -279,7 +283,7 @@ int main( int argc, char ** argv ) {
 		// Expected matrix: Identity * 2
 		Matrix< int > expected( n, n );
 		std::vector< int > expected_vals( n, 2 );
-		assert( SUCCESS == 
+		assert( SUCCESS ==
 			buildMatrixUnique( expected, I_coords.data(), I_coords.data(), expected_vals.data(), expected_vals.size(), SEQUENTIAL )
 		);
 		// Run test
