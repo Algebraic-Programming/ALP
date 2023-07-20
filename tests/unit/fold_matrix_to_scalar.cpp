@@ -629,9 +629,13 @@ void grb_program( const input< T, M > &in, RC &rc ) {
 			std::fill( rows.begin() + x * ncols( I ), rows.begin() + ( x + 1 ) * ncols( I ), x );
 			std::iota( cols.begin() + x * ncols( I ), cols.begin() + ( x + 1 ) * ncols( I ), 0 );
 		}
-		assert( SUCCESS ==
+		if( SUCCESS !=
 			buildMatrixUnique( dense_mask, rows.data(), cols.data(), nrows( I ) * ncols( I ), SEQUENTIAL )
-		);
+		) {
+			std::cerr << "Failed to build dense mask" << std::endl;
+			rc = FAILED;
+			return;
+		}
 		rc = foldLR_test(
 			"12",
 			"Reduction with a dense void mask.",
@@ -658,9 +662,13 @@ void grb_program( const input< T, M > &in, RC &rc ) {
 			std::iota( cols.begin() + x * ncols( I ), cols.begin() + ( x + 1 ) * ncols( I ), 0 );
 		}
 		std::vector< int > vals( nrows( I ) * ncols( I ), 1 );
-		assert( SUCCESS ==
+		if( SUCCESS !=
 			buildMatrixUnique( dense_mask, rows.data(), cols.data(), vals.data(), vals.size(), SEQUENTIAL )
-		);
+		) {
+			std::cerr << "Failed to build dense mask" << std::endl;
+			rc = FAILED;
+			return;
+		}
 		rc = foldLR_test(
 			"13",
 			"Reduction with a dense int mask.",
@@ -691,9 +699,13 @@ void grb_program( const input< T, M > &in, RC &rc ) {
 			vals[ e.first.first * ncols( I ) + e.first.second ] = 1;
 			break;
 		}
-		assert( SUCCESS ==
+		if( SUCCESS !=
 			buildMatrixUnique( dense_mask, rows.data(), cols.data(), vals.data(), vals.size(), SEQUENTIAL )
-		);
+		) {
+			std::cerr << "Failed to build dense mask" << std::endl;
+			rc = FAILED;
+			return;
+		}
 		rc = foldLR_test(
 			"14",
 			"Reduction with a dense int mask, matching only the first nz.",
@@ -724,9 +736,13 @@ void grb_program( const input< T, M > &in, RC &rc ) {
 		for( const auto e : I )
 			previous_idx = e.first.first * ncols( I ) + e.first.second;
 		vals[ previous_idx ] = 1;
-		assert( SUCCESS ==
+		if( SUCCESS !=
 			buildMatrixUnique( dense_mask, rows.data(), cols.data(), vals.data(), vals.size(), SEQUENTIAL )
-		);
+		) {
+			std::cerr << "Failed to build dense mask" << std::endl;
+			rc = FAILED;
+			return;
+		}
 		rc = foldLR_test(
 			"15",
 			"Reduction with a dense int mask, matching only the last nz.",
@@ -753,9 +769,13 @@ void grb_program( const input< T, M > &in, RC &rc ) {
 			std::fill( rows.begin() + x * ncols( I ), rows.begin() + ( x + 1 ) * ncols( I ), x );
 			std::iota( cols.begin() + x * ncols( I ), cols.begin() + ( x + 1 ) * ncols( I ), 0 );
 		}
-		assert( SUCCESS ==
+		if( SUCCESS !=
 			buildMatrixUnique( dense_mask, rows.data(), cols.data(), rows.size(), SEQUENTIAL )
-		);
+		) {
+			std::cerr << "Failed to build dense mask" << std::endl;
+			rc = FAILED;
+			return;
+		}
 		rc = foldLR_test< descriptors::add_identity >(
 			"16",
 			"Reduction with a dense void mask, with the descriptors::add_identity.",
@@ -843,19 +863,27 @@ int main( int argc, char ** argv ) {
 		std::vector< NzType > I_vals( n, 1.f );
 		std::iota( I_rows.begin(), I_rows.end(), 0 );
 		std::iota( I_cols.begin(), I_cols.end(), 0 );
-		assert( SUCCESS ==
+		if( SUCCESS !=
 			buildMatrixUnique( I, I_rows.data(), I_cols.data(), I_vals.data(), I_vals.size(), SEQUENTIAL )
-		);
+		) {
+			std::cerr << "Failed to build identity matrix" << std::endl;
+			rc = FAILED;
+			return 1;
+		}
 		Matrix< void > mask( n, n );
-		assert( SUCCESS ==
+		if( SUCCESS  !=
 			buildMatrixUnique( mask, I_rows.data(), I_cols.data(), I_rows.size(), SEQUENTIAL )
-		);
+		) {
+			std::cerr << "Failed to build identity mask" << std::endl;
+			rc = FAILED;
+			return 2;
+		}
 		std::cout << "-- Running test 01: Identity square matrix of size n = "
 					<< n << std::endl;
 		input< NzType, void > input(I, mask);
 		if( launcher.exec( &grb_program, input, rc, true ) != SUCCESS ) {
 			std::cerr << "Launching test 01 FAILED\n";
-			return 255;
+			return 3;
 		}
 		std::cout << std::endl << std::flush;
 	}
@@ -865,13 +893,21 @@ int main( int argc, char ** argv ) {
 		std::vector< size_t > I_rows( n, 0 ), I_cols( n );
 		std::vector< NzType > I_vals( n, 1.f );
 		std::iota( I_cols.begin(), I_cols.end(), 0 );
-		assert( SUCCESS ==
+		if( SUCCESS !=
 			buildMatrixUnique( I, I_rows.data(), I_cols.data(), I_vals.data(), I_vals.size(), SEQUENTIAL )
-		);
+		) {
+			std::cerr << "Failed to build matrix with n 1s on the first row" << std::endl;
+			rc = FAILED;
+			return 4;
+		}
 		Matrix< void > mask( n, n );
-		assert( SUCCESS ==
+		if( SUCCESS !=
 			buildMatrixUnique( mask, I_rows.data(), I_cols.data(), I_rows.size(), SEQUENTIAL )
-		);
+		) {
+			std::cerr << "Failed to build mask with n 1s on the first row" << std::endl;
+			rc = FAILED;
+			return 5;
+		}
 		std::cout << "-- Running test 02: Square matrix of size n = "
 					<< n << ", with n 1s on the first row" << std::endl;
 		input< NzType, void > input(I, mask);
@@ -887,13 +923,21 @@ int main( int argc, char ** argv ) {
 		std::vector< size_t > I_rows( n ), I_cols( n, 0 );
 		std::vector< NzType > I_vals( n, 1.f );
 		std::iota( I_rows.begin(), I_rows.end(), 0 );
-		assert( SUCCESS ==
+		if( SUCCESS !=
 			buildMatrixUnique( I, I_rows.data(), I_cols.data(), I_vals.data(), I_vals.size(), SEQUENTIAL )
-		);
+		) {
+			std::cerr << "Failed to build matrix with n 1s on the first column" << std::endl;
+			rc = FAILED;
+			return 6;
+		}
 		Matrix< void > mask( n, n );
-		assert( SUCCESS ==
+		if( SUCCESS !=
 			buildMatrixUnique( mask, I_rows.data(), I_cols.data(), I_rows.size(), SEQUENTIAL )
-		);
+		) {
+			std::cerr << "Failed to build mask with n 1s on the first column" << std::endl;
+			rc = FAILED;
+			return 7;
+		}
 		std::cout << "-- Running test 03: Square matrix of size n = "
 					<< n << ", with n 1s on the first column" << std::endl;
 		input< NzType, void > input(I, mask);
@@ -910,13 +954,21 @@ int main( int argc, char ** argv ) {
 		std::vector< NzType > I_vals( 2 * n - 1, 1.f );
 		std::iota( I_rows.begin() + n, I_rows.end(), 1 );
 		std::iota( I_cols.begin(), I_cols.begin() + n, 0 );
-		assert( SUCCESS ==
+		if( SUCCESS !=
 			buildMatrixUnique( I, I_rows.data(), I_cols.data(), I_vals.data(), I_vals.size(), SEQUENTIAL )
-		);
+		) {
+			std::cerr << "Failed to build matrix with n 1s on the first row and column" << std::endl;
+			rc = FAILED;
+			return 8;
+		}
 		Matrix< void > mask( n, n );
-		assert( SUCCESS ==
+		if( SUCCESS !=
 			buildMatrixUnique( mask, I_rows.data(), I_cols.data(), I_rows.size(), SEQUENTIAL )
-		);
+		) {
+			std::cerr << "Failed to build mask with n 1s on the first row and column" << std::endl;
+			rc = FAILED;
+			return 9;
+		}
 		std::cout << "-- Running test 04: Square matrix of size n = "
 					<< n << ", with n 1s on the first row and column" << std::endl;
 		input< NzType, void > input(I, mask);
@@ -932,13 +984,21 @@ int main( int argc, char ** argv ) {
 		std::vector< size_t > I_rows( n, 0 ), I_cols( n, 0 );
 		std::vector< NzType > I_vals( n, 1.f );
 		std::iota( I_cols.begin(), I_cols.end(), 0 );
-		assert( SUCCESS ==
+		if( SUCCESS !=
 			buildMatrixUnique( I, I_rows.data(), I_cols.data(), I_vals.data(), I_vals.size(), SEQUENTIAL )
-		);
+		) {
+			std::cerr << "Failed to build matrix with n 1s on the first row" << std::endl;
+			rc = FAILED;
+			return 10;
+		}
 		Matrix< void > mask( 1, n );
-		assert( SUCCESS ==
+		if( SUCCESS !=
 			buildMatrixUnique( mask, I_rows.data(), I_cols.data(), I_rows.size(), SEQUENTIAL )
-		);
+		) {
+			std::cerr << "Failed to build mask with n 1s on the first row" << std::endl;
+			rc = FAILED;
+			return 11;
+		}
 		std::cout << "-- Running test 05: [1-row, n = "
 					<< n << " columns] matrix, filled with 1s" << std::endl;
 		input< NzType, void > input(I, mask);
@@ -954,13 +1014,21 @@ int main( int argc, char ** argv ) {
 		std::vector< size_t > I_rows( n, 0 ), I_cols( n, 0 );
 		std::vector< NzType > I_vals( n, 1.f );
 		std::iota( I_rows.begin(), I_rows.end(), 0 );
-		assert( SUCCESS ==
+		if( SUCCESS !=
 			buildMatrixUnique( I, I_rows.data(), I_cols.data(), I_vals.data(), I_vals.size(), SEQUENTIAL )
-		);
+		) {
+			std::cerr << "Failed to build matrix with n 1s on the first column" << std::endl;
+			rc = FAILED;
+			return 12;
+		}
 		Matrix< void > mask( n, 1 );
-		assert( SUCCESS ==
+		if( SUCCESS !=
 			buildMatrixUnique( mask, I_rows.data(), I_cols.data(), I_rows.size(), SEQUENTIAL )
-		);
+		) {
+			std::cerr << "Failed to build mask with n 1s on the first column" << std::endl;
+			rc = FAILED;
+			return 13;
+		}
 		std::cout << "-- Running test 06: [n = "
 					<< n << " rows, 1 column] matrix, filled with 1s" << std::endl;
 		input< NzType, void > input(I, mask);
