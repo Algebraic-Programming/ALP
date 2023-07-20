@@ -1212,39 +1212,68 @@ namespace grb {
 			typename RIT_A, typename CIT_A, typename NIT_A
 		>
 		RC trilu_generic(
-			Matrix< OutputType, reference, RIT_L, CIT_L, NIT_L > & L,
-			const Matrix< InputType, reference, RIT_A, CIT_A, NIT_A > & A,
+			Matrix< OutputType, reference, RIT_L, CIT_L, NIT_L > &L,
+			const Matrix< InputType, reference, RIT_A, CIT_A, NIT_A > &A,
 			const long int k,
-			const Phase & phase ) {
-
-			const size_t m = descr & descriptors::transpose_matrix ? ncols( A ) : nrows( A );
-			const size_t n = descr & descriptors::transpose_matrix ? nrows( A ) : ncols( A );
-
-			// Run-time checks
-			if( m != nrows( L ) || n != ncols( L ) ) {
-				return RC::MISMATCH;
-			}
-
+			const Phase &phase
+		) {
 #ifdef _DEBUG
 			std::cout << "In grb::internal::trilu_generic( reference )\n";
 #endif
-			const auto & A_raw = descr & descriptors::transpose_matrix ? internal::getCCS( A ) : internal::getCRS( A );
+			const size_t m = descr & descriptors::transpose_matrix
+							? ncols( A ) : nrows( A );
+			const size_t n = descr & descriptors::transpose_matrix
+							? nrows( A ) : ncols( A );
+			const size_t nz = nnz( A );
+
+			if( m == 0 || n == 0 || nz == 0 ) {
+#ifdef _DEBUG
+				std::cout << "Empty matrix, nothing to compute.\n";
+#endif
+				return SUCCESS;
+			}
+
+			// Run-time checks
+			if( m != nrows( L ) || n != ncols( L ) ) {
+#ifdef _DEBUG
+				std::cout << "Mismatched dimensions detected.\n";
+#endif
+				return MISMATCH;
+			}
+
+			// Check that there is no overlap between L and A
+			if( getID(A) == getID(L) ) {
+#ifdef _DEBUG
+				std::cout << "Overlap detected between input and output matrices.\n";
+#endif
+				return OVERLAP;
+			}
+
+			const auto &A_raw = descr & descriptors::transpose_matrix
+								? internal::getCCS( A )
+								: internal::getCRS( A );
 
 			if( phase == Phase::RESIZE ) {
 				size_t nzc = 0;
 #ifdef _H_GRB_REFERENCE_OMP_BLAS3
-#pragma omp parallel for reduction( + : nzc ) default( none ) shared( A_raw ) firstprivate( k, m )
+#pragma omp parallel for reduction( + : nzc ) \
+		default( none ) shared( A_raw ) firstprivate( k, m )
 #endif
 				for( size_t i = 0; i < m; ++i ) {
-					for( auto A_k = A_raw.col_start[ i ]; A_k < A_raw.col_start[ i + 1 ]; ++A_k ) {
+					const auto A_k_start = A_raw.col_start[ i ];
+					const auto A_k_end = A_raw.col_start[ i + 1 ];
+					for( auto A_k = A_k_start; A_k < A_k_end; ++A_k ) {
 						const auto A_j = A_raw.row_index[ A_k ];
-						// If the value is in the appropriate triangle, skip it
-						if( not upper && A_j > i + k ) {
-							continue;
-						} 
-						if( upper && A_j < i - k ) {
+
+						// If the value is in the specified triangle, skip it
+						const long A_j_long = static_cast< long >( A_j );
+						const long i_long = static_cast< long >( i );
+						if( ( !upper && A_j_long > i_long + k  )
+							|| ( upper && A_j_long + k < i_long )
+						) {
 							continue;
 						}
+
 						nzc += 1;
 					}
 				}
@@ -1255,51 +1284,84 @@ namespace grb {
 			}
 
 			if( phase == Phase::EXECUTE ) {
-
-				const auto & L_crs_raw = internal::getCRS( L );
-				const auto & L_ccs_raw = internal::getCCS( L );
+				auto &L_crs_raw = internal::getCRS( L );
+				auto &L_ccs_raw = internal::getCCS( L );
 				const size_t nzc = capacity( L );
 
 				L_crs_raw.col_start[ 0 ] = 0;
 				L_ccs_raw.col_start[ 0 ] = 0;
+#ifdef _H_GRB_REFERENCE_OMP_BLAS3
+#pragma omp parallel for simd
+#endif
+				for( size_t i = 0; i < m; ++i ) {
+					L_ccs_raw.col_start[ i + 1 ] = 0;
+				}
 
 				// Prefix sum computation into L.CRS.col_start
 #ifdef _H_GRB_REFERENCE_OMP_BLAS3
-#pragma omp parallel for simd default( none ) shared( A_raw, L_crs_raw, L_ccs_raw ) firstprivate( k, m )
+#pragma omp parallel for simd default( none ) \
+			shared( A_raw, L_crs_raw, L_ccs_raw ) firstprivate( k, m )
 #endif
 				for( size_t i = 0; i < m; i++ ) {
 					size_t cumul = 0UL;
-					for( auto A_k = A_raw.col_start[ i ]; A_k < A_raw.col_start[ i + 1 ]; ++A_k ) {
+					const auto A_k_start = A_raw.col_start[ i ];
+					const auto A_k_end = A_raw.col_start[ i + 1 ];
+					for( auto A_k = A_k_start; A_k < A_k_end; ++A_k ) {
 						const auto A_j = A_raw.row_index[ A_k ];
-						// If the value is in the appropriate triangle, skip it
-						if( not upper && A_j > i + k ) {
-							continue;
-						} 
-						if( upper && A_j < i - k ) {
+
+						// If the value is in the specified triangle, skip it
+						const long A_j_long = static_cast< long >( A_j );
+						const long i_long = static_cast< long >( i );
+						if( ( !upper && A_j_long > i_long + k  )
+							|| ( upper && A_j_long + k < i_long )
+						) {
 							continue;
 						}
+
+						L_ccs_raw.col_start[ A_j + 1 ] += 1;
 						cumul += 1;
 					}
 					L_crs_raw.col_start[ i + 1 ] = cumul;
 				}
 
-				// Apply the prefix sum
-				for( size_t i = 1; i <= m; i++ ) {
-					L_crs_raw.col_start[ i ] += L_crs_raw.col_start[ i - 1 ];
-					L_ccs_raw.col_start[ i ] = L_crs_raw.col_start[ i ];
+				// Apply the prefix sum (2 openmp tasks)
+#ifdef _H_GRB_REFERENCE_OMP_BLAS3
+#pragma omp parallel default( none ) \
+			shared( L_crs_raw, L_ccs_raw ) firstprivate( m )
+#endif
+				{
+#ifdef _H_GRB_REFERENCE_OMP_BLAS3
+#pragma omp single nowait
+#endif
+					{
+						for( size_t i = 0; i < m; i++ ) {
+							L_crs_raw.col_start[ i + 1 ] += L_crs_raw.col_start[ i ];
+						}
+					}
+#ifdef _H_GRB_REFERENCE_OMP_BLAS3
+#pragma omp single
+#endif
+					{
+						for( size_t i = 0; i < m; i++ ) {
+							L_ccs_raw.col_start[ i + 1 ] += L_ccs_raw.col_start[ i ];
+						}
+					}
 				}
 
 				// Check if the number of nonzeros is greater than the capacity
 				if( L_crs_raw.col_start[ m ] > nzc ) {
 #ifdef _DEBUG
-					std::cout << "EXECUTE phase: detected insufficient capacity for requested operation.\n"
-							  << "Requested " << L_crs_raw.col_start[ m ] << " nonzeros, but capacity is " << nzc << "\n";
+					std::cout << "EXECUTE phase: detected insufficient"
+							  	<< " capacity for requested operation.\n"
+							  	<< "Requested " << L_crs_raw.col_start[ m ]
+								<< " nonzeros, but capacity is " << nzc << "\n";
 #endif
-					return RC::MISMATCH;
+					return MISMATCH;
 				}
 
 #ifdef _H_GRB_REFERENCE_OMP_BLAS3
-#pragma omp parallel default( none ) shared( A_raw, L_crs_raw, L_ccs_raw ) firstprivate( k, m )
+#pragma omp parallel default( none ) \
+			shared( A_raw, L_crs_raw, L_ccs_raw ) firstprivate( k, m )
 #endif
 				{
 					size_t start_row = 0;
@@ -1310,20 +1372,29 @@ namespace grb {
 					// Update the CRS and CCS row indices and values
 					for( size_t i = start_row; i < end_row; i++ ) {
 						auto L_k = L_crs_raw.col_start[ i ];
-						for( auto A_k = A_raw.col_start[ i ]; A_k < A_raw.col_start[ i + 1 ]; ++A_k ) {
+						const auto A_k_start = A_raw.col_start[ i ];
+						const auto A_k_end = A_raw.col_start[ i + 1 ];
+						for( auto A_k = A_k_start; A_k < A_k_end; ++A_k ) {
 							const auto A_j = A_raw.row_index[ A_k ];
-							// If the value is in the appropriate triangle, skip it
-							if( not upper && A_j > i + k ) {
-								continue;
-							} 
-							if( upper && A_j < i - k ) {
+
+							// If the value is in the specified triangle, skip it
+							const long A_j_long = static_cast< long >( A_j );
+							const long i_long = static_cast< long >( i );
+							if( ( !upper && A_j_long > i_long + k  )
+								|| ( upper && A_j_long + k < i_long )
+							) {
 								continue;
 							}
 
+							// L_crs_raw.row_index[ L_k ] = A_j;
+							// L_crs_raw.values[ L_k ] = A_raw.values[ A_k ];
+							// L_ccs_raw.row_index[ L_k ] = i;
+							// L_ccs_raw.values[ L_k ] = A_raw.values[ A_k ];
+
 							L_crs_raw.row_index[ L_k ] = A_j;
-							L_crs_raw.values[ L_k ] = A_raw.values[ A_k ];
-							L_ccs_raw.row_index[ L_k ] = i;
-							L_ccs_raw.values[ L_k ] = A_raw.values[ A_k ];
+							L_crs_raw.setValue( L_k, A_raw.values[ A_k ] );
+							L_ccs_raw.row_index[ L_crs_raw.col_start[ A_j ] ] = i;
+							L_ccs_raw.setValue( L_crs_raw.col_start[ A_j ], A_raw.values[ A_k ] );
 							L_k += 1;
 						}
 					}
@@ -1334,10 +1405,10 @@ namespace grb {
 #endif
 				internal::setCurrentNonzeroes( L, nzc );
 
-				return RC::SUCCESS;
+				return SUCCESS;
 			}
 
-			return RC::SUCCESS;;
+			return SUCCESS;;
 		}
 
 	} // namespace internal
@@ -1405,7 +1476,6 @@ namespace grb {
 	 *
 	 * \internal Dispatches to internal::eWiseApply_matrix_generic
 	 */
-
 	template<
 		Descriptor descr = grb::descriptors::no_operation,
 		class Operator,
@@ -1462,20 +1532,6 @@ namespace grb {
 		);
 	}
 
-	/**
-	 * Return the lower triangular portion of a matrix, strictly below 
-	 * the k-th diagonal.
-	 *
-	 * @param[out] L       The lower triangular portion of \a A, strictly
-	 * 					   below the k-th diagonal.
-	 * @param[in]  A       Any ALP/GraphBLAS matrix.
-	 * @param[in]  k       The diagonal above which to zero out \a A.
-	 * @param[in]  phase   The #grb::Phase in which the primitive is to proceed.
-	 *
-	 * \internal Pattern matrices are allowed
-	 *
-	 * \internal Dispatches to internal::trilu_generic
-	 */
 	template<
 		Descriptor descr = descriptors::no_operation,
 		typename InputType, typename OutputType,
@@ -1483,37 +1539,31 @@ namespace grb {
 		typename RIT_A, typename CIT_A, typename NIT_A
 	>
 	RC tril(
-		Matrix< OutputType, reference, RIT_L, CIT_L, NIT_L > & L,
-		const Matrix< InputType, reference, RIT_A, CIT_A, NIT_A > & A,
+		Matrix< OutputType, reference, RIT_L, CIT_L, NIT_L > &L,
+		const Matrix< InputType, reference, RIT_A, CIT_A, NIT_A > &A,
 		const long int k,
-		const Phase & phase = Phase::EXECUTE,
-		const typename std::enable_if< 
-			not grb::is_object< OutputType >::value && 
-			not grb::is_object< InputType >::value && 
-			std::is_convertible< InputType, OutputType >::value 
-		>::type * const = nullptr ) 
-	{
+		const Phase &phase = Phase::EXECUTE,
+		const typename std::enable_if<
+			!grb::is_object< OutputType >::value &&
+			!grb::is_object< InputType >::value &&
+			std::is_convertible< InputType, OutputType >::value
+		>::type * const = nullptr
+	) {
 #ifdef _DEBUG
-		std::cerr << "In grb::tril (reference)\n";
+		std::cout << "In grb::tril( reference )\n";
 #endif
 
 		// Static checks
-		NO_CAST_ASSERT( 
-			( not ( descr & descriptors::no_casting ) || 
-			std::is_same< InputType, OutputType >::value ), 
-			"grb::tril (reference)",
+		NO_CAST_ASSERT(
+			( !(descr & descriptors::no_casting)
+			|| std::is_same< InputType, OutputType >::value ),
+			"grb::tril( reference )",
 			"input matrix and output matrix are incompatible for implicit casting"
 		);
 
 		return internal::trilu_generic< false, descr >( L, A, k, phase );
 	}
 
-	/**
-	 * Return the lower triangular portion of a matrix, strictly below main diagonal.
-	 *
-	 * This primitive is strictly equivalent to calling grb::tril( L, A, 0, phase ).
-	 * see grb::tril( L, A, k, phase ) for full description.
-	 */
 	template<
 		Descriptor descr = descriptors::no_operation,
 		typename InputType, typename OutputType,
@@ -1521,58 +1571,44 @@ namespace grb {
 		typename RIT_A, typename CIT_A, typename NIT_A
 	>
 	RC tril(
-		Matrix< OutputType, reference, RIT_L, CIT_L, NIT_L > & L,
-		const Matrix< InputType, reference, RIT_A, CIT_A, NIT_A > & A,
-		const Phase & phase = Phase::EXECUTE,
-		const typename std::enable_if< 
-			not grb::is_object< OutputType >::value && 
-			not grb::is_object< InputType >::value && 
-			std::is_convertible< InputType, OutputType >::value 
-		>::type * const = nullptr )
-	{
-		return tril< descr >( L, A, 0, phase );
+		Matrix< OutputType, reference, RIT_L, CIT_L, NIT_L > &L,
+		const Matrix< InputType, reference, RIT_A, CIT_A, NIT_A > &A,
+		const Phase &phase = Phase::EXECUTE,
+		const typename std::enable_if<
+			!grb::is_object< OutputType >::value &&
+			!grb::is_object< InputType >::value &&
+			std::is_convertible< InputType, OutputType >::value
+		>::type * const = nullptr
+	) {
+		return tril< descr >( L, A, 0L, phase );
 	}
 
-	/**
-	 * Return the upper triangular portion of a matrix, strictly above 
-	 * the k-th diagonal.
-	 *
-	 * @param[out] U       The upper triangular portion of \a A, strictly 
-	 * 					   above the k-th diagonal.
-	 * @param[in]  A       Any ALP/GraphBLAS matrix.
-	 * @param[in]  k       The diagonal above which to zero out \a A.
-	 * @param[in]  phase   The #grb::Phase in which the primitive is to proceed.
-	 *
-	 * \internal Pattern matrices are allowed
-	 *
-	 * \internal Dispatches to internal::trilu_generic
-	 */
-	template< 
-		Descriptor descr = descriptors::no_operation, 
-		typename InputType, typename OutputType, 
-		typename RIT_U, typename CIT_U, typename NIT_U, 
+	template<
+		Descriptor descr = descriptors::no_operation,
+		typename InputType, typename OutputType,
+		typename RIT_U, typename CIT_U, typename NIT_U,
 		typename RIT_A, typename CIT_A, typename NIT_A
 	>
 	RC triu(
-		Matrix< OutputType, reference, RIT_U, CIT_U, NIT_U > & U,
-		const Matrix< InputType, reference, RIT_A, CIT_A, NIT_A > & A,
+		Matrix< OutputType, reference, RIT_U, CIT_U, NIT_U > &U,
+		const Matrix< InputType, reference, RIT_A, CIT_A, NIT_A > &A,
 		const long int k,
-		const Phase & phase = Phase::EXECUTE,
-		const typename std::enable_if< 
-			not grb::is_object< OutputType >::value && 
-			not grb::is_object< InputType >::value && 
-			std::is_convertible< InputType, OutputType >::value 
-		>::type * const = nullptr )
-	{
+		const Phase &phase = Phase::EXECUTE,
+		const typename std::enable_if<
+			!grb::is_object< OutputType >::value &&
+			!grb::is_object< InputType >::value &&
+			std::is_convertible< InputType, OutputType >::value
+		>::type * const = nullptr
+	) {
 #ifdef _DEBUG
-		std::cerr << "In grb::triu (reference)\n";
+		std::cout << "In grb::triu( reference )\n";
 #endif
 
 		// Static checks
-		NO_CAST_ASSERT( 
-			( not ( descr & descriptors::no_casting ) || 
-			std::is_same< InputType, OutputType >::value ), 
-			"grb::triu (reference)",
+		NO_CAST_ASSERT(
+			( !(descr & descriptors::no_casting)
+			|| std::is_same< InputType, OutputType >::value ),
+			"grb::triu( reference )",
 			"input matrix and output matrix are incompatible for implicit casting"
 		);
 
@@ -1580,29 +1616,23 @@ namespace grb {
 		return internal::trilu_generic< true, descr >( U, A, k, phase );
 	}
 
-	/**
-	 * Return the upper triangular portion of a matrix, stricly above the main diagonal.
-	 *
-	 * This primitive is strictly equivalent to calling grb::triu( L, A, 0, phase ).
-	 * see grb::triu( L, A, k, phase ) for full description.
-	 */
-	template< 
-		Descriptor descr = descriptors::no_operation, 
-		typename InputType, typename OutputType, 
-		typename RIT_U, typename CIT_U, typename NIT_U, 
+	template<
+		Descriptor descr = descriptors::no_operation,
+		typename InputType, typename OutputType,
+		typename RIT_U, typename CIT_U, typename NIT_U,
 		typename RIT_A, typename CIT_A, typename NIT_A
 	>
 	RC triu(
-		Matrix< OutputType, reference, RIT_U, CIT_U, NIT_U > & U,
-		const Matrix< InputType, reference, RIT_A, CIT_A, NIT_A > & A,
-		const Phase & phase = Phase::EXECUTE,
-		const typename std::enable_if< 
-			not grb::is_object< OutputType >::value && 
-			not grb::is_object< InputType >::value && 
-			std::is_convertible< InputType, OutputType >::value 
-		>::type * const = nullptr )
-	{
-		return triu< descr >( U, A, 0, phase );
+		Matrix< OutputType, reference, RIT_U, CIT_U, NIT_U > &U,
+		const Matrix< InputType, reference, RIT_A, CIT_A, NIT_A > &A,
+		const Phase &phase = Phase::EXECUTE,
+		const typename std::enable_if<
+			!grb::is_object< OutputType >::value &&
+			!grb::is_object< InputType >::value &&
+			std::is_convertible< InputType, OutputType >::value
+		>::type * const = nullptr
+	) {
+		return triu< descr >( U, A, 0L, phase );
 	}
 
 } // namespace grb

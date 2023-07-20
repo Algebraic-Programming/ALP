@@ -195,11 +195,13 @@ namespace grb {
 			phase
 		);
 		if( phase == RESIZE ) {
-			if( collectives<>::allreduce( ret, operators::any_or< RC >() ) != SUCCESS ) {
+			if( collectives<>::allreduce(
+					ret, operators::any_or< RC >()
+				) != SUCCESS
+			) {
 				return PANIC;
-			} else {
-				return SUCCESS;
 			}
+			return SUCCESS;
 		}
 		assert( phase == EXECUTE );
 		return internal::checkGlobalErrorStateOrClear( C, ret );
@@ -212,29 +214,26 @@ namespace grb {
 		typename RIT_A, typename CIT_A, typename NIT_A
 	>
 	RC tril(
-		Matrix< OutputType, BSP1D, RIT_L, CIT_L, NIT_L > & L,
-		const Matrix< InputType, BSP1D, RIT_A, CIT_A, NIT_A > & A,
+		Matrix< OutputType, BSP1D, RIT_L, CIT_L, NIT_L > &L,
+		const Matrix< InputType, BSP1D, RIT_A, CIT_A, NIT_A > &A,
 		const long int k,
-		const Phase & phase = Phase::EXECUTE,
+		const Phase &phase = Phase::EXECUTE,
 		const typename std::enable_if<
-			not grb::is_object< OutputType >::value &&
-			not grb::is_object< InputType >::value &&
+			!grb::is_object< OutputType >::value &&
+			!grb::is_object< InputType >::value &&
 			std::is_convertible< InputType, OutputType >::value
-		>::type * const = nullptr )
-	{
+		>::type * const = nullptr
+	) {
 #ifdef _DEBUG
-		std::cerr << "In grb::tril (BSP1D)\n";
+		std::cout << "In grb::tril( BSP1D )\n";
 #endif
 		assert( phase != TRY );
-		RC ret = tril< descr >(
+		const RC ret = tril< descr >(
 			internal::getLocal( L ),
 			internal::getLocal( A ),
 			k,
 			phase
 		);
-		if( phase == RESIZE ) {
-			return collectives<>::allreduce( ret, operators::any_or< RC >() ) == SUCCESS ? SUCCESS : PANIC;
-		}
 
 		return internal::checkGlobalErrorStateOrClear( L, ret );
 	}
@@ -246,15 +245,15 @@ namespace grb {
 		typename RIT_A, typename CIT_A, typename NIT_A
 	>
 	RC tril(
-		Matrix< OutputType, BSP1D, RIT_L, CIT_L, NIT_L > & L,
-		const Matrix< InputType, BSP1D, RIT_A, CIT_A, NIT_A > & A,
-		const Phase & phase = Phase::EXECUTE,
+		Matrix< OutputType, BSP1D, RIT_L, CIT_L, NIT_L > &L,
+		const Matrix< InputType, BSP1D, RIT_A, CIT_A, NIT_A > &A,
+		const Phase &phase = Phase::EXECUTE,
 		const typename std::enable_if<
-			not grb::is_object< OutputType >::value &&
-			not grb::is_object< InputType >::value &&
+			!grb::is_object< OutputType >::value &&
+			!grb::is_object< InputType >::value &&
 			std::is_convertible< InputType, OutputType >::value
-		>::type * const = nullptr )
-	{
+		>::type * const = nullptr
+	) {
 		return tril< descr >( L, A, 0, phase );
 	}
 
@@ -265,29 +264,26 @@ namespace grb {
 		typename RIT_A, typename CIT_A, typename NIT_A
 	>
 	RC triu(
-		Matrix< OutputType, BSP1D, RIT_U, CIT_U, NIT_U > & U,
-		const Matrix< InputType, BSP1D, RIT_A, CIT_A, NIT_A > & A,
+		Matrix< OutputType, BSP1D, RIT_U, CIT_U, NIT_U > &U,
+		const Matrix< InputType, BSP1D, RIT_A, CIT_A, NIT_A > &A,
 		const long int k,
-		const Phase & phase = Phase::EXECUTE,
+		const Phase &phase = Phase::EXECUTE,
 		const typename std::enable_if<
-			not grb::is_object< OutputType >::value &&
-			not grb::is_object< InputType >::value &&
+			!grb::is_object< OutputType >::value &&
+			!grb::is_object< InputType >::value &&
 			std::is_convertible< InputType, OutputType >::value
-		>::type * const = nullptr )
-	{
+		>::type * const = nullptr
+	) {
 #ifdef _DEBUG
-		std::cerr << "In grb::triu (BSP1D)\n";
+		std::cout << "In grb::triu( BSP1D )\n";
 #endif
 		assert( phase != TRY );
-		RC ret = triu< descr >(
+		const RC ret = triu< descr >(
 			internal::getLocal( U ),
 			internal::getLocal( A ),
 			k,
 			phase
 		);
-		if( phase == RESIZE ) {
-			return collectives<>::allreduce( ret, operators::any_or< RC >() ) == SUCCESS ? SUCCESS : PANIC;
-		}
 
 		return internal::checkGlobalErrorStateOrClear( U, ret );
 	}
@@ -299,15 +295,15 @@ namespace grb {
 		typename RIT_A, typename CIT_A, typename NIT_A
 	>
 	RC triu(
-		Matrix< OutputType, BSP1D, RIT_U, CIT_U, NIT_U > & U,
-		const Matrix< InputType, BSP1D, RIT_A, CIT_A, NIT_A > & A,
-		const Phase & phase = Phase::EXECUTE,
+		Matrix< OutputType, BSP1D, RIT_U, CIT_U, NIT_U > &U,
+		const Matrix< InputType, BSP1D, RIT_A, CIT_A, NIT_A > &A,
+		const Phase &phase = Phase::EXECUTE,
 		const typename std::enable_if<
-			not grb::is_object< OutputType >::value &&
-			not grb::is_object< InputType >::value &&
+			!grb::is_object< OutputType >::value &&
+			!grb::is_object< InputType >::value &&
 			std::is_convertible< InputType, OutputType >::value
-		>::type * const = nullptr )
-	{
+		>::type * const = nullptr
+	) {
 		return triu< descr >( U, A, 0, phase );
 	}
 

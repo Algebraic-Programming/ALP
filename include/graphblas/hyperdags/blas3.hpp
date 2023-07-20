@@ -332,20 +332,6 @@ namespace grb {
 		return ret;
 	}
 
-	/**
-	 * Return the lower triangular portion of a matrix, strictly 
-	 * below the k-th diagonal.
-	 *
-	 * @param[out] L       The lower triangular portion of \a A, strictly 
-	 * 				 	   below the k-th diagonal.
-	 * @param[in]  A       Any ALP/GraphBLAS matrix.
-	 * @param[in]  k       The diagonal above which to zero out \a A.
-	 * @param[in]  phase   The #grb::Phase in which the primitive 
-	 * 					   is to proceed.
-	 *
-	 * \internal Pattern matrices are allowed
-	 */
-
 	template<
 		Descriptor descr = descriptors::no_operation,
 		typename InputType, typename OutputType,
@@ -353,32 +339,44 @@ namespace grb {
 		typename RIT_A, typename CIT_A, typename NIT_A
 	>
 	RC tril(
-		Matrix< OutputType, hyperdags, RIT_L, CIT_L, NIT_L > & L,
-		const Matrix< InputType, hyperdags, RIT_A, CIT_A, NIT_A > & A,
+		Matrix< OutputType, hyperdags, RIT_L, CIT_L, NIT_L > &L,
+		const Matrix< InputType, hyperdags, RIT_A, CIT_A, NIT_A > &A,
 		const long int k,
 		const Phase & phase = Phase::EXECUTE,
-		const typename std::enable_if< 
-			! grb::is_object< OutputType >::value && 
-			! grb::is_object< InputType >::value && 
-			std::is_convertible< InputType, OutputType >::value 
-			>::type * const = nullptr ) {
+		const typename std::enable_if<
+			!grb::is_object< OutputType >::value &&
+			!grb::is_object< InputType >::value &&
+			std::is_convertible< InputType, OutputType >::value
+		>::type * const = nullptr
+	) {
 #ifdef _DEBUG
-		std::cerr << "In grb::tril (hyperdags)\n";
+		std::cout << "In grb::tril( hyperdags )\n";
 #endif
+		if( nrows( A ) == 0 || ncols( A ) == 0 || nnz( A ) == 0 ) {
+#ifdef _DEBUG
+			std::cout << "Empty matrix, nothing to compute.\n";
+#endif
+			return SUCCESS;
+		}
 
-		const RC ret = tril< descr >( 
-			internal::getMatrix( L ), 
-			internal::getMatrix( A ), 
-			k, phase 
+		const RC ret = tril< descr >(
+			internal::getMatrix( L ),
+			internal::getMatrix( A ),
+			k,
+			phase
 		);
 		if( ret != SUCCESS ) { return ret; }
 		if( phase != EXECUTE ) { return ret; }
-		if( nrows( A ) == 0 || ncols( A ) == 0 ) { return ret; }
-		std::array< const void *, 0 > sourcesP{};
+
+		internal::hyperdags::generator.addSource(
+			internal::hyperdags::SCALAR,
+			&k
+		);
+		std::array< const void *, 1 > sourcesP{ &k };
 		std::array< uintptr_t, 1 > sourcesL{
 			getID( internal::getMatrix(A) )
 		};
-		std::array< uintptr_t, 1 > destinations{ 
+		std::array< uintptr_t, 1 > destinations{
 			getID( internal::getMatrix(L) )
 		};
 		internal::hyperdags::generator.addOperation(
@@ -390,46 +388,24 @@ namespace grb {
 		return ret;
 	}
 
-	/**
-	 * Return the lower triangular portion of a matrix, strictly 
-	 * below the main diagonal.
-	 *
-	 * This primitive is strictly equivalent to calling 
-	 * grb::tril( L, A, 0, phase ).
-	 * 
-	 * see grb::tril( L, A, k, phase ) for full description.
-	 */
 	template<
 		Descriptor descr = descriptors::no_operation,
 		typename InputType, typename OutputType,
 		typename RIT_L, typename CIT_L, typename NIT_L,
 		typename RIT_A, typename CIT_A, typename NIT_A
 	>
-	RC tril( 
-		Matrix< OutputType, hyperdags, RIT_L, CIT_L, NIT_L > & L,
-		const Matrix< InputType, hyperdags, RIT_A, CIT_A, NIT_A > & A,
-		const Phase & phase = Phase::EXECUTE,
-		const typename std::enable_if< 
-			! grb::is_object< OutputType >::value && 
-			! grb::is_object< InputType >::value && 
-			std::is_convertible< InputType, OutputType >::value 
-			>::type * const = nullptr ) {
+	RC tril(
+		Matrix< OutputType, hyperdags, RIT_L, CIT_L, NIT_L > &L,
+		const Matrix< InputType, hyperdags, RIT_A, CIT_A, NIT_A > &A,
+		const Phase& phase = Phase::EXECUTE,
+		const typename std::enable_if<
+			!grb::is_object< OutputType >::value &&
+			!grb::is_object< InputType >::value &&
+			std::is_convertible< InputType, OutputType >::value
+		>::type * const = nullptr
+	) {
 		return tril< descr >( L, A, 0, phase );
 	}
-
-	/**
-	 * Return the upper triangular portion of a matrix, strictly
-	 * above the k-th diagonal.
-	 *
-	 * @param[out] U       The upper triangular portion of \a A, strictly 
-	 * 					   above the k-th diagonal.
-	 * @param[in]  A       Any ALP/GraphBLAS matrix.
-	 * @param[in]  k       The diagonal above which to zero out \a A.
-	 * @param[in]  phase   The #grb::Phase in which the primitive 
-	 * 					   is to proceed.
-	 *
-	 * \internal Pattern matrices are allowed
-	 */
 
 	template<
 		Descriptor descr = descriptors::no_operation,
@@ -438,32 +414,44 @@ namespace grb {
 		typename RIT_A, typename CIT_A, typename NIT_A
 	>
 	RC triu(
-		Matrix< OutputType, hyperdags, RIT_U, CIT_U, NIT_U > & U,
-		const Matrix< InputType, hyperdags, RIT_A, CIT_A, NIT_A > & A,
+		Matrix< OutputType, hyperdags, RIT_U, CIT_U, NIT_U > &U,
+		const Matrix< InputType, hyperdags, RIT_A, CIT_A, NIT_A > &A,
 		const long int k,
-		const Phase & phase = Phase::EXECUTE,
-		const typename std::enable_if< 
-			! grb::is_object< OutputType >::value && 
-			! grb::is_object< InputType >::value && 
-			std::is_convertible< InputType, OutputType >::value 
-			>::type * const = nullptr ) {
+		const Phase &phase = Phase::EXECUTE,
+		const typename std::enable_if<
+			!grb::is_object< OutputType >::value &&
+			!grb::is_object< InputType >::value &&
+			std::is_convertible< InputType, OutputType >::value
+		>::type * const = nullptr
+	) {
 #ifdef _DEBUG
-		std::cerr << "In grb::triu (hyperdags)\n";
+		std::cout << "In grb::triu( hyperdags )\n";
 #endif
+		if( nrows( A ) == 0 || ncols( A ) == 0 || nnz( A ) == 0 ) {
+#ifdef _DEBUG
+			std::cout << "Empty matrix, nothing to compute.\n";
+#endif
+			return SUCCESS;
+		}
 
-		const RC ret = triu< descr >( 
-			internal::getMatrix( U ), 
-			internal::getMatrix( A ), 
-			k, phase 
+		const RC ret = triu< descr >(
+			internal::getMatrix( U ),
+			internal::getMatrix( A ),
+			k,
+			phase
 		);
 		if( ret != SUCCESS ) { return ret; }
 		if( phase != EXECUTE ) { return ret; }
-		if( nrows( A ) == 0 || ncols( A ) == 0 ) { return ret; }
-		std::array< const void *, 0 > sourcesP{};
+
+		internal::hyperdags::generator.addSource(
+			internal::hyperdags::SCALAR,
+			&k
+		);
+		std::array< const void *, 1 > sourcesP{ &k };
 		std::array< uintptr_t, 1 > sourcesL{
 			getID( internal::getMatrix(A) )
 		};
-		std::array< uintptr_t, 1 > destinations{ 
+		std::array< uintptr_t, 1 > destinations{
 			getID( internal::getMatrix(U) )
 		};
 		internal::hyperdags::generator.addOperation(
@@ -475,30 +463,22 @@ namespace grb {
 		return ret;
 	}
 
-	/**
-	 * Return the lower triangular portion of a matrix, strictly 
-	 * above the main diagonal.
-	 *
-	 * This primitive is strictly equivalent to 
-	 * calling grb::triu( U, A, 0, phase ).
-	 * 
-	 * see grb::tril( U, A, k, phase ) for full description.
-	 */
 	template<
 		Descriptor descr = descriptors::no_operation,
 		typename InputType, typename OutputType,
 		typename RIT_U, typename CIT_U, typename NIT_U,
 		typename RIT_A, typename CIT_A, typename NIT_A
 	>
-	RC triu( 
+	RC triu(
 		Matrix< OutputType, hyperdags, RIT_U, CIT_U, NIT_U > & U,
 		const Matrix< InputType, hyperdags, RIT_A, CIT_A, NIT_A > & A,
 		const Phase & phase = Phase::EXECUTE,
-		const typename std::enable_if< 
-			! grb::is_object< OutputType >::value && 
-			! grb::is_object< InputType >::value && 
-			std::is_convertible< InputType, OutputType >::value 
-			>::type * const = nullptr ) {
+		const typename std::enable_if<
+			!grb::is_object< OutputType >::value &&
+			!grb::is_object< InputType >::value &&
+			std::is_convertible< InputType, OutputType >::value
+		>::type * const = nullptr
+	) {
 		return triu< descr >( U, A, 0, phase );
 	}
 

@@ -19,94 +19,81 @@
 #include <sstream>
 
 #include <graphblas.hpp>
-
 using namespace grb;
 
-template< class Iterator >
-void printSparseMatrixIterator( size_t rows, size_t cols, Iterator begin, Iterator end, const std::string & name = "", std::ostream & os = std::cout ) {
-	if( rows < 64 || cols > 64 ) {
-		return;
-	}
-	std::cout << "Matrix \"" << name << "\" (" << rows << "x" << cols << "):" << std::endl << "[" << std::endl;
-	// os.precision( 3 );
-	for( size_t y = 0; y < rows; y++ ) {
-		os << std::string( 3, ' ' );
-		for( size_t x = 0; x < cols; x++ ) {
-			auto nnz_val = std::find_if( begin, end, [ y, x ]( const typename std::iterator_traits< Iterator >::value_type & a ) {
-				return a.first.first == y && a.first.second == x;
-			} );
-			if( nnz_val != end )
-				os << std::fixed << ( *nnz_val ).second;
-			else
-				os << '_';
-			os << " ";
-		}
-		os << std::endl;
-	}
-	os << "]" << std::endl;
-}
-
-template< typename D >
-void printSparseMatrix( const grb::Matrix< D > & mat, const std::string & name = "", std::ostream & os = std::cout ) {
-	grb::wait( mat );
-	printSparseMatrixIterator( grb::nrows( mat ), grb::ncols( mat ), mat.cbegin(), mat.cend(), name, os );
-}
-
-template< typename D, Descriptor descr = descriptors::no_operation >
-D compute_value( size_t i, size_t j ) {
+template< typename D, Descriptor descr = descriptors::no_operation, typename T = long >
+D compute_value( T i, T j ) {
 	return descr & descriptors::transpose_matrix ? i + 2 * j : 2 * i + j;
 }
 
 template< Descriptor descr = descriptors::no_operation, typename D >
-RC check_obtained( const grb::Matrix< D > & L ) {
-	for( const auto & triple : L ) {
-		const size_t & i = triple.first.first;
-		const size_t & j = triple.first.second;
-		const size_t & v = triple.second;
-		if( i < j ) {
+RC check_obtained( const Matrix< D > &U, long k = 0 ) {
+	for( const auto &triple : U ) {
+		const long &i = static_cast<long>( triple.first.first );
+		const long &j = static_cast<long>( triple.first.second );
+		const auto &v = triple.second;
+		if( i + k < j ) {
 			std::cout << "Unexpected entry at position ( " << i << ", " << j << " ) "
-					  << "-- only expected entries on the lower triangular part\n";
-			return RC::FAILED;
+					  << "-- only expected entries on the lower triangular part above "
+					  << "the " << k << "-th diagonal\n";
+			return FAILED;
 		}
 		const D expected_value = compute_value< D, descr >( i, j );
 		if( v != expected_value ) {
 			std::cout << "Unexpected value at position ( " << i << ", " << j << " ) "
 					  << "-- expected " << expected_value << ", found " << v << "\n";
-			return RC::FAILED;
+			return FAILED;
 		}
 	}
-	return RC::SUCCESS;
+	return SUCCESS;
 }
 
-void grb_program( const size_t & n, grb::RC & rc ) {
-	rc = RC::SUCCESS;
+template< typename D >
+RC is_identity( const Matrix< D > &U ) {
+	size_t n = nrows( U );
+	size_t counter = 0;
+	for( const auto &triple : U ) {
+		const auto &i = triple.first.first;
+		const auto &j = triple.first.second;
+		const auto &v = triple.second;
+		if( i != j ) {
+			std::cout << "Unexpected entry at position ( " << i << ", " << j << " ) = "
+						<< v << "  --  only expected entries on the main diagonal\n";
+			return FAILED;
+		}
+		counter++;
+	}
+	return counter == n ? SUCCESS : FAILED;
+}
+
+void grb_program( const long &n, grb::RC &rc ) {
+	rc = SUCCESS;
 
 	// Matrix initialisation
-	grb::Matrix< int > A( n, n );
-	grb::Matrix< size_t > L_A( n, n );  // L_A is the lower triangular matrix of A
-	grb::Matrix< size_t > L_At( n, n ); // L_At is the lower triangular matrix of A^T
-	size_t * I = new size_t[ n ];
-	size_t * J = new size_t[ n ];
-	double * V = new double[ n ];
-	for( size_t k = 0; k < n; ++k ) {
+	Matrix< int > A( n, n );
+	size_t * I = new size_t[ 2*n ];
+	size_t * J = new size_t[ 2*n ];
+	double * V = new double[ 2*n ];
+	for( auto k = 0; k < 2*n; ++k ) {
 		I[ k ] = k % 3 == 0 ? k : k - 1;
 		J[ k ] = std::rand() % n;
 		V[ k ] = compute_value< int >( I[ k ], J[ k ] );
 	}
-	assert( not grb::buildMatrixUnique( A, I, J, V, n, SEQUENTIAL ) );
+	assert( SUCCESS ==
+		grb::buildMatrixUnique( A, I, J, V, n, SEQUENTIAL )
+	);
 
 	{ // Mixed-domain matrix, should be successful
-		printSparseMatrix( A, "A" );
-		rc = grb::tril( L_A, A, Phase::RESIZE );
-		rc = rc ? rc : grb::tril( L_A, A, Phase::EXECUTE );
-		printSparseMatrix( L_A, "L_A" );
+		Matrix< size_t > U_A( n, n );
+		rc = grb::tril( U_A, A, Phase::RESIZE );
+		rc = rc ? rc : grb::tril( U_A, A, Phase::EXECUTE );
 
 		if( rc != SUCCESS ) {
 			std::cerr << "Error on test: mixed-domain matrix" << std::endl;
 			std::cerr << "Error on executing: " << grb::toString( rc ) << std::endl;
 			return;
 		}
-		rc = check_obtained( L_A );
+		rc = check_obtained( U_A );
 		if( rc != SUCCESS ) {
 			std::cerr << "Error on test: mixed-domain matrix" << std::endl;
 			std::cerr << "Error on result, incorrect result" << std::endl;
@@ -114,18 +101,55 @@ void grb_program( const size_t & n, grb::RC & rc ) {
 		}
 		std::cout << std::flush << " -- Test passed: mixed-domain matrix" << std::flush << std::endl;
 	}
+	{ // k = 10, should be successful
+		Matrix< size_t > U_A( n, n );
+		const long k = 10;
+		rc = grb::tril( U_A, A, k, Phase::RESIZE );
+		rc = rc ? rc : grb::tril( U_A, A, k, Phase::EXECUTE );
+
+		if( rc != SUCCESS ) {
+			std::cerr << "Error on test: k = " << k << std::endl;
+			std::cerr << "Error on executing: " << grb::toString( rc ) << std::endl;
+			return;
+		}
+		rc = check_obtained( U_A, k );
+		if( rc != SUCCESS ) {
+			std::cerr << "Error on test: k = " << k << std::endl;
+			std::cerr << "Error on result, incorrect result" << std::endl;
+			return;
+		}
+		std::cout << std::flush << " -- Test passed: k = " << k << std::flush << std::endl;
+	}
+	{ // k = -10, should be successful
+		Matrix< size_t > U_A( n, n );
+		const long k = -10;
+		rc = grb::tril( U_A, A, k, Phase::RESIZE );
+		rc = rc ? rc : grb::tril( U_A, A, k, Phase::EXECUTE );
+
+		if( rc != SUCCESS ) {
+			std::cerr << "Error on test: k = " << k << std::endl;
+			std::cerr << "Error on executing: " << grb::toString( rc ) << std::endl;
+			return;
+		}
+		rc = check_obtained( U_A, k );
+		if( rc != SUCCESS ) {
+			std::cerr << "Error on test: k = " << k << std::endl;
+			std::cerr << "Error on result, incorrect result" << std::endl;
+			return;
+		}
+		std::cout << std::flush << " -- Test passed: k = " << k << std::flush << std::endl;
+	}
 	{ // Transpose_matrix descriptor, should be successful
-		printSparseMatrix( A, "A" );
-		rc = grb::tril< descriptors::transpose_matrix >( L_At, A, Phase::RESIZE );
-		rc = rc ? rc : grb::tril< descriptors::transpose_matrix >( L_At, A, Phase::EXECUTE );
-		printSparseMatrix( L_At, "L_At" );
+		Matrix< size_t > U_At( n, n );
+		rc = grb::tril< descriptors::transpose_matrix >( U_At, A, Phase::RESIZE );
+		rc = rc ? rc : grb::tril< descriptors::transpose_matrix >( U_At, A, Phase::EXECUTE );
 
 		if( rc != SUCCESS ) {
 			std::cerr << "Error on test: transpose_matrix descriptor" << std::endl;
 			std::cerr << "Error on executing: " << grb::toString( rc ) << std::endl;
 			return;
 		}
-		rc = check_obtained< descriptors::transpose_matrix >( L_At );
+		rc = check_obtained< descriptors::transpose_matrix >( U_At );
 		if( rc != SUCCESS ) {
 			std::cerr << "Error on test: transpose_matrix descriptor" << std::endl;
 			std::cerr << "Error on result, incorrect result" << std::endl;
@@ -133,11 +157,112 @@ void grb_program( const size_t & n, grb::RC & rc ) {
 		}
 		std::cout << std::flush << " -- Test passed: transpose_matrix descriptor" << std::flush << std::endl;
 	}
+	{ // Overlap is forbidden, should return RC::OVERLAP
+		rc = grb::tril< descriptors::transpose_matrix >( A, A, Phase::RESIZE );
+
+		if( rc != RC::OVERLAP ) {
+			std::cerr << "Error on test: overlap, should return RC::OVERLAP" << std::endl;
+			std::cerr << "Error on executing: " << grb::toString( rc ) << " instead of RC::OVERLAP" << std::endl;
+			return;
+		}
+		std::cout << std::flush << " -- Test passed: overlap, should return RC::OVERLAP" << std::flush << std::endl;
+	}
+	{ // Empty matrix, should be successful
+		Matrix< int > A_empty( n, n );
+		Matrix< size_t > U_A_empty( n, n );
+		rc = grb::tril( U_A_empty, A_empty, Phase::RESIZE );
+		rc = rc ? rc : grb::tril( U_A_empty, A_empty, Phase::EXECUTE );
+
+		if( rc != SUCCESS ) {
+			std::cerr << "Error on test: empty matrix" << std::endl;
+			std::cerr << "Error on executing: " << grb::toString( rc ) << std::endl;
+			return;
+		}
+		rc = check_obtained( U_A_empty );
+		if( rc != SUCCESS ) {
+			std::cerr << "Error on test: empty matrix" << std::endl;
+			std::cerr << "Error on result, incorrect result" << std::endl;
+			return;
+		}
+		std::cout << std::flush << " -- Test passed: empty matrix" << std::flush << std::endl;
+	}
+	{ // Out-of-bound <k> parameter, should be successful and return an empty matrix
+		const long k = 2*n;
+		Matrix< size_t > U_A( n, n );
+		rc = grb::tril( U_A, A, k, Phase::RESIZE );
+		rc = rc ? rc : grb::tril( U_A, A, k, Phase::EXECUTE );
+
+		if( rc != SUCCESS ) {
+			std::cerr << "Error on test: Out-of-bound <k> parameter" << std::endl;
+			std::cerr << "Error on executing: " << grb::toString( rc ) << std::endl;
+			return;
+		}
+		rc = check_obtained( U_A, k );
+		if( rc != SUCCESS ) {
+			std::cerr << "Error on test: Out-of-bound <k> parameter" << std::endl;
+			std::cerr << "Error on result, incorrect result" << std::endl;
+			return;
+		}
+		std::cout << std::flush << " -- Test passed: Out-of-bound <k> parameter" << std::flush << std::endl;
+	}
+	{ // Out-of-bound <-k> parameter, should be successful and return an empty matrix
+		const long k = -2*n;
+		Matrix< size_t > U_A( n, n );
+		rc = grb::tril( U_A, A, k, Phase::RESIZE );
+		rc = rc ? rc : grb::tril( U_A, A, k, Phase::EXECUTE );
+
+		if( rc != SUCCESS ) {
+			std::cerr << "Error on test: Out-of-bound <-k> parameter" << std::endl;
+			std::cerr << "Error on executing: " << grb::toString( rc ) << std::endl;
+			return;
+		}
+		rc = check_obtained( U_A, k );
+		if( rc != SUCCESS ) {
+			std::cerr << "Error on test: Out-of-bound <-k> parameter" << std::endl;
+			std::cerr << "Error on result, incorrect result" << std::endl;
+			return;
+		}
+		std::cout << std::flush << " -- Test passed: Out-of-bound <-k> parameter" << std::flush << std::endl;
+	}
+	{ // Identity isolation using triu( tril ( A, 1 ), 1 )
+		const Matrix< int > dense( n, n, n*n );
+		size_t * I = new size_t[ n*n ];
+		size_t * J = new size_t[ n*n ];
+		int * V = new int[ n*n ];
+		std::fill( V, V + n*n, 1 );
+		for( auto i=0; i<n; i++ ) {
+			std::iota( I + i*n, I + (i+1)*n, 0 );
+			std::fill( J + i*n, J + (i+1)*n, i );
+		}
+		assert( SUCCESS ==
+			buildMatrixUnique( A, I, J, V, n*n, SEQUENTIAL )
+		);
+		const long k = 0;
+		Matrix< size_t > U_A( n, n );
+		rc = grb::tril( U_A, A, k, Phase::RESIZE );
+		rc = rc ? rc : grb::tril( U_A, A, k, Phase::EXECUTE );
+		Matrix< size_t > I_A( n, n );
+		rc = grb::triu( I_A, U_A, k, Phase::RESIZE );
+		rc = rc ? rc : grb::triu( I_A, U_A, k, Phase::EXECUTE );
+
+		if( rc != SUCCESS ) {
+			std::cerr << "Error on test: Identity isolation using triu( tril ( A, 1 ), 1 )" << std::endl;
+			std::cerr << "Error on executing: " << grb::toString( rc ) << std::endl;
+			return;
+		}
+		rc = is_identity( I_A );
+		if( rc != SUCCESS ) {
+			std::cerr << "Error on test: Identity isolation using triu( tril ( A, 1 ), 1 )" << std::endl;
+			std::cerr << "Error on result, incorrect result" << std::endl;
+			return;
+		}
+		std::cout << std::flush << " -- Test passed: Identity isolation using triu( tril ( A, 1 ), 1 )" << std::flush << std::endl;
+	}
 }
 
 int main( int argc, char ** argv ) {
 	// defaults
-	size_t n = 1000000;
+	long n = 1000;
 
 	// error checking
 	if( argc == 2 ) {
@@ -150,7 +275,7 @@ int main( int argc, char ** argv ) {
 
 	std::cout << "This is functional test " << argv[ 0 ] << "\n";
 	grb::Launcher< AUTOMATIC > launcher;
-	grb::RC out;
+	RC out;
 	if( launcher.exec( &grb_program, n, out, false ) != SUCCESS ) {
 		std::cerr << "Launching test FAILED\n";
 		return 255;

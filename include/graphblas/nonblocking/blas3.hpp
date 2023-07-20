@@ -578,25 +578,30 @@ namespace grb {
 		typename RIT_A, typename CIT_A, typename NIT_A
 	>
 	RC tril(
-		Matrix< OutputType, nonblocking, RIT_L, CIT_L, NIT_L > & L,
-		const Matrix< InputType, nonblocking, RIT_A, CIT_A, NIT_A > & A,
+		Matrix< OutputType, nonblocking, RIT_L, CIT_L, NIT_L > &L,
+		const Matrix< InputType, nonblocking, RIT_A, CIT_A, NIT_A > &A,
 		const long int k,
-		const Phase & phase = Phase::EXECUTE,
-		const typename std::enable_if< 
-			not grb::is_object< OutputType >::value && 
-			not grb::is_object< InputType >::value && 
-			std::is_convertible< InputType, OutputType >::value 
-		>::type * const = nullptr ) 
+		const Phase &phase = Phase::EXECUTE,
+		const typename std::enable_if<
+			!grb::is_object< OutputType >::value &&
+			!grb::is_object< InputType >::value &&
+			std::is_convertible< InputType, OutputType >::value
+		>::type * const = nullptr )
 	{
 #ifdef _DEBUG
-		std::cerr << "In grb::tril (nonblocking)\n";
+		std::cout << "In grb::tril( nonblocking )\n";
 #endif
 		// nonblocking execution is not supported
 		// first, execute any computation that is not completed
 		internal::le.execution();
 
 		// second, delegate to the reference backend
-		return tril< descr >( internal::getRefMatrix( L ), internal::getRefMatrix( A ), k, phase );
+		return tril< descr >(
+			internal::getRefMatrix( L ),
+			internal::getRefMatrix( A ),
+			k,
+			phase
+		);
 	}
 
 	template<
@@ -606,60 +611,65 @@ namespace grb {
 		typename RIT_A, typename CIT_A, typename NIT_A
 	>
 	RC tril(
-		Matrix< OutputType, nonblocking, RIT_L, CIT_L, NIT_L > & L,
-		const Matrix< InputType, nonblocking, RIT_A, CIT_A, NIT_A > & A,
-		const Phase & phase = Phase::EXECUTE,
-		const typename std::enable_if< 
-			not grb::is_object< OutputType >::value && 
-			not grb::is_object< InputType >::value && 
-			std::is_convertible< InputType, OutputType >::value 
+		Matrix< OutputType, nonblocking, RIT_L, CIT_L, NIT_L > &L,
+		const Matrix< InputType, nonblocking, RIT_A, CIT_A, NIT_A > &A,
+		const Phase &phase = Phase::EXECUTE,
+		const typename std::enable_if<
+			!grb::is_object< OutputType >::value &&
+			!grb::is_object< InputType >::value &&
+			std::is_convertible< InputType, OutputType >::value
 		>::type * const = nullptr )
 	{
 		return tril< descr >( L, A, 0, phase );
 	}
 
-	template< 
-		Descriptor descr = descriptors::no_operation, 
-		typename InputType, typename OutputType, 
-		typename RIT_U, typename CIT_U, typename NIT_U, 
+	template<
+		Descriptor descr = descriptors::no_operation,
+		typename InputType, typename OutputType,
+		typename RIT_U, typename CIT_U, typename NIT_U,
 		typename RIT_A, typename CIT_A, typename NIT_A
 	>
 	RC triu(
-		Matrix< OutputType, nonblocking, RIT_U, CIT_U, NIT_U > & U,
-		const Matrix< InputType, nonblocking, RIT_A, CIT_A, NIT_A > & A,
+		Matrix< OutputType, nonblocking, RIT_U, CIT_U, NIT_U > &U,
+		const Matrix< InputType, nonblocking, RIT_A, CIT_A, NIT_A > &A,
 		const long int k,
-		const Phase & phase = Phase::EXECUTE,
-		const typename std::enable_if< 
-			not grb::is_object< OutputType >::value && 
-			not grb::is_object< InputType >::value && 
-			std::is_convertible< InputType, OutputType >::value 
+		const Phase &phase = Phase::EXECUTE,
+		const typename std::enable_if<
+			!grb::is_object< OutputType >::value &&
+			!grb::is_object< InputType >::value &&
+			std::is_convertible< InputType, OutputType >::value
 		>::type * const = nullptr )
 	{
 #ifdef _DEBUG
-		std::cerr << "In grb::triu (nonblocking)\n";
+		std::cout << "In grb::triu( nonblocking )\n";
 #endif
 		// nonblocking execution is not supported
 		// first, execute any computation that is not completed
 		internal::le.execution();
 
 		// second, delegate to the reference backend
-		return triu< descr >( internal::getRefMatrix( U ), internal::getRefMatrix( A ), k, phase );
+		return triu< descr >(
+			internal::getRefMatrix( U ),
+			internal::getRefMatrix( A ),
+			k,
+			phase
+		);
 	}
 
-	template< 
-		Descriptor descr = descriptors::no_operation, 
-		typename InputType, typename OutputType, 
-		typename RIT_U, typename CIT_U, typename NIT_U, 
+	template<
+		Descriptor descr = descriptors::no_operation,
+		typename InputType, typename OutputType,
+		typename RIT_U, typename CIT_U, typename NIT_U,
 		typename RIT_A, typename CIT_A, typename NIT_A
 	>
 	RC triu(
-		Matrix< OutputType, nonblocking, RIT_U, CIT_U, NIT_U > & U,
-		const Matrix< InputType, nonblocking, RIT_A, CIT_A, NIT_A > & A,
-		const Phase & phase = Phase::EXECUTE,
-		const typename std::enable_if< 
-			not grb::is_object< OutputType >::value && 
-			not grb::is_object< InputType >::value && 
-			std::is_convertible< InputType, OutputType >::value 
+		Matrix< OutputType, nonblocking, RIT_U, CIT_U, NIT_U > &U,
+		const Matrix< InputType, nonblocking, RIT_A, CIT_A, NIT_A > &A,
+		const Phase &phase = Phase::EXECUTE,
+		const typename std::enable_if<
+			!grb::is_object< OutputType >::value &&
+			!grb::is_object< InputType >::value &&
+			std::is_convertible< InputType, OutputType >::value
 		>::type * const = nullptr )
 	{
 		return triu< descr >( U, A, 0, phase );
