@@ -187,6 +187,14 @@ for MODE in ${MODES}; do
 				grep 'Test OK' ${TEST_OUT_DIR}/capacity_${MODE}_${BACKEND}_${P}_${T}.log || echo "Test FAILED"
 				echo " "
 
+				if [ "$BACKEND" = "reference" ] || [ "$BACKEND" = "reference_omp" ]; then
+					echo ">>>      [x]           [ ]       Testing the sorting of the CRS and CCS structures"
+					$runner ${TEST_BIN_DIR}/crs_ccs_sorting_${MODE}_${BACKEND} 5230 &> ${TEST_OUT_DIR}/crs_ccs_sorting_${MODE}_${BACKEND}_${P}_${T}.log
+					head -1 ${TEST_OUT_DIR}/crs_ccs_sorting_${MODE}_${BACKEND}_${P}_${T}.log
+					grep 'Test OK' ${TEST_OUT_DIR}/crs_ccs_sorting_${MODE}_${BACKEND}_${P}_${T}.log || echo "Test FAILED"
+					echo " "
+				fi
+
 				echo ">>>      [x]           [ ]       Testing grb::set on vectors of doubles of size"
 				echo "                                 1 000 000."
 				$runner ${TEST_BIN_DIR}/set_${MODE}_${BACKEND} 1000000 &> ${TEST_OUT_DIR}/set_${MODE}_${BACKEND}_${P}_${T}.log

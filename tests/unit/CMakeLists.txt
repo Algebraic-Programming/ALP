@@ -61,6 +61,11 @@ add_grb_executables( copyVector copyVector.cpp
 	BACKENDS reference reference_omp bsp1d hybrid hyperdags nonblocking
 )
 
+add_grb_executables( crs_ccs_sorting crs_ccs_sorting.cpp
+	BACKENDS reference reference_omp
+)
+
+
 add_grb_executables( distribution_bsp1d distribution_bsp1d.cpp
 	BACKENDS reference NO_BACKEND_NAME
 )
