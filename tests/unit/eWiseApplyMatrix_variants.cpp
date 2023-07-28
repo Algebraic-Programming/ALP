@@ -125,31 +125,31 @@ void grb_program( const input_t< Monoid > & input, output_t & output ) {
 		std::cout << "Result (operator) is correct\n";
 	}
 
-	// { // Monoid variant
-	// 	std::cout << "-- eWiseApply using Monoid, supposed to consider"
-	// 				<< " non-zeroes as the identity -> UNION\n";
-	// 	Matrix< nz_type > C( nrows( input.A ), ncols( input.A ) );
-	// 	rc = eWiseApply( C, input.A, input.B, input.monoid, RESIZE );
-	// 	wait( C );
-	// 	if( rc != SUCCESS ) {
-	// 		std::cerr << "Error: Phase::RESIZE\n";
-	// 		return;
-	// 	}
-	// 	rc = eWiseApply( C, input.A, input.B, input.monoid, EXECUTE );
-	// 	wait( C );
-	// 	if( rc != SUCCESS ) {
-	// 		std::cerr << "Error: Phase::EXECUTE\n";
-	// 		return;
-	// 	}
+	{ // Monoid variant
+		std::cout << "-- eWiseApply using Monoid, supposed to consider"
+					<< " non-zeroes as the identity -> UNION\n";
+		Matrix< nz_type > C( nrows( input.A ), ncols( input.A ) );
+		rc = eWiseApply( C, input.A, input.B, input.monoid, RESIZE );
+		wait( C );
+		if( rc != SUCCESS ) {
+			std::cerr << "Error: Phase::RESIZE\n";
+			return;
+		}
+		rc = eWiseApply( C, input.A, input.B, input.monoid, EXECUTE );
+		wait( C );
+		if( rc != SUCCESS ) {
+			std::cerr << "Error: Phase::EXECUTE\n";
+			return;
+		}
 
-	// 	if( !equals_matrix( C, input.C_monoid ) ) {
-	// 		std::cerr << "Error: Wrong result\n";
-	// 		rc = FAILED;
-	// 		return;
-	// 	}
+		if( !equals_matrix( C, input.C_monoid ) ) {
+			std::cerr << "Error: Wrong result\n";
+			rc = FAILED;
+			return;
+		}
 
-	// 	std::cout << "Result (monoid) is correct\n";
-	// }
+		std::cout << "Result (monoid) is correct\n";
+	}
 
 	rc = SUCCESS;
 }
