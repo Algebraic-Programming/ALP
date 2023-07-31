@@ -995,7 +995,7 @@ namespace grb {
 			coors1.set( arr1, false, buf1, n );
 			coors2.set( arr2, false, buf2, n );
 #ifdef _H_GRB_REFERENCE_OMP_BLAS3
-#pragma omp parallel for simd default(none) shared(CCS_raw)
+#pragma omp parallel for simd default(none) shared(CCS_raw) firstprivate(n)
 #endif
 			for( size_t j = 0; j <= n; ++j ) {
 				CCS_raw.col_start[ j ] = 0;
@@ -1035,7 +1035,7 @@ namespace grb {
 					getReferenceBuffer< typename config::NonzeroIndexType >( n + 1 );
 
 #ifdef _H_GRB_REFERENCE_OMP_BLAS3
-#pragma omp parallel for simd default(none) shared(C_col_index)
+#pragma omp parallel for simd default(none) shared(C_col_index) firstprivate(n)
 #endif
 				for( size_t j = 0; j < n; ++j ) {
 					C_col_index[ j ] = 0;
