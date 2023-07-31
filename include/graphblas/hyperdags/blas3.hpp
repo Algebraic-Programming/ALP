@@ -354,7 +354,7 @@ namespace grb {
 		std::cout << "In grb::foldr( hyperdags, mask, matrix, monoid )\n";
 #endif
 
-		if( nrows( A ) == 0 || ncols( A ) == 0 ) {
+		if( nrows( A ) == 0 || ncols( A ) == 0 || nnz( A ) == 0 || nnz( mask ) == 0 ) {
 #ifdef _DEBUG
 			std::cout << "Empty matrix, nothing to compute\n";
 #endif
@@ -405,7 +405,7 @@ namespace grb {
 		std::cout << "In grb::foldr( hyperdags, matrix, monoid )\n";
 #endif
 
-		if( nrows( A ) == 0 || ncols( A ) == 0 ) {
+		if( nrows( A ) == 0 || ncols( A ) == 0 || nnz( A ) == 0 ) {
 #ifdef _DEBUG
 			std::cout << "Empty matrix, nothing to compute\n";
 #endif
@@ -457,7 +457,7 @@ namespace grb {
 		std::cout << "In grb::foldl( hyperdags, mask, matrix, monoid )\n";
 #endif
 
-		if( nrows( A ) == 0 || ncols( A ) == 0 ) {
+		if( nrows( A ) == 0 || ncols( A ) == 0 || nnz( A ) == 0 || nnz( mask ) == 0 ) {
 #ifdef _DEBUG
 			std::cout << "Empty matrix, nothing to compute\n";
 #endif
@@ -509,7 +509,7 @@ namespace grb {
 		std::cout << "In grb::foldl( hyperdags, matrix, monoid )\n";
 #endif
 
-		if( nrows( A ) == 0 || ncols( A ) == 0 ) {
+		if( nrows( A ) == 0 || ncols( A ) == 0 || nnz( A ) == 0 ) {
 #ifdef _DEBUG
 			std::cout << "Empty matrix, nothing to compute\n";
 #endif

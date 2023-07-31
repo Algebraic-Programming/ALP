@@ -390,8 +390,11 @@ namespace grb {
 		std::cout << "In grb::foldl( BSP1D, matrix, mask, monoid )\n";
 #endif
 
-		if( grb::nnz( A ) == 0 ) {
-			return RC::SUCESS;
+		if( nnz( A ) == 0 ) {
+#ifdef _DEBUG
+			std::cout << "Input matrix has no entries; returning identity" << std::endl;
+#endif
+			return SUCCESS;
 		}
 		
 		RC rc = SUCCESS;
@@ -458,8 +461,11 @@ namespace grb {
 		std::cout << "In grb::foldl( BSP1D, matrix, monoid )\n";
 #endif
 
-		if( grb::nnz( A ) == 0 ) {
-			return RC::SUCCESS;
+		if( nnz( A ) == 0  || nrows( A ) == 0 || ncols( A ) == 0 ) {
+#ifdef _DEBUG
+			std::cout << "Input matrix has no entries; returning identity" << std::endl;
+#endif
+			return SUCCESS;
 		}
 
 		RC rc = SUCCESS;
