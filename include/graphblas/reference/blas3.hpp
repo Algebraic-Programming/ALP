@@ -1309,9 +1309,10 @@ namespace grb {
 					for( auto A_k = A_k_start; A_k < A_k_end; ++A_k ) {
 						const auto A_j = A_raw.row_index[ A_k ];
 
-						// If the value is in the specified triangle, skip it
+						// Parameter k can be negative, so we need to cast to long
 						const long A_j_long = static_cast< long >( A_j );
 						const long i_long = static_cast< long >( i );
+						// If the value is in the specified triangle, skip it
 						if( ( !upper && A_j_long > i_long + k  )
 							|| ( upper && A_j_long + k < i_long )
 						) {
@@ -1377,19 +1378,15 @@ namespace grb {
 						for( auto A_k = A_k_start; A_k < A_k_end; ++A_k ) {
 							const auto A_j = A_raw.row_index[ A_k ];
 
-							// If the value is in the specified triangle, skip it
+							// Parameter k can be negative, so we need to cast to long
 							const long A_j_long = static_cast< long >( A_j );
 							const long i_long = static_cast< long >( i );
+							// If the value is in the specified triangle, skip it
 							if( ( !upper && A_j_long > i_long + k  )
 								|| ( upper && A_j_long + k < i_long )
 							) {
 								continue;
 							}
-
-							// L_crs_raw.row_index[ L_k ] = A_j;
-							// L_crs_raw.values[ L_k ] = A_raw.values[ A_k ];
-							// L_ccs_raw.row_index[ L_k ] = i;
-							// L_ccs_raw.values[ L_k ] = A_raw.values[ A_k ];
 
 							L_crs_raw.row_index[ L_k ] = A_j;
 							L_crs_raw.setValue( L_k, A_raw.values[ A_k ] );
