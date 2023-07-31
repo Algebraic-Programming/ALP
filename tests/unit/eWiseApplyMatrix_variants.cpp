@@ -50,8 +50,8 @@ constexpr nz_type B_INITIAL_VALUE = 3;
 
 template< typename D >
 bool equals_matrix(
-	const Matrix< D > & A,
-	const Matrix< D > & B
+	const Matrix< D > &A,
+	const Matrix< D > &B
 ) {
 	if( nrows( A ) != nrows( B ) || ncols( A ) != ncols( B ) ){
 		return false;
@@ -60,25 +60,29 @@ bool equals_matrix(
 	wait( A );
 	wait( B );
 
-	std::vector< std::pair< std::pair< size_t, size_t >, D > > A_vec( A.cbegin(), A.cend() );
-	std::vector< std::pair< std::pair< size_t, size_t >, D > > B_vec( B.cbegin(), B.cend() );
+	std::vector< 
+		std::pair< std::pair< size_t, size_t >, D > 
+	> A_vec( A.cbegin(), A.cend() );
+	std::vector< 
+		std::pair< std::pair< size_t, size_t >, D > 
+	> B_vec( B.cbegin(), B.cend() );
 	return std::is_permutation( A_vec.cbegin(), A_vec.cend(), B_vec.cbegin() );
 }
 
 template< class Monoid >
 struct input_t {
-	const Matrix< nz_type > & A;
-	const Matrix< nz_type > & B;
-	const Matrix< nz_type > & C_monoid;
-	const Matrix< nz_type > & C_operator;
-	const Monoid & monoid;
+	const Matrix< nz_type > &A;
+	const Matrix< nz_type > &B;
+	const Matrix< nz_type > &C_monoid;
+	const Matrix< nz_type > &C_operator;
+	const Monoid &monoid;
 
 	input_t(
-		const Matrix< nz_type > & A = {0,0},
-		const Matrix< nz_type > & B = {0,0},
-		const Matrix< nz_type > & C_monoid = {0,0},
-		const Matrix< nz_type > & C_operator = {0,0},
-		const Monoid & monoid = Monoid() 
+		const Matrix< nz_type > &A = {0,0},
+		const Matrix< nz_type > &B = {0,0},
+		const Matrix< nz_type > &C_monoid = {0,0},
+		const Matrix< nz_type > &C_operator = {0,0},
+		const Monoid &monoid = Monoid() 
 	) : A( A ), 
 		B( B ), 
 		C_monoid( C_monoid ),
@@ -91,7 +95,7 @@ struct output_t {
 };
 
 template< class Monoid >
-void grb_program( const input_t< Monoid > & input, output_t & output ) {
+void grb_program( const input_t< Monoid > &input, output_t &output ) {
 	static_assert( is_monoid< Monoid >::value, "Monoid required" );
 	const auto &op = input.monoid.getOperator();
 	wait( input.A );
