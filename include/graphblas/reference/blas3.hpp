@@ -26,6 +26,7 @@
 
 #include <graphblas/base/blas3.hpp>
 #include <graphblas/utils/iterators/MatrixVectorIterator.hpp>
+#include <graphblas/utils/prefix_sum.hpp>
 
 #include "io.hpp"
 #include "matrix.hpp"
@@ -1326,28 +1327,35 @@ namespace grb {
 				}
 
 				// Apply the prefix sum (2 openmp tasks)
-#ifdef _H_GRB_REFERENCE_OMP_BLAS3
-				#pragma omp parallel default( none ) \
-					shared( L_crs_raw, L_ccs_raw ) firstprivate( m )
-#endif
-				{
-#ifdef _H_GRB_REFERENCE_OMP_BLAS3
-					#pragma omp single nowait
-#endif
-					{
-						for( size_t i = 0; i < m; i++ ) {
-							L_crs_raw.col_start[ i + 1 ] += L_crs_raw.col_start[ i ];
-						}
-					}
-#ifdef _H_GRB_REFERENCE_OMP_BLAS3
-					#pragma omp single
-#endif
-					{
-						for( size_t i = 0; i < m; i++ ) {
-							L_ccs_raw.col_start[ i + 1 ] += L_ccs_raw.col_start[ i ];
-						}
-					}
-				}
+// #ifdef _H_GRB_REFERENCE_OMP_BLAS3
+// 				#pragma omp parallel default( none ) \
+// 					shared( L_crs_raw, L_ccs_raw ) firstprivate( m )
+// #endif
+// 				{
+// #ifdef _H_GRB_REFERENCE_OMP_BLAS3
+// 					#pragma omp single nowait
+// #endif
+// 					{
+// 						for( size_t i = 0; i < m; i++ ) {
+// 							L_crs_raw.col_start[ i + 1 ] += L_crs_raw.col_start[ i ];
+// 						}
+// 					}
+// #ifdef _H_GRB_REFERENCE_OMP_BLAS3
+// 					#pragma omp single
+// #endif
+// 					{
+// 						for( size_t i = 0; i < m; i++ ) {
+// 							L_ccs_raw.col_start[ i + 1 ] += L_ccs_raw.col_start[ i ];
+// 						}
+// 					}
+// 				}
+
+				// These calls are individually faster than the above parallelized code
+				prefix_sum( L_crs_raw.col_start, m + 1 );
+				// But this one is "blocking" the execution even if we are not using it anymore
+				// in this primitive
+				// A local equivalent of async/await (task) would then be appropriate
+				prefix_sum( L_ccs_raw.col_start, m + 1 );
 
 				// Check if the number of nonzeros is greater than the capacity
 				if( L_crs_raw.col_start[ m ] > nzc ) {
