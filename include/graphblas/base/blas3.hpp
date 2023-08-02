@@ -445,42 +445,41 @@ namespace grb {
 	/**
 	 * Return the lower triangular portion of a matrix, strictly below the diagonal
 	 * starting at the k-th column (included).
-	 * 
+	 *
 	 * Out-of-place variant.
 	 *
 	 * @tparam descr      The descriptor to be used (descriptors::no_operation
-	 * 					  if left unspecified).
+	 *                    if left unspecified).
 	 * @tparam InputType  The type of the elements in the supplied ALP/GraphBLAS
 	 *                    matrix \a A.
 	 * @tparam OutputType The type of the elements in the supplied ALP/GraphBLAS
 	 *                    matrix \a L.
 	 *
 	 * @param[out] L       The lower triangular portion of \a A, strictly below
-	 * 					   the k-th diagonal.
+	 *                     the diagonal starting at the k-th column (included).
 	 * @param[in]  A       Any ALP/GraphBLAS matrix.
 	 * @param[in]  k       The smallest column of the diagonal above which to zero out \a A.
 	 * @param[in]  phase   The #grb::Phase in which the primitive is to proceed.
 	 *
 	 * @return grb::SUCCESS  When the call completed successfully.
 	 * @return grb::MISMATCH If the dimensions of \a L and \a A do not match.
-	 * 
+	 *
 	 * \parblock
 	 * \par Parameter \a k
-	 * If you want to extract the strict lower triangular portion of a matrix \a A 
+	 * If you want to extract the strict lower triangular portion of a matrix \a A
 	 * (without its main diagonal), you can use the following call:
 	 *        grb::tril( L, A, 1 );
 	 * \par Extract the main diagonal
-	 * If you want to extract the main diagonal of \a A, 
+	 * If you want to extract the main diagonal of \a A,
 	 * you can use the following calls:
-	 * 			grb::triu( U, A, 0 );
-	 *        	grb::tril( L, U, 0 );
+	 * 		grb::triu( U, A, 0 );
+	 * 		grb::tril( L, U, 0 );
 	 * \endparblock
 	 *
  	 * \parblock
 	 * \par Allowed descriptors
 	 * - transpose_matrix: Consider A^T instead of A.
-	 * - no_casting: If the types of \a L and \a A differ, the primitive
-	 * 				 will fail.
+	 * - no_casting: If the types of \a L and \a A differ, the primitive will fail.
 	 * \endparblock
 	 */
 	template<
@@ -520,9 +519,9 @@ namespace grb {
 	/**
 	 * Return the lower triangular portion of a matrix, strictly below the diagonal
 	 * starting at the k-th column (included).
-	 * 
+	 *
 	 * Out-of-place variant.
-	 * 
+	 *
 	 * This primitive is strictly equivalent to calling
 	 * grb::tril( L, A, 0, phase ).
 	 *
@@ -552,18 +551,18 @@ namespace grb {
 	/**
 	 * Return the upper triangular portion of a matrix, strictly above the diagonal
 	 * starting at the k-th row (included).
-	 * 
+	 *
 	 * Out-of-place variant.
 	 *
 	 * @tparam descr      The descriptor to be used (descriptors::no_operation
-	 * 					  if left unspecified).
+	 *                    if left unspecified).
 	 * @tparam InputType  The type of the elements in the supplied ALP/GraphBLAS
 	 *                    matrix \a A.
 	 * @tparam OutputType The type of the elements in the supplied ALP/GraphBLAS
 	 *                    matrix \a U.
 	 *
 	 * @param[out] U       The upper triangular portion of \a A, strictly above
-	 * 					   the k-th diagonal.
+	 *                     the diagonal starting at the k-th row (included).
 	 * @param[in]  A       Any ALP/GraphBLAS matrix.
 	 * @param[in]  k       The highest row of the diagonal above which to zero out \a A.
 	 * @param[in]  phase   The #grb::Phase in which the primitive is to proceed.
@@ -573,21 +572,20 @@ namespace grb {
 	 *
 	 * \parblock
 	 * \par Parameter \a k
-	 * If you want to extract the strict upper triangular portion of a matrix \a A 
+	 * If you want to extract the strict upper triangular portion of a matrix \a A
 	 * (without its main diagonal), you can use the following call:
 	 *        grb::triu( U, A, 1 );
 	 * \par Extract the main diagonal
-	 * If you want to extract the main diagonal of \a A, 
+	 * If you want to extract the main diagonal of \a A,
 	 * you can use the following calls:
-	 * 			grb::tril( L, A, 0 );
-	 *        	grb::triu( U, L, 0 );
+	 * 		grb::tril( L, A, 0 );
+	 * 		grb::triu( U, L, 0 );
 	 * \endparblock
-	 * 
+	 *
  	 * \parblock
 	 * \par Allowed descriptors
 	 * - transpose_matrix: Consider A^T instead of A.
-	 * - no_casting: If the types of \a T and \a A differ, the primitive
-	 * 				 will fail.
+	 * - no_casting: If the types of \a T and \a A differ, the primitive will fail.
 	 * \endparblock
 	 */
 	template<
@@ -627,7 +625,7 @@ namespace grb {
 	/**
 	 * Return the upper triangular portion of a matrix, strictly above the diagonal
 	 * starting at the k-th row (included).
-	 * 
+	 *
 	 * Out-of-place variant.
 	 *
 	 * This primitive is strictly equivalent to calling

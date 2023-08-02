@@ -289,11 +289,13 @@ int main( int argc, char ** argv ) {
 		std::cerr << "Launching test FAILED\n";
 		return 255;
 	}
+
+	std::cerr << std::flush;
 	if( out != SUCCESS ) {
-		std::cout << "Test FAILED (" << grb::toString( out ) << ")" << std::endl;
+		std::cout << std::flush << "Test FAILED (" << grb::toString( out ) << ")" << std::endl;
 		return out;
 	} else {
-		std::cout << "Test OK" << std::endl;
+		std::cout << std::flush << "Test OK" << std::endl;
 		return 0;
 	}
 }

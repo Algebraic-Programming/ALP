@@ -591,6 +591,15 @@ namespace grb {
 #ifdef _DEBUG
 		std::cout << "In grb::tril( nonblocking )\n";
 #endif
+
+		if( internal::NONBLOCKING::warn_if_not_native &&
+			config::PIPELINE::warn_if_not_native
+		) {
+			std::cerr << "Warning: tril (nonblocking) currently delegates to a "
+				<< "blocking implementation.\n"
+				<< "         Further similar such warnings will be suppressed.\n";
+			internal::NONBLOCKING::warn_if_not_native = false;
+		}
 		// nonblocking execution is not supported
 		// first, execute any computation that is not completed
 		internal::le.execution();
@@ -643,6 +652,15 @@ namespace grb {
 #ifdef _DEBUG
 		std::cout << "In grb::triu( nonblocking )\n";
 #endif
+
+		if( internal::NONBLOCKING::warn_if_not_native &&
+			config::PIPELINE::warn_if_not_native
+		) {
+			std::cerr << "Warning: triu (nonblocking) currently delegates to a "
+				<< "blocking implementation.\n"
+				<< "         Further similar such warnings will be suppressed.\n";
+			internal::NONBLOCKING::warn_if_not_native = false;
+		}
 		// nonblocking execution is not supported
 		// first, execute any computation that is not completed
 		internal::le.execution();

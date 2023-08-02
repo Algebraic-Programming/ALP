@@ -1250,14 +1250,14 @@ namespace grb {
 			}
 
 			const auto &A_raw = descr & descriptors::transpose_matrix
-								? internal::getCCS( A )
-								: internal::getCRS( A );
+				? internal::getCCS( A )
+				: internal::getCRS( A );
 
 			if( phase == Phase::RESIZE ) {
 				size_t nzc = 0;
 #ifdef _H_GRB_REFERENCE_OMP_BLAS3
-#pragma omp parallel for reduction( + : nzc ) \
-		default( none ) shared( A_raw ) firstprivate( k, m )
+				#pragma omp parallel for reduction( + : nzc ) \
+					default( none ) shared( A_raw ) firstprivate( k, m )
 #endif
 				for( size_t i = 0; i < m; ++i ) {
 					const auto A_k_start = A_raw.col_start[ i ];
@@ -1291,7 +1291,7 @@ namespace grb {
 				L_crs_raw.col_start[ 0 ] = 0;
 				L_ccs_raw.col_start[ 0 ] = 0;
 #ifdef _H_GRB_REFERENCE_OMP_BLAS3
-#pragma omp parallel for simd
+				#pragma omp parallel for simd
 #endif
 				for( size_t i = 0; i < m; ++i ) {
 					L_ccs_raw.col_start[ i + 1 ] = 0;
@@ -1299,8 +1299,8 @@ namespace grb {
 
 				// Prefix sum computation into L.CRS.col_start
 #ifdef _H_GRB_REFERENCE_OMP_BLAS3
-#pragma omp parallel for simd default( none ) \
-			shared( A_raw, L_crs_raw, L_ccs_raw ) firstprivate( k, m )
+				#pragma omp parallel for simd default( none ) \
+					shared( A_raw, L_crs_raw, L_ccs_raw ) firstprivate( k, m )
 #endif
 				for( size_t i = 0; i < m; i++ ) {
 					size_t cumul = 0UL;
@@ -1327,12 +1327,12 @@ namespace grb {
 
 				// Apply the prefix sum (2 openmp tasks)
 #ifdef _H_GRB_REFERENCE_OMP_BLAS3
-#pragma omp parallel default( none ) \
-			shared( L_crs_raw, L_ccs_raw ) firstprivate( m )
+				#pragma omp parallel default( none ) \
+					shared( L_crs_raw, L_ccs_raw ) firstprivate( m )
 #endif
 				{
 #ifdef _H_GRB_REFERENCE_OMP_BLAS3
-#pragma omp single nowait
+					#pragma omp single nowait
 #endif
 					{
 						for( size_t i = 0; i < m; i++ ) {
@@ -1340,7 +1340,7 @@ namespace grb {
 						}
 					}
 #ifdef _H_GRB_REFERENCE_OMP_BLAS3
-#pragma omp single
+					#pragma omp single
 #endif
 					{
 						for( size_t i = 0; i < m; i++ ) {
@@ -1353,16 +1353,16 @@ namespace grb {
 				if( L_crs_raw.col_start[ m ] > nzc ) {
 #ifdef _DEBUG
 					std::cout << "EXECUTE phase: detected insufficient"
-							  	<< " capacity for requested operation.\n"
-							  	<< "Requested " << L_crs_raw.col_start[ m ]
-								<< " nonzeros, but capacity is " << nzc << "\n";
+						<< " capacity for requested operation.\n"
+						<< "Requested " << L_crs_raw.col_start[ m ]
+						<< " nonzeros, but capacity is " << nzc << "\n";
 #endif
 					return MISMATCH;
 				}
 
 #ifdef _H_GRB_REFERENCE_OMP_BLAS3
-#pragma omp parallel default( none ) \
-			shared( A_raw, L_crs_raw, L_ccs_raw ) firstprivate( k, m )
+				#pragma omp parallel default( none ) \
+					shared( A_raw, L_crs_raw, L_ccs_raw ) firstprivate( k, m )
 #endif
 				{
 					size_t start_row = 0;
@@ -1609,7 +1609,6 @@ namespace grb {
 			"input matrix and output matrix are incompatible for implicit casting"
 		);
 
-		// Add descriptors::transpose_matrix to descr
 		return internal::trilu_generic< true, descr >( U, A, k, phase );
 	}
 
