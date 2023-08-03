@@ -16,10 +16,25 @@
  */
 
 #include <iostream>
+#include <iomanip>
 #include <sstream>
 
 #include <graphblas.hpp>
+#include <utils/print_vec_mat.hpp>
+
 using namespace grb;
+
+constexpr bool DebugPrint = false;
+
+
+template< bool Enabled = true, typename D >
+void printMatrixStructures( const grb::Matrix< D > & mat, const std::string & name = "", std::ostream & os = std::cout ) {
+	if(!Enabled) return;
+
+	grb::wait( mat );
+	printCRS<Enabled>( mat, name, os );
+	printCCS<Enabled>( mat, name, os );
+}
 
 template< typename D, Descriptor descr = descriptors::no_operation, typename T = long >
 D compute_value( T i, T j ) {
@@ -29,8 +44,9 @@ D compute_value( T i, T j ) {
 template< Descriptor descr = descriptors::no_operation, typename D >
 RC check_obtained( const Matrix< D > &U, long k = 0 ) {
 	for( const auto &triple : U ) {
-		const long &i = static_cast<long>( triple.first.first );
-		const long &j = static_cast<long>( triple.first.second );
+		constexpr bool transpose = descr & descriptors::transpose_matrix;
+		const long &i = static_cast<long>( transpose ? triple.first.second : triple.first.first );
+		const long &j = static_cast<long>( transpose ? triple.first.first : triple.first.second );
 		const auto &v = triple.second;
 		if( i + k < j ) {
 			std::cout << "Unexpected entry at position ( " << i << ", " << j << " ) "
@@ -71,21 +87,23 @@ void grb_program( const long &n, grb::RC &rc ) {
 
 	// Matrix initialisation
 	Matrix< int > A( n, n );
-	size_t * I = new size_t[ 2*n ];
-	size_t * J = new size_t[ 2*n ];
-	double * V = new double[ 2*n ];
-	for( auto k = 0; k < 2*n; ++k ) {
-		I[ k ] = k % 3 == 0 ? k : k - 1;
-		J[ k ] = std::rand() % n;
+	const auto N = n;
+	size_t * I = new size_t[ N ];
+	size_t * J = new size_t[ N ];
+	double * V = new double[ N ];
+	for( auto k = 0; k < N; ++k ) {
+		I[ k ] = k % n;
+		J[ k ] = (27*k) % n;
 		V[ k ] = compute_value< int >( I[ k ], J[ k ] );
 	}
 	if( SUCCESS !=
-		grb::buildMatrixUnique( A, I, J, V, n, SEQUENTIAL )
+		grb::buildMatrixUnique( A, I, J, V, N, SEQUENTIAL )
 	) {
 		std::cerr << "Error on test: building matrix" << std::endl;
 		rc = FAILED;
 		return;
 	}
+	printMatrixStructures<DebugPrint>( A, "A" );
 
 	{ // Mixed-domain matrix, should be successful
 		Matrix< size_t > U_A( n, n );
@@ -97,6 +115,7 @@ void grb_program( const long &n, grb::RC &rc ) {
 			std::cerr << "Error on executing: " << grb::toString( rc ) << std::endl;
 			return;
 		}
+		printMatrixStructures<DebugPrint>( U_A, "U_A" );
 		rc = check_obtained( U_A );
 		if( rc != SUCCESS ) {
 			std::cerr << "Error on test: mixed-domain matrix" << std::endl;
@@ -112,17 +131,18 @@ void grb_program( const long &n, grb::RC &rc ) {
 		rc = rc ? rc : grb::tril( U_A, A, k, Phase::EXECUTE );
 
 		if( rc != SUCCESS ) {
-			std::cerr << "Error on test: k = " << k << std::endl;
+			std::cerr << "Error on test: k = 10" << std::endl;
 			std::cerr << "Error on executing: " << grb::toString( rc ) << std::endl;
 			return;
 		}
+		printMatrixStructures<DebugPrint>( U_A, "U_A" );
 		rc = check_obtained( U_A, k );
 		if( rc != SUCCESS ) {
-			std::cerr << "Error on test: k = " << k << std::endl;
+			std::cerr << "Error on test: k = 10" << std::endl;
 			std::cerr << "Error on result, incorrect result" << std::endl;
 			return;
 		}
-		std::cout << std::flush << " -- Test passed: k = " << k << std::flush << std::endl;
+		std::cout << std::flush << " -- Test passed: k = 10" << std::flush << std::endl;
 	}
 	{ // k = -10, should be successful
 		Matrix< size_t > U_A( n, n );
@@ -131,17 +151,18 @@ void grb_program( const long &n, grb::RC &rc ) {
 		rc = rc ? rc : grb::tril( U_A, A, k, Phase::EXECUTE );
 
 		if( rc != SUCCESS ) {
-			std::cerr << "Error on test: k = " << k << std::endl;
+			std::cerr << "Error on test: k = -10" << std::endl;
 			std::cerr << "Error on executing: " << grb::toString( rc ) << std::endl;
 			return;
 		}
+		printMatrixStructures<DebugPrint>( U_A, "U_A" );
 		rc = check_obtained( U_A, k );
 		if( rc != SUCCESS ) {
-			std::cerr << "Error on test: k = " << k << std::endl;
+			std::cerr << "Error on test: k = -10" << std::endl;
 			std::cerr << "Error on result, incorrect result" << std::endl;
 			return;
 		}
-		std::cout << std::flush << " -- Test passed: k = " << k << std::flush << std::endl;
+		std::cout << std::flush << " -- Test passed: k = -10" << std::flush << std::endl;
 	}
 	{ // Transpose_matrix descriptor, should be successful
 		Matrix< size_t > U_At( n, n );
@@ -153,6 +174,7 @@ void grb_program( const long &n, grb::RC &rc ) {
 			std::cerr << "Error on executing: " << grb::toString( rc ) << std::endl;
 			return;
 		}
+		printMatrixStructures<DebugPrint>( U_At, "U_At" );
 		rc = check_obtained< descriptors::transpose_matrix >( U_At );
 		if( rc != SUCCESS ) {
 			std::cerr << "Error on test: transpose_matrix descriptor" << std::endl;
@@ -182,6 +204,7 @@ void grb_program( const long &n, grb::RC &rc ) {
 			std::cerr << "Error on executing: " << grb::toString( rc ) << std::endl;
 			return;
 		}
+		printMatrixStructures<DebugPrint>( U_A_empty, "U_A_empty" );
 		rc = check_obtained( U_A_empty );
 		if( rc != SUCCESS ) {
 			std::cerr << "Error on test: empty matrix" << std::endl;
@@ -201,6 +224,7 @@ void grb_program( const long &n, grb::RC &rc ) {
 			std::cerr << "Error on executing: " << grb::toString( rc ) << std::endl;
 			return;
 		}
+		printMatrixStructures<DebugPrint>( U_A, "U_A" );
 		rc = check_obtained( U_A, k );
 		if( rc != SUCCESS ) {
 			std::cerr << "Error on test: Out-of-bound <k> parameter" << std::endl;
@@ -220,6 +244,7 @@ void grb_program( const long &n, grb::RC &rc ) {
 			std::cerr << "Error on executing: " << grb::toString( rc ) << std::endl;
 			return;
 		}
+		printMatrixStructures<DebugPrint>( U_A, "U_A" );
 		rc = check_obtained( U_A, k );
 		if( rc != SUCCESS ) {
 			std::cerr << "Error on test: Out-of-bound <-k> parameter" << std::endl;
@@ -229,14 +254,14 @@ void grb_program( const long &n, grb::RC &rc ) {
 		std::cout << std::flush << " -- Test passed: Out-of-bound <-k> parameter" << std::flush << std::endl;
 	}
 	{ // Identity isolation using triu( tril ( A, 1 ), 1 )
-		const Matrix< int > dense( n, n, n*n );
-		size_t * I = new size_t[ n*n ];
-		size_t * J = new size_t[ n*n ];
-		int * V = new int[ n*n ];
-		std::fill( V, V + n*n, 1 );
-		for( auto i=0; i<n; i++ ) {
-			std::iota( I + i*n, I + (i+1)*n, 0 );
-			std::fill( J + i*n, J + (i+1)*n, i );
+		const Matrix< int > dense( n, n, n * n );
+		size_t * I = new size_t[ n * n ];
+		size_t * J = new size_t[ n * n ];
+		int * V = new int[ n * n ];
+		std::fill( V, V + n * n, 1 );
+		for( auto i = 0; i < n; i++ ) {
+			std::iota( I + i * n, I + (i + 1) * n, 0 );
+			std::fill( J + i  *n, J + (i + 1) * n, i );
 		}
 		if( SUCCESS !=
 			buildMatrixUnique( A, I, J, V, n*n, SEQUENTIAL )

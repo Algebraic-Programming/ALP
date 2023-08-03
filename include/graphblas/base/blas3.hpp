@@ -495,6 +495,8 @@ namespace grb {
 		const Matrix< InputType, implementation, RIT_A, CIT_A, NIT_A > &A,
 		const long int k,
 		const Phase &phase = Phase::EXECUTE,
+		const size_t row_offset = 0,
+		const size_t col_offset = 0,
 		const typename std::enable_if<
 			!grb::is_object< OutputType >::value &&
 			!grb::is_object< InputType >::value &&
@@ -539,6 +541,8 @@ namespace grb {
 		Matrix< OutputType, implementation, RIT_L, CIT_L, NIT_L > &L,
 		const Matrix< InputType, implementation, RIT_A, CIT_A, NIT_A > &A,
 		const Phase &phase = Phase::EXECUTE,
+		const size_t row_offset = 0,
+		const size_t col_offset = 0,
 		const typename std::enable_if<
 			!grb::is_object< OutputType >::value &&
 			!grb::is_object< InputType >::value &&
@@ -601,6 +605,8 @@ namespace grb {
 		const Matrix< InputType, implementation, RIT_A, CIT_A, NIT_A > &A,
 		const long int k,
 		const Phase &phase = Phase::EXECUTE,
+		const size_t row_offset = 0,
+		const size_t col_offset = 0,
 		const typename std::enable_if<
 			!grb::is_object< OutputType >::value &&
 			!grb::is_object< InputType >::value &&
@@ -645,6 +651,8 @@ namespace grb {
 		Matrix< OutputType, implementation, RIT_U, CIT_U, NIT_U > &U,
 		const Matrix< InputType, implementation, RIT_A, CIT_A, NIT_A > &A,
 		const Phase &phase = Phase::EXECUTE,
+		const size_t row_offset = 0,
+		const size_t col_offset = 0,
 		const typename std::enable_if<
 			!grb::is_object< OutputType >::value &&
 			!grb::is_object< InputType >::value &&
@@ -661,4 +669,3 @@ namespace grb {
 } // namespace grb
 
 #endif // end _H_GRB_BLAS3_BASE
-

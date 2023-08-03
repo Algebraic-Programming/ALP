@@ -197,7 +197,7 @@ namespace grb {
 				// check default fields that should have been set by public constructor
 				assert( _m == 0 );
 				assert( _n == 0 );
-				assert( _id = std::numeric_limits< uintptr_t >::max() );
+				assert( _id == std::numeric_limits< uintptr_t >::max() );
 				assert( _ptr == nullptr );
 				assert( _cap == 0 );
 				// these default values correspond to an empty matrix and which the
@@ -265,7 +265,7 @@ namespace grb {
 					size_t global_cap = 0;
 					try {
 						// complete local initialisation
-						_local.initialize( &_id, local_m, local_n, local_nz );
+						_local.initialize( &id, local_m, local_n, local_nz );
 
 						// sync global capacity
 						global_cap = capacity( _local );
@@ -508,6 +508,19 @@ namespace grb {
 			const Matrix< D, BSP1D, RIT, CIT, NIT > &A
 		) noexcept {
 			return A._local;
+		}
+
+		template< typename D, typename RIT, typename CIT, typename NIT >
+		std::pair<size_t, size_t> getGlobalAnchor(
+			const Matrix< D, BSP1D, RIT, CIT, NIT > &A
+		) noexcept {
+			const internal::BSP1D_Data& data = internal::grb_BSP1D.cload();
+			const auto global_rows = nrows( A );
+			//const auto global_cols = ncols( A );
+			return std::make_pair(
+				internal::Distribution< BSP1D >::local_offset( global_rows, data.s, data.P ),
+				0
+			);
 		}
 
 	} // namespace internal

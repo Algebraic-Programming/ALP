@@ -1206,7 +1206,6 @@ namespace grb {
 		}
 
 		template<
-			bool upper,
 			Descriptor descr = descriptors::no_operation,
 			typename InputType, typename OutputType,
 			typename RIT_L, typename CIT_L, typename NIT_L,
@@ -1216,16 +1215,25 @@ namespace grb {
 			Matrix< OutputType, reference, RIT_L, CIT_L, NIT_L > &L,
 			const Matrix< InputType, reference, RIT_A, CIT_A, NIT_A > &A,
 			const long int k,
-			const Phase &phase
+			const Phase &phase,
+			const size_t row_offset = 0,
+			const size_t col_offset = 0
 		) {
 #ifdef _DEBUG
 			std::cout << "In grb::internal::trilu_generic( reference )\n";
 #endif
-			const size_t m = descr & descriptors::transpose_matrix
-							? ncols( A ) : nrows( A );
-			const size_t n = descr & descriptors::transpose_matrix
-							? nrows( A ) : ncols( A );
+			constexpr bool transpose = descr & descriptors::transpose_matrix;
+			const size_t m = transpose ? ncols( A ) : nrows( A );
+			const size_t n = transpose ? nrows( A ) : ncols( A );
+			const size_t m_L = transpose ? ncols( L ) : nrows( L );
+			const size_t n_L = transpose ? nrows( L ) : ncols( L );
+			const size_t m_offset = transpose ? col_offset : row_offset;
+			const size_t n_offset = transpose ? row_offset : col_offset;
 			const size_t nz = nnz( A );
+			const auto &A_raw = transpose ? getCCS( A ) : getCRS( A );
+			auto &L_crs_raw = transpose ? getCCS( L ) : getCRS( L );
+			auto &L_ccs_raw = transpose ? getCRS( L ) : getCCS( L );
+
 
 			if( m == 0 || n == 0 || nz == 0 ) {
 #ifdef _DEBUG
@@ -1234,10 +1242,20 @@ namespace grb {
 				return SUCCESS;
 			}
 
-			// Run-time checks
-			if( m != nrows( L ) || n != ncols( L ) ) {
+			if( (descr & descriptors::force_row_major) && transpose ) {
 #ifdef _DEBUG
-				std::cout << "Mismatched dimensions detected.\n";
+				std::cerr << "force_row_major and tranpose descriptors are "
+					<< "mutually exclusive\n";
+#endif
+				return ILLEGAL;
+			}
+
+			// Run-time checks
+			if( m != m_L || n != n_L ) {
+#ifdef _DEBUG
+				std::cerr << "Mismatched dimensions detected: "
+					<< "A is (" << m << ";" << n << "), L is "
+					<< "(" << m_L << ";" << n_L << ")\n";
 #endif
 				return MISMATCH;
 			}
@@ -1245,20 +1263,18 @@ namespace grb {
 			// Check that there is no overlap between L and A
 			if( getID(A) == getID(L) ) {
 #ifdef _DEBUG
-				std::cout << "Overlap detected between input and output matrices.\n";
+				std::cout << "Overlap detected between input and output matrices: "
+					<< "ID(A)=" << getID(A) << ", ID(L)=" << getID(L) << "\n";
 #endif
 				return OVERLAP;
 			}
-
-			const auto &A_raw = descr & descriptors::transpose_matrix
-				? internal::getCCS( A )
-				: internal::getCRS( A );
 
 			if( phase == Phase::RESIZE ) {
 				size_t nzc = 0;
 #ifdef _H_GRB_REFERENCE_OMP_BLAS3
 				#pragma omp parallel for reduction( + : nzc ) \
-					default( none ) shared( A_raw ) firstprivate( k, m )
+					default( none ) shared( A_raw ) \
+					firstprivate( k, m, n_offset, m_offset )
 #endif
 				for( size_t i = 0; i < m; ++i ) {
 					const auto A_k_start = A_raw.col_start[ i ];
@@ -1266,12 +1282,10 @@ namespace grb {
 					for( auto A_k = A_k_start; A_k < A_k_end; ++A_k ) {
 						const auto A_j = A_raw.row_index[ A_k ];
 
-						// If the value is in the specified triangle, skip it
-						const long A_j_long = static_cast< long >( A_j );
-						const long i_long = static_cast< long >( i );
-						if( ( !upper && A_j_long > i_long + k  )
-							|| ( upper && A_j_long + k < i_long )
-						) {
+						// If the value is not in the specified triangle, skip it
+						const long i_long = static_cast< long >( i ) + static_cast< long >( m_offset );
+						const long A_j_long = static_cast< long >( A_j ) + static_cast< long >( n_offset );
+						if( A_j_long > i_long + k  ) {
 							continue;
 						}
 
@@ -1285,8 +1299,6 @@ namespace grb {
 			}
 
 			if( phase == Phase::EXECUTE ) {
-				auto &L_crs_raw = internal::getCRS( L );
-				auto &L_ccs_raw = internal::getCCS( L );
 				const size_t nzc = capacity( L );
 
 				L_crs_raw.col_start[ 0 ] = 0;
@@ -1294,14 +1306,15 @@ namespace grb {
 #ifdef _H_GRB_REFERENCE_OMP_BLAS3
 				#pragma omp parallel for simd
 #endif
-				for( size_t i = 0; i < m; ++i ) {
+				for( size_t i = 0; i < n; ++i ) {
 					L_ccs_raw.col_start[ i + 1 ] = 0;
 				}
 
 				// Prefix sum computation into L.CRS.col_start
 #ifdef _H_GRB_REFERENCE_OMP_BLAS3
 				#pragma omp parallel for simd default( none ) \
-					shared( A_raw, L_crs_raw, L_ccs_raw ) firstprivate( k, m )
+					shared( A_raw, L_crs_raw, L_ccs_raw ) \
+					firstprivate( k, m, n_offset, m_offset )
 #endif
 				for( size_t i = 0; i < m; i++ ) {
 					size_t cumul = 0UL;
@@ -1311,66 +1324,89 @@ namespace grb {
 						const auto A_j = A_raw.row_index[ A_k ];
 
 						// Parameter k can be negative, so we need to cast to long
-						const long A_j_long = static_cast< long >( A_j );
-						const long i_long = static_cast< long >( i );
-						// If the value is in the specified triangle, skip it
-						if( ( !upper && A_j_long > i_long + k  )
-							|| ( upper && A_j_long + k < i_long )
-						) {
+						const long i_long = static_cast< long >( i ) + static_cast< long >( m_offset );
+						const long A_j_long = static_cast< long >( A_j ) + static_cast< long >( n_offset );
+						// If the value is not in the specified triangle, skip it
+						if( A_j_long > i_long + k  ) {
 							continue;
 						}
 
-						L_ccs_raw.col_start[ A_j + 1 ] += 1;
-						cumul += 1;
+						++L_ccs_raw.col_start[ A_j + 1 ];
+						++cumul;
 					}
 					L_crs_raw.col_start[ i + 1 ] = cumul;
 				}
 
-				// Apply the prefix sum (2 openmp tasks)
-// #ifdef _H_GRB_REFERENCE_OMP_BLAS3
-// 				#pragma omp parallel default( none ) \
-// 					shared( L_crs_raw, L_ccs_raw ) firstprivate( m )
-// #endif
-// 				{
-// #ifdef _H_GRB_REFERENCE_OMP_BLAS3
-// 					#pragma omp single nowait
-// #endif
-// 					{
-// 						for( size_t i = 0; i < m; i++ ) {
-// 							L_crs_raw.col_start[ i + 1 ] += L_crs_raw.col_start[ i ];
-// 						}
-// 					}
-// #ifdef _H_GRB_REFERENCE_OMP_BLAS3
-// 					#pragma omp single
-// #endif
-// 					{
-// 						for( size_t i = 0; i < m; i++ ) {
-// 							L_ccs_raw.col_start[ i + 1 ] += L_ccs_raw.col_start[ i ];
-// 						}
-// 					}
-// 				}
+#ifdef _H_GRB_REFERENCE_OMP_BLAS3
+				const int max_nthreads = config::OMP::threads();
+				#pragma omp teams num_teams( 2 ) thread_limit( max_nthreads / 2 )
+#endif
+				{
 
-				// These calls are individually faster than the above parallelized code
-				prefix_sum( L_crs_raw.col_start, m + 1 );
-				// But this one is "blocking" the execution even if we are not using it anymore
-				// in this primitive
-				// A local equivalent of async/await (task) would then be appropriate
-				prefix_sum( L_ccs_raw.col_start, m + 1 );
+#ifdef _H_GRB_REFERENCE_OMP_BLAS3
+					const int nteams = omp_get_num_teams();
+					const int team_id = omp_get_team_num();
+					assert( nteams == 2 );
+#else
+					const int nteams = 0;
+					const int team_id = 0;
+#endif
+					if( nteams == 0 || team_id == 0 ) {
+						prefix_sum( L_crs_raw.col_start, m + 1 );
+					}
+					if( nteams == 0 || team_id == 1 ) {
+						prefix_sum( L_ccs_raw.col_start, n + 1 );
+					}
+				}
+
+#ifdef _DEBUG
+				std::cout << "L_crs_raw.col_start = { ";
+				for( size_t i = 0; i <= m; ++i ) {
+					std::cout << L_crs_raw.col_start[ i ] << " ";
+				}
+				std::cout << "}\n";
+				std::cout << "L_ccs_raw.col_start = { ";
+				for( size_t i = 0; i <= n; ++i ) {
+					std::cout << L_ccs_raw.col_start[ i ] << " ";
+				}
+				std::cout << "}\n";
+#endif
 
 				// Check if the number of nonzeros is greater than the capacity
 				if( L_crs_raw.col_start[ m ] > nzc ) {
 #ifdef _DEBUG
 					std::cout << "EXECUTE phase: detected insufficient"
 						<< " capacity for requested operation.\n"
-						<< "Requested " << L_crs_raw.col_start[ m ]
+						<< "CRS requested " << L_crs_raw.col_start[ m ]
+						<< " nonzeros, but capacity is " << nzc << "\n";
+#endif
+					return MISMATCH;
+				}
+				if( L_ccs_raw.col_start[ n ] > nzc ) {
+#ifdef _DEBUG
+					std::cout << "EXECUTE phase: detected insufficient"
+						<< " capacity for requested operation.\n"
+						<< "CCS requested " << L_ccs_raw.col_start[ n ]
 						<< " nonzeros, but capacity is " << nzc << "\n";
 #endif
 					return MISMATCH;
 				}
 
+				// Copy the CRS col_start array into a temporary array
+				// TODO: Use the local buffer instead
+				size_t L_ccs_raw_col_start_copy[ n + 1 ];
+#ifdef _H_GRB_REFERENCE_OMP_BLAS3
+				#pragma omp parallel for simd
+#endif
+				for( size_t i = 0; i <= n; ++i ) {
+					L_ccs_raw_col_start_copy[ i ] = L_ccs_raw.col_start[ i ];
+				}
+
+
 #ifdef _H_GRB_REFERENCE_OMP_BLAS3
 				#pragma omp parallel default( none ) \
-					shared( A_raw, L_crs_raw, L_ccs_raw ) firstprivate( k, m )
+					shared( A_raw, L_crs_raw, L_ccs_raw, L_ccs_raw_col_start_copy ) \
+					firstprivate( k, m, n_offset, m_offset )
 #endif
 				{
 					size_t start_row = 0;
@@ -1383,23 +1419,34 @@ namespace grb {
 						auto L_k = L_crs_raw.col_start[ i ];
 						const auto A_k_start = A_raw.col_start[ i ];
 						const auto A_k_end = A_raw.col_start[ i + 1 ];
+						// std::cout << "-- i = " << i << "\n";
 						for( auto A_k = A_k_start; A_k < A_k_end; ++A_k ) {
 							const auto A_j = A_raw.row_index[ A_k ];
 
 							// Parameter k can be negative, so we need to cast to long
-							const long A_j_long = static_cast< long >( A_j );
-							const long i_long = static_cast< long >( i );
-							// If the value is in the specified triangle, skip it
-							if( ( !upper && A_j_long > i_long + k  )
-								|| ( upper && A_j_long + k < i_long )
-							) {
+							const long i_long = static_cast< long >( i ) + static_cast< long >( m_offset );
+							const long A_j_long = static_cast< long >( A_j ) + static_cast< long >( n_offset );
+							// If the value is not in the specified triangle, skip it
+							if( A_j_long > i_long + k  ) {
 								continue;
 							}
 
+							const InputType& a_val = A_raw.getValue( A_k, InputType() );
+							// std::cout << "Found at ( " << i << ", " << A_j << " ) = " << a_val << "\n";
 							L_crs_raw.row_index[ L_k ] = A_j;
-							L_crs_raw.setValue( L_k, A_raw.values[ A_k ] );
-							L_ccs_raw.row_index[ L_crs_raw.col_start[ A_j ] ] = i;
-							L_ccs_raw.setValue( L_crs_raw.col_start[ A_j ], A_raw.values[ A_k ] );
+							L_crs_raw.setValue( L_k, a_val );
+
+							// Thread-safety ?
+							size_t ccs_idx;
+							// The following block should be thread-safe
+							// (no two threads should be able to write to the same index)
+							#pragma omp critical
+							{
+								ccs_idx = L_ccs_raw_col_start_copy[ A_j + 1 ] -1;
+								--L_ccs_raw_col_start_copy[ A_j + 1 ];
+							}
+							L_ccs_raw.row_index[ ccs_idx ] = i;
+							L_ccs_raw.setValue( ccs_idx, a_val );
 							L_k += 1;
 						}
 					}
@@ -1481,6 +1528,7 @@ namespace grb {
 	 *
 	 * \internal Dispatches to internal::eWiseApply_matrix_generic
 	 */
+
 	template<
 		Descriptor descr = grb::descriptors::no_operation,
 		class Operator,
@@ -1548,6 +1596,8 @@ namespace grb {
 		const Matrix< InputType, reference, RIT_A, CIT_A, NIT_A > &A,
 		const long int k,
 		const Phase &phase = Phase::EXECUTE,
+		const size_t row_offset = 0,
+		const size_t col_offset = 0,
 		const typename std::enable_if<
 			!grb::is_object< OutputType >::value &&
 			!grb::is_object< InputType >::value &&
@@ -1566,7 +1616,7 @@ namespace grb {
 			"input matrix and output matrix are incompatible for implicit casting"
 		);
 
-		return internal::trilu_generic< false, descr >( L, A, k, phase );
+		return internal::trilu_generic< descr >( L, A, k, phase, row_offset, col_offset );
 	}
 
 	template<
@@ -1579,13 +1629,15 @@ namespace grb {
 		Matrix< OutputType, reference, RIT_L, CIT_L, NIT_L > &L,
 		const Matrix< InputType, reference, RIT_A, CIT_A, NIT_A > &A,
 		const Phase &phase = Phase::EXECUTE,
+		const size_t row_offset = 0,
+		const size_t col_offset = 0,
 		const typename std::enable_if<
 			!grb::is_object< OutputType >::value &&
 			!grb::is_object< InputType >::value &&
 			std::is_convertible< InputType, OutputType >::value
 		>::type * const = nullptr
 	) {
-		return tril< descr >( L, A, 0L, phase );
+		return tril< descr >( L, A, 0L, phase, row_offset, col_offset );
 	}
 
 	template<
@@ -1599,6 +1651,8 @@ namespace grb {
 		const Matrix< InputType, reference, RIT_A, CIT_A, NIT_A > &A,
 		const long int k,
 		const Phase &phase = Phase::EXECUTE,
+		const size_t row_offset = 0,
+		const size_t col_offset = 0,
 		const typename std::enable_if<
 			!grb::is_object< OutputType >::value &&
 			!grb::is_object< InputType >::value &&
@@ -1617,7 +1671,7 @@ namespace grb {
 			"input matrix and output matrix are incompatible for implicit casting"
 		);
 
-		return internal::trilu_generic< true, descr >( U, A, k, phase );
+		return internal::trilu_generic< descr ^ descriptors::transpose_matrix >( U, A, k, phase, row_offset, col_offset );
 	}
 
 	template<
@@ -1630,13 +1684,15 @@ namespace grb {
 		Matrix< OutputType, reference, RIT_U, CIT_U, NIT_U > &U,
 		const Matrix< InputType, reference, RIT_A, CIT_A, NIT_A > &A,
 		const Phase &phase = Phase::EXECUTE,
+		const size_t row_offset = 0,
+		const size_t col_offset = 0,
 		const typename std::enable_if<
 			!grb::is_object< OutputType >::value &&
 			!grb::is_object< InputType >::value &&
 			std::is_convertible< InputType, OutputType >::value
 		>::type * const = nullptr
 	) {
-		return triu< descr >( U, A, 0L, phase );
+		return triu< descr >( U, A, 0L, phase, row_offset, col_offset );
 	}
 
 } // namespace grb

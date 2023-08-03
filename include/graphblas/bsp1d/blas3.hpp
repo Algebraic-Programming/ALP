@@ -228,11 +228,15 @@ namespace grb {
 		std::cout << "In grb::tril( BSP1D )\n";
 #endif
 		assert( phase != TRY );
+		const std::pair<size_t, size_t> anchor = internal::getGlobalAnchor( A );
+
 		const RC ret = tril< descr >(
 			internal::getLocal( L ),
 			internal::getLocal( A ),
 			k,
-			phase
+			phase,
+			anchor.first,
+			anchor.second
 		);
 
 		return internal::checkGlobalErrorStateOrClear( L, ret );
