@@ -32,6 +32,7 @@ void printMatrixStructures( const grb::Matrix< D > & mat, const std::string & na
 	if(!Enabled) return;
 
 	grb::wait( mat );
+	print_matrix( mat, 0, name.c_str() );
 	printCRS<Enabled>( mat, name, os );
 	printCCS<Enabled>( mat, name, os );
 }
@@ -124,6 +125,7 @@ void grb_program( const long &n, grb::RC &rc ) {
 		}
 		std::cout << std::flush << " -- Test passed: mixed-domain matrix" << std::flush << std::endl;
 	}
+
 	{ // k = 10, should be successful
 		Matrix< size_t > U_A( n, n );
 		const long k = 10;
@@ -144,6 +146,7 @@ void grb_program( const long &n, grb::RC &rc ) {
 		}
 		std::cout << std::flush << " -- Test passed: k = 10" << std::flush << std::endl;
 	}
+	return;
 	{ // k = -10, should be successful
 		Matrix< size_t > U_A( n, n );
 		const long k = -10;

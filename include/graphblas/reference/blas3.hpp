@@ -1338,7 +1338,7 @@ namespace grb {
 				}
 
 #ifdef _H_GRB_REFERENCE_OMP_BLAS3
-				const int max_nthreads = config::OMP::threads();
+				const auto max_nthreads = std::max( 2UL, config::OMP::threads() );
 				#pragma omp teams num_teams( 2 ) thread_limit( max_nthreads / 2 )
 #endif
 				{
@@ -1347,6 +1347,7 @@ namespace grb {
 					const int nteams = omp_get_num_teams();
 					const int team_id = omp_get_team_num();
 					assert( nteams == 2 );
+					assert( omp_get_team_size(omp_get_level()) >= 0 );
 #else
 					const int nteams = 0;
 					const int team_id = 0;
@@ -1372,6 +1373,15 @@ namespace grb {
 				std::cout << "}\n";
 #endif
 
+#ifdef _NDEBUG
+				for( size_t i = 0; i < m; ++i ) {
+					assert( L_crs_raw.col_start[ i+1 ] >= L_crs_raw.col_start[ i ] );
+				}
+				for( size_t i = 0; i < n; ++i ) {
+					assert( L_ccs_raw.col_start[ i+1 ] >= L_ccs_raw.col_start[ i ] );
+				}
+#endif
+
 				// Check if the number of nonzeros is greater than the capacity
 				if( L_crs_raw.col_start[ m ] > nzc ) {
 #ifdef _DEBUG
@@ -1393,8 +1403,9 @@ namespace grb {
 				}
 
 				// Copy the CRS col_start array into a temporary array
-				// TODO: Use the local buffer instead
-				size_t L_ccs_raw_col_start_copy[ n + 1 ];
+				size_t * const L_ccs_raw_col_start_copy = internal::template
+					getReferenceBuffer< size_t >( n + 1 );
+
 #ifdef _H_GRB_REFERENCE_OMP_BLAS3
 				#pragma omp parallel for simd
 #endif
@@ -1402,11 +1413,10 @@ namespace grb {
 					L_ccs_raw_col_start_copy[ i ] = L_ccs_raw.col_start[ i ];
 				}
 
-
 #ifdef _H_GRB_REFERENCE_OMP_BLAS3
 				#pragma omp parallel default( none ) \
 					shared( A_raw, L_crs_raw, L_ccs_raw, L_ccs_raw_col_start_copy ) \
-					firstprivate( k, m, n_offset, m_offset )
+					firstprivate( k, m, n, n_offset, m_offset )
 #endif
 				{
 					size_t start_row = 0;
@@ -1419,7 +1429,7 @@ namespace grb {
 						auto L_k = L_crs_raw.col_start[ i ];
 						const auto A_k_start = A_raw.col_start[ i ];
 						const auto A_k_end = A_raw.col_start[ i + 1 ];
-						// std::cout << "-- i = " << i << "\n";
+
 						for( auto A_k = A_k_start; A_k < A_k_end; ++A_k ) {
 							const auto A_j = A_raw.row_index[ A_k ];
 
@@ -1432,17 +1442,15 @@ namespace grb {
 							}
 
 							const InputType& a_val = A_raw.getValue( A_k, InputType() );
-							// std::cout << "Found at ( " << i << ", " << A_j << " ) = " << a_val << "\n";
 							L_crs_raw.row_index[ L_k ] = A_j;
 							L_crs_raw.setValue( L_k, a_val );
 
-							// Thread-safety ?
 							size_t ccs_idx;
 							// The following block should be thread-safe
 							// (no two threads should be able to write to the same index)
 							#pragma omp critical
 							{
-								ccs_idx = L_ccs_raw_col_start_copy[ A_j + 1 ] -1;
+								ccs_idx = L_ccs_raw_col_start_copy[ A_j + 1 ];
 								--L_ccs_raw_col_start_copy[ A_j + 1 ];
 							}
 							L_ccs_raw.row_index[ ccs_idx ] = i;
