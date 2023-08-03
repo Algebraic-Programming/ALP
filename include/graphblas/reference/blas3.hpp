@@ -1080,8 +1080,6 @@ namespace grb {
 
 
 				// do computations
-				bool columns[ n ] = { false };
-				bool columns2[ n ] = { false };
 				size_t nzc = 0;
 				CRS_raw.col_start[ 0 ] = 0;
 				for( size_t i = 0; i < m; ++i ) {
@@ -1091,7 +1089,7 @@ namespace grb {
 
 					for( size_t k = A_raw.col_start[ i ]; k < A_raw.col_start[ i + 1 ]; ++k ) {
 						const size_t k_col = A_raw.row_index[ k ];
-						columns[ k_col ] = true;
+						coors1.assign( k_col );
 						valbuf[ k_col ] = A_raw.getValue( k, dummy_identity );
 #ifdef _DEBUG
 						std::cout << "Found A( " << i << ", " << k_col << " ) = " << A_raw.getValue( k, dummy_identity ) << "\n";
@@ -1100,12 +1098,12 @@ namespace grb {
 
 					for( size_t l = B_raw.col_start[ i ]; l < B_raw.col_start[ i + 1 ]; ++l ) {
 						const size_t l_col = B_raw.row_index[ l ];
-						if( !columns[ l_col ] ) { // Union case: ignored
+						if( !coors1.assigned( l_col ) ) { // Union case: ignored
 							continue;
 						}
 						const auto valbuf_value_before = valbuf[ l_col ];
 						(void)grb::apply( valbuf[ l_col ], valbuf_value_before, B_raw.getValue( l, dummy_identity ), oper );
-						columns2[ l_col ] = true;
+						coors2.assign( l_col );
 #ifdef _DEBUG
 						std::cout << "Found intersection: B(" << i << ";" << l_col << ")=" << B_raw.getValue( l, dummy_identity )
 						<< "  &&  A(" << i << ";" << l_col << ")=" << valbuf_value_before
@@ -1113,16 +1111,11 @@ namespace grb {
 #endif
 					}
 
-#ifdef _H_GRB_REFERENCE_OMP_BLAS3
-				#pragma omp parallel for simd
-#endif
-					for( size_t i = 0; i < n; i++ ) {
-						columns[ i ] = false;
-					}
+					coors1.clear();
 
 					for( size_t j_unsigned = n ; j_unsigned > 0 ; j_unsigned-- ) {
 						const size_t j = j_unsigned - 1;
-						if( !columns2[ j ] ) {
+						if( !coors2.assigned( j ) ) {
 							continue;
 						}
 						// update CRS
@@ -1138,12 +1131,7 @@ namespace grb {
 					}
 					CRS_raw.col_start[ i + 1 ] = nzc;
 
-#ifdef _H_GRB_REFERENCE_OMP_BLAS3
-				#pragma omp parallel for simd
-#endif
-					for( size_t i = 0; i < n; i++ ) {
-						columns2[ i ] = false;
-					}
+					coors2.clear();
 				}
 
 #ifdef _DEBUG
@@ -1345,7 +1333,7 @@ namespace grb {
 
 
 				// do computations
-				bool columns[ n ] = { false };
+
 				size_t nzc = 0;
 				CRS_raw.col_start[ 0 ] = 0;
 				for( size_t i = 0; i < m; ++i ) {
@@ -1355,7 +1343,7 @@ namespace grb {
 
 					for( size_t k = A_raw.col_start[ i ]; k < A_raw.col_start[ i + 1 ]; ++k ) {
 						const size_t k_col = A_raw.row_index[ k ];
-						columns[ k_col ] = true;
+						coors1.assign( k_col );
 						valbuf[ k_col ] = A_raw.getValue( k, identity_A );
 #ifdef _DEBUG
 						std::cout << "Found A( " << i << ", " << k_col << " ) = " << A_raw.getValue( k, identity_A ) << "\n";
@@ -1364,7 +1352,7 @@ namespace grb {
 
 					for( size_t l = B_raw.col_start[ i ]; l < B_raw.col_start[ i + 1 ]; ++l ) {
 						const size_t l_col = B_raw.row_index[ l ];
-						if( columns[ l_col ] ) { // Intersection case
+						if( coors1.assigned( l_col ) ) { // Intersection case
 							const auto valbuf_value_before = valbuf[ l_col ];
 							(void)grb::apply( valbuf[ l_col ], valbuf_value_before, B_raw.getValue( l, identity_B ), oper );
 #ifdef _DEBUG
@@ -1376,14 +1364,14 @@ namespace grb {
 #ifdef _DEBUG
 							std::cout << "Found B( " << i << ", " << l_col << " ) = " << B_raw.getValue( l, identity_B ) << "\n";
 #endif
-							columns[ l_col ] = true;
+							coors1.assign( l_col );
 							valbuf[ l_col ] = B_raw.getValue( l, identity_B );
 						}
 					}
 
 					for( size_t j_unsigned = n ; j_unsigned > 0 ; j_unsigned-- ) {
 						const size_t j = j_unsigned - 1;
-						if( !columns[ j ] ) {
+						if( !coors1.assigned( j ) ) {
 							continue;
 						}
 						// update CRS
@@ -1399,9 +1387,7 @@ namespace grb {
 					}
 					CRS_raw.col_start[ i + 1 ] = nzc;
 
-					for( size_t i = 0; i < n; i++ ) {
-						columns[ i ] = false;
-					}
+					coors1.clear();
 				}
 
 #ifdef _DEBUG
