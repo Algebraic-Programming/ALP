@@ -20,11 +20,10 @@
 
 #include "graphblas.hpp"
 
+
 using namespace grb;
 
-void grbProgram( const void *, const size_t in_size, int & error ) {
-	error = 0;
-
+void grbProgram( const void *, const size_t in_size, int &error ) {
 	if( in_size != 0 ) {
 		std::cerr << "Unit tests called with unexpected input" << std::endl;
 		error = 1;
@@ -38,7 +37,8 @@ void grbProgram( const void *, const size_t in_size, int & error ) {
 		auto position = vector_it->first;
 		auto value = vector_it->second;
 		if( i != position || values[ i ] != value ) {
-			std::cerr << "Expected position " << i << " value " << values[ i ] << " but got position " << position << " value " << value << std::endl;
+			std::cerr << "Expected position " << i << " value " << values[ i ]
+				<< " but got position " << position << " value " << value << std::endl;
 			equals = false;
 			break;
 		}
@@ -52,19 +52,20 @@ void grbProgram( const void *, const size_t in_size, int & error ) {
 }
 
 int main( int argc, char ** argv ) {
-	(void)argc;
+	(void) argc;
 	std::cout << "Functional test executable: " << argv[ 0 ] << std::endl;
 
-	int error;
+	int error = 0;
 	grb::Launcher< AUTOMATIC > launcher;
 	if( launcher.exec( &grbProgram, NULL, 0, error ) != SUCCESS ) {
 		std::cout << "Test FAILED (test failed to launch)" << std::endl;
 		error = 255;
 	}
+	std::cerr << std::flush;
 	if( error == 0 ) {
-		std::cout << "Test OK" << std::endl;
+		std::cout << std::flush << "Test OK" << std::endl;
 	} else {
-		std::cout << "Test FAILED" << std::endl;
+		std::cout << std::flush << "Test FAILED" << std::endl;
 	}
 
 	// done

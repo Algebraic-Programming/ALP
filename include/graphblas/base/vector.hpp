@@ -237,8 +237,15 @@ namespace grb {
 			}
 
 			/**
-			 * Creates a dense ALP/GraphBLAS vector. This constructor takes an initializer
-			 * list of values that will be copied into this vector.
+			 * Creates a dense ALP/GraphBLAS vector.
+			 * This constructor takes an initializer list of values that will be copied
+			 * into this vector.
+			 * The size of the vector will be equal to the number of elements in the
+			 * initializer list.
+			 *
+			 * @param[in] vals The values to be copied into this vector.
+			 *                 Values will be read in the order in which they are
+			 * 	               supplied.
 			 */
 			Vector( const std::initializer_list< D > &vals ) {
 				(void) vals;

@@ -167,6 +167,7 @@ namespace grb {
 				std::cout << "In Vector< hyperdags >::Vector( initializer_list )"
 					<< " constructor\n";
 #endif
+				register_vector();
 			}
 
 			~Vector() {

@@ -2378,8 +2378,13 @@ namespace grb {
 		}
 
 		/**
-		 * Creates a dense ALP/GraphBLAS vector. This constructor takes an initializer
-		 * list of values that will be copied into this vector.
+		 * Constructs a BSP1D vector.
+		 *
+		 * @see Full description in base backend.
+		 *
+		 * \internal
+		 * This routine initialises the local vector and synchronises the global
+		 * vector once at the end.
 		 */
 		Vector( const std::initializer_list< D > &vals )
 			: Vector( vals.size(), vals.size() )
@@ -2413,10 +2418,8 @@ namespace grb {
 					<< i << " to " << local_index << "\n";
 #endif
 				ret = ret
-						? ret
-						: setElement(
-							_local, val, local_index, EXECUTE
-						);
+					? ret
+					: setElement( _local, val, local_index, EXECUTE );
 			}
 
 			// Synchronise once between all processes

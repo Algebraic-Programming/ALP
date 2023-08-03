@@ -265,7 +265,7 @@ namespace grb {
 				}
 
 				template< bool maybe_invalid = false >
-				inline void local_assignAll( ) noexcept {
+				inline void local_assignAll() noexcept {
 					if( maybe_invalid || _n != _cap ) {
 						if( _assigned != nullptr ) {
 							assert( _stack != nullptr );
@@ -319,7 +319,7 @@ namespace grb {
 				}
 
 				template< bool maybe_invalid = false >
-				inline void assignAll( ) noexcept {
+				inline void assignAll() noexcept {
 					// Must be defined with the same name as the reference backend
 					return local_assignAllNotAlreadyAssigned< maybe_invalid >( );
 				}
