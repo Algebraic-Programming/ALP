@@ -28,9 +28,12 @@
  */
 #include <algorithm>
 #include <utility>
+#include <iostream>
+#include <iomanip>
 
 #include <graphblas.hpp>
 
+using namespace grb;
 
 /**
  * @brief Prints the first \p _limit items (including zeroes) of vector \p x with optional heading \p head.
@@ -205,6 +208,127 @@ void print_matrix( const grb::Matrix< T, B > & mat, size_t _limit = 0, const cha
 		std::cout << std::endl;
 	}
 	std::cout << "==============" << std::endl << std::endl;
+}
+
+namespace
+{
+	template<
+		typename D,
+		class Storage,
+		typename std::enable_if< std::is_void< D >::value, int >::type = 0
+	>
+	void printCompressedStorage(
+		const Storage & storage,
+		size_t n,
+		size_t nnz,
+		std::ostream & os = std::cout
+	) {
+		os << "  col_start (" << n + 1 << "): [ ";
+		for( size_t i = 0; i <= n; ++i ) {
+			os << storage.col_start[ i ] << " ";
+		}
+		os << "]" << std::endl;
+		os << "  row_index (" << nnz << "): \n[\n";
+		for( size_t i = 0; i < n; ++i ) {
+			os << " " << std::setfill( '0' ) << std::setw( 2 ) << i << ":  ";
+			for( auto t = storage.col_start[ i ]; t < storage.col_start[ i + 1 ]; t++ )
+				os << std::setfill( '0' ) << std::setw( 2 ) << storage.row_index[ t ] << " ";
+			os << std::endl;
+		}
+		os << "]" << std::endl;
+	}
+
+	template<
+		typename D,
+		class Storage,
+		typename std::enable_if< not std::is_void< D >::value, int >::type = 0
+	>
+	void printCompressedStorage(
+		const Storage & storage,
+		size_t n,
+		size_t nnz,
+		std::ostream & os
+	) {
+		printCompressedStorage< void >( storage, n, nnz, os );
+		os << "  values    (" << nnz << "): [ ";
+		for( size_t i = 0; i < nnz; ++i ) {
+			os << storage.values[ i ] << " ";
+		}
+		os << "]" << std::endl << std::flush;
+	}
+
+} // namespace
+
+
+template<
+	bool Enabled = true,
+	typename D, typename RIT, typename CIT, typename NIT,
+	Backend implementation,
+	typename = void
+>
+void printCRS(
+	const Matrix< D, implementation, RIT, CIT, NIT > &,
+	const std::string & = "",
+	std::ostream & = std::cout
+) {}
+
+template<
+	bool Enabled = true,
+	typename D, typename RIT, typename CIT, typename NIT,
+	Backend implementation,
+	typename std::enable_if<
+		implementation == reference ||
+		implementation == reference_omp
+	>::type = true
+>
+void printCRS(
+	const Matrix< D, implementation, RIT, CIT, NIT > &mat,
+	const std::string &label = "",
+	std::ostream &os = std::cout
+) {
+	if( !Enabled ) return;
+
+	if( nrows(mat) > 100 || ncols(mat) > 100 ) return;
+
+	grb::wait( mat );
+	os << "CRS \"" << label << "\" (" << nrows( mat ) << "x" << ncols( mat ) << "):" << std::endl;
+	printCompressedStorage< D >( internal::getCRS( mat ), grb::nrows( mat ), grb::nnz( mat ), os );
+}
+
+
+template<
+	bool Enabled = true,
+	typename D, typename RIT, typename CIT, typename NIT,
+	Backend implementation = grb::config::default_backend,
+	typename = void
+>
+void printCCS(
+	const Matrix< D, implementation, RIT, CIT, NIT > &,
+	const std::string & = "",
+	std::ostream & = std::cout
+) {}
+
+template<
+	bool Enabled = true,
+	typename D, typename RIT, typename CIT, typename NIT,
+	Backend implementation = grb::config::default_backend,
+	typename std::enable_if<
+		implementation == reference ||
+		implementation == reference_omp
+	>::type = true
+>
+void printCCS(
+	const Matrix< D, implementation, RIT, CIT, NIT > &mat,
+	const std::string &label = "",
+	std::ostream &os = std::cout
+) {
+	if( !Enabled ) return;
+
+	if( nrows(mat) > 100 || ncols(mat) > 100 ) return;
+
+	grb::wait( mat );
+	os << "CCS \"" << label << "\" (" << nrows( mat ) << "x" << ncols( mat ) << "):" << std::endl;
+	printCompressedStorage< D >( internal::getCCS( mat ), grb::ncols( mat ), grb::nnz( mat ), os );
 }
 
 #endif // _H_TEST_UTILS_PRINT_VEC_MAT
