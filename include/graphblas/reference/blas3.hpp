@@ -1340,33 +1340,22 @@ namespace grb {
 #ifdef _DEBUG
 						std::cout << "  -- i: " << i << "\n";
 #endif
-
+					coors1.clear();
 					for( size_t k = A_raw.col_start[ i ]; k < A_raw.col_start[ i + 1 ]; ++k ) {
 						const size_t k_col = A_raw.row_index[ k ];
 						coors1.assign( k_col );
 						valbuf[ k_col ] = A_raw.getValue( k, identity_A );
-#ifdef _DEBUG
-						std::cout << "Found A( " << i << ", " << k_col << " ) = " << A_raw.getValue( k, identity_A ) << "\n";
-#endif
 					}
 
 					for( size_t l = B_raw.col_start[ i ]; l < B_raw.col_start[ i + 1 ]; ++l ) {
 						const size_t l_col = B_raw.row_index[ l ];
-						if( coors1.assigned( l_col ) ) { // Intersection case
-							const auto valbuf_value_before = valbuf[ l_col ];
-							(void)grb::apply( valbuf[ l_col ], valbuf_value_before, B_raw.getValue( l, identity_B ), oper );
-#ifdef _DEBUG
-							std::cout << "Found intersection: B(" << i << ";" << l_col << ")=" << B_raw.getValue( l, identity_B )
-							<< "  &&  A(" << i << ";" << l_col << ")=" << valbuf_value_before
-							<< "  ==>  C(" << i << ";" << l_col << ")=" << valbuf[ l_col ] << "\n";
-#endif
-						} else { // Union case
-#ifdef _DEBUG
-							std::cout << "Found B( " << i << ", " << l_col << " ) = " << B_raw.getValue( l, identity_B ) << "\n";
-#endif
+						const auto B_val = B_raw.getValue( l, identity_B );
+						if( !coors1.assigned( l_col ) ) { // Union case
 							coors1.assign( l_col );
-							valbuf[ l_col ] = B_raw.getValue( l, identity_B );
+							valbuf[ l_col ] = identity_A;
 						}
+						const auto valbuf_value_before = valbuf[ l_col ];
+						(void)grb::apply( valbuf[ l_col ], valbuf_value_before, B_val, oper );
 					}
 
 					for( size_t j_unsigned = n ; j_unsigned > 0 ; j_unsigned-- ) {
@@ -1386,8 +1375,6 @@ namespace grb {
 						(void)++nzc;
 					}
 					CRS_raw.col_start[ i + 1 ] = nzc;
-
-					coors1.clear();
 				}
 
 #ifdef _DEBUG
@@ -1467,7 +1454,7 @@ namespace grb {
 		);
 
 #ifdef _DEBUG
-		std::cout << "In grb::eWiseApply_matrix_generic( reference, monoid )\n";
+		std::cout << "In grb::eWiseApply( reference, monoid )\n";
 #endif
 
 		return internal::eWiseApply_matrix_generic_union< descr >(
@@ -1530,7 +1517,7 @@ namespace grb {
 			"input matrices is a pattern matrix (of type void)"
 		);
 #ifdef _DEBUG
-		std::cout << "In grb::eWiseApply_matrix_generic( reference, operator )\n";
+		std::cout << "In grb::eWiseApply( reference, operator )\n";
 #endif
 
 		return internal::eWiseApply_matrix_generic_intersection< descr >(
