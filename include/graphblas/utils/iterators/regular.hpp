@@ -1,3 +1,4 @@
+
 /*
  *   Copyright 2021 Huawei Technologies Co., Ltd.
  *
@@ -108,6 +109,8 @@ namespace grb {
 
 					typedef self_type & self_reference_type;
 
+					typedef const PosBasedIterator< R, T, SelfType > self_const_reference_type;
+
 					// constructor
 
 					/**
@@ -151,7 +154,7 @@ namespace grb {
 						return _val;
 					}
 
-					self_reference_type operator=( const self_reference_type other ) {
+					self_reference_type operator=( self_const_reference_type other ) {
 						_count = other._count;
 						_pos = other._pos;
 						_val = other._val;
@@ -179,16 +182,17 @@ namespace grb {
 						return &_val;
 					}
 
-					self_reference_type operator++(int) noexcept {
+					self_type operator++(int) noexcept {
 						assert( _pos < _count );
-						self_type ret( _pos, _count, _val, _state );
+						self_type ret =
+							SelfType::make_iterator( _pos, _count, _val, _state );
 						(void) _pos++;
 						SelfType::func( _val, _state, _pos );
 						return ret;
 					}
 
 					friend bool operator==(
-						self_reference_type left, self_reference_type right
+						self_const_reference_type left, self_const_reference_type right
 					) noexcept {
 						assert( left._count == right._count );
 						assert( left._state == right._state );
@@ -196,7 +200,7 @@ namespace grb {
 					}
 
 					friend bool operator!=(
-						self_reference_type left, self_reference_type right
+						self_const_reference_type left, self_const_reference_type right
 					) noexcept {
 						assert( left._count == right._count );
 						assert( left._state == right._state );
@@ -212,9 +216,10 @@ namespace grb {
 						return *this;
 					}
 
-					self_reference_type operator--(int) noexcept {
+					self_type operator--(int) noexcept {
 						assert( _pos > 0 );
-						self_type ret( _pos, _count, _val, _pos );
+						self_type ret =
+							SelfType::make_iterator( _pos, _count, _val, _pos );
 						(void) _pos--;
 						SelfType::func( _val, _state, _pos );
 						return ret;
@@ -235,8 +240,8 @@ namespace grb {
 					}
 	
 					friend bool operator<(
-						const self_reference_type left,
-						const self_reference_type right
+						self_const_reference_type left,
+						self_const_reference_type right
 					) {
 						assert( left._count == right._count );
 						assert( left._state == right._state );
@@ -244,8 +249,8 @@ namespace grb {
 					}
 
 					friend bool operator>(
-						const self_reference_type left,
-						const self_reference_type right
+						self_const_reference_type left,
+						self_const_reference_type right
 					) {
 						assert( left._count == right._count );
 						assert( left._state == right._state );
@@ -253,8 +258,8 @@ namespace grb {
 					}
 
 					friend bool operator<=(
-						const self_reference_type left,
-						const self_reference_type right
+						self_const_reference_type left,
+						self_const_reference_type right
 					) {
 						assert( left._count == right._count );
 						assert( left._state == right._state );
@@ -262,8 +267,8 @@ namespace grb {
 					}
 
 					friend bool operator>=(
-						const self_reference_type left,
-						const self_reference_type right
+						self_const_reference_type left,
+						self_const_reference_type right
 					) {
 						assert( left._count == right._count );
 						assert( left._state == right._state );
@@ -271,14 +276,14 @@ namespace grb {
 					}
 
 					self_reference_type operator+=( const size_t count ) noexcept {
-						assert( _pos + count < _count );
+						assert( _pos + count <= _count );
 						_pos += count;
 						SelfType::func( _val, _state, _pos );
 						return *this;
 					}
 
 					friend self_type operator+(
-						 const self_reference_type iterator,
+						 self_const_reference_type iterator,
 						 const size_t count
 					) noexcept {
 						assert( iterator._pos + count < iterator._count );
@@ -293,7 +298,7 @@ namespace grb {
 
 					friend self_type operator+(
 						const size_t count,
-						const self_reference_type iterator
+						self_const_reference_type iterator
 					) noexcept {
 						assert( iterator._pos + count < iterator._count );
 						const size_t pos = iterator._pos + count;
@@ -312,7 +317,7 @@ namespace grb {
 					}
 
 					friend self_type operator-(
-						const self_reference_type iterator,
+						self_const_reference_type iterator,
 						const size_t count
 					) noexcept {
 						assert( iterator._pos >= count );
@@ -327,7 +332,7 @@ namespace grb {
 
 					friend self_type operator-(
 						const size_t count,
-						const self_reference_type iterator
+						self_const_reference_type iterator
 					) noexcept {
 						assert( iterator._pos >= count );
 						const size_t pos = iterator._pos - count;
@@ -349,25 +354,26 @@ namespace grb {
 			 * An iterator that repeats the same value for a set number of times.
 			 */
 			template< typename T >
-			class Repeater : public grb::utils::internal::PosBasedIterator<
-				T, T,
-				Repeater< T >
-			> {
+			class Repeater {
+
+				public:
+
+					typedef grb::utils::internal::PosBasedIterator< T, T, Repeater< T > >
+						RealType;
+
 
 				protected:
 
-					typedef grb::utils::internal::PosBasedIterator< T, T, Repeater< T > >
-						BaseType;
 
 					// direct constructor
 
-					Repeater(
+					static RealType make_iterator(
 						const size_t count,
 						const size_t pos,
 						const T val
-					) :
-						BaseType::PosBasedIterator( count, pos, val, val )
-					{}
+					) {
+						return RealType( count, pos, val, val );
+					}
 
 
 				public:
@@ -386,17 +392,13 @@ namespace grb {
 					 * @param[in] val   The constant value that should be returned \a count
 					 *                  times.
 					 */
-					Repeater(
+					static RealType make_iterator(
 						const size_t count,
 						const bool start,
 						const T val
-					) :
-						BaseType::PosBasedIterator( count, start, val, val )
-					{}
-
-					// destructor
-
-					~Repeater() {}
+					) {
+						return RealType( count, start, val, val );
+					}
 
 			};
 
@@ -411,29 +413,27 @@ namespace grb {
 			 * referring to #grb::utils::containers::Range instead.
 			 */
 			template< typename T >
-			class Sequence : public grb::utils::internal::PosBasedIterator<
-				T, std::pair< size_t, size_t >,
-				Sequence< T >
-			> {
+			class Sequence {
+
+				public:
+
+					typedef grb::utils::internal::PosBasedIterator<
+						T, std::pair< size_t, size_t >, Sequence< T >
+					> RealType;
+
 
 				protected:
 
-					typedef grb::utils::internal::PosBasedIterator<
-						T,
-						std::pair< size_t, size_t >,
-						Sequence< T >
-					> BaseType;
-
 					// direct constructor
 
-					Sequence(
+					static RealType make_iterator(
 						const size_t count,
 						const size_t pos,
 						const T val,
 						const std::pair< size_t, size_t > state
-					) :
-						BaseType::PosBasedIterator( count, pos, val, state )
-					{}
+					) {
+						return RealType( count, pos, val, state );
+					}
 
 
 				public:
@@ -459,24 +459,20 @@ namespace grb {
 					 * @param[in] dummy  A dummy initialiser for return elements; optional, in
 					 *                   case \a T is not default-constructible.
 					 */
-					Sequence(
+					static RealType make_iterator(
 						const size_t count,
 						const bool start,
 						const size_t offset = 0,
 						const size_t stride = 1,
 						T dummy = T()
-					) :
-						BaseType::PosBasedIterator(
+					) {
+						return RealType(
 							count,
 							start,
 							std::pair< size_t, size_t >( offset, stride ),
 							dummy
-						)
-					{}
-
-					// destructor
-
-					~Sequence() {}
+						);
+					}
 
 			};
 
@@ -499,6 +495,8 @@ namespace grb {
 
 				private:
 
+					typedef typename grb::utils::iterators::Repeater< T > FactoryType;
+
 					const T _val;
 
 					const size_t _n;
@@ -506,7 +504,7 @@ namespace grb {
 
 				public:
 
-					typedef grb::utils::iterators::Repeater< T > iterator;
+					typedef typename grb::utils::iterators::Repeater< T >::RealType iterator;
 
 					typedef iterator const_iterator;
 
@@ -521,19 +519,19 @@ namespace grb {
 					ConstantVector( const T val, const size_t n ) : _val( val ), _n( n ) {}
 
 					iterator begin() const noexcept {
-						return iterator( _n, true, _val );
+						return FactoryType::make_iterator( _n, true, _val );
 					}
 
 					iterator end() const noexcept {
-						return iterator( _n, false, _val );
+						return FactoryType::make_iterator( _n, false, _val );
 					}
 
 					const_iterator cbegin() const noexcept {
-						return const_iterator( _n, true, _val );
+						return FactoryType::make_iterator( _n, true, _val );
 					}
 
 					const_iterator cend() const noexcept {
-						return const_iterator( _n, false, _val );
+						return FactoryType::make_iterator( _n, false, _val );
 					}
 
 			};
@@ -552,6 +550,8 @@ namespace grb {
 
 				private:
 
+					typedef grb::utils::iterators::Sequence< T > FactoryType;
+
 					const size_t _start;
 
 					const size_t _stride;
@@ -561,7 +561,7 @@ namespace grb {
 
 				public:
 
-					typedef grb::utils::iterators::Sequence< T > iterator;
+					typedef typename grb::utils::iterators::Sequence< T >::RealType iterator;
 
 					typedef iterator const_iterator;
 
@@ -601,19 +601,19 @@ namespace grb {
 					}
 
 					iterator begin() const noexcept {
-						return iterator( _count, true, _start, _stride );
+						return FactoryType::make_iterator( _count, true, _start, _stride );
 					}
 
 					iterator end() const noexcept {
-						return iterator( _count, false, _start, _stride );
+						return FactoryType::make_iterator( _count, false, _start, _stride );
 					}
 
 					const_iterator cbegin() const noexcept {
-						return const_iterator( _count, true, _start, _stride );
+						return FactoryType::make_iterator( _count, true, _start, _stride );
 					}
 
 					const_iterator cend() const noexcept {
-						return const_iterator( _count, false, _start, _stride );
+						return FactoryType::make_iterator( _count, false, _start, _stride );
 					}
 
 			};
