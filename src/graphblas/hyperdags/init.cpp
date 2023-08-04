@@ -20,8 +20,10 @@
  * @date 31st of January, 2022
  */
 
-#include <graphblas/init.hpp>
+#include <iostream>
+#include <fstream>
 
+#include <graphblas/init.hpp>
 #include <graphblas/hyperdags/hyperdags.hpp>
 
 
@@ -72,7 +74,17 @@ grb::RC grb::finalize< grb::hyperdags >() {
 		grb::internal::hyperdags::generator.finalize();
 	const grb::internal::hyperdags::DHypergraph &hypergraph =
 		hyperdag.get();
-	std::ostream &ostream = std::cout;
+
+	// Try to get the env variable HYPERDAGS_OUTPUTH_PATH
+	// If it exists, use it as the output path
+	// Otherwise, use stdout
+	const char *outputPath = std::getenv( "HYPERDAGS_OUTPUT_PATH" );
+	std::ofstream fileStream;
+	if( outputPath != nullptr ) {
+		fileStream.open( outputPath );
+	}
+	std::ostream &ostream = ( outputPath != nullptr ) ? fileStream : std::cout;
+
 	ostream << "%%MatrixMarket weighted-matrix coordinate pattern general\n";
 	// print source vertex types as comments
 	{
