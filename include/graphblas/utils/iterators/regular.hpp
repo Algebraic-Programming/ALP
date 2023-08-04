@@ -26,7 +26,9 @@
 #ifndef _H_GRB_ITERATOR_REGULAR
 #define _H_GRB_ITERATOR_REGULAR
 
+#include <utility>
 #include <iterator>
+#include <functional>
 
 #include <assert.h>
 
@@ -60,7 +62,7 @@ namespace grb {
 			 */
 			template<
 				typename R,
-				typename T, std::function< void(R&,const T&,size_t) > func,
+				typename T,
 				typename SelfType
 			>
 			class PosBasedIterator {
@@ -102,7 +104,7 @@ namespace grb {
 					
 					// STL-like typedefs
 
-					typedef SelfType self_type;
+					typedef PosBasedIterator< R, T, SelfType > self_type;
 
 					typedef self_type & self_reference_type;
 
@@ -132,7 +134,7 @@ namespace grb {
 						if( start ) {
 							_pos = 0;
 							if( count > 0 ) {
-								func( _val, state, 0 );
+								SelfType::func( _val, state, 0 );
 							}
 						} else {
 							_pos = count;
@@ -160,7 +162,7 @@ namespace grb {
 					self_reference_type operator++() noexcept {
 						assert( _pos < _count );
 						(void) ++_pos;
-						func( _val, _state, _pos );
+						SelfType::func( _val, _state, _pos );
 						return *this;
 					}
 
@@ -173,10 +175,6 @@ namespace grb {
 
 					// input iterator interface
 
-					value_type operator*() const noexcept {
-						return _val;
-					}
-
 					pointer_type operator->() const noexcept {
 						return &_val;
 					}
@@ -185,7 +183,7 @@ namespace grb {
 						assert( _pos < _count );
 						self_type ret( _pos, _count, _val, _state );
 						(void) _pos++;
-						func( _val, _state, _pos );
+						SelfType::func( _val, _state, _pos );
 						return ret;
 					}
 
@@ -193,7 +191,6 @@ namespace grb {
 						self_reference_type left, self_reference_type right
 					) noexcept {
 						assert( left._count == right._count );
-						assert( left._val == right._val );
 						assert( left._state == right._state );
 						return left._pos == right._pos;
 					}
@@ -202,7 +199,6 @@ namespace grb {
 						self_reference_type left, self_reference_type right
 					) noexcept {
 						assert( left._count == right._count );
-						assert( left._val == right._val );
 						assert( left._state == right._state );
 						return left._pos != right._pos;
 					}
@@ -212,7 +208,7 @@ namespace grb {
 					self_reference_type operator--() noexcept {
 						assert( _pos > 0 );
 						(void) --_pos;
-						func( _val, _state, _pos );
+						SelfType::func( _val, _state, _pos );
 						return *this;
 					}
 
@@ -220,7 +216,7 @@ namespace grb {
 						assert( _pos > 0 );
 						self_type ret( _pos, _count, _val, _pos );
 						(void) _pos--;
-						func( _val, _state, _pos );
+						SelfType::func( _val, _state, _pos );
 						return ret;
 					}
 
@@ -234,7 +230,7 @@ namespace grb {
 					value_type operator[]( const size_t i ) const noexcept {
 						assert( i < PosBasedIterator::_count );
 						R ret = _val;
-						func( ret, _state, i );
+						SelfType::func( ret, _state, i );
 						return ret;
 					}
 	
@@ -243,7 +239,6 @@ namespace grb {
 						const self_reference_type right
 					) {
 						assert( left._count == right._count );
-						assert( left._val == right._val );
 						assert( left._state == right._state );
 						return left._pos < right._pos;
 					}
@@ -253,7 +248,6 @@ namespace grb {
 						const self_reference_type right
 					) {
 						assert( left._count == right._count );
-						assert( left._val == right._val );
 						assert( left._state == right._state );
 						return left._pos > right._pos;
 					}
@@ -263,7 +257,6 @@ namespace grb {
 						const self_reference_type right
 					) {
 						assert( left._count == right._count );
-						assert( left._val == right._val );
 						assert( left._state == right._state );
 						return left._pos <= right._pos;
 					}
@@ -273,7 +266,6 @@ namespace grb {
 						const self_reference_type right
 					) {
 						assert( left._count == right._count );
-						assert( left._val == right._val );
 						assert( left._state == right._state );
 						return left._pos >= right._pos;
 					}
@@ -281,7 +273,7 @@ namespace grb {
 					self_reference_type operator+=( const size_t count ) noexcept {
 						assert( _pos + count < _count );
 						_pos += count;
-						func( _val, _state, _pos );
+						SelfType::func( _val, _state, _pos );
 						return *this;
 					}
 
@@ -292,7 +284,7 @@ namespace grb {
 						assert( iterator._pos + count < iterator._count );
 						const size_t pos = iterator._pos + count;
 						R val = iterator._val;
-						func( val, iterator._state, pos );
+						SelfType::func( val, iterator._state, pos );
 						return self_type(
 							pos, iterator._count,
 							val, iterator._state
@@ -306,7 +298,7 @@ namespace grb {
 						assert( iterator._pos + count < iterator._count );
 						const size_t pos = iterator._pos + count;
 						R val = iterator._val;
-						func( val, iterator._state, pos );
+						SelfType::func( val, iterator._state, pos );
 						return self_type(
 							pos, iterator._count,
 							val, iterator._state
@@ -326,7 +318,7 @@ namespace grb {
 						assert( iterator._pos >= count );
 						const size_t pos = iterator._pos - count;
 						R val = iterator._val;
-						func( val, iterator._state, pos );
+						SelfType::func( val, iterator._state, pos );
 						return self_type(
 							pos, iterator._count,
 							val, iterator._state
@@ -340,7 +332,7 @@ namespace grb {
 						assert( iterator._pos >= count );
 						const size_t pos = iterator._pos - count;
 						R val = iterator._val;
-						func( val, iterator._state, pos );
+						SelfType::func( val, iterator._state, pos );
 						return self_type(
 							pos, iterator._count,
 							val, iterator._state
@@ -357,13 +349,15 @@ namespace grb {
 			 * An iterator that repeats the same value for a set number of times.
 			 */
 			template< typename T >
-			class Repeater : public PosBasedIterator<
+			class Repeater : public grb::utils::internal::PosBasedIterator<
 				T, T,
-				[](T &, const T &, const size_t) { return; },
 				Repeater< T >
 			> {
 
 				protected:
+
+					typedef grb::utils::internal::PosBasedIterator< T, T, Repeater< T > >
+						BaseType;
 
 					// direct constructor
 
@@ -372,11 +366,13 @@ namespace grb {
 						const size_t pos,
 						const T val
 					) :
-						PosBasedIterator( count, pos, val, val )
+						BaseType::PosBasedIterator( count, pos, val, val )
 					{}
 
 
 				public:
+
+					inline static void func( T&, const T&, const size_t ) {}
 
 					// constructor
 
@@ -395,7 +391,7 @@ namespace grb {
 						const bool start,
 						const T val
 					) :
-						PosBasedIterator( count, start, val, val )
+						BaseType::PosBasedIterator( count, start, val, val )
 					{}
 
 					// destructor
@@ -415,15 +411,18 @@ namespace grb {
 			 * referring to #grb::utils::containers::Range instead.
 			 */
 			template< typename T >
-			class Sequence : public PosBasedIterator<
+			class Sequence : public grb::utils::internal::PosBasedIterator<
 				T, std::pair< size_t, size_t >,
-				[]( T &val, const std::pair< size_t, size_t > &state, const size_t pos ) {
-					val = state.first + pos * state.second;
-				},
 				Sequence< T >
 			> {
 
 				protected:
+
+					typedef grb::utils::internal::PosBasedIterator<
+						T,
+						std::pair< size_t, size_t >,
+						Sequence< T >
+					> BaseType;
 
 					// direct constructor
 
@@ -433,11 +432,19 @@ namespace grb {
 						const T val,
 						const std::pair< size_t, size_t > state
 					) :
-						PosBasedIterator( count, pos, val, state )
+						BaseType::PosBasedIterator( count, pos, val, state )
 					{}
 
 
 				public:
+
+					inline static void func(
+						T &val,
+						const std::pair< size_t, size_t > &state,
+						const size_t pos
+					) {
+						val = state.first + pos * state.second;
+					}
 
 					// constructor
 
@@ -459,10 +466,10 @@ namespace grb {
 						const size_t stride = 1,
 						T dummy = T()
 					) :
-						PosBasedIterator(
+						BaseType::PosBasedIterator(
 							count,
 							start,
-							std::make_pair< size_t, size_t >( offset, stride ),
+							std::pair< size_t, size_t >( offset, stride ),
 							dummy
 						)
 					{}
@@ -492,9 +499,9 @@ namespace grb {
 
 				private:
 
-					const T val;
+					const T _val;
 
-					const size_t n;
+					const size_t _n;
 
 
 				public:
@@ -514,19 +521,19 @@ namespace grb {
 					ConstantVector( const T val, const size_t n ) : _val( val ), _n( n ) {}
 
 					iterator begin() const noexcept {
-						return iterator( val, n, true );
+						return iterator( _n, true, _val );
 					}
 
 					iterator end() const noexcept {
-						return iterator( val, n, false );
+						return iterator( _n, false, _val );
 					}
 
-					const_iterator begin() const noexcept {
-						return const_iterator( val, n, true );
+					const_iterator cbegin() const noexcept {
+						return const_iterator( _n, true, _val );
 					}
 
-					const_iterator end() const noexcept {
-						return const_iterator( val, n, false );
+					const_iterator cend() const noexcept {
+						return const_iterator( _n, false, _val );
 					}
 
 			};
@@ -582,33 +589,31 @@ namespace grb {
 						const size_t stride,
 						const size_t end
 					) noexcept :
-						_start( start ), _stride( stride ), _count( 0 )
+						_start( start ), _stride( stride ), _count(
+							start == end ? 0 : (
+								(end-start) % stride > 0
+									? ((end-start) / stride + 1)
+									: (end-start) / stride
+							)
+						)
 					{
-						assert( start >= end );
-
-						// catch trivial case for count
-						if( start == end ) { return; }
-
-						// compute count
-						_count = (end-start) % stride > 0
-							? ((end-start) / stride + 1)
-							: (end - start) / stride;
+						assert( start <= end );
 					}
 
 					iterator begin() const noexcept {
-						return iterator( count, true, offset, stride );
+						return iterator( _count, true, _start, _stride );
 					}
 
 					iterator end() const noexcept {
-						return iterator( count, false, offset, stride );
+						return iterator( _count, false, _start, _stride );
 					}
 
-					const_iterator begin() const noexcept {
-						return const_iterator( count, true, offset, stride );
+					const_iterator cbegin() const noexcept {
+						return const_iterator( _count, true, _start, _stride );
 					}
 
-					const_iterator end() const noexcept {
-						return const_iterator( count, false, offset, stride );
+					const_iterator cend() const noexcept {
+						return const_iterator( _count, false, _start, _stride );
 					}
 
 			};
