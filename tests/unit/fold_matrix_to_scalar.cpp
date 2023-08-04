@@ -49,62 +49,6 @@ constexpr bool SKIP_MASKED = false;
 constexpr bool PRINT_TIMERS = false;
 constexpr size_t ITERATIONS = 1;
 
-
-template< class Iterator >
-void printSparseMatrixIterator(
-	size_t rows,
-	size_t cols,
-	Iterator begin,
-	Iterator end,
-	const std::string &name,
-	std::ostream &os
-) {
-#ifndef _DEBUG
-	return;
-#endif
-	std::cout << "Matrix \"" << name << "\" (" << rows << "x" << cols << "):"
-				<< std::endl << "[" << std::endl;
-	if( rows > 50 || cols > 50 ) {
-		os << "   Matrix too large to print" << std::endl;
-	} else {
-		for( size_t y = 0; y < rows; y++ ) {
-			os << std::string( 3, ' ' );
-			for( size_t x = 0; x < cols; x++ ) {
-				auto nnz_val = std::find_if(
-					begin,
-					end,
-					[ y, x ]( const typename std::iterator_traits< Iterator >::value_type &a )
-					{
-						return a.first.first == y && a.first.second == x;
-					}
-				);
-				if( nnz_val != end ) {
-					os << std::fixed << ( *nnz_val ).second;
-				} else {
-					os << '_';
-				}
-				os << " ";
-			}
-			os << std::endl;
-		}
-	}
-	os << "]" << std::endl;
-	std::flush( os );
-}
-
-template< typename D >
-void printSparseMatrix(
-	const Matrix< D > &mat,
-	const std::string &name = "",
-	std::ostream &os = std::cout
-) {
-	wait( mat );
-	printSparseMatrixIterator(
-		nrows( mat ), ncols( mat ), mat.cbegin(), mat.cend(), name, os
-	);
-}
-
-
 template<
 	Descriptor descr = descriptors::no_operation,
 	typename T, typename V, typename M, class Monoid
@@ -122,9 +66,7 @@ RC foldl_test(
 	RC expected_unmasked_rc = SUCCESS,
 	RC expected_masked_rc = SUCCESS
 ) {
-	if( SKIP_FOLDL ) {
-		return SUCCESS;
-	}
+	if( SKIP_FOLDL ) { return SUCCESS; }
 	RC rc = SUCCESS;
 
 	 // Unmasked variant test
@@ -142,7 +84,7 @@ RC foldl_test(
 			) / ITERATIONS;
 		if( PRINT_TIMERS ) {
 			std::cout << "foldl (unmasked) \"" << test_label
-						<< "\" took " << duration.count() << " ns" << std::endl;
+				<< "\" took " << duration.count() << " ns" << std::endl;
 		}
 
 		std::cout << "foldl (unmasked) \"" << test_label << "\": ";
@@ -154,12 +96,12 @@ RC foldl_test(
 			rc = rc ? rc : SUCCESS;
 		} else {
 			std::cerr << "Failed" << std::endl
-					  << test_description << std::endl
-					  << std::string( 3, ' ' ) << "Initial value: " << initial << std::endl
-					  << std::string( 3, ' ' ) << "Expected value: " << expected << std::endl
-					  << std::string( 3, ' ' ) << "Actual value: " << value << std::endl
-					  << std::string( 3, ' ' ) << "Expected rc: " << expected_unmasked_rc << std::endl
-					  << std::string( 3, ' ' ) << "Actual rc: " << local_rc << std::endl;
+				<< test_description << std::endl
+				<< std::string( 3, ' ' ) << "Initial value: " << initial << std::endl
+				<< std::string( 3, ' ' ) << "Expected value: " << expected << std::endl
+				<< std::string( 3, ' ' ) << "Actual value: " << value << std::endl
+				<< std::string( 3, ' ' ) << "Expected rc: " << expected_unmasked_rc << std::endl
+				<< std::string( 3, ' ' ) << "Actual rc: " << local_rc << std::endl;
 			rc = rc ? rc : FAILED;
 		}
 	}
@@ -179,7 +121,7 @@ RC foldl_test(
 			) / ITERATIONS;
 		if( PRINT_TIMERS ) {
 			std::cout << "foldl (masked) \"" << test_label
-						<< "\" took " << duration.count() << " ns" << std::endl;
+				<< "\" took " << duration.count() << " ns" << std::endl;
 		}
 
 		std::cout << "foldl (masked) \"" << test_label << "\": ";
@@ -191,12 +133,12 @@ RC foldl_test(
 			rc = rc ? rc : SUCCESS;
 		} else {
 			std::cerr << "Failed" << std::endl
-					  << test_description << std::endl
-					  << std::string( 3, ' ' ) << "Initial value: " << initial << std::endl
-					  << std::string( 3, ' ' ) << "Expected value: " << expected << std::endl
-					  << std::string( 3, ' ' ) << "Actual value: " << value << std::endl
-					  << std::string( 3, ' ' ) << "Expected rc: " << expected_masked_rc << std::endl
-					  << std::string( 3, ' ' ) << "Actual rc: " << local_rc << std::endl;
+				<< test_description << std::endl
+				<< std::string( 3, ' ' ) << "Initial value: " << initial << std::endl
+				<< std::string( 3, ' ' ) << "Expected value: " << expected << std::endl
+				<< std::string( 3, ' ' ) << "Actual value: " << value << std::endl
+				<< std::string( 3, ' ' ) << "Expected rc: " << expected_masked_rc << std::endl
+				<< std::string( 3, ' ' ) << "Actual rc: " << local_rc << std::endl;
 			rc = rc ? rc : FAILED;
 		}
 	}
@@ -222,8 +164,7 @@ RC foldr_test(
 	RC expected_unmasked_rc = SUCCESS,
 	RC expected_masked_rc = SUCCESS
 ) {
-	if( SKIP_FOLDR )
-		return SUCCESS;
+	if( SKIP_FOLDR ){ return SUCCESS; }
 	RC rc = SUCCESS;
 
 	// Unmasked variant test
@@ -241,7 +182,7 @@ RC foldr_test(
 			) / ITERATIONS;
 		if( PRINT_TIMERS ) {
 			std::cout << "foldr (unmasked) \"" << test_label
-						<< "\" took " << duration.count() << " ns" << std::endl;
+				<< "\" took " << duration.count() << " ns" << std::endl;
 		}
 
 		std::cout << "foldr (unmasked) \"" << test_label << "\": ";
@@ -253,12 +194,12 @@ RC foldr_test(
 			rc = rc ? rc : SUCCESS;
 		} else {
 			std::cerr << "Failed" << std::endl
-					  << test_description << std::endl
-					  << std::string( 3, ' ' ) << "Initial value: " << initial << std::endl
-					  << std::string( 3, ' ' ) << "Expected value: " << expected << std::endl
-					  << std::string( 3, ' ' ) << "Actual value: " << value << std::endl
-					  << std::string( 3, ' ' ) << "Expected rc: " << expected_unmasked_rc << std::endl
-					  << std::string( 3, ' ' ) << "Actual rc: " << local_rc << std::endl;
+				<< test_description << std::endl
+				<< std::string( 3, ' ' ) << "Initial value: " << initial << std::endl
+				<< std::string( 3, ' ' ) << "Expected value: " << expected << std::endl
+				<< std::string( 3, ' ' ) << "Actual value: " << value << std::endl
+				<< std::string( 3, ' ' ) << "Expected rc: " << expected_unmasked_rc << std::endl
+				<< std::string( 3, ' ' ) << "Actual rc: " << local_rc << std::endl;
 			rc = rc ? rc : FAILED;
 		}
 	}
@@ -278,7 +219,7 @@ RC foldr_test(
 			) / ITERATIONS;
 		if( PRINT_TIMERS ) {
 			std::cout << "foldr (masked) \"" << test_label
-						<< "\" took " << duration.count() << " ns" << std::endl;
+				<< "\" took " << duration.count() << " ns" << std::endl;
 		}
 
 		std::cout << "foldr (masked) \"" << test_label << "\": ";
@@ -290,12 +231,12 @@ RC foldr_test(
 			rc = rc ? rc : SUCCESS;
 		} else {
 			std::cerr << "Failed" << std::endl
-					  << test_description << std::endl
-					  << std::string( 3, ' ' ) << "Initial value: " << initial << std::endl
-					  << std::string( 3, ' ' ) << "Expected value: " << expected << std::endl
-					  << std::string( 3, ' ' ) << "Actual value: " << value << std::endl
-					  << std::string( 3, ' ' ) << "Expected rc: " << expected_masked_rc << std::endl
-					  << std::string( 3, ' ' ) << "Actual rc: " << local_rc << std::endl;
+				<< test_description << std::endl
+				<< std::string( 3, ' ' ) << "Initial value: " << initial << std::endl
+				<< std::string( 3, ' ' ) << "Expected value: " << expected << std::endl
+				<< std::string( 3, ' ' ) << "Actual value: " << value << std::endl
+				<< std::string( 3, ' ' ) << "Expected rc: " << expected_masked_rc << std::endl
+				<< std::string( 3, ' ' ) << "Actual rc: " << local_rc << std::endl;
 			rc = rc ? rc : FAILED;
 		}
 	}
@@ -868,7 +809,7 @@ int main( int argc, char ** argv ) {
 		) {
 			std::cerr << "Failed to build identity matrix" << std::endl;
 			rc = FAILED;
-			return 1;
+			return 2;
 		}
 		Matrix< void > mask( n, n );
 		if( SUCCESS  !=
@@ -876,14 +817,14 @@ int main( int argc, char ** argv ) {
 		) {
 			std::cerr << "Failed to build identity mask" << std::endl;
 			rc = FAILED;
-			return 2;
+			return 3;
 		}
 		std::cout << "-- Running test 01: Identity square matrix of size n = "
-					<< n << std::endl;
+			<< n << std::endl;
 		input< NzType, void > input(I, mask);
 		if( launcher.exec( &grb_program, input, rc, true ) != SUCCESS ) {
 			std::cerr << "Launching test 01 FAILED\n";
-			return 3;
+			return 4;
 		}
 		std::cout << std::endl << std::flush;
 	}
@@ -898,7 +839,7 @@ int main( int argc, char ** argv ) {
 		) {
 			std::cerr << "Failed to build matrix with n 1s on the first row" << std::endl;
 			rc = FAILED;
-			return 4;
+			return 5;
 		}
 		Matrix< void > mask( n, n );
 		if( SUCCESS !=
@@ -906,14 +847,14 @@ int main( int argc, char ** argv ) {
 		) {
 			std::cerr << "Failed to build mask with n 1s on the first row" << std::endl;
 			rc = FAILED;
-			return 5;
+			return 6;
 		}
 		std::cout << "-- Running test 02: Square matrix of size n = "
-					<< n << ", with n 1s on the first row" << std::endl;
+			<< n << ", with n 1s on the first row" << std::endl;
 		input< NzType, void > input(I, mask);
 		if( launcher.exec( &grb_program, input, rc, true ) != SUCCESS ) {
 			std::cerr << "Launching test 02 FAILED\n";
-			return 255;
+			return 7;
 		}
 		std::cout << std::endl << std::flush;
 	}
@@ -928,7 +869,7 @@ int main( int argc, char ** argv ) {
 		) {
 			std::cerr << "Failed to build matrix with n 1s on the first column" << std::endl;
 			rc = FAILED;
-			return 6;
+			return 8;
 		}
 		Matrix< void > mask( n, n );
 		if( SUCCESS !=
@@ -936,14 +877,14 @@ int main( int argc, char ** argv ) {
 		) {
 			std::cerr << "Failed to build mask with n 1s on the first column" << std::endl;
 			rc = FAILED;
-			return 7;
+			return 9;
 		}
 		std::cout << "-- Running test 03: Square matrix of size n = "
-					<< n << ", with n 1s on the first column" << std::endl;
+			<< n << ", with n 1s on the first column" << std::endl;
 		input< NzType, void > input(I, mask);
 		if( launcher.exec( &grb_program, input, rc, true ) != SUCCESS ) {
 			std::cerr << "Launching test 03 FAILED\n";
-			return 255;
+			return 10;
 		}
 		std::cout << std::endl << std::flush;
 	}
@@ -959,7 +900,7 @@ int main( int argc, char ** argv ) {
 		) {
 			std::cerr << "Failed to build matrix with n 1s on the first row and column" << std::endl;
 			rc = FAILED;
-			return 8;
+			return 11;
 		}
 		Matrix< void > mask( n, n );
 		if( SUCCESS !=
@@ -967,14 +908,14 @@ int main( int argc, char ** argv ) {
 		) {
 			std::cerr << "Failed to build mask with n 1s on the first row and column" << std::endl;
 			rc = FAILED;
-			return 9;
+			return 12;
 		}
 		std::cout << "-- Running test 04: Square matrix of size n = "
-					<< n << ", with n 1s on the first row and column" << std::endl;
+			<< n << ", with n 1s on the first row and column" << std::endl;
 		input< NzType, void > input(I, mask);
 		if( launcher.exec( &grb_program, input, rc, true ) != SUCCESS ) {
 			std::cerr << "Launching test 04 FAILED\n";
-			return 255;
+			return 13;
 		}
 		std::cout << std::endl << std::flush;
 	}
@@ -989,7 +930,7 @@ int main( int argc, char ** argv ) {
 		) {
 			std::cerr << "Failed to build matrix with n 1s on the first row" << std::endl;
 			rc = FAILED;
-			return 10;
+			return 14;
 		}
 		Matrix< void > mask( 1, n );
 		if( SUCCESS !=
@@ -1000,11 +941,11 @@ int main( int argc, char ** argv ) {
 			return 11;
 		}
 		std::cout << "-- Running test 05: [1-row, n = "
-					<< n << " columns] matrix, filled with 1s" << std::endl;
+			<< n << " columns] matrix, filled with 1s" << std::endl;
 		input< NzType, void > input(I, mask);
 		if( launcher.exec( &grb_program, input, rc, true ) != SUCCESS ) {
 			std::cerr << "Launching test 04 FAILED\n";
-			return 255;
+			return 15;
 		}
 		std::cout << std::endl << std::flush;
 	}
@@ -1019,7 +960,7 @@ int main( int argc, char ** argv ) {
 		) {
 			std::cerr << "Failed to build matrix with n 1s on the first column" << std::endl;
 			rc = FAILED;
-			return 12;
+			return 16;
 		}
 		Matrix< void > mask( n, 1 );
 		if( SUCCESS !=
@@ -1027,23 +968,24 @@ int main( int argc, char ** argv ) {
 		) {
 			std::cerr << "Failed to build mask with n 1s on the first column" << std::endl;
 			rc = FAILED;
-			return 13;
+			return 17;
 		}
 		std::cout << "-- Running test 06: [n = "
 					<< n << " rows, 1 column] matrix, filled with 1s" << std::endl;
 		input< NzType, void > input(I, mask);
 		if( launcher.exec( &grb_program, input, rc, true ) != SUCCESS ) {
 			std::cerr << "Launching test 06 FAILED\n";
-			return 255;
+			return 18;
 		}
 		std::cout << std::endl << std::flush;
 	}
 
+	std::cerr << std::flush;
 	if( rc != SUCCESS ) {
-		std::cout << "Test FAILED (" << toString( rc ) << ")" << std::endl;
-		return rc;
+		std::cout << std::flush << "Test FAILED (rc = " << toString( rc ) << ")" << std::endl;
+		return 19;
 	} else {
-		std::cout << "Test OK" << std::endl;
+		std::cout << std::flush << "Test OK" << std::endl;
 		return 0;
 	}
 }
