@@ -78,6 +78,7 @@ namespace grb {
 		 *        is not zero.
 		 *
 		 * @tparam D              The type of a non-zero element.
+		 * @tparam descr          The descriptor used to build the matrix.
 		 * @tparam RIT            The type used for row indices.
 		 * @tparam CIT            The type used for column indices.
 		 * @tparam NIT            The type used for non-zero indices.
@@ -91,9 +92,17 @@ namespace grb {
 		 *                        A positive value indicates an offset above the main
 		 *                        diagonal, and a negative value below the main diagonal.
 		 * @return Matrix< D, implementation, RIT, CIT, NIT >
+		 *
+		 * \parblock
+		 * \par Descriptors
+		 * The following descriptors are supported:
+		 * - descriptors::no_operation
+		 * - descriptors::transpose_matrix
+		 * \endparblock
 		 */
 		template<
 			typename D,
+			Descriptor descr = descriptors::no_operation,
 			typename RIT = config::RowIndexType,
 			typename CIT = config::ColIndexType,
 			typename NIT = config::NonzeroIndexType,
@@ -113,12 +122,21 @@ namespace grb {
 				: std::min( std::min( nrows, ncols ), std::min( ncols - k_abs, nrows - k_abs ) );
 
 			Matrix< D, implementation, RIT, CIT, NIT > matrix( nrows, ncols, diag_length );
+			std::unique_ptr< RIT[] > I_ptr( new RIT[ diag_length ] );
+			std::unique_ptr< CIT[] > J_ptr( new CIT[ diag_length ] );
+			std::unique_ptr< D[] > V_ptr( new D[ diag_length ] );
+			RIT* I = I_ptr.get();
+			CIT* J = J_ptr.get();
+			D* V = V_ptr.get();
 			const RIT k_i_incr = static_cast< RIT >( ( k < 0L ) ? k_abs : 0UL );
 			const CIT k_j_incr = static_cast< CIT >( ( k < 0L ) ? 0UL : k_abs );
 			for( size_t i = 0L; i < diag_length; ++i ) {
 				I[ i ] = i + k_i_incr;
 				J[ i ] = i + k_j_incr;
 				V[ i ] = identity_value;
+			}
+			if( descr & descriptors::transpose_matrix ) {
+				std::swap( I, J );
 			}
 			RC rc = buildMatrixUnique( matrix, I, J, V, diag_length, io_mode );
 			assert( rc == SUCCESS );
@@ -135,7 +153,10 @@ namespace grb {
 		 *        min( \a nrows, \a ncols ) non-zero elements, or less if \a k
 		 *        is not zero.
 		 *
+		 * @note This method is specialised for pattern matrices (void non-zero type).
+		 *
 		 * @tparam D              The type of a non-zero element (void).
+		 * @tparam descr          The descriptor used to build the matrix.
 		 * @tparam RIT            The type used for row indices.
 		 * @tparam CIT            The type used for column indices.
 		 * @tparam NIT            The type used for non-zero indices.
@@ -148,9 +169,17 @@ namespace grb {
 		 *                        A positive value indicates an offset above the main
 		 *                        diagonal, and a negative value below the main diagonal.
 		 * @return Matrix< D, implementation, RIT, CIT, NIT >
+		 *
+		 * \parblock
+		 * \par Descriptors
+		 * The following descriptors are supported:
+		 * - descriptors::no_operation
+		 * - descriptors::transpose_matrix
+		 * \endparblock
 		 */
 		template<
 			typename D,
+			Descriptor descr = descriptors::no_operation,
 			typename RIT = config::RowIndexType,
 			typename CIT = config::ColIndexType,
 			typename NIT = config::NonzeroIndexType,
@@ -169,11 +198,18 @@ namespace grb {
 				: std::min( std::min( nrows, ncols ), std::min( ncols - k_abs, nrows - k_abs ) );
 
 			Matrix< void, implementation, RIT, CIT, NIT > matrix( nrows, ncols, diag_length );
+			std::unique_ptr< RIT[] > I_ptr( new RIT[ diag_length ] );
+			std::unique_ptr< CIT[] > J_ptr( new CIT[ diag_length ] );
+			RIT* I = I_ptr.get();
+			CIT* J = J_ptr.get();
 			const RIT k_i_incr = static_cast< RIT >( ( k < 0L ) ? k_abs : 0UL );
 			const CIT k_j_incr = static_cast< CIT >( ( k < 0L ) ? 0UL : k_abs );
 			for( size_t i = 0L; i < diag_length; ++i ) {
 				I[ i ] = i + k_i_incr;
 				J[ i ] = i + k_j_incr;
+			}
+			if( descr & descriptors::transpose_matrix ) {
+				std::swap( I, J );
 			}
 			RC rc = buildMatrixUnique( matrix, I, J, diag_length, io_mode );
 			assert( rc == SUCCESS );
@@ -188,9 +224,11 @@ namespace grb {
 		/**
 		 * @brief Build an identity matrix. Output matrix will contain
 		 *        \a n non-zero elements.
-		 * @note Alias for factory::eye( n, n, io_mode, identity_value ).
+		 *
+		 * @note Alias for factory::eye< ... >( n, n, io_mode, identity_value ).
 		 *
 		 * @tparam D              The type of a non-zero element.
+		 * @tparam descr          The descriptor used to build the matrix.
 		 * @tparam RIT            The type used for row indices.
 		 * @tparam CIT            The type used for column indices.
 		 * @tparam NIT            The type used for non-zero indices.
@@ -200,9 +238,17 @@ namespace grb {
 		 * @param io_mode         The I/O mode used to build the matrix.
 		 * @param identity_value  The value of each non-zero element (default = 1)
 		 * @return Matrix< D, implementation, RIT, CIT, NIT >
+		 *
+		 * \parblock
+		 * \par Descriptors
+		 * The following descriptors are supported:
+		 * - descriptors::no_operation
+		 * - descriptors::transpose_matrix
+		 * \endparblock
 		 */
 		template<
 			typename D,
+			Descriptor descr = descriptors::no_operation,
 			typename RIT = config::RowIndexType,
 			typename CIT = config::ColIndexType,
 			typename NIT = config::NonzeroIndexType,
@@ -213,14 +259,17 @@ namespace grb {
 			const size_t n,
 			IOMode io_mode,
 			const D identity_value = static_cast< D >(1)
-		) { return eye< D >( n, n, io_mode, identity_value ); }
+		) { return eye< D, descr, RIT, CIT, NIT, implementation >( n, n, io_mode, identity_value ); }
 
 		/**
 		 * @brief Build an identity pattern matrix. Output matrix will contain
 		 *        \a n non-zero elements.
-		 * @note Alias for factory::eye< void >( n, n, io_mode ).
+		 *
+		 * @note Alias for factory::eye< void, ... >( n, n, io_mode ).
+		 * @note This method is specialised for pattern matrices (void non-zero type).
 		 *
 		 * @tparam D              The type of a non-zero element (void).
+		 * @tparam descr          The descriptor used to build the matrix.
 		 * @tparam RIT            The type used for row indices.
 		 * @tparam CIT            The type used for column indices.
 		 * @tparam NIT            The type used for non-zero indices.
@@ -230,9 +279,17 @@ namespace grb {
 		 * @param io_mode         The I/O mode used to build the matrix.
 		 * @param identity_value  The value of each non-zero element (default = 1)
 		 * @return Matrix< D, implementation, RIT, CIT, NIT >
+		 *
+		 * \parblock
+		 * \par Descriptors
+		 * The following descriptors are supported:
+		 * - descriptors::no_operation
+		 * - descriptors::transpose_matrix
+		 * \endparblock
 		 */
 		template<
 			typename D,
+			Descriptor descr = descriptors::no_operation,
 			typename RIT = config::RowIndexType,
 			typename CIT = config::ColIndexType,
 			typename NIT = config::NonzeroIndexType,
@@ -242,7 +299,7 @@ namespace grb {
 		Matrix< void, implementation, RIT, CIT, NIT > identity(
 			const size_t n,
 			IOMode io_mode
-		) { return eye< void >( n, n, io_mode ); }
+		) { return eye< void, descr, RIT, CIT, NIT, implementation >( n, n, io_mode ); }
 
 		/**
 		 * @brief Build a dense matrix filled with a given value.
@@ -288,6 +345,8 @@ namespace grb {
 		 * @brief Build a dense pattern matrix.
 		 *        Output matrix will contain nrows * ncols non-zero elements.
 		 *
+		 * @note This method is specialised for pattern matrices (void non-zero type).
+		 *
 		 * @tparam D              The type of a non-zero element (void).
 		 * @tparam RIT            The type used for row indices.
 		 * @tparam CIT            The type used for column indices.
@@ -316,7 +375,7 @@ namespace grb {
 
 		/**
 		 * @brief Build a dense matrix filled with a given value.
-		 * @note Alias for factory::full( value, nrows, ncols, io_mode ).
+		 * @note Alias for factory::full< ... >( value, nrows, ncols, io_mode ).
 		 *
 		 * @tparam D              The type of a non-zero element.
 		 * @tparam RIT            The type used for row indices.
@@ -340,11 +399,13 @@ namespace grb {
 		>
 		Matrix< D, implementation, RIT, CIT, NIT > dense(
 			const D value, const size_t nrows, const size_t ncols, IOMode io_mode
-		) { return full< D >( value, nrows, ncols, io_mode ); }
+		) { return full< D, RIT, CIT, NIT, implementation >( value, nrows, ncols, io_mode ); }
 
 		/**
 		 * @brief Build a dense pattern matrix.
-		 * @note Alias for factory::full< void >( nrows, ncols, io_mode ).
+		 *
+		 * @note Alias for factory::full< void, ... >( nrows, ncols, io_mode ).
+		 * @note This method is specialised for pattern matrices (void non-zero type).
 		 *
 		 * @tparam D              The type of a non-zero element (void).
 		 * @tparam RIT            The type used for row indices.
@@ -367,7 +428,7 @@ namespace grb {
 		>
 		Matrix< D, implementation, RIT, CIT, NIT > dense(
 			const size_t nrows, const size_t ncols, IOMode io_mode
-		) { return full< void >( nrows, ncols, io_mode ); }
+		) { return full< void, RIT, CIT, NIT, implementation >( nrows, ncols, io_mode ); }
 
 		/**
 		 * @brief Build a matrix filled with ones.
