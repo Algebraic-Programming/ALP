@@ -113,12 +113,11 @@ namespace grb {
 				: std::min( std::min( nrows, ncols ), std::min( ncols - k_abs, nrows - k_abs ) );
 
 			Matrix< D, implementation, RIT, CIT, NIT > matrix( nrows, ncols, diag_length );
-			RIT * I = new RIT[ diag_length ];
-			CIT * J = new CIT[ diag_length ];
-			D   * V = new D  [ diag_length ];
-			for( size_t i = 0; i < diag_length; ++i ) {
-				I[ i ] = i;
-				J[ i ] = i;
+			const RIT k_i_incr = static_cast< RIT >( ( k < 0L ) ? k_abs : 0UL );
+			const CIT k_j_incr = static_cast< CIT >( ( k < 0L ) ? 0UL : k_abs );
+			for( size_t i = 0L; i < diag_length; ++i ) {
+				I[ i ] = i + k_i_incr;
+				J[ i ] = i + k_j_incr;
 				V[ i ] = identity_value;
 			}
 			RC rc = buildMatrixUnique( matrix, I, J, V, diag_length, io_mode );
@@ -170,11 +169,11 @@ namespace grb {
 				: std::min( std::min( nrows, ncols ), std::min( ncols - k_abs, nrows - k_abs ) );
 
 			Matrix< void, implementation, RIT, CIT, NIT > matrix( nrows, ncols, diag_length );
-			RIT * I = new RIT[ diag_length ];
-			CIT * J = new CIT[ diag_length ];
-			for( size_t i = 0; i < diag_length; ++i ) {
-				I[ i ] = i;
-				J[ i ] = i;
+			const RIT k_i_incr = static_cast< RIT >( ( k < 0L ) ? k_abs : 0UL );
+			const CIT k_j_incr = static_cast< CIT >( ( k < 0L ) ? 0UL : k_abs );
+			for( size_t i = 0L; i < diag_length; ++i ) {
+				I[ i ] = i + k_i_incr;
+				J[ i ] = i + k_j_incr;
 			}
 			RC rc = buildMatrixUnique( matrix, I, J, diag_length, io_mode );
 			assert( rc == SUCCESS );
