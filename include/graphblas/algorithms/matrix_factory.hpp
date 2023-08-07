@@ -22,11 +22,12 @@
  * - empty
  * - eye
  * - identity
- * - full / dense
+ * - full
+ * - dense
  * - ones
  * - zeros
- * -
  *
+ * Some of these primitives are also specialised for pattern matrices (void non-zero type).
  *
  * @author Benjamin Lozes
  * @date 7th of August, 2023
@@ -73,7 +74,8 @@ namespace grb {
 
 		/**
 		 * @brief Build an identity matrix. Output matrix will contain
-		 *        min( \a nrows, \a ncols ) non-zero elements.
+		 *        min( \a nrows, \a ncols ) non-zero elements, or less if \a k
+		 *        is not zero.
 		 *
 		 * @tparam D              The type of a non-zero element.
 		 * @tparam RIT            The type used for row indices.
@@ -95,7 +97,8 @@ namespace grb {
 			typename RIT = config::RowIndexType,
 			typename CIT = config::ColIndexType,
 			typename NIT = config::NonzeroIndexType,
-			Backend implementation = config::default_backend
+			Backend implementation = config::default_backend,
+			typename std::enable_if< not std::is_void< D >::value, int >::type = 0
 		>
 		Matrix< D, implementation, RIT, CIT, NIT > eye(
 			const size_t nrows,
@@ -129,9 +132,64 @@ namespace grb {
 		}
 
 		/**
+		 * @brief Build an identity pattern matrix. Output matrix will contain
+		 *        min( \a nrows, \a ncols ) non-zero elements, or less if \a k
+		 *        is not zero.
+		 *
+		 * @tparam D              The type of a non-zero element (void).
+		 * @tparam RIT            The type used for row indices.
+		 * @tparam CIT            The type used for column indices.
+		 * @tparam NIT            The type used for non-zero indices.
+		 * @tparam implementation The backend implementation used to build
+		 *                        the matrix (default: config::default_backend).
+		 * @param nrows           The number of rows of the matrix.
+		 * @param ncols           The number of columns of the matrix.
+		 * @param io_mode         The I/O mode used to build the matrix.
+		 * @param k               The diagonal offset (default = 0).
+		 *                        A positive value indicates an offset above the main
+		 *                        diagonal, and a negative value below the main diagonal.
+		 * @return Matrix< D, implementation, RIT, CIT, NIT >
+		 */
+		template<
+			typename D,
+			typename RIT = config::RowIndexType,
+			typename CIT = config::ColIndexType,
+			typename NIT = config::NonzeroIndexType,
+			Backend implementation = config::default_backend,
+			typename std::enable_if< std::is_void< D >::value, int >::type = 0
+		>
+		Matrix< void, implementation, RIT, CIT, NIT > eye(
+			const size_t nrows,
+			const size_t ncols,
+			IOMode io_mode,
+			const long k = 0L
+		) {
+			const size_t k_abs = static_cast<size_t>( (k < 0L) ? -k : k );
+			const size_t diag_length = ( k_abs >= nrows || k_abs >= ncols )
+				? 0
+				: std::min( std::min( nrows, ncols ), std::min( ncols - k_abs, nrows - k_abs ) );
+
+			Matrix< void, implementation, RIT, CIT, NIT > matrix( nrows, ncols, diag_length );
+			RIT * I = new RIT[ diag_length ];
+			CIT * J = new CIT[ diag_length ];
+			for( size_t i = 0; i < diag_length; ++i ) {
+				I[ i ] = i;
+				J[ i ] = i;
+			}
+			RC rc = buildMatrixUnique( matrix, I, J, diag_length, io_mode );
+			assert( rc == SUCCESS );
+			if( rc != SUCCESS ) {
+				// Todo: Throw an exception or just return an empty matrix?
+				// Nb: We should consider the distributed case if we throw an exception.
+				(void) clear( matrix );
+			}
+			return matrix;
+		}
+
+		/**
 		 * @brief Build an identity matrix. Output matrix will contain
 		 *        \a n non-zero elements.
-		 * @note Alias for factory::eye( n, n, io_mode, identity_value, 0 ).
+		 * @note Alias for factory::eye( n, n, io_mode, identity_value ).
 		 *
 		 * @tparam D              The type of a non-zero element.
 		 * @tparam RIT            The type used for row indices.
@@ -149,13 +207,43 @@ namespace grb {
 			typename RIT = config::RowIndexType,
 			typename CIT = config::ColIndexType,
 			typename NIT = config::NonzeroIndexType,
-			Backend implementation = grb::config::default_backend
+			Backend implementation = grb::config::default_backend,
+			typename std::enable_if< not std::is_void< D >::value, int >::type = 0
 		>
 		Matrix< D, implementation, RIT, CIT, NIT > identity(
 			const size_t n,
 			IOMode io_mode,
 			const D identity_value = static_cast< D >(1)
-		) { return eye( nrows, ncols, io_mode, identity_value ); }
+		) { return eye< D >( n, n, io_mode, identity_value ); }
+
+		/**
+		 * @brief Build an identity pattern matrix. Output matrix will contain
+		 *        \a n non-zero elements.
+		 * @note Alias for factory::eye< void >( n, n, io_mode ).
+		 *
+		 * @tparam D              The type of a non-zero element (void).
+		 * @tparam RIT            The type used for row indices.
+		 * @tparam CIT            The type used for column indices.
+		 * @tparam NIT            The type used for non-zero indices.
+		 * @tparam implementation The backend implementation used to build
+		 *                        the matrix (default: config::default_backend).
+		 * @param n               The number of rows/columns of the matrix.
+		 * @param io_mode         The I/O mode used to build the matrix.
+		 * @param identity_value  The value of each non-zero element (default = 1)
+		 * @return Matrix< D, implementation, RIT, CIT, NIT >
+		 */
+		template<
+			typename D,
+			typename RIT = config::RowIndexType,
+			typename CIT = config::ColIndexType,
+			typename NIT = config::NonzeroIndexType,
+			Backend implementation = grb::config::default_backend,
+			typename std::enable_if< std::is_void< D >::value, int >::type = 0
+		>
+		Matrix< void, implementation, RIT, CIT, NIT > identity(
+			const size_t n,
+			IOMode io_mode
+		) { return eye< void >( n, n, io_mode ); }
 
 		/**
 		 * @brief Build a dense matrix filled with a given value.
@@ -178,7 +266,8 @@ namespace grb {
 			typename RIT = config::RowIndexType,
 			typename CIT = config::ColIndexType,
 			typename NIT = config::NonzeroIndexType,
-			Backend implementation = grb::config::default_backend
+			Backend implementation = grb::config::default_backend,
+			typename std::enable_if< not std::is_void< D >::value, int >::type = 0
 		>
 		Matrix< D, implementation, RIT, CIT, NIT > full(
 			const D value, const size_t nrows, const size_t ncols, IOMode io_mode
@@ -194,6 +283,36 @@ namespace grb {
 				(void) clear( matrix );
 			}
 			return matrix;
+		}
+
+		/**
+		 * @brief Build a dense pattern matrix.
+		 *        Output matrix will contain nrows * ncols non-zero elements.
+		 *
+		 * @tparam D              The type of a non-zero element (void).
+		 * @tparam RIT            The type used for row indices.
+		 * @tparam CIT            The type used for column indices.
+		 * @tparam NIT            The type used for non-zero indices.
+		 * @tparam implementation The backend implementation used to build
+		 *                        the matrix (default: config::default_backend).
+		 * @param nrows            The number of rows of the matrix.
+		 * @param ncols            The number of columns of the matrix.
+		 * @param io_mode         The I/O mode used to build the matrix.
+		 * @return Matrix< D, implementation, RIT, CIT, NIT >
+		 */
+		template<
+			typename D,
+			typename RIT = config::RowIndexType,
+			typename CIT = config::ColIndexType,
+			typename NIT = config::NonzeroIndexType,
+			Backend implementation = grb::config::default_backend,
+			typename std::enable_if< std::is_void< D >::value, int >::type = 0
+		>
+		Matrix< void, implementation, RIT, CIT, NIT > full(
+			const size_t nrows, const size_t ncols, IOMode io_mode
+		) {
+			(void) io_mode;
+			return Matrix< void, implementation, RIT, CIT, NIT >( nrows, ncols, nrows * ncols );
 		}
 
 		/**
@@ -217,11 +336,39 @@ namespace grb {
 			typename RIT = config::RowIndexType,
 			typename CIT = config::ColIndexType,
 			typename NIT = config::NonzeroIndexType,
-			Backend implementation = grb::config::default_backend
+			Backend implementation = grb::config::default_backend,
+			typename std::enable_if< not std::is_void< D >::value, int >::type = 0
 		>
 		Matrix< D, implementation, RIT, CIT, NIT > dense(
 			const D value, const size_t nrows, const size_t ncols, IOMode io_mode
-		) { return full( value, nrows, ncols, io_mode ); }
+		) { return full< D >( value, nrows, ncols, io_mode ); }
+
+		/**
+		 * @brief Build a dense pattern matrix.
+		 * @note Alias for factory::full< void >( nrows, ncols, io_mode ).
+		 *
+		 * @tparam D              The type of a non-zero element (void).
+		 * @tparam RIT            The type used for row indices.
+		 * @tparam CIT            The type used for column indices.
+		 * @tparam NIT            The type used for non-zero indices.
+		 * @tparam implementation The backend implementation used to build
+		 *                        the matrix (default: config::default_backend).
+		 * @param nrows            The number of rows of the matrix.
+		 * @param ncols            The number of columns of the matrix.
+		 * @param io_mode         The I/O mode used to build the matrix.
+		 * @return Matrix< D, implementation, RIT, CIT, NIT >
+		 */
+		template<
+			typename D,
+			typename RIT = config::RowIndexType,
+			typename CIT = config::ColIndexType,
+			typename NIT = config::NonzeroIndexType,
+			Backend implementation = grb::config::default_backend,
+			typename std::enable_if< std::is_void< D >::value, int >::type = 0
+		>
+		Matrix< D, implementation, RIT, CIT, NIT > dense(
+			const size_t nrows, const size_t ncols, IOMode io_mode
+		) { return full< void >( nrows, ncols, io_mode ); }
 
 		/**
 		 * @brief Build a matrix filled with ones.
@@ -248,7 +395,10 @@ namespace grb {
 		>
 		Matrix< D, implementation, RIT, CIT, NIT > ones(
 			const size_t nrows, const size_t ncols, IOMode io_mode
-		) { return full( static_cast< D >(1), nrows, ncols, io_mode ); }
+		) {
+			static_assert( not std::is_void< D >::value, "factory::ones can not be called with a void type" );
+			return full( static_cast< D >(1), nrows, ncols, io_mode );
+		}
 
 		/**
 		 * @brief Build a matrix filled with zeros.
@@ -275,7 +425,10 @@ namespace grb {
 		>
 		Matrix< D, implementation, RIT, CIT, NIT > zeros(
 			const size_t nrows, const size_t ncols, IOMode io_mode
-		) { return full( static_cast< D >(0), nrows, ncols, io_mode ); }
+		) {
+			static_assert( not std::is_void< D >::value, "factory::zeros can not be called with a void type" );
+			return full( static_cast< D >(0), nrows, ncols, io_mode );
+		}
 
 
 	} // namespace factory
