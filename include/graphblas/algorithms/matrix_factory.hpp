@@ -45,6 +45,101 @@ namespace grb {
 
 	namespace factory {
 
+		namespace internal
+		{
+			template<
+				typename D,
+				Descriptor descr,
+				typename RIT,
+				typename CIT,
+				typename NIT,
+				Backend implementation,
+				class IteratorV,
+				typename std::enable_if< not std::is_void< D >::value, int >::type = 0
+			>
+			Matrix< D, implementation, RIT, CIT, NIT > createIdentity_generic(
+				const size_t nrows,
+				const size_t ncols,
+				const long k,
+				IOMode io_mode,
+				IteratorV V
+			) {
+				const size_t k_abs = static_cast<size_t>( (k < 0L) ? -k : k );
+				const size_t diag_length = ( k_abs >= nrows || k_abs >= ncols )
+					? 0
+					: std::min( std::min( nrows, ncols ), std::min( ncols - k_abs, nrows - k_abs ) );
+
+				Matrix< D, implementation, RIT, CIT, NIT > matrix( nrows, ncols, diag_length );
+				std::unique_ptr< RIT[] > I_ptr( new RIT[ diag_length ] );
+				std::unique_ptr< CIT[] > J_ptr( new CIT[ diag_length ] );
+				RIT* I = I_ptr.get();
+				CIT* J = J_ptr.get();
+				const RIT k_i_incr = static_cast< RIT >( ( k < 0L ) ? k_abs : 0UL );
+				const CIT k_j_incr = static_cast< CIT >( ( k < 0L ) ? 0UL : k_abs );
+				for( size_t i = 0; i < diag_length; ++i ) {
+					I[ i ] = i + k_i_incr;
+					J[ i ] = i + k_j_incr;
+				}
+				if( descr & descriptors::transpose_matrix ) {
+					std::swap( I, J );
+				}
+				RC rc = buildMatrixUnique( matrix, I, J, V, diag_length, io_mode );
+				assert( rc == SUCCESS );
+				if( rc != SUCCESS ) {
+					// Todo: Throw an exception or just return an empty matrix?
+					// Nb: We should consider the distributed case if we throw an exception.
+					(void) clear( matrix );
+				}
+				return matrix;
+			}
+
+			template<
+				typename D,
+				Descriptor descr,
+				typename RIT,
+				typename CIT,
+				typename NIT,
+				Backend implementation
+			>
+			Matrix< void, implementation, RIT, CIT, NIT > createIdentity_generic(
+				const size_t nrows,
+				const size_t ncols,
+				const long k,
+				IOMode io_mode,
+				typename std::enable_if< std::is_void< D >::value, int >::type = 0
+			) {
+				const size_t k_abs = static_cast<size_t>( (k < 0L) ? -k : k );
+				const size_t diag_length = ( k_abs >= nrows || k_abs >= ncols )
+					? 0
+					: std::min( std::min( nrows, ncols ), std::min( ncols - k_abs, nrows - k_abs ) );
+
+				Matrix< void, implementation, RIT, CIT, NIT > matrix( nrows, ncols, diag_length );
+				std::unique_ptr< RIT[] > I_ptr( new RIT[ diag_length ] );
+				std::unique_ptr< CIT[] > J_ptr( new CIT[ diag_length ] );
+				RIT* I = I_ptr.get();
+				CIT* J = J_ptr.get();
+				const RIT k_i_incr = static_cast< RIT >( ( k < 0L ) ? k_abs : 0UL );
+				const CIT k_j_incr = static_cast< CIT >( ( k < 0L ) ? 0UL : k_abs );
+				for( size_t i = 0; i < diag_length; ++i ) {
+					I[ i ] = i + k_i_incr;
+					J[ i ] = i + k_j_incr;
+				}
+				if( descr & descriptors::transpose_matrix ) {
+					std::swap( I, J );
+				}
+				RC rc = buildMatrixUnique( matrix, I, J, diag_length, io_mode );
+				assert( rc == SUCCESS );
+				if( rc != SUCCESS ) {
+					// Todo: Throw an exception or just return an empty matrix?
+					// Nb: We should consider the distributed case if we throw an exception.
+					(void) clear( matrix );
+				}
+				return matrix;
+			}
+
+		} // namespace internal
+
+
 		/**
 		 * @brief Build an empty matrix, with no non-zero elements.
 		 *
@@ -116,36 +211,11 @@ namespace grb {
 			const D identity_value = static_cast< D >(1),
 			const long k = 0L
 		) {
-			const size_t k_abs = static_cast<size_t>( (k < 0L) ? -k : k );
-			const size_t diag_length = ( k_abs >= nrows || k_abs >= ncols )
-				? 0
-				: std::min( std::min( nrows, ncols ), std::min( ncols - k_abs, nrows - k_abs ) );
-
-			Matrix< D, implementation, RIT, CIT, NIT > matrix( nrows, ncols, diag_length );
-			std::unique_ptr< RIT[] > I_ptr( new RIT[ diag_length ] );
-			std::unique_ptr< CIT[] > J_ptr( new CIT[ diag_length ] );
-			std::unique_ptr< D[] > V_ptr( new D[ diag_length ] );
-			RIT* I = I_ptr.get();
-			CIT* J = J_ptr.get();
-			D* V = V_ptr.get();
-			const RIT k_i_incr = static_cast< RIT >( ( k < 0L ) ? k_abs : 0UL );
-			const CIT k_j_incr = static_cast< CIT >( ( k < 0L ) ? 0UL : k_abs );
-			for( size_t i = 0L; i < diag_length; ++i ) {
-				I[ i ] = i + k_i_incr;
-				J[ i ] = i + k_j_incr;
-				V[ i ] = identity_value;
-			}
-			if( descr & descriptors::transpose_matrix ) {
-				std::swap( I, J );
-			}
-			RC rc = buildMatrixUnique( matrix, I, J, V, diag_length, io_mode );
-			assert( rc == SUCCESS );
-			if( rc != SUCCESS ) {
-				// Todo: Throw an exception or just return an empty matrix?
-				// Nb: We should consider the distributed case if we throw an exception.
-				(void) clear( matrix );
-			}
-			return matrix;
+			std::unique_ptr< D[] > V( new D[ std::min( nrows, ncols ) ] );
+			std::fill_n( V.get(), std::min( nrows, ncols ), identity_value );
+			return internal::createIdentity_generic< D, descr, RIT, CIT, NIT, implementation >(
+				nrows, ncols, k, io_mode, V.get()
+			);
 		}
 
 		/**
@@ -192,33 +262,9 @@ namespace grb {
 			IOMode io_mode,
 			const long k = 0L
 		) {
-			const size_t k_abs = static_cast<size_t>( (k < 0L) ? -k : k );
-			const size_t diag_length = ( k_abs >= nrows || k_abs >= ncols )
-				? 0
-				: std::min( std::min( nrows, ncols ), std::min( ncols - k_abs, nrows - k_abs ) );
-
-			Matrix< void, implementation, RIT, CIT, NIT > matrix( nrows, ncols, diag_length );
-			std::unique_ptr< RIT[] > I_ptr( new RIT[ diag_length ] );
-			std::unique_ptr< CIT[] > J_ptr( new CIT[ diag_length ] );
-			RIT* I = I_ptr.get();
-			CIT* J = J_ptr.get();
-			const RIT k_i_incr = static_cast< RIT >( ( k < 0L ) ? k_abs : 0UL );
-			const CIT k_j_incr = static_cast< CIT >( ( k < 0L ) ? 0UL : k_abs );
-			for( size_t i = 0L; i < diag_length; ++i ) {
-				I[ i ] = i + k_i_incr;
-				J[ i ] = i + k_j_incr;
-			}
-			if( descr & descriptors::transpose_matrix ) {
-				std::swap( I, J );
-			}
-			RC rc = buildMatrixUnique( matrix, I, J, diag_length, io_mode );
-			assert( rc == SUCCESS );
-			if( rc != SUCCESS ) {
-				// Todo: Throw an exception or just return an empty matrix?
-				// Nb: We should consider the distributed case if we throw an exception.
-				(void) clear( matrix );
-			}
-			return matrix;
+			return internal::createIdentity_generic< void, descr, RIT, CIT, NIT, implementation >(
+				nrows, ncols, k, io_mode
+			);
 		}
 
 		/**
@@ -300,6 +346,57 @@ namespace grb {
 			const size_t n,
 			IOMode io_mode
 		) { return eye< void, descr, RIT, CIT, NIT, implementation >( n, n, io_mode ); }
+
+		/**
+		 * @brief Build an identity matrix with the given values.
+		 *        Output matrix will contain \a n non-zero elements.
+		 *
+		 * @tparam D              The type of a non-zero element.
+		 * @tparam descr          The descriptor used to build the matrix.
+		 * @tparam RIT            The type used for row indices.
+		 * @tparam CIT            The type used for column indices.
+		 * @tparam NIT            The type used for non-zero indices.
+		 * @tparam implementation The backend implementation used to build
+		 *                        the matrix (default: config::default_backend).
+		 * @tparam ValueIterator  The type of the iterator used to provide the values.
+		 * @param n               The number of rows/columns of the matrix.
+		 * @param io_mode         The I/O mode used to build the matrix.
+		 * @param V               The iterator used to provide the values.
+		 * @return Matrix< D, implementation, RIT, CIT, NIT >
+		 *
+		 * \parblock
+		 * \par Descriptors
+		 * The following descriptors are supported:
+		 * - descriptors::no_operation
+		 * - descriptors::transpose_matrix
+		 * \endparblock
+		 */
+		template<
+			typename D,
+			Descriptor descr = descriptors::no_operation,
+			typename RIT = config::RowIndexType,
+			typename CIT = config::ColIndexType,
+			typename NIT = config::NonzeroIndexType,
+			Backend implementation = grb::config::default_backend,
+			class ValueIterator,
+			typename std::enable_if< not std::is_void< D >::value, int >::type = 0
+		>
+		Matrix< D, implementation, RIT, CIT, NIT > identity(
+			const size_t n,
+			IOMode io_mode,
+			ValueIterator V,
+			const typename std::enable_if<
+				std::is_same<
+					typename std::iterator_traits< ValueIterator >::value_type,
+					D
+				>::value,
+				void
+			>::type* = nullptr
+		) {
+			return internal::createIdentity_generic< D, descr, RIT, CIT, NIT, implementation, ValueIterator >(
+				n, n, 0L, io_mode, V
+			);
+		}
 
 		/**
 		 * @brief Build a dense matrix filled with a given value.
