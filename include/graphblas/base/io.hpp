@@ -1329,8 +1329,8 @@ namespace grb {
 	template<
 		Descriptor descr = descriptors::no_operation,
 		typename InputType, typename RIT, typename CIT, typename NIT,
-		typename fwd_iterator1 = const size_t * __restrict__,
-		typename fwd_iterator2 = const size_t * __restrict__,
+		typename fwd_iterator1 = const RIT * __restrict__,
+		typename fwd_iterator2 = const CIT * __restrict__,
 		typename fwd_iterator3 = const InputType * __restrict__,
 		Backend implementation = config::default_backend
 	>
@@ -1361,8 +1361,8 @@ namespace grb {
 	template<
 		Descriptor descr = descriptors::no_operation,
 		typename InputType, typename RIT, typename CIT, typename NIT,
-		typename fwd_iterator1 = const size_t * __restrict__,
-		typename fwd_iterator2 = const size_t * __restrict__,
+		typename fwd_iterator1 = const RIT * __restrict__,
+		typename fwd_iterator2 = const CIT * __restrict__,
 		typename fwd_iterator3 = const InputType * __restrict__,
 		Backend implementation = config::default_backend
 	>
@@ -1387,8 +1387,8 @@ namespace grb {
 	template<
 		Descriptor descr = descriptors::no_operation,
 		typename InputType, typename RIT, typename CIT, typename NIT,
-		typename fwd_iterator1 = const size_t * __restrict__,
-		typename fwd_iterator2 = const size_t * __restrict__,
+		typename fwd_iterator1 = const RIT * __restrict__,
+		typename fwd_iterator2 = const CIT * __restrict__,
 		typename length_type = size_t,
 		Backend implementation = config::default_backend
 	>
@@ -1399,8 +1399,7 @@ namespace grb {
 	) {
 		// derive synchronized iterator
 		auto start = internal::makeSynchronized( I, J, I + nz, J + nz );
-		const auto end = internal::makeSynchronized(
-			I + nz, J + nz, I + nz, J + nz );
+		const auto end = internal::makeSynchronized( I + nz, J + nz, I + nz, J + nz );
 		// defer to other signature
 		return buildMatrixUnique< descr >( A, start, end, mode );
 	}
