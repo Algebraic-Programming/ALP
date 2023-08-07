@@ -16,10 +16,10 @@
  */
 
 #include <cstdio>
-
 #include <assert.h>
 
-#include "graphblas.hpp"
+#include <graphblas.hpp>
+#include <graphblas/algorithms/matrix_factory.hpp>
 
 
 using namespace grb;
@@ -27,21 +27,13 @@ using namespace grb;
 static const int data1[ 15 ] = { 4, 7, 4, 6, 4, 7, 1, 7, 3, 6, 7, 5, 1, 8, 7 };
 static const int data2[ 15 ] = { 8, 9, 8, 6, 8, 7, 8, 7, 5, 2, 3, 5, 1, 5, 5 };
 static const int chk[ 15 ] = { 32, 63, 32, 36, 32, 49, 8, 49, 15, 12, 21, 25, 1, 40, 35 };
-static const size_t I[ 15 ] = { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14 };
-static const size_t J[ 15 ] = { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14 };
 
 void grbProgram( const int &, int &error ) {
+	RC rc = SUCCESS;
 	// allocate
 	grb::Vector< int > x( 15 );
 	grb::Vector< int > sparse_x( 15 );
-	grb::Matrix< int > A( 15, 15 );
-
-	// resize for 15 elements
-	grb::RC rc = resize( A, 15 );
-	if( rc != grb::SUCCESS ) {
-		(void)fprintf( stderr, "Unexpected return code from Matrix constructor: %d.\n", (int)rc );
-		error = 3;
-	}
+	grb::Matrix< int > A = factory::identity< int >( 15, SEQUENTIAL, data2 );
 
 	// initialise x
 	if( !error ) {
@@ -53,8 +45,6 @@ void grbProgram( const int &, int &error ) {
 		}
 	}
 
-	// initialise A
-	rc = grb::buildMatrixUnique( A, I, J, data2, 15, SEQUENTIAL );
 	if( rc != grb::SUCCESS ) {
 		(void)fprintf( stderr, "Unexpected return code from Matrix buildMatrixUnique: %d.\n", (int)rc );
 		error = 5;
