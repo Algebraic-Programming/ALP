@@ -174,7 +174,10 @@ struct dense_mat {
  * @param _limit max number of rows and columns to print (0 for all)
  * @param head optional heading to print \b before the matrix
  */
-template< typename T, enum grb::Backend B >
+template< typename T,
+	enum grb::Backend B,
+	typename std::enable_if< not std::is_void< T >::value, int >::type = 0
+>
 void print_matrix( const grb::Matrix< T, B > & mat, size_t _limit = 0, const char * head = nullptr ) {
 	const size_t rows = grb::nrows( mat );
 	const size_t cols = grb::ncols( mat );
@@ -183,8 +186,8 @@ void print_matrix( const grb::Matrix< T, B > & mat, size_t _limit = 0, const cha
 	// create and dump only relevant portion
 	dense_mat< T > dump( row_limit, col_limit );
 	for( const std::pair< std::pair< size_t, size_t >, T > & t : mat ) {
-		size_t row { t.first.first };
-		size_t col { t.first.second };
+		size_t row = t.first.first;
+		size_t col = t.first.second;
 		if( row < row_limit && col < col_limit ) {
 			dump[ row ][ col ] = t.second;
 		}
@@ -204,6 +207,54 @@ void print_matrix( const grb::Matrix< T, B > & mat, size_t _limit = 0, const cha
 			} else {
 				std::cout << " ";
 			}
+		}
+		std::cout << std::endl;
+	}
+	std::cout << "==============" << std::endl << std::endl;
+}
+
+
+/**
+ * @brief Prints up to \p _limit rows and columns of matrix \p mat with optional heading \p head.
+ *
+ * @tparam T matrix data type
+ * @tparam B GraphBLAS backend storing the matrix
+ * @param mat matrix to print
+ * @param _limit max number of rows and columns to print (0 for all)
+ * @param head optional heading to print \b before the matrix
+ */
+template<
+	typename T,
+	enum grb::Backend B,
+	typename std::enable_if< std::is_void< T >::value, int >::type = 0
+>
+void print_matrix( const grb::Matrix< T, B > & mat, size_t _limit = 0, const char * head = nullptr ) {
+	const size_t rows = grb::nrows( mat );
+	const size_t cols = grb::ncols( mat );
+	size_t row_limit = _limit == 0 ? rows : std::min( _limit, rows );
+	size_t col_limit = _limit == 0 ? cols : std::min( _limit, cols );
+	// create and dump only relevant portion
+	dense_mat< bool > assigned( row_limit, col_limit );
+	for( const auto& t : mat ) {
+		auto row = t.first;
+		auto col = t.second;
+		assigned[ row ][ col ] = ( row < row_limit && col < col_limit );
+	}
+
+	if( head != nullptr ) {
+		std::cout << "<<< " << head << " >>>" << std::endl;
+	}
+	std::cout << "=== PATTERN-MATRIX ===" << std::endl;
+	std::cout << "Size: " << rows << " x " << cols << std::endl;
+	for( size_t i = 0; i < row_limit; ++i ) {
+		for( size_t j = 0; j < col_limit; ++j ) {
+			bool has_value = assigned[ i ][ j ];
+			if( has_value ) {
+				std::cout << "X";
+			} else {
+				std::cout << "_";
+			}
+			std::cout << " ";
 		}
 		std::cout << std::endl;
 	}
