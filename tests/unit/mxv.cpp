@@ -18,16 +18,18 @@
 #include <stdbool.h>
 
 #include <iostream>
+#include <memory>
 
 #include "graphblas/utils/parser.hpp"
 
 #include "graphblas.hpp"
-
+#include <utils/output_verification.hpp>
 
 using namespace grb;
 
 struct output {
 	int exit_code;
+	std::unique_ptr< PinnedVector< int > > pinnedVector;
 };
 
 struct input {
@@ -74,34 +76,15 @@ void grbProgram( const struct input &in, struct output &out ) {
 		return;
 	}
 
-	const size_t P = grb::spmd<>::nprocs();
-	const size_t s = grb::spmd<>::pid();
-	if( s == 0 ) {
-		std::cout << "%%MatrixMarket vector coordinate double general\n";
-		std::cout << "%Global index \tValue\n";
-		std::cout << grb::size( y ) << "\n";
-	}
-	for( size_t k = 0; k < P; ++k ) {
-		if( k == s ) {
-			for( const auto pair : y ) {
-				const size_t index = pair.first;
-				std::cout << index << " " << pair.second << "\n";
-			}
-			std::cout << std::flush;
-		}
-		grb::spmd<>::barrier();
-	}
-
+	out.pinnedVector = std::unique_ptr< PinnedVector< int > >( new PinnedVector< int >( y, SEQUENTIAL ) );
 	out.exit_code = 0;
-	std::cout << std::flush;
-	std::cerr << std::flush;
 }
 
 int main( int argc, char ** argv ) {
 	std::cout << "Functional test executable: " << argv[ 0 ] << "\n";
 
-	if( argc != 2 ) {
-		std::cout << "Usage: " << argv[ 0 ] << " <matrix input file>\n";
+	if( argc != 3 ) {
+		std::cout << "Usage: " << argv[ 0 ] << " <matrix input file> <verification file>\n";
 		return EXIT_SUCCESS;
 	}
 
@@ -118,7 +101,16 @@ int main( int argc, char ** argv ) {
 		return EXIT_FAILURE;
 	}
 
-	if( out.exit_code != 0 ) {
+	int rc = 0;
+	if( not out.pinnedVector ) {
+		std::cout << "no pinned vector" << std::endl;
+		rc = 1;
+	} else {
+		const char * truth_filename = argv[ 2 ];
+		rc = vector_verification( *out.pinnedVector, truth_filename, 1e-5, 1e-6 );
+	}
+
+	if( out.exit_code != 0 || rc != 0 ) {
 		std::cout << "Test FAILED (program returned non-zero exit code "
 			<< out.exit_code << ")\n" << std::endl;
 	} else {
