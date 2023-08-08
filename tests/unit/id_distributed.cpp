@@ -43,8 +43,8 @@ void grb_program1( const struct input &in, struct output &out ) {
 		}
 	}
 
-	grb::Vector< std::pair< int, float > > one( 10 );
-	grb::Vector< size_t > two( 500 );
+	grb::Vector< std::pair< int, float > > one( 1000000 );
+	grb::Vector< size_t > two( 5000000 );
 	const size_t oneLocalID = grb::getID( grb::internal::getLocal( one ) );
 	out.IDs[ 0 ] = oneLocalID;
 	const size_t twoLocalID = grb::getID( grb::internal::getLocal( two ) );
@@ -139,8 +139,8 @@ void grb_program2( const struct input &in, struct output &out ) {
 		}
 	}
 
-	grb::Matrix< std::pair< int, float > > one( 10, 10 );
-	grb::Matrix< size_t > two( 500, 10 );
+	grb::Matrix< std::pair< int, float > > one( 1000000, 100000 );
+	grb::Matrix< size_t > two( 5000000, 100000 );
 	const size_t oneLocalID = grb::getID( grb::internal::getLocal( one ) );
 	out.IDs[ 0 ] = oneLocalID;
 	const size_t twoLocalID = grb::getID( grb::internal::getLocal( two ) );
