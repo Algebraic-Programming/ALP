@@ -19,6 +19,8 @@
 #include <sstream>
 
 #include <graphblas.hpp>
+#include <utils/print_vec_mat.hpp>
+
 
 // static data corresponding to small matrices
 
@@ -131,24 +133,36 @@ void grbProgram( const void *, const size_t, grb::RC &rc ) {
 	rc = grb::resize( A, nelts_A );
 	if( rc == grb::SUCCESS ) {
 		rc = grb::buildMatrixUnique( A, I_A, J_A, V_A, nelts_A, grb::SEQUENTIAL );
+#ifdef _DEBUG
+		print_matrix( A, 0, "A" );
+#endif
 	}
 	if( rc == grb::SUCCESS ) {
 		rc = grb::resize( B, nelts_B );
 	}
 	if( rc == grb::SUCCESS ) {
 		rc = grb::buildMatrixUnique( B, I_B, J_B, V_B, nelts_B, grb::SEQUENTIAL );
+#ifdef _DEBUG
+		print_matrix( B, 0, "B" );
+#endif
 	}
 	if( rc == grb::SUCCESS ) {
 		rc = grb::resize( A_pattern, nelts_A );
 	}
 	if( rc == grb::SUCCESS ) {
 		rc = grb::buildMatrixUnique( A_pattern, I_A, J_A, nelts_A, grb::SEQUENTIAL );
+#ifdef _DEBUG
+		print_matrix( A_pattern, 0, "A_pattern" );
+#endif
 	}
 	if( rc == grb::SUCCESS ) {
 		rc = grb::resize( B_pattern, nelts_B );
 	}
 	if( rc == grb::SUCCESS ) {
 		rc = grb::buildMatrixUnique( B_pattern, I_B, J_B, nelts_B, grb::SEQUENTIAL );
+#ifdef _DEBUG
+		print_matrix( B_pattern, 0, "B_pattern" );
+#endif
 	}
 	if( rc != grb::SUCCESS ) {
 		std::cerr << "\tinitialisation FAILED\n";
