@@ -114,19 +114,26 @@ namespace grb {
 					: std::min( std::min( nrows, ncols ), std::min( ncols - k_abs, nrows - k_abs ) );
 
 				Matrix< void, implementation, RIT, CIT, NIT > matrix( nrows, ncols, diag_length );
-				std::unique_ptr< RIT[] > I_ptr( new RIT[ diag_length ] );
-				std::unique_ptr< CIT[] > J_ptr( new CIT[ diag_length ] );
-				RIT* I = I_ptr.get();
-				CIT* J = J_ptr.get();
-				const RIT k_i_incr = static_cast< RIT >( ( k < 0L ) ? k_abs : 0UL );
-				const CIT k_j_incr = static_cast< CIT >( ( k < 0L ) ? 0UL : k_abs );
-				for( size_t i = 0; i < diag_length; ++i ) {
-					I[ i ] = i + k_i_incr;
-					J[ i ] = i + k_j_incr;
-				}
-				if( descr & descriptors::transpose_matrix ) {
-					std::swap( I, J );
-				}
+				// std::unique_ptr< RIT[] > I_ptr( new RIT[ diag_length ] );
+				// std::unique_ptr< CIT[] > J_ptr( new CIT[ diag_length ] );
+				// RIT* I = I_ptr.get();
+				// CIT* J = J_ptr.get();
+				// const RIT k_i_incr = static_cast< RIT >( ( k < 0L ) ? k_abs : 0UL );
+				// const CIT k_j_incr = static_cast< CIT >( ( k < 0L ) ? 0UL : k_abs );
+				// for( size_t i = 0; i < diag_length; ++i ) {
+				// 	I[ i ] = i + k_i_incr;
+				// 	J[ i ] = i + k_j_incr;
+				// }
+				// if( descr & descriptors::transpose_matrix ) {
+				// 	std::swap( I, J );
+				// }
+
+				utils::containers::Range< RIT > I_range( 0, 1, diag_length );
+				utils::containers::Range< CIT > J_range( 0, 1, diag_length );
+
+				auto I = I_range.begin();
+				auto J = J_range.begin();
+
 				RC rc = buildMatrixUnique( matrix, I, J, diag_length, io_mode );
 				assert( rc == SUCCESS );
 				if( rc != SUCCESS ) {

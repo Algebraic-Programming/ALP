@@ -144,6 +144,19 @@ namespace grb {
 						}
 					}
 
+					PosBasedIterator( const self_const_reference_type other ) :
+						_count( other._count ), _pos( other._pos ),
+						_val( other._val ), _state( other._state )
+					{}
+
+					PosBasedIterator( PosBasedIterator< R, T, SelfType > &&other ) :
+						_count( other._count ), _pos( other._pos )
+					{
+						_val = std::move( other._val );
+						_state = std::move( other._state );
+						other._count = other._pos = 0;
+					}
+
 					// destructor does nothing special
 
 					~PosBasedIterator() {}
@@ -154,11 +167,22 @@ namespace grb {
 						return _val;
 					}
 
-					self_reference_type operator=( self_const_reference_type other ) {
+					self_reference_type operator=( self_const_reference_type other ) noexcept {
 						_count = other._count;
 						_pos = other._pos;
 						_val = other._val;
 						_state = other._state;
+						return *this;
+					}
+
+					self_reference_type operator=(
+						PosBasedIterator< R, T, SelfType > &&other
+					) noexcept {
+						_count = other._count;
+						_pos = other._pos;
+						_val = std::move( other._val );
+						_state = std::move( other._state );
+						other._count = other._pos = 0;
 						return *this;
 					}
 
