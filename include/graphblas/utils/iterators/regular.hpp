@@ -144,7 +144,7 @@ namespace grb {
 						}
 					}
 
-					PosBasedIterator( const self_const_reference_type other ) :
+					PosBasedIterator( const self_const_reference_type &other ) :
 						_count( other._count ), _pos( other._pos ),
 						_val( other._val ), _state( other._state )
 					{}
@@ -366,6 +366,14 @@ namespace grb {
 							pos, iterator._count,
 							val, iterator._state
 						);
+					}
+
+					difference_type operator-(
+						self_const_reference_type iterator
+					) const noexcept {
+						assert( iterator._count == _count );
+						assert( iterator._state == _state );
+						return static_cast< difference_type >( _pos - iterator._pos );
 					}
 
 			};

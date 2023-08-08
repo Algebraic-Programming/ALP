@@ -17,33 +17,26 @@
 
 #include <cstdio>
 
-#include "graphblas.hpp"
+#include <graphblas.hpp>
+#include <graphblas/algorithms/matrix_factory.hpp>
 
+
+using namespace grb;
 
 static const double data1[ 15 ] = { 4.32, 7.43, 4.32, 6.54, 4.21, 7.65, 7.43, 7.54, 5.32, 6.43, 7.43, 5.42, 1.84, 5.32, 7.43 };
 static const double data2[ 15 ] = { 8.49, 7.84, 8.49, 6.58, 8.91, 7.65, 7.84, 7.58, 5.49, 6.84, 7.84, 5.89, 1.88, 5.49, 7.84 };
 static const double chk[ 15 ] = { 12.81, 15.27, 12.81, 13.12, 13.12, 15.30, 15.27, 15.12, 10.81, 13.27, 15.27, 11.31, 3.72, 10.81, 15.27 };
-static const size_t I[ 15 ] = { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14 };
-static const size_t J[ 15 ] = { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14 };
 
 void alpProgram( const grb::RC &rc_in, int &error ) {
 	assert( rc_in == grb::SUCCESS );
 #ifdef NDEBUG
 	(void) rc_in;
 #endif
+	RC rc = SUCCESS;
 
 	// allocate
 	grb::Vector< double > x( 15 );
-	grb::Matrix< double > A( 15, 15 );
-
-	grb::RC rc = resize( A, 15 );
-	if( rc != grb::SUCCESS ) {
-		std::cerr << "Unexpected return code from Matrix resize: "
-			<< grb::toString( rc ) << ".\n";
-		error = 3;
-		return;
-	}
-
+	grb::Matrix< double > A = grb::factory::identity< double >( 15, SEQUENTIAL, data2 );
 	grb::Vector< double > y( 15 );
 
 	// initialise
@@ -60,13 +53,6 @@ void alpProgram( const grb::RC &rc_in, int &error ) {
 		std::cerr << "Unexpected return code from Vector assign (y): "
 			<< grb::toString( rc ) << ".\n";
 		error = 5;
-		return;
-	}
-	rc = grb::buildMatrixUnique( A, I, J, data2, 15, grb::SEQUENTIAL );
-	if( rc != grb::SUCCESS ) {
-		std::cerr << "Unexpected return code from Matrix build (A): "
-			<< grb::toString( rc ) << ".\n";
-		error = 6;
 		return;
 	}
 

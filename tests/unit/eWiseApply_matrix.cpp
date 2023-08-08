@@ -31,8 +31,6 @@ void grb_program( const int &, grb::RC &rc ) {
 		Matrix< float > B = factory::eye< float >( 10000000, 2000000, SEQUENTIAL, 2 );
 		Matrix< size_t > C = factory::eye< size_t >( 10000000, 2000000, SEQUENTIAL, 2 );
 
-		Matrix< void > D = factory::eye< void >( 10000000, 2000000, SEQUENTIAL, 2 );
-
 		rc = grb::eWiseApply( C, A, B,
 			grb::operators::add< float, size_t, char >(), RESIZE );
 		rc = rc ? rc : grb::eWiseApply( C, A, B,
