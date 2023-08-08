@@ -20,7 +20,7 @@
  *
  * Also contains dummy containers that wrap these iterators.
  *
- * @author A. N. Yzelman 
+ * @author A. N. Yzelman
  * @date 3/8/2023
  */
 
@@ -97,12 +97,12 @@ namespace grb {
 
 					typedef size_t difference_type;
 
-					typedef const R value_type;
+					typedef R value_type;
 
-					typedef const R * pointer_type;
+					typedef const R * pointer;
 
-					typedef const R & reference_type;
-					
+					typedef const R & reference;
+
 					// STL-like typedefs
 
 					typedef PosBasedIterator< R, T, SelfType > self_type;
@@ -163,7 +163,7 @@ namespace grb {
 
 					// standard iterator interface
 
-					reference_type operator*() const noexcept {
+					reference operator*() const noexcept {
 						return _val;
 					}
 
@@ -202,7 +202,7 @@ namespace grb {
 
 					// input iterator interface
 
-					pointer_type operator->() const noexcept {
+					pointer operator->() const noexcept {
 						return &_val;
 					}
 
@@ -262,7 +262,7 @@ namespace grb {
 						SelfType::func( ret, _state, i );
 						return ret;
 					}
-	
+
 					friend bool operator<(
 						self_const_reference_type left,
 						self_const_reference_type right
@@ -603,7 +603,7 @@ namespace grb {
 					 *
 					 * For example, the range \f$ (1, 2, 3, 4, 5, 6, 7, 8, 9, 10) \f$ may be
 					 * constructed by \a start 1, \a stride 1, and \a end 11.
-					 * 
+					 *
 					 * The range \f$ (0, 2, 4, 6, 8, 10) \f$ may be constructed by \a start 0,
 					 * \a stride 2, and \a end 12. Alternatively, \a end may be 11 since both
 					 * 11 and 12 are not part of the intended range.
