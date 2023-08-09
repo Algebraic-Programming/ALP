@@ -943,7 +943,6 @@ namespace grb {
 #ifdef _DEBUG
 			std::cout << "In grb::internal::eWiseApply_matrix_generic_intersection\n";
 #endif
-			assert( !(descr & descriptors::force_row_major ) );
 			assert( phase != TRY );
 			static_assert(
 				!(
@@ -953,6 +952,7 @@ namespace grb {
 				"grb::internal::eWiseApply_matrix_generic_intersection: the non-monoid"
 				" version of elementwise mxm can only be used if neither of the"
 				" input matrices is a pattern matrix (of type void)" );
+			constexpr bool crs_only = descr & descriptors::force_row_major;
 			// get whether the matrices should be transposed prior to execution
 			constexpr bool trans_left = descr & descriptors::transpose_left;
 			constexpr bool trans_right = descr & descriptors::transpose_right;
@@ -965,7 +965,19 @@ namespace grb {
 			const size_t m_B = !trans_right ? nrows( B ) : ncols( B );
 			const size_t n_B = !trans_right ? ncols( B ) : nrows( B );
 
+			if( crs_only && (trans_left || trans_right) ) {
+#ifdef _DEBUG
+				std::cerr << "grb::descriptors::force_row_major and "
+					<< "grb::descriptors::transpose_left/right are mutually "
+					<< "exclusive\n";
+#endif
+				return ILLEGAL;
+			}
+
 			if( m != m_A || m != m_B || n != n_A || n != n_B ) {
+#ifdef _DEBUG
+				std::cerr << "grb::eWiseApply: dimensions of input matrices do not match\n";
+#endif
 				return MISMATCH;
 			}
 
@@ -994,11 +1006,14 @@ namespace grb {
 			internal::Coordinates< reference > coors1, coors2;
 			coors1.set( arr1, false, buf1, n );
 			coors2.set( arr2, false, buf2, n );
+			if( !crs_only ) {
 #ifdef _H_GRB_REFERENCE_OMP_BLAS3
-#pragma omp parallel for simd default(none) shared(CCS_raw) firstprivate(n)
+				#pragma omp parallel for simd default(none) \
+					shared(CCS_raw) firstprivate(n)
 #endif
-			for( size_t j = 0; j <= n; ++j ) {
-				CCS_raw.col_start[ j ] = 0;
+				for( size_t j = 0; j <= n; ++j ) {
+					CCS_raw.col_start[ j ] = 0;
+				}
 			}
 			// end initialisations
 
@@ -1034,11 +1049,14 @@ namespace grb {
 				config::NonzeroIndexType * const C_col_index = internal::template
 					getReferenceBuffer< typename config::NonzeroIndexType >( n + 1 );
 
+				if( !crs_only ) {
 #ifdef _H_GRB_REFERENCE_OMP_BLAS3
-#pragma omp parallel for simd default(none) shared(C_col_index) firstprivate(n)
+					#pragma omp parallel for simd default(none) \
+						shared(C_col_index) firstprivate(n)
 #endif
-				for( size_t j = 0; j < n; ++j ) {
-					C_col_index[ j ] = 0;
+					for( size_t j = 0; j < n; ++j ) {
+						C_col_index[ j ] = 0;
+					}
 				}
 
 				// perform column-wise nonzero count
@@ -1052,7 +1070,9 @@ namespace grb {
 						const size_t l_col = B_raw.row_index[ l ];
 						if( coors1.assigned( l_col ) ) {
 							(void) ++nzc;
-							(void) ++CCS_raw.col_start[ l_col + 1 ];
+							if( !crs_only ) {
+								(void) ++CCS_raw.col_start[ l_col + 1 ];
+							}
 						}
 					}
 				}
@@ -1072,28 +1092,22 @@ namespace grb {
 				}
 
 				// prefix sum for CCS_raw.col_start
-				assert( CCS_raw.col_start[ 0 ] == 0 );
-				for( size_t j = 1; j < n; ++j ) {
-					CCS_raw.col_start[ j + 1 ] += CCS_raw.col_start[ j ];
+				if( !crs_only ) {
+					assert( CCS_raw.col_start[ 0 ] == 0 );
+					for( size_t j = 1; j < n; ++j ) {
+						CCS_raw.col_start[ j + 1 ] += CCS_raw.col_start[ j ];
+					}
+					assert( CCS_raw.col_start[ n ] == nzc );
 				}
-				assert( CCS_raw.col_start[ n ] == nzc );
-
 
 				// do computations
 				size_t nzc = 0;
 				CRS_raw.col_start[ 0 ] = 0;
 				for( size_t i = 0; i < m; ++i ) {
-#ifdef _DEBUG
-						std::cout << "  -- i: " << i << "\n";
-#endif
-
 					for( size_t k = A_raw.col_start[ i ]; k < A_raw.col_start[ i + 1 ]; ++k ) {
 						const size_t k_col = A_raw.row_index[ k ];
 						coors1.assign( k_col );
 						valbuf[ k_col ] = A_raw.getValue( k, dummy_identity );
-#ifdef _DEBUG
-						std::cout << "Found A( " << i << ", " << k_col << " ) = " << A_raw.getValue( k, dummy_identity ) << "\n";
-#endif
 					}
 
 					for( size_t l = B_raw.col_start[ i ]; l < B_raw.col_start[ i + 1 ]; ++l ) {
@@ -1104,11 +1118,6 @@ namespace grb {
 						const auto valbuf_value_before = valbuf[ l_col ];
 						(void)grb::apply( valbuf[ l_col ], valbuf_value_before, B_raw.getValue( l, dummy_identity ), oper );
 						coors2.assign( l_col );
-#ifdef _DEBUG
-						std::cout << "Found intersection: B(" << i << ";" << l_col << ")=" << B_raw.getValue( l, dummy_identity )
-						<< "  &&  A(" << i << ";" << l_col << ")=" << valbuf_value_before
-						<< "  ==>  C(" << i << ";" << l_col << ")=" << valbuf[ l_col ] << "\n";
-#endif
 					}
 
 					coors1.clear();
@@ -1122,10 +1131,12 @@ namespace grb {
 						CRS_raw.row_index[ nzc ] = j;
 						CRS_raw.setValue( nzc, valbuf[ j ] );
 						// update CCS
-						C_col_index[ j ]++;
-						const size_t CCS_index =  CCS_raw.col_start[ j+1 ] - C_col_index[ j ];
-						CCS_raw.row_index[ CCS_index ] = i;
-						CCS_raw.setValue( CCS_index, valbuf[ j ] );
+						if( !crs_only ) {
+							C_col_index[ j ]++;
+							const size_t CCS_index =  CCS_raw.col_start[ j+1 ] - C_col_index[ j ];
+							CCS_raw.row_index[ CCS_index ] = i;
+							CCS_raw.setValue( CCS_index, valbuf[ j ] );
+						}
 						// update count
 						(void)++nzc;
 					}
@@ -1134,21 +1145,23 @@ namespace grb {
 					coors2.clear();
 				}
 
+				if( !crs_only ) {
 #ifdef _DEBUG
-				std::cout << "CCS_raw.col_start = [ ";
-				for( size_t j = 0; j <= n; ++j )
-					std::cout << CCS_raw.col_start[ j ] << " ";
-				std::cout << "]\n";
-				std::cout << "C_col_index =       [ ";
-				for( size_t j = 0; j < n; ++j )
-					std::cout << C_col_index[ j ] << " ";
-				std::cout << "]\n";
+					std::cout << "CCS_raw.col_start = [ ";
+					for( size_t j = 0; j <= n; ++j )
+						std::cout << CCS_raw.col_start[ j ] << " ";
+					std::cout << "]\n";
+					std::cout << "C_col_index =       [ ";
+					for( size_t j = 0; j < n; ++j )
+						std::cout << C_col_index[ j ] << " ";
+					std::cout << "]\n";
 #endif
 #ifndef NDEBUG
-				for( size_t j = 0; j < n; ++j ) {
-					assert( CCS_raw.col_start[ j + 1 ] - CCS_raw.col_start[ j ] == C_col_index[ j ] );
-				}
+					for( size_t j = 0; j < n; ++j ) {
+						assert( CCS_raw.col_start[ j + 1 ] - CCS_raw.col_start[ j ] == C_col_index[ j ] );
+					}
 #endif
+				}
 
 				// set final number of nonzeroes in output matrix
 #ifdef _DEBUG
@@ -1187,10 +1200,19 @@ namespace grb {
 			std::cout << "In grb::internal::eWiseApply_matrix_generic_union\n";
 #endif
 			assert( phase != TRY );
-			assert( !(descr & descriptors::force_row_major ) );
+			constexpr bool crs_only = descr & descriptors::force_row_major;
 			// get whether the matrices should be transposed prior to execution
 			constexpr bool trans_left = descr & descriptors::transpose_left;
 			constexpr bool trans_right = descr & descriptors::transpose_right;
+
+			if( crs_only && (trans_left || trans_right) ) {
+#ifdef _DEBUG
+				std::cerr << "grb::descriptors::force_row_major and "
+					<< "grb::descriptors::transpose_left/right are mutually "
+					<< "exclusive\n";
+#endif
+				return ILLEGAL;
+			}
 
 			// run-time checks
 			const size_t m = nrows( C );
@@ -1205,6 +1227,9 @@ namespace grb {
 			const auto identity_B = monoid.template getIdentity< OutputType >();
 
 			if( m != m_A || m != m_B || n != n_A || n != n_B ) {
+#ifdef _DEBUG
+				std::cerr << "grb::eWiseApply: dimensions of input matrices do not match\n";
+#endif
 				return MISMATCH;
 			}
 
@@ -1234,21 +1259,14 @@ namespace grb {
 			internal::Coordinates< reference > coors1, coors2;
 			coors1.set( arr1, false, buf1, n );
 			coors2.set( arr2, false, buf2, n );
+			if( !crs_only ) {
 #ifdef _H_GRB_REFERENCE_OMP_BLAS3
-			#pragma omp parallel
-			{
-				size_t start, end;
-				config::OMP::localRange( start, end, 0, n + 1 );
-#else
-				const size_t start = 0;
-				const size_t end = n + 1;
+				#pragma omp parallel for simd default(none) shared(CCS_raw) firstprivate(n)
 #endif
-				for( size_t j = start; j < end; ++j ) {
+				for( size_t j = 0; j < n + 1; ++j ) {
 					CCS_raw.col_start[ j ] = 0;
 				}
-#ifdef _H_GRB_REFERENCE_OMP_BLAS3
 			}
-#endif
 			// end initialisations
 
 			// nonzero count
@@ -1291,13 +1309,17 @@ namespace grb {
 						const size_t k_col = A_raw.row_index[ k ];
 						coors1.assign( k_col );
 						(void) ++nzc;
-						(void) ++CCS_raw.col_start[ k_col + 1 ];
+						if( !crs_only ) {
+							(void) ++CCS_raw.col_start[ k_col + 1 ];
+						}
 					}
 					for( size_t l = B_raw.col_start[ i ]; l < B_raw.col_start[ i + 1 ]; ++l ) {
 						const size_t l_col = B_raw.row_index[ l ];
 						if( not coors1.assigned( l_col ) ) {
 							(void) ++nzc;
-							(void) ++CCS_raw.col_start[ l_col + 1 ];
+							if( !crs_only ) {
+								(void) ++CCS_raw.col_start[ l_col + 1 ];
+							}
 						}
 					}
 				}
@@ -1317,18 +1339,22 @@ namespace grb {
 				}
 
 				// prefix sum for CCS_raw.col_start
-				assert( CCS_raw.col_start[ 0 ] == 0 );
-				for( size_t j = 1; j < n; ++j ) {
-					CCS_raw.col_start[ j + 1 ] += CCS_raw.col_start[ j ];
+				if( !crs_only ) {
+					assert( CCS_raw.col_start[ 0 ] == 0 );
+					for( size_t j = 1; j < n; ++j ) {
+						CCS_raw.col_start[ j + 1 ] += CCS_raw.col_start[ j ];
+					}
+					assert( CCS_raw.col_start[ n ] == nzc );
 				}
-				assert( CCS_raw.col_start[ n ] == nzc );
 
 				// set C_col_index to all zero
+				if( !crs_only ) {
 #ifdef _H_GRB_REFERENCE_OMP_BLAS3
-				#pragma omp parallel for simd
+					#pragma omp parallel for simd
 #endif
-				for( size_t j = 0; j < n; j++ ) {
-					C_col_index[ j ] = 0;
+					for( size_t j = 0; j < n; j++ ) {
+						C_col_index[ j ] = 0;
+					}
 				}
 
 
@@ -1367,31 +1393,34 @@ namespace grb {
 						CRS_raw.row_index[ nzc ] = j;
 						CRS_raw.setValue( nzc, valbuf[ j ] );
 						// update CCS
-						C_col_index[ j ]++;
-						const size_t CCS_index =  CCS_raw.col_start[ j+1 ] - C_col_index[ j ];
-						CCS_raw.row_index[ CCS_index ] = i;
-						CCS_raw.setValue( CCS_index, valbuf[ j ] );
+						if( !crs_only ) {
+							const size_t CCS_index =  CCS_raw.col_start[ j+1 ] - C_col_index[ j ]++;
+							CCS_raw.row_index[ CCS_index ] = i;
+							CCS_raw.setValue( CCS_index, valbuf[ j ] );
+						}
 						// update count
 						(void)++nzc;
 					}
 					CRS_raw.col_start[ i + 1 ] = nzc;
 				}
 
+				if( !crs_only ) {
 #ifdef _DEBUG
-				std::cout << "CCS_raw.col_start = [ ";
-				for( size_t j = 0; j <= n; ++j )
-					std::cout << CCS_raw.col_start[ j ] << " ";
-				std::cout << "]\n";
-				std::cout << "C_col_index =       [ ";
-				for( size_t j = 0; j < n; ++j )
-					std::cout << C_col_index[ j ] << " ";
-				std::cout << "]\n";
+					std::cout << "CCS_raw.col_start = [ ";
+					for( size_t j = 0; j <= n; ++j )
+						std::cout << CCS_raw.col_start[ j ] << " ";
+					std::cout << "]\n";
+					std::cout << "C_col_index =       [ ";
+					for( size_t j = 0; j < n; ++j )
+						std::cout << C_col_index[ j ] << " ";
+					std::cout << "]\n";
 #endif
 #ifndef NDEBUG
-				for( size_t j = 0; j < n; ++j ) {
-					assert( CCS_raw.col_start[ j + 1 ] - CCS_raw.col_start[ j ] == C_col_index[ j ] );
-				}
+					for( size_t j = 0; j < n; ++j ) {
+						assert( CCS_raw.col_start[ j + 1 ] - CCS_raw.col_start[ j ] == C_col_index[ j ] );
+					}
 #endif
+				}
 
 				// set final number of nonzeroes in output matrix
 #ifdef _DEBUG
