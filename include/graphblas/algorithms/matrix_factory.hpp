@@ -21,13 +21,14 @@
  * Implements the following matrix factory methods:
  * - empty
  * - eye
+ * - eye< void >
  * - identity
+ * - identity< void >
  * - full
+ * - full< void >
  * - dense
  * - ones
  * - zeros
- *
- * Some of these primitives are also specialised for pattern matrices (void non-zero type).
  *
  * @author Benjamin Lozes
  * @date 7th of August, 2023
@@ -45,8 +46,8 @@ namespace grb {
 
 	namespace factory {
 
-		namespace internal
-		{
+		namespace internal {
+
 			template<
 				typename D,
 				Descriptor descr,
@@ -136,6 +137,8 @@ namespace grb {
 		/**
 		 * @brief Build an empty matrix, with no non-zero elements.
 		 *
+		 * @anchor grb_factory_empty
+		 *
 		 * @tparam D              The type of a non-zero element.
 		 * @tparam RIT            The type used for row indices.
 		 * @tparam CIT            The type used for column indices.
@@ -165,6 +168,8 @@ namespace grb {
 		 * @brief Build an identity matrix. Output matrix will contain
 		 *        min( \a nrows, \a ncols ) non-zero elements, or less if \a k
 		 *        is not zero.
+		 *
+		 * @anchor grb_factory_eye
 		 *
 		 * @tparam D              The type of a non-zero element.
 		 * @tparam descr          The descriptor used to build the matrix.
@@ -216,6 +221,8 @@ namespace grb {
 		 *        min( \a nrows, \a ncols ) non-zero elements, or less if \a k
 		 *        is not zero.
 		 *
+		 * @anchor grb_factory_void-eye
+		 *
 		 * @note This method is specialised for pattern matrices (void non-zero type).
 		 *
 		 * @tparam D              The type of a non-zero element (void).
@@ -264,18 +271,20 @@ namespace grb {
 		 * @brief Build an identity matrix. Output matrix will contain
 		 *        \a n non-zero elements.
 		 *
-		 * @note Alias for factory::eye< ... >( n, n, io_mode, identity_value ).
+		 * @note Alias for @ref grb_factory_eye "factory::eye( n, n, io_mode )"
 		 *
-		 * @tparam D              The type of a non-zero element.
-		 * @tparam descr          The descriptor used to build the matrix.
-		 * @tparam RIT            The type used for row indices.
-		 * @tparam CIT            The type used for column indices.
-		 * @tparam NIT            The type used for non-zero indices.
-		 * @tparam implementation The backend implementation used to build
-		 *                        the matrix (default: config::default_backend).
-		 * @param n               The number of rows/columns of the matrix.
-		 * @param io_mode         The I/O mode used to build the matrix.
-		 * @param identity_value  The value of each non-zero element (default = 1)
+		 * @anchor grb_factory_identity
+		 *
+		 * @tparam D                  The type of a non-zero element.
+		 * @tparam descr              The descriptor used to build the matrix.
+		 * @tparam RIT                The type used for row indices.
+		 * @tparam CIT                The type used for column indices.
+		 * @tparam NIT                The type used for non-zero indices.
+		 * @tparam implementation     The backend implementation used to build
+		 *                            the matrix (default: config::default_backend).
+		 * @param[in] n               The number of rows/columns of the matrix.
+		 * @param[in] io_mode         The I/O mode used to build the matrix.
+		 * @param[in] identity_value  The value of each non-zero element (default = 1)
 		 * @return Matrix< D, implementation, RIT, CIT, NIT >
 		 *
 		 * \parblock
@@ -304,8 +313,11 @@ namespace grb {
 		 * @brief Build an identity pattern matrix. Output matrix will contain
 		 *        \a n non-zero elements.
 		 *
-		 * @note Alias for factory::eye< void, ... >( n, n, io_mode ).
+		 * @note Alias for @ref grb_factory_void-eye "factory::eye< void, ... >( n, n, io_mode )"
+		 *
 		 * @note This method is specialised for pattern matrices (void non-zero type).
+		 *
+		 * @anchor grb_factory_void-identity
 		 *
 		 * @tparam D              The type of a non-zero element (void).
 		 * @tparam descr          The descriptor used to build the matrix.
@@ -343,6 +355,8 @@ namespace grb {
 		/**
 		 * @brief Build an identity matrix with the given values.
 		 *        Output matrix will contain \a n non-zero elements.
+		 *
+		 * @anchor grb_factory_identity-iterator
 		 *
 		 * @tparam D              The type of a non-zero element.
 		 * @tparam descr          The descriptor used to build the matrix.
@@ -389,14 +403,16 @@ namespace grb {
 				void
 			>::type* = nullptr
 		) {
-			return internal::createIdentity_generic< D, descr, RIT, CIT, NIT, implementation, ValueIterator >(
-				n, n, 0L, io_mode, V, V_length_limit
-			);
+			return internal::createIdentity_generic<
+				D, descr, RIT, CIT, NIT, implementation, ValueIterator
+			>( n, n, 0L, io_mode, V, V_length_limit );
 		}
 
 		/**
 		 * @brief Build an identity matrix with the given values.
 		 *        Output matrix will contain \a n non-zero elements.
+		 *
+		 * @anchor grb_factory_identity-pointer
 		 *
 		 * @tparam D              The type of a non-zero element.
 		 * @tparam descr          The descriptor used to build the matrix.
@@ -444,16 +460,18 @@ namespace grb {
 		 * @brief Build a dense matrix filled with a given value.
 		 *        Output matrix will contain nrows * ncols non-zero elements.
 		 *
+		 * @anchor grb_factory_full
+		 *
 		 * @tparam D              The type of a non-zero element.
 		 * @tparam RIT            The type used for row indices.
 		 * @tparam CIT            The type used for column indices.
 		 * @tparam NIT            The type used for non-zero indices.
 		 * @tparam implementation The backend implementation used to build
 		 *                        the matrix (default: config::default_backend).
-		 * @param value           The value of each non-zero element.
 		 * @param nrows            The number of rows of the matrix.
 		 * @param ncols            The number of columns of the matrix.
 		 * @param io_mode         The I/O mode used to build the matrix.
+		 * @param value           The value of each non-zero element.
 		 * @return Matrix< D, implementation, RIT, CIT, NIT >
 		 */
 		template<
@@ -466,12 +484,12 @@ namespace grb {
 			typename std::enable_if< not std::is_void< D >::value, int >::type = 0
 		>
 		Matrix< D, implementation, RIT, CIT, NIT > full(
-			const D value, const size_t nrows, const size_t ncols, IOMode io_mode
+			const size_t nrows, const size_t ncols, IOMode io_mode, const D value
 		) {
 			Matrix< D, implementation, RIT, CIT, NIT > matrix( nrows, ncols, nrows * ncols );
-			RC rc = set( matrix, value, Phase::RESIZE );
+			RC rc = set< descr >( matrix, value, Phase::RESIZE );
 			assert( rc == SUCCESS );
-			rc = rc ? rc : set( matrix, value, Phase::EXECUTE );
+			rc = rc ? rc : set< descr >( matrix, value, Phase::EXECUTE );
 			assert( rc == SUCCESS );
 			if( rc != SUCCESS ) {
 				// Todo: Throw an exception or just return an empty matrix?
@@ -486,6 +504,8 @@ namespace grb {
 		 *        Output matrix will contain nrows * ncols non-zero elements.
 		 *
 		 * @note This method is specialised for pattern matrices (void non-zero type).
+		 *
+		 * @anchor grb_factory_void-full
 		 *
 		 * @tparam D              The type of a non-zero element (void).
 		 * @tparam RIT            The type used for row indices.
@@ -516,7 +536,10 @@ namespace grb {
 
 		/**
 		 * @brief Build a dense matrix filled with a given value.
-		 * @note Alias for factory::full< ... >( value, nrows, ncols, io_mode ).
+		 *
+		 * @note Alias for @ref grb_factory_full "factory::full( nrows, ncols, io_mode, value )"
+		 *
+		 * @anchor grb_factory_full-void
 		 *
 		 * @tparam D              The type of a non-zero element.
 		 * @tparam RIT            The type used for row indices.
@@ -524,10 +547,10 @@ namespace grb {
 		 * @tparam NIT            The type used for non-zero indices.
 		 * @tparam implementation The backend implementation used to build
 		 *                        the matrix (default: config::default_backend).
-		 * @param value           The value of each non-zero element.
 		 * @param nrows            The number of rows of the matrix.
 		 * @param ncols            The number of columns of the matrix.
 		 * @param io_mode         The I/O mode used to build the matrix.
+		 * @param value           The value of each non-zero element.
 		 * @return Matrix< D, implementation, RIT, CIT, NIT >
 		 */
 		template<
@@ -540,14 +563,17 @@ namespace grb {
 			typename std::enable_if< not std::is_void< D >::value, int >::type = 0
 		>
 		Matrix< D, implementation, RIT, CIT, NIT > dense(
-			const D value, const size_t nrows, const size_t ncols, IOMode io_mode
+			const size_t nrows, const size_t ncols, IOMode io_mode, const D value
 		) { return full< D, descr, RIT, CIT, NIT, implementation >( value, nrows, ncols, io_mode ); }
 
 		/**
 		 * @brief Build a dense pattern matrix.
 		 *
-		 * @note Alias for factory::full< void, ... >( nrows, ncols, io_mode ).
+		 * @note Alias for @ref grb_factory_void-full "factory::full< void, ... >( nrows, ncols, io_mode )"
+		 *
 		 * @note This method is specialised for pattern matrices (void non-zero type).
+		 *
+		 * @anchor grb_factory_void-dense
 		 *
 		 * @tparam D              The type of a non-zero element (void).
 		 * @tparam RIT            The type used for row indices.
@@ -576,7 +602,9 @@ namespace grb {
 		/**
 		 * @brief Build a matrix filled with ones.
 		 *
-		 * @note Alias for factory::full( 1, nrows, ncols, io_mode ).
+		 * @note Alias for @ref grb_factory_full "factory::full( nrows, ncols, io_mode, 1 )"
+		 *
+		 * @anchor grb_factory_ones
 		 *
 		 * @tparam D              The type of a non-zero element.
 		 * @tparam RIT            The type used for row indices.
@@ -601,13 +629,15 @@ namespace grb {
 			const size_t nrows, const size_t ncols, IOMode io_mode
 		) {
 			static_assert( not std::is_void< D >::value, "factory::ones can not be called with a void type" );
-			return full< D, descr, RIT, CIT, NIT, implementation >( static_cast< D >(1), nrows, ncols, io_mode );
+			return full< D, descr, RIT, CIT, NIT, implementation >( nrows, ncols, io_mode, static_cast< D >(1) );
 		}
 
 		/**
 		 * @brief Build a matrix filled with zeros.
 		 *
-		 * @note Alias for factory::full( 0, nrows, ncols, io_mode ).
+		 * @note Alias for @ref grb_factory_full "factory::full( nrows, ncols, io_mode, 0 )"
+		 *
+		 * @anchor grb_factory_zeros
 		 *
 		 * @tparam D              The type of a non-zero element.
 		 * @tparam RIT            The type used for row indices.
@@ -632,9 +662,8 @@ namespace grb {
 			const size_t nrows, const size_t ncols, IOMode io_mode
 		) {
 			static_assert( not std::is_void< D >::value, "factory::zeros can not be called with a void type" );
-			return full< D, descr, RIT, CIT, NIT, implementation >( static_cast< D >(0), nrows, ncols, io_mode );
+			return full< D, descr, RIT, CIT, NIT, implementation >( nrows, ncols, io_mode, static_cast< D >(0) );
 		}
-
 
 	} // namespace factory
 
