@@ -1,6 +1,6 @@
 
 /*
- *   Copyright 2021 Huawei Technologies Co., Ltd.
+ *   Copyright 2023 Huawei Technologies Co., Ltd.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -146,7 +146,6 @@ void grb_program( const long &n, grb::RC &rc ) {
 		}
 		std::cout << std::flush << " -- Test passed: k = 10" << std::flush << std::endl;
 	}
-	return;
 	{ // k = -10, should be successful
 		Matrix< size_t > U_A( n, n );
 		const long k = -10;
@@ -275,12 +274,12 @@ void grb_program( const long &n, grb::RC &rc ) {
 			return;
 		}
 		const long k = 0;
-		Matrix< size_t > U_A( n, n );
-		rc = grb::tril( U_A, A, k, Phase::RESIZE );
-		rc = rc ? rc : grb::tril( U_A, A, k, Phase::EXECUTE );
+		Matrix< size_t > L_A( n, n );
+		rc = grb::tril( L_A, A, k, Phase::RESIZE );
+		rc = rc ? rc : grb::tril( L_A, A, k, Phase::EXECUTE );
 		Matrix< size_t > I_A( n, n );
-		rc = grb::triu( I_A, U_A, k, Phase::RESIZE );
-		rc = rc ? rc : grb::triu( I_A, U_A, k, Phase::EXECUTE );
+		rc = grb::tril< descriptors::transpose_matrix >( I_A, L_A, k, Phase::RESIZE );
+		rc = rc ? rc : grb::tril< descriptors::transpose_matrix >( I_A, L_A, k, Phase::EXECUTE );
 
 		if( rc != SUCCESS ) {
 			std::cerr << "Error on test: Identity isolation using triu( tril ( A, 1 ), 1 )" << std::endl;

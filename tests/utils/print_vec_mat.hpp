@@ -136,12 +136,14 @@ struct dense_mat {
 	 * @brief Construct a new dense_mat object of given rows and columns, <b>allocating the necessary
 	 *          physical memory for dense storage</b>.
 	 */
-	dense_mat( size_t _nrows, size_t _ncols ) :
+	dense_mat( size_t _nrows, size_t _ncols, T initial_value ) :
 		rows( _nrows ), cols( _ncols ), dense( new T[ rows * cols ] ) // we assume new throws if not enough memory
 	{
 		assert( rows != 0 );
 		assert( cols != 0 );
-		memset( dense, T( 0 ), rows * cols * ( sizeof( T ) ) );
+		for( size_t i = 0; i < rows * cols; ++i ) {
+			dense[ i ] = initial_value;
+		}
 	}
 
 	~dense_mat() {
@@ -174,19 +176,23 @@ struct dense_mat {
  * @param _limit max number of rows and columns to print (0 for all)
  * @param head optional heading to print \b before the matrix
  */
-template< typename T, enum grb::Backend B >
+template< typename T,
+	enum grb::Backend B,
+	typename std::enable_if< not std::is_void< T >::value, int >::type = 0
+>
 void print_matrix( const grb::Matrix< T, B > & mat, size_t _limit = 0, const char * head = nullptr ) {
 	const size_t rows = grb::nrows( mat );
 	const size_t cols = grb::ncols( mat );
 	size_t row_limit = _limit == 0 ? rows : std::min( _limit, rows );
 	size_t col_limit = _limit == 0 ? cols : std::min( _limit, cols );
 	// create and dump only relevant portion
-	dense_mat< T > dump( row_limit, col_limit );
+	dense_mat< std::pair< bool, T > > dump( row_limit, col_limit, { false, 0 } );
 	for( const std::pair< std::pair< size_t, size_t >, T > & t : mat ) {
-		size_t row { t.first.first };
-		size_t col { t.first.second };
+		size_t row = t.first.first;
+		size_t col = t.first.second;
 		if( row < row_limit && col < col_limit ) {
-			dump[ row ][ col ] = t.second;
+			dump[ row ][ col ].first = true;
+			dump[ row ][ col ].second = t.second;
 		}
 	}
 
@@ -197,13 +203,14 @@ void print_matrix( const grb::Matrix< T, B > & mat, size_t _limit = 0, const cha
 	std::cout << "Size: " << rows << " x " << cols << std::endl;
 	for( size_t i = 0; i < row_limit; ++i ) {
 		for( size_t j = 0; j < col_limit; ++j ) {
-			double val = dump[ i ][ j ];
-			std::cout << val;
-			if( val == 0.0 ) {
-				std::cout << "  ";
+			bool assigned = dump[ i ][ j ].first;
+			T val = dump[ i ][ j ].second;
+			if( assigned ) {
+				std::cout << val;
 			} else {
-				std::cout << " ";
+				std::cout << "_";
 			}
+			std::cout << " ";
 		}
 		std::cout << std::endl;
 	}
@@ -264,7 +271,11 @@ template<
 	bool Enabled = true,
 	typename D, typename RIT, typename CIT, typename NIT,
 	Backend implementation,
-	typename = void
+	typename std::enable_if<
+		implementation != reference &&
+		implementation != reference_omp,
+		int
+	>::type = 0
 >
 void printCRS(
 	const Matrix< D, implementation, RIT, CIT, NIT > &,
@@ -278,8 +289,9 @@ template<
 	Backend implementation,
 	typename std::enable_if<
 		implementation == reference ||
-		implementation == reference_omp
-	>::type = true
+		implementation == reference_omp,
+		int
+	>::type = 0
 >
 void printCRS(
 	const Matrix< D, implementation, RIT, CIT, NIT > &mat,
@@ -300,7 +312,11 @@ template<
 	bool Enabled = true,
 	typename D, typename RIT, typename CIT, typename NIT,
 	Backend implementation = grb::config::default_backend,
-	typename = void
+	typename std::enable_if<
+		implementation != reference &&
+		implementation != reference_omp,
+		int
+	>::type = 0
 >
 void printCCS(
 	const Matrix< D, implementation, RIT, CIT, NIT > &,
@@ -308,14 +324,16 @@ void printCCS(
 	std::ostream & = std::cout
 ) {}
 
+
 template<
 	bool Enabled = true,
 	typename D, typename RIT, typename CIT, typename NIT,
 	Backend implementation = grb::config::default_backend,
 	typename std::enable_if<
 		implementation == reference ||
-		implementation == reference_omp
-	>::type = true
+		implementation == reference_omp,
+		int
+	>::type = 0
 >
 void printCCS(
 	const Matrix< D, implementation, RIT, CIT, NIT > &mat,

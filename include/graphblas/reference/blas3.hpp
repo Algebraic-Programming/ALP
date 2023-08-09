@@ -1222,6 +1222,7 @@ namespace grb {
 #ifdef _DEBUG
 			std::cout << "In grb::internal::trilu_generic( reference )\n";
 #endif
+			constexpr bool crs_only = descr & descriptors::force_row_major;
 			constexpr bool transpose = descr & descriptors::transpose_matrix;
 			const size_t m = transpose ? ncols( A ) : nrows( A );
 			const size_t n = transpose ? nrows( A ) : ncols( A );
@@ -1242,7 +1243,7 @@ namespace grb {
 				return SUCCESS;
 			}
 
-			if( (descr & descriptors::force_row_major) && transpose ) {
+			if( crs_only && transpose ) {
 #ifdef _DEBUG
 				std::cerr << "force_row_major and tranpose descriptors are "
 					<< "mutually exclusive\n";
@@ -1289,7 +1290,7 @@ namespace grb {
 							continue;
 						}
 
-						nzc += 1;
+						++nzc;
 					}
 				}
 #ifdef _DEBUG
@@ -1311,11 +1312,6 @@ namespace grb {
 				}
 
 				// Prefix sum computation into L.CRS.col_start
-#ifdef _H_GRB_REFERENCE_OMP_BLAS3
-				#pragma omp parallel for simd default( none ) \
-					shared( A_raw, L_crs_raw, L_ccs_raw ) \
-					firstprivate( k, m, n_offset, m_offset )
-#endif
 				for( size_t i = 0; i < m; i++ ) {
 					size_t cumul = 0UL;
 					const auto A_k_start = A_raw.col_start[ i ];
@@ -1339,14 +1335,13 @@ namespace grb {
 
 #ifdef _H_GRB_REFERENCE_OMP_BLAS3
 				const auto max_nthreads = std::max( 2UL, config::OMP::threads() );
-				#pragma omp teams num_teams( 2 ) thread_limit( max_nthreads / 2 )
+				#pragma omp teams num_teams( crs_only ? 1 : 2 ) thread_limit( max_nthreads / 2UL )
 #endif
 				{
-
 #ifdef _H_GRB_REFERENCE_OMP_BLAS3
 					const int nteams = omp_get_num_teams();
 					const int team_id = omp_get_team_num();
-					assert( nteams == 2 );
+					assert( nteams == (crs_only ? 1 : 2) );
 					assert( omp_get_team_size(omp_get_level()) >= 0 );
 #else
 					const int nteams = 0;
@@ -1355,7 +1350,7 @@ namespace grb {
 					if( nteams == 0 || team_id == 0 ) {
 						prefix_sum( L_crs_raw.col_start, m + 1 );
 					}
-					if( nteams == 0 || team_id == 1 ) {
+					if( !crs_only && (nteams == 0 || team_id == 1) ) {
 						prefix_sum( L_ccs_raw.col_start, n + 1 );
 					}
 				}
@@ -1366,19 +1361,23 @@ namespace grb {
 					std::cout << L_crs_raw.col_start[ i ] << " ";
 				}
 				std::cout << "}\n";
-				std::cout << "L_ccs_raw.col_start = { ";
-				for( size_t i = 0; i <= n; ++i ) {
-					std::cout << L_ccs_raw.col_start[ i ] << " ";
+				if( !crs_only ) {
+					std::cout << "L_ccs_raw.col_start = { ";
+					for( size_t i = 0; i <= n; ++i ) {
+						std::cout << L_ccs_raw.col_start[ i ] << " ";
+					}
+					std::cout << "}\n";
 				}
-				std::cout << "}\n";
 #endif
 
 #ifdef _NDEBUG
 				for( size_t i = 0; i < m; ++i ) {
 					assert( L_crs_raw.col_start[ i+1 ] >= L_crs_raw.col_start[ i ] );
 				}
-				for( size_t i = 0; i < n; ++i ) {
-					assert( L_ccs_raw.col_start[ i+1 ] >= L_ccs_raw.col_start[ i ] );
+				if( !crs_only ) {
+					for( size_t i = 0; i < n; ++i ) {
+						assert( L_ccs_raw.col_start[ i+1 ] >= L_ccs_raw.col_start[ i ] );
+					}
 				}
 #endif
 
@@ -1392,7 +1391,7 @@ namespace grb {
 #endif
 					return MISMATCH;
 				}
-				if( L_ccs_raw.col_start[ n ] > nzc ) {
+				if( !crs_only && L_ccs_raw.col_start[ n ] > nzc ) {
 #ifdef _DEBUG
 					std::cout << "EXECUTE phase: detected insufficient"
 						<< " capacity for requested operation.\n"
@@ -1402,68 +1401,58 @@ namespace grb {
 					return MISMATCH;
 				}
 
-				// Copy the CRS col_start array into a temporary array
-				size_t * const L_ccs_raw_col_start_copy = internal::template
-					getReferenceBuffer< size_t >( n + 1 );
-
+				// retrieve buffers
+				CIT_A * C_col_index;
+				if( !crs_only ) {
+					C_col_index = internal::template getReferenceBuffer< CIT_A >( n );
 #ifdef _H_GRB_REFERENCE_OMP_BLAS3
-				#pragma omp parallel for simd
+					#pragma omp parallel for simd
 #endif
-				for( size_t i = 0; i <= n; ++i ) {
-					L_ccs_raw_col_start_copy[ i ] = L_ccs_raw.col_start[ i ];
-				}
-
-#ifdef _H_GRB_REFERENCE_OMP_BLAS3
-				#pragma omp parallel default( none ) \
-					shared( A_raw, L_crs_raw, L_ccs_raw, L_ccs_raw_col_start_copy ) \
-					firstprivate( k, m, n, n_offset, m_offset )
-#endif
-				{
-					size_t start_row = 0;
-					size_t end_row = m;
-#ifdef _H_GRB_REFERENCE_OMP_BLAS3
-					config::OMP::localRange( start_row, end_row, 0, m );
-#endif
-					// Update the CRS and CCS row indices and values
-					for( size_t i = start_row; i < end_row; i++ ) {
-						auto L_k = L_crs_raw.col_start[ i ];
-						const auto A_k_start = A_raw.col_start[ i ];
-						const auto A_k_end = A_raw.col_start[ i + 1 ];
-
-						for( auto A_k = A_k_start; A_k < A_k_end; ++A_k ) {
-							const auto A_j = A_raw.row_index[ A_k ];
-
-							// Parameter k can be negative, so we need to cast to long
-							const long i_long = static_cast< long >( i ) + static_cast< long >( m_offset );
-							const long A_j_long = static_cast< long >( A_j ) + static_cast< long >( n_offset );
-							// If the value is not in the specified triangle, skip it
-							if( A_j_long > i_long + k  ) {
-								continue;
-							}
-
-							const InputType& a_val = A_raw.getValue( A_k, InputType() );
-							L_crs_raw.row_index[ L_k ] = A_j;
-							L_crs_raw.setValue( L_k, a_val );
-
-							size_t ccs_idx;
-							// The following block should be thread-safe
-							// (no two threads should be able to write to the same index)
-							#pragma omp critical
-							{
-								ccs_idx = L_ccs_raw_col_start_copy[ A_j + 1 ];
-								--L_ccs_raw_col_start_copy[ A_j + 1 ];
-							}
-							L_ccs_raw.row_index[ ccs_idx ] = i;
-							L_ccs_raw.setValue( ccs_idx, a_val );
-							L_k += 1;
-						}
+					for( size_t i = 0; i < n; ++i ) {
+						C_col_index[ i ] = 0;
 					}
 				}
 
+				// Update the CRS and CCS row indices and values
+				size_t nzc_counter = 0;
+				for( size_t i = 0; i < m; i++ ) {
+					const auto A_k_start = A_raw.col_start[ i ];
+					const auto A_k_end = A_raw.col_start[ i + 1 ];
+					for( auto A_k = A_k_start; A_k < A_k_end; ++A_k ) {
+						const auto j = A_raw.row_index[ A_k ];
+
+						// Parameter k can be negative, so we need to cast to long
+						const long i_long = static_cast< long >( i ) + static_cast< long >( m_offset );
+						const long j_long = static_cast< long >( j ) + static_cast< long >( n_offset );
+						// If the value is not in the specified triangle, skip it
+						if( j_long > i_long + k  ) {
+							continue;
+						}
+
+
+
+						// Retrieve the value from A
+						const auto A_val = A_raw.getValue( A_k, InputType() );
+
+						// update CRS
+						L_crs_raw.row_index[ nzc_counter ] = j;
+						L_crs_raw.setValue( nzc_counter, A_val );
+						// update CCS
+						if( !crs_only ) {
+							const size_t CCS_index = C_col_index[ j ]++ + L_ccs_raw.col_start[ j ];
+							L_ccs_raw.row_index[ CCS_index ] = i;
+							L_ccs_raw.setValue( CCS_index, A_val );
+						}
+						// update count
+						(void) ++nzc_counter;
+					}
+				}
+
+
 #ifdef _DEBUG
-				std::cout << "EXECUTE phase: setCurrentNonzeroes( L, " << nzc << " )\n";
+				std::cout << "EXECUTE phase: setCurrentNonzeroes( L, " << nzc_counter << " )\n";
 #endif
-				internal::setCurrentNonzeroes( L, nzc );
+				internal::setCurrentNonzeroes( L, nzc_counter );
 
 				return SUCCESS;
 			}
