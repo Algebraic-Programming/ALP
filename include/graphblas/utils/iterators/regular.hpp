@@ -218,17 +218,16 @@ namespace grb {
 					friend bool operator==(
 						self_const_reference_type left, self_const_reference_type right
 					) noexcept {
-						assert( left._count == right._count );
-						assert( left._state == right._state );
-						return left._pos == right._pos;
+						return left._pos == right._pos &&
+							left._count == right._count &&
+							left._state == right._state	&&
+							left._val == right._val;
 					}
 
 					friend bool operator!=(
 						self_const_reference_type left, self_const_reference_type right
 					) noexcept {
-						assert( left._count == right._count );
-						assert( left._state == right._state );
-						return left._pos != right._pos;
+						return !( left == right );
 					}
 
 					// bi-directional iterator interface
@@ -267,36 +266,36 @@ namespace grb {
 						self_const_reference_type left,
 						self_const_reference_type right
 					) {
-						assert( left._count == right._count );
-						assert( left._state == right._state );
-						return left._pos < right._pos;
+						return left._count == right._count &&
+							left._state == right._state &&
+							left._pos < right._pos;
 					}
 
 					friend bool operator>(
 						self_const_reference_type left,
 						self_const_reference_type right
 					) {
-						assert( left._count == right._count );
-						assert( left._state == right._state );
-						return left._pos > right._pos;
+						return left._count == right._count &&
+							left._state == right._state &&
+							left._pos > right._pos;
 					}
 
 					friend bool operator<=(
 						self_const_reference_type left,
 						self_const_reference_type right
 					) {
-						assert( left._count == right._count );
-						assert( left._state == right._state );
-						return left._pos <= right._pos;
+						return left._count == right._count &&
+							left._state == right._state &&
+							left._pos <= right._pos;
 					}
 
 					friend bool operator>=(
 						self_const_reference_type left,
 						self_const_reference_type right
 					) {
-						assert( left._count == right._count );
-						assert( left._state == right._state );
-						return left._pos >= right._pos;
+						return left._count == right._count &&
+							left._state == right._state &&
+							left._pos >= right._pos;
 					}
 
 					self_reference_type operator+=( const size_t count ) noexcept {

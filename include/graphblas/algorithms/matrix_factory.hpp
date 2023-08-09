@@ -82,14 +82,16 @@ namespace grb {
 				utils::containers::Range< CIT > J( k_j_incr, 1, diag_length + k_j_incr );
 
 				RC rc = ( descr & descriptors::transpose_matrix )
-					? buildMatrixUnique( matrix, I.begin(), J.begin(), V_iter, diag_length, io_mode )
-					: buildMatrixUnique( matrix, J.begin(), I.begin(), V_iter, diag_length, io_mode );
+					? buildMatrixUnique( matrix, J.begin(), I.begin(), V_iter, diag_length, io_mode )
+					: buildMatrixUnique( matrix, I.begin(), J.begin(), V_iter, diag_length, io_mode );
 
 				assert( rc == SUCCESS );
 				if( rc != SUCCESS ) {
 					// Todo: Throw an exception or just return an empty matrix?
 					// Nb: We should consider the distributed case if we throw an exception.
-					(void) clear( matrix );
+					throw std::runtime_error(
+						"Error: createIdentity_generic failed: rc = " + grb::toString( rc )
+					);
 				}
 				return matrix;
 			}
@@ -119,14 +121,16 @@ namespace grb {
 				utils::containers::Range< CIT > J( 0, 1, diag_length );
 
 				RC rc = ( descr & descriptors::transpose_matrix )
-					? buildMatrixUnique( matrix, I.begin(), J.begin(), diag_length, io_mode )
-					: buildMatrixUnique( matrix, J.begin(), I.begin(), diag_length, io_mode );
+					? buildMatrixUnique( matrix, J.begin(), I.begin(), diag_length, io_mode )
+					: buildMatrixUnique( matrix, I.begin(), J.begin(), diag_length, io_mode );
 
 				assert( rc == SUCCESS );
 				if( rc != SUCCESS ) {
 					// Todo: Throw an exception or just return an empty matrix?
 					// Nb: We should consider the distributed case if we throw an exception.
-					(void) clear( matrix );
+					throw std::runtime_error(
+						"Error: createIdentity_generic<void> failed: rc = " + grb::toString( rc )
+					);
 				}
 				return matrix;
 			}
@@ -210,9 +214,14 @@ namespace grb {
 			const D identity_value = static_cast< D >(1),
 			const long k = 0L
 		) {
-			utils::containers::ConstantVector< D > V( identity_value, std::min( nrows, ncols ) );
+			// Todo: When using the iterator below, an assertion is triggered in the
+			//       buildMatrixUnique method.
+			// utils::containers::ConstantVector< D > V( identity_value, std::min( nrows, ncols ) );
+
+			std::unique_ptr< D[] > V( new D[ std::min( nrows, ncols ) ] );
+			std::fill_n( V.get(), std::min( nrows, ncols ), identity_value );
 			return internal::createIdentity_generic< D, descr, RIT, CIT, NIT, implementation >(
-				nrows, ncols, k, io_mode, V.begin()
+				nrows, ncols, k, io_mode, V.get()
 			);
 		}
 
