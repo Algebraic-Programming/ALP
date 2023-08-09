@@ -205,10 +205,9 @@ namespace grb {
 			const D identity_value = static_cast< D >(1),
 			const long k = 0L
 		) {
-			std::unique_ptr< D[] > V( new D[ std::min( nrows, ncols ) ] );
-			std::fill_n( V.get(), std::min( nrows, ncols ), identity_value );
+			utils::containers::ConstantVector< D > V( identity_value, std::min( nrows, ncols ) );
 			return internal::createIdentity_generic< D, descr, RIT, CIT, NIT, implementation >(
-				nrows, ncols, k, io_mode, V.get()
+				nrows, ncols, k, io_mode, V.begin()
 			);
 		}
 
