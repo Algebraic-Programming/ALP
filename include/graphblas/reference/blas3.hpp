@@ -1159,64 +1159,55 @@ namespace grb {
 				return MISMATCH;
 			}
 
+			// retrieve buffers
+			char * arr = nullptr, * buf = nullptr;
+			InputType * vbuf = nullptr;
+			internal::getMatrixBuffers( arr, buf, vbuf, 1, A );
+			// end buffer retrieval
+
+			// initialisations
+			internal::Coordinates< reference > coors;
+			coors.set( arr, false, buf, n_A );
+			// end initialisations
+
 			RC rc = SUCCESS;
-			RC local_rc = rc;
-			auto local_x = identity_A;
-#ifdef _H_GRB_REFERENCE_OMP_BLAS3
-			#pragma omp parallel default( none )                                           \
-				shared( A_raw, mask_raw, x, rc )                                           \
-				firstprivate( local_x, local_rc, m_A, op, identity_A, identity_mask )
-#endif
-			{
-				size_t start_row = 0;
-				size_t end_row = m_A;
-#ifdef _H_GRB_REFERENCE_OMP_BLAS3
-				config::OMP::localRange( start_row, end_row, 0, m_A );
-#endif
-				for( auto i = start_row; i < end_row; ++i ) {
-					for( auto mask_k = mask_raw.col_start[ i ]; mask_k < mask_raw.col_start[ i + 1 ]; ++mask_k ) {
-						const auto mask_j = mask_raw.row_index[ mask_k ];
+			for( size_t i = 0; i < n_A; ++i ) {
+				coors.clear();
 
-						if( !ignore_mask_values &&
-							!mask_raw.getValue( mask_k, identity_mask )
-						) {
-							continue;
-						}
+				const auto mask_k_begin = mask_raw.col_start[ i ];
+				const auto mask_k_end = mask_raw.col_start[ i + 1 ];
+				for( auto mask_k = mask_k_begin; mask_k < mask_k_end; ++mask_k ) {
+					const auto j = mask_raw.row_index[ mask_k ];
 
-						for( auto k = A_raw.col_start[ i ]; k < A_raw.col_start[ i + 1 ]; ++k ) {
-							const auto j = A_raw.row_index[ k ];
+					if( !ignore_mask_values &&
+						!mask_raw.getValue( mask_k, identity_mask )
+					) { continue; }
 
-							if( j != mask_j ) {
-								continue;
-							}
-
-							// descriptors::add_identity logic for the main diagonal of A
-							const InputType identity_increment = add_identity && ( i == j )
-								? static_cast<InputType>(1)
-								: static_cast<InputType>(0);
-
-							// Get A value
-							const InputType a_val = A_raw.getValue( k, identity_A );
-							// Compute the fold for this coordinate
-							const auto local_x_before = local_x;
-							local_rc = local_rc ? local_rc
-								: grb::apply< descr >(
-									local_x,
-									local_x_before,
-									a_val + identity_increment,
-									op
-								);
-						}
-					}
+					coors.assign( j );
 				}
 
-#ifdef _H_GRB_REFERENCE_OMP_BLAS3
-				#pragma omp critical
-#endif
-				{ // Reduction with the global result (critical section if OpenMP)
-					const auto x_before = x;
-					local_rc = local_rc ? local_rc : grb::apply< descr >( x, x_before, local_x, op );
-					rc = rc ? rc : local_rc;
+				const auto A_k_begin = A_raw.col_start[ i ];
+				const auto A_k_end = A_raw.col_start[ i + 1 ];
+				for( auto A_k = A_k_begin; A_k < A_k_end; ++A_k ) {
+					const auto j = A_raw.row_index[ A_k ];
+
+					// Skip if the coordinate is not in the mask
+					if( !coors.assigned( j ) ) { continue; }
+
+					// descriptors::add_identity logic for the main diagonal of A
+					const InputType identity_increment = add_identity && ( i == j )
+						? static_cast<InputType>(1)
+						: static_cast<InputType>(0);
+
+					// Get A value
+					const InputType a_val = A_raw.getValue( A_k, identity_A );
+					// Compute the fold for this coordinate
+					rc = rc ? rc : grb::apply< descr >(
+						x,
+						x,
+						a_val + identity_increment,
+						op
+					);
 				}
 			}
 
