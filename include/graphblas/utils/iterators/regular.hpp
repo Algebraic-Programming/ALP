@@ -310,7 +310,7 @@ namespace grb {
 						 self_const_reference_type iterator,
 						 const size_t count
 					) noexcept {
-						assert( iterator._pos + count < iterator._count );
+						assert( iterator._pos + count <= iterator._count );
 						const size_t pos = iterator._pos + count;
 						R val = iterator._val;
 						SelfType::func( val, iterator._state, pos );
@@ -324,7 +324,7 @@ namespace grb {
 						const size_t count,
 						self_const_reference_type iterator
 					) noexcept {
-						assert( iterator._pos + count < iterator._count );
+						assert( iterator._pos + count <= iterator._count );
 						const size_t pos = iterator._pos + count;
 						R val = iterator._val;
 						SelfType::func( val, iterator._state, pos );
