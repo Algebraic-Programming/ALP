@@ -1171,24 +1171,29 @@ namespace grb {
 			// end initialisations
 
 			RC rc = SUCCESS;
-			for( size_t i = 0; i < n_A; ++i ) {
+			// Note for review: by indicating that these two values can only be incremented
+			// by 1, as the col_start arrays are the results of a prefix_sum,
+			// it might simplify optimisation for the compiler
+			auto mask_k = mask_raw.col_start[ 0 ];
+			auto A_k = A_raw.col_start[ 0 ];
+
+			for( size_t i = 0; i < m_A; ++i ) {
 				coors.clear();
 
-				const auto mask_k_begin = mask_raw.col_start[ i ];
-				const auto mask_k_end = mask_raw.col_start[ i + 1 ];
-				for( auto mask_k = mask_k_begin; mask_k < mask_k_end; ++mask_k ) {
-					const auto j = mask_raw.row_index[ mask_k ];
+				for(; mask_k < mask_raw.col_start[ i + 1 ]; ++mask_k ) {
 
 					if( !ignore_mask_values &&
 						!mask_raw.getValue( mask_k, identity_mask )
 					) { continue; }
 
+					const auto j = mask_raw.row_index[ mask_k ];
 					coors.assign( j );
 				}
 
-				const auto A_k_begin = A_raw.col_start[ i ];
-				const auto A_k_end = A_raw.col_start[ i + 1 ];
-				for( auto A_k = A_k_begin; A_k < A_k_end; ++A_k ) {
+				// If there is no value in the mask for this row
+				if( coors.nonzeroes() == 0 ) { continue; }
+
+				for(; A_k < A_raw.col_start[ i + 1 ]; ++A_k ) {
 					const auto j = A_raw.row_index[ A_k ];
 
 					// Skip if the coordinate is not in the mask
