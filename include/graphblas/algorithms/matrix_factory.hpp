@@ -149,6 +149,7 @@ namespace grb {
 		 */
 		template<
 			typename D,
+			Descriptor descr = descriptors::no_operation,
 			typename RIT = config::RowIndexType,
 			typename CIT = config::ColIndexType,
 			typename NIT = config::NonzeroIndexType,
@@ -458,6 +459,7 @@ namespace grb {
 		 */
 		template<
 			typename D,
+			Descriptor descr = descriptors::no_operation,
 			typename RIT = config::RowIndexType,
 			typename CIT = config::ColIndexType,
 			typename NIT = config::NonzeroIndexType,
@@ -499,6 +501,7 @@ namespace grb {
 		 */
 		template<
 			typename D,
+			Descriptor descr = descriptors::no_operation,
 			typename RIT = config::RowIndexType,
 			typename CIT = config::ColIndexType,
 			typename NIT = config::NonzeroIndexType,
@@ -530,6 +533,7 @@ namespace grb {
 		 */
 		template<
 			typename D,
+			Descriptor descr = descriptors::no_operation,
 			typename RIT = config::RowIndexType,
 			typename CIT = config::ColIndexType,
 			typename NIT = config::NonzeroIndexType,
@@ -538,7 +542,7 @@ namespace grb {
 		>
 		Matrix< D, implementation, RIT, CIT, NIT > dense(
 			const D value, const size_t nrows, const size_t ncols, IOMode io_mode
-		) { return full< D, RIT, CIT, NIT, implementation >( value, nrows, ncols, io_mode ); }
+		) { return full< D, descr, RIT, CIT, NIT, implementation >( value, nrows, ncols, io_mode ); }
 
 		/**
 		 * @brief Build a dense pattern matrix.
@@ -559,6 +563,7 @@ namespace grb {
 		 */
 		template<
 			typename D,
+			Descriptor descr = descriptors::no_operation,
 			typename RIT = config::RowIndexType,
 			typename CIT = config::ColIndexType,
 			typename NIT = config::NonzeroIndexType,
@@ -567,7 +572,7 @@ namespace grb {
 		>
 		Matrix< D, implementation, RIT, CIT, NIT > dense(
 			const size_t nrows, const size_t ncols, IOMode io_mode
-		) { return full< void, RIT, CIT, NIT, implementation >( nrows, ncols, io_mode ); }
+		) { return full< void, descr, RIT, CIT, NIT, implementation >( nrows, ncols, io_mode ); }
 
 		/**
 		 * @brief Build a matrix filled with ones.
@@ -587,6 +592,7 @@ namespace grb {
 		 */
 		template<
 			typename D,
+			Descriptor descr = descriptors::no_operation,
 			typename RIT = config::RowIndexType,
 			typename CIT = config::ColIndexType,
 			typename NIT = config::NonzeroIndexType,
@@ -596,7 +602,7 @@ namespace grb {
 			const size_t nrows, const size_t ncols, IOMode io_mode
 		) {
 			static_assert( not std::is_void< D >::value, "factory::ones can not be called with a void type" );
-			return full( static_cast< D >(1), nrows, ncols, io_mode );
+			return full< D, descr, RIT, CIT, NIT, implementation >( static_cast< D >(1), nrows, ncols, io_mode );
 		}
 
 		/**
@@ -617,6 +623,7 @@ namespace grb {
 		 */
 		template<
 			typename D,
+			Descriptor descr = descriptors::no_operation,
 			typename RIT = config::RowIndexType,
 			typename CIT = config::ColIndexType,
 			typename NIT = config::NonzeroIndexType,
@@ -626,7 +633,7 @@ namespace grb {
 			const size_t nrows, const size_t ncols, IOMode io_mode
 		) {
 			static_assert( not std::is_void< D >::value, "factory::zeros can not be called with a void type" );
-			return full( static_cast< D >(0), nrows, ncols, io_mode );
+			return full< D, descr, RIT, CIT, NIT, implementation >( static_cast< D >(0), nrows, ncols, io_mode );
 		}
 
 
