@@ -51,16 +51,53 @@ namespace grb {
 					size_t g1_nvals;
 					// grb::RC ret = grb::set( m_w, 0 ); not necessary in ALP
 					grb::Monoid< grb::operators::add< T >, grb::identities::zero > plusMonoid;
+					grb::operators::subtract< T > minusOp;
 					grb::RC ret = grb::foldl( m_w, matching, plusMonoid );
 
 					ret = ret ? ret : grb::set<
 							grb::descriptors::invert_mask
 						>( AwoM, matching, adjacency );
 					
-					ret = ret ? ret : grb::set( C, AwoM, 0 ); // this is not needed  in C?
+					//ret = ret ? ret : grb::set( C, AwoM, 0 ); // this is not needed  in C?
 					ret = ret ? ret : grb::outer( C, AwoM, m_w, m_w, plusMonoid, plusOp );
+
 					ret = ret ? ret : grb::eWiseApply( G1, AwoM, C, minusOp ); // nonzeroes in AwoM but not in C will not be copied into G1?
-					// TODO original code line 53 onwards
+					grb::Matrix< bool > tmp( n, n, grb::nnz(G1) ); // ideally best factored out
+					grb::Matrix< T > tmp2( n, n ); // default cap is ok
+					ret = ret ? ret : grb::eWiseApply( tmp, G1, 0, gtOp );
+					ret = ret ? ret : grb::eWiseApply( tmp2, G1, tmp, leftAssignIfOp ); // check this one, ideally I'd use foldl
+					std::swap( tmp2, G1 );
+					if( ret != grb::SUCCESS ) { return ret; }
+
+					g1_nvals = grb::nnz( G1 );
+					if( g1_nvals > 0 ) {
+						// select one match (highest value on each row, one value per row, deterministic tie breaking)
+						grb::Vector< T > tmp_vec( n ); // ideally factor this out
+						grb::Vector< T > tmp_vec2( n ); // ideally factor this out
+						grb::Matrix< T > tmp3( n, n, grb::nnz( G1 ) ); // ideally factor out
+						ret = grb::foldl( tmp_vec, G1, maxMonoid );
+						ret = ret ? ret : grb::diag( tmp2, tmp_vec ); // this function does not yet exist (See branch #228)
+						ret = ret ? ret : grb::mxm( tmp3, tmp2, G1,
+							orEqualsRing );
+						ret = ret ? ret : grb::eWiseLambda( [&tmp3](const size_t i, const size_t j, T& val) { (void) i; val = j; } );
+						ret = ret ? ret : grb::clear( tmp_vec );
+						ret = ret ? ret : grb::foldl( tmp_vec, tmp3, maxMonoid );
+						ret = ret ? ret : grb::set<
+								grb::descriptors::use_index
+							>( tmp_vec2, 0 ); //or use branch #228
+						ret = ret ? ret : grb::zip( D1, tmp_vec2, tmp_vec ); // TODO: D1, augmentation matrices should be pattern matrices?
+
+						// filter conflicts (is this not better named select requited matches?)
+						ret = ret ? ret : grb::eWiseApply<
+								grb::descriptors::transpose_left
+							>( augmentations, D1, D1, anyOrOp );
+						// line 68 in orig code not necessary
+					} else {
+						ret = grb::FAILED;
+					}
+
+					// done
+					return ret;
 				}
 
 				template< typename T >
@@ -82,6 +119,22 @@ namespace grb {
 						ret = grb::PANIC;
 					}
 					return ret;
+				}
+
+				template< typename T >
+				RC flipAugmentations(
+					grb::Matrix< T > &adjacency,
+					grb::Matrix< T > &matching,
+					grb::Matrix< T > &augmentation,
+					double &currentMatchingWeight,
+					const size_t n
+				) {
+					grb::Vector< T > m( n ), a( n ), r( n ); // ideally factor this out
+					grb::operators::any_or< T > anyOrOp;
+					grb::RC ret = grb::foldl( m, matching, anyOrOp );
+					ret = ret ? ret : grb::foldl( a, augmentation, anyOrOp );
+					ret = ret ? ret : grb::eWiseApply( r, m, a, anyOrOp );
+					// line 120 onwards
 				}
 
 			} // end namespace grb::algorithms::internal::mwm
