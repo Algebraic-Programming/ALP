@@ -73,6 +73,10 @@ add_grb_executables( id id.cpp
 	BACKENDS reference reference_omp bsp1d hybrid hyperdags nonblocking
 )
 
+add_grb_executables( id_distributed id_distributed.cpp
+	BACKENDS bsp1d hybrid
+)
+
 add_grb_executables( dot dot.cpp
 	BACKENDS reference reference_omp bsp1d hybrid hyperdags nonblocking
 )

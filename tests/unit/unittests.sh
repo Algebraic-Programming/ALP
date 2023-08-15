@@ -179,6 +179,14 @@ for MODE in ${MODES}; do
 				grep 'Test OK' ${TEST_OUT_DIR}/id_${MODE}_${BACKEND}_${P}_${T}.log || echo "Test FAILED"
 				echo " "
 
+				if [ "$BACKEND" = "bsp1d" ] || [ "$BACKEND" = "hybrid" ]; then
+					echo ">>>      [x]           [ ]       Testing grb::id on distributed vectors and matrices"
+					$runner ${TEST_BIN_DIR}/id_distributed_${MODE}_${BACKEND} &> ${TEST_OUT_DIR}/id_distributed_${MODE}_${BACKEND}_${P}_${T}.log
+					head -1 ${TEST_OUT_DIR}/id_distributed_${MODE}_${BACKEND}_${P}_${T}.log
+					grep 'Test OK' ${TEST_OUT_DIR}/id_distributed_${MODE}_${BACKEND}_${P}_${T}.log || echo "Test FAILED"
+					echo " "
+				fi
+
 				echo ">>>      [x]           [ ]       Testing grb::capacity, grb::resize, and default"
 				echo "                                 and explicit capacities set during container"
 				echo "                                 construction"
