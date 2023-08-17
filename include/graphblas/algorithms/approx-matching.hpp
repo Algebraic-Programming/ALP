@@ -39,6 +39,23 @@ namespace grb {
 
 			namespace mwm {
 
+				RC buildAwoM(
+					grb::Matrix< T > &AwoM,
+					const grb::Martix< T > &adjacency,
+					const grb::Matrix< T > &matching,
+					grb::Vector< T > &workspace_vec,
+				) {
+					grb::Monoid<
+						grb::operators::add< T >,
+						grb::identities::zero
+					> plusMonoid;
+					grb::RC ret = grb::foldl( m_w, matching, plusMonoid );
+					ret = ret ? ret : grb::set<
+							grb::descriptors::invert_mask
+						>( AwoM, matching, adjacency );
+					return ret;
+				}
+
 				template< typename T >
 				RC search1AugsProcedure(
 					grb::Matrix< T > &adjacency,
@@ -46,20 +63,25 @@ namespace grb {
 					grb::Matrix< T > &augmentation,
 					const size_t n, const size_t m
 				) {
+					// ideally factor out the below:
 					grb::Vector< T > m_w( n );
-					grb::Matrix< T > C( n, n ), AwoM( n, n, m ), G1( n, n ), D1( n, n );
+					grb::Matrix< T > C( n, n ), AwoM( n, n, m );
+					grb::Matrix< T > G1( n, n ), D1( n, n );
 					size_t g1_nvals;
-					// grb::RC ret = grb::set( m_w, 0 ); not necessary in ALP
-					grb::Monoid< grb::operators::add< T >, grb::identities::zero > plusMonoid;
+					// grb::RC ret = grb::set( m_w, 0 ); not necessary?
+					grb::Monoid<
+						grb::operators::add< T >,
+						grb::identities::zero
+					> plusMonoid;
 					grb::operators::subtract< T > minusOp;
-					grb::RC ret = grb::foldl( m_w, matching, plusMonoid );
+					grb::RC ret = buildAwoM( AwoM, adjacency, matching, m_w );
 
-					ret = ret ? ret : grb::set<
-							grb::descriptors::invert_mask
-						>( AwoM, matching, adjacency );
-					
-					//ret = ret ? ret : grb::set( C, AwoM, 0 ); // this is not needed  in C?
-					ret = ret ? ret : grb::outer( C, AwoM, m_w, m_w, plusMonoid, plusOp );
+					//ret = ret ? ret : grb::set( C, AwoM, 0 ); // this is not needed?
+					ret = ret ? ret : grb::outer(
+						C, AwoM,
+						m_w, m_w,
+						plusMonoid, plusOp
+					);
 
 					ret = ret ? ret : grb::eWiseApply( G1, AwoM, C, minusOp ); // nonzeroes in AwoM but not in C will not be copied into G1?
 					grb::Matrix< bool > tmp( n, n, grb::nnz(G1) ); // ideally best factored out
@@ -153,10 +175,10 @@ namespace grb {
 
 					ret = ret ? ret : grb::set<
 							grb::descriptors::invert_mask
-						> ( buffer, R, matching );
+						>( buffer, R, matching );
 					std::swap( buffer, matching );
 					ret = ret ? ret : grb::eWiseMul(
-							matching, R, augmentation, adjacency,
+							matching, augmentation, adjacency,
 							booleanSemiring
 						);
 
