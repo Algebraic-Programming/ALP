@@ -131,10 +131,26 @@ namespace grb {
 				) {
 					grb::Vector< T > m( n ), a( n ), r( n ); // ideally factor this out
 					grb::operators::any_or< T > anyOrOp;
+					grb::operators::add< T > addOp;
+					grb::Semiring<
+						grb::operators::logical_or< bool >,
+						grb::operators::logical_and< bool >,
+						grb::identities::logical_false,
+						grb::identities::logical_true
+					> booleanSemiring;
 					grb::RC ret = grb::foldl( m, matching, anyOrOp );
 					ret = ret ? ret : grb::foldl( a, augmentation, anyOrOp );
 					ret = ret ? ret : grb::eWiseApply( r, m, a, anyOrOp );
-					// line 120 onwards
+					ret = ret ? ret : grb::outer(
+							R, matching,
+							r, 1,
+							booleanSemiring
+						);
+					ret = ret ? ret : grb::foldl<
+							grb::descriptors::transpose
+						>( R, R, addOp );
+
+					// TODO: line 125 onwards
 				}
 
 			} // end namespace grb::algorithms::internal::mwm
