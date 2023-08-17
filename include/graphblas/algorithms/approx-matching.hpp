@@ -130,8 +130,9 @@ namespace grb {
 					const size_t n
 				) {
 					grb::Vector< T > m( n ), a( n ), r( n ); // ideally factor this out
-					grb::operators::any_or< T > anyOrOp;
-					grb::operators::add< T > addOp;
+					grb::Matrix< T > buffer( n, n, grb::nnz( matching ) );
+					grb::operators::any_or< T > anyOrOp; // if T void is sufficient, then this lcould just be logical_or
+					grb::operators::logical_or< T, bool, bool > lorOp;
 					grb::Semiring<
 						grb::operators::logical_or< bool >,
 						grb::operators::logical_and< bool >,
@@ -148,9 +149,18 @@ namespace grb {
 						);
 					ret = ret ? ret : grb::foldl<
 							grb::descriptors::transpose
-						>( R, R, addOp );
+						>( R, R, lorOp );
 
-					// TODO: line 125 onwards
+					ret = ret ? ret : grb::set<
+							grb::descriptors::invert_mask
+						> ( buffer, R, matching );
+					std::swap( buffer, matching );
+					ret = ret ? ret : grb::eWiseMul(
+							matching, R, augmentation, adjacency,
+							booleanSemiring
+						);
+
+					return ret;
 				}
 
 			} // end namespace grb::algorithms::internal::mwm
