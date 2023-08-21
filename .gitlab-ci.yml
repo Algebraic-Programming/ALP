@@ -11,7 +11,7 @@ build_and_run:
     - ../bootstrap.sh --prefix=../install --no-nonblocking
     - make -j$(nproc) build_tests_category_smoke
     - mkdir -p ../hyperdags_outputs
-    - DATASETS_PATH=${ALP_DATASETS} HYPERDAGS_OUTPUT_FOLDER=$(pwd)/../hyperdags_outputs TEST_BIN_DIR=$(pwd) ../hyperdags.sh
+    - DATASETS_PATH=${ALP_DATASETS} HYPERDAGS_OUTPUT_FOLDER=$(pwd)/../hyperdags_outputs TEST_BIN_DIR=$(pwd)/tests/smoke ../hyperdags.sh
   artifacts:
     paths:
       - hyperdags_outputs/
