@@ -1,6 +1,6 @@
 #!/bin/bash
 
-if [ -z "${DATASETS_PATH}" || ! -d "${DATASETS_PATH}" ]; then
+if [ -z "${DATASETS_PATH}" ] || [ ! -d "${DATASETS_PATH}" ]; then
     echo "Please provide the correct path to the datasets directory"
     exit 1
 fi
@@ -67,7 +67,7 @@ else
     echo "Skipping simple_pagerank_wikipedia-20051105.mtx test"
 fi
 
-if [ ! -z "${GNN_DATASET_PATH}" && -d "${GNN_DATASET_PATH}" ]; then
+if [ ! -z "${GNN_DATASET_PATH}" ] && [ -d "${GNN_DATASET_PATH}" ]; then
     HYPERDAGS_OUTPUT_PATH="${CURRENT_OUT_DIR}/graphchallenge_nn_single_inference_1024neurons_120layers.mtx" \
         ${TEST_BIN_DIR}/graphchallenge_nn_single_inference_hyperdags ${GNN_DATASET_PATH} 1024 120 294 1 32 indirect 1 1
 else
