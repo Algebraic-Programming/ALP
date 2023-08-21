@@ -1,6 +1,6 @@
 #!/bin/bash
 
-if [ -z "${GNN_DATASET_PATH}" || ! -d "${DATASETS_PATH}" ]; then
+if [ -z "${DATASETS_PATH}" || ! -d "${DATASETS_PATH}" ]; then
     echo "Please provide the correct path to the datasets directory"
     exit 1
 fi
