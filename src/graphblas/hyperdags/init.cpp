@@ -81,7 +81,10 @@ grb::RC grb::finalize< grb::hyperdags >() {
 	const char *outputPath = std::getenv( "HYPERDAGS_OUTPUT_PATH" );
 	std::ofstream fileStream;
 	if( outputPath != nullptr ) {
+		std::cerr << "\t dumping HyperDAG to " << outputPath << std::endl;
 		fileStream.open( outputPath );
+	} else {
+		std::cerr << "\t dumping HyperDAG to stdout" << std::endl;
 	}
 	std::ostream &ostream = ( outputPath != nullptr ) ? fileStream : std::cout;
 
