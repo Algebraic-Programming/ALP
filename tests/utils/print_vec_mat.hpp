@@ -20,12 +20,25 @@
 
 /**
  * @file print_vec_mat.hpp
- * @author Alberto Scolari (alberto.scolari@huawei.com)
- * @brief Routines to print a grb::Vector, a grb::Matrix and a grb::PinnedVector; they are in templated form
- *          to be generic w.r.t. stored data type and backend implementation.
- * @version 0.1
- * @date 2021-04-30
+ * @authors
+ * - Alberto Scolari (alberto.scolari@huawei.com)
+ * - Benjamin Lozes (benjamin.lozes@huawei.com)
+ *
+ * @brief Utilities to print grb containers and objects.
+ *
+ * @details
+ * Routines to print:
+ * - grb::Vector, grb::Matrix & grb::PinnedVector: These primitives are in
+ *   templated form to be generic w.r.t. stored data type and
+ *   backend implementation.
+ * - reference/CompressedStorage (CRS & CCS): These primitives are in
+ *   templated form to be generic w.r.t. stored data type, but only for
+ *   reference and reference_omp backends.
+ *
+ * @version 0.2
+ * @date 25th of August 2023
  */
+
 #include <algorithm>
 #include <utility>
 #include <iostream>
@@ -35,8 +48,10 @@
 
 using namespace grb;
 
+
 /**
- * @brief Prints the first \p _limit items (including zeroes) of vector \p x with optional heading \p head.
+ * Prints the first \p _limit items (including zeroes) of vector \p x
+ * with optional heading \p head.
  *
  * @tparam T vector data type
  * @tparam B GraphBLAS backend storing the vector
@@ -45,7 +60,11 @@ using namespace grb;
  * @param head optional heading to print \b before the vector
  */
 template< typename T, enum grb::Backend B >
-void print_vector( const grb::Vector< T, B > & x, size_t _limit = 10UL, const char * head = nullptr ) {
+void print_vector(
+	const grb::Vector< T, B > &x,
+	size_t _limit = 10UL,
+	const char * head = nullptr
+) {
 	// const T * const raw{grb::internal::getRaw(x)};
 	size_t x_size { grb::size( x ) };
 	size_t limit { _limit == 0 ? x_size : std::min( x_size, _limit ) };
@@ -88,7 +107,7 @@ void print_vector( const grb::Vector< T, B > & x, size_t _limit = 10UL, const ch
 }
 
 /**
- * @brief Prints the first \p limit items of pinned vector \p x with optional
+ * Prints the first \p limit items of pinned vector \p x with optional
  * heading \p head.
  *
  * @tparam T vector data type
@@ -99,7 +118,8 @@ void print_vector( const grb::Vector< T, B > & x, size_t _limit = 10UL, const ch
  * @param[in]  head optional heading to print \b before the vector
  */
 template< typename T, enum grb::Backend B >
-void print_vector( const grb::PinnedVector< T, B > &v,
+void print_vector(
+	const grb::PinnedVector< T, B > &v,
 	const size_t limit = 10UL,
 	const char * const head = nullptr
 ) {
@@ -122,8 +142,9 @@ void print_vector( const grb::PinnedVector< T, B > &v,
 }
 
 /**
- * @brief Easy matrix container to store a matrix in a \b dense format, thus <b>also zeroes are stored</b>
- *          and the memory occupation is <b>proportional to the full size of the matrix</b>; hence, use with case!
+ * Easy matrix container to store a matrix in a \b dense format, thus <b>also
+ * zeroes are stored</b> and the memory occupation is <b>proportional to the
+ * full size of the matrix</b>; hence, use with case!
  *
  * @tparam T the type of the matrix values
  */
@@ -136,12 +157,12 @@ struct dense_mat {
 	 * @brief Construct a new dense_mat object of given rows and columns, <b>allocating the necessary
 	 *          physical memory for dense storage</b>.
 	 */
-	dense_mat( size_t _nrows, size_t _ncols ) :
+	dense_mat( size_t _nrows, size_t _ncols, T initial_value = T( 0 ) ) :
 		rows( _nrows ), cols( _ncols ), dense( new T[ rows * cols ] ) // we assume new throws if not enough memory
 	{
 		assert( rows != 0 );
 		assert( cols != 0 );
-		memset( dense, T( 0 ), rows * cols * ( sizeof( T ) ) );
+		std::fill( dense, dense + rows * cols, initial_value );
 	}
 
 	~dense_mat() {
@@ -166,56 +187,8 @@ struct dense_mat {
 };
 
 /**
- * @brief Prints up to \p _limit rows and columns of matrix \p mat with optional heading \p head.
- *
- * @tparam T matrix data type
- * @tparam B GraphBLAS backend storing the matrix
- * @param mat matrix to print
- * @param _limit max number of rows and columns to print (0 for all)
- * @param head optional heading to print \b before the matrix
- */
-template< typename T,
-	enum grb::Backend B,
-	typename std::enable_if< not std::is_void< T >::value, int >::type = 0
->
-void print_matrix( const grb::Matrix< T, B > & mat, size_t _limit = 0, const char * head = nullptr ) {
-	const size_t rows = grb::nrows( mat );
-	const size_t cols = grb::ncols( mat );
-	size_t row_limit = _limit == 0 ? rows : std::min( _limit, rows );
-	size_t col_limit = _limit == 0 ? cols : std::min( _limit, cols );
-	// create and dump only relevant portion
-	dense_mat< T > dump( row_limit, col_limit );
-	for( const std::pair< std::pair< size_t, size_t >, T > & t : mat ) {
-		size_t row = t.first.first;
-		size_t col = t.first.second;
-		if( row < row_limit && col < col_limit ) {
-			dump[ row ][ col ] = t.second;
-		}
-	}
-
-	if( head != nullptr ) {
-		std::cout << "<<< " << head << " >>>" << std::endl;
-	}
-	std::cout << "=== MATRIX ===" << std::endl;
-	std::cout << "Size: " << rows << " x " << cols << std::endl;
-	for( size_t i = 0; i < row_limit; ++i ) {
-		for( size_t j = 0; j < col_limit; ++j ) {
-			double val = dump[ i ][ j ];
-			std::cout << val;
-			if( val == 0.0 ) {
-				std::cout << "  ";
-			} else {
-				std::cout << " ";
-			}
-		}
-		std::cout << std::endl;
-	}
-	std::cout << "==============" << std::endl << std::endl;
-}
-
-
-/**
- * @brief Prints up to \p _limit rows and columns of matrix \p mat with optional heading \p head.
+ * Prints up to \p _limit rows and columns of matrix \p mat with optional
+ * heading \p head.
  *
  * @tparam T matrix data type
  * @tparam B GraphBLAS backend storing the matrix
@@ -226,16 +199,78 @@ void print_matrix( const grb::Matrix< T, B > & mat, size_t _limit = 0, const cha
 template<
 	typename T,
 	enum grb::Backend B,
-	typename std::enable_if< std::is_void< T >::value, int >::type = 0
+	typename std::enable_if< !std::is_void< T >::value >::type * = nullptr
 >
-void print_matrix( const grb::Matrix< T, B > & mat, size_t _limit = 0, const char * head = nullptr ) {
+void print_matrix(
+	const grb::Matrix< T, B > &mat,
+	size_t _limit = 0,
+	const char * head = nullptr
+) {
 	const size_t rows = grb::nrows( mat );
 	const size_t cols = grb::ncols( mat );
 	size_t row_limit = _limit == 0 ? rows : std::min( _limit, rows );
 	size_t col_limit = _limit == 0 ? cols : std::min( _limit, cols );
 	// create and dump only relevant portion
-	dense_mat< bool > assigned( row_limit, col_limit );
-	for( const auto& t : mat ) {
+	dense_mat< std::pair< bool, T> > dump(
+		row_limit, col_limit, std::make_pair( false, static_cast< T >( 0 ) )
+	);
+	for( const std::pair< std::pair< size_t, size_t >, T > & t : mat ) {
+		size_t row = t.first.first;
+		size_t col = t.first.second;
+		if( row < row_limit && col < col_limit ) {
+			dump[ row ][ col ] = std::make_pair( true, t.second );
+		}
+	}
+
+	if( head != nullptr ) {
+		std::cout << "<<< " << head << " >>>" << std::endl;
+	}
+	std::cout << "=== MATRIX ===" << std::endl;
+	std::cout << "Size: " << rows << " x " << cols << std::endl;
+	for( size_t i = 0; i < row_limit; ++i ) {
+		for( size_t j = 0; j < col_limit; ++j ) {
+			bool assigned = dump[ i ][ j ].first;
+			auto val = dump[ i ][ j ].second;
+			if( assigned ) {
+				std::cout << val;
+			} else {
+				std::cout << "_";
+			}
+			std::cout << " ";
+		}
+		std::cout << std::endl;
+	}
+	std::cout << "==============" << std::endl << std::endl;
+}
+
+
+/**
+ * Prints up to \p _limit rows and columns of matrix \p mat with optional
+ * heading \p head.
+ *
+ * @tparam T matrix data type
+ * @tparam B GraphBLAS backend storing the matrix
+ * @param mat matrix to print
+ * @param _limit max number of rows and columns to print (0 for all)
+ * @param head optional heading to print \b before the matrix
+ */
+template<
+	typename T,
+	enum grb::Backend B,
+	typename std::enable_if< std::is_void< T >::value >::type * = nullptr
+>
+void print_matrix(
+	const grb::Matrix< T, B > &mat,
+	size_t _limit = 0,
+	const char * head = nullptr
+) {
+	const size_t rows = grb::nrows( mat );
+	const size_t cols = grb::ncols( mat );
+	size_t row_limit = _limit == 0 ? rows : std::min( _limit, rows );
+	size_t col_limit = _limit == 0 ? cols : std::min( _limit, cols );
+	// create and dump only relevant portion
+	dense_mat< bool > assigned( row_limit, col_limit, false );
+	for( const auto &t : mat ) {
 		auto row = t.first;
 		auto col = t.second;
 		assigned[ row ][ col ] = ( row < row_limit && col < col_limit );
@@ -248,8 +283,7 @@ void print_matrix( const grb::Matrix< T, B > & mat, size_t _limit = 0, const cha
 	std::cout << "Size: " << rows << " x " << cols << std::endl;
 	for( size_t i = 0; i < row_limit; ++i ) {
 		for( size_t j = 0; j < col_limit; ++j ) {
-			bool has_value = assigned[ i ][ j ];
-			if( has_value ) {
+			if( assigned[ i ][ j ] ) {
 				std::cout << "X";
 			} else {
 				std::cout << "_";
@@ -266,13 +300,13 @@ namespace
 	template<
 		typename D,
 		class Storage,
-		typename std::enable_if< std::is_void< D >::value, int >::type = 0
+		typename std::enable_if< std::is_void< D >::value >::type * = nullptr
 	>
 	void printCompressedStorage(
-		const Storage & storage,
+		const Storage &storage,
 		size_t n,
 		size_t nnz,
-		std::ostream & os = std::cout
+		std::ostream &os = std::cout
 	) {
 		os << "  col_start (" << n + 1 << "): [ ";
 		for( size_t i = 0; i <= n; ++i ) {
@@ -292,13 +326,13 @@ namespace
 	template<
 		typename D,
 		class Storage,
-		typename std::enable_if< not std::is_void< D >::value, int >::type = 0
+		typename std::enable_if< !std::is_void< D >::value>::type * = nullptr
 	>
 	void printCompressedStorage(
-		const Storage & storage,
+		const Storage &storage,
 		size_t n,
 		size_t nnz,
-		std::ostream & os
+		std::ostream &os
 	) {
 		printCompressedStorage< void >( storage, n, nnz, os );
 		os << "  values    (" << nnz << "): [ ";
@@ -342,8 +376,14 @@ void printCRS(
 	if( nrows(mat) > 100 || ncols(mat) > 100 ) return;
 
 	grb::wait( mat );
-	os << "CRS \"" << label << "\" (" << nrows( mat ) << "x" << ncols( mat ) << "):" << std::endl;
-	printCompressedStorage< D >( internal::getCRS( mat ), grb::nrows( mat ), grb::nnz( mat ), os );
+	os << "CRS \"" << label
+		<< "\" (" << nrows( mat ) << "x" << ncols( mat ) << "):\n";
+	printCompressedStorage< D >(
+		internal::getCRS( mat ),
+		grb::nrows( mat ),
+		grb::nnz( mat ),
+		os
+	);
 }
 
 
@@ -378,8 +418,14 @@ void printCCS(
 	if( nrows(mat) > 100 || ncols(mat) > 100 ) return;
 
 	grb::wait( mat );
-	os << "CCS \"" << label << "\" (" << nrows( mat ) << "x" << ncols( mat ) << "):" << std::endl;
-	printCompressedStorage< D >( internal::getCCS( mat ), grb::ncols( mat ), grb::nnz( mat ), os );
+	os << "CCS \"" << label
+		<< "\" (" << nrows( mat ) << "x" << ncols( mat ) << "):\n" ;
+	printCompressedStorage< D >(
+		internal::getCCS( mat ),
+		grb::ncols( mat ),
+		grb::nnz( mat ),
+		os
+	);
 }
 
 #endif // _H_TEST_UTILS_PRINT_VEC_MAT
