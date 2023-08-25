@@ -296,6 +296,8 @@ for BACKEND in ${BACKENDS[@]}; do
 			fi
 			echo " "
 
+			# TODO: Add SSSP test here using a given dataset
+
 			for ((i=0;i<${#LABELTEST_SIZES[@]};++i));
 			do
 				LABELTEST_SIZE=${LABELTEST_SIZES[i]}

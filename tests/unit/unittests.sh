@@ -645,6 +645,13 @@ for MODE in ${MODES}; do
 				fi
 				echo " "
 
+				echo ">>>      [x]           [ ]       Testing the Single-Source-Shortest-Path (SSSP) algorithm on small pre-defined"
+				echo "                                 graphs testing specific border cases."
+				$runner ${TEST_BIN_DIR}/sssp_${MODE}_${BACKEND} &> ${TEST_OUT_DIR}/sssp_${MODE}_${BACKEND}_${P}_${T}.log
+				head -1 ${TEST_OUT_DIR}/sssp_${MODE}_${BACKEND}_${P}_${T}.log
+				grep 'Test OK' ${TEST_OUT_DIR}/sssp_${MODE}_${BACKEND}_${P}_${T}.log || echo "Test FAILED"
+				echo " "
+
 				#if [ "$BACKEND" = "reference_omp" ]; then
 				#	echo "Additional standardised unit tests not yet supported for the ${BACKEND} backend"
 				#	echo
