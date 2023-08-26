@@ -297,16 +297,15 @@ void print_matrix(
 
 namespace
 {
-	template<
-		typename D,
-		class Storage,
-		typename std::enable_if< std::is_void< D >::value >::type * = nullptr
-	>
+	template< typename D, class Storage >
 	void printCompressedStorage(
 		const Storage &storage,
 		size_t n,
 		size_t nnz,
-		std::ostream &os = std::cout
+		std::ostream &os = std::cout,
+		const typename std::enable_if<
+			std::is_void< D >::value, void
+		>::type * const = nullptr
 	) {
 		os << "  col_start (" << n + 1 << "): [ ";
 		for( size_t i = 0; i <= n; ++i ) {
@@ -323,16 +322,15 @@ namespace
 		os << "]" << std::endl;
 	}
 
-	template<
-		typename D,
-		class Storage,
-		typename std::enable_if< !std::is_void< D >::value>::type * = nullptr
-	>
+	template< typename D, class Storage >
 	void printCompressedStorage(
 		const Storage &storage,
 		size_t n,
 		size_t nnz,
-		std::ostream &os
+		std::ostream &os,
+		const typename std::enable_if<
+			!std::is_void< D >::value, void
+		>::type * const = nullptr
 	) {
 		printCompressedStorage< void >( storage, n, nnz, os );
 		os << "  values    (" << nnz << "): [ ";
@@ -344,36 +342,65 @@ namespace
 
 } // namespace
 
-
+/**
+ * Print the CRS structure of a grb::Matrix
+ *
+ * @tparam Enabled boolean flag to enable/disable the function
+ * @param mat Matrix's CRS to print
+ * @param label Label to print before the matrix
+ * @param limit Max number of rows and columns to print (-1 for all)
+ * @param os Output stream (default: std::cout)
+ */
 template<
 	bool Enabled = true,
 	typename D, typename RIT, typename CIT, typename NIT,
-	Backend implementation,
-	typename = void
+	Backend implementation
 >
 void printCRS(
 	const Matrix< D, implementation, RIT, CIT, NIT > &,
 	const std::string & = "",
-	std::ostream & = std::cout
-) {}
+	std::ostream & = std::cout,
+	const typename std::enable_if<
+		implementation != reference &&
+		implementation != reference_omp,
+	void >::type * const  = nullptr
+) {
+	static_assert(
+		implementation != reference &&
+		implementation != reference_omp,
+		"printCRS() is only available for reference and reference_omp backends"
+	);
+}
 
+/**
+ * Print the CRS structure of a grb::Matrix
+ *
+ * @tparam Enabled boolean flag to enable/disable the function
+ * @param mat Matrix's CRS to print
+ * @param label Label to print before the matrix
+ * @param limit Max number of rows and columns to print (-1 for all)
+ * @param os Output stream (default: std::cout)
+ */
 template<
 	bool Enabled = true,
 	typename D, typename RIT, typename CIT, typename NIT,
-	Backend implementation,
-	typename std::enable_if<
-		implementation == reference ||
-		implementation == reference_omp
-	>::type = true
+	Backend implementation
 >
 void printCRS(
 	const Matrix< D, implementation, RIT, CIT, NIT > &mat,
 	const std::string &label = "",
-	std::ostream &os = std::cout
+	long limit = 128, // -1 is no limit
+	std::ostream &os = std::cout,
+	const typename std::enable_if<
+		implementation == reference ||
+		implementation == reference_omp,
+	void >::type * const  = nullptr
 ) {
-	if( !Enabled ) return;
+	if( !Enabled ) { return; }
 
-	if( nrows(mat) > 100 || ncols(mat) > 100 ) return;
+	const long rows = static_cast< long >( nrows( mat ) );
+	const long cols = static_cast< long >( ncols( mat ) );
+	if( limit >= 0 && (rows > limit || cols > limit) ) { return; }
 
 	grb::wait( mat );
 	os << "CRS \"" << label
@@ -386,36 +413,66 @@ void printCRS(
 	);
 }
 
-
+/**
+ * Print the CCS structure of a grb::Matrix
+ *
+ * @tparam Enabled boolean flag to enable/disable the function
+ * @param mat Matrix's CCS to print
+ * @param label Label to print before the matrix
+ * @param limit Max number of rows and columns to print (-1 for all)
+ * @param os Output stream (default: std::cout)
+ */
 template<
 	bool Enabled = true,
 	typename D, typename RIT, typename CIT, typename NIT,
-	Backend implementation = grb::config::default_backend,
-	typename = void
+	Backend implementation
 >
 void printCCS(
 	const Matrix< D, implementation, RIT, CIT, NIT > &,
 	const std::string & = "",
-	std::ostream & = std::cout
-) {}
+	std::ostream & = std::cout,
+	const typename std::enable_if<
+		implementation != reference &&
+		implementation != reference_omp,
+	void >::type * const  = nullptr
+) {
+	static_assert(
+		implementation != reference &&
+		implementation != reference_omp,
+		"printCCS() is only available for reference and reference_omp backends"
+	);
+}
 
+
+/**
+ * Print the CCS structure of a grb::Matrix
+ *
+ * @tparam Enabled boolean flag to enable/disable the function
+ * @param mat Matrix's CCS to print
+ * @param label Label to print before the matrix
+ * @param limit Max number of rows and columns to print (-1 for all)
+ * @param os Output stream (default: std::cout)
+ */
 template<
 	bool Enabled = true,
 	typename D, typename RIT, typename CIT, typename NIT,
-	Backend implementation = grb::config::default_backend,
-	typename std::enable_if<
-		implementation == reference ||
-		implementation == reference_omp
-	>::type = true
+	Backend implementation
 >
 void printCCS(
 	const Matrix< D, implementation, RIT, CIT, NIT > &mat,
 	const std::string &label = "",
-	std::ostream &os = std::cout
+	long limit = 128, // -1 is no limit
+	std::ostream &os = std::cout,
+	const typename std::enable_if<
+		implementation == reference ||
+		implementation == reference_omp,
+	void >::type * const = nullptr
 ) {
-	if( !Enabled ) return;
+	if( !Enabled ) { return; }
 
-	if( nrows(mat) > 100 || ncols(mat) > 100 ) return;
+	const long rows = static_cast< long >( nrows( mat ) );
+	const long cols = static_cast< long >( ncols( mat ) );
+	if( limit >= 0 && (rows > limit || cols > limit) ) { return; }
 
 	grb::wait( mat );
 	os << "CCS \"" << label
