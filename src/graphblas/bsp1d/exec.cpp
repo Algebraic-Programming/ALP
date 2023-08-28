@@ -20,10 +20,43 @@
  * @date 17th of April, 2017
  */
 
-#include <graphblas/bsp1d/exec.hpp>
+#include <assert.h>
+#include <atomic>
 
-#ifdef _GRB_MANUAL
-const int LPF_MPIRMA_AUTO_INITIALIZE = 0;
-#endif
+#include <lpf/collectives.h>
+#include <lpf/core.h>
 
-bool _grb_mpi_initialized = false;
+#include <graphblas/bsp1d/exec_broadcast_routines.hpp>
+
+
+bool grb::internal::grb_mpi_initialized = false;
+
+lpf_err_t grb::internal::lpf_init_collectives_for_bradocast( lpf_t & ctx, lpf_coll_t & coll,
+	lpf_pid_t s, lpf_pid_t P, size_t max_regs ) {
+	lpf_err_t brc = lpf_collectives_init( ctx, s, P, 0, 0, 0, &coll );
+	assert( brc == LPF_SUCCESS );
+	brc = lpf_resize_message_queue( ctx, (P-1) );
+	assert( brc == LPF_SUCCESS );
+	brc = lpf_resize_memory_register( ctx, max_regs );
+	assert( brc == LPF_SUCCESS );
+	brc = lpf_sync( ctx, LPF_SYNC_DEFAULT );
+	assert( brc == LPF_SUCCESS );
+	return brc;
+}
+
+lpf_err_t grb::internal::lpf_register_and_broadcast( lpf_t & ctx, lpf_coll_t & coll, void * data, size_t size ) {
+	lpf_memslot_t global;
+	lpf_err_t brc = lpf_register_global( ctx, data, size, &global );
+	assert( brc == LPF_SUCCESS );
+	brc = lpf_sync( ctx, LPF_SYNC_DEFAULT );
+	assert( brc == LPF_SUCCESS );
+	brc = lpf_broadcast( coll, global, global, size, 0 );
+	assert( brc == LPF_SUCCESS );
+	brc = lpf_sync( ctx, LPF_SYNC_DEFAULT );
+	assert( brc == LPF_SUCCESS );
+	brc = lpf_deregister( ctx, global );
+	assert( brc == LPF_SUCCESS );
+	return brc;
+}
+
+
