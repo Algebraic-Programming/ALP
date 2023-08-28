@@ -32,6 +32,15 @@
 #include <ios>
 #include <limits>
 #include <string>
+#include <memory>
+
+#ifndef _GRB_NO_STDIO
+ #include <iostream>
+#endif
+
+#ifndef _GRB_NO_EXCEPTIONS
+ #include <stdexcept>
+#endif
 
 #include <graphblas/backends.hpp>
 #include <graphblas/ops.hpp>
@@ -43,13 +52,7 @@
 #include "config.hpp"
 #include "exec.hpp"
 
-#ifndef _GRB_NO_STDIO
- #include <iostream>
-#endif
 
-#ifndef _GRB_NO_EXCEPTIONS
- #include <stdexcept>
-#endif
 
 #include <math.h>
 
@@ -189,6 +192,99 @@ namespace grb {
 #endif
 				}
 
+
+				/**
+				 * Benchmarks a given ALP program.
+				 *
+				 * This variant applies to input data as a user-defined POD struct and
+				 * output data as a user-defined POD struct.
+				 *
+				 * @tparam RunnerType type of runner, i.e., functor object storing the information
+				 * 	to run the user-given GRB function
+				 *
+				 * @param[in]  runner functor object running the function
+				 * @param[in]  times grb::utils::TimerResults data structure with timing information
+				 * @param[in]  inner number of inner iterations
+				 * @param[out] outer number of outer iterations
+				 * @param[in]  pid process identifier of current LPF node
+				 *
+				 * @see benchmarking
+				 *
+				 * @ingroup benchmarking
+				 */
+				template<
+					enum Backend implementation,
+					typename RunnerType
+				>
+				static RC benchmark(
+					RunnerType &runner,
+					grb::utils::TimerResults &times,
+					const size_t inner,
+					const size_t outer,
+					const size_t pid
+				) {
+					const double inf = std::numeric_limits< double >::infinity();
+					grb::utils::TimerResults total_times, min_times, max_times;
+					std::unique_ptr< grb::utils::TimerResults[] > sdev_times =
+						std::unique_ptr< grb::utils::TimerResults[] >( new grb::utils::TimerResults[ outer ] );
+					total_times.set( 0 );
+					min_times.set( inf );
+					max_times.set( 0 );
+
+					// outer loop
+					for( size_t out = 0; out < outer; ++out ) {
+						grb::utils::TimerResults inner_times;
+						inner_times.set( 0 );
+
+						// inner loop
+						for( size_t in = 0; in < inner; ++in ) {
+							times.set( 0 );
+
+							runner();
+							grb::collectives< implementation >::reduce( times.io, 0,
+								grb::operators::max< double >() );
+							grb::collectives< implementation >::reduce( times.preamble, 0,
+								grb::operators::max< double >() );
+							grb::collectives< implementation >::reduce( times.useful, 0,
+								grb::operators::max< double >() );
+							grb::collectives< implementation >::reduce( times.postamble, 0,
+								grb::operators::max< double >() );
+							inner_times.accum( times );
+						}
+
+						// calculate performance stats
+						benchmark_calc_inner( out, inner, inner_times, total_times, min_times,
+							max_times, sdev_times.get() );
+
+#ifndef _GRB_NO_STDIO
+						// give experiment output line
+						if( pid == 0 ) {
+							std::cout << "Outer iteration #" << out << " timings "
+								<< "(io, preamble, useful, postamble, time since epoch): " << std::fixed
+								<< inner_times.io << ", " << inner_times.preamble << ", "
+								<< inner_times.useful << ", " << inner_times.postamble << ", ";
+								printTimeSinceEpoch( false );
+							std::cout << std::scientific;
+						}
+#endif
+
+						// pause for next outer loop
+						if( sleep( 1 ) != 0 ) {
+#ifndef _GRB_NO_STDIO
+							std::cerr << "Sleep interrupted, assume benchmark is unreliable; "
+								<< "exiting.\n";
+#endif
+							abort();
+						}
+					}
+
+					// calculate performance stats
+					benchmark_calc_outer( outer, total_times, min_times, max_times, sdev_times.get(),
+						pid );
+
+					return SUCCESS;
+				}
+
 				/**
 				 * Benchmarks a given ALP program.
 				 *
@@ -212,7 +308,7 @@ namespace grb {
 				 */
 				template<
 					typename U,
-					enum Backend implementation = config::default_backend
+					enum Backend implementation
 				>
 				static RC benchmark(
 					void ( *alp_program )( const void *, const size_t, U & ),
@@ -223,65 +319,18 @@ namespace grb {
 					const size_t outer,
 					const size_t pid
 				) {
-					const double inf = std::numeric_limits< double >::infinity();
-					grb::utils::TimerResults total_times, min_times, max_times;
-					grb::utils::TimerResults * sdev_times =
-						new grb::utils::TimerResults[ outer ];
-					total_times.set( 0 );
-					min_times.set( inf );
-					max_times.set( 0 );
+					struct void_runner {
+						void ( *fun )( const void *, const size_t, U & );
+						const void * in;
+						const size_t ins;
+						U &out;
 
-					// outer loop
-					for( size_t out = 0; out < outer; ++out ) {
-						grb::utils::TimerResults inner_times;
-						inner_times.set( 0 );
-
-						// inner loop
-						for( size_t in = 0; in < inner; in++ ) {
-							data_out.times.set( 0 );
-							( *alp_program )( data_in, in_size, data_out );
-							grb::collectives< implementation >::reduce(
-								data_out.times.io, 0, grb::operators::max< double >() );
-							grb::collectives< implementation >::reduce(
-								data_out.times.preamble, 0, grb::operators::max< double >() );
-							grb::collectives< implementation >::reduce(
-								data_out.times.useful, 0, grb::operators::max< double >() );
-							grb::collectives< implementation >::reduce(
-								data_out.times.postamble, 0, grb::operators::max< double >() );
-							inner_times.accum( data_out.times );
+						inline void operator()() {
+							fun( in, ins, out );
 						}
 
-						// calculate performance stats
-						benchmark_calc_inner( out, inner, inner_times, total_times, min_times,
-							max_times, sdev_times );
-
-#ifndef _GRB_NO_STDIO
-						// give experiment output line
-						if( pid == 0 ) {
-							std::cout << "Outer iteration #" << out << " timings (io, preamble, "
-								<< "useful, postamble, time since epoch): ";
-							std::cout << inner_times.io << ", " << inner_times.preamble << ", "
-								<< inner_times.useful << ", " << inner_times.postamble << ", ";
-							printTimeSinceEpoch( false );
-						}
-#endif
-
-						// pause for next outer loop
-						if( sleep( 1 ) != 0 ) {
-#ifndef _GRB_NO_STDIO
-							std::cerr << "Sleep interrupted, assume benchmark is unreliable; "
-								<< "exiting.\n";
-#endif
-							abort();
-						}
-					}
-
-					// calculate performance stats
-					benchmark_calc_outer( outer, total_times, min_times, max_times, sdev_times,
-						pid );
-					delete [] sdev_times;
-
-					return SUCCESS;
+					} runner{ alp_program, data_in, in_size, data_out };
+					return benchmark< implementation >( runner, data_out.times, inner, outer, pid );
 				}
 
 				/**
@@ -307,7 +356,7 @@ namespace grb {
 				 */
 				template<
 					typename T, typename U,
-					enum Backend implementation = config::default_backend
+					enum Backend implementation
 				>
 				static RC benchmark(
 					void ( *alp_program )( const T &, U & ),
@@ -317,67 +366,17 @@ namespace grb {
 					const size_t outer,
 					const size_t pid
 				) {
-					const double inf = std::numeric_limits< double >::infinity();
-					grb::utils::TimerResults total_times, min_times, max_times;
-					grb::utils::TimerResults * sdev_times =
-						new grb::utils::TimerResults[ outer ];
-					total_times.set( 0 );
-					min_times.set( inf );
-					max_times.set( 0 );
+					struct typed_runner {
+						void ( *fun )( const T &, U & );
+						const T &in;
+						U &out;
 
-					// outer loop
-					for( size_t out = 0; out < outer; ++out ) {
-						grb::utils::TimerResults inner_times;
-						inner_times.set( 0 );
-
-						// inner loop
-						for( size_t in = 0; in < inner; ++in ) {
-							data_out.times.set( 0 );
-
-							( *alp_program )( data_in, data_out );
-							grb::collectives< implementation >::reduce( data_out.times.io, 0,
-								grb::operators::max< double >() );
-							grb::collectives< implementation >::reduce( data_out.times.preamble, 0,
-								grb::operators::max< double >() );
-							grb::collectives< implementation >::reduce( data_out.times.useful, 0,
-								grb::operators::max< double >() );
-							grb::collectives< implementation >::reduce( data_out.times.postamble, 0,
-								grb::operators::max< double >() );
-							inner_times.accum( data_out.times );
+						inline void operator()() {
+							fun( in, out );
 						}
 
-						// calculate performance stats
-						benchmark_calc_inner( out, inner, inner_times, total_times, min_times,
-							max_times, sdev_times );
-
-#ifndef _GRB_NO_STDIO
-						// give experiment output line
-						if( pid == 0 ) {
-							std::cout << "Outer iteration #" << out << " timings "
-								<< "(io, preamble, useful, postamble, time since epoch): " << std::fixed
-								<< inner_times.io << ", " << inner_times.preamble << ", "
-								<< inner_times.useful << ", " << inner_times.postamble << ", ";
-								printTimeSinceEpoch( false );
-							std::cout << std::scientific;
-						}
-#endif
-
-						// pause for next outer loop
-						if( sleep( 1 ) != 0 ) {
-#ifndef _GRB_NO_STDIO
-							std::cerr << "Sleep interrupted, assume benchmark is unreliable; "
-								<< "exiting.\n";
-#endif
-							abort();
-						}
-					}
-
-					// calculate performance stats
-					benchmark_calc_outer( outer, total_times, min_times, max_times, sdev_times,
-						pid );
-					delete[] sdev_times;
-
-					return SUCCESS;
+					} runner{ alp_program, data_in, data_out };
+					return benchmark< implementation >( runner, data_out.times, inner, outer, pid );
 				}
 
 

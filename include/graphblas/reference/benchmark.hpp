@@ -96,7 +96,7 @@ namespace grb {
 				// call graphBLAS algo
 				if( ret == SUCCESS ) {
 					// call graphBLAS algo
-					benchmark< T, U >( grb_program, data_in, data_out, inner, outer, 0 );
+					benchmark< T, U, reference >( grb_program, data_in, data_out, inner, outer, 0 );
 				}
 				// finalise the GraphBLAS
 				const RC frc = grb::finalize();
