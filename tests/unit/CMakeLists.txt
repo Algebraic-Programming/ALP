@@ -290,6 +290,15 @@ add_grb_executables( matrix_type static_asserts/matrix.cpp
 	BACKENDS reference reference_omp bsp1d hybrid hyperdags nonblocking
 )
 
+add_grb_executables( launcher_auto manual_launcher_hook.cpp
+	BACKENDS bsp1d
+)
+
+add_grb_executables( launcher_frommpi_manual manual_launcher_hook.cpp
+	BACKENDS bsp1d
+	COMPILE_DEFINITIONS NO_LPF_AUTO_INIT
+)
+
 # targets to list and build the test for this category
 get_property( unit_tests_list GLOBAL PROPERTY tests_category_unit )
 add_custom_target( "list_tests_category_unit"
