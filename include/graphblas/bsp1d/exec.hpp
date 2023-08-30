@@ -290,7 +290,7 @@ namespace grb {
 
 					// AUTOMATIC mode: we must
 					//  1. initialize communication
-					brc = lpf_init_collectives_for_broadcast( ctx, s, P, 3, coll );
+					brc = lpf_init_collectives_for_broadcast( ctx, s, P, 2, coll );
 					if( brc != LPF_SUCCESS ) {
 						std::cerr << __FILE__ << ", " << __LINE__ << ": LPF collective failed"
 							<< std::endl;
