@@ -28,6 +28,7 @@
 
 #include "exec.hpp"
 
+
 namespace grb {
 
 	/**
@@ -45,10 +46,10 @@ namespace grb {
 
 			/** \internal Delegates to #grb::Launcher (reference) constructor. */
 			Benchmarker(
-				const size_t process_id = 0,        // user process ID
-				const size_t nprocs = 1,            // total number of user processes
-				std::string hostname = "localhost", // one of the user process hostnames
-				std::string port = "0"              // a free port at hostname
+				const size_t process_id = 0,
+				const size_t nprocs = 1,
+				std::string hostname = "localhost",
+				std::string port = "0"
 			) : Launcher< mode, reference >( process_id, nprocs, hostname, port ) {}
 
 			/** \internal No implementation notes. */
@@ -65,14 +66,15 @@ namespace grb {
 				if( in_size > 0 && data_in == nullptr ) {
 					return ILLEGAL;
 				}
-				// initialise GraphBLAS
+				// initialise
 				RC ret = grb::init();
 
-				// call graphBLAS algo
+				// call ALP algo
 				if( ret == SUCCESS ) {
-					benchmark< U >( grb_program, data_in, in_size, data_out, inner, outer, 0 );
+					benchmark< U, reference >( grb_program, data_in, in_size, data_out, inner,
+						outer, 0 );
 				}
-				// finalise the GraphBLAS
+				// finalise
 				const RC frc = grb::finalize();
 				if( ret == SUCCESS ) {
 					ret = frc;
@@ -84,21 +86,21 @@ namespace grb {
 			/** \internal No implementation notes. */
 			template< typename T, typename U >
 			RC exec(
-				void ( *grb_program )( const T &, U & ), // user GraphBLAS program
-				const T &data_in, U &data_out, // input & output data
+				void ( *grb_program )( const T &, U & ),
+				const T &data_in, U &data_out,
 				const size_t inner,
 				const size_t outer,
 				const bool broadcast = false
 			) {
 				(void) broadcast; // value doesn't matter for a single user process
-				// initialise GraphBLAS
+				// initialise
 				RC ret = grb::init();
-				// call graphBLAS algo
+				// call ALP algo
 				if( ret == SUCCESS ) {
-					// call graphBLAS algo
-					benchmark< T, U, reference >( grb_program, data_in, data_out, inner, outer, 0 );
+					benchmark< T, U, reference >( grb_program, data_in, data_out, inner, outer,
+						0 );
 				}
-				// finalise the GraphBLAS
+				// finalise
 				const RC frc = grb::finalize();
 				if( ret == SUCCESS ) {
 					ret = frc;
