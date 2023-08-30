@@ -933,6 +933,11 @@ namespace grb {
 			const Matrix< InputType1, reference, RIT, CIT, NIT > &A,
 			const InputType2 * __restrict__ id = nullptr
 		) noexcept {
+#ifndef NDEBUG
+			if( A_is_mask ) {
+				assert( id != nullptr );
+			}
+#endif
 #ifdef _DEBUG_REFERENCE_IO
 			std::cout << "\t called grb::internal::set_copy (reference), "
 				<< "execute phase\n";
@@ -1020,30 +1025,18 @@ namespace grb {
 				const size_t start = 0;
 				size_t end = range;
 #endif
-				if( A_is_mask ) {
-					internal::getCRS( C ).template copyFrom< true >(
-						internal::getCRS( A ), nz, m, start, end, id
-					);
-				} else {
-					internal::getCRS( C ).template copyFrom< false >(
-						internal::getCRS( A ), nz, m, start, end
-					);
-				}
+				internal::getCRS( C ).template copyFrom< A_is_mask >(
+					internal::getCRS( A ), nz, m, start, end, id
+				);
 				range = internal::getCCS( C ).copyFromRange( nz, n );
 #ifdef _H_GRB_REFERENCE_OMP_IO
 				config::OMP::localRange( start, end, 0, range );
 #else
 				end = range;
 #endif
-				if( A_is_mask ) {
-					internal::getCCS( C ).template copyFrom< true >(
-						internal::getCCS( A ), nz, n, start, end, id
-					);
-				} else {
-					internal::getCCS( C ).template copyFrom< false >(
-						internal::getCCS( A ), nz, n, start, end
-					);
-				}
+				internal::getCCS( C ).template copyFrom< A_is_mask >(
+					internal::getCCS( A ), nz, n, start, end, id
+				);
 
 			}
 			internal::setCurrentNonzeroes( C, nz );
@@ -1835,8 +1828,8 @@ namespace grb {
 			!grb::is_object< InputType >::value,
 		void >::type * const = nullptr
 	) noexcept {
-		static_assert( std::is_same< OutputType, void >::value ||
-			!std::is_same< InputType, void >::value,
+		static_assert(
+			!std::is_void< InputType >::value || std::is_same< OutputType, InputType >::value,
 			"grb::set cannot interpret an input pattern matrix without a "
 			"semiring or a monoid. This interpretation is needed for "
 			"writing the non-pattern matrix output. Possible solutions: 1) "
@@ -1846,7 +1839,8 @@ namespace grb {
 		std::cout << "Called grb::set (matrix-to-matrix, reference)" << std::endl;
 #endif
 		// static checks
-		NO_CAST_ASSERT( ( !(descr & descriptors::no_casting) ||
+		NO_CAST_ASSERT(
+			( !(descr & descriptors::no_casting) ||
 				std::is_same< InputType, OutputType >::value
 			), "grb::set",
 			"called with non-matching value types" );
@@ -1906,6 +1900,13 @@ namespace grb {
 		std::cout << "Called grb::set (matrix-to-value-masked, reference)\n";
 #endif
 		// static checks
+		static_assert( std::is_void< OutputType >::value ||
+			std::is_same< OutputType, InputType2 >::value ||
+			std::is_convertible< InputType2, OutputType >::value,
+			"grb::set (masked set to value): non-void output type should be either a) "
+			"the same as the input scalar value type or b) the input scalar type should "
+			"be convertible to the output type"
+		);
 		NO_CAST_ASSERT(
 			( !(descr & descriptors::no_casting) ||
 				std::is_same< InputType2, OutputType >::value ),

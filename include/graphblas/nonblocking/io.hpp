@@ -1134,7 +1134,8 @@ namespace grb {
 		std::cout << "Called grb::set (matrix-to-matrix, nonblocking)" << std::endl;
 #endif
 		// static checks
-		NO_CAST_ASSERT( ( !(descr & descriptors::no_casting) ||
+		NO_CAST_ASSERT(
+			( !(descr & descriptors::no_casting) ||
 				std::is_same< InputType, OutputType >::value
 			), "grb::set",
 			"called with non-matching value types" );
