@@ -138,13 +138,14 @@ namespace grb {
 			}
 
 			/** Functor operator to call a typed ALP function. */
-			inline void operator()(
+			inline grb::RC operator()(
 				const lpf_func_t fun,
 				size_t in_size, const InputType *in,
 				OutputType *out,
 				lpf_pid_t s, lpf_pid_t P
 			) const {
 				lpf_grb_call( fun, in_size, in, out, s, P );
+				return grb::SUCCESS;
 			}
 
 		};
@@ -173,12 +174,13 @@ namespace grb {
 					( in, in_size, *out );
 			}
 
-			inline void operator()(
+			inline grb::RC operator()(
 				const lpf_func_t fun, size_t in_size,
 				const InputType *in, OutputType *out,
 				lpf_pid_t s, lpf_pid_t P
 			) const {
 				lpf_grb_call( fun, in_size, in, out, s, P );
+				return grb::SUCCESS;
 			}
 
 		};
@@ -388,7 +390,12 @@ namespace grb {
 			}
 			// retrieve and run the function to be executed
 			assert( args.f_size == 1 );
-			( *dispatcher )( args.f_symbols[ 0 ], in_size, data_in, data_out, s, P  );
+			grb_rc = ( *dispatcher )( args.f_symbols[ 0 ], in_size, data_in, data_out, s, P  );
+			if( grb_rc != grb::SUCCESS ) {
+				std::cerr << "Error: dispatcher failed" << std::endl;
+				assert( false );
+				return;
+			}
 
 			// finalise ALP/GraphBLAS
 			grb_rc = grb::finalize< BSP1D >();

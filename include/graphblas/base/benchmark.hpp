@@ -224,46 +224,60 @@ namespace grb {
 					total_times.set( 0 );
 					min_times.set( inf );
 					max_times.set( 0 );
+					grb::RC ret = grb::SUCCESS;
 
 					// outer loop
-					for( size_t out = 0; out < outer; ++out ) {
+					for( size_t out = 0; out < outer && ret == grb::SUCCESS; ++out ) {
 						grb::utils::TimerResults inner_times;
 						inner_times.set( 0 );
 
 						// inner loop
-						for( size_t in = 0; in < inner; ++in ) {
+						for( size_t in = 0; in < inner && ret == grb::SUCCESS; ++in ) {
 							times.set( 0 );
 
 							runner();
-							grb::collectives< implementation >::reduce( times.io, 0,
-								grb::operators::max< double >() );
-							grb::collectives< implementation >::reduce( times.preamble, 0,
-								grb::operators::max< double >() );
-							grb::collectives< implementation >::reduce( times.useful, 0,
-								grb::operators::max< double >() );
-							grb::collectives< implementation >::reduce( times.postamble, 0,
-								grb::operators::max< double >() );
-							inner_times.accum( times );
+
+							ret = ret ? ret : grb::collectives< implementation >::reduce(
+								times.io, 0, grb::operators::max< double >() );
+							ret = ret ? ret : grb::collectives< implementation >::reduce(
+								times.preamble, 0, grb::operators::max< double >() );
+							ret = ret ? ret : grb::collectives< implementation >::reduce(
+								times.useful, 0, grb::operators::max< double >() );
+							ret = ret ? ret : grb::collectives< implementation >::reduce(
+								times.postamble, 0, grb::operators::max< double >() );
+
+							if( ret == grb::SUCCESS ) {
+								inner_times.accum( times );
+							}
 						}
 
-						// calculate performance stats
-						benchmark_calc_inner( out, inner, inner_times, total_times, min_times,
-							max_times, sdev_times );
+						if( ret == grb::SUCCESS ) {
+							// calculate performance stats
+							benchmark_calc_inner( out, inner, inner_times, total_times, min_times,
+								max_times, sdev_times );
+						}
 
 #ifndef _GRB_NO_STDIO
 						// give experiment output line
 						if( pid == 0 ) {
-							std::cout << "Outer iteration #" << out << " timings "
-								<< "(io, preamble, useful, postamble, time since epoch): " << std::fixed
-								<< inner_times.io << ", " << inner_times.preamble << ", "
-								<< inner_times.useful << ", " << inner_times.postamble << ", ";
-								printTimeSinceEpoch( false );
-							std::cout << std::scientific;
+							if( ret == grb::SUCCESS ) {
+								std::ios_base::fmtflags prev_cout_state( std::cout.flags() );
+								std::cout << "Outer iteration #" << out << " timings "
+									<< "(io, preamble, useful, postamble, time since epoch): "
+									<< std::fixed
+									<< inner_times.io << ", " << inner_times.preamble << ", "
+									<< inner_times.useful << ", " << inner_times.postamble << ", ";
+									printTimeSinceEpoch( false );
+								std::cout.flags( prev_cout_state );
+							} else {
+								std::cerr << "Error during cross-process collection of timing results: "
+									<< "\t" << grb::toString( ret ) << std::endl;
+							}
 						}
 #endif
 
 						// pause for next outer loop
-						if( sleep( 1 ) != 0 ) {
+						if( sleep( 1 ) != 0 && ret == grb::SUCCESS ) {
 #ifndef _GRB_NO_STDIO
 							std::cerr << "Sleep interrupted, assume benchmark is unreliable; "
 								<< "exiting.\n";
@@ -272,11 +286,13 @@ namespace grb {
 						}
 					}
 
-					// calculate performance stats
-					benchmark_calc_outer( outer, total_times, min_times, max_times, sdev_times,
-						pid );
+					if( ret == grb::SUCCESS ) {
+						// calculate performance stats
+						benchmark_calc_outer( outer, total_times, min_times, max_times,
+							sdev_times, pid );
+					}
 
-					return SUCCESS;
+					return ret;
 				}
 
 				/**
