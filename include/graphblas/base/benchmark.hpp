@@ -28,13 +28,13 @@
 #ifndef _H_GRB_BENCH_BASE
 #define _H_GRB_BENCH_BASE
 
-#include <chrono>
-#include <ios>
+#include <cmath>  // for sqrt
 #include <limits>
-#include <string>
-#include <memory>
+#include <vector> // warning: normally should not be used in ALP backends(!)
 
 #ifndef _GRB_NO_STDIO
+ #include <ios>
+ #include <chrono>
  #include <iostream>
 #endif
 
@@ -51,10 +51,6 @@
 #include "collectives.hpp"
 #include "config.hpp"
 #include "exec.hpp"
-
-
-
-#include <math.h>
 
 
 /**
@@ -126,7 +122,7 @@ namespace grb {
 					grb::utils::TimerResults &total_times,
 					grb::utils::TimerResults &min_times,
 					grb::utils::TimerResults &max_times,
-					grb::utils::TimerResults * sdev_times
+					std::vector< grb::utils::TimerResults > &sdev_times
 				) {
 					inner_times.normalize( total );
 					total_times.accum( inner_times );
@@ -143,7 +139,7 @@ namespace grb {
 					grb::utils::TimerResults &total_times,
 					grb::utils::TimerResults &min_times,
 					grb::utils::TimerResults &max_times,
-					grb::utils::TimerResults * sdev_times,
+					std::vector< grb::utils::TimerResults > &sdev_times,
 					const size_t pid
 				) {
 					total_times.normalize( total );
@@ -192,21 +188,20 @@ namespace grb {
 #endif
 				}
 
-
 				/**
 				 * Benchmarks a given ALP program.
 				 *
 				 * This variant applies to input data as a user-defined POD struct and
 				 * output data as a user-defined POD struct.
 				 *
-				 * @tparam RunnerType type of runner, i.e., functor object storing the information
-				 * 	to run the user-given GRB function
+				 * @tparam RunnerType The type of the runner, i.e., functor object storing
+				 *                    the information for running the supplied ALP function.
 				 *
-				 * @param[in]  runner functor object running the function
-				 * @param[in]  times grb::utils::TimerResults data structure with timing information
-				 * @param[in]  inner number of inner iterations
-				 * @param[out] outer number of outer iterations
-				 * @param[in]  pid process identifier of current LPF node
+				 * @param[in]  runner      Functor object running the function.
+				 * @param[in]  times       Data structure with timing information.
+				 * @param[in]  inner       Number of inner iterations.
+				 * @param[out] outer       Number of outer iterations.
+				 * @param[in]  pid process Identifier of current user process.
 				 *
 				 * @see benchmarking
 				 *
@@ -225,8 +220,7 @@ namespace grb {
 				) {
 					const double inf = std::numeric_limits< double >::infinity();
 					grb::utils::TimerResults total_times, min_times, max_times;
-					std::unique_ptr< grb::utils::TimerResults[] > sdev_times =
-						std::unique_ptr< grb::utils::TimerResults[] >( new grb::utils::TimerResults[ outer ] );
+					std::vector< grb::utils::TimerResults > sdev_times( outer );
 					total_times.set( 0 );
 					min_times.set( inf );
 					max_times.set( 0 );
@@ -254,7 +248,7 @@ namespace grb {
 
 						// calculate performance stats
 						benchmark_calc_inner( out, inner, inner_times, total_times, min_times,
-							max_times, sdev_times.get() );
+							max_times, sdev_times );
 
 #ifndef _GRB_NO_STDIO
 						// give experiment output line
@@ -279,7 +273,7 @@ namespace grb {
 					}
 
 					// calculate performance stats
-					benchmark_calc_outer( outer, total_times, min_times, max_times, sdev_times.get(),
+					benchmark_calc_outer( outer, total_times, min_times, max_times, sdev_times,
 						pid );
 
 					return SUCCESS;
@@ -294,13 +288,13 @@ namespace grb {
 				 * @tparam U       Output type of the given user program.
 				 * @tparam backend Which backend the program is using.
 				 *
-				 * @param[in]  alp_program The use rogram to be benchmarked
-				 * @param[in]  data_in     Input data as a raw data blob
-				 * @param[in]  in_size     The size, in bytes, of the input data
-				 * @param[out] out_data    Output data
-				 * @param[in]  inner       The number of inner repetitions of the benchmark
-				 * @param[in]  outer       The number of outer repetitions of the benchmark
-				 * @param[in]  pid         Unique ID of the calling user process
+				 * @param[in]  alp_program The user program to be benchmarked.
+				 * @param[in]  data_in     Input data as a raw data blob.
+				 * @param[in]  in_size     The size, in bytes, of the input data.
+				 * @param[out] out_data    Output data as a plain-old-data struct \a U.
+				 * @param[in]  inner       Number of inner repetitions of the benchmark.
+				 * @param[in]  outer       Number of outer repetitions of the benchmark.
+				 * @param[in]  pid         Unique ID of the calling user process.
 				 *
 				 * @see benchmarking
 				 *
@@ -329,8 +323,9 @@ namespace grb {
 							fun( in, ins, out );
 						}
 
-					} runner{ alp_program, data_in, in_size, data_out };
-					return benchmark< implementation >( runner, data_out.times, inner, outer, pid );
+					} runner = { alp_program, data_in, in_size, data_out };
+					return benchmark< implementation >( runner, data_out.times, inner, outer,
+						pid );
 				}
 
 				/**
@@ -342,13 +337,13 @@ namespace grb {
 				 * @tparam T Input type of the given user program.
 				 * @tparam U Output type of the given user program.
 				 *
-				 * @param[in]  alp_program The use rogram to be benchmarked
-				 * @param[in]  data_in     Input data as a raw data blob
-				 * @param[in]  in_size     The size, in bytes, of the input data
-				 * @param[out] out_data    Output data
-				 * @param[in]  inner       The number of inner repetitions of the benchmark
-				 * @param[in]  outer       The number of outer repetitions of the benchmark
-				 * @param[in]  pid         Unique ID of the calling user process
+				 * @param[in]  alp_program The user program to be benchmarked.
+				 * @param[in]  data_in     Input data as a raw data blob.
+				 * @param[in]  in_size     The size, in bytes, of the input data.
+				 * @param[out] out_data    Output data.
+				 * @param[in]  inner       Number of inner repetitions of the benchmark.
+				 * @param[in]  outer       Number of outer repetitions of the benchmark.
+				 * @param[in]  pid         Unique ID of the calling user process.
 				 *
 				 * @see benchmarking
 				 *
@@ -375,8 +370,9 @@ namespace grb {
 							fun( in, out );
 						}
 
-					} runner{ alp_program, data_in, data_out };
-					return benchmark< implementation >( runner, data_out.times, inner, outer, pid );
+					} runner = { alp_program, data_in, data_out };
+					return benchmark< implementation >( runner, data_out.times, inner, outer,
+						pid );
 				}
 
 
@@ -439,7 +435,7 @@ namespace grb {
 				std::string hostname = "localhost",
 				std::string port = "0"
 			) {
-				(void)process_id; (void)nprocs; (void)hostname; (void)port;
+				(void) process_id; (void) nprocs; (void) hostname; (void) port;
 #ifndef _GRB_NO_EXCEPTIONS
 				throw std::logic_error( "Benchmarker class called with unsupported mode or "
 					"implementation" );
@@ -455,11 +451,11 @@ namespace grb {
 			 * @tparam T Input type of the given user program.
 			 * @tparam U Output type of the given user program.
 			 *
-			 * @param[in]  alp_program The ALP program to be benchmarked
-			 * @param[in]  data_in     Input data as a raw data blob
-			 * @param[out] data_out    Output data
-			 * @param[in]  inner       The number of inner repetitions of the benchmark
-			 * @param[in]  outer       The number of outer repetitions of the benchmark
+			 * @param[in]  alp_program The ALP program to be benchmarked.
+			 * @param[in]  data_in     Input data as a raw data blob.
+			 * @param[out] data_out    Output data.
+			 * @param[in]  inner       Number of inner repetitions of the benchmark.
+			 * @param[in]  outer       Number of outer repetitions of the benchmark.
 			 * @param[in]  broadcast   An optional argument that dictates whether the
 			 *                         \a data_in argument should be broadcast across all
 			 *                         user processes participating in the benchmark,
@@ -501,6 +497,10 @@ namespace grb {
 				// furthermore, it should be impossible to call this function without
 				// triggering an exception during construction of this stub class, so we
 				// just return PANIC here
+#ifndef _GRB_NO_STDIO
+				std::cerr << "Error: base Benchmarker::exec called. An implementation-"
+					<< "specific variant should have been called instead.\n";
+#endif
 				return PANIC;
 			}
 
@@ -512,12 +512,12 @@ namespace grb {
 			 *
 			 * @tparam U Output type of the given user program.
 			 *
-			 * @param[in]  alp_program The use rogram to be benchmarked
-			 * @param[in]  data_in     Input data as a raw data blob
-			 * @param[in]  in_size     The size, in bytes, of the input data
-			 * @param[out] data_out    Output data
-			 * @param[in]  inner       The number of inner repetitions of the benchmark
-			 * @param[in]  outer       The number of outer repetitions of the benchmark
+			 * @param[in]  alp_program The user program to be benchmarked.
+			 * @param[in]  data_in     Input data as a raw data blob.
+			 * @param[in]  in_size     The size, in bytes, of the input data.
+			 * @param[out] data_out    Output data.
+			 * @param[in]  inner       Number of inner repetitions of the benchmark.
+			 * @param[in]  outer       Number of outer repetitions of the benchmark.
 			 * @param[in]  broadcast   An optional argument that dictates whether the
 			 *                         \a data_in argument should be broadcast across all
 			 *                         user processes participating in the benchmark,
@@ -561,6 +561,10 @@ namespace grb {
 				// furthermore, it should be impossible to call this function without
 				// triggering an exception during construction of this stub class, so we
 				// just return PANIC here
+#ifndef _GRB_NO_STDIO
+				std::cerr << "Error: base Benchmarker::exec called. An implementation-"
+					<< "specific variant should have been called instead.\n";
+#endif
 				return PANIC;
 			}
 
