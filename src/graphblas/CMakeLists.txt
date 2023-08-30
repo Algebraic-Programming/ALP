@@ -73,9 +73,10 @@ set( backend_reference_srcs
 	${CMAKE_CURRENT_SOURCE_DIR}/rc.cpp
 )
 
-# the only source file common to all BSP-based backends
+# source files common to all BSP-based backends
 set( backend_bsp_srcs
 	${CMAKE_CURRENT_SOURCE_DIR}/bsp/collectives.cpp
+	${CMAKE_CURRENT_SOURCE_DIR}/bsp/exec_broadcast_routines.cpp
 )
 
 # include only selected backends

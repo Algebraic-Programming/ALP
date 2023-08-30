@@ -89,9 +89,9 @@ namespace grb {
 			const size_t outer,
 			bool broadcast
 		) const {
-			using disp_t = internal::BenchmarkDispatcher< T, U, untyped_call >;
-			disp_t disp_info{ data_in, in_size, broadcast, inner, outer };
-			return this-> template run_lpf< T, U, disp_t >( grb_program, disp_info, data_out );
+			using Disp = internal::BenchmarkDispatcher< T, U, untyped_call >;
+			Disp disp_info{ data_in, in_size, broadcast, inner, outer };
+			return this-> template run_lpf< T, U, Disp >( grb_program, disp_info, data_out );
 		}
 
 	public:
@@ -112,7 +112,7 @@ namespace grb {
 		 * @return RC error code
 		 */
 		template< typename U > RC exec(
-			grb_untyped_func_t< void, U > grb_program,
+			AlpUntypedFunc< void, U > grb_program,
 			const void * data_in,
 			const size_t in_size,
 			U &data_out,
@@ -142,7 +142,7 @@ namespace grb {
 		 * @return RC error code
 		 */
 		template< typename T, typename U > RC exec(
-			grb_typed_func_t< T, U > grb_program,
+			AlpTypedFunc< T, U > grb_program,
 			const T &data_in,
 			U &data_out,
 			const size_t inner,

@@ -63,8 +63,8 @@ void vgrbProgram( const void* __in, const size_t, struct output &out ) {
 
 class runner_t {
 public:
-	virtual grb::RC launch_typed( grb::grb_typed_func_t< input, output >, const input &, output &, bool  ) = 0;
-	virtual grb::RC launch_untyped( grb::grb_untyped_func_t< void, output >, const void *, size_t, output &, bool ) = 0;
+	virtual grb::RC launch_typed( grb::AlpTypedFunc< input, output >, const input &, output &, bool  ) = 0;
+	virtual grb::RC launch_untyped( grb::AlpUntypedFunc< void, output >, const void *, size_t, output &, bool ) = 0;
 	virtual grb::RC finalize() = 0;
 
 	virtual ~runner_t() = default;
@@ -75,10 +75,10 @@ class bsp_launcher : public grb::Launcher< mode, grb::Backend::BSP1D >, public r
 public:
 	using grb::Launcher< mode, grb::Backend::BSP1D >::Launcher;
 
-	grb::RC launch_typed( grb::grb_typed_func_t< input, output > grbProgram, const input &in, output &out, bool bc ) override {
+	grb::RC launch_typed( grb::AlpTypedFunc< input, output > grbProgram, const input &in, output &out, bool bc ) override {
 		return this->exec( grbProgram, in, out, bc );
 	}
-	grb::RC launch_untyped( grb::grb_untyped_func_t< void, output > grbProgram, const void * in, size_t in_size, output &out, bool bc ) override {
+	grb::RC launch_untyped( grb::AlpUntypedFunc< void, output > grbProgram, const void * in, size_t in_size, output &out, bool bc ) override {
 		return this->exec( grbProgram, in, in_size, out, bc );
 	}
 	virtual grb::RC finalize() override {
@@ -94,10 +94,10 @@ class bsp_benchmarker : public grb::Benchmarker< mode, grb::Backend::BSP1D >, pu
 public:
 	using grb::Benchmarker< mode, grb::Backend::BSP1D >::Benchmarker;
 
-	grb::RC launch_typed( grb::grb_typed_func_t< input, output > grbProgram, const input &in, output &out, bool bc ) override {
+	grb::RC launch_typed( grb::AlpTypedFunc< input, output > grbProgram, const input &in, output &out, bool bc ) override {
 		return this->exec( grbProgram, in, out, bc, inner, outer );
 	}
-	grb::RC launch_untyped( grb::grb_untyped_func_t< void, output > grbProgram, const void * in, size_t in_size, output &out, bool bc ) override {
+	grb::RC launch_untyped( grb::AlpUntypedFunc< void, output > grbProgram, const void * in, size_t in_size, output &out, bool bc ) override {
 		return this->exec( grbProgram, in, in_size, out, bc, inner, outer );
 	}
 	virtual grb::RC finalize() override {
