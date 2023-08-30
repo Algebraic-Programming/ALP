@@ -30,6 +30,84 @@ namespace grb {
 
 	namespace internal {
 
+		template< typename D, typename IND, typename SIZE >
+		class Compressed_Storage;
+
+		namespace {
+
+			/**
+			 * Copies <tt>row_index<tt> and <tt>col_index<tt> from a
+			 * given Compressed_Storage to another.
+			 *
+			 * Performs no safety checking. Performs no (re-)allocations.
+			 *
+			 * @param[out] output The container to copy the coordinates to.
+			 * @param[in] input   The container to copy the coordinates from.
+			 * @param[in] nz      The number of nonzeroes in the \a other container.
+			 * @param[in] m       The index dimension of the \a other container.
+			 * @param[in] k       The start position to copy from (inclusive).
+			 * @param[in] end     The end position to copy to (exclusive).
+			 *
+			 * The copy range is 2nz + m + 1, i.e.,
+			 *   -# 0 <= start <  2nz + m + 1
+			 *   -# 0 <  end   <= 2nz + m + 1
+			 *
+			 * Concurrent calls to this function are allowed iff they consist of
+			 * disjoint ranges \a start and \a end. The copy is guaranteed to be
+			 * complete if the union of ranges spans 0 to 2nz + m + 1.
+			 */
+			template<
+				typename OutputType, typename OutputIND, typename OutputSIZE,
+				typename InputType, typename InputIND, typename InputSIZE
+			>
+			static inline void copyCoordinatesFrom(
+				Compressed_Storage< OutputType, OutputIND, OutputSIZE > &output,
+				const Compressed_Storage< InputType, InputIND, InputSIZE > &input,
+				const size_t nz, const size_t m,
+				size_t k, size_t end
+			) {
+				static_assert( std::is_convertible< InputIND, OutputIND >::value,
+					"InputIND must be convertible to OutputIND"
+				);
+				static_assert( std::is_convertible< InputSIZE, OutputSIZE >::value,
+					"InputSIZE must be convertible to OutputSIZE"
+				);
+
+				if( k < nz ) {
+					const size_t loop_end = std::min( nz, end );
+					assert( k <= loop_end );
+					std::copy_n(
+						input.row_index + k,
+						loop_end - k,
+						output.row_index + k
+					);
+					k = 0;
+				} else {
+					assert( k >= nz );
+					k -= nz;
+				}
+				if( end <= nz ) {
+					return;
+				}
+				end -= nz;
+				if( k < m + 1 ) {
+					const size_t loop_end = std::min( m + 1, end );
+					assert( k <= loop_end );
+					std::copy_n(
+						input.col_start + k,
+						loop_end - k,
+						output.col_start + k
+					);
+	#ifndef NDEBUG
+					for( size_t chk = k; chk < loop_end - 1; ++chk ) {
+						assert( input.col_start[ chk ] <= input.col_start[ chk + 1 ] );
+						assert( output.col_start[ chk ] <= output.col_start[ chk + 1 ] );
+					}
+	#endif
+				}
+			}
+		} // namespace
+
 		/**
 		 * Basic functionality for a compressed storage format (CRS/CSR or CCS/CSC).
 		 *
@@ -502,12 +580,10 @@ namespace grb {
 				}
 
 				/**
-				 * Copies contents from a given Compressed_Storage.
+				 * Copies coordinates from a given Compressed_Storage, then fills the
+				 * values with the given identity.
 				 *
 				 * Performs no safety checking. Performs no (re-)allocations.
-				 *
-				 * @tparam use_id If set to <tt>true</tt>, use \a id instead of values in
-				 *                \a other.
 				 *
 				 * @param[in] other The container to copy from.
 				 * @param[in] nz    The number of nonzeroes in the \a other container.
@@ -515,8 +591,6 @@ namespace grb {
 				 * @param[in] start The start position to copy from (inclusive).
 				 * @param[in] end   The end position to copy to (exclusive).
 				 * @param[in] id    A pointer to a value overriding those in \a other.
-				 *                  Will only be used if and only if \a use_id is set
-				 *                  <tt>true</tt>.
 				 *
 				 * The copy range is 2nz + m + 1, i.e.,
 				 *   -# 0 <= start <  2nz + m + 1
@@ -527,36 +601,27 @@ namespace grb {
 				 * complete if the union of ranges spans 0 to 2nz + m + 1.
 				 */
 				template<
-					bool use_id = false,
-					typename InputType, typename ValueType = char
+					bool useId = true,
+					typename InputType, typename InputIND, typename InputSIZE,
+					typename ValueType
 				>
 				void copyFrom(
-					const Compressed_Storage< InputType, IND, SIZE > &other,
+					const Compressed_Storage< InputType, InputIND, InputSIZE > &other,
 					const size_t nz, const size_t m,
 					const size_t start, size_t end,
-					const ValueType * __restrict__ id = nullptr
+					const ValueType * __restrict__ id,
+					const typename std::enable_if< useId, void >::type * = nullptr
 				) {
 #ifdef _DEBUG
 					std::cout << "CompressedStorage::copyFrom (cast) called with range "
-						<< start << "--" << end;
-					if( use_id ) {
-						std::cout << ". The identity " << (*id) << " will be used.\n";
-					} else {
-						std::cout << ". No identity will be used.\n";
-					}
+						<< start << "--" << end << ". The identity " << (*id) << " will be used.\n";
 #endif
 					assert( start <= end );
 					size_t k = start;
 					if( k < nz ) {
 						const size_t loop_end = std::min( nz, end );
 						assert( k <= loop_end );
-						for( ; k < loop_end; ++k ) {
-							if( use_id ) {
-								values[ k ] = *id;
-							} else {
-								values[ k ] = other.getValue( k, *id );
-							}
-						}
+						std::fill_n( values + k, loop_end - k, *id );
 						k = 0;
 					} else {
 						assert( k >= nz );
@@ -566,50 +631,45 @@ namespace grb {
 						return;
 					}
 					end -= nz;
-					if( k < nz ) {
-						const size_t loop_end = std::min( nz, end );
-						assert( k <= loop_end );
-						(void) std::memcpy(
-							row_index + k,
-							other.row_index + k,
-							(loop_end - k) * sizeof( IND )
-						);
-						k = 0;
-					} else {
-						assert( k >= nz );
-						k -= nz;
-					}
-					if( end <= nz ) {
-						return;
-					}
-					end -= nz;
-					if( k < m + 1 ) {
-						const size_t loop_end = std::min( m + 1, end );
-						assert( k <= loop_end );
-						(void) std::memcpy(
-							col_start + k,
-							other.col_start + k,
-							(loop_end - k) * sizeof( SIZE )
-						);
-					}
+
+					copyCoordinatesFrom( *this, other, nz, m, k, end );
 				}
 
-				/** \internal Specialisation for no cast copy */
-				template< bool use_id = false >
+				/**
+				 * Copies contents from a given Compressed_Storage.
+				 *
+				 * Performs no safety checking. Performs no (re-)allocations.
+				 *
+				 * @param[in] other The container to copy from.
+				 * @param[in] nz    The number of nonzeroes in the \a other container.
+				 * @param[in] m     The index dimension of the \a other container.
+				 * @param[in] start The start position to copy from (inclusive).
+				 * @param[in] end   The end position to copy to (exclusive).
+				 *
+				 * The copy range is 2nz + m + 1, i.e.,
+				 *   -# 0 <= start <  2nz + m + 1
+				 *   -# 0 <  end   <= 2nz + m + 1
+				 *
+				 * Concurrent calls to this function are allowed iff they consist of
+				 * disjoint ranges \a start and \a end. The copy is guaranteed to be
+				 * complete if the union of ranges spans 0 to 2nz + m + 1.
+				 */
+				template<
+					bool useId = false,
+					typename InputType, typename InputIND, typename InputSIZE
+				>
 				void copyFrom(
-					const Compressed_Storage< D, IND, SIZE > &other,
+					const Compressed_Storage< InputType, InputIND, InputSIZE > &other,
 					const size_t nz, const size_t m,
 					const size_t start, size_t end,
-					const D * __restrict__ id = nullptr
+					const typename std::enable_if< !useId, void >::type * = nullptr
 				) {
+					static_assert( !std::is_void< InputType >::value,
+						"InputType must not be void"
+					);
 #ifdef _DEBUG
-					std::cout << "CompressedStorage::copyFrom (no-cast) called with range "
-						<< start << "--" << end;
-					if( use_id ) {
-						std::cout << ". The identity " << (*id) << " will be used.\n";
-					} else {
-						std::cout << ". No identity will be used.\n";
-					}
+					std::cout << "CompressedStorage::copyFrom called with range "
+						<< start << "--" << end << ". No identity will be used.\n";
 #endif
 					size_t k = start;
 					if( k < nz ) {
@@ -618,19 +678,11 @@ namespace grb {
 						std::cout << "\t value range " << k << " -- " << loop_end << "\n";
 #endif
 						assert( k <= loop_end );
-						if( use_id ) {
-							std::fill( values + k, values + loop_end, *id );
-						} else {
-							GRB_UTIL_IGNORE_CLASS_MEMACCESS // by the ALP spec, D can only be POD
-								                        // types. In this case raw memory copies
-											// are OK.
-							(void) std::memcpy(
-								values + k,
-								other.values + k,
-								(loop_end - k) * sizeof( D )
-							);
-							GRB_UTIL_RESTORE_WARNINGS
-						}
+
+						GRB_UTIL_IGNORE_CLASS_MEMACCESS;
+						std::copy_n( other.values + k, loop_end - k, values + k );
+						GRB_UTIL_RESTORE_WARNINGS;
+
 						k = 0;
 					} else {
 						assert( k >= nz );
@@ -640,45 +692,11 @@ namespace grb {
 						return;
 					}
 					end -= nz;
-					if( k < nz ) {
-						const size_t loop_end = std::min( nz, end );
-#ifdef _DEBUG
-						std::cout << "\t index range " << k << " -- " << loop_end << "\n";
-#endif
-						assert( k <= loop_end );
-						(void) std::memcpy(
-							row_index + k,
-							other.row_index + k,
-							(loop_end - k) * sizeof( IND )
-						);
-						k = 0;
-					} else {
-						assert( k >= nz );
-						k -= nz;
-					}
-					if( end <= nz ) {
-						return;
-					}
-					end -= nz;
-					if( k < m + 1 ) {
-						const size_t loop_end = std::min( m + 1, end );
-#ifdef _DEBUG
-						std::cout << "\t start range " << k << " -- " << loop_end << "\n";
-#endif
-						assert( k <= loop_end );
-						(void) std::memcpy(
-							col_start + k,
-							other.col_start + k,
-							(loop_end - k) * sizeof( SIZE )
-						);
-#ifndef NDEBUG
-						for( size_t chk = k; chk < loop_end - 1; ++chk ) {
-							assert( other.col_start[ chk ] <= other.col_start[ chk + 1 ] );
-							assert( col_start[ chk ] <= col_start[ chk + 1 ] );
-						}
-#endif
-					}
+
+					copyCoordinatesFrom( *this, other, nz, m, k, end );
 				}
+
+
 
 				/**
 				 * Writes a nonzero to the given position. Does \em not update the
@@ -1176,45 +1194,22 @@ namespace grb {
 				 * \internal copyFrom specialisation for pattern matrices.
 				 */
 				template<
-					bool use_id = false,
-					typename InputType,
-					typename UnusedType = void
+					bool unusedValue = false,
+					typename InputType, typename InputIND, typename InputSIZE,
+					typename UnusedType = std::nullptr_t
 				>
 				void copyFrom(
-					const Compressed_Storage< InputType, IND, SIZE > &other,
+					const Compressed_Storage< InputType, InputIND, InputSIZE > &other,
 					const size_t nz, const size_t m, const size_t start, size_t end,
 					const UnusedType * __restrict__ = nullptr
 				) {
 					// the use_id template is meaningless in the case of pattern matrices, but
 					// is retained to keep the API the same as with the non-pattern case.
-					(void) use_id;
 #ifdef _DEBUG
 					std::cout << "CompressedStorage::copyFrom (void) called with range "
 						<< start << "--" << end << "\n";
 #endif
-					size_t k = start;
-					if( k < nz ) {
-						const size_t loop_end = std::min( nz, end );
-						(void) std::memcpy(
-							row_index + k, other.row_index + k,
-							(loop_end - k) * sizeof( IND )
-						);
-						k = 0;
-					} else {
-						assert( k >= nz );
-						k -= nz;
-					}
-					if( end <= nz ) {
-						return;
-					}
-					end -= nz;
-					if( k < m + 1 ) {
-						const size_t loop_end = std::min( m + 1, end );
-						(void) std::memcpy(
-							col_start + k, other.col_start + k,
-							(loop_end - k) * sizeof( SIZE )
-						);
-					}
+					copyCoordinatesFrom( *this, other, nz, m, start, end );
 				}
 
 				/**

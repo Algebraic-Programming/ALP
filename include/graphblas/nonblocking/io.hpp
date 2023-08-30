@@ -1158,7 +1158,8 @@ namespace grb {
 		std::cout << "Called grb::set (matrix-to-matrix, nonblocking)" << std::endl;
 #endif
 		// static checks
-		NO_CAST_ASSERT( ( !(descr & descriptors::no_casting) ||
+		NO_CAST_ASSERT(
+			( !(descr & descriptors::no_casting) ||
 				std::is_same< InputType, OutputType >::value
 			), "grb::set",
 			"called with non-matching value types" );
@@ -1187,7 +1188,7 @@ namespace grb {
 		const InputType2 &val,
 		const Phase &phase = EXECUTE
 	) noexcept {
-		static_assert( !std::is_same< OutputType, void >::value,
+		static_assert( !std::is_void< OutputType >::value,
 			"internal::grb::set (masked set to value): cannot have a pattern "
 			"matrix as output" );
 #ifdef _DEBUG
@@ -1208,11 +1209,7 @@ namespace grb {
 			return resize( C, nnz( A ) );
 		} else {
 			assert( phase == EXECUTE );
-			if( std::is_same< OutputType, void >::value ) {
-				return internal::set< false, descr >( C, A );
-			} else {
-				return internal::set< true, descr >( C, A, &val );
-			}
+			return internal::set< true, descr >( C, A, &val );
 		}
 	}
 
