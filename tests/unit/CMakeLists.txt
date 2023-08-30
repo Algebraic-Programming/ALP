@@ -211,6 +211,10 @@ add_grb_executables( copyVoidMatrices copyVoidMatrices.cpp
 	BACKENDS reference reference_omp bsp1d hybrid hyperdags nonblocking
 )
 
+add_grb_executables( copyMixedDomainsMatrices copyMixedDomainsMatrices.cpp
+	BACKENDS reference reference_omp bsp1d hybrid hyperdags nonblocking
+)
+
 add_grb_executables( masked_muladd masked_muladd.cpp
 	BACKENDS reference reference_omp bsp1d hybrid hyperdags nonblocking
 )
