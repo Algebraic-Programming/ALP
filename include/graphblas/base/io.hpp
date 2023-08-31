@@ -1181,13 +1181,14 @@ namespace grb {
 	 */
 	template<
 		Descriptor descr = descriptors::no_operation,
-		typename OutputType, typename RIT, typename CIT, typename NIT,
-		typename InputType,
+		typename OutputType, typename InputType,
+		typename RIT1, typename CIT1, typename NIT1,
+		typename RIT2, typename CIT2, typename NIT2,
 		Backend backend
 	>
 	RC set(
-		Matrix< OutputType, backend, RIT, CIT, NIT  > &C,
-		const Matrix< InputType, backend, RIT, CIT, NIT > &A,
+		Matrix< OutputType, backend, RIT1, CIT1, NIT1 > &A,
+		const Matrix< InputType, backend, RIT2, CIT2, NIT2 > &C,
 		const Phase &phase = EXECUTE,
 		const typename std::enable_if<
 			!grb::is_object< OutputType >::value &&
@@ -1198,8 +1199,8 @@ namespace grb {
 		const bool should_not_call_base_matrix_set = false;
 		assert( should_not_call_base_matrix_set );
 #endif
-		(void) C;
 		(void) A;
+		(void) C;
 		(void) phase;
 		return UNSUPPORTED;
 	}
@@ -1292,15 +1293,15 @@ namespace grb {
 	 */
 	template<
 		Descriptor descr = descriptors::no_operation,
-		typename DataType, typename RIT, typename CIT, typename NIT,
-		typename MaskType,
-		typename ValueType,
+		typename OutputType, typename InputType, typename ValueType,
+		typename RIT1, typename CIT1, typename NIT1,
+		typename RIT2, typename CIT2, typename NIT2,
 		Backend backend
 	>
 	RC set(
-		Matrix< DataType, backend, RIT, CIT, NIT  > &C,
-		const Matrix< MaskType, backend, RIT, CIT, NIT > &mask,
-		const ValueType& val,
+		Matrix< OutputType, backend, RIT1, CIT1, NIT1 > &C,
+		const Matrix< InputType, backend, RIT2, CIT2, NIT2 > &A,
+		const ValueType &val,
 		const Phase &phase = EXECUTE,
 		const typename std::enable_if<
 			!grb::is_object< DataType >::value &&
@@ -1312,8 +1313,8 @@ namespace grb {
 		const bool should_not_call_base_matrix_masked_set = false;
 		assert( should_not_call_base_matrix_masked_set );
 #endif
+		(void) A;
 		(void) C;
-		(void) mask;
 		(void) val;
 		(void) phase;
 		return UNSUPPORTED;

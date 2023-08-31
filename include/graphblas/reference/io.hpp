@@ -1883,11 +1883,12 @@ namespace grb {
 	template<
 		Descriptor descr = descriptors::no_operation,
 		typename OutputType, typename InputType1, typename InputType2,
-		typename RIT, typename CIT, typename NIT
+		typename RIT1, typename CIT1, typename NIT1,
+		typename RIT2, typename CIT2, typename NIT2
 	>
 	RC set(
-		Matrix< OutputType, reference, RIT, CIT, NIT > &C,
-		const Matrix< InputType1, reference, RIT, CIT, NIT > &A,
+		Matrix< OutputType, reference, RIT1, CIT1, NIT1 > &C,
+		const Matrix< InputType1, reference, RIT2, CIT2, NIT2 > &A,
 		const InputType2 &val,
 		const Phase &phase = EXECUTE,
 		const typename std::enable_if<
@@ -1900,6 +1901,14 @@ namespace grb {
 		std::cout << "Called grb::set (matrix-to-value-masked, reference)\n";
 #endif
 		// static checks
+		static_assert( !std::is_void< OutputType >::value,
+			"internal::grb::set (masked set to value): cannot have a pattern "
+			"matrix as output"
+		);
+		static_assert( std::is_convertible< ValueType, OutputType >::value,
+			"internal::grb::set (masked set to value): value type cannot be "
+			"converted to output type"
+		);
 		static_assert( std::is_void< OutputType >::value ||
 			std::is_same< OutputType, InputType2 >::value ||
 			std::is_convertible< InputType2, OutputType >::value,
