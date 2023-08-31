@@ -1138,6 +1138,59 @@ namespace grb {
 
 	template<
 		Descriptor descr = descriptors::no_operation,
+		typename DataType, typename RIT, typename CIT, typename NIT,
+		typename ValueType = DataType
+	>
+	RC set(
+		Matrix< DataType, nonblocking, RIT, CIT, NIT  > &C,
+		const ValueType& val,
+		const Phase &phase = EXECUTE
+	) noexcept {
+#ifdef _DEBUG
+		std::cout << "Called grb::set (matrix-to-matrix, nonblocking)" << std::endl;
+#endif
+		// static checks
+		static_assert(
+			!std::is_void< DataType >::value,
+			"grb::set (unmasked set to value): cannot have a pattern "
+			"matrix as output"
+		);
+		static_assert(
+			!std::is_void< ValueType >::value,
+			"grb::set (unmasked set to value): cannot have a pattern "
+			"matrix as output"
+		);
+		NO_CAST_ASSERT( (
+			( !(descr & descriptors::no_casting)
+				&& std::is_convertible< ValueType, DataType >::value
+			) || std::is_same< DataType, ValueType >::value
+			), "grb::set (unmasked set to value): ",
+			"called with non-matching value types"
+		);
+
+		// dynamic checks
+		assert( phase != TRY );
+
+		// delegate
+		if( internal::NONBLOCKING::warn_if_not_native &&
+			config::PIPELINE::warn_if_not_native
+		) {
+			std::cerr << "Warning: set (matrix, value, nonblocking) currently delegates "
+				<< "to a blocking implementation.\n"
+				<< "         Further similar such warnings will be suppressed.\n";
+			internal::NONBLOCKING::warn_if_not_native = false;
+		}
+
+		// nonblocking execution is not supported
+		// first, execute any computation that is not completed
+		grb::internal::le.execution();
+
+		// second, delegate to the reference backend
+		return set< descr >( internal::getRefMatrix( C ), val, phase );
+	}
+
+	template<
+		Descriptor descr = descriptors::no_operation,
 		typename OutputType, typename InputType,
 		typename RIT1, typename CIT1, typename NIT1,
 		typename RIT2, typename CIT2, typename NIT2
