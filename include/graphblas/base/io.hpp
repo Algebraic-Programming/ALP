@@ -1079,6 +1079,120 @@ namespace grb {
 	}
 
 	/**
+	 * Sets the content of a given matrix \a C to the one of
+	 * another given matrix \a A.
+	 *
+	 * @tparam descr      The descriptor of the operation. Optional; default
+	 *                    value is #grb::descriptors::no_operation.
+	 * @tparam OutputType The type of each element in the output matrix.
+	 * @tparam InputType  The type of each element in the input matrix.
+	 *
+	 * @param[in,out] C The matrix to be set.
+	 * @param[in]     A The source matrix.
+	 * @param[in] phase Which #grb::Phase the operation is requested. Optional;
+	 *                  the default is #grb::EXECUTE.
+	 *
+	 * \parblock
+	 * \par Covered descriptors
+	 *   - #grb::descriptors::no_operation,
+	 *   - #grb::descriptors::no_casting
+	 *
+	 * When \a descr includes #grb::descriptors::no_casting and if \a InputType
+	 * does not match \a OutputType, the code shall not compile.
+	 *
+	 * Any other descriptor will be ignored.
+	 * \endparblock
+	 *
+	 * \parblock
+	 * \par Performance semantics
+	 * Each backend must define performance semantics for this primitive.
+	 *
+	 * @see perfSemantics
+	 * \endparblock
+	 */
+	template<
+		Descriptor descr = descriptors::no_operation,
+		typename OutputType, typename InputType,
+		typename RIT1, typename CIT1, typename NIT1,
+		typename RIT2, typename CIT2, typename NIT2,
+		Backend backend
+	>
+	RC set(
+		Matrix< OutputType, backend, RIT1, CIT1, NIT1 > &A,
+		const Matrix< InputType, backend, RIT2, CIT2, NIT2 > &C,
+		const Phase &phase = EXECUTE
+	) noexcept {
+#ifndef NDEBUG
+		const bool should_not_call_base_matrix_set_copy_masked = false;
+		assert( should_not_call_base_matrix_set_copy_masked );
+#endif
+		(void) A;
+		(void) C;
+		(void) phase;
+		return UNSUPPORTED;
+	}
+
+	/**
+	 * Sets the content of a given matrix \a C to the coordinates of
+	 * another given matrix \a A, and fill the values with a given value.
+	 *
+	 * @tparam descr      The descriptor of the operation. Optional; default
+	 *                    value is #grb::descriptors::no_operation.
+	 * @tparam OutputType The type of each element in the output matrix.
+	 * @tparam InputType  The type of each element in the input matrix.
+	 * @tparam ValueType  The type of the given value. Should be convertible to
+	 *                    \a OutputType.
+	 *
+	 * @param[in,out] C The matrix to be set.
+	 * @param[in]     A The source matrix, from which the coordinates are copied.
+	 * @param[in]   val The value to fill the matrix's values with.
+	 * @param[in] phase Which #grb::Phase the operation is requested. Optional;
+	 *                  the default is #grb::EXECUTE.
+	 *
+	 * \parblock
+	 * \par Covered descriptors
+	 *   - #grb::descriptors::no_operation,
+	 *   - #grb::descriptors::no_casting
+	 *
+	 * When \a descr includes #grb::descriptors::no_casting and if \a InputType
+	 * does not match \a OutputType, the code shall not compile.
+	 *
+	 * Any other descriptor will be ignored.
+	 * \endparblock
+	 *
+	 * \parblock
+	 * \par Performance semantics
+	 * Each backend must define performance semantics for this primitive.
+	 *
+	 * @see perfSemantics
+	 * \endparblock
+	 */
+	template<
+		Descriptor descr = descriptors::no_operation,
+		typename OutputType, typename InputType, typename ValueType,
+		typename RIT1, typename CIT1, typename NIT1,
+		typename RIT2, typename CIT2, typename NIT2,
+		Backend backend
+	>
+	RC set(
+		Matrix< OutputType, backend, RIT1, CIT1, NIT1 > &C,
+		const Matrix< InputType, backend, RIT2, CIT2, NIT2 > &A,
+		const ValueType &val,
+		const Phase &phase = EXECUTE
+	) noexcept {
+#ifndef NDEBUG
+		const bool should_not_call_base_masked_matrix_set = false;
+		assert( should_not_call_base_masked_matrix_set );
+#endif
+		(void) A;
+		(void) C;
+		(void) val;
+		(void) phase;
+		return UNSUPPORTED;
+	}
+
+
+	/**
 	 * Sets the element of a given vector at a given position to a given value.
 	 *
 	 * If the input vector \a x already has an element \f$ x_i \f$, that element

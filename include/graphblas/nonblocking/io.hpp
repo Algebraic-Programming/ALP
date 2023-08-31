@@ -1107,14 +1107,14 @@ namespace grb {
 			bool A_is_mask,
 			Descriptor descr,
 			typename OutputType,
-			typename InputType1, typename InputType2 = const OutputType,
+			typename InputType, typename ValueType = const OutputType,
 			typename RIT1, typename CIT1, typename NIT1,
 			typename RIT2, typename CIT2, typename NIT2
 		>
 		RC set(
 			Matrix< OutputType, nonblocking, RIT1, CIT1, NIT1 > &C,
-			const Matrix< InputType1, nonblocking, RIT2, CIT2, NIT2 > &A,
-			const InputType2 * __restrict__ id = nullptr
+			const Matrix< InputType, nonblocking, RIT2, CIT2, NIT2 > &A,
+			const ValueType * __restrict__ id = nullptr
 		) noexcept {
 			if( internal::NONBLOCKING::warn_if_not_native &&
 				config::PIPELINE::warn_if_not_native
@@ -1130,7 +1130,7 @@ namespace grb {
 			grb::internal::le.execution();
 
 			// second, delegate to the reference backend
-			return set< A_is_mask, descr, OutputType, InputType1, InputType2 >(
+			return set< A_is_mask, descr, OutputType, InputType, ValueType >(
 				internal::getRefMatrix( C ), internal::getRefMatrix( A ), id );
 		}
 
@@ -1178,14 +1178,14 @@ namespace grb {
 
 	template<
 		Descriptor descr = descriptors::no_operation,
-		typename OutputType, typename InputType1, typename InputType2,
+		typename OutputType, typename InputType, typename ValueType,
 		typename RIT1, typename CIT1, typename NIT1,
 		typename RIT2, typename CIT2, typename NIT2
 	>
 	RC set(
 		Matrix< OutputType, nonblocking, RIT1, CIT1, NIT1 > &C,
-		const Matrix< InputType1, nonblocking, RIT2, CIT2, NIT2 > &A,
-		const InputType2 &val,
+		const Matrix< InputType, nonblocking, RIT2, CIT2, NIT2 > &A,
+		const ValueType &val,
 		const Phase &phase = EXECUTE
 	) noexcept {
 		static_assert( !std::is_void< OutputType >::value,
@@ -1196,7 +1196,7 @@ namespace grb {
 #endif
 		// static checks
 		NO_CAST_ASSERT( ( !(descr & descriptors::no_casting) ||
-				std::is_same< InputType2, OutputType >::value
+				std::is_same< ValueType, OutputType >::value
 			), "grb::set",
 			"called with non-matching value types"
 		);

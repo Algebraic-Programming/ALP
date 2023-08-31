@@ -969,15 +969,15 @@ namespace grb {
 		template<
 			bool A_is_mask,
 			Descriptor descr,
-			typename OutputType, typename InputType1,
-			typename InputType2 = const OutputType,
+			typename OutputType, typename InputType,
+			typename ValueType = const OutputType,
 			typename RIT1, typename CIT1, typename NIT1,
 			typename RIT2, typename CIT2, typename NIT2
 		>
 		RC set(
 			Matrix< OutputType, reference, RIT1, CIT1, NIT1 > &C,
-			const Matrix< InputType1, reference, RIT2, CIT2, NIT2 > &A,
-			const InputType2 * __restrict__ id = nullptr
+			const Matrix< InputType, reference, RIT2, CIT2, NIT2 > &A,
+			const ValueType * __restrict__ id = nullptr
 		) noexcept {
 #ifdef _DEBUG
 			std::cout << "Called grb::set (matrices, reference), execute phase\n";
@@ -993,11 +993,26 @@ namespace grb {
 			);
 			NO_CAST_ASSERT(
 				( !( descr & descriptors::no_casting ) ||
-				( !A_is_mask && std::is_same< InputType1, OutputType >::value ) ),
+				( !A_is_mask && std::is_same< InputType, OutputType >::value ) ),
 				"internal::grb::set", "called with non-matching value types"
 			);
+			NO_CAST_ASSERT(
+				( !( descr & descriptors::no_casting ) ||
+				( std::is_same< RIT1, RIT2 >::value ) ),
+				"internal::grb::set", "called with non-matching row index types"
+			);
+			NO_CAST_ASSERT(
+				( !( descr & descriptors::no_casting ) ||
+				( std::is_same< CIT1, CIT2 >::value ) ),
+				"internal::grb::set", "called with non-matching column index types"
+			);
+			NO_CAST_ASSERT(
+				( !( descr & descriptors::no_casting ) ||
+				( std::is_same< NIT1, NIT2 >::value ) ),
+				"internal::grb::set", "called with non-matching value index types"
+			);
 			NO_CAST_ASSERT( ( !( descr & descriptors::no_casting ) ||
-				( A_is_mask && std::is_same< InputType2, OutputType >::value ) ),
+				( A_is_mask && std::is_same< ValueType, OutputType >::value ) ),
 				"internal::grb::set", "Called with non-matching value types"
 			);
 
@@ -1111,21 +1126,21 @@ namespace grb {
 
 	template<
 		Descriptor descr = descriptors::no_operation,
-		typename OutputType, typename InputType1, typename InputType2,
+		typename OutputType, typename InputType, typename ValueType,
 		typename RIT1, typename CIT1, typename NIT1,
 		typename RIT2, typename CIT2, typename NIT2
 	>
 	RC set(
 		Matrix< OutputType, reference, RIT1, CIT1, NIT1 > &C,
-		const Matrix< InputType1, reference, RIT2, CIT2, NIT2 > &A,
-		const InputType2 &val,
+		const Matrix< InputType, reference, RIT2, CIT2, NIT2 > &A,
+		const ValueType &val,
 		const Phase &phase = EXECUTE
 	) noexcept {
 		static_assert( !std::is_void< OutputType >::value,
 			"internal::grb::set (masked set to value): cannot have a pattern "
 			"matrix as output"
 		);
-		static_assert( std::is_convertible< InputType2, OutputType >::value,
+		static_assert( std::is_convertible< ValueType, OutputType >::value,
 			"internal::grb::set (masked set to value): value type cannot be "
 			"converted to output type"
 		);
@@ -1135,7 +1150,7 @@ namespace grb {
 		// static checks
 		NO_CAST_ASSERT(
 			( !(descr & descriptors::no_casting) ||
-				std::is_same< InputType2, OutputType >::value
+				std::is_same< ValueType, OutputType >::value
 			), "grb::set",
 			"called with non-matching value types"
 		);
