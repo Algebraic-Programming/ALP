@@ -1079,6 +1079,72 @@ namespace grb {
 	}
 
 	/**
+	 * Sets all values of a matrix to the given value.
+	 *
+	 * Unmasked variant.
+	 *
+	 * @tparam descr     The descriptor used for this operation.
+	 * @tparam DataType  The type of each element in the given matrix.
+	 *                   Must not be void.
+	 * @tparam ValueType The type of the given value. Should be convertible
+	 *                   to \a DataType. Optional; default value is \a DataType.
+	 * @tparam backend   The backend that implements this function.
+	 *
+	 * \parblock
+	 * \par Accepted descriptors
+	 *   -# grb::descriptors::no_operation
+	 *   -# grb::descriptors::no_casting
+	 * \endparblock
+	 *
+	 * @param[in,out] C The vector of which every element is to be set to equal
+	 *                  \a val. On output, the number of elements shall be equal
+	 *                  to the size of \a C.
+	 * @param[in]   val The value to set each element of \a C to.
+	 * @param[in] phase Which #grb::Phase the operation is requested. Optional;
+	 *                  the default is #grb::EXECUTE.
+	 *
+	 * In #grb::RESIZE mode:
+	 * @returns #grb::SUCCESS  All the time, no de-/allocation is necessary.
+	 *
+	 * In #grb::EXECUTE mode:
+	 * @returns #grb::SUCCESS When the call completes successfully.
+	 *
+	 * When \a descr includes grb::descriptors::no_casting and if \a T does not
+	 * match \a DataType, the code shall not compile.
+	 *
+	 * \parblock
+	 * \par Performance semantics
+	 * Each backend must define performance semantics for this primitive.
+	 *
+	 * @see perfSemantics
+	 * \endparblock
+	 */
+	template<
+		Descriptor descr = descriptors::no_operation,
+		typename DataType, typename RIT, typename CIT, typename NIT,
+		typename ValueType = DataType,
+		Backend backend
+	>
+	RC set(
+		Matrix< DataType, backend, RIT, CIT, NIT  > &C,
+		const ValueType& val,
+		const Phase &phase = EXECUTE,
+		const typename std::enable_if<
+			!grb::is_object< DataType >::value &&
+			!grb::is_object< ValueType >::value,
+		void >::type * const = nullptr
+	) noexcept {
+#ifndef NDEBUG
+		const bool should_not_call_base_matrix_set = false;
+		assert( should_not_call_base_matrix_set );
+#endif
+		(void) C;
+		(void) val;
+		(void) phase;
+		return UNSUPPORTED;
+	}
+
+	/**
 	 * Sets the element of a given vector at a given position to a given value.
 	 *
 	 * If the input vector \a x already has an element \f$ x_i \f$, that element
