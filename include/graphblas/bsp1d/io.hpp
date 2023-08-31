@@ -823,6 +823,49 @@ namespace grb {
 		return ret;
 	}
 
+	template<
+		Descriptor descr = descriptors::no_operation,
+		typename DataType, typename RIT, typename CIT, typename NIT,
+		typename ValueType = DataType
+	>
+	RC set(
+		Matrix< DataType, BSP1D, RIT, CIT, NIT  > &C,
+		const ValueType& val,
+		const Phase &phase = EXECUTE
+	) noexcept {
+		const size_t m = nrows( C );
+		const size_t n = ncols( C );
+		const size_t nz = nnz( C );
+
+		if( m == 0 || n == 0 || nz == 0 ) { return SUCCESS; }
+
+		RC ret = set< descr >(
+			internal::getLocal( C ), val, phase
+		);
+
+		if( collectives< BSP1D >::allreduce( ret, operators::any_or< RC >() )
+			!= SUCCESS
+		) {
+			return PANIC;
+		}
+
+		if( phase == EXECUTE ) {
+			if( ret == SUCCESS ) {
+				ret = internal::updateNnz( x );
+			} else if( ret == FAILED ) {
+				const RC clear_rc = clear( x );
+				if( clear_rc != SUCCESS ) {
+					ret = PANIC;
+				}
+			} else {
+				assert( ret == PANIC );
+			}
+		}
+
+		// done
+		return ret;
+	}
+
 	/**
 	 * \internal
 	 * Implementation details:
