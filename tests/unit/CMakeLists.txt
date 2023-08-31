@@ -290,12 +290,22 @@ add_grb_executables( matrix_type static_asserts/matrix.cpp
 	BACKENDS reference reference_omp bsp1d hybrid hyperdags nonblocking
 )
 
-add_grb_executables( launcher_auto manual_launcher_hook.cpp
-	BACKENDS bsp1d
+add_grb_executables( launch_benchmark_auto launcherAndBenchmarker.cpp
+	BACKENDS bsp1d hybrid
+	COMPILE_DEFINITIONS DISTRIBUTED_EXECUTION
 )
 
-add_grb_executables( launcher_frommpi_manual manual_launcher_hook.cpp
-	BACKENDS bsp1d
+add_grb_executables( launch_benchmark_auto launcherAndBenchmarker.cpp
+	BACKENDS reference reference_omp hyperdags nonblocking
+)
+
+add_grb_executables( launch_benchmark_frommpi_manual launcherAndBenchmarker.cpp
+	BACKENDS bsp1d hybrid
+	COMPILE_DEFINITIONS DISTRIBUTED_EXECUTION NO_LPF_AUTO_INIT
+)
+
+add_grb_executables( launch_benchmark_frommpi_manual launcherAndBenchmarker.cpp
+	BACKENDS reference reference_omp hyperdags nonblocking
 	COMPILE_DEFINITIONS NO_LPF_AUTO_INIT
 )
 

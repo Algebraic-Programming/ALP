@@ -34,7 +34,9 @@
 
 #include <string.h>
 #include <stdio.h>
-#include <mpi.h>
+#ifdef DISTRIBUTED_EXECUTION
+	#include <mpi.h>
+#endif
 
 #include <graphblas.hpp>
 #include <graphblas/utils/ranges.hpp>
@@ -118,11 +120,11 @@ class Runner {
 
 template< grb::EXEC_MODE mode >
 class bsp_launcher :
-	public grb::Launcher< mode, grb::Backend::BSP1D >, public Runner
+	public grb::Launcher< mode >, public Runner
 {
 	public:
 
-		using grb::Launcher< mode, grb::Backend::BSP1D >::Launcher;
+		using grb::Launcher< mode >::Launcher;
 
 		grb::RC launch_typed(
 			grb::AlpTypedFunc< input, output > grbProgram,
@@ -140,14 +142,14 @@ class bsp_launcher :
 		}
 
 		virtual grb::RC finalize() override {
-			return grb::Launcher< mode, grb::Backend::BSP1D >::finalize();
+			return grb::Launcher< mode >::finalize();
 		}
 
 };
 
 template< grb::EXEC_MODE mode >
 class bsp_benchmarker :
-	public grb::Benchmarker< mode, grb::Backend::BSP1D >, public Runner
+	public grb::Benchmarker< mode >, public Runner
 {
 
 	private:
@@ -155,10 +157,9 @@ class bsp_benchmarker :
 		size_t inner = 2;
 		size_t outer = 2;
 
-
 	public:
 
-		using grb::Benchmarker< mode, grb::Backend::BSP1D >::Benchmarker;
+		using grb::Benchmarker< mode >::Benchmarker;
 
 		grb::RC launch_typed(
 			grb::AlpTypedFunc< input, output > grbProgram,
@@ -177,7 +178,7 @@ class bsp_benchmarker :
 		}
 
 		virtual grb::RC finalize() override {
-			return grb::Benchmarker< mode, grb::Backend::BSP1D >::finalize();
+			return grb::Benchmarker< mode >::finalize();
 		}
 
 };
@@ -192,6 +193,9 @@ std::unique_ptr< Runner > make_runner(
 	bool mpi_inited
 ) {
 	Runner *ret = nullptr;
+#ifndef DISTRIBUTED_EXECUTION
+	( void ) mpi_inited;
+#endif
 
 	switch (type) {
 		case Launch:
@@ -199,7 +203,7 @@ std::unique_ptr< Runner > make_runner(
 				case grb::AUTOMATIC:
 					ret = new bsp_launcher< grb::AUTOMATIC >;
 					break;
-
+#ifdef DISTRIBUTED_EXECUTION
 				case grb::FROM_MPI:
 					ret = new bsp_launcher< grb::FROM_MPI >( MPI_COMM_WORLD );
 					break;
@@ -207,7 +211,11 @@ std::unique_ptr< Runner > make_runner(
 				case grb::MANUAL:
 					ret = new bsp_launcher< grb::MANUAL >( s, P, host, port, mpi_inited );
 					break;
-
+#else
+				case grb::MANUAL:
+					ret = new bsp_launcher< grb::MANUAL >( s, P, host, port );
+					break;
+#endif
 				default:
 					break;
 			}
@@ -218,7 +226,7 @@ std::unique_ptr< Runner > make_runner(
 				case grb::AUTOMATIC:
 					ret = new bsp_benchmarker< grb::AUTOMATIC >;
 					break;
-
+#ifdef DISTRIBUTED_EXECUTION
 				case grb::FROM_MPI:
 					ret = new bsp_benchmarker< grb::FROM_MPI >( MPI_COMM_WORLD );
 					break;
@@ -226,6 +234,12 @@ std::unique_ptr< Runner > make_runner(
 				case grb::MANUAL:
 					ret = new bsp_benchmarker< grb::MANUAL >( s, P, host, port, mpi_inited );
 					break;
+#else
+				case grb::MANUAL:
+					ret = new bsp_benchmarker< grb::MANUAL >( s, P, host, port );
+					break;
+				case grb::FROM_MPI:
+#endif
 
 				default:
 					break;
@@ -252,15 +266,23 @@ int main( int argc, char ** argv ) {
 
 	std::cout << "Functional test executable: " << argv[ 0 ] << "\n";
 
+#ifdef DISTRIBUTED_EXECUTION
 	int lpf_mpi_inited = 0;
 	int success = MPI_Initialized( &lpf_mpi_inited );
 	ERROR_ON( success != MPI_SUCCESS, "cannot determine initalization info" );
+#endif
 	const char * host = nullptr;
 	const char * port = nullptr;
-	lpf_pid_t P = std::numeric_limits< lpf_pid_t >::max();
-	lpf_pid_t s = std::numeric_limits< lpf_pid_t >::max();
+#ifdef DISTRIBUTED_EXECUTION
+	typedef lpf_pid_t test_pid_t;
+#else
+	typedef size_t test_pid_t;
+#endif
+	test_pid_t P = std::numeric_limits< test_pid_t >::max();
+	test_pid_t s = std::numeric_limits< test_pid_t >::max();
 	grb::EXEC_MODE mode = grb::FROM_MPI;
 
+#ifdef DISTRIBUTED_EXECUTION
 	if( lpf_mpi_inited != 0 ) {
 		mode = grb::AUTOMATIC;
 		ERROR_ON( argc != 1, "no argument needed" );
@@ -279,7 +301,42 @@ int main( int argc, char ** argv ) {
 			);
 		}
 	}
-	std::cout << "\n===> chosen initialization method: " << mode << " <==="
+#else
+	if( argc == 1 ) {
+		mode = grb::AUTOMATIC;
+	} else if( argc == 5 ) {
+		mode = grb::MANUAL;
+	} else {
+		ERROR_ON( true, "either no arguments or four arguments expected.\n"
+				"For the four-argument variant, the following are expected:\n"
+			" - hostname\n"
+			" - portname\n"
+			" - total number of processes\n"
+			" - unique ID of this process\n"
+		);
+	}
+#endif
+	const char *mode_str = nullptr;
+
+	switch ( mode )
+	{
+	case grb::AUTOMATIC:
+		mode_str = "AUTOMATIC";
+		break;
+#ifdef DISTRIBUTED_EXECUTION
+	case grb::FROM_MPI:
+		mode_str = "FROM_MPI";
+		break;
+#endif
+	case grb::MANUAL:
+		mode_str = "MANUAL";
+		break;
+	default:
+		ERROR_ON( true, "unrecognized option: " << mode );
+		break;
+	}
+
+	std::cout << "\n===> chosen initialization method: " << mode_str << " <==="
 		<< std::endl;
 
 	if( mode == grb::MANUAL ) {
@@ -287,8 +344,8 @@ int main( int argc, char ** argv ) {
 		host = argv[ 1 ];
 		port = argv[ 2 ];
 		try {
-			P = static_cast< lpf_pid_t >( std::stoi( argv[ 3 ] ) );
-			s = static_cast< lpf_pid_t >( std::stoi( argv[ 4 ] ) );
+			P = static_cast< test_pid_t >( std::stoi( argv[ 3 ] ) );
+			s = static_cast< test_pid_t >( std::stoi( argv[ 4 ] ) );
 		} catch( std::exception &e ) {
 			std::cerr << "Caught exception: " << e.what() << std::endl;
 			std::cout << "Test FAILED\n" << std::endl;
@@ -303,66 +360,77 @@ int main( int argc, char ** argv ) {
 		ERROR_ON( !grb::utils::is_in_normalized_range( s, P ),
 			"Invalid value for PID: " << argv[ 4 ] );
 	}
+#ifdef DISTRIBUTED_EXECUTION
 	if( mode == grb::FROM_MPI || mode == grb::MANUAL ) {
 		success = MPI_Init( NULL, NULL );
 		ERROR_ON( success != MPI_SUCCESS, "Call to MPI_Init failed" );
 	}
+#endif
 
 	struct input in;
 	struct output out;
 	out.exit_code = 0;
+	
+	for( const bool broadcast : { true, false } ) {
+		for( const RunnerType rt : {Launch, Benchmark } ) {
+			// const bool broadcast = true;
+			const char * const runner_name = rt == Launch ? "Launch" : "Benchmark";
+			const char * const bc_str = broadcast ? "true" : "false";
+			std::cout << "\n ==> runner type: " << runner_name << ", broadcast: " << bc_str << std::endl;
+			std::unique_ptr< Runner > runner;
+			try {
+				runner = make_runner(
+					mode, rt, s, P,
+					std::string( (host != nullptr ? host : "" ) ),
+					std::string( (port != nullptr ? port : "" ) ),
+					true
+				);
+			} catch( std::runtime_error &e ) {
+				std::cerr << "got a runtime exception: " << e.what() << std::endl;
+				std::cout << "Test FAILED\n" << std::endl;
+				return EXIT_FAILURE;
+			} catch( std::exception &e ) {
+				std::cerr << "got an exception: " << e.what() << std::endl;
+				std::cout << "Test FAILED\n" << std::endl;
+				return EXIT_FAILURE;
+			} catch( ... ) {
+				std::cerr << "got an unknown exception" << std::endl;
+				std::cout << "Test FAILED\n" << std::endl;
+				return EXIT_FAILURE;
+			}
 
-	for( RunnerType rt : {Launch, Benchmark } ) {
-		const char * const runner_name = rt == Launch ? "Launch" : "Benchmark";
-		std::cout << "\n ==> runner type: " << runner_name << std::endl;
-		std::unique_ptr< Runner > runner;
-		try {
-			runner = make_runner(
-				mode, rt, s, P,
-				std::string( (host != nullptr ? host : "" ) ),
-				std::string( (port != nullptr ? port : "" ) ),
-				true
+			std::cout << "  => untyped call\n" << std::endl;
+			(void) strncpy( in.str, truth, STR_LEN + 1 );
+			grb::RC ret = runner->launch_untyped(
+				&vgrbProgram,
+				reinterpret_cast< void * >( &in ), sizeof( struct input ),
+				out, broadcast
 			);
-		} catch( std::runtime_error &e ) {
-			std::cerr << "got a runtime exception: " << e.what() << std::endl;
-			std::cout << "Test FAILED\n" << std::endl;
-			return EXIT_FAILURE;
-		} catch( std::exception &e ) {
-			std::cerr << "got an exception: " << e.what() << std::endl;
-			std::cout << "Test FAILED\n" << std::endl;
-			return EXIT_FAILURE;
-		} catch( ... ) {
-			std::cerr << "got an unknown exception" << std::endl;
-			std::cout << "Test FAILED\n" << std::endl;
-			return EXIT_FAILURE;
+			ERROR_ON( ret != grb::SUCCESS,
+				"untyped test with broadcast FAILED with code: " << grb::toString( ret ) );
+			ERROR_ON( out.exit_code != 0,
+				"untyped test with broadcast FAILED with exit code " << out.exit_code );
+
+			std::cout << "\n  => typed call\n" << std::endl;
+			ret = runner->launch_typed( &grbProgram, in, out, broadcast );
+			ERROR_ON( ret != grb::SUCCESS,
+				"typed test with broadcast FAILED with code: " << grb::toString( ret ) );
+			ERROR_ON( out.exit_code != 0,
+				"typed test with broadcast FAILED with exit code " << out.exit_code );
+
+			ret = runner->finalize();
+			
+			ERROR_ON( ret != grb::SUCCESS,
+				"finalization FAILED with code: " << grb::toString( ret ) );
+			std::cout << "  => OK" << std::endl;
 		}
-
-		std::cout << "  => untyped call\n" << std::endl;
-		(void) strncpy( in.str, truth, STR_LEN + 1 );
-		grb::RC ret = runner->launch_untyped(
-			&vgrbProgram,
-			reinterpret_cast< void * >( &in ), sizeof( struct input ),
-			out, true
-		);
-		ERROR_ON( ret != grb::SUCCESS,
-			"untyped test with broadcast FAILED with code: " << grb::toString( ret ) );
-		ERROR_ON( out.exit_code != 0,
-			"untyped test with broadcast FAILED with exit code " << out.exit_code );
-
-		std::cout << "\n  => typed call\n" << std::endl;
-		ret = runner->launch_typed( &grbProgram, in, out, true );
-		ERROR_ON( ret != grb::SUCCESS,
-			"typed test with broadcast FAILED with code: " << grb::toString( ret ) );
-		ERROR_ON( out.exit_code != 0,
-			"typed test with broadcast FAILED with exit code " << out.exit_code );
-
-		runner->finalize();
 	}
-
+#ifdef DISTRIBUTED_EXECUTION
 	if( mode == grb::FROM_MPI || mode == grb::MANUAL ) {
 		success = MPI_Finalize();
 		ERROR_ON( success != MPI_SUCCESS, "Call to MPI_Finalize failed" );
 	}
+#endif
 
 	std::cout << "\nTest OK\n" << std::endl;
 	return EXIT_SUCCESS;
