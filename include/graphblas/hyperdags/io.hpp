@@ -334,6 +334,38 @@ namespace grb {
 
 	template<
 		Descriptor descr = descriptors::no_operation,
+		typename DataType, typename RIT, typename CIT, typename NIT,
+		typename ValueType = DataType
+	>
+	RC set(
+		Matrix< DataType, hyperdags, RIT, CIT, NIT  > &C,
+		const ValueType& val,
+		const Phase &phase = EXECUTE
+	) noexcept {
+		const RC ret = set< descr >(
+			internal::getMatrix( C ), val, phase
+		);
+		if( ret != SUCCESS ) { return ret; }
+		if( phase != EXECUTE ) { return ret; }
+		if( nrows( C ) == 0 || ncols( C ) == 0 ) { return ret; }
+		std::array< const void *, 0 > sourcesP{};
+		std::array< uintptr_t, 1 > sourcesC{
+			getID( internal::getMatrix(C) )
+		};
+		std::array< uintptr_t, 1 > destinations{
+			getID( internal::getMatrix(C) )
+		};
+		internal::hyperdags::generator.addOperation(
+			internal::hyperdags::SET_MATRIX_VALUE,
+			sourcesP.begin(), sourcesP.end(),
+			sourcesC.begin(), sourcesC.end(),
+			destinations.begin(), destinations.end()
+		);
+		return ret;
+	}
+
+	template<
+		Descriptor descr = descriptors::no_operation,
 		typename OutputType, typename InputType,
 		typename RIT1, typename CIT1, typename NIT1,
 		typename RIT2, typename CIT2, typename NIT2
