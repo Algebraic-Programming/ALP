@@ -37,65 +37,15 @@ namespace grb {
 	 * No implementation notes.
 	 */
 	template< EXEC_MODE mode >
-	class Launcher< mode, hyperdags > {
-
-		private:
-
-			/**
-			 * Rely on underlying backend.
-			 */
-			typedef Launcher< mode, _GRB_WITH_HYPERDAGS_USING > MyLauncherType;
-
-			/**
-			 * Instantiate the sub-backend.
-			 */
-			MyLauncherType launcher;
-
+	class Launcher< mode, hyperdags >: public Launcher< mode, _GRB_WITH_HYPERDAGS_USING > {
 
 		public:
+			typedef Launcher< mode, _GRB_WITH_HYPERDAGS_USING > MyLauncherType;
 
-			/**
-			 * Default constructor.
-			 *
-			 * Simply calls that of the underlying constructor.
-			 */
-			Launcher(
-				const size_t process_id = 0, const size_t nprocs = 1,
-				const std::string hostname = "localhost",
-				const std::string port = "0"
-			) : launcher( process_id, nprocs, hostname, port ) {}
+			/** \internal Delegates to #grb::Launcher (reference) constructor. */
+			using MyLauncherType::Launcher;
 
-			/**
-			 * Variable input-size execution.
-			 *
-			 * Simply calls underlying launcher.
-			 */
-			template< typename U >
-			RC exec(
-				void ( *grb_program )( const void *, const size_t, U & ),
-				const void * data_in,
-				const size_t in_size,
-				U &data_out,
-				const bool broadcast = false
-			) {
-				return launcher.exec( grb_program, data_in, in_size, data_out, broadcast );
-			}
-
-			/**
-			 * Fixed-size execution.
-			 *
-			 * Simply calls underlying launcher.
-			 */
-			template< typename T, typename U >
-			RC exec(
-				void ( *grb_program )( const T &, U & ),
-				const T &data_in,
-				U &data_out,
-				const bool broadcast = false
-			) {
-				return launcher.exec( grb_program, data_in, data_out, broadcast );
-			}
-
+			using MyLauncherType::finalize;
 	};
 
 }

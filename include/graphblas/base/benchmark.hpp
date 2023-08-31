@@ -321,7 +321,7 @@ namespace grb {
 					enum Backend implementation
 				>
 				static RC benchmark(
-					void ( *alp_program )( const void *, const size_t, U & ),
+					AlpUntypedFunc< void, U > alp_program,
 					const void * data_in,
 					const size_t in_size,
 					U &data_out,
@@ -329,17 +329,9 @@ namespace grb {
 					const size_t outer,
 					const size_t pid
 				) {
-					struct void_runner {
-						void ( *fun )( const void *, const size_t, U & );
-						const void * in;
-						const size_t ins;
-						U &out;
-
-						inline void operator()() {
-							fun( in, ins, out );
-						}
-
-					} runner = { alp_program, data_in, in_size, data_out };
+					auto runner = [ alp_program, data_in, in_size, &data_out ] {
+						alp_program( data_in, in_size, data_out );
+					};
 					return benchmark< implementation >( runner, data_out.times, inner, outer,
 						pid );
 				}
@@ -370,23 +362,16 @@ namespace grb {
 					enum Backend implementation
 				>
 				static RC benchmark(
-					void ( *alp_program )( const T &, U & ),
+					AlpTypedFunc< T, U > alp_program,
 					const T &data_in,
 					U &data_out,
 					const size_t inner,
 					const size_t outer,
 					const size_t pid
 				) {
-					struct typed_runner {
-						void ( *fun )( const T &, U & );
-						const T &in;
-						U &out;
-
-						inline void operator()() {
-							fun( in, out );
-						}
-
-					} runner = { alp_program, data_in, data_out };
+					auto runner = [ alp_program, &data_in, &data_out ] {
+						alp_program( data_in, data_out );
+					};
 					return benchmark< implementation >( runner, data_out.times, inner, outer,
 						pid );
 				}

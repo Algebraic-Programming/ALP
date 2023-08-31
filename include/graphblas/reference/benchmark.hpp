@@ -39,23 +39,18 @@ namespace grb {
 	 */
 	template< enum EXEC_MODE mode >
 	class Benchmarker< mode, reference > :
-		protected Launcher< mode, reference >, protected internal::BenchmarkerBase
+		public Launcher< mode, reference >, protected internal::BenchmarkerBase
 	{
 
 		public:
 
 			/** \internal Delegates to #grb::Launcher (reference) constructor. */
-			Benchmarker(
-				const size_t process_id = 0,
-				const size_t nprocs = 1,
-				std::string hostname = "localhost",
-				std::string port = "0"
-			) : Launcher< mode, reference >( process_id, nprocs, hostname, port ) {}
+			using Launcher< mode, reference >::Launcher;
 
 			/** \internal No implementation notes. */
 			template< typename U >
 			RC exec(
-				void ( *grb_program )( const void *, const size_t, U & ),
+				AlpUntypedFunc< void, U > grb_program,
 				const void * data_in, const size_t in_size,
 				U &data_out,
 				const size_t inner, const size_t outer,
@@ -66,49 +61,30 @@ namespace grb {
 				if( in_size > 0 && data_in == nullptr ) {
 					return ILLEGAL;
 				}
-				// initialise
-				RC ret = grb::init();
-
-				// call ALP algo
-				if( ret == SUCCESS ) {
+				auto fun = [ data_in, in_size, &data_out, grb_program, inner, outer ] {
 					benchmark< U, reference >( grb_program, data_in, in_size, data_out, inner,
 						outer, 0 );
-				}
-				// finalise
-				const RC frc = grb::finalize();
-				if( ret == SUCCESS ) {
-					ret = frc;
-				}
-				// and done
-				return ret;
+				};
+				return this->init_and_run( fun, broadcast );
 			}
 
 			/** \internal No implementation notes. */
 			template< typename T, typename U >
 			RC exec(
-				void ( *grb_program )( const T &, U & ),
+				AlpTypedFunc< T, U > grb_program,
 				const T &data_in, U &data_out,
 				const size_t inner,
 				const size_t outer,
 				const bool broadcast = false
 			) {
-				(void) broadcast; // value doesn't matter for a single user process
-				// initialise
-				RC ret = grb::init();
-				// call ALP algo
-				if( ret == SUCCESS ) {
-					benchmark< T, U, reference >( grb_program, data_in, data_out, inner, outer,
-						0 );
-				}
-				// finalise
-				const RC frc = grb::finalize();
-				if( ret == SUCCESS ) {
-					ret = frc;
-				}
-				// and done
-				return ret;
+				auto fun = [ &data_in, &data_out, grb_program, inner, outer ] {
+					benchmark< T, U, reference >( grb_program, data_in, data_out, inner,
+						outer, 0 );
+				};
+				return this->init_and_run( fun, broadcast );
 			}
 
+			using Launcher< mode, reference >::finalize;
 	};
 
 } // namespace grb

@@ -27,10 +27,8 @@
 #ifndef _H_GRB_NONBLOCKING_BENCH
 #define _H_GRB_NONBLOCKING_BENCH
 
-#include <graphblas/base/benchmark.hpp>
 #include <graphblas/rc.hpp>
-
-#include "exec.hpp"
+#include <graphblas/reference/benchmark.hpp>
 
 
 namespace grb {
@@ -41,51 +39,14 @@ namespace grb {
 	 * \internal The public API simply wraps the reference Benchmarker.
 	 */
 	template< enum EXEC_MODE mode >
-	class Benchmarker< mode, nonblocking > {
-
-		private:
-
-			/** \internal Reuse reference benchmarker. */
-			Benchmarker< mode, reference > ref;
-
+	class Benchmarker< mode, nonblocking >: public Benchmarker< mode, reference > {
 
 		public:
 
-			/** \internal Mirror reference constructor. */
-			Benchmarker(
-				size_t process_id = 0,
-				size_t nprocs = 1,
-				std::string hostname = "localhost",
-				std::string port = "0"
-			) :
-				ref(process_id, nprocs, hostname, port)
-			{}
+			/** \internal Delegates to #grb::Launcher (reference) constructor. */
+			using Benchmarker< mode, reference >::Benchmarker;
 
-			/** \internal Mirror reference exec. */
-			template< typename U >
-			RC exec(
-				void ( *grb_program )( const void *, const size_t, U & ),
-				const void * data_in, const size_t in_size,
-				U &data_out,
-				const size_t inner, const size_t outer,
-				const bool broadcast = false
-			) const {
-				return ref.exec(
-					grb_program, data_in, in_size, data_out, inner, outer, broadcast
-				);
-			}
-
-			/** \internal Mirror reference exec. */
-			template< typename T, typename U >
-			RC exec(
-				void ( *grb_program )( const T &, U & ),
-				const T &data_in, U &data_out,
-				const size_t inner,
-				const size_t outer,
-				const bool broadcast = false
-			) {
-				return ref.exec( grb_program, data_in, data_out, inner, outer, broadcast );
-			}
+			using Benchmarker< mode, reference >::finalize;
 
 	};
 
