@@ -501,6 +501,39 @@ namespace grb {
 					return 2 * nz + m + 1;
 				}
 
+				template< typename ValueType >
+				void assignValue(
+					const size_t nz, const size_t,
+					const size_t start, size_t end,
+					const ValueType& val
+				) {
+					// The value can not be of type void
+					static_assert(
+						!std::is_void< ValueType >::value,
+						"ValueType must not be void"
+					);
+					// The value must be convertible to D
+					static_assert(
+						std::is_convertible< ValueType, D >::value,
+						"ValueType must be convertible to D"
+					);
+#ifdef _DEBUG
+					std::cout << "CompressedStorage::assignValue called with range "
+						<< start << "--" << end << ". Value " << val << " will be used.\n";
+#endif
+					if( start >= nz ) { return; }
+
+					const size_t loop_end = std::min( nz, end );
+#ifdef _DEBUG
+					std::cout << "\t value range " << start << " -- " << loop_end << "\n";
+#endif
+					assert( start <= loop_end );
+
+					GRB_UTIL_IGNORE_CLASS_MEMACCESS;
+					std::fill_n( values + start, loop_end - start, static_cast< D >( val ) );
+					GRB_UTIL_RESTORE_WARNINGS;
+				}
+
 				/**
 				 * Copies contents from a given Compressed_Storage.
 				 *

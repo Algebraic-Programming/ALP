@@ -1078,6 +1078,80 @@ namespace grb {
 
 	template<
 		Descriptor descr = descriptors::no_operation,
+		typename DataType, typename RIT, typename CIT, typename NIT,
+		typename ValueType = DataType
+	>
+	RC set(
+		Matrix< DataType, reference, RIT, CIT, NIT  > &C,
+		const ValueType& val,
+		const Phase &phase = EXECUTE
+	) noexcept {
+#ifdef _DEBUG
+		std::cout << "Called grb::set (matrix-to-value-unmasked, reference)\n";
+#endif
+		// static checks
+		static_assert(
+			!std::is_void< DataType >::value,
+			"grb::set (unmasked set to value): cannot have a pattern "
+			"matrix as output"
+		);
+		static_assert(
+			!std::is_void< ValueType >::value,
+			"grb::set (unmasked set to value): cannot have a pattern "
+			"matrix as output"
+		);
+		NO_CAST_ASSERT( (
+			( !(descr & descriptors::no_casting)
+				&& std::is_convertible< ValueType, DataType >::value
+			) || std::is_same< DataType, ValueType >::value
+			), "grb::set (unmasked set to value): ",
+			"called with non-matching value types"
+		);
+
+		// dynamic checks
+		assert( phase != TRY );
+
+		// delegate
+		if( phase == RESIZE ) {
+			return SUCCESS;
+		} else {
+			assert( phase == EXECUTE );
+
+			const size_t m = nrows( C );
+			const size_t n = ncols( C );
+			const size_t nz = nnz( C );
+
+			if( m == 0 || n == 0 || nz == 0 ) { return SUCCESS; }
+
+#ifdef _H_GRB_REFERENCE_OMP_IO
+			#pragma omp parallel default( none ) \
+				shared( C ) firstprivate( val, m, n, nz )
+#endif
+			{
+				{ // CRS section
+					size_t range = internal::getCRS( C ).copyFromRange( nz, m );
+					size_t start = 0, end = range;
+#ifdef _H_GRB_REFERENCE_OMP_IO
+					config::OMP::localRange( start, end, 0, range );
+#endif
+					internal::getCRS( C ).assignValue( nz, m, start, end, val );
+				}
+
+				{ // CCS section
+					size_t range = internal::getCCS( C ).copyFromRange( nz, n );
+					size_t start = 0, end = range;
+#ifdef _H_GRB_REFERENCE_OMP_IO
+					config::OMP::localRange( start, end, 0, range );
+#endif
+					internal::getCCS( C ).assignValue( nz, m, start, end, val );
+				}
+			}
+		}
+		return SUCCESS;
+	}
+
+	template<
+		Descriptor descr = descriptors::no_operation,
 		typename OutputType, typename InputType,
 		typename RIT1, typename CIT1, typename NIT1,
 		typename RIT2, typename CIT2, typename NIT2
