@@ -133,6 +133,10 @@ add_grb_executables( matrixSet matrixSet.cpp
 	BACKENDS reference reference_omp bsp1d hybrid hyperdags nonblocking
 )
 
+add_grb_executables( setMatrixValue setMatrixValue.cpp
+	BACKENDS reference reference_omp bsp1d hybrid hyperdags nonblocking
+)
+
 add_grb_executables( moveVector moveVector.cpp
 	BACKENDS reference reference_omp hyperdags bsp1d hybrid nonblocking
 )
