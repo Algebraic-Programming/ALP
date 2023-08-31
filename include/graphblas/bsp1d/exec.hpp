@@ -54,19 +54,6 @@
 
 namespace grb {
 
-	/**
-	 * Type definition for an ALP function with input type information.
-	 */
-	template< typename InputType, typename OutputType >
-	using AlpTypedFunc = void ( * )( const InputType &, OutputType & );
-
-	/**
-	 * Type definition for an ALP function without input type information.
-	 */
-	template< typename InputType, typename OutputType >
-	using AlpUntypedFunc = void ( * )( const InputType *,
-		size_t, OutputType & );
-
 	namespace internal {
 
 		/**
@@ -737,11 +724,11 @@ namespace grb {
 
 				// check for success
 				if( initrc != LPF_SUCCESS ) {
-	#ifndef _GRB_NO_STDIO
+#ifndef _GRB_NO_STDIO
 					throw std::runtime_error(
 						"LPF could not connect launcher group over TCP/IP."
 					);
-	#endif
+#endif
 				}
 			}
 
@@ -754,9 +741,9 @@ namespace grb {
 				// try and destroy the lpf_init_t
 				const lpf_err_t finrc = lpf_mpi_finalize( this->init );
 				if( finrc != LPF_SUCCESS ) {
-	#ifndef _GRB_NO_STDIO
+#ifndef _GRB_NO_STDIO
 					std::cerr << "Warning: could not destroy launcher::init from ~launcher.\n";
-	#endif
+#endif
 				}
 				this->init = LPF_INIT_NONE;
 			}
@@ -767,9 +754,9 @@ namespace grb {
 			static RC finalize() {
 				// finalise MPI when in manual mode
 				if( internal::grb_mpi_initialized && MPI_Finalize() != MPI_SUCCESS ) {
-	#ifndef _GRB_NO_STDIO
+#ifndef _GRB_NO_STDIO
 					std::cerr << "Warning: MPI_Finalize returned non-SUCCESS exit code.\n";
-	#endif
+#endif
 					return grb::PANIC;
 				}
 				internal::grb_mpi_initialized = false;
