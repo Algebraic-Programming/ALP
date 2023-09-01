@@ -469,9 +469,9 @@ namespace grb {
 			"vector"
 		);
 
-		// catch empty mask
+		// If the mask is empty: clear the vector
 		if( size( m ) == 0 ) {
-			return set< descr >( x, val, phase );
+			return clear( x );
 		}
 
 		// dynamic sanity checks
