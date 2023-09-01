@@ -37,7 +37,7 @@ HYPERDAGS_OUTPUT_PATH="${CURRENT_OUT_DIR}/simple_pagerank.mtx" \
 CURRENT_OUT_DIR="${HYPERDAGS_OUTPUT_FOLDER}/until_convergence"
 
 HYPERDAGS_OUTPUT_PATH="${CURRENT_OUT_DIR}/dot.mtx" \
-    ${UNIT_TESTS_BIN_DIR}/dot_hyperdags 1874
+    ${UNIT_TESTS_BIN_DIR}/dot_ndebug_hyperdags 1874
 
 HYPERDAGS_OUTPUT_PATH="${CURRENT_OUT_DIR}/bicgstab_gyro_m.mtx" \
     ${SMOKE_TESTS_BIN_DIR}/bicgstab_hyperdags ${DATASETS_PATH}/gyro_m.mtx direct 1 1
