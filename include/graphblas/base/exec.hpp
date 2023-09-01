@@ -221,7 +221,7 @@ namespace grb {
 			 */
 			template< typename T, typename U >
 			RC exec(
-				void ( *alp_program )( const T &, U & ),
+				AlpTypedFunc< T, U > alp_program,
 				const T &data_in,
 				U &data_out,
 				const bool broadcast = false
@@ -263,7 +263,7 @@ namespace grb {
 			 */
 			template< typename U >
 			RC exec(
-				void ( *alp_program )( const void *, const size_t, U & ),
+				AlpUntypedFunc< void, U >  alp_program,
 				const void * data_in,
 				const size_t in_size,
 				U &data_out,
