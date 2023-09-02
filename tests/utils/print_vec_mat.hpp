@@ -20,13 +20,13 @@
 
 /**
  * @file print_vec_mat.hpp
+ *
+ * Utilities to print grb containers and objects.
+ *
  * @authors
  * - Alberto Scolari (alberto.scolari@huawei.com)
  * - Benjamin Lozes (benjamin.lozes@huawei.com)
  *
- * @brief Utilities to print grb containers and objects.
- *
- * @details
  * Routines to print:
  * - grb::Vector, grb::Matrix & grb::PinnedVector: These primitives are in
  *   templated form to be generic w.r.t. stored data type and
@@ -46,28 +46,32 @@
 
 #include <graphblas.hpp>
 
+
 using namespace grb;
 
-
 /**
- * Prints the first \p _limit items (including zeroes) of vector \p x
+ * Prints the first \p limit items (including zeroes) of vector \p x
  * with optional heading \p head.
  *
- * @tparam T vector data type
- * @tparam B GraphBLAS backend storing the vector
- * @param x vector to print
- * @param _limit max number of elements to print; 0 for the entire vector
+ * Contents will be printed to the standard output stream.
+ *
+ * @tparam T Vector data type.
+ * @tparam B Vector backend.
+ *
+ * @param[in] x     The vector to print
+ * @param[in] limit Max. number of elements to print; 0 for the entire vector
  * @param head optional heading to print \b before the vector
+ *
+ * \warning Assumes iterators over \a x are ordered.
  */
 template< typename T, enum grb::Backend B >
 void print_vector(
 	const grb::Vector< T, B > &x,
-	size_t _limit = 10UL,
-	const char * head = nullptr
+	const size_t limit = 10UL,
+	const char * const head = nullptr
 ) {
-	// const T * const raw{grb::internal::getRaw(x)};
-	size_t x_size { grb::size( x ) };
-	size_t limit { _limit == 0 ? x_size : std::min( x_size, _limit ) };
+	size_t x_size = grb::size( x );
+	size_t limit = limit == 0 ? x_size : std::min( x_size, limit );
 
 	if( head != nullptr ) {
 		std::cout << "<<< " << head << " >>>" << std::endl;
@@ -77,19 +81,21 @@ void print_vector(
 		std::cout << "(size 0 vector)";
 	}
 
-	typename grb::Vector< T, B >::const_iterator it { x.cbegin() };
-	typename grb::Vector< T, B >::const_iterator end { x.cend() };
+	typename grb::Vector< T, B >::const_iterator it = x.cbegin();
+	typename grb::Vector< T, B >::const_iterator end = x.cend();
 
-	size_t previous_nnz { it == end ? limit : it->first };
+	size_t previous_nnz = it == end ? limit : it->first;
 	if( previous_nnz == 0 ) {
 		std::cout << it->second;
-		++it;
+		(void) ++it;
 	} else if( x_size > 0 ) {
 		std::cout << 0;
 	}
-	size_t next_nnz { it == end ? limit : it->first }, position { 1 };
+	size_t next_nnz, position;
+	next_nnz = it == end ? limit : it->first;
+	position = 1;
 	while( position < limit ) {
-		size_t zero_streak { std::min( next_nnz, limit ) };
+		size_t zero_streak = std::min( next_nnz, limit );
 		// print sequence of zeroes
 		for( ; position < zero_streak; ++position ) {
 			std::cout << ", ";
@@ -98,8 +104,8 @@ void print_vector(
 		if( position < limit ) {
 			std::cout << ", ";
 			std::cout << it->second;
-			++position;
-			++it;
+			(void) ++position;
+			(void) ++it;
 			next_nnz = it->first;
 		}
 	}
@@ -110,12 +116,16 @@ void print_vector(
  * Prints the first \p limit items of pinned vector \p x with optional
  * heading \p head.
  *
+ * Contents will be printed to the standard output stream.
+ *
  * @tparam T vector data type
  * @tparam B GraphBLAS backend storing the vector
  *
- * @param[in] v pinned vector to print
- * @param[in] _limit max number of elements to print; 0 for the entire vector
+ * @param[in] v      Pinned vector to print
+ * @param[in] limit Max number of elements to print; 0 for the entire vector
  * @param[in]  head optional heading to print \b before the vector
+ *
+ * \warning Nonzero values will be printed in an undefined order.
  */
 template< typename T, enum grb::Backend B >
 void print_vector(
@@ -130,71 +140,113 @@ void print_vector(
 		std::cout << "<<< " << head << " >>>" << std::endl;
 	}
 	std::cout << "First " << limit << " nonzeroes of x are: ( ";
-	size_t k { 0 };
+	size_t k = 0;
 	if( k < v.nonzeroes() && limit > 0 ) {
 		std::cout << v.getNonzeroValue( k++ );
 	}
-	for( size_t nnzs { 1 }; nnzs < limit && k < v.nonzeroes(); k++ ) {
+	for( size_t nnzs = 1; nnzs < limit && k < v.nonzeroes(); k++ ) {
 		std::cout << ", " << v.getNonzeroValue( k );
-		++nnzs;
+		(void) ++nnzs;
 	}
 	std::cout << " )" << std::endl;
 }
 
 /**
- * Easy matrix container to store a matrix in a \b dense format, thus <b>also
- * zeroes are stored</b> and the memory occupation is <b>proportional to the
- * full size of the matrix</b>; hence, use with case!
+ * Easy matrix container to store a matrix in a \b dense format.
  *
- * @tparam T the type of the matrix values
+ * \warning Thus, <b>also zeroes are stored</b> and the memory occupation is
+ *          <b>proportional to the full size of the matrix</b>. Hence, use this
+ *          function with care!
+ *
+ * @tparam T the type of the matrix values.
+ *
  */
 template< typename T >
 struct dense_mat {
-	const size_t rows, cols; ///< matrix dimensions
-	T * const dense;              ///< pointer to data, stored in a linear format (row-wise)
+
+	/** The number of rows in the matrix. */
+	const size_t rows;
+
+	/** The number of columns in the matrix. */
+	const size_t cols;
+
+	/** Pointer to the raw data, row-major storage. */
+	T * const dense;
 
 	/**
-	 * @brief Construct a new dense_mat object of given rows and columns, <b>allocating the necessary
-	 *          physical memory for dense storage</b>.
+	 * Construct a new dense_mat object of given rows and columns.
+	 *
+	 * This function <b>allocates the necessary physical memory for dense
+	 * storage</b>.
+	 *
+	 * @param[in] rows          The number of matrix rows.
+	 * @param[in] cols          The number of matrix columns.
+	 * @param[in] initial_value Optional; by default equal to zero.
+	 *
+	 * \warning This function assumes that zero maps to the literal <tt>0</tt>.
+	 *
+	 * @throws Out of memory errors in case #::dense cannot be allocated.
 	 */
-	dense_mat( size_t _nrows, size_t _ncols, T initial_value = T( 0 ) ) :
-		rows( _nrows ), cols( _ncols ), dense( new T[ rows * cols ] ) // we assume new throws if not enough memory
+	dense_mat(
+		const size_t _nrows, const size_t _ncols,
+		const T initial_value = T( 0 )
+	) :
+		rows( _nrows ), cols( _ncols ),
+		dense( new T[ rows * cols ] )
 	{
 		assert( rows != 0 );
 		assert( cols != 0 );
 		std::fill( dense, dense + rows * cols, initial_value );
 	}
 
+	/**
+	 * Releases the resources corresponding to this instance.
+	 */
 	~dense_mat() {
 		delete[] dense;
 	}
 
 	/**
-	 * @brief Operator to access an entire row, which simply returns the pointer to the first row element;
-	 *          this way, one can conveniently write \code mat[i][j]] \endcode to access each element.
+	 * Operator to access an entire row.
+	 *
+	 * @param[in] row The row to access.
+	 *
+	 * Simply returns the pointer to the first row element; this way, one can
+	 * conveniently write \code mat[i][j]] \endcode to access each element.
 	 */
-	inline T * operator[]( size_t row ) {
+	inline T * operator[]( const size_t row ) {
 		return dense + row * cols;
 	}
 
 	/**
-	 * @brief Operator to access an entire row, which simply returns the const pointer to the first row element;
-	 *          this way, one can conveniently write \code mat[i][j]] \endcode to access each element.
+	 * Operator to access an entire row.
+	 *
+	 * @param[in] row The row to access.
+	 *
+	 * Simply returns the const pointer to the first row element; this way, one can
+	 * conveniently write \code mat[i][j]] \endcode to access each element.
 	 */
-	inline const T * operator[]( size_t row ) const {
+	inline const T * operator[]( const size_t row ) const {
 		return dense + row * cols;
 	}
 };
 
 /**
- * Prints up to \p _limit rows and columns of matrix \p mat with optional
+ * Prints up to \p limit rows and columns of matrix \p mat with optional
  * heading \p head.
  *
  * @tparam T matrix data type
- * @tparam B GraphBLAS backend storing the matrix
- * @param mat matrix to print
- * @param _limit max number of rows and columns to print (0 for all)
- * @param head optional heading to print \b before the matrix
+ * @tparam B ALP/GraphBLAS backend storing the matrix
+ *
+ * @param[in] mat   Matrix to print
+ * @param[in] limit Max. number of rows and columns to print (0 for all)
+ * @param[in] head  Optional heading to print \b before the matrix
+ *
+ * \warning This first casts \a mat to a dense matrix.
+ *
+ * \warning This function does not guard against iterators over \a mat
+ *          (erroneously) returning an element at the same coordinate more
+ *          than once.
  */
 template<
 	typename T,
@@ -203,18 +255,18 @@ template<
 >
 void print_matrix(
 	const grb::Matrix< T, B > &mat,
-	size_t _limit = 0,
-	const char * head = nullptr
+	const size_t limit = 0,
+	const char * const head = nullptr
 ) {
 	const size_t rows = grb::nrows( mat );
 	const size_t cols = grb::ncols( mat );
-	size_t row_limit = _limit == 0 ? rows : std::min( _limit, rows );
-	size_t col_limit = _limit == 0 ? cols : std::min( _limit, cols );
+	size_t row_limit = limit == 0 ? rows : std::min( limit, rows );
+	size_t col_limit = limit == 0 ? cols : std::min( limit, cols );
 	// create and dump only relevant portion
 	dense_mat< std::pair< bool, T> > dump(
 		row_limit, col_limit, std::make_pair( false, static_cast< T >( 0 ) )
 	);
-	for( const std::pair< std::pair< size_t, size_t >, T > & t : mat ) {
+	for( const std::pair< std::pair< size_t, size_t >, T > &t : mat ) {
 		size_t row = t.first.first;
 		size_t col = t.first.second;
 		if( row < row_limit && col < col_limit ) {
@@ -243,16 +295,24 @@ void print_matrix(
 	std::cout << "==============" << std::endl << std::endl;
 }
 
-
 /**
- * Prints up to \p _limit rows and columns of matrix \p mat with optional
- * heading \p head.
+ * Prints up to \p limit rows and columns of matrix \p mat with optional header
+ * \p head.
+ *
+ * Specialisation for void matrices.
  *
  * @tparam T matrix data type
  * @tparam B GraphBLAS backend storing the matrix
- * @param mat matrix to print
- * @param _limit max number of rows and columns to print (0 for all)
- * @param head optional heading to print \b before the matrix
+ *
+ * @param[in] mat   Matrix to print
+ * @param[in] limit Max. number of rows and columns to print (0 for all)
+ * @param[in] head  Optional heading to print \b before the matrix
+ *
+ * \warning This first casts \a mat to a dense matrix.
+ *
+ * \warning This function does not guard against iterators over \a mat
+ *          (erroneously) returning an element at the same coordinate more
+ *          than once.
  */
 template<
 	typename T,
@@ -261,13 +321,13 @@ template<
 >
 void print_matrix(
 	const grb::Matrix< T, B > &mat,
-	size_t _limit = 0,
+	size_t limit = 0,
 	const char * head = nullptr
 ) {
 	const size_t rows = grb::nrows( mat );
 	const size_t cols = grb::ncols( mat );
-	size_t row_limit = _limit == 0 ? rows : std::min( _limit, rows );
-	size_t col_limit = _limit == 0 ? cols : std::min( _limit, cols );
+	size_t row_limit = limit == 0 ? rows : std::min( limit, rows );
+	size_t col_limit = limit == 0 ? cols : std::min( limit, cols );
 	// create and dump only relevant portion
 	dense_mat< bool > assigned( row_limit, col_limit, false );
 	for( const auto &t : mat ) {
@@ -295,13 +355,18 @@ void print_matrix(
 	std::cout << "==============" << std::endl << std::endl;
 }
 
-namespace
-{
+namespace {
+
+	/**
+	 * \internal
+	 * Helper function for printing a void reference CompressedStorage object.
+	 * \endinternal
+	 */
 	template< typename D, class Storage >
 	void printCompressedStorage(
 		const Storage &storage,
-		size_t n,
-		size_t nnz,
+		const size_t n,
+		const size_t nnz,
 		std::ostream &os = std::cout,
 		const typename std::enable_if<
 			std::is_void< D >::value, void
@@ -322,11 +387,16 @@ namespace
 		os << "]" << std::endl;
 	}
 
+	/**
+	 * \internal
+	 * Helper function for printing a general reference CompressedStorage object.
+	 * \endinternal
+	 */
 	template< typename D, class Storage >
 	void printCompressedStorage(
 		const Storage &storage,
-		size_t n,
-		size_t nnz,
+		const size_t n,
+		const size_t nnz,
 		std::ostream &os,
 		const typename std::enable_if<
 			!std::is_void< D >::value, void
@@ -343,13 +413,18 @@ namespace
 } // namespace
 
 /**
- * Print the CRS structure of a grb::Matrix
+ * Print the CRS structure of a grb::Matrix.
  *
- * @tparam Enabled boolean flag to enable/disable the function
- * @param mat Matrix's CRS to print
- * @param label Label to print before the matrix
- * @param limit Max number of rows and columns to print (-1 for all)
- * @param os Output stream (default: std::cout)
+ * @tparam Enabled boolean flag to enable/disable the function.
+ *
+ * @param[in]     mat   Matrix CRS to print.
+ * @param[in]     label Label to print before the matrix.
+ * @param[in]     limit Max number of rows and columns to print (-1 for all).
+ * @param[in,out] os    Output stream (optional; default is <tt>std::cout</tt>).
+ *
+ * \warning This function does \em not convert to CRS; if the implementing
+ *          backend is not back by a CRS-like format, calling this function will
+ *          not compile.
  */
 template<
 	bool Enabled = true,
@@ -359,6 +434,7 @@ template<
 void printCRS(
 	const Matrix< D, implementation, RIT, CIT, NIT > &,
 	const std::string & = "",
+	const size_t limit = 128,
 	std::ostream & = std::cout,
 	const typename std::enable_if<
 		implementation != reference &&
@@ -373,13 +449,18 @@ void printCRS(
 }
 
 /**
- * Print the CRS structure of a grb::Matrix
+ * Print the CRS structure of a grb::Matrix.
+ *
+ * This is the specialisation for the reference and reference_omp backends.
  *
  * @tparam Enabled boolean flag to enable/disable the function
- * @param mat Matrix's CRS to print
- * @param label Label to print before the matrix
- * @param limit Max number of rows and columns to print (-1 for all)
- * @param os Output stream (default: std::cout)
+ *
+ * @param[in]     mat   Matrix CRS to print.
+ * @param[in]     label Label to print before the matrix.
+ * @param[in]     limit Max number of rows and columns to print (-1 for all).
+ * @param[in,out] os    Output stream (optional; default is <tt>std::cout</tt>).
+ *
+ * \note The value -1 for \a limit refers to SIZE_MAX.
  */
 template<
 	bool Enabled = true,
@@ -389,20 +470,24 @@ template<
 void printCRS(
 	const Matrix< D, implementation, RIT, CIT, NIT > &mat,
 	const std::string &label = "",
-	long limit = 128, // -1 is no limit
+	const size_t limit = 128,
 	std::ostream &os = std::cout,
 	const typename std::enable_if<
 		implementation == reference ||
 		implementation == reference_omp,
 	void >::type * const  = nullptr
 ) {
+	constexpr const size_t SIZE_MAX = std::numeric_limits< size_t >::max();
 	if( !Enabled ) { return; }
 
 	const long rows = static_cast< long >( nrows( mat ) );
 	const long cols = static_cast< long >( ncols( mat ) );
-	if( limit >= 0 && (rows > limit || cols > limit) ) { return; }
+	if( limit < SIZE_MAX && (rows > limit || cols > limit) ) { return; }
 
-	grb::wait( mat );
+	const grb::RC rc = grb::wait( mat );
+	if( rc != grb::SUCCESS ) {
+		throw std::runtime_error( grb::toString( rc ) );
+	}
 	os << "CRS \"" << label
 		<< "\" (" << nrows( mat ) << "x" << ncols( mat ) << "):\n";
 	printCompressedStorage< D >(
@@ -414,13 +499,20 @@ void printCRS(
 }
 
 /**
- * Print the CCS structure of a grb::Matrix
+ * Print the CCS structure of a grb::Matrix.
  *
- * @tparam Enabled boolean flag to enable/disable the function
- * @param mat Matrix's CCS to print
- * @param label Label to print before the matrix
- * @param limit Max number of rows and columns to print (-1 for all)
- * @param os Output stream (default: std::cout)
+ * @tparam Enabled boolean flag to enable/disable the function.
+ *
+ * @param[in]     mat   Matrix CCS to print.
+ * @param[in]     label Label to print before the matrix.
+ * @param[in]     limit Max number of rows and columns to print (-1 for all).
+ * @param[in,out] os    Output stream (optional, default is <tt>std::cout</tt>.
+ *
+ * \note The value -1 for \a limit refers to SIZE_MAX.
+ *
+ * \warning This function does \em not convert to CCS; if the implementing
+ *          backend is not back by a CCS-like format, calling this function will
+ *          not compile.
  */
 template<
 	bool Enabled = true,
@@ -428,9 +520,10 @@ template<
 	Backend implementation
 >
 void printCCS(
-	const Matrix< D, implementation, RIT, CIT, NIT > &,
-	const std::string & = "",
-	std::ostream & = std::cout,
+	const Matrix< D, implementation, RIT, CIT, NIT > &mat,
+	const std::string &label = "",
+	const size_t limit = 128,
+	std::ostream &os = std::cout,
 	const typename std::enable_if<
 		implementation != reference &&
 		implementation != reference_omp,
@@ -443,15 +536,19 @@ void printCCS(
 	);
 }
 
-
 /**
- * Print the CCS structure of a grb::Matrix
+ * Print the CCS structure of a grb::Matrix.
  *
- * @tparam Enabled boolean flag to enable/disable the function
- * @param mat Matrix's CCS to print
- * @param label Label to print before the matrix
- * @param limit Max number of rows and columns to print (-1 for all)
- * @param os Output stream (default: std::cout)
+ * This is the specialisation for the reference and reference_omp backends.
+ *
+ * @tparam Enabled boolean flag to enable/disable the function.
+ *
+ * @param[in]     mat   Matrix CCS to print.
+ * @param[in]     label Label to print before the matrix.
+ * @param[in]     limit Max number of rows and columns to print (-1 for all).
+ * @param[in,out] os    Output stream (optional, default is <tt>std::cout</tt>.
+ *
+ * \note The value -1 for \a limit refers to SIZE_MAX.
  */
 template<
 	bool Enabled = true,
@@ -461,20 +558,24 @@ template<
 void printCCS(
 	const Matrix< D, implementation, RIT, CIT, NIT > &mat,
 	const std::string &label = "",
-	long limit = 128, // -1 is no limit
+	const size_t limit = 128,
 	std::ostream &os = std::cout,
 	const typename std::enable_if<
 		implementation == reference ||
 		implementation == reference_omp,
 	void >::type * const = nullptr
 ) {
+	constexpr const size_t SIZE_MAX = std::numeric_limits< size_t >::max();
 	if( !Enabled ) { return; }
 
 	const long rows = static_cast< long >( nrows( mat ) );
 	const long cols = static_cast< long >( ncols( mat ) );
-	if( limit >= 0 && (rows > limit || cols > limit) ) { return; }
+	if( limit < SIZE_MAX && (rows > limit || cols > limit) ) { return; }
 
-	grb::wait( mat );
+	const grb::RC rc = grb::wait( mat );
+	if( rc != grb::SUCCESS ) {
+		throw std::runtime_error( grb::toString( rc ) );
+	}
 	os << "CCS \"" << label
 		<< "\" (" << nrows( mat ) << "x" << ncols( mat ) << "):\n" ;
 	printCompressedStorage< D >(
