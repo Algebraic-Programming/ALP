@@ -21,7 +21,9 @@
 
 #include <graphblas.hpp>
 
-#include <utils/print_vec_mat.hpp>
+#ifdef _DEBUG
+ #include <utils/print_vec_mat.hpp>
+#endif
 
 
 // static data corresponding to small matrices
