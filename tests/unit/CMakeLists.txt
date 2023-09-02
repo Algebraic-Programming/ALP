@@ -235,8 +235,11 @@ add_grb_executables( eWiseApply_matrix eWiseApply_matrix.cpp
 	BACKENDS reference reference_omp bsp1d hybrid hyperdags nonblocking
 )
 
+# in the below, test_utils_headers is retained in case CMake is configured to
+# include _DEBUG flags
 add_grb_executables( eWiseApplyMatrixReference eWiseApplyMatrixReference.cpp
 	BACKENDS reference reference_omp hyperdags nonblocking
+	ADDITIONAL_LINK_LIBRARIES test_utils_headers
 )
 
 add_grb_executables( outer outer.cpp
