@@ -118,7 +118,9 @@ void checkCRSandCCS( const grb::Matrix< T > &C,
 }
 
 void grbProgram( const void *, const size_t, grb::RC &rc ) {
-	constexpr const size_t SIZE_MAX = std::numeric_limits< size_t >::max();
+#ifdef _DEBUG
+	constexpr const size_t smax = std::numeric_limits< size_t >::max();
+#endif
 
 	// initialise test
 	grb::Monoid< grb::operators::mul< double >, grb::identities::one > mulmono;
@@ -137,7 +139,7 @@ void grbProgram( const void *, const size_t, grb::RC &rc ) {
 	if( rc == grb::SUCCESS ) {
 		rc = grb::buildMatrixUnique( A, I_A, J_A, V_A, nelts_A, grb::SEQUENTIAL );
 #ifdef _DEBUG
-		print_matrix( A, SIZE_MAX, "A" );
+		print_matrix( A, smax, "A" );
 #endif
 	}
 	if( rc == grb::SUCCESS ) {
@@ -146,7 +148,7 @@ void grbProgram( const void *, const size_t, grb::RC &rc ) {
 	if( rc == grb::SUCCESS ) {
 		rc = grb::buildMatrixUnique( B, I_B, J_B, V_B, nelts_B, grb::SEQUENTIAL );
 #ifdef _DEBUG
-		print_matrix( B, SIZE_MAX, "B" );
+		print_matrix( B, smax, "B" );
 #endif
 	}
 	if( rc == grb::SUCCESS ) {
@@ -155,7 +157,7 @@ void grbProgram( const void *, const size_t, grb::RC &rc ) {
 	if( rc == grb::SUCCESS ) {
 		rc = grb::buildMatrixUnique( A_pattern, I_A, J_A, nelts_A, grb::SEQUENTIAL );
 #ifdef _DEBUG
-		print_matrix( A_pattern, SIZE_MAX, "A_pattern" );
+		print_matrix( A_pattern, smax, "A_pattern" );
 #endif
 	}
 	if( rc == grb::SUCCESS ) {
@@ -164,7 +166,7 @@ void grbProgram( const void *, const size_t, grb::RC &rc ) {
 	if( rc == grb::SUCCESS ) {
 		rc = grb::buildMatrixUnique( B_pattern, I_B, J_B, nelts_B, grb::SEQUENTIAL );
 #ifdef _DEBUG
-		print_matrix( B_pattern, SIZE_MAX, "B_pattern" );
+		print_matrix( B_pattern, smax, "B_pattern" );
 #endif
 	}
 	if( rc != grb::SUCCESS ) {

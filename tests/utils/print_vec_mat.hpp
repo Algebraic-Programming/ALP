@@ -67,11 +67,11 @@ using namespace grb;
 template< typename T, enum grb::Backend B >
 void print_vector(
 	const grb::Vector< T, B > &x,
-	const size_t limit = 10UL,
+	size_t limit = 10UL,
 	const char * const head = nullptr
 ) {
 	size_t x_size = grb::size( x );
-	size_t limit = limit == 0 ? x_size : std::min( x_size, limit );
+	limit = limit == 0 ? x_size : std::min( x_size, limit );
 
 	if( head != nullptr ) {
 		std::cout << "<<< " << head << " >>>" << std::endl;
@@ -477,12 +477,12 @@ void printCRS(
 		implementation == reference_omp,
 	void >::type * const  = nullptr
 ) {
-	constexpr const size_t SIZE_MAX = std::numeric_limits< size_t >::max();
+	constexpr const size_t smax = std::numeric_limits< size_t >::max();
 	if( !Enabled ) { return; }
 
 	const long rows = static_cast< long >( nrows( mat ) );
 	const long cols = static_cast< long >( ncols( mat ) );
-	if( limit < SIZE_MAX && (rows > limit || cols > limit) ) { return; }
+	if( limit < smax && (rows > limit || cols > limit) ) { return; }
 
 	const grb::RC rc = grb::wait( mat );
 	if( rc != grb::SUCCESS ) {
@@ -565,12 +565,12 @@ void printCCS(
 		implementation == reference_omp,
 	void >::type * const = nullptr
 ) {
-	constexpr const size_t SIZE_MAX = std::numeric_limits< size_t >::max();
+	constexpr const size_t smax = std::numeric_limits< size_t >::max();
 	if( !Enabled ) { return; }
 
 	const long rows = static_cast< long >( nrows( mat ) );
 	const long cols = static_cast< long >( ncols( mat ) );
-	if( limit < SIZE_MAX && (rows > limit || cols > limit) ) { return; }
+	if( limit < smax && (rows > limit || cols > limit) ) { return; }
 
 	const grb::RC rc = grb::wait( mat );
 	if( rc != grb::SUCCESS ) {
