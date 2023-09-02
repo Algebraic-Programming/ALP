@@ -250,10 +250,10 @@ namespace grb {
 		 * @tparam mode           grb::EXEC_MODE of the LPF call.
 		 * @tparam DispatcherType Information on the ALP function to run.
 		 *
-		 * @param[in,out] ctx LPF context to run in.
-		 * @param[in] s       User process identifier (in the range [0, P)).
-		 * @param[in] P       Number of parallel processes.
-		 * @param[in] args    Input and output information for LPF calls.
+		 * @param[in,out] ctx  LPF context to run in.
+		 * @param[in] s        User process identifier (in the range [0, P)).
+		 * @param[in] P        Number of parallel processes.
+		 * @param[in,out] args Input and output information for LPF calls.
 		 */
 		template<
 			typename T, typename U,
@@ -262,7 +262,7 @@ namespace grb {
 		>
 		void _grb_exec_dispatch(
 			lpf_t ctx,
-			lpf_pid_t s, lpf_pid_t P,
+			const lpf_pid_t s, const lpf_pid_t P,
 			lpf_args_t args
 		) {
 			static_assert(
@@ -472,23 +472,30 @@ namespace grb {
 			 * Pack data received from user into an internal::ExecDispatcher data
 			 * structure and run the LPF call.
 			 *
-			 * @tparam T input type
-			 * @tparam U output type
-			 * @tparam untyped_call whether the GRB function is typed
-			 * @param alp_program grb function to run distributed
-			 * @param data_in pointer to input data
-			 * @param in_size size of input data ( == sizeof( T ) if untyped_call == false )
-			 * @param data_out pointer to output data
-			 * @param broadcast whether to broadcast input from node 0 to the others
-			 * @return RC status code of the LPF call
+			 * @tparam T            Input type.
+			 * @tparam U            Output type.
+			 * @tparam untyped_call Whether the ALP function is typed.
+			 *
+			 * @param[in] alp_program ALP function to run in parallel.
+			 * @param[in] data_in     Pointer to input data.
+			 * @param[in] in_size     Size of the input data
+			 *
+			 * \note \a in_size equals <tt>sizeof( T )</tt> if \a untyped_call equals
+			 *       <tt>false</tt>.
+			 *
+			 * @param[out] data_out  Pointer to where to write output data.
+			 * @param[in]  broadcast Whether to broadcast input from node 0 to all
+			 *                       others.
+			 *
+			 * @return RC status code of the LPF call.
 			 */
 			template< typename T, typename U, bool untyped_call >
 			RC pack_data_and_run(
-				lpf_func_t alp_program, // user GraphBLAS program
+				const lpf_func_t alp_program,
 				const T *data_in,
-				size_t in_size,
-				U *data_out,
-				bool broadcast
+				const size_t in_size,
+				U * const data_out,
+				const bool broadcast
 			) {
 				typedef internal::ExecDispatcher< T, U, untyped_call > Disp;
 				Disp disp_info = { data_in, in_size, broadcast };

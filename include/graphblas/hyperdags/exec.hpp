@@ -37,15 +37,29 @@ namespace grb {
 	 * No implementation notes.
 	 */
 	template< EXEC_MODE mode >
-	class Launcher< mode, hyperdags >: public Launcher< mode, _GRB_WITH_HYPERDAGS_USING > {
+	class Launcher< mode, hyperdags > :
+		public Launcher< mode, _GRB_WITH_HYPERDAGS_USING >
+	{
 
-		public:
+		private:
+
 			typedef Launcher< mode, _GRB_WITH_HYPERDAGS_USING > MyLauncherType;
 
-			/** \internal Delegates to #grb::Launcher (reference) constructor. */
+
+		public:
+
+			/**
+			 * \internal Delegates to #grb::Launcher (reference) constructor. By
+			 *           default, this reverts to the <tt>reference</tt> backend.
+			 */
 			using MyLauncherType::Launcher;
 
+			/**
+			 * \internal Delegates to #grb::Launcher finalize. By default, this reverts
+			 *           to the <tt>reference</tt> backend.
+			 */
 			using MyLauncherType::finalize;
+
 	};
 
 }

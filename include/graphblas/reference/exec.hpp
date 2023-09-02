@@ -46,9 +46,9 @@ namespace grb {
 			) const {
 				// value doesn't matter for a single user process
 				(void) broadcast;
-				// intialise GraphBLAS
+				// intialise
 				RC ret = grb::init();
-				// call graphBLAS algo
+				// call algo
 				if( ret == SUCCESS ) {
 					runner();
 					ret = grb::finalize();
@@ -56,6 +56,7 @@ namespace grb {
 				// and done
 				return ret;
 			}
+
 
 		public:
 
@@ -96,8 +97,8 @@ namespace grb {
 			/** No implementation notes. */
 			template< typename U >
 			RC exec(
-				AlpUntypedFunc< void, U > grb_program,
-				const void * data_in, const size_t in_size,
+				AlpUntypedFunc< void, U > alp_program,
+				const void * const data_in, const size_t in_size,
 				U &data_out,
 				const bool broadcast = false
 			) const {
@@ -105,8 +106,8 @@ namespace grb {
 				if( in_size > 0 && data_in == nullptr ) {
 					return ILLEGAL;
 				}
-				auto fun = [ data_in, in_size, &data_out, grb_program ] {
-					(*grb_program)( data_in, in_size, data_out );
+				auto fun = [ data_in, in_size, &data_out, alp_program ] {
+					(*alp_program)( data_in, in_size, data_out );
 				};
 				return init_and_run( fun, broadcast );
 			}
@@ -114,12 +115,12 @@ namespace grb {
 			/** No implementation notes. */
 			template< typename T, typename U >
 			RC exec(
-				AlpTypedFunc< T, U > grb_program, // user ALP/GraphBLAS program
-				const T &data_in, U &data_out,           // input & output data
+				AlpTypedFunc< T, U > alp_program,
+				const T &data_in, U &data_out,
 				const bool broadcast = false
 			) {
-				auto fun = [ &data_in, &data_out, grb_program ] {
-					(*grb_program)( data_in, data_out );
+				auto fun = [ &data_in, &data_out, alp_program ] {
+					(*alp_program)( data_in, data_out );
 				};
 				return init_and_run( fun, broadcast );
 			}

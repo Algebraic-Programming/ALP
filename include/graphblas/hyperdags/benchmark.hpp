@@ -38,14 +38,26 @@ namespace grb {
 	class Benchmarker< mode, hyperdags > :
 		public Benchmarker< mode, _GRB_WITH_HYPERDAGS_USING >
 	{
-		public:
+
+		private:
 
 			typedef Benchmarker< mode, _GRB_WITH_HYPERDAGS_USING > MyBenchmarkerType;
 
-			/** \internal Delegates to #grb::Launcher (reference) constructor. */
+
+		public:
+
+			/**
+			 * \internal Delegates to #grb::Benchmarker constructor. By default, this
+			 *           reverts to the <tt>reference</tt> backend.
+			 */
 			using MyBenchmarkerType::Benchmarker;
 
+			/**
+			 * \internal Delegates to #grb::Benchmarker finalize. By default, this
+			 *           reverts to the <tt>reference</tt> backend.
+			 */
 			using MyBenchmarkerType::finalize;
+
 	};
 
 } // namespace grb

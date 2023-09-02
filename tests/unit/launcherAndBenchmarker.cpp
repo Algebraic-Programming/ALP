@@ -183,22 +183,22 @@ class Runner {
 
 	public:
 
-	virtual grb::RC launch_typed(
-		grb::AlpTypedFunc< InputT, output >,
-		const InputT &, output &,
-		bool
-	) = 0;
+		virtual grb::RC launch_typed(
+			grb::AlpTypedFunc< InputT, output >,
+			const InputT &, output &,
+			bool
+		) = 0;
 
-	virtual grb::RC launch_untyped(
-		grb::AlpUntypedFunc< void, output >,
-		const void *, size_t,
-		output &,
-		bool
-	) = 0;
+		virtual grb::RC launch_untyped(
+			grb::AlpUntypedFunc< void, output >,
+			const void *, size_t,
+			output &,
+			bool
+		) = 0;
 
-	virtual grb::RC finalize() = 0;
+		virtual grb::RC finalize() = 0;
 
-	virtual ~Runner() = default;
+		virtual ~Runner() = default;
 
 };
 
@@ -206,6 +206,7 @@ template< grb::EXEC_MODE mode, typename InputT >
 class bsp_launcher :
 	public grb::Launcher< mode >, public Runner< InputT >
 {
+
 	public:
 
 		using grb::Launcher< mode >::Launcher;
@@ -241,6 +242,7 @@ class bsp_benchmarker :
 		size_t inner = 2;
 		size_t outer = 2;
 
+
 	public:
 
 		using grb::Benchmarker< mode >::Benchmarker;
@@ -254,9 +256,9 @@ class bsp_benchmarker :
 		}
 
 		grb::RC launch_untyped(
-			grb::AlpUntypedFunc< void, output > grbProgram,
-			const void * in, size_t in_size,
-			output &out, bool bc
+			const grb::AlpUntypedFunc< void, output > grbProgram,
+			const void * const in, const size_t in_size,
+			output &out, const bool bc
 		) override {
 			return this->exec( grbProgram, in, in_size, out, inner, outer, bc );
 		}
@@ -275,11 +277,11 @@ std::unique_ptr< Runner< InputT > > make_runner(
 	grb::EXEC_MODE mode, RunnerType type,
 	size_t s, size_t P,
 	const std::string &host, const std::string &port,
-	bool mpi_inited
+	const bool mpi_inited
 ) {
 	Runner< InputT > *ret = nullptr;
 #ifndef DISTRIBUTED_EXECUTION
-	( void ) mpi_inited;
+	(void) mpi_inited;
 #endif
 
 	switch (type) {
@@ -336,7 +338,7 @@ std::unique_ptr< Runner< InputT > > make_runner(
 	}
 
 	if( ret == nullptr ) {
-		throw std::runtime_error( "something went wrong while creating runner" );
+		throw std::runtime_error( "Error while creating runner" );
 	}
 	return std::unique_ptr< Runner< InputT > >( ret );
 }
@@ -458,25 +460,24 @@ int main( int argc, char ** argv ) {
 #endif
 	const char *mode_str = nullptr;
 
-	switch ( mode )
-	{
-	case grb::AUTOMATIC:
-		mode_str = "AUTOMATIC";
-		break;
+	switch ( mode ) {
+		case grb::AUTOMATIC:
+			mode_str = "AUTOMATIC";
+			break;
 #ifdef DISTRIBUTED_EXECUTION
-	case grb::FROM_MPI:
-		mode_str = "FROM_MPI";
-		break;
+		case grb::FROM_MPI:
+			mode_str = "FROM_MPI";
+			break;
 #endif
-	case grb::MANUAL:
-		mode_str = "MANUAL";
-		break;
-	default:
-		ERROR_ON( true, "unrecognized option: " << mode );
-		break;
+		case grb::MANUAL:
+			mode_str = "MANUAL";
+			break;
+		default:
+			ERROR_ON( true, "unrecognised or invalid option: " << mode );
+			break;
 	}
 
-	std::cout << "\n===> chosen initialization method: " << mode_str << " <==="
+	std::cout << "\n===> chosen initialisation method: " << mode_str << " <==="
 		<< std::endl;
 
 	if( mode == grb::MANUAL ) {
@@ -521,8 +522,7 @@ int main( int argc, char ** argv ) {
 	struct input in;
 	struct output out;
 	for( const bool broadcast : { true, false } ) {
-		for( const RunnerType rt : {Launch, Benchmark } ) {
-			// const bool broadcast = true;
+		for( const RunnerType rt : { Launch, Benchmark } ) {
 			const char * const runner_name = rt == Launch ? "Launch" : "Benchmark";
 			const char * const bc_str = broadcast ? "true" : "false";
 			std::cout << "\n ==> runner type: " << runner_name << ", broadcast: " << bc_str << std::endl;
@@ -564,7 +564,7 @@ int main( int argc, char ** argv ) {
 			ret = runner->finalize();
 
 			ERROR_ON( ret != grb::SUCCESS,
-				"finalization FAILED with code: " << grb::toString( ret ) );
+				"finalisation FAILED with code: " << grb::toString( ret ) );
 			std::cout << "  => OK" << std::endl;
 
 			if( mode == grb::AUTOMATIC ) {

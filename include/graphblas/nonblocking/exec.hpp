@@ -42,6 +42,7 @@ namespace grb {
 			/** \internal Delegates to #grb::Launcher (reference) constructor. */
 			using Launcher< mode, reference >::Launcher;
 
+			/** \internal Delegates to #grb::Launcher (reference) finalize. */
 			using Launcher< mode, reference >::finalize;
 
 	};

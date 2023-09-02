@@ -43,9 +43,10 @@ namespace grb {
 
 		public:
 
-			/** \internal Delegates to #grb::Launcher (reference) constructor. */
+			/** \internal Delegates to #grb::Benchmarker (reference) constructor. */
 			using Benchmarker< mode, reference >::Benchmarker;
 
+			/** \internal Delegates to #grb::Benchmarker (reference) finalize. */
 			using Benchmarker< mode, reference >::finalize;
 
 	};

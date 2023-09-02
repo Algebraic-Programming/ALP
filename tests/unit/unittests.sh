@@ -645,14 +645,6 @@ for MODE in ${MODES}; do
 				fi
 				echo " "
 
-				#if [ "$BACKEND" = "reference_omp" ]; then
-				#	echo "Additional standardised unit tests not yet supported for the ${BACKEND} backend"
-				#	echo
-				#	continue
-				#fi
-
-				#none here: all unit tests are operational for reference_omp
-				# if [ "$BACKEND" = "bsp1d" || "$BACKEND" = "hybrid" ]; then
 				echo ">>>      [x]           [ ]       Testing Launcher and Benchmarker, AUTOMATIC mode."
 				test_name=launch_benchmark_auto_${MODE}_${BACKEND}
 				test_log=${TEST_OUT_DIR}/${test_name}_${P}_${T}.log
@@ -660,6 +652,14 @@ for MODE in ${MODES}; do
 				head -1 ${test_log}
 				grep -i 'Test OK' ${test_log} || echo "Test FAILED"
 				echo " "
+
+				#if [ "$BACKEND" = "reference_omp" ]; then
+				#	echo "Additional standardised unit tests not yet supported for the ${BACKEND} backend"
+				#	echo
+				#	continue
+				#fi
+
+				#none here: all unit tests are operational for reference_omp
 
 				if [ "$BACKEND" = "bsp1d" ] || [ "$BACKEND" = "hybrid" ]; then
 					echo ">>>      [x]           [ ]       Testing Launcher and Benchmarker, FROM_MPI mode for distributed backends."
