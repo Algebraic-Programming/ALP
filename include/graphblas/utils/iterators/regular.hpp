@@ -46,12 +46,8 @@ namespace grb {
 			 *
 			 * Here, \f$ c \f$ is the so-called \a count.
 			 *
-			 * @tparam R The return type of the iterator.
-			 *
-			 * @tparam T    Some position-independent state of the iterator.
-			 * @tparam func Transforms the current position and state into a return
-			 *              value.
-			 *
+			 * @tparam R        The return type of the iterator.
+			 * @tparam T        Some position-independent state of the iterator.
 			 * @tparam SelfType The type of the final iterator class that inherits from
 			 *                  this base iterator type.
 			 *
@@ -600,8 +596,8 @@ namespace grb {
 					 * Constructs a range.
 					 *
 					 * @param[in] start  The start of the range (inclusive)
-					 * @param[in] stride The stride of the range
 					 * @param[in] end    The end of the range (exclusive)
+					 * @param[in] stride The stride of the range (optional, default is 1)
 					 *
 					 * The value \a end must be larger than or equal to \a start. Equal values
 					 * for \a start and \a end result in an empty range. A larger value for
@@ -609,16 +605,12 @@ namespace grb {
 					 * element (\a start).
 					 *
 					 * For example, the range \f$ (1, 2, 3, 4, 5, 6, 7, 8, 9, 10) \f$ may be
-					 * constructed by \a start 1, \a stride 1, and \a end 11.
-					 *
-					 * The range \f$ (0, 2, 4, 6, 8, 10) \f$ may be constructed by \a start 0,
-					 * \a stride 2, and \a end 12. Alternatively, \a end may be 11 since both
-					 * 11 and 12 are not part of the intended range.
+					 * constructed by \a start 1, \a end 11, \a stride 1 and \a repeatitions 1.
 					 */
 					Range(
 						const size_t start,
-						const size_t stride,
-						const size_t end
+						const size_t end,
+						const size_t stride = 1UL
 					) noexcept :
 						_start( start ), _stride( stride ), _count(
 							start == end ? 0 : (
