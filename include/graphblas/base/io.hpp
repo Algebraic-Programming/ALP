@@ -1405,6 +1405,31 @@ namespace grb {
 	}
 
 	/**
+	 * Version of the above #buildMatrixUnique that handles \a nullptr
+	 * value pointers.
+	 */
+	template<
+		Descriptor descr = descriptors::no_operation,
+		typename InputType, typename RIT, typename CIT, typename NIT,
+		typename fwd_iterator1 = const RIT * __restrict__,
+		typename fwd_iterator2 = const CIT * __restrict__,
+		typename length_type = size_t,
+		Backend implementation = config::default_backend
+	>
+	RC buildMatrixUnique(
+		Matrix< InputType, implementation, RIT, CIT, NIT > &A,
+		fwd_iterator1 I, const fwd_iterator1 I_end,
+		fwd_iterator2 J, const fwd_iterator2 J_end,
+		const IOMode mode
+	) {
+		// derive synchronized iterator
+		auto start = internal::makeSynchronized( I, J, I_end, J_end );
+		const auto end = internal::makeSynchronized( I_end, J_end, I_end, J_end );
+		// defer to other signature
+		return buildMatrixUnique< descr >( A, start, end, mode );
+	}
+
+	/**
 	 * Version of buildMatrixUnique that works by supplying a single iterator
 	 * (instead of three).
 	 *
