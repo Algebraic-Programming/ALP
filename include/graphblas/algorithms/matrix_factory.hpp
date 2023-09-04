@@ -38,9 +38,11 @@
 #define _H_GRB_MATRIX_FACTORY
 
 #include <iostream>
+#include <vector>
 
 #include <graphblas.hpp>
 #include <graphblas/utils/iterators/regular.hpp>
+#include <graphblas/utils/iterators/ChainedIterators.hpp>
 
 namespace grb {
 
@@ -78,12 +80,12 @@ namespace grb {
 				Matrix< D, implementation, RIT, CIT, NIT > matrix( nrows, ncols, diag_length );
 				const RIT k_i_incr = static_cast< RIT >( ( k < 0L ) ? k_abs : 0UL );
 				const CIT k_j_incr = static_cast< CIT >( ( k < 0L ) ? 0UL : k_abs );
-				utils::containers::Range< RIT > I( k_i_incr, 1, diag_length + k_i_incr );
-				utils::containers::Range< CIT > J( k_j_incr, 1, diag_length + k_j_incr );
+				utils::containers::Range< RIT > I( k_i_incr, diag_length + k_i_incr );
+				utils::containers::Range< CIT > J( k_j_incr, diag_length + k_j_incr );
 
 				RC rc = ( descr & descriptors::transpose_matrix )
-					? buildMatrixUnique( matrix, J.begin(), I.begin(), V_iter, diag_length, io_mode )
-					: buildMatrixUnique( matrix, I.begin(), J.begin(), V_iter, diag_length, io_mode );
+					? buildMatrixUnique< descr >( matrix, J.begin(), I.begin(), V_iter, diag_length, io_mode )
+					: buildMatrixUnique< descr >( matrix, I.begin(), J.begin(), V_iter, diag_length, io_mode );
 
 				assert( rc == SUCCESS );
 				if( rc != SUCCESS ) {
@@ -117,12 +119,12 @@ namespace grb {
 					: std::min( std::min( nrows, ncols ), std::min( ncols - k_abs, nrows - k_abs ) );
 
 				Matrix< void, implementation, RIT, CIT, NIT > matrix( nrows, ncols, diag_length );
-				utils::containers::Range< RIT > I( 0, 1, diag_length );
-				utils::containers::Range< CIT > J( 0, 1, diag_length );
+				utils::containers::Range< RIT > I( 0, diag_length );
+				utils::containers::Range< CIT > J( 0, diag_length );
 
 				RC rc = ( descr & descriptors::transpose_matrix )
-					? buildMatrixUnique( matrix, J.begin(), I.begin(), diag_length, io_mode )
-					: buildMatrixUnique( matrix, I.begin(), J.begin(), diag_length, io_mode );
+					? buildMatrixUnique< descr >( matrix, J.begin(), I.begin(), diag_length, io_mode )
+					: buildMatrixUnique< descr >( matrix, I.begin(), J.begin(), diag_length, io_mode );
 
 				assert( rc == SUCCESS );
 				if( rc != SUCCESS ) {
@@ -472,6 +474,7 @@ namespace grb {
 		 * @anchor grb_factory_full
 		 *
 		 * @tparam D              The type of a non-zero element.
+		 * @tparam descr          The descriptor used to build the matrix.
 		 * @tparam RIT            The type used for row indices.
 		 * @tparam CIT            The type used for column indices.
 		 * @tparam NIT            The type used for non-zero indices.
@@ -496,15 +499,34 @@ namespace grb {
 			const size_t nrows, const size_t ncols, IOMode io_mode, const D value
 		) {
 			Matrix< D, implementation, RIT, CIT, NIT > matrix( nrows, ncols, nrows * ncols );
-			RC rc = set< descr >( matrix, value, Phase::RESIZE );
-			assert( rc == SUCCESS );
-			rc = rc ? rc : set< descr >( matrix, value, Phase::EXECUTE );
+
+			utils::containers::ChainedIteratorsVector<
+				typename utils::containers::ConstantVector< RIT >::const_iterator
+			> I( nrows );
+			utils::containers::ChainedIteratorsVector<
+				typename utils::containers::Range< CIT >::const_iterator
+			> J( nrows );
+			utils::containers::ConstantVector< D > V( value, nrows * ncols );
+			for( size_t i = 0; i < nrows; ++i ) {
+				I.push_back( utils::containers::ConstantVector< RIT >( i, ncols ) );
+				J.push_back( utils::containers::Range< CIT >( 0, ncols ) );
+			}
+			assert( std::distance( I.begin(), I.end() ) == std::distance( J.begin(), J.end() ) );
+			assert( std::distance( I.begin(), I.end() ) == std::distance( V.begin(), V.end() ) );
+
+			RC rc = ( descr & descriptors::transpose_matrix )
+				? buildMatrixUnique< descr >( matrix, J.begin(), J.end(), J.begin(), J.end(), V.begin(), V.end(), io_mode )
+				: buildMatrixUnique< descr >( matrix, I.begin(), I.end(), J.begin(), J.end(), V.begin(), V.end(), io_mode );
+
 			assert( rc == SUCCESS );
 			if( rc != SUCCESS ) {
 				// Todo: Throw an exception or just return an empty matrix?
 				// Nb: We should consider the distributed case if we throw an exception.
-				(void) clear( matrix );
+				throw std::runtime_error(
+					"Error: factory::full<void> failed: rc = " + grb::toString( rc )
+				);
 			}
+
 			return matrix;
 		}
 
@@ -517,6 +539,7 @@ namespace grb {
 		 * @anchor grb_factory_void-full
 		 *
 		 * @tparam D              The type of a non-zero element (void).
+		 * @tparam descr          The descriptor used to build the matrix.
 		 * @tparam RIT            The type used for row indices.
 		 * @tparam CIT            The type used for column indices.
 		 * @tparam NIT            The type used for non-zero indices.
@@ -539,8 +562,33 @@ namespace grb {
 		Matrix< void, implementation, RIT, CIT, NIT > full(
 			const size_t nrows, const size_t ncols, IOMode io_mode
 		) {
-			(void) io_mode;
-			return Matrix< void, implementation, RIT, CIT, NIT >( nrows, ncols, nrows * ncols );
+			Matrix< void, implementation, RIT, CIT, NIT > matrix( nrows, ncols, nrows * ncols );
+			utils::containers::ChainedIteratorsVector<
+				typename utils::containers::ConstantVector< RIT >::const_iterator
+			> I( nrows );
+			utils::containers::ChainedIteratorsVector<
+				typename utils::containers::Range< CIT >::const_iterator
+			> J( nrows );
+			for( size_t i = 0; i < nrows; ++i ) {
+				I.push_back( utils::containers::ConstantVector< RIT >( i, ncols ) );
+				J.push_back( utils::containers::Range< CIT >( 0, ncols ) );
+			}
+			assert( std::distance( I.begin(), I.end() ) == std::distance( J.begin(), J.end() ) );
+
+			RC rc = ( descr & descriptors::transpose_matrix )
+				? buildMatrixUnique< descr >( matrix, J.begin(), J.end(), J.begin(), J.end(), io_mode )
+				: buildMatrixUnique< descr >( matrix, I.begin(), I.end(), J.begin(), J.end(), io_mode );
+
+			assert( rc == SUCCESS );
+			if( rc != SUCCESS ) {
+				// Todo: Throw an exception or just return an empty matrix?
+				// Nb: We should consider the distributed case if we throw an exception.
+				throw std::runtime_error(
+					"Error: factory::full<void> failed: rc = " + grb::toString( rc )
+				);
+			}
+
+			return matrix;
 		}
 
 		/**
@@ -551,6 +599,7 @@ namespace grb {
 		 * @anchor grb_factory_full-void
 		 *
 		 * @tparam D              The type of a non-zero element.
+		 * @tparam descr          The descriptor used to build the matrix.
 		 * @tparam RIT            The type used for row indices.
 		 * @tparam CIT            The type used for column indices.
 		 * @tparam NIT            The type used for non-zero indices.
@@ -585,6 +634,7 @@ namespace grb {
 		 * @anchor grb_factory_void-dense
 		 *
 		 * @tparam D              The type of a non-zero element (void).
+		 * @tparam descr          The descriptor used to build the matrix.
 		 * @tparam RIT            The type used for row indices.
 		 * @tparam CIT            The type used for column indices.
 		 * @tparam NIT            The type used for non-zero indices.
@@ -616,6 +666,7 @@ namespace grb {
 		 * @anchor grb_factory_ones
 		 *
 		 * @tparam D              The type of a non-zero element.
+		 * @tparam descr          The descriptor used to build the matrix.
 		 * @tparam RIT            The type used for row indices.
 		 * @tparam CIT            The type used for column indices.
 		 * @tparam NIT            The type used for non-zero indices.
@@ -649,13 +700,14 @@ namespace grb {
 		 * @anchor grb_factory_zeros
 		 *
 		 * @tparam D              The type of a non-zero element.
+		 * @tparam descr          The descriptor used to build the matrix.
 		 * @tparam RIT            The type used for row indices.
 		 * @tparam CIT            The type used for column indices.
 		 * @tparam NIT            The type used for non-zero indices.
 		 * @tparam implementation The backend implementation used to build
 		 *                        the matrix (default: config::default_backend).
-		 * @param nrows            The number of rows of the matrix.
-		 * @param ncols            The number of columns of the matrix.
+		 * @param nrows           The number of rows of the matrix.
+		 * @param ncols           The number of columns of the matrix.
 		 * @param io_mode         The I/O mode used to build the matrix.
 		 * @return Matrix< D, implementation, RIT, CIT, NIT >
 		 */
