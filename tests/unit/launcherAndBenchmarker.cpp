@@ -48,12 +48,31 @@
 
 constexpr size_t STR_LEN = 1024;
 
+static const char prelude[ STR_LEN + 1 ] = "O Earth O Earth return!\n"
+	"Arise from out the dewy grass;";
+
 static const char truth[ STR_LEN + 1 ] = "Night is worn,\n"
 	"and the morn\n"
 	"rises from the slumberous mass.";
 
+static const char default_str[ STR_LEN + 1 ] = "Hear the voice of the Bard!\n"
+	"Who Present, Past, and Future, sees;";
+
 struct input {
 	char str[ STR_LEN + 1 ];
+
+	input() {
+		(void) strncpy( str, default_str, STR_LEN + 1 );
+	}
+};
+
+struct nd_input : input {
+
+	nd_input() = delete; // make this non default-constructible
+
+	nd_input( const char * _str ) {
+		(void) strncpy( this->str, _str, STR_LEN + 1 );
+	}
 };
 
 bool operator==( const struct input &obj, const char * ext ) {
@@ -70,7 +89,9 @@ struct output {
 	grb::utils::TimerResults times;
 };
 
-void grbProgram( const struct input &in, struct output &out ) {
+template< grb::EXEC_MODE mode, bool broadcasted, typename InputT >
+void grbProgram( const InputT &in, struct output &out ) {
+	static_assert( std::is_base_of< input, InputT >::value );
 	out.times.preamble = 2.0;
 	out.times.useful = 2.0;
 	out.times.io = out.times.postamble = 2.0;
@@ -78,30 +99,93 @@ void grbProgram( const struct input &in, struct output &out ) {
 
 	const size_t P = grb::spmd<>::nprocs();
 	const size_t s = grb::spmd<>::pid();
-	out.exit_code = in == truth ? 0 : 1;
-	if( out.exit_code == 0 ) {
-		std::cout << "PID " << s << " of " << P << ": match, string is\n"
-			<< "\"" << in.str << "\"\n";
+
+	const char * expected = nullptr;
+
+	if( broadcasted ) {
+		// independently from mode is or process id, every process must have the same string
+		expected = truth;
 	} else {
-		std::cout << "PID " << s << " of " << P << ": ERROR!\n"
-			<< "\"" << in.str << "\"\n"
-			<< "!=\n"
-			<< "\"" << truth << "\"\n";
+		switch (mode)
+		{
+		case grb::AUTOMATIC:
+			// here, only the master process can have the "new" string
+			// while the other processes have the "default" string
+			expected = s == 0 ? truth : default_str;
+			break;
+		case grb::FROM_MPI:
+		case grb::MANUAL:
+			// the master must have the new string, while other processes the prelude
+			expected = s == 0 ? truth : prelude;
+			break;
+		default:
+			out.exit_code = 1;
+			printf( "- ERROR: unknown mode %d\n", mode );
+			return;
+			break;
+		}
+	}
+	out.exit_code = in == expected ? 0 : 1;
+
+
+	if( out.exit_code == 0 ) {
+		printf( "--- PID %lu of %lu: MATCH", s, P );
+	} else {
+		printf( "--- PID %lu of %lu: ERROR! input string\n\"%s\"\n!=\nexpected\n\"%s\"\n",
+		s, P, in.str, expected );
 	}
 }
 
+template< grb::EXEC_MODE mode, bool broadcasted, typename InputT  >
 void vgrbProgram( const void* __in, const size_t, struct output &out ) {
 	const struct input &in = *reinterpret_cast< const struct input *>( __in );
-	return grbProgram( in, out );
+	grbProgram< mode, broadcasted, InputT >( in, out );
 }
 
+void autoVgrbProgram( const void* __in, const size_t size, struct output &out ) {
+	const size_t P = grb::spmd<>::nprocs();
+	const size_t s = grb::spmd<>::pid();
+	if( s == 0 ) {
+		const input &in = *static_cast< const input * >( __in );
+		out.exit_code = size == sizeof( input ) &&
+			in == truth ? 0 : 1;
+		if( out.exit_code == 0 ) {
+			printf( "--- PID %lu of %lu: MATCH", s, P );
+		} else {
+			printf( "--- PID %lu of %lu: ERROR! input size is %lu, string\n\"%s\"\n!=\nexpected\n\"%s\"\n",
+				s, P, size, in.str, truth );
+		}
+	} else {
+		out.exit_code = __in == nullptr && size == 0 ? 0 : 1;
+		if( out.exit_code == 0 ) {
+			printf( "--- PID %lu of %lu: MATCH, got expected values (nullptr and 0)\n", s, P );
+		} else {
+			printf( "--- PID %lu of %lu: ERROR! got %p != nullptr and %lu != 0\n",
+				s, P, __in, size );
+		}
+	}
+}
+
+template< grb::EXEC_MODE mode, bool broadcasted, typename InputT  > struct caller {
+	static constexpr grb::AlpTypedFunc< InputT, output > fun = grbProgram< mode, broadcasted, InputT >;
+};
+
+template< grb::EXEC_MODE mode, bool broadcasted, typename InputT  > struct vcaller {
+	static constexpr grb::AlpUntypedFunc< void, output > fun = vgrbProgram< mode, broadcasted, input >;
+};
+
+template< typename InputT > struct vcaller< grb::AUTOMATIC, false, InputT > {
+	static constexpr grb::AlpUntypedFunc< void, output > fun = autoVgrbProgram;
+};
+
+template< typename InputT >
 class Runner {
 
 	public:
 
 	virtual grb::RC launch_typed(
-		grb::AlpTypedFunc< input, output >,
-		const input &, output &,
+		grb::AlpTypedFunc< InputT, output >,
+		const InputT &, output &,
 		bool
 	) = 0;
 
@@ -118,17 +202,17 @@ class Runner {
 
 };
 
-template< grb::EXEC_MODE mode >
+template< grb::EXEC_MODE mode, typename InputT >
 class bsp_launcher :
-	public grb::Launcher< mode >, public Runner
+	public grb::Launcher< mode >, public Runner< InputT >
 {
 	public:
 
 		using grb::Launcher< mode >::Launcher;
 
 		grb::RC launch_typed(
-			grb::AlpTypedFunc< input, output > grbProgram,
-			const input &in, output &out, bool bc
+			grb::AlpTypedFunc< InputT, output > grbProgram,
+			const InputT &in, output &out, bool bc
 		) override {
 			return this->exec( grbProgram, in, out, bc );
 		}
@@ -147,9 +231,9 @@ class bsp_launcher :
 
 };
 
-template< grb::EXEC_MODE mode >
+template< grb::EXEC_MODE mode, typename InputT >
 class bsp_benchmarker :
-	public grb::Benchmarker< mode >, public Runner
+	public grb::Benchmarker< mode >, public Runner< InputT >
 {
 
 	private:
@@ -162,11 +246,11 @@ class bsp_benchmarker :
 		using grb::Benchmarker< mode >::Benchmarker;
 
 		grb::RC launch_typed(
-			grb::AlpTypedFunc< input, output > grbProgram,
-			const input &in, output &out,
+			grb::AlpTypedFunc< InputT, output > grbProgram,
+			const InputT &in, output &out,
 			bool bc
 		) override {
-			return this->exec( grbProgram, in, out, bc, inner, outer );
+			return this->exec( grbProgram, in, out, inner, outer, bc );
 		}
 
 		grb::RC launch_untyped(
@@ -174,7 +258,7 @@ class bsp_benchmarker :
 			const void * in, size_t in_size,
 			output &out, bool bc
 		) override {
-			return this->exec( grbProgram, in, in_size, out, bc, inner, outer );
+			return this->exec( grbProgram, in, in_size, out, inner, outer, bc );
 		}
 
 		virtual grb::RC finalize() override {
@@ -186,13 +270,14 @@ class bsp_benchmarker :
 
 enum RunnerType { Launch, Benchmark };
 
-std::unique_ptr< Runner > make_runner(
+template< typename InputT >
+std::unique_ptr< Runner< InputT > > make_runner(
 	grb::EXEC_MODE mode, RunnerType type,
 	size_t s, size_t P,
 	const std::string &host, const std::string &port,
 	bool mpi_inited
 ) {
-	Runner *ret = nullptr;
+	Runner< InputT > *ret = nullptr;
 #ifndef DISTRIBUTED_EXECUTION
 	( void ) mpi_inited;
 #endif
@@ -201,19 +286,19 @@ std::unique_ptr< Runner > make_runner(
 		case Launch:
 			switch (mode) {
 				case grb::AUTOMATIC:
-					ret = new bsp_launcher< grb::AUTOMATIC >;
+					ret = new bsp_launcher< grb::AUTOMATIC, InputT >;
 					break;
 #ifdef DISTRIBUTED_EXECUTION
 				case grb::FROM_MPI:
-					ret = new bsp_launcher< grb::FROM_MPI >( MPI_COMM_WORLD );
+					ret = new bsp_launcher< grb::FROM_MPI, InputT >( MPI_COMM_WORLD );
 					break;
 
 				case grb::MANUAL:
-					ret = new bsp_launcher< grb::MANUAL >( s, P, host, port, mpi_inited );
+					ret = new bsp_launcher< grb::MANUAL, InputT >( s, P, host, port, mpi_inited );
 					break;
 #else
 				case grb::MANUAL:
-					ret = new bsp_launcher< grb::MANUAL >( s, P, host, port );
+					ret = new bsp_launcher< grb::MANUAL, InputT >( s, P, host, port );
 					break;
 #endif
 				default:
@@ -224,19 +309,19 @@ std::unique_ptr< Runner > make_runner(
 		case Benchmark:
 			switch (mode) {
 				case grb::AUTOMATIC:
-					ret = new bsp_benchmarker< grb::AUTOMATIC >;
+					ret = new bsp_benchmarker< grb::AUTOMATIC, InputT >;
 					break;
 #ifdef DISTRIBUTED_EXECUTION
 				case grb::FROM_MPI:
-					ret = new bsp_benchmarker< grb::FROM_MPI >( MPI_COMM_WORLD );
+					ret = new bsp_benchmarker< grb::FROM_MPI, InputT >( MPI_COMM_WORLD );
 					break;
 
 				case grb::MANUAL:
-					ret = new bsp_benchmarker< grb::MANUAL >( s, P, host, port, mpi_inited );
+					ret = new bsp_benchmarker< grb::MANUAL, InputT >( s, P, host, port, mpi_inited );
 					break;
 #else
 				case grb::MANUAL:
-					ret = new bsp_benchmarker< grb::MANUAL >( s, P, host, port );
+					ret = new bsp_benchmarker< grb::MANUAL, InputT >( s, P, host, port );
 					break;
 				case grb::FROM_MPI:
 #endif
@@ -253,14 +338,69 @@ std::unique_ptr< Runner > make_runner(
 	if( ret == nullptr ) {
 		throw std::runtime_error( "something went wrong while creating runner" );
 	}
-	return std::unique_ptr< Runner >( ret );
+	return std::unique_ptr< Runner< InputT > >( ret );
 }
 
-#define ERROR_ON( cond, str ) if( cond ) {                                          \
+#define ERROR_ON( cond, str ) if( cond ) {                                  \
 		std::cerr << __FILE__ ", " << __LINE__ << ": " << str << std::endl; \
 		std::cout << "Test FAILED\n" << std::endl;                          \
-		return EXIT_FAILURE;                                                \
+		throw std::runtime_error( "check failed" );                         \
 	}
+
+
+template< template< grb::EXEC_MODE, bool, typename InputT > class FunT, grb::EXEC_MODE mode, typename RetT, typename InputT > RetT getFun( bool broadcast ) {
+	return  broadcast ? FunT< mode, true, InputT >::fun : FunT< mode, false, InputT >::fun;
+}
+
+template< template< grb::EXEC_MODE, bool, typename InputT  > class CallerT, typename RetT, typename InputT  >
+RetT getALPFun( grb::EXEC_MODE mode, bool broadcast ) {
+	switch (mode) {
+		case grb::AUTOMATIC:
+			return getFun< CallerT, grb::AUTOMATIC, RetT, InputT >( broadcast );
+			break;
+		case grb::FROM_MPI:
+			return getFun< CallerT, grb::FROM_MPI, RetT, InputT >( broadcast );
+			break;
+		case grb::MANUAL:
+			return getFun< CallerT, grb::MANUAL, RetT, InputT >( broadcast );
+			break;
+		default:
+			std::cerr << __FILE__ ", " << __LINE__ << ": " << "unknown mode " << mode << std::endl;
+			throw std::runtime_error( "unknown mode" );
+			break;
+	}
+}
+
+template< typename InputT >
+std::unique_ptr< Runner< InputT > > create_runner(
+	grb::EXEC_MODE mode, RunnerType rt,
+	size_t s, size_t P,
+	const std::string &host, const std::string &port,
+	bool mpi_inited
+) {
+	try {
+		return make_runner< InputT >(
+			mode, rt, s, P,
+			host,
+			port,
+			mpi_inited
+		);
+	} catch( std::runtime_error &e ) {
+		std::cerr << "got a runtime exception: " << e.what() << std::endl;
+		std::cout << "Test FAILED\n" << std::endl;
+		throw e;
+	} catch( std::exception &e ) {
+		std::cerr << "got an exception: " << e.what() << std::endl;
+		std::cout << "Test FAILED\n" << std::endl;
+		throw e;
+	} catch( ... ) {
+		std::cerr << "got an unknown exception" << std::endl;
+		std::cout << "Test FAILED\n" << std::endl;
+		throw std::runtime_error( "unknown exception" );
+	}
+	return std::unique_ptr< Runner< InputT > >();
+}
+
 
 int main( int argc, char ** argv ) {
 
@@ -365,64 +505,103 @@ int main( int argc, char ** argv ) {
 		success = MPI_Init( NULL, NULL );
 		ERROR_ON( success != MPI_SUCCESS, "Call to MPI_Init failed" );
 	}
+	if( mode == grb::FROM_MPI ) {
+		int rank;
+		success = MPI_Comm_rank( MPI_COMM_WORLD, &rank );
+		ERROR_ON( success != MPI_SUCCESS, "Call to MPI_Comm_rank failed" );
+		s = static_cast< test_pid_t >( rank );
+	}
 #endif
+
+
+
+	const char * input_str = ( mode == grb::AUTOMATIC ) ? truth :
+		( s == 0 ) ? truth : prelude;
 
 	struct input in;
 	struct output out;
-	out.exit_code = 0;
-	
 	for( const bool broadcast : { true, false } ) {
 		for( const RunnerType rt : {Launch, Benchmark } ) {
 			// const bool broadcast = true;
 			const char * const runner_name = rt == Launch ? "Launch" : "Benchmark";
 			const char * const bc_str = broadcast ? "true" : "false";
 			std::cout << "\n ==> runner type: " << runner_name << ", broadcast: " << bc_str << std::endl;
-			std::unique_ptr< Runner > runner;
-			try {
-				runner = make_runner(
+			std::unique_ptr< Runner< input > > runner = create_runner< input >(
+				mode, rt, s, P,
+				std::string( (host != nullptr ? host : "" ) ),
+				std::string( (port != nullptr ? port : "" ) ),
+				true
+			);
+			std::cout << "  => untyped call\n" << std::endl;
+			(void) strncpy( in.str, input_str, STR_LEN + 1 );
+			grb::AlpUntypedFunc< void, output > vfun =
+				getALPFun< vcaller, grb::AlpUntypedFunc< void, output >, input >(
+					mode, broadcast
+				);
+			out.exit_code = 256; // the ALP function MUST set to 0
+			grb::RC ret = runner->launch_untyped(
+				vfun,
+				reinterpret_cast< void * >( &in ), sizeof( input ),
+				out, broadcast
+			);
+			ERROR_ON( ret != grb::SUCCESS,
+				"untyped test FAILED with code: " << grb::toString( ret ) );
+			ERROR_ON( out.exit_code != 0,
+				"untyped test FAILED with exit code " << out.exit_code );
+
+			std::cout << "\n  => typed call\n" << std::endl;
+			grb::AlpTypedFunc< input, output > fun =
+				getALPFun< caller, grb::AlpTypedFunc< input, output >, input >(
+					mode, broadcast
+				);
+			out.exit_code = 256;
+			ret = runner->launch_typed( fun, in, out, broadcast );
+			ERROR_ON( ret != grb::SUCCESS,
+				"typed test FAILED with code: " << grb::toString( ret ) );
+			ERROR_ON( out.exit_code != 0,
+				"typed test FAILED with exit code " << out.exit_code );
+
+			ret = runner->finalize();
+
+			ERROR_ON( ret != grb::SUCCESS,
+				"finalization FAILED with code: " << grb::toString( ret ) );
+			std::cout << "  => OK" << std::endl;
+
+			if( mode == grb::AUTOMATIC ) {
+
+				std::unique_ptr< Runner< nd_input > > nd_runner = create_runner< nd_input >(
 					mode, rt, s, P,
 					std::string( (host != nullptr ? host : "" ) ),
 					std::string( (port != nullptr ? port : "" ) ),
 					true
 				);
-			} catch( std::runtime_error &e ) {
-				std::cerr << "got a runtime exception: " << e.what() << std::endl;
-				std::cout << "Test FAILED\n" << std::endl;
-				return EXIT_FAILURE;
-			} catch( std::exception &e ) {
-				std::cerr << "got an exception: " << e.what() << std::endl;
-				std::cout << "Test FAILED\n" << std::endl;
-				return EXIT_FAILURE;
-			} catch( ... ) {
-				std::cerr << "got an unknown exception" << std::endl;
-				std::cout << "Test FAILED\n" << std::endl;
-				return EXIT_FAILURE;
+
+				std::cout << "\n  => untyped call, non-default-constructible input\n" << std::endl;
+				out.exit_code = 256;
+				nd_input ndin( input_str );
+				ret = nd_runner->launch_untyped(
+					vfun,
+					reinterpret_cast< void * >( &ndin ), sizeof( nd_input ),
+					out, broadcast
+				);
+				ERROR_ON( ret != grb::SUCCESS,
+					"untyped test FAILED with code: " << grb::toString( ret ) );
+				ERROR_ON( out.exit_code != 0,
+					"untyped test FAILED with exit code " << out.exit_code );
+
+				std::cout << "\n  => typed call, non-default-constructible input\n" << std::endl;
+				out.exit_code = 256;
+				grb::AlpTypedFunc< nd_input, output > ndfun =
+					getALPFun< caller, grb::AlpTypedFunc< nd_input, output >, nd_input >(
+						mode, broadcast
+					);
+				ret = nd_runner->launch_typed( ndfun, ndin, out, broadcast );
+				int expected_retval = broadcast || P == 1 ? 0 : 256;
+				ERROR_ON( ret != grb::SUCCESS,
+					"typed test FAILED with code: " << grb::toString( ret ) );
+				ERROR_ON( out.exit_code != expected_retval,
+					"typed test FAILED with exit code " << out.exit_code );
 			}
-
-			std::cout << "  => untyped call\n" << std::endl;
-			(void) strncpy( in.str, truth, STR_LEN + 1 );
-			grb::RC ret = runner->launch_untyped(
-				&vgrbProgram,
-				reinterpret_cast< void * >( &in ), sizeof( struct input ),
-				out, broadcast
-			);
-			ERROR_ON( ret != grb::SUCCESS,
-				"untyped test with broadcast FAILED with code: " << grb::toString( ret ) );
-			ERROR_ON( out.exit_code != 0,
-				"untyped test with broadcast FAILED with exit code " << out.exit_code );
-
-			std::cout << "\n  => typed call\n" << std::endl;
-			ret = runner->launch_typed( &grbProgram, in, out, broadcast );
-			ERROR_ON( ret != grb::SUCCESS,
-				"typed test with broadcast FAILED with code: " << grb::toString( ret ) );
-			ERROR_ON( out.exit_code != 0,
-				"typed test with broadcast FAILED with exit code " << out.exit_code );
-
-			ret = runner->finalize();
-			
-			ERROR_ON( ret != grb::SUCCESS,
-				"finalization FAILED with code: " << grb::toString( ret ) );
-			std::cout << "  => OK" << std::endl;
 		}
 	}
 #ifdef DISTRIBUTED_EXECUTION

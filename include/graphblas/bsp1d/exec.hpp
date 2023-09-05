@@ -184,17 +184,15 @@ namespace grb {
 			static_assert( std::is_default_constructible< T >::value,
 				"T must be default constructible" );
 
-			typedef T AllocatedType;
-			typedef std::function< void( AllocatedType * ) > Deleter;
-			typedef std::unique_ptr< AllocatedType, Deleter > PointerHolder;
+			typedef std::function< void( T * ) > Deleter;
+			typedef std::unique_ptr< T, Deleter > PointerHolder;
 
 			static PointerHolder make_pointer( size_t ) {
-				return std::unique_ptr< AllocatedType, Deleter >(
+				return std::unique_ptr< T, Deleter >(
 					new T(), // allocate with default construction
-					[] ( AllocatedType * ptr ) { delete ptr; }
+					[] ( T * ptr ) { delete ptr; }
 				);
 			}
-
 		};
 
 		/**
@@ -204,15 +202,13 @@ namespace grb {
 		template< typename T >
 		struct exec_allocator< T, false > {
 
-			typedef char AllocatedType;
-			typedef std::function< void( AllocatedType * ) > Deleter;
-			typedef std::unique_ptr< AllocatedType, Deleter > PointerHolder;
+			typedef std::function< void( T * ) > Deleter;
+			typedef std::unique_ptr< T, Deleter > PointerHolder;
 
 			static PointerHolder make_pointer( size_t size ) {
-				return std::unique_ptr< AllocatedType, Deleter >( new AllocatedType[ size ],
-					[] ( AllocatedType * ptr ) { delete [] ptr; } );
+				return std::unique_ptr< T, Deleter >( reinterpret_cast< T * >( new char[ size ] ),
+					[] ( T * ptr ) { delete [] reinterpret_cast< char * >( ptr ); } );
 			}
-
 		};
 
 
@@ -222,6 +218,32 @@ namespace grb {
 		 *
 		 * It handles type information of the called function via the
 		 * \p DispatcherType structure.
+		 *
+		 * This call may perform memory allocations and initializations depending
+		 * on several conditions; in general, it performs these operations only
+		 * if strictly needed and if \a sensible.
+		 *
+		 * Depending on the \p mode type parameter, it attempts to create an input
+		 * data structure if this is not available. This is especially important
+		 * in AUTOMATIC mode, where processes with \p s > 0 have no data
+		 * pre-allocated. In AUTOMATIC mode, indeed, this function does its best
+		 * to supply the user function with input data:
+		 * - if broadcast was requested, data must be copied from the node with
+		 *  s == 0 to the other nodes; memory on s > 0 is allocated via \p T's
+		 * default constructor if possible, or as a byte array; in the end,
+		 * data on s > 0 is anyway overwritten by data from s == 0;
+		 * - if broadcast was not requested, this function strives to allocate
+		 *  a \a sensible input by calling \p T's default constructor if possible;
+		 *  if this is not possible, the execution is aborted.
+		 *
+		 * For modes other than AUTOMATIC, typed ALP functions are assumed to
+		 * always have a pre-allocated input, allocated by the function that
+		 * "hooked" into LPF; no memory is allocated in this case. If broadcast
+		 * is requested, the input for s > 0 is simply overwritten with that from
+		 * s == 0. For untyped functions, memory is allocated only if broadcast
+		 * is requested (because the size is not known a priori), otherwise no
+		 * allocation occurs and each ALP function takes the original input from
+		 * the launching function.
 		 *
 		 * @tparam T              ALP function input type.
 		 * @tparam U              ALP function outut type.
@@ -250,6 +272,12 @@ namespace grb {
 			);
 			static_assert( std::is_default_constructible< DispatcherType >::value,
 				"DispatcherType must be default-constructible" );
+
+
+			static_assert( std::is_same< T, void >::value || std::is_standard_layout< T >::value, "crap" );
+
+			constexpr bool is_typed_alp_prog = not DispatcherType::is_input_size_variable;
+			constexpr bool is_input_def_constructible = std::is_default_constructible< T >::value;
 
 			assert( P > 0 );
 			assert( s < P );
@@ -306,48 +334,82 @@ namespace grb {
 				}
 			}
 
-			// dispatcher is now valid: assign initial value for size
-			size_t in_size = dispatcher->input_size;
+
 			if(
-				mode != AUTOMATIC &&
-				dispatcher->broadcast_input &&
+				not is_input_def_constructible &&
+				is_typed_alp_prog &&
+				mode == AUTOMATIC &&
+				not dispatcher->broadcast_input &&
 				P > 1
-				&& DispatcherType::is_input_size_variable
 			) {
-				// user requested broadcast and the input size is user-given:
-				//   fetch size from master
-				in_size = s == 0 ? dispatcher->input_size : 0UL;
-				lpf_err_t brc = lpf_register_and_broadcast(
-						ctx, coll,
-						reinterpret_cast< void * >( &in_size ), sizeof( size_t )
-					);
-				if( brc != LPF_SUCCESS ) {
-					std::cerr << __FILE__ << ", " << __LINE__ << ": LPF collective failed"
-						<< std::endl;
-				}
-				assert( brc == LPF_SUCCESS );
-				assert( in_size != 0 );
+				std::cerr <<
+					"Error: cannot locally construct input type"
+					" for ALP program in AUTOMATIC mode" << std::endl;
+				return;
 			}
 
-			constexpr bool typed_alloc = !(DispatcherType::is_input_size_variable) &&
-				std::is_default_constructible< T >::value;
+			// dispatcher is now valid: assign initial value for size
+			size_t in_size = dispatcher->input_size;
+			if( P > 1 ) {
+				if(
+					mode != AUTOMATIC &&
+					dispatcher->broadcast_input
+					&& !is_typed_alp_prog
+				) {
+					// user requested broadcast and the input size is user-given:
+					//   fetch size from master
+					in_size = s == 0 ? dispatcher->input_size : 0UL;
+					lpf_err_t brc = lpf_register_and_broadcast(
+							ctx, coll,
+							reinterpret_cast< void * >( &in_size ), sizeof( size_t )
+						);
+					if( brc != LPF_SUCCESS ) {
+						std::cerr << __FILE__ << ", " << __LINE__ << ": LPF collective failed"
+							<< std::endl;
+					}
+					assert( brc == LPF_SUCCESS );
+					assert( in_size != 0 );
+				} else if (
+					mode == AUTOMATIC &&
+					not is_typed_alp_prog &&
+					not dispatcher->broadcast_input && s > 0
+				) {
+					// AUTOMATIC mode, untyped, no broadcast: we cannot
+					//  reconstruct the object, so pass 0 as size
+					in_size = 0;
+				}
+			}
+
+			constexpr bool typed_alloc = is_typed_alp_prog &&
+				is_input_def_constructible;
 			typedef exec_allocator< T, typed_alloc > InputAllocator;
-			typedef typename InputAllocator::AllocatedType InputAllocated;
 
 			typename InputAllocator::PointerHolder data_in_holder;
 			// input data: by default user-given input
-			const InputAllocated * data_in =
-				reinterpret_cast< const InputAllocated * >( dispatcher->input );
-			if( ( mode == AUTOMATIC ||
-					( dispatcher->broadcast_input && DispatcherType::is_input_size_variable )
-				) && s > 0
-			) {
-				// if no memory exists (mode == AUTOMATIC) or the size was not known and
-				// the user requested broadcast, then allocate input data
-				data_in_holder = InputAllocator::make_pointer( in_size );
-				data_in = data_in_holder.get();
+			const T * data_in =
+				reinterpret_cast< const T * >( dispatcher->input );
+
+			if( s > 0 ) {
+				if (
+					mode == AUTOMATIC &&
+					not is_typed_alp_prog &&
+					not dispatcher->broadcast_input
+				) {
+					// AUTOMATIC mode, untyped, no broadcast: we cannot
+					//  reconstruct the object, so pass nullptr
+					data_in = nullptr;
+				} else if(
+					mode == AUTOMATIC ||
+					( dispatcher->broadcast_input &&
+						not is_typed_alp_prog )
+				) {
+					// if no memory exists (mode == AUTOMATIC) or the size was not known and
+					// the user requested broadcast, then allocate input data
+					data_in_holder = InputAllocator::make_pointer( in_size );
+					data_in = data_in_holder.get();
+				}
 			}
-			if( ( mode == AUTOMATIC || dispatcher->broadcast_input ) && P > 1 ) {
+			if( dispatcher->broadcast_input && P > 1 ) {
 				// retrieve data from master
 				lpf_err_t brc = lpf_register_and_broadcast(
 						ctx, coll,

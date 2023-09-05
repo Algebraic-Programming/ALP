@@ -66,20 +66,10 @@ namespace grb {
 				size_t in_size, const InputType *in, OutputType *out,
 				lpf_pid_t s, lpf_pid_t P
 			) const {
-				struct void_runner {
-					const lpf_func_t _fun;
-					size_t _in_size;
-					const InputType *_in;
-					OutputType *_out;
-					lpf_pid_t _s;
-					lpf_pid_t _P;
-
-					inline void operator()() {
-						ExecDispatcher< InputType, OutputType, untyped_call >::lpf_grb_call
-							( _fun, _in_size, _in, _out, _s, _P );
-					}
-
-				} runner = { fun, in_size, in, out, s, P };
+				auto runner = [ fun, in_size, in, out, s, P ] () {
+					ExecDispatcher< InputType, OutputType, untyped_call >::lpf_grb_call
+							( fun, in_size, in, out, s, P );
+				};
 				return benchmark< BSP1D >( runner, out->times, inner, outer, s );
 			}
 
@@ -143,8 +133,7 @@ namespace grb {
 				}
 				return pack_and_run< void, U, true >(
 					reinterpret_cast< lpf_func_t >( alp_program ),
-					data_in, in_size, &data_out, broadcast,
-					inner, outer
+					data_in, in_size, &data_out, inner, outer, broadcast
 				);
 			}
 
@@ -171,7 +160,7 @@ namespace grb {
 			) const {
 				return pack_and_run< T, U, false >(
 					reinterpret_cast< lpf_func_t >( alp_program ),
-					&data_in, sizeof( T ), &data_out, broadcast, inner, outer );
+					&data_in, sizeof( T ), &data_out, inner, outer, broadcast );
 			}
 
 			using Launcher< mode, BSP1D >::finalize;
