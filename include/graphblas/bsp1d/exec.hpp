@@ -219,35 +219,42 @@ namespace grb {
 		 * It handles type information of the called function via the
 		 * \p DispatcherType structure.
 		 *
-		 * This call may perform memory allocations and initializations depending
+		 * This call may perform memory allocations and initialisations depending
 		 * on several conditions; in general, it performs these operations only
-		 * if strictly needed and if \a sensible.
+		 * if strictly needed.
 		 *
 		 * Depending on the \p mode type parameter, it attempts to create an input
 		 * data structure if this is not available. This is especially important
 		 * in AUTOMATIC mode, where processes with \p s > 0 have no data
-		 * pre-allocated. In AUTOMATIC mode, indeed, this function does its best
-		 * to supply the user function with input data:
+		 * pre-allocated.
+		 *
+		 * In AUTOMATIC mode, indeed, this function does its best to supply the user
+		 * function with input data:
 		 * - if broadcast was requested, data must be copied from the node with
 		 *  s == 0 to the other nodes; memory on s > 0 is allocated via \p T's
 		 * default constructor if possible, or as a byte array; in the end,
 		 * data on s > 0 is anyway overwritten by data from s == 0;
-		 * - if broadcast was not requested, this function strives to allocate
-		 *  a \a sensible input by calling \p T's default constructor if possible;
-		 *  if this is not possible, the execution is aborted.
+		 * - if broadcast was not requested, this function allocates sensible input
+		 *   by calling \p T's default constructor, if possible. If this is not
+		 *   possible, the call to this function shall have no other effect than
+		 *   (immediately) returning #grb::ILLEGAL.
 		 *
 		 * For modes other than AUTOMATIC, typed ALP functions are assumed to
 		 * always have a pre-allocated input, allocated by the function that
-		 * "hooked" into LPF; no memory is allocated in this case. If broadcast
+		 * \em hooked into LPF; no memory is allocated in this case. If broadcast
 		 * is requested, the input for s > 0 is simply overwritten with that from
-		 * s == 0. For untyped functions, memory is allocated only if broadcast
-		 * is requested (because the size is not known a priori), otherwise no
-		 * allocation occurs and each ALP function takes the original input from
-		 * the launching function.
+		 * s == 0. For untyped functions, memory is allocated only if broadcasting
+		 * is requested (because the size is known a priori only at user process 0),
+		 * otherwise no allocation occurs and each ALP function takes the original
+		 * input from the launching function.
+		 *
+		 * \note Thus, implicitly, if in #grb::MANUAL or in #grb::FROM_MPI modes with
+		 *       \a broadcast <tt>true</tt>, any input pointers at user processes
+		 *       \f$ s > 0 \f$ will be ignored.
 		 *
 		 * @tparam T              ALP function input type.
 		 * @tparam U              ALP function outut type.
-		 * @tparam mode           grb::EXEC_MODE of the LPF call.
+		 * @tparam mode           grb::EXEC_MODE of the launcher.
 		 * @tparam DispatcherType Information on the ALP function to run.
 		 *
 		 * @param[in,out] ctx  LPF context to run in.
@@ -274,10 +281,13 @@ namespace grb {
 				"DispatcherType must be default-constructible" );
 
 
-			static_assert( std::is_same< T, void >::value || std::is_standard_layout< T >::value, "crap" );
+			static_assert( std::is_same< T, void >::value ||
+				std::is_standard_layout< T >::value,
+				"The input type \a T must have standard layout and not be void." );
 
-			constexpr bool is_typed_alp_prog = not DispatcherType::is_input_size_variable;
-			constexpr bool is_input_def_constructible = std::is_default_constructible< T >::value;
+			constexpr bool is_typed_alp_prog = !(DispatcherType::is_input_size_variable);
+			constexpr bool is_input_def_constructible =
+				std::is_default_constructible< T >::value;
 
 			assert( P > 0 );
 			assert( s < P );
@@ -287,15 +297,30 @@ namespace grb {
 					<< "processes.\n";
 			}
 #endif
+
 			// call information for the ALP function
 			const DispatcherType *dispatcher =
 				static_cast< const DispatcherType* >( args.input );
 			std::unique_ptr< DispatcherType > dispatcher_holder;
 
+			if(
+				!is_input_def_constructible &&
+				is_typed_alp_prog &&
+				mode == AUTOMATIC &&
+				!(dispatcher->broadcast_input)
+			) {
+				throw std::logic_error( "Error: cannot locally construct input type for "
+					"ALP program in AUTOMATIC mode" );
+			}
+
+
 			lpf_coll_t coll;
 			lpf_err_t brc = LPF_SUCCESS;
 			if( P > 1 ) {
-				if( mode == AUTOMATIC ) {
+				if( mode == AUTOMATIC && !(dispatcher->broadcast_input) ) {
+					// dispatcher must be valid through default-construction
+					assert( is_input_def_constructible );
+				} else if( mode == AUTOMATIC && dispatcher->broadcast_input ) {
 					if( s > 0 ) {
 						// this is not the root process -- potentially need to allocate memory for
 						// the dispatcher
@@ -324,7 +349,9 @@ namespace grb {
 					}
 					assert( brc == LPF_SUCCESS );
 				} else if( dispatcher->broadcast_input ) {
-					// the dispatcher is already valid and the user requested broadcasting: init communication
+					assert( mode != AUTOMATIC );
+					// the dispatcher is already valid and the user requested broadcasting:
+					// init communication
 					brc = lpf_init_collectives_for_broadcast( ctx, s, P, 2, coll );
 					if( brc != LPF_SUCCESS ) {
 						std::cerr << __FILE__ << ", " << __LINE__ << ": LPF collective failed"
@@ -332,20 +359,6 @@ namespace grb {
 					}
 					assert( brc == LPF_SUCCESS );
 				}
-			}
-
-
-			if(
-				not is_input_def_constructible &&
-				is_typed_alp_prog &&
-				mode == AUTOMATIC &&
-				not dispatcher->broadcast_input &&
-				P > 1
-			) {
-				std::cerr <<
-					"Error: cannot locally construct input type"
-					" for ALP program in AUTOMATIC mode" << std::endl;
-				return;
 			}
 
 			// dispatcher is now valid: assign initial value for size
@@ -392,16 +405,15 @@ namespace grb {
 			if( s > 0 ) {
 				if (
 					mode == AUTOMATIC &&
-					not is_typed_alp_prog &&
-					not dispatcher->broadcast_input
+					!is_typed_alp_prog &&
+					!dispatcher->broadcast_input
 				) {
 					// AUTOMATIC mode, untyped, no broadcast: we cannot
 					//  reconstruct the object, so pass nullptr
 					data_in = nullptr;
 				} else if(
 					mode == AUTOMATIC ||
-					( dispatcher->broadcast_input &&
-						not is_typed_alp_prog )
+					( dispatcher->broadcast_input && !is_typed_alp_prog )
 				) {
 					// if no memory exists (mode == AUTOMATIC) or the size was not known and
 					// the user requested broadcast, then allocate input data
