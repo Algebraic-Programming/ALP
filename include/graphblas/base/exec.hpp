@@ -63,7 +63,7 @@ namespace grb {
 	 * \warning Depending on the mode given to #grb::Launcher, the parameters
 	 *          required for the exec function may differ.
 	 *
-	 * \note However, the ALP program is unaware of which mode is the launcher
+	 * \note However, the ALP program remains unaware of which mode is the launcher
 	 *       employs and will not have to change.
 	 */
 	enum EXEC_MODE {
@@ -177,19 +177,33 @@ namespace grb {
 			 * Executes a given ALP program using the user processes encapsulated by this
 			 * launcher group.
 			 *
-			 * Calling this function, depending on whether the automatic or manual/MPI
-			 * mode was selected, will either \em spawn the maximum number of available
-			 * user processes and \em then execute the given program, \em or it will
-			 * employ the given processes that are managed by the user application and
-			 * used to construct this launcher instance to execute the given
-			 * \a alp_program.
+			 * Calling this function, depending on whether the automatic, manual, or from
+			 * MPI mode was selected, will either:
+			 *  -# \em spawn the maximum number of available user processes and \em then
+			 *     execute the given program, \em or
+			 *  -# employ the given processes that are managed by the user application
+			 *     and used to construct this launcher instance to execute the given
+			 *     \a alp_program.
 			 *
 			 * This is a collective function call-- all processes in the launcher group
 			 * must make a simultaneous call to this function and must do so using
 			 * consistent arguments.
 			 *
-			 * @tparam T The type of the data to pass to the ALP program as input.
-			 * @tparam U The type of the output data to pass back to the caller.
+			 * @tparam T The type of the data to pass to the ALP program as input. This
+			 *           must be a POD type that contains no pointers.
+			 *
+			 * \note In fact, \a T may be standard layout and contain no pointers. If it
+			 *       is default-constructible, then \a broadcast may be <tt>false</tt>.
+			 *
+			 * \warning If \a T is \em not default-constructible, then during a call to
+			 *          this function, \a broadcast must equal <tt>true</tt>.
+			 *
+			 * @tparam U The type of the output data to pass back to the caller. This may
+			 *           be of any type.
+			 *
+			 * \note In case of multiple user processes, if \a mode is AUTOMATIC, then
+			 *       the output of type \a U at user processes \f$ s > 0 \f$ will be
+			 *       lost.
 			 *
 			 * @param[in]  alp_program The user program to be executed.
 			 * @param[in]  data_in     Input data of user-defined type \a T.
@@ -197,18 +211,35 @@ namespace grb {
 			 * When in automatic mode and \a broadcast is <tt>false</tt>, the data will
 			 * only be available at user process with ID 0. When in automatic mode and
 			 * \a broadcast is <tt>true</tt>, the data will be available at all user
-			 * processes. When in manual mode, the data will be available to this user
-			 * process only, with "this process" corresponding to the process that calls
-			 * this function.
+			 * processes.
+			 *
+			 * When in manual mode, each user process should collectively call this
+			 * function. If \a broadcast is <tt>false</tt> each user process should
+			 * collectively call this function. The input data will then be passed to
+			 * the corresponding ALP user processes in a one-to-one manner. Should
+			 * \a broadcast be <tt>true</tt>, then the initial input data passed to user
+			 * processes \f$ s > 0 \f$ will be overwritten with the data passed to user
+			 * process zero.
 			 *
 			 * @param[out] data_out  Output data of user-defined type \a U. The output
 			 *                       data should be available at user process with ID
 			 *                       zero.
+			 *
+			 * Only in #MANUAL or #FROM_MPI modes will the output of any user processes
+			 * with ID \f$ s > 0 \f$ be returned to the respective processes involved
+			 * with the collective call to this function. In #AUTOMATIC mode, the output
+			 * at \f$ s > 0 \f$ is ignored.
+			 *
 			 * @param[in]  broadcast Whether the input should be broadcast from user
 			 *                       process 0 to all other user processes. Optional;
-			 *                       the default value is \a false.
+			 *                       the default value is <tt>false</tt>.
+			 *
+			 * \note The default is <tt>false</tt> as it is the variant that implies the
+			 *       least cost.
 			 *
 			 * @return #grb::SUCCESS If the execution proceeded as intended.
+			 * @return #grb::ILLEGAL If \a broadcast was <tt>false</tt> and \a mode was
+			 *                       #AUTOMATIC, but \a T not default-constructible.
 			 * @return #grb::PANIC   If an unrecoverable error was encountered while
 			 *                       attempting to execute, attempting to terminate, or
 			 *                       while executing, the given program.
@@ -217,7 +248,8 @@ namespace grb {
 			 *          achieve its intended result-- for example, an iterative solver
 			 *          may fail to converge. A good programming pattern has that \a U
 			 *          either a) is an error code for the algorithm used (e.g.,
-			 *          #grb::RC), or b) that \a U contains such an error code.
+			 *          <tt>int</tt> or #grb::RC), or that b) \a U is a struct that
+			 *          contains such an error code.
 			 */
 			template< typename T, typename U >
 			RC exec(
@@ -240,9 +272,18 @@ namespace grb {
 			 * launcher group.
 			 *
 			 * This variant of exec has that \a data_in is of a variable byte size,
-			 * instead of a fixed POD type. If \a broadcast is <tt>true</tt> and the
-			 * launcher is instantiated using the #grb::AUTOMATIC mode, all bytes are
-			 * broadcast to all user processes.
+			 * instead of a fixed POD type. We refer to the given function as an untyped
+			 * ALP function (since the input is a raw pointer), whereas the other variant
+			 * executes \em typed ALP functions instead.
+			 *
+			 * If \a broadcast is <tt>true</tt> and the launcher, all bytes are broadcast
+			 * to all user processes.
+			 *
+			 * \note When in #MANUAL or #FROM_MPI mode, this implies any arguments passed
+			 *       in a process-to-process manner will be lost.
+			 *
+			 * See the \em typed ALP exec variant for more detailed comments, which also
+			 * transfer to this untyped variant.
 			 *
 			 * @param[in]  alp_program The user program to be executed.
 			 * @param[in]  data_in     Pointer to raw input byte data.
@@ -255,15 +296,15 @@ namespace grb {
 			 *                       the default value is \a false.
 			 *
 			 * @return #grb::SUCCESS If the execution proceeded as intended.
+			 * @return #grb::ILLEGAL If \a broadcast was <tt>false</tt> and \a mode was
+			 *                       #AUTOMATIC, but \a T not default-constructible.
 			 * @return #grb::PANIC   If an unrecoverable error was encountered while
 			 *                       attempting to execute, attempting to terminate, or
 			 *                       while executing, the given program.
-			 *
-			 * For more details, see the other version of this function.
 			 */
 			template< typename U >
 			RC exec(
-				AlpUntypedFunc< void, U >  alp_program,
+				AlpUntypedFunc< void, U > alp_program,
 				const void * data_in,
 				const size_t in_size,
 				U &data_out,
