@@ -282,8 +282,8 @@ namespace grb {
 
 
 			static_assert( std::is_same< T, void >::value ||
-				std::is_standard_layout< T >::value,
-				"The input type \a T must have standard layout and not be void." );
+				std::is_trivially_copyable< T >::value,
+				"The input type \a T must be trivially copyable or be void." );
 
 			constexpr bool is_typed_alp_prog = !(DispatcherType::is_input_size_variable);
 			constexpr bool is_input_def_constructible =
