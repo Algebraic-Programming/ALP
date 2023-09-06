@@ -35,6 +35,7 @@
 
 #include "graphblas/config.hpp"
 
+
 namespace grb {
 
 	namespace utils {
@@ -43,33 +44,43 @@ namespace grb {
 
 			template< enum Backend implementation >
 			class DeleterFunctions {
-			private:
-				/** Prevent instantiation. */
-				DeleterFunctions() {}
 
-			public:
-				/** \todo documentation */
-				template< typename T >
-				static void safe_free( T * const pointer ) {
-					if( pointer != NULL ) {
-						free( pointer );
-					}
-				}
-
-#ifndef _GRB_NO_LIBNUMA
-				/** \todo documentation */
-				template< typename T >
-				class safe_numa_free {
 				private:
-					size_t size;
+
+					/** Prevent instantiation. */
+					DeleterFunctions() {}
 
 				public:
-					safe_numa_free( const size_t size_in ) : size( size_in ) {}
-					void operator()( T * const pointer ) {
-						numa_free( pointer, size );
+
+					/** \todo documentation */
+					template< typename T >
+					static void safe_free( T * const pointer ) {
+						if( pointer != NULL ) {
+							free( pointer );
+						}
 					}
-				};
+
+#ifndef _GRB_NO_LIBNUMA
+					/** \todo documentation */
+					template< typename T >
+					class safe_numa_free {
+
+						private:
+
+							size_t size;
+
+
+						public:
+
+							safe_numa_free( const size_t size_in ) : size( size_in ) {}
+
+							void operator()( T * const pointer ) {
+								numa_free( pointer, size );
+							}
+
+					};
 #endif
+
 			};
 
 		} // namespace internal
@@ -79,6 +90,7 @@ namespace grb {
 } // namespace grb
 
 // now define user API:
+
 namespace grb {
 
 	namespace utils {
@@ -98,85 +110,87 @@ namespace grb {
 		 *       means to easily delete memory areas that are shared between owners
 		 *       (which is in fact quite different from the philosophy of a
 		 *        \a shared_ptr which were introduced to `forget' about deletes.)
+		 *
+		 * This class is trivially copyable in the C++11 sense.
 		 */
 		template< typename T, enum Backend implementation = config::default_backend >
 		class AutoDeleter {
 
-		private:
-			/** Where the implementation of the free function(s) reside. */
-			typedef typename internal::DeleterFunctions< implementation > functions;
+			private:
 
-			/** Functionality is provided by shared pointer. */
-			std::shared_ptr< T > _shPtr;
+				/** Where the implementation of the free function(s) reside. */
+				typedef typename internal::DeleterFunctions< implementation > functions;
 
-		public:
-			/**
-			 * Constructs a new AutoDeleter from a pointer. When this instance and all
-			 * instances copied from this one are destroyed, the pointer will be freed
-			 * if and only if it is not equal to \a NULL.
-			 *
-			 * The pointer is assumed to be allocated using \a posix_memalign, which is
-			 * compitable with the C-standard \a free. Thus pointers that cannot be
-			 * free'd in this manner should never be passed to this AutoDeleter
-			 * constructor.
-			 *
-			 * @throws std::bad_alloc If the system cannot allocate enough memory.
-			 */
-			AutoDeleter( T * const pointer = NULL, const size_t size = 0 ) {
+				/** Functionality is provided by shared pointer. */
+				std::shared_ptr< T > _shPtr;
+
+
+			public:
+
+				/**
+				 * Constructs a new AutoDeleter from a pointer. When this instance and all
+				 * instances copied from this one are destroyed, the pointer will be freed
+				 * if and only if it is not equal to \a NULL.
+				 *
+				 * The pointer is assumed to be allocated using \a posix_memalign, which is
+				 * compitable with the C-standard \a free. Thus pointers that cannot be
+				 * free'd in this manner should never be passed to this AutoDeleter
+				 * constructor.
+				 *
+				 * @throws std::bad_alloc If the system cannot allocate enough memory.
+				 */
+				AutoDeleter( T * const pointer = nullptr, const size_t size = 0 ) {
 #ifdef _GRB_NO_LIBNUMA
-				(void)size;
-				const auto free_p = &( functions::template safe_free< T > );
-				_shPtr = std::shared_ptr< T >( pointer, free_p );
-#else
-				if( size > 0 ) {
-					typedef typename functions::template safe_numa_free< T > FreeFunctor;
-					const FreeFunctor free_f( size );
-					_shPtr = std::shared_ptr< T >( pointer, free_f );
-				} else {
+					(void) size;
 					const auto free_p = &( functions::template safe_free< T > );
 					_shPtr = std::shared_ptr< T >( pointer, free_p );
-				}
+#else
+					if( size > 0 ) {
+						typedef typename functions::template safe_numa_free< T > FreeFunctor;
+						const FreeFunctor free_f( size );
+						_shPtr = std::shared_ptr< T >( pointer, free_f );
+					} else {
+						const auto free_p = &( functions::template safe_free< T > );
+						_shPtr = std::shared_ptr< T >( pointer, free_p );
+					}
 #endif
-			};
+				};
 
-			/**
-			 * Copies an \a other AutoDeleter. The underlying pointer will only be freed
-			 * if at least this new AutoDeleter and the \a other AutoDeleter are
-			 * destroyed. (The preceding says `at least' because other copies may have
-			 * been made previously.)
-			 *
-			 * @throws std::bad_alloc If the system cannot allocate enough memory.
-			 */
-			AutoDeleter( const AutoDeleter< T > & other ) : _shPtr( other._shPtr ) {}
+				/**
+				 * Copies an \a other AutoDeleter. The underlying pointer will only be freed
+				 * if at least this new AutoDeleter and the \a other AutoDeleter are
+				 * destroyed. (The preceding says `at least' because other copies may have
+				 * been made previously.)
+				 *
+				 * @throws std::bad_alloc If the system cannot allocate enough memory.
+				 */
+				AutoDeleter( const AutoDeleter< T, implementation > &other ) = default;
 
-			/**
-			 * Creates an AutoDeleter from a temporary instance by stealing its
-			 * resources.
-			 */
-			AutoDeleter( AutoDeleter< T > && other ) noexcept {
-				_shPtr = std::move( other._shPtr );
-			}
+				/**
+				 * Creates an AutoDeleter from a temporary instance by stealing its
+				 * resources.
+				 */
+				AutoDeleter( AutoDeleter< T, implementation > &&other ) = default;
 
-			/** Signals auto-deletion no longer is necessary. */
-			void clear() noexcept {
-				_shPtr.reset();
-			}
+				/** Signals auto-deletion no longer is necessary. */
+				void clear() noexcept {
+					_shPtr.reset();
+				}
 
-			/**
-			 * Relies on std::move. Equals-operator only works on temporary RHS.
-			 */
-			AutoDeleter< T > & operator=( AutoDeleter< T > && other ) {
-				_shPtr = std::move( other._shPtr );
-				return *this;
-			}
+				/**
+				 * Relies on std::move. Equals-operator only works on temporary RHS.
+				 */
+				AutoDeleter< T, implementation > & operator=(
+						AutoDeleter< T, implementation > &&other
+					) = default;
 
-			/**
-			 * Relies on copying the underlying shared pointer.
-			 */
-			AutoDeleter< T > & operator=( const AutoDeleter< T > & other ) {
-				_shPtr = other._shPtr;
-				return *this;
-			}
+				/**
+				 * Relies on copying the underlying shared pointer.
+				 */
+				AutoDeleter< T, implementation > & operator=(
+						const AutoDeleter< T, implementation > &other
+					) = default;
+
 		};
 
 	} // namespace utils
@@ -185,7 +199,8 @@ namespace grb {
 
 // include specialised DeleterFunctions
 #ifdef _GRB_WITH_BANSHEE
-#include "graphblas/banshee/deleters.hpp"
+ #include "graphblas/banshee/deleters.hpp"
 #endif
 
 #endif
+

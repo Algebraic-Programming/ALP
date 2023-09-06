@@ -55,12 +55,29 @@ namespace grb {
 			PinnedVector() : pinned_vector() {}
 
 			/** \internal No implementation notes. */
+			PinnedVector( const PinnedVector< IOType, hyperdags > & ) = default;
+
+			/** \internal No implementation notes. */
+			PinnedVector( PinnedVector< IOType, hyperdags > && ) = default;
+
+			/** \internal No implementation notes. */
 			PinnedVector(
 				const Vector< IOType, hyperdags, internal::hyperdags::Coordinates > &x,
 				const IOMode mode
 			): pinned_vector( internal::getVector(x), mode ) {};
 
-			// default destructor is allowed
+			/** \internal No implementation notes. */
+			~PinnedVector() = default;
+
+			/** \internal No implementation notes. */
+			PinnedVector< IOType, hyperdags >& operator=(
+					const PinnedVector< IOType, hyperdags > &
+				) = default;
+
+			/** \internal No implementation notes. */
+			PinnedVector< IOType, hyperdags >& operator=(
+					PinnedVector< IOType, hyperdags > &&
+				) = default;
 
 			/** \internal No implementation notes. */
 			inline size_t size() const noexcept {

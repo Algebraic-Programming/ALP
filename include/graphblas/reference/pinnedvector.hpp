@@ -70,6 +70,12 @@ namespace grb {
 			PinnedVector() : _buffered_values( nullptr ) {}
 
 			/** \internal No implementation notes. */
+			PinnedVector( const PinnedVector< IOType, reference > &x ) = default;
+
+			/** \internal No implementation notes. */
+			PinnedVector( PinnedVector< IOType, reference > &&x ) = default;
+
+			/** \internal No implementation notes. */
 			PinnedVector(
 				const Vector< IOType, reference, internal::Coordinates<
 					config::IMPLEMENTATION< reference >::coordinatesBackend()
@@ -79,11 +85,22 @@ namespace grb {
 				_raw_deleter( x._raw_deleter ), _stack_deleter( x._buffer_deleter ),
 				_buffered_values( x._raw ), _buffered_coordinates( x._coordinates )
 			{
-				(void)mode; // sequential and parallel IO mode are equivalent for this
-				            // implementation.
+				(void) mode; // sequential and parallel IO mode are equivalent for this
+				             // implementation.
 			}
 
-			// default destructor is OK
+			/** \internal No implementation notes. */
+			~PinnedVector() = default;
+
+			/** \internal No implementation notes. */
+			PinnedVector< IOType, reference >& operator=(
+					const PinnedVector< IOType, reference > &x
+				) = default;
+
+			/** \internal No implementation notes. */
+			PinnedVector< IOType, reference >& operator=(
+					PinnedVector< IOType, reference > &&x
+				) = default;
 
 			/** \internal No implementation notes. */
 			inline size_t size() const noexcept {
