@@ -420,9 +420,10 @@ int main( int argc, char ** argv ) {
 #else
 	typedef size_t test_pid_t;
 #endif
-	test_pid_t P = std::numeric_limits< test_pid_t >::max();
-	test_pid_t s = std::numeric_limits< test_pid_t >::max();
-	grb::EXEC_MODE mode = grb::FROM_MPI;
+	// default values for shared-memory execution
+	test_pid_t P = 1;
+	test_pid_t s = 0;
+	grb::EXEC_MODE mode = grb::AUTOMATIC;
 
 #ifdef DISTRIBUTED_EXECUTION
 	if( lpf_mpi_inited != 0 ) {
