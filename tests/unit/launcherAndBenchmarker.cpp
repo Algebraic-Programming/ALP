@@ -66,6 +66,7 @@ struct input {
 	}
 };
 
+// same as input, just not default-constructible for a testing scenarion
 struct nd_input : input {
 
 	nd_input() = delete; // make this non default-constructible
@@ -86,6 +87,7 @@ bool operator==( const char * ext, const struct input &obj ) {
 
 struct output {
 	int exit_code;
+	size_t P;
 	grb::utils::TimerResults times;
 };
 
@@ -99,6 +101,7 @@ void grbProgram( const InputT &in, struct output &out ) {
 
 	const size_t P = grb::spmd<>::nprocs();
 	const size_t s = grb::spmd<>::pid();
+	out.P = P;
 
 	const char * expected = nullptr;
 
@@ -137,7 +140,15 @@ void grbProgram( const InputT &in, struct output &out ) {
 }
 
 template< grb::EXEC_MODE mode, bool broadcasted, typename InputT  >
-void vgrbProgram( const void* __in, const size_t, struct output &out ) {
+void vgrbProgram( const void* __in, const size_t size, struct output &out ) {
+	if( size != STR_LEN + 1 ) {
+		const size_t P = grb::spmd<>::nprocs();
+		const size_t s = grb::spmd<>::pid();
+		out.P = P;
+		printf( "--- PID %lu of %lu: ERROR! input size %lu != expected %lu\n",
+			s, P, size, STR_LEN + 1 );
+			return;
+	}
 	const struct input &in = *reinterpret_cast< const struct input *>( __in );
 	grbProgram< mode, broadcasted, InputT >( in, out );
 }
@@ -145,6 +156,7 @@ void vgrbProgram( const void* __in, const size_t, struct output &out ) {
 void autoVgrbProgram( const void* __in, const size_t size, struct output &out ) {
 	const size_t P = grb::spmd<>::nprocs();
 	const size_t s = grb::spmd<>::pid();
+	out.P = P;
 	if( s == 0 ) {
 		const input &in = *static_cast< const input * >( __in );
 		out.exit_code = size == sizeof( input ) &&
@@ -569,6 +581,8 @@ int main( int argc, char ** argv ) {
 			std::cout << "  => OK" << std::endl;
 
 			if( mode == grb::AUTOMATIC ) {
+				// AUTOMTIC mode must implement a specific behaviour for
+				// non-default-constructible input types like nd_input, here tested
 
 				std::unique_ptr< Runner< nd_input > > nd_runner = create_runner< nd_input >(
 					mode, rt, s, P,
@@ -585,6 +599,7 @@ int main( int argc, char ** argv ) {
 					reinterpret_cast< void * >( &ndin ), sizeof( nd_input ),
 					out, broadcast
 				);
+				// untyped calls must succeed even with a non-default-constructible input
 				ERROR_ON( ret != grb::SUCCESS,
 					"untyped test FAILED with code: " << grb::toString( ret ) );
 				ERROR_ON( out.exit_code != 0,
@@ -597,9 +612,23 @@ int main( int argc, char ** argv ) {
 						mode, broadcast
 					);
 				ret = nd_runner->launch_typed( ndfun, ndin, out, broadcast );
-				int expected_retval = broadcast || P == 1 ? 0 : 256;
-				ERROR_ON( ret != grb::SUCCESS,
-					"typed test FAILED with code: " << grb::toString( ret ) );
+				// get P from process, as it may not be known outside of the
+				// launcher (e.g., for AUTOMATIC mode)
+				const bool should_fail = ( !broadcast ) && out.P > 1;
+				int expected_retval = should_fail ? 256 : 0;
+				// typed call should fail if ALL of the following conditions are met:
+				// - AUTOMATIC mode
+				// - non-default-constructible input
+				// - no broadcast requested
+				// - more than one process to run.
+				// The idea is that process 0 receives the "original" input via
+				// the launcher, but other processes cannot create a meaningful
+				// one, because the input is non-default-constructible and
+				// because broadcast has not been requested (note: broadcast
+				// occurs ONLY on user's request): in such a case, the call
+				// cannot proceed and is aborted
+				ERROR_ON( should_fail && ret == grb::SUCCESS,
+					"run is successful, but should have failed" );
 				ERROR_ON( out.exit_code != expected_retval,
 					"typed test FAILED with exit code " << out.exit_code );
 			}

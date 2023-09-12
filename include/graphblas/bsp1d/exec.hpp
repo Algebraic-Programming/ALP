@@ -38,7 +38,6 @@
 #include <lpf/core.h>
 #include <lpf/mpi.h>
 #include <mpi.h>
-#include <string.h> //for memcpy
 
 #include <graphblas/backends.hpp>
 #include <graphblas/base/exec.hpp>
@@ -49,9 +48,6 @@
 
 #include "../bsp/exec_broadcast_routines.hpp"
 
-
-/** Forward declaration. */
-
 namespace grb {
 
 	namespace internal {
@@ -59,55 +55,68 @@ namespace grb {
 		/**
 		 * Base data structure storing necessary data to run a GRB function through LPF.
 		 *
-		 * @tparam InputType type of function input
+		 * @tparam InputType            type of function input
+		 * @tparam mode                 grb::EXEC_MODE of the launcher.
+		 * @tparam _requested_broadcast whether the user requested broadcast
 		 */
-		template< typename InputType >
-		struct PackedExecInput {
+		template<
+			typename InputType,
+			EXEC_MODE _mode,
+			bool _requested_broadcast
+		>
+		struct DispatchInfo {
 
-			/** Pointer to input. */
-			const InputType *input;
+			static constexpr EXEC_MODE mode = _mode;
+			static constexpr bool requested_broadcast = _requested_broadcast;
+			static constexpr bool needs_initial_broadcast = false;
 
-			/**
-			 * Size of input.
-			 *
-			 * Equal to <tt>sizeof( InputType )</tt> for typed ALP functions.
-			 */
-			size_t input_size;
-
-			/**
-			 * Whether the user requested broadcast of input from the user process with
-			 * node zero.
-			 */
-			bool broadcast_input;
+			const InputType *in;
+			size_t in_size;
 
 			/**
-			 * Default constructor, required by _grb_exec_dispatch() in case of object
-			 * serialization.
+			 * Construct from base information.
 			 */
-			PackedExecInput() = default;
+			DispatchInfo( const InputType *_in, const size_t _in_size ) :
+				in( _in ), in_size( _in_size ) {}
 
 			/**
-			 * Constructor with member initialization, for actual construction within
-			 * node 0.
+			 * Construct from LPF arguments, following a call to
+			 * lpf_hook()/lpf_exec().
 			 */
-			PackedExecInput( const InputType *in, size_t s, bool bc ) :
-				input( in ), input_size( s ), broadcast_input( bc )
-			{}
+			DispatchInfo( const lpf_pid_t s, const lpf_args_t args ) {
+				if( s > 0 && mode == AUTOMATIC ) {
+					in = nullptr;
+					in_size = 0;
+					return;
+				}
+				in = static_cast< const InputType *>( args.input );
+				in_size = args.input_size;
+			}
+
+			const InputType *get_input() const { return in; }
+
+			size_t get_input_size() const { return in_size; }
 
 		};
 
 		/**
-		 * Adaptor type to run a typed GRB function: it stores relevant parameters for
-		 * data broadcast.
+		 * Adaptor type to run a typed GRB function: it stores relevant parameters
+		 * for data broadcast.
 		 *
-		 * Inherited from PackedExecInput.
+		 * Inherited from DispatchInfo.
 		 *
 		 * Adapts the function call to the underlying type.
 		 */
-		template< typename InputType, typename OutputType, bool variable_input >
-		struct ExecDispatcher : PackedExecInput< InputType > {
+		template<
+			typename InputType,
+			typename OutputType,
+			EXEC_MODE _mode,
+			bool _requested_broadcast,
+			bool _variable_input
+		>
+		struct ExecDispatcher : DispatchInfo< InputType, _mode, _requested_broadcast > {
 
-			using PackedExecInput< InputType >::PackedExecInput;
+			using DispatchInfo< InputType, _mode, _requested_broadcast >::DispatchInfo;
 
 			constexpr static bool is_input_size_variable = false;
 
@@ -141,14 +150,19 @@ namespace grb {
 		 * Adaptor type to run an untyped ALP function.
 		 *
 		 * It stores relevant parameters for data braodcast (inherited from
-		 * PackedExecInput) and adapts the function call to the underlying type.
+		 * DispatchInfo) and adapts the function call to the underlying type.
 		 */
-		template< typename InputType, typename OutputType >
-		struct ExecDispatcher< InputType, OutputType, true > :
-			PackedExecInput< InputType >
+		template<
+			typename InputType,
+			typename OutputType,
+			EXEC_MODE _mode,
+			bool _requested_broadcast
+		>
+		struct ExecDispatcher< InputType, OutputType, _mode, _requested_broadcast, true > :
+			DispatchInfo< InputType, _mode, _requested_broadcast >
 		{
 
-			using PackedExecInput< InputType >::PackedExecInput;
+			using DispatchInfo< InputType, _mode, _requested_broadcast >::DispatchInfo;
 
 			constexpr static bool is_input_size_variable = true;
 
@@ -180,7 +194,6 @@ namespace grb {
 		template< typename T, bool typed_allocation >
 		struct exec_allocator {
 
-			// internal: this is a reasonable assert, since T should be a POD type
 			static_assert( std::is_default_constructible< T >::value,
 				"T must be default constructible" );
 
@@ -188,16 +201,17 @@ namespace grb {
 			typedef std::unique_ptr< T, Deleter > PointerHolder;
 
 			static PointerHolder make_pointer( size_t ) {
-				return std::unique_ptr< T, Deleter >(
+				return PointerHolder(
 					new T(), // allocate with default construction
 					[] ( T * ptr ) { delete ptr; }
 				);
 			}
+
 		};
 
 		/**
 		 * Template specialization for untyped allocation: data is allocated as a byte
-		 * array * and not initialized.
+		 * array and not initialized.
 		 */
 		template< typename T >
 		struct exec_allocator< T, false > {
@@ -206,9 +220,10 @@ namespace grb {
 			typedef std::unique_ptr< T, Deleter > PointerHolder;
 
 			static PointerHolder make_pointer( size_t size ) {
-				return std::unique_ptr< T, Deleter >( reinterpret_cast< T * >( new char[ size ] ),
+				return PointerHolder( reinterpret_cast< T * >( new char[ size ] ),
 					[] ( T * ptr ) { delete [] reinterpret_cast< char * >( ptr ); } );
 			}
+
 		};
 
 
@@ -254,7 +269,6 @@ namespace grb {
 		 *
 		 * @tparam T              ALP function input type.
 		 * @tparam U              ALP function outut type.
-		 * @tparam mode           grb::EXEC_MODE of the launcher.
 		 * @tparam DispatcherType Information on the ALP function to run.
 		 *
 		 * @param[in,out] ctx  LPF context to run in.
@@ -263,24 +277,16 @@ namespace grb {
 		 * @param[in,out] args Input and output information for LPF calls.
 		 */
 		template<
-			typename T, typename U,
-			enum EXEC_MODE mode,
+			typename T,
+			typename U,
 			typename DispatcherType
 		>
-		void _grb_exec_dispatch(
+		void grb_exec_dispatch(
 			lpf_t ctx,
-			const lpf_pid_t s, const lpf_pid_t P,
+			const lpf_pid_t s,
+			const lpf_pid_t P,
 			lpf_args_t args
 		) {
-			static_assert(
-				std::is_base_of< ExecDispatcher< T, U, true >, DispatcherType >::value ||
-					std::is_base_of< ExecDispatcher< T, U, false >, DispatcherType >::value,
-				"DispatcherType must derive from ExecDispatcher"
-			);
-			static_assert( std::is_default_constructible< DispatcherType >::value,
-				"DispatcherType must be default-constructible" );
-
-
 			static_assert( std::is_same< T, void >::value ||
 				std::is_trivially_copyable< T >::value,
 				"The input type \a T must be trivially copyable or be void." );
@@ -288,6 +294,10 @@ namespace grb {
 			constexpr bool is_typed_alp_prog = !(DispatcherType::is_input_size_variable);
 			constexpr bool is_input_def_constructible =
 				std::is_default_constructible< T >::value;
+			constexpr EXEC_MODE mode = DispatcherType::mode;
+			constexpr bool broadcast_input = DispatcherType::requested_broadcast;
+			constexpr bool dispatcher_needs_broadcast =
+				DispatcherType::needs_initial_broadcast;
 
 			assert( P > 0 );
 			assert( s < P );
@@ -297,81 +307,57 @@ namespace grb {
 					<< "processes.\n";
 			}
 #endif
-
-			// call information for the ALP function
-			const DispatcherType *dispatcher =
-				static_cast< const DispatcherType* >( args.input );
-			std::unique_ptr< DispatcherType > dispatcher_holder;
-
 			if(
 				!is_input_def_constructible &&
 				is_typed_alp_prog &&
 				mode == AUTOMATIC &&
-				!(dispatcher->broadcast_input)
+				!broadcast_input &&
+				P > 1
 			) {
 				throw std::logic_error( "Error: cannot locally construct input type for "
 					"ALP program in AUTOMATIC mode" );
 			}
 
-
 			lpf_coll_t coll;
 			lpf_err_t brc = LPF_SUCCESS;
-			if( P > 1 ) {
-				if( mode == AUTOMATIC && !(dispatcher->broadcast_input) ) {
-					// dispatcher must be valid through default-construction
-					assert( is_input_def_constructible );
-				} else if( mode == AUTOMATIC && dispatcher->broadcast_input ) {
-					if( s > 0 ) {
-						// this is not the root process -- potentially need to allocate memory for
-						// the dispatcher
-						dispatcher_holder.reset( new DispatcherType );
-						dispatcher = dispatcher_holder.get();
-					}
 
-					// AUTOMATIC mode: we must
-					//  1. initialize communication
+			// initializae collectives if needed
+			if( P > 1 &&
+				( broadcast_input || dispatcher_needs_broadcast ) ) {
 					brc = lpf_init_collectives_for_broadcast( ctx, s, P, 2, coll );
 					if( brc != LPF_SUCCESS ) {
 						std::cerr << __FILE__ << ", " << __LINE__ << ": LPF collective failed"
 							<< std::endl;
 					}
 					assert( brc == LPF_SUCCESS );
-
-					// then 2. fetch the dispatcher
-					brc = lpf_register_and_broadcast(
-						ctx, coll,
-						const_cast< void * >( reinterpret_cast< const void * >( dispatcher ) ),
-						sizeof( DispatcherType )
-					);
-					if( brc != LPF_SUCCESS ) {
-						std::cerr << __FILE__ << ", " << __LINE__ << ": LPF collective failed"
-							<< std::endl;
-					}
-					assert( brc == LPF_SUCCESS );
-				} else if( dispatcher->broadcast_input ) {
-					assert( mode != AUTOMATIC );
-					// the dispatcher is already valid and the user requested broadcasting:
-					// init communication
-					brc = lpf_init_collectives_for_broadcast( ctx, s, P, 2, coll );
-					if( brc != LPF_SUCCESS ) {
-						std::cerr << __FILE__ << ", " << __LINE__ << ": LPF collective failed"
-							<< std::endl;
-					}
-					assert( brc == LPF_SUCCESS );
-				}
 			}
 
-			// dispatcher is now valid: assign initial value for size
-			size_t in_size = dispatcher->input_size;
+			// call information for the ALP function, reconstructed
+			// from the passed args
+			DispatcherType dispatcher( s, args );
+
+			if( P > 1 && dispatcher_needs_broadcast ) {
+				// fetch the dispatcher
+				brc = lpf_register_and_broadcast(
+					ctx, coll,
+					static_cast< void * >( &dispatcher ),
+					sizeof( DispatcherType )
+				);
+				if( brc != LPF_SUCCESS ) {
+					std::cerr << __FILE__ << ", " << __LINE__ << ": LPF collective failed"
+						<< std::endl;
+				}
+				assert( brc == LPF_SUCCESS );
+			}
+
+			// dispatcher is now valid on all processes:
+			// assign initial value for size
+			size_t in_size = dispatcher.get_input_size();
+
 			if( P > 1 ) {
-				if(
-					mode != AUTOMATIC &&
-					dispatcher->broadcast_input
-					&& !is_typed_alp_prog
-				) {
+				if( broadcast_input ) {
 					// user requested broadcast and the input size is user-given:
-					//   fetch size from master
-					in_size = s == 0 ? dispatcher->input_size : 0UL;
+					// fetch size from master
 					lpf_err_t brc = lpf_register_and_broadcast(
 							ctx, coll,
 							reinterpret_cast< void * >( &in_size ), sizeof( size_t )
@@ -384,8 +370,8 @@ namespace grb {
 					assert( in_size != 0 );
 				} else if (
 					mode == AUTOMATIC &&
-					not is_typed_alp_prog &&
-					not dispatcher->broadcast_input && s > 0
+					!broadcast_input &&
+					s > 0
 				) {
 					// AUTOMATIC mode, untyped, no broadcast: we cannot
 					//  reconstruct the object, so pass 0 as size
@@ -399,21 +385,20 @@ namespace grb {
 
 			typename InputAllocator::PointerHolder data_in_holder;
 			// input data: by default user-given input
-			const T * data_in =
-				reinterpret_cast< const T * >( dispatcher->input );
+			const T * data_in = dispatcher.get_input();
 
 			if( s > 0 ) {
 				if (
 					mode == AUTOMATIC &&
 					!is_typed_alp_prog &&
-					!dispatcher->broadcast_input
+					!broadcast_input
 				) {
 					// AUTOMATIC mode, untyped, no broadcast: we cannot
 					//  reconstruct the object, so pass nullptr
 					data_in = nullptr;
 				} else if(
 					mode == AUTOMATIC ||
-					( dispatcher->broadcast_input && !is_typed_alp_prog )
+					( broadcast_input && !is_typed_alp_prog )
 				) {
 					// if no memory exists (mode == AUTOMATIC) or the size was not known and
 					// the user requested broadcast, then allocate input data
@@ -421,7 +406,7 @@ namespace grb {
 					data_in = data_in_holder.get();
 				}
 			}
-			if( dispatcher->broadcast_input && P > 1 ) {
+			if( broadcast_input && P > 1 ) {
 				// retrieve data from master
 				lpf_err_t brc = lpf_register_and_broadcast(
 						ctx, coll,
@@ -439,6 +424,7 @@ namespace grb {
 			typename OutputAllocator::PointerHolder data_out_holder;
 			U * data_out = reinterpret_cast< U * >( args.output );
 			if( mode == AUTOMATIC && s > 0 ) {
+				// allocate output if memory does not exist
 				data_out_holder = OutputAllocator::make_pointer( sizeof( U ) );
 				data_out = reinterpret_cast< U * >( data_out_holder.get() );
 			}
@@ -451,7 +437,7 @@ namespace grb {
 			}
 			// retrieve and run the function to be executed
 			assert( args.f_size == 1 );
-			grb_rc = ( *dispatcher )( args.f_symbols[ 0 ], in_size, data_in, data_out, s, P  );
+			grb_rc = dispatcher( args.f_symbols[ 0 ], in_size, data_in, data_out, s, P  );
 			if( grb_rc != grb::SUCCESS ) {
 				std::cerr << "Error: dispatcher failed" << std::endl;
 				assert( false );
@@ -508,10 +494,14 @@ namespace grb {
 				const size_t in_size,
 				U * const data_out,
 				const bool broadcast
-			) {
-				typedef internal::ExecDispatcher< T, U, untyped_call > Disp;
-				Disp disp_info = { data_in, in_size, broadcast };
-				return run_lpf< T, U, Disp >( alp_program, disp_info, data_out );
+			) const {
+				if( broadcast ) {
+					typedef internal::ExecDispatcher< T, U, mode, true, untyped_call > Disp;
+					return run_lpf< T, U, Disp >( alp_program, data_in, in_size, data_out );
+				} else {
+					typedef internal::ExecDispatcher< T, U, mode, false, untyped_call > Disp;
+					return run_lpf< T, U, Disp >( alp_program, data_in, in_size, data_out );
+				}
 			}
 
 
@@ -544,20 +534,25 @@ namespace grb {
 			 *
 			 * @return RC status code of the LPF call.
 			 */
-			template< typename T, typename U, typename DispatcherType >
+			template<
+				typename T,
+				typename U,
+				typename DispatcherType
+			>
 			RC run_lpf(
 				const lpf_func_t alp_program,
-				const DispatcherType &disp_info,
+				const void * const data_in,
+				const size_t in_size,
 				U * const data_out
 			) const {
 				lpf_args_t args = {
-					&disp_info, sizeof( DispatcherType ),
+					data_in, in_size,
 					data_out, sizeof( U ),
 					&alp_program, 1
 				};
 
 				lpf_spmd_t fun = reinterpret_cast< lpf_spmd_t >(
-					internal::_grb_exec_dispatch< T, U, mode, DispatcherType > );
+					internal::grb_exec_dispatch< T, U, DispatcherType > );
 
 				const lpf_err_t spmdrc = init == LPF_INIT_NONE
 					? lpf_exec( LPF_ROOT, LPF_MAX_P, fun, args )
@@ -594,7 +589,10 @@ namespace grb {
 			 *
 			 * @return RC status code of the LPF call
 			 */
-			template< typename T, typename U >
+			template<
+				typename T,
+				typename U
+			>
 			RC exec(
 				const AlpTypedFunc< T, U > alp_program,
 				const T &data_in,

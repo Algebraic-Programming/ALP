@@ -39,24 +39,62 @@ namespace grb {
 
 	namespace internal {
 
-		/** Data structure with input and benchmarking information. */
-		template< typename InputType, typename OutputType, bool untyped_call >
+		/** Data structure with input and benchmarking information.
+		 *
+		 * In AUTOMATIC mode it needs to be broadcasted from process 0 to the
+		 * other processes, as it contains the valid number of inner and outer
+		 * iterations. In other modes, all processes MUST choose the same number
+		 * of inner/outer iterations, otherwise deadlocks may occur.
+		 */
+		template<
+			typename InputType,
+			typename OutputType,
+			EXEC_MODE _mode,
+			bool _requested_broadcast,
+			bool untyped_call
+		>
 		struct BenchmarkDispatcher :
-			ExecDispatcher< InputType, OutputType, untyped_call >,
+			ExecDispatcher< InputType, OutputType, _mode, _requested_broadcast,
+				untyped_call >,
 			protected BenchmarkerBase
 		{
+
+			static constexpr bool needs_initial_broadcast = _mode == AUTOMATIC;
 
 			size_t inner;
 			size_t outer;
 
-			BenchmarkDispatcher() : inner( 0 ), outer( 0 ) {}
-
+			// build object from basic information
 			BenchmarkDispatcher(
-				const InputType *in, size_t s, bool bc,
-				size_t _inner, size_t _outer
-			) : ExecDispatcher< InputType, OutputType, untyped_call >( in, s, bc),
-				inner( _inner ), outer( _outer )
+				const InputType *_in,
+				const size_t _in_size,
+				size_t _inner,
+				size_t _outer
+			) :
+				ExecDispatcher< InputType, OutputType, _mode, _requested_broadcast,
+					untyped_call >( _in, _in_size ),
+				inner( _inner ),
+				outer( _outer )
 			{}
+
+			// reconstruct object from LPF args, where it is embedded in
+			// input field
+			BenchmarkDispatcher( const lpf_pid_t s, const lpf_args_t args ) :
+				ExecDispatcher< InputType, OutputType, _mode, _requested_broadcast,
+					untyped_call >( nullptr, 0 ) {
+				if( s > 0 && _mode == AUTOMATIC ) {
+					inner = 0;
+					outer = 0;
+					return;
+				}
+				typedef BenchmarkDispatcher< InputType, OutputType, _mode,
+					_requested_broadcast, untyped_call > self_t;
+				const self_t *orig = reinterpret_cast< const self_t * >( args.input );
+				this->in = orig->in;
+				this->in_size = orig->in_size;
+				inner = orig->inner;
+				outer = orig->outer;
+			}
 
 			/**
 			 * Benchmark the ALP function \p fun with the given input/output parameters.
@@ -67,7 +105,8 @@ namespace grb {
 				lpf_pid_t s, lpf_pid_t P
 			) const {
 				auto runner = [ fun, in_size, in, out, s, P ] () {
-					ExecDispatcher< InputType, OutputType, untyped_call >::lpf_grb_call
+					ExecDispatcher< InputType, OutputType, _mode,
+						_requested_broadcast, untyped_call >::lpf_grb_call
 							( fun, in_size, in, out, s, P );
 				};
 				return benchmark< BSP1D >( runner, out->times, inner, outer, s );
@@ -91,10 +130,24 @@ namespace grb {
 				lpf_func_t alp_program, const T *data_in, size_t in_size, U *data_out,
 				const size_t inner, const size_t outer, bool broadcast
 			) const {
-				typedef internal::BenchmarkDispatcher< T, U, untyped_call > Disp;
-				Disp disp_info = { data_in, in_size, broadcast, inner, outer };
-				return this->template run_lpf< T, U, Disp >( alp_program, disp_info,
-					data_out );
+				if( broadcast ) {
+					typedef internal::BenchmarkDispatcher< T, U, mode, true,
+						untyped_call > Disp;
+					Disp disp_info = { data_in, in_size, inner, outer };
+					return this->template run_lpf< T, U, Disp >( alp_program,
+						reinterpret_cast< void * >( &disp_info ),
+						sizeof( Disp ), data_out
+					);
+
+				} else {
+					typedef internal::BenchmarkDispatcher< T, U, mode, false,
+						untyped_call > Disp;
+					Disp disp_info = { data_in, in_size, inner, outer };
+					return this->template run_lpf< T, U, Disp >( alp_program,
+						reinterpret_cast< void * >( &disp_info ),
+						sizeof( Disp ), data_out
+					);
+				}
 			}
 
 
@@ -128,7 +181,7 @@ namespace grb {
 				const bool broadcast = false
 			) const {
 				// check input arguments
-				if( in_size > 0 && data_in == nullptr ) {
+				if( in_size == 0 && data_in == nullptr ) {
 					return ILLEGAL;
 				}
 				return pack_and_run< void, U, true >(
@@ -154,7 +207,11 @@ namespace grb {
 			 * @returns grb::SUCCESS On a successfully completed benchmark call, and a
 			 *                       descriptive error code otherwise.
 			 */
-			template< typename T, typename U > RC exec(
+			template<
+				typename T,
+				typename U
+			>
+			RC exec(
 				AlpTypedFunc< T, U > alp_program, const T &data_in, U &data_out,
 				const size_t inner, const size_t outer, const bool broadcast = false
 			) const {
