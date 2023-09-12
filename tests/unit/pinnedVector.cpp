@@ -563,13 +563,24 @@ int main( int argc, char ** argv ) {
 		// run tests using a non-fundamental type
 		if( error == 0 ) {
 			std::cout << "\t running tests with std::pair vector entries...\n";
-			struct input< std::pair< size_t, float > > in_pair;
-			in_pair.element = std::make_pair< size_t, float >( 17, -2.7 );
+			struct couple{
+				size_t a; float b;
+				bool operator==( const couple &c ) const {
+					return c.a == a && c.b == b;
+				}
+
+				bool operator!=( const couple &c ) const {
+					return ! ((*this) == c );
+				}
+			};
+			struct input< struct couple > in_pair;
+			in_pair.element = { 17, -2.7 };
 			in_pair.mode = mode;
 			error = runTests( in_pair );
 		}
 		if( error ) { break; }
 	}
+
 
 	// done
 	if( error ) {
