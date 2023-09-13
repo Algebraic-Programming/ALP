@@ -531,6 +531,24 @@ int runTests( struct input< T > &in ) {
 	return 0;
 }
 
+// default-costructible and trivially-copyable pair of values for launcher
+struct couple{
+	size_t a; float b;
+	bool operator==( const couple &c ) const {
+		return c.a == a && c.b == b;
+	}
+
+	bool operator!=( const couple &c ) const {
+		return ! ((*this) == c );
+	}
+};
+
+// adaptor to output stream, for #ifdef _DEBUG sections
+std::ostream & operator<<( std::ostream &out, const couple &c ) {
+	out << "( " << c.a << ", " << c.b << " )";
+	return out;
+}
+
 int main( int argc, char ** argv ) {
 	// sanity check
 	if( argc != 1 ) {
@@ -563,16 +581,6 @@ int main( int argc, char ** argv ) {
 		// run tests using a non-fundamental type
 		if( error == 0 ) {
 			std::cout << "\t running tests with std::pair vector entries...\n";
-			struct couple{
-				size_t a; float b;
-				bool operator==( const couple &c ) const {
-					return c.a == a && c.b == b;
-				}
-
-				bool operator!=( const couple &c ) const {
-					return ! ((*this) == c );
-				}
-			};
 			struct input< struct couple > in_pair;
 			in_pair.element = { 17, -2.7 };
 			in_pair.mode = mode;
