@@ -543,11 +543,13 @@ struct couple{
 	}
 };
 
-// adaptor to output stream, for #ifdef _DEBUG sections
+#ifdef _DEBUG
+// adaptor to output stream
 std::ostream & operator<<( std::ostream &out, const couple &c ) {
 	out << "( " << c.a << ", " << c.b << " )";
 	return out;
 }
+#endif
 
 int main( int argc, char ** argv ) {
 	// sanity check
