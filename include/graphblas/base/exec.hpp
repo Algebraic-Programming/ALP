@@ -192,11 +192,10 @@ namespace grb {
 			 * @tparam T The type of the data to pass to the ALP program as input. This
 			 *           must be a POD type that contains no pointers.
 			 *
-			 * \note In fact, \a T may be standard layout and contain no pointers. If it
-			 *       is default-constructible, then \a broadcast may be <tt>false</tt>.
-			 *
-			 * \warning If \a T is \em not default-constructible, then during a call to
-			 *          this function, \a broadcast must equal <tt>true</tt>.
+			 * \note In fact, \a T may be standard layout and contain no pointers, or it
+			 *       may be trivially copiable and contain no pointers. For calls with
+			 *       \a broadcast <tt>false</tt>, then \a T must furthermore be default-
+			 *       constructible.
 			 *
 			 * @tparam U The type of the output data to pass back to the caller. This may
 			 *           be of any type.
