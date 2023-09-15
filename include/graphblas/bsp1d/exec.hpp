@@ -48,6 +48,7 @@
 
 #include "../bsp/exec_broadcast_routines.hpp"
 
+
 namespace grb {
 
 	namespace internal {
@@ -287,9 +288,13 @@ namespace grb {
 			const lpf_pid_t P,
 			lpf_args_t args
 		) {
-			static_assert( std::is_same< T, void >::value ||
-				std::is_trivially_copyable< T >::value,
-				"The input type \a T must be trivially copyable or be void." );
+			static_assert(
+				std::is_same< T, void >::value ||
+					std::is_trivially_copyable< T >::value ||
+					std::is_standard_layout< T >::value,
+				"The input type \a T must be void or memcpy-able (trivially copyable or"
+				"standard layout)."
+			);
 
 			constexpr bool is_typed_alp_prog = !(DispatcherType::is_input_size_variable);
 			constexpr bool is_input_def_constructible =

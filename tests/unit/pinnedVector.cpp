@@ -532,14 +532,14 @@ int runTests( struct input< T > &in ) {
 }
 
 // default-costructible and trivially-copyable pair of values for launcher
-struct couple{
+struct couple {
 	size_t a; float b;
 	bool operator==( const couple &c ) const {
 		return c.a == a && c.b == b;
 	}
 
 	bool operator!=( const couple &c ) const {
-		return ! ((*this) == c );
+		return !((*this) == c );
 	}
 };
 
@@ -582,7 +582,14 @@ int main( int argc, char ** argv ) {
 
 		// run tests using a non-fundamental type
 		if( error == 0 ) {
-			std::cout << "\t running tests with std::pair vector entries...\n";
+			std::cout << "\t running tests with DC and SL vector entries...\n";
+			struct input< std::pair< size_t, float > > in_pair;
+			in_pair.element = std::make_pair< size_t, float >( 17, -2.7 );
+			in_pair.mode = mode;
+			error = runTests( in_pair );
+		}
+		if( error == 0 ) {
+			std::cout << "\t running tests with DC and TC vector entries...\n";
 			struct input< struct couple > in_pair;
 			in_pair.element = { 17, -2.7 };
 			in_pair.mode = mode;
@@ -590,7 +597,6 @@ int main( int argc, char ** argv ) {
 		}
 		if( error ) { break; }
 	}
-
 
 	// done
 	if( error ) {
