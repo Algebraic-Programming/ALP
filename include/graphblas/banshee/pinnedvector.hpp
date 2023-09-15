@@ -24,7 +24,7 @@
  * @author A. N. Yzelman
  */
 
-#if !defined _H_GRB_BANSHEE_PINNEDVECTOR
+#if ! defined _H_GRB_BANSHEE_PINNEDVECTOR
 #define _H_GRB_BANSHEE_PINNEDVECTOR
 
 #include <graphblas/base/pinnedvector.hpp>
@@ -33,7 +33,6 @@
 #include "coordinates.hpp"
 #include "vector.hpp"
 
-
 namespace grb {
 
 	/** No implementation notes. */
@@ -41,7 +40,6 @@ namespace grb {
 	class PinnedVector< IOType, banshee > {
 
 	private:
-
 		/**
 		 * Tell the system to delete \a _buffered_values only when we had its last
 		 * banshee.
@@ -60,15 +58,9 @@ namespace grb {
 		/** A buffer of the sparsity pattern of \a _buffered_values. */
 		internal::Coordinates< banshee > _buffered_mask;
 
-
 	public:
-
 		/** No implementation notes. */
 		PinnedVector() : _buffered_values( NULL ) {}
-
-		PinnedVector( const PinnedVector< IOType, banshee > & ) = default;
-
-		PinnedVector( PinnedVector< IOType, banshee > && ) = default;
 
 		/** No implementation notes. */
 		template< typename Coords >
@@ -110,10 +102,8 @@ namespace grb {
 			_raw_deleter.clear();
 			_assigned_deleter.clear();
 		}
-
 	};
 
 } // namespace grb
 
 #endif // end ``_H_GRB_BANSHEE_PINNEDVECTOR
-

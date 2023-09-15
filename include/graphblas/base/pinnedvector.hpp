@@ -69,8 +69,6 @@ namespace grb {
 	 *       even after a call to #grb::Launcher::exec has completed, and for as
 	 *       long as the #grb::PinnedVector instance remains valid.
 	 *
-	 * \note The PinnedVector must be trivially copyable in the C++11 sense.
-	 *
 	 * \ingroup IO
 	 */
 	template< typename IOType, enum Backend implementation >
