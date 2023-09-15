@@ -342,7 +342,7 @@ int runTests( struct input< T > &in ) {
 	for( const auto &test : AllTests ) {
 		// run test
 		in.test = test;
-		rc = rc ? rc : launcher.exec( &grbProgram, in, out );
+		rc = rc ? rc : launcher.exec( &grbProgram, in, out, true );
 		if( out.error_code != SUCCESS ) {
 			return offset + 10;
 		}
