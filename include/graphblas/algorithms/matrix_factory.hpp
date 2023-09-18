@@ -218,14 +218,9 @@ namespace grb {
 			const D identity_value = static_cast< D >(1),
 			const long k = 0L
 		) {
-			// Todo: When using the iterator below, an assertion is triggered in the
-			//       buildMatrixUnique method.
-			// utils::containers::ConstantVector< D > V( identity_value, std::min( nrows, ncols ) );
-
-			std::unique_ptr< D[] > V( new D[ std::min( nrows, ncols ) ] );
-			std::fill_n( V.get(), std::min( nrows, ncols ), identity_value );
+			const utils::containers::ConstantVector< D > V( identity_value, std::min( nrows, ncols ) );
 			return internal::createIdentity_generic< D, descr, RIT, CIT, NIT, implementation >(
-				nrows, ncols, k, io_mode, V.get()
+				nrows, ncols, k, io_mode, V.begin()
 			);
 		}
 
@@ -501,18 +496,19 @@ namespace grb {
 			const size_t nrows, const size_t ncols, IOMode io_mode, const D value
 		) {
 			Matrix< D, implementation, RIT, CIT, NIT > matrix( nrows, ncols, nrows * ncols );
-
-			utils::containers::ChainedIteratorsVector<
-				typename utils::containers::ConstantVector< RIT >::const_iterator
-			> I( nrows );
+			// Initialise rows indices container with a range from 0 to nrows,
+			// each value repeated ncols times.
+			utils::containers::Range< RIT > I( 0, nrows, 1, ncols );
+			// Initialise columns values container with a range from 0 to ncols
+			// repeated nrows times.
 			utils::containers::ChainedIteratorsVector<
 				typename utils::containers::Range< CIT >::const_iterator
 			> J( nrows );
-			utils::containers::ConstantVector< D > V( value, nrows * ncols );
 			for( size_t i = 0; i < nrows; ++i ) {
-				I.push_back( utils::containers::ConstantVector< RIT >( i, ncols ) );
 				J.push_back( utils::containers::Range< CIT >( 0, ncols ) );
 			}
+			// Initialise values container with the given value.
+			utils::containers::ConstantVector< D > V( value, nrows * ncols );
 			assert( std::distance( I.begin(), I.end() ) == std::distance( J.begin(), J.end() ) );
 			assert( std::distance( I.begin(), I.end() ) == std::distance( V.begin(), V.end() ) );
 
@@ -565,14 +561,15 @@ namespace grb {
 			const size_t nrows, const size_t ncols, IOMode io_mode
 		) {
 			Matrix< void, implementation, RIT, CIT, NIT > matrix( nrows, ncols, nrows * ncols );
-			utils::containers::ChainedIteratorsVector<
-				typename utils::containers::ConstantVector< RIT >::const_iterator
-			> I( nrows );
+			// Initialise rows indices container with a range from 0 to nrows,
+			// each value repeated ncols times.
+			utils::containers::Range< RIT > I( 0, nrows, 1, ncols );
+			// Initialise columns values container with a range from 0 to ncols
+			// repeated nrows times.
 			utils::containers::ChainedIteratorsVector<
 				typename utils::containers::Range< CIT >::const_iterator
 			> J( nrows );
 			for( size_t i = 0; i < nrows; ++i ) {
-				I.push_back( utils::containers::ConstantVector< RIT >( i, ncols ) );
 				J.push_back( utils::containers::Range< CIT >( 0, ncols ) );
 			}
 			assert( std::distance( I.begin(), I.end() ) == std::distance( J.begin(), J.end() ) );

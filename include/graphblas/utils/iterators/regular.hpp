@@ -130,13 +130,9 @@ namespace grb {
 					) :
 						_count( count ), _val( dummy ), _state( state )
 					{
-						if( start ) {
-							_pos = 0;
-							if( count > 0 ) {
-								SelfType::func( _val, state, 0 );
-							}
-						} else {
-							_pos = count;
+						_pos = start ? 0 : count;
+						if( count > 0 ) {
+							SelfType::func( _val, state, _pos );
 						}
 					}
 
@@ -445,7 +441,7 @@ namespace grb {
 				public:
 
 					typedef grb::utils::internal::PosBasedIterator<
-						T, std::pair< size_t, size_t >, Sequence< T >
+						T, std::tuple< size_t, size_t, size_t >, Sequence< T >
 					> RealType;
 
 
@@ -457,7 +453,7 @@ namespace grb {
 						const size_t count,
 						const size_t pos,
 						const T val,
-						const std::pair< size_t, size_t > state
+						const std::tuple< size_t, size_t, size_t > state
 					) {
 						return RealType( count, pos, val, state );
 					}
@@ -467,10 +463,13 @@ namespace grb {
 
 					inline static void func(
 						T &val,
-						const std::pair< size_t, size_t > &state,
+						const std::tuple< size_t, size_t, size_t > &state,
 						const size_t pos
 					) {
-						val = state.first + pos * state.second;
+						const size_t offset = std::get<0>(state);
+						const size_t stride = std::get<1>(state);
+						const size_t repetitions = std::get<2>(state);
+						val = offset + ( pos / repetitions ) * stride;
 					}
 
 					// constructor
@@ -478,25 +477,27 @@ namespace grb {
 					/**
 					 * Constructs an iterator over a given sequence.
 					 *
-					 * @param[in] count  The number of elements in the sequence.
-					 * @param[in] start  Whether the iterator is in start position (or in end
-					 *                   position instead).
-					 * @param[in] offset The first element in the sequence.
-					 * @param[in] stride The distance between two elements in the sequence.
-					 * @param[in] dummy  A dummy initialiser for return elements; optional, in
-					 *                   case \a T is not default-constructible.
+					 * @param[in] count        The number of elements in the sequence.
+					 * @param[in] start        Whether the iterator is in start position (or in end
+					 *                         position instead).
+					 * @param[in] offset       The first element in the sequence.
+					 * @param[in] stride       The distance between two elements in the sequence.
+					 * @param[in] repetitions The number of times each element is repeated.
+					 * @param[in] dummy        A dummy initialiser for return elements; optional, in
+					 *                         case \a T is not default-constructible.
 					 */
 					static RealType make_iterator(
 						const size_t count,
 						const bool start,
-						const size_t offset = 0,
-						const size_t stride = 1,
+						const size_t offset = 0UL,
+						const size_t stride = 1UL,
+						const size_t repetitions = 1UL,
 						T dummy = T()
 					) {
 						return RealType(
 							count,
 							start,
-							std::pair< size_t, size_t >( offset, stride ),
+							std::tuple< size_t, size_t, size_t >( offset, stride, repetitions ),
 							dummy
 						);
 					}
@@ -564,7 +565,8 @@ namespace grb {
 			};
 
 			/**
-			 * A container that contains a sequence of numbers with a given stride.
+			 * A container that contains a sequence of numbers with a given stride,
+			 * and optionally a given number of repetitions.
 			 *
 			 * @tparam T The type of numbers; optional, default is <tt>size_t</tt>.
 			 *
@@ -579,9 +581,11 @@ namespace grb {
 
 					typedef grb::utils::iterators::Sequence< T > FactoryType;
 
-					const size_t _start;
+					const size_t _start, _end;
 
 					const size_t _stride;
+
+					const size_t _repetitions;
 
 					const size_t _count;
 
@@ -595,48 +599,67 @@ namespace grb {
 					/**
 					 * Constructs a range.
 					 *
-					 * @param[in] start  The start of the range (inclusive)
-					 * @param[in] end    The end of the range (exclusive)
-					 * @param[in] stride The stride of the range (optional, default is 1)
+					 * @param[in] start       The start of the range (inclusive)
+					 * @param[in] end         The end of the range (exclusive)
+					 * @param[in] stride      The stride of the range
+					 *                        (optional, default is 1)
+					 * @param[in] repetitions The number of repetitions of
+					 *                        each value (optional, default is 1)
 					 *
 					 * The value \a end must be larger than or equal to \a start. Equal values
 					 * for \a start and \a end result in an empty range. A larger value for
 					 * \a end than \a start will result in a range consisting at least one
 					 * element (\a start).
 					 *
-					 * For example, the range \f$ (1, 2, 3, 4, 5, 6, 7, 8, 9, 10) \f$ may be
-					 * constructed by \a start 1, \a end 11, \a stride 1 and \a repeatitions 1.
+					 * \parblock
+					 * \par Examples
+					 * The range \f$ (1, 2, 3, 4, 5, 6, 7, 8, 9, 10) \f$ may be
+					 * constructed by \a start 1, \a end 11, \a stride 1 and \a repetitions 1.
+					 *
+					 * The range \f$ (1, 3, 5, 7, 9) \f$ may be constructed by \a start 1,
+					 * \a end 11, \a stride 2 and \a repetitions 1.
+					 *
+					 * The range \f$ (1, 1, 2, 2, 3, 3) \f$ may be constructed by
+					 * \a start 1, \a end 4, \a stride 1 and \a repetitions 2.
+					 *
+					 * \endparblock
 					 */
 					Range(
 						const size_t start,
 						const size_t end,
-						const size_t stride = 1UL
+						const size_t stride = 1UL,
+						const size_t repetitions = 1UL
 					) noexcept :
-						_start( start ), _stride( stride ), _count(
-							start == end ? 0 : (
-								(end-start) % stride > 0
+						_start( start ),
+						_end( end ),
+						_stride( stride ),
+						_repetitions( repetitions ),
+						_count(
+							start == end
+								? 0
+								: ( (end-start) % stride > 0
 									? ((end-start) / stride + 1)
 									: (end-start) / stride
-							)
+								) * repetitions
 						)
 					{
 						assert( start <= end );
 					}
 
 					iterator begin() const noexcept {
-						return FactoryType::make_iterator( _count, true, _start, _stride );
+						return FactoryType::make_iterator( _count, true, _start, _stride, _repetitions );
 					}
 
 					iterator end() const noexcept {
-						return FactoryType::make_iterator( _count, false, _start, _stride );
+						return FactoryType::make_iterator( _count, false, _start, _stride, _repetitions );
 					}
 
 					const_iterator cbegin() const noexcept {
-						return FactoryType::make_iterator( _count, true, _start, _stride );
+						return FactoryType::make_iterator( _count, true, _start, _stride, _repetitions );
 					}
 
 					const_iterator cend() const noexcept {
-						return FactoryType::make_iterator( _count, false, _start, _stride );
+						return FactoryType::make_iterator( _count, false, _start, _stride, _repetitions );
 					}
 
 			};
