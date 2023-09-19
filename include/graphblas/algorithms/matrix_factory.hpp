@@ -52,6 +52,16 @@ namespace grb {
 
 		namespace internal {
 
+			size_t compute_diag_length( size_t nrows, size_t ncols, long k ) {
+				const size_t k_abs = static_cast<size_t>( (k < 0L) ? -k : k );
+				return ( k_abs >= nrows || k_abs >= ncols )
+					? 0
+					: std::min(
+						std::min( nrows, ncols ),
+						std::min( ncols - k_abs, nrows - k_abs )
+					);
+			}
+
 			template<
 				typename D,
 				Descriptor descr,
@@ -67,21 +77,13 @@ namespace grb {
 				const size_t ncols,
 				const long k,
 				IOMode io_mode,
-				IteratorV V_iter,
-				long V_length_limit = -1L // Negative means the limit is diag_length_k
+				IteratorV V_iter
 			) {
-				const size_t k_abs = static_cast<size_t>( (k < 0L) ? -k : k );
-				const size_t diag_length_k = ( k_abs >= nrows || k_abs >= ncols )
-					? 0
-					: std::min( std::min( nrows, ncols ), std::min( ncols - k_abs, nrows - k_abs ) );
-
-				const size_t diag_length = ( V_length_limit < 0 )
-					? diag_length_k
-					: std::min( diag_length_k, static_cast< size_t >( V_length_limit ) );
+				const size_t diag_length = compute_diag_length(nrows, ncols, k);
 
 				Matrix< D, implementation, RIT, CIT, NIT > matrix( nrows, ncols, diag_length );
-				const RIT k_i_incr = static_cast< RIT >( ( k < 0L ) ? k_abs : 0UL );
-				const CIT k_j_incr = static_cast< CIT >( ( k < 0L ) ? 0UL : k_abs );
+				const RIT k_i_incr = static_cast< RIT >( ( k < 0L ) ? std::abs(k) : 0UL );
+				const CIT k_j_incr = static_cast< CIT >( ( k < 0L ) ? 0UL : std::abs(k) );
 				utils::containers::Range< RIT > I( k_i_incr, diag_length + k_i_incr );
 				utils::containers::Range< CIT > J( k_j_incr, diag_length + k_j_incr );
 
@@ -115,11 +117,7 @@ namespace grb {
 				IOMode io_mode,
 				typename std::enable_if< std::is_void< D >::value, int >::type = 0
 			) {
-				const size_t k_abs = static_cast<size_t>( (k < 0L) ? -k : k );
-				const size_t diag_length = ( k_abs >= nrows || k_abs >= ncols )
-					? 0
-					: std::min( std::min( nrows, ncols ), std::min( ncols - k_abs, nrows - k_abs ) );
-
+				const size_t diag_length = compute_diag_length(nrows, ncols, k);
 				Matrix< void, implementation, RIT, CIT, NIT > matrix( nrows, ncols, diag_length );
 				utils::containers::Range< RIT > I( 0, diag_length );
 				utils::containers::Range< CIT > J( 0, diag_length );
@@ -218,9 +216,10 @@ namespace grb {
 			const D identity_value = static_cast< D >(1),
 			const long k = 0L
 		) {
-			const utils::containers::ConstantVector< D > V( identity_value, std::min( nrows, ncols ) );
+			const size_t diag_length = internal::compute_diag_length(nrows, ncols, k);
+			const utils::containers::ConstantVector< D > V( identity_value, diag_length );
 			return internal::createIdentity_generic< D, descr, RIT, CIT, NIT, implementation >(
-				nrows, ncols, k, io_mode, V.begin()
+				nrows, ncols, k, io_mode, V.cbegin()
 			);
 		}
 
@@ -377,8 +376,6 @@ namespace grb {
 		 * @param n               The number of rows/columns of the matrix.
 		 * @param io_mode         The I/O mode used to build the matrix.
 		 * @param V               The iterator used to provide the values.
-		 * @param V_length_limit  The maximum number of values to read from \a V
-		 *                        (default = -1). The limit is \a n if negative.
 		 * @return Matrix< D, implementation, RIT, CIT, NIT >
 		 *
 		 * \parblock
@@ -402,7 +399,6 @@ namespace grb {
 			const size_t n,
 			IOMode io_mode,
 			ValueIterator V,
-			long V_length_limit = -1L,
 			const typename std::enable_if<
 				std::is_same<
 					typename std::iterator_traits< ValueIterator >::value_type,
@@ -413,7 +409,7 @@ namespace grb {
 		) {
 			return internal::createIdentity_generic<
 				D, descr, RIT, CIT, NIT, implementation, ValueIterator
-			>( n, n, 0L, io_mode, V, V_length_limit );
+			>( n, n, 0L, io_mode, V );
 		}
 
 		/**
@@ -433,8 +429,6 @@ namespace grb {
 		 * @param n               The number of rows/columns of the matrix.
 		 * @param io_mode         The I/O mode used to build the matrix.
 		 * @param V               The iterator used to provide the values.
-		 * @param V_length_limit  The maximum number of values to read from \a V
-		 *                        (default = -1). The limit is \a n if negative.
 		 * @return Matrix< D, implementation, RIT, CIT, NIT >
 		 *
 		 * \parblock
@@ -456,11 +450,10 @@ namespace grb {
 		Matrix< D, implementation, RIT, CIT, NIT > identity(
 			const size_t n,
 			IOMode io_mode,
-			const D * V,
-			long V_length_limit = -1L
+			const D * V
 		) {
 			return internal::createIdentity_generic< D, descr, RIT, CIT, NIT, implementation >(
-				n, n, 0L, io_mode, V, V_length_limit
+				n, n, 0L, io_mode, V
 			);
 		}
 
