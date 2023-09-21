@@ -321,7 +321,7 @@ namespace grb {
 					enum Backend implementation
 				>
 				static RC benchmark(
-					AlpUntypedFunc< void, U > alp_program,
+					AlpUntypedFunc< U > alp_program,
 					const void * data_in,
 					const size_t in_size,
 					U &data_out,

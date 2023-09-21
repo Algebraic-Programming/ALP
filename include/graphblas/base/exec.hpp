@@ -49,9 +49,8 @@ namespace grb {
 	/**
 	 * Type definition for an ALP function without input type information.
 	 */
-	template< typename InputType, typename OutputType >
-	using AlpUntypedFunc = void ( * )( const InputType *,
-		size_t, OutputType & );
+	template< typename OutputType >
+	using AlpUntypedFunc = void ( * )( const void *, size_t, OutputType & );
 
 	/**
 	 * The various ways in which the #grb::Launcher can be used to execute an
@@ -303,7 +302,7 @@ namespace grb {
 			 */
 			template< typename U >
 			RC exec(
-				AlpUntypedFunc< void, U > alp_program,
+				AlpUntypedFunc< U > alp_program,
 				const void * data_in,
 				const size_t in_size,
 				U &data_out,

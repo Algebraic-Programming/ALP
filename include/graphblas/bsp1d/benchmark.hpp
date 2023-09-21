@@ -174,7 +174,7 @@ namespace grb {
 			 *                       descriptive error code otherwise.
 			 */
 			template< typename U > RC exec(
-				AlpUntypedFunc< void, U > alp_program,
+				AlpUntypedFunc< U > alp_program,
 				const void * data_in, const size_t in_size,
 				U &data_out,
 				const size_t inner, const size_t outer,

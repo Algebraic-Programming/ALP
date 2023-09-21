@@ -183,11 +183,11 @@ template< grb::EXEC_MODE mode, bool broadcasted, typename InputT  > struct calle
 };
 
 template< grb::EXEC_MODE mode, bool broadcasted, typename InputT  > struct vcaller {
-	static constexpr grb::AlpUntypedFunc< void, output > fun = vgrbProgram< mode, broadcasted, input >;
+	static constexpr grb::AlpUntypedFunc< output > fun = vgrbProgram< mode, broadcasted, input >;
 };
 
 template< typename InputT > struct vcaller< grb::AUTOMATIC, false, InputT > {
-	static constexpr grb::AlpUntypedFunc< void, output > fun = autoVgrbProgram;
+	static constexpr grb::AlpUntypedFunc< output > fun = autoVgrbProgram;
 };
 
 template< typename InputT >
@@ -202,7 +202,7 @@ class Runner {
 		) = 0;
 
 		virtual grb::RC launch_untyped(
-			grb::AlpUntypedFunc< void, output >,
+			grb::AlpUntypedFunc< output >,
 			const void *, size_t,
 			output &,
 			bool
@@ -231,7 +231,7 @@ class bsp_launcher :
 		}
 
 		grb::RC launch_untyped(
-			grb::AlpUntypedFunc< void, output > grbProgram,
+			grb::AlpUntypedFunc< output > grbProgram,
 			const void * in, size_t in_size,
 			output &out, bool bc
 		) override {
@@ -268,7 +268,7 @@ class bsp_benchmarker :
 		}
 
 		grb::RC launch_untyped(
-			const grb::AlpUntypedFunc< void, output > grbProgram,
+			const grb::AlpUntypedFunc< output > grbProgram,
 			const void * const in, const size_t in_size,
 			output &out, const bool bc
 		) override {
@@ -547,8 +547,8 @@ int main( int argc, char ** argv ) {
 			);
 			std::cout << "  => untyped call\n" << std::endl;
 			(void) strncpy( in.str, input_str, STR_LEN + 1 );
-			grb::AlpUntypedFunc< void, output > vfun =
-				getALPFun< vcaller, grb::AlpUntypedFunc< void, output >, input >(
+			grb::AlpUntypedFunc< output > vfun =
+				getALPFun< vcaller, grb::AlpUntypedFunc< output >, input >(
 					mode, broadcast
 				);
 			out.exit_code = 256; // the ALP function MUST set to 0

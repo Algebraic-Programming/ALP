@@ -97,7 +97,7 @@ namespace grb {
 			/** No implementation notes. */
 			template< typename U >
 			RC exec(
-				AlpUntypedFunc< void, U > alp_program,
+				AlpUntypedFunc< U > alp_program,
 				const void * const data_in, const size_t in_size,
 				U &data_out,
 				const bool broadcast = false

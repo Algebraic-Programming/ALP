@@ -172,7 +172,7 @@ namespace grb {
 				const InputType *in, OutputType *out,
 				lpf_pid_t, lpf_pid_t
 			) {
-				reinterpret_cast< AlpUntypedFunc< InputType, OutputType > >( fun )
+				reinterpret_cast< AlpUntypedFunc< OutputType > >( fun )
 					( in, in_size, *out );
 			}
 
@@ -631,7 +631,7 @@ namespace grb {
 			 */
 			template< typename U >
 			RC exec(
-				const AlpUntypedFunc< void, U > alp_program,
+				const AlpUntypedFunc< U > alp_program,
 				const void * const data_in, const size_t in_size,
 				U &data_out,
 				const bool broadcast = false
