@@ -155,7 +155,7 @@ int main( int argc, char ** argv ) {
 	std::cout << "This is functional test " << argv[ 0 ] << "\n";
 	grb::Launcher< grb::AUTOMATIC > launcher;
 	grb::RC out;
-	if( launcher.exec( &grbProgram, input, out, false ) != grb::SUCCESS ) {
+	if( launcher.exec( &grbProgram, input, out, true ) != grb::SUCCESS ) {
 		std::cerr << "Launching test FAILED\n";
 		return 255;
 	}
