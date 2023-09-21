@@ -160,6 +160,7 @@ int main( int argc, char ** argv ) {
 		return 255;
 	}
 	if( out != grb::SUCCESS ) {
+		std::cerr << std::flush;
 		std::cout << "Test FAILED (" << grb::toString( out ) << ")" << std::endl;
 		return out;
 	} else {

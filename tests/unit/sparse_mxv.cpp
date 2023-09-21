@@ -190,14 +190,15 @@ void grbProgram( const int &, int &error ) {
 }
 
 int main( int argc, char ** argv ) {
-	(void)argc;
-	(void)printf( "Functional test executable: %s\n", argv[ 0 ] );
+	(void) argc;
+	std::cout << "Functional test executable: " << argv[ 0 ] << "\n";
 
 	// sanity check against metabugs
 	int error = 0;
 	for( size_t i = 0; i < 15; ++i ) {
 		if( ! grb::utils::equals( data1[ i ] * data2[ i ], chk[ i ] ) ) {
-			(void)fprintf( stderr, "Sanity check error at position %zd: %d + %d does not equal %d.\n", i, data1[ i ], data2[ i ], chk[ i ] );
+			std::cerr << "Sanity check error at position " << i << ": " << data1[ i ]
+				<< " + " << data2[ i ] << " does not equal " << chk[ i ] << ".\n";
 			error = 1;
 		}
 	}
@@ -205,15 +206,16 @@ int main( int argc, char ** argv ) {
 	if( !error ) {
 		grb::Launcher< AUTOMATIC > launcher;
 		if( launcher.exec( &grbProgram, error, error ) != grb::SUCCESS ) {
-			(void)fprintf( stderr, "Fatal error: could not launch test.\n" );
+			std::cerr << "Fatal error: could not launch test.\n";
 			error = 2;
 		}
 	}
 
 	if( !error ) {
-		(void)printf( "Test OK\n\n" );
+		std::cout << "Test OK\n" << std::endl;
 	} else {
-		(void)printf( "Test FAILED\n\n" );
+		std::cerr << std::flush;
+		std::cout << "Test FAILED\n" << std::endl;
 	}
 
 	// done

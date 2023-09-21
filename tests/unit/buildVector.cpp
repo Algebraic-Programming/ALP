@@ -297,6 +297,7 @@ int main( int argc, char ** argv ) {
 	if( error == 0 ) {
 		std::cout << "Test OK" << std::endl;
 	} else {
+		std::cerr << std::flush;
 		std::cout << "Test FAILED" << std::endl;
 	}
 

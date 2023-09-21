@@ -179,7 +179,7 @@ int main( int argc, char ** argv ) {
 
 	grb::Launcher< AUTOMATIC > launcher;
 
-	enum grb::RC rc = launcher.exec( &grbProgram, in, out );
+	enum grb::RC rc = launcher.exec( &grbProgram, in, out, true );
 	if( rc != SUCCESS ) {
 		std::cerr << "launcher.exec returns with non-SUCCESS error code "
 			<< toString(rc) << std::endl;
@@ -190,10 +190,11 @@ int main( int argc, char ** argv ) {
 
 	// done
 	if( out.error_code != SUCCESS ) {
-		std::cout << "Test FAILED\n\n";
+		std::cerr << std::flush;
+		std::cout << "Test FAILED\n" << std::endl;
 		return 1;
 	}
-	std::cout << "Test OK\n\n";
+	std::cout << "Test OK\n" << std::endl;
 	return 0;
 }
 
