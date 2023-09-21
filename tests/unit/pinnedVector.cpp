@@ -531,21 +531,21 @@ int runTests( struct input< T > &in ) {
 	return 0;
 }
 
-// default-costructible and trivially-copyable pair of values for launcher
-struct couple {
+// default-constructible and trivially copiable pair of values for launcher
+struct Couple {
 	size_t a; float b;
-	bool operator==( const couple &c ) const {
+	bool operator==( const struct Couple &c ) const {
 		return c.a == a && c.b == b;
 	}
 
-	bool operator!=( const couple &c ) const {
+	bool operator!=( const struct Couple &c ) const {
 		return !((*this) == c );
 	}
 };
 
 #ifdef _DEBUG
 // adaptor to output stream
-std::ostream & operator<<( std::ostream &out, const couple &c ) {
+std::ostream & operator<<( std::ostream &out, const struct Couple &c ) {
 	out << "( " << c.a << ", " << c.b << " )";
 	return out;
 }
@@ -590,7 +590,7 @@ int main( int argc, char ** argv ) {
 		}
 		if( error == 0 ) {
 			std::cout << "\t running tests with DC and TC vector entries...\n";
-			struct input< struct couple > in_pair;
+			struct input< struct Couple > in_pair;
 			in_pair.element = { 17, -2.7 };
 			in_pair.mode = mode;
 			error = runTests( in_pair );
