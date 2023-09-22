@@ -69,17 +69,19 @@ namespace grb {
 	 * An ALP program remains unaware of which mode the launcher employs. Normally,
 	 * it requires no change depending on how it is launched. An exception is when
 	 * data is passed through and from the caller program:
-	 *  -# if the launch mode is #grb::EXEC_MODE::AUTOMATIC, best practice is to
-	 *     minimise the input data footprint that requires broadcasting to all user
-	 *     processes executing the algorithm. The best case is if no input data
-	 *     need be broadcast. Output is retained only from the first user process,
-	 *     i.e., the user process for which #grb::spmd<>::pid() returns zero.
+	 *  -# if the launch mode is #AUTOMATIC, best practice is to minimise the input
+	 *     data footprint that requires broadcasting to all user processes executin
+	 *     the algorithm. The best case is if no input data need be broadcast.
+	 *     Output is retained only from the first user process, i.e., the user
+	 *     process for which #grb::spmd<>::pid() returns zero.
 	 *  -# for any other launch mode, multiple user processes may exist prior to
 	 *     any ALP or ALP/GraphBLAS context exist. Each pre-existing user process
 	 *     is then mapped to an ALP user process in a one-to-one manner. Data,
 	 *     including pointer data, may be passed freely between these processes;
 	 *     this may, in principle and contrary to the automatic mode, consider
-	 *     large data.
+	 *     large data. Output is retained at each user process. In best practice,
+	 *     different user processes return different parts of the overall output,
+	 *     thereby achieving parallel I/O.
 	 */
 	enum EXEC_MODE {
 
@@ -139,11 +141,11 @@ namespace grb {
 			/**
 			 * Constructs a new #grb::Launcher.
 			 *
-			 * In #grb::EXEC_MODE::AUTOMATIC mode, a single root user processes issues
-			 * a call to this constructor. In all other modes, a call to this constructor
-			 * is \em collective: all \a nprocs processes that are to form a single
-			 * launcher group, must make a simultaneous call to this constructor and must
-			 * do so with consistent arguments.
+			 * In #AUTOMATIC mode, a single root user processes issues a call to this
+			 * constructor. In all other modes, a call to this constructor is
+			 * \em collective: all \a nprocs processes that are to form a single launcher
+			 * group, must make a simultaneous call to this constructor and must do so
+			 * with consistent arguments.
 			 *
 			 * \note One may note that in all modes, a call to this constructor must be
 			 *       collective; it is just that in automatic mode, \a nprocs must be one
