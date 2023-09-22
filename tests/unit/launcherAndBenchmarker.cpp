@@ -106,54 +106,62 @@ void grbProgram( const InputT &in, struct output &out ) {
 	const char * expected = nullptr;
 
 	if( broadcasted ) {
-		// independently from mode is or process id, every process must have the same string
+		// independently from mode is or process id, every process must have the same
+		// string
 		expected = truth;
 	} else {
-		switch (mode)
-		{
-		case grb::AUTOMATIC:
-			// here, only the master process can have the "new" string
-			// while the other processes have the "default" string
-			expected = s == 0 ? truth : default_str;
-			break;
-		case grb::FROM_MPI:
-		case grb::MANUAL:
-			// the master must have the new string, while other processes the prelude
-			expected = s == 0 ? truth : prelude;
-			break;
-		default:
-			out.exit_code = 1;
-			printf( "- ERROR: unknown mode %d\n", mode );
-			return;
-			break;
+		// in non-broadcasting mode, what a process has depends on its rank and the
+		// launcher mode.
+		switch (mode) {
+			case grb::AUTOMATIC:
+				// here, only the master process can have the "new" string
+				// while the other processes have the "default" string
+				expected = s == 0 ? truth : default_str;
+				break;
+			case grb::FROM_MPI:
+			case grb::MANUAL:
+				// the master must have the new string, while other processes the prelude
+				expected = s == 0 ? truth : prelude;
+				break;
+			default:
+				out.exit_code = 1;
+				printf( "- ERROR: unknown mode %d\n", mode );
+				return;
+				break;
 		}
 	}
 	out.exit_code = in == expected ? 0 : 1;
 
-
+	std::cout << "--- PID " << s << " of " << P << ": ";
 	if( out.exit_code == 0 ) {
-		printf( "--- PID %lu of %lu: MATCH", s, P );
+		std::cout << "MATCH\n";
 	} else {
-		printf( "--- PID %lu of %lu: ERROR! input string\n\"%s\"\n!=\nexpected\n\"%s\"\n",
-		s, P, in.str, expected );
+		std::cout << "ERROR! Input string\n\"" << in.str
+			<< "\"\n!= Expected string\n\"" << expected << "\"\n";
 	}
 }
 
-template< grb::EXEC_MODE mode, bool broadcasted, typename InputT  >
-void vgrbProgram( const void* __in, const size_t size, struct output &out ) {
+template< grb::EXEC_MODE mode, bool broadcasted, typename InputT >
+void vgrbProgram(
+	const void * const __in, const size_t size,
+	struct output &out
+) {
 	if( size != STR_LEN + 1 ) {
 		const size_t P = grb::spmd<>::nprocs();
 		const size_t s = grb::spmd<>::pid();
 		out.P = P;
-		printf( "--- PID %lu of %lu: ERROR! input size %lu != expected %lu\n",
-			s, P, size, STR_LEN + 1 );
-			return;
+		std::cout << "--- PID " << s << " of " << P << ": "
+			<< "ERROR! Input size " << size << " !- expected " << (STR_LEN+1) << "\n";
+		return;
 	}
 	const struct input &in = *reinterpret_cast< const struct input *>( __in );
 	grbProgram< mode, broadcasted, InputT >( in, out );
 }
 
-void autoVgrbProgram( const void* __in, const size_t size, struct output &out ) {
+void autoVgrbProgram(
+	const void * const __in, const size_t size,
+	struct output &out
+) {
 	const size_t P = grb::spmd<>::nprocs();
 	const size_t s = grb::spmd<>::pid();
 	out.P = P;
@@ -161,32 +169,40 @@ void autoVgrbProgram( const void* __in, const size_t size, struct output &out ) 
 		const input &in = *static_cast< const input * >( __in );
 		out.exit_code = size == sizeof( input ) &&
 			in == truth ? 0 : 1;
+		std::cout << "--- PID " << s << " of " << P << ": ";
 		if( out.exit_code == 0 ) {
-			printf( "--- PID %lu of %lu: MATCH", s, P );
+			std::cout << "MATCH\n";
 		} else {
-			printf( "--- PID %lu of %lu: ERROR! input size is %lu, string\n\"%s\"\n!=\nexpected\n\"%s\"\n",
-				s, P, size, in.str, truth );
+			std::cout << "ERROR! Input size is " << size << ", "
+				<< "string\n\"" << in.str << "\"\n!= "
+				<< "expected\n\"" << truth << "\"\n";
 		}
 	} else {
 		out.exit_code = __in == nullptr && size == 0 ? 0 : 1;
+		std::cout << "--- PID " << s << " of " << P << ": ";
 		if( out.exit_code == 0 ) {
-			printf( "--- PID %lu of %lu: MATCH, got expected values (nullptr and 0)\n", s, P );
+			std::cout << "MATCH, got expected values (nullptr and 0)\n";
 		} else {
-			printf( "--- PID %lu of %lu: ERROR! got %p != nullptr and %lu != 0\n",
-				s, P, __in, size );
+			std::cout << "ERROR! Got " << __in << " != nullptr and " << size
+				<< " != 0\n";
 		}
 	}
 }
 
-template< grb::EXEC_MODE mode, bool broadcasted, typename InputT  > struct caller {
-	static constexpr grb::AlpTypedFunc< InputT, output > fun = grbProgram< mode, broadcasted, InputT >;
+template< grb::EXEC_MODE mode, bool broadcasted, typename InputT >
+struct caller {
+	static constexpr grb::AlpTypedFunc< InputT, output > fun =
+		grbProgram< mode, broadcasted, InputT >;
 };
 
-template< grb::EXEC_MODE mode, bool broadcasted, typename InputT  > struct vcaller {
-	static constexpr grb::AlpUntypedFunc< output > fun = vgrbProgram< mode, broadcasted, input >;
+template< grb::EXEC_MODE mode, bool broadcasted, typename InputT >
+struct vcaller {
+	static constexpr grb::AlpUntypedFunc< output > fun =
+		vgrbProgram< mode, broadcasted, input >;
 };
 
-template< typename InputT > struct vcaller< grb::AUTOMATIC, false, InputT > {
+template< typename InputT >
+struct vcaller< grb::AUTOMATIC, false, InputT > {
 	static constexpr grb::AlpUntypedFunc< output > fun = autoVgrbProgram;
 };
 
@@ -297,7 +313,9 @@ std::unique_ptr< Runner< InputT > > make_runner(
 #endif
 
 	switch (type) {
+
 		case Launch:
+
 			switch (mode) {
 				case grb::AUTOMATIC:
 					ret = new bsp_launcher< grb::AUTOMATIC, InputT >;
@@ -308,7 +326,8 @@ std::unique_ptr< Runner< InputT > > make_runner(
 					break;
 
 				case grb::MANUAL:
-					ret = new bsp_launcher< grb::MANUAL, InputT >( s, P, host, port, mpi_inited );
+					ret = new bsp_launcher< grb::MANUAL, InputT >( s, P, host, port,
+						mpi_inited );
 					break;
 #else
 				case grb::MANUAL:
@@ -331,12 +350,14 @@ std::unique_ptr< Runner< InputT > > make_runner(
 					break;
 
 				case grb::MANUAL:
-					ret = new bsp_benchmarker< grb::MANUAL, InputT >( s, P, host, port, mpi_inited );
+					ret = new bsp_benchmarker< grb::MANUAL, InputT >( s, P, host, port,
+						mpi_inited );
 					break;
 #else
 				case grb::MANUAL:
 					ret = new bsp_benchmarker< grb::MANUAL, InputT >( s, P, host, port );
 					break;
+
 				case grb::FROM_MPI:
 #endif
 
@@ -346,7 +367,9 @@ std::unique_ptr< Runner< InputT > > make_runner(
 			break;
 
 		default:
+			// error is caught later
 			break;
+
 	}
 
 	if( ret == nullptr ) {
@@ -362,11 +385,20 @@ std::unique_ptr< Runner< InputT > > make_runner(
 	}
 
 
-template< template< grb::EXEC_MODE, bool, typename InputT > class FunT, grb::EXEC_MODE mode, typename RetT, typename InputT > RetT getFun( bool broadcast ) {
-	return  broadcast ? FunT< mode, true, InputT >::fun : FunT< mode, false, InputT >::fun;
+template<
+	template< grb::EXEC_MODE, bool, typename InputT > class FunT,
+	grb::EXEC_MODE mode, typename RetT, typename InputT
+>
+RetT getFun( bool broadcast ) {
+	return broadcast 
+		? FunT< mode, true, InputT >::fun
+		: FunT< mode, false, InputT >::fun;
 }
 
-template< template< grb::EXEC_MODE, bool, typename InputT  > class CallerT, typename RetT, typename InputT  >
+template<
+	template< grb::EXEC_MODE, bool, typename InputT > class CallerT,
+	typename RetT, typename InputT
+>
 RetT getALPFun( grb::EXEC_MODE mode, bool broadcast ) {
 	switch (mode) {
 		case grb::AUTOMATIC:
@@ -379,7 +411,8 @@ RetT getALPFun( grb::EXEC_MODE mode, bool broadcast ) {
 			return getFun< CallerT, grb::MANUAL, RetT, InputT >( broadcast );
 			break;
 		default:
-			std::cerr << __FILE__ ", " << __LINE__ << ": " << "unknown mode " << mode << std::endl;
+			std::cerr << __FILE__ ", " << __LINE__ << ": " << "unknown mode " << mode
+				<< std::endl;
 			throw std::runtime_error( "unknown mode" );
 			break;
 	}
@@ -414,7 +447,6 @@ std::unique_ptr< Runner< InputT > > create_runner(
 	}
 	return std::unique_ptr< Runner< InputT > >();
 }
-
 
 int main( int argc, char ** argv ) {
 
@@ -473,7 +505,7 @@ int main( int argc, char ** argv ) {
 #endif
 	const char *mode_str = nullptr;
 
-	switch ( mode ) {
+	switch( mode ) {
 		case grb::AUTOMATIC:
 			mode_str = "AUTOMATIC";
 			break;
@@ -527,8 +559,6 @@ int main( int argc, char ** argv ) {
 	}
 #endif
 
-
-
 	const char * input_str = ( mode == grb::AUTOMATIC ) ? truth :
 		( s == 0 ) ? truth : prelude;
 
@@ -538,7 +568,8 @@ int main( int argc, char ** argv ) {
 		for( const RunnerType rt : { Launch, Benchmark } ) {
 			const char * const runner_name = rt == Launch ? "Launch" : "Benchmark";
 			const char * const bc_str = broadcast ? "true" : "false";
-			std::cout << "\n ==> runner type: " << runner_name << ", broadcast: " << bc_str << std::endl;
+			std::cout << "\n ==> runner type: " << runner_name << ", "
+				<< "broadcast: " << bc_str << std::endl;
 			std::unique_ptr< Runner< input > > runner = create_runner< input >(
 				mode, rt, s, P,
 				std::string( (host != nullptr ? host : "" ) ),
@@ -591,7 +622,8 @@ int main( int argc, char ** argv ) {
 					true
 				);
 
-				std::cout << "\n  => untyped call, non-default-constructible input\n" << std::endl;
+				std::cout << "\n  => untyped call, non-default-constructible input\n"
+					<< std::endl;
 				out.exit_code = 256;
 				nd_input ndin( input_str );
 				ret = nd_runner->launch_untyped(
@@ -605,7 +637,8 @@ int main( int argc, char ** argv ) {
 				ERROR_ON( out.exit_code != 0,
 					"untyped test FAILED with exit code " << out.exit_code );
 
-				std::cout << "\n  => typed call, non-default-constructible input\n" << std::endl;
+				std::cout << "\n  => typed call, non-default-constructible input\n"
+					<< std::endl;
 				out.exit_code = 256;
 				grb::AlpTypedFunc< nd_input, output > ndfun =
 					getALPFun< caller, grb::AlpTypedFunc< nd_input, output >, nd_input >(
