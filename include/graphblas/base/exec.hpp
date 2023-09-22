@@ -56,34 +56,55 @@ namespace grb {
 	 * The various ways in which the #grb::Launcher can be used to execute an
 	 * ALP program.
 	 *
-	 * \warning An implementation may require different linker commands
-	 *          when using different modes.
+	 * \warning An implementation or backend may require different linker commands
+	 *          when using different modes, and may require different arguments be
+	 *          passed on program launch. Please see the compiler and runner
+	 *          wrappers <tt>grbcxx</tt>, <tt>alpcxx</tt>, <tt>grbrun</tt>, and/or
+	 *          <tt>alprun</tt> for more details; or refer to the implementation
+	 *          documentation.
 	 *
-	 * \warning Depending on the mode given to #grb::Launcher, the parameters
-	 *          required for the exec function may differ.
+	 * \warning Depending on the mode given to #grb::Launcher, different parameters
+	 *          to the exec function may be required.
 	 *
-	 * \note However, the ALP program remains unaware of which mode is the launcher
-	 *       employs and will not have to change.
+	 * An ALP program remains unaware of which mode the launcher employs. Normally,
+	 * it requires no change depending on how it is launched. An exception is when
+	 * data is passed through and from the caller program:
+	 *  -# if the launch mode is #grb::EXEC_MODE::AUTOMATIC, best practice is to
+	 *     minimise the input data footprint that requires broadcasting to all user
+	 *     processes executing the algorithm. The best case is if no input data
+	 *     need be broadcast. Output is retained only from the first user process,
+	 *     i.e., the user process for which #grb::spmd<>::pid() returns zero.
+	 *  -# for any other launch mode, multiple user processes may exist prior to
+	 *     any ALP or ALP/GraphBLAS context exist. Each pre-existing user process
+	 *     is then mapped to an ALP user process in a one-to-one manner. Data,
+	 *     including pointer data, may be passed freely between these processes;
+	 *     this may, in principle and contrary to the automatic mode, consider
+	 *     large data.
 	 */
 	enum EXEC_MODE {
 
 		/**
-		 * Automatic mode. The #grb::Launcher can spawn user processes
-		 * which will execute a given program.
+		 * Automatic mode.
+		 *
+		 * The #grb::Launcher may spawn additional user processes which will jointly
+		 * execute a given ALP program.
 		 */
 		AUTOMATIC = 0,
 
 		/**
-		 * Manual mode. The user controls \a nprocs user processes
-		 * which together should execute a given program, by, for
-		 * example, using the #grb::Launcher.
+		 * Manual mode.
+		 *
+		 * The user controls \a nprocs user processes which together should execute a
+		 * given ALP program.
 		 */
 		MANUAL,
 
 		/**
-		 * When running from an MPI program. The user controls
-		 * \a nprocs MPI programs, which, together, should execute
-		 * a given ALP program.
+		 * From MPI mode.
+		 *
+		 * The user controls \a nprocs MPI processes which together should execute a
+		 * given ALP program. The only difference with the manual mode is that this
+		 * mode guarantees that the pre-existing user processes are MPI processes.
 		 */
 		FROM_MPI
 
@@ -93,17 +114,22 @@ namespace grb {
 	 * A group of user processes that together execute ALP programs.
 	 *
 	 * Allows an application to run any ALP program. Input data may be passed
-	 * through a user-defined type. Output data will be retrieved via the same
-	 * type.
+	 * through a user-defined type. Output data will be retrieved via another user-
+	 * defined type.
 	 *
-	 * For backends that support multiple user processes, the caller may
-	 * explicitly set the process ID and total number of user processes.
+	 * For backends that support multiple user processes, the caller may explicitly
+	 * set the process ID and total number of user processes. If the launcher is
+	 * requested to spawn new user processes, then the given target number of user
+	 * processes acts as an upper bound; backends may elect, for example based on
+	 * run-time constraints, to make fewer user processes available to the program.
 	 *
-	 * The intended use is to `just call' the exec function, which should be
-	 * accepted by any backend.
+	 * The intended use is to `just call' the exec function, which must be accepted
+	 * by any backend in any implementation, to execute any ALP program.
 	 *
 	 * @tparam mode    Which #EXEC_MODE the Launcher should adhere to.
-	 * @tparam backend Which backend is to be used.
+	 * @tparam backend Which backend to use. This is a hidden template argument that
+	 *                 defaults to the backend selected at compile time through
+	 *                 <tt>grbcxx</tt> or <tt>alpcxx</tt>.
 	 */
 	template< enum EXEC_MODE mode, enum Backend backend >
 	class Launcher {
@@ -111,12 +137,21 @@ namespace grb {
 		public :
 
 			/**
-			 * Constructs a new #grb::Launcher. This constructor is a collective call;
-			 * all \a nprocs processes that form a single launcher group must make a
-			 * simultaneous call to this constructor.
+			 * Constructs a new #grb::Launcher.
+			 *
+			 * In #grb::EXEC_MODE::AUTOMATIC mode, a single root user processes issues
+			 * a call to this constructor. In all other modes, a call to this constructor
+			 * is \em collective: all \a nprocs processes that are to form a single
+			 * launcher group, must make a simultaneous call to this constructor and must
+			 * do so with consistent arguments.
+			 *
+			 * \note One may note that in all modes, a call to this constructor must be
+			 *       collective; it is just that in automatic mode, \a nprocs must be one
+			 *       while \a process_id must be zero.
 			 *
 			 * There is an implementation-defined time-out for the creation of a launcher
-			 * group.
+			 * group. The default arguments to the below are consistent with the
+			 * automatic launcher mode.
 			 *
 			 * @param[in]  process_id  The user process ID of the calling process.
 			 *                         The value must be larger or equal to 0. This
@@ -148,6 +183,10 @@ namespace grb {
 			 *       must not accept \a nprocs larger than 1.
 			 *
 			 * All aforementioned default values shall always be legal.
+			 *
+			 * @throws std::invalid_argument If \a nprocs is zero.
+			 * @throws std::invalid_argument If \a process_id is larger than or equal to
+			 *                               \a nprocs.
 			 */
 			Launcher(
 				const size_t process_id = 0,
@@ -157,7 +196,8 @@ namespace grb {
 			) {
 				// spec does not specify any constrants on hostname and port
 				// so accept (and ignore) anything
-				(void) hostname; (void) port;
+				(void) hostname;
+				(void) port;
 
 #ifndef _GRB_NO_EXCEPTIONS
 				// sanity checks on process_id and nprocs
@@ -192,48 +232,53 @@ namespace grb {
 			 *           must be a POD type that contains no pointers.
 			 *
 			 * \note In fact, \a T may be standard layout and contain no pointers, or it
-			 *       may be trivially copiable and contain no pointers. For calls with
-			 *       \a broadcast <tt>false</tt>, then \a T must furthermore be default-
-			 *       constructible.
+			 *       may be trivially copiable and contain no pointers.
+			 *
+			 * For calls with \a broadcast <tt>false</tt>, \a T must furthermore be
+			 * default-constructible (and have meaningful default values that allow for
+			 * successful multi-process execution).
+			 *
+			 * For programs or entry points that are solely to be called from manual or
+			 * from MPI modes with \a broadcast <tt>false</tt>, there are no constraints
+			 * on the type \a T since instances of \a T are only ever passed within the
+			 * pre-existing user process, and never communicated across user processes.
 			 *
 			 * @tparam U The type of the output data to pass back to the caller. This may
 			 *           be of any type.
 			 *
 			 * \note In case of multiple user processes, if \a mode is AUTOMATIC, then
 			 *       the output of type \a U at user processes \f$ s > 0 \f$ will be
-			 *       lost.
+			 *       lost. Only the output of the first user process \f$ s = 0 \f$ will
+			 *       be passed back to the root user process.
 			 *
 			 * @param[in]  alp_program The user program to be executed.
 			 * @param[in]  data_in     Input data of user-defined type \a T.
 			 *
 			 * When in automatic mode and \a broadcast is <tt>false</tt>, the data will
 			 * only be available at user process with ID 0. When in automatic mode and
-			 * \a broadcast is <tt>true</tt>, the data will be available at all user
+			 * \a broadcast is <tt>true</tt>, the input data will be copied to all user
 			 * processes.
 			 *
 			 * When in manual mode, each user process should collectively call this
-			 * function. If \a broadcast is <tt>false</tt> each user process should
-			 * collectively call this function. The input data will then be passed to
-			 * the corresponding ALP user processes in a one-to-one manner. Should
-			 * \a broadcast be <tt>true</tt>, then the initial input data passed to user
-			 * processes \f$ s > 0 \f$ will be overwritten with the data passed to user
-			 * process zero.
+			 * function. If \a broadcast is <tt>false</tt>, the input data will be
+			 * passed to the corresponding ALP user processes in a one-to-one manner.
+			 * Should \a broadcast be <tt>true</tt>, then the initial input data passed
+			 * to user processes \f$ s > 0 \f$ will be overwritten with the data passed
+			 * to user process zero.
 			 *
-			 * @param[out] data_out  Output data of user-defined type \a U. The output
-			 *                       data should be available at user process with ID
-			 *                       zero.
+			 * @param[out] data_out  Output data of user-defined type \a U.
 			 *
 			 * Only in #MANUAL or #FROM_MPI modes will the output of any user processes
-			 * with ID \f$ s > 0 \f$ be returned to the respective processes involved
-			 * with the collective call to this function. In #AUTOMATIC mode, the output
-			 * at \f$ s > 0 \f$ is ignored.
+			 * with ID \f$ s > 0 \f$ be returned to all user processes that collectively
+			 * call this function. In #AUTOMATIC mode, the output at \f$ s > 0 \f$ is
+			 * lost.
 			 *
 			 * @param[in]  broadcast Whether the input should be broadcast from user
 			 *                       process 0 to all other user processes. Optional;
 			 *                       the default value is <tt>false</tt>.
 			 *
 			 * \note The default is <tt>false</tt> as it is the variant that implies the
-			 *       least cost.
+			 *       least cost when launching a program.
 			 *
 			 * @return #grb::SUCCESS If the execution proceeded as intended.
 			 * @return #grb::ILLEGAL If \a broadcast was <tt>false</tt> and \a mode was
@@ -286,19 +331,20 @@ namespace grb {
 			 * @param[in]  alp_program The user program to be executed.
 			 * @param[in]  data_in     Pointer to raw input byte data.
 			 * @param[in]  in_size     The number of bytes the input data consists of.
-			 * @param[out] data_out  Output data of user-defined type \a U. The output
-			 *                       data should be available at user process with ID
-			 *                       zero.
-			 * @param[in]  broadcast Whether the input should be broadcast from user
-			 *                       process 0 to all other user processes. Optional;
-			 *                       the default value is \a false.
+			 * @param[out] data_out    Output data of user-defined type \a U. The output
+			 *                         data should be available at user process with ID
+			 *                         zero.
+			 * @param[in]  broadcast   Whether the input should be broadcast from user
+			 *                         process 0 to all other user processes. Optional;
+			 *                         the default value is \a false.
 			 *
 			 * @return #grb::SUCCESS If the execution proceeded as intended.
-			 * @return #grb::ILLEGAL If \a broadcast was <tt>false</tt> and \a mode was
-			 *                       #AUTOMATIC, but \a T not default-constructible.
 			 * @return #grb::PANIC   If an unrecoverable error was encountered while
 			 *                       attempting to execute, attempting to terminate, or
 			 *                       while executing, the given program.
+			 *
+			 * \note This variant cannot return #grb::ILLEGAL because void-pointers are
+			 *       indeed default-constructible.
 			 */
 			template< typename U >
 			RC exec(
@@ -320,10 +366,11 @@ namespace grb {
 			 * Releases all ALP resources.
 			 *
 			 * After a call to this function, no further ALP programs may launched using
-			 * the #grb::Launcher and #grb::Benchmarker. Also the use of #grb::init and
-			 * #grb::finalize will no longer be accepted.
+			 * \em any #grb::Launcher or #grb::Benchmarker instance.
 			 *
-			 * \warning #grb::init and #grb::finalize are deprecated.
+			 * \warning After a call to this function, also any subsequent call to the
+			 *          deprecated #grb::init and #grb::finalize will no longer be
+			 *          accepted.
 			 *
 			 * \internal
 			 * \todo Remove the above comments once #grb::init and #grb::finalize are
@@ -331,14 +378,15 @@ namespace grb {
 			 * \endinternal
 			 *
 			 * After a call to this function, the only way to once again run ALP programs
-			 * is to use the #grb::Launcher from a new process.
+			 * is to use the #grb::Launcher from a new user process.
 			 *
 			 * \warning Therefore, use this function with care and preferably only just
 			 *          before exiting the process.
-
+			 *
 			 * A well-behaving program calls this function, or
 			 * #grb::Benchmarker::finalize, exactly once before its process terminates,
-			 * or just after the guaranteed last invocation of an ALP program.
+			 * or, at earliest, just after the guaranteed last invocation of an ALP
+			 * program.
 			 *
 			 * @return #grb::SUCCESS The resources have successfully and permanently been
 			 *                       released.
