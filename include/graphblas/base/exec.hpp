@@ -339,6 +339,8 @@ namespace grb {
 			 *                         the default value is \a false.
 			 *
 			 * @return #grb::SUCCESS If the execution proceeded as intended.
+			 * @return #grb::ILLEGAL If \a in_size is larger than zero but \a data_in is
+			 *                       equal to <tt>nullptr</tt>.
 			 * @return #grb::PANIC   If an unrecoverable error was encountered while
 			 *                       attempting to execute, attempting to terminate, or
 			 *                       while executing, the given program.

@@ -56,7 +56,7 @@
 /**
  * \defgroup benchmarking Benchmarking
  *
- * ALP has a specialised class for benchmarking ALP programs, grb::Benchmarker,
+ * ALP has a specialised class for benchmarking ALP programs, #grb::Benchmarker,
  * which is a variant on the #grb::Launcher. It codes a particular benchmarking
  * strategy of any given ALP program as described below.
  *
@@ -436,7 +436,10 @@ namespace grb {
 				std::string hostname = "localhost",
 				std::string port = "0"
 			) {
-				(void) process_id; (void) nprocs; (void) hostname; (void) port;
+				(void) process_id;
+				(void) nprocs;
+				(void) hostname;
+				(void) port;
 #ifndef _GRB_NO_EXCEPTIONS
 				throw std::logic_error( "Benchmarker class called with unsupported mode or "
 					"implementation" );
@@ -446,14 +449,13 @@ namespace grb {
 			/**
 			 * Benchmarks a given ALP program.
 			 *
-			 * This variant applies to input data as a user-defined POD struct and
-			 * output data as a user-defined POD struct.
+			 * This variant applies to typed ALP programs.
 			 *
 			 * @tparam T Input type of the given user program.
 			 * @tparam U Output type of the given user program.
 			 *
 			 * @param[in]  alp_program The ALP program to be benchmarked.
-			 * @param[in]  data_in     Input data as a raw data blob.
+			 * @param[in]  data_in     Input data.
 			 * @param[out] data_out    Output data.
 			 * @param[in]  inner       Number of inner repetitions of the benchmark.
 			 * @param[in]  outer       Number of outer repetitions of the benchmark.
@@ -465,6 +467,8 @@ namespace grb {
 			 * The default value of \a broadcast is <tt>false</tt>.
 			 *
 			 * @returns #grb::SUCCESS The benchmarking has completed successfully.
+			 * @returns #grb::ILLEGAL If \a broadcast was <tt>false</tt> but \a T is not
+			 *                        default-constructible.
 			 * @returns #grb::FAILED  An error during benchmarking has occurred. The
 			 *                        benchmark attempt could be retried, and an error
 			 *                        for the failure is reported to the standard error
@@ -472,6 +476,8 @@ namespace grb {
 			 * @returns #grb::PANIC   If an unrecoverable error was encountered while
 			 *                        starting the benchmark, while benchmarking, or
 			 *                        while aggregating the final results.
+			 *
+			 * @see #grb::Launcher for more details.
 			 *
 			 * @see benchmarking
 			 *
@@ -508,8 +514,7 @@ namespace grb {
 			/**
 			 * Benchmarks a given ALP program.
 			 *
-			 * This variant applies to input data as a byte blob and output data as a
-			 * user-defined POD struct.
+			 * This variant applies to untyped ALP programs.
 			 *
 			 * @tparam U Output type of the given user program.
 			 *
@@ -536,6 +541,8 @@ namespace grb {
 			 * @returns #grb::PANIC   If an unrecoverable error was encountered while
 			 *                        starting the benchmark, while benchmarking, or
 			 *                        while aggregating the final results.
+			 *
+			 * @see #grb::Launcher for more details.
 			 *
 			 * @see benchmarking
 			 *
@@ -574,13 +581,7 @@ namespace grb {
 			 *
 			 * Calling this function is equivalent to calling #grb::Launcher::finalize.
 			 *
-			 * After a call to this function, no further ALP programs may be benchmarked
-			 * nor launched-- i.e., both the #grb::Launcher and #grb::Benchmarker
-			 * functionalities many no longer be used.
-			 *
-			 * A well-behaving program calls this function, or #grb::Launcher::finalize,
-			 * exactly once and just before exiting (or just before the guaranteed last
-			 * invocation of an ALP program).
+			 * @see #grb::Launcher for further details.
 			 *
 			 * @return #grb::SUCCESS The resources have successfully and permanently been
 			 *                       released.
