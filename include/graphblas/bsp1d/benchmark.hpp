@@ -39,11 +39,12 @@ namespace grb {
 
 	namespace internal {
 
-		/** Data structure with input and benchmarking information.
+		/**
+		 * Data structure with input and benchmarking information.
 		 *
-		 * In AUTOMATIC mode it needs to be broadcasted from process 0 to the
+		 * In automatic mode, this struct must be broadcast from process 0 to the
 		 * other processes, as it contains the valid number of inner and outer
-		 * iterations. In other modes, all processes MUST choose the same number
+		 * iterations. In other modes, all processes must choose the same number
 		 * of inner/outer iterations, otherwise deadlocks may occur.
 		 */
 		template<
@@ -54,11 +55,13 @@ namespace grb {
 			bool untyped_call
 		>
 		struct BenchmarkDispatcher :
-			ExecDispatcher< InputType, OutputType, _mode, _requested_broadcast,
-				untyped_call >,
+			ExecDispatcher<
+				InputType, OutputType,
+				_mode, _requested_broadcast,
+				untyped_call
+			>,
 			protected BenchmarkerBase
 		{
-
 			static constexpr bool needs_initial_broadcast = _mode == AUTOMATIC;
 
 			size_t inner;
@@ -80,15 +83,22 @@ namespace grb {
 			// reconstruct object from LPF args, where it is embedded in
 			// input field
 			BenchmarkDispatcher( const lpf_pid_t s, const lpf_args_t args ) :
-				ExecDispatcher< InputType, OutputType, _mode, _requested_broadcast,
-					untyped_call >( nullptr, 0 ) {
+				ExecDispatcher<
+					InputType, OutputType,
+					_mode, _requested_broadcast,
+					untyped_call
+				>( nullptr, 0 )
+			{
 				if( s > 0 && _mode == AUTOMATIC ) {
 					inner = 0;
 					outer = 0;
 					return;
 				}
-				typedef BenchmarkDispatcher< InputType, OutputType, _mode,
-					_requested_broadcast, untyped_call > self_t;
+				typedef BenchmarkDispatcher<
+					InputType, OutputType,
+					_mode, _requested_broadcast,
+					untyped_call
+				> self_t;
 				const self_t *orig = reinterpret_cast< const self_t * >( args.input );
 				this->in = orig->in;
 				this->in_size = orig->in_size;
@@ -105,9 +115,11 @@ namespace grb {
 				lpf_pid_t s, lpf_pid_t P
 			) const {
 				auto runner = [ fun, in_size, in, out, s, P ] () {
-					ExecDispatcher< InputType, OutputType, _mode,
-						_requested_broadcast, untyped_call >::lpf_grb_call
-							( fun, in_size, in, out, s, P );
+					ExecDispatcher<
+						InputType, OutputType,
+						_mode, _requested_broadcast,
+						untyped_call
+					>::lpf_grb_call( fun, in_size, in, out, s, P );
 				};
 				return benchmark< BSP1D >( runner, out->times, inner, outer, s );
 			}
@@ -131,19 +143,24 @@ namespace grb {
 				const size_t inner, const size_t outer, bool broadcast
 			) const {
 				if( broadcast ) {
-					typedef internal::BenchmarkDispatcher< T, U, mode, true,
-						untyped_call > Disp;
+					typedef internal::BenchmarkDispatcher<
+						T, U, mode, true,
+						untyped_call
+					> Disp;
 					Disp disp_info = { data_in, in_size, inner, outer };
-					return this->template run_lpf< T, U, Disp >( alp_program,
+					return this->template run_lpf< T, U, Disp >(
+						alp_program,
 						reinterpret_cast< void * >( &disp_info ),
 						sizeof( Disp ), data_out
 					);
-
 				} else {
-					typedef internal::BenchmarkDispatcher< T, U, mode, false,
-						untyped_call > Disp;
+					typedef internal::BenchmarkDispatcher<
+						T, U, mode, false,
+						untyped_call
+					> Disp;
 					Disp disp_info = { data_in, in_size, inner, outer };
-					return this->template run_lpf< T, U, Disp >( alp_program,
+					return this->template run_lpf< T, U, Disp >(
+						alp_program,
 						reinterpret_cast< void * >( &disp_info ),
 						sizeof( Disp ), data_out
 					);
@@ -173,7 +190,8 @@ namespace grb {
 			 * @returns grb::SUCCESS On a successfully completed benchmark call, and a
 			 *                       descriptive error code otherwise.
 			 */
-			template< typename U > RC exec(
+			template< typename U >
+			RC exec(
 				AlpUntypedFunc< U > alp_program,
 				const void * data_in, const size_t in_size,
 				U &data_out,
@@ -207,10 +225,7 @@ namespace grb {
 			 * @returns grb::SUCCESS On a successfully completed benchmark call, and a
 			 *                       descriptive error code otherwise.
 			 */
-			template<
-				typename T,
-				typename U
-			>
+			template< typename T, typename U >
 			RC exec(
 				AlpTypedFunc< T, U > alp_program, const T &data_in, U &data_out,
 				const size_t inner, const size_t outer, const bool broadcast = false
