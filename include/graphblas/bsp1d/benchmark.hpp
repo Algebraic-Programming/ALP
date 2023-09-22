@@ -237,7 +237,7 @@ namespace grb {
 
 			using Launcher< mode, BSP1D >::finalize;
 
-		};
+	};
 
 } // namespace grb
 
