@@ -299,7 +299,9 @@ namespace grb {
 				 * Benchmarks a given ALP program.
 				 *
 				 * This variant applies to input data as a byte blob and output data as a
-				 * user-defined POD struct.
+				 * user-defined type.
+				 *
+				 * @see #grb::Launcher for more details on type requirements.
 				 *
 				 * @tparam U       Output type of the given user program.
 				 * @tparam backend Which backend the program is using.
@@ -339,8 +341,10 @@ namespace grb {
 				/**
 				 * Benchmarks a given ALP program.
 				 *
-				 * This variant applies to input data as a user-defined POD struct and
-				 * output data as a user-defined POD struct.
+				 * This variant applies to input data as a user-defined POD struct without
+				 * pointer data, and output data as a user-defined type.
+				 *
+				 * @see #grb::Launcher for more details on type requirements.
 				 *
 				 * @tparam T Input type of the given user program.
 				 * @tparam U Output type of the given user program.
