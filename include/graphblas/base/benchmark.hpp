@@ -214,8 +214,7 @@ namespace grb {
 				static RC benchmark(
 					RunnerType &runner,
 					grb::utils::TimerResults &times,
-					const size_t inner,
-					const size_t outer,
+					const size_t inner, const size_t outer,
 					const size_t pid
 				) {
 					const double inf = std::numeric_limits< double >::infinity();
@@ -324,11 +323,9 @@ namespace grb {
 				>
 				static RC benchmark(
 					AlpUntypedFunc< U > alp_program,
-					const void * data_in,
-					const size_t in_size,
+					const void * data_in, const size_t in_size,
 					U &data_out,
-					const size_t inner,
-					const size_t outer,
+					const size_t inner, const size_t outer,
 					const size_t pid
 				) {
 					auto runner = [ alp_program, data_in, in_size, &data_out ] {
@@ -367,10 +364,8 @@ namespace grb {
 				>
 				static RC benchmark(
 					AlpTypedFunc< T, U > alp_program,
-					const T &data_in,
-					U &data_out,
-					const size_t inner,
-					const size_t outer,
+					const T &data_in, U &data_out,
+					const size_t inner, const size_t outer,
 					const size_t pid
 				) {
 					auto runner = [ alp_program, &data_in, &data_out ] {
@@ -436,9 +431,9 @@ namespace grb {
 			 */
 			Benchmarker(
 				const size_t process_id = 0,
-				size_t nprocs = 1,
-				std::string hostname = "localhost",
-				std::string port = "0"
+				const size_t nprocs = 1,
+				const std::string hostname = "localhost",
+				const std::string port = "0"
 			) {
 				(void) process_id;
 				(void) nprocs;
@@ -491,10 +486,8 @@ namespace grb {
 			template< typename T, typename U >
 			RC exec(
 				void ( *alp_program )( const T &, U & ),
-				const T &data_in,
-				U &data_out,
-				const size_t inner,
-				const size_t outer,
+				const T &data_in, U &data_out,
+				const size_t inner, const size_t outer,
 				const bool broadcast = false
 			) const {
 				(void) alp_program;
