@@ -380,27 +380,24 @@ namespace grb {
 			 * Releases all ALP resources.
 			 *
 			 * After a call to this function, no further ALP programs may launched using
-			 * \em any #grb::Launcher or #grb::Benchmarker instance.
+			 * \em any #grb::Launcher or #grb::Benchmarker instance. Implementations and
+			 * backends shall under no circumstance require a call to this function; any
+			 * use of this function shall remain purely optional.
 			 *
 			 * \warning After a call to this function, also any subsequent call to the
 			 *          deprecated #grb::init and #grb::finalize will no longer be
 			 *          accepted.
 			 *
 			 * \internal
-			 * \todo Remove the above comments once #grb::init and #grb::finalize are
+			 * \todo Remove the above warning once #grb::init and #grb::finalize are
 			 *       moved to an internal namespace.
 			 * \endinternal
 			 *
 			 * After a call to this function, the only way to once again run ALP programs
-			 * is to use the #grb::Launcher from a new user process.
+			 * is to use the #grb::Launcher from a different user process.
 			 *
 			 * \warning Therefore, use this function with care and preferably only just
-			 *          before exiting the process.
-			 *
-			 * A well-behaving program calls this function, or
-			 * #grb::Benchmarker::finalize, exactly once before its process terminates,
-			 * or, at earliest, just after the guaranteed last invocation of an ALP
-			 * program.
+			 *          before exiting the process-- or not at all.
 			 *
 			 * @return #grb::SUCCESS The resources have successfully and permanently been
 			 *                       released.
@@ -410,25 +407,14 @@ namespace grb {
 			 *                       undefined and should no longer be used.
 			 *
 			 * \note In the terminology of the Message Passing Interface (MPI), this
-			 *       function is the ALP equivalent of the <tt>MPI_Finalize()</tt>.
+			 *       function is similar to <tt>MPI_Finalize()</tt>.
 			 *
-			 * \note In #grb::AUTOMATIC mode when using a parallel backend that uses MPI
-			 *       to auto-parallelise the ALP computations, MPI is never explicitly
-			 *       exposed to the user application. This use case necessitates the
-			 *       specification of this function.
+			 * \warning Different from MPI, however, a call to this function at program
+			 *          exit is not mandatory.
 			 *
-			 * \note Thus, and in particular, an ALP program launched in #grb::AUTOMATIC
-			 *       mode while using the #grb::BSP1D or the #grb::hybrid backends with
-			 *       ALP compiled using LPF that in turn is configured to use an
-			 *       MPI-based engine, should make sure to call this function before
-			 *       program exit.
-			 *
-			 * \note An application that launches ALP programs in #grb::FROM_MPI mode
-			 *       must still call this function, even though a proper such application
-			 *       makes its own call to <tt>MPI_Finalize()</tt>. This does \em not
-			 *       induce improper behaviour since calling this function using a
-			 *       launcher instance in #grb::FROM_MPI mode translates, from an MPI
-			 *       perspective, to a no-op.
+			 * \warning An application that launches ALP programs in #grb::FROM_MPI mode
+			 *          that calls this function, must (afterwards) still make a call to
+			 *          <tt>MPI_Finalize()</tt>.
 			 *
 			 * \internal This is the base implementation that should be specialised by
 			 *           each backend separately.
