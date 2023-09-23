@@ -79,7 +79,7 @@ namespace grb {
 			/** Inner number of experiments. */
 			size_t inner;
 
-		;	/** Outer number of experiments. */
+			/** Outer number of experiments. */
 			size_t outer;
 
 			/**
