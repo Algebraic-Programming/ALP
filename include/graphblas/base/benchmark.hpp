@@ -191,8 +191,9 @@ namespace grb {
 				/**
 				 * Benchmarks a given ALP program.
 				 *
-				 * This variant applies to input data as a user-defined POD struct and
-				 * output data as a user-defined POD struct.
+				 * This variant applies to typed ALP programs.
+				 *
+				 * @see #grb::Launcher for more details on type requirements.
 				 *
 				 * @tparam RunnerType The type of the runner, i.e., functor object storing
 				 *                    the information for running the supplied ALP function.
@@ -297,8 +298,7 @@ namespace grb {
 				/**
 				 * Benchmarks a given ALP program.
 				 *
-				 * This variant applies to input data as a byte blob and output data as a
-				 * user-defined type.
+				 * This variant applies to untyped ALP programs.
 				 *
 				 * @see #grb::Launcher for more details on type requirements.
 				 *
