@@ -173,18 +173,28 @@ namespace grb {
 			 *                         if and only if \a nprocs is larger than one.
 			 *                         Optional: the default value is `0'.
 			 *
-			 * @throws invalid_argument If \a nprocs is zero.
-			 * @throws invalid_argument If \a process_id is greater than or equal to
-			 *                          \a nprocs.
+			 * While these arguments are generic and would work with most network
+			 * fabrics, some modes such as indeed #FROM_MPI may require other arguments
+			 * for constructing a launcher. In terms of specification, only #AUTOMATIC
+			 * and #MANUAL are required to implement this specific constructor
+			 * signature, including the specified defaults for each argument. All
+			 * aforementioned default values must be legal for the #AUTOMATIC and
+			 * #MANUAL modes.
+			 *
+			 * Any other mode in #grb::EXEC_MODE, with possibly different constructor
+			 * signatures from those listed here, are both optional and implementation-
+			 * specific.
 			 *
 			 * \note An implementation or backend may define further constraints on the
 			 *       input arguments, such as, obviously, on \a hostname and \a port, but
 			 *       also on \a nprocs and, as a result, on \a process_id.
 
-			 * \note The most obvious is that backends supporting only one user process
-			 *       must not accept \a nprocs larger than 1.
+			 * \note The most obvious such restriction has backends supporting only one
+			 *       user process not accepting \a nprocs larger than 1.
 			 *
-			 * All aforementioned default values shall always be legal.
+			 * @throws invalid_argument If \a nprocs is zero.
+			 * @throws invalid_argument If \a process_id is greater than or equal to
+			 *                          \a nprocs.
 			 *
 			 * @throws std::invalid_argument If \a nprocs is zero.
 			 * @throws std::invalid_argument If \a process_id is larger than or equal to
