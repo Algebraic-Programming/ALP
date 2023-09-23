@@ -28,8 +28,10 @@
 
 #include <lpf/core.h>
 
-#include <graphblas/base/benchmark.hpp>
 #include <graphblas/rc.hpp>
+
+#include <graphblas/base/benchmark.hpp>
+
 #include <graphblas/utils/TimerResults.hpp>
 
 #include "exec.hpp"
@@ -42,14 +44,23 @@ namespace grb {
 		/**
 		 * Data structure with input and benchmarking information.
 		 *
+		 * @tparam InputType  The input type.
+		 * @tparam OutputType The output type.
+		 * @tparam _mode      The #grb::EXEC_MODE of the benchmarker.
+		 *
 		 * In automatic mode, this struct must be broadcast from process 0 to the
 		 * other processes, as it contains the valid number of inner and outer
 		 * iterations. In other modes, all processes must choose the same number
 		 * of inner/outer iterations, otherwise deadlocks may occur.
+		 *
+		 * @tparam _requested_broadcast Whether or not the user has requested input be
+		 *                              broadcast.
+		 *
+		 * @tparam untyped_call         Whether the user has made a benchmark request
+		 *                              using an untyped ALP program.
 		 */
 		template<
-			typename InputType,
-			typename OutputType,
+			typename InputType, typename OutputType,
 			EXEC_MODE _mode,
 			bool _requested_broadcast,
 			bool untyped_call
@@ -62,26 +73,38 @@ namespace grb {
 			>,
 			protected BenchmarkerBase
 		{
+			/** Whether the dispatcher requires broadcasting. */
 			static constexpr bool needs_initial_broadcast = _mode == AUTOMATIC;
 
+			/** Inner number of experiments. */
 			size_t inner;
+
+		;	/** Outer number of experiments. */
 			size_t outer;
 
-			// build object from basic information
+			/**
+			 * Builds dispatcher from basic information.
+			 *
+			 * @param[in] _in      Pointer to the input data.
+			 * @param[in] _in_size Byte size of the input data.
+			 * @param[in] _inner   The nummer of inner iterations.
+			 * @param[in] _outer   The number of outer iterations.
+			 */
 			BenchmarkDispatcher(
-				const InputType *_in,
-				const size_t _in_size,
-				size_t _inner,
-				size_t _outer
+				const InputType *_in, const size_t _in_size,
+				size_t _inner, size_t _outer
 			) :
 				ExecDispatcher< InputType, OutputType, _mode, _requested_broadcast,
 					untyped_call >( _in, _in_size ),
-				inner( _inner ),
-				outer( _outer )
+				inner( _inner ), outer( _outer )
 			{}
 
-			// reconstruct object from LPF args, where it is embedded in
-			// input field
+			/**
+			 * Reconstruct object from LPF args, where it is embedded in its input field.
+			 *
+			 * @param[in] s    The process ID.
+			 * @param[in] args The LPF I/O arguments.
+			 */
 			BenchmarkDispatcher( const lpf_pid_t s, const lpf_args_t args ) :
 				ExecDispatcher<
 					InputType, OutputType,
@@ -107,7 +130,14 @@ namespace grb {
 			}
 
 			/**
-			 * Benchmark the ALP function \p fun with the given input/output parameters.
+			 * Benchmark the ALP function \a fun with the given input/output parameters.
+			 *
+			 * @param[in]  fun     The ALP function to run.
+			 * @param[in]  s       The process ID.
+			 * @param[in]  P       The total nuber of processes.
+			 * @param[in]  in      Pointer to the input data.
+			 * @param[in]  in_size Byte size of the input data.
+			 * @param[out] out     Pointer where to output.
 			 */
 			grb::RC operator()(
 				const lpf_func_t fun,
@@ -140,15 +170,18 @@ namespace grb {
 			/** Pack input/output data and run the given ALP function. */
 			template< typename T, typename U, bool untyped_call >
 			RC pack_and_run(
-				lpf_func_t alp_program, const T *data_in, size_t in_size, U *data_out,
-				const size_t inner, const size_t outer, bool broadcast
+				const lpf_func_t alp_program,
+				const T * const data_in, const size_t in_size,
+				U * const data_out,
+				const size_t inner, const size_t outer,
+				const bool broadcast
 			) const {
 				if( broadcast ) {
 					typedef internal::BenchmarkDispatcher<
 						T, U, mode, true,
 						untyped_call
 					> Disp;
-					Disp disp_info = { data_in, in_size, inner, outer };
+					Disp disp_info( data_in, in_size, inner, outer );
 					return this->template run_lpf< T, U, Disp >(
 						alp_program,
 						reinterpret_cast< void * >( &disp_info ),
@@ -171,7 +204,7 @@ namespace grb {
 
 		public:
 
-			// import constructor(s) from base class, implicitly based on mode
+			/** import constructor(s) from base class, implicitly based on mode */
 			using Launcher< mode, BSP1D >::Launcher;
 
 			/**
@@ -185,7 +218,7 @@ namespace grb {
 			 * @param[out] data_out    Output data.
 			 * @param[in]  inner       Number of inner iterations.
 			 * @param[in]  outer       Number of outer iterations.
-			 * @param[in]  broadcast   Whether to broadcast inputs from user process 0
+			 * @param[in]  broadcast   Whether to broadcast inputs from user process zero
 			 *                         to all other user processes.
 			 *
 			 * @returns grb::SUCCESS On a successfully completed benchmark call, and a
@@ -193,8 +226,8 @@ namespace grb {
 			 */
 			template< typename U >
 			RC exec(
-				AlpUntypedFunc< U > alp_program,
-				const void * data_in, const size_t in_size,
+				const AlpUntypedFunc< U > alp_program,
+				const void * const data_in, const size_t in_size,
 				U &data_out,
 				const size_t inner, const size_t outer,
 				const bool broadcast = false
@@ -205,7 +238,9 @@ namespace grb {
 				}
 				return pack_and_run< void, U, true >(
 					reinterpret_cast< lpf_func_t >( alp_program ),
-					data_in, in_size, &data_out, inner, outer, broadcast
+					data_in, in_size, &data_out,
+					inner, outer,
+					broadcast
 				);
 			}
 
@@ -228,14 +263,20 @@ namespace grb {
 			 */
 			template< typename T, typename U >
 			RC exec(
-				AlpTypedFunc< T, U > alp_program, const T &data_in, U &data_out,
-				const size_t inner, const size_t outer, const bool broadcast = false
+				const AlpTypedFunc< T, U > alp_program,
+				const T &data_in, U &data_out,
+				const size_t inner, const size_t outer,
+				const bool broadcast = false
 			) const {
 				return pack_and_run< T, U, false >(
 					reinterpret_cast< lpf_func_t >( alp_program ),
-					&data_in, sizeof( T ), &data_out, inner, outer, broadcast );
+					&data_in, sizeof( T ), &data_out,
+					inner, outer,
+					broadcast
+				);
 			}
 
+			/** Reuse BSP1D launcher implementation of finalize. */
 			using Launcher< mode, BSP1D >::finalize;
 
 	};
