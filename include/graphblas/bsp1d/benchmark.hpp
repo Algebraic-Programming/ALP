@@ -111,15 +111,16 @@ namespace grb {
 			 */
 			grb::RC operator()(
 				const lpf_func_t fun,
-				size_t in_size, const InputType *in, OutputType *out,
-				lpf_pid_t s, lpf_pid_t P
+				const lpf_pid_t s, const lpf_pid_t P,
+				const InputType * const in, const size_t in_size,
+				OutputType * const out
 			) const {
 				auto runner = [ fun, in_size, in, out, s, P ] () {
 					ExecDispatcher<
 						InputType, OutputType,
 						_mode, _requested_broadcast,
 						untyped_call
-					>::lpf_grb_call( fun, in_size, in, out, s, P );
+					>::lpf_grb_call( fun, s, P, in, in_size, out );
 				};
 				return benchmark< BSP1D >( runner, out->times, inner, outer, s );
 			}
