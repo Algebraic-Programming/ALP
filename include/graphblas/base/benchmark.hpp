@@ -338,8 +338,7 @@ namespace grb {
 				/**
 				 * Benchmarks a given ALP program.
 				 *
-				 * This variant applies to input data as a user-defined POD struct without
-				 * pointer data, and output data as a user-defined type.
+				 * This variant applies to typed ALP programs.
 				 *
 				 * @see #grb::Launcher for more details on type requirements.
 				 *
