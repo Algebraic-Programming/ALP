@@ -221,8 +221,11 @@ namespace grb {
 			 * @param[in]  broadcast   Whether to broadcast inputs from user process zero
 			 *                         to all other user processes.
 			 *
-			 * @returns grb::SUCCESS On a successfully completed benchmark call, and a
-			 *                       descriptive error code otherwise.
+			 * @returns grb::SUCCESS On a successfully completed benchmark call.
+			 * @returns grb::ILLEGAL If \a data_in is <tt>nullptr</tt> but \a in_size is
+			 *                       larger than zero.
+			 * @returns grb::PANIC   On an unrecoverable critical failure (see base
+			 *                       specification).
 			 */
 			template< typename U >
 			RC exec(
@@ -232,9 +235,15 @@ namespace grb {
 				const size_t inner, const size_t outer,
 				const bool broadcast = false
 			) const {
+				static_assert(
+					mode != AUTOMATIC ||
+						std::is_default_constructible< U >::value,
+					"The output type U should be default-constructible when using automatic "
+					"mode launchers."
+				);
 				// check input arguments
-				if( in_size == 0 && data_in == nullptr ) {
-					return ILLEGAL;
+				if( in_size > 0 && data_in == nullptr ) {
+					return grb::ILLEGAL;
 				}
 				return pack_and_run< void, U, true >(
 					reinterpret_cast< lpf_func_t >( alp_program ),
@@ -258,8 +267,12 @@ namespace grb {
 			 * @param[in]  broadcast   Whether to broadcast inputs from user process zero
 			 *                         to all other user processes.
 			 *
-			 * @returns grb::SUCCESS On a successfully completed benchmark call, and a
-			 *                       descriptive error code otherwise.
+			 * @returns grb::SUCCESS On a successfully completed benchmark call.
+			 * @returns grb::ILLEGAL If \a broadcast was false and the benchmarker is in
+			 *                       #AUTOMATIC mode, while \a T is not default-
+			 *                       constructible.
+			 * @returns grb::PANIC   On unrecoverable errors (see the base specification
+			 *                       for details).
 			 */
 			template< typename T, typename U >
 			RC exec(
@@ -268,6 +281,21 @@ namespace grb {
 				const size_t inner, const size_t outer,
 				const bool broadcast = false
 			) const {
+				static_assert(
+					mode != AUTOMATIC ||
+						std::is_default_constructible< U >::value,
+					"The output type U should be default-constructible when using automatic "
+					"mode launchers."
+				);
+				if(
+					mode == AUTOMATIC && broadcast == false &&
+					!std::is_default_constructible< T >::value
+				) {
+					std::cerr << "Error: input type of an ALP function must be "
+						"default-constructible when using automatic mode benchmarkers without "
+						"broadcasting.\n";
+					return grb::ILLEGAL;
+				}
 				return pack_and_run< T, U, false >(
 					reinterpret_cast< lpf_func_t >( alp_program ),
 					&data_in, sizeof( T ), &data_out,

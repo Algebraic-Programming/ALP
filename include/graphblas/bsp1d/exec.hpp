@@ -737,6 +737,12 @@ namespace grb {
 					U &data_out,
 					const bool broadcast = false
 				) {
+					static_assert(
+						mode != AUTOMATIC ||
+							std::is_default_constructible< U >::value,
+						"The output type U should be default-constructible when using automatic "
+						"mode launchers."
+					);
 					if(
 						mode == AUTOMATIC && broadcast == false &&
 						!std::is_default_constructible< T >::value
@@ -780,6 +786,12 @@ namespace grb {
 					U &data_out,
 					const bool broadcast = false
 				) {
+					static_assert(
+						mode != AUTOMATIC ||
+							std::is_default_constructible< U >::value,
+						"The output type U should be default-constructible when using automatic "
+						"mode launchers."
+					);
 					return pack_data_and_run< void, U, true >(
 						reinterpret_cast< lpf_func_t >( alp_program ),
 						data_in, in_size, &data_out, broadcast
