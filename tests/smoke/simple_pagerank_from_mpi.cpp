@@ -56,7 +56,7 @@ struct output_vector {
 	grb::utils::TimerResults times;
 };
 
-void grbProgram( const input_matrix & A, struct output_vector & out ) {
+void grbProgram( const input_matrix &A, struct output_vector &out ) {
 
 	// assume successful run
 	out.error_code = 0;
@@ -147,7 +147,7 @@ int main( int argc, char ** argv ) {
 		}
 
 		// create more convenient view of in_size
-		const struct input_matrix & A = *reinterpret_cast< struct input_matrix * >( data_in );
+		const struct input_matrix &A = *reinterpret_cast< struct input_matrix * >( data_in );
 
 		// output vector
 		struct output_vector pr;
@@ -157,6 +157,7 @@ int main( int argc, char ** argv ) {
 
 		grb::Launcher< FROM_MPI > launcher( MPI_COMM_WORLD );
 
+		// note: this exec passes pointers within a single process
 		const enum grb::RC rc = launcher.exec( &grbProgram, A, pr );
 		if( rc != SUCCESS ) {
 			std::cerr << "grb::Launcher< FROM_MPI >::exec returns with "

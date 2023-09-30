@@ -118,7 +118,7 @@ int main( int argc, char ** argv ) {
 	if( error == 0 ) {
 		grb::RC rc = grb::SUCCESS;
 		grb::Launcher< grb::AUTOMATIC > launcher;
-		rc = launcher.exec( alpProgram, rc, error );
+		rc = launcher.exec( alpProgram, rc, error, true );
 		if( rc != grb::SUCCESS ) {
 			std::cerr << "Could not launch the ALP program.\n";
 			error = 10;
