@@ -238,14 +238,21 @@ namespace grb {
 
 			/**
 			 * Creates a dense ALP/GraphBLAS vector.
-			 * This constructor takes an initializer list of values that will be copied
-			 * into this vector.
-			 * The size of the vector will be equal to the number of elements in the
-			 * initializer list.
+			 *
+			 * This constructor takes an initialiser list of values that will be copied
+			 * into this vector. The size of the vector will be equal to the number of
+			 * elements in the initialiser list.
+			 *
+			 * For backends with more than one user process, the size of \a vals is the
+			 * global vector size, and the contents of \a vals are processed using
+			 * sequential I/O semantics.
+			 *
+			 * @see #grb::IOMode For the difference between sequential and parallel I/O
+			 *                    modes.
+			 *
+			 * \note There is only a difference if there are more than one user process.
 			 *
 			 * @param[in] vals The values to be copied into this vector.
-			 *                 Values will be read in the order in which they are
-			 * 	               supplied.
 			 */
 			Vector( const std::initializer_list< D > &vals ) {
 				(void) vals;

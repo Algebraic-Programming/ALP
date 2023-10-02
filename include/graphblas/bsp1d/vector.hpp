@@ -2383,8 +2383,12 @@ namespace grb {
 		 * @see Full description in base backend.
 		 *
 		 * \internal
-		 * This routine initialises the local vector and synchronises the global
-		 * vector once at the end.
+		 * This constructor initialises the local vector and synchronises the global
+		 * vector once.
+		 *
+		 * TODO rewrite below logic using an iterator filter (GitHub PR 233, issue
+		 * 228)
+		 * \endinternal
 		 */
 		Vector( const std::initializer_list< D > &vals )
 			: Vector( vals.size(), vals.size() )

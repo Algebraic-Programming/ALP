@@ -34,19 +34,25 @@ void grbProgram( const void *, const size_t in_size, int &error ) {
 	bool equals = true;
 	auto vector_it = x.begin();
 	for( size_t i = 0; i < values.size(); i++ ) {
+		if( vector_it == x.end() ) {
+			std::cerr << "Vector iterator prematurely in end position!" << std::endl;
+			error = 10;
+			return;
+		}
 		auto position = vector_it->first;
 		auto value = vector_it->second;
 		if( i != position || values[ i ] != value ) {
 			std::cerr << "Expected position " << i << " value " << values[ i ]
-				<< " but got position " << position << " value " << value << std::endl;
+				<< " but got position " << position << " value " << value
+				<< std::endl;
 			equals = false;
 			break;
 		}
-		vector_it.operator++();
+		(void) vector_it.operator++();
 	}
 	if( !equals ) {
 		std::cerr << "Vector values are not correct" << std::endl;
-		error = 1;
+		error = 20;
 		return;
 	}
 }

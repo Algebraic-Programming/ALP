@@ -862,7 +862,7 @@ namespace grb {
 			 *
 			 * @see Full description in base backend.
 			 */
-			Vector( const std::initializer_list< D > vals )
+			Vector( const std::initializer_list< D > &vals )
 				: Vector( vals.size(), vals.size() )
 			{
 #ifdef _DEBUG
