@@ -164,6 +164,10 @@ add_grb_executables( parserTest utilParserTest.cpp
 	COMPILE_DEFINITIONS COMPARE
 )
 
+add_grb_executables( iteratorFilter iteratorFilter.cpp
+	BACKENDS reference NO_BACKEND_NAME
+)
+
 add_grb_executables( RBGaussSeidel RBGaussSeidel.cpp
 	BACKENDS reference reference_omp bsp1d hybrid hyperdags nonblocking
 )

@@ -61,6 +61,24 @@ for MODE in ${MODES}; do
 		fi
 		echo " "
 
+		echo ">>>      [x]           [ ]       Tests the IteratorFilter utility on tiny inputs"
+		${TEST_BIN_DIR}/iteratorFilter_${MODE} 3 &> ${TEST_OUT_DIR}/iteratorFilter_${MODE}_tiny.log
+		head -1 ${TEST_OUT_DIR}/iteratorFilter_${MODE}_tiny.log
+		grep 'Test OK' ${TEST_OUT_DIR}/iteratorFilter_${MODE}_tiny.log || echo "Test FAILED"
+		echo " "
+
+		echo ">>>      [x]           [ ]       Tests the IteratorFilter utility on default input"
+		${TEST_BIN_DIR}/iteratorFilter_${MODE} &> ${TEST_OUT_DIR}/iteratorFilter_${MODE}.log
+		head -1 ${TEST_OUT_DIR}/iteratorFilter_${MODE}.log
+		grep 'Test OK' ${TEST_OUT_DIR}/iteratorFilter_${MODE}.log || echo "Test FAILED"
+		echo " "
+
+		echo ">>>      [x]           [ ]       Tests the IteratorFilter utility on large inputs"
+		${TEST_BIN_DIR}/iteratorFilter_${MODE} 7013 &> ${TEST_OUT_DIR}/iteratorFilter_${MODE}_large.log
+		head -1 ${TEST_OUT_DIR}/iteratorFilter_${MODE}_large.log
+		grep 'Test OK' ${TEST_OUT_DIR}/iteratorFilter_${MODE}_large.log || echo "Test FAILED"
+		echo " "
+
 		echo ">>>      [x]           [ ]       Tests the built-in parser (in graphblas/utils/parser.hpp)"
 		echo "                                 versus the parser in tests/parser.cpp on cit-HepTh.txt."
 		if [ -f ${INPUT_DIR}/cit-HepTh.txt ]; then
