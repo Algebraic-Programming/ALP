@@ -293,24 +293,37 @@ void grb_program( const size_t &n, grb::RC &rc ) {
 	{
 		auto itPair = grb::utils::iterators::createIteratorFilter(
 			v.begin(), v.end(),
-			[] (const size_t val) { return val == 0; }
+			[] (const size_t val) { return val != 0; }
 		);
-		auto begin = (itPair.first)++;
-		expected = n - 3;
-		testOneOut( n, 0, expected, begin, itPair.second, local_rc );
+		expected = 3;
+		local_rc = grb::SUCCESS;
 		if( itPair.first == itPair.second ) {
-			std::cerr << "Expected at least three elements, one found\n";
+			std::cerr << "Expected three elements, got zero\n";
 			local_rc = grb::FAILED;
+		}
+		if( local_rc == grb::SUCCESS ) {
+			auto begin = (itPair.first)++;
+			testOnlyOne( n, 0, expected, begin, itPair.second, local_rc );
+		}
+		if( local_rc != grb::SUCCESS ) {
+			std::cerr << "Same test as done under no. 6 but after calling postfix "
+				<< "increment operator failed. The postfix operator is *not* tested "
+				<< "further\n";
 		} else {
-			size_t count = 1;
-			while( itPair.first != itPair.second ) {
-				(void) (itPair.first)++;
-				(void) ++count;
-			}
-			if( count != expected ) {
-				std::cerr << "Expected " << expected << " elements, "
-					<< "got " << count << " instead.\n";
+			if( itPair.first == itPair.second ) {
+				std::cerr << "Expected three elements, got one\n";
 				local_rc = grb::FAILED;
+			} else {
+				size_t count = 1;
+				while( itPair.first != itPair.second ) {
+					(void) (itPair.first)++;
+					(void) ++count;
+				}
+				if( count != expected ) {
+					std::cerr << "Expected " << expected << " elements, "
+						<< "got " << count << " instead.\n";
+					local_rc = grb::FAILED;
+				}
 			}
 		}
 		if( local_rc != grb::SUCCESS ) {
