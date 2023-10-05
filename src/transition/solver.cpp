@@ -23,15 +23,18 @@
 
 #include <graphblas.hpp>
 
+#include <graphblas/algorithms/conjugate_gradient.hpp>
+
 
 template< typename T, typename NZI, typename RSI >
 class CG_Data {
 
 	private:
 
-		typedef grb::Matrix< T, grb::config::default_backend, RSI, RSI, NZI > Matrix;
+		typedef grb::Matrix< T, grb::config::default_backend, NZI, NZI, RSI > Matrix;
 
 		// input args
+		size_t size;
 		T tolerance;
 		size_t max_iter;
 		Matrix matrix;
@@ -52,7 +55,7 @@ class CG_Data {
 			const size_t n,
 			const T * const a, const NZI * const ja, const RSI * const ia
 		) :
-			tolerance( 1e-5 ), max_iter( 1000 ),
+			size( n ), tolerance( 1e-5 ), max_iter( 1000 ), matrix( 0, 0 ),
 			residual( std::numeric_limits< T >::infinity() ), iters( 0 ),
 			workspace( {
 				grb::Vector< T >( n ), grb::Vector< T >( n ), grb::Vector< T >( n )
@@ -62,9 +65,11 @@ class CG_Data {
 			assert( a != nullptr );
 			assert( ja != nullptr );
 			assert( ia != nullptr );
-			const size_t nz = static_cast< size_t >( ia[ n ] );
-			matrix = grb::internal::wrapCRSMatrix( a, ja, ia, n, n );
+			Matrix A = grb::internal::wrapCRSMatrix( a, ja, ia, n, n );
+			std::swap( A, matrix );
 		}
+
+		size_t getSize() const noexcept { return size; }
 
 		T getTolerance() const noexcept { return tolerance; }
 
@@ -72,12 +77,14 @@ class CG_Data {
 
 		size_t getIters() const noexcept { return iters; }
 
-		void setMaxIters( const size_t &in ) const noexcept { max_iter = in; }
+		void setMaxIters( const size_t &in ) noexcept { max_iter = in; }
 
-		void setTolerance( const T &in ) const noexcept { tolerance = in; }
+		void setTolerance( const T &in ) noexcept { tolerance = in; }
 
 		grb::RC solve( grb::Vector< T > &x, const grb::Vector< T > &b ) {
-			return grb::algorithms::conjugate_gradient(
+			constexpr grb::Descriptor descr =
+				grb::descriptors::dense | grb::descriptors::force_row_major;
+			return grb::algorithms::conjugate_gradient< descr >(
 				x, matrix, b,
 				max_iter, tolerance,
 				iters, residual,
@@ -93,7 +100,7 @@ extern "C" {
 		sparse_cg_handle_t * const handle, const size_t n,
 		const float * const a, const int * const ja, const int * const ia
 	) {
-		if( n == 0 ) { return ILLEGAL_ARGUMENT };
+		if( n == 0 ) { return ILLEGAL_ARGUMENT; }
 		if( handle == nullptr || a == nullptr || ja == nullptr || ia == nullptr ) {
 			return NULL_ARGUMENT;
 		}
@@ -113,7 +120,7 @@ extern "C" {
 		sparse_cg_handle_t * const handle, const size_t n,
 		const double * const a, const int * const ja, const int * const ia
 	) {
-		if( n == 0 ) { return ILLEGAL_ARGUMENT };
+		if( n == 0 ) { return ILLEGAL_ARGUMENT; }
 		if( handle == nullptr || a == nullptr || ja == nullptr || ia == nullptr ) {
 			return NULL_ARGUMENT;
 		}
@@ -133,7 +140,7 @@ extern "C" {
 		sparse_cg_handle_t * const handle, const size_t n,
 		const float * const a, const size_t * const ja, const int * const ia
 	) {
-		if( n == 0 ) { return ILLEGAL_ARGUMENT };
+		if( n == 0 ) { return ILLEGAL_ARGUMENT; }
 		if( handle == nullptr || a == nullptr || ja == nullptr || ia == nullptr ) {
 			return NULL_ARGUMENT;
 		}
@@ -153,13 +160,13 @@ extern "C" {
 		sparse_cg_handle_t * const handle, const size_t n,
 		const double * const a, const size_t * const ja, const int * const ia
 	) {
-		if( n == 0 ) { return ILLEGAL_ARGUMENT };
+		if( n == 0 ) { return ILLEGAL_ARGUMENT; }
 		if( handle == nullptr || a == nullptr || ja == nullptr || ia == nullptr ) {
 			return NULL_ARGUMENT;
 		}
 		try {
 			*handle = static_cast< void * >(
-				new CG_Data< double, size_t, int >( n, a, ja, ia );
+				new CG_Data< double, size_t, int >( n, a, ja, ia ) );
 		} catch( std::exception &e ) {
 			// the grb::Matrix constructor may only throw on out of memory errors
 			std::cerr << "Error: " << e.what() << "\n";
@@ -173,7 +180,7 @@ extern "C" {
 		sparse_cg_handle_t * const handle, const size_t n,
 		const float * const a, const size_t * const ja, const size_t * const ia
 	) {
-		if( n == 0 ) { return ILLEGAL_ARGUMENT };
+		if( n == 0 ) { return ILLEGAL_ARGUMENT; }
 		if( handle == nullptr || a == nullptr || ja == nullptr || ia == nullptr ) {
 			return NULL_ARGUMENT;
 		}
@@ -193,7 +200,7 @@ extern "C" {
 		sparse_cg_handle_t * const handle, const size_t n,
 		const double * const a, const size_t * const ja, const size_t * const ia
 	) {
-		if( n == 0 ) { return ILLEGAL_ARGUMENT };
+		if( n == 0 ) { return ILLEGAL_ARGUMENT; }
 		if( handle == nullptr || a == nullptr || ja == nullptr || ia == nullptr ) {
 			return NULL_ARGUMENT;
 		}
@@ -213,7 +220,7 @@ extern "C" {
 		const sparse_cg_handle_t handle, float * const tol
 	) {
 		if( handle == nullptr || tol == nullptr ) { return NULL_ARGUMENT; }
-		*tol = static_cast< CG_data< float, int, int > * >( handle ).getTolerance();
+		*tol = static_cast< CG_Data< float, int, int > * >( handle )->getTolerance();
 		return NO_ERROR;
 	}
 
@@ -222,7 +229,7 @@ extern "C" {
 	) {
 		if( handle == nullptr || tol == nullptr ) { return NULL_ARGUMENT; }
 		*tol =
-			static_cast< CG_data< float, size_t, int > * >( handle ).getTolerance();
+			static_cast< CG_Data< float, size_t, int > * >( handle )->getTolerance();
 		return NO_ERROR;
 	}
 
@@ -231,7 +238,7 @@ extern "C" {
 	) {
 		if( handle == nullptr || tol == nullptr ) { return NULL_ARGUMENT; }
 		*tol =
-			static_cast< CG_data< float, size_t, size_t > * >( handle ).getTolerance();
+			static_cast< CG_Data< float, size_t, size_t > * >( handle )->getTolerance();
 		return NO_ERROR;
 	}
 
@@ -239,7 +246,7 @@ extern "C" {
 		const sparse_cg_handle_t handle, double * const tol
 	) {
 		if( handle == nullptr || tol == nullptr ) { return NULL_ARGUMENT; }
-		*tol = static_cast< CG_data< double, int, int > * >( handle ).getTolerance();
+		*tol = static_cast< CG_Data< double, int, int > * >( handle )->getTolerance();
 		return NO_ERROR;
 	}
 
@@ -248,7 +255,7 @@ extern "C" {
 	) {
 		if( handle == nullptr || tol == nullptr ) { return NULL_ARGUMENT; }
 		*tol =
-			static_cast< CG_data< double, size_t, int > * >( handle ).getTolerance();
+			static_cast< CG_Data< double, size_t, int > * >( handle )->getTolerance();
 		return NO_ERROR;
 	}
 
@@ -257,7 +264,7 @@ extern "C" {
 	) {
 		if( handle == nullptr || tol == nullptr ) { return NULL_ARGUMENT; }
 		*tol =
-			static_cast< CG_data< double, size_t, size_t > * >( handle ).getTolerance();
+			static_cast< CG_Data< double, size_t, size_t > * >( handle )->getTolerance();
 		return NO_ERROR;
 	}
 
@@ -265,7 +272,7 @@ extern "C" {
 		sparse_cg_handle_t handle, const float tol
 	) {
 		if( handle == nullptr ) { return NULL_ARGUMENT; }
-		static_cast< CG_data< float, int, int > * >( handle ).
+		static_cast< CG_Data< float, int, int > * >( handle )->
 			setTolerance( tol );
 		return NO_ERROR;
 	}
@@ -274,7 +281,7 @@ extern "C" {
 		sparse_cg_handle_t handle, const float tol
 	) {
 		if( handle == nullptr ) { return NULL_ARGUMENT; }
-		static_cast< CG_data< float, size_t, int > * >( handle ).
+		static_cast< CG_Data< float, size_t, int > * >( handle )->
 			setTolerance( tol );
 		return NO_ERROR;
 	}
@@ -283,7 +290,7 @@ extern "C" {
 		sparse_cg_handle_t handle, const float tol
 	) {
 		if( handle == nullptr ) { return NULL_ARGUMENT; }
-		static_cast< CG_data< float, size_t, size_t > * >( handle ).
+		static_cast< CG_Data< float, size_t, size_t > * >( handle )->
 			setTolerance( tol );
 		return NO_ERROR;
 	}
@@ -292,7 +299,7 @@ extern "C" {
 		sparse_cg_handle_t handle, const double tol
 	) {
 		if( handle == nullptr ) { return NULL_ARGUMENT; }
-		static_cast< CG_data< double, int, int > * >( handle ).
+		static_cast< CG_Data< double, int, int > * >( handle )->
 			setTolerance( tol );
 		return NO_ERROR;
 	}
@@ -301,7 +308,7 @@ extern "C" {
 		sparse_cg_handle_t handle, const double tol
 	) {
 		if( handle == nullptr ) { return NULL_ARGUMENT; }
-		static_cast< CG_data< double, size_t, int > * >( handle ).
+		static_cast< CG_Data< double, size_t, int > * >( handle )->
 			setTolerance( tol );
 		return NO_ERROR;
 	}
@@ -310,7 +317,7 @@ extern "C" {
 		sparse_cg_handle_t handle, const double tol
 	) {
 		if( handle == nullptr ) { return NULL_ARGUMENT; }
-		static_cast< CG_data< double, size_t, int > * >( handle ).
+		static_cast< CG_Data< double, size_t, int > * >( handle )->
 			setTolerance( tol );
 		return NO_ERROR;
 	}
@@ -319,7 +326,7 @@ extern "C" {
 		const sparse_cg_handle_t handle, float * const tol
 	) {
 		if( handle == nullptr || tol == nullptr ) { return NULL_ARGUMENT; }
-		*tol = static_cast< CG_data< float, int, int > * >( handle ).getResidual();
+		*tol = static_cast< CG_Data< float, int, int > * >( handle )->getResidual();
 		return NO_ERROR;
 	}
 
@@ -328,7 +335,7 @@ extern "C" {
 	) {
 		if( handle == nullptr || tol == nullptr ) { return NULL_ARGUMENT; }
 		*tol =
-			static_cast< CG_data< float, size_t, int > * >( handle ).getResidual();
+			static_cast< CG_Data< float, size_t, int > * >( handle )->getResidual();
 		return NO_ERROR;
 	}
 
@@ -337,7 +344,7 @@ extern "C" {
 	) {
 		if( handle == nullptr || tol == nullptr ) { return NULL_ARGUMENT; }
 		*tol =
-			static_cast< CG_data< float, size_t, size_t > * >( handle ).getResidual();
+			static_cast< CG_Data< float, size_t, size_t > * >( handle )->getResidual();
 		return NO_ERROR;
 	}
 
@@ -345,7 +352,7 @@ extern "C" {
 		const sparse_cg_handle_t handle, double * const tol
 	) {
 		if( handle == nullptr || tol == nullptr ) { return NULL_ARGUMENT; }
-		*tol = static_cast< CG_data< double, int, int > * >( handle ).getResidual();
+		*tol = static_cast< CG_Data< double, int, int > * >( handle )->getResidual();
 		return NO_ERROR;
 	}
 
@@ -354,7 +361,7 @@ extern "C" {
 	) {
 		if( handle == nullptr || tol == nullptr ) { return NULL_ARGUMENT; }
 		*tol =
-			static_cast< CG_data< double, size_t, int > * >( handle ).getResidual();
+			static_cast< CG_Data< double, size_t, int > * >( handle )->getResidual();
 		return NO_ERROR;
 	}
 
@@ -363,7 +370,7 @@ extern "C" {
 	) {
 		if( handle == nullptr || tol == nullptr ) { return NULL_ARGUMENT; }
 		*tol =
-			static_cast< CG_data< double, size_t, size_t > * >( handle ).getResidual();
+			static_cast< CG_Data< double, size_t, size_t > * >( handle )->getResidual();
 		return NO_ERROR;
 	}
 
@@ -371,7 +378,7 @@ extern "C" {
 		const sparse_cg_handle_t handle, size_t * const iters
 	) {
 		if( handle == nullptr || iters == nullptr ) { return NULL_ARGUMENT; }
-		*iters = static_cast< CG_data< float, int, int > * >( handle ).getIters();
+		*iters = static_cast< CG_Data< float, int, int > * >( handle )->getIters();
 		return NO_ERROR;
 	}
 
@@ -379,7 +386,7 @@ extern "C" {
 		const sparse_cg_handle_t handle, size_t * const iters
 	) {
 		if( handle == nullptr || iters == nullptr ) { return NULL_ARGUMENT; }
-		*iters = static_cast< CG_data< float, size_t, int > * >( handle ).getIters();
+		*iters = static_cast< CG_Data< float, size_t, int > * >( handle )->getIters();
 		return NO_ERROR;
 	}
 
@@ -388,7 +395,7 @@ extern "C" {
 	) {
 		if( handle == nullptr || iters == nullptr ) { return NULL_ARGUMENT; }
 		*iters =
-			static_cast< CG_data< float, size_t, size_t > * >( handle ).getIters();
+			static_cast< CG_Data< float, size_t, size_t > * >( handle )->getIters();
 		return NO_ERROR;
 	}
 
@@ -396,7 +403,7 @@ extern "C" {
 		const sparse_cg_handle_t handle, size_t * const iters
 	) {
 		if( handle == nullptr || iters == nullptr ) { return NULL_ARGUMENT; }
-		*iters = static_cast< CG_data< double, int, int > * >( handle ).getIters();
+		*iters = static_cast< CG_Data< double, int, int > * >( handle )->getIters();
 		return NO_ERROR;
 	}
 
@@ -404,7 +411,7 @@ extern "C" {
 		const sparse_cg_handle_t handle, size_t * const iters
 	) {
 		if( handle == nullptr || iters == nullptr ) { return NULL_ARGUMENT; }
-		*iters = static_cast< CG_data< double, size_t, int > * >( handle ).getIters();
+		*iters = static_cast< CG_Data< double, size_t, int > * >( handle )->getIters();
 		return NO_ERROR;
 	}
 
@@ -413,7 +420,7 @@ extern "C" {
 	) {
 		if( handle == nullptr || iters == nullptr ) { return NULL_ARGUMENT; }
 		*iters =
-			static_cast< CG_data< double, size_t, size_t > * >( handle ).getIters();
+			static_cast< CG_Data< double, size_t, size_t > * >( handle )->getIters();
 		return NO_ERROR;
 	}
 
@@ -421,7 +428,7 @@ extern "C" {
 		sparse_cg_handle_t handle, const size_t max_iters
 	) {
 		if( handle == nullptr ) { return NULL_ARGUMENT; }
-		static_cast< CG_data< float, int, int > * >( handle ).
+		static_cast< CG_Data< float, int, int > * >( handle )->
 			setMaxIters( max_iters );
 		return NO_ERROR;
 	}
@@ -430,7 +437,7 @@ extern "C" {
 		sparse_cg_handle_t handle, const size_t max_iters
 	) {
 		if( handle == nullptr ) { return NULL_ARGUMENT; }
-		static_cast< CG_data< float, size_t, int > * >( handle ).
+		static_cast< CG_Data< float, size_t, int > * >( handle )->
 			setMaxIters( max_iters );
 		return NO_ERROR;
 	}
@@ -439,7 +446,7 @@ extern "C" {
 		sparse_cg_handle_t handle, const size_t max_iters
 	) {
 		if( handle == nullptr ) { return NULL_ARGUMENT; }
-		static_cast< CG_data< float, size_t, size_t > * >( handle ).
+		static_cast< CG_Data< float, size_t, size_t > * >( handle )->
 			setMaxIters( max_iters );
 		return NO_ERROR;
 	}
@@ -448,7 +455,7 @@ extern "C" {
 		sparse_cg_handle_t handle, const size_t max_iters
 	) {
 		if( handle == nullptr ) { return NULL_ARGUMENT; }
-		static_cast< CG_data< double, int, int > * >( handle ).
+		static_cast< CG_Data< double, int, int > * >( handle )->
 			setMaxIters( max_iters );
 		return NO_ERROR;
 	}
@@ -457,7 +464,7 @@ extern "C" {
 		sparse_cg_handle_t handle, const size_t max_iters
 	) {
 		if( handle == nullptr ) { return NULL_ARGUMENT; }
-		static_cast< CG_data< double, size_t, int > * >( handle ).
+		static_cast< CG_Data< double, size_t, int > * >( handle )->
 			setMaxIters( max_iters );
 		return NO_ERROR;
 	}
@@ -466,7 +473,7 @@ extern "C" {
 		sparse_cg_handle_t handle, const size_t max_iters
 	) {
 		if( handle == nullptr ) { return NULL_ARGUMENT; }
-		static_cast< CG_data< double, size_t, size_t > * >( handle ).
+		static_cast< CG_Data< double, size_t, size_t > * >( handle )->
 			setMaxIters( max_iters );
 		return NO_ERROR;
 	}
@@ -477,12 +484,12 @@ extern "C" {
 		if( handle == nullptr || x == nullptr || b == nullptr ) {
 			return NULL_ARGUMENT;
 		}
-		auto &data = * static_cast< CG_data< float, int, int > * >( handle );
+		auto &data = * static_cast< CG_Data< float, int, int > * >( handle );
 		grb::Vector< float > alp_x =
-			grb::internal::template wrapRawVector< float >( data.n, x );
+			grb::internal::template wrapRawVector< float >( data.getSize(), x );
 		const grb::Vector< float > alp_b =
-			grb::internal::template wrapRawVector< float >( data.n, b );
-		const grb::RC rc = data.solve( x, b );
+			grb::internal::template wrapRawVector< float >( data.getSize(), b );
+		const grb::RC rc = data.solve( alp_x, alp_b );
 		// ALP spec should not allow going out of memory
 		assert( rc != grb::OUTOFMEM );
 		// should we have a return code for failed convergence?
@@ -505,12 +512,12 @@ extern "C" {
 		if( handle == nullptr || x == nullptr || b == nullptr ) {
 			return NULL_ARGUMENT;
 		}
-		auto &data = * static_cast< CG_data< float, size_t, int > * >( handle );
+		auto &data = * static_cast< CG_Data< float, size_t, int > * >( handle );
 		grb::Vector< float > alp_x =
-			grb::internal::template wrapRawVector< float >( data.n, x );
+			grb::internal::template wrapRawVector< float >( data.getSize(), x );
 		const grb::Vector< float > alp_b =
-			grb::internal::template wrapRawVector< float >( data.n, b );
-		const grb::RC rc = data.solve( x, b );
+			grb::internal::template wrapRawVector< float >( data.getSize(), b );
+		const grb::RC rc = data.solve( alp_x, alp_b );
 		// ALP spec should not allow going out of memory
 		assert( rc != grb::OUTOFMEM );
 		// should we have a return code for failed convergence?
@@ -533,12 +540,12 @@ extern "C" {
 		if( handle == nullptr || x == nullptr || b == nullptr ) {
 			return NULL_ARGUMENT;
 		}
-		auto &data = * static_cast< CG_data< float, size_t, size_t > * >( handle );
+		auto &data = * static_cast< CG_Data< float, size_t, size_t > * >( handle );
 		grb::Vector< float > alp_x =
-			grb::internal::template wrapRawVector< float >( data.n, x );
+			grb::internal::template wrapRawVector< float >( data.getSize(), x );
 		const grb::Vector< float > alp_b =
-			grb::internal::template wrapRawVector< float >( data.n, b );
-		const grb::RC rc = data.solve( x, b );
+			grb::internal::template wrapRawVector< float >( data.getSize(), b );
+		const grb::RC rc = data.solve( alp_x, alp_b );
 		// ALP spec should not allow going out of memory
 		assert( rc != grb::OUTOFMEM );
 		// should we have a return code for failed convergence?
@@ -561,12 +568,12 @@ extern "C" {
 		if( handle == nullptr || x == nullptr || b == nullptr ) {
 			return NULL_ARGUMENT;
 		}
-		auto &data = * static_cast< CG_data< double, int, int > * >( handle );
+		auto &data = * static_cast< CG_Data< double, int, int > * >( handle );
 		grb::Vector< double > alp_x =
-			grb::internal::template wrapRawVector< double >( data.n, x );
+			grb::internal::template wrapRawVector< double >( data.getSize(), x );
 		const grb::Vector< double > alp_b =
-			grb::internal::template wrapRawVector< double >( data.n, b );
-		const grb::RC rc = data.solve( x, b );
+			grb::internal::template wrapRawVector< double >( data.getSize(), b );
+		const grb::RC rc = data.solve( alp_x, alp_b );
 		// ALP spec should not allow going out of memory
 		assert( rc != grb::OUTOFMEM );
 		// should we have a return code for failed convergence?
@@ -589,12 +596,12 @@ extern "C" {
 		if( handle == nullptr || x == nullptr || b == nullptr ) {
 			return NULL_ARGUMENT;
 		}
-		auto &data = * static_cast< CG_data< double, size_t, int > * >( handle );
+		auto &data = * static_cast< CG_Data< double, size_t, int > * >( handle );
 		grb::Vector< double > alp_x =
-			grb::internal::template wrapRawVector< double >( data.n, x );
+			grb::internal::template wrapRawVector< double >( data.getSize(), x );
 		const grb::Vector< double > alp_b =
-			grb::internal::template wrapRawVector< double >( data.n, b );
-		const grb::RC rc = data.solve( x, b );
+			grb::internal::template wrapRawVector< double >( data.getSize(), b );
+		const grb::RC rc = data.solve( alp_x, alp_b );
 		// ALP spec should not allow going out of memory
 		assert( rc != grb::OUTOFMEM );
 		// should we have a return code for failed convergence?
@@ -617,12 +624,12 @@ extern "C" {
 		if( handle == nullptr || x == nullptr || b == nullptr ) {
 			return NULL_ARGUMENT;
 		}
-		auto &data = * static_cast< CG_data< double, size_t, size_t > * >( handle );
+		auto &data = * static_cast< CG_Data< double, size_t, size_t > * >( handle );
 		grb::Vector< double > alp_x =
-			grb::internal::template wrapRawVector< double >( data.n, x );
+			grb::internal::template wrapRawVector< double >( data.getSize(), x );
 		const grb::Vector< double > alp_b =
-			grb::internal::template wrapRawVector< double >( data.n, b );
-		const grb::RC rc = data.solve( x, b );
+			grb::internal::template wrapRawVector< double >( data.getSize(), b );
+		const grb::RC rc = data.solve( alp_x, alp_b );
 		// ALP spec should not allow going out of memory
 		assert( rc != grb::OUTOFMEM );
 		// should we have a return code for failed convergence?
@@ -641,37 +648,37 @@ extern "C" {
 
 	sparse_err_t sparse_cg_destroy_sii( sparse_cg_handle_t handle ) {
 		if( handle == nullptr ) { return NULL_ARGUMENT; }
-		delete static_cast< CG_data< float, int, int > * >( handle );
+		delete static_cast< CG_Data< float, int, int > * >( handle );
 		return NO_ERROR;
 	}
 
 	sparse_err_t sparse_cg_destroy_szi( sparse_cg_handle_t handle ) {
 		if( handle == nullptr ) { return NULL_ARGUMENT; }
-		delete static_cast< CG_data< float, size_t, int > * >( handle );
+		delete static_cast< CG_Data< float, size_t, int > * >( handle );
 		return NO_ERROR;
 	}
 
 	sparse_err_t sparse_cg_destroy_szz( sparse_cg_handle_t handle ) {
 		if( handle == nullptr ) { return NULL_ARGUMENT; }
-		delete static_cast< CG_data< float, size_t, size_t > * >( handle );
+		delete static_cast< CG_Data< float, size_t, size_t > * >( handle );
 		return NO_ERROR;
 	}
 
 	sparse_err_t sparse_cg_destroy_dii( sparse_cg_handle_t handle ) {
 		if( handle == nullptr ) { return NULL_ARGUMENT; }
-		delete static_cast< CG_data< double, int, int > * >( handle );
+		delete static_cast< CG_Data< double, int, int > * >( handle );
 		return NO_ERROR;
 	}
 
 	sparse_err_t sparse_cg_destroy_dzi( sparse_cg_handle_t handle ) {
 		if( handle == nullptr ) { return NULL_ARGUMENT; }
-		delete static_cast< CG_data< double, size_t, int > * >( handle );
+		delete static_cast< CG_Data< double, size_t, int > * >( handle );
 		return NO_ERROR;
 	}
 
 	sparse_err_t sparse_cg_destroy_dzz( sparse_cg_handle_t handle ) {
 		if( handle == nullptr ) { return NULL_ARGUMENT; }
-		delete static_cast< CG_data< double, size_t, size_t > * >( handle );
+		delete static_cast< CG_Data< double, size_t, size_t > * >( handle );
 		return NO_ERROR;
 	}
 

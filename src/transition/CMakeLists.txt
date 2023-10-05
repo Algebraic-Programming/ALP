@@ -63,3 +63,25 @@ if( WITH_OMP_BACKEND )
 		ARCHIVE DESTINATION "${SHMEM_BACKEND_INSTALL_DIR}"
 	)
 endif()
+# sequential solver library
+
+add_library( spsolver_static STATIC
+	${CMAKE_CURRENT_SOURCE_DIR}/solver.cpp
+)
+
+set_target_properties( spsolver_static PROPERTIES
+	OUTPUT_NAME "spsolver"
+	ARCHIVE_OUTPUT_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/shmem"
+)
+
+target_link_libraries( spsolver_static PUBLIC backend_reference transition )
+
+target_link_libraries( spsolver_static PRIVATE backend_flags )
+
+add_dependencies( libs spsolver_static )
+
+install( TARGETS spsolver_static
+	EXPORT GraphBLASTargets
+	ARCHIVE DESTINATION "${SHMEM_BACKEND_INSTALL_DIR}"
+)
+

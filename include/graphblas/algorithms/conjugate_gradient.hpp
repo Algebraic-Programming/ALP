@@ -144,7 +144,8 @@ namespace grb {
 		 * performance semantics, with the exception of getters such as #grb::nnz, are
 		 * specific to the backend selected during compilation.
 		 */
-		template< Descriptor descr = descriptors::no_operation,
+		template<
+			Descriptor descr = descriptors::no_operation,
 			typename IOType,
 			typename ResidualType,
 			typename NonzeroType,
@@ -154,19 +155,20 @@ namespace grb {
 				grb::identities::zero, grb::identities::one
 			>,
 			class Minus = operators::subtract< IOType >,
-			class Divide = operators::divide< IOType >
+			class Divide = operators::divide< IOType >,
+			typename RSI, typename NZI, Backend backend
 		>
 		grb::RC conjugate_gradient(
-			grb::Vector< IOType > &x,
-			const grb::Matrix< NonzeroType > &A,
-			const grb::Vector< InputType > &b,
+			grb::Vector< IOType, backend > &x,
+			const grb::Matrix< NonzeroType, backend, RSI, RSI, NZI > &A,
+			const grb::Vector< InputType, backend > &b,
 			const size_t max_iterations,
 			ResidualType tol,
 			size_t &iterations,
 			ResidualType &residual,
-			grb::Vector< IOType > &r,
-			grb::Vector< IOType > &u,
-			grb::Vector< IOType > &temp,
+			grb::Vector< IOType, backend > &r,
+			grb::Vector< IOType, backend > &u,
+			grb::Vector< IOType, backend > &temp,
 			const Ring &ring = Ring(),
 			const Minus &minus = Minus(),
 			const Divide &divide = Divide()
