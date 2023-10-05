@@ -15,7 +15,7 @@
  * limitations under the License.
  */
 
-#include "solvers.h"
+#include "solver.h"
 
 #include <assert.h>
 
