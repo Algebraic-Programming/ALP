@@ -614,7 +614,7 @@ namespace grb {
 		>
 		Matrix< D, implementation, RIT, CIT, NIT > dense(
 			const size_t nrows, const size_t ncols, IOMode io_mode, const D value
-		) { return full< D, descr, RIT, CIT, NIT, implementation >( value, nrows, ncols, io_mode ); }
+		) { return full< D, descr, RIT, CIT, NIT, implementation >( nrows, ncols, io_mode, value ); }
 
 		/**
 		 * @brief Build a dense pattern matrix.

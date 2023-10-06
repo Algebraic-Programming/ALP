@@ -367,6 +367,13 @@ for MODE in ${MODES}; do
 				head -1 ${TEST_OUT_DIR}/muladd_large_${MODE}_${BACKEND}_${P}_${T}
 				grep 'Test OK' ${TEST_OUT_DIR}/muladd_large_${MODE}_${BACKEND}_${P}_${T} || echo "Test FAILED"
 				echo " "
+
+				echo ">>>      [x]           [ ]       Testing grb::factories."
+				$runner ${TEST_BIN_DIR}/factories_${MODE}_${BACKEND} &> ${TEST_OUT_DIR}/factories_${MODE}_${BACKEND}_${P}_${T}
+				head -1 ${TEST_OUT_DIR}/factories_${MODE}_${BACKEND}_${P}_${T}
+				grep 'Test OK' ${TEST_OUT_DIR}/factories_${MODE}_${BACKEND}_${P}_${T} || echo "Test FAILED"
+				echo " "
+
 				echo ">>>      [x]           [ ]       Testing grb::buildVector and"
 				echo "                                 grb::buildVectorUnique"
 				$runner ${TEST_BIN_DIR}/buildVector_${MODE}_${BACKEND} &> ${TEST_OUT_DIR}/buildVector_${MODE}_${BACKEND}_${P}_${T}.log

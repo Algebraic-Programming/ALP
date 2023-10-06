@@ -150,6 +150,10 @@ add_grb_executables( eWiseMul eWiseMul.cpp
 	BACKENDS reference reference_omp bsp1d hybrid hyperdags nonblocking
 )
 
+add_grb_executables( factories factories.cpp
+	BACKENDS reference reference_omp bsp1d hybrid hyperdags nonblocking
+)
+
 add_grb_executables( muladd muladd.cpp
 	BACKENDS reference reference_omp bsp1d hybrid hyperdags nonblocking
 )
