@@ -93,6 +93,11 @@ add_grb_executables( from_mpi_launch_simple_pagerank_broadcast simple_pagerank_b
 	ADDITIONAL_LINK_LIBRARIES MPI::MPI_CXX
 )
 
+add_grb_executables( bfs bfs.cpp
+	BACKENDS reference reference_omp hyperdags nonblocking
+	ADDITIONAL_LINK_LIBRARIES test_utils
+)
+
 add_grb_executables( knn knn.cpp ../unit/parser.cpp
 	BACKENDS reference reference_omp bsp1d hybrid hyperdags nonblocking
 )

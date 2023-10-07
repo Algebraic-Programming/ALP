@@ -47,6 +47,30 @@ namespace grb {
 		 *
 		 * Mathematical notation: \f$ \odot(x,y)\ \to\ x \f$.
 		 *
+		 * @tparam Op The operator to negate.
+		 */
+		template<
+			class Op
+		>
+		class logical_not : public internal::Operator< internal::logical_not< Op > > {
+
+			public:
+
+				template< class A >
+				using GenericOperator = logical_not< A >;
+
+				logical_not() {}
+
+		};
+
+		/**
+		 * This operator discards all right-hand side input and simply copies the
+		 * left-hand side input to the output variable. It exposes the complete
+		 * interface detailed in grb::operators::internal::Operator. This operator
+		 * can be passed to any GraphBLAS function or object constructor.
+		 *
+		 * Mathematical notation: \f$ \odot(x,y)\ \to\ x \f$.
+		 *
 		 * @tparam D1 The left-hand side input domain.
 		 * @tparam D2 The right-hand side input domain.
 		 * @tparam D3 The output domain.
@@ -497,6 +521,22 @@ namespace grb {
 				using GenericOperator = logical_and< A, B, C, D >;
 
 				logical_and() {}
+		};
+
+		template<
+			typename D1, typename D2 = D1, typename D3 = D2,
+			enum Backend implementation = config::default_backend
+		>
+		class logical_nand : public logical_not<
+				logical_and< D1, D2, D3, implementation >
+		> {
+
+			public:
+
+				template< typename A, typename B, typename C, enum Backend D >
+				using GenericOperator = logical_nand< A, B, C, D >;
+
+				logical_nand() {}
 		};
 
 		/**
@@ -981,6 +1021,11 @@ namespace grb {
 
 	} // namespace operators
 
+	template< class Op >
+	struct is_operator< operators::logical_not< Op > > {
+		static const constexpr bool value = is_operator< Op >::value;
+	};
+
 	template< typename D1, typename D2, typename D3, enum Backend implementation >
 	struct is_operator< operators::left_assign_if< D1, D2, D3, implementation > > {
 		static const constexpr bool value = true;
@@ -1060,6 +1105,11 @@ namespace grb {
 
 	template< typename D1, typename D2, typename D3, enum Backend implementation >
 	struct is_operator< operators::logical_and< D1, D2, D3, implementation > > {
+		static const constexpr bool value = true;
+	};
+
+	template< typename D1, typename D2, typename D3, enum Backend implementation >
+	struct is_operator< operators::logical_nand< D1, D2, D3, implementation > > {
 		static const constexpr bool value = true;
 	};
 

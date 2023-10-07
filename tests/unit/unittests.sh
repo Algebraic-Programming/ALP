@@ -386,6 +386,12 @@ for MODE in ${MODES}; do
 				grep "Test OK" ${TEST_OUT_DIR}/argmin_${MODE}_${BACKEND}_${P}_${T}.log || echo "Test FAILED"
 				echo " "
 
+				echo ">>>      [x]           [ ]       Testing grb::algorithms::bfs with small pre-defined cases."
+				$runner ${TEST_BIN_DIR}/bfs_unit_${MODE}_${BACKEND} 2> ${TEST_OUT_DIR}/bfs_unit_${MODE}_${BACKEND}_${P}_${T}.err 1> ${TEST_OUT_DIR}/bfs_unit_${MODE}_${BACKEND}_${P}_${T}.log
+				head -1 ${TEST_OUT_DIR}/bfs_unit_${MODE}_${BACKEND}_${P}_${T}.log
+				grep "Test OK" ${TEST_OUT_DIR}/bfs_unit_${MODE}_${BACKEND}_${P}_${T}.log || echo "Test FAILED"
+				echo " "
+
 				echo ">>>      [x]           [ ]       Testing grb::argmax"
 				$runner ${TEST_BIN_DIR}/argmax_${MODE}_${BACKEND} 2> ${TEST_OUT_DIR}/argmax_${MODE}_${BACKEND}_${P}_${T}.err 1> ${TEST_OUT_DIR}/argmax_${MODE}_${BACKEND}_${P}_${T}.log
 				head -1 ${TEST_OUT_DIR}/argmax_${MODE}_${BACKEND}_${P}_${T}.log

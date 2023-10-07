@@ -256,6 +256,24 @@ for BACKEND in ${BACKENDS[@]}; do
 			    grep 'Test OK' ${TEST_OUT_DIR}/gmres_complex_${BACKEND}_${P}_${T}.log || echo "Test FAILED"
 			    echo " "
 			fi
+
+			echo ">>>      [x]           [ ]       Testing the BFS algorithms for the matrix west0497.mtx."
+			echo "                                 This test employs the grb::Launcher in automatic mode. It uses"
+			echo "                                 direct-mode file IO."
+			if [ -f ${INPUT_DIR}/west0497.mtx ] && [ "$BACKEND" != "bsp1d" ] && [ "$BACKEND" != "hybrid" ]; then
+				$runner ${TEST_BIN_DIR}/bfs_${BACKEND} ${INPUT_DIR}/west0497.mtx direct 0 0 497 &> ${TEST_OUT_DIR}/bfs_west0497_${BACKEND}_${P}_${T}.log
+				head -1 ${TEST_OUT_DIR}/bfs_west0497_${BACKEND}_${P}_${T}.log
+				grep 'Test OK' ${TEST_OUT_DIR}/bfs_west0497_${BACKEND}_${P}_${T}.log || echo "Test FAILED"
+			else
+				echo "Test DISABLED: west0497.mtx was not found. To enable, please provide ${INPUT_DIR}/west0497.mtx"
+			fi
+			if [ -f ${INPUT_DIR}/dwt_59.mtx ] && [ "$BACKEND" != "bsp1d" ] && [ "$BACKEND" != "hybrid" ]; then
+				$runner ${TEST_BIN_DIR}/bfs_${BACKEND} ${INPUT_DIR}/dwt_59.mtx direct 0 1 13 &> ${TEST_OUT_DIR}/bfs_dwt_59_${BACKEND}_${P}_${T}.log
+				head -1 ${TEST_OUT_DIR}/bfs_dwt_59_${BACKEND}_${P}_${T}.log
+				grep 'Test OK' ${TEST_OUT_DIR}/bfs_dwt_59_${BACKEND}_${P}_${T}.log || echo "Test FAILED"
+			else
+				echo "Test DISABLED: dwt_59.mtx was not found. To enable, please provide ${INPUT_DIR}/dwt_59.mtx"
+			fi
 			
 			echo ">>>      [x]           [ ]       Testing the BiCGstab algorithm for the 17361 x 17361 input"
 			echo "                                 matrix gyro_m.mtx. This test verifies against a ground-"
@@ -291,6 +309,30 @@ for BACKEND in ${BACKENDS[@]}; do
 				$runner ${TEST_BIN_DIR}/graphchallenge_nn_single_inference_${BACKEND} ${GNN_DATASET_PATH} 1024 120 294 0 0 indirect 1 1 verification ${OUTPUT_VERIFICATION_DIR}/graphchallenge_nn_out_1024_120_294_no_threshold_ref &> ${TEST_OUT_DIR}/graphchallenge_nn_single_inference_${BACKEND}_${P}_${T}.log
 				head -1 ${TEST_OUT_DIR}/graphchallenge_nn_single_inference_${BACKEND}_${P}_${T}.log
 				grep 'Test OK' ${TEST_OUT_DIR}/graphchallenge_nn_single_inference_${BACKEND}_${P}_${T}.log || echo "Test FAILED"
+			else
+				echo "Test DISABLED: ${GNN_DATASET_PATH} was not found. To enable, please provide the dataset."
+			fi
+			echo " "
+
+			echo ">>>      [x]           [ ]       Testing the Sparse Neural Network algorithm for the GraphChallenge"
+			echo "                                 dataset (neurons=1024, layers=120) taken from"
+			echo "                                 ${GNN_DATASET_PATH} and using thresholding 32."
+			if [ -d ${GNN_DATASET_PATH} ]; then
+				$runner ${TEST_BIN_DIR}/graphchallenge_nn_multi_inference_${BACKEND} ${GNN_DATASET_PATH} 1024 120 0 1 32 indirect 1 1 verification ${OUTPUT_VERIFICATION_DIR}/graphchallenge_nn_out_1024_120_0_32_threshold_ref &> ${TEST_OUT_DIR}/graphchallenge_nn_single_inference_${BACKEND}_${P}_${T}.log
+				head -1 ${TEST_OUT_DIR}/graphchallenge_nn_multi_inference_${BACKEND}_${P}_${T}.log
+				grep 'Test OK' ${TEST_OUT_DIR}/graphchallenge_nn_multi_inference_${BACKEND}_${P}_${T}.log || echo "Test FAILED"
+			else
+				echo "Test DISABLED: ${GNN_DATASET_PATH} was not found. To enable, please provide the dataset."
+			fi
+			echo " "
+
+			echo ">>>      [x]           [ ]       Testing the Sparse Neural Network algorithm for the GraphChallenge"
+			echo "                                 dataset (neurons=1024, layers=120) taken from"
+			echo "                                 ${GNN_DATASET_PATH} and without using thresholding."
+			if [ -d ${GNN_DATASET_PATH} ]; then
+				$runner ${TEST_BIN_DIR}/graphchallenge_nn_multi_inference_${BACKEND} ${GNN_DATASET_PATH} 1024 120 0 0 0 indirect 1 1 verification ${OUTPUT_VERIFICATION_DIR}/graphchallenge_nn_out_1024_120_0_no_threshold_ref &> ${TEST_OUT_DIR}/graphchallenge_nn_single_inference_${BACKEND}_${P}_${T}.log
+				head -1 ${TEST_OUT_DIR}/graphchallenge_nn_multi_inference_${BACKEND}_${P}_${T}.log
+				grep 'Test OK' ${TEST_OUT_DIR}/graphchallenge_nn_multi_inference_${BACKEND}_${P}_${T}.log || echo "Test FAILED"
 			else
 				echo "Test DISABLED: ${GNN_DATASET_PATH} was not found. To enable, please provide the dataset."
 			fi
