@@ -27,8 +27,11 @@
  * - full
  * - full< void >
  * - dense
+ * - dense< void >
  * - ones
  * - zeros
+ * - random< void >
+ * - random
  *
  * @author Benjamin Lozes
  * @date 7th of August, 2023
@@ -37,14 +40,15 @@
 #ifndef _H_GRB_MATRIX_FACTORY
 #define _H_GRB_MATRIX_FACTORY
 
-#include <iostream>
-#include <vector>
-#include <random>
 #include <algorithm>
+#include <iostream>
+#include <random>
+#include <vector>
+
+#include <graphblas/utils/iterators/ChainedIterators.hpp>
+#include <graphblas/utils/iterators/regular.hpp>
 
 #include <graphblas.hpp>
-#include <graphblas/utils/iterators/regular.hpp>
-#include <graphblas/utils/iterators/ChainedIterators.hpp>
 
 namespace grb {
 
@@ -53,92 +57,60 @@ namespace grb {
 		namespace internal {
 
 			size_t compute_diag_length( size_t nrows, size_t ncols, long k ) {
-				const size_t k_abs = static_cast<size_t>( (k < 0L) ? -k : k );
-				return ( k_abs >= nrows || k_abs >= ncols )
-					? 0
-					: std::min(
-						std::min( nrows, ncols ),
-						std::min( ncols - k_abs, nrows - k_abs )
-					);
+				const size_t k_abs = static_cast< size_t >( ( k < 0L ) ? -k : k );
+				return ( k_abs >= nrows || k_abs >= ncols ) ? 0 : std::min( std::min( nrows, ncols ), std::min( ncols - k_abs, nrows - k_abs ) );
 			}
 
-			template<
-				typename D,
+			template< typename D,
 				Descriptor descr,
 				typename RIT,
 				typename CIT,
 				typename NIT,
 				Backend implementation,
 				class IteratorV,
-				typename std::enable_if< not std::is_void< D >::value, int >::type = 0
-			>
-			Matrix< D, implementation, RIT, CIT, NIT > createIdentity_generic(
-				const size_t nrows,
-				const size_t ncols,
-				const long k,
-				IOMode io_mode,
-				IteratorV V_iter
-			) {
-				const size_t diag_length = compute_diag_length(nrows, ncols, k);
+				typename std::enable_if< not std::is_void< D >::value, int >::type = 0 >
+			Matrix< D, implementation, RIT, CIT, NIT > createIdentity_generic( const size_t nrows, const size_t ncols, const long k, IOMode io_mode, IteratorV V_iter ) {
+				const size_t diag_length = compute_diag_length( nrows, ncols, k );
 
 				Matrix< D, implementation, RIT, CIT, NIT > matrix( nrows, ncols, diag_length );
-				const RIT k_i_incr = static_cast< RIT >( ( k < 0L ) ? std::abs(k) : 0UL );
-				const CIT k_j_incr = static_cast< CIT >( ( k < 0L ) ? 0UL : std::abs(k) );
+				const RIT k_i_incr = static_cast< RIT >( ( k < 0L ) ? std::abs( k ) : 0UL );
+				const CIT k_j_incr = static_cast< CIT >( ( k < 0L ) ? 0UL : std::abs( k ) );
 				utils::containers::Range< RIT > I( k_i_incr, diag_length + k_i_incr );
 				utils::containers::Range< CIT > J( k_j_incr, diag_length + k_j_incr );
 
-				RC rc = ( descr & descriptors::transpose_matrix )
-					? buildMatrixUnique< descr >( matrix, J.begin(), I.begin(), V_iter, diag_length, io_mode )
-					: buildMatrixUnique< descr >( matrix, I.begin(), J.begin(), V_iter, diag_length, io_mode );
+				RC rc = ( descr & descriptors::transpose_matrix ) ? buildMatrixUnique< descr >( matrix, J.begin(), I.begin(), V_iter, diag_length, io_mode ) :
+																	buildMatrixUnique< descr >( matrix, I.begin(), J.begin(), V_iter, diag_length, io_mode );
 
 				assert( rc == SUCCESS );
 				if( rc != SUCCESS ) {
 					// Todo: Throw an exception or just return an empty matrix?
 					// Nb: We should consider the distributed case if we throw an exception.
-					throw std::runtime_error(
-						"Error: createIdentity_generic failed: rc = " + grb::toString( rc )
-					);
+					throw std::runtime_error( "Error: createIdentity_generic failed: rc = " + grb::toString( rc ) );
 				}
 				return matrix;
 			}
 
-			template<
-				typename D,
-				Descriptor descr,
-				typename RIT,
-				typename CIT,
-				typename NIT,
-				Backend implementation
-			>
-			Matrix< void, implementation, RIT, CIT, NIT > createIdentity_generic(
-				const size_t nrows,
-				const size_t ncols,
-				const long k,
-				IOMode io_mode,
-				typename std::enable_if< std::is_void< D >::value, int >::type = 0
-			) {
-				const size_t diag_length = compute_diag_length(nrows, ncols, k);
+			template< typename D, Descriptor descr, typename RIT, typename CIT, typename NIT, Backend implementation >
+			Matrix< void, implementation, RIT, CIT, NIT >
+			createIdentity_generic( const size_t nrows, const size_t ncols, const long k, IOMode io_mode, typename std::enable_if< std::is_void< D >::value, int >::type = 0 ) {
+				const size_t diag_length = compute_diag_length( nrows, ncols, k );
 				Matrix< void, implementation, RIT, CIT, NIT > matrix( nrows, ncols, diag_length );
 				utils::containers::Range< RIT > I( 0, diag_length );
 				utils::containers::Range< CIT > J( 0, diag_length );
 
-				RC rc = ( descr & descriptors::transpose_matrix )
-					? buildMatrixUnique< descr >( matrix, J.begin(), I.begin(), diag_length, io_mode )
-					: buildMatrixUnique< descr >( matrix, I.begin(), J.begin(), diag_length, io_mode );
+				RC rc = ( descr & descriptors::transpose_matrix ) ? buildMatrixUnique< descr >( matrix, J.begin(), I.begin(), diag_length, io_mode ) :
+																	buildMatrixUnique< descr >( matrix, I.begin(), J.begin(), diag_length, io_mode );
 
 				assert( rc == SUCCESS );
 				if( rc != SUCCESS ) {
 					// Todo: Throw an exception or just return an empty matrix?
 					// Nb: We should consider the distributed case if we throw an exception.
-					throw std::runtime_error(
-						"Error: createIdentity_generic<void> failed: rc = " + grb::toString( rc )
-					);
+					throw std::runtime_error( "Error: createIdentity_generic<void> failed: rc = " + grb::toString( rc ) );
 				}
 				return matrix;
 			}
 
 		} // namespace internal
-
 
 		/**
 		 * @brief Build an empty matrix, with no non-zero elements.
@@ -156,17 +128,14 @@ namespace grb {
 		 * @param io_mode         The I/O mode used to build the matrix.
 		 * @return Matrix< D, implementation, RIT, CIT, NIT >
 		 */
-		template<
-			typename D,
+		template< typename D,
 			Descriptor descr = descriptors::no_operation,
 			typename RIT = config::RowIndexType,
 			typename CIT = config::ColIndexType,
 			typename NIT = config::NonzeroIndexType,
-			Backend implementation = grb::config::default_backend
-		>
-		Matrix< D, implementation, RIT, CIT, NIT > empty(
-			const size_t nrows, const size_t ncols, IOMode io_mode = SEQUENTIAL
-		) {
+			Backend implementation = grb::config::default_backend >
+		Matrix< D, implementation, RIT, CIT, NIT > empty( const size_t nrows, const size_t ncols, IOMode io_mode = SEQUENTIAL ) {
+			(void)io_mode;
 			return Matrix< D, implementation, RIT, CIT, NIT >( nrows, ncols, 0UL );
 		}
 
@@ -200,27 +169,21 @@ namespace grb {
 		 * - descriptors::transpose_matrix
 		 * \endparblock
 		 */
-		template<
-			typename D,
+		template< typename D,
 			Descriptor descr = descriptors::no_operation,
 			typename RIT = config::RowIndexType,
 			typename CIT = config::ColIndexType,
 			typename NIT = config::NonzeroIndexType,
 			Backend implementation = config::default_backend,
-			typename std::enable_if< not std::is_void< D >::value, int >::type = 0
-		>
-		Matrix< D, implementation, RIT, CIT, NIT > eye(
-			const size_t nrows,
-			const size_t ncols,
-			IOMode io_mode,
-			const D identity_value = static_cast< D >(1),
-			const long k = 0L
-		) {
-			const size_t diag_length = internal::compute_diag_length(nrows, ncols, k);
+			typename std::enable_if< not std::is_void< D >::value, int >::type = 0 >
+		Matrix< D, implementation, RIT, CIT, NIT > eye( const size_t nrows, const size_t ncols, IOMode io_mode, const D identity_value = static_cast< D >( 1 ), const long k = 0L ) {
+			if( nrows == 0 || ncols == 0 ) {
+				return empty< D, descr, RIT, CIT, NIT, implementation >( nrows, ncols, io_mode );
+			}
+
+			const size_t diag_length = internal::compute_diag_length( nrows, ncols, k );
 			const utils::containers::ConstantVector< D > V( identity_value, diag_length );
-			return internal::createIdentity_generic< D, descr, RIT, CIT, NIT, implementation >(
-				nrows, ncols, k, io_mode, V.cbegin()
-			);
+			return internal::createIdentity_generic< D, descr, RIT, CIT, NIT, implementation >( nrows, ncols, k, io_mode, V.cbegin() );
 		}
 
 		/**
@@ -254,24 +217,19 @@ namespace grb {
 		 * - descriptors::transpose_matrix
 		 * \endparblock
 		 */
-		template<
-			typename D,
+		template< typename D,
 			Descriptor descr = descriptors::no_operation,
 			typename RIT = config::RowIndexType,
 			typename CIT = config::ColIndexType,
 			typename NIT = config::NonzeroIndexType,
 			Backend implementation = config::default_backend,
-			typename std::enable_if< std::is_void< D >::value, int >::type = 0
-		>
-		Matrix< void, implementation, RIT, CIT, NIT > eye(
-			const size_t nrows,
-			const size_t ncols,
-			IOMode io_mode,
-			const long k = 0L
-		) {
-			return internal::createIdentity_generic< void, descr, RIT, CIT, NIT, implementation >(
-				nrows, ncols, k, io_mode
-			);
+			typename std::enable_if< std::is_void< D >::value, int >::type = 0 >
+		Matrix< void, implementation, RIT, CIT, NIT > eye( const size_t nrows, const size_t ncols, IOMode io_mode, const long k = 0L ) {
+			if( nrows == 0 || ncols == 0 ) {
+				return empty< D, descr, RIT, CIT, NIT, implementation >( nrows, ncols, io_mode );
+			}
+
+			return internal::createIdentity_generic< void, descr, RIT, CIT, NIT, implementation >( nrows, ncols, k, io_mode );
 		}
 
 		/**
@@ -301,20 +259,16 @@ namespace grb {
 		 * - descriptors::transpose_matrix
 		 * \endparblock
 		 */
-		template<
-			typename D,
+		template< typename D,
 			Descriptor descr = descriptors::no_operation,
 			typename RIT = config::RowIndexType,
 			typename CIT = config::ColIndexType,
 			typename NIT = config::NonzeroIndexType,
 			Backend implementation = grb::config::default_backend,
-			typename std::enable_if< not std::is_void< D >::value, int >::type = 0
-		>
-		Matrix< D, implementation, RIT, CIT, NIT > identity(
-			const size_t n,
-			IOMode io_mode,
-			const D identity_value = static_cast< D >(1)
-		) { return eye< D, descr, RIT, CIT, NIT, implementation >( n, n, io_mode, identity_value ); }
+			typename std::enable_if< not std::is_void< D >::value, int >::type = 0 >
+		Matrix< D, implementation, RIT, CIT, NIT > identity( const size_t n, IOMode io_mode, const D identity_value = static_cast< D >( 1 ) ) {
+			return eye< D, descr, RIT, CIT, NIT, implementation >( n, n, io_mode, identity_value );
+		}
 
 		/**
 		 * @brief Build an identity pattern matrix. Output matrix will contain
@@ -345,19 +299,16 @@ namespace grb {
 		 * - descriptors::transpose_matrix
 		 * \endparblock
 		 */
-		template<
-			typename D,
+		template< typename D,
 			Descriptor descr = descriptors::no_operation,
 			typename RIT = config::RowIndexType,
 			typename CIT = config::ColIndexType,
 			typename NIT = config::NonzeroIndexType,
 			Backend implementation = grb::config::default_backend,
-			typename std::enable_if< std::is_void< D >::value, int >::type = 0
-		>
-		Matrix< void, implementation, RIT, CIT, NIT > identity(
-			const size_t n,
-			IOMode io_mode
-		) { return eye< void, descr, RIT, CIT, NIT, implementation >( n, n, io_mode ); }
+			typename std::enable_if< std::is_void< D >::value, int >::type = 0 >
+		Matrix< void, implementation, RIT, CIT, NIT > identity( const size_t n, IOMode io_mode ) {
+			return eye< void, descr, RIT, CIT, NIT, implementation >( n, n, io_mode );
+		}
 
 		/**
 		 * @brief Build an identity matrix with the given values.
@@ -385,31 +336,23 @@ namespace grb {
 		 * - descriptors::transpose_matrix
 		 * \endparblock
 		 */
-		template<
-			typename D,
+		template< typename D,
 			Descriptor descr = descriptors::no_operation,
 			typename RIT = config::RowIndexType,
 			typename CIT = config::ColIndexType,
 			typename NIT = config::NonzeroIndexType,
 			Backend implementation = grb::config::default_backend,
 			class ValueIterator,
-			typename std::enable_if< not std::is_void< D >::value, int >::type = 0
-		>
-		Matrix< D, implementation, RIT, CIT, NIT > identity(
-			const size_t n,
+			typename std::enable_if< not std::is_void< D >::value, int >::type = 0 >
+		Matrix< D, implementation, RIT, CIT, NIT > identity( const size_t n,
 			IOMode io_mode,
 			ValueIterator V,
-			const typename std::enable_if<
-				std::is_same<
-					typename std::iterator_traits< ValueIterator >::value_type,
-					D
-				>::value,
-				void
-			>::type* = nullptr
-		) {
-			return internal::createIdentity_generic<
-				D, descr, RIT, CIT, NIT, implementation, ValueIterator
-			>( n, n, 0L, io_mode, V );
+			const typename std::enable_if< std::is_same< typename std::iterator_traits< ValueIterator >::value_type, D >::value, void >::type * = nullptr ) {
+			if( n == 0 ) {
+				return empty< D, descr, RIT, CIT, NIT, implementation >( n, n, io_mode );
+			}
+
+			return internal::createIdentity_generic< D, descr, RIT, CIT, NIT, implementation, ValueIterator >( n, n, 0L, io_mode, V );
 		}
 
 		/**
@@ -438,23 +381,19 @@ namespace grb {
 		 * - descriptors::transpose_matrix
 		 * \endparblock
 		 */
-		template<
-			typename D,
+		template< typename D,
 			Descriptor descr = descriptors::no_operation,
 			typename RIT = config::RowIndexType,
 			typename CIT = config::ColIndexType,
 			typename NIT = config::NonzeroIndexType,
 			Backend implementation = grb::config::default_backend,
-			typename std::enable_if< not std::is_void< D >::value, int >::type = 0
-		>
-		Matrix< D, implementation, RIT, CIT, NIT > identity(
-			const size_t n,
-			IOMode io_mode,
-			const D * V
-		) {
-			return internal::createIdentity_generic< D, descr, RIT, CIT, NIT, implementation >(
-				n, n, 0L, io_mode, V
-			);
+			typename std::enable_if< not std::is_void< D >::value, int >::type = 0 >
+		Matrix< D, implementation, RIT, CIT, NIT > identity( const size_t n, IOMode io_mode, const D * V ) {
+			if( n == 0 ) {
+				return empty< D, descr, RIT, CIT, NIT, implementation >( n, n, io_mode );
+			}
+
+			return internal::createIdentity_generic< D, descr, RIT, CIT, NIT, implementation >( n, n, 0L, io_mode, V );
 		}
 
 		/**
@@ -476,27 +415,25 @@ namespace grb {
 		 * @param value           The value of each non-zero element.
 		 * @return Matrix< D, implementation, RIT, CIT, NIT >
 		 */
-		template<
-			typename D,
+		template< typename D,
 			Descriptor descr = descriptors::no_operation,
 			typename RIT = config::RowIndexType,
 			typename CIT = config::ColIndexType,
 			typename NIT = config::NonzeroIndexType,
 			Backend implementation = grb::config::default_backend,
-			typename std::enable_if< not std::is_void< D >::value, int >::type = 0
-		>
-		Matrix< D, implementation, RIT, CIT, NIT > full(
-			const size_t nrows, const size_t ncols, IOMode io_mode, const D value
-		) {
+			typename std::enable_if< not std::is_void< D >::value, int >::type = 0 >
+		Matrix< D, implementation, RIT, CIT, NIT > full( const size_t nrows, const size_t ncols, IOMode io_mode, const D value ) {
+			if( nrows == 0 || ncols == 0 ) {
+				return empty< D, descr, RIT, CIT, NIT, implementation >( nrows, ncols, io_mode );
+			}
+
 			Matrix< D, implementation, RIT, CIT, NIT > matrix( nrows, ncols, nrows * ncols );
 			// Initialise rows indices container with a range from 0 to nrows,
 			// each value repeated ncols times.
 			utils::containers::Range< RIT > I( 0, nrows, 1, ncols );
 			// Initialise columns values container with a range from 0 to ncols
 			// repeated nrows times.
-			utils::containers::ChainedIteratorsVector<
-				typename utils::containers::Range< CIT >::const_iterator
-			> J( nrows );
+			utils::containers::ChainedIteratorsVector< typename utils::containers::Range< CIT >::const_iterator > J( nrows );
 			for( size_t i = 0; i < nrows; ++i ) {
 				J.push_back( utils::containers::Range< CIT >( 0, ncols ) );
 			}
@@ -505,17 +442,14 @@ namespace grb {
 			assert( std::distance( I.begin(), I.end() ) == std::distance( J.begin(), J.end() ) );
 			assert( std::distance( I.begin(), I.end() ) == std::distance( V.begin(), V.end() ) );
 
-			RC rc = ( descr & descriptors::transpose_matrix )
-				? buildMatrixUnique< descr >( matrix, J.begin(), J.end(), J.begin(), J.end(), V.begin(), V.end(), io_mode )
-				: buildMatrixUnique< descr >( matrix, I.begin(), I.end(), J.begin(), J.end(), V.begin(), V.end(), io_mode );
+			RC rc = ( descr & descriptors::transpose_matrix ) ? buildMatrixUnique< descr >( matrix, J.begin(), J.end(), J.begin(), J.end(), V.begin(), V.end(), io_mode ) :
+																buildMatrixUnique< descr >( matrix, I.begin(), I.end(), J.begin(), J.end(), V.begin(), V.end(), io_mode );
 
 			assert( rc == SUCCESS );
 			if( rc != SUCCESS ) {
 				// Todo: Throw an exception or just return an empty matrix?
 				// Nb: We should consider the distributed case if we throw an exception.
-				throw std::runtime_error(
-					"Error: factory::full<void> failed: rc = " + grb::toString( rc )
-				);
+				throw std::runtime_error( "Error: factory::full<void> failed: rc = " + grb::toString( rc ) );
 			}
 
 			return matrix;
@@ -541,43 +475,38 @@ namespace grb {
 		 * @param io_mode         The I/O mode used to build the matrix.
 		 * @return Matrix< D, implementation, RIT, CIT, NIT >
 		 */
-		template<
-			typename D,
+		template< typename D,
 			Descriptor descr = descriptors::no_operation,
 			typename RIT = config::RowIndexType,
 			typename CIT = config::ColIndexType,
 			typename NIT = config::NonzeroIndexType,
 			Backend implementation = grb::config::default_backend,
-			typename std::enable_if< std::is_void< D >::value, int >::type = 0
-		>
-		Matrix< void, implementation, RIT, CIT, NIT > full(
-			const size_t nrows, const size_t ncols, IOMode io_mode
-		) {
+			typename std::enable_if< std::is_void< D >::value, int >::type = 0 >
+		Matrix< void, implementation, RIT, CIT, NIT > full( const size_t nrows, const size_t ncols, IOMode io_mode ) {
+			if( nrows == 0 || ncols == 0 ) {
+				return empty< D, descr, RIT, CIT, NIT, implementation >( nrows, ncols, io_mode );
+			}
+
 			Matrix< void, implementation, RIT, CIT, NIT > matrix( nrows, ncols, nrows * ncols );
 			// Initialise rows indices container with a range from 0 to nrows,
 			// each value repeated ncols times.
 			utils::containers::Range< RIT > I( 0, nrows, 1, ncols );
 			// Initialise columns values container with a range from 0 to ncols
 			// repeated nrows times.
-			utils::containers::ChainedIteratorsVector<
-				typename utils::containers::Range< CIT >::const_iterator
-			> J( nrows );
+			utils::containers::ChainedIteratorsVector< typename utils::containers::Range< CIT >::const_iterator > J( nrows );
 			for( size_t i = 0; i < nrows; ++i ) {
 				J.push_back( utils::containers::Range< CIT >( 0, ncols ) );
 			}
 			assert( std::distance( I.begin(), I.end() ) == std::distance( J.begin(), J.end() ) );
 
-			RC rc = ( descr & descriptors::transpose_matrix )
-				? buildMatrixUnique< descr >( matrix, J.begin(), J.end(), J.begin(), J.end(), io_mode )
-				: buildMatrixUnique< descr >( matrix, I.begin(), I.end(), J.begin(), J.end(), io_mode );
+			RC rc = ( descr & descriptors::transpose_matrix ) ? buildMatrixUnique< descr >( matrix, J.begin(), J.end(), J.begin(), J.end(), io_mode ) :
+																buildMatrixUnique< descr >( matrix, I.begin(), I.end(), J.begin(), J.end(), io_mode );
 
 			assert( rc == SUCCESS );
 			if( rc != SUCCESS ) {
 				// Todo: Throw an exception or just return an empty matrix?
 				// Nb: We should consider the distributed case if we throw an exception.
-				throw std::runtime_error(
-					"Error: factory::full<void> failed: rc = " + grb::toString( rc )
-				);
+				throw std::runtime_error( "Error: factory::full<void> failed: rc = " + grb::toString( rc ) );
 			}
 
 			return matrix;
@@ -603,18 +532,16 @@ namespace grb {
 		 * @param value           The value of each non-zero element.
 		 * @return Matrix< D, implementation, RIT, CIT, NIT >
 		 */
-		template<
-			typename D,
+		template< typename D,
 			Descriptor descr = descriptors::no_operation,
 			typename RIT = config::RowIndexType,
 			typename CIT = config::ColIndexType,
 			typename NIT = config::NonzeroIndexType,
 			Backend implementation = grb::config::default_backend,
-			typename std::enable_if< not std::is_void< D >::value, int >::type = 0
-		>
-		Matrix< D, implementation, RIT, CIT, NIT > dense(
-			const size_t nrows, const size_t ncols, IOMode io_mode, const D value
-		) { return full< D, descr, RIT, CIT, NIT, implementation >( nrows, ncols, io_mode, value ); }
+			typename std::enable_if< not std::is_void< D >::value, int >::type = 0 >
+		Matrix< D, implementation, RIT, CIT, NIT > dense( const size_t nrows, const size_t ncols, IOMode io_mode, const D value ) {
+			return full< D, descr, RIT, CIT, NIT, implementation >( nrows, ncols, io_mode, value );
+		}
 
 		/**
 		 * @brief Build a dense pattern matrix.
@@ -637,18 +564,16 @@ namespace grb {
 		 * @param io_mode         The I/O mode used to build the matrix.
 		 * @return Matrix< D, implementation, RIT, CIT, NIT >
 		 */
-		template<
-			typename D,
+		template< typename D,
 			Descriptor descr = descriptors::no_operation,
 			typename RIT = config::RowIndexType,
 			typename CIT = config::ColIndexType,
 			typename NIT = config::NonzeroIndexType,
 			Backend implementation = grb::config::default_backend,
-			typename std::enable_if< std::is_void< D >::value, int >::type = 0
-		>
-		Matrix< D, implementation, RIT, CIT, NIT > dense(
-			const size_t nrows, const size_t ncols, IOMode io_mode
-		) { return full< void, descr, RIT, CIT, NIT, implementation >( nrows, ncols, io_mode ); }
+			typename std::enable_if< std::is_void< D >::value, int >::type = 0 >
+		Matrix< void, implementation, RIT, CIT, NIT > dense( const size_t nrows, const size_t ncols, IOMode io_mode ) {
+			return full< void, descr, RIT, CIT, NIT, implementation >( nrows, ncols, io_mode );
+		}
 
 		/**
 		 * @brief Build a matrix filled with ones.
@@ -669,19 +594,24 @@ namespace grb {
 		 * @param io_mode         The I/O mode used to build the matrix.
 		 * @return Matrix< D, implementation, RIT, CIT, NIT >
 		 */
-		template<
-			typename D,
+		template< typename D,
 			Descriptor descr = descriptors::no_operation,
 			typename RIT = config::RowIndexType,
 			typename CIT = config::ColIndexType,
 			typename NIT = config::NonzeroIndexType,
-			Backend implementation = grb::config::default_backend
-		>
-		Matrix< D, implementation, RIT, CIT, NIT > ones(
-			const size_t nrows, const size_t ncols, IOMode io_mode
-		) {
-			static_assert( not std::is_void< D >::value, "factory::ones can not be called with a void type" );
-			return full< D, descr, RIT, CIT, NIT, implementation >( nrows, ncols, io_mode, static_cast< D >(1) );
+			Backend implementation = grb::config::default_backend >
+		Matrix< D, implementation, RIT, CIT, NIT > ones( const size_t nrows, const size_t ncols, IOMode io_mode, typename std::enable_if< not std::is_void< D >::value, int >::type = 0 ) {
+			return full< D, descr, RIT, CIT, NIT, implementation >( nrows, ncols, io_mode, static_cast< D >( 1 ) );
+		}
+
+		template< typename D,
+			Descriptor descr = descriptors::no_operation,
+			typename RIT = config::RowIndexType,
+			typename CIT = config::ColIndexType,
+			typename NIT = config::NonzeroIndexType,
+			Backend implementation = grb::config::default_backend >
+		Matrix< void, implementation, RIT, CIT, NIT > ones( const size_t nrows, const size_t ncols, IOMode io_mode, typename std::enable_if< std::is_void< D >::value, int >::type = 0 ) {
+			return full< D, descr, RIT, CIT, NIT, implementation >( nrows, ncols, io_mode );
 		}
 
 		/**
@@ -703,19 +633,24 @@ namespace grb {
 		 * @param io_mode         The I/O mode used to build the matrix.
 		 * @return Matrix< D, implementation, RIT, CIT, NIT >
 		 */
-		template<
-			typename D,
+		template< typename D,
 			Descriptor descr = descriptors::no_operation,
 			typename RIT = config::RowIndexType,
 			typename CIT = config::ColIndexType,
 			typename NIT = config::NonzeroIndexType,
-			Backend implementation = grb::config::default_backend
-		>
-		Matrix< D, implementation, RIT, CIT, NIT > zeros(
-			const size_t nrows, const size_t ncols, IOMode io_mode
-		) {
-			static_assert( not std::is_void< D >::value, "factory::zeros can not be called with a void type" );
-			return full< D, descr, RIT, CIT, NIT, implementation >( nrows, ncols, io_mode, static_cast< D >(0) );
+			Backend implementation = grb::config::default_backend >
+		Matrix< D, implementation, RIT, CIT, NIT > zeros( const size_t nrows, const size_t ncols, IOMode io_mode, typename std::enable_if< not std::is_void< D >::value, int >::type = 0 ) {
+			return full< D, descr, RIT, CIT, NIT, implementation >( nrows, ncols, io_mode, static_cast< D >( 1 ) );
+		}
+
+		template< typename D,
+			Descriptor descr = descriptors::no_operation,
+			typename RIT = config::RowIndexType,
+			typename CIT = config::ColIndexType,
+			typename NIT = config::NonzeroIndexType,
+			Backend implementation = grb::config::default_backend >
+		Matrix< void, implementation, RIT, CIT, NIT > zeros( const size_t nrows, const size_t ncols, IOMode io_mode, typename std::enable_if< std::is_void< D >::value, int >::type = 0 ) {
+			return full< D, descr, RIT, CIT, NIT, implementation >( nrows, ncols, io_mode );
 		}
 
 		/**
@@ -748,8 +683,7 @@ namespace grb {
 		 * @param val_dist                The distribution used to generate the values.
 		 * @return Matrix< D, implementation, RIT, CIT, NIT >
 		 */
-		template<
-			typename D,
+		template< typename D,
 			Descriptor descr = descriptors::no_operation,
 			typename RIT = config::RowIndexType,
 			typename CIT = config::ColIndexType,
@@ -758,16 +692,19 @@ namespace grb {
 			typename RowDistributionType,
 			typename ColDistributionType,
 			typename ValueDistributionType,
-			Backend implementation = grb::config::default_backend
-		>
-		Matrix< D, implementation, RIT, CIT, NIT > random(
-			const size_t nrows, const size_t ncols, IOMode io_mode,
+			Backend implementation = grb::config::default_backend >
+		Matrix< D, implementation, RIT, CIT, NIT > random( const size_t nrows,
+			const size_t ncols,
+			IOMode io_mode,
 			double sparsity,
-			RandomGeneratorType &rgen,
-			RowDistributionType &row_dist,
-			ColDistributionType &col_dist,
-			ValueDistributionType &val_dist
-		) {
+			RandomGeneratorType & rgen,
+			RowDistributionType & row_dist,
+			ColDistributionType & col_dist,
+			ValueDistributionType & val_dist ) {
+			if( nrows == 0 || ncols == 0 ) {
+				return empty< D, descr, RIT, CIT, NIT, implementation >( nrows, ncols, io_mode );
+			}
+
 			const size_t nvals = nrows * ncols * std::max( 1.0, std::min( 1.0, sparsity ) );
 			Matrix< D, implementation, RIT, CIT, NIT > matrix( nrows, ncols, nvals );
 
@@ -780,24 +717,20 @@ namespace grb {
 				V[ i ] = val_dist( rgen );
 			}
 
-			RC rc = ( descr & descriptors::transpose_matrix )
-				? buildMatrixUnique< descr >( matrix, J.begin(), J.end(), J.begin(), J.end(), V.begin(), V.end(), io_mode )
-				: buildMatrixUnique< descr >( matrix, I.begin(), I.end(), J.begin(), J.end(), V.begin(), V.end(), io_mode );
+			RC rc = ( descr & descriptors::transpose_matrix ) ? buildMatrixUnique< descr >( matrix, J.begin(), J.end(), J.begin(), J.end(), V.begin(), V.end(), io_mode ) :
+																buildMatrixUnique< descr >( matrix, I.begin(), I.end(), J.begin(), J.end(), V.begin(), V.end(), io_mode );
 
 			assert( rc == SUCCESS );
 			if( rc != SUCCESS ) {
 				// Todo: Throw an exception or just return an empty matrix?
 				// Nb: We should consider the distributed case if we throw an exception.
-				throw std::runtime_error(
-					"Error: factory::random failed: rc = " + grb::toString( rc )
-				);
+				throw std::runtime_error( "Error: factory::random failed: rc = " + grb::toString( rc ) );
 			}
 
 			return matrix;
 		}
 
-		template<
-			typename D,
+		template< typename D,
 			Descriptor descr = descriptors::no_operation,
 			typename RIT = config::RowIndexType,
 			typename CIT = config::ColIndexType,
@@ -805,16 +738,19 @@ namespace grb {
 			typename RandomGeneratorType,
 			typename RowDistributionType,
 			typename ColDistributionType,
-			Backend implementation = grb::config::default_backend
-		>
-		Matrix< void, implementation, RIT, CIT, NIT > random(
-			const size_t nrows, const size_t ncols, IOMode io_mode,
+			Backend implementation = grb::config::default_backend >
+		Matrix< void, implementation, RIT, CIT, NIT > random( const size_t nrows,
+			const size_t ncols,
+			IOMode io_mode,
 			double sparsity,
-			RandomGeneratorType &rgen,
-			RowDistributionType &row_dist,
-			ColDistributionType &col_dist,
-			typename std::enable_if< std::is_void< D >::value, int >::type = 0
-		) {
+			RandomGeneratorType & rgen,
+			RowDistributionType & row_dist,
+			ColDistributionType & col_dist,
+			typename std::enable_if< std::is_void< D >::value, int >::type = 0 ) {
+			if( nrows == 0 || ncols == 0 ) {
+				return empty< D, descr, RIT, CIT, NIT, implementation >( nrows, ncols, io_mode );
+			}
+
 			const size_t nvals = nrows * ncols * std::max( 1.0, std::min( 1.0, sparsity ) );
 			Matrix< void, implementation, RIT, CIT, NIT > matrix( nrows, ncols, nvals );
 
@@ -825,22 +761,18 @@ namespace grb {
 				J[ i ] = col_dist( rgen );
 			}
 
-			RC rc = ( descr & descriptors::transpose_matrix )
-				? buildMatrixUnique< descr >( matrix, J.begin(), J.end(), J.begin(), J.end(), io_mode )
-				: buildMatrixUnique< descr >( matrix, I.begin(), I.end(), J.begin(), J.end(), io_mode );
+			RC rc = ( descr & descriptors::transpose_matrix ) ? buildMatrixUnique< descr >( matrix, J.begin(), J.end(), J.begin(), J.end(), io_mode ) :
+																buildMatrixUnique< descr >( matrix, I.begin(), I.end(), J.begin(), J.end(), io_mode );
 
 			assert( rc == SUCCESS );
 			if( rc != SUCCESS ) {
 				// Todo: Throw an exception or just return an empty matrix?
 				// Nb: We should consider the distributed case if we throw an exception.
-				throw std::runtime_error(
-					"Error: factory::random<void> failed: rc = " + grb::toString( rc )
-				);
+				throw std::runtime_error( "Error: factory::random<void> failed: rc = " + grb::toString( rc ) );
 			}
 
 			return matrix;
 		}
-
 
 		/**
 		 * Build a matrix filled with random values at random positions.
@@ -869,56 +801,39 @@ namespace grb {
 		 * @param seed            The seed used to generate the random values.
 		 * @return Matrix< D, implementation, RIT, CIT, NIT >
 		 */
-		template<
-			typename D,
+		template< typename D,
 			Descriptor descr = descriptors::no_operation,
 			typename RIT = config::RowIndexType,
 			typename CIT = config::ColIndexType,
 			typename NIT = config::NonzeroIndexType,
-			Backend implementation = grb::config::default_backend
-		>
-		Matrix< D, implementation, RIT, CIT, NIT > random(
-			const size_t nrows, const size_t ncols, IOMode io_mode,
-			double sparsity,
-			const unsigned long seed = 0UL
-		) {
+			Backend implementation = grb::config::default_backend >
+		Matrix< D, implementation, RIT, CIT, NIT > random( const size_t nrows, const size_t ncols, IOMode io_mode, double sparsity, const unsigned long seed = 0UL ) {
+			if( nrows == 0 || ncols == 0 ) {
+				return empty< D, descr, RIT, CIT, NIT, implementation >( nrows, ncols, io_mode );
+			}
+
 			std::mt19937 gen( seed );
 
-			return random<
-				D, descr, RIT, CIT, NIT, implementation
-			>(
-				nrows, ncols, io_mode, sparsity,
-				gen,
-				std::uniform_real_distribution< RIT >( static_cast< RIT >( 0 ), nrows - 1 ),
-				std::uniform_real_distribution< CIT >( static_cast< CIT >( 0 ), ncols - 1 ),
-				std::uniform_real_distribution< D >( static_cast< D >( 0 ), static_cast< D >( 1 ) )
-			);
+			return random< D, descr, RIT, CIT, NIT, implementation >( nrows, ncols, io_mode, sparsity, gen, std::uniform_real_distribution< RIT >( static_cast< RIT >( 0 ), nrows - 1 ),
+				std::uniform_real_distribution< CIT >( static_cast< CIT >( 0 ), ncols - 1 ), std::uniform_real_distribution< D >( static_cast< D >( 0 ), static_cast< D >( 1 ) ) );
 		}
 
-		template<
-			typename D,
+		template< typename D,
 			Descriptor descr = descriptors::no_operation,
 			typename RIT = config::RowIndexType,
 			typename CIT = config::ColIndexType,
 			typename NIT = config::NonzeroIndexType,
-			Backend implementation = grb::config::default_backend
-		>
-		Matrix< void, implementation, RIT, CIT, NIT > random(
-			const size_t nrows, const size_t ncols, IOMode io_mode,
-			double sparsity,
-			const unsigned long seed = 0UL,
-			typename std::enable_if< std::is_void< D >::value, int >::type = 0
-		) {
+			Backend implementation = grb::config::default_backend >
+		Matrix< void, implementation, RIT, CIT, NIT >
+		random( const size_t nrows, const size_t ncols, IOMode io_mode, double sparsity, const unsigned long seed = 0UL, typename std::enable_if< std::is_void< D >::value, int >::type = 0 ) {
+			if( nrows == 0 || ncols == 0 ) {
+				return empty< D, descr, RIT, CIT, NIT, implementation >( nrows, ncols, io_mode );
+			}
+
 			std::mt19937 gen( seed );
 
-			return random<
-				void, descr, RIT, CIT, NIT, implementation
-			>(
-				nrows, ncols, io_mode, sparsity,
-				gen,
-				std::uniform_real_distribution< RIT >( static_cast< RIT >( 0 ), nrows - 1 ),
-				std::uniform_real_distribution< CIT >( static_cast< CIT >( 0 ), ncols - 1 )
-			);
+			return random< void, descr, RIT, CIT, NIT, implementation >( nrows, ncols, io_mode, sparsity, gen, std::uniform_real_distribution< RIT >( static_cast< RIT >( 0 ), nrows - 1 ),
+				std::uniform_real_distribution< CIT >( static_cast< CIT >( 0 ), ncols - 1 ) );
 		}
 
 	} // namespace factory
@@ -926,4 +841,3 @@ namespace grb {
 } // namespace grb
 
 #endif // end _H_GRB_MATRIX_FACTORY
-
