@@ -78,8 +78,7 @@ namespace grb {
 				utils::containers::Range< RIT > I( k_i_incr, diag_length + k_i_incr );
 				utils::containers::Range< CIT > J( k_j_incr, diag_length + k_j_incr );
 
-				RC rc = ( descr & descriptors::transpose_matrix ) ? buildMatrixUnique< descr >( matrix, J.begin(), I.begin(), V_iter, diag_length, io_mode ) :
-																	buildMatrixUnique< descr >( matrix, I.begin(), J.begin(), V_iter, diag_length, io_mode );
+				RC rc = buildMatrixUnique< descr >( matrix, I.begin(), J.begin(), V_iter, diag_length, io_mode );
 
 				assert( rc == SUCCESS );
 				if( rc != SUCCESS ) {
@@ -98,8 +97,7 @@ namespace grb {
 				utils::containers::Range< RIT > I( 0, diag_length );
 				utils::containers::Range< CIT > J( 0, diag_length );
 
-				RC rc = ( descr & descriptors::transpose_matrix ) ? buildMatrixUnique< descr >( matrix, J.begin(), I.begin(), diag_length, io_mode ) :
-																	buildMatrixUnique< descr >( matrix, I.begin(), J.begin(), diag_length, io_mode );
+				RC rc = buildMatrixUnique< descr >( matrix, I.begin(), J.begin(), diag_length, io_mode );
 
 				assert( rc == SUCCESS );
 				if( rc != SUCCESS ) {
@@ -442,13 +440,12 @@ namespace grb {
 			assert( std::distance( I.begin(), I.end() ) == std::distance( J.begin(), J.end() ) );
 			assert( std::distance( I.begin(), I.end() ) == std::distance( V.begin(), V.end() ) );
 
-			RC rc = ( descr & descriptors::transpose_matrix ) ? buildMatrixUnique< descr >( matrix, J.begin(), J.end(), J.begin(), J.end(), V.begin(), V.end(), io_mode ) :
-																buildMatrixUnique< descr >( matrix, I.begin(), I.end(), J.begin(), J.end(), V.begin(), V.end(), io_mode );
+			RC rc = buildMatrixUnique< descr >( matrix, I.begin(), I.end(), J.begin(), J.end(), V.begin(), V.end(), io_mode );
 
 			assert( rc == SUCCESS );
 			if( rc != SUCCESS ) {
-				// Todo: Throw an exception or just return an empty matrix?
-				// Nb: We should consider the distributed case if we throw an exception.
+				// Question for review: Throw an exception or just return an empty matrix?
+				//                  Nb: We should consider the distributed case if we throw an exception.
 				throw std::runtime_error( "Error: factory::full<void> failed: rc = " + grb::toString( rc ) );
 			}
 
@@ -498,14 +495,11 @@ namespace grb {
 				J.push_back( utils::containers::Range< CIT >( 0, ncols ) );
 			}
 			assert( std::distance( I.begin(), I.end() ) == std::distance( J.begin(), J.end() ) );
+			RC rc = buildMatrixUnique< descr >( matrix, I.begin(), I.end(), J.begin(), J.end(), io_mode );
 
-			RC rc = ( descr & descriptors::transpose_matrix ) ? buildMatrixUnique< descr >( matrix, J.begin(), J.end(), J.begin(), J.end(), io_mode ) :
-																buildMatrixUnique< descr >( matrix, I.begin(), I.end(), J.begin(), J.end(), io_mode );
-
-			assert( rc == SUCCESS );
 			if( rc != SUCCESS ) {
-				// Todo: Throw an exception or just return an empty matrix?
-				// Nb: We should consider the distributed case if we throw an exception.
+				// Question for review: Throw an exception or just return an empty matrix?
+				//                  Nb: We should consider the distributed case if we throw an exception.
 				throw std::runtime_error( "Error: factory::full<void> failed: rc = " + grb::toString( rc ) );
 			}
 
@@ -717,13 +711,12 @@ namespace grb {
 				V[ i ] = val_dist( rgen );
 			}
 
-			RC rc = ( descr & descriptors::transpose_matrix ) ? buildMatrixUnique< descr >( matrix, J.begin(), J.end(), J.begin(), J.end(), V.begin(), V.end(), io_mode ) :
-																buildMatrixUnique< descr >( matrix, I.begin(), I.end(), J.begin(), J.end(), V.begin(), V.end(), io_mode );
+			RC rc = buildMatrixUnique< descr >( matrix, I.begin(), I.end(), J.begin(), J.end(), V.begin(), V.end(), io_mode );
 
 			assert( rc == SUCCESS );
 			if( rc != SUCCESS ) {
-				// Todo: Throw an exception or just return an empty matrix?
-				// Nb: We should consider the distributed case if we throw an exception.
+				// Question for review: Throw an exception or just return an empty matrix?
+				//                  Nb: We should consider the distributed case if we throw an exception.
 				throw std::runtime_error( "Error: factory::random failed: rc = " + grb::toString( rc ) );
 			}
 
@@ -761,13 +754,12 @@ namespace grb {
 				J[ i ] = col_dist( rgen );
 			}
 
-			RC rc = ( descr & descriptors::transpose_matrix ) ? buildMatrixUnique< descr >( matrix, J.begin(), J.end(), J.begin(), J.end(), io_mode ) :
-																buildMatrixUnique< descr >( matrix, I.begin(), I.end(), J.begin(), J.end(), io_mode );
+			RC rc = buildMatrixUnique< descr >( matrix, I.begin(), I.end(), J.begin(), J.end(), io_mode );
 
 			assert( rc == SUCCESS );
 			if( rc != SUCCESS ) {
-				// Todo: Throw an exception or just return an empty matrix?
-				// Nb: We should consider the distributed case if we throw an exception.
+				// Question for review: Throw an exception or just return an empty matrix?
+				//                  Nb: We should consider the distributed case if we throw an exception.
 				throw std::runtime_error( "Error: factory::random<void> failed: rc = " + grb::toString( rc ) );
 			}
 
