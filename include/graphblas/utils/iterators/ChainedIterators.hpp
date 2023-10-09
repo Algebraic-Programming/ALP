@@ -194,6 +194,20 @@ namespace grb {
                         return dist;
 					}
 
+                    self_type& operator+=( const size_t count ) noexcept {
+                        for( size_t i = 0; i < count; ++i ) {
+                            ++( *this );
+                        }
+                        return *this;
+                    }
+
+                    self_type& operator-=( const size_t count ) noexcept {
+                        for( size_t i = 0; i < count; ++i ) {
+                            --( *this );
+                        }
+                        return *this;
+                    }
+
                     difference_type do_distance(
                         const_self_type &first, const_self_type &last, std::input_iterator_tag
                     ) const noexcept {
