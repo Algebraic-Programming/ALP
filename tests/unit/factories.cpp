@@ -607,8 +607,8 @@ int main( int argc, char ** argv ) {
 		std::cerr << "  -n (optional, default is " << in << "): a positive integer.\n";
 		return 1;
 	}
-	if( argc == 2 ) {
-		in = atoi( argv[ 1 ] );
+	if( argc >= 2 ) {
+		in = std::strtoul( argv[ 1 ], nullptr, 0 );
 	}
 
 	std::cout << "This is functional test " << argv[ 0 ] << "\n";
