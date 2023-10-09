@@ -133,8 +133,8 @@ namespace grb {
                         return tmp;
                     }
 
-                    /** The dereference operator. */
-                    reference operator*() const {
+                    /** The value operator. */
+                    value_type operator*() const {
                         return *(
                             _iterators[ _current_iterator ].first
                                 +  _current_subiter_index
@@ -300,7 +300,7 @@ namespace grb {
 
                     template< typename SubIterContainer >
                     void push_back( const SubIterContainer &container ) {
-                        push_back( container.begin(), container.end() );
+                        push_back( container.cbegin(), container.cend() );
                     }
 
                     /** The emplace_back method */
