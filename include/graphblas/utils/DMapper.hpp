@@ -34,6 +34,8 @@ namespace grb {
 
 	namespace utils {
 
+		extern bool ignoreNonExistantId;
+
 		/**
 		 * Maps a non-deterministic sequence of indices of type \a IndexType to a
 		 * deterministic sequence. Supports sequences of insertions and deletions.
@@ -137,6 +139,9 @@ namespace grb {
 					std::cout << "DMapper::remove( " << in << " )" << std::endl;
 #endif
 					const auto &it = invmap.find( in );
+					if( ignoreNonExistantId && it == invmap.end() ) {
+						return;
+					}
 					assert( it != invmap.end() );
 					const IndexType global_id = it->second;
 #ifdef _DEBUG

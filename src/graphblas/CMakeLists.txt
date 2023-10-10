@@ -71,6 +71,7 @@ add_custom_target( libs ALL )
 set( backend_reference_srcs
 	${CMAKE_CURRENT_SOURCE_DIR}/descriptors.cpp
 	${CMAKE_CURRENT_SOURCE_DIR}/rc.cpp
+	${CMAKE_CURRENT_SOURCE_DIR}/dmapper.cpp
 )
 
 # source files common to all BSP-based backends
