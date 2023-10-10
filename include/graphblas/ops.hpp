@@ -250,6 +250,19 @@ namespace grb {
 				max() {}
 		};
 
+		template<
+			typename D, typename RIT, typename CIT,
+			enum Backend implementation = config::default_backend
+		>
+		class is_diagonal : public internal::SingleMatrixCoordinatesOperatorBase<
+			internal::is_diagonal< D, RIT, CIT, implementation >
+		> {
+
+			public:
+
+				is_diagonal() {}
+		};
+
 		/**
 		 * This operator takes the minimum of the two input parameters and writes
 		 * the result to the output variable. It exposes the complete interface
@@ -1015,6 +1028,11 @@ namespace grb {
 
 	template< typename D1, typename D2, typename D3, enum Backend implementation >
 	struct is_operator< operators::max< D1, D2, D3, implementation > > {
+		static const constexpr bool value = true;
+	};
+
+	template< typename D1, typename D2, typename D3, enum Backend implementation >
+	struct is_single_matrix_coordinates_operator< operators::is_diagonal< D1, D2, D3, implementation > > {
 		static const constexpr bool value = true;
 	};
 
