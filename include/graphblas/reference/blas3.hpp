@@ -1326,6 +1326,88 @@ namespace grb {
 		);
 	}
 
+	template<
+		Descriptor descr = grb::descriptors::no_operation,
+		class Operator,
+		typename Tin,
+		typename RITin, typename CITin, typename NITin,
+		typename Tout,
+		typename RITout, typename CITout, typename NITout
+	>
+	RC select(
+		Matrix< Tout, reference, RITout, CITout, NITout >& out,
+		const Matrix< Tin, reference, RITin, CITin, NITin >& in,
+		const Operator op = Operator(),
+		const Phase& phase = Phase::EXECUTE,
+		const typename std::enable_if<
+			!grb::is_object< Tin >::value &&
+			!grb::is_object< Tout >::value &&
+			grb::is_single_matrix_coordinates_operator< Operator >::value,
+		void >::type * const = nullptr
+	) {
+		std::cout << "In grb::select( reference )\n";
+		RC rc = SUCCESS;
+
+		const auto identity = grb::identities::zero< Tin >::value();
+
+		auto &out_raw = internal::getCRS( out );
+		const auto &in_raw = internal::getCRS( in );
+		const size_t m = nrows( in );
+		// const size_t n = descr & grb::descriptors::force_row_major ?
+		// 	ncols( in ) : nrows( in );
+
+		if( phase == Phase::RESIZE ) {
+			size_t nzc = 0;
+
+#ifdef _H_GRB_REFERENCE_OMP_BLAS3
+#pragma omp parallel default(none) shared(out, in_raw, rc, std::cout) firstprivate(m, op, identity) reduction(+:nzc)
+#endif
+			{
+				size_t start_row = 0;
+				size_t end_row = m;
+#ifdef _H_GRB_REFERENCE_OMP_BLAS3
+				config::OMP::localRange( start_row, end_row, 0, m );
+#endif
+				for( auto i = start_row; i < end_row; ++i ) {
+					for( auto k = in_raw.col_start[ i ]; k < in_raw.col_start[ i + 1 ]; ++k ) {
+						const auto j = in_raw.row_index[ k ];
+						const Tin value = in_raw.getValue( k, identity );
+						if( op.apply( i, j, value ) ) {
+							nzc++;
+						}
+					}
+				}
+			}
+			std::cout << "\t nzc = " << nzc << "\n";
+			return rc ? rc : grb::resize( out, nzc );
+		}
+
+		if( phase == Phase::EXECUTE ) {
+			out_raw.col_start[ 0 ] = 0;
+
+			size_t nzc = 0;
+			for( size_t i = 0; i < m; ++i ) {
+				size_t nzc_i = 0;
+				for( size_t k = in_raw.col_start[ i ]; k < in_raw.col_start[ i + 1 ]; ++k ) {
+					const auto j = in_raw.row_index[ k ];
+					const Tin value = in_raw.getValue( k, identity );
+					if( not op.apply( i, j, value) ) continue;
+
+					nzc_i++;
+					out_raw.row_index[ nzc ] = j;
+					out_raw.setValue( nzc, value );
+					std::cout << "\tKeeping value at: " << i << ", " << j << " -> idx=" << nzc << "\n";
+					nzc++;
+				}
+				out_raw.col_start[ i + 1 ] = nzc_i + out_raw.col_start[ i ];
+			}
+
+			internal::setCurrentNonzeroes( out, nzc );
+		}
+
+		return rc;
+	}
+
 } // namespace grb
 
 #undef NO_CAST_ASSERT

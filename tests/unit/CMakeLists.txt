@@ -175,6 +175,10 @@ add_grb_executables( RBGaussSeidel RBGaussSeidel.cpp
 	BACKENDS reference reference_omp bsp1d hybrid hyperdags nonblocking
 )
 
+add_grb_executables( selectMatrix selectMatrix.cpp
+	BACKENDS reference reference_omp
+)
+
 add_grb_executables( set set.cpp
 	BACKENDS reference reference_omp bsp1d hybrid hyperdags nonblocking
 )

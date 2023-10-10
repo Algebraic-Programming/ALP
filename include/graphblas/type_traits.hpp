@@ -112,6 +112,24 @@ namespace grb {
 	};
 
 	/**
+	 * Used to inspect whether a given type is an ALP matrix operator for coordinates.
+	 *
+	 * @tparam T The type to inspect.
+	 *
+	 * \ingroup typeTraits
+	 */
+	template< typename T >
+	struct is_single_matrix_coordinates_operator {
+
+		/**
+		 * Whether \a T is an ALP operator.
+		 *
+		 * \internal Base case: an arbitrary type is not an ALP operator.
+		 */
+		static const constexpr bool value = false;
+	};
+
+	/**
 	 * Used to inspect whether a given type is an ALP/GraphBLAS object.
 	 *
 	 * @tparam T The type to inspect.

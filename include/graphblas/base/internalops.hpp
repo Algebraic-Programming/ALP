@@ -1000,6 +1000,29 @@ namespace grb {
 
 			};
 
+			template<
+				typename D, typename RIT, typename CIT,
+				enum Backend implementation = config::default_backend
+			>
+			class is_diagonal {
+
+				public:
+					typedef D value_type;
+					typedef RIT row_type;
+					typedef CIT column_type;
+
+					static bool apply(
+						const row_type * __restrict__ const x,
+						const column_type * __restrict__ const y,
+						const value_type * __restrict__ const v
+					) {
+						(void)v;
+						std::cout << __func__ << ": " << *x << " " << *y  << std::endl;
+						return *x == *y;
+					}
+			};
+
+
 			/**
 			 * Standard min operator.
 			 *
@@ -2801,6 +2824,44 @@ namespace grb {
 						}
 					}
 
+			};
+
+			/**
+			 * This class takes a generic operator implementation and exposes a more
+			 * convenient apply() function based on it. This function allows arbitrary
+			 * data types being passed as parameters, and automatically handles any
+			 * casting required for the raw operator.
+			 *
+			 * @tparam OP The generic operator implementation.
+			 *
+			 * @see Operator for full details.
+			 */
+			template< typename OP, enum Backend implementation = config::default_backend >
+			class SingleMatrixCoordinatesOperatorBase {
+				protected:
+
+					typedef typename OP::value_type D;
+					typedef typename OP::row_type RIT;
+					typedef typename OP::column_type CIT;
+
+				public:
+
+					template< typename RIT1, typename CIT1, typename D1 >
+					static bool apply( const RIT1 & x, const CIT1 & y, const D1 & v ) {
+						const RIT a = static_cast< RIT1 >( x );
+						const CIT b = static_cast< CIT1 >( y );
+						const D val = static_cast< D1 >( v );
+						return  OP::apply( &a, &b, &val );
+					}
+
+					/**
+					 * This is the high-performance version of apply() in the sense that no
+					 * casting is required. This version will be automatically caled whenever
+					 * possible.
+					 */
+					static bool apply( const RIT & x, const CIT & y, D & v ) {
+						return OP::apply( &x, &y, &v );
+					}
 			};
 
 			/**
