@@ -415,14 +415,19 @@ namespace grb {
 				P > 1
 			) {
 				std::cerr << "Error: cannot locally construct input type (typeid name \""
-					<< typeid(T).name() << "\"for an ALP program that is launched "
+					<< typeid(T).name() << "\") for an ALP program that is launched "
 					<< "in automatic mode, with broadcasting, and using more than one user"
 					<< "one user process.\n"
 					<< "Additionally, this error should have been caught prior to the "
 					<< "attempted launch of the ALP program-- please submit a bug report."
 					<< std::endl;
-				assert( false );
-				return;
+				// if this condition triggers, we must abort execution and signal an error
+				// condition to the caller of Launcher.exec(), because her function could
+				// not be run; however, LPF has no principled way to propagate error
+				// conditions and we must resort to this exeception, which LPF catches,
+				// then reporting to the caller that an error occurred; hence,
+				// DO NOT REMOVE THIS EXCEPTION!
+				throw std::logic_error( "Error: cannot locally construct input data" );
 			}
 
 			lpf_coll_t coll;
@@ -617,6 +622,12 @@ namespace grb {
 					const size_t in_size,
 					U * const data_out
 				) const {
+					static_assert(
+						mode != AUTOMATIC ||
+							std::is_default_constructible< U >::value,
+						"The output type U should be default-constructible when using"
+						"automatic mode launchers."
+					);
 					// construct LPF I/O args
 					lpf_args_t args = {
 						data_in, in_size,
@@ -737,24 +748,11 @@ namespace grb {
 					U &data_out,
 					const bool broadcast = false
 				) {
-					static_assert(
-						mode != AUTOMATIC ||
-							std::is_default_constructible< U >::value,
-						"The output type U should be default-constructible when using automatic "
-						"mode launchers."
+					return pack_data_and_run< T, U, false >(
+						reinterpret_cast< lpf_func_t >( alp_program ),
+						&data_in, sizeof( T ),
+						&data_out, broadcast
 					);
-					if(
-						mode == AUTOMATIC && broadcast == false &&
-						!std::is_default_constructible< T >::value
-					) {
-						return grb::ILLEGAL;
-					} else {
-						return pack_data_and_run< T, U, false >(
-							reinterpret_cast< lpf_func_t >( alp_program ),
-							&data_in, sizeof( T ),
-							&data_out, broadcast
-						);
-					}
 				}
 
 				/**
@@ -786,12 +784,6 @@ namespace grb {
 					U &data_out,
 					const bool broadcast = false
 				) {
-					static_assert(
-						mode != AUTOMATIC ||
-							std::is_default_constructible< U >::value,
-						"The output type U should be default-constructible when using automatic "
-						"mode launchers."
-					);
 					return pack_data_and_run< void, U, true >(
 						reinterpret_cast< lpf_func_t >( alp_program ),
 						data_in, in_size, &data_out, broadcast

@@ -235,12 +235,6 @@ namespace grb {
 				const size_t inner, const size_t outer,
 				const bool broadcast = false
 			) const {
-				static_assert(
-					mode != AUTOMATIC ||
-						std::is_default_constructible< U >::value,
-					"The output type U should be default-constructible when using automatic "
-					"mode launchers."
-				);
 				// check input arguments
 				if( in_size > 0 && data_in == nullptr ) {
 					return grb::ILLEGAL;
@@ -281,21 +275,6 @@ namespace grb {
 				const size_t inner, const size_t outer,
 				const bool broadcast = false
 			) const {
-				static_assert(
-					mode != AUTOMATIC ||
-						std::is_default_constructible< U >::value,
-					"The output type U should be default-constructible when using automatic "
-					"mode launchers."
-				);
-				if(
-					mode == AUTOMATIC && broadcast == false &&
-					!std::is_default_constructible< T >::value
-				) {
-					std::cerr << "Error: input type of an ALP function must be "
-						"default-constructible when using automatic mode benchmarkers without "
-						"broadcasting.\n";
-					return grb::ILLEGAL;
-				}
 				return pack_and_run< T, U, false >(
 					reinterpret_cast< lpf_func_t >( alp_program ),
 					&data_in, sizeof( T ), &data_out,
