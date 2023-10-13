@@ -1413,7 +1413,6 @@ namespace grb {
 		typename InputType, typename RIT, typename CIT, typename NIT,
 		typename fwd_iterator1 = const RIT * __restrict__,
 		typename fwd_iterator2 = const CIT * __restrict__,
-		typename length_type = size_t,
 		Backend implementation = config::default_backend
 	>
 	RC buildMatrixUnique(
