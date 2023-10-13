@@ -467,7 +467,7 @@ namespace grb::factory {
 				typename grb::utils::containers::Range< CIT >::const_iterator
 			> J( nrows );
 		for( size_t i = 0; i < nrows; ++i ) {
-			J.push_back( grb::utils::containers::Range< CIT >( 0, ncols ) );
+			J.emplace_back( grb::utils::containers::Range< CIT >( 0, ncols ) );
 		}
 		// Initialise values container with the given value.
 		grb::utils::containers::ConstantVector< D > V( value, nrows * ncols );
@@ -539,7 +539,7 @@ namespace grb::factory {
 				typename grb::utils::containers::Range< CIT >::const_iterator
 			> J( nrows );
 		for( size_t i = 0; i < nrows; ++i ) {
-			J.push_back( grb::utils::containers::Range< CIT >( 0, ncols ) );
+			J.emplace_back( grb::utils::containers::Range< CIT >( 0, ncols ) );
 		}
 		assert( std::distance( I.begin(), I.end() ) == std::distance( J.begin(), J.end() ) );
 		RC rc = buildMatrixUnique< descr >(

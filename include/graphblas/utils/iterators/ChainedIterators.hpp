@@ -62,8 +62,8 @@ namespace grb::utils::iterators {
             typedef typename std::iterator_traits< SubIterType >::difference_type
                 difference_type;
 
-            using self_type = ChainedIterators< SubIterType >;
-            using const_self_type = const ChainedIterators< SubIterType >;
+            typedef ChainedIterators< SubIterType > self_type;
+            typedef const ChainedIterators< SubIterType > const_self_type;
 
             /** The base constructor. */
             ChainedIterators() = delete;
@@ -250,8 +250,8 @@ namespace grb::utils::containers {
 
         public:
 
-            using iterator = utils::iterators::ChainedIterators< SubIterType >;
-            using const_iterator = const utils::iterators::ChainedIterators< SubIterType >;
+            typedef utils::iterators::ChainedIterators< SubIterType > iterator;
+            typedef const utils::iterators::ChainedIterators< SubIterType > const_iterator;
 
             /** The base constructor. */
             ChainedIteratorsVector( size_t capacity = 0UL ) {
@@ -290,20 +290,25 @@ namespace grb::utils::containers {
             /** The destructor. */
             ~ChainedIteratorsVector() {}
 
-            /** The push_back method */
-            void push_back( const SubIterType &begin, const SubIterType &end ) {
+            /**
+             * The emplace_back method
+             *
+             * Allows the user to chain a new iterator to the end of the
+             * current list of iterators.
+             */
+            void emplace_back( const SubIterType &begin, const SubIterType &end ) {
                 _iterators.emplace_back( begin, end );
             }
 
+            /**
+             * The emplace_back method
+             *
+             * Allows the user to chain a new iterator to the end of the
+             * current list of iterators.
+             */
             template< typename SubIterContainer >
-            void push_back( const SubIterContainer &container ) {
-                push_back( container.cbegin(), container.cend() );
-            }
-
-            /** The emplace_back method */
-            template< typename... Args >
-            void emplace_back( Args&&... args ) {
-                _iterators.emplace_back( std::forward< Args >( args )... );
+            void emplace_back( const SubIterContainer &container ) {
+                emplace_back( container.cbegin(), container.cend() );
             }
 
             /** The clear method */
@@ -318,6 +323,7 @@ namespace grb::utils::containers {
                 );
             }
 
+            /** The const begin method. */
             iterator cbegin() const {
                 return begin();
             }
@@ -331,6 +337,7 @@ namespace grb::utils::containers {
                 );
             }
 
+            /** The const end method. */
             iterator cend() const {
                 return end();
             }
@@ -344,7 +351,7 @@ namespace grb::utils::containers {
                 return dist;
             }
 
-                /** The size method for a sub-iterator. */
+            /** The size method for a sub-iterator. */
             size_t size( size_t i ) const {
                 assert( i < _iterators.size() );
                 return std::distance( _iterators[i].first, _iterators[i].second );
@@ -353,6 +360,45 @@ namespace grb::utils::containers {
     };
 
 } // namespace grb::utils::containers
+
+
+namespace std {
+
+	/**
+	 * Iterator traits for the ChainedIterators.
+	 *
+	 * @tparam SubIteratorType The underlying iterator type.
+	 *
+	 * Inherits all values from the \a SubIteratorType.
+	 */
+	template< typename SubIteratorType >
+	struct iterator_traits<
+		grb::utils::iterators::ChainedIterators< SubIteratorType >
+	> {
+
+		/** This trait is inherited from \a SubIteratorType. */
+		typedef typename std::iterator_traits< SubIteratorType >::difference_type
+			difference_type;
+
+		/** This trait is inherited from \a SubIteratorType. */
+		typedef typename std::iterator_traits< SubIteratorType >::value_type
+            value_type;
+
+		/** This trait is inherited from \a SubIteratorType. */
+		typedef typename std::iterator_traits< SubIteratorType >::pointer
+            pointer;
+
+		/** This trait is inherited from \a SubIteratorType. */
+		typedef typename std::iterator_traits< SubIteratorType >::reference
+            reference;
+
+		/** This trait is inherited from \a SubIteratorType. */
+		typedef typename std::iterator_traits< SubIteratorType >::iterator_category
+            iterator_category;
+
+	};
+
+}
 
 #endif // end ``_H_CHAINEDITERATORS''
 
