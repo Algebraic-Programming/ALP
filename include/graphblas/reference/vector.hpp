@@ -478,18 +478,19 @@ namespace grb {
 
 			// perform straight copy
 			fwd_iterator it = start;
-			for( size_t i = 0; start != end && i < _coordinates.size(); ++i ) {
+			for( size_t i = 0; it != end && i < _coordinates.size(); ++i ) {
 				// flag coordinate as assigned
 				if( _coordinates.assign( i ) ) {
 					if( descr & descriptors::no_duplicates ) {
 						return ILLEGAL;
 					}
 					// nonzero already existed, so fold into existing one
-					foldl( _raw[ i ], *it++, dup );
+					foldl( _raw[ i ], *it, dup );
 				} else {
 					// new nonzero, so overwrite
-					_raw[ i ] = static_cast< D >( *it++ );
+					_raw[ i ] = static_cast< D >( *it );
 				}
+				++it;
 			}
 
 			// write back final position
@@ -538,7 +539,9 @@ namespace grb {
 			nnz_iterator nnz = nnz_start;
 			ind_iterator ind = ind_start;
 			while( nnz != nnz_end || ind != ind_end ) {
-				const size_t i = static_cast< size_t >( *ind++ );
+				const size_t i = static_cast< size_t >( *ind );
+				++ind;
+
 				// sanity check
 				if( i >= _coordinates.size() ) {
 					return MISMATCH;
@@ -547,10 +550,11 @@ namespace grb {
 					if( descr & descriptors::no_duplicates ) {
 						return ILLEGAL;
 					}
-					foldl( _raw[ i ], *nnz++, dup );
+					foldl( _raw[ i ], *nnz, dup );
 				} else {
-					_raw[ i ] = static_cast< D >( *nnz++ );
+					_raw[ i ] = static_cast< D >( *nnz );
 				}
+				++nnz;
 			}
 
 			// done

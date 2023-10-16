@@ -25,6 +25,8 @@
 #define _H_GRB_ITERATOR_UTILS
 
 #include <cstddef>
+#include <algorithm>
+#include <type_traits>
 
 #include <graphblas/rc.hpp>
 #include <graphblas/type_traits.hpp>
@@ -76,6 +78,28 @@ namespace grb {
 				return MISMATCH;
 			}
 			return SUCCESS;
+		}
+
+		/**
+		 * Computes the difference between \p a \a - \p b and returns it as the given
+		 * type \p DiffType.
+		 *
+		 * Raises an exception if \p DiffType cannot store the difference.
+		 */
+		template<
+			typename DiffType,
+			typename SizeType
+		> DiffType compute_signed_distance(
+			const SizeType a,
+			const SizeType b
+		) {
+			static_assert( std::is_signed< DiffType >::value, "DiffType should be signed" );
+			const SizeType diff = std::max( a, b ) - std::min( a, b );
+			if( diff > static_cast< SizeType >( std::numeric_limits< DiffType >::max() ) ) {
+				throw std::range_error( "cannot represent difference" );
+			}
+			DiffType result = static_cast< DiffType >( diff );
+			return a >= b ? result : -result ;
 		}
 
 	} // end namespace utils
