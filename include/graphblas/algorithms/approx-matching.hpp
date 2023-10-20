@@ -43,14 +43,8 @@ namespace grb {
 					grb::Matrix< T > &AwoM,
 					const grb::Martix< T > &adjacency,
 					const grb::Matrix< T > &matching,
-					grb::Vector< T > &workspace_vec,
 				) {
-					grb::Monoid<
-						grb::operators::add< T >,
-						grb::identities::zero
-					> plusMonoid;
-					grb::RC ret = grb::foldl( m_w, matching, plusMonoid );
-					ret = ret ? ret : grb::set<
+					grb::RC ret = grb::set<
 							grb::descriptors::invert_mask
 						>( AwoM, matching, adjacency );
 					return ret;
@@ -58,68 +52,176 @@ namespace grb {
 
 				template< typename T >
 				RC search1AugsProcedure(
-					grb::Matrix< T > &adjacency,
-					grb::Matrix< T > &matching,
-					grb::Matrix< T > &augmentation,
-					const size_t n, const size_t m
+					grb::Matrix< void > &augmentation,
+					const grb::Matrix< T > &adjacency,
+					const grb::Matrix< T > &matching,
+					const size_t n, const size_t m,
+					grb::Vector< T > temp,
+					grb::Vector< T > m_w,
+					grb::Matrix< T > AwoM,
+					grb::Matrix< T > C,
+					grb::Matrix< T > G1,
+					grb::Matrix< void > D1,
+					grb::Matrix< bool > maskM,
 				) {
-					// ideally factor out the below:
-					grb::Vector< T > m_w( n );
-					grb::Matrix< T > C( n, n ), AwoM( n, n, m );
-					grb::Matrix< T > G1( n, n ), D1( n, n );
-					size_t g1_nvals;
-					// grb::RC ret = grb::set( m_w, 0 ); not necessary?
+					grb::Semiring<
+						grb::operators::add< T >, // any_or
+						grb::operators::mul< T >, // left_assign
+						grb::identities::zero,
+						grb::identities::one
+					> plusTimes;
 					grb::Monoid<
 						grb::operators::add< T >,
 						grb::identities::zero
 					> plusMonoid;
+					grb::operators::add< T > plusOp;
 					grb::operators::subtract< T > minusOp;
-					grb::RC ret = buildAwoM( AwoM, adjacency, matching, m_w );
+					grb::operators::greater_than< T > gtOp;
+					grb::operators::left_assign_if< T, bool, T > leftAssignIfOp;
+					if( grb::size( temp ) != n ) { return MISMATCH; }
+					if( grb::size( m_w ) != n ) { return MISMATCH; }
+					if( grb::ncols( C ) != n || grb::nrows( C ) != n ) { return MISMATCH; }
+					if( grb::ncols( G1 ) != n || grb::nrows( G1 ) != n ) { return MISMATCH; }
+					if( grb::ncols( AwoM ) != n || grb::nrows( AwoM ) != n ) { return MISMATCH; }
+					if( grb::ncols( D1 ) != n || grb::nrows( D1 ) != n ) { return MISMATCH; }
+					if( grb::ncols( maskM ) != n || grb::nrows( maskM ) != n ) { return MISMATCH; }
+					if( grb::capacity( temp ) < n ) { return ILLEGAL; }
+					if( grb::capacity( m_w ) < n ) { return ILLEGAL; }
+					if( grb::capacity( C ) < m ) { return ILLEGAL; }
+					if( grb::capacity( G1 ) < m ) { return ILLEGAL; }
+					if( grb::capacity( AwoM ) < m ) { return ILLEGAL; }
+					if( grb::capacity( D1 ) < m ) { return ILLEGAL; }
+					if( grb::capacity( maskM ) < m ) { return ILLEGAL; }
+					size_t g1_nvals;
+					grb::RC ret = grb::set( m_w, 0 ); // we use dense descriptor later
+					ret = ret ? ret : grb::set( temp, 1.0 );
+					ret = ret ? ret : grb::mxv< grb::descriptors::dense >( m_w, matching, temp, plusTimes );
+					ret = ret ? ret : buildAwoM( AwoM, adjacency, matching );
 
-					//ret = ret ? ret : grb::set( C, AwoM, 0 ); // this is not needed?
-					ret = ret ? ret : grb::outer(
+					ret = ret ? ret : grb::set( C, AwoM, 0 ); // note: this is absolutely necessary bc of minus later
+					ret = ret ? ret : grb::outer< grb::descriptors::dense >(
 						C, AwoM,
 						m_w, m_w,
 						plusMonoid, plusOp
 					);
 
-					ret = ret ? ret : grb::eWiseApply( G1, AwoM, C, minusOp ); // nonzeroes in AwoM but not in C will not be copied into G1?
-					grb::Matrix< bool > tmp( n, n, grb::nnz(G1) ); // ideally best factored out
-					grb::Matrix< T > tmp2( n, n ); // default cap is ok
-					ret = ret ? ret : grb::eWiseApply( tmp, G1, 0, gtOp );
-					ret = ret ? ret : grb::eWiseApply( tmp2, G1, tmp, leftAssignIfOp ); // check this one, ideally I'd use foldl
-					std::swap( tmp2, G1 );
+					ret = ret ? ret : grb::eWiseApply( G1, AwoM, C, minusOp );
+					ret = ret ? ret : grb::eWiseApply( maskM, G1, 0, gtOp );
+					ret = ret ? ret : grb::eWiseApply( C, G1, maskM, leftAssignIfOp );
 					if( ret != grb::SUCCESS ) { return ret; }
+
+					std::swap( C, G1 );
 
 					g1_nvals = grb::nnz( G1 );
 					if( g1_nvals > 0 ) {
 						// select one match (highest value on each row, one value per row, deterministic tie breaking)
-						grb::Vector< T > tmp_vec( n ); // ideally factor this out
-						grb::Vector< T > tmp_vec2( n ); // ideally factor this out
-						grb::Matrix< T > tmp3( n, n, grb::nnz( G1 ) ); // ideally factor out
-						ret = grb::foldl( tmp_vec, G1, maxMonoid );
-						ret = ret ? ret : grb::diag( tmp2, tmp_vec ); // this function does not yet exist (See branch #228)
-						ret = ret ? ret : grb::mxm( tmp3, tmp2, G1,
+						ret = grb::clear( temp );
+						ret = ret ? ret : grb::foldl( temp, G1, maxMonoid );
+						ret = ret ? ret : grb::diag( C, temp ); // this function does not yet exist (See branch #228)
+						ret = ret ? ret : grb::mxm( maskM, C, G1,
 							orEqualsRing );
-						ret = ret ? ret : grb::eWiseLambda( [&tmp3](const size_t i, const size_t j, T& val) { (void) i; val = j; } );
-						ret = ret ? ret : grb::clear( tmp_vec );
-						ret = ret ? ret : grb::foldl( tmp_vec, tmp3, maxMonoid );
+						ret = ret ? ret : grb::set( C, maskM, G1 );
+						ret = ret ? ret : grb::eWiseLambda(
+								[&C](const size_t i, const size_t j, T& val) {
+									(void) i;
+									val = j;
+								},
+							C );
+						ret = ret ? ret : grb::clear( temp );
+						ret = ret ? ret : grb::foldl( temp, C, maxMonoid );
+
+						// warning: abuses m_w as a temp vec
 						ret = ret ? ret : grb::set<
 								grb::descriptors::use_index
-							>( tmp_vec2, 0 ); //or use branch #228
-						ret = ret ? ret : grb::zip( D1, tmp_vec2, tmp_vec ); // TODO: D1, augmentation matrices should be pattern matrices?
+							>( m_w, 0 ); //or use branch #228
+						ret = ret ? ret : grb::zip( D1, m_w, temp );
 
-						// filter conflicts (is this not better named select requited matches?)
+						// filter conflicts (select requited matches)
 						ret = ret ? ret : grb::eWiseApply<
 								grb::descriptors::transpose_left
 							>( augmentations, D1, D1, anyOrOp );
-						// line 68 in orig code not necessary
 					} else {
 						ret = grb::FAILED;
 					}
 
 					// done
 					return ret;
+				}
+
+				template< typename T >
+				RC search3AugsProcedure(
+					grb::Matrix< void > &augmentation,
+					const grb::Matrix< T > &adjacency,
+					const grb::Matrix< T > &matching,
+					const size_t n, const size_t m,
+					grb::Vector< T > temp,
+					grb::Vector< T > m_w,
+					grb::Matrix< T > AwoM,
+					grb::Matrix< T > C,
+					grb::Matrix< T > G3,
+					grb::Matrix< void > D3,
+					grb::Matrix< bool > maskM,
+				) {
+					grb::Semiring<
+						grb::operators::add< T >, // any_or
+						grb::operators::mul< T >, // left_assign
+						grb::identities::zero,
+						grb::identities::one
+					> plusTimes;
+					grb::Monoid<
+						grb::operators::add< T >,
+						grb::identities::zero
+					> plusMonoid;
+					grb::operators::add< T > plusOp;
+					grb::operators::subtract< T > minusOp;
+					grb::operators::greater_than< T > gtOp;
+					grb::operators::left_assign_if< T, bool, T > leftAssignIfOp;
+					if( grb::size( temp ) != n ) { return MISMATCH; }
+					if( grb::size( m_w ) != n ) { return MISMATCH; }
+					if( grb::ncols( C ) != n || grb::nrows( C ) != n ) { return MISMATCH; }
+					if( grb::ncols( G1 ) != n || grb::nrows( G1 ) != n ) { return MISMATCH; }
+					if( grb::ncols( AwoM ) != n || grb::nrows( AwoM ) != n ) { return MISMATCH; }
+					if( grb::ncols( D1 ) != n || grb::nrows( D1 ) != n ) { return MISMATCH; }
+					if( grb::ncols( maskM ) != n || grb::nrows( maskM ) != n ) { return MISMATCH; }
+					if( grb::capacity( temp ) < n ) { return ILLEGAL; }
+					if( grb::capacity( m_w ) < n ) { return ILLEGAL; }
+					if( grb::capacity( C ) < m ) { return ILLEGAL; }
+					if( grb::capacity( G1 ) < m ) { return ILLEGAL; }
+					if( grb::capacity( AwoM ) < m ) { return ILLEGAL; }
+					if( grb::capacity( D1 ) < m ) { return ILLEGAL; }
+					if( grb::capacity( maskM ) < m ) { return ILLEGAL; }
+					size_t g1_nvals;
+					grb::RC ret = grb::set( m_w, 0 );
+					ret = ret ? ret : grb::set( temp, 1.0 );
+					ret = ret ? ret : grb::mxv< grb::descriptors::dense >( m_w, matching, temp, plusTimes );
+					ret = ret ? ret : buildAwoM( AwoM, adjacency, matching );
+
+					ret = ret ? ret : grb::set( C, AwoM, 0 ); // note: this is absolutely necessary bc of minus later
+					ret = ret ? ret : grb::outer< grb::descriptors::dense >(
+						C, AwoM,
+						m_w, m_w,
+						plusMonoid, plusOp
+					);
+
+					ret = ret ? ret : grb::eWiseApply( G1, AwoM, C, minusOp );
+					ret = ret ? ret : grb::eWiseApply( maskM, G1, 0, gtOp );
+					ret = ret ? ret : grb::eWiseApply( C, G1, maskM, leftAssignIfOp );
+					if( ret != grb::SUCCESS ) { return ret; }
+
+					std::swap( C, G1 );
+
+					// maskM in the below could be void (TODO)
+					ret = ret ? ret : grb::clear( m_w );
+					ret = ret ? ret : grb::mxv( m_w, matching, temp, plusTimes ); // maybe one mxv can be enough
+					ret = ret ? ret : grb::clean( maskM );
+					ret = ret ? ret : grb::outer( maskM, AwoM, m_w, m_w, plusTimes );
+					ret = ret ? ret : grb::set( C, maskM, AwoM );
+					if( ret != grb::SUCCESS ) { return ret; }
+
+					std::swap( C, AwoM );
+
+					// TODO continue from line 6, alg 8
+
 				}
 
 				template< typename T >
@@ -131,11 +233,11 @@ namespace grb {
 				) {
 					RC ret = grb::SUCCESS;
 					if( k == 1 ) {
-						ret = search1AugsProcedure( adjacency, matching, augmentation, n );
+						ret = search1AugsProcedure( adjacency, matching, augmentation, n ); //arguments!
 					} else if( k == 2 ) {
 						ret = search2AugsProcedure( adjacency, matching, augmentation, n );
 					} else if( k == 3 ) {
-						ret = search2AugsProcedure( adjacency, matching, augmentation, n );
+						ret = search3AugsProcedure( adjacency, matching, augmentation, n );
 					} else {
 						std::cerr << "This case should never be triggered\n";
 						ret = grb::PANIC;
@@ -145,14 +247,34 @@ namespace grb {
 
 				template< typename T >
 				RC flipAugmentations(
-					grb::Matrix< T > &adjacency,
 					grb::Matrix< T > &matching,
-					grb::Matrix< T > &augmentation,
-					double &currentMatchingWeight,
+					const grb::Matrix< T > &adjacency,
+					const grb::Matrix< void > &augmentation,
 					const size_t n
+					grb::Vector< T > m,
+					grb::Vector< T > a,
+					grb::Vector< T > r,
+					grb::Matrix< T > buffer
 				) {
-					grb::Vector< T > m( n ), a( n ), r( n ); // ideally factor this out
-					grb::Matrix< T > buffer( n, n, grb::nnz( matching ) );
+					if( grb::nrows( matching ) != n || grb::ncols( matching ) != n ) {
+						return ILLEGAL;
+					}
+					if( grb::nrows( adjacency ) != n || grb::ncols( adjacency ) != n ) {
+						return ILLEGAL;
+					}
+					if( grb::nrows( augmentation ) != n || grb::ncols( augmentation ) != n ) {
+						return ILLEGAL;
+					}
+					if( grb::nrows( buffer ) != n || grb::ncols( buffer ) != n ) {
+						return ILLEGAL;
+					}
+					if( grb::size( m ) != n ) { return ILLEGAL; }
+					if( grb::size( a ) != n ) { return ILLEGAL; }
+					if( grb::size( r ) != n ) { return ILLEGAL; }
+					if( grb::capacity( buffer ) < grb::nnz( matching ) ) { return ILLEGAL; }
+					if( grb::capacity( m ) < n ) { return ILLEGAL; }
+					if( grb::capacity( a ) < n ) { return ILLEGAL; }
+					if( grb::capacity( r ) < n ) { return ILLEGAL; }
 					grb::operators::any_or< T > anyOrOp; // if T void is sufficient, then this lcould just be logical_or
 					grb::operators::logical_or< T, bool, bool > lorOp;
 					grb::Semiring<
@@ -162,8 +284,11 @@ namespace grb {
 						grb::identities::logical_true
 					> booleanSemiring;
 					grb::RC ret = grb::foldl( m, matching, anyOrOp );
-					ret = ret ? ret : grb::foldl( a, augmentation, anyOrOp );
+					ret = ret ? ret : grb::set( r, true );
+					ret = ret ? ret : grb::mxv( a, augmentation, r, booleanSemiring );
 					ret = ret ? ret : grb::eWiseApply( r, m, a, anyOrOp );
+					// now we have the conflicts in r
+
 					ret = ret ? ret : grb::outer(
 							R, matching,
 							r, 1,
@@ -176,6 +301,8 @@ namespace grb {
 					ret = ret ? ret : grb::set<
 							grb::descriptors::invert_mask
 						>( buffer, R, matching );
+					if( ret != grb::SUCCESS ) { return ret; }
+
 					std::swap( buffer, matching );
 					ret = ret ? ret : grb::eWiseMul(
 							matching, augmentation, adjacency,
