@@ -1202,6 +1202,12 @@ namespace grb {
 		static const constexpr bool value = true;
 	};
 
+	/**
+	 * This struct template specialization determines if the logical_not operator is
+	 * idempotent by checking if the operator being negated is idempotent.
+	 * If the operator is idempotent, then negating its result will not change the
+	 * result, and the operator remains idempotent.
+	 */
 	template< class Op >
 	struct is_idempotent< operators::logical_not< Op >, void > {
 		static const constexpr bool value = is_idempotent< Op >::value;
