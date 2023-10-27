@@ -230,7 +230,7 @@ target_include_directories(
 )
 
 install( DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/transition/"
-	DESTINATION "${GRB_INCLUDE_INSTALL_DIR}/../transition/"
+	DESTINATION "${GRB_INCLUDE_INSTALL_DIR}/../transition"
 	FILES_MATCHING REGEX "${HEADERS_REGEX}"
 )
 
