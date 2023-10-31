@@ -992,20 +992,17 @@ namespace grb {
 			const auto dummy_identity = identities::zero< OutputType >::value();
 
 			// retrieve buffers
-			char * arr1, * arr2, * arr3, * buf1, * buf2, * buf3;
-			arr1 = arr2 = buf1 = buf2 = nullptr;
+			char * arr1, * arr3, * buf1, * buf3;
+			arr1 = buf1 = nullptr;
 			InputType1 * vbuf1 = nullptr;
-			InputType2 * vbuf2 = nullptr;
 			OutputType * valbuf = nullptr;
 			internal::getMatrixBuffers( arr1, buf1, vbuf1, 1, A );
-			internal::getMatrixBuffers( arr2, buf2, vbuf2, 1, B );
 			internal::getMatrixBuffers( arr3, buf3, valbuf, 1, C );
 			// end buffer retrieval
 
 			// initialisations
-			internal::Coordinates< reference > coors1, coors2;
+			internal::Coordinates< reference > coors1;
 			coors1.set( arr1, false, buf1, n );
-			coors2.set( arr2, false, buf2, n );
 			if( !crs_only ) {
 #ifdef _H_GRB_REFERENCE_OMP_BLAS3
 				#pragma omp parallel for simd default(none) \
@@ -1022,6 +1019,7 @@ namespace grb {
 
 			// symbolic phase
 			if( phase == RESIZE ) {
+				nzc = 0;
 				for( size_t i = 0; i < m; ++i ) {
 					coors1.clear();
 					for( size_t k = A_raw.col_start[ i ]; k < A_raw.col_start[ i + 1 ]; ++k ) {
@@ -1045,6 +1043,7 @@ namespace grb {
 
 			// computational phase
 			if( phase == EXECUTE ) {
+				nzc = 0;
 				// retrieve additional buffer
 				config::NonzeroIndexType * const C_col_index = internal::template
 					getReferenceBuffer< typename config::NonzeroIndexType >( n + 1 );
@@ -1101,9 +1100,11 @@ namespace grb {
 				}
 
 				// do computations
-				size_t nzc = 0;
+				nzc = 0;
 				CRS_raw.col_start[ 0 ] = 0;
 				for( size_t i = 0; i < m; ++i ) {
+					coors1.clear();
+
 					for( size_t k = A_raw.col_start[ i ]; k < A_raw.col_start[ i + 1 ]; ++k ) {
 						const size_t k_col = A_raw.row_index[ k ];
 						coors1.assign( k_col );
@@ -1111,57 +1112,75 @@ namespace grb {
 					}
 
 					for( size_t l = B_raw.col_start[ i ]; l < B_raw.col_start[ i + 1 ]; ++l ) {
-						const size_t l_col = B_raw.row_index[ l ];
-						if( !coors1.assigned( l_col ) ) { // Union case: ignored
+						const size_t j = B_raw.row_index[ l ];
+						if( !coors1.assigned( j ) ) { // Union case: ignored
 							continue;
 						}
-						const auto valbuf_value_before = valbuf[ l_col ];
-						(void)grb::apply( valbuf[ l_col ], valbuf_value_before, B_raw.getValue( l, dummy_identity ), oper );
-						coors2.assign( l_col );
-					}
 
-					coors1.clear();
+						const auto valbuf_value_before = valbuf[ j ];
+						OutputType result_value;
+						(void)grb::apply( result_value, valbuf_value_before, B_raw.getValue( l, dummy_identity ), oper );
 
-					for( size_t j_unsigned = n ; j_unsigned > 0 ; j_unsigned-- ) {
-						const size_t j = j_unsigned - 1;
-						if( !coors2.assigned( j ) ) {
-							continue;
-						}
 						// update CRS
 						CRS_raw.row_index[ nzc ] = j;
-						CRS_raw.setValue( nzc, valbuf[ j ] );
+						CRS_raw.setValue( nzc, result_value );
+
 						// update CCS
 						if( !crs_only ) {
 							C_col_index[ j ]++;
 							const size_t CCS_index =  CCS_raw.col_start[ j+1 ] - C_col_index[ j ];
 							CCS_raw.row_index[ CCS_index ] = i;
-							CCS_raw.setValue( CCS_index, valbuf[ j ] );
+							CCS_raw.setValue( CCS_index, result_value );
 						}
+
 						// update count
 						(void)++nzc;
 					}
+
 					CRS_raw.col_start[ i + 1 ] = nzc;
 
-					coors2.clear();
 				}
 
-				if( !crs_only ) {
+
 #ifdef _DEBUG
-					std::cout << "CCS_raw.col_start = [ ";
-					for( size_t j = 0; j <= n; ++j )
-						std::cout << CCS_raw.col_start[ j ] << " ";
-					std::cout << "]\n";
+				std::cout << "CRS_raw.col_start = [ ";
+				for( size_t j = 0; j <= m; ++j )
+					std::cout << CRS_raw.col_start[ j ] << " ";
+				std::cout << "]\n";
+				std::cout << "CRS_raw.row_index = [ ";
+				for( size_t j = 0; j < nzc; ++j )
+					std::cout << CRS_raw.row_index[ j ] << " ";
+				std::cout << "]\n";
+				std::cout << "CRS_raw.values    = [ ";
+				for( size_t j = 0; j < nzc; ++j )
+					std::cout << CRS_raw.values[ j ] << " ";
+				std::cout << "]\n";
+				if( !crs_only ) {
 					std::cout << "C_col_index =       [ ";
 					for( size_t j = 0; j < n; ++j )
 						std::cout << C_col_index[ j ] << " ";
 					std::cout << "]\n";
-#endif
-#ifndef NDEBUG
-					for( size_t j = 0; j < n; ++j ) {
-						assert( CCS_raw.col_start[ j + 1 ] - CCS_raw.col_start[ j ] == C_col_index[ j ] );
-					}
-#endif
+					std::cout << "CCS_raw.col_start = [ ";
+					for( size_t j = 0; j <= n; ++j )
+						std::cout << CCS_raw.col_start[ j ] << " ";
+					std::cout << "]\n";
+					std::cout << "CCS_raw.row_index = [ ";
+					for( size_t j = 0; j < nzc; ++j )
+						std::cout << CCS_raw.row_index[ j ] << " ";
+					std::cout << "]\n";
+					std::cout << "CCS_raw.values    = [ ";
+					for( size_t j = 0; j < nzc; ++j )
+						std::cout << CCS_raw.values[ j ] << " ";
+					std::cout << "]\n";
 				}
+#endif
+
+#ifndef NDEBUG
+				if( !crs_only ) {
+					for( size_t j = 0; j < n; ++j )
+						assert( CCS_raw.col_start[ j + 1 ] - CCS_raw.col_start[ j ] == C_col_index[ j ] );
+				}
+#endif
 
 				// set final number of nonzeroes in output matrix
 #ifdef _DEBUG
