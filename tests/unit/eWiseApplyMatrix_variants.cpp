@@ -39,8 +39,10 @@
 #include <vector>
 
 #include <graphblas.hpp>
+#include <utils/print_vec_mat.hpp>
 
 using namespace grb;
+
 
 using nz_type = int;
 
@@ -53,23 +55,26 @@ bool equals_matrix(
 	const Matrix< D > &A,
 	const Matrix< D > &B
 ) {
-	if( nrows( A ) != nrows( B ) || ncols( A ) != ncols( B ) ){
+	if( nrows( A ) != nrows( B ) ||
+		ncols( A ) != ncols( B ) ||
+		nnz( A ) != nnz( B )
+	) {
 		return false;
 	}
 
 	wait( A );
 	wait( B );
 
-	std::vector< 
-		std::pair< std::pair< size_t, size_t >, D > 
+	std::vector<
+		std::pair< std::pair< size_t, size_t >, D >
 	> A_vec( A.cbegin(), A.cend() );
-	std::vector< 
-		std::pair< std::pair< size_t, size_t >, D > 
+	std::vector<
+		std::pair< std::pair< size_t, size_t >, D >
 	> B_vec( B.cbegin(), B.cend() );
 	return std::is_permutation( A_vec.cbegin(), A_vec.cend(), B_vec.cbegin() );
 }
 
-template< class Monoid >
+template< class Monoid, Descriptor descr = descriptors::no_operation >
 struct input_t {
 	const Matrix< nz_type > &A;
 	const Matrix< nz_type > &B;
@@ -82,11 +87,11 @@ struct input_t {
 		const Matrix< nz_type > &B = {0,0},
 		const Matrix< nz_type > &C_monoid = {0,0},
 		const Matrix< nz_type > &C_operator = {0,0},
-		const Monoid &monoid = Monoid() 
-	) : A( A ), 
-		B( B ), 
+		const Monoid &monoid = Monoid()
+	) : A( A ),
+		B( B ),
 		C_monoid( C_monoid ),
-		C_operator( C_operator ), 
+		C_operator( C_operator ),
 		monoid( monoid ) {}
 };
 
@@ -94,32 +99,35 @@ struct output_t {
 	RC rc;
 };
 
-template< class Monoid >
-void grb_program( const input_t< Monoid > &input, output_t &output ) {
+template< class Monoid, Descriptor descr >
+void grb_program( const input_t< Monoid, descr > &input, output_t &output ) {
 	static_assert( is_monoid< Monoid >::value, "Monoid required" );
 	const auto &op = input.monoid.getOperator();
-	wait( input.A );
-	wait( input.B );
 
 	RC &rc = output.rc;
 
 	{ // Operator variant
-		std::cout << "-- eWiseApply using Operator, supposed to be"
+		std::cout << "  -- eWiseApply using Operator, supposed to be"
 					<< " annihilating non-zeroes -> INTERSECTION\n";
 		Matrix< nz_type > C( nrows( input.A ), ncols( input.A ) );
-		rc = eWiseApply( C, input.A, input.B, op, RESIZE );
-		wait( C );
+
+		rc = eWiseApply<descr>( C, input.A, input.B, op, RESIZE );
 		if( rc != SUCCESS ) {
 			std::cerr << "Error: Phase::RESIZE\n";
 			return;
 		}
-		rc = eWiseApply( C, input.A, input.B, op, EXECUTE );
-		wait( C );
+		if( capacity( C ) < nnz( input.C_operator ) ) {
+			std::cerr << "Error: Capacity should be at least " << nnz( input.C_operator ) << "\n";
+			rc = FAILED;
+			return;
+		}
+
+		rc = eWiseApply<descr>( C, input.A, input.B, op, EXECUTE );
 		if( rc != SUCCESS ) {
 			std::cerr << "Error: Phase::EXECUTE\n";
 			return;
 		}
-
+		print_matrix( C, 10, "C (intersection)" );
 		if( !equals_matrix( C, input.C_operator ) ) {
 			std::cerr << "Error: Wrong result\n";
 			rc = FAILED;
@@ -130,22 +138,27 @@ void grb_program( const input_t< Monoid > &input, output_t &output ) {
 	}
 
 	{ // Monoid variant
-		std::cout << "-- eWiseApply using Monoid, supposed to consider"
+		std::cout << "  -- eWiseApply using Monoid, supposed to consider"
 					<< " non-zeroes as the identity -> UNION\n";
 		Matrix< nz_type > C( nrows( input.A ), ncols( input.A ) );
-		rc = eWiseApply( C, input.A, input.B, input.monoid, RESIZE );
-		wait( C );
+
+		rc = eWiseApply<descr>( C, input.A, input.B, input.monoid, RESIZE );
 		if( rc != SUCCESS ) {
 			std::cerr << "Error: Phase::RESIZE\n";
 			return;
 		}
-		rc = eWiseApply( C, input.A, input.B, input.monoid, EXECUTE );
-		wait( C );
+		if( capacity( C ) < nnz( input.C_operator ) ) {
+			std::cerr << "Error: Capacity should be at least " << nnz( input.C_monoid ) << "\n";
+			rc = FAILED;
+			return;
+		}
+
+		rc = eWiseApply<descr>( C, input.A, input.B, input.monoid, EXECUTE );
 		if( rc != SUCCESS ) {
 			std::cerr << "Error: Phase::EXECUTE\n";
 			return;
 		}
-
+		print_matrix( C, 10, "C (union)" );
 		if( !equals_matrix( C, input.C_monoid ) ) {
 			std::cerr << "Error: Wrong result\n";
 			rc = FAILED;
@@ -165,7 +178,7 @@ int main( int argc, char ** argv ) {
 	size_t N = 10;
 
 	if( argc > 2 ) {
-		std::cout << "Usage: " << argv[ 0 ] << std::endl;
+		std::cout << "Usage: " << argv[ 0 ] << " [n=" << N << "]" << std::endl;
 		return 1;
 	}
 	if( argc == 2 ) {
@@ -186,12 +199,14 @@ int main( int argc, char ** argv ) {
 	 * 	  (...)
 	 */
 	Matrix< nz_type > A( N, N, N );
-	std::vector< size_t > A_rows( N, 0 ), A_cols( N, 0 );
-	std::vector< nz_type > A_values( N, A_INITIAL_VALUE );
-	std::iota( A_cols.begin(), A_cols.end(), 0 );
-	if( SUCCESS !=
-		buildMatrixUnique( A, A_rows.data(), A_cols.data(), A_values.data(), A_values.size(), SEQUENTIAL )
-	) { return 2; }
+	{
+		std::vector< size_t > A_rows( N, 0 ), A_cols( N, 0 );
+		std::vector< nz_type > A_values( N, A_INITIAL_VALUE );
+		std::iota( A_cols.begin(), A_cols.end(), 0 );
+		if( SUCCESS !=
+			buildMatrixUnique( A, A_rows.data(), A_cols.data(), A_values.data(), A_values.size(), SEQUENTIAL )
+		) { return 2; }
+	}
 
 	/** Matrix B: Column matrix filled with B_INITIAL_VALUE
 	 *  Y _ _ _ _
@@ -202,14 +217,17 @@ int main( int argc, char ** argv ) {
 	 * 	  (...)
 	 */
 	Matrix< nz_type > B( N, N, N );
-	std::vector< size_t > B_rows( N, 0 ), B_cols( N, 0 );
-	std::vector< nz_type > B_values( N, B_INITIAL_VALUE );
-	std::iota( B_rows.begin(), B_rows.end(), 0 );
-	if( SUCCESS !=
-		buildMatrixUnique( B, B_rows.data(), B_cols.data(), B_values.data(), B_values.size(), SEQUENTIAL )
-	) { return 3; }
-
 	{
+		std::vector< size_t > B_rows( N, 0 ), B_cols( N, 0 );
+		std::vector< nz_type > B_values( N, B_INITIAL_VALUE );
+		std::iota( B_rows.begin(), B_rows.end(), 0 );
+		if( SUCCESS !=
+			buildMatrixUnique( B, B_rows.data(), B_cols.data(), B_values.data(), B_values.size(), SEQUENTIAL )
+		) { return 3; }
+	}
+
+	{ // C = A .+ B
+		std::cout << "-- Test C = A .+ B\n";
 		/** Matrix C_monoid_truth: Union of A and B
 		 * X+Y  X   X   X   X
 		 * Y  ___ ___ ___ ___
@@ -260,28 +278,112 @@ int main( int argc, char ** argv ) {
 			)
 		) { return 5; }
 
-		{ /** Test using addition operator, same type for lhs and rhs
-		   */
-			input_t<
-				Monoid< operators::add< nz_type >, identities::zero >
-			> input { A, B, C_monoid_truth, C_op_truth };
-			output_t output { SUCCESS };
-			// Run the test
-			RC rc = launcher.exec( &grb_program, input, output, false );
-			// Check the result
-			if( rc != SUCCESS ) {
-				std::cerr << "Error: Launcher::exec\n";
-				return 6;
-			}
-			if( output.rc != SUCCESS ) {
-				std::cerr << "Test FAILED (" << toString( output.rc ) << ")" << std::endl;
-				return 7;
-			}
+		input_t<
+			Monoid< operators::add< nz_type >, identities::zero >
+		> input { A, B, C_monoid_truth, C_op_truth };
+		output_t output { SUCCESS };
+		// Run the test
+		RC rc = launcher.exec( &grb_program, input, output, false );
+		// Check the result
+		if( rc != SUCCESS ) {
+			std::cerr << "Error: Launcher::exec\n";
+			return 6;
+		}
+		if( output.rc != SUCCESS ) {
+			std::cerr << "Test FAILED (" << toString( output.rc ) << ")" << std::endl;
+			return 7;
+		}
+	}
+
+	{ // C = A .+ A
+		std::cout << "-- Test C = A .+ A\n";
+		/** Matrix C_truth: Union/intersection of A and A
+		 * X+X X+X X+X X+X X+X
+		 * ___ ___ ___ ___ ___
+		 * ___ ___ ___ ___ ___(...)
+		 * ___ ___ ___ ___ ___
+		 * ___ ___ ___ ___ ___
+		 * 	      (...)
+		 */
+		Matrix< nz_type > C_truth( N, N );
+		size_t nvalues = ncols( A );
+		std::vector< size_t > C_truth_rows( nvalues, 0 ), C_truth_cols( nvalues, 0 );
+		std::vector< nz_type > C_truth_values( nvalues, A_INITIAL_VALUE+A_INITIAL_VALUE );
+		std::iota( C_truth_cols.begin(), C_truth_cols.end(), 0 );
+		if( SUCCESS !=
+			buildMatrixUnique(
+				C_truth,
+				C_truth_rows.data(),
+				C_truth_cols.data(),
+				C_truth_values.data(),
+				C_truth_values.size(),
+				SEQUENTIAL
+			)
+		) { return 8; }
+
+		input_t<
+			Monoid< operators::add< nz_type >, identities::zero >
+		> input { A, A, C_truth, C_truth };
+		output_t output { SUCCESS };
+		// Run the test
+		RC rc = launcher.exec( &grb_program, input, output, false );
+		// Check the result
+		if( rc != SUCCESS ) {
+			std::cerr << "Error: Launcher::exec\n";
+			return 9;
+		}
+		if( output.rc != SUCCESS ) {
+			std::cerr << "Test FAILED (" << toString( output.rc ) << ")" << std::endl;
+			return 10;
+		}
+	}
+
+	{ // C = A .+ Bt
+		std::cout << "-- Test C = A .+ Bt\n";
+		/** Matrix C_truth: Union/intersection of A and Bt
+		 * X+Y X+Y X+Y X+Y X+Y
+		 * ___ ___ ___ ___ ___
+		 * ___ ___ ___ ___ ___(...)
+		 * ___ ___ ___ ___ ___
+		 * ___ ___ ___ ___ ___
+		 * 	      (...)
+		 */
+		Matrix< nz_type > C_truth( N, N );
+		size_t nvalues = ncols( A );
+		std::vector< size_t > C_truth_rows( nvalues, 0 ), C_truth_cols( nvalues, 0 );
+		std::vector< nz_type > C_truth_values( nvalues, A_INITIAL_VALUE+B_INITIAL_VALUE );
+		std::iota( C_truth_cols.begin(), C_truth_cols.end(), 0 );
+		if( SUCCESS !=
+			buildMatrixUnique(
+				C_truth,
+				C_truth_rows.data(),
+				C_truth_cols.data(),
+				C_truth_values.data(),
+				C_truth_values.size(),
+				SEQUENTIAL
+			)
+		) { return 8; }
+
+		input_t<
+			Monoid< operators::add< nz_type >, identities::zero >,
+			descriptors::transpose_right
+		> input { A, B, C_truth, C_truth };
+		output_t output { SUCCESS };
+		// Run the test
+		RC rc = launcher.exec( &grb_program, input, output, false );
+		// Check the result
+		if( rc != SUCCESS ) {
+			std::cerr << "Error: Launcher::exec\n";
+			return 9;
+		}
+		if( output.rc != SUCCESS ) {
+			std::cerr << "Test FAILED (" << toString( output.rc ) << ")" << std::endl;
+			return 10;
 		}
 	}
 
 	std::cerr << std::flush;
 	std::cout << "Test OK" << std::endl << std::flush;
-	
+
 	return 0;
 }
