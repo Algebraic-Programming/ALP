@@ -1293,6 +1293,7 @@ namespace grb {
 
 			// symbolic phase
 			if( phase == RESIZE ) {
+				nzc = 0;
 				for( size_t i = 0; i < m; ++i ) {
 					coors1.clear();
 					for( size_t k = A_raw.col_start[ i ]; k < A_raw.col_start[ i + 1 ]; ++k ) {
@@ -1322,6 +1323,7 @@ namespace grb {
 					getReferenceBuffer< typename config::NonzeroIndexType >( n + 1 );
 
 				// perform column-wise nonzero count
+				nzc = 0;
 				for( size_t i = 0; i < m; ++i ) {
 					coors1.clear();
 					for( size_t k = A_raw.col_start[ i ]; k < A_raw.col_start[ i + 1 ]; ++k ) {
@@ -1379,13 +1381,12 @@ namespace grb {
 
 				// do computations
 
-				size_t nzc = 0;
+				nzc = 0;
 				CRS_raw.col_start[ 0 ] = 0;
 				for( size_t i = 0; i < m; ++i ) {
-#ifdef _DEBUG
-						std::cout << "  -- i: " << i << "\n";
-#endif
 					coors1.clear();
+					coors2.clear();
+
 					for( size_t k = A_raw.col_start[ i ]; k < A_raw.col_start[ i + 1 ]; ++k ) {
 						const size_t k_col = A_raw.row_index[ k ];
 						coors1.assign( k_col );
@@ -1393,47 +1394,106 @@ namespace grb {
 					}
 
 					for( size_t l = B_raw.col_start[ i ]; l < B_raw.col_start[ i + 1 ]; ++l ) {
-						const size_t l_col = B_raw.row_index[ l ];
+						const size_t j = B_raw.row_index[ l ];
 						const auto B_val = B_raw.getValue( l, identity_B );
-						if( !coors1.assigned( l_col ) ) { // Union case
-							coors1.assign( l_col );
-							valbuf[ l_col ] = identity_A;
+						if( !coors1.assigned( j ) ) { // Union case
+							valbuf[ j ] = identity_A;
+						} else {
+							coors2.assign( j );
 						}
-						const auto valbuf_value_before = valbuf[ l_col ];
-						(void)grb::apply( valbuf[ l_col ], valbuf_value_before, B_val, oper );
-					}
 
-					for( size_t j_unsigned = n ; j_unsigned > 0 ; j_unsigned-- ) {
-						const size_t j = j_unsigned - 1;
-						if( !coors1.assigned( j ) ) {
-							continue;
-						}
+						const auto valbuf_value_before = valbuf[ j ];
+						OutputType result_value;
+						(void)grb::apply( result_value, valbuf_value_before, B_val, oper );
+
 						// update CRS
 						CRS_raw.row_index[ nzc ] = j;
-						CRS_raw.setValue( nzc, valbuf[ j ] );
+						CRS_raw.setValue( nzc, result_value );
+
 						// update CCS
 						if( !crs_only ) {
-							const size_t CCS_index =  CCS_raw.col_start[ j+1 ] - C_col_index[ j ]++;
+							const size_t CCS_index =  CCS_raw.col_start[ j+1 ] - ++C_col_index[ j ];
+#ifdef NDEBUG
+							assert( CCS_index < capacity( C ) );
+							assert( CCS_index < CCS_raw.col_start[ j+1 ] );
+							assert( CCS_index >= CCS_raw.col_start[ j ] );
+#endif
 							CCS_raw.row_index[ CCS_index ] = i;
-							CCS_raw.setValue( CCS_index, valbuf[ j ] );
+							CCS_raw.setValue( CCS_index, result_value );
 						}
 						// update count
 						(void)++nzc;
 					}
+
+					for( size_t l = A_raw.col_start[ i ]; l < A_raw.col_start[ i + 1 ]; ++l ) {
+						const size_t j = A_raw.row_index[ l ];
+						if( coors2.assigned( j ) ) { // Intersection case: already done before
+							continue;
+						}
+#ifdef NDEBUG
+						assert( !coors1.assigned( j ) ); // Union case: already done before
+#endif
+
+						const auto A_val = A_raw.getValue( l, identity_A );
+						OutputType result_value;
+						(void)grb::apply( result_value, A_val, identity_B, oper );
+
+						// update CRS
+						CRS_raw.row_index[ nzc ] = j;
+						CRS_raw.setValue( nzc, result_value );
+
+						// update CCS
+						if( !crs_only ) {
+							const size_t CCS_index =  CCS_raw.col_start[ j+1 ] - ++C_col_index[ j ];
+#ifdef NDEBUG
+							assert( CCS_index < capacity( C ) );
+							assert( CCS_index < CCS_raw.col_start[ j+1 ] );
+							assert( CCS_index >= CCS_raw.col_start[ j ] );
+#endif
+							CCS_raw.row_index[ CCS_index ] = i;
+							CCS_raw.setValue( CCS_index, result_value );
+						}
+						// update count
+						(void)++nzc;
+					}
+
 					CRS_raw.col_start[ i + 1 ] = nzc;
 				}
 
 				if( !crs_only ) {
 #ifdef _DEBUG
-					std::cout << "CCS_raw.col_start = [ ";
-					for( size_t j = 0; j <= n; ++j )
-						std::cout << CCS_raw.col_start[ j ] << " ";
+					std::cout << "CRS_raw.col_start = [ ";
+					for( size_t j = 0; j <= m; ++j )
+						std::cout << CRS_raw.col_start[ j ] << " ";
 					std::cout << "]\n";
-					std::cout << "C_col_index =       [ ";
-					for( size_t j = 0; j < n; ++j )
-						std::cout << C_col_index[ j ] << " ";
+					std::cout << "CRS_raw.row_index = [ ";
+					for( size_t j = 0; j < nzc; ++j )
+						std::cout << CRS_raw.row_index[ j ] << " ";
 					std::cout << "]\n";
+					std::cout << "CRS_raw.values    = [ ";
+					for( size_t j = 0; j < nzc; ++j )
+						std::cout << CRS_raw.values[ j ] << " ";
+					std::cout << "]\n";
+					if( !crs_only ) {
+						std::cout << "C_col_index =       [ ";
+						for( size_t j = 0; j < n; ++j )
+							std::cout << C_col_index[ j ] << " ";
+						std::cout << "]\n";
+						std::cout << "CCS_raw.col_start = [ ";
+						for( size_t j = 0; j <= n; ++j )
+							std::cout << CCS_raw.col_start[ j ] << " ";
+						std::cout << "]\n";
+						std::cout << "CCS_raw.row_index = [ ";
+						for( size_t j = 0; j < nzc; ++j )
+							std::cout << CCS_raw.row_index[ j ] << " ";
+						std::cout << "]\n";
+						std::cout << "CCS_raw.values    = [ ";
+						for( size_t j = 0; j < nzc; ++j )
+							std::cout << CCS_raw.values[ j ] << " ";
+						std::cout << "]\n";
+					}
 #endif
+
 #ifndef NDEBUG
 					for( size_t j = 0; j < n; ++j ) {
 						assert( CCS_raw.col_start[ j + 1 ] - CCS_raw.col_start[ j ] == C_col_index[ j ] );

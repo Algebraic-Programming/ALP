@@ -82,6 +82,7 @@ void grb_program( const void * const fn_p, const size_t fn_length, grb::RC & rc 
 	if( rc == grb::SUCCESS ) {
 		grb::Matrix< double > chk( p, q );
 		rc = rc ? rc : grb::resize( chk, grb::nnz( spy ) );
+		rc = rc ? rc : grb::eWiseApply( chk, spy, spy2, ring.getMultiplicativeMonoid(), grb::Phase::RESIZE );
 		rc = rc ? rc : grb::eWiseApply( chk, spy, spy2, ring.getMultiplicativeMonoid() );
 		if( rc == grb::SUCCESS && grb::nnz( chk ) != grb::nnz( spy ) ) {
 			std::cerr << "Unexpected number of nonzeroes for chk: " << grb::nnz(chk) << ", expected " << grb::nnz(spy) << "\n";
@@ -114,6 +115,7 @@ void grb_program( const void * const fn_p, const size_t fn_length, grb::RC & rc 
 	if( rc == grb::SUCCESS ) {
 		grb::Matrix< double > chk( p, q );
 		rc = rc ? rc : grb::resize( chk, nnz( spy ) );
+		rc = rc ? rc : grb::eWiseApply( chk, spy, spy2, ring.getMultiplicativeMonoid(), grb::Phase::RESIZE );
 		rc = rc ? rc : grb::eWiseApply( chk, spy, spy2, ring.getMultiplicativeMonoid() );
 		if( rc == grb::SUCCESS && grb::nnz( chk ) != grb::nnz( spy ) ) {
 			std::cerr << "Unexpected number of nonzeroes for chk (pattern): " << grb::nnz(chk) << ", expected " << grb::nnz(spy) << "\n";
@@ -146,6 +148,7 @@ void grb_program( const void * const fn_p, const size_t fn_length, grb::RC & rc 
 	if( rc == grb::SUCCESS ) {
 		grb::Matrix< double > chk( p, q );
 		rc = rc ? rc : grb::resize( chk, nnz( spy ) );
+		rc = rc ? rc : grb::eWiseApply( chk, spy, spy2, ring.getMultiplicativeMonoid(), grb::Phase::RESIZE );
 		rc = rc ? rc : grb::eWiseApply( chk, spy, spy2, ring.getMultiplicativeMonoid() );
 		if( rc == grb::SUCCESS && grb::nnz( chk ) != grb::nnz( spy ) ) {
 			std::cerr << "Unexpected number of nonzeroes for chk (boolean): " << grb::nnz(chk) << ", expected " << grb::nnz(spy) << "\n";
