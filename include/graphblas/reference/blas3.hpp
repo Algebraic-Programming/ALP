@@ -57,6 +57,34 @@
 		"********************************************************************" \
 		"******************************\n" );
 
+#ifndef _H_GRB_REFERENCE_BLAS3_ACCESSORS
+#define _H_GRB_REFERENCE_BLAS3_ACCESSORS
+
+namespace grb::internal
+{
+	template< typename D, typename T >
+	static inline void assignValue(
+		D *array, size_t i, const T& value,
+		typename std::enable_if< !std::is_void< D >::value >::type * const = nullptr
+	) { array[i] = value; }
+
+	template< typename T >
+	static inline void assignValue( void *, size_t, const T& ) { /* do nothing */ }
+
+	template< typename D, typename T >
+	static inline T getValue(
+		const D *array, size_t i, const T&,
+		typename std::enable_if< !std::is_void< D >::value >::type * const = nullptr
+	) { return array[i]; }
+
+	template< typename T >
+	static inline T getValue( const void *, size_t, const T& identity ) { return identity; }
+
+} // namespace grb::internal
+
+#endif // _H_GRB_REFERENCE_BLAS3_ACCESSORS
+
+
 namespace grb {
 
 	namespace internal {
@@ -1433,7 +1461,7 @@ namespace grb {
 
 #ifdef _H_GRB_REFERENCE_OMP_BLAS3
 								if( !coors1.asyncAssign( k_col, local_update1 ) ) {
-									vbuf1[ k_col ] = A_raw.getValue( k, identity_A );
+									assignValue( vbuf1, k_col, A_raw.getValue( k, identity_A ) );
 									if( ++assigns1 == maxAsyncAssigns1 ) {
 										coors1.joinUpdate( local_update1 );
 										assigns1 = 0;
@@ -1441,7 +1469,7 @@ namespace grb {
 								}
 #else
 								if( !coors1.assign( k_col ) ) {
-									vbuf1[ k_col ] = A_raw.getValue( k, identity_A );
+									assignValue( vbuf1, k_col, A_raw.getValue( k, identity_A ) );
 								}
 #endif
 							}
@@ -1462,7 +1490,7 @@ namespace grb {
 
 #ifdef _H_GRB_REFERENCE_OMP_BLAS3
 								if( !coors2.asyncAssign( k_col, local_update2 ) ) {
-									vbuf2[ k_col ] = B_raw.getValue( k, identity_B );
+									assignValue( vbuf2, k_col, B_raw.getValue( k, identity_B ) );
 									if( ++assigns2 == maxAsyncAssigns2 ) {
 										coors2.joinUpdate( local_update2 );
 										assigns2 = 0;
@@ -1470,7 +1498,7 @@ namespace grb {
 								}
 #else
 								if( !coors2.assign( k_col ) ) {
-									vbuf2[ k_col ] = B_raw.getValue( k, identity_B );
+									assignValue( vbuf2, k_col, B_raw.getValue( k, identity_B ) );
 								}
 #endif
 							}
@@ -1483,8 +1511,8 @@ namespace grb {
 					for( size_t k = 0; k < std::max( coors1.nonzeroes(), coors2.nonzeroes() ); ++k ) {
 						const auto& assigned_coors = coors1.assigned(k) ? coors1 : coors2;
 						const auto j = assigned_coors.index( k );
-						const auto A_val = coors1.assigned(k) ? vbuf1[ j ] : identity_A;
-						const auto B_val = coors2.assigned(k) ? vbuf2[ j ] : identity_B;
+						const auto A_val = coors1.assigned(k) ? getValue(vbuf1, j, identity_A) : identity_A;
+						const auto B_val = coors2.assigned(k) ? getValue(vbuf2, j, identity_B) : identity_B;
 
 						OutputType result_value;
 						(void)grb::apply( result_value, A_val, B_val, oper );
