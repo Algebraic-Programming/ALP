@@ -1513,7 +1513,6 @@ namespace grb {
 						const auto j = coors1.index( k );
 						const auto A_val = getValue(vbuf1, j, identity_A);
 						const auto B_val = coors2.assigned(j) ? getValue(vbuf2, j, identity_B) : identity_B;
-						std::cout << " * (" << i << ", " << j << ") = " << A_val << " " << B_val << "\n";
 
 						OutputType result_value;
 						(void)grb::apply( result_value, A_val, B_val, oper );
@@ -1543,7 +1542,6 @@ namespace grb {
 						}
 						const auto A_val = coors1.assigned(j) ? getValue(vbuf1, j, identity_A) : identity_A;
 						const auto B_val = getValue(vbuf2, j, identity_B);
-						std::cout << " # (" << i << ", " << j << ") = " << A_val << " " << B_val << "\n";
 
 						OutputType result_value;
 						(void)grb::apply( result_value, A_val, B_val, oper );
