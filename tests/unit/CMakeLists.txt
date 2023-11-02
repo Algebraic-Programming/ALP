@@ -73,6 +73,10 @@ add_grb_executables( id id.cpp
 	BACKENDS reference reference_omp bsp1d hybrid hyperdags nonblocking
 )
 
+add_grb_executables( id_distributed id_distributed.cpp
+	BACKENDS bsp1d hybrid
+)
+
 add_grb_executables( dot dot.cpp
 	BACKENDS reference reference_omp bsp1d hybrid hyperdags nonblocking
 )
@@ -236,8 +240,11 @@ add_grb_executables( eWiseApply_matrix eWiseApply_matrix.cpp
 	BACKENDS reference reference_omp bsp1d hybrid hyperdags nonblocking
 )
 
+# in the below, test_utils_headers is retained in case CMake is configured to
+# include _DEBUG flags
 add_grb_executables( eWiseApplyMatrixReference eWiseApplyMatrixReference.cpp
 	BACKENDS reference reference_omp hyperdags nonblocking
+	ADDITIONAL_LINK_LIBRARIES test_utils_headers
 )
 
 add_grb_executables( outer outer.cpp
@@ -286,6 +293,25 @@ add_grb_executables( properties static_asserts/properties.cpp
 
 add_grb_executables( matrix_type static_asserts/matrix.cpp
 	BACKENDS reference reference_omp bsp1d hybrid hyperdags nonblocking
+)
+
+add_grb_executables( launch_benchmark_auto launcherAndBenchmarker.cpp
+	BACKENDS bsp1d hybrid
+	COMPILE_DEFINITIONS DISTRIBUTED_EXECUTION
+)
+
+add_grb_executables( launch_benchmark_auto launcherAndBenchmarker.cpp
+	BACKENDS reference reference_omp hyperdags nonblocking
+)
+
+add_grb_executables( launch_benchmark_frommpi_manual launcherAndBenchmarker.cpp
+	BACKENDS bsp1d hybrid
+	COMPILE_DEFINITIONS DISTRIBUTED_EXECUTION NO_LPF_AUTO_INIT
+)
+
+add_grb_executables( launch_benchmark_frommpi_manual launcherAndBenchmarker.cpp
+	BACKENDS reference reference_omp hyperdags nonblocking
+	COMPILE_DEFINITIONS NO_LPF_AUTO_INIT
 )
 
 # targets to list and build the test for this category

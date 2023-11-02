@@ -197,7 +197,7 @@ namespace grb {
 				// check default fields that should have been set by public constructor
 				assert( _m == 0 );
 				assert( _n == 0 );
-				assert( _id = std::numeric_limits< uintptr_t >::max() );
+				assert( _id == std::numeric_limits< uintptr_t >::max() );
 				assert( _ptr == nullptr );
 				assert( _cap == 0 );
 				// these default values correspond to an empty matrix and which the
@@ -265,7 +265,7 @@ namespace grb {
 					size_t global_cap = 0;
 					try {
 						// complete local initialisation
-						_local.initialize( &_id, local_m, local_n, local_nz );
+						_local.initialize( &id, local_m, local_n, local_nz );
 
 						// sync global capacity
 						global_cap = capacity( _local );

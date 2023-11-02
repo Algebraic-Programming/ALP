@@ -54,13 +54,14 @@ int main( int argc, char ** argv ) {
 	grb::Launcher< grb::AUTOMATIC > launcher;
 
 	// run
-	if( launcher.exec( &grbProgram, P, exit_status ) != grb::SUCCESS ) {
+	if( launcher.exec( &grbProgram, P, exit_status, true ) != grb::SUCCESS ) {
 		std::cout << "Test FAILED (launcher did not return SUCCESS).\n" << std::endl;
 		return 200;
 	}
 
 	// master process reports test success
 	if( exit_status ) {
+		std::cerr << std::flush;
 		std::cout << "Test FAILED (exit code " << exit_status << ").\n" << std::endl;
 	} else {
 		std::cout << "Test OK\n" << std::endl;

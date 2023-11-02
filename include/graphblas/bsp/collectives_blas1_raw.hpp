@@ -53,9 +53,10 @@
 		"**********************\n" );
 
 #define BLAS1_RAW
-#include "collectives_blas1.hpp"
+ #include "collectives_blas1.hpp"
 #undef BLAS1_RAW
 
 #undef NO_CAST_ASSERT_BLAS1
 
 #endif // end ``_H_GRB_BSP_COLL_BLAS1_RAW''
+

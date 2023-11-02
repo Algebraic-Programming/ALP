@@ -37,6 +37,27 @@ namespace grb {
 	template< EXEC_MODE mode >
 	class Launcher< mode, reference > {
 
+		protected:
+
+			template< typename Runner >
+			RC init_and_run(
+				Runner &runner,
+				const bool broadcast
+			) const {
+				// value doesn't matter for a single user process
+				(void) broadcast;
+				// intialise
+				RC ret = grb::init();
+				// call algo
+				if( ret == SUCCESS ) {
+					runner();
+					ret = grb::finalize();
+				}
+				// and done
+				return ret;
+			}
+
+
 		public:
 
 			/**
@@ -76,49 +97,36 @@ namespace grb {
 			/** No implementation notes. */
 			template< typename U >
 			RC exec(
-				void ( *grb_program )( const void *, const size_t, U & ),
-				const void * data_in, const size_t in_size,
+				AlpUntypedFunc< U > alp_program,
+				const void * const data_in, const size_t in_size,
 				U &data_out,
 				const bool broadcast = false
 			) const {
-				// value doesn't matter for a single user process
-				(void) broadcast;
 				// check input arguments
 				if( in_size > 0 && data_in == nullptr ) {
 					return ILLEGAL;
 				}
-				// intialise GraphBLAS
-				RC ret = grb::init();
-				// call graphBLAS algo
-				if( ret == SUCCESS ) {
-					(*grb_program)( data_in, in_size, data_out );
-					ret = grb::finalize();
-				}
-				// and done
-				return ret;
+				auto fun = [ data_in, in_size, &data_out, alp_program ] {
+					(*alp_program)( data_in, in_size, data_out );
+				};
+				return init_and_run( fun, broadcast );
 			}
 
 			/** No implementation notes. */
 			template< typename T, typename U >
 			RC exec(
-				void ( *grb_program )( const T &, U & ), // user ALP/GraphBLAS program
-				const T &data_in, U &data_out,           // input & output data
+				AlpTypedFunc< T, U > alp_program,
+				const T &data_in, U &data_out,
 				const bool broadcast = false
 			) {
-				(void) broadcast; // value doesn't matter for a single user process
-				// intialise ALP/GraphBLAS
-				RC ret = grb::init();
-				// call graphBLAS algo
-				if( ret == SUCCESS ) {
-					(*grb_program)( data_in, data_out );
-					ret = grb::finalize();
-				}
-				// and done
-				return ret;
+				auto fun = [ &data_in, &data_out, alp_program ] {
+					(*alp_program)( data_in, data_out );
+				};
+				return init_and_run( fun, broadcast );
 			}
 
 			/** No implementation notes. */
-			grb::RC finalize() { return grb::SUCCESS; }
+			static grb::RC finalize() { return grb::SUCCESS; }
 
 	};
 

@@ -30,6 +30,7 @@
 #include <cstddef> //size_t
 
 #include <graphblas/base/spmd.hpp>
+#include <graphblas/reference/spmd.hpp>
 
 
 namespace grb {

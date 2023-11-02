@@ -113,7 +113,7 @@ int main( int argc, char ** argv ) {
 
 	grb::Launcher< AUTOMATIC > automatic_launcher;
 
-	if( automatic_launcher.exec( &grbProgram, in, out ) != SUCCESS ) {
+	if( automatic_launcher.exec( &grbProgram, in, out, true ) != SUCCESS ) {
 		std::cout << "Test FAILED (launcher did not return SUCCESS).\n" << std::endl;
 		return EXIT_FAILURE;
 	}

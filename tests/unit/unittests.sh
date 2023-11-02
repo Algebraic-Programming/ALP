@@ -179,6 +179,14 @@ for MODE in ${MODES}; do
 				grep 'Test OK' ${TEST_OUT_DIR}/id_${MODE}_${BACKEND}_${P}_${T}.log || echo "Test FAILED"
 				echo " "
 
+				if [ "$BACKEND" = "bsp1d" ] || [ "$BACKEND" = "hybrid" ]; then
+					echo ">>>      [x]           [ ]       Testing grb::id on distributed vectors and matrices"
+					$runner ${TEST_BIN_DIR}/id_distributed_${MODE}_${BACKEND} &> ${TEST_OUT_DIR}/id_distributed_${MODE}_${BACKEND}_${P}_${T}.log
+					head -1 ${TEST_OUT_DIR}/id_distributed_${MODE}_${BACKEND}_${P}_${T}.log
+					grep 'Test OK' ${TEST_OUT_DIR}/id_distributed_${MODE}_${BACKEND}_${P}_${T}.log || echo "Test FAILED"
+					echo " "
+				fi
+
 				echo ">>>      [x]           [ ]       Testing grb::capacity, grb::resize, and default"
 				echo "                                 and explicit capacities set during container"
 				echo "                                 construction"
@@ -643,6 +651,14 @@ for MODE in ${MODES}; do
 				fi
 				echo " "
 
+				echo ">>>      [x]           [ ]       Testing Launcher and Benchmarker, AUTOMATIC mode."
+				test_name=launch_benchmark_auto_${MODE}_${BACKEND}
+				test_log=${TEST_OUT_DIR}/${test_name}_${P}_${T}.log
+				$runner ${TEST_BIN_DIR}/${test_name} &> ${test_log}
+				head -1 ${test_log}
+				grep -i 'Test OK' ${test_log} || echo "Test FAILED"
+				echo " "
+
 				#if [ "$BACKEND" = "reference_omp" ]; then
 				#	echo "Additional standardised unit tests not yet supported for the ${BACKEND} backend"
 				#	echo
@@ -651,8 +667,39 @@ for MODE in ${MODES}; do
 
 				#none here: all unit tests are operational for reference_omp
 
+				if [ "$BACKEND" = "bsp1d" ] || [ "$BACKEND" = "hybrid" ]; then
+					echo ">>>      [x]           [ ]       Testing Launcher and Benchmarker, FROM_MPI mode for distributed backends."
+					test_name=launch_benchmark_frommpi_manual_${MODE}_${BACKEND}
+					test_log=${TEST_OUT_DIR}/launch_benchmark_frommpi_${MODE}_${BACKEND}_${P}_${T}.log
+					$runner ${TEST_BIN_DIR}/${test_name} &> ${test_log}
+					head -1 ${test_log}
+					grep -i 'Test OK' ${test_log} || echo "Test FAILED"
+					echo " "
+				else
+					echo ">>>      [x]           [ ]       Testing Launcher and Benchmarker, MANUAL mode for shared-memory backends."
+					test_log=${TEST_OUT_DIR}/launch_benchmark_manual_${MODE}_${BACKEND}_${P}_${T}.log
+					$runner ${TEST_BIN_DIR}/launch_benchmark_frommpi_manual_${MODE}_${BACKEND} localhost 77770 1 0 &> ${test_log}
+					head -1 ${test_log}
+					grep -i 'Test OK' ${test_log} || echo "Test FAILED"
+					echo " "
+				fi
+
 			done
+
 		done
+
+		if [ "$BACKEND" = "bsp1d" ] || [ "$BACKEND" = "hybrid" ]; then
+			echo ">>>      [x]           [ ]       Testing Launcher and Benchmarker, MANUAL mode for distributed backends."
+			test_name=launch_benchmark_frommpi_manual_${MODE}_${BACKEND}
+			test_log=${TEST_OUT_DIR}/launch_benchmark_manual_${MODE}_${BACKEND}.log
+			bash -c "${MANUALRUN} ${TEST_BIN_DIR}/${test_name} localhost 77770 4 0 &> ${test_log}.0 & \
+				${MANUALRUN} ${TEST_BIN_DIR}/${test_name} localhost 77770 4 3 &> ${test_log}.3 & \
+				${MANUALRUN} ${TEST_BIN_DIR}/${test_name} localhost 77770 4 1 &> ${test_log}.1 & \
+				${MANUALRUN} ${TEST_BIN_DIR}/${test_name} localhost 77770 4 2 &> ${test_log}.2 & \
+				wait"
+			(grep -q 'Test OK' ${test_log}.1 && grep -q 'Test OK' ${test_log}.2 && grep -q 'Test OK' ${test_log}.3 \
+				&& grep -q 'Test OK' ${test_log}.0 && printf "Test OK.\n\n") || (printf "Test FAILED.\n\n")
+		fi
 
 		if [ "$BACKEND" = "bsp1d" ]; then
 			echo "Additional unit tests for the BSP1D backend:"

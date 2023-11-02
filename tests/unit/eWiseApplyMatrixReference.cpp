@@ -125,15 +125,24 @@ void checkCRSandCCS(
 		const auto & crsExpected = internal::getCRS( expected );
 		for( size_t i = 0; i < nrows( obtained ); ++i ) {
 			for( size_t k = crsObtained.col_start[ i ]; k < crsObtained.col_start[ i + 1 ]; ++k ) {
-				if( crsObtained.row_index[ k ] != crsExpected.row_index[ k ] ) {
-					std::cerr << "Error: unexpected entry at ( " << i << ", " << crsObtained.row_index[ k ] << " ), "
-							  << "expected one at ( " << i << ", " << crsExpected.row_index[ k ] << " ) "
-							  << "instead (CRS).\n";
+				const auto nValuesInRow = crsObtained.col_start[ i + 1 ] - crsObtained.col_start[ i ];
+				const auto expectedValuesInRow = crsExpected.col_start[ i + 1 ] - crsExpected.col_start[ i ];
+				if( nValuesInRow != expectedValuesInRow ) {
+					std::cerr << "Error: unexpected number of non-zero entries in row " << i << "; "
+							  << "expected " << expectedValuesInRow << ", "
+							  << "obtained " << nValuesInRow << " (CRS).\n";
 					rc = FAILED;
 				}
-				if( crsObtained.values[ k ] != crsExpected.values[ k ] ) {
-					std::cerr << "Error: unexpected value " << crsObtained.values[ k ] << "; "
-							  << "expected " << crsExpected.values[ k ] << " (CRS).\n";
+				const auto searchedJ = crsObtained.row_index[ k ];
+				const auto searchedV = crsObtained.values[ k ];
+				bool found = false;
+				for( size_t l = crsExpected.col_start[ i ]; l < crsExpected.col_start[ i + 1 ]; ++l ) {
+					found |= ( crsExpected.row_index[ l ] == searchedJ ) && ( crsExpected.values[ l ] == searchedV );
+				}
+				if( !found ) {
+					std::cerr << "Error: Can not found entry "
+							  << "( " << i << ", " << searchedJ << " ) = "
+							  << searchedV << " (CRS).\n";
 					rc = FAILED;
 				}
 			}
@@ -143,18 +152,26 @@ void checkCRSandCCS(
 	{ // check CCS output
 		const auto & ccsObtained = internal::getCCS( obtained );
 		const auto & ccsExpected = internal::getCCS( expected );
-		for( size_t j = 0; j < ncols( obtained ); ++j ) {
-			for( size_t k = ccsExpected.col_start[ j ]; k < ccsExpected.col_start[ j + 1 ]; ++k ) {
-				if( ccsObtained.row_index[ k ] != ccsExpected.row_index[ k ] ) {
-					std::cerr << "Error: unexpected entry at "
-							  << "( " << ccsObtained.row_index[ k ] << ", " << j << " ), "
-							  << "expected one at ( " << ccsExpected.row_index[ k ] << ", " << j << " ) "
-							  << "instead (CCS).\n";
+		for( size_t i = 0; i < ncols( obtained ); ++i ) {
+			for( size_t k = ccsExpected.col_start[ i ]; k < ccsExpected.col_start[ i + 1 ]; ++k ) {
+				const auto nValuesInRow = ccsObtained.col_start[ i + 1 ] - ccsObtained.col_start[ i ];
+				const auto expectedValuesInRow = ccsExpected.col_start[ i + 1 ] - ccsExpected.col_start[ i ];
+				if( nValuesInRow != expectedValuesInRow ) {
+					std::cerr << "Error: unexpected number of non-zero entries in row " << i << "; "
+							  << "expected " << expectedValuesInRow << ", "
+							  << "obtained " << nValuesInRow << " (CCS).\n";
 					rc = FAILED;
 				}
-				if( ccsObtained.values[ k ] != ccsExpected.values[ k ] ) {
-					std::cerr << "Error: unexpected value " << ccsObtained.values[ k ] << "; "
-							  << "expected " << ccsExpected.values[ k ] << " (CCS).\n";
+				const auto searchedJ = ccsObtained.row_index[ k ];
+				const auto searchedV = ccsObtained.values[ k ];
+				bool found = false;
+				for( size_t l = ccsExpected.col_start[ i ]; l < ccsExpected.col_start[ i + 1 ]; ++l ) {
+					found |= ( ccsExpected.row_index[ l ] == searchedJ ) && ( ccsExpected.values[ l ] == searchedV );
+				}
+				if( !found ) {
+					std::cerr << "Error: Can not found entry "
+							  << "( " << i << ", " << searchedJ << " ) = "
+							  << searchedV << " (CCS).\n";
 					rc = FAILED;
 				}
 			}

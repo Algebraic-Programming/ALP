@@ -25,8 +25,8 @@
 
 #include <graphblas/base/io.hpp>
 
-#include <graphblas/vector.hpp>
-#include <graphblas/matrix.hpp>
+#include "vector.hpp"
+#include "matrix.hpp"
 
 #define NO_CAST_ASSERT( x, y, z )                                              \
 	static_assert( x,                                                          \
