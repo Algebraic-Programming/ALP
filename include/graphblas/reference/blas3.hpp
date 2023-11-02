@@ -1354,12 +1354,13 @@ namespace grb {
 					coors1.clear();
 					for( size_t k = A_raw.col_start[ i ]; k < A_raw.col_start[ i + 1 ]; ++k ) {
 						const size_t k_col = A_raw.row_index[ k ];
-						coors1.assign( k_col );
-						(void) ++nzc;
+						if( !coors1.assign( k_col ) ) {
+							(void) ++nzc;
+						}
 					}
 					for( size_t l = B_raw.col_start[ i ]; l < B_raw.col_start[ i + 1 ]; ++l ) {
 						const size_t l_col = B_raw.row_index[ l ];
-						if( not coors1.assigned( l_col ) ) {
+						if( !coors1.assigned( l_col ) ) {
 							(void) ++nzc;
 						}
 					}
@@ -1384,15 +1385,16 @@ namespace grb {
 					coors1.clear();
 					for( size_t k = A_raw.col_start[ i ]; k < A_raw.col_start[ i + 1 ]; ++k ) {
 						const size_t k_col = A_raw.row_index[ k ];
-						coors1.assign( k_col );
-						(void) ++nzc;
+						if( !coors1.assign( k_col ) ) {
+							(void) ++nzc;
+						}
 						if( !crs_only ) {
 							(void) ++CCS_raw.col_start[ k_col + 1 ];
 						}
 					}
 					for( size_t l = B_raw.col_start[ i ]; l < B_raw.col_start[ i + 1 ]; ++l ) {
 						const size_t l_col = B_raw.row_index[ l ];
-						if( not coors1.assigned( l_col ) ) {
+						if( !coors1.assigned( l_col ) ) {
 							(void) ++nzc;
 							if( !crs_only ) {
 								(void) ++CCS_raw.col_start[ l_col + 1 ];
@@ -1449,70 +1451,99 @@ namespace grb {
 						firstprivate(i, A_raw, identity_A, B_raw, identity_B )
 #endif
 					{
-						auto local_update1 = coors1.EMPTY_UPDATE();
-						{
-#ifdef _H_GRB_REFERENCE_OMP_BLAS3
-							const size_t maxAsyncAssigns1 = coors1.maxAsyncAssigns();
-							size_t assigns1 = 0;
-							#pragma omp for simd schedule( dynamic, config::CACHE_LINE_SIZE::value() ) nowait
-#endif
-							for( size_t k = A_raw.col_start[ i ]; k < A_raw.col_start[ i + 1 ]; ++k ) {
-								const size_t k_col = A_raw.row_index[ k ];
 
 #ifdef _H_GRB_REFERENCE_OMP_BLAS3
-								if( !coors1.asyncAssign( k_col, local_update1 ) ) {
-									assignValue( vbuf1, k_col, A_raw.getValue( k, identity_A ) );
-									if( ++assigns1 == maxAsyncAssigns1 ) {
-										coors1.joinUpdate( local_update1 );
-										assigns1 = 0;
-									}
-								}
-#else
-								if( !coors1.assign( k_col ) ) {
-									assignValue( vbuf1, k_col, A_raw.getValue( k, identity_A ) );
-								}
+						auto local_update1 = coors1.EMPTY_UPDATE();
+						const size_t maxAsyncAssigns1 = coors1.maxAsyncAssigns();
+						size_t assigns1 = 0;
+						#pragma omp for simd schedule( dynamic, config::CACHE_LINE_SIZE::value() ) nowait
 #endif
+						for( size_t k = A_raw.col_start[ i ]; k < A_raw.col_start[ i + 1 ]; ++k ) {
+							const size_t k_col = A_raw.row_index[ k ];
+
+#ifdef _H_GRB_REFERENCE_OMP_BLAS3
+							if( !coors1.asyncAssign( k_col, local_update1 ) ) {
+								assignValue( vbuf1, k_col, A_raw.getValue( k, identity_A ) );
+								if( ++assigns1 == maxAsyncAssigns1 ) {
+									coors1.joinUpdate( local_update1 );
+									assigns1 = 0;
+								}
 							}
+#else
+							if( !coors1.assign( k_col ) ) {
+								assignValue( vbuf1, k_col, A_raw.getValue( k, identity_A ) );
+							}
+#endif
 						}
+
 #ifdef _H_GRB_REFERENCE_OMP_BLAS3
 						while( !coors1.joinUpdate( local_update1 )) {}
 #endif
 
-						auto local_update2 = coors2.EMPTY_UPDATE();
-						{
-#ifdef _H_GRB_REFERENCE_OMP_BLAS3
-							const size_t maxAsyncAssigns2 = coors2.maxAsyncAssigns();
-							size_t assigns2 = 0;
-							#pragma omp for simd schedule( dynamic, config::CACHE_LINE_SIZE::value() ) nowait
-#endif
-							for( size_t k = B_raw.col_start[ i ]; k < B_raw.col_start[ i + 1 ]; ++k ) {
-								const size_t k_col = B_raw.row_index[ k ];
 
 #ifdef _H_GRB_REFERENCE_OMP_BLAS3
-								if( !coors2.asyncAssign( k_col, local_update2 ) ) {
-									assignValue( vbuf2, k_col, B_raw.getValue( k, identity_B ) );
-									if( ++assigns2 == maxAsyncAssigns2 ) {
-										coors2.joinUpdate( local_update2 );
-										assigns2 = 0;
-									}
-								}
-#else
-								if( !coors2.assign( k_col ) ) {
-									assignValue( vbuf2, k_col, B_raw.getValue( k, identity_B ) );
-								}
+						auto local_update2 = coors2.EMPTY_UPDATE();
+						const size_t maxAsyncAssigns2 = coors2.maxAsyncAssigns();
+						size_t assigns2 = 0;
+						#pragma omp for simd schedule( dynamic, config::CACHE_LINE_SIZE::value() ) nowait
 #endif
+						for( size_t k = B_raw.col_start[ i ]; k < B_raw.col_start[ i + 1 ]; ++k ) {
+							const size_t k_col = B_raw.row_index[ k ];
+
+#ifdef _H_GRB_REFERENCE_OMP_BLAS3
+							if( !coors2.asyncAssign( k_col, local_update2 ) ) {
+								assignValue( vbuf2, k_col, B_raw.getValue( k, identity_B ) );
+								if( ++assigns2 == maxAsyncAssigns2 ) {
+									coors2.joinUpdate( local_update2 );
+									assigns2 = 0;
+								}
 							}
+#else
+							if( !coors2.assign( k_col ) ) {
+								assignValue( vbuf2, k_col, B_raw.getValue( k, identity_B ) );
+							}
+#endif
 						}
 #ifdef _H_GRB_REFERENCE_OMP_BLAS3
 						while( !coors2.joinUpdate( local_update2 )) {}
 #endif
 					}
 
-					for( size_t k = 0; k < std::max( coors1.nonzeroes(), coors2.nonzeroes() ); ++k ) {
-						const auto& assigned_coors = coors1.assigned(k) ? coors1 : coors2;
-						const auto j = assigned_coors.index( k );
-						const auto A_val = coors1.assigned(k) ? getValue(vbuf1, j, identity_A) : identity_A;
-						const auto B_val = coors2.assigned(k) ? getValue(vbuf2, j, identity_B) : identity_B;
+					for( size_t k = 0; k < coors1.nonzeroes(); ++k ) {
+						const auto j = coors1.index( k );
+						const auto A_val = getValue(vbuf1, j, identity_A);
+						const auto B_val = coors2.assigned(j) ? getValue(vbuf2, j, identity_B) : identity_B;
+						std::cout << " * (" << i << ", " << j << ") = " << A_val << " " << B_val << "\n";
+
+						OutputType result_value;
+						(void)grb::apply( result_value, A_val, B_val, oper );
+
+						// update CRS
+						CRS_raw.row_index[ nzc ] = j;
+						CRS_raw.setValue( nzc, result_value );
+
+						// update CCS
+						if( !crs_only ) {
+							const size_t CCS_index =  CCS_raw.col_start[ j+1 ] - ++C_col_index[ j ];
+#ifdef NDEBUG
+							assert( CCS_index < capacity( C ) );
+							assert( CCS_index < CCS_raw.col_start[ j+1 ] );
+							assert( CCS_index >= CCS_raw.col_start[ j ] );
+#endif
+							CCS_raw.row_index[ CCS_index ] = i;
+							CCS_raw.setValue( CCS_index, result_value );
+						}
+						// update count
+						(void)++nzc;
+					}
+					for( size_t k = 0; k < coors2.nonzeroes(); ++k ) {
+						const auto j = coors2.index( k );
+						if( coors1.assigned(j) ) { // Intersection case: already handled
+							continue;
+						}
+						const auto A_val = coors1.assigned(j) ? getValue(vbuf1, j, identity_A) : identity_A;
+						const auto B_val = getValue(vbuf2, j, identity_B);
+						std::cout << " # (" << i << ", " << j << ") = " << A_val << " " << B_val << "\n";
 
 						OutputType result_value;
 						(void)grb::apply( result_value, A_val, B_val, oper );
