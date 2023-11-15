@@ -30,6 +30,8 @@
 #include <graphblas/nonblocking/pipeline.hpp>
 #include <graphblas/nonblocking/analytic_model.hpp>
 
+// #define _LOCAL_DEBUG
+
 
 using namespace grb::internal;
 
@@ -829,6 +831,10 @@ grb::RC Pipeline::execution() {
 
 	lower_bound.resize( num_tiles );
 	upper_bound.resize( num_tiles );
+	for( std::set< internal::Coordinates< nonblocking > * >::iterator vt = vbegin(); vt != vend(); ++vt ) {
+		auto* coords = *vt;
+		coords->_debug_is_counting_sort_done = false;
+	}
 
 	// if all vectors are already dense and there is no out-of-place operation to
 	// make them sparse we avoid paying the overhead for updating the coordinates
@@ -849,15 +855,52 @@ grb::RC Pipeline::execution() {
 		}
 #endif
 
+		{ // Initialise the lower and upper bounds
+			#pragma omp parallel for schedule(dynamic) num_threads(nthreads)
+			for( size_t tile_id = 0; tile_id < num_tiles; ++tile_id ) {
+
+				config::OMP::localRange(
+						lower_bound[tile_id], upper_bound[tile_id],
+						0, containers_size, tile_size, tile_id, num_tiles
+				);
+				assert(lower_bound[tile_id] <= upper_bound[tile_id]);
+			}
+		}
+
+		{
+#if defined(_DEBUG) || defined(_LOCAL_DEBUG)
+			fprintf( stderr, "Pipeline::execution(2): check if any of the coordinates will use the search-variant of asyncSubsetInit:\n" );
+#endif
+			size_t current_coord_idx = 0;
+			for( auto vt = vbegin(); vt != vend(); ++vt ) {
+				auto *coords = *vt;
+				for( size_t tile_id = 0; tile_id < num_tiles; ++tile_id ) {
+					bool will_require_counting_sum = not coords->should_use_bitmask_asyncSubsetInit(
+							num_tiles, tile_id, lower_bound[tile_id], upper_bound[tile_id]
+					);
+					if (will_require_counting_sum) {
+#if defined(_DEBUG) || defined(_LOCAL_DEBUG)
+						fprintf(stderr, "  -- coord %zu: will require counting sum+sort for %zu values\n",
+						        current_coord_idx, upper_bound[tile_id] - lower_bound[tile_id]);
+#endif
+						coords->countingSortComputation(num_tiles, lower_bound, upper_bound);
+						break;
+					}
+				}
+				++current_coord_idx;
+				//coords->countingSortComputation(num_tiles, lower_bound, upper_bound);
+			}
+		}
+
 		#pragma omp parallel for schedule(dynamic) num_threads(nthreads)
 		for( size_t tile_id = 0; tile_id < num_tiles; ++tile_id ) {
 
-			// compute the lower and upper bounds
-			config::OMP::localRange(
-				lower_bound[ tile_id ], upper_bound[ tile_id ],
-				0, containers_size, tile_size, tile_id, num_tiles
-			);
-			assert( lower_bound[ tile_id ] <= upper_bound[ tile_id ] );
+//			// compute the lower and upper bounds
+//			config::OMP::localRange(
+//				lower_bound[ tile_id ], upper_bound[ tile_id ],
+//				0, containers_size, tile_size, tile_id, num_tiles
+//			);
+//			assert( lower_bound[ tile_id ] <= upper_bound[ tile_id ] );
 
 #ifndef GRB_ALREADY_DENSE_OPTIMIZATION
 			for(
@@ -868,7 +911,7 @@ grb::RC Pipeline::execution() {
 					continue;
 				}
 
-				(**vt).asyncSubsetInit( lower_bound[ tile_id ], upper_bound[ tile_id ] );
+				(**vt).asyncSubsetInit( num_tiles, lower_bound[ tile_id ], upper_bound[ tile_id ] );
 			}
 #endif
 
@@ -907,14 +950,51 @@ grb::RC Pipeline::execution() {
 			(**vt).localCoordinatesInit( am );
 		}
 
+		{ // Initialise the lower and upper bounds
+			#pragma omp parallel for schedule(dynamic) num_threads(nthreads)
+			for( size_t tile_id = 0; tile_id < num_tiles; ++tile_id ) {
+
+				config::OMP::localRange(
+						lower_bound[tile_id], upper_bound[tile_id],
+						0, containers_size, tile_size, tile_id, num_tiles
+				);
+				assert(lower_bound[tile_id] <= upper_bound[tile_id]);
+			}
+		}
+
+		{
+#if defined(_DEBUG) || defined(_LOCAL_DEBUG)
+			fprintf( stderr, "Pipeline::execution: check if any of the coordinates will use the search-variant of asyncSubsetInit:\n" );
+#endif
+			size_t current_coord_idx = 0;
+			for( auto vt = vbegin(); vt != vend(); ++vt ) {
+				auto *coords = *vt;
+				bool will_require_counting_sum = false;
+				for( size_t tile_id = 0; tile_id < num_tiles; ++tile_id ) {
+					will_require_counting_sum |= not coords->should_use_bitmask_asyncSubsetInit(
+						num_tiles, tile_id, lower_bound[ tile_id ], upper_bound[ tile_id ]
+					);
+					if( will_require_counting_sum ) {
+#if defined(_DEBUG) || defined(_LOCAL_DEBUG)
+						fprintf( stderr, "  -- coord %zu: will require counting sum+sort for %zu values\n", current_coord_idx, upper_bound[ tile_id ]- lower_bound[ tile_id ] );
+#endif
+						coords->countingSortComputation( num_tiles, lower_bound, upper_bound );
+						break;
+					}
+				}
+				++current_coord_idx;
+				//coords->countingSortComputation( num_tiles, lower_bound, upper_bound );
+			}
+		}
+
 		#pragma omp parallel for schedule(dynamic) num_threads(nthreads)
 		for( size_t tile_id = 0; tile_id < num_tiles; ++tile_id ) {
 
-			config::OMP::localRange(
-				lower_bound[ tile_id ], upper_bound[ tile_id ],
-				0, containers_size, tile_size, tile_id, num_tiles
-			);
-			assert( lower_bound[ tile_id ] <= upper_bound[ tile_id ] );
+//			config::OMP::localRange(
+//				lower_bound[ tile_id ], upper_bound[ tile_id ],
+//				0, containers_size, tile_size, tile_id, num_tiles
+//			);
+//			assert( lower_bound[ tile_id ] <= upper_bound[ tile_id ] );
 
 			for(
 				std::set< internal::Coordinates< nonblocking > * >::iterator vt = vbegin();
@@ -937,7 +1017,7 @@ grb::RC Pipeline::execution() {
 				}
 #endif
 
-				(**vt).asyncSubsetInit( lower_bound[ tile_id ], upper_bound[ tile_id ] );
+				(**vt).asyncSubsetInit( num_tiles, lower_bound[ tile_id ], upper_bound[ tile_id ] );
 				initialized_coordinates = true;
 			}
 		}

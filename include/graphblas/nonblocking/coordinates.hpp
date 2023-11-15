@@ -35,6 +35,7 @@
 
 #include <stddef.h> //size_t
 #include <assert.h>
+#include <algorithm>
 
 #include <graphblas/rc.hpp>
 #include <graphblas/backends.hpp>
@@ -49,7 +50,7 @@
 #include <graphblas/nonblocking/init.hpp>
 #include <graphblas/nonblocking/analytic_model.hpp>
 
-// #define _LOCAL_DEBUG
+#define _LOCAL_DEBUG
 
 
 namespace grb {
@@ -73,6 +74,10 @@ namespace grb {
 				typedef bool ArrayType;
 
 
+				// TODO: Remove me
+				bool _debug_is_counting_sort_done = false;
+
+
 			private:
 
 				bool * __restrict__ _assigned;
@@ -91,6 +96,9 @@ namespace grb {
 				std::vector< config::VectorIndexType * > local_buffer;
 				config::VectorIndexType * __restrict__ local_new_nnzs;
 				config::VectorIndexType * __restrict__ pref_sum;
+
+				std::vector<config::VectorIndexType> counting_sum;
+
 
 				// the analytic model used during the execution of a pipeline
 				AnalyticModel analytic_model;
@@ -418,7 +426,10 @@ namespace grb {
 
 					local_buffer.resize( analytic_model.getNumTiles() );
 
-					#pragma omp parallel for schedule(dynamic) num_threads(nthreads)
+					#pragma omp parallel for default(none) \
+						firstprivate(tile_size, num_tiles) \
+						shared(local_buffer, _buffer) \
+						schedule(dynamic) num_threads(nthreads)
 					for( size_t tile_id = 0; tile_id < num_tiles; ++tile_id ) {
 						local_buffer[ tile_id ] = _buffer + tile_id * ( tile_size + 1 );
 					}
@@ -428,6 +439,8 @@ namespace grb {
 				}
 
 				bool should_use_bitmask_asyncSubsetInit(
+					const size_t /* num_tiles */,
+					const size_t /* tile_id */,
 					const size_t lower_bound,
 					const size_t upper_bound
 				) const noexcept {
@@ -438,45 +451,59 @@ namespace grb {
 				}
 
 				void _asyncSubsetInit_bitmask(
+					const size_t /* num_tiles */,
+					const size_t /* tile_id */,
 					const size_t lower_bound,
 					const size_t upper_bound,
 					config::VectorIndexType *local_stack,
 					config::VectorIndexType *local_nnzs
 				) noexcept {
-#if defined(_DEBUG) || defined(_LOCAL_DEBUG)
-					fprintf( stderr, "[trace] - _asyncSubsetInit_bitmask( bounds: [%zu, %zu] ) -> local_nnzs=",
-						lower_bound, upper_bound );
-#endif
 					for( size_t i = lower_bound; i < upper_bound; ++i ) {
 						if( _assigned[ i ] ) {
 							local_stack[ (*local_nnzs)++ ] = i - lower_bound;
 						}
 					}
-#if defined(_DEBUG) || defined(_LOCAL_DEBUG)
-					fprintf( stderr, "%u\n", *local_nnzs );
-#endif
+//#if defined(_DEBUG) || defined(_LOCAL_DEBUG)
+//					#pragma omp critical
+//						fprintf( stderr, "[T%02d] - _asyncSubsetInit_bitmask( bounds: [%zu, %zu] ) -> local_nnzs=%u\n",
+//							omp_get_thread_num(), lower_bound, upper_bound, *local_nnzs );
+//#endif
 				}
 
 				void _asyncSubsetInit_search(
+					const size_t /* num_tiles */,
+					const size_t tile_id,
 					const size_t lower_bound,
 					const size_t upper_bound,
 					config::VectorIndexType *local_stack,
 					config::VectorIndexType *local_nnzs
 				) noexcept {
+					const auto lower_bound_idx = counting_sum[ tile_id ];
+					const auto upper_bound_idx = counting_sum[ tile_id+1 ];
+					if( lower_bound_idx == upper_bound_idx ) { return; }
 #if defined(_DEBUG) || defined(_LOCAL_DEBUG)
-					fprintf( stderr, "[trace] - _asyncSubsetInit_search( bounds: [%zu, %zu] ) -> local_nnzs=",
-						lower_bound, upper_bound );
+					#pragma omp critical
+						fprintf(stderr, "[T%02d] - _asyncSubsetInit_search():  tile_id=%zu, lower_bound_idx=%u, upper_bound_idx=%u\n",
+							omp_get_thread_num(), tile_id, lower_bound_idx, upper_bound_idx );
 #endif
-					for( size_t i = 0; i < _n; ++i ) {
+					for( size_t i = lower_bound_idx; i < upper_bound_idx; ++i ) {
 						const size_t k = _stack[ i ];
-						if( lower_bound <= k && k < upper_bound ) {
-							assert( _assigned[ k ] );
-							local_stack[ (*local_nnzs)++ ] = k - lower_bound;
-						}
-					}
 #if defined(_DEBUG) || defined(_LOCAL_DEBUG)
-					fprintf( stderr, "%u\n", *local_nnzs );
+						if( not ( lower_bound <= k && k < upper_bound ) ) {
+							#pragma omp critical
+								fprintf(stderr, "ERROR [T%02d] - _asyncSubsetInit_search(): i=%zu, k=%zu, lower_bound=%zu, upper_bound=%zu\n",
+									omp_get_thread_num(), i, k, lower_bound, upper_bound );
+						}
 #endif
+						assert ( lower_bound <= k && k < upper_bound );
+						assert( _assigned[ k ] );
+						local_stack[ (*local_nnzs)++ ] = k - lower_bound;
+					}
+//#if defined(_DEBUG) || defined(_LOCAL_DEBUG)
+//					#pragma omp critical
+//						fprintf( stderr, "[T%02d] - _asyncSubsetInit_search( bounds: [%zu, %zu] ) -> local_nnzs=%u\n",
+//							omp_get_thread_num(), lower_bound, upper_bound, *local_nnzs );
+//#endif
 				}
 
 				/**
@@ -494,6 +521,7 @@ namespace grb {
 				 *                            (exclusive).
 				 */
 				void asyncSubsetInit(
+					const size_t num_tiles,
 					const size_t lower_bound,
 					const size_t upper_bound
 				) noexcept {
@@ -505,14 +533,139 @@ namespace grb {
 					config::VectorIndexType *local_stack = local_buffer[ tile_id ] + 1;
 
 					*local_nnzs = 0;
-					if( should_use_bitmask_asyncSubsetInit( lower_bound, upper_bound ) ) {
-						_asyncSubsetInit_bitmask( lower_bound, upper_bound, local_stack, local_nnzs );
+					if( should_use_bitmask_asyncSubsetInit( num_tiles, tile_id, lower_bound, upper_bound ) ) {
+						_asyncSubsetInit_bitmask( num_tiles, tile_id, lower_bound, upper_bound, local_stack, local_nnzs );
 					} else {
-						_asyncSubsetInit_search( lower_bound, upper_bound, local_stack, local_nnzs );
+						assert( _debug_is_counting_sort_done );
+						_asyncSubsetInit_search( num_tiles, tile_id, lower_bound, upper_bound, local_stack, local_nnzs );
 					}
 
 					// the number of new nonzeroes is initialized here
 					local_new_nnzs[ tile_id ] = 0;
+				}
+
+				void countingSumComputation_sequential(
+						const size_t num_tiles,
+						const std::vector< size_t > &lower_bounds,
+						const std::vector< size_t > &upper_bounds
+				) noexcept {
+					// TODO: Move me to the initialisation phase, and use _buffer instead of a vector
+					counting_sum.resize( num_tiles+1 );
+
+					for( size_t i = 0; i <= num_tiles; ++i ) {
+						counting_sum[ i ] = 0;
+					}
+
+					// Counting sum computation
+					for(size_t tile_id = 0; tile_id < num_tiles; ++tile_id ) {
+						const auto lower_bound = lower_bounds[tile_id];
+						const auto upper_bound = upper_bounds[tile_id];
+
+						for (size_t i = 0; i < _n; ++i) {
+							const auto k = _stack[i];
+							if (not (lower_bound <= k && k < upper_bound)) {
+								continue;
+							}
+							assert(_assigned[k]);
+							counting_sum[tile_id + 1]++;
+						}
+					}
+
+#if defined(_DEBUG) || defined(_LOCAL_DEBUG)
+					#pragma omp critical
+					{
+						fprintf( stderr, "[T%02d] - counting_sum (not-prefixed): {num_tiles=%02zu}[ ",
+								 omp_get_thread_num(), num_tiles );
+						for(size_t i = 0; i <= num_tiles; ++i )
+							fprintf( stderr, "%04u ", counting_sum[ i ] );
+						fprintf( stderr, "]\n" );
+					}
+#endif
+
+					// Prefix sum computation of the counting sum
+					for( size_t i = 1; i <= num_tiles; ++i ) {
+						counting_sum[i] += counting_sum[i - 1];
+					}
+
+#if defined(_DEBUG) || defined(_LOCAL_DEBUG)
+	#pragma omp critical
+					{
+						fprintf( stderr, "[T%02d] - counting_sum (prefixed):     {num_tiles=%02zu}[ ",
+								 omp_get_thread_num(), num_tiles );
+						for(size_t i = 0; i <= num_tiles; ++i )
+							fprintf( stderr, "%04u ", counting_sum[ i ] );
+						fprintf( stderr, "]\n" );
+					}
+#endif
+					if( counting_sum[ num_tiles ] != _n ) {
+						#pragma omp critical
+							fprintf( stderr, "[T%02d] - counting_sum[ num_tiles ] = %u, _n = %zu\n",
+									 omp_get_thread_num(), counting_sum[ num_tiles ], _n );
+					}
+					assert( counting_sum[ num_tiles ] == _n );
+				}
+
+				void countingSortComputation(
+						const size_t num_tiles,
+						const std::vector< size_t > &lower_bounds,
+						const std::vector< size_t > &upper_bounds
+						) noexcept {
+					countingSumComputation_sequential( num_tiles, lower_bounds, upper_bounds );
+
+					// TODO: Move me to the initialisation phase, and use _buffer instead of a vector
+					auto counting_sum_copy = counting_sum;
+
+					for( size_t tile_id = 0; tile_id < num_tiles; ++tile_id ) {
+						const auto lower_bound = lower_bounds[ tile_id ];
+						const auto upper_bound = upper_bounds[ tile_id ];
+
+						size_t assigned_in_bucket = 0;
+						#pragma omp critical
+							fprintf(stderr,
+							        "[T%02d] - i = [%u, %zu[ (tile_id=%zu)\n",
+																        omp_get_thread_num(), counting_sum[tile_id], upper_bound, tile_id);
+						for (size_t i = counting_sum[tile_id]; i < _n; ++i) {
+							const auto k = _stack[i];
+							if( not (lower_bound <= k && k < upper_bound) ) {
+								continue;
+							}
+
+							const auto stack_new_idx = counting_sum_copy[tile_id]++;
+							assert( stack_new_idx < _n );
+							assert( _assigned[ k ] );
+							if( stack_new_idx == i ) {
+								assigned_in_bucket++;
+								continue;
+							}
+							#pragma omp critical
+							fprintf(stderr,
+							        "[T%02d] - Found element %zu (%u) is in tile %zu\n",
+							        omp_get_thread_num(), i, k, tile_id);
+#if defined(_DEBUG) || defined(_LOCAL_DEBUG)
+	#pragma omp critical
+							{
+								fprintf( stderr, "[T%02d] - swap( %zu, %u ) {_n=%04zu}\n",
+										 omp_get_thread_num(), i, stack_new_idx, _n );
+								fprintf( stderr, "[T%02d] - counting_sum (____________): {num_tiles=%02zu}[ ",
+										 omp_get_thread_num(), num_tiles );
+								for(size_t _i = 0; _i <= num_tiles; ++_i )
+									fprintf( stderr, "%04u ", counting_sum_copy[ _i ] );
+								fprintf( stderr, "]\n" );
+							}
+#endif
+							assert(stack_new_idx < _n);
+							std::swap(_stack[i], _stack[stack_new_idx]);
+							assigned_in_bucket++;
+						}
+						// Print assigned_in_bucket
+						#pragma omp critical
+						fprintf(stderr,
+						        "[T%02d] - assigned_in_bucket = %zu, should be %u\n",
+						        omp_get_thread_num(), assigned_in_bucket, counting_sum[tile_id+1] - counting_sum[tile_id]);
+						assert( assigned_in_bucket == (counting_sum[tile_id+1] - counting_sum[tile_id]) );
+					}
+
+					_debug_is_counting_sort_done = true;
 				}
 
 				/**
