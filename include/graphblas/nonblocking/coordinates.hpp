@@ -49,6 +49,8 @@
 #include <graphblas/nonblocking/init.hpp>
 #include <graphblas/nonblocking/analytic_model.hpp>
 
+// #define _LOCAL_DEBUG
+
 
 namespace grb {
 
@@ -425,6 +427,58 @@ namespace grb {
 					pref_sum = _buffer + num_tiles * ( tile_size + 2 );
 				}
 
+				bool should_use_bitmask_asyncSubsetInit(
+					const size_t lower_bound,
+					const size_t upper_bound
+				) const noexcept {
+					assert( _cap > 0 );
+					assert( _n <= _cap );
+					assert( lower_bound <= upper_bound );
+					return upper_bound - lower_bound < _n;
+				}
+
+				void _asyncSubsetInit_bitmask(
+					const size_t lower_bound,
+					const size_t upper_bound,
+					config::VectorIndexType *local_stack,
+					config::VectorIndexType *local_nnzs
+				) noexcept {
+#if defined(_DEBUG) || defined(_LOCAL_DEBUG)
+					fprintf( stderr, "[trace] - _asyncSubsetInit_bitmask( bounds: [%zu, %zu] ) -> local_nnzs=",
+						lower_bound, upper_bound );
+#endif
+					for( size_t i = lower_bound; i < upper_bound; ++i ) {
+						if( _assigned[ i ] ) {
+							local_stack[ (*local_nnzs)++ ] = i - lower_bound;
+						}
+					}
+#if defined(_DEBUG) || defined(_LOCAL_DEBUG)
+					fprintf( stderr, "%u\n", *local_nnzs );
+#endif
+				}
+
+				void _asyncSubsetInit_search(
+					const size_t lower_bound,
+					const size_t upper_bound,
+					config::VectorIndexType *local_stack,
+					config::VectorIndexType *local_nnzs
+				) noexcept {
+#if defined(_DEBUG) || defined(_LOCAL_DEBUG)
+					fprintf( stderr, "[trace] - _asyncSubsetInit_search( bounds: [%zu, %zu] ) -> local_nnzs=",
+						lower_bound, upper_bound );
+#endif
+					for( size_t i = 0; i < _n; ++i ) {
+						const size_t k = _stack[ i ];
+						if( lower_bound <= k && k < upper_bound ) {
+							assert( _assigned[ k ] );
+							local_stack[ (*local_nnzs)++ ] = k - lower_bound;
+						}
+					}
+#if defined(_DEBUG) || defined(_LOCAL_DEBUG)
+					fprintf( stderr, "%u\n", *local_nnzs );
+#endif
+				}
+
 				/**
 				 * Initialises a Coordinate instance that refers to a subset of this
 				 * coordinates instance. Multiple disjoint subsets may be retrieved
@@ -443,9 +497,7 @@ namespace grb {
 					const size_t lower_bound,
 					const size_t upper_bound
 				) noexcept {
-					if( _cap == 0 ) {
-						return;
-					}
+					if( _cap == 0 ) { return; }
 
 					const size_t tile_id = lower_bound / analytic_model.getTileSize();
 
@@ -453,20 +505,10 @@ namespace grb {
 					config::VectorIndexType *local_stack = local_buffer[ tile_id ] + 1;
 
 					*local_nnzs = 0;
-					if( upper_bound - lower_bound < _n ) {
-						for( size_t i = lower_bound; i < upper_bound; ++i ) {
-							if( _assigned[ i ] ) {
-								local_stack[ (*local_nnzs)++ ] = i - lower_bound;
-							}
-						}
+					if( should_use_bitmask_asyncSubsetInit( lower_bound, upper_bound ) ) {
+						_asyncSubsetInit_bitmask( lower_bound, upper_bound, local_stack, local_nnzs );
 					} else {
-						for( size_t i = 0; i < _n; ++i ) {
-							const size_t k = _stack[ i ];
-							if( lower_bound <= k && k < upper_bound ) {
-								assert( _assigned[ k ] );
-								local_stack[ (*local_nnzs)++ ] = k - lower_bound;
-							}
-						}
+						_asyncSubsetInit_search( lower_bound, upper_bound, local_stack, local_nnzs );
 					}
 
 					// the number of new nonzeroes is initialized here
