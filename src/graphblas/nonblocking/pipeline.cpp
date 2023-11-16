@@ -270,6 +270,11 @@ size_t Pipeline::getContainersSize() const {
 	return containers_size;
 }
 
+
+void Pipeline::addFunctorStage(
+		const PipelineFunctorStage &&functorStage, const Opcode opcode
+) {}
+
 void Pipeline::addStage(
 		const Pipeline::stage_type &&func, const Opcode opcode,
 		const size_t n, const size_t data_type_size,

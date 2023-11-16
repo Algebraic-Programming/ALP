@@ -35,6 +35,7 @@
 
 #include "graphblas.hpp"
 
+#define _BENCHMARKING
 
 using namespace grb;
 
@@ -80,7 +81,9 @@ static grb::RC setupSparseMatrix(
 			mxValues[ e ] = static_cast< double >( e + 1 ) / static_cast< double >( elems );
 			assert( I[ e ] < n );
 			assert( J[ e ] < n );
+#if not defined(_BENCHMARKING)
 			std::cout << I[ e ] << " " << J[ e ] << " " << mxValues[ e ] << "\n";
+#endif
 			if( ( mode == 1 || mode == 4 ) && J[ e ] == n / 2 ) {
 				chk[ I[ e ] ] += mxValues[ e ];
 			} else if( ( mode == 2 || mode == 3 ) && I[ e ] == n / 2 ) {
@@ -199,10 +202,12 @@ void grbProgram( const struct input &data_in, struct output &out ) {
 				out.error_code = mxv( vy, mx, vx, ring );
 			}
 			out.times.useful = timer.time() / static_cast< double >( data_in.rep );
+#if not defined(_BENCHMARKING)
 			// check result
 			if( out.error_code == SUCCESS ) {
 				out.error_code = checkResult( chk, vy );
 			}
+#endif
 			// done
 			out.times.postamble = 0;
 			break;

@@ -131,6 +131,11 @@ namespace grb {
 					const void * const input_matrix
 				);
 
+				RC addFunctorStage(
+						const PipelineFunctorStage &&functorStage,
+						const Opcode opcode
+				);
+
 				/**
 				 * Adds an eWiseLambda stage to an automatically-determined pipeline.
 				 *

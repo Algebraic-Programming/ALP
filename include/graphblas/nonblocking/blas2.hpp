@@ -398,6 +398,275 @@ namespace grb {
 		}
 
 		template<
+				Descriptor descr,
+				bool masked,
+				bool input_masked,
+				bool left_handed,
+				bool using_semiring,
+				template< typename > class One,
+				class AdditiveMonoid,
+				class Multiplication,
+				typename IOType,
+				typename InputType1,
+				typename InputType2,
+				typename InputType3,
+				typename InputType4,
+				typename RIT,
+				typename CIT,
+				typename NIT,
+				typename Coords
+		>
+		struct vxm_generic_functor : PipelineFunctorStage {
+			static constexpr const bool dense_descr = descr & descriptors::dense;
+
+			Vector< IOType, nonblocking, Coords > &u;
+			const Vector< InputType3, nonblocking, Coords >  &mask;
+			const Vector< InputType1, nonblocking, Coords >  &v;
+			const Vector< InputType4, nonblocking, Coords > &v_mask;
+			const Matrix< InputType2, nonblocking, RIT, CIT, NIT > &A;
+			const AdditiveMonoid &add;
+			const Multiplication &mul;
+			const std::function< size_t( size_t ) > row_l2g;
+			const std::function< size_t( size_t ) > row_g2l;
+			const std::function< size_t( size_t ) > col_l2g;
+			const std::function< size_t( size_t ) > col_g2l;
+			IOType * __restrict__ const y;
+			const InputType1 * __restrict__ const x;
+			const InputType3 * __restrict__ const z;
+			const InputType4 * __restrict__ const vm;
+
+			vxm_generic_functor(
+					Vector< IOType, nonblocking, Coords > &u,
+					const Vector< InputType3, nonblocking, Coords > &mask,
+					const Vector< InputType1, nonblocking, Coords > &v,
+					const Vector< InputType4, nonblocking, Coords > &v_mask,
+					const Matrix< InputType2, nonblocking, RIT, CIT, NIT > &A,
+					const AdditiveMonoid &add,
+					const Multiplication &mul,
+					const std::function< size_t( size_t ) >& row_l2g,
+					const std::function< size_t( size_t ) >& row_g2l,
+					const std::function< size_t( size_t ) >& col_l2g,
+					const std::function< size_t( size_t ) >& col_g2l,
+					IOType * __restrict__ const y,
+					const InputType1 * __restrict__ const x,
+					const InputType3 * __restrict__ const z,
+					const InputType4 * __restrict__ const vm
+					) :
+				u( u ),
+				mask( mask ),
+				v( v ),
+				v_mask( v_mask ),
+				A( A ),
+				add( add ),
+				mul( mul ),
+				row_l2g( row_l2g ),
+				row_g2l( row_g2l ),
+				col_l2g( col_l2g ),
+				col_g2l( col_g2l ),
+				y( y ),
+				x( x ),
+				z( z ),
+				vm( vm )
+			{}
+
+			RC operator()(
+					internal::Pipeline &pipeline,
+					const size_t lower_bound, const size_t upper_bound
+			) noexcept {
+#ifdef _NONBLOCKING_DEBUG
+				#pragma omp critical
+				std::cout << "\t\tExecution of stage vxm_generic in the range("
+					<< lower_bound << ", " << upper_bound << ")" << std::endl;
+#endif
+				(void) pipeline;
+
+				RC rc = SUCCESS;
+
+				Coords local_u, local_mask;
+				const size_t local_n = upper_bound - lower_bound;
+				size_t local_mask_nz = local_n;
+
+#ifdef GRB_ALREADY_DENSE_OPTIMIZATION
+				const bool already_dense_vectors = dense_descr ||
+				                                   pipeline.allAlreadyDenseVectors();
+#else
+				constexpr const bool already_dense_vectors = dense_descr;
+#endif
+
+				bool already_dense_output = true;
+				bool already_dense_output_mask = true;
+
+				if( !already_dense_vectors ) {
+#ifdef GRB_ALREADY_DENSE_OPTIMIZATION
+					already_dense_output = pipeline.containsAlreadyDenseVector(
+							&internal::getCoordinates( u ) );
+					if( !already_dense_output ) {
+#else
+						already_dense_output = false;
+#endif
+						local_u = internal::getCoordinates( u ).asyncSubset( lower_bound,
+						                                                     upper_bound );
+#ifdef GRB_ALREADY_DENSE_OPTIMIZATION
+					}
+#endif
+					if( masked ) {
+#ifdef GRB_ALREADY_DENSE_OPTIMIZATION
+						already_dense_output_mask = pipeline.containsAlreadyDenseVector(
+								&internal::getCoordinates( mask ) );
+						if( !already_dense_output_mask ) {
+#else
+							already_dense_output_mask = false;
+#endif
+							local_mask = internal::getCoordinates( mask ).asyncSubset( lower_bound,
+							                                                           upper_bound );
+							local_mask_nz = local_mask.nonzeroes();
+#ifdef GRB_ALREADY_DENSE_OPTIMIZATION
+						}
+#endif
+					}
+				}
+
+				// check if transpose is required
+				if( descr & descriptors::transpose_matrix ) {
+					// start compute u=vA^T
+#ifdef _DEBUG
+					std::cout << s << ": in u=vA^T=Av variant\n";
+#endif
+
+					// start u=vA^T using CRS
+					// matrix = &(A.CRS);
+					// TODO internal issue #193
+					if( !masked || (descr & descriptors::invert_mask) ) {
+						// loop over all columns of the input matrix (can be done in parallel):
+#ifdef _DEBUG
+						std::cout << s << ": in full CRS variant (gather)\n";
+#endif
+
+						for( size_t i = lower_bound; i < upper_bound; i++ ) {
+#ifdef GRB_BOOLEAN_DISPATCHER
+							boolean_dispatcher_vxm_inner_kernel_gather<
+#else
+									vxm_inner_kernel_gather<
+#endif
+									descr, masked, input_masked, left_handed, One
+							>(
+									already_dense_output, already_dense_output_mask,
+									rc, lower_bound, local_u, local_mask,
+									u, y[ i ], i, v, x, nrows( A ), internal::getCRS( A ),
+									mask, z, v_mask, vm, add, mul,
+									row_l2g, col_l2g, col_g2l
+							);
+						}
+
+					} else {
+#ifdef _DEBUG
+						std::cout << s << ": in masked CRS variant (gather). Mask has "
+							<< local_mask_nz << " nonzeroes and size " << local_n << ":\n";
+						for( size_t k = 0; k < local_mask_nz; ++k ) {
+							std::cout << " "
+							<< ( ( already_dense_output_mask ? k : local_mask.index( k ) ) +
+								lower_bound );
+						}
+						std::cout << "\n";
+#endif
+						assert( masked );
+
+						for( size_t k = 0; k < local_mask_nz; ++k ) {
+							const size_t i =
+									( already_dense_output_mask ? k : local_mask.index( k ) ) +
+									lower_bound;
+							assert( i < nrows(A) );
+
+#ifdef GRB_BOOLEAN_DISPATCHER
+							boolean_dispatcher_vxm_inner_kernel_gather<
+#else
+									vxm_inner_kernel_gather<
+#endif
+									descr, false, input_masked, left_handed, One
+							>(
+									already_dense_output, already_dense_output_mask,
+									rc, lower_bound, local_u, local_mask,
+									u, y[ i ], i, v, x, nrows( A ), internal::getCRS( A ),
+									mask, z, v_mask, vm, add, mul,
+									row_l2g, col_l2g, col_g2l
+							);
+						}
+					}
+					// end compute u=vA^T
+				} else {
+#ifdef _DEBUG
+					std::cout << s << ": in u=vA=A^Tv variant\n";
+#endif
+					// start u=vA using CCS
+#ifdef _DEBUG
+					std::cout << s << ": in column-major vector times matrix variant (u=vA)\n"
+						<< "\t(this variant relies on the gathering inner kernel)\n";
+#endif
+
+					// if not transposed, then CCS is the data structure to go:
+					// TODO internal issue #193
+					if( !masked || (descr & descriptors::invert_mask) ) {
+#ifdef _DEBUG
+						std::cout << s << ": loop over all input matrix columns\n";
+#endif
+
+						for( size_t j = lower_bound; j < upper_bound; j++ ) {
+#ifdef GRB_BOOLEAN_DISPATCHER
+							boolean_dispatcher_vxm_inner_kernel_gather<
+#else
+									vxm_inner_kernel_gather<
+#endif
+									descr, masked, input_masked, left_handed, One
+							>(
+									already_dense_output, already_dense_output_mask,
+									rc, lower_bound, local_u, local_mask,
+									u, y[ j ], j, v, x, nrows( A ), internal::getCCS( A ),
+									mask, z, v_mask, vm, add, mul,
+									row_l2g, row_g2l, col_l2g
+							);
+						}
+					} else {
+						// loop only over the nonzero masks (can still be done in parallel!)
+#ifdef _DEBUG
+						std::cout << s << ": loop over mask indices\n";
+#endif
+						assert( masked );
+
+						for( size_t k = 0; k < local_mask_nz; ++k ) {
+							const size_t j =
+									( already_dense_output_mask ? k : local_mask.index( k ) ) + lower_bound;
+#ifdef GRB_BOOLEAN_DISPATCHER
+							boolean_dispatcher_vxm_inner_kernel_gather<
+#else
+									vxm_inner_kernel_gather<
+#endif
+									descr, masked, input_masked, left_handed, One
+							>(
+									already_dense_output, already_dense_output_mask,
+									rc, lower_bound, local_u, local_mask,
+									u, y[ j ], j, v, x, nrows( A ), internal::getCCS( A ),
+									mask, z, v_mask, vm, add, mul,
+									row_l2g, row_g2l, col_l2g
+							);
+						}
+					}
+					// end computing u=vA
+				}
+#ifdef GRB_ALREADY_DENSE_OPTIMIZATION
+				if( !already_dense_output ) {
+#else
+					if( !already_dense_vectors ) {
+#endif
+					internal::getCoordinates( u ).asyncJoinSubset( local_u, lower_bound,
+					                                               upper_bound );
+				}
+
+				return rc;
+			}
+		};
+
+
+		template<
 			Descriptor descr,
 			bool masked,
 			bool input_masked,
@@ -777,23 +1046,22 @@ namespace grb {
 				return rc;
 			};
 
+			vxm_generic_functor<
+			        descr, masked, input_masked, left_handed, using_semiring,
+					One, AdditiveMonoid, Multiplication, IOType,
+					InputType1, InputType2, InputType3, InputType4,
+					RIT, CIT, NIT, Coords
+				> vxmFunctor(
+					u, mask, v, v_mask, A, add, mul, row_l2g, row_g2l, col_l2g, col_g2l,
+					y, x, z, vm
+			);
+
 			// since the local coordinates are never used for the input vector and the
 			// input mask they are added only for verification of legal usage of the
 			// dense descriptor
-			ret = ret ? ret : internal::le.addStage(
-					std::move( func ),
-					internal::Opcode::BLAS2_VXM_GENERIC,
-					size( u ), sizeof( IOType ), dense_descr, true,
-					&u, nullptr, &internal::getCoordinates( u ), nullptr,
-					&v,
-					masked ? &mask : nullptr,
-					input_masked ? &v_mask : nullptr,
-					nullptr,
-					&internal::getCoordinates( v ),
-					masked ? &internal::getCoordinates( mask ) : nullptr,
-					input_masked ? &internal::getCoordinates( v_mask ) : nullptr,
-					nullptr,
-					&A
+			ret = ret ? ret : internal::le.addFunctorStage(
+					std::move( vxmFunctor ),
+					internal::Opcode::BLAS2_VXM_GENERIC
 				);
 
 #ifdef _NONBLOCKING_DEBUG

@@ -100,6 +100,11 @@ namespace grb {
 			BLAS2_VXM_GENERIC
 		};
 
+		class Pipeline;
+
+		struct PipelineFunctorStage {
+			virtual ~PipelineFunctorStage() = default;
+		};
 		/**
 		 * Encodes a single pipeline that may be expanded, merged, or executed.
 		 */
@@ -120,6 +125,7 @@ namespace grb {
 				size_t containers_size;
 				size_t size_of_data_type;
 				std::vector< stage_type > stages;
+				std::vector< PipelineFunctorStage > functorStages;
 				std::vector< Opcode > opcodes;
 
 				std::set< Coordinates< nonblocking > * > accessed_coordinates;
@@ -289,6 +295,11 @@ namespace grb {
 					const Coordinates< nonblocking > * const coor_c_ptr,
 					const Coordinates< nonblocking > * const coor_d_ptr,
 					const void * const input_matrix
+				);
+
+				void addFunctorStage(
+						const PipelineFunctorStage &&functorStage,
+						const Opcode opcode
 				);
 
 				void addeWiseLambdaStage(

@@ -58,6 +58,11 @@ void LazyEvaluation::checkIfExceeded() noexcept {
 	}
 }
 
+grb::RC LazyEvaluation::addFunctorStage(
+		const PipelineFunctorStage &&functorStage,
+		const Opcode opcode
+) {}
+
 grb::RC LazyEvaluation::addStage(
 	const Pipeline::stage_type &&func, Opcode opcode,
 	const size_t n, const size_t data_type_size,
