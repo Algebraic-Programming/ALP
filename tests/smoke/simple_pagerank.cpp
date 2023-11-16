@@ -132,10 +132,13 @@ void grbProgram( const struct input &data_in, struct output &out ) {
 			&( out.iterations ), &( out.residual )
 		);
 		double single_time = timer.time();
-		if( rc != SUCCESS ) {
+		if( !(rc == SUCCESS || rc == FAILED) ) {
 			std::cerr << "Failure: call to simple_pagerank did not succeed "
 				<< "(" << toString( rc ) << ")." << std::endl;
 			out.error_code = 20;
+		}
+		if( rc == FAILED ) {
+			std::cout << "Warning: call to simple_pagerank did not converge\n";
 		}
 		if( rc == SUCCESS ) {
 			rc = collectives<>::reduce( single_time, 0, operators::max< double >() );
@@ -145,8 +148,13 @@ void grbProgram( const struct input &data_in, struct output &out ) {
 		}
 		out.times.useful = single_time;
 		out.rep = static_cast< size_t >( 1000.0 / single_time ) + 1;
-		if( rc == SUCCESS ) {
+		if( rc == SUCCESS || rc == FAILED ) {
 			if( s == 0 ) {
+				if( rc == FAILED ) {
+					std::cout << "Info: cold simple_pagerank did not converge within ";
+				} else {
+					std::cout << "Info: cold simple_pagerank completed within ";
+				}
 				std::cout << "Info: cold pagerank completed within "
 					<< out.iterations << " iterations. Last computed residual is "
 					<< out.residual << ". Time taken was " << single_time

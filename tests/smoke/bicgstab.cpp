@@ -149,10 +149,13 @@ void grbProgram( const struct input &data_in, struct output &out ) {
 			ring, minus, divide
 		);
 		double single_time = timer.time();
-		if( rc != SUCCESS ) {
+		if( !(rc == SUCCESS || rc == FAILED) ) {
 			std::cerr << "Failure: call to bicgstab not succeed ("
 				<< toString( rc ) << ")." << std::endl;
 			out.error_code = 20;
+		}
+		if( rc == FAILED ) {
+			std::cout << "Warning: call to conjugate_gradient did not converge\n";
 		}
 		if( rc == SUCCESS ) {
 			rc = collectives<>::reduce( single_time, 0, operators::max< double >() );
@@ -162,10 +165,14 @@ void grbProgram( const struct input &data_in, struct output &out ) {
 		}
 		out.times.useful = single_time;
 		out.rep = static_cast< size_t >( 1000.0 / single_time ) + 1;
-		if( rc == SUCCESS ) {
+		if( rc == SUCCESS || rc == FAILED ) {
 			if( s == 0 ) {
-				std::cout << "Info: cold bicgstab completed within "
-					<< out.iterations << " iterations. Last computed residual is "
+				if( rc == FAILED ) {
+					std::cout << "Info: cold bicgstab did not converge within ";
+				} else {
+					std::cout << "Info: cold bicgstab completed within ";
+				}
+				std::cout << out.iterations << " iterations. Last computed residual is "
 					<< out.residual << ". Time taken was " << single_time << " ms. "
 					<< "Deduced inner repetitions parameter of " << out.rep << " "
 					<< "to take 1 second or more per inner benchmark.\n";
@@ -189,9 +196,7 @@ void grbProgram( const struct input &data_in, struct output &out ) {
 			}
 		}
 		time_taken = timer.time();
-		if( rc == SUCCESS ) {
-			out.times.useful = time_taken / static_cast< double >( out.rep );
-		}
+		out.times.useful = time_taken / static_cast< double >( out.rep );
 		// print timing at root process
 		if( grb::spmd<>::pid() == 0 ) {
 			std::cout << "Time taken for a " << out.rep << " "

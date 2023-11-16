@@ -86,12 +86,12 @@ void grbProgram( const struct input &data_in, struct output &out ) {
 
 	// create local parser
 	grb::utils::MatrixFileReader< ScalarType,
-			std::conditional<
-				(sizeof( grb::config::RowIndexType ) > sizeof( grb::config::ColIndexType )),
-				grb::config::RowIndexType,
-				grb::config::ColIndexType
-			>::type
-		> parser( data_in.filename, data_in.direct );
+		std::conditional<
+			(sizeof( grb::config::RowIndexType ) > sizeof( grb::config::ColIndexType )),
+			grb::config::RowIndexType,
+			grb::config::ColIndexType
+		>::type
+	> parser( data_in.filename, data_in.direct );
 	assert( parser.m() == parser.n() );
 	const size_t n = parser.n();
 	out.times.io = timer.time();
@@ -152,10 +152,13 @@ void grbProgram( const struct input &data_in, struct output &out ) {
 			r, u, temp
 		);
 		double single_time = timer.time();
-		if( rc != SUCCESS ) {
+		if( !(rc == SUCCESS || rc == FAILED) ) {
 			std::cerr << "Failure: call to conjugate_gradient did not succeed ("
 				<< toString( rc ) << ")." << std::endl;
 			out.error_code = 20;
+		}
+		if( rc == FAILED ) {
+			std::cout << "Warning: call to conjugate_gradient did not converge\n";
 		}
 		if( rc == SUCCESS ) {
 			rc = collectives<>::reduce( single_time, 0, operators::max< double >() );
@@ -165,10 +168,14 @@ void grbProgram( const struct input &data_in, struct output &out ) {
 		}
 		out.times.useful = single_time;
 		out.rep = static_cast< size_t >( 1000.0 / single_time ) + 1;
-		if( rc == SUCCESS ) {
+		if( rc == SUCCESS || rc == FAILED ) {
 			if( s == 0 ) {
-				std::cout << "Info: cold conjugate_gradient completed within "
-					<< out.iterations << " iterations. Last computed residual is "
+				if( rc == FAILED ) {
+					std::cout << "Info: cold conjugate_gradient did not converge within ";
+				} else {
+					std::cout << "Info: cold conjugate_gradient completed within ";
+				}
+				std::cout << out.iterations << " iterations. Last computed residual is "
 					<< out.residual << ". Time taken was " << single_time << " ms. "
 					<< "Deduced inner repetitions parameter of " << out.rep << " "
 					<< "to take 1 second or more per inner benchmark.\n";
