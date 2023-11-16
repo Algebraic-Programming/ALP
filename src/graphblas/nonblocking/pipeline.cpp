@@ -856,7 +856,7 @@ grb::RC Pipeline::execution() {
 #endif
 
 		{ // Initialise the lower and upper bounds
-			#pragma omp parallel for schedule(dynamic) num_threads(nthreads)
+			#pragma omp parallel for schedule(dynamic, config::CACHE_LINE_SIZE::value()) num_threads(nthreads)
 			for( size_t tile_id = 0; tile_id < num_tiles; ++tile_id ) {
 
 				config::OMP::localRange(
@@ -871,24 +871,19 @@ grb::RC Pipeline::execution() {
 #if defined(_DEBUG) || defined(_LOCAL_DEBUG)
 			fprintf( stderr, "Pipeline::execution(2): check if any of the coordinates will use the search-variant of asyncSubsetInit:\n" );
 #endif
-			size_t current_coord_idx = 0;
-			for( auto vt = vbegin(); vt != vend(); ++vt ) {
-				auto *coords = *vt;
+			for(auto coords : accessed_coordinates) {
+				// Reduction ( operator OR ) over all tiles to check if any of the tiles will need a counting sum+sort
+				bool will_require_counting = false;
 				for( size_t tile_id = 0; tile_id < num_tiles; ++tile_id ) {
-					bool will_require_counting_sum = not coords->should_use_bitmask_asyncSubsetInit(
-							num_tiles, tile_id, lower_bound[tile_id], upper_bound[tile_id]
+					will_require_counting |= not coords->should_use_bitmask_asyncSubsetInit(
+							num_tiles, tile_id, lower_bound[ tile_id ], upper_bound[ tile_id ]
 					);
-					if (will_require_counting_sum) {
-#if defined(_DEBUG) || defined(_LOCAL_DEBUG)
-						fprintf(stderr, "  -- coord %zu: will require counting sum+sort for %zu values\n",
-						        current_coord_idx, upper_bound[tile_id] - lower_bound[tile_id]);
-#endif
-						coords->countingSortComputation(num_tiles, lower_bound, upper_bound);
-						break;
-					}
 				}
-				++current_coord_idx;
-				//coords->countingSortComputation(num_tiles, lower_bound, upper_bound);
+				// If any of the tiles will need a counting sum+sort
+				if( will_require_counting ) {
+					// Contains an omp parallel region
+					coords->countingSortComputation( num_tiles, lower_bound, upper_bound );
+				}
 			}
 		}
 
@@ -951,9 +946,8 @@ grb::RC Pipeline::execution() {
 		}
 
 		{ // Initialise the lower and upper bounds
-			#pragma omp parallel for schedule(dynamic) num_threads(nthreads)
+			#pragma omp parallel for schedule(dynamic, config::CACHE_LINE_SIZE::value()) num_threads(nthreads)
 			for( size_t tile_id = 0; tile_id < num_tiles; ++tile_id ) {
-
 				config::OMP::localRange(
 						lower_bound[tile_id], upper_bound[tile_id],
 						0, containers_size, tile_size, tile_id, num_tiles
@@ -966,24 +960,19 @@ grb::RC Pipeline::execution() {
 #if defined(_DEBUG) || defined(_LOCAL_DEBUG)
 			fprintf( stderr, "Pipeline::execution: check if any of the coordinates will use the search-variant of asyncSubsetInit:\n" );
 #endif
-			size_t current_coord_idx = 0;
-			for( auto vt = vbegin(); vt != vend(); ++vt ) {
-				auto *coords = *vt;
-				bool will_require_counting_sum = false;
+			for(auto coords : accessed_coordinates) {
+				// Reduction ( operator OR ) over all tiles to check if any of the tiles will need a counting sum+sort
+				bool will_require_counting = false;
 				for( size_t tile_id = 0; tile_id < num_tiles; ++tile_id ) {
-					will_require_counting_sum |= not coords->should_use_bitmask_asyncSubsetInit(
-						num_tiles, tile_id, lower_bound[ tile_id ], upper_bound[ tile_id ]
-					);
-					if( will_require_counting_sum ) {
-#if defined(_DEBUG) || defined(_LOCAL_DEBUG)
-						fprintf( stderr, "  -- coord %zu: will require counting sum+sort for %zu values\n", current_coord_idx, upper_bound[ tile_id ]- lower_bound[ tile_id ] );
-#endif
-						coords->countingSortComputation( num_tiles, lower_bound, upper_bound );
-						break;
-					}
+					will_require_counting |= not coords->should_use_bitmask_asyncSubsetInit(
+							num_tiles, tile_id, lower_bound[ tile_id ], upper_bound[ tile_id ]
+						);
 				}
-				++current_coord_idx;
-				//coords->countingSortComputation( num_tiles, lower_bound, upper_bound );
+				// If any of the tiles will need a counting sum+sort
+				if( will_require_counting ) {
+					// Contains an omp parallel region
+					coords->countingSortComputation( num_tiles, lower_bound, upper_bound );
+				}
 			}
 		}
 

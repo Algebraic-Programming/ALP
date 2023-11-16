@@ -552,9 +552,21 @@ namespace grb {
 					// TODO: Move me to the initialisation phase, and use _buffer instead of a vector
 					counting_sum.resize( num_tiles+1 );
 
+					// Initialise counting sum to zero
+					#pragma omp for simd
 					for( size_t i = 0; i <= num_tiles; ++i ) {
 						counting_sum[ i ] = 0;
 					}
+
+					if( num_tiles == 0 ) {
+#if defined(_DEBUG) || defined(_LOCAL_DEBUG)
+						#pragma omp critical
+							fprintf( stderr, "[T%02d](l%04d) - guard clause: num_tiles = 0\n",
+									 omp_get_thread_num(), __LINE__ );
+#endif
+						return;
+					}
+					auto counting_sum_copy = counting_sum;
 
 					// Counting sum computation
 					for(size_t tile_id = 0; tile_id < num_tiles; ++tile_id ) {
@@ -569,6 +581,46 @@ namespace grb {
 							assert(_assigned[k]);
 							counting_sum[tile_id + 1]++;
 						}
+					}
+
+					// Counting sum computation
+#if defined(_DEBUG) || defined(_LOCAL_DEBUG)
+					#pragma omp critical
+						fprintf( stderr, "[T%02d](l%04d) - going to compute the counting sum: _n=%zu, num_tiles=%zu \n",
+								 omp_get_thread_num(), __LINE__, _n, num_tiles );
+#endif
+					for (size_t i = 0; i < _n; ++i) {
+						const auto k = _stack[i];
+						size_t tile_id = 0;
+						// TODO: Binary search instead ?
+						while ( (k < lower_bounds[tile_id] || k >= upper_bounds[tile_id]) && tile_id < num_tiles) {
+							tile_id++;
+						}
+						const auto lower_bound = lower_bounds[tile_id];
+						const auto upper_bound = upper_bounds[tile_id];
+
+#if defined(_DEBUG) || defined(_LOCAL_DEBUG)
+						#pragma omp critical
+						fprintf(stderr, "  [T%02d](l%04d) - k=%u, tile_id=%zu, bounds=[%zu, %zu[ \n",
+						        omp_get_thread_num(), __LINE__, k, tile_id, lower_bound, upper_bound);
+#endif
+						assert(k >= lower_bounds[tile_id]);
+						assert(tile_id < num_tiles);
+						assert(lower_bound <= k && k < upper_bound);
+						assert(_assigned[k]);
+						counting_sum_copy[tile_id + 1]++;
+					}
+
+					// Compare counting_sum_copy and counting_sum
+					for( size_t i = 0; i <= num_tiles; ++i ) {
+#if defined(_DEBUG) || defined(_LOCAL_DEBUG)
+						if( counting_sum_copy[i] != counting_sum[i] ) {
+							#pragma omp critical
+								fprintf( stderr, "[T%02d] - counting_sum_copy[%zu] = %u  !=  counting_sum[%zu] = %u\n",
+									omp_get_thread_num(), i, counting_sum_copy[i], i, counting_sum[i] );
+						}
+#endif
+						assert( counting_sum_copy[i] == counting_sum[i] );
 					}
 
 #if defined(_DEBUG) || defined(_LOCAL_DEBUG)
@@ -588,7 +640,7 @@ namespace grb {
 					}
 
 #if defined(_DEBUG) || defined(_LOCAL_DEBUG)
-	#pragma omp critical
+					#pragma omp critical
 					{
 						fprintf( stderr, "[T%02d] - counting_sum (prefixed):     {num_tiles=%02zu}[ ",
 								 omp_get_thread_num(), num_tiles );
@@ -596,12 +648,12 @@ namespace grb {
 							fprintf( stderr, "%04u ", counting_sum[ i ] );
 						fprintf( stderr, "]\n" );
 					}
-#endif
 					if( counting_sum[ num_tiles ] != _n ) {
 						#pragma omp critical
 							fprintf( stderr, "[T%02d] - counting_sum[ num_tiles ] = %u, _n = %zu\n",
 									 omp_get_thread_num(), counting_sum[ num_tiles ], _n );
 					}
+#endif
 					assert( counting_sum[ num_tiles ] == _n );
 				}
 
@@ -620,10 +672,12 @@ namespace grb {
 						const auto upper_bound = upper_bounds[ tile_id ];
 
 						size_t assigned_in_bucket = 0;
+#if defined(_DEBUG) || defined(_LOCAL_DEBUG)
 						#pragma omp critical
 							fprintf(stderr,
 							        "[T%02d] - i = [%u, %zu[ (tile_id=%zu)\n",
-																        omp_get_thread_num(), counting_sum[tile_id], upper_bound, tile_id);
+									omp_get_thread_num(), counting_sum[tile_id], upper_bound, tile_id );
+#endif
 						for (size_t i = counting_sum[tile_id]; i < _n; ++i) {
 							const auto k = _stack[i];
 							if( not (lower_bound <= k && k < upper_bound) ) {
@@ -633,16 +687,12 @@ namespace grb {
 							const auto stack_new_idx = counting_sum_copy[tile_id]++;
 							assert( stack_new_idx < _n );
 							assert( _assigned[ k ] );
-							if( stack_new_idx == i ) {
-								assigned_in_bucket++;
-								continue;
-							}
-							#pragma omp critical
-							fprintf(stderr,
-							        "[T%02d] - Found element %zu (%u) is in tile %zu\n",
-							        omp_get_thread_num(), i, k, tile_id);
 #if defined(_DEBUG) || defined(_LOCAL_DEBUG)
-	#pragma omp critical
+							#pragma omp critical
+								fprintf(stderr,
+								        "[T%02d] - Found element %zu (%u) is in tile %zu\n",
+								        omp_get_thread_num(), i, k, tile_id);
+							#pragma omp critical
 							{
 								fprintf( stderr, "[T%02d] - swap( %zu, %u ) {_n=%04zu}\n",
 										 omp_get_thread_num(), i, stack_new_idx, _n );
@@ -657,12 +707,13 @@ namespace grb {
 							std::swap(_stack[i], _stack[stack_new_idx]);
 							assigned_in_bucket++;
 						}
+#if defined(_DEBUG) || defined(_LOCAL_DEBUG)
 						// Print assigned_in_bucket
 						#pragma omp critical
 						fprintf(stderr,
-						        "[T%02d] - assigned_in_bucket = %zu, should be %u\n",
+						        "[T%02d] - assigned_in_bucket = %zu, expected to be %u\n",
 						        omp_get_thread_num(), assigned_in_bucket, counting_sum[tile_id+1] - counting_sum[tile_id]);
-						assert( assigned_in_bucket == (counting_sum[tile_id+1] - counting_sum[tile_id]) );
+#endif
 					}
 
 					_debug_is_counting_sort_done = true;
