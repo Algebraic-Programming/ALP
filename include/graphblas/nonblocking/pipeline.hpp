@@ -103,7 +103,71 @@ namespace grb {
 		class Pipeline;
 
 		struct PipelineFunctorStage {
+			const size_t n;
+			const size_t data_type_size;
+			const bool dense_descr;
+			const bool dense_mask;
+			void * const output_vector_ptr;
+			void * const output_aux_vector_ptr;
+			Coordinates< nonblocking > * const coor_output_ptr;
+			Coordinates< nonblocking > * const coor_output_aux_ptr;
+			const void * const input_a_ptr;
+			const void * const input_b_ptr;
+			const void * const input_c_ptr;
+			const void * const input_d_ptr;
+			const Coordinates< nonblocking > * const coor_a_ptr;
+			const Coordinates< nonblocking > * const coor_b_ptr;
+			const Coordinates< nonblocking > * const coor_c_ptr;
+			const Coordinates< nonblocking > * const coor_d_ptr;
+			const void * const input_matrix;
+
+			PipelineFunctorStage(
+				const size_t n,
+				const size_t data_type_size,
+				const bool dense_descr,
+				const bool dense_mask,
+				void * const output_container_ptr,
+				void * const output_aux_container_ptr,
+				Coordinates< nonblocking > * const coor_output_ptr,
+				Coordinates< nonblocking > * const coor_output_aux_ptr,
+				const void * const input_a_ptr,
+				const void * const input_b_ptr,
+				const void * const input_c_ptr,
+				const void * const input_d_ptr,
+				const Coordinates< nonblocking > * const coor_a_ptr,
+				const Coordinates< nonblocking > * const coor_b_ptr,
+				const Coordinates< nonblocking > * const coor_c_ptr,
+				const Coordinates< nonblocking > * const coor_d_ptr,
+				const void * const input_matrix
+			) :
+			n( n ),
+			data_type_size( data_type_size ),
+			dense_descr( dense_descr ),
+			dense_mask( dense_mask ),
+			output_vector_ptr( output_container_ptr ),
+			output_aux_vector_ptr( output_aux_container_ptr ),
+			coor_output_ptr( coor_output_ptr ),
+			coor_output_aux_ptr( coor_output_aux_ptr ),
+			input_a_ptr( input_a_ptr ),
+			input_b_ptr( input_b_ptr ),
+			input_c_ptr( input_c_ptr ),
+			input_d_ptr( input_d_ptr ),
+			coor_a_ptr( coor_a_ptr ),
+			coor_b_ptr( coor_b_ptr ),
+			coor_c_ptr( coor_c_ptr ),
+			coor_d_ptr( coor_d_ptr ),
+			input_matrix( input_matrix )
+			{}
+
 			virtual ~PipelineFunctorStage() = default;
+
+			RC operator()(
+				internal::Pipeline &pipeline,
+				const size_t lower_bound, const size_t upper_bound
+			) noexcept {
+				std::cerr << "SHOULD NOT BE CALLED" << std::endl;
+				std::abort();
+			}
 		};
 		/**
 		 * Encodes a single pipeline that may be expanded, merged, or executed.
@@ -223,6 +287,8 @@ namespace grb {
 #endif
 				bool empty() const;
 
+				typename std::vector< PipelineFunctorStage >::iterator pfbegin();
+				typename std::vector< PipelineFunctorStage >::iterator pfend();
 				typename std::vector< stage_type >::iterator pbegin();
 				typename std::vector< stage_type >::iterator pend();
 				typename std::set< Coordinates< nonblocking > * >::iterator vbegin();
@@ -230,6 +296,7 @@ namespace grb {
 
 				size_t accessedCoordinatesSize() const;
 				size_t getNumStages() const;
+				size_t getNumFunctorStages() const;
 				size_t getContainersSize() const;
 
 				/**

@@ -248,6 +248,14 @@ typename std::vector< Pipeline::stage_type >::iterator Pipeline::pend() {
 	return stages.end();
 }
 
+typename std::vector< PipelineFunctorStage >::iterator Pipeline::pfbegin() {
+	return functorStages.begin();
+}
+
+typename std::vector< PipelineFunctorStage >::iterator Pipeline::pfend() {
+	return functorStages.end();
+}
+
 typename std::set< Coordinates< grb::nonblocking > * >::iterator
 Pipeline::vbegin() {
 	return accessed_coordinates.begin();
@@ -266,6 +274,10 @@ size_t Pipeline::getNumStages() const {
 	return stages.size();
 }
 
+size_t Pipeline::getNumFunctorStages() const {
+	return stages.size();
+}
+
 size_t Pipeline::getContainersSize() const {
 	return containers_size;
 }
@@ -273,7 +285,203 @@ size_t Pipeline::getContainersSize() const {
 
 void Pipeline::addFunctorStage(
 		const PipelineFunctorStage &&functorStage, const Opcode opcode
-) {}
+) {
+
+	// Gather data like in addStage
+	const size_t n = functorStage.n;
+	const size_t data_type_size = functorStage.data_type_size;
+	const bool dense_descr = functorStage.dense_descr;
+	const bool dense_mask = functorStage.dense_mask;
+	void * const output_vector_ptr = functorStage.output_vector_ptr;
+	void * const output_aux_vector_ptr = functorStage.output_aux_vector_ptr;
+	Coordinates< nonblocking > * const coor_output_ptr = functorStage.coor_output_ptr;
+	Coordinates< nonblocking > * const coor_output_aux_ptr = functorStage.coor_output_aux_ptr;
+	const void * const input_a_ptr = functorStage.input_a_ptr;
+	const void * const input_b_ptr = functorStage.input_b_ptr;
+	const void * const input_c_ptr = functorStage.input_c_ptr;
+	const void * const input_d_ptr = functorStage.input_d_ptr;
+	const Coordinates< nonblocking > * const coor_a_ptr = functorStage.coor_a_ptr;
+	const Coordinates< nonblocking > * const coor_b_ptr = functorStage.coor_b_ptr;
+	const Coordinates< nonblocking > * const coor_c_ptr = functorStage.coor_c_ptr;
+	const Coordinates< nonblocking > * const coor_d_ptr = functorStage.coor_d_ptr;
+	const void * const input_matrix = functorStage.input_matrix;
+
+	assert( functorStages.size() != 0 || containers_size == 0);
+
+	if( functorStages.size() == 0 ) {
+		containers_size = n;
+	}
+
+	// the size of containers and the data type should match
+	assert( containers_size == n );
+
+	//TODO (internal issue 617): does the size of data matches for all containers?
+
+	// pipelines may consist of primitives that operate on different data types,
+	// e.g., double and bool the analytic model should take into account the
+	// different data types and make a proper estimation an easy and perhaps
+	// temporary fix is to use the maximum size of the data types involved in a
+	// pipeline
+	if( data_type_size > size_of_data_type ) {
+		size_of_data_type = data_type_size;
+	}
+
+	functorStages.push_back( std::move( functorStage ) );
+	opcodes.push_back( opcode );
+
+	if( output_vector_ptr != nullptr ) {
+		output_vectors.insert( output_vector_ptr );
+	}
+
+	if( output_aux_vector_ptr != nullptr ) {
+		output_vectors.insert( output_aux_vector_ptr );
+	}
+
+	// special treatment for an SpMV operation as the input must not be overwritten
+	// by another stage of the pipeline
+	if( opcode == Opcode::BLAS2_VXM_GENERIC ) {
+
+		if( input_a_ptr != nullptr ) {
+			input_vectors.insert( input_a_ptr );
+			vxm_input_vectors.insert( input_a_ptr );
+		}
+
+		if( input_b_ptr != nullptr ) {
+			input_vectors.insert( input_b_ptr );
+			vxm_input_vectors.insert( input_b_ptr );
+		}
+
+		if( input_c_ptr != nullptr ) {
+			input_vectors.insert( input_c_ptr );
+			vxm_input_vectors.insert( input_c_ptr );
+		}
+
+		if( input_d_ptr != nullptr ) {
+			input_vectors.insert( input_d_ptr );
+			vxm_input_vectors.insert( input_d_ptr );
+		}
+
+		// in the current implementation that supports level-1 and level-2 operations
+		// a pointer to an input matrix may be passed only by an SpMV operation
+		// TODO once level-3 operations are supported, the following code should be
+		//      moved
+		if( input_matrix != nullptr ) {
+			input_matrices.insert( input_matrix );
+		}
+	} else {
+		if( input_a_ptr != nullptr ) {
+			input_vectors.insert( input_a_ptr );
+		}
+
+		if( input_b_ptr != nullptr ) {
+			input_vectors.insert( input_b_ptr );
+		}
+
+		if( input_c_ptr != nullptr ) {
+			input_vectors.insert( input_c_ptr );
+		}
+
+		if( input_d_ptr != nullptr ) {
+			input_vectors.insert( input_d_ptr );
+		}
+	}
+
+	// update all the sets of the pipeline by adding the entries of the new stage
+	if( coor_a_ptr != nullptr ) {
+		if( dense_descr ) {
+			dense_descr_coordinates.insert(
+					const_cast< Coordinates< nonblocking > * >( coor_a_ptr ) );
+		} else {
+			accessed_coordinates.insert(
+					const_cast< Coordinates< nonblocking > * >( coor_a_ptr ) );
+		}
+	}
+
+	if( coor_b_ptr != nullptr ) {
+		if( dense_descr ) {
+			dense_descr_coordinates.insert(
+					const_cast< internal::Coordinates< nonblocking > * >( coor_b_ptr ) );
+		} else {
+			accessed_coordinates.insert(
+					const_cast< internal::Coordinates< nonblocking > * >( coor_b_ptr ) );
+		}
+	}
+
+	if( coor_c_ptr != nullptr ) {
+		if( dense_descr ) {
+			dense_descr_coordinates.insert(
+					const_cast< internal::Coordinates<nonblocking > * >( coor_c_ptr ) );
+		} else {
+			accessed_coordinates.insert(
+					const_cast< internal::Coordinates< nonblocking > * >( coor_c_ptr ) );
+		}
+	}
+
+	if( coor_d_ptr != nullptr ) {
+		if( dense_descr ) {
+			dense_descr_coordinates.insert(
+					const_cast< internal::Coordinates< nonblocking > * >( coor_d_ptr ) );
+		} else {
+			accessed_coordinates.insert(
+					const_cast< internal::Coordinates< nonblocking > * >( coor_d_ptr ) );
+		}
+	}
+
+	// keep track of out-of-place operations that may make a dense vector sparse
+	// such operations disable potential optimizations for already dense vectors
+	if( opcode == Opcode::BLAS1_EWISEAPPLY ||
+	    opcode == Opcode::BLAS1_MASKED_EWISEAPPLY ||
+	    opcode == Opcode::IO_SET_MASKED_SCALAR ||
+	    opcode == Opcode::IO_SET_VECTOR ||
+	    opcode == Opcode::IO_SET_MASKED_VECTOR
+			) {
+		// the output of these specific primitives cannot be nullptr
+
+		if( dense_descr ) {
+			dense_descr_coordinates.insert( coor_output_ptr );
+		}
+
+		// when the dense descriptor is not provided or the operation is masked
+		// there is no guarantee that an already dense vector will remain dense
+		// therefore, the pipeline is marked to disable the already dense optimization
+		if( !dense_descr || ( !dense_mask && (
+				opcode == Opcode::BLAS1_MASKED_EWISEAPPLY ||
+				opcode == Opcode::IO_SET_MASKED_SCALAR ||
+				opcode == Opcode::IO_SET_MASKED_VECTOR
+		) ) ) {
+			contains_out_of_place_primitive = true;
+			out_of_place_output_coordinates.insert( coor_output_ptr );
+			accessed_coordinates.insert( coor_output_ptr );
+		}
+
+		// TODO: once UNZIP is complete
+		// the second output is always nullptr for the out-of-place primitives that
+		// are handled here
+		// however, once we have the complete implementation of unzip (which handles
+		// sparsity) then need to consider the second output here
+	} else {
+
+		// check the first output
+		if( coor_output_ptr != nullptr ) {
+			if( dense_descr ) {
+				dense_descr_coordinates.insert( coor_output_ptr );
+			} else {
+				accessed_coordinates.insert( coor_output_ptr );
+			}
+		}
+
+		// check the second output
+		if( coor_output_aux_ptr != nullptr ) {
+			if( dense_descr ) {
+				dense_descr_coordinates.insert( coor_output_aux_ptr );
+			} else {
+				accessed_coordinates.insert( coor_output_aux_ptr );
+			}
+		}
+	}
+
+	warnIfExceeded();
+}
 
 void Pipeline::addStage(
 		const Pipeline::stage_type &&func, const Opcode opcode,
@@ -290,7 +498,7 @@ void Pipeline::addStage(
 		const Coordinates< nonblocking > * const coor_d_ptr,
 		const void * const input_matrix
 ) {
-	assert( stages.size() != 0 || containers_size == 0);
+//	assert( stages.size() != 0 || containers_size == 0);
 
 	if( stages.size() == 0 ) {
 		containers_size = n;
@@ -878,8 +1086,8 @@ grb::RC Pipeline::execution() {
 #endif
 
 			RC local_ret = SUCCESS;
-			for( std::vector< stage_type >::iterator pt = pbegin();
-				pt != pend(); ++pt
+			for( std::vector< PipelineFunctorStage >::iterator pt = pfbegin();
+				pt != pfend(); ++pt
 			) {
 				local_ret = local_ret
 					? local_ret
@@ -954,8 +1162,8 @@ grb::RC Pipeline::execution() {
 		for( size_t tile_id = 0; tile_id < num_tiles; ++tile_id ) {
 
 			RC local_ret = SUCCESS;
-			for( std::vector< stage_type >::iterator pt = pbegin();
-				pt != pend(); ++pt
+			for( std::vector< PipelineFunctorStage >::iterator pt = pfbegin();
+				pt != pfend(); ++pt
 			) {
 				local_ret = local_ret
 					? local_ret

@@ -452,22 +452,41 @@ namespace grb {
 					const InputType3 * __restrict__ const z,
 					const InputType4 * __restrict__ const vm
 					) :
-				u( u ),
-				mask( mask ),
-				v( v ),
-				v_mask( v_mask ),
-				A( A ),
-				add( add ),
-				mul( mul ),
-				row_l2g( row_l2g ),
-				row_g2l( row_g2l ),
-				col_l2g( col_l2g ),
-				col_g2l( col_g2l ),
-				y( y ),
-				x( x ),
-				z( z ),
-				vm( vm )
-			{}
+					PipelineFunctorStage(
+							size( u ),
+							sizeof( IOType ),
+							dense_descr,
+							true,
+							&u,
+							nullptr,
+							&internal::getCoordinates( u ),
+							nullptr,
+							&v,
+							masked ? &mask : nullptr,
+							input_masked ? &v_mask : nullptr,
+							nullptr,
+							&internal::getCoordinates( v ),
+							masked ? &internal::getCoordinates( mask ) : nullptr,
+							input_masked ? &internal::getCoordinates( v_mask ) : nullptr,
+							nullptr,
+							&A
+							),
+					u( u ),
+					mask( mask ),
+					v( v ),
+					v_mask( v_mask ),
+					A( A ),
+					add( add ),
+					mul( mul ),
+					row_l2g( row_l2g ),
+					row_g2l( row_g2l ),
+					col_l2g( col_l2g ),
+					col_g2l( col_g2l ),
+					y( y ),
+					x( x ),
+					z( z ),
+					vm( vm )
+				{}
 
 			RC operator()(
 					internal::Pipeline &pipeline,
@@ -1063,6 +1082,24 @@ namespace grb {
 					std::move( vxmFunctor ),
 					internal::Opcode::BLAS2_VXM_GENERIC
 				);
+
+			/*
+			ret = ret ? ret : internal::le.addStage(
+					std::move( func ),
+					internal::Opcode::BLAS2_VXM_GENERIC,
+					size( u ), sizeof( IOType ), dense_descr, true,
+					&u, nullptr, &internal::getCoordinates( u ), nullptr,
+					&v,
+					masked ? &mask : nullptr,
+					input_masked ? &v_mask : nullptr,
+					nullptr,
+					&internal::getCoordinates( v ),
+					masked ? &internal::getCoordinates( mask ) : nullptr,
+					input_masked ? &internal::getCoordinates( v_mask ) : nullptr,
+					nullptr,
+					&A
+				);
+			*/
 
 #ifdef _NONBLOCKING_DEBUG
 			std::cout << "\t\tStage added to a pipeline: vxm_generic" << std::endl;
