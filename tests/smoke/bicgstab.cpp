@@ -28,20 +28,24 @@
 #include <graphblas.hpp>
 #include <utils/output_verification.hpp>
 
-#define TOL 0.0001
-#define MAX_ITERS 10000
-
-#define C1 0.001
-#define C2 0.001
-
-
 using namespace grb;
 using namespace algorithms;
+
+
+constexpr double TOL = 0.0001;
+
+/** Default maximum number of solver iterations */
+constexpr size_t MAX_ITERS = 10000;
+
+constexpr double C1 = 0.001;
+
+constexpr double C2 = 0.001;
 
 struct input {
 	char filename[ 1024 ];
 	bool direct;
 	size_t rep;
+	size_t solver_iterations;
 };
 
 struct output {
@@ -143,7 +147,7 @@ void grbProgram( const struct input &data_in, struct output &out ) {
 		timer.reset();
 		rc = bicgstab(
 			x, L, b,
-			MAX_ITERS, TOL,
+			data_in.solver_iterations, TOL,
 			out.iterations, out.residual,
 			r, buf1, buf2, buf3, buf4, buf5,
 			ring, minus, divide
@@ -189,7 +193,7 @@ void grbProgram( const struct input &data_in, struct output &out ) {
 			if( rc == SUCCESS ) {
 				rc = bicgstab(
 					x, L, b,
-					MAX_ITERS, TOL,
+					data_in.solver_iterations, TOL,
 					out.iterations, out.residual,
 					r, buf1, buf2, buf3, buf4, buf5
 				);
@@ -199,8 +203,8 @@ void grbProgram( const struct input &data_in, struct output &out ) {
 		out.times.useful = time_taken / static_cast< double >( out.rep );
 		// print timing at root process
 		if( grb::spmd<>::pid() == 0 ) {
-			std::cout << "Time taken for a " << out.rep << " "
-				<< "Conjugate Gradients calls (hot start): " << out.times.useful << ". "
+			std::cout << "Time taken for " << out.rep << " BiCGstab "
+				<< "calls (hot start): " << out.times.useful << ". "
 				<< "Error code is " << out.error_code << std::endl;
 			std::cout << "\tnumber of BiCGstab iterations: " << out.iterations << "\n";
 			std::cout << "\tmilliseconds per iteration: "
@@ -236,18 +240,23 @@ void grbProgram( const struct input &data_in, struct output &out ) {
 
 int main( int argc, char ** argv ) {
 	// sanity check
-	if( argc < 3 || argc > 7 ) {
+	if( argc < 3 || argc > 8 ) {
 		std::cout << "Usage: " << argv[ 0 ]
 			<< " <dataset> <direct/indirect> "
-			<< "(inner iterations) (outer iterations) (verification <truth-file>)\n";
+			<< "(inner iterations) (outer iterations) (solver iterations) "
+			<< "(verification <truth-file>)\n";
 		std::cout << "<dataset> and <direct/indirect> are mandatory arguments.\n";
 		std::cout << "(inner iterations) is optional, the default is "
 			<< grb::config::BENCHMARKING::inner() << ". "
-			<< "If set to zero, the program will select a number of iterations "
-			<< "approximately required to take at least one second to complete.\n";
+			<< "If this integer is set to zero, the program will select a number of "
+			<< "inner iterations that results in at least one second of computation "
+			<< "time.\n";
 		std::cout << "(outer iterations) is optional, the default is "
 			<< grb::config::BENCHMARKING::outer()
-			<< ". This value must be strictly larger than 0.\n";
+			<< ". This integer must be strictly larger than 0.\n";
+		std::cout << "(solver iterations) is optional, the default is "
+			<< MAX_ITERS
+			<< ". This integer must be strictly larger than 0.\n";
 		std::cout << "(verification <truth-file>) is optional." << std::endl;
 		return 0;
 	}
@@ -257,7 +266,7 @@ int main( int argc, char ** argv ) {
 	struct input in;
 
 	// get file name
-	(void)strncpy( in.filename, argv[ 1 ], 1023 );
+	(void) strncpy( in.filename, argv[ 1 ], 1023 );
 	in.filename[ 1023 ] = '\0';
 
 	// get direct or indirect addressing
@@ -273,9 +282,9 @@ int main( int argc, char ** argv ) {
 	if( argc >= 4 ) {
 		in.rep = strtoumax( argv[ 3 ], &end, 10 );
 		if( argv[ 3 ] == end ) {
-			std::cerr << "Could not parse argument " << argv[ 2 ] << " "
+			std::cerr << "Could not parse argument " << argv[ 3 ] << " "
 				<< "for number of inner experiment repititions." << std::endl;
-			return 2;
+			return 20;
 		}
 	}
 
@@ -284,35 +293,47 @@ int main( int argc, char ** argv ) {
 	if( argc >= 5 ) {
 		outer = strtoumax( argv[ 4 ], &end, 10 );
 		if( argv[ 4 ] == end ) {
-			std::cerr << "Could not parse argument " << argv[ 3 ] << " "
+			std::cerr << "Could not parse argument " << argv[ 4 ] << " "
 				<< "for number of outer experiment repititions." << std::endl;
-			return 4;
+			return 40;
+		}
+	}
+
+	in.solver_iterations = MAX_ITERS;
+	if( argc >= 6 ) {
+		in.solver_iterations = strtoumax( argv[ 5 ], &end, 10 );
+		if( argv[ 5 ] == end ) {
+			std::cerr << "Could not parse argument " << argv[ 5 ] << " "
+				<< "for the maximum number of solver iterations." << std::endl;
+			return 50;
 		}
 	}
 
 	// check for verification of the output
 	bool verification = false;
 	char truth_filename[ 1024 ];
-	if( argc >= 6 ) {
-		if( strncmp( argv[ 5 ], "verification", 12 ) == 0 ) {
+	if( argc >= 7 ) {
+		if( strncmp( argv[ 6 ], "verification", 12 ) == 0 ) {
 			verification = true;
-			if( argc >= 7 ) {
-				(void)strncpy( truth_filename, argv[ 6 ], 1023 );
+			if( argc >= 8 ) {
+				(void) strncpy( truth_filename, argv[ 7 ], 1023 );
 				truth_filename[ 1023 ] = '\0';
 			} else {
 				std::cerr << "The verification file was not provided as an argument."
 					<< std::endl;
-				return 5;
+				return 60;
 			}
 		} else {
-			std::cerr << "Could not parse argument \"" << argv[ 5 ] << "\", "
+			std::cerr << "Could not parse argument \"" << argv[ 6 ] << "\", "
 				<< "the optional \"verification\" argument was expected." << std::endl;
-			return 5;
+			return 70;
 		}
 	}
 
 	std::cout << "Executable called with parameters " << in.filename << ", "
-		<< "inner repititions = " << in.rep << ", and outer reptitions = " << outer
+		<< "inner repititions = " << in.rep << ", "
+		<< "outer reptitions = " << outer << ", and "
+		<< "solver iterations = " << in.solver_iterations << "."
 		<< std::endl;
 
 	// the output struct
@@ -331,7 +352,7 @@ int main( int argc, char ** argv ) {
 		if( rc != SUCCESS ) {
 			std::cerr << "launcher.exec returns with non-SUCCESS error code "
 				<< (int)rc << std::endl;
-			return 6;
+			return 80;
 		}
 	}
 
@@ -343,7 +364,7 @@ int main( int argc, char ** argv ) {
 	if( rc != SUCCESS ) {
 		std::cerr << "benchmarker.exec returns with non-SUCCESS error code "
 			<< grb::toString( rc ) << std::endl;
-		return 8;
+		return 90;
 	} else if( out.error_code == 0 ) {
 		std::cout << "Benchmark completed successfully and took " << out.iterations
 			<< " iterations to converge with residual " << out.residual << ".\n";
