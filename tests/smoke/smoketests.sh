@@ -162,7 +162,7 @@ for BACKEND in ${BACKENDS[@]}; do
 			echo "                                 grb::Launcher in automatic mode with statically sized IO,"
 			echo "                                 and uses sequential file IO in direct mode."
 			if [ -f ${INPUT_DIR}/west0497.mtx ]; then
-			$runner ${TEST_BIN_DIR}/simple_pagerank_${BACKEND} ${INPUT_DIR}/west0497.mtx direct 1 1 verification ${OUTPUT_VERIFICATION_DIR}/pagerank_out_west0497_ref &> ${TEST_OUT_DIR}/simple_pagerank_${BACKEND}_west0497_${P}_${T}.log
+			$runner ${TEST_BIN_DIR}/simple_pagerank_${BACKEND} ${INPUT_DIR}/west0497.mtx direct 1 1 1000 verification ${OUTPUT_VERIFICATION_DIR}/pagerank_out_west0497_ref &> ${TEST_OUT_DIR}/simple_pagerank_${BACKEND}_west0497_${P}_${T}.log
 				head -1 ${TEST_OUT_DIR}/simple_pagerank_${BACKEND}_west0497_${P}_${T}.log
 				grep 'Test OK' ${TEST_OUT_DIR}/simple_pagerank_${BACKEND}_west0497_${P}_${T}.log || echo "Test FAILED"
 			else
@@ -190,7 +190,7 @@ for BACKEND in ${BACKENDS[@]}; do
 			echo "                                 employs the grb::Launcher in automatic mode. It uses"
 			echo "                                 direct-mode file IO."
 			if [ -f ${INPUT_DIR}/gyro_m.mtx ]; then
-				$runner ${TEST_BIN_DIR}/conjugate_gradient_${BACKEND} ${INPUT_DIR}/gyro_m.mtx direct 1 1 verification ${OUTPUT_VERIFICATION_DIR}/conjugate_gradient_out_gyro_m_ref &> ${TEST_OUT_DIR}/conjugate_gradient_${BACKEND}_${P}_${T}.log
+				$runner ${TEST_BIN_DIR}/conjugate_gradient_${BACKEND} ${INPUT_DIR}/gyro_m.mtx direct 1 1 1000 verification ${OUTPUT_VERIFICATION_DIR}/conjugate_gradient_out_gyro_m_ref &> ${TEST_OUT_DIR}/conjugate_gradient_${BACKEND}_${P}_${T}.log
 				head -1 ${TEST_OUT_DIR}/conjugate_gradient_${BACKEND}_${P}_${T}.log
 				grep 'Test OK' ${TEST_OUT_DIR}/conjugate_gradient_${BACKEND}_${P}_${T}.log || echo "Test FAILED"
 			else
@@ -205,7 +205,7 @@ for BACKEND in ${BACKENDS[@]}; do
 			echo "                                 variant."
 			echo "Functional test executable: ${TEST_BIN_DIR}/kcore_decomposition_${BACKEND}"
 			if [ -f ${INPUT_DIR}/EPA.mtx ]; then
-				$runner ${TEST_BIN_DIR}/kcore_decomposition_${BACKEND} ${INPUT_DIR}/EPA.mtx direct 1 1 verification ${OUTPUT_VERIFICATION_DIR}/kcore_decomposition_eda_ref &> ${TEST_OUT_DIR}/kcore_decomposition_${BACKEND}_EPA_${P}_${T}.log
+				$runner ${TEST_BIN_DIR}/kcore_decomposition_${BACKEND} ${INPUT_DIR}/EPA.mtx direct 1 1 1000 verification ${OUTPUT_VERIFICATION_DIR}/kcore_decomposition_eda_ref &> ${TEST_OUT_DIR}/kcore_decomposition_${BACKEND}_EPA_${P}_${T}.log
 				grep 'Test OK' ${TEST_OUT_DIR}/kcore_decomposition_${BACKEND}_EPA_${P}_${T}.log || printf 'Test FAILED.\n'
 			else
 				echo "Test DISABLED; dataset not found. Provide EPA.mtx in the ./datasets/ directory to enable."
@@ -221,7 +221,7 @@ for BACKEND in ${BACKENDS[@]}; do
 				echo "                                 verifies against a ground-truth solution vector. The test"
 				echo "                                 employs the grb::Launcher in automatic mode. It uses"
 				echo "                                 direct-mode file IO."
-				$runner ${TEST_BIN_DIR}/conjugate_gradient_complex_${BACKEND} ${TEST_DATA_DIR}/${TESTNAME}.mtx direct 1 1 verification ${OUTPUT_VERIFICATION_DIR}/complex_conjugate_conjugate_gradient_out_${TESTNAME}_ref &> ${TEST_OUT_DIR}/conjugate_gradient_complex_${BACKEND}_${P}_${T}.log
+				$runner ${TEST_BIN_DIR}/conjugate_gradient_complex_${BACKEND} ${TEST_DATA_DIR}/${TESTNAME}.mtx direct 1 1 1000 verification ${OUTPUT_VERIFICATION_DIR}/complex_conjugate_conjugate_gradient_out_${TESTNAME}_ref &> ${TEST_OUT_DIR}/conjugate_gradient_complex_${BACKEND}_${P}_${T}.log
 				head -1 ${TEST_OUT_DIR}/conjugate_gradient_complex_${BACKEND}_${P}_${T}.log
 				grep 'Test OK' ${TEST_OUT_DIR}/conjugate_gradient_complex_${BACKEND}_${P}_${T}.log || echo "Test FAILED"
 			else
@@ -264,7 +264,7 @@ for BACKEND in ${BACKENDS[@]}; do
 			echo "                                 employs the grb::Launcher in automatic mode. It uses"
 			echo "                                 direct-mode file IO."
 			if [ -f ${INPUT_DIR}/gyro_m.mtx ]; then
-				$runner ${TEST_BIN_DIR}/bicgstab_${BACKEND} ${INPUT_DIR}/gyro_m.mtx direct 1 1 verification ${OUTPUT_VERIFICATION_DIR}/conjugate_gradient_out_gyro_m_ref &> ${TEST_OUT_DIR}/bicgstab_${BACKEND}_${P}_${T}.log
+				$runner ${TEST_BIN_DIR}/bicgstab_${BACKEND} ${INPUT_DIR}/gyro_m.mtx direct 1 1 1000 verification ${OUTPUT_VERIFICATION_DIR}/conjugate_gradient_out_gyro_m_ref &> ${TEST_OUT_DIR}/bicgstab_${BACKEND}_${P}_${T}.log
 				head -1 ${TEST_OUT_DIR}/bicgstab_${BACKEND}_${P}_${T}.log
 				grep 'Test OK' ${TEST_OUT_DIR}/bicgstab_${BACKEND}_${P}_${T}.log || echo "Test FAILED"
 			else
@@ -276,7 +276,7 @@ for BACKEND in ${BACKENDS[@]}; do
 			echo "                                 dataset (neurons=1024, layers=120, offset=294) taken from"
 			echo "                                 ${GNN_DATASET_PATH} and using thresholding 32."
 			if [ -d ${GNN_DATASET_PATH} ]; then
-				$runner ${TEST_BIN_DIR}/graphchallenge_nn_single_inference_${BACKEND} ${GNN_DATASET_PATH} 1024 120 294 1 32 indirect 1 1 verification ${OUTPUT_VERIFICATION_DIR}/graphchallenge_nn_out_1024_120_294_32_threshold_ref &> ${TEST_OUT_DIR}/graphchallenge_nn_single_inference_${BACKEND}_${P}_${T}.log
+				$runner ${TEST_BIN_DIR}/graphchallenge_nn_single_inference_${BACKEND} ${GNN_DATASET_PATH} 1024 120 294 1 32 indirect 1 1 1000 verification ${OUTPUT_VERIFICATION_DIR}/graphchallenge_nn_out_1024_120_294_32_threshold_ref &> ${TEST_OUT_DIR}/graphchallenge_nn_single_inference_${BACKEND}_${P}_${T}.log
 				head -1 ${TEST_OUT_DIR}/graphchallenge_nn_single_inference_${BACKEND}_${P}_${T}.log
 				grep 'Test OK' ${TEST_OUT_DIR}/graphchallenge_nn_single_inference_${BACKEND}_${P}_${T}.log || echo "Test FAILED"
 			else
@@ -288,7 +288,7 @@ for BACKEND in ${BACKENDS[@]}; do
 			echo "                                 dataset (neurons=1024, layers=120, offset=294) taken from"
 			echo "                                 ${GNN_DATASET_PATH} and without using thresholding."
 			if [ -d ${GNN_DATASET_PATH} ]; then
-				$runner ${TEST_BIN_DIR}/graphchallenge_nn_single_inference_${BACKEND} ${GNN_DATASET_PATH} 1024 120 294 0 0 indirect 1 1 verification ${OUTPUT_VERIFICATION_DIR}/graphchallenge_nn_out_1024_120_294_no_threshold_ref &> ${TEST_OUT_DIR}/graphchallenge_nn_single_inference_${BACKEND}_${P}_${T}.log
+				$runner ${TEST_BIN_DIR}/graphchallenge_nn_single_inference_${BACKEND} ${GNN_DATASET_PATH} 1024 120 294 0 0 indirect 1 1 1000 verification ${OUTPUT_VERIFICATION_DIR}/graphchallenge_nn_out_1024_120_294_no_threshold_ref &> ${TEST_OUT_DIR}/graphchallenge_nn_single_inference_${BACKEND}_${P}_${T}.log
 				head -1 ${TEST_OUT_DIR}/graphchallenge_nn_single_inference_${BACKEND}_${P}_${T}.log
 				grep 'Test OK' ${TEST_OUT_DIR}/graphchallenge_nn_single_inference_${BACKEND}_${P}_${T}.log || echo "Test FAILED"
 			else
@@ -390,7 +390,7 @@ for BACKEND in ${BACKENDS[@]}; do
 				echo "                                 backend."
 				echo "Functional test executable: ${TEST_BIN_DIR}/kcore_decomposition_critical_${BACKEND}"
 				if [ -f ${INPUT_DIR}/EPA.mtx ]; then
-					$runner ${TEST_BIN_DIR}/kcore_decomposition_critical_${BACKEND} ${INPUT_DIR}/EPA.mtx direct 1 1 verification ${OUTPUT_VERIFICATION_DIR}/kcore_decomposition_eda_ref &> ${TEST_OUT_DIR}/kcore_decomposition_critical_${BACKEND}_EPA_${P}_${T}.log
+					$runner ${TEST_BIN_DIR}/kcore_decomposition_critical_${BACKEND} ${INPUT_DIR}/EPA.mtx direct 1 1 1000 verification ${OUTPUT_VERIFICATION_DIR}/kcore_decomposition_eda_ref &> ${TEST_OUT_DIR}/kcore_decomposition_critical_${BACKEND}_EPA_${P}_${T}.log
 					grep 'Test OK' ${TEST_OUT_DIR}/kcore_decomposition_critical_${BACKEND}_EPA_${P}_${T}.log || printf 'Test FAILED.\n'
 				else
 					echo "Test DISABLED; dataset not found. Provide EPA.mtx in the ./datasets/ directory to enable."
