@@ -28,14 +28,22 @@
 #include <graphblas.hpp>
 #include <utils/output_verification.hpp>
 
-
 using namespace grb;
 using namespace algorithms;
+
+
+/** Default maximum number of iterations. */
+constexpr const size_t max_iters = 1000;
+
+constexpr const double alpha = 0.85;
+
+constexpr const double tol = 1e-7;
 
 struct input {
 	char filename[ 1024 ];
 	bool direct;
 	size_t rep;
+	size_t solver_iterations;
 };
 
 struct output {
@@ -70,9 +78,7 @@ void grbProgram( const struct input &data_in, struct output &out ) {
 	// create local parser
 	grb::utils::MatrixFileReader< void,
 		std::conditional<
-			(
-				sizeof( grb::config::RowIndexType ) > sizeof( grb::config::ColIndexType )
-			),
+			(sizeof( grb::config::RowIndexType ) > sizeof( grb::config::ColIndexType )),
 			grb::config::RowIndexType,
 			grb::config::ColIndexType
 		>::type
@@ -128,14 +134,17 @@ void grbProgram( const struct input &data_in, struct output &out ) {
 		rc = simple_pagerank< descriptors::no_operation >(
 			pr, L,
 			buf1, buf2, buf3,
-			0.85, 1e-7, 1000,
+			alpha, tol, data_in.solver_iterations,
 			&( out.iterations ), &( out.residual )
 		);
 		double single_time = timer.time();
-		if( rc != SUCCESS ) {
+		if( !(rc == SUCCESS || rc == FAILED) ) {
 			std::cerr << "Failure: call to simple_pagerank did not succeed "
 				<< "(" << toString( rc ) << ")." << std::endl;
 			out.error_code = 20;
+		}
+		if( rc == FAILED ) {
+			std::cout << "Warning: call to simple_pagerank did not converge\n";
 		}
 		if( rc == SUCCESS ) {
 			rc = collectives<>::reduce( single_time, 0, operators::max< double >() );
@@ -145,8 +154,13 @@ void grbProgram( const struct input &data_in, struct output &out ) {
 		}
 		out.times.useful = single_time;
 		out.rep = static_cast< size_t >( 1000.0 / single_time ) + 1;
-		if( rc == SUCCESS ) {
+		if( rc == SUCCESS || rc == FAILED ) {
 			if( s == 0 ) {
+				if( rc == FAILED ) {
+					std::cout << "Info: cold simple_pagerank did not converge within ";
+				} else {
+					std::cout << "Info: cold simple_pagerank completed within ";
+				}
 				std::cout << "Info: cold pagerank completed within "
 					<< out.iterations << " iterations. Last computed residual is "
 					<< out.residual << ". Time taken was " << single_time
@@ -164,24 +178,23 @@ void grbProgram( const struct input &data_in, struct output &out ) {
 				rc = simple_pagerank< descriptors::no_operation >(
 					pr, L,
 					buf1, buf2, buf3,
-					0.85, 1e-7, 1000,
+					alpha, tol, data_in.solver_iterations,
 					&( out.iterations ), &( out.residual )
 				);
 			}
 		}
 		time_taken = timer.time();
-		if( rc == SUCCESS ) {
-			out.times.useful = time_taken / static_cast< double >( out.rep );
-		}
-		sleep( 1 );
-#ifndef NDEBUG
+		out.times.useful = time_taken / static_cast< double >( out.rep );
 		// print timing at root process
 		if( grb::spmd<>::pid() == 0 ) {
-			std::cout << "Time taken for a " << out.rep
+			std::cout << "Time taken for " << out.rep
 				<< " PageRank calls (hot start): " << out.times.useful << ". "
-				<< "Error code is " << out.error_code << std::endl;
+				<< "Error code is " << grb::toString( rc ) << std::endl;
+			std::cout << "\tnumber of PR iterations: " << out.iterations << "\n";
+			std::cout << "\tmilliseconds per iteration: "
+				<< (out.times.useful / static_cast< double >( out.iterations )) << "\n";
 		}
-#endif
+		sleep( 1 );
 	}
 
 	// start postamble
@@ -210,18 +223,23 @@ void grbProgram( const struct input &data_in, struct output &out ) {
 
 int main( int argc, char ** argv ) {
 	// sanity check
-	if( argc < 3 || argc > 7 ) {
+	if( argc < 3 || argc > 8 ) {
 		std::cout << "Usage: " << argv[ 0 ] << " "
 			<< "<dataset> <direct/indirect> "
-			<< "(inner iterations) (outer iterations) (verification <truth-file>)\n";
+			<< "(inner iterations) (outer iterations) (solver iterations) "
+			<< "(verification <truth-file>)\n";
 		std::cout << "<dataset> and <direct/indirect> are mandatory arguments.\n";
 		std::cout << "(inner iterations) is optional, the default is "
 			<< grb::config::BENCHMARKING::inner() << ". "
-			<< "If set to zero, the program will select a number of iterations "
-			<< "approximately required to take at least one second to complete.\n";
+			<< "If this integer is set to zero, the program will select a number of "
+			<< "inner iterations that results in at least one second of computation "
+			<< "time.\n";
 		std::cout << "(outer iterations) is optional, the default is "
 			<< grb::config::BENCHMARKING::outer()
-			<< ". This value must be strictly larger than 0.\n";
+			<< ". This integer must be strictly larger than 0.\n";
+		std::cout << "(solver iterations) is optional, the default is "
+			<< max_iters
+			<< ". This integer must be strictly larger than 0.\n";
 		std::cout << "(verification <truth-file>) is optional. "
 			<< "The <truth-file> must point to a pre-computed solution that the "
 			<< "computed solution will be verified against." << std::endl;
@@ -233,7 +251,7 @@ int main( int argc, char ** argv ) {
 	struct input in;
 
 	// get file name
-	(void)strncpy( in.filename, argv[ 1 ], 1023 );
+	(void) strncpy( in.filename, argv[ 1 ], 1023 );
 	in.filename[ 1023 ] = '\0';
 
 	// get direct or indirect addressing
@@ -249,9 +267,9 @@ int main( int argc, char ** argv ) {
 	if( argc >= 4 ) {
 		in.rep = strtoumax( argv[ 3 ], &end, 10 );
 		if( argv[ 3 ] == end ) {
-			std::cerr << "Could not parse argument " << argv[ 2 ]
+			std::cerr << "Could not parse argument " << argv[ 3 ]
 				<< " for number of inner experiment repititions." << std::endl;
-			return 2;
+			return 20;
 		}
 	}
 
@@ -260,36 +278,47 @@ int main( int argc, char ** argv ) {
 	if( argc >= 5 ) {
 		outer = strtoumax( argv[ 4 ], &end, 10 );
 		if( argv[ 4 ] == end ) {
-			std::cerr << "Could not parse argument " << argv[ 3 ]
+			std::cerr << "Could not parse argument " << argv[ 4 ]
 				<< " for number of outer experiment repititions." << std::endl;
-			return 4;
+			return 40;
+		}
+	}
+
+	in.solver_iterations = max_iters;
+	if( argc >= 6 ) {
+		in.solver_iterations = strtoumax( argv[ 5 ], &end, 10 );
+		if( argv[ 5 ] == end ) {
+			std::cerr << "Could not parse argument " << argv[ 5 ] << " "
+				<< "for the maximum number of solver iterations." << std::endl;
+			return 50;
 		}
 	}
 
 	// check for verification of the output
 	bool verification = false;
 	char truth_filename[ 1024 ];
-	if( argc >= 6 ) {
-		if( strncmp( argv[ 5 ], "verification", 12 ) == 0 ) {
+	if( argc >= 7 ) {
+		if( strncmp( argv[ 6 ], "verification", 12 ) == 0 ) {
 			verification = true;
-			if( argc >= 7 ) {
-				(void)strncpy( truth_filename, argv[ 6 ], 1023 );
+			if( argc >= 8 ) {
+				(void) strncpy( truth_filename, argv[ 7 ], 1023 );
 				truth_filename[ 1023 ] = '\0';
 			} else {
 				std::cerr << "The verification file was not provided as an argument."
 					<< std::endl;
-				return 5;
+				return 60;
 			}
 		} else {
-			std::cerr << "Could not parse argument \"" << argv[ 5 ] << "\", "
+			std::cerr << "Could not parse argument \"" << argv[ 6 ] << "\", "
 				<< "the optional \"verification\" argument was expected." << std::endl;
-			return 5;
+			return 70;
 		}
 	}
 
 	std::cout << "Executable called with parameters " << in.filename << ", "
-		<< "inner repititions = " << in.rep << ", "
-		<< "and outer reptitions = " << outer << std::endl;
+		<< "inner repetitions = " << in.rep << ", "
+		<< "outer repetitions = " << outer << ", and "
+		<< "solver iterations = " << in.solver_iterations << "." << std::endl;
 
 	// the output struct
 	struct output out;
@@ -307,7 +336,7 @@ int main( int argc, char ** argv ) {
 		if( rc != SUCCESS ) {
 			std::cerr << "launcher.exec returns with non-SUCCESS error code "
 				<< (int)rc << std::endl;
-			return 6;
+			return 80;
 		}
 	}
 
