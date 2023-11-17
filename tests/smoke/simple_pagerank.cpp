@@ -31,12 +31,13 @@
 using namespace grb;
 using namespace algorithms;
 
+
 /** Default maximum number of iterations. */
-constexpr size_t max_iters = 1000;
+constexpr const size_t max_iters = 1000;
 
-constexpr double alpha = 0.85;
+constexpr const double alpha = 0.85;
 
-constexpr double tol = 1e-7;
+constexpr const double tol = 1e-7;
 
 struct input {
 	char filename[ 1024 ];
@@ -188,7 +189,7 @@ void grbProgram( const struct input &data_in, struct output &out ) {
 		if( grb::spmd<>::pid() == 0 ) {
 			std::cout << "Time taken for " << out.rep
 				<< " PageRank calls (hot start): " << out.times.useful << ". "
-				<< "Error code is " << out.error_code << std::endl;
+				<< "Error code is " << grb::toString( rc ) << std::endl;
 			std::cout << "\tnumber of PR iterations: " << out.iterations << "\n";
 			std::cout << "\tmilliseconds per iteration: "
 				<< (out.times.useful / static_cast< double >( out.iterations )) << "\n";

@@ -32,14 +32,14 @@ using namespace grb;
 using namespace algorithms;
 
 
-constexpr double TOL = 0.0001;
+constexpr const double tol = 0.0001;
 
 /** Default maximum number of solver iterations */
-constexpr size_t MAX_ITERS = 10000;
+constexpr const size_t max_iters = 10000;
 
-constexpr double C1 = 0.001;
+constexpr const double c1 = 0.001;
 
-constexpr double C2 = 0.001;
+constexpr const double c2 = 0.001;
 
 struct input {
 	char filename[ 1024 ];
@@ -147,19 +147,19 @@ void grbProgram( const struct input &data_in, struct output &out ) {
 		timer.reset();
 		rc = bicgstab(
 			x, L, b,
-			data_in.solver_iterations, TOL,
+			data_in.solver_iterations, tol,
 			out.iterations, out.residual,
 			r, buf1, buf2, buf3, buf4, buf5,
 			ring, minus, divide
 		);
 		double single_time = timer.time();
 		if( !(rc == SUCCESS || rc == FAILED) ) {
-			std::cerr << "Failure: call to bicgstab not succeed ("
+			std::cerr << "Failure: call to BiCGstab not succeed ("
 				<< toString( rc ) << ")." << std::endl;
 			out.error_code = 20;
 		}
 		if( rc == FAILED ) {
-			std::cout << "Warning: call to conjugate_gradient did not converge\n";
+			std::cout << "Warning: call to BiCGstab did not converge\n";
 		}
 		if( rc == SUCCESS ) {
 			rc = collectives<>::reduce( single_time, 0, operators::max< double >() );
@@ -172,9 +172,9 @@ void grbProgram( const struct input &data_in, struct output &out ) {
 		if( rc == SUCCESS || rc == FAILED ) {
 			if( s == 0 ) {
 				if( rc == FAILED ) {
-					std::cout << "Info: cold bicgstab did not converge within ";
+					std::cout << "Info: cold BiCGstab did not converge within ";
 				} else {
-					std::cout << "Info: cold bicgstab completed within ";
+					std::cout << "Info: cold BiCGstab completed within ";
 				}
 				std::cout << out.iterations << " iterations. Last computed residual is "
 					<< out.residual << ". Time taken was " << single_time << " ms. "
@@ -193,7 +193,7 @@ void grbProgram( const struct input &data_in, struct output &out ) {
 			if( rc == SUCCESS ) {
 				rc = bicgstab(
 					x, L, b,
-					data_in.solver_iterations, TOL,
+					data_in.solver_iterations, tol,
 					out.iterations, out.residual,
 					r, buf1, buf2, buf3, buf4, buf5
 				);
@@ -205,7 +205,7 @@ void grbProgram( const struct input &data_in, struct output &out ) {
 		if( grb::spmd<>::pid() == 0 ) {
 			std::cout << "Time taken for " << out.rep << " BiCGstab "
 				<< "calls (hot start): " << out.times.useful << ". "
-				<< "Error code is " << out.error_code << std::endl;
+				<< "Error code is " << grb::toString( rc ) << std::endl;
 			std::cout << "\tnumber of BiCGstab iterations: " << out.iterations << "\n";
 			std::cout << "\tmilliseconds per iteration: "
 				<< ( out.times.useful / static_cast< double >( out.iterations ) )
@@ -255,7 +255,7 @@ int main( int argc, char ** argv ) {
 			<< grb::config::BENCHMARKING::outer()
 			<< ". This integer must be strictly larger than 0.\n";
 		std::cout << "(solver iterations) is optional, the default is "
-			<< MAX_ITERS
+			<< max_iters
 			<< ". This integer must be strictly larger than 0.\n";
 		std::cout << "(verification <truth-file>) is optional." << std::endl;
 		return 0;
@@ -299,7 +299,7 @@ int main( int argc, char ** argv ) {
 		}
 	}
 
-	in.solver_iterations = MAX_ITERS;
+	in.solver_iterations = max_iters;
 	if( argc >= 6 ) {
 		in.solver_iterations = strtoumax( argv[ 5 ], &end, 10 );
 		if( argv[ 5 ] == end ) {
@@ -388,7 +388,7 @@ int main( int argc, char ** argv ) {
 		if( verification ) {
 			out.error_code = vector_verification(
 				out.pinnedVector, truth_filename,
-				C1, C2
+				c1, c2
 			);
 			if( out.error_code == 0 ) {
 				std::cout << "Output vector verificaton was successful!\n";

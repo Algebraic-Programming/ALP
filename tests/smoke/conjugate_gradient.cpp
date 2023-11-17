@@ -43,13 +43,13 @@ using BaseScalarType = double;
  using ScalarType = BaseScalarType;
 #endif
 
-constexpr BaseScalarType TOL = 0.000001;
+constexpr const BaseScalarType tol = 0.000001;
 
 /** The default number of maximum iterations. */
-constexpr size_t MAX_ITERS = 10000;
+constexpr const size_t max_iters = 10000;
 
-constexpr double C1 = 0.0001;
-constexpr double C2 = 0.0001;
+constexpr const double c1 = 0.0001;
+constexpr const double c2 = 0.0001;
 
 struct input {
 	char filename[ 1024 ];
@@ -150,7 +150,7 @@ void grbProgram( const struct input &data_in, struct output &out ) {
 		timer.reset();
 		rc = conjugate_gradient(
 			x, L, b,
-			data_in.solver_iterations, TOL,
+			data_in.solver_iterations, tol,
 			out.iterations, out.residual,
 			r, u, temp
 		);
@@ -195,7 +195,7 @@ void grbProgram( const struct input &data_in, struct output &out ) {
 			if( rc == SUCCESS ) {
 				rc = conjugate_gradient(
 					x, L, b,
-					data_in.solver_iterations, TOL,
+					data_in.solver_iterations, tol,
 					out.iterations, out.residual,
 					r, u, temp
 				);
@@ -207,7 +207,7 @@ void grbProgram( const struct input &data_in, struct output &out ) {
 		if( grb::spmd<>::pid() == 0 ) {
 			std::cout << "Time taken for " << out.rep << " "
 				<< "Conjugate Gradients calls (hot start): " << out.times.useful << ". "
-				<< "Error code is " << out.error_code << std::endl;
+				<< "Error code is " << grb::toString( rc ) << std::endl;
 			std::cout << "\tnumber of CG iterations: " << out.iterations << "\n";
 			std::cout << "\tmilliseconds per iteration: "
 				<< ( out.times.useful / static_cast< double >( out.iterations ) )
@@ -257,7 +257,7 @@ int main( int argc, char ** argv ) {
 			<< grb::config::BENCHMARKING::outer()
 			<< ". This integer must be strictly larger than 0.\n";
 		std::cout << "(solver iterations) is optional, the default is "
-			<< MAX_ITERS
+			<< max_iters
 			<< ". This integer must be strictly larger than 0.\n";
 		std::cout << "(verification <truth-file>) is optional." << std::endl;
 		return 0;
@@ -301,7 +301,7 @@ int main( int argc, char ** argv ) {
 		}
 	}
 
-	in.solver_iterations = MAX_ITERS;
+	in.solver_iterations = max_iters;
 	if( argc >= 6 ) {
 		in.solver_iterations = strtoumax( argv[ 5 ], &end, 10 );
 		if( argv[ 5 ] == end ) {
@@ -390,7 +390,7 @@ int main( int argc, char ** argv ) {
 		if( verification ) {
 			out.error_code = vector_verification(
 				out.pinnedVector, truth_filename,
-				C1, C2
+				c1, c2
 			);
 			if( out.error_code == 0 ) {
 				std::cout << "Output vector verificaton was successful!\n";
