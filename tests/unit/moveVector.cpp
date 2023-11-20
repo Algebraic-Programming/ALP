@@ -23,7 +23,7 @@
 
 using namespace grb;
 
-void grb_program( const size_t & n, grb::RC & rc ) {
+void grb_program( const size_t &n, grb::RC &rc ) {
 	grb::Vector< double > vector( n );
 	if( grb::nnz( vector ) != 0 ) {
 		std::cerr << "\tinitialisation FAILED: vector has " << grb::nnz( vector ) << " entries, while expecting 0\n";

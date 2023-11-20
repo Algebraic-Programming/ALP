@@ -30,11 +30,13 @@
 #include <inttypes.h>
 
 #include <graphblas/algorithms/label.hpp>
-#include <graphblas/utils/Timer.hpp>
+#include <graphblas/utils/timer.hpp>
 #include <graphblas/utils/parser.hpp>
 
 #include <graphblas.hpp>
+
 #include <utils/print_vec_mat.hpp>
+
 
 using namespace grb;
 

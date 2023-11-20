@@ -31,10 +31,10 @@
 
 #include <inttypes.h>
 
-#include "graphblas/utils/Timer.hpp"
+#include "graphblas/utils/timer.hpp"
 
 #include <graphblas.hpp>
-#include <graphblas/utils/Timer.hpp>
+
 
 using namespace grb;
 

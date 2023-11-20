@@ -22,9 +22,12 @@
 #include <inttypes.h>
 
 #include <graphblas.hpp>
+
 #include <graphblas/algorithms/kcore_decomposition.hpp>
-#include <graphblas/utils/Timer.hpp>
+
+#include <graphblas/utils/timer.hpp>
 #include <graphblas/utils/parser.hpp>
+
 #include <utils/output_verification.hpp>
 
 

@@ -21,6 +21,7 @@
 
 #include "lpf/core.h"
 
+
 void spmd( lpf_t ctx, lpf_pid_t s, lpf_pid_t P, lpf_args_t args ) {
 	(void)ctx;
 	int & exit_status = *static_cast< int * >( args.output );
@@ -30,3 +31,4 @@ void spmd( lpf_t ctx, lpf_pid_t s, lpf_pid_t P, lpf_args_t args ) {
 		getpid(), getppid(), (size_t)s, (size_t)P );
 	exit_status = 0;
 }
+

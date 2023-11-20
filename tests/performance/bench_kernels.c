@@ -18,6 +18,7 @@
 
 #include "bench_kernels.h"
 
+
 #ifdef BENCH_KERNELS_OPENMP
 
 void bench_kernels_axpy( double * restrict a, const double alpha, const double * restrict x, const double * restrict y, const size_t n ) {

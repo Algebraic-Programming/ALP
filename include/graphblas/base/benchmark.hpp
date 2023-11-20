@@ -46,7 +46,7 @@
 #include <graphblas/ops.hpp>
 #include <graphblas/rc.hpp>
 #include <graphblas/utils.hpp>
-#include <graphblas/utils/TimerResults.hpp>
+#include <graphblas/utils/timerResults.hpp>
 
 #include "collectives.hpp"
 #include "config.hpp"

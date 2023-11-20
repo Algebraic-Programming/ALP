@@ -25,8 +25,8 @@
 
 #include "graphblas.hpp"
 
-using namespace grb;
 
+using namespace grb;
 
 struct output {
 	int exit_code;

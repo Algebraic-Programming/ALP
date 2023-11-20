@@ -20,17 +20,19 @@
 
 #include <mpi.h>
 
-#include <graphblas/algorithms/simple_pagerank.hpp>
-#include <graphblas/utils/Timer.hpp>
-
 #include <graphblas.hpp>
+
+#include <graphblas/algorithms/simple_pagerank.hpp>
+
+#include <graphblas/utils/timer.hpp>
+
 
 #define PR_TEST_DIMENSION 1000000
 
 #ifdef MULTIPLE_ENTRY
-#define LOOP_MAIN 3
+ #define LOOP_MAIN 3
 #else
-#define LOOP_MAIN 1
+ #define LOOP_MAIN 1
 #endif
 
 const int LPF_MPI_AUTO_INITIALIZE = 0;

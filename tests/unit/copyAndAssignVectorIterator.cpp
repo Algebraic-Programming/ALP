@@ -24,7 +24,7 @@
 
 using namespace grb;
 
-void grb_program( const size_t & n, grb::RC & rc ) {
+void grb_program( const size_t &n, grb::RC &rc ) {
 	grb::Vector< double > vector( n );
 	rc = grb::set( vector, 1.5 ); // vector = 1.5 everywhere
 	if( rc != SUCCESS ) {

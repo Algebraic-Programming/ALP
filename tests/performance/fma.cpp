@@ -21,7 +21,7 @@
 #include <assert.h>
 #include <inttypes.h> //for strtoumax
 
-#include <graphblas/utils/Timer.hpp>
+#include <graphblas/utils/timer.hpp>
 
 #include "bench_kernels.h" //for bench_kernels_axpy
 

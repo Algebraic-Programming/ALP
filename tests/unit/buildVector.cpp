@@ -19,15 +19,15 @@
 
 #include "graphblas.hpp"
 
-using namespace grb;
 
+using namespace grb;
 
 static const int data1[ 15 ] = { 4, 7, 4, 6, 4, 7, 1, 7, 3, 6, 7, 5, 1, 8, 7 };
 static const size_t I[ 15 ] = { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14 };
 static const size_t D[ 15 ] = { 4, 1, 4, 1, 9, 7, 7, 9, 0, 2, 14, 13, 13, 12, 12 };
 static const int ddata[ 15 ] = { 3, 13, 6, 0, 8, 0, 0, 8, 0, 11, 0, 0, 15, 6, 7 };
 
-void grbProgram( const void *, const size_t in_size, int & error ) {
+void grbProgram( const void *, const size_t in_size, int &error ) {
 	error = 0;
 
 	if( in_size != 0 ) {

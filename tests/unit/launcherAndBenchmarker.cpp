@@ -35,7 +35,7 @@
 #include <string.h>
 #include <stdio.h>
 #ifdef DISTRIBUTED_EXECUTION
-	#include <mpi.h>
+ #include <mpi.h>
 #endif
 
 #include <graphblas.hpp>

@@ -27,20 +27,20 @@
  * via buildMatrixUnique(), nor for matrices in general.
  */
 
-#include <iostream>
-#include <cstddef>
-#include <algorithm>
-#include <initializer_list>
-#include <stdexcept>
 #include <array>
 #include <vector>
-#include <iterator>
-#include <utility>
-#include <unordered_map>
 #include <cassert>
-#include <sstream>
-#include <type_traits>
+#include <cstddef>
 #include <cstdlib>
+#include <sstream>
+#include <utility>
+#include <iterator>
+#include <iostream>
+#include <algorithm>
+#include <stdexcept>
+#include <type_traits>
+#include <unordered_map>
+#include <initializer_list>
 
 #include <graphblas.hpp>
 #include <graphblas/nonzeroStorage.hpp>

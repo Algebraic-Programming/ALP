@@ -30,7 +30,8 @@
 #include <inttypes.h>
 
 #include "graphblas/algorithms/label.hpp"
-#include "graphblas/utils/Timer.hpp"
+
+#include "graphblas/utils/timer.hpp"
 
 #include "graphblas.hpp"
 

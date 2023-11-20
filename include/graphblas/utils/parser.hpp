@@ -20,5 +20,10 @@
  * @date 1st of June, 2017
  */
 
-#include "graphblas/utils/parser/MatrixFileReader.hpp"
+#ifndef _H_GRB_UTILS_PARSER
+#define _H_GRB_UTILS_PARSER
+
+ #include "graphblas/utils/parser/matrixFileReader.hpp"
+
+#endif
 

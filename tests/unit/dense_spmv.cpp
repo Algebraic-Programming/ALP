@@ -31,7 +31,7 @@
 
 #include <inttypes.h>
 
-#include <graphblas/utils/Timer.hpp>
+#include <graphblas/utils/timer.hpp>
 #include <graphblas/utils/parser.hpp>
 
 #include "graphblas.hpp"

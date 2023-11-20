@@ -47,11 +47,14 @@ namespace grb {
 		 * This declaration uses SFINAE in order to expose implementations for
 		 * supported value types only, based on the given \a SubIterType.
 		 */
-		template< typename S1, typename S2, typename V, typename SubIterType, class Enable = void >
+		template<
+			typename S1, typename S2, typename V,
+			typename SubIterType, class Enable = void
+		>
 		class NonzeroIterator;
 
 		/**
-		 * \internal Specialisation for types that are direved from the required type.
+		 * \internal Specialisation for types that are derived from the required type.
 		 */
 		template< typename S1, typename S2, typename V, typename SubIterType >
 		class NonzeroIterator<

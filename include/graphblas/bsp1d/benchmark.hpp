@@ -32,7 +32,7 @@
 
 #include <graphblas/base/benchmark.hpp>
 
-#include <graphblas/utils/TimerResults.hpp>
+#include <graphblas/utils/timerResults.hpp>
 
 #include "exec.hpp"
 

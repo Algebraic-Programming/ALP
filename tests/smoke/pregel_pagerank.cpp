@@ -21,11 +21,13 @@
 
 #include <inttypes.h>
 
+#include <graphblas.hpp>
+
 #include <graphblas/algorithms/pregel_pagerank.hpp>
-#include <graphblas/utils/Timer.hpp>
+
+#include <graphblas/utils/timer.hpp>
 #include <graphblas/utils/parser.hpp>
 
-#include <graphblas.hpp>
 #include <utils/output_verification.hpp>
 
 #ifndef PR_CONVERGENCE_MODE

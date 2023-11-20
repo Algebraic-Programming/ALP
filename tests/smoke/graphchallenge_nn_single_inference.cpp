@@ -22,17 +22,19 @@
 #include <inttypes.h>
 
 #include <graphblas/algorithms/sparse_nn_single_inference.hpp>
-#include <graphblas/utils/Timer.hpp>
+
+#include <graphblas/utils/timer.hpp>
 #include <graphblas/utils/parser.hpp>
 
 #include <graphblas.hpp>
+
 #include <utils/output_verification.hpp>
+
 
 #define C1 0.0001
 #define C2 0.0001
 
 #define MAX_LEN 1000
-
 
 using namespace grb;
 using namespace algorithms;

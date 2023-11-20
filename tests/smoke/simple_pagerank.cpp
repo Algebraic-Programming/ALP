@@ -21,16 +21,18 @@
 
 #include <inttypes.h>
 
+#include <graphblas.hpp>
+
 #include <graphblas/algorithms/simple_pagerank.hpp>
-#include <graphblas/utils/Timer.hpp>
+
+#include <graphblas/utils/timer.hpp>
 #include <graphblas/utils/parser.hpp>
 
-#include <graphblas.hpp>
 #include <utils/output_verification.hpp>
+
 
 using namespace grb;
 using namespace algorithms;
-
 
 /** Default maximum number of iterations. */
 constexpr const size_t max_iters = 1000;

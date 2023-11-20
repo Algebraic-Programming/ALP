@@ -27,16 +27,16 @@
 
 #include <graphblas/algorithms/bicgstab.hpp>
 
-#include <graphblas/utils/Timer.hpp>
+#include <graphblas/utils/timer.hpp>
 #include <graphblas/utils/parser.hpp>
 #include <graphblas/utils/singleton.hpp>
 #include <graphblas/utils/iterators/nonzeroIterator.hpp>
 
 #include <utils/output_verification.hpp>
 
+
 using namespace grb;
 using namespace algorithms;
-
 
 /** Parser type */
 typedef grb::utils::MatrixFileReader< double,

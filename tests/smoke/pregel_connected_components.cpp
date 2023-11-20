@@ -21,11 +21,12 @@
 
 #include <inttypes.h>
 
-#include <graphblas/algorithms/pregel_connected_components.hpp>
-#include <graphblas/utils/Timer.hpp>
-#include <graphblas/utils/parser.hpp>
-
 #include <graphblas.hpp>
+
+#include <graphblas/algorithms/pregel_connected_components.hpp>
+
+#include <graphblas/utils/timer.hpp>
+#include <graphblas/utils/parser.hpp>
 
 
 using namespace grb;

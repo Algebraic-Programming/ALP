@@ -17,10 +17,12 @@
 
 #include <iostream>
 
-#include <graphblas/algorithms/knn.hpp>
-#include <graphblas/utils/Timer.hpp>
-
 #include <graphblas.hpp>
+
+#include <graphblas/algorithms/knn.hpp>
+
+#include <graphblas/utils/timer.hpp>
+
 
 #ifndef KNN_TEST_DIMENSION
  #define KNN_TEST_DIMENSION 10

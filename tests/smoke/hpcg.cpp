@@ -35,36 +35,43 @@
 #include <type_traits>
 
 #include <graphblas.hpp>
+
 #include <graphblas/algorithms/hpcg/hpcg.hpp>
 #include <graphblas/algorithms/hpcg/system_building_utils.hpp>
+
+#include <graphblas/utils/timer.hpp>
+
+#include <utils/argument_parser.hpp>
+#include <utils/assertions.hpp>
+#include <utils/print_vec_mat.hpp>
+
 
 // here we define a custom macro and do not use NDEBUG since the latter is not defined for smoke tests
 #ifdef HPCG_PRINT_STEPS
 
 // HPCG_PRINT_STEPS requires defining the following symbols
 
-/**
- * @brief simply prints \p args on a dedicated line.
- */
-#define DBG_println( args ) std::cout << args << std::endl;
+ /**
+  * @brief simply prints \p args on a dedicated line.
+  */
+ #define DBG_println( args ) std::cout << args << std::endl;
 
 // forward declaration for the tracing facility
-template< typename T,
-	class Ring = grb::Semiring< grb::operators::add< T >, grb::operators::mul< T >, grb::identities::zero, grb::identities::one >
+template<
+	typename T,
+	class Ring = grb::Semiring<
+		grb::operators::add< T >, grb::operators::mul< T >,
+		grb::identities::zero, grb::identities::one
+	>
 >
 void print_norm( const grb::Vector< T > &r, const char * head, const Ring &ring = Ring() );
 
-/**
- * @brief prints \p head and the norm of \p r.
- */
-#define DBG_print_norm( vec, head ) print_norm( vec, head )
+ /**
+  * @brief prints \p head and the norm of \p r.
+  */
+ #define DBG_print_norm( vec, head ) print_norm( vec, head )
+
 #endif
-
-#include <graphblas/utils/Timer.hpp>
-
-#include <utils/argument_parser.hpp>
-#include <utils/assertions.hpp>
-#include <utils/print_vec_mat.hpp>
 
 //========== MAIN PROBLEM PARAMETERS =========
 // values modifiable via cmd line args: default set as in reference HPCG

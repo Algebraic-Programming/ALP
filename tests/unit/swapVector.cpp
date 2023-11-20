@@ -20,9 +20,10 @@
 
 #include <graphblas.hpp>
 
+
 using namespace grb;
 
-void grb_program( const size_t & n, grb::RC & rc ) {
+void grb_program( const size_t &n, grb::RC &rc ) {
 	grb::Vector< double > fullVector( n ), emptyVector( n );
 	rc = grb::set( fullVector, 1.5 );
 	if( rc != SUCCESS ) {
