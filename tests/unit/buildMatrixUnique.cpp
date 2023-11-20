@@ -43,8 +43,8 @@
 #include <cstdlib>
 
 #include <graphblas.hpp>
-#include <graphblas/NonzeroStorage.hpp>
-#include <graphblas/utils/iterators/NonzeroIterator.hpp>
+#include <graphblas/nonzeroStorage.hpp>
+#include <graphblas/utils/iterators/nonzeroIterator.hpp>
 
 #include <utils/assertions.hpp>
 #include <utils/matrix_generators.hpp>

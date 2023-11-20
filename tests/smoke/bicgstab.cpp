@@ -21,16 +21,48 @@
 
 #include <inttypes.h>
 
+#include <graphblas.hpp>
+
+#include <graphblas/nonzeroStorage.hpp>
+
 #include <graphblas/algorithms/bicgstab.hpp>
+
 #include <graphblas/utils/Timer.hpp>
 #include <graphblas/utils/parser.hpp>
+#include <graphblas/utils/singleton.hpp>
+#include <graphblas/utils/iterators/nonzeroIterator.hpp>
 
-#include <graphblas.hpp>
 #include <utils/output_verification.hpp>
 
 using namespace grb;
 using namespace algorithms;
 
+
+/** Parser type */
+typedef grb::utils::MatrixFileReader< double,
+	std::conditional<
+		(sizeof(grb::config::RowIndexType) > sizeof(grb::config::ColIndexType)),
+		grb::config::RowIndexType,
+		grb::config::ColIndexType
+	>::type
+> Parser;
+
+/** Nonzero type */
+typedef internal::NonzeroStorage<
+	grb::config::RowIndexType,
+	grb::config::ColIndexType,
+	double
+> NonzeroT;
+
+/** In-memory storage type */
+typedef grb::utils::Singleton<
+	std::pair<
+		// stores n and nz (according to parser)
+		std::pair< size_t, size_t >,
+		// stores the actual nonzeroes
+		std::vector< NonzeroT >
+	>
+> Storage;
 
 constexpr const double tol = 0.0001;
 
@@ -57,6 +89,37 @@ struct output {
 	PinnedVector< double > pinnedVector;
 };
 
+void ioProgram( const struct input &data_in, bool &success ) {
+	success = false;
+	// Parse and store matrix in singleton class
+	auto &data = Storage::getData().second;
+	try {
+		Parser parser( data_in.filename, data_in.direct );
+		assert( parser.m() == parser.n() );
+		Storage::getData().first.first = parser.n();
+		Storage::getData().first.second = parser.nz();
+		/* Once internal issue #342 is resolved this can be re-enabled
+		for(
+			auto it = parser.begin( PARALLEL );
+			it != parser.end( PARALLEL );
+			++it
+		) {
+			data.push_back( *it );
+		}*/
+		for(
+			auto it = parser.begin( SEQUENTIAL );
+			it != parser.end( SEQUENTIAL );
+			++it
+		) {
+			data.push_back( NonzeroT( *it ) );
+		}
+	} catch( std::exception &e ) {
+		std::cerr << "I/O program failed: " << e.what() << "\n";
+		return;
+	}
+	success = true;
+}
+
 void grbProgram( const struct input &data_in, struct output &out ) {
 
 	// get user process ID
@@ -77,29 +140,24 @@ void grbProgram( const struct input &data_in, struct output &out ) {
 	// assume successful run
 	out.error_code = 0;
 
-	// create local parser
-	grb::utils::MatrixFileReader< double,
-		std::conditional<
-			(sizeof(grb::config::RowIndexType) > sizeof(grb::config::ColIndexType)),
-			grb::config::RowIndexType,
-			grb::config::ColIndexType
-		>::type
-	> parser( data_in.filename, data_in.direct );
-	assert( parser.m() == parser.n() );
-	const size_t n = parser.n();
-	out.times.io = timer.time();
-	timer.reset();
-
 	// load into GraphBLAS
+	const size_t n = Storage::getData().first.first;
 	Matrix< double > L( n, n );
 	{
-		const RC rc = buildMatrixUnique( L,
-			parser.begin( SEQUENTIAL ), parser.end( SEQUENTIAL),
+		const auto &data = Storage::getData().second;
+		const RC rc = buildMatrixUnique(
+			L,
+			utils::makeNonzeroIterator<
+				grb::config::RowIndexType, grb::config::ColIndexType, double
+			>( data.begin() ),
+			utils::makeNonzeroIterator<
+				grb::config::RowIndexType, grb::config::ColIndexType, double
+			>( data.end() ),
 			SEQUENTIAL
 		);
 		/* Once internal issue #342 is resolved this can be re-enabled
 		const RC rc = buildMatrixUnique( L,
-			parser.begin( PARALLEL ), parser.end( PARALLEL),
+			data.begin(), data.end(),
 			PARALLEL
 		);*/
 		if( rc != SUCCESS ) {
@@ -112,7 +170,7 @@ void grbProgram( const struct input &data_in, struct output &out ) {
 	// check number of nonzeroes
 	try {
 		const size_t global_nnz = nnz( L );
-		const size_t parser_nnz = parser.nz();
+		const size_t parser_nnz = Storage::getData().first.second;
 		if( global_nnz != parser_nnz ) {
 			std::cerr << "Failure: global nnz (" << global_nnz << ") does not equal "
 				<< "parser nnz (" << parser_nnz << ")." << std::endl;
@@ -124,7 +182,11 @@ void grbProgram( const struct input &data_in, struct output &out ) {
 			<< "grb::Matrix reports " << nnz( L ) << " nonzeroes.\n";
 	}
 
-	// test default BiCGstab run
+	// I/O done
+	out.times.io = timer.time();
+	timer.reset();
+
+	// set up test of default BiCGstab
 	Semiring<
 		grb::operators::add< double >, grb::operators::mul< double >,
 		grb::identities::zero, grb::identities::one
@@ -336,11 +398,27 @@ int main( int argc, char ** argv ) {
 		<< "solver iterations = " << in.solver_iterations << "."
 		<< std::endl;
 
-	// the output struct
-	struct output out;
-
 	// set standard exit code
 	grb::RC rc = SUCCESS;
+
+	// launch I/O
+	{
+		bool success;
+		grb::Launcher< AUTOMATIC > launcher;
+		rc = launcher.exec( &ioProgram, in, success, true );
+		if( rc != SUCCESS ) {
+			std::cerr << "launcher.exec(I/O) returns with non-SUCCESS error code \""
+				<< grb::toString( rc ) << "\"\n";
+			return 73;
+		}
+		if( !success ) {
+			std::cerr << "I/O program caught an exception\n";
+			return 77;
+		}
+	}
+
+	// the output struct
+	struct output out;
 
 	// launch estimator (if requested)
 	if( in.rep == 0 ) {

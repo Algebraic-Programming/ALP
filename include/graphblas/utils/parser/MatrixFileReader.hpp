@@ -20,8 +20,8 @@
  * @date 25th of May, 2017
  */
 
-#ifndef _H_MATRIXFILEREADER
-#define _H_MATRIXFILEREADER
+#ifndef _H_GRB_UTILS_MATRIXFILEREADER
+#define _H_GRB_UTILS_MATRIXFILEREADER
 
 #include <algorithm> //std::max
 #include <iostream>
@@ -47,201 +47,209 @@ namespace grb {
 			friend std::ostream & operator<<(
 				std::ostream &out, const MatrixFileReader< U, V > &A );
 
-		private:
 
-			/**
-			 * In case we are reading pattern matrices, which value to substitute for
-			 * nonzeroes.
-			 */
-			const T patternValue;
+			private:
+
+				/**
+				 * In case we are reading pattern matrices, which value to substitute for
+				 * nonzeroes.
+				 */
+				const T patternValue;
 
 
-		public:
+			public:
 
-			/**
-			 * Constructs a matrix reader using minimal information.
-			 *
-			 * This constructor will parse the file in its entirety once. The use of an
-			 * iterator will parse the file \em again.
-			 *
-			 * @param[in] filename Which file to read.
-			 * @param[in] direct   (Optional) Whether the file uses direct indexing.
-			 *                     If not, new indices will be automatically inferred.
-			 *                     Default value is \a true.
-			 *
-			 * @param[in] symmetricmap    (Optional) In case \a direct is \a false,
-			 *                            whether the row map should equal the column
-			 *                            map.
-			 * @param[in] patternValueSub (Optional) Which value to substitute for
-			 *                            nonzeroes when reading in from a pattern
-			 *                            matrix.
-			 *
-			 * Defaults for \a direct and \a symmetricmap are <tt>true</tt>.
-			 * Default for \a patternValueSub is <tt>static_cast< T >(1)</tt>
-			 *
-			 * @throws std::runtime_error If the given file does not exist.
-			 *
-			 * \note Auto-detecting the correct value for \a pattern only can happen
-			 *       successfully in case of MatrixMarket.
-			 */
-			MatrixFileReader(
-				const std::string filename,
-				const bool direct = true, const bool symmetricmap = true,
-				const T patternValueSub = 1
-			) : patternValue( patternValueSub ) {
-				internal::MatrixFileProperties &properties = this->properties;
-				// set properties
-				properties._fn = filename;
-				properties._direct = direct;
-				properties._symmetricmap = symmetricmap;
-				// check for existance of file
-				this->exists();
-				// open up file stream to infer remainder properties
-				std::ifstream infile( properties._fn );
-				// try and find header
-				if( !this->findHeader( infile ) ) {
+				/** Public typedef of the iterator type. */
+				typedef typename internal::MatrixFileIterator< S, T > iterator;
+
+				/** Public typedef of the iterator type. */
+				typedef iterator const_iterator;
+
+				/**
+				 * Constructs a matrix reader using minimal information.
+				 *
+				 * This constructor will parse the file in its entirety once. The use of an
+				 * iterator will parse the file \em again.
+				 *
+				 * @param[in] filename Which file to read.
+				 * @param[in] direct   (Optional) Whether the file uses direct indexing.
+				 *                     If not, new indices will be automatically inferred.
+				 *                     Default value is \a true.
+				 *
+				 * @param[in] symmetricmap    (Optional) In case \a direct is \a false,
+				 *                            whether the row map should equal the column
+				 *                            map.
+				 * @param[in] patternValueSub (Optional) Which value to substitute for
+				 *                            nonzeroes when reading in from a pattern
+				 *                            matrix.
+				 *
+				 * Defaults for \a direct and \a symmetricmap are <tt>true</tt>.
+				 * Default for \a patternValueSub is <tt>static_cast< T >(1)</tt>
+				 *
+				 * @throws std::runtime_error If the given file does not exist.
+				 *
+				 * \note Auto-detecting the correct value for \a pattern only can happen
+				 *       successfully in case of MatrixMarket.
+				 */
+				MatrixFileReader(
+					const std::string filename,
+					const bool direct = true, const bool symmetricmap = true,
+					const T patternValueSub = 1
+				) : patternValue( patternValueSub ) {
+					internal::MatrixFileProperties &properties = this->properties;
+					// set properties
+					properties._fn = filename;
+					properties._direct = direct;
+					properties._symmetricmap = symmetricmap;
+					// check for existance of file
+					this->exists();
+					// open up file stream to infer remainder properties
+					std::ifstream infile( properties._fn );
+					// try and find header
+					if( !this->findHeader( infile ) ) {
 #ifdef _DEBUG
-					std::cout << "MatrixFileReader: couldn't parse header, inferring SNAP-"
-						<< "based defaults; i.e., no pattern matrix, not symmetric, and"
-						<< "0-based.\n";
+						std::cout << "MatrixFileReader: couldn't parse header, inferring SNAP-"
+							<< "based defaults; i.e., no pattern matrix, not symmetric, and"
+							<< "0-based.\n";
 #endif
-					// not found, so we have to infer matrix properties
-					// we assume the input is not pattern, since \a T is not \a void
-					properties._pattern = false;
-					// assume unsymmetric
-					properties._symmetric = internal::General;
-					// assume zero-based (SNAP-like)
-					properties._oneBased = false;
-					// record we assume SNAP
-					properties._type = internal::MatrixFileProperties::Type::SNAP;
-					// ignore comments
-					this->ignoreComments( infile );
-					// initialise default values, declare buffers
-					properties._m = properties._n = properties._nz = properties._entries = 0;
-					S row, col;
-					T val;
-					// read until we drop
-					while( (infile >> row >> col >> val) ) {
-						(void) ++properties._entries;
-						(void) ++properties._nz;
-						// if symmetric, count non-diagonal entries twice
-						if( properties._symmetric && row != col ) {
+						// not found, so we have to infer matrix properties
+						// we assume the input is not pattern, since \a T is not \a void
+						properties._pattern = false;
+						// assume unsymmetric
+						properties._symmetric = internal::General;
+						// assume zero-based (SNAP-like)
+						properties._oneBased = false;
+						// record we assume SNAP
+						properties._type = internal::MatrixFileProperties::Type::SNAP;
+						// ignore comments
+						this->ignoreComments( infile );
+						// initialise default values, declare buffers
+						properties._m = properties._n = properties._nz = properties._entries = 0;
+						S row, col;
+						T val;
+						// read until we drop
+						while( (infile >> row >> col >> val) ) {
+							(void) ++properties._entries;
 							(void) ++properties._nz;
-						}
-						(void) val;
-						if( !direct ) {
-							const auto row_it = properties._row_map.find( row );
-							if( row_it != properties._row_map.end() ) {
-								row = row_it->second;
-							} else {
-								const size_t new_row_index = properties._row_map.size();
-								properties._row_map[ row ] = new_row_index;
-								row = new_row_index;
+							// if symmetric, count non-diagonal entries twice
+							if( properties._symmetric && row != col ) {
+								(void) ++properties._nz;
 							}
-							if( properties._symmetricmap ) {
-								const auto col_it = properties._row_map.find( col );
-								if( col_it != properties._row_map.end() ) {
-									col = col_it->second;
+							(void) val;
+							if( !direct ) {
+								const auto row_it = properties._row_map.find( row );
+								if( row_it != properties._row_map.end() ) {
+									row = row_it->second;
 								} else {
-									const size_t new_col_index = properties._col_map.size();
-									properties._row_map[ col ] = new_col_index;
-									col = new_col_index;
+									const size_t new_row_index = properties._row_map.size();
+									properties._row_map[ row ] = new_row_index;
+									row = new_row_index;
 								}
-							} else {
-								const auto col_it = properties._col_map.find( col );
-								if( col_it != properties._col_map.end() ) {
-									col = col_it->second;
+								if( properties._symmetricmap ) {
+									const auto col_it = properties._row_map.find( col );
+									if( col_it != properties._row_map.end() ) {
+										col = col_it->second;
+									} else {
+										const size_t new_col_index = properties._col_map.size();
+										properties._row_map[ col ] = new_col_index;
+										col = new_col_index;
+									}
 								} else {
-									const size_t new_col_index = properties._col_map.size();
-									properties._col_map[ col ] = new_col_index;
-									col = new_col_index;
+									const auto col_it = properties._col_map.find( col );
+									if( col_it != properties._col_map.end() ) {
+										col = col_it->second;
+									} else {
+										const size_t new_col_index = properties._col_map.size();
+										properties._col_map[ col ] = new_col_index;
+										col = new_col_index;
+									}
 								}
 							}
+							// if symmetric, count non-diagonal entries twice
+							if( properties._symmetric && row != col ) {
+								++properties._nz;
+							}
+							// update dimensions
+							if( row > properties._m ) {
+								properties._m = row;
+							}
+							if( col > properties._n ) {
+								properties._n = col;
+							}
 						}
-						// if symmetric, count non-diagonal entries twice
-						if( properties._symmetric && row != col ) {
-							++properties._nz;
+						// correct _m and _n
+						if( properties._symmetricmap ) {
+							properties._m = std::max( properties._m, properties._n );
+							properties._n = properties._m;
 						}
-						// update dimensions
-						if( row > properties._m ) {
-							properties._m = row;
-						}
-						if( col > properties._n ) {
-							properties._n = col;
+						if( properties._nz > 0 ) {
+							(void) ++properties._m;
+							(void) ++properties._n;
 						}
 					}
-					// correct _m and _n
-					if( properties._symmetricmap ) {
-						properties._m = std::max( properties._m, properties._n );
-						properties._n = properties._m;
-					}
-					if( properties._nz > 0 ) {
-						(void) ++properties._m;
-						(void) ++properties._n;
-					}
-				}
-				// print info to stdout
-				this->coda();
+					// print info to stdout
+					this->coda();
 #ifdef _DEBUG
-				std::cout << *this << "\n";
+					std::cout << *this << "\n";
 #endif
-			}
+				}
 
-			// we do not provide non-const iterators, as we will not modify files
-			// all other iterators follow the MatrixFileIterator codes:
+				// we do not provide non-const iterators, as we will not modify files
+				// all other iterators follow the MatrixFileIterator codes:
 
-			/**
-			 * This is an alias to cbegin() -- we only allow read-only access to the
-			 * underlying matrix.
-			 */
-			internal::MatrixFileIterator< S, T > begin(
-				const IOMode mode = SEQUENTIAL,
-				const std::function< void( T & ) > valueConverter = []( T & ) {} ) {
-				return cbegin( mode, valueConverter );
-			}
+				/**
+				 * This is an alias to cbegin() -- we only allow read-only access to the
+				 * underlying matrix.
+				 */
+				internal::MatrixFileIterator< S, T > begin(
+					const IOMode mode = SEQUENTIAL,
+					const std::function< void( T & ) > valueConverter = []( T & ) {} ) {
+					return cbegin( mode, valueConverter );
+				}
 
-			/**
-			 * This is an alias to cbegin() -- we only allow read-only access to the
-			 * underlying matrix.
-			 */
-			internal::MatrixFileIterator< S, T > end(
-				const IOMode mode = SEQUENTIAL,
-				const std::function< void( T & ) > valueConverter = []( T & ) {} ) {
-				return cend( mode, valueConverter );
-			}
+				/**
+				 * This is an alias to cbegin() -- we only allow read-only access to the
+				 * underlying matrix.
+				 */
+				internal::MatrixFileIterator< S, T > end(
+					const IOMode mode = SEQUENTIAL,
+					const std::function< void( T & ) > valueConverter = []( T & ) {} ) {
+					return cend( mode, valueConverter );
+				}
 
-			/**
-			 * Reads out the nonzeroes from the underlying matrix file. The returned
-			 * iterator points to the first nonzero in the collection. No order of
-			 * iteration is defined.
-			 *
-			 * @param[in] mode           Which I/O mode to employ.
-			 * @param[in] valueConverter Optional value conversion lambda.
-			 *
-			 * The valueConverter must be a lambda function with signature
-			 *   <tt> void f( T& ); </tt>
-			 *
-			 * The default value for \a mode is #SEQUENTIAL.
-			 * The default for \a valueConverter is a no-op.
-			 */
-			internal::MatrixFileIterator< S, T > cbegin(
-				const IOMode mode = SEQUENTIAL,
-				const std::function< void( T & ) > valueConverter = []( T & ) {} ) {
-				return internal::MatrixFileIterator< S, T >(
-					internal::MatrixFileReaderBase< T, S >::properties, mode,
-					valueConverter, patternValue, false
-				);
-			}
+				/**
+				 * Reads out the nonzeroes from the underlying matrix file. The returned
+				 * iterator points to the first nonzero in the collection. No order of
+				 * iteration is defined.
+				 *
+				 * @param[in] mode           Which I/O mode to employ.
+				 * @param[in] valueConverter Optional value conversion lambda.
+				 *
+				 * The valueConverter must be a lambda function with signature
+				 *   <tt> void f( T& ); </tt>
+				 *
+				 * The default value for \a mode is #SEQUENTIAL.
+				 * The default for \a valueConverter is a no-op.
+				 */
+				internal::MatrixFileIterator< S, T > cbegin(
+					const IOMode mode = SEQUENTIAL,
+					const std::function< void( T & ) > valueConverter = []( T & ) {} ) {
+					return internal::MatrixFileIterator< S, T >(
+						internal::MatrixFileReaderBase< T, S >::properties, mode,
+						valueConverter, patternValue, false
+					);
+				}
 
-			/** Matching end iterator to cbegin(). */
-			internal::MatrixFileIterator< S, T > cend(
-				const IOMode mode = SEQUENTIAL,
-				const std::function< void( T & ) > valueConverter = []( T & ) {} ) {
-				return internal::MatrixFileIterator< S, T >(
-					internal::MatrixFileReaderBase< T, S >::properties, mode,
-					valueConverter, patternValue, true
-				);
-			}
+				/** Matching end iterator to cbegin(). */
+				internal::MatrixFileIterator< S, T > cend(
+					const IOMode mode = SEQUENTIAL,
+					const std::function< void( T & ) > valueConverter = []( T & ) {} ) {
+					return internal::MatrixFileIterator< S, T >(
+						internal::MatrixFileReaderBase< T, S >::properties, mode,
+						valueConverter, patternValue, true
+					);
+				}
+
 		};
 
 		template< typename S >
@@ -255,137 +263,145 @@ namespace grb {
 			friend std::ostream & operator<<(
 				std::ostream &out, const MatrixFileReader< U, V > &A );
 
-		public:
 
-			/**
-			 * Constructs a matrix reader using minimal information.
-			 *
-			 * This constructor will parse the file in its entirety once. The use of an
-			 * iterator will parse the file \em again.
-			 *
-			 * @param[in] filename Which file to read.
-			 * @param[in] direct   (Optional) Whether the file uses direct indexing.
-			 *                     If not, new indices will be automatically inferred.
-			 *                     Default value is \a true.
-			 * @param[in] symmetricmap (Optional) In case \a direct is \a false, whether
-			 *                         the row map should equal the column map.
-			 *
-			 * @throws std::runtime_error If the given file does not exist.
-			 *
-			 * \note Auto-detecting the correct value for \a pattern only can happen
-			 *       successfully in case of MatrixMarket.
-			 */
-			MatrixFileReader(
-				const std::string filename,
-				const bool direct = true,
-				const bool symmetricmap = true
-			) {
-				internal::MatrixFileProperties &properties = this->properties;
-				// set properties
-				properties._fn = filename;
-				properties._direct = direct;
-				properties._symmetricmap = symmetricmap;
-				// check for existance of file
-				this->exists();
-				// open up file stream to infer remainder properties
-				std::ifstream infile( properties._fn );
-				// try and find header
-				if( !this->findHeader( infile ) ) {
-					// not found, so we have to infer values for _n, _m, and _nz
-					// we first assume the input is pattern and unsymmetric
-					properties._pattern = true;
-					properties._symmetric = internal::General;
-					// assume 0-based input (SNAP-like)
-					properties._oneBased = false;
-					// record we assume SNAP
-					properties._type = internal::MatrixFileProperties::Type::SNAP;
-					// ignore comments
-					this->ignoreComments( infile );
-					// initialise default values, declare buffers
-					properties._m = properties._n = properties._nz = properties._entries = 0;
-					S row, col;
-					// read until we drop
-					while( (infile >> row >> col) ) {
-						(void) ++properties._entries;
-						(void) ++properties._nz;
-						if( !direct ) {
-							const auto row_it = properties._row_map.find( row );
-							if( row_it != properties._row_map.end() ) {
-								row = row_it->second;
-							} else {
-								const size_t new_row_index = properties._row_map.size();
-								properties._row_map[ row ] = new_row_index;
-								row = new_row_index;
-							}
-							if( properties._symmetricmap ) {
-								const auto col_it = properties._row_map.find( col );
-								if( col_it != properties._row_map.end() ) {
-									col = col_it->second;
-								} else {
-									const size_t new_col_index = properties._row_map.size();
-									properties._row_map[ col ] = new_col_index;
-									col = new_col_index;
-								}
-							} else {
-								const auto col_it = properties._col_map.find( col );
-								if( col_it != properties._col_map.end() ) {
-									col = col_it->second;
-								} else {
-									const size_t new_col_index = properties._col_map.size();
-									properties._col_map[ col ] = new_col_index;
-									col = new_col_index;
-								}
-							}
-						}
-						// if symmetric, count non-diagonal entries twice
-						if( properties._symmetric && row != col ) {
+			public:
+
+				/** Public typedef of the iterator type. */
+				typedef typename internal::MatrixFileIterator< S, void > iterator;
+
+				/** Public typedef of the iterator type. */
+				typedef iterator const_iterator;
+
+				/**
+				 * Constructs a matrix reader using minimal information.
+				 *
+				 * This constructor will parse the file in its entirety once. The use of an
+				 * iterator will parse the file \em again.
+				 *
+				 * @param[in] filename Which file to read.
+				 * @param[in] direct   (Optional) Whether the file uses direct indexing.
+				 *                     If not, new indices will be automatically inferred.
+				 *                     Default value is \a true.
+				 * @param[in] symmetricmap (Optional) In case \a direct is \a false, whether
+				 *                         the row map should equal the column map.
+				 *
+				 * @throws std::runtime_error If the given file does not exist.
+				 *
+				 * \note Auto-detecting the correct value for \a pattern only can happen
+				 *       successfully in case of MatrixMarket.
+				 */
+				MatrixFileReader(
+					const std::string filename,
+					const bool direct = true,
+					const bool symmetricmap = true
+				) {
+					internal::MatrixFileProperties &properties = this->properties;
+					// set properties
+					properties._fn = filename;
+					properties._direct = direct;
+					properties._symmetricmap = symmetricmap;
+					// check for existance of file
+					this->exists();
+					// open up file stream to infer remainder properties
+					std::ifstream infile( properties._fn );
+					// try and find header
+					if( !this->findHeader( infile ) ) {
+						// not found, so we have to infer values for _n, _m, and _nz
+						// we first assume the input is pattern and unsymmetric
+						properties._pattern = true;
+						properties._symmetric = internal::General;
+						// assume 0-based input (SNAP-like)
+						properties._oneBased = false;
+						// record we assume SNAP
+						properties._type = internal::MatrixFileProperties::Type::SNAP;
+						// ignore comments
+						this->ignoreComments( infile );
+						// initialise default values, declare buffers
+						properties._m = properties._n = properties._nz = properties._entries = 0;
+						S row, col;
+						// read until we drop
+						while( (infile >> row >> col) ) {
+							(void) ++properties._entries;
 							(void) ++properties._nz;
+							if( !direct ) {
+								const auto row_it = properties._row_map.find( row );
+								if( row_it != properties._row_map.end() ) {
+									row = row_it->second;
+								} else {
+									const size_t new_row_index = properties._row_map.size();
+									properties._row_map[ row ] = new_row_index;
+									row = new_row_index;
+								}
+								if( properties._symmetricmap ) {
+									const auto col_it = properties._row_map.find( col );
+									if( col_it != properties._row_map.end() ) {
+										col = col_it->second;
+									} else {
+										const size_t new_col_index = properties._row_map.size();
+										properties._row_map[ col ] = new_col_index;
+										col = new_col_index;
+									}
+								} else {
+									const auto col_it = properties._col_map.find( col );
+									if( col_it != properties._col_map.end() ) {
+										col = col_it->second;
+									} else {
+										const size_t new_col_index = properties._col_map.size();
+										properties._col_map[ col ] = new_col_index;
+										col = new_col_index;
+									}
+								}
+							}
+							// if symmetric, count non-diagonal entries twice
+							if( properties._symmetric && row != col ) {
+								(void) ++properties._nz;
+							}
+							// update dimensions
+							if( row > properties._m ) {
+								properties._m = row;
+							}
+							if( col > properties._n ) {
+								properties._n = col;
+							}
 						}
-						// update dimensions
-						if( row > properties._m ) {
-							properties._m = row;
+						// correct _m and _n
+						if( properties._symmetricmap ) {
+							properties._m = std::max( properties._m, properties._n );
+							properties._n = properties._m;
 						}
-						if( col > properties._n ) {
-							properties._n = col;
+						if( properties._nz > 0 ) {
+							(void) ++properties._m;
+							(void) ++properties._n;
 						}
 					}
-					// correct _m and _n
-					if( properties._symmetricmap ) {
-						properties._m = std::max( properties._m, properties._n );
-						properties._n = properties._m;
-					}
-					if( properties._nz > 0 ) {
-						(void) ++properties._m;
-						(void) ++properties._n;
-					}
-				}
-				// print info to stdout
-				this->coda();
+					// print info to stdout
+					this->coda();
 #ifdef _DEBUG
-				std::cout << *this << "\n";
+					std::cout << *this << "\n";
 #endif
-			}
+				}
 
-			// we do not provide non-const iterators, as we will not modify files
-			// all other iterators follow the MatrixFileIterator codes:
+				// we do not provide non-const iterators, as we will not modify files
+				// all other iterators follow the MatrixFileIterator codes:
 
-			internal::MatrixFileIterator< S, void > begin( const IOMode mode = SEQUENTIAL ) {
-				return cbegin( mode );
-			}
+				internal::MatrixFileIterator< S, void > begin( const IOMode mode = SEQUENTIAL ) {
+					return cbegin( mode );
+				}
 
-			internal::MatrixFileIterator< S, void > end( const IOMode mode = SEQUENTIAL ) {
-				return cend( mode );
-			}
+				internal::MatrixFileIterator< S, void > end( const IOMode mode = SEQUENTIAL ) {
+					return cend( mode );
+				}
 
-			internal::MatrixFileIterator< S, void > cbegin( const IOMode mode = SEQUENTIAL ) {
-				return internal::MatrixFileIterator< S, void >(
-					internal::MatrixFileReaderBase< void, S >::properties, mode );
-			}
+				internal::MatrixFileIterator< S, void > cbegin( const IOMode mode = SEQUENTIAL ) {
+					return internal::MatrixFileIterator< S, void >(
+						internal::MatrixFileReaderBase< void, S >::properties, mode );
+				}
 
-			internal::MatrixFileIterator< S, void > cend( const IOMode mode = SEQUENTIAL ) {
-				return internal::MatrixFileIterator< S, void >(
-					internal::MatrixFileReaderBase< void, S >::properties, mode, true );
-			}
+				internal::MatrixFileIterator< S, void > cend( const IOMode mode = SEQUENTIAL ) {
+					return internal::MatrixFileIterator< S, void >(
+						internal::MatrixFileReaderBase< void, S >::properties, mode, true );
+				}
+
 		};
 
 		/** Pretty printing function. */
@@ -416,5 +432,5 @@ namespace grb {
 
 } // namespace grb
 
-#endif //``_H_MATRIXFILEREADER''
+#endif //``_H_GRB_UTILS_MATRIXFILEREADER''
 

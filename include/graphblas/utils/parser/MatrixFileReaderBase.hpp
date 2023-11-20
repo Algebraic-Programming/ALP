@@ -20,8 +20,8 @@
  * @date 25th of May, 2017
  */
 
-#ifndef _H_MATRIXFILEREADERBASE
-#define _H_MATRIXFILEREADERBASE
+#ifndef _H_GRB_UTILS_MATRIXFILEREADER_BASE
+#define _H_GRB_UTILS_MATRIXFILEREADER_BASE
 
 #include <exception>
 #include <fstream>
@@ -380,5 +380,5 @@ namespace grb {
 
 } // namespace grb
 
-#endif // end ``_H_MATRIXFILEREADERBASE''
+#endif // end ``_H_GRB_UTILS_MATRIXFILEREADER_BASE''
 
