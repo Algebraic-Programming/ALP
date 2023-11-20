@@ -32,7 +32,7 @@
 
 #include <sys/stat.h> //C-style stat, used to check file existance
 
-#include "MatrixFileProperties.hpp"
+#include "matrixFileProperties.hpp"
 
 
 namespace grb {

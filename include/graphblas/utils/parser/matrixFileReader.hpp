@@ -23,14 +23,14 @@
 #ifndef _H_GRB_UTILS_MATRIXFILEREADER
 #define _H_GRB_UTILS_MATRIXFILEREADER
 
-#include <algorithm> //std::max
-#include <iostream>
 #include <string>
+#include <iostream>
+#include <algorithm> //std::max
 #include <type_traits>
 
-#include "MatrixFileIterator.hpp"
-#include "MatrixFileProperties.hpp"
-#include "MatrixFileReaderBase.hpp"
+#include "matrixFileIterator.hpp"
+#include "matrixFileProperties.hpp"
+#include "matrixFileReaderBase.hpp"
 
 
 namespace grb {

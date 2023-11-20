@@ -45,7 +45,7 @@
 #include <graphblas/utils/hpparser.h>
 #include <graphblas/utils/iscomplex.hpp>
 
-#include "MatrixFileProperties.hpp"
+#include "matrixFileProperties.hpp"
 
 #ifdef _GRB_WITH_OMP
  #include <graphblas/omp/config.hpp>
