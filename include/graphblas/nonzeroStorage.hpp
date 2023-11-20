@@ -138,6 +138,17 @@ namespace grb {
 					std::pair< RowIndexT, ColIndexT >( _row, _col )
 				{}
 
+				NonzeroStorage(
+					const std::pair< size_t, size_t > &pair
+				) noexcept :
+					std::pair< RowIndexT, ColIndexT >(
+						std::make_pair(
+							static_cast< RowIndexT >( pair.first ),
+							static_cast< ColIndexT >( pair.second )
+						)
+					)
+				{}
+
 				NonzeroStorage( NonzeroStorage< RowIndexT, ColIndexT, void >&& ) = default;
 
 				NonzeroStorage(
