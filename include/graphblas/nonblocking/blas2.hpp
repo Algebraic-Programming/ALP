@@ -1176,6 +1176,11 @@ namespace grb {
 			phase );
 	}
 
+	template< typename T>
+	static inline  T identity( const T & a) {
+		return a;
+	}
+
 	template<
 		Descriptor descr = descriptors::no_operation,
 		bool output_may_be_masked = true,
@@ -1203,6 +1208,12 @@ namespace grb {
 			grb::is_semiring< Ring >::value,
 		void >::type * const = nullptr
 	) {
+		struct {
+			inline size_t operator()( const size_t& a) const noexcept {
+				return a;
+			}
+		} identity;
+
 		constexpr bool left_sided = true;
 		if( output_may_be_masked && size( v_mask ) == 0 && size( mask ) > 0 ) {
 
@@ -1212,18 +1223,10 @@ namespace grb {
 					u, mask, v, v_mask, A,
 					ring.getAdditiveMonoid(), ring.getMultiplicativeOperator(),
 					phase,
-					[]( const size_t i ) {
-						return i;
-					},
-					[]( const size_t i ) {
-						return i;
-					},
-					[]( const size_t i ) {
-						return i;
-					},
-					[]( const size_t i ) {
-						return i;
-					}
+					identity,
+					identity,
+					identity,
+					identity
 				);
 		} else if( input_may_be_masked && size( mask ) == 0 && size( v_mask ) > 0 ) {
 			return internal::vxm_generic<
