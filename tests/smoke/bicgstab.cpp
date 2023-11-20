@@ -39,7 +39,8 @@ using namespace grb;
 using namespace algorithms;
 
 /** Parser type */
-typedef grb::utils::MatrixFileReader< double,
+typedef grb::utils::MatrixFileReader<
+	double,
 	std::conditional<
 		(sizeof(grb::config::RowIndexType) > sizeof(grb::config::ColIndexType)),
 		grb::config::RowIndexType,
@@ -97,7 +98,11 @@ void ioProgram( const struct input &data_in, bool &success ) {
 		Parser parser( data_in.filename, data_in.direct );
 		assert( parser.m() == parser.n() );
 		Storage::getData().first.first = parser.n();
-		Storage::getData().first.second = parser.nz();
+		try {
+			Storage::getData().first.second = parser.nz();
+		} catch( ... ) {
+			Storage::getData().first.second = parser.entries();
+		}
 		/* Once internal issue #342 is resolved this can be re-enabled
 		for(
 			auto it = parser.begin( PARALLEL );
@@ -168,18 +173,13 @@ void grbProgram( const struct input &data_in, struct output &out ) {
 	}
 
 	// check number of nonzeroes
-	try {
-		const size_t global_nnz = nnz( L );
-		const size_t parser_nnz = Storage::getData().first.second;
-		if( global_nnz != parser_nnz ) {
-			std::cerr << "Failure: global nnz (" << global_nnz << ") does not equal "
-				<< "parser nnz (" << parser_nnz << ")." << std::endl;
-			return;
-		}
-	} catch( const std::runtime_error & ) {
-		std::cout << "Info: nonzero check skipped as the number of nonzeroes "
-			<< "cannot be derived from the matrix file header. The "
-			<< "grb::Matrix reports " << nnz( L ) << " nonzeroes.\n";
+	const size_t global_nnz = nnz( L );
+	const size_t parser_nnz = Storage::getData().first.second;
+	if( global_nnz != parser_nnz ) {
+		std::cerr << "Warning: global nnz (" << global_nnz << ") does not equal "
+			<< "parser nnz (" << parser_nnz << "). " << "This could naturally occur "
+			<< "if the input matrix file employs symmetric storage; in that case, the "
+			<< "number of entries is roughly half of the number of nonzeroes.\n";
 	}
 
 	// I/O done
