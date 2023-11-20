@@ -114,6 +114,10 @@ static grb::RC setupSparseMatrix(
 }
 
 static enum grb::RC checkResult( const grb::Vector< double > &left, const grb::Vector< double > &right ) {
+	(void) left;
+	(void) right;
+	grb::RC ret = SUCCESS;
+#if not defined(_BENCHMARKING)
 	std::cout << "checkResult called on the following two vectors:\n";
 	std::cout << "\tLeft vector (" << nnz( left ) << "/" << size( left ) << ") reads:\n";
 	for( const std::pair< size_t, double > &pair : left ) {
@@ -123,7 +127,6 @@ static enum grb::RC checkResult( const grb::Vector< double > &left, const grb::V
 	for( const std::pair< size_t, double > &pair : right ) {
 		std::cout << "\t\t" << pair.first << " " << pair.second << "\n";
 	}
-	enum grb::RC ret = SUCCESS;
 	if( grb::size( left ) != grb::size( right ) ) {
 		std::cout << "Left vector does not equal the size of the right vector.\n";
 		return FAILED;
@@ -156,6 +159,7 @@ static enum grb::RC checkResult( const grb::Vector< double > &left, const grb::V
 			ret = FAILED;
 		}
 	}
+#endif
 	return ret;
 }
 
@@ -202,12 +206,10 @@ void grbProgram( const struct input &data_in, struct output &out ) {
 				out.error_code = mxv( vy, mx, vx, ring );
 			}
 			out.times.useful = timer.time() / static_cast< double >( data_in.rep );
-#if not defined(_BENCHMARKING)
 			// check result
 			if( out.error_code == SUCCESS ) {
 				out.error_code = checkResult( chk, vy );
 			}
-#endif
 			// done
 			out.times.postamble = 0;
 			break;
