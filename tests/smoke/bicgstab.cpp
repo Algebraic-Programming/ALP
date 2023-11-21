@@ -154,15 +154,21 @@ void grbProgram( const struct input &data_in, struct output &out ) {
 			L,
 			utils::makeNonzeroIterator<
 				grb::config::RowIndexType, grb::config::ColIndexType, double
-			>( data.begin() ),
+			>( data.cbegin() ),
 			utils::makeNonzeroIterator<
 				grb::config::RowIndexType, grb::config::ColIndexType, double
-			>( data.end() ),
+			>( data.cend() ),
 			SEQUENTIAL
 		);
 		/* Once internal issue #342 is resolved this can be re-enabled
-		const RC rc = buildMatrixUnique( L,
-			data.begin(), data.end(),
+		const RC rc = buildMatrixUnique(
+			L,
+			utils::makeNonzeroIterator<
+				grb::config::RowIndexType, grb::config::ColIndexType, double
+			>( data.cbegin() ),
+			utils::makeNonzeroIterator<
+				grb::config::RowIndexType, grb::config::ColIndexType, double
+			>( data.cend() ),
 			PARALLEL
 		);*/
 		if( rc != SUCCESS ) {
