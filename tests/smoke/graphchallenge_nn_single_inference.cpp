@@ -21,26 +21,57 @@
 
 #include <inttypes.h>
 
+#include <graphblas.hpp>
+
 #include <graphblas/algorithms/sparse_nn_single_inference.hpp>
+
+#include <graphblas/nonzeroStorage.hpp>
 
 #include <graphblas/utils/timer.hpp>
 #include <graphblas/utils/parser.hpp>
+#include <graphblas/utils/singleton.hpp>
 
-#include <graphblas.hpp>
+#include <graphblas/utils/iterators/nonzeroIterator.hpp>
 
 #include <utils/output_verification.hpp>
 
 
-#define C1 0.0001
-#define C2 0.0001
-
-#define MAX_LEN 1000
-
 using namespace grb;
 using namespace algorithms;
 
+/** Parser type */
+typedef grb::utils::MatrixFileReader<
+	double,
+	std::conditional<
+		(sizeof(grb::config::RowIndexType) > sizeof(grb::config::ColIndexType)),
+		grb::config::RowIndexType,
+		grb::config::ColIndexType
+	>::type
+> Parser;
+
+/** Nonzero type */
+typedef grb::internal::NonzeroStorage<
+	grb::config::RowIndexType,
+	grb::config::ColIndexType,
+	double
+> NonzeroT;
+
+/** In-memory storage type */
+typedef grb::utils::Singleton<
+	std::pair<
+		// biases
+		std::vector< double >,
+		// for each input file, stores the number of nonzeroes and the nonzeroes
+		std::vector< std::pair< size_t, std::vector< NonzeroT > > >
+	>
+> Storage;
+
+constexpr const double c1 = 0.0001;
+constexpr const double c2 = 0.0002;
+constexpr const size_t max_len = 1000;
+
 struct input {
-	char dataset_path[ MAX_LEN + 1 ];
+	char dataset_path[ max_len + 1 ];
 	size_t neurons;
 	size_t layers;
 	bool thresholded;
@@ -58,38 +89,29 @@ struct output {
 	PinnedVector< double > pinnedVector;
 };
 
-void grbProgram( const struct input &data_in, struct output &out ) {
-
-	// get user process ID
-	const size_t s = spmd<>::pid();
-	assert( s < spmd<>::nprocs() );
-
-	// get input n
-	grb::utils::Timer timer;
-	timer.reset();
-
-	// assume successful run
-	out.error_code = 0;
-
-	char weights_path[ MAX_LEN + 1 ];
-	if( strlen( data_in.dataset_path ) + strlen( "/WEIGHTS-HPEC" ) > MAX_LEN ) {
+void ioProgram( const struct input &data_in, int &rc ) {
+	rc = 0;
+	char weights_path[ max_len + 1 ];
+	if( strlen( data_in.dataset_path ) + strlen( "/WEIGHTS-HPEC" ) > max_len ) {
 		std::cerr << "Failure: given dataset path is too long (please use a "
 			"shorter dataset path)" << std::endl;
+		rc = 10;
 		return;
 	}
 	strcpy( weights_path, data_in.dataset_path );
 	strcat( weights_path, "/WEIGHTS-HPEC" );
 
-	char input_vector_path[ MAX_LEN + 1 ];
-	if( strlen( data_in.dataset_path ) + strlen( "/MNIST-HPEC" ) > MAX_LEN ) {
+	char input_vector_path[ max_len + 1 ];
+	if( strlen( data_in.dataset_path ) + strlen( "/MNIST-HPEC" ) > max_len ) {
 		std::cerr << "Failure: given dataset path is too long (please use a "
 			<< "shorter dataset path)" << std::endl;
+		rc = 20;
 		return;
 	}
 	strcpy( input_vector_path, data_in.dataset_path );
 	strcat( input_vector_path, "/MNIST-HPEC" );
 
-	std::vector< double > biases;
+	std::vector< double > &biases = Storage::getData().first;
 
 	if( data_in.neurons == 1024 ) {
 		for( size_t i = 0; i < data_in.layers; i++ ) {
@@ -110,17 +132,11 @@ void grbProgram( const struct input &data_in, struct output &out ) {
 	} else {
 		std::cerr << "Failure: the number of neurons does not correspond to a "
 			"known dataset" << std::endl;
+		rc = 30;
 		return;
 	}
 
-	size_t n;
-	out.times.io = timer.time();
-	timer.reset();
-
-	std::vector< grb::Matrix< double > > L;
-
 	for( size_t i = 0; i < data_in.layers; i++ ) {
-
 		// get the names of the input files for all layers correct
 		std::ostringstream oss;
 		oss << weights_path << "/neuron" << data_in.neurons << "/n"
@@ -128,53 +144,45 @@ void grbProgram( const struct input &data_in, struct output &out ) {
 		std::string filename = oss.str();
 
 		// create local parser
-		grb::utils::MatrixFileReader< double,
-			std::conditional<
-				(sizeof(grb::config::RowIndexType) > sizeof(grb::config::ColIndexType)),
-				grb::config::RowIndexType,
-				grb::config::ColIndexType
-			>::type
-		> parser( filename.c_str(), data_in.direct );
+		Parser parser( filename.c_str(), data_in.direct );
 		assert( parser.m() == parser.n() );
 		assert( data_in.neurons == parser.n() );
-		n = parser.n();
+		if( parser.m() != parser.n() ) {
+			std::cerr << "Error: expected input file to be square\n";
+			rc = 40;
+			return;
+		}
+		if( data_in.neurons != parser.n() ) {
+			std::cerr << "Error: expected input matrix to match #neurons\n";
+			rc = 50;
+			return;
+		}
 
-		// load into GraphBLAS
-		L.push_back( grb::Matrix< double >( n, n ) );
-
+		// preload file into storage
+		std::pair< size_t, std::vector< NonzeroT > > fileContents;
 		{
-			const RC rc = buildMatrixUnique( L[ i ],
-				parser.begin( SEQUENTIAL ), parser.end( SEQUENTIAL ),
-				SEQUENTIAL
-			);
+			try{
+				fileContents.first = parser.nz();
+			} catch( ... ) {
+				fileContents.first = parser.entries();
+			}
+			for(
+				auto it = parser.cbegin( SEQUENTIAL );
+				it != parser.cend( SEQUENTIAL );
+				++it
+			) {
+				fileContents.second.push_back( NonzeroT( *it ) );
+			}
 			// See internal issue #342 for re-enabling the below
-			//const RC rc = buildMatrixUnique( L[ i ],
-			//	parser.begin( PARALLEL ), parser.end( PARALLEL),
-			//	PARALLEL
-			//);
-			if( rc != SUCCESS ) {
-				std::cerr << "Failure: call to buildMatrixUnique did not succeed ("
-					<< toString( rc ) << ")." << std::endl;
-				return;
-			}
+			/*for(
+				auto it = parser.cbegin( PARALLEL );
+				it != parser.cend( PARALLEL );
+				++it
+			) {
+				fileContents.second.push_back( NonzeroT( *it ) );
+			}*/
 		}
-
-		// check number of nonzeroes
-		try {
-			const size_t global_nnz = nnz( L[ i ] );
-			const size_t parser_nnz = parser.nz();
-			if( global_nnz != parser_nnz ) {
-				std::cerr << "Failure: global nnz (" << global_nnz
-					<< ") does not equal parser nnz "
-					<< "(" << parser_nnz << ")." << std::endl;
-				return;
-			}
-		} catch( const std::runtime_error & ) {
-			std::cout << "Info: nonzero check skipped as the number of "
-				"nonzeroes cannot be derived from the matrix file "
-				"header. The grb::Matrix reports " << nnz( L[ i ] )
-				<< "nonzeroes.\n";
-		}
+		Storage::getData().second.push_back( fileContents );
 	}
 
 	// get the name of the input files for the vector correct
@@ -184,26 +192,139 @@ void grbProgram( const struct input &data_in, struct output &out ) {
 	std::string vector_filename = oss.str();
 
 	// create local parser
-	grb::utils::MatrixFileReader< double,
-		std::conditional<
-			( sizeof(grb::config::RowIndexType) > sizeof(grb::config::ColIndexType)),
-			grb::config::RowIndexType,
-			grb::config::ColIndexType
-		>::type
-	> parser( vector_filename, data_in.direct );
+	Parser parser( vector_filename, data_in.direct );
 	assert( data_in.neurons == parser.n() );
-	n = parser.n();
+	if( data_in.neurons != parser.n() ) {
+		std::cerr << "Error: expected input vector size to match #neurons\n";
+		rc = 60;
+		return;
+	}
+	// preload vector into storage
+	// note that we here read vector data by reusing the more general matrix parser
+	std::pair< size_t, std::vector< NonzeroT > > fileContents;
+	{
+		try{
+			fileContents.first = parser.nz();
+		} catch( ... ) {
+			fileContents.first = parser.entries();
+		}
+		for(
+			auto it = parser.cbegin( SEQUENTIAL );
+			it != parser.cend( SEQUENTIAL );
+			++it
+		) {
+			fileContents.second.push_back( NonzeroT( *it ) );
+		}
+		// See internal issue #342 for re-enabling the below
+		/*for(
+			auto it = parser.cbegin( PARALLEL );
+			it != parser.cend( PARALLEL );
+			++it
+		) {
+			fileContents.second.push_back( NonzeroT( *it ) );
+		}*/
+	}
+	Storage::getData().second.push_back( fileContents );
+	if( Storage::getData().second.size() != data_in.layers + 1 ) {
+		std::cerr << "Error: expected " << (data_in.layers + 1) << " matrices would be "
+			<< "parsed, got " << Storage::getData().second.size() << " instead\n";
+		rc = 70;
+		return;
+	}
+	std::cout << "Info: I/O subprogram cached " << Storage::getData().second.size()
+		<< " files.\n";
+}
+
+void grbProgram( const struct input &data_in, struct output &out ) {
+
+	// get user process ID
+	const size_t s = spmd<>::pid();
+	assert( s < spmd<>::nprocs() );
+
+	// get input n
+	grb::utils::Timer timer;
+	timer.reset();
+
+	// assume successful run
+	out.error_code = 0;
+
+	out.times.io = timer.time();
+	timer.reset();
+
+	std::vector< double > &biases = Storage::getData().first;
+	std::vector< grb::Matrix< double > > L;
 
 	// load into GraphBLAS
-	grb::Matrix< double > Lvin( n, n );
-	{
-		const RC rc = buildMatrixUnique( Lvin,
-			parser.begin( SEQUENTIAL ), parser.end( SEQUENTIAL ),
+	const size_t n = data_in.neurons;
+	for( size_t i = 0; i < data_in.layers; i++ ) {
+		L.push_back( grb::Matrix< double >( n, n ) );
+		assert( Storage::getData().second.size() == data_in.layers + 1 );
+		const size_t parser_nz = (Storage::getData().second)[ i ].first;
+		const auto &data = (Storage::getData().second)[ i ].second;
+		const RC rc = buildMatrixUnique(
+			L[ i ],
+			utils::makeNonzeroIterator<
+				grb::config::RowIndexType, grb::config::ColIndexType, double
+			>( data.cbegin() ),
+			utils::makeNonzeroIterator<
+				grb::config::RowIndexType, grb::config::ColIndexType, double
+			>( data.cend() ),
 			SEQUENTIAL
 		);
 		// See internal issue #342 for re-enabling the below
-		//const RC rc = buildMatrixUnique( Lvin,
-		//	parser.begin( PARALLEL ), parser.end( PARALLEL),
+		//const RC rc = buildMatrixUnique(
+		//	L[ i ],
+		//	utils::makeNonzeroIterator<
+		//		grb::config::RowIndexType, grb::config::ColIndexType, double
+		//	>( data.cbegin() ),
+		//	utils::makeNonzeroIterator<
+		//		grb::config::RowIndexType, grb::config::ColIndexType, double
+		//	>( data.cend() ),
+		//	PARALLEL
+		//);
+		if( rc != SUCCESS ) {
+			std::cerr << "Failure: call to buildMatrixUnique did not succeed ("
+				<< toString( rc ) << ")." << std::endl;
+			out.error_code = 5;
+			return;
+		}
+		// check number of nonzeroes
+		const size_t global_nnz = nnz( L[ i ] );
+		if( global_nnz != parser_nz ) {
+			std::cerr << "Failure: ALP/GraphBLAS matrix nnz (" << global_nnz << ") "
+				<< "does not equal parser nnz (" << parser_nz << ")!\n";
+			out.error_code = 10;
+			return;
+		}
+	}
+
+	// this a simple way to get the input vector by reading it as a matrix using
+	// the existing parser and then apply the vxm operation on the matrix and on a
+	// vector of ones
+	grb::Vector< double > vout( n ), vin( n ), temp( n );
+	{
+		grb::Matrix< double > Lvin( n, n );
+		const size_t parser_nz = (Storage::getData().second)[ data_in.layers ].first;
+		const auto &data = (Storage::getData().second)[ data_in.layers ].second;
+		RC rc = buildMatrixUnique(
+			Lvin,
+			utils::makeNonzeroIterator<
+				grb::config::RowIndexType, grb::config::ColIndexType, double
+			>( data.cbegin() ),
+			utils::makeNonzeroIterator<
+				grb::config::RowIndexType, grb::config::ColIndexType, double
+			>( data.cend() ),
+			SEQUENTIAL
+		);
+		// See internal issue #342 for re-enabling the below
+		//const RC rc = buildMatrixUnique(
+		//	Lvin,
+		//	utils::makeNonzeroIterator<
+		//		grb::config::RowIndexType, grb::config::ColIndexType, double
+		//	>( data.cbegin() ),
+		//	utils::makeNonzeroIterator<
+		//		grb::config::RowIndexType, grb::config::ColIndexType, double
+		//	>( data.cend() ),
 		//	PARALLEL
 		//);
 		if( rc != SUCCESS ) {
@@ -211,34 +332,48 @@ void grbProgram( const struct input &data_in, struct output &out ) {
 				<< toString( rc ) << ")." << std::endl;
 			return;
 		}
+		// check number of nonzeroes
+		const size_t global_nnz = nnz( Lvin );
+		if( global_nnz != parser_nz ) {
+			std::cerr << "Failure: ALP/GraphBLAS matrix nnz (" << global_nnz << ") "
+				<< "does not equal parser nnz (" << parser_nz << ")!\n";
+			out.error_code = 15;
+			return;
+		}
+
+		// now we have the matrix form of the input vector, turn it into an actual
+		// vector:
+		grb::Semiring<
+			grb::operators::add< double >, grb::operators::mul< double >,
+			grb::identities::zero, grb::identities::one
+		> realRing;
+
+		rc = grb::set( vout, 1.0 );
+		assert( rc == SUCCESS );
+
+		rc = rc ? rc : grb::clear( vin );
+		assert( rc == SUCCESS );
+
+		rc = rc ? rc : grb::vxm( vin, vout, Lvin, realRing );
+		assert( rc == SUCCESS );
+
+		rc = rc ? rc : grb::clear( vout );
+		assert( rc == SUCCESS );
+
+		if( rc != SUCCESS ) {
+			std::cerr << "Error: could not convert the input vector format\n";
+			out.error_code = 17;
+			return;
+		}
 	}
-
-	grb::Vector< double > vout( n ), vin( n ), temp( n );
-
-	// this a simple way to get the input vector by reading it as a matrix using
-	// the existing parser and then apply the vxm operation on the matrix and on a
-	// vector of ones
-	grb::Semiring<
-		grb::operators::add< double >, grb::operators::mul< double >,
-		grb::identities::zero, grb::identities::one
-	> realRing;
-
-	RC rc = SUCCESS;
-
-	rc = grb::set( temp, 1.0 );
-	assert( rc == SUCCESS );
-
-	rc = rc ? rc : grb::clear(vin);
-	assert( rc == SUCCESS );
-
-	rc = rc ? rc : grb::vxm( vin, temp, Lvin, realRing );
-	assert( rc == SUCCESS );
 
 	out.times.preamble = timer.time();
 
 	// by default, copy input requested repetitions to output repititions performed
 	out.rep = data_in.rep;
+
 	// time a single call
+	RC rc = SUCCESS;
 	if( out.rep == 0 ) {
 		timer.reset();
 		if( data_in.thresholded ) {
@@ -363,10 +498,10 @@ int main( int argc, char ** argv ) {
 	struct input in;
 
 	// get the dataset path
-	if( strlen( argv[ 1 ] ) > MAX_LEN ) {
+	if( strlen( argv[ 1 ] ) > max_len ) {
 		std::cerr << "Given dataset path is too long; please use a shorter dataset "
 			<< "path)" << std::endl;
-		return 1;
+		return 10;
 	}
 	strcpy( in.dataset_path, argv[ 1 ] );
 
@@ -390,7 +525,7 @@ int main( int argc, char ** argv ) {
 	} else {
 		std::cerr << "Could not parse argument " << argv[ 5 ] << " for the usage of "
 			<< "a threshold (accepted values are 0 and 1)." << std::endl;
-		return 2;
+		return 20;
 	}
 
 	// get direct or indirect addressing
@@ -408,7 +543,7 @@ int main( int argc, char ** argv ) {
 		if( argv[ 8 ] == end ) {
 			std::cerr << "Could not parse argument " << argv[ 8 ] << " "
 				<< "for number of inner experiment repititions." << std::endl;
-			return 3;
+			return 30;
 		}
 	}
 
@@ -419,28 +554,28 @@ int main( int argc, char ** argv ) {
 		if( argv[ 9 ] == end ) {
 			std::cerr << "Could not parse argument " << argv[ 9 ] << " "
 				<< "for number of outer experiment repititions." << std::endl;
-			return 4;
+			return 40;
 		}
 	}
 
 	// check for verification of the output
 	bool verification = false;
-	char truth_filename[ MAX_LEN + 1 ];
+	char truth_filename[ max_len + 1 ];
 	if( argc >= 11 ) {
 		if( strncmp( argv[ 10 ], "verification", 12 ) == 0 ) {
 			verification = true;
 			if( argc >= 12 ) {
-				(void)strncpy( truth_filename, argv[ 11 ], MAX_LEN );
-				truth_filename[ MAX_LEN ] = '\0';
+				(void) strncpy( truth_filename, argv[ 11 ], max_len );
+				truth_filename[ max_len ] = '\0';
 			} else {
 				std::cerr << "The verification file was not provided as an argument."
 					<< std::endl;
-				return 5;
+				return 50;
 			}
 		} else {
 			std::cerr << "Could not parse argument \"" << argv[ 10 ] << "\", "
 				<< "the optional \"verification\" argument was expected." << std::endl;
-			return 5;
+			return 60;
 		}
 	}
 
@@ -455,6 +590,22 @@ int main( int argc, char ** argv ) {
 	// set standard exit code
 	grb::RC rc = SUCCESS;
 
+	// perform I/O
+	{
+		int error_code;
+		grb::Launcher< AUTOMATIC > launcher;
+		rc = launcher.exec( &ioProgram, in, error_code, true );
+		if( rc != SUCCESS ) {
+			std::cerr << "launcher.exec(I/O) returns with non-SUCCESS error code \""
+				<< grb::toString( rc ) << "\"\n";
+			return 73;
+		}
+		if( error_code != 0 ) {
+			std::cerr << "I/O sub-program caught an error (code " << error_code << ")\n";
+			return 77;
+		}
+	}
+
 	// launch estimator (if requested)
 	if( in.rep == 0 ) {
 		grb::Launcher< AUTOMATIC > launcher;
@@ -465,7 +616,7 @@ int main( int argc, char ** argv ) {
 		if( rc != SUCCESS ) {
 			std::cerr << "launcher.exec returns with non-SUCCESS error code "
 				<< (int)rc << std::endl;
-			return 6;
+			return 80;
 		}
 	}
 
@@ -477,7 +628,7 @@ int main( int argc, char ** argv ) {
 	if( rc != SUCCESS ) {
 		std::cerr << "benchmarker.exec returns with non-SUCCESS error code "
 			<< grb::toString( rc ) << std::endl;
-		return 8;
+		return 90;
 	} else if( out.error_code == 0 ) {
 		std::cout << "Benchmark completed successfully.\n";
 	}
@@ -499,7 +650,7 @@ int main( int argc, char ** argv ) {
 	} else {
 		if( verification ) {
 			out.error_code = vector_verification(
-				out.pinnedVector, truth_filename, C1, C2
+				out.pinnedVector, truth_filename, c1, c2
 			);
 			if( out.error_code == 0 ) {
 				std::cout << "Output vector verificaton was successful!\n";
@@ -516,6 +667,10 @@ int main( int argc, char ** argv ) {
 	std::cout << std::endl;
 
 	// done
-	return out.error_code;
+	if( out.error_code == 0 ) {
+		return 0;
+	} else {
+		return (100 + out.error_code);
+	}
 }
 
