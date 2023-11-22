@@ -16,18 +16,12 @@
  */
 
 #include <stdlib.h>
-
-#include <sys/wait.h>
 #include <unistd.h>
+#include <sys/wait.h>
 
 #include <iostream>
 
 #include <graphblas.hpp>
-
-#define USE1 std::cout << "Usage: " << argv[ 0 ] << " <#processes>\n";
-#define USE2 std::cout << "  <#processes>  The integer value for #processes. May not " \
-                          "be negative. This program must be called #processes times " \
-			  "on any number of connected nodes.\n";
 
 
 extern void grbProgram( const size_t &, int & );
@@ -37,7 +31,11 @@ int main( int argc, char ** argv ) {
 	std::cout << "Functional test executable: " << argv[ 0 ] << "\n";
 
 	if( argc != 2 ) {
-		USE1 USE2 return 0;
+		std::cout << "Usage: " << argv[ 0 ] << " <#processes>\n";
+		std::cout << "  <#processes>  The integer value for #processes. May not "
+			<< "be negative. This program must be called #processes times "
+			<< "on any number of connected nodes.\n";
+		return 0;
 	}
 
 	// read command-line args
@@ -46,8 +44,9 @@ int main( int argc, char ** argv ) {
 	// input sanity checks
 	if( P <= 0 ) {
 		std::cerr << "Invalid value for #processes (" << argv[1] << ", "
-			<< "parsed as " << static_cast< size_t >(P) << ".\n";
-		USE2 return 100;
+			<< "parsed as " << static_cast< size_t >(P) << ".\n"
+			<< "Argument must be a strictly positive integer.\n";
+		return 100;
 	}
 
 	// prepare launcher and output field
@@ -71,7 +70,4 @@ int main( int argc, char ** argv ) {
 	// done
 	return exit_status;
 }
-
-#undef USE1
-#undef USE2
 

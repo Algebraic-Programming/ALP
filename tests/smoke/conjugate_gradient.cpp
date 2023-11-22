@@ -51,7 +51,8 @@ using BaseScalarType = double;
 #endif
 
 /** Parser type */
-typedef grb::utils::MatrixFileReader< ScalarType,
+typedef grb::utils::MatrixFileReader<
+	ScalarType,
 	std::conditional<
 		(sizeof(grb::config::RowIndexType) > sizeof(grb::config::ColIndexType)),
 		grb::config::RowIndexType,

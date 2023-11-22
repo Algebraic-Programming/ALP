@@ -831,6 +831,10 @@ int main( int argc, char **argv ) {
 	std::cout << std::endl;
 
 	// done
-	return (50 + out.rc);
+	if( out.rc == 0 ) {
+		return 0;
+	} else {
+		return (50 + out.rc);
+	}
 }
 

@@ -174,7 +174,8 @@ int main( int argc, char ** argv ) {
 			internal::Distribution< BSP1D >::global_length_to_local( n, s, P )
 		) {
 			error = static_cast< int >( 14 + s );
-			(void) fprintf( stderr,
+			(void) fprintf(
+				stderr,
 				"Unexpected output from global_length_to_local at check %d: for a "
 				"vector of length %zd, PID %zd out of %zd has %zd elements "
 				"(expected: %zd).\n",

@@ -31,7 +31,7 @@ namespace grb {
 	namespace utils {
 
 		/**
-		 * This class describes a read-only singleton.
+		 * This class describes a singleton of a given type \a T.
 		 *
 		 * The data corresponding to a singleton may be retrieved via a call to
 		 * ::getData. The singleton includes storage.
@@ -43,6 +43,21 @@ namespace grb {
 		 * @tparam key The identifier of this singleton.
 		 *
 		 * The type \a T must be default-constructible.
+		 *
+		 * \warning The use of singletons is almost always discouraged.
+		 *
+		 * \warning In particular, never use this class within template library
+		 *          implementations, including ALP!
+		 *
+		 * \note The recommendation is have this class used only by final, top-level
+		 *       application codes (if indeed they must be used). The rationale for
+		 *       this is that singleton classes otherwise may by multiple modules of
+		 *       an application, without them being aware of each others' use, with
+		 *       all kinds of horrendous effects then becoming possible (if not
+		 *       likely).
+		 *       
+		 * \note Indeed, the only current uses of this class are within the test
+		 *       suite, in their top-level .cpp files only.
 		 */
 		template< typename T, size_t key = 0 >
 		class Singleton {
@@ -50,7 +65,7 @@ namespace grb {
 			private:
 
 				/**
-				 * \internal Make sure no-one except ::getData can construct an instance.
+				 * \internal Make sure no-one can construct an instance of this class.
 				 */
 				Singleton();
 
@@ -58,11 +73,19 @@ namespace grb {
 			public:
 
 				/**
-				 * Retrieves data from this singleton.
+				 * @returns The data corresponding to this singleton.
 				 *
-				 * Throws an error if the singleton was not yet initialised.
+				 * \warning The user code must typically distinguish between the first use
+				 *          of the singleton (which then initialises the data with something
+				 *          meaningful), versus subsequent use that uses the initialised
+				 *          data. By default, i.e., on the very first initial access to the
+				 *          singleton data, the data corresponds to its default-constructed
+				 *          state.
 				 *
-				 * @returns The data with which the singleton was initialised.
+				 * This function is thread-safe, but the underlying data type \a T may of
+				 * course have its own ideas on thread-safety. (I.e., the use of singleton
+				 * is only truly thread-safe if the subset the interface of \a T it uses is
+				 * thread-safe.)
 				 */
 				static T& getData() {
 					static T data;
