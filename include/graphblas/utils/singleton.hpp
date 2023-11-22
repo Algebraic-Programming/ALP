@@ -33,31 +33,32 @@ namespace grb {
 		/**
 		 * This class describes a singleton of a given type \a T.
 		 *
-		 * The data corresponding to a singleton may be retrieved via a call to
-		 * ::getData. The singleton includes storage.
+		 * \warning The use of singletons is almost always discouraged.
+		 *
+		 * Each process contains exactly one storage of type \a T associated with this
+		 * singleton, which is retrieved via the a call to ::getData
 		 *
 		 * If multiple singletons of the same data type \a T are required, then each
 		 * such singleton should define a unique \a key.
 		 *
-		 * @tparam T   The data type of the singleton.
-		 * @tparam key The identifier of this singleton.
-		 *
 		 * The type \a T must be default-constructible.
 		 *
-		 * \warning The use of singletons is almost always discouraged.
+		 * @tparam T   The default-constructible data type of the singleton.
+		 * @tparam key The identifier of this singleton.
 		 *
-		 * \warning In particular, never use this class within template library
-		 *          implementations, including ALP!
+		 * \warning Never use this class within template library implementations,
+		 *          including ALP!
 		 *
-		 * \note The recommendation is have this class used only by final, top-level
-		 *       application codes (if indeed they must be used). The rationale for
-		 *       this is that singleton classes otherwise may by multiple modules of
-		 *       an application, without them being aware of each others' use, with
-		 *       all kinds of horrendous effects then becoming possible (if not
-		 *       likely).
+		 * \note The recommendation is to have this class used only by final,
+		 *       top-level application codes -- if indeed it must be used at all.
+		 *       The rationale for this is that singleton classes otherwise may be
+		 *       employed by multiple independent modules of an application, without
+		 *       them being aware of each others' use. Such a scenario would allow for
+		 *       all kinds of horrendous effects.
 		 *       
-		 * \note Indeed, the only current uses of this class are within the test
-		 *       suite, in their top-level .cpp files only.
+		 * \note Indeed and accordingly, within the ALP project, the only current uses
+		 *       of this class are within the test suite, in their top-level .cpp
+		 *       files only.
 		 */
 		template< typename T, size_t key = 0 >
 		class Singleton {

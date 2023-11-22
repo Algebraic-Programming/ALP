@@ -324,8 +324,6 @@ void grbProgram( const simulation_input &in, struct output &out ) {
 
 	// start postamble
 	timer.reset();
-	// set error code
-	out.error_code = rc;
 
 	Semiring<
 		grb::operators::add< double >, grb::operators::mul< double >,
@@ -335,6 +333,9 @@ void grbProgram( const simulation_input &in, struct output &out ) {
 	out.square_norm_diff = 0.0;
 	rc = rc ? rc : grb::eWiseMul( b, -1.0, x, ring );
 	rc = rc ? rc : grb::dot( out.square_norm_diff, b, b, ring );
+
+	// set error code
+	out.error_code = rc;
 
 	// output
 	out.pinnedVector = std::unique_ptr< PinnedVector< double > >(

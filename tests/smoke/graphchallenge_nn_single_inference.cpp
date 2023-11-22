@@ -248,9 +248,6 @@ void grbProgram( const struct input &data_in, struct output &out ) {
 	// assume successful run
 	out.error_code = 0;
 
-	out.times.io = timer.time();
-	timer.reset();
-
 	std::vector< double > &biases = Storage::getData().first;
 	std::vector< grb::Matrix< double > > L;
 
@@ -298,10 +295,19 @@ void grbProgram( const struct input &data_in, struct output &out ) {
 		}
 	}
 
+	// At this point, I/O stage one completes. It is followed by a necessary
+	// pre-amble stage now.
+	out.times.io = timer.time();
+	timer.reset();
+
 	// this a simple way to get the input vector by reading it as a matrix using
 	// the existing parser and then apply the vxm operation on the matrix and on a
 	// vector of ones
 	grb::Vector< double > vout( n ), vin( n ), temp( n );
+
+	// preamble stage one completes, we move back into the final I/O stage two
+	out.times.preamble = timer.time();
+	timer.reset();
 	{
 		grb::Matrix< double > Lvin( n, n );
 		const size_t parser_nz = (Storage::getData().second)[ data_in.layers ].first;
@@ -341,6 +347,11 @@ void grbProgram( const struct input &data_in, struct output &out ) {
 			return;
 		}
 
+		// at this point, the final I/O stage 2 finishes and we move back into the
+		// preamble, for its final stage
+		out.times.io += timer.time();
+		timer.reset();
+
 		// now we have the matrix form of the input vector, turn it into an actual
 		// vector:
 		grb::Semiring<
@@ -367,7 +378,8 @@ void grbProgram( const struct input &data_in, struct output &out ) {
 		}
 	}
 
-	out.times.preamble = timer.time();
+	// we are done with the preamble
+	out.times.preamble += timer.time();
 
 	// by default, copy input requested repetitions to output repititions performed
 	out.rep = data_in.rep;

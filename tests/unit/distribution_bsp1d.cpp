@@ -199,7 +199,8 @@ int main( int argc, char ** argv ) {
 			internal::Distribution< BSP1D >::local_offset( n, s, P )
 		) {
 			error = static_cast< int >( 14 + s + P );
-			(void) fprintf( stderr,
+			(void) fprintf(
+				stderr,
 				"Unexpected output from local_offset at check %d: for a vector of "
 				"length %zd, PID %zd out of %zd has %zd preceding elements "
 				"(expected: %zd)\n",
