@@ -18,7 +18,8 @@
 /**
  * @file hpcg_test.cpp
  * @author Alberto Scolari (alberto.scolari@huawei.com)
- * @brief Test for HPCG simulations on N-dimensional physical problems.
+ *
+ * Test for HPCG simulations on N-dimensional physical problems.
  *
  * This test strictly follows the parameter and the formulation of the reference HPCG
  * benchmark impementation in https://github.com/hpcg-benchmark/hpcg.
@@ -27,11 +28,11 @@
  */
 
 #include <array>
-#include <cassert>
 #include <cmath>
+#include <memory>
+#include <cassert>
 #include <cstdlib>
 #include <iostream>
-#include <memory>
 #include <type_traits>
 
 #include <graphblas.hpp>
@@ -41,9 +42,9 @@
 
 #include <graphblas/utils/timer.hpp>
 
-#include <utils/argument_parser.hpp>
 #include <utils/assertions.hpp>
 #include <utils/print_vec_mat.hpp>
+#include <utils/argument_parser.hpp>
 
 
 // here we define a custom macro and do not use NDEBUG since the latter is not defined for smoke tests
@@ -52,7 +53,7 @@
 // HPCG_PRINT_STEPS requires defining the following symbols
 
  /**
-  * @brief simply prints \p args on a dedicated line.
+  * Prints \a args on a dedicated line.
   */
  #define DBG_println( args ) std::cout << args << std::endl;
 
@@ -67,7 +68,7 @@ template<
 void print_norm( const grb::Vector< T > &r, const char * head, const Ring &ring = Ring() );
 
  /**
-  * @brief prints \p head and the norm of \p r.
+  * Prints \a head and the norm of \a vec.
   */
  #define DBG_print_norm( vec, head ) print_norm( vec, head )
 
@@ -100,7 +101,7 @@ static const char * const TEXT_HIGHLIGHT = "===> ";
 
 
 /**
- * @brief Container for system parameters to create the HPCG problem.
+ * Container for system parameters to create the HPCG problem.
  */
 struct system_input {
 	size_t nx, ny, nz;
@@ -108,7 +109,7 @@ struct system_input {
 };
 
 /**
- * @brief Container for the parameters for the HPCG simulation.
+ * Container for the parameters for the HPCG simulation.
  */
 struct simulation_input : public system_input {
 	size_t test_repetitions;
@@ -119,7 +120,7 @@ struct simulation_input : public system_input {
 };
 
 /**
- * @brief Containers for test outputs.
+ * Containers for test outputs.
  */
 struct output {
 	RC error_code;
@@ -139,7 +140,7 @@ struct output {
 };
 
 /**
- * @brief Returns the closets power of 2 bigger or equal to \p n .
+ * Returns the closets power of 2 bigger or equal to \a n.
  */
 template< typename T = size_t >
 T static next_pow_2( T n ) {
@@ -154,20 +155,29 @@ T static next_pow_2( T n ) {
 }
 
 /**
- * @brief Builds and initializes a 3D system for an HPCG simulation according to the given 3D system sizes.
- * @return RC grb::SUCCESS if the system initialization within GraphBLAS succeeded
+ * Builds and initializes a 3D system for an HPCG simulation according to the
+ * given 3D system sizes.
+ *
+ * @return RC grb::SUCCESS If the system initialization within GraphBLAS
+ *                         succeeded.
  */
-static RC build_3d_system( std::unique_ptr< hpcg_data< double, double, double > > & holder, const system_input & in ) {
-	const std::array< size_t, 3 > physical_sys_sizes { in.nx, in.ny, in.nz };
+static RC build_3d_system(
+	std::unique_ptr< hpcg_data< double, double, double > > &holder,
+	const system_input &in
+) {
+	const std::array< size_t, 3 > physical_sys_sizes = { in.nx, in.ny, in.nz };
 	struct hpcg_system_params< 3, double > params {
-		physical_sys_sizes, HALO_RADIUS, BAND_WIDTH_3D * 2 + 1, SYSTEM_DIAG_VALUE, SYSTEM_NON_DIAG_VALUE, PHYS_SYSTEM_SIZE_MIN, in.max_coarsening_levels, 2
+		physical_sys_sizes, HALO_RADIUS,
+		BAND_WIDTH_3D * 2 + 1, SYSTEM_DIAG_VALUE,
+		SYSTEM_NON_DIAG_VALUE, PHYS_SYSTEM_SIZE_MIN,
+		in.max_coarsening_levels, 2
 	};
 
 	return build_hpcg_system< 3, double >( holder, params );
 }
 
 #ifdef HPCG_PRINT_SYSTEM
-static void print_system( const hpcg_data< double, double, double > & data ) {
+static void print_system( const hpcg_data< double, double, double > &data ) {
 	print_matrix( data.A, 70, "A" );
 	multi_grid_data< double, double > * coarser = data.coarser_level;
 	while( coarser != nullptr ) {
@@ -179,13 +189,23 @@ static void print_system( const hpcg_data< double, double, double > & data ) {
 #endif
 
 #ifdef HPCG_PRINT_STEPS
-template< typename T,
-		class Ring = Semiring< grb::operators::add< T >, grb::operators::mul< T >, grb::identities::zero, grb::identities::one >
+template<
+	typename T,
+	class Ring = Semiring<
+		grb::operators::add< T >, grb::operators::mul< T >,
+		grb::identities::zero, grb::identities::one
 	>
-void print_norm( const grb::Vector< T > & r, const char * head, const Ring & ring ) {
+>
+void print_norm(
+	const grb::Vector< T > &r,
+	const char * head,
+	const Ring &ring
+) {
 	T norm;
 	RC ret = grb::dot( norm, r, r, ring ); // residual = r' * r;
-	(void)ret;
+#ifdef NDEBUG
+	(void) ret;
+#endif
 	assert( ret == SUCCESS );
 	std::cout << ">>> ";
 	if( head != nullptr ) {
@@ -196,10 +216,10 @@ void print_norm( const grb::Vector< T > & r, const char * head, const Ring & rin
 #endif
 
 /**
- * @brief Main test, building an HPCG problem and running the simulation closely following the
- * parameters in the reference HPCG test.
+ * Main test, building an HPCG problem and running the simulation closely
+ * following the parameters in the reference HPCG test.
  */
-void grbProgram( const simulation_input & in, struct output & out ) {
+void grbProgram( const simulation_input &in, struct output &out ) {
 	// get user process ID
 	assert( spmd<>::pid() < spmd<>::nprocs() );
 	grb::utils::Timer timer;
@@ -214,7 +234,8 @@ void grbProgram( const simulation_input & in, struct output & out ) {
 	rc = build_3d_system( hpcg_state, in );
 
 	if( rc != SUCCESS ) {
-		std::cerr << "Failure to generate the system (" << toString( rc ) << ")." << std::endl;
+		std::cerr << "Failure to generate the system (" << toString( rc ) << ")."
+			<< std::endl;
 		out.error_code = rc;
 		return;
 	}
@@ -224,15 +245,19 @@ void grbProgram( const simulation_input & in, struct output & out ) {
 	}
 #endif
 
-	Matrix< double > & A { hpcg_state->A };
-	Vector< double > & x { hpcg_state->x };
-	Vector< double > & b { hpcg_state->b };
+	Matrix< double > &A = hpcg_state->A;
+	Vector< double > &x = hpcg_state->x;
+	Vector< double > &b = hpcg_state->b;
 
 	// set vectors as from standard HPCG benchmark
-	set( x, 1.0 );
-	set( b, 0.0 );
-	rc = grb::mxv( b, A, x, grb::Semiring< grb::operators::add< double >, grb::operators::mul< double >, grb::identities::zero, grb::identities::one >() );
-	set( x, 0.0 );
+	rc = rc ? rc : set( x, 1.0 );
+	rc = rc ? rc : set( b, 0.0 );
+	rc = rc ? rc : grb::mxv(
+		b, A, x,
+		grb::Semiring< grb::operators::add< double >, grb::operators::mul< double >,
+		grb::identities::zero, grb::identities::one
+	>() );
+	rc = rc ? rc : set( x, 0.0 );
 
 #ifdef HPCG_PRINT_SYSTEM
 	if( spmd<>::pid() == 0 ) {
@@ -243,11 +268,15 @@ void grbProgram( const simulation_input & in, struct output & out ) {
 
 	out.times.preamble = timer.time();
 
-	const bool with_preconditioning = ! in.no_preconditioning;
+	const bool with_preconditioning = !(in.no_preconditioning);
 	if( in.evaluation_run ) {
 		out.test_repetitions = 0;
 		timer.reset();
-		rc = hpcg( *hpcg_state, with_preconditioning, in.smoother_steps, in.smoother_steps, in.max_iterations, 0.0, out.performed_iterations, out.residual );
+		rc = rc ? rc : hpcg(
+			*hpcg_state, with_preconditioning,
+			in.smoother_steps, in.smoother_steps, in.max_iterations, 0.0,
+			out.performed_iterations, out.residual
+		);
 		double single_time = timer.time();
 		if( rc == SUCCESS ) {
 			rc = collectives<>::reduce( single_time, 0, operators::max< double >() );
@@ -258,15 +287,19 @@ void grbProgram( const simulation_input & in, struct output & out ) {
 		// do benchmark
 		timer.reset();
 		for( size_t i = 0; i < in.test_repetitions && rc == SUCCESS; ++i ) {
-			rc = set( x, 0.0 );
+			rc = rc ? rc : set( x, 0.0 );
 			assert( rc == SUCCESS );
-			rc = hpcg( *hpcg_state, with_preconditioning, in.smoother_steps, in.smoother_steps, in.max_iterations, 0.0, out.performed_iterations, out.residual );
-			out.test_repetitions++;
+			rc = rc ? rc : hpcg(
+				*hpcg_state, with_preconditioning,
+				in.smoother_steps, in.smoother_steps, in.max_iterations, 0.0,
+				out.performed_iterations, out.residual
+			);
+			(void) ++(out.test_repetitions);
 			if( rc != SUCCESS ) {
 				break;
 			}
 		}
-		double time_taken { timer.time() };
+		double time_taken = timer.time();
 		out.times.useful = time_taken / static_cast< double >( out.test_repetitions );
 		// sleep( 1 );
 	}
@@ -274,13 +307,18 @@ void grbProgram( const simulation_input & in, struct output & out ) {
 	if( spmd<>::pid() == 0 ) {
 		if( rc == SUCCESS ) {
 			if( in.evaluation_run ) {
-				std::cout << "Info: cold HPCG completed within " << out.performed_iterations << " iterations. Last computed residual is " << out.residual << ". Time taken was " << out.times.useful
-						  << " ms. Deduced inner repetitions parameter of " << out.test_repetitions << " to take 1 second or more per inner benchmark." << std::endl;
+				std::cout << "Info: cold HPCG completed within " << out.performed_iterations
+					<< " iterations. Last computed residual is " << out.residual << ". "
+					<< "Time taken was " << out.times.useful << " ms. "
+					<< "Deduced inner repetitions parameter of " << out.test_repetitions << " "
+					<< "to take 1 second or more per inner benchmark." << std::endl;
 			} else {
-				std::cout << "Average time taken for each of " << out.test_repetitions << " HPCG calls (hot start): " << out.times.useful << std::endl;
+				std::cout << "Average time taken for each of " << out.test_repetitions
+					<< " HPCG calls (hot start): " << out.times.useful << std::endl;
 			}
 		} else {
-			std::cerr << "Failure: call to HPCG did not succeed (" << toString( rc ) << ")." << std::endl;
+			std::cerr << "Failure: call to HPCG did not succeed (" << toString( rc )
+				<< ")." << std::endl;
 		}
 	}
 
@@ -289,38 +327,51 @@ void grbProgram( const simulation_input & in, struct output & out ) {
 	// set error code
 	out.error_code = rc;
 
-	Semiring< grb::operators::add< double >, grb::operators::mul< double >, grb::identities::zero, grb::identities::one > ring;
-	grb::set( b, 1.0 );
+	Semiring<
+		grb::operators::add< double >, grb::operators::mul< double >,
+		grb::identities::zero, grb::identities::one
+	> ring;
+	rc = rc ? rc : grb::set( b, 1.0 );
 	out.square_norm_diff = 0.0;
-	grb::eWiseMul( b, -1.0, x, ring );
-	grb::dot( out.square_norm_diff, b, b, ring );
+	rc = rc ? rc : grb::eWiseMul( b, -1.0, x, ring );
+	rc = rc ? rc : grb::dot( out.square_norm_diff, b, b, ring );
 
 	// output
-	out.pinnedVector = std::unique_ptr< PinnedVector< double > >( new PinnedVector< double >( x, SEQUENTIAL ) );
+	out.pinnedVector = std::unique_ptr< PinnedVector< double > >(
+		new PinnedVector< double >( x, SEQUENTIAL ) );
+
 	// finish timing
-	const double time_taken { timer.time() };
+	const double time_taken = timer.time();
 	out.times.postamble = time_taken;
 }
 
 /**
- * @brief Parser the command-line arguments to extract the simulation information and checks they are valid.
+ * Parses the command-line arguments to extract the simulation information and
+ * checks they are valid.
  */
-static void parse_arguments( simulation_input &, size_t &, double &, int, char ** );
+static void parse_arguments(
+	simulation_input &, size_t &, double &, int, char ** );
 
 int main( int argc, char ** argv ) {
 	simulation_input sim_in;
 	size_t test_outer_iterations;
 	double max_residual_norm;
 
-	parse_arguments( sim_in, test_outer_iterations, max_residual_norm, argc, argv );
+	parse_arguments(
+		sim_in, test_outer_iterations, max_residual_norm,
+		argc, argv
+	);
 	thcout << "System size x: " << sim_in.nx << std::endl;
 	thcout << "System size y: " << sim_in.ny << std::endl;
 	thcout << "System size z: " << sim_in.nz << std::endl;
-	thcout << "System max coarsening levels " << sim_in.max_coarsening_levels << std::endl;
+	thcout << "System max coarsening levels " << sim_in.max_coarsening_levels
+		<< std::endl;
 	thcout << "Test repetitions: " << sim_in.test_repetitions << std::endl;
 	thcout << "Max iterations: " << sim_in.max_iterations << std::endl;
-	thcout << "Direct launch: " << std::boolalpha << sim_in.evaluation_run << std::noboolalpha << std::endl;
-	thcout << "No conditioning: " << std::boolalpha << sim_in.no_preconditioning << std::noboolalpha << std::endl;
+	thcout << "Direct launch: " << std::boolalpha << sim_in.evaluation_run
+		<< std::noboolalpha << std::endl;
+	thcout << "No conditioning: " << std::boolalpha << sim_in.no_preconditioning
+		<< std::noboolalpha << std::endl;
 	thcout << "Smoother steps: " << sim_in.smoother_steps << std::endl;
 	thcout << "Test outer iterations: " << test_outer_iterations << std::endl;
 	thcout << "Maximum norm for residual: " << max_residual_norm << std::endl;
@@ -329,7 +380,7 @@ int main( int argc, char ** argv ) {
 	struct output out;
 
 	// set standard exit code
-	grb::RC rc { SUCCESS };
+	grb::RC rc = SUCCESS;
 
 	// launch estimator (if requested)
 	if( sim_in.evaluation_run ) {
@@ -338,21 +389,26 @@ int main( int argc, char ** argv ) {
 		if( rc == SUCCESS ) {
 			sim_in.test_repetitions = out.test_repetitions;
 		} else {
-			thcout << "launcher.exec returns with non-SUCCESS error code " << grb::toString( rc ) << std::endl;
+			std::cerr << std::flush;
+			thcout << "launcher.exec returns with non-SUCCESS error code "
+				<< grb::toString( rc ) << std::endl;
 			std::exit( -1 );
 		}
 	}
 
 	// launch full benchmark
 	grb::Benchmarker< AUTOMATIC > benchmarker;
-	rc = benchmarker.exec( &grbProgram, sim_in, out, 1, test_outer_iterations, true );
+	rc = benchmarker.exec( &grbProgram, sim_in, out, 1, test_outer_iterations,
+		true );
 	ASSERT_RC_SUCCESS( rc );
-	thcout << "Benchmark completed successfully and took " << out.performed_iterations << " iterations to converge with residual " << out.residual << std::endl;
+	thcout << "Benchmark completed successfully and took "
+		<< out.performed_iterations << " iterations to converge with residual "
+		<< out.residual << std::endl;
 
-	if( ! out.pinnedVector ) {
+	if( !(out.pinnedVector) ) {
 		thcerr << "no output vector to inspect" << std::endl;
 	} else {
-		const PinnedVector< double > &solution { *out.pinnedVector };
+		const PinnedVector< double > &solution = *(out.pinnedVector);
 		thcout << "Size of x is " << solution.size() << std::endl;
 		if( solution.size() > 0 ) {
 			print_vector( solution, 30, "SOLUTION" );
@@ -360,10 +416,9 @@ int main( int argc, char ** argv ) {
 			thcerr << "ERROR: solution contains no values" << std::endl;
 		}
 	}
-
 	ASSERT_RC_SUCCESS( out.error_code );
 
-	double residual_norm { sqrt( out.square_norm_diff ) };
+	double residual_norm = sqrt( out.square_norm_diff );
 	thcout << "Residual norm: " << residual_norm << std::endl;
 
 	ASSERT_LT( residual_norm, max_residual_norm );
@@ -372,8 +427,10 @@ int main( int argc, char ** argv ) {
 	return 0;
 }
 
-static void parse_arguments( simulation_input & sim_in, size_t & outer_iterations, double & max_residual_norm, int argc, char ** argv ) {
-
+static void parse_arguments(
+	simulation_input &sim_in, size_t &outer_iterations, double &max_residual_norm,
+	int argc, char ** argv
+) {
 	argument_parser parser;
 	parser.add_optional_argument( "--nx", sim_in.nx, PHYS_SYSTEM_SIZE_DEF, "physical system size along x" )
 		.add_optional_argument( "--ny", sim_in.ny, PHYS_SYSTEM_SIZE_DEF, "physical system size along y" )
@@ -397,27 +454,32 @@ static void parse_arguments( simulation_input & sim_in, size_t & outer_iteration
 	parser.parse( argc, argv );
 
 	// check for valid values
-	size_t ssize { std::max( next_pow_2( sim_in.nx ), PHYS_SYSTEM_SIZE_MIN ) };
+	size_t ssize = std::max( next_pow_2( sim_in.nx ), PHYS_SYSTEM_SIZE_MIN );
 	if( ssize != sim_in.nx ) {
-		std::cout << "Setting system size x to " << ssize << " instead of " << sim_in.nx << std::endl;
+		std::cout << "Setting system size x to " << ssize << " instead of "
+			<< sim_in.nx << std::endl;
 		sim_in.nx = ssize;
 	}
 	ssize = std::max( next_pow_2( sim_in.ny ), PHYS_SYSTEM_SIZE_MIN );
 	if( ssize != sim_in.ny ) {
-		std::cout << "Setting system size y to " << ssize << " instead of " << sim_in.ny << std::endl;
+		std::cout << "Setting system size y to " << ssize << " instead of "
+			<< sim_in.ny << std::endl;
 		sim_in.ny = ssize;
 	}
 	ssize = std::max( next_pow_2( sim_in.nz ), PHYS_SYSTEM_SIZE_MIN );
 	if( ssize != sim_in.nz ) {
-		std::cout << "Setting system size z to " << ssize << " instead of " << sim_in.nz << std::endl;
+		std::cout << "Setting system size z to " << ssize << " instead of "
+			<< sim_in.nz << std::endl;
 		sim_in.nz = ssize;
 	}
 	if( sim_in.max_coarsening_levels > MAX_COARSENING_LEVELS ) {
-		std::cout << "Setting max coarsening level to " << MAX_COARSENING_LEVELS << " instead of " << sim_in.max_coarsening_levels << std::endl;
+		std::cout << "Setting max coarsening level to " << MAX_COARSENING_LEVELS
+			<< " instead of " << sim_in.max_coarsening_levels << std::endl;
 		sim_in.max_coarsening_levels = MAX_COARSENING_LEVELS;
 	}
 	if( sim_in.test_repetitions == 0 ) {
-		std::cerr << "ERROR no test runs selected: set \"--test-rep >0\"" << std::endl;
+		std::cerr << "ERROR no test runs selected: set \"--test-rep >0\""
+			<< std::endl;
 		std::exit( -1 );
 	}
 	if( sim_in.max_iterations == 0 ) {
