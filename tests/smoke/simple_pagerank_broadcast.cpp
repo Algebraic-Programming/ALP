@@ -62,7 +62,10 @@ struct output_vector {
 	grb::utils::TimerResults times;
 };
 
-void grbProgram( const void * data_in, const size_t in_size, struct output_vector & out ) {
+void grbProgram(
+	const void * data_in, const size_t in_size,
+	struct output_vector &out
+) {
 	// sanity check
 	assert( in_size >= sizeof( struct input_matrix ) );
 #ifdef NDEBUG
@@ -71,7 +74,8 @@ void grbProgram( const void * data_in, const size_t in_size, struct output_vecto
 	// create more convenient view of in_size
 	struct input_matrix A = *static_cast< const struct input_matrix * >( data_in );
 	// correct input_matrix struct
-	A.rows = reinterpret_cast< size_t * >( reinterpret_cast< char * >( const_cast< void * >( data_in ) ) + sizeof( struct input_matrix ) );
+	A.rows = reinterpret_cast< size_t * >( reinterpret_cast< char * >(
+			const_cast< void * >( data_in ) ) + sizeof( struct input_matrix ) );
 	A.cols = A.rows + A.nz;
 	// sanity check
 	assert( in_size == sizeof( struct input_matrix ) + nz * sizeof( size_t ) * 2 );
@@ -105,7 +109,8 @@ void grbProgram( const void * data_in, const size_t in_size, struct output_vecto
 
 	// print timing at root process
 	if( grb::spmd<>::pid() == 0 ) {
-		std::cout << "Time taken for a single PageRank call (cold start): " << time_taken << std::endl;
+		std::cout << "Time taken for a single PageRank call (cold start): "
+			<< time_taken << std::endl;
 	}
 
 	// set error code
@@ -121,7 +126,7 @@ void grbProgram( const void * data_in, const size_t in_size, struct output_vecto
 #ifdef PINNED_OUTPUT
 	out.pinnedVector = PinnedVector< double >( pr, SEQUENTIAL );
 #else
-	for( auto nonzero : pr ) {
+	for( const auto &nonzero : pr ) {
 		out.indices.push_back( nonzero.first );
 		out.pr_values.push_back( nonzero.second );
 	}
@@ -144,23 +149,26 @@ int main( int argc, char ** argv ) {
 	}
 
 	int s = -1;
-	(void)MPI_Comm_rank( MPI_COMM_WORLD, &s );
+	(void) MPI_Comm_rank( MPI_COMM_WORLD, &s );
 	assert( s != -1 );
 
 	for( int loop = 0; loop < LOOP_MAIN; ++loop ) {
 
 		// the input matrix as a single big chunk of memory
-		const size_t in_size = s == 0 ? sizeof( struct input_matrix ) + nz * sizeof( size_t ) * 2 : 0;
+		const size_t in_size = s == 0
+			? sizeof( struct input_matrix ) + nz * sizeof( size_t ) * 2
+			: 0;
 		char * data_in = s == 0 ? new char[ in_size ] : NULL;
 
 		// root process initialises
 		if( s == 0 ) {
 			// create more convenient view of in_size
-			struct input_matrix & A = *reinterpret_cast< struct input_matrix * >( data_in );
+			struct input_matrix &A =
+				*reinterpret_cast< struct input_matrix * >( data_in );
 			A.n = n;
 			A.nz = nz;
-			A.rows = reinterpret_cast< size_t * >( data_in + sizeof( struct input_matrix ) );
-			A.cols = reinterpret_cast< size_t * >( A.rows + nz ); // note that A.rows is of type size_t so thepointer airthmetic is exact here (no need to add sizeof(size_t))
+			A.rows = reinterpret_cast< size_t * >(data_in + sizeof(struct input_matrix));
+			A.cols = reinterpret_cast< size_t * >( A.rows + nz );
 			// construct example pattern matrix
 			for( size_t i = 0; i < A.n; ++i ) {
 				A.rows[ i ] = i;
@@ -179,11 +187,11 @@ int main( int argc, char ** argv ) {
 #endif
 
 		grb::Launcher< FROM_MPI > launcher( MPI_COMM_WORLD );
-		const enum grb::RC rc = launcher.exec( &grbProgram, data_in, in_size, pr, true );
+		const enum grb::RC rc = launcher.exec( &grbProgram, data_in, in_size, pr,
+			true );
 		if( rc != SUCCESS ) {
-			std::cerr << "grb::Launcher< FROM_MPI >::exec returns with "
-						 "non-SUCCESS exit code "
-					  << (int)rc << std::endl;
+			std::cerr << "grb::Launcher< FROM_MPI >::exec returns with non-SUCCESS "
+				<< "exit code " << grb::toString(rc) << std::endl;
 			return 16;
 		}
 
@@ -197,7 +205,11 @@ int main( int argc, char ** argv ) {
 #endif
 		std::cout << "First 10 nonzeroes of pr are: ( ";
 #ifdef PINNED_OUTPUT
-		for( size_t k = 0; k < 10 && k < pr.pinnedVector.nonzeroes() && k < 10; ++k ) {
+		for(
+			size_t k = 0;
+			k < 10 && k < pr.pinnedVector.nonzeroes() && k < 10;
+			++k
+		) {
 			const auto &nonzeroValue = pr.pinnedVector.getNonzeroValue( k );
 			std::cout << nonzeroValue << " ";
 		}
@@ -220,3 +232,4 @@ int main( int argc, char ** argv ) {
 	// done
 	return 0;
 }
+

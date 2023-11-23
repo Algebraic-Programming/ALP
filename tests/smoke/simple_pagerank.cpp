@@ -28,6 +28,7 @@
 #include <graphblas/utils/timer.hpp>
 #include <graphblas/utils/parser.hpp>
 #include <graphblas/utils/singleton.hpp>
+
 #include <graphblas/utils/iterators/nonzeroIterator.hpp>
 
 #include <utils/output_verification.hpp>
@@ -88,11 +89,21 @@ struct output {
 
 void ioProgram( const struct input &data_in, bool &success ) {
 	success = false;
+
+	// sanity check on input
+	if( data_in.filename[ 0 ] == '\0' ) {
+		std::cerr << "Error: no file name given as input.\n";
+		return;
+	}
+
 	// Parse and store matrix in singleton class
-	auto &data = Storage::getData().second;
 	try {
+		auto &data = Storage::getData().second;
 		Parser parser( data_in.filename, data_in.direct );
-		assert( parser.m() == parser.n() );
+		if( parser.m() != parser.n() ) {
+			std::cerr << "Error: input matrix must be square.\n";
+			return;
+		}
 		Storage::getData().first.first = parser.n();
 		try {
 			Storage::getData().first.second = parser.nz();
@@ -146,6 +157,17 @@ void grbProgram( const struct input &data_in, struct output &out ) {
 	Matrix< void > L( n, n );
 	{
 		const auto &data = Storage::getData().second;
+		/* Once internal issue #342 is resolved this can be re-enabled
+		const RC rc = buildMatrixUnique(
+			L,
+			utils::makeNonzeroIterator<
+				grb::config::RowIndexType, grb::config::ColIndexType, void
+			>( data.cbegin() ),
+			utils::makeNonzeroIterator<
+				grb::config::RowIndexType, grb::config::ColIndexType, void
+			>( data.cend() ),
+			PARALLEL
+		);*/
 		const RC rc = buildMatrixUnique(
 			L,
 			utils::makeNonzeroIterator<
@@ -168,11 +190,10 @@ void grbProgram( const struct input &data_in, struct output &out ) {
 	const size_t global_nnz = nnz( L );
 	const size_t parser_nnz = Storage::getData().first.second;
 	if( global_nnz != parser_nnz ) {
-		std::cerr << "Failure: global nnz (" << global_nnz << ") "
+		std::cerr << "Warning: global nnz (" << global_nnz << ") does not equal "
 			<< "parser nnz (" << parser_nnz << "). This could naturally occur if the "
 			<< "input file employs symmetric storage, in which case only roughly one "
-			<< "half of the input is stored.\n";
-		out.error_code = 15;
+			<< "half of the input is stored (and visible to the parser).\n";
 	}
 
 	// I/O done

@@ -55,7 +55,7 @@ static void coda( size_t * const LI, size_t * const LJ, const size_t nz ) {
 
 void grbProgram( const size_t &P, int &exit_status ) {
 	const size_t s = spmd<>::pid();
-	(void)P;
+	(void) P;
 
 	// assume successful run
 	exit_status = 0;
@@ -64,7 +64,12 @@ void grbProgram( const size_t &P, int &exit_status ) {
 	// construct pattern matrix from a dataset file
 	size_t *LI, *LJ;
 	std::string type = STR( PR_DATASET_TYPE );
-	readEdges( STR( PR_DATASET_FILE ), type == "indirect", PR_DATASET_N, &nz, &LI, &LJ, &weights );
+	readEdges(
+		STR( PR_DATASET_FILE ),
+		type == "indirect", // note that type is an std::string
+		PR_DATASET_N,
+		&nz, &LI, &LJ, &weights
+	);
 #else
 	// construct example pattern matrix
 	size_t * LI = new size_t[ nz ];
@@ -81,6 +86,7 @@ void grbProgram( const size_t &P, int &exit_status ) {
 	Matrix< void > L( n, n );
 	RC rc = buildMatrixUnique( L, LI, LJ, nz, SEQUENTIAL );
 	if( rc != SUCCESS ) {
+		std::cerr << "Error during call to buildMatrixUnique\n";
 		exit_status = 1;
 		coda( LI, LJ, nz );
 		return;
@@ -88,6 +94,7 @@ void grbProgram( const size_t &P, int &exit_status ) {
 
 	// check number of nonzeroes
 	if( nnz( L ) != nz ) {
+		std::cerr << "Error checking number of nonzeroes\n";
 		exit_status = 2;
 		coda( LI, LJ, nz );
 		return;
@@ -104,6 +111,7 @@ void grbProgram( const size_t &P, int &exit_status ) {
 		exit_status = 3;
 		// no convergence, but will print output
 	} else if( rc != SUCCESS ) {
+		std::cerr << "Error during call to simple_pagerank\n";
 		exit_status = 4;
 		coda( LI, LJ, nz );
 		return;
@@ -122,12 +130,12 @@ void grbProgram( const size_t &P, int &exit_status ) {
 			// note: if the backend uses a barrier for synchronisation, then the below
 			//       synchronises the output to std::out which is useful for
 			//       verification.
-#ifndef NDEBUG
 			const auto sync_rc = spmd<>::sync();
-			assert( sync_rc == SUCCESS );
-#else
-			(void) spmd<>::sync();
-#endif
+			if( sync_rc != SUCCESS ) {
+				std::cerr << "Error: synchronisation during print to stdout failed\n";
+				exit_status = 5;
+				break;
+			}
 		}
 		if( s == 0 && rc == FAILED ) {
 			std::cout << "The PageRank algorithm did not converge." << std::endl;

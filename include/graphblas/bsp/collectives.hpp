@@ -429,7 +429,7 @@ namespace grb {
 			 *                      to be broadcast. Must match across all user processes
 			 *                      in the collective call.
 			 * @param[in] root      Which user process ID is the root.
-			 * 
+			 *
 			 * \parblock
 			 * \par Performance semantics
 			 *

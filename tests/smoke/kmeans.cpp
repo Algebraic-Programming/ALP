@@ -61,13 +61,14 @@ void grbProgram( const void *, const size_t in_size, grb::RC &ret ) {
 
 #ifdef _DEBUG
 	for( const auto &pair : classes_and_centroids ) {
-		std::cout << "\tpoint " << pair.first << "\tcluster " << pair.second.first << "\tsquared distance " << pair.second.second << "\n";
+		std::cout << "\tpoint " << pair.first << "\tcluster " << pair.second.first
+			<< "\tsquared distance " << pair.second.second << "\n";
 	}
 #endif
 }
 
 int main( int argc, char ** argv ) {
-	(void)argc;
+	(void) argc;
 	std::cout << "Functional test executable: " << argv[ 0 ] << "\n";
 
 	grb::RC rc = SUCCESS;

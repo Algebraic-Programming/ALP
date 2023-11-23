@@ -88,7 +88,8 @@ void grbProgram( const input_matrix &A, struct output_vector &out ) {
 
 	// print timing at root process
 	if( grb::spmd<>::pid() == 0 ) {
-		std::cout << "Time taken for a single PageRank call (cold start): " << time_taken << std::endl;
+		std::cout << "Time taken for a single PageRank call (cold start): "
+			<< time_taken << std::endl;
 	}
 
 	// set error code
@@ -101,7 +102,7 @@ void grbProgram( const input_matrix &A, struct output_vector &out ) {
 	}
 
 	// output
-	for( auto nonzero : pr ) {
+	for( const auto &nonzero : pr ) {
 		out.indices.push_back( nonzero.first );
 		out.pr_values.push_back( nonzero.second );
 	}
@@ -127,14 +128,17 @@ int main( int argc, char ** argv ) {
 	for( int loop = 0; loop < LOOP_MAIN; ++loop ) {
 
 		// the input matrix as a single big chunk of memory
-		const size_t in_size = sizeof( struct input_matrix ) + nz * sizeof( size_t ) * 2;
+		const size_t in_size = sizeof( struct input_matrix ) +
+			nz * sizeof( size_t ) * 2;
 		char * data_in = new char[ in_size ];
 		// initialise struct
 		{
-			struct input_matrix & A = *reinterpret_cast< struct input_matrix * >( data_in );
+			struct input_matrix &A =
+				*reinterpret_cast< struct input_matrix * >( data_in );
 			A.n = n;
 			A.nz = nz;
-			A.rows = reinterpret_cast< size_t * >( data_in + sizeof( struct input_matrix ) );
+			A.rows = reinterpret_cast< size_t * >(
+				data_in + sizeof( struct input_matrix ) );
 			// note that A.rows is of type size_t so the pointer arithmetic
 			// in the below is exact (no need to multiply with sizeof(size_t))
 			A.cols = reinterpret_cast< size_t * >( A.rows + nz );
@@ -148,7 +152,8 @@ int main( int argc, char ** argv ) {
 		}
 
 		// create more convenient view of in_size
-		const struct input_matrix &A = *reinterpret_cast< struct input_matrix * >( data_in );
+		const struct input_matrix &A =
+			*reinterpret_cast< struct input_matrix * >( data_in );
 
 		// output vector
 		struct output_vector pr;
@@ -161,16 +166,16 @@ int main( int argc, char ** argv ) {
 		// note: this exec passes pointers within a single process
 		const enum grb::RC rc = launcher.exec( &grbProgram, A, pr );
 		if( rc != SUCCESS ) {
-			std::cerr << "grb::Launcher< FROM_MPI >::exec returns with "
-						 "non-SUCCESS exit code "
-					  << (int)rc << std::endl;
+			std::cerr << "grb::Launcher< FROM_MPI >::exec returns with non-SUCCESS "
+				<< "exit code " << grb::toString(rc) << std::endl;
 		}
 
 		std::cout << "Error code is " << pr.error_code << ".\n";
 		std::cout << "Size of pr is " << pr.local_size << ".\n";
 		size_t max = pr.local_size >= 10 ? 10 : pr.local_size;
 		if( max > 0 ) {
-			std::cout << "First " << max << " elements of pr are: ( " << pr.pr_values[ 0 ];
+			std::cout << "First " << max << " elements of pr are: ( "
+				<< pr.pr_values[ 0 ];
 			for( size_t i = 1; i < max; ++i ) {
 				std::cout << ", " << pr.pr_values[ i ];
 			}
@@ -178,7 +183,7 @@ int main( int argc, char ** argv ) {
 		}
 
 		// free all memory
-		delete[] data_in;
+		delete [] data_in;
 	}
 
 	// finalise MPI
@@ -190,3 +195,4 @@ int main( int argc, char ** argv ) {
 	// done
 	return 0;
 }
+

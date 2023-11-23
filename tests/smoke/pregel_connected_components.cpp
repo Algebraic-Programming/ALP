@@ -27,10 +27,40 @@
 
 #include <graphblas/utils/timer.hpp>
 #include <graphblas/utils/parser.hpp>
+#include <graphblas/utils/singleton.hpp>
+
+#include <graphblas/utils/iterators/nonzeroIterator.hpp>
 
 
 using namespace grb;
 using namespace algorithms;
+
+/** Parser type */
+typedef grb::utils::MatrixFileReader<
+	void,
+	std::conditional<
+		(sizeof(grb::config::RowIndexType) > sizeof(grb::config::ColIndexType)),
+		grb::config::RowIndexType,
+		grb::config::ColIndexType
+	>::type
+> Parser;
+
+/** Nonzero type */
+typedef internal::NonzeroStorage<
+	grb::config::RowIndexType,
+	grb::config::ColIndexType,
+	void
+> NonzeroT;
+
+/** In-memory storage type */
+typedef grb::utils::Singleton<
+	std::pair<
+		// stores n and nz (according to parser)
+		std::pair< size_t, size_t >,
+		// stores the actual nonzeroes
+		std::vector< NonzeroT >
+	>
+> Storage;
 
 struct input {
 	char filename[ 1024 ];
@@ -46,6 +76,51 @@ struct output {
 	PinnedVector< size_t > pinnedVector;
 };
 
+void ioProgram( const struct input &data_in, bool &success ) {
+	success = false;
+
+	// sanity check on input
+	if( data_in.filename[ 0 ] == '\0' ) {
+		std::cerr << "Error: no file name given as input.\n";
+		return;
+	}
+
+	// Parse and store matrix in singleton class
+	try {
+		auto &data = Storage::getData().second;
+		Parser parser( data_in.filename, data_in.direct );
+		if( parser.m() != parser.n() ) {
+			std::cerr << "Error: input matrix must be square.\n";
+			return;
+		}
+		Storage::getData().first.first = parser.n();
+		try {
+			Storage::getData().first.second = parser.nz();
+		} catch( ... ) {
+			Storage::getData().first.second = parser.entries();
+		}
+		/* Once internal issue #342 is resolved this can be re-enabled
+		for(
+			auto it = parser.begin( PARALLEL );
+			it != parser.end( PARALLEL );
+			++it
+		) {
+			data.push_back( *it );
+		}*/
+		for(
+			auto it = parser.begin( SEQUENTIAL );
+			it != parser.end( SEQUENTIAL );
+			++it
+		) {
+			data.push_back( NonzeroT( *it ) );
+		}
+	} catch( std::exception &e ) {
+		std::cerr << "I/O program failed: " << e.what() << "\n";
+		return;
+	}
+	success = true;
+}
+
 void grbProgram( const struct input &data_in, struct output &out ) {
 
 	// get user process ID
@@ -56,35 +131,46 @@ void grbProgram( const struct input &data_in, struct output &out ) {
 	grb::utils::Timer timer;
 	timer.reset();
 
-	// sanity checks on input
-	if( data_in.filename[ 0 ] == '\0' ) {
-		std::cerr << s << ": no file name given as input." << std::endl;
-		out.error_code = ILLEGAL;
-		return;
-	}
-
 	// assume successful run
 	out.error_code = 0;
 
-	// create local parser
-	grb::utils::MatrixFileReader< void,
-		std::conditional<
-			(sizeof(grb::config::RowIndexType) > sizeof(grb::config::ColIndexType)),
-			grb::config::RowIndexType,
-			grb::config::ColIndexType
-		>::type
-	> parser( data_in.filename, data_in.direct );
-	assert( parser.m() == parser.n() );
-	const size_t n = parser.n();
-	out.times.io = timer.time();
-	timer.reset();
-
-        // prepare Pregel interface
+	// get data from storage and prepare Pregel interface
+	const size_t n = Storage::getData().first.first;
+	const auto &data = Storage::getData().second;
+	/* Once internal issue #342 is resolved this can be re-enabled
         grb::interfaces::Pregel< void > pregel(
-		parser.n(), parser.m(),
-		parser.begin(), parser.end(),
+		n, n,
+		utils::makeNonzeroIterator<
+			grb::config::RowIndexType, grb::config::ColIndexType, void
+		>( data.cbegin() ),
+		utils::makeNonzeroIterator<
+			grb::config::RowIndexType, grb::config::ColIndexType, void
+		>( data.cend() ),
+		PARALLEL
+	);*/
+        grb::interfaces::Pregel< void > pregel(
+		n, n,
+		utils::makeNonzeroIterator<
+			grb::config::RowIndexType, grb::config::ColIndexType, void
+		>( data.cbegin() ),
+		utils::makeNonzeroIterator<
+			grb::config::RowIndexType, grb::config::ColIndexType, void
+		>( data.cend() ),
 		SEQUENTIAL
 	);
+	{
+		const size_t parser_nnz = Storage::getData().first.second;
+		if( pregel.numEdges() != parser_nnz ) {
+			std::cerr << "Warning: number of edges (" << pregel.numEdges() << ") does "
+				<< "not equal parser nnz (" << parser_nnz << "). This could naturally "
+				<< "occur if the input file employs symmetric storage, in which case only "
+				<< "roughly one half of the input is stored (and visible to the parser).\n";
+		}
+	}
+
+	// finish I/O, go to preamble
+	out.times.io = timer.time();
+	timer.reset();
 
 	// 1. initalise connected components IDs and message buffers
         grb::Vector< size_t > cc( n );
@@ -99,7 +185,7 @@ void grbProgram( const struct input &data_in, struct output &out ) {
 	if( out.rep == 0 ) {
 		timer.reset();
 	        rc = grb::algorithms::pregel::ConnectedComponents< size_t >::execute(
-			pregel, cc, pregel.num_vertices() );
+			pregel, cc, pregel.numVertices() );
 		double single_time = timer.time();
 		if( rc != SUCCESS ) {
 			std::cerr << "Failure: call to Pregel ConnectedAlgorithms did not succeed "
@@ -220,18 +306,24 @@ int main( int argc, char ** argv ) {
 	if( strncmp( argv[ 2 ], "direct", 6 ) == 0 ) {
 		in.direct = true;
 	} else {
-		in.direct = false;
+		if( strncmp( argv[ 2 ], "indirect", 8 ) == 0 ) {
+			in.direct = false;
+		} else {
+			std::cerr << "Could not parse argument \"" << argv[ 2 ] << "\"; expected "
+				<< "\"direct\" or \"indirect\"\n";
+			return 10;
+		}
 	}
 
 	// get inner number of iterations
 	in.rep = grb::config::BENCHMARKING::inner();
-	char * end = NULL;
+	char * end = nullptr;
 	if( argc >= 4 ) {
 		in.rep = strtoumax( argv[ 3 ], &end, 10 );
 		if( argv[ 3 ] == end ) {
-			std::cerr << "Could not parse argument " << argv[ 2 ]
-				<< " for number of inner experiment repititions." << std::endl;
-			return 2;
+			std::cerr << "Could not parse argument " << argv[ 3 ]
+				<< " for number of inner experiment repetitions." << std::endl;
+			return 20;
 		}
 	}
 
@@ -240,9 +332,9 @@ int main( int argc, char ** argv ) {
 	if( argc >= 5 ) {
 		outer = strtoumax( argv[ 4 ], &end, 10 );
 		if( argv[ 4 ] == end ) {
-			std::cerr << "Could not parse argument " << argv[ 3 ]
-				<< " for number of outer experiment repititions." << std::endl;
-			return 4;
+			std::cerr << "Could not parse argument " << argv[ 4 ]
+				<< " for number of outer experiment repetitions." << std::endl;
+			return 30;
 		}
 	}
 
@@ -258,12 +350,12 @@ int main( int argc, char ** argv ) {
 			} else {
 				std::cerr << "The verification file was not provided as an argument."
 					<< std::endl;
-				return 5;
+				return 40;
 			}
 		} else {
 			std::cerr << "Could not parse argument \"" << argv[ 5 ] << "\", "
 				<< "the optional \"verification\" argument was expected." << std::endl;
-			return 5;
+			return 50;
 		}
 	}
 
@@ -277,6 +369,22 @@ int main( int argc, char ** argv ) {
 	// set standard exit code
 	grb::RC rc = SUCCESS;
 
+	// run I/O program
+	{
+		bool success;
+		grb::Launcher< AUTOMATIC > launcher;
+		rc = launcher.exec( &ioProgram, in, success, true );
+		if( rc != SUCCESS ) {
+			std::cerr << "launcher.exec(I/O) returns with non-SUCCESS error code \""
+				<< grb::toString( rc ) << "\"\n";
+			return 60;
+		}
+		if( !success ) {
+			std::cerr << "I/O program caught an exception\n";
+			return 70;
+		}
+	}
+
 	// launch estimator (if requested)
 	if( in.rep == 0 ) {
 		grb::Launcher< AUTOMATIC > launcher;
@@ -287,7 +395,7 @@ int main( int argc, char ** argv ) {
 		if( rc != SUCCESS ) {
 			std::cerr << "launcher.exec returns with non-SUCCESS error code "
 				<< grb::toString( rc ) << std::endl;
-			return 6;
+			return 80;
 		}
 	}
 
@@ -299,7 +407,7 @@ int main( int argc, char ** argv ) {
 	if( rc != SUCCESS ) {
 		std::cerr << "benchmarker.exec returns with non-SUCCESS error code "
 			<< grb::toString( rc ) << std::endl;
-		return 8;
+		return 90;
 	} else if( out.error_code == 0 ) {
 		std::cout << "Benchmark completed successfully and took "
 			<< out.iterations << " iterations to converge.\n";
@@ -341,6 +449,10 @@ int main( int argc, char ** argv ) {
 	std::cout << std::endl;
 
 	// done
-	return out.error_code;
+	if( out.error_code == 0 ) {
+		return 0;
+	} else {
+		return (100 + out.error_code);
+	}
 }
 

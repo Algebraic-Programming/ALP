@@ -55,7 +55,7 @@ namespace grb {
 		 *       employed by multiple independent modules of an application, without
 		 *       them being aware of each others' use. Such a scenario would allow for
 		 *       all kinds of horrendous effects.
-		 *       
+		 *
 		 * \note Indeed and accordingly, within the ALP project, the only current uses
 		 *       of this class are within the test suite, in their top-level .cpp
 		 *       files only.
