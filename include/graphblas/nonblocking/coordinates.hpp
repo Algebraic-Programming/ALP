@@ -63,8 +63,9 @@
 
 #include <graphblas/nonblocking/init.hpp>
 #include <graphblas/nonblocking/analytic_model.hpp>
+#include <iomanip>
 
-#define _LOCAL_DEBUG
+// #define _LOCAL_DEBUG
 
 
 namespace grb {
@@ -509,8 +510,8 @@ namespace grb {
 									omp_get_thread_num(), i, k, lower_bound, upper_bound );
 						}
 #endif
-						assert ( lower_bound <= k && k < upper_bound );
-						assert( _assigned[ k ] );
+						ASSERT( lower_bound <= k && k < upper_bound, "i=" << i << ", k=" << k << ", lower_bound=" << lower_bound << ", upper_bound=" << upper_bound );
+						ASSERT( _assigned[ k ], "i=" << i << ", k=" << k << ", lower_bound=" << lower_bound << ", upper_bound=" << upper_bound );
 						local_stack[ (*local_nnzs)++ ] = k - lower_bound;
 					}
 //#if defined(_DEBUG) || defined(_LOCAL_DEBUG)
@@ -569,6 +570,8 @@ namespace grb {
 					while( k >= upper_bounds[tile_id] ) {
 						++tile_id;
 					}
+					(void) num_tiles;
+					(void) lower_bounds;
 					ASSERT(tile_id < num_tiles, "tile_id = " << tile_id << ", num_tiles = " << num_tiles);
 					ASSERT(k < upper_bounds[tile_id], "k = " << k << ", tile_id = " << tile_id << ", upper_bounds[tile_id] = " << upper_bounds[tile_id]);
 					ASSERT(k >= lower_bounds[tile_id], "k = " << k << ", tile_id = " << tile_id << ", lower_bounds[tile_id] = " << lower_bounds[tile_id]);
@@ -583,70 +586,53 @@ namespace grb {
 					// TODO: Move me to the initialisation phase, and use _buffer instead of a vector
 					counting_sum.resize( num_tiles+1 );
 
-					// Initialise counting sum to zero
+					// Initialise counting to zero
 					#pragma omp for simd
 					for( size_t i = 0; i <= num_tiles; ++i ) {
 						counting_sum[ i ] = 0;
 					}
 
-					if( num_tiles == 0 ) {
-#if defined(_DEBUG) || defined(_LOCAL_DEBUG)
-						#pragma omp critical
-							fprintf( stderr, "[T%02d](l%04d) - guard clause: num_tiles = 0\n",
-									 omp_get_thread_num(), __LINE__ );
-#endif
-						return;
-					}
+					if( num_tiles == 0 ) { return; }
 
-					// Counting sum computation ( supposed to be faster )
-#if defined(_DEBUG) || defined(_LOCAL_DEBUG)
-					#pragma omp critical
-						fprintf( stderr, "[T%02d](l%04d) - going to compute the counting sum: _n=%zu, num_tiles=%zu \n",
-								 omp_get_thread_num(), __LINE__, _n, num_tiles );
-#endif
+					// For-each element in the stack
 					for (size_t i = 0; i < _n; ++i) {
 						const auto k = _stack[i];
+
+						// Find the tile id of the element
 						size_t tile_id = getTileId( k, num_tiles, lower_bounds, upper_bounds );
-						const auto lower_bound = lower_bounds[tile_id];
-						const auto upper_bound = upper_bounds[tile_id];
 
-#if defined(_DEBUG) || defined(_LOCAL_DEBUG)
-						#pragma omp critical
-						fprintf(stderr, "  [T%02d](l%04d) - k=%u, tile_id=%zu, bounds=[%zu, %zu[ \n",
-						        omp_get_thread_num(), __LINE__, k, tile_id, lower_bound, upper_bound);
-#endif
-						assert(_assigned[k]);
+						// Assertions
+						ASSERT( _assigned[k], "i=" << i << ", k=" << k << ", tile_id=" << tile_id );
+						ASSERT( k >= lower_bounds[tile_id], "i=" << i << ", k=" << k << ", tile_id=" << tile_id << ", lower_bound=" << lower_bounds[tile_id] );
+						ASSERT( k < upper_bounds[tile_id], "i=" << i << ", k=" << k << ", tile_id=" << tile_id << ", upper_bound=" << upper_bounds[tile_id] );
+						ASSERT( tile_id < num_tiles, "i=" << i << ", k=" << k << ", tile_id=" << tile_id << ", num_tiles=" << num_tiles );
+
+						// Increment the counting for the element's tile
 						counting_sum[tile_id + 1]++;
-					}
 
-					// Prefix sum computation of the counting sum
+					} // end for-each element in the stack
+
+
 #if defined(_DEBUG) || defined(_LOCAL_DEBUG)
-					#pragma omp critical
-					{
-						fprintf( stderr, "[T%02d] - counting_sum (not-prefixed): {num_tiles=%02zu}[ ",
-								 omp_get_thread_num(), num_tiles );
-						for(size_t i = 0; i <= num_tiles; ++i )
-							fprintf( stderr, "%04u ", counting_sum[ i ] );
-						fprintf( stderr, "]\n" );
-					}
+					std::cout << "counting_sum (not-prefixed): {num_tiles=" << num_tiles << "}[ ";
+					for(size_t i = 0; i <= num_tiles; ++i )
+						std::cout << std::setw(3) << counting_sum[ i ] << " ";
+					std::cout << "]\n";
 #endif
 
-					// Prefix sum computation of the counting sum
 					// TODO: Make this parallel
+					// Prefix-sum computation of the counting
 					for( size_t i = 0; i < num_tiles; ++i ) {
 						counting_sum[i+1] += counting_sum[i];
 					}
 
 #if defined(_DEBUG) || defined(_LOCAL_DEBUG)
-					#pragma omp critical
-					{
-						fprintf( stderr, "[T%02d] - counting_sum (prefixed):     {num_tiles=%02zu}[ ",
-								 omp_get_thread_num(), num_tiles );
-						for(size_t i = 0; i <= num_tiles; ++i )
-							fprintf( stderr, "%04u ", counting_sum[ i ] );
-						fprintf( stderr, "]\n" );
-					}
+					std::cout << "counting_sum (prefixed):     {num_tiles=" << num_tiles << "}[ ";
+					for(size_t i = 0; i <= num_tiles; ++i )
+						std::cout << std::setw(3) << counting_sum[ i ] << " ";
+					std::cout << "]\n";
 #endif
+
 					ASSERT( counting_sum[ num_tiles ] == _n, "counting_sum[ num_tiles ] = " << counting_sum[ num_tiles ] << ", _n = " << _n );
 				}
 
@@ -657,74 +643,63 @@ namespace grb {
 				) noexcept {
 					countingSumComputation_sequential( num_tiles, lower_bounds, upper_bounds );
 
-					// TODO: Move me to the initialisation phase, and use _buffer instead of a vector
-					auto counting_sum_copy = counting_sum;
-					const auto tile_size = upper_bounds[0] - lower_bounds[0];
-
+					// For-each tile
 					for( size_t tile_id = 0; tile_id < num_tiles; ++tile_id ) {
-						const auto lower_bound = lower_bounds[ tile_id ];
-						const auto upper_bound = upper_bounds[ tile_id ];
 
-#if defined(_DEBUG) || defined(_LOCAL_DEBUG)
-	#pragma omp critical
-						fprintf(stderr,
-						        "[T%02d] - i = [%u, %zu[ (tile_id=%zu)\n",
-						        omp_get_thread_num(), counting_sum[tile_id], upper_bound, tile_id );
-#endif
-						size_t assigned_in_bucket = 0;
-						const size_t max_assigned_in_bucket = upper_bound - lower_bound;
-						for (size_t i = counting_sum[tile_id]; i < _n && assigned_in_bucket < max_assigned_in_bucket; ++i) {
+						// Bounds of the current tile
+						const auto lower_bound = lower_bounds[tile_id];
+						const auto upper_bound = upper_bounds[tile_id];
+
+						// Allows to keep counting_sort intact and singular
+						size_t assigned_in_tile = 0;
+
+						// Allows quick exit from the loop if the tile has already been filled
+						const size_t max_assigned_in_tile = upper_bound - lower_bound;
+
+						// For-each element in the stack, from the end of the last processed tile
+						for (size_t i = counting_sum[tile_id + 1]; i < _n && assigned_in_tile < max_assigned_in_tile; ++i) {
 							const auto k = _stack[i];
-							if( not (lower_bound <= k && k < upper_bound) ) {
-								continue;
-							}
 
-							const auto stack_new_idx = counting_sum[tile_id] + assigned_in_bucket;
-							assert( stack_new_idx < _n );
-							assert( _assigned[ k ] );
-#if defined(_DEBUG) || defined(_LOCAL_DEBUG)
-	#pragma omp critical
-							fprintf(stderr,
-							        "[T%02d] - Found element %zu (%u) is in tile %zu\n",
-							        omp_get_thread_num(), i, k, tile_id);
-	#pragma omp critical
-							{
-								fprintf( stderr, "[T%02d] - swap( %zu, %zu ) {_n=%04zu}\n",
-								         omp_get_thread_num(), i, stack_new_idx, _n );
-								fprintf( stderr, "[T%02d] - counting_sum (____________): {num_tiles=%02zu}[ ",
-								         omp_get_thread_num(), num_tiles );
-								for(size_t _i = 0; _i <= num_tiles; ++_i )
-									fprintf( stderr, "%04u ", counting_sum_copy[ _i ] );
-								fprintf( stderr, "]\n" );
-							}
-#endif
+							// If the element is not in the current tile, skip it
+							if(not(lower_bound <= k && k < upper_bound)) { continue; }
+
+							// Find the new index of the element: beginning of the current tile + assigned_in_tile
+							const auto stack_new_idx = counting_sum[tile_id] + assigned_in_tile;
+
+							// Increment the number of assigned elements in the current tile
+							assigned_in_tile++;
+
+							// Assertions
 							assert(stack_new_idx < _n);
+							assert(_assigned[k]);
+							assert(k >= lower_bound);
+							assert(k < upper_bound);
+
+							// Swap the element with the one at the new index
 							std::swap(_stack[i], _stack[stack_new_idx]);
-							assigned_in_bucket++;
-						}
+
+						} // end for-each element in the stack
+					} // end for-each tile
+
 #if defined(_DEBUG) || defined(_LOCAL_DEBUG)
-						// Print assigned_in_bucket
-					fprintf(stderr,
-					        "[T%02d] - assigned_in_bucket = %zu, expected to be %u\n",
-					        omp_get_thread_num(), assigned_in_bucket, counting_sum[tile_id+1] - counting_sum[tile_id]);
-					std::cout << "_stack (after counting sort)(tile_size=" << tile_size << "): [";
-					for( size_t i = 0; i < _n; ++i ) {
-						const auto k = _stack[i];
-						if( (k % tile_size) == 0 ) std::cout << "\n\t| ";
-						std::cout << k << " ";
+					std::cout << "_stack (after sort): [";
+					for( size_t _tile_id = 0; _tile_id < num_tiles; ++_tile_id ) {
+						std::cout << "\n\t| ";
+						for( size_t i = counting_sum[_tile_id]; i < counting_sum[_tile_id+1]; ++i )
+							std::cout << _stack[i] << " ";
 					}
 					std::cout << "\n]\n";
-					}
 #endif
 
 					{ // Pass over the _stack and check that the coordinates are sorted
 						for (size_t i = 0; i < _n; i++) {
 							const auto k = _stack[i];
 							const auto tile_id = getTileId( k, num_tiles, lower_bounds, upper_bounds );
-							ASSERT(_assigned[k], "k = " << k << ", i = " << i << ", tile_id = " << tile_id << "\n");
-							ASSERT(k < upper_bounds[tile_id], "k = " << k << ", i = " << i << ", tile_id = " << tile_id  << ", lower_bound = " << lower_bounds[tile_id] << ", upper_bound = " << upper_bounds[tile_id]);
-							ASSERT(k >= lower_bounds[tile_id], "k = " << k << ", i = " << i << ", tile_id = " << tile_id << ", lower_bound = " << lower_bounds[tile_id] << ", upper_bound = " << upper_bounds[tile_id]);
-							ASSERT(tile_id < num_tiles, "k = " << k << ", i = " << i << ", tile_id = " << tile_id << ", lower_bound = " << lower_bounds[tile_id] << ", upper_bound = " << upper_bounds[tile_id] << ", num_tiles = " << num_tiles);
+							(void) tile_id;
+							ASSERT(_assigned[k], "i=" << i << ", k=" << k << ", tile_id=" << tile_id);
+							ASSERT(k < upper_bounds[tile_id], "i=" << i << ", k=" << k << ", tile_id=" << tile_id << ", upper_bounds[tile_id]=" << upper_bounds[tile_id]);
+							ASSERT(k >= lower_bounds[tile_id], "i=" << i << ", k=" << k << ", tile_id=" << tile_id << ", lower_bounds[tile_id]=" << lower_bounds[tile_id]);
+							ASSERT(tile_id < num_tiles, "i=" << i << ", k=" << k << ", tile_id=" << tile_id << ", num_tiles=" << num_tiles);
 						}
 					}
 
