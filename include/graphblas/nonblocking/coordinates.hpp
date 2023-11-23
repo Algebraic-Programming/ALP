@@ -568,22 +568,24 @@ namespace grb {
 					}
 					auto counting_sum_copy = counting_sum;
 
-					// Counting sum computation
-					for(size_t tile_id = 0; tile_id < num_tiles; ++tile_id ) {
-						const auto lower_bound = lower_bounds[tile_id];
-						const auto upper_bound = upper_bounds[tile_id];
+//					// Counting sum computation
+//					for(size_t tile_id = 0; tile_id < num_tiles; ++tile_id ) {
+//						const auto lower_bound = lower_bounds[tile_id];
+//						const auto upper_bound = upper_bounds[tile_id];
+//
+//						for (size_t i = 0; i < _n; ++i) {
+//							const auto k = _stack[i];
+//							if (not (lower_bound <= k && k < upper_bound)) {
+//								continue;
+//							}
+//							assert(_assigned[k]);
+//							counting_sum[tile_id + 1]++;
+//						}
+//					}
 
-						for (size_t i = 0; i < _n; ++i) {
-							const auto k = _stack[i];
-							if (not (lower_bound <= k && k < upper_bound)) {
-								continue;
-							}
-							assert(_assigned[k]);
-							counting_sum[tile_id + 1]++;
-						}
-					}
+					const auto tile_size = upper_bounds[0] - lower_bounds[0];
 
-					// Counting sum computation
+					// Counting sum computation ( supposed to be faster )
 #if defined(_DEBUG) || defined(_LOCAL_DEBUG)
 					#pragma omp critical
 						fprintf( stderr, "[T%02d](l%04d) - going to compute the counting sum: _n=%zu, num_tiles=%zu \n",
@@ -591,11 +593,8 @@ namespace grb {
 #endif
 					for (size_t i = 0; i < _n; ++i) {
 						const auto k = _stack[i];
-						size_t tile_id = 0;
-						// TODO: Binary search instead ?
-						while ( (k < lower_bounds[tile_id] || k >= upper_bounds[tile_id]) && tile_id < num_tiles) {
-							tile_id++;
-						}
+						size_t tile_id = std::floor( k / tile_size );
+						assert(tile_id < num_tiles);
 						const auto lower_bound = lower_bounds[tile_id];
 						const auto upper_bound = upper_bounds[tile_id];
 
@@ -604,25 +603,28 @@ namespace grb {
 						fprintf(stderr, "  [T%02d](l%04d) - k=%u, tile_id=%zu, bounds=[%zu, %zu[ \n",
 						        omp_get_thread_num(), __LINE__, k, tile_id, lower_bound, upper_bound);
 #endif
+						assert(k < upper_bound);
 						assert(k >= lower_bounds[tile_id]);
-						assert(tile_id < num_tiles);
-						assert(lower_bound <= k && k < upper_bound);
 						assert(_assigned[k]);
 						counting_sum_copy[tile_id + 1]++;
 					}
 
-					// Compare counting_sum_copy and counting_sum
-					for( size_t i = 0; i <= num_tiles; ++i ) {
-#if defined(_DEBUG) || defined(_LOCAL_DEBUG)
-						if( counting_sum_copy[i] != counting_sum[i] ) {
-							#pragma omp critical
-								fprintf( stderr, "[T%02d] - counting_sum_copy[%zu] = %u  !=  counting_sum[%zu] = %u\n",
-									omp_get_thread_num(), i, counting_sum_copy[i], i, counting_sum[i] );
-						}
-#endif
-						assert( counting_sum_copy[i] == counting_sum[i] );
-					}
+//					// Compare counting_sum_copy and counting_sum
+//					for( size_t i = 0; i <= num_tiles; ++i ) {
+//#if defined(_DEBUG) || defined(_LOCAL_DEBUG)
+//						if( counting_sum_copy[i] != counting_sum[i] ) {
+//							#pragma omp critical
+//								fprintf( stderr, "[T%02d] - counting_sum_copy[%zu] = %u  !=  counting_sum[%zu] = %u\n",
+//									omp_get_thread_num(), i, counting_sum_copy[i], i, counting_sum[i] );
+//						}
+//#endif
+//						assert( counting_sum_copy[i] == counting_sum[i] );
+//					}
 
+					// TODO: Remove me
+					counting_sum = counting_sum_copy;
+
+					// Prefix sum computation of the counting sum
 #if defined(_DEBUG) || defined(_LOCAL_DEBUG)
 					#pragma omp critical
 					{
@@ -635,8 +637,9 @@ namespace grb {
 #endif
 
 					// Prefix sum computation of the counting sum
-					for( size_t i = 1; i <= num_tiles; ++i ) {
-						counting_sum[i] += counting_sum[i - 1];
+					// TODO: Make this parallel
+					for( size_t i = 0; i < num_tiles; ++i ) {
+						counting_sum[i+1] += counting_sum[i];
 					}
 
 #if defined(_DEBUG) || defined(_LOCAL_DEBUG)
