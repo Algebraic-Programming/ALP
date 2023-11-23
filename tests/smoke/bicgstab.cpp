@@ -30,6 +30,7 @@
 #include <graphblas/utils/timer.hpp>
 #include <graphblas/utils/parser.hpp>
 #include <graphblas/utils/singleton.hpp>
+
 #include <graphblas/utils/iterators/nonzeroIterator.hpp>
 
 #include <utils/output_verification.hpp>
@@ -92,6 +93,12 @@ struct output {
 
 void ioProgram( const struct input &data_in, bool &success ) {
 	success = false;
+
+	// sanity checks on input
+	if( data_in.filename[ 0 ] == '\0' ) {
+		std::cerr << "Error: no input file given\n";
+		return;
+	}
 	// Parse and store matrix in singleton class
 	auto &data = Storage::getData().second;
 	try {

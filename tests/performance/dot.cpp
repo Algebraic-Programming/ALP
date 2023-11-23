@@ -51,25 +51,33 @@ struct bench_input {
 	double check;
 };
 
-void functional_test( const struct test_input & in, struct test_output & out ) {
+void functional_test( const struct test_input &in, struct test_output &out ) {
 	out.error_code = 0;
 
 	// declare graphBLAS data structures
 	typedef grb::Vector< double > vector;
-	const size_t & n = in.n;
+	const size_t &n = in.n;
 	vector xv( n ), yv( n );
 
 	// declare raw data structures for comparison purposes
 	double check = 0.0;
-	double * __restrict__ xr = NULL;
-	double * __restrict__ yr = NULL;
-	int prc = posix_memalign( (void **)&xr, grb::config::CACHE_LINE_SIZE::value(), n * sizeof( double ) );
+	double * __restrict__ xr = nullptr;
+	double * __restrict__ yr = nullptr;
+	int prc = posix_memalign(
+		(void **)&xr,
+		grb::config::CACHE_LINE_SIZE::value(),
+		n * sizeof( double )
+	);
 	assert( prc == 0 );
 	if( prc != 0 ) {
 		out.error_code = 98;
 		return;
 	}
-	prc = posix_memalign( (void **)&yr, grb::config::CACHE_LINE_SIZE::value(), n * sizeof( double ) );
+	prc = posix_memalign(
+		(void **)&yr,
+		grb::config::CACHE_LINE_SIZE::value(),
+		n * sizeof( double )
+	);
 	assert( prc == 0 );
 	if( prc != 0 ) {
 		out.error_code = 99;
@@ -98,13 +106,17 @@ void functional_test( const struct test_input & in, struct test_output & out ) {
 
 	// call templated dot
 	grb::utils::Timer timer;
-	typename grb::Semiring< grb::operators::add< double >, grb::operators::mul< double >, grb::identities::zero, grb::identities::one > reals;
+	typename grb::Semiring<
+		grb::operators::add< double >, grb::operators::mul< double >,
+		grb::identities::zero, grb::identities::one
+	> reals;
 	timer.reset();
 	double alpha = 0.0;
 	const RC rc = grb::dot( alpha, xv, yv, reals );
 	out.time = timer.time();
 	if( rc != SUCCESS ) {
-		(void)fprintf( stderr, "Call to grb::dot failed with exit code %d.\n", (int)rc );
+		(void) fprintf( stderr, "Call to grb::dot failed with exit code %d.\n",
+			(int)rc );
 		out.error_code = 200;
 	}
 
@@ -116,15 +128,18 @@ void functional_test( const struct test_input & in, struct test_output & out ) {
 
 	// now check result
 	if( ! grb::utils::equals( check, alpha, 2 * n ) ) {
-		(void)printf( "%lf (templated) does not equal %lf (sequential).\n", alpha, check );
+		(void) printf( "%lf (templated) does not equal %lf (sequential).\n", alpha,
+			check );
 		out.error_code = 300;
 	}
 	if( ! grb::utils::equals( check, beta, 2 * n ) ) {
-		(void)printf( "%lf (compiler) does not equal %lf (sequential).\n", beta, check );
+		(void) printf( "%lf (compiler) does not equal %lf (sequential).\n", beta,
+			check );
 		out.error_code = 301;
 	}
 	if( ! grb::utils::equals( alpha, beta, 2 * n ) ) {
-		(void)printf( "%lf (templated) does not equal %lf (compiler).\n", alpha, beta );
+		(void) printf( "%lf (templated) does not equal %lf (compiler).\n", alpha,
+			beta );
 		out.error_code = 302;
 	}
 
@@ -135,7 +150,7 @@ void functional_test( const struct test_input & in, struct test_output & out ) {
 	// done
 }
 
-void bench_templated( const struct bench_input & in, struct bench_output & out ) {
+void bench_templated( const struct bench_input &in, struct bench_output &out ) {
 	out.error_code = 0;
 	grb::utils::Timer timer;
 	timer.reset();
@@ -154,11 +169,15 @@ void bench_templated( const struct bench_input & in, struct bench_output & out )
 	}
 
 	// first do a cold run
-	typename grb::Semiring< grb::operators::add< double >, grb::operators::mul< double >, grb::identities::zero, grb::identities::one > reals;
+	typename grb::Semiring<
+		grb::operators::add< double >, grb::operators::mul< double >,
+		grb::identities::zero, grb::identities::one
+	> reals;
 	double alpha = 0.0;
 	const enum RC rc = grb::dot( alpha, xv, yv, reals );
 	if( rc != SUCCESS ) {
-		(void)fprintf( stderr, "Call to grb::dot failed with exit code %d.\n", (int)rc );
+		(void) fprintf( stderr, "Call to grb::dot failed with exit code %d.\n",
+			(int)rc );
 		out.error_code = 201;
 	}
 
@@ -175,15 +194,13 @@ void bench_templated( const struct bench_input & in, struct bench_output & out )
 		ttime += timer.time() / static_cast< double >( in.rep );
 
 		// sanity checks
-		if( ! grb::utils::equals( in.check, alpha, 2 * n ) ) {
-			(void)printf( "%lf (templated, re-entrant) does not equal %lf "
-						  "(sequential).\n",
-				alpha, in.check );
+		if( !grb::utils::equals( in.check, alpha, 2 * n ) ) {
+			(void) printf( "%lf (templated, re-entrant) does not equal %lf "
+				"(sequential).\n", alpha, in.check );
 			out.error_code = 304;
 		}
 		if( grc != SUCCESS ) {
-			(void)printf( "Call to grb::dot failed (re-entrant) with exit code "
-						  "%d.\n",
+			(void) printf( "Call to grb::dot failed (re-entrant) with exit code %d.\n",
 				(int)grc );
 			out.error_code = 202;
 		}
@@ -194,7 +211,7 @@ void bench_templated( const struct bench_input & in, struct bench_output & out )
 	out.times.io = out.times.postamble = 0;
 }
 
-void bench_lambda( const struct bench_input & in, struct bench_output & out ) {
+void bench_lambda( const struct bench_input &in, struct bench_output &out ) {
 	out.error_code = 0;
 	grb::utils::Timer timer;
 	timer.reset();
@@ -213,19 +230,24 @@ void bench_lambda( const struct bench_input & in, struct bench_output & out ) {
 	}
 
 	// first do a cold run
-	typename grb::Semiring< grb::operators::add< double >, grb::operators::mul< double >, grb::identities::zero, grb::identities::one > reals;
+	typename grb::Semiring<
+		grb::operators::add< double >, grb::operators::mul< double >,
+		grb::identities::zero, grb::identities::one
+	> reals;
 	double alpha = reals.template getZero< double >();
 	const RC rc = grb::eWiseLambda(
 		[ &xv, &yv, &alpha, &reals ]( const size_t i ) {
 			double temp = 0.0;
 			const auto mul_op = reals.getMultiplicativeOperator();
 			const auto add_op = reals.getAdditiveOperator();
-			(void)grb::apply( temp, xv[ i ], yv[ i ], mul_op );
-			(void)grb::foldl( alpha, temp, add_op );
+			(void) grb::apply( temp, xv[ i ], yv[ i ], mul_op );
+			(void) grb::foldl( alpha, temp, add_op );
 		},
-		xv );
+		xv
+	);
 	if( rc != SUCCESS ) {
-		(void)fprintf( stderr, "Error in call to grb::eWiseLambda, non-SUCCESS return code %d.\n", (int)rc );
+		(void) fprintf( stderr, "Error in call to grb::eWiseLambda, non-SUCCESS "
+			"return code %d.\n", (int)rc );
 		out.error_code = 203;
 	}
 
@@ -244,29 +266,28 @@ void bench_lambda( const struct bench_input & in, struct bench_output & out ) {
 				const auto mul_op = reals.getMultiplicativeOperator();
 				const auto add_op = reals.getAdditiveOperator();
 				// grb::operators::mul< double >::foldl( temp, yv[ i ] );        //note: these two lines are about equally
-			    // grb::operators::add< double >::foldl( alpha, temp );          //      fast as the below two lines
-			    // grb::foldl< grb::operators::mul< double > >( temp, yv[ i ] ); //note: these two lines are about equally
-			    // grb::foldl< grb::operators::add< double > >( alpha, temp );   //      fast as the below two lines
-				(void)grb::foldl( temp, yv[ i ], mul_op ); // note: these two lines are about equally
-				(void)grb::foldl( alpha, temp, add_op );   //      fast as the below one. This is the
-			                                               //      recommended GraphBLAS call. The
-			                                               //      performance difference vs grb::dot
-			                                               //      is due to vectorisation.
-			                                               // alpha += xv[ i ] * yv[ i ];
+				// grb::operators::add< double >::foldl( alpha, temp );          //      fast as the below two lines
+				// grb::foldl< grb::operators::mul< double > >( temp, yv[ i ] ); //note: these two lines are about equally
+				// grb::foldl< grb::operators::add< double > >( alpha, temp );   //      fast as the below two lines
+				(void) grb::foldl( temp, yv[ i ], mul_op ); // note: these two lines are about equally
+				(void) grb::foldl( alpha, temp, add_op );   //      fast as the below one. This is the
+			                                                    //      recommended GraphBLAS call. The
+			                                                    //      performance difference vs grb::dot
+			                                                    //      is due to vectorisation.
+				// alpha += xv[ i ] * yv[ i ];
 			},
-			xv );
+			xv
+		);
 		ltime += timer.time() / static_cast< double >( in.rep );
 
-		if( ! grb::utils::equals( in.check, alpha, 2 * n ) ) {
-			(void)printf( "%lf (eWiseLambda, re-entrant) does not equal %lf "
-						  "(sequential).\n",
-				alpha, in.check );
+		if( !grb::utils::equals( in.check, alpha, 2 * n ) ) {
+			(void) printf( "%lf (eWiseLambda, re-entrant) does not equal %lf "
+				"(sequential).\n", alpha, in.check );
 			out.error_code = 305;
 		}
 		if( grc != SUCCESS ) {
-			(void)printf( "Call to grb::eWiseLambda failed (re-entrant) with "
-						  "exit code %d.\n",
-				(int)grc );
+			(void) printf( "Call to grb::eWiseLambda failed (re-entrant) with exit code "
+				"%d.\n", (int)grc );
 			out.error_code = 204;
 		}
 	}
@@ -276,21 +297,29 @@ void bench_lambda( const struct bench_input & in, struct bench_output & out ) {
 	out.times.io = out.times.postamble = 0;
 }
 
-void bench_raw( const struct bench_input & in, struct bench_output & out ) {
+void bench_raw( const struct bench_input &in, struct bench_output &out ) {
 	out.error_code = 0;
 	grb::utils::Timer timer;
 	timer.reset();
 
 	// declare raw data structures
-	const size_t & n = in.n;
-	double * __restrict__ xr = NULL;
-	double * __restrict__ yr = NULL;
-	int prc = posix_memalign( (void **)&xr, grb::config::CACHE_LINE_SIZE::value(), n * sizeof( double ) );
+	const size_t &n = in.n;
+	double * __restrict__ xr = nullptr;
+	double * __restrict__ yr = nullptr;
+	int prc = posix_memalign(
+		(void **)&xr,
+		grb::config::CACHE_LINE_SIZE::value(),
+		n * sizeof( double )
+	);
 	assert( prc == 0 );
-	prc = posix_memalign( (void **)&yr, grb::config::CACHE_LINE_SIZE::value(), n * sizeof( double ) );
+	prc = posix_memalign(
+		(void **)&yr,
+		grb::config::CACHE_LINE_SIZE::value(),
+		n * sizeof( double )
+	);
 	assert( prc == 0 );
 #ifdef NDEBUG
-	(void)prc;
+	(void) prc;
 #endif
 
 	// set input
@@ -315,9 +344,8 @@ void bench_raw( const struct bench_input & in, struct bench_output & out ) {
 		ctime += timer.time() / static_cast< double >( in.rep );
 
 		if( ! grb::utils::equals( in.check, alpha, 2 * n ) ) {
-			(void)printf( "%lf (compiler, re-entrant) does not equal %lf "
-						  "(sequential).\n",
-				alpha, in.check );
+			(void) printf( "%lf (compiler, re-entrant) does not equal %lf "
+				"(sequential).\n", alpha, in.check );
 			out.error_code = 306;
 		}
 	}
@@ -338,7 +366,8 @@ void bench_raw( const struct bench_input & in, struct bench_output & out ) {
 int main( int argc, char ** argv ) {
 	// sanity check on program args
 	if( argc < 2 || argc > 4 ) {
-		std::cout << "Usage: " << argv[ 0 ] << " <vector length> (inner iterations) (outer iterations)" << std::endl;
+		std::cout << "Usage: " << argv[ 0 ] << " <vector length> (inner iterations) "
+			<< "(outer iterations)" << std::endl;
 		return 0;
 	}
 	std::cout << "Test executable: " << argv[ 0 ] << std::endl;
@@ -350,10 +379,11 @@ int main( int argc, char ** argv ) {
 	struct bench_output out;
 
 	// get vector length
-	char * end = NULL;
+	char * end = nullptr;
 	in.n = strtoumax( argv[ 1 ], &end, 10 );
 	if( argv[ 1 ] == end ) {
-		std::cerr << "Could not parse argument " << argv[ 1 ] << " for vector length.\n Test FAILED." << std::endl;
+		std::cerr << "Could not parse argument " << argv[ 1 ] << " for vector "
+			<< "length.\n Test FAILED." << std::endl;
 		return 10;
 	}
 	test_in.n = in.n;
@@ -363,10 +393,8 @@ int main( int argc, char ** argv ) {
 	if( argc >= 3 ) {
 		in.rep = strtoumax( argv[ 2 ], &end, 10 );
 		if( argv[ 2 ] == end ) {
-			std::cerr << "Could not parse argument " << argv[ 2 ]
-					  << " for number of inner experiment repititions.\n Test "
-						 "FAILED."
-					  << std::endl;
+			std::cerr << "Could not parse argument " << argv[ 2 ] << " for number of "
+				<< "inner experiment repititions.\n Test FAILED." << std::endl;
 			return 20;
 		}
 	}
@@ -376,10 +404,8 @@ int main( int argc, char ** argv ) {
 	if( argc >= 4 ) {
 		outer = strtoumax( argv[ 3 ], &end, 10 );
 		if( argv[ 3 ] == end ) {
-			std::cerr << "Could not parse argument " << argv[ 3 ]
-					  << " for number of outer experiment repititions.\n Test "
-						 "FAILED."
-					  << std::endl;
+			std::cerr << "Could not parse argument " << argv[ 3 ] << " for number of "
+				<< "outer experiment repititions.\n Test FAILED." << std::endl;
 			return 30;
 		}
 	}
@@ -394,7 +420,8 @@ int main( int argc, char ** argv ) {
 		return 30;
 	}
 	if( test_out.error_code != 0 ) {
-		std::cerr << "Functional test exits with nonzero exit code " << out.error_code << "\nTest FAILED." << std::endl;
+		std::cerr << "Functional test exits with nonzero exit code " << out.error_code
+			<< "\nTest FAILED." << std::endl;
 		return out.error_code;
 	}
 
@@ -402,50 +429,58 @@ int main( int argc, char ** argv ) {
 	in.check = test_out.check; // pass through checksum value to benchmarks
 	if( in.rep == 0 ) {
 		in.rep = static_cast< size_t >( 1000.0 / test_out.time ) + 1;
-		std::cout << "Auto-selected number of inner repetitions is " << in.rep << " (at an estimated time of " << test_out.time << " ms. of useful work per benchmark).\n";
+		std::cout << "Auto-selected number of inner repetitions is " << in.rep
+			<< " (at an estimated time of " << test_out.time
+			<< " ms. of useful work per benchmark).\n";
 	}
 
 	// start benchmark test 1
 	std::cout << "\nBenchmark label: compiler-optimised dot product on raw "
-				 "arrays of size "
-			  << in.n << std::endl;
+		<< "arrays of size " << in.n << std::endl;
 	if( bench.exec( &bench_raw, in, out, 1, outer, true ) != SUCCESS ) {
 		std::cerr << "Error launching raw benchmark test.\nTest FAILED." << std::endl;
 		return 60;
 	}
 	if( out.error_code != 0 ) {
-		std::cerr << "Raw benchmark test exits with nonzero exit code " << out.error_code << "\nTest FAILED." << std::endl;
+		std::cerr << "Raw benchmark test exits with nonzero exit code "
+			<< out.error_code << "\nTest FAILED." << std::endl;
 		return out.error_code;
 	}
 
 	// start benchmark test 2
 	std::cout << "\nBenchmark label: grb::dot of size " << in.n << std::endl;
 	if( bench.exec( &bench_templated, in, out, 1, outer, true ) != SUCCESS ) {
-		std::cerr << "Error launching templated benchmark test.\n Test FAILED." << std::endl;
+		std::cerr << "Error launching templated benchmark test.\n Test FAILED."
+			<< std::endl;
 		return 40;
 	}
 	if( out.error_code != 0 ) {
-		std::cerr << "Templated benchmark test exits with nonzero exit code " << out.error_code << "\nTest FAILED." << std::endl;
+		std::cerr << "Templated benchmark test exits with nonzero exit code "
+			<< out.error_code << "\nTest FAILED." << std::endl;
 		return out.error_code;
 	}
 
 	// start benchmark test 3
 	if( grb::Properties<>::writableCaptured ) {
-		std::cout << "\nBenchmark label: grb::eWiseLambda (dot) of size " << in.n << std::endl;
+		std::cout << "\nBenchmark label: grb::eWiseLambda (dot) of size " << in.n
+			<< std::endl;
 		if( bench.exec( &bench_lambda, in, out, 1, outer, true ) != SUCCESS ) {
-			std::cerr << "Error launching lambda benchmark test.\nTest FAILED." << std::endl;
+			std::cerr << "Error launching lambda benchmark test.\nTest FAILED."
+				<< std::endl;
 			return 50;
 		}
 		if( out.error_code != 0 ) {
-			std::cerr << "Lambda benchmark test exits with nonzero exit code " << out.error_code << "\nTest FAILED." << std::endl;
+			std::cerr << "Lambda benchmark test exits with nonzero exit code "
+				<< out.error_code << "\nTest FAILED." << std::endl;
 			return out.error_code;
 		}
 	} else {
 		std::cout << "\nBackend does not support writing to captured scalars, "
-					 "skipping benchmark of lambda-based dot product...\n\n";
+			<< "skipping benchmark of lambda-based dot product...\n\n";
 	}
 
 	// done
 	std::cout << "Test OK.\n\n";
 	return EXIT_SUCCESS;
 }
+
