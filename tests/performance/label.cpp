@@ -122,7 +122,7 @@ void ioProgram( const struct input &data_in, bool &success ) {
 	try {
 		auto &data = Storage::getData().second;
 		Parser parser( data_in.filename, data_in.direct );
-		if( parser.m() == parser.n() ) {
+		if( parser.m() != parser.n() ) {
 			std::cerr << "Error: input matrix must be square.\n";
 			return;
 		}
