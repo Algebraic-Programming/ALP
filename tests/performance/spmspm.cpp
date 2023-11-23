@@ -532,6 +532,10 @@ int main( int argc, char ** argv ) {
 	std::cout << std::endl;
 
 	// done
-	return out.error_code;
+	if( out.error_code == 0 ) {
+		return 0;
+	} else {
+		return (80 + out.error_code);
+	}
 }
 
