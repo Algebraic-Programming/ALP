@@ -127,17 +127,17 @@ void grb_program( const size_t &n, grb::RC &rc ) {
 		}
 		testOneOut( n, 17, expected, beginCopy, itPair.second, local_rc );
 		if( local_rc != grb::SUCCESS ) {
-			std::cerr << "Test 2 FAILED\n";
+			std::cerr << "Test 2 FAILED: " << grb::toString( local_rc ) << "\n";
 			rc = grb::FAILED;
 		}
 		testOneOut( n, 17, expected, beginCopy2, endCopy, local_rc );
 		if( local_rc != grb::SUCCESS ) {
-			std::cerr << "Test 3 FAILED\n";
+			std::cerr << "Test 3 FAILED" << grb::toString( local_rc ) << "\n";
 			rc = grb::FAILED;
 		}
 		testOneOut( n, 17, expected, itPair.first, itPair.second, local_rc );
 		if( local_rc != grb::SUCCESS ) {
-			std::cerr << "Test 4 FAILED\n";
+			std::cerr << "Test 4 FAILED" << grb::toString( local_rc ) << "\n";
 			rc = grb::FAILED;
 		}
 	}
@@ -155,7 +155,7 @@ void grb_program( const size_t &n, grb::RC &rc ) {
 		}
 		testOnlyOne( n, 7, expected, itPair.first, itPair.second, local_rc );
 		if( local_rc != grb::SUCCESS ) {
-			std::cerr << "Test 5 FAILED\n";
+			std::cerr << "Test 5 FAILED" << grb::toString( local_rc ) << "\n";
 			rc = grb::FAILED;
 		}
 	}
@@ -203,7 +203,7 @@ void grb_program( const size_t &n, grb::RC &rc ) {
 			testOnlyOne( n, 7, expected, begin, end, local_rc );
 		}
 		if( local_rc != grb::SUCCESS ) {
-			std::cerr << "Test 6 FAILED\n";
+			std::cerr << "Test 6 FAILED" << grb::toString( local_rc ) << "\n";
 			rc = grb::FAILED;
 		}
 	}
@@ -222,7 +222,7 @@ void grb_program( const size_t &n, grb::RC &rc ) {
 		expected = 3;
 		testOnlyOne( n, 0, expected, itPair.first, itPair.second, local_rc );
 		if( local_rc != grb::SUCCESS ) {
-			std::cerr << "Test 7 FAILED\n";
+			std::cerr << "Test 7 FAILED" << grb::toString( local_rc ) << "\n";
 			rc = grb::FAILED;
 		}
 	}
@@ -236,7 +236,7 @@ void grb_program( const size_t &n, grb::RC &rc ) {
 		expected = n - 3;
 		testOneOut( n, 0, expected, itPair.first, itPair.second, local_rc );
 		if( local_rc != grb::SUCCESS ) {
-			std::cerr << "Test 8 FAILED\n";
+			std::cerr << "Test 8 FAILED" << grb::toString( local_rc ) << "\n";
 			rc = grb::FAILED;
 		}
 	}
@@ -252,7 +252,7 @@ void grb_program( const size_t &n, grb::RC &rc ) {
 		expected = n - 3;
 		testOneOut( n, 0, expected, begin, end, local_rc );
 		if( local_rc != grb::SUCCESS ) {
-			std::cerr << "Test 9 FAILED\n";
+			std::cerr << "Test 9 FAILED" << grb::toString( local_rc ) << "\n";
 			rc = grb::FAILED;
 		}
 	}
@@ -327,7 +327,7 @@ void grb_program( const size_t &n, grb::RC &rc ) {
 			}
 		}
 		if( local_rc != grb::SUCCESS ) {
-			std::cerr << "Test 11 FAILED\n";
+			std::cerr << "Test 11 FAILED" << grb::toString( local_rc ) << "\n";
 			rc = grb::FAILED;
 		}
 	}
