@@ -141,6 +141,13 @@ void ioProgram( const struct input &data_in, bool &success ) {
 		) {
 			data.push_back( NonzeroT( *it ) );
 		}
+		if( Storage::getData().first.second != data.size() ) {
+			const size_t parser_nz = Storage::getData().first.second;
+			std::cerr << "Warning: cached nnz (" << data.size() << ") does not equal "
+				<< "parser nnz (" << parser_nz << "). " << "This could naturally occur "
+				<< "if the input matrix file employs symmetric storage; in that case, the "
+				<< "number of entries is roughly half of the number of nonzeroes.\n";
+		}
 	} catch( std::exception &e ) {
 		std::cerr << "I/O program failed: " << e.what() << "\n";
 		return;
@@ -178,8 +185,9 @@ void grbProgram( const struct input &data_in, struct output &out ) {
 			out.error_code = PANIC;
 			return;
 		}
-		if( I.size() == nz ) {
-			std::cerr << "Error: expected the size of I to be equal to nz\n";
+		if( I.size() != nz ) {
+			std::cerr << "Error: expected the size of I (" << I.size() << ") "
+				<< "to be equal to nz (" << nz << ")\n";
 			out.error_code = PANIC;
 			return;
 		}
