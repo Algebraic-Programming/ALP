@@ -368,10 +368,11 @@ int main( int argc, char ** argv ) {
 
 	// done
 	if( out.error_code != SUCCESS ) {
-		std::cout << "Test FAILED\n\n";
+		std::cerr << std::flush;
+		std::cout << "Test FAILED\n" << std::endl;
 		return 255;
 	}
-	std::cout << "Test OK\n\n";
+	std::cout << "Test OK\n" << std::endl;
 	return 0;
 }
 
