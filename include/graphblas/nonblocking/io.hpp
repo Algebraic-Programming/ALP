@@ -563,7 +563,7 @@ namespace grb {
 		}
 
 		// do set
-		(void)internal::getCoordinates( x ).assign( i );
+		(void) internal::getCoordinates( x ).assign( i );
 		internal::getRaw( x )[ i ] = static_cast< DataType >( val );
 
 #ifdef _DEBUG

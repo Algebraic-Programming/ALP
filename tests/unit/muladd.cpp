@@ -20,9 +20,10 @@
 
 #include <graphblas.hpp>
 
+
 using namespace grb;
 
-void grb_program( const size_t & n, grb::RC & rc ) {
+void grb_program( const size_t &n, grb::RC &rc ) {
 	const double alpha = 1.5;
 	const double beta = 3.14;
 	const double gamma = 2.718;

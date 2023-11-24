@@ -31,7 +31,7 @@
 #include <graphblas/rc.hpp>
 
 #include <graphblas/utils/DMapper.hpp>
-#include <graphblas/utils/ThreadLocalStorage.hpp>
+#include <graphblas/utils/threadLocalStorage.hpp>
 
 #include <assert.h> //assertions
 #include <lpf/bsmp.h>

@@ -128,7 +128,7 @@ namespace grb {
 					const size_t max_steps = 0,
 					size_t * const steps_taken = nullptr
 				) {
-					const size_t n = pregel.num_vertices();
+					const size_t n = pregel.numVertices();
 					if( grb::size( group_ids ) != n ) {
 						return MISMATCH;
 					}

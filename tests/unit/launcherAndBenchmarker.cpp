@@ -35,7 +35,7 @@
 #include <string.h>
 #include <stdio.h>
 #ifdef DISTRIBUTED_EXECUTION
-	#include <mpi.h>
+ #include <mpi.h>
 #endif
 
 #include <graphblas.hpp>
@@ -390,7 +390,7 @@ template<
 	grb::EXEC_MODE mode, typename RetT, typename InputT
 >
 RetT getFun( bool broadcast ) {
-	return broadcast 
+	return broadcast
 		? FunT< mode, true, InputT >::fun
 		: FunT< mode, false, InputT >::fun;
 }

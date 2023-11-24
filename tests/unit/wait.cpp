@@ -20,6 +20,7 @@
 
 #include "graphblas.hpp"
 
+
 // test strategy: construct a sparse vector, then use it for various operations
 // together with the dense descriptor. This should result in an ILLEGAL return
 // code, which may either be found when executing the primitive (for blocking

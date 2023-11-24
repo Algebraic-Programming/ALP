@@ -39,14 +39,21 @@
 #include <inttypes.h>
 
 #include <graphblas.hpp>
+
 #include <graphblas/algorithms/gmres.hpp>
-#include <graphblas/utils/Timer.hpp>
+
+#include <graphblas/utils/timer.hpp>
 #include <graphblas/utils/parser.hpp>
+#include <graphblas/utils/singleton.hpp>
+#include <graphblas/utils/iterators/nonzeroIterator.hpp>
 
 #include <utils/output_verification.hpp>
 
 
 #define MAX_FN_SIZE 255
+
+using namespace grb;
+using namespace algorithms;
 
 using BaseScalarType = double;
 #ifdef _GMRES_COMPLEX
@@ -55,13 +62,46 @@ using BaseScalarType = double;
  using ScalarType = BaseScalarType;
 #endif
 
+/** Parser type */
+typedef utils::MatrixFileReader<
+	ScalarType,
+	std::conditional<
+		(sizeof(grb::config::RowIndexType) > sizeof(grb::config::ColIndexType)),
+		grb::config::RowIndexType,
+		grb::config::ColIndexType
+	>::type
+> Parser;
+
+/** Nonzero type */
+typedef grb::internal::NonzeroStorage<
+	grb::config::RowIndexType,
+	grb::config::ColIndexType,
+	ScalarType
+> NonzeroT;
+
+/** In-memory storage type */
+typedef utils::Singleton<
+	std::pair<
+		// stores n and nz (according to parser)
+		std::pair< size_t, size_t >,
+		// stores the actual nonzeroes
+		std::vector< NonzeroT >
+	>, 0
+> Storage;
+
+/** In-memory preconditioner storage */
+typedef utils::Singleton<
+	std::pair<
+		// stores n and nz (according to parser)
+		std::pair< size_t, size_t >,
+		// stores the actual nonzeroes
+		std::vector< NonzeroT >
+	>, 1
+> Preconditioner;
+
 constexpr BaseScalarType TOL = 1.e-9;
 
-using namespace grb;
-using namespace algorithms;
-
 struct input {
-
 	bool generate_random = true;
 	size_t rep = grb::config::BENCHMARKING::inner();
 	size_t max_iterations = 1;
@@ -76,11 +116,9 @@ struct input {
 	size_t rep_outer = grb::config::BENCHMARKING::outer();
 	BaseScalarType tol = TOL;
 	size_t gmres_restart = 10;
-
 };
 
 struct output {
-
 	int rc;
 	size_t rep;
 	size_t iterations;
@@ -92,18 +130,19 @@ struct output {
 	double time_preamble;
 	double time_io;
 	PinnedVector< ScalarType > pinnedVector;
-
 };
 
-template< typename T > T random_value();
+template< typename T >
+T random_value();
 
-template<> BaseScalarType
-random_value< BaseScalarType >() {
+template<>
+BaseScalarType random_value< BaseScalarType >() {
         return static_cast< BaseScalarType >( rand() ) / RAND_MAX;
 }
 
-template<> std::complex< BaseScalarType >
-random_value< std::complex< BaseScalarType > >() {
+template<>
+std::complex< BaseScalarType > random_value< std::complex< BaseScalarType > >()
+{
         const BaseScalarType re = random_value< BaseScalarType >();
         const BaseScalarType im = random_value< BaseScalarType >();
         return std::complex< BaseScalarType >( re, im );
@@ -165,7 +204,7 @@ void generate_random_data(
 			if( i == j ) {
 				MatPveci[ pcout ] = i;
 				MatPvecj[ pcout ] = j;
-				grb::foldr( one, tmp2, divide );
+				(void) grb::foldr( one, tmp2, divide );
 				MatPvecv[ pcout ] = tmp2;
 				(void) ++pcout;
 			}
@@ -186,7 +225,6 @@ RC make_matrices(
 	const size_t &nz_per_row
 ) {
 	RC rc = SUCCESS;
-
 	{
 		std::vector< size_t > MatAveci;
 		std::vector< size_t > MatAvecj;
@@ -215,6 +253,100 @@ RC make_matrices(
 		);
 	}
 	return rc;
+}
+
+void ioProgram( const struct input &data_in, bool &success ) {
+	success = false;
+	if( data_in.generate_random ) {
+		// in this case, all data is randomly generated; I/O is trivial (no-op)
+		success = true;
+		return;
+	}
+	// Parse and store matrix in singleton class
+	auto &data = Storage::getData().second;
+	try {
+		Parser parser( data_in.filename, data_in.direct );
+		assert( parser.m() == parser.n() );
+		if( parser.m() != parser.n() ) {
+			std::cerr << "Error: input matrix " << data_in.filename << " is not "
+				<< "rectangular!";
+			return;
+		}
+		Storage::getData().first.first = parser.n();
+		try {
+			Storage::getData().first.second = parser.nz();
+		} catch( ... ) {
+			Storage::getData().first.second = parser.entries();
+		}
+		/* Once internal issue #342 is resolved this can be re-enabled
+		for(
+			auto it = parser.begin( PARALLEL );
+			it != parser.end( PARALLEL );
+			++it
+		) {
+			data.push_back( *it );
+		}*/
+		for(
+			auto it = parser.begin( SEQUENTIAL );
+			it != parser.end( SEQUENTIAL );
+			++it
+		) {
+			data.push_back( NonzeroT( *it ) );
+		}
+	} catch( std::exception &e ) {
+		std::cerr << "I/O program failed to load system matrix: " << e.what()
+			<< "\n";
+		return;
+	}
+	if( !(data_in.no_preconditioning) ) {
+#ifdef DEBUG
+		std::cout << "Info: reading preconditioning matrix from "
+			<< data_in.precond_filename << " file \n";
+#endif
+		// Parse and store matrix in singleton class
+		auto &data = Preconditioner::getData().second;
+		try {
+			Parser parser( data_in.filename, data_in.direct );
+			assert( parser.m() == parser.n() );
+			if( parser.m() != parser.n() ) {
+				std::cerr << "Error: input matrix " << data_in.filename << " is not "
+					<< "rectangular!";
+				return;
+			}
+			if( parser.m() != Storage::getData().first.first ) {
+				std::cerr << "Error: preconditioner has size " << parser.m() << ", which "
+					<< "differs from system matrix size " << Storage::getData().first.first
+					<< "\n";
+				return;
+			}
+			Preconditioner::getData().first.first = parser.n();
+			try {
+				Preconditioner::getData().first.second = parser.nz();
+			} catch( ... ) {
+				Preconditioner::getData().first.second = parser.entries();
+			}
+			/* Once internal issue #342 is resolved this can be re-enabled
+			for(
+				auto it = parser.begin( PARALLEL );
+				it != parser.end( PARALLEL );
+				++it
+			) {
+				data.push_back( *it );
+			}*/
+			for(
+				auto it = parser.begin( SEQUENTIAL );
+				it != parser.end( SEQUENTIAL );
+				++it
+			) {
+				data.push_back( NonzeroT( *it ) );
+			}
+		} catch( std::exception &e ) {
+			std::cerr << "I/O program failed to load preconditioner: " << e.what()
+				<< "\n";
+			return;
+		}
+	}
+	success = true;
 }
 
 void grbProgram( const struct input &data_in, struct output &out ) {
@@ -246,21 +378,7 @@ void grbProgram( const struct input &data_in, struct output &out ) {
 		// get size for random matrix
 		n = data_in.n;
 	} else {
-		// get size for input matrix
-		grb::utils::MatrixFileReader<
-			ScalarType,
-			std::conditional<
-				(sizeof( grb::config::RowIndexType ) > sizeof( grb::config::ColIndexType )),
-				grb::config::RowIndexType,
-				grb::config::ColIndexType
-			>::type
-		> parser( data_in.filename, data_in.direct );
-		if( parser.m() != parser.n() ) {
-			std::cerr << " matrix in " << data_in.filename
-				<< " file, is not rectangular!";
-			rc = grb::ILLEGAL;
-		}
-		n = parser.n();
+		n = Storage::getData().first.first;
 	}
 
 #ifdef DEBUG
@@ -283,20 +401,28 @@ void grbProgram( const struct input &data_in, struct output &out ) {
 #endif
 	} else {
 		// read matrix A from file
-		grb::utils::MatrixFileReader<
-			ScalarType,
-			std::conditional<
-				(sizeof( grb::config::RowIndexType ) > sizeof( grb::config::ColIndexType )),
-			grb::config::RowIndexType,
-			grb::config::ColIndexType
-			>::type
-		> parser( data_in.filename, data_in.direct );
+		const auto &data = Storage::getData().second;
 		rc = rc ? rc : buildMatrixUnique(
 			A,
-			parser.begin( SEQUENTIAL ),
-			parser.end( SEQUENTIAL ),
+			utils::makeNonzeroIterator<
+				grb::config::RowIndexType, grb::config::ColIndexType, ScalarType
+			>( data.cbegin() ),
+			utils::makeNonzeroIterator<
+				grb::config::RowIndexType, grb::config::ColIndexType, ScalarType
+			>( data.cend() ),
 			SEQUENTIAL
 		);
+		/* Once internal issue #342 is resolved this can be re-enabled
+		const RC rc = buildMatrixUnique(
+			L,
+			utils::makeNonzeroIterator<
+				grb::config::RowIndexType, grb::config::ColIndexType, ScalarType
+			>( data.cbegin() ),
+			utils::makeNonzeroIterator<
+				grb::config::RowIndexType, grb::config::ColIndexType, ScalarType
+			>( data.cend() ),
+			PARALLEL
+		);*/
 #ifdef DEBUG
 		if( rc == grb::SUCCESS ) {
 			std::cout << "Matrix A built from " << data_in.filename
@@ -305,34 +431,28 @@ void grbProgram( const struct input &data_in, struct output &out ) {
 #endif
 		// read preconditioner P from file
 		if( !data_in.no_preconditioning ) {
-#ifdef DEBUG
-			std::cout << "Reading preconditioning matrix from "
-				<< data_in.precond_filename << " file \n";
-#endif
-			grb::utils::MatrixFileReader<
-				ScalarType,
-				std::conditional<
-					(sizeof( grb::config::RowIndexType ) > sizeof( grb::config::ColIndexType )),
-					grb::config::RowIndexType,
-					grb::config::ColIndexType
-				>::type
-			> parser_precond( data_in.precond_filename, data_in.direct );
-			if( parser_precond.m() != parser_precond.n() ) {
-				std::cerr << " matrix in " << data_in.precond_filename
-					<< " file, is not rectangular!";
-				rc = grb::ILLEGAL;
-			} else if( parser_precond.n() != n ) {
-				std::cerr << " Preconditioner P("
-					  << parser_precond.n() << ") mast have same dimensions as matrix A("
-					  << n << ") !\n";
-				rc = grb::ILLEGAL;
-			}
+			const auto &data = Preconditioner::getData().second;
 			rc = rc ? rc : buildMatrixUnique(
 				P,
-				parser_precond.begin( SEQUENTIAL ),
-				parser_precond.end( SEQUENTIAL ),
+				utils::makeNonzeroIterator<
+					grb::config::RowIndexType, grb::config::ColIndexType, ScalarType
+				>( data.cbegin() ),
+				utils::makeNonzeroIterator<
+					grb::config::RowIndexType, grb::config::ColIndexType, ScalarType
+				>( data.cend() ),
 				SEQUENTIAL
 			);
+			/* Once internal issue #342 is resolved this can be re-enabled
+			const RC rc = buildMatrixUnique(
+				P,
+				utils::makeNonzeroIterator<
+					grb::config::RowIndexType, grb::config::ColIndexType, ScalarType
+				>( data.cbegin() ),
+				utils::makeNonzeroIterator<
+					grb::config::RowIndexType, grb::config::ColIndexType, ScalarType
+				>( data.cend() ),
+				PARALLEL
+			);*/
 #ifdef DEBUG
 			if( rc == grb::SUCCESS ) {
 				std::cout << "Matrix P built from " << data_in.precond_filename
@@ -641,7 +761,25 @@ int main( int argc, char **argv ) {
 
 	std::cout << "Executable called with parameters " << in.filename << ", "
 		  << "inner repititions = " << in.rep << ", "
-		  << "and outer reptitions = " << in.rep_outer << std::endl;
+		  << "outer reptitions = " << in.rep_outer << ", "
+		  << "GMRES restart iteration = " << in.gmres_restart << ", and"
+		  << "maximum solver iterations = " << in.max_iterations << "\n";
+
+	// launch I/O
+	{
+		bool success;
+		grb::Launcher< AUTOMATIC > launcher;
+		rc = launcher.exec( &ioProgram, in, success, true );
+		if( rc != SUCCESS ) {
+			std::cerr << "Error: launcher.exec(I/O) returns non-SUCCESS error code \""
+				<< grb::toString( rc ) << "\"\n";
+			return 10;
+		}
+		if( !success ) {
+			std::cerr << "Error: I/O program caught an exception\n";
+			return 20;
+		}
+	}
 
 	// launch estimator (if requested)
 	if( in.rep == 0 ) {
@@ -653,7 +791,7 @@ int main( int argc, char **argv ) {
 		if( rc != SUCCESS ) {
 			std::cerr << "launcher.exec returns with non-SUCCESS error code "
 				<< (int)rc << std::endl;
-			return 6;
+			return 30;
 		}
 	}
 
@@ -665,7 +803,7 @@ int main( int argc, char **argv ) {
 	if( rc != SUCCESS ) {
 		std::cerr << "benchmarker.exec returns with non-SUCCESS error code "
 			<< grb::toString( rc ) << std::endl;
-		return 8;
+		return 40;
 	} else if( out.rc == 0 ) {
 		std::cout << "Benchmark completed successfully and took "
 			<< out.iterations << " iterations to converge "
@@ -693,6 +831,10 @@ int main( int argc, char **argv ) {
 	std::cout << std::endl;
 
 	// done
-	return out.rc;
+	if( out.rc == 0 ) {
+		return 0;
+	} else {
+		return (50 + out.rc);
+	}
 }
 

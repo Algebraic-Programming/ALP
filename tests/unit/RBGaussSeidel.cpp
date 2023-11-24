@@ -22,8 +22,8 @@
 
 #include <graphblas.hpp>
 
-using namespace grb;
 
+using namespace grb;
 
 constexpr const size_t MAX_FN_LENGTH = 500;
 static_assert( MAX_FN_LENGTH > 0, "MAX_FN_LENGTH must be larger than 0" );
