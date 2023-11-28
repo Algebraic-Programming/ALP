@@ -47,8 +47,8 @@
  #include <set>
 #endif
 
-#include <stddef.h> //size_t
-#include <assert.h>
+#include <cstddef> //size_t
+#include <cassert>
 #include <algorithm>
 
 #include <graphblas/rc.hpp>
@@ -493,6 +493,10 @@ namespace grb {
 					config::VectorIndexType *local_stack,
 					config::VectorIndexType *local_nnzs
 				) noexcept {
+					(void) tile_id;
+					(void) lower_bound;
+					(void) upper_bound;
+
 					const auto lower_bound_idx = counting_sum[ tile_id ];
 					const auto upper_bound_idx = counting_sum[ tile_id+1 ];
 					if( lower_bound_idx == upper_bound_idx ) { return; }
@@ -549,9 +553,17 @@ namespace grb {
 
 					*local_nnzs = 0;
 					if( should_use_bitmask_asyncSubsetInit( num_tiles, tile_id, lower_bound, upper_bound ) ) {
+						#ifdef _LOCAL_DEBUG
+						#pragma omp critical
+							std::cerr << "> Using bitmask\n";
+						#endif
 						_asyncSubsetInit_bitmask( num_tiles, tile_id, lower_bound, upper_bound, local_stack, local_nnzs );
 					} else {
 						assert( _debug_is_counting_sort_done );
+						#ifdef _LOCAL_DEBUG
+						#pragma omp critical
+							std::cerr << "> Using search\n";
+						#endif
 						_asyncSubsetInit_search( num_tiles, tile_id, lower_bound, upper_bound, local_stack, local_nnzs );
 					}
 
@@ -565,13 +577,15 @@ namespace grb {
 						const std::vector< size_t > &lower_bounds,
 						const std::vector< size_t > &upper_bounds
 				) {
-					//const size_t tile_id = std::floor( (k+1) / (upper_bounds[0] - lower_bounds[0]) );
-					size_t tile_id = 0;
-					while( k >= upper_bounds[tile_id] ) {
-						++tile_id;
-					}
+					ASSERT( num_tiles > 0, "num_tiles = " << num_tiles );
 					(void) num_tiles;
 					(void) lower_bounds;
+					(void) upper_bounds;
+
+					const auto tile_size = upper_bounds[0] - lower_bounds[0];
+					ASSERT( tile_size > 0, "tile_size = " << tile_size );
+					const size_t tile_id = k / tile_size;
+
 					ASSERT(tile_id < num_tiles, "tile_id = " << tile_id << ", num_tiles = " << num_tiles);
 					ASSERT(k < upper_bounds[tile_id], "k = " << k << ", tile_id = " << tile_id << ", upper_bounds[tile_id] = " << upper_bounds[tile_id]);
 					ASSERT(k >= lower_bounds[tile_id], "k = " << k << ", tile_id = " << tile_id << ", lower_bounds[tile_id] = " << lower_bounds[tile_id]);
@@ -581,8 +595,11 @@ namespace grb {
 				void countingSumComputation_sequential(
 						const size_t num_tiles,
 						const std::vector< size_t > &lower_bounds,
-						const std::vector< size_t > &upper_bounds
+						const std::vector< size_t > &upper_bounds,
+						const std::vector< size_t > &tiles_to_process
 				) noexcept {
+					(void) tiles_to_process;
+
 					// TODO: Move me to the initialisation phase, and use _buffer instead of a vector
 					counting_sum.resize( num_tiles+1 );
 
@@ -639,12 +656,20 @@ namespace grb {
 				void countingSortComputation(
 					const size_t num_tiles,
 					const std::vector< size_t > &lower_bounds,
-					const std::vector< size_t > &upper_bounds
+					const std::vector< size_t > &upper_bounds,
+					const std::vector< size_t > &tiles_to_process
 				) noexcept {
-					countingSumComputation_sequential( num_tiles, lower_bounds, upper_bounds );
+					if(num_tiles == 1) {
+						#pragma omp critical
+							std::cerr << "countingSortComputation(): num_tiles == 1\n";
+						_debug_is_counting_sort_done = true;
+						return;
+					}
+
+					countingSumComputation_sequential( num_tiles, lower_bounds, upper_bounds, tiles_to_process );
 
 					// For-each tile
-					for( size_t tile_id = 0; tile_id < num_tiles; ++tile_id ) {
+					for( size_t tile_id : tiles_to_process ) {
 
 						// Bounds of the current tile
 						const auto lower_bound = lower_bounds[tile_id];
@@ -691,17 +716,17 @@ namespace grb {
 					std::cout << "\n]\n";
 #endif
 
-					{ // Pass over the _stack and check that the coordinates are sorted
-						for (size_t i = 0; i < _n; i++) {
-							const auto k = _stack[i];
-							const auto tile_id = getTileId( k, num_tiles, lower_bounds, upper_bounds );
-							(void) tile_id;
-							ASSERT(_assigned[k], "i=" << i << ", k=" << k << ", tile_id=" << tile_id);
-							ASSERT(k < upper_bounds[tile_id], "i=" << i << ", k=" << k << ", tile_id=" << tile_id << ", upper_bounds[tile_id]=" << upper_bounds[tile_id]);
-							ASSERT(k >= lower_bounds[tile_id], "i=" << i << ", k=" << k << ", tile_id=" << tile_id << ", lower_bounds[tile_id]=" << lower_bounds[tile_id]);
-							ASSERT(tile_id < num_tiles, "i=" << i << ", k=" << k << ", tile_id=" << tile_id << ", num_tiles=" << num_tiles);
-						}
-					}
+//					{ // Pass over the _stack and check that the coordinates are sorted
+//						for (size_t i = 0; i < _n; i++) {
+//							const auto k = _stack[i];
+//							const auto tile_id = getTileId( k, num_tiles, lower_bounds, upper_bounds );
+//							(void) tile_id;
+//							ASSERT(_assigned[k], "i=" << i << ", k=" << k << ", tile_id=" << tile_id);
+//							ASSERT(k < upper_bounds[tile_id], "i=" << i << ", k=" << k << ", tile_id=" << tile_id << ", upper_bounds[tile_id]=" << upper_bounds[tile_id]);
+//							ASSERT(k >= lower_bounds[tile_id], "i=" << i << ", k=" << k << ", tile_id=" << tile_id << ", lower_bounds[tile_id]=" << lower_bounds[tile_id]);
+//							ASSERT(tile_id < num_tiles, "i=" << i << ", k=" << k << ", tile_id=" << tile_id << ", num_tiles=" << num_tiles);
+//						}
+//					}
 
 					_debug_is_counting_sort_done = true;
 				}

@@ -872,17 +872,18 @@ grb::RC Pipeline::execution() {
 			fprintf( stderr, "Pipeline::execution(2): check if any of the coordinates will use the search-variant of asyncSubsetInit:\n" );
 #endif
 			for(auto coords : accessed_coordinates) {
+				std::vector< size_t > tiles_requiring_counting;
+				tiles_requiring_counting.reserve( num_tiles );
 				// Reduction ( operator OR ) over all tiles to check if any of the tiles will need a counting sum+sort
-				bool will_require_counting = false;
 				for( size_t tile_id = 0; tile_id < num_tiles; ++tile_id ) {
-					will_require_counting |= not coords->should_use_bitmask_asyncSubsetInit(
+					if( not coords->should_use_bitmask_asyncSubsetInit(
 							num_tiles, tile_id, lower_bound[ tile_id ], upper_bound[ tile_id ]
-					);
+					) ) tiles_requiring_counting.push_back( tile_id );
 				}
 				// If any of the tiles will need a counting sum+sort
-				if( will_require_counting ) {
+				if( tiles_requiring_counting.size() > 0 ) {
 					// Contains an omp parallel region
-					coords->countingSortComputation( num_tiles, lower_bound, upper_bound );
+					coords->countingSortComputation( num_tiles, lower_bound, upper_bound, tiles_requiring_counting );
 				}
 			}
 		}
@@ -960,22 +961,36 @@ grb::RC Pipeline::execution() {
 #if defined(_DEBUG) || defined(_LOCAL_DEBUG)
 			fprintf( stderr, "Pipeline::execution: check if any of the coordinates will use the search-variant of asyncSubsetInit:\n" );
 #endif
+			size_t coord_idx = 0;
 			for(auto coords : accessed_coordinates) {
+				std::vector< size_t > tiles_requiring_counting;
+				tiles_requiring_counting.reserve( num_tiles );
 				// Reduction ( operator OR ) over all tiles to check if any of the tiles will need a counting sum+sort
-				bool will_require_counting = false;
 				for( size_t tile_id = 0; tile_id < num_tiles; ++tile_id ) {
-					will_require_counting |= not coords->should_use_bitmask_asyncSubsetInit(
+					if( not coords->should_use_bitmask_asyncSubsetInit(
 							num_tiles, tile_id, lower_bound[ tile_id ], upper_bound[ tile_id ]
-						);
+					) ) tiles_requiring_counting.push_back( tile_id );
 				}
 				// If any of the tiles will need a counting sum+sort
-				if( will_require_counting ) {
+				if( tiles_requiring_counting.size() > 0 ) {
+#ifdef _LOCAL_DEBUG
+					#pragma omp critical
+					{
+						std::cerr << "countingSortComputation for coords " << coord_idx << " / "
+						          << accessed_coordinates.size() << "; tiles=[";
+						for( auto tile_id : tiles_requiring_counting ) 		std::cerr << tile_id << ",";
+						std::cerr << "]" << std::endl;
+					}
+#endif
 					// Contains an omp parallel region
-					coords->countingSortComputation( num_tiles, lower_bound, upper_bound );
+					coords->countingSortComputation( num_tiles, lower_bound, upper_bound, tiles_requiring_counting );
 				}
+
+				coord_idx++;
 			}
 		}
 
+		// TODO: Uncomment me
 		#pragma omp parallel for schedule(dynamic) num_threads(nthreads)
 		for( size_t tile_id = 0; tile_id < num_tiles; ++tile_id ) {
 
@@ -985,10 +1000,19 @@ grb::RC Pipeline::execution() {
 //			);
 //			assert( lower_bound[ tile_id ] <= upper_bound[ tile_id ] );
 
+			size_t coord_idx = 0;
 			for(
 				std::set< internal::Coordinates< nonblocking > * >::iterator vt = vbegin();
 				vt != vend(); ++vt
 			) {
+#ifdef _LOCAL_DEBUG
+				#pragma omp critical
+					std::cerr << "-- tile_id: " << tile_id
+						<< "; coords " << coord_idx << " / " << accessed_coordinates.size()
+						<< "; _n/N: " << (**vt).nonzeroes() << "/" << (**vt).size()
+						<< std::endl;
+#endif
+				coord_idx++;
 
 				// skip the initialization of coordinates of different size, which may
 				// happen only for the input of vxm_generic as it's read-only for the
@@ -1010,6 +1034,9 @@ grb::RC Pipeline::execution() {
 				initialized_coordinates = true;
 			}
 		}
+		#ifdef _LOCAL_DEBUG
+		std::cerr << std::endl << std::endl;
+		#endif
 
 		// even if only one vector is sparse, we cannot reuse memory because the first
 		// two arguments that we pass to the lambda functions determine whether we
