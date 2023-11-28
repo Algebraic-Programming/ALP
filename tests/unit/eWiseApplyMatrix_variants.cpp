@@ -171,25 +171,7 @@ void grb_program( const input_t< Monoid, descr > &input, output_t &output ) {
 	rc = SUCCESS;
 }
 
-int main( int argc, char ** argv ) {
-	(void) argc;
-	(void) argv;
-
-	size_t N = 10;
-
-	if( argc > 2 ) {
-		std::cout << "Usage: " << argv[ 0 ] << " [n=" << N << "]" << std::endl;
-		return 1;
-	}
-	if( argc == 2 ) {
-		N = std::stoul( argv[ 1 ] );
-	}
-
-	std::cout << "This is functional test " << argv[ 0 ] << std::endl << std::flush;
-
-	Launcher< AUTOMATIC > launcher;
-
-	// Create input data
+void test_program( const size_t& N, size_t& ) {
 	/** Matrix A: Row matrix filled with A_INITIAL_VALUE
 	 *  X X X X X
 	 * 	_ _ _ _ _
@@ -198,14 +180,19 @@ int main( int argc, char ** argv ) {
 	 * 	_ _ _ _ _
 	 * 	  (...)
 	 */
-	Matrix< nz_type > A( N, N, N );
+	Matrix< nz_type > A( N, N );
+	grb::resize( A, N );
 	{
 		std::vector< size_t > A_rows( N, 0 ), A_cols( N, 0 );
 		std::vector< nz_type > A_values( N, A_INITIAL_VALUE );
 		std::iota( A_cols.begin(), A_cols.end(), 0 );
-		if( SUCCESS !=
+		if(
+			SUCCESS !=
 			buildMatrixUnique( A, A_rows.data(), A_cols.data(), A_values.data(), A_values.size(), SEQUENTIAL )
-		) { return 2; }
+		) {
+			throw std::runtime_error("(LINE " + std::to_string(__LINE__)
+			+ "Test FAILED: buildMatrixUnique" );
+		}
 	}
 
 	/** Matrix B: Column matrix filled with B_INITIAL_VALUE
@@ -221,9 +208,13 @@ int main( int argc, char ** argv ) {
 		std::vector< size_t > B_rows( N, 0 ), B_cols( N, 0 );
 		std::vector< nz_type > B_values( N, B_INITIAL_VALUE );
 		std::iota( B_rows.begin(), B_rows.end(), 0 );
-		if( SUCCESS !=
-			buildMatrixUnique( B, B_rows.data(), B_cols.data(), B_values.data(), B_values.size(), SEQUENTIAL )
-		) { return 3; }
+		if(
+				SUCCESS !=
+			buildMatrixUnique( B, B_rows.data(), B_cols.data(), B_values.data(), B_values.size(), SEQUENTIAL
+			) ) {
+			throw std::runtime_error("(LINE " + std::to_string(__LINE__)
+				+ "Test FAILED: buildMatrixUnique" );
+		}
 	}
 
 	{ // C = A .+ B
@@ -246,15 +237,18 @@ int main( int argc, char ** argv ) {
 		std::fill( C_monoid_truth_values.begin() + 1, C_monoid_truth_values.begin() + nrows( A ), A_INITIAL_VALUE );
 		std::fill( C_monoid_truth_values.begin() + nrows( A ), C_monoid_truth_values.end(), B_INITIAL_VALUE );
 		if( SUCCESS !=
-			buildMatrixUnique(
-				C_monoid_truth,
-				C_monoid_truth_rows.data(),
-				C_monoid_truth_cols.data(),
-				C_monoid_truth_values.data(),
-				C_monoid_truth_values.size(),
-				SEQUENTIAL
-			)
-		) { return 4; }
+		    buildMatrixUnique(
+				    C_monoid_truth,
+				    C_monoid_truth_rows.data(),
+				    C_monoid_truth_cols.data(),
+				    C_monoid_truth_values.data(),
+				    C_monoid_truth_values.size(),
+				    SEQUENTIAL
+		    )
+				) {
+			throw std::runtime_error("(LINE " + std::to_string(__LINE__)
+				+ "Test FAILED: buildMatrixUnique" );
+		}
 
 		/** Matrix C_op_truth: Intersection of A and B
 		 *  X+Y ___ ___ ___ ___
@@ -268,30 +262,28 @@ int main( int argc, char ** argv ) {
 		std::vector< size_t > C_op_truth_rows( 1, 0 ), C_op_truth_cols( 1, 0 );
 		std::vector< nz_type > C_op_truth_values( 1, A_INITIAL_VALUE + B_INITIAL_VALUE );
 		if( SUCCESS !=
-			buildMatrixUnique(
-				C_op_truth,
-				C_op_truth_rows.data(),
-				C_op_truth_cols.data(),
-				C_op_truth_values.data(),
-				C_op_truth_values.size(),
-				SEQUENTIAL
-			)
-		) { return 5; }
+		    buildMatrixUnique(
+				    C_op_truth,
+				    C_op_truth_rows.data(),
+				    C_op_truth_cols.data(),
+				    C_op_truth_values.data(),
+				    C_op_truth_values.size(),
+				    SEQUENTIAL
+		    )
+				) {
+			throw std::runtime_error("(LINE " + std::to_string(__LINE__)
+				+ "Test FAILED: buildMatrixUnique" );
+		}
 
 		input_t<
-			Monoid< operators::add< nz_type >, identities::zero >
+				Monoid< operators::add< nz_type >, identities::zero >
 		> input { A, B, C_monoid_truth, C_op_truth };
 		output_t output { SUCCESS };
 		// Run the test
-		RC rc = launcher.exec( &grb_program, input, output, false );
-		// Check the result
-		if( rc != SUCCESS ) {
-			std::cerr << "Error: Launcher::exec\n";
-			return 6;
-		}
+		grb_program(input, output );
 		if( output.rc != SUCCESS ) {
-			std::cerr << "Test FAILED (" << toString( output.rc ) << ")" << std::endl;
-			return 7;
+			throw std::runtime_error("(LINE " + std::to_string(__LINE__)
+				+ "Test FAILED (" + toString( output.rc ) + ")" );
 		}
 	}
 
@@ -311,30 +303,27 @@ int main( int argc, char ** argv ) {
 		std::vector< nz_type > C_truth_values( nvalues, A_INITIAL_VALUE+A_INITIAL_VALUE );
 		std::iota( C_truth_cols.begin(), C_truth_cols.end(), 0 );
 		if( SUCCESS !=
-			buildMatrixUnique(
-				C_truth,
-				C_truth_rows.data(),
-				C_truth_cols.data(),
-				C_truth_values.data(),
-				C_truth_values.size(),
-				SEQUENTIAL
-			)
-		) { return 8; }
+		    buildMatrixUnique(
+				    C_truth,
+				    C_truth_rows.data(),
+				    C_truth_cols.data(),
+				    C_truth_values.data(),
+				    C_truth_values.size(),
+				    SEQUENTIAL
+		    )) {
+			throw std::runtime_error("(LINE " + std::to_string(__LINE__)
+					+ "Test FAILED: buildMatrixUnique" );
+		}
 
 		input_t<
-			Monoid< operators::add< nz_type >, identities::zero >
+				Monoid< operators::add< nz_type >, identities::zero >
 		> input { A, A, C_truth, C_truth };
 		output_t output { SUCCESS };
 		// Run the test
-		RC rc = launcher.exec( &grb_program, input, output, false );
-		// Check the result
-		if( rc != SUCCESS ) {
-			std::cerr << "Error: Launcher::exec\n";
-			return 9;
-		}
+		grb_program(input, output );
 		if( output.rc != SUCCESS ) {
-			std::cerr << "Test FAILED (" << toString( output.rc ) << ")" << std::endl;
-			return 10;
+			throw std::runtime_error("(LINE " + std::to_string(__LINE__)
+				+ "Test FAILED (" + toString( output.rc ) + ")" );
 		}
 	}
 
@@ -354,33 +343,54 @@ int main( int argc, char ** argv ) {
 		std::vector< nz_type > C_truth_values( nvalues, A_INITIAL_VALUE+B_INITIAL_VALUE );
 		std::iota( C_truth_cols.begin(), C_truth_cols.end(), 0 );
 		if( SUCCESS !=
-			buildMatrixUnique(
-				C_truth,
-				C_truth_rows.data(),
-				C_truth_cols.data(),
-				C_truth_values.data(),
-				C_truth_values.size(),
-				SEQUENTIAL
-			)
-		) { return 8; }
+		    buildMatrixUnique(
+				    C_truth,
+				    C_truth_rows.data(),
+				    C_truth_cols.data(),
+				    C_truth_values.data(),
+				    C_truth_values.size(),
+				    SEQUENTIAL
+		    )) {
+			throw std::runtime_error("(LINE " + std::to_string(__LINE__)
+				+ "Test FAILED: buildMatrixUnique" );
+		}
 
 		input_t<
-			Monoid< operators::add< nz_type >, identities::zero >,
-			descriptors::transpose_right
+				Monoid< operators::add< nz_type >, identities::zero >,
+				descriptors::transpose_right
 		> input { A, B, C_truth, C_truth };
 		output_t output { SUCCESS };
 		// Run the test
-		RC rc = launcher.exec( &grb_program, input, output, false );
-		// Check the result
-		if( rc != SUCCESS ) {
-			std::cerr << "Error: Launcher::exec\n";
-			return 9;
-		}
+		grb_program(input, output );
 		if( output.rc != SUCCESS ) {
-			std::cerr << "Test FAILED (" << toString( output.rc ) << ")" << std::endl;
-			return 10;
+			throw std::runtime_error("(LINE " + std::to_string(__LINE__)
+				+ "Test FAILED (" + toString( output.rc ) + ")" );
 		}
 	}
+}
+
+int main( int argc, char ** argv ) {
+	(void) argc;
+	(void) argv;
+
+	std::cerr << __func__ << " is not implemented yet" << std::endl;
+
+	size_t N = 10;
+
+	if( argc > 2 ) {
+		std::cout << "Usage: " << argv[ 0 ] << " [n=" << N << "]" << std::endl;
+		return 1;
+	}
+	if( argc == 2 ) {
+		N = std::stoul( argv[ 1 ] );
+	}
+
+	std::cout << "This is functional test " << argv[ 0 ] << std::endl << std::flush;
+
+	Launcher< AUTOMATIC > launcher;
+
+	// Create input data
+	RC rc = launcher.exec( &test_program, N, N, false );
 
 	std::cerr << std::flush;
 	std::cout << "Test OK" << std::endl << std::flush;
