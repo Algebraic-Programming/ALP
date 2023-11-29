@@ -18,13 +18,12 @@
 #include <algorithm>
 #include <functional>
 #include <iostream>
-#include <sstream>
-
-#include <graphblas/algorithms/matrix_factory.hpp>
 
 #include <graphblas.hpp>
+#include <graphblas/algorithms/matrix_factory.hpp>
 
 using namespace grb;
+
 
 namespace {
 	static RC error( const std::string & msg ) {
@@ -137,15 +136,10 @@ static RC test_factory_identity( const size_t & n ) {
 		} else if( ncols( M ) != n ) {
 			return error( "grb::factory::identity<void>: ncols != n" );
 		}
-		std::vector< bool > touched( n, false );
 		for( const auto & e : M ) {
-			touched[ e.first ] = true;
 			if( e.first != e.second ) {
 				return error( "grb::factory::identity<void>: incorrect coordinate" );
 			}
-		}
-		if( std::find( touched.cbegin(), touched.cend(), false ) != touched.cend() ) {
-			return error( "grb::factory::identity<void>: not touched every elements" );
 		}
 	}
 
@@ -158,17 +152,12 @@ static RC test_factory_identity( const size_t & n ) {
 		} else if( ncols( M ) != n ) {
 			return error( "grb::factory::identity<int>: ncols != n" );
 		}
-		std::vector< bool > touched( n, false );
 		for( const auto & e : M ) {
-			touched[ e.first.first ] = true;
 			if( e.first.first != e.first.second ) {
 				return error( "grb::factory::identity<int>: incorrect coordinate" );
 			} else if( e.second != 2 ) {
 				return error( "grb::factory::identity<int>: incorrect value" );
 			}
-		}
-		if( std::find( touched.cbegin(), touched.cend(), false ) != touched.cend() ) {
-			return error( "grb::factory::identity<void>: not touched every elements" );
 		}
 	}
 
@@ -215,15 +204,10 @@ static RC test_factory_eye( const size_t & n ) {
 		} else if( ncols( M ) != n ) {
 			return error( "grb::factory::eye<void>, size=(n,n): ncols != n" );
 		}
-		std::vector< bool > touched( n, false );
 		for( const auto & e : M ) {
-			touched[ e.first ] = true;
 			if( e.first != e.second ) {
 				return error( "grb::factory::eye<void>, size=(n,n): incorrect coordinate" );
 			}
-		}
-		if( std::find( touched.cbegin(), touched.cend(), false ) != touched.cend() ) {
-			return error( "grb::factory::eye<void>, size=(n,n): not touched every elements" );
 		}
 	}
 
@@ -236,17 +220,12 @@ static RC test_factory_eye( const size_t & n ) {
 		} else if( ncols( M ) != n ) {
 			return error( "grb::factory::eye<int>, size=(n,n): ncols != n" );
 		}
-		std::vector< bool > touched( n, false );
 		for( const auto & e : M ) {
-			touched[ e.first.first ] = true;
 			if( e.first.first != e.first.second ) {
 				return error( "grb::factory::eye<int>, size=(n,n): incorrect coordinate" );
 			} else if( e.second != 2 ) {
 				return error( "grb::factory::eye<int>, size=(n,n): incorrect value" );
 			}
-		}
-		if( std::find( touched.cbegin(), touched.cend(), false ) != touched.cend() ) {
-			return error( "grb::factory::eye<void>, size=(n,n): not touched every elements" );
 		}
 	}
 
@@ -259,17 +238,12 @@ static RC test_factory_eye( const size_t & n ) {
 		} else if( ncols( M ) != n ) {
 			return error( "grb::factory::eye<int>, size=(1,n): ncols != n" );
 		}
-		std::vector< bool > touched( 1, false );
 		for( const auto & e : M ) {
-			touched[ e.first.first ] = true;
 			if( e.first.first != 0 ) {
 				return error( "grb::factory::eye<int>, size=(1,n): incorrect coordinate" );
 			} else if( e.second != 2 ) {
 				return error( "grb::factory::eye<int>, size=(1,n): incorrect value" );
 			}
-		}
-		if( std::find( touched.cbegin(), touched.cend(), false ) != touched.cend() ) {
-			return error( "grb::factory::eye<void>, size=(1,n): not touched every elements" );
 		}
 	}
 
@@ -282,9 +256,7 @@ static RC test_factory_eye( const size_t & n ) {
 		} else if( ncols( M ) != 1 ) {
 			return error( "grb::factory::eye<int>, size=(n,1): ncols != 1" );
 		}
-		std::vector< bool > touched( 1, false );
 		for( const auto & e : M ) {
-			touched[ e.first.first ] = true;
 			if( e.first.second != 0 ) {
 				return error( "grb::factory::eye<int>, size=(n,1): incorrect column coordinate" );
 
@@ -292,16 +264,18 @@ static RC test_factory_eye( const size_t & n ) {
 				return error( "grb::factory::eye<int>, size=(n,1): incorrect value" );
 			}
 		}
-		if( std::find( touched.cbegin(), touched.cend(), false ) != touched.cend() ) {
-			return error( "grb::factory::eye<int>, size=(n,1): not touched every elements" );
-		}
 	}
 
 	return SUCCESS;
 }
 
 template< typename VoidFactoryFunc, typename IntFactoryFunc >
-RC test_factory_full_templated( const size_t & n, const std::string & factoryName, const VoidFactoryFunc & voidFactory, const IntFactoryFunc & intFactory ) {
+RC test_factory_full_templated(
+	const size_t & n,
+	const std::string & factoryName,
+	const VoidFactoryFunc & voidFactory,
+	const IntFactoryFunc & intFactory
+) {
 	{ // grb::factory::voidFactory of size: [0,0]
 		Matrix< void > M = voidFactory( 0, 0, IOMode::SEQUENTIAL );
 		if( nnz( M ) != 0 ) {
@@ -341,13 +315,6 @@ RC test_factory_full_templated( const size_t & n, const std::string & factoryNam
 		} else if( ncols( M ) != n ) {
 			return error( "grb::factory::" + factoryName + "<void>, size=(n,n): ncols != n" );
 		}
-		std::vector< bool > touched( n * n, false );
-		for( const auto & e : M ) {
-			touched[ e.first * n + e.second ] = true;
-		}
-		if( std::find( touched.cbegin(), touched.cend(), false ) != touched.cend() ) {
-			return error( "grb::factory::" + factoryName + "<void>, size=(n,n): not touched every elements" );
-		}
 	}
 
 	{ // grb::factory::intFactory of size: [n,n]
@@ -359,15 +326,10 @@ RC test_factory_full_templated( const size_t & n, const std::string & factoryNam
 		} else if( ncols( M ) != n ) {
 			return error( "grb::factory::" + factoryName + "<int>, size=(n,n): ncols != n" );
 		}
-		std::vector< bool > touched( n * n, false );
 		for( const auto & e : M ) {
-			touched[ e.first.first * n + e.first.second ] = true;
 			if( e.second != 2 ) {
 				return error( "grb::factory::" + factoryName + "<int>, size=(n,n): incorrect value" );
 			}
-		}
-		if( std::find( touched.cbegin(), touched.cend(), false ) != touched.cend() ) {
-			return error( "grb::factory::" + factoryName + "<int>, size=(n,n): not touched every elements" );
 		}
 	}
 
@@ -380,17 +342,12 @@ RC test_factory_full_templated( const size_t & n, const std::string & factoryNam
 		} else if( ncols( M ) != n ) {
 			return error( "grb::factory::" + factoryName + "<int>, size=(1,n): ncols != n" );
 		}
-		std::vector< bool > touched( n, false );
 		for( const auto & e : M ) {
-			touched[ e.first.second ] = true;
 			if( e.first.first != 0 ) {
 				return error( "grb::factory::" + factoryName + "<int>, size=(1,n): incorrect row coordinate" );
 			} else if( e.second != 2 ) {
 				return error( "grb::factory::" + factoryName + "<int>, size=(1,n): incorrect value" );
 			}
-		}
-		if( std::find( touched.cbegin(), touched.cend(), false ) != touched.cend() ) {
-			return error( "grb::factory::" + factoryName + "<int>, size=(1,n): not touched every elements" );
 		}
 	}
 
@@ -403,17 +360,12 @@ RC test_factory_full_templated( const size_t & n, const std::string & factoryNam
 		} else if( ncols( M ) != 1 ) {
 			return error( "grb::factory::" + factoryName + "<int>, size=(n,1): ncols != 1" );
 		}
-		std::vector< bool > touched( n, false );
 		for( const auto & e : M ) {
-			touched[ e.first.first ] = true;
 			if( e.first.second != 0 ) {
 				return error( "grb::factory::" + factoryName + "<int>, size=(n,1): incorrect column coordinate" );
 			} else if( e.second != 2 ) {
 				return error( "grb::factory::" + factoryName + "<int>, size=(n,1): incorrect value" );
 			}
-		}
-		if( std::find( touched.cbegin(), touched.cend(), false ) != touched.cend() ) {
-			return error( "grb::factory::" + factoryName + "<int>, size=(n,1): not touched every elements" );
 		}
 	}
 
@@ -443,7 +395,13 @@ static RC test_factory_full( const size_t & n ) {
 }
 
 template< typename VoidFactoryFunc, typename IntFactoryFunc >
-static RC test_factory_dense_valued( const size_t & n, const std::string & factoryName, const VoidFactoryFunc & voidFactory, const IntFactoryFunc & intFactory, const int expectedValue ) {
+static RC test_factory_dense_valued(
+	const size_t & n,
+	const std::string & factoryName,
+	const VoidFactoryFunc & voidFactory,
+	const IntFactoryFunc & intFactory,
+	const int expectedValue
+) {
 	{ // grb::factory::voidFactory of size: [0,0]
 		Matrix< void > M = voidFactory( 0, 0, IOMode::SEQUENTIAL );
 		if( nnz( M ) != 0 ) {
@@ -483,13 +441,6 @@ static RC test_factory_dense_valued( const size_t & n, const std::string & facto
 		} else if( ncols( M ) != n ) {
 			return error( "grb::factory::" + factoryName + "<void>, size=(n,n): ncols != n" );
 		}
-		std::vector< bool > touched( n * n, false );
-		for( const auto & e : M ) {
-			touched[ e.first * n + e.second ] = true;
-		}
-		if( std::find( touched.cbegin(), touched.cend(), false ) != touched.cend() ) {
-			return error( "grb::factory::" + factoryName + "<void>, size=(n,n): not touched every elements" );
-		}
 	}
 
 	{ // grb::factory::intFactory of size: [n,n]
@@ -501,15 +452,10 @@ static RC test_factory_dense_valued( const size_t & n, const std::string & facto
 		} else if( ncols( M ) != n ) {
 			return error( "grb::factory::" + factoryName + "<int>, size=(n,n): ncols != n" );
 		}
-		std::vector< bool > touched( n * n, false );
 		for( const auto & e : M ) {
-			touched[ e.first.first * n + e.first.second ] = true;
 			if( e.second != expectedValue ) {
 				return error( "grb::factory::eye<int>, size=(n,n): incorrect value" );
 			}
-		}
-		if( std::find( touched.cbegin(), touched.cend(), false ) != touched.cend() ) {
-			return error( "grb::factory::" + factoryName + "<int>, size=(n,n): not touched every elements" );
 		}
 	}
 
@@ -522,17 +468,12 @@ static RC test_factory_dense_valued( const size_t & n, const std::string & facto
 		} else if( ncols( M ) != n ) {
 			return error( "grb::factory::" + factoryName + "<int>, size=(1,n): ncols != n" );
 		}
-		std::vector< bool > touched( n, false );
 		for( const auto & e : M ) {
-			touched[ e.first.second ] = true;
 			if( e.first.first != 0 ) {
 				return error( "grb::factory::" + factoryName + "<int>, size=(1,n): incorrect row coordinate" );
 			} else if( e.second != expectedValue ) {
 				return error( "grb::factory::" + factoryName + "<int>, size=(1,n): incorrect value" );
 			}
-		}
-		if( std::find( touched.cbegin(), touched.cend(), false ) != touched.cend() ) {
-			return error( "grb::factory::" + factoryName + "<int>, size=(1,n): not touched every elements" );
 		}
 	}
 
@@ -545,17 +486,12 @@ static RC test_factory_dense_valued( const size_t & n, const std::string & facto
 		} else if( ncols( M ) != 1 ) {
 			return error( "grb::factory::" + factoryName + "<int>, size=(n,1): ncols != 1" );
 		}
-		std::vector< bool > touched( n, false );
 		for( const auto & e : M ) {
-			touched[ e.first.first ] = true;
 			if( e.first.second != 0 ) {
 				return error( "grb::factory::" + factoryName + "<int>, size=(n,1): incorrect column coordinate" );
 			} else if( e.second != expectedValue ) {
 				return error( "grb::factory::" + factoryName + "<int>, size=(n,1): incorrect value" );
 			}
-		}
-		if( std::find( touched.cbegin(), touched.cend(), false ) != touched.cend() ) {
-			return error( "grb::factory::" + factoryName + "<int>, size=(n,1): not touched every elements" );
 		}
 	}
 

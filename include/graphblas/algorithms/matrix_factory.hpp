@@ -55,7 +55,7 @@ namespace grb::factory {
 	namespace internal {
 
 		size_t compute_diag_length( size_t nrows, size_t ncols, long k ) {
-			const size_t k_abs = static_cast< size_t >( ( k < 0L ) ? -k : k );
+			const auto k_abs = static_cast< size_t >( ( k < 0L ) ? -k : k );
 			return ( k_abs >= nrows || k_abs >= ncols )
 				? 0
 				: std::min(
@@ -321,7 +321,8 @@ namespace grb::factory {
 		typename CIT = config::ColIndexType,
 		typename NIT = config::NonzeroIndexType,
 		Backend implementation = grb::config::default_backend,
-		typename std::enable_if< std::is_void< D >::value, int >::type = 0 >
+		typename std::enable_if< std::is_void< D >::value, int >::type = 0
+	>
 	Matrix< void, implementation, RIT, CIT, NIT > identity( size_t n, IOMode io_mode ) {
 		return eye< void, descr, RIT, CIT, NIT, implementation >( n, n, io_mode );
 	}
