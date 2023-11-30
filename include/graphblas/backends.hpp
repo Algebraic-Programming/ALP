@@ -29,6 +29,7 @@
 #ifndef _H_GRB_BACKENDS
 #define _H_GRB_BACKENDS
 
+#include <string>
 
 namespace grb {
 
@@ -217,6 +218,36 @@ namespace grb {
 		banshee_ssr
 
 	};
+
+	/**
+	 * @param backend
+	 * @return The name of the given backend.
+	 */
+	static inline std::string toString( enum grb::Backend backend ) {
+		switch(backend) {
+			case grb::Backend::reference:     return "reference";
+			case grb::Backend::reference_omp: return "reference_omp";
+			case grb::Backend::hyperdags:     return "hyperdags";
+			case grb::Backend::nonblocking:   return "nonblocking";
+			case grb::Backend::shmem1D:       return "shmem1D";
+			case grb::Backend::NUMA1D:        return "NUMA1D";
+			case grb::Backend::GENERIC_BSP:   return "GENERIC_BSP";
+			case grb::Backend::BSP1D:         return "BSP1D";
+			case grb::Backend::doublyBSP1D:   return "doublyBSP1D";
+			case grb::Backend::BSP2D:         return "BSP2D";
+			case grb::Backend::autoBSP:       return "autoBSP";
+			case grb::Backend::optBSP:        return "optBSP";
+			case grb::Backend::hybrid:        return "hybrid";
+			case grb::Backend::hybridSmall:   return "hybridSmall";
+			case grb::Backend::hybridMid:     return "hybridMid";
+			case grb::Backend::hybridLarge:   return "hybridLarge";
+			case grb::Backend::minFootprint:  return "minFootprint";
+			case grb::Backend::banshee:       return "banshee";
+			case grb::Backend::banshee_ssr:   return "banshee_ssr";
+			default:
+				return "unknown_backend(id=" + std::to_string( static_cast< int >( backend ) ) + ")";
+		}
+	}
 
 } // namespace grb
 
