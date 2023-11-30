@@ -462,36 +462,31 @@ namespace grb {
 					assert( _cap > 0 );
 					assert( _n <= _cap );
 					assert( lower_bound <= upper_bound );
-					return upper_bound - lower_bound < _n;
+					return nonzeroes() * (upper_bound - lower_bound) > size();
 				}
 
 				void _asyncSubsetInit_bitmask(
-					const size_t /* num_tiles */,
-					const size_t /* tile_id */,
-					const size_t lower_bound,
-					const size_t upper_bound,
-					config::VectorIndexType *local_stack,
-					config::VectorIndexType *local_nnzs
+						const size_t lower_bound,
+						const size_t upper_bound,
+						const size_t /*tile_id*/,
+						config::VectorIndexType *local_nnzs,
+						config::VectorIndexType *local_stack
 				) noexcept {
+					assert( _cap > 0 );
+
 					for( size_t i = lower_bound; i < upper_bound; ++i ) {
 						if( _assigned[ i ] ) {
 							local_stack[ (*local_nnzs)++ ] = i - lower_bound;
 						}
 					}
-//#if defined(_DEBUG) || defined(_LOCAL_DEBUG)
-//					#pragma omp critical
-//						fprintf( stderr, "[T%02d] - _asyncSubsetInit_bitmask( bounds: [%zu, %zu] ) -> local_nnzs=%u\n",
-//							omp_get_thread_num(), lower_bound, upper_bound, *local_nnzs );
-//#endif
 				}
 
 				void _asyncSubsetInit_search(
-					const size_t /* num_tiles */,
-					const size_t tile_id,
-					const size_t lower_bound,
-					const size_t upper_bound,
-					config::VectorIndexType *local_stack,
-					config::VectorIndexType *local_nnzs
+						const size_t lower_bound,
+						const size_t upper_bound,
+						const size_t tile_id,
+						config::VectorIndexType *local_nnzs,
+						config::VectorIndexType *local_stack
 				) noexcept {
 					(void) tile_id;
 					(void) lower_bound;
@@ -518,11 +513,6 @@ namespace grb {
 						ASSERT( _assigned[ k ], "i=" << i << ", k=" << k << ", lower_bound=" << lower_bound << ", upper_bound=" << upper_bound );
 						local_stack[ (*local_nnzs)++ ] = k - lower_bound;
 					}
-//#if defined(_DEBUG) || defined(_LOCAL_DEBUG)
-//					#pragma omp critical
-//						fprintf( stderr, "[T%02d] - _asyncSubsetInit_search( bounds: [%zu, %zu] ) -> local_nnzs=%u\n",
-//							omp_get_thread_num(), lower_bound, upper_bound, *local_nnzs );
-//#endif
 				}
 
 				/**
@@ -544,6 +534,7 @@ namespace grb {
 					const size_t lower_bound,
 					const size_t upper_bound
 				) noexcept {
+					(void) num_tiles;
 					if( _cap == 0 ) { return; }
 
 					const size_t tile_id = lower_bound / analytic_model.getTileSize();
@@ -552,20 +543,24 @@ namespace grb {
 					config::VectorIndexType *local_stack = local_buffer[ tile_id ] + 1;
 
 					*local_nnzs = 0;
+#ifdef GRB_ALREADY_DENSE_OPTIMIZATION
+					_asyncSubsetInit_bitmask( lower_bound, upper_bound, tile_id, local_nnzs, local_stack );
+#else
 					if( should_use_bitmask_asyncSubsetInit( num_tiles, tile_id, lower_bound, upper_bound ) ) {
 						#ifdef _LOCAL_DEBUG
 						#pragma omp critical
 							std::cerr << "> Using bitmask\n";
 						#endif
-						_asyncSubsetInit_bitmask( num_tiles, tile_id, lower_bound, upper_bound, local_stack, local_nnzs );
+						_asyncSubsetInit_bitmask( lower_bound, upper_bound, tile_id, local_nnzs, local_stack );
 					} else {
 						assert( _debug_is_counting_sort_done );
 						#ifdef _LOCAL_DEBUG
 						#pragma omp critical
 							std::cerr << "> Using search\n";
 						#endif
-						_asyncSubsetInit_search( num_tiles, tile_id, lower_bound, upper_bound, local_stack, local_nnzs );
+						_asyncSubsetInit_search( lower_bound, upper_bound, tile_id, local_nnzs, local_stack );
 					}
+#endif
 
 					// the number of new nonzeroes is initialized here
 					local_new_nnzs[ tile_id ] = 0;
