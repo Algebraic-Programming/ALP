@@ -972,14 +972,7 @@ namespace grb {
 			std::cout << "In grb::internal::eWiseApply_matrix_generic_intersection\n";
 #endif
 			assert( phase != TRY );
-			static_assert(
-				!(
-				    std::is_same< InputType1, void >::value ||
-				    std::is_same< InputType2, void >::value
-				),
-				"grb::internal::eWiseApply_matrix_generic_intersection: the non-monoid"
-				" version of elementwise mxm can only be used if neither of the"
-				" input matrices is a pattern matrix (of type void)" );
+
 			constexpr bool crs_only = descr & descriptors::force_row_major;
 			// get whether the matrices should be transposed prior to execution
 			constexpr bool trans_left = descr & descriptors::transpose_left;
@@ -1729,12 +1722,10 @@ namespace grb {
 			"called with an output matrix C that does not match the output domain "
 			"of the given multiplication operator"
 		);
-		static_assert( ( !(
-				std::is_same< InputType1, void >::value ||
-				std::is_same< InputType2, void >::value )
-			), "grb::eWiseApply (reference, matrix <- matrix x matrix, operator): "
-			"the operator version of eWiseApply cannot be used if either of the "
-			"input matrices is a pattern matrix (of type void)"
+		static_assert(
+			!std::is_void< OutputType >::value,
+			"grb::eWiseApply: the elementwise mxm cannot be used if the"
+			" output matrix is a pattern matrix (of type void)"
 		);
 #ifdef _DEBUG
 		std::cout << "In grb::eWiseApply( reference, operator )\n";
