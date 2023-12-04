@@ -872,14 +872,12 @@ grb::RC Pipeline::execution() {
 			fprintf( stderr, "Pipeline::execution(2): check if any of the coordinates will use the search-variant of asyncSubsetInit:\n" );
 #endif
 #ifndef GRB_ALREADY_DENSE_OPTIMIZATION
+		std::vector< Coordinates< nonblocking > * > accessed_coordinates_vec( accessed_coordinates.begin(), accessed_coordinates.end() );
+		#pragma omp parallel for schedule(dynamic) num_threads(nthreads)
+		for( Coordinates< nonblocking > * vt : accessed_coordinates_vec ) {
+			if( (*vt).size() != getContainersSize() ) { continue; }
 
-		for(
-			std::set< internal::Coordinates< nonblocking > * >::iterator vt = vbegin();
-			vt != vend(); ++vt
-		) {
-			if( (**vt).size() != getContainersSize() ) { continue; }
-
-			(**vt).asyncSubsetInit( num_tiles, lower_bound, upper_bound );
+			(*vt).asyncSubsetInit( num_tiles, lower_bound, upper_bound );
 		}
 #endif
 		#pragma omp parallel for schedule(dynamic) num_threads(nthreads)
@@ -943,25 +941,24 @@ grb::RC Pipeline::execution() {
 #if defined(_DEBUG) || defined(_LOCAL_DEBUG)
 			fprintf( stderr, "Pipeline::execution(2): check if any of the coordinates will use the search-variant of asyncSubsetInit:\n" );
 #endif
-			for(
-				std::set< internal::Coordinates< nonblocking > * >::iterator vt = vbegin();
-				vt != vend(); ++vt
-				) {
-				if ( (**vt).size() != getContainersSize() ) {
+			std::vector< Coordinates< nonblocking > * > accessed_coordinates_vec( accessed_coordinates.begin(), accessed_coordinates.end() );
+			#pragma omp parallel for schedule(dynamic) num_threads(nthreads)
+			for( Coordinates< nonblocking > * vt : accessed_coordinates_vec ) {
+				if ( (*vt).size() != getContainersSize() ) {
 					continue;
 				}
 
 #ifdef GRB_ALREADY_DENSE_OPTIMIZATION
-				if( (**vt).isDense() && (
-					!contains_out_of_place_primitive || !outOfPlaceOutput( *vt )
+				if( (*vt).isDense() && (
+					!contains_out_of_place_primitive || !outOfPlaceOutput( vt )
 				) ) {
 					continue;
 				}
 #endif
 
-				(**vt).asyncSubsetInit( num_tiles, lower_bound, upper_bound );
-				initialized_coordinates = true;
+				(*vt).asyncSubsetInit( num_tiles, lower_bound, upper_bound );
 			}
+			initialized_coordinates = true;
 		}
 
 
