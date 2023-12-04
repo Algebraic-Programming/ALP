@@ -479,7 +479,10 @@ void printCRS(
 ) {
 	constexpr const size_t smax = std::numeric_limits< size_t >::max();
 	if( !Enabled ) { return; }
-	if( limit < smax && (nrows( mat ) > limit || ncols( mat ) > limit) ) { return; }
+
+	const long rows = static_cast< long >( nrows( mat ) );
+	const long cols = static_cast< long >( ncols( mat ) );
+	if( limit < smax && (rows > limit || cols > limit) ) { return; }
 
 	const grb::RC rc = grb::wait( mat );
 	if( rc != grb::SUCCESS ) {

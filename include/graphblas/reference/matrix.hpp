@@ -1663,7 +1663,7 @@ namespace grb {
 			 * When given a forward iterator tag, calls the sequential implementation of
 			 * buildMatrixUnique.
 			 */
-			template <typename fwd_iterator>
+			template< typename fwd_iterator >
 			RC buildMatrixUniqueImpl(
 				const fwd_iterator &_start,
 				const fwd_iterator &_end,
@@ -1675,13 +1675,13 @@ namespace grb {
 			/**
 			 * The sequential implementation of buildMatrixUnique.
 			 */
-			template <typename fwd_iterator>
+			template< typename fwd_iterator >
 			RC buildMatrixUniqueImplSeq(
 				const fwd_iterator &_start,
 				const fwd_iterator &_end
 			) {
 #ifdef _DEBUG
-				std::cout << " fwrd acces iterator " << '\n';
+				std::cout << "forward access iterator detected\n";
 				std::cout << "buildMatrixUnique called with " << cap << " nonzeroes.\n";
 				std::cout << "buildMatrixUnique: input is\n";
 				for( fwd_iterator it = _start; it != _end; ++it ) {

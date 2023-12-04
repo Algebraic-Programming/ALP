@@ -21,11 +21,12 @@
 
 #include "graphblas.hpp"
 
+
 using namespace grb;
 
 int main( int argc, char ** argv ) {
-	(void)argc;
-	(void)printf( "Functional test executable: %s\n", argv[ 0 ] );
+	(void) argc;
+	(void) printf( "Functional test executable: %s\n", argv[ 0 ] );
 
 	const int data1[ 15 ] = { 4, 7, 4, 6, 4, 7, 1, 7, 3, 6, 7, 5, 1, 8, 7 };
 	const int data2[ 15 ] = { 8, 9, 8, 6, 8, 7, 8, 7, 5, 2, 3, 5, 1, 5, 5 };

@@ -328,7 +328,7 @@ namespace grb {
 				data.s == root &&
 					ret == SUCCESS &&
 					internal::getCoordinates( out ).size() !=
-				       		internal::getCoordinates( out ).nonzeroes() &&
+						internal::getCoordinates( out ).nonzeroes() &&
 					i < data.P * size;
 				++i
 			) {

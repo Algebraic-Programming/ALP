@@ -20,8 +20,8 @@
  * @date 25th of May, 2017
  */
 
-#ifndef _H_MATRIXFILEITERATOR
-#define _H_MATRIXFILEITERATOR
+#ifndef _H_GRB_UTILS_MATRIXFILEITERATOR
+#define _H_GRB_UTILS_MATRIXFILEITERATOR
 
 #include <cstddef> //std::ptrdiff_t
 #include <fstream>
@@ -45,7 +45,7 @@
 #include <graphblas/utils/hpparser.h>
 #include <graphblas/utils/iscomplex.hpp>
 
-#include "MatrixFileProperties.hpp"
+#include "matrixFileProperties.hpp"
 
 #ifdef _GRB_WITH_OMP
  #include <graphblas/omp/config.hpp>
@@ -1223,5 +1223,5 @@ namespace grb {
 	}     // namespace utils
 } // namespace grb
 
-#endif // end ``_H_MATRIXFILEITERATOR''
+#endif // end ``_H_GRB_UTILS_MATRIXFILEITERATOR''
 

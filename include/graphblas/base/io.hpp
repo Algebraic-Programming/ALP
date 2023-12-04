@@ -33,7 +33,7 @@
 #include <graphblas/rc.hpp>
 #include <graphblas/phase.hpp>
 #include <graphblas/iomode.hpp>
-#include <graphblas/SynchronizedNonzeroIterator.hpp>
+#include <graphblas/synchronizedNonzeroIterator.hpp>
 #include <graphblas/utils/iterators/type_traits.hpp>
 
 #include "matrix.hpp"

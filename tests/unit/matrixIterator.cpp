@@ -24,11 +24,11 @@
 
 #include <graphblas.hpp>
 #include <graphblas/utils.hpp> // grb::equals
-#include <graphblas/SynchronizedNonzeroIterator.hpp>
+#include <graphblas/synchronizedNonzeroIterator.hpp>
 
 
 #include <utils/matrix_values_check.hpp>
-#include <graphblas/utils/iterators/NonzeroIterator.hpp>
+#include <graphblas/utils/iterators/nonzeroIterator.hpp>
 
 
 using namespace grb;

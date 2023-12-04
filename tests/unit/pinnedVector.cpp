@@ -21,7 +21,7 @@
 #include <inttypes.h>
 
 #include <graphblas/algorithms/knn.hpp>
-#include <graphblas/utils/Timer.hpp>
+#include <graphblas/utils/timer.hpp>
 #include <graphblas/utils/parser.hpp>
 
 #include <graphblas.hpp>

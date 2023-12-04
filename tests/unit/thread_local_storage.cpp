@@ -26,7 +26,8 @@
 
 #include <pthread.h>
 
-#include <graphblas/utils/ThreadLocalStorage.hpp>
+#include <graphblas/utils/threadLocalStorage.hpp>
+
 
 static constexpr size_t P = 4;
 static pthread_t handles[ P ];

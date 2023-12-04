@@ -18,7 +18,9 @@
 #include <assert.h>
 
 #include "graphblas.hpp"
+
 #include "lpf/core.h"
+
 
 // forward declaration of the GraphBLAS program
 void grbProgram( const size_t &, int & );

@@ -17,10 +17,12 @@
 
 #include <iostream>
 
-#include <graphblas/algorithms/knn.hpp>
-#include <graphblas/utils/Timer.hpp>
-
 #include <graphblas.hpp>
+
+#include <graphblas/algorithms/knn.hpp>
+
+#include <graphblas/utils/timer.hpp>
+
 
 #ifndef KNN_TEST_DIMENSION
  #define KNN_TEST_DIMENSION 10
@@ -67,11 +69,17 @@ void grbProgram( const size_t &P, int &exit_status ) {
 	// construct pattern matrix from a dataset file
 	size_t *LI, *LJ;
 	std::string type = STR( KNN_DATASET_TYPE );
-	std::cout << "Loading from dataset " << std::to_string( STR( KNN_DATASET_FILE ) ) << "...\n";
-	readEdges( STR( KNN_DATASET_FILE ), type == "indirect", KNN_DATASET_N, &nz, &LI, &LJ, &weights );
+	std::cout << "Loading from dataset "
+		<< std::to_string( STR( KNN_DATASET_FILE ) ) << "...\n";
+	readEdges(
+		STR( KNN_DATASET_FILE ),
+		type == "indirect", // note that type is an std::string
+		KNN_DATASET_N, &nz, &LI, &LJ, &weights
+	);
 #else
 	// construct example pattern matrix
-	std::cout << "Loading example of " << n << " vertices and " << nz << " == " << ( n + 1 ) << " nonzeroes.\n";
+	std::cout << "Loading example of " << n << " vertices and " << nz << " == "
+		<< ( n + 1 ) << " nonzeroes.\n";
 	size_t * LI = new size_t[ nz ];
 	size_t * LJ = new size_t[ nz ];
 	for( size_t i = 0; i < n; ++i ) {
@@ -86,6 +94,7 @@ void grbProgram( const size_t &P, int &exit_status ) {
 	Matrix< void > L( n, n );
 	RC rc = buildMatrixUnique( L, LI, LJ, nz, SEQUENTIAL );
 	if( rc != SUCCESS ) {
+		std::cerr << "Error: building L failed\n";
 		exit_status = 1;
 		coda( LI, LJ );
 		return;
@@ -93,6 +102,7 @@ void grbProgram( const size_t &P, int &exit_status ) {
 
 	// check number of nonzeroes
 	if( nnz( L ) != nz ) {
+		std::cerr << "Error: nonzero count does not match\n";
 		exit_status = 2;
 		coda( LI, LJ );
 		return;
@@ -107,7 +117,8 @@ void grbProgram( const size_t &P, int &exit_status ) {
 	Vector< bool > buf1( n );
 	assert( nnz( neighbourhood ) == 0 );
 
-	std::cout << "Now passing into grb::algorithms::knn with source = " << ( n - 4 ) << " for benchmark...\n";
+	std::cout << "Now passing into grb::algorithms::knn with source = "
+		<< ( n - 4 ) << " for benchmark...\n";
 	timer.reset();
 	benchtimer.reset();
 	rc = knn< descriptors::no_operation >( neighbourhood, L, n - 4, 1, buf1 );
@@ -116,6 +127,7 @@ void grbProgram( const size_t &P, int &exit_status ) {
 
 	// set error code
 	if( rc != SUCCESS ) {
+		std::cerr << "Error during call to k-nearest reachability query\n";
 		exit_status = 4;
 		coda( LI, LJ );
 		return;
@@ -123,16 +135,22 @@ void grbProgram( const size_t &P, int &exit_status ) {
 
 	// print timing at root process
 	if( s == 0 ) {
-		std::cout << "Average time taken for call to knn (root user process): " << time_taken << std::endl;
+		std::cout << "Average time taken for call to knn (root user process): "
+			<< time_taken << std::endl;
 	}
 
-	rc = collectives<>::allreduce< descriptors::no_casting >( time_taken, operators::max< double >() );
-	assert( rc == SUCCESS ); // do this via assert, we are not testing collectives here
+	rc = collectives<>::allreduce< descriptors::no_casting >(
+		time_taken, operators::max< double >() );
+	if( rc != SUCCESS ) {
+		std::cerr << "Error: could not allreduce timings\n";
+		exit_status = 5;
+		coda( LI, LJ );
+		return;
+	}
 
 	if( s == 0 ) {
 		std::cout << "Average time taken for call to knn (max over all user "
-					 "processes): "
-				  << time_taken << std::endl;
+			"processes): " << time_taken << std::endl;
 	}
 
 	// print check to screen if dimension is small
@@ -144,22 +162,25 @@ void grbProgram( const size_t &P, int &exit_status ) {
 				const auto it_end = neighbourhood.end();
 				for( ; it != it_end; ++it ) {
 					const auto nonzero = *it;
-					if( ! ( nonzero.second ) )
+					if( !(nonzero.second) ) {
 						continue;
+					}
 					std::cout << nonzero.first << " ";
 				}
 				std::cout << ")\n";
 			}
 			const enum RC bsprc = spmd<>::sync();
-			assert( bsprc == SUCCESS );
-#ifdef NDEBUG
-			(void) bsprc;
-#endif
+			if( bsprc != SUCCESS ) {
+				std::cerr << "Error: synhronisation during printing to stdout failed\n";
+				exit_status = 6;
+				break;
+			}
 		}
 	}
 
 	// done
 	coda( LI, LJ );
+
 	return;
 }
 

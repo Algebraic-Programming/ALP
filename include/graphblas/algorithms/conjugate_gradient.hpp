@@ -38,8 +38,8 @@ namespace grb {
 	namespace algorithms {
 
 		/**
-		 * Solves a linear system \f$ b = Ax \f$ with \f$ x \f$ unknown by the Conjugate
-		 * Gradients (CG) method on general fields.
+		 * Solves a linear system \f$ b = Ax \f$ with \f$ x \f$ unknown by the
+		 * Conjugate Gradients (CG) method on general fields.
 		 *
 		 * Does not perform any preconditioning.
 		 *

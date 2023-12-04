@@ -29,7 +29,6 @@
 
 
 #include <graphblas/bsp/config.hpp>
-#include <graphblas/utils/ThreadLocalStorage.hpp>
 #include <graphblas/bsp1d/init.hpp>
 
 grb::utils::ThreadLocalStorage< grb::internal::BSP1D_Data > grb::internal::grb_BSP1D;

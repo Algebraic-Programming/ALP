@@ -50,7 +50,8 @@ namespace grb {
 
 			public:
 
-				using iterator_category = typename std::iterator_traits< IterT1 >::iterator_category;
+				using iterator_category =
+					typename std::iterator_traits< IterT1 >::iterator_category;
 
 		};
 

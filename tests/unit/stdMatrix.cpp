@@ -21,10 +21,10 @@
 
 #include <graphblas.hpp>
 
+
 using namespace grb;
 
-
-void grb_program( const size_t & n, grb::RC & rc ) {
+void grb_program( const size_t &n, grb::RC &rc ) {
 	std::vector< grb::Matrix< unsigned char > > matrices;
 	size_t * const I = new size_t[ n ];
 	size_t * const J = new size_t[ n ];

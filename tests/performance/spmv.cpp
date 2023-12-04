@@ -26,13 +26,43 @@
 
 #include <inttypes.h>
 
-#include <graphblas/utils/Timer.hpp>
-#include <graphblas/utils/parser.hpp>
-
 #include <graphblas.hpp>
+
+#include <graphblas/utils/timer.hpp>
+#include <graphblas/utils/parser.hpp>
+#include <graphblas/utils/singleton.hpp>
+
+#include <graphblas/utils/iterators/nonzeroIterator.hpp>
 
 
 using namespace grb;
+
+/** Parser type */
+typedef grb::utils::MatrixFileReader<
+	double,
+	std::conditional<
+		(sizeof(grb::config::RowIndexType) > sizeof(grb::config::ColIndexType)),
+		grb::config::RowIndexType,
+		grb::config::ColIndexType
+	>::type
+> Parser;
+
+/** Nonzero type */
+typedef internal::NonzeroStorage<
+	grb::config::RowIndexType,
+	grb::config::ColIndexType,
+	double
+> NonzeroT;
+
+/** In-memory storage type */
+typedef grb::utils::Singleton<
+	std::pair<
+		// stores n and nz (according to parser)
+		std::pair< size_t, size_t >,
+		// stores the actual nonzeroes
+		std::vector< NonzeroT >
+	>
+> Storage;
 
 struct input {
 	char filename[ 1024 ];
@@ -47,6 +77,54 @@ struct output {
 	PinnedVector< double > pinnedVector;
 };
 
+void ioProgram( const struct input &data_in, bool &success ) {
+	success = false;
+
+	// sanity checks on input
+	if( data_in.filename[ 0 ] == '\0' ) {
+		std::cerr << "Error: no input file given\n";
+		return;
+	}
+	// Parse and store matrix in singleton class
+	auto &data = Storage::getData().second;
+	try {
+		Parser parser( data_in.filename, data_in.direct );
+		Storage::getData().first.first  = parser.m();
+		Storage::getData().first.second = parser.n();
+		size_t parser_nz;
+		try {
+			parser_nz = parser.nz();
+		} catch( ... ) {
+			parser_nz = parser.entries();
+		}
+		/* Once internal issue #342 is resolved this can be re-enabled
+		for(
+			auto it = parser.begin( PARALLEL );
+			it != parser.end( PARALLEL );
+			++it
+		) {
+			data.push_back( *it );
+		}*/
+		for(
+			auto it = parser.begin( SEQUENTIAL );
+			it != parser.end( SEQUENTIAL );
+			++it
+		) {
+			data.push_back( NonzeroT( *it ) );
+		}
+		if( parser_nz != data.size() ) {
+			std::cerr << "Warning: stored nnz (" << data.size() << ") does not equal "
+				<< "parser nnz (" << parser_nz << "). " << "This could naturally occur "
+				<< "if the input matrix file employs symmetric storage; in that case, the "
+				<< "number of entries is roughly half of the number of nonzeroes.\n";
+		}
+	} catch( std::exception &e ) {
+		std::cerr << "I/O program failed: " << e.what() << "\n";
+		return;
+	}
+	success = true;
+}
+
 void grbProgram( const struct input &data_in, struct output &out ) {
 	// get user process ID
 	const size_t s = spmd<>::pid();
@@ -56,41 +134,34 @@ void grbProgram( const struct input &data_in, struct output &out ) {
 	grb::utils::Timer timer;
 	timer.reset();
 
-	// sanity checks on input
-	if( data_in.filename[ 0 ] == '\0' ) {
-		std::cerr << s << ": no file name given as input." << std::endl;
-		out.error_code = ILLEGAL;
-		return;
-	}
-
 	// assume successful run
 	out.error_code = 0;
 
-	// create local parser
-	grb::utils::MatrixFileReader< double,
-		std::conditional< (sizeof( grb::config::RowIndexType) >
-				sizeof(grb::config::ColIndexType )),
-			grb::config::RowIndexType,
-			grb::config::ColIndexType
-		>::type
-	> parser( data_in.filename, data_in.direct );
-	const size_t m = parser.m();
-	const size_t n = parser.n();
-
-	out.times.io = timer.time();
-	timer.reset();
-
 	// load into GraphBLAS
+	const size_t m = Storage::getData().first.first;
+	const size_t n = Storage::getData().first.second;
 	Matrix< double > A( m, n );
 	{
+		const auto &data = Storage::getData().second;
 		const RC rc = buildMatrixUnique(
 			A,
-			parser.begin( SEQUENTIAL ), parser.end( SEQUENTIAL ),
+			utils::makeNonzeroIterator<
+				grb::config::RowIndexType, grb::config::ColIndexType, double
+			>( data.cbegin() ),
+			utils::makeNonzeroIterator<
+				grb::config::RowIndexType, grb::config::ColIndexType, double
+			>( data.cend() ),
 			SEQUENTIAL
 		);
 		/* Once internal issue #342 is resolved this can be re-enabled
-		const RC rc = buildMatrixUnique( A,
-			parser.begin( PARALLEL ), parser.end( PARALLEL),
+		const RC rc = buildMatrixUnique(
+			A,
+			utils::makeNonzeroIterator<
+				grb::config::RowIndexType, grb::config::ColIndexType, double
+			>( data.cbegin() ),
+			utils::makeNonzeroIterator<
+				grb::config::RowIndexType, grb::config::ColIndexType, double
+			>( data.cend() ),
 			PARALLEL
 		);*/
 		if( rc != SUCCESS ) {
@@ -99,21 +170,8 @@ void grbProgram( const struct input &data_in, struct output &out ) {
 			return;
 		}
 	}
-
-	// check number of nonzeroes
-	try {
-		const size_t global_nnz = nnz( A );
-		const size_t parser_nnz = parser.nz();
-		if( global_nnz != parser_nnz ) {
-			std::cerr << "Failure: global nnz (" << global_nnz << ") does not equal "
-				<< "parser nnz (" << parser_nnz << ")." << std::endl;
-			return;
-		}
-	} catch( const std::runtime_error & ) {
-		std::cout << "Info: nonzero check skipped as the number of nonzeroes "
-			<< "cannot be derived from the matrix file header. The "
-			<< "grb::Matrix reports " << nnz( A ) << " nonzeroes.\n";
-	}
+	out.times.io = timer.time();
+	timer.reset();
 
 	RC rc = SUCCESS;
 
@@ -126,6 +184,9 @@ void grbProgram( const struct input &data_in, struct output &out ) {
 
 	rc = rc ? rc : set( x, static_cast< double >( 1 ) );
 	assert( rc == SUCCESS );
+
+	// that was the preamble
+	out.times.preamble = timer.time();
 
 	// by default, copy input requested repetitions to output repititions performed
 	out.rep = data_in.rep;
@@ -167,9 +228,6 @@ void grbProgram( const struct input &data_in, struct output &out ) {
 			return;
 		}
 	}
-
-	// that was the preamble
-	out.times.preamble = timer.time();
 
 	// now do benchmark
 	double time_taken;
@@ -252,7 +310,13 @@ int main( int argc, char ** argv ) {
 	if( strncmp( argv[ 2 ], "direct", 6 ) == 0 ) {
 		in.direct = true;
 	} else {
-		in.direct = false;
+		if( strncmp( argv[ 2 ], "indirect", 8 ) == 0 ) {
+			in.direct = false;
+		} else {
+			std::cerr << "Error: could not parse 2nd argument \"" << argv[ 2 ] << "\", "
+				<< "expected \"direct\" or \"indirect\"\n";
+			return 10;
+		}
 	}
 
 	// get inner number of iterations
@@ -263,7 +327,7 @@ int main( int argc, char ** argv ) {
 		if( argv[ 3 ] == end ) {
 			std::cerr << "Could not parse argument " << argv[ 2 ] << " "
 				<< "for number of inner experiment repititions." << std::endl;
-			return 2;
+			return 20;
 		}
 	}
 
@@ -274,12 +338,14 @@ int main( int argc, char ** argv ) {
 		if( argv[ 4 ] == end ) {
 			std::cerr << "Could not parse argument " << argv[ 3 ] << " "
 				<< "for number of outer experiment repititions." << std::endl;
-			return 4;
+			return 30;
 		}
 	}
 
-	std::cout << "Executable called with parameters " << in.filename << ", "
-		<< "inner repititions = " << in.rep << ", and outer reptitions = " << outer
+	std::cout << "Executable called with parameters "
+		<< "file name = " << in.filename << ", "
+		<< "inner repititions = " << in.rep << ", and "
+		<< "outer reptitions = " << outer
 		<< std::endl;
 
 	// the output struct
@@ -287,6 +353,22 @@ int main( int argc, char ** argv ) {
 
 	// set standard exit code
 	grb::RC rc = SUCCESS;
+
+	// launch I/O
+	{
+		bool success;
+		grb::Launcher< AUTOMATIC > launcher;
+		rc = launcher.exec( &ioProgram, in, success, true );
+		if( rc != SUCCESS ) {
+			std::cerr << "launcher.exec(I/O) returns with non-SUCCESS error code \""
+				<< grb::toString( rc ) << "\"\n";
+			return 40;
+		}
+		if( !success ) {
+			std::cerr << "I/O program caught an exception\n";
+			return 50;
+		}
+	}
 
 	// launch estimator (if requested)
 	if( in.rep == 0 ) {
@@ -298,7 +380,7 @@ int main( int argc, char ** argv ) {
 		if( rc != SUCCESS ) {
 			std::cerr << "launcher.exec returns with non-SUCCESS error code "
 				<< (int)rc << std::endl;
-			return 6;
+			return 60;
 		}
 	}
 
@@ -310,7 +392,7 @@ int main( int argc, char ** argv ) {
 	if( rc != SUCCESS ) {
 		std::cerr << "benchmarker.exec returns with non-SUCCESS error code "
 			<< grb::toString( rc ) << std::endl;
-		return 8;
+		return 70;
 	}
 
 	std::cout << "Error code is " << out.error_code << ".\n";
