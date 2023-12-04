@@ -961,12 +961,12 @@ namespace grb {
 			const Operator &oper,
 			const Phase &phase,
 			const typename std::enable_if<
-				!grb::is_object< OutputType >::value &&
-				!grb::is_object< InputType1 >::value &&
-				!grb::is_object< InputType2 >::value &&
-				grb::is_operator< Operator >::value,
-				void
-			>::type * const = nullptr
+					!grb::is_object< OutputType >::value &&
+					!grb::is_object< InputType1 >::value &&
+					!grb::is_object< InputType2 >::value &&
+					grb::is_operator< Operator >::value,
+					void
+				>::type * const = nullptr
 		) {
 #ifdef _DEBUG
 			std::cout << "In grb::internal::eWiseApply_matrix_generic_intersection\n";
@@ -1264,11 +1264,12 @@ namespace grb {
 			const Monoid &monoid,
 			const Phase &phase,
 			const typename std::enable_if<
-				!grb::is_object< OutputType >::value &&
-				!grb::is_object< InputType1 >::value &&
-				!grb::is_object< InputType2 >::value &&
-				grb::is_monoid< Monoid >::value,
-			void >::type * const = nullptr
+					!grb::is_object< OutputType >::value &&
+					!grb::is_object< InputType1 >::value &&
+					!grb::is_object< InputType2 >::value &&
+					grb::is_monoid< Monoid >::value,
+					void
+				>::type * const = nullptr
 		) {
 
 #ifdef _DEBUG
@@ -1623,11 +1624,11 @@ namespace grb {
 	} // namespace internal
 
 	/**
-	 * Computes \f$ C = A . B \f$ for a given monoid.
+	 * Computes \f$ C = A . B \f$ for a given monoid (union pattern).
 	 *
 	 * \internal Allows pattern matrix inputs.
 	 *
-	 * \internal Dispatches to internal::eWiseApply_matrix_generic
+	 * \internal Dispatches to internal::eWiseApply_matrix_generic_union
 	 */
 	template<
 		Descriptor descr = descriptors::no_operation,
@@ -1642,12 +1643,14 @@ namespace grb {
 		const Matrix< InputType1, reference, RIT2, CIT2, NIT2 > &A,
 		const Matrix< InputType2, reference, RIT3, CIT3, NIT3 > &B,
 		const MulMonoid &mulmono,
-		const Phase phase = EXECUTE,
-		const typename std::enable_if< !grb::is_object< OutputType >::value &&
-			!grb::is_object< InputType1 >::value &&
-			!grb::is_object< InputType2 >::value &&
-			grb::is_monoid< MulMonoid >::value,
-		void >::type * const = nullptr
+		const Phase &phase = EXECUTE,
+		const typename std::enable_if<
+				!grb::is_object< OutputType >::value &&
+				!grb::is_object< InputType1 >::value &&
+				!grb::is_object< InputType2 >::value &&
+				grb::is_monoid< MulMonoid >::value,
+				void
+			>::type * const = nullptr
 	) {
 		// static checks
 		NO_CAST_ASSERT( ( !( descr & descriptors::no_casting ) ||
@@ -1679,13 +1682,12 @@ namespace grb {
 	}
 
 	/**
-	 * Computes \f$ C = A . B \f$ for a given binary operator.
+	 * Computes \f$ C = A . B \f$ for a given operator (intersection pattern).
 	 *
-	 * \internal Pattern matrices not allowed
+	 * \internal Allows pattern matrix inputs.
 	 *
-	 * \internal Dispatches to internal::eWiseApply_matrix_generic
+	 * \internal Dispatches to internal::eWiseApply_matrix_generic_intersection
 	 */
-
 	template<
 		Descriptor descr = grb::descriptors::no_operation,
 		class Operator,
@@ -1698,13 +1700,15 @@ namespace grb {
 		Matrix< OutputType, reference, RIT1, CIT1, NIT1 > &C,
 		const Matrix< InputType1, reference, RIT2, CIT2, NIT2 > &A,
 		const Matrix< InputType2, reference, RIT3, CIT3, NIT3 > &B,
-		const Operator &mulOp,
-		const Phase phase = EXECUTE,
-		const typename std::enable_if< !grb::is_object< OutputType >::value &&
-			!grb::is_object< InputType1 >::value &&
-			!grb::is_object< InputType2 >::value &&
-			grb::is_operator< Operator >::value,
-		void >::type * const = nullptr
+		const Operator &op,
+		const Phase &phase = EXECUTE,
+		const typename std::enable_if<
+				!grb::is_object< OutputType >::value &&
+				!grb::is_object< InputType1 >::value &&
+				!grb::is_object< InputType2 >::value &&
+				grb::is_operator< Operator >::value,
+				void
+			>::type * const = nullptr
 	) {
 		// static checks
 		NO_CAST_ASSERT( ( !( descr & descriptors::no_casting ) ||
@@ -1737,7 +1741,7 @@ namespace grb {
 #endif
 
 		return internal::eWiseApply_matrix_generic_intersection< descr >(
-			C, A, B, mulOp, phase
+			C, A, B, op, phase
 		);
 	}
 

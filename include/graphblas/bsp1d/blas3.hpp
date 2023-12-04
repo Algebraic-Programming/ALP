@@ -119,66 +119,66 @@ namespace grb {
 
 	/** \internal Simply delegates to process-local backend */
 	template<
-			Descriptor descr = descriptors::no_operation,
-			class MulMonoid,
-			typename OutputType, typename InputType1, typename InputType2,
-			typename RIT1, typename CIT1, typename NIT1,
-			typename RIT2, typename CIT2, typename NIT2,
-			typename RIT3, typename CIT3, typename NIT3
+		Descriptor descr = descriptors::no_operation,
+		class MulMonoid,
+		typename OutputType, typename InputType1, typename InputType2,
+		typename RIT1, typename CIT1, typename NIT1,
+		typename RIT2, typename CIT2, typename NIT2,
+		typename RIT3, typename CIT3, typename NIT3
 	>
 	RC eWiseApply(
-			Matrix< OutputType, BSP1D, RIT1, CIT1, NIT1 > &C,
-			const Matrix< InputType1, BSP1D, RIT2, CIT2, NIT2 > &A,
-			const Matrix< InputType2, BSP1D, RIT3, CIT3, NIT3 > &B,
-			const MulMonoid &mul,
-			const Phase phase = EXECUTE,
-			const typename std::enable_if<
-					!grb::is_object< OutputType >::value &&
-					!grb::is_object< InputType1 >::value &&
-					!grb::is_object< InputType2 >::value &&
-					grb::is_monoid< MulMonoid >::value,
-					void >::type * const = nullptr
+		Matrix< OutputType, BSP1D, RIT1, CIT1, NIT1 > &C,
+		const Matrix< InputType1, BSP1D, RIT2, CIT2, NIT2 > &A,
+		const Matrix< InputType2, BSP1D, RIT3, CIT3, NIT3 > &B,
+		const MulMonoid &mul,
+		const Phase &phase = EXECUTE,
+		const typename std::enable_if<
+				!grb::is_object< OutputType >::value &&
+				!grb::is_object< InputType1 >::value &&
+				!grb::is_object< InputType2 >::value &&
+				grb::is_monoid< MulMonoid >::value, void
+			>::type * const = nullptr
 	) {
 		assert( phase != TRY );
 		RC ret = eWiseApply< descr >(
-				internal::getLocal( C ),
-				internal::getLocal( A ),
-				internal::getLocal( B ),
-				mul,
-				phase
+			internal::getLocal( C ),
+			internal::getLocal( A ),
+			internal::getLocal( B ),
+			mul,
+			phase
 		);
 		return internal::checkGlobalErrorStateOrClear( C, ret );
 	}
 
 	/** \internal Simply delegates to process-local backend */
 	template<
-			Descriptor descr = descriptors::no_operation,
-			class Operator,
-			typename OutputType, typename InputType1, typename InputType2,
-			typename RIT1, typename CIT1, typename NIT1,
-			typename RIT2, typename CIT2, typename NIT2,
-			typename RIT3, typename CIT3, typename NIT3
+		Descriptor descr = descriptors::no_operation,
+		class Operator,
+		typename OutputType, typename InputType1, typename InputType2,
+		typename RIT1, typename CIT1, typename NIT1,
+		typename RIT2, typename CIT2, typename NIT2,
+		typename RIT3, typename CIT3, typename NIT3
 	>
 	RC eWiseApply(
-			Matrix< OutputType, BSP1D, RIT1, CIT1, NIT1 > &C,
-			const Matrix< InputType1, BSP1D, RIT2, CIT2, NIT2 > &A,
-			const Matrix< InputType2, BSP1D, RIT3, CIT3, NIT3 > &B,
-			const Operator &op,
-			const Phase phase = EXECUTE,
-			const typename std::enable_if<
-					!grb::is_object< OutputType >::value &&
-					!grb::is_object< InputType1 >::value &&
-					!grb::is_object< InputType2 >::value &&
-					grb::is_operator< Operator >::value,
-					void >::type * const = nullptr
+		Matrix< OutputType, BSP1D, RIT1, CIT1, NIT1 > &C,
+		const Matrix< InputType1, BSP1D, RIT2, CIT2, NIT2 > &A,
+		const Matrix< InputType2, BSP1D, RIT3, CIT3, NIT3 > &B,
+		const Operator &op,
+		const Phase &phase = EXECUTE,
+		const typename std::enable_if<
+				!grb::is_object< OutputType >::value &&
+				!grb::is_object< InputType1 >::value &&
+				!grb::is_object< InputType2 >::value &&
+				grb::is_operator< Operator >::value, void
+			>::type * const = nullptr
 	) {
 		assert( phase != TRY );
 		RC ret = eWiseApply< descr >(
-				internal::getLocal( C ),
-				internal::getLocal( A ),
-				internal::getLocal( B ),
-				op,
-				phase
+			internal::getLocal( C ),
+			internal::getLocal( A ),
+			internal::getLocal( B ),
+			op,
+			phase
 		);
 		return internal::checkGlobalErrorStateOrClear( C, ret );
 	}
