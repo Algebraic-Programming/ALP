@@ -500,32 +500,6 @@ namespace grb {
 			grb::is_operator< Operator >::value,
 		void >::type * const = nullptr
 	) {
-		// static checks
-		NO_CAST_ASSERT( ( !( descr & descriptors::no_casting ) ||
-			std::is_same< typename Operator::D1, InputType1 >::value ),
-			"grb::eWiseApply (nonblocking, matrix <- matrix x matrix, operator)",
-			"called with a prefactor input matrix A that does not match the first "
-			"domain of the given multiplication operator"
-		);
-		NO_CAST_ASSERT( ( !( descr & descriptors::no_casting ) ||
-			std::is_same< typename Operator::D2, InputType2 >::value ),
-			"grb::eWiseApply (nonblocking, matrix <- matrix x matrix, operator)",
-			"called with a postfactor input matrix B that does not match the first "
-			"domain of the given multiplication operator"
-		);
-		NO_CAST_ASSERT( ( !( descr & descriptors::no_casting ) ||
-			std::is_same< typename Operator::D3, OutputType >::value ),
-			"grb::eWiseApply (nonblocking, matrix <- matrix x matrix, operator)",
-			"called with an output matrix C that does not match the output domain "
-			"of the given multiplication operator"
-		);
-		static_assert( ( !(
-				std::is_same< InputType1, void >::value ||
-				std::is_same< InputType2, void >::value )
-			), "grb::eWiseApply (nonblocking, matrix <- matrix x matrix, operator): "
-			"the operator version of eWiseApply cannot be used if either of the "
-			"input matrices is a pattern matrix (of type void)"
-		);
 		if( internal::NONBLOCKING::warn_if_not_native && config::PIPELINE::warn_if_not_native ) {
 			std::cerr << "Warning: eWiseApply (nonblocking) currently delegates to a "
 				<< "blocking implementation.\n"
