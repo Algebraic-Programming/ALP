@@ -1703,15 +1703,17 @@ namespace grb {
 				void
 			>::type * const = nullptr
 	) {
+		typedef typename std::conditional<std::is_void<InputType1>::value, typename Operator::D1, InputType1>::type ActualInputType1;
+		typedef typename std::conditional<std::is_void<InputType2>::value, typename Operator::D2, InputType1>::type ActualInputType2;
 		// static checks
 		NO_CAST_ASSERT( ( !( descr & descriptors::no_casting ) ||
-			std::is_same< typename Operator::D1, InputType1 >::value ),
+			std::is_same< typename Operator::D1, ActualInputType1 >::value ),
 			"grb::eWiseApply (reference, matrix <- matrix x matrix, operator)",
 			"called with a prefactor input matrix A that does not match the first "
 			"domain of the given multiplication operator"
 		);
 		NO_CAST_ASSERT( ( !( descr & descriptors::no_casting ) ||
-			std::is_same< typename Operator::D2, InputType2 >::value ),
+			std::is_same< typename Operator::D2, ActualInputType2 >::value ),
 			"grb::eWiseApply (reference, matrix <- matrix x matrix, operator)",
 			"called with a postfactor input matrix B that does not match the first "
 			"domain of the given multiplication operator"
