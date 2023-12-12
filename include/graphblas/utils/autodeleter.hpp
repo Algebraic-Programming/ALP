@@ -32,6 +32,7 @@
 #endif
 
 #include <memory>
+#include <stdexcept>
 
 #include "graphblas/config.hpp"
 
@@ -56,6 +57,10 @@ namespace grb {
 					}
 				}
 
+				/** \todo documentation */
+				template< typename T >
+				static void no_free( T * const ) {}
+
 #ifndef _GRB_NO_LIBNUMA
 				/** \todo documentation */
 				template< typename T >
@@ -69,8 +74,8 @@ namespace grb {
 						numa_free( pointer, size );
 					}
 				};
-#endif
 			};
+#endif
 
 		} // namespace internal
 
@@ -99,17 +104,23 @@ namespace grb {
 		 *       (which is in fact quite different from the philosophy of a
 		 *        \a shared_ptr which were introduced to `forget' about deletes.)
 		 */
-		template< typename T, enum Backend implementation = config::default_backend >
-		class AutoDeleter {
+		template<
+			typename T,
+			enum Backend implementation = config::default_backend
+		> class AutoDeleter {
 
-		private:
-			/** Where the implementation of the free function(s) reside. */
-			typedef typename internal::DeleterFunctions< implementation > functions;
-
-			/** Functionality is provided by shared pointer. */
-			std::shared_ptr< T > _shPtr;
+		/** Where the implementation of the free function(s) reside. */
+		typedef typename internal::DeleterFunctions< implementation > functions;
 
 		public:
+
+			enum AllocationType { OPTIMIZED, SIMPLE, UNMANAGED };
+
+			AutoDeleter() : AutoDeleter( NULL, 0, AllocationType::UNMANAGED ) {}
+
+			AutoDeleter( T * const pointer, const size_t size ) :
+				AutoDeleter( pointer, size, AllocationType::OPTIMIZED ) {}
+
 			/**
 			 * Constructs a new AutoDeleter from a pointer. When this instance and all
 			 * instances copied from this one are destroyed, the pointer will be freed
@@ -122,12 +133,10 @@ namespace grb {
 			 *
 			 * @throws std::bad_alloc If the system cannot allocate enough memory.
 			 */
-			AutoDeleter( T * const pointer = NULL, const size_t size = 0 ) {
-#ifdef _GRB_NO_LIBNUMA
-				(void)size;
-				const auto free_p = &( functions::template safe_free< T > );
-				_shPtr = std::shared_ptr< T >( pointer, free_p );
-#else
+			AutoDeleter( T * const pointer, const size_t size, AllocationType type ) {
+				// (void)size;
+				// const auto free_p = &( functions::template safe_free< T > );
+				// _shPtr = std::shared_ptr< T >( pointer, free_p );
 				if( size > 0 ) {
 					typedef typename functions::template safe_numa_free< T > FreeFunctor;
 					const FreeFunctor free_f( size );
@@ -136,7 +145,33 @@ namespace grb {
 					const auto free_p = &( functions::template safe_free< T > );
 					_shPtr = std::shared_ptr< T >( pointer, free_p );
 				}
+
+				switch (type)
+				{
+				case OPTIMIZED:
+#ifndef _GRB_NO_LIBNUMA
+					{
+						typedef typename functions::template safe_numa_free< T > FreeFunctor;
+						const FreeFunctor free_f( size );
+						_shPtr = std::shared_ptr< T >( pointer, free_f );
+						break;
+					}
 #endif
+				case SIMPLE:
+					{
+						const auto free_f = &( functions::template safe_free< T > );
+						_shPtr = std::shared_ptr< T >( pointer, free_f );
+						break;
+					}
+				case UNMANAGED:
+					{
+						const auto free_n = &( functions::template no_free< T > );
+						_shPtr = std::shared_ptr< T >( pointer, free_n );
+						break;
+					}
+				default:
+					throw std::runtime_error( "AllocationType not handled" );
+				}
 			};
 
 			/**
@@ -155,6 +190,22 @@ namespace grb {
 			 */
 			AutoDeleter( AutoDeleter< T > && other ) noexcept {
 				_shPtr = std::move( other._shPtr );
+			}
+
+			inline T& operator[]( size_t idx ) noexcept {
+				return _shPtr.get()[ idx ];
+			}
+
+			inline const T& operator[]( size_t idx ) const noexcept {
+				return _shPtr.get()[ idx ];
+			}
+
+			inline T* get() noexcept {
+				return _shPtr.get();
+			}
+
+			inline T* get() const noexcept {
+				return _shPtr.get();
 			}
 
 			/** Signals auto-deletion no longer is necessary. */
@@ -177,6 +228,11 @@ namespace grb {
 				_shPtr = other._shPtr;
 				return *this;
 			}
+
+		private:
+
+			/** Functionality is provided by shared pointer. */
+			std::shared_ptr< T > _shPtr;
 		};
 
 	} // namespace utils

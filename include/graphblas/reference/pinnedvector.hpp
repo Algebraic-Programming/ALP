@@ -77,7 +77,7 @@ namespace grb {
 				const IOMode mode
 			) :
 				_raw_deleter( x._raw_deleter ), _stack_deleter( x._buffer_deleter ),
-				_buffered_values( x._raw ), _buffered_coordinates( x._coordinates )
+				_buffered_values( x._raw_deleter.get() ), _buffered_coordinates( x._coordinates )
 			{
 				(void) mode; // sequential and parallel IO mode are equivalent for this
 				             // implementation.

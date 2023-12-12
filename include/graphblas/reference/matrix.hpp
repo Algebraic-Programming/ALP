@@ -1372,19 +1372,31 @@ namespace grb {
 					alloc_ok = utils::alloc(
 						"grb::Matrix< T, reference >::Matrix()",
 						"initial capacity allocation",
-						coorArr[ 0 ], sizes[ 0 ], false, _local_deleter[ 0 ],
-						coorArr[ 1 ], sizes[ 1 ], false, _local_deleter[ 1 ],
-						coorBuf[ 0 ], sizes[ 2 ], false, _local_deleter[ 2 ],
-						coorBuf[ 1 ], sizes[ 3 ], false, _local_deleter[ 3 ],
-						alloc[ 6 ], sizes[ 4 ], false, _local_deleter[ 4 ],
-						alloc[ 7 ], sizes[ 5 ], false, _local_deleter[ 5 ],
-						alloc[ 0 ], sizes[ 6 ], true, _deleter[ 0 ],
-						alloc[ 1 ], sizes[ 7 ], true, _deleter[ 1 ],
-						alloc[ 2 ], sizes[ 8 ], true, _deleter[ 2 ],
-						alloc[ 3 ], sizes[ 9 ], true, _deleter[ 3 ],
-						alloc[ 4 ], sizes[ 10 ], true, _deleter[ 4 ],
-						alloc[ 5 ], sizes[ 11 ], true, _deleter[ 5 ]
+						sizes[ 0 ], false, _local_deleter[ 0 ],
+						sizes[ 1 ], false, _local_deleter[ 1 ],
+						sizes[ 2 ], false, _local_deleter[ 2 ],
+						sizes[ 3 ], false, _local_deleter[ 3 ],
+						sizes[ 4 ], false, _local_deleter[ 4 ],
+						sizes[ 5 ], false, _local_deleter[ 5 ],
+						sizes[ 6 ], true, _deleter[ 0 ],
+						sizes[ 7 ], true, _deleter[ 1 ],
+						sizes[ 8 ], true, _deleter[ 2 ],
+						sizes[ 9 ], true, _deleter[ 3 ],
+						sizes[ 10 ], true, _deleter[ 4 ],
+						sizes[ 11 ], true, _deleter[ 5 ]
 					);
+					coorArr[ 0 ] = _local_deleter[ 0 ].get();
+					coorArr[ 1 ] = _local_deleter[ 1 ].get();
+					coorBuf[ 0 ] = _local_deleter[ 2 ].get();
+					coorBuf[ 1 ] = _local_deleter[ 3 ].get();
+					alloc[ 6 ] = _local_deleter[ 4 ].get();
+					alloc[ 7 ] = _local_deleter[ 5 ].get();
+					alloc[ 0 ] = _deleter[ 0 ].get();
+					alloc[ 1 ] = _deleter[ 1 ].get();
+					alloc[ 2 ] = _deleter[ 2 ].get();
+					alloc[ 3 ] = _deleter[ 3 ].get();
+					alloc[ 4 ] = _deleter[ 4 ].get();
+					alloc[ 5 ] = _deleter[ 5 ].get();
 				} else {
 					const size_t sizes[ 2 ] = {
 						rows * internal::SizeOf< D >::value,
@@ -1395,9 +1407,11 @@ namespace grb {
 					alloc_ok = utils::alloc(
 						"grb::Matrix< T, reference >::Matrix()",
 						"empty allocation",
-						alloc[ 6 ], sizes[ 0 ], false, _local_deleter[ 4 ],
-						alloc[ 7 ], sizes[ 1 ], false, _local_deleter[ 5 ]
+						sizes[ 0 ], false, _local_deleter[ 4 ],
+						sizes[ 1 ], false, _local_deleter[ 5 ]
 					);
+					alloc[ 6 ] = _local_deleter[ 4 ].get();
+					alloc[ 7 ] = _local_deleter[ 5 ].get();
 				}
 
 				// check allocation status
@@ -1595,11 +1609,15 @@ namespace grb {
 				// do allocation
 				RC ret = utils::alloc(
 					"grb::Matrix< T, reference >::resize", description.str(),
-					alloc[ 0 ], sizes[ 0 ], true, _deleter[ 2 ],
-					alloc[ 1 ], sizes[ 1 ], true, _deleter[ 3 ],
-					alloc[ 2 ], sizes[ 2 ], true, _deleter[ 4 ],
-					alloc[ 3 ], sizes[ 3 ], true, _deleter[ 5 ]
+					sizes[ 0 ], true, _deleter[ 2 ],
+					sizes[ 1 ], true, _deleter[ 3 ],
+					sizes[ 2 ], true, _deleter[ 4 ],
+					sizes[ 3 ], true, _deleter[ 5 ]
 				);
+				alloc[ 0 ] = _deleter[ 2 ].get();
+				alloc[ 1 ] = _deleter[ 3 ].get();
+				alloc[ 2 ] = _deleter[ 4 ].get();
+				alloc[ 3 ] = _deleter[ 5 ].get();
 
 				if( ret != SUCCESS ) {
 					// exit function without side-effects

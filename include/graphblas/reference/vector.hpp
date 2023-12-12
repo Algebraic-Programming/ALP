@@ -53,6 +53,7 @@
 #include "compressed_storage.hpp"
 #include "coordinates.hpp"
 #include "spmd.hpp"
+#include "init.hpp"
 
 #define NO_CAST_ASSERT( x, y, z )                                              \
 	static_assert( x,                                                          \
@@ -275,13 +276,10 @@ namespace grb {
 	private:
 
 		/** My ID. */
-		uintptr_t _id;
+		typename internal::ReferenceMapper::IDType _id;
 
 		/** Whether \a id should be removed from #internal::reference_mapper */
 		bool _remove_id;
-
-		/** Pointer to the raw underlying array. */
-		D * __restrict__ _raw;
 
 		/** All (sparse) coordinate information. */
 		MyCoordinates _coordinates;
@@ -370,12 +368,11 @@ namespace grb {
 
 			// set defaults
 			if( id_in == nullptr ) {
-				_id = std::numeric_limits< uintptr_t >::max();
+				_id = internal::ReferenceMapper::getInvalidID();
 			} else {
 				_id = *id_in;
 			}
 			_remove_id = id_in == nullptr;
-			_raw = nullptr;
 			_coordinates.set( nullptr, false, nullptr, 0 );
 
 			// catch trivial case: zero capacity
@@ -398,7 +395,7 @@ namespace grb {
 						reinterpret_cast< uintptr_t >( assigned_in )
 					);
 				}
-				_raw = raw_in;
+				_raw_deleter = utils::AutoDeleter< D >( raw_in, cap_in, utils::AutoDeleter< D >::AllocationType::UNMANAGED );
 				_coordinates.set( assigned_in, assigned_initialized, buffer_in, cap_in );
 				return;
 			} else {
@@ -411,10 +408,12 @@ namespace grb {
 			// now allocate in one go
 			const RC rc = grb::utils::alloc(
 				"grb::Vector< T, reference, MyCoordinates > (constructor)",
-				"", _raw, cap_in, true, _raw_deleter, // values array
-				assigned, MyCoordinates::arraySize( cap_in ), true, _assigned_deleter,
-				buffer, MyCoordinates::bufferSize( cap_in ), true, _buffer_deleter
+				"", cap_in, true, _raw_deleter, // values array
+				MyCoordinates::arraySize( cap_in ), true, _assigned_deleter,
+				MyCoordinates::bufferSize( cap_in ), true, _buffer_deleter
 			);
+			assigned = _assigned_deleter.get();
+			buffer = _buffer_deleter.get();
 
 			// catch errors
 			if( rc == OUTOFMEM ) {
@@ -485,10 +484,10 @@ namespace grb {
 						return ILLEGAL;
 					}
 					// nonzero already existed, so fold into existing one
-					foldl( _raw[ i ], *it++, dup );
+					foldl( _raw_deleter[ i ], *it++, dup );
 				} else {
 					// new nonzero, so overwrite
-					_raw[ i ] = static_cast< D >( *it++ );
+					_raw_deleter[ i ] = static_cast< D >( *it++ );
 				}
 			}
 
@@ -547,9 +546,9 @@ namespace grb {
 					if( descr & descriptors::no_duplicates ) {
 						return ILLEGAL;
 					}
-					foldl( _raw[ i ], *nnz++, dup );
+					foldl( _raw_deleter[ i ], *nnz++, dup );
 				} else {
-					_raw[ i ] = static_cast< D >( *nnz++ );
+					_raw_deleter[ i ] = static_cast< D >( *nnz++ );
 				}
 			}
 
@@ -562,7 +561,8 @@ namespace grb {
 		 *           vector. This constructor results in a dense vector whose
 		 *           structure is immutable. Any invalid use incurs UB; use with care.
 		 */
-		Vector( const size_t n, D *__restrict__ const raw ) : _raw( raw ) {
+		Vector( const size_t n, D *__restrict__ const raw ) :
+			_raw_deleter( raw, n, utils::AutoDeleter< D >::AllocationType::UNMANAGED ) {
 #ifdef _DEBUG
 			std::cerr << "In Vector< reference > constructor that wraps around an "
 				<< "external raw array.\n";
@@ -599,6 +599,8 @@ namespace grb {
 		 * @see Vector::lambda_reference for the user-level specification.
 		 */
 		typedef D & lambda_reference;
+
+		typedef const D & const_lambda_reference;
 
 		/**
 		 * A standard iterator for the Vector< D, reference, MyCoordinates > class.
@@ -718,7 +720,7 @@ namespace grb {
 					std::cout << "\t ConstIterator at process " << s << " / " << P
 						<< " translated index " << index << " to " << global_index << "\n";
 #endif
-					value = std::make_pair( global_index, container->_raw[ index ] );
+					value = std::make_pair( global_index, container->_raw_deleter[ index ] );
 				}
 
 
@@ -832,7 +834,8 @@ namespace grb {
 			 * undefined).
 			 * \endparblock
 			 */
-			Vector( const size_t n, const size_t nz ) : _raw( nullptr ) {
+			Vector( const size_t n, const size_t nz )
+			{
 #ifdef _DEBUG
 				std::cerr << "In Vector< reference >::Vector( size_t, size_t ) "
 					<< "constructor\n";
@@ -869,7 +872,8 @@ namespace grb {
 			 * @throws runtime_error If the call to grb::set fails, the error code is
 			 *                       caught and thrown.
 			 */
-			Vector( const Vector< D, reference, MyCoordinates > &x ) : _raw( nullptr ) {
+			Vector( const Vector< D, reference, MyCoordinates > &x )
+			{
 #ifdef _DEBUG
 				std::cout << "In Vector< reference > copy-constructor. Copy source has ID "
 					<< x._id << "\n";
@@ -904,7 +908,6 @@ namespace grb {
 				// copy and move
 				_id = x._id;
 				_remove_id = x._remove_id;
-				_raw = x._raw;
 				_coordinates = std::move( x._coordinates );
 				_raw_deleter = std::move( x._raw_deleter );
 				_assigned_deleter = std::move( x._assigned_deleter );
@@ -913,7 +916,6 @@ namespace grb {
 				// invalidate that which was not moved
 				x._id = std::numeric_limits< uintptr_t >::max();
 				x._remove_id = false;
-				x._raw = nullptr;
 			}
 
 			/**
@@ -962,14 +964,12 @@ namespace grb {
 #endif
 				_id = x._id;
 				_remove_id = x._remove_id;
-				_raw = x._raw;
 				_coordinates = std::move( x._coordinates );
 				_raw_deleter = std::move( x._raw_deleter );
 				_assigned_deleter = std::move( x._assigned_deleter );
 				_buffer_deleter = std::move( x._buffer_deleter );
 				x._id = std::numeric_limits< uintptr_t >::max();
 				x._remove_id = false;
-				x._raw = nullptr;
 				return *this;
 			}
 
@@ -1104,12 +1104,12 @@ namespace grb {
 					// only copy element when mask is true
 					if( utils::interpretMask< descr >(
 						mask._coordinates.assigned( i ),
-						mask._raw + i
+						mask._raw_deleter.get() + i
 					) ) {
 						if( _coordinates.assign( i ) ) {
-							foldl( _raw[ i ], *nnz++, accum );
+							foldl( _raw_deleter[ i ], *nnz++, accum );
 						} else {
-							_raw[ i ] = static_cast< D >( *nnz++ );
+							_raw_deleter[ i ] = static_cast< D >( *nnz++ );
 						}
 					}
 				}
@@ -1159,13 +1159,13 @@ namespace grb {
 					// check mask
 					if( utils::interpretMask< descr >(
 						mask._coordinates.assigned( i ),
-						mask._raw + i
+						mask._raw_deleter.get() + i
 					) ) {
 						// update _n if necessary
 						if( _coordinates.assign( i ) ) {
-							foldl( _raw[ i ], val, accum );
+							foldl( _raw_deleter[ i ], val, accum );
 						} else {
-							_raw[ i ] = static_cast< D >( val );
+							_raw_deleter[ i ] = static_cast< D >( val );
 						}
 					}
 				}
@@ -1200,7 +1200,7 @@ namespace grb {
 			 * \note This function is used internally for testing purposes.
 			 */
 			D * raw() const {
-				return _raw;
+				return _raw_deleter.get();
 			}
 
 			/**
@@ -1219,7 +1219,7 @@ namespace grb {
 				assert( i < _coordinates.size() );
 				assert( _coordinates.assigned( i ) );
 				// directly return the reference
-				return _raw[ i ];
+				return _raw_deleter[ i ];
 			}
 
 			/**
@@ -1233,12 +1233,12 @@ namespace grb {
 			 *
 			 * @see Vector::operator[] for the user-level specification.
 			 */
-			lambda_reference operator[]( const size_t i ) const {
+			const_lambda_reference operator[]( const size_t i ) const {
 				// sanity checks
 				assert( i < _coordinates.size() );
 				assert( _coordinates.assigned( i ) );
 				// directly return the reference
-				return _raw[ i ];
+				return _raw_deleter[ i ];
 			}
 
 			/**
@@ -1286,12 +1286,12 @@ namespace grb {
 
 			template< typename D, typename C >
 			inline D * getRaw( Vector< D, reference, C > &x ) noexcept {
-				return x._raw;
+				return x.raw();
 			}
 
 			template< typename D, typename C >
 			inline const D * getRaw( const Vector< D, reference, C > &x ) noexcept {
-				return x._raw;
+				return x.raw();
 			}
 
 			template< typename D, typename RIT, typename CIT, typename NIT >

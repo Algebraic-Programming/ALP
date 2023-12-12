@@ -215,7 +215,7 @@ namespace grb {
 				return vector[ i ];
 			}
 
-			T & operator[]( const size_t i ) const {
+			const T & operator[]( const size_t i ) const {
 				return vector[ i ];
 			}
 			/**

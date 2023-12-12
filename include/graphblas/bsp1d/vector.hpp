@@ -621,13 +621,15 @@ namespace grb {
 				// allocate raw, assigned, and stack arrays
 				const RC rc = grb::utils::alloc(
 					"grb::Vector< T, BSP1D, C > (initialize)", sstream.str(),
-					_raw, cap_in, true, _raw_deleter,
-					new_assigned,
-						internal::Coordinates< _GRB_BSP1D_BACKEND >::arraySize( cap_in ),
+					cap_in, true, _raw_deleter,
+					internal::Coordinates< _GRB_BSP1D_BACKEND >::arraySize( cap_in ),
 						true,
 						_assigned_deleter,
-					_buffer, bufferSize, true, _buffer_deleter
+					bufferSize, true, _buffer_deleter
 				);
+				_raw = _raw_deleter.get();
+				new_assigned = _assigned_deleter.get();
+				_buffer = _buffer_deleter.get();
 				// identify error and throw
 				if( rc == OUTOFMEM ) {
 					throw std::runtime_error( "Out-of-memory during BSP1D Vector memory "
@@ -2613,7 +2615,7 @@ namespace grb {
 		}
 
 		/** No implementation notes (see above). */
-		const typename LocalVector::lambda_reference
+		typename LocalVector::const_lambda_reference
 		operator[]( const size_t i ) const {
 			// return const reference
 			return _local[ i ];

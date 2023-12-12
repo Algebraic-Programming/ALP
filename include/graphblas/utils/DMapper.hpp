@@ -74,10 +74,16 @@ namespace grb {
 
 			public:
 
+				typedef IndexType IDType;
+
 				/**
 				 * Default constructor.
 				 */
 				DMapper() : counter( 0 ) {}
+
+				static IDType getInvalidID() {
+					return std::numeric_limits< IndexType >::max();
+				}
 
 				/**
 				 * Appends an insertion in the current index sequence.
@@ -88,7 +94,7 @@ namespace grb {
 				 * call to delete using the same index \a in, or otherwise undefined behaviour
 				 * will occur.
 				 */
-				IndexType insert( const IndexType in ) {
+				IDType insert( const IDType in ) {
 #ifdef _DEBUG
 					std::cout << "DMapper::insert( " << in << " )" << std::endl;
 #endif
@@ -96,13 +102,13 @@ namespace grb {
 					const auto &it = mapper.find( in );
 					assert( it == mapper.end() );
 #endif
-					IndexType ret;
+					IDType ret;
 					if( removals.size() > 0 ) {
 						const auto &removeIt = removals.begin();
 						ret = *removeIt;
 						removals.erase( removeIt );
 					} else {
-						assert( counter != std::numeric_limits< IndexType >::max() );
+						assert( counter != getInvalidID() );
 						ret = counter++;
 					}
 #ifdef _DEBUG
@@ -132,13 +138,13 @@ namespace grb {
 				 * There must not have been a call to this function with the same \a in
 				 * parameter after the call to #insert that returned \a in.
 				 */
-				void remove( const IndexType in ) {
+				void remove( const IDType in ) {
 #ifdef _DEBUG
 					std::cout << "DMapper::remove( " << in << " )" << std::endl;
 #endif
 					const auto &it = invmap.find( in );
 					assert( it != invmap.end() );
-					const IndexType global_id = it->second;
+					const IDType global_id = it->second;
 #ifdef _DEBUG
 					std::cout << "\t request corresponds to non-deterministic ID "
 						<< global_id << "\n";

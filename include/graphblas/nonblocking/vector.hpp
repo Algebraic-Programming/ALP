@@ -218,6 +218,8 @@ namespace grb {
 			 */
 			typedef D & lambda_reference;
 
+			typedef const D & const_lambda_reference;
+
 			typedef typename Vector< D, reference, MyCoordinates >::const_iterator
 				const_iterator;
 
@@ -387,7 +389,7 @@ namespace grb {
 				return ref[ i ];
 			}
 
-			lambda_reference operator[]( const size_t i ) const {
+			const_lambda_reference operator[]( const size_t i ) const {
 				return ref[ i ];
 			}
 

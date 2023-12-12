@@ -37,8 +37,10 @@ namespace grb {
 #ifndef _H_GRB_REFERENCE_OMP_INIT
 		// these are all the global fields for the reference backend
 
+		typedef utils::DMapper< uintptr_t > ReferenceMapper;
+
 		/** \internal Used for generating deterministic IDs. */
-		extern grb::utils::DMapper< uintptr_t > reference_mapper;
+		extern ReferenceMapper reference_mapper;
 
 		/** \internal Shared buffer */
 		extern char * reference_buffer;

@@ -103,11 +103,11 @@ namespace grb {
 		template< typename T, enum Backend implementation >
 		RC alloc(
 			const std::string prefix, const std::string postfix,
-			T * __restrict__ &pointer, const size_t size, const bool shared,
+			const size_t size, const bool shared,
 			utils::AutoDeleter< T, implementation > &deleter
 		) {
 			size_t allocd = 0;
-			const RC ret = internal::Allocator< implementation >::functions::alloc( allocd, pointer, size, shared, deleter );
+			const RC ret = internal::Allocator< implementation >::functions::alloc( allocd, size, shared, deleter );
 			internal::Allocator< implementation >::functions::postAlloc( ret, allocd, prefix, postfix );
 			return ret;
 		}
@@ -174,14 +174,14 @@ namespace grb {
 		 */
 		template< typename T, enum Backend implementation, typename... Targs >
 		RC alloc( const std::string prefix, const std::string postfix,
-			T * __restrict__ &pointer, const size_t size,
+			const size_t size,
 			const bool shared,
 			utils::AutoDeleter< T, implementation > &deleter,
 			Targs &&... args
 		) {
 			size_t allocd = 0;
 			const RC ret = internal::Allocator< implementation >::functions::alloc(
-				allocd, pointer, size, shared,
+				allocd, size, shared,
 				deleter, std::forward< Targs >( args )...
 			);
 			internal::Allocator< implementation >::functions::postAlloc(
