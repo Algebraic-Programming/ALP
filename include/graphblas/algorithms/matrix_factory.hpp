@@ -889,7 +889,7 @@ namespace grb::factory {
 	 * @param[in] n        The number of columns of the matrix.
 	 * @param[in] sparsity The sparsity factor of the matrix, 1.0 being a dense
 	 *                     matrix and 0.0 being an empty matrix.
-	 * @param[in] rd       The random device used to generate the random data.
+	 * @param[in] rgen     The random device used to generate the random data.
 	 * @param[in] row_dist The distribution used to generate the row indices.
 	 * @param[in] col_dist The distribution used to generate the column indices.
 	 * @param[in] val_dist The distribution used to generate the values.
@@ -986,7 +986,7 @@ namespace grb::factory {
 	 * @param[in] n        The number of columns of the matrix.
 	 * @param[in] sparsity The sparsity factor of the matrix, 1.0 being a dense
 	 *                     matrix and 0.0 being an empty matrix.
-	 * @param[in] rd       The random device used to generate the random data.
+	 * @param[in] rgen     The random device used to generate the random data.
 	 * @param[in] row_dist The distribution used to generate the row indices.
 	 * @param[in] col_dist The distribution used to generate the column indices.
 	 * @param[in] val_dist The distribution used to generate the values.
