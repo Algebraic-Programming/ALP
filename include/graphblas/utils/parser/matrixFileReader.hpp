@@ -406,7 +406,10 @@ namespace grb {
 
 		/** Pretty printing function. */
 		template< typename T, typename S >
-		std::ostream & operator<<( std::ostream & out, const MatrixFileReader< T, S > & A ) {
+		std::ostream & operator<<(
+			std::ostream &out,
+			const MatrixFileReader< T, S > &A
+		) {
 			size_t nnz;
 			try {
 				nnz = A.nz();
@@ -428,9 +431,9 @@ namespace grb {
 			return out;
 		}
 
-	} // namespace utils
+	} // namespace grb::utils
 
 } // namespace grb
 
-#endif //``_H_GRB_UTILS_MATRIXFILEREADER''
+#endif // end macro ifndef _H_GRB_UTILS_MATRIXFILEREADER
 
