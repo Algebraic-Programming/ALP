@@ -742,7 +742,7 @@ namespace grb {
 				mutable size_t incs;
 				mutable bool started;
 				bool ended;
-				MatrixFileProperties properties;
+				MatrixFileProperties &properties;
 				IOMode mode;
 
 				static constexpr size_t buffer_length = config::PARSER::bsize() / 2 / sizeof( size_t );
