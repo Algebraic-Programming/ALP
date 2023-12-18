@@ -192,6 +192,10 @@ namespace grb {
 				_shPtr = std::move( other._shPtr );
 			}
 
+			explicit operator bool() const noexcept {
+				return bool( _shPtr );
+			}
+
 			inline T& operator[]( size_t idx ) noexcept {
 				return _shPtr.get()[ idx ];
 			}

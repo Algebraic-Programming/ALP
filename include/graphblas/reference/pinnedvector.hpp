@@ -53,7 +53,7 @@ namespace grb {
 			 * Tell the system to delete the stack of the \a _buffered_coordinates only
 			 * when we had its last reference.
 			 */
-			utils::AutoDeleter< char > _stack_deleter;
+			// utils::AutoDeleter< char > _stack_deleter;
 
 			/** A buffer of the local vector. */
 			IOType * _buffered_values;
@@ -76,11 +76,12 @@ namespace grb {
 				> > &x,
 				const IOMode mode
 			) :
-				_raw_deleter( x._raw_deleter ), _stack_deleter( x._buffer_deleter ),
+				_raw_deleter( x._raw_deleter ),
 				_buffered_values( x._raw_deleter.get() ), _buffered_coordinates( x._coordinates )
 			{
 				(void) mode; // sequential and parallel IO mode are equivalent for this
-				             // implementation.
+				            // implementation.
+				_buffered_coordinates.releaseAssignedArray();
 			}
 
 			// default destructor is OK

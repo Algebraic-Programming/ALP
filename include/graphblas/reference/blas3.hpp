@@ -148,8 +148,11 @@ namespace grb {
 				getReferenceBuffer< typename config::NonzeroIndexType >( n + 1 );
 
 			// initialisations
+			constexpr auto unm = utils::AutoDeleter< char >::AllocationType::UNMANAGED;
 			internal::Coordinates< reference > coors;
-			coors.set( arr, buf, n );
+
+			coors.set( utils::AutoDeleter< char >( arr, 2, unm ),
+				utils::AutoDeleter< char >( buf, 2, unm ), n );
 
 			if( !crs_only ) {
 #ifdef _H_GRB_REFERENCE_OMP_BLAS3
@@ -1030,8 +1033,14 @@ namespace grb {
 
 			// initialisations
 			internal::Coordinates< reference > coors1, coors2;
-			coors1.set( arr1, buf1, n );
-			coors2.set( arr2, buf2, n );
+			constexpr auto unm = utils::AutoDeleter< char >::AllocationType::UNMANAGED;
+			utils::AutoDeleter< char >( arr1, 2, utils::AutoDeleter< char >::AllocationType::UNMANAGED ),
+			coors1.set(
+				utils::AutoDeleter< char >( arr1, 2, unm ),
+				utils::AutoDeleter< char >( buf1, 2, unm ), n );
+			coors2.set(
+				utils::AutoDeleter< char >( arr2, 2, unm ),
+				utils::AutoDeleter< char >( buf2, 2, unm ), n );
 #ifdef _H_GRB_REFERENCE_OMP_BLAS3
 			#pragma omp parallel
 			{

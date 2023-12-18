@@ -26,6 +26,7 @@
 #include <stddef.h> //size_t
 
 #include <stdexcept> //std::runtime_error
+#include <utility>
 
 #include <assert.h>
 #include <string.h> //memcpy
@@ -34,6 +35,8 @@
 #include <graphblas/base/coordinates.hpp>
 #include <graphblas/descriptors.hpp>
 #include <graphblas/utils.hpp>
+#include <graphblas/utils/autodeleter.hpp>
+
 
 #include "config.hpp"
 
@@ -76,12 +79,16 @@ namespace grb {
 				/** Pointer to the underlying indexing array. */
 				bool * __restrict__ _assigned;
 
+				utils::AutoDeleter< char > _assigned_deleter;
+
 				/**
 				 * Stack of assigned coordinates.
 				 * This array will be P larger than required, so that the overflow can act
 				 * as a buffer of size P required by #rebuildSparsity.
 				 */
 				StackType * __restrict__ _stack;
+
+				utils::AutoDeleter< char > _stack_deleter;
 
 				/**
 				 * A buffer required for parallel updates.
@@ -232,7 +239,9 @@ namespace grb {
 				 * @param[in] x The Coordinates instance to move contents from.
 				 */
 				inline Coordinates( Coordinates &&x ) noexcept :
-					_assigned( x._assigned ), _stack( x._stack ), _buffer( x._buffer ),
+					_assigned( x._assigned ), _assigned_deleter( std::move( x._assigned_deleter ) ),
+					_stack( x._stack ), _stack_deleter( std::move( x._stack_deleter ) ),
+					_buffer( x._buffer ),
 					_n( x._n ), _cap( x._cap ), _buf( x._buf )
 				{
 					x._assigned = nullptr;
@@ -275,7 +284,9 @@ namespace grb {
 				inline Coordinates & operator=( Coordinates &&x ) noexcept {
 					assert( this != &x );
 					_assigned = x._assigned;
+					_assigned_deleter = std::move( x._assigned_deleter );
 					_stack = x._stack;
+					_stack_deleter = std::move( x._stack_deleter );
 					_buffer = x._buffer;
 					_n = x._n;
 					_cap = x._cap;
@@ -284,6 +295,11 @@ namespace grb {
 					x._stack = x._buffer = NULL;
 					x._n = x._cap = x._buf = 0;
 					return *this;
+				}
+
+				void releaseAssignedArray() {
+					_assigned_deleter.clear();
+					_assigned = nullptr;
 				}
 
 				/**
@@ -334,13 +350,15 @@ namespace grb {
 				 * call to this function, the state shall become valid.
 				 */
 				void set(
-					void * const arr,
-					void * const buf, const size_t dim
+					// void * const arr,
+					// void * const buf, const size_t dim
+					utils::AutoDeleter< char >&& arr,
+					utils::AutoDeleter< char >&& buf, const size_t dim
 				) noexcept {
 					// catch trivial case
-					if( arr == nullptr || buf == nullptr ) {
-						assert( arr == nullptr );
-						assert( buf == nullptr );
+					if( !arr || !buf ) {
+						assert( !arr );
+						assert( !buf );
 						assert( dim == 0 );
 						_assigned = nullptr;
 						_stack = nullptr;
@@ -353,14 +371,16 @@ namespace grb {
 
 					// _assigned has no alignment issues, take directly from input buffer
 					assert( reinterpret_cast< uintptr_t >( _assigned ) % sizeof( bool ) == 0 );
-					_assigned = static_cast< bool * >( arr );
+					_assigned_deleter = std::move( arr );
+					_assigned = reinterpret_cast< bool * >( arr.get() );
 					// ...but _stack does have potential alignment issues:
-					char * buf_raw = static_cast< char * >( buf );
+					char * buf_raw = buf.get();
 					constexpr const size_t size = sizeof( StackType );
 					const size_t mod = reinterpret_cast< uintptr_t >( buf_raw ) % size;
 					if( mod != 0 ) {
 						buf_raw += size - mod;
 					}
+					_stack_deleter = std::move( buf );
 					_stack = reinterpret_cast< StackType * >( buf_raw );
 					// no alignment issues between stack and buffer, so just shift by dim:
 					_buffer = _stack + dim;

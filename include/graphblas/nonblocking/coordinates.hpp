@@ -29,6 +29,7 @@
 
 #include <stdexcept> //std::runtime_error
 #include <vector>
+#include <utility>
 #if defined _DEBUG && ! defined NDEBUG
  #include <set>
 #endif
@@ -48,6 +49,7 @@
 
 #include <graphblas/nonblocking/init.hpp>
 #include <graphblas/nonblocking/analytic_model.hpp>
+#include <graphblas/utils/autodeleter.hpp>
 
 
 namespace grb {
@@ -75,7 +77,11 @@ namespace grb {
 
 				bool * __restrict__ _assigned;
 
+				utils::AutoDeleter< char > _assigned_deleter;
+
 				StackType * __restrict__ _stack;
+
+				utils::AutoDeleter< char > _stack_deleter;
 
 				StackType * __restrict__ _buffer;
 
@@ -132,7 +138,9 @@ namespace grb {
 				{}
 
 				inline Coordinates( Coordinates< nonblocking > &&x ) noexcept :
-					_assigned( x._assigned ), _stack( x._stack ), _buffer( x._buffer ),
+					_assigned( x._assigned ), _assigned_deleter( std::move( x._assigned_deleter ) ),
+					_stack( x._stack ), _stack_deleter( std::move( x._stack_deleter ) ),
+					_buffer( x._buffer ),
 					_n( x._n ), _cap( x._cap ), _buf( x._buf )
 				{
 					x._assigned = nullptr;
@@ -142,7 +150,9 @@ namespace grb {
 				}
 
 				inline Coordinates( const Coordinates< nonblocking > &x ) noexcept :
-					_assigned( x._assigned ), _stack( x._stack ), _buffer( x._buffer ),
+					_assigned( x._assigned ), _assigned_deleter( x._assigned_deleter ),
+					_stack( x._stack ), _stack_deleter( x._stack_deleter ),
+					_buffer( x._buffer ),
 					_n( x._n ), _cap( x._cap ), _buf( x._buf )
 				{
 					assert( this != &x );
@@ -161,7 +171,9 @@ namespace grb {
 				) noexcept {
 					assert( this != &x );
 					_assigned = x._assigned;
+					_assigned_deleter = std::move( x._assigned_deleter );
 					_stack = x._stack;
+					_stack_deleter = std::move( x._stack_deleter );
 					_buffer = x._buffer;
 					_n = x._n;
 					_cap = x._cap;
@@ -172,19 +184,26 @@ namespace grb {
 					return *this;
 				}
 
+				void releaseAssignedArray() {
+					_assigned_deleter.clear();
+					_assigned = nullptr;
+				}
+
 				inline ~Coordinates() noexcept {
 					// done (the #_assigned and #_stack memory
 					// blocks are not managed by this class)
 				}
 
 				void set(
-					void * const arr,
-					void * const buf, const size_t dim
+					// void * const arr,
+					// void * const buf, const size_t dim
+					utils::AutoDeleter< char >&& arr,
+					utils::AutoDeleter< char >&& buf, const size_t dim
 				) noexcept {
 					// catch trivial case
-					if( arr == nullptr || buf == nullptr ) {
-						assert( arr == nullptr );
-						assert( buf == nullptr );
+					if( !arr || !buf ) {
+						assert( !arr );
+						assert( !buf );
 						assert( dim == 0 );
 						_assigned = nullptr;
 						_stack = nullptr;
@@ -197,9 +216,11 @@ namespace grb {
 
 					// _assigned has no alignment issues, take directly from input buffer
 					assert( reinterpret_cast< uintptr_t >( _assigned ) % sizeof( bool ) == 0 );
-					_assigned = static_cast< bool * >( arr );
+					_assigned_deleter = std::move( arr );
+					_assigned = reinterpret_cast< bool * >( arr.get() );
 					// ...but _stack does have potential alignment issues:
-					char * buf_raw = static_cast< char * >( buf );
+					_stack_deleter = std::move( buf );
+					char * buf_raw = static_cast< char * >( buf.get() );
 					constexpr const size_t size = sizeof( StackType );
 					const size_t mod = reinterpret_cast< uintptr_t >( buf_raw ) % size;
 					if( mod != 0 ) {
@@ -512,10 +533,17 @@ namespace grb {
 					config::VectorIndexType *local_stack = local_buffer[ tile_id ] + 1;
 
 					Coordinates< nonblocking > ret;
-					assert( upper_bound - lower_bound <= analytic_model.getTileSize() );
+					const size_t size = upper_bound - lower_bound;
+					assert( size <= analytic_model.getTileSize() );
 
-					ret.set( _assigned + lower_bound, local_stack,
-						upper_bound - lower_bound );
+					constexpr auto unm = utils::AutoDeleter< char >::AllocationType::UNMANAGED;
+
+					ret.set(
+						// _assigned + lower_bound,
+						utils::AutoDeleter< char >( reinterpret_cast< char * >( _assigned + lower_bound ), size, unm ),
+						// local_stack,
+						utils::AutoDeleter< char >( reinterpret_cast< char * >( local_stack ), size, unm ),
+						size );
 
 					// the number of new nonzeroes is used to determine the total number
 					// of nonzeroes for the given local coordinates, since some of the

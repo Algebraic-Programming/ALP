@@ -58,7 +58,7 @@ namespace grb {
 			utils::AutoDeleter< IOType > _raw_deleter;
 
 			/** Essentially a shared pointer into the SPA's stack. */
-			utils::AutoDeleter< char > _stack_deleter;
+			// utils::AutoDeleter< char > _stack_deleter;
 
 			/** The shared nonzero values */
 			IOType * _buffered_values;
@@ -89,12 +89,13 @@ namespace grb {
 				}
 
 				_raw_deleter = internal::getRefVector(x)._raw_deleter;
-				_stack_deleter = internal::getRefVector(x)._buffer_deleter;
+				// _stack_deleter = internal::getRefVector(x)._buffer_deleter;
 				_buffered_values = internal::getRefVector(x)._raw_deleter.get();
 				_buffered_coordinates = internal::getRefVector(x)._coordinates;
 
 				// The nonblocking backend is always single process, so the mode is unused.
 				(void) mode;
+				_buffered_coordinates.releaseAssignedArray();
 			}
 
 			/** \internal No implementation details */

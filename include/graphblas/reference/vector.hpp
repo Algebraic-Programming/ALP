@@ -293,14 +293,14 @@ namespace grb {
 		 * on how the vector was initialised and on whether the underlying data was
 		 * pinned by the user.
 		 */
-		utils::AutoDeleter< char > _assigned_deleter;
+		// utils::AutoDeleter< char > _assigned_deleter;
 
 		/**
 		 * Will automatically free the buffer area required by #_coordinates,
 		 * depending on how the vector was initialised and on whether the
 		 * underlying vector data was pinned by the user.
 		 */
-		utils::AutoDeleter< char > _buffer_deleter;
+		// utils::AutoDeleter< char > _buffer_deleter;
 
 		/**
 		 * Function to manually initialise this vector instance. This function is
@@ -369,12 +369,15 @@ namespace grb {
 			} else {
 				_id = *id_in;
 			}
-			_coordinates.set( nullptr, nullptr, 0 );
+			// _coordinates.set( nullptr, nullptr, 0 );
 
 			// catch trivial case: zero capacity
 			if( cap_in == 0 ) {
 				return;
 			}
+
+			utils::AutoDeleter< char > _assigned_deleter;
+			utils::AutoDeleter< char > _buffer_deleter;
 
 			// catch trivial case: memory areas are passed explicitly
 			if( raw_in != nullptr || assigned_in != nullptr || buffer_in != nullptr ) {
@@ -393,53 +396,56 @@ namespace grb {
 				}
 				_raw_deleter = utils::AutoDeleter< D >( raw_in, cap_in,
 					utils::AutoDeleter< D >::AllocationType::UNMANAGED );
-				_coordinates.set( assigned_in, buffer_in, cap_in );
-				return;
+				// _coordinates.set( assigned_in, buffer_in, cap_in );
+				// return;
+				_assigned_deleter = utils::AutoDeleter< char >( static_cast< char * >( assigned_in ), 0,
+					utils::AutoDeleter< char >::AllocationType::UNMANAGED );
+				_buffer_deleter = utils::AutoDeleter< char >( static_cast< char * >( buffer_in ), 0,
+					utils::AutoDeleter< char >::AllocationType::UNMANAGED );
 			} else {
 				assert( assigned_initialized == false );
-			}
 
-			// non-trivial case; we must allocate. First set defaults
-			char * assigned = nullptr;
-			char * buffer = nullptr;
-			// now allocate in one go
-			const RC rc = grb::utils::alloc(
-				"grb::Vector< T, reference, MyCoordinates > (constructor)",
-				"", cap_in, true, _raw_deleter, // values array
-				MyCoordinates::arraySize( cap_in ), true, _assigned_deleter,
-				MyCoordinates::bufferSize( cap_in ), true, _buffer_deleter
-			);
-			assigned = _assigned_deleter.get();
-			buffer = _buffer_deleter.get();
-
-			// catch errors
-			if( rc == OUTOFMEM ) {
-				throw std::runtime_error( "Out-of-memory during reference Vector memory "
-					"allocation" );
-			} else if( rc != SUCCESS ) {
-				throw std::runtime_error( "Unhandled runtime error from Vector memory "
-					"allocation" );
-			}
-
-			// assign _id
-			assert( assigned != nullptr );
-			if( id_in == nullptr ) {
-				_id = internal::reference_mapper.insert(
-					reinterpret_cast< uintptr_t >( assigned )
+				// non-trivial case; we must allocate. First set defaults
+				// char * assigned = nullptr;
+				// char * buffer = nullptr;
+				// now allocate in one go
+				const RC rc = grb::utils::alloc(
+					"grb::Vector< T, reference, MyCoordinates > (constructor)",
+					"", cap_in, true, _raw_deleter, // values array
+					MyCoordinates::arraySize( cap_in ), true, _assigned_deleter,
+					MyCoordinates::bufferSize( cap_in ), true, _buffer_deleter
 				);
+				// assigned = _assigned_deleter.get();
+				// buffer = _buffer_deleter.get();
+
+				// catch errors
+				if( rc == OUTOFMEM ) {
+					throw std::runtime_error( "Out-of-memory during reference Vector memory "
+						"allocation" );
+				} else if( rc != SUCCESS ) {
+					throw std::runtime_error( "Unhandled runtime error from Vector memory "
+						"allocation" );
+				}
+
+				// assign _id
+				assert( _assigned_deleter.get() != nullptr );
+				if( id_in == nullptr ) {
+					_id = internal::reference_mapper.insert(
+						reinterpret_cast< uintptr_t >( _assigned_deleter.get() )
+					);
+				}
+				assert( rc == SUCCESS );
 			}
 
 			// assign to _coordinates struct
-			_coordinates.set( assigned, buffer, cap_in );
+			_coordinates.set( std::move( _assigned_deleter ),
+				std::move( _buffer_deleter ), cap_in );
 			if( !assigned_initialized ) {
 				_coordinates.clearAssignedUpTo( cap_in );
 			}
 
 			// there should always be zero initial values
 			assert( _coordinates.nonzeroes() == 0 );
-
-			// done
-			assert( rc == SUCCESS );
 		}
 
 		/**
@@ -908,8 +914,8 @@ namespace grb {
 				_id = x._id;
 				_coordinates = std::move( x._coordinates );
 				_raw_deleter = std::move( x._raw_deleter );
-				_assigned_deleter = std::move( x._assigned_deleter );
-				_buffer_deleter = std::move( x._buffer_deleter );
+				// _assigned_deleter = std::move( x._assigned_deleter );
+				// _buffer_deleter = std::move( x._buffer_deleter );
 
 				// invalidate that which was not moved
 				x._id = internal::ReferenceMapper::getInvalidID();
@@ -962,8 +968,8 @@ namespace grb {
 				_id = x._id;
 				_coordinates = std::move( x._coordinates );
 				_raw_deleter = std::move( x._raw_deleter );
-				_assigned_deleter = std::move( x._assigned_deleter );
-				_buffer_deleter = std::move( x._buffer_deleter );
+				// _assigned_deleter = std::move( x._assigned_deleter );
+				// _buffer_deleter = std::move( x._buffer_deleter );
 				x._id = internal::ReferenceMapper::getInvalidID();
 				return *this;
 			}
