@@ -60,7 +60,7 @@ int main( int argc, char ** argv ) {
 	// allocate
 	grb::Vector< int > x( 15 );
 	grb::Vector< int > y( 15 );
-	grb::Matrix< int > A = grb::factory::identity< int >( 15, SEQUENTIAL, data2 );
+	grb::Matrix< int > A = grb::factory::diag< int >( 15, 15, data2, data2 + 15 );
 
 	// initialise x
 	if( !error ) {

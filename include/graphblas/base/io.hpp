@@ -1319,12 +1319,15 @@ namespace grb {
 	 *       matrix construction is costly and the user is referred to the
 	 *       costly buildMatrix() function instead.
 	 *
+	 * \par Performance semantics:
 	 * \parblock
-	 * \par Performance semantics.
-	 * Each backend must define performance semantics for this primitive.
+	 * each backend must define performance semantics for this primitive.
 	 *
 	 * @see perfSemantics
 	 * \endparblock
+	 *
+	 * \par Allowed descriptors:
+	 * None.
 	 */
 	template<
 		Descriptor descr = descriptors::no_operation,

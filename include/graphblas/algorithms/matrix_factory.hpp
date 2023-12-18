@@ -16,22 +16,9 @@
  */
 
 /**
- * @file
+ * @file matrix_factory.hpp
  *
  * Implements the following matrix factory methods:
- * - empty
- * - eye
- * - eye< void >
- * - identity
- * - identity< void >
- * - full
- * - full< void >
- * - dense
- * - dense< void >
- * - ones
- * - zeros
- * - random< void >
- * - random
  *
  * @author Benjamin Lozes
  * @date 7th of August, 2023
@@ -40,23 +27,128 @@
 #ifndef _H_GRB_MATRIX_FACTORY
 #define _H_GRB_MATRIX_FACTORY
 
-#include <algorithm>
-#include <iostream>
 #include <random>
 #include <vector>
+#include <iostream>
+#include <algorithm>
 
-#include <graphblas/utils/iterators/ChainedIterators.hpp>
 #include <graphblas/utils/iterators/regular.hpp>
+#include <graphblas/utils/iterators/ChainedIterators.hpp>
 
 #include <graphblas.hpp>
 
+
+/**
+ * A namespace for factories of ALP/GraphBLAS matrices.
+ *
+ * Calling a factory function, in the case of an ALP process with multiple user
+ * processes is an \em collective call. ALP guarantees that if a call fails at
+ * one user process, the call also fails at all other user processes.
+ *
+ * Just as with constructing any ALP container, the use of factory functions,
+ * when an error is encountered, will result in C++ exceptions being thrown.
+ *
+ * The following matrix factory methods are supported:
+ *  -# #diag,
+ *  -# #empty,
+ *  -# #eye,
+ *  -# #identity,
+ *  -# #full,
+ *  -# #dense,
+ *  -# #ones,
+ *  -# #zeros, and
+ *  -# #random.
+ *
+ * For each factory method, there is a variant for producing pattern as well as
+ * non-pattern matrices. All these functions are implemented on top of core ALP
+ * primitives.
+ *
+ * \par Performance semantics
+ * \parblock
+ * While the implementation of all factory methods guarantee their construction
+ * within \f$ \Theta(1) \f$ work-space, the involved work and data movement are
+ * \f$ \mathcal{O}(n+m) \f$ instead, where \f$ n \f$ is the maximum matrix
+ * dimension and \f$ m \f$ the number of nonzeroes in the produced matrix.
+ * The work and data movement furthermore do \em not scale with the number of
+ * user processes-- the factory methods are implemented using sequential I/O
+ * semantics.
+ *
+ * \note Providing these matrix factory methods via sequential I/O is needed
+ *       since otherwise we may not implement this functionality on the ALP
+ *       algorithm level, and must instead either 1) implement these as core ALP
+ *       primitives, or 2) provide efficient introspection to the distribution
+ *       of \em arbitrary backends. The former entails significant work, while
+ *       the latter does not yet exist.
+ *
+ * \note If scalable factory methods are required, please submit a feature
+ *       request and/or contact the maintainers.
+ *
+ * Most matrix factory methods are shared-memory parallel. Those which are
+ * \em not shared-memory parallel are: #full, #dense, #ones, #zeros, and
+ * #random.
+ *
+ * @see grb::IOMode for a more in-depth description of sequential (versus
+ *                  parallel) I/O semantics.
+ * \endparblock
+ *
+ * \par A note on aliases
+ * Some methods are aliases of one another -- different from core ALP
+ * primitives, the goal for this factory class, just as with any ALP algorithm,
+ * is to provide the end-user with productive tools; the goal is not to provide
+ * some minimal set of primitives that allow the widest range of algorithms to
+ * efficiently be implemented on top of them. Given this difference in end-goal,
+ * maintaining multiple aliases are hence encouraged, as long as they indeed
+ * increase productivity.
+ */
 namespace grb::factory {
+
+	/**
+	 * Builds an empty matrix, without any values.
+	 *
+	 * @tparam D       The type of a non-zero element.
+	 * @tparam RIT     The type used for row indices.
+	 * @tparam CIT     The type used for column indices.
+	 * @tparam NIT     The type used for non-zero indices.
+	 * @tparam backend The selected backend.
+	 *
+	 * @param[in] m The requested number of rows of the returned matrix.
+	 * @param[in] n The requested number of columns of the returned matrix.
+	 *
+	 * @returns An empty matrix of the requested type.
+	 */
+	template<
+		typename D,
+		typename RIT = config::RowIndexType,
+		typename CIT = config::ColIndexType,
+		typename NIT = config::NonzeroIndexType,
+		Backend implementation = grb::config::default_backend
+	>
+	Matrix< D, implementation, RIT, CIT, NIT > empty(
+		const size_t m, const size_t n
+	) {
+		return Matrix< D, implementation, RIT, CIT, NIT >( m, n, 0 );
+	}
 
 	namespace internal {
 
-		size_t compute_diag_length( size_t nrows, size_t ncols, long k ) {
-			const auto k_abs = static_cast< size_t >( ( k < 0L ) ? -k : k );
-			return ( k_abs >= nrows || k_abs >= ncols )
+		/**
+		 * Given a matrix size as well as a diagonal offset, computes the length
+		 * (in number of elements) of that diagonal.
+		 *
+		 * @param[in] nrows The number of rows of the matrix.
+		 * @param[in] ncols The number of columns of the matrix.
+		 * @param[in] k     The diagonal offset (may be a negative integer).
+		 *
+		 * @returns The diagonal length, in number of elements.
+		 */
+		size_t compute_diag_length(
+			const size_t nrows, const size_t ncols,
+			const long k
+		) {
+			constexpr const long zero = static_cast< long >( 0 );
+			const auto k_abs = static_cast< size_t >(
+				(k < zero) ? -k : k );
+			return (k_abs >= nrows || k_abs >= ncols)
 				? 0
 				: std::min(
 					std::min( nrows, ncols ),
@@ -64,35 +156,71 @@ namespace grb::factory {
 				);
 		}
 
+		/**
+		 * Generic implementation for creating an identity matrix.
+		 *
+		 * @tparam D       The type of a non-zero element.
+		 * @tparam RIT     The type used for row indices.
+		 * @tparam CIT     The type used for column indices.
+		 * @tparam NIT     The type used for non-zero indices.
+		 * @tparam backend The selected backend.
+		 *
+		 * @param[in] nrows The number of rows of the matrix.
+		 * @param[in] ncols The number of columns of the matrix.
+		 * @param[in] k     The diagonal offset (may be a negative integer).
+		 *
+		 * @param[in] V_iter Start iterator to a collection of values to be put on the
+		 *                   diagonal.
+		 * @param[in] V_end  Iterator to the same collection as \a V_iter, at its end
+		 *                   position.
+		 *
+		 * \warning Assumes \a V_iter contains enough elements (but potentially more)
+		 *          to fill up the requested diagonal.
+		 *
+		 * \note This is usually achieved implicitly by \a V_iter being a repeater
+		 *       iterator of sufficient size, e.g., of full matrix size.
+		 */
 		template<
-			typename D, Descriptor descr,
-			typename RIT, typename CIT, typename NIT,
-			Backend implementation,
+			typename D, typename RIT, typename CIT, typename NIT,
+			Backend backend,
 			class IteratorV,
-			typename std::enable_if< not std::is_void< D >::value, int >::type = 0
+			typename std::enable_if< !std::is_void< D >::value, int >::type = 0
 		>
-		Matrix< D, implementation, RIT, CIT, NIT > createIdentity_generic(
-			size_t nrows, size_t ncols,
-			long k,
-			IOMode io_mode,
-			IteratorV V_iter
+		Matrix< D, backend, RIT, CIT, NIT > createIdentity_generic(
+			const size_t nrows, const size_t ncols,
+			const long k,
+			const IteratorV V_iter, const IteratorV V_end
 		) {
+			// some useful scalars
+			constexpr const long s_zero = static_cast< long >( 0 );
+			constexpr const size_t u_zero = static_cast< size_t >( 0 );
 			const size_t diag_length = compute_diag_length( nrows, ncols, k );
+			assert( static_cast< size_t >(std::distance( V_iter, V_end )) >=
+				diag_length );
+#ifdef NDEBUG
+			(void) V_end;
+#endif
 
-			Matrix< D, implementation, RIT, CIT, NIT > matrix( nrows, ncols, diag_length );
-			const RIT k_i_incr = static_cast< RIT >( ( k < 0L ) ? std::abs( k ) : 0UL );
-			const CIT k_j_incr = static_cast< CIT >( ( k < 0L ) ? 0UL : std::abs( k ) );
+			// declare matrix-to-be-returned
+			Matrix< D, backend, RIT, CIT, NIT > matrix(
+				nrows, ncols, diag_length );
+
+			// get row- and column-wise starting positions
+			const RIT k_i_incr = static_cast< RIT >(
+				(k < s_zero) ? std::abs( k ) : u_zero );
+			const CIT k_j_incr = static_cast< CIT >(
+				(k < s_zero) ? u_zero : std::abs( k ) );
+
+			// translate it to a range so we can get iterators
 			grb::utils::containers::Range< RIT > I( k_i_incr, diag_length + k_i_incr );
 			grb::utils::containers::Range< CIT > J( k_j_incr, diag_length + k_j_incr );
 
-			RC rc = buildMatrixUnique< descr >(
-				matrix, I.begin(), J.begin(), V_iter, diag_length, io_mode
+			// construct the matrix from the given iterators
+			const RC rc = buildMatrixUnique(
+				matrix, I.begin(), J.begin(), V_iter, diag_length, SEQUENTIAL
 			);
 
-			assert( rc == SUCCESS );
 			if( rc != SUCCESS ) {
-				// Todo: Throw an exception or just return an empty matrix?
-				// Nb: We should consider the distributed case if we throw an exception.
 				throw std::runtime_error(
 					"Error: createIdentity_generic failed: rc = " + grb::toString( rc )
 				);
@@ -100,32 +228,47 @@ namespace grb::factory {
 			return matrix;
 		}
 
+		/**
+		 * Generic implementation for creating an identity matrix.
+		 *
+		 * @tparam D       The type of a non-zero element.
+		 * @tparam RIT     The type used for row indices.
+		 * @tparam CIT     The type used for column indices.
+		 * @tparam NIT     The type used for non-zero indices.
+		 * @tparam backend The selected backend.
+		 *
+		 * @param[in] nrows The number of rows of the matrix.
+		 * @param[in] ncols The number of columns of the matrix.
+		 * @param[in] k     The diagonal offset (may be a negative integer).
+		 *
+		 * This is the variant for void matrices.
+		 */
 		template<
-			typename D, Descriptor descr,
-			typename RIT, typename CIT, typename NIT,
-			Backend implementation
-		>
-		Matrix< void, implementation, RIT, CIT, NIT > createIdentity_generic(
-			size_t nrows, size_t ncols,
-			long k,
-			IOMode io_mode,
+			typename D, typename RIT, typename CIT, typename NIT,
+			Backend backend,
 			typename std::enable_if< std::is_void< D >::value, int >::type = 0
+		>
+		Matrix< void, backend, RIT, CIT, NIT > createIdentity_generic(
+			const size_t nrows, const size_t ncols,
+			const long k
 		) {
+			// pattern matrix variant of the above
+			constexpr const long s_zero = static_cast< long >( 0 );
+			constexpr const size_t u_zero = static_cast< size_t >( 0 );
 			const size_t diag_length = compute_diag_length( nrows, ncols, k );
-			Matrix< void, implementation, RIT, CIT, NIT > matrix(
+			Matrix< void, backend, RIT, CIT, NIT > matrix(
 				nrows, ncols, diag_length
 			);
-			grb::utils::containers::Range< RIT > I( 0, diag_length );
-			grb::utils::containers::Range< CIT > J( 0, diag_length );
-
-			RC rc = buildMatrixUnique< descr >(
-				matrix, I.begin(), J.begin(), diag_length, io_mode
+			const RIT k_i_incr = static_cast< RIT >(
+				(k < s_zero) ? std::abs( k ) : u_zero );
+			const CIT k_j_incr = static_cast< CIT >(
+				(k < s_zero) ? u_zero : std::abs( k ) );
+			grb::utils::containers::Range< RIT > I( k_i_incr, diag_length + k_i_incr );
+			grb::utils::containers::Range< CIT > J( k_j_incr, diag_length + k_j_incr );
+			const RC rc = buildMatrixUnique(
+				matrix, I.begin(), J.begin(), diag_length, SEQUENTIAL
 			);
-
-			assert( rc == SUCCESS );
 			if( rc != SUCCESS ) {
-				// Todo: Throw an exception or just return an empty matrix?
-				// Nb: We should consider the distributed case if we throw an exception.
 				throw std::runtime_error(
 					"Error: createIdentity_generic<void> failed: rc = " + grb::toString( rc )
 				);
@@ -136,353 +279,307 @@ namespace grb::factory {
 	} // namespace internal
 
 	/**
-	 * Build an empty matrix, with no non-zero elements.
+	 * Builds a diagonal matrix with the given values.
 	 *
-	 * @tparam D              The type of a non-zero element.
-	 * @tparam RIT            The type used for row indices.
-	 * @tparam CIT            The type used for column indices.
-	 * @tparam NIT            The type used for non-zero indices.
-	 * @tparam implementation The backend implementation used to build
-	 *                        the matrix (default: config::default_backend).
-	 * @param nrows            The number of rows of the matrix.
-	 * @param ncols            The number of columns of the matrix.
-	 * @param io_mode         The I/O mode used to build the matrix (unused).
+	 * This function takes as input an iterator-pair over any STL-style container
+	 * of diagonal values. This employs sequential I/O semantics as described in
+	 * #grb::IOMode.
 	 *
-	 * @return Matrix< D, implementation, RIT, CIT, NIT >
+	 * \warning Therefore, performance-critical code should not depend on this
+	 *          factory method-- building the requested matrix inherently does not
+	 *          scale with the number of user processes due to the sequential input
+	 *          it entails.
+	 *
+	 * The output matrix will contain \f$ q = \min\{ m, n \} \f$ non-zeroes or less
+	 * if \a k is not zero.
+	 *
+	 * @tparam D             The type of a non-zero element.
+	 * @tparam RIT           The type used for row indices.
+	 * @tparam CIT           The type used for column indices.
+	 * @tparam NIT           The type used for non-zero indices.
+	 * @tparam backend       The selected backend.
+	 * @tparam ValueIterator The type of the iterator used to provide the values.
+	 *
+	 * @param[in] m      The number of rows of the matrix.
+	 * @param[in] n      The number of columns of the matrix.
+	 * @param[in] values The iterator over the diagonal values.
+	 * @param[in] valEnd Iterator in end-position matching \a values.
+	 * @param[in] k      The diagonal offset (default = 0). A positive value
+	 *                   indicates an offset above the main diagonal, while a
+	 *                   negative value indicates an offset below the main
+	 *                   diagonal.
+	 *
+	 * The distance between \a values and \a valEnd must be at least \f$ q \f$, or
+	 * less if \a k is not zero.
+	 *
+	 * @returns The requested diagonal matrix.
 	 */
 	template<
 		typename D,
-		Descriptor descr = descriptors::no_operation,
 		typename RIT = config::RowIndexType,
 		typename CIT = config::ColIndexType,
 		typename NIT = config::NonzeroIndexType,
-		Backend implementation = grb::config::default_backend
-	>
-	Matrix< D, implementation, RIT, CIT, NIT > empty(
-		size_t nrows, size_t ncols, IOMode io_mode = SEQUENTIAL
-	) {
-		(void)io_mode;
-		return Matrix< D, implementation, RIT, CIT, NIT >( nrows, ncols, 0UL );
-	}
-
-	/**
-	 * Build an identity matrix. Output matrix will contain
-	 * min( \a nrows, \a ncols ) non-zero elements, or less if \a k
-	 * is not zero.
-	 *
-	 * @tparam D              The type of a non-zero element.
-	 * @tparam descr          The descriptor used to build the matrix.
-	 * @tparam RIT            The type used for row indices.
-	 * @tparam CIT            The type used for column indices.
-	 * @tparam NIT            The type used for non-zero indices.
-	 * @tparam implementation The backend implementation used to build
-	 *                        the matrix (default: config::default_backend).
-	 * @param nrows           The number of rows of the matrix.
-	 * @param ncols           The number of columns of the matrix.
-	 * @param io_mode         The I/O mode used to build the matrix.
-	 * @param identity_value  The value of each non-zero element (default = 1).
-	 * @param k               The diagonal offset (default = 0).
-	 *                        A positive value indicates an offset above the main
-	 *                        diagonal, and a negative value below the main diagonal.
-	 *
-	 * @return Matrix< D, implementation, RIT, CIT, NIT >
-	 */
-	template<
-		typename D,
-		Descriptor descr = descriptors::no_operation,
-		typename RIT = config::RowIndexType,
-		typename CIT = config::ColIndexType,
-		typename NIT = config::NonzeroIndexType,
-		Backend implementation = config::default_backend,
-		typename std::enable_if< not std::is_void< D >::value, int >::type = 0
-	>
-	Matrix< D, implementation, RIT, CIT, NIT > eye(
-		size_t nrows, size_t ncols, IOMode io_mode,
-		D identity_value = static_cast< D >( 1 ),
-		long k = 0L
-	) {
-		if( nrows == 0 || ncols == 0 ) {
-			return empty< D, descr, RIT, CIT, NIT, implementation >(
-				nrows, ncols, io_mode
-			);
-		}
-
-		const size_t diag_length = internal::compute_diag_length( nrows, ncols, k );
-		const grb::utils::containers::ConstantVector< D > V( identity_value, diag_length );
-		return internal::createIdentity_generic<
-				D, descr, RIT, CIT, NIT, implementation
-			>( nrows, ncols, k, io_mode, V.cbegin() );
-	}
-
-	/**
-	 * Build an identity pattern matrix. Output matrix will contain
-	 * min( \a nrows, \a ncols ) non-zero elements, or less if \a k
-	 * is not zero.
-	 *
-	 * @note This method is specialised for pattern matrices (void non-zero type).
-	 *
-	 * @tparam D              The type of a non-zero element (void).
-	 * @tparam descr          The descriptor used to build the matrix.
-	 * @tparam RIT            The type used for row indices.
-	 * @tparam CIT            The type used for column indices.
-	 * @tparam NIT            The type used for non-zero indices.
-	 * @tparam implementation The backend implementation used to build
-	 *                        the matrix (default: config::default_backend).
-	 * @param nrows           The number of rows of the matrix.
-	 * @param ncols           The number of columns of the matrix.
-	 * @param io_mode         The I/O mode used to build the matrix.
-	 * @param k               The diagonal offset (default = 0).
-	 *                        A positive value indicates an offset above the main
-	 *                        diagonal, and a negative value below the main diagonal.
-	 *
-	 * @return Matrix< D, implementation, RIT, CIT, NIT >
-	 */
-	template< typename D,
-		Descriptor descr = descriptors::no_operation,
-		typename RIT = config::RowIndexType,
-		typename CIT = config::ColIndexType,
-		typename NIT = config::NonzeroIndexType,
-		Backend implementation = config::default_backend,
-		typename std::enable_if< std::is_void< D >::value, int >::type = 0 >
-	Matrix< void, implementation, RIT, CIT, NIT > eye(
-		size_t nrows, size_t ncols, IOMode io_mode, long k = 0L
-	) {
-		if( nrows == 0 || ncols == 0 ) {
-			return empty< D, descr, RIT, CIT, NIT, implementation >(
-				nrows, ncols, io_mode
-			);
-		}
-
-		return internal::createIdentity_generic<
-				void, descr, RIT, CIT, NIT, implementation
-			>( nrows, ncols, k, io_mode );
-	}
-
-	/**
-	 * Build an identity matrix. Output matrix will contain
-	 * \a n non-zero elements.
-	 *
-	 * @note Alias for factory::eye( n, n, io_mode )
-	 *
-	 * @tparam D                  The type of a non-zero element.
-	 * @tparam descr              The descriptor used to build the matrix.
-	 * @tparam RIT                The type used for row indices.
-	 * @tparam CIT                The type used for column indices.
-	 * @tparam NIT                The type used for non-zero indices.
-	 * @tparam implementation     The backend implementation used to build
-	 *                            the matrix (default: config::default_backend).
-	 * @param[in] n               The number of rows/columns of the matrix.
-	 * @param[in] io_mode         The I/O mode used to build the matrix.
-	 * @param[in] identity_value  The value of each non-zero element (default = 1)
-	 *
-	 * @return Matrix< D, implementation, RIT, CIT, NIT >
-	 */
-	template<
-		typename D,
-		Descriptor descr = descriptors::no_operation,
-		typename RIT = config::RowIndexType,
-		typename CIT = config::ColIndexType,
-		typename NIT = config::NonzeroIndexType,
-		Backend implementation = grb::config::default_backend,
-		typename std::enable_if< not std::is_void< D >::value, int >::type = 0
-	>
-	Matrix< D, implementation, RIT, CIT, NIT > identity(
-		size_t n, IOMode io_mode, D identity_value = static_cast< D >( 1 )
-	) {
-		return eye< D, descr, RIT, CIT, NIT, implementation >(
-			n, n, io_mode, identity_value
-		);
-	}
-
-	/**
-	 * Build an identity pattern matrix. Output matrix will contain
-	 * \a n non-zero elements.
-	 *
-	 * @note Alias for factory::eye< void, ... >( n, n, io_mode )
-	 *
-	 * @note This method is specialised for pattern matrices (void non-zero type).
-	 *
-	 * @tparam D              The type of a non-zero element (void).
-	 * @tparam descr          The descriptor used to build the matrix.
-	 * @tparam RIT            The type used for row indices.
-	 * @tparam CIT            The type used for column indices.
-	 * @tparam NIT            The type used for non-zero indices.
-	 * @tparam implementation The backend implementation used to build
-	 *                        the matrix (default: config::default_backend).
-	 * @param n               The number of rows/columns of the matrix.
-	 * @param io_mode         The I/O mode used to build the matrix.
-	 * @param identity_value  The value of each non-zero element (default = 1)
-	 *
-	 * @return Matrix< D, implementation, RIT, CIT, NIT >
-	 */
-	template< typename D,
-		Descriptor descr = descriptors::no_operation,
-		typename RIT = config::RowIndexType,
-		typename CIT = config::ColIndexType,
-		typename NIT = config::NonzeroIndexType,
-		Backend implementation = grb::config::default_backend,
-		typename std::enable_if< std::is_void< D >::value, int >::type = 0
-	>
-	Matrix< void, implementation, RIT, CIT, NIT > identity( size_t n, IOMode io_mode ) {
-		return eye< void, descr, RIT, CIT, NIT, implementation >( n, n, io_mode );
-	}
-
-	/**
-	 * Build an identity matrix with the given values.
-	 * Output matrix will contain \a n non-zero elements.
-	 *
-	 * @tparam D              The type of a non-zero element.
-	 * @tparam descr          The descriptor used to build the matrix.
-	 * @tparam RIT            The type used for row indices.
-	 * @tparam CIT            The type used for column indices.
-	 * @tparam NIT            The type used for non-zero indices.
-	 * @tparam implementation The backend implementation used to build
-	 *                        the matrix (default: config::default_backend).
-	 * @tparam ValueIterator  The type of the iterator used to provide the values.
-	 * @param n               The number of rows/columns of the matrix.
-	 * @param io_mode         The I/O mode used to build the matrix.
-	 * @param values          The iterator used to provide the values.
-	 *
-	 * @return Matrix< D, implementation, RIT, CIT, NIT >
-	 */
-	template<
-		typename D,
-		Descriptor descr = descriptors::no_operation,
-		typename RIT = config::RowIndexType,
-		typename CIT = config::ColIndexType,
-		typename NIT = config::NonzeroIndexType,
-		Backend implementation = grb::config::default_backend,
+		Backend backend = grb::config::default_backend,
 		class ValueIterator,
-		typename std::enable_if< not std::is_void< D >::value, int >::type = 0
+		typename std::enable_if< !std::is_void< D >::value, int >::type = 0
 	>
-	Matrix< D, implementation, RIT, CIT, NIT > identity(
-		size_t n, IOMode io_mode,
-		ValueIterator values,
-		const typename std::enable_if<
-			std::is_same<
+	Matrix< D, backend, RIT, CIT, NIT > diag(
+		const size_t m, const size_t n,
+		const ValueIterator values, const ValueIterator valEnd,
+		const long k = static_cast< long >( 0 )
+	) {
+		// static sanity checks
+		static_assert(
+			std::is_convertible<
 				typename std::iterator_traits< ValueIterator >::value_type,
 				D
 			>::value,
-			void
-		>::type * = nullptr
-	) {
-		if( n == 0 ) {
-			return empty< D, descr, RIT, CIT, NIT, implementation >(
-				n, n, io_mode
-			);
-		}
-
-		return internal::createIdentity_generic<
-				D, descr, RIT, CIT, NIT, implementation, ValueIterator
-			>( n, n, 0L, io_mode, values );
-	}
-
-	/**
-	 * Build an identity matrix with the given values.
-	 * Output matrix will contain \a n non-zero elements.
-	 *
-	 * @tparam D              The type of a non-zero element.
-	 * @tparam descr          The descriptor used to build the matrix.
-	 * @tparam RIT            The type used for row indices.
-	 * @tparam CIT            The type used for column indices.
-	 * @tparam NIT            The type used for non-zero indices.
-	 * @tparam implementation The backend implementation used to build
-	 *                        the matrix (default: config::default_backend).
-	 * @tparam ValueIterator  The type of the iterator used to provide the values.
-	 * @param n               The number of rows/columns of the matrix.
-	 * @param io_mode         The I/O mode used to build the matrix.
-	 * @param values          The iterator used to provide the values.
-	 *
-	 * @return Matrix< D, implementation, RIT, CIT, NIT >
-	 */
-	template<
-		typename D,
-		Descriptor descr = descriptors::no_operation,
-		typename RIT = config::RowIndexType,
-		typename CIT = config::ColIndexType,
-		typename NIT = config::NonzeroIndexType,
-		Backend implementation = grb::config::default_backend,
-		typename std::enable_if< not std::is_void< D >::value, int >::type = 0
-	>
-	Matrix< D, implementation, RIT, CIT, NIT > identity(
-		size_t n, IOMode io_mode, const D * values
-	) {
-		if( n == 0 ) {
-			return empty< D, descr, RIT, CIT, NIT, implementation >(
-				n, n, io_mode
-			);
-		}
-
-		return internal::createIdentity_generic<
-				D, descr, RIT, CIT, NIT, implementation
-			>(
-				n, n, 0L, io_mode, values
-			);
-	}
-
-	/**
-	 * Build a dense matrix filled with a given value.
-	 * Output matrix will contain nrows * ncols non-zero elements.
-	 *
-	 * @tparam D              The type of a non-zero element.
-	 * @tparam descr          The descriptor used to build the matrix.
-	 * @tparam RIT            The type used for row indices.
-	 * @tparam CIT            The type used for column indices.
-	 * @tparam NIT            The type used for non-zero indices.
-	 * @tparam implementation The backend implementation used to build
-	 *                        the matrix (default: config::default_backend).
-	 * @param nrows            The number of rows of the matrix.
-	 * @param ncols            The number of columns of the matrix.
-	 * @param io_mode         The I/O mode used to build the matrix.
-	 * @param value           The value of each non-zero element.
-	 *
-	 * @return Matrix< D, implementation, RIT, CIT, NIT >
-	 */
-	template<
-		typename D,
-		Descriptor descr = descriptors::no_operation,
-		typename RIT = config::RowIndexType,
-		typename CIT = config::ColIndexType,
-		typename NIT = config::NonzeroIndexType,
-		Backend implementation = grb::config::default_backend,
-		typename std::enable_if< not std::is_void< D >::value, int >::type = 0
-	>
-	Matrix< D, implementation, RIT, CIT, NIT > full(
-		size_t nrows, size_t ncols, IOMode io_mode, D value
-	) {
-		if( nrows == 0 || ncols == 0 ) {
-			return empty< D, descr, RIT, CIT, NIT, implementation >(
-				nrows, ncols, io_mode
-			);
-		}
-
-		Matrix< D, implementation, RIT, CIT, NIT > matrix(
-			nrows, ncols, nrows * ncols
+			"grb::factory::diag called with value types that are not convertible to the "
+			"matrix nonzero type."
 		);
+
+		// check trivial dispatch
+		if( m == 0 || n == 0 ) {
+			return empty< D, RIT, CIT, NIT, backend >( n, n );
+		}
+
+		return internal::createIdentity_generic<
+				D, RIT, CIT, NIT, backend, ValueIterator
+			>( m, n, k, values, valEnd );
+	}
+
+	/**
+	 * Builds an identity matrix.
+	 *
+	 * Output matrix will contain \f$ \min\{ m, n \} \f$ non-zero elements or less
+	 * if \a k is not zero.
+	 *
+	 * @tparam D       The type of non-zero elements.
+	 * @tparam RIT     The type used for row indices.
+	 * @tparam CIT     The type used for column indices.
+	 * @tparam NIT     The type used for non-zero indices.
+	 * @tparam backend The selected backend.
+	 *
+	 * @param[in] m               The number of rows of the matrix.
+	 * @param[in] n               The number of columns of the matrix.
+	 * @param[in] identity_value  The value of each non-zero element (default = 1).
+	 * @param[in] k               The diagonal offset (default = 0). A positive
+	 *                            value indicates an offset above the main
+	 *                            diagonal, while a negative value indicates an
+	 *                            offset below the main diagonal.
+	 *
+	 * @returns The requested identity matrix.
+	 */
+	template<
+		typename D,
+		typename RIT = config::RowIndexType,
+		typename CIT = config::ColIndexType,
+		typename NIT = config::NonzeroIndexType,
+		Backend backend = config::default_backend,
+		typename std::enable_if< !std::is_void< D >::value, int >::type = 0
+	>
+	Matrix< D, backend, RIT, CIT, NIT > eye(
+		const size_t m, size_t n,
+		const D identity_value = static_cast< D >( 1 ),
+		const long k = static_cast< long >( 0 )
+	) {
+		// check for possible trivial dispatch
+		if( m == 0 || n == 0 ) {
+			return empty< D, RIT, CIT, NIT, backend >( m, n );
+		}
+
+		// we are in the non-pattern case, so we need a repeated iterator for the
+		// values-- determine worst-case length (cheaper than computing the actual
+		// diagonal length)
+		const size_t wcl = std::max( m, n );
+		const grb::utils::containers::ConstantVector< D > V( identity_value, wcl );
+
+		// call generic implementation
+		return internal::createIdentity_generic<
+				D, RIT, CIT, NIT, backend 
+			>( m, n, k, V.cbegin(), V.cend() );
+	}
+
+	/**
+	 * Builds an identity pattern matrix.
+	 *
+	 * Output matrix will contain \f$ \min\{ m, n \} \f$ non-zero elements or less
+	 * if \a k is not zero.
+	 *
+	 * @note This method is specialised for pattern matrices (void non-zero type).
+	 *
+	 * @tparam D       The type of a non-zero element (void).
+	 * @tparam RIT     The type used for row indices.
+	 * @tparam CIT     The type used for column indices.
+	 * @tparam NIT     The type used for non-zero indices.
+	 * @tparam backend The selected backend.
+	 *
+	 * @param[in] m The number of rows of the matrix.
+	 * @param[in] n The number of columns of the matrix.
+	 * @param[in] k The diagonal offset (default = 0). A positive value indicates
+	 *              an offset above the main diagonal, while a negative value
+	 *              indicates an offset below the main diagonal.
+	 *
+	 * @returns The requested identity matrix.
+	 */
+	template<
+		typename D,
+		typename RIT = config::RowIndexType,
+		typename CIT = config::ColIndexType,
+		typename NIT = config::NonzeroIndexType,
+		Backend backend = config::default_backend,
+		typename std::enable_if< std::is_void< D >::value, int >::type = 0
+	>
+	Matrix< void, backend, RIT, CIT, NIT > eye(
+		const size_t m, const size_t n, long k = static_cast< long >(0)
+	) {
+		// check trivial case
+		if( m == 0 || n == 0 ) {
+			return empty< D, RIT, CIT, NIT, backend >( m, n );
+		}
+
+		// dispatch to generic function
+		return internal::createIdentity_generic<
+				void, RIT, CIT, NIT, backend
+			>( m, n, k );
+	}
+
+	/**
+	 * Builds an identity matrix.
+	 *
+	 * \note This is an alias for factory::eye( n, n, io_mode ). It differs only
+	 *       in that this function produces square matrices.
+	 *
+	 * See #factory::eye for detailed documentation.
+	 *
+	 * @tparam D       The type of a non-zero element.
+	 * @tparam RIT     The type used for row indices.
+	 * @tparam CIT     The type used for column indices.
+	 * @tparam NIT     The type used for non-zero indices.
+	 * @tparam backend The selected backend.
+	 *
+	 * @param[in] n              The number of rows/columns of the matrix.
+	 * @param[in] identity_value The value of each non-zero element (default = 1).
+	 *
+	 * @returns The requested identity matrix.
+	 */
+	template<
+		typename D,
+		typename RIT = config::RowIndexType,
+		typename CIT = config::ColIndexType,
+		typename NIT = config::NonzeroIndexType,
+		Backend backend = grb::config::default_backend,
+		typename std::enable_if< not std::is_void< D >::value, int >::type = 0
+	>
+	Matrix< D, backend, RIT, CIT, NIT > identity(
+		const size_t n, const D identity_value = static_cast< D >( 1 )
+	) {
+		return eye< D, RIT, CIT, NIT, backend >(
+			n, n, identity_value
+		);
+	}
+
+	/**
+	 * Builds an identity pattern matrix.
+	 *
+	 * This is the pattern matrix variant -- see the non-patterm variant for
+	 * complete documentation.
+	 *
+	 * @tparam D       The type of a non-zero element (void).
+	 * @tparam RIT     The type used for row indices.
+	 * @tparam CIT     The type used for column indices.
+	 * @tparam NIT     The type used for non-zero indices.
+	 * @tparam backend The selected backend.
+	 *
+	 * @param[in] n The number of rows/columns of the matrix.
+	 *
+	 * @returns The requested identity matrix.
+	 */
+	template<
+		typename D,
+		typename RIT = config::RowIndexType,
+		typename CIT = config::ColIndexType,
+		typename NIT = config::NonzeroIndexType,
+		Backend backend = grb::config::default_backend,
+		typename std::enable_if< std::is_void< D >::value, int >::type = 0
+	>
+	Matrix< void, backend, RIT, CIT, NIT > identity( const size_t n ) {
+		return eye< void, RIT, CIT, NIT, backend >( n, n );
+	}
+
+	/**
+	 * Builds a dense matrix filled with a given value.
+	 *
+	 * \note ALP/GraphBLAS does not have efficient support for dense matrices--
+	 *       the dense data will be stored in a sparse format, which will not
+	 *       lead to efficient computations. See ALP/Dense for efficient dense
+	 *       linear algebra support.
+	 *
+	 * Output matrix will contain \f$ mn \f$ non-zero elements.
+	 *
+	 * @tparam D       The type of a non-zero element.
+	 * @tparam RIT     The type used for row indices.
+	 * @tparam CIT     The type used for column indices.
+	 * @tparam NIT     The type used for non-zero indices.
+	 * @tparam backend The selected backend.
+	 *
+	 * @param[in] m     The number of rows of the matrix.
+	 * @param[in] n     The number of columns of the matrix.
+	 * @param[in] value The value of each non-zero element.
+	 *
+	 * @returns The requested full matrix.
+	 */
+	template<
+		typename D,
+		typename RIT = config::RowIndexType,
+		typename CIT = config::ColIndexType,
+		typename NIT = config::NonzeroIndexType,
+		Backend backend = grb::config::default_backend,
+		typename std::enable_if< !std::is_void< D >::value, int >::type = 0
+	>
+	Matrix< D, backend, RIT, CIT, NIT > full(
+		const size_t m, const size_t n, const D value
+	) {
+		if( m == 0 || n == 0 ) {
+			return empty< D, RIT, CIT, NIT, backend >( m, n );
+		}
+
+		const size_t nz = m * n;
+		if( nz / m != n ) {
+			throw std::runtime_error( "Requested dense matrix overflows in number of "
+				"nonzeroes." );
+		}
+
+		Matrix< D, backend, RIT, CIT, NIT > matrix( m, n, nz );
+
 		// Initialise rows indices container with a range from 0 to nrows,
 		// each value repeated ncols times.
-		grb::utils::containers::Range< RIT > I( 0, nrows, 1, ncols );
+		grb::utils::containers::Range< RIT > I( 0, m, 1, n );
 		// Initialise columns values container with a range from 0 to ncols
 		// repeated nrows times.
 		grb::utils::containers::ChainedIteratorsVector<
 				typename grb::utils::containers::Range< CIT >::const_iterator
-			> J( nrows );
-		for( size_t i = 0; i < nrows; ++i ) {
-			J.emplace_back( grb::utils::containers::Range< CIT >( 0, ncols ) );
+			> J( m );
+		for( size_t i = 0; i < m; ++i ) {
+			J.emplace_back( grb::utils::containers::Range< CIT >( 0, n ) );
 		}
 		// Initialise values container with the given value.
-		grb::utils::containers::ConstantVector< D > V( value, nrows * ncols );
-		assert( std::distance( I.begin(), I.end() ) == std::distance( J.begin(), J.end() ) );
-		assert( std::distance( I.begin(), I.end() ) == std::distance( V.begin(), V.end() ) );
+		grb::utils::containers::ConstantVector< D > V( value, nz );
+#ifndef NDEBUG
+		const size_t Isz = std::distance( I.begin(), I.end() );
+		const size_t Jsz = std::distance( J.begin(), J.end() );
+		const size_t Vsz = std::distance( V.begin(), V.end() );
+		assert( Isz == Jsz );
+		assert( Isz == Vsz );
+#endif
 
-		RC rc = buildMatrixUnique< descr >(
-			matrix, I.begin(), I.end(), J.begin(), J.end(), V.begin(), V.end(), io_mode
+		const RC rc = buildMatrixUnique(
+			matrix,
+			I.begin(), I.end(), J.begin(), J.end(), V.begin(), V.end(),
+			SEQUENTIAL
 		);
 
-		assert( rc == SUCCESS );
 		if( rc != SUCCESS ) {
-			// Question for review: Throw an exception or just return an empty matrix?
-			//                  Nb: We should consider the distributed case if we throw an exception.
 			throw std::runtime_error(
 				"Error: factory::full<void> failed: rc = " + grb::toString( rc )
 			);
@@ -493,63 +590,68 @@ namespace grb::factory {
 
 	/**
 	 * Build a dense pattern matrix.
-	 * Output matrix will contain nrows * ncols non-zero elements.
 	 *
-	 * @note This method is specialised for pattern matrices (void non-zero type).
+	 * \note ALP/GraphBLAS does not have efficient support for dense matrices--
+	 *       the dense data will be stored in a sparse format, which will not
+	 *       lead to efficient computations. See ALP/Dense for efficient dense
+	 *       linear algebra support.
 	 *
-	 * @tparam D              The type of a non-zero element (void).
-	 * @tparam descr          The descriptor used to build the matrix.
-	 * @tparam RIT            The type used for row indices.
-	 * @tparam CIT            The type used for column indices.
-	 * @tparam NIT            The type used for non-zero indices.
-	 * @tparam implementation The backend implementation used to build
-	 *                        the matrix (default: config::default_backend).
-	 * @param nrows            The number of rows of the matrix.
-	 * @param ncols            The number of columns of the matrix.
-	 * @param io_mode         The I/O mode used to build the matrix.
+	 * Output matrix will contain \f$ mn \f$ non-zero elements.
 	 *
-	 * @return Matrix< D, implementation, RIT, CIT, NIT >
+	 * \note This method is specialised for pattern matrices (void non-zero type).
+	 *
+	 * @tparam D       The type of a non-zero element (void).
+	 * @tparam RIT     The type used for row indices.
+	 * @tparam CIT     The type used for column indices.
+	 * @tparam NIT     The type used for non-zero indices.
+	 * @tparam backend The selected backend.
+	 *
+	 * @param[in] m     The number of rows of the matrix.
+	 * @param[in] n     The number of columns of the matrix.
+	 *
+	 * @returns The requested full matrix.
 	 */
 	template<
 		typename D,
-		Descriptor descr = descriptors::no_operation,
 		typename RIT = config::RowIndexType,
 		typename CIT = config::ColIndexType,
 		typename NIT = config::NonzeroIndexType,
-		Backend implementation = grb::config::default_backend,
+		Backend backend = grb::config::default_backend,
 		typename std::enable_if< std::is_void< D >::value, int >::type = 0
 	>
-	Matrix< void, implementation, RIT, CIT, NIT > full(
-		size_t nrows, size_t ncols, IOMode io_mode
+	Matrix< void, backend, RIT, CIT, NIT > full(
+		const size_t m, const size_t n
 	) {
-		if( nrows == 0 || ncols == 0 ) {
-			return empty< D, descr, RIT, CIT, NIT, implementation >(
-				nrows, ncols, io_mode
-			);
+		if( m == 0 || n == 0 ) {
+			return empty< D, RIT, CIT, NIT, backend >( m, n );
 		}
 
-		Matrix< void, implementation, RIT, CIT, NIT > matrix(
-			nrows, ncols, nrows * ncols
-		);
+		const size_t nz = m * n;
+		if( nz / m != n ) {
+			throw std::runtime_error( "Requested dense matrix overflows in number of "
+				"nonzeroes." );
+		}
+
+		Matrix< void, backend, RIT, CIT, NIT > matrix( m, n, nz );
+
 		// Initialise rows indices container with a range from 0 to nrows,
 		// each value repeated ncols times.
-		grb::utils::containers::Range< RIT > I( 0, nrows, 1, ncols );
+		grb::utils::containers::Range< RIT > I( 0, m, 1, n );
 		// Initialise columns values container with a range from 0 to ncols
 		// repeated nrows times.
 		grb::utils::containers::ChainedIteratorsVector<
 				typename grb::utils::containers::Range< CIT >::const_iterator
-			> J( nrows );
-		for( size_t i = 0; i < nrows; ++i ) {
-			J.emplace_back( grb::utils::containers::Range< CIT >( 0, ncols ) );
+			> J( m );
+		for( size_t i = 0; i < m; ++i ) {
+			J.emplace_back( grb::utils::containers::Range< CIT >( 0, n ) );
 		}
-		assert( std::distance( I.begin(), I.end() ) == std::distance( J.begin(), J.end() ) );
-		RC rc = buildMatrixUnique< descr >(
-			matrix, I.begin(), I.end(), J.begin(), J.end(), io_mode
+		assert( std::distance( I.begin(), I.end() ) ==
+			std::distance( J.begin(), J.end() ) );
+		const RC rc = buildMatrixUnique(
+			matrix, I.begin(), I.end(), J.begin(), J.end(), SEQUENTIAL
 		);
 
 		if( rc != SUCCESS ) {
-			// Question for review: Throw an exception or just return an empty matrix?
-			//                  Nb: We should consider the distributed case if we throw an exception.
 			throw std::runtime_error(
 				"Error: factory::full<void> failed: rc = " + grb::toString( rc )
 			);
@@ -559,209 +661,243 @@ namespace grb::factory {
 	}
 
 	/**
-	 * Build a dense matrix filled with a given value.
+	 * Builds a dense matrix filled with a given value.
 	 *
-	 * @note Alias for factory::full( nrows, ncols, io_mode, value )
+	 * \note This is an alias for #grb::factory::full -- see that function for
+	 *       complete documentation.
 	 *
-	 * @tparam D              The type of a non-zero element.
-	 * @tparam descr          The descriptor used to build the matrix.
-	 * @tparam RIT            The type used for row indices.
-	 * @tparam CIT            The type used for column indices.
-	 * @tparam NIT            The type used for non-zero indices.
-	 * @tparam implementation The backend implementation used to build
-	 *                        the matrix (default: config::default_backend).
-	 * @param nrows            The number of rows of the matrix.
-	 * @param ncols            The number of columns of the matrix.
-	 * @param io_mode         The I/O mode used to build the matrix.
-	 * @param value           The value of each non-zero element.
+	 * @tparam D       The type of a non-zero element.
+	 * @tparam RIT     The type used for row indices.
+	 * @tparam CIT     The type used for column indices.
+	 * @tparam NIT     The type used for non-zero indices.
+	 * @tparam backend The selected backend.
 	 *
-	 * @return Matrix< D, implementation, RIT, CIT, NIT >
+	 * @param[in] m     The number of rows of the matrix.
+	 * @param[in] n     The number of columns of the matrix.
+	 * @param[in] value The value of each non-zero element.
+	 *
+	 * @returns The requested dense matrix.
 	 */
 	template<
 		typename D,
-		Descriptor descr = descriptors::no_operation,
 		typename RIT = config::RowIndexType,
 		typename CIT = config::ColIndexType,
 		typename NIT = config::NonzeroIndexType,
-		Backend implementation = grb::config::default_backend,
+		Backend backend = grb::config::default_backend,
 		typename std::enable_if< not std::is_void< D >::value, int >::type = 0
 	>
-	Matrix< D, implementation, RIT, CIT, NIT > dense(
-		size_t nrows, size_t ncols, IOMode io_mode, D value
+	Matrix< D, backend, RIT, CIT, NIT > dense(
+		const size_t m, const size_t n, const D value
 	) {
-		return full< D, descr, RIT, CIT, NIT, implementation >(
-			nrows, ncols, io_mode, value
-		);
+		return full< D, RIT, CIT, NIT, backend >( m, n, value );
 	}
 
 	/**
-	 * Build a dense pattern matrix.
+	 * Builds a dense pattern matrix.
 	 *
-	 * @note Alias for factory::full< void, ... >( nrows, ncols, io_mode )
+	 * \note This is an alias for #grb::factory::full -- see that function for
+	 *       complete documentation.
 	 *
-	 * @note This method is specialised for pattern matrices (void non-zero type).
+	 * @tparam D       The type of a non-zero element (void).
+	 * @tparam RIT     The type used for row indices.
+	 * @tparam CIT     The type used for column indices.
+	 * @tparam NIT     The type used for non-zero indices.
+	 * @tparam backend The selected backend.
 	 *
-	 * @tparam D              The type of a non-zero element (void).
-	 * @tparam descr          The descriptor used to build the matrix.
-	 * @tparam RIT            The type used for row indices.
-	 * @tparam CIT            The type used for column indices.
-	 * @tparam NIT            The type used for non-zero indices.
-	 * @tparam implementation The backend implementation used to build
-	 *                        the matrix (default: config::default_backend).
-	 * @param nrows            The number of rows of the matrix.
-	 * @param ncols            The number of columns of the matrix.
-	 * @param io_mode         The I/O mode used to build the matrix.
+	 * @param[in] m The number of rows of the matrix.
+	 * @param[in] n The number of columns of the matrix.
 	 *
-	 * @return Matrix< D, implementation, RIT, CIT, NIT >
+	 * @returns The requested dense matrix.
 	 */
 	template<
 		typename D,
-		Descriptor descr = descriptors::no_operation,
 		typename RIT = config::RowIndexType,
 		typename CIT = config::ColIndexType,
 		typename NIT = config::NonzeroIndexType,
-		Backend implementation = grb::config::default_backend,
+		Backend backend = grb::config::default_backend,
 		typename std::enable_if< std::is_void< D >::value, int >::type = 0
 	>
-	Matrix< void, implementation, RIT, CIT, NIT > dense(
-		size_t nrows, size_t ncols, IOMode io_mode
+	Matrix< void, backend, RIT, CIT, NIT > dense(
+		const size_t m, const size_t n
 	) {
-		return full< void, descr, RIT, CIT, NIT, implementation >(
-			nrows, ncols, io_mode
-		);
+		return full< void, RIT, CIT, NIT, backend >( m, n );
 	}
 
 	/**
-	 * Build a matrix filled with ones.
+	 * Builds a matrix filled with ones.
 	 *
-	 * @note Alias for factory::full( nrows, ncols, io_mode, 1 )
+	 * \note This is an alias for factory::full( m, n, 1 ).
 	 *
-	 * @tparam D              The type of a non-zero element.
-	 * @tparam descr          The descriptor used to build the matrix.
-	 * @tparam RIT            The type used for row indices.
-	 * @tparam CIT            The type used for column indices.
-	 * @tparam NIT            The type used for non-zero indices.
-	 * @tparam implementation The backend implementation used to build
-	 *                        the matrix (default: config::default_backend).
-	 * @param nrows            The number of rows of the matrix.
-	 * @param ncols            The number of columns of the matrix.
-	 * @param io_mode         The I/O mode used to build the matrix.
+	 * @see #grb::factory::full for complete documentation.
 	 *
-	 * @return Matrix< D, implementation, RIT, CIT, NIT >
+	 * @tparam D       The type of a non-zero element.
+	 * @tparam RIT     The type used for row indices.
+	 * @tparam CIT     The type used for column indices.
+	 * @tparam NIT     The type used for non-zero indices.
+	 * @tparam backend The selected backend.
+	 *
+	 * @param[in] m The number of rows of the matrix.
+	 * @param[in] n The number of columns of the matrix.
+	 *
+	 * @returns Returns a dense matrix with entries one.
 	 */
 	template<
 		typename D,
-		Descriptor descr = descriptors::no_operation,
 		typename RIT = config::RowIndexType,
 		typename CIT = config::ColIndexType,
 		typename NIT = config::NonzeroIndexType,
-		Backend implementation = grb::config::default_backend
+		Backend backend = grb::config::default_backend,
+		typename std::enable_if< !std::is_void< D >::value, int >::type = 0
 	>
-	Matrix< D, implementation, RIT, CIT, NIT > ones(
-		size_t nrows, size_t ncols, IOMode io_mode,
-		typename std::enable_if< ! std::is_void< D >::value, int >::type = 0
+	Matrix< D, backend, RIT, CIT, NIT > ones(
+		const size_t m, const size_t n
 	) {
-		return full< D, descr, RIT, CIT, NIT, implementation >(
-			nrows, ncols, io_mode, static_cast< D >( 1 )
-		);
+		return full< D, RIT, CIT, NIT, backend >( m, n, static_cast< D >( 1 ) );
 	}
+
+	/**
+	 * Builds a dense pattern matrix filled with ones.
+	 *
+	 * \note This is an alias for factory::full( m, n, 1 ). Since a pattern matrix
+	 *       is requested, however, the numerical value 1 is meaningless.
+	 *
+	 * @see #grb::factory::full for complete documentation.
+	 *
+	 * @tparam D       The type of a non-zero element.
+	 * @tparam RIT     The type used for row indices.
+	 * @tparam CIT     The type used for column indices.
+	 * @tparam NIT     The type used for non-zero indices.
+	 * @tparam backend The selected backend.
+	 *
+	 * @param[in] m The number of rows of the matrix.
+	 * @param[in] n The number of columns of the matrix.
+	 *
+	 * @returns Returns a dense pattern matrix.
+	 */
+	template<
+		typename D,
+		typename RIT = config::RowIndexType,
+		typename CIT = config::ColIndexType,
+		typename NIT = config::NonzeroIndexType,
+		Backend backend = grb::config::default_backend,
+		typename std::enable_if< std::is_void< D >::value, int >::type = 0
+	>
+	Matrix< void, backend, RIT, CIT, NIT > ones(
+		const size_t m, const size_t n
+	) {
+		return full< D, RIT, CIT, NIT, backend >( m, n );
+	}
+
+	/**
+	 * Builds a matrix filled with zeros.
+	 *
+	 * \note This is an alias for factory::full( m, n, 0 )
+	 *
+	 * @see #grb::factory::full for complete documentation.
+	 *
+	 * @tparam D       The type of a non-zero element.
+	 * @tparam RIT     The type used for row indices.
+	 * @tparam CIT     The type used for column indices.
+	 * @tparam NIT     The type used for non-zero indices.
+	 * @tparam backend The selected backend.
+	 *
+	 * @param[in] m The number of rows of the matrix.
+	 * @param[in] n The number of columns of the matrix.
+	 *
+	 * @returns A dense matrix of zeroes.
+	 */
+	template<
+		typename D,
+		typename RIT = config::RowIndexType,
+		typename CIT = config::ColIndexType,
+		typename NIT = config::NonzeroIndexType,
+		Backend backend = grb::config::default_backend
+	>
+	Matrix< D, backend, RIT, CIT, NIT > zeros(
+		const size_t m, const size_t n,
+		typename std::enable_if< !std::is_void< D >::value, int >::type = 0
+	) {
+		return full< D, RIT, CIT, NIT, backend >( m, n, static_cast< D >( 1 ) );
+	}
+
+	/**
+	 * Builds a matrix filled with zeros.
+	 *
+	 * \note This is an alias for factory::full( m, n, 0 ). Since a pattern matrix
+	 *       is requested, however, the numerical value 0 is meaningless.
+	 *
+	 * @see #grb::factory::full for complete documentation.
+	 *
+	 * @tparam D       The type of a non-zero element.
+	 * @tparam RIT     The type used for row indices.
+	 * @tparam CIT     The type used for column indices.
+	 * @tparam NIT     The type used for non-zero indices.
+	 * @tparam backend The selected backend.
+	 *
+	 * @param[in] m The number of rows of the matrix.
+	 * @param[in] n The number of columns of the matrix.
+	 *
+	 * @returns A dense pattern matrix.
+	 */
 
 	template<
 		typename D,
-		Descriptor descr = descriptors::no_operation,
 		typename RIT = config::RowIndexType,
 		typename CIT = config::ColIndexType,
 		typename NIT = config::NonzeroIndexType,
-		Backend implementation = grb::config::default_backend
+		Backend backend = grb::config::default_backend
 	>
-	Matrix< void, implementation, RIT, CIT, NIT > ones(
-		size_t nrows, size_t ncols, IOMode io_mode,
+	Matrix< void, backend, RIT, CIT, NIT > zeros(
+		const size_t m, const size_t n,
 		typename std::enable_if< std::is_void< D >::value, int >::type = 0
 	) {
-		return full< D, descr, RIT, CIT, NIT, implementation >(
-			nrows, ncols, io_mode
-		);
+		return full< D, RIT, CIT, NIT, backend >( m, n );
 	}
 
 	/**
-	 * Build a matrix filled with zeros.
+	 * Builds a matrix filled with random values at random positions.
 	 *
-	 * @note Alias for factory::full( nrows, ncols, io_mode, 0 )
+	 * \warning Usually, (uniform) random matrices do \em not mimic practical
+	 *          graph and sparse matrix structures at all. Therefore, use this
+	 *          functionality with care.
 	 *
-	 * @tparam D              The type of a non-zero element.
-	 * @tparam descr          The descriptor used to build the matrix.
-	 * @tparam RIT            The type used for row indices.
-	 * @tparam CIT            The type used for column indices.
-	 * @tparam NIT            The type used for non-zero indices.
-	 * @tparam implementation The backend implementation used to build
-	 *                        the matrix (default: config::default_backend).
-	 * @param nrows           The number of rows of the matrix.
-	 * @param ncols           The number of columns of the matrix.
-	 * @param io_mode         The I/O mode used to build the matrix.
+	 * More advanced models that mimic graphs and/or sparse matrices from different
+	 * practical application domains may be integrated by passing different
+	 * distributions to the below API.
 	 *
-	 * @return Matrix< D, implementation, RIT, CIT, NIT >
+	 * \note One might be inclined to use this functionality to implement
+	 *       randomised linear algebra methods. Doing so would be inefficient since
+	 *       such algorithms would require repeated sampling. A different and
+	 *       significantly more suitable design, akin to that of views in
+	 *       ALP/Dense, is under development.
+	 *
+	 * @tparam D                     The type of a non-zero values.
+	 * @tparam RIT                   The type used for row indices.
+	 * @tparam CIT                   The type used for column indices.
+	 * @tparam NIT                   The type used for non-zero indices.
+	 * @tparam RandomDeviceType      The type of the random device used to generate
+	 *                               the random data.
+	 * @tparam RowDistributionType   The type of the distribution used to generate
+	 *                               the row indices.
+	 * @tparam ColDistributionType   The type of the distribution used to generate
+	 *                               the column indices.
+	 * @tparam ValueDistributionType The type of the distribution used to generate
+	 *                               the values.
+	 * @tparam backend               The selected backend.
+	 *
+	 * @param[in] m        The number of rows of the matrix.
+	 * @param[in] n        The number of columns of the matrix.
+	 * @param[in] sparsity The sparsity factor of the matrix, 1.0 being a dense
+	 *                     matrix and 0.0 being an empty matrix.
+	 * @param[in] rd       The random device used to generate the random data.
+	 * @param[in] row_dist The distribution used to generate the row indices.
+	 * @param[in] col_dist The distribution used to generate the column indices.
+	 * @param[in] val_dist The distribution used to generate the values.
+	 *
+	 * @returns The requested random matrix.
 	 */
 	template<
 		typename D,
-		Descriptor descr = descriptors::no_operation,
-		typename RIT = config::RowIndexType,
-		typename CIT = config::ColIndexType,
-		typename NIT = config::NonzeroIndexType,
-		Backend implementation = grb::config::default_backend
-	>
-	Matrix< D, implementation, RIT, CIT, NIT > zeros(
-		size_t nrows, size_t ncols, IOMode io_mode,
-		typename std::enable_if< ! std::is_void< D >::value, int >::type = 0
-	) {
-		return full< D, descr, RIT, CIT, NIT, implementation >(
-			nrows, ncols, io_mode, static_cast< D >( 1 )
-		);
-	}
-
-	template< typename D,
-		Descriptor descr = descriptors::no_operation,
-		typename RIT = config::RowIndexType,
-		typename CIT = config::ColIndexType,
-		typename NIT = config::NonzeroIndexType,
-		Backend implementation = grb::config::default_backend >
-	Matrix< void, implementation, RIT, CIT, NIT > zeros( size_t nrows, size_t ncols, IOMode io_mode, typename std::enable_if< std::is_void< D >::value, int >::type = 0 ) {
-		return full< D, descr, RIT, CIT, NIT, implementation >( nrows, ncols, io_mode );
-	}
-
-	/**
-	 * Build a matrix filled with random values at random positions.
-	 *
-	 * @tparam D                      The type of a non-zero values.
-	 * @tparam descr                  The descriptor used to build the matrix.
-	 * @tparam RIT                    The type used for row indices.
-	 * @tparam CIT                    The type used for column indices.
-	 * @tparam NIT                    The type used for non-zero indices.
-	 * @tparam RandomDeviceType       The type of the random device used to generate
-	 *                                the random data.
-	 * @tparam RowDistributionType    The type of the distribution used to generate
-	 *                                the row indices.
-	 * @tparam ColDistributionType    The type of the distribution used to generate
-	 *                                the column indices.
-	 * @tparam ValueDistributionType  The type of the distribution used to generate
-	 *                                the values.
-	 * @tparam implementation         The backend implementation used to build
-	 *                                the matrix (default: config::default_backend).
-	 *
-	 * @param nrows                   The number of rows of the matrix.
-	 * @param ncols                   The number of columns of the matrix.
-	 * @param io_mode                 The I/O mode used to build the matrix.
-	 * @param sparsity		          The sparsity factor of the matrix, 1.0 being
-	 *                                a dense matrix and 0.0 being an empty matrix.
-	 * @param rd                      The random device used to generate the random data.
-	 * @param row_dist                The distribution used to generate the row indices.
-	 * @param col_dist                The distribution used to generate the column indices.
-	 * @param val_dist                The distribution used to generate the values.
-	 *
-	 * @return Matrix< D, implementation, RIT, CIT, NIT >
-	 */
-	template<
-		typename D,
-		Descriptor descr = descriptors::no_operation,
 		typename RIT = config::RowIndexType,
 		typename CIT = config::ColIndexType,
 		typename NIT = config::NonzeroIndexType,
@@ -769,23 +905,24 @@ namespace grb::factory {
 		typename RowDistributionType,
 		typename ColDistributionType,
 		typename ValueDistributionType,
-		Backend implementation = grb::config::default_backend
+		Backend backend = grb::config::default_backend
 	>
-	Matrix< D, implementation, RIT, CIT, NIT > random(
-		size_t nrows, size_t ncols, IOMode io_mode,
-		double sparsity, RandomGeneratorType & rgen,
-		RowDistributionType & row_dist,
-		ColDistributionType & col_dist,
-		ValueDistributionType & val_dist
+	Matrix< D, backend, RIT, CIT, NIT > random(
+		const size_t m, const size_t n,
+		const double sparsity,
+		RandomGeneratorType &rgen,
+		RowDistributionType &row_dist,
+		ColDistributionType &col_dist,
+		ValueDistributionType &val_dist
 	) {
-		if( nrows == 0 || ncols == 0 ) {
-			return empty< D, descr, RIT, CIT, NIT, implementation >(
-				nrows, ncols, io_mode
-			);
+		// FIXME guard against overflow
+		const size_t nvals = m * n * std::max( 1.0, std::min( 1.0, sparsity ) );
+
+		if( m == 0 || n == 0 || nvals == 0 ) {
+			return empty< D, RIT, CIT, NIT, backend >( m, n );
 		}
 
-		const size_t nvals = nrows * ncols * std::max( 1.0, std::min( 1.0, sparsity ) );
-		Matrix< D, implementation, RIT, CIT, NIT > matrix( nrows, ncols, nvals );
+		Matrix< D, backend, RIT, CIT, NIT > matrix( m, n, nvals );
 
 		std::vector< RIT > I( nvals );
 		std::vector< CIT > J( nvals );
@@ -795,15 +932,15 @@ namespace grb::factory {
 			J[ i ] = col_dist( rgen );
 			V[ i ] = val_dist( rgen );
 		}
+		// FIXME filter out / re-sample any repeated entries
 
-		RC rc = buildMatrixUnique< descr >(
-			matrix, I.begin(), I.end(), J.begin(), J.end(), V.begin(), V.end(), io_mode
+		const RC rc = buildMatrixUnique(
+			matrix,
+			I.begin(), I.end(), J.begin(), J.end(), V.begin(), V.end(),
+			SEQUENTIAL
 		);
 
-		assert( rc == SUCCESS );
 		if( rc != SUCCESS ) {
-			// Question for review: Throw an exception or just return an empty matrix?
-			//                  Nb: We should consider the distributed case if we throw an exception.
 			throw std::runtime_error(
 				"Error: factory::random failed: rc = " + grb::toString( rc )
 			);
@@ -812,29 +949,76 @@ namespace grb::factory {
 		return matrix;
 	}
 
+	/**
+	 * Builds a pattern matrix filled with random values at random positions.
+	 *
+	 * This is the pattern-specialisation of the #grb::factory::random function.
+	 *
+	 * \warning Usually, (uniform) random matrices do \em not mimic practical
+	 *          graph and sparse matrix structures at all. Therefore, use this
+	 *          functionality with care.
+	 *
+	 * More advanced models that mimic graphs and/or sparse matrices from different
+	 * practical application domains may be integrated by passing different
+	 * distributions to the below API.
+	 *
+	 * \note One might be inclined to use this functionality to implement
+	 *       randomised linear algebra methods. Doing so would be inefficient since
+	 *       such algorithms would require repeated sampling. A different and
+	 *       significantly more suitable design, akin to that of views in
+	 *       ALP/Dense, is under development.
+	 *
+	 * @tparam D                     The type of a non-zero values.
+	 * @tparam RIT                   The type used for row indices.
+	 * @tparam CIT                   The type used for column indices.
+	 * @tparam NIT                   The type used for non-zero indices.
+	 * @tparam RandomDeviceType      The type of the random device used to generate
+	 *                               the random data.
+	 * @tparam RowDistributionType   The type of the distribution used to generate
+	 *                               the row indices.
+	 * @tparam ColDistributionType   The type of the distribution used to generate
+	 *                               the column indices.
+	 * @tparam ValueDistributionType The type of the distribution used to generate
+	 *                               the values.
+	 * @tparam backend               The selected backend.
+	 *
+	 * @param[in] m        The number of rows of the matrix.
+	 * @param[in] n        The number of columns of the matrix.
+	 * @param[in] sparsity The sparsity factor of the matrix, 1.0 being a dense
+	 *                     matrix and 0.0 being an empty matrix.
+	 * @param[in] rd       The random device used to generate the random data.
+	 * @param[in] row_dist The distribution used to generate the row indices.
+	 * @param[in] col_dist The distribution used to generate the column indices.
+	 * @param[in] val_dist The distribution used to generate the values.
+	 *
+	 * @returns The requested random matrix.
+	 */
 	template<
 		typename D,
-		Descriptor descr = descriptors::no_operation,
 		typename RIT = config::RowIndexType,
 		typename CIT = config::ColIndexType,
 		typename NIT = config::NonzeroIndexType,
 		typename RandomGeneratorType,
 		typename RowDistributionType,
 		typename ColDistributionType,
-		Backend implementation = grb::config::default_backend
+		Backend backend = grb::config::default_backend
 	>
-	Matrix< void, implementation, RIT, CIT, NIT > random(
-		size_t nrows, size_t ncols, IOMode io_mode,
-		double sparsity, RandomGeneratorType & rgen,
-		RowDistributionType & row_dist, ColDistributionType & col_dist,
+	Matrix< void, backend, RIT, CIT, NIT > random(
+		const size_t m, const size_t n,
+		const double sparsity,
+		RandomGeneratorType &rgen,
+		RowDistributionType &row_dist,
+		ColDistributionType &col_dist,
 		typename std::enable_if< std::is_void< D >::value, int >::type = 0
 	) {
-		if( nrows == 0 || ncols == 0 ) {
-			return empty< D, descr, RIT, CIT, NIT, implementation >( nrows, ncols, io_mode );
+		// FIXME guard against overflow
+		const size_t nvals = m * n * std::max( 1.0, std::min( 1.0, sparsity ) );
+
+		if( m == 0 || n == 0 || nvals == 0 ) {
+			return empty< D, RIT, CIT, NIT, backend >( m, n );
 		}
 
-		const size_t nvals = nrows * ncols * std::max( 1.0, std::min( 1.0, sparsity ) );
-		Matrix< void, implementation, RIT, CIT, NIT > matrix( nrows, ncols, nvals );
+		Matrix< void, backend, RIT, CIT, NIT > matrix( m, n, nvals );
 
 		std::vector< RIT > I( nvals );
 		std::vector< CIT > J( nvals );
@@ -842,15 +1026,12 @@ namespace grb::factory {
 			I[ i ] = row_dist( rgen );
 			J[ i ] = col_dist( rgen );
 		}
+		// FIXME filter out / re-sample any repeated entries
 
-		RC rc = buildMatrixUnique< descr >(
-			matrix, I.begin(), I.end(), J.begin(), J.end(), io_mode
+		const RC rc = buildMatrixUnique(
+			matrix, I.begin(), I.end(), J.begin(), J.end(), SEQUENTIAL
 		);
-
-		assert( rc == SUCCESS );
 		if( rc != SUCCESS ) {
-			// Question for review: Throw an exception or just return an empty matrix?
-			//                  Nb: We should consider the distributed case if we throw an exception.
 			throw std::runtime_error(
 				"Error: factory::random<void> failed: rc = " + grb::toString( rc )
 			);
@@ -860,104 +1041,132 @@ namespace grb::factory {
 	}
 
 	/**
-	 * Build a matrix filled with random values at random positions.
+	 * Builds a matrix filled with random values at random positions.
 	 *
 	 * Will use an \a mt19937 random generator with the given seed.
-	 * The distributions used to generate the random data are uniform_real_distribution
-	 * with the following ranges:
-	 * * row indices:    [0, nrows - 1]
-	 * * column indices: [0, ncols - 1]
-	 * * values:         [0, 1]
 	 *
-	 * @tparam D              The type of a non-zero values.
-	 * @tparam descr          The descriptor used to build the matrix.
-	 * @tparam RIT            The type used for row indices.
-	 * @tparam CIT            The type used for column indices.
-	 * @tparam NIT            The type used for non-zero indices.
-	 * @tparam implementation The backend implementation used to build
-	 *                        the matrix (default: config::default_backend).
-	 * @param nrows           The number of rows of the matrix.
-	 * @param ncols           The number of columns of the matrix.
-	 * @param io_mode         The I/O mode used to build the matrix.
-	 * @param sparsity		  The sparsity factor of the matrix, 1.0 being
-	 *                        a dense matrix and 0.0 being an empty matrix.
-	 * @param seed            The seed used to generate the random values.
+	 * The distributions used to generate the random data are
+	 * uniform_real_distribution with the following ranges:
+	 *  -# row indices:    [0, m - 1]
+	 *  -# column indices: [0, n - 1]
+	 *  -# values:         [0, 1]
 	 *
-	 * @return Matrix< D, implementation, RIT, CIT, NIT >
+	 * \warning Usually, uniform random matrices do \em not mimic practical graph
+	 *          and sparse matrix structures at all. Therefore, use this
+	 *          functionality with care.
+	 *
+	 * @tparam D       The type of a non-zero values.
+	 * @tparam RIT     The type used for row indices.
+	 * @tparam CIT     The type used for column indices.
+	 * @tparam NIT     The type used for non-zero indices.
+	 * @tparam backend The selected backend.
+	 *
+	 * @param[in] m        The number of rows of the matrix.
+	 * @param[in] n        The number of columns of the matrix.
+	 * @param[in] sparsity The sparsity factor of the matrix, 1.0 being a dense
+	 *                     matrix and 0.0 being an empty matrix.
+	 * @param[in] seed     The seed used to generate the random values.
+	 *
+	 * @returns The requested random matrix.
 	 */
 	template<
 		typename D,
-		Descriptor descr = descriptors::no_operation,
 		typename RIT = config::RowIndexType,
 		typename CIT = config::ColIndexType,
 		typename NIT = config::NonzeroIndexType,
-		Backend implementation = grb::config::default_backend
+		Backend backend = grb::config::default_backend
 	>
-	Matrix< D, implementation, RIT, CIT, NIT > random(
-		size_t nrows, size_t ncols, IOMode io_mode,
-		double sparsity, unsigned long seed = 0UL
+	Matrix< D, backend, RIT, CIT, NIT > random(
+		const size_t m, const size_t n,
+		const double sparsity,
+		const unsigned long seed = static_cast< unsigned long >( 0 )
 	) {
-		if( nrows == 0 || ncols == 0 ) {
-			return empty< D, descr, RIT, CIT, NIT, implementation >(
-				nrows, ncols, io_mode
-			);
+		if( m == 0 || n == 0 ) {
+			return empty< D, RIT, CIT, NIT, backend >( m, n );
 		}
 
 		std::mt19937 gen( seed );
 
 		const std::uniform_real_distribution< RIT > rowDistribution(
-			static_cast< RIT >( 0 ), static_cast< RIT >( nrows - 1 )
+			static_cast< RIT >( 0 ), static_cast< RIT >( m - 1 )
 		);
 		const std::uniform_real_distribution< CIT > colDistribution(
-			static_cast< CIT >( 0 ), static_cast< CIT >( ncols - 1 )
+			static_cast< CIT >( 0 ), static_cast< CIT >( n - 1 )
 		);
 		const std::uniform_real_distribution< D > valuesDistribution(
 			static_cast< D >( 0 ), static_cast< D >( 1 )
 		);
 
-		return random< D, descr, RIT, CIT, NIT, implementation >(
-			nrows, ncols, io_mode,
-			sparsity, gen,
-			rowDistribution, colDistribution, valuesDistribution
+		return random< D, RIT, CIT, NIT, backend >(
+			nrows, ncols, sparsity,
+			gen, rowDistribution, colDistribution, valuesDistribution
 		);
 	}
 
+	/**
+	 * Builds a pattern matrix filled with random values at random positions.
+	 *
+	 * Will use an \a mt19937 random generator with the given seed.
+	 *
+	 * The distributions used to generate the random data are
+	 * uniform_real_distribution with the following ranges:
+	 *  -# row indices:    [0, m - 1]
+	 *  -# column indices: [0, n - 1]
+	 *
+	 * \warning Usually, uniform random matrices do \em not mimic practical graph
+	 *          and sparse matrix structures at all. Therefore, use this
+	 *          functionality with care.
+	 *
+	 * This is the pattern-specialisation of the #grb::factory::random function
+	 * specialised for uniform random sampling using the \a mt19937 RNG.
+	 *
+	 * @tparam D       The type of a non-zero values.
+	 * @tparam RIT     The type used for row indices.
+	 * @tparam CIT     The type used for column indices.
+	 * @tparam NIT     The type used for non-zero indices.
+	 * @tparam backend The selected backend.
+	 *
+	 * @param[in] m        The number of rows of the matrix.
+	 * @param[in] n        The number of columns of the matrix.
+	 * @param[in] sparsity The sparsity factor of the matrix, 1.0 being a dense
+	 *                     matrix and 0.0 being an empty matrix.
+	 * @param[in] seed     The seed used to generate the random values.
+	 *
+	 * @returns The requested random matrix.
+	 */
 	template<
 		typename D,
-		Descriptor descr = descriptors::no_operation,
 		typename RIT = config::RowIndexType,
 		typename CIT = config::ColIndexType,
 		typename NIT = config::NonzeroIndexType,
-		Backend implementation = grb::config::default_backend
+		Backend backend = grb::config::default_backend
 	>
-	Matrix< void, implementation, RIT, CIT, NIT >
-	random(
-		size_t nrows, size_t ncols, IOMode io_mode,
-		double sparsity, unsigned long seed = 0UL,
+	Matrix< void, backend, RIT, CIT, NIT > random(
+		const size_t m, const size_t n,
+		const double sparsity,
+		const unsigned long seed = static_cast< unsigned long >(0),
 		typename std::enable_if< std::is_void< D >::value, int >::type = 0
 	) {
-		if( nrows == 0 || ncols == 0 ) {
-			return empty< D, descr, RIT, CIT, NIT, implementation >(
-				nrows, ncols, io_mode
-			);
+		if( m == 0 || n == 0 ) {
+			return empty< D, RIT, CIT, NIT, backend >( m, n );
 		}
 
 		std::mt19937 gen( seed );
 
 		const std::uniform_real_distribution< RIT > rowDistribution(
-			static_cast< RIT >( 0 ), static_cast< RIT >( nrows - 1 )
+			static_cast< RIT >( 0 ), static_cast< RIT >( m - 1 )
 		);
 		const std::uniform_real_distribution< CIT > colDistribution(
-			static_cast< CIT >( 0 ), static_cast< CIT >( ncols - 1 )
+			static_cast< CIT >( 0 ), static_cast< CIT >( n - 1 )
 		);
 
-		return random< void, descr, RIT, CIT, NIT, implementation >(
-			nrows, ncols, io_mode,
-			sparsity, gen,
-			rowDistribution, colDistribution
+		return random< void, RIT, CIT, NIT, backend >(
+			m, n, sparsity,
+			gen, rowDistribution, colDistribution
 		);
 	}
 
 } // namespace grb::factory
 
 #endif // end _H_GRB_MATRIX_FACTORY
+

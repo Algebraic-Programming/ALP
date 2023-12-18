@@ -29,8 +29,8 @@ static const int data2[ 15 ] = { 8, 9, 8, 6, 8, 7, 8, 7, 5, 2, 3, 5, 1, 5, 5 };
 static const int chk[ 15 ] = { 32, 63, 32, 36, 32, 49, 8, 49, 15, 12, 21, 25, 1, 40, 35 };
 
 int main( int argc, char ** argv ) {
-	(void)argc;
-	(void)printf( "Functional test executable: %s\n", argv[ 0 ] );
+	(void) argc;
+	std::cout << "Functional test executable: " << argv[ 0 ] << "\n";
 
 	// sanity check against metabugs
 	int error = 0;
@@ -60,7 +60,7 @@ int main( int argc, char ** argv ) {
 	// allocate
 	grb::Vector< int > x( 15 );
 	grb::Vector< int > y( 15 );
-	grb::Matrix< int > A = factory::identity< int >( 15, SEQUENTIAL, data2 );
+	grb::Matrix< int > A = factory::diag< int >( 15, 15, data2, data2 + 15 );
 	grb::Vector< bool > mask( 15 );
 
 	// initialise x

@@ -33,10 +33,10 @@ void grb_program( const size_t &n, grb::RC &rc ) {
 	> ring;
 
 	// initialize test
-	const grb::Matrix< double > A = factory::eye< double >( n, n, SEQUENTIAL, 1, 1 );
-	const grb::Matrix< double > B = factory::identity< double >( n, SEQUENTIAL, 2 );
+	const grb::Matrix< double > A = factory::eye< double >( n, n, 1, 1 );
+	const grb::Matrix< double > B = factory::identity< double >( n, 2 );
 	grb::Matrix< double > C( n, n );
-	grb::Matrix< double > C_expected = factory::eye< double >( n, n, SEQUENTIAL, 2, 1 );
+	grb::Matrix< double > C_expected = factory::eye< double >( n, n, 2, 1 );
 
 	// compute with the semiring mxm
 	std::cout << "\tVerifying the semiring version of mxm\n";

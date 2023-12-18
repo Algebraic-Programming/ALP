@@ -33,20 +33,22 @@ void grbProgram( const int &, int &error ) {
 	// allocate
 	grb::Vector< int > x( 15 );
 	grb::Vector< int > sparse_x( 15 );
-	grb::Matrix< int > A = factory::identity< int >( 15, SEQUENTIAL, data2 );
+	grb::Matrix< int > A = factory::diag< int >( 15, 15, data2, data2 + 15 );
 
 	// initialise x
 	if( !error ) {
 		const int * iterator = &(data1[ 0 ]);
 		rc = grb::buildVector( x, iterator, iterator + 15, SEQUENTIAL );
 		if( rc != grb::SUCCESS ) {
-			(void)fprintf( stderr, "Unexpected return code from Vector build (x): %d.\n", (int)rc );
+			std::cerr << "Unexpected return code from Vector build (x): "
+				<< grb::toString( rc ) << ".\n";
 			error = 4;
 		}
 	}
 
 	if( rc != grb::SUCCESS ) {
-		(void)fprintf( stderr, "Unexpected return code from Matrix buildMatrixUnique: %d.\n", (int)rc );
+		std::cerr << "Unexpected return code from Matrix buildMatrixUnique: "
+			<< grb::toString( rc ) << ".\n";
 		error = 5;
 	}
 
@@ -65,11 +67,13 @@ void grbProgram( const int &, int &error ) {
 
 		// check zero sizes
 		if( grb::nnz( y ) != 0 ) {
-			(void)fprintf( stderr, "Unexpected number of nonzeroes in y: %zd (expected 0).\n", grb::nnz( y ) );
+			std::cerr << "Unexpected number of nonzeroes in y: " << grb::nnz( y )
+				<< " (expected 0).\n";
 			error = 6;
 		}
 		if( !error && grb::nnz( m ) != 0 ) {
-			(void)fprintf( stderr, "Unexpected number of nonzeroes in m: %zd (expected 0).\n", grb::nnz( m ) );
+			std::cerr << "Unexpected number of nonzeroes in m: " << grb::nnz( m )
+				<< " (expected 0).\n";
 			error = 7;
 		}
 
@@ -77,13 +81,15 @@ void grbProgram( const int &, int &error ) {
 		if( !error ) {
 			rc = grb::setElement( m, true, i );
 			if( rc != grb::SUCCESS ) {
-				(void)fprintf( stderr, "Unexpected return code from vector set (m[%zd]): %d.\n", i, (int)rc );
+				std::cerr << "Unexpected return code from vector set (m[" << i << "]): "
+					<< grb::toString( rc ) << ".\n";
 				error = 8;
 			}
 		}
 		if( !error ) {
 			if( grb::nnz( m ) != 1 ) {
-				(void)fprintf( stderr, "Unexpected number of nonzeroes in m: %zd (expected 1).\n", grb::nnz( m ) );
+				std::cerr << "Unexpected number of nonzeroes in m: " << grb::nnz( m )
+					<< "(expected 1).\n";
 				error = 9;
 			}
 		}
@@ -92,14 +98,16 @@ void grbProgram( const int &, int &error ) {
 		if( !error ) {
 			rc = grb::mxv( y, m, A, x, integers );
 			if( rc != grb::SUCCESS ) {
-				(void)fprintf( stderr, "Unexpected return code from grb::vxm: %d.\n", (int)rc );
+				std::cerr << "Unexpected return code from grb::vxm: "
+				       << grb::toString( rc ) << ".\n";
 				error = 10;
 			}
 		}
 
 		// check sparsity
 		if( !error && grb::nnz( y ) != 1 ) {
-			(void)fprintf( stderr, "Unexpected number of nonzeroes in y: %zd (expected 1).\n", grb::nnz( y ) );
+			std::cerr << "Unexpected number of nonzeroes in y: " << grb::nnz( y )
+				<< " (expected 1).\n";
 			error = 11;
 		}
 
@@ -108,16 +116,13 @@ void grbProgram( const int &, int &error ) {
 			const size_t cur_index = pair.first;
 			const int against = pair.second;
 			if( !error && cur_index == i && !grb::utils::equals( chk[ i ], against ) ) {
-				(void)fprintf( stderr,
-					"Output vector element mismatch at position %zd: %d does not equal "
-					"%d.\n",
-					i, chk[ i ], against
-				);
+				std::cerr << "Output vector element mismatch at position " << i << ": "
+					<< chk[ i ] << " does not equal " << against << ".\n";
 				error = 12;
 			}
 			if( !error && cur_index != i ) {
-				(void)fprintf( stderr, "Expected no ouput vector element at position %zd;"
-					"only expected an entry at position %zd.\n", cur_index, i );
+				std::cerr << "Expected no ouput vector element at position " << cur_index
+					<< ": only expected an entry at position " << i << ".\n";
 				error = 13;
 			}
 		}
@@ -126,35 +131,40 @@ void grbProgram( const int &, int &error ) {
 		if( !error ) {
 			rc = grb::clear( y );
 			if( rc != grb::SUCCESS ) {
-				(void)fprintf( stderr, "Unexpected return code from grb::clear (y): %d.\n", (int)rc );
+				std::cerr << "Unexpected return code from grb::clear (y): "
+					<< grb::toString( rc ) << ".\n";
 				error = 14;
 			}
 		}
 		if( !error ) {
 			rc = grb::clear( sparse_x );
 			if( rc != grb::SUCCESS ) {
-				(void)fprintf( stderr, "Unexpected return code from grb::clear (sparse_x): %d.\n", (int)rc );
+				std::cerr << "Unexpected return code from grb::clear (sparse_x): "
+					<< grb::toString( rc ) << ".\n";
 				error = 15;
 			}
 		}
 		if( !error ) {
 			rc = grb::setElement( sparse_x, data1[ i ], i );
 			if( rc != grb::SUCCESS ) {
-				(void)fprintf( stderr, "Unexpected return code from grb::set (sparse_x: %d.\n", (int)rc );
+				std::cerr << "Unexpected return code from grb::set (sparse_x: "
+					<< grb::toString( rc ) << ".\n";
 				error = 16;
 			}
 		}
 		if( !error ) {
 			rc = grb::mxv( y, m, A, sparse_x, integers );
 			if( rc != grb::SUCCESS ) {
-				(void)fprintf( stderr, "Unpexpected return code from grb::mxv (in_place): %d.\n", (int)rc );
+				std::cerr << "Unpexpected return code from grb::mxv (in_place): "
+					<< grb::toString( rc ) << ".\n";
 				error = 17;
 			}
 		}
 
 		// check sparsity
 		if( !error && grb::nnz( y ) != 1 ) {
-			(void)fprintf( stderr, "Unexpected number of nonzeroes in y: %zd (expected 1).\n", grb::nnz( y ) );
+			std::cerr << "Unexpected number of nonzeroes in y: " << grb::nnz( y )
+				<< " (expected 1).\n";
 			error = 18;
 		}
 
@@ -163,16 +173,13 @@ void grbProgram( const int &, int &error ) {
 			const size_t cur_index = pair.first;
 			const int against = pair.second;
 			if( !error && cur_index == i && !grb::utils::equals( chk[ i ], against ) ) {
-				(void)fprintf( stderr,
-					"Output vector element mismatch at position %zd: %d does not equal "
-					"%d.\n",
-					i, chk[ i ], against
-				);
+				std::cerr << "Output vector element mismatch at position " << i << ": "
+					<< chk[ i ] << " does not equal " << against << ".\n";
 				error = 19;
 			}
 			if( !error && cur_index != i ) {
-				(void)fprintf( stderr, "Expected no ouput vector element at position %zd;"
-					"only expected an entry at position %zd.\n", cur_index, i );
+				std::cerr << "Expected no ouput vector element at position " << cur_index
+					<< ": only expected an entry at position " << i << ".\n";
 				error = 20;
 			}
 		}
@@ -186,7 +193,7 @@ int main( int argc, char ** argv ) {
 	// sanity check against metabugs
 	int error = 0;
 	for( size_t i = 0; i < 15; ++i ) {
-		if( ! grb::utils::equals( data1[ i ] * data2[ i ], chk[ i ] ) ) {
+		if( !grb::utils::equals( data1[ i ] * data2[ i ], chk[ i ] ) ) {
 			std::cerr << "Sanity check error at position " << i << ": " << data1[ i ]
 				<< " + " << data2[ i ] << " does not equal " << chk[ i ] << ".\n";
 			error = 1;
