@@ -178,8 +178,8 @@ namespace grb {
 				}
 
 				void set(
-					void * const arr, bool arr_initialized,
-					void * const buf, const size_t dim, bool parallel = true
+					void * const arr,
+					void * const buf, const size_t dim
 				) noexcept {
 					// catch trivial case
 					if( arr == nullptr || buf == nullptr ) {
@@ -214,20 +214,41 @@ namespace grb {
 					_buf = internal::NONBLOCKING::vectorBufferSize( _cap );
 
 					// and initialise _assigned (but only if necessary)
-					if( dim > 0 && !arr_initialized ) {
-						if( parallel ) {
-							#pragma omp parallel
-							{
-								size_t start, end;
-								config::OMP::localRange( start, end, 0, dim );
-								for( size_t i = start; i < end; ++i ) {
-									_assigned[ i ] = false;
-								}
-							}
-						} else {
-							for( size_t i = 0; i < dim; ++i ) {
+					// if( dim > 0 && !arr_initialized ) {
+						// clearAssignedUpTo( dim );
+					// 	if( parallel ) {
+					// 		#pragma omp parallel
+					// 		{
+					// 			size_t start, end;
+					// 			config::OMP::localRange( start, end, 0, dim );
+					// 			for( size_t i = start; i < end; ++i ) {
+					// 				_assigned[ i ] = false;
+					// 			}
+					// 		}
+					// 	} else {
+					// 		for( size_t i = 0; i < dim; ++i ) {
+					// 			_assigned[ i ] = false;
+					// 		}
+					// 	}
+					// }
+				}
+
+				void clearAssignedUpTo( const size_t dim, bool parallel = true ) noexcept {
+					if( dim == 0 ) {
+						return;
+					}
+					if( parallel ) {
+						#pragma omp parallel
+						{
+							size_t start, end;
+							config::OMP::localRange( start, end, 0, dim );
+							for( size_t i = start; i < end; ++i ) {
 								_assigned[ i ] = false;
 							}
+						}
+					} else {
+						for( size_t i = 0; i < dim; ++i ) {
+							_assigned[ i ] = false;
 						}
 					}
 				}
@@ -493,8 +514,8 @@ namespace grb {
 					Coordinates< nonblocking > ret;
 					assert( upper_bound - lower_bound <= analytic_model.getTileSize() );
 
-					ret.set( _assigned + lower_bound, true, local_stack,
-						upper_bound - lower_bound, false );
+					ret.set( _assigned + lower_bound, local_stack,
+						upper_bound - lower_bound );
 
 					// the number of new nonzeroes is used to determine the total number
 					// of nonzeroes for the given local coordinates, since some of the

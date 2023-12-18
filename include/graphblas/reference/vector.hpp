@@ -369,7 +369,7 @@ namespace grb {
 			} else {
 				_id = *id_in;
 			}
-			_coordinates.set( nullptr, false, nullptr, 0 );
+			_coordinates.set( nullptr, nullptr, 0 );
 
 			// catch trivial case: zero capacity
 			if( cap_in == 0 ) {
@@ -391,8 +391,9 @@ namespace grb {
 						reinterpret_cast< uintptr_t >( assigned_in )
 					);
 				}
-				_raw_deleter = utils::AutoDeleter< D >( raw_in, cap_in, utils::AutoDeleter< D >::AllocationType::UNMANAGED );
-				_coordinates.set( assigned_in, assigned_initialized, buffer_in, cap_in );
+				_raw_deleter = utils::AutoDeleter< D >( raw_in, cap_in,
+					utils::AutoDeleter< D >::AllocationType::UNMANAGED );
+				_coordinates.set( assigned_in, buffer_in, cap_in );
 				return;
 			} else {
 				assert( assigned_initialized == false );
@@ -429,7 +430,10 @@ namespace grb {
 			}
 
 			// assign to _coordinates struct
-			_coordinates.set( assigned, assigned_initialized, buffer, cap_in );
+			_coordinates.set( assigned, buffer, cap_in );
+			if( !assigned_initialized ) {
+				_coordinates.clearAssignedUpTo( cap_in );
+			}
 
 			// there should always be zero initial values
 			assert( _coordinates.nonzeroes() == 0 );

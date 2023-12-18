@@ -334,7 +334,7 @@ namespace grb {
 				 * call to this function, the state shall become valid.
 				 */
 				void set(
-					void * const arr, bool arr_initialized,
+					void * const arr,
 					void * const buf, const size_t dim
 				) noexcept {
 					// catch trivial case
@@ -375,24 +375,45 @@ namespace grb {
 						1
 #endif
 					);
-					// and initialise _assigned (but only if necessary)
-					if( dim > 0 && !arr_initialized ) {
-#ifdef _H_GRB_REFERENCE_OMP_COORDINATES
-						#pragma omp parallel
-						{
-							size_t start, end;
-							config::OMP::localRange( start, end, 0, dim );
-#else
-							const size_t start = 0;
-							const size_t end = dim;
-#endif
-							for( size_t i = start; i < end; ++i ) {
-								_assigned[ i ] = false;
-							}
-#ifdef _H_GRB_REFERENCE_OMP_COORDINATES
-						}
-#endif
+// 					// and initialise _assigned (but only if necessary)
+// 					if( dim > 0 && !arr_initialized ) {
+// #ifdef _H_GRB_REFERENCE_OMP_COORDINATES
+// 						#pragma omp parallel
+// 						{
+// 							size_t start, end;
+// 							config::OMP::localRange( start, end, 0, dim );
+// #else
+// 							const size_t start = 0;
+// 							const size_t end = dim;
+// #endif
+// 							for( size_t i = start; i < end; ++i ) {
+// 								_assigned[ i ] = false;
+// 							}
+// #ifdef _H_GRB_REFERENCE_OMP_COORDINATES
+// 						}
+// #endif
+// 					}
+				}
+
+				void clearAssignedUpTo( const size_t dim ) noexcept {
+					if( dim == 0 ) {
+						return;
 					}
+#ifdef _H_GRB_REFERENCE_OMP_COORDINATES
+					#pragma omp parallel
+					{
+						size_t start, end;
+						config::OMP::localRange( start, end, 0, dim );
+#else
+						const size_t start = 0;
+						const size_t end = dim;
+#endif
+						for( size_t i = start; i < end; ++i ) {
+							_assigned[ i ] = false;
+						}
+#ifdef _H_GRB_REFERENCE_OMP_COORDINATES
+					}
+#endif
 				}
 
 				/**
@@ -1509,21 +1530,7 @@ namespace grb {
 							assert( dense_coordinates_may_not_call_clear );
 						}
 #endif
-#ifdef _H_GRB_REFERENCE_OMP_COORDINATES
-						#pragma omp parallel
-						{
-							size_t start, end;
-							config::OMP::localRange( start, end, 0, _cap );
-#else
-							const size_t start = 0;
-							const size_t end = _cap;
-#endif
-							for( size_t i = start; i < end; ++i ) {
-								_assigned[ i ] = false;
-							}
-#ifdef _H_GRB_REFERENCE_OMP_COORDINATES
-						}
-#endif
+						clearAssignedUpTo( _cap );
 					} else {
 #ifdef _H_GRB_REFERENCE_OMP_COORDINATES
 						if( _n < config::OMP::minLoopSize() ) {

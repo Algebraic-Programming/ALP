@@ -149,7 +149,7 @@ namespace grb {
 
 			// initialisations
 			internal::Coordinates< reference > coors;
-			coors.set( arr, false, buf, n );
+			coors.set( arr, buf, n );
 
 			if( !crs_only ) {
 #ifdef _H_GRB_REFERENCE_OMP_BLAS3
@@ -1030,8 +1030,8 @@ namespace grb {
 
 			// initialisations
 			internal::Coordinates< reference > coors1, coors2;
-			coors1.set( arr1, false, buf1, n );
-			coors2.set( arr2, false, buf2, n );
+			coors1.set( arr1, buf1, n );
+			coors2.set( arr2, buf2, n );
 #ifdef _H_GRB_REFERENCE_OMP_BLAS3
 			#pragma omp parallel
 			{
