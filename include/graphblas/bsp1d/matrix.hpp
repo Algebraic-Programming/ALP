@@ -256,7 +256,7 @@ namespace grb {
 
 					// see if we can get an ID
 					const auto ptr = new char[ 1 ];
-					const auto id = data.mapper.insert(
+					auto id = data.mapper.insert(
 						reinterpret_cast< uintptr_t >( ptr )
 					);
 

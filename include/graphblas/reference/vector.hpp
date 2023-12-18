@@ -278,9 +278,6 @@ namespace grb {
 		/** My ID. */
 		typename internal::ReferenceMapper::IDType _id;
 
-		/** Whether \a id should be removed from #internal::reference_mapper */
-		bool _remove_id;
-
 		/** All (sparse) coordinate information. */
 		MyCoordinates _coordinates;
 
@@ -372,7 +369,6 @@ namespace grb {
 			} else {
 				_id = *id_in;
 			}
-			_remove_id = id_in == nullptr;
 			_coordinates.set( nullptr, false, nullptr, 0 );
 
 			// catch trivial case: zero capacity
@@ -579,7 +575,6 @@ namespace grb {
 				_id = internal::reference_mapper.insert(
 					reinterpret_cast< uintptr_t >( raw )
 				);
-				_remove_id = true;
 				_coordinates.setDense( n );
 			}
 		}
@@ -907,15 +902,13 @@ namespace grb {
 #endif
 				// copy and move
 				_id = x._id;
-				_remove_id = x._remove_id;
 				_coordinates = std::move( x._coordinates );
 				_raw_deleter = std::move( x._raw_deleter );
 				_assigned_deleter = std::move( x._assigned_deleter );
 				_buffer_deleter = std::move( x._buffer_deleter );
 
 				// invalidate that which was not moved
-				x._id = std::numeric_limits< uintptr_t >::max();
-				x._remove_id = false;
+				x._id = internal::ReferenceMapper::getInvalidID();
 			}
 
 			/**
@@ -963,13 +956,11 @@ namespace grb {
 					<< " into " << _id << "\n";
 #endif
 				_id = x._id;
-				_remove_id = x._remove_id;
 				_coordinates = std::move( x._coordinates );
 				_raw_deleter = std::move( x._raw_deleter );
 				_assigned_deleter = std::move( x._assigned_deleter );
 				_buffer_deleter = std::move( x._buffer_deleter );
-				x._id = std::numeric_limits< uintptr_t >::max();
-				x._remove_id = false;
+				x._id = internal::ReferenceMapper::getInvalidID();
 				return *this;
 			}
 
@@ -985,13 +976,9 @@ namespace grb {
 				// _raw_deleter,
 				// _buffer_deleter, and
 				// _assigned_deleter
-				if( _coordinates.size() > 0 && _remove_id ) {
+				if( _coordinates.size() > 0 ) {
 					internal::reference_mapper.remove( _id );
-					_id = std::numeric_limits< uintptr_t >::max();
-				} else {
-					if( _remove_id ) {
-						assert( _id == std::numeric_limits< uintptr_t >::max() );
-					}
+					_id = internal::ReferenceMapper::getInvalidID();
 				}
 			}
 

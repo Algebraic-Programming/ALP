@@ -138,7 +138,11 @@ namespace grb {
 				 * There must not have been a call to this function with the same \a in
 				 * parameter after the call to #insert that returned \a in.
 				 */
-				void remove( const IDType in ) {
+				void remove( IDType & in ) {
+
+					if( in == getInvalidID() ) {
+						return;
+					}
 #ifdef _DEBUG
 					std::cout << "DMapper::remove( " << in << " )" << std::endl;
 #endif
@@ -156,6 +160,7 @@ namespace grb {
 					}
 					invmap.erase( it );
 					removals.insert( in );
+					in = getInvalidID();
 				}
 
 		}; // end ``grb::utils::DMapper''
