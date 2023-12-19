@@ -198,7 +198,9 @@ namespace grb {
 					// void * const arr,
 					// void * const buf, const size_t dim
 					utils::AutoDeleter< char >&& arr,
-					utils::AutoDeleter< char >&& buf, const size_t dim
+					utils::AutoDeleter< char >&& buf, const size_t dim,
+					const bool arr_was_cleared,
+					const bool parallel = true
 				) noexcept {
 					// catch trivial case
 					if( !arr || !buf ) {
@@ -216,8 +218,8 @@ namespace grb {
 
 					// _assigned has no alignment issues, take directly from input buffer
 					assert( reinterpret_cast< uintptr_t >( _assigned ) % sizeof( bool ) == 0 );
-					_assigned_deleter = std::move( arr );
 					_assigned = reinterpret_cast< bool * >( arr.get() );
+					_assigned_deleter = std::move( arr );
 					// ...but _stack does have potential alignment issues:
 					_stack_deleter = std::move( buf );
 					char * buf_raw = static_cast< char * >( buf.get() );
@@ -235,23 +237,9 @@ namespace grb {
 					_buf = internal::NONBLOCKING::vectorBufferSize( _cap );
 
 					// and initialise _assigned (but only if necessary)
-					// if( dim > 0 && !arr_initialized ) {
-						// clearAssignedUpTo( dim );
-					// 	if( parallel ) {
-					// 		#pragma omp parallel
-					// 		{
-					// 			size_t start, end;
-					// 			config::OMP::localRange( start, end, 0, dim );
-					// 			for( size_t i = start; i < end; ++i ) {
-					// 				_assigned[ i ] = false;
-					// 			}
-					// 		}
-					// 	} else {
-					// 		for( size_t i = 0; i < dim; ++i ) {
-					// 			_assigned[ i ] = false;
-					// 		}
-					// 	}
-					// }
+					if( !arr_was_cleared ) {
+						clearAssignedUpTo( dim, parallel );
+					}
 				}
 
 				void clearAssignedUpTo( const size_t dim, bool parallel = true ) noexcept {
@@ -543,7 +531,7 @@ namespace grb {
 						utils::AutoDeleter< char >( reinterpret_cast< char * >( _assigned + lower_bound ), size, unm ),
 						// local_stack,
 						utils::AutoDeleter< char >( reinterpret_cast< char * >( local_stack ), size, unm ),
-						size );
+						size, true );
 
 					// the number of new nonzeroes is used to determine the total number
 					// of nonzeroes for the given local coordinates, since some of the

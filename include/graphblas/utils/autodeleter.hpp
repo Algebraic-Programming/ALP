@@ -137,14 +137,14 @@ namespace grb {
 				// (void)size;
 				// const auto free_p = &( functions::template safe_free< T > );
 				// _shPtr = std::shared_ptr< T >( pointer, free_p );
-				if( size > 0 ) {
-					typedef typename functions::template safe_numa_free< T > FreeFunctor;
-					const FreeFunctor free_f( size );
-					_shPtr = std::shared_ptr< T >( pointer, free_f );
-				} else {
-					const auto free_p = &( functions::template safe_free< T > );
-					_shPtr = std::shared_ptr< T >( pointer, free_p );
-				}
+				// if( size > 0 ) {
+				// 	typedef typename functions::template safe_numa_free< T > FreeFunctor;
+				// 	const FreeFunctor free_f( size );
+				// 	_shPtr = std::shared_ptr< T >( pointer, free_f );
+				// } else {
+				// 	const auto free_p = &( functions::template safe_free< T > );
+				// 	_shPtr = std::shared_ptr< T >( pointer, free_p );
+				// }
 
 				switch (type)
 				{

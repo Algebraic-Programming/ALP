@@ -258,7 +258,9 @@ namespace grb {
 				 * \endinternal
 				 */
 				inline Coordinates( const Coordinates &x ) noexcept :
-					_assigned( x._assigned ), _stack( x._stack ), _buffer( x._buffer ),
+					_assigned( x._assigned ), _assigned_deleter( x._assigned_deleter ),
+					_stack( x._stack ), _stack_deleter( x._stack_deleter ),
+					_buffer( x._buffer ),
 					_n( x._n ), _cap( x._cap ), _buf( x._buf )
 				{
 					// self-assignment is a programming error
@@ -353,7 +355,9 @@ namespace grb {
 					// void * const arr,
 					// void * const buf, const size_t dim
 					utils::AutoDeleter< char >&& arr,
-					utils::AutoDeleter< char >&& buf, const size_t dim
+					utils::AutoDeleter< char >&& buf,
+					const size_t dim,
+					bool arr_was_cleared
 				) noexcept {
 					// catch trivial case
 					if( !arr || !buf ) {
@@ -371,8 +375,9 @@ namespace grb {
 
 					// _assigned has no alignment issues, take directly from input buffer
 					assert( reinterpret_cast< uintptr_t >( _assigned ) % sizeof( bool ) == 0 );
-					_assigned_deleter = std::move( arr );
+					// get address before arr is emptied
 					_assigned = reinterpret_cast< bool * >( arr.get() );
+					_assigned_deleter = std::move( arr );
 					// ...but _stack does have potential alignment issues:
 					char * buf_raw = buf.get();
 					constexpr const size_t size = sizeof( StackType );
@@ -395,24 +400,10 @@ namespace grb {
 						1
 #endif
 					);
-// 					// and initialise _assigned (but only if necessary)
-// 					if( dim > 0 && !arr_initialized ) {
-// #ifdef _H_GRB_REFERENCE_OMP_COORDINATES
-// 						#pragma omp parallel
-// 						{
-// 							size_t start, end;
-// 							config::OMP::localRange( start, end, 0, dim );
-// #else
-// 							const size_t start = 0;
-// 							const size_t end = dim;
-// #endif
-// 							for( size_t i = start; i < end; ++i ) {
-// 								_assigned[ i ] = false;
-// 							}
-// #ifdef _H_GRB_REFERENCE_OMP_COORDINATES
-// 						}
-// #endif
-// 					}
+					// and initialise _assigned (but only if necessary)
+					if( !arr_was_cleared ) {
+						clearAssignedUpTo( dim );
+					}
 				}
 
 				void clearAssignedUpTo( const size_t dim ) noexcept {

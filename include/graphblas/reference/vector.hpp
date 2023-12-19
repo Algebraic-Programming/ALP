@@ -439,10 +439,7 @@ namespace grb {
 
 			// assign to _coordinates struct
 			_coordinates.set( std::move( _assigned_deleter ),
-				std::move( _buffer_deleter ), cap_in );
-			if( !assigned_initialized ) {
-				_coordinates.clearAssignedUpTo( cap_in );
-			}
+				std::move( _buffer_deleter ), cap_in, assigned_initialized );
 
 			// there should always be zero initial values
 			assert( _coordinates.nonzeroes() == 0 );
