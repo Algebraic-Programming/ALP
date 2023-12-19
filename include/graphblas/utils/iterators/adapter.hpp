@@ -50,6 +50,10 @@ namespace grb::utils {
 		 *
 		 * @tparam SubIterT The underlying iterator type.
 		 *
+		 * For ease-of-use, see #make_adapter_iterator. If not using that factory
+		 * method and rather this class directly, the type \a SubIterT must always
+		 * be explicitly given.
+		 *
 		 * \internal This adapter implementation is for random access iterators.
 		 */
 		template<
@@ -313,10 +317,32 @@ namespace grb::utils {
 
 		// factory
 
+		/**
+		 * Creates an adapter of a given iterator.
+		 *
+		 * @tparam SubIterT The type of the given iterator.
+		 *
+		 * \warning Not all iterator categories are presently supported.
+		 *
+		 * \note Random access iterators guaranteed to be supported.
+		 *
+		 * @param[in] start The given iterator whose values shall be adapted.
+		 * @param[in] end   The end-iterator that matches \a start.
+		 * @param[in] func  The function by which the values of the given iterator
+		 *                  shall be adapted.
+		 *
+		 * @returns An iterator in the same position as \a start but whose values
+		 *          will be modified according to \a func.
+		 *
+		 * The returned iterator is a const-iterator, meaning the values iterated over
+		 * cannot be modified, even if the original iterator supported this.
+		 */
 		template< typename SubIterT >
 		static Adapter< SubIterT > make_adapter_iterator(
 			const SubIterT start, const SubIterT end,
-			typename SubIterT::value_type (*func) (const typename SubIterT::value_type)
+			const std::function<
+				typename SubIterT::value_type(const typename SubIterT::value_type)
+			> func
 		) {
 			return Adapter< SubIterT >( start, end, func );
 		}
