@@ -352,7 +352,7 @@ namespace grb {
 						R val = iterator._val;
 						SelfType::func( val, iterator._state, pos );
 						return self_type(
-							pos, iterator._count,
+							iterator._count, pos,
 							val, iterator._state
 						);
 					}
@@ -366,7 +366,7 @@ namespace grb {
 						R val = iterator._val;
 						SelfType::func( val, iterator._state, pos );
 						return self_type(
-							pos, iterator._count,
+							iterator._count, pos,
 							val, iterator._state
 						);
 					}
@@ -386,7 +386,7 @@ namespace grb {
 						R val = iterator._val;
 						SelfType::func( val, iterator._state, pos );
 						return self_type(
-							pos, iterator._count,
+							iterator._count, pos,
 							val, iterator._state
 						);
 					}
@@ -400,7 +400,7 @@ namespace grb {
 						R val = iterator._val;
 						SelfType::func( val, iterator._state, pos );
 						return self_type(
-							pos, iterator._count,
+							iterator._count, pos,
 							val, iterator._state
 						);
 					}
