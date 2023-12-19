@@ -66,6 +66,13 @@ namespace grb {
 
 				protected:
 
+					/**
+					 * Configurable block size for parallel I/O.
+					 *
+					 * The default here is a small multiple of standard cache line sizes.
+					 */
+					static constexpr const size_t block_size = 256;
+
 					size_t _count;
 
 					size_t _pos;
@@ -118,6 +125,20 @@ namespace grb {
 					 * @param[in] dummy An optional dummy value of type \a R in case instances
 					 *                  of \a R are not default-constructible.
 					 *
+					 * To create iterators that mimic parallel I/O, the following optional
+					 * arguments exist:
+					 *
+					 * @param[in] s     The process ID. Optional; default is zero.
+					 * @param[in] P     The number of processes. Optional; default is one.
+					 *
+					 * The parameter \a s must be strictly smaller than \a P. The parameter
+					 * \a P may not be zero.
+					 *
+					 * If \a s is 0 and \a P is 1, default sequential semantics are selected;
+					 * meaning, the iterator constructed will iterate over the entire range.
+					 * If \a s is nonzero and \a P is larger than one, the created iterator
+					 * iterates but over part of the range.
+					 *
 					 * \warning The maximum value for \a count is <tt>SIZE_MAX</tt>. After
 					 *          incrementing the iterator returned by this constructor that
 					 *          many times, the iterator shall be in end position.
@@ -126,11 +147,36 @@ namespace grb {
 						const size_t count,
 						const bool start,
 						const T state,
-						const R dummy = R()
+						const R dummy = R(),
+						const size_t s = 0,
+						const size_t P = 1
 					) :
 						_count( count ), _val( dummy ), _state( state )
 					{
-						_pos = start ? 0 : count;
+						// run-time checks
+						if( P == 0 || s >= P ) {
+							throw std::runtime_error( "Illegal values for s and/or P" );
+						}
+						// adjust count according to P
+						if( P > 1 && count > block_size ) {
+							const size_t bcount = (count % block_size) > 0
+								? count / block_size + 1
+								: count / block_size;
+							const size_t bcount_per_process = (bcount % P) > 0
+								? bcount / P + 1
+								: bcount / P;
+							_count = bcount_per_process * block_size;
+						}
+						// adjust count according to s
+						_count = (s+1) * _count;
+						if( _count > count ) { _count = count; }
+						// select start position according to s
+						_pos = start
+							? s * _count
+							: count;
+						// correct potential overflow of starting position
+						if( _pos > count ) { _pos = count; }
+						// initialise selected starting position
 						if( count > 0 ) {
 							SelfType::func( _val, state, _pos );
 						}
@@ -212,14 +258,14 @@ namespace grb {
 					) noexcept {
 						return left._pos == right._pos &&
 							left._count == right._count &&
-							left._state == right._state	&&
+							left._state == right._state &&
 							left._val == right._val;
 					}
 
 					friend bool operator!=(
 						self_const_reference_type left, self_const_reference_type right
 					) noexcept {
-						return !( left == right );
+						return !(left == right);
 					}
 
 					// bi-directional iterator interface
@@ -375,6 +421,9 @@ namespace grb {
 
 			/**
 			 * An iterator that repeats the same value for a set number of times.
+			 *
+			 * Rather than using this iterator directly, users may want to refer to the
+			 * #grb::utils::containers::ConstantVector container instead.
 			 */
 			template< typename T >
 			class Repeater {
@@ -414,13 +463,24 @@ namespace grb {
 					 *                  position.
 					 * @param[in] val   The constant value that should be returned \a count
 					 *                  times.
+					 *
+					 * The following are optional arguments for optionally creating parallel
+					 * I/O iterators:
+					 *
+					 * @param[in] s The process ID; default is zero.
+					 * @param[in] P The number of processes; default is one.
+					 *
+					 * The parameter \a s must be strictly smaller than \a P, and \a P must be
+					 * larger than zero.
 					 */
 					static RealType make_iterator(
 						const size_t count,
 						const bool start,
-						const T val
+						const T val,
+						const size_t s = 0,
+						const size_t P = 1
 					) {
-						return RealType( count, start, val, val );
+						return RealType( count, start, val, val, s, P );
 					}
 
 			};
@@ -485,20 +545,32 @@ namespace grb {
 					 * @param[in] repetitions The number of times each element is repeated.
 					 * @param[in] dummy        A dummy initialiser for return elements; optional, in
 					 *                         case \a T is not default-constructible.
+					 *
+					 * The following are optional arguments for optionally creating parallel
+					 * I/O iterators:
+					 *
+					 * @param[in] s The process ID; default is zero.
+					 * @param[in] P The number of processes; default is one.
+					 *
+					 * The parameter \a s must be strictly smaller than \a P, and \a P must be
+					 * larger than zero.
 					 */
 					static RealType make_iterator(
 						const size_t count,
 						const bool start,
-						const size_t offset = 0UL,
-						const size_t stride = 1UL,
-						const size_t repetitions = 1UL,
-						T dummy = T()
+						const size_t offset = static_cast< size_t >( 0 ),
+						const size_t stride = static_cast< size_t >( 1 ),
+						const size_t repetitions = static_cast< size_t >( 1 ),
+						T dummy = T(),
+						const size_t s = 0,
+						const size_t P = 1
 					) {
 						return RealType(
 							count,
 							start,
 							std::tuple< size_t, size_t, size_t >( offset, stride, repetitions ),
-							dummy
+							dummy,
+							s, P
 						);
 					}
 
@@ -546,20 +618,20 @@ namespace grb {
 					 */
 					ConstantVector( const T val, const size_t n ) : _val( val ), _n( n ) {}
 
-					iterator begin() const noexcept {
-						return FactoryType::make_iterator( _n, true, _val );
+					iterator begin( const size_t s = 0, const size_t P = 1 ) const {
+						return FactoryType::make_iterator( _n, true, _val, s, P );
 					}
 
-					iterator end() const noexcept {
-						return FactoryType::make_iterator( _n, false, _val );
+					iterator end( const size_t s = 0, const size_t P = 1 ) const {
+						return FactoryType::make_iterator( _n, false, _val, s, P );
 					}
 
-					const_iterator cbegin() const noexcept {
-						return FactoryType::make_iterator( _n, true, _val );
+					const_iterator cbegin( const size_t s = 0, const size_t P = 1 ) const {
+						return FactoryType::make_iterator( _n, true, _val, s, P );
 					}
 
-					const_iterator cend() const noexcept {
-						return FactoryType::make_iterator( _n, false, _val );
+					const_iterator cend( const size_t s = 0, const size_t P = 1 ) const {
+						return FactoryType::make_iterator( _n, false, _val, s, P );
 					}
 
 			};
@@ -627,8 +699,8 @@ namespace grb {
 					Range(
 						const size_t start,
 						const size_t end,
-						const size_t stride = 1UL,
-						const size_t repetitions = 1UL
+						const size_t stride = static_cast< size_t >( 1 ),
+						const size_t repetitions = static_cast< size_t >( 1 )
 					) noexcept :
 						_start( start ),
 						_end( end ),
@@ -646,20 +718,24 @@ namespace grb {
 						assert( start <= end );
 					}
 
-					iterator begin() const noexcept {
-						return FactoryType::make_iterator( _count, true, _start, _stride, _repetitions );
+					iterator begin( const size_t s = 0, const size_t P = 1 ) const {
+						return FactoryType::make_iterator( _count, true, _start, _stride,
+							_repetitions, T(), s, P );
 					}
 
-					iterator end() const noexcept {
-						return FactoryType::make_iterator( _count, false, _start, _stride, _repetitions );
+					iterator end( const size_t s = 0, const size_t P = 1 ) const {
+						return FactoryType::make_iterator( _count, false, _start, _stride,
+							_repetitions, T(), s, P );
 					}
 
-					const_iterator cbegin() const noexcept {
-						return FactoryType::make_iterator( _count, true, _start, _stride, _repetitions );
+					const_iterator cbegin( const size_t s = 0, const size_t P = 1 ) const {
+						return FactoryType::make_iterator( _count, true, _start, _stride,
+							_repetitions, T(), s, P );
 					}
 
-					const_iterator cend() const noexcept {
-						return FactoryType::make_iterator( _count, false, _start, _stride, _repetitions );
+					const_iterator cend( const size_t s = 0, const size_t P = 1 ) const {
+						return FactoryType::make_iterator( _count, false, _start, _stride,
+							_repetitions, T(), s, P );
 					}
 
 			};
@@ -668,7 +744,7 @@ namespace grb {
 
 	} // end namespace grb::utils
 
-}
+} // end namespace grb
 
 #endif // end _H_GRB_ITERATOR_REGULAR
 
