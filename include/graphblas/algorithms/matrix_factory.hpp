@@ -32,8 +32,8 @@
 #include <iostream>
 #include <algorithm>
 
+#include <graphblas/utils/iterators/adapter.hpp>
 #include <graphblas/utils/iterators/regular.hpp>
-#include <graphblas/utils/iterators/ChainedIterators.hpp>
 
 #include <graphblas.hpp>
 
@@ -84,8 +84,7 @@
  *       request and/or contact the maintainers.
  *
  * Most matrix factory methods are shared-memory parallel. Those which are
- * \em not shared-memory parallel are: #full, #dense, #ones, #zeros, and
- * #random.
+ * \em not shared-memory parallel are all variants of #random.
  *
  * @see grb::IOMode for a more in-depth description of sequential (versus
  *                  parallel) I/O semantics.
@@ -556,18 +555,31 @@ namespace grb::factory {
 		// each value repeated ncols times.
 		grb::utils::containers::Range< RIT > I( 0, m, 1, n );
 		// Initialise columns values container with a range from 0 to ncols
-		// repeated nrows times.
+		// repeated nrows times. There are two ways of doing this:
+		//  1) using ChainedIterators, or
+		//  2) using the iterator::Adapter.
+		// We select here way #2, and disable way #1:
+#if 0
 		grb::utils::containers::ChainedIteratorsVector<
 				typename grb::utils::containers::Range< CIT >::const_iterator
 			> J( m );
 		for( size_t i = 0; i < m; ++i ) {
 			J.emplace_back( grb::utils::containers::Range< CIT >( 0, n ) );
 		}
+#endif
+		grb::utils::containers::Range< size_t > J_raw( 0, nz );
+		const auto entryInd2colInd = [&m, &n] (const CIT k) -> CIT {
+				return k / m;
+			};
+		auto J_begin = grb::utils::iterators::make_adapter_iterator(
+			J_raw.cbegin(), J_raw.cend(), entryInd2colInd );
+		const auto J_end = grb::utils::iterators::make_adapter_iterator(
+			J_raw.cend(), J_raw.cend(), entryInd2colInd );
 		// Initialise values container with the given value.
 		grb::utils::containers::ConstantVector< D > V( value, nz );
 #ifndef NDEBUG
 		const size_t Isz = std::distance( I.begin(), I.end() );
-		const size_t Jsz = std::distance( J.begin(), J.end() );
+		const size_t Jsz = std::distance( J_begin, J_end );
 		const size_t Vsz = std::distance( V.begin(), V.end() );
 		assert( Isz == Jsz );
 		assert( Isz == Vsz );
@@ -575,7 +587,7 @@ namespace grb::factory {
 
 		const RC rc = buildMatrixUnique(
 			matrix,
-			I.begin(), I.end(), J.begin(), J.end(), V.begin(), V.end(),
+			I.begin(), I.end(), J_begin, J_end, V.begin(), V.end(),
 			SEQUENTIAL
 		);
 
@@ -638,17 +650,29 @@ namespace grb::factory {
 		// each value repeated ncols times.
 		grb::utils::containers::Range< RIT > I( 0, m, 1, n );
 		// Initialise columns values container with a range from 0 to ncols
-		// repeated nrows times.
+		// repeated nrows times. As mentioned above, there are two ways to provide
+		// iterators, we disable the first way (via ChainedIterators) and enable the
+		// iterators::adaptor way:
+#if 0
 		grb::utils::containers::ChainedIteratorsVector<
 				typename grb::utils::containers::Range< CIT >::const_iterator
 			> J( m );
 		for( size_t i = 0; i < m; ++i ) {
 			J.emplace_back( grb::utils::containers::Range< CIT >( 0, n ) );
 		}
+#endif
+		grb::utils::containers::Range< size_t > J_raw( 0, nz );
+		const auto nonzeroInd2colInd = [&m] (const size_t k) -> size_t {
+				return k / m;
+			};
+		auto J_begin = grb::utils::iterators::make_adapter_iterator(
+			J_raw.cbegin(), J_raw.cend(), nonzeroInd2colInd );
+		auto J_end = grb::utils::iterators::make_adapter_iterator(
+			J_raw.cend(), J_raw.cend(), nonzeroInd2colInd );
 		assert( std::distance( I.begin(), I.end() ) ==
-			std::distance( J.begin(), J.end() ) );
+			std::distance( J_begin, J_end ) );
 		const RC rc = buildMatrixUnique(
-			matrix, I.begin(), I.end(), J.begin(), J.end(), SEQUENTIAL
+			matrix, I.begin(), I.end(), J_begin, J_end, SEQUENTIAL
 		);
 
 		if( rc != SUCCESS ) {
