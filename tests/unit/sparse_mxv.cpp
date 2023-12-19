@@ -46,12 +46,6 @@ void grbProgram( const int &, int &error ) {
 		}
 	}
 
-	if( rc != grb::SUCCESS ) {
-		std::cerr << "Unexpected return code from Matrix buildMatrixUnique: "
-			<< grb::toString( rc ) << ".\n";
-		error = 5;
-	}
-
 	// get a semiring where multiplication is addition, and addition is multiplication
 	// this also tests if the proper identity is used
 	typename grb::Semiring<

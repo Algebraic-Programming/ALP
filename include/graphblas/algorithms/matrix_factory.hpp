@@ -447,8 +447,8 @@ namespace grb::factory {
 	/**
 	 * Builds an identity matrix.
 	 *
-	 * \note This is an alias for factory::eye( n, n, io_mode ). It differs only
-	 *       in that this function produces square matrices.
+	 * \note This is an alias for factory::eye( n, n ). It differs only in that
+	 *       this function produces square matrices.
 	 *
 	 * See #factory::eye for detailed documentation.
 	 *
