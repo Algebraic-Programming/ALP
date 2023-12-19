@@ -191,6 +191,19 @@ for MODE in ${MODES}; do
 				echo "#################################################################"
 				echo " "
 
+				echo ">>>      [x]           [ ]       Testing parallel iterators of the grb::utils Range and"
+				echo "                                 ConstantVector containers"
+				$runner ${TEST_BIN_DIR}/parallelRegularIterators_${MODE}_${BACKEND} &> ${TEST_OUT_DIR}/parallelRegularIterators_${MODE}_${BACKEND}_${P}_${T}.log
+				head -1 ${TEST_OUT_DIR}/parallelRegularIterators_${MODE}_${BACKEND}_${P}_${T}.log
+				grep 'Test OK' ${TEST_OUT_DIR}/parallelRegularIterators_${MODE}_${BACKEND}_${P}_${T}.log || echo "Test FAILED"
+				echo " "
+
+				echo ">>>      [x]           [ ]       Testing the adapter iterator from grb::utils::iterators"
+				$runner ${TEST_BIN_DIR}/adapterIterator_${MODE}_${BACKEND} &> ${TEST_OUT_DIR}/adapterIterator_${MODE}_${BACKEND}_${P}_${T}.log
+				head -1 ${TEST_OUT_DIR}/adapterIterator_${MODE}_${BACKEND}_${P}_${T}.log
+				grep 'Test OK' ${TEST_OUT_DIR}/adapterIterator_${MODE}_${BACKEND}_${P}_${T}.log || echo "Test FAILED"
+				echo " "
+
 				echo ">>>      [x]           [ ]       Testing grb::id on vectors and matrices"
 				$runner ${TEST_BIN_DIR}/id_${MODE}_${BACKEND} &> ${TEST_OUT_DIR}/id_${MODE}_${BACKEND}_${P}_${T}.log
 				head -1 ${TEST_OUT_DIR}/id_${MODE}_${BACKEND}_${P}_${T}.log
