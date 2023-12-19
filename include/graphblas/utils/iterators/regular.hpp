@@ -38,6 +38,16 @@ namespace grb {
 
 	namespace utils {
 
+		namespace iterators {
+
+			template< typename T >
+			class Repeater;
+
+			template< typename T >
+			class Sequence;
+
+		}
+
 		namespace internal {
 
 			/**
@@ -63,6 +73,10 @@ namespace grb {
 				typename SelfType
 			>
 			class PosBasedIterator {
+
+				friend class grb::utils::iterators::Repeater< R >;
+
+				friend class grb::utils::iterators::Sequence< R >;
 
 				protected:
 
@@ -247,7 +261,7 @@ namespace grb {
 					self_type operator++(int) noexcept {
 						assert( _pos < _count );
 						self_type ret =
-							SelfType::make_iterator( _pos, _count, _val, _state );
+							SelfType::create_iterator( _count, _pos, _val, _state );
 						(void) _pos++;
 						SelfType::func( _val, _state, _pos );
 						return ret;
@@ -428,6 +442,8 @@ namespace grb {
 			template< typename T >
 			class Repeater {
 
+				friend class internal::PosBasedIterator< T, T, Repeater< T > >;
+
 				public:
 
 					typedef grb::utils::internal::PosBasedIterator< T, T, Repeater< T > >
@@ -439,12 +455,13 @@ namespace grb {
 
 					// direct constructor
 
-					static RealType make_iterator(
+					static RealType create_iterator(
 						const size_t count,
 						const size_t pos,
-						const T val
+						const T val,
+						const T state
 					) {
-						return RealType( count, pos, val, val );
+						return RealType( count, pos, val, state );
 					}
 
 
@@ -498,6 +515,11 @@ namespace grb {
 			template< typename T >
 			class Sequence {
 
+				friend class internal::PosBasedIterator<
+					T, std::tuple< size_t, size_t, size_t >,
+					Sequence< T >
+				>;
+
 				public:
 
 					typedef grb::utils::internal::PosBasedIterator<
@@ -509,7 +531,7 @@ namespace grb {
 
 					// direct constructor
 
-					static RealType make_iterator(
+					static RealType create_iterator(
 						const size_t count,
 						const size_t pos,
 						const T val,
