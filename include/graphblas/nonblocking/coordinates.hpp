@@ -220,9 +220,9 @@ namespace grb {
 					assert( reinterpret_cast< uintptr_t >( _assigned ) % sizeof( bool ) == 0 );
 					_assigned = reinterpret_cast< bool * >( arr.get() );
 					_assigned_deleter = std::move( arr );
-					// ...but _stack does have potential alignment issues:
-					_stack_deleter = std::move( buf );
 					char * buf_raw = static_cast< char * >( buf.get() );
+					_stack_deleter = std::move( buf );
+					// ...but _stack does have potential alignment issues:
 					constexpr const size_t size = sizeof( StackType );
 					const size_t mod = reinterpret_cast< uintptr_t >( buf_raw ) % size;
 					if( mod != 0 ) {

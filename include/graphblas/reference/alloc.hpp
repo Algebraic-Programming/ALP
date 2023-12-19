@@ -68,10 +68,10 @@ namespace grb {
 						size_t &allocd
 					) {
 						// catch trivial case
-						// if( elements == 0 ) {
-						// 	pointer = nullptr;
-						// 	return SUCCESS;
-						// }
+						if( elements == 0 ) {
+							deleter.clear();
+							return SUCCESS;
+						}
 						// non-trivial case, first compute size
 						const size_t size = elements * sizeof( T );
 						// check if the region is supposed to be shared or not
