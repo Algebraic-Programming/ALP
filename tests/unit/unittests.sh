@@ -191,6 +191,8 @@ for MODE in ${MODES}; do
 				echo "#################################################################"
 				echo " "
 
+				# test utilities first, as some other unit tests depend on them
+
 				echo ">>>      [x]           [ ]       Testing parallel iterators of the grb::utils Range and"
 				echo "                                 ConstantVector containers"
 				$runner ${TEST_BIN_DIR}/parallelRegularIterators_${MODE}_${BACKEND} &> ${TEST_OUT_DIR}/parallelRegularIterators_${MODE}_${BACKEND}_${P}_${T}.log
@@ -203,6 +205,23 @@ for MODE in ${MODES}; do
 				head -1 ${TEST_OUT_DIR}/adapterIterator_${MODE}_${BACKEND}_${P}_${T}.log
 				grep 'Test OK' ${TEST_OUT_DIR}/adapterIterator_${MODE}_${BACKEND}_${P}_${T}.log || echo "Test FAILED"
 				echo " "
+
+				# test buildMatrix and factory first, as other unit tests depend on them
+
+				echo ">>>      [x]           [ ]       Testing building a matrix via input iterators"
+				echo "                                 both sequentially and in parallel"
+				$runner ${TEST_BIN_DIR}/buildMatrixUnique_${MODE}_${BACKEND} &> ${TEST_OUT_DIR}/buildMatrixUnique_${MODE}_${BACKEND}_${P}_${T}.log
+				head -1 ${TEST_OUT_DIR}/buildMatrixUnique_${MODE}_${BACKEND}_${P}_${T}.log
+				grep 'Test OK' ${TEST_OUT_DIR}/buildMatrixUnique_${MODE}_${BACKEND}_${P}_${T}.log || echo "Test FAILED"
+				echo " "
+
+				echo ">>>      [x]           [ ]       Testing grb::factories."
+				$runner ${TEST_BIN_DIR}/factories_${MODE}_${BACKEND} &> ${TEST_OUT_DIR}/factories_${MODE}_${BACKEND}_${P}_${T}
+				head -1 ${TEST_OUT_DIR}/factories_${MODE}_${BACKEND}_${P}_${T}
+				grep 'Test OK' ${TEST_OUT_DIR}/factories_${MODE}_${BACKEND}_${P}_${T} || echo "Test FAILED"
+				echo " "
+
+				# order of unit tests below here should not matter / matter less
 
 				echo ">>>      [x]           [ ]       Testing grb::id on vectors and matrices"
 				$runner ${TEST_BIN_DIR}/id_${MODE}_${BACKEND} &> ${TEST_OUT_DIR}/id_${MODE}_${BACKEND}_${P}_${T}.log
@@ -379,12 +398,6 @@ for MODE in ${MODES}; do
 				$runner ${TEST_BIN_DIR}/muladd_${MODE}_${BACKEND} 10000000 &> ${TEST_OUT_DIR}/muladd_large_${MODE}_${BACKEND}_${P}_${T}
 				head -1 ${TEST_OUT_DIR}/muladd_large_${MODE}_${BACKEND}_${P}_${T}
 				grep 'Test OK' ${TEST_OUT_DIR}/muladd_large_${MODE}_${BACKEND}_${P}_${T} || echo "Test FAILED"
-				echo " "
-
-				echo ">>>      [x]           [ ]       Testing grb::factories."
-				$runner ${TEST_BIN_DIR}/factories_${MODE}_${BACKEND} &> ${TEST_OUT_DIR}/factories_${MODE}_${BACKEND}_${P}_${T}
-				head -1 ${TEST_OUT_DIR}/factories_${MODE}_${BACKEND}_${P}_${T}
-				grep 'Test OK' ${TEST_OUT_DIR}/factories_${MODE}_${BACKEND}_${P}_${T} || echo "Test FAILED"
 				echo " "
 
 				echo ">>>      [x]           [ ]       Testing grb::buildVector and"
@@ -570,13 +583,6 @@ for MODE in ${MODES}; do
 				$runner ${TEST_BIN_DIR}/wait_${MODE}_${BACKEND} 11733 &> ${TEST_OUT_DIR}/wait_large_${MODE}_${BACKEND}_${P}_${T}.log
 				head -1 ${TEST_OUT_DIR}/wait_large_${MODE}_${BACKEND}_${P}_${T}.log
 				grep 'Test OK' ${TEST_OUT_DIR}/wait_large_${MODE}_${BACKEND}_${P}_${T}.log || echo "Test FAILED"
-				echo " "
-
-				echo ">>>      [x]           [ ]       Testing building a matrix via input iterators"
-				echo "                                 both sequentially and in parallel"
-				$runner ${TEST_BIN_DIR}/buildMatrixUnique_${MODE}_${BACKEND} &> ${TEST_OUT_DIR}/buildMatrixUnique_${MODE}_${BACKEND}_${P}_${T}.log
-				head -1 ${TEST_OUT_DIR}/buildMatrixUnique_${MODE}_${BACKEND}_${P}_${T}.log
-				grep 'Test OK' ${TEST_OUT_DIR}/buildMatrixUnique_${MODE}_${BACKEND}_${P}_${T}.log || echo "Test FAILED"
 				echo " "
 
 				echo ">>>      [x]           [ ]       Testing grb::eWiseApply using + on matrices"

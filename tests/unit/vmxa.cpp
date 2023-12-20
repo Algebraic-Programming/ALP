@@ -22,6 +22,7 @@
 
 
 using namespace grb;
+using namespace grb::algorithms;
 
 static const double data1[ 15 ] = { 4.32, 7.43, 4.32, 6.54, 4.21, 7.65, 7.43, 7.54, 5.32, 6.43, 7.43, 5.42, 1.84, 5.32, 7.43 };
 static const double data2[ 15 ] = { 8.49, 7.84, 8.49, 6.58, 8.91, 7.65, 7.84, 7.58, 5.49, 6.84, 7.84, 5.89, 1.88, 5.49, 7.84 };
@@ -36,7 +37,7 @@ void alpProgram( const grb::RC &rc_in, int &error ) {
 
 	// allocate
 	grb::Vector< double > x( 15 );
-	grb::Matrix< double > A = grb::factory::diag< double >( 15, 15, data2,
+	grb::Matrix< double > A = matrices< double >::diag( 15, 15, data2,
 		data2 + 15 );
 	grb::Vector< double > y( 15 );
 

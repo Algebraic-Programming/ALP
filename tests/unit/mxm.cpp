@@ -19,12 +19,14 @@
 #include <sstream>
 
 #include <graphblas.hpp>
+
 #include <graphblas/algorithms/matrix_factory.hpp>
+
 #include <utils/matrix_values_check.hpp>
 
 
-
 using namespace grb;
+using namespace grb::algorithms;
 
 void grb_program( const size_t &n, grb::RC &rc ) {
 	grb::Semiring<
@@ -33,10 +35,10 @@ void grb_program( const size_t &n, grb::RC &rc ) {
 	> ring;
 
 	// initialize test
-	const grb::Matrix< double > A = factory::eye< double >( n, n, 1, 1 );
-	const grb::Matrix< double > B = factory::identity< double >( n, 2 );
+	const grb::Matrix< double > A = matrices< double >::eye( n, n, 1, 1 );
+	const grb::Matrix< double > B = matrices< double >::identity( n, 2 );
 	grb::Matrix< double > C( n, n );
-	grb::Matrix< double > C_expected = factory::eye< double >( n, n, 2, 1 );
+	grb::Matrix< double > C_expected = matrices< double >::eye( n, n, 2, 1 );
 
 	// compute with the semiring mxm
 	std::cout << "\tVerifying the semiring version of mxm\n";

@@ -141,24 +141,24 @@ namespace grb::algorithms {
 			 * Given a matrix size as well as a diagonal offset, computes the length
 			 * (in number of elements) of that diagonal.
 			 *
-			 * @param[in] nrows The number of rows of the matrix.
-			 * @param[in] ncols The number of columns of the matrix.
-			 * @param[in] k     The diagonal offset (may be a negative integer).
+			 * @param[in] m The number of rows of the matrix.
+			 * @param[in] n The number of columns of the matrix.
+			 * @param[in] k The diagonal offset (may be a negative integer).
 			 *
 			 * @returns The diagonal length, in number of elements.
 			 */
 			static size_t compute_diag_length(
-				const size_t nrows, const size_t ncols,
+				const size_t m, const size_t n,
 				const long k
 			) {
 				constexpr const long zero = static_cast< long >( 0 );
 				const auto k_abs = static_cast< size_t >(
 					(k < zero) ? -k : k );
-				return (k_abs >= nrows || k_abs >= ncols)
+				return (k_abs >= m || k_abs >= n)
 					? 0
 					: std::min(
-						std::min( nrows, ncols ),
-						std::min( ncols - k_abs, nrows - k_abs )
+						std::min( m, n ),
+						std::min( n - k_abs, m - k_abs )
 					);
 			}
 
@@ -193,7 +193,7 @@ namespace grb::algorithms {
 				// some useful scalars
 				constexpr const long s_zero = static_cast< long >( 0 );
 				constexpr const size_t u_zero = static_cast< size_t >( 0 );
-				const size_t diag_length = compute_diag_length( nrows, ncols, k );
+				const size_t diag_length = compute_diag_length( m, n, k );
 				assert( static_cast< size_t >(std::distance( V_iter, V_end )) >=
 					diag_length );
 #ifdef NDEBUG
@@ -201,7 +201,7 @@ namespace grb::algorithms {
 #endif
 
 				// declare matrix-to-be-returned
-				MatrixType matrix( nrows, ncols, diag_length );
+				MatrixType matrix( m, n, diag_length );
 
 				// get row- and column-wise starting positions
 				const RIT k_i_incr = static_cast< RIT >(
@@ -273,7 +273,7 @@ namespace grb::algorithms {
 			 * @returns The requested diagonal matrix.
 			 */
 			template< class ValueIterator >
-			MatrixType diag(
+			static MatrixType diag(
 				const size_t m, const size_t n,
 				const ValueIterator values, const ValueIterator valEnd,
 				const long k = static_cast< long >( 0 )
@@ -313,7 +313,7 @@ namespace grb::algorithms {
 			 *
 			 * @returns The requested identity matrix.
 			 */
-			MatrixType eye(
+			static MatrixType eye(
 				const size_t m, size_t n,
 				const D identity_value = static_cast< D >( 1 ),
 				const long k = static_cast< long >( 0 )
@@ -346,7 +346,7 @@ namespace grb::algorithms {
 			 *
 			 * @returns The requested identity matrix.
 			 */
-			MatrixType identity(
+			static MatrixType identity(
 				const size_t n,
 				const D identity_value = static_cast< D >( 1 )
 			) {
@@ -369,7 +369,7 @@ namespace grb::algorithms {
 			 *
 			 * @returns The requested full matrix.
 			 */
-			MatrixType full(
+			static MatrixType full(
 				const size_t m, const size_t n,
 				const D value
 			) {
@@ -449,10 +449,10 @@ namespace grb::algorithms {
 			 *
 			 * @returns The requested dense matrix.
 			 */
-			MatrixType dense(
+			static MatrixType dense(
 				const size_t m, const size_t n, const D value
 			) {
-				return full< D, RIT, CIT, NIT, backend >( m, n, value );
+				return full( m, n, value );
 			}
 
 			/**
@@ -474,7 +474,7 @@ namespace grb::algorithms {
 			 *          which no entry \f$ a_{kl} \f$ existed in \f$ A \f$ will have
 			 *          value 0 in the returned matrix.
 			 */
-			MatrixType dense( const MatrixType &A ) {
+			static MatrixType dense( const MatrixType &A ) {
 				static_assert( std::is_arithmetic< D >::value,
 					"dense (from input matrix) requires an arithemtic nonzero type" );
 				grb::Monoid< grb::operators::add< D >, grb::identities::zero > addMon;
@@ -521,7 +521,7 @@ namespace grb::algorithms {
 			 *
 			 * @returns A dense matrix of zeroes.
 			 */
-			MatrixType zeros( const size_t m, const size_t n ) {
+			static MatrixType zeros( const size_t m, const size_t n ) {
 				static_assert( std::is_arithmetic< D >::value,
 					"zeros requires an arithemtic nonzero type" );
 				return full( m, n, static_cast< D >( 0 ) );
@@ -542,7 +542,7 @@ namespace grb::algorithms {
 			 *
 			 * @returns Returns a dense matrix with entries one.
 			 */
-			MatrixType ones( const size_t m, const size_t n ) {
+			static MatrixType ones( const size_t m, const size_t n ) {
 				static_assert( std::is_arithmetic< D >::value,
 					"ones requires an arithemtic nonzero type" );
 				return full( m, n, static_cast< D >( 1 ) );
@@ -591,7 +591,7 @@ namespace grb::algorithms {
 				typename ColDistributionType,
 				typename ValueDistributionType
 			>
-			MatrixType random(
+			static MatrixType random(
 				const size_t m, const size_t n,
 				const double sparsity,
 				RandomGeneratorType &rgen,
@@ -601,13 +601,13 @@ namespace grb::algorithms {
 			) {
 				// FIXME guard against overflow
 				const size_t nvals = m * n * std::max( 1.0, std::min( 1.0, sparsity ) );
-		
+
 				if( m == 0 || n == 0 || nvals == 0 ) {
 					return empty( m, n );
 				}
-		
-				grb::MatrixType matrix( m, n, nvals );
-		
+
+				MatrixType matrix( m, n, nvals );
+
 				std::vector< RIT > I( nvals );
 				std::vector< CIT > J( nvals );
 				std::vector< D > V( nvals );
@@ -617,19 +617,19 @@ namespace grb::algorithms {
 					V[ i ] = val_dist( rgen );
 				}
 				// FIXME filter out / re-sample any repeated entries
-		
+
 				const grb::RC rc = grb::buildMatrixUnique(
 					matrix,
 					I.begin(), I.end(), J.begin(), J.end(), V.begin(), V.end(),
 					SEQUENTIAL
 				);
-		
+
 				if( rc != SUCCESS ) {
 					throw std::runtime_error(
 						"Error: factory::random failed: rc = " + grb::toString( rc )
 					);
 				}
-		
+
 				return matrix;
 			}
 
@@ -656,7 +656,7 @@ namespace grb::algorithms {
 			 *
 			 * @returns The requested random matrix.
 			 */
-			MatrixType random(
+			static MatrixType random(
 				const size_t m, const size_t n,
 				const double sparsity,
 				const unsigned long seed = static_cast< unsigned long >( 0 )
@@ -664,9 +664,9 @@ namespace grb::algorithms {
 				if( m == 0 || n == 0 ) {
 					return empty( m, n );
 				}
-		
+
 				std::mt19937 gen( seed );
-		
+
 				const std::uniform_real_distribution< RIT > rowDistribution(
 					static_cast< RIT >( 0 ), static_cast< RIT >( m - 1 )
 				);
@@ -676,9 +676,9 @@ namespace grb::algorithms {
 				const std::uniform_real_distribution< D > valuesDistribution(
 					static_cast< D >( 0 ), static_cast< D >( 1 )
 				);
-		
+
 				return random(
-					nrows, ncols, sparsity,
+					m, n, sparsity,
 					gen, rowDistribution, colDistribution, valuesDistribution
 				);
 			}
@@ -717,7 +717,8 @@ namespace grb::algorithms {
 				// pattern matrix variant of the above
 				constexpr const long s_zero = static_cast< long >( 0 );
 				constexpr const size_t u_zero = static_cast< size_t >( 0 );
-				const size_t diag_length = compute_diag_length( nrows, ncols, k );
+				const size_t diag_length = matrices< int, mode, backend, RIT, CIT, NIT >::
+					compute_diag_length( m, n, k );
 				Matrix< void, backend, RIT, CIT, NIT > matrix( m, n, diag_length );
 				const RIT k_i_incr = static_cast< RIT >(
 					(k < s_zero) ? std::abs( k ) : u_zero );
@@ -737,6 +738,20 @@ namespace grb::algorithms {
 			}
 
 		public:
+
+			/**
+			 * Builds an empty matrix, without any values.
+			 *
+			 * @param[in] m The requested number of rows of the returned matrix.
+			 * @param[in] n The requested number of columns of the returned matrix.
+			 *
+			 * @returns An empty matrix of the requested type.
+			 */
+			static MatrixType empty(
+				const size_t m, const size_t n
+			) {
+				return MatrixType( m, n, 0 );
+			}
 
 			/**
 			 * Builds a diagonal pattern matrix.
@@ -792,7 +807,7 @@ namespace grb::algorithms {
 			 *
 			 * @returns The requested identity matrix.
 			 */
-			MatrixType eye(
+			static MatrixType eye(
 				const size_t m, const size_t n,
 				long k = static_cast< long >(0)
 			) {
@@ -815,7 +830,7 @@ namespace grb::algorithms {
 			 *
 			 * @returns The requested identity matrix.
 			 */
-			MatrixType identity( const size_t n ) {
+			static MatrixType identity( const size_t n ) {
 				return eye( n, n );
 			}
 
@@ -836,7 +851,7 @@ namespace grb::algorithms {
 			 *
 			 * @returns The requested full matrix.
 			 */
-			MatrixType full( const size_t m, const size_t n ) {
+			static MatrixType full( const size_t m, const size_t n ) {
 				if( m == 0 || n == 0 ) {
 					return empty( m, n );
 				}
@@ -903,7 +918,7 @@ namespace grb::algorithms {
 			 *
 			 * @returns The requested dense matrix.
 			 */
-			MatrixType dense( const size_t m, const size_t n ) {
+			static MatrixType dense( const size_t m, const size_t n ) {
 				return full( m, n );
 			}
 
@@ -918,7 +933,7 @@ namespace grb::algorithms {
 			 *
 			 * @returns A dense pattern matrix.
 			 */
-			MatrixType dense( const MatrixType &A ) {
+			static MatrixType dense( const MatrixType &A ) {
 				(void) A;
 				return full( grb::nrows( A ), grb::ncols( A ) );
 			}
@@ -937,7 +952,7 @@ namespace grb::algorithms {
 			 *
 			 * @returns A dense pattern matrix.
 			 */
-			MatrixType zeros( const size_t m, const size_t n ) {
+			static MatrixType zeros( const size_t m, const size_t n ) {
 				return full( m, n );
 			}
 
@@ -955,7 +970,7 @@ namespace grb::algorithms {
 			 *
 			 * @returns Returns a dense pattern matrix.
 			 */
-			MatrixType ones( const size_t m, const size_t n ) {
+			static MatrixType ones( const size_t m, const size_t n ) {
 				return full( m, n );
 			}
 
@@ -1003,7 +1018,7 @@ namespace grb::algorithms {
 				typename RowDistributionType,
 				typename ColDistributionType
 			>
-			MatrixType random(
+			static MatrixType random(
 				const size_t m, const size_t n,
 				const double sparsity,
 				RandomGeneratorType &rgen,
@@ -1012,13 +1027,13 @@ namespace grb::algorithms {
 			) {
 				// FIXME guard against overflow
 				const size_t nvals = m * n * std::max( 1.0, std::min( 1.0, sparsity ) );
-		
+
 				if( m == 0 || n == 0 || nvals == 0 ) {
 					return empty( m, n );
 				}
-		
+
 				MatrixType matrix( m, n, nvals );
-		
+
 				std::vector< RIT > I( nvals );
 				std::vector< CIT > J( nvals );
 				for( size_t i = 0; i < nvals; ++i ) {
@@ -1026,7 +1041,7 @@ namespace grb::algorithms {
 					J[ i ] = col_dist( rgen );
 				}
 				// FIXME filter out / re-sample any repeated entries
-		
+
 				const RC rc = buildMatrixUnique(
 					matrix, I.begin(), I.end(), J.begin(), J.end(), SEQUENTIAL
 				);
@@ -1035,7 +1050,7 @@ namespace grb::algorithms {
 						"Error: factory::random<void> failed: rc = " + grb::toString( rc )
 					);
 				}
-		
+
 				return matrix;
 			}
 
@@ -1064,7 +1079,7 @@ namespace grb::algorithms {
 			 *
 			 * @returns The requested random matrix.
 			 */
-			MatrixType random(
+			static MatrixType random(
 				const size_t m, const size_t n,
 				const double sparsity,
 				const unsigned long seed = static_cast< unsigned long >(0)
@@ -1072,16 +1087,16 @@ namespace grb::algorithms {
 				if( m == 0 || n == 0 ) {
 					return empty( m, n );
 				}
-		
+
 				std::mt19937 gen( seed );
-		
+
 				const std::uniform_real_distribution< RIT > rowDistribution(
 					static_cast< RIT >( 0 ), static_cast< RIT >( m - 1 )
 				);
 				const std::uniform_real_distribution< CIT > colDistribution(
 					static_cast< CIT >( 0 ), static_cast< CIT >( n - 1 )
 				);
-		
+
 				return random(
 					m, n, sparsity,
 					gen, rowDistribution, colDistribution

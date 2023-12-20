@@ -23,13 +23,15 @@
 
 using namespace grb;
 
+using namespace grb::algorithms;
+
 void grb_program( const int &, grb::RC &rc ) {
 
 	// large non-square mixed-domain matrix check
 	{
-		Matrix< char > A = factory::eye< char >( 10000000, 2000000, 2 );
-		Matrix< float > B = factory::eye< float >( 10000000, 2000000, 2 );
-		Matrix< size_t > C = factory::eye< size_t >( 10000000, 2000000, 2 );
+		Matrix< char > A = matrices< char >::eye( 10000000, 2000000, 2 );
+		Matrix< float > B = matrices< float >::eye( 10000000, 2000000, 2 );
+		Matrix< size_t > C = matrices< size_t >::eye( 10000000, 2000000, 2 );
 
 		rc = grb::eWiseApply( C, A, B,
 			grb::operators::add< float, size_t, char >(), RESIZE );
