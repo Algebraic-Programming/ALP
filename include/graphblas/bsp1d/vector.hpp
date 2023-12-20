@@ -2494,7 +2494,7 @@ namespace grb {
 			_buffer_deleter = std::move( x._buffer_deleter );
 
 			// invalidate fields of x
-			x._id = std::numeric_limits< uintptr_t >::max();
+			x._id = internal::BSP1DMapper::getInvalidID();
 			x._raw = nullptr;
 			x._assigned = nullptr;
 			x._buffer = nullptr;

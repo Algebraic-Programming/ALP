@@ -278,6 +278,10 @@ namespace grb {
 		/** My ID. */
 		typename internal::ReferenceMapper::IDType _id;
 
+		/** Whether \a id should be removed from #internal::reference_mapper */
+		bool _remove_id;
+
+
 		/** All (sparse) coordinate information. */
 		MyCoordinates _coordinates;
 
@@ -369,7 +373,7 @@ namespace grb {
 			} else {
 				_id = *id_in;
 			}
-			// _coordinates.set( nullptr, nullptr, 0 );
+			_remove_id = id_in == nullptr;
 
 			// catch trivial case: zero capacity
 			if( cap_in == 0 ) {
@@ -380,6 +384,7 @@ namespace grb {
 			utils::AutoDeleter< char > _buffer_deleter;
 
 			// catch trivial case: memory areas are passed explicitly
+			const void * id_ptr;
 			if( raw_in != nullptr || assigned_in != nullptr || buffer_in != nullptr ) {
 				// raw_in and assigned_in must both be NULL or both be non-NULL in a call to
 				// grb::Vector::initialize (reference or reference_omp).
@@ -389,15 +394,9 @@ namespace grb {
 					)
 				);
 				// assign _id
-				if( id_in == nullptr ) {
-					_id = internal::reference_mapper.insert(
-						reinterpret_cast< uintptr_t >( assigned_in )
-					);
-				}
+				id_ptr = assigned_in;
 				_raw_deleter = utils::AutoDeleter< D >( raw_in, cap_in,
 					utils::AutoDeleter< D >::AllocationType::UNMANAGED );
-				// _coordinates.set( assigned_in, buffer_in, cap_in );
-				// return;
 				_assigned_deleter = utils::AutoDeleter< char >( static_cast< char * >( assigned_in ), 0,
 					utils::AutoDeleter< char >::AllocationType::UNMANAGED );
 				_buffer_deleter = utils::AutoDeleter< char >( static_cast< char * >( buffer_in ), 0,
@@ -415,8 +414,6 @@ namespace grb {
 					MyCoordinates::arraySize( cap_in ), true, _assigned_deleter,
 					MyCoordinates::bufferSize( cap_in ), true, _buffer_deleter
 				);
-				// assigned = _assigned_deleter.get();
-				// buffer = _buffer_deleter.get();
 
 				// catch errors
 				if( rc == OUTOFMEM ) {
@@ -429,12 +426,14 @@ namespace grb {
 
 				// assign _id
 				assert( _assigned_deleter.get() != nullptr );
-				if( id_in == nullptr ) {
-					_id = internal::reference_mapper.insert(
-						reinterpret_cast< uintptr_t >( _assigned_deleter.get() )
-					);
-				}
+				id_ptr = _assigned_deleter.get();
 				assert( rc == SUCCESS );
+			}
+
+			if( _remove_id ) {
+				_id = internal::reference_mapper.insert(
+					reinterpret_cast< uintptr_t >( id_ptr )
+				);
 			}
 
 			// assign to _coordinates struct
@@ -582,6 +581,7 @@ namespace grb {
 				_id = internal::reference_mapper.insert(
 					reinterpret_cast< uintptr_t >( raw )
 				);
+				_remove_id = true;
 				_coordinates.setDense( n );
 			}
 		}
@@ -909,6 +909,7 @@ namespace grb {
 #endif
 				// copy and move
 				_id = x._id;
+				_remove_id = x._remove_id;
 				_coordinates = std::move( x._coordinates );
 				_raw_deleter = std::move( x._raw_deleter );
 				// _assigned_deleter = std::move( x._assigned_deleter );
@@ -916,6 +917,7 @@ namespace grb {
 
 				// invalidate that which was not moved
 				x._id = internal::ReferenceMapper::getInvalidID();
+				x._remove_id = false;
 			}
 
 			/**
@@ -963,11 +965,13 @@ namespace grb {
 					<< " into " << _id << "\n";
 #endif
 				_id = x._id;
+				_remove_id = x._remove_id;
 				_coordinates = std::move( x._coordinates );
 				_raw_deleter = std::move( x._raw_deleter );
 				// _assigned_deleter = std::move( x._assigned_deleter );
 				// _buffer_deleter = std::move( x._buffer_deleter );
 				x._id = internal::ReferenceMapper::getInvalidID();
+				x._remove_id = false;
 				return *this;
 			}
 
@@ -983,9 +987,12 @@ namespace grb {
 				// _raw_deleter,
 				// _buffer_deleter, and
 				// _assigned_deleter
-				if( _coordinates.size() > 0 ) {
+				if( _coordinates.size() > 0 && _remove_id ) {
 					internal::reference_mapper.remove( _id );
 					_id = internal::ReferenceMapper::getInvalidID();
+					_remove_id = false;
+				} else if( _remove_id ) {
+					assert( _id == internal::ReferenceMapper::getInvalidID() );
 				}
 			}
 

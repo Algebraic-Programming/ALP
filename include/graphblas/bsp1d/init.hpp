@@ -42,6 +42,8 @@ namespace grb {
 
 	namespace internal {
 
+		typedef utils::DMapper< uintptr_t > BSP1DMapper;
+
 		/** All information corresponding to a get request. */
 		struct get_request {
 			lpf_pid_t src_pid;
@@ -171,7 +173,7 @@ namespace grb {
 			bool destroyed;
 
 			/** Mapper to assign IDs to BSP1D containers .*/
-			utils::DMapper< uintptr_t > mapper;
+			BSP1DMapper mapper;
 
 			/**
 			 * Initialises all fields.
