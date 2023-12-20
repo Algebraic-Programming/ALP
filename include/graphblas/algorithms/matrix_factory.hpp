@@ -215,7 +215,7 @@ namespace grb::algorithms {
 
 				// construct the matrix from the given iterators
 				const RC rc = buildMatrixUnique(
-					matrix, I.begin(), J.begin(), V_iter, diag_length, SEQUENTIAL
+					matrix, I.begin(), J.begin(), V_iter, diag_length, mode
 				);
 
 				if( rc != SUCCESS ) {
@@ -424,8 +424,7 @@ namespace grb::algorithms {
 
 				const RC rc = buildMatrixUnique(
 					matrix,
-					I.begin(), I.end(), J_begin, J_end, V.begin(), V.end(),
-					SEQUENTIAL
+					I.begin(), I.end(), J_begin, J_end, V.begin(), V.end(), mode
 				);
 
 				if( rc != SUCCESS ) {
@@ -620,8 +619,7 @@ namespace grb::algorithms {
 
 				const grb::RC rc = grb::buildMatrixUnique(
 					matrix,
-					I.begin(), I.end(), J.begin(), J.end(), V.begin(), V.end(),
-					SEQUENTIAL
+					I.begin(), I.end(), J.begin(), J.end(), V.begin(), V.end(), mode
 				);
 
 				if( rc != SUCCESS ) {
@@ -727,7 +725,7 @@ namespace grb::algorithms {
 				grb::utils::containers::Range< RIT > I( k_i_incr, diag_length + k_i_incr );
 				grb::utils::containers::Range< CIT > J( k_j_incr, diag_length + k_j_incr );
 				const RC rc = buildMatrixUnique(
-					matrix, I.begin(), J.begin(), diag_length, SEQUENTIAL
+					matrix, I.begin(), J.begin(), diag_length, mode
 				);
 				if( rc != SUCCESS ) {
 					throw std::runtime_error(
@@ -893,7 +891,7 @@ namespace grb::algorithms {
 					std::distance( J_begin, J_end ) );
 
 				const RC rc = buildMatrixUnique(
-					matrix, I.begin(), I.end(), J_begin, J_end, SEQUENTIAL
+					matrix, I.begin(), I.end(), J_begin, J_end, mode
 				);
 
 				if( rc != SUCCESS ) {
@@ -1043,7 +1041,7 @@ namespace grb::algorithms {
 				// FIXME filter out / re-sample any repeated entries
 
 				const RC rc = buildMatrixUnique(
-					matrix, I.begin(), I.end(), J.begin(), J.end(), SEQUENTIAL
+					matrix, I.begin(), I.end(), J.begin(), J.end(), mode
 				);
 				if( rc != SUCCESS ) {
 					throw std::runtime_error(
