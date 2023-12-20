@@ -619,14 +619,14 @@ namespace grb {
 					internal::Coordinates< _GRB_BSP1D_BACKEND >::bufferSize( _local_n ) +
 					internal::Coordinates< _GRB_BSP1D_BACKEND >::bufferSize( cap_in );
 				// allocate raw, assigned, and stack arrays
-				const RC rc = grb::utils::alloc(
-					"grb::Vector< T, BSP1D, C > (initialize)", sstream.str(),
-					cap_in, true, _raw_deleter,
-					internal::Coordinates< _GRB_BSP1D_BACKEND >::arraySize( cap_in ),
-						true,
-						_assigned_deleter,
-					bufferSize, true, _buffer_deleter
-				);
+				utils::Allocator allocator;
+				(void) allocator.alloc( cap_in, true, _raw_deleter )
+					.alloc( internal::Coordinates< _GRB_BSP1D_BACKEND >::arraySize( cap_in ),
+						true, _assigned_deleter )
+					.alloc( bufferSize, true, _buffer_deleter );
+				const RC rc = allocator.getLastAllocationResult();
+				allocator.printReport( "grb::Vector< T, BSP1D, C > (initialize)",
+					sstream.str().c_str() );
 				_raw = _raw_deleter.get();
 				new_assigned = _assigned_deleter.get();
 				_buffer = _buffer_deleter.get();

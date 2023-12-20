@@ -80,7 +80,11 @@ grb::RC grb::init< grb::reference_omp >( const size_t s, const size_t P, void * 
 	// print output
 	const auto T = config::OMP::threads();
 	std::cerr << "Info: grb::init (reference_omp) called. OpenMP is set to utilise " << T << " threads.\n";
-	rc = grb::utils::alloc( "", "", T * sizeof( grb::config::CACHE_LINE_SIZE::value() ) * sizeof( size_t ), true, privateSizetOMP_deleter );
+	utils::Allocator allocator;
+	(void) allocator.alloc( T * sizeof( grb::config::CACHE_LINE_SIZE::value() ) * sizeof( size_t ),
+		true, privateSizetOMP_deleter );
+	rc = allocator.getLastAllocationResult();
+	allocator.printReport( "", "" );
 	grb::internal::privateSizetOMP = privateSizetOMP_deleter.get();
 	// use same initialisation procedure as sequential implementation
 	if( rc == grb::SUCCESS ) {

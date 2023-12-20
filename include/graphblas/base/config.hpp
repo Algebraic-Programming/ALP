@@ -303,7 +303,7 @@ namespace grb {
 				 * \endinternal
 				 */
 				static bool report(
-					const std::string &prefix, const std::string &action,
+					const char* prefix, const char* action,
 					const size_t size, const bool printNewline = true
 				) {
 #ifdef _GRB_NO_STDIO

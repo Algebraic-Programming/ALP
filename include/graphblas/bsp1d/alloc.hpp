@@ -23,6 +23,7 @@
 #ifndef _H_GRB_ALLOC_BSP1D
 #define _H_GRB_ALLOC_BSP1D
 
+#include <graphblas/utils/autodeleter.hpp>
 #include <graphblas/utils/alloc.hpp>
 
 namespace grb {

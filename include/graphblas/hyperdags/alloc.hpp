@@ -27,6 +27,7 @@
 #ifndef _H_GRB_HYPERDAGS_ALLOC
 #define _H_GRB_HYPERDAGS_ALLOC
 
+#include <graphblas/utils/autodeleter.hpp>
 
 namespace grb {
 

@@ -408,12 +408,15 @@ namespace grb {
 				// char * assigned = nullptr;
 				// char * buffer = nullptr;
 				// now allocate in one go
-				const RC rc = grb::utils::alloc(
-					"grb::Vector< T, reference, MyCoordinates > (constructor)",
-					"", cap_in, true, _raw_deleter, // values array
-					MyCoordinates::arraySize( cap_in ), true, _assigned_deleter,
-					MyCoordinates::bufferSize( cap_in ), true, _buffer_deleter
-				);
+				utils::Allocator allocator;
+
+				(void) allocator.alloc( cap_in, true, _raw_deleter ) // values array
+					.alloc( MyCoordinates::arraySize( cap_in ), true, _assigned_deleter )
+					.alloc( MyCoordinates::bufferSize( cap_in ), true, _buffer_deleter );
+
+				RC rc = allocator.getLastAllocationResult();
+				allocator.printReport(
+					"grb::Vector< T, reference, MyCoordinates > (constructor)", "" );
 
 				// catch errors
 				if( rc == OUTOFMEM ) {

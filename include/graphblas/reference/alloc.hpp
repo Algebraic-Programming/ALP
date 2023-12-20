@@ -129,8 +129,8 @@ namespace grb {
 						const bool shared, utils::AutoDeleter< T > &deleter, size_t &allocd
 					) {
 						return mode_alloc( elements,
-							shared ? grb::config::IMPLEMENTATION<>::sharedAllocMode() : 
-								grb::config::IMPLEMENTATION<>::defaultAllocMode(), 
+							shared ? grb::config::IMPLEMENTATION<>::sharedAllocMode() :
+								grb::config::IMPLEMENTATION<>::defaultAllocMode(),
 							deleter, allocd );
 					}
 
@@ -152,61 +152,6 @@ namespace grb {
 						}
 						// done
 						return recursive_error_code;
-					}
-
-					/** Allocates multiple memory segments in a safe way. */
-					template< typename T, typename... Targs >
-					static RC alloc(
-						size_t &allocd, const size_t size,
-						const bool shared, utils::AutoDeleter< T > &deleter,
-						Targs &&... args
-					) {
-						// set local deleter
-						utils::AutoDeleter< T > new_deleter;
-						// try new alloc
-						// T * __restrict__ new_pointer = NULL;
-						RC recursive_error_code = single_alloc( size, shared, new_deleter, allocd );
-						// check for success
-						if( recursive_error_code != SUCCESS ) {
-							// fail, so propagate
-							return recursive_error_code;
-						}
-						// recurse on remainder arguments
-						recursive_error_code = alloc( allocd, std::forward< Targs >( args )... );
-						// check for failure
-						if( recursive_error_code != SUCCESS ) {
-							// fail, so reset old pointer and propagate error code
-							return recursive_error_code;
-						}
-						// all is OK, so finally
-						//  1) set pointer to newly allocated memory area, and
-						//  2) propagate the deleter to user space
-						// pointer = new_pointer;
-						deleter = new_deleter;
-						// done
-						return SUCCESS;
-					}
-
-					/** Helper function that prints allocation information to stdout. */
-					static void postAlloc(
-						const RC ret, const size_t allocd,
-						const std::string prefix, const std::string postfix
-					) {
-						if( ret == SUCCESS ) {
-							if( config::MEMORY::report( prefix, "allocated", allocd, false ) ) {
-								if( !postfix.empty() ) {
-									std::cout << ", reason: " << postfix << ".\n";
-								}
-							}
-						} else {
-							if( config::MEMORY::report(
-								prefix, "failed to allocate", allocd, false
-							) ) {
-								if( !postfix.empty() ) {
-									std::cout << ", reason: " << postfix << ".\n";
-								}
-							}
-						}
 					}
 
 			};

@@ -1330,7 +1330,6 @@ namespace grb {
 				}
 
 				// memory allocations
-				RC alloc_ok = SUCCESS;
 				char * alloc[ 8 ] = {
 					nullptr, nullptr, nullptr, nullptr,
 					nullptr, nullptr, nullptr, nullptr
@@ -1340,6 +1339,7 @@ namespace grb {
 				) {
 					throw std::runtime_error( "Could not resize global buffer" );
 				}
+				utils::Allocator allocator;
 				if( rows > 0 && cols > 0 ) {
 					// check whether requested capacity is sensible
 					if( cap_in / rows > cols ||
@@ -1369,22 +1369,18 @@ namespace grb {
 						sizes[ 8 ] = sizes[ 9 ] = sizes[ 10 ] = sizes[ 11 ] = 0;
 					}
 					// allocate required arrays
-					alloc_ok = utils::alloc(
-						"grb::Matrix< T, reference >::Matrix()",
-						"initial capacity allocation",
-						sizes[ 0 ], false, _local_deleter[ 0 ],
-						sizes[ 1 ], false, _local_deleter[ 1 ],
-						sizes[ 2 ], false, _local_deleter[ 2 ],
-						sizes[ 3 ], false, _local_deleter[ 3 ],
-						sizes[ 4 ], false, _local_deleter[ 4 ],
-						sizes[ 5 ], false, _local_deleter[ 5 ],
-						sizes[ 6 ], true, _deleter[ 0 ],
-						sizes[ 7 ], true, _deleter[ 1 ],
-						sizes[ 8 ], true, _deleter[ 2 ],
-						sizes[ 9 ], true, _deleter[ 3 ],
-						sizes[ 10 ], true, _deleter[ 4 ],
-						sizes[ 11 ], true, _deleter[ 5 ]
-					);
+					(void) allocator.alloc( sizes[ 0 ], false, _local_deleter[ 0 ] )
+						.alloc( sizes[ 1 ], false, _local_deleter[ 1 ] )
+						.alloc( sizes[ 2 ], false, _local_deleter[ 2 ] )
+						.alloc( sizes[ 3 ], false, _local_deleter[ 3 ] )
+						.alloc( sizes[ 4 ], false, _local_deleter[ 4 ] )
+						.alloc( sizes[ 5 ], false, _local_deleter[ 5 ] )
+						.alloc( sizes[ 6 ], true, _deleter[ 0 ] )
+						.alloc( sizes[ 7 ], true, _deleter[ 1 ] )
+						.alloc( sizes[ 8 ], true, _deleter[ 2 ] )
+						.alloc( sizes[ 9 ], true, _deleter[ 3 ] )
+						.alloc( sizes[ 10 ], true, _deleter[ 4 ] )
+						.alloc( sizes[ 11 ], true, _deleter[ 5 ] );
 					coorArr[ 0 ] = _local_deleter[ 0 ].get();
 					coorArr[ 1 ] = _local_deleter[ 1 ].get();
 					coorBuf[ 0 ] = _local_deleter[ 2 ].get();
@@ -1404,15 +1400,16 @@ namespace grb {
 					};
 					coorArr[ 0 ] = coorArr[ 1 ] = nullptr;
 					coorBuf[ 0 ] = coorBuf[ 1 ] = nullptr;
-					alloc_ok = utils::alloc(
-						"grb::Matrix< T, reference >::Matrix()",
-						"empty allocation",
-						sizes[ 0 ], false, _local_deleter[ 4 ],
-						sizes[ 1 ], false, _local_deleter[ 5 ]
-					);
+					(void) allocator.alloc( sizes[ 0 ], false, _local_deleter[ 4 ] )
+						.alloc( sizes[ 1 ], false, _local_deleter[ 5 ] );
 					alloc[ 6 ] = _local_deleter[ 4 ].get();
 					alloc[ 7 ] = _local_deleter[ 5 ].get();
 				}
+				RC alloc_ok = allocator.getLastAllocationResult();
+				allocator.printReport(
+					"grb::Matrix< T, reference >::Matrix()",
+					"initial capacity allocation"
+				);
 
 				// check allocation status
 				if( alloc_ok == OUTOFMEM ) {
@@ -1607,12 +1604,15 @@ namespace grb {
 					<< "times " << n << " matrix.\n";
 
 				// do allocation
-				RC ret = utils::alloc(
-					"grb::Matrix< T, reference >::resize", description.str(),
-					sizes[ 0 ], true, _deleter[ 2 ],
-					sizes[ 1 ], true, _deleter[ 3 ],
-					sizes[ 2 ], true, _deleter[ 4 ],
-					sizes[ 3 ], true, _deleter[ 5 ]
+				utils::Allocator allocator;
+				(void) allocator.alloc( sizes[ 0 ], true, _deleter[ 2 ] )
+					.alloc( sizes[ 1 ], true, _deleter[ 3 ] )
+					.alloc( sizes[ 2 ], true, _deleter[ 4 ] )
+					.alloc( sizes[ 3 ], true, _deleter[ 5 ] );
+				RC ret = allocator.getLastAllocationResult();
+				allocator.printReport(
+					"grb::Matrix< T, reference >::resize",
+					description.str().c_str()
 				);
 				alloc[ 0 ] = _deleter[ 2 ].get();
 				alloc[ 1 ] = _deleter[ 3 ].get();
