@@ -470,13 +470,13 @@ static RC test_factory_dense_valued(
 	{ // matrices::voidFactory of size: [n,n]
 		Matrix< void > M = voidFactory( n, n );
 		if( nnz( M ) != n * n ) {
-			return error( "matrices::" + factoryName + "<void>, size=(n,n): "
-				"nnz != n*n" );
+			return error( "matrices< void >::" + factoryName + ", size=(n,n): "
+				"nnz = " + nnz( M ) + " != n*n = " + (n*n) );
 		} else if( nrows( M ) != n ) {
-			return error( "matrices::" + factoryName + "<void>, size=(n,n): "
+			return error( "matrices< void >::" + factoryName + ", size=(n,n): "
 				"nrows != n" );
 		} else if( ncols( M ) != n ) {
-			return error( "matrices::" + factoryName + "<void>, size=(n,n): "
+			return error( "matrices< void >::" + factoryName + ", size=(n,n): "
 				"ncols != n" );
 		}
 	}

@@ -34,7 +34,8 @@ void grbProgram( const int &, int &error ) {
 	// allocate
 	grb::Vector< int > x( 15 );
 	grb::Vector< int > sparse_x( 15 );
-	grb::Matrix< int > A = matrices< int >::diag( 15, 15, data2, data2 + 15 );
+	grb::Matrix< int > A = matrices< int, grb::SEQUENTIAL >::diag(
+		15, 15, data2, data2 + 15 );
 
 	// initialise x
 	if( !error ) {

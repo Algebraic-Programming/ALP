@@ -37,8 +37,8 @@ void alpProgram( const grb::RC &rc_in, int &error ) {
 
 	// allocate
 	grb::Vector< double > x( 15 );
-	grb::Matrix< double > A = matrices< double >::diag( 15, 15, data2,
-		data2 + 15 );
+	grb::Matrix< double > A = matrices< double, grb::SEQUENTIAL >::diag(
+		15, 15, data2, data2 + 15 );
 	grb::Vector< double > y( 15 );
 
 	// initialise

@@ -61,7 +61,8 @@ int main( int argc, char ** argv ) {
 	// allocate
 	grb::Vector< int > x( 15 );
 	grb::Vector< int > y( 15 );
-	grb::Matrix< int > A = matrices< int >::diag( 15, 15, data2, data2 + 15 );
+	grb::Matrix< int > A = matrices< int, grb::SEQUENTIAL >::diag(
+		15, 15, data2, data2 + 15 );
 	grb::Vector< bool > mask( 15 );
 
 	// initialise x

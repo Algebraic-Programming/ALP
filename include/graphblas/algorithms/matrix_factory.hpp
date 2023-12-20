@@ -122,7 +122,7 @@ namespace grb::algorithms {
 	 */
 	template<
 		typename D,
-		grb::IOMode mode = grb::SEQUENTIAL, // <-- TODO FIXME set to parallel (after testing all ok for sequential)
+		grb::IOMode mode = grb::SEQUENTIAL, // TODO FIXME: it should be possible to set the default value to PARALLEL, but this presently causes all sorts of errors that need debugging first
 		grb::Backend backend = grb::config::default_backend,
 		typename RIT = grb::config::RowIndexType,
 		typename CIT = grb::config::ColIndexType,
@@ -136,6 +136,28 @@ namespace grb::algorithms {
 
 			/** Short-hand typedef for the matrix return type. */
 			typedef Matrix< D, backend, RIT, CIT, NIT > MatrixType;
+
+			/**
+			 * @returns The number of user processes
+			 *
+			 * This number is used to establish in how many pieces input containers must
+			 * be cut.
+			 *
+			 * If the number is larger than one, then #getPID establishes the unique ID
+			 * of the calling user process.
+			 */
+			static size_t getP() {
+				return mode == grb::SEQUENTIAL ? 1 : grb::spmd< backend >::nprocs();
+			}
+
+			/**
+			 * @returns The unique user process ID.
+			 *
+			 * This value is stricly less than what #getP returns.
+			 */
+			static size_t getPID() {
+				return mode == grb::SEQUENTIAL ? 0 : grb::spmd< backend >::pid();
+			}
 
 			/**
 			 * Given a matrix size as well as a diagonal offset, computes the length
@@ -179,11 +201,12 @@ namespace grb::algorithms {
 			 * @param[in] V_end  Iterator to the same collection as \a V_iter, at its end
 			 *                   position.
 			 *
-			 * \warning Assumes \a V_iter contains enough elements (but potentially more)
-			 *          to fill up the requested diagonal.
+			 * The \a V_iter and \a V_end iterator pair is assumed to match the I/O mode
+			 * of the matrix factory class this method is part of. If it does not match,
+			 * undefined behaviour will occur.
 			 *
-			 * \note This is usually achieved implicitly by \a V_iter being a repeater
-			 *       iterator of sufficient size, e.g., of full matrix size.
+			 * The \a V_iter and \a V_end iterator pair must contain exactly the number
+			 * of elements that should appear on the requested diagonal.
 			 */
 			template< class IteratorV >
 			static MatrixType createIdentity_generic(
@@ -214,8 +237,14 @@ namespace grb::algorithms {
 				grb::utils::containers::Range< CIT > J( k_j_incr, diag_length + k_j_incr );
 
 				// construct the matrix from the given iterators
+				const size_t s = getPID();
+				const size_t P = getP();
 				const RC rc = buildMatrixUnique(
-					matrix, I.begin(), J.begin(), V_iter, diag_length, mode
+					matrix,
+					I.begin( s, P ), I.end( s, P ),
+					J.begin( s, P ), J.end( s, P ),
+					V_iter, V_end,
+					mode
 				);
 
 				if( rc != SUCCESS ) {
@@ -269,6 +298,13 @@ namespace grb::algorithms {
 			 *
 			 * The distance between \a values and \a valEnd must be at least \f$ q \f$, or
 			 * less if \a k is not zero.
+			 *
+			 * If \a mode is #grb::PARALLEL, then the \em union of elements spanned by
+			 * \a values and \a valEnd across all user processes making a collective call
+			 * to this function, comprises the set of all input values. If \a mode is
+			 * #grb::SEQUENTIAL, then the elements spanned at each user process comprises
+			 * the set of all input values, and the complete set of inputs must match
+			 * over all user processes. See also #grb::IOMode.
 			 *
 			 * @returns The requested diagonal matrix.
 			 */
@@ -326,11 +362,14 @@ namespace grb::algorithms {
 				// we are in the non-pattern case, so we need a repeated iterator for the
 				// values-- determine worst-case length (cheaper than computing the actual
 				// diagonal length)
-				const size_t wcl = std::max( m, n );
-				const grb::utils::containers::ConstantVector< D > V( identity_value, wcl );
+				const size_t diag_length = compute_diag_length( m, n, k );
+				const grb::utils::containers::ConstantVector< D > V( identity_value,
+					diag_length );
 
 				// call generic implementation
-				return createIdentity_generic( m, n, k, V.cbegin(), V.cend() );
+				const size_t s = getPID();
+				const size_t P = getP();
+				return createIdentity_generic( m, n, k, V.cbegin( s, P ), V.cend( s, P ) );
 			}
 
 			/**
@@ -383,6 +422,8 @@ namespace grb::algorithms {
 						"nonzeroes." );
 				}
 
+				const size_t s = getPID();
+				const size_t P = getP();
 				MatrixType matrix( m, n, nz );
 
 				// Initialise rows indices container with a range from 0 to nrows,
@@ -407,24 +448,27 @@ namespace grb::algorithms {
 						return k / m;
 					};
 				auto J_begin = grb::utils::iterators::make_adapter_iterator(
-					J_raw.cbegin(), J_raw.cend(), entryInd2colInd );
+					J_raw.cbegin( s, P ), J_raw.cend( s, P ), entryInd2colInd );
 				const auto J_end = grb::utils::iterators::make_adapter_iterator(
-					J_raw.cend(), J_raw.cend(), entryInd2colInd );
+					J_raw.cend( s, P ), J_raw.cend( s, P ), entryInd2colInd );
 
 				// Initialise values container with the given value.
 				grb::utils::containers::ConstantVector< D > V( value, nz );
 
 #ifndef NDEBUG
-				const size_t Isz = std::distance( I.begin(), I.end() );
+				const size_t Isz = std::distance( I.begin( s, P ), I.end( s, P ) );
 				const size_t Jsz = std::distance( J_begin, J_end );
-				const size_t Vsz = std::distance( V.begin(), V.end() );
+				const size_t Vsz = std::distance( V.begin( s, P ), V.end( s, P ) );
 				assert( Isz == Jsz );
 				assert( Isz == Vsz );
 #endif
 
 				const RC rc = buildMatrixUnique(
 					matrix,
-					I.begin(), I.end(), J_begin, J_end, V.begin(), V.end(), mode
+					I.begin( s, P ), I.end( s, P ),
+					J_begin, J_end,
+					V.begin( s, P ), V.end( s, P ),
+					mode
 				);
 
 				if( rc != SUCCESS ) {
@@ -617,9 +661,16 @@ namespace grb::algorithms {
 				}
 				// FIXME filter out / re-sample any repeated entries
 
+				if( mode != grb::SEQUENTIAL ) {
+					std::cerr << "Warning: grb::algorithms::matrices< .., grb::PARALLEL, .. > "
+						<< "requests the generation of a random matrix, which can NOT proceed in "
+						<< "the requested parallel I/O mode. Using sequential I/O instead(!)\n";
+				}
+
 				const grb::RC rc = grb::buildMatrixUnique(
 					matrix,
-					I.begin(), I.end(), J.begin(), J.end(), V.begin(), V.end(), mode
+					I.begin(), I.end(), J.begin(), J.end(), V.begin(), V.end(),
+					grb::SEQUENTIAL // this must be sequential in the current setup (FIXME)
 				);
 
 				if( rc != SUCCESS ) {
@@ -701,6 +752,12 @@ namespace grb::algorithms {
 			typedef Matrix< void, backend, RIT, CIT, NIT > MatrixType;
 
 			/**
+			 * Short-hand type to the base implementation that defines some useful
+			 * helper functions.
+			 */
+			typedef matrices< int, mode, backend, RIT, CIT, NIT > BaseType;
+
+			/**
 			 * Generic implementation for creating an identity matrix.
 			 *
 			 * @param[in] m The number of rows of the matrix.
@@ -715,17 +772,21 @@ namespace grb::algorithms {
 				// pattern matrix variant of the above
 				constexpr const long s_zero = static_cast< long >( 0 );
 				constexpr const size_t u_zero = static_cast< size_t >( 0 );
-				const size_t diag_length = matrices< int, mode, backend, RIT, CIT, NIT >::
-					compute_diag_length( m, n, k );
-				Matrix< void, backend, RIT, CIT, NIT > matrix( m, n, diag_length );
+				const size_t diag_length = BaseType::compute_diag_length( m, n, k );
+				MatrixType matrix( m, n, diag_length );
 				const RIT k_i_incr = static_cast< RIT >(
 					(k < s_zero) ? std::abs( k ) : u_zero );
 				const CIT k_j_incr = static_cast< CIT >(
 					(k < s_zero) ? u_zero : std::abs( k ) );
 				grb::utils::containers::Range< RIT > I( k_i_incr, diag_length + k_i_incr );
 				grb::utils::containers::Range< CIT > J( k_j_incr, diag_length + k_j_incr );
+				const size_t s = BaseType::getPID();
+				const size_t P = BaseType::getP();
 				const RC rc = buildMatrixUnique(
-					matrix, I.begin(), J.begin(), diag_length, mode
+					matrix,
+					I.begin( s, P ), I.end( s, P ),
+					J.begin( s, P ), J.end( s, P ),
+					mode
 				);
 				if( rc != SUCCESS ) {
 					throw std::runtime_error(
@@ -734,6 +795,7 @@ namespace grb::algorithms {
 				}
 				return matrix;
 			}
+
 
 		public:
 
@@ -860,6 +922,8 @@ namespace grb::algorithms {
 						"nonzeroes." );
 				}
 
+				const size_t s = BaseType::getPID();
+				const size_t P = BaseType::getP();
 				MatrixType matrix( m, n, nz );
 
 				// Initialise rows indices container with a range from 0 to nrows,
@@ -883,15 +947,18 @@ namespace grb::algorithms {
 						return k / m;
 					};
 				auto J_begin = grb::utils::iterators::make_adapter_iterator(
-					J_raw.cbegin(), J_raw.cend(), nonzeroInd2colInd );
+					J_raw.cbegin( s, P ), J_raw.cend( s, P ), nonzeroInd2colInd );
 				auto J_end = grb::utils::iterators::make_adapter_iterator(
-					J_raw.cend(), J_raw.cend(), nonzeroInd2colInd );
+					J_raw.cend( s, P ), J_raw.cend( s, P ), nonzeroInd2colInd );
 
-				assert( std::distance( I.begin(), I.end() ) ==
+				assert( std::distance( I.begin( s, P ), I.end( s, P ) ) ==
 					std::distance( J_begin, J_end ) );
 
 				const RC rc = buildMatrixUnique(
-					matrix, I.begin(), I.end(), J_begin, J_end, mode
+					matrix,
+					I.begin( s, P ), I.end( s, P ),
+					J_begin, J_end,
+					mode
 				);
 
 				if( rc != SUCCESS ) {
@@ -1040,12 +1107,19 @@ namespace grb::algorithms {
 				}
 				// FIXME filter out / re-sample any repeated entries
 
+				if( mode != grb::SEQUENTIAL ) {
+					std::cerr << "Warning: grb::algorithms::matrices< .., grb::PARALLEL, .. > "
+						<< "requests the generation of a random matrix, which can NOT proceed in "
+						<< "the requested parallel I/O mode. Using sequential I/O instead(!)\n";
+				}
+
 				const RC rc = buildMatrixUnique(
-					matrix, I.begin(), I.end(), J.begin(), J.end(), mode
+					matrix, I.begin(), I.end(), J.begin(), J.end(),
+					grb::SEQUENTIAL // this must be sequential in the current setup (FIXME)
 				);
 				if( rc != SUCCESS ) {
 					throw std::runtime_error(
-						"Error: factory::random<void> failed: rc = " + grb::toString( rc )
+						"Error: matrices< void >::random failed: rc = " + grb::toString( rc )
 					);
 				}
 
