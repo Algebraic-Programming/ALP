@@ -97,9 +97,27 @@ void grbProgram( const void * data_in, const size_t in_size, struct output_vecto
 
 	double time_taken;
 	grb::utils::Timer timer;
+	constexpr double alpha = 0.85;
+	constexpr double conv = 0.0000001;
+	constexpr size_t max = 1000;
+	size_t iterations;
+	double quality;
 	timer.reset();
-	rc = simple_pagerank< descriptors::no_operation >( pr, L, buf1, buf2, buf3 );
+	rc = simple_pagerank< descriptors::no_operation >( pr, L, buf1, buf2, buf3,
+		alpha, conv, max, &iterations, &quality );
 	time_taken = timer.time();
+	if( conv <= quality ) {
+		if( spmd<>::pid() == 0 ) {
+			std::cerr << "Info: simple pagerank converged after " << iterations
+				<< " iterations." << std::endl;
+		}
+	} else {
+		if( spmd<>::pid() == 0 ) {
+			std::cout << "Info: simple pagerank did not converge after "
+				<< iterations << " iterations." << std::endl;
+		}
+		rc = grb::FAILED; // not converged
+	}
 
 	// print timing at root process
 	if( grb::spmd<>::pid() == 0 ) {

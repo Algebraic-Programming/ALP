@@ -95,8 +95,25 @@ void grbProgram( const size_t &P, int &exit_status ) {
 	// test default pagerank run
 	Vector< double > pr( n );
 	Vector< double > buf1( n ), buf2( n ), buf3( n );
+	constexpr double alpha = 0.85;
+	constexpr double conv = 0.0000001;
+	constexpr size_t max = 1000;
+	size_t iterations;
+	double quality;
 
-	rc = simple_pagerank<>( pr, L, buf1, buf2, buf3 );
+	rc = simple_pagerank<>( pr, L, buf1, buf2, buf3, alpha, conv, max, &iterations, &quality );
+	if( conv <= quality ) {
+		if( spmd<>::pid() == 0 ) {
+			std::cerr << "Info: simple pagerank converged after " << iterations
+				<< " iterations." << std::endl;
+		}
+	} else {
+		if( spmd<>::pid() == 0 ) {
+			std::cout << "Info: simple pagerank did not converge after "
+				<< iterations << " iterations." << std::endl;
+		}
+		rc = grb::FAILED; // not converged
+	}
 
 	// set error code
 	if( rc == FAILED ) {

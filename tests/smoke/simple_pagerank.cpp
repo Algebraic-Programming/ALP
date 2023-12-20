@@ -132,6 +132,18 @@ void grbProgram( const struct input &data_in, struct output &out ) {
 			&( out.iterations ), &( out.residual )
 		);
 		double single_time = timer.time();
+		if( 1e-7 <= out.residual ) {
+			if( spmd<>::pid() == 0 ) {
+				std::cerr << "Info: simple pagerank converged after " << out.iterations
+					<< " iterations." << std::endl;
+			}
+		} else {
+			if( spmd<>::pid() == 0 ) {
+				std::cout << "Info: simple pagerank did not converge after "
+					<< out.iterations << " iterations." << std::endl;
+			}
+			rc = grb::FAILED; // not converged
+		}
 		if( rc != SUCCESS ) {
 			std::cerr << "Failure: call to simple_pagerank did not succeed "
 				<< "(" << toString( rc ) << ")." << std::endl;
@@ -167,6 +179,19 @@ void grbProgram( const struct input &data_in, struct output &out ) {
 					0.85, 1e-7, 1000,
 					&( out.iterations ), &( out.residual )
 				);
+
+				if( 1e-7 <= out.residual ) {
+					if( spmd<>::pid() == 0 ) {
+						std::cerr << "Info: simple pagerank converged after " << out.iterations
+							<< " iterations." << std::endl;
+					}
+				} else {
+					if( spmd<>::pid() == 0 ) {
+						std::cout << "Info: simple pagerank did not converge after "
+							<< out.iterations << " iterations." << std::endl;
+					}
+					rc = grb::FAILED; // not converged
+				}
 			}
 		}
 		time_taken = timer.time();

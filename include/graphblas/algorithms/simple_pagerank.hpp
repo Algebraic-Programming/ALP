@@ -474,23 +474,8 @@ namespace grb {
 						<< toString( ret ) << "\n";
 				}
 				return ret;
-			} else if( residual <= conv ) {
-#ifdef _DEBUG
-				if( spmd<>::pid() == 0 ) {
-					std::cerr << "Info: simple pagerank converged after " << iter
-						<< " iterations.\n";
-				}
-#endif
-				return SUCCESS; // converged!
-			} else {
-#ifdef _DEBUG
-				if( spmd<>::pid() == 0 ) {
-					std::cout << "Info: simple pagerank did not converge after "
-						<< iter << " iterations.\n";
-				}
-#endif
-				return FAILED; // not converged
 			}
+			return SUCCESS; // converged!
 		}
 
 	} // namespace algorithms
