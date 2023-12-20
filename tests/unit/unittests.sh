@@ -735,6 +735,7 @@ for MODE in ${MODES}; do
 				${MANUALRUN} ${TEST_BIN_DIR}/${test_name} localhost 77770 4 1 &> ${test_log}.1 & \
 				${MANUALRUN} ${TEST_BIN_DIR}/${test_name} localhost 77770 4 2 &> ${test_log}.2 & \
 				wait"
+			head -1 ${test_log}.0
 			(grep -q 'Test OK' ${test_log}.1 && grep -q 'Test OK' ${test_log}.2 && grep -q 'Test OK' ${test_log}.3 \
 				&& grep -q 'Test OK' ${test_log}.0 && printf "Test OK.\n\n") || (printf "Test FAILED.\n\n")
 		fi
