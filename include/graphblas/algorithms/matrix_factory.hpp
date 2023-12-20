@@ -375,8 +375,8 @@ namespace grb::algorithms {
 			/**
 			 * Builds an identity matrix.
 			 *
-			 * \note This is an alias for #eye( n, n ). It differs only in that this
-			 *       function produces square matrices only.
+			 * \note This is an alias for #eye. It differs only in that this function
+			 *       produces square matrices only.
 			 *
 			 * See #eye for detailed documentation.
 			 *
@@ -483,8 +483,8 @@ namespace grb::algorithms {
 			/**
 			 * Builds a dense matrix filled with a given value.
 			 *
-			 * \note This is an alias for #grb::factory::full -- see that function for
-			 *       complete documentation.
+			 * \note This is an alias for #full -- see that function for complete
+			 *       documentation.
 			 *
 			 * @param[in] m     The number of rows of the matrix.
 			 * @param[in] n     The number of columns of the matrix.
@@ -573,9 +573,9 @@ namespace grb::algorithms {
 			/**
 			 * Builds a matrix filled with ones.
 			 *
-			 * \note This is an alias for factory::full( m, n, 1 ).
+			 * \note This is an alias for <tt>full( m, n, 1 )</tt>.
 			 *
-			 * @see #grb::factory::full for complete documentation.
+			 * @see #full for complete documentation.
 			 *
 			 * The only constraint that this function adds over the specification of
 			 * #full, is that the type \a D be numeric.
@@ -973,8 +973,8 @@ namespace grb::algorithms {
 			/**
 			 * Builds a dense pattern matrix.
 			 *
-			 * \note This is an alias for #grb::factory::full -- see that function for
-			 *       complete documentation.
+			 * \note This is an alias for #full -- see that function for complete
+			 *       documentation.
 			 *
 			 * \note This is the specialisation for pattern matrices.
 			 *
@@ -1042,7 +1042,7 @@ namespace grb::algorithms {
 			/**
 			 * Builds a pattern matrix filled with random values at random positions.
 			 *
-			 * This is the pattern-specialisation of the #grb::factory::random function.
+			 * This is the pattern-specialisation of the #random function.
 			 *
 			 * \warning Usually, (uniform) random matrices do \em not mimic practical
 			 *          graph and sparse matrix structures at all. Therefore, use this
@@ -1074,7 +1074,6 @@ namespace grb::algorithms {
 			 * @param[in] rgen     The random device used to generate the random data.
 			 * @param[in] row_dist The distribution used to generate the row indices.
 			 * @param[in] col_dist The distribution used to generate the column indices.
-			 * @param[in] val_dist The distribution used to generate the values.
 			 *
 			 * @returns The requested random matrix.
 			 */
@@ -1140,8 +1139,8 @@ namespace grb::algorithms {
 			 *          and sparse matrix structures at all. Therefore, use this
 			 *          functionality with care.
 			 *
-			 * This is the pattern-specialisation of the #grb::factory::random function
-			 * specialised for uniform random sampling using the \a mt19937 RNG.
+			 * This is the pattern-specialisation of the #random function, specialised
+			 * for uniform random sampling using the \a mt19937 RNG.
 			 *
 			 * @param[in] m        The number of rows of the matrix.
 			 * @param[in] n        The number of columns of the matrix.
