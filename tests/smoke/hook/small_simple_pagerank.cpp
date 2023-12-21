@@ -102,7 +102,9 @@ void grbProgram( const size_t &P, int &exit_status ) {
 	double quality;
 
 	rc = simple_pagerank<>( pr, L, buf1, buf2, buf3, alpha, conv, max, &iterations, &quality );
-	if( conv <= quality ) {
+	std::cout << "conv " << conv << std::endl;
+	std::cout << "quality " << quality << std::endl;
+	if( conv >= quality ) {
 		if( spmd<>::pid() == 0 ) {
 			std::cerr << "Info: simple pagerank converged after " << iterations
 				<< " iterations." << std::endl;
