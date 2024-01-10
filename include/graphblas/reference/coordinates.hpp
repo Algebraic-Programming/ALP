@@ -293,8 +293,8 @@ namespace grb {
 					_n = x._n;
 					_cap = x._cap;
 					_buf = x._buf;
-					x._assigned = NULL;
-					x._stack = x._buffer = NULL;
+					x._assigned = nullptr;
+					x._stack = x._buffer = nullptr;
 					x._n = x._cap = x._buf = 0;
 					return *this;
 				}

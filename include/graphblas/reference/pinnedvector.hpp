@@ -37,6 +37,19 @@
 
 namespace grb {
 
+	template< typename IOType > class PinnedVector< IOType, reference >;
+
+	namespace internal {
+
+		template< typename IOType >
+		utils::AutoDeleter< IOType > & get_buffered_values_deleter( PinnedVector< IOType, reference > & );
+
+		template< typename IOType >
+		internal::Coordinates<
+			config::IMPLEMENTATION< reference >::coordinatesBackend()
+		> &  get_buffered_coordinates( PinnedVector< IOType, reference > & );
+	}
+
 	/** \internal No implementation notes. */
 	template< typename IOType >
 	class PinnedVector< IOType, reference > {
@@ -47,13 +60,7 @@ namespace grb {
 			 * Tell the system to delete \a _buffered_values only when we had its last
 			 * reference.
 			 */
-			utils::AutoDeleter< IOType > _raw_deleter;
-
-			/**
-			 * Tell the system to delete the stack of the \a _buffered_coordinates only
-			 * when we had its last reference.
-			 */
-			// utils::AutoDeleter< char > _stack_deleter;
+			utils::AutoDeleter< IOType > _buffered_values_deleter;
 
 			/** A buffer of the local vector. */
 			IOType * _buffered_values;
@@ -76,7 +83,7 @@ namespace grb {
 				> > &x,
 				const IOMode mode
 			) :
-				_raw_deleter( x._raw_deleter ),
+				_buffered_values_deleter( x._raw_deleter ),
 				_buffered_values( x._raw_deleter.get() ), _buffered_coordinates( x._coordinates )
 			{
 				(void) mode; // sequential and parallel IO mode are equivalent for this
@@ -142,6 +149,16 @@ namespace grb {
 			) const noexcept {
 				assert( k < nonzeroes() );
 				return _buffered_coordinates.index( k );
+			}
+
+			friend const utils::AutoDeleter< IOType > & internal::get_buffered_values_deleter( const PinnedVector< IOType, reference > & pv ) {
+				return pv._buffered_values_deleter;
+			}
+
+			friend const internal::Coordinates<
+				config::IMPLEMENTATION< reference >::coordinatesBackend()
+			> &  internal::get_buffered_coordinates( const PinnedVector< IOType, reference > & pv ) {
+				return pv._buffered_coordinates;
 			}
 
 	};

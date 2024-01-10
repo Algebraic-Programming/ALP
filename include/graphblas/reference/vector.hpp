@@ -175,6 +175,15 @@ namespace grb {
 			const size_t n, const D *__restrict__ const raw
 		);
 
+
+		template< typename IOType >
+		const utils::AutoDeleter< IOType > & get_buffered_values_deleter( const PinnedVector< IOType, reference > & );
+
+		template< typename IOType >
+		const internal::Coordinates<
+			config::IMPLEMENTATION< reference >::coordinatesBackend()
+		> & get_buffered_coordinates( const PinnedVector< IOType, reference > & );
+
 	} // namespace internal
 
 	/**
@@ -281,7 +290,6 @@ namespace grb {
 		/** Whether \a id should be removed from #internal::reference_mapper */
 		bool _remove_id;
 
-
 		/** All (sparse) coordinate information. */
 		MyCoordinates _coordinates;
 
@@ -291,20 +299,6 @@ namespace grb {
 		 * the user.
 		 */
 		utils::AutoDeleter< D > _raw_deleter;
-
-		/**
-		 * Will automatically free the _assigned array in #_coordinates, depending
-		 * on how the vector was initialised and on whether the underlying data was
-		 * pinned by the user.
-		 */
-		// utils::AutoDeleter< char > _assigned_deleter;
-
-		/**
-		 * Will automatically free the buffer area required by #_coordinates,
-		 * depending on how the vector was initialised and on whether the
-		 * underlying vector data was pinned by the user.
-		 */
-		// utils::AutoDeleter< char > _buffer_deleter;
 
 		/**
 		 * Function to manually initialise this vector instance. This function is
@@ -905,22 +899,34 @@ namespace grb {
 			 * No implementation remarks.
 			 * @see Vector for the user-level specfication.
 			 */
-			Vector( Vector< D, reference, MyCoordinates > &&x ) noexcept {
+			Vector( Vector< D, reference, MyCoordinates > &&x ) noexcept :
+				// copy and move
+				_id( x._id ),
+				_remove_id( x._remove_id ),
+				_coordinates( std::move( x._coordinates ) ),
+				_raw_deleter( std::move( x._raw_deleter ) )
+			{
 #ifdef _DEBUG
 				std::cout << "Vector (reference) move-constructor called. Moving from ID "
 					<< x._id << "\n";
 #endif
-				// copy and move
-				_id = x._id;
-				_remove_id = x._remove_id;
-				_coordinates = std::move( x._coordinates );
-				_raw_deleter = std::move( x._raw_deleter );
 				// _assigned_deleter = std::move( x._assigned_deleter );
 				// _buffer_deleter = std::move( x._buffer_deleter );
 
 				// invalidate that which was not moved
 				x._id = internal::ReferenceMapper::getInvalidID();
 				x._remove_id = false;
+			}
+
+			Vector( const PinnedVector< D, reference > & pv ) noexcept :
+				_id( internal::ReferenceMapper::getInvalidID() ),
+				_remove_id( true ),
+				_coordinates( internal::get_buffered_values_deleter( pv ) ),
+				_raw_deleter( internal::get_buffered_coordinates( pv ) )
+			{
+				_id = internal::reference_mapper.insert(
+					reinterpret_cast< uintptr_t >( _coordinates._assigned )
+				);
 			}
 
 			/**
