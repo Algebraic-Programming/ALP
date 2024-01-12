@@ -161,6 +161,14 @@ namespace grb {
 		inline const Vector< D, reference, C >& getRefVector(
 			const Vector< D, nonblocking, C > &x ) noexcept;
 
+		template< typename IOType >
+		const utils::AutoDeleter< IOType > & get_buffered_values_deleter( const PinnedVector< IOType, nonblocking > & );
+
+		template< typename IOType >
+		const internal::Coordinates<
+			config::IMPLEMENTATION< nonblocking >::coordinatesBackend()
+		> &  get_buffered_coordinates( const PinnedVector< IOType, nonblocking > & );
+
 	} // namespace internal
 
 	template< typename D, typename MyCoordinates >
@@ -270,6 +278,13 @@ namespace grb {
 
 				ref = std::move( x.ref );
 			}
+
+
+			Vector( const PinnedVector< D, nonblocking > & pv ) noexcept :
+				ref( internal::get_buffered_coordinates( pv ),
+					internal::get_buffered_values_deleter( pv ) ) {}
+
+
 
 			Vector< D, nonblocking, MyCoordinates > & operator=(
 				const Vector< D, nonblocking, MyCoordinates > &x

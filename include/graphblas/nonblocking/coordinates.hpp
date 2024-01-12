@@ -184,9 +184,13 @@ namespace grb {
 					return *this;
 				}
 
-				void releaseAssignedArray() {
-					_assigned_deleter.clear();
-					_assigned = nullptr;
+				// void releaseAssignedArray() {
+				// 	_assigned_deleter.clear();
+				// 	_assigned = nullptr;
+				// }
+
+				const bool * getAssignedBaseAddress() const noexcept {
+					return _assigned;
 				}
 
 				inline ~Coordinates() noexcept {

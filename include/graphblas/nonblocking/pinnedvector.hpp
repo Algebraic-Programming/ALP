@@ -37,16 +37,26 @@
 
 namespace grb {
 
+	template< typename IOType > class PinnedVector< IOType, nonblocking >;
+
 	namespace internal {
 
 		extern LazyEvaluation le;
 
-	}
+		template< typename IOType >
+		const utils::AutoDeleter< IOType > & get_buffered_values_deleter( const PinnedVector< IOType, nonblocking > & );
+
+		template< typename IOType >
+		const internal::Coordinates<
+			config::IMPLEMENTATION< nonblocking >::coordinatesBackend()
+		> &  get_buffered_coordinates( const PinnedVector< IOType, nonblocking > & );
+
+	} // namespace internal
 
 	/**
-	 * The PinnedVector class is based on that of the reference backend.
+	 * The PinnedVector class is based on that of the  backend.
 	 *
-	 * \internal There is some code duplication with the reference PinnedVector.
+	 * \internal There is some code duplication with the  PinnedVector.
 	 *           At present, it is unclear if this can be reduced.
 	 */
 	template< typename IOType >
@@ -83,19 +93,18 @@ namespace grb {
 				> > &x,
 				const IOMode mode
 			) {
+				// The nonblocking backend is always single process, so the mode is unused.
+				(void) mode;
+
 				// The execution of a pipeline that uses the vector is necessary.
 				if( internal::getCoordinates(x).size() > 0 ) {
 					internal::le.execution( &x );
 				}
-
 				_raw_deleter = internal::getRefVector(x)._raw_deleter;
 				// _stack_deleter = internal::getRefVector(x)._buffer_deleter;
-				_buffered_values = internal::getRefVector(x)._raw_deleter.get();
+				_buffered_values = _raw_deleter.get();
 				_buffered_coordinates = internal::getRefVector(x)._coordinates;
 
-				// The nonblocking backend is always single process, so the mode is unused.
-				(void) mode;
-				_buffered_coordinates.releaseAssignedArray();
 			}
 
 			/** \internal No implementation details */
@@ -156,7 +165,29 @@ namespace grb {
 				return _buffered_coordinates.index( k );
 			}
 
+			friend const utils::AutoDeleter< IOType > & internal::get_buffered_values_deleter<>( const PinnedVector< IOType, nonblocking > & pv );
+
+			friend const internal::Coordinates<
+				config::IMPLEMENTATION< nonblocking >::coordinatesBackend()
+			> &  internal::get_buffered_coordinates<>( const PinnedVector< IOType, nonblocking > & pv );
+
 	};
+
+	namespace internal {
+
+		template< typename IOType >
+		const utils::AutoDeleter< IOType > & get_buffered_values_deleter( const PinnedVector< IOType, nonblocking > & pv ) {
+			return pv._raw_deleter;
+		}
+
+		template< typename IOType >
+		const internal::Coordinates<
+			config::IMPLEMENTATION< nonblocking >::coordinatesBackend()
+		> &  get_buffered_coordinates( const PinnedVector< IOType, nonblocking > & pv ) {
+			return pv._buffered_coordinates;
+		}
+
+	}
 
 } // namespace grb
 
