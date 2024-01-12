@@ -299,9 +299,13 @@ namespace grb {
 					return *this;
 				}
 
-				void releaseAssignedArray() {
-					_assigned_deleter.clear();
-					_assigned = nullptr;
+				// void releaseAssignedArray() {
+				// 	_assigned_deleter.clear();
+				// 	_assigned = nullptr;
+				// }
+
+				const bool * getAssignedBaseAddress() const noexcept {
+					return _assigned;
 				}
 
 				/**
@@ -352,8 +356,6 @@ namespace grb {
 				 * call to this function, the state shall become valid.
 				 */
 				void set(
-					// void * const arr,
-					// void * const buf, const size_t dim
 					utils::AutoDeleter< char >&& arr,
 					utils::AutoDeleter< char >&& buf,
 					const size_t dim,

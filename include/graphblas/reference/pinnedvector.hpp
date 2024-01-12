@@ -42,13 +42,14 @@ namespace grb {
 	namespace internal {
 
 		template< typename IOType >
-		utils::AutoDeleter< IOType > & get_buffered_values_deleter( PinnedVector< IOType, reference > & );
+		const utils::AutoDeleter< IOType > & get_buffered_values_deleter( const PinnedVector< IOType, reference > & );
 
 		template< typename IOType >
-		internal::Coordinates<
+		const internal::Coordinates<
 			config::IMPLEMENTATION< reference >::coordinatesBackend()
-		> &  get_buffered_coordinates( PinnedVector< IOType, reference > & );
-	}
+		> &  get_buffered_coordinates( const PinnedVector< IOType, reference > & );
+
+	} // namespace internal
 
 	/** \internal No implementation notes. */
 	template< typename IOType >
@@ -84,11 +85,11 @@ namespace grb {
 				const IOMode mode
 			) :
 				_buffered_values_deleter( x._raw_deleter ),
-				_buffered_values( x._raw_deleter.get() ), _buffered_coordinates( x._coordinates )
+				_buffered_values( x._raw_deleter.get() ),
+				_buffered_coordinates( x._coordinates )
 			{
 				(void) mode; // sequential and parallel IO mode are equivalent for this
 				            // implementation.
-				_buffered_coordinates.releaseAssignedArray();
 			}
 
 			// default destructor is OK
@@ -151,17 +152,29 @@ namespace grb {
 				return _buffered_coordinates.index( k );
 			}
 
-			friend const utils::AutoDeleter< IOType > & internal::get_buffered_values_deleter( const PinnedVector< IOType, reference > & pv ) {
-				return pv._buffered_values_deleter;
-			}
+			friend const utils::AutoDeleter< IOType > & internal::get_buffered_values_deleter<>( const PinnedVector< IOType, reference > & pv );
 
 			friend const internal::Coordinates<
 				config::IMPLEMENTATION< reference >::coordinatesBackend()
-			> &  internal::get_buffered_coordinates( const PinnedVector< IOType, reference > & pv ) {
-				return pv._buffered_coordinates;
-			}
+			> &  internal::get_buffered_coordinates<>( const PinnedVector< IOType, reference > & pv );
 
 	};
+
+	namespace internal {
+
+		template< typename IOType >
+		const utils::AutoDeleter< IOType > & get_buffered_values_deleter( const PinnedVector< IOType, reference > & pv ) {
+			return pv._buffered_values_deleter;
+		}
+
+		template< typename IOType >
+		const internal::Coordinates<
+			config::IMPLEMENTATION< reference >::coordinatesBackend()
+		> &  get_buffered_coordinates( const PinnedVector< IOType, reference > & pv ) {
+			return pv._buffered_coordinates;
+		}
+
+	}
 
 } // namespace grb
 

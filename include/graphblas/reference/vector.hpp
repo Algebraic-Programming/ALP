@@ -175,7 +175,6 @@ namespace grb {
 			const size_t n, const D *__restrict__ const raw
 		);
 
-
 		template< typename IOType >
 		const utils::AutoDeleter< IOType > & get_buffered_values_deleter( const PinnedVector< IOType, reference > & );
 
@@ -583,7 +582,6 @@ namespace grb {
 			}
 		}
 
-
 	public:
 
 		/** @see Vector::value_type. */
@@ -918,16 +916,27 @@ namespace grb {
 				x._remove_id = false;
 			}
 
-			Vector( const PinnedVector< D, reference > & pv ) noexcept :
+			Vector(
+				const MyCoordinates & _buffered_coordinates,
+				const utils::AutoDeleter< D > & _buffered_values
+			) noexcept :
 				_id( internal::ReferenceMapper::getInvalidID() ),
-				_remove_id( true ),
-				_coordinates( internal::get_buffered_values_deleter( pv ) ),
-				_raw_deleter( internal::get_buffered_coordinates( pv ) )
+				_remove_id( _buffered_coordinates.size() > 0 ),
+				_coordinates( _buffered_coordinates ),
+				_raw_deleter( _buffered_values )
 			{
-				_id = internal::reference_mapper.insert(
-					reinterpret_cast< uintptr_t >( _coordinates._assigned )
-				);
+				if( _coordinates.size() > 0 ) {
+					_id = internal::reference_mapper.insert(
+						reinterpret_cast< uintptr_t >( _coordinates.getAssignedBaseAddress() )
+					);
+				}
 			}
+
+			Vector( const PinnedVector< D, reference > & pv ) noexcept :
+				Vector( internal::get_buffered_coordinates( pv ),
+					internal::get_buffered_values_deleter( pv )
+				)
+			{}
 
 			/**
 			 * Copy-constructor.
