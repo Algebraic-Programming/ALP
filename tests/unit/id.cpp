@@ -215,6 +215,23 @@ void grb_program2( const struct input &in, struct output &out ) {
 		return;
 	}
 
+	/*
+	Test for move assignement id cleanup.
+	*/
+
+	grb::Matrix< int > new_one( 10, 10, 10 );
+	grb::Matrix< int > new_two( 10, 10, 10 );
+	new_two = std::move(new_one);
+
+	std::vector<grb::Matrix< int > > new_vector;
+
+	/*
+	Creating multiple new objects to generate potential id collision.
+	*/
+	for(int i=0;i<1000;i++) {
+		new_vector.emplace_back( 10, 10, 10 );
+	}
+
 }
 
 // NOTE:
