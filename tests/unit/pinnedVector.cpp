@@ -20,7 +20,6 @@
 #include <cstdlib>
 #include <inttypes.h>
 
-#include <graphblas/algorithms/knn.hpp>
 #include <graphblas/utils/timer.hpp>
 #include <graphblas/utils/parser.hpp>
 
@@ -28,7 +27,6 @@
 
 
 using namespace grb;
-using namespace algorithms;
 
 enum Test {
 	EMPTY,
@@ -134,12 +132,13 @@ static inline bool checkSparse(
 }
 
 template< typename T >
-void grbProgram( const struct input< T > &in, struct output< T > &out ) {
+void grbProgramVector2Pinned( const struct input< T > &in, struct output< T > &out ) {
 	// create container
 	constexpr const size_t zero = 0;
 	Vector< T > empty( zero ), nonempty( n ), zero_cap( n, zero );
 	srand( 15124 );
 	RC rc = SUCCESS;
+	out.error_code = SUCCESS;
 
 	// print progress
 	switch( in.test ) {
@@ -239,97 +238,495 @@ void grbProgram( const struct input< T > &in, struct output< T > &out ) {
 		rc = grb::clear( nonempty );
 	}
 
-	// return as a pinnedVector
-	if( rc == SUCCESS ) {
-		switch( in.test ) {
-			case EMPTY:
-				out.vector = PinnedVector< T >( empty, in.mode );
-				if( out.vector.size() != 0 ) {
-					rc = FAILED;
-				}
-				break;
-			case UNPOPULATED:
-			case DENSE:
-			case DENSE_CLEARED:
-			case MOST_SPARSE:
-			case MOST_SPARSE_CLEARED:
-			case TWO_ENTRIES:
-			case SPARSE_RANDOM:
-			case LEAST_SPARSE:
-			case LEAST_SPARSE_CLEARED:
-				out.vector = PinnedVector< T >( nonempty, in.mode );
-				if( out.vector.size() != n ) {
-					rc = FAILED;
-				}
-				break;
-			case ZERO_CAP:
-				out.vector = PinnedVector< T >( zero_cap, in.mode );
-				if( out.vector.size() != n ) {
-					rc = FAILED;
-				}
-				break;
-			default:
-				assert( false );
-		}
-		if( rc == FAILED ) {
-			std::cerr << "To-be returned PinnedVector has invalid size "
-				<< out.vector.size() << "\n";
-			return;
-		}
+	if( rc != SUCCESS ) {
+		out.error_code = rc;
+		return;
 	}
 
+	// return as a pinnedVector
+	switch( in.test ) {
+		case EMPTY:
+			out.vector = PinnedVector< T >( empty, in.mode );
+			if( out.vector.size() != 0 ) {
+				rc = FAILED;
+			}
+			break;
+		case UNPOPULATED:
+		case DENSE:
+		case DENSE_CLEARED:
+		case MOST_SPARSE:
+		case MOST_SPARSE_CLEARED:
+		case TWO_ENTRIES:
+		case SPARSE_RANDOM:
+		case LEAST_SPARSE:
+		case LEAST_SPARSE_CLEARED:
+			out.vector = PinnedVector< T >( nonempty, in.mode );
+			if( out.vector.size() != n ) {
+				rc = FAILED;
+			}
+			break;
+		case ZERO_CAP:
+			out.vector = PinnedVector< T >( zero_cap, in.mode );
+			if( out.vector.size() != n ) {
+				rc = FAILED;
+			}
+			break;
+		default:
+			assert( false );
+	}
+	if( rc == FAILED ) {
+		std::cerr << "To-be returned PinnedVector has invalid size "
+			<< out.vector.size() << "\n";
+		return;
+	}
+
+	if( rc != SUCCESS ) {
+		out.error_code = rc;
+		return;
+	}
+
+	if( in.mode != PARALLEL ) { return; }
+
 	// check total number of nozeroes when in PARALLEL mode
-	if( rc == SUCCESS && in.mode == PARALLEL ) {
-		operators::add< size_t > addOp;
-		size_t nzs = out.vector.nonzeroes();
-		if( collectives<>::allreduce( nzs, addOp ) != SUCCESS ) {
-			std::cerr << "Could not reduce the number of nonzeroes of all pinned "
-				<< "vectors.\n";
-			rc = FAILED;
-			return;
-		}
-		size_t expect = 0;
-		switch( in.test ) {
-			case EMPTY:
-			case UNPOPULATED:
-			case ZERO_CAP:
-			case DENSE_CLEARED:
-			case MOST_SPARSE_CLEARED:
-			case LEAST_SPARSE_CLEARED:
-				expect = 0;
-				break;
-			case DENSE:
-				expect = n;
-				break;
-			case MOST_SPARSE:
-				expect = 1;
-				break;
-			case TWO_ENTRIES:
-				expect = 2;
-				break;
-			case SPARSE_RANDOM:
-				break;
-			case LEAST_SPARSE:
-				expect = n-1;
-				break;
-			default:
-				assert( false );
-		}
-		if( in.test != SPARSE_RANDOM && nzs != expect ) {
-			std::cerr << "Expected " << expect << " nonzeroes, but "
-				<< nzs << " nonzeroes found\n";
-			rc = FAILED;
-		}
-		if( in.test == SPARSE_RANDOM && nzs > n ) {
-			std::cerr << "Illegal number of nonzeroes " << nzs << "\n";
-			rc = FAILED;
-		}
+	operators::add< size_t > addOp;
+	size_t nzs = out.vector.nonzeroes();
+	if( collectives<>::allreduce( nzs, addOp ) != SUCCESS ) {
+		std::cerr << "Could not reduce the number of nonzeroes of all pinned "
+			<< "vectors.\n";
+		rc = FAILED;
+		return;
+	}
+	size_t expect = 0;
+	switch( in.test ) {
+		case EMPTY:
+		case UNPOPULATED:
+		case ZERO_CAP:
+		case DENSE_CLEARED:
+		case MOST_SPARSE_CLEARED:
+		case LEAST_SPARSE_CLEARED:
+			expect = 0;
+			break;
+		case DENSE:
+			expect = n;
+			break;
+		case MOST_SPARSE:
+			expect = 1;
+			break;
+		case TWO_ENTRIES:
+			expect = 2;
+			break;
+		case SPARSE_RANDOM:
+			break;
+		case LEAST_SPARSE:
+			expect = n-1;
+			break;
+		default:
+			assert( false );
+	}
+	if( in.test != SPARSE_RANDOM && nzs != expect ) {
+		std::cerr << "Expected " << expect << " nonzeroes, but "
+			<< nzs << " nonzeroes found\n";
+		rc = FAILED;
+	}
+	if( in.test == SPARSE_RANDOM && nzs > n ) {
+		std::cerr << "Illegal number of nonzeroes " << nzs << "\n";
+		rc = FAILED;
 	}
 
 	// done
 	out.error_code = rc;
 	return;
 }
+
+
+template< typename T >
+int checkVector2Pinned( enum Test test, struct input< T > &in, const struct output< T > &out ) {
+	RC rc = SUCCESS;
+
+	// check size of output vector
+	switch( test ) {
+		case EMPTY:
+			if( out.vector.size() != 0 ) {
+				std::cerr << "Empty pinned vector has nonzero size\n";
+				rc = FAILED;
+			}
+			break;
+		case UNPOPULATED:
+		case ZERO_CAP:
+		case DENSE:
+		case DENSE_CLEARED:
+		case MOST_SPARSE:
+		case MOST_SPARSE_CLEARED:
+		case TWO_ENTRIES:
+		case SPARSE_RANDOM:
+		case LEAST_SPARSE:
+		case LEAST_SPARSE_CLEARED:
+			if( out.vector.size() != n ) {
+				std::cerr << "Vector does not have expected capacity\n";
+				rc = FAILED;
+			}
+			break;
+		default:
+			assert( false );
+	}
+	if( rc != SUCCESS ) {
+		return 20;
+	}
+
+	// get number of nonzeroes
+	size_t nzs = out.vector.nonzeroes();
+
+	// check number of nonzeroes
+	switch( test ) {
+		case EMPTY:
+		case UNPOPULATED:
+		case ZERO_CAP:
+		case DENSE_CLEARED:
+		case MOST_SPARSE_CLEARED:
+		case LEAST_SPARSE_CLEARED:
+			if( nzs != 0 ) {
+				std::cerr << "Pinned vector has nonzeroes ( " << nzs
+					<< " ), but none were expected\n";
+				rc = FAILED;
+			}
+			break;
+		case DENSE:
+			if( in.mode == SEQUENTIAL && nzs != n ) {
+				std::cerr << "Pinned vector does not hold the expected number of "
+					<< "nonzeroes ( " << nzs << ", expected " << n
+					<< " ).\n";
+				rc = FAILED;
+			}
+			if( in.mode == PARALLEL && nzs > n ) {
+				std::cerr << "Pinned vector holds too many nonzeroes ( " << nzs << ", "
+					<< "maximum is " << n << " ).\n";
+				rc = FAILED;
+			}
+			break;
+		case MOST_SPARSE:
+			if( in.mode == SEQUENTIAL && nzs != 1 ) {
+				std::cerr << "Pinned vector has " << nzs << " nonzeroes, expected 1\n";
+				rc = FAILED;
+			}
+			if( in.mode == PARALLEL && nzs > 1 ) {
+				std::cerr << "Pinned vector holds too many nonzeroes ( " << nzs << ", "
+					<< "maximum is 1 ).\n";
+				rc = FAILED;
+			}
+			break;
+		case TWO_ENTRIES:
+			if( in.mode == SEQUENTIAL && nzs != 2 ) {
+				std::cerr << "Pinned vector has " << nzs << " nonzeroes, expected 2\n";
+				rc = FAILED;
+			}
+			if( in.mode == PARALLEL && nzs > 2 ) {
+				std::cerr << "Pinned vector holds too many nonzeroes ( " << nzs << ", "
+					<< "maximum is 1 ).\n";
+				rc = FAILED;
+			}
+			break;
+		case SPARSE_RANDOM:
+			if( nzs > n ) {
+				std::cerr << "Pinned vector has too many nonzeroes\n";
+				rc = FAILED;
+			}
+			break;
+		case LEAST_SPARSE:
+			if( in.mode == SEQUENTIAL && nzs != n - 1 ) {
+				std::cerr << "Pinned vector has " << nzs
+					<< ", but should have " << (n-1) << "\n";
+				rc = FAILED;
+			}
+			if( in.mode == PARALLEL && nzs > n - 1 ) {
+				std::cerr << "Pinned vector holds too many nonzeroes ( " << nzs << ", "
+					<< "maximum is " << (n-1) << " ).\n";
+				rc = FAILED;
+			}
+			break;
+		default:
+			assert( false );
+	}
+	if( rc != SUCCESS ) {
+		return 30;
+	}
+
+	// check nonzero contents via API
+	for( size_t k = 0; rc == SUCCESS && k < out.vector.nonzeroes(); ++k ) {
+		const size_t index = out.vector.getNonzeroIndex( k );
+		const T value = out.vector.getNonzeroValue( k );
+		switch( test ) {
+			case EMPTY:
+			case UNPOPULATED:
+			case ZERO_CAP:
+			case DENSE_CLEARED:
+			case MOST_SPARSE_CLEARED:
+			case LEAST_SPARSE_CLEARED:
+				std::cerr << "Iterating over nonzeroes, while none should exist (I)\n";
+				rc = FAILED;
+				break;
+			case DENSE:
+				if( !checkDense( index, value, in.element ) ) {
+					rc = FAILED;
+				}
+				break;
+			case MOST_SPARSE:
+			case TWO_ENTRIES:
+			case SPARSE_RANDOM:
+			case LEAST_SPARSE:
+				if( !checkSparse( index, value, in.element, test ) ) {
+					rc = FAILED;
+				}
+				break;
+			default:
+				assert( false );
+		}
+
+	}
+	if( rc != SUCCESS ) {
+		return 40;
+	}
+
+	// check nonzero contents via iterator
+	// (TODO: this is not yet implemented in PinnedVector-- should we?)
+	/*for( const auto &nonzero : out.vector ) {
+		switch( test ) {
+			case EMPTY:
+			case UNPOPULATED:
+			case ZERO_CAP:
+			case DENSE_CLEARED:
+			case MOST_SPARSE_CLEARED:
+			case LEAST_SPARSE_CLEARED:
+				std::cerr << "Iterating over nonzeroes, while none should exist (II)\n";
+				rc = FAILED;
+				break;
+			case DENSE:
+				if( !checkDense( nonzero.first, nonzero.second, in.element ) ) {
+					rc = FAILED;
+				}
+				break;
+			case MOST_SPARSE:
+			case TWO_ENTRIES:
+			case SPARSE_RANDOM:
+			case LEAST_SPARSE:
+				if( !checkSparse( nonzero.first, nonzero.second, in.element, test ) ) {
+					rc = FAILED;
+				}
+				break;
+			default:
+				assert( false );
+		}
+		if( rc != SUCCESS ) { break; }
+	}
+	if( rc != SUCCESS ) {
+		return 50;
+	}*/
+
+	return 0;
+}
+
+template< typename T >
+struct p2vInput {
+	enum Test test;
+	IOMode mode;
+	const PinnedVector< T > &pinnedVector;
+};
+
+template< typename T >
+struct p2vOutput {
+	RC error_code;
+};
+
+
+template< typename T >
+void grbProgramPinned2VectorAndCheck( const p2vInput< T > &in, struct p2vOutput< T > &out ) {
+	out.error_code = SUCCESS;
+
+	// print progress
+	switch( in.test ) {
+		case EMPTY:
+			std::cout << "\t\t testing empty pinned vectors...\n";
+			break;
+		case UNPOPULATED:
+			std::cout << "\t\t testing unpopulated pinned vectors...\n";
+			break;
+		case ZERO_CAP:
+			std::cout << "\t\t testing zero-capacity pinned vectors...\n";
+			break;
+		case DENSE:
+			std::cout << "\t\t testing dense pinned vectors...\n";
+			break;
+		case DENSE_CLEARED:
+			std::cout << "\t\t testing cleared pinned vectors...\n";
+			break;
+		case MOST_SPARSE:
+			std::cout << "\t\t testing sparse pinned vector with one entry...\n";
+			break;
+		case TWO_ENTRIES:
+			std::cout << "\t\t testing sparse pinned vector with two entries...\n";
+			break;
+		case MOST_SPARSE_CLEARED:
+			std::cout << "\t\t testing cleared pinned vectors (from sparse)...\n";
+			break;
+		case SPARSE_RANDOM:
+			std::cout << "\t\t testing sparse pinned vector with "
+				<< "randomly positioned entries...\n";
+			break;
+		case LEAST_SPARSE:
+			std::cout << "\t\t testing sparse pinned vector with only one unset entry...\n";
+			break;
+		case LEAST_SPARSE_CLEARED:
+			std::cout << "\t\t testing cleared pinned vector (from almost-dense)...\n";
+			break;
+		default:
+			assert( false );
+	}
+
+	Vector< T > vector( in.pinnedVector );
+
+	// check size of output vector
+	switch( in.test ) {
+		case EMPTY:
+			if( size( vector ) != 0 ) {
+				std::cerr << "Empty pinned vector has nonzero size\n";
+				out.error_code = FAILED;
+			}
+			break;
+		case UNPOPULATED:
+		case ZERO_CAP:
+		case DENSE:
+		case DENSE_CLEARED:
+		case MOST_SPARSE:
+		case MOST_SPARSE_CLEARED:
+		case TWO_ENTRIES:
+		case SPARSE_RANDOM:
+		case LEAST_SPARSE:
+		case LEAST_SPARSE_CLEARED:
+			if( size( vector ) != n ) {
+				std::cerr << "Pinned vector does not have expected capacity\n";
+				out.error_code = FAILED;
+			}
+			break;
+		default:
+			assert( false );
+	}
+	if( out.error_code != SUCCESS ) {
+		return;
+	}
+
+	// get number of nonzeroes
+	size_t nzs = nnz( vector );
+
+	// check number of nonzeroes
+	switch( in.test ) {
+		case EMPTY:
+		case UNPOPULATED:
+		case ZERO_CAP:
+		case DENSE_CLEARED:
+		case MOST_SPARSE_CLEARED:
+		case LEAST_SPARSE_CLEARED:
+			if( nzs != 0 ) {
+				std::cerr << "Pinned vector has nonzeroes ( " << nzs
+					<< " ), but none were expected\n";
+				out.error_code = FAILED;
+			}
+			break;
+		case DENSE:
+			if( in.mode == SEQUENTIAL && nzs != n ) {
+				std::cerr << "Pinned vector does not hold the expected number of "
+					<< "nonzeroes ( " << nzs << ", expected " << n
+					<< " ).\n";
+				out.error_code = FAILED;
+			}
+			if( in.mode == PARALLEL && nzs > n ) {
+				std::cerr << "Pinned vector holds too many nonzeroes ( " << nzs << ", "
+					<< "maximum is " << n << " ).\n";
+				out.error_code = FAILED;
+			}
+			break;
+		case MOST_SPARSE:
+			if( in.mode == SEQUENTIAL && nzs != 1 ) {
+				std::cerr << "Pinned vector has " << nzs << " nonzeroes, expected 1\n";
+				out.error_code = FAILED;
+			}
+			if( in.mode == PARALLEL && nzs > 1 ) {
+				std::cerr << "Pinned vector holds too many nonzeroes ( " << nzs << ", "
+					<< "maximum is 1 ).\n";
+				out.error_code = FAILED;
+			}
+			break;
+		case TWO_ENTRIES:
+			if( in.mode == SEQUENTIAL && nzs != 2 ) {
+				std::cerr << "Pinned vector has " << nzs << " nonzeroes, expected 2\n";
+				out.error_code = FAILED;
+			}
+			if( in.mode == PARALLEL && nzs > 2 ) {
+				std::cerr << "Pinned vector holds too many nonzeroes ( " << nzs << ", "
+					<< "maximum is 1 ).\n";
+				out.error_code = FAILED;
+			}
+			break;
+		case SPARSE_RANDOM:
+			if( nzs > n ) {
+				std::cerr << "Pinned vector has too many nonzeroes\n";
+				out.error_code = FAILED;
+			}
+			break;
+		case LEAST_SPARSE:
+			if( in.mode == SEQUENTIAL && nzs != n - 1 ) {
+				std::cerr << "Pinned vector has " << nzs
+					<< ", but should have " << (n-1) << "\n";
+				out.error_code = FAILED;
+			}
+			if( in.mode == PARALLEL && nzs > n - 1 ) {
+				std::cerr << "Pinned vector holds too many nonzeroes ( " << nzs << ", "
+					<< "maximum is " << (n-1) << " ).\n";
+				out.error_code = FAILED;
+			}
+			break;
+		default:
+			assert( false );
+	}
+	if( out.error_code != SUCCESS ) {
+		return;
+	}
+
+	// check nonzero contents via API
+	for( size_t k = 0; out.error_code == SUCCESS && k < in.pinnedVector.nonzeroes(); ++k ) {
+		const size_t index = in.pinnedVector.getNonzeroIndex( k );
+		const T pvValue = in.pinnedVector.getNonzeroValue( k );
+
+		const T value = vector[ index ];
+		switch( in.test ) {
+			case EMPTY:
+			case UNPOPULATED:
+			case ZERO_CAP:
+			case DENSE_CLEARED:
+			case MOST_SPARSE_CLEARED:
+			case LEAST_SPARSE_CLEARED:
+				std::cerr << "Iterating over nonzeroes, while none should exist (I)\n";
+				out.error_code = FAILED;
+				break;
+			case DENSE:
+				if( !checkDense( index, value, pvValue ) ) {
+					out.error_code = FAILED;
+				}
+				break;
+			case MOST_SPARSE:
+			case TWO_ENTRIES:
+			case SPARSE_RANDOM:
+			case LEAST_SPARSE:
+				if( !checkSparse( index, value, pvValue, in.test ) ) {
+					out.error_code = FAILED;
+				}
+				break;
+			default:
+				assert( false );
+		}
+	}
+
+	return;
+}
+
 
 template< typename T >
 int runTests( struct input< T > &in ) {
@@ -342,188 +739,17 @@ int runTests( struct input< T > &in ) {
 	for( const auto &test : AllTests ) {
 		// run test
 		in.test = test;
-		rc = rc ? rc : launcher.exec( &grbProgram, in, out, true );
+		rc = rc ? rc : launcher.exec( &grbProgramVector2Pinned, in, out, true );
 		if( out.error_code != SUCCESS ) {
 			return offset + 10;
 		}
 
-		// check size of output vector
-		switch( test ) {
-			case EMPTY:
-				if( out.vector.size() != 0 ) {
-					std::cerr << "Empty pinned vector has nonzero size\n";
-					rc = FAILED;
-				}
-				break;
-			case UNPOPULATED:
-			case ZERO_CAP:
-			case DENSE:
-			case DENSE_CLEARED:
-			case MOST_SPARSE:
-			case MOST_SPARSE_CLEARED:
-			case TWO_ENTRIES:
-			case SPARSE_RANDOM:
-			case LEAST_SPARSE:
-			case LEAST_SPARSE_CLEARED:
-				if( out.vector.size() != n ) {
-					std::cerr << "Vector does not have expected capacity\n";
-					rc = FAILED;
-				}
-				break;
-			default:
-				assert( false );
-		}
-		if( rc != SUCCESS ) {
+		p2vInput< T > in = { test, in.mode, out.vector };
+		p2vOutput< T > out;
+		rc = rc ? rc : launcher.exec( &grbProgramPinned2VectorAndCheck, in, out, true );
+		if( out.error_code != SUCCESS ) {
 			return offset + 20;
 		}
-
-		// get number of nonzeroes
-		size_t nzs = out.vector.nonzeroes();
-
-		// check number of nonzeroes
-		switch( test ) {
-			case EMPTY:
-			case UNPOPULATED:
-			case ZERO_CAP:
-			case DENSE_CLEARED:
-			case MOST_SPARSE_CLEARED:
-			case LEAST_SPARSE_CLEARED:
-				if( nzs != 0 ) {
-					std::cerr << "Pinned vector has nonzeroes ( " << nzs
-						<< " ), but none were expected\n";
-					rc = FAILED;
-				}
-				break;
-			case DENSE:
-				if( in.mode == SEQUENTIAL && nzs != n ) {
-					std::cerr << "Pinned vector does not hold the expected number of "
-						<< "nonzeroes ( " << nzs << ", expected " << n
-						<< " ).\n";
-					rc = FAILED;
-				}
-				if( in.mode == PARALLEL && nzs > n ) {
-					std::cerr << "Pinned vector holds too many nonzeroes ( " << nzs << ", "
-						<< "maximum is " << n << " ).\n";
-					rc = FAILED;
-				}
-				break;
-			case MOST_SPARSE:
-				if( in.mode == SEQUENTIAL && nzs != 1 ) {
-					std::cerr << "Pinned vector has " << nzs << " nonzeroes, expected 1\n";
-					rc = FAILED;
-				}
-				if( in.mode == PARALLEL && nzs > 1 ) {
-					std::cerr << "Pinned vector holds too many nonzeroes ( " << nzs << ", "
-						<< "maximum is 1 ).\n";
-					rc = FAILED;
-				}
-				break;
-			case TWO_ENTRIES:
-				if( in.mode == SEQUENTIAL && nzs != 2 ) {
-					std::cerr << "Pinned vector has " << nzs << " nonzeroes, expected 2\n";
-					rc = FAILED;
-				}
-				if( in.mode == PARALLEL && nzs > 2 ) {
-					std::cerr << "Pinned vector holds too many nonzeroes ( " << nzs << ", "
-						<< "maximum is 1 ).\n";
-					rc = FAILED;
-				}
-				break;
-			case SPARSE_RANDOM:
-				if( nzs > n ) {
-					std::cerr << "Pinned vector has too many nonzeroes\n";
-					rc = FAILED;
-				}
-				break;
-			case LEAST_SPARSE:
-				if( in.mode == SEQUENTIAL && nzs != n - 1 ) {
-					std::cerr << "Pinned vector has " << nzs
-						<< ", but should have " << (n-1) << "\n";
-					rc = FAILED;
-				}
-				if( in.mode == PARALLEL && nzs > n - 1 ) {
-					std::cerr << "Pinned vector holds too many nonzeroes ( " << nzs << ", "
-						<< "maximum is " << (n-1) << " ).\n";
-					rc = FAILED;
-				}
-				break;
-			default:
-				assert( false );
-		}
-		if( rc != SUCCESS ) {
-			return offset + 30;
-		}
-
-		// check nonzero contents via API
-		for( size_t k = 0; rc == SUCCESS && k < out.vector.nonzeroes(); ++k ) {
-			const size_t index = out.vector.getNonzeroIndex( k );
-			const T value = out.vector.getNonzeroValue( k );
-			switch( test ) {
-				case EMPTY:
-				case UNPOPULATED:
-				case ZERO_CAP:
-				case DENSE_CLEARED:
-				case MOST_SPARSE_CLEARED:
-				case LEAST_SPARSE_CLEARED:
-					std::cerr << "Iterating over nonzeroes, while none should exist (I)\n";
-					rc = FAILED;
-					break;
-				case DENSE:
-					if( !checkDense( index, value, in.element ) ) {
-						rc = FAILED;
-					}
-					break;
-				case MOST_SPARSE:
-				case TWO_ENTRIES:
-				case SPARSE_RANDOM:
-				case LEAST_SPARSE:
-					if( !checkSparse( index, value, in.element, test ) ) {
-						rc = FAILED;
-					}
-					break;
-				default:
-					assert( false );
-			}
-
-		}
-		if( rc != SUCCESS ) {
-			return offset + 40;
-		}
-
-		// check nonzero contents via iterator
-		// (TODO: this is not yet implemented in PinnedVector-- should we?)
-		/*for( const auto &nonzero : out.vector ) {
-			switch( test ) {
-				case EMPTY:
-				case UNPOPULATED:
-				case ZERO_CAP:
-				case DENSE_CLEARED:
-				case MOST_SPARSE_CLEARED:
-				case LEAST_SPARSE_CLEARED:
-					std::cerr << "Iterating over nonzeroes, while none should exist (II)\n";
-					rc = FAILED;
-					break;
-				case DENSE:
-					if( !checkDense( nonzero.first, nonzero.second, in.element ) ) {
-						rc = FAILED;
-					}
-					break;
-				case MOST_SPARSE:
-				case TWO_ENTRIES:
-				case SPARSE_RANDOM:
-				case LEAST_SPARSE:
-					if( !checkSparse( nonzero.first, nonzero.second, in.element, test ) ) {
-						rc = FAILED;
-					}
-					break;
-				default:
-					assert( false );
-			}
-			if( rc != SUCCESS ) { break; }
-		}
-		if( rc != SUCCESS ) {
-			return offset + 50;
-		}*/
 
 		offset += 60;
 	}
@@ -579,22 +805,21 @@ int main( int argc, char ** argv ) {
 		in_double.element = 3.1415926535;
 		in_double.mode = mode;
 		error = runTests( in_double );
+		if( error ) { break; }
 
 		// run tests using a non-fundamental type
-		if( error == 0 ) {
-			std::cout << "\t running tests with DC and SL vector entries...\n";
-			struct input< std::pair< size_t, float > > in_pair;
-			in_pair.element = std::make_pair< size_t, float >( 17, -2.7 );
-			in_pair.mode = mode;
-			error = runTests( in_pair );
-		}
-		if( error == 0 ) {
-			std::cout << "\t running tests with DC and TC vector entries...\n";
-			struct input< struct Couple > in_pair;
-			in_pair.element = { 17, -2.7 };
-			in_pair.mode = mode;
-			error = runTests( in_pair );
-		}
+		std::cout << "\t running tests with DC and SL vector entries...\n";
+		struct input< std::pair< size_t, float > > in_pair;
+		in_pair.element = std::make_pair< size_t, float >( 17, -2.7 );
+		in_pair.mode = mode;
+		error = runTests( in_pair );
+		if( error ) { break; }
+
+		std::cout << "\t running tests with DC and TC vector entries...\n";
+		struct input< struct Couple > couple_in_pair;
+		couple_in_pair.element = { 17, -2.7 };
+		couple_in_pair.mode = mode;
+		error = runTests( couple_in_pair );
 		if( error ) { break; }
 	}
 
