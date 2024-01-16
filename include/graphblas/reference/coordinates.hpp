@@ -97,6 +97,13 @@ namespace grb {
 				/** Per-thread capacity for parallel stack updates. */
 				size_t _buf;
 
+				/** Number of threads for which these coordinates have been initialised. */
+#ifdef _H_GRB_REFERENCE_OMP_COORDINATES
+				const size_t _threads = config::OMP::threads();
+#else
+				const size_t _threads = 1;
+#endif
+
 				/**
 				 * Increments the number of nonzeroes in the current thread-local stack.
 				 *
@@ -292,6 +299,10 @@ namespace grb {
 				inline ~Coordinates() noexcept {
 					// done (the #_assigned and #_stack memory
 					// blocks are not managed by this class)
+				}
+
+				size_t requiredThreadsForUpdate() const noexcept {
+					return _threads;
 				}
 
 				/**
