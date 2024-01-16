@@ -1308,6 +1308,9 @@ namespace grb {
 
 			template< typename D, typename C >
 			inline C & getCoordinates( Vector< D, reference, C > &x ) noexcept {
+#ifdef _H_GRB_REFERENCE_OMP_VECTOR
+				assert( x._coordinates.requiredThreadsForUpdate() == config::OMP::threads() );
+#endif
 				return x._coordinates;
 			}
 
