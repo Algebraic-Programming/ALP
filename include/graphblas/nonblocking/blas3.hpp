@@ -571,6 +571,47 @@ namespace grb {
 		);
 	}
 
+	template<
+		Descriptor descr = descriptors::no_operation,
+		class Operator,
+		typename Tin,
+		typename RITin, typename CITin, typename NITin,
+		typename Tout,
+		typename RITout, typename CITout, typename NITout
+	>
+	RC select(
+		Matrix< Tout, nonblocking, RITout, CITout, NITout >& out,
+		const Matrix< Tin, nonblocking, RITin, CITin, NITin >& in,
+		const Operator op = Operator(),
+		const Phase& phase = EXECUTE
+	) {
+#ifdef _DEBUG
+		std::cout << "In grb::select( nonblocking )\n";
+#endif
+		if( internal::NONBLOCKING::warn_if_not_native &&
+				config::PIPELINE::warn_if_not_native
+			) {
+				std::cerr << "Warning: select (nonblocking) currently delegates to a "
+					<< "blocking implementation.\n"
+					<< "         Further similar such warnings will be suppressed.\n";
+				internal::NONBLOCKING::warn_if_not_native = false;
+			}
+
+			// nonblocking execution is not supported
+			// first, execute any computation that is not completed
+			internal::le.execution();
+
+			// second, delegate to the reference backend
+			return select<
+					descr, Operator
+				>(
+					internal::getRefMatrix( out ),
+					internal::getRefMatrix( in ),
+					op,
+					phase
+				);
+		}
+
 } // namespace grb
 
 #undef NO_CAST_ASSERT
