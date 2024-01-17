@@ -1327,7 +1327,7 @@ namespace grb {
 	}
 
 	template<
-		Descriptor descr = grb::descriptors::no_operation,
+		Descriptor descr = descriptors::no_operation,
 		class Operator,
 		typename Tin,
 		typename RITin, typename CITin, typename NITin,
@@ -1338,25 +1338,42 @@ namespace grb {
 		Matrix< Tout, reference, RITout, CITout, NITout >& out,
 		const Matrix< Tin, reference, RITin, CITin, NITin >& in,
 		const Operator op = Operator(),
-		const Phase& phase = Phase::EXECUTE,
+		const Phase& phase = EXECUTE,
 		const typename std::enable_if<
-			!grb::is_object< Tin >::value &&
-			!grb::is_object< Tout >::value &&
-			grb::is_single_matrix_coordinates_operator< Operator >::value,
-		void >::type * const = nullptr
+			!is_object< Tin >::value &&
+			!is_object< Tout >::value &&
+			is_single_matrix_coordinates_operator< Operator >::value
+		>::type * const = nullptr
 	) {
+#ifdef _DEBUG
 		std::cout << "In grb::select( reference )\n";
+#endif
+
 		RC rc = SUCCESS;
+		const Tin identity = Tin();
 
-		const auto identity = grb::identities::zero< Tin >::value();
+		constexpr bool crs_only = descr & descriptors::force_row_major;
+		constexpr bool transpose_input = descr & descriptors::transpose_matrix;
+		static_assert( !(crs_only && transpose_input),
+			"The descriptors::force_row_major and descriptors::transpose_matrix "
+			"flags cannot be used simultaneously" );
 
-		auto &out_raw = internal::getCRS( out );
-		const auto &in_raw = internal::getCRS( in );
-		const size_t m = nrows( in );
-		// const size_t n = descr & grb::descriptors::force_row_major ?
-		// 	ncols( in ) : nrows( in );
+		const auto &in_raw = transpose_input ? internal::getCCS( in ) : internal::getCRS( in );
+		auto &out_crs = internal::getCRS( out );
+		auto &out_ccs = internal::getCCS( out );
+		const size_t
+			m = transpose_input ? ncols( in ) : nrows( in ),
+			n = transpose_input ? nrows( in ) : ncols( in );
+		const size_t
+			m_out = nrows( out ),
+			n_out = ncols( out );
 
-		if( phase == Phase::RESIZE ) {
+		// Check if the dimensions fit
+		if( m != m_out || n != n_out ) {
+			return MISMATCH;
+		}
+
+		if( phase == RESIZE ) {
 			size_t nzc = 0;
 
 #ifdef _H_GRB_REFERENCE_OMP_BLAS3
@@ -1378,35 +1395,82 @@ namespace grb {
 					}
 				}
 			}
-			std::cout << "\t nzc = " << nzc << "\n";
-			return rc ? rc : grb::resize( out, nzc );
+			return grb::resize( out, nzc );
 		}
 
-		if( phase == Phase::EXECUTE ) {
-			out_raw.col_start[ 0 ] = 0;
+		assert( phase == EXECUTE );
+		// Execute phase only from here on
 
-			size_t nzc = 0;
+		char *arr = nullptr, *buf = nullptr;
+		Tin *valbuf = nullptr;
+		config::NonzeroIndexType *col_counter = nullptr;
+
+		if( !crs_only ) {
+			internal::getMatrixBuffers( arr, buf, valbuf, 1, in );
+			col_counter = internal::getReferenceBuffer< config::NonzeroIndexType >( n + 1 );
+
+#ifdef _H_GRB_REFERENCE_OMP_BLAS3
+#pragma omp parallel for simd default(none) shared(out_ccs) firstprivate(n)
+#endif
+			for( size_t j = 0; j < n + 1; ++j ) {
+				out_ccs.col_start[ j ] = 0;
+			}
+
+			// Fill CCS.col_start with the number of nonzeros in each column
 			for( size_t i = 0; i < m; ++i ) {
-				size_t nzc_i = 0;
 				for( size_t k = in_raw.col_start[ i ]; k < in_raw.col_start[ i + 1 ]; ++k ) {
 					const auto j = in_raw.row_index[ k ];
 					const Tin value = in_raw.getValue( k, identity );
 					if( not op.apply( i, j, value) ) continue;
-
-					nzc_i++;
-					out_raw.row_index[ nzc ] = j;
-					out_raw.setValue( nzc, value );
-					std::cout << "\tKeeping value at: " << i << ", " << j << " -> idx=" << nzc << "\n";
-					nzc++;
+					++out_ccs.col_start[ j + 1 ];
 				}
-				out_raw.col_start[ i + 1 ] = nzc_i + out_raw.col_start[ i ];
 			}
 
-			internal::setCurrentNonzeroes( out, nzc );
+			// Prefix sum of CCS.col_start
+			for( size_t j = 1; j < n + 1; ++j ) {
+				out_ccs.col_start[ j ] += out_ccs.col_start[ j - 1 ];
+			}
+
+#ifdef _H_GRB_REFERENCE_OMP_BLAS3
+#pragma omp parallel for simd default(none) shared(col_counter) firstprivate(n)
+#endif
+			for( size_t j = 0; j < n + 1; ++j ) {
+				col_counter[ j ] = 0;
+			}
 		}
+
+		out_crs.col_start[ 0 ] = 0;
+		size_t nzc = 0;
+		for( size_t i = 0; i < m; ++i ) {
+			for( size_t k = in_raw.col_start[ i ]; k < in_raw.col_start[ i + 1 ]; ++k ) {
+				const auto j = in_raw.row_index[ k ];
+				const Tin value = in_raw.getValue( k, identity );
+				if( not op.apply( i, j, value) ) continue;
+#ifdef _DEBUG
+				std::cout << "\tKeeping value at: " << i << ", " << j << " -> idx=" << nzc << "\n";
+#endif
+
+				// Update CCS
+				if( !crs_only ) {
+					const auto idx = col_counter[ j ] + out_ccs.col_start[ j ];
+					out_ccs.row_index[ idx ] = i;
+					out_ccs.setValue( idx, value );
+					++col_counter[ j ];
+				}
+
+				// Update CRS
+				out_crs.row_index[ nzc ] = j;
+				out_crs.setValue( nzc, value );
+				++nzc;
+			}
+			out_crs.col_start[ i + 1 ] = nzc;
+		}
+
+		internal::setCurrentNonzeroes( out, nzc );
 
 		return rc;
 	}
+
 
 } // namespace grb
 
