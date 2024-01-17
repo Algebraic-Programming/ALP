@@ -604,11 +604,14 @@ for MODE in ${MODES}; do
 				grep 'Test OK' ${TEST_OUT_DIR}/zip_large_${MODE}_${BACKEND}_${P}_${T} || echo "Test FAILED"
 				echo " "
 
-				echo ">>>      [x]           [ ]       Testing grb::select on matrices of integers and of size 50'000"
-        $runner ${TEST_BIN_DIR}/selectMatrix_${MODE}_${BACKEND} 50000 &> ${TEST_OUT_DIR}/selectMatrix_${MODE}_${BACKEND}_${P}_${T}
-        head -1 ${TEST_OUT_DIR}/selectMatrix_${MODE}_${BACKEND}_${P}_${T}
-        grep 'Test OK' ${TEST_OUT_DIR}/selectMatrix_${MODE}_${BACKEND}_${P}_${T} || echo "Test FAILED"
-        echo " "
+				# If backend is not hyperdags
+				if [ "$BACKEND" != "hyperdags" ]; then
+					echo ">>>      [x]           [ ]       Testing grb::select on matrices of integers and of size 50'000"
+					$runner ${TEST_BIN_DIR}/selectMatrix_${MODE}_${BACKEND} 50000 &> ${TEST_OUT_DIR}/selectMatrix_${MODE}_${BACKEND}_${P}_${T}
+					head -1 ${TEST_OUT_DIR}/selectMatrix_${MODE}_${BACKEND}_${P}_${T}
+					grep 'Test OK' ${TEST_OUT_DIR}/selectMatrix_${MODE}_${BACKEND}_${P}_${T} || echo "Test FAILED"
+					echo " "
+				fi
 
 				echo ">>>      [x]           [ ]       Testing copy-constructor of square pattern matrices"
 				echo "                                 of size 1003."

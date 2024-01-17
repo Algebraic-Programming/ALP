@@ -176,7 +176,7 @@ add_grb_executables( RBGaussSeidel RBGaussSeidel.cpp
 )
 
 add_grb_executables( selectMatrix selectMatrix.cpp
-	BACKENDS reference reference_omp
+	BACKENDS reference reference_omp hyperdags nonblocking
 )
 
 add_grb_executables( set set.cpp

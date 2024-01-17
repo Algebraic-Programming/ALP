@@ -89,6 +89,7 @@ RC test_case(const Matrix<D>& input, const SelectionOperator op, const std::stri
 		return rc;
 	}
 
+	grb::wait( output );
 	printSparseMatrix<Debug>(output);
 
 	const bool valid = matrix_validate_predicate(output, op);
