@@ -126,7 +126,7 @@ namespace grb {
 		 *
 		 * \internal Base case: an arbitrary type is not an ALP operator.
 		 */
-		static const constexpr bool value = false;
+		static constexpr bool value = false;
 	};
 
 	/**

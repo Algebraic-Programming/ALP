@@ -1001,8 +1001,7 @@ namespace grb {
 			};
 
 			template<
-				typename D, typename RIT, typename CIT,
-				enum Backend implementation = config::default_backend
+				typename D, typename RIT, typename CIT
 			>
 			class is_diagonal {
 
@@ -1014,12 +1013,82 @@ namespace grb {
 					static bool apply(
 						const row_type * __restrict__ const x,
 						const column_type * __restrict__ const y,
-						const value_type * __restrict__ const v
+						const value_type * __restrict__ const
 					) {
-						(void)v;
-						std::cout << __func__ << ": " << *x << " " << *y  << std::endl;
 						return *x == *y;
 					}
+			};
+
+			template<
+				typename D, typename RIT, typename CIT
+			>
+			class is_strictly_lower {
+
+			public:
+				typedef D value_type;
+				typedef RIT row_type;
+				typedef CIT column_type;
+
+				static bool apply(
+					const row_type * __restrict__ const x,
+					const column_type * __restrict__ const y,
+					const value_type * __restrict__ const
+				) {
+					return *x > *y;
+				}
+			};
+
+			template<
+				typename D, typename RIT, typename CIT
+			>
+			class is_lower_or_diagonal {
+
+			public:
+				typedef D value_type;
+				typedef RIT row_type;
+				typedef CIT column_type;
+
+				static bool apply(
+					const row_type * __restrict__ const x,
+					const column_type * __restrict__ const y,
+					const value_type * __restrict__ const
+				) {
+					return *x >= *y;
+				}
+			};
+
+			template<
+				typename D, typename RIT, typename CIT
+			>
+			class is_strictly_upper {
+
+			public:
+				typedef D value_type;
+				typedef RIT row_type;
+				typedef CIT column_type;
+
+				static bool apply(
+					const row_type * __restrict__ const x,
+					const column_type * __restrict__ const y,
+					const value_type * __restrict__ const v
+				)  { return not is_lower_or_diagonal< D, RIT, CIT >::apply( x, y, v ); }
+			};
+
+			template<
+				typename D, typename RIT, typename CIT
+			>
+			class is_upper_or_diagonal {
+
+			public:
+				typedef D value_type;
+				typedef RIT row_type;
+				typedef CIT column_type;
+
+				static bool apply(
+					const row_type * __restrict__ const x,
+					const column_type * __restrict__ const y,
+					const value_type * __restrict__ const v
+				) { return not is_strictly_lower< D, RIT, CIT >::apply( x, y, v ); }
 			};
 
 

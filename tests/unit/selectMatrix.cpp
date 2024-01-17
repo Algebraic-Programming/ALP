@@ -1,4 +1,3 @@
-
 /*
  *   Copyright 2021 Huawei Technologies Co., Ltd.
  *
@@ -25,27 +24,26 @@
 
 using namespace grb;
 
-#define _DEBUG
+constexpr bool Debug = false;
 
 namespace {
-	template< class Iterator >
-	void printSparseMatrixIterator( size_t rows, size_t cols, Iterator begin, Iterator end, const std::string & name = "", std::ostream & os = std::cout ) {
-#ifndef _DEBUG
-		return;
-#endif
+	template<class Iterator>
+	void printSparseMatrixIterator(size_t rows, size_t cols, Iterator begin, Iterator end, const std::string& name = "",
+	                               std::ostream& os = std::cout) {
 		std::cout << "Matrix \"" << name << "\" (" << rows << "x" << cols << "):" << std::endl << "[" << std::endl;
-		if( rows > 1000 || cols > 1000 ) {
+		if (rows > 1000 || cols > 1000) {
 			os << "   Matrix too large to print" << std::endl;
 		} else {
 			// os.precision( 3 );
-			for( size_t y = 0; y < rows; y++ ) {
-				os << std::string( 3, ' ' );
-				for( size_t x = 0; x < cols; x++ ) {
-					auto nnz_val = std::find_if( begin, end, [ y, x ]( const typename std::iterator_traits< Iterator >::value_type & a ) {
-						return a.first.first == y && a.first.second == x;
-					} );
-					if( nnz_val != end )
-						os << std::fixed << ( *nnz_val ).second;
+			for (size_t y = 0; y < rows; y++) {
+				os << std::string(3, ' ');
+				for (size_t x = 0; x < cols; x++) {
+					auto nnz_val = std::find_if(
+						begin, end, [ y, x ](const typename std::iterator_traits<Iterator>::value_type& a) {
+							return a.first.first == y && a.first.second == x;
+						});
+					if (nnz_val != end)
+						os << std::fixed << (*nnz_val).second;
 					else
 						os << '_';
 					os << " ";
@@ -56,73 +54,140 @@ namespace {
 		os << "]" << std::endl;
 	}
 
-	template< typename D >
-	void printSparseMatrix( const Matrix< D > & mat, const std::string & name = "", std::ostream & os = std::cout ) {
-		wait( mat );
-		printSparseMatrixIterator( nrows( mat ), ncols( mat ), mat.cbegin(), mat.cend(), name, os );
+	template<bool enabled, typename D>
+	void printSparseMatrix(const Matrix<D>& mat, const std::string& name = "", std::ostream& os = std::cout) {
+		if (not enabled) return;
+		wait(mat);
+		printSparseMatrixIterator(nrows(mat), ncols(mat), mat.cbegin(), mat.cend(), name, os);
 	}
-
 } // namespace
 
-template< typename D >
-bool tril_predicate( size_t r, size_t c, D val ) {
-	(void)val;
-	return r >= c;
+template<typename D, typename Func>
+bool matrix_validate_predicate(const Matrix<D>& B, Func predicate) {
+	return std::all_of(B.cbegin(), B.cend(), [ predicate ](const std::pair<std::pair<size_t, size_t>, D>& e) {
+		return predicate.apply(e.first.first, e.first.second, e.second);
+	});
 }
 
-template< typename D, typename Func >
-bool matrix_validate_predicate( const Matrix< D > & B, Func predicate ) {
-	return std::all_of( B.cbegin(), B.cend(), [ predicate ]( const std::pair< std::pair< size_t, size_t >, D > & e ) {
-		return predicate( e.first.first, e.first.second, e.second );
-	} );
-}
+template<typename D, typename SelectionOperator>
+RC test_case(const Matrix<D>& input, const SelectionOperator op, const std::string& test_name) {
+	std::cout << test_name << std::endl;
 
-template< typename D, Backend implementation, typename RIT, typename CIT, typename NIT >
-void grb_program( const Matrix< D, implementation, RIT, CIT, NIT > & A, RC & rc ) {
-	{ // Test 01: Lower triangular matrix select, same matrix types, boolean predicate
-		std::cout << "Test 01: Lower triangular matrix select, same matrix types, boolean predicate" << std::endl;
-		Matrix< D > B( nrows( A ), ncols( A ) );
-		std::cout << "B.initial: nnz=" << nnz( B ) << ", capacity=" << capacity( B ) << std::endl;
-		rc = rc ? rc : select( B, A, operators::is_diagonal<D, RIT, CIT>(), Phase::RESIZE );
-		std::cout << "B.resized: nnz=" << nnz( B ) << ", capacity=" << capacity( B ) << std::endl;
-		rc = rc ? rc : select( B, A, operators::is_diagonal<D, RIT, CIT>(), Phase::EXECUTE );
-		std::cout << "B.executed: nnz=" << nnz( B ) << ", capacity=" << capacity( B ) << std::endl;
-		printSparseMatrix( B, "tril" );
-		matrix_validate_predicate( B, tril_predicate< D > );
+	Matrix<D> output(nrows(input), ncols(input), 0);
+
+	RC rc = select(output, input, op, RESIZE);
+	if( rc != SUCCESS ) {
+		std::cerr << "RESIZE phase of test <" << test_name <<
+			"> failed, rc is \"" << toString(rc) << "\"" << std::endl;
+		return rc;
 	}
+
+	rc = select(output, input, op, EXECUTE);
+	if( rc != SUCCESS ) {
+		std::cerr << "EXECUTE phase of test <" << test_name <<
+			"> failed, rc is \"" << toString(rc) << "\"" << std::endl;
+		return rc;
+	}
+
+	printSparseMatrix<Debug>(output);
+
+	const bool valid = matrix_validate_predicate(output, op);
+	if( not valid ) {
+		std::cerr << "Test <" << test_name << "> failed, output matrix is invalid" << std::endl;
+		return FAILED;
+	}
+
+	return SUCCESS;
 }
 
-int main( int argc, char ** argv ) {
+void grb_program(const long& n, RC& rc) {
+	rc = SUCCESS;
+
+	Matrix<int> I(n, n, n); {
+		// Build matrix
+		std::vector<size_t> indices(n, 0);
+		std::iota(indices.begin(), indices.end(), 0);
+		std::vector<int> values(n, 1);
+		buildMatrixUnique(I, indices.data(), indices.data(), values.data(), n, SEQUENTIAL);
+
+		printSparseMatrix<Debug>(I, "identity");
+	}
+
+	Matrix<int> I_tr(n, n, n); {
+		// Build matrix
+		std::vector<size_t> rows_indices(n, 0);
+		std::iota(rows_indices.begin(), rows_indices.end(), 0);
+		std::vector<size_t> cols_indices(n, 0);
+		std::iota(cols_indices.begin(), cols_indices.end(), 0);
+		std::reverse(cols_indices.begin(), cols_indices.end());
+		std::vector<int> values(n, 1);
+		buildMatrixUnique(I_tr, rows_indices.data(), cols_indices.data(), values.data(), n, SEQUENTIAL);
+
+		printSparseMatrix<Debug>(I_tr, "transposed-identity");
+	}
+
+	// Test 01: Select <diagonal> out of <identity>
+	rc = rc ? rc : test_case(I, operators::is_diagonal<int>(),
+	          "Test 01: Select <diagonal> out of <identity>");
+
+	// Test 02: Select <diagonal> out of <transposed-identity>
+	rc = rc ? rc : test_case(I_tr, operators::is_diagonal<int>(),
+	          "Test 02: Select <diagonal> out of <transposed-identity>");
+
+	// Test 03: Select <strict-lower> out of <identity>
+	rc = rc ? rc : test_case(I, operators::is_strictly_lower<int>(),
+	          "Test 03: Select <strict-lower> out of <identity>");
+
+	// Test 04: Select <strict-lower> out of <identity>
+	rc = rc ? rc : test_case(I_tr, operators::is_strictly_lower<int>(),
+	          "Test 04: Select <strict-lower> out of <transposed-identity>");
+
+	// Test 05: Select <strict-upper> out of <identity>
+	rc = rc ? rc : test_case(I, operators::is_strictly_upper<int>(),
+	          "Test 05: Select <strict-lower> out of <identity>");
+
+	// Test 06: Select <strict-upper> out of <identity>
+	rc = rc ? rc : test_case(I_tr, operators::is_strictly_upper<int>(),
+	          "Test 06: Select <strict-lower> out of <transposed-identity>");
+
+	// Test 07: Select <lower-or-diag> out of <identity>
+	rc = rc ? rc : test_case(I, operators::is_lower_or_diagonal<int>(),
+	          "Test 07: Select <lower-or-diag> out of <identity>");
+
+	// Test 08: Select <lower-or-diag> out of <identity>
+	rc = rc ? rc : test_case(I_tr, operators::is_lower_or_diagonal<int>(),
+	          "Test 08: Select <lower-or-diag> out of <transposed-identity>");
+
+	// Test 09: Select <upper-or-diag> out of <identity>
+	rc = rc ? rc : test_case(I, operators::is_upper_or_diagonal<int>(),
+	          "Test 09: Select <upper-or-diag> out of <identity>");
+
+	// Test 10: Select <upper-or-diag> out of <identity>
+	rc = rc ? rc : test_case(I_tr, operators::is_upper_or_diagonal<int>(),
+	          "Test 10: Select <upper-or-diag> out of <transposed-identity>");
+}
+
+int main(int argc, char** argv) {
 	(void) argc;
 	(void) argv;
 
 	RC out = SUCCESS;
 
-	std::cout << "This is functional test " << argv[ 0 ] << "\n";
-	Launcher< EXEC_MODE::AUTOMATIC > launcher;
+	std::cout << "This is functional test " << argv[0] << "\n";
+	Launcher<AUTOMATIC> launcher;
 
-	{ // Transposed identity matrix
-		Matrix< int > A0( 5, 5  );
-		std::vector< size_t > A0_rows( nrows( A0 ), 0 ), A0_cols( ncols( A0 ), 0 );
-		std::vector< int > A0_vals( A0_rows.size(), 1 );
-		for( size_t i = 0; i < A0_rows.size(); i++ ) {
-			A0_rows[ i ] = nrows( A0 ) - 1 - i;
-			A0_cols[ i ] = i;
-		}
-		buildMatrixUnique( A0, A0_rows.data(), A0_cols.data(), A0_vals.data(), A0_rows.size(), IOMode::PARALLEL );
+	const long n = argc > 1 ? std::strtol(argv[1], nullptr, 10) : 10;
 
-		printSparseMatrix( A0, "A0" );
-		if( launcher.exec( &grb_program, A0, out, true ) != RC::SUCCESS ) {
-			std::cerr << "Launching test FAILED\n";
-			return 255;
-		}
+	if (launcher.exec(&grb_program, n, out) != SUCCESS) {
+		std::cerr << "Launching test FAILED\n";
+		return 255;
 	}
 
-	if( out != RC::SUCCESS ) {
-		std::cout << "Test FAILED (" << toString( out ) << ")" << std::endl;
+	if (out != SUCCESS) {
+		std::cout << "Test FAILED (" << toString(out) << ")" << std::endl;
 		return out;
-	} else {
-		std::cout << "Test OK" << std::endl;
-		return 0;
 	}
+
+	std::cerr << "Test OK" << std::endl;
+	return 0;
 }
