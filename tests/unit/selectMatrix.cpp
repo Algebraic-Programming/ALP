@@ -69,33 +69,71 @@ bool matrix_validate_predicate(const Matrix<D>& B, Func predicate) {
 	});
 }
 
-template<typename D, typename SelectionOperator>
-RC test_case(const Matrix<D>& input, const SelectionOperator op, const std::string& test_name) {
+template<typename D, typename SelectionOperator, typename RIT, typename CIT, Backend implementation>
+RC test_case(
+	const Matrix<D, implementation, RIT, CIT>& input,
+	const SelectionOperator op,
+	const std::string& test_name
+) {
 	std::cout << test_name << std::endl;
 
-	Matrix<D> output(nrows(input), ncols(input), 0);
+	{ // Non-lambda variant
+		Matrix<D> output(nrows(input), ncols(input), 0);
 
-	RC rc = select(output, input, op, RESIZE);
-	if( rc != SUCCESS ) {
-		std::cerr << "RESIZE phase of test <" << test_name <<
-			"> failed, rc is \"" << toString(rc) << "\"" << std::endl;
-		return rc;
+		RC rc = select(output, input, op, RESIZE);
+		if( rc != SUCCESS ) {
+			std::cerr << "(non-lambda variant): RESIZE phase of test <" << test_name <<
+				"> failed, rc is \"" << toString(rc) << "\"" << std::endl;
+			return rc;
+		}
+
+		rc = select(output, input, op, EXECUTE);
+		if( rc != SUCCESS ) {
+			std::cerr << "(non-lambda variant): EXECUTE phase of test <" << test_name <<
+				"> failed, rc is \"" << toString(rc) << "\"" << std::endl;
+			return rc;
+		}
+
+		grb::wait( output );
+		printSparseMatrix<Debug>(output);
+
+		const bool valid = matrix_validate_predicate(output, op);
+		if( not valid ) {
+			std::cerr << "(non-lambda variant): Test <" << test_name << "> failed, output matrix is invalid" << std::endl;
+			return FAILED;
+		}
 	}
 
-	rc = select(output, input, op, EXECUTE);
-	if( rc != SUCCESS ) {
-		std::cerr << "EXECUTE phase of test <" << test_name <<
-			"> failed, rc is \"" << toString(rc) << "\"" << std::endl;
-		return rc;
-	}
+	{ // Lambda variant
+		Matrix<D> output(nrows(input), ncols(input), 0);
 
-	grb::wait( output );
-	printSparseMatrix<Debug>(output);
+		auto lambda = [](const RIT & x, const CIT & y, const D & v) {
+			const SelectionOperator op_;
+			return op_.apply(x, y, v);
+		};
 
-	const bool valid = matrix_validate_predicate(output, op);
-	if( not valid ) {
-		std::cerr << "Test <" << test_name << "> failed, output matrix is invalid" << std::endl;
-		return FAILED;
+		RC rc = selectLambda(output, input, lambda, RESIZE);
+		if( rc != SUCCESS ) {
+			std::cerr << "(lambda variant): RESIZE phase of test <" << test_name <<
+				"> failed, rc is \"" << toString(rc) << "\"" << std::endl;
+			return rc;
+		}
+
+		rc = selectLambda(output, input, lambda, EXECUTE);
+		if( rc != SUCCESS ) {
+			std::cerr << "(lambda variant): EXECUTE phase of test <" << test_name <<
+				"> failed, rc is \"" << toString(rc) << "\"" << std::endl;
+			return rc;
+		}
+
+		grb::wait( output );
+		printSparseMatrix<Debug>(output);
+
+		const bool valid = matrix_validate_predicate(output, op);
+		if( not valid ) {
+			std::cerr << "(lambda variant): Test <" << test_name << "> failed, output matrix is invalid" << std::endl;
+			return FAILED;
+		}
 	}
 
 	return SUCCESS;

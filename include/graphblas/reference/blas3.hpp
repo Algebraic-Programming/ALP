@@ -61,6 +61,142 @@ namespace grb {
 
 	namespace internal {
 
+		template<
+			Descriptor descr = descriptors::no_operation,
+			class Operator,
+			typename Tin,
+			typename RITin, typename CITin, typename NITin,
+			typename Tout,
+			typename RITout, typename CITout, typename NITout
+		>
+		RC select_generic(
+			Matrix< Tout, reference, RITout, CITout, NITout >& out,
+			const Matrix< Tin, reference, RITin, CITin, NITin >& in,
+			const Operator op = Operator(),
+			const Phase& phase = EXECUTE
+		) {
+			RC rc = SUCCESS;
+			const Tin identity = Tin();
+
+			constexpr bool crs_only = descr & descriptors::force_row_major;
+			constexpr bool transpose_input = descr & descriptors::transpose_matrix;
+			static_assert( !(crs_only && transpose_input),
+				"The descriptors::force_row_major and descriptors::transpose_matrix "
+				"flags cannot be used simultaneously" );
+
+			const auto &in_raw = transpose_input ? internal::getCCS( in ) : internal::getCRS( in );
+			auto &out_crs = internal::getCRS( out );
+			auto &out_ccs = internal::getCCS( out );
+			const size_t
+				m = transpose_input ? ncols( in ) : nrows( in ),
+				n = transpose_input ? nrows( in ) : ncols( in );
+			const size_t
+				m_out = nrows( out ),
+				n_out = ncols( out );
+
+			// Check if the dimensions fit
+			if( m != m_out || n != n_out ) {
+				return MISMATCH;
+			}
+
+			if( phase == RESIZE ) {
+				size_t nzc = 0;
+
+#ifdef _H_GRB_REFERENCE_OMP_BLAS3
+				#pragma omp parallel default(none) shared(out, in_raw, rc, std::cout) firstprivate(m, op, identity) reduction(+:nzc)
+#endif
+				{
+					size_t start_row = 0;
+					size_t end_row = m;
+#ifdef _H_GRB_REFERENCE_OMP_BLAS3
+					config::OMP::localRange( start_row, end_row, 0, m );
+#endif
+					for( auto i = start_row; i < end_row; ++i ) {
+						for( auto k = in_raw.col_start[ i ]; k < in_raw.col_start[ i + 1 ]; ++k ) {
+							const auto j = in_raw.row_index[ k ];
+							const Tin value = in_raw.getValue( k, identity );
+							if( op.apply( i, j, value ) ) {
+								nzc++;
+							}
+						}
+					}
+				}
+				return grb::resize( out, nzc );
+			}
+
+			assert( phase == EXECUTE );
+			// Execute phase only from here on
+
+			char *arr = nullptr, *buf = nullptr;
+			Tin *valbuf = nullptr;
+			config::NonzeroIndexType *col_counter = nullptr;
+
+			if( !crs_only ) {
+				internal::getMatrixBuffers( arr, buf, valbuf, 1, in );
+				col_counter = internal::getReferenceBuffer< config::NonzeroIndexType >( n + 1 );
+
+#ifdef _H_GRB_REFERENCE_OMP_BLAS3
+				#pragma omp parallel for simd default(none) shared(out_ccs) firstprivate(n)
+#endif
+				for( size_t j = 0; j < n + 1; ++j ) {
+					out_ccs.col_start[ j ] = 0;
+				}
+
+				// Fill CCS.col_start with the number of nonzeros in each column
+				for( size_t i = 0; i < m; ++i ) {
+					for( size_t k = in_raw.col_start[ i ]; k < in_raw.col_start[ i + 1 ]; ++k ) {
+						const auto j = in_raw.row_index[ k ];
+						const Tin value = in_raw.getValue( k, identity );
+						if( not op.apply( i, j, value) ) continue;
+						++out_ccs.col_start[ j + 1 ];
+					}
+				}
+
+				// Prefix sum of CCS.col_start
+				for( size_t j = 1; j < n + 1; ++j ) {
+					out_ccs.col_start[ j ] += out_ccs.col_start[ j - 1 ];
+				}
+
+#ifdef _H_GRB_REFERENCE_OMP_BLAS3
+				#pragma omp parallel for simd default(none) shared(col_counter) firstprivate(n)
+#endif
+				for( size_t j = 0; j < n + 1; ++j ) {
+					col_counter[ j ] = 0;
+				}
+			}
+
+			out_crs.col_start[ 0 ] = 0;
+			size_t nzc = 0;
+			for( size_t i = 0; i < m; ++i ) {
+				for( size_t k = in_raw.col_start[ i ]; k < in_raw.col_start[ i + 1 ]; ++k ) {
+					const auto j = in_raw.row_index[ k ];
+					const Tin value = in_raw.getValue( k, identity );
+					if( not op.apply( i, j, value) ) continue;
+#ifdef _DEBUG
+					std::cout << "\tKeeping value at: " << i << ", " << j << " -> idx=" << nzc << "\n";
+#endif
+
+					// Update CCS
+					if( !crs_only ) {
+						const auto idx = col_counter[ j ] + out_ccs.col_start[ j ];
+						out_ccs.row_index[ idx ] = i;
+						out_ccs.setValue( idx, value );
+						++col_counter[ j ];
+					}
+
+					// Update CRS
+					out_crs.row_index[ nzc ] = j;
+					out_crs.setValue( nzc, value );
+					++nzc;
+				}
+				out_crs.col_start[ i + 1 ] = nzc;
+			}
+
+			internal::setCurrentNonzeroes( out, nzc );
+
+			return rc;
+		}
+
 		/**
 		 * \internal general mxm implementation that all mxm variants refer to
 		 */
@@ -1349,128 +1485,47 @@ namespace grb {
 		std::cout << "In grb::select( reference )\n";
 #endif
 
-		RC rc = SUCCESS;
-		const Tin identity = Tin();
-
-		constexpr bool crs_only = descr & descriptors::force_row_major;
-		constexpr bool transpose_input = descr & descriptors::transpose_matrix;
-		static_assert( !(crs_only && transpose_input),
-			"The descriptors::force_row_major and descriptors::transpose_matrix "
-			"flags cannot be used simultaneously" );
-
-		const auto &in_raw = transpose_input ? internal::getCCS( in ) : internal::getCRS( in );
-		auto &out_crs = internal::getCRS( out );
-		auto &out_ccs = internal::getCCS( out );
-		const size_t
-			m = transpose_input ? ncols( in ) : nrows( in ),
-			n = transpose_input ? nrows( in ) : ncols( in );
-		const size_t
-			m_out = nrows( out ),
-			n_out = ncols( out );
-
-		// Check if the dimensions fit
-		if( m != m_out || n != n_out ) {
-			return MISMATCH;
-		}
-
-		if( phase == RESIZE ) {
-			size_t nzc = 0;
-
-#ifdef _H_GRB_REFERENCE_OMP_BLAS3
-#pragma omp parallel default(none) shared(out, in_raw, rc, std::cout) firstprivate(m, op, identity) reduction(+:nzc)
-#endif
-			{
-				size_t start_row = 0;
-				size_t end_row = m;
-#ifdef _H_GRB_REFERENCE_OMP_BLAS3
-				config::OMP::localRange( start_row, end_row, 0, m );
-#endif
-				for( auto i = start_row; i < end_row; ++i ) {
-					for( auto k = in_raw.col_start[ i ]; k < in_raw.col_start[ i + 1 ]; ++k ) {
-						const auto j = in_raw.row_index[ k ];
-						const Tin value = in_raw.getValue( k, identity );
-						if( op.apply( i, j, value ) ) {
-							nzc++;
-						}
-					}
-				}
-			}
-			return grb::resize( out, nzc );
-		}
-
-		assert( phase == EXECUTE );
-		// Execute phase only from here on
-
-		char *arr = nullptr, *buf = nullptr;
-		Tin *valbuf = nullptr;
-		config::NonzeroIndexType *col_counter = nullptr;
-
-		if( !crs_only ) {
-			internal::getMatrixBuffers( arr, buf, valbuf, 1, in );
-			col_counter = internal::getReferenceBuffer< config::NonzeroIndexType >( n + 1 );
-
-#ifdef _H_GRB_REFERENCE_OMP_BLAS3
-#pragma omp parallel for simd default(none) shared(out_ccs) firstprivate(n)
-#endif
-			for( size_t j = 0; j < n + 1; ++j ) {
-				out_ccs.col_start[ j ] = 0;
-			}
-
-			// Fill CCS.col_start with the number of nonzeros in each column
-			for( size_t i = 0; i < m; ++i ) {
-				for( size_t k = in_raw.col_start[ i ]; k < in_raw.col_start[ i + 1 ]; ++k ) {
-					const auto j = in_raw.row_index[ k ];
-					const Tin value = in_raw.getValue( k, identity );
-					if( not op.apply( i, j, value) ) continue;
-					++out_ccs.col_start[ j + 1 ];
-				}
-			}
-
-			// Prefix sum of CCS.col_start
-			for( size_t j = 1; j < n + 1; ++j ) {
-				out_ccs.col_start[ j ] += out_ccs.col_start[ j - 1 ];
-			}
-
-#ifdef _H_GRB_REFERENCE_OMP_BLAS3
-#pragma omp parallel for simd default(none) shared(col_counter) firstprivate(n)
-#endif
-			for( size_t j = 0; j < n + 1; ++j ) {
-				col_counter[ j ] = 0;
-			}
-		}
-
-		out_crs.col_start[ 0 ] = 0;
-		size_t nzc = 0;
-		for( size_t i = 0; i < m; ++i ) {
-			for( size_t k = in_raw.col_start[ i ]; k < in_raw.col_start[ i + 1 ]; ++k ) {
-				const auto j = in_raw.row_index[ k ];
-				const Tin value = in_raw.getValue( k, identity );
-				if( not op.apply( i, j, value) ) continue;
-#ifdef _DEBUG
-				std::cout << "\tKeeping value at: " << i << ", " << j << " -> idx=" << nzc << "\n";
-#endif
-
-				// Update CCS
-				if( !crs_only ) {
-					const auto idx = col_counter[ j ] + out_ccs.col_start[ j ];
-					out_ccs.row_index[ idx ] = i;
-					out_ccs.setValue( idx, value );
-					++col_counter[ j ];
-				}
-
-				// Update CRS
-				out_crs.row_index[ nzc ] = j;
-				out_crs.setValue( nzc, value );
-				++nzc;
-			}
-			out_crs.col_start[ i + 1 ] = nzc;
-		}
-
-		internal::setCurrentNonzeroes( out, nzc );
-
-		return rc;
+		return internal::select_generic< descr >(
+			out, in, op, phase
+		);
 	}
 
+	template<
+		Descriptor descr = descriptors::no_operation,
+		class PredicateFunction,
+		typename Tin,
+		typename RITin, typename CITin, typename NITin,
+		typename Tout,
+		typename RITout, typename CITout, typename NITout
+	>
+	RC selectLambda(
+		Matrix< Tout, reference, RITout, CITout, NITout >& out,
+		const Matrix< Tin, reference, RITin, CITin, NITin >& in,
+		const PredicateFunction &lambda,
+		const Phase& phase = EXECUTE,
+		const typename std::enable_if<
+			!is_object< Tin >::value &&
+			!is_object< Tout >::value
+		>::type * const = nullptr
+	) {
+#ifdef _DEBUG
+		std::cout << "In grb::selectLambda( reference )\n";
+#endif
+
+		struct LambdaOperator {
+			const PredicateFunction& op;
+
+			explicit LambdaOperator( const PredicateFunction& op_ ) : op( op_ ) {}
+
+			bool apply( const RITin & x, const CITin & y, const Tin & v ) const {
+				return op( x, y, v );
+			}
+		} lambdaOp( lambda );
+
+		return internal::select_generic< descr >(
+			out, in, lambdaOp, phase
+		);
+	}
 
 } // namespace grb
 

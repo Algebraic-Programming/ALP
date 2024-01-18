@@ -2905,7 +2905,7 @@ namespace grb {
 			 *
 			 * @see Operator for full details.
 			 */
-			template< typename OP, enum Backend implementation = config::default_backend >
+			template< typename OP >
 			class SingleMatrixCoordinatesOperatorBase {
 				protected:
 
