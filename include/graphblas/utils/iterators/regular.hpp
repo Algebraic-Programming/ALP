@@ -278,10 +278,8 @@ namespace grb {
 					friend bool operator==(
 						self_const_reference_type left, self_const_reference_type right
 					) noexcept {
-						return left._pos == right._pos &&
-							left._count == right._count &&
-							left._state == right._state &&
-							left._val == right._val;
+						assert( left._count == right._count );
+						return left._pos == right._pos;
 					}
 
 					friend bool operator!=(
