@@ -222,9 +222,7 @@ void grb_program2( const struct input &in, struct output &out ) {
 	*/
 	for(int i=0;i<1000;i++) {
 		grb::Matrix< int > new_one( 10, 10, 10 );
-		//std::cout << "ID of new_one: " << grb::getID(new_one) << std::endl;
 		grb::Matrix< int > new_two( 10, 10, 10 );
-		//std::cout << "ID of new_two: " << grb::getID(new_two) << std::endl;
 		new_two = std::move(new_one);
 	}
 
