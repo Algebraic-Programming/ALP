@@ -356,8 +356,9 @@ namespace grb {
 		if( phase != EXECUTE ) { return ret; }
 		if( nrows( out ) == 0 || ncols( out ) == 0 ) { return ret; }
 		std::array< const void *, 0 > sourcesP{};
-		std::array< uintptr_t, 1 > sourcesC{
-			getID( internal::getMatrix(in) )
+		std::array< uintptr_t, 2 > sourcesC{
+			getID( internal::getMatrix(in) ),
+			getID( internal::getMatrix(out) )
 		};
 		std::array< uintptr_t, 1 > destinations{
 			getID( internal::getMatrix(out) )
