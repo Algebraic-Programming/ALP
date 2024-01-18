@@ -612,6 +612,47 @@ namespace grb {
 				);
 		}
 
+	template<
+		Descriptor descr = descriptors::no_operation,
+		class SelectionLambda,
+		typename Tin,
+		typename RITin, typename CITin, typename NITin,
+		typename Tout,
+		typename RITout, typename CITout, typename NITout
+	>
+	RC selectLambda(
+		Matrix< Tout, nonblocking, RITout, CITout, NITout >& out,
+		const Matrix< Tin, nonblocking, RITin, CITin, NITin >& in,
+		const SelectionLambda &lambda,
+		const Phase& phase = EXECUTE
+	) {
+#ifdef _DEBUG
+		std::cout << "In grb::selectLambda( nonblocking )\n";
+#endif
+		if( internal::NONBLOCKING::warn_if_not_native &&
+				config::PIPELINE::warn_if_not_native
+			) {
+			std::cerr << "Warning: selectLambda (nonblocking) currently delegates to a "
+				<< "blocking implementation.\n"
+				<< "         Further similar such warnings will be suppressed.\n";
+			internal::NONBLOCKING::warn_if_not_native = false;
+			}
+
+		// nonblocking execution is not supported
+		// first, execute any computation that is not completed
+		internal::le.execution();
+
+		// second, delegate to the reference backend
+		return selectLambda<
+				descr, SelectionLambda
+			>(
+				internal::getRefMatrix( out ),
+				internal::getRefMatrix( in ),
+				lambda,
+				phase
+			);
+	}
+
 } // namespace grb
 
 #undef NO_CAST_ASSERT
