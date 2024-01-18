@@ -651,6 +651,8 @@ void grb_program( const size_t &n, grb::RC &rc ) {
 	rc = rc != SUCCESS ? rc : test_factory_identity( n, 1 );
 	std::cout << "Testing matrices::identity (-2 offset)\n";
 	rc = rc != SUCCESS ? rc : test_factory_identity( n, -2 );
+	std::cout << "Testing matrices::identity (n offset)\n";
+	rc = rc != SUCCESS ? rc : test_factory_identity( n, n );
 	std::cout << "Testing matrices::eye\n";
 	rc = rc != SUCCESS ? rc : test_factory_eye( n );
 	std::cout << "Testing matrices::dense (direct)\n";
