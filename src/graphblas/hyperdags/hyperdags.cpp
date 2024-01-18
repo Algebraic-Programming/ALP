@@ -383,6 +383,9 @@ std::string grb::internal::hyperdags::toString(
 		case SELECT_MATRIX_MATRIX:
 			return "select( matrix, matrix, selection_operator )";
 
+		case SELECT_LAMBDA_MATRIX_MATRIX:
+			return "selectLambda( matrix, matrix, lambda )";
+
 	}
 	assert( false );
 	return "unknown operation";

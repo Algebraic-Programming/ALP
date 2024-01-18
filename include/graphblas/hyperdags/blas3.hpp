@@ -372,6 +372,46 @@ namespace grb {
 		return ret;
 	}
 
+	template<
+		Descriptor descr = descriptors::no_operation,
+		class SelectionLambda,
+		typename Tin,
+		typename RITin, typename CITin, typename NITin,
+		typename Tout,
+		typename RITout, typename CITout, typename NITout
+	>
+	RC selectLambda(
+		Matrix< Tout, hyperdags, RITout, CITout, NITout >& out,
+		const Matrix< Tin, hyperdags, RITin, CITin, NITin >& in,
+		const SelectionLambda &lambda,
+		const Phase& phase = EXECUTE
+	) {
+		const RC ret = selectLambda< descr >(
+			internal::getMatrix( out ),
+			internal::getMatrix( in ),
+			lambda,
+			phase
+		);
+		if( ret != SUCCESS ) { return ret; }
+		if( phase != EXECUTE ) { return ret; }
+		if( nrows( out ) == 0 || ncols( out ) == 0 ) { return ret; }
+		std::array< const void *, 0 > sourcesP{};
+		std::array< uintptr_t, 2 > sourcesC{
+			getID( internal::getMatrix(in) ),
+			getID( internal::getMatrix(out) )
+		};
+		std::array< uintptr_t, 1 > destinations{
+			getID( internal::getMatrix(out) )
+		};
+		internal::hyperdags::generator.addOperation(
+			internal::hyperdags::SELECT_LAMBDA_MATRIX_MATRIX,
+			sourcesP.begin(), sourcesP.end(),
+			sourcesC.begin(), sourcesC.end(),
+			destinations.begin(), destinations.end()
+		);
+		return ret;
+	}
+
 } // end namespace grb
 
 #endif
