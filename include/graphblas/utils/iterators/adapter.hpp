@@ -45,7 +45,7 @@ namespace grb::utils {
 		 * sub-iterator.
 		 *
 		 * \note Currently the adapter supports random access iterators only. If
-		 *       If support for other iterator categories is required, please submit
+		 *       support for other iterator categories is required, please submit
 		 *       a feature request and/or contact the maintainers.
 		 *
 		 * @tparam SubIterT The underlying iterator type.
@@ -324,18 +324,24 @@ namespace grb::utils {
 		 *
 		 * \warning Not all iterator categories are presently supported.
 		 *
-		 * \note Random access iterators guaranteed to be supported.
+		 * Only random random access iterators are currently supported.
 		 *
 		 * @param[in] start The given iterator whose values shall be adapted.
 		 * @param[in] end   The end-iterator that matches \a start.
 		 * @param[in] func  The function by which the values of the given iterator
-		 *                  shall be adapted.
+		 *                  shall be adapted. The function must take a single const
+		 *                  value of the iterator value type, and shall return the
+		 *                  modified value type.
 		 *
 		 * @returns An iterator in the same position as \a start but whose values
 		 *          will be modified according to \a func.
 		 *
 		 * The returned iterator is a const-iterator, meaning the values iterated over
-		 * cannot be modified, even if the original iterator supported this.
+		 * cannot be modified-- even if the original iterator supported this.
+		 *
+		 * The iterator adapter does not support changing the original value type of
+		 * the underlying \a start and \a end iterators. If such functionality would
+		 * be useful, please submit a feature request.
 		 */
 		template< typename SubIterT >
 		static Adapter< SubIterT > make_adapter_iterator(
