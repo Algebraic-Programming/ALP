@@ -442,6 +442,78 @@ namespace grb {
 		return ret == SUCCESS ? UNSUPPORTED : ret;
 	}
 
+	template<
+		Descriptor descr,
+		class SelectionOperator,
+		typename Tin,
+		typename RITin, typename CITin, typename NITin,
+		typename Tout,
+		typename RITout, typename CITout, typename NITout,
+		Backend backend
+	>
+	RC select(
+		Matrix< Tout, backend, RITout, CITout, NITout >& out,
+		const Matrix< Tin, backend, RITin, CITin, NITin >& in,
+		const SelectionOperator &op,
+		const Phase& phase = EXECUTE,
+		const typename std::enable_if<
+			!is_object< Tin >::value &&
+			!is_object< Tout >::value &&
+			is_single_matrix_coordinates_operator< SelectionOperator >::value
+		>::type * const = nullptr
+		) {
+		(void) descr;
+		(void) out;
+		(void) in;
+		(void) op;
+		(void) phase;
+#ifdef _DEBUG
+		std::cerr << "Selected backend does not implement grb::select\n";
+#endif
+#ifndef NDEBUG
+		const bool selected_backend_does_not_support_select	= false;
+		assert( selected_backend_does_not_support_select );
+#endif
+		(void) grb::clear( out  );
+		return UNSUPPORTED;
+	}
+
+
+	template<
+		Descriptor descr,
+		class PredicateFunction,
+		typename Tin,
+		typename RITin, typename CITin, typename NITin,
+		typename Tout,
+		typename RITout, typename CITout, typename NITout,
+		Backend backend
+	>
+	RC selectLambda(
+		Matrix< Tout, backend, RITout, CITout, NITout >& out,
+		const Matrix< Tin, backend, RITin, CITin, NITin >& in,
+		const PredicateFunction &lambda,
+		const Phase& phase = EXECUTE,
+		const typename std::enable_if<
+			!is_object< Tin >::value &&
+			!is_object< Tout >::value
+		>::type * const = nullptr
+		) {
+		(void) descr;
+		(void) out;
+		(void) in;
+		(void) lambda;
+		(void) phase;
+#ifdef _DEBUG
+		std::cerr << "Selected backend does not implement grb::selectLambda\n";
+#endif
+#ifndef NDEBUG
+		const bool selected_backend_does_not_support_selectLambda	= false;
+		assert( selected_backend_does_not_support_selectLambda );
+#endif
+		(void) grb::clear( out  );
+		return UNSUPPORTED;
+	}
+
 	/**
 	 * @}
 	 */
