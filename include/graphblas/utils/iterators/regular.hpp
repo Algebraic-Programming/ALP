@@ -83,7 +83,8 @@ namespace grb {
 					/**
 					 * Configurable block size for parallel I/O.
 					 *
-					 * The default here is a small multiple of standard cache line sizes.
+					 * The default here is a small multiple of standard cache line sizes. This
+					 * value must be larger than zero.
 					 */
 					static constexpr const size_t block_size = 256;
 
@@ -167,6 +168,9 @@ namespace grb {
 					) :
 						_count( count ), _val( dummy ), _state( state )
 					{
+						// static run-time checks
+						static_assert( block_size > 0,
+							"Regular iterator: internal block size must be larger than zero" );
 						// run-time checks
 						if( P == 0 || s >= P ) {
 							throw std::runtime_error( "Illegal values for s and/or P" );
@@ -191,7 +195,7 @@ namespace grb {
 						// correct potential overflow of starting position
 						if( _pos > count ) { _pos = count; }
 						// initialise selected starting position
-						if( count > 0 ) {
+						if( _pos != count ) {
 							SelfType::func( _val, state, _pos );
 						}
 					}
@@ -241,7 +245,9 @@ namespace grb {
 					self_reference_type operator++() noexcept {
 						assert( _pos < _count );
 						(void) ++_pos;
-						SelfType::func( _val, _state, _pos );
+						if( _pos != _count ) {
+							SelfType::func( _val, _state, _pos );
+						}
 						return *this;
 					}
 
@@ -263,7 +269,9 @@ namespace grb {
 						self_type ret =
 							SelfType::create_iterator( _count, _pos, _val, _state );
 						(void) _pos++;
-						SelfType::func( _val, _state, _pos );
+						if( _pos != _count ) {
+							SelfType::func( _val, _state, _pos );
+						}
 						return ret;
 					}
 
@@ -287,7 +295,9 @@ namespace grb {
 					self_reference_type operator--() noexcept {
 						assert( _pos > 0 );
 						(void) --_pos;
-						SelfType::func( _val, _state, _pos );
+						if( _pos < _count ) {
+							SelfType::func( _val, _state, _pos );
+						}
 						return *this;
 					}
 
@@ -296,7 +306,9 @@ namespace grb {
 						self_type ret =
 							SelfType::make_iterator( _pos, _count, _val, _pos );
 						(void) _pos--;
-						SelfType::func( _val, _state, _pos );
+						if( _pos < _count ) {
+							SelfType::func( _val, _state, _pos );
+						}
 						return ret;
 					}
 
@@ -353,7 +365,9 @@ namespace grb {
 					self_reference_type operator+=( const size_t count ) noexcept {
 						assert( _pos + count <= _count );
 						_pos += count;
-						SelfType::func( _val, _state, _pos );
+						if( _pos != _count ) {
+							SelfType::func( _val, _state, _pos );
+						}
 						return *this;
 					}
 
@@ -364,7 +378,9 @@ namespace grb {
 						assert( iterator._pos + count <= iterator._count );
 						const size_t pos = iterator._pos + count;
 						R val = iterator._val;
-						SelfType::func( val, iterator._state, pos );
+						if( pos != iterator._count ) {
+							SelfType::func( val, iterator._state, pos );
+						}
 						return self_type(
 							iterator._count, pos,
 							val, iterator._state
@@ -378,7 +394,9 @@ namespace grb {
 						assert( iterator._pos + count <= iterator._count );
 						const size_t pos = iterator._pos + count;
 						R val = iterator._val;
-						SelfType::func( val, iterator._state, pos );
+						if( pos != iterator._count ) {
+							SelfType::func( val, iterator._state, pos );
+						}
 						return self_type(
 							iterator._count, pos,
 							val, iterator._state
@@ -398,7 +416,9 @@ namespace grb {
 						assert( iterator._pos >= count );
 						const size_t pos = iterator._pos - count;
 						R val = iterator._val;
-						SelfType::func( val, iterator._state, pos );
+						if( pos != iterator._count ) {
+							SelfType::func( val, iterator._state, pos );
+						}
 						return self_type(
 							iterator._count, pos,
 							val, iterator._state
@@ -412,7 +432,9 @@ namespace grb {
 						assert( iterator._pos >= count );
 						const size_t pos = iterator._pos - count;
 						R val = iterator._val;
-						SelfType::func( val, iterator._state, pos );
+						if( pos != iterator._count ) {
+							SelfType::func( val, iterator._state, pos );
+						}
 						return self_type(
 							iterator._count, pos,
 							val, iterator._state
