@@ -28,7 +28,6 @@
 #define _H_GRB_MATRIX_FACTORY
 
 #include <random>
-#include <vector>
 #include <iostream>
 #include <algorithm>
 
@@ -66,7 +65,6 @@ namespace grb::algorithms {
 	 *  -# #dense,
 	 *  -# #ones,
 	 *  -# #zeros, and
-	 *  -# #random.
 	 * All these methos are implemented on top of core ALP primitives.
 	 *
 	 * @tparam D       The type of a non-zero element.
@@ -122,17 +120,15 @@ namespace grb::algorithms {
 	 */
 	template<
 		typename D,
-		grb::IOMode mode = grb::SEQUENTIAL, // TODO FIXME: it should be possible to set the default value to PARALLEL, but this presently causes all sorts of errors that need debugging first
-		grb::Backend backend = grb::config::default_backend,
-		typename RIT = grb::config::RowIndexType,
-		typename CIT = grb::config::ColIndexType,
-		typename NIT = grb::config::NonzeroIndexType
+		IOMode mode = SEQUENTIAL, // TODO FIXME: it should be possible to set the default value to PARALLEL, but this presently causes all sorts of errors that need debugging first
+		Backend backend = config::default_backend,
+		typename RIT = config::RowIndexType,
+		typename CIT = config::ColIndexType,
+		typename NIT = config::NonzeroIndexType
 	>
 	class matrices {
 
 		friend class matrices< void, mode, backend >;
-
-		private:
 
 			/** Short-hand typedef for the matrix return type. */
 			typedef Matrix< D, backend, RIT, CIT, NIT > MatrixType;
@@ -147,7 +143,7 @@ namespace grb::algorithms {
 			 * of the calling user process.
 			 */
 			static size_t getP() {
-				return mode == grb::SEQUENTIAL ? 1 : grb::spmd< backend >::nprocs();
+				return mode == SEQUENTIAL ? 1 : spmd<backend>::nprocs();
 			}
 
 			/**
@@ -156,7 +152,7 @@ namespace grb::algorithms {
 			 * This value is stricly less than what #getP returns.
 			 */
 			static size_t getPID() {
-				return mode == grb::SEQUENTIAL ? 0 : grb::spmd< backend >::pid();
+				return mode == SEQUENTIAL ? 0 : spmd<backend>::pid();
 			}
 
 			/**
@@ -173,7 +169,7 @@ namespace grb::algorithms {
 				const size_t m, const size_t n,
 				const long k
 			) {
-				constexpr const long zero = static_cast< long >( 0 );
+				constexpr long zero = static_cast< long >( 0 );
 				const auto k_abs = static_cast< size_t >(
 					(k < zero) ? -k : k );
 				return (k_abs >= m || k_abs >= n)
@@ -214,8 +210,8 @@ namespace grb::algorithms {
 				const IteratorV V_iter, const IteratorV V_end
 			) {
 				// some useful scalars
-				constexpr const long s_zero = static_cast< long >( 0 );
-				constexpr const size_t u_zero = static_cast< size_t >( 0 );
+				constexpr auto s_zero = static_cast< long >( 0 );
+				constexpr auto u_zero = static_cast< size_t >( 0 );
 				const size_t diag_length = compute_diag_length( m, n, k );
 				assert( static_cast< size_t >(std::distance( V_iter, V_end )) >=
 					diag_length );
@@ -233,8 +229,8 @@ namespace grb::algorithms {
 					(k < s_zero) ? u_zero : std::abs( k ) );
 
 				// translate it to a range so we can get iterators
-				grb::utils::containers::Range< RIT > I( k_i_incr, diag_length + k_i_incr );
-				grb::utils::containers::Range< CIT > J( k_j_incr, diag_length + k_j_incr );
+				utils::containers::Range< RIT > I( k_i_incr, diag_length + k_i_incr );
+				utils::containers::Range< CIT > J( k_j_incr, diag_length + k_j_incr );
 
 				// construct the matrix from the given iterators
 				const size_t s = getPID();
@@ -249,7 +245,7 @@ namespace grb::algorithms {
 
 				if( rc != SUCCESS ) {
 					throw std::runtime_error(
-						"Error: createIdentity_generic failed: rc = " + grb::toString( rc )
+						"Error: createIdentity_generic failed: rc = " + toString( rc )
 					);
 				}
 				return matrix;
@@ -363,8 +359,8 @@ namespace grb::algorithms {
 				// values-- determine worst-case length (cheaper than computing the actual
 				// diagonal length)
 				const size_t diag_length = compute_diag_length( m, n, k );
-				const grb::utils::containers::ConstantVector< D > V( identity_value,
-					diag_length );
+				const utils::containers::ConstantVector< D > V( identity_value,
+				                                                diag_length );
 
 				// call generic implementation
 				const size_t s = getPID();
@@ -433,7 +429,7 @@ namespace grb::algorithms {
 
 				// Initialise rows indices container with a range from 0 to nrows,
 				// each value repeated ncols times.
-				grb::utils::containers::Range< RIT > I( 0, m, 1, n );
+				utils::containers::Range< RIT > I( 0, m, 1, n );
 
 				// Initialise columns values container with a range from 0 to ncols
 				// repeated nrows times. There are two ways of doing this:
@@ -448,17 +444,17 @@ namespace grb::algorithms {
 					J.emplace_back( grb::utils::containers::Range< CIT >( 0, n ) );
 				}
 #endif
-				grb::utils::containers::Range< size_t > J_raw( 0, nz );
+				const utils::containers::Range<> J_raw( 0, nz );
 				const auto entryInd2colInd = [&m] (const CIT k) -> CIT {
 						return k / m;
 					};
-				auto J_begin = grb::utils::iterators::make_adapter_iterator(
+				auto J_begin = utils::iterators::make_adapter_iterator(
 					J_raw.cbegin( s, P ), J_raw.cend( s, P ), entryInd2colInd );
-				const auto J_end = grb::utils::iterators::make_adapter_iterator(
+				const auto J_end = utils::iterators::make_adapter_iterator(
 					J_raw.cend( s, P ), J_raw.cend( s, P ), entryInd2colInd );
 
 				// Initialise values container with the given value.
-				grb::utils::containers::ConstantVector< D > V( value, nz );
+				utils::containers::ConstantVector< D > V( value, nz );
 
 #ifndef NDEBUG
 				const size_t Isz = std::distance( I.begin( s, P ), I.end( s, P ) );
@@ -478,7 +474,7 @@ namespace grb::algorithms {
 
 				if( rc != SUCCESS ) {
 					throw std::runtime_error(
-						"Error: factory::full<void> failed: rc = " + grb::toString( rc )
+						"Error: factory::full<void> failed: rc = " + toString( rc )
 					);
 				}
 
@@ -525,7 +521,7 @@ namespace grb::algorithms {
 			static MatrixType dense( const MatrixType &A ) {
 				static_assert( std::is_arithmetic< D >::value,
 					"dense (from input matrix) requires an arithemtic nonzero type" );
-				grb::Monoid< grb::operators::add< D >, grb::identities::zero > addMon;
+				Monoid<operators::add<D>, identities::zero> addMon;
 				const size_t m = grb::nrows( A );
 				const size_t n = grb::ncols( A );
 				if( n == 0 || m == 0 ) {
@@ -543,12 +539,12 @@ namespace grb::algorithms {
 				}
 
 				MatrixType matrix( m, n, nz );
-				grb::RC rc = grb::set( matrix, 0 );
+				RC rc = grb::set( matrix, 0 );
 				rc = rc ? rc : grb::foldl( matrix, A, addMon );
 
-				if( rc != grb::SUCCESS ) {
+				if( rc != SUCCESS) {
 					throw std::runtime_error( "Could not promote input matrix to a dense one: "
-						+ grb::toString( rc ) );
+						+ toString( rc ) );
 				}
 
 				return matrix;
@@ -595,148 +591,6 @@ namespace grb::algorithms {
 					"ones requires an arithemtic nonzero type" );
 				return full( m, n, static_cast< D >( 1 ) );
 			}
-
-			/**
-			 * Builds a matrix filled with random values at random positions.
-			 *
-			 * \warning Usually, (uniform) random matrices do \em not mimic practical
-			 *          graph and sparse matrix structures at all. Therefore, use this
-			 *          functionality with care.
-			 *
-			 * More advanced models that mimic graphs and/or sparse matrices from different
-			 * practical application domains may be integrated by passing different
-			 * distributions to the below API.
-			 *
-			 * \note One might be inclined to use this functionality to implement
-			 *       randomised linear algebra methods. Doing so would be inefficient since
-			 *       such algorithms would require repeated sampling. A different and
-			 *       significantly more suitable design, akin to that of views in
-			 *       ALP/Dense, is under development.
-			 *
-			 * @tparam RandomDeviceType      The type of the random device used to generate
-			 *                               the random data.
-			 * @tparam RowDistributionType   The type of the distribution used to generate
-			 *                               the row indices.
-			 * @tparam ColDistributionType   The type of the distribution used to generate
-			 *                               the column indices.
-			 * @tparam ValueDistributionType The type of the distribution used to generate
-			 *                               the values.
-			 *
-			 * @param[in] m        The number of rows of the matrix.
-			 * @param[in] n        The number of columns of the matrix.
-			 * @param[in] sparsity The sparsity factor of the matrix, 1.0 being a dense
-			 *                     matrix and 0.0 being an empty matrix.
-			 * @param[in] rgen     The random device used to generate the random data.
-			 * @param[in] row_dist The distribution used to generate the row indices.
-			 * @param[in] col_dist The distribution used to generate the column indices.
-			 * @param[in] val_dist The distribution used to generate the values.
-			 *
-			 * @returns The requested random matrix.
-			 */
-			template<
-				typename RandomGeneratorType,
-				typename RowDistributionType,
-				typename ColDistributionType,
-				typename ValueDistributionType
-			>
-			static MatrixType random(
-				const size_t m, const size_t n,
-				const double sparsity,
-				RandomGeneratorType &rgen,
-				RowDistributionType &row_dist,
-				ColDistributionType &col_dist,
-				ValueDistributionType &val_dist
-			) {
-				// FIXME guard against overflow
-				const size_t nvals = m * n * std::max( 1.0, std::min( 1.0, sparsity ) );
-
-				if( m == 0 || n == 0 || nvals == 0 ) {
-					return empty( m, n );
-				}
-
-				MatrixType matrix( m, n, nvals );
-
-				std::vector< RIT > I( nvals );
-				std::vector< CIT > J( nvals );
-				std::vector< D > V( nvals );
-				for( size_t i = 0; i < nvals; ++i ) {
-					I[ i ] = row_dist( rgen );
-					J[ i ] = col_dist( rgen );
-					V[ i ] = val_dist( rgen );
-				}
-				// FIXME filter out / re-sample any repeated entries
-
-				if( mode != grb::SEQUENTIAL ) {
-					std::cerr << "Warning: grb::algorithms::matrices< .., grb::PARALLEL, .. > "
-						<< "requests the generation of a random matrix, which can NOT proceed in "
-						<< "the requested parallel I/O mode. Using sequential I/O instead(!)\n";
-				}
-
-				const grb::RC rc = grb::buildMatrixUnique(
-					matrix,
-					I.begin(), I.end(), J.begin(), J.end(), V.begin(), V.end(),
-					grb::SEQUENTIAL // this must be sequential in the current setup (FIXME)
-				);
-
-				if( rc != SUCCESS ) {
-					throw std::runtime_error(
-						"Error: factory::random failed: rc = " + grb::toString( rc )
-					);
-				}
-
-				return matrix;
-			}
-
-			/**
-			 * Builds a matrix filled with random values at random positions.
-			 *
-			 * Will use an \a mt19937 random generator with the given seed.
-			 *
-			 * The distributions used to generate the random data are
-			 * uniform_real_distribution with the following ranges:
-			 *  -# row indices:    [0, m - 1]
-			 *  -# column indices: [0, n - 1]
-			 *  -# values:         [0, 1]
-			 *
-			 * \warning Usually, uniform random matrices do \em not mimic practical graph
-			 *          and sparse matrix structures at all. Therefore, use this
-			 *          functionality with care.
-			 *
-			 * @param[in] m        The number of rows of the matrix.
-			 * @param[in] n        The number of columns of the matrix.
-			 * @param[in] sparsity The sparsity factor of the matrix, 1.0 being a dense
-			 *                     matrix and 0.0 being an empty matrix.
-			 * @param[in] seed     The seed used to generate the random values.
-			 *
-			 * @returns The requested random matrix.
-			 */
-			static MatrixType random(
-				const size_t m, const size_t n,
-				const double sparsity,
-				const unsigned long seed = static_cast< unsigned long >( 0 )
-			) {
-				if( m == 0 || n == 0 ) {
-					return empty( m, n );
-				}
-
-				std::mt19937 gen( seed );
-
-				const std::uniform_real_distribution< RIT > rowDistribution(
-					static_cast< RIT >( 0 ), static_cast< RIT >( m - 1 )
-				);
-				const std::uniform_real_distribution< CIT > colDistribution(
-					static_cast< CIT >( 0 ), static_cast< CIT >( n - 1 )
-				);
-				const std::uniform_real_distribution< D > valuesDistribution(
-					static_cast< D >( 0 ), static_cast< D >( 1 )
-				);
-
-				return random(
-					m, n, sparsity,
-					gen, rowDistribution, colDistribution, valuesDistribution
-				);
-			}
-
 	}; // end class matrices
 
 	/**
@@ -746,12 +600,10 @@ namespace grb::algorithms {
 	 * non-pattern, generic, class for the complete documentation.
 	 */
 	template<
-		grb::IOMode mode, grb::Backend backend,
+		IOMode mode, Backend backend,
 		typename RIT, typename CIT, typename NIT
 	>
 	class matrices< void, mode, backend, RIT, CIT, NIT > {
-
-		private:
 
 			/** Short-hand typedef for the matrix return type. */
 			typedef Matrix< void, backend, RIT, CIT, NIT > MatrixType;
@@ -775,16 +627,16 @@ namespace grb::algorithms {
 				const size_t m, const size_t n, const long k
 			) {
 				// pattern matrix variant of the above
-				constexpr const long s_zero = static_cast< long >( 0 );
-				constexpr const size_t u_zero = static_cast< size_t >( 0 );
+				constexpr auto s_zero = static_cast< long >( 0 );
+				constexpr auto u_zero = static_cast< size_t >( 0 );
 				const size_t diag_length = BaseType::compute_diag_length( m, n, k );
 				MatrixType matrix( m, n, diag_length );
 				const RIT k_i_incr = static_cast< RIT >(
 					(k < s_zero) ? std::abs( k ) : u_zero );
 				const CIT k_j_incr = static_cast< CIT >(
 					(k < s_zero) ? u_zero : std::abs( k ) );
-				grb::utils::containers::Range< RIT > I( k_i_incr, diag_length + k_i_incr );
-				grb::utils::containers::Range< CIT > J( k_j_incr, diag_length + k_j_incr );
+				utils::containers::Range< RIT > I( k_i_incr, diag_length + k_i_incr );
+				utils::containers::Range< CIT > J( k_j_incr, diag_length + k_j_incr );
 				const size_t s = BaseType::getPID();
 				const size_t P = BaseType::getP();
 				const RC rc = buildMatrixUnique(
@@ -795,7 +647,7 @@ namespace grb::algorithms {
 				);
 				if( rc != SUCCESS ) {
 					throw std::runtime_error(
-						"Error: createIdentity_generic<void> failed: rc = " + grb::toString( rc )
+						"Error: createIdentity_generic<void> failed: rc = " + toString( rc )
 					);
 				}
 				return matrix;
@@ -939,7 +791,7 @@ namespace grb::algorithms {
 
 				// Initialise rows indices container with a range from 0 to nrows,
 				// each value repeated ncols times.
-				grb::utils::containers::Range< RIT > I( 0, m, 1, n );
+				utils::containers::Range< RIT > I( 0, m, 1, n );
 
 				// Initialise columns values container with a range from 0 to ncols
 				// repeated nrows times. As mentioned above, there are two ways to provide
@@ -953,13 +805,13 @@ namespace grb::algorithms {
 					J.emplace_back( grb::utils::containers::Range< CIT >( 0, n ) );
 				}
 #endif
-				grb::utils::containers::Range< size_t > J_raw( 0, nz );
+				const utils::containers::Range<> J_raw( 0, nz );
 				const auto nonzeroInd2colInd = [&m] (const size_t k) -> size_t {
 						return k / m;
 					};
-				auto J_begin = grb::utils::iterators::make_adapter_iterator(
+				auto J_begin = utils::iterators::make_adapter_iterator(
 					J_raw.cbegin( s, P ), J_raw.cend( s, P ), nonzeroInd2colInd );
-				auto J_end = grb::utils::iterators::make_adapter_iterator(
+				auto J_end = utils::iterators::make_adapter_iterator(
 					J_raw.cend( s, P ), J_raw.cend( s, P ), nonzeroInd2colInd );
 
 				assert( std::distance( I.begin( s, P ), I.end( s, P ) ) ==
@@ -974,7 +826,7 @@ namespace grb::algorithms {
 
 				if( rc != SUCCESS ) {
 					throw std::runtime_error(
-						"Error: factory::full<void> failed: rc = " + grb::toString( rc )
+						"Error: factory::full<void> failed: rc = " + toString( rc )
 					);
 				}
 
@@ -1048,141 +900,6 @@ namespace grb::algorithms {
 			 */
 			static MatrixType ones( const size_t m, const size_t n ) {
 				return full( m, n );
-			}
-
-			/**
-			 * Builds a pattern matrix filled with random values at random positions.
-			 *
-			 * This is the pattern-specialisation of the #random function.
-			 *
-			 * \warning Usually, (uniform) random matrices do \em not mimic practical
-			 *          graph and sparse matrix structures at all. Therefore, use this
-			 *          functionality with care.
-			 *
-			 * More advanced models that mimic graphs and/or sparse matrices from different
-			 * practical application domains may be integrated by passing different
-			 * distributions to the below API.
-			 *
-			 * \note One might be inclined to use this functionality to implement
-			 *       randomised linear algebra methods. Doing so would be inefficient since
-			 *       such algorithms would require repeated sampling. A different and
-			 *       significantly more suitable design, akin to that of views in
-			 *       ALP/Dense, is under development.
-			 *
-			 * @tparam RandomDeviceType      The type of the random device used to generate
-			 *                               the random data.
-			 * @tparam RowDistributionType   The type of the distribution used to generate
-			 *                               the row indices.
-			 * @tparam ColDistributionType   The type of the distribution used to generate
-			 *                               the column indices.
-			 * @tparam ValueDistributionType The type of the distribution used to generate
-			 *                               the values.
-			 *
-			 * @param[in] m        The number of rows of the matrix.
-			 * @param[in] n        The number of columns of the matrix.
-			 * @param[in] sparsity The sparsity factor of the matrix, 1.0 being a dense
-			 *                     matrix and 0.0 being an empty matrix.
-			 * @param[in] rgen     The random device used to generate the random data.
-			 * @param[in] row_dist The distribution used to generate the row indices.
-			 * @param[in] col_dist The distribution used to generate the column indices.
-			 *
-			 * @returns The requested random matrix.
-			 */
-			template<
-				typename RandomGeneratorType,
-				typename RowDistributionType,
-				typename ColDistributionType
-			>
-			static MatrixType random(
-				const size_t m, const size_t n,
-				const double sparsity,
-				RandomGeneratorType &rgen,
-				RowDistributionType &row_dist,
-				ColDistributionType &col_dist
-			) {
-				// FIXME guard against overflow
-				const size_t nvals = m * n * std::max( 1.0, std::min( 1.0, sparsity ) );
-
-				if( m == 0 || n == 0 || nvals == 0 ) {
-					return empty( m, n );
-				}
-
-				MatrixType matrix( m, n, nvals );
-
-				std::vector< RIT > I( nvals );
-				std::vector< CIT > J( nvals );
-				for( size_t i = 0; i < nvals; ++i ) {
-					I[ i ] = row_dist( rgen );
-					J[ i ] = col_dist( rgen );
-				}
-				// FIXME filter out / re-sample any repeated entries
-
-				if( mode != grb::SEQUENTIAL ) {
-					std::cerr << "Warning: grb::algorithms::matrices< .., grb::PARALLEL, .. > "
-						<< "requests the generation of a random matrix, which can NOT proceed in "
-						<< "the requested parallel I/O mode. Using sequential I/O instead(!)\n";
-				}
-
-				const RC rc = buildMatrixUnique(
-					matrix, I.begin(), I.end(), J.begin(), J.end(),
-					grb::SEQUENTIAL // this must be sequential in the current setup (FIXME)
-				);
-				if( rc != SUCCESS ) {
-					throw std::runtime_error(
-						"Error: matrices< void >::random failed: rc = " + grb::toString( rc )
-					);
-				}
-
-				return matrix;
-			}
-
-			/**
-			 * Builds a pattern matrix filled with random values at random positions.
-			 *
-			 * Will use an \a mt19937 random generator with the given seed.
-			 *
-			 * The distributions used to generate the random data are
-			 * uniform_real_distribution with the following ranges:
-			 *  -# row indices:    [0, m - 1]
-			 *  -# column indices: [0, n - 1]
-			 *
-			 * \warning Usually, uniform random matrices do \em not mimic practical graph
-			 *          and sparse matrix structures at all. Therefore, use this
-			 *          functionality with care.
-			 *
-			 * This is the pattern-specialisation of the #random function, specialised
-			 * for uniform random sampling using the \a mt19937 RNG.
-			 *
-			 * @param[in] m        The number of rows of the matrix.
-			 * @param[in] n        The number of columns of the matrix.
-			 * @param[in] sparsity The sparsity factor of the matrix, 1.0 being a dense
-			 *                     matrix and 0.0 being an empty matrix.
-			 * @param[in] seed     The seed used to generate the random values.
-			 *
-			 * @returns The requested random matrix.
-			 */
-			static MatrixType random(
-				const size_t m, const size_t n,
-				const double sparsity,
-				const unsigned long seed = static_cast< unsigned long >(0)
-			) {
-				if( m == 0 || n == 0 ) {
-					return empty( m, n );
-				}
-
-				std::mt19937 gen( seed );
-
-				const std::uniform_real_distribution< RIT > rowDistribution(
-					static_cast< RIT >( 0 ), static_cast< RIT >( m - 1 )
-				);
-				const std::uniform_real_distribution< CIT > colDistribution(
-					static_cast< CIT >( 0 ), static_cast< CIT >( n - 1 )
-				);
-
-				return random(
-					m, n, sparsity,
-					gen, rowDistribution, colDistribution
-				);
 			}
 
 	}; // end class matrices (pattern specialisation)
