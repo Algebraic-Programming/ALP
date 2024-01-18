@@ -93,8 +93,9 @@ int main( int argc, char ** argv ) {
 
 	// do masked mxv for 14 different mask combinations
 	for( unsigned int i = 0; !error && i < 15; ++i ) {
-		if( i == 3 )
+		if( i == 3 ) {
 			continue;
+		}
 
 		if( !error ) {
 			rc = grb::clear( mask );
