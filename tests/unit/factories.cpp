@@ -28,7 +28,7 @@ using namespace grb::algorithms;
 
 namespace {
 	static RC error( const std::string &msg ) {
-		std::cerr << "Test FAILED:" << msg << std::endl;
+		std::cerr << "Test FAILED: " << msg << std::endl;
 		return FAILED;
 	}
 } // namespace
@@ -97,9 +97,14 @@ static RC test_factory_empty( const size_t &n ) {
 	return SUCCESS;
 }
 
-static RC test_factory_identity( const size_t &n ) {
+static RC test_factory_identity( const size_t &n, const long &offset ) {
+	const size_t i_offset = offset > 0 ? offset : 0;
+	const size_t j_offset = offset < 0 ? (-offset) : 0;
+	const size_t expected_nnz = i_offset + j_offset < n
+		? n - i_offset - j_offset
+		: 0;
 	{ // matrices< void >::identity of size: [0,0]
-		Matrix< void > M = matrices< void >::identity( 0 );
+		Matrix< void > M = matrices< void >::identity( 0, offset );
 		if( nnz( M ) != 0 ) {
 			return error( "matrices< void >::identity, size=(0,0): nnz != 0" );
 		} else if( nrows( M ) != 0 ) {
@@ -114,7 +119,7 @@ static RC test_factory_identity( const size_t &n ) {
 	}
 
 	{ // matrices< int >::identity of size: [0,0]
-		Matrix< int > M = matrices< int >::identity( 0, 2 );
+		Matrix< int > M = matrices< int >::identity( 0, 2, offset );
 		if( nnz( M ) != 0 ) {
 			return error( "matrices< int >::identity, size=(0,0): nnz != 0" );
 		} else if( nrows( M ) != 0 ) {
@@ -129,34 +134,38 @@ static RC test_factory_identity( const size_t &n ) {
 	}
 
 	{ // matrices< void >::identity
-		Matrix< void > M = matrices< void >::identity( n );
-		if( nnz( M ) != n ) {
-			return error( "matrices< void >::identity: nnz != n" );
+		Matrix< void > M = matrices< void >::identity( n, offset );
+		if( nnz( M ) != expected_nnz ) {
+			return error( "matrices< void >::identity: nnz != n-abs(k)" );
 		} else if( nrows( M ) != n ) {
 			return error( "matrices< void >::identity: nrows != n" );
 		} else if( ncols( M ) != n ) {
 			return error( "matrices< void >::identity: ncols != n" );
 		}
 		for( const auto &e : M ) {
-			if( e.first != e.second ) {
-				return error( "matrices< void >::identity: incorrect coordinate" );
+			if( e.first + i_offset != e.second + j_offset ) {
+				std::cerr << "matrices< void >::identity: incorrect coordinate ( "
+					<< i_offset << "|"
+					<< e.first << ", " << e.second << " )\n";
+				return FAILED;
 			}
 		}
 	}
 
 	{ // matrices< int >::identity
-		Matrix< int > M = matrices< int >::identity( n, 2 );
-		if( nnz( M ) != n ) {
-			return error( "matrices< int >::identity: nnz != n" );
+		Matrix< int > M = matrices< int >::identity( n, 2, offset );
+		if( nnz( M ) != expected_nnz ) {
+			return error( "matrices< int >::identity: nnz != n-abs(k)" );
 		} else if( nrows( M ) != n ) {
 			return error( "matrices< int >::identity: nrows != n" );
 		} else if( ncols( M ) != n ) {
 			return error( "matrices< int >::identity: ncols != n" );
 		}
 		for( const auto &e : M ) {
-			if( e.first.first != e.first.second ) {
+			if( e.first.first + i_offset != e.first.second + j_offset ) {
 				return error( "matrices< int >::identity: incorrect coordinate" );
-			} else if( e.second != 2 ) {
+			}
+			if( e.second != 2 ) {
 				return error( "matrices< int >::identity: incorrect value" );
 			}
 		}
@@ -578,7 +587,11 @@ void grb_program( const size_t &n, grb::RC &rc ) {
 	std::cout << "Testing matrices::empty\n";
 	rc = rc != SUCCESS ? rc : test_factory_empty( n );
 	std::cout << "Testing matrices::identity\n";
-	rc = rc != SUCCESS ? rc : test_factory_identity( n );
+	rc = rc != SUCCESS ? rc : test_factory_identity( n, 0 );
+	std::cout << "Testing matrices::identity (1 offset)\n";
+	rc = rc != SUCCESS ? rc : test_factory_identity( n, 1 );
+	std::cout << "Testing matrices::identity (-2 offset)\n";
+	rc = rc != SUCCESS ? rc : test_factory_identity( n, -2 );
 	std::cout << "Testing matrices::eye\n";
 	rc = rc != SUCCESS ? rc : test_factory_eye( n );
 	std::cout << "Testing matrices::dense (direct)\n";

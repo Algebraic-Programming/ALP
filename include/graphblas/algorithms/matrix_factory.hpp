@@ -382,14 +382,19 @@ namespace grb::algorithms {
 			 *
 			 * @param[in] n              The number of rows/columns of the matrix.
 			 * @param[in] identity_value The value of each non-zero element (default = 1).
+			 * @param[in] k               The diagonal offset (default = 0). A positive
+			 *                            value indicates an offset above the main
+			 *                            diagonal, while a negative value indicates an
+			 *                            offset below the main diagonal.
 			 *
 			 * @returns The requested identity matrix.
 			 */
 			static MatrixType identity(
 				const size_t n,
-				const D identity_value = static_cast< D >( 1 )
+				const D identity_value = static_cast< D >( 1 ),
+				const long k = static_cast< long >( 0 )
 			) {
-				return eye( n, n, identity_value );
+				return eye( n, n, identity_value, k );
 			}
 
 			/**
@@ -869,7 +874,7 @@ namespace grb::algorithms {
 			 */
 			static MatrixType eye(
 				const size_t m, const size_t n,
-				long k = static_cast< long >(0)
+				const long k = static_cast< long >(0)
 			) {
 				// check trivial case
 				if( m == 0 || n == 0 ) {
@@ -887,11 +892,17 @@ namespace grb::algorithms {
 			 *       for complete documentation.
 			 *
 			 * @param[in] n The number of rows/columns of the matrix.
+			 * @param[in] k The diagonal offset (default = 0). A positive value indicates
+			 *              an offset above the main diagonal, while a negative value
+			 *              indicates an offset below the main diagonal.
 			 *
 			 * @returns The requested identity matrix.
 			 */
-			static MatrixType identity( const size_t n ) {
-				return eye( n, n );
+			static MatrixType identity(
+				const size_t n,
+				const long k = static_cast< long >(0)
+			) {
+				return eye( n, n, k );
 			}
 
 			/**
