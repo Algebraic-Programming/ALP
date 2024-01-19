@@ -194,7 +194,7 @@ static RC test_factory_identity( const size_t &n ) {
 	}
 
 	{ // matrices< int >::identity
-		Matrix< int > M = matrices< int >::identity( n, n );
+		Matrix< int > M = matrices< int >::identity( n, n, 2 );
 		if( nnz( M ) != expected_nnz ) {
 			return error( "matrices< int >::identity: nnz != n-abs(k)" );
 		}
