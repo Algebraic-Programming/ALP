@@ -960,9 +960,17 @@ namespace grb {
 			auto local_x = monoid.template getIdentity< typename Monoid::D3 >();
 
 #ifdef _H_GRB_REFERENCE_OMP_BLAS3
+			const auto n_threads = config::OMP::threads();
+			const size_t nbytes = internal::template getCurrentBufferSize< InputType >();
+			assert( nbytes > 0 );
+			InputType *values_buffer = internal::template getReferenceBuffer< InputType >( nbytes );
+			assert( values_buffer != nullptr );
+#endif
+
+#ifdef _H_GRB_REFERENCE_OMP_BLAS3
 			#pragma omp parallel default( none )             \
-				shared( A_raw, x, rc )                       \
-				firstprivate( local_x, local_rc, A_nnz, op )
+				shared( A_raw, x, rc, values_buffer )        \
+				firstprivate( local_x, local_rc, A_nnz, op, n_threads )
 #endif
 			{
 				size_t start = 0;
@@ -982,17 +990,24 @@ namespace grb {
 				}
 
 #ifdef _H_GRB_REFERENCE_OMP_BLAS3
-				#pragma omp critical
-#endif
+				const auto tid = config::OMP::current_thread_ID();
+				values_buffer[ tid] = local_x;
+
+				#pragma omp barrier
+				#pragma omp single
 				{ // Reduction with the global result (critical section if OpenMP)
-					const auto x_before = x;
-					local_rc = local_rc
-						? local_rc
-						: grb::apply< descr >(
-							x, x_before, local_x, op
-						);
+					for( size_t tid = 0; tid < n_threads; ++tid ) {
+						const auto local_x_before = x;
+						local_rc = local_rc ? local_rc
+							: grb::apply< descr >(
+								x, local_x_before, values_buffer[ tid ], op
+							);
+					}
 					rc = rc ? rc : local_rc;
 				}
+#else
+				x = local_x;
+#endif
 			}
 
 			return rc;
