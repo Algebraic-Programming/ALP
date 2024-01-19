@@ -63,8 +63,8 @@ namespace grb::algorithms {
 	 *  -# #identity,
 	 *  -# #full,
 	 *  -# #dense,
-	 *  -# #ones,
-	 *  -# #zeros, and
+	 *  -# #ones, and
+	 *  -# #zeros.
 	 * All these methos are implemented on top of core ALP primitives.
 	 *
 	 * @tparam D       The type of a non-zero element.
@@ -120,11 +120,11 @@ namespace grb::algorithms {
 	 */
 	template<
 		typename D,
-		IOMode mode = SEQUENTIAL, // TODO FIXME: it should be possible to set the default value to PARALLEL, but this presently causes all sorts of errors that need debugging first
-		Backend backend = config::default_backend,
-		typename RIT = config::RowIndexType,
-		typename CIT = config::ColIndexType,
-		typename NIT = config::NonzeroIndexType
+		grb::IOMode mode = grb::SEQUENTIAL, // TODO FIXME: it should be possible to set the default value to PARALLEL, but this presently causes all sorts of errors that need debugging first
+		grb::Backend backend = grb::config::default_backend,
+		typename RIT = grb::config::RowIndexType,
+		typename CIT = grb::config::ColIndexType,
+		typename NIT = grb::config::NonzeroIndexType
 	>
 	class matrices {
 
@@ -143,7 +143,7 @@ namespace grb::algorithms {
 			 * of the calling user process.
 			 */
 			static size_t getP() {
-				return mode == SEQUENTIAL ? 1 : spmd<backend>::nprocs();
+				return mode == grb::SEQUENTIAL ? 1 : grb::spmd<backend>::nprocs();
 			}
 
 			/**
@@ -152,7 +152,7 @@ namespace grb::algorithms {
 			 * This value is stricly less than what #getP returns.
 			 */
 			static size_t getPID() {
-				return mode == SEQUENTIAL ? 0 : spmd<backend>::pid();
+				return mode == grb::SEQUENTIAL ? 0 : grb::spmd<backend>::pid();
 			}
 
 			/**
@@ -169,8 +169,8 @@ namespace grb::algorithms {
 				const size_t m, const size_t n,
 				const long k
 			) {
-				constexpr long zero = static_cast< long >( 0 );
-				const auto k_abs = static_cast< size_t >(
+				constexpr const long zero = static_cast< long >( 0 );
+				const size_t k_abs = static_cast< size_t >(
 					(k < zero) ? -k : k );
 				// catch out-of-bounds offsets
 				if( k < zero && k_abs >= m ) {
@@ -218,8 +218,8 @@ namespace grb::algorithms {
 					<< n << ", k = " << k << " (non-void variant)\n";
 #endif
 				// some useful scalars
-				constexpr auto s_zero = static_cast< long >( 0 );
-				constexpr auto u_zero = static_cast< size_t >( 0 );
+				constexpr const long s_zero = static_cast< long >( 0 );
+				constexpr const size_t u_zero = static_cast< size_t >( 0 );
 				const size_t diag_length = compute_diag_length( m, n, k );
 				assert( static_cast< size_t >(std::distance( V_iter, V_end )) >=
 					diag_length );
@@ -240,8 +240,8 @@ namespace grb::algorithms {
 					(k < s_zero) ? u_zero : std::abs( k ) );
 
 				// translate it to a range so we can get iterators
-				utils::containers::Range< RIT > I( k_i_incr, diag_length + k_i_incr );
-				utils::containers::Range< CIT > J( k_j_incr, diag_length + k_j_incr );
+				grb::utils::containers::Range< RIT > I( k_i_incr, diag_length + k_i_incr );
+				grb::utils::containers::Range< CIT > J( k_j_incr, diag_length + k_j_incr );
 
 				// construct the matrix from the given iterators
 				const size_t s = getPID();
@@ -256,7 +256,7 @@ namespace grb::algorithms {
 
 				if( rc != SUCCESS ) {
 					throw std::runtime_error(
-						"Error: createIdentity_generic failed: rc = " + toString( rc )
+						"Error: createIdentity_generic failed: rc = " + grb::toString( rc )
 					);
 				}
 				return matrix;
@@ -370,8 +370,8 @@ namespace grb::algorithms {
 				// values-- determine worst-case length (cheaper than computing the actual
 				// diagonal length)
 				const size_t diag_length = compute_diag_length( m, n, k );
-				const utils::containers::ConstantVector< D > V( identity_value,
-				                                                diag_length );
+				const grb::utils::containers::ConstantVector< D > V( identity_value,
+					diag_length );
 
 				// call generic implementation
 				const size_t s = getPID();
@@ -440,7 +440,7 @@ namespace grb::algorithms {
 
 				// Initialise rows indices container with a range from 0 to nrows,
 				// each value repeated ncols times.
-				utils::containers::Range< RIT > I( 0, m, 1, n );
+				grb::utils::containers::Range< RIT > I( 0, m, 1, n );
 
 				// Initialise columns values container with a range from 0 to ncols
 				// repeated nrows times. There are two ways of doing this:
@@ -455,17 +455,17 @@ namespace grb::algorithms {
 					J.emplace_back( grb::utils::containers::Range< CIT >( 0, n ) );
 				}
 #endif
-				const utils::containers::Range<> J_raw( 0, nz );
+				const grb::utils::containers::Range< size_t > J_raw( 0, nz );
 				const auto entryInd2colInd = [&m] (const CIT k) -> CIT {
 						return k / m;
 					};
-				auto J_begin = utils::iterators::make_adapter_iterator(
+				auto J_begin = grb::utils::iterators::make_adapter_iterator(
 					J_raw.cbegin( s, P ), J_raw.cend( s, P ), entryInd2colInd );
-				const auto J_end = utils::iterators::make_adapter_iterator(
+				const auto J_end = grb::utils::iterators::make_adapter_iterator(
 					J_raw.cend( s, P ), J_raw.cend( s, P ), entryInd2colInd );
 
 				// Initialise values container with the given value.
-				utils::containers::ConstantVector< D > V( value, nz );
+				grb::utils::containers::ConstantVector< D > V( value, nz );
 
 #ifndef NDEBUG
 				const size_t Isz = std::distance( I.begin( s, P ), I.end( s, P ) );
@@ -485,7 +485,7 @@ namespace grb::algorithms {
 
 				if( rc != SUCCESS ) {
 					throw std::runtime_error(
-						"Error: factory::full<void> failed: rc = " + toString( rc )
+						"Error: factory::full<void> failed: rc = " + grb::toString( rc )
 					);
 				}
 
@@ -532,7 +532,10 @@ namespace grb::algorithms {
 			static MatrixType dense( const MatrixType &A ) {
 				static_assert( std::is_arithmetic< D >::value,
 					"dense (from input matrix) requires an arithemtic nonzero type" );
-				Monoid<operators::add<D>, identities::zero> addMon;
+				grb::Monoid<
+					grb::operators::add< D >,
+					grb::identities::zero
+				> addMon;
 				const size_t m = grb::nrows( A );
 				const size_t n = grb::ncols( A );
 				if( n == 0 || m == 0 ) {
@@ -550,12 +553,12 @@ namespace grb::algorithms {
 				}
 
 				MatrixType matrix( m, n, nz );
-				RC rc = grb::set( matrix, 0 );
+				grb::RC rc = grb::set( matrix, 0 );
 				rc = rc ? rc : grb::foldl( matrix, A, addMon );
 
-				if( rc != SUCCESS) {
+				if( rc != grb::SUCCESS) {
 					throw std::runtime_error( "Could not promote input matrix to a dense one: "
-						+ toString( rc ) );
+						+ grb::toString( rc ) );
 				}
 
 				return matrix;
@@ -611,10 +614,12 @@ namespace grb::algorithms {
 	 * non-pattern, generic, class for the complete documentation.
 	 */
 	template<
-		IOMode mode, Backend backend,
+		grb::IOMode mode, grb::Backend backend,
 		typename RIT, typename CIT, typename NIT
 	>
 	class matrices< void, mode, backend, RIT, CIT, NIT > {
+
+		private:
 
 			/** Short-hand typedef for the matrix return type. */
 			typedef Matrix< void, backend, RIT, CIT, NIT > MatrixType;
@@ -638,16 +643,16 @@ namespace grb::algorithms {
 				const size_t m, const size_t n, const long k
 			) {
 				// pattern matrix variant of the above
-				constexpr auto s_zero = static_cast< long >( 0 );
-				constexpr auto u_zero = static_cast< size_t >( 0 );
+				constexpr const long s_zero = static_cast< long >( 0 );
+				constexpr const size_t u_zero = static_cast< size_t >( 0 );
 				const size_t diag_length = BaseType::compute_diag_length( m, n, k );
 				MatrixType matrix( m, n, diag_length );
 				const RIT k_i_incr = static_cast< RIT >(
 					(k < s_zero) ? std::abs( k ) : u_zero );
 				const CIT k_j_incr = static_cast< CIT >(
 					(k < s_zero) ? u_zero : std::abs( k ) );
-				utils::containers::Range< RIT > I( k_i_incr, diag_length + k_i_incr );
-				utils::containers::Range< CIT > J( k_j_incr, diag_length + k_j_incr );
+				grb::utils::containers::Range< RIT > I( k_i_incr, diag_length + k_i_incr );
+				grb::utils::containers::Range< CIT > J( k_j_incr, diag_length + k_j_incr );
 				const size_t s = BaseType::getPID();
 				const size_t P = BaseType::getP();
 				const RC rc = buildMatrixUnique(
@@ -658,7 +663,7 @@ namespace grb::algorithms {
 				);
 				if( rc != SUCCESS ) {
 					throw std::runtime_error(
-						"Error: createIdentity_generic<void> failed: rc = " + toString( rc )
+						"Error: createIdentity_generic<void> failed: rc = " + grb::toString( rc )
 					);
 				}
 				return matrix;
@@ -802,7 +807,7 @@ namespace grb::algorithms {
 
 				// Initialise rows indices container with a range from 0 to nrows,
 				// each value repeated ncols times.
-				utils::containers::Range< RIT > I( 0, m, 1, n );
+				grb::utils::containers::Range< RIT > I( 0, m, 1, n );
 
 				// Initialise columns values container with a range from 0 to ncols
 				// repeated nrows times. As mentioned above, there are two ways to provide
@@ -816,13 +821,13 @@ namespace grb::algorithms {
 					J.emplace_back( grb::utils::containers::Range< CIT >( 0, n ) );
 				}
 #endif
-				const utils::containers::Range<> J_raw( 0, nz );
+				const grb::utils::containers::Range< size_t > J_raw( 0, nz );
 				const auto nonzeroInd2colInd = [&m] (const size_t k) -> size_t {
 						return k / m;
 					};
-				auto J_begin = utils::iterators::make_adapter_iterator(
+				auto J_begin = grb::utils::iterators::make_adapter_iterator(
 					J_raw.cbegin( s, P ), J_raw.cend( s, P ), nonzeroInd2colInd );
-				auto J_end = utils::iterators::make_adapter_iterator(
+				auto J_end = grb::utils::iterators::make_adapter_iterator(
 					J_raw.cend( s, P ), J_raw.cend( s, P ), nonzeroInd2colInd );
 
 				assert( std::distance( I.begin( s, P ), I.end( s, P ) ) ==
@@ -837,7 +842,7 @@ namespace grb::algorithms {
 
 				if( rc != SUCCESS ) {
 					throw std::runtime_error(
-						"Error: factory::full<void> failed: rc = " + toString( rc )
+						"Error: factory::full<void> failed: rc = " + grb::toString( rc )
 					);
 				}
 

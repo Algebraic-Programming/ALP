@@ -27,7 +27,7 @@ using namespace grb;
 using namespace grb::algorithms;
 
 namespace {
-	RC error( const std::string &msg ) {
+	inline RC error( const std::string &msg ) {
 		std::cerr << "Test FAILED: " << msg << std::endl;
 		return FAILED;
 	}
@@ -709,7 +709,7 @@ void grb_program( const size_t &n, grb::RC &rc ) {
 	rc = rc != SUCCESS ? rc : test_factory_ones( n );
 }
 
-int main(const int argc, char ** argv ) {
+int main( int argc, char ** argv ) {
 	// defaults
 	constexpr const size_t n_max = static_cast< size_t >(
 		std::numeric_limits< long >::max() );
