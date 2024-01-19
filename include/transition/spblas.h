@@ -19,7 +19,7 @@
  * @file
  *
  * This is the ALP implementation of a subset of the de-facto *_spblas.h Sparse
- * BLAS standard. This implementation uses the spblas_ prefix; e.g.,
+ * BLAS standard. This implementation uses the SPBLAS_FUN(  prefix; e.g.,
  * #spblas_dcsrgemv.
  *
  * All functions defined have <tt>void</tt> return types. This implies two
@@ -39,6 +39,10 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
+
+#define SPBLAS_FUN( name ) SPCONCAT( spblas_, name )
+
+#define EXT_SPBLAS_FUN( name ) SPCONCAT( ext, SPBLAS_FUN( name ) )
 
 /**
  * Performs sparse matrix--vector multiplication.
@@ -61,7 +65,7 @@ extern "C" {
  *
  * All memory regions must be pre-allocated and initialised.
  */
-void spblas_dcsrgemv(
+void SPBLAS_FUN( dcsrgemv )(
 	const char * transa,
 	const int * m,
 	const double * a, const int * ia, const int * ja,
@@ -98,7 +102,7 @@ void spblas_dcsrgemv(
  *                      should be \f$ n \f$. If in column-major format, this
  *                      should be \f$ m \f$.
  */
-void spblas_dcsrmm(
+void SPBLAS_FUN( dcsrmm )(
 	const char * transa,
 	const int * m, const int * n, const int * k,
 	const double * alpha,
@@ -149,7 +153,7 @@ void spblas_dcsrmm(
  *                  integer when computation has proceeded successfully until
  *                  (but not including) the returned integer.
  */
-void spblas_dcsrmultcsr(
+void SPBLAS_FUN( dcsrmultcsr )(
 	const char * trans, const int * request, const int * sort,
 	const int * m, const int * n, const int * k,
 	double * a, int * ja, int * ia,
@@ -189,7 +193,7 @@ void spblas_dcsrmultcsr(
  *
  * This is an ALP implementation-specific extension.
  */
-void extspblas_dcsrmultsv(
+void EXT_SPBLAS_FUN( dcsrmultsv )(
 	const char * trans, const int * request,
 	const int * m, const int * n,
 	const double * a, const int * ja, const int * ia,
@@ -201,7 +205,7 @@ void extspblas_dcsrmultsv(
  * An extension that frees any buffers the ALP/GraphBLAS-generated SparseBLAS
  * library may have allocated.
  */
-void extspblas_free();
+void EXT_SPBLAS_FUN( free )();
 
 #ifdef __cplusplus
 } // end extern "C"

@@ -26,6 +26,7 @@
 #include <assert.h>
 
 #include <graphblas.hpp>
+#include <spblas.h>
 
 
 /** \internal Internal namespace for the SparseBLAS implementation. */
@@ -511,11 +512,11 @@ namespace std {
 
 extern "C" {
 
-	extblas_sparse_vector EXTBLAS_dusv_begin( const int n ) {
+	extblas_sparse_vector EXTBLAS_FUN( dusv_begin )( const int n ) {
 		return new sparseblas::SparseVector< double >( n );
 	}
 
-	int EXTBLAS_dusv_insert_entry(
+	int EXTBLAS_FUN( dusv_insert_entry )(
 		extblas_sparse_vector x,
 		const double val,
 		const int index
@@ -530,7 +531,7 @@ extern "C" {
 		return 0;
 	}
 
-	int EXTBLAS_dusv_end( extblas_sparse_vector x ) {
+	int EXTBLAS_FUN( dusv_end )( extblas_sparse_vector x ) {
 		auto vector = sparseblas::getDoubleVector( x );
 		assert( !(vector->finalized) );
 		try {
@@ -541,13 +542,13 @@ extern "C" {
 		return 0;
 	}
 
-	int EXTBLAS_dusvds( extblas_sparse_vector x ) {
+	int EXTBLAS_FUN( dusvds )( extblas_sparse_vector x ) {
 		auto vector = sparseblas::getDoubleVector( x );
 		delete vector;
 		return 0;
 	}
 
-	int EXTBLAS_dusv_nz( const extblas_sparse_vector x, int * const nz ) {
+	int EXTBLAS_FUN( dusv_nz )( const extblas_sparse_vector x, int * const nz ) {
 		auto vector = sparseblas::getDoubleVector( x );
 		assert( vector->finalized );
 		const size_t nnz = grb::nnz( *(vector->vector) );
@@ -560,7 +561,7 @@ extern "C" {
 		return 0;
 	}
 
-	int EXTBLAS_dusv_clear( extblas_sparse_vector x ) {
+	int EXTBLAS_FUN( dusv_clear )( extblas_sparse_vector x ) {
 		auto vector = sparseblas::getDoubleVector( x );
 		assert( vector->finalized );
 		const grb::RC rc = grb::clear( *(vector->vector) );
@@ -570,7 +571,7 @@ extern "C" {
 		return 0;
 	}
 
-	int EXTBLAS_dusv_open( const extblas_sparse_vector x ) {
+	int EXTBLAS_FUN( dusv_open )( const extblas_sparse_vector x ) {
 		auto vector = sparseblas::getDoubleVector( x );
 		assert( vector->finalized );
 		try {
@@ -582,7 +583,7 @@ extern "C" {
 		return 0;
 	}
 
-	int EXTBLAS_dusv_get(
+	int EXTBLAS_FUN( dusv_get )(
 		const extblas_sparse_vector x,
 		double * const val, int * const ind
 	) {
@@ -605,7 +606,7 @@ extern "C" {
 		}
 	}
 
-	int EXTBLAS_dusv_close( const extblas_sparse_vector x ) {
+	int EXTBLAS_FUN( dusv_close )( const extblas_sparse_vector x ) {
 		auto vector = sparseblas::getDoubleVector( x );
 		assert( vector->finalized );
 		vector->start = vector->end;
@@ -787,7 +788,7 @@ extern "C" {
 		return 0;
 	}
 
-	void spblas_dcsrgemv(
+	void SPBLAS_FUN( dcsrgemv )(
 		const char * transa,
 		const int * m_p,
 		const double * a, const int * ia, const int * ja,
@@ -895,7 +896,7 @@ extern "C" {
 		return 255;
 	}
 
-	void spblas_dcsrmm(
+	void SPBLAS_FUN( dcsrmm )(
 		const char * const transa,
 		const int * m, const int * n, const int * k,
 		const double * alpha,
@@ -987,7 +988,7 @@ extern "C" {
 		return 0;
 	}
 
-	void extspblas_dcsrmultsv(
+	void EXT_SPBLAS_FUN( dcsrmultsv )(
 		const char * trans, const int * request,
 		const int * m, const int * n,
 		const double * a, const int * ja, const int * ia,
@@ -1132,7 +1133,7 @@ extern "C" {
 		return 0;
 	}
 
-	void spblas_dcsrmultcsr(
+	void SPBLAS_FUN( dcsrmultcsr )(
 		const char * trans, const int * request, const int * sort,
 		const int * m_p, const int * n_p, const int * k_p,
 		double * a, int * ja, int * ia,
@@ -1323,7 +1324,7 @@ extern "C" {
 		return 0;
 	}
 
-	void extspblas_free() {
+	void EXT_SPBLAS_FUN( free )() {
 		(void) EXTBLAS_free();
 	}
 
