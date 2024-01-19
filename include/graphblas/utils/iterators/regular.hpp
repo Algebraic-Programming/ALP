@@ -176,6 +176,7 @@ namespace grb {
 							throw std::runtime_error( "Illegal values for s and/or P" );
 						}
 						// adjust count according to P
+						size_t entries_per_process = count;
 						if( P > 1 && count > block_size ) {
 							const size_t bcount = (count % block_size) > 0
 								? count / block_size + 1
@@ -183,17 +184,17 @@ namespace grb {
 							const size_t bcount_per_process = (bcount % P) > 0
 								? bcount / P + 1
 								: bcount / P;
-							_count = bcount_per_process * block_size;
+							entries_per_process = bcount_per_process * block_size;
 						}
 						// adjust count according to s
-						_count = (s+1) * _count;
+						_count = (s+1) * entries_per_process;
 						if( _count > count ) { _count = count; }
 						// select start position according to s
 						_pos = start
-							? s * _count
-							: count;
+							? s * entries_per_process
+							: _count;
 						// correct potential overflow of starting position
-						if( _pos > count ) { _pos = count; }
+						if( _pos > _count ) { _pos = _count; }
 						// initialise selected starting position
 						if( _pos != count ) {
 							SelfType::func( _val, state, _pos );
