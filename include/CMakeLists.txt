@@ -221,18 +221,18 @@ install( TARGETS algorithms EXPORT GraphBLASTargets )
 
 # this target lists the transition path headers
 # these are plain C headers and do not have any dependences
-add_library( transition INTERFACE )
+add_library( transition_headers INTERFACE )
 
 target_include_directories(
-	transition INTERFACE
+	transition_headers INTERFACE
 	$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/transition/>
 	$<INSTALL_INTERFACE:transition/>
 )
 
 install( DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/transition/"
-	DESTINATION "${GRB_INCLUDE_INSTALL_DIR}/../transition"
+	DESTINATION "${INCLUDE_INSTALL_DIR}/transition"
 	FILES_MATCHING REGEX "${HEADERS_REGEX}"
 )
 
-install( TARGETS transition EXPORT GraphBLASTargets )
+install( TARGETS transition_headers EXPORT GraphBLASTargets )
 

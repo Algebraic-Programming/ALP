@@ -20,113 +20,83 @@
 
 assert_defined_variables( WITH_REFERENCE_BACKEND WITH_OMP_BACKEND )
 
+function( add_transition_library target_name lib_type lib_name src1 )
+
+	set( multiValueArgs
+		"SOURCES"
+		"PUBLIC_LINK_LIBRARIES"
+	)
+
+	cmake_parse_arguments(parsed "" "" "${multiValueArgs}" "SOURCES;${src1};${ARGN}" )
+
+	add_library( ${target_name} ${lib_type} ${parsed_SOURCES} )
+
+	set_target_properties( ${target_name} PROPERTIES
+		OUTPUT_NAME ${lib_name}
+		ARCHIVE_OUTPUT_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/shmem"
+	)
+
+	target_link_libraries( ${target_name} PUBLIC transition_headers ${parsed_PUBLIC_LINK_LIBRARIES} )
+
+	target_link_libraries( ${target_name} PRIVATE backend_flags )
+
+	add_dependencies( libs ${target_name} )
+
+	install( TARGETS ${target_name}
+		EXPORT GraphBLASTargets
+		ARCHIVE DESTINATION "${SHMEM_BACKEND_INSTALL_DIR}"
+	)
+	
+endfunction( add_transition_library )
+
+
+
+
+
+
+
+
+
+
+
+# sequential SparseBLAS
+
 if( WITH_REFERENCE_BACKEND )
-	add_library( sparseblas_static STATIC
-		${CMAKE_CURRENT_SOURCE_DIR}/sparseblas.cpp
-	)
-
-	set_target_properties( sparseblas_static PROPERTIES
-		OUTPUT_NAME "sparseblas"
-		ARCHIVE_OUTPUT_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/shmem"
-	)
-
-	target_link_libraries( sparseblas_static PUBLIC backend_reference transition )
-
-	target_link_libraries( sparseblas_static PRIVATE backend_flags )
-
-	add_dependencies( libs sparseblas_static )
-
-	install( TARGETS sparseblas_static
-		EXPORT GraphBLASTargets
-		ARCHIVE DESTINATION "${SHMEM_BACKEND_INSTALL_DIR}"
-	)
-endif( WITH_REFERENCE_BACKEND )
-
-if( WITH_OMP_BACKEND )
-	add_library( sparseblas_omp_static STATIC
-		${CMAKE_CURRENT_SOURCE_DIR}/sparseblas.cpp
-	)
-
-	set_target_properties( sparseblas_omp_static PROPERTIES
-		OUTPUT_NAME "sparseblas_omp"
-		ARCHIVE_OUTPUT_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/shmem"
-	)
-
-	target_link_libraries( sparseblas_omp_static PUBLIC backend_reference_omp transition )
-
-	target_link_libraries( sparseblas_omp_static PRIVATE backend_flags )
-
-	add_dependencies( libs sparseblas_omp_static )
-
-	install( TARGETS sparseblas_omp_static
-		EXPORT GraphBLASTargets
-		ARCHIVE DESTINATION "${SHMEM_BACKEND_INSTALL_DIR}"
+	add_transition_library( sparseblas_static STATIC "sparseblas" ${CMAKE_CURRENT_SOURCE_DIR}/sparseblas.cpp
+		PUBLIC_LINK_LIBRARIES backend_reference
 	)
 endif()
+
+# shared-memory parallel SparseBLAS
+if( WITH_OMP_BACKEND )
+	add_transition_library( sparseblas_omp_static STATIC "sparseblas_omp" ${CMAKE_CURRENT_SOURCE_DIR}/sparseblas.cpp
+		PUBLIC_LINK_LIBRARIES backend_reference_omp
+	)
+endif()
+
 # sequential solver library
 if( WITH_NONBLOCKING_BACKEND )
-	add_library( spsolver_static STATIC
-		${CMAKE_CURRENT_SOURCE_DIR}/solver.cpp
-	)
-
-	set_target_properties( spsolver_static PROPERTIES
-		OUTPUT_NAME "spsolver"
-		ARCHIVE_OUTPUT_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/shmem"
-	)
-
-	target_link_libraries( spsolver_static PUBLIC backend_reference transition )
-
-	target_link_libraries( spsolver_static PRIVATE backend_flags )
-
-	add_dependencies( libs spsolver_static )
-
-	install( TARGETS spsolver_static
-		EXPORT GraphBLASTargets
-		ARCHIVE DESTINATION "${SHMEM_BACKEND_INSTALL_DIR}"
+	add_transition_library( spsolver_static STATIC "spsolver" ${CMAKE_CURRENT_SOURCE_DIR}/solver.cpp
+		PUBLIC_LINK_LIBRARIES backend_reference
 	)
 endif()
 
 # shmem parallel solver library
 if( WITH_OMP_BACKEND )
-	add_library( spsolver_omp_static STATIC
-		${CMAKE_CURRENT_SOURCE_DIR}/solver.cpp
-	)
-
-	set_target_properties( spsolver_omp_static PROPERTIES
-		OUTPUT_NAME "spsolver_omp"
-		ARCHIVE_OUTPUT_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/shmem"
-	)
-
-	target_link_libraries( spsolver_omp_static PUBLIC backend_reference_omp transition )
-
-	target_link_libraries( spsolver_omp_static PRIVATE backend_flags )
-
-	add_dependencies( libs spsolver_omp_static )
-
-	install( TARGETS spsolver_omp_static
-		EXPORT GraphBLASTargets
-		ARCHIVE DESTINATION "${SHMEM_BACKEND_INSTALL_DIR}"
+	add_transition_library( spsolver_omp_static STATIC "spsolver_omp" ${CMAKE_CURRENT_SOURCE_DIR}/solver.cpp
+		PUBLIC_LINK_LIBRARIES backend_reference_omp
 	)
 endif()
 
 if( WITH_NONBLOCKING_BACKEND )
-	add_library( spsolver_nonblocking_static STATIC
-		${CMAKE_CURRENT_SOURCE_DIR}/solver.cpp
+	add_transition_library( spsolver_nonblocking_static STATIC "spsolver_nonblocking" ${CMAKE_CURRENT_SOURCE_DIR}/solver.cpp
+		PUBLIC_LINK_LIBRARIES backend_nonblocking
 	)
 
-	set_target_properties( spsolver_nonblocking_static PROPERTIES
-		OUTPUT_NAME "spsolver_nonblocking"
-		ARCHIVE_OUTPUT_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/shmem"
-	)
+	if( ${CMAKE_SYSTEM_PROCESSOR} MATCHES "arm" )
+		add_transition_library( kml_solver STATIC "ksolver" ${CMAKE_CURRENT_SOURCE_DIR}/kml_iss.cpp
+			PUBLIC_LINK_LIBRARIES spsolver_nonblocking_static
+		)
+	endif()
 
-	target_link_libraries( spsolver_nonblocking_static PUBLIC backend_nonblocking transition )
-
-	target_link_libraries( spsolver_nonblocking_static PRIVATE backend_flags )
-
-	add_dependencies( libs spsolver_nonblocking_static )
-
-	install( TARGETS spsolver_nonblocking_static
-		EXPORT GraphBLASTargets
-		ARCHIVE DESTINATION "${SHMEM_BACKEND_INSTALL_DIR}"
-	)
 endif()
