@@ -36,7 +36,7 @@ void grb_program( const size_t &n, grb::RC &rc ) {
 
 	// initialize test
 	const grb::Matrix< double > A = matrices< double >::eye( n, n, 1, 1 );
-	const grb::Matrix< double > B = matrices< double >::identity( n, 2 );
+	const grb::Matrix< double > B = matrices< double >::identity( n, n, 2 );
 	grb::Matrix< double > C( n, n );
 	grb::Matrix< double > C_expected = matrices< double >::eye( n, n, 2, 1 );
 
