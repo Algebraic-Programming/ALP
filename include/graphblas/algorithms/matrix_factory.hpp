@@ -120,7 +120,7 @@ namespace grb::algorithms {
 	 */
 	template<
 		typename D,
-		grb::IOMode mode = grb::SEQUENTIAL, // TODO FIXME: it should be possible to set the default value to PARALLEL, but this presently causes all sorts of errors that need debugging first
+		grb::IOMode mode = grb::PARALLEL,
 		grb::Backend backend = grb::config::default_backend,
 		typename RIT = grb::config::RowIndexType,
 		typename CIT = grb::config::ColIndexType,
@@ -221,8 +221,6 @@ namespace grb::algorithms {
 				constexpr const long s_zero = static_cast< long >( 0 );
 				constexpr const size_t u_zero = static_cast< size_t >( 0 );
 				const size_t diag_length = compute_diag_length( m, n, k );
-				assert( static_cast< size_t >(std::distance( V_iter, V_end )) >=
-					diag_length );
 #ifdef NDEBUG
 				(void) V_end;
 #endif
@@ -246,6 +244,10 @@ namespace grb::algorithms {
 				// construct the matrix from the given iterators
 				const size_t s = getPID();
 				const size_t P = getP();
+				assert( static_cast< size_t >(std::distance( V_iter, V_end )) >=
+					static_cast< size_t >(std::distance( I.begin( s, P ), I.end( s, P ) )) );
+				assert( static_cast< size_t >(std::distance( V_iter, V_end )) >=
+					static_cast< size_t >(std::distance( J.begin( s, P ), J.end( s, P ) )) );
 				const RC rc = buildMatrixUnique(
 					matrix,
 					I.begin( s, P ), I.end( s, P ),
@@ -435,7 +437,6 @@ namespace grb::algorithms {
 
 				const size_t s = getPID();
 				const size_t P = getP();
-				MatrixType matrix( m, n, nz );
 
 				// Initialise rows indices container with a range from 0 to nrows,
 				// each value repeated ncols times.
@@ -464,21 +465,25 @@ namespace grb::algorithms {
 					J_raw.cend( s, P ), J_raw.cend( s, P ), entryInd2colInd );
 
 				// Initialise values container with the given value.
-				grb::utils::containers::ConstantVector< D > V( value, nz );
-
+				const size_t local_nz = std::distance( I.begin( s, P ), I.end( s, P ) );
 #ifndef NDEBUG
-				const size_t Isz = std::distance( I.begin( s, P ), I.end( s, P ) );
+				const size_t Isz = local_nz;
 				const size_t Jsz = std::distance( J_begin, J_end );
-				const size_t Vsz = std::distance( V.begin( s, P ), V.end( s, P ) );
 				assert( Isz == Jsz );
+#endif
+				grb::utils::containers::ConstantVector< D > V( value, local_nz );
+#ifndef NDEBUG
+				const size_t Vsz = std::distance( V.begin(), V.end() );
 				assert( Isz == Vsz );
 #endif
 
+				// allocate and build
+				MatrixType matrix( m, n, nz );
 				const RC rc = buildMatrixUnique(
 					matrix,
 					I.begin( s, P ), I.end( s, P ),
 					J_begin, J_end,
-					V.begin( s, P ), V.end( s, P ),
+					V.begin(), V.end(),
 					mode
 				);
 
@@ -801,7 +806,6 @@ namespace grb::algorithms {
 
 				const size_t s = BaseType::getPID();
 				const size_t P = BaseType::getP();
-				MatrixType matrix( m, n, nz );
 
 				// Initialise rows indices container with a range from 0 to nrows,
 				// each value repeated ncols times.
@@ -831,6 +835,8 @@ namespace grb::algorithms {
 				assert( std::distance( I.begin( s, P ), I.end( s, P ) ) ==
 					std::distance( J_begin, J_end ) );
 
+				// construct and populate matrix
+				MatrixType matrix( m, n, nz );
 				const RC rc = buildMatrixUnique(
 					matrix,
 					I.begin( s, P ), I.end( s, P ),
