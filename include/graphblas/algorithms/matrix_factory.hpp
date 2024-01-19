@@ -172,11 +172,15 @@ namespace grb::algorithms {
 				constexpr long zero = static_cast< long >( 0 );
 				const auto k_abs = static_cast< size_t >(
 					(k < zero) ? -k : k );
-				return (k_abs >= m || k_abs >= n)
-					? 0
-					: std::min(
-						std::min( m, n ),
-						std::min( n - k_abs, m - k_abs )
+				// catch out-of-bounds offsets
+				if( k < zero && k_abs >= m ) {
+					return 0;
+				} else if( k > zero && k_abs >= n ) {
+					return 0;
+				}
+				return std::min( std::min( m, n ), k < zero
+						? m - k_abs
+						: n - k_abs
 					);
 			}
 
@@ -209,6 +213,10 @@ namespace grb::algorithms {
 				const size_t m, const size_t n, const long k,
 				const IteratorV V_iter, const IteratorV V_end
 			) {
+#ifdef _DEBUG
+				std::cout << "createIdentity_generic called with m = " << m << ", n = "
+					<< n << ", k = " << k << " (non-void variant)\n";
+#endif
 				// some useful scalars
 				constexpr auto s_zero = static_cast< long >( 0 );
 				constexpr auto u_zero = static_cast< size_t >( 0 );
@@ -217,6 +225,9 @@ namespace grb::algorithms {
 					diag_length );
 #ifdef NDEBUG
 				(void) V_end;
+#endif
+#ifdef _DEBUG
+				std::cout << "Computed diag_length = " << diag_length << "\n";
 #endif
 
 				// declare matrix-to-be-returned

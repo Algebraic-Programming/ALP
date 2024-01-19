@@ -190,9 +190,14 @@ static RC test_factory_identity( const size_t &n, const long &offset ) {
 	return SUCCESS;
 }
 
-static RC test_factory_eye( const size_t &n ) {
+static RC test_factory_eye( const size_t &n, const long &offset ) {
+	const size_t i_offset = offset > 0 ? offset : 0;
+	const size_t j_offset = offset < 0 ? (-offset) : 0;
+	const size_t expected_nnz = i_offset + j_offset < n
+		? n - i_offset - j_offset
+		: 0;
 	{ // matrices< void >::eye of size: [0,0]
-		Matrix< void > M = matrices< void >::eye( 0, 0 );
+		Matrix< void > M = matrices< void >::eye( 0, 0, offset );
 		if( nnz( M ) != 0 ) {
 			return error( "matrices< void >::eye, size=(0,0): nnz != 0" );
 		}
@@ -209,7 +214,7 @@ static RC test_factory_eye( const size_t &n ) {
 	}
 
 	{ // matrices< int >::eye of size: [0,0]
-		Matrix< int > M = matrices< int >::eye( 0, 0 );
+		Matrix< int > M = matrices< int >::eye( 0, 0, offset );
 		if( nnz( M ) != 0 ) {
 			return error( "matrices< int >::eye, size=(0,0): nnz != 0" );
 		}
@@ -226,8 +231,8 @@ static RC test_factory_eye( const size_t &n ) {
 	}
 
 	{ // matrices< void >::eye of size: [n,n]
-		Matrix< void > M = matrices< void >::eye( n, n );
-		if( nnz( M ) != n ) {
+		Matrix< void > M = matrices< void >::eye( n, n, offset );
+		if( nnz( M ) != expected_nnz ) {
 			return error( "matrices< void >::eye, size=(n,n): nnz != n" );
 		}
 		if( nrows( M ) != n ) {
@@ -237,16 +242,16 @@ static RC test_factory_eye( const size_t &n ) {
 			return error( "matrices< void >::eye, size=(n,n): ncols != n" );
 		}
 		for( const auto &e : M ) {
-			if( e.first != e.second ) {
+			if( e.first + i_offset != e.second + j_offset ) {
 				return error( "matrices< void >::eye, size=(n,n): incorrect coordinate" );
 			}
 		}
 	}
 
 	{ // matrices< int >::eye of size: [n,n]
-		Matrix< int > M = matrices< int >::eye( n, n, 2 );
-		if( nnz( M ) != n ) {
-			return error( "matrices< int >::eye, size=(n,n): nnz != n" );
+		Matrix< int > M = matrices< int >::eye( n, n, 2, offset );
+		if( nnz( M ) != expected_nnz ) {
+			return error( "matrices< int >::eye, size=(n,n): nnz != n-abs(k)" );
 		}
 		if( nrows( M ) != n ) {
 			return error( "matrices< int >::eye, size=(n,n): nrows != n" );
@@ -255,7 +260,7 @@ static RC test_factory_eye( const size_t &n ) {
 			return error( "matrices< int >::eye, size=(n,n): ncols != n" );
 		}
 		for( const auto &e : M ) {
-			if( e.first.first != e.first.second ) {
+			if( e.first.first + i_offset != e.first.second + j_offset ) {
 				return error( "matrices< int >::eye, size=(n,n): incorrect coordinate" );
 			}
 			if( e.second != 2 ) {
@@ -265,9 +270,15 @@ static RC test_factory_eye( const size_t &n ) {
 	}
 
 	{ // matrices< int >::eye of size: [1,n]
-		Matrix< int > M = matrices< int >::eye( 1, n, 2 );
-		if( nnz( M ) != 1 ) {
-			return error( "matrices< int >::eye, size=(1,n): nnz != 1" );
+		Matrix< int > M = matrices< int >::eye( 1, n, 2, offset );
+		if( offset < 0 || i_offset > n ) {
+			if( nnz( M ) != 0 ) {
+				return error( "matrices< int >::eye, size(1,n): nnz != 0" );
+			}
+		} else if( nnz( M ) != 1 ) {
+			std::cerr << "matrices< int >:eye, size=(1,n), offset=" << offset << ": "
+				<< "nnz != 1 (it reads " << nnz( M ) << " instead)\n";
+			return FAILED;
 		}
 		if( nrows( M ) != 1 ) {
 			return error( "matrices< int >::eye, size=(1,n): nrows != 1" );
@@ -276,18 +287,32 @@ static RC test_factory_eye( const size_t &n ) {
 			return error( "matrices< int >::eye, size=(1,n): ncols != n" );
 		}
 		for( const auto &e : M ) {
-			if( e.first.first != 0 ) {
-				return error( "matrices< int >::eye, size=(1,n): incorrect coordinate" );
-			}
-			if( e.second != 2 ) {
-				return error( "matrices< int >::eye, size=(1,n): incorrect value" );
+			if( offset < 0 ) {
+				std::cerr << "matrices< int >::eye, size(1,n), offset=" << offset << ": "
+					<< "incorrect coordinate\n";
+				return FAILED;
+			} else {
+				if( e.first.first != 0 ) {
+					return error( "matrices< int >::eye, size=(1,n): incorrect row index" );
+				}
+				if( e.first.second != i_offset ) {
+					return error( "matrices< int >::eye, size=(1,n): incorrect column "
+						"coordinate" );
+				}
+				if( e.second != 2 ) {
+					return error( "matrices< int >::eye, size=(1,n): incorrect value" );
+				}
 			}
 		}
 	}
 
 	{ // matrices< int >::eye of size: [n,1]
-		Matrix< int > M = matrices< int >::eye( n, 1, 2 );
-		if( nnz( M ) != 1 ) {
+		Matrix< int > M = matrices< int >::eye( n, 1, 2, offset );
+		if( offset > 0 || j_offset > n ) {
+			if( nnz( M ) != 0 ) {
+				return error( "matrices< int >::eye, size=(n,1): nnz != 0" );
+			}
+		} else if( nnz( M ) != 1 ) {
 			return error( "matrices< int >::eye, size=(n,1): nnz != 1" );
 		}
 		if( nrows( M ) != n ) {
@@ -297,13 +322,26 @@ static RC test_factory_eye( const size_t &n ) {
 			return error( "matrices< int >::eye, size=(n,1): ncols != 1" );
 		}
 		for( const auto &e : M ) {
-			if( e.first.second != 0 ) {
-				return error( "matrices< int >::eye, size=(n,1): "
-					"incorrect column coordinate" );
-
-			}
-			if( e.second != 2 ) {
-				return error( "matrices< int >::eye, size=(n,1): incorrect value" );
+			if( offset > 0 ) {
+				std::cerr << "matrices< int >::eye, size=(n,1), offset=" << offset << ": "
+					<< "incorrect coordinate\n";
+				return FAILED;
+			} else {
+				if( e.first.first != j_offset ) {
+					std::cerr << "matrices< int >::eye, size=(n,1), offset=" << offset << ": "
+						<< "incorrect row coordinate\n";
+					return FAILED;
+				}
+				if( e.first.second != 0 ) {
+					std::cerr << "matrices< int >::eye, size=(n,1), offset=" << offset << ": "
+						<< "incorrect column coordinate\n";
+					return FAILED;
+				}
+				if( e.second != 2 ) {
+					std::cerr << "matrices< int >::eye, size=(n,1), offset=" << offset << ": "
+						<< "incorrect value\n";
+					return FAILED;
+				}
 			}
 		}
 	}
@@ -654,7 +692,13 @@ void grb_program( const size_t &n, grb::RC &rc ) {
 	std::cout << "Testing matrices::identity (n offset)\n";
 	rc = rc != SUCCESS ? rc : test_factory_identity( n, n );
 	std::cout << "Testing matrices::eye\n";
-	rc = rc != SUCCESS ? rc : test_factory_eye( n );
+	rc = rc != SUCCESS ? rc : test_factory_eye( n, 0 );
+	std::cout << "Testing matrices::eye (2 offset)\n";
+	rc = rc != SUCCESS ? rc : test_factory_eye( n, 2 );
+	std::cout << "Testing matrices::eye (-1 offset)\n";
+	rc = rc != SUCCESS ? rc : test_factory_eye( n, -1 );
+	std::cout << "Testing matrices::eye (-2*n offset)\n";
+	rc = rc != SUCCESS ? rc : test_factory_eye( n, -2*static_cast<long>(n) );
 	std::cout << "Testing matrices::dense (direct)\n";
 	rc = rc != SUCCESS ? rc : test_factory_dense( n );
 	std::cout << "Testing matrices::full\n";
@@ -667,17 +711,24 @@ void grb_program( const size_t &n, grb::RC &rc ) {
 
 int main(const int argc, char ** argv ) {
 	// defaults
+	constexpr const size_t n_max = static_cast< size_t >(
+		std::numeric_limits< long >::max() );
 	size_t in = 100;
 
 	// error checking
 	if( argc > 2 ) {
 		std::cerr << "Usage: " << argv[ 0 ] << " [n]\n";
 		std::cerr << "  -n (optional, default is " << in << "): "
-			<< "a positive integer.\n";
-		return 1;
+			<< "a positive integer smaller or equal to "
+			<< n_max << ".\n";
+		return 10;
 	}
 	if( argc >= 2 ) {
 		in = std::strtoul( argv[ 1 ], nullptr, 0 );
+		if( in > n_max ) {
+			std::cerr << "Given value for n is too large\n";
+			return 20;
+		}
 	}
 
 	std::cout << "This is functional test " << argv[ 0 ] << "\n";
