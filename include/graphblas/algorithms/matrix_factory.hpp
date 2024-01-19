@@ -348,18 +348,20 @@ namespace grb::algorithms {
 			 *
 			 * @param[in] m               The number of rows of the matrix.
 			 * @param[in] n               The number of columns of the matrix.
-			 * @param[in] identity_value  The value of each non-zero element (default = 1).
-			 * @param[in] k               The diagonal offset (default = 0). A positive
+			 * @param[in] value	          The value of each non-zero element.
+			 * @param[in] k               The diagonal offset. A positive
 			 *                            value indicates an offset above the main
 			 *                            diagonal, while a negative value indicates an
-			 *                            offset below the main diagonal.
+			 *                            offset below the main diagonal. Zero is equivalent
+			 *                            to a call to #identity.
 			 *
 			 * @returns The requested identity matrix.
 			 */
 			static MatrixType eye(
-				const size_t m, size_t n,
-				const D identity_value = static_cast< D >( 1 ),
-				const long k = static_cast< long >( 0 )
+				const size_t m,
+				const size_t n,
+				const D value,
+				const long k
 			) {
 				// check for possible trivial dispatch
 				if( m == 0 || n == 0 ) {
@@ -370,7 +372,7 @@ namespace grb::algorithms {
 				// values-- determine worst-case length (cheaper than computing the actual
 				// diagonal length)
 				const size_t diag_length = compute_diag_length( m, n, k );
-				const grb::utils::containers::ConstantVector< D > V( identity_value,
+				const grb::utils::containers::ConstantVector< D > V( value,
 					diag_length );
 
 				// call generic implementation
@@ -383,25 +385,22 @@ namespace grb::algorithms {
 			 * Builds an identity matrix.
 			 *
 			 * \note This is an alias for #eye. It differs only in that this function
-			 *       produces square matrices only.
+			 *       doesn't allow a diagonal offset.
 			 *
 			 * See #eye for detailed documentation.
 			 *
-			 * @param[in] n              The number of rows/columns of the matrix.
+			 * @param[in] m              The number of rows of the matrix.
+			 * @param[in] n              The number of columns of the matrix.
 			 * @param[in] identity_value The value of each non-zero element (default = 1).
-			 * @param[in] k               The diagonal offset (default = 0). A positive
-			 *                            value indicates an offset above the main
-			 *                            diagonal, while a negative value indicates an
-			 *                            offset below the main diagonal.
 			 *
 			 * @returns The requested identity matrix.
 			 */
 			static MatrixType identity(
+				const size_t m,
 				const size_t n,
-				const D identity_value = static_cast< D >( 1 ),
-				const long k = static_cast< long >( 0 )
+				const D identity_value = static_cast< D >( 1 )
 			) {
-				return eye( n, n, identity_value, k );
+				return eye( m, n, identity_value, 0 );
 			}
 
 			/**
@@ -741,8 +740,9 @@ namespace grb::algorithms {
 			 * @returns The requested identity matrix.
 			 */
 			static MatrixType eye(
-				const size_t m, const size_t n,
-				const long k = static_cast< long >(0)
+				const size_t m,
+				const size_t n,
+				const long k
 			) {
 				// check trivial case
 				if( m == 0 || n == 0 ) {
@@ -759,18 +759,16 @@ namespace grb::algorithms {
 			 * \note This is the pattern matrix variant -- see the non-patterm variant
 			 *       for complete documentation.
 			 *
-			 * @param[in] n The number of rows/columns of the matrix.
-			 * @param[in] k The diagonal offset (default = 0). A positive value indicates
-			 *              an offset above the main diagonal, while a negative value
-			 *              indicates an offset below the main diagonal.
+			 * @param[in] m The number of rows of the matrix.
+			 * @param[in] n The number of columns of the matrix.
 			 *
 			 * @returns The requested identity matrix.
 			 */
 			static MatrixType identity(
-				const size_t n,
-				const long k = static_cast< long >(0)
+				const size_t m,
+				const size_t n
 			) {
-				return eye( n, n, k );
+				return eye( m, n, 0 );
 			}
 
 			/**

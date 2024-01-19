@@ -33,6 +33,21 @@ namespace {
 	}
 } // namespace
 
+/**
+ * This function tests the 'empty' factory function for matrices.
+ *
+ * The 'empty' factory function creates an empty matrix of a given size.
+ * This test function checks the correctness of the created matrix by verifying
+ * its properties such as the number of non-zero elements, the number
+ * of rows and columns.
+ *
+ * @param n The size of the matrix to be tested.
+ *
+ * @return Returns a RC (Return Code) indicating the success or failure
+ * of the test.
+ * If the test is successful, it returns SUCCESS.
+ * If the test fails, it returns FAILED.
+ */
 static RC test_factory_empty( const size_t &n ) {
 	{ // matrices< void >::empty of size: [0,0]
 		Matrix< void > M = matrices< void >::empty( 0, 0 );
@@ -105,6 +120,23 @@ static RC test_factory_empty( const size_t &n ) {
 	return SUCCESS;
 }
 
+/**
+ * This function tests the 'identity' factory function for matrices.
+ *
+ * The 'identity' factory function creates an identity matrix of a given size
+ * with a given offset. This test function checks the correctness of the
+ * created matrix by verifying its properties such as the number of non-zero
+ * elements, the number of rows and columns.
+ *
+ * @param n The size of the matrix to be tested.
+ * @param offset The offset for the identity matrix. Positive values shift the
+ * identity diagonal to the right, while negative values shift it to the left.
+ *
+ * @return Returns a RC (Return Code) indicating the success or failure
+ * of the test.
+ * If the test is successful, it returns SUCCESS.
+ * If the test fails, it returns FAILED.
+ */
 static RC test_factory_identity( const size_t &n, const long &offset ) {
 	const size_t i_offset = offset > 0 ? offset : 0;
 	const size_t j_offset = offset < 0 ? (-offset) : 0;
@@ -190,6 +222,23 @@ static RC test_factory_identity( const size_t &n, const long &offset ) {
 	return SUCCESS;
 }
 
+/**
+ * This function tests the 'eye' factory function for matrices.
+ *
+ * The 'eye' factory function creates an identity matrix with a given offset.
+ * This test function checks the correctness of the created matrix by verifying
+ * its properties such as the number of non-zero elements, the number of rows
+ * and columns, and the values of the elements.
+ *
+ * @param n The size of the matrix to be tested.
+ * @param offset The offset for the identity matrix. Positive values shift the
+ * identity diagonal to the right, while negative values shift it to the left.
+ *
+ * @return Returns a RC (Return Code) indicating the success or failure
+ * of the test.
+ * If the test is successful, it returns SUCCESS.
+ * If the test fails, it returns FAILED.
+ */
 static RC test_factory_eye( const size_t &n, const long &offset ) {
 	const size_t i_offset = offset > 0 ? offset : 0;
 	const size_t j_offset = offset < 0 ? (-offset) : 0;
@@ -214,7 +263,7 @@ static RC test_factory_eye( const size_t &n, const long &offset ) {
 	}
 
 	{ // matrices< int >::eye of size: [0,0]
-		Matrix< int > M = matrices< int >::eye( 0, 0, offset );
+		Matrix< int > M = matrices< int >::eye( 0, 0, 1, offset );
 		if( nnz( M ) != 0 ) {
 			return error( "matrices< int >::eye, size=(0,0): nnz != 0" );
 		}
@@ -491,6 +540,21 @@ RC test_factory_full_templated(
 	return SUCCESS;
 }
 
+/**
+ * This function tests the 'dense' factory function for matrices.
+ *
+ * The 'dense' factory function creates a dense matrix of a given size.
+ * This test function checks the correctness of the created matrix by verifying
+ * its properties such as the number of non-zero elements, the number
+ * of rows and columns.
+ *
+ * @param n The size of the matrix to be tested.
+ *
+ * @return Returns a RC (Return Code) indicating the success or failure
+ * of the test.
+ * If the test is successful, it returns SUCCESS.
+ * If the test fails, it returns FAILED.
+ */
 static RC test_factory_dense( const size_t &n ) {
 	return test_factory_full_templated(
 		n, "dense",
@@ -502,6 +566,21 @@ static RC test_factory_dense( const size_t &n ) {
 		} );
 }
 
+/**
+ * This function tests the 'full' factory function for matrices.
+ *
+ * The 'full' factory function creates a full matrix of a given size.
+ * This test function checks the correctness of the created matrix by verifying
+ * its properties such as the number of non-zero elements, the number
+ * of rows and columns.
+ *
+ * @param n The size of the matrix to be tested.
+ *
+ * @return Returns a RC (Return Code) indicating the success or failure
+ * of the test.
+ * If the test is successful, it returns SUCCESS.
+ * If the test fails, it returns FAILED.
+ */
 static RC test_factory_full( const size_t & n ) {
 	return test_factory_full_templated(
 		n, "full",
@@ -655,6 +734,21 @@ static RC test_factory_dense_valued(
 	return SUCCESS;
 }
 
+/**
+ * This function tests the 'zeros' factory function for matrices.
+ *
+ * The 'zeros' factory function creates a matrix of a given size filled with zeros.
+ * This test function checks the correctness of the created matrix by verifying
+ * its properties such as the number of non-zero elements, the number
+ * of rows and columns.
+ *
+ * @param n The size of the matrix to be tested.
+ *
+ * @return Returns a RC (Return Code) indicating the success or failure
+ * of the test.
+ * If the test is successful, it returns SUCCESS.
+ * If the test fails, it returns FAILED.
+ */
 static RC test_factory_zeros( const size_t &n ) {
 	return test_factory_dense_valued(
 		n, "zeros",
@@ -667,6 +761,21 @@ static RC test_factory_zeros( const size_t &n ) {
 		0 );
 }
 
+/**
+ * This function tests the 'ones' factory function for matrices.
+ *
+ * The 'ones' factory function creates a matrix of a given size filled with ones.
+ * This test function checks the correctness of the created matrix by verifying
+ * its properties such as the number of non-zero elements, the number
+ * of rows and columns.
+ *
+ * @param n The size of the matrix to be tested.
+ *
+ * @return Returns a RC (Return Code) indicating the success or failure
+ * of the test.
+ * If the test is successful, it returns SUCCESS.
+ * If the test fails, it returns FAILED.
+ */
 static RC test_factory_ones( const size_t &n ) {
 	return test_factory_dense_valued(
 		n, "ones",
