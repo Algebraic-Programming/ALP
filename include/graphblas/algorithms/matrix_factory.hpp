@@ -40,21 +40,23 @@
 namespace grb::algorithms {
 
 	/**
-	 * Factories for creating ALP/GraphBLAS matrices with standard patterns, like,
-	 * for example, identity matrices.
+	 * Factories for creating ALP/GraphBLAS matrices with standard patterns such as
+	 * identity matrices.
 	 *
 	 * Just as with constructing any ALP container, the use of factory functions,
-	 * when an error is encountered, will result in C++ exceptions being thrown.
+	 * when an error is encountered, results in C++ exceptions being thrown.
 	 *
-	 * The capacity of returned matrices is requested at the exact minimum that
-	 * is required. As per the core ALP/GraphBLAS specification, this means that
-	 * the returned matrices have a capacity of <em>at least</em> the minimum
-	 * required.
+	 * The capacity of returned matrices is requested at the exact minimum that is
+	 * required. As per the core ALP/GraphBLAS specification, this means that the
+	 * returned matrices have a capacity of <em>at least</em> the minimum required;
+	 * i.e., <code>assert( grb::nnz(R) <= grb::capacity(R) );</code> holds, with
+	 * <code>R</code> the returned matrix.
 	 *
 	 * In the case of an ALP process with multiple user processes, calling any
 	 * factory method is an \em collective call. ALP guarantees that if a call
 	 * fails at one user process, the call also fails at all other user processes,
-	 * with matching exceptions.
+	 * with matching exceptions. The matrix factory is scalable in the number of
+	 * threads as well as the number of user processes.
 	 *
 	 * The following matrix factory methods are supported:
 	 *  -# #diag,
@@ -65,7 +67,8 @@ namespace grb::algorithms {
 	 *  -# #dense,
 	 *  -# #ones, and
 	 *  -# #zeros.
-	 * All these methos are implemented on top of core ALP primitives.
+	 *
+	 * All these methods are implemented on top of core ALP primitives.
 	 *
 	 * @tparam D       The type of a non-zero element.
 	 * @tparam mode    The I/O mode to be used when constructing matrices.
@@ -88,35 +91,47 @@ namespace grb::algorithms {
 	 * within \f$ \Theta(1) \f$ work-space, the involved work and data movement are
 	 * \f$ \mathcal{O}(n+m) \f$ instead, where \f$ n \f$ is the maximum matrix
 	 * dimension and \f$ m \f$ the number of nonzeroes in the produced matrix.
-	 * The work and data movement furthermore do \em not scale with the number of
-	 * user processes-- the factory methods are implemented using sequential I/O
-	 * semantics.
 	 *
-	 * \note Providing these matrix factory methods via sequential I/O is needed
-	 *       since otherwise we may not implement this functionality on the ALP
-	 *       algorithm level, and must instead either 1) implement these as core ALP
-	 *       primitives, or 2) provide efficient introspection to the distribution
-	 *       of \em arbitrary backends. The former entails significant work, while
-	 *       the latter does not yet exist.
+	 * In case of a shared-memory parallel benchmark with \f$ T \f$ threads, the
+	 * thread-local work and data movement become \f$ \mathcal{O}((n+m)/T+T) \f$.
+	 * System-wide compute costs thus are proportional to
+	 * \f$ \mathcal{O}(m+n)/T+T \f$ while system-wide data movement costs remain
+	 * proportional to \f$ \mathcal{O}(m+n+T) \f$, with usually \f$ m+n \gg T \f$.
+	 * The work-space cost remains \f$ \Theta(1) \f$.
+	 * 
+	 * In case of a distributed-memory parallel backend and use of this factory
+	 * class in #grb::PARALLEL I/O \a mode over \f$ P \f$ user processes with
+	 * \f$ T_s \f$ threads at user process \f$ s \f$, thread-local work and data
+	 * movement become $\f \mathcal{O}((n+m)/T_sP+T_s+P) \f$.
+	 * System-wide compute costs thus are proportional to
+	 *   \f$ \mathcal{O}(\min_s (m+n)/T_sP + \max_s T_s + P), \f$
+	 * while system-wide data movement costs are proportional to
+	 *   \f$ \mathcal{O}((m+n)/P + \max_s T_s + P). \f$
+	 * The work-space costs are \f$ \Theta( P ) \f$.
 	 *
-	 * \note If scalable factory methods are required, please submit a feature
-	 *       request and/or contact the maintainers.
-	 *
-	 * Most matrix factory methods are shared-memory parallel. Those which are
-	 * \em not shared-memory parallel are all variants of #random.
+	 * In sequential I/O mode, we give only the system-wide costing for brevity:
+	 *   -# \f$ \mathcal{O}( \min m+n / T_s + \max T_s + P ) work;
+	 *   -# \f$ \mathcal{O}( m + n + \max T_s + P );
+	 *   -# \f$ \Theta( P ) \f$ work-space.
 	 *
 	 * @see grb::IOMode for a more in-depth description of sequential (versus
 	 *                  parallel) I/O semantics.
+	 *
+	 * \note This analysis assumes bandwidth is shared amongst all threads in a
+	 *       shared-memory system, whereas each user process has exclusive use
+	 *       of its memory controllers. These assumptions require properly
+	 *       configured execution environments.
 	 * \endparblock
 	 *
 	 * \par A note on aliases
-	 * Some methods are aliases of one another -- different from core ALP
-	 * primitives, the goal for this factory class, just as with any ALP algorithm,
-	 * is to provide the end-user with productive tools; the goal is not to provide
-	 * some minimal set of primitives that allow the widest range of algorithms to
-	 * efficiently be implemented on top of them. Given this difference in end-goal,
-	 * maintaining multiple aliases are hence encouraged, as long as they indeed
-	 * increase productivity.
+	 * Different from core primitives, the goal for this factory class is to
+	 * provide productive tools. This goal differs from the core primitives which
+	 * aim to provide some minimal set of primitives that allow efficient
+	 * implementation of the widest possible range of algorithms.
+	 *
+	 * Given this difference in end-goal, maintaining multiple aliases for this
+	 * factory class -- or indeed for algorithms in general -- are hence
+	 * encouraged, as long as they indeed increase productivity.
 	 */
 	template<
 		typename D,
@@ -387,21 +402,31 @@ namespace grb::algorithms {
 			 * Builds an identity matrix.
 			 *
 			 * \note This is an alias for #eye. It differs only in that this function
-			 *       doesn't allow a diagonal offset.
+			 *       does not allow for rectangular output nor for diagonal offsets.
 			 *
 			 * See #eye for detailed documentation.
 			 *
-			 * @param[in] m              The number of rows of the matrix.
-			 * @param[in] n              The number of columns of the matrix.
-			 * @param[in] identity_value The value of each non-zero element (default = 1).
+			 * @param[in] n    The size of the identity matrix to be returned.
+			 * @param[in] ring The semiring under which an identity matrix should be
+			 *                 formed (optional -- the default simply puts ones on the
+			 *                 diagonal).
+			 *
+			 * \note For non-numerical \a D, the semiring default cannot be applied and
+			 *       \a ring becomes a mandatory argument.
 			 *
 			 * @returns The requested identity matrix.
 			 */
+			template<
+				typename Semiring = grb::Semiring<
+					grb::operators::add< D >, grb::operators::mul< D >,
+					grb::identities::zero, grb::identities::one
+				>
+			>
 			static MatrixType identity(
-				const size_t m,
 				const size_t n,
-				const D identity_value = static_cast< D >( 1 )
+				const Semiring &ring = Semiring()
 			) {
+				constexpr const D identity_value = ring::template getOne< D >();
 				return eye( m, n, identity_value, 0 );
 			}
 
@@ -761,19 +786,20 @@ namespace grb::algorithms {
 			/**
 			 * Builds an identity pattern matrix.
 			 *
-			 * \note This is the pattern matrix variant -- see the non-patterm variant
+			 * \note This is the pattern matrix variant -- see the non-pattern variant
 			 *       for complete documentation.
 			 *
-			 * @param[in] m The number of rows of the matrix.
-			 * @param[in] n The number of columns of the matrix.
+			 * @param[in] n The size of the identity matrix to be returned.
 			 *
-			 * @returns The requested identity matrix.
+			 * \note A semiring is not requested as what value represents one is not
+			 *       relevant for pattern matrices.
+			 *
+			 * @returns The requested identity pattern matrix.
 			 */
 			static MatrixType identity(
-				const size_t m,
 				const size_t n
 			) {
-				return eye( m, n, 0 );
+				return eye( n, n, 0 );
 			}
 
 			/**
