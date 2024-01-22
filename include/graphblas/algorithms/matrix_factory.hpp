@@ -70,12 +70,17 @@ namespace grb::algorithms {
 	 *
 	 * All these methods are implemented on top of core ALP primitives.
 	 *
-	 * @tparam D       The type of a non-zero element.
-	 * @tparam mode    The I/O mode to be used when constructing matrices.
-	 *                 Optional; default is #grb::PARALLEL.
+	 * @tparam D       The type of a non-zero element of the returned matrices.
 	 *
 	 * When passing <tt>void</tt> to \a D, the returned matrices will be pattern
 	 * matrices.
+	 *
+	 * @tparam mode    The I/O mode to be used when constructing matrices.
+	 *                 Optional; default is #grb::PARALLEL.
+	 *
+	 * \warning At present, #diag for non-pattern matrices is only supported for
+	 *          sequential I/O. Please append to GitHub issue #238 if you require
+	 *          this functionality so that we may prioritise it higher.
 	 *
 	 * The remainder template parameters are automatically inferred and should
 	 * only be overridden by an expert user:
@@ -634,6 +639,7 @@ namespace grb::algorithms {
 					"ones requires an arithemtic nonzero type" );
 				return full( m, n, static_cast< D >( 1 ) );
 			}
+
 	}; // end class matrices
 
 	/**
@@ -741,6 +747,10 @@ namespace grb::algorithms {
 				const size_t m, const size_t n,
 				const long k = static_cast< long >( 0 )
 			) {
+				// static checks
+				static_assert( mode == grb::SEQUENTIAL,
+					"matrices<>::diag is currently only supported with sequential I/O" );
+
 				// check trivial dispatch
 				if( m == 0 || n == 0 ) {
 					return empty( n, n );
