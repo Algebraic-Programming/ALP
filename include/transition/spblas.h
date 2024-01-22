@@ -40,7 +40,11 @@
 extern "C" {
 #endif
 
-#define SPBLAS_FUN( name ) SPCONCAT( spblas_, name )
+#ifndef SPBLAS_PREFIX
+	#define SPBLAS_PREFIX spblas_
+#endif
+
+#define SPBLAS_FUN( name ) SPCONCAT( SPBLAS_PREFIX, name )
 
 #define EXT_SPBLAS_FUN( name ) SPCONCAT( ext, SPBLAS_FUN( name ) )
 
