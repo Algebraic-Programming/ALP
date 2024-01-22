@@ -344,6 +344,8 @@ namespace grb::algorithms {
 				const long k = static_cast< long >( 0 )
 			) {
 				// static sanity checks
+				static_assert( mode == grb::SEQUENTIAL,
+					"matrices<>::diag is currently only supported with sequential I/O" );
 				static_assert(
 					std::is_convertible<
 						typename std::iterator_traits< ValueIterator >::value_type,
@@ -368,22 +370,25 @@ namespace grb::algorithms {
 			 * Output matrix will contain \f$ \min\{ m, n \} \f$ non-zero elements or less
 			 * if \a k is not zero.
 			 *
-			 * @param[in] m               The number of rows of the matrix.
-			 * @param[in] n               The number of columns of the matrix.
-			 * @param[in] value	          The value of each non-zero element.
-			 * @param[in] k               The diagonal offset. A positive
-			 *                            value indicates an offset above the main
-			 *                            diagonal, while a negative value indicates an
-			 *                            offset below the main diagonal. Zero is equivalent
-			 *                            to a call to #identity.
+			 * @param[in] m     The number of rows of the matrix.
+			 * @param[in] n     The number of columns of the matrix.
+			 * @param[in] value The value of each non-zero element.
+			 * @param[in] k     The diagonal offset. A positive value indicates an offset
+			 *                  above the main diagonal, while a negative value indicates
+			 *                  an offset below the main diagonal.
+			 *
+			 * Providing \a value equal to one and \a k equal to zero is equivalent to a
+			 * default call to #identity. Therefore, \a value and \a k are defined as
+			 * optional arguments to this function as well, with defaults one and zero,
+			 * respectively.
 			 *
 			 * @returns The requested identity matrix.
 			 */
 			static MatrixType eye(
 				const size_t m,
 				const size_t n,
-				const D value,
-				const long k
+				const D value = static_cast< D >( 1 ),
+				const long k = static_cast< long >( 0 )
 			) {
 				// check for possible trivial dispatch
 				if( m == 0 || n == 0 ) {
@@ -610,12 +615,28 @@ namespace grb::algorithms {
 			 *
 			 * @param[in] m The number of rows of the matrix.
 			 * @param[in] n The number of columns of the matrix.
+			 * @param[in] ring The semiring under which a matrix of zeroes should be
+			 *                 formed (optional -- the default simply produces a matrix
+			 *                 of numerical zeroes).
+			 *
+			 * \note For non-numerical \a D, the semiring default cannot be applied and
+			 *       \a ring becomes a mandatory argument.
 			 *
 			 * @returns A dense matrix of zeroes.
 			 */
-			static MatrixType zeros( const size_t m, const size_t n ) {
+			template<
+				typename Semiring = grb::Semiring<
+					grb::operators::add< D >, grb::operators::mul< D >,
+					grb::identities::zero, grb::identities::one
+				>
+			>
+			static MatrixType zeros(
+				const size_t m, const size_t n,
+				const Semiring &ring = Semiring()
+			) {
 				static_assert( std::is_arithmetic< D >::value,
 					"zeros requires an arithemtic nonzero type" );
+				const D zero = ring.template getZero< D >();
 				return full( m, n, static_cast< D >( 0 ) );
 			}
 
@@ -629,14 +650,30 @@ namespace grb::algorithms {
 			 * The only constraint that this function adds over the specification of
 			 * #full, is that the type \a D be numeric.
 			 *
-			 * @param[in] m The number of rows of the matrix.
-			 * @param[in] n The number of columns of the matrix.
+			 * @param[in] m    The number of rows of the matrix.
+			 * @param[in] n    The number of columns of the matrix.
+			 * @param[in] ring The semiring under which a matrix of ones should be
+			 *                 formed (optional -- the default simply produces a matrix
+			 *                 of numerical ones).
+			 *
+			 * \note For non-numerical \a D, the semiring default cannot be applied and
+			 *       \a ring becomes a mandatory argument.
 			 *
 			 * @returns Returns a dense matrix with entries one.
 			 */
-			static MatrixType ones( const size_t m, const size_t n ) {
+			template<
+				typename Semiring = grb::Semiring<
+					grb::operators::add< D >, grb::operators::mul< D >,
+					grb::identities::zero, grb::identities::one
+				>
+			>
+			static MatrixType ones(
+				const size_t m, const size_t n,
+				const Semiring &ring = Semiring()
+			) {
 				static_assert( std::is_arithmetic< D >::value,
 					"ones requires an arithemtic nonzero type" );
+				const D one = ring.template getOne< D >();
 				return full( m, n, static_cast< D >( 1 ) );
 			}
 
@@ -734,12 +771,11 @@ namespace grb::algorithms {
 			 * For pattern matrices, a call to this function is an alias of a call to
 			 * #eye. (For general matrices, the functions are \em not equivalent).
 			 *
-			 * @param[in] m      The number of rows of the matrix.
-			 * @param[in] n      The number of columns of the matrix.
-			 * @param[in] k      The diagonal offset (default = 0). A positive value
-			 *                   indicates an offset above the main diagonal, while a
-			 *                   negative value indicates an offset below the main
-			 *                   diagonal.
+			 * @param[in] m The number of rows of the matrix.
+			 * @param[in] n The number of columns of the matrix.
+			 * @param[in] k The diagonal offset (default = 0). A positive value indicates
+			 *              an offset above the main diagonal, while a negative value
+			 *              indicates an offset below the main diagonal.
 			 *
 			 * @returns The requested diagonal matrix.
 			 */
@@ -747,10 +783,6 @@ namespace grb::algorithms {
 				const size_t m, const size_t n,
 				const long k = static_cast< long >( 0 )
 			) {
-				// static checks
-				static_assert( mode == grb::SEQUENTIAL,
-					"matrices<>::diag is currently only supported with sequential I/O" );
-
 				// check trivial dispatch
 				if( m == 0 || n == 0 ) {
 					return empty( n, n );
@@ -782,7 +814,7 @@ namespace grb::algorithms {
 			static MatrixType eye(
 				const size_t m,
 				const size_t n,
-				const long k
+				const long k = static_cast< long >( 0 )
 			) {
 				// check trivial case
 				if( m == 0 || n == 0 ) {
