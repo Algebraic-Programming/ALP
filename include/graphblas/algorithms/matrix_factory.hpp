@@ -102,7 +102,7 @@ namespace grb::algorithms {
 	 * In case of a distributed-memory parallel backend and use of this factory
 	 * class in #grb::PARALLEL I/O \a mode over \f$ P \f$ user processes with
 	 * \f$ T_s \f$ threads at user process \f$ s \f$, thread-local work and data
-	 * movement become $\f \mathcal{O}((n+m)/T_sP+T_s+P) \f$.
+	 * movement become \f$ \mathcal{O}((n+m)/T_sP+T_s+P) \f$.
 	 * System-wide compute costs thus are proportional to
 	 *   \f$ \mathcal{O}(\min_s (m+n)/T_sP + \max_s T_s + P), \f$
 	 * while system-wide data movement costs are proportional to
@@ -110,8 +110,8 @@ namespace grb::algorithms {
 	 * The work-space costs are \f$ \Theta( P ) \f$.
 	 *
 	 * In sequential I/O mode, we give only the system-wide costing for brevity:
-	 *   -# \f$ \mathcal{O}( \min m+n / T_s + \max T_s + P ) work;
-	 *   -# \f$ \mathcal{O}( m + n + \max T_s + P );
+	 *   -# \f$ \mathcal{O}( \min m+n / T_s + \max T_s + P ) \f$ work;
+	 *   -# \f$ \mathcal{O}( m + n + \max T_s + P ) \f$ data movement;
 	 *   -# \f$ \Theta( P ) \f$ work-space.
 	 *
 	 * @see grb::IOMode for a more in-depth description of sequential (versus
