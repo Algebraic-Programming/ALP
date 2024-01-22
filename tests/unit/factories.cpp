@@ -176,7 +176,7 @@ static RC test_factory_identity( const size_t &n ) {
 	{ // matrices< void >::identity
 		Matrix< void > M = matrices< void >::identity( n );
 		if( nnz( M ) != expected_nnz ) {
-			return error( "matrices< void >::identity: nnz != n-abs(k)" );
+			return error( "matrices< void >::identity: nnz != n" );
 		}
 		if( nrows( M ) != n ) {
 			return error( "matrices< void >::identity: nrows != n" );
@@ -194,9 +194,9 @@ static RC test_factory_identity( const size_t &n ) {
 	}
 
 	{ // matrices< int >::identity
-		Matrix< int > M = matrices< int >::identity( n, 2 );
+		Matrix< int > M = matrices< int >::identity( n );
 		if( nnz( M ) != expected_nnz ) {
-			return error( "matrices< int >::identity: nnz != n-abs(k)" );
+			return error( "matrices< int >::identity: nnz != n" );
 		}
 		if( nrows( M ) != n ) {
 			return error( "matrices< int >::identity: nrows != n" );
@@ -208,8 +208,54 @@ static RC test_factory_identity( const size_t &n ) {
 			if( e.first.first != e.first.second ) {
 				return error( "matrices< int >::identity: incorrect coordinate" );
 			}
-			if( e.second != 2 ) {
+			if( e.second != 1 ) {
 				return error( "matrices< int >::identity: incorrect value" );
+			}
+		}
+	}
+
+	{ // matrices< double >::identity with non-standard semiring, empty
+		Semiring<
+			operators::min< double >, operators::add< double >,
+			identities::infinity, identities::zero
+		> minPlusFP64;
+		Matrix< double > M = matrices< double >::identity( 0, minPlusFP64 );
+		if( nnz( M ) != 0 ) {
+			return error( "matrices< double >::identity: nnz != 0" );
+		}
+		if( nrows( M ) != 0 ) {
+			return error( "matrices< double >::identity:: nrows != 0" );
+		}
+		if( ncols( M ) != 0 ) {
+			return error( "matrices< double >::identity:: ncols != 0" );
+		}
+		for( const auto &e : M ) {
+			(void) e;
+			return error( "matrices< double >::identity, size=(0,0): found a value" );
+		}
+	}
+
+	{ // matrices< double >::identity with non-standard semiring
+		Semiring<
+			operators::min< double >, operators::add< double >,
+			identities::infinity, identities::zero
+		> minPlusFP64;
+		Matrix< double > M = matrices< double >::identity( n, minPlusFP64 );
+		if( nnz( M ) != expected_nnz ) {
+			return error( "matrices< double >::identity: nnz != n" );
+		}
+		if( nrows( M ) != n ) {
+			return error( "matrices< double >::identity:: nrows != n" );
+		}
+		if( ncols( M ) != n ) {
+			return error( "matrices< double >::identity:: ncols != n" );
+		}
+		for( const auto &e : M ) {
+			if( e.first.first != e.first.second ) {
+				return error( "matrices< double >::identity: incorrect coordinate" );
+			}
+			if( e.second != std::numeric_limits< double >::infinity() ) {
+				return error( "matrices< double >::identity: incorrect value" );
 			}
 		}
 	}
