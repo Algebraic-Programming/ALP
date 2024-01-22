@@ -140,7 +140,7 @@ static RC test_factory_empty( const size_t &n ) {
 static RC test_factory_identity( const size_t &n ) {
 	const size_t expected_nnz = n;
 	{ // matrices< void >::identity of size: [0,0]
-		Matrix< void > M = matrices< void >::identity( 0, 0 );
+		Matrix< void > M = matrices< void >::identity( 0 );
 		if( nnz( M ) != 0 ) {
 			return error( "matrices< void >::identity, size=(0,0): nnz != 0" );
 		}
@@ -157,7 +157,7 @@ static RC test_factory_identity( const size_t &n ) {
 	}
 
 	{ // matrices< int >::identity of size: [0,0]
-		Matrix< int > M = matrices< int >::identity( 0, 0 );
+		Matrix< int > M = matrices< int >::identity( 0 );
 		if( nnz( M ) != 0 ) {
 			return error( "matrices< int >::identity, size=(0,0): nnz != 0" );
 		}
@@ -174,7 +174,7 @@ static RC test_factory_identity( const size_t &n ) {
 	}
 
 	{ // matrices< void >::identity
-		Matrix< void > M = matrices< void >::identity( n, n );
+		Matrix< void > M = matrices< void >::identity( n );
 		if( nnz( M ) != expected_nnz ) {
 			return error( "matrices< void >::identity: nnz != n-abs(k)" );
 		}
@@ -194,7 +194,7 @@ static RC test_factory_identity( const size_t &n ) {
 	}
 
 	{ // matrices< int >::identity
-		Matrix< int > M = matrices< int >::identity( n, n, 2 );
+		Matrix< int > M = matrices< int >::identity( n, 2 );
 		if( nnz( M ) != expected_nnz ) {
 			return error( "matrices< int >::identity: nnz != n-abs(k)" );
 		}
@@ -791,10 +791,16 @@ void grb_program( const size_t &n, grb::RC &rc ) {
 	rc = rc != SUCCESS ? rc : test_factory_identity( n );
 	std::cout << "Testing matrices::eye\n";
 	rc = rc != SUCCESS ? rc : test_factory_eye( n, 0 );
+	std::cout << "Testing matrices::eye (1 offset)\n";
+	rc = rc != SUCCESS ? rc : test_factory_eye( n, 1 );
 	std::cout << "Testing matrices::eye (2 offset)\n";
 	rc = rc != SUCCESS ? rc : test_factory_eye( n, 2 );
+	std::cout << "Testing matrices::eye (n offset)\n";
+	rc = rc != SUCCESS ? rc : test_factory_eye( n, static_cast<long>(n) );
 	std::cout << "Testing matrices::eye (-1 offset)\n";
 	rc = rc != SUCCESS ? rc : test_factory_eye( n, -1 );
+	std::cout << "Testing matrices::eye (-2 offset)\n";
+	rc = rc != SUCCESS ? rc : test_factory_eye( n, -2 );
 	std::cout << "Testing matrices::eye (-2*n offset)\n";
 	rc = rc != SUCCESS ? rc : test_factory_eye( n, -2*static_cast<long>(n) );
 	std::cout << "Testing matrices::dense (direct)\n";
