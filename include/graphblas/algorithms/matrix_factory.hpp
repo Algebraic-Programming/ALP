@@ -426,8 +426,8 @@ namespace grb::algorithms {
 				const size_t n,
 				const Semiring &ring = Semiring()
 			) {
-				constexpr const D identity_value = ring::template getOne< D >();
-				return eye( m, n, identity_value, 0 );
+				const D identity_value = ring.template getOne< D >();
+				return eye( n, n, identity_value, 0 );
 			}
 
 			/**
