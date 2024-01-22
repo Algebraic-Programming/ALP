@@ -639,9 +639,9 @@ for MODE in ${MODES}; do
 
 				echo ">>>      [x]           [ ]       Testing the Single-Source-Shortest-Path (SSSP) algorithm on small pre-defined"
 				echo "                                 graphs testing specific border cases."
-				$runner ${TEST_BIN_DIR}/sssp_${MODE}_${BACKEND} &> ${TEST_OUT_DIR}/sssp_${MODE}_${BACKEND}_${P}_${T}.log
-				head -1 ${TEST_OUT_DIR}/sssp_${MODE}_${BACKEND}_${P}_${T}.log
-				grep 'Test OK' ${TEST_OUT_DIR}/sssp_${MODE}_${BACKEND}_${P}_${T}.log || echo "Test FAILED"
+				$runner ${TEST_BIN_DIR}/sssp_unit_${MODE}_${BACKEND} &> ${TEST_OUT_DIR}/sssp_unit_${MODE}_${BACKEND}_${P}_${T}.log
+				head -1 ${TEST_OUT_DIR}/sssp_unit_${MODE}_${BACKEND}_${P}_${T}.log
+				grep 'Test OK' ${TEST_OUT_DIR}/sssp_unit_${MODE}_${BACKEND}_${P}_${T}.log || echo "Test FAILED"
 				echo " "
 
 				#if [ "$BACKEND" = "reference_omp" ]; then

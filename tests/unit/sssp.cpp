@@ -14,15 +14,11 @@
  * limitations under the License.
  */
 
-#include <exception>
 #include <iostream>
 #include <vector>
-#include <cinttypes>
 
 #include <graphblas.hpp>
 #include <graphblas/algorithms/sssp.hpp>
-#include <graphblas/utils/Timer.hpp>
-#include <graphblas/utils/parser.hpp>
 #include <utils/output_verification.hpp>
 
 using namespace grb;
@@ -40,47 +36,211 @@ template< typename T >
 struct input_t {
 	Matrix< T > A;
 	size_t root;
-	const Vector< T > & expected_distances;
+	const std::vector< T >& expected_distances;
 
 	// Empty constructor necessary for distributed backends
-	input_t( 
+	explicit input_t(
 		const Matrix<T>& A = {0,0},
 		size_t root = 0,
-		const Vector< T > & expected_distances = {0} 
+		const std::vector< T >& expected_distances = {}
 	) : A( A ), root( root ), expected_distances( expected_distances ) {}
 };
 
-struct output_t {
-	RC rc = SUCCESS;
-	utils::TimerResults times;
-};
-
 template< typename T >
-void grbProgram( const struct input_t< T > & input, struct output_t & output ) {
+RC test_case( const struct input_t< T > & input ) {
 	std::cout << std::endl << "Running SSSP" << std::endl;
-	output.rc = SUCCESS;
-	utils::Timer timer;
+	RC rc = SUCCESS;
 
-	timer.reset();
 	bool explored_all = false;
 	size_t max_level = 0;
 	Vector< T > distances( grb::nrows( input.A ) );
 	Vector< T > x( grb::nrows( input.A ) ), y( grb::nrows( input.A ) );
-	output.times.preamble = timer.time();
 
-	timer.reset();
-	output.rc = algorithms::sssp( input.A, input.root, explored_all, max_level, distances, x, y );
-	output.times.useful = timer.time();
+	rc = rc ? rc : algorithms::sssp( input.A, input.root, explored_all, max_level, distances, x, y );
 
 	// Check distances by comparing it with the expected one
-	if( std::equal( input.expected_distances.cbegin(), input.expected_distances.cend(), distances.cbegin() ) ) {
-		std::cout << "SUCCESS: distances are correct" << std::endl;
-	} else {
+	bool equals_distances = true;
+	for( size_t i = 0; i < grb::nrows( input.A ) && equals_distances; i++ ) {
+		equals_distances &= (input.expected_distances[ i ] == distances[ i ]);
+	}
+	if( not equals_distances ) {
 		std::cerr << "FAILED: distances are incorrect" << std::endl;
 		std::cerr << "distances != expected_distances" << std::endl;
 		for( size_t i = 0; i < grb::nrows( input.A ); i++ )
 			std::cerr << std::string( 3, ' ' ) << distances[ i ] << " | " << input.expected_distances[ i ] << std::endl;
-		output.rc = FAILED;
+		rc = FAILED;
+	}
+
+	return rc;
+}
+
+void grb_test_suite( const void *, const size_t, RC& rc ) {
+
+	/** Matrix A0: Fully connected graph
+	 *
+	 * [0]     [1]
+	 *  ├───────┤
+	 * [2]     [3]
+	 *
+	 */
+	{ // Directed version, root = 0, uniform weights = 1
+		size_t root = 0;
+		std::vector< weight_t > expected_distances { 0, 1, 1, 1 };
+		std::cout << "-- Running test on A0 (undirected, acyclic, root " + std::to_string( root ) + ")" << std::endl;
+		Matrix< weight_t > A( 4, 4 );
+		std::vector< size_t > A_rows { { 0, 0, 0, 1, 1, 1, 2, 2, 2, 3, 3, 3 } };
+		std::vector< size_t > A_cols { { 1, 2, 3, 0, 2, 3, 0, 1, 3, 0, 1, 2 } };
+		std::vector< weight_t > A_values( A_rows.size(), 1 );
+		buildMatrixUnique( A, A_rows.data(), A_cols.data(), A_values.data(), A_rows.size(), PARALLEL );
+		input_t< weight_t > input { A, root, expected_distances };
+		rc = test_case(input );
+		if( rc != SUCCESS ) {
+			std::cerr << "Test failed: rc = " << rc << std::endl;
+			return;
+		}
+		std::cout << std::endl;
+	}
+
+	/** Matrix A1: Node [0] connected to all other nodes
+	 *
+	 * Schema:
+	 *  0 ----- 1
+	 *  | \
+	 *  |   \
+	 *  |     \
+	 *  2       3
+	 *
+	 *  [0] ──┬──▶ [1]
+	 *   │    │
+	 *   ▼    ▼
+	 *  [2]  [3]
+	 *
+	 */
+	{ // Directed version, root = 0, uniform weights = 1
+		size_t root = 0;
+		std::vector< weight_t > expected_distances { 0, 1, 1, 1 };
+		std::cout << "-- Running test on A1 (directed, root " + std::to_string( root ) + ")" << std::endl;
+		Matrix< weight_t > A( 4, 4 );
+		std::vector< size_t > A_rows { { 0, 0, 0 } };
+		std::vector< size_t > A_cols { { 1, 2, 3 } };
+		std::vector< weight_t > A_values( A_rows.size(), 1 );
+		buildMatrixUnique( A, A_rows.data(), A_cols.data(), A_values.data(), A_rows.size(), PARALLEL );
+		input_t< weight_t > input { A, root, expected_distances };
+		rc = test_case(input );
+		if( rc != SUCCESS ) {
+			std::cerr << "Test failed: rc = " << rc << std::endl;
+			return;
+		}
+		std::cout << std::endl;
+	}
+
+	/** Matrix A2:
+	 *
+	 *  [0] ──▶ [2] ──▶ [3]
+	 *   │
+	 *   ▼
+	 *  [1]
+	 *
+	 */
+	{ // Directed version, root = 0, uniform weights = 1
+		size_t root = 0;
+		std::vector< weight_t > expected_distances { 0, 1, 1, 2 };
+		std::cout << "-- Running test on A2 (directed, root " + std::to_string( root ) + ")" << std::endl;
+		Matrix< weight_t > A( 4, 4 );
+		std::vector< size_t > A_rows { { 0, 0, 2 } };
+		std::vector< size_t > A_cols { { 1, 2, 3 } };
+		std::vector< weight_t > A_values( A_rows.size(), 1 );
+		buildMatrixUnique( A, A_rows.data(), A_cols.data(), A_values.data(), A_rows.size(), PARALLEL );
+		input_t< weight_t > input { A, root, expected_distances };
+		rc = test_case(input );
+		if( rc != SUCCESS ) {
+			std::cerr << "Test failed: rc = " << rc << std::endl;
+			return;
+		}
+		std::cout << std::endl;
+	}
+
+	/** Matrix A3:
+	 *
+	 *  [0] ──▶ [1] ──▶ [2] ──▶ [3]
+	 *
+	 */
+	{ // Directed version, root = 0, uniform weights = 1
+		size_t root = 0;
+		std::vector< weight_t > expected_distances { 0, 1, 2, 3 };
+		std::cout << "-- Running test on A3.1 (directed, root " + std::to_string( root ) + ")" << std::endl;
+		Matrix< weight_t > A( 4, 4 );
+		std::vector< size_t > A_rows { { 0, 1, 2 } };
+		std::vector< size_t > A_cols { { 1, 2, 3 } };
+		std::vector< weight_t > A_values( A_rows.size(), 1 );
+		buildMatrixUnique( A, A_rows.data(), A_cols.data(), A_values.data(), A_rows.size(), PARALLEL );
+		input_t< weight_t > input { A, root, expected_distances };
+		rc = test_case(input );
+		if( rc != SUCCESS ) {
+			std::cerr << "Test failed: rc = " << rc << std::endl;
+			return;
+		}
+		std::cout << std::endl;
+	}
+	{ // Directed version, root = 0, uniform weights = 10
+		size_t root = 0;
+		std::vector< weight_t > expected_distances { 0, 10, 20, 30 };
+		std::cout << "-- Running test on A3.2 (directed, root " + std::to_string( root ) + ")" << std::endl;
+		Matrix< weight_t > A( 4, 4 );
+		std::vector< size_t > A_rows { { 0, 1, 2 } };
+		std::vector< size_t > A_cols { { 1, 2, 3 } };
+		std::vector< weight_t > A_values( A_rows.size(), 10 );
+		buildMatrixUnique( A, A_rows.data(), A_cols.data(), A_values.data(), A_rows.size(), PARALLEL );
+		input_t< weight_t > input { A, root,  expected_distances };
+		rc = test_case(input );
+		if( rc != SUCCESS ) {
+			std::cerr << "Test failed: rc = " << rc << std::endl;
+			return;
+		}
+		std::cout << std::endl;
+	}
+
+	/** Matrix A4:
+	 *  Graph A3 with a shortcut from [0] to [2]
+	 *
+	 *  [0] ──▶ [1] ──▶ [2] ──▶ [3]
+	 *   │               ▲
+	 *   └───────────────┘
+	 *
+	 */
+	{ // Directed version, root = 0, uniform weights = 1
+		size_t root = 0;
+		std::vector< weight_t > expected_distances { 0, 1, 1, 2 };
+		std::cout << "-- Running test on A4.1 (directed, root " + std::to_string( root ) + ")" << std::endl;
+		Matrix< weight_t > A( 4, 4 );
+		std::vector< size_t > A_rows { { 0, 0, 1, 2 } };
+		std::vector< size_t > A_cols { { 1, 2, 2, 3 } };
+		std::vector< weight_t > A_values( A_rows.size(), 1 );
+		buildMatrixUnique( A, A_rows.data(), A_cols.data(), A_values.data(), A_rows.size(), PARALLEL );
+		input_t< weight_t > input { A, root, expected_distances };
+		rc = test_case(input );
+		if( rc != SUCCESS ) {
+			std::cerr << "Test failed: rc = " << rc << std::endl;
+			return;
+		}
+		std::cout << std::endl;
+	}
+	{ // Directed version, root = 0, uniform weights = 10
+		size_t root = 0;
+		std::vector< weight_t > expected_distances { 0, 10, 10, 20 };
+		std::cout << "-- Running test on A4.2 (directed, root " + std::to_string( root ) + ")" << std::endl;
+		Matrix< weight_t > A( 4, 4 );
+		std::vector< size_t > A_rows { { 0, 0, 1, 2 } };
+		std::vector< size_t > A_cols { { 1, 2, 2, 3 } };
+		std::vector< weight_t > A_values( A_rows.size(), 10 );
+		buildMatrixUnique( A, A_rows.data(), A_cols.data(), A_values.data(), A_rows.size(), PARALLEL );
+		input_t< weight_t > input { A, root,  expected_distances };
+		rc = test_case( input );
+		if( rc != SUCCESS ) {
+			std::cerr << "Test failed: rc = " << rc << std::endl;
+			return;
+		}
+		std::cout << std::endl;
 	}
 }
 
@@ -96,152 +256,18 @@ int main( int argc, char ** argv ) {
 		return 1;
 	}
 
-	/** Matrix A0: Fully connected acyclic graph
-	 *
-	 * Schema:
-	 *  0 ----- 1
-	 *  | \   / |
-	 *  |   X   |
-	 *  | /   \ |
-	 *  2 ----- 3
-	 *
-	 */
-	{ // Directed version, root = 0, uniform weights = 1
-		size_t root = 0;
-		std::vector< weight_t > expected_distances { 0, 1, 1, 1 };
-		std::cout << "-- Running test on A0 (undirected, acyclic, root " + std::to_string( root ) + ")" << std::endl;
-		Matrix< weight_t > A( 4, 4 );
-		std::vector< size_t > A_rows { { 0, 0, 0, 1, 1, 1, 2, 2, 2, 3, 3, 3 } };
-		std::vector< size_t > A_cols { { 1, 2, 3, 0, 2, 3, 0, 1, 3, 0, 1, 2 } };
-		std::vector< weight_t > A_values( A_rows.size(), 1 );
-		grb::buildMatrixUnique( A, A_rows.data(), A_cols.data(), A_values.data(), A_rows.size(), PARALLEL );
-		input_t< weight_t > input { A, root, stdToGrbVector( expected_distances ) };
-		output_t output;
-		RC rc = launcher.exec( &grbProgram, input, output, true );
-		if( rc != SUCCESS ) {
-			std::cerr << "ERROR during execution: rc = " << rc << std::endl;
-			return rc;
-		} else if( output.rc ) {
-			std::cerr << "Test failed: rc = " << output.rc << std::endl;
-			return output.rc;
-		}
-		std::cout << std::endl;
+	RC success = SUCCESS;
+	RC execution_rc = launcher.exec( &grb_test_suite, nullptr, 0, success, true );
+	if( execution_rc != SUCCESS ) {
+		std::cerr << "ERROR during execution: execution_rc is "
+			<< toString(execution_rc) << std::endl;
+		return execution_rc;
 	}
 
-	/** Matrix A1:
-	 *
-	 * Schema:
-	 *  0 ----- 1
-	 *  | \
-	 *  |   \
-	 *  |     \
-	 *  2       3
-	 *
-	 */
-	{ // Directed version, root = 0, uniform weights = 1
-		size_t root = 0;
-		std::vector< weight_t > expected_distances { 0, 1, 1, 1 };
-		std::cout << "-- Running test on A1 (directed, root " + std::to_string( root ) + ")" << std::endl;
-		Matrix< weight_t > A( 4, 4 );
-		std::vector< size_t > A_rows { { 0, 0, 0 } };
-		std::vector< size_t > A_cols { { 1, 2, 3 } };
-		std::vector< weight_t > A_values( A_rows.size(), 1 );
-		grb::buildMatrixUnique( A, A_rows.data(), A_cols.data(), A_values.data(), A_rows.size(), PARALLEL );
-		input_t< weight_t > input { A, root, stdToGrbVector( expected_distances ) };
-		output_t output;
-		RC rc = launcher.exec( &grbProgram, input, output, true );
-		if( rc != SUCCESS ) {
-			std::cerr << "ERROR during execution: rc = " << rc << std::endl;
-			return rc;
-		} else if( output.rc ) {
-			std::cerr << "Test failed: rc = " << output.rc << std::endl;
-			return output.rc;
-		}
-		std::cout << std::endl;
+	if( success != SUCCESS ) {
+		std::cerr << "Test FAILED. Return code (RC) is " << grb::toString(success) << std::endl;
+		return FAILED;
 	}
-
-	/** Matrix A2:
-	 *
-	 * Schema:
-	 *  0 ----- 2 ----- 3
-	 *  |
-	 *  |
-	 *  |
-	 *  1
-	 *
-	 */
-	{ // Directed version, root = 0, uniform weights = 1
-		size_t root = 0;
-		std::vector< weight_t > expected_distances { 0, 1, 1, 2 };
-		std::cout << "-- Running test on A2 (directed, root " + std::to_string( root ) + ")" << std::endl;
-		Matrix< weight_t > A( 4, 4 );
-		std::vector< size_t > A_rows { { 0, 0, 2 } };
-		std::vector< size_t > A_cols { { 1, 2, 3 } };
-		std::vector< weight_t > A_values( A_rows.size(), 1 );
-		grb::buildMatrixUnique( A, A_rows.data(), A_cols.data(), A_values.data(), A_rows.size(), PARALLEL );
-		input_t< weight_t > input { A, root, stdToGrbVector( expected_distances ) };
-		output_t output;
-		RC rc = launcher.exec( &grbProgram, input, output, true );
-		if( rc != SUCCESS ) {
-			std::cerr << "ERROR during execution: rc = " << rc << std::endl;
-			return rc;
-		} else if( output.rc ) {
-			std::cerr << "Test failed: rc = " << output.rc << std::endl;
-			return output.rc;
-		}
-		std::cout << std::endl;
-	}
-
-	/** Matrix A3:
-	 *
-	 * Schema:
-	 *
-	 *  0 ----- 1 ----- 2 ----- 3
-	 *
-	 */
-	{ // Directed version, root = 0, uniform weights = 1
-		size_t root = 0;
-		std::vector< weight_t > expected_distances { 0, 1, 2, 3 };
-		std::cout << "-- Running test on A2.1 (directed, root " + std::to_string( root ) + ")" << std::endl;
-		Matrix< weight_t > A( 4, 4 );
-		std::vector< size_t > A_rows { { 0, 0, 2 } };
-		std::vector< size_t > A_cols { { 1, 2, 3 } };
-		std::vector< weight_t > A_values( A_rows.size(), 1 );
-		grb::buildMatrixUnique( A, A_rows.data(), A_cols.data(), A_values.data(), A_rows.size(), PARALLEL );
-		input_t< weight_t > input { A, root, stdToGrbVector( expected_distances ) };
-		output_t output;
-		RC rc = launcher.exec( &grbProgram, input, output, true );
-		if( rc != SUCCESS ) {
-			std::cerr << "ERROR during execution: rc = " << rc << std::endl;
-			return rc;
-		} else if( output.rc ) {
-			std::cerr << "Test failed: rc = " << output.rc << std::endl;
-			return output.rc;
-		}
-		std::cout << std::endl;
-	}
-	{ // Directed version, root = 0, uniform weights = 10
-		size_t root = 0;
-		std::vector< weight_t > expected_distances { 0, 10, 10, 30 };
-		std::cout << "-- Running test on A2.2 (directed, root " + std::to_string( root ) + ")" << std::endl;
-		Matrix< weight_t > A( 4, 4 );
-		std::vector< size_t > A_rows { { 0, 0, 2 } };
-		std::vector< size_t > A_cols { { 1, 2, 3 } };
-		std::vector< weight_t > A_values( A_rows.size(), 10 );
-		grb::buildMatrixUnique( A, A_rows.data(), A_cols.data(), A_values.data(), A_rows.size(), PARALLEL );
-		input_t< weight_t > input { A, root, stdToGrbVector( expected_distances ) };
-		output_t output;
-		RC rc = launcher.exec( &grbProgram, input, output, true );
-		if( rc != SUCCESS ) {
-			std::cerr << "ERROR during execution: rc = " << rc << std::endl;
-			return rc;
-		} else if( output.rc ) {
-			std::cerr << "Test failed: rc = " << output.rc << std::endl;
-			return output.rc;
-		}
-		std::cout << std::endl;
-	}
-
 	std::cout << "Test OK" << std::endl;
 
 	return 0;
