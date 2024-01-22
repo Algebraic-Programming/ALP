@@ -295,7 +295,7 @@ namespace grb {
 		 *          domain.
 		 */
 		template< typename D >
-		constexpr D getZero() const {
+		D getZero() const {
 			return additiveMonoid.template getIdentity< D >();
 		}
 
@@ -311,7 +311,7 @@ namespace grb {
 		 *         domain.
 		 */
 		template< typename D >
-		constexpr D getOne() const {
+		D getOne() const {
 			return multiplicativeMonoid.template getIdentity< D >();
 		}
 
