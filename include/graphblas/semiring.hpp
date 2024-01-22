@@ -182,7 +182,11 @@ namespace grb {
 	 * @tparam _ID1 The identity under addition (the `0').
 	 * @tparam _ID2 The identity under multiplication (the `1').
 	 */
-	template< class _OP1, class _OP2, template< typename > class _ID1, template< typename > class _ID2 >
+	template<
+		class _OP1, class _OP2,
+		template< typename > class _ID1,
+		template< typename > class _ID2
+	>
 	class Semiring {
 
 		static_assert( std::is_same< typename _OP2::D3, typename _OP1::D1 >::value,
@@ -206,6 +210,7 @@ namespace grb {
 			"operator" );
 
 	public:
+
 		/** The first input domain of the multiplicative operator. */
 		typedef typename _OP2::D1 D1;
 
@@ -244,7 +249,9 @@ namespace grb {
 		template< typename OneType >
 		using One = _ID2< OneType >;
 
+
 	private:
+
 		static constexpr size_t D1_bsz = grb::config::SIMD_BLOCKSIZE< D1 >::value();
 		static constexpr size_t D2_bsz = grb::config::SIMD_BLOCKSIZE< D2 >::value();
 		static constexpr size_t D3_bsz = grb::config::SIMD_BLOCKSIZE< D3 >::value();
@@ -257,15 +264,23 @@ namespace grb {
 		/** The multiplicative monoid. */
 		MultiplicativeMonoid multiplicativeMonoid;
 
+
 	public:
+
 		/** Blocksize for element-wise addition. */
-		static constexpr size_t blocksize_add = D3_bsz < D4_bsz ? D3_bsz : D4_bsz;
+		static constexpr size_t blocksize_add = D3_bsz < D4_bsz
+			? D3_bsz
+			: D4_bsz;
 
 		/** Blocksize for element-wise multiplication. */
-		static constexpr size_t blocksize_mul = mul_input_bsz < D3_bsz ? mul_input_bsz : D3_bsz;
+		static constexpr size_t blocksize_mul = mul_input_bsz < D3_bsz
+			? mul_input_bsz
+			: D3_bsz;
 
 		/** Blocksize for element-wise multiply-adds. */
-		static constexpr size_t blocksize = blocksize_mul < blocksize_add ? blocksize_mul : blocksize_add;
+		static constexpr size_t blocksize = blocksize_mul < blocksize_add
+			? blocksize_mul
+			: blocksize_add;
 
 		/**
 		 * Retrieves the zero corresponding to this semiring. The zero value will be
@@ -335,19 +350,37 @@ namespace grb {
 		MultiplicativeOperator getMultiplicativeOperator() const {
 			return multiplicativeMonoid.getOperator();
 		}
+
 	};
 
 	// overload for GraphBLAS type traits.
-	template< class _OP1, class _OP2, template< typename > class _ID1, template< typename > class _ID2 >
-	struct is_semiring< Semiring< _OP1, _OP2, _ID1, _ID2 > > {
+	template<
+		class _OP1, class _OP2,
+		template< typename > class _ID1,
+		template< typename > class _ID2
+	>
+	struct is_semiring<
+		Semiring< _OP1, _OP2, _ID1, _ID2 >
+	> {
 		/** This is a GraphBLAS semiring. */
 		static const constexpr bool value = true;
 	};
 
-	template< class _OP1, class _OP2, template< typename > class _ID1, template< typename > class _ID2 >
-	struct has_immutable_nonzeroes< Semiring< _OP1, _OP2, _ID1, _ID2 > > {
-		static const constexpr bool value = grb::is_semiring< Semiring< _OP1, _OP2, _ID1, _ID2 > >::value &&
-			std::is_same< _OP1, typename grb::operators::logical_or< typename _OP1::D1, typename _OP1::D2, typename _OP1::D3 > >::value;
+	template<
+		class _OP1, class _OP2,
+		template< typename > class _ID1,
+		template< typename > class _ID2
+	>
+	struct has_immutable_nonzeroes<
+		Semiring< _OP1, _OP2, _ID1, _ID2 >
+	> {
+		static const constexpr bool value = grb::is_semiring<
+			Semiring< _OP1, _OP2, _ID1, _ID2 > >::value &&
+			std::is_same<
+				_OP1, typename grb::operators::logical_or< typename _OP1::D1,
+				typename _OP1::D2, typename _OP1::D3
+			> >::value;
+
 	};
 
 } // namespace grb
