@@ -637,7 +637,7 @@ namespace grb::algorithms {
 				static_assert( std::is_arithmetic< D >::value,
 					"zeros requires an arithemtic nonzero type" );
 				const D zero = ring.template getZero< D >();
-				return full( m, n, static_cast< D >( 0 ) );
+				return full( m, n, static_cast< D >( zero ) );
 			}
 
 			/**
@@ -674,7 +674,7 @@ namespace grb::algorithms {
 				static_assert( std::is_arithmetic< D >::value,
 					"ones requires an arithemtic nonzero type" );
 				const D one = ring.template getOne< D >();
-				return full( m, n, static_cast< D >( 1 ) );
+				return full( m, n, static_cast< D >( one ) );
 			}
 
 	}; // end class matrices
