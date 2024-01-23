@@ -20,16 +20,17 @@
 #include <iostream>
 
 #include <graphblas.hpp>
+#include <utils/assertions.hpp>
 #include <graphblas/algorithms/matrix_factory.hpp>
 
 
 using namespace grb;
 using namespace grb::algorithms;
 
-#define ERROR( rc, msg ) {									\
+#define ERROR( rc, msg ) {										\
 	std::cerr << "  [Line " << __LINE__ << "] Test FAILED: "	\
-		<< (msg) << std::endl;								\
-	(rc) = (rc) ? (rc) : FAILED;							\
+		<< (msg) << std::endl;									\
+	(rc) = FAILED;												\
 }
 
 /**
@@ -847,6 +848,11 @@ void grb_program( const size_t &n, RC &rc ) {
 	test_factory_zeros( rc, n );
 	std::cout << "Testing matrices::ones\n";
 	test_factory_ones( rc, n );
+
+	// Check return code for distributed backends
+	ASSERT_RC_SUCCESS(
+		collectives<>::allreduce( rc, grb::operators::any_or< RC >() )
+	);
 }
 
 int main( int argc, char ** argv ) {
