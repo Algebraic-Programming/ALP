@@ -26,12 +26,11 @@
 using namespace grb;
 using namespace grb::algorithms;
 
-namespace {
-	inline RC error( const std::string &msg ) {
-		std::cerr << "Test FAILED: " << msg << std::endl;
-		return FAILED;
-	}
-} // namespace
+#define ERROR( rc, msg ) {									\
+	std::cerr << "  [Line " << __LINE__ << "] Test FAILED: "	\
+		<< (msg) << std::endl;								\
+	(rc) = (rc) ? (rc) : FAILED;							\
+}
 
 /**
  * This function tests the 'empty' factory function for matrices.
@@ -41,6 +40,7 @@ namespace {
  * its properties such as the number of non-zero elements, the number
  * of rows and columns.
  *
+ * @param rc The return code of the test.
  * @param n The size of the matrix to be tested.
  *
  * @return Returns a RC (Return Code) indicating the success or failure
@@ -48,76 +48,74 @@ namespace {
  * If the test is successful, it returns SUCCESS.
  * If the test fails, it returns FAILED.
  */
-static RC test_factory_empty( const size_t &n ) {
+static void test_factory_empty( RC &rc, const size_t &n ) {
 	{ // matrices< void >::empty of size: [0,0]
-		Matrix< void > M = matrices< void >::empty( 0, 0 );
+		const Matrix< void > M = matrices< void >::empty( 0, 0 );
 		if( nnz( M ) != 0 ) {
-			return error( "matrices< void >::empty, size=(0,0): nnz != 0" );
+			ERROR( rc, "matrices< void >::empty, size=(0,0): nnz != 0" );
 		}
 		if( nrows( M ) != 0 ) {
-			return error( "matrices< void >::empty, size=(0,0): nrows != 0" );
+			ERROR( rc, "matrices< void >::empty, size=(0,0): nrows != 0" );
 		}
 		if( ncols( M ) != 0 ) {
-			return error( "matrices< void >::empty, size=(0,0): ncols != 0" );
+			ERROR( rc, "matrices< void >::empty, size=(0,0): ncols != 0" );
 		}
 		for( const auto &e : M ) {
 			(void) e;
-			return error( "matrices< void >::empty, size=(0,0): found a value" );
+			ERROR( rc, "matrices< void >::empty, size=(0,0): found a value" );
 		}
 	}
 
 	{ // matrices< int >::empty of size: [0,0]
-		Matrix< int > M = matrices< int >::empty( 0, 0 );
+		const Matrix< int > M = matrices< int >::empty( 0, 0 );
 		if( nnz( M ) != 0 ) {
-			return error( "matrices< int >::empty, size=(0,0): nnz != 0" );
+			ERROR( rc, "matrices< int >::empty, size=(0,0): nnz != 0" );
 		}
 		if( nrows( M ) != 0 ) {
-			return error( "matrices< int >::empty, size=(0,0): nrows != 0" );
+			ERROR( rc, "matrices< int >::empty, size=(0,0): nrows != 0" );
 		}
 		if( ncols( M ) != 0 ) {
-			return error( "matrices< int >::empty, size=(0,0): ncols != 0" );
+			ERROR( rc, "matrices< int >::empty, size=(0,0): ncols != 0" );
 		}
 		for( const auto &e : M ) {
 			(void) e;
-			return error( "matrices< int >::empty, size=(0,0): found a value" );
+			ERROR( rc, "matrices< int >::empty, size=(0,0): found a value" );
 		}
 	}
 
 	{ // matrices< void >::empty of size: [n,n]
-		Matrix< void > M = matrices< void >::empty( n, n );
+		const Matrix< void > M = matrices< void >::empty( n, n );
 		if( nnz( M ) != 0 ) {
-			return error( "matrices< void >::empty, size=(n,n): nnz != 0" );
+			ERROR( rc, "matrices< void >::empty, size=(n,n): nnz != 0" );
 		}
 		if( nrows( M ) != n ) {
-			return error( "matrices< void >::empty, size=(n,n): nrows != n" );
+			ERROR( rc, "matrices< void >::empty, size=(n,n): nrows != n" );
 		}
 		if( ncols( M ) != n ) {
-			return error( "matrices< void >::empty, size=(n,n): ncols != n" );
+			ERROR( rc, "matrices< void >::empty, size=(n,n): ncols != n" );
 		}
 		for( const auto &e : M ) {
 			(void) e;
-			return error( "matrices< void >::empty, size=(n,n): found a value" );
+			ERROR( rc, "matrices< void >::empty, size=(n,n): found a value" );
 		}
 	}
 
 	{ // matrices< int >::empty of size: [n,n]
-		Matrix< int > M = matrices< int >::empty( n, n );
+		const Matrix< int > M = matrices< int >::empty( n, n );
 		if( nnz( M ) != 0 ) {
-			return error( "matrices< int >::empty, size=(n,n): nnz != 0" );
+			ERROR( rc, "matrices< int >::empty, size=(n,n): nnz != 0" );
 		}
 		if( nrows( M ) != n ) {
-			return error( "matrices< int >::empty, size=(n,n): nrows != n" );
+			ERROR( rc, "matrices< int >::empty, size=(n,n): nrows != n" );
 		}
 		if( ncols( M ) != n ) {
-			return error( "matrices< int >::empty, size=(n,n): ncols != n" );
+			ERROR( rc, "matrices< int >::empty, size=(n,n): ncols != n" );
 		}
 		for( const auto &e : M ) {
 			(void) e;
-			return error( "matrices< int >::empty, size=(n,n): found a value" );
+			ERROR( rc, "matrices< int >::empty, size=(n,n): found a value" );
 		}
 	}
-
-	return SUCCESS;
 }
 
 /**
@@ -128,67 +126,65 @@ static RC test_factory_empty( const size_t &n ) {
  * created matrix by verifying its properties such as the number of non-zero
  * elements, the number of rows and columns.
  *
+ * @param rc The return code of the test.
  * @param n The size of the matrix to be tested.
- * @param offset The offset for the identity matrix. Positive values shift the
- * identity diagonal to the right, while negative values shift it to the left.
  *
  * @return Returns a RC (Return Code) indicating the success or failure
  * of the test.
  * If the test is successful, it returns SUCCESS.
  * If the test fails, it returns FAILED.
  */
-static RC test_factory_identity( const size_t &n ) {
+static void test_factory_identity( RC &rc, const size_t &n ) {
 	const size_t expected_nnz = n;
 	{ // matrices< void >::identity of size: [0,0]
 		Matrix< void > M = matrices< void >::identity( 0 );
 		if( nnz( M ) != 0 ) {
-			return error( "matrices< void >::identity, size=(0,0): nnz != 0" );
+			ERROR( rc, "matrices< void >::identity, size=(0,0): nnz != 0" );
 		}
 		if( nrows( M ) != 0 ) {
-			return error( "matrices< void >::identity, size=(0,0): nrows != 0" );
+			ERROR( rc, "matrices< void >::identity, size=(0,0): nrows != 0" );
 		}
 		if( ncols( M ) != 0 ) {
-			return error( "matrices< void >::identity, size=(0,0): ncols != 0" );
+			ERROR( rc, "matrices< void >::identity, size=(0,0): ncols != 0" );
 		}
 		for( const auto &e : M ) {
 			(void) e;
-			return error( "matrices< void >::identity, size=(0,0): found a value" );
+			ERROR( rc, "matrices< void >::identity, size=(0,0): found a value" );
 		}
 	}
 
 	{ // matrices< int >::identity of size: [0,0]
 		Matrix< int > M = matrices< int >::identity( 0 );
 		if( nnz( M ) != 0 ) {
-			return error( "matrices< int >::identity, size=(0,0): nnz != 0" );
+			ERROR( rc, "matrices< int >::identity, size=(0,0): nnz != 0" );
 		}
 		if( nrows( M ) != 0 ) {
-			return error( "matrices< int >::identity, size=(0,0): nrows != 0" );
+			ERROR( rc, "matrices< int >::identity, size=(0,0): nrows != 0" );
 		}
 		if( ncols( M ) != 0 ) {
-			return error( "matrices< int >::identity, size=(0,0): ncols != 0" );
+			ERROR( rc, "matrices< int >::identity, size=(0,0): ncols != 0" );
 		}
 		for( const auto &e : M ) {
 			(void) e;
-			return error( "matrices< int >::identity, size=(0,0): found a value" );
+			ERROR( rc, "matrices< int >::identity, size=(0,0): found a value" );
 		}
 	}
 
 	{ // matrices< void >::identity
 		Matrix< void > M = matrices< void >::identity( n );
 		if( nnz( M ) != expected_nnz ) {
-			return error( "matrices< void >::identity: nnz != n" );
+			ERROR( rc, "matrices< void >::identity: nnz != n" );
 		}
 		if( nrows( M ) != n ) {
-			return error( "matrices< void >::identity: nrows != n" );
+			ERROR( rc, "matrices< void >::identity: nrows != n" );
 		}
 		if( ncols( M ) != n ) {
-			return error( "matrices< void >::identity: ncols != n" );
+			ERROR( rc, "matrices< void >::identity: ncols != n" );
 		}
 		for( const auto &e : M ) {
 			if( e.first != e.second ) {
-				std::cerr << "matrices< void >::identity: incorrect coordinate ( "
-					<< e.first << ", " << e.second << " )\n";
-				return FAILED;
+				ERROR( rc, "matrices< void >::identity: incorrect coordinate ( "
+					+ std::to_string(e.first) + ", " + std::to_string(e.second) + " )\n" );
 			}
 		}
 	}
@@ -196,20 +192,20 @@ static RC test_factory_identity( const size_t &n ) {
 	{ // matrices< int >::identity
 		Matrix< int > M = matrices< int >::identity( n );
 		if( nnz( M ) != expected_nnz ) {
-			return error( "matrices< int >::identity: nnz != n" );
+			ERROR( rc, "matrices< int >::identity: nnz != n" );
 		}
 		if( nrows( M ) != n ) {
-			return error( "matrices< int >::identity: nrows != n" );
+			ERROR( rc, "matrices< int >::identity: nrows != n" );
 		}
 		if( ncols( M ) != n ) {
-			return error( "matrices< int >::identity: ncols != n" );
+			ERROR( rc, "matrices< int >::identity: ncols != n" );
 		}
 		for( const auto &e : M ) {
 			if( e.first.first != e.first.second ) {
-				return error( "matrices< int >::identity: incorrect coordinate" );
+				ERROR( rc, "matrices< int >::identity: incorrect coordinate" );
 			}
 			if( e.second != 1 ) {
-				return error( "matrices< int >::identity: incorrect value" );
+				ERROR( rc, "matrices< int >::identity: incorrect value" );
 			}
 		}
 	}
@@ -221,17 +217,17 @@ static RC test_factory_identity( const size_t &n ) {
 		> minPlusFP64;
 		Matrix< double > M = matrices< double >::identity( 0, minPlusFP64 );
 		if( nnz( M ) != 0 ) {
-			return error( "matrices< double >::identity: nnz != 0" );
+			ERROR( rc, "matrices< double >::identity: nnz != 0" );
 		}
 		if( nrows( M ) != 0 ) {
-			return error( "matrices< double >::identity:: nrows != 0" );
+			ERROR( rc, "matrices< double >::identity:: nrows != 0" );
 		}
 		if( ncols( M ) != 0 ) {
-			return error( "matrices< double >::identity:: ncols != 0" );
+			ERROR( rc, "matrices< double >::identity:: ncols != 0" );
 		}
 		for( const auto &e : M ) {
 			(void) e;
-			return error( "matrices< double >::identity, size=(0,0): found a value" );
+			ERROR( rc, "matrices< double >::identity, size=(0,0): found a value" );
 		}
 	}
 
@@ -242,27 +238,24 @@ static RC test_factory_identity( const size_t &n ) {
 		> minPlusFP64;
 		Matrix< double > M = matrices< double >::identity( n, minPlusFP64 );
 		if( nnz( M ) != expected_nnz ) {
-			return error( "matrices< double >::identity: nnz != n" );
+			ERROR( rc, "matrices< double >::identity: nnz != n" );
 		}
 		if( nrows( M ) != n ) {
-			return error( "matrices< double >::identity:: nrows != n" );
+			ERROR( rc, "matrices< double >::identity:: nrows != n" );
 		}
 		if( ncols( M ) != n ) {
-			return error( "matrices< double >::identity:: ncols != n" );
+			ERROR( rc, "matrices< double >::identity:: ncols != n" );
 		}
 		for( const auto &e : M ) {
 			if( e.first.first != e.first.second ) {
-				return error( "matrices< double >::identity: incorrect coordinate" );
+				ERROR( rc, "matrices< double >::identity: incorrect coordinate" );
 			}
 			if( e.second != 0 ) {
-				std::cerr << "matrices< double >::identity: incorrect value, got "
-					<< e.second << ", expected zero\n";
-				return FAILED;
+				ERROR( rc, "matrices< double >::identity: incorrect value, got "
+					+ std::to_string(e.second) + ", expected zero\n" );
 			}
 		}
 	}
-
-	return SUCCESS;
 }
 
 /**
@@ -273,6 +266,7 @@ static RC test_factory_identity( const size_t &n ) {
  * its properties such as the number of non-zero elements, the number of rows
  * and columns, and the values of the elements.
  *
+ * @param rc The return code of the test.
  * @param n The size of the matrix to be tested.
  * @param offset The offset for the identity matrix. Positive values shift the
  * identity diagonal to the right, while negative values shift it to the left.
@@ -282,7 +276,7 @@ static RC test_factory_identity( const size_t &n ) {
  * If the test is successful, it returns SUCCESS.
  * If the test fails, it returns FAILED.
  */
-static RC test_factory_eye( const size_t &n, const long &offset ) {
+static void test_factory_eye( RC &rc, const size_t &n, const long &offset ) {
 	const size_t i_offset = offset > 0 ? offset : 0;
 	const size_t j_offset = offset < 0 ? (-offset) : 0;
 	const size_t expected_nnz = i_offset + j_offset < n
@@ -291,51 +285,51 @@ static RC test_factory_eye( const size_t &n, const long &offset ) {
 	{ // matrices< void >::eye of size: [0,0]
 		Matrix< void > M = matrices< void >::eye( 0, 0, offset );
 		if( nnz( M ) != 0 ) {
-			return error( "matrices< void >::eye, size=(0,0): nnz != 0" );
+			ERROR( rc, "matrices< void >::eye, size=(0,0): nnz != 0" );
 		}
 		if( nrows( M ) != 0 ) {
-			return error( "matrices< void >::eye, size=(0,0): nrows != 0" );
+			ERROR( rc, "matrices< void >::eye, size=(0,0): nrows != 0" );
 		}
 		if( ncols( M ) != 0 ) {
-			return error( "matrices< void >::eye, size=(0,0): ncols != 0" );
+			ERROR( rc, "matrices< void >::eye, size=(0,0): ncols != 0" );
 		}
 		for( const auto &e : M ) {
 			(void) e;
-			return error( "matrices< void >::eye, size=(0,0): found a value" );
+			ERROR( rc, "matrices< void >::eye, size=(0,0): found a value" );
 		}
 	}
 
 	{ // matrices< int >::eye of size: [0,0]
 		Matrix< int > M = matrices< int >::eye( 0, 0, 1, offset );
 		if( nnz( M ) != 0 ) {
-			return error( "matrices< int >::eye, size=(0,0): nnz != 0" );
+			ERROR( rc, "matrices< int >::eye, size=(0,0): nnz != 0" );
 		}
 		if( nrows( M ) != 0 ) {
-			return error( "matrices< int >::eye, size=(0,0): nrows != 0" );
+			ERROR( rc, "matrices< int >::eye, size=(0,0): nrows != 0" );
 		}
 		if( ncols( M ) != 0 ) {
-			return error( "matrices< int >::eye, size=(0,0): ncols != 0" );
+			ERROR( rc, "matrices< int >::eye, size=(0,0): ncols != 0" );
 		}
 		for( const auto &e : M ) {
 			(void) e;
-			return error( "matrices< int >::eye, size=(0,0): found a value" );
+			ERROR( rc, "matrices< int >::eye, size=(0,0): found a value" );
 		}
 	}
 
 	{ // matrices< void >::eye of size: [n,n]
 		Matrix< void > M = matrices< void >::eye( n, n, offset );
 		if( nnz( M ) != expected_nnz ) {
-			return error( "matrices< void >::eye, size=(n,n): nnz != n" );
+			ERROR( rc, "matrices< void >::eye, size=(n,n): nnz != n" );
 		}
 		if( nrows( M ) != n ) {
-			return error( "matrices< void >::eye, size=(n,n): nrows != n" );
+			ERROR( rc, "matrices< void >::eye, size=(n,n): nrows != n" );
 		}
 		if( ncols( M ) != n ) {
-			return error( "matrices< void >::eye, size=(n,n): ncols != n" );
+			ERROR( rc, "matrices< void >::eye, size=(n,n): ncols != n" );
 		}
 		for( const auto &e : M ) {
 			if( e.first + i_offset != e.second + j_offset ) {
-				return error( "matrices< void >::eye, size=(n,n): incorrect coordinate" );
+				ERROR( rc, "matrices< void >::eye, size=(n,n): incorrect coordinate" );
 			}
 		}
 	}
@@ -343,20 +337,20 @@ static RC test_factory_eye( const size_t &n, const long &offset ) {
 	{ // matrices< int >::eye of size: [n,n]
 		Matrix< int > M = matrices< int >::eye( n, n, 2, offset );
 		if( nnz( M ) != expected_nnz ) {
-			return error( "matrices< int >::eye, size=(n,n): nnz != n-abs(k)" );
+			ERROR( rc, "matrices< int >::eye, size=(n,n): nnz != n-abs(k)" );
 		}
 		if( nrows( M ) != n ) {
-			return error( "matrices< int >::eye, size=(n,n): nrows != n" );
+			ERROR( rc, "matrices< int >::eye, size=(n,n): nrows != n" );
 		}
 		if( ncols( M ) != n ) {
-			return error( "matrices< int >::eye, size=(n,n): ncols != n" );
+			ERROR( rc, "matrices< int >::eye, size=(n,n): ncols != n" );
 		}
 		for( const auto &e : M ) {
 			if( e.first.first + i_offset != e.first.second + j_offset ) {
-				return error( "matrices< int >::eye, size=(n,n): incorrect coordinate" );
+				ERROR( rc, "matrices< int >::eye, size=(n,n): incorrect coordinate" );
 			}
 			if( e.second != 2 ) {
-				return error( "matrices< int >::eye, size=(n,n): incorrect value" );
+				ERROR( rc, "matrices< int >::eye, size=(n,n): incorrect value" );
 			}
 		}
 	}
@@ -365,34 +359,32 @@ static RC test_factory_eye( const size_t &n, const long &offset ) {
 		Matrix< int > M = matrices< int >::eye( 1, n, 2, offset );
 		if( offset < 0 || i_offset >= n ) {
 			if( nnz( M ) != 0 ) {
-				return error( "matrices< int >::eye, size(1,n): nnz != 0" );
+				ERROR( rc, "matrices< int >::eye, size(1,n): nnz != 0" );
 			}
 		} else if( nnz( M ) != 1 ) {
-			std::cerr << "matrices< int >:eye, size=(1,n), offset=" << offset << ": "
-				<< "nnz != 1 (it reads " << nnz( M ) << " instead)\n";
-			return FAILED;
+			ERROR( rc, "matrices< int >:eye, size=(1,n), offset=" + std::to_string(offset)
+				+ ": nnz != 1 (it reads " + std::to_string(nnz( M )) + " instead)\n")
 		}
 		if( nrows( M ) != 1 ) {
-			return error( "matrices< int >::eye, size=(1,n): nrows != 1" );
+			ERROR( rc, "matrices< int >::eye, size=(1,n): nrows != 1" );
 		}
 		if( ncols( M ) != n ) {
-			return error( "matrices< int >::eye, size=(1,n): ncols != n" );
+			ERROR( rc, "matrices< int >::eye, size=(1,n): ncols != n" );
 		}
 		for( const auto &e : M ) {
 			if( offset < 0 ) {
-				std::cerr << "matrices< int >::eye, size(1,n), offset=" << offset << ": "
-					<< "incorrect coordinate\n";
-				return FAILED;
+				ERROR( rc, "matrices< int >::eye, size(1,n), offset=" + std::to_string(offset)
+					+ ": incorrect coordinate\n" );
 			} else {
 				if( e.first.first != 0 ) {
-					return error( "matrices< int >::eye, size=(1,n): incorrect row index" );
+					ERROR( rc, "matrices< int >::eye, size=(1,n): incorrect row index" );
 				}
 				if( e.first.second != i_offset ) {
-					return error( "matrices< int >::eye, size=(1,n): incorrect column "
+					ERROR( rc, "matrices< int >::eye, size=(1,n): incorrect column "
 						"coordinate" );
 				}
 				if( e.second != 2 ) {
-					return error( "matrices< int >::eye, size=(1,n): incorrect value" );
+					ERROR( rc, "matrices< int >::eye, size=(1,n): incorrect value" );
 				}
 			}
 		}
@@ -402,47 +394,42 @@ static RC test_factory_eye( const size_t &n, const long &offset ) {
 		Matrix< int > M = matrices< int >::eye( n, 1, 2, offset );
 		if( offset > 0 || j_offset > n ) {
 			if( nnz( M ) != 0 ) {
-				return error( "matrices< int >::eye, size=(n,1): nnz != 0" );
+				ERROR( rc, "matrices< int >::eye, size=(n,1): nnz != 0" );
 			}
 		} else if( nnz( M ) != 1 ) {
-			return error( "matrices< int >::eye, size=(n,1): nnz != 1" );
+			ERROR( rc, "matrices< int >::eye, size=(n,1): nnz != 1" );
 		}
 		if( nrows( M ) != n ) {
-			return error( "matrices< int >::eye, size=(n,1): nrows != n" );
+			ERROR( rc, "matrices< int >::eye, size=(n,1): nrows != n" );
 		}
 		if( ncols( M ) != 1 ) {
-			return error( "matrices< int >::eye, size=(n,1): ncols != 1" );
+			ERROR( rc, "matrices< int >::eye, size=(n,1): ncols != 1" );
 		}
 		for( const auto &e : M ) {
 			if( offset > 0 ) {
-				std::cerr << "matrices< int >::eye, size=(n,1), offset=" << offset << ": "
-					<< "incorrect coordinate\n";
-				return FAILED;
+				ERROR( rc, "matrices< int >::eye, size=(n,1), offset=" + std::to_string(offset)
+					+ ": incorrect coordinate\n" );
 			} else {
 				if( e.first.first != j_offset ) {
-					std::cerr << "matrices< int >::eye, size=(n,1), offset=" << offset << ": "
-						<< "incorrect row coordinate\n";
-					return FAILED;
+					ERROR( rc, "matrices< int >::eye, size=(n,1), offset=" + std::to_string(offset)
+						+ ": incorrect row coordinate\n" );
 				}
 				if( e.first.second != 0 ) {
-					std::cerr << "matrices< int >::eye, size=(n,1), offset=" << offset << ": "
-						<< "incorrect column coordinate\n";
-					return FAILED;
+					ERROR( rc, "matrices< int >::eye, size=(n,1), offset=" + std::to_string(offset)
+						+ ": incorrect column coordinate\n" );
 				}
 				if( e.second != 2 ) {
-					std::cerr << "matrices< int >::eye, size=(n,1), offset=" << offset << ": "
-						<< "incorrect value\n";
-					return FAILED;
+					ERROR( rc, "matrices< int >::eye, size=(n,1), offset=" + std::to_string(offset)
+						+ ": incorrect value\n" );
 				}
 			}
 		}
 	}
-
-	return SUCCESS;
 }
 
 template< typename VoidFactoryFunc, typename IntFactoryFunc >
-RC test_factory_full_templated(
+void test_factory_full_templated(
+	RC &rc,
 	const size_t &n,
 	const std::string &factoryName,
 	const VoidFactoryFunc &voidFactory,
@@ -451,20 +438,20 @@ RC test_factory_full_templated(
 	{ // matrices::voidFactory of size: [0,0]
 		Matrix< void > M = voidFactory( 0, 0 );
 		if( nnz( M ) != 0 ) {
-			return error( "matrices::" + factoryName + "<void>, size=(0,0): "
+			ERROR( rc, "matrices::" + factoryName + "<void>, size=(0,0): "
 				"nnz != 0" );
 		}
 		if( nrows( M ) != 0 ) {
-			return error( "matrices::" + factoryName + "<void>, size=(0,0): "
+			ERROR( rc, "matrices::" + factoryName + "<void>, size=(0,0): "
 				"nrows != 0" );
 		}
 		if( ncols( M ) != 0 ) {
-			return error( "matrices::" + factoryName + "<void>, size=(0,0): "
+			ERROR( rc, "matrices::" + factoryName + "<void>, size=(0,0): "
 				"ncols != 0" );
 		}
 		for( const auto &e : M ) {
 			(void) e;
-			return error( "matrices::" + factoryName + "<void>, size=(0,0): "
+			ERROR( rc, "matrices::" + factoryName + "<void>, size=(0,0): "
 				"found a value" );
 		}
 	}
@@ -472,20 +459,20 @@ RC test_factory_full_templated(
 	{ // matrices::intFactory of size: [0,0]
 		Matrix< int > M = intFactory( 0, 0, 2 );
 		if( nnz( M ) != 0 ) {
-			return error( "matrices::" + factoryName + "<void>, size=(0,0): "
+			ERROR( rc, "matrices::" + factoryName + "<void>, size=(0,0): "
 				"nnz != 0" );
 		}
 		if( nrows( M ) != 0 ) {
-			return error( "matrices::" + factoryName + "<void>, size=(0,0): "
+			ERROR( rc, "matrices::" + factoryName + "<void>, size=(0,0): "
 				"nrows != 0" );
 		}
 		if( ncols( M ) != 0 ) {
-			return error( "matrices::" + factoryName + "<void>, size=(0,0): "
+			ERROR( rc, "matrices::" + factoryName + "<void>, size=(0,0): "
 				"ncols != 0" );
 		}
 		for( const auto &e : M ) {
 			(void) e;
-			return error( "matrices::" + factoryName + "<void>, size=(0,0): "
+			ERROR( rc, "matrices::" + factoryName + "<void>, size=(0,0): "
 				"found a value" );
 		}
 	}
@@ -493,15 +480,15 @@ RC test_factory_full_templated(
 	{ // matrices::voidFactory of size: [n,n]
 		Matrix< void > M = voidFactory( n, n );
 		if( nnz( M ) != n * n ) {
-			return error( "matrices::" + factoryName + "<void>, size=(n,n): "
+			ERROR( rc, "matrices::" + factoryName + "<void>, size=(n,n): "
 				"nnz != n*n" );
 		}
 		if( nrows( M ) != n ) {
-			return error( "matrices::" + factoryName + "<void>, size=(n,n): "
+			ERROR( rc, "matrices::" + factoryName + "<void>, size=(n,n): "
 				"nrows != n" );
 		}
 		if( ncols( M ) != n ) {
-			return error( "matrices::" + factoryName + "<void>, size=(n,n): "
+			ERROR( rc, "matrices::" + factoryName + "<void>, size=(n,n): "
 				"ncols != n" );
 		}
 	}
@@ -509,20 +496,20 @@ RC test_factory_full_templated(
 	{ // matrices::intFactory of size: [n,n]
 		Matrix< int > M = intFactory( n, n, 2 );
 		if( nnz( M ) != n * n ) {
-			return error( "matrices::" + factoryName + "<int>, size=(n,n): "
+			ERROR( rc, "matrices::" + factoryName + "<int>, size=(n,n): "
 				"nnz != n*n" );
 		}
 		if( nrows( M ) != n ) {
-			return error( "matrices::" + factoryName + "<int>, size=(n,n): "
+			ERROR( rc, "matrices::" + factoryName + "<int>, size=(n,n): "
 				"nrows != n" );
 		}
 		if( ncols( M ) != n ) {
-			return error( "matrices::" + factoryName + "<int>, size=(n,n): "
+			ERROR( rc, "matrices::" + factoryName + "<int>, size=(n,n): "
 				"ncols != n" );
 		}
 		for( const auto &e : M ) {
 			if( e.second != 2 ) {
-				return error( "matrices::" + factoryName + "<int>, size=(n,n): "
+				ERROR( rc, "matrices::" + factoryName + "<int>, size=(n,n): "
 					"incorrect value" );
 			}
 		}
@@ -531,24 +518,24 @@ RC test_factory_full_templated(
 	{ // matrices::intFactory of size: [1,n]
 		Matrix< int > M = intFactory( 1, n, 2 );
 		if( nnz( M ) != n ) {
-			return error( "matrices::" + factoryName + "<int>, size=(1,n): "
+			ERROR( rc, "matrices::" + factoryName + "<int>, size=(1,n): "
 				"nnz != n" );
 		}
 		if( nrows( M ) != 1 ) {
-			return error( "matrices::" + factoryName + "<int>, size=(1,n): "
+			ERROR( rc, "matrices::" + factoryName + "<int>, size=(1,n): "
 				"nrows != 1" );
 		}
 		if( ncols( M ) != n ) {
-			return error( "matrices::" + factoryName + "<int>, size=(1,n): "
+			ERROR( rc, "matrices::" + factoryName + "<int>, size=(1,n): "
 				"ncols != n" );
 		}
 		for( const auto &e : M ) {
 			if( e.first.first != 0 ) {
-				return error( "matrices::" + factoryName + "<int>, size=(1,n): "
+				ERROR( rc, "matrices::" + factoryName + "<int>, size=(1,n): "
 					"incorrect row coordinate" );
 			}
 			if( e.second != 2 ) {
-				return error( "matrices::" + factoryName + "<int>, size=(1,n): "
+				ERROR( rc, "matrices::" + factoryName + "<int>, size=(1,n): "
 					"incorrect value" );
 			}
 		}
@@ -557,30 +544,28 @@ RC test_factory_full_templated(
 	{ // matrices::intFactory of size: [n,1]
 		Matrix< int > M = intFactory( n, 1, 2 );
 		if( nnz( M ) != n ) {
-			return error( "matrices::" + factoryName + "<int>, size=(n,1): "
+			ERROR( rc, "matrices::" + factoryName + "<int>, size=(n,1): "
 				"nnz != n" );
 		}
 		if( nrows( M ) != n ) {
-			return error( "matrices::" + factoryName + "<int>, size=(n,1): "
+			ERROR( rc, "matrices::" + factoryName + "<int>, size=(n,1): "
 				"nrows != n" );
 		}
 		if( ncols( M ) != 1 ) {
-			return error( "matrices::" + factoryName + "<int>, size=(n,1): "
+			ERROR( rc, "matrices::" + factoryName + "<int>, size=(n,1): "
 				"ncols != 1" );
 		}
 		for( const auto &e : M ) {
 			if( e.first.second != 0 ) {
-				return error( "matrices::" + factoryName + "<int>, size=(n,1): "
+				ERROR( rc, "matrices::" + factoryName + "<int>, size=(n,1): "
 					"incorrect column coordinate" );
 			}
 			if( e.second != 2 ) {
-				return error( "matrices::" + factoryName + "<int>, size=(n,1): "
+				ERROR( rc, "matrices::" + factoryName + "<int>, size=(n,1): "
 					"incorrect value" );
 			}
 		}
 	}
-
-	return SUCCESS;
 }
 
 /**
@@ -591,6 +576,7 @@ RC test_factory_full_templated(
  * its properties such as the number of non-zero elements, the number
  * of rows and columns.
  *
+ * @param rc The return code of the test.
  * @param n The size of the matrix to be tested.
  *
  * @return Returns a RC (Return Code) indicating the success or failure
@@ -598,9 +584,9 @@ RC test_factory_full_templated(
  * If the test is successful, it returns SUCCESS.
  * If the test fails, it returns FAILED.
  */
-static RC test_factory_dense( const size_t &n ) {
-	return test_factory_full_templated(
-		n, "dense",
+static void test_factory_dense( RC &rc, const size_t &n ) {
+	test_factory_full_templated(
+		rc, n, "dense",
 		[&](const size_t r, const size_t c ) {
 			return matrices< void >::dense( r, c );
 		},
@@ -617,6 +603,7 @@ static RC test_factory_dense( const size_t &n ) {
  * its properties such as the number of non-zero elements, the number
  * of rows and columns.
  *
+ * @param rc The return code of the test.
  * @param n The size of the matrix to be tested.
  *
  * @return Returns a RC (Return Code) indicating the success or failure
@@ -624,9 +611,9 @@ static RC test_factory_dense( const size_t &n ) {
  * If the test is successful, it returns SUCCESS.
  * If the test fails, it returns FAILED.
  */
-static RC test_factory_full( const size_t & n ) {
+static void test_factory_full( RC &rc, const size_t & n ) {
 	return test_factory_full_templated(
-		n, "full",
+		rc, n, "full",
 		[&](const size_t r, const size_t c ) {
 			return matrices< void >::full( r, c );
 		},
@@ -636,7 +623,8 @@ static RC test_factory_full( const size_t & n ) {
 }
 
 template< typename VoidFactoryFunc, typename IntFactoryFunc >
-static RC test_factory_dense_valued(
+static void test_factory_dense_valued(
+	RC &rc,
 	const size_t &n,
 	const std::string &factoryName,
 	const VoidFactoryFunc &voidFactory,
@@ -646,20 +634,20 @@ static RC test_factory_dense_valued(
 	{ // matrices::voidFactory of size: [0,0]
 		Matrix< void > M = voidFactory( 0, 0 );
 		if( nnz( M ) != 0 ) {
-			return error( "matrices::" + factoryName + "<void>, size=(0,0): "
+			ERROR( rc, "matrices::" + factoryName + "<void>, size=(0,0): "
 				"nnz != 0" );
 		}
 		if( nrows( M ) != 0 ) {
-			return error( "matrices::" + factoryName + "<void>, size=(0,0): "
+			ERROR( rc, "matrices::" + factoryName + "<void>, size=(0,0): "
 				"nrows != 0" );
 		}
 		if( ncols( M ) != 0 ) {
-			return error( "matrices::" + factoryName + "<void>, size=(0,0): "
+			ERROR( rc, "matrices::" + factoryName + "<void>, size=(0,0): "
 				"ncols != 0" );
 		}
 		for( const auto &e : M ) {
 			(void) e;
-			return error( "matrices::" + factoryName + "<void>, size=(0,0): "
+			ERROR( rc, "matrices::" + factoryName + "<void>, size=(0,0): "
 				"found a value" );
 		}
 	}
@@ -667,20 +655,20 @@ static RC test_factory_dense_valued(
 	{ // matrices::intFactory of size: [0,0]
 		Matrix< int > M = intFactory( 0, 0 );
 		if( nnz( M ) != 0 ) {
-			return error( "matrices::" + factoryName + "<void>, size=(0,0): "
+			ERROR( rc, "matrices::" + factoryName + "<void>, size=(0,0): "
 				"nnz != 0" );
 		}
 		if( nrows( M ) != 0 ) {
-			return error( "matrices::" + factoryName + "<void>, size=(0,0): "
+			ERROR( rc, "matrices::" + factoryName + "<void>, size=(0,0): "
 				"nrows != 0" );
 		}
 		if( ncols( M ) != 0 ) {
-			return error( "matrices::" + factoryName + "<void>, size=(0,0): "
+			ERROR( rc, "matrices::" + factoryName + "<void>, size=(0,0): "
 				"ncols != 0" );
 		}
 		for( const auto &e : M ) {
 			(void) e;
-			return error( "matrices::" + factoryName + "<void>, size=(0,0): "
+			ERROR( rc, "matrices::" + factoryName + "<void>, size=(0,0): "
 				"found a value" );
 		}
 	}
@@ -688,15 +676,15 @@ static RC test_factory_dense_valued(
 	{ // matrices::voidFactory of size: [n,n]
 		Matrix< void > M = voidFactory( n, n );
 		if( nnz( M ) != n * n ) {
-			return error( "matrices< void >::" + factoryName + ", size=(n,n): "
+			ERROR( rc, "matrices< void >::" + factoryName + ", size=(n,n): "
 				"nnz = " + std::to_string(nnz( M )) + " != n*n = " + std::to_string(n*n) );
 		}
 		if( nrows( M ) != n ) {
-			return error( "matrices< void >::" + factoryName + ", size=(n,n): "
+			ERROR( rc, "matrices< void >::" + factoryName + ", size=(n,n): "
 				"nrows != n" );
 		}
 		if( ncols( M ) != n ) {
-			return error( "matrices< void >::" + factoryName + ", size=(n,n): "
+			ERROR( rc, "matrices< void >::" + factoryName + ", size=(n,n): "
 				"ncols != n" );
 		}
 	}
@@ -704,20 +692,20 @@ static RC test_factory_dense_valued(
 	{ // matrices::intFactory of size: [n,n]
 		Matrix< int > M = intFactory( n, n );
 		if( nnz( M ) != n * n ) {
-			return error( "matrices::" + factoryName + "<int>, size=(n,n): "
+			ERROR( rc, "matrices::" + factoryName + "<int>, size=(n,n): "
 				"nnz != n*n" );
 		}
 		if( nrows( M ) != n ) {
-			return error( "matrices::" + factoryName + "<int>, size=(n,n): "
+			ERROR( rc, "matrices::" + factoryName + "<int>, size=(n,n): "
 				"nrows != n" );
 		}
 		if( ncols( M ) != n ) {
-			return error( "matrices::" + factoryName + "<int>, size=(n,n): "
+			ERROR( rc, "matrices::" + factoryName + "<int>, size=(n,n): "
 				"ncols != n" );
 		}
 		for( const auto &e : M ) {
 			if( e.second != expectedValue ) {
-				return error( "matrices::eye<int>, size=(n,n): incorrect value" );
+				ERROR( rc, "matrices::eye<int>, size=(n,n): incorrect value" );
 			}
 		}
 	}
@@ -725,24 +713,24 @@ static RC test_factory_dense_valued(
 	{ // matrices::intFactory of size: [1,n]
 		Matrix< int > M = intFactory( 1, n );
 		if( nnz( M ) != n ) {
-			return error( "matrices::" + factoryName + "<int>, size=(1,n): "
+			ERROR( rc, "matrices::" + factoryName + "<int>, size=(1,n): "
 				"nnz != n" );
 		}
 		if( nrows( M ) != 1 ) {
-			return error( "matrices::" + factoryName + "<int>, size=(1,n): "
+			ERROR( rc, "matrices::" + factoryName + "<int>, size=(1,n): "
 				"nrows != 1" );
 		}
 		if( ncols( M ) != n ) {
-			return error( "matrices::" + factoryName + "<int>, size=(1,n): "
+			ERROR( rc, "matrices::" + factoryName + "<int>, size=(1,n): "
 				"ncols != n" );
 		}
 		for( const auto &e : M ) {
 			if( e.first.first != 0 ) {
-				return error( "matrices::" + factoryName + "<int>, size=(1,n): "
+				ERROR( rc, "matrices::" + factoryName + "<int>, size=(1,n): "
 					"incorrect row coordinate" );
 			}
 			if( e.second != expectedValue ) {
-				return error( "matrices::" + factoryName + "<int>, size=(1,n): "
+				ERROR( rc, "matrices::" + factoryName + "<int>, size=(1,n): "
 					"incorrect value" );
 			}
 		}
@@ -751,30 +739,28 @@ static RC test_factory_dense_valued(
 	{ // matrices::intFactory of size: [n,1]
 		Matrix< int > M = intFactory( n, 1 );
 		if( nnz( M ) != n ) {
-			return error( "matrices::" + factoryName + "<int>, size=(n,1): "
+			ERROR( rc, "matrices::" + factoryName + "<int>, size=(n,1): "
 				"nnz != n" );
 		}
 		if( nrows( M ) != n ) {
-			return error( "matrices::" + factoryName + "<int>, size=(n,1): "
+			ERROR( rc, "matrices::" + factoryName + "<int>, size=(n,1): "
 				"nrows != n" );
 		}
 		if( ncols( M ) != 1 ) {
-			return error( "matrices::" + factoryName + "<int>, size=(n,1): "
+			ERROR( rc, "matrices::" + factoryName + "<int>, size=(n,1): "
 				"ncols != 1" );
 		}
 		for( const auto &e : M ) {
 			if( e.first.second != 0 ) {
-				return error( "matrices::" + factoryName + "<int>, size=(n,1): "
+				ERROR( rc, "matrices::" + factoryName + "<int>, size=(n,1): "
 					"incorrect column coordinate" );
 			}
 			if( e.second != expectedValue ) {
-				return error( "matrices::" + factoryName + "<int>, size=(n,1): "
+				ERROR( rc, "matrices::" + factoryName + "<int>, size=(n,1): "
 					"incorrect value" );
 			}
 		}
 	}
-
-	return SUCCESS;
 }
 
 /**
@@ -785,6 +771,7 @@ static RC test_factory_dense_valued(
  * its properties such as the number of non-zero elements, the number
  * of rows and columns.
  *
+ * @param rc The return code of the test.
  * @param n The size of the matrix to be tested.
  *
  * @return Returns a RC (Return Code) indicating the success or failure
@@ -792,9 +779,9 @@ static RC test_factory_dense_valued(
  * If the test is successful, it returns SUCCESS.
  * If the test fails, it returns FAILED.
  */
-static RC test_factory_zeros( const size_t &n ) {
-	return test_factory_dense_valued(
-		n, "zeros",
+static void test_factory_zeros( RC &rc, const size_t &n ) {
+	test_factory_dense_valued(
+		rc, n, "zeros",
 		[&](const size_t r, const size_t c ) {
 			return matrices< void >::zeros( r, c );
 		},
@@ -812,6 +799,7 @@ static RC test_factory_zeros( const size_t &n ) {
  * its properties such as the number of non-zero elements, the number
  * of rows and columns.
  *
+ * @param rc The return code of the test.
  * @param n The size of the matrix to be tested.
  *
  * @return Returns a RC (Return Code) indicating the success or failure
@@ -819,9 +807,9 @@ static RC test_factory_zeros( const size_t &n ) {
  * If the test is successful, it returns SUCCESS.
  * If the test fails, it returns FAILED.
  */
-static RC test_factory_ones( const size_t &n ) {
-	return test_factory_dense_valued(
-		n, "ones",
+static void test_factory_ones( RC &rc, const size_t &n ) {
+	test_factory_dense_valued(
+		rc, n, "ones",
 		[&](const size_t r, const size_t c ) {
 			return matrices< void >::ones( r, c );
 		},
@@ -831,34 +819,34 @@ static RC test_factory_ones( const size_t &n ) {
 		1 );
 }
 
-void grb_program( const size_t &n, grb::RC &rc ) {
+void grb_program( const size_t &n, RC &rc ) {
 	rc = SUCCESS;
 	std::cout << "Testing matrices::empty\n";
-	rc = rc != SUCCESS ? rc : test_factory_empty( n );
+	test_factory_empty( rc, n );
 	std::cout << "Testing matrices::identity\n";
-	rc = rc != SUCCESS ? rc : test_factory_identity( n );
+	test_factory_identity( rc, n );
 	std::cout << "Testing matrices::eye\n";
-	rc = rc != SUCCESS ? rc : test_factory_eye( n, 0 );
+	test_factory_eye( rc, n, 0 );
 	std::cout << "Testing matrices::eye (1 offset)\n";
-	rc = rc != SUCCESS ? rc : test_factory_eye( n, 1 );
+	test_factory_eye( rc, n, 1 );
 	std::cout << "Testing matrices::eye (2 offset)\n";
-	rc = rc != SUCCESS ? rc : test_factory_eye( n, 2 );
+	test_factory_eye( rc, n, 2 );
 	std::cout << "Testing matrices::eye (n offset)\n";
-	rc = rc != SUCCESS ? rc : test_factory_eye( n, static_cast<long>(n) );
+	test_factory_eye( rc, n, static_cast<long>(n) );
 	std::cout << "Testing matrices::eye (-1 offset)\n";
-	rc = rc != SUCCESS ? rc : test_factory_eye( n, -1 );
+	test_factory_eye( rc, n, -1 );
 	std::cout << "Testing matrices::eye (-2 offset)\n";
-	rc = rc != SUCCESS ? rc : test_factory_eye( n, -2 );
+	test_factory_eye( rc, n, -2 );
 	std::cout << "Testing matrices::eye (-2*n offset)\n";
-	rc = rc != SUCCESS ? rc : test_factory_eye( n, -2*static_cast<long>(n) );
+	test_factory_eye( rc, n, -2*static_cast<long>(n) );
 	std::cout << "Testing matrices::dense (direct)\n";
-	rc = rc != SUCCESS ? rc : test_factory_dense( n );
+	test_factory_dense( rc, n );
 	std::cout << "Testing matrices::full\n";
-	rc = rc != SUCCESS ? rc : test_factory_full( n );
+	test_factory_full( rc, n );
 	std::cout << "Testing matrices::zeros\n";
-	rc = rc != SUCCESS ? rc : test_factory_zeros( n );
+	test_factory_zeros( rc, n );
 	std::cout << "Testing matrices::ones\n";
-	rc = rc != SUCCESS ? rc : test_factory_ones( n );
+	test_factory_ones( rc, n );
 }
 
 int main( int argc, char ** argv ) {
