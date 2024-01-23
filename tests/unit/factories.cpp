@@ -254,8 +254,10 @@ static RC test_factory_identity( const size_t &n ) {
 			if( e.first.first != e.first.second ) {
 				return error( "matrices< double >::identity: incorrect coordinate" );
 			}
-			if( e.second != std::numeric_limits< double >::infinity() ) {
-				return error( "matrices< double >::identity: incorrect value" );
+			if( e.second != 0 ) {
+				std::cerr << "matrices< double >::identity: incorrect value, got "
+					<< e.second << ", expected zero\n";
+				return FAILED;
 			}
 		}
 	}
@@ -361,7 +363,7 @@ static RC test_factory_eye( const size_t &n, const long &offset ) {
 
 	{ // matrices< int >::eye of size: [1,n]
 		Matrix< int > M = matrices< int >::eye( 1, n, 2, offset );
-		if( offset < 0 || i_offset > n ) {
+		if( offset < 0 || i_offset >= n ) {
 			if( nnz( M ) != 0 ) {
 				return error( "matrices< int >::eye, size(1,n): nnz != 0" );
 			}
