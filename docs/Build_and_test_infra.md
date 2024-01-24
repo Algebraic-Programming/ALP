@@ -125,6 +125,9 @@ runs of the script
 confirmation; it is iseful, for example, for scripted builds
 * `--with-datasets=<path/>` allows passing the path to the directory with the
   datasets required to run some tests (otherwise skipped)
+* `--spblas-prefix=<prefix>` to indicate a custom prefix for the spBLAS library;
+  the library (and the corresponding `make` target) will be called
+  "\<prefix\>\_spblas_\<backend\>"
 * `--help` shows all available options and skips directory checks.
 
 For a dry run, just add the `--show` option to inspect the building command on
@@ -515,7 +518,7 @@ by default when compiling executables, for example
 4. the variable `ALL_BACKENDS` lists all possible backends (even if not enabled)
 to detect potential configuration errors: therefore, you should always add the
 new backend to this variable; on the contrary, the variable `AVAILABLE_BACKENDS`
-lists only the backends actually available in the building infrastructure, 
+lists only the backends actually available in the building infrastructure,
 depending on the user's inputs; you may add your backend with something like
 
     ```cmake
@@ -525,8 +528,8 @@ depending on the user's inputs; you may add your backend with something like
     ```
 
 5. the variable `AVAILABLE_TEST_BACKENDS` lists all backends that were enabled
-and for which tests are built; usually it is a subset of `AVAILABLE_BACKENDS`, 
-which also contains backends pulled in as dependencies of user-chosen backends; 
+and for which tests are built; usually it is a subset of `AVAILABLE_BACKENDS`,
+which also contains backends pulled in as dependencies of user-chosen backends;
 for example, if the user enables only the hyperdags backend, the reference
 backend is also listed in `AVAILABLE_BACKENDS`, while `AVAILABLE_TEST_BACKENDS`
 lists only hyperdags.
