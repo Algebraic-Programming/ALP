@@ -53,7 +53,7 @@ namespace grb::algorithms {
 	 * <code>R</code> the returned matrix.
 	 *
 	 * In the case of an ALP process with multiple user processes, calling any
-	 * factory method is an \em collective call. ALP guarantees that if a call
+	 * factory method is a \em collective call. ALP guarantees that if a call
 	 * fails at one user process, the call also fails at all other user processes,
 	 * with matching exceptions. The matrix factory is scalable in the number of
 	 * threads as well as the number of user processes.
@@ -97,7 +97,7 @@ namespace grb::algorithms {
 	 * \f$ \mathcal{O}(n+m) \f$ instead, where \f$ n \f$ is the maximum matrix
 	 * dimension and \f$ m \f$ the number of nonzeroes in the produced matrix.
 	 *
-	 * In case of a shared-memory parallel benchmark with \f$ T \f$ threads, the
+	 * In case of a shared-memory parallel backend with \f$ T \f$ threads, the
 	 * thread-local work and data movement become \f$ \mathcal{O}((n+m)/T+T) \f$.
 	 * System-wide compute costs thus are proportional to
 	 * \f$ \mathcal{O}(m+n)/T+T \f$ while system-wide data movement costs remain
@@ -107,9 +107,9 @@ namespace grb::algorithms {
 	 * In case of a distributed-memory parallel backend and use of this factory
 	 * class in #grb::PARALLEL I/O \a mode over \f$ P \f$ user processes with
 	 * \f$ T_s \f$ threads at user process \f$ s \f$, thread-local work and data
-	 * movement become \f$ \mathcal{O}((n+m)/T_sP+T_s+P) \f$.
+	 * movement become \f$ \mathcal{O}((n+m)/(T_sP)+T_s+P) \f$.
 	 * System-wide compute costs thus are proportional to
-	 *   \f$ \mathcal{O}(\min_s (m+n)/T_sP + \max_s T_s + P), \f$
+	 *   \f$ \mathcal{O}(\min_s (m+n)/(T_sP) + \max_s T_s + P), \f$
 	 * while system-wide data movement costs are proportional to
 	 *   \f$ \mathcal{O}((m+n)/P + \max_s T_s + P). \f$
 	 * The work-space costs are \f$ \Theta( P ) \f$.
@@ -118,6 +118,9 @@ namespace grb::algorithms {
 	 *   -# \f$ \mathcal{O}( \min m+n / T_s + \max T_s + P ) \f$ work;
 	 *   -# \f$ \mathcal{O}( m + n + \max T_s + P ) \f$ data movement;
 	 *   -# \f$ \Theta( P ) \f$ work-space.
+	 *
+	 * \warning Thus, the use of the sequential I/O mode is never scalable in
+	 *          \f$ P \f$ and discouraged always.
 	 *
 	 * @see grb::IOMode for a more in-depth description of sequential (versus
 	 *                  parallel) I/O semantics.
@@ -149,6 +152,8 @@ namespace grb::algorithms {
 	class matrices {
 
 		friend class matrices< void, mode, backend >;
+
+		private:
 
 			/** Short-hand typedef for the matrix return type. */
 			typedef Matrix< D, backend, RIT, CIT, NIT > MatrixType;
@@ -227,6 +232,14 @@ namespace grb::algorithms {
 			 *
 			 * The \a V_iter and \a V_end iterator pair must contain exactly the number
 			 * of elements that should appear on the requested diagonal.
+			 *
+			 * \warning In parallel I/O mode, the given iterator pair must match in
+			 *          terms of both contents and order of returned elements, to those
+			 *          of the row- and column-indices returned by the \em internally-
+			 *          defined iterators, which (currently) are given by:
+			 *            - #grb::utils::iterators::Range .
+			 *          Therefore, the input values iterators should always remain hidden
+			 *          from the humble user.
 			 */
 			template< class IteratorV >
 			static MatrixType createIdentity_generic(
@@ -264,9 +277,9 @@ namespace grb::algorithms {
 				// construct the matrix from the given iterators
 				const size_t s = getPID();
 				const size_t P = getP();
-				assert( static_cast< size_t >(std::distance( V_iter, V_end )) >=
+				assert( static_cast< size_t >(std::distance( V_iter, V_end )) ==
 					static_cast< size_t >(std::distance( I.begin( s, P ), I.end( s, P ) )) );
-				assert( static_cast< size_t >(std::distance( V_iter, V_end )) >=
+				assert( static_cast< size_t >(std::distance( V_iter, V_end )) ==
 					static_cast< size_t >(std::distance( J.begin( s, P ), J.end( s, P ) )) );
 				const RC rc = buildMatrixUnique(
 					matrix,
@@ -336,6 +349,8 @@ namespace grb::algorithms {
 			 * over all user processes. See also #grb::IOMode.
 			 *
 			 * @returns The requested diagonal matrix.
+			 *
+			 * \warning This function is currently only implemented for sequential I/O.
 			 */
 			template< class ValueIterator >
 			static MatrixType diag(
@@ -365,10 +380,10 @@ namespace grb::algorithms {
 			}
 
 			/**
-			 * Builds an identity matrix.
+			 * Builds a diagonal matrix.
 			 *
-			 * Output matrix will contain \f$ \min\{ m, n \} \f$ non-zero elements or less
-			 * if \a k is not zero.
+			 * The output matrix will contain \f$ \min\{ m, n \} \f$ non-zero elements
+			 * or less, if \a k is not zero.
 			 *
 			 * @param[in] m     The number of rows of the matrix.
 			 * @param[in] n     The number of columns of the matrix.
@@ -377,16 +392,16 @@ namespace grb::algorithms {
 			 *                  above the main diagonal, while a negative value indicates
 			 *                  an offset below the main diagonal.
 			 *
-			 * Providing \a value equal to one and \a k equal to zero is equivalent to a
-			 * default call to #identity. Therefore, \a value and \a k are defined as
-			 * optional arguments to this function as well, with defaults one and zero,
-			 * respectively.
+			 * Providing \a value equal to one, \a k equal to zero, and \a n equal to
+			 * \a m, is equivalent to a default call to #identity. Therefore, \a value,
+			 * \a k, and \a n are defined as optional arguments to this function as well,
+			 * with defaults one and zero, respectively.
 			 *
-			 * @returns The requested identity matrix.
+			 * @returns The requested diagonal matrix.
 			 */
 			static MatrixType eye(
 				const size_t m,
-				const size_t n,
+				const size_t n = m,
 				const D value = static_cast< D >( 1 ),
 				const long k = static_cast< long >( 0 )
 			) {
@@ -412,7 +427,8 @@ namespace grb::algorithms {
 			 * Builds an identity matrix.
 			 *
 			 * \note This is an alias for #eye. It differs only in that this function
-			 *       does not allow for rectangular output nor for diagonal offsets.
+			 *       does not allow for rectangular output, nor for non-identity values
+			 *       on the diagonal, nor for diagonal offsets.
 			 *
 			 * See #eye for detailed documentation.
 			 *
@@ -479,11 +495,11 @@ namespace grb::algorithms {
 
 				// Initialise columns values container with a range from 0 to ncols
 				// repeated nrows times. There are two ways of doing this:
-				//  1) using ChainedIterators, or
+				//  1) using InterleavedIterators, or
 				//  2) using the iterator::Adapter.
 				// We select here way #2, and disable way #1:
 #if 0
-				grb::utils::containers::ChainedIteratorsVector<
+				grb::utils::containers::InterleavedIteratorsVector<
 						typename grb::utils::containers::Range< CIT >::const_iterator
 					> J( m );
 				for( size_t i = 0; i < m; ++i ) {
@@ -562,19 +578,29 @@ namespace grb::algorithms {
 			 *
 			 * @param[in] A The (sparse) input matrix.
 			 *
+			 * @param[in] ring The semiring in case 'zero' is not intended to be the
+			 *                 standard numerical zero. This argument is optional; by
+			 *                 default, the numerical zero will be used.
+			 *
+			 * \note In case of non-numerical \a D, \a ring becomes a mandatory
+			 *       argument.
+			 *
 			 * @returns The matrix \a A converted to a dense format. More precisely,
 			 *          entries \f$ a_{ij} \in A \f$ will equal that of the returned
 			 *          matrix at position \f$ (i, j) \f$. Coordinates $(k, l)$ for
 			 *          which no entry \f$ a_{kl} \f$ existed in \f$ A \f$ will have
 			 *          value 0 in the returned matrix.
 			 */
-			static MatrixType dense( const MatrixType &A ) {
-				static_assert( std::is_arithmetic< D >::value,
-					"dense (from input matrix) requires an arithemtic nonzero type" );
-				grb::Monoid<
-					grb::operators::add< D >,
-					grb::identities::zero
-				> addMon;
+			template<
+				typename Semiring = grb::Semiring<
+					grb::operators::add< D >, grb::operators::mul< D >,
+					grb::identities::zero, grb::identities::one
+				>
+			>
+			static MatrixType dense(
+				const MatrixType &A,
+				const Semiring &ring = Semiring()
+			) {
 				const size_t m = grb::nrows( A );
 				const size_t n = grb::ncols( A );
 				if( n == 0 || m == 0 ) {
@@ -582,7 +608,7 @@ namespace grb::algorithms {
 				}
 
 				if( grb::nnz( A ) == 0 ) {
-					return zeros( m, n );
+					return zeros( m, n, ring );
 				}
 
 				const size_t nz = m * n;
@@ -591,8 +617,10 @@ namespace grb::algorithms {
 						"nonzeroes." );
 				}
 
+				const auto addMon = ring.getAdditiveMonoid();
+				const D zero = ring.template getZero< D >();
 				MatrixType matrix( m, n, nz );
-				grb::RC rc = grb::set( matrix, 0 );
+				grb::RC rc = grb::set( matrix, zero );
 				rc = rc ? rc : grb::foldl( matrix, A, addMon );
 
 				if( rc != grb::SUCCESS) {
@@ -610,11 +638,8 @@ namespace grb::algorithms {
 			 *
 			 * @see #full for complete documentation.
 			 *
-			 * The only constraint that this function adds over the specification of
-			 * #full, is that the type \a D be numeric.
-			 *
-			 * @param[in] m The number of rows of the matrix.
-			 * @param[in] n The number of columns of the matrix.
+			 * @param[in] m    The number of rows of the matrix.
+			 * @param[in] n    The number of columns of the matrix.
 			 * @param[in] ring The semiring under which a matrix of zeroes should be
 			 *                 formed (optional -- the default simply produces a matrix
 			 *                 of numerical zeroes).
@@ -634,8 +659,6 @@ namespace grb::algorithms {
 				const size_t m, const size_t n,
 				const Semiring &ring = Semiring()
 			) {
-				static_assert( std::is_arithmetic< D >::value,
-					"zeros requires an arithemtic nonzero type" );
 				const D zero = ring.template getZero< D >();
 				return full( m, n, static_cast< D >( zero ) );
 			}
@@ -646,9 +669,6 @@ namespace grb::algorithms {
 			 * \note This is an alias for <tt>full( m, n, 1 )</tt>.
 			 *
 			 * @see #full for complete documentation.
-			 *
-			 * The only constraint that this function adds over the specification of
-			 * #full, is that the type \a D be numeric.
 			 *
 			 * @param[in] m    The number of rows of the matrix.
 			 * @param[in] n    The number of columns of the matrix.
@@ -671,8 +691,6 @@ namespace grb::algorithms {
 				const size_t m, const size_t n,
 				const Semiring &ring = Semiring()
 			) {
-				static_assert( std::is_arithmetic< D >::value,
-					"ones requires an arithemtic nonzero type" );
 				const D one = ring.template getOne< D >();
 				return full( m, n, static_cast< D >( one ) );
 			}
@@ -766,10 +784,8 @@ namespace grb::algorithms {
 			 *
 			 * \note This method is specialised for pattern matrices (void non-zero type).
 			 *
-			 * @tparam ValueIterator The type of the iterator used to provide the values.
-			 *
 			 * For pattern matrices, a call to this function is an alias of a call to
-			 * #eye. (For general matrices, the functions are \em not equivalent).
+			 * #eye. (For general matrices, the functions are \em not equivalent.)
 			 *
 			 * @param[in] m The number of rows of the matrix.
 			 * @param[in] n The number of columns of the matrix.
@@ -881,10 +897,10 @@ namespace grb::algorithms {
 
 				// Initialise columns values container with a range from 0 to ncols
 				// repeated nrows times. As mentioned above, there are two ways to provide
-				// iterators, we disable the first way (via ChainedIterators) and enable the
-				// iterators::adaptor way:
+				// iterators, we disable the first way (via InterleavedIterators) and enable
+				// the iterators::adaptor way:
 #if 0
-				grb::utils::containers::ChainedIteratorsVector<
+				grb::utils::containers::InterleavedIteratorsVector<
 						typename grb::utils::containers::Range< CIT >::const_iterator
 					> J( m );
 				for( size_t i = 0; i < m; ++i ) {
@@ -947,6 +963,9 @@ namespace grb::algorithms {
 			 *
 			 * @param[in] A The (sparse) input matrix.
 			 *
+			 * \note A semiring is not requested as what value represents one is not
+			 *       relevant for pattern matrices.
+			 *
 			 * @returns A dense pattern matrix.
 			 */
 			static MatrixType dense( const MatrixType &A ) {
@@ -966,6 +985,9 @@ namespace grb::algorithms {
 			 * @param[in] m The number of rows of the matrix.
 			 * @param[in] n The number of columns of the matrix.
 			 *
+			 * \note A semiring is not requested as what value represents zero is not
+			 *       relevant for pattern matrices.
+			 *
 			 * @returns A dense pattern matrix.
 			 */
 			static MatrixType zeros( const size_t m, const size_t n ) {
@@ -983,6 +1005,9 @@ namespace grb::algorithms {
 			 *
 			 * @param[in] m The number of rows of the matrix.
 			 * @param[in] n The number of columns of the matrix.
+			 *
+			 * \note A semiring is not requested as what value represents one is not
+			 *       relevant for pattern matrices.
 			 *
 			 * @returns Returns a dense pattern matrix.
 			 */
