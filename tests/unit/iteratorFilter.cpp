@@ -95,8 +95,12 @@ void grb_program( const size_t &n, grb::RC &rc ) {
 
 	// test for filtering out the number 7
 	{
-		auto itPair = grb::utils::iterators::createIteratorFilter(
+		auto first = grb::utils::iterators::make_filtered_iterator(
 			v.begin(), v.end(),
+			[] (const size_t val) { return val == 7; }
+		);
+		const auto second = grb::utils::iterators::make_filtered_iterator(
+			v.end(), v.end(),
 			[] (const size_t val) { return val == 7; }
 		);
 		if( n < 8 ) {
@@ -104,7 +108,7 @@ void grb_program( const size_t &n, grb::RC &rc ) {
 		} else {
 			expected = n - 1;
 		}
-		testOneOut( n, 7, expected, itPair.first, itPair.second, local_rc );
+		testOneOut( n, 7, expected, first, second, local_rc );
 		if( local_rc != grb::SUCCESS ) {
 			std::cerr << "Test 1 FAILED\n";
 			rc = grb::FAILED;
@@ -113,19 +117,23 @@ void grb_program( const size_t &n, grb::RC &rc ) {
 
 	// similar test but with one or both iterators copied
 	{
-		auto itPair = grb::utils::iterators::createIteratorFilter(
+		auto first = grb::utils::iterators::make_filtered_iterator(
 			v.begin(), v.end(),
 			[] (const size_t val) { return val == 17; }
 		);
-		auto beginCopy = itPair.first;
-		auto beginCopy2 = itPair.first;
-		auto endCopy = itPair.second;
+		const auto second = grb::utils::iterators::make_filtered_iterator(
+			v.begin(), v.end(),
+			[] (const size_t val) { return val == 17; }
+		);
+		auto beginCopy = first;
+		auto beginCopy2 = first;
+		auto endCopy = second;
 		if( n < 18 ) {
 			expected = n;
 		} else {
 			expected = n - 1;
 		}
-		testOneOut( n, 17, expected, beginCopy, itPair.second, local_rc );
+		testOneOut( n, 17, expected, beginCopy, second, local_rc );
 		if( local_rc != grb::SUCCESS ) {
 			std::cerr << "Test 2 FAILED: " << grb::toString( local_rc ) << "\n";
 			rc = grb::FAILED;
@@ -135,7 +143,7 @@ void grb_program( const size_t &n, grb::RC &rc ) {
 			std::cerr << "Test 3 FAILED" << grb::toString( local_rc ) << "\n";
 			rc = grb::FAILED;
 		}
-		testOneOut( n, 17, expected, itPair.first, itPair.second, local_rc );
+		testOneOut( n, 17, expected, first, second, local_rc );
 		if( local_rc != grb::SUCCESS ) {
 			std::cerr << "Test 4 FAILED" << grb::toString( local_rc ) << "\n";
 			rc = grb::FAILED;
@@ -144,8 +152,12 @@ void grb_program( const size_t &n, grb::RC &rc ) {
 
 	// test filtering out anything other than 7
 	{
-		auto itPair = grb::utils::iterators::createIteratorFilter(
+		auto first = grb::utils::iterators::make_filtered_iterator(
 			v.begin(), v.end(),
+			[] (const size_t val) { return val != 7; }
+		);
+		const auto second = grb::utils::iterators::make_filtered_iterator(
+			v.end(), v.end(),
 			[] (const size_t val) { return val != 7; }
 		);
 		if( n > 7 ) {
@@ -153,7 +165,7 @@ void grb_program( const size_t &n, grb::RC &rc ) {
 		} else {
 			expected = 0;
 		}
-		testOnlyOne( n, 7, expected, itPair.first, itPair.second, local_rc );
+		testOnlyOne( n, 7, expected, first, second, local_rc );
 		if( local_rc != grb::SUCCESS ) {
 			std::cerr << "Test 5 FAILED" << grb::toString( local_rc ) << "\n";
 			rc = grb::FAILED;
@@ -163,32 +175,36 @@ void grb_program( const size_t &n, grb::RC &rc ) {
 	// similar test to number 5, but using explicit copy constructed iterators
 	// also uses the std::vector const_iterators
 	{
-		auto itPair = grb::utils::iterators::createIteratorFilter(
+		auto first = grb::utils::iterators::make_filtered_iterator(
 			v.cbegin(), v.cend(),
+			[] (const size_t val) { return val != 7; }
+		);
+		const auto second = grb::utils::iterators::make_filtered_iterator(
+			v.cend(), v.cend(),
 			[] (const size_t val) { return val != 7; }
 		);
 		grb::utils::iterators::IteratorFilter<
 			std::vector< size_t >::const_iterator
-		> begin( itPair.first );
+		> begin( first );
 		grb::utils::iterators::IteratorFilter<
 			std::vector< size_t >::const_iterator
-		> end( itPair.second);
+		> end( second);
 		local_rc = grb::SUCCESS;
-		if( begin != itPair.first ) {
+		if( begin != first ) {
 			std::cerr << "Copy of iterator in start position does not equal source\n";
 			local_rc = grb::FAILED;
 		} else {
-			if( !(begin == itPair.first) ) {
+			if( !(begin == first) ) {
 				std::cerr << "Equality operator behaviour mismatches that of the inequality "
 					<< "operator (I)\n";
 				local_rc = grb::FAILED;
 			}
 		}
-		if( end != itPair.second ) {
+		if( end != second ) {
 			std::cerr << "Copy of iterator in end position does not equal source\n";
 			local_rc = grb::FAILED;
 		} else {
-			if( !(end == itPair.second) ) {
+			if( !(end == second) ) {
 				std::cerr << "Equality operator behaviour mismatches that of the inequality "
 					<< "operator (II)\n";
 				local_rc = grb::FAILED;
@@ -215,12 +231,16 @@ void grb_program( const size_t &n, grb::RC &rc ) {
 
 	// filter everything except duplicate entry
 	{
-		auto itPair = grb::utils::iterators::createIteratorFilter(
+		auto first = grb::utils::iterators::make_filtered_iterator(
 			v.begin(), v.end(),
 			[] (const size_t val) { return val != 0; }
 		);
+		const auto second = grb::utils::iterators::make_filtered_iterator(
+			v.end(), v.end(),
+			[] (const size_t val) { return val != 0; }
+		);
 		expected = 3;
-		testOnlyOne( n, 0, expected, itPair.first, itPair.second, local_rc );
+		testOnlyOne( n, 0, expected, first, second, local_rc );
 		if( local_rc != grb::SUCCESS ) {
 			std::cerr << "Test 7 FAILED" << grb::toString( local_rc ) << "\n";
 			rc = grb::FAILED;
@@ -229,12 +249,16 @@ void grb_program( const size_t &n, grb::RC &rc ) {
 
 	// filter all duplicates
 	{
-		auto itPair = grb::utils::iterators::createIteratorFilter(
+		auto first = grb::utils::iterators::make_filtered_iterator(
 			v.begin(), v.end(),
 			[] (const size_t val) { return val == 0; }
 		);
+		const auto second = grb::utils::iterators::make_filtered_iterator(
+			v.end(), v.end(),
+			[] (const size_t val) { return val == 0; }
+		);
 		expected = n - 3;
-		testOneOut( n, 0, expected, itPair.first, itPair.second, local_rc );
+		testOneOut( n, 0, expected, first, second, local_rc );
 		if( local_rc != grb::SUCCESS ) {
 			std::cerr << "Test 8 FAILED" << grb::toString( local_rc ) << "\n";
 			rc = grb::FAILED;
@@ -243,12 +267,16 @@ void grb_program( const size_t &n, grb::RC &rc ) {
 
 	// same test but using move-assigned iterators
 	{
-		auto itPair = grb::utils::iterators::createIteratorFilter(
+		auto first = grb::utils::iterators::make_filtered_iterator(
 			v.begin(), v.end(),
 			[] (const size_t val) { return val == 0; }
 		);
-		auto begin = std::move( itPair.first );
-		auto end = std::move( itPair.second );
+		const auto second = grb::utils::iterators::make_filtered_iterator(
+			v.end(), v.end(),
+			[] (const size_t val) { return val == 0; }
+		);
+		auto begin = std::move( first );
+		auto end = std::move( second );
 		expected = n - 3;
 		testOneOut( n, 0, expected, begin, end, local_rc );
 		if( local_rc != grb::SUCCESS ) {
@@ -259,16 +287,20 @@ void grb_program( const size_t &n, grb::RC &rc ) {
 
 	// same test as number 6, but then using move constructor
 	{
-		auto itPair = grb::utils::iterators::createIteratorFilter(
+		auto first = grb::utils::iterators::make_filtered_iterator(
 			v.begin(), v.end(),
+			[] (const size_t val) { return val != 0; }
+		);
+		const auto second = grb::utils::iterators::make_filtered_iterator(
+			v.end(), v.end(),
 			[] (const size_t val) { return val != 0; }
 		);
 		grb::utils::iterators::IteratorFilter<
 			std::vector< size_t >::iterator
-		> begin( std::move( itPair.first ) );
+		> begin( std::move( first ) );
 		grb::utils::iterators::IteratorFilter<
 			std::vector< size_t >::iterator
-		> end( std::move( itPair.second ) );
+		> end( std::move( second ) );
 		expected = 3;
 		local_rc = grb::SUCCESS;
 		if( begin == end ) {
@@ -291,32 +323,36 @@ void grb_program( const size_t &n, grb::RC &rc ) {
 
 	// tests mixture of prefix and postfix increments
 	{
-		auto itPair = grb::utils::iterators::createIteratorFilter(
+		auto first = grb::utils::iterators::make_filtered_iterator(
 			v.begin(), v.end(),
+			[] (const size_t val) { return val != 0; }
+		);
+		const auto second = grb::utils::iterators::make_filtered_iterator(
+			v.end(), v.end(),
 			[] (const size_t val) { return val != 0; }
 		);
 		expected = 3;
 		local_rc = grb::SUCCESS;
-		if( itPair.first == itPair.second ) {
+		if( first == second ) {
 			std::cerr << "Expected three elements, got zero\n";
 			local_rc = grb::FAILED;
 		}
 		if( local_rc == grb::SUCCESS ) {
-			auto begin = (itPair.first)++;
-			testOnlyOne( n, 0, expected, begin, itPair.second, local_rc );
+			auto begin = first++;
+			testOnlyOne( n, 0, expected, begin, second, local_rc );
 		}
 		if( local_rc != grb::SUCCESS ) {
 			std::cerr << "Same test as done under no. 6 but after calling postfix "
 				<< "increment operator failed. The postfix operator is *not* tested "
 				<< "further\n";
 		} else {
-			if( itPair.first == itPair.second ) {
+			if( first == second ) {
 				std::cerr << "Expected three elements, got one\n";
 				local_rc = grb::FAILED;
 			} else {
 				size_t count = 1;
-				while( itPair.first != itPair.second ) {
-					(void) (itPair.first)++;
+				while( first != second ) {
+					(void) first++;
 					(void) ++count;
 				}
 				if( count != expected ) {

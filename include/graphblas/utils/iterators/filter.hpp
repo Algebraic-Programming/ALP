@@ -42,39 +42,38 @@ namespace grb {
 			 *
 			 * @tparam FwdSubIter The underlying iterator type.
 			 *
-			 * Instances of this class may only be created via #IteratorFilter::create.
+			 * Instances of this class may only be created via #make_filtered_iterator().
 			 * This is because incrementing an instance of this iterator needs to ensure
 			 * that while filtering input elements, it does not move past its end
 			 * position. Therefore the safe use of this class always requires instances
 			 * to be aware of what the underlying end position is, which is ensured by
-			 * the #IteratorFilter::create API.
+			 * the #make_filtered_iterator() API.
 			 */
 			template< typename FwdSubIter >
 			class IteratorFilter;
 
 			/**
 			 * The factory function that takes any iterator pair over the same
-			 * container and returns a matching filtered iterator pair.
+			 * container and returns a filtered iterator.
 			 *
-			 * @param[in] begin A sub iterator in begin position.
-			 * @param[in] end   A sub iterator that matches the end position of
-			 *                  \a begin.
+			 * @param[in] begin An iterator over the same container as \a end.
+			 * @param[in] end   An iterator over the same container as \a begin in end
+			 *                  position.
 			 * @param[in] func  Values between \a begin and \a end for which this
 			 *                  function evaluates <tt>true</tt> shall \em not be
 			 *                  iterated over by the returned IteratorFilter instances.
 			 *
-			 * returns A pair of IteratorFilter instances, the first matching \a begin
-			 *         and the second matching \a end.
+			 * @returns An #grb::utils::iterators::IteratorFilter instance, matching the
+			 *          first iterator position from \a begin onwards for which \a func
+			 *          evaluates <tt>false</tt> or equals \a end.
 			 *
 			 * \note If all elements from \a begin to \a end in the underlying
-			 *       collection are to be filtered according to \a func, then two
-			 *       equal IteratorFilter instances may be returned, indicative of the
-			 *       resulting empty set.
+			 *       collection are to be filtered according to \a func, then the
+			 *       returned iterator will match \a end, indicative of the resulting
+			 *       empty set.
 			 */
 			template< typename FwdSubIter >
-			std::pair<
-				IteratorFilter< FwdSubIter >, IteratorFilter< FwdSubIter >
-			> createIteratorFilter(
+			IteratorFilter< FwdSubIter > make_filtered_iterator(
 				FwdSubIter begin, const FwdSubIter end,
 				const std::function< bool(const typename FwdSubIter::value_type &) > func
 			);
@@ -161,9 +160,7 @@ namespace grb {
 					}
 
 					template< typename T >
-					friend std::pair<
-						IteratorFilter< T >, IteratorFilter< T >
-					> createIteratorFilter(
+					friend IteratorFilter< T > make_filtered_iterator(
 						T begin, const T end,
 						const std::function< bool(const typename T::value_type &) > func
 					);
@@ -181,7 +178,8 @@ namespace grb {
 					/**
 					 * An IteratorFilter may never be default-constructed.
 					 *
-					 * IteratorFilter instances may only be created via a call to #create.
+					 * IteratorFilter instances may only be created via a call to
+					 * #make_filtered_iterator().
 					 */
 					IteratorFilter() = delete;
 
@@ -313,23 +311,17 @@ namespace grb {
 			};
 
 			template< typename FwdSubIter >
-			std::pair<
-				IteratorFilter< FwdSubIter >, IteratorFilter< FwdSubIter >
-			> createIteratorFilter(
+			IteratorFilter< FwdSubIter > make_filtered_iterator(
 				FwdSubIter begin, const FwdSubIter end,
 				const std::function< bool(const typename FwdSubIter::value_type &) > func
 			) {
-				std::pair <
-					IteratorFilter< FwdSubIter >, IteratorFilter< FwdSubIter >
-				> ret = {
-					IteratorFilter< FwdSubIter >( begin, end, func ),
-					IteratorFilter< FwdSubIter >( end, end, func )
-				};
+				IteratorFilter< FwdSubIter > ret =
+					IteratorFilter< FwdSubIter >( begin, end, func );
 				if( begin != end ) {
 					while( begin != end && func( *begin ) ) {
 						(void) ++begin;
 					}
-					ret.first = IteratorFilter< FwdSubIter >( begin, end, func );
+					ret = IteratorFilter< FwdSubIter >( begin, end, func );
 				}
 				return ret;
 			}
