@@ -152,7 +152,6 @@ add_grb_executables( eWiseMul eWiseMul.cpp
 
 add_grb_executables( factories factories.cpp
 	BACKENDS reference reference_omp bsp1d hybrid hyperdags nonblocking
-	ADDITIONAL_LINK_LIBRARIES test_utils
 )
 
 add_grb_executables( muladd muladd.cpp
