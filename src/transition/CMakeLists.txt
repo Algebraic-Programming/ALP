@@ -37,11 +37,10 @@ function( add_transition_library target_name lib_type lib_name src1 )
 	target_link_libraries( ${target_name} PUBLIC transition_headers ${parsed_PUBLIC_LINK_LIBRARIES} )
 	target_link_libraries( ${target_name} PRIVATE backend_flags )
 	add_dependencies( libs ${target_name} )
-	install( TARGETS ${target_name}
-		EXPORT GraphBLASTargets
+	install( TARGETS ${target_name} EXPORT GraphBLASTargets
 		ARCHIVE DESTINATION "${SHMEM_BACKEND_INSTALL_DIR}"
 	)
-	
+
 endfunction( add_transition_library )
 
 if( WITH_REFERENCE_BACKEND )
@@ -49,12 +48,14 @@ if( WITH_REFERENCE_BACKEND )
 		PUBLIC_LINK_LIBRARIES backend_reference
 	)
 
-	if( ${CMAKE_SYSTEM_PROCESSOR} MATCHES "arm" )
-		add_transition_library( kml_sparseblas_static STATIC "kml_sparseblas" ${CMAKE_CURRENT_SOURCE_DIR}/sparseblas.cpp
-			PUBLIC_LINK_LIBRARIES backend_reference
-		)
-		target_compile_definitions( kml_sparseblas_static PUBLIC SPBLAS_PREFIX=kml_ )
+	set( _SPBLAS_PREFIX "kml_" )
+	if( SPBLAS_PREFIX )
+		set( _SPBLAS_PREFIX "${SPBLAS_PREFIX}_" )
 	endif()
+	add_transition_library( ${_SPBLAS_PREFIX}sparseblas_static STATIC "${_SPBLAS_PREFIX}sparseblas"
+		${CMAKE_CURRENT_SOURCE_DIR}/sparseblas.cpp PUBLIC_LINK_LIBRARIES backend_reference
+	)
+	target_compile_definitions( ${_SPBLAS_PREFIX}sparseblas_static PUBLIC SPBLAS_PREFIX=${_SPBLAS_PREFIX} )
 
 	add_transition_library( spsolver_static STATIC "spsolver" ${CMAKE_CURRENT_SOURCE_DIR}/solver.cpp
 		PUBLIC_LINK_LIBRARIES backend_reference
@@ -80,10 +81,7 @@ if( WITH_NONBLOCKING_BACKEND )
 		PUBLIC_LINK_LIBRARIES backend_nonblocking
 	)
 
-	# add KML solver replacement only on ARM platform
-	if( ${CMAKE_SYSTEM_PROCESSOR} MATCHES "arm" )
-		add_transition_library( kml_solver STATIC "kml_ksolver" ${CMAKE_CURRENT_SOURCE_DIR}/kml_iss.cpp
-			PUBLIC_LINK_LIBRARIES spsolver_nonblocking_static
-		)
-	endif()
+	add_transition_library( kml_solver STATIC "kml_solver" ${CMAKE_CURRENT_SOURCE_DIR}/kml_iss.cpp
+		PUBLIC_LINK_LIBRARIES spsolver_nonblocking_static
+	)
 endif()

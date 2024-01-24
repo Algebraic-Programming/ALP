@@ -107,6 +107,10 @@ option( TEST_PERFORMANCE_OPTIONS
 option( DATASETS_DIR "Directory with datasets for tests" )
 option( GNN_DATASET_PATH "Directory with the GraphChallengeDataset dataset" )
 
+option( SPBLAS_PREFIX "Prefix for SparseBLAS library" OFF )
+message( STATUS "SPBLAS_PREFIX: ${SPBLAS_PREFIX}" )
+
+
 ### CHECK THE OPTIONS ARE COHERENT
 list( APPEND CMAKE_MODULE_PATH "${PROJECT_SOURCE_DIR}/cmake" )
 include( Utils )

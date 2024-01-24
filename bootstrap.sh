@@ -84,6 +84,7 @@ the location where LPF is installed"
 	echo "  --generator=<value>                 - set the generator for CMake (otherwise use CMake's default)"
 	echo "  --show                              - show generation commands instead of running them"
 	echo "  --delete-files                      - delete files in the current directory without asking for confirmation"
+	echo "  --spblas-prefix                     - delete files in the current directory without asking for confirmation"
 	echo "  --help                              - prints this help"
 	echo " "
 	echo "Notes:"
@@ -111,6 +112,7 @@ coverage_build=no
 generator=
 delete_files=no
 DATASETS_PATH=
+spblas_prefix=
 
 if [[ "$#" -lt 1 ]]; then
 	echo "No argument given, at least --prefix=<path/to/install/directory/> is mandatory"
@@ -184,6 +186,9 @@ or assume default paths (--with-lpf)"
 			;;
 	--delete-files) # useful for scripts
 			delete_files=yes
+			;;
+	--spblas-prefix=*)
+			spblas_prefix="${arg#--spblas-prefix=}"
 			;;
 	*)
 			echo "Unknown argument ${arg}"
@@ -350,6 +355,9 @@ the current directory before invocation or confirm the deletion of its content w
 	fi
 	if [[ "${lpf}" == "yes" ]]; then
 		CMAKE_OPTS+=" -DLPF_INSTALL_PATH='${ABSOLUTE_LPF_INSTALL_PATH}'"
+	fi
+	if [[ ! -z "${spblas_prefix}" ]]; then
+		CMAKE_OPTS+=" -DSPBLAS_PREFIX='${spblas_prefix}'"
 	fi
 
 	if [[ ! -z "${generator}" ]]; then
