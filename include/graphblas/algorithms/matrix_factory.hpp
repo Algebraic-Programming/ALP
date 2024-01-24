@@ -237,7 +237,7 @@ namespace grb::algorithms {
 			 *          terms of both contents and order of returned elements, to those
 			 *          of the row- and column-indices returned by the \em internally-
 			 *          defined iterators, which (currently) are given by:
-			 *            - #grb::utils::iterators::Range .
+			 *            - #grb::utils::containers::Range.
 			 *          Therefore, the input values iterators should always remain hidden
 			 *          from the humble user.
 			 */

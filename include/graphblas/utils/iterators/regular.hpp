@@ -16,6 +16,8 @@
  */
 
 /**
+ * @file
+ *
  * A set of iterators that mimic containers with regular structure.
  *
  * Also contains dummy containers that wrap these iterators.
@@ -38,6 +40,9 @@ namespace grb {
 
 	namespace utils {
 
+		/**
+		 * Collects various useful STL-compatible iterators.
+		 */
 		namespace iterators {
 
 			template< typename T >
@@ -1004,6 +1009,7 @@ namespace grb {
 
 		} // end namespace grb::utils::iterators
 
+		/** Collects various useful STL-compatible containers. */
 		namespace containers {
 
 			/**

@@ -16,8 +16,10 @@
  */
 
 /**
- * An iterator that adapts the values returned by a sub-iterator according to
- * some user-defined lambda.
+ * @file
+ *
+ * Defines an iterator that adapts the values returned by a sub-iterator
+ * according to some user-defined lambda.
  *
  * @author A. N. Yzelman
  * @date 19/12/2023
@@ -50,9 +52,9 @@ namespace grb::utils {
 		 *
 		 * @tparam SubIterT The underlying iterator type.
 		 *
-		 * For ease-of-use, see #make_adapter_iterator. If not using that factory
-		 * method and rather this class directly, the type \a SubIterT must always
-		 * be explicitly given.
+		 * For ease-of-use, see #make_adapter_iterator(). If not using that factory
+		 * method and rather this class directly, the type \a SubIterT must always be
+		 * explicitly given.
 		 *
 		 * \internal This adapter implementation is for random access iterators.
 		 */
