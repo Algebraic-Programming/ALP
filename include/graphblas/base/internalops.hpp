@@ -2761,7 +2761,7 @@ namespace grb {
 					 *               initialised.
 					 * @param[out] c The output. Must be pre-allocated.
 					 *
-					 * At the end of the operation, \f$ c = \conjugate_mul\{a,b\} \f$.
+					 * At the end of the operation, \f$ c = \bar{ab} \f$.
 					 */
 					static void apply(
 						const IN1 * __restrict__ const a,

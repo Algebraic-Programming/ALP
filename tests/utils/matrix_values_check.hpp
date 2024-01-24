@@ -29,6 +29,7 @@
 #include <cstddef>
 #include <type_traits>
 #include <algorithm>
+#include <vector>
 
 #include <graphblas.hpp>
 #include <graphblas/utils/iterators/type_traits.hpp>
@@ -307,6 +308,117 @@ namespace grb {
 			}
 			counted_values = counted;
 			return result;
+		}
+
+		template<
+			typename D, class Storage1, class Storage2,
+			typename std::enable_if< std::is_void< D >::value, int >::type = 0
+		>
+		RC compare_internal_storage(
+			const Storage1 &storage1,
+			const Storage2 &storage2,
+			const size_t n,
+			const size_t nnz
+		) {
+			(void) nnz;
+
+			for( size_t i = 0; i <= n; i++ ) {
+				if( storage1.col_start[ i ] != storage2.col_start[ i ] ) {
+					std::cerr << "Error: col_start[" << i << "] is different: "
+						<< storage1.col_start[ i ] << " != " << storage2.col_start[ i ]
+						<< std::endl;
+					return FAILED;
+				}
+			}
+			for( size_t i = 0; i < n; i++ ) {
+				for( auto t = storage1.col_start[ i ]; t < storage1.col_start[ i + 1 ]; t++ ) {
+					if( storage1.row_index[ t ] != storage2.row_index[ t ] ) {
+						std::cerr << "Error: row_index[" << t << "] is different: "
+							<< storage1.row_index[ i ] << " != " << storage2.row_index[ i ]
+							<< std::endl;
+						return FAILED;
+					}
+				}
+			}
+			return SUCCESS;
+		}
+
+		template<
+			typename D, class Storage1, class Storage2,
+			typename std::enable_if< not std::is_void< D >::value, int >::type = 0
+		>
+		RC compare_internal_storage(
+			const Storage1 &storage1,
+			const Storage2 &storage2,
+			const size_t n,
+			const size_t nnz
+		) {
+			RC rc = compare_internal_storage< void >( storage1, storage2, n, nnz );
+			if( rc != SUCCESS ) {
+				return rc;
+			}
+
+			for( size_t i = 0; i < nnz; i++ ) {
+				if( storage1.values[ i ] != storage2.values[ i ] ) {
+					std::cerr << "Error: values[" << i << "] is different: "
+						<< storage1.values[ i ] << " != " << storage2.values[ i ]
+						<< std::endl;
+					return FAILED;
+				}
+			}
+			return SUCCESS;
+		}
+
+		template< typename D1, typename D2 >
+		RC compare_crs( const Matrix< D1 > &A, const Matrix< D2> &B ) {
+			if( nrows( A ) != nrows( B ) || ncols( A ) != ncols( B ) ) {
+				std::cerr << "Error: matrices have different dimensions\n";
+				return FAILED;
+			}
+			if ( nnz( A ) != nnz( B ) ) {
+				std::cerr << "Error: matrices have different number of non-zeroes\n";
+				return FAILED;
+			}
+
+			return compare_internal_storage<
+				typename std::conditional<
+					std::is_void< D1 >::value ||
+					std::is_void< D2 >::value,
+					void,
+					D1
+				>::type
+			> (
+				grb::internal::getCRS( A ),
+				grb::internal::getCRS( B ),
+				nrows( A ),
+				nnz( A )
+			);
+		}
+
+		template< typename D1, typename D2 >
+		RC compare_ccs( const Matrix< D1 > &A, const Matrix< D2> &B ) {
+			if( nrows( A ) != nrows( B ) || ncols( A ) != ncols( B ) ) {
+				std::cerr << "Error: matrices have different dimensions\n";
+				return FAILED;
+			}
+			if ( nnz( A ) != nnz( B ) ) {
+				std::cerr << "Error: matrices have different number of non-zeroes\n";
+				return FAILED;
+			}
+
+			return compare_internal_storage<
+				typename std::conditional<
+					std::is_void< D1 >::value ||
+					std::is_void< D2 >::value,
+					void,
+					D1
+				>::type
+			> (
+				grb::internal::getCCS( A ),
+				grb::internal::getCCS( B ),
+				ncols( A ),
+				nnz( A )
+			);
 		}
 
 	} // namespace grb::utils
