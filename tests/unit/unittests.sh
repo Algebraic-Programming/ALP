@@ -554,10 +554,18 @@ for MODE in ${MODES}; do
 				echo " "
 
 				echo ">>>      [x]           [ ]       Testing grb::eWiseApply (matrices, Monoid / Operator)"
-				$runner ${TEST_BIN_DIR}/eWiseApplyMatrix_variants_${MODE}_${BACKEND} &> ${TEST_OUT_DIR}/eWiseApplyMatrix_variants_${MODE}_${BACKEND}_${P}_${T}.log
-				head -1 ${TEST_OUT_DIR}/eWiseApplyMatrix_variants_${MODE}_${BACKEND}_${P}_${T}.log
-				grep 'Test OK' ${TEST_OUT_DIR}/eWiseApplyMatrix_variants_${MODE}_${BACKEND}_${P}_${T}.log || echo "Test FAILED"
+				echo "                                  using small matrices (100x100)"
+				$runner ${TEST_BIN_DIR}/eWiseApplyMatrix_variants_${MODE}_${BACKEND} 100 &> ${TEST_OUT_DIR}/eWiseApplyMatrix_variants_small_${MODE}_${BACKEND}_${P}_${T}.log
+				head -1 ${TEST_OUT_DIR}/eWiseApplyMatrix_variants_small_${MODE}_${BACKEND}_${P}_${T}.log
+				grep 'Test OK' ${TEST_OUT_DIR}/eWiseApplyMatrix_variants_small_${MODE}_${BACKEND}_${P}_${T}.log || echo "Test FAILED"
 				echo " "
+
+        echo ">>>      [x]           [ ]       Testing grb::eWiseApply (matrices, Monoid / Operator)"
+        echo "                                  using large matrices (100'000x100'000)"
+        $runner ${TEST_BIN_DIR}/eWiseApplyMatrix_variants_${MODE}_${BACKEND} 100000 &> ${TEST_OUT_DIR}/eWiseApplyMatrix_variants_large_${MODE}_${BACKEND}_${P}_${T}.log
+        head -1 ${TEST_OUT_DIR}/eWiseApplyMatrix_variants_large_${MODE}_${BACKEND}_${P}_${T}.log
+        grep 'Test OK' ${TEST_OUT_DIR}/eWiseApplyMatrix_variants_large_${MODE}_${BACKEND}_${P}_${T}.log || echo "Test FAILED"
+        echo " "
 
 				echo ">>>      [x]           [ ]       Testing grb::zip on two vectors of doubles and"
 				echo "                                 ints of size 10 000 000."
