@@ -122,7 +122,7 @@ void grb_program( const size_t &n, grb::RC &rc ) {
 			[] (const size_t val) { return val == 17; }
 		);
 		const auto second = grb::utils::iterators::make_filtered_iterator(
-			v.begin(), v.end(),
+			v.end(), v.end(),
 			[] (const size_t val) { return val == 17; }
 		);
 		auto beginCopy = first;
@@ -140,12 +140,12 @@ void grb_program( const size_t &n, grb::RC &rc ) {
 		}
 		testOneOut( n, 17, expected, beginCopy2, endCopy, local_rc );
 		if( local_rc != grb::SUCCESS ) {
-			std::cerr << "Test 3 FAILED" << grb::toString( local_rc ) << "\n";
+			std::cerr << "Test 3 FAILED: " << grb::toString( local_rc ) << "\n";
 			rc = grb::FAILED;
 		}
 		testOneOut( n, 17, expected, first, second, local_rc );
 		if( local_rc != grb::SUCCESS ) {
-			std::cerr << "Test 4 FAILED" << grb::toString( local_rc ) << "\n";
+			std::cerr << "Test 4 FAILED: " << grb::toString( local_rc ) << "\n";
 			rc = grb::FAILED;
 		}
 	}
