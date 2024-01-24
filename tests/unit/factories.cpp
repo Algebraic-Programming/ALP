@@ -849,10 +849,16 @@ void grb_program( const size_t &n, RC &rc ) {
 	test_factory_ones( rc, n );
 
 	// synchronise return code for distributed backends
-	if( collectives<>::allreduce( rc, grb::operators::any_or< RC >() )
-		!= SUCCESS )
 	{
-		rc = PANIC;
+		const grb::RC my_rc = rc;
+		if( collectives<>::allreduce( rc, grb::operators::any_or< RC >() )
+			!= SUCCESS )
+		{
+			std::cerr << "Fatal error: could not reduce final error code over all user "
+				<< "processes. My local error code prior to the attempted allreduce was "
+				<< toString( my_rc ) << "\n";
+			rc = PANIC;
+		}
 	}
 }
 
