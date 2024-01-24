@@ -114,7 +114,6 @@ add_grb_executable_custom( hpparser ${ALP_UTILS_SRC_PATH}/hpparser.c
 
 add_grb_executables( masked_mxv masked_mxv.cpp
 	BACKENDS reference reference_omp hyperdags nonblocking
-	ADDITIONAL_LINK_LIBRARIES test_utils
 )
 
 add_grb_executables( masked_vxm masked_vxm.cpp
