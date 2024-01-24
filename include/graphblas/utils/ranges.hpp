@@ -79,7 +79,8 @@ namespace grb {
 			typename T,
 			typename std::enable_if< std::is_unsigned< T >::value, T >::type = 0
 		>
-		bool is_geq_zero( const T ) {
+		bool is_geq_zero( const T x ) {
+			(void) x;
 			return true;
 		}
 
