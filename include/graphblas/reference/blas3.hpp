@@ -1001,6 +1001,13 @@ namespace grb {
 				return MISMATCH;
 			}
 
+			if( getID(A) == getID(C) || getID(B) == getID(C) ) {
+#ifdef _DEBUG
+				std::cerr << "grb::eWiseApply: The output matrix can not simultaneously be "
+					<< "one of the input matrices\n";
+#endif
+			}
+
 			const auto &A_raw = !trans_left ?
 				internal::getCRS( A ) :
 				internal::getCCS( A );
@@ -1019,9 +1026,11 @@ namespace grb {
 			internal::getMatrixBuffers( arr3, buf3, valbuf, 1, C );
 			// end buffer retrieval
 
-			// initialisations
+			// initialisations of the coordinates
 			Coordinates<reference> coors1;
 			coors1.set( arr1, false, buf1, n );
+			// end initialisations of the coordinates
+
 			if( !crs_only ) {
 #ifdef _H_GRB_REFERENCE_OMP_BLAS3
 				#pragma omp parallel for simd default(none) \
@@ -1279,6 +1288,13 @@ namespace grb {
 				return ILLEGAL;
 			}
 
+			if( getID(A) == getID(C) || getID(B) == getID(C) ) {
+#ifdef _DEBUG
+				std::cerr << "grb::eWiseApply: The output matrix can not simultaneously be "
+					<< "one of the input matrices\n";
+#endif
+			}
+
 			// run-time checks
 			const size_t m = nrows( C );
 			const size_t n = ncols( C );
@@ -1310,20 +1326,22 @@ namespace grb {
 
 
 			// retrieve buffers
-			char * arr1, * arr2, * arr3, * buf1, * buf2, * buf3;
-			arr1 = arr2 = buf1 = buf2 = nullptr;
+			char *arr1 = nullptr, *arr3 = nullptr;
+			char *buf1 = nullptr, *buf3 = nullptr;
 			InputType1 * vbuf1 = nullptr;
-			InputType2 * vbuf2 = nullptr;
-			OutputType * valbuf = nullptr;
+			OutputType * vbuf3 = nullptr;
 			internal::getMatrixBuffers( arr1, buf1, vbuf1, 1, A );
-			internal::getMatrixBuffers( arr2, buf2, vbuf2, 1, B );
-			internal::getMatrixBuffers( arr3, buf3, valbuf, 1, C );
+			internal::getMatrixBuffers( arr3, buf3, vbuf3, 1, C );
 			// end buffer retrieval
 
-			// initialisations
+			// initialisations of the coordinates
+			// Note: By using the buffer of the output matrix C, we can
+			//       allow A and B to be the same matrix (with the same buffer)
 			Coordinates< reference > coors1, coors2;
 			coors1.set( arr1, false, buf1, n );
-			coors2.set( arr2, false, buf2, n );
+			coors2.set( arr3, false, buf3, n );
+			// end initialisations of the coordinates
+
 			if( !crs_only ) {
 #ifdef _H_GRB_REFERENCE_OMP_BLAS3
 				#pragma omp parallel for simd default(none) shared(CCS_raw) firstprivate(n)
@@ -1435,7 +1453,7 @@ namespace grb {
 
 #ifdef _H_GRB_REFERENCE_OMP_BLAS3
 				#pragma omp parallel default(none) \
-						shared(coors1, vbuf1, coors2, vbuf2) \
+						shared(coors1, vbuf1, coors2, vbuf3) \
 						firstprivate(i, A_raw, identity_A, B_raw, identity_B )
 #endif
 					{
@@ -1480,7 +1498,7 @@ namespace grb {
 
 #ifdef _H_GRB_REFERENCE_OMP_BLAS3
 							if( !coors2.asyncAssign( k_col, local_update2 ) ) {
-								assignValue( vbuf2, k_col, B_raw.getValue( k, identity_B ) );
+								assignValue( vbuf3, k_col, B_raw.getValue( k, identity_B ) );
 								if( ++assigns2 == maxAsyncAssigns2 ) {
 									coors2.joinUpdate( local_update2 );
 									assigns2 = 0;
@@ -1488,7 +1506,7 @@ namespace grb {
 							}
 #else
 							if( !coors2.assign( k_col ) ) {
-								assignValue( vbuf2, k_col, B_raw.getValue( k, identity_B ) );
+								assignValue( vbuf3, k_col, B_raw.getValue( k, identity_B ) );
 							}
 #endif
 						}
@@ -1500,7 +1518,7 @@ namespace grb {
 					for( size_t k = 0; k < coors1.nonzeroes(); ++k ) {
 						const auto j = coors1.index( k );
 						const auto A_val = getValue(vbuf1, j, identity_A);
-						const auto B_val = coors2.assigned(j) ? getValue(vbuf2, j, identity_B) : identity_B;
+						const auto B_val = coors2.assigned(j) ? getValue(vbuf3, j, identity_B) : identity_B;
 
 						OutputType result_value;
 						(void)grb::apply( result_value, A_val, B_val, oper );
@@ -1529,7 +1547,7 @@ namespace grb {
 							continue;
 						}
 						const auto A_val = coors1.assigned(j) ? getValue(vbuf1, j, identity_A) : identity_A;
-						const auto B_val = getValue(vbuf2, j, identity_B);
+						const auto B_val = getValue(vbuf3, j, identity_B);
 
 						OutputType result_value;
 						(void)grb::apply( result_value, A_val, B_val, oper );
