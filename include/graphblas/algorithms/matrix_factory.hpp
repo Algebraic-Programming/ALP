@@ -401,7 +401,7 @@ namespace grb::algorithms {
 			 */
 			static MatrixType eye(
 				const size_t m,
-				const size_t n = m,
+				const size_t n,
 				const D value = static_cast< D >( 1 ),
 				const long k = static_cast< long >( 0 )
 			) {
@@ -421,6 +421,19 @@ namespace grb::algorithms {
 				const size_t s = getPID();
 				const size_t P = getP();
 				return createIdentity_generic( m, n, k, V.cbegin( s, P ), V.cend( s, P ) );
+			}
+
+			/**
+			 * Builds a diagonal matrix.
+			 *
+			 * This provides the variant where all optional arguments are defaulted.
+			 *
+			 * @param[in] n The size of the output square diagonal matrix.
+			 *
+			 * @return The requested square diagonal matrix.
+			 */
+			static MatrixType eye( const size_t n ) {
+				return eye( n, n );
 			}
 
 			/**
@@ -809,7 +822,7 @@ namespace grb::algorithms {
 			}
 
 			/**
-			 * Builds an identity pattern matrix.
+			 * Builds a diagonal pattern matrix.
 			 *
 			 * Output matrix will contain \f$ \min\{ m, n \} \f$ non-zero elements or less
 			 * if \a k is not zero.
@@ -839,6 +852,19 @@ namespace grb::algorithms {
 
 				// dispatch to generic function
 				return createIdentity_generic( m, n, k );
+			}
+
+			/**
+			 * Builds a diagonal pattern matrix.
+			 *
+			 * This provides the variant where all optional arguments are defaulted.
+			 *
+			 * @param[in] n The size of the output square diagonal matrix.
+			 *
+			 * @return The requested square diagonal matrix.
+			 */
+			static MatrixType eye( const size_t n ) {
+				return eye( n, n );
 			}
 
 			/**
