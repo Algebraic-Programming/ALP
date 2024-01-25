@@ -27,7 +27,7 @@
 #define _H_GRB_ALGORITHMS_CONJUGATE_GRADIENT
 
 #include <cstdio>
-#include <complex>
+#include <cmath>
 
 #include <graphblas.hpp>
 #include <graphblas/utils/iscomplex.hpp>
@@ -326,7 +326,7 @@ namespace grb {
 			assert( ret == SUCCESS );
 
 			if( ret == SUCCESS ) {
-				tol *= sqrt( grb::utils::is_complex< IOType >::modulus( bnorm ) );
+				tol *= std::sqrt( grb::utils::is_complex< IOType >::modulus( bnorm ) );
 			}
 
 			size_t iter = 0;
@@ -419,7 +419,7 @@ namespace grb {
 
 			// return correct error code
 			if( ret == SUCCESS ) {
-				if( sqrt( residual ) >= tol ) {
+				if( std::sqrt( residual ) >= tol ) {
 					// did not converge within iterations
 					return FAILED;
 				}
