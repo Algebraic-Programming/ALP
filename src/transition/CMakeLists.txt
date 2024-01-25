@@ -81,7 +81,7 @@ if( WITH_NONBLOCKING_BACKEND )
 		PUBLIC_LINK_LIBRARIES backend_nonblocking
 	)
 
-	add_transition_library( kml_solver STATIC "kml_solver" ${CMAKE_CURRENT_SOURCE_DIR}/kml_iss.cpp
+	add_transition_library( ksolver STATIC "ksolver" ${CMAKE_CURRENT_SOURCE_DIR}/kml_iss.cpp
 		PUBLIC_LINK_LIBRARIES spsolver_nonblocking_static
 	)
 endif()
