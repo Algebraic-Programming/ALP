@@ -19,7 +19,7 @@
  * @file
  *
  * This exposes the same interface of KML_SOLVER, as documented in
- * 
+ *
  * https://www.hikunpeng.com/document/detail/en/kunpengaccel/math-lib/devg-kml/kunpengaccel_kml_16_0287.html
  *
  * @author Alberto Scolari
@@ -39,6 +39,7 @@ extern "C" {
 
 typedef void KmlSolverTask;
 
+// KML solver library error values
 #define KMLSS_NO_ERROR 0
 #define KMLSS_NONZERO_INDEXING 1
 #define KMLSS_MISSING_DIAGONAL_ELEMENT 2
@@ -61,8 +62,10 @@ typedef void KmlSolverTask;
 #define KMLSS_INTERNAL_ERROR 1000001
 #define KMLSS_NOT_IMPLEMENTED 1000002
 
+// error value for errors non prescribed by KML
 #define KMLSS_OTHER_ERROR 2000002
 
+// KML solvers parameters value
 #define KMLSS_FILL_IN 0
 #define KMLSS_PERM 1
 #define KMLSS_REFINEMENT_MAX_STEPS 2
