@@ -73,96 +73,152 @@ typedef enum {
 
 typedef void * sparse_cg_handle_t;
 
-sparse_err_t sparse_cg_init_sii( sparse_cg_handle_t * const handle, const size_t n, const float * const a, const int * const ja, const int * const ia );
+sparse_err_t sparse_cg_init_sii(
+	sparse_cg_handle_t * const handle, const size_t n,
+	const float * const a, const int * const ja, const int * const ia
+);
 
-sparse_err_t sparse_cg_init_dii( sparse_cg_handle_t * const handle, const size_t n, const double * const a, const int * const ja, const int * const ia );
+sparse_err_t sparse_cg_init_dii(
+	sparse_cg_handle_t * const handle, const size_t n,
+	const double * const a, const int * const ja, const int * const ia
+);
 
-sparse_err_t sparse_cg_init_szi( sparse_cg_handle_t * const handle, const size_t n, const float * const a, const size_t * const ja, const int * const ia );
+sparse_err_t sparse_cg_init_szi(
+	sparse_cg_handle_t * const handle, const size_t n,
+	const float * const a, const size_t * const ja, const int * const ia
+);
 
-sparse_err_t sparse_cg_init_dzi( sparse_cg_handle_t * const handle, const size_t n, const double * const a, const size_t * const ja, const int * const ia );
+sparse_err_t sparse_cg_init_dzi(
+	sparse_cg_handle_t * const handle, const size_t n,
+	const double * const a, const size_t * const ja, const int * const ia
+);
 
-sparse_err_t sparse_cg_init_szz( sparse_cg_handle_t * const handle, const size_t n, const float * const a, const size_t * const ja, const size_t * const ia );
+sparse_err_t sparse_cg_init_szz(
+	sparse_cg_handle_t * const handle, const size_t n,
+	const float * const a, const size_t * const ja, const size_t * const ia
+);
 
-sparse_err_t sparse_cg_init_dzz( sparse_cg_handle_t * const handle, const size_t n, const double * const a, const size_t * const ja, const size_t * const ia );
+sparse_err_t sparse_cg_init_dzz(
+	sparse_cg_handle_t * const handle, const size_t n,
+	const double * const a, const size_t * const ja, const size_t * const ia
+);
 
 // Note that siz and diz are skipped on purpose. Such variants would not seem
 // sensible, though could easily be provided if they do turn out to be needed
 
-sparse_err_t sparse_cg_get_tolerance_sii( const sparse_cg_handle_t handle, float * const tol );
+sparse_err_t sparse_cg_get_tolerance_sii(
+	const sparse_cg_handle_t handle, float * const tol );
 
-sparse_err_t sparse_cg_get_tolerance_szi( const sparse_cg_handle_t handle, float * const tol );
+sparse_err_t sparse_cg_get_tolerance_szi(
+	const sparse_cg_handle_t handle, float * const tol );
 
-sparse_err_t sparse_cg_get_tolerance_szz( const sparse_cg_handle_t handle, float * const tol );
+sparse_err_t sparse_cg_get_tolerance_szz(
+	const sparse_cg_handle_t handle, float * const tol );
 
-sparse_err_t sparse_cg_get_tolerance_dii( const sparse_cg_handle_t handle, double * const tol );
+sparse_err_t sparse_cg_get_tolerance_dii(
+	const sparse_cg_handle_t handle, double * const tol );
 
-sparse_err_t sparse_cg_get_tolerance_dzi( const sparse_cg_handle_t handle, double * const tol );
+sparse_err_t sparse_cg_get_tolerance_dzi(
+	const sparse_cg_handle_t handle, double * const tol );
 
-sparse_err_t sparse_cg_get_tolerance_dzz( const sparse_cg_handle_t handle, double * const tol );
+sparse_err_t sparse_cg_get_tolerance_dzz(
+	const sparse_cg_handle_t handle, double * const tol );
 
-sparse_err_t sparse_cg_set_tolerance_sii( sparse_cg_handle_t handle, const float tol );
+sparse_err_t sparse_cg_set_tolerance_sii(
+	sparse_cg_handle_t handle, const float tol );
 
-sparse_err_t sparse_cg_set_tolerance_szi( sparse_cg_handle_t handle, const float tol );
+sparse_err_t sparse_cg_set_tolerance_szi(
+	sparse_cg_handle_t handle, const float tol );
 
-sparse_err_t sparse_cg_set_tolerance_szz( sparse_cg_handle_t handle, const float tol );
+sparse_err_t sparse_cg_set_tolerance_szz(
+	sparse_cg_handle_t handle, const float tol );
 
-sparse_err_t sparse_cg_set_tolerance_dii( sparse_cg_handle_t handle, const double tol );
+sparse_err_t sparse_cg_set_tolerance_dii(
+	sparse_cg_handle_t handle, const double tol );
 
-sparse_err_t sparse_cg_set_tolerance_dzi( sparse_cg_handle_t handle, const double tol );
+sparse_err_t sparse_cg_set_tolerance_dzi(
+	sparse_cg_handle_t handle, const double tol );
 
-sparse_err_t sparse_cg_set_tolerance_dzz( sparse_cg_handle_t handle, const double tol );
+sparse_err_t sparse_cg_set_tolerance_dzz(
+	sparse_cg_handle_t handle, const double tol );
 
-sparse_err_t sparse_cg_get_residual_sii( const sparse_cg_handle_t handle, float * const tol );
+sparse_err_t sparse_cg_get_residual_sii(
+	const sparse_cg_handle_t handle, float * const tol );
 
-sparse_err_t sparse_cg_get_residual_szi( const sparse_cg_handle_t handle, float * const tol );
+sparse_err_t sparse_cg_get_residual_szi(
+	const sparse_cg_handle_t handle, float * const tol );
 
-sparse_err_t sparse_cg_get_residual_szz( const sparse_cg_handle_t handle, float * const tol );
+sparse_err_t sparse_cg_get_residual_szz(
+	const sparse_cg_handle_t handle, float * const tol );
 
-sparse_err_t sparse_cg_get_residual_dii( const sparse_cg_handle_t handle, double * const tol );
+sparse_err_t sparse_cg_get_residual_dii(
+	const sparse_cg_handle_t handle, double * const tol );
 
-sparse_err_t sparse_cg_get_residual_dzi( const sparse_cg_handle_t handle, double * const tol );
+sparse_err_t sparse_cg_get_residual_dzi(
+	const sparse_cg_handle_t handle, double * const tol );
 
-sparse_err_t sparse_cg_get_residual_dzz( const sparse_cg_handle_t handle, double * const tol );
+sparse_err_t sparse_cg_get_residual_dzz(
+	const sparse_cg_handle_t handle, double * const tol );
 
-// another variant of sparse_cg_get_iter_count could provide output as an int, uint, etc.
+// another variant of sparse_cg_get_iter_count could provide output as an int,
+// uint, etc.
 
-sparse_err_t sparse_cg_get_iter_count_sii( const sparse_cg_handle_t handle, size_t * const iters );
+sparse_err_t sparse_cg_get_iter_count_sii(
+	const sparse_cg_handle_t handle, size_t * const iters );
 
-sparse_err_t sparse_cg_get_iter_count_szi( const sparse_cg_handle_t handle, size_t * const iters );
+sparse_err_t sparse_cg_get_iter_count_szi(
+	const sparse_cg_handle_t handle, size_t * const iters );
 
-sparse_err_t sparse_cg_get_iter_count_szz( const sparse_cg_handle_t handle, size_t * const iters );
+sparse_err_t sparse_cg_get_iter_count_szz(
+	const sparse_cg_handle_t handle, size_t * const iters );
 
-sparse_err_t sparse_cg_get_iter_count_dii( const sparse_cg_handle_t handle, size_t * const iters );
+sparse_err_t sparse_cg_get_iter_count_dii(
+	const sparse_cg_handle_t handle, size_t * const iters );
 
-sparse_err_t sparse_cg_get_iter_count_dzi( const sparse_cg_handle_t handle, size_t * const iters );
+sparse_err_t sparse_cg_get_iter_count_dzi(
+	const sparse_cg_handle_t handle, size_t * const iters );
 
-sparse_err_t sparse_cg_get_iter_count_dzz( const sparse_cg_handle_t handle, size_t * const iters );
+sparse_err_t sparse_cg_get_iter_count_dzz(
+	const sparse_cg_handle_t handle, size_t * const iters );
 
-// another variant of sparse_cg_set_max_iter_count could take int, uint, etc. inputs
+// another variant of sparse_cg_set_max_iter_count could take int, uint, etc.
+// inputs
 
-sparse_err_t sparse_cg_set_max_iter_count_sii( sparse_cg_handle_t handle, const size_t max_iters );
+sparse_err_t sparse_cg_set_max_iter_count_sii(
+	sparse_cg_handle_t handle, const size_t max_iters );
 
-sparse_err_t sparse_cg_set_max_iter_count_szi( sparse_cg_handle_t handle, const size_t max_iters );
+sparse_err_t sparse_cg_set_max_iter_count_szi(
+	sparse_cg_handle_t handle, const size_t max_iters );
 
-sparse_err_t sparse_cg_set_max_iter_count_szz( sparse_cg_handle_t handle, const size_t max_iters );
+sparse_err_t sparse_cg_set_max_iter_count_szz(
+	sparse_cg_handle_t handle, const size_t max_iters );
 
-sparse_err_t sparse_cg_set_max_iter_count_dii( sparse_cg_handle_t handle, const size_t max_iters );
+sparse_err_t sparse_cg_set_max_iter_count_dii(
+	sparse_cg_handle_t handle, const size_t max_iters );
 
-sparse_err_t sparse_cg_set_max_iter_count_dzi( sparse_cg_handle_t handle, const size_t max_iters );
+sparse_err_t sparse_cg_set_max_iter_count_dzi(
+	sparse_cg_handle_t handle, const size_t max_iters );
 
-sparse_err_t sparse_cg_set_max_iter_count_dzz( sparse_cg_handle_t handle, const size_t max_iters );
+sparse_err_t sparse_cg_set_max_iter_count_dzz(
+	sparse_cg_handle_t handle, const size_t max_iters );
 
-sparse_err_t sparse_cg_solve_sii( sparse_cg_handle_t handle, float * const x, const float * const b );
+sparse_err_t sparse_cg_solve_sii(
+	sparse_cg_handle_t handle, float * const x, const float * const b );
 
-sparse_err_t sparse_cg_solve_szi( sparse_cg_handle_t handle, float * const x, const float * const b );
+sparse_err_t sparse_cg_solve_szi(
+	sparse_cg_handle_t handle, float * const x, const float * const b );
 
-sparse_err_t sparse_cg_solve_szz( sparse_cg_handle_t handle, float * const x, const float * const b );
+sparse_err_t sparse_cg_solve_szz(
+	sparse_cg_handle_t handle, float * const x, const float * const b );
 
-sparse_err_t sparse_cg_solve_dii( sparse_cg_handle_t handle, double * const x, const double * const b );
+sparse_err_t sparse_cg_solve_dii(
+	sparse_cg_handle_t handle, double * const x, const double * const b );
 
-sparse_err_t sparse_cg_solve_dzi( sparse_cg_handle_t handle, double * const x, const double * const b );
+sparse_err_t sparse_cg_solve_dzi(
+	sparse_cg_handle_t handle, double * const x, const double * const b );
 
-sparse_err_t sparse_cg_solve_dzz( sparse_cg_handle_t handle, double * const x, const double * const b );
+sparse_err_t sparse_cg_solve_dzz(
+	sparse_cg_handle_t handle, double * const x, const double * const b );
 
 sparse_err_t sparse_cg_destroy_sii( sparse_cg_handle_t handle );
 

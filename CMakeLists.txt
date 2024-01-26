@@ -159,18 +159,21 @@ endif()
 
 # Enable backends based on features
 if( ENABLE_SOLVER_LIB )
-	set( WITH_NONBLOCKING_BACKEND ON )
-	message( STATUS "Enabling compilation of nonblocking backend: required by extra solver libraries" )
+	if( NOT WITH_NONBLOCKING_BACKEND )
+		set( WITH_NONBLOCKING_BACKEND ON )
+		message( STATUS "Enabling compilation of nonblocking backend: required by extra solver libraries" )
+	endif()
+	if( NOT WITH_REFERENCE_BACKEND )
+		set( WITH_REFERENCE_BACKEND ON )
+		message( STATUS "Enabling compilation of reference backend: required by extra solver libraries" )
+	endif()
 endif()
 
 if( ENABLE_EXTRA_SOLVER_LIBS )
-	set( WITH_REFERENCE_BACKEND ON )
-	message( STATUS "Enabling compilation of reference backend: required by extra solver libraries" )
-endif()
-
-if( ENABLE_EXTRA_SOLVER_LIBS )
-	set( WITH_OMP_BACKEND ON )
-	message( STATUS "Enabling compilation of reference_omp backend: required by extra solver libraries" )
+	if( NOT WITH_OMP_BACKEND )
+		set( WITH_OMP_BACKEND ON )
+		message( STATUS "Enabling compilation of reference_omp backend: required by extra solver libraries" )
+	endif()
 endif()
 
 # Enabling reference_omp backend if bsp1d is active

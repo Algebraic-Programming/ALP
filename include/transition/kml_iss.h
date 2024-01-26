@@ -139,3 +139,4 @@ int KML_CG_PREFIXED( CleanDI )( KmlSolverTask ** );
 #endif
 
 #endif // end ifdef _H_ALP_KML_ISS
+

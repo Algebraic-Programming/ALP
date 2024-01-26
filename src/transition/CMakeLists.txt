@@ -58,7 +58,7 @@ if( WITH_REFERENCE_BACKEND )
 	)
 	target_compile_definitions( ${_SPBLAS_PREFIX}sparseblas_static PUBLIC SPBLAS_PREFIX=${_SPBLAS_PREFIX} )
 
-	if( ENABLE_EXTRA_SOLVER_LIBS )
+	if( ENABLE_SOLVER_LIB )
 		add_transition_library( spsolver_sequential STATIC "spsolver_sequential" ${CMAKE_CURRENT_SOURCE_DIR}/solver.cpp
 			PRIVATE_LINK_LIBRARIES backend_reference
 		)
@@ -86,11 +86,12 @@ if( WITH_NONBLOCKING_BACKEND )
 		add_transition_library( spsolver_shmem_parallel STATIC "spsolver_shmem_parallel" ${CMAKE_CURRENT_SOURCE_DIR}/solver.cpp
 			PRIVATE_LINK_LIBRARIES backend_nonblocking
 		)
-	endif()
 
-	# same binary name of KML library
-	# https://www.hikunpeng.com/document/detail/en/kunpengaccel/math-lib/devg-kml/kunpengaccel_kml_16_0011.html
-	add_transition_library( ksolver STATIC "ksolver" ${CMAKE_CURRENT_SOURCE_DIR}/kml_iss.cpp
-		PRIVATE_LINK_LIBRARIES spsolver_nonblocking_static
-	)
+		# same binary name of KML library
+		# https://www.hikunpeng.com/document/detail/en/kunpengaccel/math-lib/devg-kml/kunpengaccel_kml_16_0011.html
+		add_transition_library( ksolver STATIC "ksolver" ${CMAKE_CURRENT_SOURCE_DIR}/kml_iss.cpp
+			PRIVATE_LINK_LIBRARIES spsolver_nonblocking_static
+		)
+	endif()
 endif()
+

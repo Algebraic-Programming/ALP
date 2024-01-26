@@ -496,3 +496,4 @@ sparse_err_t sparse_cg_destroy_dzi( sparse_cg_handle_t handle ) {
 sparse_err_t sparse_cg_destroy_dzz( sparse_cg_handle_t handle ) {
 	return sparse_cg_destroy_impl< double, size_t, size_t >( handle );
 }
+

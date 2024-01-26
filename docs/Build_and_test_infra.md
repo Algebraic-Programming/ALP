@@ -128,10 +128,10 @@ confirmation; it is iseful, for example, for scripted builds
 * `--spblas-prefix=<prefix>` to indicate a custom prefix for the spBLAS library;
   the library (and the corresponding `make` target) will be called
   "\<prefix\>\_spblas_\<backend\>"
-* `--no-solver-lib` to disable generating the target for the library of lines
-  solvers (compiled against the nonblocking backend)
-* `--enable-extra-solver-lib` to enable libraries for solvers compiled against
-  the reference and OMP backends
+* `--no-solver-lib` to disable generating the target for the solver library
+  (compiled against the reference and nonblocking backend)
+* `--enable-extra-solver-lib` to enable the solver library compiled against
+  the reference OMP backend
 * `--help` shows all available options and skips directory checks.
 
 For a dry run, just add the `--show` option to inspect the building command on
