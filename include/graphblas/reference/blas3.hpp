@@ -916,6 +916,206 @@ namespace grb {
 		return ret;
 	}
 
+
+	/**
+	 * A masked outer product of two vectors. Assuming vectors \a u and \a v are oriented
+	 * column-wise, the result matrix \a A will contain \f$ uv^T \f$, masked to non-zero values from \a mask.
+	 */
+	template<
+		Descriptor descr = descriptors::no_operation,
+		class Operator,
+		typename InputType1, typename InputType2, typename OutputType,
+		typename Coords,
+		typename RIT, typename CIT, typename NIT
+	>
+	RC maskedOuter(
+		Matrix< OutputType, reference, RIT, CIT, NIT > &A,
+		const Matrix< OutputType, reference, RIT, CIT, NIT > &mask,
+		const Vector< InputType1, reference, Coords > &u,
+		const Vector< InputType2, reference, Coords > &v,
+		const Operator &mul = Operator(),
+		const Phase &phase = EXECUTE,
+		const typename std::enable_if<
+			grb::is_operator< Operator >::value &&
+			!grb::is_object< InputType1 >::value &&
+			!grb::is_object< InputType2 >::value &&
+			!grb::is_object< OutputType >::value,
+			void >::type * const = nullptr
+	) {
+		// static checks
+		NO_CAST_ASSERT( ( !(descr & descriptors::no_casting) ||
+				std::is_same< typename Operator::D1, InputType1 >::value
+			), "grb::maskedOuter",
+			"called with a prefactor vector that does not match the first domain "
+			"of the given multiplication operator" );
+		NO_CAST_ASSERT( ( !(descr & descriptors::no_casting) ||
+				std::is_same< typename Operator::D2, InputType2 >::value
+			), "grb::maskedOuter",
+			"called with a postfactor vector that does not match the first domain "
+			"of the given multiplication operator" );
+		NO_CAST_ASSERT( ( !(descr & descriptors::no_casting) ||
+				std::is_same< typename Operator::D3, OutputType >::value
+			), "grb::maskedOuter",
+			"called with an output matrix that does not match the output domain of "
+			"the given multiplication operator" );
+		static_assert( ( !(descr & descriptors::invert_mask)
+			),
+			"grb::maskedOuter: invert_mask descriptor cannot be used ");
+#ifdef _DEBUG
+		std::cout << "In grb::maskedOuter (reference)\n";
+#endif
+
+		const size_t nrows = size( u );
+		const size_t ncols = size( v );
+
+		const size_t m = grb::nrows( mask );
+		const size_t n = grb::ncols( mask );
+
+		assert( phase != TRY );
+		if( nrows != grb::nrows( A ) || nrows != m ) {
+			return MISMATCH;
+		}
+
+		if( ncols != grb::ncols( A ) || ncols != n ) {
+			return MISMATCH;
+		}
+
+
+		const auto &mask_raw = internal::getCRS( mask );
+
+		size_t nzc = 0;
+		for( size_t i = 0; i < nrows; ++i ) {
+			if( internal::getCoordinates( u ).assigned( i ) ) {
+				for( auto k = mask_raw.col_start[ i ]; k < mask_raw.col_start[ i + 1 ]; ++k ) {
+					const size_t k_col = mask_raw.row_index[ k ];
+					if( internal::getCoordinates( v ).assigned( k_col ) ) {
+						nzc++;
+					}
+				}
+			}
+		}
+
+		if( phase == RESIZE ) {
+			return resize( A, nzc );
+		}
+
+		assert( phase == EXECUTE );
+		if( capacity( A ) < nzc ) {
+#ifdef _DEBUG
+			std::cout << "\t insufficient capacity to complete "
+				"requested masked outer-product computation\n";
+#endif
+			const RC clear_rc = clear( A );
+			if( clear_rc != SUCCESS ) {
+				return PANIC;
+			} else {
+				return FAILED;
+			}
+		}
+
+		grb::Monoid<
+			grb::operators::left_assign< OutputType >,
+			grb::identities::zero
+		> monoid;
+
+		RC ret = SUCCESS;
+		if( phase == EXECUTE ) {
+			ret = grb::clear( A );
+		}
+		assert( nnz( A ) == 0 );
+
+		auto &CRS_raw = internal::getCRS( A );
+		auto &CCS_raw = internal::getCCS( A );
+
+		const InputType1 * __restrict__ const x = internal::getRaw( u );
+		const InputType2 * __restrict__ const y = internal::getRaw( v );
+		char * arr = nullptr;
+		char * buf = nullptr;
+		OutputType * valbuf = nullptr;
+		internal::getMatrixBuffers( arr, buf, valbuf, 1, A );
+		config::NonzeroIndexType * A_col_index = internal::template
+			getReferenceBuffer< typename config::NonzeroIndexType >( ncols + 1 );
+
+		
+		internal::Coordinates< reference > coors;
+		coors.set( arr, false, buf, ncols );
+
+		CRS_raw.col_start[ 0 ] = 0;
+		for( size_t j = 0; j <= ncols; ++j ) {
+			CCS_raw.col_start[ j ] = 0;
+		}
+
+		
+		nzc = 0;
+		for( size_t i = 0; i < nrows; ++i ) {
+			if( internal::getCoordinates( u ).assigned( i ) ) {
+				for( auto k = mask_raw.col_start[ i ]; k < mask_raw.col_start[ i + 1 ]; ++k ) {
+					const size_t k_col = mask_raw.row_index[ k ];
+					if( internal::getCoordinates( v ).assigned( k_col ) ) {
+						(void) ++nzc;
+						(void) ++CCS_raw.col_start[ k_col + 1 ];
+					}
+				}
+			}
+			CRS_raw.col_start[ i + 1 ] = nzc;
+		}
+
+
+		A_col_index[ 0 ] = 0;
+		for( size_t j = 1; j < ncols; ++j ) {
+			CCS_raw.col_start[ j + 1 ] += CCS_raw.col_start[ j ];
+			A_col_index[ j ] = 0;
+		}
+
+
+		const size_t old_nzc = nzc;
+
+		// use previously computed CCS offset array to update CCS during the
+		// computational phase
+		nzc = 0;
+		for( size_t i = 0; i < nrows; ++i ) {
+			coors.clear();
+			if( internal::getCoordinates( u ).assigned( i ) ) {
+				for( auto k = mask_raw.col_start[ i ]; k < mask_raw.col_start[ i + 1 ]; ++k ) {
+					const size_t k_col = mask_raw.row_index[ k ];
+					if( internal::getCoordinates( v ).assigned( k_col ) ) {
+						coors.assign( k_col );
+						valbuf[ k_col ] = monoid.template getIdentity< OutputType >();
+						(void) grb::apply( valbuf[ k_col ],
+							x[i],
+							y[k_col],
+							mul );
+					}
+				}
+			}
+			for( size_t k = 0; k < coors.nonzeroes(); ++k ) {
+				assert( nzc < old_nzc );
+				const size_t j = coors.index( k );
+				// update CRS
+				CRS_raw.row_index[ nzc ] = j;
+				CRS_raw.setValue( nzc, valbuf[ j ] );
+				// update CCS
+				const size_t CCS_index = A_col_index[ j ]++ + CCS_raw.col_start[ j ];
+				CCS_raw.row_index[ CCS_index ] = i;
+				CCS_raw.setValue( CCS_index, valbuf[ j ] );
+				// update count
+				(void) ++nzc;
+			}
+			CRS_raw.col_start[ i + 1 ] = nzc;
+		}
+
+		for( size_t j = 0; j < ncols; ++j ) {
+			assert( CCS_raw.col_start[ j + 1 ] - CCS_raw.col_start[ j ] ==
+				A_col_index[ j ] );
+		}
+		assert( nzc == old_nzc );
+		
+
+		internal::setCurrentNonzeroes( A, nzc );
+		
+		return ret;
+	}
+
 	namespace internal {
 
 		/**
