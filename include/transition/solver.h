@@ -1,6 +1,6 @@
 
 /*
- *   Copyright 2021 Huawei Technologies Co., Ltd.
+ *   Copyright 2023 Huawei Technologies Co., Ltd.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -56,6 +56,12 @@ typedef enum {
 	 * Out of memory error detected during call.
 	 */
 	OUT_OF_MEMORY,
+
+	/*
+	* The algorithm has failed achieving its intendeed result. For example, an
+	* iterative solver did not converge.
+	*/
+	FAILED,
 
 	/**
 	 * An unknown error has been encountered. The state of the underlying solver

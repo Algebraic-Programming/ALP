@@ -1,6 +1,6 @@
 
 /*
- *   Copyright 2021 Huawei Technologies Co., Ltd.
+ *   Copyright 2024 Huawei Technologies Co., Ltd.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,16 +15,22 @@
  * limitations under the License.
  */
 
-#include "solver.h"
 
 #include <assert.h>
-
 #include <array>
 
 #include <graphblas.hpp>
-
 #include <graphblas/algorithms/conjugate_gradient.hpp>
 
+#include "solver.h"
+
+/**
+ * @file
+ * This implements a transition path API to the linear system solvers.
+ *
+ * @author Alberto Scolari
+ * @date 26/01/2024
+ */
 
 template< typename T, typename NZI, typename RSI >
 class CG_Data {
@@ -45,7 +51,6 @@ class CG_Data {
 
 		// workspace
 		std::array< grb::Vector< T >, 3 > workspace;
-
 
 	public:
 
@@ -94,593 +99,400 @@ class CG_Data {
 
 };
 
-extern "C" {
 
-	sparse_err_t sparse_cg_init_sii(
-		sparse_cg_handle_t * const handle, const size_t n,
-		const float * const a, const int * const ja, const int * const ia
-	) {
-		if( n == 0 ) { return ILLEGAL_ARGUMENT; }
-		if( handle == nullptr || a == nullptr || ja == nullptr || ia == nullptr ) {
-			return NULL_ARGUMENT;
-		}
-		try {
-			*handle = static_cast< void * >(
-				new CG_Data< float, int, int >( n, a, ja, ia ) );
-		} catch( std::exception &e ) {
-			// the grb::Matrix constructor may only throw on out of memory errors
-			std::cerr << "Error: " << e.what() << "\n";
-			*handle = nullptr;
-			return OUT_OF_MEMORY;
-		}
-		return NO_ERROR;
+template< typename T, typename NZI, typename RSI >
+static sparse_err_t sparse_cg_init_impl(
+	sparse_cg_handle_t * const handle, const size_t n,
+	const T * const a, const NZI * const ja, const RSI * const ia
+) {
+	if( n == 0 ) { return ILLEGAL_ARGUMENT; }
+	if( handle == nullptr || a == nullptr || ja == nullptr || ia == nullptr ) {
+		return NULL_ARGUMENT;
 	}
-
-	sparse_err_t sparse_cg_init_dii(
-		sparse_cg_handle_t * const handle, const size_t n,
-		const double * const a, const int * const ja, const int * const ia
-	) {
-		if( n == 0 ) { return ILLEGAL_ARGUMENT; }
-		if( handle == nullptr || a == nullptr || ja == nullptr || ia == nullptr ) {
-			return NULL_ARGUMENT;
-		}
-		try {
-			*handle = static_cast< void * >(
-				new CG_Data< double, int, int >( n, a, ja, ia ) );
-		} catch( std::exception &e ) {
-			// the grb::Matrix constructor may only throw on out of memory errors
-			std::cerr << "Error: " << e.what() << "\n";
-			*handle = nullptr;
-			return OUT_OF_MEMORY;
-		}
-		return NO_ERROR;
+	try {
+		*handle = static_cast< void * >(
+			new CG_Data< T, NZI, RSI >( n, a, ja, ia ) );
+	} catch( std::exception &e ) {
+		// the grb::Matrix constructor may only throw on out of memory errors
+		std::cerr << "Error: " << e.what() << "\n";
+		*handle = nullptr;
+		return OUT_OF_MEMORY;
 	}
+	return NO_ERROR;
+}
 
-	sparse_err_t sparse_cg_init_szi(
-		sparse_cg_handle_t * const handle, const size_t n,
-		const float * const a, const size_t * const ja, const int * const ia
-	) {
-		if( n == 0 ) { return ILLEGAL_ARGUMENT; }
-		if( handle == nullptr || a == nullptr || ja == nullptr || ia == nullptr ) {
-			return NULL_ARGUMENT;
-		}
-		try {
-			*handle = static_cast< void * > (
-				new CG_Data< float, size_t, int >( n, a, ja, ia ) );
-		} catch( std::exception &e ) {
-			// the grb::Matrix constructor may only throw on out of memory errors
-			std::cerr << "Error: " << e.what() << "\n";
-			*handle = nullptr;
-			return OUT_OF_MEMORY;
-		}
-		return NO_ERROR;
+sparse_err_t sparse_cg_init_sii(
+	sparse_cg_handle_t * const handle, const size_t n,
+	const float * const a, const int * const ja, const int * const ia
+) {
+	return sparse_cg_init_impl< float, int, int >( handle, n, a, ja, ia );
+}
+
+sparse_err_t sparse_cg_init_dii(
+	sparse_cg_handle_t * const handle, const size_t n,
+	const double * const a, const int * const ja, const int * const ia
+) {
+	return sparse_cg_init_impl< double, int, int >( handle, n, a, ja, ia );
+}
+
+sparse_err_t sparse_cg_init_szi(
+	sparse_cg_handle_t * const handle, const size_t n,
+	const float * const a, const size_t * const ja, const int * const ia
+) {
+	return sparse_cg_init_impl< float, size_t, int >( handle, n, a, ja, ia );
+}
+
+sparse_err_t sparse_cg_init_dzi(
+	sparse_cg_handle_t * const handle, const size_t n,
+	const double * const a, const size_t * const ja, const int * const ia
+) {
+	return sparse_cg_init_impl< double, size_t, int >( handle, n, a, ja, ia );
+}
+
+sparse_err_t sparse_cg_init_szz(
+	sparse_cg_handle_t * const handle, const size_t n,
+	const float * const a, const size_t * const ja, const size_t * const ia
+) {
+	return sparse_cg_init_impl< float, size_t, size_t >( handle, n, a, ja, ia );
+}
+
+sparse_err_t sparse_cg_init_dzz(
+	sparse_cg_handle_t * const handle, const size_t n,
+	const double * const a, const size_t * const ja, const size_t * const ia
+) {
+	return sparse_cg_init_impl< double, size_t, size_t >( handle, n, a, ja, ia );
+}
+
+
+template< typename T, typename NZI, typename RSI >
+static sparse_err_t sparse_cg_get_tolerance_impl(
+	const sparse_cg_handle_t handle, T * const tol
+) {
+	if( handle == nullptr || tol == nullptr ) { return NULL_ARGUMENT; }
+	*tol = static_cast< CG_Data< T, NZI, RSI > * >( handle )->getTolerance();
+	return NO_ERROR;
+}
+
+sparse_err_t sparse_cg_get_tolerance_sii(
+	const sparse_cg_handle_t handle, float * const tol
+) {
+	return sparse_cg_get_tolerance_impl< float, int, int >( handle, tol );
+}
+
+sparse_err_t sparse_cg_get_tolerance_szi(
+	const sparse_cg_handle_t handle, float * const tol
+) {
+	return sparse_cg_get_tolerance_impl< float, size_t, int >( handle, tol );
+}
+
+sparse_err_t sparse_cg_get_tolerance_szz(
+	const sparse_cg_handle_t handle, float * const tol
+) {
+	return sparse_cg_get_tolerance_impl< float, size_t, size_t >( handle, tol );
+}
+
+sparse_err_t sparse_cg_get_tolerance_dii(
+	const sparse_cg_handle_t handle, double * const tol
+) {
+	return sparse_cg_get_tolerance_impl< double, int, int >( handle, tol );
+}
+
+sparse_err_t sparse_cg_get_tolerance_dzi(
+	const sparse_cg_handle_t handle, double * const tol
+) {
+	return sparse_cg_get_tolerance_impl< double, size_t, int >( handle, tol );
+}
+
+sparse_err_t sparse_cg_get_tolerance_dzz(
+	const sparse_cg_handle_t handle, double * const tol
+) {
+	return sparse_cg_get_tolerance_impl< double, size_t, size_t >( handle, tol );
+}
+
+
+template< typename T, typename NZI, typename RSI >
+static sparse_err_t sparse_cg_set_tolerance_impl(
+	sparse_cg_handle_t handle, const T tol
+) {
+	if( handle == nullptr ) { return NULL_ARGUMENT; }
+	static_cast< CG_Data< T, NZI, RSI > * >( handle )->setTolerance( tol );
+	return NO_ERROR;
+}
+
+sparse_err_t sparse_cg_set_tolerance_sii(
+	sparse_cg_handle_t handle, const float tol
+) {
+	return sparse_cg_set_tolerance_impl< float, int, int >( handle, tol );
+}
+
+sparse_err_t sparse_cg_set_tolerance_szi(
+	sparse_cg_handle_t handle, const float tol
+) {
+	return sparse_cg_set_tolerance_impl< float, size_t, int >( handle, tol );
+}
+
+sparse_err_t sparse_cg_set_tolerance_szz(
+	sparse_cg_handle_t handle, const float tol
+) {
+	return sparse_cg_set_tolerance_impl< float, size_t, size_t >( handle, tol );
+}
+
+sparse_err_t sparse_cg_set_tolerance_dii(
+	sparse_cg_handle_t handle, const double tol
+) {
+	return sparse_cg_set_tolerance_impl< double, int, int >( handle, tol );
+}
+
+sparse_err_t sparse_cg_set_tolerance_dzi(
+	sparse_cg_handle_t handle, const double tol
+) {
+	return sparse_cg_set_tolerance_impl< double, size_t, int >( handle, tol );
+}
+
+sparse_err_t sparse_cg_set_tolerance_dzz(
+	sparse_cg_handle_t handle, const double tol
+) {
+	return sparse_cg_set_tolerance_impl< double, size_t, size_t >( handle, tol );
+}
+
+
+template< typename T, typename NZI, typename RSI >
+static sparse_err_t sparse_cg_get_residual_impl(
+	const sparse_cg_handle_t handle, T * const tol
+) {
+	if( handle == nullptr || tol == nullptr ) { return NULL_ARGUMENT; }
+	*tol = static_cast< CG_Data< T, NZI, RSI > * >( handle )->getResidual();
+	return NO_ERROR;
+}
+
+sparse_err_t sparse_cg_get_residual_sii(
+	const sparse_cg_handle_t handle, float * const tol
+) {
+	return sparse_cg_get_residual_impl< float, int, int >( handle, tol );
+}
+
+sparse_err_t sparse_cg_get_residual_szi(
+	const sparse_cg_handle_t handle, float * const tol
+) {
+	return sparse_cg_get_residual_impl< float, size_t, int >( handle, tol );
+}
+
+sparse_err_t sparse_cg_get_residual_szz(
+	const sparse_cg_handle_t handle, float * const tol
+) {
+	return sparse_cg_get_residual_impl< float, size_t, size_t >( handle, tol );
+}
+
+sparse_err_t sparse_cg_get_residual_dii(
+	const sparse_cg_handle_t handle, double * const tol
+) {
+	return sparse_cg_get_residual_impl< double, int, int >( handle, tol );
+}
+
+sparse_err_t sparse_cg_get_residual_dzi(
+	const sparse_cg_handle_t handle, double * const tol
+) {
+	return sparse_cg_get_residual_impl< double, size_t, int >( handle, tol );
+}
+
+sparse_err_t sparse_cg_get_residual_dzz(
+	const sparse_cg_handle_t handle, double * const tol
+) {
+	return sparse_cg_get_residual_impl< double, size_t, size_t >( handle, tol );
+}
+
+
+template< typename T, typename NZI, typename RSI >
+static sparse_err_t sparse_cg_get_iter_count_impl(
+	const sparse_cg_handle_t handle, size_t * const iters
+) {
+	if( handle == nullptr || iters == nullptr ) { return NULL_ARGUMENT; }
+	*iters = static_cast< CG_Data< T, NZI, RSI > * >( handle )->getIters();
+	return NO_ERROR;
+}
+
+sparse_err_t sparse_cg_get_iter_count_sii(
+	const sparse_cg_handle_t handle, size_t * const iters
+) {
+	return sparse_cg_get_iter_count_impl< float, int, int >( handle, iters );
+}
+
+sparse_err_t sparse_cg_get_iter_count_szi(
+	const sparse_cg_handle_t handle, size_t * const iters
+) {
+	return sparse_cg_get_iter_count_impl< float, size_t, int >( handle, iters );
+}
+
+sparse_err_t sparse_cg_get_iter_count_szz(
+	const sparse_cg_handle_t handle, size_t * const iters
+) {
+	return sparse_cg_get_iter_count_impl< float, size_t, size_t >( handle, iters );
+}
+
+sparse_err_t sparse_cg_get_iter_count_dii(
+	const sparse_cg_handle_t handle, size_t * const iters
+) {
+	return sparse_cg_get_iter_count_impl< double, int, int >( handle, iters );
+}
+
+sparse_err_t sparse_cg_get_iter_count_dzi(
+	const sparse_cg_handle_t handle, size_t * const iters
+) {
+	return sparse_cg_get_iter_count_impl< double, size_t, int >( handle, iters );
+}
+
+sparse_err_t sparse_cg_get_iter_count_dzz(
+	const sparse_cg_handle_t handle, size_t * const iters
+) {
+	return sparse_cg_get_iter_count_impl< double, size_t, size_t >( handle, iters );
+}
+
+
+template< typename T, typename NZI, typename RSI >
+static sparse_err_t sparse_cg_set_max_iter_count_impl(
+	sparse_cg_handle_t handle, const size_t max_iters
+) {
+	if( handle == nullptr ) { return NULL_ARGUMENT; }
+	static_cast< CG_Data< T, NZI, RSI > * >( handle )->
+		setMaxIters( max_iters );
+	return NO_ERROR;
+}
+
+sparse_err_t sparse_cg_set_max_iter_count_sii(
+	sparse_cg_handle_t handle, const size_t max_iters
+) {
+	return sparse_cg_set_max_iter_count_impl< float, int, int >( handle,
+		max_iters );
+}
+
+sparse_err_t sparse_cg_set_max_iter_count_szi(
+	sparse_cg_handle_t handle, const size_t max_iters
+) {
+	return sparse_cg_set_max_iter_count_impl< float, size_t, int >( handle,
+		max_iters );
+}
+
+sparse_err_t sparse_cg_set_max_iter_count_szz(
+	sparse_cg_handle_t handle, const size_t max_iters
+) {
+	return sparse_cg_set_max_iter_count_impl< float, size_t, size_t >( handle,
+		max_iters );
+}
+
+sparse_err_t sparse_cg_set_max_iter_count_dii(
+	sparse_cg_handle_t handle, const size_t max_iters
+) {
+	return sparse_cg_set_max_iter_count_impl< double, int, int >( handle,
+		max_iters );
+}
+
+sparse_err_t sparse_cg_set_max_iter_count_dzi(
+	sparse_cg_handle_t handle, const size_t max_iters
+) {
+	return sparse_cg_set_max_iter_count_impl< double, size_t, int >( handle,
+		max_iters );
+}
+
+sparse_err_t sparse_cg_set_max_iter_count_dzz(
+	sparse_cg_handle_t handle, const size_t max_iters
+) {
+	return sparse_cg_set_max_iter_count_impl< double, size_t, size_t >( handle,
+		max_iters );
+}
+
+
+template< typename T, typename NZI, typename RSI >
+static sparse_err_t sparse_cg_solve_impl(
+	sparse_cg_handle_t handle, T * const x, const T * const b
+) {
+	if( handle == nullptr || x == nullptr || b == nullptr ) {
+		return NULL_ARGUMENT;
 	}
-
-	sparse_err_t sparse_cg_init_dzi(
-		sparse_cg_handle_t * const handle, const size_t n,
-		const double * const a, const size_t * const ja, const int * const ia
-	) {
-		if( n == 0 ) { return ILLEGAL_ARGUMENT; }
-		if( handle == nullptr || a == nullptr || ja == nullptr || ia == nullptr ) {
-			return NULL_ARGUMENT;
-		}
-		try {
-			*handle = static_cast< void * >(
-				new CG_Data< double, size_t, int >( n, a, ja, ia ) );
-		} catch( std::exception &e ) {
-			// the grb::Matrix constructor may only throw on out of memory errors
-			std::cerr << "Error: " << e.what() << "\n";
-			*handle = nullptr;
-			return OUT_OF_MEMORY;
-		}
-		return NO_ERROR;
+	auto &data = * static_cast< CG_Data< T, NZI, RSI > * >( handle );
+	grb::Vector< T > alp_x =
+		grb::internal::template wrapRawVector< T >( data.getSize(), x );
+	const grb::Vector< T > alp_b =
+		grb::internal::template wrapRawVector< T >( data.getSize(), b );
+	const grb::RC rc = data.solve( alp_x, alp_b );
+	// ALP spec should not allow going out of memory
+	assert( rc != grb::OUTOFMEM );
+	// should we have a return code for failed convergence?
+	if( rc == grb::FAILED ) {
+		return FAILED;
+	} else if( rc == grb::PANIC ) {
+		return UNKNOWN;
+	} else if( rc != grb::SUCCESS ) {
+		std::cerr << "Warning: ALP should not have returned the following error\n"
+			<< "\t" << grb::toString( rc ) << "\n"
+			<< "Please submit a bug report.\n";
+		return UNKNOWN;
 	}
+	return NO_ERROR;
+}
 
-	sparse_err_t sparse_cg_init_szz(
-		sparse_cg_handle_t * const handle, const size_t n,
-		const float * const a, const size_t * const ja, const size_t * const ia
-	) {
-		if( n == 0 ) { return ILLEGAL_ARGUMENT; }
-		if( handle == nullptr || a == nullptr || ja == nullptr || ia == nullptr ) {
-			return NULL_ARGUMENT;
-		}
-		try {
-			*handle = static_cast< void * >(
-				new CG_Data< float, size_t, size_t >( n, a, ja, ia ) );
-		} catch( std::exception &e ) {
-			// the grb::Matrix constructor may only throw on out of memory errors
-			std::cerr << "Error: " << e.what() << "\n";
-			*handle = nullptr;
-			return OUT_OF_MEMORY;
-		}
-		return NO_ERROR;
-	}
+sparse_err_t sparse_cg_solve_sii(
+	sparse_cg_handle_t handle, float * const x, const float * const b
+) {
+	return sparse_cg_solve_impl< float, int, int >( handle, x, b );
+}
 
-	sparse_err_t sparse_cg_init_dzz(
-		sparse_cg_handle_t * const handle, const size_t n,
-		const double * const a, const size_t * const ja, const size_t * const ia
-	) {
-		if( n == 0 ) { return ILLEGAL_ARGUMENT; }
-		if( handle == nullptr || a == nullptr || ja == nullptr || ia == nullptr ) {
-			return NULL_ARGUMENT;
-		}
-		try {
-			*handle = static_cast< void * >(
-				new CG_Data< double, size_t, size_t >( n, a, ja, ia ) );
-		} catch( std::exception &e ) {
-			// the grb::Matrix constructor may only throw on out of memory errors
-			std::cerr << "Error: " << e.what() << "\n";
-			*handle = nullptr;
-			return OUT_OF_MEMORY;
-		}
-		return NO_ERROR;
-	}
+sparse_err_t sparse_cg_solve_szi(
+	sparse_cg_handle_t handle, float * const x, const float * const b
+) {
+	return sparse_cg_solve_impl< float, size_t, int >( handle, x, b );
+}
 
-	sparse_err_t sparse_cg_get_tolerance_sii(
-		const sparse_cg_handle_t handle, float * const tol
-	) {
-		if( handle == nullptr || tol == nullptr ) { return NULL_ARGUMENT; }
-		*tol = static_cast< CG_Data< float, int, int > * >( handle )->getTolerance();
-		return NO_ERROR;
-	}
+sparse_err_t sparse_cg_solve_szz(
+	sparse_cg_handle_t handle, float * const x, const float * const b
+) {
+	return sparse_cg_solve_impl< float, size_t, size_t >( handle, x, b );
+}
 
-	sparse_err_t sparse_cg_get_tolerance_szi(
-		const sparse_cg_handle_t handle, float * const tol
-	) {
-		if( handle == nullptr || tol == nullptr ) { return NULL_ARGUMENT; }
-		*tol =
-			static_cast< CG_Data< float, size_t, int > * >( handle )->getTolerance();
-		return NO_ERROR;
-	}
+sparse_err_t sparse_cg_solve_dii(
+	sparse_cg_handle_t handle, double * const x, const double * const b
+) {
+	return sparse_cg_solve_impl< double, int, int >( handle, x, b );
+}
 
-	sparse_err_t sparse_cg_get_tolerance_szz(
-		const sparse_cg_handle_t handle, float * const tol
-	) {
-		if( handle == nullptr || tol == nullptr ) { return NULL_ARGUMENT; }
-		*tol =
-			static_cast< CG_Data< float, size_t, size_t > * >( handle )->getTolerance();
-		return NO_ERROR;
-	}
+sparse_err_t sparse_cg_solve_dzi(
+	sparse_cg_handle_t handle, double * const x, const double * const b
+) {
+	return sparse_cg_solve_impl< double, size_t, int >( handle, x, b );
+}
 
-	sparse_err_t sparse_cg_get_tolerance_dii(
-		const sparse_cg_handle_t handle, double * const tol
-	) {
-		if( handle == nullptr || tol == nullptr ) { return NULL_ARGUMENT; }
-		*tol = static_cast< CG_Data< double, int, int > * >( handle )->getTolerance();
-		return NO_ERROR;
-	}
+sparse_err_t sparse_cg_solve_dzz(
+	sparse_cg_handle_t handle, double * const x, const double * const b
+) {
+	return sparse_cg_solve_impl< double, size_t, size_t >( handle, x, b );
+}
 
-	sparse_err_t sparse_cg_get_tolerance_dzi(
-		const sparse_cg_handle_t handle, double * const tol
-	) {
-		if( handle == nullptr || tol == nullptr ) { return NULL_ARGUMENT; }
-		*tol =
-			static_cast< CG_Data< double, size_t, int > * >( handle )->getTolerance();
-		return NO_ERROR;
-	}
+template< typename T, typename NZI, typename RSI >
+static sparse_err_t sparse_cg_destroy_impl( sparse_cg_handle_t handle ) {
+	if( handle == nullptr ) { return NULL_ARGUMENT; }
+	delete static_cast< CG_Data< T, NZI, RSI > * >( handle );
+	return NO_ERROR;
+}
 
-	sparse_err_t sparse_cg_get_tolerance_dzz(
-		const sparse_cg_handle_t handle, double * const tol
-	) {
-		if( handle == nullptr || tol == nullptr ) { return NULL_ARGUMENT; }
-		*tol =
-			static_cast< CG_Data< double, size_t, size_t > * >( handle )->getTolerance();
-		return NO_ERROR;
-	}
+sparse_err_t sparse_cg_destroy_sii( sparse_cg_handle_t handle ) {
+	return sparse_cg_destroy_impl< float, int, int >( handle );
+}
 
-	sparse_err_t sparse_cg_set_tolerance_sii(
-		sparse_cg_handle_t handle, const float tol
-	) {
-		if( handle == nullptr ) { return NULL_ARGUMENT; }
-		static_cast< CG_Data< float, int, int > * >( handle )->
-			setTolerance( tol );
-		return NO_ERROR;
-	}
+sparse_err_t sparse_cg_destroy_szi( sparse_cg_handle_t handle ) {
+	return sparse_cg_destroy_impl< float, size_t, int >( handle );
+}
 
-	sparse_err_t sparse_cg_set_tolerance_szi(
-		sparse_cg_handle_t handle, const float tol
-	) {
-		if( handle == nullptr ) { return NULL_ARGUMENT; }
-		static_cast< CG_Data< float, size_t, int > * >( handle )->
-			setTolerance( tol );
-		return NO_ERROR;
-	}
+sparse_err_t sparse_cg_destroy_szz( sparse_cg_handle_t handle ) {
+	return sparse_cg_destroy_impl< float, size_t, size_t >( handle );
+}
 
-	sparse_err_t sparse_cg_set_tolerance_szz(
-		sparse_cg_handle_t handle, const float tol
-	) {
-		if( handle == nullptr ) { return NULL_ARGUMENT; }
-		static_cast< CG_Data< float, size_t, size_t > * >( handle )->
-			setTolerance( tol );
-		return NO_ERROR;
-	}
+sparse_err_t sparse_cg_destroy_dii( sparse_cg_handle_t handle ) {
+	return sparse_cg_destroy_impl< double, int, int >( handle );
+}
 
-	sparse_err_t sparse_cg_set_tolerance_dii(
-		sparse_cg_handle_t handle, const double tol
-	) {
-		if( handle == nullptr ) { return NULL_ARGUMENT; }
-		static_cast< CG_Data< double, int, int > * >( handle )->
-			setTolerance( tol );
-		return NO_ERROR;
-	}
+sparse_err_t sparse_cg_destroy_dzi( sparse_cg_handle_t handle ) {
+	return sparse_cg_destroy_impl< double, size_t, int >( handle );
+}
 
-	sparse_err_t sparse_cg_set_tolerance_dzi(
-		sparse_cg_handle_t handle, const double tol
-	) {
-		if( handle == nullptr ) { return NULL_ARGUMENT; }
-		static_cast< CG_Data< double, size_t, int > * >( handle )->
-			setTolerance( tol );
-		return NO_ERROR;
-	}
-
-	sparse_err_t sparse_cg_set_tolerance_dzz(
-		sparse_cg_handle_t handle, const double tol
-	) {
-		if( handle == nullptr ) { return NULL_ARGUMENT; }
-		static_cast< CG_Data< double, size_t, int > * >( handle )->
-			setTolerance( tol );
-		return NO_ERROR;
-	}
-
-	sparse_err_t sparse_cg_get_residual_sii(
-		const sparse_cg_handle_t handle, float * const tol
-	) {
-		if( handle == nullptr || tol == nullptr ) { return NULL_ARGUMENT; }
-		*tol = static_cast< CG_Data< float, int, int > * >( handle )->getResidual();
-		return NO_ERROR;
-	}
-
-	sparse_err_t sparse_cg_get_residual_szi(
-		const sparse_cg_handle_t handle, float * const tol
-	) {
-		if( handle == nullptr || tol == nullptr ) { return NULL_ARGUMENT; }
-		*tol =
-			static_cast< CG_Data< float, size_t, int > * >( handle )->getResidual();
-		return NO_ERROR;
-	}
-
-	sparse_err_t sparse_cg_get_residual_szz(
-		const sparse_cg_handle_t handle, float * const tol
-	) {
-		if( handle == nullptr || tol == nullptr ) { return NULL_ARGUMENT; }
-		*tol =
-			static_cast< CG_Data< float, size_t, size_t > * >( handle )->getResidual();
-		return NO_ERROR;
-	}
-
-	sparse_err_t sparse_cg_get_residual_dii(
-		const sparse_cg_handle_t handle, double * const tol
-	) {
-		if( handle == nullptr || tol == nullptr ) { return NULL_ARGUMENT; }
-		*tol = static_cast< CG_Data< double, int, int > * >( handle )->getResidual();
-		return NO_ERROR;
-	}
-
-	sparse_err_t sparse_cg_get_residual_dzi(
-		const sparse_cg_handle_t handle, double * const tol
-	) {
-		if( handle == nullptr || tol == nullptr ) { return NULL_ARGUMENT; }
-		*tol =
-			static_cast< CG_Data< double, size_t, int > * >( handle )->getResidual();
-		return NO_ERROR;
-	}
-
-	sparse_err_t sparse_cg_get_residual_dzz(
-		const sparse_cg_handle_t handle, double * const tol
-	) {
-		if( handle == nullptr || tol == nullptr ) { return NULL_ARGUMENT; }
-		*tol =
-			static_cast< CG_Data< double, size_t, size_t > * >( handle )->getResidual();
-		return NO_ERROR;
-	}
-
-	sparse_err_t sparse_cg_get_iter_count_sii(
-		const sparse_cg_handle_t handle, size_t * const iters
-	) {
-		if( handle == nullptr || iters == nullptr ) { return NULL_ARGUMENT; }
-		*iters = static_cast< CG_Data< float, int, int > * >( handle )->getIters();
-		return NO_ERROR;
-	}
-
-	sparse_err_t sparse_cg_get_iter_count_szi(
-		const sparse_cg_handle_t handle, size_t * const iters
-	) {
-		if( handle == nullptr || iters == nullptr ) { return NULL_ARGUMENT; }
-		*iters = static_cast< CG_Data< float, size_t, int > * >( handle )->getIters();
-		return NO_ERROR;
-	}
-
-	sparse_err_t sparse_cg_get_iter_count_szz(
-		const sparse_cg_handle_t handle, size_t * const iters
-	) {
-		if( handle == nullptr || iters == nullptr ) { return NULL_ARGUMENT; }
-		*iters =
-			static_cast< CG_Data< float, size_t, size_t > * >( handle )->getIters();
-		return NO_ERROR;
-	}
-
-	sparse_err_t sparse_cg_get_iter_count_dii(
-		const sparse_cg_handle_t handle, size_t * const iters
-	) {
-		if( handle == nullptr || iters == nullptr ) { return NULL_ARGUMENT; }
-		*iters = static_cast< CG_Data< double, int, int > * >( handle )->getIters();
-		return NO_ERROR;
-	}
-
-	sparse_err_t sparse_cg_get_iter_count_dzi(
-		const sparse_cg_handle_t handle, size_t * const iters
-	) {
-		if( handle == nullptr || iters == nullptr ) { return NULL_ARGUMENT; }
-		*iters = static_cast< CG_Data< double, size_t, int > * >( handle )->getIters();
-		return NO_ERROR;
-	}
-
-	sparse_err_t sparse_cg_get_iter_count_dzz(
-		const sparse_cg_handle_t handle, size_t * const iters
-	) {
-		if( handle == nullptr || iters == nullptr ) { return NULL_ARGUMENT; }
-		*iters =
-			static_cast< CG_Data< double, size_t, size_t > * >( handle )->getIters();
-		return NO_ERROR;
-	}
-
-	sparse_err_t sparse_cg_set_max_iter_count_sii(
-		sparse_cg_handle_t handle, const size_t max_iters
-	) {
-		if( handle == nullptr ) { return NULL_ARGUMENT; }
-		static_cast< CG_Data< float, int, int > * >( handle )->
-			setMaxIters( max_iters );
-		return NO_ERROR;
-	}
-
-	sparse_err_t sparse_cg_set_max_iter_count_szi(
-		sparse_cg_handle_t handle, const size_t max_iters
-	) {
-		if( handle == nullptr ) { return NULL_ARGUMENT; }
-		static_cast< CG_Data< float, size_t, int > * >( handle )->
-			setMaxIters( max_iters );
-		return NO_ERROR;
-	}
-
-	sparse_err_t sparse_cg_set_max_iter_count_szz(
-		sparse_cg_handle_t handle, const size_t max_iters
-	) {
-		if( handle == nullptr ) { return NULL_ARGUMENT; }
-		static_cast< CG_Data< float, size_t, size_t > * >( handle )->
-			setMaxIters( max_iters );
-		return NO_ERROR;
-	}
-
-	sparse_err_t sparse_cg_set_max_iter_count_dii(
-		sparse_cg_handle_t handle, const size_t max_iters
-	) {
-		if( handle == nullptr ) { return NULL_ARGUMENT; }
-		static_cast< CG_Data< double, int, int > * >( handle )->
-			setMaxIters( max_iters );
-		return NO_ERROR;
-	}
-
-	sparse_err_t sparse_cg_set_max_iter_count_dzi(
-		sparse_cg_handle_t handle, const size_t max_iters
-	) {
-		if( handle == nullptr ) { return NULL_ARGUMENT; }
-		static_cast< CG_Data< double, size_t, int > * >( handle )->
-			setMaxIters( max_iters );
-		return NO_ERROR;
-	}
-
-	sparse_err_t sparse_cg_set_max_iter_count_dzz(
-		sparse_cg_handle_t handle, const size_t max_iters
-	) {
-		if( handle == nullptr ) { return NULL_ARGUMENT; }
-		static_cast< CG_Data< double, size_t, size_t > * >( handle )->
-			setMaxIters( max_iters );
-		return NO_ERROR;
-	}
-
-	sparse_err_t sparse_cg_solve_sii(
-		sparse_cg_handle_t handle, float * const x, const float * const b
-	) {
-		if( handle == nullptr || x == nullptr || b == nullptr ) {
-			return NULL_ARGUMENT;
-		}
-		auto &data = * static_cast< CG_Data< float, int, int > * >( handle );
-		grb::Vector< float > alp_x =
-			grb::internal::template wrapRawVector< float >( data.getSize(), x );
-		const grb::Vector< float > alp_b =
-			grb::internal::template wrapRawVector< float >( data.getSize(), b );
-		const grb::RC rc = data.solve( alp_x, alp_b );
-		// ALP spec should not allow going out of memory
-		assert( rc != grb::OUTOFMEM );
-		// should we have a return code for failed convergence?
-		if( rc == grb::FAILED ) {
-			std::cerr << "Warning: call to sparse_cg_solve_??? did not converge\n";
-		} else if( rc == grb::PANIC ) {
-			return UNKNOWN;
-		} else if( rc != grb::SUCCESS ) {
-			std::cerr << "Warning: ALP should not have returned the following error\n"
-				<< "\t" << grb::toString( rc ) << "\n"
-				<< "Please submit a bug report.\n";
-			return UNKNOWN;
-		}
-		return NO_ERROR;
-	}
-
-	sparse_err_t sparse_cg_solve_szi(
-		sparse_cg_handle_t handle, float * const x, const float * const b
-	) {
-		if( handle == nullptr || x == nullptr || b == nullptr ) {
-			return NULL_ARGUMENT;
-		}
-		auto &data = * static_cast< CG_Data< float, size_t, int > * >( handle );
-		grb::Vector< float > alp_x =
-			grb::internal::template wrapRawVector< float >( data.getSize(), x );
-		const grb::Vector< float > alp_b =
-			grb::internal::template wrapRawVector< float >( data.getSize(), b );
-		const grb::RC rc = data.solve( alp_x, alp_b );
-		// ALP spec should not allow going out of memory
-		assert( rc != grb::OUTOFMEM );
-		// should we have a return code for failed convergence?
-		if( rc == grb::FAILED ) {
-			std::cerr << "Warning: call to sparse_cg_solve_??? did not converge\n";
-		} else if( rc == grb::PANIC ) {
-			return UNKNOWN;
-		} else if( rc != grb::SUCCESS ) {
-			std::cerr << "Warning: ALP should not have returned the following error\n"
-				<< "\t" << grb::toString( rc ) << "\n"
-				<< "Please submit a bug report.\n";
-			return UNKNOWN;
-		}
-		return NO_ERROR;
-	}
-
-	sparse_err_t sparse_cg_solve_szz(
-		sparse_cg_handle_t handle, float * const x, const float * const b
-	) {
-		if( handle == nullptr || x == nullptr || b == nullptr ) {
-			return NULL_ARGUMENT;
-		}
-		auto &data = * static_cast< CG_Data< float, size_t, size_t > * >( handle );
-		grb::Vector< float > alp_x =
-			grb::internal::template wrapRawVector< float >( data.getSize(), x );
-		const grb::Vector< float > alp_b =
-			grb::internal::template wrapRawVector< float >( data.getSize(), b );
-		const grb::RC rc = data.solve( alp_x, alp_b );
-		// ALP spec should not allow going out of memory
-		assert( rc != grb::OUTOFMEM );
-		// should we have a return code for failed convergence?
-		if( rc == grb::FAILED ) {
-			std::cerr << "Warning: call to sparse_cg_solve_??? did not converge\n";
-		} else if( rc == grb::PANIC ) {
-			return UNKNOWN;
-		} else if( rc != grb::SUCCESS ) {
-			std::cerr << "Warning: ALP should not have returned the following error\n"
-				<< "\t" << grb::toString( rc ) << "\n"
-				<< "Please submit a bug report.\n";
-			return UNKNOWN;
-		}
-		return NO_ERROR;
-	}
-
-	sparse_err_t sparse_cg_solve_dii(
-		sparse_cg_handle_t handle, double * const x, const double * const b
-	) {
-		if( handle == nullptr || x == nullptr || b == nullptr ) {
-			return NULL_ARGUMENT;
-		}
-		auto &data = * static_cast< CG_Data< double, int, int > * >( handle );
-		grb::Vector< double > alp_x =
-			grb::internal::template wrapRawVector< double >( data.getSize(), x );
-		const grb::Vector< double > alp_b =
-			grb::internal::template wrapRawVector< double >( data.getSize(), b );
-		const grb::RC rc = data.solve( alp_x, alp_b );
-		// ALP spec should not allow going out of memory
-		assert( rc != grb::OUTOFMEM );
-		// should we have a return code for failed convergence?
-		if( rc == grb::FAILED ) {
-			std::cerr << "Warning: call to sparse_cg_solve_??? did not converge\n";
-		} else if( rc == grb::PANIC ) {
-			return UNKNOWN;
-		} else if( rc != grb::SUCCESS ) {
-			std::cerr << "Warning: ALP should not have returned the following error\n"
-				<< "\t" << grb::toString( rc ) << "\n"
-				<< "Please submit a bug report.\n";
-			return UNKNOWN;
-		}
-		return NO_ERROR;
-	}
-
-	sparse_err_t sparse_cg_solve_dzi(
-		sparse_cg_handle_t handle, double * const x, const double * const b
-	) {
-		if( handle == nullptr || x == nullptr || b == nullptr ) {
-			return NULL_ARGUMENT;
-		}
-		auto &data = * static_cast< CG_Data< double, size_t, int > * >( handle );
-		grb::Vector< double > alp_x =
-			grb::internal::template wrapRawVector< double >( data.getSize(), x );
-		const grb::Vector< double > alp_b =
-			grb::internal::template wrapRawVector< double >( data.getSize(), b );
-		const grb::RC rc = data.solve( alp_x, alp_b );
-		// ALP spec should not allow going out of memory
-		assert( rc != grb::OUTOFMEM );
-		// should we have a return code for failed convergence?
-		if( rc == grb::FAILED ) {
-			std::cerr << "Warning: call to sparse_cg_solve_??? did not converge\n";
-		} else if( rc == grb::PANIC ) {
-			return UNKNOWN;
-		} else if( rc != grb::SUCCESS ) {
-			std::cerr << "Warning: ALP should not have returned the following error\n"
-				<< "\t" << grb::toString( rc ) << "\n"
-				<< "Please submit a bug report.\n";
-			return UNKNOWN;
-		}
-		return NO_ERROR;
-	}
-
-	sparse_err_t sparse_cg_solve_dzz(
-		sparse_cg_handle_t handle, double * const x, const double * const b
-	) {
-		if( handle == nullptr || x == nullptr || b == nullptr ) {
-			return NULL_ARGUMENT;
-		}
-		auto &data = * static_cast< CG_Data< double, size_t, size_t > * >( handle );
-		grb::Vector< double > alp_x =
-			grb::internal::template wrapRawVector< double >( data.getSize(), x );
-		const grb::Vector< double > alp_b =
-			grb::internal::template wrapRawVector< double >( data.getSize(), b );
-		const grb::RC rc = data.solve( alp_x, alp_b );
-		// ALP spec should not allow going out of memory
-		assert( rc != grb::OUTOFMEM );
-		// should we have a return code for failed convergence?
-		if( rc == grb::FAILED ) {
-			std::cerr << "Warning: call to sparse_cg_solve_??? did not converge\n";
-		} else if( rc == grb::PANIC ) {
-			return UNKNOWN;
-		} else if( rc != grb::SUCCESS ) {
-			std::cerr << "Warning: ALP should not have returned the following error\n"
-				<< "\t" << grb::toString( rc ) << "\n"
-				<< "Please submit a bug report.\n";
-			return UNKNOWN;
-		}
-		return NO_ERROR;
-	}
-
-	sparse_err_t sparse_cg_destroy_sii( sparse_cg_handle_t handle ) {
-		if( handle == nullptr ) { return NULL_ARGUMENT; }
-		delete static_cast< CG_Data< float, int, int > * >( handle );
-		return NO_ERROR;
-	}
-
-	sparse_err_t sparse_cg_destroy_szi( sparse_cg_handle_t handle ) {
-		if( handle == nullptr ) { return NULL_ARGUMENT; }
-		delete static_cast< CG_Data< float, size_t, int > * >( handle );
-		return NO_ERROR;
-	}
-
-	sparse_err_t sparse_cg_destroy_szz( sparse_cg_handle_t handle ) {
-		if( handle == nullptr ) { return NULL_ARGUMENT; }
-		delete static_cast< CG_Data< float, size_t, size_t > * >( handle );
-		return NO_ERROR;
-	}
-
-	sparse_err_t sparse_cg_destroy_dii( sparse_cg_handle_t handle ) {
-		if( handle == nullptr ) { return NULL_ARGUMENT; }
-		delete static_cast< CG_Data< double, int, int > * >( handle );
-		return NO_ERROR;
-	}
-
-	sparse_err_t sparse_cg_destroy_dzi( sparse_cg_handle_t handle ) {
-		if( handle == nullptr ) { return NULL_ARGUMENT; }
-		delete static_cast< CG_Data< double, size_t, int > * >( handle );
-		return NO_ERROR;
-	}
-
-	sparse_err_t sparse_cg_destroy_dzz( sparse_cg_handle_t handle ) {
-		if( handle == nullptr ) { return NULL_ARGUMENT; }
-		delete static_cast< CG_Data< double, size_t, size_t > * >( handle );
-		return NO_ERROR;
-	}
-
-} // end extern "C"
-
+sparse_err_t sparse_cg_destroy_dzz( sparse_cg_handle_t handle ) {
+	return sparse_cg_destroy_impl< double, size_t, size_t >( handle );
+}

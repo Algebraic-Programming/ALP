@@ -1,5 +1,4 @@
 
-
 /*
  *   Copyright 2024 Huawei Technologies Co., Ltd.
  *
@@ -38,7 +37,6 @@
 extern "C" {
 #endif
 
-
 typedef void KmlSolverTask;
 
 #define KMLSS_NO_ERROR 0
@@ -63,6 +61,7 @@ typedef void KmlSolverTask;
 #define KMLSS_INTERNAL_ERROR 1000001
 #define KMLSS_NOT_IMPLEMENTED 1000002
 
+#define KMLSS_OTHER_ERROR 2000002
 
 #define KMLSS_FILL_IN 0
 #define KMLSS_PERM 1
@@ -84,43 +83,53 @@ typedef void KmlSolverTask;
 #define KMLSS_PIVOTING_THRESHOLD 17
 #define KMLSS_MATCHING_TYPE 18
 
-int KmlIssCgInitSI( KmlSolverTask **, int, const float *, const int *, const int * );
-int KmlIssCgInitDI( KmlSolverTask **, int, const double *, const int *, const int * );
 
+#define KML_CG_PREFIXED( name ) KmlIssCg ## name
 
-int KmlIssCgSetUserPreconditionerSI(KmlSolverTask **, void *, int (*)(void *, float *) );
-int KmlIssCgSetUserPreconditionerDI(KmlSolverTask **, void *, int (*)(void *, double *) );
+// Initialization routines to create a solver task
+
+int KML_CG_PREFIXED( InitSI )( KmlSolverTask **, int, const float *, const int *, const int * );
+int KML_CG_PREFIXED( InitDI )( KmlSolverTask **, int, const double *, const int *, const int * );
+
+// Setters for preconditioner
+
+int KML_CG_PREFIXED( SetUserPreconditionerSI )( KmlSolverTask **, void *, int (*)( void *, float * ) );
+int KML_CG_PREFIXED( SetUserPreconditionerDI )( KmlSolverTask **, void *, int (*)( void *, double * ) );
+
+// Setters for solver parameters
 
 typedef int KML_SOLVER_PARAM;
+int KML_CG_PREFIXED( SetSII )( KmlSolverTask **, KML_SOLVER_PARAM, const int *, int );
+int KML_CG_PREFIXED( SetDII )( KmlSolverTask **, KML_SOLVER_PARAM, const int *, int );
+int KML_CG_PREFIXED( SetSIS )( KmlSolverTask **, KML_SOLVER_PARAM, const float *, int );
+int KML_CG_PREFIXED( SetDID )( KmlSolverTask **, KML_SOLVER_PARAM, const double *, int );
 
+// Analyze problem before solving
 
-int KmlIssCgSetSII(KmlSolverTask **, KML_SOLVER_PARAM, const int *, int );
-int KmlIssCgSetDII(KmlSolverTask **, KML_SOLVER_PARAM, const int *, int );
-int KmlIssCgSetSIS(KmlSolverTask **, KML_SOLVER_PARAM, const float *, int );
-int KmlIssCgSetDID(KmlSolverTask **, KML_SOLVER_PARAM, const double *, int );
+int KML_CG_PREFIXED( AnalyzeSI )( KmlSolverTask ** );
+int KML_CG_PREFIXED( AnalyzeDI )( KmlSolverTask ** );
 
+// Analyze a sparse matrix and change it storage mode
 
-int KmlIssCgAnalyzeSI(KmlSolverTask ** );
-int KmlIssCgAnalyzeDI(KmlSolverTask ** );
+int KML_CG_PREFIXED( FactorizeSI )( KmlSolverTask ** );
+int KML_CG_PREFIXED( FactorizeDI )( KmlSolverTask ** );
 
+// Run the solver
 
-int KmlIssCgFactorizeSI(KmlSolverTask ** );
-int KmlIssCgFactorizeDI(KmlSolverTask ** );
+int KML_CG_PREFIXED( SolveSI )( KmlSolverTask **, int, float *, int, const float *, int );
+int KML_CG_PREFIXED( SolveDI )( KmlSolverTask **, int, double *, int, const double *, int );
 
+// Get parameters after solving
 
-int KmlIssCgSolveSI(KmlSolverTask **, int, float *, int, const float *, int );
-int KmlIssCgSolveDI(KmlSolverTask **, int, double *, int, const double *, int );
+int KML_CG_PREFIXED( GetSII )( KmlSolverTask **, KML_SOLVER_PARAM, int *, int );
+int KML_CG_PREFIXED( GetDII )( KmlSolverTask **, KML_SOLVER_PARAM, int *, int );
+int KML_CG_PREFIXED( GetSIS )( KmlSolverTask **, KML_SOLVER_PARAM, float *, int );
+int KML_CG_PREFIXED( GetDID )( KmlSolverTask **, KML_SOLVER_PARAM, double *, int );
 
+// De-allocate data and destroy the solver task
 
-int KmlIssCgGetSII(KmlSolverTask **, KML_SOLVER_PARAM, int *, int );
-int KmlIssCgGetDII(KmlSolverTask **, KML_SOLVER_PARAM, int *, int );
-int KmlIssCgGetSIS(KmlSolverTask **, KML_SOLVER_PARAM, float *, int );
-int KmlIssCgGetDID(KmlSolverTask **, KML_SOLVER_PARAM, double *, int );
-
-
-int KmlIssCgCleanSI(KmlSolverTask **);
-int KmlIssCgCleanDI(KmlSolverTask **);
-
+int KML_CG_PREFIXED( CleanSI )( KmlSolverTask ** );
+int KML_CG_PREFIXED( CleanDI )( KmlSolverTask ** );
 
 #ifdef __cplusplus
 } // end extern "C"
