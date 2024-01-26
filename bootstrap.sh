@@ -85,8 +85,10 @@ the location where LPF is installed"
 	echo "  --show                              - show generation commands instead of running them"
 	echo "  --delete-files                      - delete files in the current directory without asking for confirmation"
 	echo "  --spblas-prefix                     - prefix for spblas routines and for compilation target ('kml_' if none)"
+	echo "  --no-solver-lib                     - disable generating the target for the library of lines solvers (against the nonblocking backend)"
+	echo "  --enable-extra-solver-lib           - enable libraries for solvers compiled against the reference and OMP backends"
 	echo "  --help                              - prints this help"
-	echo " "
+	echo
 	echo "Notes:"
 	echo "  - If the install directory does not exist, it will be created."
 	echo "  - The --prefix path is mandatory. No make targets will execute"
@@ -113,6 +115,8 @@ generator=
 delete_files=no
 DATASETS_PATH=
 spblas_prefix=
+no_solver_lib=
+enable_extra_solver_lib=no
 
 if [[ "$#" -lt 1 ]]; then
 	echo "No argument given, at least --prefix=<path/to/install/directory/> is mandatory"
@@ -189,6 +193,12 @@ or assume default paths (--with-lpf)"
 			;;
 	--spblas-prefix=*)
 			spblas_prefix="${arg#--spblas-prefix=}"
+			;;
+	--no-solver-lib)
+			no_solver_lib="yes"
+			;;
+	--enable-extra-solver-lib)
+			enable_extra_solver_lib="yes"
 			;;
 	*)
 			echo "Unknown argument ${arg}"
@@ -359,6 +369,13 @@ the current directory before invocation or confirm the deletion of its content w
 	if [[ ! -z "${spblas_prefix}" ]]; then
 		CMAKE_OPTS+=" -DSPBLAS_PREFIX='${spblas_prefix}'"
 	fi
+	if [[ "${no_solver_lib}" == "yes" ]]; then
+		CMAKE_OPTS+=" -DENABLE_SOLVER_LIB=OFF"
+	fi
+	if [[ "${enable_extra_solver_lib}" == "yes" ]]; then
+		CMAKE_OPTS+=" -DENABLE_EXTRA_SOLVER_LIBS=ON"
+	fi
+
 
 	if [[ ! -z "${generator}" ]]; then
 		CMAKE_OPTS+=" -G '${generator}'"

@@ -108,7 +108,8 @@ option( DATASETS_DIR "Directory with datasets for tests" )
 option( GNN_DATASET_PATH "Directory with the GraphChallengeDataset dataset" )
 
 option( SPBLAS_PREFIX "Prefix for SparseBLAS library" OFF )
-message( STATUS "SPBLAS_PREFIX: ${SPBLAS_PREFIX}" )
+option( ENABLE_SOLVER_LIB "Compile linear solver against the nonblocking backend" ON )
+option( ENABLE_EXTRA_SOLVER_LIBS "Compile linear solver also against reference OMP and backends" OFF )
 
 
 ### CHECK THE OPTIONS ARE COHERENT
@@ -154,6 +155,22 @@ if( WITH_BSP1D_BACKEND )
 endif()
 if( WITH_HYBRID_BACKEND )
 	list( APPEND AVAILABLE_TEST_BACKENDS "hybrid" )
+endif()
+
+# Enable backends based on features
+if( ENABLE_SOLVER_LIB )
+	set( WITH_NONBLOCKING_BACKEND ON )
+	message( STATUS "Enabling compilation of nonblocking backend: required by extra solver libraries" )
+endif()
+
+if( ENABLE_EXTRA_SOLVER_LIBS )
+	set( WITH_REFERENCE_BACKEND ON )
+	message( STATUS "Enabling compilation of reference backend: required by extra solver libraries" )
+endif()
+
+if( ENABLE_EXTRA_SOLVER_LIBS )
+	set( WITH_OMP_BACKEND ON )
+	message( STATUS "Enabling compilation of reference_omp backend: required by extra solver libraries" )
 endif()
 
 # Enabling reference_omp backend if bsp1d is active

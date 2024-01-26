@@ -25,6 +25,7 @@ function( add_transition_library target_name lib_type lib_name src1 )
 	set( multiValueArgs
 		"SOURCES"
 		"PUBLIC_LINK_LIBRARIES"
+		"PRIVATE_LINK_LIBRARIES"
 	)
 	cmake_parse_arguments( parsed "" "" "${multiValueArgs}" "SOURCES;${src1};${ARGN}" )
 
@@ -35,7 +36,7 @@ function( add_transition_library target_name lib_type lib_name src1 )
 	)
 
 	target_link_libraries( ${target_name} PUBLIC transition_headers ${parsed_PUBLIC_LINK_LIBRARIES} )
-	target_link_libraries( ${target_name} PRIVATE backend_flags )
+	target_link_libraries( ${target_name} PRIVATE backend_flags ${parsed_PRIVATE_LINK_LIBRARIES} )
 	add_dependencies( libs ${target_name} )
 	install( TARGETS ${target_name} EXPORT GraphBLASTargets
 		ARCHIVE DESTINATION "${SHMEM_BACKEND_INSTALL_DIR}"
@@ -57,31 +58,39 @@ if( WITH_REFERENCE_BACKEND )
 	)
 	target_compile_definitions( ${_SPBLAS_PREFIX}sparseblas_static PUBLIC SPBLAS_PREFIX=${_SPBLAS_PREFIX} )
 
-	add_transition_library( spsolver_static STATIC "spsolver" ${CMAKE_CURRENT_SOURCE_DIR}/solver.cpp
-		PUBLIC_LINK_LIBRARIES backend_reference
-	)
+	if( ENABLE_EXTRA_SOLVER_LIBS )
+		add_transition_library( spsolver_sequential STATIC "spsolver_sequential" ${CMAKE_CURRENT_SOURCE_DIR}/solver.cpp
+			PRIVATE_LINK_LIBRARIES backend_reference
+		)
+	endif()
 endif()
 
 if( WITH_OMP_BACKEND )
 	add_transition_library( sparseblas_omp_static STATIC "sparseblas_omp" ${CMAKE_CURRENT_SOURCE_DIR}/sparseblas.cpp
-		PUBLIC_LINK_LIBRARIES backend_reference_omp
+		PRIVATE_LINK_LIBRARIES backend_reference_omp
 	)
 
 	add_transition_library( kml_sparseblas_omp_static STATIC "kml_sparseblas_omp" ${CMAKE_CURRENT_SOURCE_DIR}/sparseblas.cpp
-		PUBLIC_LINK_LIBRARIES backend_reference_omp
+		PRIVATE_LINK_LIBRARIES backend_reference_omp
 	)
 
-	add_transition_library( spsolver_omp_static STATIC "spsolver_omp" ${CMAKE_CURRENT_SOURCE_DIR}/solver.cpp
-		PUBLIC_LINK_LIBRARIES backend_reference_omp
-	)
+	if( ENABLE_EXTRA_SOLVER_LIBS )
+		add_transition_library( spsolver_shmem_blocking STATIC "spsolver_shmem_blocking" ${CMAKE_CURRENT_SOURCE_DIR}/solver.cpp
+			PRIVATE_LINK_LIBRARIES backend_reference_omp
+		)
+	endif()
 endif()
 
 if( WITH_NONBLOCKING_BACKEND )
-	add_transition_library( spsolver_nonblocking_static STATIC "spsolver_nonblocking" ${CMAKE_CURRENT_SOURCE_DIR}/solver.cpp
-		PUBLIC_LINK_LIBRARIES backend_nonblocking
-	)
+	if( ENABLE_SOLVER_LIB )
+		add_transition_library( spsolver_shmem_parallel STATIC "spsolver_shmem_parallel" ${CMAKE_CURRENT_SOURCE_DIR}/solver.cpp
+			PRIVATE_LINK_LIBRARIES backend_nonblocking
+		)
+	endif()
 
+	# same binary name of KML library
+	# https://www.hikunpeng.com/document/detail/en/kunpengaccel/math-lib/devg-kml/kunpengaccel_kml_16_0011.html
 	add_transition_library( ksolver STATIC "ksolver" ${CMAKE_CURRENT_SOURCE_DIR}/kml_iss.cpp
-		PUBLIC_LINK_LIBRARIES spsolver_nonblocking_static
+		PRIVATE_LINK_LIBRARIES spsolver_nonblocking_static
 	)
 endif()
