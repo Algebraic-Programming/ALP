@@ -587,6 +587,12 @@ for MODE in ${MODES}; do
 				grep 'Test OK' ${TEST_OUT_DIR}/outer_${MODE}_${BACKEND}_${P}_${T}.log || echo "Test FAILED"
 				echo " "
 
+				echo ">>>      [x]           [ ]       Testing grb::maskedOuter on a small matrix"
+				$runner ${TEST_BIN_DIR}/maskedOuter_${MODE}_${BACKEND} &> ${TEST_OUT_DIR}/maskedOuter_${MODE}_${BACKEND}_${P}_${T}.log
+				head -1 ${TEST_OUT_DIR}/maskedOuter_${MODE}_${BACKEND}_${P}_${T}.log
+				grep 'Test OK' ${TEST_OUT_DIR}/maskedOuter_${MODE}_${BACKEND}_${P}_${T}.log || echo "Test FAILED"
+				echo " "
+
 				echo ">>>      [x]           [ ]       Testing vector times matrix using the normal (+,*)"
 				echo "                                 semiring over integers on a diagonal matrix"
 				echo " "
