@@ -197,6 +197,8 @@ namespace grb {
 
 		friend class PinnedVector< D, nonblocking >;
 
+		// Native interface friends
+
 		template< typename ValueType, Backend backend >
 		friend Vector<
 			ValueType, backend,
