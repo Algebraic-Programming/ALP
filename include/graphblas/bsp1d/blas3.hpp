@@ -206,13 +206,12 @@ namespace grb {
 	}
 
 	template<
-		Descriptor descr,
+		Descriptor descr = descriptors::no_operation,
 		class SelectionOperator,
 		typename Tin,
 		typename RITin, typename CITin, typename NITin,
 		typename Tout,
-		typename RITout, typename CITout, typename NITout,
-		Backend backend
+		typename RITout, typename CITout, typename NITout
 	>
 	RC select(
 		Matrix< Tout, BSP1D, RITout, CITout, NITout >& out,
@@ -248,7 +247,7 @@ namespace grb {
 
 
 	template<
-		Descriptor descr,
+		Descriptor descr = descriptors::no_operation,
 		class PredicateFunction,
 		typename Tin,
 		typename RITin, typename CITin, typename NITin,
