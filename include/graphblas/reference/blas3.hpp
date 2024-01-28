@@ -72,8 +72,9 @@ namespace grb {
 		RC select_generic(
 			Matrix< Tout, reference, RITout, CITout, NITout >& out,
 			const Matrix< Tin, reference, RITin, CITin, NITin >& in,
-			const Operator op = Operator(),
-			const Phase& phase = EXECUTE
+			const std::pair< RITin, CITin >& in_coordinates,
+			const Operator op,
+			const Phase& phase
 		) {
 			RC rc = SUCCESS;
 			const Tin identity = Tin();
@@ -114,8 +115,10 @@ namespace grb {
 					for( auto i = start_row; i < end_row; ++i ) {
 						for( auto k = in_raw.col_start[ i ]; k < in_raw.col_start[ i + 1 ]; ++k ) {
 							const auto j = in_raw.row_index[ k ];
+							const auto r = i + in_coordinates.first;
+							const auto c = j + in_coordinates.second;
 							const Tin value = in_raw.getValue( k, identity );
-							if( op.apply( i, j, value ) ) {
+							if( op.apply( r, c, value ) ) {
 								nzc++;
 							}
 						}
@@ -146,8 +149,10 @@ namespace grb {
 				for( size_t i = 0; i < m; ++i ) {
 					for( size_t k = in_raw.col_start[ i ]; k < in_raw.col_start[ i + 1 ]; ++k ) {
 						const auto j = in_raw.row_index[ k ];
+						const auto r = i + in_coordinates.first;
+						const auto c = j + in_coordinates.second;
 						const Tin value = in_raw.getValue( k, identity );
-						if( not op.apply( i, j, value) ) continue;
+						if( not op.apply( r, c, value) ) continue;
 						++out_ccs.col_start[ j + 1 ];
 					}
 				}
@@ -170,8 +175,10 @@ namespace grb {
 			for( size_t i = 0; i < m; ++i ) {
 				for( size_t k = in_raw.col_start[ i ]; k < in_raw.col_start[ i + 1 ]; ++k ) {
 					const auto j = in_raw.row_index[ k ];
+					const auto r = i + in_coordinates.first;
+					const auto c = j + in_coordinates.second;
 					const Tin value = in_raw.getValue( k, identity );
-					if( not op.apply( i, j, value) ) continue;
+					if( not op.apply( r, c, value) ) continue;
 #ifdef _DEBUG
 					std::cout << "\tKeeping value at: " << i << ", " << j << " -> idx=" << nzc << "\n";
 #endif
@@ -195,6 +202,36 @@ namespace grb {
 			internal::setCurrentNonzeroes( out, nzc );
 
 			return rc;
+		}
+
+		template<
+			Descriptor descr = descriptors::no_operation,
+			class PredicateFunction,
+			typename Tin,
+			typename RITin, typename CITin, typename NITin,
+			typename Tout,
+			typename RITout, typename CITout, typename NITout
+		>
+		RC selectLambda_generic(
+			Matrix< Tout, reference, RITout, CITout, NITout >& out,
+			const Matrix< Tin, reference, RITin, CITin, NITin >& in,
+			const std::pair< RITin, CITin >& in_coordinates,
+			const PredicateFunction &lambda,
+			const Phase& phase
+		) {
+			struct LambdaOperator {
+				const PredicateFunction& op;
+
+				explicit LambdaOperator( const PredicateFunction& op_ ) : op( op_ ) {}
+
+				inline bool apply( const RITin & x, const CITin & y, const Tin & v ) const {
+					return op( x, y, v );
+				}
+			};
+
+			return internal::select_generic< descr >(
+				out, in, in_coordinates, LambdaOperator( lambda ), phase
+			);
 		}
 
 		/**
@@ -1486,7 +1523,14 @@ namespace grb {
 #endif
 
 		return internal::select_generic< descr >(
-			out, in, op, phase
+			out,
+			in,
+			std::make_pair(
+				static_cast< RITin >( 0 ),
+				static_cast< CITin >( 0 )
+			),
+			op,
+			phase
 		);
 	}
 
@@ -1512,18 +1556,15 @@ namespace grb {
 		std::cout << "In grb::selectLambda( reference )\n";
 #endif
 
-		struct LambdaOperator {
-			const PredicateFunction& op;
-
-			explicit LambdaOperator( const PredicateFunction& op_ ) : op( op_ ) {}
-
-			bool apply( const RITin & x, const CITin & y, const Tin & v ) const {
-				return op( x, y, v );
-			}
-		} lambdaOp( lambda );
-
-		return internal::select_generic< descr >(
-			out, in, lambdaOp, phase
+		return internal::selectLambda_generic< descr >(
+			out,
+			in,
+			std::make_pair(
+				static_cast< RITin >( 0 ),
+				static_cast< CITin >( 0 )
+			),
+			lambda,
+			phase
 		);
 	}
 

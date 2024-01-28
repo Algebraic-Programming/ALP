@@ -490,6 +490,13 @@ namespace grb {
 				return end( mode );
 			}
 
+			std::pair< RIT, CIT > getLocalCoordinates() const noexcept {
+				return std::make_pair(
+					_m / spmd< BSP1D >::nprocs(),
+					_n
+				);
+			}
+
 	};
 
 	namespace internal {

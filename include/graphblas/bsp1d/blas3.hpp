@@ -227,9 +227,10 @@ namespace grb {
 	) {
 		assert( phase != TRY );
 
-		const RC ret = select< descr >(
+		const RC ret = internal::select_generic< descr >(
 			internal::getLocal( out ),
 			internal::getLocal( in ),
+			in.getLocalCoordinates(),
 			op,
 			phase
 		);
@@ -266,9 +267,10 @@ namespace grb {
 	) {
 		assert( phase != TRY );
 
-		const RC ret = selectLambda< descr >(
+		const RC ret = internal::selectLambda_generic< descr >(
 			internal::getLocal( out ),
 			internal::getLocal( in ),
+			in.getLocalCoordinates(),
 			lambda,
 			phase
 		);
