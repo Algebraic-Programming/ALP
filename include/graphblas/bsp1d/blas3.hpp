@@ -205,6 +205,85 @@ namespace grb {
 		return internal::checkGlobalErrorStateOrClear( C, ret );
 	}
 
+	template<
+		Descriptor descr,
+		class SelectionOperator,
+		typename Tin,
+		typename RITin, typename CITin, typename NITin,
+		typename Tout,
+		typename RITout, typename CITout, typename NITout,
+		Backend backend
+	>
+	RC select(
+		Matrix< Tout, BSP1D, RITout, CITout, NITout >& out,
+		const Matrix< Tin, BSP1D, RITin, CITin, NITin >& in,
+		const SelectionOperator &op,
+		const Phase& phase = EXECUTE,
+		const typename std::enable_if<
+				!is_object< Tin >::value &&
+				!is_object< Tout >::value &&
+				is_single_matrix_coordinates_operator< SelectionOperator >::value
+		>::type * const = nullptr
+	) {
+		assert( phase != TRY );
+
+		const RC ret = select< descr >(
+			internal::getLocal( out ),
+			internal::getLocal( in ),
+			op,
+			phase
+		);
+
+		if( phase == RESIZE ) {
+			if( collectives<>::allreduce( ret, operators::any_or< RC >() ) != SUCCESS ) {
+				return PANIC;
+			} else {
+				return SUCCESS;
+			}
+		}
+		assert( phase == EXECUTE );
+		return internal::checkGlobalErrorStateOrClear( out, ret );
+	}
+
+
+	template<
+		Descriptor descr,
+		class PredicateFunction,
+		typename Tin,
+		typename RITin, typename CITin, typename NITin,
+		typename Tout,
+		typename RITout, typename CITout, typename NITout
+	>
+	RC selectLambda(
+		Matrix< Tout, BSP1D, RITout, CITout, NITout >& out,
+		const Matrix< Tin, BSP1D, RITin, CITin, NITin >& in,
+		const PredicateFunction &lambda,
+		const Phase& phase = EXECUTE,
+		const typename std::enable_if<
+				!is_object< Tin >::value &&
+				!is_object< Tout >::value
+		>::type * const = nullptr
+	) {
+		assert( phase != TRY );
+
+		const RC ret = selectLambda< descr >(
+			internal::getLocal( out ),
+			internal::getLocal( in ),
+			lambda,
+			phase
+		);
+
+		if( phase == RESIZE ) {
+			if( collectives<>::allreduce( ret, operators::any_or< RC >() ) != SUCCESS ) {
+				return PANIC;
+			} else {
+				return SUCCESS;
+			}
+		}
+		assert( phase == EXECUTE );
+		return internal::checkGlobalErrorStateOrClear( out, ret );
+	}
+
 } // namespace grb
 
 #endif
