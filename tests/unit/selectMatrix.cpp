@@ -166,43 +166,43 @@ void grb_program(const long& n, RC& rc) {
 	}
 
 	// Test 01: Select <diagonal> out of <identity>
-	rc = rc ? rc : test_case(I, operators::is_diagonal<int>(),
+	rc = rc ? rc : test_case(I, operators::select::is_diagonal<int>(),
 	          "Test 01: Select <diagonal> out of <identity>");
 
 	// Test 02: Select <diagonal> out of <transposed-identity>
-	rc = rc ? rc : test_case(I_tr, operators::is_diagonal<int>(),
+	rc = rc ? rc : test_case(I_tr, operators::select::is_diagonal<int>(),
 	          "Test 02: Select <diagonal> out of <transposed-identity>");
 
 	// Test 03: Select <strict-lower> out of <identity>
-	rc = rc ? rc : test_case(I, operators::is_strictly_lower<int>(),
+	rc = rc ? rc : test_case(I, operators::select::is_strictly_lower<int>(),
 	          "Test 03: Select <strict-lower> out of <identity>");
 
 	// Test 04: Select <strict-lower> out of <identity>
-	rc = rc ? rc : test_case(I_tr, operators::is_strictly_lower<int>(),
+	rc = rc ? rc : test_case(I_tr, operators::select::is_strictly_lower<int>(),
 	          "Test 04: Select <strict-lower> out of <transposed-identity>");
 
 	// Test 05: Select <strict-upper> out of <identity>
-	rc = rc ? rc : test_case(I, operators::is_strictly_upper<int>(),
+	rc = rc ? rc : test_case(I, operators::select::is_strictly_upper<int>(),
 	          "Test 05: Select <strict-lower> out of <identity>");
 
 	// Test 06: Select <strict-upper> out of <identity>
-	rc = rc ? rc : test_case(I_tr, operators::is_strictly_upper<int>(),
+	rc = rc ? rc : test_case(I_tr, operators::select::is_strictly_upper<int>(),
 	          "Test 06: Select <strict-lower> out of <transposed-identity>");
 
 	// Test 07: Select <lower-or-diag> out of <identity>
-	rc = rc ? rc : test_case(I, operators::is_lower_or_diagonal<int>(),
+	rc = rc ? rc : test_case(I, operators::select::is_lower_or_diagonal<int>(),
 	          "Test 07: Select <lower-or-diag> out of <identity>");
 
 	// Test 08: Select <lower-or-diag> out of <identity>
-	rc = rc ? rc : test_case(I_tr, operators::is_lower_or_diagonal<int>(),
+	rc = rc ? rc : test_case(I_tr, operators::select::is_lower_or_diagonal<int>(),
 	          "Test 08: Select <lower-or-diag> out of <transposed-identity>");
 
 	// Test 09: Select <upper-or-diag> out of <identity>
-	rc = rc ? rc : test_case(I, operators::is_upper_or_diagonal<int>(),
+	rc = rc ? rc : test_case(I, operators::select::is_upper_or_diagonal<int>(),
 	          "Test 09: Select <upper-or-diag> out of <identity>");
 
 	// Test 10: Select <upper-or-diag> out of <identity>
-	rc = rc ? rc : test_case(I_tr, operators::is_upper_or_diagonal<int>(),
+	rc = rc ? rc : test_case(I_tr, operators::select::is_upper_or_diagonal<int>(),
 	          "Test 10: Select <upper-or-diag> out of <transposed-identity>");
 }
 

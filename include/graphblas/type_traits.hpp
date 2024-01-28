@@ -119,7 +119,7 @@ namespace grb {
 	 * \ingroup typeTraits
 	 */
 	template< typename T >
-	struct is_single_matrix_coordinates_operator {
+	struct is_matrix_selection_operator {
 
 		/**
 		 * Whether \a T is an ALP operator.

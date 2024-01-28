@@ -1478,7 +1478,7 @@ namespace grb {
 		const typename std::enable_if<
 			!is_object< Tin >::value &&
 			!is_object< Tout >::value &&
-			is_single_matrix_coordinates_operator< Operator >::value
+			is_matrix_selection_operator< Operator >::value
 		>::type * const = nullptr
 	) {
 #ifdef _DEBUG

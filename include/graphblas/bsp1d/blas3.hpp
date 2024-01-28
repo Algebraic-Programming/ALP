@@ -222,7 +222,7 @@ namespace grb {
 		const typename std::enable_if<
 				!is_object< Tin >::value &&
 				!is_object< Tout >::value &&
-				is_single_matrix_coordinates_operator< SelectionOperator >::value
+				is_matrix_selection_operator< SelectionOperator >::value
 		>::type * const = nullptr
 	) {
 		assert( phase != TRY );
