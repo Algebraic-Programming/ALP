@@ -490,10 +490,10 @@ namespace grb {
 				return end( mode );
 			}
 
-			std::pair< RIT, CIT > getLocalCoordinates() const noexcept {
-				return std::make_pair(
-					_m / spmd< BSP1D >::nprocs(),
-					_n
+			std::pair< RowIndexType, ColIndexType > getLocalCoordinates() const noexcept {
+				return std::make_pair< RowIndexType, ColIndexType >(
+					static_cast< RowIndexType >( _m / spmd< BSP1D >::nprocs() ),
+					static_cast< ColIndexType >( _n )
 				);
 			}
 
