@@ -104,7 +104,9 @@ namespace grb {
 				size_t nzc = 0;
 
 #ifdef _H_GRB_REFERENCE_OMP_BLAS3
-				#pragma omp parallel default(none) shared(out, in_raw, rc, std::cout) firstprivate(m, op, identity) reduction(+:nzc)
+				#pragma omp parallel default(none) \
+					shared(out, in_raw, rc) firstprivate(m, op, identity, in_coordinates) \
+					reduction(+:nzc)
 #endif
 				{
 					size_t start_row = 0;
@@ -139,7 +141,8 @@ namespace grb {
 				col_counter = internal::getReferenceBuffer< config::NonzeroIndexType >( n + 1 );
 
 #ifdef _H_GRB_REFERENCE_OMP_BLAS3
-				#pragma omp parallel for simd default(none) shared(out_ccs) firstprivate(n)
+				#pragma omp parallel for simd default(none) \
+					shared(out_ccs) firstprivate(in_coordinates, n)
 #endif
 				for( size_t j = 0; j < n + 1; ++j ) {
 					out_ccs.col_start[ j ] = 0;
@@ -163,7 +166,8 @@ namespace grb {
 				}
 
 #ifdef _H_GRB_REFERENCE_OMP_BLAS3
-				#pragma omp parallel for simd default(none) shared(col_counter) firstprivate(n)
+				#pragma omp parallel for simd default(none) \
+					shared(col_counter) firstprivate(in_coordinates, n)
 #endif
 				for( size_t j = 0; j < n + 1; ++j ) {
 					col_counter[ j ] = 0;
