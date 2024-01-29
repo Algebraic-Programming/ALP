@@ -44,15 +44,16 @@ function( add_transition_library target_name lib_type lib_name src1 )
 
 endfunction( add_transition_library )
 
+set( _SPBLAS_PREFIX "kml_" )
+if( SPBLAS_PREFIX )
+	set( _SPBLAS_PREFIX "${SPBLAS_PREFIX}_" )
+endif()
+
 if( WITH_REFERENCE_BACKEND )
 	add_transition_library( sparseblas_static STATIC "sparseblas" ${CMAKE_CURRENT_SOURCE_DIR}/sparseblas.cpp
 		PUBLIC_LINK_LIBRARIES backend_reference
 	)
 
-	set( _SPBLAS_PREFIX "kml_" )
-	if( SPBLAS_PREFIX )
-		set( _SPBLAS_PREFIX "${SPBLAS_PREFIX}_" )
-	endif()
 	add_transition_library( ${_SPBLAS_PREFIX}sparseblas_static STATIC "${_SPBLAS_PREFIX}sparseblas"
 		${CMAKE_CURRENT_SOURCE_DIR}/sparseblas.cpp PUBLIC_LINK_LIBRARIES backend_reference
 	)
@@ -70,9 +71,10 @@ if( WITH_OMP_BACKEND )
 		PRIVATE_LINK_LIBRARIES backend_reference_omp
 	)
 
-	add_transition_library( kml_sparseblas_omp_static STATIC "kml_sparseblas_omp" ${CMAKE_CURRENT_SOURCE_DIR}/sparseblas.cpp
-		PRIVATE_LINK_LIBRARIES backend_reference_omp
+	add_transition_library( ${_SPBLAS_PREFIX}sparseblas_omp_static STATIC "${_SPBLAS_PREFIX}sparseblas_omp"
+		${CMAKE_CURRENT_SOURCE_DIR}/sparseblas.cpp PRIVATE_LINK_LIBRARIES backend_reference_omp
 	)
+	target_compile_definitions( ${_SPBLAS_PREFIX}sparseblas_omp_static PUBLIC SPBLAS_PREFIX=${_SPBLAS_PREFIX} )
 
 	if( ENABLE_EXTRA_SOLVER_LIBS )
 		add_transition_library( spsolver_shmem_blocking STATIC "spsolver_shmem_blocking" ${CMAKE_CURRENT_SOURCE_DIR}/solver.cpp
