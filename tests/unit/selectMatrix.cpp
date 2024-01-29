@@ -24,13 +24,20 @@
 
 using namespace grb;
 
+#define STDERR_WITH_LINE std::cerr << "[Line " << __LINE__ << "]  "
+
 constexpr bool Debug = false;
 
 namespace {
 	template<class Iterator>
 	void printSparseMatrixIterator(size_t rows, size_t cols, Iterator begin, Iterator end, const std::string& name = "",
 	                               std::ostream& os = std::cout) {
-		std::cout << "Matrix \"" << name << "\" (" << rows << "x" << cols << "):" << std::endl << "[" << std::endl;
+		std::vector<bool> assigned(rows * cols, false);
+		for( auto it = begin; it != end; ++it ) {
+			assigned[ it->first.first * cols + it->first.second ] = true;
+		}
+
+		os << "Matrix \"" << name << "\" (" << rows << "x" << cols << "):" << std::endl << "[" << std::endl;
 		if (rows > 256 || cols > 256) {
 			os << "   Matrix too large to print" << std::endl;
 		} else {
@@ -38,12 +45,8 @@ namespace {
 			for (size_t y = 0; y < rows; y++) {
 				os << std::string(3, ' ');
 				for (size_t x = 0; x < cols; x++) {
-					auto nnz_val = std::find_if(
-						begin, end, [ y, x ](const typename std::iterator_traits<Iterator>::value_type& a) {
-							return a.first.first == y && a.first.second == x;
-						});
-					if (nnz_val != end)
-						os << std::fixed << (*nnz_val).second;
+					if (assigned[y * cols + x])
+						os << 'X';
 					else
 						os << '_';
 					os << " ";
@@ -157,63 +160,85 @@ RC test_case(
 	return SUCCESS;
 }
 
+template< typename D >
 void grb_program(const long& n, RC& rc) {
 	rc = SUCCESS;
 
-	Matrix<int> I(n, n, n), I_tr(n, n, n);
-	{ // Build matrices I and I_tr
-		std::vector<int> values(n, 1);
-		std::vector<size_t> rows_indices(n, 0);
-		std::iota(rows_indices.begin(), rows_indices.end(), 0);
-		buildMatrixUnique(I, rows_indices.data(), rows_indices.data(), values.data(), n, SEQUENTIAL);
+	Matrix<D>  I(n, n, n),
+	             I_transposed(n, n, n),
+	             One_row(n, n, n),
+	             One_col(n, n, n);
+
+	{ // Build matrices
+		std::vector<D> values(n, 1);
+		std::vector<D> const_indices_zero(n, 0);
+		std::vector<size_t> iota_indices(n, 0);
+		std::iota(iota_indices.begin(), iota_indices.end(), 0);
+		std::vector<size_t> reverse_iota_indices(n, 0);
+		for (long i = n-1; i >= 0; i--) { reverse_iota_indices[i] = i; }
+
+		buildMatrixUnique(I, iota_indices.data(), iota_indices.data(), values.data(), n, SEQUENTIAL);
 		printSparseMatrix<Debug>(I, "identity");
 
-		std::vector<size_t> cols_indices(n, 0);
-		std::iota(cols_indices.begin(), cols_indices.end(), 0);
-		std::reverse(cols_indices.begin(), cols_indices.end());
-		buildMatrixUnique(I_tr, rows_indices.data(), cols_indices.data(), values.data(), n, SEQUENTIAL);
-		printSparseMatrix<Debug>(I_tr, "transposed-identity");
+		buildMatrixUnique(I_transposed, iota_indices.data(), reverse_iota_indices.data(), values.data(), n, SEQUENTIAL);
+		printSparseMatrix<Debug>(I_transposed, "transposed-identity");
+
+		buildMatrixUnique(One_row, iota_indices.data(), const_indices_zero.data(), values.data(), n, SEQUENTIAL);
+		printSparseMatrix<Debug>(One_row, "one-row");
+
+		buildMatrixUnique(One_col, const_indices_zero.data(), iota_indices.data(), values.data(), n, SEQUENTIAL);
+		printSparseMatrix<Debug>(One_col, "one-column");
 	}
 
-	// Test 01: Select <diagonal> out of <identity>
-	rc = rc ? rc : test_case(I, operators::select::is_diagonal<int>(),
+	// Test 01: Select <diagonal>
+	rc = rc ? rc : test_case(I, operators::select::is_diagonal<D>(),
 	          "Test 01: Select <diagonal> out of <identity>");
+	rc = rc ? rc : test_case(I_transposed, operators::select::is_diagonal<D>(),
+	          "Test 01: Select <diagonal> out of <transposed-identity>");
+	rc = rc ? rc : test_case(One_row, operators::select::is_diagonal<D>(),
+	          "Test 01: Select <diagonal> out of <one-row>");
+	rc = rc ? rc : test_case(One_col, operators::select::is_diagonal<D>(),
+	          "Test 01: Select <diagonal> out of <one-column>");
 
-	// Test 02: Select <diagonal> out of <transposed-identity>
-	rc = rc ? rc : test_case(I_tr, operators::select::is_diagonal<int>(),
-	          "Test 02: Select <diagonal> out of <transposed-identity>");
+	// Test 02: Select <strict-lower>
+	rc = rc ? rc : test_case(I, operators::select::is_strictly_lower<D>(),
+	          "Test 02: Select <strict-lower> out of <identity>");
+	rc = rc ? rc : test_case(I_transposed, operators::select::is_strictly_lower<D>(),
+	          "Test 02: Select <strict-lower> out of <transposed-identity>");
+	rc = rc ? rc : test_case(One_row, operators::select::is_strictly_lower<D>(),
+	          "Test 02: Select <strict-lower> out of <one-row>");
+	rc = rc ? rc : test_case(One_col, operators::select::is_strictly_lower<D>(),
+	          "Test 02: Select <strict-lower> out of <one-column>");
 
-	// Test 03: Select <strict-lower> out of <identity>
-	rc = rc ? rc : test_case(I, operators::select::is_strictly_lower<int>(),
+	// Test 03: Select <strict-upper>
+	rc = rc ? rc : test_case(I, operators::select::is_strictly_upper<D>(),
 	          "Test 03: Select <strict-lower> out of <identity>");
+	rc = rc ? rc : test_case(I_transposed, operators::select::is_strictly_upper<D>(),
+	          "Test 03: Select <strict-lower> out of <transposed-identity>");
+	rc = rc ? rc : test_case(One_row, operators::select::is_strictly_upper<D>(),
+	          "Test 03: Select <strict-lower> out of <one-row>");
+	rc = rc ? rc : test_case(One_col, operators::select::is_strictly_upper<D>(),
+	          "Test 03: Select <strict-lower> out of <one-column>");
 
-	// Test 04: Select <strict-lower> out of <transposed-identity>
-	rc = rc ? rc : test_case(I_tr, operators::select::is_strictly_lower<int>(),
-	          "Test 04: Select <strict-lower> out of <transposed-identity>");
+	// Test 04: Select <lower-or-diag>
+	rc = rc ? rc : test_case(I, operators::select::is_lower_or_diagonal<D>(),
+	          "Test 04: Select <lower-or-diag> out of <identity>");
+	rc = rc ? rc : test_case(I_transposed, operators::select::is_lower_or_diagonal<D>(),
+	          "Test 04: Select <lower-or-diag> out of <transposed-identity>");
+	rc = rc ? rc : test_case(One_row, operators::select::is_lower_or_diagonal<D>(),
+	          "Test 04: Select <lower-or-diag> out of <one-row>");
+	rc = rc ? rc : test_case(One_col, operators::select::is_lower_or_diagonal<D>(),
+			  "Test 04: Select <lower-or-diag> out of <one-column>");
 
-	// Test 05: Select <strict-upper> out of <identity>
-	rc = rc ? rc : test_case(I, operators::select::is_strictly_upper<int>(),
-	          "Test 05: Select <strict-lower> out of <identity>");
-
-	// Test 06: Select <strict-upper> out of <transposed-identity>
-	rc = rc ? rc : test_case(I_tr, operators::select::is_strictly_upper<int>(),
-	          "Test 06: Select <strict-lower> out of <transposed-identity>");
-
-	// Test 07: Select <lower-or-diag> out of <identity>
-	rc = rc ? rc : test_case(I, operators::select::is_lower_or_diagonal<int>(),
-	          "Test 07: Select <lower-or-diag> out of <identity>");
-
-	// Test 08: Select <lower-or-diag> out of <transposed-identity>
-	rc = rc ? rc : test_case(I_tr, operators::select::is_lower_or_diagonal<int>(),
-	          "Test 08: Select <lower-or-diag> out of <transposed-identity>");
-
-	// Test 09: Select <upper-or-diag> out of <identity>
-	rc = rc ? rc : test_case(I, operators::select::is_upper_or_diagonal<int>(),
-	          "Test 09: Select <upper-or-diag> out of <identity>");
-
-	// Test 10: Select <upper-or-diag> out of <transposed-identity>
-	rc = rc ? rc : test_case(I_tr, operators::select::is_upper_or_diagonal<int>(),
-	          "Test 10: Select <upper-or-diag> out of <transposed-identity>");
+	// Test 05: Select <upper-or-diag>
+	rc = rc ? rc : test_case(I, operators::select::is_upper_or_diagonal<D>(),
+	          "Test 05: Select <upper-or-diag> out of <identity>");
+	rc = rc ? rc : test_case(I_transposed, operators::select::is_upper_or_diagonal<D>(),
+	          "Test 05: Select <upper-or-diag> out of <transposed-identity>");
+	rc = rc ? rc : test_case(One_row, operators::select::is_upper_or_diagonal<D>(),
+	          "Test 05: Select <upper-or-diag> out of <one-row>");
+	rc = rc ? rc : test_case(One_col, operators::select::is_upper_or_diagonal<D>(),
+	          "Test 05: Select <upper-or-diag> out of <one-column>");
 
 	assert(
 		collectives<>::allreduce( rc, operators::any_or<RC>() ) == SUCCESS
@@ -229,18 +254,31 @@ int main(int argc, char** argv) {
 	std::cout << "This is functional test " << argv[0] << "\n";
 	Launcher<AUTOMATIC> launcher;
 
-	const long n = argc > 1 ? std::strtol(argv[1], nullptr, 10) : 10;
-	std::cout << "-- Running test with n=" << n << std::endl;
+	const long n = argc > 1 ? std::strtol(argv[1], nullptr, 10) : 1000;
 
-	if (launcher.exec(&grb_program, n, out, true) != SUCCESS) {
-		std::cerr << "Launching test FAILED\n";
-		return 255;
+	{
+		std::cout << "-- -- Running test with using matrix-type: int" << std::endl;
+		if (launcher.exec(&grb_program<int>, n, out, true) != SUCCESS) {
+			STDERR_WITH_LINE << "Launching test FAILED\n";
+			return 255;
+		}
+		if (out != SUCCESS) {
+			STDERR_WITH_LINE << "Test FAILED (" << toString(out) << ")" << std::endl;
+			return out;
+		}
 	}
-
-	if (out != SUCCESS) {
-		std::cout << "Test FAILED (" << toString(out) << ")" << std::endl;
-		return out;
-	}
+	// NOTE: grb::select does not support pattern matrices for the moment
+	// {
+	// 	std::cout << "-- -- Running test with using matrix-type: void" << std::endl;
+	// 	if (launcher.exec(&grb_program<void>, n, out, true) != SUCCESS) {
+	// 		STDERR_WITH_LINE << "Launching test FAILED\n";
+	// 		return 255;
+	// 	}
+	// 	if (out != SUCCESS) {
+	// 		STDERR_WITH_LINE << "Test FAILED (" << toString(out) << ")" << std::endl;
+	// 		return out;
+	// 	}
+	// }
 
 	std::cout << std::flush;
 	std::cerr << std::flush << "Test OK" << std::endl;
