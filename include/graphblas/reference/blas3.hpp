@@ -141,7 +141,7 @@ namespace grb {
 			config::NonzeroIndexType *col_counter = nullptr;
 
 			if( !crs_only ) {
-				internal::getMatrixBuffers( arr, buf, valbuf, 1, in );
+				internal::getMatrixBuffers( arr, buf, valbuf, 1, out );
 				col_counter = internal::getReferenceBuffer< config::NonzeroIndexType >( n + 1 );
 
 #ifdef _H_GRB_REFERENCE_OMP_BLAS3
@@ -165,7 +165,7 @@ namespace grb {
 				}
 
 				// Prefix sum of CCS.col_start
-				for( size_t j = 1; j < n + 1; ++j ) {
+				for( size_t j = 2; j < n + 1; ++j ) {
 					out_ccs.col_start[ j ] += out_ccs.col_start[ j - 1 ];
 				}
 
@@ -188,7 +188,7 @@ namespace grb {
 					const Tin value = in_raw.getValue( k, identity );
 					if( not op.apply( r, c, value) ) continue;
 #ifdef _DEBUG
-					std::cout << "\tKeeping value at: " << i << ", " << j << " -> idx=" << nzc << "\n";
+					std::cout << "\tKeeping value at: " << r << ", " << c << " -> idx=" << nzc << "\n";
 #endif
 
 					// Update CCS

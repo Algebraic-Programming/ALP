@@ -78,12 +78,13 @@ bool matrix_validate_predicate(
 			std::cerr << "  /!\\ Predicate failed for ("
 				<< each.first.first << ", " << each.first.second << ", " << each.second << ")"
 				<< std::endl;
-			return false;
+			valid = false;
+			break;
 		}
 	}
 	assert( collectives<>::allreduce( valid, operators::logical_and<bool>() ) == SUCCESS );
 
-	return true;
+	return valid;
 }
 
 template<typename D, typename SelectionOperator, typename RIT, typename CIT, Backend implementation>
@@ -125,9 +126,8 @@ RC test_case(
 	{ // Lambda variant
 		Matrix<D, implementation, RIT, CIT> output(nrows(input), ncols(input), 0);
 
-		auto lambda = [](const RIT & x, const CIT & y, const D & v) {
-			const SelectionOperator op_;
-			return op_.apply(x, y, v);
+		auto lambda = [&op](const RIT & x, const CIT & y, const D & v) {
+			return op.apply(x, y, v);
 		};
 
 		RC rc = selectLambda(output, input, lambda, RESIZE);
@@ -160,26 +160,18 @@ RC test_case(
 void grb_program(const long& n, RC& rc) {
 	rc = SUCCESS;
 
-	Matrix<int> I(n, n, n); {
-		// Build matrix
-		std::vector<size_t> indices(n, 0);
-		std::iota(indices.begin(), indices.end(), 0);
+	Matrix<int> I(n, n, n), I_tr(n, n, n);
+	{ // Build matrices I and I_tr
 		std::vector<int> values(n, 1);
-		buildMatrixUnique(I, indices.data(), indices.data(), values.data(), n, SEQUENTIAL);
-
-		printSparseMatrix<Debug>(I, "identity");
-	}
-
-	Matrix<int> I_tr(n, n, n); {
-		// Build matrix
 		std::vector<size_t> rows_indices(n, 0);
 		std::iota(rows_indices.begin(), rows_indices.end(), 0);
+		buildMatrixUnique(I, rows_indices.data(), rows_indices.data(), values.data(), n, SEQUENTIAL);
+		printSparseMatrix<Debug>(I, "identity");
+
 		std::vector<size_t> cols_indices(n, 0);
 		std::iota(cols_indices.begin(), cols_indices.end(), 0);
 		std::reverse(cols_indices.begin(), cols_indices.end());
-		std::vector<int> values(n, 1);
 		buildMatrixUnique(I_tr, rows_indices.data(), cols_indices.data(), values.data(), n, SEQUENTIAL);
-
 		printSparseMatrix<Debug>(I_tr, "transposed-identity");
 	}
 
@@ -195,7 +187,7 @@ void grb_program(const long& n, RC& rc) {
 	rc = rc ? rc : test_case(I, operators::select::is_strictly_lower<int>(),
 	          "Test 03: Select <strict-lower> out of <identity>");
 
-	// Test 04: Select <strict-lower> out of <identity>
+	// Test 04: Select <strict-lower> out of <transposed-identity>
 	rc = rc ? rc : test_case(I_tr, operators::select::is_strictly_lower<int>(),
 	          "Test 04: Select <strict-lower> out of <transposed-identity>");
 
@@ -203,7 +195,7 @@ void grb_program(const long& n, RC& rc) {
 	rc = rc ? rc : test_case(I, operators::select::is_strictly_upper<int>(),
 	          "Test 05: Select <strict-lower> out of <identity>");
 
-	// Test 06: Select <strict-upper> out of <identity>
+	// Test 06: Select <strict-upper> out of <transposed-identity>
 	rc = rc ? rc : test_case(I_tr, operators::select::is_strictly_upper<int>(),
 	          "Test 06: Select <strict-lower> out of <transposed-identity>");
 
@@ -211,7 +203,7 @@ void grb_program(const long& n, RC& rc) {
 	rc = rc ? rc : test_case(I, operators::select::is_lower_or_diagonal<int>(),
 	          "Test 07: Select <lower-or-diag> out of <identity>");
 
-	// Test 08: Select <lower-or-diag> out of <identity>
+	// Test 08: Select <lower-or-diag> out of <transposed-identity>
 	rc = rc ? rc : test_case(I_tr, operators::select::is_lower_or_diagonal<int>(),
 	          "Test 08: Select <lower-or-diag> out of <transposed-identity>");
 
@@ -219,7 +211,7 @@ void grb_program(const long& n, RC& rc) {
 	rc = rc ? rc : test_case(I, operators::select::is_upper_or_diagonal<int>(),
 	          "Test 09: Select <upper-or-diag> out of <identity>");
 
-	// Test 10: Select <upper-or-diag> out of <identity>
+	// Test 10: Select <upper-or-diag> out of <transposed-identity>
 	rc = rc ? rc : test_case(I_tr, operators::select::is_upper_or_diagonal<int>(),
 	          "Test 10: Select <upper-or-diag> out of <transposed-identity>");
 
