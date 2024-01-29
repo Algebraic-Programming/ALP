@@ -31,7 +31,7 @@ namespace {
 	void printSparseMatrixIterator(size_t rows, size_t cols, Iterator begin, Iterator end, const std::string& name = "",
 	                               std::ostream& os = std::cout) {
 		std::cout << "Matrix \"" << name << "\" (" << rows << "x" << cols << "):" << std::endl << "[" << std::endl;
-		if (rows > 1000 || cols > 1000) {
+		if (rows > 256 || cols > 256) {
 			os << "   Matrix too large to print" << std::endl;
 		} else {
 			// os.precision( 3 );
@@ -74,11 +74,16 @@ bool matrix_validate_predicate(
 	*/
 	bool valid = true;
 	for( const auto &each : B ) {
-		valid &= predicate.apply( each.first.first, each.first.second, each.second );
+		if( not predicate.apply( each.first.first, each.first.second, each.second ) ) {
+			std::cerr << "  /!\\ Predicate failed for ("
+				<< each.first.first << ", " << each.first.second << ", " << each.second << ")"
+				<< std::endl;
+			return false;
+		}
 	}
 	assert( collectives<>::allreduce( valid, operators::logical_and<bool>() ) == SUCCESS );
 
-	return valid;
+	return true;
 }
 
 template<typename D, typename SelectionOperator, typename RIT, typename CIT, Backend implementation>
@@ -217,6 +222,10 @@ void grb_program(const long& n, RC& rc) {
 	// Test 10: Select <upper-or-diag> out of <identity>
 	rc = rc ? rc : test_case(I_tr, operators::select::is_upper_or_diagonal<int>(),
 	          "Test 10: Select <upper-or-diag> out of <transposed-identity>");
+
+	assert(
+		collectives<>::allreduce( rc, operators::any_or<RC>() ) == SUCCESS
+	);
 }
 
 int main(int argc, char** argv) {
@@ -241,6 +250,7 @@ int main(int argc, char** argv) {
 		return out;
 	}
 
-	std::cerr << "Test OK" << std::endl;
+	std::cout << std::flush;
+	std::cerr << std::flush << "Test OK" << std::endl;
 	return 0;
 }

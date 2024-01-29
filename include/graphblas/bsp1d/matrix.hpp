@@ -490,15 +490,14 @@ namespace grb {
 				return end( mode );
 			}
 
-			std::pair< RowIndexType, ColIndexType > getLocalCoordinates() const noexcept {
-				const auto rows = internal::Distribution< BSP1D >::local_offset(
+			std::pair< RowIndexType, ColIndexType > getLocalCoordinatesOffset() const noexcept {
+				const auto row_offset = internal::Distribution< BSP1D >::local_offset(
 					_m, spmd<BSP1D>::pid(), spmd<BSP1D>::nprocs()
 				);
-				const auto result = std::make_pair< RowIndexType, ColIndexType >(
-					static_cast< RowIndexType >( rows ),
-					static_cast< ColIndexType >( _n )
+				return std::make_pair< RowIndexType, ColIndexType >(
+					static_cast< RowIndexType >( row_offset ),
+					static_cast< ColIndexType >( 0 )
 				);
-				return result;
 			}
 
 	};

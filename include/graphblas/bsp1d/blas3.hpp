@@ -229,7 +229,7 @@ namespace grb {
 		RC ret = internal::select_generic< descr >(
 			internal::getLocal( out ),
 			internal::getLocal( in ),
-			in.getLocalCoordinates(),
+			in.getLocalCoordinatesOffset(),
 			op,
 			phase
 		);
@@ -269,7 +269,7 @@ namespace grb {
 		RC ret = internal::selectLambda_generic< descr >(
 			internal::getLocal( out ),
 			internal::getLocal( in ),
-			in.getLocalCoordinates(),
+			in.getLocalCoordinatesOffset(),
 			lambda,
 			phase
 		);
