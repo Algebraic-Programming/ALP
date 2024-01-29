@@ -62,11 +62,23 @@ namespace {
 	}
 } // namespace
 
-template<typename D, typename Func>
-bool matrix_validate_predicate(const Matrix<D>& B, Func predicate) {
-	return std::all_of(B.cbegin(), B.cend(), [ predicate ](const std::pair<std::pair<size_t, size_t>, D>& e) {
-		return predicate.apply(e.first.first, e.first.second, e.second);
-	});
+template<typename D, typename Func, typename RIT, typename CIT, Backend implementation>
+bool matrix_validate_predicate(
+	const Matrix<D, implementation, RIT, CIT>& B,
+	Func predicate
+) {
+	/*
+	NOTE:
+	This function will fail for distributed backend because the local iterator of the matrix
+	does not reflect the global coordinates, which can lead to false negatives.
+	*/
+	bool valid = true;
+	for( const auto &each : B ) {
+		valid &= predicate.apply( each.first.first, each.first.second, each.second );
+	}
+	assert( collectives<>::allreduce( valid, operators::logical_and<bool>() ) == SUCCESS );
+
+	return valid;
 }
 
 template<typename D, typename SelectionOperator, typename RIT, typename CIT, Backend implementation>
@@ -78,7 +90,7 @@ RC test_case(
 	std::cout << test_name << std::endl;
 
 	{ // Non-lambda variant
-		Matrix<D> output(nrows(input), ncols(input), 0);
+		Matrix<D, implementation, RIT, CIT> output(nrows(input), ncols(input), 0);
 
 		RC rc = select(output, input, op, RESIZE);
 		if( rc != SUCCESS ) {
@@ -97,6 +109,7 @@ RC test_case(
 		grb::wait( output );
 		printSparseMatrix<Debug>(output);
 
+
 		const bool valid = matrix_validate_predicate(output, op);
 		if( not valid ) {
 			std::cerr << "(non-lambda variant): Test <" << test_name << "> failed, output matrix is invalid" << std::endl;
@@ -105,7 +118,7 @@ RC test_case(
 	}
 
 	{ // Lambda variant
-		Matrix<D> output(nrows(input), ncols(input), 0);
+		Matrix<D, implementation, RIT, CIT> output(nrows(input), ncols(input), 0);
 
 		auto lambda = [](const RIT & x, const CIT & y, const D & v) {
 			const SelectionOperator op_;
@@ -216,8 +229,9 @@ int main(int argc, char** argv) {
 	Launcher<AUTOMATIC> launcher;
 
 	const long n = argc > 1 ? std::strtol(argv[1], nullptr, 10) : 10;
+	std::cout << "-- Running test with n=" << n << std::endl;
 
-	if (launcher.exec(&grb_program, n, out) != SUCCESS) {
+	if (launcher.exec(&grb_program, n, out, true) != SUCCESS) {
 		std::cerr << "Launching test FAILED\n";
 		return 255;
 	}
