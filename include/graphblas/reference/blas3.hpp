@@ -100,6 +100,10 @@ namespace grb {
 				return MISMATCH;
 			}
 
+			if( m == 0 || n == 0 ) {
+				return SUCCESS;
+			}
+
 			if( phase == RESIZE ) {
 				size_t nzc = 0;
 
