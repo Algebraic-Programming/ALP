@@ -220,11 +220,14 @@ namespace grb {
 	};
 
 	/**
-	 * @param backend
-	 * @return The name of the given backend.
+	 * Converts a backend identifier to a human-readable string.
+	 *
+	 * @param[in] backend The backend whose string to return.
+	 *
+	 * @return The name of the given \a backend as a C++ string.
 	 */
-	static inline std::string toString( enum grb::Backend backend ) {
-		switch(backend) {
+	static inline std::string toString( const enum grb::Backend backend ) {
+		switch( backend ) {
 			case grb::Backend::reference:     return "reference";
 			case grb::Backend::reference_omp: return "reference_omp";
 			case grb::Backend::hyperdags:     return "hyperdags";
@@ -245,7 +248,10 @@ namespace grb {
 			case grb::Backend::banshee:       return "banshee";
 			case grb::Backend::banshee_ssr:   return "banshee_ssr";
 			default:
-				return "unknown_backend(id=" + std::to_string( static_cast< int >( backend ) ) + ")";
+				const int backend_id = static_cast< int >( backend );
+				std::cerr << "Warning, std::string( const grb::Backend ): unknown backend "
+					<< backend_id << " encountered, please submit a bug report.\n";
+				return "unknown_backend(id=" + std::to_string( backend_id ) + ")";
 		}
 	}
 
