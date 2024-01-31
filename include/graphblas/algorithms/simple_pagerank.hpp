@@ -225,7 +225,7 @@ namespace grb {
 
 #ifdef _DEBUG
 			std::cout << "Prelude to iteration 0:\n";
-			(void) eWiseLambda(
+			(void) eWiseLambda< descriptors::dense >(
 				[ &row_sum, &pr_next, &pr ]( const size_t i ) {
 					#pragma omp critical
 					{
@@ -238,7 +238,7 @@ namespace grb {
 
 			// calculate in-place the inverse of row sums, and keep zero if dangling
 			// this eWiseLambda is always supported since alpha is read-only
-			ret = ret ? ret : eWiseLambda(
+			ret = ret ? ret : eWiseLambda< descriptors::dense >(
 					[ &row_sum, &alpha, &zero ]( const size_t i ) {
 						assert( row_sum[ i ] >= zero );
 						if( row_sum[ i ] > zero ) {
@@ -251,7 +251,7 @@ namespace grb {
 
 #ifdef _DEBUG
 			std::cout << "Row sum array:\n";
-			(void) eWiseLambda(
+			(void) eWiseLambda< descriptors::dense >(
 				[ &row_sum ]( const size_t i ) {
 					#pragma omp critical
 					std::cout << i << ": " << row_sum[ i ] << "\n";
@@ -273,7 +273,7 @@ namespace grb {
 
 #ifdef _DEBUG
 				std::cout << "Current PR array:\n";
-				(void) eWiseLambda(
+				(void) eWiseLambda< descriptors::dense >(
 						[ &pr ]( const size_t i ) {
 							#pragma omp critical
 							if( i < 8 ) {
@@ -288,7 +288,7 @@ namespace grb {
 					// can we reduce via lambdas?
 					if( Properties<>::writableCaptured ) {
 						// yes we can, so save one unnecessary stream on pr
-						ret = eWiseLambda(
+						ret = eWiseLambda< descriptors::dense >(
 								[ &pr_next, &row_sum, &dangling, &pr ]( const size_t i ) {
 									// calculate dangling contribution
 									if( row_sum[ i ] == 0 ) {
@@ -309,14 +309,13 @@ namespace grb {
 						assert( ret == SUCCESS );
 					} else {
 						// otherwise we have to handle the reduction separately
-						ret = foldl< grb::descriptors::invert_mask >(
+						ret = foldl< descriptors::dense | grb::descriptors::invert_mask >(
 							dangling, pr, row_sum, addM
 						);
 						assert( ret == SUCCESS );
 
 						// separately from the element-wise multiplication here
-						ret = ret ? ret : set( pr_next, 0 );
-						ret = ret ? ret : eWiseApply(
+						ret = ret ? ret : eWiseApply< descriptors::dense >(
 								pr_next, pr, row_sum,
 								grb::operators::mul< double >()
 							);
@@ -329,7 +328,7 @@ namespace grb {
 					const auto s = spmd<>::pid();
 					if( dbg == s ) {
 						std::cout << "Next PR array (under construction):\n";
-						eWiseLambda(
+						eWiseLambda< descriptors::dense >(
 							[ &pr_next, s ]( const size_t i ) {
 								#pragma omp critical
 								if( i < 10 ) {
@@ -357,8 +356,8 @@ namespace grb {
 
 				// multiply with row-normalised link matrix (no change to dangling rows)
 				// note that the later eWiseLambda requires the output be dense
-				ret = ret ? ret : set( pr_nextnext, 0 ); assert( ret == SUCCESS );
-				ret = ret ? ret : vxm< descr >( pr_nextnext, pr_next, L, realRing );
+				ret = ret ? ret : set< descriptors::dense >( pr_nextnext, 0 ); assert( ret == SUCCESS );
+				ret = ret ? ret : vxm< descriptors::dense | descr >( pr_nextnext, pr_next, L, realRing );
 				assert( ret == SUCCESS );
 				assert( n == grb::nnz( pr_nextnext ) );
 
@@ -366,7 +365,7 @@ namespace grb {
 				for( size_t dbg = 0; dbg < spmd<>::nprocs(); ++dbg ) {
 					if( dbg == s ) {
 						std::cout << s << ": nextnext PR array (after vxm):\n";
-						(void) eWiseLambda(
+						(void) eWiseLambda< descriptors::dense >(
 							[ &pr_nextnext, s ]( const size_t i ) {
 								#pragma omp critical
 								if( i < 10 )
@@ -380,7 +379,7 @@ namespace grb {
 					if( spmd<>::pid() == k ) {
 						std::cout << "old pr \t scaled input \t alpha * pr * H at PID "
 							<< k << "\n";
-						(void) eWiseLambda(
+						(void) eWiseLambda< descriptors::dense >(
 							[ &pr, &pr_next, &pr_nextnext ]( const size_t i ) {
 								#pragma omp critical
 								{
@@ -399,7 +398,7 @@ namespace grb {
 					// can we reduce via lambdas?
 					if( grb::Properties<>::writableCaptured ) {
 						// yes, we can. So update pr[ i ] and calculate residual simultaneously
-						ret = eWiseLambda(
+						ret = eWiseLambda< descriptors::dense >(
 							[ &pr, &pr_nextnext, &dangling, &residual, &zero ]( const size_t i ) {
 								// cache old pagerank vector
 								const IOType oldval = pr[ i ];
@@ -445,7 +444,7 @@ namespace grb {
 				}
 
 				// update iteration count
-				++iter;
+				(void) ++iter;
 
 				// check convergence
 				if( conv != zero && residual <= conv ) { break; }
