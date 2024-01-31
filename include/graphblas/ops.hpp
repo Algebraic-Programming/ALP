@@ -993,7 +993,7 @@ namespace grb {
 			typename CIT = config::ColIndexType
 		>
 		class is_diagonal : public internal::MatrixSelectionOperatorBase<
-			internal::is_diagonal< D, RIT, CIT >
+			internal::is_diagonal< D, RIT, CIT >, D
 		> {
 			public:
 				is_diagonal() = default;
@@ -1005,7 +1005,7 @@ namespace grb {
 			typename CIT = config::ColIndexType
 		>
 		class is_strictly_lower : public internal::MatrixSelectionOperatorBase<
-			internal::is_strictly_lower< D, RIT, CIT >
+			internal::is_strictly_lower< D, RIT, CIT >, D
 		> {
 		public:
 			is_strictly_lower() = default;
@@ -1017,7 +1017,7 @@ namespace grb {
 			typename CIT = config::ColIndexType
 		>
 		class is_lower_or_diagonal : public internal::MatrixSelectionOperatorBase<
-			internal::is_lower_or_diagonal< D, RIT, CIT >
+			internal::is_lower_or_diagonal< D, RIT, CIT >, D
 		> {
 		public:
 			is_lower_or_diagonal() = default;
@@ -1029,7 +1029,7 @@ namespace grb {
 			typename CIT = config::ColIndexType
 		>
 		class is_strictly_upper : public internal::MatrixSelectionOperatorBase<
-			internal::is_strictly_upper< D, RIT, CIT >
+			internal::is_strictly_upper< D, RIT, CIT >, D
 		> {
 		public:
 			is_strictly_upper() = default;
@@ -1041,7 +1041,7 @@ namespace grb {
 			typename CIT = config::ColIndexType
 		>
 		class is_upper_or_diagonal : public internal::MatrixSelectionOperatorBase<
-			internal::is_upper_or_diagonal< D, RIT, CIT >
+			internal::is_upper_or_diagonal< D, RIT, CIT >, D
 		> {
 		public:
 			is_upper_or_diagonal() = default;

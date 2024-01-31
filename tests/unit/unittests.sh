@@ -604,8 +604,20 @@ for MODE in ${MODES}; do
 				grep 'Test OK' ${TEST_OUT_DIR}/zip_large_${MODE}_${BACKEND}_${P}_${T} || echo "Test FAILED"
 				echo " "
 
-        echo ">>>      [x]           [ ]       Testing grb::select on matrices of integers and of size 50'000"
-        $runner ${TEST_BIN_DIR}/selectMatrix_${MODE}_${BACKEND} 50000 &> ${TEST_OUT_DIR}/selectMatrix_${MODE}_${BACKEND}_${P}_${T}
+        echo ">>>      [x]           [ ]       Testing grb::select on matrices of integers and of size 5'000"
+        $runner ${TEST_BIN_DIR}/selectMatrix_${MODE}_${BACKEND} 5000 &> ${TEST_OUT_DIR}/selectMatrix_${MODE}_${BACKEND}_${P}_${T}_5000
+        head -1 ${TEST_OUT_DIR}/selectMatrix_${MODE}_${BACKEND}_${P}_${T}_5000
+        grep 'Test OK' ${TEST_OUT_DIR}/selectMatrix_${MODE}_${BACKEND}_${P}_${T}_5000 || echo "Test FAILED"
+        echo " "
+
+        echo ">>>      [x]           [ ]       Testing grb::select on matrices of integers and of size 3"
+        $runner ${TEST_BIN_DIR}/selectMatrix_${MODE}_${BACKEND} 3 &> ${TEST_OUT_DIR}/selectMatrix_${MODE}_${BACKEND}_${P}_${T}_3
+        head -1 ${TEST_OUT_DIR}/selectMatrix_${MODE}_${BACKEND}_${P}_${T}_3
+        grep 'Test OK' ${TEST_OUT_DIR}/selectMatrix_${MODE}_${BACKEND}_${P}_${T}_3 || echo "Test FAILED"
+        echo " "
+
+        echo ">>>      [x]           [ ]       Testing grb::select on matrices of integers and of size 5'000"
+        $runner ${TEST_BIN_DIR}/selectMatrix_${MODE}_${BACKEND} 5000 &> ${TEST_OUT_DIR}/selectMatrix_${MODE}_${BACKEND}_${P}_${T}
         head -1 ${TEST_OUT_DIR}/selectMatrix_${MODE}_${BACKEND}_${P}_${T}
         grep 'Test OK' ${TEST_OUT_DIR}/selectMatrix_${MODE}_${BACKEND}_${P}_${T} || echo "Test FAILED"
         echo " "
@@ -752,6 +764,10 @@ for MODE in ${MODES}; do
 			echo ">>>      [x]           [ ]       Testing BSP1D distribution for a vector of size 100000"
 			echo " "
 			${TEST_BIN_DIR}/distribution_bsp1d_${MODE}
+
+			echo ">>>      [x]           [ ]       Testing BSP1D distribution for a matrix of size 7777x7777"
+      echo " "
+      ${TEST_BIN_DIR}/distribution_matrix_bsp1d_${MODE} 7777
 
 			echo ">>>      [x]           [ ]       Testing dense vector times matrix using the double (+,*)"
 			echo "                                 semiring where matrix elements are doubles and vector"

@@ -70,11 +70,12 @@ namespace grb {
 			typename RITout, typename CITout, typename NITout
 		>
 		RC select_generic(
-			Matrix< Tout, reference, RITout, CITout, NITout >& out,
-			const Matrix< Tin, reference, RITin, CITin, NITin >& in,
-			const std::pair< RITin, CITin >& in_coordinates,
-			const Operator op,
-			const Phase& phase
+			Matrix< Tout, reference, RITout, CITout, NITout > &out,
+			const Matrix< Tin, reference, RITin, CITin, NITin > &in,
+			const Operator &op,
+			const std::function< size_t( size_t ) > &row_l2g,
+			const std::function< size_t( size_t ) > &col_l2g,
+			const Phase &phase
 		) {
 			RC rc = SUCCESS;
 			const Tin identity = Tin();
@@ -109,7 +110,8 @@ namespace grb {
 
 #ifdef _H_GRB_REFERENCE_OMP_BLAS3
 				#pragma omp parallel default(none) \
-					shared(out, in_raw, rc) firstprivate(m, op, identity, in_coordinates) \
+					shared(in_raw, rc, row_l2g, col_l2g) \
+					firstprivate(m, op, identity) \
 					reduction(+:nzc)
 #endif
 				{
@@ -121,10 +123,8 @@ namespace grb {
 					for( auto i = start_row; i < end_row; ++i ) {
 						for( auto k = in_raw.col_start[ i ]; k < in_raw.col_start[ i + 1 ]; ++k ) {
 							const auto j = in_raw.row_index[ k ];
-							const auto r = i + in_coordinates.first;
-							const auto c = j + in_coordinates.second;
-							const Tin value = in_raw.getValue( k, identity );
-							if( op.apply( r, c, value ) ) {
+							const auto value = in_raw.getValue( k, identity );
+							if( op.apply( row_l2g( i ), col_l2g( j ), value ) ) {
 								nzc++;
 							}
 						}
@@ -136,17 +136,19 @@ namespace grb {
 			assert( phase == EXECUTE );
 			// Execute phase only from here on
 
-			char *arr = nullptr, *buf = nullptr;
-			Tin *valbuf = nullptr;
-			config::NonzeroIndexType *col_counter = nullptr;
+			// Declare the column counter array
+			config::NonzeroIndexType * col_counter = nullptr;
 
 			if( !crs_only ) {
+				// Allocate the column counter array
+				char *arr = nullptr, *buf = nullptr;
+				Tin *valbuf = nullptr;
 				internal::getMatrixBuffers( arr, buf, valbuf, 1, out );
 				col_counter = internal::getReferenceBuffer< config::NonzeroIndexType >( n + 1 );
 
 #ifdef _H_GRB_REFERENCE_OMP_BLAS3
 				#pragma omp parallel for simd default(none) \
-					shared(out_ccs) firstprivate(in_coordinates, n)
+					shared(out_ccs, row_l2g, col_l2g) firstprivate(n)
 #endif
 				for( size_t j = 0; j < n + 1; ++j ) {
 					out_ccs.col_start[ j ] = 0;
@@ -156,22 +158,21 @@ namespace grb {
 				for( size_t i = 0; i < m; ++i ) {
 					for( size_t k = in_raw.col_start[ i ]; k < in_raw.col_start[ i + 1 ]; ++k ) {
 						const auto j = in_raw.row_index[ k ];
-						const auto r = i + in_coordinates.first;
-						const auto c = j + in_coordinates.second;
-						const Tin value = in_raw.getValue( k, identity );
-						if( not op.apply( r, c, value) ) continue;
+						const auto value = in_raw.getValue( k, identity );
+						if( not op.apply( row_l2g( i ), col_l2g( j ), value ) ) continue;
 						++out_ccs.col_start[ j + 1 ];
 					}
 				}
 
 				// Prefix sum of CCS.col_start
-				for( size_t j = 2; j < n + 1; ++j ) {
+				for( size_t j = 1; j < n + 1; ++j ) {
 					out_ccs.col_start[ j ] += out_ccs.col_start[ j - 1 ];
 				}
 
+				// Initialise the column counter array with zeros
 #ifdef _H_GRB_REFERENCE_OMP_BLAS3
 				#pragma omp parallel for simd default(none) \
-					shared(col_counter) firstprivate(in_coordinates, n)
+					shared(col_counter, row_l2g, col_l2g) firstprivate(n)
 #endif
 				for( size_t j = 0; j < n + 1; ++j ) {
 					col_counter[ j ] = 0;
@@ -183,17 +184,16 @@ namespace grb {
 			for( size_t i = 0; i < m; ++i ) {
 				for( size_t k = in_raw.col_start[ i ]; k < in_raw.col_start[ i + 1 ]; ++k ) {
 					const auto j = in_raw.row_index[ k ];
-					const auto r = i + in_coordinates.first;
-					const auto c = j + in_coordinates.second;
-					const Tin value = in_raw.getValue( k, identity );
-					if( not op.apply( r, c, value) ) continue;
+					const auto value = in_raw.getValue( k, identity );
+					if( not op.apply( row_l2g( i ), col_l2g( j ), value ) ) continue;
 #ifdef _DEBUG
-					std::cout << "\tKeeping value at: " << r << ", " << c << " -> idx=" << nzc << "\n";
+					std::cout << "\tKeeping value at: " << row_l2g( i ) << ", "
+						<< col_l2g( j ) << " -> idx=" << nzc << "\n";
 #endif
 
 					// Update CCS
 					if( !crs_only ) {
-						const auto idx = col_counter[ j ] + out_ccs.col_start[ j ];
+						const auto idx = out_ccs.col_start[ j ] + col_counter[ j ];
 						out_ccs.row_index[ idx ] = i;
 						out_ccs.setValue( idx, value );
 						++col_counter[ j ];
@@ -221,24 +221,31 @@ namespace grb {
 			typename RITout, typename CITout, typename NITout
 		>
 		RC selectLambda_generic(
-			Matrix< Tout, reference, RITout, CITout, NITout >& out,
-			const Matrix< Tin, reference, RITin, CITin, NITin >& in,
-			const std::pair< RITin, CITin >& in_coordinates,
+			Matrix< Tout, reference, RITout, CITout, NITout > &out,
+			const Matrix< Tin, reference, RITin, CITin, NITin > &in,
 			const PredicateFunction &lambda,
-			const Phase& phase
+			const std::function< size_t( size_t ) > &row_l2g,
+			const std::function< size_t( size_t ) > &col_l2g,
+			const Phase &phase
 		) {
 			struct LambdaOperator {
-				const PredicateFunction& op;
+				typedef typename std::conditional<
+						std::is_void< Tin >::value, bool, Tin
+					>::type D;
+				typedef RITin RIT;
+				typedef CITin CIT;
 
-				explicit LambdaOperator( const PredicateFunction& op_ ) : op( op_ ) {}
+				const PredicateFunction op;
 
-				inline bool apply( const RITin & x, const CITin & y, const Tin & v ) const {
+				explicit LambdaOperator( const PredicateFunction &op_ ) : op( op_ ) {}
+
+				bool apply( const RIT &x, const CIT &y, const D &v ) const {
 					return op( x, y, v );
 				}
 			};
 
 			return internal::select_generic< descr >(
-				out, in, in_coordinates, LambdaOperator( lambda ), phase
+				out, in, LambdaOperator( lambda ), row_l2g, col_l2g, phase
 			);
 		}
 
@@ -1529,15 +1536,19 @@ namespace grb {
 #ifdef _DEBUG
 		std::cout << "In grb::select( reference )\n";
 #endif
+		static_assert(
+			(std::is_void<Tin>::value && std::is_void<Tout>::value)
+			|| std::is_same<Tin, Tout>::value,
+			"grb::select (reference): "
+			"input and output matrix types must match"
+		);
 
 		return internal::select_generic< descr >(
 			out,
 			in,
-			std::make_pair(
-				static_cast< RITin >( 0 ),
-				static_cast< CITin >( 0 )
-			),
 			op,
+			[](size_t i) { return i; },
+			[](size_t j) { return j; },
 			phase
 		);
 	}
@@ -1564,14 +1575,19 @@ namespace grb {
 		std::cout << "In grb::selectLambda( reference )\n";
 #endif
 
+		static_assert(
+			(std::is_void<Tin>::value && std::is_void<Tout>::value)
+			|| std::is_same<Tin, Tout>::value,
+			"grb::selectLambda (reference): "
+			"input and output matrix types must match"
+		);
+
 		return internal::selectLambda_generic< descr >(
 			out,
 			in,
-			std::make_pair(
-				static_cast< RITin >( 0 ),
-				static_cast< CITin >( 0 )
-			),
 			lambda,
+			[](size_t i) { return i; },
+			[](size_t j) { return j; },
 			phase
 		);
 	}

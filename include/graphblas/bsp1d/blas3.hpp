@@ -226,11 +226,14 @@ namespace grb {
 	) {
 		assert( phase != TRY );
 
+		const auto coordinatesTranslationFunctions = in.getLocalToGlobalCoordinatesTranslationFunctions();
+
 		RC ret = internal::select_generic< descr >(
 			internal::getLocal( out ),
 			internal::getLocal( in ),
-			in.getLocalCoordinatesOffset(),
 			op,
+			std::get<0>(coordinatesTranslationFunctions),
+			std::get<1>(coordinatesTranslationFunctions),
 			phase
 		);
 
@@ -266,11 +269,14 @@ namespace grb {
 	) {
 		assert( phase != TRY );
 
+		const auto coordinatesTranslationFunctions = in.getLocalToGlobalCoordinatesTranslationFunctions();
+
 		RC ret = internal::selectLambda_generic< descr >(
 			internal::getLocal( out ),
 			internal::getLocal( in ),
-			in.getLocalCoordinatesOffset(),
 			lambda,
+			std::get<0>(coordinatesTranslationFunctions),
+			std::get<1>(coordinatesTranslationFunctions),
 			phase
 		);
 

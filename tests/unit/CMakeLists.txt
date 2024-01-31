@@ -65,6 +65,11 @@ add_grb_executables( distribution_bsp1d distribution_bsp1d.cpp
 	BACKENDS reference NO_BACKEND_NAME
 )
 
+add_grb_executables( distribution_matrix_bsp1d distribution_matrix_bsp1d.cpp
+	BACKENDS bsp1d NO_BACKEND_NAME
+	ADDITIONAL_LINK_LIBRARIES test_utils
+)
+
 add_grb_executables( distribution distribution.cpp
 	BACKENDS bsp1d NO_BACKEND_NAME
 )
@@ -177,6 +182,7 @@ add_grb_executables( RBGaussSeidel RBGaussSeidel.cpp
 
 add_grb_executables( selectMatrix selectMatrix.cpp
 	BACKENDS reference reference_omp bsp1d hybrid hyperdags nonblocking
+	ADDITIONAL_LINK_LIBRARIES test_utils_headers
 )
 
 add_grb_executables( set set.cpp

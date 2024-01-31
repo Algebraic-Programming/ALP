@@ -21,6 +21,7 @@
 #include <vector>
 
 #include <graphblas.hpp>
+#include <utils/print_vec_mat.hpp>
 
 using namespace grb;
 
@@ -29,41 +30,31 @@ using namespace grb;
 constexpr bool Debug = false;
 
 namespace {
-	template<class Iterator>
-	void printSparseMatrixIterator(size_t rows, size_t cols, Iterator begin, Iterator end, const std::string& name = "",
-	                               std::ostream& os = std::cout) {
-		std::vector<bool> assigned(rows * cols, false);
-		for( auto it = begin; it != end; ++it ) {
-			assigned[ it->first.first * cols + it->first.second ] = true;
-		}
-
-		os << "Matrix \"" << name << "\" (" << rows << "x" << cols << "):" << std::endl << "[" << std::endl;
-		if (rows > 256 || cols > 256) {
-			os << "   Matrix too large to print" << std::endl;
-		} else {
-			// os.precision( 3 );
-			for (size_t y = 0; y < rows; y++) {
-				os << std::string(3, ' ');
-				for (size_t x = 0; x < cols; x++) {
-					if (assigned[y * cols + x])
-						os << 'X';
-					else
-						os << '_';
-					os << " ";
-				}
-				os << std::endl;
-			}
-		}
-		os << "]" << std::endl;
-	}
-
 	template<bool enabled, typename D>
-	void printSparseMatrix(const Matrix<D>& mat, const std::string& name = "", std::ostream& os = std::cout) {
+	void printSparseMatrix(
+		const Matrix<D>& mat, const std::string& name = "", std::ostream& os = std::cerr
+	) {
 		if (not enabled) return;
 		wait(mat);
-		printSparseMatrixIterator(nrows(mat), ncols(mat), mat.cbegin(), mat.cend(), name, os);
+		print_matrix( mat, 256, name, os );
 	}
 } // namespace
+
+template< typename D >
+std::tuple< const size_t, const size_t, D > getMatrixEntry(
+	const std::pair<const std::pair<size_t, size_t>, D> &entry,
+	typename std::enable_if< not std::is_void<D>::value >::type * = nullptr
+) {
+	return std::make_tuple(entry.first.first, entry.first.second, entry.second);
+}
+
+template< typename D >
+std::tuple< const size_t, const size_t, bool > getMatrixEntry(
+	const std::pair<const size_t, const size_t> &entry,
+   typename std::enable_if< std::is_void<D>::value >::type * = nullptr
+) {
+	return std::make_tuple(entry.first, entry.second, true);
+}
 
 template<typename D, typename Func, typename RIT, typename CIT, Backend implementation>
 bool matrix_validate_predicate(
@@ -77,9 +68,10 @@ bool matrix_validate_predicate(
 	*/
 	bool valid = true;
 	for( const auto &each : B ) {
-		if( not predicate.apply( each.first.first, each.first.second, each.second ) ) {
+		const auto entry = getMatrixEntry<D>(each);
+		if( not predicate.apply( std::get<0>(entry), std::get<1>(entry), std::get<2>(entry) ) ) {
 			std::cerr << "  /!\\ Predicate failed for ("
-				<< each.first.first << ", " << each.first.second << ", " << each.second << ")"
+				<< std::get<0>(entry) << ", " << std::get<1>(entry) << ", " << std::get<2>(entry) << ")"
 				<< std::endl;
 			valid = false;
 			break;
@@ -115,13 +107,12 @@ RC test_case(
 			return rc;
 		}
 
-		grb::wait( output );
 		printSparseMatrix<Debug>(output);
-
 
 		const bool valid = matrix_validate_predicate(output, op);
 		if( not valid ) {
-			std::cerr << "(non-lambda variant): Test <" << test_name << "> failed, output matrix is invalid" << std::endl;
+			std::cerr << "(non-lambda variant): Test <"
+				<< test_name << "> failed, output matrix is invalid" << std::endl;
 			return FAILED;
 		}
 	}
@@ -129,8 +120,8 @@ RC test_case(
 	{ // Lambda variant
 		Matrix<D, implementation, RIT, CIT> output(nrows(input), ncols(input), 0);
 
-		auto lambda = [&op](const RIT & x, const CIT & y, const D & v) {
-			return op.apply(x, y, v);
+		auto lambda = []( const RIT & x, const CIT & y, const D & v ) {
+			return SelectionOperator().apply(x, y, v);
 		};
 
 		RC rc = selectLambda(output, input, lambda, RESIZE);
@@ -152,7 +143,8 @@ RC test_case(
 
 		const bool valid = matrix_validate_predicate(output, op);
 		if( not valid ) {
-			std::cerr << "(lambda variant): Test <" << test_name << "> failed, output matrix is invalid" << std::endl;
+			std::cerr << "(lambda variant): Test <" << test_name
+				<< "> failed, output matrix is invalid" << std::endl;
 			return FAILED;
 		}
 	}
@@ -160,85 +152,130 @@ RC test_case(
 	return SUCCESS;
 }
 
+template< typename D, typename RIT, typename CIT, typename NIT, Backend implementation >
+RC buildMatrixUniqueWrapper(
+	Matrix<D, implementation, RIT, CIT, NIT>& mat,
+	const size_t* row_indices,
+	const size_t* col_indices,
+	const size_t nvals,
+	const IOMode io_mode,
+	typename std::enable_if< not std::is_void<D>::value >::type * = nullptr
+) {
+	std::vector<D> values(nvals, 1);
+	return buildMatrixUnique( mat, row_indices, col_indices, values.data(), nvals, io_mode );
+}
+
+template< typename D, typename RIT, typename CIT, typename NIT, Backend implementation >
+RC buildMatrixUniqueWrapper(
+	Matrix<D, implementation, RIT, CIT, NIT>& mat,
+	const size_t* row_indices,
+	const size_t* col_indices,
+	const size_t nvals,
+	const IOMode io_mode,
+	typename std::enable_if< std::is_void<D>::value >::type * = nullptr
+) {
+	return buildMatrixUnique( mat, row_indices, col_indices, nvals, io_mode );
+}
+
+
 template< typename D >
 void grb_program(const long& n, RC& rc) {
+	const std::string D_name = std::is_void<D>::value ? "void" : "non-void";
 	rc = SUCCESS;
 
-	Matrix<D>  I(n, n, n),
-	             I_transposed(n, n, n),
-	             One_row(n, n, n),
-	             One_col(n, n, n);
+	Matrix<D>
+		I(n, n, n),
+		I_transposed(n, n, n),
+		One_row(n, n, n),
+		One_col(n, n, n);
 
 	{ // Build matrices
-		std::vector<D> values(n, 1);
-		std::vector<D> const_indices_zero(n, 0);
+		std::vector<size_t> const_indices_zero(n, 0);
 		std::vector<size_t> iota_indices(n, 0);
 		std::iota(iota_indices.begin(), iota_indices.end(), 0);
 		std::vector<size_t> reverse_iota_indices(n, 0);
-		for (long i = n-1; i >= 0; i--) { reverse_iota_indices[i] = i; }
+		for (auto i = 0; i < n; ++i) {
+			reverse_iota_indices[i] = n - i - 1;
+		}
 
-		buildMatrixUnique(I, iota_indices.data(), iota_indices.data(), values.data(), n, SEQUENTIAL);
+		rc = rc
+			? rc
+			: buildMatrixUniqueWrapper(
+				I, iota_indices.data(), iota_indices.data(), n, SEQUENTIAL
+			);
 		printSparseMatrix<Debug>(I, "identity");
 
-		buildMatrixUnique(I_transposed, iota_indices.data(), reverse_iota_indices.data(), values.data(), n, SEQUENTIAL);
+		rc = rc
+			? rc
+			: buildMatrixUniqueWrapper(
+				I_transposed, iota_indices.data(), reverse_iota_indices.data(), n, SEQUENTIAL
+			);
 		printSparseMatrix<Debug>(I_transposed, "transposed-identity");
 
-		buildMatrixUnique(One_row, iota_indices.data(), const_indices_zero.data(), values.data(), n, SEQUENTIAL);
+		rc = rc
+			? rc
+			: buildMatrixUniqueWrapper(
+				One_row, const_indices_zero.data(), iota_indices.data(), n, SEQUENTIAL
+			);
 		printSparseMatrix<Debug>(One_row, "one-row");
 
-		buildMatrixUnique(One_col, const_indices_zero.data(), iota_indices.data(), values.data(), n, SEQUENTIAL);
+		rc = rc
+			? rc
+			: buildMatrixUniqueWrapper(
+				One_col, iota_indices.data(), const_indices_zero.data(), n, SEQUENTIAL
+			);
 		printSparseMatrix<Debug>(One_col, "one-column");
 	}
 
 	// Test 01: Select <diagonal>
 	rc = rc ? rc : test_case(I, operators::select::is_diagonal<D>(),
-	          "Test 01: Select <diagonal> out of <identity>");
+	          "Test 01: Select <is_diagonal<" + D_name + ">> out of <identity>");
 	rc = rc ? rc : test_case(I_transposed, operators::select::is_diagonal<D>(),
-	          "Test 01: Select <diagonal> out of <transposed-identity>");
+	          "Test 01: Select <is_diagonal<" + D_name + ">> out of <transposed-identity>");
 	rc = rc ? rc : test_case(One_row, operators::select::is_diagonal<D>(),
-	          "Test 01: Select <diagonal> out of <one-row>");
+	          "Test 01: Select <is_diagonal<" + D_name + ">> out of <one-row>");
 	rc = rc ? rc : test_case(One_col, operators::select::is_diagonal<D>(),
-	          "Test 01: Select <diagonal> out of <one-column>");
+	          "Test 01: Select <is_diagonal<" + D_name + ">> out of <one-column>");
 
 	// Test 02: Select <strict-lower>
 	rc = rc ? rc : test_case(I, operators::select::is_strictly_lower<D>(),
-	          "Test 02: Select <strict-lower> out of <identity>");
+	          "Test 02: Select <is_strictly_lower<" + D_name + ">> out of <identity>");
 	rc = rc ? rc : test_case(I_transposed, operators::select::is_strictly_lower<D>(),
-	          "Test 02: Select <strict-lower> out of <transposed-identity>");
+	          "Test 02: Select <is_strictly_lower<" + D_name + ">> out of <transposed-identity>");
 	rc = rc ? rc : test_case(One_row, operators::select::is_strictly_lower<D>(),
-	          "Test 02: Select <strict-lower> out of <one-row>");
+	          "Test 02: Select <is_strictly_lower<" + D_name + ">> out of <one-row>");
 	rc = rc ? rc : test_case(One_col, operators::select::is_strictly_lower<D>(),
-	          "Test 02: Select <strict-lower> out of <one-column>");
+	          "Test 02: Select <is_strictly_lower<" + D_name + ">> out of <one-column>");
 
 	// Test 03: Select <strict-upper>
 	rc = rc ? rc : test_case(I, operators::select::is_strictly_upper<D>(),
-	          "Test 03: Select <strict-lower> out of <identity>");
+	          "Test 03: Select <is_strictly_upper<" + D_name + ">> out of <identity>");
 	rc = rc ? rc : test_case(I_transposed, operators::select::is_strictly_upper<D>(),
-	          "Test 03: Select <strict-lower> out of <transposed-identity>");
+	          "Test 03: Select <is_strictly_upper<" + D_name + ">> out of <transposed-identity>");
 	rc = rc ? rc : test_case(One_row, operators::select::is_strictly_upper<D>(),
-	          "Test 03: Select <strict-lower> out of <one-row>");
+	          "Test 03: Select <is_strictly_upper<" + D_name + ">> out of <one-row>");
 	rc = rc ? rc : test_case(One_col, operators::select::is_strictly_upper<D>(),
-	          "Test 03: Select <strict-lower> out of <one-column>");
+	          "Test 03: Select <is_strictly_upper<" + D_name + ">> out of <one-column>");
 
 	// Test 04: Select <lower-or-diag>
 	rc = rc ? rc : test_case(I, operators::select::is_lower_or_diagonal<D>(),
-	          "Test 04: Select <lower-or-diag> out of <identity>");
+	          "Test 04: Select <is_lower_or_diagonal<" + D_name + ">> out of <identity>");
 	rc = rc ? rc : test_case(I_transposed, operators::select::is_lower_or_diagonal<D>(),
-	          "Test 04: Select <lower-or-diag> out of <transposed-identity>");
+	          "Test 04: Select <is_lower_or_diagonal<" + D_name + ">> out of <transposed-identity>");
 	rc = rc ? rc : test_case(One_row, operators::select::is_lower_or_diagonal<D>(),
-	          "Test 04: Select <lower-or-diag> out of <one-row>");
+	          "Test 04: Select <is_lower_or_diagonal<" + D_name + ">> out of <one-row>");
 	rc = rc ? rc : test_case(One_col, operators::select::is_lower_or_diagonal<D>(),
-			  "Test 04: Select <lower-or-diag> out of <one-column>");
+			  "Test 04: Select <is_lower_or_diagonal<" + D_name + ">> out of <one-column>");
 
 	// Test 05: Select <upper-or-diag>
 	rc = rc ? rc : test_case(I, operators::select::is_upper_or_diagonal<D>(),
-	          "Test 05: Select <upper-or-diag> out of <identity>");
+	          "Test 05: Select <is_lower_or_diagonal<" + D_name + ">> out of <identity>");
 	rc = rc ? rc : test_case(I_transposed, operators::select::is_upper_or_diagonal<D>(),
-	          "Test 05: Select <upper-or-diag> out of <transposed-identity>");
+	          "Test 05: Select <is_lower_or_diagonal<" + D_name + ">> out of <transposed-identity>");
 	rc = rc ? rc : test_case(One_row, operators::select::is_upper_or_diagonal<D>(),
-	          "Test 05: Select <upper-or-diag> out of <one-row>");
+	          "Test 05: Select <is_lower_or_diagonal<" + D_name + ">> out of <one-row>");
 	rc = rc ? rc : test_case(One_col, operators::select::is_upper_or_diagonal<D>(),
-	          "Test 05: Select <upper-or-diag> out of <one-column>");
+	          "Test 05: Select <is_lower_or_diagonal<" + D_name + ">> out of <one-column>");
 
 	assert(
 		collectives<>::allreduce( rc, operators::any_or<RC>() ) == SUCCESS
@@ -267,8 +304,8 @@ int main(int argc, char** argv) {
 			return out;
 		}
 	}
-	// NOTE: grb::select does not support pattern matrices for the moment
-	// {
+
+	// { // To be implemented
 	// 	std::cout << "-- -- Running test with using matrix-type: void" << std::endl;
 	// 	if (launcher.exec(&grb_program<void>, n, out, true) != SUCCESS) {
 	// 		STDERR_WITH_LINE << "Launching test FAILED\n";

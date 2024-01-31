@@ -4278,7 +4278,6 @@ namespace grb {
 
 	namespace operators::select::internal {
 
-
 		/**
 		 * This class takes a generic operator implementation and exposes a more
 		 * convenient apply() function based on it. This function allows arbitrary
@@ -4289,7 +4288,7 @@ namespace grb {
 		 *
 		 * @see Operator for full details.
 		 */
-		template< typename OP >
+		template< typename OP, typename  >
 		class MatrixSelectionOperatorBase {
 			protected:
 
@@ -4303,18 +4302,46 @@ namespace grb {
 				static bool apply( const RIT1 & x, const CIT1 & y, const D1 & v ) {
 					const RIT a = static_cast< RIT1 >( x );
 					const CIT b = static_cast< CIT1 >( y );
-					const D val = static_cast< D1 >( v );
-					return  OP::apply( &a, &b, &val );
+					return OP::apply( &a, &b, &v );
 				}
 
 				/**
 				 * This is the high-performance version of apply() in the sense that no
 				 * casting is required. This version will be automatically caled whenever
-				 * possible.
+				 * possible (non-void variant).
 				 */
 				static bool apply( const RIT & x, const CIT & y, D & v ) {
 					return OP::apply( &x, &y, &v );
 				}
+
+		};
+
+		template< typename OP >
+		class MatrixSelectionOperatorBase< OP, void > {
+			protected:
+
+				typedef typename OP::value_type D;
+				typedef typename OP::row_type RIT;
+				typedef typename OP::column_type CIT;
+
+			public:
+
+				template< typename RIT1, typename CIT1 >
+				static bool apply( const RIT1 & x, const CIT1 & y ) {
+					const RIT a = static_cast< RIT1 >( x );
+					const CIT b = static_cast< CIT1 >( y );
+					return OP::apply( &a, &b, nullptr );
+				}
+
+				/**
+				 * This is the high-performance version of apply() in the sense that no
+				 * casting is required. This version will be automatically caled whenever
+				 * possible (void variant).
+				 */
+				static bool apply( const RIT & x, const CIT & y ) {
+					return OP::apply( &x, &y, nullptr );
+				}
+
 		};
 
 
