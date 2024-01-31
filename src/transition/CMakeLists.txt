@@ -44,16 +44,16 @@ function( add_transition_library target_name lib_type lib_name src1 )
 
 endfunction( add_transition_library )
 
-
 if( WITH_REFERENCE_BACKEND )
 	add_transition_library( sparseblas_static STATIC "sparseblas" ${CMAKE_CURRENT_SOURCE_DIR}/sparseblas.cpp
 		PUBLIC_LINK_LIBRARIES backend_reference
 	)
 
-	add_transition_library( ${_SPBLAS_PREFIX}sparseblas_static STATIC "${_SPBLAS_PREFIX}sparseblas"
+	# this is the version for sequantial execution only
+	add_transition_library( ${_SPBLAS_PREFIX}sparseblas_sequential STATIC "${_SPBLAS_PREFIX}sparseblas_sequential"
 		${CMAKE_CURRENT_SOURCE_DIR}/sparseblas.cpp PUBLIC_LINK_LIBRARIES backend_reference
 	)
-	target_compile_definitions( ${_SPBLAS_PREFIX}sparseblas_static PUBLIC SPBLAS_PREFIX=${_SPBLAS_PREFIX} )
+	target_compile_definitions( ${_SPBLAS_PREFIX}sparseblas_sequential PUBLIC SPBLAS_PREFIX=${_SPBLAS_PREFIX} )
 
 	if( ENABLE_SOLVER_LIB )
 		add_transition_library( spsolver_sequential STATIC "spsolver_sequential" ${CMAKE_CURRENT_SOURCE_DIR}/solver.cpp
@@ -67,10 +67,11 @@ if( WITH_OMP_BACKEND )
 		PRIVATE_LINK_LIBRARIES backend_reference_omp
 	)
 
-	add_transition_library( ${_SPBLAS_PREFIX}sparseblas_omp_static STATIC "${_SPBLAS_PREFIX}sparseblas_omp"
+	# this is the "default" version (parallel)
+	add_transition_library( ${_SPBLAS_PREFIX}sparseblas STATIC "${_SPBLAS_PREFIX}sparseblas"
 		${CMAKE_CURRENT_SOURCE_DIR}/sparseblas.cpp PRIVATE_LINK_LIBRARIES backend_reference_omp
 	)
-	target_compile_definitions( ${_SPBLAS_PREFIX}sparseblas_omp_static PUBLIC SPBLAS_PREFIX=${_SPBLAS_PREFIX} )
+	target_compile_definitions( ${_SPBLAS_PREFIX}sparseblas PUBLIC SPBLAS_PREFIX=${_SPBLAS_PREFIX} )
 
 	if( ENABLE_EXTRA_SOLVER_LIBS )
 		add_transition_library( spsolver_shmem_blocking STATIC "spsolver_shmem_blocking" ${CMAKE_CURRENT_SOURCE_DIR}/solver.cpp

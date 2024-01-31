@@ -19,7 +19,7 @@
  * @file
  *
  * This is the ALP implementation of a subset of the de-facto *_spblas.h Sparse
- * BLAS standard. This implementation uses the SPBLAS_FUN(  prefix; e.g.,
+ * BLAS standard. This implementation uses the SPBLAS_NAME(  prefix; e.g.,
  * #spblas_dcsrgemv.
  *
  * All functions defined have <tt>void</tt> return types. This implies two
@@ -44,9 +44,11 @@ extern "C" {
 	#error "SPBLAS_PREFIX must be defined"
 #endif
 
-#define SPBLAS_FUN( name ) SPCONCAT( SPBLAS_PREFIX, name )
+#define SPBLAS_NAME( name ) SPCONCAT( SPBLAS_PREFIX, name )
 
-#define EXT_SPBLAS_FUN( name ) SPCONCAT( ext, SPBLAS_FUN( name ) )
+#define EXT_SPBLAS_NAME( name ) SPCONCAT( ext, SPBLAS_NAME( name ) )
+
+#define SPBLAS_RET_T void
 
 /**
  * Performs sparse matrix--vector multiplication.
@@ -69,7 +71,7 @@ extern "C" {
  *
  * All memory regions must be pre-allocated and initialised.
  */
-void SPBLAS_FUN( dcsrgemv )(
+SPBLAS_RET_T SPBLAS_NAME( dcsrgemv )(
 	const char * transa,
 	const int * m,
 	const double * a, const int * ia, const int * ja,
@@ -106,7 +108,7 @@ void SPBLAS_FUN( dcsrgemv )(
  *                      should be \f$ n \f$. If in column-major format, this
  *                      should be \f$ m \f$.
  */
-void SPBLAS_FUN( dcsrmm )(
+SPBLAS_RET_T SPBLAS_NAME( dcsrmm )(
 	const char * transa,
 	const int * m, const int * n, const int * k,
 	const double * alpha,
@@ -157,7 +159,7 @@ void SPBLAS_FUN( dcsrmm )(
  *                  integer when computation has proceeded successfully until
  *                  (but not including) the returned integer.
  */
-void SPBLAS_FUN( dcsrmultcsr )(
+SPBLAS_RET_T SPBLAS_NAME( dcsrmultcsr )(
 	const char * trans, const int * request, const int * sort,
 	const int * m, const int * n, const int * k,
 	double * a, int * ja, int * ia,
@@ -197,7 +199,7 @@ void SPBLAS_FUN( dcsrmultcsr )(
  *
  * This is an ALP implementation-specific extension.
  */
-void EXT_SPBLAS_FUN( dcsrmultsv )(
+SPBLAS_RET_T EXT_SPBLAS_NAME( dcsrmultsv )(
 	const char * trans, const int * request,
 	const int * m, const int * n,
 	const double * a, const int * ja, const int * ia,
@@ -209,7 +211,7 @@ void EXT_SPBLAS_FUN( dcsrmultsv )(
  * An extension that frees any buffers the ALP/GraphBLAS-generated SparseBLAS
  * library may have allocated.
  */
-void EXT_SPBLAS_FUN( free )();
+SPBLAS_RET_T EXT_SPBLAS_NAME( free )();
 
 #ifdef __cplusplus
 } // end extern "C"

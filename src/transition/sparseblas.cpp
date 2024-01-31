@@ -788,7 +788,7 @@ extern "C" {
 		return 0;
 	}
 
-	void SPBLAS_FUN( dcsrgemv )(
+	SPBLAS_RET_T SPBLAS_NAME( dcsrgemv )(
 		const char * transa,
 		const int * m_p,
 		const double * a, const int * ia, const int * ja,
@@ -896,7 +896,7 @@ extern "C" {
 		return 255;
 	}
 
-	void SPBLAS_FUN( dcsrmm )(
+	SPBLAS_RET_T SPBLAS_NAME( dcsrmm )(
 		const char * const transa,
 		const int * m, const int * n, const int * k,
 		const double * alpha,
@@ -988,7 +988,7 @@ extern "C" {
 		return 0;
 	}
 
-	void EXT_SPBLAS_FUN( dcsrmultsv )(
+	SPBLAS_RET_T EXT_SPBLAS_NAME( dcsrmultsv )(
 		const char * trans, const int * request,
 		const int * m, const int * n,
 		const double * a, const int * ja, const int * ia,
@@ -1133,7 +1133,7 @@ extern "C" {
 		return 0;
 	}
 
-	void SPBLAS_FUN( dcsrmultcsr )(
+	SPBLAS_RET_T SPBLAS_NAME( dcsrmultcsr )(
 		const char * trans, const int * request, const int * sort,
 		const int * m_p, const int * n_p, const int * k_p,
 		double * a, int * ja, int * ia,
@@ -1324,7 +1324,7 @@ extern "C" {
 		return 0;
 	}
 
-	void EXT_SPBLAS_FUN( free )() {
+	SPBLAS_RET_T EXT_SPBLAS_NAME( free )() {
 		(void) EXTBLAS_free();
 	}
 
