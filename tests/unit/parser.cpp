@@ -21,6 +21,7 @@
 #include <map>
 #include <sstream>
 #include <stdexcept>
+#include <cstdint>
 
 #include "graphblas/synchronizedNonzeroIterator.hpp"
 

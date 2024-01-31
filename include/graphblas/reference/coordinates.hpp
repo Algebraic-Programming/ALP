@@ -25,6 +25,7 @@
 
 #include <stddef.h> //size_t
 
+#include <cstdint>
 #include <stdexcept> //std::runtime_error
 
 #include <assert.h>
