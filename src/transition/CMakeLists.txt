@@ -44,10 +44,6 @@ function( add_transition_library target_name lib_type lib_name src1 )
 
 endfunction( add_transition_library )
 
-set( _SPBLAS_PREFIX "kml_" )
-if( SPBLAS_PREFIX )
-	set( _SPBLAS_PREFIX "${SPBLAS_PREFIX}_" )
-endif()
 
 if( WITH_REFERENCE_BACKEND )
 	add_transition_library( sparseblas_static STATIC "sparseblas" ${CMAKE_CURRENT_SOURCE_DIR}/sparseblas.cpp

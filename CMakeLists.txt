@@ -282,6 +282,9 @@ endif()
 # compilation flags for all targets
 include( CompileFlags )
 
+# information for the transition path
+include( Transition )
+
 ### BACKEND HEADERS
 
 # by default no headers are built

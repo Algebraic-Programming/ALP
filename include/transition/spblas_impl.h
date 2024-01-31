@@ -31,8 +31,8 @@
  *      the detection of dimension mismatches.
  */
 
-#ifndef _H_ALP_SPBLAS
-#define _H_ALP_SPBLAS
+#ifndef _H_ALP_SPBLAS_IMPL
+#define _H_ALP_SPBLAS_IMPL
 
 #include "blas_sparse_vec.h"
 
@@ -41,7 +41,7 @@ extern "C" {
 #endif
 
 #ifndef SPBLAS_PREFIX
-	#define SPBLAS_PREFIX spblas_
+	#error "SPBLAS_PREFIX must be defined"
 #endif
 
 #define SPBLAS_FUN( name ) SPCONCAT( SPBLAS_PREFIX, name )
@@ -215,5 +215,5 @@ void EXT_SPBLAS_FUN( free )();
 } // end extern "C"
 #endif
 
-#endif // end _H_ALP_SPBLAS
+#endif // end _H_ALP_SPBLAS_IMPL
 
