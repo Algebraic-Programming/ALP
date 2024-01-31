@@ -69,7 +69,7 @@ bool matrix_validate_predicate(
 	bool valid = true;
 	for( const auto &each : B ) {
 		const auto entry = getMatrixEntry<D>(each);
-		if( not predicate.apply( std::get<0>(entry), std::get<1>(entry), std::get<2>(entry) ) ) {
+		if( not predicate( std::get<0>(entry), std::get<1>(entry), std::get<2>(entry) ) ) {
 			std::cerr << "  /!\\ Predicate failed for ("
 				<< std::get<0>(entry) << ", " << std::get<1>(entry) << ", " << std::get<2>(entry) << ")"
 				<< std::endl;
@@ -121,7 +121,7 @@ RC test_case(
 		Matrix<D, implementation, RIT, CIT> output(nrows(input), ncols(input), 0);
 
 		auto lambda = []( const RIT & x, const CIT & y, const D & v ) {
-			return SelectionOperator().apply(x, y, v);
+			return SelectionOperator()(x, y, v);
 		};
 
 		RC rc = selectLambda(output, input, lambda, RESIZE);

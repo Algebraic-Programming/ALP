@@ -63,7 +63,7 @@ namespace grb {
 
 		template<
 			Descriptor descr = descriptors::no_operation,
-			class Operator,
+			class SelectionOperator,
 			typename Tin,
 			typename RITin, typename CITin, typename NITin,
 			typename Tout,
@@ -72,7 +72,7 @@ namespace grb {
 		RC select_generic(
 			Matrix< Tout, reference, RITout, CITout, NITout > &out,
 			const Matrix< Tin, reference, RITin, CITin, NITin > &in,
-			const Operator &op,
+			const SelectionOperator &op,
 			const std::function< size_t( size_t ) > &row_l2g,
 			const std::function< size_t( size_t ) > &col_l2g,
 			const Phase &phase
@@ -124,7 +124,7 @@ namespace grb {
 						for( auto k = in_raw.col_start[ i ]; k < in_raw.col_start[ i + 1 ]; ++k ) {
 							const auto j = in_raw.row_index[ k ];
 							const auto value = in_raw.getValue( k, identity );
-							if( op.apply( row_l2g( i ), col_l2g( j ), value ) ) {
+							if( op( row_l2g( i ), col_l2g( j ), value ) ) {
 								nzc++;
 							}
 						}
@@ -159,7 +159,7 @@ namespace grb {
 					for( size_t k = in_raw.col_start[ i ]; k < in_raw.col_start[ i + 1 ]; ++k ) {
 						const auto j = in_raw.row_index[ k ];
 						const auto value = in_raw.getValue( k, identity );
-						if( not op.apply( row_l2g( i ), col_l2g( j ), value ) ) continue;
+						if( not op( row_l2g( i ), col_l2g( j ), value ) ) continue;
 						++out_ccs.col_start[ j + 1 ];
 					}
 				}
@@ -185,7 +185,7 @@ namespace grb {
 				for( size_t k = in_raw.col_start[ i ]; k < in_raw.col_start[ i + 1 ]; ++k ) {
 					const auto j = in_raw.row_index[ k ];
 					const auto value = in_raw.getValue( k, identity );
-					if( not op.apply( row_l2g( i ), col_l2g( j ), value ) ) continue;
+					if( not op( row_l2g( i ), col_l2g( j ), value ) ) continue;
 #ifdef _DEBUG
 					std::cout << "\tKeeping value at: " << row_l2g( i ) << ", "
 						<< col_l2g( j ) << " -> idx=" << nzc << "\n";
@@ -210,43 +210,6 @@ namespace grb {
 			internal::setCurrentNonzeroes( out, nzc );
 
 			return rc;
-		}
-
-		template<
-			Descriptor descr = descriptors::no_operation,
-			class PredicateFunction,
-			typename Tin,
-			typename RITin, typename CITin, typename NITin,
-			typename Tout,
-			typename RITout, typename CITout, typename NITout
-		>
-		RC selectLambda_generic(
-			Matrix< Tout, reference, RITout, CITout, NITout > &out,
-			const Matrix< Tin, reference, RITin, CITin, NITin > &in,
-			const PredicateFunction &lambda,
-			const std::function< size_t( size_t ) > &row_l2g,
-			const std::function< size_t( size_t ) > &col_l2g,
-			const Phase &phase
-		) {
-			struct LambdaOperator {
-				typedef typename std::conditional<
-						std::is_void< Tin >::value, bool, Tin
-					>::type D;
-				typedef RITin RIT;
-				typedef CITin CIT;
-
-				const PredicateFunction op;
-
-				explicit LambdaOperator( const PredicateFunction &op_ ) : op( op_ ) {}
-
-				bool apply( const RIT &x, const CIT &y, const D &v ) const {
-					return op( x, y, v );
-				}
-			};
-
-			return internal::select_generic< descr >(
-				out, in, LambdaOperator( lambda ), row_l2g, col_l2g, phase
-			);
 		}
 
 		/**
@@ -1516,7 +1479,7 @@ namespace grb {
 
 	template<
 		Descriptor descr = descriptors::no_operation,
-		class Operator,
+		class SelectionOperator,
 		typename Tin,
 		typename RITin, typename CITin, typename NITin,
 		typename Tout,
@@ -1525,12 +1488,12 @@ namespace grb {
 	RC select(
 		Matrix< Tout, reference, RITout, CITout, NITout >& out,
 		const Matrix< Tin, reference, RITin, CITin, NITin >& in,
-		const Operator op = Operator(),
+		const SelectionOperator op = SelectionOperator(),
 		const Phase& phase = EXECUTE,
 		const typename std::enable_if<
 			!is_object< Tin >::value &&
 			!is_object< Tout >::value &&
-			is_matrix_selection_operator< Operator >::value
+			is_matrix_selection_operator< SelectionOperator >::value
 		>::type * const = nullptr
 	) {
 #ifdef _DEBUG
@@ -1582,7 +1545,7 @@ namespace grb {
 			"input and output matrix types must match"
 		);
 
-		return internal::selectLambda_generic< descr >(
+		return internal::select_generic< descr >(
 			out,
 			in,
 			lambda,

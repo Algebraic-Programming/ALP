@@ -4280,7 +4280,7 @@ namespace grb {
 
 		/**
 		 * This class takes a generic operator implementation and exposes a more
-		 * convenient apply() function based on it. This function allows arbitrary
+		 * convenient operator() function based on it. This function allows arbitrary
 		 * data types being passed as parameters, and automatically handles any
 		 * casting required for the raw operator.
 		 *
@@ -4288,60 +4288,52 @@ namespace grb {
 		 *
 		 * @see Operator for full details.
 		 */
-		template< typename OP, typename  >
-		class MatrixSelectionOperatorBase {
-			protected:
+		template< typename OP, typename >
+		struct MatrixSelectionOperatorBase {
+			typedef typename OP::value_type D;
+			typedef typename OP::row_type RIT;
+			typedef typename OP::column_type CIT;
 
-				typedef typename OP::value_type D;
-				typedef typename OP::row_type RIT;
-				typedef typename OP::column_type CIT;
+			template< typename RIT1, typename CIT1, typename D1 >
+			bool operator()( const RIT1 & x, const CIT1 & y, const D1 & v ) const {
+				const RIT a = static_cast< RIT1 >( x );
+				const CIT b = static_cast< CIT1 >( y );
+				return OP::apply( &a, &b, &v );
+			}
 
-			public:
-
-				template< typename RIT1, typename CIT1, typename D1 >
-				static bool apply( const RIT1 & x, const CIT1 & y, const D1 & v ) {
-					const RIT a = static_cast< RIT1 >( x );
-					const CIT b = static_cast< CIT1 >( y );
-					return OP::apply( &a, &b, &v );
-				}
-
-				/**
-				 * This is the high-performance version of apply() in the sense that no
-				 * casting is required. This version will be automatically caled whenever
-				 * possible (non-void variant).
-				 */
-				static bool apply( const RIT & x, const CIT & y, D & v ) {
-					return OP::apply( &x, &y, &v );
-				}
+			/**
+			 * This is the high-performance version of apply() in the sense that no
+			 * casting is required. This version will be automatically caled whenever
+			 * possible (non-void variant).
+			 */
+			bool operator()( const RIT & x, const CIT & y, D & v ) const {
+				return OP::apply( &x, &y, &v );
+			}
 
 		};
 
 		template< typename OP >
-		class MatrixSelectionOperatorBase< OP, void > {
-			protected:
+		struct MatrixSelectionOperatorBase< OP, void > {
+			typedef typename OP::value_type D;
+			typedef typename OP::row_type RIT;
+			typedef typename OP::column_type CIT;
 
-				typedef typename OP::value_type D;
-				typedef typename OP::row_type RIT;
-				typedef typename OP::column_type CIT;
+			template< typename RIT1, typename CIT1, typename Unused = std::nullptr_t >
+			bool apply( const RIT1 & x, const CIT1 & y, Unused& = Unused() ) const {
+				const RIT a = static_cast< RIT1 >( x );
+				const CIT b = static_cast< CIT1 >( y );
+				return OP::apply( &a, &b, nullptr );
+			}
 
-			public:
-
-				template< typename RIT1, typename CIT1 >
-				static bool apply( const RIT1 & x, const CIT1 & y ) {
-					const RIT a = static_cast< RIT1 >( x );
-					const CIT b = static_cast< CIT1 >( y );
-					return OP::apply( &a, &b, nullptr );
-				}
-
-				/**
-				 * This is the high-performance version of apply() in the sense that no
-				 * casting is required. This version will be automatically caled whenever
-				 * possible (void variant).
-				 */
-				static bool apply( const RIT & x, const CIT & y ) {
-					return OP::apply( &x, &y, nullptr );
-				}
-
+			/**
+			 * This is the high-performance version of apply() in the sense that no
+			 * casting is required. This version will be automatically caled whenever
+			 * possible (void variant).
+			 */
+			template< typename Unused = std::nullptr_t >
+			bool apply( const RIT & x, const CIT & y, Unused& = Unused() ) const {
+				return OP::apply( &x, &y, nullptr );
+			}
 		};
 
 
@@ -4349,28 +4341,24 @@ namespace grb {
 		template<
 			typename D, typename RIT, typename CIT
 		>
-		class is_diagonal {
+		struct is_diagonal {
+			typedef D value_type;
+			typedef RIT row_type;
+			typedef CIT column_type;
 
-			public:
-				typedef D value_type;
-				typedef RIT row_type;
-				typedef CIT column_type;
-
-				static bool apply(
-					const row_type * __restrict__ const x,
-					const column_type * __restrict__ const y,
-					const value_type * __restrict__ const
-				) {
-					return *x == *y;
-				}
+			static bool apply(
+				const row_type * __restrict__ const x,
+				const column_type * __restrict__ const y,
+				const value_type * __restrict__ const
+			) {
+				return *x == *y;
+			}
 		};
 
 		template<
 			typename D, typename RIT, typename CIT
 		>
-		class is_strictly_lower {
-
-		public:
+		struct is_strictly_lower {
 			typedef D value_type;
 			typedef RIT row_type;
 			typedef CIT column_type;
@@ -4387,9 +4375,7 @@ namespace grb {
 		template<
 			typename D, typename RIT, typename CIT
 		>
-		class is_lower_or_diagonal {
-
-		public:
+		struct is_lower_or_diagonal {
 			typedef D value_type;
 			typedef RIT row_type;
 			typedef CIT column_type;
@@ -4406,9 +4392,7 @@ namespace grb {
 		template<
 			typename D, typename RIT, typename CIT
 		>
-		class is_strictly_upper {
-
-		public:
+		struct is_strictly_upper {
 			typedef D value_type;
 			typedef RIT row_type;
 			typedef CIT column_type;
@@ -4423,9 +4407,7 @@ namespace grb {
 		template<
 			typename D, typename RIT, typename CIT
 		>
-		class is_upper_or_diagonal {
-
-		public:
+		struct is_upper_or_diagonal {
 			typedef D value_type;
 			typedef RIT row_type;
 			typedef CIT column_type;
