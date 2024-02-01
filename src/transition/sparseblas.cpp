@@ -26,7 +26,6 @@
 #include <assert.h>
 
 #include <graphblas.hpp>
-#include <spblas.h>
 
 
 /** \internal Internal namespace for the SparseBLAS implementation. */
@@ -788,90 +787,6 @@ extern "C" {
 		return 0;
 	}
 
-	SPBLAS_RET_T SPBLAS_NAME( dcsrgemv )(
-		const char * transa,
-		const int * m_p,
-		const double * a, const int * ia, const int * ja,
-		const double * x,
-		double * y
-	) {
-		// declare algebraic structures
-		grb::Semiring<
-			grb::operators::add< double >, grb::operators::mul< double >,
-			grb::identities::zero, grb::identities::one
-		> ring;
-		grb::Monoid<
-			grb::operators::max< int >, grb::identities::negative_infinity
-		> maxMonoid;
-
-		// declare minimum necessary descriptors
-		constexpr grb::Descriptor minDescr = grb::descriptors::dense |
-			grb::descriptors::force_row_major;
-
-		// determine matrix size
-		const int m = *m_p;
-		const grb::Vector< int > columnIndices =
-			grb::internal::template wrapRawVector< int >( ia[ m ], ja );
-		int n = 0;
-		grb::RC rc = foldl( n, columnIndices, maxMonoid );
-		if( rc != grb::SUCCESS ) {
-			std::cerr << "Could not determine matrix column size\n";
-			assert( false );
-			return;
-		}
-
-		// retrieve buffers (only when A needs to be output also)
-		//char * const bitmask = sparseblas::getBitmask( n );
-		//char * const stack = sparseblas::getStack( n );
-		//double * const buffer = sparseblas::template getBuffer< double >( n );
-
-		// retrieve necessary ALP/GraphBLAS container wrappers
-		const grb::Matrix< double, grb::config::default_backend, int, int, int > A =
-			grb::internal::wrapCRSMatrix( a, ja, ia, m, n );
-		const grb::Vector< double > input = grb::internal::template
-			wrapRawVector< double >( n, x );
-		grb::Vector< double > output = grb::internal::template
-			wrapRawVector< double >( m, y );
-
-		// set output vector to zero
-		rc = grb::set( output, ring.template getZero< double >() );
-		if( rc != grb::SUCCESS ) {
-			std::cerr << "Could not set output vector to zero\n";
-			assert( false );
-			return;
-		}
-
-		// do either y=Ax or y=A^Tx
-		if( transa[0] == 'N' ) {
-			rc = grb::mxv< minDescr >(
-				output, A, input, ring
-			);
-			if( rc != grb::SUCCESS ) {
-				std::cerr << "ALP/GraphBLAS returns error during SpMV: "
-					<< grb::toString( rc ) << ".\n";
-				assert( false );
-				return;
-			}
-		} else {
-			// Hermitian is not supported
-			assert( transa[0] == 'T' );
-			rc = grb::mxv<
-				minDescr |
-				grb::descriptors::transpose_matrix
-			>(
-				output, A, input, ring
-			);
-			if( rc != grb::SUCCESS ) {
-				std::cerr << "ALP/GraphBLAS returns error during transposed SpMV: "
-					<< grb::toString( rc ) << ".\n";
-				assert( false );
-				return;
-			}
-		}
-
-		// done
-	}
-
 	int BLAS_dusmm(
 		const enum blas_order_type order,
 		const enum blas_trans_type transa,
@@ -894,43 +809,6 @@ extern "C" {
 			<< "been implemented.\n";
 		assert( false );
 		return 255;
-	}
-
-	SPBLAS_RET_T SPBLAS_NAME( dcsrmm )(
-		const char * const transa,
-		const int * m, const int * n, const int * k,
-		const double * alpha,
-		const char * matdescra, const double * val, const int * indx,
-		const int * pntrb, const int * pntre,
-		const double * b, const int * ldb,
-		const double * beta,
-		double * c, const int * ldc
-	) {
-		assert( transa[0] == 'N' || transa[0] == 'T' );
-		assert( m != NULL );
-		assert( n != NULL );
-		assert( k != NULL );
-		assert( alpha != NULL );
-		// not sure yet what constraints if any on matdescra
-		if( *m > 0 && *k > 0 ) {
-			assert( pntrb != NULL );
-			assert( pntre != NULL );
-		}
-		// val and indx could potentially be NULL if there are no nonzeroes
-		assert( b != NULL );
-		assert( ldb != NULL );
-		assert( beta != NULL );
-		assert( c != NULL );
-		assert( ldc != NULL );
-		(void) transa;
-		(void) m; (void) n; (void) k;
-		(void) alpha;
-		(void) matdescra; (void) val; (void) indx; (void) pntrb; (void) pntre;
-		(void) b; (void) ldb;
-		(void) beta;
-		(void) c; (void) ldc;
-		// requires dense ALP and mixed sparse/dense operations
-		assert( false );
 	}
 
 	int EXTBLAS_dusmsv(
@@ -986,53 +864,6 @@ extern "C" {
 			}
 		}
 		return 0;
-	}
-
-	SPBLAS_RET_T EXT_SPBLAS_NAME( dcsrmultsv )(
-		const char * trans, const int * request,
-		const int * m, const int * n,
-		const double * a, const int * ja, const int * ia,
-		const extblas_sparse_vector x,
-		extblas_sparse_vector y
-	) {
-		grb::Semiring<
-			grb::operators::add< double >, grb::operators::mul< double >,
-			grb::identities::zero, grb::identities::one
-		> ring;
-		const grb::Matrix< double, grb::config::default_backend, int, int, int > A =
-			grb::internal::wrapCRSMatrix( a, ja, ia, *m, *n );
-		auto input  = sparseblas::getDoubleVector( x );
-		auto output = sparseblas::getDoubleVector( y );
-		if( !(input->finalized) ) {
-			throw std::runtime_error( "Uninitialised input vector during SpMSpV\n" );
-		}
-		if( !(output->finalized) ) {
-			throw std::runtime_error( "Uninitialised output vector during SpMSpV\n" );
-		}
-		if( request[ 0 ] != 0 && request[ 1 ] != 1 ) {
-			throw std::runtime_error( "Illegal request during call to dcsrmultsv\n" );
-		}
-		grb::Phase phase = grb::EXECUTE;
-		if( request[ 0 ] == 1 ) {
-			phase = grb::RESIZE;
-		}
-		grb::RC rc;
-		if( trans[0] == 'N' ) {
-			rc = grb::mxv< grb::descriptors::force_row_major >( *(output->vector), A,
-				*(input->vector), ring, phase );
-		} else {
-			if( trans[1] != 'T' ) {
-				throw std::runtime_error( "Illegal trans argument to dcsrmultsv\n" );
-			}
-			rc = grb::mxv<
-				grb::descriptors::force_row_major |
-				grb::descriptors::transpose_matrix
-			>( *(output->vector), A, *(input->vector), ring, phase );
-		}
-		if( rc != grb::SUCCESS ) {
-			throw std::runtime_error( "ALP/GraphBLAS returns error during call to "
-				"SpMSpV: " + grb::toString( rc ) );
-		}
 	}
 
 	int EXTBLAS_dusmsm(
@@ -1133,114 +964,6 @@ extern "C" {
 		return 0;
 	}
 
-	SPBLAS_RET_T SPBLAS_NAME( dcsrmultcsr )(
-		const char * trans, const int * request, const int * sort,
-		const int * m_p, const int * n_p, const int * k_p,
-		double * a, int * ja, int * ia,
-		double * b, int * jb, int * ib,
-		double * c, int * jc, int * ic,
-		const int * nzmax, int * info
-	) {
-		assert( trans[0] == 'N' );
-		assert( sort != NULL && sort[0] == 7 );
-		assert( m_p != NULL );
-		assert( n_p != NULL );
-		assert( k_p != NULL );
-		assert( a != NULL ); assert( ja != NULL ); assert( ia != NULL );
-		assert( b != NULL ); assert( jb != NULL ); assert( ib != NULL );
-		assert( c != NULL ); assert( jc != NULL ); assert( ic != NULL );
-		assert( nzmax != NULL );
-		assert( info != NULL );
-
-		// declare algebraic structures
-		grb::Semiring<
-			grb::operators::add< double >, grb::operators::mul< double >,
-			grb::identities::zero, grb::identities::one
-		> ring;
-
-		// check support
-		if( trans[ 0 ] != 'N' ) {
-			std::cerr << "ALP/SparseBLAS, error: illegal trans argument to dcsrmultcsr\n";
-			*info = 4;
-		}
-		if( sort[ 0 ] != 7 ) {
-			std::cerr << "ALP/SparseBLAS, error: illegal sort argument to dcsrmultcsr\n";
-			*info = 5;
-			return;
-		}
-
-		// declare minimum necessary descriptors
-		constexpr const grb::Descriptor minDescr = grb::descriptors::dense |
-			grb::descriptors::force_row_major;
-
-		// determine matrix size
-		const int m = *m_p;
-		const int n = *n_p;
-		const int k = *k_p;
-
-		// retrieve buffers (only when A needs to be output also)
-		char * bitmask = nullptr;
-		char * stack = nullptr;
-		double * valbuf = nullptr;
-		if( sparseblas::template getBuffer< double >(
-				bitmask, stack, valbuf, n
-			) == false
-		) {
-			std::cerr << "ALP/SparseBLAS, error: could not allocate buffer for "
-				<< "computations on an output matrix\n";
-			*info = 10;
-			return;
-		}
-
-		// retrieve necessary ALP/GraphBLAS container wrappers
-		const grb::Matrix< double, grb::config::default_backend, int, int, int > A =
-			grb::internal::wrapCRSMatrix( a, ja, ia, m, k );
-		const grb::Matrix< double, grb::config::default_backend, int, int, int > B =
-			grb::internal::wrapCRSMatrix( b, jb, ib, k, n );
-		grb::Matrix< double, grb::config::default_backend, int, int, int > C =
-			grb::internal::wrapCRSMatrix(
-				c, jc, ic,
-				m, n, *nzmax,
-				bitmask, stack, valbuf
-			);
-
-		// set output vector to zero
-		grb::RC rc = grb::clear( C );
-		if( rc != grb::SUCCESS ) {
-			std::cerr << "ALP/SparseBLAS, error: Could not clear output matrix\n";
-			assert( false );
-			*info = 20;
-			return;
-		}
-
-		// do either C=AB or C=A^TB
-		if( trans[0] == 'N' ) {
-			if( *request == 1 ) {
-				rc = grb::mxm< minDescr >( C, A, B, ring, grb::RESIZE );
-			} else {
-				assert( *request == 0 || *request == 2 );
-				rc = grb::mxm< minDescr >( C, A, B, ring );
-			}
-			if( rc != grb::SUCCESS ) {
-				std::cerr << "ALP/SparseBLAS, error during call to SpMSpM: "
-					<< grb::toString( rc ) << ".\n";
-				assert( false );
-				*info = 30;
-				return;
-			}
-		} else {
-			// this case is not supported
-			assert( false );
-		}
-
-		// done
-		if( *request == 1 ) {
-			*info = -1;
-		} else {
-			*info = 0;
-		}
-	}
-
 	int EXTBLAS_dusm_nz( const blas_sparse_matrix A, int * nz ) {
 		auto matA = sparseblas::getDoubleMatrix( A );
 		if( !(matA->finalized) ) {
@@ -1322,10 +1045,6 @@ extern "C" {
 			return 10;
 		}
 		return 0;
-	}
-
-	SPBLAS_RET_T EXT_SPBLAS_NAME( free )() {
-		(void) EXTBLAS_free();
 	}
 
 } // end extern "C"
