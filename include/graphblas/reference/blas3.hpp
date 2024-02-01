@@ -104,7 +104,7 @@ namespace grb {
 				return MISMATCH;
 			}
 
-			if( m == 0 || n == 0 || nnz(in ) {
+			if( m == 0 || n == 0 || nnz(in ) ) {
 				return SUCCESS;
 			}
 
