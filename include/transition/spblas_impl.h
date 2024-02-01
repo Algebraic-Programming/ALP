@@ -18,17 +18,20 @@
 /**
  * @file
  *
- * This is the ALP implementation of a subset of the de-facto *_spblas.h Sparse
- * BLAS standard. This implementation uses the SPBLAS_NAME(  prefix; e.g.,
- * #spblas_dcsrgemv.
+ * This is the ALP implementation of a subset of the de-facto *_spblas.h
+ * standard for sparse linear algebra kernels.
+ *
+ * This implementation uses a configurable prefix for the primitives it defines;
+ * e.g., and by default, <tt>alp_cspblas_dcsrgemv</tt> for sparse matrix--vector
+ * multiplication using <tt>double</tt>s.
  *
  * All functions defined have <tt>void</tt> return types. This implies two
  * important factors:
  *   1. when breaking the contract defined in the API, undefined behaviour will
- *      occur.
+ *      occur;
  *   2. this API hence does not permit the graceful handling of any errors that
- *      ALP would normally recover gracefully from, such as, but not limited to,
- *      the detection of dimension mismatches.
+ *      ALP would normally allow graceful recovery from, such as, but not
+ *      limited to, the detection of dimension mismatches.
  */
 
 #ifndef _H_ALP_SPBLAS_IMPL
@@ -41,13 +44,25 @@ extern "C" {
 #endif
 
 #ifndef SPBLAS_PREFIX
-	#error "SPBLAS_PREFIX must be defined"
+ #error "SPBLAS_PREFIX must be defined"
 #endif
 
+/** \internal Macros used to support configurable prefixes */
 #define SPBLAS_NAME( name ) SPCONCAT( SPBLAS_PREFIX, name )
 
+/** \internal Macros used to support configurable prefixes */
 #define EXT_SPBLAS_NAME( name ) SPCONCAT( ext, SPBLAS_NAME( name ) )
 
+/**
+ * \internal
+ *
+ * Allows reconfiguring the return type.
+ *
+ * \warning This is strongly discouraged as the use of non-<tt>void</tt> return
+ *          types will break compatability with the de-facto SpBLAS standard.
+ *
+ * \endinternal
+ */
 #define SPBLAS_RET_T void
 
 /**

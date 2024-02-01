@@ -125,11 +125,14 @@ runs of the script
 confirmation; it is iseful, for example, for scripted builds
 * `--with-datasets=<path/>` allows passing the path to the directory with the
   datasets required to run some tests (otherwise skipped)
-* `--spblas-prefix=<prefix>` to indicate a custom prefix for the spBLAS library;
-  the library (and the corresponding `make` target) will be called
-  "\<prefix\>\_spblas_\<backend\>"
-* `--no-solver-lib` to disable generating the target for the solver library
-  (compiled against the reference and nonblocking backend)
+* `--spblas-prefix=<prefix>` to indicate a custom prefix for the SpBLAS API and
+  library; symbols will be named as in the following example:
+  "\<prefix\>dcsrgemv" for double-precision sparse matrix--vector
+  multiplication using the standard CRS. The corresponding libraries will be
+  named "\<prefix\>sequential" and "\<prefix\>shmem_parallel\". The
+  corresponding `make` targets will be called "\<prefix\>\_spblas\_\<backend\>"
+* `--no-solver-lib` to disable generating solver library compiled against the
+  reference and nonblocking backends
 * `--enable-extra-solver-lib` to enable the solver library compiled against
   the reference OMP backend
 * `--help` shows all available options and skips directory checks.

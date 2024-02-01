@@ -36,6 +36,7 @@ extern "C" {
 
 #define EXTBLAS_FUN( name ) SPCONCAT( EXTBLAS_, name )
 
+
 /** A sparse vector. This is an implementation-specific extension. */
 typedef void * extblas_sparse_vector;
 

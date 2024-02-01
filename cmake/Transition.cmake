@@ -14,11 +14,10 @@
 # limitations under the License.
 #
 
-# prefix to be used for sparseBLAS
-# default according to KML specification
-# https://www.hikunpeng.com/document/detail/en/kunpengaccel/math-lib/devg-kml/kunpengaccel_kml_16_0186.html
+# prefix to be used for the SpBLAS interface
 
-set( _SPBLAS_PREFIX "kml_sparse_" )
+set( _SPBLAS_PREFIX "alp_cspblas_" )
 if( SPBLAS_PREFIX )
 	set( _SPBLAS_PREFIX "${SPBLAS_PREFIX}" )
 endif()
+

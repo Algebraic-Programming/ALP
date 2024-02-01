@@ -20,32 +20,68 @@ ALP/GraphBLAS exposes several of its functionalities via established C
 interfaces, in order to facilitate the transition of legacy software.
 Ideally, users of transition interfaces need only re-compile and link their
 software; in some cases, trivial modifications might be required to migrate to
-transition interfaces, e.g., changing functions prefix.
+transition interfaces, e.g., changing the prefix of called functions.
 
-The exposed interfaces are:
+The current transition path interfaces is at an *experimental prototype phase*;
+in particular, not all primitives in a given standard API are currently
+implemented. For SparseBLAS in particular, additional support or coverage may
+freely be requested in GitHub issue #14. For other standard interfaces, feel
+free to open new issues or to contact the maintainers.
 
-* the **sparse CG solver** interface, offering an implementation of the
-  Conjugate Gradient (CG) algorithm with the related facilities to populate the
-  necessary data structures; you may check
-  [the related header file](../include/transition/solver.h)
-* the **KML solver** interface, exposing similar functionalities to the sparse
-  CG solver and matching the interface of the
-  [Kunpeng Math Library Solver](https://www.hikunpeng.com/document/detail/en/kunpengaccel/math-lib/devg-kml/kunpengaccel_kml_16_0287.html);
-  you may go through the available functions
-  [in the related header](../include/transition/kml_iss.h)
-* the **Sparse BLAS** interface, exposing some calls of the de-facto standard
-  [Sparse BLAS API](https://www.intel.com/content/www/us/en/docs/onemkl/developer-reference-dpcpp/2024-0/sparse-blas-functionality.html);
-  these calls are visible
-  [in the implementation header](../include/transition/spblas_impl.h),
-  which exposes them via the `spblas.h` header (created during installation)
-  with a configurable prefix; the prefix can be configured during bootstrap via
-  the `--spblas-prefix` option (as from
-  [the configuration and compilation instructions](Build_and_test_infra.md#generation-via-the-bootstrapsh-script));
-  the default prefix is `kml_sparse_`, following the prefix conventions of
-  [Kunpeng Math Library SPBLAS](https://www.hikunpeng.com/document/detail/en/kunpengaccel/math-lib/devg-kml/kunpengaccel_kml_16_0186.html)
+The currently exposed interfaces are:
 
-These interfaces are simply built with `make` (or with the dedicated targets)
-and, upon installation, the headers are available in
-`<installation directory>/include/transition/`, while the (static) binaries in
-`<installation directory>/lib/sequential/`.
+* the Sparse BLAS interface as defined by the BLAS forum and in the following
+  paper: Duff, Iain S., Michael A. Heroux, and Roldan Pozo. "An overview of the
+  sparse basic linear algebra subprograms: The new standard from the BLAS
+  technical forum." ACM Transactions on Mathematical Software (TOMS) 28(2),
+  2002, pp. 239-267. Refer to either of the following for the current
+  implementation status within ALP:
+    - [stable](http://albert-jan.yzelman.net/alp/user/blas__sparse_8h.html);
+    - [development](../include/transition/blas_sparse.h).
+* the SpBLAS interface-- while not a standard proper, it may be considered a
+  de-facto one as it is implemented by various vendors as well as open source
+  projects and enjoys wide-spread use. Refer to either of the following for
+  the current implementation status within ALP:
+   - [stable](http://albert-jan.yzelman.net/alp/user/spblas_8h.html);
+   - [development](../include/transition/spblas_impl.h).
+  The prefix emitted to this function, necessary since this is not a properly
+  standardised interface, by default starts with `alp_`, but can be configured
+  during bootstrap via the `--spblas-prefix` option; see also
+  [the configuration and compilation instructions](Build_and_test_infra.md#generation-via-the-bootstrapsh-script).
+* a non-standard solver interface that currently only exposes the ALP conjugate
+  gradient (CG) algorithm and may be used with any CRS matrix and raw C/C++
+  vector data. Refer to either of the following for the current implementation
+  status within ALP:
+   - [stable]((http://albert-jan.yzelman.net/alp/user/solver_8h.html);
+   - [development](../include/transition/solver.h).
+  Based on this solver API we also expose a CG solver that matches the Kunpeng
+  Library. The ALP coverage this API is nearly complete and documented here:
+   - [stable]();
+   - [development](../include/transition/kml_iss.h).
+
+All of these transition libraries show-case ALP's ability to quickly wrap around
+external APIs, thus simplifying integration of ALP-backed code with existing
+software. We do note, however, that the direct use of the native C++ ALP API may
+lead to higher performance than the use of these transition path interfaces, and
+that in some cases the legacy interface itself is what makes achieving such
+higher performance impossible.
+
+The transition interfaces are built with the default `make`. Upon installation,
+the headers and (static) libraries are installed in
+`<installation directory>/include/transition/` and
+`<installation directory>/lib/sequential/`, respectively.
+
+The default library names for the *sequential* transition path libraries are:
+ - `libsparseblas_sequential.a` for the standard Sparse BLAS implementation,
+ - `libalp_cspblas_sequential.a` for the de-facto standard SpBLAS, and
+ - `libspsolver_sequential.a` for the non-standard solver library.
+
+The default shared-memory parallel transition path libraries are:
+ - `libsparseblas_shmem_parallel.a` for the standard Sparse BLAS,
+ - `libalp_cspblas_shmem_parallel.a` for the de-facto standard SpBLAS,
+ - `libspsolver_shmem_parallel.a` for the non-standard solver library, and
+ - `libksolver.a` for the ALP-generated Kunpeng Library solver implementation.
+
+At present, no dynamic libraries are built -- if this would be useful, please
+feel free to submit a feature request or to contact the maintainers.
 

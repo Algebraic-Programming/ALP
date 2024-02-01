@@ -87,6 +87,10 @@ typedef void KmlSolverTask;
 #define KMLSS_MATCHING_TYPE 18
 
 
+/**
+ * This macro prefixes all functions with <tt>KmlIssCg</tt> and may be used to
+ * reconfigure this default prefix.
+ */
 #define KML_CG_PREFIXED( name ) KmlIssCg ## name
 
 // Initialization routines to create a solver task
