@@ -29,8 +29,28 @@
  */
 
 #include "spblas.h"
+#include "native.hpp"
+#include "sparse_vector_impl.hpp"
+
+#include <assert.h>
 
 #include <graphblas.hpp>
+
+
+/** \internal Namespace for helper functions of the SpBLAS implementation. */
+namespace spblas {
+
+	/**
+	 * \internal Utility function that converts a #extblas_sparse_vector to a
+	 *           sparseblas::SparseVector. This is for vectors of doubles.
+	 */
+	static native::SparseVector< double > * getDoubleVector(
+		EXTBLAS_TYPE( sparse_vector ) x
+	) {
+		return static_cast< native::SparseVector< double >* >( x );
+	}
+
+}
 
 
 extern "C" {
@@ -171,8 +191,8 @@ extern "C" {
 		> ring;
 		const grb::Matrix< double, grb::config::default_backend, int, int, int > A =
 			grb::internal::wrapCRSMatrix( a, ja, ia, *m, *n );
-		auto input  = sparseblas::getDoubleVector( x );
-		auto output = sparseblas::getDoubleVector( y );
+		auto input  = spblas::getDoubleVector( x );
+		auto output = spblas::getDoubleVector( y );
 		if( !(input->finalized) ) {
 			throw std::runtime_error( "Uninitialised input vector during SpMSpV\n" );
 		}
@@ -254,12 +274,12 @@ extern "C" {
 		char * bitmask = nullptr;
 		char * stack = nullptr;
 		double * valbuf = nullptr;
-		if( sparseblas::template getBuffer< double >(
+		if( grb::native::template getSPA< double >(
 				bitmask, stack, valbuf, n
 			) == false
 		) {
-			std::cerr << "ALP/SparseBLAS, error: could not allocate buffer for "
-				<< "computations on an output matrix\n";
+			std::cerr << "ALP/SpBLAS, error: could not allocate buffer for computations "
+				<< "on an output matrix (dcsrmultcsr)\n";
 			*info = 10;
 			return;
 		}
@@ -314,7 +334,12 @@ extern "C" {
 	}
 
 	SPBLAS_RET_T EXT_SPBLAS_NAME( free )() {
-		(void) EXTBLAS_free();
+		grb::native::destroyGlobalBuffer();
+		const grb::RC rc = grb::finalize();
+		if( rc != grb::SUCCESS ) {
+			std::cerr << "Error during call to EXT_SPBLAS_free\n";
+			assert( false );
+		}
 	}
 
 } // end extern "C"

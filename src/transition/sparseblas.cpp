@@ -25,6 +25,7 @@
  */
 
 #include "blas_sparse.h"
+#include "sparse_vector_impl.hpp"
 
 #include <limits>
 #include <vector>
@@ -252,76 +253,6 @@ namespace sparseblas {
 	};
 
 	/**
-	 * \internal A sparse vector that is either under construction, or finalized as
-	 *           an ALP/GraphBLAS vector.
-	 */
-	template< typename T >
-	class SparseVector {
-
-		public:
-
-			int n;
-			bool finalized;
-			grb::Vector< T > * vector;
-			typename grb::Vector< T >::const_iterator start, end;
-
-		private:
-
-			std::vector< T > uc_vals;
-			std::vector< int > uc_inds;
-
-		public:
-
-			SparseVector( const int &_n ) :
-				n( _n ), finalized( false ), vector( nullptr )
-			{}
-
-			~SparseVector() {
-				if( finalized ) {
-					assert( vector != nullptr );
-					delete vector;
-				} else {
-					assert( vector == nullptr );
-				}
-			}
-
-			void add( const T &val, const int &index ) {
-				assert( !finalized );
-				uc_vals.push_back( val );
-				uc_inds.push_back( index );
-			}
-
-			void finalize() {
-				assert( uc_vals.size() == uc_inds.size() );
-				const size_t nz = uc_vals.size();
-				vector = new grb::Vector< T >( n, nz );
-				if( vector == nullptr ) {
-					std::cerr << "Could not create ALP/GraphBLAS vector of size " << n
-						<< " and capacity " << nz << "\n";
-					throw std::runtime_error( "Could not create ALP/GraphBLAS vector" );
-				}
-				if( grb::capacity( *vector ) < nz ) {
-					throw std::runtime_error( "ALP/GraphBLAS vector has insufficient "
-						"capacity" );
-				}
-				const grb::RC rc = grb::buildVector(
-					*vector,
-					uc_inds.cbegin(), uc_inds.cend(),
-					uc_vals.cbegin(), uc_vals.cend(),
-					grb::SEQUENTIAL
-				);
-				if( rc != grb::SUCCESS ) {
-					throw std::runtime_error( "Could not ingest nonzeroes into ALP/GraphBLAS "
-						"vector" );
-				}
-				uc_vals.clear();
-				uc_inds.clear();
-				finalized = true;
-			}
-
-	};
-
-	/**
 	 * \internal SparseBLAS allows a matrix to be under construction or finalized.
 	 *           This class matches that concept -- for non-finalized matrices, it
 	 *           is backed by MatrixUC, and otherwise by an ALP/GraphBLAS matrix.
@@ -400,8 +331,10 @@ namespace sparseblas {
 	 * \internal Utility function that converts a #extblas_sparse_vector to a
 	 *           sparseblas::SparseVector. This is for vectors of doubles.
 	 */
-	SparseVector< double > * getDoubleVector( EXTBLAS_TYPE( sparse_vector ) x ) {
-		return static_cast< SparseVector< double >* >( x );
+	static native::SparseVector< double > * getDoubleVector(
+		EXTBLAS_TYPE( sparse_vector ) x
+	) {
+		return static_cast< native::SparseVector< double >* >( x );
 	}
 
 	/**
@@ -410,83 +343,6 @@ namespace sparseblas {
 	 */
 	SparseMatrix< double > * getDoubleMatrix( blas_sparse_matrix A ) {
 		return static_cast< SparseMatrix< double >* >( A );
-	}
-
-	/**
-	 * \internal Internal buffer used for output matrix containers.
-	 */
-	char * buffer = nullptr;
-
-	/**
-	 * \internal The size of #buffer.
-	 */
-	size_t buffer_size = 0;
-
-	/**
-	 * @returns false if and only if buffer allocation failed.
-	 * @returns true on success.
-	 */
-	template< typename T >
-	bool getBuffer(
-		char * &bitmask, char * &stack, T * &valbuf,
-		const size_t size
-	) {
-		typedef typename grb::internal::Coordinates< grb::config::default_backend >
-			Coors;
-		constexpr const size_t b = grb::config::CACHE_LINE_SIZE::value();
-
-		// catch trivial case
-		if( size == 0 ) {
-			bitmask = stack = nullptr;
-			valbuf = nullptr;
-			return true;
-		}
-
-		// compute required size
-		size_t reqSize = Coors::arraySize( size ) + Coors::stackSize( size ) +
-			(size * sizeof(T)) + 3 * b;
-
-		// ensure buffer is at least the required size
-		if( buffer == nullptr ) {
-			assert( buffer_size == 0 );
-			buffer_size = reqSize;
-			buffer = static_cast< char * >( malloc( buffer_size ) );
-			if( buffer == nullptr ) {
-				buffer_size = 0;
-				return false;
-			}
-		} else if( buffer_size < reqSize ) {
-			free( buffer );
-			buffer_size = std::max( reqSize, 2 * buffer_size );
-			buffer = static_cast< char * >( malloc( buffer_size ) );
-			if( buffer == nullptr ) {
-				buffer_size = 0;
-				return false;
-			}
-		}
-
-		// set buffers and make sure they are aligned
-		char * walk = buffer;
-		uintptr_t cur_mod = reinterpret_cast< uintptr_t >(walk) % b;
-		if( cur_mod > 0 ) {
-			walk += (b - cur_mod);
-		}
-		bitmask = walk;
-		walk += Coors::arraySize( size );
-		cur_mod = reinterpret_cast< uintptr_t >(walk) % b;
-		if( cur_mod > 0 ) {
-			walk += (b - cur_mod);
-		}
-		stack = walk;
-		walk += Coors::stackSize( size );
-		cur_mod = reinterpret_cast< uintptr_t >(walk) % b;
-		if( cur_mod > 0 ) {
-			walk += (b - cur_mod);
-		}
-		valbuf = reinterpret_cast< T * >( walk);
-
-		// done
-		return true;
 	}
 
 } // end namespace sparseblas
@@ -521,7 +377,7 @@ namespace std {
 extern "C" {
 
 	EXTBLAS_TYPE( sparse_vector ) EXTBLAS_FUN( dusv_begin )( const int n ) {
-		return new sparseblas::SparseVector< double >( n );
+		return new native::SparseVector< double >( n );
 	}
 
 	int EXTBLAS_FUN( dusv_insert_entry )(
@@ -1045,12 +901,6 @@ extern "C" {
 	}
 
 	int EXTBLAS_free() {
-		if( sparseblas::buffer != nullptr || sparseblas::buffer_size > 0 ) {
-			assert( sparseblas::buffer != nullptr );
-			assert( sparseblas::buffer_size > 0 );
-			free( sparseblas::buffer );
-			sparseblas::buffer_size = 0;
-		}
 		const grb::RC rc = grb::finalize();
 		if( rc != grb::SUCCESS ) {
 			std::cerr << "Error during call to EXTBLAS_free\n";
