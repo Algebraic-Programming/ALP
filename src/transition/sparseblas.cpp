@@ -400,7 +400,7 @@ namespace sparseblas {
 	 * \internal Utility function that converts a #extblas_sparse_vector to a
 	 *           sparseblas::SparseVector. This is for vectors of doubles.
 	 */
-	SparseVector< double > * getDoubleVector( extblas_sparse_vector x ) {
+	SparseVector< double > * getDoubleVector( EXTBLAS_TYPE( sparse_vector ) x ) {
 		return static_cast< SparseVector< double >* >( x );
 	}
 
@@ -520,12 +520,12 @@ namespace std {
 
 extern "C" {
 
-	extblas_sparse_vector EXTBLAS_FUN( dusv_begin )( const int n ) {
+	EXTBLAS_TYPE( sparse_vector ) EXTBLAS_FUN( dusv_begin )( const int n ) {
 		return new sparseblas::SparseVector< double >( n );
 	}
 
 	int EXTBLAS_FUN( dusv_insert_entry )(
-		extblas_sparse_vector x,
+		EXTBLAS_TYPE( sparse_vector ) x,
 		const double val,
 		const int index
 	) {
@@ -539,7 +539,7 @@ extern "C" {
 		return 0;
 	}
 
-	int EXTBLAS_FUN( dusv_end )( extblas_sparse_vector x ) {
+	int EXTBLAS_FUN( dusv_end )( EXTBLAS_TYPE( sparse_vector ) x ) {
 		auto vector = sparseblas::getDoubleVector( x );
 		assert( !(vector->finalized) );
 		try {
@@ -550,13 +550,16 @@ extern "C" {
 		return 0;
 	}
 
-	int EXTBLAS_FUN( dusvds )( extblas_sparse_vector x ) {
+	int EXTBLAS_FUN( dusvds )( EXTBLAS_TYPE( sparse_vector ) x ) {
 		auto vector = sparseblas::getDoubleVector( x );
 		delete vector;
 		return 0;
 	}
 
-	int EXTBLAS_FUN( dusv_nz )( const extblas_sparse_vector x, int * const nz ) {
+	int EXTBLAS_FUN( dusv_nz )(
+		const EXTBLAS_TYPE( sparse_vector ) x,
+		int * const nz
+	) {
 		auto vector = sparseblas::getDoubleVector( x );
 		assert( vector->finalized );
 		const size_t nnz = grb::nnz( *(vector->vector) );
@@ -569,7 +572,7 @@ extern "C" {
 		return 0;
 	}
 
-	int EXTBLAS_FUN( dusv_clear )( extblas_sparse_vector x ) {
+	int EXTBLAS_FUN( dusv_clear )( EXTBLAS_TYPE( sparse_vector ) x ) {
 		auto vector = sparseblas::getDoubleVector( x );
 		assert( vector->finalized );
 		const grb::RC rc = grb::clear( *(vector->vector) );
@@ -579,7 +582,7 @@ extern "C" {
 		return 0;
 	}
 
-	int EXTBLAS_FUN( dusv_open )( const extblas_sparse_vector x ) {
+	int EXTBLAS_FUN( dusv_open )( const EXTBLAS_TYPE( sparse_vector ) x ) {
 		auto vector = sparseblas::getDoubleVector( x );
 		assert( vector->finalized );
 		try {
@@ -592,7 +595,7 @@ extern "C" {
 	}
 
 	int EXTBLAS_FUN( dusv_get )(
-		const extblas_sparse_vector x,
+		const EXTBLAS_TYPE( sparse_vector ) x,
 		double * const val, int * const ind
 	) {
 		auto vector = sparseblas::getDoubleVector( x );
@@ -614,7 +617,7 @@ extern "C" {
 		}
 	}
 
-	int EXTBLAS_FUN( dusv_close )( const extblas_sparse_vector x ) {
+	int EXTBLAS_FUN( dusv_close )( const EXTBLAS_TYPE( sparse_vector ) x ) {
 		auto vector = sparseblas::getDoubleVector( x );
 		assert( vector->finalized );
 		vector->start = vector->end;
@@ -823,8 +826,8 @@ extern "C" {
 	int EXTBLAS_dusmsv(
 		const enum blas_trans_type transa,
 		const double alpha, const blas_sparse_matrix A,
-		const extblas_sparse_vector x,
-		extblas_sparse_vector y
+		const EXTBLAS_TYPE( sparse_vector ) x,
+		EXTBLAS_TYPE( sparse_vector ) y
 	) {
 		grb::Semiring<
 			grb::operators::add< double >, grb::operators::mul< double >,
