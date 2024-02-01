@@ -162,8 +162,8 @@ extern "C" {
 		const char * trans, const int * request,
 		const int * m, const int * n,
 		const double * a, const int * ja, const int * ia,
-		const extblas_sparse_vector x,
-		extblas_sparse_vector y
+		const EXTBLAS_TYPE( sparse_vector ) x,
+		EXTBLAS_TYPE( sparse_vector ) y
 	) {
 		grb::Semiring<
 			grb::operators::add< double >, grb::operators::mul< double >,
