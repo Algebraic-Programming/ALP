@@ -15,6 +15,15 @@
  * limitations under the License.
  */
 
+/**
+ * @file
+ *
+ * Implements the Sparse BLAS standard using ALP/GraphBLAS.
+ *
+ * @author A. N. Yzelman
+ * @date 2023
+ */
+
 #include "blas_sparse.h"
 
 #include <limits>

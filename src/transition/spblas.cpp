@@ -15,6 +15,19 @@
  * limitations under the License.
  */
 
+/**
+ * @file
+ *
+ * Implements the SpBLAS interface using ALP/GraphBLAS.
+ *
+ * This file was split from the preceding <tt>sparseblas.cpp</tt>, which
+ * previously implemented both this SpBLAS interface as well as the SparseBLAS
+ * one.
+ *
+ * @author A. N. Yzelman
+ * @date 1/2/2024
+ */
+
 #include "spblas.h"
 
 #include <graphblas.hpp>
