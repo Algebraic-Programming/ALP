@@ -30,7 +30,6 @@
  * @date 1/2/2024
  */
 
-
 #ifndef _H_SPARSE_VECTOR_IMPL
 #define _H_SPARSE_VECTOR_IMPL
 

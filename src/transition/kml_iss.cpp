@@ -19,7 +19,7 @@
  * @file
  *
  * This implements the routines of KML_SOLVER, as in
- * 
+ *
  * https://www.hikunpeng.com/document/detail/en/kunpengaccel/math-lib/devg-kml/kunpengaccel_kml_16_0287.html
  *
  * @author Alberto Scolari

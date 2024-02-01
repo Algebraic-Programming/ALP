@@ -130,7 +130,8 @@ confirmation; it is iseful, for example, for scripted builds
   "\<prefix\>dcsrgemv" for double-precision sparse matrix--vector
   multiplication using the standard CRS. The corresponding libraries will be
   named "\<prefix\>sequential" and "\<prefix\>shmem_parallel\". The
-  corresponding `make` targets will be called "\<prefix\>\_spblas\_\<backend\>"
+  corresponding `make` targets will be called "\<prefix\>_sequential" and
+  "\<prefix\>_shmem_parallel"
 * `--no-solver-lib` to disable generating solver library compiled against the
   reference and nonblocking backends
 * `--enable-extra-solver-lib` to enable the solver library compiled against
@@ -530,7 +531,7 @@ depending on the user's inputs; you may add your backend with something like
 
     ```cmake
     if ( WITH_EXAMPLE_BACKEND )
-    	list( APPEND AVAILABLE_BACKENDS "example" )
+        list( APPEND AVAILABLE_BACKENDS "example" )
     endif()
     ```
 

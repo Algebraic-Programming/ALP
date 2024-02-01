@@ -59,13 +59,19 @@ namespace grb {
 			/**
 			 * Internal global buffer.
 			 *
-			 * \note The buffer is kept separate from now as in principle it could occur
+			 * \note The buffer is kept separate fom now as in principle it could occur
 			 *       for a single executable to use both ALP directly while
 			 *       \em additionally using transition path functionality.
 			 *
 			 * \note Therefore, similarly, each transition path library should include
 			 *       this header so that it generates its own buffer logic in case a
 			 *       single user program mixes multiple transition path libraries.
+			 *
+			 * \internal
+			 * \todo A more elegant option would be to investigate how the main ALPs
+			 *       global buffer implementation could be made compatible with such use
+			 *       cases.
+			 * \endinternal
 			 */
 			char * buffer = nullptr;
 
