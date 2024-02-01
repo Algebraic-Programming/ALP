@@ -61,6 +61,9 @@ extern "C" {
  * \warning This is strongly discouraged as the use of non-<tt>void</tt> return
  *          types will break compatability with the de-facto SpBLAS standard.
  *
+ * \warning Setting this to anything other than <tt>void</tt> is presently not
+ *          supported (the spblas.cpp must first be modified to cope with this).
+ *
  * \endinternal
  */
 #define SPBLAS_RET_T void
