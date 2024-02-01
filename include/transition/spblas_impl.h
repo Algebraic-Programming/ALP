@@ -18,20 +18,11 @@
 /**
  * @file
  *
- * This is the ALP implementation of a subset of the de-facto *_spblas.h
+ * Provides the ALP implementation of a subset of the de-facto *_spblas.h
  * standard for sparse linear algebra kernels.
  *
- * This implementation uses a configurable prefix for the primitives it defines;
- * e.g., and by default, <tt>alp_cspblas_dcsrgemv</tt> for sparse matrix--vector
- * multiplication using <tt>double</tt>s.
- *
- * All functions defined have <tt>void</tt> return types. This implies two
- * important factors:
- *   1. when breaking the contract defined in the API, undefined behaviour will
- *      occur;
- *   2. this API hence does not permit the graceful handling of any errors that
- *      ALP would normally allow graceful recovery from, such as, but not
- *      limited to, the detection of dimension mismatches.
+ * @author A. N. Yzelman
+ * @date 2023
  */
 
 #ifndef _H_ALP_SPBLAS_IMPL
@@ -42,6 +33,48 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
+
+/**
+ * \defgroup SPBLAS SpBLAS
+ * \ingroup TRANS
+ *
+ * An SpBLAS implementation enabled by ALP/GraphBLAS.
+ *
+ * ALP provides a (presently partial) implementation of SpBLAS interface for
+ * sparse linear algebra kernels. While not a standard proper, it may bes
+ * considered a de-facto one as it is implemented by various vendors as well as
+ * open source projects, and enjoys wide-spread use.
+ *
+ * This implementation uses a configurable prefix for the primitives it defines;
+ * e.g., and by default, <tt>alp_cspblas_dcsrgemv</tt> for sparse matrix--vector
+ * multiplication using <tt>double</tt> nonzero value types. To reconfigure this
+ * name, please see the <tt>--spblas-prefix</tt> option to the bootstrap script.
+ *
+ * \note Since this is not a properly standardised API, even if choosing another
+ *       prefix, it remains strongly recommended to make sure the prefix remains
+ *       unique.
+ *
+ * All functions defined have <tt>void</tt> return types. This implies two
+ * important factors:
+ *   1. when breaking the contract defined in the API, undefined behaviour will
+ *      occur;
+ *   2. this API hence does not permit the graceful handling of any errors that
+ *      ALP would normally allow graceful recovery from, such as, but not
+ *      limited to, the detection of dimension mismatches.
+ *
+ * \warning In addition to the above, some idiosyncrasies of the SpBLAS
+ *          interface may incur significant performance penalties. The use of
+ *          the \ref SPARSEBLAS interface, if not the direct use of the
+ *          \ref GraphBLAS interface, is strongly recommended when possible.
+ *
+ * The implementation of this standard is done by directly mapping this API to
+ * the equivalent ALP/GraphBLAS primitives. By default, ALP builds both
+ * sequential and shared- memory parallel SpBLAS libraries. It does so simply by
+ * compiling the same ALP-based SpBLAS implementation with a sequential and a
+ * shared-memory ALP backend, respectively.
+ *
+ * @{
+ */
 
 #ifndef SPBLAS_PREFIX
  #error "SPBLAS_PREFIX must be defined"
@@ -197,7 +230,7 @@ SPBLAS_RET_T SPBLAS_NAME( dcsrmultcsr )(
  * Here, \f$ A \f$ is assumed in Compressed Row Storage (CRS), while \f$ x \f$
  * and \f$ y \f$ are assumed to be using the #extblas_sparse_vector extension.
  *
- * This API follows loosely that of #spblas_dcsrmultcsr.
+ * This API follows loosely that of #alp_cspblas_dcsrmultcsr.
  *
  * @param[in] trans Either 'N' or 'T', indicating whether A is to be transposed.
  *                  The Hermitian operator on \a A is currently not supported;
@@ -231,6 +264,8 @@ SPBLAS_RET_T EXT_SPBLAS_NAME( dcsrmultsv )(
  * library may have allocated.
  */
 SPBLAS_RET_T EXT_SPBLAS_NAME( free )();
+
+/**@}*/ // ends the SpBLAS doxygen group
 
 #ifdef __cplusplus
 } // end extern "C"

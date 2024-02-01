@@ -32,12 +32,17 @@
  * @date 26/01/2024
  */
 
+/**
+ * @tparam T   The nonzero value type.
+ * @tparam NZI The nonzero index type.
+ * @tparam RSI The row and column index type.
+ */
 template< typename T, typename NZI, typename RSI >
 class CG_Data {
 
 	private:
 
-		typedef grb::Matrix< T, grb::config::default_backend, NZI, NZI, RSI > Matrix;
+		typedef grb::Matrix< T, grb::config::default_backend, RSI, RSI, NZI > Matrix;
 
 		// input args
 		size_t size;
@@ -58,7 +63,7 @@ class CG_Data {
 
 		CG_Data(
 			const size_t n,
-			const T * const a, const NZI * const ja, const RSI * const ia
+			const T * const a, const RSI * const ja, const NZI * const ia
 		) :
 			size( n ), tolerance( 1e-5 ), max_iter( 1000 ), matrix( 0, 0 ),
 			residual( std::numeric_limits< T >::infinity() ), iters( 0 ),
@@ -103,7 +108,7 @@ class CG_Data {
 template< typename T, typename NZI, typename RSI >
 static sparse_err_t sparse_cg_init_impl(
 	sparse_cg_handle_t * const handle, const size_t n,
-	const T * const a, const NZI * const ja, const RSI * const ia
+	const T * const a, const RSI * const ja, const NZI * const ia
 ) {
 	if( n == 0 ) { return ILLEGAL_ARGUMENT; }
 	if( handle == nullptr || a == nullptr || ja == nullptr || ia == nullptr ) {
@@ -135,16 +140,16 @@ sparse_err_t sparse_cg_init_dii(
 	return sparse_cg_init_impl< double, int, int >( handle, n, a, ja, ia );
 }
 
-sparse_err_t sparse_cg_init_szi(
+sparse_err_t sparse_cg_init_siz(
 	sparse_cg_handle_t * const handle, const size_t n,
-	const float * const a, const size_t * const ja, const int * const ia
+	const float * const a, const int * const ja, const size_t * const ia
 ) {
 	return sparse_cg_init_impl< float, size_t, int >( handle, n, a, ja, ia );
 }
 
-sparse_err_t sparse_cg_init_dzi(
+sparse_err_t sparse_cg_init_diz(
 	sparse_cg_handle_t * const handle, const size_t n,
-	const double * const a, const size_t * const ja, const int * const ia
+	const double * const a, const int * const ja, const size_t * const ia
 ) {
 	return sparse_cg_init_impl< double, size_t, int >( handle, n, a, ja, ia );
 }
@@ -179,7 +184,7 @@ sparse_err_t sparse_cg_get_tolerance_sii(
 	return sparse_cg_get_tolerance_impl< float, int, int >( handle, tol );
 }
 
-sparse_err_t sparse_cg_get_tolerance_szi(
+sparse_err_t sparse_cg_get_tolerance_siz(
 	const sparse_cg_handle_t handle, float * const tol
 ) {
 	return sparse_cg_get_tolerance_impl< float, size_t, int >( handle, tol );
@@ -197,7 +202,7 @@ sparse_err_t sparse_cg_get_tolerance_dii(
 	return sparse_cg_get_tolerance_impl< double, int, int >( handle, tol );
 }
 
-sparse_err_t sparse_cg_get_tolerance_dzi(
+sparse_err_t sparse_cg_get_tolerance_diz(
 	const sparse_cg_handle_t handle, double * const tol
 ) {
 	return sparse_cg_get_tolerance_impl< double, size_t, int >( handle, tol );
@@ -225,7 +230,7 @@ sparse_err_t sparse_cg_set_tolerance_sii(
 	return sparse_cg_set_tolerance_impl< float, int, int >( handle, tol );
 }
 
-sparse_err_t sparse_cg_set_tolerance_szi(
+sparse_err_t sparse_cg_set_tolerance_siz(
 	sparse_cg_handle_t handle, const float tol
 ) {
 	return sparse_cg_set_tolerance_impl< float, size_t, int >( handle, tol );
@@ -243,7 +248,7 @@ sparse_err_t sparse_cg_set_tolerance_dii(
 	return sparse_cg_set_tolerance_impl< double, int, int >( handle, tol );
 }
 
-sparse_err_t sparse_cg_set_tolerance_dzi(
+sparse_err_t sparse_cg_set_tolerance_diz(
 	sparse_cg_handle_t handle, const double tol
 ) {
 	return sparse_cg_set_tolerance_impl< double, size_t, int >( handle, tol );
@@ -271,7 +276,7 @@ sparse_err_t sparse_cg_get_residual_sii(
 	return sparse_cg_get_residual_impl< float, int, int >( handle, tol );
 }
 
-sparse_err_t sparse_cg_get_residual_szi(
+sparse_err_t sparse_cg_get_residual_siz(
 	const sparse_cg_handle_t handle, float * const tol
 ) {
 	return sparse_cg_get_residual_impl< float, size_t, int >( handle, tol );
@@ -289,7 +294,7 @@ sparse_err_t sparse_cg_get_residual_dii(
 	return sparse_cg_get_residual_impl< double, int, int >( handle, tol );
 }
 
-sparse_err_t sparse_cg_get_residual_dzi(
+sparse_err_t sparse_cg_get_residual_diz(
 	const sparse_cg_handle_t handle, double * const tol
 ) {
 	return sparse_cg_get_residual_impl< double, size_t, int >( handle, tol );
@@ -317,7 +322,7 @@ sparse_err_t sparse_cg_get_iter_count_sii(
 	return sparse_cg_get_iter_count_impl< float, int, int >( handle, iters );
 }
 
-sparse_err_t sparse_cg_get_iter_count_szi(
+sparse_err_t sparse_cg_get_iter_count_siz(
 	const sparse_cg_handle_t handle, size_t * const iters
 ) {
 	return sparse_cg_get_iter_count_impl< float, size_t, int >( handle, iters );
@@ -335,7 +340,7 @@ sparse_err_t sparse_cg_get_iter_count_dii(
 	return sparse_cg_get_iter_count_impl< double, int, int >( handle, iters );
 }
 
-sparse_err_t sparse_cg_get_iter_count_dzi(
+sparse_err_t sparse_cg_get_iter_count_diz(
 	const sparse_cg_handle_t handle, size_t * const iters
 ) {
 	return sparse_cg_get_iter_count_impl< double, size_t, int >( handle, iters );
@@ -365,7 +370,7 @@ sparse_err_t sparse_cg_set_max_iter_count_sii(
 		max_iters );
 }
 
-sparse_err_t sparse_cg_set_max_iter_count_szi(
+sparse_err_t sparse_cg_set_max_iter_count_siz(
 	sparse_cg_handle_t handle, const size_t max_iters
 ) {
 	return sparse_cg_set_max_iter_count_impl< float, size_t, int >( handle,
@@ -386,7 +391,7 @@ sparse_err_t sparse_cg_set_max_iter_count_dii(
 		max_iters );
 }
 
-sparse_err_t sparse_cg_set_max_iter_count_dzi(
+sparse_err_t sparse_cg_set_max_iter_count_diz(
 	sparse_cg_handle_t handle, const size_t max_iters
 ) {
 	return sparse_cg_set_max_iter_count_impl< double, size_t, int >( handle,
@@ -436,7 +441,7 @@ sparse_err_t sparse_cg_solve_sii(
 	return sparse_cg_solve_impl< float, int, int >( handle, x, b );
 }
 
-sparse_err_t sparse_cg_solve_szi(
+sparse_err_t sparse_cg_solve_siz(
 	sparse_cg_handle_t handle, float * const x, const float * const b
 ) {
 	return sparse_cg_solve_impl< float, size_t, int >( handle, x, b );
@@ -454,7 +459,7 @@ sparse_err_t sparse_cg_solve_dii(
 	return sparse_cg_solve_impl< double, int, int >( handle, x, b );
 }
 
-sparse_err_t sparse_cg_solve_dzi(
+sparse_err_t sparse_cg_solve_diz(
 	sparse_cg_handle_t handle, double * const x, const double * const b
 ) {
 	return sparse_cg_solve_impl< double, size_t, int >( handle, x, b );
@@ -477,7 +482,7 @@ sparse_err_t sparse_cg_destroy_sii( sparse_cg_handle_t handle ) {
 	return sparse_cg_destroy_impl< float, int, int >( handle );
 }
 
-sparse_err_t sparse_cg_destroy_szi( sparse_cg_handle_t handle ) {
+sparse_err_t sparse_cg_destroy_siz( sparse_cg_handle_t handle ) {
 	return sparse_cg_destroy_impl< float, size_t, int >( handle );
 }
 
@@ -489,7 +494,7 @@ sparse_err_t sparse_cg_destroy_dii( sparse_cg_handle_t handle ) {
 	return sparse_cg_destroy_impl< double, int, int >( handle );
 }
 
-sparse_err_t sparse_cg_destroy_dzi( sparse_cg_handle_t handle ) {
+sparse_err_t sparse_cg_destroy_diz( sparse_cg_handle_t handle ) {
 	return sparse_cg_destroy_impl< double, size_t, int >( handle );
 }
 

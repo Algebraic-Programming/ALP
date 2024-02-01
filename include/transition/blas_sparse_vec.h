@@ -29,6 +29,11 @@
 #ifndef _H_ALP_SPARSEBLAS_EXT_VEC
 #define _H_ALP_SPARSEBLAS_EXT_VEC
 
+/**
+ * \addtogroup SPARSEBLAS
+ * @{
+ */
+
 /**@{*/
 /** \internal Helper macros for #EXTBLAS_FUN and #EXTBLAS_TYPE */
 #define __SPBLAS_CONC( _a, _b ) _a ## _b
@@ -209,6 +214,8 @@ int EXTBLAS_FUN( dusv_close )( const EXTBLAS_TYPE( sparse_vector ) x );
  * This is an implementation-specific extension.
  */
 int EXTBLAS_FUN( dusv_clear )( EXTBLAS_TYPE( sparse_vector ) x );
+
+/**@}*/ // end doxygen grouping for SPARSEBLAS
 
 #ifdef __cplusplus
 } // end extern "C"

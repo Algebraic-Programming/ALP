@@ -21,6 +21,39 @@
  * This is the ALP implementation of a subset of the NIST Sparse BLAS standard.
  * While the API is standardised, this header makes some implementation-specific
  * extensions.
+ *
+ * @author A. N. Yzelman
+ * @date 2023
+ */
+
+/**
+ * \defgroup TRANS Transition path
+ *
+ * The transition path libraries enable integrating ALP with existing software.
+ * It operates by exposing several of its functionalities via established C
+ * interfaces and established data formats in order to facilitate the transition
+ * of legacy software to ALP. Ideally, users of transition interfaces need only
+ * re-compile and link their software; in some cases, trivial modifications
+ * might be required to migrate to transition interfaces, e.g., changing the
+ * prefix of called functions.
+ *
+ * The currently exposed interfaces are:
+ *  - \ref SPARSEBLAS;
+ *  - \ref SPBLAS; and
+ *  - \ref TRANS_SOLVERS.
+ *
+ * All of these transition libraries show-case ALP's ability to quickly wrap
+ * around external APIs, thus simplifying integration of ALP-backed code with
+ * existing software. We do note, however, that the direct use of the native C++
+ * ALP API may lead to higher performance than the use of these transition path
+ * interfaces, and that in some cases the legacy interface itself is what makes
+ * achieving such higher performance impossible.
+ *
+ * The current transition path interfaces are at an *experimental prototype
+ * phase*; in particular, not all primitives in a given standard API are
+ * currently implemented. For \ref SPARSEBLAS in particular, additional support
+ * or coverage may freely be requested in GitHub issue #14. For other
+ * interfaces, feel free to open new issues or to contact the maintainers.
  */
 
 #ifndef _H_ALP_SPARSEBLAS_NIST
@@ -31,6 +64,41 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
+
+/**
+ * \defgroup SPARSEBLAS SparseBLAS
+ * \ingroup TRANS
+ *
+ * A SparseBLAS implementation enabled by ALP/GraphBLAS
+ *
+ * ALP provides a (presently partial) implementation of the Sparse BLAS standard
+ * as defined by the BLAS forum and in the following paper:
+ *  - Duff, Iain S., Michael A. Heroux, and Roldan Pozo. "An overview of the
+ *    sparse basic linear algebra subprograms: The new standard from the BLAS
+ *    technical forum." ACM Transactions on Mathematical Software (TOMS) 28(2),
+ *    2002, pp. 239-267.
+ *
+ * We also provide a couple of extensions over this standard, in particular to
+ * add support for sparse vectors. Such extensions are prefixed by
+ * <tt>EXTBLAS_</tt> and <tt>extblas_</tt>, such as, for example,
+ *  - #EXTBLAS_dusv_begin and
+ *  - #extblas_sparse_vector.
+ * This prefix can be configured differently, please refer to the developer
+ * documentation if looking for this option.
+ *
+ * The functionalities defined by the standard of course retain the prefix
+ * defined by the standard: <tt>BLAS_</tt> and <tt>blas_</tt>, such as, e.g.,
+ *  - #BLAS_duscr_begin and
+ *  - #blas_sparse_matrix.
+ *
+ * The implementation of this standard is done by mapping back to the equivalent
+ * ALP/GraphBLAS primitives. By default, ALP builds both sequential and shared-
+ * memory parallel SparseBLAS libraries. It does so simply by compiling the same
+ * ALP-based SparseBLAS implementation with a sequential and a shared-memory ALP
+ * backend, respectively.
+ *
+ * @{
+ */
 
 /**
  * The possible transposition types.
@@ -328,6 +396,8 @@ int EXTBLAS_dusm_clear( blas_sparse_matrix A );
  *          implementation enters an undefined state.
  */
 int EXTBLAS_free();
+
+/**@}*/ // ends the SparseBLAS doxygen group
 
 #ifdef __cplusplus
 } // end extern "C"
