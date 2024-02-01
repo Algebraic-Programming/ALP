@@ -51,7 +51,7 @@ if( WITH_REFERENCE_BACKEND )
 
 	# this is the version for sequantial execution only
 	add_transition_library( ${_SPBLAS_PREFIX}sequential STATIC "${_SPBLAS_PREFIX}sequential"
-		${CMAKE_CURRENT_SOURCE_DIR}/sparseblas.cpp PUBLIC_LINK_LIBRARIES backend_reference
+		${CMAKE_CURRENT_SOURCE_DIR}/spblas.cpp PUBLIC_LINK_LIBRARIES backend_reference
 	)
 	target_compile_definitions( ${_SPBLAS_PREFIX}sequential PUBLIC SPBLAS_PREFIX=${_SPBLAS_PREFIX} )
 
@@ -69,7 +69,7 @@ if( WITH_OMP_BACKEND )
 
 	# this is the "default" version (parallel)
 	add_transition_library( ${_SPBLAS_PREFIX}shmem_parallel STATIC "${_SPBLAS_PREFIX}shmem_parallel"
-		${CMAKE_CURRENT_SOURCE_DIR}/sparseblas.cpp PRIVATE_LINK_LIBRARIES backend_reference_omp
+		${CMAKE_CURRENT_SOURCE_DIR}/spblas.cpp PRIVATE_LINK_LIBRARIES backend_reference_omp
 	)
 	target_compile_definitions( ${_SPBLAS_PREFIX}shmem_parallel PUBLIC SPBLAS_PREFIX=${_SPBLAS_PREFIX} )
 
