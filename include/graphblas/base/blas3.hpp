@@ -551,10 +551,10 @@ namespace grb {
 		std::cerr << "Selected backend does not implement grb::select\n";
 #endif
 #ifndef NDEBUG
-		const bool selected_backend_does_not_support_select	= false;
+		const bool selected_backend_does_not_support_select = false;
 		assert( selected_backend_does_not_support_select );
 #endif
-		(void) grb::clear( B  );
+		(void) grb::clear( B );
 		return UNSUPPORTED;
 	}
 
@@ -665,10 +665,10 @@ namespace grb {
 		std::cerr << "Selected backend does not implement grb::selectLambda\n";
 #endif
 #ifndef NDEBUG
-		const bool selected_backend_does_not_support_selectLambda	= false;
+		const bool selected_backend_does_not_support_selectLambda = false;
 		assert( selected_backend_does_not_support_selectLambda );
 #endif
-		(void) grb::clear( B  );
+		(void) grb::clear( B );
 		return UNSUPPORTED;
 	}
 
