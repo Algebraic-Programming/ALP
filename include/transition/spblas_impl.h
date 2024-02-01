@@ -47,11 +47,12 @@ extern "C" {
  #error "SPBLAS_PREFIX must be defined"
 #endif
 
+/**@{*/
 /** \internal Macros used to support configurable prefixes */
 #define SPBLAS_NAME( name ) SPCONCAT( SPBLAS_PREFIX, name )
-
-/** \internal Macros used to support configurable prefixes */
-#define EXT_SPBLAS_NAME( name ) SPCONCAT( ext, SPBLAS_NAME( name ) )
+#define EXT_SPBLAS_PREFIX SPCONCAT( SPBLAS_PREFIX, ext )
+#define EXT_SPBLAS_NAME( name ) SPCONCAT( EXT_SPBLAS_PREFIX, name )
+/**@}*/
 
 /**
  * \internal
