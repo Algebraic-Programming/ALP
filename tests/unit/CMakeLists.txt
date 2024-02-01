@@ -154,17 +154,26 @@ add_grb_executables( eWiseMul eWiseMul.cpp
 	BACKENDS reference reference_omp bsp1d hybrid hyperdags nonblocking
 )
 
+add_grb_executables( factories factories.cpp
+	BACKENDS reference reference_omp bsp1d hybrid hyperdags nonblocking
+)
+
 add_grb_executables( muladd muladd.cpp
 	BACKENDS reference reference_omp bsp1d hybrid hyperdags nonblocking
 )
 
 add_grb_executables( mxm mxm.cpp
 	BACKENDS reference reference_omp hyperdags nonblocking #bsp1d hybrid
+	ADDITIONAL_LINK_LIBRARIES test_utils
 )
 
 add_grb_executables( parserTest utilParserTest.cpp
 	BACKENDS reference NO_BACKEND_NAME
 	COMPILE_DEFINITIONS COMPARE
+)
+
+add_grb_executables( iteratorFilter iteratorFilter.cpp
+	BACKENDS reference NO_BACKEND_NAME
 )
 
 add_grb_executables( RBGaussSeidel RBGaussSeidel.cpp
@@ -282,6 +291,14 @@ add_grb_executables( buildMatrixUnique buildMatrixUnique.cpp
 
 add_grb_executables( pinnedVector pinnedVector.cpp
 	BACKENDS reference reference_omp bsp1d hybrid hyperdags nonblocking
+)
+
+add_grb_executables( parallelRegularIterators parallelRegularIterators.cpp
+	BACKENDS reference reference_omp hyperdags nonblocking bsp1d hybrid
+)
+
+add_grb_executables( adapterIterator adapterIterator.cpp
+	BACKENDS reference reference_omp hyperdags nonblocking bsp1d hybrid
 )
 
 # the below targets test successfully when they compile -- they do not need to

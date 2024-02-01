@@ -172,7 +172,8 @@ namespace grb {
 								// parse first non-comment non-header line
 								std::istringstream iss( line );
 								// set defaults
-								properties._m = properties._n = properties._nz = properties._entries = 0;
+								properties._m = properties._n = properties._nz = properties._entries =
+									0;
 								if( !(iss >> properties._m >> properties._n >> properties._entries) ) {
 									// could not read length line-- let a non-mtx parser try
 									mmfile = false;

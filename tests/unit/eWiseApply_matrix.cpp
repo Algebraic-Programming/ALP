@@ -19,29 +19,21 @@
 #include <sstream>
 
 #include <graphblas.hpp>
-
+#include <graphblas/algorithms/matrix_factory.hpp>
 
 using namespace grb;
 
-void grb_program( const size_t &n, grb::RC &rc ) {
+using namespace grb::algorithms;
+
+void grb_program( const int &, grb::RC &rc ) {
 
 	// large non-square mixed-domain matrix check
 	{
-		grb::Matrix< char > A( n, 2*n );
-		grb::Matrix< float > B( n, 2*n );
-		grb::Matrix< size_t > C( n, 2*n );
-		size_t * I = new size_t[ n ];
-		size_t * J = new size_t[ n ];
-		char * V = new char[ n ];
-		for( size_t k = 0; k < n; ++k ) {
-			I[ k ] = k;
-			J[ k ] = k+n;
-			V[ k ] = 2;
-		}
-		rc = grb::buildMatrixUnique( A, I, J, V, n, SEQUENTIAL );
-		rc = rc ? rc : grb::buildMatrixUnique( B, I, J, V, n, SEQUENTIAL );
-		rc = rc ? rc : grb::buildMatrixUnique( C, I, J, V, n, SEQUENTIAL );
-		rc = rc ? rc : grb::eWiseApply( C, A, B,
+		Matrix< char > A = matrices< char >::eye( 10000000, 2000000, 2, 0 );
+		Matrix< float > B = matrices< float >::eye( 10000000, 2000000, 2, 0 );
+		Matrix< size_t > C = matrices< size_t >::eye( 10000000, 2000000, 2, 0 );
+
+		rc = grb::eWiseApply( C, A, B,
 			grb::operators::add< float, size_t, char >(), RESIZE );
 		rc = rc ? rc : grb::eWiseApply( C, A, B,
 			grb::operators::add< float, size_t, char >() );
