@@ -42,14 +42,13 @@ void grb_program( const int &, grb::RC &rc ) {
 				<< "mixed-domain matrix check\n";
 			return;
 		}
-		
 		for( const auto &triple : C ) {
-			const auto &i = triple.first.first;
-			const auto &j = triple.first.second;
-			const auto &v = triple.second;
-			if( j != i+n ) {
-				std::cout << "Unexpected entry at position ( " << i << ", " << i+n << " ) "
-					<< "-- only expected entries on the n-th diagonal\n";
+			const size_t &i = triple.first.first;
+			const size_t &j = triple.first.second;
+			const size_t &v = triple.second;
+			if( i != j ) {
+				std::cout << "Unexpected entry at position ( " << i << ", " << j << " ) "
+					<< "-- only expected entries on the diagonal\n";
 				rc = FAILED;
 			}
 			if( v != 4 ) {
@@ -68,14 +67,15 @@ void grb_program( const int &, grb::RC &rc ) {
 
 int main( int argc, char ** argv ) {
 	// defaults
-	size_t input = 1000; // unused
+	bool printUsage = false;
+	int input = 0; // unused
 
 	// error checking
 	if( argc > 1 ) {
-		input = std::strtoul( argv[ 1 ], nullptr, 10 );
+		printUsage = true;
 	}
-	if( argc > 2 ) {
-		std::cerr << "Usage: " << argv[ 0 ] << "[n]\n";
+	if( printUsage ) {
+		std::cerr << "Usage: " << argv[ 0 ] << "\n";
 		return 1;
 	}
 
@@ -94,4 +94,3 @@ int main( int argc, char ** argv ) {
 		return 0;
 	}
 }
-
