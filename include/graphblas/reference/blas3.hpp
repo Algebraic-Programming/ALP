@@ -61,8 +61,12 @@ namespace grb {
 
 	namespace internal {
 
+		/**
+		 * \internal general select implementation that
+		 * all select variants refer to
+		 */
 		template<
-			Descriptor descr = descriptors::no_operation,
+			Descriptor descr,
 			class SelectionOperator,
 			typename Tin,
 			typename RITin, typename CITin, typename NITin,
@@ -77,7 +81,6 @@ namespace grb {
 			const std::function< size_t( size_t ) > &col_l2g,
 			const Phase &phase
 		) {
-			RC rc = SUCCESS;
 			const Tin identity = Tin();
 
 			constexpr bool crs_only = descr & descriptors::force_row_major;
@@ -101,7 +104,7 @@ namespace grb {
 				return MISMATCH;
 			}
 
-			if( m == 0 || n == 0 ) {
+			if( m == 0 || n == 0 || nnz(in ) {
 				return SUCCESS;
 			}
 
@@ -110,7 +113,7 @@ namespace grb {
 
 #ifdef _H_GRB_REFERENCE_OMP_BLAS3
 				#pragma omp parallel default(none) \
-					shared(in_raw, rc, row_l2g, col_l2g) \
+					shared(in_raw, row_l2g, col_l2g) \
 					firstprivate(m, op, identity) \
 					reduction(+:nzc)
 #endif
@@ -133,8 +136,8 @@ namespace grb {
 				return grb::resize( out, nzc );
 			}
 
-			assert( phase == EXECUTE );
 			// Execute phase only from here on
+			assert( phase == EXECUTE );
 
 			// Declare the column counter array
 			config::NonzeroIndexType * col_counter = nullptr;
@@ -159,8 +162,9 @@ namespace grb {
 					for( size_t k = in_raw.col_start[ i ]; k < in_raw.col_start[ i + 1 ]; ++k ) {
 						const auto j = in_raw.row_index[ k ];
 						const auto value = in_raw.getValue( k, identity );
-						if( not op( row_l2g( i ), col_l2g( j ), value ) ) continue;
-						++out_ccs.col_start[ j + 1 ];
+						if( op( row_l2g( i ), col_l2g( j ), value ) ) {
+							++out_ccs.col_start[ j + 1 ];
+						}
 					}
 				}
 
@@ -185,7 +189,9 @@ namespace grb {
 				for( size_t k = in_raw.col_start[ i ]; k < in_raw.col_start[ i + 1 ]; ++k ) {
 					const auto j = in_raw.row_index[ k ];
 					const auto value = in_raw.getValue( k, identity );
-					if( not op( row_l2g( i ), col_l2g( j ), value ) ) continue;
+					if( not op( row_l2g( i ), col_l2g( j ), value ) ) {
+						continue;
+					}
 #ifdef _DEBUG
 					std::cout << "\tKeeping value at: " << row_l2g( i ) << ", "
 						<< col_l2g( j ) << " -> idx=" << nzc << "\n";
@@ -194,9 +200,9 @@ namespace grb {
 					// Update CCS
 					if( !crs_only ) {
 						const auto idx = out_ccs.col_start[ j ] + col_counter[ j ];
+						++col_counter[ j ];
 						out_ccs.row_index[ idx ] = i;
 						out_ccs.setValue( idx, value );
-						++col_counter[ j ];
 					}
 
 					// Update CRS
@@ -209,7 +215,7 @@ namespace grb {
 
 			internal::setCurrentNonzeroes( out, nzc );
 
-			return rc;
+			return SUCCESS;
 		}
 
 		/**
@@ -1420,7 +1426,6 @@ namespace grb {
 	 *
 	 * \internal Dispatches to internal::eWiseApply_matrix_generic
 	 */
-
 	template<
 		Descriptor descr = grb::descriptors::no_operation,
 		class Operator,
@@ -1486,10 +1491,10 @@ namespace grb {
 		typename RITout, typename CITout, typename NITout
 	>
 	RC select(
-		Matrix< Tout, reference, RITout, CITout, NITout >& out,
-		const Matrix< Tin, reference, RITin, CITin, NITin >& in,
+		Matrix< Tout, reference, RITout, CITout, NITout > &out,
+		const Matrix< Tin, reference, RITin, CITin, NITin > &in,
 		const SelectionOperator op = SelectionOperator(),
-		const Phase& phase = EXECUTE,
+		const Phase &phase = EXECUTE,
 		const typename std::enable_if<
 			!is_object< Tin >::value &&
 			!is_object< Tout >::value &&
@@ -1499,6 +1504,7 @@ namespace grb {
 #ifdef _DEBUG
 		std::cout << "In grb::select( reference )\n";
 #endif
+
 		static_assert(
 			(std::is_void<Tin>::value && std::is_void<Tout>::value)
 			|| std::is_same<Tin, Tout>::value,
@@ -1510,8 +1516,8 @@ namespace grb {
 			out,
 			in,
 			op,
-			[](size_t i) { return i; },
-			[](size_t j) { return j; },
+			[]( size_t i ) { return i; },
+			[]( size_t j ) { return j; },
 			phase
 		);
 	}
@@ -1525,10 +1531,10 @@ namespace grb {
 		typename RITout, typename CITout, typename NITout
 	>
 	RC selectLambda(
-		Matrix< Tout, reference, RITout, CITout, NITout >& out,
-		const Matrix< Tin, reference, RITin, CITin, NITin >& in,
+		Matrix< Tout, reference, RITout, CITout, NITout > &out,
+		const Matrix< Tin, reference, RITin, CITin, NITin > &in,
 		const PredicateFunction &lambda,
-		const Phase& phase = EXECUTE,
+		const Phase &phase = EXECUTE,
 		const typename std::enable_if<
 			!is_object< Tin >::value &&
 			!is_object< Tout >::value
@@ -1539,7 +1545,7 @@ namespace grb {
 #endif
 
 		static_assert(
-			(std::is_void<Tin>::value && std::is_void<Tout>::value)
+			( std::is_void<Tin>::value && std::is_void<Tout>::value )
 			|| std::is_same<Tin, Tout>::value,
 			"grb::selectLambda (reference): "
 			"input and output matrix types must match"
@@ -1549,8 +1555,8 @@ namespace grb {
 			out,
 			in,
 			lambda,
-			[](size_t i) { return i; },
-			[](size_t j) { return j; },
+			[]( size_t i ) { return i; },
+			[]( size_t j ) { return j; },
 			phase
 		);
 	}

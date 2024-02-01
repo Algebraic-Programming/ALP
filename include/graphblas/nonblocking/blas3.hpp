@@ -580,10 +580,10 @@ namespace grb {
 		typename RITout, typename CITout, typename NITout
 	>
 	RC select(
-		Matrix< Tout, nonblocking, RITout, CITout, NITout >& out,
-		const Matrix< Tin, nonblocking, RITin, CITin, NITin >& in,
+		Matrix< Tout, nonblocking, RITout, CITout, NITout > &out,
+		const Matrix< Tin, nonblocking, RITin, CITin, NITin > &in,
 		const Operator op = Operator(),
-		const Phase& phase = EXECUTE
+		const Phase &phase = EXECUTE
 	) {
 #ifdef _DEBUG
 		std::cout << "In grb::select( nonblocking )\n";
@@ -602,14 +602,12 @@ namespace grb {
 			internal::le.execution();
 
 			// second, delegate to the reference backend
-			return select<
-					descr, Operator
-				>(
-					internal::getRefMatrix( out ),
-					internal::getRefMatrix( in ),
-					op,
-					phase
-				);
+			return select< descr, Operator >(
+				internal::getRefMatrix( out ),
+				internal::getRefMatrix( in ),
+				op,
+				phase
+			);
 		}
 
 	template<
@@ -621,10 +619,10 @@ namespace grb {
 		typename RITout, typename CITout, typename NITout
 	>
 	RC selectLambda(
-		Matrix< Tout, nonblocking, RITout, CITout, NITout >& out,
-		const Matrix< Tin, nonblocking, RITin, CITin, NITin >& in,
+		Matrix< Tout, nonblocking, RITout, CITout, NITout > &out,
+		const Matrix< Tin, nonblocking, RITin, CITin, NITin > &in,
 		const SelectionLambda &lambda,
-		const Phase& phase = EXECUTE
+		const Phase &phase = EXECUTE
 	) {
 #ifdef _DEBUG
 		std::cout << "In grb::selectLambda( nonblocking )\n";
@@ -643,14 +641,12 @@ namespace grb {
 		internal::le.execution();
 
 		// second, delegate to the reference backend
-		return selectLambda<
-				descr, SelectionLambda
-			>(
-				internal::getRefMatrix( out ),
-				internal::getRefMatrix( in ),
-				lambda,
-				phase
-			);
+		return selectLambda< descr, SelectionLambda >(
+			internal::getRefMatrix( out ),
+			internal::getRefMatrix( in ),
+			lambda,
+			phase
+		);
 	}
 
 } // namespace grb

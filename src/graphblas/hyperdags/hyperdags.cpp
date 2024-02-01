@@ -380,10 +380,10 @@ std::string grb::internal::hyperdags::toString(
 		case GETID_MATRIX:
 			return "getID( matrix )";
 
-		case SELECT_MATRIX_MATRIX:
+		case SELECT_MATRIX_MATRIX_OP:
 			return "select( matrix, matrix, selection_operator )";
 
-		case SELECT_LAMBDA_MATRIX_MATRIX:
+		case SELECT_MATRIX_MATRIX_LAMBDA:
 			return "selectLambda( matrix, matrix, lambda )";
 
 	}

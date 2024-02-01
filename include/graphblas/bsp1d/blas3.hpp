@@ -205,6 +205,7 @@ namespace grb {
 		return internal::checkGlobalErrorStateOrClear( C, ret );
 	}
 
+	/** \internal Simply delegates to process-local backend */
 	template<
 		Descriptor descr = descriptors::no_operation,
 		class SelectionOperator,
@@ -214,10 +215,10 @@ namespace grb {
 		typename RITout, typename CITout, typename NITout
 	>
 	RC select(
-		Matrix< Tout, BSP1D, RITout, CITout, NITout >& out,
-		const Matrix< Tin, BSP1D, RITin, CITin, NITin >& in,
+		Matrix< Tout, BSP1D, RITout, CITout, NITout > &out,
+		const Matrix< Tin, BSP1D, RITin, CITin, NITin > &in,
 		const SelectionOperator &op,
-		const Phase& phase = EXECUTE,
+		const Phase &phase = EXECUTE,
 		const typename std::enable_if<
 				!is_object< Tin >::value &&
 				!is_object< Tout >::value &&
@@ -248,7 +249,7 @@ namespace grb {
 		return internal::checkGlobalErrorStateOrClear( out, ret );
 	}
 
-
+	/** \internal Simply delegates to process-local backend */
 	template<
 		Descriptor descr = descriptors::no_operation,
 		class PredicateFunction,
@@ -258,10 +259,10 @@ namespace grb {
 		typename RITout, typename CITout, typename NITout
 	>
 	RC selectLambda(
-		Matrix< Tout, BSP1D, RITout, CITout, NITout >& out,
-		const Matrix< Tin, BSP1D, RITin, CITin, NITin >& in,
+		Matrix< Tout, BSP1D, RITout, CITout, NITout > &out,
+		const Matrix< Tin, BSP1D, RITin, CITin, NITin > &in,
 		const PredicateFunction &lambda,
-		const Phase& phase = EXECUTE,
+		const Phase &phase = EXECUTE,
 		const typename std::enable_if<
 				!is_object< Tin >::value &&
 				!is_object< Tout >::value
