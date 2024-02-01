@@ -272,7 +272,7 @@ namespace grb {
 
 		const auto coordinatesTranslationFunctions = in.getLocalToGlobalCoordinatesTranslationFunctions();
 
-		RC ret = internal::selectLambda_generic< descr >(
+		RC ret = internal::select_generic< descr >(
 			internal::getLocal( out ),
 			internal::getLocal( in ),
 			lambda,
