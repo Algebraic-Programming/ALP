@@ -193,8 +193,8 @@ int BLAS_dusmm(
 int EXTBLAS_dusmsv(
 	const enum blas_trans_type transa,
 	const double alpha, const blas_sparse_matrix A,
-	const extblas_sparse_vector x,
-	extblas_sparse_vector y
+	const EXTBLAS_TYPE( sparse_vector ) x,
+	EXTBLAS_TYPE( sparse_vector ) y
 );
 
 /**
