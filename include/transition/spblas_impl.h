@@ -50,7 +50,7 @@ extern "C" {
 /**@{*/
 /** \internal Macros used to support configurable prefixes */
 #define SPBLAS_NAME( name ) SPCONCAT( SPBLAS_PREFIX, name )
-#define EXT_SPBLAS_PREFIX SPCONCAT( SPBLAS_PREFIX, ext )
+#define EXT_SPBLAS_PREFIX SPCONCAT( SPBLAS_PREFIX, ext_ )
 #define EXT_SPBLAS_NAME( name ) SPCONCAT( EXT_SPBLAS_PREFIX, name )
 /**@}*/
 

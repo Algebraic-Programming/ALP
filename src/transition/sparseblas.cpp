@@ -341,7 +341,7 @@ namespace sparseblas {
 	 * \internal Utility function that converts a #blas_sparse_matrix to a
 	 *           sparseblas::SparseMatrix. This is for matrices of doubles.
 	 */
-	SparseMatrix< double > * getDoubleMatrix( blas_sparse_matrix A ) {
+	static SparseMatrix< double > * getDoubleMatrix( blas_sparse_matrix A ) {
 		return static_cast< SparseMatrix< double >* >( A );
 	}
 
