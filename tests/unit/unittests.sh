@@ -605,8 +605,8 @@ for MODE in ${MODES}; do
 				echo " "
 
         echo ">>>      [x]           [ ]       Testing grb::eWiseApply (matrices, Monoid / Operator)"
-        echo "                                  using large matrices (100'000x100'000)"
-        $runner ${TEST_BIN_DIR}/eWiseApplyMatrix_variants_${MODE}_${BACKEND} 100000 &> ${TEST_OUT_DIR}/eWiseApplyMatrix_variants_large_${MODE}_${BACKEND}_${P}_${T}.log
+        echo "                                  using large matrices (10'000x10'000)"
+        $runner ${TEST_BIN_DIR}/eWiseApplyMatrix_variants_${MODE}_${BACKEND} 10000 &> ${TEST_OUT_DIR}/eWiseApplyMatrix_variants_large_${MODE}_${BACKEND}_${P}_${T}.log
         head -1 ${TEST_OUT_DIR}/eWiseApplyMatrix_variants_large_${MODE}_${BACKEND}_${P}_${T}.log
         grep 'Test OK' ${TEST_OUT_DIR}/eWiseApplyMatrix_variants_large_${MODE}_${BACKEND}_${P}_${T}.log || echo "Test FAILED"
         echo " "

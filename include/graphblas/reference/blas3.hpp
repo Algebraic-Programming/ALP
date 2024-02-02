@@ -1358,18 +1358,60 @@ namespace grb {
 			// symbolic phase
 			if( phase == RESIZE ) {
 				nzc = 0;
-				for( size_t i = 0; i < m; ++i ) {
-					coors1.clear();
-					for( size_t k = A_raw.col_start[ i ]; k < A_raw.col_start[ i + 1 ]; ++k ) {
-						const size_t k_col = A_raw.row_index[ k ];
-						if( !coors1.assign( k_col ) ) {
-							(void) ++nzc;
+
+
+#ifdef _H_GRB_REFERENCE_OMP_BLAS3
+				#pragma omp parallel default(none) \
+					shared(coors1, vbuf1, coors2, vbuf3) \
+					firstprivate(A_raw, identity_A, B_raw, identity_B, m) \
+					reduction(+:nzc)
+#endif
+				{
+					for( size_t i = 0; i < m; ++i ) {
+#ifdef _H_GRB_REFERENCE_OMP_BLAS3
+						#pragma omp single
+#endif
+						{
+							coors1.clear();
 						}
-					}
-					for( size_t l = B_raw.col_start[ i ]; l < B_raw.col_start[ i + 1 ]; ++l ) {
-						const size_t l_col = B_raw.row_index[ l ];
-						if( !coors1.assigned( l_col ) ) {
-							(void) ++nzc;
+#ifdef _H_GRB_REFERENCE_OMP_BLAS3
+						#pragma omp barrier
+#endif
+#ifdef _H_GRB_REFERENCE_OMP_BLAS3
+						auto local_update1 = coors1.EMPTY_UPDATE();
+						const size_t maxAsyncAssigns1 = coors1.maxAsyncAssigns();
+						size_t assigns1 = 0;
+						#pragma omp for simd schedule( dynamic, config::CACHE_LINE_SIZE::value() ) nowait
+#endif
+						for( size_t k = A_raw.col_start[ i ]; k < A_raw.col_start[ i + 1 ]; ++k ) {
+							const size_t k_col = A_raw.row_index[ k ];
+#ifdef _H_GRB_REFERENCE_OMP_BLAS3
+							if( !coors1.asyncAssign( k_col, local_update1 ) ) {
+                                assignValue( vbuf1, k_col, A_raw.getValue( k, identity_A ) );
+                                if( ++assigns1 == maxAsyncAssigns1 ) {
+                                    coors1.joinUpdate( local_update1 );
+                                    assigns1 = 0;
+                                }
+                            }
+#else
+							(void)coors1.assign( k_col );
+#endif
+							(void)++nzc;
+						}
+#ifdef _H_GRB_REFERENCE_OMP_BLAS3
+	                    while( !coors1.joinUpdate( local_update1 ) ) {}
+#endif
+
+#ifdef _H_GRB_REFERENCE_OMP_BLAS3
+						#pragma omp barrier
+
+						#pragma omp for simd schedule( dynamic, config::CACHE_LINE_SIZE::value() )
+#endif
+						for( size_t l = B_raw.col_start[ i ]; l < B_raw.col_start[ i + 1 ]; ++l ) {
+							const size_t l_col = B_raw.row_index[ l ];
+							if( !coors1.assigned( l_col ) ) {
+								(void)++nzc;
+							}
 						}
 					}
 				}
@@ -1392,9 +1434,9 @@ namespace grb {
 					coors1.clear();
 					for( size_t k = A_raw.col_start[ i ]; k < A_raw.col_start[ i + 1 ]; ++k ) {
 						const size_t k_col = A_raw.row_index[ k ];
-						if( !coors1.assign( k_col ) ) {
-							(void) ++nzc;
-						}
+						(void)coors1.assign( k_col );
+						(void)++nzc;
+
 						if( !crs_only ) {
 							(void) ++CCS_raw.col_start[ k_col + 1 ];
 						}
@@ -1402,9 +1444,9 @@ namespace grb {
 					for( size_t l = B_raw.col_start[ i ]; l < B_raw.col_start[ i + 1 ]; ++l ) {
 						const size_t l_col = B_raw.row_index[ l ];
 						if( !coors1.assigned( l_col ) ) {
-							(void) ++nzc;
+							(void)++nzc;
 							if( !crs_only ) {
-								(void) ++CCS_raw.col_start[ l_col + 1 ];
+								(void)++CCS_raw.col_start[ l_col + 1 ];
 							}
 						}
 					}
@@ -1425,11 +1467,13 @@ namespace grb {
 
 				// prefix sum for CCS_raw.col_start
 				if( !crs_only ) {
-					assert( CCS_raw.col_start[ 0 ] == 0 );
 					for( size_t j = 1; j < n; ++j ) {
 						CCS_raw.col_start[ j + 1 ] += CCS_raw.col_start[ j ];
 					}
+#ifndef NDEBUG
+					assert( CCS_raw.col_start[ 0 ] == 0 );
 					assert( CCS_raw.col_start[ n ] == nzc );
+#endif
 				}
 
 				// set C_col_index to all zero
@@ -1442,9 +1486,7 @@ namespace grb {
 					}
 				}
 
-
 				// do computations
-
 				nzc = 0;
 				CRS_raw.col_start[ 0 ] = 0;
 				for( size_t i = 0; i < m; ++i ) {
@@ -1457,7 +1499,6 @@ namespace grb {
 						firstprivate(i, A_raw, identity_A, B_raw, identity_B )
 #endif
 					{
-
 #ifdef _H_GRB_REFERENCE_OMP_BLAS3
 						auto local_update1 = coors1.EMPTY_UPDATE();
 						const size_t maxAsyncAssigns1 = coors1.maxAsyncAssigns();
@@ -1469,17 +1510,15 @@ namespace grb {
 
 #ifdef _H_GRB_REFERENCE_OMP_BLAS3
 							if( !coors1.asyncAssign( k_col, local_update1 ) ) {
-								assignValue( vbuf1, k_col, A_raw.getValue( k, identity_A ) );
 								if( ++assigns1 == maxAsyncAssigns1 ) {
 									coors1.joinUpdate( local_update1 );
 									assigns1 = 0;
 								}
 							}
 #else
-							if( !coors1.assign( k_col ) ) {
-								assignValue( vbuf1, k_col, A_raw.getValue( k, identity_A ) );
-							}
+							(void)coors1.assign( k_col );
 #endif
+							assignValue( vbuf1, k_col, A_raw.getValue( k, identity_A ) );
 						}
 
 #ifdef _H_GRB_REFERENCE_OMP_BLAS3
@@ -1505,10 +1544,9 @@ namespace grb {
 								}
 							}
 #else
-							if( !coors2.assign( k_col ) ) {
-								assignValue( vbuf3, k_col, B_raw.getValue( k, identity_B ) );
-							}
+							(void)coors2.assign( k_col );
 #endif
+							assignValue( vbuf3, k_col, B_raw.getValue( k, identity_B ) );
 						}
 #ifdef _H_GRB_REFERENCE_OMP_BLAS3
 						while( !coors2.joinUpdate( local_update2 )) {}
