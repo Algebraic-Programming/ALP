@@ -244,6 +244,8 @@ namespace grb {
 
 		friend class PinnedVector< D, BSP1D >;
 
+		friend class Vector< D, nonblocking, internal::Coordinates< nonblocking > >;
+
 		template< typename ValueType, Backend backend >
 		friend Vector<
 			ValueType, backend,
