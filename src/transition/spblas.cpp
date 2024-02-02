@@ -52,7 +52,6 @@ namespace spblas {
 
 }
 
-
 SPBLAS_RET_T SPBLAS_NAME( dcsrgemv )(
 	const char * transa,
 	const int * m_p,
@@ -339,3 +338,4 @@ SPBLAS_RET_T EXT_SPBLAS_NAME( free )() {
 		assert( false );
 	}
 }
+
