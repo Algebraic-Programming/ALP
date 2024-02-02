@@ -374,540 +374,535 @@ namespace std {
 
 // implementation of the SparseBLAS API follows
 
-extern "C" {
+EXTBLAS_TYPE( sparse_vector ) EXTBLAS_FUN( dusv_begin )( const int n ) {
+	return new native::SparseVector< double >( n );
+}
 
-	EXTBLAS_TYPE( sparse_vector ) EXTBLAS_FUN( dusv_begin )( const int n ) {
-		return new native::SparseVector< double >( n );
+int EXTBLAS_FUN( dusv_insert_entry )(
+	EXTBLAS_TYPE( sparse_vector ) x,
+	const double val,
+	const int index
+) {
+	auto vector = sparseblas::getDoubleVector( x );
+	assert( !(vector->finalized) );
+	try {
+		vector->add( val, index );
+	} catch( ... ) {
+		return 20;
 	}
+	return 0;
+}
 
-	int EXTBLAS_FUN( dusv_insert_entry )(
-		EXTBLAS_TYPE( sparse_vector ) x,
-		const double val,
-		const int index
-	) {
-		auto vector = sparseblas::getDoubleVector( x );
-		assert( !(vector->finalized) );
-		try {
-			vector->add( val, index );
-		} catch( ... ) {
-			return 20;
+int EXTBLAS_FUN( dusv_end )( EXTBLAS_TYPE( sparse_vector ) x ) {
+	auto vector = sparseblas::getDoubleVector( x );
+	assert( !(vector->finalized) );
+	try {
+		vector->finalize();
+	} catch( ... ) {
+		return 30;
+	}
+	return 0;
+}
+
+int EXTBLAS_FUN( dusvds )( EXTBLAS_TYPE( sparse_vector ) x ) {
+	auto vector = sparseblas::getDoubleVector( x );
+	delete vector;
+	return 0;
+}
+
+int EXTBLAS_FUN( dusv_nz )(
+	const EXTBLAS_TYPE( sparse_vector ) x,
+	int * const nz
+) {
+	auto vector = sparseblas::getDoubleVector( x );
+	assert( vector->finalized );
+	const size_t nnz = grb::nnz( *(vector->vector) );
+	if( nnz > static_cast< size_t >( std::numeric_limits< int >::max() ) ) {
+		std::cerr << "Number of nonzeroes is larger than what can be represented by "
+			<< "a SparseBLAS int!\n";
+		return 10;
+	}
+	*nz = static_cast< int >(nnz);
+	return 0;
+}
+
+int EXTBLAS_FUN( dusv_clear )( EXTBLAS_TYPE( sparse_vector ) x ) {
+	auto vector = sparseblas::getDoubleVector( x );
+	assert( vector->finalized );
+	const grb::RC rc = grb::clear( *(vector->vector) );
+	if( rc != grb::SUCCESS ) {
+		return 10;
+	}
+	return 0;
+}
+
+int EXTBLAS_FUN( dusv_open )( const EXTBLAS_TYPE( sparse_vector ) x ) {
+	auto vector = sparseblas::getDoubleVector( x );
+	assert( vector->finalized );
+	try {
+		vector->start = vector->vector->cbegin();
+		vector->end = vector->vector->cend();
+	} catch( ... ) {
+		return 10;
+	}
+	return 0;
+}
+
+int EXTBLAS_FUN( dusv_get )(
+	const EXTBLAS_TYPE( sparse_vector ) x,
+	double * const val, int * const ind
+) {
+	auto vector = sparseblas::getDoubleVector( x );
+	assert( vector->finalized );
+	assert( vector->start != vector->end );
+	assert( val != nullptr );
+	assert( ind != nullptr );
+	*val = vector->start->second;
+	*ind = vector->start->first;
+	try {
+		(void) ++(vector->start);
+	} catch( ... ) {
+		return 2;
+	}
+	if( vector->start == vector->end ) {
+		return 0;
+	} else {
+		return 1;
+	}
+}
+
+int EXTBLAS_FUN( dusv_close )( const EXTBLAS_TYPE( sparse_vector ) x ) {
+	auto vector = sparseblas::getDoubleVector( x );
+	assert( vector->finalized );
+	vector->start = vector->end;
+	return 0;
+}
+
+blas_sparse_matrix BLAS_duscr_begin( const int m, const int n ) {
+	return new sparseblas::SparseMatrix< double >( m, n );
+}
+
+int BLAS_duscr_insert_entry(
+	blas_sparse_matrix A,
+	const double val, const int row, const int col
+) {
+	auto matrix = sparseblas::getDoubleMatrix( A );
+	assert( matrix->finalized == false );
+	assert( matrix->ingest != nullptr );
+	try {
+		matrix->ingest->add( val, row, col );
+	} catch( ... ) {
+		return 2;
+	}
+	return 0;
+}
+
+int BLAS_duscr_insert_entries(
+	blas_sparse_matrix A,
+	const int nnz,
+	const double * vals, const int * rows, const int * cols
+) {
+	auto matrix = sparseblas::getDoubleMatrix( A );
+	assert( matrix->finalized == false );
+	assert( matrix->ingest != nullptr );
+	try {
+		for( int k = 0; k < nnz; ++k ) {
+			matrix->ingest->add( vals[ k ], rows[ k ], cols[ k ] );
 		}
-		return 0;
+	} catch( ... ) {
+		return 3;
 	}
+	return 0;
+}
 
-	int EXTBLAS_FUN( dusv_end )( EXTBLAS_TYPE( sparse_vector ) x ) {
-		auto vector = sparseblas::getDoubleVector( x );
-		assert( !(vector->finalized) );
-		try {
-			vector->finalize();
-		} catch( ... ) {
-			return 30;
+int BLAS_duscr_insert_col(
+	blas_sparse_matrix A,
+	const int j, const int nnz,
+	const double * vals, const int * rows
+) {
+	auto matrix = sparseblas::getDoubleMatrix( A );
+	assert( matrix->finalized == false );
+	assert( matrix->ingest != nullptr );
+	try {
+		for( int k = 0; k < nnz; ++k ) {
+			matrix->ingest->add( vals[ k ], rows[ k ], j );
 		}
-		return 0;
+	} catch( ... ) {
+		return 4;
 	}
+	return 0;
+}
 
-	int EXTBLAS_FUN( dusvds )( EXTBLAS_TYPE( sparse_vector ) x ) {
-		auto vector = sparseblas::getDoubleVector( x );
-		delete vector;
-		return 0;
-	}
-
-	int EXTBLAS_FUN( dusv_nz )(
-		const EXTBLAS_TYPE( sparse_vector ) x,
-		int * const nz
-	) {
-		auto vector = sparseblas::getDoubleVector( x );
-		assert( vector->finalized );
-		const size_t nnz = grb::nnz( *(vector->vector) );
-		if( nnz > static_cast< size_t >( std::numeric_limits< int >::max() ) ) {
-			std::cerr << "Number of nonzeroes is larger than what can be represented by "
-				<< "a SparseBLAS int!\n";
-			return 10;
+int BLAS_duscr_insert_row(
+	blas_sparse_matrix A,
+	const int i, const int nnz,
+	const double * vals, const int * cols
+) {
+	auto matrix = sparseblas::getDoubleMatrix( A );
+	assert( matrix->finalized == false );
+	assert( matrix->ingest != nullptr );
+	try {
+		for( int k = 0; k < nnz; ++k ) {
+			matrix->ingest->add( vals[ k ], i, cols[ k ] );
 		}
-		*nz = static_cast< int >(nnz);
-		return 0;
+	} catch( ... ) {
+		return 5;
 	}
+	return 0;
+}
 
-	int EXTBLAS_FUN( dusv_clear )( EXTBLAS_TYPE( sparse_vector ) x ) {
-		auto vector = sparseblas::getDoubleVector( x );
-		assert( vector->finalized );
-		const grb::RC rc = grb::clear( *(vector->vector) );
+int BLAS_duscr_end( blas_sparse_matrix A ) {
+	auto matrix = sparseblas::getDoubleMatrix( A );
+	assert( matrix->finalized == false );
+	assert( matrix->ingest != nullptr );
+	try {
+		matrix->finalize();
+	} catch( const std::runtime_error &e ) {
+		std::cerr << "Caught error: " << e.what() << "\n";
+		return 1;
+	}
+	return 0;
+}
+
+int EXTBLAS_dusm_clear( blas_sparse_matrix A ) {
+	auto matrix = sparseblas::getDoubleMatrix( A );
+	assert( matrix->finalized );
+	const grb::RC rc = grb::clear( *(matrix->A) );
+	if( rc != grb::SUCCESS ) {
+		return 10;
+	}
+	return 0;
+}
+
+int BLAS_usds( blas_sparse_matrix A ) {
+	delete sparseblas::getDoubleMatrix( A );
+	return 0;
+}
+
+int BLAS_dusmv(
+	const enum blas_trans_type transa,
+	const double alpha, const blas_sparse_matrix A,
+	const double * x, int incx,
+	double * const y, const int incy
+) {
+	grb::Semiring<
+		grb::operators::add< double >, grb::operators::mul< double >,
+		grb::identities::zero, grb::identities::one
+	> ring;
+	auto matrix = sparseblas::getDoubleMatrix( A );
+	if( alpha != 1.0 ) {
+		grb::Vector< double > output = grb::internal::template
+			wrapRawVector< double >( matrix->m, y );
+		const grb::RC rc = grb::foldl< grb::descriptors::dense >(
+			output, 1.0 / alpha, ring.getMultiplicativeOperator() );
 		if( rc != grb::SUCCESS ) {
-			return 10;
-		}
-		return 0;
-	}
-
-	int EXTBLAS_FUN( dusv_open )( const EXTBLAS_TYPE( sparse_vector ) x ) {
-		auto vector = sparseblas::getDoubleVector( x );
-		assert( vector->finalized );
-		try {
-			vector->start = vector->vector->cbegin();
-			vector->end = vector->vector->cend();
-		} catch( ... ) {
-			return 10;
-		}
-		return 0;
-	}
-
-	int EXTBLAS_FUN( dusv_get )(
-		const EXTBLAS_TYPE( sparse_vector ) x,
-		double * const val, int * const ind
-	) {
-		auto vector = sparseblas::getDoubleVector( x );
-		assert( vector->finalized );
-		assert( vector->start != vector->end );
-		assert( val != nullptr );
-		assert( ind != nullptr );
-		*val = vector->start->second;
-		*ind = vector->start->first;
-		try {
-			(void) ++(vector->start);
-		} catch( ... ) {
-			return 2;
-		}
-		if( vector->start == vector->end ) {
-			return 0;
-		} else {
-			return 1;
+			std::cerr << "Error during pre-scaling during SpMV\n";
+			return 50;
 		}
 	}
-
-	int EXTBLAS_FUN( dusv_close )( const EXTBLAS_TYPE( sparse_vector ) x ) {
-		auto vector = sparseblas::getDoubleVector( x );
-		assert( vector->finalized );
-		vector->start = vector->end;
-		return 0;
+	if( incx != 1 || incy != 1 ) {
+		// TODO: requires ALP views
+		std::cerr << "Strided input and/or output vectors are not supported.\n";
+		return 255;
 	}
-
-	blas_sparse_matrix BLAS_duscr_begin( const int m, const int n ) {
-		return new sparseblas::SparseMatrix< double >( m, n );
+	if( !(matrix->finalized) ) {
+		std::cerr << "Input matrix was not yet finalised; see BLAS_duscr_end.\n";
+		return 100;
 	}
-
-	int BLAS_duscr_insert_entry(
-		blas_sparse_matrix A,
-		const double val, const int row, const int col
-	) {
-		auto matrix = sparseblas::getDoubleMatrix( A );
-		assert( matrix->finalized == false );
-		assert( matrix->ingest != nullptr );
-		try {
-			matrix->ingest->add( val, row, col );
-		} catch( ... ) {
-			return 2;
-		}
-		return 0;
-	}
-
-	int BLAS_duscr_insert_entries(
-		blas_sparse_matrix A,
-		const int nnz,
-		const double * vals, const int * rows, const int * cols
-	) {
-		auto matrix = sparseblas::getDoubleMatrix( A );
-		assert( matrix->finalized == false );
-		assert( matrix->ingest != nullptr );
-		try {
-			for( int k = 0; k < nnz; ++k ) {
-				matrix->ingest->add( vals[ k ], rows[ k ], cols[ k ] );
-			}
-		} catch( ... ) {
-			return 3;
-		}
-		return 0;
-	}
-
-	int BLAS_duscr_insert_col(
-		blas_sparse_matrix A,
-		const int j, const int nnz,
-		const double * vals, const int * rows
-	) {
-		auto matrix = sparseblas::getDoubleMatrix( A );
-		assert( matrix->finalized == false );
-		assert( matrix->ingest != nullptr );
-		try {
-			for( int k = 0; k < nnz; ++k ) {
-				matrix->ingest->add( vals[ k ], rows[ k ], j );
-			}
-		} catch( ... ) {
-			return 4;
-		}
-		return 0;
-	}
-
-	int BLAS_duscr_insert_row(
-		blas_sparse_matrix A,
-		const int i, const int nnz,
-		const double * vals, const int * cols
-	) {
-		auto matrix = sparseblas::getDoubleMatrix( A );
-		assert( matrix->finalized == false );
-		assert( matrix->ingest != nullptr );
-		try {
-			for( int k = 0; k < nnz; ++k ) {
-				matrix->ingest->add( vals[ k ], i, cols[ k ] );
-			}
-		} catch( ... ) {
-			return 5;
-		}
-		return 0;
-	}
-
-	int BLAS_duscr_end( blas_sparse_matrix A ) {
-		auto matrix = sparseblas::getDoubleMatrix( A );
-		assert( matrix->finalized == false );
-		assert( matrix->ingest != nullptr );
-		try {
-			matrix->finalize();
-		} catch( const std::runtime_error &e ) {
-			std::cerr << "Caught error: " << e.what() << "\n";
-			return 1;
-		}
-		return 0;
-	}
-
-	int EXTBLAS_dusm_clear( blas_sparse_matrix A ) {
-		auto matrix = sparseblas::getDoubleMatrix( A );
-		assert( matrix->finalized );
-		const grb::RC rc = grb::clear( *(matrix->A) );
+	assert( matrix->finalized );
+	if( transa == blas_no_trans ) {
+		const grb::Vector< double > input = grb::internal::template
+			wrapRawVector< double >( matrix->n, x );
+		grb::Vector< double > output = grb::internal::template
+			wrapRawVector< double >( matrix->m, y );
+		const grb::RC rc = grb::mxv< grb::descriptors::dense >(
+			output, *(matrix->A), input, ring
+		);
 		if( rc != grb::SUCCESS ) {
-			return 10;
+			std::cerr << "ALP/GraphBLAS returns error during SpMV: "
+				<< grb::toString( rc ) << ".\n";
+			return 200;
 		}
-		return 0;
+	} else {
+		const grb::Vector< double > input = grb::internal::template
+			wrapRawVector< double >( matrix->m, x );
+		grb::Vector< double > output = grb::internal::template
+			wrapRawVector< double >( matrix->n, y );
+		const grb::RC rc = grb::mxv<
+			grb::descriptors::dense |
+			grb::descriptors::transpose_matrix
+		>(
+			output, *(matrix->A), input, ring
+		);
+		if( rc != grb::SUCCESS ) {
+			std::cerr << "ALP/GraphBLAS returns error during transposed SpMV: "
+				<< grb::toString( rc ) << ".\n";
+			return 200;
+		}
+	}
+	if( alpha != 1.0 ) {
+		grb::Vector< double > output = grb::internal::template
+			wrapRawVector< double >( matrix->m, y );
+		const grb::RC rc = grb::foldl< grb::descriptors::dense >(
+			output, alpha, ring.getMultiplicativeOperator() );
+		if( rc != grb::SUCCESS ) {
+			std::cerr << "Error during post-scaling during SpMV\n";
+			return 250;
+		}
+	}
+	return 0;
+}
+
+int BLAS_dusmm(
+	const enum blas_order_type order,
+	const enum blas_trans_type transa,
+	const int nrhs,
+	const double alpha, const blas_sparse_matrix A,
+	const double * B, const int ldb,
+	const double * C, const int ldc
+) {
+	(void) order;
+	(void) transa;
+	(void) nrhs;
+	(void) alpha;
+	(void) A;
+	(void) B;
+	(void) ldb;
+	(void) C;
+	(void) ldc;
+	// TODO requires dense ALP and mixed sparse/dense ALP operations
+	std::cerr << "BLAS_dusmm (sparse matrix times dense matrix) has not yet "
+		<< "been implemented.\n";
+	assert( false );
+	return 255;
+}
+
+int EXTBLAS_dusmsv(
+	const enum blas_trans_type transa,
+	const double alpha, const blas_sparse_matrix A,
+	const EXTBLAS_TYPE( sparse_vector ) x,
+	EXTBLAS_TYPE( sparse_vector ) y
+) {
+	grb::Semiring<
+		grb::operators::add< double >, grb::operators::mul< double >,
+		grb::identities::zero, grb::identities::one
+	> ring;
+	auto matrix = sparseblas::getDoubleMatrix( A );
+	auto input  = sparseblas::getDoubleVector( x );
+	auto output = sparseblas::getDoubleVector( y );
+	if( !(matrix->finalized) ) {
+		std::cerr << "Uninitialised input matrix during SpMSpV\n";
+		return 10;
+	}
+	if( !(input->finalized) ) {
+		std::cerr << "Uninitialised input vector during SpMSpV\n";
+		return 20;
+	}
+	if( !(output->finalized) ) {
+		std::cerr << "Uninitialised output vector during SpMSpV\n";
+		return 30;
+	}
+	grb::RC rc = grb::SUCCESS;
+	if( alpha != 1.0 ) {
+		rc = grb::foldl( *(output->vector), 1.0 / alpha,
+			ring.getMultiplicativeOperator() );
+		if( rc != grb::SUCCESS ) {
+			std::cerr << "Error during pre-scaling of SpMSpV\n";
+			return 40;
+		}
+	}
+	if( transa == blas_no_trans ) {
+		rc = grb::mxv( *(output->vector), *(matrix->A), *(input->vector), ring );
+	} else {
+		rc = grb::mxv< grb::descriptors::transpose_matrix >(
+			*(output->vector), *(matrix->A), *(input->vector), ring );
+	}
+	if( rc != grb::SUCCESS ) {
+		std::cerr << "Error during call to grb::mxv (SpMSpV)\n";
+		return 50;
+	}
+	if( alpha != 1.0 ) {
+		rc = grb::foldl( *(output->vector), alpha,
+			ring.getMultiplicativeOperator() );
+		if( rc != grb::SUCCESS ) {
+			std::cerr << "Error during post-scaling of SpMSpV\n";
+			return 60;
+		}
+	}
+	return 0;
+}
+
+int EXTBLAS_dusmsm(
+	const enum blas_trans_type transa,
+	const double alpha, const blas_sparse_matrix A,
+	const enum blas_trans_type transb, const blas_sparse_matrix B,
+	blas_sparse_matrix C
+) {
+	grb::Semiring<
+		grb::operators::add< double >, grb::operators::mul< double >,
+		grb::identities::zero, grb::identities::one
+	> ring;
+	auto matA = sparseblas::getDoubleMatrix( A );
+	auto matB = sparseblas::getDoubleMatrix( B );
+	auto matC = sparseblas::getDoubleMatrix( C );
+	if( !(matA->finalized) ) {
+		std::cerr << "Uninitialised left-hand input matrix during SpMSpM\n";
+		return 10;
+	}
+	if( !(matB->finalized) ) {
+		std::cerr << "Uninitialised right-hand input matrix during SpMSpM\n";
+		return 20;
+	}
+	if( !(matC->finalized) ) {
+		std::cerr << "Uninitialised output matrix during SpMSpM\n";
+		return 30;
 	}
 
-	int BLAS_usds( blas_sparse_matrix A ) {
-		delete sparseblas::getDoubleMatrix( A );
-		return 0;
-	}
-
-	int BLAS_dusmv(
-		const enum blas_trans_type transa,
-		const double alpha, const blas_sparse_matrix A,
-		const double * x, int incx,
-		double * const y, const int incy
-	) {
-		grb::Semiring<
-			grb::operators::add< double >, grb::operators::mul< double >,
-			grb::identities::zero, grb::identities::one
-		> ring;
-		auto matrix = sparseblas::getDoubleMatrix( A );
-		if( alpha != 1.0 ) {
-			grb::Vector< double > output = grb::internal::template
-				wrapRawVector< double >( matrix->m, y );
-			const grb::RC rc = grb::foldl< grb::descriptors::dense >(
-				output, 1.0 / alpha, ring.getMultiplicativeOperator() );
-			if( rc != grb::SUCCESS ) {
-				std::cerr << "Error during pre-scaling during SpMV\n";
-				return 50;
-			}
-		}
-		if( incx != 1 || incy != 1 ) {
-			// TODO: requires ALP views
-			std::cerr << "Strided input and/or output vectors are not supported.\n";
-			return 255;
-		}
-		if( !(matrix->finalized) ) {
-			std::cerr << "Input matrix was not yet finalised; see BLAS_duscr_end.\n";
-			return 100;
-		}
-		assert( matrix->finalized );
-		if( transa == blas_no_trans ) {
-			const grb::Vector< double > input = grb::internal::template
-				wrapRawVector< double >( matrix->n, x );
-			grb::Vector< double > output = grb::internal::template
-				wrapRawVector< double >( matrix->m, y );
-			const grb::RC rc = grb::mxv< grb::descriptors::dense >(
-				output, *(matrix->A), input, ring
-			);
-			if( rc != grb::SUCCESS ) {
-				std::cerr << "ALP/GraphBLAS returns error during SpMV: "
-					<< grb::toString( rc ) << ".\n";
-				return 200;
-			}
-		} else {
-			const grb::Vector< double > input = grb::internal::template
-				wrapRawVector< double >( matrix->m, x );
-			grb::Vector< double > output = grb::internal::template
-				wrapRawVector< double >( matrix->n, y );
-			const grb::RC rc = grb::mxv<
-				grb::descriptors::dense |
-				grb::descriptors::transpose_matrix
-			>(
-				output, *(matrix->A), input, ring
-			);
-			if( rc != grb::SUCCESS ) {
-				std::cerr << "ALP/GraphBLAS returns error during transposed SpMV: "
-					<< grb::toString( rc ) << ".\n";
-				return 200;
-			}
-		}
-		if( alpha != 1.0 ) {
-			grb::Vector< double > output = grb::internal::template
-				wrapRawVector< double >( matrix->m, y );
-			const grb::RC rc = grb::foldl< grb::descriptors::dense >(
-				output, alpha, ring.getMultiplicativeOperator() );
-			if( rc != grb::SUCCESS ) {
-				std::cerr << "Error during post-scaling during SpMV\n";
-				return 250;
-			}
-		}
-		return 0;
-	}
-
-	int BLAS_dusmm(
-		const enum blas_order_type order,
-		const enum blas_trans_type transa,
-		const int nrhs,
-		const double alpha, const blas_sparse_matrix A,
-		const double * B, const int ldb,
-		const double * C, const int ldc
-	) {
-		(void) order;
-		(void) transa;
-		(void) nrhs;
-		(void) alpha;
-		(void) A;
-		(void) B;
-		(void) ldb;
-		(void) C;
-		(void) ldc;
-		// TODO requires dense ALP and mixed sparse/dense ALP operations
-		std::cerr << "BLAS_dusmm (sparse matrix times dense matrix) has not yet "
-			<< "been implemented.\n";
-		assert( false );
+	grb::RC rc = grb::SUCCESS;
+	if( alpha != 1.0 ) {
+		/*const grb::RC rc = grb::foldl( *(matC->A), 1.0 / alpha,
+			ring.getMultiplicativeOperator() );
+		if( rc != grb::SUCCESS ) {
+			std::cerr << "Error during pre-scaling for SpMSpM\n";
+			return 40;
+		}*/
+		// TODO requires level-3 fold in ALP/GraphBLAS
+		std::cerr << "Any other alpha from 1.0 is currently not supported for "
+			<< "SpMSpM multiplication\n";
 		return 255;
 	}
 
-	int EXTBLAS_dusmsv(
-		const enum blas_trans_type transa,
-		const double alpha, const blas_sparse_matrix A,
-		const EXTBLAS_TYPE( sparse_vector ) x,
-		EXTBLAS_TYPE( sparse_vector ) y
-	) {
-		grb::Semiring<
-			grb::operators::add< double >, grb::operators::mul< double >,
-			grb::identities::zero, grb::identities::one
-		> ring;
-		auto matrix = sparseblas::getDoubleMatrix( A );
-		auto input  = sparseblas::getDoubleVector( x );
-		auto output = sparseblas::getDoubleVector( y );
-		if( !(matrix->finalized) ) {
-			std::cerr << "Uninitialised input matrix during SpMSpV\n";
-			return 10;
-		}
-		if( !(input->finalized) ) {
-			std::cerr << "Uninitialised input vector during SpMSpV\n";
-			return 20;
-		}
-		if( !(output->finalized) ) {
-			std::cerr << "Uninitialised output vector during SpMSpV\n";
-			return 30;
-		}
-		grb::RC rc = grb::SUCCESS;
-		if( alpha != 1.0 ) {
-			rc = grb::foldl( *(output->vector), 1.0 / alpha,
-				ring.getMultiplicativeOperator() );
-			if( rc != grb::SUCCESS ) {
-				std::cerr << "Error during pre-scaling of SpMSpV\n";
-				return 40;
-			}
-		}
-		if( transa == blas_no_trans ) {
-			rc = grb::mxv( *(output->vector), *(matrix->A), *(input->vector), ring );
-		} else {
-			rc = grb::mxv< grb::descriptors::transpose_matrix >(
-				*(output->vector), *(matrix->A), *(input->vector), ring );
-		}
+	// resize phase
+	if( transa == blas_no_trans && transb == blas_no_trans ) {
+		rc = grb::mxm( *(matC->A), *(matA->A), *(matB->A), ring, grb::RESIZE );
+	} else if( transa != blas_no_trans && transb == blas_no_trans ) {
+		rc = grb::mxm< grb::descriptors::transpose_left >(
+			*(matC->A), *(matA->A), *(matB->A), ring, grb::RESIZE );
+	} else if( transa == blas_no_trans && transb != blas_no_trans ) {
+		rc = grb::mxm< grb::descriptors::transpose_right >(
+			*(matC->A), *(matA->A), *(matB->A), ring, grb::RESIZE );
+	} else {
+		assert( transa != blas_no_trans );
+		assert( transb != blas_no_trans );
+		rc = grb::mxm<
+			grb::descriptors::transpose_left |
+			grb::descriptors::transpose_right
+		>( *(matC->A), *(matA->A), *(matB->A), ring, grb::RESIZE );
+	}
+	if( rc != grb::SUCCESS ) {
+		std::cerr << "Error during call to ALP/GraphBLAS mxm (RESIZE phase): "
+			<< grb::toString( rc ) << "\n";
+		return 50;
+	}
+
+	// execute phase
+	if( transa == blas_no_trans && transb == blas_no_trans ) {
+		rc = grb::mxm( *(matC->A), *(matA->A), *(matB->A), ring );
+	} else if( transa != blas_no_trans && transb == blas_no_trans ) {
+		rc = grb::mxm< grb::descriptors::transpose_left >(
+			*(matC->A), *(matA->A), *(matB->A), ring );
+	} else if( transa == blas_no_trans && transb != blas_no_trans ) {
+		rc = grb::mxm< grb::descriptors::transpose_right >(
+			*(matC->A), *(matA->A), *(matB->A), ring );
+	} else {
+		assert( transa != blas_no_trans );
+		assert( transb != blas_no_trans );
+		rc = grb::mxm<
+			grb::descriptors::transpose_left |
+			grb::descriptors::transpose_right
+		>( *(matC->A), *(matA->A), *(matB->A), ring );
+	}
+	if( rc != grb::SUCCESS ) {
+		std::cerr << "Error during call to ALP/GraphBLAS mxm (EXECUTE phase): \n"
+			<< grb::toString( rc ) << "\n";
+		return 60;
+	}
+
+	/*TODO see above
+	if( alpha != 1.0 ) {
+		rc = grb::foldl( *(matC->A), 1.0 / alpha,
+			ring.getMultiplicativeOperator() );
 		if( rc != grb::SUCCESS ) {
-			std::cerr << "Error during call to grb::mxv (SpMSpV)\n";
-			return 50;
+			std::cerr << "Error during post-scaling for SpMSpM\n";
+			return 70;
 		}
-		if( alpha != 1.0 ) {
-			rc = grb::foldl( *(output->vector), alpha,
-				ring.getMultiplicativeOperator() );
-			if( rc != grb::SUCCESS ) {
-				std::cerr << "Error during post-scaling of SpMSpV\n";
-				return 60;
-			}
-		}
+	}*/
+	return 0;
+}
+
+int EXTBLAS_dusm_nz( const blas_sparse_matrix A, int * nz ) {
+	auto matA = sparseblas::getDoubleMatrix( A );
+	if( !(matA->finalized) ) {
+		std::cerr << "Uninitialised left-hand input matrix during dusm_nz\n";
+		return 10;
+	}
+	const size_t grb_nz = grb::nnz( *(matA->A) );
+	if( grb_nz > static_cast< size_t >(std::numeric_limits< int >::max()) ) {
+		std::cerr << "Number of nonzeroes in given sparse matrix is larger than "
+			<< "what can be represented by a SparseBLAS int\n";
+		return 20;
+	}
+	*nz = static_cast< int >( grb_nz );
+	return 0;
+}
+
+int EXTBLAS_dusm_open( const blas_sparse_matrix A ) {
+	auto matA = sparseblas::getDoubleMatrix( A );
+	if( !(matA->finalized) ) {
+		std::cerr << "Uninitialised left-hand input matrix during dusm_nz\n";
+		return 10;
+	}
+	try{
+		matA->start = matA->A->cbegin();
+		matA->end = matA->A->cend();
+	} catch( ... ) {
+		std::cerr << "Could not retrieve matrix iterators\n";
+		return 20;
+	}
+	return 0;
+}
+
+int EXTBLAS_dusm_get(
+	const blas_sparse_matrix A,
+	double * value, int * row, int * col
+) {
+	auto matA = sparseblas::getDoubleMatrix( A );
+	if( !(matA->finalized) ) {
+		std::cerr << "Uninitialised left-hand input matrix during dusm_nz\n";
+		return 10;
+	}
+	assert( matA->start != matA->end );
+	const auto &triplet = *(matA->start);
+	*value = triplet.second;
+	*row = triplet.first.first;
+	*col = triplet.first.second;
+	try {
+		(void) ++(matA->start);
+	} catch( ... ) {
+		return 2;
+	}
+	if( matA->start == matA->end ) {
 		return 0;
+	} else {
+		return 1;
 	}
+}
 
-	int EXTBLAS_dusmsm(
-		const enum blas_trans_type transa,
-		const double alpha, const blas_sparse_matrix A,
-		const enum blas_trans_type transb, const blas_sparse_matrix B,
-		blas_sparse_matrix C
-	) {
-		grb::Semiring<
-			grb::operators::add< double >, grb::operators::mul< double >,
-			grb::identities::zero, grb::identities::one
-		> ring;
-		auto matA = sparseblas::getDoubleMatrix( A );
-		auto matB = sparseblas::getDoubleMatrix( B );
-		auto matC = sparseblas::getDoubleMatrix( C );
-		if( !(matA->finalized) ) {
-			std::cerr << "Uninitialised left-hand input matrix during SpMSpM\n";
-			return 10;
-		}
-		if( !(matB->finalized) ) {
-			std::cerr << "Uninitialised right-hand input matrix during SpMSpM\n";
-			return 20;
-		}
-		if( !(matC->finalized) ) {
-			std::cerr << "Uninitialised output matrix during SpMSpM\n";
-			return 30;
-		}
-
-		grb::RC rc = grb::SUCCESS;
-		if( alpha != 1.0 ) {
-			/*const grb::RC rc = grb::foldl( *(matC->A), 1.0 / alpha,
-				ring.getMultiplicativeOperator() );
-			if( rc != grb::SUCCESS ) {
-				std::cerr << "Error during pre-scaling for SpMSpM\n";
-				return 40;
-			}*/
-			// TODO requires level-3 fold in ALP/GraphBLAS
-			std::cerr << "Any other alpha from 1.0 is currently not supported for "
-				<< "SpMSpM multiplication\n";
-			return 255;
-		}
-
-		// resize phase
-		if( transa == blas_no_trans && transb == blas_no_trans ) {
-			rc = grb::mxm( *(matC->A), *(matA->A), *(matB->A), ring, grb::RESIZE );
-		} else if( transa != blas_no_trans && transb == blas_no_trans ) {
-			rc = grb::mxm< grb::descriptors::transpose_left >(
-				*(matC->A), *(matA->A), *(matB->A), ring, grb::RESIZE );
-		} else if( transa == blas_no_trans && transb != blas_no_trans ) {
-			rc = grb::mxm< grb::descriptors::transpose_right >(
-				*(matC->A), *(matA->A), *(matB->A), ring, grb::RESIZE );
-		} else {
-			assert( transa != blas_no_trans );
-			assert( transb != blas_no_trans );
-			rc = grb::mxm<
-				grb::descriptors::transpose_left |
-				grb::descriptors::transpose_right
-			>( *(matC->A), *(matA->A), *(matB->A), ring, grb::RESIZE );
-		}
-		if( rc != grb::SUCCESS ) {
-			std::cerr << "Error during call to ALP/GraphBLAS mxm (RESIZE phase): "
-				<< grb::toString( rc ) << "\n";
-			return 50;
-		}
-
-		// execute phase
-		if( transa == blas_no_trans && transb == blas_no_trans ) {
-			rc = grb::mxm( *(matC->A), *(matA->A), *(matB->A), ring );
-		} else if( transa != blas_no_trans && transb == blas_no_trans ) {
-			rc = grb::mxm< grb::descriptors::transpose_left >(
-				*(matC->A), *(matA->A), *(matB->A), ring );
-		} else if( transa == blas_no_trans && transb != blas_no_trans ) {
-			rc = grb::mxm< grb::descriptors::transpose_right >(
-				*(matC->A), *(matA->A), *(matB->A), ring );
-		} else {
-			assert( transa != blas_no_trans );
-			assert( transb != blas_no_trans );
-			rc = grb::mxm<
-				grb::descriptors::transpose_left |
-				grb::descriptors::transpose_right
-			>( *(matC->A), *(matA->A), *(matB->A), ring );
-		}
-		if( rc != grb::SUCCESS ) {
-			std::cerr << "Error during call to ALP/GraphBLAS mxm (EXECUTE phase): \n"
-				<< grb::toString( rc ) << "\n";
-			return 60;
-		}
-
-		/*TODO see above
-		if( alpha != 1.0 ) {
-			rc = grb::foldl( *(matC->A), 1.0 / alpha,
-				ring.getMultiplicativeOperator() );
-			if( rc != grb::SUCCESS ) {
-				std::cerr << "Error during post-scaling for SpMSpM\n";
-				return 70;
-			}
-		}*/
-		return 0;
+int EXTBLAS_dusm_close( const blas_sparse_matrix A ) {
+	auto matA = sparseblas::getDoubleMatrix( A );
+	if( !(matA->finalized) ) {
+		std::cerr << "Uninitialised left-hand input matrix during dusm_nz\n";
+		return 10;
 	}
+	matA->start = matA->end;
+	return 0;
+}
 
-	int EXTBLAS_dusm_nz( const blas_sparse_matrix A, int * nz ) {
-		auto matA = sparseblas::getDoubleMatrix( A );
-		if( !(matA->finalized) ) {
-			std::cerr << "Uninitialised left-hand input matrix during dusm_nz\n";
-			return 10;
-		}
-		const size_t grb_nz = grb::nnz( *(matA->A) );
-		if( grb_nz > static_cast< size_t >(std::numeric_limits< int >::max()) ) {
-			std::cerr << "Number of nonzeroes in given sparse matrix is larger than "
-				<< "what can be represented by a SparseBLAS int\n";
-			return 20;
-		}
-		*nz = static_cast< int >( grb_nz );
-		return 0;
+int EXTBLAS_free() {
+	const grb::RC rc = grb::finalize();
+	if( rc != grb::SUCCESS ) {
+		std::cerr << "Error during call to EXTBLAS_free\n";
+		return 10;
 	}
-
-	int EXTBLAS_dusm_open( const blas_sparse_matrix A ) {
-		auto matA = sparseblas::getDoubleMatrix( A );
-		if( !(matA->finalized) ) {
-			std::cerr << "Uninitialised left-hand input matrix during dusm_nz\n";
-			return 10;
-		}
-		try{
-			matA->start = matA->A->cbegin();
-			matA->end = matA->A->cend();
-		} catch( ... ) {
-			std::cerr << "Could not retrieve matrix iterators\n";
-			return 20;
-		}
-		return 0;
-	}
-
-	int EXTBLAS_dusm_get(
-		const blas_sparse_matrix A,
-		double * value, int * row, int * col
-	) {
-		auto matA = sparseblas::getDoubleMatrix( A );
-		if( !(matA->finalized) ) {
-			std::cerr << "Uninitialised left-hand input matrix during dusm_nz\n";
-			return 10;
-		}
-		assert( matA->start != matA->end );
-		const auto &triplet = *(matA->start);
-		*value = triplet.second;
-		*row = triplet.first.first;
-		*col = triplet.first.second;
-		try {
-			(void) ++(matA->start);
-		} catch( ... ) {
-			return 2;
-		}
-		if( matA->start == matA->end ) {
-			return 0;
-		} else {
-			return 1;
-		}
-	}
-
-	int EXTBLAS_dusm_close( const blas_sparse_matrix A ) {
-		auto matA = sparseblas::getDoubleMatrix( A );
-		if( !(matA->finalized) ) {
-			std::cerr << "Uninitialised left-hand input matrix during dusm_nz\n";
-			return 10;
-		}
-		matA->start = matA->end;
-		return 0;
-	}
-
-	int EXTBLAS_free() {
-		const grb::RC rc = grb::finalize();
-		if( rc != grb::SUCCESS ) {
-			std::cerr << "Error during call to EXTBLAS_free\n";
-			return 10;
-		}
-		return 0;
-	}
-
-} // end extern "C"
-
+	return 0;
+}
