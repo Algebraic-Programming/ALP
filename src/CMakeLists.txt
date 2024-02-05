@@ -52,17 +52,19 @@ endmacro( joinAndAppend )
 # of values to be stored inside the wrappers
 foreach( backend ${AVAILABLE_BACKENDS} )
 	assert_valid_variables( ${backend}_WRAPPER_COMPILER_COMMAND )
-	assert_defined_variables( ${backend}_WRAPPER_RUNENV ${backend}_WRAPPER_RUNNER
+	assert_defined_variables( ${backend}_WRAPPER_RUNNER ${backend}_WRAPPER_LINK_FLAGS
 		${backend}_WRAPPER_COMPILE_DEFINITIONS ${backend}_WRAPPER_COMPILE_OPTIONS
-		${backend}_WRAPPER_LINK_FLAGS
 	)
 
 	list( APPEND backend_list "\"${backend}\"" )
 	joinAndAppend( compiler_list ${backend}_WRAPPER_COMPILER_COMMAND )
 	joinAndAppend( library_dir ${backend}_LIB_DIR )
 
-	joinAndAppend( runenv_list ${backend}_WRAPPER_RUNENV )
 	joinAndAppend( runner_list ${backend}_WRAPPER_RUNNER )
+
+	string( TOUPPER ${backend} _bname )
+	list( APPEND backend_dir_list "ALP_${_bname}_LIBRARY_PATH=\"${${backend}_LIB_DIR}\"" )
+	joinAndAppend( runenv_list ${backend}_LIB_DIR )
 	set( compile_options "${${backend}_WRAPPER_COMPILE_DEFINITIONS}" )
 	list( TRANSFORM compile_options PREPEND "-D" )
 	list( APPEND compile_options ${${backend}_WRAPPER_COMPILE_OPTIONS} )
@@ -85,6 +87,7 @@ endmacro( joinWithNewLine )
 joinWithNewLine( backend_list AVAILABLE_BACKENDS_SPACED )
 list( JOIN LPFRUN_CMD " " LPFRUN_CMD_SPACED )
 list( JOIN MANUALRUN " " MANUALRUN_SPACED )
+joinWithNewLine( backend_dir_list BACKEND_DIR_LIST )
 configure_file( ${CMAKE_CURRENT_SOURCE_DIR}/setenv.in ${CMAKE_CURRENT_BINARY_DIR}/setenv @ONLY )
 
 set( cflags "${COMMON_WRAPPER_DEFINITIONS}" )
