@@ -15,6 +15,8 @@
  */
 
 /**
+ * @file
+ *
  * Utilities for handling input iterators.
  *
  * @author Alberto Scolari
@@ -46,10 +48,11 @@ namespace grb {
 		 * @param[in] rows The number of matrix rows.
 		 * @param[in] cols The number of matrix columns.
 		 *
-		 * @return RC SUCCESS if the iterator's row and column values (i.e.,
-		 *                    <tt>it.i()</tt> <tt>it.j()</tt>, respectively) are both
-		 *                    within the given matrix boundaries, and MISMATCH
-		 *                    otherwise.
+		 * @return #grb::SUCCESS  If the iterator row and column values (i.e.,
+		 *                        <tt>it.i()</tt> <tt>it.j()</tt>, respectively) are
+		 *                        both within the given matrix boundaries.
+		 * @return #grb::MISMATCH If the iterator row and column values are
+		 *                        outside of the given bounds.
 		 */
 		template< typename IterT >
 		inline RC check_input_coordinates(

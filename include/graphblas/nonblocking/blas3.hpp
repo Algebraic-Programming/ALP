@@ -30,7 +30,7 @@
 #include <type_traits> //for std::enable_if
 
 #include <graphblas/base/blas3.hpp>
-#include <graphblas/utils/iterators/MatrixVectorIterator.hpp>
+#include <graphblas/utils/iterators/matrixVectorIterator.hpp>
 
 #include "io.hpp"
 #include "matrix.hpp"

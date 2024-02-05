@@ -20,6 +20,7 @@
 
 #include "graphblas.hpp"
 
+
 // test strategy: construct a sparse vector, then use it for various operations
 // together with the dense descriptor. This should result in an ILLEGAL return
 // code, which may either be found when executing the primitive (for blocking
@@ -155,11 +156,12 @@ int main( int argc, char ** argv ) {
 	std::cout << "This is functional test " << argv[ 0 ] << "\n";
 	grb::Launcher< grb::AUTOMATIC > launcher;
 	grb::RC out;
-	if( launcher.exec( &grbProgram, input, out, false ) != grb::SUCCESS ) {
+	if( launcher.exec( &grbProgram, input, out, true ) != grb::SUCCESS ) {
 		std::cerr << "Launching test FAILED\n";
 		return 255;
 	}
 	if( out != grb::SUCCESS ) {
+		std::cerr << std::flush;
 		std::cout << "Test FAILED (" << grb::toString( out ) << ")" << std::endl;
 		return out;
 	} else {

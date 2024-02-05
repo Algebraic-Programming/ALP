@@ -27,13 +27,13 @@
 
 #include <graphblas.hpp>
 
-#include <limits>
 #include <cmath>
-#include <complex>
+#include <limits>
 #include <string>
-#include <iostream>
+#include <complex>
 #include <fstream>
 #include <sstream>
+#include <iostream>
 
 #include <assert.h>
 
@@ -238,7 +238,7 @@ int vector_verification(
 		// the condition evaluated by the function isless will be false and then
 		// the whole condition of the if-statement will be evaluated to true
 		// making the verification to fail as expected
-		if( !isless( curInfNorm, c2 * magnitudeInf + eps ) ) {
+		if( !std::isless( curInfNorm, c2 * magnitudeInf + eps ) ) {
 			std::cerr << "Output vector failed inf-norm verification at index "
 				<< i << ":\n"
 				<< "\tmeasured absolute error at this index: " << curInfNorm << "\n"
@@ -260,7 +260,7 @@ int vector_verification(
 
 	// isgreaterequal is used to ensure that the condition norm_inf >= 0
 	// will be evaluated to false when norm_inf is equal to NaN or -NaN
-	if( !isgreaterequal( norm_inf, 0 ) ) {
+	if( !std::isgreaterequal( norm_inf, 0 ) ) {
 		std::cerr << "Output vector failed inf-norm verification:\n"
 			<< "\tinf-norm is neither positive nor zero -- "
 			<< "it reads " << norm_inf << " instead\n";
@@ -275,7 +275,7 @@ int vector_verification(
 
 	// isgreaterequal is used to ensure that the condition norm2 >= 0
 	// will be evaluated to false when norm2 is equal to NaN or -NaN
-	if( isgreaterequal( norm2, 0 ) ) {
+	if( std::isgreaterequal( norm2, 0 ) ) {
 		norm2 = sqrt( norm2 );
 	} else {
 		std::cerr << "Output vector failed 2-norm verification:\n"
@@ -293,7 +293,7 @@ int vector_verification(
 	delete [] raw_output_vector;
 
 	// perform check and return
-	if( !isless( norm2, c1 * magnitude2 + n * eps ) ) {
+	if( !std::isless( norm2, c1 * magnitude2 + n * eps ) ) {
 		std::cerr << "Output vector failed 2-norm verification:\n"
 			<< "\t2-norm is " << norm2 << ".\n"
 			<< "\t2-norm is larger than the specified relative tolerance of "
@@ -306,7 +306,7 @@ int vector_verification(
 			<< "\t2-norm is " << norm2 << " which is smaller or equal to the effective "
 			<< "relative tolerance of " << (c1 * magnitude2 + n * eps) << "\n";
 	}
-	if( !isless( norm_inf, c2 * magnitudeInf + eps ) ) {
+	if( !std::isless( norm_inf, c2 * magnitudeInf + eps ) ) {
 		std::cerr << "Output vector failed inf-norm verification:\n"
 		<< "\tinf-norm is " << norm_inf << " at index " << norm_inf_at << "\n"
 		<< "\tinf-norm is larger than the specified relative tolerance of "

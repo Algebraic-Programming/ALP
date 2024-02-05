@@ -19,15 +19,45 @@
 
 #include <inttypes.h>
 
-#include <graphblas/algorithms/knn.hpp>
-#include <graphblas/utils/Timer.hpp>
-#include <graphblas/utils/parser.hpp>
-
 #include <graphblas.hpp>
+
+#include <graphblas/algorithms/knn.hpp>
+
+#include <graphblas/utils/timer.hpp>
+#include <graphblas/utils/parser.hpp>
+#include <graphblas/utils/singleton.hpp>
+#include <graphblas/utils/iterators/nonzeroIterator.hpp>
 
 
 using namespace grb;
 using namespace algorithms;
+
+/** Parser type */
+typedef grb::utils::MatrixFileReader<
+	void,
+	std::conditional<
+		(sizeof(grb::config::RowIndexType) > sizeof(grb::config::ColIndexType)),
+		grb::config::RowIndexType,
+		grb::config::ColIndexType
+	>::type
+> Parser;
+
+/** Nonzero type */
+typedef internal::NonzeroStorage<
+	grb::config::RowIndexType,
+	grb::config::ColIndexType,
+	void
+> NonzeroT;
+
+/** In-memory storage type */
+typedef grb::utils::Singleton<
+	std::pair<
+		// stores n and nz (according to parser)
+		std::pair< size_t, size_t >,
+		// stores the actual nonzeroes
+		std::vector< NonzeroT >
+	>
+> Storage;
 
 struct input {
 	char filename[ 1024 ];
@@ -42,33 +72,54 @@ struct output {
 	size_t rep;
 };
 
+void ioProgram( const struct input &data_in, bool &success ) {
+	success = false;
+	// Parse and store matrix in singleton class
+	try {
+		auto &data = Storage::getData().second;
+		Parser parser( data_in.filename, data_in.direct );
+		if( parser.n() != parser.m() ) {
+			std::cout << "The matrix loaded is not square\n";
+			return;
+		}
+		Storage::getData().first.first = parser.n();
+		try {
+			Storage::getData().first.second = parser.nz();
+		} catch( ... ) {
+			Storage::getData().first.second = parser.entries();
+		}
+		/* Once internal issue #342 is resolved this can be re-enabled
+		for(
+			auto it = parser.begin( PARALLEL );
+			it != parser.end( PARALLEL );
+			++it
+		) {
+			data.push_back( *it );
+		}*/
+		for(
+			auto it = parser.begin( SEQUENTIAL );
+			it != parser.end( SEQUENTIAL );
+			++it
+		) {
+			data.push_back( NonzeroT( *it ) );
+		}
+	} catch( std::exception &e ) {
+		std::cerr << "I/O program failed: " << e.what() << "\n";
+		return;
+	}
+	success = true;
+}
+
 void grbProgram( const struct input &data_in, struct output &out ) {
 	// get user process ID
 	const size_t s = spmd<>::pid();
 	assert( s < spmd<>::nprocs() );
 
-	// sanity checks on input
-	if( data_in.filename[ 0 ] == '\0' ) {
-		std::cerr << s << ": no file name given as input." << std::endl;
-		out.error_code = ILLEGAL;
-		return;
-	}
-
 	grb::utils::Timer timer;
 	timer.reset();
 
-	// parse file locally
-	grb::utils::MatrixFileReader< void, unsigned int > reader(
-		data_in.filename, data_in.direct
-	);
-
 	// retrieve number of vertices
-	const size_t n = reader.n();
-	if( n != reader.m() ) {
-		std::cout << "The matrix loaded is not square\n";
-		out.error_code = ILLEGAL;
-		return;
-	}
+	const size_t n = Storage::getData().first.first;
 
 	// create output
 	Vector< bool > neighbourhood( n );
@@ -79,39 +130,56 @@ void grbProgram( const struct input &data_in, struct output &out ) {
 	out.times.preamble = timer.time();
 	timer.reset();
 
-	// handle trivial case
-	if( n == 0 ) {
-		out.neighbourhood = PinnedVector< bool >( neighbourhood, SEQUENTIAL );
-		out.error_code = SUCCESS;
-		return;
-	}
-
-	// set source to approx. middle vertex
-	const size_t source = n / 2;
-	std::cout << s << ": starting " << data_in.k << "-hop from source vertex "
-		<< source << "\n";
-
-	// handle trivial case
-	if( data_in.k == 0 ) {
-		out.error_code = setElement( neighbourhood, true, source );
-		out.neighbourhood = PinnedVector< bool >( neighbourhood, SEQUENTIAL );
-		return;
-	}
 	// assume successful run
 	out.error_code = SUCCESS;
 
 	// load parsed file into GraphBLAS
 	Matrix< void > A( n, n );
-	RC rc = buildMatrixUnique( A,
-		reader.begin( PARALLEL ), reader.end( PARALLEL ),
-		PARALLEL
-	);
-	if( rc != SUCCESS ) {
-		out.error_code = rc;
-		return;
+	{
+		const auto &data = Storage::getData().second;
+		/* Once internal issue #342 is resolved this can be re-enabled
+		const RC rc = buildMatrixUnique(
+			A,
+			utils::makeNonzeroIterator<
+				grb::config::RowIndexType, grb::config::ColIndexType, void
+			>( data.cbegin() ),
+			utils::makeNonzeroIterator<
+				grb::config::RowIndexType, grb::config::ColIndexType, void
+			>( data.cend() ),
+			PARALLEL
+		);*/
+		RC rc = buildMatrixUnique(
+			A,
+			utils::makeNonzeroIterator<
+				grb::config::RowIndexType, grb::config::ColIndexType, void
+			>( data.cbegin() ),
+			utils::makeNonzeroIterator<
+				grb::config::RowIndexType, grb::config::ColIndexType, void
+			>( data.cend() ),
+			SEQUENTIAL
+		);
+		if( rc != SUCCESS ) {
+			std::cerr << "Error: populating matrix failed ( " << grb::toString( rc )
+				<< ")\n";
+			out.error_code = rc;
+			return;
+		}
+		const size_t parser_nz = Storage::getData().first.second;
+		const size_t matrix_nz = nnz( A );
+		if( parser_nz != matrix_nz ) {
+		std::cerr << "Warning: matrix nnz (" << matrix_nz << ") does not equal "
+			<< "parser nnz (" << parser_nz << "). This could naturally occur if the "
+			<< "input file employs symmetric storage, in which case only roughly one "
+			<< "half of the input is stored (and visible to the parser).\n";
+		}
 	}
 	out.times.io = timer.time();
 	timer.reset();
+
+	// set source to approx. middle vertex
+	const size_t source = n / 2;
+	std::cout << "Info: " << s << ": starting " << data_in.k
+		<< "-hop from source vertex " << source << "\n";
 
 	// time the knn computation
 	double time_taken;
@@ -119,7 +187,7 @@ void grbProgram( const struct input &data_in, struct output &out ) {
 	std::cout << s << ": starting knn with a " << grb::nrows( A ) << " by "
 		<< grb::ncols( A ) << " matrix holding " << grb::nnz( A ) << " nonzeroes.\n";
 #endif
-	rc = knn< descriptors::no_operation >(
+	RC rc = knn< descriptors::no_operation >(
 		neighbourhood, A, source, data_in.k,
 		buf1
 	);
@@ -130,7 +198,9 @@ void grbProgram( const struct input &data_in, struct output &out ) {
 
 	// sanity check
 	if( rc != SUCCESS ) {
-		out.error_code = PANIC;
+		std::cerr << "Error: call to k-hop BFS failed ( " << grb::toString( rc )
+			<< ")\n";
+		out.error_code = rc;
 		return;
 	}
 
@@ -151,8 +221,6 @@ void grbProgram( const struct input &data_in, struct output &out ) {
 	// pin output
 	out.neighbourhood = PinnedVector< bool >( neighbourhood, SEQUENTIAL );
 
-	out.times.postamble = timer.time();
-
 	// print test output at root process
 	if( s == 0 ) {
 #ifdef _DEBUG
@@ -163,24 +231,24 @@ void grbProgram( const struct input &data_in, struct output &out ) {
 			const auto index = out.neighbourhood.getNonzeroIndex( k );
 			if( value ) {
 				std::cout << index << "\n";
-				++count;
+				(void) ++count;
 			}
 		}
 #endif
 	}
 
 	// done
+	out.times.postamble = timer.time();
 	return;
 }
 
 int main( int argc, char ** argv ) {
 	// sanity check
 	if( argc < 4 || argc > 6 ) {
-		std::cout << "Usage: " << argv[ 0 ] << " "
-			<< "<k> <dataset> <direct/indirect> "
+		std::cout << "Usage: " << argv[ 0 ] << " <k> <dataset> <direct/indirect> "
 			<< "(inner iterations) (outer iterations)\n";
-		std::cout << "<k>, <dataset>, and <direct/indirect> "
-			<< "are mandatory arguments.\n";
+		std::cout << "<k>, <dataset>, and <direct/indirect> are mandatory "
+			<< "arguments.\n";
 		std::cout << "(inner iterations) is optional, the default is "
 			<< grb::config::BENCHMARKING::inner() << ". "
 			<< "If set to zero, the program will select a number of iterations "
@@ -199,14 +267,20 @@ int main( int argc, char ** argv ) {
 	in.k = atoi( argv[ 1 ] );
 
 	// get file name
-	(void)strncpy( in.filename, argv[ 2 ], 1023 );
+	(void) strncpy( in.filename, argv[ 2 ], 1023 );
 	in.filename[ 1023 ] = '\0';
 
 	// get direct or indirect
 	if( strncmp( argv[ 3 ], "direct", 6 ) == 0 ) {
 		in.direct = true;
 	} else {
-		in.direct = false;
+		if( strncmp( argv[ 3 ], "indirect", 8 ) == 0 ) {
+			in.direct = false;
+		} else {
+			std::cerr << "Error: could not parse third argument \"" << argv[ 3 ]
+				<< "\", expected either \"direct\" or \"indirect\"\n";
+			return 10;
+		}
 	}
 
 	// get inner number of iterations
@@ -217,7 +291,7 @@ int main( int argc, char ** argv ) {
 		if( argv[ 4 ] == end ) {
 			std::cerr << "Could not parse argument " << argv[ 4 ]
 				<< " for number of inner experiment repititions." << std::endl;
-			return 2;
+			return 20;
 		}
 	}
 
@@ -228,7 +302,7 @@ int main( int argc, char ** argv ) {
 		if( argv[ 5 ] == end ) {
 			std::cerr << "Could not parse argument " << argv[ 5 ]
 				<< " for number of outer experiment repititions." << std::endl;
-			return 4;
+			return 30;
 		}
 	}
 
@@ -240,8 +314,23 @@ int main( int argc, char ** argv ) {
 	// the output struct
 	struct output out;
 
-	// launch estimater (if requested)
+	// launch I/O
 	grb::RC rc = SUCCESS;
+	{
+		grb::Launcher< AUTOMATIC > launcer;
+		bool success;
+		rc = launcer.exec( &ioProgram, in, success, true );
+		if( rc != SUCCESS ) {
+			std::cerr << "Error: I/O program launch failed\n";
+			return 40;
+		}
+		if( !success ) {
+			std::cerr << "Error: I/O program failed\n";
+			return 50;
+		}
+	}
+
+	// launch estimator (if requested)
 	if( inner == 0 ) {
 		grb::Launcher< AUTOMATIC > launcher;
 		rc = launcher.exec( &grbProgram, in, out, true );
@@ -249,28 +338,27 @@ int main( int argc, char ** argv ) {
 			inner = out.rep;
 			std::cout << "Auto-selected " << inner << " repetitions to reach approx. "
 				<< "1 second run-time." << std::endl;
-		}
-		if( rc != SUCCESS ) {
-			std::cerr << "launcher.exec returns with non-SUCCESS error code "
-				<< (int)rc << std::endl;
-			return 6;
+		} else {
+			std::cerr << "Error: launcher.exec returns with non-SUCCESS error code "
+				<< grb::toString( rc ) << std::endl;
+			return 60;
 		}
 	}
 
 	if( rc == SUCCESS ) {
 		grb::Benchmarker< AUTOMATIC > launcher;
 		rc = launcher.exec( &grbProgram, in, out, inner, outer, true );
+		if( rc != SUCCESS ) {
+			std::cerr << "Error: benchmarker launch failed ( " << grb::toString( rc )
+				<< std::endl;
+			return 70;
+		}
 	}
 
-	if( rc != SUCCESS ) {
-		std::cerr << "launcher.exec returns with non-SUCCESS error code "
-			<< (int)rc << std::endl;
-		return 50;
-	}
-
+	// print out
+	const size_t count = out.neighbourhood.nonzeroes();
 	std::cout << "Error code is " << out.error_code << ".\n";
 	std::cout << "Output vector size is " << out.neighbourhood.size() << ".\n";
-	const size_t count = out.neighbourhood.nonzeroes();
 	std::cout << "Neighbourhood size is " << count << " "
 		<< "(out of " << out.neighbourhood.size() << ").\n";
 #if defined PRINT_FIRST_TEN || defined _DEBUG

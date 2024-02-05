@@ -20,7 +20,13 @@
 
 #include <graphblas.hpp>
 
+#include <graphblas/algorithms/matrix_factory.hpp>
+
+#include <utils/matrix_values_check.hpp>
+
+
 using namespace grb;
+using namespace grb::algorithms;
 
 void grb_program( const size_t &n, grb::RC &rc ) {
 	grb::Semiring<
@@ -29,35 +35,10 @@ void grb_program( const size_t &n, grb::RC &rc ) {
 	> ring;
 
 	// initialize test
-	grb::Matrix< double > A( n, n );
-	grb::Matrix< double > B( n, n );
+	const grb::Matrix< double > A = matrices< double >::eye( n, n, 1, 1 );
+	const grb::Matrix< double > B = matrices< double >::eye( n, n, 0, 2 );
 	grb::Matrix< double > C( n, n );
-	size_t I[ n ], J[ n ];
-	double V[ n ];
-	for( size_t k = 0; k < n; ++k ) {
-		I[ k ] = J[ k ] = k;
-		V[ k ] = 2.0;
-	}
-	rc = grb::resize( B, n );
-	if( rc == SUCCESS ) {
-		rc = grb::buildMatrixUnique( B, I, J, V, n, SEQUENTIAL );
-	}
-	if( rc == SUCCESS ) {
-		rc = grb::resize( A, n );
-	}
-	if( rc == SUCCESS ) {
-		V[ 0 ] = 1.0;
-		for( size_t k = 1; k < n; ++k ) {
-			J[ k - 1 ] = k;
-			V[ k ] = 1.0;
-		}
-		J[ n - 1 ] = 0;
-		rc = grb::buildMatrixUnique( A, I, J, V, n, SEQUENTIAL );
-	}
-	if( rc != SUCCESS ) {
-		std::cerr << "\tinitialisation FAILED\n";
-		return;
-	}
+	grb::Matrix< double > C_expected = matrices< double >::eye( n, n, 2, 1 );
 
 	// compute with the semiring mxm
 	std::cout << "\tVerifying the semiring version of mxm\n";
@@ -76,53 +57,13 @@ void grb_program( const size_t &n, grb::RC &rc ) {
 	}
 
 	// check CRS output
-	const auto &crs1 = internal::getCRS( C );
-	for( size_t i = 0; i < n; ++i ) {
-		const size_t entries = crs1.col_start[ i + 1 ] - crs1.col_start[ i ];
-		if( entries != 1 ) {
-			std::cerr << "Error: unexpected number of entries " << entries << ", "
-				<< "expected 1 (CRS).\n";
-			rc = FAILED;
-		}
-		for( size_t k = crs1.col_start[ i ]; k < crs1.col_start[ i + 1 ]; ++k ) {
-			const size_t expect = i == n - 1 ? 0 : i + 1;
-			if( crs1.row_index[ k ] != expect ) {
-				std::cerr << "Error: unexpected entry at ( " << i << ", "
-					<< crs1.row_index[ k ] << " ), expected one at ( "
-					<< i << ", " << ( ( i + 1 ) % n ) << " ) instead (CRS).\n";
-				rc = FAILED;
-			}
-			if( crs1.values[ k ] != 2.0 ) {
-				std::cerr << "Error: unexpected value " << crs1.values[ k ]
-					<< "; expected 2 (CRS).\n";
-				rc = FAILED;
-			}
-		}
+	if( utils::compare_crs( C, C_expected ) != SUCCESS ) {
+		std::cerr << "Error: unexpected CRS output\n";
 	}
 
 	// check CCS output
-	const auto &ccs1 = internal::getCCS( C );
-	for( size_t j = 0; j < n; ++j ) {
-		const size_t entries = ccs1.col_start[ j + 1 ] - ccs1.col_start[ j ];
-		if( entries != 1 ) {
-			std::cerr << "Error: unexpected number of entries " << entries
-				<< ", expected 1 (CCS).\n";
-			rc = FAILED;
-		}
-		for( size_t k = ccs1.col_start[ j ]; k < ccs1.col_start[ j + 1 ]; ++k ) {
-			const size_t expect = j == 0 ? n - 1 : j - 1;
-			if( ccs1.row_index[ k ] != expect ) {
-				std::cerr << "Error: unexpected entry at ( " << ccs1.row_index[ k ] << ", "
-					<< j << " ), expected one at ( " << expect << ", " << j
-					<< " ) instead (CCS).\n";
-				rc = FAILED;
-			}
-			if( ccs1.values[ k ] != 2.0 ) {
-				std::cerr << "Error: unexpected value " << ccs1.values[ k ]
-					<< "; expected 2 (CCS).\n";
-				rc = FAILED;
-			}
-		}
+	if( utils::compare_ccs( C, C_expected ) != SUCCESS ) {
+		std::cerr << "Error: unexpected CCS output\n";
 	}
 
 	// compute with the operator-monoid mxm
@@ -151,53 +92,13 @@ void grb_program( const size_t &n, grb::RC &rc ) {
 	}
 
 	// check CRS output
-	const auto &crs2 = internal::getCRS( C );
-	for( size_t i = 0; i < n; ++i ) {
-		const size_t entries = crs2.col_start[ i + 1 ] - crs2.col_start[ i ];
-		if( entries != 1 ) {
-			std::cerr << "Error: unexpected number of entries " << entries
-				<< ", expected 1 (CRS).\n";
-			rc = FAILED;
-		}
-		for( size_t k = crs2.col_start[ i ]; k < crs2.col_start[ i + 1 ]; ++k ) {
-			const size_t expect = i == n - 1 ? 0 : i + 1;
-			if( crs2.row_index[ k ] != expect ) {
-				std::cerr << "Error: unexpected entry at ( " << i << ", "
-					<< crs2.row_index[ k ] << " ), expected one at ( " << i << ", "
-					<< ( ( i + 1 ) % n ) << " ) instead (CRS).\n";
-				rc = FAILED;
-			}
-			if( crs2.values[ k ] != 2.0 ) {
-				std::cerr << "Error: unexpected value " << crs2.values[ k ]
-					<< "; expected 2 (CRS).\n";
-				rc = FAILED;
-			}
-		}
+	if( utils::compare_crs( C, C_expected ) != SUCCESS ) {
+		std::cerr << "Error: unexpected CRS output\n";
 	}
 
 	// check CCS output
-	const auto &ccs2 = internal::getCCS( C );
-	for( size_t j = 0; j < n; ++j ) {
-		const size_t entries = ccs2.col_start[ j + 1 ] - ccs2.col_start[ j ];
-		if( entries != 1 ) {
-			std::cerr << "Error: unexpected number of entries " << entries
-				<< ", expected 1 (CCS).\n";
-			rc = FAILED;
-		}
-		for( size_t k = ccs2.col_start[ j ]; k < ccs2.col_start[ j + 1 ]; ++k ) {
-			const size_t expect = j == 0 ? n - 1 : j - 1;
-			if( ccs2.row_index[ k ] != expect ) {
-				std::cerr << "Error: unexpected entry at ( " << ccs2.row_index[ k ] << ", "
-					<< j << " ), expected one at ( " << expect << ", " << j
-					<< " ) instead (CCS).\n";
-				rc = FAILED;
-			}
-			if( ccs2.values[ k ] != 2.0 ) {
-				std::cerr << "Error: unexpected value " << ccs2.values[ k ]
-					<< "; expected 2 (CCS).\n";
-				rc = FAILED;
-			}
-		}
+	if( utils::compare_ccs( C, C_expected ) != SUCCESS ) {
+		std::cerr << "Error: unexpected CCS output\n";
 	}
 }
 

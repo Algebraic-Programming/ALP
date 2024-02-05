@@ -38,6 +38,11 @@
  *  -# generalised sparse linear algebra, \ref GraphBLAS;
  *  -# vertex-centric programming, \ref Pregel.
  *
+ * Additionally, to ease integration with existing software, ALP defines
+ * so-called \ref TRANS libraries, which presently includes (partial)
+ * implementations of the \ref SPARSEBLAS and \ref SPBLAS (de-facto) standards,
+ * as well as an interface for numerical \ref TRANS_SOLVERS.
+ *
  * Several other programming interfaces are under design at present.
  *
  * For authors who contributed to ALP, please see the NOTICE file.

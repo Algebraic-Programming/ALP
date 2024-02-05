@@ -72,7 +72,7 @@ add_grb_executables( driver_simple_pagerank
 	ADDITIONAL_LINK_LIBRARIES test_utils_headers
 )
 
-add_grb_executables( driver_label ../smoke/label.cpp
+add_grb_executables( driver_label label.cpp
 	../unit/parser.cpp
 	BACKENDS reference reference_omp bsp1d hybrid hyperdags nonblocking
 	ADDITIONAL_LINK_LIBRARIES test_utils_headers

@@ -125,7 +125,7 @@ namespace grb {
 			 * will have access to the dictionary. All other processes will only have
 			 * a (distributed) view of the associated vectors.
 			 *
-			 * \parblock Performance semantics.
+			 * \par Performance semantics.
 			 *
 			 * This constructor scans the input file twice. When \a mode is
 			 * \a SEQUENTIAL or \a REPLICATED, no communication between the user
@@ -137,7 +137,11 @@ namespace grb {
 			 * (requires synchronisation on each query), or in a fully replicated
 			 * fashion (does not scale in memory).
 			 */
-			IndexedVectorMap( const std::string filename, const size_t dim, const Mode mode, const size_t root_pid = 0 ) : dimension( dim ) {
+			IndexedVectorMap(
+				const std::string filename,
+				const size_t dim, const Mode mode,
+				const size_t root_pid = 0
+			) : dimension( dim ) {
 				// get SPMD info
 				const size_t my_id = grb::spmd<>::pid();
 				const size_t P = grb::spmd<>::nprocs();
@@ -332,7 +336,7 @@ namespace grb {
 			 *
 			 * If an error other than the above occurs, this will result in a message
 			 * printed to std::err and a premature exit of the function. The
-			 * appropriate grb::RC error code is then returned. See @grb::foldl for
+			 * appropriate grb::RC error code is then returned. See #grb::foldl for
 			 * such possible error conditions.
 			 *
 			 * \warning Note that if \a mode was \a SEQUENTIAL while constructing
@@ -343,8 +347,15 @@ namespace grb {
 			 *          overriden STL's IOStreams to throw exceptions instea dof setting
 			 *          fail bits.
 			 */
-			template< descriptors::Descriptor descr = descriptors::no_operation, class Operator, class OutputType >
-			RC foldlSentence( grb::Vector< OutputType > & combinedVector, const std::string & query, const Operator & op ) const noexcept {
+			template<
+				descriptors::Descriptor descr = descriptors::no_operation,
+				class Operator, class OutputType
+			>
+			RC foldlSentence(
+				grb::Vector< OutputType > &combinedVector,
+				const std::string &query,
+				const Operator &op
+			) const noexcept {
 				if( size( combinedVector ) != dimension ) {
 					return MISMATCH;
 				}

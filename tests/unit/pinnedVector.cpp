@@ -21,7 +21,7 @@
 #include <inttypes.h>
 
 #include <graphblas/algorithms/knn.hpp>
-#include <graphblas/utils/Timer.hpp>
+#include <graphblas/utils/timer.hpp>
 #include <graphblas/utils/parser.hpp>
 
 #include <graphblas.hpp>
@@ -342,7 +342,7 @@ int runTests( struct input< T > &in ) {
 	for( const auto &test : AllTests ) {
 		// run test
 		in.test = test;
-		rc = rc ? rc : launcher.exec( &grbProgram, in, out );
+		rc = rc ? rc : launcher.exec( &grbProgram, in, out, true );
 		if( out.error_code != SUCCESS ) {
 			return offset + 10;
 		}
@@ -531,6 +531,26 @@ int runTests( struct input< T > &in ) {
 	return 0;
 }
 
+// default-constructible and trivially copiable pair of values for launcher
+struct Couple {
+	size_t a; float b;
+	bool operator==( const struct Couple &c ) const {
+		return c.a == a && c.b == b;
+	}
+
+	bool operator!=( const struct Couple &c ) const {
+		return !((*this) == c );
+	}
+};
+
+#ifdef _DEBUG
+// adaptor to output stream
+std::ostream & operator<<( std::ostream &out, const struct Couple &c ) {
+	out << "( " << c.a << ", " << c.b << " )";
+	return out;
+}
+#endif
+
 int main( int argc, char ** argv ) {
 	// sanity check
 	if( argc != 1 ) {
@@ -562,9 +582,16 @@ int main( int argc, char ** argv ) {
 
 		// run tests using a non-fundamental type
 		if( error == 0 ) {
-			std::cout << "\t running tests with std::pair vector entries...\n";
+			std::cout << "\t running tests with DC and SL vector entries...\n";
 			struct input< std::pair< size_t, float > > in_pair;
 			in_pair.element = std::make_pair< size_t, float >( 17, -2.7 );
+			in_pair.mode = mode;
+			error = runTests( in_pair );
+		}
+		if( error == 0 ) {
+			std::cout << "\t running tests with DC and TC vector entries...\n";
+			struct input< struct Couple > in_pair;
+			in_pair.element = { 17, -2.7 };
 			in_pair.mode = mode;
 			error = runTests( in_pair );
 		}

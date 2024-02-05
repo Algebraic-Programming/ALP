@@ -84,8 +84,11 @@ the location where LPF is installed"
 	echo "  --generator=<value>                 - set the generator for CMake (otherwise use CMake's default)"
 	echo "  --show                              - show generation commands instead of running them"
 	echo "  --delete-files                      - delete files in the current directory without asking for confirmation"
+	echo "  --spblas-prefix=<value>             - set the prefix to <value> for spblas routines and the library name ('alp_cspblas_' if none)"
+	echo "  --no-solver-lib                     - disable generating the solver libraries"
+	echo "  --enable-extra-solver-lib           - enable generating solver library compiled against the reference_omp backend"
 	echo "  --help                              - prints this help"
-	echo " "
+	echo
 	echo "Notes:"
 	echo "  - If the install directory does not exist, it will be created."
 	echo "  - The --prefix path is mandatory. No make targets will execute"
@@ -111,6 +114,9 @@ coverage_build=no
 generator=
 delete_files=no
 DATASETS_PATH=
+spblas_prefix=
+no_solver_lib=
+enable_extra_solver_lib=no
 
 if [[ "$#" -lt 1 ]]; then
 	echo "No argument given, at least --prefix=<path/to/install/directory/> is mandatory"
@@ -184,6 +190,15 @@ or assume default paths (--with-lpf)"
 			;;
 	--delete-files) # useful for scripts
 			delete_files=yes
+			;;
+	--spblas-prefix=*)
+			spblas_prefix="${arg#--spblas-prefix=}"
+			;;
+	--no-solver-lib)
+			no_solver_lib="yes"
+			;;
+	--enable-extra-solver-lib)
+			enable_extra_solver_lib="yes"
 			;;
 	*)
 			echo "Unknown argument ${arg}"
@@ -351,6 +366,16 @@ the current directory before invocation or confirm the deletion of its content w
 	if [[ "${lpf}" == "yes" ]]; then
 		CMAKE_OPTS+=" -DLPF_INSTALL_PATH='${ABSOLUTE_LPF_INSTALL_PATH}'"
 	fi
+	if [[ ! -z "${spblas_prefix}" ]]; then
+		CMAKE_OPTS+=" -DSPBLAS_PREFIX='${spblas_prefix}'"
+	fi
+	if [[ "${no_solver_lib}" == "yes" ]]; then
+		CMAKE_OPTS+=" -DENABLE_SOLVER_LIB=OFF"
+	fi
+	if [[ "${enable_extra_solver_lib}" == "yes" ]]; then
+		CMAKE_OPTS+=" -DENABLE_EXTRA_SOLVER_LIBS=ON"
+	fi
+
 
 	if [[ ! -z "${generator}" ]]; then
 		CMAKE_OPTS+=" -G '${generator}'"

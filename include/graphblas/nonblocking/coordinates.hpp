@@ -232,6 +232,21 @@ namespace grb {
 					}
 				}
 
+				/**
+				 * Sets this data structure to a dummy placeholder for a dense structure.
+				 *
+				 * This structure will be immutable, and does not support the majority of
+				 * operations this class defines; use dense coordinates with care.
+				 */
+				void setDense( const size_t dim ) noexcept {
+					_assigned = nullptr;
+					_stack = nullptr;
+					_buffer = nullptr;
+					_n = dim;
+					_cap = dim;
+					_buf = 0;
+				}
+
 				inline bool assign( const size_t i ) noexcept {
 					if( _n == _cap ) {
 						return true;

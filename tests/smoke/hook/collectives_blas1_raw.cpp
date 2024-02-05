@@ -18,9 +18,10 @@
 #include <stdio.h>
 #include <assert.h>
 
-#include "graphblas/utils/Timer.hpp"
+#include "graphblas/utils/timer.hpp"
 
 #include "graphblas.hpp"
+
 
 using namespace grb;
 

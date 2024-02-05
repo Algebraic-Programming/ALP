@@ -33,11 +33,11 @@
 #endif
 
 #include "graphblas/blas1.hpp"                 // for grb::size
-#include <graphblas/NonzeroStorage.hpp>
+#include "graphblas/nonzeroStorage.hpp"
 
 // the below transforms an std::vector iterator into an ALP/GraphBLAS-compatible
 // iterator:
-#include "graphblas/utils/iterators/NonzeroIterator.hpp"
+#include "graphblas/utils/iterators/nonzeroIterator.hpp"
 
 #include <graphblas/base/io.hpp>
 #include <graphblas/utils/iterators/utils.hpp>
