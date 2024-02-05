@@ -24,9 +24,11 @@ BACKENDCFLAGS=(@BACKEND_CFLAGS_SPACED@)
 BACKENDLFLAGS=(@BACKEND_LFLAGS_SPACED@)
 COMMONCFLAGS=@COMMON_FLAGS_SPACED@
 VERSION="@VERSION@"
+BACKEND_LIBRARY_OUTPUT_NAME="@BACKEND_LIBRARY_OUTPUT_NAME@"
+LIBRARY_DIRS=(@LIBRARY_DIRS_SPACED@)
 
 declare -a ARGS
-LINK=true
+LINK="dynamic"
 SHOW="eval"
 BACKEND=${BACKENDS[0]}
 CXXSTD=c++11
@@ -39,16 +41,14 @@ while [[ $# -gt 0 ]]; do
 			BACKEND=$1
 			shift
 		;;
-		-c)
-			ARGS+=("-c")
-			LINK=false
+		--link-alp-static)
+			LINK="static"
 		;;
 		--show)
 			SHOW=echo
 		;;
 		--std=*)
 			CXXSTD="${option#*=}"
-			shift
 		;;
 		--version)
 			echo "This is ALP/GraphBLAS version ${VERSION}"
@@ -88,14 +88,15 @@ then
 	exit 255
 fi
 
-LFLAGS=
-if ${LINK}
-then
-	LFLAGS=${BACKENDLFLAGS[${BACKENDID}]}
+if [[ "${LINK}" == "dynamic" ]]; then
+	LIB="-L '${LIBRARY_DIRS[${BACKENDID}]}' -l${BACKEND_LIBRARY_OUTPUT_NAME}"
+else
+	LIB="'${LIBRARY_DIRS[${BACKENDID}]}/lib${BACKEND_LIBRARY_OUTPUT_NAME}.a'"
 fi
+LFLAGS="${LIB} ${BACKENDLFLAGS[${BACKENDID}]}"
 
-COMPILER=${BACKENDCOMPILERS[${BACKENDID}]}
+COMPILER="${BACKENDCOMPILERS[${BACKENDID}]}"
 
-CMD="${COMPILER} -std=${CXXSTD} -I'${INCLUDEDIR}' ${COMMONCFLAGS} ${BACKENDCFLAGS[${BACKENDID}]} "${ARGS[@]}" "$@" ${LFLAGS}"
+CMD="${COMPILER} -std=${CXXSTD} -I'${INCLUDEDIR}' ${COMMONCFLAGS} ${BACKENDCFLAGS[${BACKENDID}]} ${ARGS[@]} "$@" ${LFLAGS}"
 
 ${SHOW} "${CMD}"
