@@ -3737,6 +3737,7 @@ namespace grb {
 	 * @see perfSemantics
 	 */
 	template<
+		Descriptor = descriptors::no_operation,
 		typename Func,
 		typename DataType,
 		Backend backend,

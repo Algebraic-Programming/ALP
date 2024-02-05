@@ -897,6 +897,7 @@ namespace grb {
 	) noexcept;
 
 	template<
+		Descriptor,
 		class ActiveDistribution, typename Func, typename DataType,
 		typename RIT, typename CIT, typename NIT
 	>
@@ -992,6 +993,7 @@ namespace grb {
 		);
 
 		template<
+			Descriptor,
 			class ActiveDistribution, typename Func, typename DataType,
 			typename RIT, typename CIT, typename NIT
 		>

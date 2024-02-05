@@ -2455,6 +2455,7 @@ namespace grb {
 		 * @see grb::eWiseLambda for the user-level specification.
 		 */
 		template<
+			Descriptor,
 			class ActiveDistribution,
 			typename Func,
 			typename DataType, typename RIT, typename CIT, typename NIT
@@ -2846,6 +2847,7 @@ namespace grb {
 	 * @see grb::eWiseLambda for the user-level specification.
 	 */
 	template<
+		Descriptor descr = descriptors::no_operation,
 		typename Func,
 		typename DataType1, typename RIT, typename CIT, typename NIT,
 		typename DataType2,
@@ -2865,7 +2867,7 @@ namespace grb {
 			return MISMATCH;
 		}
 		// recurse
-		return eWiseLambda( f, A, args... );
+		return eWiseLambda< descr >( f, A, args... );
 	}
 
 	/** @} */

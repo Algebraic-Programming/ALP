@@ -351,13 +351,14 @@ namespace grb {
 			internal::Coordinates< _GRB_BSP1D_BACKEND >
 		> & internal::getGlobal< D, C >( const Vector< D, BSP1D, C > & );
 
-		template< typename Func, typename DataType, typename Coords >
+		template< Descriptor, typename Func, typename DataType, typename Coords >
 		friend RC eWiseLambda(
 			const Func,
 			const Vector< DataType, BSP1D, Coords > &
 		);
 
 		template<
+			Descriptor,
 			typename Func,
 			typename DataType1, typename DataType2,
 			typename Coords, typename... Args
