@@ -59,7 +59,6 @@ set( HYBRID_BACKEND_INSTALL_DIR "${BINARY_LIBRARIES_INSTALL_DIR}/hybrid" )
 # backend: (mandatory) argument name
 # COMPILER_COMMAND: (optional) Bash command (also including options, as a CMake list)
 #	to invoke the compiler; if left empty, it is set to CMAKE_CXX_COMPILER
-# RUNENV: (optional) environment variables for running the executable
 # RUNNER: (optional) runner command (also including options, as a CMake list) to
 #	run the executable
 # COMPILE_DEFINITIONS: (optional) definitions for compilation, as "SYMBOL" or
@@ -71,7 +70,7 @@ set( HYBRID_BACKEND_INSTALL_DIR "${BINARY_LIBRARIES_INSTALL_DIR}/hybrid" )
 # since they are expanded as macro arguments
 #
 function( addBackendWrapperGenOptions backend )
-	set( multiValueArgs "COMPILER_COMMAND;RUNENV;RUNNER"
+	set( multiValueArgs "COMPILER_COMMAND;RUNNER"
 		"COMPILE_DEFINITIONS;COMPILE_OPTIONS;LINK_FLAGS;LIB_DIR"
 	)
 	cmake_parse_arguments( parsed "${options}" "${oneValueArgs}"
@@ -88,7 +87,6 @@ function( addBackendWrapperGenOptions backend )
 	if( NOT parsed_COMPILER_COMMAND )
 		set( ${backend}_WRAPPER_COMPILER_COMMAND "${CMAKE_CXX_COMPILER}" PARENT_SCOPE )
 	endif()
-	set( ${backend}_WRAPPER_RUNENV "${parsed_RUNENV}" PARENT_SCOPE )
 	set( ${backend}_WRAPPER_RUNNER "${parsed_RUNNER}" PARENT_SCOPE )
 	set( ${backend}_LIB_DIR "${parsed_LIB_DIR}" PARENT_SCOPE )
 
