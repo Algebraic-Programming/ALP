@@ -25,6 +25,11 @@
 
 #include <cstring> //std::memcpy
 
+#if reference == reference_omp
+	#define _H_GRB_REFERENCE_OMP_COMPRESSED_STORAGE
+	#include <omp.h>
+#endif
+
 
 namespace grb {
 
@@ -76,11 +81,12 @@ namespace grb {
 				if( k < nz ) {
 					const size_t loop_end = std::min( nz, end );
 					assert( k <= loop_end );
-					std::copy_n(
-						input.row_index + k,
-						loop_end - k,
-						output.row_index + k
-					);
+#ifdef _H_GRB_REFERENCE_OMP_COMPRESSED_STORAGE
+					#pragma omp for simd
+#endif
+					for( size_t i = k; i < loop_end; ++i ) {
+						output.row_index[ i ] = static_cast< OutputIND >( input.row_index[ i ] );
+					}
 					k = 0;
 				} else {
 					assert( k >= nz );
@@ -93,11 +99,12 @@ namespace grb {
 				if( k < m + 1 ) {
 					const size_t loop_end = std::min( m + 1, end );
 					assert( k <= loop_end );
-					std::copy_n(
-						input.col_start + k,
-						loop_end - k,
-						output.col_start + k
-					);
+#ifdef _H_GRB_REFERENCE_OMP_COMPRESSED_STORAGE
+					#pragma omp for simd
+#endif
+					for( size_t i = k; i < loop_end; ++i ) {
+						output.col_start[ i ] = static_cast< OutputSIZE >( input.col_start[ i ] );
+					}
 	#ifndef NDEBUG
 					for( size_t chk = k; chk < loop_end - 1; ++chk ) {
 						assert( input.col_start[ chk ] <= input.col_start[ chk + 1 ] );
@@ -585,13 +592,16 @@ namespace grb {
 				 *
 				 * Performs no safety checking. Performs no (re-)allocations.
 				 *
+				 * @tparam use_id   If set to <tt>true</tt>, use \a id instead of values in
+				 *                  \a other.
 				 * @param[in] other The container to copy from.
 				 * @param[in] nz    The number of nonzeroes in the \a other container.
 				 * @param[in] m     The index dimension of the \a other container.
 				 * @param[in] start The start position to copy from (inclusive).
 				 * @param[in] end   The end position to copy to (exclusive).
 				 * @param[in] id    A pointer to a value overriding those in \a other.
-				 *
+				 *                  Will only be used if and only if \a use_id is set
+				 *                  to <tt>true</tt>.
 				 * The copy range is 2nz + m + 1, i.e.,
 				 *   -# 0 <= start <  2nz + m + 1
 				 *   -# 0 <  end   <= 2nz + m + 1
@@ -680,7 +690,12 @@ namespace grb {
 						assert( k <= loop_end );
 
 						GRB_UTIL_IGNORE_CLASS_MEMACCESS;
-						std::copy_n( other.values + k, loop_end - k, values + k );
+#ifdef _H_GRB_REFERENCE_OMP_COMPRESSED_STORAGE
+						#pragma omp for simd
+#endif
+						for( size_t i = k; i < loop_end; ++i ) {
+							values[ i ] = static_cast< D >( other.values[ i ] );
+						}
 						GRB_UTIL_RESTORE_WARNINGS;
 
 						k = 0;
@@ -695,8 +710,6 @@ namespace grb {
 
 					copyCoordinatesFrom( *this, other, nz, m, k, end );
 				}
-
-
 
 				/**
 				 * Writes a nonzero to the given position. Does \em not update the
@@ -1203,8 +1216,10 @@ namespace grb {
 					const size_t nz, const size_t m, const size_t start, size_t end,
 					const UnusedType * __restrict__ = nullptr
 				) {
-					// the use_id template is meaningless in the case of pattern matrices, but
-					// is retained to keep the API the same as with the non-pattern case.
+					(void) unusedValue;
+					// the unusedValue template is meaningless in the case of
+					// pattern matrices, but is retained to keep the API
+					// the same as with the non-pattern case.
 #ifdef _DEBUG
 					std::cout << "CompressedStorage::copyFrom (void) called with range "
 						<< start << "--" << end << "\n";

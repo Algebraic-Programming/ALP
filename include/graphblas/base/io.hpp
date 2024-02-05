@@ -1123,8 +1123,8 @@ namespace grb {
 		const Phase &phase = EXECUTE
 	) noexcept {
 #ifndef NDEBUG
-		const bool should_not_call_base_matrix_set_copy_masked = false;
-		assert( should_not_call_base_matrix_set_copy_masked );
+		const bool should_not_call_base_matrix_set_copy = false;
+		assert( should_not_call_base_matrix_set_copy );
 #endif
 		(void) A;
 		(void) C;

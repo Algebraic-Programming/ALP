@@ -982,14 +982,17 @@ namespace grb {
 #ifdef _DEBUG
 			std::cout << "Called grb::set (matrices, reference), execute phase\n";
 #endif
-			if( A_is_mask ) {
-				assert( id != nullptr );
-			}
 			// static checks
 			static_assert(
 				!A_is_mask || !std::is_void< OutputType >::value,
 				"grb::set (matrices, reference): "
 				"if A is a mask, then C must not be a void matrix"
+			);
+			static_assert(
+				A_is_mask ||
+				( !A_is_mask &&
+				  std::is_convertible< ValueType, OutputType >::value ),
+				"internal::grb::set called with non-matching value types"
 			);
 			NO_CAST_ASSERT(
 				( !( descr & descriptors::no_casting ) ||
@@ -1015,6 +1018,12 @@ namespace grb {
 				( A_is_mask && std::is_same< ValueType, OutputType >::value ) ),
 				"internal::grb::set", "Called with non-matching value types"
 			);
+
+#ifndef NDEBUG
+			if( A_is_mask ) {
+				assert( id != nullptr );
+			}
+#endif
 
 			// run-time checks
 			const size_t m = nrows( A );

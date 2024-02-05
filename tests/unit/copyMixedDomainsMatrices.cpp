@@ -22,7 +22,6 @@
 
 #include <graphblas.hpp>
 
-
 using namespace grb;
 
 
@@ -53,8 +52,6 @@ void grb_program( const size_t &n, grb::RC &rc ) {
 			return;
 		}
 	}
-
-
 
 	{ // Try cast to ushort (should succeed)
 		Matrix< ushort > M_short( n, n, 0UL );
@@ -176,10 +173,10 @@ int main( int argc, char ** argv ) {
 	if( argc == 2 ) {
 		size_t read;
 		std::istringstream ss( argv[ 1 ] );
-		if( ! ( ss >> read ) ) {
+		if( !( ss >> read ) ) {
 			std::cerr << "Error parsing first argument\n";
 			printUsage = true;
-		} else if( ! ss.eof() ) {
+		} else if( !ss.eof() ) {
 			std::cerr << "Error parsing first argument\n";
 			printUsage = true;
 		} else {
