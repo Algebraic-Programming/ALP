@@ -21,7 +21,6 @@
 #include <algorithm>
 
 #include <graphblas.hpp>
-#include <graphblas/utils/iterators/MatrixVectorIterator.hpp>
 
 
 using namespace grb;
