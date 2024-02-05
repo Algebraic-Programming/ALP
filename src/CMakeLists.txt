@@ -59,6 +59,7 @@ foreach( backend ${AVAILABLE_BACKENDS} )
 
 	list( APPEND backend_list "\"${backend}\"" )
 	joinAndAppend( compiler_list ${backend}_WRAPPER_COMPILER_COMMAND )
+	joinAndAppend( library_dir ${backend}_LIB_DIR )
 
 	joinAndAppend( runenv_list ${backend}_WRAPPER_RUNENV )
 	joinAndAppend( runner_list ${backend}_WRAPPER_RUNNER )
@@ -75,7 +76,13 @@ endforeach( )
 # sourcing the resulting setenv makes the quotes seem as part of the
 # executable name. Until this is fixed, we do not support spaces in
 # the LPF install path (FIXME)
-list( JOIN backend_list " " AVAILABLE_BACKENDS_SPACED )
+
+macro( joinWithNewLine inListName outListName )
+	list( JOIN ${inListName} "\n" tmp_spaced )
+	set( ${outListName} "\n${tmp_spaced}\n" )
+endmacro( joinWithNewLine )
+
+joinWithNewLine( backend_list AVAILABLE_BACKENDS_SPACED )
 list( JOIN LPFRUN_CMD " " LPFRUN_CMD_SPACED )
 list( JOIN MANUALRUN " " MANUALRUN_SPACED )
 configure_file( ${CMAKE_CURRENT_SOURCE_DIR}/setenv.in ${CMAKE_CURRENT_BINARY_DIR}/setenv @ONLY )
@@ -85,13 +92,15 @@ list( TRANSFORM cflags PREPEND "-D" )
 list( APPEND cflags "${COMMON_WRAPPER_OPTIONS}" )
 joinAndAppend( COMMON_FLAGS_SPACED cflags )
 
-list( JOIN compiler_list " " BACKEND_COMPILERS_SPACED )
-list( JOIN compile_options_list " " BACKEND_CFLAGS_SPACED )
-list( JOIN link_flags_list " " BACKEND_LFLAGS_SPACED )
+joinWithNewLine( compiler_list BACKEND_COMPILERS_SPACED )
+joinWithNewLine( library_dir LIBRARY_DIRS_SPACED )
+
+joinWithNewLine( compile_options_list BACKEND_CFLAGS_SPACED )
+joinWithNewLine( link_flags_list BACKEND_LFLAGS_SPACED )
 configure_file( ${CMAKE_CURRENT_SOURCE_DIR}/grbcxx.in ${CMAKE_CURRENT_BINARY_DIR}/grbcxx @ONLY )
 
-list( JOIN runenv_list " " BACKEND_RUNENV_SPACED )
-list( JOIN runner_list " " BACKEND_RUNNER_SPACED )
+joinWithNewLine( runenv_list BACKEND_RUNENV_SPACED )
+joinWithNewLine( runner_list BACKEND_RUNNER_SPACED )
 configure_file( ${CMAKE_CURRENT_SOURCE_DIR}/grbrun.in ${CMAKE_CURRENT_BINARY_DIR}/grbrun @ONLY )
 
 # install them to the install folder with execute permission
@@ -107,7 +116,7 @@ install( FILES ${CMAKE_CURRENT_BINARY_DIR}/setenv
 
 ### GENERATE CMAKE INFRASTRUCTURE INSIDE INSTALLATION DIRECTORY
 
-include(CMakePackageConfigHelpers)
+include( CMakePackageConfigHelpers )
 
 # write file with version information
 write_basic_package_version_file(
