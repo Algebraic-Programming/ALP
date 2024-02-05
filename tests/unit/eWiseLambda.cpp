@@ -34,7 +34,7 @@ void grbProgram( const void *, const size_t in_size, int &error ) {
 	error = 0;
 
 	if( in_size != 0 ) {
-		(void)fprintf( stderr, "Unit tests called with unexpected input\n" );
+		(void) fprintf( stderr, "Unit tests called with unexpected input\n" );
 		error = 1;
 		return;
 	}
@@ -42,7 +42,6 @@ void grbProgram( const void *, const size_t in_size, int &error ) {
 	// allocate
 	grb::Matrix< int > M( 10, 10 );
 
-    
 	grb::RC rc = buildMatrixUnique( M, &( M_I[ 0 ] ), &( M_J[ 0 ] ), M_val, 2, SEQUENTIAL );
 	if( rc != SUCCESS ) {
 		std::cerr << "\t initial buildMatrixUnique FAILED\n";
@@ -50,7 +49,7 @@ void grbProgram( const void *, const size_t in_size, int &error ) {
 	}
 
 	if( !error ) {
-        rc =  grb::eWiseLambda( [&M]( const size_t i, const size_t j, int& nz ) { nz = j; }, M );
+		rc =  grb::eWiseLambda( [&M]( const size_t i, const size_t j, int& nz ) { nz = j; }, M );
 	}
 	if( rc != SUCCESS ) {
 		std::cerr << "\t eWiseLambda call failed\n";
@@ -59,17 +58,17 @@ void grbProgram( const void *, const size_t in_size, int &error ) {
 
 	if( !error ) {
 		for(auto it: M) {
-            if( it.second != it.first.second ) {
-                std::cerr << "\t eWiseLambda returned incorrect result\n";
-                error = 15;
-                break;
-            }
+			if( it.second != it.first.second ) {
+				std::cerr << "\t eWiseLambda returned incorrect result\n";
+				error = 15;
+				break;
+			}
 		}
 	}
 }
 
 int main( int argc, char ** argv ) {
-	(void)argc;
+	(void) argc;
 	std::cout << "Functional test executable: " << argv[ 0 ] << "\n";
 
 	int error;
