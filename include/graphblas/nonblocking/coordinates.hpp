@@ -340,9 +340,18 @@ namespace grb {
 							assert( dense_coordinates_may_not_call_clear );
 						}
 #endif
-						#pragma omp parallel for schedule( dynamic, config::CACHE_LINE_SIZE::value() )
-						for( size_t i = 0; i < _cap; ++i ) {
-							_assigned[ i ] = false;
+
+						// note: clear() may only be called outside pipelines, so we make parallel
+						// scheduling decisions independently of the analytic model
+						if( _cap < config::OMP::minLoopSize() ) {
+							for( size_t i = 0; i < _cap; ++i ) {
+								_assigned[ i ] = false;
+							}
+						} else {
+							#pragma omp parallel for schedule( static, config::CACHE_LINE_SIZE::value() )
+							for( size_t i = 0; i < _cap; ++i ) {
+								_assigned[ i ] = false;
+							}
 						}
 					} else {
 						if( _n < config::OMP::minLoopSize() ) {
@@ -350,7 +359,7 @@ namespace grb {
 								_assigned[ _stack[ k ] ] = false;
 							}
 						} else {
-							#pragma omp parallel for schedule( dynamic, config::CACHE_LINE_SIZE::value() )
+							#pragma omp parallel for schedule( static, config::CACHE_LINE_SIZE::value() )
 							for( size_t k = 0; k < _n; ++k ) {
 								_assigned[ _stack[ k ] ] = false;
 							}
@@ -443,9 +452,15 @@ namespace grb {
 
 					local_buffer.resize( analytic_model.getNumTiles() );
 
-					#pragma omp parallel for schedule(dynamic) num_threads(nthreads)
-					for( size_t tile_id = 0; tile_id < num_tiles; ++tile_id ) {
-						local_buffer[ tile_id ] = _buffer + tile_id * ( tile_size + 1 );
+					if( num_tiles < config::OMP::minLoopSize() ) {
+						for( size_t tile_id = 0; tile_id < num_tiles; ++tile_id ) {
+							local_buffer[ tile_id ] = _buffer + tile_id * (tile_size + 1);
+						}
+					} else {
+						#pragma omp parallel for schedule( static, config::CACHE_LINE_SIZE::value() ) num_threads( nthreads )
+						for( size_t tile_id = 0; tile_id < num_tiles; ++tile_id ) {
+							local_buffer[ tile_id ] = _buffer + tile_id * (tile_size + 1);
+						}
 					}
 
 					local_new_nnzs = _buffer + num_tiles * ( tile_size + 1 );
@@ -608,7 +623,7 @@ namespace grb {
 
 						#pragma omp parallel num_threads(nthreads)
 						{
-							#pragma omp for
+							#pragma omp for schedule( static, config::CACHE_LINE_SIZE::value() )
 							for( size_t id = 0; id < prefix_sum_num_tiles; id++ ) {
 
 								size_t lower, upper;
@@ -646,7 +661,7 @@ namespace grb {
 								}
 							}
 
-							#pragma omp for
+							#pragma omp for schedule( static, config::CACHE_LINE_SIZE::value() )
 							for(size_t id = 0; id < prefix_sum_num_tiles; id++ ) {
 
 								size_t lower, upper;
