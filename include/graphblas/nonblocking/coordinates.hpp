@@ -623,6 +623,8 @@ namespace grb {
 
 						#pragma omp parallel num_threads(nthreads)
 						{
+							// the chunk size chosen here avoids false sharing (assuming that
+							// local_prefix_sum is aligned)
 							#pragma omp for schedule( static, config::CACHE_LINE_SIZE::value() )
 							for( size_t id = 0; id < prefix_sum_num_tiles; id++ ) {
 
@@ -661,7 +663,10 @@ namespace grb {
 								}
 							}
 
-							#pragma omp for schedule( static, config::CACHE_LINE_SIZE::value() )
+							// note here there local_prefix_sum is read-only. Several threads may
+							// read the same cache line, but not write to the same one. So we do
+							// not define a minimum chunk size
+							#pragma omp for schedule( static )
 							for(size_t id = 0; id < prefix_sum_num_tiles; id++ ) {
 
 								size_t lower, upper;
