@@ -44,7 +44,23 @@ template<>
 grb::RC grb::init< grb::nonblocking >(
 	const size_t s, const size_t P, void * const data
 ) {
-	// It initializes the maximum number of threads used by the analytic model.
+	std::cerr << "Info: grb::init (nonblocking) called.\n";
+	const grb::RC reference_ret = grb::init< grb::reference >( s, P, data );
+	if( reference_ret != grb::SUCCESS ) {
+		std::cerr << "Error, grb::init (nonblocking): initialising the reference "
+			<< "backend failed\n";
+		return ret;
+	}
+
+	// reserve enough memory for prefix-sum computations
+	if( !internal::template ensureReferenceBufsize< char >(
+			T * T * config::CACHE_LINE_SIZE::value()
+		)
+	) {
+		return grb::OUTOFMEM;
+	}
+
+	// Initialises the maximum number of threads used by the analytic model.
 	internal::NONBLOCKING::num_threads = config::OMP::threads();
 
 	// If the environment variable GRB_NONBLOCKING_TILE_SIZE is set, a fixed
@@ -79,7 +95,8 @@ grb::RC grb::init< grb::nonblocking >(
 			<< grb::internal::NONBLOCKING::manual_fixed_tile_size << "." << std::endl;
 	}
 
-	return grb::init< grb::reference >( s, P, data );
+	// done
+	return grb::SUCCESS;
 }
 
 template<>
