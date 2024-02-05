@@ -43,9 +43,11 @@ size_t grb::internal::reference_bufsize = 0;
 static grb::utils::AutoDeleter< size_t > privateSizetOMP_deleter;
 
 template<>
-grb::RC grb::init< grb::reference >( const size_t s, const size_t P, void * const data ) {
+grb::RC grb::init< grb::reference >(
+	const size_t s, const size_t P, void * const data
+) {
 	// we don't use any implementation-specific init data
-	(void)data;
+	(void) data;
 	// print output
 	std::cerr << "Info: grb::init (reference) called.\n";
 	// sanity checks
@@ -75,19 +77,29 @@ grb::RC grb::finalize< grb::reference >() {
 
 #ifdef _GRB_WITH_OMP
 template<>
-grb::RC grb::init< grb::reference_omp >( const size_t s, const size_t P, void * const data ) {
+grb::RC grb::init< grb::reference_omp >(
+	const size_t s, const size_t P,
+	void * const data
+) {
 	RC rc = grb::SUCCESS;
 	// print output
 	const auto T = config::OMP::threads();
-	std::cerr << "Info: grb::init (reference_omp) called. OpenMP is set to utilise " << T << " threads.\n";
-	rc = grb::utils::alloc( "", "", grb::internal::privateSizetOMP, T * sizeof( grb::config::CACHE_LINE_SIZE::value() ) * sizeof( size_t ), true, privateSizetOMP_deleter );
+	std::cerr << "Info: grb::init (reference_omp) called. OpenMP is set to "
+		<< "utilise " << T << " threads.\n";
+	rc = grb::utils::alloc( "", "", grb::internal::privateSizetOMP,
+			T * sizeof( grb::config::CACHE_LINE_SIZE::value() ) * sizeof( size_t ), true,
+			privateSizetOMP_deleter
+		);
 	// use same initialisation procedure as sequential implementation
 	if( rc == grb::SUCCESS ) {
 		rc = grb::init< grb::reference >( s, P, data );
 	}
 	// pre-reserve a minimum buffer equal to the combined L1 cache size
 	if( rc == grb::SUCCESS ) {
-		if( ! internal::template ensureReferenceBufsize< char >( T * config::MEMORY::l1_cache_size() ) ) {
+		if( !internal::template ensureReferenceBufsize< char >(
+				T * config::MEMORY::l1_cache_size()
+			)
+		) {
 			rc = grb::OUTOFMEM;
 		}
 	}
