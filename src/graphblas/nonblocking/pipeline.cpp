@@ -849,7 +849,7 @@ grb::RC Pipeline::execution() {
 		}
 #endif
 
-		#pragma omp parallel for schedule(dynamic) num_threads(nthreads)
+		#pragma omp parallel for schedule( static ) num_threads( nthreads )
 		for( size_t tile_id = 0; tile_id < num_tiles; ++tile_id ) {
 
 			// compute the lower and upper bounds
@@ -907,7 +907,7 @@ grb::RC Pipeline::execution() {
 			(**vt).localCoordinatesInit( am );
 		}
 
-		#pragma omp parallel for schedule(dynamic) num_threads(nthreads)
+		#pragma omp parallel for schedule( dynamic ) num_threads( nthreads )
 		for( size_t tile_id = 0; tile_id < num_tiles; ++tile_id ) {
 
 			config::OMP::localRange(
@@ -945,7 +945,7 @@ grb::RC Pipeline::execution() {
 		// even if only one vector is sparse, we cannot reuse memory because the first
 		// two arguments that we pass to the lambda functions determine whether we
 		// reuse memory or not and they cannot vary for different vectors
-		#pragma omp parallel for schedule(dynamic) num_threads(nthreads)
+		#pragma omp parallel for schedule( dynamic ) num_threads( nthreads )
 		for( size_t tile_id = 0; tile_id < num_tiles; ++tile_id ) {
 
 			RC local_ret = SUCCESS;
@@ -994,7 +994,7 @@ grb::RC Pipeline::execution() {
 			}
 
 			if( new_nnz ) {
-				#pragma omp parallel for schedule(dynamic) num_threads(nthreads)
+				#pragma omp parallel for schedule( dynamic ) num_threads( nthreads )
 				for( size_t tile_id = 0; tile_id < num_tiles; ++tile_id ) {
 					for(
 						std::set< internal::Coordinates< nonblocking > * >::iterator vt =
