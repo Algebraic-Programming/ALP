@@ -227,6 +227,27 @@ namespace grb {
 	};
 
 	/**
+	 * Used to inspect whether a given operator is logically negated.
+	 *
+	 * @tparam T The operator to inspect.
+	 *
+	 * An example of a commutative operator is numerical addition,
+	 * #grb::operators::add.
+	 *
+	 * \ingroup typeTraits
+	 */
+	template< typename T, typename = void >
+	struct is_logically_negated {
+
+		static_assert( is_operator< T >::value,
+			"Template argument should be an ALP binary operator." );
+
+		/** Whether \a T is logically negated. */
+		static const constexpr bool value = false;
+
+	};
+
+	/**
 	 * Used to inspect whether a given operator or monoid is commutative.
 	 *
 	 * @tparam T The operator or monoid to inspect.

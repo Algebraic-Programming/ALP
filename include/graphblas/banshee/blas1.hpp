@@ -3491,7 +3491,7 @@ namespace grb {
 				for( size_t b = 0; b < Ring::blocksize; ++b, ++i ) {
 					// if we end up with a zero value
 					if( sparse && yy[ b ] == ring.template getZero< typename Ring::D4 >() ) {
-						// then substract it from the set of nonzeroes stored
+						// then subtract it from the set of nonzeroes stored
 						if( internal::getCoordinates( _z ).assigned( i ) ) {
 							internal::getRaw( _z )[ i ] = ring.template getZero< typename Ring::D4 >();
 						}

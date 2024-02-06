@@ -40,6 +40,28 @@ namespace grb {
 	namespace operators {
 
 		/**
+		 * Standard negation operator.
+		 *
+		 * Allows to wrap any operator and negate its result.
+		 */
+		template<
+			class Op,
+			enum Backend implementation = config::default_backend
+		>
+		class logical_not : public internal::Operator<
+			internal::logical_not< Op >
+		> {
+
+			public:
+
+				template< class A >
+				using GenericOperator = logical_not< A >;
+
+				logical_not() {}
+
+		};
+
+		/**
 		 * This operator discards all right-hand side input and simply copies the
 		 * left-hand side input to the output variable. It exposes the complete
 		 * interface detailed in grb::operators::internal::Operator. This operator
@@ -284,7 +306,7 @@ namespace grb {
 		};
 
 		/**
-		 * Numerical substraction of two numbers.
+		 * Numerical subtraction of two numbers.
 		 *
 		 * Mathematical notation: \f$ \odot(x,y)\ \to\ x - y \f$.
 		 *
@@ -299,7 +321,7 @@ namespace grb {
 			enum Backend implementation = config::default_backend
 		>
 		class subtract : public internal::Operator<
-			internal::substract< D1, D2, D3, implementation >
+			internal::subtract< D1, D2, D3, implementation >
 		> {
 
 			public:
@@ -469,6 +491,34 @@ namespace grb {
 				using GenericOperator = logical_or< A, B, C, D >;
 
 				logical_or() {}
+		};
+
+		/**
+		 * The logical xor.
+		 *
+		 * It returns <tt>true</tt> whenever one and one only of its inputs
+		 * evaluate <tt>true</tt>, and returns <tt>false</tt> otherwise.
+		 *
+		 * If the output domain is not Boolean, then the returned value is
+		 * <tt>true</tt> or <tt>false</tt> cast to the output domain.
+		 *
+		 * \warning Thus both input domains and the output domain must be
+		 * 		\em castable to <tt>bool</tt>.
+		 */
+		template<
+			typename D1, typename D2 = D1, typename D3 = D2,
+			enum Backend implementation = config::default_backend
+		>
+		class logical_xor : public internal::Operator<
+				internal::logical_xor< D1, D2, D3, implementation >
+		> {
+
+			public:
+
+				template< typename A, typename B, typename C, enum Backend D >
+				using GenericOperator = logical_xor< A, B, C, D >;
+
+				logical_xor() {}
 		};
 
 		/**
@@ -981,6 +1031,11 @@ namespace grb {
 
 	} // namespace operators
 
+	template< class Op >
+	struct is_operator< operators::logical_not< Op > > {
+		static const constexpr bool value = is_operator< Op >::value;
+	};
+
 	template< typename D1, typename D2, typename D3, enum Backend implementation >
 	struct is_operator< operators::left_assign_if< D1, D2, D3, implementation > > {
 		static const constexpr bool value = true;
@@ -1055,6 +1110,11 @@ namespace grb {
 
 	template< typename D1, typename D2, typename D3, enum Backend implementation >
 	struct is_operator< operators::logical_or< D1, D2, D3, implementation > > {
+		static const constexpr bool value = true;
+	};
+
+	template< typename D1, typename D2, typename D3, enum Backend implementation >
+	struct is_operator< operators::logical_xor< D1, D2, D3, implementation > > {
 		static const constexpr bool value = true;
 	};
 
@@ -1142,6 +1202,17 @@ namespace grb {
 		static const constexpr bool value = true;
 	};
 
+	/**
+	 * This struct template specialization determines if the logical_not operator is
+	 * idempotent by checking if the operator being negated is idempotent.
+	 * If the operator is idempotent, then negating its result will not change the
+	 * result, and the operator remains idempotent.
+	 */
+	template< class Op >
+	struct is_idempotent< operators::logical_not< Op >, void > {
+		static const constexpr bool value = is_idempotent< Op >::value;
+	};
+
 	template< typename D1, typename D2, typename D3 >
 	struct is_idempotent< operators::min< D1, D2, D3 >, void > {
 		static const constexpr bool value = true;
@@ -1159,6 +1230,11 @@ namespace grb {
 
 	template< typename D1, typename D2, typename D3 >
 	struct is_idempotent< operators::logical_or< D1, D2, D3 >, void > {
+		static const constexpr bool value = true;
+	};
+
+	template< typename D1, typename D2, typename D3 >
+	struct is_idempotent< operators::logical_xor< D1, D2, D3 >, void > {
 		static const constexpr bool value = true;
 	};
 
@@ -1197,7 +1273,7 @@ namespace grb {
 		OP,
 		typename std::enable_if< is_operator< OP >::value, void >::type
 	> {
-		static constexpr const bool value = OP::is_associative();
+		static constexpr const bool value = is_logically_negated<OP>::value ? false : OP::OperatorType::is_associative;
 	};
 
 	template< typename OP >
@@ -1205,7 +1281,15 @@ namespace grb {
 		OP,
 		typename std::enable_if< is_operator< OP >::value, void >::type
 	> {
-		static constexpr const bool value = OP::is_commutative();
+		static constexpr const bool value = OP::OperatorType::is_commutative;
+	};
+
+	template< typename OP >
+	struct is_logically_negated<
+		operators::logical_not< OP >,
+		typename std::enable_if< is_operator< OP >::value, void >::type
+	> {
+		static constexpr const bool value = not is_logically_negated< OP >::value;
 	};
 
 	// internal type traits follow

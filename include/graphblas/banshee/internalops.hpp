@@ -129,7 +129,7 @@ namespace grb {
 
 			/** \todo add documentation */
 			template< typename IN1, typename IN2, typename OUT >
-			class substract< IN1, IN2, OUT, banshee_ssr > {
+			class subtract< IN1, IN2, OUT, banshee_ssr > {
 			public:
 				/** Alias to the left-hand input data type. */
 				typedef IN1 left_type;
