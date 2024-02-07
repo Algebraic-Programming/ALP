@@ -248,7 +248,7 @@ namespace grb {
 			 * sequential I/O semantics.
 			 *
 			 * @see #grb::IOMode For the difference between sequential and parallel I/O
-			 *                    modes.
+			 *                   modes.
 			 *
 			 * \note There is only a difference if there are more than one user process.
 			 *
