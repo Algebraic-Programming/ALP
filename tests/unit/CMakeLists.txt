@@ -251,6 +251,10 @@ add_grb_executables( eWiseApplyMatrixReference eWiseApplyMatrixReference.cpp
 	ADDITIONAL_LINK_LIBRARIES test_utils_headers
 )
 
+add_grb_executables( eWiseLambda eWiseLambda.cpp
+	BACKENDS reference reference_omp hyperdags nonblocking
+)
+
 add_grb_executables( outer outer.cpp
 	BACKENDS reference reference_omp hyperdags nonblocking
 )
