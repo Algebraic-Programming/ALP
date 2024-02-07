@@ -105,12 +105,12 @@ namespace grb {
 					for( size_t i = k; i < loop_end; ++i ) {
 						output.col_start[ i ] = static_cast< OutputSIZE >( input.col_start[ i ] );
 					}
-	#ifndef NDEBUG
+#ifndef NDEBUG
 					for( size_t chk = k; chk < loop_end - 1; ++chk ) {
 						assert( input.col_start[ chk ] <= input.col_start[ chk + 1 ] );
 						assert( output.col_start[ chk ] <= output.col_start[ chk + 1 ] );
 					}
-	#endif
+#endif
 				}
 			}
 		} // namespace
