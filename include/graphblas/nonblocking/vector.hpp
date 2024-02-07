@@ -273,7 +273,7 @@ namespace grb {
 #endif
 			}
 
-			Vector( const std::initializer_list< D > vals )  : ref( vals ) {
+			Vector( const std::initializer_list< D > vals ) : ref( vals ) {
 				// pipeline execution is not required here as this is a grb::Vector
 				// declaration
 #ifdef _DEBUG
