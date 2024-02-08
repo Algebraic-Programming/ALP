@@ -334,7 +334,7 @@ namespace grb {
 				for( auto t = storage1.col_start[ i ]; t < storage1.col_start[ i + 1 ]; t++ ) {
 					if( storage1.row_index[ t ] != storage2.row_index[ t ] ) {
 						std::cerr << "Error: row_index[" << t << "] is different: "
-							<< storage1.row_index[ i ] << " != " << storage2.row_index[ i ]
+							<< storage1.row_index[ t ] << " != " << storage2.row_index[ t ]
 							<< std::endl;
 						return FAILED;
 					}
