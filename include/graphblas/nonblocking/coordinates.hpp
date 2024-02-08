@@ -664,10 +664,9 @@ namespace grb {
 								local_prefix_sum[ id ] = pref_sum[ upper - 1 ];
 							}
 
+							// this barrier ensures all threads have already written the local prefix
+							// sum for each parallel task
 							#pragma omp barrier
-
-							// here, there is an implicit barrier that ensures all threads have
-							// already written the local prefix sum for each parallel task
 
 							// a single threads computes the prefix sum for the last element of each
 							// thread
