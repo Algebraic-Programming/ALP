@@ -273,9 +273,14 @@ namespace grb {
 							assert( !maybe_invalid || _n <= _cap );
 							_n = _cap;
 
-							for( size_t i = 0; i < _n; ++i ) {
-								_assigned[ i ] = true;
-								_stack[ i ] = i;
+							#pragma omp parallel
+							{
+								size_t start, end;
+								config::OMP::localRange( start, end, 0, _n );
+								for( size_t i = start; i < end; ++i ) {
+									_assigned[ i ] = true;
+									_stack[ i ] = i;
+								}
 							}
 						}
 					}
@@ -321,7 +326,7 @@ namespace grb {
 				template< bool maybe_invalid = false >
 				inline void assignAll() noexcept {
 					// Must be defined with the same name as the reference backend
-					return local_assignAllNotAlreadyAssigned< maybe_invalid >( );
+					return local_assignAll< maybe_invalid >();
 				}
 
 				inline void clear() noexcept {
