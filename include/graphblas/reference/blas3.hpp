@@ -918,6 +918,152 @@ namespace grb {
 
 	namespace internal {
 
+		/** Function that folds given matrix \a A to the matrix \a B.
+		 * Function keeps one value per row, the maximal value of a non-zero in that row.
+		 * In the case of ties, the maximal position is kept.
+		 */
+
+		template<
+			Descriptor descr = descriptors::no_operation,
+			typename IOType,
+			typename RIT, typename CIT, typename NIT
+		>
+		RC maxPerRow(
+			Matrix< IOType, reference, RIT, CIT, NIT  > &B,
+			const Matrix< IOType, reference, RIT, CIT, NIT  > &A,
+			const Phase &phase = EXECUTE
+		) {
+#ifdef _DEBUG
+			std::cout << "In grb::internal::maxPerRow\n";
+#endif
+			RC rc = SUCCESS;
+
+
+
+			const size_t m = nrows( A );
+			const size_t n = ncols( A );
+
+			assert( phase != TRY );
+			if( m != grb::nrows( B ) ) {
+				return MISMATCH;
+			}
+
+			if( n != grb::ncols( B ) ) {
+				return MISMATCH;
+			}
+
+
+			const auto &A_raw = internal::getCRS( A );
+
+
+			size_t nzc = 0;
+			for( size_t i = 0; i < m; ++i ) {
+				if( A_raw.col_start[ i ] != A_raw.col_start[ i + 1 ] ) {
+					nzc++;
+				}
+			}
+
+			if( phase == RESIZE ) {
+				return resize( B, nzc );
+			}
+
+			assert( phase == EXECUTE );
+			if( capacity( B ) < nzc ) {
+	#ifdef _DEBUG
+				std::cout << "\t insufficient capacity to complete "
+					"requested maximum per row computation\n";
+	#endif
+				const RC clear_rc = clear( B );
+				if( clear_rc != SUCCESS ) {
+					return PANIC;
+				} else {
+					return FAILED;
+				}
+			}
+
+			auto &CRS_raw = internal::getCRS( B );
+			auto &CCS_raw = internal::getCCS( B );
+
+			const auto dummy_identity = identities::zero< IOType >::value();
+
+			RC ret = SUCCESS;
+			if( phase == EXECUTE ) {
+				ret = grb::clear( B );
+			}
+			assert( nnz( B ) == 0 ); 
+
+			char * arr1 = nullptr, * arr2 = nullptr ;
+			char * buf1 = nullptr, * buf2 = nullptr;
+			IOType * valbuf1 = nullptr, * valbuf2 = nullptr;
+			internal::getMatrixBuffers( arr1, buf1, valbuf1, 1, A );
+			internal::getMatrixBuffers( arr2, buf2, valbuf2, 1, B );
+
+
+			config::NonzeroIndexType * B_col_index = internal::template
+				getReferenceBuffer< typename config::NonzeroIndexType >( n + 1 );
+
+			CRS_raw.col_start[ 0 ] = 0;
+			for( size_t j = 0; j <= n; ++j ) {
+				CCS_raw.col_start[ j ] = 0;
+			}
+
+			
+			nzc = 0;
+			for( size_t i = 0; i < m; ++i ) {
+				IOType fin_val;
+				size_t fin_col;
+				for( auto k = A_raw.col_start[ i ]; k < A_raw.col_start[ i + 1 ]; ++k ) {
+					const IOType k_val = A_raw.getValue( k, dummy_identity );
+					const size_t k_col = A_raw.row_index[ k ];
+					if( k == A_raw.col_start[ i ] || ( k_val > fin_val || ( k_val == fin_val && k_col > fin_col ) ) ) {
+						fin_val = k_val;
+						fin_col = k_col;
+					}
+				}
+				if( A_raw.col_start[ i ] != A_raw.col_start[ i + 1 ] ) {
+					CCS_raw.col_start[ fin_col + 1 ]++;
+					CRS_raw.row_index[ nzc ] = fin_col;
+					CRS_raw.setValue( nzc, fin_val );
+					nzc++;
+				}
+				CRS_raw.col_start[ i + 1 ] = nzc;
+			}
+
+
+			B_col_index[ 0 ] = 0;
+			for( size_t j = 1; j < n; ++j ) {
+				CCS_raw.col_start[ j + 1 ] += CCS_raw.col_start[ j ];
+				B_col_index[ j ] = 0;
+			}
+			for( size_t i = 0; i < n; ++i ) {
+				IOType fin_val;
+				size_t fin_col;
+				for( auto k = A_raw.col_start[ i ]; k < A_raw.col_start[ i + 1 ]; ++k ) {
+					const IOType k_val = A_raw.getValue( k, dummy_identity );
+					const size_t k_col = A_raw.row_index[ k ];
+					if( k == A_raw.col_start[ i ] || ( k_val > fin_val || ( k_val == fin_val && k_col > fin_col ) ) ) {
+						fin_val = k_val;
+						fin_col = k_col;
+					}
+				}
+				if( A_raw.col_start[ i ] != A_raw.col_start[ i + 1 ] ) {
+					const size_t CCS_index = B_col_index[ fin_col ]++ + CCS_raw.col_start[ fin_col ];
+					CCS_raw.row_index[ CCS_index ] = i;
+					CCS_raw.setValue( CCS_index, fin_val );
+				}
+			}
+
+			for( size_t j = 0; j < n; ++j ) {
+				assert( CCS_raw.col_start[ j + 1 ] - CCS_raw.col_start[ j ] ==
+					B_col_index[ j ] );
+			}
+			
+
+			internal::setCurrentNonzeroes( B, nzc );
+
+			return ret;
+		}
+
 		/**
 		 * \internal general elementwise matrix application that all eWiseApply
 		 *           variants refer to.
