@@ -633,7 +633,7 @@ namespace grb {
 						// parallel computation of the prefix sum
 						size_t local_prefix_sum[ prefix_sum_num_tiles ];
 
-						#pragma omp parallel num_threads(nthreads)
+						#pragma omp parallel num_threads( nthreads )
 						{
 							// the chunk size chosen here avoids false sharing (assuming that
 							// local_prefix_sum is aligned)
@@ -664,6 +664,8 @@ namespace grb {
 								local_prefix_sum[ id ] = pref_sum[ upper - 1 ];
 							}
 
+							#pragma omp barrier
+
 							// here, there is an implicit barrier that ensures all threads have
 							// already written the local prefix sum for each parallel task
 
@@ -674,7 +676,7 @@ namespace grb {
 								for( size_t i = 1; i < prefix_sum_num_tiles; i++ ) {
 									local_prefix_sum[ i ] += local_prefix_sum[ i - 1 ];
 								}
-							}
+							} // note implicit OpenMP barrier here
 
 							// note here there local_prefix_sum is read-only. Several threads may
 							// read the same cache line, but not write to the same one. So we do
