@@ -348,9 +348,13 @@ namespace grb {
 								_assigned[ i ] = false;
 							}
 						} else {
-							#pragma omp parallel for schedule( static, config::CACHE_LINE_SIZE::value() )
-							for( size_t i = 0; i < _cap; ++i ) {
-								_assigned[ i ] = false;
+							#pragma omp parallel
+							{
+								size_t start, end;
+								config::OMP::localRange( start, end, 0, _cap );
+								for( size_t i = start; i < end; ++i ) {
+									_assigned[ i ] = false;
+								}
 							}
 						}
 					} else {
@@ -359,9 +363,13 @@ namespace grb {
 								_assigned[ _stack[ k ] ] = false;
 							}
 						} else {
-							#pragma omp parallel for schedule( static, config::CACHE_LINE_SIZE::value() )
-							for( size_t k = 0; k < _n; ++k ) {
-								_assigned[ _stack[ k ] ] = false;
+							#pragma omp parallel
+							{
+								size_t start, end;
+								config::OMP::localRange( start, end, 0, _n );
+								for( size_t k = start; k < end; ++k ) {
+									_assigned[ _stack[ k ] ] = false;
+								}
 							}
 						}
 					}
@@ -457,9 +465,13 @@ namespace grb {
 							local_buffer[ tile_id ] = _buffer + tile_id * (tile_size + 1);
 						}
 					} else {
-						#pragma omp parallel for schedule( static, config::CACHE_LINE_SIZE::value() ) num_threads( nthreads )
-						for( size_t tile_id = 0; tile_id < num_tiles; ++tile_id ) {
-							local_buffer[ tile_id ] = _buffer + tile_id * (tile_size + 1);
+						#pragma omp parallel num_threads( nthreads )
+						{
+							size_t start, end;
+							config::OMP::localRange( start, end, 0, num_tiles );
+							for( size_t tile_id = start; tile_id < end; ++tile_id ) {
+								local_buffer[ tile_id ] = _buffer + tile_id * (tile_size + 1);
+							}
 						}
 					}
 
@@ -625,8 +637,9 @@ namespace grb {
 						{
 							// the chunk size chosen here avoids false sharing (assuming that
 							// local_prefix_sum is aligned)
-							#pragma omp for schedule( static, config::CACHE_LINE_SIZE::value() )
-							for( size_t id = 0; id < prefix_sum_num_tiles; id++ ) {
+							size_t start, end;
+							config::OMP::localRange( start, end, 0, prefix_sum_num_tiles );
+							for( size_t id = start; id < end; id++ ) {
 
 								size_t lower, upper;
 								config::OMP::localRange( lower, upper, 0, num_tiles,
@@ -666,8 +679,9 @@ namespace grb {
 							// note here there local_prefix_sum is read-only. Several threads may
 							// read the same cache line, but not write to the same one. So we do
 							// not define a minimum chunk size
-							#pragma omp for schedule( static )
-							for(size_t id = 0; id < prefix_sum_num_tiles; id++ ) {
+							// also note that this loops over the exact same range as the for-loop
+							// before the omp single block
+							for( size_t id = start; id < end; id++ ) {
 
 								size_t lower, upper;
 								config::OMP::localRange( lower, upper, 0, num_tiles,
