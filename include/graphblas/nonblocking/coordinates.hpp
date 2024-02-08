@@ -265,7 +265,7 @@ namespace grb {
 				}
 
 				template< bool maybe_invalid = false >
-				inline void local_assignAll( ) noexcept {
+				inline void local_assignAll() noexcept {
 					if( maybe_invalid || _n != _cap ) {
 						if( _assigned != nullptr ) {
 							assert( _stack != nullptr );
@@ -318,8 +318,21 @@ namespace grb {
 					}
 				}
 
-				inline void clear() noexcept {
+				inline void assignAll() noexcept {
+					// this operates on the global coordinates, not on a local view of it
+					#pragma omp parallel
+					{
+						size_t start, end;
+						config::OMP::localRange( start, end, 0, _cap );
+						for( size_t i = start; i < end; ++i ) {
+							_assigned[ i ] = true;
+							_stack[ i ] = i;
+						}
+					}
+					_n = _cap;
+				}
 
+				inline void clear() noexcept {
 					if( _n == _cap ) {
 #ifndef NDEBUG
 						if( _assigned == nullptr && _cap > 0 ) {
@@ -327,7 +340,6 @@ namespace grb {
 							assert( dense_coordinates_may_not_call_clear );
 						}
 #endif
-
 						#pragma omp parallel for schedule( dynamic, config::CACHE_LINE_SIZE::value() )
 						for( size_t i = 0; i < _cap; ++i ) {
 							_assigned[ i ] = false;

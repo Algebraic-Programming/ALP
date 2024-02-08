@@ -49,7 +49,10 @@ void grbProgram( const void *, const size_t in_size, int &error ) {
 	}
 
 	if( !error ) {
-		rc =  grb::eWiseLambda( [&M]( const size_t i, const size_t j, int& nz ) { nz = j; }, M );
+		rc =  grb::eWiseLambda( [&M]( const size_t i, const size_t j, int& nz ) {
+				(void) i;
+				nz = j;
+			}, M );
 	}
 	if( rc != SUCCESS ) {
 		std::cerr << "\t eWiseLambda call failed\n";
@@ -57,8 +60,8 @@ void grbProgram( const void *, const size_t in_size, int &error ) {
 	}
 
 	if( !error ) {
-		for(auto it: M) {
-			if( it.second != it.first.second ) {
+		for( const auto &it : M ) {
+			if( static_cast< size_t >(it.second) != it.first.second ) {
 				std::cerr << "\t eWiseLambda returned incorrect result\n";
 				error = 15;
 				break;
