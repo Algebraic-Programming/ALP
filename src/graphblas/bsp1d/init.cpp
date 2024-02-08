@@ -20,18 +20,15 @@
  * @date 24th of January, 2017
  */
 
-// DBG
-//#define _DEBUG
-//#undef NDEBUG
-
-//DO NOT REMOVE THIS HEADER!!! needed for 'finalize< _GRB_BSP1D_BACKEND >();'
+//header needed for 'finalize< _GRB_BSP1D_BACKEND >();'
 #include <graphblas/init.hpp>
-
 
 #include <graphblas/bsp/config.hpp>
 #include <graphblas/bsp1d/init.hpp>
 
-grb::utils::ThreadLocalStorage< grb::internal::BSP1D_Data > grb::internal::grb_BSP1D;
+
+grb::utils::ThreadLocalStorage< grb::internal::BSP1D_Data >
+grb::internal::grb_BSP1D;
 
 template<>
 grb::RC grb::init< grb::BSP1D >(
@@ -51,7 +48,8 @@ grb::RC grb::init< grb::BSP1D >(
 #ifdef _DEBUG
 	std::cout << s << ": initializing thread-local store..." << std::endl;
 #endif
-	return data.initialize( ctx,
+	return data.initialize(
+		ctx,
 		static_cast< lpf_pid_t >(s),
 		static_cast< lpf_pid_t >(P),
 		grb::config::LPF::regs(),
@@ -91,14 +89,18 @@ grb::RC grb::finalize< grb::BSP1D >() {
 	return ret2;
 }
 
-grb::RC grb::internal::BSP1D_Data::initialize( lpf_t _context,
+grb::RC grb::internal::BSP1D_Data::initialize(
+	lpf_t _context,
 	const lpf_pid_t _s, const lpf_pid_t _P,
 	const size_t _regs, const size_t _maxh
 ) {
-	// required buffer for all-to-all on #messages, followed by a prefix-sum
+	// required buffer for an all-to-all on #messages followed by a prefix-sum
+
 	// also dubs as the required buffer sufficient for all-reducing any
-	// standard raw data type. To guarantee all-reducing user-defined types
-	// is possible, a grb::Scalar must be introduced.
+	// fundamental raw data type.
+
+	// To guarantee all-reducing user-defined types is possible, a grb::Scalar
+	// must be introduced(!)
 	const size_t bufferSize = 3 * _P * sizeof( size_t );
 	return initialize( _context, _s, _P, _regs, _maxh, bufferSize );
 }
@@ -115,11 +117,15 @@ grb::RC grb::internal::BSP1D_Data::initialize(
 		<< _maxh << ", " << _bufsize << "\n";
 #endif
 	// arg checks
-	assert( _context != NULL );
+	assert( _context != nullptr );
 	assert( _regs > 0 );
 
 	// initialise fields
 	regs_taken = 0;
+	coll_call_capacity = 0;
+	coll_reduction_bsize = 0;
+	coll_other_bsize = 0;
+	lpf_info = LPF_INVALID_MACHINE;
 	s = _s;
 	P = _P;
 	context = _context;
@@ -130,16 +136,24 @@ grb::RC grb::internal::BSP1D_Data::initialize(
 	payload_size = 0;
 	tag_size = 0;
 	max_msgs = 0;
+	cur_payload = nullptr;
+	cur_msgs = nullptr;
+	queue_status = 0;
+	queue = LPF_INVALID_BSMP;
+	coll = LPF_INVALID_COLL;
+	// end default initialisers
+
+	// try allocations (and initialisations) first
 	cur_payload = new( std::nothrow ) size_t[ P ];
-	if( cur_payload == NULL ) {
+	if( cur_payload == nullptr ) {
 #ifdef _DEBUG
 		std::cerr << "\t out of memory while initializing (1)\n";
 #endif
 		return OUTOFMEM;
 	}
 	cur_msgs = new( std::nothrow ) size_t[ P ];
-	if( cur_msgs == NULL ) {
-		delete[] cur_payload;
+	if( cur_msgs == nullptr ) {
+		delete [] cur_payload;
 #ifdef _DEBUG
 		std::cerr << "\t out of memory while initializing (2)\n";
 #endif
@@ -148,8 +162,6 @@ grb::RC grb::internal::BSP1D_Data::initialize(
 	for( size_t i = 0; i < P; ++i ) {
 		cur_payload[ i ] = cur_msgs[ i ] = 0;
 	}
-	queue_status = 0;
-	queue = LPF_INVALID_BSMP;
 
 	if( _bufsize > 0 ) {
 		// try and allocate the buffer
@@ -169,70 +181,139 @@ grb::RC grb::internal::BSP1D_Data::initialize(
 		}
 	} else {
 		// set buffer to empty
-		buffer = NULL;
+		buffer = nullptr;
 	}
 
+	// now make allocation requests of LPF:
+
+	// first, the machine info
+	if( lpfrc == LPF_SUCCESS ) {
+		lpfrc = lpf_probe( context, &lpf_info );
+	}
+	if( lpfrc == LPF_ERR_OUT_OF_MEMORY ) {
+		delete [] cur_payload;
+		delete [] cur_msgs;
+		if( buffer != nullptr ) { free( buffer ); }
+#ifdef _DEBUG
+		std::cerr << "Out of memory while initializing lpf_machine_t\n";
+#endif
+		return OUTOFMEM;
+	} else if( lpfrc != LPF_SUCCESS ) {
+		const bool lpf_probe_spec_says_this_should_never_occur = false;
+		assert( lpf_probe_spec_says_this_should_never_occur );
+		return PANIC;
+	}
+
+	// resize internal LPF buffers
+
+	// message buffer
+	{
+		// make sure we allocate at least enough buffer for a broadcast
+		const size_t max_msgs_for_bcast = P > 1
+			? std::max( P + 1, 2 * P - 3 )
+			: P + 1;
+		_maxh = max_msgs_for_bcast > _maxh
+			? max_msgs_for_bcast
+			: _maxh;
+	}
 #ifdef _DEBUG
 	std::cout << "\t " << s << ": calling lpf_resize_message_queue, requesting a "
 		<< "capacity of " << _maxh << ". Context is " << context << std::endl;
 #endif
-
-	// resize LPF buffers accordingly
 	lpf_err_t lpfrc = lpf_resize_message_queue( context, _maxh );
-	if( lpfrc == LPF_SUCCESS ) {
-		lpfrc = lpf_probe( context, &lpf_info );
+	if( lpfrc == LPF_ERR_OUT_OF_MEMORY ) {
+		delete[] cur_payload;
+		delete[] cur_msgs;
+		if( buffer != nullptr ) { free( buffer ); }
+#ifdef _DEBUG
+		std::cerr << "Out of memory while initializing LPF message queue\n";
+#endif
+		return OUTOFMEM;
 	}
 
-	// interpret mitigable error codes
+	// memory slot buffer
+#ifdef _DEBUG
+	std::cout << s << ": calling lpf_resize_memory_register, requesting a "
+		<< "capacity of " << _regs << ". Context is " << context << std::endl;
+#endif
+	// note: we ask the requested number of memory slots for a capacity, plus one
+	//       in order to initialise the LPF collectives.
+	lpfrc = lpf_resize_memory_register( context, _regs + 1 );
 	if( lpfrc == LPF_ERR_OUT_OF_MEMORY ) {
 		delete[] cur_payload;
 		delete[] cur_msgs;
+		if( buffer != nullptr ) { free( buffer ); }
 #ifdef _DEBUG
-		std::cerr << "Out of memory while initializing (4)\n";
+		std::cerr << "Out of memory while initializing memory slot buffer\n";
 #endif
 		return OUTOFMEM;
 	}
-#ifdef _DEBUG
-	std::cout << s << ": calling lpf_resize_memory_register, "
-		<< "requesting a capacity of " << _regs << ". "
-		<< "Context is " << context << std::endl;
-#endif
-	lpfrc = lpf_resize_memory_register( context, _regs );
-	if( lpfrc == LPF_ERR_OUT_OF_MEMORY ) {
-		delete[] cur_payload;
-		delete[] cur_msgs;
-#ifdef _DEBUG
-		std::cerr << "Out of memory while initializing (5)\n";
-#endif
-		return OUTOFMEM;
-	} else if( lpfrc == LPF_SUCCESS ) {
+
+	// activation of requested LPF buffers is required before we can initialise
+	// LPF libraries and register our own buffer for communication
+	if( lpfrc == LPF_SUCCESS ) {
 		// activate the new buffer sizes
 		lpfrc = lpf_sync( context, LPF_SYNC_DEFAULT );
 	}
-	// if non-mitigable, return panic
 	if( lpfrc != LPF_SUCCESS ) {
+		// any error at this point cannot be mitigated by ALP; return panic
 		delete[] cur_payload;
 		delete[] cur_msgs;
+		if( buffer != nullptr ) { free( buffer ); }
 #ifdef _DEBUG
 		std::cerr << "Communication layer failed to initialize\n";
 #endif
 		return PANIC;
 	}
 
-	// register the buffer for communication and activate it
+	// initialise the LPF collectives
+	coll_call_capacity = COLL_CALL_CAPACITY_DEFAULT;
+	coll_reduction_bsize = COLL_REDUCTION_BSIZE_DEFAULT;
+	coll_other_bsize = COLL_OTHER_BSIZE_DEFAULT;
+	if( lpfrc == LPF_SUCCESS ) {
+		lpfrc = lpf_collectives_init(
+			context,
+			s, P,
+			coll_call_capacity,
+			coll_reduction_bsize,
+			coll_other_bsize,
+			&coll
+		);
+	}
+	if( lpfrc != LPF_SUCCESS ) {
+		assert( lpfrc == LPF_ERR_OUT_OF_MEMORY );
+		delete[] cur_payload;
+		delete[] cur_msgs;
+		if( buffer != nullptr ) { free( buffer ); }
+#ifdef _DEBUG
+		std::cerr << "Out of memory while initializing LPF collectives\n";
+#endif
+		return OUTOFMEM;
+	}
+
+	// register the buffer for communication
 	lpfrc = lpf_register_global( context, buffer, buffer_size, &slot );
 #ifdef _DEBUG
 	std::cout << _s << ": address " << buffer << " (size " << buffer_size << ") "
 		<< "binds to slot " << slot << "\n";
 #endif
-	if( lpfrc == LPF_SUCCESS ) {
-		lpfrc = lpf_sync( context, LPF_SYNC_DEFAULT );
+	assert( lpfrc == LPF_SUCCESS ) {
+	if( lpfrc != LPF_SUCCESS ) {
+		const bool lpf_reg_global_spec_this_should_never_occur = false;
+		assert( lpf_reg_global_spec_this_should_never_occur );
+		return PANIC;
 	}
+
+	// activate our buffer registration as well as the collectives instance
+	lpfrc = lpf_sync( context, LPF_SYNC_DEFAULT );
 	if( lpfrc != LPF_SUCCESS ) {
 		delete[] cur_payload;
 		delete[] cur_msgs;
+		if( buffer != nullptr ) { free( buffer ); }
+		(void) lpf_collectives_destroy( coll );
+		(void) lpf_deregister( slot );
 #ifdef _DEBUG
-		std::cerr << "Failed to initialize global buffer\n";
+		std::cerr << "Failed to activate global buffer and LPF collectives\n";
 #endif
 		return PANIC;
 	}
@@ -241,52 +322,70 @@ grb::RC grb::internal::BSP1D_Data::initialize(
 	lpf_regs = _regs;
 	lpf_maxh = _maxh;
 	buffer_size = _bufsize;
-	signalMemslotTaken();
-	return grb::init< _GRB_BSP1D_BACKEND >( 0, 1, NULL );
+	signalMemslotTaken( 2 ); // one for the buffer, another for the collectives
+	return grb::init< _GRB_BSP1D_BACKEND >( 0, 1, nullptr );
 }
 
 grb::RC grb::internal::BSP1D_Data::destroy() {
+	grb::RC ret = SUCCESS;
+
 	// deregister buffer area
-	lpf_err_t lpfrc = lpf_deregister( context, slot );
+	if( lpf_deregister( context, slot ) != LPF_SUCCESS ) {
+		// this should never happen according to the LPF specs
+		const bool lpf_specs_violated = false;
+		assert( lpf_specs_violated );
+		ret = PANIC;
+	}
 
 	// invalidate all fields
 	regs_taken = 0;
+	coll_call_capacity = 0;
+	coll_reduction_bsize = 0;
+	coll_other_bsize = 0;
+	lpf_info = LPF_INVALID_MACHINE;
 	s = 0;
 	P = 0;
 	context = LPF_NONE;
 	lpf_regs = 0;
 	lpf_maxh = 0;
 	buffer_size = 0;
+	assert( buffer != nullptr );
 	free( buffer );
-	buffer = NULL;
+	buffer = nullptr;
 	slot = LPF_INVALID_MEMSLOT;
 	payload_size = 0;
 	tag_size = 0;
 	max_msgs = 0;
-	if( cur_payload != NULL ) {
-		delete[] cur_payload;
-		cur_payload = NULL;
+	if( cur_payload != nullptr ) {
+		delete [] cur_payload;
+		cur_payload = nullptr;
 	}
-	if( cur_msgs != NULL ) {
-		delete[] cur_msgs;
-		cur_msgs = NULL;
+	if( cur_msgs != nullptr ) {
+		delete [] cur_msgs;
+		cur_msgs = nullptr;
 	}
 	queue_status = 0;
+	put_requests.clear();
+	get_requests.clear();
 	if( queue != LPF_INVALID_BSMP ) {
 		if( lpf_bsmp_destroy( &queue ) != LPF_SUCCESS ) {
-			return PANIC;
+			std::cerr << "Error while destroying LPF BSMP queue\n";
+			ret = PANIC;
 		}
 		assert( queue == LPF_INVALID_BSMP );
 	}
+	if( coll != LPF_INVALID_COLL ) {
+		if( lpf_collectives_destroy( coll ) != LPF_SUCCESS ) {
+			std::cerr << "Error while destroying LPF collectives instance\n";
+			ret = PANIC;
+		}
+		coll = LPF_INVALID_COLL;
+	}
+	mapper.clear();
 	destroyed = true;
 
-	// check return status
-	if( lpfrc != LPF_SUCCESS ) {
-		// this should never happen according to the specs
-		return PANIC;
-	}
 	// done
-	return SUCCESS;
+	return ret;
 }
 
 // The following function was declared inline:
@@ -509,7 +608,8 @@ grb::RC grb::internal::BSP1D_Data::ensureBSMPCapacity(
 	}
 
 	// create new buffer
-	if( lpf_bsmp_create( context,
+	if( lpf_bsmp_create(
+			context,
 			s, P,
 			payload_size, tag_size,
 			max_msgs, &queue
@@ -519,6 +619,48 @@ grb::RC grb::internal::BSP1D_Data::ensureBSMPCapacity(
 	}
 
 	// done
+	return SUCCESS;
+}
+
+grb::RC grb::internal::BSP1D_Data::ensureCollectivesCapacity(
+	const size_t requested_call_capacity,
+	const size_t requested_reduction_bsize,
+	const size_t requested_other_bsize
+) {
+	const bool need_reinitialisation =
+		requested_call_capacity > coll_call_capacity ||
+		requested_reduction_bsize > coll_reduction_bsize ||
+		requested_other_bsize > coll_other_bsize;
+	if( !need_reinitialisation ) { return SUCCESS; }
+
+	assert( coll != LPF_INVALID_COLL );
+	lpf_err_t lpf_rc = lpf_collectives_destroy( coll );
+	if( lpf_rc == LPF_SUCCESS ) {
+		coll_call_capacity = requested_call_capacity > coll_call_capacity
+			? requested_call_capacity
+			: coll_call_capacity;
+		coll_reduction_bsize = requested_reduction_bsize > coll_reduction_bsize
+			? requested_reduction_bsize
+			: coll_reduction_bsize;
+		coll_other_bsize = requested_other_bsize > coll_other_bsize
+			? requested_other_bsize
+			: coll_other_bsize;
+		lpf_rc = lpf_collectives_init(
+			context,
+			s, P,
+			requested_call_capacity,
+			requested_reduction_bsize,
+			requested_other_bsize
+		);
+	}
+	if( lpf_rc != LPF_ERR_OUT_OF_MEMORY ) {
+		return OUTOFMEM;
+	} else if( lpf_rc != LPF_SUCCESS ) {
+		const bool lpf_coll_can_only_succeed_or_oom = false;
+		assert( lpf_coll_can_only_succeed_or_oom );
+		std::cerr << "Error during call to BSP1D_Data::ensureCollectivesCapacity\n";
+		return PANIC;
+	}
 	return SUCCESS;
 }
 
