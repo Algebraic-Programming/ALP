@@ -936,7 +936,6 @@ namespace grb {
 #ifdef _DEBUG
 			std::cout << "In grb::internal::maxPerRow\n";
 #endif
-			RC rc = SUCCESS;
 
 
 
