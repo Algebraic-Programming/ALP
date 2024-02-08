@@ -180,7 +180,8 @@ namespace grb {
 		typename T
 	>
 	RC set(
-		Vector< DataType, hyperdags, Coords > &x, const T val,
+		Vector< DataType, hyperdags, Coords > &x, 
+		const T val,
 		const Phase &phase = EXECUTE,
 		const typename std::enable_if<
 			!grb::is_object< DataType >::value &&
