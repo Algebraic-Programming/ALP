@@ -273,14 +273,9 @@ namespace grb {
 							assert( !maybe_invalid || _n <= _cap );
 							_n = _cap;
 
-							#pragma omp parallel
-							{
-								size_t start, end;
-								config::OMP::localRange( start, end, 0, _n );
-								for( size_t i = start; i < end; ++i ) {
-									_assigned[ i ] = true;
-									_stack[ i ] = i;
-								}
+							for( size_t i = 0; i < _n; ++i ) {
+								_assigned[ i ] = true;
+								_stack[ i ] = i;
 							}
 						}
 					}
@@ -323,14 +318,21 @@ namespace grb {
 					}
 				}
 
-				template< bool maybe_invalid = false >
 				inline void assignAll() noexcept {
-					// Must be defined with the same name as the reference backend
-					return local_assignAll< maybe_invalid >();
+					// this operates on the global coordinates, not on a local view of it
+					#pragma omp parallel
+					{
+						size_t start, end;
+						config::OMP::localRange( start, end, 0, _cap );
+						for( size_t i = start; i < end; ++i ) {
+							_assigned[ i ] = true;
+							_stack[ i ] = i;
+						}
+					}
+					_n = _cap;
 				}
 
 				inline void clear() noexcept {
-
 					if( _n == _cap ) {
 #ifndef NDEBUG
 						if( _assigned == nullptr && _cap > 0 ) {
@@ -338,7 +340,6 @@ namespace grb {
 							assert( dense_coordinates_may_not_call_clear );
 						}
 #endif
-
 						#pragma omp parallel for schedule( dynamic, config::CACHE_LINE_SIZE::value() )
 						for( size_t i = 0; i < _cap; ++i ) {
 							_assigned[ i ] = false;
