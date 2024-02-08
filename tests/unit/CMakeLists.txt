@@ -259,6 +259,11 @@ add_grb_executables( outer outer.cpp
 	BACKENDS reference reference_omp hyperdags nonblocking
 )
 
+add_grb_executables( maxPerRow maxPerRow.cpp
+	BACKENDS reference
+	ADDITIONAL_LINK_LIBRARIES test_utils
+)
+
 # must generate the golden output for other tests
 force_add_grb_executable( mxv mxv.cpp
 	BACKEND reference
