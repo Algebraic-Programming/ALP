@@ -24,6 +24,12 @@ variables:
       - "yes"
       - "no"
     description: "Enable compilation using multiple compilers"
+  SLURM_TESTS_ENABLED:
+    value: "no"
+    options:
+      - "yes"
+      - "no"
+    description: "Enable test on the Slurm cluster"
   COVERAGE_ENABLED:
     value: "no"
     options:
@@ -237,6 +243,36 @@ gitleaks:
   script: gitleaks detect -v --source .
 
 
+## Jobs running on Slurm cluster
+
+# factored out command to cmake and build in non-debug mode
+.build_ndebug: &build_ndebug_slurm
+  - mkdir -p install build && cd ./build
+  - ../bootstrap.sh --prefix=../install --with-datasets=${ALP_DATASETS}
+  - make -j$(nproc)
+
+tests_performance_slurm:
+  rules:
+    - if: $SLURM_TESTS_ENABLED == "yes"
+  tags:
+    - slurm
+  variables:
+    CI_SLURM_PARTITION: "Zen3"
+    CI_SLURM_NNODES: "1"
+    CI_SLURM_NTASKS: "1"
+    CI_SLURM_CPUS_PER_TASK: "64"
+    CI_SLURM_MEM_PER_NODE: "64G"
+    CI_SLURM_TIMELIMIT: "00-10:00:00" # 10 hours
+    SLURM_JOB_START_TIMEOUT_SECONDS: "3600" # 1 hour timeout to switch from PENDING to RUNNING
+  script:
+    - *build_ndebug
+    - make -j$(nproc) performancetests &| tee performancetests.log
+    - ../tests/summarise.sh performancetests.log tests/performance/output/benchmarks tests/performance/output/scaling
+  artifacts:
+    paths: [ build/*.log ]
+    expire_in: 1 day
+
+
 ## Additional tests specific to main branches only
 
 tests_performance:
@@ -363,7 +399,7 @@ coverage_matrix:
     - echo "-- NONBLOCKING=${backends_array[3]}"
 
     - rm -rf build install && mkdir -p install build && cd build
-    - cmake -DCMAKE_INSTALL_PREFIX='../install' 
+    - cmake -DCMAKE_INSTALL_PREFIX='../install'
       -DCMAKE_BUILD_TYPE=Coverage
       -DDATASETS_DIR=${ALP_DATASETS}
       -DWITH_HYPERDAGS_BACKEND=${backends_array[0]}
