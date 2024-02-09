@@ -266,7 +266,7 @@ tests_performance_slurm:
     SLURM_JOB_START_TIMEOUT_SECONDS: "3600" # 1 hour timeout to switch from PENDING to RUNNING
   script:
     - *build_ndebug
-    - make -j$(nproc) performancetests &| tee performancetests.log
+    - make -j$(nproc) performancetests |& tee performancetests.log
     - ../tests/summarise.sh performancetests.log tests/performance/output/benchmarks tests/performance/output/scaling
   artifacts:
     paths: [ build/*.log ]
