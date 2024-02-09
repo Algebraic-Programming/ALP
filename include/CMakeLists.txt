@@ -219,30 +219,20 @@ install( DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/graphblas/interfaces/"
 
 install( TARGETS algorithms EXPORT GraphBLASTargets )
 
-# generate the spblas header with the library prefix
-configure_file( ${CMAKE_CURRENT_SOURCE_DIR}/transition/spblas.h.in
-	${CMAKE_CURRENT_BINARY_DIR}/transition/spblas.h @ONLY
-)
-
 # this target lists the transition path headers
 # these are plain C headers and do not have any dependences
-add_library( transition_headers INTERFACE )
+add_library( transition INTERFACE )
 
 target_include_directories(
-	transition_headers INTERFACE
+	transition INTERFACE
 	$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/transition/>
-	$<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}/transition/>
 	$<INSTALL_INTERFACE:transition/>
 )
 
-install( FILES ${CMAKE_CURRENT_BINARY_DIR}/transition/spblas.h
-	DESTINATION "${INCLUDE_INSTALL_DIR}/transition"
-)
-
 install( DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/transition/"
-	DESTINATION "${INCLUDE_INSTALL_DIR}/transition"
+	DESTINATION "${GRB_INCLUDE_INSTALL_DIR}/../transition/"
 	FILES_MATCHING REGEX "${HEADERS_REGEX}"
 )
 
-install( TARGETS transition_headers EXPORT GraphBLASTargets )
+install( TARGETS transition EXPORT GraphBLASTargets )
 

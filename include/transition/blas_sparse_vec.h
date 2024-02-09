@@ -21,47 +21,17 @@
  * This is an ALP-specific extension to the NIST Sparse BLAS standard, which
  * the ALP libsparseblas transition path also introduces to the de-facto spblas
  * standard.
- *
- * @author A. N. Yzelman
- * @date 2023
  */
 
 #ifndef _H_ALP_SPARSEBLAS_EXT_VEC
 #define _H_ALP_SPARSEBLAS_EXT_VEC
 
-/**
- * \addtogroup SPARSEBLAS
- * @{
- */
-
-/**@{*/
-/** \internal Helper macros for #EXTBLAS_FUN and #EXTBLAS_TYPE */
-#define __SPBLAS_CONC( _a, _b ) _a ## _b
-#define __SPBLAS_CONCAT( _a, _b ) __SPBLAS_CONC( _a, _b )
-#define SPCONCAT( _a, _b ) __SPBLAS_CONCAT( _a, _b )
-/**@}*/
-
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-/**@{*/
-/**
- * \internal
- *
- * Allows renaming our non-standard functions with some other prefix.
- *
- * The default prefixes are <tt>EXTBLAS_</tt> for functions and
- * <tt>extblas_</tt> for types.
- *
- * \endinternal
- */
-#define EXTBLAS_FUN( name ) SPCONCAT( EXTBLAS_, name )
-#define EXTBLAS_TYPE( name ) SPCONCAT( extblas_, name )
-/**@}*/
-
 /** A sparse vector. This is an implementation-specific extension. */
-typedef void * EXTBLAS_TYPE( sparse_vector );
+typedef void * extblas_sparse_vector;
 
 /**
  * Creates a handle to a new sparse vector that holds no entries.
@@ -72,7 +42,7 @@ typedef void * EXTBLAS_TYPE( sparse_vector );
  *
  * @returns An #extblas_sparse_vector that is under construction.
  */
-EXTBLAS_TYPE( sparse_vector ) EXTBLAS_FUN( dusv_begin )( const int n );
+extblas_sparse_vector EXTBLAS_dusv_begin( const int n );
 
 /**
  * Inserts a new nonzero entry into a sparse vector that is under construction.
@@ -90,8 +60,8 @@ EXTBLAS_TYPE( sparse_vector ) EXTBLAS_FUN( dusv_begin )( const int n );
  *
  * This is an implementation-specific extension.
  */
-int EXTBLAS_FUN( dusv_insert_entry )(
-	EXTBLAS_TYPE( sparse_vector ) x,
+int EXTBLAS_dusv_insert_entry(
+	extblas_sparse_vector x,
 	const double val,
 	const int index
 );
@@ -108,7 +78,7 @@ int EXTBLAS_FUN( dusv_insert_entry )(
  *
  * This is an implementation-specific extension.
  */
-int EXTBLAS_FUN( dusv_end )( EXTBLAS_TYPE( sparse_vector ) x );
+int EXTBLAS_dusv_end( extblas_sparse_vector x );
 
 /**
  * Destroys the given sparse vector.
@@ -122,7 +92,7 @@ int EXTBLAS_FUN( dusv_end )( EXTBLAS_TYPE( sparse_vector ) x );
  *
  * This is an implementation-specific extension.
  */
-int EXTBLAS_FUN( dusvds )( EXTBLAS_TYPE( sparse_vector ) x );
+int EXTBLAS_dusvds( extblas_sparse_vector x );
 
 /**
  * Retrieves the number of nonzeroes in a given finalised sparse vector.
@@ -137,7 +107,7 @@ int EXTBLAS_FUN( dusvds )( EXTBLAS_TYPE( sparse_vector ) x );
  *
  * This is an implementation-specific extension.
  */
-int EXTBLAS_FUN( dusv_nz )( const EXTBLAS_TYPE( sparse_vector ) x, int * nz );
+int EXTBLAS_dusv_nz( const extblas_sparse_vector x, int * nz );
 
 /**
  * Opens a sparse vector for read-out.
@@ -154,7 +124,7 @@ int EXTBLAS_FUN( dusv_nz )( const EXTBLAS_TYPE( sparse_vector ) x, int * nz );
  *
  * This is an implementation-specific extension.
  */
-int EXTBLAS_FUN( dusv_open )( const EXTBLAS_TYPE( sparse_vector ) x );
+int EXTBLAS_dusv_open( const extblas_sparse_vector x );
 
 /**
  * Retrieves a sparse vector entry.
@@ -184,8 +154,8 @@ int EXTBLAS_FUN( dusv_open )( const EXTBLAS_TYPE( sparse_vector ) x );
  *
  * This is an implementation-specific extension.
  */
-int EXTBLAS_FUN( dusv_get )(
-	const EXTBLAS_TYPE( sparse_vector ) x,
+int EXTBLAS_dusv_get(
+	const extblas_sparse_vector x,
 	double * const val, int * const ind
 );
 
@@ -200,7 +170,7 @@ int EXTBLAS_FUN( dusv_get )(
  *
  * This is an implementation-specific extension.
  */
-int EXTBLAS_FUN( dusv_close )( const EXTBLAS_TYPE( sparse_vector ) x );
+int EXTBLAS_dusv_close( const extblas_sparse_vector x );
 
 /**
  * Removes all entries from a finalised sparse vector.
@@ -213,9 +183,7 @@ int EXTBLAS_FUN( dusv_close )( const EXTBLAS_TYPE( sparse_vector ) x );
  *
  * This is an implementation-specific extension.
  */
-int EXTBLAS_FUN( dusv_clear )( EXTBLAS_TYPE( sparse_vector ) x );
-
-/**@}*/ // end doxygen grouping for SPARSEBLAS
+int EXTBLAS_dusv_clear( extblas_sparse_vector x );
 
 #ifdef __cplusplus
 } // end extern "C"

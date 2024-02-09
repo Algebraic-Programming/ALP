@@ -89,14 +89,6 @@ add_grb_executables( ewiseapply ewiseapply.cpp
 	BACKENDS reference reference_omp bsp1d hybrid hyperdags nonblocking
 )
 
-add_grb_executables( tril tril.cpp
-	BACKENDS reference reference_omp hyperdags
-)
-
-add_grb_executables( triu triu.cpp
-	BACKENDS reference reference_omp hyperdags
-)
-
 add_grb_executables( eWiseMatrix eWiseMatrix.cpp
 	BACKENDS reference reference_omp bsp1d hybrid hyperdags nonblocking
 )
@@ -131,10 +123,6 @@ add_grb_executables( masked_vxm masked_vxm.cpp
 add_grb_executables( matrixIterator matrixIterator.cpp
 	BACKENDS reference reference_omp bsp1d hybrid hyperdags nonblocking
 	ADDITIONAL_LINK_LIBRARIES test_utils_headers
-)
-
-add_grb_executables( fold_matrix_to_scalar fold_matrix_to_scalar.cpp
-	BACKENDS reference reference_omp bsp1d hybrid hyperdags nonblocking
 )
 
 add_grb_executables( doubleAssign doubleAssign.cpp
@@ -263,10 +251,6 @@ add_grb_executables( eWiseApplyMatrixReference eWiseApplyMatrixReference.cpp
 	ADDITIONAL_LINK_LIBRARIES test_utils_headers
 )
 
-add_grb_executables( eWiseLambda eWiseLambda.cpp
-	BACKENDS reference reference_omp hyperdags nonblocking
-)
-
 add_grb_executables( outer outer.cpp
 	BACKENDS reference reference_omp hyperdags nonblocking
 )
@@ -310,10 +294,6 @@ add_grb_executables( parallelRegularIterators parallelRegularIterators.cpp
 
 add_grb_executables( adapterIterator adapterIterator.cpp
 	BACKENDS reference reference_omp hyperdags nonblocking bsp1d hybrid
-)
-
-add_grb_executables( vectorFromListConstructor vectorFromListConstructor.cpp
-	BACKENDS reference reference_omp bsp1d hybrid hyperdags nonblocking
 )
 
 # the below targets test successfully when they compile -- they do not need to
