@@ -25,7 +25,7 @@
 #include <inttypes.h>
 
 #include <graphblas/algorithms/triangle_count.hpp>
-#include <graphblas/utils/Timer.hpp>
+#include <graphblas/utils/timer.hpp>
 #include <graphblas/utils/parser.hpp>
 
 #include <graphblas.hpp>
@@ -81,12 +81,12 @@ void grbProgram( const input & data_in, output & out ) {
 
 	timer.reset();
 	// Create a local parser
-	grb::utils::MatrixFileReader< 
+	grb::utils::MatrixFileReader<
 		void,
 		std::conditional<
 			( sizeof( grb::config::RowIndexType ) > sizeof( grb::config::ColIndexType ) ),
 			grb::config::RowIndexType,
-			grb::config::ColIndexType 
+			grb::config::ColIndexType
 		>::type
 	> parser( data_in.filename, data_in.direct );
 	assert( parser.m() == parser.n() );
@@ -134,12 +134,12 @@ void grbProgram( const input & data_in, output & out ) {
 			if( p.first == p.second ) {
 				continue;
 			}
-			
+
 			rows.push_back( p.first );
 			cols.push_back( p.second );
 		}
 		std::vector< IntegerType > values( rows.size(), static_cast< IntegerType >( 1 ) );
-		assert( SUCCESS == 
+		assert( SUCCESS ==
 			buildMatrixUnique( A, rows.data(), cols.data(), values.data(), values.size(), IOMode::SEQUENTIAL )
 		);
 	}
@@ -183,9 +183,9 @@ int main( int argc, char ** argv ) {
 	if( !parse_arguments( argc, argv, in, err ) ) {
 		return err;
 	}
-	
+
 	std::cout << "Executable called with parameters " << in.filename << ", "
-		<< "inner repititions = " << in.inner_rep << ", and outer reptitions = " 
+		<< "inner repititions = " << in.inner_rep << ", and outer reptitions = "
 		<< in.outer_rep	<< std::endl;
 
 	// Run the test for all algorithms
@@ -248,8 +248,8 @@ int main( int argc, char ** argv ) {
 bool parse_arguments( int argc, char ** argv, input & in, int& err ) {
 	// Check if we are testing on a file
 	if( argc < 4 || argc > 6 ) {
-		std::cerr << "Usages: \n\t" 
-			<< argv[ 0 ] << " <graph_filepath> <direct/indirect> <expected_triangle_count> (inner iterations) (outer iterations)" 
+		std::cerr << "Usages: \n\t"
+			<< argv[ 0 ] << " <graph_filepath> <direct/indirect> <expected_triangle_count> (inner iterations) (outer iterations)"
 			<< std::endl;
 		err = 1;
 		return false;

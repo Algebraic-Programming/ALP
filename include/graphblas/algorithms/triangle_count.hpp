@@ -31,7 +31,7 @@
 #include <numeric>
 #include <vector>
 
-#include <graphblas/utils/iterators/NonzeroIterator.hpp>
+#include <graphblas/utils/iterators/nonzeroIterator.hpp>
 
 #include <graphblas.hpp>
 
@@ -143,10 +143,10 @@ namespace grb {
 									   operators::mul< D1 >,
 									   identities::zero,
 									   identities::one >,
-			class MulMonoid = Monoid< operators::mul< D1 >, 
+			class MulMonoid = Monoid< operators::mul< D1 >,
 									  identities::one >,
-			class SumMonoid = Monoid< operators::add< size_t, D1, size_t >, 
-									  identities::zero > 
+			class SumMonoid = Monoid< operators::add< size_t, D1, size_t >,
+									  identities::zero >
 		>
 		RC triangle_count(
 			const TriangleCountAlgorithm algo,
