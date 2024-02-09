@@ -180,6 +180,11 @@ add_grb_executables( kcore_decomposition kcore_decomposition.cpp
 	BACKENDS reference reference_omp hyperdags nonblocking bsp1d hybrid
 )
 
+add_grb_executables( triangle_count triangle_count.cpp
+	ADDITIONAL_LINK_LIBRARIES test_utils_headers
+	BACKENDS reference reference_omp bsp1d hybrid hyperdags nonblocking
+)
+
 # targets to list and build the test for this category
 get_property( smoke_tests_list GLOBAL PROPERTY tests_category_smoke )
 add_custom_target( "list_tests_category_smoke"

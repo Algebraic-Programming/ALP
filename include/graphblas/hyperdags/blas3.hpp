@@ -332,6 +332,343 @@ namespace grb {
 		return ret;
 	}
 
+	template<
+		Descriptor descr = descriptors::no_operation,
+		class Monoid,
+		typename InputType, typename IOType, typename MaskType,
+		typename RIT_A, typename CIT_A, typename NIT_A,
+		typename RIT_M, typename CIT_M, typename NIT_M
+	>
+	RC foldr(
+		IOType &x,
+		const Matrix< InputType, hyperdags, RIT_A, CIT_A, NIT_A > &A,
+		const Matrix< MaskType, hyperdags, RIT_M, CIT_M, NIT_M > &mask,
+		const Monoid &monoid = Monoid(),
+		const typename std::enable_if< !grb::is_object< IOType >::value &&
+			!grb::is_object< InputType >::value &&
+			!grb::is_object< MaskType >::value &&
+			grb::is_monoid< Monoid >::value, void
+		>::type * const = nullptr
+	) {
+#ifdef _DEBUG
+		std::cout << "In grb::foldr (hyperdags, mask, matrix, monoid)\n";
+#endif
+
+		const RC ret = foldr< descr, Monoid >(
+			x, internal::getMatrix( A ), internal::getMatrix( mask ), monoid
+		);
+		if( ret != SUCCESS ) { return ret; }
+		if( nrows( A ) == 0 || ncols( A ) == 0 ) { return ret; }
+		std::array< const void *, 0 > sourcesP{};
+		std::array< uintptr_t, 2 > sourcesC{
+			getID( internal::getMatrix(A) ),
+			getID( internal::getMatrix(mask) )
+		};
+		std::array< uintptr_t, 0 > destinations{};
+		// NOTE scalar output is ignored
+		// std::array< uintptr_t, 1 > destinations{ &x };
+		internal::hyperdags::generator.addOperation(
+			internal::hyperdags::FOLDR_SCALAR_MATRIX_MASK_MONOID,
+			sourcesP.begin(), sourcesP.end(),
+			sourcesC.begin(), sourcesC.end(),
+			destinations.begin(), destinations.end()
+		);
+		return ret;
+	}
+
+	template<
+		Descriptor descr = descriptors::no_operation,
+		class Monoid,
+		typename InputType, typename IOType,
+		typename RIT, typename CIT, typename NIT
+	>
+	RC foldr(
+		IOType &x,
+		const Matrix< InputType, hyperdags, RIT, CIT, NIT > &A,
+		const Monoid &monoid,
+		const typename std::enable_if< !grb::is_object< IOType >::value &&
+			!grb::is_object< InputType >::value &&
+			grb::is_monoid< Monoid >::value, void
+		>::type * const = nullptr
+	) {
+#ifdef _DEBUG
+		std::cout << "In grb::foldr (hyperdags, matrix, monoid)\n";
+#endif
+
+		const RC ret = foldr< descr, Monoid >(
+			x, internal::getMatrix( A ), monoid
+		);
+		if( ret != SUCCESS ) { return ret; }
+		if( nrows( A ) == 0 || ncols( A ) == 0 ) { return ret; }
+		std::array< const void *, 0 > sourcesP{};
+		std::array< uintptr_t, 1 > sourcesC{ getID( internal::getMatrix(A) ) };
+		std::array< uintptr_t, 0 > destinations{};
+		// NOTE scalar output is ignored
+		// std::array< uintptr_t, 1 > destinations{ &x };
+		internal::hyperdags::generator.addOperation(
+			internal::hyperdags::FOLDR_SCALAR_MATRIX_MONOID,
+			sourcesP.begin(), sourcesP.end(),
+			sourcesC.begin(), sourcesC.end(),
+			destinations.begin(), destinations.end()
+		);
+		return ret;
+	}
+
+	template<
+		Descriptor descr = descriptors::no_operation,
+		class Monoid,
+		typename InputType, typename IOType, typename MaskType,
+		typename RIT_A, typename CIT_A, typename NIT_A,
+		typename RIT_M, typename CIT_M, typename NIT_M
+	>
+	RC foldl(
+		IOType &x,
+		const Matrix< InputType, hyperdags, RIT_A, CIT_A, NIT_A > &A,
+		const Matrix< MaskType, hyperdags, RIT_M, CIT_M, NIT_M > &mask,
+		const Monoid &monoid,
+		const typename std::enable_if<
+			!grb::is_object< IOType >::value &&
+			!grb::is_object< InputType >::value &&
+			!grb::is_object< MaskType >::value &&
+			grb::is_monoid< Monoid >::value, void
+		>::type * const = nullptr
+	) {
+		#ifdef _DEBUG
+		std::cout << "In grb::foldl (hyperdags, mask, matrix, monoid)\n";
+#endif
+
+		const RC ret = foldl< descr, Monoid >(
+			x, internal::getMatrix( A ), internal::getMatrix( mask ), monoid
+		);
+		if( ret != SUCCESS ) { return ret; }
+		if( nrows( A ) == 0 || ncols( A ) == 0 ) { return ret; }
+		std::array< const void *, 0 > sourcesP{};
+		std::array< uintptr_t, 2 > sourcesC{
+			getID( internal::getMatrix(A) ),
+			getID( internal::getMatrix(mask) )
+		};
+		std::array< uintptr_t, 0 > destinations{};
+		// NOTE scalar output is ignored
+		// std::array< uintptr_t, 1 > destinations{ &x };
+		internal::hyperdags::generator.addOperation(
+			internal::hyperdags::FOLDL_SCALAR_MATRIX_MASK_MONOID,
+			sourcesP.begin(), sourcesP.end(),
+			sourcesC.begin(), sourcesC.end(),
+			destinations.begin(), destinations.end()
+		);
+		return ret;
+	}
+
+	template<
+		Descriptor descr = descriptors::no_operation,
+		class Monoid,
+		typename InputType, typename IOType,
+		typename RIT, typename CIT, typename NIT
+	>
+	RC foldl(
+		IOType &x,
+		const Matrix< InputType, hyperdags, RIT, CIT, NIT > &A,
+		const Monoid &monoid,
+		const typename std::enable_if<
+			!grb::is_object< IOType >::value &&
+			!grb::is_object< InputType >::value &&
+			grb::is_monoid< Monoid >::value, void
+		>::type * const = nullptr
+	) {
+#ifdef _DEBUG
+		std::cout << "In grb::foldl (hyperdags, matrix, monoid)\n";
+#endif
+
+		const RC ret = foldl< descr, Monoid >(
+			x, internal::getMatrix( A ), monoid
+		);
+		if( ret != SUCCESS ) { return ret; }
+		if( nrows( A ) == 0 || ncols( A ) == 0 ) { return ret; }
+		std::array< const void *, 0 > sourcesP{};
+		std::array< uintptr_t, 1 > sourcesC{ getID( internal::getMatrix(A) ) };
+		std::array< uintptr_t, 0 > destinations{};
+		// NOTE scalar output is ignored
+		// std::array< uintptr_t, 1 > destinations{ &x };
+		internal::hyperdags::generator.addOperation(
+			internal::hyperdags::FOLDL_SCALAR_MATRIX_MONOID,
+			sourcesP.begin(), sourcesP.end(),
+			sourcesC.begin(), sourcesC.end(),
+			destinations.begin(), destinations.end()
+		);
+		return ret;
+	}
+	
+
+	/**
+	 * Return the lower triangular portion of a matrix, strictly 
+	 * below the k-th diagonal.
+	 *
+	 * @param[out] L       The lower triangular portion of \a A, strictly 
+	 * 				 	   below the k-th diagonal.
+	 * @param[in]  A       Any ALP/GraphBLAS matrix.
+	 * @param[in]  k       The diagonal above which to zero out \a A.
+	 * @param[in]  phase   The #grb::Phase in which the primitive 
+	 * 					   is to proceed.
+	 *
+	 * \internal Pattern matrices are allowed
+	 */
+
+	template<
+		Descriptor descr = descriptors::no_operation,
+		typename InputType, typename OutputType,
+		typename RIT_L, typename CIT_L, typename NIT_L,
+		typename RIT_A, typename CIT_A, typename NIT_A
+	>
+	RC tril(
+		Matrix< OutputType, hyperdags, RIT_L, CIT_L, NIT_L > & L,
+		const Matrix< InputType, hyperdags, RIT_A, CIT_A, NIT_A > & A,
+		const long int k,
+		const Phase & phase = Phase::EXECUTE,
+		const typename std::enable_if< 
+			! grb::is_object< OutputType >::value && 
+			! grb::is_object< InputType >::value && 
+			std::is_convertible< InputType, OutputType >::value 
+			>::type * const = nullptr ) {
+#ifdef _DEBUG
+		std::cerr << "In grb::tril (hyperdags)\n";
+#endif
+
+		const RC ret = tril< descr >( 
+			internal::getMatrix( L ), 
+			internal::getMatrix( A ), 
+			k, phase 
+		);
+		if( ret != SUCCESS ) { return ret; }
+		if( phase != EXECUTE ) { return ret; }
+		if( nrows( A ) == 0 || ncols( A ) == 0 ) { return ret; }
+		std::array< const void *, 0 > sourcesP{};
+		std::array< uintptr_t, 1 > sourcesL{
+			getID( internal::getMatrix(A) )
+		};
+		std::array< uintptr_t, 1 > destinations{ 
+			getID( internal::getMatrix(L) )
+		};
+		internal::hyperdags::generator.addOperation(
+			internal::hyperdags::TRIL_MATRIX,
+			sourcesP.begin(), sourcesP.end(),
+			sourcesL.begin(), sourcesL.end(),
+			destinations.begin(), destinations.end()
+		);
+		return ret;
+	}
+
+	/**
+	 * Return the lower triangular portion of a matrix, strictly 
+	 * below the main diagonal.
+	 *
+	 * This primitive is strictly equivalent to calling 
+	 * grb::tril( L, A, 0, phase ).
+	 * 
+	 * see grb::tril( L, A, k, phase ) for full description.
+	 */
+	template<
+		Descriptor descr = descriptors::no_operation,
+		typename InputType, typename OutputType,
+		typename RIT_L, typename CIT_L, typename NIT_L,
+		typename RIT_A, typename CIT_A, typename NIT_A
+	>
+	RC tril( 
+		Matrix< OutputType, hyperdags, RIT_L, CIT_L, NIT_L > & L,
+		const Matrix< InputType, hyperdags, RIT_A, CIT_A, NIT_A > & A,
+		const Phase & phase = Phase::EXECUTE,
+		const typename std::enable_if< 
+			! grb::is_object< OutputType >::value && 
+			! grb::is_object< InputType >::value && 
+			std::is_convertible< InputType, OutputType >::value 
+			>::type * const = nullptr ) {
+		return tril< descr >( L, A, 0, phase );
+	}
+
+	/**
+	 * Return the upper triangular portion of a matrix, strictly
+	 * above the k-th diagonal.
+	 *
+	 * @param[out] U       The upper triangular portion of \a A, strictly 
+	 * 					   above the k-th diagonal.
+	 * @param[in]  A       Any ALP/GraphBLAS matrix.
+	 * @param[in]  k       The diagonal above which to zero out \a A.
+	 * @param[in]  phase   The #grb::Phase in which the primitive 
+	 * 					   is to proceed.
+	 *
+	 * \internal Pattern matrices are allowed
+	 */
+
+	template<
+		Descriptor descr = descriptors::no_operation,
+		typename InputType, typename OutputType,
+		typename RIT_U, typename CIT_U, typename NIT_U,
+		typename RIT_A, typename CIT_A, typename NIT_A
+	>
+	RC triu(
+		Matrix< OutputType, hyperdags, RIT_U, CIT_U, NIT_U > & U,
+		const Matrix< InputType, hyperdags, RIT_A, CIT_A, NIT_A > & A,
+		const long int k,
+		const Phase & phase = Phase::EXECUTE,
+		const typename std::enable_if< 
+			! grb::is_object< OutputType >::value && 
+			! grb::is_object< InputType >::value && 
+			std::is_convertible< InputType, OutputType >::value 
+			>::type * const = nullptr ) {
+#ifdef _DEBUG
+		std::cerr << "In grb::triu (hyperdags)\n";
+#endif
+
+		const RC ret = triu< descr >( 
+			internal::getMatrix( U ), 
+			internal::getMatrix( A ), 
+			k, phase 
+		);
+		if( ret != SUCCESS ) { return ret; }
+		if( phase != EXECUTE ) { return ret; }
+		if( nrows( A ) == 0 || ncols( A ) == 0 ) { return ret; }
+		std::array< const void *, 0 > sourcesP{};
+		std::array< uintptr_t, 1 > sourcesL{
+			getID( internal::getMatrix(A) )
+		};
+		std::array< uintptr_t, 1 > destinations{ 
+			getID( internal::getMatrix(U) )
+		};
+		internal::hyperdags::generator.addOperation(
+			internal::hyperdags::TRIU_MATRIX,
+			sourcesP.begin(), sourcesP.end(),
+			sourcesL.begin(), sourcesL.end(),
+			destinations.begin(), destinations.end()
+		);
+		return ret;
+	}
+
+	/**
+	 * Return the lower triangular portion of a matrix, strictly 
+	 * above the main diagonal.
+	 *
+	 * This primitive is strictly equivalent to 
+	 * calling grb::triu( U, A, 0, phase ).
+	 * 
+	 * see grb::tril( U, A, k, phase ) for full description.
+	 */
+	template<
+		Descriptor descr = descriptors::no_operation,
+		typename InputType, typename OutputType,
+		typename RIT_U, typename CIT_U, typename NIT_U,
+		typename RIT_A, typename CIT_A, typename NIT_A
+	>
+	RC triu( 
+		Matrix< OutputType, hyperdags, RIT_U, CIT_U, NIT_U > & U,
+		const Matrix< InputType, hyperdags, RIT_A, CIT_A, NIT_A > & A,
+		const Phase & phase = Phase::EXECUTE,
+		const typename std::enable_if< 
+			! grb::is_object< OutputType >::value && 
+			! grb::is_object< InputType >::value && 
+			std::is_convertible< InputType, OutputType >::value 
+			>::type * const = nullptr ) {
+		return triu< descr >( U, A, 0, phase );
+	}
+
 } // end namespace grb
 
 #endif

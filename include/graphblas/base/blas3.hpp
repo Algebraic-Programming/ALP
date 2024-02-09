@@ -442,6 +442,421 @@ namespace grb {
 		return ret == SUCCESS ? UNSUPPORTED : ret;
 	}
 
+
+	/**
+	 * Reduces, or \em folds, a matrix into a scalar.
+	 * Right-to-left masked variant.
+	 *
+	 * Reduction takes place according a monoid \f$ (\oplus,1) \f$, where
+	 * \f$ \oplus:\ D_1 \times D_2 \to D_3 \f$ with associated identities
+	 * \f$ 1_k in D_k \f$. Usually, \f$ D_k \subseteq D_3, 1 \leq k < 3 \f$,
+	 * though other more exotic structures may be envisioned (and used).
+	 *
+	 * Let \f$ x_0 = 1 \f$ and let
+	 * \f$ x_{i+1} = \begin{cases}
+	 *   x_i \oplus y_i\text{ if }y_i\text{ is nonzero and }m_i\text{ evaluates true}
+	 *   x_i\text{ otherwise}
+	 * \end{cases},\f$
+	 * for all \f$ i \in \{ 0, 1, \ldots, n-1 \} \f$.
+	 *
+	 * \note Per this definition, the folding happens in a right-to-left direction.
+	 *       If another direction is wanted, which may have use in cases where
+	 *       \f$ D_1 \f$ differs from \f$ D_2 \f$, then either a monoid with those
+	 *       operator domains switched may be supplied, or #grb::foldr may be used
+	 *       instead.
+	 *
+	 * Note that the operator \f$ \oplus \f$ must be associative since it is part
+	 * of a monoid. This algebraic property is exploited when parallelising the
+	 * requested operation. The identity is required when parallelising over
+	 * multiple user processes.
+	 *
+	 * \warning In so doing, the order of the evaluation of the reduction operation
+	 *          should not be expected to be a serial, right-to-left, evaluation of
+	 *          the computation chain.
+	 *
+	 * @tparam descr     The descriptor to be used (descriptors::no_operation if
+	 *                   left unspecified).
+	 * @tparam Monoid    The monoid to use for reduction.
+	 * @tparam InputType The type of the elements in the supplied ALP/GraphBLAS
+	 *                   matrix \a A.
+	 * @tparam IOType    The type of the output scalar \a x.
+	 * @tparam MaskType  The type of the elements in the supplied ALP/GraphBLAS
+	 *                   matrix \a mask.
+	 *
+	 * @param[in, out] x   The result of the reduction.
+	 * 					   Prior value will be considered.
+	 * @param[in]      A   Any ALP/GraphBLAS matrix, will be reduced into \a x.
+	 * @param[in]   mask   Any ALP/GraphBLAS matrix, will mask the matrix \a A.
+	 * 					   Dimensions must match those of \a A.
+	 * @param[in] monoid   The monoid under which to perform this reduction.
+	 * 					   An identity element must be provided when using
+	 * 					   threads in order to perform the local reductions.
+	 *
+	 * @return grb::SUCCESS  When the call completed successfully.
+	 * @return grb::MISMATCH If a \a mask was not empty and does not have size
+	 *                       equal to \a y.
+	 *
+	 * @see grb::foldl provides similar in-place functionality, but folds in a
+	 * 	left-to-right direction.
+	 * @see The same primitive but unmasked is also provided.
+	 *
+	 * \parblock
+	 * \par Valid descriptors
+	 * - descriptors::no_operation: the default descriptor.
+	 * - descriptors::no_casting: the first domain of
+	 * 	 	\a monoid must match \a InputType, the second domain of \a op
+	 * 		match \a IOType, the third domain must match \a IOType.
+	 * - descriptors::transpose_left: A^T will be considered instead 
+	 * 	 	of \a A.
+	 * - descriptors::transpose_right: mask^T will be considered 
+	 * 	 	instead of \a mask.
+	 * - descriptors::invert_mask: Not supported yet.
+	 *
+	 * \note Invalid descriptors will be ignored.
+	 *
+	 * \endparblock
+	 *
+	 * \par Performance semantics
+	 * Each backend must define performance semantics for this primitive.
+	 *
+	 * @see perfSemantics
+	 */
+	template<
+		Descriptor descr = descriptors::no_operation,
+		class Monoid,
+		typename InputType, typename IOType, typename MaskType,
+		typename RIT_A, typename CIT_A, typename NIT_A,
+		typename RIT_M, typename CIT_M, typename NIT_M,
+		Backend backend
+	>
+	RC foldr(
+		IOType &x,
+		const Matrix< InputType, backend, RIT_A, CIT_A, NIT_A > &A,
+		const Matrix< MaskType, backend, RIT_M, CIT_M, NIT_M > &mask,
+		const Monoid &monoid = Monoid(),
+		const typename std::enable_if< !grb::is_object< IOType >::value &&
+			!grb::is_object< InputType >::value &&
+			!grb::is_object< MaskType >::value &&
+			grb::is_monoid< Monoid >::value, void
+		>::type * const = nullptr
+	) {
+#ifndef NDEBUG
+		const bool should_not_call_base_scalar_masked_matrix_foldr = false;
+		assert( should_not_call_base_scalar_masked_matrix_foldr );
+#endif
+		(void) A;
+		(void) x;
+		(void) mask;
+		(void) monoid;
+		return UNSUPPORTED;
+	}
+
+	/**
+	 * Reduces, or \em folds, a matrix into a scalar. 
+	 * Right-to-left unmasked variant.
+	 * 
+	 * Please see the masked grb::foldr variant for a full description.
+	 * 
+	 * \parblock
+	 * 
+	 * \par Valid descriptors specific to this variant
+	 * - descriptors::transpose_matrix: A^T will be considered instead 
+	 * 	 	of \a A.
+	 * 
+	 * \note See other valid descriptors in the masked variant.
+	 * \note Invalid descriptors will be ignored.
+	 * 
+	 * \endparblock
+	 */
+	template<
+		Descriptor descr = descriptors::no_operation,
+		class Monoid,
+		typename InputType, typename IOType,
+		typename RIT, typename CIT, typename NIT,
+		Backend backend
+	>
+	RC foldr(
+		IOType &x,
+		const Matrix< InputType, backend, RIT, CIT, NIT > &A,
+		const Monoid &monoid,
+		const typename std::enable_if< !grb::is_object< IOType >::value &&
+			!grb::is_object< InputType >::value &&
+			grb::is_monoid< Monoid >::value, void
+		>::type * const = nullptr
+	) {
+#ifndef NDEBUG
+		const bool should_not_call_base_scalar_unmasked_matrix_foldr = false;
+		assert( should_not_call_base_scalar_unmasked_matrix_foldr );
+#endif
+		(void) A;
+		(void) x;
+		(void) monoid;
+		return UNSUPPORTED;
+	}
+
+
+	/**
+	 * Reduces, or \em folds, a matrix into a scalar. 
+	 * Left-to-right masked variant.
+	 * 
+	 * Please see the masked grb::foldr variant for a full description.
+	 */
+	template<
+		Descriptor descr = descriptors::no_operation,
+		class Monoid,
+		typename InputType, typename IOType, typename MaskType,
+		typename RIT_A, typename CIT_A, typename NIT_A,
+		typename RIT_M, typename CIT_M, typename NIT_M,
+		Backend backend
+	>
+	RC foldl(
+		IOType &x,
+		const Matrix< InputType, backend, RIT_A, CIT_A, NIT_A > &A,
+		const Matrix< MaskType, backend, RIT_M, CIT_M, NIT_M > &mask,
+		const Monoid &monoid = Monoid(),
+		const typename std::enable_if< !grb::is_object< IOType >::value &&
+			!grb::is_object< InputType >::value &&
+			!grb::is_object< MaskType >::value &&
+			grb::is_monoid< Monoid >::value, void
+		>::type * const = nullptr
+	) {
+#ifndef NDEBUG
+		const bool should_not_call_base_scalar_matrix_foldl = false;
+		assert( should_not_call_base_scalar_matrix_foldl );
+#endif
+		(void) A;
+		(void) x;
+		(void) mask;
+		(void) monoid;
+		return UNSUPPORTED;
+	}
+
+	/**
+	 * Reduces, or \em folds, a matrix into a scalar. 
+	 * Left-to-right unmasked variant.
+	 * 
+	 * Please see the masked grb::foldr variant for a full description.
+	 * 
+	 * \parblock
+	 * 
+	 * \par Valid descriptors specific to this variant
+	 * - descriptors::transpose_matrix: A^T will be considered instead 
+	 * 	 	of \a A.
+	 * 
+	 * \note See other valid descriptors in the masked variant.
+	 * \note Invalid descriptors will be ignored.
+	 * 
+	 * \endparblock
+	 */
+	template<
+		Descriptor descr = descriptors::no_operation,
+		class Monoid,
+		typename InputType, typename IOType,
+		typename RIT, typename CIT, typename NIT,
+		Backend backend
+	>
+	RC foldl(
+		IOType &x,
+		const Matrix< InputType, backend, RIT, CIT, NIT > &A,
+		const Monoid &monoid,
+		const typename std::enable_if< 
+			!grb::is_object< IOType >::value &&
+			!grb::is_object< InputType >::value &&
+			grb::is_monoid< Monoid >::value, void
+		>::type * const = nullptr
+	) {
+#ifndef NDEBUG
+		const bool should_not_call_base_scalar_unmasked_matrix_foldl = false;
+		assert( should_not_call_base_scalar_unmasked_matrix_foldl );
+#endif
+		(void) A;
+		(void) x;
+		(void) monoid;
+		return UNSUPPORTED;
+	}
+
+	/**
+	 * Return the lower triangular portion of a matrix, strictly below the k-th 
+	 * diagonal (excluded).
+	 *
+	 * @tparam descr      The descriptor to be used (descriptors::no_operation
+	 * 					  if left unspecified).
+	 * @tparam InputType  The type of the elements in the supplied ALP/GraphBLAS
+	 *                    matrix \a A.
+	 * @tparam OutputType The type of the elements in the supplied ALP/GraphBLAS
+	 *                    matrix \a L.
+	 *
+	 * @param[out] L       The lower triangular portion of \a A, strictly below
+	 * 					   the k-th diagonal.
+	 * @param[in]  A       Any ALP/GraphBLAS matrix.
+	 * @param[in]  k       The diagonal above which to zero out \a A.
+	 * @param[in]  phase   The #grb::Phase in which the primitive is to proceed.
+	 *
+	 * @return grb::SUCCESS  When the call completed successfully.
+	 * @return grb::MISMATCH If the dimensions of \a L and \a A do not match.
+	 *
+ 	 * \parblock
+	 * \par Allowed descriptors
+	 * - transpose_matrix: Consider A^T instead of A.
+	 * - no_casting: If the types of \a L and \a A differ, the primitive
+	 * 				 will fail.
+	 * \endparblock
+	 */
+	template<
+		Descriptor descr = descriptors::no_operation,
+		typename InputType,
+		typename OutputType,
+		typename RIT_L, typename CIT_L, typename NIT_L,
+		typename RIT_A, typename CIT_A, typename NIT_A,
+		Backend implementation
+	>
+	RC tril(
+		Matrix< OutputType, implementation, RIT_L, CIT_L, NIT_L > & L,
+		const Matrix< InputType, implementation, RIT_A, CIT_A, NIT_A > & A,
+		const long int k,
+		const Phase &phase = Phase::EXECUTE,
+		const typename std::enable_if<
+			!grb::is_object< OutputType >::value &&
+			!grb::is_object< InputType >::value &&
+			std::is_convertible< InputType, OutputType >::value
+		>::type * const = nullptr
+	) {
+		(void) L;
+		(void) A;
+		(void) k;
+		(void) phase;
+#ifdef _DEBUG
+		std::cerr << "Selected backend does not implement grb::tril()\n";
+#endif
+#ifndef NDEBUG
+		const bool selected_backend_does_not_support_tril = false;
+		assert( selected_backend_does_not_support_tril );
+#endif
+		const RC ret = grb::clear( L );
+		return ret == SUCCESS ? UNSUPPORTED : ret;
+	}
+
+	/**
+	 * Return the lower triangular portion of a matrix,
+	 * strictly below main diagonal (excluded).
+	 *
+	 * This primitive is strictly equivalent to calling
+	 * grb::tril( L, A, 0, phase ).
+	 * 
+	 * see grb::tril( L, A, k, phase ) for full description.
+	 */
+	template<
+		Descriptor descr = descriptors::no_operation,
+		typename InputType,
+		typename OutputType,
+		typename RIT_L, typename CIT_L, typename NIT_L,
+		typename RIT_A, typename CIT_A, typename NIT_A,
+		Backend implementation
+	>
+	RC tril(
+		Matrix< OutputType, implementation, RIT_L, CIT_L, NIT_L > & L,
+		const Matrix< InputType, implementation, RIT_A, CIT_A, NIT_A > & A,
+		const Phase &phase = Phase::EXECUTE,
+		const typename std::enable_if<
+			!grb::is_object< OutputType >::value &&
+			!grb::is_object< InputType >::value &&
+			std::is_convertible< InputType, OutputType >::value
+		>::type * const = nullptr
+	) {
+		return tril< descr >( L, A, 0, phase );
+	}
+
+	/**
+	 * Return the upper triangular portion of a matrix, strictly above the k-th 
+	 * diagonal (excluded).
+	 *
+	 * @tparam descr      The descriptor to be used (descriptors::no_operation
+	 * 					  if left unspecified).
+	 * @tparam InputType  The type of the elements in the supplied ALP/GraphBLAS
+	 *                    matrix \a A.
+	 * @tparam OutputType The type of the elements in the supplied ALP/GraphBLAS
+	 *                    matrix \a U.
+	 *
+	 * @param[out] U       The upper triangular portion of \a A, strictly above 
+	 * 					   the k-th diagonal.
+	 * @param[in]  A       Any ALP/GraphBLAS matrix.
+	 * @param[in]  k       The diagonal above which to zero out \a A.
+	 * @param[in]  phase   The #grb::Phase in which the primitive is to proceed.
+	 *
+	 * @return grb::SUCCESS  When the call completed successfully.
+	 * @return grb::MISMATCH If the dimensions of \a U and \a A do not match.
+	 *
+ 	 * \parblock
+	 * \par Allowed descriptors
+	 * - transpose_matrix: Consider A^T instead of A.
+	 * - no_casting: If the types of \a T and \a A differ, the primitive
+	 * 				 will fail.
+	 * \endparblock
+	 */
+	template<
+		Descriptor descr = descriptors::no_operation,
+		typename InputType,
+		typename OutputType,
+		typename RIT_U, typename CIT_U, typename NIT_U,
+		typename RIT_A, typename CIT_A, typename NIT_A,
+		Backend implementation
+	>
+	RC triu(
+		Matrix< OutputType, implementation, RIT_U, CIT_U, NIT_U > & U,
+		const Matrix< InputType, implementation, RIT_A, CIT_A, NIT_A > & A,
+		const long int k,
+		const Phase &phase = Phase::EXECUTE,
+		const typename std::enable_if<
+			!grb::is_object< OutputType >::value &&
+			!grb::is_object< InputType >::value &&
+			std::is_convertible< InputType, OutputType >::value
+		>::type * const = nullptr
+	) {
+		(void) U;
+		(void) A;
+		(void) k;
+		(void) phase;
+#ifdef _DEBUG
+		std::cerr << "Selected backend does not implement grb::triu()\n";
+#endif
+#ifndef NDEBUG
+		const bool selected_backend_does_not_support_triu = false;
+		assert( selected_backend_does_not_support_triu );
+#endif
+		const RC ret = grb::clear( U );
+		return ret == SUCCESS ? UNSUPPORTED : ret;
+	}
+
+	/**
+	 * Return the upper triangular portion of a matrix,
+	 * strictly above main diagonal (excluded).
+	 *
+	 * This primitive is strictly equivalent to calling
+	 * grb::triu( U, A, 0, phase ) 
+	 * 
+	 * see grb::triu( U, A, k, phase ) for full description.
+	 */
+	template<
+		Descriptor descr = descriptors::no_operation,
+		typename InputType,
+		typename OutputType,
+		typename RIT_U, typename CIT_U, typename NIT_U,
+		typename RIT_A, typename CIT_A, typename NIT_A,
+		Backend implementation
+	>
+	RC triu(
+		Matrix< OutputType, implementation, RIT_U, CIT_U, NIT_U > & U,
+		const Matrix< InputType, implementation, RIT_A, CIT_A, NIT_A > & A,
+		const Phase &phase = Phase::EXECUTE,
+		const typename std::enable_if<
+			!grb::is_object< OutputType >::value &&
+			!grb::is_object< InputType >::value &&
+			std::is_convertible< InputType, OutputType >::value
+		>::type * const = nullptr
+	) {
+		return triu< descr >( U, A, 0, phase );
+	}
+
 	/**
 	 * @}
 	 */
