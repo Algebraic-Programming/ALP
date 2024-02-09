@@ -215,11 +215,11 @@ void grb_program2( const struct input &in, struct output &out ) {
 		return;
 	}
 
-	/*
-	Test for move assignement id cleanup.
-	
-	Creating and performing move assignment on multiple new objects to generate potential id collision.
-	*/
+	/**
+	 * Test for move assignement id cleanup.
+	 *
+	 * Creating and performing move assignment on multiple new objects to generate potential id collision.
+	 */
 	for( int i = 0; i < 1000; i++ ) {
 		grb::Matrix< int > new_one( 10, 10, 10 );
 		grb::Matrix< int > new_two( 10, 10, 10 );
