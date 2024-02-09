@@ -27,15 +27,19 @@
 
 #include "config.hpp"
 
-#include <graphblas/base/init.hpp>
 #include <graphblas/rc.hpp>
+
+#include <graphblas/base/init.hpp>
 
 #include <graphblas/utils/DMapper.hpp>
 #include <graphblas/utils/threadLocalStorage.hpp>
 
 #include <assert.h> //assertions
-#include <lpf/bsmp.h>
+
 #include <lpf/core.h>
+
+#include <lpf/bsmp.h>
+#include <lpf/collectives.h>
 
 
 namespace grb {

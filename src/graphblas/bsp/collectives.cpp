@@ -104,7 +104,7 @@ grb::RC grb::internal::commsPostamble(
 	if( globalMemslot ) {
 		data.signalMemslotReleased( globalMemslot );
 	}
-	if( *coll != LPF_INVALID_COLL ) {
+	if( coll != nullptr ) {
 		if( lpf_collectives_destroy( *coll ) != LPF_SUCCESS ) {
 			assert( false );
 			return PANIC;

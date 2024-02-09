@@ -23,10 +23,12 @@
 #ifndef _H_GRB_BSP_INTERNAL_COLL
 #define _H_GRB_BSP_INTERNAL_COLL
 
-#include <lpf/collectives.h>
 #include <lpf/core.h>
 
+#include <lpf/collectives.h>
+
 #include <graphblas/bsp1d/init.hpp>
+
 
 namespace grb {
 
