@@ -245,10 +245,11 @@ gitleaks:
 
 ## Jobs running on Slurm cluster
 
-# factored out command to cmake and build in non-debug mode
-.build_ndebug: &build_ndebug
+# factored out command to download the datasets, cmake, and build in non-debug mode
+.setup_and_build_ndebug: &setup_and_build_ndebug
+  - ./tools/downloadDatasets.sh <<< "yes"
   - mkdir -p install build && cd ./build
-  - ../bootstrap.sh --prefix=../install --with-datasets=${ALP_DATASETS}
+  - ../bootstrap.sh --prefix=../install --with-datasets=../datasets
   - make -j$(nproc)
 
 tests_performance_slurm:
@@ -265,7 +266,7 @@ tests_performance_slurm:
     CI_SLURM_TIMELIMIT: "00-10:00:00" # 10 hours
     SLURM_JOB_START_TIMEOUT_SECONDS: "3600" # 1 hour timeout to switch from PENDING to RUNNING
   script:
-    - *build_ndebug
+    - *setup_and_build_ndebug
     - make -j$(nproc) performancetests |& tee performancetests.log
     - ../tests/summarise.sh performancetests.log tests/performance/output/benchmarks tests/performance/output/scaling
   artifacts:
