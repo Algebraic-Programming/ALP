@@ -407,6 +407,12 @@ for MODE in ${MODES}; do
 				grep 'Test OK' ${TEST_OUT_DIR}/buildVector_${MODE}_${BACKEND}_${P}_${T}.log || echo "Test FAILED"
 				echo " "
 
+				echo ">>>      [x]           [ ]       Testing grb::Vector( initializer_list ) constructor"
+				$runner ${TEST_BIN_DIR}/vectorFromListConstructor_${MODE}_${BACKEND} &> ${TEST_OUT_DIR}/vectorFromListConstructor_${MODE}_${BACKEND}_${P}_${T}.log
+				head -1 ${TEST_OUT_DIR}/vectorFromListConstructor_${MODE}_${BACKEND}_${P}_${T}.log
+				grep 'Test OK' ${TEST_OUT_DIR}/vectorFromListConstructor_${MODE}_${BACKEND}_${P}_${T}.log || echo "Test FAILED"
+				echo " "
+
 				echo ">>>      [x]           [ ]       Testing grb::vectorToMatrixConverter"
 				$runner ${TEST_BIN_DIR}/vectorToMatrix_${MODE}_${BACKEND} &> ${TEST_OUT_DIR}/vectorToMatrix_${MODE}_${BACKEND}_${P}_${T}.log
 				head -1 ${TEST_OUT_DIR}/vectorToMatrix_${MODE}_${BACKEND}_${P}_${T}.log
@@ -629,6 +635,12 @@ for MODE in ${MODES}; do
 				$runner ${TEST_BIN_DIR}/mxm_${MODE}_${BACKEND} &> ${TEST_OUT_DIR}/mxm_${MODE}_${BACKEND}_${P}_${T}.log
 				head -1 ${TEST_OUT_DIR}/mxm_${MODE}_${BACKEND}_${P}_${T}.log
 				grep 'Test OK' ${TEST_OUT_DIR}/mxm_${MODE}_${BACKEND}_${P}_${T}.log || echo "Test FAILED"
+				echo " "
+
+				echo ">>>      [x]           [ ]       Testing grb::eWiseLambda on a small matrix"
+				$runner ${TEST_BIN_DIR}/eWiseLambda_${MODE}_${BACKEND} &> ${TEST_OUT_DIR}/eWiseLambda_${MODE}_${BACKEND}_${P}_${T}.log
+				head -1 ${TEST_OUT_DIR}/eWiseLambda_${MODE}_${BACKEND}_${P}_${T}.log
+				grep 'Test OK' ${TEST_OUT_DIR}/eWiseLambda_${MODE}_${BACKEND}_${P}_${T}.log || echo "Test FAILED"
 				echo " "
 
 				echo ">>>      [x]           [ ]       Testing grb::outer on a small matrix"

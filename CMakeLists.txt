@@ -107,6 +107,11 @@ option( TEST_PERFORMANCE_OPTIONS
 option( DATASETS_DIR "Directory with datasets for tests" )
 option( GNN_DATASET_PATH "Directory with the GraphChallengeDataset dataset" )
 
+option( SPBLAS_PREFIX "Prefix for SparseBLAS library" OFF )
+option( ENABLE_SOLVER_LIB "Compile solver library against the reference and nonblocking backends" ON )
+option( ENABLE_EXTRA_SOLVER_LIBS "Compile solver library against the reference_omp backend, in addition to reference and nonblocking" OFF )
+
+
 ### CHECK THE OPTIONS ARE COHERENT
 list( APPEND CMAKE_MODULE_PATH "${PROJECT_SOURCE_DIR}/cmake" )
 include( Utils )
@@ -152,35 +157,66 @@ if( WITH_HYBRID_BACKEND )
 	list( APPEND AVAILABLE_TEST_BACKENDS "hybrid" )
 endif()
 
+# Enable backends based on features
+if( ENABLE_SOLVER_LIB )
+	if( NOT WITH_NONBLOCKING_BACKEND )
+		set( WITH_NONBLOCKING_BACKEND ON )
+		message( STATUS "Enabling compilation of nonblocking backend: required by solver libraries" )
+	endif()
+	if( NOT WITH_REFERENCE_BACKEND )
+		set( WITH_REFERENCE_BACKEND ON )
+		message( STATUS "Enabling compilation of reference backend: required by solver libraries" )
+	endif()
+endif()
+
+if( ENABLE_EXTRA_SOLVER_LIBS )
+	if( NOT WITH_OMP_BACKEND )
+		set( WITH_OMP_BACKEND ON )
+		message( STATUS "Enabling compilation of reference_omp backend: required by extra solver libraries" )
+	endif()
+endif()
+
 # Enabling reference_omp backend if bsp1d is active
 if( WITH_BSP1D_BACKEND )
-	set( WITH_OMP_BACKEND ON )
-	message( STATUS "Enabling compilation of reference_omp backend: required by bsp1d" )
+	if( NOT WITH_OMP_BACKEND )
+		set( WITH_OMP_BACKEND ON )
+		message( STATUS "Enabling compilation of reference_omp backend: required by bsp1d" )
+	endif()
 endif()
 
 # Enabling reference_omp backend if hybrid is active
 if( WITH_HYBRID_BACKEND )
-	set( WITH_OMP_BACKEND ON )
-	message( STATUS "Enabling compilation of reference_omp backend: required by hybrid" )
+	if( NOT WITH_OMP_BACKEND )
+		set( WITH_OMP_BACKEND ON )
+		message( STATUS "Enabling compilation of reference_omp backend: required by hybrid" )
+	endif()
 endif()
 
 # Enabling reference_omp backend if non-blocking is active
 if( WITH_NONBLOCKING_BACKEND )
-	set( WITH_OMP_BACKEND ON )
-	message( STATUS "Enabling compilation of reference_omp backend: required by nonblocking" )
+	if( NOT WITH_OMP_BACKEND )
+		set( WITH_OMP_BACKEND ON )
+		message( STATUS "Enabling compilation of reference_omp backend: required by nonblocking" )
+	endif()
 endif()
 
 # Enabling backend required by hyperdags (if not)
 if( WITH_HYPERDAGS_BACKEND )
 	if( WITH_HYPERDAGS_USING STREQUAL "reference" )
-		set( WITH_REFERENCE_BACKEND ON )
-		message( STATUS "Enabling reference backend for hyperdags" )
+		if( NOT WITH_REFERENCE_BACKEND )
+			set( WITH_REFERENCE_BACKEND ON )
+			message( STATUS "Enabling reference backend for hyperdags" )
+		endif()
 	elseif(WITH_HYPERDAGS_USING STREQUAL "reference_omp" )
-		set( WITH_OMP_BACKEND ON )
-		message( STATUS "Enabling reference_omp backend for hyperdags" )
+		if( NOT WITH_OMP_BACKEND )
+			set( WITH_OMP_BACKEND ON )
+			message( STATUS "Enabling reference_omp backend for hyperdags" )
+		endif()
 	elseif(WITH_HYPERDAGS_USING STREQUAL "nonblocking" )
-		set( WITH_NONBLOCKING_BACKEND ON )
-		message( STATUS "Enabling non-blocking backend for hyperdags" )
+		if( NOT WITH_NONBLOCKING_BACKEND )
+			set( WITH_NONBLOCKING_BACKEND ON )
+			message( STATUS "Enabling non-blocking backend for hyperdags" )
+		endif()
 	else()
 		message( FATAL_ERROR "Unrecognised backend for hyperdags: ${WITH_HYPERDAGS_USING}.\nAvailable options: reference, reference_omp, nonblocking" )
 	endif()
@@ -188,8 +224,10 @@ endif()
 
 # Enabling reference backend if reference_omp is active
 if( WITH_OMP_BACKEND )
-	set( WITH_REFERENCE_BACKEND ON )
-	message( STATUS "Enabling compilation of reference backend: required by reference_omp" )
+	if( NOT WITH_REFERENCE_BACKEND )
+		set( WITH_REFERENCE_BACKEND ON )
+		message( STATUS "Enabling compilation of reference backend: required by reference_omp" )
+	endif()
 endif()
 
 # set LPF_INSTALL_PATH as FILEPATH inside the cache
@@ -257,6 +295,9 @@ endif()
 
 # compilation flags for all targets
 include( CompileFlags )
+
+# information for the transition path
+include( Transition )
 
 ### BACKEND HEADERS
 

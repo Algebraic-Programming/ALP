@@ -419,6 +419,32 @@ namespace grb {
 			const Matrix< InputType, nonblocking, RIT, CIT, NIT > &
 		);
 
+		// Native interface friends
+
+		friend const grb::Matrix<
+			D, nonblocking,
+			ColIndexType, ColIndexType, NonzeroIndexType
+		>
+		internal::wrapCRSMatrix< D, ColIndexType, NonzeroIndexType, nonblocking >(
+			const D *__restrict__ const,
+			const ColIndexType *__restrict__ const,
+			const NonzeroIndexType *__restrict__ const,
+			const size_t, const size_t
+		);
+
+		friend grb::Matrix<
+			D, nonblocking,
+			ColIndexType, ColIndexType, NonzeroIndexType
+		>
+		internal::wrapCRSMatrix< D, ColIndexType, NonzeroIndexType, nonblocking >(
+			D *__restrict__ const,
+			ColIndexType *__restrict__ const,
+			NonzeroIndexType *__restrict__ const,
+			const size_t, const size_t, const size_t,
+			char * const, char * const,
+			D *__restrict__ const
+		);
+
 
 		private:
 
