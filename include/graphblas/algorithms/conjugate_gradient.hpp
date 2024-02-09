@@ -27,7 +27,7 @@
 #define _H_GRB_ALGORITHMS_CONJUGATE_GRADIENT
 
 #include <cstdio>
-#include <cmath>
+#include <complex>
 
 #include <graphblas.hpp>
 #include <graphblas/utils/iscomplex.hpp>
@@ -144,8 +144,7 @@ namespace grb {
 		 * performance semantics, with the exception of getters such as #grb::nnz, are
 		 * specific to the backend selected during compilation.
 		 */
-		template<
-			Descriptor descr = descriptors::no_operation,
+		template< Descriptor descr = descriptors::no_operation,
 			typename IOType,
 			typename ResidualType,
 			typename NonzeroType,
@@ -155,20 +154,19 @@ namespace grb {
 				grb::identities::zero, grb::identities::one
 			>,
 			class Minus = operators::subtract< IOType >,
-			class Divide = operators::divide< IOType >,
-			typename RSI, typename NZI, Backend backend
+			class Divide = operators::divide< IOType >
 		>
 		grb::RC conjugate_gradient(
-			grb::Vector< IOType, backend > &x,
-			const grb::Matrix< NonzeroType, backend, RSI, RSI, NZI > &A,
-			const grb::Vector< InputType, backend > &b,
+			grb::Vector< IOType > &x,
+			const grb::Matrix< NonzeroType > &A,
+			const grb::Vector< InputType > &b,
 			const size_t max_iterations,
 			ResidualType tol,
 			size_t &iterations,
 			ResidualType &residual,
-			grb::Vector< IOType, backend > &r,
-			grb::Vector< IOType, backend > &u,
-			grb::Vector< IOType, backend > &temp,
+			grb::Vector< IOType > &r,
+			grb::Vector< IOType > &u,
+			grb::Vector< IOType > &temp,
 			const Ring &ring = Ring(),
 			const Minus &minus = Minus(),
 			const Divide &divide = Divide()
@@ -326,7 +324,7 @@ namespace grb {
 			assert( ret == SUCCESS );
 
 			if( ret == SUCCESS ) {
-				tol *= std::sqrt( grb::utils::is_complex< IOType >::modulus( bnorm ) );
+				tol *= sqrt( grb::utils::is_complex< IOType >::modulus( bnorm ) );
 			}
 
 			size_t iter = 0;
@@ -419,7 +417,7 @@ namespace grb {
 
 			// return correct error code
 			if( ret == SUCCESS ) {
-				if( std::sqrt( residual ) >= tol ) {
+				if( sqrt( residual ) >= tol ) {
 					// did not converge within iterations
 					return FAILED;
 				}

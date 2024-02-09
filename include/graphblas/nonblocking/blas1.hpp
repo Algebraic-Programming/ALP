@@ -548,7 +548,7 @@ namespace grb {
 			typename Monoid::D3 global =
 				monoid.template getIdentity< typename Monoid::D3 >();
 
-			size_t local_reduced_size = NONBLOCKING::numThreads() *
+			size_t local_reduced_size = sysconf( _SC_NPROCESSORS_ONLN ) *
 				config::CACHE_LINE_SIZE::value();
 			IOType local_reduced[ local_reduced_size ];
 
@@ -10550,7 +10550,7 @@ namespace grb {
 				typename AddMonoid::D3 reduced =
 					addMonoid.template getIdentity< typename AddMonoid::D3 >();
 
-				size_t reduced_size = NONBLOCKING::numThreads() *
+				size_t reduced_size = sysconf( _SC_NPROCESSORS_ONLN ) *
 					config::CACHE_LINE_SIZE::value();
 				typename AddMonoid::D3 array_reduced[ reduced_size ];
 

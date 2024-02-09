@@ -161,15 +161,6 @@ namespace grb {
 				register_vector();
 			}
 
-			Vector( const std::initializer_list< T > vals ) : vector( vals )
-			{
-#ifdef _DEBUG
-				std::cout << "In Vector< hyperdags >::Vector( initializer_list )"
-					<< " constructor\n";
-#endif
-				register_vector();
-			}
-
 			~Vector() {
 #ifdef _DEBUG
 				std::cout << "Vector (hyperdags) destructor\n";

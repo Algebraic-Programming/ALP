@@ -266,20 +266,6 @@ for MODE in ${MODES}; do
 				grep 'Test OK' ${TEST_OUT_DIR}/ewiseapply_small_${MODE}_${BACKEND}_${P}_${T} || echo "Test FAILED"
 				echo " "
 
-				if [ "$BACKEND" = "reference" ] || [ "$BACKEND" = "reference_omp" ]|| [ "$BACKEND" = "hyperdags" ]; then
-					echo ">>>      [x]           [ ]       Testing grb::tril"
-					$runner ${TEST_BIN_DIR}/tril_${MODE}_${BACKEND} &> ${TEST_OUT_DIR}/tril_${MODE}_${BACKEND}_${P}_${T}
-					head -1 ${TEST_OUT_DIR}/tril_${MODE}_${BACKEND}_${P}_${T}
-					grep 'Test OK' ${TEST_OUT_DIR}/tril_${MODE}_${BACKEND}_${P}_${T} || echo "Test FAILED"
-					echo " "
-
-					echo ">>>      [x]           [ ]       Testing grb::triu"
-					$runner ${TEST_BIN_DIR}/triu_${MODE}_${BACKEND} &> ${TEST_OUT_DIR}/triu_${MODE}_${BACKEND}_${P}_${T}
-					head -1 ${TEST_OUT_DIR}/triu_${MODE}_${BACKEND}_${P}_${T}
-					grep 'Test OK' ${TEST_OUT_DIR}/triu_${MODE}_${BACKEND}_${P}_${T} || echo "Test FAILED"
-					echo " "
-				fi
-
 				echo ">>>      [x]           [ ]       Testing grb::eWiseApply using (+,0) on vectors"
 				echo "                                 of doubles of size 100."
 				$runner ${TEST_BIN_DIR}/ewiseapply_${MODE}_${BACKEND} 100 &> ${TEST_OUT_DIR}/ewiseapply_${MODE}_${BACKEND}_${P}_${T}
@@ -421,12 +407,6 @@ for MODE in ${MODES}; do
 				grep 'Test OK' ${TEST_OUT_DIR}/buildVector_${MODE}_${BACKEND}_${P}_${T}.log || echo "Test FAILED"
 				echo " "
 
-				echo ">>>      [x]           [ ]       Testing grb::Vector( initializer_list ) constructor"
-				$runner ${TEST_BIN_DIR}/vectorFromListConstructor_${MODE}_${BACKEND} &> ${TEST_OUT_DIR}/vectorFromListConstructor_${MODE}_${BACKEND}_${P}_${T}.log
-				head -1 ${TEST_OUT_DIR}/vectorFromListConstructor_${MODE}_${BACKEND}_${P}_${T}.log
-				grep 'Test OK' ${TEST_OUT_DIR}/vectorFromListConstructor_${MODE}_${BACKEND}_${P}_${T}.log || echo "Test FAILED"
-				echo " "
-
 				echo ">>>      [x]           [ ]       Testing grb::vectorToMatrixConverter"
 				$runner ${TEST_BIN_DIR}/vectorToMatrix_${MODE}_${BACKEND} &> ${TEST_OUT_DIR}/vectorToMatrix_${MODE}_${BACKEND}_${P}_${T}.log
 				head -1 ${TEST_OUT_DIR}/vectorToMatrix_${MODE}_${BACKEND}_${P}_${T}.log
@@ -467,12 +447,6 @@ for MODE in ${MODES}; do
 				$runner ${TEST_BIN_DIR}/matrixSet_${MODE}_${BACKEND} 2> ${TEST_OUT_DIR}/matrixSet_${MODE}_${BACKEND}_${P}_${T}.err 1> ${TEST_OUT_DIR}/matrixSet_${MODE}_${BACKEND}_${P}_${T}.log
 				head -1 ${TEST_OUT_DIR}/matrixSet_${MODE}_${BACKEND}_${P}_${T}.log
 				echo "Test OK" ${TEST_OUT_DIR}/matrixSet_${MODE}_${BACKEND}_${P}_${T}.log || echo "Test FAILED"
-				echo " "
-
-				echo ">>>      [x]           [ ]       Testing grb::foldl+r (scalar, matrix, [mask], monoid)"
-				$runner ${TEST_BIN_DIR}/fold_matrix_to_scalar_${MODE}_${BACKEND} 2> ${TEST_OUT_DIR}/fold_matrix_to_scalar_${MODE}_${BACKEND}_${P}_${T}.err 1> ${TEST_OUT_DIR}/fold_matrix_to_scalar_${MODE}_${BACKEND}_${P}_${T}.log
-				head -1 ${TEST_OUT_DIR}/fold_matrix_to_scalar_${MODE}_${BACKEND}_${P}_${T}.log
-				echo "Test OK" ${TEST_OUT_DIR}/fold_matrix_to_scalar_${MODE}_${BACKEND}_${P}_${T}.log || echo "Test FAILED"
 				echo " "
 
 				echo ">>>      [x]           [ ]       Tests the \`level-0' grb::collectives"
@@ -649,12 +623,6 @@ for MODE in ${MODES}; do
 				$runner ${TEST_BIN_DIR}/mxm_${MODE}_${BACKEND} &> ${TEST_OUT_DIR}/mxm_${MODE}_${BACKEND}_${P}_${T}.log
 				head -1 ${TEST_OUT_DIR}/mxm_${MODE}_${BACKEND}_${P}_${T}.log
 				grep 'Test OK' ${TEST_OUT_DIR}/mxm_${MODE}_${BACKEND}_${P}_${T}.log || echo "Test FAILED"
-				echo " "
-
-				echo ">>>      [x]           [ ]       Testing grb::eWiseLambda on a small matrix"
-				$runner ${TEST_BIN_DIR}/eWiseLambda_${MODE}_${BACKEND} &> ${TEST_OUT_DIR}/eWiseLambda_${MODE}_${BACKEND}_${P}_${T}.log
-				head -1 ${TEST_OUT_DIR}/eWiseLambda_${MODE}_${BACKEND}_${P}_${T}.log
-				grep 'Test OK' ${TEST_OUT_DIR}/eWiseLambda_${MODE}_${BACKEND}_${P}_${T}.log || echo "Test FAILED"
 				echo " "
 
 				echo ">>>      [x]           [ ]       Testing grb::outer on a small matrix"
