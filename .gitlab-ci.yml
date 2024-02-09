@@ -246,7 +246,7 @@ gitleaks:
 ## Jobs running on Slurm cluster
 
 # factored out command to cmake and build in non-debug mode
-.build_ndebug: &build_ndebug_slurm
+.build_ndebug: &build_ndebug
   - mkdir -p install build && cd ./build
   - ../bootstrap.sh --prefix=../install --with-datasets=${ALP_DATASETS}
   - make -j$(nproc)
