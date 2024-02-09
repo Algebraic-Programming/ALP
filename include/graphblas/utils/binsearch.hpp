@@ -46,7 +46,7 @@ namespace grb {
 		 *       the type of the iterator.
 		 *
 		 * @param[in] x     The value to be found.
-		 * @parma[in] start The start iterator of the container to be searched.
+		 * @param[in] start The start iterator of the container to be searched.
 		 * @param[in] end   The end iterator of the container to be searched.
 		 *
 		 * @return How many times \a start may be incremented before \a x is found.

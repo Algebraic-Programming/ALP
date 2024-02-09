@@ -17,17 +17,25 @@ limitations under the License.
 
 # ALP/GraphBLAS development documentation
 
- This folder contains the documentation for the development of ALP/GraphBLAS, in
- particular:
+The following resources are useful to develop ALP/GraphBLAS:
 
 * the [Development Guidelines](Development.md) to read about ALP/GraphBLAS'
 development philosophy and work with its codebase
+* the [directory structure of the project](Directory_structure.md)
 * the
 [guide to the Building and Testing Infrastructure](Build_and_test_infra.md)
 * the
 [guide to run Tests](Run_tests.md)
 * the code documentation, generated via Doxygen through the building
 infrastructure (`make docs`) and available in the subdirectory `code`
+
+
+
+# Using ALP/GraphBLAS
+
+The following resources show how to use ALP/GraphBLAS or parts of it in
+external projects:
+
 * the
 [guide to use ALP/GraphBLAS in your own project](Use_ALPGraphBLAS_in_your_own_project.md)
-* the [directory structure of the project](Directory_structure.md)
+* the [guide to use ALP/GraphBLAS transition path](Transition_use.md)

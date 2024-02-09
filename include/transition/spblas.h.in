@@ -15,15 +15,12 @@
  * limitations under the License.
  */
 
-/*
- * @author A. N. Yzelman
- * @date 17th of April, 2017
- */
+#ifndef _H_ALP_SPBLAS
+#define _H_ALP_SPBLAS
 
-#include <graphblas/bsp1d/exec.hpp>
+#define SPBLAS_PREFIX @_SPBLAS_PREFIX@
 
-#ifdef _GRB_MANUAL
-const int LPF_MPIRMA_AUTO_INITIALIZE = 0;
-#endif
+#include "spblas_impl.h"
 
-bool _grb_mpi_initialized = false;
+#endif // _H_ALP_SPBLAS
+

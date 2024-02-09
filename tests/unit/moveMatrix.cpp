@@ -20,12 +20,16 @@
 
 #include <graphblas.hpp>
 
+
 using namespace grb;
 
-void grb_program( const size_t & n, grb::RC & rc ) {
+void grb_program( const size_t &n, grb::RC &rc ) {
 	grb::Matrix< double > matrix( n, n );
 	if( grb::nrows( matrix ) != n || grb::ncols( matrix ) != n || grb::nnz( matrix ) != 0 ) {
-		std::cerr << "\tinitialisation FAILED: matrix has " << grb::nrows( matrix ) << " rows, " << grb::ncols( matrix ) << " columns, and " << grb::nnz( matrix ) << " entries, while expecting an n by n matrix with 0 entries.\n";
+		std::cerr << "\tinitialisation FAILED: matrix has " << grb::nrows( matrix )
+			<< " rows, " << grb::ncols( matrix ) << " columns, and "
+			<< grb::nnz( matrix ) << " entries, while expecting an n by n matrix with "
+			<< "0 entries.\n";
 		rc = FAILED;
 		return;
 	}

@@ -17,7 +17,7 @@
 #include <iostream>
 #include <sstream>
 
-#include <graphblas/utils/iterators/MatrixVectorIterator.hpp>
+#include <graphblas/utils/iterators/matrixVectorIterator.hpp>
 
 #include <graphblas.hpp>
 

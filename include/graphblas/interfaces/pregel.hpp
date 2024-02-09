@@ -925,7 +925,7 @@ namespace grb {
 				 *
 				 * @returns The maximum vertex ID.
 				 */
-				size_t num_vertices() const noexcept { return n; }
+				size_t numVertices() const noexcept { return n; }
 
 				/**
 				 * Queries the number of edges of the graph this Pregel instance has been
@@ -933,7 +933,7 @@ namespace grb {
 				 *
 				 * @returns The number of edges within the underlying graph.
 				 */
-				size_t num_edges() const noexcept { return nz; }
+				size_t numEdges() const noexcept { return nz; }
 
 				/**
 				 * Returns the ALP/GraphBLAS matrix representation of the underlying
@@ -946,7 +946,7 @@ namespace grb {
 				 * @returns The underlying ALP/GraphBLAS matrix corresponding to the
 				 *          underlying graph.
 				 */
-				const grb::Matrix< MatrixEntryType > & get_matrix() const noexcept {
+				const grb::Matrix< MatrixEntryType > & getMatrix() const noexcept {
 					return graph;
 				}
 

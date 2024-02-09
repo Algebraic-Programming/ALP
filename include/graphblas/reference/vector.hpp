@@ -244,6 +244,8 @@ namespace grb {
 
 		friend class PinnedVector< D, BSP1D >;
 
+		friend class Vector< D, nonblocking, internal::Coordinates< nonblocking > >;
+
 		template< typename ValueType, Backend backend >
 		friend Vector<
 			ValueType, backend,
@@ -853,6 +855,28 @@ namespace grb {
 #ifdef _DEBUG
 				std::cerr << "In Vector< reference >::Vector( size_t ) constructor\n";
 #endif
+			}
+
+			/**
+			 * Constructs a reference vector.
+			 *
+			 * @see Full description in base backend.
+			 */
+			Vector( const std::initializer_list< D > &vals )
+				: Vector( vals.size(), vals.size() )
+			{
+#ifdef _DEBUG
+				std::cerr << "In Vector< reference >::Vector( initializer_list )"
+					<< " constructor\n";
+#endif
+
+#ifdef _H_GRB_REFERENCE_OMP_VECTOR
+				#pragma omp parallel for simd
+#endif
+				for( size_t i = 0; i < vals.size(); ++i ) {
+					_raw[ i ] = *( vals.begin() + i );
+				}
+				_coordinates.assignAll();
 			}
 
 			/**

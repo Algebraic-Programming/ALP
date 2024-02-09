@@ -187,7 +187,7 @@ namespace grb {
 					const Data &parameters = Data(),
 					const size_t max_steps = 0
 				) {
-					const size_t n = pregel.num_vertices();
+					const size_t n = pregel.numVertices();
 					if( grb::size( scores ) != n ) {
 						return MISMATCH;
 					}
