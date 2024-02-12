@@ -28,14 +28,13 @@
 #include <assert.h>
 #include <string.h>
 
-#include <graphblas/backends.hpp>
-#include <graphblas/base/collectives.hpp>
-#include <graphblas/blas0.hpp>
-#include <graphblas/bsp1d/init.hpp>
 #include <graphblas/ops.hpp>
+#include <graphblas/blas0.hpp>
+#include <graphblas/backends.hpp>
 
-#include "collectives_blas1_raw.hpp"
-#include "internal-collectives.hpp"
+#include <graphblas/base/collectives.hpp>
+
+#include <graphblas/bsp1d/init.hpp>
 
 #define NO_CAST_ASSERT_BLAS0( x, y, z )                                            \
 	static_assert( x,                                                              \
@@ -68,6 +67,55 @@
 
 
 namespace grb {
+
+	namespace {
+
+		/**
+		 * This is a reducer function of the signature specified by lpf_reducer_t.
+		 */
+		template< typename OP >
+		void generic_reducer( size_t n, const void * array_p, void * value_p ) {
+			typedef typename OP::D1 lhs_type;
+			typedef typename OP::D2 rhs_type;
+			typedef typename OP::D3 out_type;
+			static_assert(
+					std::is_same< rhs_type, out_type >::value,
+					"A generic operator-only reducer from an array into a scalar requires the "
+					"RHS and output types to be the same"
+				);
+			assert( array_p != value_p );
+
+			const lhs_type * const __restrict__ array =
+				static_cast< const lhs_type * >( array_p );
+			out_type * const __restrict__ value =
+				static_cast< out_type * >( value_p );
+
+			lhs_type left_buffer[ OP::blocksize ];
+
+			// SIMD loop
+			size_t i = 0;
+			while( i + OP::blocksize < n ) {
+				// load
+				for( size_t k = 0; k < OP::blocksize; ++k ) {
+					left_buffer[ k ] = array[ i + k ];
+				}
+				// compute
+				for( size_t k = 0; k < OP::blocksize; ++k ) {
+					OP::foldr( left_buffer[ k ], *value );
+				}
+				// increment
+				i += OP::blocksize;
+			}
+
+			// scalar coda
+			for( ; i < n; ++i ) {
+				OP::foldr( array[ i ], *value );
+			}
+
+			// done
+		}
+
+	} // end anon namespace
 
 	/**
 	 * Collective communications using ALP operators for reduce-style operations.
@@ -108,8 +156,9 @@ namespace grb {
 				typename Operator, typename IOType
 			>
 			static RC allreduce( IOType &inout, const Operator &op = Operator() ) {
-				// this is the serial algorithm only
-				// TODO internal issue #19
+				// We use the operator type to create a matching lpf_reducer_t. As a result,
+				// the operator instance is never explicitly used.
+				(void) op;
 #ifdef _DEBUG
 				std::cout << "Entered grb::collectives< BSP1D >::allreduce with inout = "
 					<< inout << " and op = " << &op << std::endl;
@@ -134,76 +183,59 @@ namespace grb {
 					return SUCCESS;
 				}
 
-				// we need to register inout
-				lpf_memslot_t inout_slot = LPF_INVALID_MEMSLOT;
-				if( data.ensureMemslotAvailable() != grb::SUCCESS ) {
-#ifndef NDEBUG
-					const bool could_not_ensure_enough_memory_slots_available = false;
-					assert( could_not_ensure_enough_memory_slots_available );
-#endif
-					return PANIC;
-				}
-				if( lpf_register_local( data.context,
-						&inout,
-						sizeof( IOType ),
-						&inout_slot
-					) != LPF_SUCCESS
-				) {
-#ifndef NDEBUG
-					const bool lpf_register_returned_error = false;
-					assert( lpf_register_returned_error );
-#endif
-					return PANIC;
-				} else {
-					data.signalMemslotTaken();
-				}
+				// ensure the global buffer has enough capacity
+				RC rc = data.ensureBufferSize( sizeof( IOType ) );
+				if( rc != SUCCESS ) { return rc; }
 
-				// allgather inout values
-				// note: buffer size check is done by the below function
-				if( internal::allgather(
-					inout_slot, 0,
-					data.slot, data.s * sizeof( IOType ),
-					sizeof( IOType ),
-					data.P * sizeof( IOType ),
-					true
-				) != grb::SUCCESS ) {
-#ifndef NDEBUG
-					const bool allgather_returned_error = false;
-					assert( allgather_returned_error );
-#endif
-					return PANIC;
-			}
+				// ensure we can execute the requested collective call
+				rc = data.ensureCollectivesCapacity( 1, sizeof( IOType ), 0 );
+				rc = rc != SUCCESS ? rc : data.ensureMaxMessages( 2 * data.P - 2 );
+				if( rc != SUCCESS ) { return rc; }
 
-				// deregister
-				if( lpf_deregister( data.context, inout_slot ) != LPF_SUCCESS ) {
-#ifndef NDEBUG
-					const bool lpf_deregister_returned_error = false;
-					assert( lpf_deregister_returned_error );
-#endif
-					return PANIC;
-				} else {
-					data.signalMemslotReleased();
+				// retrieve buffer area
+				IOType * const __restrict__ buffer = data.template getBuffer< IOType >();
+
+				// copy payload into buffer
+				// rationale: this saves one global registration, which otherwise is likely
+				//            to dominate most uses for this collective call
+				*buffer = inout;
+
+				// get the lpf_reducer_t
+				lpf_reducer_t reducer = &(generic_reducer< Operator >);
+
+				// schedule allreduce
+				lpf_err_t lpf_rc = lpf_allreduce(
+						data.coll,
+						buffer, data.slot,
+						sizeof(IOType),
+						reducer
+					);
+
+				// execute allreduce
+				if( lpf_rc == LPF_SUCCESS ) {
+					lpf_rc = lpf_sync( data.context, LPF_SYNC_DEFAULT );
 				}
 
-				// fold everything
-				IOType * __restrict__ const buffer = data.getBuffer< IOType >();
-				for( size_t i = 0; i < data.P; ++i ) {
-					if( i == data.s ) {
-						continue;
+				// catch LPF errors
+				if( lpf_rc != LPF_SUCCESS ) {
+					/* LCOV_EXCL_START */
+					if( lpf_rc != LPF_ERR_FATAL ) {
+						std::cerr << "Error: unspecified LPF error was returned, please submit a "
+							<< "bug report!\n";
+#ifndef NDEBUG
+						const bool lpf_spec_says_this_should_not_occur = false;
+						assert( lpf_spec_says_this_should_not_occur );
+#endif
+						return PANIC;
 					}
-#ifdef _DEBUG
-					std::cout << data.s << ": in Collectives< BSP1D >::allreduce. Buffer "
-						<< "index " << i << ", folding " << buffer[ i ] << " into " << inout
-						<< ", yields ";
-#endif
-					// if casting is required to apply op, foldl will take care of this
-					if( foldl< descr >( inout, buffer[ i ], op ) != SUCCESS ) {
-						assert( false );
-					}
-#ifdef _DEBUG
-					std::cout << inout << std::endl;
-#endif
+					std::cerr << "Error (allreduce, distributed): LPF reports unmitigable "
+						<< "error\n";
+					return PANIC;
+					/* LCOV_EXCL_STOP */
 				}
+
+				// copy back
+				inout = *buffer;
 
 				// done
 				return SUCCESS;
@@ -230,8 +262,9 @@ namespace grb {
 				IOType &inout, const lpf_pid_t root = 0,
 				const Operator op = Operator()
 			) {
-				// this is the serial algorithm only
-				// TODO internal issue #19
+				// We use the operator type to create a matching lpf_reducer_t. As a result,
+				// the operator instance is never explicitly used.
+				(void) op;
 
 				// static sanity check
 				NO_CAST_ASSERT_BLAS0( ( !(descr & descriptors::no_casting) ||
@@ -251,67 +284,61 @@ namespace grb {
 					return SUCCESS;
 				}
 
-				// make sure we can support comms pattern: IOType -> P * IOType
-				lpf_coll_t coll;
-				if( commsPreamble(
-						data, &coll, data.P, data.P * sizeof( IOType ), 0, 1
-					) != SUCCESS
-				) {
-					return PANIC;
+				// ensure the global buffer has enough capacity
+				RC rc = data.ensureBufferSize( sizeof( IOType ) );
+				if( rc != SUCCESS ) { return rc; }
+
+				// ensure we can execute the requested collective call
+				rc = data.ensureCollectivesCapacity( 1, sizeof( IOType ), 0 );
+				rc = rc != SUCCESS ? rc : data.ensureMaxMessages( data.P - 1 );
+				if( rc != SUCCESS ) { return rc; }
+
+				// retrieve buffer area
+				IOType * const __restrict__ buffer = data.template getBuffer< IOType >();
+
+				// copy payload into buffer
+				// rationale: this saves one global registration, which otherwise is likely
+				//            to dominate most uses for this collective call
+				*buffer = inout;
+
+				// get the lpf_reducer_t
+				lpf_reducer_t reducer = &(generic_reducer< Operator >);
+
+				// schedule allreduce
+				lpf_err_t lpf_rc = lpf_reduce(
+						data.coll,
+						buffer, data.slot,
+						sizeof(IOType),
+						reducer,
+						root
+					);
+
+				// execute allreduce
+				if( lpf_rc == LPF_SUCCESS ) {
+					lpf_rc = lpf_sync( data.context, LPF_SYNC_DEFAULT );
 				}
 
-				// create a local register slot
-				lpf_memslot_t inout_slot = LPF_INVALID_MEMSLOT;
-				if( lpf_register_global(
-						data.context, &inout, sizeof( IOType ), &inout_slot
-					) != LPF_SUCCESS
-				) {
-					return PANIC;
-				}
-
-				if( lpf_sync( data.context, LPF_SYNC_DEFAULT ) != LPF_SUCCESS ) {
-					return PANIC;
-				}
-
-				// gather together values
-				if( lpf_gather(
-						coll, inout_slot, data.slot, sizeof( IOType ), root
-					) != LPF_SUCCESS
-				) {
-					return PANIC;
-				}
-
-				// finish the communication
-				if( lpf_sync( data.context, LPF_SYNC_DEFAULT ) != LPF_SUCCESS ) {
-					return PANIC;
-				}
-
-				// do deregister
-				if( lpf_deregister( data.context, inout_slot ) != LPF_SUCCESS ) {
-					return PANIC;
-				}
-
-				// fold everything: root only
-				if( data.s == root ) {
-					IOType * __restrict__ const buffer = data.getBuffer< IOType >();
-					for( size_t i = 0; i < data.P; ++i ) {
-						if( i == root ) {
-							continue;
-						}
-						// if casting is required to apply op, foldl will take care of this
-						// note: the no_casting check could be deferred to foldl but this would
-						//       result in unclear error messages
-						if( foldl< descr >( inout, buffer[ i ], op ) != SUCCESS ) {
-							return PANIC;
-						}
+				// catch LPF errors
+				if( lpf_rc != LPF_SUCCESS ) {
+					/* LCOV_EXCL_START */
+					if( lpf_rc != LPF_ERR_FATAL ) {
+						std::cerr << "Error (reduce, distributed): unspecified LPF error was "
+							<< "returned, please submit a bug report!\n";
+#ifndef NDEBUG
+						const bool lpf_spec_says_this_should_not_occur = false;
+						assert( lpf_spec_says_this_should_not_occur );
+#endif
+						return PANIC;
 					}
+					std::cerr << "Error (reduce, distributed): LPF reports unmitigable error"
+						<< "\n";
+					return PANIC;
+					/* LCOV_EXCL_STOP */
 				}
 
-				if( commsPostamble(
-						data, &coll, data.P, data.P * sizeof( IOType ), 0, 1
-					) != SUCCESS
-				) {
-					return PANIC;
+				// copy back
+				if( data.s == static_cast< size_t >( root ) ) {
+					inout = *buffer;
 				}
 
 				// done
@@ -369,48 +396,75 @@ namespace grb {
 				// we need access to LPF context
 				internal::BSP1D_Data &data = internal::grb_BSP1D.load();
 
-				// make sure we can support comms pattern: IOType -> IOType
-				lpf_coll_t coll;
-				if( commsPreamble( data, &coll, data.P, 0, 0, 1 ) != SUCCESS ) {
-					return PANIC;
+				// dynamic checks
+				if( root >= data.P ) {
+					return ILLEGAL;
 				}
 
-				// register inout
-				lpf_memslot_t slot = LPF_INVALID_MEMSLOT;
-				if( data.ensureMemslotAvailable() != SUCCESS ) {
-					return PANIC;
-				}
-				if( lpf_register_global(
-						data.context, &inout, sizeof( IOType ), &slot
-					) != LPF_SUCCESS
-				) {
-					return PANIC;
+				// catch trivial request first
+				if( data.P == 1 ) {
+					return SUCCESS;
 				}
 
-				if( lpf_sync( data.context, LPF_SYNC_DEFAULT ) != LPF_SUCCESS ) {
-					return PANIC;
+				// ensure the global buffer has enough capacity
+				RC rc = data.ensureBufferSize( sizeof( IOType ) );
+				if( rc != SUCCESS ) { return rc; }
+
+				// ensure we have enough memory slots for local registration
+				rc = data.ensureMemslotAvailable();
+				if( rc != SUCCESS ) { return rc; }
+
+				// ensure we can execute the requested collective call
+				rc = data.ensureCollectivesCapacity( 1, 0, sizeof( IOType ) );
+
+				// ensure we have the required h-relation capacity
+				// note the below cannot overflow since we guarantee data.P > 1
+				rc = rc != SUCCESS
+					? rc
+					: data.ensureMaxMessages( std::max( data.P + 1, 2 * data.P - 3 ) );
+				if( rc != SUCCESS ) { return rc; }
+
+				// root retrieve buffer area and copies payload into buffer
+				// rationale: this saves one global registration, which otherwise is likely
+				//            to dominate most uses for this collective call
+				if( data.s == static_cast< size_t >( root ) ) {
+					IOType * const __restrict__ buffer = data.template getBuffer< IOType >();
+					*buffer = inout;
 				}
 
-				// broadcast value
-				if( lpf_broadcast(
-						coll, slot, slot, sizeof( IOType ), root
-					) != LPF_SUCCESS
-				) {
-					return PANIC;
+				// register destination area
+				lpf_memslot_t dest_slot = LPF_INVALID_MEMSLOT;
+				lpf_err_t lpf_rc = lpf_register_local(
+					data.context, &inout, sizeof( IOType ), &dest_slot );
+				if( lpf_rc == SUCCESS ) {
+					lpf_rc = lpf_broadcast( data.coll, data.slot, dest_slot, sizeof( IOType ),
+						root );
 				}
 
 				// finish communication
-				if( lpf_sync( data.context, LPF_SYNC_DEFAULT ) != LPF_SUCCESS ) {
-					return PANIC;
+				if( lpf_rc == LPF_SUCCESS ) {
+					lpf_rc = lpf_sync( data.context, LPF_SYNC_DEFAULT );
 				}
 
-				// coda
-				if( lpf_deregister( data.context, slot ) != LPF_SUCCESS ) {
-					return PANIC;
+				// cleanup
+				if( dest_slot != LPF_INVALID_MEMSLOT && lpf_rc != LPF_ERR_FATAL ) {
+					(void) lpf_deregister( data.context, dest_slot );
 				}
 
-				if( commsPostamble( data, &coll, data.P, 0, 0, 1 ) != SUCCESS ) {
+				// LPF error handling
+				if( lpf_rc != LPF_SUCCESS ) {
+					/* LCOV_EXCL_START */
+					if( lpf_rc != LPF_ERR_FATAL ) {
+#ifndef NDEBUG
+						const bool lpf_spec_says_this_should_never_happen = false;
+						assert( lpf_spec_says_this_should_never_happen );
+#endif
+						std::cerr << "Error, broadcast (BSP): unexpected error. Please submit a "
+							<< "bug report\n";
+					}
+					std::cerr << "Error, broadcast (BSP): LPF encountered a fatal error\n";
 					return PANIC;
+					/* LCOV_EXCL_STOP */
 				}
 
 				// done
@@ -436,6 +490,9 @@ namespace grb {
 			 * Please refer to the LPF collectives higher-level library for the
 			 * performance semantics of this call. (This function does not implements
 			 * its own custom logic for this primitive.)
+			 *
+			 * This cost should be appended with the cost of registering \a inout as a
+			 * memory space for global RDMA communication.
 			 * \endparblock
 			 *
 			 * @returns grb::SUCCESS On successful broadcast of the requested array.
@@ -445,7 +502,86 @@ namespace grb {
 			static RC broadcast(
 				IOType * inout, const size_t size, const size_t root = 0
 			) {
-				return internal::broadcast< descr >( inout, size, root );
+				// we need access to LPF context
+				internal::BSP1D_Data &data = internal::grb_BSP1D.load();
+
+				// check contract
+				if( root >= data.P ) {
+					return ILLEGAL;
+				}
+
+				// catch trivial cases
+				if( data.P == 1 || size == 0 ) {
+					return SUCCESS;
+				}
+
+				// an array of arbitrary size is probably best not copied, we hence incur
+				// the extra latency of registering inout
+
+				// ensure we have enough memory slots for global registration
+				RC rc = data.ensureMemslotAvailable();
+
+				// ensure we can execute the requested collective call
+				rc = rc != SUCCESS
+					? rc
+					: data.ensureCollectivesCapacity( 1, 0, size * sizeof( IOType ) );
+
+				// ensure we have the required h-relation capacity
+				// note the below cannot overflow since we guarantee data.P > 1
+				rc = rc != SUCCESS
+					? rc
+					: data.ensureMaxMessages( std::max( data.P + 1, 2 * data.P - 3 ) );
+
+				// propagate any errors
+				if( rc != SUCCESS ) { return rc; }
+
+				// get byte size
+				const size_t bsize = size * sizeof( IOType );
+
+				// register array
+				lpf_memslot_t user_slot = LPF_INVALID_MEMSLOT;
+				lpf_err_t lpf_rc = lpf_register_global(
+					data.context, &inout, bsize, &user_slot );
+
+				// activate registration
+				if( lpf_rc == LPF_SUCCESS ) {
+					lpf_sync( data.context, LPF_SYNC_DEFAULT );
+				}
+
+				// schedule broadcast
+				if( lpf_rc == LPF_SUCCESS ) {
+					lpf_rc = lpf_broadcast( data.coll, user_slot, user_slot, bsize, root );
+				}
+
+				// execute broadcast
+				if( lpf_rc == LPF_SUCCESS ) {
+					lpf_sync( data.context, LPF_SYNC_DEFAULT );
+				}
+
+				// cleanup
+				if( user_slot != LPF_INVALID_MEMSLOT && lpf_rc != LPF_ERR_FATAL ) {
+					(void) lpf_deregister( data.context, user_slot );
+				}
+
+				// LPF error handling
+				if( lpf_rc != LPF_SUCCESS ) {
+					/* LCOV_EXCL_START */
+					if( lpf_rc != LPF_ERR_FATAL ) {
+#ifndef NDEBUG
+						const bool lpf_spec_says_this_should_never_happen = false;
+						assert( lpf_spec_says_this_should_never_happen );
+#endif
+						std::cerr << "Error, array broadcast (BSP): unexpected error. Please "
+							<< "submit a bug report\n";
+					}
+					std::cerr << "Error, array broadcast (BSP): LPF encountered a fatal error"
+						<< "\n";
+					return PANIC;
+					/* LCOV_EXCL_STOP */
+				}
+
+				// done
+				return SUCCESS;
 			}
 
 	};

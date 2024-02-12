@@ -30,20 +30,26 @@
 #include <lpf/core.h>
 
 #include <graphblas/phase.hpp>
-#include <graphblas/backends.hpp>
-#include <graphblas/base/pinnedvector.hpp>
-#include <graphblas/collectives.hpp>
 #include <graphblas/config.hpp>
+#include <graphblas/backends.hpp>
+#include <graphblas/collectives.hpp>
+#include <graphblas/type_traits.hpp>
+
+#include <graphblas/base/pinnedvector.hpp>
+
 #include <graphblas/reference/blas1-raw.hpp>
 #include <graphblas/reference/coordinates.hpp>
 #include <graphblas/reference/vector.hpp>
-#include <graphblas/type_traits.hpp>
+
+#include <graphblas/bsp/internal-collectives.hpp>
+#include <graphblas/bsp/collectives_blas1_vec.hpp>
+
 #include <graphblas/utils/alloc.hpp>
 #include <graphblas/utils/autodeleter.hpp>
 
+#include "init.hpp"
 #include "config.hpp"
 #include "distribution.hpp"
-#include "init.hpp"
 
 #ifdef _DEBUG
  #include "spmd.hpp"
@@ -379,7 +385,8 @@ namespace grb {
 			class Ring,
 			typename OutputType, typename InputType1, typename InputType2
 		>
-		friend RC internal::allreduce( OutputType &,
+		friend RC internal::allreduce(
+			OutputType &,
 			const Vector< InputType1, BSP1D, C > &,
 			const Vector< InputType2, BSP1D, C > &,
 			RC( reducer )(

@@ -172,8 +172,9 @@ namespace grb {
 				size_t i = 0;
 				data.s == root &&
 					ret == SUCCESS &&
-					internal::getCoordinates( out ).size() != internal::getCoordinates( out ).nonzeroes()
-					&& i < data.P;
+					internal::getCoordinates( out ).size() !=
+						internal::getCoordinates( out ).nonzeroes() &&
+					i < data.P;
 				++i
 			) {
 				(void) internal::getCoordinates( out ).assign( i );
@@ -208,8 +209,9 @@ namespace grb {
 		 *                  Default is grb::descriptors::no_operation.
 		 * @tparam IOType   The type of the to-be gathered value.
 		 *
-		 * @param[in]  in:  The vector at the calling process to be gathered.
-		 * @param[out] out: The vector of gathered values, available at the root process.
+		 * @param[in]  in  The vector at the calling process to be gathered.
+		 * @param[out] out The vector of gathered values, available at the root
+		 *                 process.
 		 *
 		 * @returns grb::SUCCESS When the operation succeeds as planned.
 		 * @returns grb::PANIC   When the communication layer unexpectedly fails. When
@@ -223,7 +225,6 @@ namespace grb {
 		 * -# transferred bytes: \f$ N \f$ ;
 		 * -# BSP cost: \f$ Ng + l \f$;
 		 * \endparblock
-		 *
 		 */
 		template<
 			Descriptor descr = descriptors::no_operation,
@@ -562,26 +563,34 @@ namespace grb {
 			lpf_memslot_t dst = LPF_INVALID_MEMSLOT;
 #ifdef BLAS1_RAW
 			if( ret == SUCCESS ) {
-				const lpf_err_t brc = lpf_register_global( data.context, const_cast< IOType * >( in ), size * sizeof( IOType ), &src );
+				const lpf_err_t brc = lpf_register_global( data.context,
+					const_cast< IOType * >( in ), size * sizeof( IOType ), &src );
 				if( brc != LPF_SUCCESS ) {
 					ret = PANIC;
 				}
 			}
 			if( ret == SUCCESS ) {
-				const lpf_err_t brc = lpf_register_global( data.context, out, size / data.P * sizeof( IOType ), &dst );
+				const lpf_err_t brc = lpf_register_global( data.context, out,
+					size / data.P * sizeof( IOType ), &dst );
 				if( brc != LPF_SUCCESS ) {
 					ret = PANIC;
 				}
 			}
 #else
 			if( ret == SUCCESS ) {
-				const lpf_err_t brc = lpf_register_global( data.context, const_cast< IOType * >( internal::getRaw( in ) ), internal::getCoordinates( in ).nonzeroes() * sizeof( IOType ), &src );
+				const lpf_err_t brc = lpf_register_global(
+					data.context,
+					const_cast< IOType * >( internal::getRaw( in ) ),
+					internal::getCoordinates( in ).nonzeroes() * sizeof( IOType ),
+					&src
+				);
 				if( brc != LPF_SUCCESS ) {
 					ret = PANIC;
 				}
 			}
 			if( ret == SUCCESS ) {
-				const lpf_err_t brc = lpf_register_global( data.context, internal::getRaw( out ), size / data.P * sizeof( IOType ), &dst );
+				const lpf_err_t brc = lpf_register_global( data.context,
+					internal::getRaw( out ), size / data.P * sizeof( IOType ), &dst );
 				if( brc != LPF_SUCCESS ) {
 					ret = PANIC;
 				}
@@ -594,7 +603,8 @@ namespace grb {
 
 			// scatter values
 			if( ret == SUCCESS ) {
-				const lpf_err_t brc = lpf_scatter( coll, src, dst, ( size / procs ) * sizeof( IOType ), root );
+				const lpf_err_t brc = lpf_scatter( coll, src, dst,
+					( size / procs ) * sizeof( IOType ), root );
 				if( brc != LPF_SUCCESS ) {
 					ret = PANIC;
 				}
@@ -604,9 +614,11 @@ namespace grb {
 			if( ret == SUCCESS && data.s == root ) {
 				const size_t offset = root * ( size / procs );
 #ifdef BLAS1_RAW
-				(void)memcpy( out + offset, in + offset, ( size / procs ) * sizeof( IOType ) );
+				(void) memcpy( out + offset, in + offset,
+					( size / procs ) * sizeof( IOType ) );
 #else
-				(void)memcpy( internal::getRaw( out ) + offset, internal::getRaw( in ) + offset, ( size / procs ) * sizeof( IOType ) );
+				(void) memcpy( internal::getRaw( out ) + offset,
+					internal::getRaw( in ) + offset, ( size / procs ) * sizeof( IOType ) );
 #endif
 			}
 
@@ -653,8 +665,8 @@ namespace grb {
 		 *                  Default is grb::descriptors::no_operation.
 		 * @tparam IOType   The type of the to-be gathered value.
 		 *
-		 * @param[in]  in:  The value at the calling process to be gathered.
-		 * @param[out] out: The vector of gathered values, available at each process.
+		 * @param[in]  in   The value at the calling process to be gathered.
+		 * @param[out] out  The vector of gathered values, available at each process.
 		 *
 		 * @returns grb::SUCCESS When the operation succeeds as planned.
 		 * @returns grb::PANIC   When the communication layer unexpectedly fails. When
@@ -703,16 +715,22 @@ namespace grb {
 			// create a local register slot for in
 			lpf_memslot_t in_slot = LPF_INVALID_MEMSLOT;
 			RC ret = SUCCESS;
-			if( ret == SUCCESS && lpf_register_local( data.context, &in, sizeof( IOType ), &in_slot ) != LPF_SUCCESS ) {
+			if( ret == SUCCESS && lpf_register_local( data.context, &in,
+				sizeof( IOType ), &in_slot ) != LPF_SUCCESS
+			) {
 				ret = PANIC;
 			}
 			lpf_memslot_t dest = LPF_INVALID_MEMSLOT;
 #ifdef BLAS1_RAW
-			if( ret == SUCCESS && lpf_register_global( data.context, out, data.P * sizeof( IOType ), &dest ) != LPF_SUCCESS ) {
+			if( ret == SUCCESS && lpf_register_global( data.context, out,
+				data.P * sizeof( IOType ), &dest ) != LPF_SUCCESS
+			) {
 				ret = PANIC;
 			}
 #else
-			if( ret == SUCCESS && lpf_register_global( data.context, internal::getRaw( out ), data.P * sizeof( IOType ), &dest ) != LPF_SUCCESS ) {
+			if( ret == SUCCESS && lpf_register_global( data.context,
+				internal::getRaw( out ), data.P * sizeof( IOType ), &dest ) != LPF_SUCCESS
+			) {
 				ret = PANIC;
 			}
 #endif
@@ -724,17 +742,23 @@ namespace grb {
 			out[ data.s ] = in;
 #endif
 
-			if( ret == SUCCESS && lpf_sync( data.context, LPF_SYNC_DEFAULT ) != LPF_SUCCESS ) {
+			if( ret == SUCCESS && lpf_sync( data.context, LPF_SYNC_DEFAULT )
+				!= LPF_SUCCESS
+			) {
 				ret = PANIC;
 			}
 
 			// allgather values
-			if( ret == SUCCESS && lpf_allgather( coll, in_slot, dest, sizeof( IOType ), false ) != LPF_SUCCESS ) {
+			if( ret == SUCCESS && lpf_allgather( coll, in_slot, dest, sizeof( IOType ),
+				false ) != LPF_SUCCESS
+			) {
 				ret = PANIC;
 			}
 
 			// complete communication
-			if( ret == SUCCESS && lpf_sync( data.context, LPF_SYNC_DEFAULT ) != LPF_SUCCESS ) {
+			if( ret == SUCCESS && lpf_sync( data.context, LPF_SYNC_DEFAULT )
+				!= LPF_SUCCESS
+			) {
 				ret = PANIC;
 			}
 
@@ -742,15 +766,19 @@ namespace grb {
 			// correct sparsity info
 			for( size_t i = 0; ret == SUCCESS && i < data.P; i++ ) {
 				const size_t index = i;
-				(void)internal::getCoordinates( out ).assign( index );
+				(void) internal::getCoordinates( out ).assign( index );
 			}
 #endif
 
 			// do deregister
-			if( in_slot != LPF_INVALID_MEMSLOT && lpf_deregister( data.context, in_slot ) != LPF_SUCCESS ) {
+			if( in_slot != LPF_INVALID_MEMSLOT && lpf_deregister( data.context, in_slot
+				) != LPF_SUCCESS
+			) {
 				ret = PANIC;
 			}
-			if( dest != LPF_INVALID_MEMSLOT && lpf_deregister( data.context, dest ) != LPF_SUCCESS ) {
+			if( dest != LPF_INVALID_MEMSLOT && lpf_deregister( data.context, dest )
+				!= LPF_SUCCESS
+			) {
 				ret = PANIC;
 			}
 
@@ -771,12 +799,12 @@ namespace grb {
 		 * collective graphBLAS operation. The BSP costs are as for the LPF
 		 * #allgather.
 		 *
-		 * @tparam descr    The GraphBLAS descriptor.
-		 *                  Default is grb::descriptors::no_operation.
-		 * @tparam IOType   The type of the to-be gathered value.
+		 * @tparam descr   The GraphBLAS descriptor.
+		 *                 Default is grb::descriptors::no_operation.
+		 * @tparam IOType  The type of the to-be gathered value.
 		 *
-		 * @param[in]  in:  The vector at the calling process to be gathered.
-		 * @param[out] out: The vector of gathered values, available at each process.
+		 * @param[in]  in  The vector at the calling process to be gathered.
+		 * @param[out] out The vector of gathered values, available at each process.
 		 *
 		 * @returns grb::SUCCESS When the operation succeeds as planned.
 		 * @returns grb::PANIC   When the communication layer unexpectedly fails. When
@@ -786,8 +814,8 @@ namespace grb {
 		 * \parblock
 		 * \par Performance semantics:
 		 * -# Problem size N: \f$ P * in.size * \mathit{sizeof}(\mathit{IOType}) \f$
-		 * -# local work: \f$ 0 \f$ ;
-		 * -# transferred bytes: \f$ N \f$ ;
+		 * -# local work: \f$ 0 \f$;
+		 * -# transferred bytes: \f$ N \f$;
 		 * -# BSP cost: \f$ Ng + l \f$;
 		 * \endparblock
 		 *
@@ -821,7 +849,9 @@ namespace grb {
 
 			// preabmle
 			lpf_coll_t coll;
-			if( commsPreamble( data, &coll, data.P, data.P * size * sizeof( IOType ), 1, 1 ) != SUCCESS ) {
+			if( commsPreamble( data, &coll, data.P, data.P * size * sizeof( IOType ),
+				1, 1 ) != SUCCESS
+			) {
 				return PANIC;
 			}
 
@@ -830,40 +860,57 @@ namespace grb {
 			lpf_memslot_t dest = LPF_INVALID_MEMSLOT;
 			RC ret = SUCCESS;
 #ifdef BLAS1_RAW
-			if( ret == SUCCESS && lpf_register_local( data.context, in, size * sizeof( IOType ), &in_slot ) != LPF_SUCCESS ) {
+			if( ret == SUCCESS && lpf_register_local( data.context, in,
+				size * sizeof( IOType ), &in_slot ) != LPF_SUCCESS
+			) {
 				ret = PANIC;
 			}
-			if( ret == SUCCESS && lpf_register_global( data.context, out, data.P * size * sizeof( IOType ), &dest ) != LPF_SUCCESS ) {
+			if( ret == SUCCESS && lpf_register_global( data.context, out,
+				data.P * size * sizeof( IOType ), &dest ) != LPF_SUCCESS
+			) {
 				ret = PANIC;
 			}
 #else
-			if( ret == SUCCESS && lpf_register_local( data.context, internal::getRaw( in ), size * sizeof( IOType ), &in_slot ) != LPF_SUCCESS ) {
+			if( ret == SUCCESS && lpf_register_local( data.context,
+				internal::getRaw( in ), size * sizeof( IOType ), &in_slot ) != LPF_SUCCESS
+			) {
 				ret = PANIC;
 			}
-			if( ret == SUCCESS && lpf_register_global( data.context, internal::getRaw( out ), size * sizeof( IOType ), &dest ) != LPF_SUCCESS ) {
+			if( ret == SUCCESS && lpf_register_global( data.context,
+				internal::getRaw( out ), size * sizeof( IOType ), &dest ) != LPF_SUCCESS
+			) {
 				ret = PANIC;
 			}
 #endif
-
-			if( ret == SUCCESS && lpf_sync( data.context, LPF_SYNC_DEFAULT ) != LPF_SUCCESS ) {
+			if( ret == SUCCESS && lpf_sync( data.context, LPF_SYNC_DEFAULT )
+				!= LPF_SUCCESS
+			) {
 				ret = PANIC;
 			}
 
 			// allgather values
-			if( ret == SUCCESS && lpf_allgather( coll, in_slot, dest, size * sizeof( IOType ), false ) != LPF_SUCCESS ) {
+			if( ret == SUCCESS && lpf_allgather( coll, in_slot, dest,
+				size * sizeof( IOType ), false ) != LPF_SUCCESS
+			) {
 				ret = PANIC;
 			}
 
 			// complete the allgather
-			if( ret == SUCCESS && lpf_sync( data.context, LPF_SYNC_DEFAULT ) != LPF_SUCCESS ) {
+			if( ret == SUCCESS && lpf_sync( data.context, LPF_SYNC_DEFAULT )
+				!= LPF_SUCCESS
+			) {
 				ret = PANIC;
 			}
 
 			// do deregister
-			if( in_slot != LPF_INVALID_MEMSLOT && lpf_deregister( data.context, in_slot ) != LPF_SUCCESS ) {
+			if( in_slot != LPF_INVALID_MEMSLOT && lpf_deregister( data.context, in_slot )
+				!= LPF_SUCCESS
+			) {
 				ret = PANIC;
 			}
-			if( dest != LPF_INVALID_MEMSLOT && lpf_deregister( data.context, dest ) != LPF_SUCCESS ) {
+			if( dest != LPF_INVALID_MEMSLOT && lpf_deregister( data.context, dest )
+				!= LPF_SUCCESS
+			) {
 				ret = PANIC;
 			}
 
@@ -874,12 +921,14 @@ namespace grb {
 #else
 				const size_t index = data.s * size + i;
 				internal::getRaw( out )[ index ] = internal::getRaw( in )[ index ];
-				(void)internal::getCoordinates( out ).assign( index );
+				(void) internal::getCoordinates( out ).assign( index );
 #endif
 			}
 
 			// postamble
-			if( commsPostamble( data, &coll, data.P, data.P * size * sizeof( IOType ), 1, 1 ) != SUCCESS ) {
+			if( commsPostamble( data, &coll, data.P, data.P * size * sizeof( IOType ),
+				1, 1 ) != SUCCESS
+			) {
 				return PANIC;
 			}
 
@@ -952,39 +1001,63 @@ namespace grb {
 			lpf_memslot_t dest = LPF_INVALID_MEMSLOT;
 			RC ret = SUCCESS;
 #ifdef BLAS1_RAW
-			if( ret == SUCCESS && lpf_register_global( data.context, in, data.P * sizeof( IOType ), &in_slot ) != LPF_SUCCESS ) {
+			if( ret == SUCCESS && lpf_register_global( data.context, in,
+				data.P * sizeof( IOType ), &in_slot ) != LPF_SUCCESS
+			) {
 				ret = PANIC;
 			}
-			if( ret == SUCCESS && lpf_register_global( data.context, out, data.P * sizeof( IOType ), &dest ) != LPF_SUCCESS ) {
+			if( ret == SUCCESS && lpf_register_global( data.context, out,
+				data.P * sizeof( IOType ), &dest ) != LPF_SUCCESS
+			) {
 				ret = PANIC;
 			}
 #else
-			if( ret == SUCCESS && lpf_register_global( data.context, const_cast< IOType * >( internal::getRaw( in ) ), data.P * sizeof( IOType ), &in_slot ) != LPF_SUCCESS ) {
+			if( ret == SUCCESS && lpf_register_global(
+					data.context,
+					const_cast< IOType * >( internal::getRaw( in ) ),
+					data.P * sizeof( IOType ), &in_slot
+				) != LPF_SUCCESS
+			) {
 				ret = PANIC;
 			}
-			if( ret == SUCCESS && lpf_register_global( data.context, internal::getRaw( out ), data.P * sizeof( IOType ), &dest ) != LPF_SUCCESS ) {
+			if( ret == SUCCESS && lpf_register_global(
+					data.context,
+					internal::getRaw( out ), data.P * sizeof( IOType ),
+					&dest
+				) != LPF_SUCCESS
+			) {
 				ret = PANIC;
 			}
 #endif
-			if( ret == SUCCESS && lpf_sync( data.context, LPF_SYNC_DEFAULT ) != LPF_SUCCESS ) {
+			if( ret == SUCCESS && lpf_sync( data.context, LPF_SYNC_DEFAULT )
+				!= LPF_SUCCESS
+			) {
 				ret = PANIC;
 			}
 
 			// alltoall values
-			if( ret == SUCCESS && lpf_alltoall( coll, in_slot, dest, sizeof( IOType ) ) != LPF_SUCCESS ) {
+			if( ret == SUCCESS && lpf_alltoall( coll, in_slot, dest, sizeof( IOType ) )
+				!= LPF_SUCCESS
+			) {
 				ret = PANIC;
 			}
 
 			// finish communication request
-			if( ret == SUCCESS && lpf_sync( data.context, LPF_SYNC_DEFAULT ) != LPF_SUCCESS ) {
+			if( ret == SUCCESS && lpf_sync( data.context, LPF_SYNC_DEFAULT )
+				!= LPF_SUCCESS
+			) {
 				ret = PANIC;
 			}
 
 			// do deregister
-			if( in_slot != LPF_INVALID_MEMSLOT && lpf_deregister( data.context, in_slot ) != LPF_SUCCESS ) {
+			if( in_slot != LPF_INVALID_MEMSLOT && lpf_deregister( data.context, in_slot )
+				!= LPF_SUCCESS
+			) {
 				ret = PANIC;
 			}
-			if( dest != LPF_INVALID_MEMSLOT && lpf_deregister( data.context, dest ) != LPF_SUCCESS ) {
+			if( dest != LPF_INVALID_MEMSLOT && lpf_deregister( data.context, dest )
+				!= LPF_SUCCESS
+			) {
 				ret = PANIC;
 			}
 
@@ -998,8 +1071,13 @@ namespace grb {
 				internal::getRaw( out )[ data.s ] = internal::getRaw( in )[ data.s ];
 			}
 			// update sparsity info
-			for( size_t i = 0; ret == SUCCESS && internal::getCoordinates( out ).nonzeroes() != internal::getCoordinates( out ).size() && i < data.P; ++i ) {
-				(void)internal::getCoordinates( out ).assign( i );
+			for( size_t i = 0; ret == SUCCESS &&
+					internal::getCoordinates( out ).nonzeroes() !=
+						internal::getCoordinates( out ).size() &&
+					i < data.P;
+				++i
+			) {
+				(void) internal::getCoordinates( out ).assign( i );
 			}
 #endif
 
@@ -1120,7 +1198,8 @@ namespace grb {
 #ifdef BLAS1_RAW
 				lpf_err_t brt = lpf_register_global( data.context, inout, N, &vector_slot );
 #else
-				lpf_err_t brt = lpf_register_global( data.context, internal::getRaw( inout ), internal::getCoordinates( inout ).size() * bytes, &vector_slot );
+				lpf_err_t brt = lpf_register_global( data.context, internal::getRaw( inout ),
+					internal::getCoordinates( inout ).size() * bytes, &vector_slot );
 #endif
 				if( brt != LPF_SUCCESS ) {
 					return PANIC;
@@ -1131,7 +1210,9 @@ namespace grb {
 				}
 
 				// alltoall values
-				if( lpf_allgather( coll, vector_slot, out_slot, size * bytes, true ) != LPF_SUCCESS ) {
+				if( lpf_allgather( coll, vector_slot, out_slot, size * bytes, true )
+					!= LPF_SUCCESS
+				) {
 					return PANIC;
 				}
 				if( lpf_sync( data.context, LPF_SYNC_DEFAULT ) != LPF_SUCCESS ) {
@@ -1145,9 +1226,11 @@ namespace grb {
 					}
 					for( size_t j = 0; j < size; j++ ) {
 #ifdef BLAS1_RAW
-						if( foldl< descr >( inout[ j ], results[ i * size + j ], op ) != SUCCESS ) {
+						if( foldl< descr >( inout[ j ], results[ i * size + j ], op )
+							!= SUCCESS ) {
 #else
-						if( foldl< descr >( internal::getRaw( inout )[ j ], results[ i * size + j ], op ) != SUCCESS ) {
+						if( foldl< descr >( internal::getRaw( inout )[ j ],
+							results[ i * size + j ], op ) != SUCCESS ) {
 #endif
 							return PANIC;
 						}
@@ -1170,7 +1253,9 @@ namespace grb {
 #ifdef BLAS1_RAW
 				if( lpf_register_global( ctx, inout, N, &slot ) != LPF_SUCCESS ) {
 #else
-				if( lpf_register_global( ctx, internal::getRaw( inout ), N, &slot ) != LPF_SUCCESS ) {
+				if( lpf_register_global( ctx, internal::getRaw( inout ), N, &slot )
+					!= LPF_SUCCESS
+				) {
 #endif
 					return PANIC;
 				}
@@ -1181,7 +1266,12 @@ namespace grb {
 				size_t offset = chunk * me;
 				size_t my_chunk = ( offset + chunk ) <= size ? chunk : ( size - offset );
 				for( size_t pid = 0; pid < P; pid++ ) {
-					const lpf_err_t rc = lpf_get( ctx, pid, slot, offset * bytes, data.slot, pid * my_chunk * bytes, my_chunk * bytes, LPF_MSG_DEFAULT );
+					const lpf_err_t rc = lpf_get(
+						ctx, pid,
+						slot, offset * bytes,
+						data.slot, pid * my_chunk * bytes,
+						my_chunk * bytes, LPF_MSG_DEFAULT
+					);
 					if( rc != LPF_SUCCESS ) {
 						return PANIC;
 					}
@@ -1198,9 +1288,13 @@ namespace grb {
 					}
 					for( size_t j = 0; j < my_chunk; j++ ) {
 #ifdef BLAS1_RAW
-						if( foldl< descr >( inout[ offset + j ], buffer[ pid * my_chunk + j ], op ) != SUCCESS ) {
+						if( foldl< descr >( inout[ offset + j ], buffer[ pid * my_chunk + j ], op
+							) != SUCCESS
+						) {
 #else
-						if( foldl< descr >( internal::getRaw( inout )[ offset + j ], buffer[ pid * my_chunk + j ], op ) != SUCCESS ) {
+						if( foldl< descr >( internal::getRaw( inout )[ offset + j ],
+							buffer[ pid * my_chunk + j ], op ) != SUCCESS
+						) {
 #endif
 							return PANIC;
 						}
@@ -1210,7 +1304,12 @@ namespace grb {
 					if( pid == me ) {
 						continue;
 					}
-					const lpf_err_t rc = lpf_put( ctx, slot, offset * bytes, pid, slot, offset * bytes, my_chunk * bytes, LPF_MSG_DEFAULT );
+					const lpf_err_t rc = lpf_put(
+						ctx,
+						slot, offset * bytes,
+						pid, slot, offset * bytes,
+						my_chunk * bytes, LPF_MSG_DEFAULT
+					);
 					if( rc != LPF_SUCCESS ) {
 						return PANIC;
 					}
@@ -1225,7 +1324,9 @@ namespace grb {
 			}
 
 			// postamble
-			if( commsPostamble( data, &coll, 2 * data.P, data.P * size * bytes, 0, 1 ) != SUCCESS ) {
+			if( commsPostamble( data, &coll, 2 * data.P, data.P * size * bytes, 0, 1 )
+				!= SUCCESS
+			) {
 				return PANIC;
 			}
 
@@ -1320,7 +1421,9 @@ namespace grb {
 #endif
 			const size_t bytes = sizeof( IOType );
 
-			if( commsPreamble( data, &coll, data.P, data.P * size * bytes, 0, 1 ) != SUCCESS ) {
+			if( commsPreamble( data, &coll, data.P, data.P * size * bytes, 0, 1 )
+				!= SUCCESS
+			) {
 				return PANIC;
 			}
 
@@ -1374,7 +1477,8 @@ namespace grb {
 						IOType tmp = buffer[ j ];
 						for( size_t i = 1; i < P; i++ ) {
 							// if casting is required to apply op, foldl will take care of this
-							// note: the no_casting check could be deferred to foldl but this would result in unclear error messages
+							// note: the no_casting check could be deferred to foldl but this would
+							//       result in unclear error messages
 							if( foldl< descr >( tmp, buffer[ i * size + j ], op ) != SUCCESS ) {
 								return PANIC;
 							}
@@ -1384,7 +1488,7 @@ namespace grb {
 #else
 						const size_t index = j;
 						internal::getRaw( inout )[ index ] = tmp;
-						(void)internal::getCoordinates( inout ).assign( index );
+						(void) internal::getCoordinates( inout ).assign( index );
 #endif
 					}
 				}
@@ -1407,7 +1511,7 @@ namespace grb {
 					if( tmp_core_home == core_home ) {
 						break;
 					}
-					--core_count;
+					(void) --core_count;
 				}
 
 				// create a local register slot pointing at the vector
@@ -1415,7 +1519,9 @@ namespace grb {
 #ifdef BLAS1_RAW
 				if( lpf_register_local( ctx, inout, N, &slot ) != LPF_SUCCESS ) {
 #else
-				if( lpf_register_local( ctx, internal::getRaw( inout ), N, &slot ) != LPF_SUCCESS ) {
+				if( lpf_register_local( ctx, internal::getRaw( inout ), N, &slot )
+					!= LPF_SUCCESS
+				) {
 #endif
 					return PANIC;
 				}
@@ -1423,7 +1529,12 @@ namespace grb {
 
 				// step 1: all non-core processes write to their designated core process
 				if( ! is_core ) {
-					const lpf_err_t rc = lpf_put( ctx, slot, 0, core_home, data.slot, me * N, N, LPF_MSG_DEFAULT );
+					const lpf_err_t rc = lpf_put(
+						ctx,
+						slot, 0,
+						core_home, data.slot, me * N,
+						N, LPF_MSG_DEFAULT
+					);
 					if( rc != LPF_SUCCESS ) {
 						return PANIC;
 					}
@@ -1437,9 +1548,13 @@ namespace grb {
 					for( size_t k = 1; k < core_count; ++k ) {
 						for( size_t j = 0; j < size; j++ ) {
 #ifdef BLAS1_RAW
-							if( foldl< descr >( inout[ j ], buffer[ ( ( me + k ) % P ) * size + j ], op ) != SUCCESS ) {
+							if( foldl< descr >( inout[ j ], buffer[ ( ( me + k ) % P ) * size + j ],
+								op ) != SUCCESS
+							) {
 #else
-							if( foldl< descr >( internal::getRaw( inout )[ j ], buffer[ ( ( me + k ) % P ) * size + j ], op ) != SUCCESS ) {
+							if( foldl< descr >( internal::getRaw( inout )[ j ],
+								buffer[ ( ( me + k ) % P ) * size + j ], op ) != SUCCESS
+							) {
 #endif
 								return PANIC;
 							}
@@ -1448,7 +1563,8 @@ namespace grb {
 				}
 				// non-root processes will write their result to root
 				if( is_core && me != root ) {
-					const lpf_err_t rc = lpf_put( ctx, slot, 0, root, data.slot, me * N, N, LPF_MSG_DEFAULT );
+					const lpf_err_t rc = lpf_put( ctx, slot, 0, root, data.slot, me * N, N,
+						LPF_MSG_DEFAULT );
 					if( rc != LPF_SUCCESS ) {
 						return PANIC;
 					}
@@ -1466,9 +1582,13 @@ namespace grb {
 					for( size_t k = hop; k < P; k += hop ) {
 						for( size_t j = 0; j < size; j++ ) {
 #ifdef BLAS1_RAW
-							if( foldl< descr >( inout[ j ], buffer[ ( ( k + root ) % P ) * size + j ], op ) != SUCCESS ) {
+							if( foldl< descr >( inout[ j ],
+								buffer[ ( ( k + root ) % P ) * size + j ], op ) != SUCCESS
+							) {
 #else
-							if( foldl< descr >( internal::getRaw( inout )[ j ], buffer[ ( ( k + root ) % P ) * size + j ], op ) != SUCCESS ) {
+							if( foldl< descr >( internal::getRaw( inout )[ j ],
+								buffer[ ( ( k + root ) % P ) * size + j ], op ) != SUCCESS
+							) {
 #endif
 								return PANIC;
 							}
@@ -1485,7 +1605,9 @@ namespace grb {
 #ifdef BLAS1_RAW
 				if( lpf_register_global( ctx, inout, N, &slot ) != LPF_SUCCESS ) {
 #else
-				if( lpf_register_global( ctx, internal::getRaw( inout ), N, &slot ) != LPF_SUCCESS ) {
+				if( lpf_register_global( ctx, internal::getRaw( inout ), N, &slot )
+					!= LPF_SUCCESS
+				) {
 #endif
 					return PANIC;
 				}
@@ -1494,9 +1616,16 @@ namespace grb {
 				}
 
 				const size_t offset = chunk * me;
-				const size_t my_chunk = ( offset + chunk ) <= size ? chunk : ( size - offset );
+				const size_t my_chunk = ( offset + chunk ) <= size
+					? chunk
+					: ( size - offset );
 				for( size_t pid = 0; pid < P; pid++ ) {
-					const lpf_err_t rc = lpf_get( ctx, pid, slot, offset * bytes, data.slot, pid * my_chunk * bytes, my_chunk * bytes, LPF_MSG_DEFAULT );
+					const lpf_err_t rc = lpf_get(
+						ctx,
+						pid, slot, offset * bytes,
+						data.slot, pid * my_chunk * bytes,
+						my_chunk * bytes, LPF_MSG_DEFAULT
+					);
 					if( rc != LPF_SUCCESS ) {
 						return PANIC;
 					}
@@ -1513,16 +1642,25 @@ namespace grb {
 					}
 					for( size_t j = 0; j < my_chunk; j++ ) {
 #ifdef BLAS1_RAW
-						if( foldl< descr >( inout[ offset + j ], buffer[ pid * my_chunk + j ], op ) != SUCCESS ) {
+						if( foldl< descr >( inout[ offset + j ], buffer[ pid * my_chunk + j ], op
+							) != SUCCESS
+						) {
 #else
-						if( foldl< descr >( internal::getRaw( inout )[ offset + j ], buffer[ pid * my_chunk + j ], op ) != SUCCESS ) {
+						if( foldl< descr >( internal::getRaw( inout )[ offset + j ],
+							buffer[ pid * my_chunk + j ], op ) != SUCCESS
+						) {
 #endif
 							return PANIC;
 						}
 					}
 				}
 				if( me != root ) {
-					const lpf_err_t rc = lpf_put( ctx, slot, offset * bytes, root, slot, offset * bytes, my_chunk * bytes, LPF_MSG_DEFAULT );
+					const lpf_err_t rc = lpf_put(
+						ctx,
+						slot, offset * bytes,
+						root, slot, offset * bytes, my_chunk * bytes,
+						LPF_MSG_DEFAULT
+					);
 					if( rc != LPF_SUCCESS ) {
 						return PANIC;
 					}
@@ -1537,7 +1675,9 @@ namespace grb {
 			}
 
 			// postamble
-			if( commsPostamble( data, &coll, data.P, data.P * size * bytes, 0, 1 ) != SUCCESS ) {
+			if( commsPostamble( data, &coll, data.P, data.P * size * bytes, 0, 1 )
+				!= SUCCESS
+			) {
 				return PANIC;
 			}
 
@@ -1574,10 +1714,10 @@ namespace grb {
 		 * @tparam InputType The type of the input vector elements.
 		 * @tparam IOType   The type of the to-be reduced value.
 		 *
-		 * @param[in]  in:   The vector at the calling process to be reduced.
-		 * @param[out] out:  The value of the result of the reduction, at the root process.
-		 * @param[in]  op:   The associative operator to reduce by.
-		 * @param[in]  root: The id of the root process.
+		 * @param[in]  in   The vector at the calling process to be reduced.
+		 * @param[out] out  The value of the result of the reduction, at the root process.
+		 * @param[in]  op   The associative operator to reduce by.
+		 * @param[in]  root The id of the root process.
 		 *
 		 * \note If \op is commutative, the implementation is free to employ a different
 		 *       allreduce algorithm, as long as it is documented well enough so that
@@ -1631,13 +1771,16 @@ namespace grb {
 #ifndef BLAS1_RAW
 			const size_t size = internal::getCoordinates( in ).size();
 #endif
-			if( commsPreamble( data, &coll, data.P, data.P * sizeof( IOType ), 1 ) != SUCCESS ) {
+			if( commsPreamble( data, &coll, data.P, data.P * sizeof( IOType ), 1 )
+				!= SUCCESS
+			) {
 				return PANIC;
 			}
 
 			// reduce our values locally
 			// if casting is required to apply op, foldl will take care of this
-			// note: the no_casting check could be deferred to foldl but this would result in unclear error messages
+			// note: the no_casting check could be deferred to foldl but this would
+			//       result in unclear error messages
 			if( data.s == root ) {
 				for( size_t i = 0; i < size; i++ ) {
 #ifdef BLAS1_RAW
@@ -1671,12 +1814,16 @@ namespace grb {
 
 			// create a register slot
 			lpf_memslot_t in_slot = LPF_INVALID_MEMSLOT;
-			if( lpf_register_local( data.context, &out, sizeof( IOType ), &in_slot ) != LPF_SUCCESS ) {
+			if( lpf_register_local( data.context, &out, sizeof( IOType ), &in_slot )
+				!= LPF_SUCCESS
+			) {
 				return PANIC;
 			}
 
 			// gather together values
-			if( lpf_gather( coll, in_slot, data.slot, sizeof( IOType ), root ) != LPF_SUCCESS ) {
+			if( lpf_gather( coll, in_slot, data.slot, sizeof( IOType ), root )
+				!= LPF_SUCCESS
+			) {
 				return PANIC;
 			}
 			if( lpf_sync( data.context, LPF_SYNC_DEFAULT ) != LPF_SUCCESS ) {
@@ -1696,7 +1843,8 @@ namespace grb {
 						continue;
 					}
 					// if casting is required to apply op, foldl will take care of this
-					// note: the no_casting check could be deferred to foldl but this would result in unclear error messages
+					// note: the no_casting check could be deferred to foldl but this would
+					//       result in unclear error messages
 					if( foldl< descr >( out, buffer[ i ], op ) != SUCCESS ) {
 						return PANIC;
 					}
@@ -1704,7 +1852,9 @@ namespace grb {
 			}
 
 			// postamble
-			if( commsPostamble( data, &coll, data.P, data.P * sizeof( IOType ), 1 ) != SUCCESS ) {
+			if( commsPostamble( data, &coll, data.P, data.P * sizeof( IOType ), 1 )
+				!= SUCCESS
+			) {
 				return PANIC;
 			}
 
@@ -1799,9 +1949,9 @@ namespace grb {
 		 * @tparam InputType The type of the input vector elements.
 		 * @tparam IOType   The type of the to-be reduced value.
 		 *
-		 * @param[in]  in:   The vector at the calling process to be reduced.
-		 * @param[out] out:  The value of the result of the reduction, at each process.
-		 * @param[in]  op:   The associative operator to reduce by.
+		 * @param[in]  in   The vector at the calling process to be reduced.
+		 * @param[out] out  The value of the result of the reduction, at each process.
+		 * @param[in]  op   The associative operator to reduce by.
 		 *
 		 * \note If \op is commutative, the implementation is free to employ a different
 		 *       allreduce algorithm, as long as it is documented well enough so that
@@ -2031,11 +2181,9 @@ namespace grb {
 		) {
 			// we need access to BSP context
 			internal::BSP1D_Data &data = internal::grb_BSP1D.load();
-
 #ifndef BLAS1_RAW
 			const size_t size = internal::getCoordinates( inout ).size();
 #endif
-
 			// preamble
 			lpf_coll_t coll;
 			if( commsPreamble( data, &coll, data.P, 0, 0, 1 ) != SUCCESS ) {
@@ -2046,28 +2194,41 @@ namespace grb {
 			lpf_memslot_t slot = LPF_INVALID_MEMSLOT;
 			RC ret = SUCCESS;
 #ifndef BLAS1_RAW
-			if( ret == SUCCESS && lpf_register_global( data.context, internal::getRaw( inout ), size * sizeof( IOType ), &slot ) != LPF_SUCCESS ) {
+			if( ret == SUCCESS && lpf_register_global( data.context,
+				internal::getRaw( inout ), size * sizeof( IOType ), &slot ) != LPF_SUCCESS
+			) {
 #else
-			if( ret == SUCCESS && lpf_register_global( data.context, const_cast< typename std::remove_const< IOType >::type * >( inout ), size * sizeof( IOType ), &slot ) != LPF_SUCCESS ) {
+			if( ret == SUCCESS && lpf_register_global( data.context,
+				const_cast< typename std::remove_const< IOType >::type * >( inout ),
+				size * sizeof( IOType ), &slot ) != LPF_SUCCESS
+			) {
 #endif
 				ret = PANIC;
 			}
-			if( ret == SUCCESS && lpf_sync( data.context, LPF_SYNC_DEFAULT ) != LPF_SUCCESS ) {
+			if( ret == SUCCESS && lpf_sync( data.context, LPF_SYNC_DEFAULT )
+				!= LPF_SUCCESS
+			) {
 				ret = PANIC;
 			}
 
 			// broadcast value
-			if( ret == SUCCESS && lpf_broadcast( coll, slot, slot, size * sizeof( IOType ), root ) != LPF_SUCCESS ) {
+			if( ret == SUCCESS && lpf_broadcast( coll, slot, slot,
+				size * sizeof( IOType ), root ) != LPF_SUCCESS
+			) {
 				ret = PANIC;
 			}
 
 			// finish requested comm
-			if( ret == SUCCESS && lpf_sync( data.context, LPF_SYNC_DEFAULT ) != LPF_SUCCESS ) {
+			if( ret == SUCCESS && lpf_sync( data.context, LPF_SYNC_DEFAULT )
+				!= LPF_SUCCESS
+			) {
 				ret = PANIC;
 			}
 
 			// destroy memslot
-			if( slot != LPF_INVALID_MEMSLOT && lpf_deregister( data.context, slot ) != LPF_SUCCESS ) {
+			if( slot != LPF_INVALID_MEMSLOT && lpf_deregister( data.context, slot )
+				!= LPF_SUCCESS
+			) {
 				ret = PANIC;
 			}
 
