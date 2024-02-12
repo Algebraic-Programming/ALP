@@ -146,17 +146,15 @@ grb::RC grb::internal::BSP1D_Data::initialize(
 	// try allocations (and initialisations) first
 	cur_payload = new( std::nothrow ) size_t[ P ];
 	if( cur_payload == nullptr ) {
-#ifdef _DEBUG
-		std::cerr << "\t out of memory while initializing (1)\n";
-#endif
+		std::cerr << "\tError during BSP1D::init: "
+			<< "out of memory while initializing (1)\n";
 		return OUTOFMEM;
 	}
 	cur_msgs = new( std::nothrow ) size_t[ P ];
 	if( cur_msgs == nullptr ) {
 		delete [] cur_payload;
-#ifdef _DEBUG
-		std::cerr << "\t out of memory while initializing (2)\n";
-#endif
+		std::cerr << "\tError during BSP1D::init: "
+			<< "out of memory while initializing (2)\n";
 		return OUTOFMEM;
 	}
 	for( size_t i = 0; i < P; ++i ) {
@@ -165,18 +163,17 @@ grb::RC grb::internal::BSP1D_Data::initialize(
 
 	if( _bufsize > 0 ) {
 		// try and allocate the buffer
+		// note: the below always uses local allocation (and rightly so)
 		const int prc = posix_memalign(
 			&buffer,
 			grb::config::CACHE_LINE_SIZE::value(),
 			_bufsize
 		);
-		// Note: always uses local allocation (and rightly so)
 		if( prc != 0 ) {
 			delete[] cur_payload;
 			delete[] cur_msgs;
-#ifdef _DEBUG
-			std::cerr << "\t out of memory while initializing (3)\n";
-#endif
+			std::cerr << "\tError during BSP1D::init: "
+				<< "out of memory while initializing (3)\n";
 			return OUTOFMEM;
 		}
 	} else {
@@ -192,9 +189,8 @@ grb::RC grb::internal::BSP1D_Data::initialize(
 		delete [] cur_payload;
 		delete [] cur_msgs;
 		if( buffer != nullptr ) { free( buffer ); }
-#ifdef _DEBUG
-		std::cerr << "Out of memory while initializing lpf_machine_t\n";
-#endif
+		std::cerr << "\tError during BSP1D::init: "
+			"Out of memory while initializing lpf_machine_t\n";
 		return OUTOFMEM;
 	} else if( lpfrc != LPF_SUCCESS ) {
 		/* LCOV_EXCL_START */
@@ -229,9 +225,8 @@ grb::RC grb::internal::BSP1D_Data::initialize(
 		delete [] cur_payload;
 		delete [] cur_msgs;
 		if( buffer != nullptr ) { free( buffer ); }
-#ifdef _DEBUG
-		std::cerr << "Out of memory while initializing LPF message queue\n";
-#endif
+		std::cerr << "\tError during BSP1D::init: "
+			<< "Out of memory while initializing LPF message queue\n";
 		return OUTOFMEM;
 	}
 
@@ -247,9 +242,8 @@ grb::RC grb::internal::BSP1D_Data::initialize(
 		delete [] cur_payload;
 		delete [] cur_msgs;
 		if( buffer != nullptr ) { free( buffer ); }
-#ifdef _DEBUG
-		std::cerr << "Out of memory while initializing memory slot buffer\n";
-#endif
+		std::cerr << "\tError during BSP1D::init: "
+			<< "out of memory while initializing memory slot buffer\n";
 		return OUTOFMEM;
 	}
 
@@ -260,6 +254,15 @@ grb::RC grb::internal::BSP1D_Data::initialize(
 		lpfrc = lpf_sync( context, LPF_SYNC_DEFAULT );
 	}
 	if( lpfrc != LPF_SUCCESS ) {
+		// we exclude this block from coverage since the only specified possible
+		// return type is PANIC, which can't really be tested for
+		/* LCOV_EXCL_START */
+#ifndef NDEBUG
+		if( lpfrc != LPF_PANIC ) {
+			const bool spec_says_this_should_never_occur = false;
+			assert( spec_says_this_should_never_occur );
+		}
+#endif
 		// any error at this point cannot be mitigated by ALP; return panic
 		delete [] cur_payload;
 		delete [] cur_msgs;
@@ -268,6 +271,7 @@ grb::RC grb::internal::BSP1D_Data::initialize(
 		std::cerr << "Communication layer failed to initialize\n";
 #endif
 		return PANIC;
+		/* LCOV_EXCL_STOP */
 	}
 
 	// initialise the LPF collectives
@@ -288,9 +292,8 @@ grb::RC grb::internal::BSP1D_Data::initialize(
 		delete [] cur_payload;
 		delete [] cur_msgs;
 		if( buffer != nullptr ) { free( buffer ); }
-#ifdef _DEBUG
-		std::cerr << "Out of memory while initializing LPF collectives\n";
-#endif
+		std::cerr << "\tError during BSP1D::init: "
+			<< "Out of memory while initializing LPF collectives\n";
 		return OUTOFMEM;
 	}
 
@@ -305,8 +308,8 @@ grb::RC grb::internal::BSP1D_Data::initialize(
 	if( lpfrc != LPF_SUCCESS ) {
 		/* LCOV_EXCL_START */
 #ifndef NDEBUG
-		const bool lpf_reg_global_spec_this_should_never_occur = false;
-		assert( lpf_reg_global_spec_this_should_never_occur );
+		const bool lpf_reg_global_spec_says_this_should_never_occur = false;
+		assert( lpf_reg_global_spec_says_this_should_never_occur );
 #endif
 		return PANIC;
 		/* LCOV_EXCL_STOP */
@@ -315,6 +318,7 @@ grb::RC grb::internal::BSP1D_Data::initialize(
 	// activate our buffer registration as well as the collectives instance
 	lpfrc = lpf_sync( context, LPF_SYNC_DEFAULT );
 	if( lpfrc != LPF_SUCCESS ) {
+		/* LCOV_EXCL_START */
 		delete [] cur_payload;
 		delete [] cur_msgs;
 		if( buffer != nullptr ) { free( buffer ); }
@@ -324,6 +328,7 @@ grb::RC grb::internal::BSP1D_Data::initialize(
 		std::cerr << "Failed to activate global buffer and LPF collectives\n";
 #endif
 		return PANIC;
+		/* LCOV_EXCL_STOP */
 	}
 
 	// all OK
@@ -507,11 +512,11 @@ grb::RC grb::internal::BSP1D_Data::ensureMemslotAvailable(
 		return SUCCESS;
 	}
 	// see if we need to do anything
-	if( regs_taken + count > lpf_regs ) {
+	if( regs_taken + count + 1 > lpf_regs ) {
 		// standard amortised behaviour
 		lpf_regs *= 2;
 		// shortcut if initial doubling was not sufficient
-		if( regs_taken + count > lpf_regs ) {
+		if( regs_taken + count + 1 > lpf_regs ) {
 			lpf_regs = regs_taken + count;
 		}
 #ifdef _DEBUG
@@ -663,7 +668,7 @@ grb::RC grb::internal::BSP1D_Data::ensureCollectivesCapacity(
 			&coll
 		);
 	}
-	if( lpf_rc != LPF_ERR_OUT_OF_MEMORY ) {
+	if( lpf_rc == LPF_ERR_OUT_OF_MEMORY ) {
 		return OUTOFMEM;
 	} else if( lpf_rc != LPF_SUCCESS ) {
 		// This should never happen according to the LPF specs
