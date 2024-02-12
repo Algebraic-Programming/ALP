@@ -960,11 +960,13 @@ namespace grb {
 
 	template<
 		Descriptor descr = descriptors::no_operation,
-		class Monoid,
-		typename Func, typename DataType, typename Coords
+		typename Func,
+		typename DataType,
+		typename Coords
 	>
 	RC eWiseLambda(
-		const Func f, const Vector< DataType, hyperdags, Coords > &x
+		const Func f,
+		const Vector< DataType, hyperdags, Coords > &x
 	) {
 		std::array< const void *, 0 > sourcesP{};
 		std::array< uintptr_t, 1 > sourcesC{ getID( internal::getVector(x) ) };
