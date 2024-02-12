@@ -22,6 +22,8 @@
 
 #include "graphblas.hpp"
 
+#include "graphblas/bsp/collectives_blas1_raw.hpp"
+
 
 using namespace grb;
 
@@ -51,8 +53,9 @@ void grbProgram( const size_t &P, int &exit_status ) {
 
 	// prep buffer
 	if( rc != SUCCESS ) {
-		(void) fprintf( stderr, "grb::internal::initCollectivesBuffer returns bad error code (%d).\n", (int)rc );
-		exit_status = 1;
+		std::cerr << "grb::internal::initCollectivesBuffer returns bad error code ("
+			<< grb::toString(rc) << ").\n";
+		exit_status = 10;
 		return;
 	}
 
@@ -60,18 +63,17 @@ void grbProgram( const size_t &P, int &exit_status ) {
 	d = pi * s;
 	rc = grb::internal::gather( d, v, root );
 	if( rc != SUCCESS ) {
-		(void)fprintf( stderr, "grb::internal::gather (small) returns bad error code (%d).\n", (int)rc );
-		exit_status = 1;
+		std::cerr << "grb::internal::gather (small) returns bad error code ("
+			<< grb::toString(rc) << ").\n";
+		exit_status = 20;
 		return;
 	}
 	if( s == root ) {
 		for( size_t i = 0; i < P; i++ ) {
 			if( v[ i ] != pi * i ) {
-				(void)fprintf( stderr,
-					"grb::internal::gather (smal) returns incorrect value (%lf) at "
-					"index %d.\n",
-					v[ i ], (int)i );
-				exit_status = 1;
+				std::cerr << "grb::internal::gather (smal) returns incorrect value ("
+					<< v[ i ] << ") at index " << i << ".\n";
+				exit_status = 30;
 				return;
 			}
 		}
@@ -83,19 +85,18 @@ void grbProgram( const size_t &P, int &exit_status ) {
 	}
 	rc = grb::internal::gather( vLarge, n, vLarger, root );
 	if( rc != SUCCESS ) {
-		(void)fprintf( stderr, "grb::internal::gather (large) returns bad error code (%d).\n", (int)rc );
-		exit_status = 1;
+		std::cerr << "grb::internal::gather (large) returns bad error code ("
+			<< grb::toString(rc) << ").\n";
+		exit_status = 40;
 		return;
 	}
 	if( s == root ) {
 		for( size_t i = 0; i < P; i++ ) {
 			for( size_t j = 0; j < n; j++ ) {
 				if( vLarger[ i * n + j ] != pi * i + j ) {
-					(void)fprintf( stderr,
-						"grb::internal::gather (large) returns incorrect value "
-						"(%lf) at index %d,%d.\n",
-						vLarger[ i * n + j ], (int)i, (int)j );
-					exit_status = 1;
+					std::cerr << "grb::internal::gather (large) returns incorrect value ("
+						<< vLarger[ i * n + j ] << ") at index " << i << "," << j << ".\n";
+					exit_status = 50;
 					return;
 				}
 			}
@@ -106,17 +107,16 @@ void grbProgram( const size_t &P, int &exit_status ) {
 	d = pi * s;
 	rc = grb::internal::allgather( d, v );
 	if( rc != SUCCESS ) {
-		(void)fprintf( stderr, "grb::internal::allgather returns bad error code (%d).\n", (int)rc );
-		exit_status = 1;
+		std::cerr << "grb::internal::allgather returns bad error code ("
+			<< grb::toString(rc) << ").\n";
+		exit_status = 60;
 		return;
 	}
 	for( size_t i = 0; i < P; i++ ) {
 		if( v[ i ] != pi * i ) {
-			(void)fprintf( stderr,
-				"grb::internal::allgather returns incorrect value (%lf) at index "
-				"%d.\n",
-				v[ i ], (int)i );
-			exit_status = 1;
+			std::cerr << "grb::internal::allgather returns incorrect value (" << v[ i ]
+				<< ") at index " << i << ".\n";
+			exit_status = 70;
 			return;
 		}
 	}
@@ -129,13 +129,15 @@ void grbProgram( const size_t &P, int &exit_status ) {
 	}
 	rc = grb::internal::scatter( v, d, root );
 	if( rc != SUCCESS ) {
-		(void)fprintf( stderr, "grb::internal::scatter (small) returns bad error code (%d).\n", (int)rc );
-		exit_status = 1;
+		std::cerr << "grb::internal::scatter (small) returns bad error code ("
+			<< grb::toString(rc) << ").\n";
+		exit_status = 80;
 		return;
 	}
 	if( d != pi * s ) {
-		(void)fprintf( stderr, "grb::internal::scatter (small) returns incorrect value (%lf).\n", d );
-		exit_status = 1;
+		std::cerr << "grb::internal::scatter (small) returns incorrect value (" << d
+			<< ".\n";
+		exit_status = 90;
 		return;
 	}
 
@@ -148,17 +150,16 @@ void grbProgram( const size_t &P, int &exit_status ) {
 
 	rc = grb::internal::scatter( vLarger, n * P, vLarge, root );
 	if( rc != SUCCESS ) {
-		(void)fprintf( stderr, "grb::internal::scatter (large) returns bad error code (%d).\n", (int)rc );
-		exit_status = 1;
+		std::cerr << "grb::internal::scatter (large) returns bad error code ("
+			<< grb::toString(rc) << ").\n";
+		exit_status = 100;
 		return;
 	}
 	for( size_t i = 0; i < n; i++ ) {
 		if( vLarge[ i ] != ( s * n + i ) * pi ) {
-			(void)fprintf( stderr,
-				"grb::internal::scatter (large) returns incorrect value (%lf) at "
-				"index %d.\n",
-				vLarge[ i ], (int)i );
-			exit_status = 1;
+			std::cerr << "grb::internal::scatter (large) returns incorrect value ("
+				<< vLarge[ i ] << " at index " << i << ".\n";
+			exit_status = 110;
 			return;
 		}
 	}
@@ -170,17 +171,16 @@ void grbProgram( const size_t &P, int &exit_status ) {
 	double out[ P ];
 	rc = grb::internal::alltoall( v, out );
 	if( rc != SUCCESS ) {
-		(void)fprintf( stderr, "grb::internal::alltoall returns bad error code (%d).\n", (int)rc );
-		exit_status = 1;
+		std::cerr << "grb::internal::alltoall returns bad error code ("
+			<< grb::toString(rc) << ".\n";
+		exit_status = 120;
 		return;
 	}
 	for( size_t i = 0; i < P; i++ ) {
 		if( out[ i ] != pi * s ) {
-			(void)fprintf( stderr,
-				"grb::internal::alltoall returns incorrect value (%lf) at index "
-				"%d.\n",
-				out[ i ], (int)i );
-			exit_status = 1;
+			std::cerr << "grb::internal::alltoall returns incorrect value (" << out[ i ]
+				<< ") at index " << i << ".\n";
+			exit_status = 130;
 			return;
 		}
 	}
@@ -191,17 +191,16 @@ void grbProgram( const size_t &P, int &exit_status ) {
 	}
 	rc = grb::internal::allcombine( v, P, oper );
 	if( rc != SUCCESS ) {
-		(void)fprintf( stderr, "grb::internal::allcombine returns bad error code (%d).\n", (int)rc );
-		exit_status = 1;
+		std::cerr << "grb::internal::allcombine returns bad error code ("
+			<< grb::toString(rc) << ".\n";
+		exit_status = 140;
 		return;
 	}
 	for( size_t i = 0; i < P; i++ ) {
 		if( v[ i ] != pi * P * i ) {
-			(void)fprintf( stderr,
-				"grb::internal::allcombine returns incorrect value (%lf) at index "
-				"%d.\n",
-				v[ i ], (int)i );
-			exit_status = 1;
+			std::cerr << "grb::internal::allcombine returns incorrect value (" << v[ i ]
+				<< ") at index " << i << ".\n";
+			exit_status = 150;
 			return;
 		}
 	}
@@ -212,20 +211,19 @@ void grbProgram( const size_t &P, int &exit_status ) {
 	}
 	rc = grb::internal::combine( vLarge, n, oper, root );
 	if( rc != SUCCESS ) {
-		(void)fprintf( stderr, "grb::internal::combine (large) returns bad error code (%d).\n", (int)rc );
-		exit_status = 1;
+		std::cerr << "grb::internal::combine (large) returns bad error code ("
+			<< grb::toString(rc) << ".\n";
+		exit_status = 160;
 		return;
 	}
 	if( s == root ) {
 		size_t sum = ( P - 1 ) * ( P / 2 );
 		for( size_t i = 0; i < n; i++ ) {
 			double val = sum * pi + i * P;
-			if( ! same( vLarge[ i ], val ) ) {
-				(void)fprintf( stderr,
-					"grb::internal::combine (large) returns incorrect value (%lf) "
-					"at index %d.\n",
-					vLarge[ i ], (int)i );
-				exit_status = 1;
+			if( !same( vLarge[ i ], val ) ) {
+				std::cerr << "grb::internal::combine (large) returns incorrect value ("
+					<< vLarge[ i ] << " at index " << i << ".\n";
+				exit_status = 170;
 				return;
 			}
 		}
@@ -238,8 +236,9 @@ void grbProgram( const size_t &P, int &exit_status ) {
 	d = 0;
 	rc = grb::internal::reduce( vLarge, n, d, oper, root );
 	if( rc != SUCCESS ) {
-		(void)fprintf( stderr, "grb::internal::reduce (large) returns bad error code (%d).\n", (int)rc );
-		exit_status = 1;
+		std::cerr << "grb::internal::reduce (large) returns bad error code ("
+			<< grb::toString(rc) << ").\n";
+		exit_status = 180;
 		return;
 	}
 	if( s == root ) {
@@ -248,9 +247,10 @@ void grbProgram( const size_t &P, int &exit_status ) {
 		for( size_t i = 0; i < n; i++ ) {
 			val += sum * pi + i * P;
 		}
-		if( ! same( d, val ) ) {
-			(void)fprintf( stderr, "grb::internal::reduce (large) returns incorrect value (%lf).\n", d );
-			exit_status = 1;
+		if( !same( d, val ) ) {
+			std::cerr << "grb::internal::reduce (large) returns incorrect value ("
+				<< d << ".\n";
+			exit_status = 190;
 			return;
 		}
 	}
@@ -262,8 +262,9 @@ void grbProgram( const size_t &P, int &exit_status ) {
 	d = 0;
 	rc = grb::internal::allreduce( vLarge, n, d, oper );
 	if( rc != SUCCESS ) {
-		(void)fprintf( stderr, "grb::internal::allreduce (large) returns bad error code (%d).\n", (int)rc );
-		exit_status = 1;
+		std::cerr << "grb::internal::allreduce (large) returns bad error code ("
+			<< grb::toString(rc) << ").\n";
+		exit_status = 200;
 		return;
 	}
 	size_t sum = ( P - 1 ) * ( P / 2 );
@@ -271,9 +272,10 @@ void grbProgram( const size_t &P, int &exit_status ) {
 	for( size_t i = 0; i < n; i++ ) {
 		val += sum * pi + i * P;
 	}
-	if( ! same( d, val ) ) {
-		(void)fprintf( stderr, "grb::internal::allreduce (large) returns incorrect value (%lf).\n", d );
-		exit_status = 1;
+	if( !same( d, val ) ) {
+		std::cerr << "grb::internal::allreduce (large) returns incorrect value ("
+			<< d << ".\n";
+		exit_status = 210;
 		return;
 	}
 
@@ -285,18 +287,18 @@ void grbProgram( const size_t &P, int &exit_status ) {
 	}
 	rc = grb::internal::broadcast( vLarge, n, root );
 	if( rc != SUCCESS ) {
-		(void)fprintf( stderr, "grb::internal::broadcast (large) returns bad error code (%d).\n", (int)rc );
-		exit_status = 1;
+		std::cerr << "grb::internal::broadcast (large) returns bad error code ("
+			<< grb::toString(rc) << ").\n";
+		exit_status = 220;
 		return;
 	}
 	for( size_t i = 0; i < n; i++ ) {
 		if( vLarge[ i ] != pi * root + i ) {
-			(void)fprintf( stderr,
-				"grb::internal::broadcast (large) returns incorrect value (%lf) at "
-				"index %d.\n",
-				vLarge[ i ], (int)i );
-			exit_status = 1;
+			std::cerr << "grb::internal::broadcast (large) returns incorrect value ("
+				<< vLarge[ i ] << ") at index " << i << ".\n";
+			exit_status = 230;
 			return;
 		}
 	}
 }
+
