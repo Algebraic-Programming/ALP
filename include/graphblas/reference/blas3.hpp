@@ -982,6 +982,11 @@ namespace grb {
 			return MISMATCH;
 		}
 
+		if( nnz( mask ) == 0 || nnz( u ) == 0 || nnz( v ) == 0 ) {
+			clear( A );
+			return SUCCESS;
+		}
+
 
 		const auto &mask_raw = internal::getCRS( mask );
 
