@@ -971,6 +971,8 @@ namespace grb {
 		const size_t m = grb::nrows( mask );
 		const size_t n = grb::ncols( mask );
 
+		constexpr bool crs_only = descr & descriptors::force_row_major;
+
 		assert( phase != TRY );
 		if( nrows != grb::nrows( A ) || nrows != m ) {
 			return MISMATCH;
@@ -984,6 +986,9 @@ namespace grb {
 		const auto &mask_raw = internal::getCRS( mask );
 
 		size_t nzc = 0;
+#ifdef _H_GRB_REFERENCE_OMP_BLAS3
+		#pragma omp parallel for reduction(+:nzc)
+#endif
 		for( size_t i = 0; i < nrows; ++i ) {
 			if( internal::getCoordinates( u ).assigned( i ) ) {
 				for( auto k = mask_raw.col_start[ i ]; k < mask_raw.col_start[ i + 1 ]; ++k ) {
@@ -1036,13 +1041,20 @@ namespace grb {
 		config::NonzeroIndexType * A_col_index = internal::template
 			getReferenceBuffer< typename config::NonzeroIndexType >( ncols + 1 );
 
-		
+
 		internal::Coordinates< reference > coors;
 		coors.set( arr, false, buf, ncols );
 
 		CRS_raw.col_start[ 0 ] = 0;
-		for( size_t j = 0; j <= ncols; ++j ) {
-			CCS_raw.col_start[ j ] = 0;
+
+		if( !crs_only ) {
+
+#ifdef _H_GRB_REFERENCE_OMP_BLAS3
+			#pragma omp parallel for simd
+#endif
+			for( size_t j = 0; j <= ncols; ++j ) {
+				CCS_raw.col_start[ j ] = 0;
+			}
 		}
 
 		
@@ -1053,18 +1065,27 @@ namespace grb {
 					const size_t k_col = mask_raw.row_index[ k ];
 					if( internal::getCoordinates( v ).assigned( k_col ) ) {
 						(void) ++nzc;
-						(void) ++CCS_raw.col_start[ k_col + 1 ];
+						if( !crs_only ) {
+							(void) ++CCS_raw.col_start[ k_col + 1 ];
+						}
 					}
 				}
 			}
 			CRS_raw.col_start[ i + 1 ] = nzc;
 		}
 
+		if( !crs_only ) {
+			for( size_t j = 1; j < ncols; ++j ) {
+				CCS_raw.col_start[ j + 1 ] += CCS_raw.col_start[ j ];
+			}
 
-		A_col_index[ 0 ] = 0;
-		for( size_t j = 1; j < ncols; ++j ) {
-			CCS_raw.col_start[ j + 1 ] += CCS_raw.col_start[ j ];
-			A_col_index[ j ] = 0;
+
+#ifdef _H_GRB_REFERENCE_OMP_BLAS3
+			#pragma omp parallel for simd
+#endif
+			for( size_t j = 0; j < ncols; ++j ) {
+				A_col_index[ j ] = 0;
+			}
 		}
 
 
@@ -1074,8 +1095,8 @@ namespace grb {
 		// computational phase
 		nzc = 0;
 		for( size_t i = 0; i < nrows; ++i ) {
-			coors.clear();
 			if( internal::getCoordinates( u ).assigned( i ) ) {
+				coors.clear();
 				for( auto k = mask_raw.col_start[ i ]; k < mask_raw.col_start[ i + 1 ]; ++k ) {
 					const size_t k_col = mask_raw.row_index[ k ];
 					if( internal::getCoordinates( v ).assigned( k_col ) ) {
@@ -1095,18 +1116,21 @@ namespace grb {
 				CRS_raw.row_index[ nzc ] = j;
 				CRS_raw.setValue( nzc, valbuf[ j ] );
 				// update CCS
-				const size_t CCS_index = A_col_index[ j ]++ + CCS_raw.col_start[ j ];
-				CCS_raw.row_index[ CCS_index ] = i;
-				CCS_raw.setValue( CCS_index, valbuf[ j ] );
+				if( !crs_only ) {
+					const size_t CCS_index = A_col_index[ j ]++ + CCS_raw.col_start[ j ];
+					CCS_raw.row_index[ CCS_index ] = i;
+					CCS_raw.setValue( CCS_index, valbuf[ j ] );
+				}
 				// update count
 				(void) ++nzc;
 			}
 			CRS_raw.col_start[ i + 1 ] = nzc;
 		}
-
-		for( size_t j = 0; j < ncols; ++j ) {
-			assert( CCS_raw.col_start[ j + 1 ] - CCS_raw.col_start[ j ] ==
-				A_col_index[ j ] );
+		if( !crs_only ) {
+			for( size_t j = 0; j < ncols; ++j ) {
+				assert( CCS_raw.col_start[ j + 1 ] - CCS_raw.col_start[ j ] ==
+					A_col_index[ j ] );
+			}
 		}
 		assert( nzc == old_nzc );
 		
