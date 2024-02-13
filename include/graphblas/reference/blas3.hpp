@@ -982,9 +982,13 @@ namespace grb {
 			return MISMATCH;
 		}
 
-		if( nnz( mask ) == 0 || nnz( u ) == 0 || nnz( v ) == 0 ) {
+		if( nnz( u ) == 0 || nnz( v ) == 0 ) {
 			clear( A );
 			return SUCCESS;
+		}
+
+		if( nnz(mask) == 0 ) {
+			return outer( A, u, v, mul, phase );
 		}
 
 
