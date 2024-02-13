@@ -1018,11 +1018,6 @@ namespace grb {
 			}
 		}
 
-		grb::Monoid<
-			grb::operators::left_assign< OutputType >,
-			grb::identities::zero
-		> monoid;
-
 		RC ret = SUCCESS;
 		if( phase == EXECUTE ) {
 			ret = grb::clear( A );
@@ -1101,8 +1096,7 @@ namespace grb {
 					const size_t k_col = mask_raw.row_index[ k ];
 					if( internal::getCoordinates( v ).assigned( k_col ) ) {
 						coors.assign( k_col );
-						valbuf[ k_col ] = monoid.template getIdentity< OutputType >();
-						(void) grb::apply( valbuf[ k_col ],
+						grb::apply( valbuf[ k_col ],
 							x[i],
 							y[k_col],
 							mul );
