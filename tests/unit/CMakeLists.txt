@@ -247,7 +247,7 @@ add_grb_executables( outer outer.cpp
 )
 
 add_grb_executables( maskedOuter maskedOuter.cpp
-	BACKENDS reference
+	BACKENDS reference reference_omp
 )
 
 # must generate the golden output for other tests

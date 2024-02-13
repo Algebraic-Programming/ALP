@@ -24,8 +24,6 @@
 using namespace grb;
 
 // sample data
-static const double vec1_vals[ 3 ] = { 1, 2, 3 };
-static const double vec2_vals[ 3 ] = { 4, 5, 6 };
 
 static const double m1[ 3 ] = { 0.5, 3.4, 5 };
 
@@ -37,10 +35,7 @@ static const double m2[ 6 ] = { 0.5, -1, 23, 34, -4.4, 3.14 };
 static const size_t I2[ 6 ] = { 0, 0, 1, 1, 2, 2 };
 static const size_t J2[ 6 ] = { 1, 2, 0, 2, 0, 1 };
 
-static const double mask_test1_in[ 3 ] = { 1, 1, 1 };
 static const double mask_test1_expect[ 3 ] = { 4, 10, 18 };
-
-static const double mask_test2_in[ 3 ] = { 1, 1, 1 };
 static const double mask_test2_expect[ 3 ] = { 11, 20, 27 };
 
 void grbProgram( const void *, const size_t in_size, int &error ) {
@@ -53,15 +48,15 @@ void grbProgram( const void *, const size_t in_size, int &error ) {
 	}
 
 	// allocate
-	grb::Vector< double > u( 3 );
-	grb::Vector< double > v( 3 );
+	grb::Vector< double > u = { 1, 2, 3 };
+	grb::Vector< double > v = { 4, 5, 6 };
 	grb::Matrix< double > Result1( 3, 3 );
 	grb::Matrix< double > Result2( 3, 3 );
-	grb::Matrix< double > mask1( 3, 3 );
-	grb::Matrix< double > mask2( 3, 3 );
-	grb::Vector< double > test1( 3 );
+	grb::Matrix< double > Mask1( 3, 3 );
+	grb::Matrix< double > Mask2( 3, 3 );
+	grb::Vector< double > test1 = { 1, 1, 1 };
 	grb::Vector< double > out1( 3 );
-	grb::Vector< double > test2( 3 );
+	grb::Vector< double > test2 = { 1, 1, 1 };
 	grb::Vector< double > out2( 3 );
 
 	// semiring
@@ -70,83 +65,63 @@ void grbProgram( const void *, const size_t in_size, int &error ) {
 		grb::identities::zero, grb::identities::one
 	> ring;
 
-	// initialise vec
-	const double * vec_iter = &(vec1_vals[ 0 ]);
-	grb::RC rc = grb::buildVector( u, vec_iter, vec_iter + 3, SEQUENTIAL );
+	grb::RC rc = grb::buildMatrixUnique( Mask1, &( I1[ 0 ] ), &( J1[ 0 ] ), m1, 3, SEQUENTIAL );
+
 	if( rc != SUCCESS ) {
-		std::cerr << "\t initial buildVector FAILED\n";
+		std::cerr << "\t first mask buildMatrix FAILED\n";
 		error = 5;
 	}
 
 	if( !error ) {
-		vec_iter = &(vec2_vals[ 0 ]);
-		rc = grb::buildVector( v, vec_iter, vec_iter + 3, SEQUENTIAL );
+		rc = grb::buildMatrixUnique( Mask2, &( I2[ 0 ] ), &( J2[ 0 ] ), m2, 6, SEQUENTIAL );
+		if( rc != SUCCESS ) {
+			std::cerr << "\t second mask buildMatrix FAILED\n";
+			error = 10;
+		}
 	}
-	if( rc != SUCCESS ) {
-		std::cerr << "\t initial buildVector FAILED\n";
-		error = 10;
-	}
+
+	
 
 	if( !error ) {
-		rc = grb::buildMatrixUnique( mask1, &( I1[ 0 ] ), &( J1[ 0 ] ), m1, 3, SEQUENTIAL );
+		rc = grb::maskedOuter( Result1, Mask1, u, v, ring.getMultiplicativeOperator(), RESIZE );
+		rc = rc ? rc : grb::maskedOuter( Result1, Mask1, u, v, ring.getMultiplicativeOperator() );
+		if( rc != grb::SUCCESS ) {
+			std::cerr << "Unexpected return code from grb::maskedOuter: "
+				<< toString( rc ) << ".\n";
+			error = 15;
+		}
 	}
 
-	if( rc != SUCCESS ) {
-		std::cerr << "\t first buildMatrix FAILED\n";
-		error = 15;
-	}
-
-	if( !error ) {
-		rc = grb::buildMatrixUnique( mask2, &( I2[ 0 ] ), &( J2[ 0 ] ), m2, 6, SEQUENTIAL );
-	}
-
-	if( rc != SUCCESS ) {
-		std::cerr << "\t second buildMatrix FAILED\n";
-		error = 20;
-	}
-
-	if( !error ) {
-		rc = grb::maskedOuter( Result1, mask1, u, v, ring.getMultiplicativeOperator(), RESIZE );
-		rc = rc ? rc : grb::maskedOuter( Result1, mask1, u, v, ring.getMultiplicativeOperator() );
-	}
-	if( rc != grb::SUCCESS ) {
-		std::cerr << "Unexpected return code from grb::maskedOuter: "
-			<< toString( rc ) << ".\n";
-		error = 25;
-	}
 
 	if( !error && grb::nnz( Result1 ) != 3 ) {
 		std::cerr << "\t Unexpected number of nonzeroes in matrix: "
 			<< grb::nnz( Result1 ) << ", expected 3.\n";
-		error = 30;
+		error = 20;
 	}
 
 	if( !error ) {
-		rc = grb::maskedOuter( Result2, mask2, u, v, ring.getMultiplicativeOperator(), RESIZE );
-		rc = rc ? rc : grb::maskedOuter( Result2, mask2, u, v, ring.getMultiplicativeOperator() );
+		rc = grb::maskedOuter< descriptors::force_row_major >( Result2, Mask2, u, v, ring.getMultiplicativeOperator(), RESIZE );
+		rc = rc ? rc : grb::maskedOuter< descriptors::force_row_major >( Result2, Mask2, u, v, ring.getMultiplicativeOperator() );
+		if( rc != grb::SUCCESS ) {
+			std::cerr << "Unexpected return code from grb::maskedOuter: "
+				<< toString( rc ) << ".\n";
+			error = 25;
+		}
 	}
-	if( rc != grb::SUCCESS ) {
-		std::cerr << "Unexpected return code from grb::maskedOuter: "
-			<< toString( rc ) << ".\n";
-		error = 35;
-	}
+
 
 	if( !error && grb::nnz( Result2 ) != 6 ) {
 		std::cerr << "\t Unexpected number of nonzeroes in matrix: "
 			<< grb::nnz( Result2 ) << ", expected 6.\n";
-		error = 40;
+		error = 30;
 	}
 
 	if( !error ) {
-		const double * const test1_iter = &( mask_test1_in[ 0 ] );
-		rc = grb::buildVector( test1, test1_iter, test1_iter + 3, SEQUENTIAL );
-		if( rc == grb::SUCCESS ) {
-			rc = grb::vxm( out1, test1, Result1, ring );
-		}
+		rc = grb::vxm( out1, test1, Result1, ring );
 		if( rc != grb::SUCCESS ) {
-			std::cerr << "Unexpected return code from premultiplying M by a vector (vxm): "
+			std::cerr << "Unexpected return code from premultiplying Result1 by a vector (vxm): "
 				<< toString( rc ) << ".\n";
-			error = 45;
+			error = 35;
 		}
 	}
 
@@ -154,7 +129,7 @@ void grbProgram( const void *, const size_t in_size, int &error ) {
 		if( grb::nnz( out1 ) != 3 ) {
 			std::cerr << "\t Unexpected number of nonzeroes (premultiply): "
 				<< grb::nnz( out1 ) << ", expected 3\n";
-			error = 50;
+			error = 40;
 		}
 		for( const auto &pair : out1 ) {
 			size_t i = pair.first;
@@ -163,20 +138,16 @@ void grbProgram( const void *, const size_t in_size, int &error ) {
 					<< "unexpected value " << pair.second << " "
 					<< "at coordinate " << i << ", expected "
 					<< mask_test1_expect[ i ] << ".\n";
-				error = 55;
+				error = 45;
 				break;
 			}
 		}
 	}
 
 	if( !error ) {
-		const double * const test2_iter = &( mask_test2_in[ 0 ] );
-		rc = grb::buildVector( test2, test2_iter, test2_iter + 3, SEQUENTIAL );
-		if( rc == grb::SUCCESS ) {
-			rc = grb::vxm< grb::descriptors::transpose_matrix >( out2, test2, Result2, ring );
-		}
+		rc = grb::vxm< grb::descriptors::transpose_matrix >( out2, test2, Result2, ring );
 		if( rc != grb::SUCCESS ) {
-			std::cerr << "Unexpected return code from postmultiplying M by a vector (vxm): "
+			std::cerr << "Unexpected return code from postmultiplying Result2 by a vector (vxm): "
 				<< toString( rc ) << ".\n";
 			error = 60;
 		}
@@ -191,7 +162,7 @@ void grbProgram( const void *, const size_t in_size, int &error ) {
 		for( const auto &pair : out2 ) {
 			size_t i = pair.first;
 			if( pair.second != mask_test2_expect[ i ] ) {
-				std::cerr << "Postmultiplying M by a vector of all ones, "
+				std::cerr << "Postmultiplying Result2 by a vector of all ones, "
 					<< "unexpected value " << pair.second << " "
 					<< "at coordinate " << i << ", "
 					<< "expected " << mask_test2_expect[ i ] << ".\n";
@@ -202,6 +173,134 @@ void grbProgram( const void *, const size_t in_size, int &error ) {
 	}
 }
 
+void grb_program_custom_size( const size_t &n, int &error ) {
+	grb::Semiring<
+		grb::operators::add< double >, grb::operators::mul< double >,
+		grb::identities::zero, grb::identities::one
+	> ring;
+
+	// initialize test
+	grb::Matrix< double > Result( n, n );
+	grb::Matrix< double > Mask( n, n );
+	size_t I[ 2 * n - 1 ], J[ 2 * n - 1 ];
+	double mask_in [ 2 * n - 1 ];
+	double u_in[ n ];
+	double v_in[ n ];
+	double test_in[ n ];
+	double expect[ n ];
+	grb::Vector< double > u( n );
+	grb::Vector< double > v( n );
+	grb::Vector< double > test( n );
+	grb::Vector< double > out( n );
+	for( size_t k = 0; k < n; ++k ) {
+		I[ k ] = J[ k ] = k;
+		mask_in[ k ] = 1;
+		u_in[ k ] = k + 1;
+		v_in[ k ] = k + 1;
+		test_in[ k ] = 1;
+		if( k < n - 1 ) {
+			I[ n + k ] = k;
+			J[ n + k ] = k + 1;
+			mask_in [ n + k ] = 1;
+		}
+		if( k == 0 ) {
+			expect [ k ] = 1;
+		}
+		else {
+			expect [ k ] = ( k + 1 ) * ( 2 * k + 1 );
+		}
+	}
+	
+	const double * vec_iter = &(u_in[ 0 ]);
+	grb::RC rc = grb::buildVector( u, vec_iter, vec_iter + n, SEQUENTIAL );
+	if( rc != SUCCESS ) {
+		std::cerr << "\t buildVector of u vector FAILED\n";
+		error = 5;
+	}
+
+	if( !error ) {
+		vec_iter = &(v_in[ 0 ]);
+		rc = grb::buildVector( v, vec_iter, vec_iter + n, SEQUENTIAL );
+		if( rc != SUCCESS ) {
+			std::cerr << "\t buildVector of v vector FAILED\n";
+			error = 10;
+		}
+	}
+
+	if( !error ) {
+		vec_iter = &(test_in[ 0 ]);
+		rc = grb::buildVector( test, vec_iter, vec_iter + n, SEQUENTIAL );
+		if( rc != SUCCESS ) {
+			std::cerr << "\t buildVector of test input vector FAILED\n";
+			error = 15;
+		}
+	}
+
+	if( !error ) {
+		rc = grb::resize( Mask, 2 * n - 1 );
+		if( rc != SUCCESS ) {
+			std::cerr << "\t mask matrix resize FAILED\n";
+			error = 20;
+		}
+	}
+
+	if( !error ) {
+		rc = grb::buildMatrixUnique( Mask, I, J, mask_in, 2 * n - 1, SEQUENTIAL );
+		if( rc != SUCCESS ) {
+			std::cerr << "\t buildMatrixUnique of mask matrix FAILED\n";
+			error = 25;
+		}
+	}
+
+	if( !error ) {
+		rc = grb::maskedOuter( Result, Mask, u, v, ring.getMultiplicativeOperator(), RESIZE );
+		rc = rc ? rc : grb::maskedOuter( Result, Mask, u, v, ring.getMultiplicativeOperator() );
+		if( rc != grb::SUCCESS ) {
+			std::cerr << "Unexpected return code from grb::maskedOuter: "
+				<< toString( rc ) << ".\n";
+			error = 30;
+		}
+	}
+
+
+	if( !error && grb::nnz( Result ) != 2 * n -1 ) {
+		std::cerr << "\t Unexpected number of nonzeroes in matrix: "
+			<< grb::nnz( Result ) << ", expected "
+			<< 2 * n - 1 <<".\n";
+		error = 35;
+	}
+
+	if( !error ) {
+		rc = grb::vxm( out, test, Result, ring );
+		if( rc != grb::SUCCESS ) {
+			std::cerr << "Unexpected return code from premultiplying Result by a vector (vxm): "
+				<< toString( rc ) << ".\n";
+			error = 40;
+		}
+	}
+
+	if( !error ) {
+		if( grb::nnz( out ) != n ) {
+			std::cerr << "\t Unexpected number of nonzeroes (premultiply): "
+				<< grb::nnz( out ) << ", expected "
+				<< n << ".\n";
+			error = 45;
+		}
+		for( const auto &pair : out ) {
+			size_t i = pair.first;
+			if( pair.second != expect[ i ] ) {
+				std::cerr << "Premultiplying Result by a vector of all ones, "
+					<< "unexpected value " << pair.second << " "
+					<< "at coordinate " << i << ", expected "
+					<< expect[ i ] << ".\n";
+				error = 50;
+				break;
+			}
+		}
+	}
+
+}
+
 int main( int argc, char ** argv ) {
 	(void)argc;
 	std::cout << "Functional test executable: " << argv[ 0 ] << "\n";
@@ -210,14 +309,55 @@ int main( int argc, char ** argv ) {
 	grb::Launcher< AUTOMATIC > launcher;
 
 	if( launcher.exec( &grbProgram, nullptr, 0, error ) != SUCCESS ) {
-		std::cerr << "Test failed to launch\n";
+		std::cerr << "Test 1 failed to launch\n";
 		error = 255;
 	}
 	if( error == 0 ) {
-		std::cout << "Test OK\n" << std::endl;
+		std::cout << "Test 1 OK\n" << std::endl;
 	} else {
 		std::cerr << std::flush;
-		std::cout << "Test FAILED\n" << std::endl;
+		std::cout << "Test 1 FAILED\n" << std::endl;
+	}
+
+	bool printUsage = false;
+	size_t n = 100;
+
+	// error checking
+	if( argc > 2 ) {
+		printUsage = true;
+	}
+	if( argc == 2 ) {
+		size_t read;
+		std::istringstream ss( argv[ 1 ] );
+		if( ! ( ss >> read ) ) {
+			std::cerr << "Error parsing first argument\n";
+			printUsage = true;
+		} else if( ! ss.eof() ) {
+			std::cerr << "Error parsing first argument\n";
+			printUsage = true;
+		} else {
+			// all OK
+			n = read;
+		}
+	}
+	if( printUsage ) {
+		std::cerr << "Usage: " << argv[ 0 ] << " [n]\n";
+		std::cerr << "  -n (optional, default is 100): an integer, the "
+					 "test size.\n";
+		return 1;
+	}
+
+	error = 0;
+
+	if( launcher.exec( &grb_program_custom_size, n, error ) != SUCCESS ) {
+		std::cerr << "Launching test 2 FAILED\n";
+		error = 255;
+	}
+	if( error == 0 ) {
+		std::cout << "Test 2 OK\n" << std::endl;
+	} else {
+		std::cerr << std::flush;
+		std::cout << "Test 2 FAILED\n" << std::endl;
 	}
 
 	// done
