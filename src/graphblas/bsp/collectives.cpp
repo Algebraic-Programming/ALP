@@ -23,96 +23,6 @@
 #include <graphblas/bsp/internal-collectives.hpp>
 
 
-grb::RC grb::internal::commsPreamble(
-	internal::BSP1D_Data &data, lpf_coll_t * const coll,
-	const size_t maxMessages, const size_t maxBufSize,
-	const unsigned int localMemslot, const unsigned int globalMemslot
-) {
-#ifdef _DEBUG
-	std::cout << "internal::commsPreamble, called with coll at " << coll
-		<< ", max messages and buffer size " << maxMessages << " - " << maxBufSize
-		<< ", local and global memslots " << localMemslot << " - " << globalMemslot
-		<< "\n";
-#endif
-	*coll = LPF_INVALID_COLL;
-	if( maxBufSize > 0 && data.checkBufferSize( maxBufSize ) != SUCCESS ) {
-#ifdef _DEBUG
-		std::cerr << "internal::commsPreamble, could not reserve buffer size of "
-			<< maxBufSize << "!" << std::endl;
-#endif
-#ifndef NDEBUG
-		const bool insufficient_buffer_capacity_for_requested_pattern = false;
-		assert( insufficient_buffer_capacity_for_requested_pattern );
-#endif
-		return PANIC;
-	}
-	if( maxMessages > 0 && data.ensureMaxMessages( maxMessages ) != SUCCESS ) {
-#ifdef _DEBUG
-		std::cerr << "internal::commsPreamble, could not reserve max msg "
-			<< "buffer size of " << maxMessages << "!" << std::endl;
-#endif
-#ifndef NDEBUG
-		const bool could_not_resize_lpf_message_buffer = false;
-		assert( could_not_resize_lpf_message_buffer );
-#endif
-		return PANIC;
-	}
-	if( (localMemslot > 0 || globalMemslot > 0) &&
-		data.ensureMemslotAvailable( localMemslot + globalMemslot ) != SUCCESS
-	) {
-#ifdef _DEBUG
-		std::cerr << "internal::commsPreamble, could not reserve " << localMemslot
-			<< " local memory slots!" << std::endl;
-		std::cerr << "internal::commsPreamble, could not reserve " << globalMemslot
-			<< " global memory slots!" << std::endl;
-#endif
-#ifndef NDEBUG
-		const bool could_not_resize_lpf_memory_slot_capacity = false;
-		assert( could_not_resize_lpf_memory_slot_capacity );
-#endif
-		return PANIC;
-	}
-#ifdef _DEBUG
-	std::cout << "internal::commsPreamble, taking requested number of memslots..."
-		<< std::endl;
-#endif
-	if( localMemslot > 0 ) {
-		data.signalMemslotTaken( localMemslot );
-	}
-	if( globalMemslot > 0 ) {
-		data.signalMemslotTaken( globalMemslot );
-	}
-#ifdef _DEBUG
-	std::cout << "internal::commsPreamble, success." << std::endl;
-#endif
-	return SUCCESS;
-}
-
-grb::RC grb::internal::commsPostamble(
-	internal::BSP1D_Data &data,
-	lpf_coll_t * const coll,
-	const size_t maxMessages,
-	const size_t maxBufSize,
-	const unsigned int localMemslot,
-	const unsigned int globalMemslot
-) {
-	(void) maxMessages;
-	(void) maxBufSize;
-	if( localMemslot > 0 ) {
-		data.signalMemslotReleased( localMemslot );
-	}
-	if( globalMemslot ) {
-		data.signalMemslotReleased( globalMemslot );
-	}
-	if( coll != nullptr ) {
-		if( lpf_collectives_destroy( *coll ) != LPF_SUCCESS ) {
-			assert( false );
-			return PANIC;
-		}
-	}
-	return SUCCESS;
-}
-
 grb::RC grb::internal::gather(
 	const lpf_memslot_t src, const size_t src_offset,
 	const lpf_memslot_t dst, const size_t dst_offset,
@@ -120,48 +30,85 @@ grb::RC grb::internal::gather(
 	const lpf_pid_t root
 ) {
 	// sanity check
-	if( src_offset + size > total ) {
+	if( size > total ) {
 		return ILLEGAL;
 	}
-	if( dst_offset + size > total ) {
+	if( size > total ) {
 		return ILLEGAL;
 	}
 
 	// we need access to LPF context
 	internal::BSP1D_Data &data = internal::grb_BSP1D.load();
 
-	// ensure we can support comms pattern: total
-	lpf_coll_t coll = LPF_INVALID_COLL;
-	if( commsPreamble( data, &coll, data.P, total ) != SUCCESS ) {
-		assert( false );
-		return PANIC;
+	if( root >= data.P ) {
+		return ILLEGAL;
 	}
 
-	// schedule gather
-	if( data.s != root ) {
-		// put local data remotely
-		const lpf_err_t lpf_rc = lpf_put(
-			data.context,
-			src, src_offset, root,
-			dst, dst_offset,
-			size,
-			LPF_MSG_DEFAULT
-		);
-		if( lpf_rc != LPF_SUCCESS ) {
-			assert( false );
-			return PANIC;
+	RC ret = SUCCESS;
+	lpf_err_t lpf_rc = LPF_SUCCESS;
+	if( src_offset == 0 && dst_offset == 0 ) {
+		// ensure we can support comms pattern
+		ret = data.ensureCollectivesCapacity( 1, 0, size );
+
+		// ensure we can support comms pattern
+		if( ret == SUCCESS ) {
+			ret = data.ensureMaxMessages( data.P - 1 );
+		}
+
+		// then schedule it
+		if( ret == SUCCESS ) {
+			lpf_rc = lpf_gather(
+					data.coll,
+					src, dst, size,
+					root
+				);
+		}
+	} else {
+		// ensure we can support comms pattern
+		ret = data.ensureMaxMessages( data.P - 1 );
+
+		// then schedule it
+		if( ret == SUCCESS && data.s != root ) {
+			// put local data remotely
+			lpf_rc = lpf_put(
+				data.context,
+				src, src_offset, root,
+				dst, dst_offset,
+				size,
+				LPF_MSG_DEFAULT
+			);
 		}
 	}
 
-	// finish gather
-	if( lpf_sync( data.context, LPF_SYNC_DEFAULT ) != LPF_SUCCESS ) {
-		assert( false );
+	// error handling
+	if( ret != SUCCESS ) {
+		// propagate
+		return ret;
+	}
+	if( lpf_rc != LPF_SUCCESS ) {
+		// none of the calls made thus far should have failed
+		/* LCOV_EXCL_START */
+#ifndef NDEBUG
+		const bool lpf_spec_says_no_failure_possible = false;
+		assert( lpf_spec_says_no_failure_possible );
+#endif
 		return PANIC;
+		/* LCOV_EXCL_STOP */
 	}
 
-	if( commsPostamble( data, &coll, data.P, total ) != SUCCESS ) {
-		assert( false );
+	// finish comms
+	lpf_rc = lpf_sync( data.context, LPF_SYNC_DEFAULT );
+	if( lpf_rc != LPF_SUCCESS ) {
+		// Under no normal circumstance should this branch be reachable
+		/* LCOV_EXCL_START */
+		if( lpf_rc != LPF_ERR_FATAL ) {
+#ifndef NDEBUG
+			const bool lpf_spec_says_this_is_unreachable = false;
+			assert( lpf_spec_says_this_is_unreachable );
+#endif
+		}
 		return PANIC;
+		/* LCOV_EXCL_STOP */
 	}
 
 	// done
@@ -182,56 +129,72 @@ grb::RC grb::internal::allgather(
 	// we need access to LPF context
 	internal::BSP1D_Data &data = internal::grb_BSP1D.load();
 
-	// ensure we can support comms pattern: total
-	lpf_coll_t coll = LPF_INVALID_COLL;
-	if( commsPreamble( data, &coll, data.P, total ) != SUCCESS ) {
-#ifndef NDEBUG
-		const bool commsPreamble_returned_error = false;
-		assert( commsPreamble_returned_error );
-#endif
-		return PANIC;
+	// check for trivial execution
+	if( data.P == 1 ) {
+		return SUCCESS;
 	}
 
-	// schedule allgather
-	for( lpf_pid_t i = 0; i < data.P; ++i ) {
+	RC ret = SUCCESS;
+	lpf_err_t lpf_rc = LPF_SUCCESS;
 
-		// may not want to send to myself
-		if( exclude_self && i == data.s ) {
-			continue;
+	if( src_offset == 0 && dst_offset == 0 ) {
+		ret = data.ensureCollectivesCapacity( 1, 0, size );
+		if( ret == SUCCESS ) {
+			ret = data.ensureMaxMessages( 2 * data.P );
 		}
-
-		// put local data remotely
-		const lpf_err_t lpf_rc = lpf_put(
-				data.context,
-				src, src_offset,
-				i, dst, dst_offset,
-				size,
-				LPF_MSG_DEFAULT
-			);
-		if( lpf_rc != LPF_SUCCESS ) {
-#ifndef NDEBUG
-			const bool lpf_put_returned_error = false;
-			assert( lpf_put_returned_error );
-#endif
-			return PANIC;
+		if( ret == SUCCESS ) {
+			lpf_rc = lpf_allgather(
+					data.coll,
+					src, dst, size,
+					exclude_self
+				);
+		}
+	} else {
+		if( exclude_self ) {
+			ret = data.ensureMaxMessages( 2 * data.P - 2 );
+		} else {
+			ret = data.ensureMaxMessages( 2 * data.P );
+		}
+		if( ret == SUCCESS ) {
+			for( lpf_pid_t i = 0; i < data.P; ++i ) {
+				if( exclude_self && i == data.s ) { continue; }
+					lpf_rc = lpf_put(
+							data.context,
+							src, src_offset,
+							i, dst, dst_offset,
+							size, LPF_MSG_DEFAULT
+						);
+			}
 		}
 	}
 
-	// finish allgather
-	if( lpf_sync( data.context, LPF_SYNC_DEFAULT ) != LPF_SUCCESS ) {
+	// error handling
+	if( ret != SUCCESS ) {
+		return ret;
+	}
+	if( lpf_rc != LPF_SUCCESS ) {
+		/* LCOV_EXCL_START */
 #ifndef NDEBUG
-		const bool lpf_sync_returned_error = false;
-		assert( lpf_sync_returned_error );
+		const bool lpf_spec_says_no_failure_possible = false;
+		assert( lpf_spec_says_no_failure_possible );
 #endif
 		return PANIC;
+		/* LCOV_EXCL_STOP */
 	}
 
-	if( commsPostamble( data, &coll, data.P, total ) != SUCCESS ) {
+	// finish comms
+	lpf_rc = lpf_sync( data.context, LPF_SYNC_DEFAULT );
+	if( lpf_rc != LPF_SUCCESS ) {
+		// Under no normal circumstance should this branch be reachable
+		/* LCOV_EXCL_START */
+		if( lpf_rc != LPF_ERR_FATAL ) {
 #ifndef NDEBUG
-		const bool commsPostamble_returned_error = false;
-		assert( commsPostamble_returned_error );
+			const bool lpf_spec_says_this_is_unreachable = false;
+			assert( lpf_spec_says_this_is_unreachable );
 #endif
+		}
 		return PANIC;
+		/* LCOV_EXCL_STOP */
 	}
 
 	// done

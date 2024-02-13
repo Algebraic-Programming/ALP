@@ -42,19 +42,6 @@ namespace grb {
 
 		// allgather collective from library
 
-		/*
-		 * Ensure the destination buffer can hold at least this number of elements.
-		 *
-		 * It shall only be legal to call collectives that result in output not
-		 * exceeding what is initialised here; otherwise, use of said collectives
-		 * will result in UB.
-		 */
-		template< typename T >
-		RC initCollectivesBuffer( const size_t num_elements ) {
-			auto &data = internal::grb_BSP1D.load();
-			return data.ensureBufferSize( num_elements * sizeof( T ) );
-		}
-
 		/* Schedules a gather operation from memory slot src (with src_offset)
 		 * across each process, to memory slot dst (with offset dst_offset) on
 		 * the root process. The size of each message may vary across processes,
@@ -193,54 +180,9 @@ namespace grb {
 			const bool exclude_self = true
 		);
 
-		/**
-		 * Specify the maximum number of messages, the maximum buffer size for these
-		 * messages, and the allocation of a local or global memory sot - preamble to
-		 * communications
-		 *
-		 * @param[in] data The persistent BSP state.
-		 * @param[in] coll The BSP collective comms structure.
-		 * @param[in] maxMessages The maximum number of messages being transferred.
-		 * @param[in] maxBufSize The maximum number of bytes required for communications.
-		 * @param[in] localMemslot The number of local memory slots requested.
-		 * @param[in] globalMemslot The number of gobal memory slots requested.
-		 */
-		RC commsPreamble(
-			internal::BSP1D_Data &data,
-			lpf_coll_t * coll,
-			const size_t maxMessages,
-			const size_t maxBufSize = 0,
-			const unsigned int localMemslot = 0,
-			const unsigned int globalMemslot = 0
-		);
-
-		/**
-		 * Specify the maximum number of messages, the maximum buffer size for these
-		 * messages, and the allocation of a local or global memory sot - postamble to
-		 * communications
-		 *
-		 * @param[in] data          The persistent BSP state.
-		 * @param[in] coll          The BSP collective comms structure.
-		 * @param[in] maxMessages   The maximum number of messages that were being
-		 *                          transferred.
-		 * @param[in] maxBufSize    The maximum number of bytes that were required for
-		 *                          communications.
-		 * @param[in] localMemslot  The number of local memory slots that were
-		 *                          requested.
-		 * @param[in] globalMemslot The number of gobal memory slots that were
-		 *                          requested.
-		 */
-		RC commsPostamble(
-			internal::BSP1D_Data &data,
-			lpf_coll_t * coll,
-			const size_t maxMessages,
-			const size_t maxBufSize = 0,
-			const unsigned int localMemslot = 0,
-			const unsigned int globalMemslot = 0
-		);
-
 	} // namespace internal
 
 } // namespace grb
 
 #endif // end ``_H_GRB_BSP_COLL''
+

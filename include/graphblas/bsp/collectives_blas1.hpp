@@ -31,8 +31,13 @@
 
 #include <lpf/collectives.h>
 
-#include <graphblas/base/vector.hpp>
 #include <graphblas/blas0.hpp>
+#include <graphblas/final.hpp>
+
+#include <graphblas/base/vector.hpp>
+
+#include <graphblas/bsp/error.hpp>
+
 #include <graphblas/bsp1d/init.hpp>
 
 #include "internal-collectives.hpp"
@@ -74,8 +79,8 @@ namespace grb {
 		 * \parblock
 		 * \par Performance semantics:
 		 * -# Problem size N: \f$ P * \mathit{sizeof}(\mathit{IOType}) \f$
-		 * -# local work: \f$ 0 \f$ ;
-		 * -# transferred bytes: \f$ N \f$ ;
+		 * -# local work: \f$ 0 \f$;
+		 * -# transferred bytes: \f$ N \f$;
 		 * -# BSP cost: \f$ Ng + l \f$;
 		 * \endparblock
 		 *
@@ -91,7 +96,7 @@ namespace grb {
 		RC gather(
 			const IOType &in,
 #ifdef BLAS1_RAW
-			IOType * out,
+			IOType * const out,
 #else
 			Vector< IOType, reference, Coords > &out,
 #endif
@@ -101,18 +106,18 @@ namespace grb {
 			internal::BSP1D_Data &data = internal::grb_BSP1D.load();
 
 			// run-time sanity check
+			if( root >= data.P ) {
+				return ILLEGAL;
+			}
 #ifndef BLAS1_RAW
 			TEST_VEC_SIZE( out, data.P )
+#else
+			if( out == nullptr ) {
+				return ILLEGAL;
+			}
 #endif
 
-			// make sure we can support comms pattern: IOType -> P * IOType
-			lpf_coll_t coll;
-			if( commsPreamble( data, &coll, data.P, 0, 0, 1 ) != SUCCESS ) {
-				// if failure at this point, no harm done and exit immediately
-				return PANIC;
-			}
-
-			// copy input to buffer
+			// copy input to buffer -- saves one LPF registration
 			const size_t pos = ( data.s == root ) ? data.s : 0;
 
 			// prevent self-copy
@@ -126,73 +131,55 @@ namespace grb {
 			}
 #endif
 
-			// create memslot on output vector
 			lpf_memslot_t slot = LPF_INVALID_MEMSLOT;
+			lpf_err_t lpf_rc = LPF_SUCCESS;
 			RC ret = SUCCESS;
+			if( data.P > 1 ) {
+				// preliminaries
+				ret = data.ensureMemslotAvailable();
+				if( ret == SUCCESS ) {
+					ret = data.ensureMaxMessages( data.P - 1 );
+				}
+				if( ret == SUCCESS ) {
+					ret = data.ensureCollectivesCapacity( 1, 0, sizeof( IOType ) );
+				}
+				if( ret != SUCCESS ) { return ret; }
+
+				// create memslot on output vector
 #ifndef BLAS1_RAW
-			if( lpf_register_global(
-					data.context, internal::getRaw( out ), data.P * sizeof( IOType ), &slot
-				) != LPF_SUCCESS
-			) {
+				lpf_rc = lpf_register_global( data.context, internal::getRaw( out ),
+					data.P * sizeof( IOType ), &slot );
 #else
-			if( lpf_register_global(
-					data.context, out, data.P * sizeof( IOType ), &slot
-				) != LPF_SUCCESS
-			) {
+				lpf_rc = lpf_register_global( data.context, out, data.P * sizeof( IOType ),
+					&slot );
 #endif
-				// failure at this point will have to be cleaned up as best as possible
-				ret = PANIC;
-			}
+				if( lpf_rc == LPF_SUCCESS ) {
+					lpf_rc = lpf_sync( data.context, LPF_SYNC_DEFAULT );
+				}
+				ret = checkLPFerror( lpf_rc );
 
-			if( ret == SUCCESS && lpf_sync( data.context, LPF_SYNC_DEFAULT ) ) {
-				ret = PANIC;
-			}
-
-			// gather values
-			if( ret == SUCCESS &&
-					lpf_gather( coll, slot, slot, sizeof( IOType ), root )
-				!= LPF_SUCCESS
-			) {
-				// failure at this point will have to be cleaned up as best as possible
-				ret = PANIC;
-			}
-
-			// perform communication
-			if( ret == SUCCESS &&
-					lpf_sync( data.context, LPF_SYNC_DEFAULT )
-				!= LPF_SUCCESS
-			) {
-				// failure at this point will have to be cleaned up as best as possible
-				ret = PANIC;
+				// gather values
+				if( ret == SUCCESS ) {
+					lpf_rc = lpf_gather( data.coll, slot, slot, sizeof( IOType ), root );
+					if( lpf_rc == LPF_SUCCESS ) {
+						lpf_sync( data.context, LPF_SYNC_DEFAULT );
+					}
+					ret = checkLPFerror( lpf_rc );
+				}
 			}
 
 #ifndef BLAS1_RAW
-			// make sure sparsity info is correct
-			for(
-				size_t i = 0;
-				data.s == root &&
-					ret == SUCCESS &&
-					internal::getCoordinates( out ).size() !=
-						internal::getCoordinates( out ).nonzeroes() &&
-					i < data.P;
-				++i
-			) {
-				(void) internal::getCoordinates( out ).assign( i );
+			if( ret == SUCCESS ) {
+				if( data.s == root ) {
+					// make sure sparsity info is correct
+					internal::getCoordinates( out ).template assignAll< true >();
+				}
 			}
 #endif
 
 			// deregister slot
-			if( slot != LPF_INVALID_MEMSLOT &&
-					lpf_deregister( data.context, slot )
-				!= LPF_SUCCESS
-			) {
-				// error during cleanup of memslot
-				ret = PANIC;
-			}
-
-			if( commsPostamble( data, &coll, data.P, 0, 0, 1 ) != SUCCESS ) {
-				// error during cleanup of postamble
-				ret = PANIC;
+			if( slot != LPF_INVALID_MEMSLOT && lpf_rc != LPF_ERR_FATAL ) {
+				(void) lpf_deregister( data.context, slot );
 			}
 
 			// done
@@ -221,8 +208,8 @@ namespace grb {
 		 * \parblock
 		 * \par Performance semantics:
 		 * -# Problem size N: \f$ P * in.size * \mathit{sizeof}(\mathit{IOType}) \f$
-		 * -# local work: \f$ 0 \f$ ;
-		 * -# transferred bytes: \f$ N \f$ ;
+		 * -# local work: \f$ 0 \f$;
+		 * -# transferred bytes: \f$ N \f$;
 		 * -# BSP cost: \f$ Ng + l \f$;
 		 * \endparblock
 		 */
@@ -236,9 +223,9 @@ namespace grb {
 		>
 		RC gather(
 #ifdef BLAS1_RAW
-			const IOType * in,
+			const IOType * const in,
 			const size_t size,
-			IOType * out,
+			IOType * const out,
 #else
 			const Vector< IOType, reference, Coords > &in,
 			Vector< IOType, reference, Coords > &out,
@@ -248,106 +235,102 @@ namespace grb {
 			// we need access to BSP context
 			internal::BSP1D_Data &data = internal::grb_BSP1D.load();
 
-			// make sure we can support comms pattern: Vector IOType -> P * Vector IOType
+			// dynamic checks
+			if( root >= data.P ) {
+				return ILLEGAL;
+			}
 #ifndef BLAS1_RAW
 			TEST_VEC_MULTIPLE( in, out, data.P )
 			const size_t size = internal::getCoordinates( in ).size();
+#else
+			if( in == nullptr || out == nullptr ) {
+				return ILLEGAL;
+			}
 #endif
+			const size_t bsize = size * sizeof( IOType );
 
-			lpf_coll_t coll;
-			if( commsPreamble( data, &coll, data.P, 0, 0, 1 ) != SUCCESS ) {
-				return PANIC;
+			// check trivial dispatch
+			if( size == 0 ) {
+				return SUCCESS;
 			}
 
-			// create memslot on output vector
-			lpf_memslot_t slot = LPF_INVALID_MEMSLOT;
+			lpf_memslot_t in_slot, out_slot;
+			in_slot = out_slot = LPF_INVALID_MEMSLOT;
+			lpf_err_t lpf_rc = LPF_SUCCESS;
 			RC ret = SUCCESS;
+			if( data.P > 1 ) {
+				// preliminaries
+				ret = data.ensureCollectivesCapacity( 1, 0, bsize );
+				if( ret == SUCCESS ) {
+					ret = data.ensureMemslotAvailable( 2 );
+				}
+				if( ret == SUCCESS ) {
+					ret = data.ensureMaxMessages( data.P - 1 );
+				}
+				if( ret != SUCCESS ) { return ret; }
+
+				// create memslot on output vector
 #ifndef BLAS1_RAW
-			if( lpf_register_global( data.context, internal::getRaw( out ),
-					size * data.P * sizeof( IOType ), &slot )
-				!= LPF_SUCCESS
-			) {
+				lpf_rc = lpf_register_local( data.context, internal::getRaw( out ),
+					size * data.P * sizeof( IOType ), &out_slot );
+				if( lpf_rc == LPF_SUCCESS ) {
+					lpf_register_global( data.context,
+						const_cast< IOType * >(internal::getRaw( in )), bsize, &in_slot );
+				}
 #else
-			if( lpf_register_global( data.context, out, size * data.P * sizeof( IOType ),
-					&slot )
-				!= LPF_SUCCESS
-			) {
+				lpf_rc = lpf_register_local( data.context, out, data.P * bsize, &out_slot );
+				if( lpf_rc == LPF_SUCCESS ) {
+					lpf_register_global( data.context, const_cast< IOType * >(in), bsize,
+						&in_slot );
+				}
 #endif
-				// failure at this point will have to be cleaned up as best as possible
-				ret = PANIC;
+				// activate registrations
+				if( lpf_rc == LPF_SUCCESS ) {
+					lpf_rc = lpf_sync( data.context, LPF_SYNC_DEFAULT );
+				}
+
+				// gather values
+				if( lpf_rc == LPF_SUCCESS ) {
+					lpf_rc = lpf_gather( data.coll, in_slot, out_slot, bsize, root );
+				}
+
+				// complete requested communication
+				if( lpf_rc == LPF_SUCCESS ) {
+					lpf_rc = lpf_sync( data.context, LPF_SYNC_DEFAULT );
+				}
+
+				// done with LPF section
+				ret = checkLPFerror( lpf_rc );
 			}
 
-			// copy input to buffer
-			const size_t pos = ( data.s == root ) ? data.s : 0;
-#ifdef BLAS1_RAW
-			for(
-				size_t i = 0;
-				ret == SUCCESS && ( out + pos * size ) != in && i < size;
-				i++
-			) {
-				out[ pos * size + i ] = in[ i ];
-			}
+			// do self-copy, if required
+			if( ret == SUCCESS && data.s == root ) {
+#ifndef BLAS1_RAW
+				const void * const in_p = internal::getRaw(in);
+				char * const out_p = reinterpret_cast< char * >(internal::getRaw( out ));
 #else
-			for(
-				size_t i = 0;
-				ret == SUCCESS &&
-					(internal::getRaw( out ) + pos * size) != internal::getRaw( in ) &&
-					i < size;
-				i++
-			) {
-				internal::getRaw( out )[ pos * size + i ] = internal::getRaw( in )[ i ];
-			}
+				const void * const in_p = in;
+				char * const out_p = reinterpret_cast< char * >(out);
 #endif
-			// activate registrations
-			if( ret == SUCCESS &&
-					lpf_sync( data.context, LPF_SYNC_DEFAULT )
-				!= LPF_SUCCESS
-			) {
-				ret = PANIC;
-			}
-
-			// gather values
-			if( ret == SUCCESS &&
-					lpf_gather( coll, slot, slot, size * sizeof( IOType ), root )
-				!= LPF_SUCCESS
-			) {
-				ret = PANIC;
-			}
-
-			// complete requested communication
-			if( ret == SUCCESS &&
-					lpf_sync( data.context, LPF_SYNC_DEFAULT )
-				!= LPF_SUCCESS
-			) {
-				ret = PANIC;
+				if( out_p + data.s * size != in_p ) {
+					internal::maybeParallel< _GRB_BSP1D_BACKEND >::memcpy(
+						out_p + data.s * size, in_p, bsize );
+				}
 			}
 
 #ifndef BLAS1_RAW
-			// set sparsity of output
-			for(
-				size_t i = 0;
-				data.s == root &&
-					ret == SUCCESS &&
-					internal::getCoordinates( out ).size() !=
-						internal::getCoordinates( out ).nonzeroes() &&
-					i < data.P * size;
-				++i
-			) {
-				(void) internal::getCoordinates( out ).assign( i );
+			if( ret == SUCCESS ) {
+				// set sparsity of output
+				internal::getCoordinates( out ).template assignAll< true >();
 			}
 #endif
 
 			// destroy memory slot
-			if( slot != LPF_INVALID_MEMSLOT &&
-					lpf_deregister( data.context, slot ) !=
-				LPF_SUCCESS
-			) {
-				ret = PANIC;
+			if( in_slot != LPF_INVALID_MEMSLOT && lpf_rc != LPF_ERR_FATAL ) {
+				(void) lpf_deregister( data.context, in_slot );
 			}
-
-			// postamble
-			if( commsPostamble( data, &coll, data.P, 0, 0, 1 ) != SUCCESS ) {
-				ret = PANIC;
+			if( out_slot != LPF_INVALID_MEMSLOT && lpf_rc != LPF_ERR_FATAL ) {
+				(void) lpf_deregister( data.context, out_slot );
 			}
 
 			// done
@@ -393,7 +376,7 @@ namespace grb {
 		>
 		RC scatter(
 #ifdef BLAS1_RAW
-			const IOType * in,
+			const IOType * const in,
 #else
 			const Vector< IOType, reference, Coords > &in,
 #endif
@@ -403,93 +386,88 @@ namespace grb {
 			// we need access to BSP context
 			internal::BSP1D_Data &data = internal::grb_BSP1D.load();
 
-			// make sure we can support comms pattern: P * IOType -> IOType
+			// dynamic checks
 #ifndef BLAS1_RAW
 			TEST_VEC_SIZE( in, data.P )
 #endif
-
-			lpf_coll_t coll;
-			if( commsPreamble( data, &coll, data.P, 0, 0, 2 ) != SUCCESS ) {
-				return PANIC;
+			if( root >= data.P ) {
+				return ILLEGAL;
 			}
+#ifdef BLAS1_RAW
+			if( in == nullptr ) {
+				return ILLEGAL;
+			}
+#endif
 
-			// create memslot on output vector
 			lpf_memslot_t src, dest;
 			src = dest = LPF_INVALID_MEMSLOT;
+			lpf_err_t lpf_rc = LPF_SUCCESS;
 			RC ret = SUCCESS;
-			if( lpf_register_global( data.context, &out, sizeof( IOType ), &dest )
-				!= LPF_SUCCESS
-			) {
-				ret = PANIC;
-			}
+			if( data.P > 1 ) {
+				// preliminaries
+				ret = data.ensureMemslotAvailable( 2 );
+				if( ret == SUCCESS ) {
+					data.ensureCollectivesCapacity( 1, 0, sizeof( IOType ) );
+				}
+				if( ret != SUCCESS ) { return ret; }
+
+				// create memslot on output vector
+				lpf_rc = lpf_register_local( data.context, &out, sizeof( IOType ),
+					&dest );
+				if( lpf_rc == LPF_SUCCESS ) {
 #ifndef BLAS1_RAW
-			if( ret == SUCCESS && lpf_register_global(
-					data.context,
-					const_cast< IOType * >( internal::getRaw( in ) ),
-					data.P * sizeof( IOType ),
-					&src
-				) != LPF_SUCCESS
-			) {
+					lpf_rc = lpf_register_global(
+						data.context,
+						const_cast< IOType * >( internal::getRaw( in ) ),
+						data.P * sizeof( IOType ),
+						&src
+					);
 #else
-			if( ret == SUCCESS && lpf_register_global(
-					data.context,
-					const_cast< IOType * >( in ),
-					data.P * sizeof( IOType ),
-					&src
-				) != LPF_SUCCESS
-			) {
+					lpf_rc = lpf_register_global(
+						data.context,
+						const_cast< IOType * >( in ),
+						data.P * sizeof( IOType ),
+						&src
+					);
 #endif
-				// failure at this point will have to be cleaned up as best as possible
-				ret = PANIC;
+				}
+
+				// activate global regs
+				if( lpf_rc == LPF_SUCCESS ) {
+					lpf_rc = lpf_sync( data.context, LPF_SYNC_DEFAULT );
+				}
+
+				// scatter values
+				if( lpf_rc == LPF_SUCCESS ) {
+					lpf_rc = lpf_scatter( data.coll, src, dest, sizeof( IOType ), root );
+				}
+
+				// wait for completion of requested collective
+				if( lpf_rc == LPF_SUCCESS ) {
+					lpf_rc = lpf_sync( data.context, LPF_SYNC_DEFAULT );
+				}
+
+				// end of LPF section
+				ret = checkLPFerror( lpf_rc );
 			}
 
-			// root copies output
+			if( ret == SUCCESS ) {
+				// root copies output
 #ifndef BLAS1_RAW
-			if( ret == SUCCESS && data.s == root &&
-				&out != internal::getRaw( in ) + data.s
-			) {
+				if( data.s == root && &out != internal::getRaw( in ) + data.s ) {
 #else
-			if( ret == SUCCESS && data.s == root && &out != in + data.s ) {
+				if( data.s == root && &out != in + data.s ) {
 #endif
-				out = in[ data.s ];
-			}
-
-			// activate global regs
-			if( ret == SUCCESS &&
-				lpf_sync( data.context, LPF_SYNC_DEFAULT ) != LPF_SUCCESS
-			) {
-				ret = PANIC;
-			}
-
-			// scatter values
-			if( ret == SUCCESS &&
-				lpf_scatter( coll, src, dest, sizeof( IOType ), root ) != LPF_SUCCESS
-			) {
-				ret = PANIC;
-			}
-
-			// wait for completion of requested collective
-			if( ret == SUCCESS &&
-				lpf_sync( data.context, LPF_SYNC_DEFAULT ) != LPF_SUCCESS
-			) {
-				ret = PANIC;
+					out = in[ data.s ];
+				}
 			}
 
 			// destroy memory slots
-			if( src != LPF_INVALID_MEMSLOT &&
-				lpf_deregister( data.context, src ) != LPF_SUCCESS
-			) {
-				ret = PANIC;
+			if( src != LPF_INVALID_MEMSLOT && lpf_rc != LPF_ERR_FATAL ) {
+				(void) lpf_deregister( data.context, src );
 			}
-			if( dest != LPF_INVALID_MEMSLOT &&
-				lpf_deregister( data.context, dest ) != LPF_SUCCESS
-			) {
-				ret = PANIC;
-			}
-
-			// perform postamble
-			if( commsPostamble( data, &coll, data.P, 0, 0, 2 ) != SUCCESS ) {
-				ret = PANIC;
+			if( dest != LPF_INVALID_MEMSLOT && lpf_rc != LPF_ERR_FATAL ) {
+				(void) lpf_deregister( data.context, dest );
 			}
 
 			// done
@@ -537,9 +515,9 @@ namespace grb {
 		>
 		RC scatter(
 #ifdef BLAS1_RAW
-			const IOType * in,
+			const IOType * const in,
 			const size_t size,
-			IOType * out,
+			IOType * const out,
 #else
 			const Vector< IOType, reference, Coords > &in,
 			Vector< IOType, reference, Coords > &out,
@@ -555,98 +533,111 @@ namespace grb {
 			TEST_VEC_MULTIPLE( out, in, procs )
 			const size_t size = internal::getCoordinates( in ).size();
 #endif
+			// dynamic checks
+			if( root >= procs ) {
+				return ILLEGAL;
+			}
+			if( size % procs > 0 ) {
+				return ILLEGAL;
+			}
+#ifdef BLAS1_RAW
+			if( in == nullptr || out == nullptr ) {
+				return ILLEGAL;
+			}
+#endif
+			if( size == 0 ) {
+				return SUCCESS;
+			}
 
-			lpf_coll_t coll;
-			RC ret = commsPreamble( data, &coll, procs, 0, 0, 2 );
-
+			const size_t lsize = size / data.P;
+			const size_t bsize = lsize * sizeof( IOType );
 			lpf_memslot_t src = LPF_INVALID_MEMSLOT;
 			lpf_memslot_t dst = LPF_INVALID_MEMSLOT;
+			lpf_err_t lpf_rc = LPF_SUCCESS;
+			RC ret = SUCCESS;
+			if( data.P > 1 ) {
+				// preliminaries
+				ret = data.ensureCollectivesCapacity( 1, 0, bsize );
+				if( ret == SUCCESS ) {
+					ret = data.ensureMemslotAvailable( 2 );
+				}
+				if( ret == SUCCESS ) {
+					ret = data.ensureMaxMessages( data.P - 1 );
+				}
+				if( ret != SUCCESS ) { return ret; }
+
+				// create memslots
 #ifdef BLAS1_RAW
-			if( ret == SUCCESS ) {
-				const lpf_err_t brc = lpf_register_global( data.context,
-					const_cast< IOType * >( in ), size * sizeof( IOType ), &src );
-				if( brc != LPF_SUCCESS ) {
-					ret = PANIC;
+				if( data.s == root ) {
+					lpf_rc = lpf_register_global( data.context, const_cast< IOType * >( in ),
+						size * sizeof( IOType ), &src );
+				} else {
+					lpf_rc = lpf_register_global( data.context, const_cast< IOType * >( in ),
+						0, &src );
 				}
-			}
-			if( ret == SUCCESS ) {
-				const lpf_err_t brc = lpf_register_global( data.context, out,
-					size / data.P * sizeof( IOType ), &dst );
-				if( brc != LPF_SUCCESS ) {
-					ret = PANIC;
+				if( lpf_rc == LPF_SUCCESS ) {
+					lpf_rc = lpf_register_local( data.context, out, bsize, &dst );
 				}
-			}
 #else
-			if( ret == SUCCESS ) {
-				const lpf_err_t brc = lpf_register_global(
-					data.context,
-					const_cast< IOType * >( internal::getRaw( in ) ),
-					internal::getCoordinates( in ).nonzeroes() * sizeof( IOType ),
-					&src
-				);
-				if( brc != LPF_SUCCESS ) {
-					ret = PANIC;
+				if( data.s == root ) {
+					lpf_rc = lpf_register_global(
+						data.context,
+						const_cast< IOType * >( internal::getRaw( in ) ),
+						internal::getCoordinates( in ).nonzeroes() * sizeof( IOType ),
+						&src
+					);
+				} else {
+					lpf_rc = lpf_register_global( data.context, nullptr, 0, &src );
 				}
-			}
-			if( ret == SUCCESS ) {
-				const lpf_err_t brc = lpf_register_global( data.context,
-					internal::getRaw( out ), size / data.P * sizeof( IOType ), &dst );
-				if( brc != LPF_SUCCESS ) {
-					ret = PANIC;
+				if( lpf_rc == LPF_SUCCESS ) {
+					lpf_rc = lpf_register_local( data.context, internal::getRaw( out ),
+						size / data.P * sizeof( IOType ), &dst );
 				}
-			}
 #endif
-
-			if( ret == SUCCESS && lpf_sync( data.context, LPF_SYNC_DEFAULT ) != LPF_SUCCESS ) {
-				ret = PANIC;
-			}
-
-			// scatter values
-			if( ret == SUCCESS ) {
-				const lpf_err_t brc = lpf_scatter( coll, src, dst,
-					( size / procs ) * sizeof( IOType ), root );
-				if( brc != LPF_SUCCESS ) {
-					ret = PANIC;
+				// activate memslots
+				if( lpf_rc == LPF_SUCCESS ) {
+					lpf_rc = lpf_sync( data.context, LPF_SYNC_DEFAULT );
 				}
+
+				// schedule & exec scatter
+				if( lpf_rc == LPF_SUCCESS ) {
+					lpf_rc = lpf_scatter( data.coll, src, dst, bsize, root );
+				}
+				if( lpf_rc == LPF_SUCCESS ) {
+					lpf_rc = lpf_sync( data.context, LPF_SYNC_DEFAULT );
+				}
+
+				// end of LPF section
+				ret = checkLPFerror( lpf_rc );
 			}
 
-			// local copy
-			if( ret == SUCCESS && data.s == root ) {
-				const size_t offset = root * ( size / procs );
+			// local copy, if needed
+			if( ret == SUCCESS ) {
+				if( data.s == root ) {
+					const size_t offset = root * ( size / procs );
 #ifdef BLAS1_RAW
-				(void) memcpy( out + offset, in + offset,
-					( size / procs ) * sizeof( IOType ) );
+					if( out + offset != in + offset ) {
+						internal::maybeParallel< _GRB_BSP1D_BACKEND >::memcpy(
+							out + offset, in + offset, bsize );
+					}
 #else
-				(void) memcpy( internal::getRaw( out ) + offset,
-					internal::getRaw( in ) + offset, ( size / procs ) * sizeof( IOType ) );
+					if( internal::getRaw(out) + offset != internal::getRaw(in) + offset ) {
+						internal::maybeParallel< _GRB_BSP1D_BACKEND >::memcpy(
+							internal::getRaw( out ) + offset,
+							internal::getRaw( in ) + offset,
+							bsize
+						);
+					}
 #endif
-			}
-
-			// wait for requested communication to complete
-			if( ret == SUCCESS ) {
-				const lpf_err_t brc = lpf_sync( data.context, LPF_SYNC_DEFAULT );
-				if( brc != LPF_SUCCESS ) {
-					ret = PANIC;
 				}
 			}
 
 			// destroy memory slots
-			if( ret == SUCCESS ) {
-				const lpf_err_t brc = lpf_deregister( data.context, src );
-				if( brc != LPF_SUCCESS ) {
-					ret = PANIC;
-				}
+			if( src != LPF_INVALID_MEMSLOT && lpf_rc != LPF_ERR_FATAL ) {
+				(void) lpf_deregister( data.context, src );
 			}
-			if( ret == SUCCESS ) {
-				const lpf_err_t brc = lpf_deregister( data.context, dst );
-				if( brc != LPF_SUCCESS ) {
-					ret = PANIC;
-				}
-			}
-
-			// postamble
-			if( ret == SUCCESS ) {
-				ret = commsPostamble( data, &coll, procs, 0, 0, 2 );
+			if( dst != LPF_INVALID_MEMSLOT && lpf_rc != LPF_ERR_FATAL ) {
+				(void) lpf_deregister( data.context, dst );
 			}
 
 			// done
@@ -693,7 +684,7 @@ namespace grb {
 		RC allgather(
 			IOType &in,
 #ifdef BLAS1_RAW
-			IOType * out
+			IOType * const out
 #else
 			Vector< IOType, reference, Coords > &out
 #endif
@@ -701,90 +692,77 @@ namespace grb {
 			// we need access to BSP context
 			internal::BSP1D_Data &data = internal::grb_BSP1D.load();
 
-			// make sure we can support comms pattern: IOType -> P * IOType
+			// dynamic checks
 #ifndef BLAS1_RAW
 			TEST_VEC_SIZE( out, data.P )
+#else
+			if( out == nullptr ) {
+				return ILLEGAL;
+			}
 #endif
-
-			// preamble
-			lpf_coll_t coll;
-			if( commsPreamble( data, &coll, data.P, 0, 1, 1 ) != SUCCESS ) {
-				return PANIC;
-			}
-
-			// create a local register slot for in
-			lpf_memslot_t in_slot = LPF_INVALID_MEMSLOT;
-			RC ret = SUCCESS;
-			if( ret == SUCCESS && lpf_register_local( data.context, &in,
-				sizeof( IOType ), &in_slot ) != LPF_SUCCESS
-			) {
-				ret = PANIC;
-			}
-			lpf_memslot_t dest = LPF_INVALID_MEMSLOT;
+			// check trivial op
+			if( data.P == 1 ) {
 #ifdef BLAS1_RAW
-			if( ret == SUCCESS && lpf_register_global( data.context, out,
-				data.P * sizeof( IOType ), &dest ) != LPF_SUCCESS
-			) {
-				ret = PANIC;
-			}
+				*out = in;
+				return SUCCESS;
 #else
-			if( ret == SUCCESS && lpf_register_global( data.context,
-				internal::getRaw( out ), data.P * sizeof( IOType ), &dest ) != LPF_SUCCESS
-			) {
-				ret = PANIC;
-			}
+				*(internal::getRaw( out )) = in;
+				internal::getCoordinates( out ).template assignAll< true >();
+				return SUCCESS;
 #endif
+			}
 
-			// perform local copy
-#ifndef BLAS1_RAW
-			internal::getRaw( out )[ data.s ] = in;
+			// preliminaries
+			const size_t bsize = data.P * sizeof( IOType );
+			RC ret = data.ensureMaxMessages( 2 * data.P );
+			if( ret == SUCCESS ) {
+				ret = data.ensureMemslotAvailable();
+			}
+			if( ret == SUCCESS ) {
+				ret = data.ensureCollectivesCapacity( 1, 0, sizeof( IOType ) );
+			}
+			if( ret == SUCCESS ) {
+				ret = data.ensureBufferSize( sizeof( IOType ) );
+			}
+			if( ret != SUCCESS ) { return ret; }
+
+			// copy input to buffer -- saves one registration
+			IOType * const __restrict__ buffer = data.template getBuffer< IOType >();
+			*buffer = in;
+
+			// create and activate a global memslot for out
+			lpf_memslot_t dest = LPF_INVALID_MEMSLOT;
+			lpf_err_t lpf_rc = LPF_SUCCESS;
+#ifdef BLAS1_RAW
+			lpf_rc = lpf_register_global( data.context, out, bsize, &dest );
 #else
-			out[ data.s ] = in;
+			lpf_rc = lpf_register_global( data.context, internal::getRaw( out ),
+				bsize, &dest );
 #endif
-
-			if( ret == SUCCESS && lpf_sync( data.context, LPF_SYNC_DEFAULT )
-				!= LPF_SUCCESS
-			) {
-				ret = PANIC;
+			if( lpf_rc == LPF_SUCCESS ) {
+				lpf_rc = lpf_sync( data.context, LPF_SYNC_DEFAULT );
 			}
 
-			// allgather values
-			if( ret == SUCCESS && lpf_allgather( coll, in_slot, dest, sizeof( IOType ),
-				false ) != LPF_SUCCESS
-			) {
-				ret = PANIC;
+			// schedule and execute allgather
+			if( lpf_rc == LPF_SUCCESS ) {
+				lpf_rc = lpf_allgather( data.coll, data.slot, dest, sizeof( IOType ),
+					true );
 			}
-
-			// complete communication
-			if( ret == SUCCESS && lpf_sync( data.context, LPF_SYNC_DEFAULT )
-				!= LPF_SUCCESS
-			) {
-				ret = PANIC;
+			if( lpf_rc == LPF_SUCCESS ) {
+				lpf_rc = lpf_sync( data.context, LPF_SYNC_DEFAULT );
 			}
+			ret = checkLPFerror( lpf_rc );
 
 #ifndef BLAS1_RAW
-			// correct sparsity info
-			for( size_t i = 0; ret == SUCCESS && i < data.P; i++ ) {
-				const size_t index = i;
-				(void) internal::getCoordinates( out ).assign( index );
+			// set output vector structure
+			if( ret == SUCCESS ) {
+				internal::getCoordinates( out ).template assignAll< true >();
 			}
 #endif
 
 			// do deregister
-			if( in_slot != LPF_INVALID_MEMSLOT && lpf_deregister( data.context, in_slot
-				) != LPF_SUCCESS
-			) {
-				ret = PANIC;
-			}
-			if( dest != LPF_INVALID_MEMSLOT && lpf_deregister( data.context, dest )
-				!= LPF_SUCCESS
-			) {
-				ret = PANIC;
-			}
-
-			// postamble
-			if( commsPostamble( data, &coll, data.P, 0, 1, 1 ) != SUCCESS ) {
-				ret = PANIC;
+			if( dest != LPF_INVALID_MEMSLOT && lpf_rc != LPF_ERR_FATAL ) {
+				(void) lpf_deregister( data.context, dest );
 			}
 
 			// done
@@ -830,9 +808,9 @@ namespace grb {
 		>
 		RC allgather(
 #ifdef BLAS1_RAW
-			const IOType * in,
+			const IOType * const in,
 			const size_t size,
-			IOType * out
+			IOType * const out
 #else
 			const Vector< IOType, reference, Coords > &in,
 			Vector< IOType, reference, Coords > &out
@@ -841,95 +819,80 @@ namespace grb {
 			// we need access to BSP context
 			internal::BSP1D_Data &data = internal::grb_BSP1D.load();
 
-			// make sure we can support comms pattern: IOType -> P * IOType
+			// dynamic checks
 #ifndef BLAS1_RAW
 			TEST_VEC_MULTIPLE( in, out, data.P )
 			const size_t size = in._cap;
+#else
+			if( in == nullptr || out == nullptr ) {
+				return ILLEGAL;
+			}
 #endif
-
-			// preabmle
-			lpf_coll_t coll;
-			if( commsPreamble( data, &coll, data.P, data.P * size * sizeof( IOType ),
-				1, 1 ) != SUCCESS
-			) {
-				return PANIC;
+			// check for trivial op
+			if( size == 0 ) {
+				return SUCCESS;
 			}
 
-			// create a local register slot for input and output
+			// preliminaries
+			const size_t bsize = size * sizeof( IOType );
+			RC ret = data.ensureMemslotAvailable( 2 );
+			if( ret == SUCCESS ) {
+				ret = data.ensureMaxMessages( 2 * data.P );
+			}
+			if( ret == SUCCESS ) {
+				ret = data.ensureCollectivesCapacity( 1, 0, bsize );
+			}
+			if( ret != SUCCESS ) { return ret; }
+
 			lpf_memslot_t in_slot = LPF_INVALID_MEMSLOT;
 			lpf_memslot_t dest = LPF_INVALID_MEMSLOT;
-			RC ret = SUCCESS;
+			lpf_err_t lpf_rc = LPF_SUCCESS;
+			if( data.P > 1 ) {
+				// create a local register slot for input and output
 #ifdef BLAS1_RAW
-			if( ret == SUCCESS && lpf_register_local( data.context, in,
-				size * sizeof( IOType ), &in_slot ) != LPF_SUCCESS
-			) {
-				ret = PANIC;
-			}
-			if( ret == SUCCESS && lpf_register_global( data.context, out,
-				data.P * size * sizeof( IOType ), &dest ) != LPF_SUCCESS
-			) {
-				ret = PANIC;
-			}
+				lpf_rc = lpf_register_local( data.context, in, bsize, &in_slot );
+				if( lpf_rc == LPF_SUCCESS ) {
+					lpf_rc = lpf_register_global( data.context, out, data.P * bsize, &dest );
+				}
 #else
-			if( ret == SUCCESS && lpf_register_local( data.context,
-				internal::getRaw( in ), size * sizeof( IOType ), &in_slot ) != LPF_SUCCESS
-			) {
-				ret = PANIC;
-			}
-			if( ret == SUCCESS && lpf_register_global( data.context,
-				internal::getRaw( out ), size * sizeof( IOType ), &dest ) != LPF_SUCCESS
-			) {
-				ret = PANIC;
-			}
+				lpf_rc = lpf_register_local( data.context, internal::getRaw( in ), bsize,
+					&in_slot );
+				if( lpf_rc == LPF_SUCCESS ) {
+					lpf_rc = lpf_register_global( data.context, internal::getRaw( out ), bsize,
+						&dest );
+				}
 #endif
-			if( ret == SUCCESS && lpf_sync( data.context, LPF_SYNC_DEFAULT )
-				!= LPF_SUCCESS
-			) {
-				ret = PANIC;
+				if( lpf_rc == LPF_SUCCESS ) {
+					lpf_rc = lpf_sync( data.context, LPF_SYNC_DEFAULT );
+				}
+				if( lpf_rc == LPF_SUCCESS ) {
+					lpf_rc = lpf_allgather( data.coll, in_slot, dest, bsize, false );
+				}
+				if( lpf_rc == LPF_SUCCESS ) {
+					lpf_rc = lpf_sync( data.context, LPF_SYNC_DEFAULT );
+				}
+				ret = checkLPFerror( lpf_rc );
 			}
 
-			// allgather values
-			if( ret == SUCCESS && lpf_allgather( coll, in_slot, dest,
-				size * sizeof( IOType ), false ) != LPF_SUCCESS
-			) {
-				ret = PANIC;
-			}
-
-			// complete the allgather
-			if( ret == SUCCESS && lpf_sync( data.context, LPF_SYNC_DEFAULT )
-				!= LPF_SUCCESS
-			) {
-				ret = PANIC;
+			if( ret == SUCCESS ) {
+				// copy local results into output vector
+#ifdef BLAS1_RAW
+				const void * const in_p = in;
+				void * const out_p = out + data.s * size;
+#else
+				const void * const in_p = internal::getRaw( in );
+				void * const out_p = internal::getRaw( out ) + data.s * size;
+#endif
+				internal::maybeParallel< _GRB_BSP1D_BACKEND >::memcpy( out_p, in_p, bsize );
+				internal::getCoordinates( out ).template assignAll< true >();
 			}
 
 			// do deregister
-			if( in_slot != LPF_INVALID_MEMSLOT && lpf_deregister( data.context, in_slot )
-				!= LPF_SUCCESS
-			) {
-				ret = PANIC;
+			if( in_slot != LPF_INVALID_MEMSLOT && lpf_rc != LPF_ERR_FATAL ) {
+				(void) lpf_deregister( data.context, in_slot );
 			}
-			if( dest != LPF_INVALID_MEMSLOT && lpf_deregister( data.context, dest )
-				!= LPF_SUCCESS
-			) {
-				ret = PANIC;
-			}
-
-			// copy local results into output vector
-			for( size_t i = 0; i < size; i++ ) {
-#ifdef BLAS1_RAW
-				out[ data.s * size + i ] = in[ i ];
-#else
-				const size_t index = data.s * size + i;
-				internal::getRaw( out )[ index ] = internal::getRaw( in )[ index ];
-				(void) internal::getCoordinates( out ).assign( index );
-#endif
-			}
-
-			// postamble
-			if( commsPostamble( data, &coll, data.P, data.P * size * sizeof( IOType ),
-				1, 1 ) != SUCCESS
-			) {
-				return PANIC;
+			if( dest != LPF_INVALID_MEMSLOT && lpf_rc != LPF_ERR_FATAL ) {
+				(void) lpf_deregister( data.context, dest );
 			}
 
 			// done
@@ -941,7 +904,7 @@ namespace grb {
 		 * per process to a vector of \a P elements.
 		 *
 		 * The alltoall shall be complete by the end of the call. This is a collective
-		 * graphBLAS operation. The BSP costs are as for the LPF #alltoall.
+		 * GraphBLAS operation. The BSP costs are as for the LPF #alltoall.
 		 *
 		 * @tparam descr    The GraphBLAS descriptor.
 		 *                  Default is grb::descriptors::no_operation.
@@ -976,8 +939,8 @@ namespace grb {
 		>
 		RC alltoall(
 #ifdef BLAS1_RAW
-			IOType * in,
-			IOType * out
+			IOType * const in,
+			IOType * const out
 #else
 			const Vector< IOType, reference, Coords > &in,
 			Vector< IOType, reference, Coords > &out
@@ -985,105 +948,86 @@ namespace grb {
 		) {
 			// we need access to BSP context
 			internal::BSP1D_Data &data = internal::grb_BSP1D.load();
+
+			// dynamic checks
 #ifndef BLAS1_RAW
 			TEST_VEC_SIZE( in, data.P )
 			TEST_VEC_SIZE( out, data.P )
+#else
+			if( in == nullptr || out == nullptr ) {
+				return ILLEGAL;
+			}
 #endif
 
-			// make sure we can support comms pattern: IOType -> P * IOType
-			lpf_coll_t coll;
-			if( commsPreamble( data, &coll, data.P, 0, 0, 2 ) != SUCCESS ) {
-				return PANIC;
-			}
-
-			// create a global register slot for in
 			lpf_memslot_t in_slot = LPF_INVALID_MEMSLOT;
 			lpf_memslot_t dest = LPF_INVALID_MEMSLOT;
+			lpf_err_t lpf_rc = LPF_SUCCESS;
 			RC ret = SUCCESS;
+			if( data.P > 1 ) {
+				// preliminaries
+				const size_t bsize = data.P * sizeof( IOType );
+				ret = data.ensureCollectivesCapacity( 1, 0, bsize );
+				if( ret == SUCCESS ) {
+					data.ensureMemslotAvailable( 2 );
+				}
+				if( ret == SUCCESS ) {
+					data.ensureMaxMessages( 2 * data.P - 2 );
+				}
+				if( ret != SUCCESS ) { return ret; }
+
+				// create a global register slot for in
 #ifdef BLAS1_RAW
-			if( ret == SUCCESS && lpf_register_global( data.context, in,
-				data.P * sizeof( IOType ), &in_slot ) != LPF_SUCCESS
-			) {
-				ret = PANIC;
-			}
-			if( ret == SUCCESS && lpf_register_global( data.context, out,
-				data.P * sizeof( IOType ), &dest ) != LPF_SUCCESS
-			) {
-				ret = PANIC;
-			}
+				lpf_rc = lpf_register_global( data.context, in, bsize, &in_slot );
+				if( lpf_rc == LPF_SUCCESS ) {
+					lpf_rc = lpf_register_global( data.context, out, bsize, &dest );
+				}
 #else
-			if( ret == SUCCESS && lpf_register_global(
-					data.context,
-					const_cast< IOType * >( internal::getRaw( in ) ),
-					data.P * sizeof( IOType ), &in_slot
-				) != LPF_SUCCESS
-			) {
-				ret = PANIC;
-			}
-			if( ret == SUCCESS && lpf_register_global(
-					data.context,
-					internal::getRaw( out ), data.P * sizeof( IOType ),
-					&dest
-				) != LPF_SUCCESS
-			) {
-				ret = PANIC;
-			}
+				lpf_rc = lpf_register_global(
+						data.context,
+						const_cast< IOType * >( internal::getRaw( in ) ), bsize,
+						&in_slot
+					);
+				if( lpf_rc == LPF_SUCCESS ) {
+					lpf_rc = lpf_register_global(
+						data.context,
+						internal::getRaw( out ), bsize,
+						&dest
+					);
+				}
 #endif
-			if( ret == SUCCESS && lpf_sync( data.context, LPF_SYNC_DEFAULT )
-				!= LPF_SUCCESS
-			) {
-				ret = PANIC;
+				if( lpf_rc == LPF_SUCCESS ) {
+					lpf_rc = lpf_sync( data.context, LPF_SYNC_DEFAULT );
+				}
+				if( lpf_rc == LPF_SUCCESS ) {
+					lpf_rc = lpf_alltoall( data.coll, in_slot, dest, sizeof( IOType ) );
+				}
+				if( lpf_rc == LPF_SUCCESS ) {
+					lpf_rc = lpf_sync( data.context, LPF_SYNC_DEFAULT );
+				}
+				ret = checkLPFerror( lpf_rc );
 			}
 
-			// alltoall values
-			if( ret == SUCCESS && lpf_alltoall( coll, in_slot, dest, sizeof( IOType ) )
-				!= LPF_SUCCESS
-			) {
-				ret = PANIC;
-			}
-
-			// finish communication request
-			if( ret == SUCCESS && lpf_sync( data.context, LPF_SYNC_DEFAULT )
-				!= LPF_SUCCESS
-			) {
-				ret = PANIC;
+			if( ret == SUCCESS ) {
+				// copy local results into output vector
+#ifdef BLAS1_RAW
+				if( out != in ) {
+					out[ data.s ] = in[ data.s ];
+				}
+#else
+				if( internal::getRaw( out ) != internal::getRaw( in ) ) {
+					internal::getRaw( out )[ data.s ] = internal::getRaw( in )[ data.s ];
+				}
+				// update sparsity info
+				internal::getCoordinates( out ).template assignAll< true >();
+#endif
 			}
 
 			// do deregister
-			if( in_slot != LPF_INVALID_MEMSLOT && lpf_deregister( data.context, in_slot )
-				!= LPF_SUCCESS
-			) {
-				ret = PANIC;
+			if( in_slot != LPF_INVALID_MEMSLOT && lpf_rc != LPF_ERR_FATAL ) {
+				(void) lpf_deregister( data.context, in_slot );
 			}
-			if( dest != LPF_INVALID_MEMSLOT && lpf_deregister( data.context, dest )
-				!= LPF_SUCCESS
-			) {
-				ret = PANIC;
-			}
-
-			// copy local results into output vector
-#ifdef BLAS1_RAW
-			if( ret == SUCCESS && out != in ) {
-				out[ data.s ] = in[ data.s ];
-			}
-#else
-			if( ret == SUCCESS && internal::getRaw( out ) != internal::getRaw( in ) ) {
-				internal::getRaw( out )[ data.s ] = internal::getRaw( in )[ data.s ];
-			}
-			// update sparsity info
-			for( size_t i = 0; ret == SUCCESS &&
-					internal::getCoordinates( out ).nonzeroes() !=
-						internal::getCoordinates( out ).size() &&
-					i < data.P;
-				++i
-			) {
-				(void) internal::getCoordinates( out ).assign( i );
-			}
-#endif
-
-			// postamble
-			if( commsPostamble( data, &coll, data.P, 0, 0, 2 ) != SUCCESS ) {
-				ret = PANIC;
+			if( dest != LPF_INVALID_MEMSLOT && lpf_rc != LPF_ERR_FATAL ) {
+				(void) lpf_deregister( data.context, dest );
 			}
 
 			// done
@@ -1140,12 +1084,12 @@ namespace grb {
 		>
 		RC allcombine(
 #ifdef BLAS1_RAW
-			IOType * inout,
+			IOType * const inout,
 			const size_t size,
 #else
 			Vector< IOType, reference, Coords > &inout,
 #endif
-			const Operator op
+			const Operator &op
 		) {
 			// static sanity check
 			NO_CAST_ASSERT_BLAS1( ( !(descr & descriptors::no_casting) ||
@@ -1162,176 +1106,183 @@ namespace grb {
 			const size_t size = internal::getCoordinates( inout ).size();
 #endif
 			const size_t bytes = sizeof( IOType );
+			const size_t bsize = size * bytes;
 
-			// make sure we can support comms pattern: IOType -> P * IOType
-			lpf_coll_t coll;
-			if( commsPreamble( data, &coll, 2 * data.P, data.P * size * bytes, 0, 1 ) != SUCCESS ) {
-				return PANIC;
+			// dynamic sanity checks
+#ifdef BLAS1_RAW
+			if( inout == nullptr ) {
+				return ILLEGAL;
+			}
+#endif
+
+			// check trivial calls
+			if( size == 0 ) {
+				return SUCCESS;
+			}
+			if( data.P == 1 ) {
+				return SUCCESS;
 			}
 
-			// gather machine params
-			lpf_machine_t machine;
-			if( lpf_probe( data.context, &machine ) != LPF_SUCCESS ) {
-				return PANIC;
-			}
-			const size_t P = data.P;
-			const size_t me = data.s;
-			const size_t N = size * bytes; // size on each process
-			const double g = machine.g( P, size, LPF_SYNC_DEFAULT );
-			const double l = machine.l( P, size, LPF_SYNC_DEFAULT );
+			// determine which variant to follow
+			enum Variant { ONE_STEP, TWO_STEP };
+			Variant variant = ONE_STEP;
+			{
+				const size_t P = data.P;
+				const size_t N = bsize;
+				const double g = data.getMessageGap( bsize );
+				const double l = data.getLatency( bsize );
 
-			// one superstep basic approach: pNg + l
-			// p small
-			const double basic_cost = ( P * N * g ) + l;
-			// two supersteps using transpose and gather: 2Ng + 2l
-			// p large, N >= p
-			const double transpose_cost = ( 2 * N * g ) + ( 2 * l );
+				// one superstep basic approach: pNg + l, applicable for small p, N
+				const double basic_cost = ( P * N * g ) + l;
 
-			// choose basic approach if lowest cost or size small
-			if( basic_cost < transpose_cost || size < P ) {
-				// prepare buffer
-				IOType * results = data.template getBuffer< IOType >();
-				lpf_memslot_t out_slot = data.slot;
+				// two supersteps using transpose and gather: 2Ng + 2l, applicable for large
+				// p or when N is very large
+				const double transpose_cost = ( 2 * N * g ) + ( 2 * l );
 
-				// temporarily register inout vector memory area
-				lpf_memslot_t vector_slot = LPF_INVALID_MEMSLOT;
-#ifdef BLAS1_RAW
-				lpf_err_t brt = lpf_register_global( data.context, inout, N, &vector_slot );
-#else
-				lpf_err_t brt = lpf_register_global( data.context, internal::getRaw( inout ),
-					internal::getCoordinates( inout ).size() * bytes, &vector_slot );
-#endif
-				if( brt != LPF_SUCCESS ) {
-					return PANIC;
-				}
-
-				if( lpf_sync( data.context, LPF_SYNC_DEFAULT ) != LPF_SUCCESS ) {
-					return PANIC;
-				}
-
-				// alltoall values
-				if( lpf_allgather( coll, vector_slot, out_slot, size * bytes, true )
-					!= LPF_SUCCESS
-				) {
-					return PANIC;
-				}
-				if( lpf_sync( data.context, LPF_SYNC_DEFAULT ) != LPF_SUCCESS ) {
-					return PANIC;
-				}
-
-				// combine results into output vector
-				for( size_t i = 0; i < data.P; i++ ) {
-					if( i == data.s ) {
-						continue;
-					}
-					for( size_t j = 0; j < size; j++ ) {
-#ifdef BLAS1_RAW
-						if( foldl< descr >( inout[ j ], results[ i * size + j ], op )
-							!= SUCCESS ) {
-#else
-						if( foldl< descr >( internal::getRaw( inout )[ j ],
-							results[ i * size + j ], op ) != SUCCESS ) {
-#endif
-							return PANIC;
-						}
-					}
-				}
-
-				// do deregister
-				if( lpf_deregister( data.context, vector_slot ) != LPF_SUCCESS ) {
-					return PANIC;
-				}
-			} else {
-				// choose transpose and allgather
-				// share message equally apart from maybe the final process
-				size_t chunk = ( size + P - 1 ) / P;
-
-				// step 1: my_chunk*size bytes from each process to my collectives slot
-
-				lpf_memslot_t slot = LPF_INVALID_MEMSLOT;
-				lpf_t ctx = lpf_collectives_get_context( coll );
-#ifdef BLAS1_RAW
-				if( lpf_register_global( ctx, inout, N, &slot ) != LPF_SUCCESS ) {
-#else
-				if( lpf_register_global( ctx, internal::getRaw( inout ), N, &slot )
-					!= LPF_SUCCESS
-				) {
-#endif
-					return PANIC;
-				}
-				if( lpf_sync( ctx, LPF_SYNC_DEFAULT ) != LPF_SUCCESS ) {
-					return PANIC;
-				}
-
-				size_t offset = chunk * me;
-				size_t my_chunk = ( offset + chunk ) <= size ? chunk : ( size - offset );
-				for( size_t pid = 0; pid < P; pid++ ) {
-					const lpf_err_t rc = lpf_get(
-						ctx, pid,
-						slot, offset * bytes,
-						data.slot, pid * my_chunk * bytes,
-						my_chunk * bytes, LPF_MSG_DEFAULT
-					);
-					if( rc != LPF_SUCCESS ) {
-						return PANIC;
-					}
-				}
-				if( lpf_sync( ctx, LPF_SYNC_DEFAULT ) != LPF_SUCCESS ) {
-					return PANIC;
-				}
-
-				// step 2: combine the chunks and write to each process
-				IOType * __restrict__ const buffer = data.getBuffer< IOType >();
-				for( size_t pid = 0; pid < P; pid++ ) {
-					if( pid == me ) {
-						continue;
-					}
-					for( size_t j = 0; j < my_chunk; j++ ) {
-#ifdef BLAS1_RAW
-						if( foldl< descr >( inout[ offset + j ], buffer[ pid * my_chunk + j ], op
-							) != SUCCESS
-						) {
-#else
-						if( foldl< descr >( internal::getRaw( inout )[ offset + j ],
-							buffer[ pid * my_chunk + j ], op ) != SUCCESS
-						) {
-#endif
-							return PANIC;
-						}
-					}
-				}
-				for( size_t pid = 0; pid < P; pid++ ) {
-					if( pid == me ) {
-						continue;
-					}
-					const lpf_err_t rc = lpf_put(
-						ctx,
-						slot, offset * bytes,
-						pid, slot, offset * bytes,
-						my_chunk * bytes, LPF_MSG_DEFAULT
-					);
-					if( rc != LPF_SUCCESS ) {
-						return PANIC;
-					}
-				}
-				if( lpf_sync( ctx, LPF_SYNC_DEFAULT ) != LPF_SUCCESS ) {
-					return PANIC;
-				}
-				// do deregister
-				if( lpf_deregister( ctx, slot ) != LPF_SUCCESS ) {
-					return PANIC;
+				// go for two-step if it is cheaper and applicable
+				if( basic_cost >= transpose_cost && size >= P ) {
+					variant = TWO_STEP;
 				}
 			}
 
-			// postamble
-			if( commsPostamble( data, &coll, 2 * data.P, data.P * size * bytes, 0, 1 )
-				!= SUCCESS
-			) {
-				return PANIC;
+			// preliminaries
+			RC ret = data.ensureMemslotAvailable();
+			if( ret == SUCCESS ) {
+				ret = data.ensureMaxMessages( 2 * data.P );
+			}
+			if( ret == SUCCESS ) {
+				if( variant == ONE_STEP ) {
+					ret = data.ensureBufferSize( data.P * bsize );
+				} else {
+					assert( variant == TWO_STEP );
+					ret = data.ensureBufferSize( bsize + data.P * sizeof( IOType ) );
+				}
+			}
+			if( ret == SUCCESS && variant == ONE_STEP ) {
+				ret = data.ensureCollectivesCapacity( 1, 0, bsize );
+			}
+			if( ret != SUCCESS ) { return ret; }
+
+
+			// register inout
+			lpf_memslot_t inout_slot = LPF_INVALID_MEMSLOT;
+			lpf_err_t lpf_rc = LPF_SUCCESS;
+#ifdef BLAS1_RAW
+			lpf_rc = lpf_register_global( data.context, inout, bsize, &inout_slot );
+#else
+			lpf_rc = lpf_register_global( data.context, internal::getRaw( inout ),
+				bsize, &inout_slot );
+#endif
+			if( lpf_rc == LPF_SUCCESS ) {
+				lpf_rc = lpf_sync( data.context, LPF_SYNC_DEFAULT );
+			}
+
+			// implementation check -- the below switch is hardcoded for these two
+			// variants:
+			if( variant != ONE_STEP && variant != TWO_STEP ) {
+					/* LCOV_EXCL_START */
+					std::cerr << "Error, internal::allcombine (BSP): unrecognised variant, "
+						<< "please submit a bug report\n";
+#ifndef NDEBUG
+					const bool alp_bsp_implementation_error = false;
+					assert( alp_bsp_implementation_error );
+#endif
+					// abuse LPF fatal error code for propagating panic
+					lpf_rc = LPF_ERR_FATAL;
+					/* LCOV_EXCL_STOP */
+			}
+
+			if( lpf_rc != LPF_SUCCESS ) { return checkLPFerror( lpf_rc ); }
+
+			// execute
+			IOType * results = data.template getBuffer< IOType >();
+			switch( variant ) {
+
+				case ONE_STEP:
+
+					// allgather values
+					lpf_rc = lpf_allgather( data.coll, inout_slot, data.slot, bsize, true );
+					if( lpf_rc == LPF_SUCCESS ) {
+						lpf_rc = lpf_sync( data.context, LPF_SYNC_DEFAULT );
+					}
+
+					// combine results into output vector
+#ifdef BLAS1_RAW
+					internal::maybeParallel< _GRB_BSP1D_BACKEND >::foldMatrixToVector< descr >(
+							inout, results, data.P, size, data.s, op );
+#else
+					internal::maybeParallel< _GRB_BSP1D_BACKEND >::foldMatrixToVector< descr >(
+							internal::getRaw(inout), results, data.P, size, data.s, op );
+#endif
+					break;
+
+				case TWO_STEP:
+
+					// transpose and allgather
+
+					// step 1: my_chunk*size bytes from each process to my collectives slot
+					size_t chunk = ( size + data.P - 1 ) / data.P; // chunk size rounded up
+					size_t offset = data.s * chunk;                // start of my chunk
+					// my chunk size (corrected for out-of-bounds):
+					size_t my_chunk = (offset + chunk) <= size ? chunk : (size - offset);
+
+					// NOTE TODO: this could have been an lpf_gather if that supported offsets
+					//            see LPF GitHub issue #19
+					for( size_t pid = 0; pid < data.P && lpf_rc == LPF_SUCCESS; pid++ ) {
+						if( pid == data.s ) { continue; }
+						lpf_rc = lpf_get(
+							data.context,
+							pid, inout_slot, offset * bytes,
+							data.slot, pid * my_chunk * bytes,
+							my_chunk * bytes,
+							LPF_MSG_DEFAULT
+						);
+					}
+					if( lpf_rc == LPF_SUCCESS ) {
+						lpf_rc = lpf_sync( data.context, LPF_SYNC_DEFAULT );
+					}
+
+					// step 2: combine the chunks
+					if( lpf_rc == SUCCESS ) {
+#ifdef BLAS1_RAW
+						internal::maybeParallel< _GRB_BSP1D_BACKEND >::
+							foldMatrixToVector< descr >( inout + offset,
+								results, data.P, my_chunk, data.s, op );
+#else
+						internal::maybeParallel< _GRB_BSP1D_BACKEND >::
+							foldMatrixToVector< descr >( internal::getRaw( inout ) + offset,
+								results, data.P, my_chunk, data.s, op );
+#endif
+					}
+
+					// step 3: broadcast local combined chunks
+					// NOTE TODO: this could have been an lpf_broadcast if that supported
+					//            offsets. See LPF GitHub issue #19
+					for( size_t pid = 0; pid < data.P && lpf_rc == LPF_SUCCESS; pid++ ) {
+						if( pid == data.s ) { continue; }
+						lpf_rc = lpf_put(
+							data.context,
+							inout_slot, offset * bytes,
+							pid, inout_slot, offset * bytes,
+							my_chunk * bytes,
+							LPF_MSG_DEFAULT
+						);
+					}
+					if( lpf_rc == LPF_SUCCESS ) {
+						lpf_rc = lpf_sync( data.context, LPF_SYNC_DEFAULT );
+					}
+					break;
+
+			}
+			ret = checkLPFerror( lpf_rc );
+
+			// do deregister
+			if( inout_slot != LPF_INVALID_MEMSLOT && lpf_rc != LPF_ERR_FATAL ) {
+				(void) lpf_deregister( data.context, inout_slot );
 			}
 
 			// done
-			return SUCCESS;
+			return ret;
 		}
 
 		/**
@@ -1393,7 +1344,7 @@ namespace grb {
 		>
 		RC combine(
 #ifdef BLAS1_RAW
-			IOType * inout,
+			IOType * const inout,
 			const size_t size,
 #else
 			Vector< IOType, reference, Coords > &inout,
@@ -1414,277 +1365,294 @@ namespace grb {
 			// we need access to BSP context
 			internal::BSP1D_Data &data = internal::grb_BSP1D.load();
 
-			// make sure we can support comms pattern: IOType -> P * IOType
-			lpf_coll_t coll;
 #ifndef BLAS1_RAW
 			const size_t size = internal::getCoordinates( inout ).size();
 #endif
 			const size_t bytes = sizeof( IOType );
+			const size_t bsize = size * bytes;
 
-			if( commsPreamble( data, &coll, data.P, data.P * size * bytes, 0, 1 )
-				!= SUCCESS
-			) {
-				return PANIC;
-			}
+			// determine best variant
+			enum Variant { ONE_STEP, TREE, TWO_STEP };
+			Variant variant = ONE_STEP;
+			{
+				const double P = data.P;
+				const double N = static_cast< double >(bsize);
+				const double g = data.getMessageGap( N );
+				const double l = data.getLatency( N );
+				constexpr double two = 2;
 
-			// gather machine params
-			lpf_machine_t machine;
-			if( lpf_probe( data.context, &machine ) != LPF_SUCCESS ) {
-				return PANIC;
-			}
-			const size_t P = data.P;
-			const size_t me = data.s;
-			const size_t N = size * bytes; // size on each process
-			const double g = machine.g( P, size, LPF_SYNC_DEFAULT );
-			const double l = machine.l( P, size, LPF_SYNC_DEFAULT );
+				// one superstep basic approach: pNg + l, useful for small p, N
+				const double basic_cost = (P * N * g) + l;
+				// two supersteps using transpose and gather: 2Ng + 2l, useful for large P
+				// requires N >= P
+				const double transpose_cost = (two * N * g) + (two * l);
+				// two supersteps using sqrt(p) degree tree: 2sqrt(p)Ng + 2l,
+				// useful for large P, does also work for N < p
+				const double tree_cost = (two * sqrt( P ) * N * g) + (two * l);
 
-			// one superstep basic approach: pNg + l
-			// p small
-			const double basic_cost = ( P * N * g ) + l;
-			// two supersteps using transpose and gather: 2Ng + 2l
-			// p large, N >= p
-			const double transpose_cost = ( 2 * N * g ) + ( 2 * l );
-			// two supersteps using sqrt(p) degree tree: 2sqrt(p)Ng + 2l
-			// p large, N < p
-			const double tree_cost = ( 2 * sqrt( (unsigned int)P ) * N * g ) + ( 2 * l );
-
-			lpf_t ctx = lpf_collectives_get_context( coll );
-
-			// choose basic cost if its the lowest
-			if( basic_cost < transpose_cost && basic_cost < tree_cost ) {
-				// copy input to buffer
-				IOType * __restrict__ const buffer = data.getBuffer< IOType >();
-				size_t pos = ( me == root ) ? data.s : 0;
-				for( size_t i = 0; i < size; i++ ) {
-#ifdef BLAS1_RAW
-					buffer[ pos * size + i ] = inout[ i ];
-#else
-					buffer[ pos * size + i ] = internal::getRaw( inout )[ i ];
-#endif
+				if( basic_cost >= transpose_cost || basic_cost >= tree_cost ) {
+					if( transpose_cost < tree_cost && N >= P ) {
+						variant = TWO_STEP;
+					} else {
+						variant = TREE;
+					}
 				}
+			}
+
+			// preliminaries
+			RC ret = SUCCESS;
+			if( variant == ONE_STEP || variant == TREE ) {
+				ret = data.ensureBufferSize( data.P * bsize );
+			} else if( variant == TWO_STEP ) {
+				ret = data.ensureBufferSize( bsize + data.P );
+			} else {
+				/* LCOV_EXCL_START */
+				std::cerr << "Error (internal::combine, BSP): unrecognised variant, please "
+					<< "submit a bug report\n";
+#ifndef NDEBUG
+				const bool internal_logic_error = false;
+				assert( internal_logic_error );
+#endif
+				ret = PANIC;
+				/* LCOV_EXCL_STOP */
+			}
+			if( ret == SUCCESS ) {
+				if( variant == TREE || variant == TWO_STEP ) {
+					ret = data.ensureMemslotAvailable();
+				}
+			}
+			if( ret == SUCCESS ) {
+				ret = data.ensureMaxMessages( data.P - 1 );
+			}
+			if( ret == SUCCESS ) {
+				if( variant == ONE_STEP ) {
+					ret = data.ensureCollectivesCapacity( 1, 0, bsize );
+				}
+			}
+			if( ret != SUCCESS ) { return ret; }
+
+			// create memslot
+			lpf_memslot_t inout_slot = LPF_INVALID_MEMSLOT;
+			lpf_err_t lpf_rc = LPF_SUCCESS;
+			if( variant == TREE ) {
+#ifdef BLAS1_RAW
+				lpf_rc = lpf_register_local( data.context, inout, bsize, &inout_slot );
+#else
+				lpf_rc = lpf_register_local( data.context, internal::getRaw( inout ), bsize,
+					&inout_slot );
+#endif
+			} else if( variant == TWO_STEP ) {
+#ifdef BLAS1_RAW
+				lpf_rc = lpf_register_global( data.context, inout, bsize, &inout_slot );
+#else
+				lpf_rc = lpf_register_global( data.context, internal::getRaw( inout ),
+					bsize, &inout_slot );
+#endif
+				if( lpf_rc == LPF_SUCCESS ) {
+					lpf_rc = lpf_sync( data.context, LPF_SYNC_DEFAULT );
+				}
+			}
+			// note: ONE_STEP variant needs no memory slot registration
+
+			// prelims are done
+			if( lpf_rc != LPF_SUCCESS ) { return checkLPFerror( lpf_rc ); }
+
+			// execute
+			IOType * __restrict__ const buffer = data.getBuffer< IOType >();
+			if( variant == ONE_STEP ) {
+
+				// copy input to buffer
+				size_t pos = ( data.s == root ) ? data.s : 0;
+#ifdef BLAS1_RAW
+				internal::maybeParallel< _GRB_BSP1D_BACKEND >::memcpy(
+					buffer + pos * size, inout, size );
+#else
+				internal::maybeParallel< _GRB_BSP1D_BACKEND >::memcpy(
+					buffer + pos * size, internal::getRaw( inout ), size );
+#endif
 
 				// gather together values
-				if( lpf_gather( coll, data.slot, data.slot, N, root ) != LPF_SUCCESS ) {
-					return PANIC;
-				}
-				if( lpf_sync( data.context, LPF_SYNC_DEFAULT ) != LPF_SUCCESS ) {
-					return PANIC;
+				lpf_rc = lpf_gather( data.coll, data.slot, data.slot, bsize, root );
+				if( lpf_rc == LPF_SUCCESS ) {
+					lpf_rc = lpf_sync( data.context, LPF_SYNC_DEFAULT );
 				}
 
 				// fold everything: root only
-				if( me == root ) {
-					for( size_t j = 0; j < size; j++ ) {
-						IOType tmp = buffer[ j ];
-						for( size_t i = 1; i < P; i++ ) {
-							// if casting is required to apply op, foldl will take care of this
-							// note: the no_casting check could be deferred to foldl but this would
-							//       result in unclear error messages
-							if( foldl< descr >( tmp, buffer[ i * size + j ], op ) != SUCCESS ) {
-								return PANIC;
-							}
-						}
+				if( lpf_rc == LPF_SUCCESS && data.s == root ) {
 #ifdef BLAS1_RAW
-						inout[ j ] = tmp;
+					internal::maybeParallel< _GRB_BSP1D_BACKEND >::
+						foldMatrixToVector< descr >( inout, buffer, data.P, size, data.s, op );
 #else
-						const size_t index = j;
-						internal::getRaw( inout )[ index ] = tmp;
-						(void) internal::getCoordinates( inout ).assign( index );
+					internal::maybeParallel< _GRB_BSP1D_BACKEND >::
+						foldMatrixToVector< descr >( internal::getRaw(inout), buffer, data.P,
+							size, data.s, op );
+					internal::getCoordinates( inout ).template assignAll< true >();
 #endif
-					}
 				}
-			} else if( size < P ) {
+
+				// done
+
+			} else if( variant == TREE ) {
+
 				// choose tree if N is too small to transpose
 				// the (max) interval between each core process
-				const size_t hop = sqrt( P );
+				const size_t hop = sqrt( static_cast< double >(data.P) );
 				// the offset from my core process
-				const size_t core_offset = DIFF( me, root, P ) % hop;
+				const size_t core_offset = DIFF( data.s, root, data.P ) % hop;
 				// my core process
-				const size_t core_home = DIFF( me, core_offset, P );
-				// am i a core process
+				const size_t core_home = DIFF( data.s, core_offset, data.P );
+				// am I a core process
 				const bool is_core = ( core_offset == 0 );
 				// number of processes in my core group
 				size_t core_count = hop;
 				while( core_count > 1 ) {
-					const size_t tmp_proc = me + ( core_count - 1 );
-					const size_t tmp_core_offset = DIFF( tmp_proc, root, P ) % hop;
-					const size_t tmp_core_home = DIFF( tmp_proc, tmp_core_offset, P );
+					const size_t tmp_proc = data.s + ( core_count - 1 );
+					const size_t tmp_core_offset = DIFF( tmp_proc, root, data.P ) % hop;
+					const size_t tmp_core_home = DIFF( tmp_proc, tmp_core_offset, data.P );
 					if( tmp_core_home == core_home ) {
 						break;
 					}
 					(void) --core_count;
 				}
 
-				// create a local register slot pointing at the vector
-				lpf_memslot_t slot = LPF_INVALID_MEMSLOT;
-#ifdef BLAS1_RAW
-				if( lpf_register_local( ctx, inout, N, &slot ) != LPF_SUCCESS ) {
-#else
-				if( lpf_register_local( ctx, internal::getRaw( inout ), N, &slot )
-					!= LPF_SUCCESS
-				) {
-#endif
-					return PANIC;
-				}
-				IOType * __restrict__ const buffer = data.getBuffer< IOType >();
-
 				// step 1: all non-core processes write to their designated core process
-				if( ! is_core ) {
-					const lpf_err_t rc = lpf_put(
-						ctx,
-						slot, 0,
-						core_home, data.slot, me * N,
-						N, LPF_MSG_DEFAULT
+				if( !is_core ) {
+					lpf_rc = lpf_put(
+						data.context,
+						inout_slot, 0,
+						core_home, data.slot, data.s * bsize,
+						bsize,
+						LPF_MSG_DEFAULT
 					);
-					if( rc != LPF_SUCCESS ) {
-						return PANIC;
-					}
 				}
-				if( lpf_sync( ctx, LPF_SYNC_DEFAULT ) != LPF_SUCCESS ) {
-					return PANIC;
+				if( lpf_rc == LPF_SUCCESS ) {
+					lpf_rc = lpf_sync( data.context, LPF_SYNC_DEFAULT );
 				}
 
 				// step 2: all core processes combine their results into their vector
-				if( is_core ) {
+				if( is_core && lpf_rc == LPF_SUCCESS ) {
 					for( size_t k = 1; k < core_count; ++k ) {
-						for( size_t j = 0; j < size; j++ ) {
 #ifdef BLAS1_RAW
-							if( foldl< descr >( inout[ j ], buffer[ ( ( me + k ) % P ) * size + j ],
-								op ) != SUCCESS
-							) {
+						internal::maybeParallel< _GRB_BSP1D_BACKEND >::
+							foldMatrixToVector< descr >( inout,
+								buffer + ((data.s + k) % data.P) * size, 1, size, data.s, op );
 #else
-							if( foldl< descr >( internal::getRaw( inout )[ j ],
-								buffer[ ( ( me + k ) % P ) * size + j ], op ) != SUCCESS
-							) {
+						internal::maybeParallel< _GRB_BSP1D_BACKEND >::
+							foldMatrixToVector< descr >( internal::getRaw(inout),
+								buffer + ((data.s + k) % data.P) * size, 1, size, data.s, op );
 #endif
-								return PANIC;
-							}
-						}
 					}
-				}
-				// non-root processes will write their result to root
-				if( is_core && me != root ) {
-					const lpf_err_t rc = lpf_put( ctx, slot, 0, root, data.slot, me * N, N,
-						LPF_MSG_DEFAULT );
-					if( rc != LPF_SUCCESS ) {
-						return PANIC;
-					}
-				}
-				if( lpf_sync( ctx, LPF_SYNC_DEFAULT ) != LPF_SUCCESS ) {
-					return PANIC;
-				}
-				// do deregister
-				if( lpf_deregister( ctx, slot ) != LPF_SUCCESS ) {
-					return PANIC;
 				}
 
-				// step 3: root process combines its results from the core processes
-				if( me == root ) {
-					for( size_t k = hop; k < P; k += hop ) {
-						for( size_t j = 0; j < size; j++ ) {
+				// step 3: non-root processes will write their result to root
+				if( is_core && data.s != root && lpf_rc == LPF_SUCCESS ) {
+					lpf_rc = lpf_put(
+							data.context,
+							inout_slot, 0,
+							root, data.slot, data.s * bsize,
+							bsize,
+							LPF_MSG_DEFAULT
+						);
+				}
+				if( lpf_rc == LPF_SUCCESS ) {
+					lpf_rc = lpf_sync( data.context, LPF_SYNC_DEFAULT );
+				}
+
+				// step 4: root process combines its results from the core processes
+				if( data.s == root ) {
+					for( size_t k = hop; k < data.P; k += hop ) {
 #ifdef BLAS1_RAW
-							if( foldl< descr >( inout[ j ],
-								buffer[ ( ( k + root ) % P ) * size + j ], op ) != SUCCESS
-							) {
+						internal::maybeParallel< _GRB_BSP1D_BACKEND >::
+							foldMatrixToVector< descr >( inout,
+								buffer + ((k + root) % data.P) * size, 1, size, data.s, op );
 #else
-							if( foldl< descr >( internal::getRaw( inout )[ j ],
-								buffer[ ( ( k + root ) % P ) * size + j ], op ) != SUCCESS
-							) {
+						internal::maybeParallel< _GRB_BSP1D_BACKEND >::
+							foldMatrixToVector< descr >( internal::getRaw(inout),
+								buffer + ((k + root) % data.P) * size, 1, size, data.s, op );
 #endif
-								return PANIC;
-							}
-						}
 					}
 				}
-			} else {
-				// choose transpose and gather
-				// share message equally apart from maybe the final process
-				size_t chunk = ( size + P - 1 ) / P;
+
+				// done
+
+			} else if( variant == TWO_STEP ) {
+
+				// transpose and gather
 
 				// step 1: my_chunk*size bytes from each process to my collectives slot
-				lpf_memslot_t slot = LPF_INVALID_MEMSLOT;
-#ifdef BLAS1_RAW
-				if( lpf_register_global( ctx, inout, N, &slot ) != LPF_SUCCESS ) {
-#else
-				if( lpf_register_global( ctx, internal::getRaw( inout ), N, &slot )
-					!= LPF_SUCCESS
-				) {
-#endif
-					return PANIC;
-				}
-				if( lpf_sync( ctx, LPF_SYNC_DEFAULT ) != LPF_SUCCESS ) {
-					return PANIC;
-				}
-
-				const size_t offset = chunk * me;
+				const size_t chunk = ( size + data.P - 1 ) / data.P;
+				const size_t offset = data.s * chunk;
 				const size_t my_chunk = ( offset + chunk ) <= size
 					? chunk
-					: ( size - offset );
-				for( size_t pid = 0; pid < P; pid++ ) {
-					const lpf_err_t rc = lpf_get(
-						ctx,
-						pid, slot, offset * bytes,
+					: (size - offset);
+				for( size_t pid = 0; pid < data.P && lpf_rc == LPF_SUCCESS; pid++ ) {
+					if( pid == data.s ) { continue; }
+					lpf_rc = lpf_get(
+						data.context,
+						pid, inout_slot, offset * bytes,
 						data.slot, pid * my_chunk * bytes,
-						my_chunk * bytes, LPF_MSG_DEFAULT
+						my_chunk * bytes,
+						LPF_MSG_DEFAULT
 					);
-					if( rc != LPF_SUCCESS ) {
-						return PANIC;
-					}
 				}
-				if( lpf_sync( ctx, LPF_SYNC_DEFAULT ) != LPF_SUCCESS ) {
-					return PANIC;
+				if( lpf_rc == LPF_SUCCESS ) {
+					lpf_rc = lpf_sync( data.context, LPF_SYNC_DEFAULT );
 				}
 
 				// step 2: combine the chunks and write to the root process
-				IOType * __restrict__ const buffer = data.getBuffer< IOType >();
-				for( size_t pid = 0; pid < P; pid++ ) {
-					if( pid == me ) {
-						continue;
-					}
-					for( size_t j = 0; j < my_chunk; j++ ) {
+				if( lpf_rc == LPF_SUCCESS ) {
 #ifdef BLAS1_RAW
-						if( foldl< descr >( inout[ offset + j ], buffer[ pid * my_chunk + j ], op
-							) != SUCCESS
-						) {
+					internal::maybeParallel< _GRB_BSP1D_BACKEND >::
+						foldMatrixToVector< descr >( inout + offset,
+							buffer, data.P, my_chunk, data.s, op );
 #else
-						if( foldl< descr >( internal::getRaw( inout )[ offset + j ],
-							buffer[ pid * my_chunk + j ], op ) != SUCCESS
-						) {
+					internal::maybeParallel< _GRB_BSP1D_BACKEND >::
+						foldMatrixToVector< descr >( internal::getRaw(inout) + offset,
+							buffer, data.P, my_chunk, data.s, op );
 #endif
-							return PANIC;
-						}
+					if( data.s != root ) {
+						lpf_rc = lpf_put(
+							data.context,
+							inout_slot, offset * bytes,
+							root, data.slot, offset * bytes,
+							my_chunk * bytes,
+							LPF_MSG_DEFAULT
+						);
 					}
 				}
-				if( me != root ) {
-					const lpf_err_t rc = lpf_put(
-						ctx,
-						slot, offset * bytes,
-						root, slot, offset * bytes, my_chunk * bytes,
-						LPF_MSG_DEFAULT
-					);
-					if( rc != LPF_SUCCESS ) {
-						return PANIC;
-					}
+				if( lpf_rc == LPF_SUCCESS ) {
+					lpf_rc = lpf_sync( data.context, LPF_SYNC_DEFAULT );
 				}
-				if( lpf_sync( ctx, LPF_SYNC_DEFAULT ) != LPF_SUCCESS ) {
-					return PANIC;
-				}
-				// do deregister
-				if( lpf_deregister( ctx, slot ) != LPF_SUCCESS ) {
-					return PANIC;
-				}
+
+				// done
+
+			} else {
+
+				/* LCOV_EXCL_START */
+				std::cerr << "Error, internal::combine (BSP): unrecognised variant, "
+					<< "please submit a bug report\n";
+#ifndef NDEBUG
+				const bool alp_bsp_implementation_error = false;
+				assert( alp_bsp_implementation_error );
+#endif
+				// abuse LPF fatal error code for propagating panic
+				lpf_rc = LPF_ERR_FATAL;
+				/* LCOV_EXCL_STOP */
 			}
 
-			// postamble
-			if( commsPostamble( data, &coll, data.P, data.P * size * bytes, 0, 1 )
-				!= SUCCESS
-			) {
-				return PANIC;
+			// end of LPF section
+			ret = checkLPFerror( lpf_rc );
+
+			// clean up memslots
+			if( inout_slot != LPF_INVALID_MEMSLOT && lpf_rc != LPF_ERR_FATAL ) {
+				(void) lpf_deregister( data.context, inout_slot );
 			}
 
 			// done
-			return SUCCESS;
+			return ret;
 		}
 
+#if 0 // DBG TODO FIXME seeing if we can just remove it, this function is a fundamentally bad idea
 		/**
 		 * Schedules a reduce operation of a vector of N/P elements of type IOType per
 		 * process to a single element.
@@ -1744,7 +1712,7 @@ namespace grb {
 		>
 		RC reduce(
 #ifdef BLAS1_RAW
-			const InputType * in,
+			const InputType * const in,
 			const size_t size,
 #else
 			const Vector< InputType, reference, Coords > &in,
@@ -2121,6 +2089,7 @@ namespace grb {
 			return allreduce( in, out, op );
 #endif
 		}
+#endif
 
 		/**
 		 * Schedules a broadcast operation of a vector of N elements of type IOType
@@ -2147,7 +2116,7 @@ namespace grb {
 		 * -# BSP cost: \f$ NPg + l \f$;
 		 * \endparblock
 		 *
-		 * \par Performance semantics: two hase
+		 * \par Performance semantics: two phase
 		 * -# Problem size N: \f$ inout.size * \mathit{sizeof}(\mathit{IOType}) \f$
 		 * -# local work: \f$ 0 \f$ ;
 		 * -# transferred bytes: \f$ 2N \f$ ;
@@ -2172,7 +2141,7 @@ namespace grb {
 		>
 		RC broadcast(
 #ifdef BLAS1_RAW
-			IOType * inout,
+			IOType * const inout,
 			const size_t size,
 #else
 			Vector< IOType, reference, Coords > &inout,
@@ -2184,57 +2153,66 @@ namespace grb {
 #ifndef BLAS1_RAW
 			const size_t size = internal::getCoordinates( inout ).size();
 #endif
-			// preamble
-			lpf_coll_t coll;
-			if( commsPreamble( data, &coll, data.P, 0, 0, 1 ) != SUCCESS ) {
-				return PANIC;
+			// dynamic checks
+			if( root >= data.P ) {
+				return ILLEGAL;
 			}
-
-			// create memslot
-			lpf_memslot_t slot = LPF_INVALID_MEMSLOT;
-			RC ret = SUCCESS;
-#ifndef BLAS1_RAW
-			if( ret == SUCCESS && lpf_register_global( data.context,
-				internal::getRaw( inout ), size * sizeof( IOType ), &slot ) != LPF_SUCCESS
-			) {
-#else
-			if( ret == SUCCESS && lpf_register_global( data.context,
-				const_cast< typename std::remove_const< IOType >::type * >( inout ),
-				size * sizeof( IOType ), &slot ) != LPF_SUCCESS
-			) {
+#ifdef BLAS1_RAW
+			if( inout == nullptr ) {
+				return ILLEGAL;
+			}
 #endif
-				ret = PANIC;
+
+			// check trivial dispatch
+			if( size == 0 ) {
+				return SUCCESS;
 			}
-			if( ret == SUCCESS && lpf_sync( data.context, LPF_SYNC_DEFAULT )
-				!= LPF_SUCCESS
-			) {
-				ret = PANIC;
+			if( data.P == 1 ) {
+				return SUCCESS;
 			}
 
-			// broadcast value
-			if( ret == SUCCESS && lpf_broadcast( coll, slot, slot,
-				size * sizeof( IOType ), root ) != LPF_SUCCESS
-			) {
-				ret = PANIC;
+			// preliminaries
+			const size_t bsize = size * sizeof( IOType );
+			RC ret = data.ensureCollectivesCapacity( 1, 0, bsize );
+			if( ret == SUCCESS ) {
+				ret = data.ensureMemslotAvailable();
+			}
+			if( ret == SUCCESS ) {
+				ret = data.ensureMaxMessages( std::max( data.P + 1, 2 * data.P - 3 ) );
+			}
+			if( ret != SUCCESS ) { return ret; }
+
+			// create and activate memslot
+			lpf_memslot_t slot = LPF_INVALID_MEMSLOT;
+			lpf_err_t lpf_rc = LPF_SUCCESS;
+#ifndef BLAS1_RAW
+			lpf_rc = lpf_register_global( data.context, internal::getRaw(inout), bsize,
+				&slot );
+#else
+			lpf_rc = lpf_register_global(
+					data.context,
+					const_cast< typename std::remove_const< IOType >::type * >(inout),
+					bsize, &slot
+				);
+#endif
+			if( lpf_rc == LPF_SUCCESS ) {
+				lpf_rc = lpf_sync( data.context, LPF_SYNC_DEFAULT );
 			}
 
-			// finish requested comm
-			if( ret == SUCCESS && lpf_sync( data.context, LPF_SYNC_DEFAULT )
-				!= LPF_SUCCESS
-			) {
-				ret = PANIC;
+			// request and wait for broadcast
+			if( lpf_rc == LPF_SUCCESS ) {
+				lpf_rc = lpf_broadcast( data.coll, slot, slot, bsize, root );
 			}
+			if( lpf_rc == LPF_SUCCESS ) {
+				lpf_rc = lpf_sync( data.context, LPF_SYNC_DEFAULT );
+			}
+
+			// end of LPF section
+			ret = checkLPFerror( lpf_rc );
 
 			// destroy memslot
-			if( slot != LPF_INVALID_MEMSLOT && lpf_deregister( data.context, slot )
-				!= LPF_SUCCESS
-			) {
-				ret = PANIC;
-			}
-
-			// postamble
-			if( commsPostamble( data, &coll, data.P, 0, 0, 1 ) != SUCCESS ) {
-				ret = PANIC;
+			if( slot != LPF_INVALID_MEMSLOT && lpf_rc != LPF_ERR_FATAL ) {
+				(void) lpf_deregister( data.context, slot );
 			}
 
 			// done

@@ -49,7 +49,6 @@ void grbProgram( const size_t &P, int &exit_status ) {
 	double v[ P ];
 	double vLarge[ n ];
 	double vLarger[ n * P ];
-	rc = grb::internal::template initCollectivesBuffer< double >( n * P );
 
 	// prep buffer
 	if( rc != SUCCESS ) {
@@ -229,6 +228,7 @@ void grbProgram( const size_t &P, int &exit_status ) {
 		}
 	}
 
+#if 0 // TODO FIXME DBG checking whether we can remove this functionality
 	// reduce: large
 	for( size_t i = 0; i < n; i++ ) {
 		vLarge[ i ] = pi * s + i;
@@ -278,6 +278,7 @@ void grbProgram( const size_t &P, int &exit_status ) {
 		exit_status = 210;
 		return;
 	}
+#endif
 
 	// broadcast: large
 	if( s == root ) {

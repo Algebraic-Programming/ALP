@@ -380,7 +380,7 @@ namespace grb {
 		          friends
 		   ********************* */
 
-		template<
+		/*template<
 			Descriptor,
 			class Ring,
 			typename OutputType, typename InputType1, typename InputType2
@@ -396,7 +396,7 @@ namespace grb {
 				const Ring &
 			),
 			const Ring &
-		);
+		);*/ // TODO FIXME DBG
 
 		/* ********************
 		         IO friends

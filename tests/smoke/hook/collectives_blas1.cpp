@@ -51,7 +51,6 @@ void grbProgram( const size_t &P, int &exit_status ) {
 	grb::Vector< double, reference > vLarger( n * P );
 
 	// prep buffer
-	rc = grb::internal::template initCollectivesBuffer< double >( n * P );
 	if( rc != SUCCESS ) {
 		(void) fprintf( stderr, "grb::internal::initCollectivesBuffer returns bad error code (%d).\n", (int)rc );
 		exit_status = 1;
@@ -230,6 +229,7 @@ void grbProgram( const size_t &P, int &exit_status ) {
 		}
 	}
 
+#if 0 // TODO FIXME DBG testing if we can remove these functions
 	// reduce: large
 	(void) grb::set< grb::descriptors::use_index >( vLarge, 0 );
 	(void) grb::foldr( pi * s, vLarge, grb::operators::add< double >() );
@@ -273,6 +273,7 @@ void grbProgram( const size_t &P, int &exit_status ) {
 		exit_status = 1;
 		return;
 	}
+#endif
 
 	// broadcast: large
 	if( s == root ) {
