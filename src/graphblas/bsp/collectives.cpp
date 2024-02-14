@@ -30,6 +30,9 @@ grb::RC grb::internal::gather(
 	const size_t size, const size_t total,
 	const lpf_pid_t root
 ) {
+#ifdef _DEBUG
+	std::cout << "In internal::gather (direct)" << std::endl;
+#endif
 	// sanity check
 	if( size > total ) {
 		return ILLEGAL;
@@ -45,75 +48,35 @@ grb::RC grb::internal::gather(
 		return ILLEGAL;
 	}
 
-	RC ret = SUCCESS;
+	// ensure we can support comms pattern
+	RC ret = data.ensureMaxMessages( data.P - 1 );
+	if( ret != SUCCESS ) { return ret; }
+
+	// schedule and execute
 	lpf_err_t lpf_rc = LPF_SUCCESS;
-	if( src_offset == 0 && dst_offset == 0 ) {
-		// ensure we can support comms pattern
-		ret = data.ensureCollectivesCapacity( 1, 0, size );
-
-		// ensure we can support comms pattern
-		if( ret == SUCCESS ) {
-			ret = data.ensureMaxMessages( data.P - 1 );
-		}
-
-		// then schedule it
-		if( ret == SUCCESS ) {
-			lpf_rc = lpf_gather(
-					data.coll,
-					src, dst, size,
-					root
-				);
-		}
-	} else {
-		// ensure we can support comms pattern
-		ret = data.ensureMaxMessages( data.P - 1 );
-
-		// then schedule it
-		if( ret == SUCCESS && data.s != root ) {
-			// put local data remotely
-			lpf_rc = lpf_put(
-				data.context,
-				src, src_offset, root,
-				dst, dst_offset,
-				size,
-				LPF_MSG_DEFAULT
-			);
-		}
+	if( data.s != root ) {
+		// put local data remotely
+		lpf_rc = lpf_put(
+			data.context,
+			src, src_offset, root,
+			dst, dst_offset,
+			size,
+			LPF_MSG_DEFAULT
+		);
+	}
+	if( lpf_rc == LPF_SUCCESS ) {
+		lpf_rc = lpf_sync( data.context, LPF_SYNC_DEFAULT );
 	}
 
 	// error handling
-	if( ret != SUCCESS ) {
-		// propagate
-		return ret;
-	}
-	if( lpf_rc != LPF_SUCCESS ) {
-		// none of the calls made thus far should have failed
-		/* LCOV_EXCL_START */
-#ifndef NDEBUG
-		const bool lpf_spec_says_no_failure_possible = false;
-		assert( lpf_spec_says_no_failure_possible );
-#endif
-		return PANIC;
-		/* LCOV_EXCL_STOP */
-	}
+	ret = checkLPFerror( lpf_rc, "internal::gather, direct variant" );
 
-	// finish comms
-	lpf_rc = lpf_sync( data.context, LPF_SYNC_DEFAULT );
-	if( lpf_rc != LPF_SUCCESS ) {
-		// Under no normal circumstance should this branch be reachable
-		/* LCOV_EXCL_START */
-		if( lpf_rc != LPF_ERR_FATAL ) {
-#ifndef NDEBUG
-			const bool lpf_spec_says_this_is_unreachable = false;
-			assert( lpf_spec_says_this_is_unreachable );
+#ifdef _DEBUG
+	std::cout << "\t internal::gather (direct): exiting" << std::endl;
 #endif
-		}
-		return PANIC;
-		/* LCOV_EXCL_STOP */
-	}
 
 	// done
-	return SUCCESS;
+	return ret;
 }
 
 grb::RC grb::internal::allgather(
@@ -122,6 +85,9 @@ grb::RC grb::internal::allgather(
 	const size_t size, const size_t total,
 	const bool exclude_self
 ) {
+#ifdef _DEBUG
+	std::cout << "In internal::allgather (direct)" << std::endl;
+#endif
 	// sanity check
 	if( size > total ) {
 		return ILLEGAL;
@@ -163,6 +129,10 @@ grb::RC grb::internal::allgather(
 		ret = checkLPFerror( lpf_rc, "grb::internal::allgather (direct, BSP)" );
 	}
 
+#ifdef _DEBUG
+	std::cout << "\t internal::allgather (direct): exiting" << std::endl;
+#endif
+
 	// done
 	return ret;
 }
@@ -176,6 +146,7 @@ grb::RC grb::internal::alltoall(
 	// we need access to LPF context
 	internal::BSP1D_Data &data = internal::grb_BSP1D.load();
 #ifdef _DEBUG
+	std::cout << "In internal::alltoall (direct)" << std::endl;
 	std::cout << data.s << ", calls alltoall with src slot " << src << ", offset "
 		<< src_offset << ", element size " << size << ", buffer (output) offset "
 		<< buffer_offset << ", and exclude_self " << exclude_self << "\n";
@@ -219,6 +190,10 @@ grb::RC grb::internal::alltoall(
 	// end of LPF section
 	ret = checkLPFerror( lpf_rc, "internal::alltoall (direct, BSP)" );
 
+#ifdef _DEBUG
+	std::cout << "\t internal::alltoall (direct): exiting" << std::endl;
+#endif
+
 	// done
 	return ret;
 }
@@ -232,6 +207,7 @@ grb::RC grb::internal::alltoallv(
 	// we need access to LPF context
 	internal::BSP1D_Data &data = internal::grb_BSP1D.load();
 #ifdef _DEBUG
+	std::cout << "In internal::alltoallv (direct)" << std::endl;
 	std::cout << data.s << ", entering alltoallv. I am sending ( " << out[ 0 ];
 	for( size_t i = 1; i < data.P; ++i ) {
 		std::cout << ", " << out[ i ];
@@ -277,18 +253,14 @@ grb::RC grb::internal::alltoallv(
 	RC ret = data.ensureMaxMessages( nmsgs );
 
 	// check if we can continue
-	if( ret != SUCCESS ) {
-		return ret;
-	}
+	if( ret != SUCCESS ) { return ret; }
 
+	// schedule pattern
+	lpf_err_t lpf_rc = LPF_SUCCESS;
 	if( nmsgs > 0 ) {
-		for( size_t k = 0; k < data.P; ++k ) {
-			if( exclude_self && k == data.s ) {
-				continue;
-			}
-			if( in[ k ] == 0 ) {
-				continue;
-			}
+		for( size_t k = 0; lpf_rc == LPF_SUCCESS && k < data.P; ++k ) {
+			if( exclude_self && k == data.s ) { continue; }
+			if( in[ k ] == 0 ) { continue; }
 #ifdef _DEBUG
 			std::cout << data.s << ", alltoallv issues get from process " << k
 				<< " slot " << src << " at offset " << src_offset + src_disp[ k ]
@@ -296,17 +268,13 @@ grb::RC grb::internal::alltoallv(
 				<< dst_offset + dst_disp[ k ] << ", copying " << in[ k ] << " bytes."
 				<< std::endl;
 #endif
-			lpf_err_t lpf_rc = lpf_get(
+			lpf_rc = lpf_get(
 				data.context,
 				k, src, src_offset + src_disp[ k ],
 				data.slot, dst_offset + dst_disp[ k ],
 				in[ k ],
 				LPF_MSG_DEFAULT
 			);
-			if( lpf_rc != LPF_SUCCESS ) {
-				assert( false );
-				return PANIC;
-			}
 		}
 	}
 #ifdef _DEBUG
@@ -316,12 +284,19 @@ grb::RC grb::internal::alltoallv(
 	}
 #endif
 
-	if( lpf_sync( data.context, LPF_SYNC_DEFAULT ) != LPF_SUCCESS ) {
-		assert( false );
-		return PANIC;
+	// execute pattern
+	if( lpf_rc == LPF_SUCCESS ) {
+		lpf_rc = lpf_sync( data.context, LPF_SYNC_DEFAULT );
 	}
 
+	// handle any errors
+	ret = checkLPFerror( lpf_rc, "internal::alltoallv (direct)" );
+
+#ifdef _DEBUG
+	std::cout << "\t internal::alltoallv (direct): exiting" << std::endl;
+#endif
+
 	// done
-	return SUCCESS;
+	return ret;
 }
 
