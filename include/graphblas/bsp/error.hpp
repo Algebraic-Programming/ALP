@@ -43,6 +43,7 @@ namespace grb::internal {
 		 * lpf_register_*, lpf_deregister, LPF collectives, lpf_get, and/or lpf_put.
 		 *
 		 * @param[in] lpf_rc The resulting LPF error code.
+		 * @param[in] source The source of the error, as a human-readable string.
 		 *
 		 * As such, the only expected error codes for \a lpf_rc are LPF_SUCCESS and
 		 * LPF_ERR_FATAL, the latter of which cannot be mitigated and encapsulates
