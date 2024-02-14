@@ -52,8 +52,8 @@ grb::RC grb::init< grb::BSP1D >(
 		ctx,
 		static_cast< lpf_pid_t >(s),
 		static_cast< lpf_pid_t >(P),
-		grb::config::LPF::regs(),
-		grb::config::LPF::maxh()
+		grb::config::LPF::MEMSLOT_CAPACITY_DEFAULT,
+		grb::config::LPF::MAX_H_RELATION_DEFAULT
 	);
 }
 
@@ -236,9 +236,9 @@ grb::RC grb::internal::BSP1D_Data::initialize(
 
 	// initialise the LPF collectives
 	assert( lpfrc == LPF_SUCCESS );
-	coll_call_capacity = COLL_CALL_CAPACITY_DEFAULT;
-	coll_reduction_bsize = COLL_REDUCTION_BSIZE_DEFAULT;
-	coll_other_bsize = COLL_OTHER_BSIZE_DEFAULT;
+	coll_call_capacity = grb::config::LPF::COLL_CALL_CAPACITY_DEFAULT;
+	coll_reduction_bsize = grb::config::LPF::COLL_REDUCTION_BSIZE_DEFAULT;
+	coll_other_bsize = grb::config::LPF::COLL_OTHER_BSIZE_DEFAULT;
 	lpfrc = lpf_collectives_init(
 		context,
 		s, P,

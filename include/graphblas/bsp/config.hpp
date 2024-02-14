@@ -42,17 +42,36 @@ namespace grb {
 				/**
 				 * Return the default number of memory registrations used by GraphBLAS.
 				 */
-				static constexpr size_t regs() {
-					return 500;
-				}
+				static constexpr size_t MEMSLOT_CAPACITY_DEFAULT = 500;
 
 				/**
-				 * Return the default maximum h relation expressed in the number of messages
-				 * (instead of bytes) used by GraphBLAS.
+				 * Return the default maximum h-relation expressed in the number of messages
+				 * (not bytes) used by GraphBLAS.
 				 */
-				static constexpr size_t maxh() {
-					return 200;
-				}
+				static constexpr size_t MAX_H_RELATION_DEFAULT = 200;
+
+				/**
+				 * The default number of consecutive collective calls that is initially
+				 * supported when creating a new instance of this object.
+				 */
+				static constexpr size_t COLL_CALL_CAPACITY_DEFAULT = 1;
+
+				/**
+				 * The default reduction element size (in bytes) that is initially
+				 * supported when creating a new instance of this object.
+				 */
+				static constexpr size_t COLL_REDUCTION_BSIZE_DEFAULT = 0;
+
+				/**
+				 * The default element size (in bytes) for other collective types that is
+				 * initially supported when creating a new instance of this object.
+				 *
+				 * We take here the native word length as the default. However, the use of
+				 * a broadcast for the #grb::Launcher implies that the required byte size
+				 * here can be arbitrarily large. Therefore, the BSP1D #grb::Launcher
+				 * implementation must rely on #ensureCollectivesCapacity.
+				 */
+				static constexpr size_t COLL_OTHER_BSIZE_DEFAULT = sizeof( size_t );
 
 		};
 
