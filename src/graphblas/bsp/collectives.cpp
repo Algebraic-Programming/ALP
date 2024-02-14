@@ -20,6 +20,7 @@
  * @date 20th of February, 2017
  */
 
+#include <graphblas/bsp/error.hpp>
 #include <graphblas/bsp/internal-collectives.hpp>
 
 
@@ -137,68 +138,33 @@ grb::RC grb::internal::allgather(
 	RC ret = SUCCESS;
 	lpf_err_t lpf_rc = LPF_SUCCESS;
 
-	if( src_offset == 0 && dst_offset == 0 ) {
-		ret = data.ensureCollectivesCapacity( 1, 0, size );
-		if( ret == SUCCESS ) {
-			ret = data.ensureMaxMessages( 2 * data.P );
-		}
-		if( ret == SUCCESS ) {
-			lpf_rc = lpf_allgather(
-					data.coll,
-					src, dst, size,
-					exclude_self
-				);
-		}
+	if( exclude_self ) {
+		ret = data.ensureMaxMessages( 2 * data.P - 2 );
 	} else {
-		if( exclude_self ) {
-			ret = data.ensureMaxMessages( 2 * data.P - 2 );
-		} else {
-			ret = data.ensureMaxMessages( 2 * data.P );
-		}
-		if( ret == SUCCESS ) {
-			for( lpf_pid_t i = 0; i < data.P; ++i ) {
-				if( exclude_self && i == data.s ) { continue; }
-					lpf_rc = lpf_put(
-							data.context,
-							src, src_offset,
-							i, dst, dst_offset,
-							size, LPF_MSG_DEFAULT
-						);
-			}
-		}
+		ret = data.ensureMaxMessages( 2 * data.P );
 	}
+	if( ret == SUCCESS ) {
+		for( lpf_pid_t i = 0; i < data.P; ++i ) {
+			if( exclude_self && i == data.s ) { continue; }
+				lpf_rc = lpf_put(
+						data.context,
+						src, src_offset,
+						i, dst, dst_offset,
+						size, LPF_MSG_DEFAULT
+					);
+		}
 
-	// error handling
-	if( ret != SUCCESS ) {
-		return ret;
-	}
-	if( lpf_rc != LPF_SUCCESS ) {
-		/* LCOV_EXCL_START */
-#ifndef NDEBUG
-		const bool lpf_spec_says_no_failure_possible = false;
-		assert( lpf_spec_says_no_failure_possible );
-#endif
-		return PANIC;
-		/* LCOV_EXCL_STOP */
-	}
-
-	// finish comms
-	lpf_rc = lpf_sync( data.context, LPF_SYNC_DEFAULT );
-	if( lpf_rc != LPF_SUCCESS ) {
-		// Under no normal circumstance should this branch be reachable
-		/* LCOV_EXCL_START */
-		if( lpf_rc != LPF_ERR_FATAL ) {
-#ifndef NDEBUG
-			const bool lpf_spec_says_this_is_unreachable = false;
-			assert( lpf_spec_says_this_is_unreachable );
-#endif
+		// finish comms
+		if( lpf_rc == LPF_SUCCESS ) {
+			lpf_rc = lpf_sync( data.context, LPF_SYNC_DEFAULT );
 		}
-		return PANIC;
-		/* LCOV_EXCL_STOP */
+
+		// finish LPF section
+		ret = checkLPFerror( lpf_rc );
 	}
 
 	// done
-	return SUCCESS;
+	return ret;
 }
 
 grb::RC grb::internal::alltoall(
