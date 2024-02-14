@@ -218,7 +218,6 @@ void grbProgram( const size_t &P, int &exit_status ) {
 			std::cerr << "grb::internal::allcombine returns incorrect value (" << v[ i ]
 				<< ") at index " << i << ".\n";
 			exit_status = 140;
-			return;
 		}
 	}
 	if( collectives<>::allreduce( exit_status, reduceRC ) != SUCCESS ) {
