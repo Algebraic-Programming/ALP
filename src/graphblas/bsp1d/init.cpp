@@ -69,12 +69,12 @@ grb::RC grb::finalize< grb::BSP1D >() {
 #ifndef NDEBUG
 	for( size_t k = 0; k < data.P; ++k ) {
 		if( k == s ) {
-			std::cerr << "\t process " << s << " is finalising\n";
+			std::cerr << "\t process " << s << " is finalising" << std::endl;
 		}
 		if( lpf_sync( data.context, LPF_SYNC_DEFAULT )
 			!= LPF_SUCCESS
 		) {
-			std::cerr << "\t process " << s << " failed to sync\n";
+			std::cerr << "\t process " << s << " failed to sync" << std::endl;
 		}
 	}
 #endif
