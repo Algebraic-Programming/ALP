@@ -322,7 +322,34 @@ grb::RC grb::internal::BSP1D_Data::initialize(
 grb::RC grb::internal::BSP1D_Data::destroy() {
 	grb::RC ret = SUCCESS;
 
-	// invalidate all fields
+	// first clean up everything that needs the LPF context
+	if( slot != LPF_INVALID_MEMSLOT ) {
+		if( lpf_deregister( context, slot ) != LPF_SUCCESS ) {
+			// this should never happen according to the LPF specs
+			/* LCOV_EXCL_START */
+#ifndef NDEBUG
+			const bool lpf_specs_violated = false;
+			assert( lpf_specs_violated );
+#endif
+			ret = PANIC;
+			/* LCOV_EXCL_STOP */
+		}
+		slot = LPF_INVALID_MEMSLOT;
+	}
+	if( queue != LPF_INVALID_BSMP ) {
+		if( lpf_bsmp_destroy( &queue ) != LPF_SUCCESS ) {
+			std::cerr << "Error while destroying LPF BSMP queue\n";
+			ret = PANIC;
+		}
+		assert( queue == LPF_INVALID_BSMP );
+	}
+	if( lpf_collectives_destroy( coll ) != LPF_SUCCESS ) {
+		std::cerr << "Error while destroying LPF collectives instance\n";
+		ret = PANIC;
+	}
+	coll = LPF_INVALID_COLL;
+
+	// then clean up the rest, in order of declaration in bsp1d/init.hpp:
 	regs_taken = 0;
 	coll_call_capacity = 0;
 	coll_reduction_bsize = 0;
@@ -338,19 +365,6 @@ grb::RC grb::internal::BSP1D_Data::destroy() {
 		free( buffer );
 		buffer = nullptr;
 	}
-	if( slot != LPF_INVALID_MEMSLOT ) {
-		if( lpf_deregister( context, slot ) != LPF_SUCCESS ) {
-			// this should never happen according to the LPF specs
-			/* LCOV_EXCL_START */
-#ifndef NDEBUG
-			const bool lpf_specs_violated = false;
-			assert( lpf_specs_violated );
-#endif
-			ret = PANIC;
-			/* LCOV_EXCL_STOP */
-		}
-		slot = LPF_INVALID_MEMSLOT;
-	}
 	payload_size = 0;
 	tag_size = 0;
 	max_msgs = 0;
@@ -359,18 +373,6 @@ grb::RC grb::internal::BSP1D_Data::destroy() {
 	queue_status = 0;
 	put_requests.clear();
 	get_requests.clear();
-	if( queue != LPF_INVALID_BSMP ) {
-		if( lpf_bsmp_destroy( &queue ) != LPF_SUCCESS ) {
-			std::cerr << "Error while destroying LPF BSMP queue\n";
-			ret = PANIC;
-		}
-		assert( queue == LPF_INVALID_BSMP );
-	}
-	if( lpf_collectives_destroy( coll ) != LPF_SUCCESS ) {
-		std::cerr << "Error while destroying LPF collectives instance\n";
-		ret = PANIC;
-	}
-	coll = LPF_INVALID_COLL;
 	destroyed = true;
 	mapper.clear();
 
