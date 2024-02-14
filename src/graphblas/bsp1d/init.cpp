@@ -258,7 +258,7 @@ grb::RC grb::internal::BSP1D_Data::initialize(
 		// return type is PANIC, which can't really be tested for
 		/* LCOV_EXCL_START */
 #ifndef NDEBUG
-		if( lpfrc != LPF_PANIC ) {
+		if( lpfrc != LPF_ERR_FATAL ) {
 			const bool spec_says_this_should_never_occur = false;
 			assert( spec_says_this_should_never_occur );
 		}
@@ -299,10 +299,10 @@ grb::RC grb::internal::BSP1D_Data::initialize(
 
 	// register the buffer for communication
 	assert( lpfrc == LPF_SUCCESS );
-	lpfrc = lpf_register_global( context, buffer, buffer_size, &slot );
+	lpfrc = lpf_register_global( context, buffer, _bufsize, &slot );
 #ifdef _DEBUG
-	std::cout << _s << ": address " << buffer << " (size " << buffer_size << ") "
-		<< "binds to slot " << slot << "\n";
+	std::cout << "\tBSP::init (" << _s << "): address " << buffer << " (size "
+		<< _bufsize << ") " << "binds to slot " << slot << "\n";
 #endif
 	assert( lpfrc == LPF_SUCCESS );
 	if( lpfrc != LPF_SUCCESS ) {
@@ -430,21 +430,25 @@ grb::RC grb::internal::BSP1D_Data::ensureBufferSize( const size_t size_in ) {
 	// memslots, always re-register
 	lpf_err_t lpfrc = lpf_deregister( context, slot );
 	if( lpfrc != LPF_SUCCESS ) {
+		// this should never happen according to the LPF spec
+		/* LCOV_EXCL_START */
+#ifndef NDEBUG
+		const bool lpf_spec_violated = false;
+		assert( lpf_spec_violated );
+#endif
 #ifdef _DEBUG
 		std::cout << "\t" << s << ": could not deregister memory slot "
 			<< slot << "\n";
 #endif
 		return PANIC;
+		/* LCOV_EXCL_STOP */
 	}
 
 #ifdef _DEBUG
 	std::cout << "\t" << s << ": reallocating local buffer\n";
 #endif
 	// calculate new buffer size
-	size_t size = 2 * buffer_size;
-	if( size < size_in ) {
-		size = size_in;
-	}
+	const size_t size = std::max( 2 * buffer_size, size_in );
 
 	// make a new allocation
 	void * replacement = nullptr;
@@ -467,17 +471,22 @@ grb::RC grb::internal::BSP1D_Data::ensureBufferSize( const size_t size_in ) {
 		buffer = replacement;
 		buffer_size = size;
 	} else {
+		/* LCOV_EXCL_START */
 #ifdef _DEBUG
 		std::cerr << "\t" << s << ": unexpected error during posix_memalign call\n";
 #endif
-		assert( false );
+#ifndef NDEBUG
+		const bool unhandled_posix_memalign_error = false;
+		assert( unhandled_posix_memalign_error );
+#endif
 		return PANIC;
+		/* LCOV_EXCL_STOP */
 	}
 
 	// replace memory slot
 	lpfrc = lpf_register_global( context, buffer, buffer_size, &slot );
 #ifdef _DEBUG
-	std::cout << "\t" << s << ": address " << buffer << " "
+	std::cout << "\tBSP::ensureBufferSize (" << s << "): address " << buffer << " "
 		<< "(size " << buffer_size << ") binds to slot " << slot << "\n";
 #endif
 	if( lpfrc == LPF_SUCCESS ) {
@@ -650,27 +659,40 @@ grb::RC grb::internal::BSP1D_Data::ensureCollectivesCapacity(
 
 	lpf_err_t lpf_rc = lpf_collectives_destroy( coll );
 	if( lpf_rc == LPF_SUCCESS ) {
-		coll_call_capacity = requested_call_capacity > coll_call_capacity
-			? requested_call_capacity
-			: coll_call_capacity;
-		coll_reduction_bsize = requested_reduction_bsize > coll_reduction_bsize
-			? requested_reduction_bsize
-			: coll_reduction_bsize;
-		coll_other_bsize = requested_other_bsize > coll_other_bsize
-			? requested_other_bsize
-			: coll_other_bsize;
+		const size_t target_call_capacity =
+			requested_call_capacity > coll_call_capacity
+				? std::max( 2 * coll_call_capacity, requested_call_capacity )
+				: coll_call_capacity;
+		const size_t target_reduction_bsize =
+			requested_reduction_bsize > coll_reduction_bsize
+				? std::max( 2 * coll_reduction_bsize, requested_reduction_bsize )
+				: coll_reduction_bsize;
+		const size_t target_other_bsize =
+			requested_other_bsize > coll_other_bsize
+				? std::max( 2 * coll_other_bsize, requested_other_bsize )
+				: coll_other_bsize;
 		lpf_rc = lpf_collectives_init(
 			context,
 			s, P,
-			requested_call_capacity,
-			requested_reduction_bsize,
-			requested_other_bsize,
+			target_call_capacity,
+			target_reduction_bsize,
+			target_other_bsize,
 			&coll
 		);
+		if( lpf_rc == LPF_SUCCESS ) {
+			coll_call_capacity = target_call_capacity;
+			coll_reduction_bsize = target_reduction_bsize;
+			coll_other_bsize = target_other_bsize;
+		} else if( lpf_rc == LPF_ERR_OUT_OF_MEMORY ) {
+#ifdef _DEBUG
+			std::cout << "BSP1D::ensureCollectivesCapacity: requested capacity goes out "
+				<< "of memory\n";
+#endif
+			return OUTOFMEM;
+		}
 	}
-	if( lpf_rc == LPF_ERR_OUT_OF_MEMORY ) {
-		return OUTOFMEM;
-	} else if( lpf_rc != LPF_SUCCESS ) {
+
+	if( lpf_rc != LPF_SUCCESS ) {
 		// This should never happen according to the LPF specs
 		/* LCOV_EXCL_START */
 #ifndef NDEBUG
@@ -681,6 +703,14 @@ grb::RC grb::internal::BSP1D_Data::ensureCollectivesCapacity(
 		return PANIC;
 		/* LCOV_EXCL_STOP */
 	}
+
+	// done
+#ifdef _DEBUG
+	std::cout << "BSP1D::ensureCollectivesCapacity, current capacities:\n"
+		<< "\tnumber of collective calls supported: " << coll_call_capacity << "\n"
+		<< "\treduction byte size supported:        " << coll_reduction_bsize << "\n"
+		<< "\tother byte size supported:            " << coll_other_bsize << "\n";
+#endif
 	return SUCCESS;
 }
 
