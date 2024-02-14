@@ -160,7 +160,7 @@ grb::RC grb::internal::allgather(
 		}
 
 		// finish LPF section
-		ret = checkLPFerror( lpf_rc );
+		ret = checkLPFerror( lpf_rc, "grb::internal::allgather (direct, BSP)" );
 	}
 
 	// done
@@ -189,9 +189,11 @@ grb::RC grb::internal::alltoall(
 	// make sure we can support comms pattern
 	const size_t nmsgs = exclude_self ? 2 * data.P - 2 : 2 * data.P;
 	RC ret = data.ensureMaxMessages( nmsgs );
+	if( ret != SUCCESS ) { return ret; }
 
 	// get remote contributions
-	for( lpf_pid_t k = 0; ret == SUCCESS && size > 0 && k < data.P; ++k ) {
+	lpf_err_t lpf_rc = LPF_SUCCESS;
+	for( lpf_pid_t k = 0; lpf_rc == SUCCESS && size > 0 && k < data.P; ++k ) {
 		if( exclude_self && static_cast< size_t >( k ) == data.s ) {
 			continue;
 		}
@@ -200,26 +202,22 @@ grb::RC grb::internal::alltoall(
 			<< " slot " << src << " offset " << src_offset << " into buffer at offset "
 			<< buffer_offset + k * size << ". Copy size is " << size << "." << std::endl;
 #endif
-		const lpf_err_t lpf_rc = lpf_get(
+		lpf_rc = lpf_get(
 			data.context,
 			k, src, src_offset,
 			data.slot, buffer_offset + k * size,
 			size,
 			LPF_MSG_DEFAULT
 		);
-		if( lpf_rc != LPF_SUCCESS ) {
-			assert( false );
-			ret = PANIC;
-		}
 	}
 
 	// finish alltoall
-	if( ret == SUCCESS ) {
-		if( lpf_sync( data.context, LPF_SYNC_DEFAULT ) != LPF_SUCCESS ) {
-			assert( false );
-			ret = PANIC;
-		}
+	if( lpf_rc == LPF_SUCCESS ) {
+		lpf_rc = lpf_sync( data.context, LPF_SYNC_DEFAULT );
 	}
+
+	// end of LPF section
+	ret = checkLPFerror( lpf_rc, "internal::alltoall (direct, BSP)" );
 
 	// done
 	return ret;

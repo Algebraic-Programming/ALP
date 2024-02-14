@@ -156,7 +156,7 @@ namespace grb {
 				if( lpf_rc == LPF_SUCCESS ) {
 					lpf_rc = lpf_sync( data.context, LPF_SYNC_DEFAULT );
 				}
-				ret = checkLPFerror( lpf_rc );
+				ret = checkLPFerror( lpf_rc, "internal::gather (scalar, BSP)" );
 
 				// gather values
 				if( ret == SUCCESS ) {
@@ -164,7 +164,7 @@ namespace grb {
 					if( lpf_rc == LPF_SUCCESS ) {
 						lpf_sync( data.context, LPF_SYNC_DEFAULT );
 					}
-					ret = checkLPFerror( lpf_rc );
+					ret = checkLPFerror( lpf_rc, "internal::gather (scalar, BSP)" );
 				}
 			}
 
@@ -300,7 +300,7 @@ namespace grb {
 				}
 
 				// done with LPF section
-				ret = checkLPFerror( lpf_rc );
+				ret = checkLPFerror( lpf_rc, "internal::gather (vector, BSP)" );
 			}
 
 			// do self-copy, if required
@@ -448,7 +448,7 @@ namespace grb {
 				}
 
 				// end of LPF section
-				ret = checkLPFerror( lpf_rc );
+				ret = checkLPFerror( lpf_rc, "internal::scatter (scalar, BSP)" );
 			}
 
 			if( ret == SUCCESS ) {
@@ -608,7 +608,7 @@ namespace grb {
 				}
 
 				// end of LPF section
-				ret = checkLPFerror( lpf_rc );
+				ret = checkLPFerror( lpf_rc, "internal::scatter (vector, BSP)" );
 			}
 
 			// local copy, if needed
@@ -751,7 +751,7 @@ namespace grb {
 			if( lpf_rc == LPF_SUCCESS ) {
 				lpf_rc = lpf_sync( data.context, LPF_SYNC_DEFAULT );
 			}
-			ret = checkLPFerror( lpf_rc );
+			ret = checkLPFerror( lpf_rc, "internal::allgather (scalar, BSP)" );
 
 #ifndef BLAS1_RAW
 			// set output vector structure
@@ -871,7 +871,7 @@ namespace grb {
 				if( lpf_rc == LPF_SUCCESS ) {
 					lpf_rc = lpf_sync( data.context, LPF_SYNC_DEFAULT );
 				}
-				ret = checkLPFerror( lpf_rc );
+				ret = checkLPFerror( lpf_rc, "internal::allgather (vector, BSP)" );
 			}
 
 			if( ret == SUCCESS ) {
@@ -1004,7 +1004,7 @@ namespace grb {
 				if( lpf_rc == LPF_SUCCESS ) {
 					lpf_rc = lpf_sync( data.context, LPF_SYNC_DEFAULT );
 				}
-				ret = checkLPFerror( lpf_rc );
+				ret = checkLPFerror( lpf_rc, "internal::alltoall (BSP)" );
 			}
 
 			if( ret == SUCCESS ) {
@@ -1192,7 +1192,9 @@ namespace grb {
 					/* LCOV_EXCL_STOP */
 			}
 
-			if( lpf_rc != LPF_SUCCESS ) { return checkLPFerror( lpf_rc ); }
+			if( lpf_rc != LPF_SUCCESS ) {
+				return checkLPFerror( lpf_rc, "internal::allcombine (intermediate, BSP)" );
+			}
 
 			// execute
 			IOType * results = data.template getBuffer< IOType >();
@@ -1274,7 +1276,7 @@ namespace grb {
 					break;
 
 			}
-			ret = checkLPFerror( lpf_rc );
+			ret = checkLPFerror( lpf_rc, "internal::allcombine (coda, BSP)" );
 
 			// do deregister
 			if( inout_slot != LPF_INVALID_MEMSLOT && lpf_rc != LPF_ERR_FATAL ) {
@@ -1455,7 +1457,9 @@ namespace grb {
 			// note: ONE_STEP variant needs no memory slot registration
 
 			// prelims are done
-			if( lpf_rc != LPF_SUCCESS ) { return checkLPFerror( lpf_rc ); }
+			if( lpf_rc != LPF_SUCCESS ) {
+				return checkLPFerror( lpf_rc, "internal::combine (intermediate, BSP)" );
+			}
 
 			// execute
 			IOType * __restrict__ const buffer = data.getBuffer< IOType >();
@@ -1641,7 +1645,7 @@ namespace grb {
 			}
 
 			// end of LPF section
-			ret = checkLPFerror( lpf_rc );
+			ret = checkLPFerror( lpf_rc, "internal::combine (coda, BSP)" );
 
 			// clean up memslots
 			if( inout_slot != LPF_INVALID_MEMSLOT && lpf_rc != LPF_ERR_FATAL ) {
@@ -2208,7 +2212,7 @@ namespace grb {
 			}
 
 			// end of LPF section
-			ret = checkLPFerror( lpf_rc );
+			ret = checkLPFerror( lpf_rc, "internal::broadcast (BSP)" );
 
 			// destroy memslot
 			if( slot != LPF_INVALID_MEMSLOT && lpf_rc != LPF_ERR_FATAL ) {

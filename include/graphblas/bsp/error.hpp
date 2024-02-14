@@ -55,13 +55,17 @@ namespace grb::internal {
 		 *
 		 * On any other LPF error code, this function will return PANIC but also log
 		 * an error to stderr and, if enabled, trips an assertion.
+		 *
+		 * \internal
+		 * \todo If we bump to C++17 we can use constexpr std::string_view
+		 * \endinternal
 		 */
-		inline RC checkLPFerror( const lpf_err_t lpf_rc ) {
+		inline RC checkLPFerror( const lpf_err_t lpf_rc, const std::string source ) {
 			if( lpf_rc != LPF_SUCCESS ) {
 				// failure at this point cannot be mitigated and possibly violates LPF spec
 				/* LCOV_EXCL_START */
 				if( lpf_rc != LPF_ERR_FATAL ) {
-					std::cerr << "Error (level-1 collectives, BSP): LPF returned an "
+					std::cerr << "Error (" << source << "): LPF returned an "
 						<< "unexpected error code. Please submit a bug report.\n";
 #ifndef NDEBUG
 					const bool lpf_spec_says_this_should_never_happen = false;
