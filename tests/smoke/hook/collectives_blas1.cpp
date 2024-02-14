@@ -77,8 +77,14 @@ void grbProgram( const size_t &P, int &exit_status ) {
 
 	// gather: large
 	std::cout << "\ttesting gather (large)" << std::endl;
-	(void) grb::set< grb::descriptors::use_index >( vLarge, 0 );
-	(void) grb::foldr( pi * s, vLarge, grb::operators::add< double >() );
+	assert( rc == SUCCESS );
+	rc = grb::set< grb::descriptors::use_index >( vLarge, 0 );
+	rc = rc ? rc : grb::foldr( pi * s, vLarge, grb::operators::add< double >() );
+	if( rc != SUCCESS ) {
+		std::cerr << "Could not initialise gather (large) test\n";
+		exit_status = 28;
+		return;
+	}
 	rc = grb::internal::gather( vLarge, vLarger, root );
 	if( rc != SUCCESS ) {
 		std::cerr << "grb::internal::gather (large) returns bad error code ("
