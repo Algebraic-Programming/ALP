@@ -375,29 +375,6 @@ namespace grb {
 			Args const &... args
 		);
 
-		/* *********************
-		    Level-1 collectives
-		          friends
-		   ********************* */
-
-		/*template<
-			Descriptor,
-			class Ring,
-			typename OutputType, typename InputType1, typename InputType2
-		>
-		friend RC internal::allreduce(
-			OutputType &,
-			const Vector< InputType1, BSP1D, C > &,
-			const Vector< InputType2, BSP1D, C > &,
-			RC( reducer )(
-				OutputType &,
-				const Vector< InputType1, BSP1D, C > &,
-				const Vector< InputType2, BSP1D, C > &,
-				const Ring &
-			),
-			const Ring &
-		);*/ // TODO FIXME DBG
-
 		/* ********************
 		         IO friends
 		   ******************** */
