@@ -30,7 +30,6 @@ add_subdirectory( transition )
 assert_valid_variables( AVAILABLE_BACKENDS CMAKE_INSTALL_PREFIX INCLUDE_INSTALL_DIR
 	VERSION BIN_INSTALL_DIR
 )
-assert_defined_variables( COMMON_WRAPPER_DEFINITIONS COMMON_WRAPPER_OPTIONS )
 
 if( WITH_BSP1D_BACKEND OR WITH_HYBRID_BACKEND )
 	assert_valid_variables( LPFRUN_CMD MANUALRUN )
@@ -89,11 +88,6 @@ list( JOIN LPFRUN_CMD " " LPFRUN_CMD_SPACED )
 list( JOIN MANUALRUN " " MANUALRUN_SPACED )
 joinWithNewLine( backend_dir_list BACKEND_DIR_LIST )
 configure_file( ${CMAKE_CURRENT_SOURCE_DIR}/setenv.in ${CMAKE_CURRENT_BINARY_DIR}/setenv @ONLY )
-
-set( cflags "${COMMON_WRAPPER_DEFINITIONS}" )
-list( TRANSFORM cflags PREPEND "-D" )
-list( APPEND cflags "${COMMON_WRAPPER_OPTIONS}" )
-joinAndAppend( COMMON_FLAGS_SPACED cflags )
 
 joinWithNewLine( compiler_list BACKEND_COMPILERS_SPACED )
 joinWithNewLine( library_dir LIBRARY_DIRS_SPACED )
