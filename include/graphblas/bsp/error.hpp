@@ -27,6 +27,14 @@
 #ifndef _H_GRB_BSP_ERROR
 #define _H_GRB_BSP_ERROR
 
+#include <graphblas/rc.hpp>
+
+#include <cassert>
+#include <iostream>
+
+#include <lpf/core.h>
+
+
 namespace grb::internal {
 
 	namespace {
