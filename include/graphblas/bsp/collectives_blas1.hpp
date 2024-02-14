@@ -390,8 +390,8 @@ namespace grb {
 		 * \parblock
 		 * \par Performance semantics:
 		 * -# Problem size N: \f$ P * \mathit{sizeof}(\mathit{IOType}) \f$
-		 * -# local work: \f$ 0 \f$ ;
-		 * -# transferred bytes: \f$ N \f$ ;
+		 * -# local work: \f$ 0 \f$;
+		 * -# transferred bytes: \f$ N \f$;
 		 * -# BSP cost: \f$ Ng + l \f$;
 		 * \endparblock
 		 *
@@ -544,8 +544,8 @@ namespace grb {
 		 * \parblock
 		 * \par Performance semantics:
 		 * -# Problem size N: \f$ in.size * \mathit{sizeof}(\mathit{IOType}) \f$
-		 * -# local work: \f$ 0 \f$ ;
-		 * -# transferred bytes: \f$ N \f$ ;
+		 * -# local work: \f$ 0 \f$;
+		 * -# transferred bytes: \f$ N \f$;
 		 * -# BSP cost: \f$ Ng + l \f$;
 		 * \endparblock
 		 *
@@ -727,8 +727,8 @@ namespace grb {
 		 * \parblock
 		 * \par Performance semantics:
 		 * -# Problem size N: \f$ P * \mathit{sizeof}(\mathit{IOType}) \f$
-		 * -# local work: \f$ 0 \f$ ;
-		 * -# transferred bytes: \f$ N \f$ ;
+		 * -# local work: \f$ 0 \f$;
+		 * -# transferred bytes: \f$ N \f$;
 		 * -# BSP cost: \f$ Ng + l \f$;
 		 * \endparblock
 		 *
@@ -1024,8 +1024,8 @@ namespace grb {
 		 * \parblock
 		 * \par Performance semantics:
 		 * -# Problem size N: \f$ P * \mathit{sizeof}(\mathit{IOType}) \f$
-		 * -# local work: \f$ 0 \f$ ;
-		 * -# transferred bytes: \f$ N \f$ ;
+		 * -# local work: \f$ 0 \f$;
+		 * -# transferred bytes: \f$ N \f$;
 		 * -# BSP cost: \f$ Ng + l \f$;
 		 * \endparblock
 		 *
@@ -1176,16 +1176,16 @@ namespace grb {
 		 * \parblock
 		 * \par Performance semantics: allgather (N < P*P)
 		 * -# Problem size N: \f$ P * inout.size * \mathit{sizeof}(\mathit{IOType}) \f$
-		 * -# local work: \f$ N*Operator \f$ ;
-		 * -# transferred bytes: \f$ N \f$ ;
+		 * -# local work: \f$ N*Operator \f$;
+		 * -# transferred bytes: \f$ N \f$;
 		 * -# BSP cost: \f$ Ng + N*Operator + l \f$;
 		 * \endparblock
 		 *
 		 * \parblock
 		 * \par Performance semantics: transpose, reduce and allgather (N >= P*P)
 		 * -# Problem size N: \f$ P * inout.size * \mathit{sizeof}(\mathit{IOType}) \f$
-		 * -# local work: \f$ (N/P)*Operator \f$ ;
-		 * -# transferred bytes: \f$ 2(N/P) \f$ ;
+		 * -# local work: \f$ (N/P)*Operator \f$;
+		 * -# transferred bytes: \f$ 2(N/P) \f$;
 		 * -# BSP cost: \f$ 2(N/P)g + (N/P)*Operator + 2l \f$;
 		 * \endparblock
 		 *
@@ -1443,24 +1443,24 @@ namespace grb {
 		 * \parblock
 		 * \par Performance semantics: allgather (N < P*P)
 		 * -# Problem size N: \f$ P * inout.size * \mathit{sizeof}(\mathit{IOType}) \f$
-		 * -# local work: \f$ N*Operator \f$ ;
-		 * -# transferred bytes: \f$ N \f$ ;
+		 * -# local work: \f$ N*Operator \f$;
+		 * -# transferred bytes: \f$ N \f$;
 		 * -# BSP cost: \f$ Ng + N*Operator + l \f$;
 		 * \endparblock
 		 *
 		 * \parblock
 		 * \par Performance semantics: transpose, reduce and allgather (N >= P*P)
 		 * -# Problem size N: \f$ P * inout.size * \mathit{sizeof}(\mathit{IOType}) \f$
-		 * -# local work: \f$ (N/P)*Operator \f$ ;
-		 * -# transferred bytes: \f$ 2(N/P) \f$ ;
+		 * -# local work: \f$ (N/P)*Operator \f$;
+		 * -# transferred bytes: \f$ 2(N/P) \f$;
 		 * -# BSP cost: \f$ 2(N/P)g + (N/P)*Operator + 2l \f$;
 		 * \endparblock
 		 *
 		 * \parblock
 		 * \par Performance semantics: two level tree
 		 * -# Problem size N: \f$ P * inout.size * \mathit{sizeof}(\mathit{IOType}) \f$
-		 * -# local work: \f$ 2(N/\sqrt{P})*Operator \f$ ;
-		 * -# transferred bytes: \f$ 2(N/\sqrt{P}) \f$ ;
+		 * -# local work: \f$ 2(N/\sqrt{P})*Operator \f$;
+		 * -# transferred bytes: \f$ 2(N/\sqrt{P}) \f$;
 		 * -# BSP cost: \f$ 2(N/\sqrt{P})g + (N/\sqrt{P})*Operator + 2l \f$;
 		 * \endparblock
 		 *
@@ -1845,22 +1845,22 @@ namespace grb {
 		 * \parblock
 		 * \par Performance semantics: serial
 		 * -# Problem size N: \f$ inout.size * \mathit{sizeof}(\mathit{IOType}) \f$
-		 * -# local work: \f$ 0 \f$ ;
-		 * -# transferred bytes: \f$ NP \f$ ;
+		 * -# local work: \f$ 0 \f$;
+		 * -# transferred bytes: \f$ NP \f$;
 		 * -# BSP cost: \f$ NPg + l \f$;
 		 * \endparblock
 		 *
 		 * \par Performance semantics: two phase
 		 * -# Problem size N: \f$ inout.size * \mathit{sizeof}(\mathit{IOType}) \f$
-		 * -# local work: \f$ 0 \f$ ;
-		 * -# transferred bytes: \f$ 2N \f$ ;
+		 * -# local work: \f$ 0 \f$;
+		 * -# transferred bytes: \f$ 2N \f$;
 		 * -# BSP cost: \f$ 2(Ng + l) \f$;
 		 * \endparblock
 		 *
 		 * \par Performance semantics: two level tree
 		 * -# Problem size N: \f$ inout.size * \mathit{sizeof}(\mathit{IOType}) \f$
-		 * -# local work: \f$ 0 \f$ ;
-		 * -# transferred bytes: \f$ 2\sqrt{P}N \f$ ;
+		 * -# local work: \f$ 0 \f$;
+		 * -# transferred bytes: \f$ 2\sqrt{P}N \f$;
 		 * -# BSP cost: \f$ 2(\sqrt{P}Ng + l) \f$;
 		 * \endparblock
 		 *
