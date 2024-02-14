@@ -102,6 +102,13 @@ namespace grb {
 #endif
 			const lpf_pid_t root
 		) {
+#ifdef _DEBUG
+ #ifdef BLAS1_RAW
+			std::cout << "In internal::gather (BSP), raw variant, scalar" << std::endl;
+ #else
+			std::cout << "In internal::gather (BSP), grb variant, scalar" << std::endl;
+ #endif
+#endif
 			// we need access to BSP context
 			internal::BSP1D_Data &data = internal::grb_BSP1D.load();
 
@@ -181,7 +188,15 @@ namespace grb {
 			if( slot != LPF_INVALID_MEMSLOT && lpf_rc != LPF_ERR_FATAL ) {
 				(void) lpf_deregister( data.context, slot );
 			}
-
+#ifdef _DEBUG
+ #ifdef BLAS1_RAW
+			std::cout << "\t internal::gather (BSP), raw variant, scalar: exiting"
+				<< std::endl;
+ #else
+			std::cout << "\t internal::gather (BSP), grb variant, scalar: exiting"
+				<< std::endl;
+ #endif
+#endif
 			// done
 			return ret;
 		}
@@ -232,6 +247,13 @@ namespace grb {
 #endif
 			const lpf_pid_t root
 		) {
+#ifdef _DEBUG
+ #ifdef BLAS1_RAW
+			std::cout << "In internal::gather (BSP), raw variant, vector" << std::endl;
+ #else
+			std::cout << "In internal::gather (BSP), grb variant, vector" << std::endl;
+ #endif
+#endif
 			// we need access to BSP context
 			internal::BSP1D_Data &data = internal::grb_BSP1D.load();
 
@@ -271,16 +293,16 @@ namespace grb {
 
 				// create memslot on output vector
 #ifndef BLAS1_RAW
-				lpf_rc = lpf_register_local( data.context, internal::getRaw( out ),
+				lpf_rc = lpf_register_global( data.context, internal::getRaw( out ),
 					size * data.P * sizeof( IOType ), &out_slot );
 				if( lpf_rc == LPF_SUCCESS ) {
-					lpf_register_global( data.context,
+					lpf_register_local( data.context,
 						const_cast< IOType * >(internal::getRaw( in )), bsize, &in_slot );
 				}
 #else
-				lpf_rc = lpf_register_local( data.context, out, data.P * bsize, &out_slot );
+				lpf_rc = lpf_register_global( data.context, out, data.P * bsize, &out_slot );
 				if( lpf_rc == LPF_SUCCESS ) {
-					lpf_register_global( data.context, const_cast< IOType * >(in), bsize,
+					lpf_register_local( data.context, const_cast< IOType * >(in), bsize,
 						&in_slot );
 				}
 #endif
@@ -332,7 +354,15 @@ namespace grb {
 			if( out_slot != LPF_INVALID_MEMSLOT && lpf_rc != LPF_ERR_FATAL ) {
 				(void) lpf_deregister( data.context, out_slot );
 			}
-
+#ifdef _DEBUG
+ #ifdef BLAS1_RAW
+			std::cout << "\t internal::gather (BSP), raw variant, vector: exiting"
+				<< std::endl;
+ #else
+			std::cout << "\t internal::gather (BSP), grb variant, vector: exiting"
+				<< std::endl;
+ #endif
+#endif
 			// done
 			return ret;
 		}
@@ -383,6 +413,13 @@ namespace grb {
 			IOType &out,
 			const lpf_pid_t root
 		) {
+#ifdef _DEBUG
+ #ifdef BLAS1_RAW
+			std::cout << "In internal::scatter (BSP), raw variant, scalar" << std::endl;
+ #else
+			std::cout << "In internal::scatter (BSP), grb variant, scalar" << std::endl;
+ #endif
+#endif
 			// we need access to BSP context
 			internal::BSP1D_Data &data = internal::grb_BSP1D.load();
 
@@ -469,7 +506,15 @@ namespace grb {
 			if( dest != LPF_INVALID_MEMSLOT && lpf_rc != LPF_ERR_FATAL ) {
 				(void) lpf_deregister( data.context, dest );
 			}
-
+#ifdef _DEBUG
+ #ifdef BLAS1_RAW
+			std::cout << "\t internal::scatter (BSP), raw variant, scalar: exiting"
+				<< std::endl;
+ #else
+			std::cout << "\t internal::scatter (BSP), grb variant, scalar: exiting"
+				<< std::endl;
+ #endif
+#endif
 			// done
 			return ret;
 		}
@@ -524,6 +569,13 @@ namespace grb {
 #endif
 			const lpf_pid_t root
 		) {
+#ifdef _DEBUG
+ #ifdef BLAS1_RAW
+			std::cout << "In internal::scatter (BSP), raw variant, vector" << std::endl;
+ #else
+			std::cout << "In internal::scatter (BSP), grb variant, vector" << std::endl;
+ #endif
+#endif
 			// we need access to BSP context
 			internal::BSP1D_Data &data = internal::grb_BSP1D.load();
 			const size_t procs = data.P;
@@ -639,7 +691,15 @@ namespace grb {
 			if( dst != LPF_INVALID_MEMSLOT && lpf_rc != LPF_ERR_FATAL ) {
 				(void) lpf_deregister( data.context, dst );
 			}
-
+#ifdef _DEBUG
+ #ifdef BLAS1_RAW
+			std::cout << "\t internal::scatter (BSP), raw variant, vector: exiting"
+				<< std::endl;
+ #else
+			std::cout << "\t internal::scatter (BSP), grb variant, vector: exiting"
+				<< std::endl;
+ #endif
+#endif
 			// done
 			return ret;
 		}
@@ -689,6 +749,15 @@ namespace grb {
 			Vector< IOType, reference, Coords > &out
 #endif
 		) {
+#ifdef _DEBUG
+ #ifdef BLAS1_RAW
+			std::cout << "In internal::allgather (BSP), raw variant, scalar"
+				<< std::endl;
+ #else
+			std::cout << "In internal::allgather (BSP), grb variant, scalar"
+				<< std::endl;
+ #endif
+#endif
 			// we need access to BSP context
 			internal::BSP1D_Data &data = internal::grb_BSP1D.load();
 
@@ -753,18 +822,33 @@ namespace grb {
 			}
 			ret = checkLPFerror( lpf_rc, "internal::allgather (scalar, BSP)" );
 
-#ifndef BLAS1_RAW
-			// set output vector structure
+			// if all is OK, set output vector structure and copy our own local value
 			if( ret == SUCCESS ) {
+#ifndef BLAS1_RAW
+				if( internal::getRaw(out) + data.s != &in ) {
+					internal::getRaw(out)[ data.s ] = in;
+				}
 				internal::getCoordinates( out ).template assignAll< true >();
-			}
+#else
+				if( out + data.s != &in ) {
+					out[ data.s ] = in;
+				}
 #endif
+			}
 
 			// do deregister
 			if( dest != LPF_INVALID_MEMSLOT && lpf_rc != LPF_ERR_FATAL ) {
 				(void) lpf_deregister( data.context, dest );
 			}
-
+#ifdef _DEBUG
+ #ifdef BLAS1_RAW
+			std::cout << "\t internal::allgather (BSP), raw variant, scalar: exiting"
+				<< std::endl;
+ #else
+			std::cout << "\t internal::allgather (BSP), grb variant, scalar: exiting"
+				<< std::endl;
+ #endif
+#endif
 			// done
 			return ret;
 		}
@@ -816,6 +900,15 @@ namespace grb {
 			Vector< IOType, reference, Coords > &out
 #endif
 		) {
+#ifdef _DEBUG
+ #ifdef BLAS1_RAW
+			std::cout << "In internal::allgather (BSP), raw variant, vector"
+				<< std::endl;
+ #else
+			std::cout << "In internal::allgather (BSP), grb variant, vector"
+				<< std::endl;
+ #endif
+#endif
 			// we need access to BSP context
 			internal::BSP1D_Data &data = internal::grb_BSP1D.load();
 
@@ -894,7 +987,15 @@ namespace grb {
 			if( dest != LPF_INVALID_MEMSLOT && lpf_rc != LPF_ERR_FATAL ) {
 				(void) lpf_deregister( data.context, dest );
 			}
-
+#ifdef _DEBUG
+ #ifdef BLAS1_RAW
+			std::cout << "\t internal::allgather (BSP), raw variant, vector: exiting"
+				<< std::endl;
+ #else
+			std::cout << "\t internal::allgather (BSP), grb variant, vector: exiting"
+				<< std::endl;
+ #endif
+#endif
 			// done
 			return SUCCESS;
 		}
@@ -946,6 +1047,13 @@ namespace grb {
 			Vector< IOType, reference, Coords > &out
 #endif
 		) {
+#ifdef _DEBUG
+ #ifdef BLAS1_RAW
+			std::cout << "In internal::alltoall (BSP), raw variant" << std::endl;
+ #else
+			std::cout << "In internal::alltoall (BSP), grb variant" << std::endl;
+ #endif
+#endif
 			// we need access to BSP context
 			internal::BSP1D_Data &data = internal::grb_BSP1D.load();
 
@@ -1029,7 +1137,15 @@ namespace grb {
 			if( dest != LPF_INVALID_MEMSLOT && lpf_rc != LPF_ERR_FATAL ) {
 				(void) lpf_deregister( data.context, dest );
 			}
-
+#ifdef _DEBUG
+ #ifdef BLAS1_RAW
+			std::cout << "\t internal::alltoall (BSP), raw variant: exiting"
+				<< std::endl;
+ #else
+			std::cout << "\t internal::alltoall (BSP), grb variant: exiting"
+				<< std::endl;
+ #endif
+#endif
 			// done
 			return ret;
 		}
@@ -1099,7 +1215,13 @@ namespace grb {
 				), "grb::collectives::allcombine",
 				"Incompatible given value type and operator domains while "
 				"no_casting descriptor was set" );
-
+#ifdef _DEBUG
+ #ifdef BLAS1_RAW
+			std::cout << "In internal::allcombine (BSP), raw variant" << std::endl;
+ #else
+			std::cout << "In internal::allcombine (BSP), grb variant" << std::endl;
+ #endif
+#endif
 			// we need access to BSP context
 			internal::BSP1D_Data &data = internal::grb_BSP1D.load();
 #ifndef BLAS1_RAW
@@ -1282,7 +1404,15 @@ namespace grb {
 			if( inout_slot != LPF_INVALID_MEMSLOT && lpf_rc != LPF_ERR_FATAL ) {
 				(void) lpf_deregister( data.context, inout_slot );
 			}
-
+#ifdef _DEBUG
+ #ifdef BLAS1_RAW
+			std::cout << "\t internal::allcombine (BSP), raw variant: exiting"
+				<< std::endl;
+ #else
+			std::cout << "\t internal::allcombine (BSP), grb variant: exiting"
+				<< std::endl;
+ #endif
+#endif
 			// done
 			return ret;
 		}
@@ -1363,7 +1493,13 @@ namespace grb {
 				"Incompatible given value type and operator domains while "
 				"no_casting descriptor was set"
 			);
-
+#ifdef _DEBUG
+ #ifdef BLAS1_RAW
+			std::cout << "In internal::combine (BSP), raw variant" << std::endl;
+ #else
+			std::cout << "In internal::combine (BSP), grb variant" << std::endl;
+ #endif
+#endif
 			// we need access to BSP context
 			internal::BSP1D_Data &data = internal::grb_BSP1D.load();
 
@@ -1464,6 +1600,16 @@ namespace grb {
 			// execute
 			IOType * __restrict__ const buffer = data.getBuffer< IOType >();
 			if( variant == ONE_STEP ) {
+#ifdef _DEBUG
+ #ifdef BLAS1_RAW
+				std::cout << "\t internal::combine (BSP), raw: selected one-step variant"
+					<< std::endl;
+ #else
+				std::cout << "\t internal::combine (BSP), grb: selected one-step variant"
+					<< std::endl;
+ #endif
+#endif
+				// one-shot variant
 
 				// copy input to buffer
 				size_t pos = ( data.s == root ) ? data.s : 0;
@@ -1497,8 +1643,17 @@ namespace grb {
 				// done
 
 			} else if( variant == TREE ) {
+#ifdef _DEBUG
+ #ifdef BLAS1_RAW
+				std::cout << "\t internal::combine (BSP), raw: selected tree variant"
+					<< std::endl;
+ #else
+				std::cout << "\t internal::combine (BSP), grb: selected tree variant"
+					<< std::endl;
+ #endif
+#endif
+				// tree variant
 
-				// choose tree if N is too small to transpose
 				// the (max) interval between each core process
 				const size_t hop = sqrt( static_cast< double >(data.P) );
 				// the offset from my core process
@@ -1539,11 +1694,11 @@ namespace grb {
 #ifdef BLAS1_RAW
 						internal::maybeParallel< _GRB_BSP1D_BACKEND >::
 							foldMatrixToVector< descr >( inout,
-								buffer + ((data.s + k) % data.P) * size, 1, size, data.s, op );
+								buffer + ((data.s + k) % data.P) * size, 1, size, 1, op );
 #else
 						internal::maybeParallel< _GRB_BSP1D_BACKEND >::
 							foldMatrixToVector< descr >( internal::getRaw(inout),
-								buffer + ((data.s + k) % data.P) * size, 1, size, data.s, op );
+								buffer + ((data.s + k) % data.P) * size, 1, size, 1, op );
 #endif
 					}
 				}
@@ -1568,11 +1723,11 @@ namespace grb {
 #ifdef BLAS1_RAW
 						internal::maybeParallel< _GRB_BSP1D_BACKEND >::
 							foldMatrixToVector< descr >( inout,
-								buffer + ((k + root) % data.P) * size, 1, size, data.s, op );
+								buffer + ((k + root) % data.P) * size, 1, size, 1, op );
 #else
 						internal::maybeParallel< _GRB_BSP1D_BACKEND >::
 							foldMatrixToVector< descr >( internal::getRaw(inout),
-								buffer + ((k + root) % data.P) * size, 1, size, data.s, op );
+								buffer + ((k + root) % data.P) * size, 1, size, 1, op );
 #endif
 					}
 				}
@@ -1580,7 +1735,15 @@ namespace grb {
 				// done
 
 			} else if( variant == TWO_STEP ) {
-
+#ifdef _DEBUG
+ #ifdef BLAS1_RAW
+				std::cout << "\t internal::combine (BSP), raw: selected two-step variant"
+					<< std::endl;
+ #else
+				std::cout << "\t internal::combine (BSP), grb: selected two-step variant"
+					<< std::endl;
+ #endif
+#endif
 				// transpose and gather
 
 				// step 1: my_chunk*size bytes from each process to my collectives slot
@@ -1651,7 +1814,13 @@ namespace grb {
 			if( inout_slot != LPF_INVALID_MEMSLOT && lpf_rc != LPF_ERR_FATAL ) {
 				(void) lpf_deregister( data.context, inout_slot );
 			}
-
+#ifdef _DEBUG
+ #ifdef BLAS1_RAW
+			std::cout << "\t internal::combine (BSP), raw variant: exiting" << std::endl;
+ #else
+			std::cout << "\t internal::combine (BSP), grb variant: exiting" << std::endl;
+ #endif
+#endif
 			// done
 			return ret;
 		}
@@ -2152,6 +2321,13 @@ namespace grb {
 #endif
 			const lpf_pid_t root
 		) {
+#ifdef _DEBUG
+ #ifdef BLAS1_RAW
+			std::cout << "In internal::broadcast (BSP), raw variant" << std::endl;
+ #else
+			std::cout << "In internal::broadcast (BSP), grb variant" << std::endl;
+ #endif
+#endif
 			// we need access to BSP context
 			internal::BSP1D_Data &data = internal::grb_BSP1D.load();
 #ifndef BLAS1_RAW
@@ -2218,7 +2394,15 @@ namespace grb {
 			if( slot != LPF_INVALID_MEMSLOT && lpf_rc != LPF_ERR_FATAL ) {
 				(void) lpf_deregister( data.context, slot );
 			}
-
+#ifdef _DEBUG
+ #ifdef BLAS1_RAW
+			std::cout << "\t internal::broadcast (BSP), raw variant: exiting"
+				<< std::endl;
+ #else
+			std::cout << "\t internal::broadcast (BSP), grb variant: exiting"
+				<< std::endl;
+ #endif
+#endif
 			// done
 			return ret;
 		}
