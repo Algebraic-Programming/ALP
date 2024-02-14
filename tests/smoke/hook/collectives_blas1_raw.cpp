@@ -254,58 +254,6 @@ void grbProgram( const size_t &P, int &exit_status ) {
 	}
 	if( exit_status != 0 ) { return; }
 
-#if 0 // TODO FIXME DBG checking whether we can remove this functionality
-	// reduce: large
-	for( size_t i = 0; i < n; i++ ) {
-		vLarge[ i ] = pi * s + i;
-	}
-	d = 0;
-	rc = grb::internal::reduce( vLarge, n, d, oper, root );
-	if( rc != SUCCESS ) {
-		std::cerr << "grb::internal::reduce (large) returns bad error code ("
-			<< grb::toString(rc) << ").\n";
-		exit_status = 180;
-		return;
-	}
-	if( s == root ) {
-		size_t sum = ( P - 1 ) * ( P / 2 );
-		double val = 0;
-		for( size_t i = 0; i < n; i++ ) {
-			val += sum * pi + i * P;
-		}
-		if( !same( d, val ) ) {
-			std::cerr << "grb::internal::reduce (large) returns incorrect value ("
-				<< d << ".\n";
-			exit_status = 190;
-			return;
-		}
-	}
-
-	// allreduce: large
-	for( size_t i = 0; i < n; i++ ) {
-		vLarge[ i ] = pi * s + i;
-	}
-	d = 0;
-	rc = grb::internal::allreduce( vLarge, n, d, oper );
-	if( rc != SUCCESS ) {
-		std::cerr << "grb::internal::allreduce (large) returns bad error code ("
-			<< grb::toString(rc) << ").\n";
-		exit_status = 200;
-		return;
-	}
-	size_t sum = ( P - 1 ) * ( P / 2 );
-	double val = 0;
-	for( size_t i = 0; i < n; i++ ) {
-		val += sum * pi + i * P;
-	}
-	if( !same( d, val ) ) {
-		std::cerr << "grb::internal::allreduce (large) returns incorrect value ("
-			<< d << ".\n";
-		exit_status = 210;
-		return;
-	}
-#endif
-
 	// broadcast: large
 	std::cout << "\ttesting broadcast (large)" << std::endl;
 	if( s == root ) {

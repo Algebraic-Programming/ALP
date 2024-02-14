@@ -282,52 +282,6 @@ void grbProgram( const size_t &P, int &exit_status ) {
 	}
 	if( exit_status != 0 ) { return; }
 
-#if 0 // TODO FIXME DBG testing if we can remove these functions
-	// reduce: large
-	(void) grb::set< grb::descriptors::use_index >( vLarge, 0 );
-	(void) grb::foldr( pi * s, vLarge, grb::operators::add< double >() );
-	d = 0;
-	rc = grb::internal::reduce( vLarge, d, oper, root );
-	if( rc != SUCCESS ) {
-		(void)fprintf( stderr, "grb::internal::reduce (large) returns bad error code (%d).\n", (int)rc );
-		exit_status = 1;
-		return;
-	}
-	if( s == root ) {
-		size_t sum = ( P - 1 ) * ( P / 2 );
-		double val = 0;
-		for( size_t i = 0; i < n; i++ ) {
-			val += sum * pi + i * P;
-		}
-		if( ! same( d, val ) ) {
-			(void)fprintf( stderr, "grb::internal::reduce (large) returns incorrect value (%lf).\n", d );
-			exit_status = 1;
-			return;
-		}
-	}
-
-	// allreduce: large
-	(void) grb::set< grb::descriptors::use_index >( vLarge, 0 );
-	(void) grb::foldr( pi * s, vLarge, grb::operators::add< double >() );
-	d = 0;
-	rc = grb::internal::allreduce( vLarge, d, oper );
-	if( rc != SUCCESS ) {
-		(void)fprintf( stderr, "grb::internal::allreduce (large) returns bad error code (%d).\n", (int)rc );
-		exit_status = 1;
-		return;
-	}
-	size_t sum = ( P - 1 ) * ( P / 2 );
-	double val = 0;
-	for( size_t i = 0; i < n; i++ ) {
-		val += sum * pi + i * P;
-	}
-	if( ! same( d, val ) ) {
-		(void)fprintf( stderr, "grb::internal::allreduce (large) returns incorrect value (%lf).\n", d );
-		exit_status = 1;
-		return;
-	}
-#endif
-
 	// broadcast: large
 	std::cout << "\ttesting broadcast (large)" << std::endl;
 	if( s == root ) {
