@@ -681,6 +681,10 @@ namespace grb {
 				nz < _local_n ? nz : _local_n
 			);
 
+#ifdef _DEBUG
+			std::cout << "\t grb::Vector< T, BSP1D, C >::initialize, reference "
+				<< "initialisations have completed" << std::endl;
+#endif
 			// retrieve global capacity
 			size_t global_cap = capacity( _local );
 			if( collectives< BSP1D >::allreduce(
@@ -691,6 +695,11 @@ namespace grb {
 				throw std::runtime_error( "Synchronising global capacity failed" );
 			}
 			_cap = global_cap;
+
+#ifdef _DEBUG
+			std::cout << "\t grb::Vector< T, BSP1D, C >::initialize, global capacity is "
+				<< _cap << std::endl;
+#endif
 
 			// now set remaining fields
 			_n = cap_in;

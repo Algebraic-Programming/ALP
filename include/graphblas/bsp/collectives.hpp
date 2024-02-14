@@ -160,7 +160,7 @@ namespace grb {
 				// the operator instance is never explicitly used.
 				(void) op;
 #ifdef _DEBUG
-				std::cout << "Entered grb::collectives< BSP1D >::allreduce with inout = "
+				std::cout << "Entered grb::collectives< BSP >::allreduce with inout = "
 					<< inout << " and op = " << &op << std::endl;
 #endif
 
@@ -203,6 +203,10 @@ namespace grb {
 				// get the lpf_reducer_t
 				lpf_reducer_t reducer = &(generic_reducer< Operator >);
 
+#ifdef _DEBUG
+				std::cout << "\tcollectives< BSP >::allreduce, calls lpf_allreduce with "
+					<< "size " << sizeof(IOType) << std::endl;
+#endif
 				// schedule allreduce
 				lpf_err_t lpf_rc = lpf_allreduce(
 						data.coll,
