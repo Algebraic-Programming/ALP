@@ -171,7 +171,7 @@ namespace grb {
 				 *
 				 * @see queue.
 				 */
-				size_t * cur_payload;
+				std::vector< size_t > cur_payload;
 
 				/**
 				 * The current number of messages sent to a sibling process.
@@ -180,7 +180,7 @@ namespace grb {
 				 *
 				 * @see queue.
 				 */
-				size_t * cur_msgs;
+				std::vector< size_t > cur_msgs;
 
 				/**
 				 * The status of the BSMP #queue.
