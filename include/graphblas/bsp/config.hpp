@@ -53,6 +53,34 @@ namespace grb {
 				/**
 				 * The default number of consecutive collective calls that is initially
 				 * supported when creating a new instance of this object.
+				 *
+				 * \internal
+				 * The ALP implementation for LPF backends (found in /bsp/) maintain a
+				 * single lpf_coll_t to drive collective communications. The same instance
+				 * is used for all of the following cases:
+				 *  - the use of #grb::collectives for all LPF-enabled backends;
+				 *  - the use of internal level-0 and level-1 collectives on raw scalars
+				 *    and raw arrays;
+				 *  - the use of internal level-1 collectives on ALP/GraphBLAS vectors;
+				 *  - the direct calling of collectives using LPF memslots (lpf_memslot_t)
+				 *    directly through a C++ API.
+				 * The sharing of a single lpf_coll_t ensures that re-initialisations of
+				 * LPF collectives are minimised, if not outright eliminated.
+				 *
+				 * \note The reason they are presently not outright eliminated is because
+				 *       users may call #grb::collectives<> using any scalar value, i.e.,
+				 *       any POD type, which may have arbitrary size. The only way to
+				 *       totally eliminate related costs is to introduce a grb::Scalar
+				 *       type, whose declaration could include re-initialising the
+				 *       LPF collectives if necessary, and without breaking any performance
+				 *       guarantees.
+				 *
+				 * For performance, always use the latter direct variants as they will be
+				 * synchronisation-free (unless calling a collective for a never-before-seen
+				 * size, see also the note directly above). The other variants will most of
+				 * the time require addational synchronisation to register memory addresses
+				 * for RDMA communication.
+				 * \endinternal
 				 */
 				static constexpr size_t COLL_CALL_CAPACITY_DEFAULT = 1;
 
