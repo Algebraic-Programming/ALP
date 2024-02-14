@@ -34,6 +34,8 @@
 
 #include <graphblas/base/collectives.hpp>
 
+#include <graphblas/bsp/error.hpp>
+
 #include <graphblas/bsp1d/init.hpp>
 
 #define NO_CAST_ASSERT_BLAS0( x, y, z )                                            \
@@ -185,11 +187,10 @@ namespace grb {
 
 				// ensure the global buffer has enough capacity
 				RC rc = data.ensureBufferSize( sizeof( IOType ) );
-				if( rc != SUCCESS ) { return rc; }
-
 				// ensure we can execute the requested collective call
-				rc = data.ensureCollectivesCapacity( 1, sizeof( IOType ), 0 );
-				rc = rc != SUCCESS ? rc : data.ensureMaxMessages( 2 * data.P - 2 );
+				rc = rc ? rc : data.ensureCollectivesCapacity( 1, sizeof( IOType ), 0 );
+				rc = rc ? rc : data.ensureMaxMessages( 2 * data.P - 2 );
+				// exit on failed preconditions
 				if( rc != SUCCESS ) { return rc; }
 
 				// retrieve buffer area
@@ -221,28 +222,16 @@ namespace grb {
 				}
 
 				// catch LPF errors
-				if( lpf_rc != LPF_SUCCESS ) {
-					/* LCOV_EXCL_START */
-					if( lpf_rc != LPF_ERR_FATAL ) {
-						std::cerr << "Error: unspecified LPF error was returned, please submit a "
-							<< "bug report!\n";
-#ifndef NDEBUG
-						const bool lpf_spec_says_this_should_not_occur = false;
-						assert( lpf_spec_says_this_should_not_occur );
-#endif
-						return PANIC;
-					}
-					std::cerr << "Error (allreduce, distributed): LPF reports unmitigable "
-						<< "error\n";
-					return PANIC;
-					/* LCOV_EXCL_STOP */
-				}
+				rc = internal::checkLPFerror( lpf_rc,
+					"grb::collectives< BSP >::allreduce" );
 
 				// copy back
-				inout = *buffer;
+				if( rc == SUCCESS ) {
+					inout = *buffer;
+				}
 
 				// done
-				return SUCCESS;
+				return rc;
 			}
 
 			/**
@@ -283,6 +272,11 @@ namespace grb {
 				// we need access to LPF context
 				internal::BSP1D_Data &data = internal::grb_BSP1D.load();
 
+				// dynamic checks
+				if( root >= data.P ) {
+					return ILLEGAL;
+				}
+
 				// catch trivial case early
 				if( data.P == 1 ) {
 					return SUCCESS;
@@ -290,11 +284,9 @@ namespace grb {
 
 				// ensure the global buffer has enough capacity
 				RC rc = data.ensureBufferSize( sizeof( IOType ) );
-				if( rc != SUCCESS ) { return rc; }
-
 				// ensure we can execute the requested collective call
-				rc = data.ensureCollectivesCapacity( 1, sizeof( IOType ), 0 );
-				rc = rc != SUCCESS ? rc : data.ensureMaxMessages( data.P - 1 );
+				rc = rc ? rc : data.ensureCollectivesCapacity( 1, sizeof( IOType ), 0 );
+				rc = rc ? rc : data.ensureMaxMessages( data.P - 1 );
 				if( rc != SUCCESS ) { return rc; }
 
 				// retrieve buffer area
@@ -323,25 +315,10 @@ namespace grb {
 				}
 
 				// catch LPF errors
-				if( lpf_rc != LPF_SUCCESS ) {
-					/* LCOV_EXCL_START */
-					if( lpf_rc != LPF_ERR_FATAL ) {
-						std::cerr << "Error (reduce, distributed): unspecified LPF error was "
-							<< "returned, please submit a bug report!\n";
-#ifndef NDEBUG
-						const bool lpf_spec_says_this_should_not_occur = false;
-						assert( lpf_spec_says_this_should_not_occur );
-#endif
-						return PANIC;
-					}
-					std::cerr << "Error (reduce, distributed): LPF reports unmitigable error"
-						<< "\n";
-					return PANIC;
-					/* LCOV_EXCL_STOP */
-				}
+				rc = internal::checkLPFerror( lpf_rc, "grb::collectives< BSP >::reduce" );
 
 				// copy back
-				if( data.s == static_cast< size_t >( root ) ) {
+				if( rc == SUCCESS && data.s == static_cast< size_t >( root ) ) {
 					inout = *buffer;
 				}
 
@@ -412,19 +389,13 @@ namespace grb {
 
 				// ensure the global buffer has enough capacity
 				RC rc = data.ensureBufferSize( sizeof( IOType ) );
-				if( rc != SUCCESS ) { return rc; }
-
 				// ensure we have enough memory slots for local registration
-				rc = data.ensureMemslotAvailable();
-				if( rc != SUCCESS ) { return rc; }
-
+				rc = rc ? rc : data.ensureMemslotAvailable();
 				// ensure we can execute the requested collective call
-				rc = data.ensureCollectivesCapacity( 1, 0, sizeof( IOType ) );
-
+				rc = rc ? rc : data.ensureCollectivesCapacity( 1, 0, sizeof( IOType ) );
 				// ensure we have the required h-relation capacity
 				// note the below cannot overflow since we guarantee data.P > 1
-				rc = rc != SUCCESS
-					? rc
+				rc = rc ? rc
 					: data.ensureMaxMessages( std::max( data.P + 1, 2 * data.P - 3 ) );
 				if( rc != SUCCESS ) { return rc; }
 
@@ -436,7 +407,7 @@ namespace grb {
 					*buffer = inout;
 				}
 
-				// register destination area
+				// register destination area, schedule broadcast, and wait for it to finish
 				lpf_memslot_t dest_slot = LPF_INVALID_MEMSLOT;
 				lpf_err_t lpf_rc = lpf_register_local(
 					data.context, &inout, sizeof( IOType ), &dest_slot );
@@ -444,35 +415,21 @@ namespace grb {
 					lpf_rc = lpf_broadcast( data.coll, data.slot, dest_slot, sizeof( IOType ),
 						root );
 				}
-
-				// finish communication
 				if( lpf_rc == LPF_SUCCESS ) {
 					lpf_rc = lpf_sync( data.context, LPF_SYNC_DEFAULT );
 				}
+
+				// LPF error handling
+				rc = internal::checkLPFerror( lpf_rc,
+					"grb::collectives< BSP >::broadcast (scalar)" );
 
 				// cleanup
 				if( dest_slot != LPF_INVALID_MEMSLOT && lpf_rc != LPF_ERR_FATAL ) {
 					(void) lpf_deregister( data.context, dest_slot );
 				}
 
-				// LPF error handling
-				if( lpf_rc != LPF_SUCCESS ) {
-					/* LCOV_EXCL_START */
-					if( lpf_rc != LPF_ERR_FATAL ) {
-#ifndef NDEBUG
-						const bool lpf_spec_says_this_should_never_happen = false;
-						assert( lpf_spec_says_this_should_never_happen );
-#endif
-						std::cerr << "Error, broadcast (BSP): unexpected error. Please submit a "
-							<< "bug report\n";
-					}
-					std::cerr << "Error, broadcast (BSP): LPF encountered a fatal error\n";
-					return PANIC;
-					/* LCOV_EXCL_STOP */
-				}
-
 				// done
-				return SUCCESS;
+				return rc;
 			}
 
 			/**
@@ -524,18 +481,13 @@ namespace grb {
 
 				// ensure we have enough memory slots for global registration
 				RC rc = data.ensureMemslotAvailable();
-
 				// ensure we can execute the requested collective call
-				rc = rc != SUCCESS
-					? rc
+				rc = rc ? rc
 					: data.ensureCollectivesCapacity( 1, 0, size * sizeof( IOType ) );
-
 				// ensure we have the required h-relation capacity
 				// note the below cannot overflow since we guarantee data.P > 1
-				rc = rc != SUCCESS
-					? rc
+				rc = rc ? rc
 					: data.ensureMaxMessages( std::max( data.P + 1, 2 * data.P - 3 ) );
-
 				// propagate any errors
 				if( rc != SUCCESS ) { return rc; }
 
@@ -562,30 +514,17 @@ namespace grb {
 					lpf_sync( data.context, LPF_SYNC_DEFAULT );
 				}
 
+				// LPF error handling
+				rc = internal::checkLPFerror( lpf_rc,
+					"grb::collectives< BSP >::broadcast (array)" );
+
 				// cleanup
 				if( user_slot != LPF_INVALID_MEMSLOT && lpf_rc != LPF_ERR_FATAL ) {
 					(void) lpf_deregister( data.context, user_slot );
 				}
 
-				// LPF error handling
-				if( lpf_rc != LPF_SUCCESS ) {
-					/* LCOV_EXCL_START */
-					if( lpf_rc != LPF_ERR_FATAL ) {
-#ifndef NDEBUG
-						const bool lpf_spec_says_this_should_never_happen = false;
-						assert( lpf_spec_says_this_should_never_happen );
-#endif
-						std::cerr << "Error, array broadcast (BSP): unexpected error. Please "
-							<< "submit a bug report\n";
-					}
-					std::cerr << "Error, array broadcast (BSP): LPF encountered a fatal error"
-						<< "\n";
-					return PANIC;
-					/* LCOV_EXCL_STOP */
-				}
-
 				// done
-				return SUCCESS;
+				return rc;
 			}
 
 	};
