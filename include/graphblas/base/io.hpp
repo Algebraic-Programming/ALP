@@ -1134,7 +1134,12 @@ namespace grb {
 
 	/**
 	 * Sets the content of a given matrix \a C to the coordinates of
-	 * another given matrix \a A, and fill the values with a given value.
+	 * another given matrix \a mask, and fill the values with a given value.
+	 *
+	 * Another way to view this operation is entries in \a C are set to \a val only
+	 * at those coordinates for which \a mask has a coordinate. The matrix \a mask
+	 * is interpreted structurally; i.e., a value in \a C will appear even for
+	 * coordinates in \a mask that store an explicit zero.
 	 *
 	 * @tparam descr      The descriptor of the operation. Optional; default
 	 *                    value is #grb::descriptors::no_operation.
@@ -1144,7 +1149,7 @@ namespace grb {
 	 *                    \a OutputType.
 	 *
 	 * @param[in,out] C The matrix to be set.
-	 * @param[in]     A The source matrix, from which the coordinates are copied.
+	 * @param[in]  mask The source matrix, from which the coordinates are copied.
 	 * @param[in]   val The value to fill the matrix's values with.
 	 * @param[in] phase Which #grb::Phase the operation is requested. Optional;
 	 *                  the default is #grb::EXECUTE.
@@ -1159,6 +1164,10 @@ namespace grb {
 	 *
 	 * Any other descriptor will be ignored.
 	 * \endparblock
+	 *
+	 * \warning Mask-modifier descriptors, such as #grb::descriptors::invert_mask
+	 *          are not accepted while #grb::descriptors::structural is in fact
+	 *          implied by this specification.
 	 *
 	 * \parblock
 	 * \par Performance semantics
@@ -1176,7 +1185,7 @@ namespace grb {
 	>
 	RC set(
 		Matrix< OutputType, backend, RIT1, CIT1, NIT1 > &C,
-		const Matrix< InputType, backend, RIT2, CIT2, NIT2 > &A,
+		const Matrix< InputType, backend, RIT2, CIT2, NIT2 > &mask,
 		const ValueType &val,
 		const Phase &phase = EXECUTE
 	) noexcept {
@@ -1184,8 +1193,8 @@ namespace grb {
 		const bool should_not_call_base_masked_matrix_set = false;
 		assert( should_not_call_base_masked_matrix_set );
 #endif
-		(void) A;
 		(void) C;
+		(void) mask;
 		(void) val;
 		(void) phase;
 		return UNSUPPORTED;
