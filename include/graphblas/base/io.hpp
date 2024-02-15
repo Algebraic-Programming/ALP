@@ -1200,7 +1200,6 @@ namespace grb {
 		return UNSUPPORTED;
 	}
 
-
 	/**
 	 * Sets the element of a given vector at a given position to a given value.
 	 *
