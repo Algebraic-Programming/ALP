@@ -100,7 +100,12 @@ install( TARGETS backend_headers_nodefs EXPORT GraphBLASTargets
 	INCLUDES DESTINATION "${INCLUDE_INSTALL_DIR}"
 )
 
-install( TARGETS alp_utils_headers EXPORT GraphBLASTargets )
+# the utils library currently depends heavily on other ALP functionalities,
+# but could be easily split out in future; in view of this, export an
+# independent include path (incidentally the same as ALP)
+install( TARGETS alp_utils_headers EXPORT GraphBLASTargets
+	INCLUDES DESTINATION "${INCLUDE_INSTALL_DIR}"
+)
 
 if( WITH_REFERENCE_BACKEND_HEADERS )
 	add_library( backend_reference_headers INTERFACE )
@@ -244,3 +249,4 @@ install( DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/transition/"
 install( TARGETS transition_headers EXPORT GraphBLASTargets
 	INCLUDES DESTINATION "${TRANSITION_INCLUDE_INSTALL_DIR}"
 )
+
