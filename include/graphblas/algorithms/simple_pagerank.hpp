@@ -30,7 +30,7 @@
 #include <graphblas.hpp>
 
 #ifndef _GRB_NO_STDIO
-#include <iostream>
+ #include <iostream>
 #endif
 
 
@@ -67,9 +67,21 @@ namespace grb {
 		 * \f$ G = \alpha L + (1-\alpha)ee^T \f$ over which the power iterations are
 		 * exectuted.
 		 *
+		 * The following buffers require full capacity (i.e., #grb::size should
+		 * equal #grb::capacity):
+		 *
 		 * @param[in,out] pr_next     Buffer for the PageRank algorithm.
 		 * @param[in,out] pr_nextnext Buffer for the PageRank algorithm.
 		 * @param[in,out] row_sum     Buffer for the PageRank algorithm.
+		 *
+		 * The following buffer requires a capacity of at least the number of dangling
+		 * nodes in \a L:
+		 *
+		 * @param[in,out] is_dangling Buffer for the PageRank algorithm.
+		 *
+		 * \note Should the exact number of (or an upper bound to) dangling nodes in
+		 *       \a L be unknown a priori, then choosing a full capacity for
+		 *       \a is_dangling is always appropriate and sufficient.
 		 *
 		 * The PageRank algorithm holds the following \em optional parameters:
 		 *
@@ -137,6 +149,7 @@ namespace grb {
 			Vector< IOType > &pr_next,
 			Vector< IOType > &pr_nextnext,
 			Vector< IOType > &row_sum,
+			Vector< bool > &is_dangling,
 			const IOType alpha = 0.85,
 			const IOType conv = 0.0000001,
 			const size_t max = 1000,
@@ -183,6 +196,7 @@ namespace grb {
 				) {
 					return ILLEGAL;
 				}
+
 				// alpha must be within 0 and 1 (both exclusive)
 				if( alpha <= 0 || alpha >= 1 ) {
 					return ILLEGAL;
@@ -206,22 +220,50 @@ namespace grb {
 			ret = ret ? ret : set( pr_nextnext, zero );
 			assert( ret == SUCCESS );
 
-			// calculate row sums
-			Semiring<
-				operators::add< IOType >,
-				operators::left_assign_if< IOType, bool, IOType >,
-				identities::zero,
-				identities::logical_true
-			> pattern_ring;
-
-			ret = ret ? ret : set( pr_next, 1 ); // abuses pr_next as temporary vector
-			ret = ret ? ret : set( row_sum, 0 );
-			ret = ret ? ret :
-				vxm< descr | descriptors::dense | descriptors::transpose_matrix >(
-					row_sum, pr_next, L, pattern_ring
-				);
-			// pr_next is now free for further use
+			// calculate row sums, abuses pr_next as a temporary vector
+			{
+				Semiring<
+					operators::add< IOType >,
+					operators::left_assign_if< IOType, bool, IOType >,
+					identities::zero,
+					identities::logical_true
+				> pattern_ring;
+				ret = ret ? ret : set( pr_next, 1 );
+				ret = ret ? ret : set( row_sum, 0 );
+				ret = ret ? ret :
+					vxm< descr | descriptors::dense | descriptors::transpose_matrix >(
+						row_sum, pr_next, L, pattern_ring
+					);
+			}
 			assert( ret == SUCCESS );
+
+			// construct is_dangling, again abusing pr_next
+			{
+				grb::Monoid<
+					grb::operators::add< size_t, IOType, size_t >,
+					grb::identities::zero
+				> reducer;
+				assert( nnz( row_sum ) == n );
+				assert( nnz( pr_next ) == n );
+				ret = ret ? ret : eWiseLambda< descriptors::dense >(
+					[&pr_next,&row_sum,&zero](const size_t i) {
+						if( row_sum[ i ] == zero ) {
+							pr_next[ i ] = 1;
+						} else {
+							pr_next[ i ] = 0;
+						}
+					}, row_sum, pr_next );
+				size_t num_dangling = 0;
+				ret = ret ? ret :
+					foldl< descriptors::dense >( num_dangling, pr_next, reducer );
+				if( ret == SUCCESS && capacity( is_dangling ) < num_dangling ) {
+					return ILLEGAL;
+				}
+				ret = ret ? ret : clear( is_dangling );
+				ret = ret ? ret : set( is_dangling, pr_next, true );
+			}
+			assert( ret == SUCCESS );
+			// pr_next is now free for further use
 
 #ifdef _DEBUG
 			std::cout << "Prelude to iteration 0:\n";
@@ -229,11 +271,9 @@ namespace grb {
 				[ &row_sum, &pr_next, &pr ]( const size_t i ) {
 					#pragma omp critical
 					{
-						std::cout << i << ": " << row_sum[ i ] << "\t" << pr[ i ] << "\t"
-							<< pr_next[ i ] << "\n";
+						std::cout << i << ": " << row_sum[ i ] << "\t" << pr[ i ] << "\n";
 					}
-				},
-				pr, pr_next, row_sum );
+				}, row_sum, pr );
 #endif
 
 			// calculate in-place the inverse of row sums, and keep zero if dangling
@@ -309,8 +349,8 @@ namespace grb {
 						assert( ret == SUCCESS );
 					} else {
 						// otherwise we have to handle the reduction separately
-						ret = foldl< descriptors::dense | grb::descriptors::invert_mask >(
-							dangling, pr, row_sum, addM
+						ret = foldl< descriptors::structural >(
+							dangling, pr, is_dangling, addM
 						);
 						assert( ret == SUCCESS );
 
