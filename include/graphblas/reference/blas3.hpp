@@ -929,7 +929,7 @@ namespace grb {
 		typename Coords,
 		typename RIT, typename CIT, typename NIT
 	>
-	RC maskedOuter(
+	RC outer(
 		Matrix< OutputType, reference, RIT, CIT, NIT > &A,
 		const Matrix< MaskType, reference, RIT, CIT, NIT > &mask,
 		const Vector< InputType1, reference, Coords > &u,
@@ -947,23 +947,23 @@ namespace grb {
 		// static checks
 		NO_CAST_ASSERT( ( !(descr & descriptors::no_casting) ||
 				std::is_same< typename Operator::D1, InputType1 >::value
-			), "grb::maskedOuter",
+			), "grb::outer",
 			"called with a prefactor vector that does not match the first domain "
 			"of the given multiplication operator" );
 		NO_CAST_ASSERT( ( !(descr & descriptors::no_casting) ||
 				std::is_same< typename Operator::D2, InputType2 >::value
-			), "grb::maskedOuter",
+			), "grb::outer",
 			"called with a postfactor vector that does not match the first domain "
 			"of the given multiplication operator" );
 		NO_CAST_ASSERT( ( !(descr & descriptors::no_casting) ||
 				std::is_same< typename Operator::D3, OutputType >::value
-			), "grb::maskedOuter",
+			), "grb::outer",
 			"called with an output matrix that does not match the output domain of "
 			"the given multiplication operator" );
 		static_assert( !(descr & descriptors::invert_mask),
-			"grb::maskedOuter: invert_mask descriptor cannot be used ");
+			"grb::outer: invert_mask descriptor cannot be used ");
 #ifdef _DEBUG
-		std::cout << "In grb::maskedOuter (reference)\n";
+		std::cout << "In grb::outer (reference)\n";
 #endif
 
 		const size_t nrows = size( u );

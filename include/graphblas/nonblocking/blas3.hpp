@@ -424,7 +424,7 @@ namespace grb {
 		typename Coords,
 		typename RIT, typename CIT, typename NIT
 	>
-	RC maskedOuter(
+	RC outer(
 		Matrix< OutputType, nonblocking, RIT, CIT, NIT > &A,
 		const Matrix< MaskType, nonblocking, RIT, CIT, NIT > &mask,
 		const Vector< InputType1, nonblocking, Coords > &u,
@@ -442,7 +442,7 @@ namespace grb {
 		if( internal::NONBLOCKING::warn_if_not_native &&
 			config::PIPELINE::warn_if_not_native
 		) {
-			std::cerr << "Warning: maskedOuter (nonblocking) currently delegates "
+			std::cerr << "Warning: outer (nonblocking) currently delegates "
 				<< "to a blocking implementation.\n"
 				<< "         Further similar such warnings will be suppressed.\n";
 			internal::NONBLOCKING::warn_if_not_native = false;
@@ -453,7 +453,7 @@ namespace grb {
 		internal::le.execution();
 
 		// second, delegate to the reference backend
-		return maskedOuter< descr, Operator >(
+		return outer< descr, Operator >(
 			internal::getRefMatrix( A ),
 			internal::getRefMatrix( mask ),
 			internal::getRefVector( u ),

@@ -499,7 +499,7 @@ namespace grb {
 		typename RIT, typename CIT, typename NIT,
 		Backend backend
 	>
-	RC maskedOuter(
+	RC outer(
 		Matrix< OutputType, backend, RIT, CIT, NIT > &A,
 		const Matrix< MaskType, backend, RIT, CIT, NIT > &mask,
 		const Vector< InputType1, backend, Coords > &u,
@@ -521,7 +521,7 @@ namespace grb {
 		(void) op;
 		(void) phase;
 #ifdef _DEBUG
-		std::cerr << "Selected backend does not implement grb::maskedOuter\n";
+		std::cerr << "Selected backend does not implement grb::outer\n";
 #endif
 #ifndef NDEBUG
 		const bool selected_backend_does_not_support_masked_outer	= false;
