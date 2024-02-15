@@ -1279,6 +1279,10 @@ namespace grb {
 	 * is forbidden also. Implementations shall throw a static assertion failure
 	 * if the user nonetheless asks for structural mask inversion.
 	 *
+	 * \warning Mask-modifier descriptors, such as #grb::descriptors::invert_mask
+	 *          are not accepted while #grb::descriptors::structural is in fact
+	 *          implied by this specification.
+	 *
 	 * \parblock
 	 * \par Performance semantics
 	 * Each backend must define performance semantics for this primitive.
@@ -1300,7 +1304,7 @@ namespace grb {
 	>
 	RC set(
 		Matrix< OutputType, backend, RIT1, CIT1, NIT1 > &C,
-		const Matrix< InputType, backend, RIT2, CIT2, NIT2 > &A,
+		const Matrix< InputType, backend, RIT2, CIT2, NIT2 > &mask,
 		const ValueType &val,
 		const Phase &phase = EXECUTE,
 		const typename std::enable_if<
@@ -1313,8 +1317,8 @@ namespace grb {
 		const bool should_not_call_base_matrix_masked_set = false;
 		assert( should_not_call_base_matrix_masked_set );
 #endif
-		(void) A;
 		(void) C;
+		(void) mask;
 		(void) val;
 		(void) phase;
 		return UNSUPPORTED;
