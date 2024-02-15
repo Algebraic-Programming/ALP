@@ -222,7 +222,7 @@ std::string grb::internal::hyperdags::toString(
 			return "outer( matrix, vector, vector, operation )";
 
 		case MASKED_OUTER:
-			return "maskedOuter( matrix, matrix, vector, vector, operation )";
+			return "outer( matrix, matrix, vector, vector, operation )";
 
 		case MXV_VECTOR_VECTOR_MATRIX_VECTOR_VECTOR_R:
 			return "mxv( vector, vector, matrix, vector, vector, ring )";

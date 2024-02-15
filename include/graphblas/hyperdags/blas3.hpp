@@ -265,7 +265,7 @@ namespace grb {
 		typename Coords,
 		typename RIT, typename CIT, typename NIT
 	>
-	RC maskedOuter(
+	RC outer(
 		Matrix< OutputType, hyperdags, RIT, CIT, NIT > &A,
 		const Matrix< MaskType, hyperdags, RIT, CIT, NIT > &mask,
 		const Vector< InputType1, hyperdags, Coords > &u,
@@ -280,7 +280,7 @@ namespace grb {
 			!grb::is_object< OutputType >::value,
 			void >::type * const = nullptr
 	) {
-		const RC ret = maskedOuter< descr >(
+		const RC ret = outer< descr >(
 			internal::getMatrix( A ),
 			internal::getMatrix( mask ),
 			internal::getVector( u ),

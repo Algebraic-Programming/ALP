@@ -214,7 +214,7 @@ namespace grb {
 		typename Coords,
 		typename RIT, typename CIT, typename NIT
 	>
-	RC maskedOuter(
+	RC outer(
 		Matrix< OutputType, BSP1D, RIT, CIT, NIT > &A,
 		const Matrix< MaskType, BSP1D, RIT, CIT, NIT > &mask,
 		const Vector< InputType1, BSP1D, Coords > &u,
@@ -230,7 +230,7 @@ namespace grb {
 			void >::type * const = nullptr
 	) {
 		assert( phase != TRY );
-		RC ret = maskedOuter< descr, Operator >(
+		RC ret = outer< descr, Operator >(
 			internal::getLocal( A ),
 			internal::getLocal( mask ),
 			internal::getLocal( u ),
