@@ -540,7 +540,136 @@ void findPath2Augmentations( grb::Matrix< int > &G2P, grb::Matrix< int > &D2P, c
 		grb::mxv( v, P_m, a, Phase::EXECUTE );
 
 		
+		grb::Vector< int > c( n );
+
+		grb::eWiseApply( c, a, v, grb::operators::equal< int >() , Phase::RESIZE );
+		grb::eWiseApply( c, a, v, grb::operators::equal< int >() , Phase::EXECUTE );
+
+		grb::Vector< int > cu( n );
+
+		grb::eWiseApply( cu, c, mu, grb::operators::left_assign< int >() , Phase::RESIZE );
+		grb::eWiseApply( cu, c, mu, grb::operators::left_assign< int >() , Phase::EXECUTE );
+
+		grb::Vector< int > cl( n );
+
+		grb::eWiseApply( cl, c, ml, grb::operators::left_assign< int >() , Phase::RESIZE );
+		grb::eWiseApply( cl, c, ml, grb::operators::left_assign< int >() , Phase::EXECUTE );
+
+
+		grb::Matrix< int > Temp( n, n );
+		grb::Matrix< int > Max( n, n );
+
+
+
+
+
+
+
+
+
+		grb::Matrix< int > G1u( n, n );
+		grb::Matrix< int > D1u( n, n );
+
+		selectSubmatrix( Temp, G1, cu, z );
+
+		maxPerRow( Max, Temp, z );
+
+		Monoid<
+			grb::operators::right_assign< int >,
+			grb::identities::zero
+		> right_assignment_monoid;
+
+		grb::eWiseApply( Temp, G1, Max, right_assignment_monoid, Phase::RESIZE );
+		grb::eWiseApply( Temp, G1, Max, right_assignment_monoid, Phase::EXECUTE );
+
+		grb::eWiseApply( G1u, G1, Temp, grb::operators::subtract< int >(), Phase::RESIZE );
+		grb::eWiseApply( G1u, G1, Temp, grb::operators::subtract< int >(), Phase::EXECUTE );
+
+		maxPerRow( D1u, G1u, z );
+
+		grb::Matrix< int > D2P_tmpu( n, n );
+
+		selectSubmatrix( D2P_tmpu, D1, m, z );
+
+		grb::Matrix< int > D2P_tmp_au( n, n );
 		
+		grb::set( D2P_tmp_au, D2P_tmpu, Phase::RESIZE );
+		grb::set( D2P_tmp_au, D2P_tmpu );
+
+		grb::eWiseLambda( [&D2P_tmp_au]( const size_t i, const size_t j, int& nz ) { nz = j; }, D2P_tmp_au );
+
+		grb::Vector< int > a( n );
+		grb::mxv( a, D2P_tmp_au, z, standard ); 
+
+		grb::Vector< int > a_g( n );
+		grb::mxv( a_g, D2P_tmpu, z, standard ); 
+
+		grb::Matrix< int > G2P_tmp1u( n, n );
+
+		grb::maskedOuter(G2P_tmp1u, M, a_g, a_g, grb::operators::add< int >(), Phase::RESIZE );
+		grb::maskedOuter(G2P_tmp1u, M, a_g, a_g, grb::operators::add< int >(), Phase::EXECUTE );
+
+		grb::Matrix< int > G2P_tmp2u( n, n );
+
+		grb::select( G2P_tmp2u, G2P_tmp1u, grb::operators::is_positive<int,int,int>(), Phase::RESIZE );
+		grb::select( G2P_tmp2u, G2P_tmp1u, grb::operators::is_positive<int,int,int>(), Phase::EXECUTE );
+
+
+
+
+
+
+
+
+
+		grb::Matrix< int > G1l( n, n );
+		grb::Matrix< int > D1l( n, n );
+
+		selectSubmatrix( Temp, G1, cl, z );
+
+		maxPerRow( Max, Temp, z );
+
+		Monoid<
+			grb::operators::right_assign< int >,
+			grb::identities::zero
+		> right_assignment_monoid;
+
+		grb::eWiseApply( Temp, G1, Max, right_assignment_monoid, Phase::RESIZE );
+		grb::eWiseApply( Temp, G1, Max, right_assignment_monoid, Phase::EXECUTE );
+
+		grb::eWiseApply( G1l, G1, Temp, grb::operators::subtract< int >(), Phase::RESIZE );
+		grb::eWiseApply( G1l, G1, Temp, grb::operators::subtract< int >(), Phase::EXECUTE );
+
+		maxPerRow( D1l, G1l, z );
+
+		grb::Matrix< int > D2P_tmpl( n, n );
+
+		selectSubmatrix( D2P_tmpl, D1, m, z );
+
+		grb::Matrix< int > D2P_tmp_al( n, n );
+		
+		grb::set( D2P_tmp_al, D2P_tmpl, Phase::RESIZE );
+		grb::set( D2P_tmp_al, D2P_tmpl );
+
+		grb::eWiseLambda( [&D2P_tmp_al]( const size_t i, const size_t j, int& nz ) { nz = j; }, D2P_tmp_al );
+
+		grb::Vector< int > a( n );
+		grb::mxv( a, D2P_tmp_al, z, standard ); 
+
+		grb::Vector< int > a_g( n );
+		grb::mxv( a_g, D2P_tmpl, z, standard ); 
+
+		grb::Matrix< int > G2P_tmp1l( n, n );
+
+		grb::maskedOuter(G2P_tmp1l, M, a_g, a_g, grb::operators::add< int >(), Phase::RESIZE );
+		grb::maskedOuter(G2P_tmp1l, M, a_g, a_g, grb::operators::add< int >(), Phase::EXECUTE );
+
+		grb::Matrix< int > G2P_tmp2l( n, n );
+
+		grb::select( G2P_tmp2l, G2P_tmp1l, grb::operators::is_positive<int,int,int>(), Phase::RESIZE );
+		grb::select( G2P_tmp2l, G2P_tmp1l, grb::operators::is_positive<int,int,int>(), Phase::EXECUTE );
+
+
 	}
 	else {
 
