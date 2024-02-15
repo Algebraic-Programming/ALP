@@ -971,6 +971,10 @@ namespace grb {
 		const size_t m = grb::nrows( mask );
 		const size_t n = grb::ncols( mask );
 
+		if( m == 0 || n == 0 ) {
+			return outer< descr >( A, u, v, mul, phase );
+		}
+
 		constexpr bool crs_only = descr & descriptors::force_row_major;
 
 		assert( phase != TRY );
@@ -985,10 +989,6 @@ namespace grb {
 		if( nnz( u ) == 0 || nnz( v ) == 0 ) {
 			clear( A );
 			return SUCCESS;
-		}
-
-		if( nnz(mask) == 0 ) {
-			return outer( A, u, v, mul, phase );
 		}
 
 
