@@ -53,7 +53,7 @@ namespace grb {
 		 */
 		template<
 			typename D1, typename D2 = D1, typename D3 = D2,
-			Backend implementation = config::default_backend
+			enum Backend implementation = config::default_backend
 		>
 		class left_assign :
 			public internal::Operator<
@@ -62,7 +62,7 @@ namespace grb {
 
 			public:
 
-				template< typename A, typename B, typename C, Backend D >
+				template< typename A, typename B, typename C, enum Backend D >
 				using GenericOperator = left_assign< A, B, C, D >;
 
 				left_assign() {}
@@ -80,7 +80,7 @@ namespace grb {
 		 */
 		template<
 			typename D1, typename D2 = D1, typename D3 = D2,
-			Backend implementation = config::default_backend
+			enum Backend implementation = config::default_backend
 		>
 		class left_assign_if :
 			 public internal::Operator<
@@ -89,7 +89,7 @@ namespace grb {
 
 			public:
 
-				template< typename A, typename B, typename C, Backend D >
+				template< typename A, typename B, typename C, enum Backend D >
 				using GenericOperator = left_assign_if< A, B, C, D >;
 
 				left_assign_if() {}
@@ -110,7 +110,7 @@ namespace grb {
 		 */
 		template<
 			typename D1, typename D2 = D1, typename D3 = D2,
-			Backend implementation = config::default_backend
+			enum Backend implementation = config::default_backend
 		>
 		class right_assign : public internal::Operator<
 				internal::right_assign< D1, D2, D3, implementation >
@@ -118,7 +118,7 @@ namespace grb {
 
 			public:
 
-				template< typename A, typename B, typename C, Backend D >
+				template< typename A, typename B, typename C, enum Backend D >
 				using GenericOperator = right_assign< A, B, C, D >;
 
 				right_assign() {}
@@ -136,7 +136,7 @@ namespace grb {
 		 */
 		template<
 			typename D1, typename D2 = D1, typename D3 = D2,
-			Backend implementation = config::default_backend
+			enum Backend implementation = config::default_backend
 		>
 		class right_assign_if : public internal::Operator<
 				internal::right_assign_if< D1, D2, D3, implementation >
@@ -144,7 +144,7 @@ namespace grb {
 
 			public:
 
-				template< typename A, typename B, typename C, Backend D >
+				template< typename A, typename B, typename C, enum Backend D >
 				using GenericOperator = right_assign_if< A, B, C, D >;
 
 				right_assign_if() {}
@@ -170,7 +170,7 @@ namespace grb {
 		// [Operator Wrapping]
 		template<
 			typename D1, typename D2 = D1, typename D3 = D2,
-			Backend implementation = config::default_backend
+			enum Backend implementation = config::default_backend
 		>
 		class add : public internal::Operator<
 			internal::add< D1, D2, D3, implementation >
@@ -178,7 +178,7 @@ namespace grb {
 
 			public:
 
-				template< typename A, typename B, typename C, Backend D >
+				template< typename A, typename B, typename C, enum Backend D >
 				using GenericOperator = add< A, B, C, D >;
 
 				add() {}
@@ -203,7 +203,7 @@ namespace grb {
 		 */
 		template<
 			typename D1, typename D2 = D1, typename D3 = D2,
-			Backend implementation = config::default_backend
+			enum Backend implementation = config::default_backend
 		>
 		class mul : public internal::Operator<
 			internal::mul< D1, D2, D3, implementation >
@@ -211,7 +211,7 @@ namespace grb {
 
 			public:
 
-				template< typename A, typename B, typename C, Backend D >
+				template< typename A, typename B, typename C, enum Backend D >
 				using GenericOperator = mul< A, B, C, D >;
 
 				mul() {}
@@ -236,7 +236,7 @@ namespace grb {
 		 */
 		template<
 			typename D1, typename D2 = D1, typename D3 = D2,
-			Backend implementation = config::default_backend
+			enum Backend implementation = config::default_backend
 		>
 		class max : public internal::Operator<
 			internal::max< D1, D2, D3, implementation >
@@ -244,70 +244,75 @@ namespace grb {
 
 			public:
 
-				template< typename A, typename B, typename C, Backend D >
+				template< typename A, typename B, typename C, enum Backend D >
 				using GenericOperator = max< A, B, C, D >;
 
 				max() {}
 		};
 
 		template<
-			typename D,
-			typename RIT = config::RowIndexType,
-			typename CIT = config::ColIndexType
+			typename D, typename RIT, typename CIT,
+			enum Backend implementation = config::default_backend
 		>
 		class is_diagonal : public internal::SingleMatrixCoordinatesOperatorBase<
-			internal::is_diagonal< D, RIT, CIT >
+			internal::is_diagonal< D, RIT, CIT, implementation >
 		> {
+
 			public:
-				is_diagonal() = default;
+
+				is_diagonal() {}
 		};
 
 		template<
-			typename D,
-			typename RIT = config::RowIndexType,
-			typename CIT = config::ColIndexType
-		>
-		class is_strictly_lower : public internal::SingleMatrixCoordinatesOperatorBase<
-			internal::is_strictly_lower< D, RIT, CIT >
-		> {
-		public:
-			is_strictly_lower() = default;
-		};
-
-		template<
-			typename D,
-			typename RIT = config::RowIndexType,
-			typename CIT = config::ColIndexType
-		>
-		class is_lower_or_diagonal : public internal::SingleMatrixCoordinatesOperatorBase<
-			internal::is_lower_or_diagonal< D, RIT, CIT >
-		> {
-		public:
-			is_lower_or_diagonal() = default;
-		};
-
-		template<
-			typename D,
-			typename RIT = config::RowIndexType,
-			typename CIT = config::ColIndexType
+			typename D, typename RIT, typename CIT,
+			enum Backend implementation = config::default_backend
 		>
 		class is_strictly_upper : public internal::SingleMatrixCoordinatesOperatorBase<
-			internal::is_strictly_upper< D, RIT, CIT >
+			internal::is_strictly_upper< D, RIT, CIT, implementation >
 		> {
-		public:
-			is_strictly_upper() = default;
+
+			public:
+
+				is_strictly_upper() {}
 		};
 
 		template<
-			typename D,
-			typename RIT = config::RowIndexType,
-			typename CIT = config::ColIndexType
+			typename D, typename RIT, typename CIT,
+			enum Backend implementation = config::default_backend
 		>
-		class is_upper_or_diagonal : public internal::SingleMatrixCoordinatesOperatorBase<
-			internal::is_upper_or_diagonal< D, RIT, CIT >
+		class is_strictly_lower : public internal::SingleMatrixCoordinatesOperatorBase<
+			internal::is_strictly_lower< D, RIT, CIT, implementation >
 		> {
-		public:
-			is_upper_or_diagonal() = default;
+
+			public:
+
+				is_strictly_lower() {}
+		};
+
+		template<
+			typename D, typename RIT, typename CIT,
+			enum Backend implementation = config::default_backend
+		>
+		class is_nonzero : public internal::SingleMatrixCoordinatesOperatorBase<
+			internal::is_nonzero< D, RIT, CIT, implementation >
+		> {
+
+			public:
+
+				is_nonzero() {}
+		};
+
+		template<
+			typename D, typename RIT, typename CIT,
+			enum Backend implementation = config::default_backend
+		>
+		class is_positive : public internal::SingleMatrixCoordinatesOperatorBase<
+			internal::is_positive< D, RIT, CIT, implementation >
+		> {
+
+			public:
+
+				is_positive() {}
 		};
 
 		/**
@@ -329,7 +334,7 @@ namespace grb {
 		 */
 		template<
 			typename D1, typename D2 = D1, typename D3 = D2,
-			Backend implementation = config::default_backend
+			enum Backend implementation = config::default_backend
 		>
 		class min : public internal::Operator<
 				internal::min< D1, D2, D3, implementation >
@@ -337,7 +342,7 @@ namespace grb {
 
 			public:
 
-				template< typename A, typename B, typename C, Backend D >
+				template< typename A, typename B, typename C, enum Backend D >
 				using GenericOperator = min< A, B, C, D >;
 
 				min() {}
@@ -356,7 +361,7 @@ namespace grb {
 		 */
 		template<
 			typename D1, typename D2 = D1, typename D3 = D2,
-			Backend implementation = config::default_backend
+			enum Backend implementation = config::default_backend
 		>
 		class subtract : public internal::Operator<
 			internal::substract< D1, D2, D3, implementation >
@@ -364,7 +369,7 @@ namespace grb {
 
 			public:
 
-				template< typename A, typename B, typename C, Backend D >
+				template< typename A, typename B, typename C, enum Backend D >
 				using GenericOperator = subtract< A, B, C, D >;
 
 				subtract() {}
@@ -383,7 +388,7 @@ namespace grb {
 		 */
 		template<
 			typename D1, typename D2 = D1, typename D3 = D2,
-			Backend implementation = config::default_backend
+			enum Backend implementation = config::default_backend
 		>
 		class divide : public internal::Operator<
 				internal::divide< D1, D2, D3, implementation >
@@ -391,7 +396,7 @@ namespace grb {
 
 			public:
 
-				template< typename A, typename B, typename C, Backend D >
+				template< typename A, typename B, typename C, enum Backend D >
 				using GenericOperator = divide< A, B, C, D >;
 
 				divide() {}
@@ -408,7 +413,7 @@ namespace grb {
 		 */
 		template<
 			typename D1, typename D2 = D1, typename D3 = D2,
-			Backend implementation = config::default_backend
+			enum Backend implementation = config::default_backend
 		>
 		class divide_reverse : public internal::Operator<
 				internal::divide_reverse< D1, D2, D3, implementation >
@@ -416,7 +421,7 @@ namespace grb {
 
 			public:
 
-				template< typename A, typename B, typename C, Backend D >
+				template< typename A, typename B, typename C, enum Backend D >
 				using GenericOperator = divide_reverse< A, B, C, D >;
 
 				divide_reverse() {}
@@ -434,7 +439,7 @@ namespace grb {
 		 */
 		template<
 			typename D1, typename D2 = D1, typename D3 = D2,
-			Backend implementation = config::default_backend
+			enum Backend implementation = config::default_backend
 		>
 		class equal : public internal::Operator<
 				internal::equal< D1, D2, D3, implementation >
@@ -442,7 +447,7 @@ namespace grb {
 
 			public:
 
-				template< typename A, typename B, typename C, Backend D >
+				template< typename A, typename B, typename C, enum Backend D >
 				using GenericOperator = equal< A, B, C, D >;
 
 				equal() {}
@@ -460,7 +465,7 @@ namespace grb {
 		 */
 		template<
 			typename D1, typename D2 = D1, typename D3 = D2,
-			Backend implementation = config::default_backend
+			enum Backend implementation = config::default_backend
 		>
 		class not_equal : public internal::Operator<
 			internal::not_equal< D1, D2, D3, implementation >
@@ -468,7 +473,7 @@ namespace grb {
 
 			public:
 
-				template< typename A, typename B, typename C, Backend D >
+				template< typename A, typename B, typename C, enum Backend D >
 				using GenericOperator = not_equal< A, B, C, D >;
 
 				not_equal() {}
@@ -489,7 +494,7 @@ namespace grb {
 		 */
 		template<
 			typename D1, typename D2 = D1, typename D3 = D2,
-			Backend implementation = config::default_backend
+			enum Backend implementation = config::default_backend
 		>
 		class any_or : public internal::Operator<
 			internal::any_or< D1, D2, D3, implementation >
@@ -497,7 +502,7 @@ namespace grb {
 
 			public:
 
-				template< typename A, typename B, typename C, Backend D >
+				template< typename A, typename B, typename C, enum Backend D >
 				using GenericOperator = any_or< A, B, C, D >;
 
 				any_or() {}
@@ -517,7 +522,7 @@ namespace grb {
 		 */
 		template<
 			typename D1, typename D2 = D1, typename D3 = D2,
-			Backend implementation = config::default_backend
+			enum Backend implementation = config::default_backend
 		>
 		class logical_or : public internal::Operator<
 				internal::logical_or< D1, D2, D3, implementation >
@@ -525,7 +530,7 @@ namespace grb {
 
 			public:
 
-				template< typename A, typename B, typename C, Backend D >
+				template< typename A, typename B, typename C, enum Backend D >
 				using GenericOperator = logical_or< A, B, C, D >;
 
 				logical_or() {}
@@ -545,7 +550,7 @@ namespace grb {
 		 */
 		template<
 			typename D1, typename D2 = D1, typename D3 = D2,
-			Backend implementation = config::default_backend
+			enum Backend implementation = config::default_backend
 		>
 		class logical_and : public internal::Operator<
 				internal::logical_and< D1, D2, D3, implementation >
@@ -553,7 +558,7 @@ namespace grb {
 
 			public:
 
-				template< typename A, typename B, typename C, Backend D >
+				template< typename A, typename B, typename C, enum Backend D >
 				using GenericOperator = logical_and< A, B, C, D >;
 
 				logical_and() {}
@@ -569,7 +574,7 @@ namespace grb {
 		 */
 		template<
 			typename D1, typename D2 = D1, typename D3 = D2,
-			Backend implementation = config::default_backend
+			enum Backend implementation = config::default_backend
 		>
 		class relu : public internal::Operator<
 				internal::relu< D1, D2, D3, implementation >
@@ -577,7 +582,7 @@ namespace grb {
 
 			public:
 
-				template< typename A, typename B, typename C, Backend D >
+				template< typename A, typename B, typename C, enum Backend D >
 				using GenericOperator = relu< A, B, C, D >;
 
 				relu() {}
@@ -596,7 +601,7 @@ namespace grb {
 		 */
 		template<
 			typename D1, typename D2 = D1, typename D3 = D2,
-			Backend implementation = config::default_backend
+			enum Backend implementation = config::default_backend
 		>
 		class abs_diff : public internal::Operator<
 				internal::abs_diff< D1, D2, D3, implementation >
@@ -604,7 +609,7 @@ namespace grb {
 
 			public:
 
-				template< typename A, typename B, typename C, Backend D >
+				template< typename A, typename B, typename C, enum Backend D >
 				using GenericOperator = abs_diff< A, B, C, D >;
 
 				abs_diff() {}
@@ -678,7 +683,7 @@ namespace grb {
 		 */
 		template<
 			typename D1, typename D2, typename D3,
-			Backend implementation = config::default_backend
+			enum Backend implementation = config::default_backend
 		>
 		class square_diff : public internal::Operator<
 				internal::square_diff< D1, D2, D3, implementation >
@@ -686,7 +691,7 @@ namespace grb {
 
 			public:
 
-				template< typename A, typename B, typename C, Backend D >
+				template< typename A, typename B, typename C, enum Backend D >
 				using GenericOperator = square_diff< A, B, C, D >;
 
 				square_diff() {}
@@ -704,7 +709,7 @@ namespace grb {
 		 */
 		template<
 			typename IN1, typename IN2,
-			Backend implementation = config::default_backend
+			enum Backend implementation = config::default_backend
 		>
 		class zip : public internal::Operator<
 				internal::zip< IN1, IN2, implementation >
@@ -712,7 +717,7 @@ namespace grb {
 
 			public:
 
-				template< typename A, typename B, Backend D >
+				template< typename A, typename B, enum Backend D >
 				using GenericOperator = zip< A, B, D >;
 
 				zip() {}
@@ -733,7 +738,7 @@ namespace grb {
 		 */
 		template<
 			typename D1, typename D2 = D1, typename D3 = D2,
-			Backend implementation = config::default_backend
+			enum Backend implementation = config::default_backend
 		>
 		class equal_first : public internal::Operator<
 				internal::equal_first< D1, D2, D3, implementation >
@@ -741,7 +746,7 @@ namespace grb {
 
 			public:
 
-				template< typename A, typename B, typename C, Backend D >
+				template< typename A, typename B, typename C, enum Backend D >
 				using GenericOperator = equal_first< A, B, C, D >;
 
 				equal_first() {}
@@ -762,7 +767,7 @@ namespace grb {
 		 */
 		template<
 			typename D1, typename D2 = D1, typename D3 = D2,
-			Backend implementation = config::default_backend
+			enum Backend implementation = config::default_backend
 		>
 		class less_than : public internal::Operator<
 				internal::lt< D1, D2, D3, implementation >
@@ -770,7 +775,7 @@ namespace grb {
 
 			public:
 
-				template< typename A, typename B, typename C, Backend D >
+				template< typename A, typename B, typename C, enum Backend D >
 				using GenericOperator = less_than< A, B, C, D >;
 
 				less_than() {}
@@ -791,7 +796,7 @@ namespace grb {
 		 */
 		template<
 			typename D1, typename D2 = D1, typename D3 = D2,
-			Backend implementation = config::default_backend
+			enum Backend implementation = config::default_backend
 		>
 		class leq : public internal::Operator<
 				internal::leq< D1, D2, D3, implementation >
@@ -799,7 +804,7 @@ namespace grb {
 
 			public:
 
-				template< typename A, typename B, typename C, Backend D >
+				template< typename A, typename B, typename C, enum Backend D >
 				using GenericOperator = leq< A, B, C, D >;
 
 				leq() {}
@@ -820,7 +825,7 @@ namespace grb {
 		 */
 		template<
 			typename D1, typename D2 = D1, typename D3 = D2,
-			Backend implementation = config::default_backend
+			enum Backend implementation = config::default_backend
 		>
 		class greater_than: public internal::Operator<
 				internal::gt< D1, D2, D3, implementation >
@@ -828,7 +833,7 @@ namespace grb {
 
 			public:
 
-				template< typename A, typename B, typename C, Backend D >
+				template< typename A, typename B, typename C, enum Backend D >
 				using GenericOperator = greater_than< A, B, C, D >;
 
 				greater_than() {}
@@ -849,7 +854,7 @@ namespace grb {
 		 */
 		template<
 			typename D1, typename D2 = D1, typename D3 = D2,
-			Backend implementation = config::default_backend
+			enum Backend implementation = config::default_backend
 		>
 		class geq : public internal::Operator<
 				internal::geq< D1, D2, D3, implementation >
@@ -857,7 +862,7 @@ namespace grb {
 
 			public:
 
-				template< typename A, typename B, typename C, Backend D >
+				template< typename A, typename B, typename C, enum Backend D >
 				using GenericOperator = geq< A, B, C, D >;
 
 				geq() {}
@@ -922,7 +927,7 @@ namespace grb {
 		 */
 		template<
 			typename IN1, typename IN2, typename OUT, bool conj_left,
-			Backend implementation = config::default_backend
+			enum Backend implementation = config::default_backend
 		>
 		class conjugate_mul : public operators::internal::Operator<
 			internal::conjugate_mul< IN1, IN2, OUT, conj_left, implementation >
@@ -930,7 +935,7 @@ namespace grb {
 
 			public:
 
-				template< typename A, typename B, typename C, bool D, Backend E >
+				template< typename A, typename B, typename C, bool D, enum Backend E >
 				using GenericOperator = conjugate_mul< A, B, C, D, E >;
 
 				conjugate_mul() {}
@@ -973,7 +978,7 @@ namespace grb {
 		 */
 		template<
 			typename IN1, typename IN2 = IN1, typename OUT = IN2,
-			Backend implementation = config::default_backend
+			enum Backend implementation = config::default_backend
 		>
 		class conjugate_right_mul : public operators::internal::Operator<
 			internal::conjugate_mul< IN1, IN2, OUT, false, implementation >
@@ -981,7 +986,7 @@ namespace grb {
 
 			public:
 
-				template< typename A, typename B, typename C, Backend D >
+				template< typename A, typename B, typename C, enum Backend D >
 				using GenericOperator = conjugate_right_mul< A, B, C, D >;
 
 				conjugate_right_mul() {}
@@ -1024,7 +1029,7 @@ namespace grb {
 		 */
 		template<
 			typename IN1, typename IN2 = IN1, typename OUT = IN2,
-			Backend implementation = config::default_backend
+			enum Backend implementation = config::default_backend
 		>
 		class conjugate_left_mul : public operators::internal::Operator<
 			internal::conjugate_mul< IN1, IN2, OUT, true, implementation >
@@ -1032,7 +1037,7 @@ namespace grb {
 
 			public:
 
-				template< typename A, typename B, typename C, Backend D >
+				template< typename A, typename B, typename C, enum Backend D >
 				using GenericOperator = conjugate_left_mul< A, B, C, D >;
 
 				conjugate_left_mul() {}
@@ -1041,236 +1046,240 @@ namespace grb {
 
 	} // namespace operators
 
-	template< typename D1, typename D2, typename D3, Backend implementation >
+	template< typename D1, typename D2, typename D3, enum Backend implementation >
 	struct is_operator< operators::left_assign_if< D1, D2, D3, implementation > > {
-		static constexpr bool value = true;
+		static const constexpr bool value = true;
 	};
 
-	template< typename D1, typename D2, typename D3, Backend implementation >
+	template< typename D1, typename D2, typename D3, enum Backend implementation >
 	struct is_operator< operators::right_assign_if< D1, D2, D3, implementation > > {
-		static constexpr bool value = true;
+		static const constexpr bool value = true;
 	};
 
-	template< typename D1, typename D2, typename D3, Backend implementation >
+	template< typename D1, typename D2, typename D3, enum Backend implementation >
 	struct is_operator< operators::left_assign< D1, D2, D3, implementation > > {
-		static constexpr bool value = true;
+		static const constexpr bool value = true;
 	};
 
-	template< typename D1, typename D2, typename D3, Backend implementation >
+	template< typename D1, typename D2, typename D3, enum Backend implementation >
 	struct is_operator< operators::right_assign< D1, D2, D3, implementation > > {
-		static constexpr bool value = true;
+		static const constexpr bool value = true;
 	};
 
 	// [Operator Type Traits]
-	template< typename D1, typename D2, typename D3, Backend implementation >
+	template< typename D1, typename D2, typename D3, enum Backend implementation >
 	struct is_operator< operators::add< D1, D2, D3, implementation > > {
-		static constexpr bool value = true;
+		static const constexpr bool value = true;
 	};
 	// [Operator Type Traits]
 
-	template< typename D1, typename D2, typename D3, Backend implementation >
+	template< typename D1, typename D2, typename D3, enum Backend implementation >
 	struct is_operator< operators::mul< D1, D2, D3, implementation > > {
-		static constexpr bool value = true;
+		static const constexpr bool value = true;
 	};
 
-	template< typename D1, typename D2, typename D3, Backend implementation >
+	template< typename D1, typename D2, typename D3, enum Backend implementation >
 	struct is_operator< operators::max< D1, D2, D3, implementation > > {
-		static constexpr bool value = true;
+		static const constexpr bool value = true;
 	};
 
-	template< typename D1, typename D2, typename D3 >
-	struct is_single_matrix_coordinates_operator< operators::is_diagonal< D1, D2, D3 > > {
-		static constexpr bool value = true;
-	};
-	template< typename D1, typename D2, typename D3 >
-	struct is_single_matrix_coordinates_operator< operators::is_strictly_lower< D1, D2, D3 > > {
-		static constexpr bool value = true;
-	};
-	template< typename D1, typename D2, typename D3 >
-	struct is_single_matrix_coordinates_operator< operators::is_lower_or_diagonal< D1, D2, D3 > > {
-		static constexpr bool value = true;
-	};
-	template< typename D1, typename D2, typename D3 >
-	struct is_single_matrix_coordinates_operator< operators::is_strictly_upper< D1, D2, D3 > > {
-		static constexpr bool value = true;
-	};
-	template< typename D1, typename D2, typename D3 >
-	struct is_single_matrix_coordinates_operator< operators::is_upper_or_diagonal< D1, D2, D3 > > {
-		static constexpr bool value = true;
+	template< typename D1, typename D2, typename D3, enum Backend implementation >
+	struct is_single_matrix_coordinates_operator< operators::is_diagonal< D1, D2, D3, implementation > > {
+		static const constexpr bool value = true;
 	};
 
-	template< typename D1, typename D2, typename D3, Backend implementation >
+	template< typename D1, typename D2, typename D3, enum Backend implementation >
+	struct is_single_matrix_coordinates_operator< operators::is_strictly_upper< D1, D2, D3, implementation > > {
+		static const constexpr bool value = true;
+	};
+
+	template< typename D1, typename D2, typename D3, enum Backend implementation >
+	struct is_single_matrix_coordinates_operator< operators::is_strictly_lower< D1, D2, D3, implementation > > {
+		static const constexpr bool value = true;
+	};
+
+	template< typename D1, typename D2, typename D3, enum Backend implementation >
+	struct is_single_matrix_coordinates_operator< operators::is_nonzero< D1, D2, D3, implementation > > {
+		static const constexpr bool value = true;
+	};
+
+	template< typename D1, typename D2, typename D3, enum Backend implementation >
+	struct is_single_matrix_coordinates_operator< operators::is_positive< D1, D2, D3, implementation > > {
+		static const constexpr bool value = true;
+	};
+
+	template< typename D1, typename D2, typename D3, enum Backend implementation >
 	struct is_operator< operators::min< D1, D2, D3, implementation > > {
-		static constexpr bool value = true;
+		static const constexpr bool value = true;
 	};
 
-	template< typename D1, typename D2, typename D3, Backend implementation >
+	template< typename D1, typename D2, typename D3, enum Backend implementation >
 	struct is_operator< operators::subtract< D1, D2, D3, implementation > > {
-		static constexpr bool value = true;
+		static const constexpr bool value = true;
 	};
 
-	template< typename D1, typename D2, typename D3, Backend implementation >
+	template< typename D1, typename D2, typename D3, enum Backend implementation >
 	struct is_operator< operators::divide< D1, D2, D3, implementation > > {
-		static constexpr bool value = true;
+		static const constexpr bool value = true;
 	};
 
-	template< typename D1, typename D2, typename D3, Backend implementation >
+	template< typename D1, typename D2, typename D3, enum Backend implementation >
 	struct is_operator< operators::divide_reverse< D1, D2, D3, implementation > > {
-		static constexpr bool value = true;
+		static const constexpr bool value = true;
 	};
 
-	template< typename D1, typename D2, typename D3, Backend implementation >
+	template< typename D1, typename D2, typename D3, enum Backend implementation >
 	struct is_operator< operators::equal< D1, D2, D3, implementation > > {
-		static constexpr bool value = true;
+		static const constexpr bool value = true;
 	};
 
-	template< typename D1, typename D2, typename D3, Backend implementation >
+	template< typename D1, typename D2, typename D3, enum Backend implementation >
 	struct is_operator< operators::not_equal< D1, D2, D3, implementation > > {
-		static constexpr bool value = true;
+		static const constexpr bool value = true;
 	};
 
-	template< typename D1, typename D2, typename D3, Backend implementation >
+	template< typename D1, typename D2, typename D3, enum Backend implementation >
 	struct is_operator< operators::any_or< D1, D2, D3, implementation > > {
-		static constexpr bool value = true;
+		static const constexpr bool value = true;
 	};
 
-	template< typename D1, typename D2, typename D3, Backend implementation >
+	template< typename D1, typename D2, typename D3, enum Backend implementation >
 	struct is_operator< operators::logical_or< D1, D2, D3, implementation > > {
-		static constexpr bool value = true;
+		static const constexpr bool value = true;
 	};
 
-	template< typename D1, typename D2, typename D3, Backend implementation >
+	template< typename D1, typename D2, typename D3, enum Backend implementation >
 	struct is_operator< operators::logical_and< D1, D2, D3, implementation > > {
-		static constexpr bool value = true;
+		static const constexpr bool value = true;
 	};
 
-	template< typename D1, typename D2, typename D3, Backend implementation >
+	template< typename D1, typename D2, typename D3, enum Backend implementation >
 	struct is_operator< operators::abs_diff< D1, D2, D3, implementation > > {
-		static constexpr bool value = true;
+		static const constexpr bool value = true;
 	};
 
-	template< typename D1, typename D2, typename D3, Backend implementation >
+	template< typename D1, typename D2, typename D3, enum Backend implementation >
 	struct is_operator< operators::relu< D1, D2, D3, implementation > > {
-		static constexpr bool value = true;
+		static const constexpr bool value = true;
 	};
 
 	template< typename IType, typename VType >
 	struct is_operator< operators::argmin< IType, VType > > {
-		static constexpr bool value = true;
+		static const constexpr bool value = true;
 	};
 
 	template< typename IType, typename VType >
 	struct is_operator< operators::argmax< IType, VType > > {
-		static constexpr bool value = true;
+		static const constexpr bool value = true;
 	};
 
-	template< typename D1, typename D2, typename D3, Backend implementation >
+	template< typename D1, typename D2, typename D3, enum Backend implementation >
 	struct is_operator< operators::square_diff< D1, D2, D3, implementation > > {
-		static constexpr bool value = true;
+		static const constexpr bool value = true;
 	};
 
-	template< typename IN1, typename IN2, Backend implementation >
+	template< typename IN1, typename IN2, enum Backend implementation >
 	struct is_operator< operators::zip< IN1, IN2, implementation > > {
-		static constexpr bool value = true;
+		static const constexpr bool value = true;
 	};
 
-	template< typename D1, typename D2, typename D3, Backend implementation >
+	template< typename D1, typename D2, typename D3, enum Backend implementation >
 	struct is_operator< operators::equal_first< D1, D2, D3, implementation > > {
-		static constexpr bool value = true;
+		static const constexpr bool value = true;
 	};
 
-	template< typename D1, typename D2, typename D3, Backend implementation >
+	template< typename D1, typename D2, typename D3, enum Backend implementation >
 	struct is_operator< operators::less_than< D1, D2, D3, implementation > > {
-		static constexpr bool value = true;
+		static const constexpr bool value = true;
 	};
 
-	template< typename D1, typename D2, typename D3, Backend implementation >
+	template< typename D1, typename D2, typename D3, enum Backend implementation >
 	struct is_operator< operators::leq< D1, D2, D3, implementation > > {
-		static constexpr bool value = true;
+		static const constexpr bool value = true;
 	};
 
-	template< typename D1, typename D2, typename D3, Backend implementation >
+	template< typename D1, typename D2, typename D3, enum Backend implementation >
 	struct is_operator< operators::greater_than< D1, D2, D3, implementation > > {
-		static constexpr bool value = true;
+		static const constexpr bool value = true;
 	};
 
-	template< typename D1, typename D2, typename D3, Backend implementation >
+	template< typename D1, typename D2, typename D3, enum Backend implementation >
 	struct is_operator< operators::geq< D1, D2, D3, implementation > > {
-		static constexpr bool value = true;
+		static const constexpr bool value = true;
 	};
 
 	template<
 		typename D1, typename D2, typename D3,
-		bool cl, Backend implementation
+		bool cl, enum Backend implementation
 	>
 	struct is_operator<
 		operators::conjugate_mul< D1, D2, D3, cl, implementation >
 	> {
-		static constexpr bool value = true;
+		static const constexpr bool value = true;
 	};
 
-	template< typename D1, typename D2, typename D3, Backend implementation >
+	template< typename D1, typename D2, typename D3, enum Backend implementation >
 	struct is_operator<
 		operators::conjugate_left_mul< D1, D2, D3, implementation >
 	> {
-		static constexpr bool value = true;
+		static const constexpr bool value = true;
 	};
 
-	template< typename D1, typename D2, typename D3, Backend implementation >
+	template< typename D1, typename D2, typename D3, enum Backend implementation >
 	struct is_operator<
 		operators::conjugate_right_mul< D1, D2, D3, implementation >
 	> {
-		static constexpr bool value = true;
+		static const constexpr bool value = true;
 	};
 
 	template< typename D1, typename D2, typename D3 >
 	struct is_idempotent< operators::min< D1, D2, D3 >, void > {
-		static constexpr bool value = true;
+		static const constexpr bool value = true;
 	};
 
 	template< typename D1, typename D2, typename D3 >
 	struct is_idempotent< operators::max< D1, D2, D3 >, void > {
-		static constexpr bool value = true;
+		static const constexpr bool value = true;
 	};
 
 	template< typename D1, typename D2, typename D3 >
 	struct is_idempotent< operators::any_or< D1, D2, D3 >, void > {
-		static constexpr bool value = true;
+		static const constexpr bool value = true;
 	};
 
 	template< typename D1, typename D2, typename D3 >
 	struct is_idempotent< operators::logical_or< D1, D2, D3 >, void > {
-		static constexpr bool value = true;
+		static const constexpr bool value = true;
 	};
 
 	template< typename D1, typename D2, typename D3 >
 	struct is_idempotent< operators::logical_and< D1, D2, D3 >, void > {
-		static constexpr bool value = true;
+		static const constexpr bool value = true;
 	};
 
 	template< typename D1, typename D2, typename D3 >
 	struct is_idempotent< operators::relu< D1, D2, D3 >, void > {
-		static constexpr bool value = true;
+		static const constexpr bool value = true;
 	};
 
 	template< typename D1, typename D2, typename D3 >
 	struct is_idempotent< operators::left_assign_if< D1, D2, D3 >, void > {
-		static constexpr bool value = true;
+		static const constexpr bool value = true;
 	};
 
 	template< typename D1, typename D2, typename D3 >
 	struct is_idempotent< operators::right_assign_if< D1, D2, D3 >, void > {
-		static constexpr bool value = true;
+		static const constexpr bool value = true;
 	};
 
 	template< typename IType, typename VType >
 	struct is_idempotent< operators::argmin< IType, VType >, void > {
-		static constexpr bool value = true;
+		static const constexpr bool value = true;
 	};
 
 	template< typename IType, typename VType >
 	struct is_idempotent< operators::argmax< IType, VType >, void > {
-		static constexpr bool value = true;
+		static const constexpr bool value = true;
 	};
 
 	template< typename OP >
@@ -1278,7 +1287,7 @@ namespace grb {
 		OP,
 		typename std::enable_if< is_operator< OP >::value, void >::type
 	> {
-		static constexpr bool value = OP::is_associative();
+		static constexpr const bool value = OP::is_associative();
 	};
 
 	template< typename OP >
@@ -1286,21 +1295,21 @@ namespace grb {
 		OP,
 		typename std::enable_if< is_operator< OP >::value, void >::type
 	> {
-		static constexpr bool value = OP::is_commutative();
+		static constexpr const bool value = OP::is_commutative();
 	};
 
 	// internal type traits follow
 
 	namespace internal {
 
-		template< typename D1, typename D2, typename D3, Backend implementation >
+		template< typename D1, typename D2, typename D3, enum Backend implementation >
 		struct maybe_noop< operators::left_assign_if< D1, D2, D3, implementation > > {
-			static constexpr bool value = true;
+			static const constexpr bool value = true;
 		};
 
-		template< typename D1, typename D2, typename D3, Backend implementation >
+		template< typename D1, typename D2, typename D3, enum Backend implementation >
 		struct maybe_noop< operators::right_assign_if< D1, D2, D3, implementation > > {
-			static constexpr bool value = true;
+			static const constexpr bool value = true;
 		};
 
 	} // end namespace grb::internal
@@ -1329,4 +1338,3 @@ namespace std {
 #endif
 
 #endif // end ``_H_GRB_OPERATORS''
-

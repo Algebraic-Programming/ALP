@@ -1001,7 +1001,8 @@ namespace grb {
 			};
 
 			template<
-				typename D, typename RIT, typename CIT
+				typename D, typename RIT, typename CIT,
+				enum Backend implementation = config::default_backend
 			>
 			class is_diagonal {
 
@@ -1013,82 +1014,96 @@ namespace grb {
 					static bool apply(
 						const row_type * __restrict__ const x,
 						const column_type * __restrict__ const y,
-						const value_type * __restrict__ const
+						const value_type * __restrict__ const v
 					) {
+						(void)v;
+						std::cout << __func__ << ": " << *x << " " << *y  << std::endl;
 						return *x == *y;
 					}
 			};
 
 			template<
-				typename D, typename RIT, typename CIT
-			>
-			class is_strictly_lower {
-
-			public:
-				typedef D value_type;
-				typedef RIT row_type;
-				typedef CIT column_type;
-
-				static bool apply(
-					const row_type * __restrict__ const x,
-					const column_type * __restrict__ const y,
-					const value_type * __restrict__ const
-				) {
-					return *x > *y;
-				}
-			};
-
-			template<
-				typename D, typename RIT, typename CIT
-			>
-			class is_lower_or_diagonal {
-
-			public:
-				typedef D value_type;
-				typedef RIT row_type;
-				typedef CIT column_type;
-
-				static bool apply(
-					const row_type * __restrict__ const x,
-					const column_type * __restrict__ const y,
-					const value_type * __restrict__ const
-				) {
-					return *x >= *y;
-				}
-			};
-
-			template<
-				typename D, typename RIT, typename CIT
+				typename D, typename RIT, typename CIT,
+				enum Backend implementation = config::default_backend
 			>
 			class is_strictly_upper {
 
-			public:
-				typedef D value_type;
-				typedef RIT row_type;
-				typedef CIT column_type;
+				public:
+					typedef D value_type;
+					typedef RIT row_type;
+					typedef CIT column_type;
 
-				static bool apply(
-					const row_type * __restrict__ const x,
-					const column_type * __restrict__ const y,
-					const value_type * __restrict__ const v
-				)  { return not is_lower_or_diagonal< D, RIT, CIT >::apply( x, y, v ); }
+					static bool apply(
+						const row_type * __restrict__ const x,
+						const column_type * __restrict__ const y,
+						const value_type * __restrict__ const v
+					) {
+						(void)v;
+						std::cout << __func__ << ": " << *x << " " << *y  << std::endl;
+						return *x < *y;
+					}
 			};
 
 			template<
-				typename D, typename RIT, typename CIT
+				typename D, typename RIT, typename CIT,
+				enum Backend implementation = config::default_backend
 			>
-			class is_upper_or_diagonal {
+			class is_strictly_lower {
 
-			public:
-				typedef D value_type;
-				typedef RIT row_type;
-				typedef CIT column_type;
+				public:
+					typedef D value_type;
+					typedef RIT row_type;
+					typedef CIT column_type;
 
-				static bool apply(
-					const row_type * __restrict__ const x,
-					const column_type * __restrict__ const y,
-					const value_type * __restrict__ const v
-				) { return not is_strictly_lower< D, RIT, CIT >::apply( x, y, v ); }
+					static bool apply(
+						const row_type * __restrict__ const x,
+						const column_type * __restrict__ const y,
+						const value_type * __restrict__ const v
+					) {
+						(void)v;
+						std::cout << __func__ << ": " << *x << " " << *y  << std::endl;
+						return *x > *y;
+					}
+			};
+
+			template<
+				typename D, typename RIT, typename CIT,
+				enum Backend implementation = config::default_backend
+			>
+			class is_nonzero {
+
+				public:
+					typedef D value_type;
+					typedef RIT row_type;
+					typedef CIT column_type;
+
+					static bool apply(
+						const row_type * __restrict__ const x,
+						const column_type * __restrict__ const y,
+						const value_type * __restrict__ const v
+					) {
+						return (*v)!=0;
+					}
+			};
+
+			template<
+				typename D, typename RIT, typename CIT,
+				enum Backend implementation = config::default_backend
+			>
+			class is_positive {
+
+				public:
+					typedef D value_type;
+					typedef RIT row_type;
+					typedef CIT column_type;
+
+					static bool apply(
+						const row_type * __restrict__ const x,
+						const column_type * __restrict__ const y,
+						const value_type * __restrict__ const v
+					) {
+						return (*v)>0;
+					}
 			};
 
 
@@ -2853,7 +2868,7 @@ namespace grb {
 					 *               initialised.
 					 * @param[out] c The output. Must be pre-allocated.
 					 *
-					 * At the end of the operation, \f$ c = \bar{ab} \f$.
+					 * At the end of the operation, \f$ c = \conjugate_mul\{a,b\} \f$.
 					 */
 					static void apply(
 						const IN1 * __restrict__ const a,
@@ -2905,7 +2920,7 @@ namespace grb {
 			 *
 			 * @see Operator for full details.
 			 */
-			template< typename OP >
+			template< typename OP, enum Backend implementation = config::default_backend >
 			class SingleMatrixCoordinatesOperatorBase {
 				protected:
 
@@ -4409,4 +4424,3 @@ namespace grb {
 } // namespace grb
 
 #endif // _H_GRB_INTERNAL_OPERATORS_BASE
-
