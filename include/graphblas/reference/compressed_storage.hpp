@@ -26,8 +26,8 @@
 #include <cstring> //std::memcpy
 
 #if reference == reference_omp
-	#define _H_GRB_REFERENCE_OMP_COMPRESSED_STORAGE
-	#include <omp.h>
+ #define _H_GRB_REFERENCE_OMP_COMPRESSED_STORAGE
+ #include <omp.h>
 #endif
 
 
