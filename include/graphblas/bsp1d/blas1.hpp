@@ -4506,6 +4506,7 @@ namespace grb {
 
 	/** \internal No implementation notes. */
 	template<
+		Descriptor descr = descriptors::no_operation,
 		typename Func,
 		typename DataType1, typename DataType2, typename Coords,
 		typename... Args
