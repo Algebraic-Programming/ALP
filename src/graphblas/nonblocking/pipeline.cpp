@@ -849,39 +849,43 @@ grb::RC Pipeline::execution() {
 		}
 #endif
 
-		#pragma omp parallel for schedule(dynamic) num_threads(nthreads)
-		for( size_t tile_id = 0; tile_id < num_tiles; ++tile_id ) {
+		#pragma omp parallel num_threads( nthreads )
+		{
+			size_t start, end;
+			config::OMP::localRange( start, end, 0, num_tiles );
+			for( size_t tile_id = start; tile_id < end; ++tile_id ) {
 
-			// compute the lower and upper bounds
-			config::OMP::localRange(
-				lower_bound[ tile_id ], upper_bound[ tile_id ],
-				0, containers_size, tile_size, tile_id, num_tiles
-			);
-			assert( lower_bound[ tile_id ] <= upper_bound[ tile_id ] );
+				// compute the lower and upper bounds
+				config::OMP::localRange(
+					lower_bound[ tile_id ], upper_bound[ tile_id ],
+					0, containers_size, tile_size, tile_id, num_tiles
+				);
+				assert( lower_bound[ tile_id ] <= upper_bound[ tile_id ] );
 
 #ifndef GRB_ALREADY_DENSE_OPTIMIZATION
-			for(
-				std::set< internal::Coordinates< nonblocking > * >::iterator vt = vbegin();
-				vt != vend(); ++vt
-			) {
-				if ( (**vt).size() != getContainersSize() ) {
-					continue;
-				}
+				for(
+					std::set< internal::Coordinates< nonblocking > * >::iterator vt = vbegin();
+					vt != vend(); ++vt
+				) {
+					if ( (**vt).size() != getContainersSize() ) {
+						continue;
+					}
 
-				(**vt).asyncSubsetInit( lower_bound[ tile_id ], upper_bound[ tile_id ] );
-			}
+					(**vt).asyncSubsetInit( lower_bound[ tile_id ], upper_bound[ tile_id ] );
+				}
 #endif
 
-			RC local_ret = SUCCESS;
-			for( std::vector< stage_type >::iterator pt = pbegin();
-				pt != pend(); ++pt
-			) {
-				local_ret = local_ret
-					? local_ret
-					: (*pt)( *this, lower_bound[ tile_id ], upper_bound[ tile_id ] );
-			}
-			if( local_ret != SUCCESS ) {
-				ret = local_ret;
+				RC local_ret = SUCCESS;
+				for( std::vector< stage_type >::iterator pt = pbegin();
+					pt != pend(); ++pt
+				) {
+					local_ret = local_ret
+						? local_ret
+						: (*pt)( *this, lower_bound[ tile_id ], upper_bound[ tile_id ] );
+				}
+				if( local_ret != SUCCESS ) {
+					ret = local_ret;
+				}
 			}
 		}
 	} else {
@@ -907,7 +911,7 @@ grb::RC Pipeline::execution() {
 			(**vt).localCoordinatesInit( am );
 		}
 
-		#pragma omp parallel for schedule(dynamic) num_threads(nthreads)
+		#pragma omp parallel for schedule( dynamic ) num_threads( nthreads )
 		for( size_t tile_id = 0; tile_id < num_tiles; ++tile_id ) {
 
 			config::OMP::localRange(
@@ -945,7 +949,7 @@ grb::RC Pipeline::execution() {
 		// even if only one vector is sparse, we cannot reuse memory because the first
 		// two arguments that we pass to the lambda functions determine whether we
 		// reuse memory or not and they cannot vary for different vectors
-		#pragma omp parallel for schedule(dynamic) num_threads(nthreads)
+		#pragma omp parallel for schedule( dynamic ) num_threads( nthreads )
 		for( size_t tile_id = 0; tile_id < num_tiles; ++tile_id ) {
 
 			RC local_ret = SUCCESS;
@@ -994,7 +998,7 @@ grb::RC Pipeline::execution() {
 			}
 
 			if( new_nnz ) {
-				#pragma omp parallel for schedule(dynamic) num_threads(nthreads)
+				#pragma omp parallel for schedule( dynamic ) num_threads( nthreads )
 				for( size_t tile_id = 0; tile_id < num_tiles; ++tile_id ) {
 					for(
 						std::set< internal::Coordinates< nonblocking > * >::iterator vt =
