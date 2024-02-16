@@ -2573,9 +2573,10 @@ namespace grb {
 				j_start = A.n / 2;
 				assert( A.n > 0 );
 				while( j_start < A.n && !(
-					A.CCS.col_start[ j_start ] <=
-						start && start < A.CCS.col_start[ j_start + 1 ]
-				) ) {
+						A.CCS.col_start[ j_start ] <= start &&
+						start < A.CCS.col_start[ j_start + 1 ]
+					)
+				) {
 #ifdef _DEBUG
  #ifdef _H_GRB_REFERENCE_OMP_BLAS2
 					#pragma omp critical
@@ -2608,33 +2609,32 @@ namespace grb {
 				j_left_range = 0;
 				j_right_range = A.n;
 				j_end = A.n / 2;
-				if( j_end < A.CCS.col_start[ A.n ] ) {
-					while( j_end < A.n && !(
+				while( j_end < A.n && !(
 						A.CCS.col_start[ j_end ] <= end &&
 						end < A.CCS.col_start[ j_end + 1 ]
-					) ) {
+					)
+				) {
 #ifdef _DEBUG
  #ifdef _H_GRB_REFERENCE_OMP_BLAS2
-						#pragma omp critical
+					#pragma omp critical
  #endif
-						std::cout << "\t binary search for " << end << " in [ " << j_left_range
-							<< ", " << j_right_range << " ) = [ " << A.CCS.col_start[ j_left_range ]
-							<< ", " << A.CCS.col_start[ j_right_range ] << " ). "
-							<< "Currently tried and failed at " << j_end << "\n";
+					std::cout << "\t binary search for " << end << " in [ " << j_left_range
+						<< ", " << j_right_range << " ) = [ " << A.CCS.col_start[ j_left_range ]
+						<< ", " << A.CCS.col_start[ j_right_range ] << " ). "
+						<< "Currently tried and failed at " << j_end << "\n";
 #endif
-						if( j_right_range == j_left_range ) {
-							assert( false );
-							break;
-						} else if( A.CCS.col_start[ j_end ] > end ) {
-							j_right_range = j_end;
-						} else {
-							j_left_range = j_end + 1;
-						}
-						assert( j_right_range >= j_left_range );
-						j_end = j_right_range - j_left_range;
-						j_end /= 2;
-						j_end += j_left_range;
+					if( j_right_range == j_left_range ) {
+						assert( false );
+						break;
+					} else if( A.CCS.col_start[ j_end ] > end ) {
+						j_right_range = j_end;
+					} else {
+						j_left_range = j_end + 1;
 					}
+					assert( j_right_range >= j_left_range );
+					j_end = j_right_range - j_left_range;
+					j_end /= 2;
+					j_end += j_left_range;
 				}
 				if( j_start > j_end ) {
 					j_start = j_end;

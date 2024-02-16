@@ -36,7 +36,7 @@ namespace grb {
 		 * \warning The use of singletons is almost always discouraged.
 		 *
 		 * Each process contains exactly one storage of type \a T associated with this
-		 * singleton, which is retrieved via the a call to ::getData
+		 * singleton, which is retrieved via the a call to #getData
 		 *
 		 * If multiple singletons of the same data type \a T are required, then each
 		 * such singleton should define a unique \a key.
