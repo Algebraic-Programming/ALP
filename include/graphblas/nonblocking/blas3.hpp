@@ -416,6 +416,50 @@ namespace grb {
 		);
 	}
 
+	template<
+		Descriptor descr = descriptors::no_operation,
+		class Operator,
+		typename InputType1, typename InputType2, typename OutputType,
+		typename Coords,
+		typename RIT, typename CIT, typename NIT
+	>
+	RC maskedOuter(
+		Matrix< OutputType, nonblocking, RIT, CIT, NIT > &A,
+		const Matrix< OutputType, nonblocking, RIT, CIT, NIT > &mask,
+		const Vector< InputType1, nonblocking, Coords > &u,
+		const Vector< InputType2, nonblocking, Coords > &v,
+		const Operator &mul = Operator(),
+		const Phase &phase = EXECUTE,
+		const typename std::enable_if<
+			grb::is_operator< Operator >::value &&
+			!grb::is_object< InputType1 >::value &&
+			!grb::is_object< InputType2 >::value &&
+			!grb::is_object< OutputType >::value,
+			void >::type * const = nullptr
+	) {
+		if( internal::NONBLOCKING::warn_if_not_native &&
+			config::PIPELINE::warn_if_not_native
+		) {
+			std::cerr << "Warning: maskedOuter (nonblocking) currently delegates "
+				<< "to a blocking implementation.\n"
+				<< "         Further similar such warnings will be suppressed.\n";
+			internal::NONBLOCKING::warn_if_not_native = false;
+		}
+
+		// nonblocking execution is not supported
+		// first, execute any computation that is not completed
+		internal::le.execution();
+
+		// second, delegate to the reference backend
+		return maskedOuter< descr, Operator >(
+			internal::getRefMatrix( A ),
+			internal::getRefMatrix( mask ),
+			internal::getRefVector( u ),
+			internal::getRefVector( v ),
+			mul, phase
+		);
+	}
+
 	namespace internal {
 
 		template<
