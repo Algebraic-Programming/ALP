@@ -924,13 +924,14 @@ namespace grb {
 	template<
 		Descriptor descr = descriptors::no_operation,
 		class Operator,
-		typename InputType1, typename InputType2, typename OutputType,
+		typename InputType1, typename InputType2,
+		typename MaskType, typename OutputType,
 		typename Coords,
 		typename RIT, typename CIT, typename NIT
 	>
 	RC maskedOuter(
 		Matrix< OutputType, reference, RIT, CIT, NIT > &A,
-		const Matrix< OutputType, reference, RIT, CIT, NIT > &mask,
+		const Matrix< MaskType, reference, RIT, CIT, NIT > &mask,
 		const Vector< InputType1, reference, Coords > &u,
 		const Vector< InputType2, reference, Coords > &v,
 		const Operator &mul = Operator(),
@@ -939,6 +940,7 @@ namespace grb {
 			grb::is_operator< Operator >::value &&
 			!grb::is_object< InputType1 >::value &&
 			!grb::is_object< InputType2 >::value &&
+			!grb::is_object< MaskType >::value &&
 			!grb::is_object< OutputType >::value,
 			void >::type * const = nullptr
 	) {
@@ -958,8 +960,7 @@ namespace grb {
 			), "grb::maskedOuter",
 			"called with an output matrix that does not match the output domain of "
 			"the given multiplication operator" );
-		static_assert( ( !(descr & descriptors::invert_mask)
-			),
+		static_assert( !(descr & descriptors::invert_mask),
 			"grb::maskedOuter: invert_mask descriptor cannot be used ");
 #ifdef _DEBUG
 		std::cout << "In grb::maskedOuter (reference)\n";
@@ -972,6 +973,7 @@ namespace grb {
 		const size_t n = grb::ncols( mask );
 
 		if( m == 0 || n == 0 ) {
+			// If the mask has a null size, it will be ignored
 			return outer< descr >( A, u, v, mul, phase );
 		}
 
@@ -1061,7 +1063,7 @@ namespace grb {
 			}
 		}
 
-		
+
 		nzc = 0;
 		for( size_t i = 0; i < nrows; ++i ) {
 			if( internal::getCoordinates( u ).assigned( i ) ) {
@@ -1136,10 +1138,9 @@ namespace grb {
 			}
 		}
 		assert( nzc == old_nzc );
-		
 
 		internal::setCurrentNonzeroes( A, nzc );
-		
+
 		return ret;
 	}
 

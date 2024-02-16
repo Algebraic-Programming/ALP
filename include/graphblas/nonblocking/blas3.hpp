@@ -419,13 +419,14 @@ namespace grb {
 	template<
 		Descriptor descr = descriptors::no_operation,
 		class Operator,
-		typename InputType1, typename InputType2, typename OutputType,
+		typename InputType1, typename InputType2,
+		typename OutputType, typename MaskType,
 		typename Coords,
 		typename RIT, typename CIT, typename NIT
 	>
 	RC maskedOuter(
 		Matrix< OutputType, nonblocking, RIT, CIT, NIT > &A,
-		const Matrix< OutputType, nonblocking, RIT, CIT, NIT > &mask,
+		const Matrix< MaskType, nonblocking, RIT, CIT, NIT > &mask,
 		const Vector< InputType1, nonblocking, Coords > &u,
 		const Vector< InputType2, nonblocking, Coords > &v,
 		const Operator &mul = Operator(),
@@ -434,6 +435,7 @@ namespace grb {
 			grb::is_operator< Operator >::value &&
 			!grb::is_object< InputType1 >::value &&
 			!grb::is_object< InputType2 >::value &&
+			!grb::is_object< MaskType >::value &&
 			!grb::is_object< OutputType >::value,
 			void >::type * const = nullptr
 	) {

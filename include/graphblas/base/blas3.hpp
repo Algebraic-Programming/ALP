@@ -443,6 +443,96 @@ namespace grb {
 	}
 
 	/**
+	 * Masked outer product of two vectors. Assuming vectors \a u and \a v are
+	 * oriented column-wise, the result matrix \a A will contain \f$ uv^T \f$,
+	 * masked to non-zero values from \a mask.. This is an out-of-place
+	 * function and will be updated soon to be in-place instead.
+	 *
+	 * \internal Implemented via mxm as a multiplication of a column vector with
+	 *           a row vector, while following the given mask.
+	 *
+	 * @tparam descr      The descriptor to be used. Optional; the default is
+	 *                    #grb::descriptors::no_operation.
+	 * @tparam Operator   The operator to use.
+	 * @tparam InputType1 The value type of the left-hand vector.
+	 * @tparam InputType2 The value type of the right-hand vector.
+	 * @tparam MaskType   The value type of the mask matrix.
+	 * @tparam OutputType The value type of the ouput matrix
+	 *
+	 * @param[out]  A      The output matrix.
+	 * @param[out]  mask   The mask matrix.
+	 * @param[in]   u      The left-hand input vector.
+	 * @param[in]   v      The right-hand input vector.
+	 * @param[in]   op     The operator.
+	 * @param[in]   phase  The #grb::Phase the call should execute. Optional; the
+	 *                     default parameter is #grb::EXECUTE.
+	 *
+	 * @return #grb::SUCCESS  On successful completion of this call.
+	 * @return #grb::MISMATCH Whenever the dimensions of the inputs and/or outputs
+	 *                        do not match. All input data containers are left
+	 *                        untouched if this exit code is returned; it will be
+	 *                        be as though this call was never made.
+	 * @return #grb::FAILED   If \a phase is #grb::EXECUTE, indicates that the
+	 *                        capacity of \a A was insufficient. The output
+	 *                        matrix \a A is cleared, and the call to this function
+	 *                        has no further effects.
+	 * @return #grb::OUTOFMEM If \a phase is #grb::RESIZE, indicates an
+	 *                        out-of-memory exception. The call to this function
+	 *                        shall have no other effects beyond returning this
+	 *                        error code; the previous state of \a A is retained.
+	 * @return #grb::PANIC    A general unmitigable error has been encountered. If
+	 *                        returned, ALP enters an undefined state and the user
+	 *                        program is encouraged to exit as quickly as possible.
+	 *
+	 * \par Performance semantics
+	 *
+	 * Each backend must define performance semantics for this primitive.
+	 *
+	 * @see perfSemantics
+	 */
+	template<
+		Descriptor descr = descriptors::no_operation,
+		class Operator,
+		typename InputType1, typename InputType2,
+		typename OutputType, typename MaskType,
+		typename Coords,
+		typename RIT, typename CIT, typename NIT,
+		Backend backend
+	>
+	RC maskedOuter(
+		Matrix< OutputType, backend, RIT, CIT, NIT > &A,
+		const Matrix< MaskType, backend, RIT, CIT, NIT > &mask,
+		const Vector< InputType1, backend, Coords > &u,
+		const Vector< InputType2, backend, Coords > &v,
+		const Operator &op = Operator(),
+		const Phase &phase = EXECUTE,
+		const typename std::enable_if<
+			grb::is_operator< Operator >::value &&
+			!grb::is_object< InputType1 >::value &&
+			!grb::is_object< InputType2 >::value &&
+			!grb::is_object< MaskType >::value &&
+			!grb::is_object< OutputType >::value,
+			void >::type * const = nullptr
+	) {
+		(void) A;
+		(void) mask;
+		(void) u;
+		(void) v;
+		(void) op;
+		(void) phase;
+#ifdef _DEBUG
+		std::cerr << "Selected backend does not implement grb::maskedOuter\n";
+#endif
+#ifndef NDEBUG
+		const bool selected_backend_does_not_support_masked_outer	= false;
+		assert( selected_backend_does_not_support_masked_outer );
+#endif
+		const RC ret = grb::clear( A );
+		return ret == SUCCESS ? UNSUPPORTED : ret;
+	}
+
+
+	/**
 	 * @}
 	 */
 
