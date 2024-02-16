@@ -642,8 +642,10 @@ namespace grb {
 	 *
 	 * \todo Check and, if needed, revise performance semantics.
 	 */
-	template< Descriptor descr = descriptors::no_operation,
-		typename OutputType, typename InputType, typename Coords >
+	template<
+		Descriptor descr = descriptors::no_operation,
+		typename OutputType, typename InputType, typename Coords
+	>
 	RC set(
 		Vector< OutputType, reference, Coords > &x,
 		const Vector< InputType, reference, Coords > &y,
@@ -989,10 +991,14 @@ namespace grb {
 				"if A is a mask, then C must not be a void matrix"
 			);
 			static_assert(
-				A_is_mask ||
-				( !A_is_mask &&
-				  std::is_convertible< ValueType, OutputType >::value ),
+				A_is_mask || std::is_convertible< ValueType, OutputType >::value,
 				"internal::grb::set called with non-matching value types"
+			);
+			static_assert(
+				! A_is_mask ||
+				! ( descr & descriptors::structural && descr & descriptors::invert_mask ),
+				"internal::grb::set can not be called with both descriptors::structural "
+				"and descriptors::invert_mask in the masked variant"
 			);
 			NO_CAST_ASSERT(
 				( !( descr & descriptors::no_casting ) ||
