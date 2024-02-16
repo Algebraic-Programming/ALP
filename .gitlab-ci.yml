@@ -270,7 +270,7 @@ gitleaks:
 ## Jobs running on Slurm cluster
 
 # factored out command to download the datasets, cmake, and build in non-debug mode
-.setup_and_build_ndebug_slurm: &setup_and_build_ndebug
+.setup_and_build_ndebug_slurm: &setup_and_build_ndebug_slurm
   - mkdir -p install build && cd ./build
   - ../bootstrap.sh --prefix=../install --with-datasets=${SLURM_DATASETS_DIR_PATH} --no-hyperdags
   - make -j$(nproc)
