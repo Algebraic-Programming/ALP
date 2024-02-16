@@ -445,7 +445,7 @@ namespace grb {
 	/**
 	 * Masked outer product of two vectors. Assuming vectors \a u and \a v are
 	 * oriented column-wise, the result matrix \a A will contain \f$ uv^T \f$,
-	 * masked to non-zero values from \a mask.. This is an out-of-place
+	 * masked to non-zero values from \a mask. This is an out-of-place
 	 * function and will be updated soon to be in-place instead.
 	 *
 	 * \internal Implemented via mxm as a multiplication of a column vector with

@@ -86,7 +86,7 @@ void grbProgram( const void *, const size_t in_size, int &error ) {
 		rc = grb::outer( Result1, Mask1, u, v, ring.getMultiplicativeOperator(), RESIZE );
 		rc = rc ? rc : grb::outer( Result1, Mask1, u, v, ring.getMultiplicativeOperator() );
 		if( rc != grb::SUCCESS ) {
-			std::cerr << "Unexpected return code from grb::maskedOuter: "
+			std::cerr << "Unexpected return code from grb::outer: "
 				<< toString( rc ) << ".\n";
 			error = 15;
 		}
@@ -103,7 +103,7 @@ void grbProgram( const void *, const size_t in_size, int &error ) {
 		rc = grb::outer< descriptors::force_row_major >( Result2, Mask2, u, v, ring.getMultiplicativeOperator(), RESIZE );
 		rc = rc ? rc : grb::outer< descriptors::force_row_major >( Result2, Mask2, u, v, ring.getMultiplicativeOperator() );
 		if( rc != grb::SUCCESS ) {
-			std::cerr << "Unexpected return code from grb::maskedOuter: "
+			std::cerr << "Unexpected return code from grb::outer: "
 				<< toString( rc ) << ".\n";
 			error = 25;
 		}
@@ -256,7 +256,7 @@ void grb_program_custom_size( const size_t &n, int &error ) {
 		rc = grb::outer( Result, Mask, u, v, ring.getMultiplicativeOperator(), RESIZE );
 		rc = rc ? rc : grb::outer( Result, Mask, u, v, ring.getMultiplicativeOperator() );
 		if( rc != grb::SUCCESS ) {
-			std::cerr << "Unexpected return code from grb::maskedOuter: "
+			std::cerr << "Unexpected return code from grb::outer: "
 				<< toString( rc ) << ".\n";
 			error = 30;
 		}
