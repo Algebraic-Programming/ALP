@@ -7,5 +7,5 @@ flags.mk
 paths.mk
 [Bb]uild*/
 [Oo]bj*/
-[In]nstall*/
+[Ii]nstall*/
 cmake-build-*/

@@ -30,6 +30,30 @@ variables:
       - "yes"
       - "no"
     description: "Enable test on the Slurm cluster"
+  CI_SLURM_PARTITION:
+    value: "Zen3"
+    description: "Partition to use (if using Slurm)"
+  CI_SLURM_NNODES:
+    value: "1"
+    description: "Number of nodes to request (if using Slurm)"
+  CI_SLURM_NTASKS:
+    value: "1"
+    description: "Number of tasks to request (if using Slurm)"
+  CI_SLURM_CPUS_PER_TASK:
+    value: "64"
+    description: "Number of CPUs per task (if using Slurm)"
+  CI_SLURM_MEM_PER_NODE:
+    value: "64G"
+    description: "Memory per node (if using Slurm)"
+  CI_SLURM_TIMELIMIT:
+    value: "00-10:00:00" # 10 hours
+    description: "Time limit for the job (if using Slurm)"
+  SLURM_JOB_START_TIMEOUT_SECONDS:
+    value: "3600" # 1 hour timeout to switch from PENDING to RUNNING
+    description: "Allowed time for the job to switch from PENDING to RUNNING (if using Slurm)"
+  SLURM_DATASETS_DIR_PATH:
+    value: "/storage/datasets/graphs-and-sparse-matrices"
+    description: "Path to the datasets directory (if using Slurm)"
   COVERAGE_ENABLED:
     value: "no"
     options:
@@ -246,10 +270,9 @@ gitleaks:
 ## Jobs running on Slurm cluster
 
 # factored out command to download the datasets, cmake, and build in non-debug mode
-.setup_and_build_ndebug: &setup_and_build_ndebug
-  - ./tools/downloadDatasets.sh <<< "yes"
+.setup_and_build_ndebug_slurm: &setup_and_build_ndebug
   - mkdir -p install build && cd ./build
-  - ../bootstrap.sh --prefix=../install --with-datasets=../datasets
+  - ../bootstrap.sh --prefix=../install --with-datasets=${SLURM_DATASETS_DIR_PATH} --no-hyperdags
   - make -j$(nproc)
 
 tests_performance_slurm:
@@ -257,21 +280,13 @@ tests_performance_slurm:
     - if: $SLURM_TESTS_ENABLED == "yes"
   tags:
     - slurm
-  variables:
-    CI_SLURM_PARTITION: "Zen3"
-    CI_SLURM_NNODES: "1"
-    CI_SLURM_NTASKS: "1"
-    CI_SLURM_CPUS_PER_TASK: "64"
-    CI_SLURM_MEM_PER_NODE: "64G"
-    CI_SLURM_TIMELIMIT: "00-10:00:00" # 10 hours
-    SLURM_JOB_START_TIMEOUT_SECONDS: "3600" # 1 hour timeout to switch from PENDING to RUNNING
   script:
-    - *setup_and_build_ndebug
+    - *setup_and_build_ndebug_slurm
     - make -j$(nproc) performancetests |& tee performancetests.log
     - ../tests/summarise.sh performancetests.log tests/performance/output/benchmarks tests/performance/output/scaling
   artifacts:
     paths: [ build/*.log ]
-    expire_in: 1 day
+    expire_in: 1 month
 
 
 ## Additional tests specific to main branches only
