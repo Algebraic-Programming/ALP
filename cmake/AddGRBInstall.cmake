@@ -48,6 +48,21 @@ set( HYPERDAGS_BACKEND_INSTALL_DIR "${BINARY_LIBRARIES_INSTALL_DIR}/hyperdags" )
 set( BSP1D_BACKEND_INSTALL_DIR "${BINARY_LIBRARIES_INSTALL_DIR}/spmd" )
 set( HYBRID_BACKEND_INSTALL_DIR "${BINARY_LIBRARIES_INSTALL_DIR}/hybrid" )
 
+# definitions and options common to all backends:  all backends include
+# REFERENCE_INCLUDE_DEFS, REFERENCE_OMP_INCLUDE_DEFS and -fopenmp due to the
+# dependency on OpenMP -- to be resolved
+set( COMMON_COMPILE_DEFINITIONS  "${REFERENCE_INCLUDE_DEFS};${REFERENCE_OMP_INCLUDE_DEFS}" )
+set( COMMON_COMPILE_OPTIONS "-fopenmp" )
+
+# link flags common to all backends, to be inserted before and after the
+# backend-specific flags
+set( COMMON_LFLAGS_PRE
+	"-l${ALP_UTILS_LIBRARY_OUTPUT_NAME};-L '${BINARY_LIBRARIES_INSTALL_DIR}'"
+)
+if( WITH_NUMA )
+	list( APPEND COMMON_LFLAGS_POST "-lnuma"  )
+endif()
+
 # addBackendWrapperGenOptions
 # creates the variables to store the settings for a backend, in order to create
 # the wrapper scripts for the installation; unless otherwise specified, arguments
@@ -87,53 +102,42 @@ function( addBackendWrapperGenOptions backend lib_dir )
 	endif()
 	set( ${backend}_WRAPPER_RUNNER "${parsed_RUNNER}" PARENT_SCOPE )
 	set( ${backend}_LIB_DIR "${lib_dir}" PARENT_SCOPE )
-	set( ${backend}_WRAPPER_COMPILE_DEFINITIONS "${parsed_COMPILE_DEFINITIONS}" PARENT_SCOPE )
-	set( ${backend}_WRAPPER_COMPILE_OPTIONS "${parsed_COMPILE_OPTIONS}" PARENT_SCOPE )
+
+	list( APPEND __cd "${COMMON_COMPILE_DEFINITIONS}" "${parsed_COMPILE_DEFINITIONS}" )
+	set( ${backend}_WRAPPER_COMPILE_DEFINITIONS "${__cd}" PARENT_SCOPE )
+
+	list( APPEND __co "${COMMON_COMPILE_OPTIONS}" "${parsed_COMPILE_OPTIONS}" )
+	set( ${backend}_WRAPPER_COMPILE_OPTIONS "${__co}" PARENT_SCOPE )
 	set( ${backend}_WRAPPER_LINK_FLAGS "${parsed_LINK_FLAGS}" PARENT_SCOPE )
 endfunction( addBackendWrapperGenOptions )
-
-if( WITH_NUMA )
-	set( NUMA_LFLAG "-lnuma" )
-endif()
 
 ### POPULATING WRAPPER INFORMATION FOR INSTALLATION TARGETS
 # for each enabled backend, add its information for the wrapper generation
 # paths may have spaces, hence wrap them inside single quotes ''
 
-# all backends include both REFERENCE_INCLUDE_DEFS and REFERENCE_OMP_INCLUDE_DEFS,
-# due to the dependency on OpenMP -- to be resolved
-
 # shared memory backends
 if( WITH_REFERENCE_BACKEND )
 	addBackendWrapperGenOptions( "reference" "${SHMEM_BACKEND_INSTALL_DIR}"
-		COMPILE_DEFINITIONS
-		"${REFERENCE_INCLUDE_DEFS};${REFERENCE_OMP_INCLUDE_DEFS};${REFERENCE_SELECTION_DEFS}"
-		LINK_FLAGS "${NUMA_LFLAG}"
+		COMPILE_DEFINITIONS "${REFERENCE_SELECTION_DEFS}"
 	)
 endif()
 
 if( WITH_OMP_BACKEND )
 	addBackendWrapperGenOptions( "reference_omp" "${SHMEM_BACKEND_INSTALL_DIR}"
-		COMPILE_DEFINITIONS
-			"${REFERENCE_INCLUDE_DEFS};${REFERENCE_OMP_INCLUDE_DEFS};${REFERENCE_OMP_SELECTION_DEFS}"
-		COMPILE_OPTIONS "-fopenmp"
-		LINK_FLAGS "${NUMA_LFLAG}"
+		COMPILE_DEFINITIONS "${REFERENCE_OMP_SELECTION_DEFS}"
 	)
 endif()
 
 # dependent backends
 if( WITH_HYPERDAGS_BACKEND )
 	addBackendWrapperGenOptions( "hyperdags" "${HYPERDAGS_BACKEND_INSTALL_DIR}"
-		COMPILE_DEFINITIONS
-		"${REFERENCE_INCLUDE_DEFS};${REFERENCE_OMP_INCLUDE_DEFS};${HYPERDAGS_INCLUDE_DEFS};${HYPERDAGS_SELECTION_DEFS}"
-		LINK_FLAGS "${NUMA_LFLAG}"
+		COMPILE_DEFINITIONS "${HYPERDAGS_INCLUDE_DEFS};${HYPERDAGS_SELECTION_DEFS}"
 	)
 endif()
 
 if( WITH_NONBLOCKING_BACKEND )
 	addBackendWrapperGenOptions( "nonblocking" "${SHMEM_BACKEND_INSTALL_DIR}"
 		COMPILE_DEFINITIONS "${NONBLOCKING_INCLUDE_DEFS};${NONBLOCKING_SELECTION_DEFS}"
-		LINK_FLAGS "${NUMA_LFLAG}"
 	)
 endif()
 
@@ -163,10 +167,7 @@ if( WITH_BSP1D_BACKEND OR WITH_HYBRID_BACKEND )
 		addBackendWrapperGenOptions( "bsp1d" "${BSP1D_BACKEND_INSTALL_DIR}"
 			COMPILER_COMMAND "${LPF_CXX_COMPILER}"
 			RUNNER "${LPFRUN_CMD}"
-			COMPILE_DEFINITIONS
-				"${REFERENCE_INCLUDE_DEFS};${REFERENCE_OMP_INCLUDE_DEFS};${LPF_INCLUDE_DEFS};${BSP1D_SELECTION_DEFS}"
-			COMPILE_OPTIONS "-fopenmp"
-			LINK_FLAGS "${NUMA_LFLAG}"
+			COMPILE_DEFINITIONS "${LPF_INCLUDE_DEFS};${BSP1D_SELECTION_DEFS}"
 		)
 	endif()
 
@@ -174,10 +175,7 @@ if( WITH_BSP1D_BACKEND OR WITH_HYBRID_BACKEND )
 		addBackendWrapperGenOptions( "hybrid" "${HYBRID_BACKEND_INSTALL_DIR}"
 			COMPILER_COMMAND "${LPF_CXX_COMPILER}"
 			RUNNER "${LPFRUN_CMD}"
-			COMPILE_DEFINITIONS
-				"${REFERENCE_INCLUDE_DEFS};${REFERENCE_OMP_INCLUDE_DEFS};${LPF_INCLUDE_DEFS};${HYBRID_SELECTION_DEFS}"
-			COMPILE_OPTIONS "-fopenmp"
-			LINK_FLAGS "${NUMA_LFLAG}"
+			COMPILE_DEFINITIONS "${LPF_INCLUDE_DEFS};${HYBRID_SELECTION_DEFS}"
 		)
 	endif()
 endif()
