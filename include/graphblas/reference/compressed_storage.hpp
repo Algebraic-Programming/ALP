@@ -47,11 +47,11 @@ namespace grb {
 			 * Performs no safety checking. Performs no (re-)allocations.
 			 *
 			 * @param[out] output The container to copy the coordinates to.
-			 * @param[in] input   The container to copy the coordinates from.
-			 * @param[in] nz      The number of nonzeroes in the \a other container.
-			 * @param[in] m       The index dimension of the \a other container.
-			 * @param[in] k       The start position to copy from (inclusive).
-			 * @param[in] end     The end position to copy to (exclusive).
+			 * @param[in]  input  The container to copy the coordinates from.
+			 * @param[in]  nz     The number of nonzeroes in the \a other container.
+			 * @param[in]  m      The index dimension of the \a other container.
+			 * @param[in]  k      The start position to copy from (inclusive).
+			 * @param[in]  end    The end position to copy to (exclusive).
 			 *
 			 * The copy range is 2nz + m + 1, i.e.,
 			 *   -# 0 <= start <  2nz + m + 1
