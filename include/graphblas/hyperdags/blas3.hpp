@@ -259,6 +259,59 @@ namespace grb {
 
 	template<
 		Descriptor descr = descriptors::no_operation,
+		class Operator,
+		typename InputType1, typename InputType2,
+		typename MaskType, typename OutputType,
+		typename Coords,
+		typename RIT, typename CIT, typename NIT
+	>
+	RC maskedOuter(
+		Matrix< OutputType, hyperdags, RIT, CIT, NIT > &A,
+		const Matrix< MaskType, hyperdags, RIT, CIT, NIT > &mask,
+		const Vector< InputType1, hyperdags, Coords > &u,
+		const Vector< InputType2, hyperdags, Coords > &v,
+		const Operator &mul = Operator(),
+		const Phase &phase = EXECUTE,
+		const typename std::enable_if<
+			grb::is_operator< Operator >::value &&
+			!grb::is_object< InputType1 >::value &&
+			!grb::is_object< InputType2 >::value &&
+			!grb::is_object< MaskType >::value &&
+			!grb::is_object< OutputType >::value,
+			void >::type * const = nullptr
+	) {
+		const RC ret = maskedOuter< descr >(
+			internal::getMatrix( A ),
+			internal::getMatrix( mask ),
+			internal::getVector( u ),
+			internal::getVector( v ),
+			mul,
+			phase
+		);
+		if( ret != SUCCESS ) { return ret; }
+		if( phase != EXECUTE ) { return ret; }
+		if( nrows( A ) == 0 || ncols( A ) == 0 ) { return ret; }
+		std::array< const void *, 0 > sourcesP{};
+		std::array< uintptr_t, 4 > sourcesC{
+			getID( internal::getVector(u) ),
+			getID( internal::getVector(v) ),
+			getID( internal::getMatrix(mask) ),
+			getID( internal::getMatrix(A) )
+		};
+		std::array< uintptr_t, 1 > destinations{
+			getID( internal::getMatrix(A) )
+		};
+		internal::hyperdags::generator.addOperation(
+			internal::hyperdags::MASKED_OUTER,
+			sourcesP.begin(), sourcesP.end(),
+			sourcesC.begin(), sourcesC.end(),
+			destinations.begin(), destinations.end()
+		);
+		return ret;
+	}
+
+	template<
+		Descriptor descr = descriptors::no_operation,
 		typename OutputType, typename InputType1, typename InputType2,
 		typename InputType3, typename RIT, typename CIT, typename NIT,
 		typename Coords
