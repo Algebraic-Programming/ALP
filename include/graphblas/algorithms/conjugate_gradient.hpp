@@ -356,7 +356,7 @@ namespace grb {
 					sigma,
 					r, z,
 					ring.getAdditiveMonoid(),
-					grb::operators::conjugate_left_mul< IOType >()
+					grb::operators::conjugate_right_mul< IOType >()
 				);
 
 			assert( ret == grb::SUCCESS );
@@ -409,12 +409,10 @@ namespace grb {
 				ret = ret ? ret : grb::eWiseMul< descr_dense >( x, alpha, u, ring );
 				assert( ret == grb::SUCCESS );
 
-				// temp = alpha .* temp
+				// r = r - alpha .* temp = r - alpha .* (A * u);
 				ret = ret ? ret : grb::foldr< descr_dense >( alpha, temp,
 					ring.getMultiplicativeMonoid() );
 				assert( ret == grb::SUCCESS );
-
-				// r = r - temp;
 				ret = ret ? ret : grb::foldl< descr_dense >( r, temp, minus );
 				assert( ret == SUCCESS );
 
@@ -447,7 +445,7 @@ namespace grb {
 							beta,
 							r, z,
 							ring.getAdditiveMonoid(),
-							grb::operators::conjugate_left_mul< IOType >()
+							grb::operators::conjugate_right_mul< IOType >()
 						);
 					assert( ret == grb::SUCCESS );
 				} else {
