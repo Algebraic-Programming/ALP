@@ -418,32 +418,18 @@ namespace grb {
 				ret = ret ? ret : grb::foldl< descr_dense >( r, temp, minus );
 				assert( ret == SUCCESS );
 
-				// get residual
-				if( preconditioned ) {
-					// in this case, the algorithm does not require r' * r for subsequent
-					// iterations so we must spend extra effort to compute it. We use alpha
-					// as a temporary scalar here to do so
-					alpha = zero;
-					ret = ret ? ret : grb::dot< descr_dense >(
-							alpha,
-							r, r,
-							ring.getAdditiveMonoid(),
-							grb::operators::conjugate_left_mul< IOType >()
-						);
-					assert( ret == grb::SUCCESS );
-					residual = grb::utils::is_complex< IOType >::modulus( alpha );
-				} else {
-					// in the non-preconditioned case, the algorithm requires beta=r' * r
-					beta = zero;
-					ret = ret ? ret : grb::dot< descr_dense >(
-							beta,
-							r, r,
-							ring.getAdditiveMonoid(),
-							grb::operators::conjugate_left_mul< IOType >()
-						);
-					assert( ret == grb::SUCCESS );
-					residual = grb::utils::is_complex< IOType >::modulus( beta );
-				}
+				// get residual. In the preconditioned case, the resulting scalar is *not*
+				// used for subsequent operations. Therefore, we first compute the residual
+				// using alpha as a temporary scalar
+				alpha = zero;
+				ret = ret ? ret : grb::dot< descr_dense >(
+						alpha,
+						r, r,
+						ring.getAdditiveMonoid(),
+						grb::operators::conjugate_left_mul< IOType >()
+					);
+				assert( ret == grb::SUCCESS );
+				residual = grb::utils::is_complex< IOType >::modulus( alpha );
 
 				// check residual
 				if( ret == grb::SUCCESS ) {
@@ -464,6 +450,8 @@ namespace grb {
 							grb::operators::conjugate_left_mul< IOType >()
 						);
 					assert( ret == grb::SUCCESS );
+				} else {
+					beta = alpha;
 				}
 
 				// alpha = beta / sigma;
