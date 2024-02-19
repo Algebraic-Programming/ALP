@@ -689,7 +689,9 @@ namespace grb {
 #endif
 						assert( k <= loop_end );
 
-						GRB_UTIL_IGNORE_CLASS_MEMACCESS;
+						GRB_UTIL_IGNORE_CLASS_MEMACCESS; // by the ALP spec, D can only be a POD
+						                                 // type, in which case raw memory copies
+										 // are OK
 #ifdef _H_GRB_REFERENCE_OMP_COMPRESSED_STORAGE
 						#pragma omp for simd
 #endif
