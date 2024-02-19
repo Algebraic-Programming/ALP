@@ -325,23 +325,18 @@ namespace grb {
 
 			IOType sigma, bnorm, alpha, beta;
 
-			// temp = 0
-			grb::RC ret = grb::set( temp, 0 );
-			assert( ret == grb::SUCCESS );
-
-			// temp = A * x
+			// r = b - temp;
+			grb::RC ret = grb::set( temp, 0 ); assert( ret == grb::SUCCESS );
 			ret = ret ? ret : grb::mxv< descr_dense >( temp, A, x, ring );
 			assert( ret == grb::SUCCESS );
-
-			// r = b - temp;
-			ret = ret ? ret : grb::set( r, zero );
+			ret = ret ? ret : grb::set( r, zero ); assert( ret == grb::SUCCESS );
 			// note: no dense descriptor since we actually allow sparse b
 			ret = ret ? ret : grb::foldl( r, b, ring.getAdditiveMonoid() );
+			// from here onwards, r, temp, x are dense and will remain so
 			assert( nnz( r ) == n );
 			assert( nnz( temp ) == n );
 			ret = ret ? ret : grb::foldl< descr_dense >( r, temp, minus );
 			assert( ret == SUCCESS );
-			assert( nnz( r ) == n );
 
 			// z = M^-1r
 			if( preconditioned ) {
@@ -352,12 +347,14 @@ namespace grb {
 			// u = z;
 			ret = ret ? ret : grb::set( u, z );
 			assert( ret == grb::SUCCESS );
+			// from here onwards, u is dense; i.e., all vectors are dense from now on,
+			// and we can freely use the dense descriptor in the subsequent
 
 			// sigma = r' * z;
 			sigma = zero;
 			ret = ret ? ret : grb::dot< descr_dense >(
 					sigma,
-					temp, z,
+					r, z,
 					ring.getAdditiveMonoid(),
 					grb::operators::conjugate_left_mul< IOType >()
 				);
@@ -366,21 +363,19 @@ namespace grb {
 
 			// bnorm = b' * b;
 			bnorm = zero;
-			if( grb::utils::is_complex< IOType >::value ) {
-				ret = ret ? ret : grb::eWiseLambda( [&temp,&b]( const size_t i ) {
-						temp[ i ] = grb::utils::is_complex< IOType >::conjugate( b[ i ] );
-					}, temp
-				);
-				ret = ret ? ret : grb::dot< descr_dense >( bnorm, temp, b, ring );
-			} else {
-				ret = ret ? ret : grb::dot< descr_dense >( bnorm, b, b, ring );
-			}
+			ret = ret ? ret : grb::dot< descr_dense >(
+				bnorm,
+				b, b,
+				ring.getAdditiveMonoid(),
+				grb::operators::conjugate_left_mul< IOType >() );
 			assert( ret == grb::SUCCESS );
 
 			// get effective tolerance and exit on any error during prelude
 			if( ret == grb::SUCCESS ) {
 				tol *= std::sqrt( grb::utils::is_complex< IOType >::modulus( bnorm ) );
 			} else {
+				std::cerr << "Warning: preconditioned CG caught error during prelude ("
+					<< grb::toString( ret ) << ")\n";
 				return ret;
 			}
 
@@ -390,21 +385,19 @@ namespace grb {
 				assert( iter < max_iterations );
 				(void) ++iter;
 
-				// temp = 0
-				ret = ret ? ret : grb::set( temp, 0 );
-				assert( ret == grb::SUCCESS );
-
 				// temp = A * u;
+				ret = ret ? ret : grb::set< descr_dense >( temp, 0 );
+				assert( ret == grb::SUCCESS );
 				ret = ret ? ret : grb::mxv< descr_dense >( temp, A, u, ring );
 				assert( ret == grb::SUCCESS );
 
-				// beta = u' * temp;
+				// beta = (A * u)' * u;
 				beta = zero;
 				ret = ret ? ret : grb::dot< descr_dense >(
 						beta,
-						u, temp,
+						temp, u,
 						ring.getAdditiveMonoid(),
-						grb::operators::conjugate_left_mul< IOType >()
+						grb::operators::conjugate_right_mul< IOType >()
 					);
 				assert( ret == grb::SUCCESS );
 
@@ -433,19 +426,20 @@ namespace grb {
 					alpha = zero;
 					ret = ret ? ret : grb::dot< descr_dense >(
 							alpha,
-							r, z,
+							r, r,
 							ring.getAdditiveMonoid(),
-							grb::operators::conjugate_right_mul< IOType >()
+							grb::operators::conjugate_left_mul< IOType >()
 						);
 					assert( ret == grb::SUCCESS );
 					residual = grb::utils::is_complex< IOType >::modulus( alpha );
 				} else {
 					// in the non-preconditioned case, the algorithm requires beta=r' * r
+					beta = zero;
 					ret = ret ? ret : grb::dot< descr_dense >(
 							beta,
 							r, r,
 							ring.getAdditiveMonoid(),
-							grb::operators::conjugate_right_mul< IOType >()
+							grb::operators::conjugate_left_mul< IOType >()
 						);
 					assert( ret == grb::SUCCESS );
 					residual = grb::utils::is_complex< IOType >::modulus( beta );
@@ -458,15 +452,16 @@ namespace grb {
 
 				// apply preconditioner action (if required), and compute beta for the
 				// preconditioned case
+				// z = M^-1r
+				// beta = r' * z
 				if( preconditioned ) {
-					ret = ret ? ret : Minv( z, r ); assert( ret == grb::SUCCESS );
-					// beta = r' * z;
 					beta = zero;
+					ret = ret ? ret : Minv( z, r ); assert( ret == grb::SUCCESS );
 					ret = ret ? ret : grb::dot< descr_dense >(
 							beta,
 							r, z,
 							ring.getAdditiveMonoid(),
-							grb::operators::conjugate_right_mul< IOType >()
+							grb::operators::conjugate_left_mul< IOType >()
 						);
 					assert( ret == grb::SUCCESS );
 				}
@@ -475,15 +470,13 @@ namespace grb {
 				ret = ret ? ret : grb::apply( alpha, beta, sigma, divide );
 				assert( ret == grb::SUCCESS );
 
-				// temp = r + alpha * u;
-				ret = ret ? ret : grb::set< descr_dense >( temp, z );
+				// u_next = z + beta * u_previous;
+				ret = ret ? ret : grb::foldr< descr_dense >( alpha, u,
+					ring.getMultiplicativeMonoid() );
 				assert( ret == grb::SUCCESS );
-				ret = ret ? ret : grb::eWiseMul< descr_dense >( temp, alpha, u, ring );
+				ret = ret ? ret : grb::foldr< descr_dense >( z, u,
+					ring.getAdditiveMonoid() );
 				assert( ret == grb::SUCCESS );
-				assert( grb::nnz( temp ) == grb::size( temp ) );
-
-				// u = temp
-				std::swap( u, temp );
 
 				sigma = beta;
 			} while( ret == grb::SUCCESS );
