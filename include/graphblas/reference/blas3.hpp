@@ -1144,8 +1144,8 @@ namespace grb {
 						}
 					}
 				}
+				CRS_raw.col_start[ i + 1 ] = nzc;
 			}
-
 		}
 
 		if( !crs_only ) {
