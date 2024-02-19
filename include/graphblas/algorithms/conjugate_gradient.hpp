@@ -399,19 +399,19 @@ namespace grb {
 				ret = ret ? ret : grb::mxv< descr_dense >( temp, A, u, ring );
 				assert( ret == grb::SUCCESS );
 
-				// beta = temp' * u
+				// beta = u' * temp;
 				beta = zero;
 				if( grb::utils::is_complex< IOType >::value ) {
-					ret = ret ? ret : grb::eWiseLambda( [&temp]( const size_t i ) {
-							temp[ i ] = grb::utils::is_complex< IOType >::conjugate( temp[ i ] );
-						}, temp
+					ret = ret ? ret : grb::eWiseLambda( [&u]( const size_t i ) {
+							u[ i ] = grb::utils::is_complex< IOType >::conjugate( u[ i ] );
+						}, u
 					);
 				}
 				ret = ret ? ret : grb::dot< descr_dense >( beta, temp, u, ring );
 				if( grb::utils::is_complex< IOType >::value ) {
 					ret = ret ? ret : grb::eWiseLambda( [&temp]( const size_t i ) {
-							temp[ i ] = grb::utils::is_complex< IOType >::conjugate( temp[ i ] );
-						}, temp
+							u[ i ] = grb::utils::is_complex< IOType >::conjugate( u[ i ] );
+						}, u
 					);
 				}
 				assert( ret == grb::SUCCESS );
