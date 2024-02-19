@@ -2218,7 +2218,7 @@ namespace grb {
 
 #ifndef _H_GRB_REFERENCE_OMP_BLAS2
 		/**
-		 * A nonzero wrapper for use with grb::eWiseLambda over matricies.
+		 * A nonzero wrapper for use with grb::eWiseLambda over matrices.
 		 *
 		 * \internal In the general case, stores a pointer to values. Row and column
 		 *           indices are kept as a copy since doing so is in virtually all
