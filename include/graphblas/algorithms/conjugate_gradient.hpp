@@ -93,8 +93,10 @@ namespace grb {
 		 *     #grb::Vector with the same element type.
 		 * Both vectors are guaranteed to be dense when given to \a Minv.
 		 *
-		 * A good preconditioner action \a Minv is both efficient to apply and
-		 * drastrically reduces the number of CG iterations required.
+		 * A good preconditioner action \a Minv is both efficient to apply as well as
+		 * drastrically reduces the number of CG iterations required. The latter is
+		 * achieved by constructing \a Minv so that the condition number of
+		 * \f$ M^{-1}A \f$ is much smaller than that of \f$ A \f$.
 		 *
 		 * @param[in]     Minv           The preconditioner action if
 		 *                               \a preconditioned equals <tt>true</tt>.
@@ -401,19 +403,12 @@ namespace grb {
 
 				// beta = u' * temp;
 				beta = zero;
-				if( grb::utils::is_complex< IOType >::value ) {
-					ret = ret ? ret : grb::eWiseLambda( [&u]( const size_t i ) {
-							u[ i ] = grb::utils::is_complex< IOType >::conjugate( u[ i ] );
-						}, u
+				ret = ret ? ret : grb::dot< descr_dense >(
+						beta,
+						temp, u,
+						ring.getAdditiveMonoid(),
+						grb::operators::conjugate_right_mul< IOType >()
 					);
-				}
-				ret = ret ? ret : grb::dot< descr_dense >( beta, temp, u, ring );
-				if( grb::utils::is_complex< IOType >::value ) {
-					ret = ret ? ret : grb::eWiseLambda( [&temp]( const size_t i ) {
-							u[ i ] = grb::utils::is_complex< IOType >::conjugate( u[ i ] );
-						}, u
-					);
-				}
 				assert( ret == grb::SUCCESS );
 
 				// alpha = sigma / beta;
