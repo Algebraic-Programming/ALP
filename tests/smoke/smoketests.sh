@@ -250,7 +250,7 @@ preconditioned_
 				echo "                                 ${TESTNAME}.mtx. This test verifies against a ground-truth"
 				echo "                                 solution vector. The test employs the grb::Launcher in automatic"
 				echo "                                 mode. It uses direct-mode file IO."
-				$runner ${TEST_BIN_DIR}/conjugate_gradient_complex_${BACKEND} ${TEST_DATA_DIR}/${TESTNAME}.mtx direct 1 1 1000 true verification ${OUTPUT_VERIFICATION_DIR}/complex_conjugate_conjugate_gradient_out_${TESTNAME}_ref &> ${TEST_OUT_DIR}/preconditioned_conjugate_gradient_complex_${BACKEND}_${P}_${T}.log
+				$runner ${TEST_BIN_DIR}/conjugate_gradient_complex_${BACKEND} ${TEST_DATA_DIR}/${TESTNAME}.mtx direct 1 1 10000 true verification ${OUTPUT_VERIFICATION_DIR}/complex_conjugate_conjugate_gradient_out_${TESTNAME}_ref &> ${TEST_OUT_DIR}/preconditioned_conjugate_gradient_complex_${BACKEND}_${P}_${T}.log
 				head -1 ${TEST_OUT_DIR}/preconditioned_conjugate_gradient_complex_${BACKEND}_${P}_${T}.log
 				grep 'Test OK' ${TEST_OUT_DIR}/preconditioned_conjugate_gradient_complex_${BACKEND}_${P}_${T}.log || echo "Test FAILED"
 			else
