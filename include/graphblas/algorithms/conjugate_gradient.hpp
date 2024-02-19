@@ -91,9 +91,10 @@ namespace grb {
 		 *     #grb::Vector with element type <tt>IOType</tt>, and
 		 *  -# the input vector to the preconditioner as a const-reference to a
 		 *     #grb::Vector with the same element type.
-		 * Both vectors are guaranteed to be dense when given to \a M. A good
-		 * preconditioner action \a Minv is both efficient to apply as well as
-		 * reducing the number of CG iterations required drastically.
+		 * Both vectors are guaranteed to be dense when given to \a Minv.
+		 *
+		 * A good preconditioner action \a Minv is both efficient to apply and
+		 * drastrically reduces the number of CG iterations required.
 		 *
 		 * @param[in]     Minv           The preconditioner action if
 		 *                               \a preconditioned equals <tt>true</tt>.
@@ -120,9 +121,9 @@ namespace grb {
 		 * @param[in,out] temp           A temporary vector of the same size as \a x.
 		 * @param[in,out] temp_precond   A temporary vector of the same size as \a x.
 		 *
-		 * \note If \a preconditioned is <tt>false</tt>, then all of \a M, \a right,
-		 *       and \a temp2 are ignored. In this case, \a temp2 need not have the
-		 *       same length as \a x nor need it have full capacity.
+		 * \note If \a preconditioned is <tt>false</tt>, then both \a Minv and
+		 *       \a temp_precond are ignored. In this case, \a temp_precond need not
+		 *       have the same length as \a x, nor need it have full capacity.
 		 *
 		 * Finally, the algebraic structures over which the CG is executed are given:
 		 *
