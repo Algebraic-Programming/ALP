@@ -88,6 +88,7 @@ constexpr const double c2 = 0.0001;
 struct input {
 	char filename[ 1024 ];
 	bool direct;
+	bool jacobi_precond;
 	size_t rep;
 	size_t solver_iterations;
 };
@@ -159,9 +160,12 @@ void grbProgram( const struct input &data_in, struct output &out ) {
 	// load into GraphBLAS
 	const size_t n = Storage::getData().first.first;
 	Matrix< ScalarType > L( n, n );
+	Vector< ScalarType > diag = data_in.jacobi_precond
+		? Vector< ScalarType >( n )
+		: Vector< ScalarType >( 0 );
 	{
 		const auto &data = Storage::getData().second;
-		const RC rc = buildMatrixUnique(
+		RC io_rc = buildMatrixUnique(
 			L,
 			utils::makeNonzeroIterator<
 				grb::config::RowIndexType, grb::config::ColIndexType, ScalarType
@@ -172,7 +176,7 @@ void grbProgram( const struct input &data_in, struct output &out ) {
 			SEQUENTIAL
 		);
 		/* Once internal issue #342 is resolved this can be re-enabled
-		const RC rc = buildMatrixUnique(
+		RC io_rc = buildMatrixUnique(
 			L,
 			utils::makeNonzeroIterator<
 				grb::config::RowIndexType, grb::config::ColIndexType, double
@@ -182,10 +186,31 @@ void grbProgram( const struct input &data_in, struct output &out ) {
 			>( data.cend() ),
 			PARALLEL
 		);*/
-		if( rc != SUCCESS ) {
+		if( io_rc != SUCCESS ) {
 			std::cerr << "Failure: call to buildMatrixUnique did not succeed "
-				<< "(" << toString( rc ) << ")." << std::endl;
+				<< "(" << toString( io_rc ) << ")." << std::endl;
+			out.error_code = 5;
 			return;
+		}
+		if( data_in.jacobi_precond ) {
+			assert( io_rc == SUCCESS );
+			io_rc = grb::set( diag, 0 );
+			io_rc = io_rc
+				? io_rc
+				: grb::eWiseLambda( [&diag,&L](
+						const size_t i, const size_t j, ScalarType &v
+					) {
+						if( i == j ) {
+							diag[ i ] = utils::is_complex< ScalarType >::inverse( v );
+						}
+					}, L, diag
+				);
+			if( io_rc != SUCCESS ) {
+				std::cerr << "Failure: extracting diagonal did not succeed ("
+					<< toString( io_rc ) << ").\n";
+				out.error_code = 10;
+				return;
+			}
 		}
 	}
 
@@ -205,6 +230,15 @@ void grbProgram( const struct input &data_in, struct output &out ) {
 
 	// set up default pagerank test
 	Vector< ScalarType > x( n ), b( n ), r( n ), u( n ), temp( n );
+	Vector< ScalarType > optional_temp = data_in.jacobi_precond
+		? Vector< ScalarType >( n )
+		: Vector< ScalarType >( 0 );
+	std::function< RC( Vector< ScalarType > &, const Vector< ScalarType > & ) >
+		jacobi_preconditioner =
+			[&diag](grb::Vector< ScalarType > &out, const grb::Vector< ScalarType > &in) {
+					return grb::eWiseApply< descriptors::dense >( out, in, diag,
+						grb::operators::mul< ScalarType >() );
+			};
 
 	set( x, static_cast< ScalarType >( 1 ) / static_cast< ScalarType >( n ) );
 	set( b, static_cast< ScalarType >( 1 ) );
@@ -217,12 +251,22 @@ void grbProgram( const struct input &data_in, struct output &out ) {
 	RC rc = SUCCESS;
 	if( out.rep == 0 ) {
 		timer.reset();
-		rc = conjugate_gradient(
-			x, L, b,
-			data_in.solver_iterations, tol,
-			out.iterations, out.residual,
-			r, u, temp
-		);
+		if( data_in.jacobi_precond ) {
+			rc = preconditioned_conjugate_gradient(
+				x, L, b,
+				jacobi_preconditioner,
+				data_in.solver_iterations, tol,
+				out.iterations, out.residual,
+				r, u, temp, optional_temp
+			);
+		} else {
+			rc = conjugate_gradient(
+				x, L, b,
+				data_in.solver_iterations, tol,
+				out.iterations, out.residual,
+				r, u, temp
+			);
+		}
 		double single_time = timer.time();
 		if( !(rc == SUCCESS || rc == FAILED) ) {
 			std::cerr << "Failure: call to conjugate_gradient did not succeed ("
@@ -262,12 +306,22 @@ void grbProgram( const struct input &data_in, struct output &out ) {
 					  / static_cast< ScalarType >( n ) );
 
 			if( rc == SUCCESS ) {
-				rc = conjugate_gradient(
-					x, L, b,
-					data_in.solver_iterations, tol,
-					out.iterations, out.residual,
-					r, u, temp
-				);
+				if( data_in.jacobi_precond ) {
+					rc = preconditioned_conjugate_gradient(
+						x, L, b,
+						jacobi_preconditioner,
+						data_in.solver_iterations, tol,
+						out.iterations, out.residual,
+						r, u, temp, optional_temp
+					);
+				} else {
+					rc = conjugate_gradient(
+						x, L, b,
+						data_in.solver_iterations, tol,
+						out.iterations, out.residual,
+						r, u, temp
+					);
+				}
 			}
 		}
 		const double time_taken = timer.time();
@@ -311,10 +365,10 @@ void grbProgram( const struct input &data_in, struct output &out ) {
 
 int main( int argc, char ** argv ) {
 	// sanity check
-	if( argc < 3 || argc > 8 ) {
+	if( argc < 3 || argc > 9 ) {
 		std::cout << "Usage: " << argv[ 0 ]
 			<< " <dataset> <direct/indirect> "
-			<< "(inner iterations) (outer iterations) (solver iterations) "
+			<< "(inner iterations) (outer iterations) (solver iterations) (Jacobi) "
 			<< "(verification <truth-file>)\n";
 		std::cout << "<dataset> and <direct/indirect> are mandatory arguments.\n";
 		std::cout << "(inner iterations) is optional, the default is "
@@ -328,6 +382,9 @@ int main( int argc, char ** argv ) {
 		std::cout << "(solver iterations) is optional, the default is "
 			<< max_iters
 			<< ". This integer must be strictly larger than 0.\n";
+		std::cout << "(Jacobi) is an optional boolean value, with default false. "
+			<< "The only possible other value is true, which, if sets, will apply "
+			<< "Jacobi preconditioning to the CG solve.\n";
 		std::cout << "(verification <truth-file>) is optional." << std::endl;
 		return 0;
 	}
@@ -380,14 +437,25 @@ int main( int argc, char ** argv ) {
 		}
 	}
 
+	in.jacobi_precond = false;
+	if( argc >= 7 ) {
+		if( strncmp( argv[ 6 ], "true", 5 ) == 0 ) {
+			in.jacobi_precond = true;
+		} else if( strncmp( argv[ 6 ], "false", 6 ) != 0 ) {
+			std::cerr << "Could not parse argument " << argv[ 6 ] << ", for whether "
+				<< "Jacobi preconditioning should be enabled (expected true or false).\n";
+			return 55;
+		}
+	}
+
 	// check for verification of the output
 	bool verification = false;
 	char truth_filename[ 1024 ];
-	if( argc >= 7 ) {
-		if( strncmp( argv[ 6 ], "verification", 12 ) == 0 ) {
+	if( argc >= 8 ) {
+		if( strncmp( argv[ 7 ], "verification", 12 ) == 0 ) {
 			verification = true;
-			if( argc >= 8 ) {
-				(void) strncpy( truth_filename, argv[ 7 ], 1023 );
+			if( argc >= 9 ) {
+				(void) strncpy( truth_filename, argv[ 8 ], 1023 );
 				truth_filename[ 1023 ] = '\0';
 			} else {
 				std::cerr << "The verification file was not provided as an argument."
@@ -395,7 +463,7 @@ int main( int argc, char ** argv ) {
 				return 60;
 			}
 		} else {
-			std::cerr << "Could not parse argument \"" << argv[ 6 ] << "\", "
+			std::cerr << "Could not parse argument \"" << argv[ 7 ] << "\", "
 				<< "the optional \"verification\" argument was expected." << std::endl;
 			return 70;
 		}
@@ -403,8 +471,9 @@ int main( int argc, char ** argv ) {
 
 	std::cout << "Executable called with parameters " << in.filename << ", "
 		<< "inner repititions = " << in.rep << ", "
-		<< "outer reptitions = " << outer << ", and "
-		<< "solver iterations = " << in.solver_iterations << "."
+		<< "outer reptitions = " << outer << ", "
+		<< "solver iterations = " << in.solver_iterations << ", and "
+		<< "Jacobi preconditioning = " << in.jacobi_precond << "."
 		<< std::endl;
 
 	// set standard exit code
