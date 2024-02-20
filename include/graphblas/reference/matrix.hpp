@@ -933,7 +933,7 @@ namespace grb {
 			"Cannot create an ALP matrix of ALP objects!" );
 
 		/* *********************
-			BLAS2 friends
+			I/O friends
 		   ********************* */
 
 		template< typename DataType, typename RIT, typename CIT, typename NIT >
@@ -962,14 +962,43 @@ namespace grb {
 			const size_t
 		) noexcept;
 
+		template< typename InputType, typename RIT, typename CIT, typename NIT >
+		friend uintptr_t getID(
+			const Matrix< InputType, reference, RIT, CIT, NIT > &
+		);
+
+		template<
+			Descriptor descr, typename InputType,
+			typename RIT, typename CIT, typename NIT,
+			typename fwd_iterator
+		>
+		friend RC buildMatrixUnique(
+			Matrix< InputType, reference, RIT, CIT, NIT > &,
+			fwd_iterator, const fwd_iterator,
+			const IOMode
+		);
+
+		/* *********************
+			BLAS2 friends
+		   ********************* */
+
+		template<
+			typename Func,
+			typename DataType1, typename RIT, typename CIT, typename NIT
+		>
+		friend RC eWiseLambda(
+			const Func,
+			const Matrix< DataType1, reference, RIT, CIT, NIT > &
+		);
+
 		template<
 			class ActiveDistribution, typename Func, typename DataType,
 			typename RIT, typename CIT, typename NIT
 		>
-		friend RC eWiseLambda(
+		friend RC internal::eWiseLambda(
 			const Func,
 			const Matrix< DataType, reference, RIT, CIT, NIT > &,
-			const size_t, const size_t
+			const size_t, const size_t, const size_t, const size_t
 		);
 
 		template<
@@ -1026,19 +1055,8 @@ namespace grb {
 		);
 
 		/* ********************
-			IO friends
+		     Internal friends
 		   ******************** */
-
-		template<
-			Descriptor descr, typename InputType,
-			typename RIT, typename CIT, typename NIT,
-			typename fwd_iterator
-		>
-		friend RC buildMatrixUnique(
-			Matrix< InputType, reference, RIT, CIT, NIT > &,
-			fwd_iterator, const fwd_iterator,
-			const IOMode
-		);
 
 		friend internal::Compressed_Storage< D, RowIndexType, NonzeroIndexType > &
 		internal::getCRS<>(
@@ -1096,15 +1114,6 @@ namespace grb {
 			const unsigned int,
 			const grb::Matrix< InputType, reference, RIT, CIT, NIT > &
 		) noexcept;
-
-		template< typename InputType, typename RIT, typename CIT, typename NIT >
-		friend uintptr_t getID(
-			const Matrix< InputType, reference, RIT, CIT, NIT > &
-		);
-
-		/* *************************
-		   Friend internal functions
-		   ************************* */
 
 		friend const grb::Matrix<
 			D, reference,
