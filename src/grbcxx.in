@@ -30,6 +30,36 @@ LINK="dynamic"
 SHOW="eval"
 BACKEND=${BACKENDS[0]}
 CXXSTD=c++11
+help="no"
+
+function print_help {
+	local this_bin="$1"
+	local BACKEND=$2
+	local COMPILER=$3
+	local help_arg="--help"
+	if [[ "${BACKEND}" == "bsp1d" || "${BACKEND}" == "hybrid" ]]; then
+		# LPF's lpfcxx doesn't recognize "--help", just "-help"
+		help_arg="-help"
+	fi
+
+	echo "* Compiles an ALP/GraphBLAS application by calling an underlying compiler and by passing needed flags."
+	echo
+	echo "USAGE: ${this_bin} [ALP-specific options...] [--] <compiler arguments...>"
+	echo
+	echo "ALP-specific options:"
+	echo "  -b,--backend <backend>  compile against the ALP/GraphBLAS backend <backend>; possible values: ${BACKENDS[@]}; default: reference"
+	echo "  --link-alp-static       link the specified ALP/GraphBLAS backend statically (default linking is dynamic)"
+	echo "  --show                  show the full compilation command WITHOUT executing it"
+	echo "  --version               display the current ALP/GraphBLAS version"
+	echo "  --help                  display this help"
+	echo "  -- <args...>            pass all the following <args...> arguments directly to the underlying compiler"
+	echo
+	echo "* Selected backend: ${BACKEND}"
+	echo "* Underlying compiler: ${COMPILER}"
+	echo "* Underlying compiler help:"
+	echo
+	exec ${COMPILER} ${help_arg}
+}
 
 while [[ $# -gt 0 ]]; do
 	option="$1"
@@ -56,6 +86,9 @@ while [[ $# -gt 0 ]]; do
 			echo " "
 			ARGS+=("${option}")
 		;;
+		--help)
+			help="yes"
+		;;
 		--)
 			break
 		;;
@@ -73,12 +106,19 @@ for i in "${!BACKENDS[@]}"; do
 		break
 	fi
 done
+COMPILER="${BACKENDCOMPILERS[${BACKENDID}]}"
 
 if [[ ${BACKENDID} -eq -1 ]]
 then
 	echo "Could not find requested backend \`${BACKEND}'"
 	exit 255
 fi
+
+if [[ "${help}" == "yes" ]]; then
+	print_help "$(realpath $0)" ${BACKEND} ${COMPILER}
+	exit 0
+fi
+
 
 if [[ ! -d "${INCLUDEDIR}" ]]
 then
@@ -93,8 +133,7 @@ else
 fi
 LFLAGS="@COMMON_LFLAGS_PRE_SPACED@ ${LIB} ${BACKENDLFLAGS[${BACKENDID}]} @COMMON_LFLAGS_POST_SPACED@"
 
-COMPILER="${BACKENDCOMPILERS[${BACKENDID}]}"
-
 CMD="${COMPILER} -std=${CXXSTD} -I'${INCLUDEDIR}' ${BACKENDCFLAGS[${BACKENDID}]} ${ARGS[@]} "$@" ${LFLAGS}"
 
 ${SHOW} "${CMD}"
+
