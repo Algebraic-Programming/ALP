@@ -55,8 +55,6 @@
 
 #include <graphblas/reference/NonzeroWrapper.hpp>
 
-#include "forward.hpp"
-
 
 namespace grb {
 
@@ -201,16 +199,6 @@ namespace grb {
 		const size_t
 	) noexcept;
 
-	template<
-		class ActiveDistribution, typename Func, typename DataType,
-		typename RIT, typename CIT, typename NIT
-	>
-	RC eWiseLambda(
-		const Func f,
-		const Matrix< DataType, nonblocking, RIT, CIT, NIT > &A,
-		const size_t s, const size_t P
-	);
-
 	/**
 	 * A GraphBLAS matrix, nonblocking implementation.
 	 *
@@ -278,16 +266,6 @@ namespace grb {
 			Matrix< DataType, nonblocking, RIT, CIT, NIT > &,
 			const size_t
 		) noexcept;
-
-		template<
-			class ActiveDistribution, typename Func, typename DataType,
-			typename RIT, typename CIT, typename NIT
-		>
-		friend RC eWiseLambda(
-			const Func,
-			const Matrix< DataType, nonblocking, RIT, CIT, NIT > &,
-			const size_t, const size_t
-		);
 
 		template<
 			Descriptor descr,

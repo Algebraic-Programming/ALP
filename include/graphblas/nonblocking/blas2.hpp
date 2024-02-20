@@ -39,10 +39,9 @@
 
 #include <graphblas/reference/compressed_storage.hpp>
 
-#include "coordinates.hpp"
-#include "forward.hpp"
 #include "matrix.hpp"
 #include "vector.hpp"
+#include "coordinates.hpp"
 #include "lazy_evaluation.hpp"
 #include "boolean_dispatcher_blas2.hpp"
 
