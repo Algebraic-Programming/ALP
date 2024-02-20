@@ -23,6 +23,34 @@ BACKENDRUNNER=(@BACKEND_RUNNER_SPACED@)
 declare -a ARGS
 SHOW="eval"
 BACKEND=${BACKENDS[0]}
+help="no"
+
+function print_help {
+	local this_bin="$1"
+	local BACKEND=$2
+	local RUNNER=$3
+
+	echo "* Runs an ALP/GraphBLAS binary by calling an underlying runner and by passing needed flags."
+	echo
+	echo "USAGE: ${this_bin} [ALP-specific options...] [--] [runner arguments...] <ALP/GraphBLAS binary> [binary arguments...]"
+	echo
+	echo "ALP-specific options:"
+	echo "  -b,--backend <backend>  run against the ALP/GraphBLAS backend <backend>; possible values: ${BACKENDS[@]}; default: reference"
+	echo "  --show                  show the full run command WITHOUT executing it"
+	echo "  --help                  display this help"
+	echo "  -- <args...>            pass all the following <args...> arguments directly to the underlying runner"
+	echo
+	echo "* Selected backend: ${BACKEND}"
+	if [[ -z "${RUNNER}" ]]; then
+		# shared-memory backends have no runner
+		echo "* No custom runner: running the given ALP/GraphBLAS binary directly"
+	else
+		echo "* Underlying runner: ${RUNNER}"
+		echo "* Underlying runner help:"
+		echo
+		exec ${RUNNER} --help
+	fi
+}
 
 while [[ $# -gt 0 ]]; do
 	option="$1"
@@ -34,6 +62,9 @@ while [[ $# -gt 0 ]]; do
 		;;
 		--show)
 			SHOW=echo
+		;;
+		--help)
+			help="yes"
 		;;
 		--)
 			break
@@ -62,4 +93,10 @@ fi
 RUNNER=${BACKENDRUNNER[${BACKENDID}]}
 LD_PATH="@ALP_UTILS_INSTALL_DIR@:${BACKENDRUNENV[${BACKENDID}]}"
 
-${SHOW} LD_LIBRARY_PATH="${LD_PATH}:${LD_LIBRARY_PATH}" ${RUNNER} "${ARGS[@]}" "$@"
+if [[ "${help}" == "yes" ]]; then
+	print_help "$(realpath $0)" ${BACKEND} ${RUNNER}
+	exit 0
+fi
+
+${SHOW} LD_LIBRARY_PATH="\"${LD_PATH}:${LD_LIBRARY_PATH}\"" ${RUNNER} "${ARGS[@]}" "$@"
+
