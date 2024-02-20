@@ -446,10 +446,14 @@ namespace grb {
 				std::is_convertible< size_t, DataType >::value,
 			void >::type * const = nullptr
 		) {
+			const size_t n = size( x );
 			if( descr & descriptors::use_index ) {
 				// make it ok to call eWiseLambda
-				if( old_nnz < size( x ) ) {
-					internal::getCoordinates( internal::getLocal( x ) ).assignAll();
+				if( !((descr & descriptors::dense) || old_nnz == n) ) {
+					if( old_nnz < n ) {
+						internal::getCoordinates( internal::getLocal( x ) ).assignAll();
+					}
+					internal::setDense( x );
 				}
 				// set-to-index via eWiseLambda
 				return eWiseLambda( [ &x ]( const size_t i ) {
@@ -457,7 +461,13 @@ namespace grb {
 					}, x );
 			} else {
 				// otherwise directly delegate
-				return set< descr >( internal::getLocal( x ), val );
+				RC ret = set< descr >( internal::getLocal( x ), val );
+				if( !((descr & descriptors::dense) || old_nnz == n) ) {
+					if( ret == SUCCESS ) {
+						internal::setDense( x );
+					}
+				}
+				return ret;
 			}
 		}
 
@@ -475,7 +485,11 @@ namespace grb {
 		) {
 			static_assert( !(descr & descriptors::use_index ),
 				"use_index requires casting from size_t to the vector value type" );
-			return set< descr >( internal::getLocal( x ), val );
+			RC ret = set< descr >( internal::getLocal( x ), val );
+			if( ret == SUCCESS ) {
+				internal::setDense( x );
+			}
+			return ret;
 		}
 
 	} // end namespace internal
@@ -529,13 +543,7 @@ namespace grb {
 
 		// dispatch
 		assert( phase == EXECUTE );
-		RC ret = internal::set_handle_use_index< descr >( x, old_nnz, val );
-		if( ret == SUCCESS ) {
-			internal::setDense( x );
-		}
-
-		// done
-		return ret;
+		return internal::set_handle_use_index< descr >( x, old_nnz, val );
 	}
 
 	/**
