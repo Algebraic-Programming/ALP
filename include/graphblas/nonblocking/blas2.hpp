@@ -1491,7 +1491,6 @@ namespace grb {
 	}
 
 	template<
-		class ActiveDistribution,
 		typename Func,
 		typename DataType,
 		typename RIT,
@@ -1500,9 +1499,7 @@ namespace grb {
 	>
 	RC eWiseLambda(
 		const Func f,
-		const Matrix< DataType, nonblocking, RIT, CIT, NIT > &A,
-		const size_t s,
-		const size_t P
+		const Matrix< DataType, nonblocking, RIT, CIT, NIT > &A
 	) {
 		if( internal::NONBLOCKING::warn_if_not_native &&
 			config::PIPELINE::warn_if_not_native
@@ -1518,8 +1515,8 @@ namespace grb {
 		internal::le.execution();
 
 		// second, delegate to the reference backend
-		return eWiseLambda< ActiveDistribution, Func, DataType, RIT, CIT, NIT >(
-			f, internal::getRefMatrix( A ), s, P );
+		return eWiseLambda< Func, DataType, RIT, CIT, NIT >(
+			f, internal::getRefMatrix( A ) );
 	}
 
 	template<
