@@ -550,7 +550,7 @@ namespace grb {
 
 			size_t local_reduced_size = NONBLOCKING::numThreads() *
 				config::CACHE_LINE_SIZE::value();
-			IOType local_reduced[ local_reduced_size ];
+			typename Monoid::D3 local_reduced[ local_reduced_size ];
 
 			for(
 				size_t i = 0;
