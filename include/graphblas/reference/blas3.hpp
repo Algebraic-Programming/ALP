@@ -1076,16 +1076,8 @@ namespace grb {
 
 		const InputType1 * __restrict__ const x = internal::getRaw( u );
 		const InputType2 * __restrict__ const y = internal::getRaw( v );
-		char * arr = nullptr;
-		char * buf = nullptr;
-		OutputType * valbuf = nullptr;
-		internal::getMatrixBuffers( arr, buf, valbuf, 1, A );
 		config::NonzeroIndexType * A_col_index = internal::template
 			getReferenceBuffer< typename config::NonzeroIndexType >( ncols + 1 );
-
-
-		internal::Coordinates< reference > coors;
-		coors.set( arr, false, buf, ncols );
 
 		CRS_raw.col_start[ 0 ] = 0;
 
@@ -1170,7 +1162,6 @@ namespace grb {
 		nzc = 0;
 		for( size_t i = 0; i < nrows; ++i ) {
 			if( internal::getCoordinates( u ).assigned( i ) ) {
-				coors.clear();
 				if( ( descr & descriptors::structural_complement ) != descriptors::structural_complement ) {
 					for( auto k = mask_raw.col_start[ i ]; k < mask_raw.col_start[ i + 1 ]; ++k ) {
 						const size_t k_col = mask_raw.row_index[ k ];
@@ -1178,11 +1169,23 @@ namespace grb {
 							internal::getCoordinates( v ).assigned( k_col ) &&
 							utils::interpretMask< descr, MaskType >( true, mask_raw.values, k )
 						) {
-							coors.assign( k_col );
-							grb::apply( valbuf[ k_col ],
-								x[i],
-								y[k_col],
+							OutputType val;
+							grb::apply( val,
+								x[ i ],
+								y[ k_col ],
 								mul );
+
+							CRS_raw.row_index[ nzc ] = k_col;
+							CRS_raw.setValue( nzc, val );
+							// update CCS
+							if( !crs_only ) {
+								const size_t CCS_index = A_col_index[ k_col ]++ + CCS_raw.col_start[ k_col ];
+								CCS_raw.row_index[ CCS_index ] = i;
+								CCS_raw.setValue( CCS_index, val );
+							}
+							// update count
+							(void) ++nzc;
+							
 						}
 					}
 				}
@@ -1199,29 +1202,25 @@ namespace grb {
 							!mask_coors.assign( j ) &&
 							internal::getCoordinates( v ).assigned( j ) 
 						) {
-							coors.assign( j );
-							grb::apply( valbuf[ j ],
-								x[i],
-								y[j],
+							OutputType val;
+							grb::apply( val,
+								x[ i ],
+								y[ j ],
 								mul );
+
+							CRS_raw.row_index[ nzc ] = j;
+							CRS_raw.setValue( nzc, val );
+							// update CCS
+							if( !crs_only ) {
+								const size_t CCS_index = A_col_index[ j ]++ + CCS_raw.col_start[ j ];
+								CCS_raw.row_index[ CCS_index ] = i;
+								CCS_raw.setValue( CCS_index, val );
+							}
+							// update count
+							(void) ++nzc;
 						}
 					}
 				}
-			}
-			for( size_t k = 0; k < coors.nonzeroes(); ++k ) {
-				assert( nzc < old_nzc );
-				const size_t j = coors.index( k );
-				// update CRS
-				CRS_raw.row_index[ nzc ] = j;
-				CRS_raw.setValue( nzc, valbuf[ j ] );
-				// update CCS
-				if( !crs_only ) {
-					const size_t CCS_index = A_col_index[ j ]++ + CCS_raw.col_start[ j ];
-					CCS_raw.row_index[ CCS_index ] = i;
-					CCS_raw.setValue( CCS_index, valbuf[ j ] );
-				}
-				// update count
-				(void) ++nzc;
 			}
 			CRS_raw.col_start[ i + 1 ] = nzc;
 		}
