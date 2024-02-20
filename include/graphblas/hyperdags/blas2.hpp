@@ -569,8 +569,7 @@ namespace grb {
 			return vxm< descr >( u, mask, v, A, ring, phase );
 		}
 		const RC ret = vxm< descr >(
-			internal::getVector(u),
-			internal::getVector(mask),
+			internal::getVector(u), internal::getVector(mask),
 			internal::getVector(v),
 			internal::getVector(v_mask),
 			internal::getMatrix(A),
@@ -633,8 +632,10 @@ namespace grb {
 			return vxm< descr >( u, mask, v, A, add, mul, phase );
 		}
 		const RC ret = vxm< descr >(
-			internal::getVector(u), internal::getVector(mask),
-			internal::getVector(v), internal::getVector(v_mask), internal::getMatrix(A),
+			internal::getVector(u),
+			internal::getVector(mask),
+			internal::getVector(v), internal::getVector(v_mask),
+			internal::getMatrix(A),
 			add, mul, phase
 		);
 		if( ret != SUCCESS ) { return ret; }
@@ -642,10 +643,10 @@ namespace grb {
 		if( nrows( A ) == 0 || ncols( A ) == 0 ) { return ret; }
 		std::array< const void *, 0 > sourcesP{};
 		std::vector< uintptr_t > sourcesC{
+			getID( internal::getVector(u) ),
 			getID( internal::getVector(v) ),
-			getID( internal::getMatrix(A) ),
 			getID( internal::getVector(v_mask) ),
-			getID( internal::getVector(u) )
+			getID( internal::getMatrix(A) ),
 		};
 		if( size( internal::getVector(mask) ) == 0 ) {
 			sourcesC.push_back( getID( internal::getVector(mask) ) );

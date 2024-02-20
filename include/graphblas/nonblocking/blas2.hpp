@@ -1544,7 +1544,7 @@ namespace grb {
 			return MISMATCH;
 		}
 
-		return eWiseLambda( f, A, args... );
+		return eWiseLambda< descr >( f, A, args... );
 	}
 
 	/** @} */

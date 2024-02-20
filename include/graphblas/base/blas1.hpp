@@ -3741,11 +3741,13 @@ namespace grb {
 		typename Func,
 		typename DataType,
 		Backend backend,
-		typename Coords
+		typename Coords,
+		typename... Args
 	>
 	RC eWiseLambda(
 		const Func f,
-		const Vector< DataType, backend, Coords > &x
+		const Vector< DataType, backend, Coords > &x,
+		Args...
 	) {
 #ifndef NDEBUG
 		const bool should_not_call_base_vector_ewiselambda = false;

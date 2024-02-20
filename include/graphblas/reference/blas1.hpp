@@ -9817,6 +9817,10 @@ namespace grb {
 	) {
 		const size_t n = internal::getCoordinates( x ).size();
 		if( (descr & descriptors::dense) && grb::nnz( x ) < n ) {
+#ifdef _DEBUG
+			std::cerr << "Error: eWiseLambda called with dense descriptor "
+				<< "on a sparse vector.\n";
+#endif
 			return ILLEGAL;
 		}
 		return internal::eWiseLambda< descr, internal::Distribution< reference > >(

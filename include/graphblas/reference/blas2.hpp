@@ -2866,6 +2866,17 @@ namespace grb {
 				<< " nor " << ncols( A ) << ").\n";
 			return MISMATCH;
 		}
+
+		if( (descr & descriptors::dense) &&
+		    !internal::getCoordinates(x).isDense()
+		) {
+#ifdef _DEBUG
+			std::cerr << "Error: eWiseLambda called with dense descriptor "
+				<< "on a sparse vector.\n";
+#endif
+			return ILLEGAL;
+		}
+
 		// recurse
 		return eWiseLambda< descr >( f, A, args... );
 	}
