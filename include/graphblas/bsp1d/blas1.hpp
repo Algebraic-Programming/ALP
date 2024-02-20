@@ -548,7 +548,7 @@ namespace grb {
 			// indeed all other possible errors (MISMATCH, ILLEGAL) should already have
 			// been caught on this backend's level. If they occur on the final backend,
 			// there is a logic error on the BSP1D backend side somewhere.
-			assert( ret == SUCCESS || ret == OUT_OF_MEMORY );
+			assert( ret == SUCCESS || ret == OUTOFMEM );
 		}
 
 		// handle try and execute
@@ -993,7 +993,7 @@ namespace grb {
 			// indeed all other possible errors (MISMATCH, ILLEGAL) should already have
 			// been caught on this backend's level. If they occur on the final backend,
 			// there is a logic error on the BSP1D backend side somewhere.
-			assert( ret == SUCCESS || ret == OUT_OF_MEMORY );
+			assert( ret == SUCCESS || ret == OUTOFMEM );
 		}
 
 		// handle try and execute
@@ -4491,8 +4491,11 @@ namespace grb {
 	 */
 	template< typename Func, typename DataType, typename Coords >
 	RC eWiseLambda( const Func f, const Vector< DataType, BSP1D, Coords > &x ) {
-		// rely on local lambda
-		return eWiseLambda( f, internal::getLocal( x ) );
+		const internal::BSP1D_Data &data = internal::grb_BSP1D.cload();
+		// rely on local lambda, passing in the active global distribution, global
+		// length, and number of user processes
+		return internal::eWiseLambda< typename internal::Distribution< BSP1D > >(
+			f, internal::getLocal( x ), x._n, data.s, data.P );
 		// note the sparsity structure will not change by the above call
 	}
 

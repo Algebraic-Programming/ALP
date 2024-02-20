@@ -2664,20 +2664,41 @@ namespace grb {
 		}
 
 		/**
-		 * Implementation simply defers to the reference implementation operator
-		 * overload. This means this function expects local indices, which happens
-		 * automatically when using eWiseLambda.
+		 * Implementation in debug mode checks that the given index is distributed to
+		 * this process, and if not, trips an assert. It proceeds to translate the
+		 * global index \a i to a process-local one, and, using the local index,
+		 * defers to the final backend.
 		 */
 		typename LocalVector::lambda_reference operator[]( const size_t i ) {
+			const auto data = internal::grb_BSP1D.cload();
+#ifndef NDEBUG
+			// dynamic sanity check
+			const size_t k = internal::Distribution< BSP1D >::global_index_to_process_id(
+				i, _n, data.P );
+			assert( data.s == k );
+#endif
+			// translate global index to local
+			const size_t local = internal::Distribution< BSP1D >::global_index_to_local(
+				i, _n, data.P );
 			// return reference
-			return _local[ i ];
+			return _local[ local ];
 		}
 
 		/** No implementation notes (see above). */
 		const typename LocalVector::lambda_reference
 		operator[]( const size_t i ) const {
+			const auto data = internal::grb_BSP1D.cload();
+#ifndef NDEBUG
+			// dynamic sanity check
+			const size_t k = internal::Distribution< BSP1D >::global_index_to_process_id(
+				i, _n, data.P );
+			assert( data.s == k );
+#endif
+			// translate global index to local
+			const size_t local = internal::Distribution< BSP1D >::global_index_to_local(
+				i, _n, data.P );
 			// return const reference
-			return _local[ i ];
+			return _local[ local ];
 		}
 
 		/**
