@@ -34,14 +34,14 @@ namespace grb {
 	// forward-declared and this forward definition file included from both
 	// matrix.hpp and blas2.hpp
 	template<
-		class ActiveDistribution = internal::Distribution< nonblocking >,
+		class ActiveDistribution,
 		typename Func, typename DataType,
 		typename RIT, typename CIT, typename NIT
 	>
 	RC eWiseLambda(
-		const Func f,
-		const Matrix< DataType, nonblocking, RIT, CIT, NIT > &A,
-		const size_t s = 0, const size_t P = 1
+		const Func,
+		const Matrix< DataType, nonblocking, RIT, CIT, NIT > &,
+		const size_t, const size_t, const size_t, const size_t
 	);
 	// end eWiseLambda declarations
 
