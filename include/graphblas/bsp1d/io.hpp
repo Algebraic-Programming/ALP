@@ -447,19 +447,16 @@ namespace grb {
 			void >::type * const = nullptr
 		) {
 			if( descr & descriptors::use_index ) {
-				const internal::BSP1D_Data &data = internal::grb_BSP1D.cload();
-				const auto p = data.P;
-				const auto s = data.s;
-				const auto n = grb::size( x );
+				// make it ok to call eWiseLambda
 				if( old_nnz < size( x ) ) {
 					internal::getCoordinates( internal::getLocal( x ) ).assignAll();
 				}
-				return eWiseLambda( [ &x, &n, &s, &p ]( const size_t i ) {
-					x[ i ] = internal::Distribution< BSP1D >::local_index_to_global(
-							i, n, s, p
-						);
+				// set-to-index via eWiseLambda
+				return eWiseLambda( [ &x ]( const size_t i ) {
+						x[ i ] = i;
 					}, x );
 			} else {
+				// otherwise directly delegate
 				return set< descr >( internal::getLocal( x ), val );
 			}
 		}
