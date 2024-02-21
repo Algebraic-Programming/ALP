@@ -75,6 +75,7 @@ set( backend_reference_srcs
 
 # source files common to all BSP-based backends
 set( backend_bsp_srcs
+	${CMAKE_CURRENT_SOURCE_DIR}/bsp/utils.cpp
 	${CMAKE_CURRENT_SOURCE_DIR}/bsp/collectives.cpp
 	${CMAKE_CURRENT_SOURCE_DIR}/bsp/exec_broadcast_routines.cpp
 )
