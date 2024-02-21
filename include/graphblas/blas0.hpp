@@ -604,6 +604,7 @@ namespace grb {
 				}
 
 		};
+
 	} // namespace internal
 
 } // namespace grb
