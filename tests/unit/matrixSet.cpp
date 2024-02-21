@@ -201,6 +201,126 @@ void grb_program( const size_t &n, grb::RC &rc ) {
 	if( rc != SUCCESS ) {
 		return;
 	}
+
+	//check masked matrix set
+	grb::Matrix< int > Mask( n, n );
+	grb::Matrix< int > Output( n, n );
+	grb::Matrix< int > Input( n, n );
+	size_t I[ 2 * n - 1 ], J[ 2 * n - 1 ];
+	int mask_vals [ 2 * n - 1 ];
+	int input_vals [ 2 * n - 1 ];
+
+	for( size_t k = 0; k < n; ++k ) {
+		I[ k ] = J[ k ] = k;
+		mask_vals[ k ] = 1;
+		input_vals[ k ] = k;
+		if( k < n - 1 ) {
+			I[ n + k ] = k;
+			J[ n + k ] = k + 1;
+			mask_vals [ n + k ] = 0;
+			input_vals[ n + k ] = k;
+		}
+	}
+
+	rc = grb::buildMatrixUnique( Mask, I, J, mask_vals, 2 * n - 1, SEQUENTIAL );
+	if( rc != SUCCESS ) {
+		std::cerr << "\t buildMatrixUnique of mask matrix FAILED\n";
+		return;
+	}
+
+	rc = grb::buildMatrixUnique( Input, I, J, input_vals, 2 * n - 1, SEQUENTIAL );
+	if( rc != SUCCESS ) {
+		std::cerr << "\t buildMatrixUnique of input matrix FAILED\n";
+		return;
+	}
+
+	rc = grb::resize(Output, 2 * n - 1 );
+	if( rc != SUCCESS ) {
+		std::cerr << "\t grb::resize of output matrix for the matrix to matrix masked set FAILED\n";
+		return;
+	}
+
+	rc = grb::set< descriptors::structural >( Output, Mask, Input );
+	if( rc != SUCCESS ) {
+		std::cerr << "\t grb::set structural (matrix to matrix masked) FAILED\n";
+		return;
+	}
+
+	if( grb::nnz( Output ) != 2 * n - 1 ) {
+		std::cerr << "\t unexpected number of output elements ( " << grb::nnz( Output ) << " ), expected " << 2 * n - 1 <<".\n";
+		rc = FAILED;
+	}
+
+	for( const auto & triplet : Output ) {
+		if( triplet.first.first != triplet.first.second && triplet.first.first != triplet.first.second - 1 ) {
+			std::cerr << "\tunexpected entry at ( " << triplet.first.first << ", " << triplet.first.second << " ), value " << triplet.second << ".\n";
+			rc = FAILED;
+		} if( triplet.first.first != triplet.second ) {
+			std::cerr << "\tunexpected entry at ( " << triplet.first.first << ", " << triplet.first.second << " ) with value " << triplet.second;
+			std::cerr << ", expected value "<< triplet.first.first <<".\n";
+			rc = FAILED;
+		}
+	}
+
+	if( rc != SUCCESS ) {
+		return;
+	}
+
+	
+
+	rc = grb::set( Output, Mask, Input );
+	if( rc != SUCCESS ) {
+		std::cerr << "\t grb::set (matrix to matrix masked) FAILED\n";
+		return;
+	}
+
+	if( grb::nnz( Output ) != n ) {
+		std::cerr << "\t unexpected number of output elements ( " << grb::nnz( Output ) << " ), expected " << n <<".\n";
+		rc = FAILED;
+	}
+
+	for( const auto & triplet : Output ) {
+		if( triplet.first.first != triplet.first.second ) {
+			std::cerr << "\tunexpected entry at ( " << triplet.first.first << ", " << triplet.first.second << " ), value " << triplet.second << ".\n";
+			rc = FAILED;
+		} if( triplet.first.first != triplet.second ) {
+			std::cerr << "\tunexpected entry at ( " << triplet.first.first << ", " << triplet.first.second << " ) with value " << triplet.second;
+			std::cerr << ", expected value "<< triplet.first.first <<".\n";
+			rc = FAILED;
+		}
+	}
+
+	if( rc != SUCCESS ) {
+		return;
+	}
+
+
+
+	rc = grb::set< descriptors::invert_mask >( Output, Mask, Input );
+	if( rc != SUCCESS ) {
+		std::cerr << "\t grb::set invert mask (matrix to matrix masked) FAILED\n";
+		return;
+	}
+
+	if( grb::nnz( Output ) != n - 1 ) {
+		std::cerr << "\t unexpected number of output elements ( " << grb::nnz( Output ) << " ), expected " << n - 1 <<".\n";
+		rc = FAILED;
+	}
+
+	for( const auto & triplet : Output ) {
+		if( triplet.first.first != triplet.first.second - 1 ) {
+			std::cerr << "\tunexpected entry at ( " << triplet.first.first << ", " << triplet.first.second << " ), value " << triplet.second << ".\n";
+			rc = FAILED;
+		} if( triplet.first.first != triplet.second ) {
+			std::cerr << "\tunexpected entry at ( " << triplet.first.first << ", " << triplet.first.second << " ) with value " << triplet.second;
+			std::cerr << ", expected value "<< triplet.first.first <<".\n";
+			rc = FAILED;
+		}
+	}
+
+	if( rc != SUCCESS ) {
+		return;
+	}
 }
 
 int main( int argc, char ** argv ) {
