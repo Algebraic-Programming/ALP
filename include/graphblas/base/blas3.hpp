@@ -508,23 +508,23 @@ namespace grb {
 	 *                       equal to \a y.
 	 *
 	 * @see grb::foldl provides similar in-place functionality, but folds in a
-	 * 	left-to-right direction.
+	 *                 left-to-right direction.
 	 * @see The same primitive but unmasked is also provided.
 	 *
 	 * \parblock
 	 * \par Valid descriptors
 	 * - descriptors::no_operation: the default descriptor.
-	 * - descriptors::no_casting: the first domain of
-	 * 	 	\a monoid must match \a InputType, the second domain of \a op
-	 * 		match \a IOType, the third domain must match \a IOType.
+	 * - descriptors::no_casting: the first domain of \a monoid must match
+	 *  \a InputType, the second domain of \a op match \a IOType, the third
+	 *  domain must match \a IOType.
 	 * - descriptors::transpose_matrix: A^T will be considered
-	 * 	 	instead of \a A (unmasked variant only).
+	 *   instead of \a A (unmasked variant only).
 	 * - descriptors::transpose_left: A^T will be considered instead
-	 * 	 	of \a A.
+	 *   of \a A.
 	 * - descriptors::transpose_right: mask^T will be considered
-	 * 	 	instead of \a mask.
+	 *   instead of \a mask.
 	 * - descriptors::structural: Any value stored in \a mask is considered
-	 * 		to be <tt>true</tt>.
+	 *   to be <tt>true</tt>.
 	 *
 	 * \note Invalid descriptors will be ignored.
 	 *
@@ -751,23 +751,23 @@ namespace grb {
 	 *                       equal to \a y.
 	 *
 	 * @see grb::foldr provides similar in-place functionality, but folds in a
-	 * 	left-to-right direction.
+	 *                 left-to-right direction.
 	 * @see The same primitive but unmasked is also provided.
 	 *
 	 * \parblock
 	 * \par Valid descriptors
 	 * - descriptors::no_operation: the default descriptor.
-	 * - descriptors::no_casting: the first domain of
-	 * 	 	\a monoid must match \a InputType, the second domain of \a op
-	 * 		match \a IOType, the third domain must match \a IOType.
+	 * - descriptors::no_casting: the first domain of \a monoid must match
+	 *   \a InputType, the second domain of \a op match \a IOType, the third
+	 *    domain must match \a IOType.
 	 * - descriptors::transpose_matrix: A^T will be considered
-	 * 	 	instead of \a A (unmasked variant only).
+	 *   instead of \a A (unmasked variant only).
 	 * - descriptors::transpose_left: A^T will be considered instead
-	 * 	 	of \a A.
+	 *   of \a A.
 	 * - descriptors::transpose_right: mask^T will be considered
-	 * 	 	instead of \a mask.
+	 *   instead of \a mask.
 	 * - descriptors::structural: Any value stored in \a mask is considered
-	 * 		to be <tt>true</tt>.
+	 *   to be <tt>true</tt>.
 	 *
 	 * \note Invalid descriptors will be ignored.
 	 *
