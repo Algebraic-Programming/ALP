@@ -43,6 +43,12 @@ void grb_program( const size_t &n, grb::RC &rc ) {
 	grb::Matrix< void > C( n, n );
 	grb::Matrix< void > D( n, n );
 	grb::Matrix< unsigned int > E( n, n );
+	grb::Matrix< int > Mask( n, n );
+	grb::Matrix< int > Output( n, n );
+	grb::Matrix< int > Input( n, n );
+	
+
+	
 	rc = grb::resize( A, 15 );
 	if( rc == SUCCESS ) {
 		rc = grb::buildMatrixUnique( A, I, J, data1, 15, SEQUENTIAL );
@@ -61,6 +67,35 @@ void grb_program( const size_t &n, grb::RC &rc ) {
 			}
 		}
 	}
+
+	size_t I_mask[ 2 * n - 1 ], J_mask[ 2 * n - 1 ];
+	int mask_vals [ 2 * n - 1 ];
+	int input_vals [ 2 * n - 1 ];
+
+	for( size_t k = 0; k < n; ++k ) {
+		I_mask[ k ] = J_mask[ k ] = k;
+		mask_vals[ k ] = 1;
+		input_vals[ k ] = k;
+		if( k < n - 1 ) {
+			I_mask[ n + k ] = k;
+			J_mask[ n + k ] = k + 1;
+			mask_vals [ n + k ] = 0;
+			input_vals[ n + k ] = k;
+		}
+	}
+
+	rc = grb::buildMatrixUnique( Mask, I_mask, J_mask, mask_vals, 2 * n - 1, SEQUENTIAL );
+	if( rc != SUCCESS ) {
+		std::cerr << "\t buildMatrixUnique of mask matrix FAILED\n";
+		return;
+	}
+
+	rc = grb::buildMatrixUnique( Input, I_mask, J_mask, input_vals, 2 * n - 1, SEQUENTIAL );
+	if( rc != SUCCESS ) {
+		std::cerr << "\t buildMatrixUnique of input matrix FAILED\n";
+		return;
+	}
+
 	if( rc == SUCCESS ) {
 		rc = grb::resize( B, 15 );
 	}
@@ -72,6 +107,9 @@ void grb_program( const size_t &n, grb::RC &rc ) {
 	}
 	if( rc == SUCCESS ) {
 		rc = grb::resize( E, 15 );
+	}
+	if( rc == SUCCESS ) {
+		rc = grb::resize(Output, 2 * n - 1 );
 	}
 	if( rc != SUCCESS || grb::nnz( A ) != 15 ) {
 		std::cerr << "\tinitialisation FAILED\n";
@@ -203,42 +241,6 @@ void grb_program( const size_t &n, grb::RC &rc ) {
 	}
 
 	//check masked matrix set
-	grb::Matrix< int > Mask( n, n );
-	grb::Matrix< int > Output( n, n );
-	grb::Matrix< int > Input( n, n );
-	size_t I[ 2 * n - 1 ], J[ 2 * n - 1 ];
-	int mask_vals [ 2 * n - 1 ];
-	int input_vals [ 2 * n - 1 ];
-
-	for( size_t k = 0; k < n; ++k ) {
-		I[ k ] = J[ k ] = k;
-		mask_vals[ k ] = 1;
-		input_vals[ k ] = k;
-		if( k < n - 1 ) {
-			I[ n + k ] = k;
-			J[ n + k ] = k + 1;
-			mask_vals [ n + k ] = 0;
-			input_vals[ n + k ] = k;
-		}
-	}
-
-	rc = grb::buildMatrixUnique( Mask, I, J, mask_vals, 2 * n - 1, SEQUENTIAL );
-	if( rc != SUCCESS ) {
-		std::cerr << "\t buildMatrixUnique of mask matrix FAILED\n";
-		return;
-	}
-
-	rc = grb::buildMatrixUnique( Input, I, J, input_vals, 2 * n - 1, SEQUENTIAL );
-	if( rc != SUCCESS ) {
-		std::cerr << "\t buildMatrixUnique of input matrix FAILED\n";
-		return;
-	}
-
-	rc = grb::resize(Output, 2 * n - 1 );
-	if( rc != SUCCESS ) {
-		std::cerr << "\t grb::resize of output matrix for the matrix to matrix masked set FAILED\n";
-		return;
-	}
 
 	rc = grb::set< descriptors::structural >( Output, Mask, Input );
 	if( rc != SUCCESS ) {
@@ -255,7 +257,7 @@ void grb_program( const size_t &n, grb::RC &rc ) {
 		if( triplet.first.first != triplet.first.second && triplet.first.first != triplet.first.second - 1 ) {
 			std::cerr << "\tunexpected entry at ( " << triplet.first.first << ", " << triplet.first.second << " ), value " << triplet.second << ".\n";
 			rc = FAILED;
-		} if( triplet.first.first != triplet.second ) {
+		} if( (int) triplet.first.first != triplet.second ) {
 			std::cerr << "\tunexpected entry at ( " << triplet.first.first << ", " << triplet.first.second << " ) with value " << triplet.second;
 			std::cerr << ", expected value "<< triplet.first.first <<".\n";
 			rc = FAILED;
@@ -283,7 +285,7 @@ void grb_program( const size_t &n, grb::RC &rc ) {
 		if( triplet.first.first != triplet.first.second ) {
 			std::cerr << "\tunexpected entry at ( " << triplet.first.first << ", " << triplet.first.second << " ), value " << triplet.second << ".\n";
 			rc = FAILED;
-		} if( triplet.first.first != triplet.second ) {
+		} if( (int) triplet.first.first != triplet.second ) {
 			std::cerr << "\tunexpected entry at ( " << triplet.first.first << ", " << triplet.first.second << " ) with value " << triplet.second;
 			std::cerr << ", expected value "<< triplet.first.first <<".\n";
 			rc = FAILED;
@@ -311,7 +313,7 @@ void grb_program( const size_t &n, grb::RC &rc ) {
 		if( triplet.first.first != triplet.first.second - 1 ) {
 			std::cerr << "\tunexpected entry at ( " << triplet.first.first << ", " << triplet.first.second << " ), value " << triplet.second << ".\n";
 			rc = FAILED;
-		} if( triplet.first.first != triplet.second ) {
+		} if( (int) triplet.first.first != triplet.second ) {
 			std::cerr << "\tunexpected entry at ( " << triplet.first.first << ", " << triplet.first.second << " ) with value " << triplet.second;
 			std::cerr << ", expected value "<< triplet.first.first <<".\n";
 			rc = FAILED;
