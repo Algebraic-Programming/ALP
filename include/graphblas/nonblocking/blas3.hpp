@@ -579,9 +579,9 @@ namespace grb {
 		typename RIT_M, typename CIT_M, typename NIT_M
 	>
 	RC foldr(
-		IOType &x,
 		const Matrix< InputType, nonblocking, RIT_A, CIT_A, NIT_A > &A,
 		const Matrix< MaskType, nonblocking, RIT_M, CIT_M, NIT_M > &mask,
+		IOType &x,
 		const Monoid &monoid = Monoid(),
 		const typename std::enable_if< !grb::is_object< IOType >::value &&
 			!grb::is_object< InputType >::value &&
@@ -589,6 +589,42 @@ namespace grb {
 			grb::is_monoid< Monoid >::value, void
 		>::type * const = nullptr
 	) {
+		// static checks
+		static_assert( !std::is_void< InputType >::value,
+			"grb::foldr( nonblocking, IOType <- [[IOType]], monoid, masked ): "
+			"the provided matrix may not be a pattern matrix."
+			"Possible fix: provide a semiring instead of a ring"
+		);
+		static_assert( grb::is_commutative< Monoid >::value,
+			"grb::foldr( nonblocking, IOType <- [[IOType]], monoid, masked ): "
+			"the provided monoid must be commutative (but is not)"
+		);
+		static_assert( (std::is_same< typename Monoid::D1, InputType >::value),
+			"grb::foldr( nonblocking, IOType <- [[IOType]], monoid, masked ): "
+			"called with a prefactor input type that does not match the first domain of "
+			"the given monoid"
+		);
+		static_assert( (std::is_same< typename Monoid::D2, IOType >::value),
+			"grb::foldr( nonblocking, IOType <- [[IOType]], monoid, masked ): "
+			"called with a postfactor input type that does not match the second domain "
+			"of the given monoid"
+		);
+		static_assert( (std::is_same< typename Monoid::D3, IOType >::value),
+			"grb::foldr( nonblocking, IOType <- [[IOType]], monoid, masked ): "
+			"called with an output type that does not match the output domain of the "
+			"given monoid"
+		);
+		static_assert( !(descr & descriptors::add_identity),
+			"grb::foldr( nonblocking, IOType <- [[IOType]], monoid, masked ): "
+			"the use of the add_identity descriptor requires a semiring, but a monoid "
+			"was given"
+		);
+		static_assert( !(
+				(descr & descriptors::invert_mask) &&
+				(descr & descriptors::structural)
+			), "grb::foldr( nonblocking, IOType <- [[IOType]], monoid, masked ): "
+			"may not select an inverted structural mask for matrices"
+		);
 #ifdef _DEBUG
 		std::cout << "In grb::foldr( nonblocking, matrix, mask, monoid )\n";
 #endif
@@ -607,7 +643,65 @@ namespace grb {
 		internal::le.execution();
 
 		// second, delegate to the reference backend
-		return foldr< descr, Monoid >( x, internal::getRefMatrix( A ), internal::getRefMatrix( mask ), monoid );
+		return foldr< descr, Monoid >( internal::getRefMatrix( A ),
+			internal::getRefMatrix( mask ), x, monoid );
+	}
+
+	template<
+		Descriptor descr = descriptors::no_operation,
+		class Semiring,
+		typename InputType, typename IOType, typename MaskType,
+		typename RIT_A, typename CIT_A, typename NIT_A,
+		typename RIT_M, typename CIT_M, typename NIT_M
+	>
+	RC foldr(
+		const Matrix< InputType, nonblocking, RIT_A, CIT_A, NIT_A > &A,
+		const Matrix< MaskType, nonblocking, RIT_M, CIT_M, NIT_M > &mask,
+		IOType &x,
+		const Semiring &semiring = Semiring(),
+		const typename std::enable_if< !grb::is_object< IOType >::value &&
+			!grb::is_object< InputType >::value &&
+			!grb::is_object< MaskType >::value &&
+			grb::is_semiring< Semiring >::value, void
+		>::type * const = nullptr
+	) {
+		// static checks
+		static_assert( (std::is_same< typename Semiring::D3, InputType >::value),
+			"grb::foldr( nonblocking, IOType <- [[IOType]], semiring, masked ): "
+			"called with a prefactor input type that does not match the third domain "
+			"of the given semiring"
+		);
+		static_assert( (std::is_same< typename Semiring::D4, IOType >::value),
+			"grb::foldr( nonblocking, IOType <- [[IOType]], semiring, masked ): "
+			"called with a postfactor input type that does not match the fourth domain "
+			"of the given semiring"
+		);
+		static_assert( !(
+				(descr & descriptors::invert_mask) &&
+				(descr & descriptors::structural)
+			), "grb::foldr( nonblocking, IOType <- [[IOType]], semiring, masked ): "
+			"may not select an inverted structural mask for matrices"
+		);
+#ifdef _DEBUG
+		std::cout << "In grb::foldr( nonblocking, matrix, mask, semiring )\n";
+#endif
+
+		if( internal::NONBLOCKING::warn_if_not_native &&
+			config::PIPELINE::warn_if_not_native
+		) {
+			std::cerr << "Warning: grb::foldr( nonblocking, matrix, mask, semiring )"
+				<< " currently delegates to a blocking implementation\n"
+				<< "         Further similar such warnings will be suppressed.\n";
+			internal::NONBLOCKING::warn_if_not_native = false;
+		}
+
+		// nonblocking execution is not supported
+		// first, execute any computation that is not completed
+		internal::le.execution();
+
+		// second, delegate to the reference backend
+		return foldr< descr, Semiring >( internal::getRefMatrix( A ),
+			internal::getRefMatrix( mask ), x, semiring );
 	}
 
 	template<
@@ -617,14 +711,44 @@ namespace grb {
 		typename RIT, typename CIT, typename NIT
 	>
 	RC foldr(
-		IOType &x,
 		const Matrix< InputType, nonblocking, RIT, CIT, NIT > &A,
+		IOType &x,
 		const Monoid &monoid,
 		const typename std::enable_if< !grb::is_object< IOType >::value &&
 			!grb::is_object< InputType >::value &&
 			grb::is_monoid< Monoid >::value, void
 		>::type * const = nullptr
 	) {
+		// static checks
+		static_assert( !std::is_void< InputType >::value,
+			"grb::foldr( nonblocking, IOType <- [[IOType]], monoid ): "
+			"the provided matrix may not be a pattern matrix."
+			"Possible fix: provide a semiring instead of a ring"
+		);
+		static_assert( grb::is_commutative< Monoid >::value,
+			"grb::foldr( nonblocking, IOType <- [[IOType]], monoid ): "
+			"the provided monoid must be commutative (but is not)"
+		);
+		static_assert( (std::is_same< typename Monoid::D1, InputType >::value),
+			"grb::foldr( nonblocking, IOType <- [[IOType]], monoid ): "
+			"called with a prefactor input type that does not match the first domain of "
+			"the given monoid"
+		);
+		static_assert( (std::is_same< typename Monoid::D2, IOType >::value),
+			"grb::foldr( nonblocking, IOType <- [[IOType]], monoid ): "
+			"called with a postfactor input type that does not match the second domain "
+			"of the given monoid"
+		);
+		static_assert( (std::is_same< typename Monoid::D3, IOType >::value),
+			"grb::foldr( nonblocking, IOType <- [[IOType]], monoid ): "
+			"called with an output type that does not match the output domain of the "
+			"given monoid"
+		);
+		static_assert( !(descr & descriptors::add_identity),
+			"grb::foldr( nonblocking, IOType <- [[IOType]], monoid ): "
+			"the use of the add_identity descriptor requires a semiring, but a monoid "
+			"was given"
+		);
 #ifdef _DEBUG
 		std::cout << "In grb::foldr( nonblocking, matrix, monoid )\n";
 #endif
@@ -643,7 +767,54 @@ namespace grb {
 		internal::le.execution();
 
 		// second, delegate to the reference backend
-		return foldr< descr, Monoid >( x, internal::getRefMatrix( A ), monoid	);
+		return foldr< descr, Monoid >( internal::getRefMatrix( A ), x, monoid );
+	}
+
+	template<
+		Descriptor descr = descriptors::no_operation,
+		class Semiring,
+		typename InputType, typename IOType,
+		typename RIT, typename CIT, typename NIT
+	>
+	RC foldr(
+		const Matrix< InputType, nonblocking, RIT, CIT, NIT > &A,
+		IOType &x,
+		const Semiring &semiring = Semiring(),
+		const typename std::enable_if< !grb::is_object< IOType >::value &&
+			!grb::is_object< InputType >::value &&
+			grb::is_semiring< Semiring >::value, void
+		>::type * const = nullptr
+	) {
+		// static checks
+		static_assert( (std::is_same< typename Semiring::D3, InputType >::value),
+			"grb::foldr( nonblocking, IOType <- [[IOType]], semiring ): "
+			"called with a prefactor input type that does not match the third domain of "
+			"the given semiring"
+		);
+		static_assert( (std::is_same< typename Semiring::D4, IOType >::value),
+			"grb::foldr( nonblocking, IOType <- [[IOType]], semiring ): "
+			"called with a postfactor input type that does not match the fourth domain "
+			"of the given semiring"
+		);
+#ifdef _DEBUG
+		std::cout << "In grb::foldr( nonblocking, matrix, semiring )\n";
+#endif
+
+		if( internal::NONBLOCKING::warn_if_not_native &&
+			config::PIPELINE::warn_if_not_native
+		) {
+			std::cerr << "Warning: grb::foldr( nonblocking, matrix, semiring )"
+				<< " currently delegates to a blocking implementation\n"
+				<< "         Further similar such warnings will be suppressed.\n";
+			internal::NONBLOCKING::warn_if_not_native = false;
+		}
+
+		// nonblocking execution is not supported
+		// first, execute any computation that is not completed
+		internal::le.execution();
+
+		// second, delegate to the reference backend
+		return foldr< descr, Semiring >( internal::getRefMatrix( A ), x, semiring );
 	}
 
 	template<
@@ -665,6 +836,42 @@ namespace grb {
 			grb::is_monoid< Monoid >::value, void
 		>::type * const = nullptr
 	) {
+		// static checks
+		static_assert( !std::is_void< InputType >::value,
+			"grb::foldl( nonblocking, IOType <- [[IOType]], monoid ): "
+			"the provided matrix may not be a pattern matrix."
+			"Possible fix: provide a semiring instead of a ring"
+		);
+		static_assert( grb::is_commutative< Monoid >::value,
+			"grb::foldl( nonblocking, IOType <- [[IOType]], monoid ): "
+			"the provided monoid must be commutative (but is not)"
+		);
+		static_assert( (std::is_same< typename Monoid::D1, IOType >::value),
+			"grb::foldl( nonblocking, IOType <- [[IOType]], monoid, masked ): "
+			"called with a prefactor input type that does not match the first domain of "
+			"the given monoid"
+		);
+		static_assert( (std::is_same< typename Monoid::D2, InputType >::value),
+			"grb::foldl( nonblocking, IOType <- [[IOType]], monoid, masked ): "
+			"called with a postfactor input type that does not match the second domain "
+			"of the given monoid"
+		);
+		static_assert( (std::is_same< typename Monoid::D3, IOType >::value),
+			"grb::foldl( nonblocking, IOType <- [[IOType]], monoid, masked ): "
+			"called with an output type that does not match the output domain of the "
+			"given monoid"
+		);
+		static_assert( !(descr & descriptors::add_identity),
+			"grb::foldl( nonblocking, IOType <- [[IOType]], monoid, masked ): "
+			"the use of the add_identity descriptor requires a semiring, but a monoid "
+			"was given"
+		);
+		static_assert( !(
+				(descr & descriptors::invert_mask) &&
+				(descr & descriptors::structural)
+			), "grb::foldl( nonblocking, IOType <- [[IOType]], monoid, masked ): "
+			"may not select an inverted structural mask for matrices"
+		);
 #ifdef _DEBUG
 		std::cout << "In grb::foldl( nonblocking, matrix, mask, monoid )\n";
 #endif
@@ -683,7 +890,71 @@ namespace grb {
 		internal::le.execution();
 
 		// second, delegate to the reference backend
-		return foldl< descr, Monoid >( x, internal::getRefMatrix( A ), internal::getRefMatrix( mask ), monoid );
+		return foldl< descr, Monoid >( x, internal::getRefMatrix( A ),
+			internal::getRefMatrix( mask ), monoid );
+	}
+
+	template<
+		Descriptor descr = descriptors::no_operation,
+		class Semiring,
+		typename InputType, typename IOType, typename MaskType,
+		typename RIT_A, typename CIT_A, typename NIT_A,
+		typename RIT_M, typename CIT_M, typename NIT_M
+	>
+	RC foldl(
+		IOType &x,
+		const Matrix< InputType, nonblocking, RIT_A, CIT_A, NIT_A > &A,
+		const Matrix< MaskType, nonblocking, RIT_M, CIT_M, NIT_M > &mask,
+		const Semiring &semiring = Semiring(),
+		const typename std::enable_if<
+			!grb::is_object< IOType >::value &&
+			!grb::is_object< InputType >::value &&
+			!grb::is_object< MaskType >::value &&
+			grb::is_semiring< Semiring >::value, void
+		>::type * const = nullptr
+	) {
+		// static checks
+		static_assert( (std::is_same< typename Semiring::D3, IOType >::value),
+			"grb::foldl( nonblocking, IOType <- [[IOType]], semiring, masked ): "
+			"called with a prefactor input type that does not match the third domain "
+			"of the given semiring"
+		);
+		static_assert( (std::is_same< typename Semiring::D4, InputType >::value),
+			"grb::foldl( nonblocking, IOType <- [[IOType]], semiring, masked ): "
+			"called with a postfactor input type that does not match the fourth domain "
+			"of the given semiring"
+		);
+		static_assert( (std::is_same< typename Semiring::D4, IOType >::value),
+			"grb::foldl( nonblocking, IOType <- [[IOType]], semiring, masked ): "
+			"called with an output type that does not match the fourth domain of the "
+			"given semiring"
+		);
+		static_assert( !(
+				(descr & descriptors::invert_mask) &&
+				(descr & descriptors::structural)
+			), "grb::foldl( nonblocking, IOType <- [[IOType]], semiring, masked ): "
+			"may not select an inverted structural mask for matrices"
+		);
+#ifdef _DEBUG
+		std::cout << "In grb::foldl( nonblocking, matrix, mask, semiring )\n";
+#endif
+
+		if( internal::NONBLOCKING::warn_if_not_native &&
+			config::PIPELINE::warn_if_not_native
+		) {
+			std::cerr << "Warning: grb::foldl( nonblocking, matrix, mask, semiring )"
+				<< " currently delegates to a blocking implementation\n"
+				<< "         Further similar such warnings will be suppressed.\n";
+			internal::NONBLOCKING::warn_if_not_native = false;
+		}
+
+		// nonblocking execution is not supported
+		// first, execute any computation that is not completed
+		internal::le.execution();
+
+		// second, delegate to the reference backend
+		return foldl< descr, Semiring >( x, internal::getRefMatrix( A ),
+			internal::getRefMatrix( mask ), semiring );
 	}
 
 	template<
@@ -702,6 +973,36 @@ namespace grb {
 			grb::is_monoid< Monoid >::value, void
 		>::type * const = nullptr
 	) {
+		// static checks
+		static_assert( !std::is_void< InputType >::value,
+			"grb::foldl( nonblocking, IOType <- [[IOType]], monoid ): "
+			"the provided matrix may not be a pattern matrix."
+			"Possible fix: provide a semiring instead of a ring"
+		);
+		static_assert( grb::is_commutative< Monoid >::value,
+			"grb::foldl( nonblocking, IOType <- [[IOType]], monoid ): "
+			"the provided monoid must be commutative (but is not)"
+		);
+		static_assert( (std::is_same< typename Monoid::D1, IOType >::value),
+			"grb::foldl( nonblocking, IOType <- [[IOType]], monoid ): "
+			"called with a prefactor input type that does not match the first domain of "
+			"the given monoid"
+		);
+		static_assert( (std::is_same< typename Monoid::D2, InputType >::value),
+			"grb::foldl( nonblocking, IOType <- [[IOType]], monoid ): "
+			"called with a postfactor input type that does not match the second domain "
+			"of the given monoid"
+		);
+		static_assert( (std::is_same< typename Monoid::D3, IOType >::value),
+			"grb::foldl( nonblocking, IOType <- [[IOType]], monoid ): "
+			"called with an output type that does not match the output domain of the "
+			"given monoid"
+		);
+		static_assert( !(descr & descriptors::add_identity),
+			"grb::foldl( nonblocking, IOType <- [[IOType]], monoid ): "
+			"the use of the add_identity descriptor requires a semiring, but a monoid "
+			"was given"
+		);
 #ifdef _DEBUG
 		std::cout << "In grb::foldl( nonblocking, matrix, monoid )\n";
 #endif
@@ -719,7 +1020,59 @@ namespace grb {
 		internal::le.execution();
 
 		// second, delegate to the reference backend
-		return foldl< descr, Monoid >( x, internal::getRefMatrix( A ), monoid	);
+		return foldl< descr, Monoid >( x, internal::getRefMatrix( A ), monoid );
+	}
+
+	template<
+		Descriptor descr = descriptors::no_operation,
+		class Semiring,
+		typename InputType, typename IOType,
+		typename RIT, typename CIT, typename NIT
+	>
+	RC foldl(
+		IOType &x,
+		const Matrix< InputType, nonblocking, RIT, CIT, NIT > &A,
+		const Semiring &semiring = Semiring(),
+		const typename std::enable_if<
+			!grb::is_object< IOType >::value &&
+			!grb::is_object< InputType >::value &&
+			grb::is_semiring< Semiring >::value, void
+		>::type * const = nullptr
+	) {
+		// static checks
+		static_assert( (std::is_same< typename Semiring::D3, IOType >::value),
+			"grb::foldl( nonblocking, IOType <- [[IOType]], semiring ): "
+			"called with a prefactor input type that does not match the third domain "
+			"of the given semiring"
+		);
+		static_assert( (std::is_same< typename Semiring::D4, InputType >::value),
+			"grb::foldl( nonblocking, IOType <- [[IOType]], semiring ): "
+			"called with a postfactor input type that does not match the fourth domain "
+			"of the given semiring"
+		);
+		static_assert( (std::is_same< typename Semiring::D4, IOType >::value),
+			"grb::foldl( nonblocking, IOType <- [[IOType]], semiring ): "
+			"called with an output type that does not match the fourth domain of the "
+			"given semiring"
+		);
+#ifdef _DEBUG
+		std::cout << "In grb::foldl( nonblocking, matrix, semiring )\n";
+#endif
+
+		if( internal::NONBLOCKING::warn_if_not_native &&
+			config::PIPELINE::warn_if_not_native
+		) {
+			std::cerr << "Warning: grb::foldl( nonblocking, matrix, semiring )"
+				<< " currently delegates to a blocking implementation\n"
+				<< "         Further similar such warnings will be suppressed.\n";
+			internal::NONBLOCKING::warn_if_not_native = false;
+		}
+		// nonblocking execution is not supported
+		// first, execute any computation that is not completed
+		internal::le.execution();
+
+		// second, delegate to the reference backend
+		return foldl< descr, Semiring >( x, internal::getRefMatrix( A ), semiring );
 	}
 
 } // namespace grb
