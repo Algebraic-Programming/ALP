@@ -29,10 +29,6 @@
 #define _H_GRB_BSP_UTILS
 
 #include "graphblas/rc.hpp"
-#include "graphblas/ops.hpp"
-#include "graphblas/collectives.hpp"
-
-#include <iostream>
 
 
 namespace grb::internal {
@@ -48,21 +44,7 @@ namespace grb::internal {
 	 * corrected global error code will be returned. In either mode, if the
 	 * assertion fails, an error is printed to stderr.
 	 */
-	RC assertSyncedRC( const RC &in ) {
-		RC global_rc = in;
-		if( collectives< BSP1D >::allreduce( global_rc, operators::any_or< RC >() )
-			!= RC::SUCCESS
-		) {
-			return PANIC;
-		}
-		if( global_rc != in ) {
-			std::cerr << "Internal error: expected a globally in-sync error code, but "
-				"I had (" << grb::toString( in ) << ") while someone else had ("
-				<< grb::toString( global_rc ) << ").\n";
-		}
-		assert( global_rc == in );
-		return global_rc;
-	}
+	RC assertSyncedRC( const RC &in );
 
 } // end namespace grb::internal
 
