@@ -54,11 +54,7 @@ set( HYBRID_BACKEND_INSTALL_DIR "${BINARY_LIBRARIES_INSTALL_DIR}/hybrid" )
 set( COMMON_COMPILE_DEFINITIONS  "${REFERENCE_INCLUDE_DEFS};${REFERENCE_OMP_INCLUDE_DEFS}" )
 set( COMMON_COMPILE_OPTIONS "-fopenmp" )
 
-# link flags common to all backends, to be inserted before and after the
-# backend-specific flags
-set( COMMON_LFLAGS_PRE
-	"-l${ALP_UTILS_LIBRARY_OUTPUT_NAME};-L '${BINARY_LIBRARIES_INSTALL_DIR}'"
-)
+# link flags common to all backends, to be inserted after the backend-specific flags
 if( WITH_NUMA )
 	list( APPEND COMMON_LFLAGS_POST "-lnuma"  )
 endif()
