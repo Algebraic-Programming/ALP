@@ -174,7 +174,7 @@ RC foldr_test(
 		RC local_rc = SUCCESS;
 		for( size_t _ = 0; _ < ITERATIONS; _++ ) {
 			value = initial;
-			local_rc = local_rc ? local_rc : foldr< descr >( value, A, monoid );
+			local_rc = local_rc ? local_rc : foldr< descr >( A, value, monoid );
 		}
 		const auto end_chrono = std::chrono::high_resolution_clock::now();
 		const auto duration = std::chrono::duration_cast< std::chrono::nanoseconds >(
@@ -211,7 +211,7 @@ RC foldr_test(
 		RC local_rc = SUCCESS;
 		for( size_t _ = 0; _ < ITERATIONS; _++ ) {
 			value = initial;
-			local_rc = local_rc ? local_rc : foldr< descr >( value, A, mask, monoid );
+			local_rc = local_rc ? local_rc : foldr< descr >( A, mask, value, monoid );
 		}
 		const auto end_chrono = std::chrono::high_resolution_clock::now();
 		const auto duration = std::chrono::duration_cast< std::chrono::nanoseconds >(
@@ -706,6 +706,10 @@ void grb_program( const input< T, M > &in, RC &rc ) {
 		size_t nnz =  nrows( I ) * ncols( I );
 		Matrix< void > dense_mask( nrows( I ), ncols( I ), nnz);
 		std::vector< size_t > rows( nnz ), cols( nnz );
+		Semiring<
+			operators::add< NzType >, operators::mul< NzType >,
+			identities::zero, identities::one
+		> semiring;
 		for( size_t x = 0; x < nrows( I ); x++ ) {
 			std::fill( rows.begin() + x * ncols( I ), rows.begin() + ( x + 1 ) * ncols( I ), x );
 			std::iota( cols.begin() + x * ncols( I ), cols.begin() + ( x + 1 ) * ncols( I ), 0 );
@@ -722,7 +726,7 @@ void grb_program( const input< T, M > &in, RC &rc ) {
 			"Reduction with a dense void mask, with the descriptors::add_identity.",
 			I, dense_mask,
 			static_cast< NzType >( 0 ), static_cast< NzType >( n + std::min( nrows( I ), ncols( I ) ) ),
-			Monoid< operators::add< NzType >, identities::zero >(),
+			semiring,
 			false, false
 		);
 		if( rc ) { return; }
