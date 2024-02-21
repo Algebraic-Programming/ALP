@@ -1156,6 +1156,206 @@ namespace grb {
 		}
 	}
 
+	template<
+		Descriptor descr = descriptors::no_operation,
+		typename OutputType, typename MaskType, typename InputType,
+		typename RIT1, typename CIT1, typename NIT1,
+		typename RIT2, typename CIT2, typename NIT2
+	>
+	RC set(
+		Matrix< OutputType, reference, RIT1, CIT1, NIT1 > &C,
+		const Matrix< MaskType, reference, RIT2, CIT2, NIT2 > &Mask,
+		const Matrix< InputType, reference, RIT2, CIT2, NIT2 > &A,
+		const Phase &phase = EXECUTE
+	) noexcept {
+		static_assert( !std::is_void< OutputType >::value,
+			"grb::set (masked set to matrix): cannot have a pattern "
+			"matrix as output" );
+		static_assert( std::is_convertible< InputType, OutputType >::value,
+			"grb::set (masked set to matrix): input type cannot be "
+			"converted to output type"
+		);
+		static_assert(
+			! ( descr & descriptors::structural && descr & descriptors::invert_mask ),
+			"grb::set can not be called with both descriptors::structural "
+			"and descriptors::invert_mask in the masked variant"
+		);
+#ifdef _DEBUG
+		std::cout << "Called grb::set (matrix-to-matrix-masked, reference)\n";
+#endif
+		// static checks
+		NO_CAST_ASSERT( ( !(descr & descriptors::no_casting) ||
+				std::is_same< InputType, OutputType >::value
+			), "grb::set",
+			"called with non-matching value types"
+		);
+
+		// dynamic checks
+		assert( phase != TRY );
+
+		const size_t nrows = grb::nrows( C );
+		const size_t ncols = grb::ncols( C );
+
+		const size_t m = grb::nrows( Mask );
+		const size_t n = grb::ncols( Mask );
+
+		/*grb::Monoid<
+			grb::operators::left_assign< OutputType >,
+			grb::identities::zero
+		> dummyMonoid;*/
+
+		if( m == 0 || n == 0 ) {
+			// If the mask has a null size, it will be ignored
+			return set< descr >( C, A, phase );
+		}
+
+		if( nrows != grb::nrows( A ) || nrows != m ) {
+			return MISMATCH;
+		}
+
+		if( ncols != grb::ncols( A ) || ncols != n ) {
+			return MISMATCH;
+		}
+
+		const auto &mask_raw = internal::getCRS( Mask );
+
+		const auto &A_raw = internal::getCRS( A );
+
+		size_t nzc = 0;
+
+		char * mask_arr = nullptr;
+		char * mask_buf = nullptr;
+		OutputType * mask_valbuf = nullptr;
+		internal::getMatrixBuffers( mask_arr, mask_buf, mask_valbuf, 1, Mask );
+
+		internal::Coordinates< reference > mask_coors;
+		mask_coors.set( mask_arr, false, mask_buf, ncols );
+
+		for( size_t i = 0; i < nrows; ++i ) {
+			mask_coors.clear();
+			for( auto k = mask_raw.col_start[ i ]; k < mask_raw.col_start[ i + 1 ]; ++k ) {
+				const size_t k_col = mask_raw.row_index[ k ];
+				if( utils::interpretMask< descr, MaskType >( true, mask_raw.values, k ) ) {
+					mask_coors.assign( k_col );
+				}
+			}
+			for( auto k = A_raw.col_start[ i ]; k < A_raw.col_start[ i + 1 ]; ++k ) {
+				const size_t k_col = A_raw.row_index[ k ];
+				if( mask_coors.assigned( k_col ) ) {
+					nzc++;
+				}
+			}
+		}
+
+		if( phase == RESIZE ) {
+			return resize( C, nzc );
+		}
+
+		assert( phase == EXECUTE );
+
+		if( capacity( C ) < nzc ) {
+#ifdef _DEBUG
+			std::cout << "\t insufficient capacity to complete "
+				"requested masked set matrix to matrix computation\n";
+#endif
+			const RC clear_rc = clear( C );
+			if( clear_rc != SUCCESS ) {
+				return PANIC;
+			} else {
+				return FAILED;
+			}
+		}
+
+		auto &CRS_raw = internal::getCRS( C );
+		auto &CCS_raw = internal::getCCS( C );
+
+		config::NonzeroIndexType * C_col_index = internal::template
+			getReferenceBuffer< typename config::NonzeroIndexType >( ncols + 1 );
+
+		CRS_raw.col_start[ 0 ] = 0;
+
+#ifdef _H_GRB_REFERENCE_OMP_BLAS3
+			#pragma omp parallel for simd
+#endif
+		for( size_t j = 0; j <= ncols; ++j ) {
+			CCS_raw.col_start[ j ] = 0;
+		}
+
+
+		nzc = 0;
+		for( size_t i = 0; i < nrows; ++i ) {
+			mask_coors.clear();
+			for( auto k = mask_raw.col_start[ i ]; k < mask_raw.col_start[ i + 1 ]; ++k ) {
+				const size_t k_col = mask_raw.row_index[ k ];
+				if( utils::interpretMask< descr, MaskType >( true, mask_raw.values, k ) ) {
+					mask_coors.assign( k_col );
+				}
+			}
+			for( auto k = A_raw.col_start[ i ]; k < A_raw.col_start[ i + 1 ]; ++k ) {
+				const size_t k_col = A_raw.row_index[ k ];
+				if( mask_coors.assigned( k_col ) ) {
+					nzc++;
+					CCS_raw.col_start[ k_col + 1 ]++;
+				}
+			}
+			CRS_raw.col_start[ i + 1 ] = nzc;
+		}
+
+		for( size_t j = 1; j < ncols; ++j ) {
+			CCS_raw.col_start[ j + 1 ] += CCS_raw.col_start[ j ];
+		}
+
+#ifdef _H_GRB_REFERENCE_OMP_BLAS3
+		#pragma omp parallel for simd
+#endif
+		for( size_t j = 0; j < ncols; ++j ) {
+			C_col_index[ j ] = 0;
+		}
+
+
+		const size_t old_nzc = nzc;
+
+		// use previously computed CCS offset array to update CCS during the
+		// computational phase
+		nzc = 0;
+		for( size_t i = 0; i < nrows; ++i ) {
+			mask_coors.clear();
+			for( auto k = mask_raw.col_start[ i ]; k < mask_raw.col_start[ i + 1 ]; ++k ) {
+				const size_t k_col = mask_raw.row_index[ k ];
+				if( utils::interpretMask< descr, MaskType >( true, mask_raw.values, k ) ) {
+					mask_coors.assign( k_col );
+				}
+			}
+			for( auto k = A_raw.col_start[ i ]; k < A_raw.col_start[ i + 1 ]; ++k ) {
+				const size_t k_col = A_raw.row_index[ k ];
+				if( mask_coors.assigned( k_col ) ) {
+					OutputType val = A_raw.getValue( k, *( (OutputType*) nullptr ) );
+					CRS_raw.row_index[ nzc ] = k_col;
+					CRS_raw.setValue( nzc, val );
+					const size_t CCS_index = C_col_index[ k_col ]++ + CCS_raw.col_start[ k_col ];
+					CCS_raw.row_index[ CCS_index ] = i;
+					CCS_raw.setValue( CCS_index, val );
+					nzc++;
+				}
+			}
+		}
+
+		for( size_t j = 0; j < ncols; ++j ) {
+			assert( CCS_raw.col_start[ j + 1 ] - CCS_raw.col_start[ j ] ==
+				C_col_index[ j ] );
+		}
+		assert( old_nzc == nzc );
+
+		internal::setCurrentNonzeroes( C, nzc );
+
+		return SUCCESS;
+	}
+
+
+
+
+	
+
 	/**
 	 * Ingests raw data into a GraphBLAS vector.
 	 *
