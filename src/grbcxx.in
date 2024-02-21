@@ -43,14 +43,17 @@ function print_help {
 		# LPF's lpfcxx doesn't recognize "--help", just "-help"
 		help_arg="-help"
 	fi
+	local ALL_BACKENDS="${BACKENDS[@]}"
 
 	echo "* Compiles an ALP/GraphBLAS application by calling an underlying compiler and by passing needed flags."
 	echo
-	echo "USAGE: ${this_bin} [ALP-specific options...] [--] <compiler arguments...>"
+	echo "Usage: ${this_bin} [ALP-specific options...] [--] <compiler arguments...>"
 	echo
 	echo "ALP-specific options:"
-	echo "  -b,--backend <backend>  compile against the ALP/GraphBLAS backend <backend>; possible values: ${BACKENDS[@]}; default: reference"
-	echo "  --link-alp-static       link the specified ALP/GraphBLAS backend statically (default linking is dynamic)"
+	echo "  -b,--backend <backend>  compile against the ALP/GraphBLAS backend <backend>;"
+	echo "                          possible values: ${ALL_BACKENDS// /, };"
+	echo "                          default: ${BACKENDS[0]}"
+	echo "  --link-alp-static       link the specified ALP/GraphBLAS backend and the utility library statically (default linking is dynamic)"
 	echo "  --show                  show the full compilation command WITHOUT executing it"
 	echo "  --version               display the current ALP/GraphBLAS version"
 	echo "  --help                  display this help"
@@ -117,7 +120,13 @@ then
 fi
 
 if [[ "${help}" == "yes" ]]; then
-	print_help "$(realpath $0)" ${BACKEND} ${COMPILER}
+	full_path="$0"
+	# try calling realpath (if it exists) to get the full path
+	real_path="$(realpath $0 2>&1)"
+	if [[ "$?" == "0" ]]; then
+		full_path=${real_path}
+	fi
+	print_help "${full_path}" "${BACKEND}" "${COMPILER}"
 	exit 0
 fi
 

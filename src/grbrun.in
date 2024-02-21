@@ -32,7 +32,7 @@ function print_help {
 
 	echo "* Runs an ALP/GraphBLAS binary by calling an underlying runner and by passing needed flags."
 	echo
-	echo "USAGE: ${this_bin} [ALP-specific options...] [--] [runner arguments...] <ALP/GraphBLAS binary> [binary arguments...]"
+	echo "Usage: ${this_bin} [ALP-specific options...] [--] [runner arguments...] <ALP/GraphBLAS binary> [binary arguments...]"
 	echo
 	echo "ALP-specific options:"
 	echo "  -b,--backend <backend>  run against the ALP/GraphBLAS backend <backend>; possible values: ${BACKENDS[@]}; default: reference"
@@ -94,7 +94,13 @@ RUNNER=${BACKENDRUNNER[${BACKENDID}]}
 LD_PATH="@ALP_UTILS_INSTALL_DIR@:${BACKENDRUNENV[${BACKENDID}]}"
 
 if [[ "${help}" == "yes" ]]; then
-	print_help "$(realpath $0)" ${BACKEND} ${RUNNER}
+	full_path="$0"
+	# try calling realpath (if it exists) to get the full path
+	real_path="$(realpath $0 2>&1)"
+	if [[ "$?" == "0" ]]; then
+		full_path=${real_path}
+	fi
+	print_help "${full_path}" "${BACKEND}" "${RUNNER}"
 	exit 0
 fi
 
