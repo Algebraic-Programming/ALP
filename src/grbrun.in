@@ -29,13 +29,16 @@ function print_help {
 	local this_bin="$1"
 	local BACKEND=$2
 	local RUNNER=$3
+	local ALL_BACKENDS="${BACKENDS[@]}"
 
 	echo "* Runs an ALP/GraphBLAS binary by calling an underlying runner and by passing needed flags."
 	echo
 	echo "Usage: ${this_bin} [ALP-specific options...] [--] [runner arguments...] <ALP/GraphBLAS binary> [binary arguments...]"
 	echo
 	echo "ALP-specific options:"
-	echo "  -b,--backend <backend>  run against the ALP/GraphBLAS backend <backend>; possible values: ${BACKENDS[@]}; default: reference"
+	echo "  -b,--backend <backend>  run against the ALP/GraphBLAS backend <backend>;"
+	echo "                          possible values: ${ALL_BACKENDS// /, };"
+	echo "                          default: ${BACKENDS[0]}"
 	echo "  --show                  show the full run command WITHOUT executing it"
 	echo "  --help                  display this help"
 	echo "  -- <args...>            pass all the following <args...> arguments directly to the underlying runner"
