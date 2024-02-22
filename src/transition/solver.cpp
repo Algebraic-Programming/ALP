@@ -326,6 +326,54 @@ sparse_err_t sparse_cg_init_dzz(
 	return sparse_cg_init_impl< double, size_t, size_t >( handle, n, a, ja, ia );
 }
 
+template< typename T, typename NZI, typename RSI >
+static sparse_err_t sparse_cg_get_size_impl(
+	const sparse_cg_handle_t handle, size_t * const size
+) {
+	if( handle == nullptr || size == nullptr ) { return NULL_ARGUMENT; }
+	*size = static_cast< CG_Data< T, NZI, RSI > * >( handle )->getSize();
+	return NO_ERROR;
+}
+
+sparse_err_t sparse_cg_get_size_sii(
+	const sparse_cg_handle_t handle, size_t * const size
+) {
+	return sparse_cg_get_size_impl< float, int, int >( handle, size );
+}
+
+sparse_err_t sparse_cg_get_size_siz(
+	const sparse_cg_handle_t handle, size_t * const size
+) {
+	return sparse_cg_get_size_impl< float, size_t, int >( handle, size );
+}
+
+template< typename T, typename NZI, typename RSI >
+sparse_err_t sparse_cg_get_size_szz(
+	const sparse_cg_handle_t handle, size_t * const size
+) {
+	return sparse_cg_get_size_impl< float, size_t, size_t >( handle, size );
+}
+
+template< typename T, typename NZI, typename RSI >
+sparse_err_t sparse_cg_get_size_dii(
+	const sparse_cg_handle_t handle, size_t * const size
+) {
+	return sparse_cg_get_size_impl< double, int, int >( handle, size );
+}
+
+template< typename T, typename NZI, typename RSI >
+sparse_err_t sparse_cg_get_size_diz(
+	const sparse_cg_handle_t handle, size_t * const size
+) {
+	return sparse_cg_get_size_impl< double, size_t, int >( handle, size );
+}
+
+template< typename T, typename NZI, typename RSI >
+sparse_err_t sparse_cg_get_size_dzz(
+	const sparse_cg_handle_t handle, size_t * const size
+) {
+	return sparse_cg_get_size_impl< double, size_t, size_t >( handle, size );
+}
 
 template< typename T, typename NZI, typename RSI >
 static sparse_err_t sparse_cg_get_tolerance_impl(

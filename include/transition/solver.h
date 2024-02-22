@@ -310,6 +310,161 @@ sparse_err_t sparse_cg_init_dzz(
 // Note that szi and dzi are skipped on purpose. Such variants would not seem
 // sensible, though could easily be provided if they do turn out to be needed
 
+/**
+ * Retrieves the system size for a given CG solver handle.
+ *
+ * @param[in]  handle A handle to a valid CG solver object.
+ * @param[out] size   Where to store the system size.
+ *
+ * @returns #NULL_ARGUMENT If \a handle is <tt>NULL</tt>. If this error is
+ *                         returned, the call to this function shall not have
+ *                         any other effects.
+ * @returns #NULL_ARGUMENT If \a size is <tt>NULL</tt>. If this error code is
+ *                         returned, the call to this function shall have no
+ *                         other effects.
+ * @returns #NO_ERROR      Otherwise.
+ *
+ * This variant is for CG solve instances of type <tt>sii</tt>.
+ *
+ * \warning If \a handle did not refer to a valid CG solver instance, the effect
+ *          of calling this function is undefined(!).
+ *
+ * @see #sparse_cg_init_sii On how to obtain a valid CG solver instance for use
+ *                          with this function.
+ */
+sparse_err_t sparse_cg_get_size_sii(
+	sparse_cg_handle_t const handle, size_t * const size
+);
+
+/**
+ * Retrieves the system size for a given CG solver handle.
+ *
+ * @param[in]  handle A handle to a valid CG solver object.
+ * @param[out] size   Where to store the system size.
+ *
+ * @returns #NULL_ARGUMENT If \a handle is <tt>NULL</tt>. If this error is
+ *                         returned, the call to this function shall not have
+ *                         any other effects.
+ * @returns #NULL_ARGUMENT If \a size is <tt>NULL</tt>. If this error code is
+ *                         returned, the call to this function shall have no
+ *                         other effects.
+ * @returns #NO_ERROR      Otherwise.
+ *
+ * This variant is for CG solve instances of type <tt>siz</tt>.
+ *
+ * \warning If \a handle did not refer to a valid CG solver instance, the effect
+ *          of calling this function is undefined(!).
+ *
+ * @see #sparse_cg_init_siz On how to obtain a valid CG solver instance for use
+ *                          with this function.
+ */
+sparse_err_t sparse_cg_get_size_siz(
+	sparse_cg_handle_t const handle, size_t * const size
+);
+
+/**
+ * Retrieves the system size for a given CG solver handle.
+ *
+ * @param[in]  handle A handle to a valid CG solver object.
+ * @param[out] size   Where to store the system size.
+ *
+ * @returns #NULL_ARGUMENT If \a handle is <tt>NULL</tt>. If this error is
+ *                         returned, the call to this function shall not have
+ *                         any other effects.
+ * @returns #NULL_ARGUMENT If \a size is <tt>NULL</tt>. If this error code is
+ *                         returned, the call to this function shall have no
+ *                         other effects.
+ * @returns #NO_ERROR      Otherwise.
+ *
+ * This variant is for CG solve instances of type <tt>szz</tt>.
+ *
+ * \warning If \a handle did not refer to a valid CG solver instance, the effect
+ *          of calling this function is undefined(!).
+ *
+ * @see #sparse_cg_init_szz On how to obtain a valid CG solver instance for use
+ *                          with this function.
+ */
+sparse_err_t sparse_cg_get_size_szz(
+	sparse_cg_handle_t const handle, size_t * const size
+);
+
+/**
+ * Retrieves the system size for a given CG solver handle.
+ *
+ * @param[in]  handle A handle to a valid CG solver object.
+ * @param[out] size   Where to store the system size.
+ *
+ * @returns #NULL_ARGUMENT If \a handle is <tt>NULL</tt>. If this error is
+ *                         returned, the call to this function shall not have
+ *                         any other effects.
+ * @returns #NULL_ARGUMENT If \a size is <tt>NULL</tt>. If this error code is
+ *                         returned, the call to this function shall have no
+ *                         other effects.
+ * @returns #NO_ERROR      Otherwise.
+ *
+ * This variant is for CG solve instances of type <tt>dii</tt>.
+ *
+ * \warning If \a handle did not refer to a valid CG solver instance, the effect
+ *          of calling this function is undefined(!).
+ *
+ * @see #sparse_cg_init_dii On how to obtain a valid CG solver instance for use
+ *                          with this function.
+ */
+sparse_err_t sparse_cg_get_size_dii(
+	sparse_cg_handle_t const handle, size_t * const size
+);
+
+/**
+ * Retrieves the system size for a given CG solver handle.
+ *
+ * @param[in]  handle A handle to a valid CG solver object.
+ * @param[out] size   Where to store the system size.
+ *
+ * @returns #NULL_ARGUMENT If \a handle is <tt>NULL</tt>. If this error is
+ *                         returned, the call to this function shall not have
+ *                         any other effects.
+ * @returns #NULL_ARGUMENT If \a size is <tt>NULL</tt>. If this error code is
+ *                         returned, the call to this function shall have no
+ *                         other effects.
+ * @returns #NO_ERROR      Otherwise.
+ *
+ * This variant is for CG solve instances of type <tt>diz</tt>.
+ *
+ * \warning If \a handle did not refer to a valid CG solver instance, the effect
+ *          of calling this function is undefined(!).
+ *
+ * @see #sparse_cg_init_diz On how to obtain a valid CG solver instance for use
+ *                          with this function.
+ */
+sparse_err_t sparse_cg_get_size_diz(
+	sparse_cg_handle_t const handle, size_t * const size
+);
+
+/**
+ * Retrieves the system size for a given CG solver handle.
+ *
+ * @param[in]  handle A handle to a valid CG solver object.
+ * @param[out] size   Where to store the system size.
+ *
+ * @returns #NULL_ARGUMENT If \a handle is <tt>NULL</tt>. If this error is
+ *                         returned, the call to this function shall not have
+ *                         any other effects.
+ * @returns #NULL_ARGUMENT If \a size is <tt>NULL</tt>. If this error code is
+ *                         returned, the call to this function shall have no
+ *                         other effects.
+ * @returns #NO_ERROR      Otherwise.
+ *
+ * This variant is for CG solve instances of type <tt>dzz</tt>.
+ *
+ * \warning If \a handle did not refer to a valid CG solver instance, the effect
+ *          of calling this function is undefined(!).
+ *
+ * @see #sparse_cg_init_dzz On how to obtain a valid CG solver instance for use
+ *                          with this function.
+ */
+sparse_err_t sparse_cg_get_size_dzz(
+	sparse_cg_handle_t const handle, size_t * const size
+);
 
 /**
  * Gets the current accepted relative tolerance for the given CG solver.
