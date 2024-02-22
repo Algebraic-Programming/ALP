@@ -196,20 +196,59 @@ int KML_CG_PREFIXED( SetUserPreconditionerSI )(
 	KmlSolverTask ** handle_p,
 	void * data, int (*preconditioner)( void *, float * )
 ) {
-	struct sparse_t_precond_data< float > * const sparse_t_data = nullptr;
-	try {
-		data = new struct sparse_t_precond_data< float >();
-	} catch( ... ) {
-		return KMLSS_NO_MEMORY;
-	}
+	int (*sparse_t_function_p) (
+		float * const,
+		const float * const,
+		void * const
+	) = nullptr;
+	void * sparse_t_data_p = nullptr;
 	sparse_cg_handle_t handle = *handle_p;
-	sparse_err_t rc = sparse_cg_get_size_sii( handle, &(sparse_t_data->n) );
-	if( rc == NO_ERROR ) {
-		sparse_t_data->kml_preconditioner = preconditioner;
-		sparse_t_data->kml_data = data;
-		rc = sparse_cg_set_preconditioner_sii(
-			handle, sparse_t_preconditioner, sparse_t_data );
+	size_t size;
+
+	sparse_err_t rc = sparse_cg_get_preconditioner_sii(
+		handle, &sparse_t_function_p, &sparse_t_data_p );
+	rc = rc ? rc : sparse_cg_get_size_sii( handle, &size );
+	if( rc != sparse_err_t::NO_ERROR ) { return sparse_err_t_2_int( rc ); }
+
+	if( preconditioner == nullptr ) {
+		// in this case, no preconditioning is requested
+		// if we had data stored, delete it
+		if( sparse_t_data_p != nullptr && preconditioner == nullptr ) {
+			{
+				struct sparse_t_precond_data< float > * const sparse_t_data =
+					reinterpret_cast< sparse_t_precond_data< float > * >( sparse_t_data_p );
+				delete sparse_t_data;
+			}
+			sparse_t_data_p = nullptr;
+		}
+	} else {
+		// in this case, preconditioning is requested
+		sparse_t_function_p = &(sparse_t_preconditioner< float >);
+		// if we had no data already stored, create it
+		if( sparse_t_data_p == nullptr ) {
+			try {
+				struct sparse_t_precond_data< float > * const sparse_t_data =
+					new struct sparse_t_precond_data< float >();
+				sparse_t_data_p = sparse_t_data;
+			} catch( ... ) {
+				return KMLSS_NO_MEMORY;
+			}
+		}
+		// (re-)initialise sparse_t_data
+		{
+			struct sparse_t_precond_data< float > * const sparse_t_data =
+				reinterpret_cast< sparse_t_precond_data< float > * >( sparse_t_data_p );
+			sparse_t_data->n = size;
+			sparse_t_data->kml_preconditioner = preconditioner;
+			sparse_t_data->kml_data = data;
+		}
 	}
+
+	// activate the selected preconditioner
+	rc = sparse_cg_set_preconditioner_sii(
+		handle, sparse_t_function_p, sparse_t_data_p );
+
+	// done
 	return sparse_err_t_2_int( rc );
 }
 
@@ -217,20 +256,59 @@ int KML_CG_PREFIXED( SetUserPreconditionerDI )(
 	KmlSolverTask ** handle_p,
 	void * data, int (*preconditioner)( void *, double * )
 ) {
-	struct sparse_t_precond_data< double > * sparse_t_data = nullptr;
-	try {
-		sparse_t_data = new struct sparse_t_precond_data< double >();
-	} catch( ... ) {
-		return KMLSS_NO_MEMORY;
-	}
+	int (*sparse_t_function_p) (
+		double * const,
+		const double * const,
+		void * const
+	) = nullptr;
+	void * sparse_t_data_p = nullptr;
 	sparse_cg_handle_t handle = *handle_p;
-	sparse_err_t rc = sparse_cg_get_size_dii( handle, &(sparse_t_data->n) );
-	if( rc == sparse_err_t::NO_ERROR ) {
-		sparse_t_data->kml_preconditioner = preconditioner;
-		sparse_t_data->kml_data = data;
-		rc = sparse_cg_set_preconditioner_dii(
-			handle, sparse_t_preconditioner, sparse_t_data );
+	size_t size;
+
+	sparse_err_t rc = sparse_cg_get_preconditioner_dii(
+		handle, &sparse_t_function_p, &sparse_t_data_p );
+	rc = rc ? rc : sparse_cg_get_size_dii( handle, &size );
+	if( rc != sparse_err_t::NO_ERROR ) { return sparse_err_t_2_int( rc ); }
+
+	if( preconditioner == nullptr ) {
+		// in this case, no preconditioning is requested
+		// if we had data stored, delete it
+		if( sparse_t_data_p != nullptr && preconditioner == nullptr ) {
+			{
+				struct sparse_t_precond_data< double > * const sparse_t_data =
+					reinterpret_cast< sparse_t_precond_data< double > * >( sparse_t_data_p );
+				delete sparse_t_data;
+			}
+			sparse_t_data_p = nullptr;
+		}
+	} else {
+		// in this case, preconditioning is requested
+		sparse_t_function_p = &(sparse_t_preconditioner< double >);
+		// if we had no data already stored, create it
+		if( sparse_t_data_p == nullptr ) {
+			try {
+				struct sparse_t_precond_data< double > * const sparse_t_data =
+					new struct sparse_t_precond_data< double >();
+				sparse_t_data_p = sparse_t_data;
+			} catch( ... ) {
+				return KMLSS_NO_MEMORY;
+			}
+		}
+		// (re-)initialise sparse_t_data
+		{
+			struct sparse_t_precond_data< double > * const sparse_t_data =
+				reinterpret_cast< sparse_t_precond_data< double > * >( sparse_t_data_p );
+			sparse_t_data->n = size;
+			sparse_t_data->kml_preconditioner = preconditioner;
+			sparse_t_data->kml_data = data;
+		}
 	}
+
+	// activate the selected preconditioner
+	rc = sparse_cg_set_preconditioner_dii(
+		handle, sparse_t_function_p, sparse_t_data_p );
+
+	// done
 	return sparse_err_t_2_int( rc );
 }
 
