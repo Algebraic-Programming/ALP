@@ -1147,15 +1147,10 @@ namespace grb {
 #ifdef _DEBUG
 			std::cout << "In grb::internal::fold_masked_generic( reference )\n";
 #endif
-			constexpr bool ignore_mask_values = (descr & descriptors::structural);
 			constexpr bool add_identity = (descr & descriptors::add_identity);
 			constexpr bool transpose_mask = (descr & descriptors::transpose_right);
 			constexpr bool transpose_input = (descr & descriptors::transpose_left);
 
-			typedef typename std::conditional<
-				std::is_void< MaskType >::value, bool, MaskType
-			>::type MaskIdentityType;
-			const auto identity_mask = static_cast< MaskIdentityType >( true );
 			const auto &zero_A = left_handed
 				? monoid.template getIdentity< typename Monoid::D2 >()
 				: monoid.template getIdentity< typename Monoid::D1 >();
@@ -1207,8 +1202,8 @@ namespace grb {
 				coors.clear();
 
 				for(; mask_k < mask_raw.col_start[ i + 1 ]; ++mask_k ) {
-					if( !ignore_mask_values &&
-						mask_raw.getValue( mask_k, identity_mask )
+					if(
+						!utils::interpretMatrixMask< descr, MaskType >( true, mask_raw.getValues(), mask_k )
 					) { continue; }
 
 					const auto j = mask_raw.row_index[ mask_k ];
