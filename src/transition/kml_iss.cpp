@@ -417,3 +417,49 @@ int KML_CG_PREFIXED( GetDID )(
 	return ret;
 }
 
+int KML_CG_PREFIXED( CleanSI )( KmlSolverTask ** handle_p ) {
+	void * data = nullptr;
+	sparse_cg_handle_t handle = *handle_p;
+	sparse_cg_preconditioner_sxx_t preconditioner = nullptr;
+
+	sparse_err_t rc = sparse_cg_get_preconditioner_sii(
+		handle, &preconditioner, &data );
+	rc = rc ? rc : sparse_cg_destroy_sii( handle );
+	if( rc != sparse_err_t::NO_ERROR ) { return sparse_err_t_2_int( rc ); }
+
+	if( data != nullptr ) {
+		auto * const sparse_t_data =
+			reinterpret_cast< sparse_t_precond_data< float > * >( data );
+		try {
+			delete sparse_t_data;
+		} catch( ... ) {
+			return KMLSS_INTERNAL_ERROR;
+		}
+	}
+
+	return NO_ERROR;
+}
+
+int KML_CG_PREFIXED( CleanDI )( KmlSolverTask ** handle_p ) {
+	void * data = nullptr;
+	sparse_cg_handle_t handle = *handle_p;
+	sparse_cg_preconditioner_dxx_t preconditioner = nullptr;
+
+	sparse_err_t rc = sparse_cg_get_preconditioner_dii(
+		handle, &preconditioner, &data );
+	rc = rc ? rc : sparse_cg_destroy_dii( handle );
+	if( rc != sparse_err_t::NO_ERROR ) { return sparse_err_t_2_int( rc ); }
+
+	if( data != nullptr ) {
+		auto * const sparse_t_data =
+			reinterpret_cast< sparse_t_precond_data< double > * >( data );
+		try {
+			delete sparse_t_data;
+		} catch( ... ) {
+			return KMLSS_INTERNAL_ERROR;
+		}
+	}
+
+	return NO_ERROR;
+}
+
