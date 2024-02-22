@@ -933,6 +933,9 @@ namespace grb {
 #ifdef _DEBUG
 			std::cout << "In grb::internal::fold_unmasked_generic( reference )\n";
 #endif
+			static_assert( !(descr & descriptors::add_identity),
+				"internal::fold_unmasked_generic should not be called with add_identity descriptor" );
+
 			constexpr bool transpose =
 				descr & grb::descriptors::transpose_matrix ||
 				descr & grb::descriptors::transpose_left;
