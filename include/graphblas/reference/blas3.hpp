@@ -1910,15 +1910,15 @@ namespace grb {
 			return internal::fold_add_identity_unmasked_generic< descr, Semiring, false >(
 				x, A, semiring
 			);
-		} else {
-			return internal::fold_unmasked_generic<
-				descr,
-				typename Semiring::AdditiveMonoid,
-				false
-			>(
-				x, A, semiring.getAdditiveMonoid()
-			);
 		}
+		return internal::fold_unmasked_generic<
+			descr & ~descriptors::add_identity,
+			typename Semiring::AdditiveMonoid,
+			false
+		>(
+			x, A, semiring.getAdditiveMonoid()
+		);
+
 	}
 
 	template<
@@ -2186,7 +2186,7 @@ namespace grb {
 			);
 		} else {
 			return internal::fold_unmasked_generic<
-				descr,
+				descr & ~descriptors::add_identity,
 				typename Semiring::AdditiveMonoid,
 				false
 			>(
