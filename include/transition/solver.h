@@ -146,6 +146,59 @@ typedef enum {
  */
 typedef void * sparse_cg_handle_t;
 
+/**
+ * A user-defined preconditioner function type for CG solver that employ
+ * single-precision floating-point nonzero values.
+ *
+ * I.e. and more precisely, a preconditioner function type for CG solver handles
+ * of types * <tt>sii</tt>, <tt>siz</tt>, and <tt>szz</tt>.
+ *
+ * A preconditioner is assumed to be a plain C function pointer, where
+ *  -# the function returns an <tt>int</tt> error code (where zero will be
+ *     interpreted as success);
+ *  -# the first argument is where the result of applying the preconditioner
+ *     will be stored. It is a raw vector pointer, i.e., <tt>float *</tt>;
+ *  -# the second argument contains the data on which the preconditioner
+ *     action should be computed. It is a raw const vector pointer, i.e.,
+ *     <tt>const float*</tt>;
+ *  -# the third argument contains a pointer to any preconditioner data it
+ *     may require. It is a raw void pointer, meaning, although usually not
+ *     necessary nor recommended, the preconditioner data may be stateful.
+ *
+ * The function signature must match exactly this specification.
+ */
+typedef int (*sparse_cg_preconditioner_sxx_t) (
+	float * const,
+	const float * const,
+	void * const
+);
+
+/**
+ * A user-defined preconditioner function type for CG solver that employ
+ * double-precision floating-point nonzero values.
+ *
+ * I.e. and more precisely, a preconditioner function type for CG solver handles
+ * of types * <tt>dii</tt>, <tt>diz</tt>, and <tt>dzz</tt>.
+ *
+ * A preconditioner is assumed to be a plain C function pointer, where
+ *  -# the function returns an <tt>int</tt> error code (where zero will be
+ *     interpreted as success);
+ *  -# the first argument is where the result of applying the preconditioner
+ *     will be stored. It is a raw vector pointer, i.e., <tt>double *</tt>;
+ *  -# the second argument contains the data on which the preconditioner
+ *     action should be computed. It is a raw const vector pointer, i.e.,
+ *     <tt>const double *</tt>;
+ *  -# the third argument contains a pointer to any preconditioner data it
+ *     may require. It is a raw void pointer, meaning, although usually not
+ *     necessary nor recommended, the preconditioner data may be stateful.
+ *
+ * The function signature must match exactly this specification.
+ */
+typedef int (*sparse_cg_preconditioner_dxx_t) (
+	double * const,
+	const double * const,
+	void * const
+);
 
 /**
  * Initialises a #sparse_cg_handle_t object.
@@ -783,6 +836,167 @@ sparse_err_t sparse_cg_get_iter_count_dzz(
 // another variant of sparse_cg_get_iter_count could provide output as an int,
 // uint, etc.
 
+/**
+ * Sets a new preconditioner to apply during a next solve call.
+ *
+ * @param[in,out] handle         A handle to a valid CG solver object.
+ * @param[in]     preconditioner The preconditioner as a C function pointer.
+ *
+ * @see #sparse_cg_preconditioner_sxx_t On the required signature for
+ *                                      \a preconditioner.
+ *
+ * @param[in]     data           Pointer to any data the preconditioner may
+ *                               require.
+ *
+ * This variant is for CG solver handles of type <tt>sii</tt>.
+ *
+ * \warning If \a handle did not refer to a valid CG solver instance of a
+ *          matching type, the effect of calling this function is undefined(!)
+ *
+ * @see #sparse_cg_init_sii  On how to obtain a valid CG solver instance for use
+ *                           with this function.
+ * @see #sparse_cg_solve_sii On how to call the resulting preconditioned solver.
+ */
+sparse_err_t sparse_cg_set_preconditioner_sii(
+	const sparse_cg_handle_t handle,
+	const sparse_cg_preconditioner_sxx_t preconditioner,
+	void * const data
+);
+
+/**
+ * Sets a new preconditioner to apply during a next solve call.
+ *
+ * @param[in,out] handle         A handle to a valid CG solver object.
+ * @param[in]     preconditioner The preconditioner as a C function pointer.
+ *
+ * @see #sparse_cg_preconditioner_dxx_t On the required signature for
+ *                                      \a preconditioner.
+ *
+ * @param[in]     data           Pointer to any data the preconditioner may
+ *                               require.
+ *
+ * This variant is for CG solver handles of type <tt>dii</tt>.
+ *
+ * \warning If \a handle did not refer to a valid CG solver instance of a
+ *          matching type, the effect of calling this function is undefined(!)
+ *
+ * @see #sparse_cg_init_dii  On how to obtain a valid CG solver instance for use
+ *                           with this function.
+ * @see #sparse_cg_solve_dii On how to call the resulting preconditioned solver.
+ */
+sparse_err_t sparse_cg_set_preconditioner_dii(
+	const sparse_cg_handle_t handle,
+	const sparse_cg_preconditioner_dxx_t preconditioner,
+	void * const data
+);
+
+/**
+ * Sets a new preconditioner to apply during a next solve call.
+ *
+ * @param[in,out] handle         A handle to a valid CG solver object.
+ * @param[in]     preconditioner The preconditioner as a C function pointer.
+ *
+ * @see #sparse_cg_preconditioner_sxx_t On the required signature for
+ *                                      \a preconditioner.
+ *
+ * @param[in]     data           Pointer to any data the preconditioner may
+ *                               require.
+ *
+ * This variant is for CG solver handles of type <tt>sii</tt>.
+ *
+ * \warning If \a handle did not refer to a valid CG solver instance of a
+ *          matching type, the effect of calling this function is undefined(!)
+ *
+ * @see #sparse_cg_init_siz  On how to obtain a valid CG solver instance for use
+ *                           with this function.
+ * @see #sparse_cg_solve_siz On how to call the resulting preconditioned solver.
+ */
+sparse_err_t sparse_cg_set_preconditioner_siz(
+	const sparse_cg_handle_t handle,
+	const sparse_cg_preconditioner_sxx_t preconditioner,
+	void * const data
+);
+
+/**
+ * Sets a new preconditioner to apply during a next solve call.
+ *
+ * @param[in,out] handle         A handle to a valid CG solver object.
+ * @param[in]     preconditioner The preconditioner as a C function pointer.
+ *
+ * @see #sparse_cg_preconditioner_dxx_t On the required signature for
+ *                                      \a preconditioner.
+ *
+ * @param[in]     data           Pointer to any data the preconditioner may
+ *                               require.
+ *
+ * This variant is for CG solver handles of type <tt>dii</tt>.
+ *
+ * \warning If \a handle did not refer to a valid CG solver instance of a
+ *          matching type, the effect of calling this function is undefined(!)
+ *
+ * @see #sparse_cg_init_diz  On how to obtain a valid CG solver instance for use
+ *                           with this function.
+ * @see #sparse_cg_solve_diz On how to call the resulting preconditioned solver.
+ */
+sparse_err_t sparse_cg_set_preconditioner_diz(
+	const sparse_cg_handle_t handle,
+	const sparse_cg_preconditioner_dxx_t preconditioner,
+	void * const data
+);
+
+/**
+ * Sets a new preconditioner to apply during a next solve call.
+ *
+ * @param[in,out] handle         A handle to a valid CG solver object.
+ * @param[in]     preconditioner The preconditioner as a C function pointer.
+ *
+ * @see #sparse_cg_preconditioner_sxx_t On the required signature for
+ *                                      \a preconditioner.
+ *
+ * @param[in]     data           Pointer to any data the preconditioner may
+ *                               require.
+ *
+ * This variant is for CG solver handles of type <tt>sii</tt>.
+ *
+ * \warning If \a handle did not refer to a valid CG solver instance of a
+ *          matching type, the effect of calling this function is undefined(!)
+ *
+ * @see #sparse_cg_init_szz  On how to obtain a valid CG solver instance for use
+ *                           with this function.
+ * @see #sparse_cg_solve_szz On how to call the resulting preconditioned solver.
+ */
+sparse_err_t sparse_cg_set_preconditioner_szz(
+	const sparse_cg_handle_t handle,
+	const sparse_cg_preconditioner_sxx_t preconditioner,
+	void * const data
+);
+
+/**
+ * Sets a new preconditioner to apply during a next solve call.
+ *
+ * @param[in,out] handle         A handle to a valid CG solver object.
+ * @param[in]     preconditioner The preconditioner as a C function pointer.
+ *
+ * @see #sparse_cg_preconditioner_dxx_t On the required signature for
+ *                                      \a preconditioner.
+ *
+ * @param[in]     data           Pointer to any data the preconditioner may
+ *                               require.
+ *
+ * This variant is for CG solver handles of type <tt>dii</tt>.
+ *
+ * \warning If \a handle did not refer to a valid CG solver instance of a
+ *          matching type, the effect of calling this function is undefined(!)
+ *
+ * @see #sparse_cg_init_dzz  On how to obtain a valid CG solver instance for use
+ *                           with this function.
+ * @see #sparse_cg_solve_dzz On how to call the resulting preconditioned solver.
+ */
+sparse_err_t sparse_cg_set_preconditioner_dzz(
+	const sparse_cg_handle_t handle,
+	const sparse_cg_preconditioner_dxx_t preconditioner,
+	void * const data
+);
 
 /**
  * Executes a solve using a given CG solver handle, a given right-hand side
