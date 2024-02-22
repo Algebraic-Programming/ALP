@@ -358,28 +358,24 @@ sparse_err_t sparse_cg_get_size_siz(
 	return sparse_cg_get_size_impl< float, size_t, int >( handle, size );
 }
 
-template< typename T, typename NZI, typename RSI >
 sparse_err_t sparse_cg_get_size_szz(
 	const sparse_cg_handle_t handle, size_t * const size
 ) {
 	return sparse_cg_get_size_impl< float, size_t, size_t >( handle, size );
 }
 
-template< typename T, typename NZI, typename RSI >
 sparse_err_t sparse_cg_get_size_dii(
 	const sparse_cg_handle_t handle, size_t * const size
 ) {
 	return sparse_cg_get_size_impl< double, int, int >( handle, size );
 }
 
-template< typename T, typename NZI, typename RSI >
 sparse_err_t sparse_cg_get_size_diz(
 	const sparse_cg_handle_t handle, size_t * const size
 ) {
 	return sparse_cg_get_size_impl< double, size_t, int >( handle, size );
 }
 
-template< typename T, typename NZI, typename RSI >
 sparse_err_t sparse_cg_get_size_dzz(
 	const sparse_cg_handle_t handle, size_t * const size
 ) {
