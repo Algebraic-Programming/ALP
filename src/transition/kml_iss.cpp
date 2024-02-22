@@ -26,8 +26,13 @@
  * @date 26/01/2024
  */
 
+#include <graphblas.hpp>
+
 #include <kml_iss.h>
 #include <solver.h>
+
+#include <assert.h>
+
 
 #define KMLSS_SET_ARG( nd, param, case_val, sparse_err_t_val )                      \
 	if( nd != 1 ) { return KMLSS_BAD_DATA_SIZE; }                               \
@@ -135,19 +140,99 @@ int KML_CG_PREFIXED( InitDI )(
 	return sparse_err_t_2_int( err );
 }
 
+/**
+ * The data object for preconditioners.
+ *
+ * Enables translation between sparse_cg_t preconditioners and KML
+ * preconditioners.
+ */
+template< typename T >
+struct sparse_t_precond_data {
+
+	/** The system size. */
+	size_t n;
+
+	/** The KML user preconditioner. */
+	int (*kml_preconditioner)( void *, T * );
+
+	/** The KML user data. */
+	void * kml_data;
+
+};
+
+/**
+ * The sparse_cg_t preconditioner function that calls the KML user-defined
+ * preconditioner.
+ */
+template< typename T >
+static int sparse_t_preconditioner(
+	T * const out,
+	const T * const in,
+	void * const data_p
+) {
+	// get data
+	assert( data_p );
+	if( data_p == NULL ) { return 10; }
+	const struct sparse_t_precond_data< T > &data =
+		*reinterpret_cast< struct sparse_t_precond_data< T > * >(
+			data_p);
+
+	// we'll be a little bit smart about converting this signature to an in-place
+	// one by relying on ALP primitives that will auto-parallelise the necessary
+	// copy
+	grb::Vector< T > alp_out =
+		grb::internal::template wrapRawVector< T >( data.n, out );
+	const grb::Vector< T > alp_in =
+		grb::internal::template wrapRawVector< T >( data.n, in );
+	grb::RC rc = grb::set< grb::descriptors::dense >( alp_out, alp_in );
+	rc = rc ? rc : grb::wait();
+	if( rc != grb::RC::SUCCESS ) { return 20; }
+
+	// now out equals in and we can call the KML preconditioner signature
+	return (data.kml_preconditioner)( data.kml_data, out );
+}
 
 int KML_CG_PREFIXED( SetUserPreconditionerSI )(
-	KmlSolverTask **, void *, int (*)( void *, float * )
+	KmlSolverTask ** handle_p,
+	void * data, int (*preconditioner)( void *, float * )
 ) {
-	return KMLSS_NOT_IMPLEMENTED;
+	struct sparse_t_precond_data< float > * const sparse_t_data = nullptr;
+	try {
+		data = new struct sparse_t_precond_data< float >();
+	} catch( ... ) {
+		return KMLSS_NO_MEMORY;
+	}
+	sparse_cg_handle_t handle = *handle_p;
+	sparse_err_t rc = sparse_cg_get_size_sii( handle, &(sparse_t_data->n) );
+	if( rc == NO_ERROR ) {
+		sparse_t_data->kml_preconditioner = preconditioner;
+		sparse_t_data->kml_data = data;
+		rc = sparse_cg_set_preconditioner_sii(
+			handle, sparse_t_preconditioner, sparse_t_data );
+	}
+	return sparse_err_t_2_int( rc );
 }
 
 int KML_CG_PREFIXED( SetUserPreconditionerDI )(
-	KmlSolverTask **, void *, int (*)( void *, double * )
+	KmlSolverTask ** handle_p,
+	void * data, int (*preconditioner)( void *, double * )
 ) {
-	return KMLSS_NOT_IMPLEMENTED;
+	struct sparse_t_precond_data< double > * sparse_t_data = nullptr;
+	try {
+		sparse_t_data = new struct sparse_t_precond_data< double >();
+	} catch( ... ) {
+		return KMLSS_NO_MEMORY;
+	}
+	sparse_cg_handle_t handle = *handle_p;
+	sparse_err_t rc = sparse_cg_get_size_dii( handle, &(sparse_t_data->n) );
+	if( rc == sparse_err_t::NO_ERROR ) {
+		sparse_t_data->kml_preconditioner = preconditioner;
+		sparse_t_data->kml_data = data;
+		rc = sparse_cg_set_preconditioner_dii(
+			handle, sparse_t_preconditioner, sparse_t_data );
+	}
+	return sparse_err_t_2_int( rc );
 }
-
 
 int KML_CG_PREFIXED( SetSII )(
 	KmlSolverTask **handle, KML_SOLVER_PARAM param, const int *data, int nd
