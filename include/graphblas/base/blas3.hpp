@@ -294,7 +294,7 @@ namespace grb {
 	 *                        no further effects.
 	 * @return #grb::OUTOFMEM If \a phase is #grb::RESIZE, indicates an
 	 *                        out-of-memory exception. The call to this function
-	 *                        shall have no other effects beyond *returning this
+	 *                        shall have no other effects beyond returning this
 	 *                        error code; the previous state of \a z is retained.
 	 * @return #grb::PANIC    A general unmitigable error has been encountered. If
 	 *                        returned, ALP enters an undefined state and the user

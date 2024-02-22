@@ -2378,6 +2378,67 @@ namespace grb {
 		}
 
 		/**
+		 * Constructs a BSP1D vector.
+		 *
+		 * @see Full description in base backend.
+		 *
+		 * \internal
+		 * This constructor initialises the local vector and synchronises the global
+		 * vector once.
+		 *
+		 * TODO rewrite below logic using an iterator filter (GitHub PR 233, issue
+		 * 228)
+		 * \endinternal
+		 */
+		Vector( const std::initializer_list< D > &vals )
+			: Vector( vals.size(), vals.size() )
+		{
+#ifdef _DEBUG
+			std::cerr << "In Vector< BSP1D >::Vector( initializer_list ) constructor\n";
+#endif
+			RC ret = SUCCESS;
+			const size_t n = vals.size();
+			const internal::BSP1D_Data &data = internal::grb_BSP1D.cload();
+
+			// Set all the local values
+			for( size_t i = 0; i < vals.size(); i++ ) {
+				const D val = *( vals.begin() + i );
+
+				// check if local
+				// if( (i / x._b) % data.P != data.s ) {
+				if( data.s !=
+					internal::Distribution< BSP1D >::global_index_to_process_id(
+						i, n, data.P
+					)
+				) {
+					continue;
+				}
+
+				// local, so translate index and perform requested operation
+				const size_t local_index =
+					internal::Distribution< BSP1D >::global_index_to_local( i, n, data.P );
+#ifdef _DEBUG
+				std::cout << data.s << ", grb::setElement translates global index "
+					<< i << " to " << local_index << "\n";
+#endif
+				ret = ret
+					? ret
+					: setElement( _local, val, local_index, EXECUTE );
+			}
+
+			// Synchronise once between all processes
+			if( SUCCESS !=
+				collectives< BSP1D >::allreduce( ret, operators::any_or< RC >() )
+			) {
+				throw std::runtime_error( "grb::Vector< BSP1D >::Vector( initializer_list ): "
+					"collective::allreduce failed." );
+			}
+
+			// on successful execute, sync new nnz count
+			updateNnz();
+		}
+
+		/**
 		 * Copy constructor.
 		 *
 		 * Incurs the same costs as the normal constructor, followed by a grb::set.

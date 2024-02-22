@@ -300,6 +300,10 @@ add_grb_executables( adapterIterator adapterIterator.cpp
 	BACKENDS reference reference_omp hyperdags nonblocking bsp1d hybrid
 )
 
+add_grb_executables( vectorFromListConstructor vectorFromListConstructor.cpp
+	BACKENDS reference reference_omp bsp1d hybrid hyperdags nonblocking
+)
+
 # the below targets test successfully when they compile -- they do not need to
 # be executed successfully as part of the unit test suite.
 

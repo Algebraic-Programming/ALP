@@ -858,6 +858,28 @@ namespace grb {
 			}
 
 			/**
+			 * Constructs a reference vector.
+			 *
+			 * @see Full description in base backend.
+			 */
+			Vector( const std::initializer_list< D > &vals )
+				: Vector( vals.size(), vals.size() )
+			{
+#ifdef _DEBUG
+				std::cerr << "In Vector< reference >::Vector( initializer_list )"
+					<< " constructor\n";
+#endif
+
+#ifdef _H_GRB_REFERENCE_OMP_VECTOR
+				#pragma omp parallel for simd
+#endif
+				for( size_t i = 0; i < vals.size(); ++i ) {
+					_raw[ i ] = *( vals.begin() + i );
+				}
+				_coordinates.assignAll();
+			}
+
+			/**
 			 * The default constructor creates an empty vector and should never be
 			 * used explicitly.
 			 */
