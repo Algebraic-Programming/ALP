@@ -183,6 +183,17 @@ class CG_Data {
 		size_t getIters() const noexcept { return iters; }
 
 		/**
+		 * Retrieves the currently active preconditioner.
+		 *
+		 * @param[out] in   Where to store the preconditioner.
+		 * @param[out] data Where to store the corresponding data.
+		 */
+		void getPreconditioner( preconditioner_t &in, void * &data ) const noexcept {
+			in = preconditioner;
+			data = preconditioner_data;
+		}
+
+		/**
 		 * Sets the maximum number of iterations a solve call may spend.
 		 *
 		 * @param[in] in The new maximum number of iterations.
@@ -558,6 +569,73 @@ sparse_err_t sparse_cg_get_iter_count_dzz(
 	return sparse_cg_get_iter_count_impl< double, size_t, size_t >( handle, iters );
 }
 
+template< typename T, typename NZI, typename RSI >
+static sparse_err_t sparse_cg_get_preconditioner_impl(
+	sparse_cg_handle_t handle,
+	int (** const preconditioner)( T * const, const T * const, void * const ),
+	void * * const data
+) {
+	if( handle == nullptr || preconditioner == nullptr || data == nullptr ) {
+		return NULL_ARGUMENT;
+	}
+	static_cast< const CG_Data< T, NZI, RSI > * >( handle )->
+		getPreconditioner( *preconditioner, *data );
+	return NO_ERROR;
+}
+
+sparse_err_t sparse_cg_get_preconditioner_sii(
+	const sparse_cg_handle_t handle,
+	sparse_cg_preconditioner_sxx_t * const preconditioner,
+	void * * const data
+) {
+	return sparse_cg_get_preconditioner_impl< float, int, int >(
+		handle, preconditioner, data );
+}
+
+sparse_err_t sparse_cg_get_preconditioner_siz(
+	const sparse_cg_handle_t handle,
+	sparse_cg_preconditioner_sxx_t * const preconditioner,
+	void * * const data
+) {
+	return sparse_cg_get_preconditioner_impl< float, size_t, int >(
+		handle, preconditioner, data );
+}
+
+sparse_err_t sparse_cg_get_preconditioner_szz(
+	const sparse_cg_handle_t handle,
+	sparse_cg_preconditioner_sxx_t * const preconditioner,
+	void * * const data
+) {
+	return sparse_cg_get_preconditioner_impl< float, size_t, size_t >(
+		handle, preconditioner, data );
+}
+
+sparse_err_t sparse_cg_get_preconditioner_dii(
+	const sparse_cg_handle_t handle,
+	sparse_cg_preconditioner_dxx_t * const preconditioner,
+	void * * const data
+) {
+	return sparse_cg_get_preconditioner_impl< double, int, int >(
+		handle, preconditioner, data );
+}
+
+sparse_err_t sparse_cg_get_preconditioner_diz(
+	const sparse_cg_handle_t handle,
+	sparse_cg_preconditioner_dxx_t * const preconditioner,
+	void * * const data
+) {
+	return sparse_cg_get_preconditioner_impl< double, size_t, int >(
+		handle, preconditioner, data );
+}
+
+sparse_err_t sparse_cg_get_preconditioner_dzz(
+	const sparse_cg_handle_t handle,
+	sparse_cg_preconditioner_dxx_t * const preconditioner,
+	void * * const data
+) {
+	return sparse_cg_get_preconditioner_impl< double, size_t, size_t >(
+		handle, preconditioner, data );
+}
 
 // setters
 

@@ -992,6 +992,210 @@ sparse_err_t sparse_cg_get_iter_count_dzz(
 // uint, etc.
 
 /**
+ * Retrieves the currently active preconditioner.
+ *
+ * @param[in,out] handle         A handle to a valid CG solver object.
+ * @param[out]    preconditioner Where to store the function pointer that is the
+ *                               current preconditioner.
+ * @param[out]    data           Where to store the pointer to any data that
+ *                               the currently active preconditioner requires.
+ *
+ * @returns #NULL_ARGUMENT If \a handle is <tt>NULL</tt>. If this error is
+ *                         returned, the call to this function shall not have
+ *                         any other effects.
+ * @returns #NULL_ARGUMENT If \a preconditioner is <tt>NULL</tt>. If this error
+ *                         code is returned, the call to this function shall
+ *                         have no other effects.
+ * @returns #NULL_ARGUMENT If \a data is <tt>NULL</tt>. If this error code is
+ *                         returned, the call to this function shall have no
+ *                         other effects.
+ * @returns #NO_ERROR      Otherwise.
+ *
+ * This variant is for CG solver handles of type <tt>sii</tt>.
+ *
+ * \warning If \a handle did not refer to a valid CG solver instance of a
+ *          matching type, the effect of calling this function is undefined(!)
+ *
+ * @see #sparse_cg_init_sii On how to obtain a valid CG solver instance for use
+ *                          with this function.
+ */
+sparse_err_t sparse_cg_get_preconditioner_sii(
+	const sparse_cg_handle_t handle,
+	sparse_cg_preconditioner_sxx_t * const preconditioner,
+	void * * const data
+);
+
+/**
+ * Retrieves the currently active preconditioner.
+ *
+ * @param[in,out] handle         A handle to a valid CG solver object.
+ * @param[out]    preconditioner Where to store the function pointer that is the
+ *                               current preconditioner.
+ * @param[out]    data           Where to store the pointer to any data that
+ *                               the currently active preconditioner requires.
+ *
+ * @returns #NULL_ARGUMENT If \a handle is <tt>NULL</tt>. If this error is
+ *                         returned, the call to this function shall not have
+ *                         any other effects.
+ * @returns #NULL_ARGUMENT If \a preconditioner is <tt>NULL</tt>. If this error
+ *                         code is returned, the call to this function shall
+ *                         have no other effects.
+ * @returns #NULL_ARGUMENT If \a data is <tt>NULL</tt>. If this error code is
+ *                         returned, the call to this function shall have no
+ *                         other effects.
+ * @returns #NO_ERROR      Otherwise.
+ *
+ * This variant is for CG solver handles of type <tt>siz</tt>.
+ *
+ * \warning If \a handle did not refer to a valid CG solver instance of a
+ *          matching type, the effect of calling this function is undefined(!)
+ *
+ * @see #sparse_cg_init_siz On how to obtain a valid CG solver instance for use
+ *                          with this function.
+ */
+sparse_err_t sparse_cg_get_preconditioner_siz(
+	const sparse_cg_handle_t handle,
+	sparse_cg_preconditioner_sxx_t * const preconditioner,
+	void * * const data
+);
+
+/**
+ * Retrieves the currently active preconditioner.
+ *
+ * @param[in,out] handle         A handle to a valid CG solver object.
+ * @param[out]    preconditioner Where to store the function pointer that is the
+ *                               current preconditioner.
+ * @param[out]    data           Where to store the pointer to any data that
+ *                               the currently active preconditioner requires.
+ *
+ * @returns #NULL_ARGUMENT If \a handle is <tt>NULL</tt>. If this error is
+ *                         returned, the call to this function shall not have
+ *                         any other effects.
+ * @returns #NULL_ARGUMENT If \a preconditioner is <tt>NULL</tt>. If this error
+ *                         code is returned, the call to this function shall
+ *                         have no other effects.
+ * @returns #NULL_ARGUMENT If \a data is <tt>NULL</tt>. If this error code is
+ *                         returned, the call to this function shall have no
+ *                         other effects.
+ * @returns #NO_ERROR      Otherwise.
+ *
+ * This variant is for CG solver handles of type <tt>szz</tt>.
+ *
+ * \warning If \a handle did not refer to a valid CG solver instance of a
+ *          matching type, the effect of calling this function is undefined(!)
+ *
+ * @see #sparse_cg_init_szz On how to obtain a valid CG solver instance for use
+ *                          with this function.
+ */
+sparse_err_t sparse_cg_get_preconditioner_szz(
+	const sparse_cg_handle_t handle,
+	sparse_cg_preconditioner_sxx_t * const preconditioner,
+	void * * const data
+);
+
+/**
+ * Retrieves the currently active preconditioner.
+ *
+ * @param[in,out] handle         A handle to a valid CG solver object.
+ * @param[out]    preconditioner Where to store the function pointer that is the
+ *                               current preconditioner.
+ * @param[out]    data           Where to store the pointer to any data that
+ *                               the currently active preconditioner requires.
+ *
+ * @returns #NULL_ARGUMENT If \a handle is <tt>NULL</tt>. If this error is
+ *                         returned, the call to this function shall not have
+ *                         any other effects.
+ * @returns #NULL_ARGUMENT If \a preconditioner is <tt>NULL</tt>. If this error
+ *                         code is returned, the call to this function shall
+ *                         have no other effects.
+ * @returns #NULL_ARGUMENT If \a data is <tt>NULL</tt>. If this error code is
+ *                         returned, the call to this function shall have no
+ *                         other effects.
+ * @returns #NO_ERROR      Otherwise.
+ *
+ * This variant is for CG solver handles of type <tt>dii</tt>.
+ *
+ * \warning If \a handle did not refer to a valid CG solver instance of a
+ *          matching type, the effect of calling this function is undefined(!)
+ *
+ * @see #sparse_cg_init_dii  On how to obtain a valid CG solver instance for use
+ *                           with this function.
+ */
+sparse_err_t sparse_cg_get_preconditioner_dii(
+	const sparse_cg_handle_t handle,
+	sparse_cg_preconditioner_dxx_t * const preconditioner,
+	void * * const data
+);
+
+/**
+ * Retrieves the currently active preconditioner.
+ *
+ * @param[in,out] handle         A handle to a valid CG solver object.
+ * @param[out]    preconditioner Where to store the function pointer that is the
+ *                               current preconditioner.
+ * @param[out]    data           Where to store the pointer to any data that
+ *                               the currently active preconditioner requires.
+ *
+ * @returns #NULL_ARGUMENT If \a handle is <tt>NULL</tt>. If this error is
+ *                         returned, the call to this function shall not have
+ *                         any other effects.
+ * @returns #NULL_ARGUMENT If \a preconditioner is <tt>NULL</tt>. If this error
+ *                         code is returned, the call to this function shall
+ *                         have no other effects.
+ * @returns #NULL_ARGUMENT If \a data is <tt>NULL</tt>. If this error code is
+ *                         returned, the call to this function shall have no
+ *                         other effects.
+ * @returns #NO_ERROR      Otherwise.
+ *
+ * This variant is for CG solver handles of type <tt>diz</tt>.
+ *
+ * \warning If \a handle did not refer to a valid CG solver instance of a
+ *          matching type, the effect of calling this function is undefined(!)
+ *
+ * @see #sparse_cg_init_diz  On how to obtain a valid CG solver instance for use
+ *                           with this function.
+ */
+sparse_err_t sparse_cg_get_preconditioner_diz(
+	const sparse_cg_handle_t handle,
+	sparse_cg_preconditioner_dxx_t * const preconditioner,
+	void * * const data
+);
+
+/**
+ * Retrieves the currently active preconditioner.
+ *
+ * @param[in,out] handle         A handle to a valid CG solver object.
+ * @param[out]    preconditioner Where to store the function pointer that is the
+ *                               current preconditioner.
+ * @param[out]    data           Where to store the pointer to any data that
+ *                               the currently active preconditioner requires.
+ *
+ * @returns #NULL_ARGUMENT If \a handle is <tt>NULL</tt>. If this error is
+ *                         returned, the call to this function shall not have
+ *                         any other effects.
+ * @returns #NULL_ARGUMENT If \a preconditioner is <tt>NULL</tt>. If this error
+ *                         code is returned, the call to this function shall
+ *                         have no other effects.
+ * @returns #NULL_ARGUMENT If \a data is <tt>NULL</tt>. If this error code is
+ *                         returned, the call to this function shall have no
+ *                         other effects.
+ * @returns #NO_ERROR      Otherwise.
+ *
+ * This variant is for CG solver handles of type <tt>dzz</tt>.
+ *
+ * \warning If \a handle did not refer to a valid CG solver instance of a
+ *          matching type, the effect of calling this function is undefined(!)
+ *
+ * @see #sparse_cg_init_dzz On how to obtain a valid CG solver instance for use
+ *                          with this function.
+ */
+sparse_err_t sparse_cg_get_preconditioner_dzz(
+	const sparse_cg_handle_t handle,
+	sparse_cg_preconditioner_dxx_t * const preconditioner,
+	void * * const data
+);
+
+/**
  * Sets a new preconditioner to apply during a next solve call.
  *
  * @param[in,out] handle         A handle to a valid CG solver object.
@@ -1002,6 +1206,11 @@ sparse_err_t sparse_cg_get_iter_count_dzz(
  *
  * @param[in]     data           Pointer to any data the preconditioner may
  *                               require.
+ *
+ * @returns #NULL_ARGUMENT If \a handle is <tt>NULL</tt>. If this error is
+ *                         returned, the call to this function shall not have
+ *                         any other effects.
+ * @returns #NO_ERROR      Otherwise.
  *
  * This variant is for CG solver handles of type <tt>sii</tt>.
  *
@@ -1030,6 +1239,11 @@ sparse_err_t sparse_cg_set_preconditioner_sii(
  * @param[in]     data           Pointer to any data the preconditioner may
  *                               require.
  *
+ * @returns #NULL_ARGUMENT If \a handle is <tt>NULL</tt>. If this error is
+ *                         returned, the call to this function shall not have
+ *                         any other effects.
+ * @returns #NO_ERROR      Otherwise.
+ *
  * This variant is for CG solver handles of type <tt>dii</tt>.
  *
  * \warning If \a handle did not refer to a valid CG solver instance of a
@@ -1056,6 +1270,11 @@ sparse_err_t sparse_cg_set_preconditioner_dii(
  *
  * @param[in]     data           Pointer to any data the preconditioner may
  *                               require.
+ *
+ * @returns #NULL_ARGUMENT If \a handle is <tt>NULL</tt>. If this error is
+ *                         returned, the call to this function shall not have
+ *                         any other effects.
+ * @returns #NO_ERROR      Otherwise.
  *
  * This variant is for CG solver handles of type <tt>sii</tt>.
  *
@@ -1084,6 +1303,11 @@ sparse_err_t sparse_cg_set_preconditioner_siz(
  * @param[in]     data           Pointer to any data the preconditioner may
  *                               require.
  *
+ * @returns #NULL_ARGUMENT If \a handle is <tt>NULL</tt>. If this error is
+ *                         returned, the call to this function shall not have
+ *                         any other effects.
+ * @returns #NO_ERROR      Otherwise.
+ *
  * This variant is for CG solver handles of type <tt>dii</tt>.
  *
  * \warning If \a handle did not refer to a valid CG solver instance of a
@@ -1111,6 +1335,11 @@ sparse_err_t sparse_cg_set_preconditioner_diz(
  * @param[in]     data           Pointer to any data the preconditioner may
  *                               require.
  *
+ * @returns #NULL_ARGUMENT If \a handle is <tt>NULL</tt>. If this error is
+ *                         returned, the call to this function shall not have
+ *                         any other effects.
+ * @returns #NO_ERROR      Otherwise.
+ *
  * This variant is for CG solver handles of type <tt>sii</tt>.
  *
  * \warning If \a handle did not refer to a valid CG solver instance of a
@@ -1137,6 +1366,11 @@ sparse_err_t sparse_cg_set_preconditioner_szz(
  *
  * @param[in]     data           Pointer to any data the preconditioner may
  *                               require.
+ *
+ * @returns #NULL_ARGUMENT If \a handle is <tt>NULL</tt>. If this error is
+ *                         returned, the call to this function shall not have
+ *                         any other effects.
+ * @returns #NO_ERROR      Otherwise.
  *
  * This variant is for CG solver handles of type <tt>dii</tt>.
  *
