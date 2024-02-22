@@ -315,7 +315,7 @@ int KML_CG_PREFIXED( SetUserPreconditionerDI )(
 int KML_CG_PREFIXED( SetSII )(
 	KmlSolverTask **handle, KML_SOLVER_PARAM param, const int *data, int nd
 ) {
-	KMLSS_SET_ARG( nd, param, KMLSS_THRESHOLD,
+	KMLSS_SET_ARG( nd, param, KMLSS_MAX_ITERATION_COUNT,
 		sparse_cg_set_max_iter_count_sii( handle, *data ) );
 }
 
@@ -323,7 +323,7 @@ int KML_CG_PREFIXED( SetSIS )(
 	KmlSolverTask **handle, KML_SOLVER_PARAM param,
 	const float *data, int nd
 ) {
-	KMLSS_SET_ARG( nd, param, KMLSS_MAX_ITERATION_COUNT,
+	KMLSS_SET_ARG( nd, param, KMLSS_THRESHOLD,
 		sparse_cg_set_tolerance_sii( handle, *data ) );
 }
 
@@ -331,7 +331,7 @@ int KML_CG_PREFIXED( SetDII )(
 	KmlSolverTask **handle, KML_SOLVER_PARAM param,
 	const int *data, int nd
 ) {
-	KMLSS_SET_ARG( nd, param, KMLSS_THRESHOLD,
+	KMLSS_SET_ARG( nd, param, KMLSS_MAX_ITERATION_COUNT,
 		sparse_cg_set_max_iter_count_dii( handle, *data ) );
 }
 
@@ -339,26 +339,30 @@ int KML_CG_PREFIXED( SetDID )(
 	KmlSolverTask **handle, KML_SOLVER_PARAM param,
 	const double *data, int nd
 ) {
-	KMLSS_SET_ARG( nd, param, KMLSS_MAX_ITERATION_COUNT,
+	KMLSS_SET_ARG( nd, param, KMLSS_THRESHOLD,
 		sparse_cg_set_tolerance_dii( handle, *data ) );
 }
 
 
 int KML_CG_PREFIXED( AnalyzeSI )( KmlSolverTask ** ) {
-	return KMLSS_NOT_IMPLEMENTED;
+	// not implemented, but not supported yet in KML
+	return KMLSS_NO_ERROR;
 }
 
 int KML_CG_PREFIXED( AnalyzeDI )( KmlSolverTask ** ) {
-	return KMLSS_NOT_IMPLEMENTED;
+	// not implemented, but not supported yet in KML
+	return KMLSS_NO_ERROR;
 }
 
 
 int KML_CG_PREFIXED( FactorizeSI )( KmlSolverTask ** ) {
-	return KMLSS_NOT_IMPLEMENTED;
+	// not implemented, but not supported yet in KML
+	return KMLSS_NO_ERROR;
 }
 
 int KML_CG_PREFIXED( FactorizeDI )( KmlSolverTask ** ) {
-	return KMLSS_NOT_IMPLEMENTED;
+	// not implemented, but not supported yet in KML
+	return KMLSS_NO_ERROR;
 }
 
 
