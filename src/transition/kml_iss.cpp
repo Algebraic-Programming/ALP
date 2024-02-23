@@ -332,7 +332,7 @@ int KML_CG_PREFIXED( SetSII )(
 	KmlSolverTask **handle, KML_SOLVER_PARAM param, const int *data, int nd
 ) {
 	KMLSS_SET_ARG( nd, param, KMLSS_MAX_ITERATION_COUNT,
-		sparse_cg_set_max_iter_count_sii( handle, *data ) );
+		sparse_cg_set_max_iter_count_sii( *handle, *data ) );
 }
 
 int KML_CG_PREFIXED( SetSIS )(
@@ -340,7 +340,7 @@ int KML_CG_PREFIXED( SetSIS )(
 	const float *data, int nd
 ) {
 	KMLSS_SET_ARG( nd, param, KMLSS_THRESHOLD,
-		sparse_cg_set_tolerance_sii( handle, *data ) );
+		sparse_cg_set_tolerance_sii( *handle, *data ) );
 }
 
 int KML_CG_PREFIXED( SetDII )(
@@ -348,7 +348,7 @@ int KML_CG_PREFIXED( SetDII )(
 	const int *data, int nd
 ) {
 	KMLSS_SET_ARG( nd, param, KMLSS_MAX_ITERATION_COUNT,
-		sparse_cg_set_max_iter_count_dii( handle, *data ) );
+		sparse_cg_set_max_iter_count_dii( *handle, *data ) );
 }
 
 int KML_CG_PREFIXED( SetDID )(
@@ -356,7 +356,7 @@ int KML_CG_PREFIXED( SetDID )(
 	const double *data, int nd
 ) {
 	KMLSS_SET_ARG( nd, param, KMLSS_THRESHOLD,
-		sparse_cg_set_tolerance_dii( handle, *data ) );
+		sparse_cg_set_tolerance_dii( *handle, *data ) );
 }
 
 
@@ -424,7 +424,7 @@ int KML_CG_PREFIXED( GetSIS )(
 	float *data, int nd
 ) {
 	KMLSS_GET_ARG( nd, param, KMLSS_TOLERANCE,
-		sparse_cg_get_residual_sii(*handle, data), ret );
+		sparse_cg_get_residual_sii( *handle, data ), ret );
 	return ret;
 }
 
@@ -433,7 +433,7 @@ int KML_CG_PREFIXED( GetDID )(
 	double *data, int nd
 ) {
 	KMLSS_GET_ARG( nd, param, KMLSS_TOLERANCE,
-		sparse_cg_get_residual_dii(*handle, data), ret );
+		sparse_cg_get_residual_dii( *handle, data ), ret );
 	return ret;
 }
 
