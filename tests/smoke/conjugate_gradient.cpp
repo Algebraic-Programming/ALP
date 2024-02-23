@@ -228,7 +228,7 @@ void grbProgram( const struct input &data_in, struct output &out ) {
 	out.times.io = timer.time();
 	timer.reset();
 
-	// set up default pagerank test
+	// set up default CG test
 	Vector< ScalarType > x( n ), b( n ), r( n ), u( n ), temp( n );
 	Vector< ScalarType > optional_temp = data_in.jacobi_precond
 		? Vector< ScalarType >( n )
