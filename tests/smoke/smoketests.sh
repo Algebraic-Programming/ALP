@@ -211,7 +211,7 @@ for BACKEND in ${BACKENDS[@]}; do
 				echo "Test DISABLED: gyro_m.mtx was not found. To enable, please provide ${INPUT_DIR}/gyro_m.mtx"
 			fi
 			echo " "
-preconditioned_
+
 			echo ">>>      [x]           [ ]       Tests grb::Launcher on a K-core decomposition on the dataset"
 			echo "                                 EPA.mtx. The launcher is used in automatic mode and the I/O"
 			echo "                                 mode is sequential. The Launcher::exec called is with struct"
