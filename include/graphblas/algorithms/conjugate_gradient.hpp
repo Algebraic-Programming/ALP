@@ -193,8 +193,11 @@ namespace grb {
 			const grb::Matrix< NonzeroType, backend, RSI, RSI, NZI > &A,
 			const grb::Vector< InputType, backend > &b,
 			const std::function<
-					grb::RC(grb::Vector< IOType > &, const grb::Vector< IOType > &)
-				> &Minv,
+					grb::RC(
+						grb::Vector< IOType, backend > &,
+						const grb::Vector< IOType, backend > &
+						)
+					> &Minv,
 			const size_t max_iterations,
 			ResidualType tol,
 			size_t &iterations,
@@ -250,7 +253,7 @@ namespace grb {
 			const size_t n = grb::ncols( A );
 
 			// retrieve conditional buffers
-			grb::Vector< IOType > &z = preconditioned ? temp_precond : r;
+			grb::Vector< IOType, backend > &z = preconditioned ? temp_precond : r;
 
 			// dynamic checks
 			{
@@ -555,12 +558,18 @@ namespace grb {
 
 			// create a dummy preconditioner and buffer that will never be used
 			std::function<
-				grb::RC( grb::Vector< IOType >&, const grb::Vector< IOType >& )
+				grb::RC(
+					grb::Vector< IOType, backend >&,
+					const grb::Vector< IOType, backend >&
+				)
 			> dummy_preconditioner =
-				[](grb::Vector< IOType >&, const grb::Vector< IOType >&) -> grb::RC {
+				[](
+					grb::Vector< IOType, backend >&,
+					const grb::Vector< IOType, backend >&
+				) -> grb::RC {
 					return grb::FAILED;
 				};
-			grb::Vector< IOType > dummy_buffer( 0 );
+			grb::Vector< IOType, backend > dummy_buffer( 0 );
 
 			// call PCG with preconditioning disabled
 			return preconditioned_conjugate_gradient< descr, false >(
