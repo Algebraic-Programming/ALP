@@ -36,63 +36,63 @@
 #include <assert.h>
 
 
-#define KMLSS_SET_ARG( nd, param, case_val, sparse_err_t_val )                 \
-	if( nd != 1 ) { return KMLSS_BAD_DATA_SIZE; }                          \
-	int err = KMLSS_NO_ERROR;                                              \
-	switch ( param ) {                                                     \
-		case case_val:                                                 \
-		{                                                              \
-			const sparse_err_t r = sparse_err_t_val;               \
-			if( r != NO_ERROR ) {                                  \
-				if( r == NULL_ARGUMENT ) {                     \
-					return KMLSS_NULL_ARGUMENT;            \
-				} else {                                       \
-					printf( "Unknown internal error\n" );  \
-					return KMLSS_INTERNAL_ERROR;           \
-				}                                              \
-			}                                                      \
-			break;                                                 \
-		}                                                              \
-		default:                                                       \
-			err = KMLSS_BAD_SELECTOR;                              \
-	}                                                                      \
+#define KMLSS_SET_ARG( nd, param, case_val, sparse_err_t_val )                                 \
+	if( nd != 1 ) { return KMLSS_BAD_DATA_SIZE; }                                          \
+	int err = KMLSS_NO_ERROR;                                                              \
+	switch ( param ) {                                                                     \
+		case case_val:                                                                 \
+		{                                                                              \
+			const sparse_err_t r = sparse_err_t_val;                               \
+			if( r != NO_ERROR ) {                                                  \
+				if( r == NULL_ARGUMENT ) {                                     \
+					return KMLSS_NULL_ARGUMENT;                            \
+				} else {                                                       \
+					(void) fprintf( stderr, "Unknown internal error\n" );  \
+					return KMLSS_INTERNAL_ERROR;                           \
+				}                                                              \
+			}                                                                      \
+			break;                                                                 \
+		}                                                                              \
+		default:                                                                       \
+			err = KMLSS_BAD_SELECTOR;                                              \
+	}                                                                                      \
 	return err;
 
 // do not propagate FAILED in case of failed convergence (KML convention)
-#define KMLSS_SOLVE( nb, sparse_err_t_val )                    \
-	if( nb != 1 ) { return KMLSS_BAD_NB; }                 \
-	const sparse_err_t r = sparse_err_t_val;               \
-	if( r == FAILED ) { return KMLSS_NO_ERROR; }           \
-	int err = KMLSS_NO_ERROR;                              \
-	if( r != NO_ERROR ) {                                  \
-		if( r == NULL_ARGUMENT ) {                     \
-			return KMLSS_NULL_ARGUMENT;            \
-		} else {                                       \
-			printf( "Unknown internal error\n" );  \
-			return KMLSS_INTERNAL_ERROR;           \
-		}                                              \
-	}                                                      \
+#define KMLSS_SOLVE( nb, sparse_err_t_val )                                    \
+	if( nb != 1 ) { return KMLSS_BAD_NB; }                                 \
+	const sparse_err_t r = sparse_err_t_val;                               \
+	if( r == FAILED ) { return KMLSS_NO_ERROR; }                           \
+	int err = KMLSS_NO_ERROR;                                              \
+	if( r != NO_ERROR ) {                                                  \
+		if( r == NULL_ARGUMENT ) {                                     \
+			return KMLSS_NULL_ARGUMENT;                            \
+		} else {                                                       \
+			(void) fprintf( stderr, "Unknown internal error\n" );  \
+			return KMLSS_INTERNAL_ERROR;                           \
+		}                                                              \
+	}                                                                      \
 	return err;
 
-#define KMLSS_GET_ARG( nd, param, case_val, sparse_err_t_val, err )            \
-	if( nd != 1 ) { return KMLSS_BAD_DATA_SIZE; }                          \
-	int err = KMLSS_NO_ERROR;                                              \
-	switch ( param ) {                                                     \
-		case case_val:                                                 \
-		{                                                              \
-			const sparse_err_t r = sparse_err_t_val;               \
-			if( r != NO_ERROR ) {                                  \
-				if( r == NULL_ARGUMENT ) {                     \
-					return KMLSS_NULL_ARGUMENT;            \
-				} else {                                       \
-					printf( "Unknown internal error\n" );  \
-					return KMLSS_INTERNAL_ERROR;           \
-				}                                              \
-			}                                                      \
-			break;                                                 \
-		}                                                              \
-		default:                                                       \
-			err = KMLSS_BAD_SELECTOR;                              \
+#define KMLSS_GET_ARG( nd, param, case_val, sparse_err_t_val, err )                            \
+	if( nd != 1 ) { return KMLSS_BAD_DATA_SIZE; }                                          \
+	int err = KMLSS_NO_ERROR;                                                              \
+	switch ( param ) {                                                                     \
+		case case_val:                                                                 \
+		{                                                                              \
+			const sparse_err_t r = sparse_err_t_val;                               \
+			if( r != NO_ERROR ) {                                                  \
+				if( r == NULL_ARGUMENT ) {                                     \
+					return KMLSS_NULL_ARGUMENT;                            \
+				} else {                                                       \
+					(void) fprintf( stderr, "Unknown internal error\n" );  \
+					return KMLSS_INTERNAL_ERROR;                           \
+				}                                                              \
+			}                                                                      \
+			break;                                                                 \
+		}                                                                              \
+		default:                                                                       \
+			err = KMLSS_BAD_SELECTOR;                                              \
 	}
 
 /**
@@ -453,7 +453,7 @@ int KML_CG_PREFIXED( CleanSI )( KmlSolverTask ** handle_p ) {
 		try {
 			delete sparse_t_data;
 		} catch( ... ) {
-			printf( "Unknown internal error\n" );
+			(void) fprintf( stderr, "Unknown internal error\n" );
 			return KMLSS_INTERNAL_ERROR;
 		}
 	}
@@ -477,7 +477,7 @@ int KML_CG_PREFIXED( CleanDI )( KmlSolverTask ** handle_p ) {
 		try {
 			delete sparse_t_data;
 		} catch( ... ) {
-			printf( "Unknown internal error\n" );
+			(void) fprintf( stderr, "Unknown internal error\n" );
 			return KMLSS_INTERNAL_ERROR;
 		}
 	}
