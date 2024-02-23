@@ -1992,6 +1992,9 @@ namespace grb {
 
 			/** \internal No implementation notes. */
 			SelfType& operator=( SelfType &&other ) noexcept {
+				if( m > 0 && n > 0 && remove_id ) {
+					internal::reference_mapper.remove( id );
+				}
 				moveFromOther( std::forward< SelfType >(other) );
 				return *this;
 			}
