@@ -339,7 +339,7 @@ namespace grb {
 			assert( nnz( r ) == n );
 			assert( nnz( temp ) == n );
 			ret = ret ? ret : grb::foldl< descr_dense >( r, temp, minus );
-			assert( ret == SUCCESS );
+			assert( ret == grb::SUCCESS );
 
 			// z = M^-1r
 			if( preconditioned ) {
@@ -417,7 +417,7 @@ namespace grb {
 					ring.getMultiplicativeMonoid() );
 				assert( ret == grb::SUCCESS );
 				ret = ret ? ret : grb::foldl< descr_dense >( r, temp, minus );
-				assert( ret == SUCCESS );
+				assert( ret == grb::SUCCESS );
 
 				// get residual. In the preconditioned case, the resulting scalar is *not*
 				// used for subsequent operations. Therefore, we first compute the residual
