@@ -26,6 +26,8 @@
  * @date 26/01/2024
  */
 
+#include <cstdio>
+
 #include <graphblas.hpp>
 
 #include <kml_iss.h>
@@ -34,60 +36,70 @@
 #include <assert.h>
 
 
-#define KMLSS_SET_ARG( nd, param, case_val, sparse_err_t_val )                      \
-	if( nd != 1 ) { return KMLSS_BAD_DATA_SIZE; }                               \
-	int err = KMLSS_NO_ERROR;                                                   \
-	switch ( param ) {                                                          \
-		case case_val:                                                      \
-		{                                                                   \
-			const sparse_err_t r = sparse_err_t_val;                    \
-			if( r != NO_ERROR ) {                                       \
-				err = ( r == NULL_ARGUMENT ) ?                      \
-					KMLSS_NULL_ARGUMENT : KMLSS_INTERNAL_ERROR; \
-			}                                                           \
-			break;                                                      \
-		}                                                                   \
-	default:                                                                    \
-		err = KMLSS_BAD_SELECTOR;                                           \
-	}                                                                           \
+#define KMLSS_SET_ARG( nd, param, case_val, sparse_err_t_val )                 \
+	if( nd != 1 ) { return KMLSS_BAD_DATA_SIZE; }                          \
+	int err = KMLSS_NO_ERROR;                                              \
+	switch ( param ) {                                                     \
+		case case_val:                                                 \
+		{                                                              \
+			const sparse_err_t r = sparse_err_t_val;               \
+			if( r != NO_ERROR ) {                                  \
+				if( r == NULL_ARGUMENT ) {                     \
+					return KMLSS_NULL_ARGUMENT;            \
+				} else {                                       \
+					printf( "Unknown internal error\n" );  \
+					return KMLSS_INTERNAL_ERROR;           \
+				}                                              \
+			}                                                      \
+			break;                                                 \
+		}                                                              \
+		default:                                                       \
+			err = KMLSS_BAD_SELECTOR;                              \
+	}                                                                      \
 	return err;
 
 // do not propagate FAILED in case of failed convergence (KML convention)
-#define KMLSS_SOLVE( nb, sparse_err_t_val )          \
-	if( nb != 1 ) { return KMLSS_BAD_NB; }       \
-	const sparse_err_t r = sparse_err_t_val;     \
-	if( r == FAILED ) { return KMLSS_NO_ERROR; } \
-	int err = KMLSS_NO_ERROR;                    \
-	if( r != NO_ERROR ) {                        \
-		err = ( r == NULL_ARGUMENT )         \
-			? KMLSS_NULL_ARGUMENT        \
-			: KMLSS_INTERNAL_ERROR;      \
-	}                                            \
+#define KMLSS_SOLVE( nb, sparse_err_t_val )                    \
+	if( nb != 1 ) { return KMLSS_BAD_NB; }                 \
+	const sparse_err_t r = sparse_err_t_val;               \
+	if( r == FAILED ) { return KMLSS_NO_ERROR; }           \
+	int err = KMLSS_NO_ERROR;                              \
+	if( r != NO_ERROR ) {                                  \
+		if( r == NULL_ARGUMENT ) {                     \
+			return KMLSS_NULL_ARGUMENT;            \
+		} else {                                       \
+			printf( "Unknown internal error\n" );  \
+			return KMLSS_INTERNAL_ERROR;           \
+		}                                              \
+	}                                                      \
 	return err;
 
-#define KMLSS_GET_ARG( nd, param, case_val, sparse_err_t_val, err ) \
-	if( nd != 1 ) { return KMLSS_BAD_DATA_SIZE; }               \
-	int err = KMLSS_NO_ERROR;                                   \
-	switch ( param ) {                                          \
-		case case_val:                                      \
-		{                                                   \
-			const sparse_err_t r = sparse_err_t_val;    \
-			if( r != NO_ERROR ) {                       \
-				err = ( r == NULL_ARGUMENT )        \
-					? KMLSS_NULL_ARGUMENT       \
-					: KMLSS_INTERNAL_ERROR;     \
-			}                                           \
-			break;                                      \
-		}                                                   \
-		default:                                            \
-			err = KMLSS_BAD_SELECTOR;                   \
+#define KMLSS_GET_ARG( nd, param, case_val, sparse_err_t_val, err )            \
+	if( nd != 1 ) { return KMLSS_BAD_DATA_SIZE; }                          \
+	int err = KMLSS_NO_ERROR;                                              \
+	switch ( param ) {                                                     \
+		case case_val:                                                 \
+		{                                                              \
+			const sparse_err_t r = sparse_err_t_val;               \
+			if( r != NO_ERROR ) {                                  \
+				if( r == NULL_ARGUMENT ) {                     \
+					return KMLSS_NULL_ARGUMENT;            \
+				} else {                                       \
+					printf( "Unknown internal error\n" );  \
+					return KMLSS_INTERNAL_ERROR;           \
+				}                                              \
+			}                                                      \
+			break;                                                 \
+		}                                                              \
+		default:                                                       \
+			err = KMLSS_BAD_SELECTOR;                              \
 	}
 
 /**
  * Converts a sparse_err_t into an int.
  */
 static int sparse_err_t_2_int( const sparse_err_t err ) {
-	int result = 0;
+	int result = KMLSS_NO_ERROR;
 	switch ( err ) {
 		case NO_ERROR:
 		{
@@ -128,6 +140,8 @@ int KML_CG_PREFIXED( InitSI )(
 	KmlSolverTask **handle, int n, const float *a,
 	const int *ja, const int *ia
 ) {
+	// negative numbers become positive when casted to size_t
+	if( n <= 0 ) { return KMLSS_BAD_N; }
 	sparse_err_t err = sparse_cg_init_sii( handle, n, a, ja, ia );
 	return sparse_err_t_2_int( err );
 }
@@ -136,6 +150,8 @@ int KML_CG_PREFIXED( InitDI )(
 	KmlSolverTask **handle, int n, const double *a,
 	const int *ja, const int *ia
 ) {
+	// negative numbers become positive when casted to size_t
+	if( n <= 0 ) { return KMLSS_BAD_N; }
 	sparse_err_t err = sparse_cg_init_dii( handle, n, a, ja, ia );
 	return sparse_err_t_2_int( err );
 }
@@ -344,25 +360,25 @@ int KML_CG_PREFIXED( SetDID )(
 }
 
 
-int KML_CG_PREFIXED( AnalyzeSI )( KmlSolverTask ** ) {
+int KML_CG_PREFIXED( AnalyzeSI )( KmlSolverTask ** handle ) {
 	// not implemented, but not supported yet in KML
-	return KMLSS_NO_ERROR;
+	return handle != NULL ? KMLSS_NO_ERROR : KMLSS_NULL_ARGUMENT;
 }
 
-int KML_CG_PREFIXED( AnalyzeDI )( KmlSolverTask ** ) {
+int KML_CG_PREFIXED( AnalyzeDI )( KmlSolverTask ** handle ) {
 	// not implemented, but not supported yet in KML
-	return KMLSS_NO_ERROR;
+	return handle != NULL ? KMLSS_NO_ERROR : KMLSS_NULL_ARGUMENT;
 }
 
 
-int KML_CG_PREFIXED( FactorizeSI )( KmlSolverTask ** ) {
+int KML_CG_PREFIXED( FactorizeSI )( KmlSolverTask ** handle ) {
 	// not implemented, but not supported yet in KML
-	return KMLSS_NO_ERROR;
+	return handle != NULL ? KMLSS_NO_ERROR : KMLSS_NULL_ARGUMENT;
 }
 
-int KML_CG_PREFIXED( FactorizeDI )( KmlSolverTask ** ) {
+int KML_CG_PREFIXED( FactorizeDI )( KmlSolverTask ** handle ) {
 	// not implemented, but not supported yet in KML
-	return KMLSS_NO_ERROR;
+	return handle != NULL ? KMLSS_NO_ERROR : KMLSS_NULL_ARGUMENT;
 }
 
 
@@ -388,7 +404,7 @@ int KML_CG_PREFIXED( GetSII )(
 	size_t s = 0;
 	KMLSS_GET_ARG( nd, param, KMLSS_ITERATION_COUNT,
 		sparse_cg_get_iter_count_sii( *handle, &s ), ret );
-	if( ret == NO_ERROR ) { *data = static_cast< int >( s ); }
+	if( ret == KMLSS_NO_ERROR ) { *data = static_cast< int >( s ); }
 	return ret;
 }
 
@@ -399,7 +415,7 @@ int KML_CG_PREFIXED( GetDII )(
 	size_t s = 0;
 	KMLSS_GET_ARG( nd, param, KMLSS_ITERATION_COUNT,
 		sparse_cg_get_iter_count_dii( *handle, &s ), ret );
-	if( ret == NO_ERROR ) { *data = static_cast< int >( s ); }
+	if( ret == KMLSS_NO_ERROR ) { *data = static_cast< int >( s ); }
 	return ret;
 }
 
@@ -437,11 +453,12 @@ int KML_CG_PREFIXED( CleanSI )( KmlSolverTask ** handle_p ) {
 		try {
 			delete sparse_t_data;
 		} catch( ... ) {
+			printf( "Unknown internal error\n" );
 			return KMLSS_INTERNAL_ERROR;
 		}
 	}
 
-	return NO_ERROR;
+	return KMLSS_NO_ERROR;
 }
 
 int KML_CG_PREFIXED( CleanDI )( KmlSolverTask ** handle_p ) {
@@ -460,10 +477,11 @@ int KML_CG_PREFIXED( CleanDI )( KmlSolverTask ** handle_p ) {
 		try {
 			delete sparse_t_data;
 		} catch( ... ) {
+			printf( "Unknown internal error\n" );
 			return KMLSS_INTERNAL_ERROR;
 		}
 	}
 
-	return NO_ERROR;
+	return KMLSS_NO_ERROR;
 }
 
