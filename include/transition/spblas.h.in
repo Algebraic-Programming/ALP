@@ -15,6 +15,20 @@
  * limitations under the License.
  */
 
+/**
+ * @file
+ *
+ * \ingroup TRANS
+ *
+ * Defines the solver transition path API with arbitrary primitive prefixes.
+ *
+ * @see blas_sparse.h for the SparseBLAS transition path API
+ * @see spblas_impl.h for the SpBLAS transition path API
+ *
+ * @author A. Scolari
+ * @date 2nd of February, 2024
+ */
+
 #ifndef _H_ALP_SPBLAS
 #define _H_ALP_SPBLAS
 

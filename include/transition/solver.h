@@ -18,6 +18,8 @@
 /**
  * @file
  *
+ * \ingroup TRANS
+ *
  * Defines the solver transition path API.
  *
  * @see blas_sparse.h for the SparseBLAS transition path API
@@ -85,13 +87,21 @@
  * Currently, the following ALP solvers are exposed:
  *  -# the sparse Conjugate Gradient (CG) solver, implemented at
  *     #grb::algorithms::conjugate_gradient.
+ *  -# its preconditioned variant (PCG), implemented at
+ *     #grb::algorithms::preconditioned_conjugate_gradient. The preconditioner
+ *     may be supplied as an arbitrary user-defined function; while this is
+ *     maximally flexible, it also requires the user to employ parallelisation
+ *     and other optimisations for the preconditioner, manually.
  *
  * If you require any other solver, please feel free to submit a feature request
- * or to contact the maintainer.
+ * or to contact the maintainer(s).
  * \endparblock
  *
- * \warning The solvers here defined, and the transition path functionalities as a
- *          whole, are currently in an experimental prototype stage.
+ * \warning The solvers here defined, and the transition path functionalities as
+ *          a whole, are currently in a prototype stage. While the underlying
+ *          ALP algorithms are automatically smoke tested and robust, the
+ *          transition path libraries are presently tested externally and often
+ *          manually.
  */
 
 #ifndef _H_ALP_SPARSE_LINSOLVERS
@@ -135,7 +145,9 @@ typedef enum {
 
 	/**
 	 * An unknown error has been encountered. The state of the underlying solver
-	 * library has become undefined.
+	 * library has become undefined. When encoutering this error code, the caller
+	 * is encouraged to exit gracefully or (at least) to make no further calls into
+	 * this library.
 	 */
 	UNKNOWN
 
@@ -151,7 +163,7 @@ typedef void * sparse_cg_handle_t;
  * single-precision floating-point nonzero values.
  *
  * I.e. and more precisely, a preconditioner function type for CG solver handles
- * of types * <tt>sii</tt>, <tt>siz</tt>, and <tt>szz</tt>.
+ * of types <tt>sii</tt>, <tt>siz</tt>, and <tt>szz</tt>.
  *
  * A preconditioner is assumed to be a plain C function pointer, where
  *  -# the function returns an <tt>int</tt> error code (where zero will be
@@ -178,7 +190,7 @@ typedef int (*sparse_cg_preconditioner_sxx_t) (
  * double-precision floating-point nonzero values.
  *
  * I.e. and more precisely, a preconditioner function type for CG solver handles
- * of types * <tt>dii</tt>, <tt>diz</tt>, and <tt>dzz</tt>.
+ * of types <tt>dii</tt>, <tt>diz</tt>, and <tt>dzz</tt>.
  *
  * A preconditioner is assumed to be a plain C function pointer, where
  *  -# the function returns an <tt>int</tt> error code (where zero will be
