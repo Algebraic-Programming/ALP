@@ -960,6 +960,11 @@ namespace grb {
 			), "grb::outer",
 			"called with an output matrix that does not match the output domain of "
 			"the given multiplication operator" );
+		static_assert(
+			! ( descr & descriptors::structural && descr & descriptors::invert_mask ),
+			"grb::outer can not be called with both descriptors::structural "
+			"and descriptors::invert_mask in the masked variant"
+		);
 #ifdef _DEBUG
 		std::cout << "In grb::outer (reference)\n";
 #endif
@@ -1004,47 +1009,22 @@ namespace grb {
 
 		size_t nzc = 0;
 
-		if( ( descr & descriptors::structural_complement ) != descriptors::structural_complement ) {
-
 #ifdef _H_GRB_REFERENCE_OMP_BLAS3
-			#pragma omp parallel for reduction(+:nzc)
+		#pragma omp parallel for reduction(+:nzc)
 #endif
-			for( size_t i = 0; i < nrows; ++i ) {
-				if( internal::getCoordinates( u ).assigned( i ) ) {
-					for( auto k = mask_raw.col_start[ i ]; k < mask_raw.col_start[ i + 1 ]; ++k ) {
-						const size_t k_col = mask_raw.row_index[ k ];
-						if( 
-							internal::getCoordinates( v ).assigned( k_col ) && 
-							utils::interpretMask< descr, MaskType >( true, mask_raw.values, k ) 
-						) {
+		for( size_t i = 0; i < nrows; ++i ) {
+			if( internal::getCoordinates( u ).assigned( i ) ) {
+				for( auto k = mask_raw.col_start[ i ]; k < mask_raw.col_start[ i + 1 ]; ++k ) {
+					const size_t k_col = mask_raw.row_index[ k ];
+					if( 
+						internal::getCoordinates( v ).assigned( k_col ) && 
+						utils::interpretMask< descr, MaskType >( true, mask_raw.values, k ) 
+					) {
 
-							nzc++;
-						}
+						nzc++;
 					}
 				}
 			}
-
-		}
-		else {
-
-			for( size_t i = 0; i < nrows; ++i ) {
-				if( internal::getCoordinates( u ).assigned( i ) ) {
-					mask_coors.clear();
-					for( auto k = mask_raw.col_start[ i ]; k < mask_raw.col_start[ i + 1 ]; ++k ) {
-						const size_t k_col = mask_raw.row_index[ k ];
-						mask_coors.assign( k_col );
-					}
-					for( size_t j = 0; j < ncols; ++j ) {
-						if( 
-							!mask_coors.assign( j ) &&
-							internal::getCoordinates( v ).assigned( j ) 
-						) {
-							nzc++;
-						}
-					}
-				}
-			}
-
 		}
 
 		if( phase == RESIZE ) {
@@ -1094,50 +1074,22 @@ namespace grb {
 
 		nzc = 0;
 
-		if( ( descr & descriptors::structural_complement ) != descriptors::structural_complement ) {
-			for( size_t i = 0; i < nrows; ++i ) {
-				if( internal::getCoordinates( u ).assigned( i ) ) {
-					for( auto k = mask_raw.col_start[ i ]; k < mask_raw.col_start[ i + 1 ]; ++k ) {
-						const size_t k_col = mask_raw.row_index[ k ];
-						if( 
-							internal::getCoordinates( v ).assigned( k_col ) && 
-							utils::interpretMask< descr, MaskType >( true, mask_raw.values, k )
-						) {
-							(void) ++nzc;
-							if( !crs_only ) {
-								(void) ++CCS_raw.col_start[ k_col + 1 ];
-							}
+		for( size_t i = 0; i < nrows; ++i ) {
+			if( internal::getCoordinates( u ).assigned( i ) ) {
+				for( auto k = mask_raw.col_start[ i ]; k < mask_raw.col_start[ i + 1 ]; ++k ) {
+					const size_t k_col = mask_raw.row_index[ k ];
+					if( 
+						internal::getCoordinates( v ).assigned( k_col ) && 
+						utils::interpretMask< descr, MaskType >( true, mask_raw.values, k )
+					) {
+						(void) ++nzc;
+						if( !crs_only ) {
+							(void) ++CCS_raw.col_start[ k_col + 1 ];
 						}
 					}
 				}
-				CRS_raw.col_start[ i + 1 ] = nzc;
 			}
-		}
-		else {
-
-			for( size_t i = 0; i < nrows; ++i ) {
-				if( internal::getCoordinates( u ).assigned( i ) ) {
-					mask_coors.clear();
-					for( auto k = mask_raw.col_start[ i ]; k < mask_raw.col_start[ i + 1 ]; ++k ) {
-						const size_t k_col = mask_raw.row_index[ k ];
-						mask_coors.assign( k_col );
-					}
-					for( size_t j = 0; j < ncols; ++j ) {
-
-						if( 
-							!mask_coors.assign( j ) &&
-							internal::getCoordinates( v ).assigned( j ) 
-						) {
-
-							(void) ++nzc;
-							if( !crs_only ) {
-								(void) ++CCS_raw.col_start[ j + 1 ];
-							}
-						}
-					}
-				}
-				CRS_raw.col_start[ i + 1 ] = nzc;
-			}
+			CRS_raw.col_start[ i + 1 ] = nzc;
 		}
 
 		if( !crs_only ) {
@@ -1162,63 +1114,27 @@ namespace grb {
 		nzc = 0;
 		for( size_t i = 0; i < nrows; ++i ) {
 			if( internal::getCoordinates( u ).assigned( i ) ) {
-				if( ( descr & descriptors::structural_complement ) != descriptors::structural_complement ) {
-					for( auto k = mask_raw.col_start[ i ]; k < mask_raw.col_start[ i + 1 ]; ++k ) {
-						const size_t k_col = mask_raw.row_index[ k ];
-						if( 
-							internal::getCoordinates( v ).assigned( k_col ) &&
-							utils::interpretMask< descr, MaskType >( true, mask_raw.values, k )
-						) {
-							OutputType val;
-							grb::apply( val,
-								x[ i ],
-								y[ k_col ],
-								mul );
-
-							CRS_raw.row_index[ nzc ] = k_col;
-							CRS_raw.setValue( nzc, val );
-							// update CCS
-							if( !crs_only ) {
-								const size_t CCS_index = A_col_index[ k_col ]++ + CCS_raw.col_start[ k_col ];
-								CCS_raw.row_index[ CCS_index ] = i;
-								CCS_raw.setValue( CCS_index, val );
-							}
-							// update count
-							(void) ++nzc;
-							
+				for( auto k = mask_raw.col_start[ i ]; k < mask_raw.col_start[ i + 1 ]; ++k ) {
+					const size_t k_col = mask_raw.row_index[ k ];
+					if( 
+						internal::getCoordinates( v ).assigned( k_col ) &&
+						utils::interpretMask< descr, MaskType >( true, mask_raw.values, k )
+					) {
+						OutputType val;
+						grb::apply( val,
+							x[ i ],
+							y[ k_col ],
+							mul );
+						CRS_raw.row_index[ nzc ] = k_col;
+						CRS_raw.setValue( nzc, val );
+						// update CCS
+						if( !crs_only ) {
+							const size_t CCS_index = A_col_index[ k_col ]++ + CCS_raw.col_start[ k_col ];
+							CCS_raw.row_index[ CCS_index ] = i;
+							CCS_raw.setValue( CCS_index, val );
 						}
-					}
-				}
-				else {
-
-					mask_coors.clear();
-					for( auto k = mask_raw.col_start[ i ]; k < mask_raw.col_start[ i + 1 ]; ++k ) {
-						const size_t k_col = mask_raw.row_index[ k ];
-						mask_coors.assign( k_col );
-					}
-					for( size_t j = 0; j < ncols; ++j ) {
-
-						if( 
-							!mask_coors.assign( j ) &&
-							internal::getCoordinates( v ).assigned( j ) 
-						) {
-							OutputType val;
-							grb::apply( val,
-								x[ i ],
-								y[ j ],
-								mul );
-
-							CRS_raw.row_index[ nzc ] = j;
-							CRS_raw.setValue( nzc, val );
-							// update CCS
-							if( !crs_only ) {
-								const size_t CCS_index = A_col_index[ j ]++ + CCS_raw.col_start[ j ];
-								CCS_raw.row_index[ CCS_index ] = i;
-								CCS_raw.setValue( CCS_index, val );
-							}
-							// update count
-							(void) ++nzc;
-						}
+						// update count
+						(void) ++nzc;	
 					}
 				}
 			}

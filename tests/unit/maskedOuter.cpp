@@ -30,10 +30,10 @@ static const double m1[ 4 ] = { 0.5, 3.4, 5, 0 };
 static const size_t I1[ 4 ] = { 0, 1, 2, 0 };
 static const size_t J1[ 4 ] = { 0, 1, 2, 2 };
 
-static const double m2[ 3 ] = { 0.5, -1, 3.14 };
+static const double m2[ 8 ] = { 1, 1, 0, 0, 0, 0, 0, 0 };
 
-static const size_t I2[ 3 ] = { 0, 1, 2 };
-static const size_t J2[ 3 ] = { 0, 1, 2 };
+static const size_t I2[ 8 ] = { 0, 2, 0, 0, 1, 1, 2, 2 };
+static const size_t J2[ 8 ] = { 0, 2, 1, 2, 0, 2, 0, 1 };
 
 static const double mask_test1_expect[ 3 ] = { 4, 10, 18 };
 static const double mask_test2_expect[ 3 ] = { 11, 20, 27 };
@@ -73,7 +73,7 @@ void grbProgram( const void *, const size_t in_size, int &error ) {
 	}
 
 	if( !error ) {
-		rc = grb::buildMatrixUnique( Mask2, &( I2[ 0 ] ), &( J2[ 0 ] ), m2, 3, SEQUENTIAL );
+		rc = grb::buildMatrixUnique( Mask2, &( I2[ 0 ] ), &( J2[ 0 ] ), m2, 8, SEQUENTIAL );
 		if( rc != SUCCESS ) {
 			std::cerr << "\t second mask buildMatrix FAILED\n";
 			error = 10;
@@ -100,8 +100,8 @@ void grbProgram( const void *, const size_t in_size, int &error ) {
 	}
 
 	if( !error ) {
-		rc = grb::outer< descriptors::force_row_major | descriptors::structural_complement >( Result2, Mask2, u, v, ring.getMultiplicativeOperator(), RESIZE );
-		rc = rc ? rc : grb::outer< descriptors::force_row_major | descriptors::structural_complement >( Result2, Mask2, u, v, ring.getMultiplicativeOperator() );
+		rc = grb::outer< descriptors::force_row_major | descriptors::invert_mask >( Result2, Mask2, u, v, ring.getMultiplicativeOperator(), RESIZE );
+		rc = rc ? rc : grb::outer< descriptors::force_row_major | descriptors::invert_mask >( Result2, Mask2, u, v, ring.getMultiplicativeOperator() );
 		if( rc != grb::SUCCESS ) {
 			std::cerr << "Unexpected return code from grb::outer: "
 				<< toString( rc ) << ".\n";
