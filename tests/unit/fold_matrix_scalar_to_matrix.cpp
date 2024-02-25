@@ -113,18 +113,16 @@ void grb_program( const input< T, M, S, OpFoldl, OpFoldr > & in, RC & rc ) {
 
 		Matrix< T > result = in.initial;
 		rc = rc ? rc : foldl( result, in.scalar, in.opFoldl );
-		if( rc == SUCCESS ) {
-			std::cout << "OK" << std::flush << std::endl;
-		} else {
+		if( rc != SUCCESS ) {
 			std::cerr << "Execution failed - " << std::endl << in.test_description << std::endl;
 		}
 
 		rc = rc ? rc : ( are_matrices_equals( result, in.expected ) ? SUCCESS : FAILED );
-		if( rc == SUCCESS ) {
-			std::cout << "OK" << std::flush << std::endl;
-		} else {
+		if( rc != SUCCESS ) {
 			std::cerr << "Check failed - " << std::endl << in.test_description << std::endl;
 		}
+
+		std::cout << "OK" << std::endl;
 	}
 
 	// Masked variant foldl
@@ -133,18 +131,16 @@ void grb_program( const input< T, M, S, OpFoldl, OpFoldr > & in, RC & rc ) {
 
 		Matrix< T > result = in.initial;
 		rc = rc ? rc : foldl( result, in.mask, in.scalar, in.opFoldl );
-		if( rc == SUCCESS ) {
-			std::cout << "OK" << std::flush << std::endl;
-		} else {
+		if( rc != SUCCESS ) {
 			std::cerr << "Execution failed - " << std::endl << in.test_description << std::endl;
 		}
 
 		rc = rc ? rc : ( are_matrices_equals( result, in.expected ) ? SUCCESS : FAILED );
-		if( rc == SUCCESS ) {
-			std::cout << "OK" << std::flush << std::endl;
-		} else {
+		if( rc != SUCCESS ) {
 			std::cerr << "Check failed - " << std::endl << in.test_description << std::endl;
 		}
+
+		std::cout << "OK" << std::endl;
 	}
 
 	// Unmasked variant foldr
@@ -153,18 +149,16 @@ void grb_program( const input< T, M, S, OpFoldl, OpFoldr > & in, RC & rc ) {
 
 		Matrix< T > result = in.initial;
 		rc = rc ? rc : foldr( result, in.scalar, in.opFoldr );
-		if( rc == SUCCESS ) {
-			std::cout << "OK" << std::flush << std::endl;
-		} else {
+		if( rc != SUCCESS ) {
 			std::cerr << "Execution failed - " << std::endl << in.test_description << std::endl;
 		}
 
 		rc = rc ? rc : ( are_matrices_equals( result, in.expected ) ? SUCCESS : FAILED );
-		if( rc == SUCCESS ) {
-			std::cout << "OK" << std::flush << std::endl;
-		} else {
+		if( rc != SUCCESS ) {
 			std::cerr << "Check failed - " << std::endl << in.test_description << std::endl;
 		}
+
+		std::cout << "OK" << std::endl;
 	}
 
 	// Masked variant foldr
@@ -173,18 +167,16 @@ void grb_program( const input< T, M, S, OpFoldl, OpFoldr > & in, RC & rc ) {
 
 		Matrix< T > result = in.initial;
 		rc = rc ? rc : foldr( result, in.mask, in.scalar, in.opFoldr );
-		if( rc == SUCCESS ) {
-			std::cout << "OK" << std::flush << std::endl;
-		} else {
+		if( rc != SUCCESS ) {
 			std::cerr << "Execution failed - " << std::endl << in.test_description << std::endl;
 		}
 
 		rc = rc ? rc : ( are_matrices_equals( result, in.expected ) ? SUCCESS : FAILED );
-		if( rc == SUCCESS ) {
-			std::cout << "OK" << std::flush << std::endl;
-		} else {
+		if( rc != SUCCESS ) {
 			std::cerr << "Check failed - " << std::endl << in.test_description << std::endl;
 		}
+
+		std::cout << "OK" << std::endl;
 	}
 }
 

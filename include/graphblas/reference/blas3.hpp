@@ -1207,6 +1207,7 @@ namespace grb {
 		template<
 			Descriptor descr = descriptors::no_operation,
 			class Operator,
+			bool left_fold,
 			typename InputType, typename IOType,
 			typename RIT, typename CIT, typename NIT
 		>
@@ -1226,62 +1227,68 @@ namespace grb {
 				return SUCCESS;
 			}
 
+			constexpr bool crs_only = descr & descriptors::force_row_major;
+
 			const auto &A_crs_raw = internal::getCRS( A );
 			const auto &A_ccs_raw = internal::getCCS( A );
 			const size_t A_nnz = nnz( A );
 
-			RC rc = SUCCESS;
-			RC local_rc = rc;
+			RC global_rc = SUCCESS;
 
 #ifdef _H_GRB_REFERENCE_OMP_BLAS3
-	#pragma omp parallel default(none) \
-				shared(A_crs_raw, A_ccs_raw, rc, std::cout) \
-				firstprivate(x, local_rc, A_nnz, op)
+			#pragma omp parallel default(none) \
+				shared(A_crs_raw, A_ccs_raw, global_rc) \
+				firstprivate(x, A_nnz, op)
 #endif
 			{
-				size_t start = 0;
-				size_t end = A_nnz;
-#ifdef _H_GRB_REFERENCE_OMP_BLAS3
-				config::OMP::localRange( start, end, 0, A_nnz );
-#endif
-				for( size_t idx = start; idx < end; ++idx ) {
-					// Get A value
-					const IOType a_val_before = A_crs_raw.values[ idx ];
-#ifdef _DEBUG
-					std::cout << "A.CRS.values[ " + std::to_string( idx ) + " ] = "
-					+ std::to_string( a_val_before ) + "\n" << std::flush;
-#endif
-					// Compute the fold for this coordinate
-					local_rc = local_rc
-								? local_rc
-								: apply< descr >(
-									A_crs_raw.values[ idx ], a_val_before, x, op
-								);
-					local_rc = local_rc
-								? local_rc
-								: apply< descr >(
-									A_ccs_raw.values[ idx ], a_val_before, x, op
-								);
-#ifdef _DEBUG
-					std::cout << "Computing: op(" + std::to_string( a_val_before )
-							+ ", " + std::to_string( x ) + ") = "
-							+ std::to_string( A_ccs_raw.values[ idx ] ) + "\n" << std::flush;
-#endif
-				}
+				RC local_rc = SUCCESS;
 
 #ifdef _H_GRB_REFERENCE_OMP_BLAS3
-	#pragma omp critical
+				size_t start, end;
+				config::OMP::localRange( start, end, 0, A_nnz );
+#else
+				const size_t start = 0;
+				const size_t end = A_nnz;
 #endif
-				{ // Reduction with the global return code
-					rc = rc ? rc : local_rc;
+				for( size_t idx = start; idx < end; ++idx ) {
+					// CRS section
+					const IOType lhs = left_fold ? A_crs_raw.values[ idx ] : x;
+					const IOType rhs = left_fold ? x : A_crs_raw.values[ idx ];
+					local_rc = local_rc
+						? local_rc
+						: apply< descr >(
+							A_crs_raw.values[ idx ], lhs, rhs, op
+						);
+				}
+
+				for( size_t idx = start; idx < end && !crs_only; ++idx ) {
+					// CCS section
+					const IOType lhs = left_fold ? A_ccs_raw.values[ idx ] : x;
+					const IOType rhs = left_fold ? x : A_ccs_raw.values[ idx ];
+					local_rc = local_rc
+						? local_rc
+						: apply< descr >(
+							A_ccs_raw.values[ idx ], lhs, rhs, op
+						);
+				}
+
+				if( local_rc != SUCCESS ) {
+#ifdef _H_GRB_REFERENCE_OMP_BLAS3
+					#pragma omp critical
+#endif
+					{ // Reduction with the global return code
+						global_rc = global_rc ? global_rc : local_rc;
+					}
 				}
 			}
-			return rc;
+
+			return global_rc;
 		}
 
 		template<
 			Descriptor descr = descriptors::no_operation,
 			class Operator,
+			bool left_fold,
 			typename InputType, typename IOType, typename MaskType,
 			typename RIT_A, typename CIT_A, typename NIT_A,
 			typename RIT_M, typename CIT_M, typename NIT_M
@@ -1292,10 +1299,6 @@ namespace grb {
 			const InputType &x,
 			const Operator &op = Operator()
 		) {
-			typedef typename std::conditional<
-					std::is_void< MaskType >::value, bool, MaskType
-				>::type MaskIdentityType;
-
 #ifdef _DEBUG
 			std::cout << "In grb::internal::scale_masked_generic( reference )\n" << std::flush;
 #endif
@@ -1316,12 +1319,12 @@ namespace grb {
 #endif
 				return ILLEGAL;
 			}
+			constexpr bool crs_only = descr & descriptors::force_row_major;
 
 			const auto &A_crs_raw = internal::getCRS( A );
 			const auto &A_ccs_raw = internal::getCCS( A );
-			const auto &mask_raw = descr & descriptors::transpose_right
-									? internal::getCCS( mask )
-									: internal::getCRS( mask );
+			const auto &mask_crs_raw = internal::getCRS( mask );
+			const auto &mask_ccs_raw = internal::getCCS( mask );
 			const size_t m = nrows( A );
 			const size_t n = ncols( A );
 			const size_t m_mask = descr & descriptors::transpose_left
@@ -1331,6 +1334,11 @@ namespace grb {
 									? nrows( mask )
 									: ncols( mask );
 
+			// if no mask is provided, call the unmasked version
+			if( m_mask * n_mask == 0 ) {
+				return scale_unmasked_generic< descr, Operator, false >( A, x, op );
+			}
+
 			// Check mask dimensions
 			if( m != m_mask || n != n_mask ) {
 #ifdef _DEBUG
@@ -1339,98 +1347,57 @@ namespace grb {
 				return MISMATCH;
 			}
 
-			RC rc = SUCCESS;
-			RC local_rc = rc;
+			// Initialise coordinates bitmask
+			char * arr1 = nullptr, * buf1 = nullptr;
+			InputType * vbuf1 = nullptr;
+			internal::getMatrixBuffers( arr1, buf1, vbuf1, 1, A );
+			internal::Coordinates< reference > coors;
+			coors.set( arr1, false, buf1, m );
 
-#ifdef _H_GRB_REFERENCE_OMP_BLAS3
-	#pragma omp parallel default(none) \
-				shared(A_crs_raw, A_ccs_raw, mask_raw, rc, std::cout) \
-				firstprivate(x, local_rc, m, op)
-#endif
-			{
-				size_t start_row = 0;
-				size_t end_row = m;
-#ifdef _H_GRB_REFERENCE_OMP_BLAS3
-				config::OMP::localRange( start_row, end_row, 0, m );
-#endif
-				for( auto i = start_row; i < end_row; ++i ) {
-					auto mask_k = mask_raw.col_start[ i ];
-					const auto k_start = A_crs_raw.col_start[ i ];
-					const auto k_end = A_crs_raw.col_start[ i + 1 ];
-					for( auto k = k_start; k < k_end; ++k ) {
-						const auto j = A_crs_raw.row_index[ k ];
-						/* Increment the mask pointer until we find the right column,
-						* or a lower column  (since the storage withing a row
-						* is sorted in a descending order)
-						*/
-						while( mask_k < mask_raw.col_start[ i + 1 ]
-								&& mask_raw.row_index[ mask_k ] > j )
-						{
-							mask_k++;
-						}
+			RC global_rc = SUCCESS;
 
-						if( mask_k >= mask_raw.col_start[ i + 1 ] ) {
-#ifdef _DEBUG
-							std::cout << "No value left for this column\n" << std::flush;
-#endif
-							break;
-						}
-
-						const bool mask_has_value = mask_raw.getValue(
-							mask_k,
-							identities::logical_true<MaskIdentityType>::value()
+			for( size_t i = 0; i < m; ++i ) {
+				coors.clear();
+				for( size_t k = mask_crs_raw.col_start[ i ]; k < mask_crs_raw.col_start[ i + 1 ]; ++k ) {
+					coors.assign( mask_crs_raw.row_index[ k ] );
+				}
+				for( size_t l = A_crs_raw.col_start[ i ]; l < A_crs_raw.col_start[ i + 1 ]; ++l ) {
+					if( !coors.assigned( A_crs_raw.row_index[ l ] ) ) {
+						continue;
+					}
+					const IOType lhs = left_fold ? A_crs_raw.values[ l ] : x;
+					const IOType rhs = left_fold ? x : A_crs_raw.values[ l ];
+					global_rc = global_rc
+						? global_rc
+						: apply< descr >(
+							A_crs_raw.values[ l ], lhs, rhs, op
 						);
-						if( mask_raw.row_index[ mask_k ] < j || !mask_has_value ) {
-#ifdef _DEBUG
-							std::cout << "Skip masked value at: ( " + std::to_string( i )
-									+ ";" + std::to_string( mask_raw.row_index[ mask_k ] )
-									+ " )\n" << std::flush;
-#endif
+				}
+			}
+
+			if( !crs_only ) {
+				for( size_t i = 0; i < n; ++i ) {
+					// CCS section
+					coors.clear();
+					for( size_t k = mask_ccs_raw.col_start[ i ]; k < mask_ccs_raw.col_start[ i + 1 ]; ++k ) {
+						coors.assign( mask_ccs_raw.row_index[ k ] );
+					}
+					for( size_t l = A_ccs_raw.col_start[ i ]; l < A_ccs_raw.col_start[ i + 1 ]; ++l ) {
+						if( !coors.assigned( A_crs_raw.row_index[ l ] ) ) {
 							continue;
 						}
-
-#ifdef _DEBUG
-							std::cout << "Found masked value at: ( " + std::to_string( i )
-									+ ";" + std::to_string( mask_raw.row_index[ mask_k ] )
-									+ " )\n" << std::flush;
-#endif
-						// Get A value
-						const auto a_val_before = A_crs_raw.values[ k ];
-#ifdef _DEBUG
-						std::cout << "A( " + std::to_string( i ) + ";" + std::to_string( j )
-								+ " ) = " + std::to_string( a_val_before ) + "\n" << std::flush;
-#endif
-						// Compute the fold for this coordinate
-						local_rc = local_rc
-									? local_rc
-									: apply< descr >(
-										A_crs_raw.values[ k ], a_val_before, x, op
-									);
-						local_rc = local_rc
-									? local_rc
-									: apply< descr >(
-										A_ccs_raw.values[ k ], a_val_before, x, op
-									);
-#ifdef _DEBUG
-						std::cout << "Computing: op(" + std::to_string( a_val_before )
-								+ ", " + std::to_string( x ) + ") = "
-								+ std::to_string( A_ccs_raw.values[ k ] )
-								+ "\n" << std::flush;
-#endif
-					}
-				}
-
-				if( local_rc != SUCCESS ) {
-#ifdef _H_GRB_REFERENCE_OMP_BLAS3
-	#pragma omp critical
-#endif
-					{ // Reduction with the global return code
-						rc = rc ? rc : local_rc;
+						const IOType lhs = left_fold ? A_ccs_raw.values[ l ] : x;
+						const IOType rhs = left_fold ? x : A_ccs_raw.values[ l ];
+						global_rc = global_rc
+							? global_rc
+							: apply< descr >(
+								A_ccs_raw.values[ l ], lhs, rhs, op
+							);
 					}
 				}
 			}
 
-			return rc;
+			return global_rc;
 		}
 
 	} // namespace internal
@@ -1604,7 +1571,7 @@ namespace grb {
 		std::cout << "In grb::foldl (reference, matrix, mask, scalar, op)\n";
 #endif
 
-		return internal::scale_masked_generic< descr, Operator >(
+		return internal::scale_masked_generic< descr, Operator, true >(
 			A, mask, x, op
 		);
 	}
@@ -1654,7 +1621,7 @@ namespace grb {
 		std::cout << "In grb::foldl (reference, matrix, scalar, op)\n";
 #endif
 
-		return internal::scale_unmasked_generic< descr, Operator >(
+		return internal::scale_unmasked_generic< descr, Operator, true >(
 			A, x, op
 		);
 	}
@@ -1706,7 +1673,7 @@ namespace grb {
 		std::cout << "In grb::foldr (reference, matrix, mask, scalar, op)\n";
 #endif
 
-		return internal::scale_masked_generic< descr, Operator >(
+		return internal::scale_masked_generic< descr, Operator, false >(
 			A, mask, x, op
 		);
 	}
@@ -1755,7 +1722,7 @@ namespace grb {
 		std::cout << "In grb::foldr (reference, matrix, scalar, op)\n";
 #endif
 
-		return internal::scale_unmasked_generic< descr, Operator >(
+		return internal::scale_unmasked_generic< descr, Operator, false >(
 			A, x, op
 		);
 	}
