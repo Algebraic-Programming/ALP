@@ -472,10 +472,10 @@ namespace grb {
 
 		// second, delegate to the reference backend
 		return eWiseApply< descr >(
-			internal::getRefMatrix( C ), 
-			internal::getRefMatrix( A ), 
+			internal::getRefMatrix( C ),
+			internal::getRefMatrix( A ),
 			internal::getRefMatrix( B ),
-			mulmono, 
+			mulmono,
 			phase
 		);
 	}
@@ -511,16 +511,36 @@ namespace grb {
 		std::cout << "In grb::eWiseApply (nonblocking, op)\n";
 #endif
 
+		// static checks
+		NO_CAST_ASSERT( ( !( descr & descriptors::no_casting ) ||
+			std::is_same< typename Operator::D1, InputType1 >::value ),
+			"grb::eWiseApply (nonblocking, matrix <- matrix x matrix, operator)",
+			"called with a prefactor input matrix A that does not match the first "
+			"domain of the given multiplication operator"
+		);
+		NO_CAST_ASSERT( ( !( descr & descriptors::no_casting ) ||
+			std::is_same< typename Operator::D2, InputType2 >::value ),
+			"grb::eWiseApply (nonblocking, matrix <- matrix x matrix, operator)",
+			"called with a postfactor input matrix B that does not match the first "
+			"domain of the given multiplication operator"
+		);
+		NO_CAST_ASSERT( ( !( descr & descriptors::no_casting ) ||
+			std::is_same< typename Operator::D3, OutputType >::value ),
+			"grb::eWiseApply (nonblocking, matrix <- matrix x matrix, operator)",
+			"called with an output matrix C that does not match the output domain "
+			"of the given multiplication operator"
+		);
+
 		// nonblocking execution is not supported
 		// first, execute any computation that is not completed
 		internal::le.execution();
 
 		// second, delegate to the reference backend
 		return eWiseApply< descr >(
-			internal::getRefMatrix( C ), 
-			internal::getRefMatrix( A ), 
+			internal::getRefMatrix( C ),
+			internal::getRefMatrix( A ),
 			internal::getRefMatrix( B ),
-			mulOp, 
+			mulOp,
 			phase
 		);
 	}

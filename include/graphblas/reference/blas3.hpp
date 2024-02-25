@@ -57,32 +57,6 @@
 		"********************************************************************" \
 		"******************************\n" );
 
-#ifndef _H_GRB_REFERENCE_BLAS3_ACCESSORS
-#define _H_GRB_REFERENCE_BLAS3_ACCESSORS
-
-namespace grb::internal
-{
-	template< typename D, typename T >
-	static void assignValue(
-		D *array, size_t i, const T& value,
-		typename std::enable_if< !std::is_void< D >::value >::type * const = nullptr
-	) { array[i] = value; }
-
-	template< typename T >
-	static void assignValue( void *, size_t, const T& ) { /* do nothing */ }
-
-	template< typename D, typename T >
-	static T getValue(
-		const D *array, size_t i, const T&,
-		typename std::enable_if< !std::is_void< D >::value >::type * const = nullptr
-	) { return array[i]; }
-
-	template< typename T >
-	static T getValue( const void *, size_t, const T& identity ) { return identity; }
-
-} // namespace grb::internal
-
-#endif // _H_GRB_REFERENCE_BLAS3_ACCESSORS
 
 
 namespace grb {
@@ -1077,11 +1051,18 @@ namespace grb {
 
 				if( !crs_only ) {
 #ifdef _H_GRB_REFERENCE_OMP_BLAS3
-					#pragma omp parallel for simd default(none) \
-						shared(C_col_index) firstprivate(n)
+#pragma omp parallel
 #endif
-					for( size_t j = 0; j < n; ++j ) {
-						C_col_index[ j ] = 0;
+					{
+						size_t start = 0;
+						size_t end = n + 1;
+#ifdef _H_GRB_REFERENCE_OMP_BLAS3
+						config::OMP::localRange( start, end, 0, n + 1 );
+						#pragma omp parallel for simd
+#endif
+						for( size_t j = start; j < end; ++j ) {
+							C_col_index[ j ] = 0;
+						}
 					}
 				}
 
@@ -1149,7 +1130,7 @@ namespace grb {
 
 #ifdef _H_GRB_REFERENCE_OMP_BLAS3
 							if( !coors1.asyncAssign( k_col, local_update ) ) {
-								assignValue( valbuf, k_col , A_raw.getValue( k, dummy_identity ) );
+								utils::assignValue( valbuf, k_col , A_raw.getValue( k, dummy_identity ) );
 								if( ++assigns == maxAsyncAssigns ) {
 									coors1.joinUpdate( local_update );
 									assigns = 0;
@@ -1157,7 +1138,7 @@ namespace grb {
 							}
 #else
 							if( !coors1.assign( k_col ) ) {
-								assignValue( valbuf, k_col, A_raw.getValue( k, dummy_identity ) );
+								utils::assignValue( valbuf, k_col, A_raw.getValue( k, dummy_identity ) );
 							}
 #endif
 						}
@@ -1387,7 +1368,7 @@ namespace grb {
 							const size_t k_col = A_raw.row_index[ k ];
 #ifdef _H_GRB_REFERENCE_OMP_BLAS3
 							if( !coors1.asyncAssign( k_col, local_update1 ) ) {
-                                assignValue( vbuf1, k_col, A_raw.getValue( k, identity_A ) );
+                                utils::assignValue( vbuf1, k_col, A_raw.getValue( k, identity_A ) );
                                 if( ++assigns1 == maxAsyncAssigns1 ) {
                                     coors1.joinUpdate( local_update1 );
                                     assigns1 = 0;
@@ -1518,7 +1499,7 @@ namespace grb {
 #else
 							(void)coors1.assign( k_col );
 #endif
-							assignValue( vbuf1, k_col, A_raw.getValue( k, identity_A ) );
+							utils::assignValue( vbuf1, k_col, A_raw.getValue( k, identity_A ) );
 						}
 
 #ifdef _H_GRB_REFERENCE_OMP_BLAS3
@@ -1537,7 +1518,7 @@ namespace grb {
 
 #ifdef _H_GRB_REFERENCE_OMP_BLAS3
 							if( !coors2.asyncAssign( k_col, local_update2 ) ) {
-								assignValue( vbuf3, k_col, B_raw.getValue( k, identity_B ) );
+								utils::assignValue( vbuf3, k_col, B_raw.getValue( k, identity_B ) );
 								if( ++assigns2 == maxAsyncAssigns2 ) {
 									coors2.joinUpdate( local_update2 );
 									assigns2 = 0;
@@ -1546,7 +1527,7 @@ namespace grb {
 #else
 							(void)coors2.assign( k_col );
 #endif
-							assignValue( vbuf3, k_col, B_raw.getValue( k, identity_B ) );
+							utils::assignValue( vbuf3, k_col, B_raw.getValue( k, identity_B ) );
 						}
 #ifdef _H_GRB_REFERENCE_OMP_BLAS3
 						while( !coors2.joinUpdate( local_update2 )) {}
@@ -1555,8 +1536,8 @@ namespace grb {
 
 					for( size_t k = 0; k < coors1.nonzeroes(); ++k ) {
 						const auto j = coors1.index( k );
-						const auto A_val = getValue(vbuf1, j, identity_A);
-						const auto B_val = coors2.assigned(j) ? getValue(vbuf3, j, identity_B) : identity_B;
+						const auto A_val = utils::getValue(vbuf1, j, identity_A);
+						const auto B_val = coors2.assigned(j) ? utils::getValue(vbuf3, j, identity_B) : identity_B;
 
 						OutputType result_value;
 						(void)grb::apply( result_value, A_val, B_val, oper );
@@ -1584,8 +1565,8 @@ namespace grb {
 						if( coors1.assigned(j) ) { // Intersection case: already handled
 							continue;
 						}
-						const auto A_val = coors1.assigned(j) ? getValue(vbuf1, j, identity_A) : identity_A;
-						const auto B_val = getValue(vbuf3, j, identity_B);
+						const auto A_val = coors1.assigned(j) ? utils::getValue(vbuf1, j, identity_A) : identity_A;
+						const auto B_val = utils::getValue(vbuf3, j, identity_B);
 
 						OutputType result_value;
 						(void)grb::apply( result_value, A_val, B_val, oper );
@@ -1753,8 +1734,14 @@ namespace grb {
 				void
 			>::type * const = nullptr
 	) {
-		typedef typename std::conditional<std::is_void<InputType1>::value, typename Operator::D1, InputType1>::type ActualInputType1;
-		typedef typename std::conditional<std::is_void<InputType2>::value, typename Operator::D2, InputType1>::type ActualInputType2;
+		typedef typename std::conditional<
+			std::is_void<InputType1>::value,
+			typename Operator::D1,
+			InputType1>::type ActualInputType1;
+		typedef typename std::conditional<
+			std::is_void<InputType2>::value,
+			typename Operator::D2,
+			InputType1>::type ActualInputType2;
 		// static checks
 		NO_CAST_ASSERT( ( !( descr & descriptors::no_casting ) ||
 			std::is_same< typename Operator::D1, ActualInputType1 >::value ),
@@ -1775,9 +1762,11 @@ namespace grb {
 			"of the given multiplication operator"
 		);
 		static_assert(
-			!std::is_void< OutputType >::value,
-			"grb::eWiseApply: the elementwise mxm cannot be used if the"
-			" output matrix is a pattern matrix (of type void)"
+			!std::is_void< OutputType >::value ||
+			( std::is_void< InputType1 >::value && std::is_void< InputType2 >::value ),
+			"grb::eWiseApply: the elementwise mxm only support"
+			" output pattern-matrix (of type void) if both"
+			" input matrices are also pattern matrices"
 		);
 #ifdef _DEBUG
 		std::cout << "In grb::eWiseApply( reference, operator )\n";

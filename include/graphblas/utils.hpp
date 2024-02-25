@@ -54,6 +54,24 @@ namespace grb {
 	 */
 	namespace utils {
 
+		template< typename D, typename T >
+		static void assignValue(
+			D *array, size_t i, const T& value,
+			typename std::enable_if< !std::is_void< D >::value >::type * const = nullptr
+		) { array[i] = value; }
+
+		template< typename T >
+		static void assignValue( void *, size_t, const T& ) { /* do nothing */ }
+
+		template< typename D, typename T >
+		static T getValue(
+			const D *array, size_t i, const T&,
+			typename std::enable_if< !std::is_void< D >::value >::type * const = nullptr
+		) { return array[i]; }
+
+		template< typename T >
+		static T getValue( const void *, size_t, const T& identity ) { return identity; }
+
 		/**
 		 * Checks whether two values are equal.
 		 *

@@ -140,14 +140,31 @@ namespace grb {
 			>::type * const = nullptr
 	) {
 		assert( phase != TRY );
-		RC ret = eWiseApply< descr >(
-			internal::getLocal( C ),
-			internal::getLocal( A ),
-			internal::getLocal( B ),
-			mul,
-			phase
-		);
-		return internal::checkGlobalErrorStateOrClear( C, ret );
+		RC local_rc = SUCCESS;
+		if( phase == RESIZE ) {
+			RC ret = eWiseApply< descr >(
+				internal::getLocal( C ),
+				internal::getLocal( A ),
+				internal::getLocal( B ),
+				mul,
+				RESIZE
+			);
+			if( collectives<>::allreduce( ret, operators::any_or< RC >() ) != SUCCESS ) {
+				return PANIC;
+			} else {
+				return ret;
+			}
+		} else {
+			assert( phase == EXECUTE );
+			local_rc = eWiseApply< descr >(
+				internal::getLocal( C ),
+				internal::getLocal( A ),
+				internal::getLocal( B ),
+				mul,
+				EXECUTE
+			);
+		}
+		return internal::checkGlobalErrorStateOrClear( C, local_rc );
 	}
 
 	/** \internal Simply delegates to process-local backend */
@@ -173,15 +190,31 @@ namespace grb {
 			>::type * const = nullptr
 	) {
 		assert( phase != TRY );
-		RC ret = eWiseApply< descr >(
-			internal::getLocal( C ),
-			internal::getLocal( A ),
-			internal::getLocal( B ),
-			op,
-			phase
-		);
-		return internal::checkGlobalErrorStateOrClear( C, ret );
-	}
+		RC local_rc = SUCCESS;
+		if( phase == RESIZE ) {
+			RC ret = eWiseApply< descr >(
+				internal::getLocal( C ),
+				internal::getLocal( A ),
+				internal::getLocal( B ),
+				op,
+				RESIZE
+			);
+			if( collectives<>::allreduce( ret, operators::any_or< RC >() ) != SUCCESS ) {
+				return PANIC;
+			} else {
+				return ret;
+			}
+		} else {
+			assert( phase == EXECUTE );
+			local_rc = eWiseApply< descr >(
+				internal::getLocal( C ),
+				internal::getLocal( A ),
+				internal::getLocal( B ),
+				op,
+				EXECUTE
+			);
+		}
+		return internal::checkGlobalErrorStateOrClear( C, local_rc );
 
 } // namespace grb
 
