@@ -49,20 +49,14 @@ constexpr bool SKIP_MASKED = false;
 
 // #define _DEBUG
 
-template< typename D >
+template< typename D, typename T >
 bool are_matrices_equals(
 	const Matrix< D > & A,
-	const Matrix< D > & B )
+	const Matrix< T > & B )
 {
-	if( nrows( A ) != nrows( B ) || ncols( A ) != ncols( B ) )
+	if( nrows( A ) != nrows( B ) || ncols( A ) != ncols( B ) || nnz( A ) != nnz( B ) )
 		return false;
-	grb::wait( A );
-	grb::wait( B );
-	std::vector< std::pair< std::pair< size_t, size_t >, D > > A_vec(
-		A.cbegin(), A.cend() );
-	std::vector< std::pair< std::pair< size_t, size_t >, D > > B_vec(
-		B.cbegin(), B.cend() );
-	return std::is_permutation( A_vec.cbegin(), A_vec.cend(), B_vec.cbegin() );
+	return std::is_permutation( A.cbegin(), A.cend(), B.cbegin() );
 }
 
 /**
@@ -180,6 +174,87 @@ void grb_program( const input< T, M, S, OpFoldl, OpFoldr > & in, RC & rc ) {
 	}
 }
 
+struct main_input_t {
+	const int k;
+	const size_t n;
+};
+
+void main_grb(const main_input_t &in, RC& rc) {
+	const size_t n = in.n;
+	const auto k = in.k;
+
+	// Initial matrix
+	Matrix< int > initial( n, n );
+	std::vector< size_t > initial_rows( n ), initial_cols( n );
+	std::vector< int > initial_values( n, 1 );
+	std::iota( initial_rows.begin(), initial_rows.end(), 0 );
+	std::iota( initial_cols.begin(), initial_cols.end(), 0 );
+	if( SUCCESS !=
+		buildMatrixUnique( initial, initial_rows.data(), initial_cols.data(), initial_values.data(), initial_values.size(), SEQUENTIAL )
+	) { throw std::runtime_error("[Line " + std::to_string(__LINE__) + "]: Building initial matrix failed"); }
+
+	{
+		const std::string label( "Test 01" );
+		const std::string description(
+			"Initial: Identity int [" + std::to_string( n ) + ";" + std::to_string( n ) +
+			"]\n"
+			"Mask: Identity void matrix (matching the input).\n"
+			"k = 2\n"
+			"Operator: mul\n"
+			"Expected: Identity int [" +
+			std::to_string( n ) + ";" + std::to_string( n ) + "] * 2"
+		);
+		// Mask (matching the input matrix)
+		Matrix< void > mask( n, n );
+		if( SUCCESS !=
+			buildMatrixUnique( mask, initial_rows.data(), initial_cols.data(), initial_rows.size(), SEQUENTIAL )
+		) { throw std::runtime_error("[Line " + std::to_string(__LINE__) + "]: Building mask matrix failed"); }
+		// Expected matrix
+		Matrix< int > expected( n, n );
+		std::vector< int > expected_values( n, 2 );
+		if( SUCCESS !=
+			buildMatrixUnique( expected, initial_rows.data(), initial_cols.data(), expected_values.data(), expected_values.size(), SEQUENTIAL )
+		) { throw std::runtime_error("[Line " + std::to_string(__LINE__) + "]: Building mask matrix failed"); }
+
+		std::cout << "-- Running " << label << " --" << std::endl;
+		input< int, void, int, operators::mul< int >, operators::mul< int > > in {
+			label.c_str(), description.c_str(), initial, mask, k, expected
+		};
+		grb_program( in, rc );
+		std::cout << std::endl << std::flush;
+	}
+
+	{
+		const std::string label( "Test 02" );
+		const std::string description(
+			"Initial: Identity int [" + std::to_string( n ) + ";" + std::to_string( n ) +
+			"]\n"
+			"Mask: Identity void matrix (empty).\n"
+			"k = 2\n"
+			"Operator: mul\n"
+			"Expected: Identity int [" +
+			std::to_string( n ) + ";" + std::to_string( n ) + "]"
+		);
+		// Mask (matching the input matrix)
+		Matrix< void > mask( n, n );
+		if( SUCCESS !=
+			buildMatrixUnique( mask, initial_rows.data(), initial_cols.data(), 0, SEQUENTIAL )
+		) { throw std::runtime_error("[Line " + std::to_string(__LINE__) + "]: Building mask matrix failed"); }
+		// Expected matrix
+		Matrix< int > expected( n, n );
+		if( SUCCESS !=
+			buildMatrixUnique( expected, initial_rows.data(), initial_cols.data(), initial_values.data(), initial_values.size(), SEQUENTIAL )
+		) { throw std::runtime_error("[Line " + std::to_string(__LINE__) + "]: Building mask matrix failed"); }
+
+		std::cout << "-- Running " << label << " --" << std::endl;
+		input< int, void, int, operators::mul< int >, operators::mul< int > > in {
+			label.c_str(), description.c_str(), initial, mask, k, expected, false, true
+		};
+		grb_program( in, rc );
+		std::cout << std::endl << std::flush;
+	}
+}
+
 int main( int argc, char ** argv ) {
 	// defaults
 	bool printUsage = false;
@@ -200,92 +275,11 @@ int main( int argc, char ** argv ) {
 	}
 
 	std::cout << "This is functional test " << argv[ 0 ] << "\n";
-	grb::Launcher< AUTOMATIC > launcher;
-	RC rc = SUCCESS;
+	const int k = 2;
 
-	if( !rc ) { // Identity square * 2
-		const int k = 2;
-		// Initial matrix
-		Matrix< int > initial( n, n );
-		std::vector< size_t > initial_rows( n ), initial_cols( n );
-		std::vector< int > initial_values( n, 1 );
-		std::iota( initial_rows.begin(), initial_rows.end(), 0 );
-		std::iota( initial_cols.begin(), initial_cols.end(), 0 );
-		if( SUCCESS !=
-			buildMatrixUnique( initial, initial_rows.data(), initial_cols.data(), initial_values.data(), initial_values.size(), SEQUENTIAL )
-		) {
-			std::cerr << "Building initial matrix failed" << std::endl;
-			rc = FAILED;
-			return 1;
-		}
+	const main_input_t in = {k, n};
+	RC rc = grb::Launcher< AUTOMATIC >().exec( &main_grb, in, rc );
 
-		{
-			const std::string label( "Test 01" );
-			const std::string description(
-				"Initial: Identity int [" + std::to_string( n ) + ";" + std::to_string( n ) +
-				"]\n"
-				"Mask: Identity void matrix (matching the input).\n"
-				"k = 2\n"
-				"Operator: mul\n"
-				"Expected: Identity int [" +
-				std::to_string( n ) + ";" + std::to_string( n ) + "] * 2"
-			);
-			// Mask (matching the input matrix)
-			Matrix< void > mask( n, n );
-			assert( SUCCESS ==
-				buildMatrixUnique( mask, initial_rows.data(), initial_cols.data(), initial_rows.size(), SEQUENTIAL )
-			);
-			// Expected matrix
-			Matrix< int > expected( n, n );
-			std::vector< int > expected_values( n, 2 );
-			assert( SUCCESS ==
-				buildMatrixUnique( expected, initial_rows.data(), initial_cols.data(), expected_values.data(), expected_values.size(), SEQUENTIAL )
-			);
-
-			std::cout << "-- Running " << label << " --" << std::endl;
-			input< int, void, int, operators::mul< int >, operators::mul< int > > in {
-				label.c_str(), description.c_str(), initial, mask, k, expected
-			};
-			if( launcher.exec( &grb_program, in, rc, true ) != SUCCESS ) {
-				std::cerr << "Launching " << label << " failed" << std::endl;
-				return 255;
-			}
-			std::cout << std::endl << std::flush;
-		}
-
-		{
-			const std::string label( "Test 02" );
-			const std::string description(
-				"Initial: Identity int [" + std::to_string( n ) + ";" + std::to_string( n ) +
-				"]\n"
-				"Mask: Identity void matrix (empty).\n"
-				"k = 2\n"
-				"Operator: mul\n"
-				"Expected: Identity int [" +
-				std::to_string( n ) + ";" + std::to_string( n ) + "]"
-			);
-			// Mask (matching the input matrix)
-			Matrix< void > mask( n, n );
-			assert( SUCCESS ==
-				buildMatrixUnique( mask, initial_rows.data(), initial_cols.data(), 0, SEQUENTIAL )
-			);
-			// Expected matrix
-			Matrix< int > expected( n, n );
-			assert( SUCCESS ==
-				buildMatrixUnique( expected, initial_rows.data(), initial_cols.data(), initial_values.data(), initial_values.size(), SEQUENTIAL )
-			);
-
-			std::cout << "-- Running " << label << " --" << std::endl;
-			input< int, void, int, operators::mul< int >, operators::mul< int > > in {
-				label.c_str(), description.c_str(), initial, mask, k, expected, false, true
-			};
-			if( launcher.exec( &grb_program, in, rc, true ) != SUCCESS ) {
-				std::cerr << "Launching " << label << " failed" << std::endl;
-				return 255;
-			}
-			std::cout << std::endl << std::flush;
-		}
-	}
 
 	if( rc != SUCCESS ) {
 		std::cout << "Test FAILED (" << grb::toString( rc ) << ")" << std::endl;
