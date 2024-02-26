@@ -377,7 +377,12 @@ namespace grb {
 			const void * const,
 			const size_t
 		) {
-			return assigned;
+			bool ret = assigned;
+			if( ( descriptor & descriptors::structural_complement ) == descriptors::structural_complement ) {
+				return !ret;
+			} else {
+				return ret;
+			}
 		}
 
 	} // namespace utils
