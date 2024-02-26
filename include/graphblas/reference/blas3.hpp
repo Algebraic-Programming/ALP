@@ -1359,18 +1359,32 @@ namespace grb {
 				nzc = 0;
 				CRS_raw.col_start[ 0 ] = 0;
 				for( size_t i = 0; i < m; ++i ) {
-					coors1.clear();
-					for( size_t k = A_raw.col_start[ i ]; k < A_raw.col_start[ i + 1 ]; ++k ) {
-						const auto k_col = A_raw.row_index[ k ];
-						(void) coors1.assign( k_col );
-						utils::assignValue( vbuf1, k_col, A_raw.getValue( k, identity_A ) );
-					}
-
-					coors2.clear();
-					for( size_t k = B_raw.col_start[ i ]; k < B_raw.col_start[ i + 1 ]; ++k ) {
-						const auto k_col = B_raw.row_index[ k ];
-						(void) coors2.assign( k_col );
-						utils::assignValue( vbuf3, k_col, B_raw.getValue( k, identity_B ) );
+#ifdef _H_GRB_REFERENCE_OMP_BLAS3
+					#pragma omp parallel
+#endif
+					{
+#ifdef _H_GRB_REFERENCE_OMP_BLAS3
+						#pragma omp single nowait
+#endif
+						{
+							coors1.clear();
+							for( size_t k = A_raw.col_start[ i ]; k < A_raw.col_start[ i + 1 ]; ++k ) {
+								const auto k_col = A_raw.row_index[ k ];
+								(void) coors1.assign( k_col );
+								utils::assignValue( vbuf1, k_col, A_raw.getValue( k, identity_A ) );
+							}
+						}
+#ifdef _H_GRB_REFERENCE_OMP_BLAS3
+						#pragma omp single nowait
+#endif
+						{
+							coors2.clear();
+							for( size_t k = B_raw.col_start[ i ]; k < B_raw.col_start[ i + 1 ]; ++k ) {
+								const auto k_col = B_raw.row_index[ k ];
+								(void) coors2.assign( k_col );
+								utils::assignValue( vbuf3, k_col, B_raw.getValue( k, identity_B ) );
+							}
+						}
 					}
 
 					for( size_t k = 0; k < coors1.nonzeroes(); ++k ) {
