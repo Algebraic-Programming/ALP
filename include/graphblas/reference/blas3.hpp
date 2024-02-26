@@ -1001,7 +1001,7 @@ namespace grb {
 
 		char * mask_arr = nullptr;
 		char * mask_buf = nullptr;
-		OutputType * mask_valbuf = nullptr;
+		MaskType * mask_valbuf = nullptr;
 		internal::getMatrixBuffers( mask_arr, mask_buf, mask_valbuf, 1, mask );
 
 		internal::Coordinates< reference > mask_coors;
@@ -1018,7 +1018,7 @@ namespace grb {
 					const auto k_col = mask_raw.row_index[ k ];
 					if( 
 						internal::getCoordinates( v ).assigned( k_col ) && 
-						utils::interpretMask< descr, MaskType >( true, mask_raw.values, k ) 
+						utils::interpretMatrixMask< descr, MaskType >( true, mask_raw.getValues(), k ) 
 					) {
 
 						nzc++;
@@ -1080,7 +1080,7 @@ namespace grb {
 					const auto k_col = mask_raw.row_index[ k ];
 					if( 
 						internal::getCoordinates( v ).assigned( k_col ) && 
-						utils::interpretMask< descr, MaskType >( true, mask_raw.values, k )
+						utils::interpretMatrixMask< descr, MaskType >( true, mask_raw.getValues(), k )
 					) {
 						nzc++;
 						if( !crs_only ) {
@@ -1115,7 +1115,7 @@ namespace grb {
 					const auto k_col = mask_raw.row_index[ k ];
 					if( 
 						internal::getCoordinates( v ).assigned( k_col ) &&
-						utils::interpretMask< descr, MaskType >( true, mask_raw.values, k )
+						utils::interpretMatrixMask< descr, MaskType >( true, mask_raw.getValues(), k )
 					) {
 						OutputType val;
 						grb::apply( val,
