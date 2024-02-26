@@ -1015,7 +1015,7 @@ namespace grb {
 		for( size_t i = 0; i < nrows; ++i ) {
 			if( internal::getCoordinates( u ).assigned( i ) ) {
 				for( auto k = mask_raw.col_start[ i ]; k < mask_raw.col_start[ i + 1 ]; ++k ) {
-					const size_t k_col = mask_raw.row_index[ k ];
+					const auto k_col = mask_raw.row_index[ k ];
 					if( 
 						internal::getCoordinates( v ).assigned( k_col ) && 
 						utils::interpretMask< descr, MaskType >( true, mask_raw.values, k ) 
@@ -1077,14 +1077,14 @@ namespace grb {
 		for( size_t i = 0; i < nrows; ++i ) {
 			if( internal::getCoordinates( u ).assigned( i ) ) {
 				for( auto k = mask_raw.col_start[ i ]; k < mask_raw.col_start[ i + 1 ]; ++k ) {
-					const size_t k_col = mask_raw.row_index[ k ];
+					const auto k_col = mask_raw.row_index[ k ];
 					if( 
 						internal::getCoordinates( v ).assigned( k_col ) && 
 						utils::interpretMask< descr, MaskType >( true, mask_raw.values, k )
 					) {
-						(void) ++nzc;
+						nzc++;
 						if( !crs_only ) {
-							(void) ++CCS_raw.col_start[ k_col + 1 ];
+							CCS_raw.col_start[ k_col + 1 ]++;
 						}
 					}
 				}
@@ -1112,7 +1112,7 @@ namespace grb {
 		for( size_t i = 0; i < nrows; ++i ) {
 			if( internal::getCoordinates( u ).assigned( i ) ) {
 				for( auto k = mask_raw.col_start[ i ]; k < mask_raw.col_start[ i + 1 ]; ++k ) {
-					const size_t k_col = mask_raw.row_index[ k ];
+					const auto k_col = mask_raw.row_index[ k ];
 					if( 
 						internal::getCoordinates( v ).assigned( k_col ) &&
 						utils::interpretMask< descr, MaskType >( true, mask_raw.values, k )
@@ -1126,23 +1126,27 @@ namespace grb {
 						CRS_raw.setValue( nzc, val );
 						// update CCS
 						if( !crs_only ) {
-							const size_t CCS_index = A_col_index[ k_col ]++ + CCS_raw.col_start[ k_col ];
+							const auto CCS_index = A_col_index[ k_col ] + CCS_raw.col_start[ k_col ];
+							A_col_index[ k_col ]++;
 							CCS_raw.row_index[ CCS_index ] = i;
 							CCS_raw.setValue( CCS_index, val );
 						}
 						// update count
-						(void) ++nzc;	
+						nzc++;	
 					}
 				}
 			}
 			CRS_raw.col_start[ i + 1 ] = nzc;
 		}
+
+#ifndef NDEBUG
 		if( !crs_only ) {
 			for( size_t j = 0; j < ncols; ++j ) {
 				assert( CCS_raw.col_start[ j + 1 ] - CCS_raw.col_start[ j ] ==
 					A_col_index[ j ] );
 			}
 		}
+#endif
 
 		internal::setCurrentNonzeroes( A, nzc );
 
