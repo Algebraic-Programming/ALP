@@ -468,8 +468,12 @@ void grbProgram( const size_t &P, int &exit_status ) {
 	grb::Vector< bool > even_mask( n );
 	check = 0.0;
 	for( size_t i = 0; i < n; i += 2 ) {
-		check += xr[ i ];
-		const grb::RC setrc = grb::setElement( even_mask, true, i );
+		bool set_to = false;
+		if( i%4 == 0 ) {
+			check += xr[ i ];
+			set_to = true;
+		}
+		const grb::RC setrc = grb::setElement( even_mask, set_to, i );
 #ifndef NDEBUG
 		assert( setrc == grb::SUCCESS );
 #else
@@ -484,7 +488,7 @@ void grbProgram( const size_t &P, int &exit_status ) {
 	}
 
 	check = 0.0;
-	for( size_t i = 1; i < n; i += 2 ) {
+	for( size_t i = 2; i < n; i += 4 ) {
 		check += xr[ i ];
 	}
 
@@ -555,7 +559,7 @@ void grbProgram( const size_t &P, int &exit_status ) {
 		}
 
 		exit_status = expect_sparse_success< grb::descriptors::invert_mask >(
-			sparse, realm, grb::nnz(sparse), empty_mask );
+			sparse, realm, 0.0, empty_mask, grb::nnz(sparse) );
 		if( exit_status != 0 ) {
 			exit_status += 500;
 			return;
@@ -606,7 +610,7 @@ void grbProgram( const size_t &P, int &exit_status ) {
 		}
 
 		exit_status = expect_sparse_success< grb::descriptors::invert_mask >(
-			sparse, realm, grb::nnz(sparse), odd_mask );
+			sparse, realm, 0.0, odd_mask, grb::nnz(sparse) );
 		if( exit_status != 0 ) {
 			exit_status += 1100;
 			return;
