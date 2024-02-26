@@ -27,7 +27,7 @@
 #define _H_GRB_ALGORITHMS_CONJUGATE_GRADIENT
 
 #include <cstdio>
-#include <complex>
+#include <cmath>
 
 #include <graphblas.hpp>
 #include <graphblas/utils/iscomplex.hpp>
@@ -38,21 +38,28 @@ namespace grb {
 	namespace algorithms {
 
 		/**
-		 * Solves a linear system \f$ b = Ax \f$ with \f$ x \f$ unknown by the Conjugate
-		 * Gradients (CG) method on general fields.
+		 * Solves a preconditioned linear system \f$ b = M^{-1}Ax \f$ with \f$ x \f$
+		 * unknown by the Conjugate Gradients (CG) method on general fields.
 		 *
-		 * Does not perform any preconditioning.
+		 * The preconditioner \a M, alike to the system matrix \a A, must be symmetric
+		 * positive definite.
 		 *
-		 * @tparam descr        The user descriptor
-		 * @tparam IOType       The input/output vector nonzero type
-		 * @tparam ResidualType The type of the residual
-		 * @tparam NonzeroType  The matrix nonzero type
-		 * @tparam InputType    The right-hand side vector nonzero type
-		 * @tparam Ring         The semiring under which to perform CG
-		 * @tparam Minus        The minus operator corresponding to the inverse of the
-		 *                      additive operator of the given \a Ring.
-		 * @tparam Divide       The division operator corresponding to the inverse of
-		 *                      the multiplicative operator of the given \a Ring.
+		 * @tparam descr          The user descriptor
+		 * @tparam preconditioned Whether to apply any given preconditioners.
+		 *
+		 * \note The default value for \a preconditioned is <tt>true</tt> and it is
+		 *       normally not necessary to override this value: if wishing to call a
+		 *       non-preconditioned CG, please see #conjugate_gradient.
+		 *
+		 * @tparam IOType         The input/output vector nonzero type
+		 * @tparam ResidualType   The type of the residual
+		 * @tparam NonzeroType    The matrix nonzero type
+		 * @tparam InputType      The right-hand side vector nonzero type
+		 * @tparam Ring           The semiring under which to perform CG
+		 * @tparam Minus          The minus operator corresponding to the inverse of
+		 *                        the additive operator of the given \a Ring.
+		 * @tparam Divide         The division operator corresponding to the inverse
+		 *                        of the multiplicative operator of the given \a Ring.
 		 *
 		 * Valid descriptors to this algorithm are:
 		 *   -# descriptors::no_casting
@@ -78,12 +85,29 @@ namespace grb {
 		 * @param[in]     b              The known right-hand side in \f$ Ax = b \f$.
 		 *                               Must be structurally dense.
 		 *
+		 * The preconditioner action \f$ M^{-1}r \f$ is supplied as a standard
+		 * <tt>std::function</tt> that outputs a #grb::RC and takes two arguments:
+		 *  -# the output vector of the preconditioning action as a reference to a
+		 *     #grb::Vector with element type <tt>IOType</tt>, and
+		 *  -# the input vector to the preconditioner as a const-reference to a
+		 *     #grb::Vector with the same element type.
+		 * Both vectors are guaranteed to be dense when given to \a Minv.
+		 *
+		 * A good preconditioner action \a Minv is both efficient to apply as well as
+		 * drastrically reduces the number of CG iterations required. The latter is
+		 * achieved by constructing \a Minv so that the condition number of
+		 * \f$ M^{-1}A \f$ is much smaller than that of \f$ A \f$.
+		 *
+		 * @param[in]     Minv           The preconditioner action if
+		 *                               \a preconditioned equals <tt>true</tt>.
+		 *
 		 * If \a A is \f$ n \times n \f$, then \a x and \a b must have matching length
 		 * \f$ n \f$. The vector \a x furthermore must have a capacity of \f$ n \f$.
 		 *
 		 * CG algorithm inputs:
 		 *
-		 * @param[in]     max_iterations The maximum number of CG iterations.
+		 * @param[in]     max_iterations The maximum number of CG iterations. Must be
+		 *                               larger than zero.
 		 * @param[in]     tol            The requested relative tolerance.
 		 *
 		 * Additional outputs (besides \a x):
@@ -97,6 +121,11 @@ namespace grb {
 		 * @param[in,out] r              A temporary vector of the same size as \a x.
 		 * @param[in,out] u              A temporary vector of the same size as \a x.
 		 * @param[in,out] temp           A temporary vector of the same size as \a x.
+		 * @param[in,out] temp_precond   A temporary vector of the same size as \a x.
+		 *
+		 * \note If \a preconditioned is <tt>false</tt>, then both \a Minv and
+		 *       \a temp_precond are ignored. In this case, \a temp_precond need not
+		 *       have the same length as \a x, nor need it have full capacity.
 		 *
 		 * Finally, the algebraic structures over which the CG is executed are given:
 		 *
@@ -115,8 +144,8 @@ namespace grb {
 		 * @returns #grb::ILLEGAL  When \a A is not square.
 		 * @returns #grb::MISMATCH When \a x or \a b does not match the size of \a A.
 		 * @returns #grb::ILLEGAL  When \a x does not have capacity \f$ n \f$.
-		 * @returns #grb::ILLEGAL  When at least one of the workspace vectors does not
-		 *                         have capacity \f$ n \f$.
+		 * @returns #grb::ILLEGAL  When at least one of the required workspace vectors
+		 *                         does not have capacity \f$ n \f$.
 		 * @returns #grb::ILLEGAL  If \a tol is not strictly positive.
 		 * @returns #grb::PANIC    If an unrecoverable error has been encountered. The
 		 *                         output as well as the state of ALP/GraphBLAS is
@@ -144,7 +173,9 @@ namespace grb {
 		 * performance semantics, with the exception of getters such as #grb::nnz, are
 		 * specific to the backend selected during compilation.
 		 */
-		template< Descriptor descr = descriptors::no_operation,
+		template<
+			Descriptor descr = descriptors::no_operation,
+			bool preconditioned = true,
 			typename IOType,
 			typename ResidualType,
 			typename NonzeroType,
@@ -154,19 +185,27 @@ namespace grb {
 				grb::identities::zero, grb::identities::one
 			>,
 			class Minus = operators::subtract< IOType >,
-			class Divide = operators::divide< IOType >
+			class Divide = operators::divide< IOType >,
+			typename RSI, typename NZI, Backend backend
 		>
-		grb::RC conjugate_gradient(
-			grb::Vector< IOType > &x,
-			const grb::Matrix< NonzeroType > &A,
-			const grb::Vector< InputType > &b,
+		grb::RC preconditioned_conjugate_gradient(
+			grb::Vector< IOType, backend > &x,
+			const grb::Matrix< NonzeroType, backend, RSI, RSI, NZI > &A,
+			const grb::Vector< InputType, backend > &b,
+			const std::function<
+					grb::RC(
+						grb::Vector< IOType, backend > &,
+						const grb::Vector< IOType, backend > &
+						)
+					> &Minv,
 			const size_t max_iterations,
 			ResidualType tol,
 			size_t &iterations,
 			ResidualType &residual,
-			grb::Vector< IOType > &r,
-			grb::Vector< IOType > &u,
-			grb::Vector< IOType > &temp,
+			grb::Vector< IOType, backend > &r,
+			grb::Vector< IOType, backend > &u,
+			grb::Vector< IOType, backend > &temp,
+			grb::Vector< IOType, backend > &temp_precond,
 			const Ring &ring = Ring(),
 			const Minus &minus = Minus(),
 			const Divide &divide = Divide()
@@ -213,39 +252,60 @@ namespace grb {
 			const IOType zero = ring.template getZero< IOType >();
 			const size_t n = grb::ncols( A );
 
+			// retrieve conditional buffers
+			grb::Vector< IOType, backend > &z = preconditioned ? temp_precond : r;
+
 			// dynamic checks
 			{
 				const size_t m = grb::nrows( A );
-				if( size( x ) != n ) {
-					return MISMATCH;
+				if( grb::size( x ) != n ) {
+					std::cerr << "Error: initial solution guess and output vector length ("
+						<< size( x ) << ") does not match matrix size (" << m << ").\n";
+					return grb::MISMATCH;
 				}
-				if( size( b ) != m ) {
-					return MISMATCH;
+				if( grb::size( b ) != m ) {
+					std::cerr << "Error: right-hand side size (" << grb::size( b ) << ") does "
+						<< "not match matrix size (" << m << ").\n";
+					return grb::MISMATCH;
 				}
-				if( size( r ) != n || size( u ) != n || size( temp ) != n ) {
+				if( grb::size( r ) != n || grb::size( u ) != n || grb::size( temp ) != n ) {
 					std::cerr << "Error: provided workspace vectors are not of the correct "
 						<< "length.\n";
-					return MISMATCH;
+					return grb::MISMATCH;
+				}
+				if( preconditioned && grb::size( temp_precond ) != n ) {
+					std::cerr << "Error: (left) preconditioner workspace vector does not have "
+						<< "the correct length.\n";
+					return grb::MISMATCH;
 				}
 				if( m != n ) {
 					std::cerr << "Warning: grb::algorithms::conjugate_gradient requires "
 						<< "square input matrices, but a non-square input matrix was "
 						<< "given instead.\n";
-					return ILLEGAL;
+					return grb::ILLEGAL;
 				}
 
 				// capacities
-				if( capacity( x ) != n ) {
-					return ILLEGAL;
+				if( grb::capacity( x ) != n ) {
+					return grb::ILLEGAL;
 				}
-				if( capacity( r ) != n || capacity( u ) != n || capacity( temp ) != n ) {
-					return ILLEGAL;
+				if( grb::capacity( r ) != n || grb::capacity( u ) != n ||
+					grb::capacity( temp ) != n
+				) {
+					return grb::ILLEGAL;
+				}
+				if( preconditioned && grb::capacity( temp_precond ) != n ) {
+					return grb::ILLEGAL;
 				}
 
 				// others
 				if( tol <= zero_residual ) {
 					std::cerr << "Error: tolerance input to CG must be strictly positive\n";
-					return ILLEGAL;
+					return grb::ILLEGAL;
+				}
+				if( max_iterations == 0 ) {
+					std::cerr << "Error: at least one CG iteration must be requested\n";
+					return grb::ILLEGAL;
 				}
 			}
 
@@ -253,176 +313,273 @@ namespace grb {
 			iterations = 0;
 			residual = std::numeric_limits< double >::infinity();
 
-			// trivial shortcuts
-			if( max_iterations == 0 ) {
-				return FAILED;
-			}
-
 			// make x and b structurally dense (if not already) so that the remainder
 			// algorithm can safely use the dense descriptor for faster operations
 			{
-				RC rc = SUCCESS;
+				RC rc = grb::SUCCESS;
 				if( nnz( x ) != n ) {
-					rc = set< descriptors::invert_mask | descriptors::structural >(
+					rc = grb::set< descriptors::invert_mask | descriptors::structural >(
 						x, x, zero
 					);
 				}
-				if( rc != SUCCESS ) {
-					return rc;
-				}
+				if( rc != grb::SUCCESS ) { return rc; }
 				assert( nnz( x ) == n );
 			}
 
 			IOType sigma, bnorm, alpha, beta;
 
-			// temp = 0
-			grb::RC ret = grb::set( temp, 0 );
-			assert( ret == SUCCESS );
-
-			// temp = A * x
-			ret = ret ? ret : grb::mxv< descr_dense >( temp, A, x, ring );
-			assert( ret == SUCCESS );
-
 			// r = b - temp;
-			ret = ret ? ret : grb::set( r, zero );
+			grb::RC ret = grb::set( temp, 0 ); assert( ret == grb::SUCCESS );
+			ret = ret ? ret : grb::mxv< descr_dense >( temp, A, x, ring );
+			assert( ret == grb::SUCCESS );
+			ret = ret ? ret : grb::set( r, zero ); assert( ret == grb::SUCCESS );
+			// note: no dense descriptor since we actually allow sparse b
 			ret = ret ? ret : grb::foldl( r, b, ring.getAdditiveMonoid() );
+			// from here onwards, r, temp, x are dense and will remain so
 			assert( nnz( r ) == n );
 			assert( nnz( temp ) == n );
 			ret = ret ? ret : grb::foldl< descr_dense >( r, temp, minus );
-			assert( ret == SUCCESS );
-			assert( nnz( r ) == n );
+			assert( ret == grb::SUCCESS );
 
-			// u = r;
-			ret = ret ? ret : grb::set( u, r );
-			assert( ret == SUCCESS );
+			// z = M^-1r
+			if( preconditioned ) {
+				ret = ret ? ret : grb::set( z, 0 ); // also ensures z is dense, henceforth
+				ret = ret ? ret : Minv( z, r );
+			} // else, z equals r (by reference)
 
-			// sigma = r' * r;
+			// u = z;
+			ret = ret ? ret : grb::set( u, z );
+			assert( ret == grb::SUCCESS );
+			// from here onwards, u is dense; i.e., all vectors are dense from now on,
+			// and we can freely use the dense descriptor in the subsequent
+
+			// sigma = r' * z;
 			sigma = zero;
-			if( grb::utils::is_complex< IOType >::value ) {
-				ret = ret ? ret : grb::eWiseLambda( [&temp,&r]( const size_t i ) {
-						temp[ i ] = grb::utils::is_complex< IOType >::conjugate( r[ i ] );
-					}, temp
+			ret = ret ? ret : grb::dot< descr_dense >(
+					sigma,
+					r, z,
+					ring.getAdditiveMonoid(),
+					grb::operators::conjugate_right_mul< IOType >()
 				);
-				ret = ret ? ret : grb::dot< descr_dense >( sigma, temp, r, ring );
-			} else {
-				ret = ret ? ret : grb::dot< descr_dense >( sigma, r, r, ring );
-			}
 
-			assert( ret == SUCCESS );
+			assert( ret == grb::SUCCESS );
 
 			// bnorm = b' * b;
 			bnorm = zero;
-			if( grb::utils::is_complex< IOType >::value ) {
-				ret = ret ? ret : grb::eWiseLambda( [&temp,&b]( const size_t i ) {
-						temp[ i ] = grb::utils::is_complex< IOType >::conjugate( b[ i ] );
-					}, temp
-				);
-				ret = ret ? ret : grb::dot< descr_dense >( bnorm, temp, b, ring );
+			ret = ret ? ret : grb::dot< descr_dense >(
+				bnorm,
+				b, b,
+				ring.getAdditiveMonoid(),
+				grb::operators::conjugate_left_mul< IOType >() );
+			assert( ret == grb::SUCCESS );
+
+			// get effective tolerance and exit on any error during prelude
+			if( ret == grb::SUCCESS ) {
+				tol *= std::sqrt( grb::utils::is_complex< IOType >::modulus( bnorm ) );
 			} else {
-				ret = ret ? ret : grb::dot< descr_dense >( bnorm, b, b, ring );
-			}
-			assert( ret == SUCCESS );
-
-			if( ret == SUCCESS ) {
-				tol *= sqrt( grb::utils::is_complex< IOType >::modulus( bnorm ) );
+				std::cerr << "Warning: preconditioned CG caught error during prelude ("
+					<< grb::toString( ret ) << ")\n";
+				return ret;
 			}
 
+			// all OK; perform main iterations
 			size_t iter = 0;
-
 			do {
 				assert( iter < max_iterations );
 				(void) ++iter;
 
-				// temp = 0
-				ret = ret ? ret : grb::set( temp, 0 );
-				assert( ret == SUCCESS );
-
 				// temp = A * u;
+				ret = ret ? ret : grb::set< descr_dense >( temp, 0 );
+				assert( ret == grb::SUCCESS );
 				ret = ret ? ret : grb::mxv< descr_dense >( temp, A, u, ring );
-				assert( ret == SUCCESS );
+				assert( ret == grb::SUCCESS );
 
-				// beta = u' * temp
+				// beta = (A * u)' * u;
 				beta = zero;
-				if( grb::utils::is_complex< IOType >::value ) {
-					ret = ret ? ret : grb::eWiseLambda( [&u]( const size_t i ) {
-							u[ i ] = grb::utils::is_complex< IOType >::conjugate( u[ i ] );
-						}, u
+				ret = ret ? ret : grb::dot< descr_dense >(
+						beta,
+						temp, u,
+						ring.getAdditiveMonoid(),
+						grb::operators::conjugate_right_mul< IOType >()
 					);
-				}
-				ret = ret ? ret : grb::dot< descr_dense >( beta, temp, u, ring );
-				if( grb::utils::is_complex< IOType >::value ) {
-					ret = ret ? ret : grb::eWiseLambda( [&u]( const size_t i ) {
-							u[ i ] = grb::utils::is_complex< IOType >::conjugate( u[ i ] );
-						}, u
-					);
-				}
-				assert( ret == SUCCESS );
+				assert( ret == grb::SUCCESS );
 
 				// alpha = sigma / beta;
 				ret = ret ? ret : grb::apply( alpha, sigma, beta, divide );
-				assert( ret == SUCCESS );
+				assert( ret == grb::SUCCESS );
 
 				// x = x + alpha * u;
 				ret = ret ? ret : grb::eWiseMul< descr_dense >( x, alpha, u, ring );
-				assert( ret == SUCCESS );
+				assert( ret == grb::SUCCESS );
 
-				// temp = alpha .* temp
-				// Warning: operator-based foldr requires temp be dense
-				ret = ret ? ret : grb::foldr( alpha, temp, ring.getMultiplicativeMonoid() );
-				assert( ret == SUCCESS );
-
-				// r = r - temp;
+				// r = r - alpha .* temp = r - alpha .* (A * u);
+				ret = ret ? ret : grb::foldr< descr_dense >( alpha, temp,
+					ring.getMultiplicativeMonoid() );
+				assert( ret == grb::SUCCESS );
 				ret = ret ? ret : grb::foldl< descr_dense >( r, temp, minus );
-				assert( ret == SUCCESS );
+				assert( ret == grb::SUCCESS );
 
-				// beta = r' * r;
-				beta = zero;
-				if( grb::utils::is_complex< IOType >::value ) {
-					ret = ret ? ret : grb::eWiseLambda( [&temp,&r]( const size_t i ) {
-							temp[ i ] = grb::utils::is_complex< IOType >::conjugate( r[ i ] );
-						}, temp
+				// get residual. In the preconditioned case, the resulting scalar is *not*
+				// used for subsequent operations. Therefore, we first compute the residual
+				// using alpha as a temporary scalar
+				alpha = zero;
+				ret = ret ? ret : grb::dot< descr_dense >(
+						alpha,
+						r, r,
+						ring.getAdditiveMonoid(),
+						grb::operators::conjugate_left_mul< IOType >()
 					);
-					ret = ret ? ret : grb::dot< descr_dense >( beta, temp, r, ring );
-				} else {
-					ret = ret ? ret : grb::dot< descr_dense >( beta, r, r, ring );
-				}
-				residual = grb::utils::is_complex< IOType >::modulus( beta );
-				assert( ret == SUCCESS );
+				assert( ret == grb::SUCCESS );
+				residual = grb::utils::is_complex< IOType >::modulus( alpha );
 
-				if( ret == SUCCESS ) {
-					if( sqrt( residual ) < tol || iter >= max_iterations ) {
-						break;
-					}
+				// check residual
+				if( ret == grb::SUCCESS ) {
+					if( sqrt( residual ) < tol || iter >= max_iterations ) { break; }
+				}
+
+				// apply preconditioner action (if required), and compute beta for the
+				// preconditioned case
+				// z = M^-1r
+				// beta = r' * z
+				if( preconditioned ) {
+					beta = zero;
+					ret = ret ? ret : Minv( z, r ); assert( ret == grb::SUCCESS );
+					ret = ret ? ret : grb::dot< descr_dense >(
+							beta,
+							r, z,
+							ring.getAdditiveMonoid(),
+							grb::operators::conjugate_right_mul< IOType >()
+						);
+					assert( ret == grb::SUCCESS );
+				} else {
+					beta = alpha;
 				}
 
 				// alpha = beta / sigma;
 				ret = ret ? ret : grb::apply( alpha, beta, sigma, divide );
-				assert( ret == SUCCESS );
+				assert( ret == grb::SUCCESS );
 
-				// temp = r + alpha * u;
-				ret = ret ? ret : grb::set( temp, r );
-				assert( ret == SUCCESS );
-				ret = ret ? ret : grb::eWiseMul< descr_dense >( temp, alpha, u, ring );
-				assert( ret == SUCCESS );
-				assert( nnz( temp ) == size( temp ) );
-
-				// u = temp
-				std::swap( u, temp );
+				// u_next = z + beta * u_previous;
+				ret = ret ? ret : grb::foldr< descr_dense >( alpha, u,
+					ring.getMultiplicativeMonoid() );
+				assert( ret == grb::SUCCESS );
+				ret = ret ? ret : grb::foldr< descr_dense >( z, u,
+					ring.getAdditiveMonoid() );
+				assert( ret == grb::SUCCESS );
 
 				sigma = beta;
-			} while( ret == SUCCESS );
+			} while( ret == grb::SUCCESS );
 
 			// output that is independent of error code
 			iterations = iter;
 
 			// return correct error code
-			if( ret == SUCCESS ) {
-				if( sqrt( residual ) >= tol ) {
+			if( ret == grb::SUCCESS ) {
+				if( std::sqrt( residual ) >= tol ) {
 					// did not converge within iterations
-					return FAILED;
+					return grb::FAILED;
 				}
 			}
 			return ret;
+		}
+
+		/**
+		 * Solves a linear system \f$ b = Ax \f$ with \f$ x \f$ unknown by the
+		 * Conjugate Gradients (CG) method on general fields.
+		 *
+		 * Does not perform any preconditioning-- for preconditioned CG and full
+		 * documentation, please see #preconditioned_conjugate_gradient.
+		 */
+		template<
+			Descriptor descr = descriptors::no_operation,
+			typename IOType,
+			typename ResidualType,
+			typename NonzeroType,
+			typename InputType,
+			class Ring = Semiring<
+				grb::operators::add< IOType >, grb::operators::mul< IOType >,
+				grb::identities::zero, grb::identities::one
+			>,
+			class Minus = operators::subtract< IOType >,
+			class Divide = operators::divide< IOType >,
+			typename RSI, typename NZI, Backend backend
+		>
+		grb::RC conjugate_gradient(
+			grb::Vector< IOType, backend > &x,
+			const grb::Matrix< NonzeroType, backend, RSI, RSI, NZI > &A,
+			const grb::Vector< InputType, backend > &b,
+			const size_t max_iterations,
+			ResidualType tol,
+			size_t &iterations,
+			ResidualType &residual,
+			grb::Vector< IOType, backend > &r,
+			grb::Vector< IOType, backend > &u,
+			grb::Vector< IOType, backend > &temp,
+			const Ring &ring = Ring(),
+			const Minus &minus = Minus(),
+			const Divide &divide = Divide()
+		) {
+			// static checks
+			static_assert( std::is_floating_point< ResidualType >::value,
+				"Can only use the CG algorithm with floating-point residual "
+				"types." ); // unless some different norm were used: issue #89
+			static_assert( !( descr & descriptors::no_casting ) || (
+					std::is_same< IOType, ResidualType >::value &&
+					std::is_same< IOType, NonzeroType >::value &&
+					std::is_same< IOType, InputType >::value
+				), "One or more of the provided containers have differing element types "
+				"while the no-casting descriptor has been supplied"
+			);
+			static_assert( !( descr & descriptors::no_casting ) || (
+					std::is_same< NonzeroType, typename Ring::D1 >::value &&
+					std::is_same< IOType, typename Ring::D2 >::value &&
+					std::is_same< InputType, typename Ring::D3 >::value &&
+					std::is_same< InputType, typename Ring::D4 >::value
+				), "no_casting descriptor was set, but semiring has incompatible domains "
+				"with the given containers."
+			);
+			static_assert( !( descr & descriptors::no_casting ) || (
+					std::is_same< InputType, typename Minus::D1 >::value &&
+					std::is_same< InputType, typename Minus::D2 >::value &&
+					std::is_same< InputType, typename Minus::D3 >::value
+				), "no_casting descriptor was set, but given minus operator has "
+				"incompatible domains with the given containers."
+			);
+			static_assert( !( descr & descriptors::no_casting ) || (
+					std::is_same< ResidualType, typename Divide::D1 >::value &&
+					std::is_same< ResidualType, typename Divide::D2 >::value &&
+					std::is_same< ResidualType, typename Divide::D3 >::value
+				), "no_casting descriptor was set, but given divide operator has "
+				"incompatible domains with the given tolerance type."
+			);
+			static_assert( std::is_floating_point< ResidualType >::value,
+				"Require floating-point residual type."
+			);
+
+			// create a dummy preconditioner and buffer that will never be used
+			std::function<
+				grb::RC(
+					grb::Vector< IOType, backend >&,
+					const grb::Vector< IOType, backend >&
+				)
+			> dummy_preconditioner =
+				[](
+					grb::Vector< IOType, backend >&,
+					const grb::Vector< IOType, backend >&
+				) -> grb::RC {
+					return grb::FAILED;
+				};
+			grb::Vector< IOType, backend > dummy_buffer( 0 );
+
+			// call PCG with preconditioning disabled
+			return preconditioned_conjugate_gradient< descr, false >(
+					x, A, b,
+					dummy_preconditioner,
+					max_iterations, tol,
+					iterations, residual,
+					r, u, temp, dummy_buffer,
+					ring, minus, divide
+				);
 		}
 
 	} // namespace algorithms

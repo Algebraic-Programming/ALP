@@ -15,10 +15,16 @@
  * limitations under the License.
  */
 
-#include <iostream>
+#include <limits>
 #include <sstream>
+#include <iostream>
 
 #include <graphblas.hpp>
+
+#ifdef _DEBUG
+ #include <utils/print_vec_mat.hpp>
+#endif
+
 
 // static data corresponding to small matrices
 
@@ -114,8 +120,11 @@ void checkCRSandCCS( const grb::Matrix< T > &C,
 }
 
 void grbProgram( const void *, const size_t, grb::RC &rc ) {
+#ifdef _DEBUG
+	constexpr const size_t smax = std::numeric_limits< size_t >::max();
+#endif
 
-	// initialize test
+	// initialise test
 	grb::Monoid< grb::operators::mul< double >, grb::identities::one > mulmono;
 
 	const size_t n = 4;
@@ -131,24 +140,36 @@ void grbProgram( const void *, const size_t, grb::RC &rc ) {
 	rc = grb::resize( A, nelts_A );
 	if( rc == grb::SUCCESS ) {
 		rc = grb::buildMatrixUnique( A, I_A, J_A, V_A, nelts_A, grb::SEQUENTIAL );
+#ifdef _DEBUG
+		print_matrix( A, smax, "A" );
+#endif
 	}
 	if( rc == grb::SUCCESS ) {
 		rc = grb::resize( B, nelts_B );
 	}
 	if( rc == grb::SUCCESS ) {
 		rc = grb::buildMatrixUnique( B, I_B, J_B, V_B, nelts_B, grb::SEQUENTIAL );
+#ifdef _DEBUG
+		print_matrix( B, smax, "B" );
+#endif
 	}
 	if( rc == grb::SUCCESS ) {
 		rc = grb::resize( A_pattern, nelts_A );
 	}
 	if( rc == grb::SUCCESS ) {
 		rc = grb::buildMatrixUnique( A_pattern, I_A, J_A, nelts_A, grb::SEQUENTIAL );
+#ifdef _DEBUG
+		print_matrix( A_pattern, smax, "A_pattern" );
+#endif
 	}
 	if( rc == grb::SUCCESS ) {
 		rc = grb::resize( B_pattern, nelts_B );
 	}
 	if( rc == grb::SUCCESS ) {
 		rc = grb::buildMatrixUnique( B_pattern, I_B, J_B, nelts_B, grb::SEQUENTIAL );
+#ifdef _DEBUG
+		print_matrix( B_pattern, smax, "B_pattern" );
+#endif
 	}
 	if( rc != grb::SUCCESS ) {
 		std::cerr << "\tinitialisation FAILED\n";

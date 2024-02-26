@@ -15,12 +15,14 @@ fi
 
 NUM_OK=`grep -i "Test OK" "$1" | wc -l`
 NUM_DISABLED=`grep -i "Test DISABLED" "$1" | wc -l`
+NUM_CDISABLED=`grep -i "Tests DISABLED" "$1" | wc -l`
 NUM_FAILED=`grep -i "Test FAILED" "$1" | wc -l`
 
 echo "Summary of $1:"
 printf "  %4s PASSED\n" ${NUM_OK}
 printf "  %4s SKIPPED\n" ${NUM_DISABLED}
 printf "  %4s FAILED\n" ${NUM_FAILED}
+printf "  %4s TEST CATEGORIES SKIPPED\n" ${NUM_CDISABLED}
 
 if [ ${NUM_FAILED} -gt 0 ]; then
 	printf "\nOne or more failures detected. Log contents:\n\n"

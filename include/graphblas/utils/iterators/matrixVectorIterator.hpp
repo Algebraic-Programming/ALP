@@ -15,7 +15,11 @@
  * limitations under the License.
  */
 
-/*
+/**
+ * @file
+ *
+ * Provides an iterator that transforms vector data into matrix data.
+ *
  * @author V. Vlacic
  */
 

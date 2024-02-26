@@ -25,6 +25,9 @@
 
 #include <complex>
 
+#include <math.h>
+
+
 namespace grb {
 
 	namespace utils {
@@ -85,6 +88,25 @@ namespace grb {
 					return x * x;
 				}
 
+				/**
+				 * @returns The polar coordinates of a given value.
+				 *
+				 * The first argument in the returned pair is the magnitude, while the
+				 * second is the phase.
+				 */
+				static std::pair< C, C > polar( const C &x ) noexcept {
+					std::pair< C, C > ret{ std::abs( x ), x < 0 ? M_PI : 0 };
+					return ret;
+				}
+
+				/**
+				 * @returns The multiplicative inverse of a given value.
+				 */
+				static C inverse( const C &x ) noexcept {
+					constexpr C one = 1;
+					return one / x;
+				}
+
 		};
 
 		/** \internal The specialisation for std::complex types. */
@@ -98,7 +120,9 @@ namespace grb {
 			);
 
 			public:
+
 				typedef T type;
+
 				static constexpr const bool value = true;
 
 				static std::complex< T > conjugate( const std::complex< T > &x ) {
@@ -111,6 +135,18 @@ namespace grb {
 
 				static T norm( const std::complex< T > &x ) {
 					return std::norm( x );
+				}
+
+				static std::pair< T, T > polar( const std::complex< T > &x ) noexcept {
+					std::pair< T, T > ret{ std::abs( x ), std::arg( x ) };
+					return ret;
+				}
+
+				static std::complex< T > inverse( const std::complex< T > &x ) noexcept {
+					constexpr T one = 1;
+					const std::pair< T, T > polar_coords = polar( x );
+					return std::polar( one / polar_coords.first,
+						-(polar_coords.second) );
 				}
 
 		};

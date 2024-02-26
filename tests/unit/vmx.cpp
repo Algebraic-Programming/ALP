@@ -17,19 +17,19 @@
 
 #include <iostream>
 
-#include "graphblas.hpp"
+#include <graphblas.hpp>
+#include <graphblas/algorithms/matrix_factory.hpp>
 
 
 using namespace grb;
+using namespace grb::algorithms;
 
 static const int data1[ 15 ] = { 4, 7, 4, 6, 4, 7, 1, 7, 3, 6, 7, 5, 1, 8, 7 };
 static const int data2[ 15 ] = { 8, 9, 8, 6, 8, 7, 8, 7, 5, 2, 3, 5, 1, 5, 5 };
 static const int chk[ 15 ] = { 32, 63, 32, 36, 32, 49, 8, 49, 15, 12, 21, 25, 1, 40, 35 };
-static const size_t I[ 15 ] = { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14 };
-static const size_t J[ 15 ] = { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14 };
 
 int main( int argc, char ** argv ) {
-	(void)argc;
+	(void) argc;
 	std::cout << "Functional test executable: " << argv[ 0 ] << "\n";
 
 	// sanity check against metabugs
@@ -61,15 +61,8 @@ int main( int argc, char ** argv ) {
 	// allocate
 	grb::Vector< int > x( 15 );
 	grb::Vector< int > y( 15 );
-	grb::Matrix< int > A( 15, 15 );
-
-	// resize for 15 elements
-	rc = resize( A, 15 );
-	if( rc != grb::SUCCESS ) {
-		std::cerr << "Unexpected return code from Matrix constructor: "
-			<< static_cast< int >(rc) << "." << std::endl;
-		error = 3;
-	}
+	grb::Matrix< int > A = matrices< int, grb::SEQUENTIAL >::diag(
+		15, 15, data2, data2 + 15 );
 
 	// initialise x
 	if( !error ) {
@@ -114,14 +107,6 @@ int main( int argc, char ** argv ) {
 			error = 6;
 			break;
 		}
-	}
-
-	// initialise A
-	rc = grb::buildMatrixUnique( A, I, J, data2, 15, SEQUENTIAL );
-	if( rc != grb::SUCCESS ) {
-		std::cerr << "Unexpected return code from Matrix buildMatrixUnique: "
-			<< static_cast< int >(rc) << "." << std::endl;
-		error = 7;
 	}
 
 	// get a semiring where multiplication is addition, and addition is multiplication

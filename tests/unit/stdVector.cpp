@@ -21,9 +21,10 @@
 
 #include <graphblas.hpp>
 
+
 using namespace grb;
 
-void grb_program( const size_t & n, grb::RC & rc ) {
+void grb_program( const size_t &n, grb::RC &rc ) {
 	std::vector< grb::Vector< unsigned char > > vectors;
 	rc = SUCCESS;
 	// We test a lot of ways to push a grb::Vector into an std::Vector.

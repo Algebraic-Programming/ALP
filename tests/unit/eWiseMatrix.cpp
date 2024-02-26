@@ -20,6 +20,7 @@
 
 #include <graphblas.hpp>
 
+
 using namespace grb;
 
 static const int data1[ 15 ] = { 4, 7, 4, 6, 4, 7, 1, 7, 3, 6, 7, 5, 1, 8, 7 };

@@ -9725,6 +9725,98 @@ namespace grb {
 		return SUCCESS;
 	}
 
+	namespace internal {
+
+		/**
+		 * This is the `real' implementation on reference vectors. It allows for
+		 * coping with non-trivial distributions.
+		 *
+		 * @see Vector::operator[]()
+		 * @see Vector::lambda_reference
+		 */
+		template<
+			typename ActiveDistribution,
+			typename Func,
+			typename DataType, typename Coords
+		>
+		RC eWiseLambda(
+			const Func f,
+			const Vector< DataType, reference, Coords > &x,
+			const size_t global_n, const size_t s, const size_t P
+		) {
+#ifdef _DEBUG
+			std::cout << "Info: entering eWiseLambda function on vectors.\n";
+#endif
+			const auto &coors = internal::getCoordinates( x );
+			if( coors.isDense() ) {
+				// vector is distributed sequentially, so just loop over it
+#ifdef _H_GRB_REFERENCE_OMP_BLAS1
+				#pragma omp parallel
+				{
+					size_t start, end;
+					config::OMP::localRange( start, end, 0, coors.size() );
+#else
+					const size_t start = 0;
+					const size_t end = coors.size();
+#endif
+					for( size_t i = start; i < end; ++i ) {
+						// get global coordinate
+						const size_t global =
+							ActiveDistribution::local_index_to_global( i, global_n, s, P );
+						// apply the lambda
+						f( global );
+					}
+#ifdef _H_GRB_REFERENCE_OMP_BLAS1
+				}
+#endif
+			} else {
+#ifdef _H_GRB_REFERENCE_OMP_BLAS1
+				#pragma omp parallel
+				{
+					size_t start, end;
+					config::OMP::localRange( start, end, 0, coors.nonzeroes() );
+#else
+					const size_t start = 0;
+					const size_t end = coors.nonzeroes();
+#endif
+					for( size_t k = start; k < end; ++k ) {
+						const size_t i = coors.index( k );
+#ifdef _DEBUG
+						std::cout << "\tprocessing coordinate " << k << " "
+							<< "which has index " << i << "\n";
+#endif
+						const size_t global =
+							ActiveDistribution::local_index_to_global( i, global_n, s, P );
+						f( global );
+					}
+#ifdef _H_GRB_REFERENCE_OMP_BLAS1
+				}
+#endif
+			}
+
+			// and done!
+			return SUCCESS;
+		}
+
+	} // end grb::internal
+
+	/**
+	 * This is the eWiseLambda that performs the actual computation (i.e., the base
+	 * case of the recursion. It delegates to a distribution-generic eWiseLambda.
+	 */
+	template<
+		typename Func,
+		typename DataType1, typename Coords
+	>
+	RC eWiseLambda(
+		const Func f,
+		const Vector< DataType1, reference, Coords > &x
+	) {
+		const size_t n = internal::getCoordinates( x ).size();
+		return internal::eWiseLambda< internal::Distribution< reference > >(
+			f, x, n, 0, 1 );
+	}
+
 	/**
 	 * This is the eWiseLambda that performs length checking by recursion.
 	 *
@@ -9750,66 +9842,6 @@ namespace grb {
 		}
 		// continue
 		return eWiseLambda( f, x, args... );
-	}
-
-	/**
-	 * No implementation notes. This is the `real' implementation on reference
-	 * vectors.
-	 *
-	 * @see Vector::operator[]()
-	 * @see Vector::lambda_reference
-	 */
-	template< typename Func, typename DataType, typename Coords >
-	RC eWiseLambda(
-		const Func f,
-		const Vector< DataType, reference, Coords > &x
-	) {
-#ifdef _DEBUG
-		std::cout << "Info: entering eWiseLambda function on vectors.\n";
-#endif
-		const auto &coors = internal::getCoordinates( x );
-		if( coors.isDense() ) {
-			// vector is distributed sequentially, so just loop over it
-#ifdef _H_GRB_REFERENCE_OMP_BLAS1
-			#pragma omp parallel
-			{
-				size_t start, end;
-				config::OMP::localRange( start, end, 0, coors.size() );
-#else
-				const size_t start = 0;
-				const size_t end = coors.size();
-#endif
-				for( size_t i = start; i < end; ++i ) {
-					// apply the lambda
-					f( i );
-				}
-#ifdef _H_GRB_REFERENCE_OMP_BLAS1
-			}
-#endif
-		} else {
-#ifdef _H_GRB_REFERENCE_OMP_BLAS1
-			#pragma omp parallel
-			{
-				size_t start, end;
-				config::OMP::localRange( start, end, 0, coors.nonzeroes() );
-#else
-				const size_t start = 0;
-				const size_t end = coors.nonzeroes();
-#endif
-				for( size_t k = start; k < end; ++k ) {
-					const size_t i = coors.index( k );
-#ifdef _DEBUG
-					std::cout << "\tprocessing coordinate " << k << " "
-						<< "which has index " << i << "\n";
-#endif
-					f( i );
-				}
-#ifdef _H_GRB_REFERENCE_OMP_BLAS1
-			}
-#endif
-		}
-		// and done!
-		return SUCCESS;
 	}
 
 	/**

@@ -19,9 +19,11 @@
 #include <assert.h>
 
 #include "graphblas/bsp/collectives_blas1_vec.hpp"
-#include "graphblas/utils/Timer.hpp"
+
+#include "graphblas/utils/timer.hpp"
 
 #include "graphblas.hpp"
+
 
 using namespace grb;
 

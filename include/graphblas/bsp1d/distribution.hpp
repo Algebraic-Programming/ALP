@@ -91,8 +91,10 @@ namespace grb {
 			 *
 			 * This function completes in \f$ \Theta(1) \f$ time.
 			 */
-			static inline size_t global_index_to_process_id( const size_t global, const size_t n, const size_t P ) {
-				(void)n;
+			static inline size_t global_index_to_process_id(
+				const size_t global, const size_t n, const size_t P
+			) {
+				(void) n;
 				return ( global / blocksize() ) % P;
 			}
 
@@ -117,9 +119,12 @@ namespace grb {
 			 *
 			 * This function completes in \f$ \Theta(1) \f$ time.
 			 */
-			static inline size_t global_index_to_local( const size_t global, const size_t n, const size_t P ) {
-				(void)n; // this distribution need not consider the global length
-				return ( ( global / blocksize() ) / P ) * blocksize() + ( global % blocksize() );
+			static inline size_t global_index_to_local(
+				const size_t global,
+				const size_t n, const size_t P
+			) {
+				(void) n; // this distribution need not consider the global length
+				return ((global / blocksize()) / P) * blocksize() + (global % blocksize());
 			}
 
 			/**
@@ -136,11 +141,14 @@ namespace grb {
 			 *
 			 * @return The global index of the given local \a index.
 			 */
-			static inline size_t local_index_to_global( const size_t local, const size_t n, const size_t s, const size_t P ) {
-				(void)n; // this distribution need not consider the global length
-				const size_t my_block = ( local / blocksize() ) * P + s;
+			static inline size_t local_index_to_global(
+				const size_t local, const size_t n,
+				const size_t s, const size_t P
+			) {
+				(void) n; // this distribution need not consider the global length
+				const size_t my_block = ( local / blocksize()) * P + s;
 				const size_t offset = local % blocksize();
-				return ( my_block * blocksize() ) + offset;
+				return (my_block * blocksize()) + offset;
 			}
 
 			/**
@@ -159,17 +167,28 @@ namespace grb {
 			 *
 			 * This function completes in \f$ \Theta(1) \f$ time.
 			 */
-			static inline size_t global_length_to_local( const size_t global, const size_t s, const size_t P ) {
-				constexpr size_t b = blocksize();                 // the number of elements in a single block
-				size_t ret = ( global / b ) / P;                  // this is the number of blocks distributed to each process, rounded down
-				ret *= b;                                         // translates back to the number of elements, instead of number of blocks
-				const size_t block_overflow = ( global / b ) % P; // computes which processes overflow beyond ret elements
-				if( block_overflow == s ) {                       // in this case, the last couple of elements flow into this process
+			static inline size_t global_length_to_local(
+				const size_t global,
+				const size_t s, const size_t P
+			) {
+				// the number of elements in a single block
+				constexpr size_t b = blocksize();
+				// this is the number of blocks distributed to each process, rounded down
+				size_t ret = ( global / b ) / P;
+				// translates back to the number of elements, instead of number of blocks
+				ret *= b;
+				// computes which processes overflow beyond ret elements
+				const size_t block_overflow = ( global / b ) % P;
+				if( block_overflow == s ) {
+					// in this case, the last couple of elements flow into this process
 					ret += global % b;
-				} else if( block_overflow > s ) { // in this case, given that it is not equal to s-1, this process overflows
-					ret += b;                     // by exactly one full block
+				} else if( block_overflow > s ) {
+					// in this case, given that it is not equal to s-1, this process overflows
+					// by exactly one full block
+					ret += b;
 				}
-				// and otherwise this process has exactly the minimum number elemenents. In all cases, we are done:
+				// and otherwise this process has exactly the minimum number elemenents.
+				// In all cases, we are done:
 				return ret;
 			}
 
@@ -199,22 +218,33 @@ namespace grb {
 			 *
 			 * This function completes in \f$ \Theta(1) \f$ time.
 			 */
-			static inline size_t local_offset( const size_t global, const size_t s, const size_t P ) {
-				constexpr size_t b = blocksize(); // the number of elements in a single block
-				size_t ret = ( global / b ) / P;  // the number of blocks distributed to each process,
-				// rounded down
-				ret *= b; // lower bound on the number of elements distributed
-				// to each process
-				const size_t block_overflow = ( global / b ) % P; // computes which processes overflow beyond
-				                                                  // the minimum size
-				if( s <= block_overflow ) {                       // in this case, the preceding processes to local_pid
-					ret += b;                                     // all preceding processes have one additional full block
-					ret *= s;                                     // multiply by the number of preceding processes
+			static inline size_t local_offset(
+				const size_t global,
+				const size_t s, const size_t P
+			) {
+				// the number of elements in a single block
+				constexpr size_t b = blocksize();
+				// the number of blocks distributed to each process, rounded down
+				size_t ret = (global / b) / P;
+				// lower bound on the number of elements distributed to each process
+				ret *= b;
+				// computes which processes overflow beyond the minimum size
+				const size_t block_overflow = ( global / b ) % P;
+				if( s <= block_overflow ) {
+					// in this case, the preceding processes to local_pid have one additional
+					// full block
+					ret += b;
+					// multiply by the number of preceding processes
+					ret *= s;
 				} else {
-					const size_t minsize = ret;                  // cache the minimum size
-					ret += block_overflow * ( ret + b );         // add all preceding full blocks
-					ret += global % b;                           // add last not-so-full block
-					ret += ( s - block_overflow - 1 ) * minsize; // add all preceding minimum blocks
+					// cache the minimum size
+					const size_t minsize = ret;
+					// add all preceding full blocks
+					ret += block_overflow * ( ret + b );
+					// add last not-so-full block
+					ret += global % b;
+					// add all preceding minimum blocks
+					ret += ( s - block_overflow - 1 ) * minsize;
 				}
 				// done
 				return ret;
@@ -251,14 +281,18 @@ namespace grb {
 			 *          value smaller or equal to the given \a offset.
 			 * @returns If no such value exists, \a P will be returned.
 			 */
-			static inline size_t offset_to_pid( const size_t offset, const size_t size, const size_t P ) {
-				constexpr size_t b = blocksize(); // the number of elements in a single block
+			static inline size_t offset_to_pid(
+				const size_t offset, const size_t size,
+				const size_t P
+			) {
+				// the number of elements in a single block
+				constexpr size_t b = blocksize();
 				const size_t nonFullBlockSize = size % b;
-				const size_t minFullBlockSize = ( ( size / b ) / P ) * b;
+				const size_t minFullBlockSize = ((size / b) / P) * b;
 				const size_t maxFullBlockSize = minFullBlockSize + b;
 
 				// determine where nonFullBlockSize goes
-				const size_t nonFullBlockSizePID = ( size / b ) % P;
+				const size_t nonFullBlockSizePID = (size / b) % P;
 
 				// we are left of nonFullBlockSizePID
 				const size_t ret1 = offset / maxFullBlockSize;
@@ -269,7 +303,9 @@ namespace grb {
 				// we are at nonFullBlockSizePID
 				assert( offset >= nonFullBlockSizePID * maxFullBlockSize );
 				size_t running_offset = offset - nonFullBlockSizePID * maxFullBlockSize;
-				if( running_offset < minFullBlockSize + nonFullBlockSize || minFullBlockSize == 0 ) {
+				if( running_offset < minFullBlockSize + nonFullBlockSize ||
+					minFullBlockSize == 0
+				) {
 					return nonFullBlockSizePID;
 				}
 
@@ -278,9 +314,12 @@ namespace grb {
 				running_offset -= minFullBlockSize + nonFullBlockSize;
 				return nonFullBlockSizePID + running_offset / minFullBlockSize + 1;
 			}
+
 		};
 
 	} // namespace internal
+
 } // namespace grb
 
 #endif // end `_H_GRB_BSP1D_DISTRIBUTION'
+

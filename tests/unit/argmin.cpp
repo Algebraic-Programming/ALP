@@ -20,9 +20,10 @@
 
 #include <graphblas.hpp>
 
+
 using namespace grb;
 
-void grb_program( const size_t & n, grb::RC & rc ) {
+void grb_program( const size_t &n, grb::RC &rc ) {
 	grb::Vector< size_t > index( n );
 	grb::Vector< double > value( n );
 	grb::Vector< std::pair< size_t, double > > left( n ), right( n ), out( n );
