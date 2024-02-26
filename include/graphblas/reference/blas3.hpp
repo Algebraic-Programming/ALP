@@ -1106,9 +1106,6 @@ namespace grb {
 			}
 		}
 
-
-		const size_t old_nzc = nzc;
-
 		// use previously computed CCS offset array to update CCS during the
 		// computational phase
 		nzc = 0;
@@ -1146,7 +1143,6 @@ namespace grb {
 					A_col_index[ j ] );
 			}
 		}
-		assert( nzc == old_nzc );
 
 		internal::setCurrentNonzeroes( A, nzc );
 
