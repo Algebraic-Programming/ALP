@@ -64,7 +64,7 @@ namespace grb {
 	class Matrix< D, BSP1D, RowIndexType, ColIndexType, NonzeroIndexType > {
 
 		/* *********************
-		        BLAS2 friends
+		        I/O friends
 		   ********************* */
 
 		template< typename DataType, typename RIT, typename CIT, typename NIT >
@@ -91,6 +91,33 @@ namespace grb {
 		friend RC resize(
 			Matrix< InputType, BSP1D, RIT, CIT, NIT > &, const size_t
 		) noexcept;
+
+		template< typename IOType, typename RIT, typename CIT, typename NIT >
+		friend uintptr_t getID( const Matrix< IOType, BSP1D, RIT, CIT, NIT > & );
+
+		template<
+			Descriptor descr, typename InputType,
+			typename RIT, typename CIT, typename NIT,
+			typename fwd_iterator
+		>
+		friend RC buildMatrixUnique(
+			Matrix< InputType, BSP1D, RIT, CIT, NIT > &,
+			fwd_iterator, const fwd_iterator,
+			const IOMode
+		);
+
+		/* *********************
+		       BLAS-2 friends
+		   ********************* */
+
+		template<
+			typename Func, typename DataType1,
+			typename RIT, typename CIT, typename NIT
+		>
+		friend RC eWiseLambda(
+			const Func,
+			const Matrix< DataType1, BSP1D, RIT, CIT, NIT > &
+		);
 
 		template<
 			Descriptor, bool, bool, bool, class Ring,
@@ -122,16 +149,9 @@ namespace grb {
 			const Ring &, const Phase &
 		);
 
-		template<
-			Descriptor descr, typename InputType,
-			typename RIT, typename CIT, typename NIT,
-			typename fwd_iterator
-		>
-		friend RC buildMatrixUnique(
-			Matrix< InputType, BSP1D, RIT, CIT, NIT > &,
-			fwd_iterator, const fwd_iterator,
-			const IOMode
-		);
+		/* *********************
+		      Internal friends
+		   ********************* */
 
 		template< typename IOType, typename RIT, typename CIT, typename NIT >
 		friend Matrix< IOType, _GRB_BSP1D_BACKEND, RIT, CIT, NIT > &
@@ -140,9 +160,6 @@ namespace grb {
 		template< typename IOType, typename RIT, typename CIT, typename NIT >
 		friend const Matrix< IOType, _GRB_BSP1D_BACKEND, RIT, CIT, NIT > &
 		internal::getLocal( const Matrix< IOType, BSP1D, RIT, CIT, NIT > & ) noexcept;
-
-		template< typename IOType, typename RIT, typename CIT, typename NIT >
-		friend uintptr_t getID( const Matrix< IOType, BSP1D, RIT, CIT, NIT > & );
 
 
 		private:

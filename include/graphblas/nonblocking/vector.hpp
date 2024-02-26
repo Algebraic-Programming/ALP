@@ -260,7 +260,7 @@ namespace grb {
 				// declaration
 #ifdef _DEBUG
 				std::cerr << "In Vector< nonblocking >::Vector( size_t, size_t )"
-					<< " constructor\n";				
+					<< " constructor\n";
 #endif
 			}
 
@@ -278,7 +278,7 @@ namespace grb {
 				// declaration
 #ifdef _DEBUG
 				std::cerr << "In Vector< nonblocking >::Vector( initializer_list )"
-					<< " constructor\n";				
+					<< " constructor\n";
 #endif
 			}
 
