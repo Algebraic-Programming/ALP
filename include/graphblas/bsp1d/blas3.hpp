@@ -251,11 +251,6 @@ namespace grb {
 			"called with an output type that does not match the output domain of the "
 			"given monoid"
 		);
-		static_assert( !(descr & descriptors::add_identity),
-			"grb::foldr( BSP1D, IOType <- [[IOType]], monoid, masked ): "
-			"the use of the add_identity descriptor requires a semiring, but a monoid "
-			"was given"
-		);
 		static_assert( !(
 				(descr & descriptors::invert_mask) &&
 				(descr & descriptors::structural)
@@ -314,93 +309,6 @@ namespace grb {
 
 	template<
 		Descriptor descr = descriptors::no_operation,
-		class Semiring,
-		typename InputType, typename IOType, typename MaskType,
-		typename RIT_A, typename CIT_A, typename NIT_A,
-		typename RIT_M, typename CIT_M, typename NIT_M
-	>
-	RC foldr(
-		const Matrix< InputType, BSP1D, RIT_A, CIT_A, NIT_A > &A,
-		const Matrix< MaskType, BSP1D, RIT_M, CIT_M, NIT_M > &mask,
-		IOType &x,
-		const Semiring &semiring = Semiring(),
-		const typename std::enable_if<
-			!grb::is_object< IOType >::value &&
-			!grb::is_object< InputType >::value &&
-			!grb::is_object< MaskType >::value &&
-			grb::is_semiring< Semiring >::value, void
-		>::type * const = nullptr
-	) {
-		// static checks
-		static_assert( (std::is_same< typename Semiring::D3, InputType >::value),
-			"grb::foldr( BSP1D, IOType <- [[IOType]], semiring, masked ): "
-			"called with a prefactor input type that does not match the third domain "
-			"of the given semiring"
-		);
-		static_assert( (std::is_same< typename Semiring::D4, IOType >::value),
-			"grb::foldr( BSP1D, IOType <- [[IOType]], semiring, masked ): "
-			"called with a postfactor input type that does not match the fourth domain "
-			"of the given semiring"
-		);
-		static_assert( !(
-				(descr & descriptors::invert_mask) &&
-				(descr & descriptors::structural)
-			), "grb::foldr( BSP1D, IOType <- [[IOType]], semiring, masked ): "
-			"may not select an inverted structural mask for matrices"
-		);
-#ifdef _DEBUG
-		std::cout << "In grb::foldr( BSP1D, matrix, mask, semiring )\n";
-#endif
-		// first check whether we can dispatch
-		if( grb::nrows( mask ) == 0 && grb::ncols( mask ) == 0 ) {
-			return foldr< descr >( A, x, semiring );
-		}
-
-		// dynamic checks
-		if( grb::nrows( A ) != grb::nrows( mask ) ||
-			grb::ncols( A ) != grb::ncols( mask )
-		) {
-			return RC::MISMATCH;
-		}
-
-		// check for trivial op
-		if( grb::nnz( A ) == 0 || grb::nnz( mask ) == 0 ||
-			grb::nrows( A ) == 0 || grb::ncols( A ) == 0
-		) {
-			return RC::SUCCESS;
-		}
-
-		// do local folding
-		RC rc = SUCCESS;
-		IOType local = semiring.template getZero< IOType >();
-		rc = foldr< descr >( internal::getLocal( A ),
-			internal::getLocal( mask ), local, semiring );
-
-		// note we are not synchronising the error code, since by this point any non-
-		// success error-code will always collective. However, in the spirit of
-		// defensive programming, we will assert this when in debug mode:
-#ifndef NDEBUG
-		rc = internal::assertSyncedRC( rc );
-#endif
-#ifdef _DEBUG
-		std::cout << "After process-local delegation, local value has become "
-			<< local << ". Entering allreduce..." << std::endl;
-#endif
-
-		// All-reduce using \a op
-		rc = rc ? rc :
-			collectives< BSP1D >::allreduce< descr >( local,
-				semiring.getAdditiveOperator() );
-
-		// Accumulate end result
-		rc = rc ? rc : foldr( x, local, semiring.getAdditiveOperator() );
-
-		// done
-		return rc;
-	}
-
-	template<
-		Descriptor descr = descriptors::no_operation,
 		class Monoid,
 		typename InputType, typename IOType,
 		typename RIT, typename CIT, typename NIT
@@ -439,11 +347,6 @@ namespace grb {
 			"called with an output type that does not match the output domain of the "
 			"given monoid"
 		);
-		static_assert( !(descr & descriptors::add_identity),
-			"grb::foldr( BSP1D, IOType <- [[IOType]], monoid ): "
-			"the use of the add_identity descriptor requires a semiring, but a monoid "
-			"was given"
-		);
 #ifdef _DEBUG
 		std::cout << "In grb::foldr( BSP1D, matrix, monoid )\n";
 #endif
@@ -475,69 +378,6 @@ namespace grb {
 
 		// Accumulate end result
 		rc = rc ? rc : foldr( x, local, monoid.getOperator() );
-
-		// done
-		return rc;
-	}
-
-	template<
-		Descriptor descr = descriptors::no_operation,
-		class Semiring,
-		typename InputType, typename IOType,
-		typename RIT, typename CIT, typename NIT
-	>
-	RC foldr(
-		const Matrix< InputType, BSP1D, RIT, CIT, NIT > &A,
-		IOType &x,
-		const Semiring &semiring = Semiring(),
-		const typename std::enable_if< !grb::is_object< IOType >::value &&
-			!grb::is_object< InputType >::value &&
-			grb::is_semiring< Semiring >::value, void
-		>::type * const = nullptr
-	) {
-		// static checks
-		static_assert( (std::is_same< typename Semiring::D3, InputType >::value),
-			"grb::foldr( BSP1D, IOType <- [[IOType]], semiring ): "
-			"called with a prefactor input type that does not match the third domain "
-			"the given semiring"
-		);
-		static_assert( (std::is_same< typename Semiring::D4, IOType >::value),
-			"grb::foldr( BSP1D, IOType <- [[IOType]], semiring ): "
-			"called with a postfactor input type that does not match the fourth domain "
-			"of the given semiring"
-		);
-#ifdef _DEBUG
-		std::cout << "In grb::foldr( BSP1D, matrix, semiring )\n";
-#endif
-
-		// check for trivial op
-		if( grb::nnz( A ) == 0 || grb::ncols( A ) == 0 || grb::nrows( A ) == 0 ) {
-			return RC::SUCCESS;
-		}
-
-		// do local folding
-		RC rc = SUCCESS;
-		IOType local = semiring.template getZero< IOType >();
-		rc = foldr< descr >( internal::getLocal( A ), local, semiring );
-
-		// note we are not synchronising the error code, since by this point any non-
-		// success error-code will always collective. However, in the spirit of
-		// defensive programming, we will assert this when in debug mode:
-#ifndef NDEBUG
-		rc = internal::assertSyncedRC( rc );
-#endif
-#ifdef _DEBUG
-		std::cout << "After process-local delegation, local value has become "
-			<< local << ". Entering allreduce..." << std::endl;
-#endif
-
-		// All-reduce using \a op
-		rc = rc ? rc :
-			collectives< BSP1D >::allreduce< descr >( local,
-				semiring.getAdditiveOperator() );
-
-		// Accumulate end result
-		rc = rc ? rc : foldr( x, local, semiring.getAdditiveOperator() );
 
 		// done
 		return rc;
@@ -586,11 +426,6 @@ namespace grb {
 			"grb::foldl( BSP1D, IOType <- [[IOType]], monoid, masked ): "
 			"called with an output type that does not match the output domain of the "
 			"given monoid"
-		);
-		static_assert( !(descr & descriptors::add_identity),
-			"grb::foldl( BSP1D, IOType <- [[IOType]], monoid, masked ): "
-			"the use of the add_identity descriptor requires a semiring, but a monoid "
-			"was given"
 		);
 		static_assert( !(
 				(descr & descriptors::invert_mask) &&
@@ -653,100 +488,6 @@ namespace grb {
 
 	template<
 		Descriptor descr = descriptors::no_operation,
-		class Semiring,
-		typename InputType, typename IOType, typename MaskType,
-		typename RIT_A, typename CIT_A, typename NIT_A,
-		typename RIT_M, typename CIT_M, typename NIT_M
-	>
-	RC foldl(
-		IOType &x,
-		const Matrix< InputType, BSP1D, RIT_A, CIT_A, NIT_A > &A,
-		const Matrix< MaskType, BSP1D, RIT_M, CIT_M, NIT_M > &mask,
-		const Semiring &semiring = Semiring(),
-		const typename std::enable_if<
-			!grb::is_object< IOType >::value &&
-			!grb::is_object< InputType >::value &&
-			!grb::is_object< MaskType >::value &&
-			grb::is_semiring< Semiring >::value, void
-		>::type * const = nullptr
-	) {
-		// static checks
-		static_assert( (std::is_same< typename Semiring::D3, IOType >::value),
-			"grb::foldl( BSP1D, IOType <- [[IOType]], semiring, masked ): "
-			"called with a prefactor input type that does not match the third domain "
-			"the given semiring"
-		);
-		static_assert( (std::is_same< typename Semiring::D4, InputType >::value),
-			"grb::foldl( BSP1D, IOType <- [[IOType]], semiring, masked ): "
-			"called with a postfactor input type that does not match the fourth domain "
-			"of the given semiring"
-		);
-		static_assert( (std::is_same< typename Semiring::D4, IOType >::value),
-			"grb::foldl( BSP1D, IOType <- [[IOType]], semiring, masked ): "
-			"called with an output type that does not match the fourth domain of the "
-			"given semiring"
-		);
-		static_assert( !(
-				(descr & descriptors::invert_mask) &&
-				(descr & descriptors::structural)
-			), "grb::foldl( BSP1D, IOType <- [[IOType]], semiring, masked ): "
-			"may not select an inverted structural mask for matrices"
-		);
-#ifdef _DEBUG
-		std::cout << "In grb::foldl( BSP1D, matrix, mask, semiring )\n";
-#endif
-		// first check whether we can dispatch
-		if( grb::nrows( mask ) == 0 && grb::ncols( mask ) == 0 ) {
-			return foldl< descr >( x, A, semiring );
-		}
-
-		// dynamic checks
-		if( grb::nrows( A ) != grb::nrows( mask ) ||
-			grb::ncols( A ) != grb::ncols( mask )
-		) {
-			return RC::MISMATCH;
-		}
-
-		// check for trivial op
-		if( nnz( A ) == 0 || grb::nnz( mask ) == 0 ||
-			grb::nrows( A ) == 0 || grb::ncols( A ) == 0
-		) {
-#ifdef _DEBUG
-			std::cout << "Input matrix has no entries; returning identity" << std::endl;
-#endif
-			return SUCCESS;
-		}
-
-		// do local folding
-		RC rc = SUCCESS;
-		IOType local = semiring.template getZero< IOType >();
-		rc = foldl< descr >( local, internal::getLocal( A ),
-			internal::getLocal( mask ), semiring );
-
-		// note we are not synchronising the error code, since by this point any non-
-		// success error-code will always collective. However, in the spirit of
-		// defensive programming, we will assert this when in debug mode:
-#ifndef NDEBUG
-		rc = internal::assertSyncedRC( rc );
-#endif
-#ifdef _DEBUG
-		std::cout << "After process-local delegation, local value has become "
-			<< local << ". Entering allreduce..." << std::endl;
-#endif
-
-		// All-reduce using \a op
-		rc = rc ? rc : collectives< BSP1D >::allreduce< descr >( local,
-			semiring.getAdditiveOperator() );
-
-		// Accumulate end result
-		rc = rc ? rc : foldl( x, local, semiring.getAdditiveOperator() );
-
-		// done
-		return rc;
-	}
-
-	template<
-		Descriptor descr = descriptors::no_operation,
 		class Monoid,
 		typename InputType, typename IOType,
 		typename RIT, typename CIT, typename NIT
@@ -786,11 +527,6 @@ namespace grb {
 			"called with an output type that does not match the output domain of the "
 			"given monoid"
 		);
-		static_assert( !(descr & descriptors::add_identity),
-			"grb::foldl( BSP1D, IOType <- [[IOType]], monoid ): "
-			"the use of the add_identity descriptor requires a semiring, but a monoid "
-			"was given"
-		);
 #ifdef _DEBUG
 		std::cout << "In grb::foldl( BSP1D, matrix, monoid )\n";
 #endif
@@ -825,77 +561,6 @@ namespace grb {
 
 		// Accumulate end result
 		rc = rc ? rc : foldl( x, local, monoid.getOperator() );
-
-		// done
-		return rc;
-	}
-
-	template<
-		Descriptor descr = descriptors::no_operation,
-		class Semiring,
-		typename InputType, typename IOType,
-		typename RIT, typename CIT, typename NIT
-	>
-	RC foldl(
-		IOType &x,
-		const Matrix< InputType, BSP1D, RIT, CIT, NIT > &A,
-		const Semiring &semiring = Semiring(),
-		const typename std::enable_if<
-			!grb::is_object< IOType >::value &&
-			!grb::is_object< InputType >::value &&
-			grb::is_semiring< Semiring >::value, void
-		>::type * const = nullptr
-	) {
-		// static checks
-		static_assert( (std::is_same< typename Semiring::D3, IOType >::value),
-			"grb::foldl( BSP1D, IOType <- [[IOType]], semiring ): "
-			"called with a prefactor input type that does not match the third domain "
-			"of the given semiring"
-		);
-		static_assert( (std::is_same< typename Semiring::D4, InputType >::value),
-			"grb::foldl( BSP1D, IOType <- [[IOType]], semiring ): "
-			"called with a postfactor input type that does not match the fourth domain "
-			"of the given semiring"
-		);
-		static_assert( (std::is_same< typename Semiring::D4, IOType >::value),
-			"grb::foldl( BSP1D, IOType <- [[IOType]], semiring ): "
-			"called with an output type that does not match the fourth domain of the "
-			"given semiring"
-		);
-#ifdef _DEBUG
-		std::cout << "In grb::foldl( BSP1D, matrix, semiring )\n";
-#endif
-
-		// check for trivial op
-		if( nnz( A ) == 0 || nrows( A ) == 0 || ncols( A ) == 0 ) {
-#ifdef _DEBUG
-			std::cout << "Input matrix has no entries; returning identity" << std::endl;
-#endif
-			return SUCCESS;
-		}
-
-		// do local folding
-		RC rc = SUCCESS;
-		IOType local = semiring.template getZero< IOType >();
-		rc = foldl< descr >( local, internal::getLocal( A ), semiring );
-
-		// note we are not synchronising the error code, since by this point any non-
-		// success error-code will always collective. However, in the spirit of
-		// defensive programming, we will assert this when in debug mode:
-#ifndef NDEBUG
-		rc = internal::assertSyncedRC( rc );
-#endif
-#ifdef _DEBUG
-		std::cout << "After process-local delegation, local value has become "
-			<< local << ". Entering allreduce..." << std::endl;
-#endif
-
-		// All-reduce using \a op
-		rc = rc ? rc : collectives< BSP1D >::allreduce< descr >( local,
-			semiring.getAdditiveOperator() );
-
-		// Accumulate end result
-		rc = rc ? rc : foldl( x, local, semiring.getAdditiveOperator() );
 
 		// done
 		return rc;

@@ -933,8 +933,6 @@ namespace grb {
 #ifdef _DEBUG
 			std::cout << "In grb::internal::fold_unmasked_generic( reference )\n";
 #endif
-			static_assert( !(descr & descriptors::add_identity),
-				"internal::fold_unmasked_generic should not be called with add_identity descriptor" );
 
 			constexpr bool transpose =
 				descr & grb::descriptors::transpose_matrix ||
@@ -1000,135 +998,6 @@ namespace grb {
 		}
 
 		template<
-			Descriptor descr,
-			class Ring, bool left_handed,
-			typename InputType, typename IOType,
-			typename RIT, typename CIT, typename NIT
-		>
-		RC fold_add_identity_unmasked_generic(
-			IOType &x,
-			const Matrix< InputType, reference, RIT, CIT, NIT > &A,
-			const Ring &ring
-		) {
-#ifdef _DEBUG
-			std::cout << "In grb::internal::fold_add_identity_unmasked_generic( "
-				<< "reference )\n";
-#endif
-			constexpr bool transpose =
-				(descr & grb::descriptors::transpose_matrix) ||
-				(descr & grb::descriptors::transpose_left);
-
-			assert( !(nnz( A ) == 0 || nrows( A ) == 0 || ncols( A ) == 0) );
-
-			if( (descr & descriptors::force_row_major) && transpose ) {
-				std::cerr << "This implementation requires that the force_row_major and "
-					<< "transpose descriptors are mutually exclusive\n";
-				return UNSUPPORTED;
-			}
-
-			const auto &A_raw = transpose ? getCCS( A ) : getCRS( A );
-			const size_t m = transpose ? ncols( A ) : nrows( A );
-
-			const auto &op = ring.getAdditiveOperator();
-			const auto &zero = left_handed
-				? ring.template getZero< typename Ring::D2 >()
-				: ring.template getZero< typename Ring::D1 >();
-			const auto &one = left_handed
-				? ring.template getOne< typename Ring::D2 >()
-				: ring.template getOne< typename Ring::D1 >();
-			RC rc = SUCCESS;
-
-#ifdef _H_GRB_REFERENCE_OMP_BLAS3
-			#pragma omp parallel
-#endif
-			{
-				size_t start = 0;
-				size_t end = m;
-				RC local_rc = rc;
-				auto local_x = zero;
-#ifdef _H_GRB_REFERENCE_OMP_BLAS3
-				config::OMP::localRange( start, end, 0, m );
-#endif
-				for( auto i = start; i < end; ++i ) {
-					bool identity_element_computed = false;
-					for(
-						auto k = A_raw.col_start[ start ];
-						k < A_raw.col_start[ i + 1 ];
-						k++
-					) {
-						const auto j = A_raw.row_index[ k ];
-
-						// Check if the element of the main diagonal has been touched in this row
-						identity_element_computed |=
-							(descr & descriptors::add_identity) && i == j;
-
-						// descriptors::add_identity logic
-						const InputType identity_increment = ( i == j )
-							? static_cast< InputType >(one)
-							: static_cast< InputType >(zero);
-
-						// Get A value
-						const InputType a_val = A_raw.getValue( k, one );
-						// Compute the fold for this coordinate
-						const auto local_x_before = local_x;
-						if( local_rc == RC::SUCCESS ) {
-							if( left_handed ) {
-								local_rc = grb::apply< descr >(
-										local_x,
-										local_x_before, a_val + identity_increment,
-										op
-									);
-							} else {
-								local_rc = grb::apply< descr >(
-										local_x,
-										a_val + identity_increment, local_x_before,
-										op
-									);
-							}
-						}
-					}
-					// If the element on the main diagonal was not present in the row,
-					// compute it manually
-					if( !identity_element_computed ) {
-						const auto local_x_before = local_x;
-						if( local_rc == RC::SUCCESS ) {
-							if( left_handed ) {
-								local_rc = grb::apply< descr >(
-										local_x,
-										local_x_before, static_cast< InputType >( one ),
-										op
-									);
-							} else {
-								local_rc = grb::apply< descr >(
-										local_x,
-										static_cast< InputType >( one ), local_x_before,
-										op
-									);
-							}
-						}
-					}
-				}
-
-#ifdef _H_GRB_REFERENCE_OMP_BLAS3
-				#pragma omp critical
-#endif
-				{ // Reduction with the global result (critical section if OpenMP)
-					if( local_rc == RC::SUCCESS ) {
-						if( left_handed ) {
-							local_rc = grb::foldl< descr >( x, local_x, op );
-						} else {
-							local_rc = grb::foldr< descr >( local_x, x, op );
-						}
-					}
-					rc = rc ? rc : local_rc;
-				}
-			}
-
-			// done
-			return rc;
-		}
-
-		template<
 			Descriptor descr = descriptors::no_operation,
 			class Monoid, bool left_handed,
 			typename InputType, typename IOType, typename MaskType,
@@ -1150,11 +1019,10 @@ namespace grb {
 #ifdef _DEBUG
 			std::cout << "In grb::internal::fold_masked_generic( reference )\n";
 #endif
-			constexpr bool add_identity = (descr & descriptors::add_identity);
 			constexpr bool transpose_mask = (descr & descriptors::transpose_right);
 			constexpr bool transpose_input = (descr & descriptors::transpose_left);
 
-			const auto &zero_A = left_handed
+			const auto monoid_identity = left_handed
 				? monoid.template getIdentity< typename Monoid::D2 >()
 				: monoid.template getIdentity< typename Monoid::D1 >();
 			const auto &op = monoid.getOperator();
@@ -1222,18 +1090,13 @@ namespace grb {
 					// Skip if the coordinate is not in the mask
 					if( !coors.assigned( j ) ) { continue; }
 
-					// descriptors::add_identity logic for the main diagonal of A
-					const InputType identity_increment = add_identity && ( i == j )
-						? *one_A
-						: zero_A;
-
 					// Get A value
-					const InputType a_val = A_raw.getValue( A_k, *one_A );
+					const InputType a_val = A_raw.getValue( A_k, monoid_identity );
 					// Compute the fold for this coordinate
 					if( left_handed ) {
-						rc = rc ? rc : grb::foldl< descr >( x, a_val + identity_increment, op );
+						rc = rc ? rc : grb::foldl< descr >( x, a_val, op );
 					} else {
-						rc = rc ? rc : grb::foldr< descr >( a_val + identity_increment, x, op );
+						rc = rc ? rc : grb::foldr< descr >( a_val, x, op );
 					}
 				}
 			}
@@ -1736,77 +1599,6 @@ namespace grb {
 
 	template<
 		Descriptor descr = descriptors::no_operation,
-		class Semiring,
-		typename InputType, typename IOType, typename MaskType,
-		typename RIT_A, typename CIT_A, typename NIT_A,
-		typename RIT_M, typename CIT_M, typename NIT_M
-	>
-	RC foldr(
-		const Matrix< InputType, reference, RIT_A, CIT_A, NIT_A > &A,
-		const Matrix< MaskType, reference, RIT_M, CIT_M, NIT_M > &mask,
-		IOType &x,
-		const Semiring &semiring = Semiring(),
-		const typename std::enable_if<
-			!grb::is_object< IOType >::value &&
-			!grb::is_object< InputType >::value &&
-			!grb::is_object< MaskType >::value &&
-			grb::is_semiring< Semiring >::value, void
-		>::type * const = nullptr
-	) {
-		// static checks
-		static_assert( (std::is_same< typename Semiring::D3, InputType >::value),
-			"grb::foldr( reference, IOType <- [[IOType]], semiring, masked ): "
-			"called with a prefactor input type that does not match the third domain of "
-			"the given semiring"
-		);
-		static_assert( (std::is_same< typename Semiring::D4, IOType >::value),
-			"grb::foldr( reference, IOType <- [[IOType]], semiring, masked ): "
-			"called with a postfactor input type that does not match the fourth domain "
-			"of the given semiring"
-		);
-		static_assert( (std::is_same< typename Semiring::D4, IOType >::value),
-			"grb::foldr( reference, IOType <- [[IOType]], semiring, masked ): "
-			"called with an output type that does not match the fourth domain of the "
-			"given semiring"
-		);
-		static_assert( !(
-				(descr & descriptors::invert_mask) &&
-				(descr & descriptors::structural)
-			), "grb::foldr( reference, IOType <- [[IOType]], semiring, masked ): "
-			"may not select an inverted structural mask for matrices"
-		);
-		// first check whether we can dispatch
-		if( grb::nrows( mask ) == 0 && grb::ncols( mask ) == 0 ) {
-			return foldr< descr >( A, x, semiring );
-		}
-
-		// dynamic checks
-		if( grb::nrows( A ) != grb::nrows( mask ) ||
-			grb::ncols( A ) != grb::ncols( mask )
-		) {
-			return RC::MISMATCH;
-		}
-
-		// check for trivial op
-		if( grb::nnz( A ) == 0 || grb::nnz( mask ) == 0 ||
-			grb::nrows( A ) == 0 || grb::ncols( A ) == 0
-		) {
-			return RC::SUCCESS;
-		}
-
-		// do fold
-		const auto one = semiring.template getOne< InputType >();
-		return internal::fold_masked_generic<
-			descr,
-			typename Semiring::AdditiveMonoid,
-			false
-		>(
-			x, A, mask, semiring.getAdditiveMonoid(), &one
-		);
-	}
-
-	template<
-		Descriptor descr = descriptors::no_operation,
 		class Monoid,
 		typename InputType, typename IOType,
 		typename RIT, typename CIT, typename NIT
@@ -1846,11 +1638,6 @@ namespace grb {
 			"called with an output type that does not match the output domain of the "
 			"given monoid"
 		);
-		static_assert( !(descr & descriptors::add_identity),
-			"grb::foldr( reference, IOType <- [[IOType]], monoid ): "
-			"the use of the add_identity descriptor requires a semiring, but a monoid "
-			"was given"
-		);
 #ifdef _DEBUG
 		std::cout << "In grb::foldr( reference, matrix, monoid )\n";
 #endif
@@ -1863,62 +1650,6 @@ namespace grb {
 		return internal::fold_unmasked_generic< descr, Monoid, false >(
 			x, A, monoid
 		);
-	}
-
-	template<
-		Descriptor descr = descriptors::no_operation,
-		class Semiring,
-		typename InputType, typename IOType,
-		typename RIT, typename CIT, typename NIT
-	>
-	RC foldr(
-		const Matrix< InputType, reference, RIT, CIT, NIT > &A,
-		IOType &x,
-		const Semiring &semiring = Semiring(),
-		const typename std::enable_if<
-			!grb::is_object< IOType >::value &&
-			!grb::is_object< InputType >::value &&
-			grb::is_semiring< Semiring >::value, void
-		>::type * const = nullptr
-	) {
-		// static checks
-		static_assert( (std::is_same< typename Semiring::D3, InputType >::value),
-			"grb::foldr( reference, IOType <- [[IOType]], semiring ): "
-			"called with a prefactor input type that does not match the third domain of "
-			"the given semiring"
-		);
-		static_assert( (std::is_same< typename Semiring::D4, IOType >::value),
-			"grb::foldr( reference, IOType <- [[IOType]], semiring ): "
-			"called with a postfactor input type that does not match the fourth domain "
-			"of the given semiring"
-		);
-		static_assert( (std::is_same< typename Semiring::D4, IOType >::value),
-			"grb::foldr( reference, IOType <- [[IOType]], semiring ): "
-			"called with an output type that does not match the fourth domain of the "
-			"given semiring"
-		);
-#ifdef _DEBUG
-		std::cout << "In grb::foldr( reference, matrix, semiring )\n";
-#endif
-		// check for trivial op
-		if( grb::nnz( A ) == 0 || grb::nrows( A ) == 0 || grb::ncols( A ) == 0 ) {
-			return RC::SUCCESS;
-		}
-
-		// otherwise, go ahead
-		if( descr & descriptors::add_identity ) {
-			return internal::fold_add_identity_unmasked_generic< descr, Semiring, false >(
-				x, A, semiring
-			);
-		}
-		return internal::fold_unmasked_generic<
-			descr & ~descriptors::add_identity,
-			typename Semiring::AdditiveMonoid,
-			false
-		>(
-			x, A, semiring.getAdditiveMonoid()
-		);
-
 	}
 
 	template<
@@ -1964,11 +1695,6 @@ namespace grb {
 			"grb::foldl( reference, IOType <- [[IOType]], monoid, masked ): "
 			"called with an output type that does not match the output domain of the "
 			"given monoid"
-		);
-		static_assert( !(descr & descriptors::add_identity),
-			"grb::foldl( reference, IOType <- [[IOType]], monoid, masked ): "
-			"the use of the add_identity descriptor requires a semiring, but a monoid "
-			"was given"
 		);
 		static_assert( !(
 				(descr & descriptors::invert_mask) &&
@@ -2007,80 +1733,6 @@ namespace grb {
 
 	template<
 		Descriptor descr = descriptors::no_operation,
-		class Semiring,
-		typename InputType, typename IOType, typename MaskType,
-		typename RIT_A, typename CIT_A, typename NIT_A,
-		typename RIT_M, typename CIT_M, typename NIT_M
-	>
-	RC foldl(
-		IOType &x,
-		const Matrix< InputType, reference, RIT_A, CIT_A, NIT_A > &A,
-		const Matrix< MaskType, reference, RIT_M, CIT_M, NIT_M > &mask,
-		const Semiring &semiring = Semiring(),
-		const typename std::enable_if<
-			!grb::is_object< IOType >::value &&
-			!grb::is_object< InputType >::value &&
-			!grb::is_object< MaskType >::value &&
-			grb::is_semiring< Semiring >::value, void
-		>::type * const = nullptr
-	) {
-		// static checks
-		static_assert( (std::is_same< typename Semiring::D4, IOType >::value),
-			"grb::foldl( reference, IOType <- [[IOType]], semiring, masked ): "
-			"called with a prefactor input type that does not match the fourth domain "
-			"of the given semiring"
-		);
-		static_assert( (std::is_same< typename Semiring::D4, InputType >::value),
-			"grb::foldl( reference, IOType <- [[IOType]], semiring, masked ): "
-			"called with a postfactor input type that does not match the fourth domain "
-			"of the given semiring"
-		);
-		static_assert( (std::is_same< typename Semiring::D3, IOType >::value),
-			"grb::foldl( reference, IOType <- [[IOType]], semiring, masked ): "
-			"called with an output type that does not match the third domain of the "
-			"given semiring"
-		);
-		static_assert( !(
-				(descr & descriptors::invert_mask) &&
-				(descr & descriptors::structural)
-			), "grb::foldl( reference, IOType <- [[IOType]], semiring, masked ): "
-			"may not select an inverted structural mask for matrices"
-		);
-#ifdef _DEBUG
-		std::cout << "In grb::foldl( reference, mask, matrix, semiring )\n";
-#endif
-		// first check whether we can dispatch
-		if( grb::nrows( mask ) == 0 && grb::ncols( mask ) == 0 ) {
-			return foldl< descr >( x, A, semiring );
-		}
-
-		// dynamic checks
-		if( grb::nrows( A ) != grb::nrows( mask ) ||
-			grb::ncols( A ) != grb::ncols( mask )
-		) {
-			return RC::MISMATCH;
-		}
-
-		// check for trivial op
-		if( grb::nnz( A ) == 0 || grb::nnz( mask ) == 0 ||
-			grb::nrows( A ) == 0 || grb::ncols( A ) == 0
-		) {
-			return RC::SUCCESS;
-		}
-
-		// do fold
-		const auto one = semiring.template getOne< InputType >();
-		return internal::fold_masked_generic<
-			descr,
-			typename Semiring::AdditiveMonoid,
-			true
-		>(
-			x, A, mask, semiring.getAdditiveMonoid(), &one
-		);
-	}
-
-	template<
-		Descriptor descr = descriptors::no_operation,
 		class Monoid,
 		typename InputType, typename IOType,
 		typename RIT, typename CIT, typename NIT
@@ -2120,11 +1772,6 @@ namespace grb {
 			"called with an output type that does not match the output domain of the "
 			"given monoid"
 		);
-		static_assert( !(descr & descriptors::add_identity),
-			"grb::foldl( reference, IOType <- [[IOType]], monoid ): "
-			"the use of the add_identity descriptor requires a semiring, but a monoid "
-			"was given"
-		);
 #ifdef _DEBUG
 		std::cout << "In grb::foldl( reference, matrix, monoid )\n";
 #endif
@@ -2137,62 +1784,6 @@ namespace grb {
 		return internal::fold_unmasked_generic< descr, Monoid, true >(
 			x, A, monoid
 		);
-	}
-
-	template<
-		Descriptor descr = descriptors::no_operation,
-		class Semiring,
-		typename InputType, typename IOType,
-		typename RIT, typename CIT, typename NIT
-	>
-	RC foldl(
-		IOType &x,
-		const Matrix< InputType, reference, RIT, CIT, NIT > &A,
-		const Semiring &semiring = Semiring(),
-		const typename std::enable_if<
-			!grb::is_object< IOType >::value &&
-			!grb::is_object< InputType >::value &&
-			grb::is_semiring< Semiring >::value, void
-		>::type * const = nullptr
-	) {
-		// static checks
-		static_assert( (std::is_same< typename Semiring::D3, IOType >::value),
-			"grb::foldl( reference, IOType <- [[IOType]], semiring ): "
-			"called with a prefactor input type that does not match the third domain of "
-			"the given semiring"
-		);
-		static_assert( (std::is_same< typename Semiring::D4, InputType >::value),
-			"grb::foldl( reference, IOType <- [[IOType]], semiring ): "
-			"called with a postfactor input type that does not match the fourth domain "
-			"of the given semiring"
-		);
-		static_assert( (std::is_same< typename Semiring::D4, IOType >::value),
-			"grb::foldl( reference, IOType <- [[IOType]], semiring ): "
-			"called with an output type that does not match the fourth domain of the "
-			"given semiring"
-		);
-#ifdef _DEBUG
-		std::cout << "In grb::foldl( reference, matrix, semiring )\n";
-#endif
-		// check for trivial op
-		if( grb::nnz( A ) == 0 || grb::nrows( A ) == 0 || grb::ncols( A ) == 0 ) {
-			return RC::SUCCESS;
-		}
-
-		// do folding
-		if( descr & descriptors::add_identity ) {
-			return internal::fold_add_identity_unmasked_generic< descr, Semiring, true >(
-				x, A, semiring
-			);
-		} else {
-			return internal::fold_unmasked_generic<
-				descr & ~descriptors::add_identity,
-				typename Semiring::AdditiveMonoid,
-				false
-			>(
-				x, A, semiring.getAdditiveMonoid()
-			);
-		}
 	}
 
 } // namespace grb
