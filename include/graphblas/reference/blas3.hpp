@@ -81,7 +81,12 @@ namespace grb {
 			const std::function< size_t( size_t ) > &col_l2g,
 			const Phase &phase
 		) {
-			const Tin identity = Tin();
+			typedef typename std::conditional<
+				std::is_void< Tin >::value,
+				bool,
+				Tin
+			>::type InValuesType;
+			const InValuesType identity = InValuesType();
 
 			constexpr bool crs_only = descr & descriptors::force_row_major;
 			constexpr bool transpose_input = descr & descriptors::transpose_matrix;
@@ -145,7 +150,7 @@ namespace grb {
 			if( !crs_only ) {
 				// Allocate the column counter array
 				char *arr = nullptr, *buf = nullptr;
-				Tin *valbuf = nullptr;
+				InValuesType *valbuf = nullptr;
 				internal::getMatrixBuffers( arr, buf, valbuf, 1, out );
 				col_counter = internal::getReferenceBuffer< config::NonzeroIndexType >( n + 1 );
 
@@ -1506,7 +1511,7 @@ namespace grb {
 #endif
 
 		static_assert(
-			(std::is_void<Tin>::value && std::is_void<Tout>::value)
+			( std::is_void<Tin>::value && std::is_void<Tout>::value )
 			|| std::is_same<Tin, Tout>::value,
 			"grb::select (reference): "
 			"input and output matrix types must match"

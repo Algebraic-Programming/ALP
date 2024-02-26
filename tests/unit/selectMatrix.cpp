@@ -33,7 +33,9 @@ namespace {
 
 	template< bool enabled, typename D >
 	void printSparseMatrix(
-		const Matrix<D> &mat, const std::string &name = "", std::ostream &os = std::cerr
+		const Matrix<D> &mat,
+		const std::string &name = "",
+		std::ostream &os = std::cerr
 	) {
 		if( !enabled ) return;
 		wait( mat );
@@ -45,9 +47,15 @@ namespace {
 template< typename D >
 std::tuple< const size_t, const size_t, D > getMatrixEntry(
 	const std::pair< const std::pair<size_t, size_t >, D > &entry,
-	const typename std::enable_if< !std::is_void< D >::value >::type * = nullptr
+	const typename std::enable_if<
+		!std::is_void< D >::value
+	>::type * = nullptr
 ) {
-	return std::make_tuple( entry.first.first, entry.first.second, entry.second );
+	return std::make_tuple(
+		entry.first.first,
+		entry.first.second,
+		entry.second
+	);
 }
 
 template< typename D >
@@ -55,11 +63,18 @@ std::tuple< const size_t, const size_t, bool > getMatrixEntry(
 	const std::pair< const size_t, const size_t > &entry,
 	const typename std::enable_if< std::is_void< D >::value >::type * = nullptr
 ) {
-	return std::make_tuple( entry.first, entry.second, true );
+	return std::make_tuple(
+		entry.first,
+		entry.second,
+		true
+	);
 }
 
 template<
-	typename D, typename Func, typename RIT, typename CIT, Backend implementation
+	typename D,
+	typename Func,
+	typename RIT, typename CIT,
+	Backend implementation
 >
 bool matrix_validate_predicate(
 	const Matrix< D, implementation, RIT, CIT > &B,
@@ -86,7 +101,8 @@ bool matrix_validate_predicate(
 		}
 	}
 	if(
-		collectives<>::allreduce( valid, operators::logical_and< bool >() ) != SUCCESS
+		collectives<>::allreduce( valid, operators::logical_and< bool >() )
+		!= SUCCESS
 	) {
 		return false;
 	}
@@ -95,7 +111,10 @@ bool matrix_validate_predicate(
 }
 
 template<
-	typename D, typename SelectionOperator, typename RIT, typename CIT, Backend implementation
+	typename D,
+	typename SelectionOperator,
+	typename RIT, typename CIT,
+	Backend implementation
 >
 RC test_case(
 	const Matrix< D, implementation, RIT, CIT > &input,
@@ -111,15 +130,17 @@ RC test_case(
 
 		RC rc = select( output, input, op, RESIZE );
 		if( rc != SUCCESS ) {
-			std::cerr << "(non-lambda variant): RESIZE phase of test <" << test_name <<
-				"> failed, rc is \"" << toString(rc) << "\"" << std::endl;
+			std::cerr << "(non-lambda variant): RESIZE phase of test <"
+				<< test_name << "> failed, rc is \""
+				<< toString(rc) << "\"" << std::endl;
 			return rc;
 		}
 
 		rc = select( output, input, op, EXECUTE );
 		if( rc != SUCCESS ) {
-			std::cerr << "(non-lambda variant): EXECUTE phase of test <" << test_name <<
-				"> failed, rc is \"" << toString(rc) << "\"" << std::endl;
+			std::cerr << "(non-lambda variant): EXECUTE phase of test <"
+				<< test_name << "> failed, rc is \""
+				<< toString(rc) << "\"" << std::endl;
 			return rc;
 		}
 
@@ -128,7 +149,8 @@ RC test_case(
 		const bool valid = matrix_validate_predicate( output, op );
 		if( !valid ) {
 			std::cerr << "(non-lambda variant): Test <"
-				<< test_name << "> failed, output matrix is invalid" << std::endl;
+				<< test_name << "> failed, output matrix is invalid"
+				<< std::endl;
 			return FAILED;
 		}
 	}
@@ -144,15 +166,17 @@ RC test_case(
 
 		RC rc = selectLambda( output, input, lambda, RESIZE );
 		if( rc != SUCCESS ) {
-			std::cerr << "(lambda variant): RESIZE phase of test <" << test_name <<
-				"> failed, rc is \"" << toString(rc) << "\"" << std::endl;
+			std::cerr << "(lambda variant): RESIZE phase of test <"
+				<< test_name << "> failed, rc is \""
+				<< toString(rc) << "\"" << std::endl;
 			return rc;
 		}
 
 		rc = selectLambda( output, input, lambda, EXECUTE );
 		if( rc != SUCCESS ) {
-			std::cerr << "(lambda variant): EXECUTE phase of test <" << test_name <<
-				"> failed, rc is \"" << toString(rc) << "\"" << std::endl;
+			std::cerr << "(lambda variant): EXECUTE phase of test <"
+				<< test_name << "> failed, rc is \""
+				<< toString(rc) << "\"" << std::endl;
 			return rc;
 		}
 
@@ -171,7 +195,9 @@ RC test_case(
 }
 
 template<
-	typename D, typename RIT, typename CIT, typename NIT, Backend implementation
+	typename D,
+	typename RIT, typename CIT, typename NIT,
+	Backend implementation
 >
 RC buildMatrixUniqueWrapper(
 	Matrix< D, implementation, RIT, CIT, NIT > &mat,
@@ -179,14 +205,19 @@ RC buildMatrixUniqueWrapper(
 	const size_t * col_indices,
 	const size_t nvals,
 	const IOMode io_mode,
-	const typename std::enable_if< !std::is_void<D>::value >::type * const = nullptr
+	const typename std::enable_if<
+		!std::is_void<D>::value
+	>::type * const = nullptr
 ) {
 	std::vector< D > values( nvals, 1 );
-	return buildMatrixUnique( mat, row_indices, col_indices, values.data(), nvals, io_mode );
+	return buildMatrixUnique( mat, row_indices,
+		col_indices, values.data(), nvals, io_mode );
 }
 
 template<
-	typename D, typename RIT, typename CIT, typename NIT, Backend implementation
+	typename D,
+	typename RIT, typename CIT, typename NIT,
+	Backend implementation
 >
 RC buildMatrixUniqueWrapper(
 	Matrix< D, implementation, RIT, CIT, NIT > &mat,
@@ -194,15 +225,20 @@ RC buildMatrixUniqueWrapper(
 	const size_t * col_indices,
 	const size_t nvals,
 	const IOMode io_mode,
-	const typename std::enable_if< std::is_void<D>::value >::type * const = nullptr
+	const typename std::enable_if<
+		std::is_void<D>::value
+	>::type * const = nullptr
 ) {
-	return buildMatrixUnique( mat, row_indices, col_indices, nvals, io_mode );
+	return buildMatrixUnique( mat, row_indices,
+		col_indices, nvals, io_mode );
 }
 
 
 template< typename D >
 void grb_program( const size_t &n, RC &rc ) {
-	const std::string D_name = std::is_void< D >::value ? "void" : "non-void";
+	const std::string D_name = std::is_void< D >::value
+		? "void"
+		: "non-void";
 	rc = SUCCESS;
 
 	Matrix< D >
@@ -223,28 +259,32 @@ void grb_program( const size_t &n, RC &rc ) {
 		rc = rc
 			? rc
 			: buildMatrixUniqueWrapper(
-				I, iota_indices.data(), iota_indices.data(), n, SEQUENTIAL
+				I, iota_indices.data(),
+				iota_indices.data(), n, SEQUENTIAL
 			);
 		printSparseMatrix< Debug >( I, "identity" );
 
 		rc = rc
 			? rc
 			: buildMatrixUniqueWrapper(
-				I_transposed, iota_indices.data(), reverse_iota_indices.data(), n, SEQUENTIAL
+				I_transposed, iota_indices.data(),
+				reverse_iota_indices.data(), n, SEQUENTIAL
 			);
 		printSparseMatrix< Debug >( I_transposed, "transposed-identity" );
 
 		rc = rc
 			? rc
 			: buildMatrixUniqueWrapper(
-				One_row, const_indices_zero.data(), iota_indices.data(), n, SEQUENTIAL
+				One_row, const_indices_zero.data(),
+				iota_indices.data(), n, SEQUENTIAL
 			);
 		printSparseMatrix< Debug >( One_row, "one-row" );
 
 		rc = rc
 			? rc
 			: buildMatrixUniqueWrapper(
-				One_col, iota_indices.data(), const_indices_zero.data(), n, SEQUENTIAL
+				One_col, iota_indices.data(),
+				const_indices_zero.data(), n, SEQUENTIAL
 			);
 		printSparseMatrix< Debug >( One_col, "one-column" );
 	}
