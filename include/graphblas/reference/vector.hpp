@@ -1274,7 +1274,7 @@ namespace grb {
 
 			template< typename D, typename C >
 			inline C & getCoordinates( Vector< D, reference, C > &x ) noexcept {
-#ifdef _H_GRB_REFERENCE_OMP_VECTOR
+#if defined(_H_GRB_REFERENCE_OMP_VECTOR) && !defined(NDEBUG)
 				if( x._coordinates.requiredThreadsForUpdate() != config::OMP::maxThreads() ) {
 					#pragma omp critical
 						std::cerr << "   " << x._coordinates.requiredThreadsForUpdate()
