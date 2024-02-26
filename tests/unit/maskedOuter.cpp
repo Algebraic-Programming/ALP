@@ -345,7 +345,7 @@ int main( int argc, char ** argv ) {
 	if( error != 0 ) {
 		std::cerr << std::flush;
 		std::cout << "Test 1 FAILED\n" << std::endl;
-		return 0;
+		return error;
 	}
 
 	if( launcher.exec( &grb_program_custom_size, n, error ) != SUCCESS ) {
