@@ -2036,7 +2036,7 @@ namespace grb {
 	>
 	RC set(
 		Matrix< OutputType, reference, RIT1, CIT1, NIT1 > &C,
-		const Matrix< MaskType, reference, RIT2, CIT2, NIT2 > &Mask,
+		const Matrix< MaskType, reference, RIT2, CIT2, NIT2 > &M,
 		const Matrix< InputType, reference, RIT2, CIT2, NIT2 > &A,
 		const Phase &phase = EXECUTE
 	) noexcept {
@@ -2068,8 +2068,8 @@ namespace grb {
 		const size_t nrows = grb::nrows( C );
 		const size_t ncols = grb::ncols( C );
 
-		const size_t m = grb::nrows( Mask );
-		const size_t n = grb::ncols( Mask );
+		const size_t m = grb::nrows( M );
+		const size_t n = grb::ncols( M );
 
 		/*grb::Monoid<
 			grb::operators::left_assign< OutputType >,
@@ -2089,7 +2089,7 @@ namespace grb {
 			return MISMATCH;
 		}
 
-		const auto &mask_raw = internal::getCRS( Mask );
+		const auto &mask_raw = internal::getCRS( M );
 
 		const auto &A_raw = internal::getCRS( A );
 
@@ -2098,7 +2098,7 @@ namespace grb {
 		char * mask_arr = nullptr;
 		char * mask_buf = nullptr;
 		OutputType * mask_valbuf = nullptr;
-		internal::getMatrixBuffers( mask_arr, mask_buf, mask_valbuf, 1, Mask );
+		internal::getMatrixBuffers( mask_arr, mask_buf, mask_valbuf, 1, M );
 
 		internal::Coordinates< reference > mask_coors;
 		mask_coors.set( mask_arr, false, mask_buf, ncols );
@@ -2185,8 +2185,6 @@ namespace grb {
 		}
 
 
-		const size_t old_nzc = nzc;
-
 		// use previously computed CCS offset array to update CCS during the
 		// computational phase
 		nzc = 0;
@@ -2216,7 +2214,6 @@ namespace grb {
 			assert( CCS_raw.col_start[ j + 1 ] - CCS_raw.col_start[ j ] ==
 				C_col_index[ j ] );
 		}
-		assert( old_nzc == nzc );
 
 		internal::setCurrentNonzeroes( C, nzc );
 
