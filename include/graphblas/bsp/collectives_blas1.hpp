@@ -37,13 +37,18 @@
 
 #include "internal-collectives.hpp"
 
-/** The difference between pid and root, modulus P - circumvents weird modulus behaviour under -ve numbers */
-#define DIFF( pid, root, P ) ( ( pid < root ) ? pid + P - root : pid - root ) % P
+/**
+ * The difference between pid and root, modulus P - circumvents weird modulus
+ * behaviour under -ve numbers
+ */
+#define DIFF( pid, root, P ) ( (pid < root) ? pid + P - root : pid - root ) % P
+
 
 namespace grb {
 
 	/**
-	 * Collective communications using the GraphBLAS operators for reduce-style operations.
+	 * Collective communications using the GraphBLAS operators for reduce-style
+	 * operations.
 	 */
 	namespace internal {
 
@@ -57,8 +62,9 @@ namespace grb {
 		 *                  Default is grb::descriptors::no_operation.
 		 * @tparam IOType   The type of the to-be gathered value.
 		 *
-		 * @param[in]  in:  The value at the calling process to be gathered.
-		 * @param[out] out: The vector of gathered values, available at the root process.
+		 * @param[in]  in  The value at the calling process to be gathered.
+		 * @param[out] out The vector of gathered values, available at the root
+		 *                 process.
 		 *
 		 * @returns grb::SUCCESS When the operation succeeds as planned.
 		 * @returns grb::PANIC   When the communication layer unexpectedly fails. When
@@ -74,22 +80,25 @@ namespace grb {
 		 * \endparblock
 		 *
 		 */
-		template< Descriptor descr = descriptors::no_operation,
+		template<
+			Descriptor descr = descriptors::no_operation,
 			typename IOType
 #ifndef BLAS1_RAW
 			,
 			typename Coords
 #endif
-			>
-		RC gather( const IOType & in,
+		>
+		RC gather(
+			const IOType &in,
 #ifdef BLAS1_RAW
 			IOType * out,
 #else
-			Vector< IOType, reference, Coords > & out,
+			Vector< IOType, reference, Coords > &out,
 #endif
-			const lpf_pid_t root ) {
+			const lpf_pid_t root
+		) {
 			// we need access to BSP context
-			internal::BSP1D_Data & data = internal::grb_BSP1D.load();
+			internal::BSP1D_Data &data = internal::grb_BSP1D.load();
 
 			// run-time sanity check
 #ifndef BLAS1_RAW
@@ -121,9 +130,15 @@ namespace grb {
 			lpf_memslot_t slot = LPF_INVALID_MEMSLOT;
 			RC ret = SUCCESS;
 #ifndef BLAS1_RAW
-			if( lpf_register_global( data.context, internal::getRaw( out ), data.P * sizeof( IOType ), &slot ) != LPF_SUCCESS ) {
+			if( lpf_register_global(
+					data.context, internal::getRaw( out ), data.P * sizeof( IOType ), &slot
+				) != LPF_SUCCESS
+			) {
 #else
-			if( lpf_register_global( data.context, out, data.P * sizeof( IOType ), &slot ) != LPF_SUCCESS ) {
+			if( lpf_register_global(
+					data.context, out, data.P * sizeof( IOType ), &slot
+				) != LPF_SUCCESS
+			) {
 #endif
 				// failure at this point will have to be cleaned up as best as possible
 				ret = PANIC;
@@ -134,26 +149,42 @@ namespace grb {
 			}
 
 			// gather values
-			if( ret == SUCCESS && lpf_gather( coll, slot, slot, sizeof( IOType ), root ) != LPF_SUCCESS ) {
+			if( ret == SUCCESS &&
+					lpf_gather( coll, slot, slot, sizeof( IOType ), root )
+				!= LPF_SUCCESS
+			) {
 				// failure at this point will have to be cleaned up as best as possible
 				ret = PANIC;
 			}
 
 			// perform communication
-			if( ret == SUCCESS && lpf_sync( data.context, LPF_SYNC_DEFAULT ) != LPF_SUCCESS ) {
+			if( ret == SUCCESS &&
+					lpf_sync( data.context, LPF_SYNC_DEFAULT )
+				!= LPF_SUCCESS
+			) {
 				// failure at this point will have to be cleaned up as best as possible
 				ret = PANIC;
 			}
 
 #ifndef BLAS1_RAW
 			// make sure sparsity info is correct
-			for( size_t i = 0; data.s == root && ret == SUCCESS && internal::getCoordinates( out ).size() != internal::getCoordinates( out ).nonzeroes() && i < data.P; ++i ) {
-				(void)internal::getCoordinates( out ).assign( i );
+			for(
+				size_t i = 0;
+				data.s == root &&
+					ret == SUCCESS &&
+					internal::getCoordinates( out ).size() != internal::getCoordinates( out ).nonzeroes()
+					&& i < data.P;
+				++i
+			) {
+				(void) internal::getCoordinates( out ).assign( i );
 			}
 #endif
 
 			// deregister slot
-			if( slot != LPF_INVALID_MEMSLOT && lpf_deregister( data.context, slot ) != LPF_SUCCESS ) {
+			if( slot != LPF_INVALID_MEMSLOT &&
+					lpf_deregister( data.context, slot )
+				!= LPF_SUCCESS
+			) {
 				// error during cleanup of memslot
 				ret = PANIC;
 			}
@@ -168,8 +199,8 @@ namespace grb {
 		}
 
 		/**
-		 * Schedules a gather operation of a vector of \a N/P elements of type IOType per process
-		 * to a vector of \f$ N \f$ elements.
+		 * Schedules a gather operation of a vector of \a N/P elements of type IOType
+		 * per process to a vector of \f$ N \f$ elements.
 		 * The gather shall be complete by the end of the call. This is a collective
 		 * graphBLAS operation. The BSP costs are as for the LPF #gather.
 		 *
@@ -194,25 +225,27 @@ namespace grb {
 		 * \endparblock
 		 *
 		 */
-		template< Descriptor descr = descriptors::no_operation,
+		template<
+			Descriptor descr = descriptors::no_operation,
 			typename IOType
 #ifndef BLAS1_RAW
 			,
 			typename Coords
 #endif
-			>
+		>
 		RC gather(
 #ifdef BLAS1_RAW
 			const IOType * in,
 			const size_t size,
 			IOType * out,
 #else
-			const Vector< IOType, reference, Coords > & in,
-			Vector< IOType, reference, Coords > & out,
+			const Vector< IOType, reference, Coords > &in,
+			Vector< IOType, reference, Coords > &out,
 #endif
-			const lpf_pid_t root ) {
+			const lpf_pid_t root
+		) {
 			// we need access to BSP context
-			internal::BSP1D_Data & data = internal::grb_BSP1D.load();
+			internal::BSP1D_Data &data = internal::grb_BSP1D.load();
 
 			// make sure we can support comms pattern: Vector IOType -> P * Vector IOType
 #ifndef BLAS1_RAW
@@ -229,9 +262,15 @@ namespace grb {
 			lpf_memslot_t slot = LPF_INVALID_MEMSLOT;
 			RC ret = SUCCESS;
 #ifndef BLAS1_RAW
-			if( lpf_register_global( data.context, internal::getRaw( out ), size * data.P * sizeof( IOType ), &slot ) != LPF_SUCCESS ) {
+			if( lpf_register_global( data.context, internal::getRaw( out ),
+					size * data.P * sizeof( IOType ), &slot )
+				!= LPF_SUCCESS
+			) {
 #else
-			if( lpf_register_global( data.context, out, size * data.P * sizeof( IOType ), &slot ) != LPF_SUCCESS ) {
+			if( lpf_register_global( data.context, out, size * data.P * sizeof( IOType ),
+					&slot )
+				!= LPF_SUCCESS
+			) {
 #endif
 				// failure at this point will have to be cleaned up as best as possible
 				ret = PANIC;
@@ -240,38 +279,68 @@ namespace grb {
 			// copy input to buffer
 			const size_t pos = ( data.s == root ) ? data.s : 0;
 #ifdef BLAS1_RAW
-			for( size_t i = 0; ret == SUCCESS && ( out + pos * size ) != in && i < size; i++ ) {
+			for(
+				size_t i = 0;
+				ret == SUCCESS && ( out + pos * size ) != in && i < size;
+				i++
+			) {
 				out[ pos * size + i ] = in[ i ];
 			}
 #else
-			for( size_t i = 0; ret == SUCCESS && ( internal::getRaw( out ) + pos * size ) != internal::getRaw( in ) && i < size; i++ ) {
+			for(
+				size_t i = 0;
+				ret == SUCCESS &&
+					(internal::getRaw( out ) + pos * size) != internal::getRaw( in ) &&
+					i < size;
+				i++
+			) {
 				internal::getRaw( out )[ pos * size + i ] = internal::getRaw( in )[ i ];
 			}
 #endif
 			// activate registrations
-			if( ret == SUCCESS && lpf_sync( data.context, LPF_SYNC_DEFAULT ) != LPF_SUCCESS ) {
+			if( ret == SUCCESS &&
+					lpf_sync( data.context, LPF_SYNC_DEFAULT )
+				!= LPF_SUCCESS
+			) {
 				ret = PANIC;
 			}
 
 			// gather values
-			if( ret == SUCCESS && lpf_gather( coll, slot, slot, size * sizeof( IOType ), root ) != LPF_SUCCESS ) {
+			if( ret == SUCCESS &&
+					lpf_gather( coll, slot, slot, size * sizeof( IOType ), root )
+				!= LPF_SUCCESS
+			) {
 				ret = PANIC;
 			}
 
 			// complete requested communication
-			if( ret == SUCCESS && lpf_sync( data.context, LPF_SYNC_DEFAULT ) != LPF_SUCCESS ) {
+			if( ret == SUCCESS &&
+					lpf_sync( data.context, LPF_SYNC_DEFAULT )
+				!= LPF_SUCCESS
+			) {
 				ret = PANIC;
 			}
 
 #ifndef BLAS1_RAW
 			// set sparsity of output
-			for( size_t i = 0; data.s == root && ret == SUCCESS && internal::getCoordinates( out ).size() != internal::getCoordinates( out ).nonzeroes() && i < data.P * size; ++i ) {
-				(void)internal::getCoordinates( out ).assign( i );
+			for(
+				size_t i = 0;
+				data.s == root &&
+					ret == SUCCESS &&
+					internal::getCoordinates( out ).size() !=
+						internal::getCoordinates( out ).nonzeroes() &&
+					i < data.P * size;
+				++i
+			) {
+				(void) internal::getCoordinates( out ).assign( i );
 			}
 #endif
 
 			// destroy memory slot
-			if( slot != LPF_INVALID_MEMSLOT && lpf_deregister( data.context, slot ) != LPF_SUCCESS ) {
+			if( slot != LPF_INVALID_MEMSLOT &&
+					lpf_deregister( data.context, slot ) !=
+				LPF_SUCCESS
+			) {
 				ret = PANIC;
 			}
 
@@ -294,8 +363,10 @@ namespace grb {
 		 *                  Default is grb::descriptors::no_operation.
 		 * @tparam IOType   The type of the to-be scattered value.
 		 *
-		 * @param[in]  in:  The vector of \a P elements at the root process to be scattered.
-		 * @param[out] out: The scattered value of the root process \f$ vector[i] \f$ at process \a i.
+		 * @param[in]  in  The vector of \a P elements at the root process to be
+		 *                 scattered.
+		 * @param[out] out The scattered value of the root process \f$ vector[i] \f$
+		 *                 at process \a i.
 		 *
 		 * @returns grb::SUCCESS When the operation succeeds as planned.
 		 * @returns grb::PANIC   When the communication layer unexpectedly fails. When
@@ -311,23 +382,25 @@ namespace grb {
 		 * \endparblock
 		 *
 		 */
-		template< Descriptor descr = descriptors::no_operation,
+		template<
+			Descriptor descr = descriptors::no_operation,
 			typename IOType
 #ifndef BLAS1_RAW
 			,
 			typename Coords
 #endif
-			>
+		>
 		RC scatter(
 #ifdef BLAS1_RAW
 			const IOType * in,
 #else
-			const Vector< IOType, reference, Coords > & in,
+			const Vector< IOType, reference, Coords > &in,
 #endif
-			IOType & out,
-			const lpf_pid_t root ) {
+			IOType &out,
+			const lpf_pid_t root
+		) {
 			// we need access to BSP context
-			internal::BSP1D_Data & data = internal::grb_BSP1D.load();
+			internal::BSP1D_Data &data = internal::grb_BSP1D.load();
 
 			// make sure we can support comms pattern: P * IOType -> IOType
 #ifndef BLAS1_RAW
@@ -343,13 +416,27 @@ namespace grb {
 			lpf_memslot_t src, dest;
 			src = dest = LPF_INVALID_MEMSLOT;
 			RC ret = SUCCESS;
-			if( lpf_register_global( data.context, &out, sizeof( IOType ), &dest ) != LPF_SUCCESS ) {
+			if( lpf_register_global( data.context, &out, sizeof( IOType ), &dest )
+				!= LPF_SUCCESS
+			) {
 				ret = PANIC;
 			}
 #ifndef BLAS1_RAW
-			if( ret == SUCCESS && lpf_register_global( data.context, const_cast< IOType * >( internal::getRaw( in ) ), data.P * sizeof( IOType ), &src ) != LPF_SUCCESS ) {
+			if( ret == SUCCESS && lpf_register_global(
+					data.context,
+					const_cast< IOType * >( internal::getRaw( in ) ),
+					data.P * sizeof( IOType ),
+					&src
+				) != LPF_SUCCESS
+			) {
 #else
-			if( ret == SUCCESS && lpf_register_global( data.context, const_cast< IOType * >( in ), data.P * sizeof( IOType ), &src ) != LPF_SUCCESS ) {
+			if( ret == SUCCESS && lpf_register_global(
+					data.context,
+					const_cast< IOType * >( in ),
+					data.P * sizeof( IOType ),
+					&src
+				) != LPF_SUCCESS
+			) {
 #endif
 				// failure at this point will have to be cleaned up as best as possible
 				ret = PANIC;
@@ -357,7 +444,9 @@ namespace grb {
 
 			// root copies output
 #ifndef BLAS1_RAW
-			if( ret == SUCCESS && data.s == root && &out != internal::getRaw( in ) + data.s ) {
+			if( ret == SUCCESS && data.s == root &&
+				&out != internal::getRaw( in ) + data.s
+			) {
 #else
 			if( ret == SUCCESS && data.s == root && &out != in + data.s ) {
 #endif
@@ -365,25 +454,35 @@ namespace grb {
 			}
 
 			// activate global regs
-			if( ret == SUCCESS && lpf_sync( data.context, LPF_SYNC_DEFAULT ) != LPF_SUCCESS ) {
+			if( ret == SUCCESS &&
+				lpf_sync( data.context, LPF_SYNC_DEFAULT ) != LPF_SUCCESS
+			) {
 				ret = PANIC;
 			}
 
 			// scatter values
-			if( ret == SUCCESS && lpf_scatter( coll, src, dest, sizeof( IOType ), root ) != LPF_SUCCESS ) {
+			if( ret == SUCCESS &&
+				lpf_scatter( coll, src, dest, sizeof( IOType ), root ) != LPF_SUCCESS
+			) {
 				ret = PANIC;
 			}
 
 			// wait for completion of requested collective
-			if( ret == SUCCESS && lpf_sync( data.context, LPF_SYNC_DEFAULT ) != LPF_SUCCESS ) {
+			if( ret == SUCCESS &&
+				lpf_sync( data.context, LPF_SYNC_DEFAULT ) != LPF_SUCCESS
+			) {
 				ret = PANIC;
 			}
 
 			// destroy memory slots
-			if( src != LPF_INVALID_MEMSLOT && lpf_deregister( data.context, src ) != LPF_SUCCESS ) {
+			if( src != LPF_INVALID_MEMSLOT &&
+				lpf_deregister( data.context, src ) != LPF_SUCCESS
+			) {
 				ret = PANIC;
 			}
-			if( dest != LPF_INVALID_MEMSLOT && lpf_deregister( data.context, dest ) != LPF_SUCCESS ) {
+			if( dest != LPF_INVALID_MEMSLOT &&
+				lpf_deregister( data.context, dest ) != LPF_SUCCESS
+			) {
 				ret = PANIC;
 			}
 
@@ -398,17 +497,20 @@ namespace grb {
 
 		/**
 		 * Schedules a scatter operation of a vector of \a N elements of type IOType
-		 * to a vector of \f$ N/P elements \f$ per process. It is assumed that \a N is a multiple of \a P.
-		 * The gather shall be complete by the end of the call. This is a collective
-		 * graphBLAS operation. The BSP costs are as for the LPF #gather.
+		 * to a vector of \f$ N/P elements \f$ per process. It is assumed that \a N is
+		 * a multiple of \a P. The gather shall be complete by the end of the call.
+		 * This is a collective graphBLAS operation. The BSP costs are as for the LPF
+		 * #gather.
 		 *
 		 * @tparam descr    The GraphBLAS descriptor.
 		 *                  Default is grb::descriptors::no_operation.
 		 * @tparam IOType   The type of the to-be scattered value.
 		 *
-		 * @param[in]  in:  The vector of N elements at the root process to be scattered.
-		 * @param[out] out: The scattered vector of the root process, such that process \a i
-		 *                  has \f$ N/P \f$ elements located at offset \f$ (N/P)*i \f$.
+		 * @param[in]  in  The vector of N elements at the root process to be
+		 *                 scattered.
+		 * @param[out] out The scattered vector of the root process, such that process
+		 *                 \a i has \f$ N/P \f$ elements located at offset
+		 *                 \f$ (N/P)*i \f$.
 		 *
 		 * @returns grb::SUCCESS When the operation succeeds as planned.
 		 * @returns grb::PANIC   When the communication layer unexpectedly fails. When
@@ -424,25 +526,27 @@ namespace grb {
 		 * \endparblock
 		 *
 		 */
-		template< Descriptor descr = descriptors::no_operation,
+		template<
+			Descriptor descr = descriptors::no_operation,
 			typename IOType
 #ifndef BLAS1_RAW
 			,
 			typename Coords
 #endif
-			>
+		>
 		RC scatter(
 #ifdef BLAS1_RAW
 			const IOType * in,
 			const size_t size,
 			IOType * out,
 #else
-			const Vector< IOType, reference, Coords > & in,
-			Vector< IOType, reference, Coords > & out,
+			const Vector< IOType, reference, Coords > &in,
+			Vector< IOType, reference, Coords > &out,
 #endif
-			const lpf_pid_t root ) {
+			const lpf_pid_t root
+		) {
 			// we need access to BSP context
-			internal::BSP1D_Data & data = internal::grb_BSP1D.load();
+			internal::BSP1D_Data &data = internal::grb_BSP1D.load();
 			const size_t procs = data.P;
 
 #ifndef BLAS1_RAW
@@ -538,10 +642,12 @@ namespace grb {
 		}
 
 		/**
-		 * Schedules an allgather operation of a single object of type IOType per process
-		 * to a vector of P elements.
-		 * The allgather shall be complete by the end of the call. This is a collective
-		 * graphBLAS operation. The BSP costs are as for the LPF #allgather.
+		 * Schedules an allgather operation of a single object of type IOType per
+		 * process to a vector of P elements.
+		 *
+		 * The allgather shall be complete by the end of the call. This is a
+		 * collective graphBLAS operation. The BSP costs are as for the LPF
+		 * #allgather.
 		 *
 		 * @tparam descr    The GraphBLAS descriptor.
 		 *                  Default is grb::descriptors::no_operation.
@@ -564,22 +670,24 @@ namespace grb {
 		 * \endparblock
 		 *
 		 */
-		template< Descriptor descr = descriptors::no_operation,
+		template<
+			Descriptor descr = descriptors::no_operation,
 			typename IOType
 #ifndef BLAS1_RAW
 			,
 			typename Coords
 #endif
-			>
-		RC allgather( IOType & in,
+		>
+		RC allgather(
+			IOType &in,
 #ifdef BLAS1_RAW
 			IOType * out
 #else
-			Vector< IOType, reference, Coords > & out
+			Vector< IOType, reference, Coords > &out
 #endif
 		) {
 			// we need access to BSP context
-			internal::BSP1D_Data & data = internal::grb_BSP1D.load();
+			internal::BSP1D_Data &data = internal::grb_BSP1D.load();
 
 			// make sure we can support comms pattern: IOType -> P * IOType
 #ifndef BLAS1_RAW
@@ -656,10 +764,12 @@ namespace grb {
 		}
 
 		/**
-		 * Schedules an allgather operation of a vector of \a N/P elements of type IOType per process
-		 * to a vector of \f$ N \f$ elements.
-		 * The allgather shall be complete by the end of the call. This is a collective
-		 * graphBLAS operation. The BSP costs are as for the LPF #allgather.
+		 * Schedules an allgather operation of a vector of \a N/P elements of type
+		 * IOType per process to a vector of \f$ N \f$ elements.
+		 *
+		 * The allgather shall be complete by the end of the call. This is a
+		 * collective graphBLAS operation. The BSP costs are as for the LPF
+		 * #allgather.
 		 *
 		 * @tparam descr    The GraphBLAS descriptor.
 		 *                  Default is grb::descriptors::no_operation.
@@ -682,25 +792,26 @@ namespace grb {
 		 * \endparblock
 		 *
 		 */
-		template< Descriptor descr = descriptors::no_operation,
+		template<
+			Descriptor descr = descriptors::no_operation,
 			typename IOType
 #ifndef BLAS1_RAW
 			,
 			typename Coords
 #endif
-			>
+		>
 		RC allgather(
 #ifdef BLAS1_RAW
 			const IOType * in,
 			const size_t size,
 			IOType * out
 #else
-			const Vector< IOType, reference, Coords > & in,
-			Vector< IOType, reference, Coords > & out
+			const Vector< IOType, reference, Coords > &in,
+			Vector< IOType, reference, Coords > &out
 #endif
 		) {
 			// we need access to BSP context
-			internal::BSP1D_Data & data = internal::grb_BSP1D.load();
+			internal::BSP1D_Data &data = internal::grb_BSP1D.load();
 
 			// make sure we can support comms pattern: IOType -> P * IOType
 #ifndef BLAS1_RAW
@@ -777,8 +888,9 @@ namespace grb {
 		}
 
 		/**
-		 * Schedules an alltoall operation of a vector of P elements of type IOType per process
-		 * to a vector of \a P elements.
+		 * Schedules an alltoall operation of a vector of P elements of type IOType
+		 * per process to a vector of \a P elements.
+		 *
 		 * The alltoall shall be complete by the end of the call. This is a collective
 		 * graphBLAS operation. The BSP costs are as for the LPF #alltoall.
 		 *
@@ -786,9 +898,10 @@ namespace grb {
 		 *                  Default is grb::descriptors::no_operation.
 		 * @tparam IOType   The type of the vector elements.
 		 *
-		 * @param[in]  in:  The vector of \a P elements at each process.
-		 * @param[out] out: The resulting vector of \a P elements, such that process \f$ i \f$ will
-		 *                  receive (in order) the element at \f$ vector[i] \f$ from each process.
+		 * @param[in]  in  The vector of \a P elements at each process.
+		 * @param[out] out The resulting vector of \a P elements, such that process
+		 *                 \f$ i \f$ will receive (in order) the element at
+		 *                 \f$ vector[i] \f$ from each process.
 		 *
 		 * @returns grb::SUCCESS When the operation succeeds as planned.
 		 * @returns grb::PANIC   When the communication layer unexpectedly fails. When
@@ -804,24 +917,25 @@ namespace grb {
 		 * \endparblock
 		 *
 		 */
-		template< Descriptor descr = descriptors::no_operation,
+		template<
+			Descriptor descr = descriptors::no_operation,
 			typename IOType
 #ifndef BLAS1_RAW
 			,
 			typename Coords
 #endif
-			>
+		>
 		RC alltoall(
 #ifdef BLAS1_RAW
 			IOType * in,
 			IOType * out
 #else
-			const Vector< IOType, reference, Coords > & in,
-			Vector< IOType, reference, Coords > & out
+			const Vector< IOType, reference, Coords > &in,
+			Vector< IOType, reference, Coords > &out
 #endif
 		) {
 			// we need access to BSP context
-			internal::BSP1D_Data & data = internal::grb_BSP1D.load();
+			internal::BSP1D_Data &data = internal::grb_BSP1D.load();
 #ifndef BLAS1_RAW
 			TEST_VEC_SIZE( in, data.P )
 			TEST_VEC_SIZE( out, data.P )
@@ -899,19 +1013,22 @@ namespace grb {
 		}
 
 		/**
-		 * Schedules an allcombine operation of a vector of \a N/P elements of type IOType per process
-		 * to a vector of \a N/P elements.
-		 * The allcombine shall be complete by the end of the call. This is a collective
-		 * graphBLAS operation. The BSP costs are as for the LPF #allcombine.
+		 * Schedules an allcombine operation of a vector of \a N/P elements of type
+		 * IOType per process to a vector of \a N/P elements.
+		 *
+		 * The allcombine shall be complete by the end of the call. This is a
+		 * collective graphBLAS operation. The BSP costs are as for the LPF
+		 * #allcombine.
 		 *
 		 * @tparam descr    The GraphBLAS descriptor.
 		 *                  Default is grb::descriptors::no_operation.
 		 * @tparam Operator Which operator to use for combining.
 		 * @tparam IOType   The type of the vector elements.
 		 *
-		 * @param[in,out]  inout: The vector of \a N/P elements at each process. At the end of
-		 *                        the call, each process shall hold the combined vectors.
-		 * @param[in]      op:    The associative operator to combine by.
+		 * @param[in,out]  inout The vector of \a N/P elements at each process. At
+		 *                       the end of the call, each process shall hold the
+		 *                       combined vectors.
+		 * @param[in]      op    The associative operator to combine by.
 		 *
 		 * @returns grb::SUCCESS When the operation succeeds as planned.
 		 * @returns grb::PANIC   When the communication layer unexpectedly fails. When
@@ -935,7 +1052,8 @@ namespace grb {
 		 * \endparblock
 		 *
 		 */
-		template< Descriptor descr = descriptors::no_operation,
+		template<
+			Descriptor descr = descriptors::no_operation,
 			typename Operator,
 			typename IOType
 #ifndef BLAS1_RAW
@@ -949,16 +1067,19 @@ namespace grb {
 #else
 			Vector< IOType, reference, Coords > &inout,
 #endif
-			const Operator op ) {
+			const Operator op
+		) {
 			// static sanity check
-			NO_CAST_ASSERT_BLAS1( ( ! ( descr & descriptors::no_casting ) || std::is_same< IOType, typename Operator::D1 >::value || std::is_same< IOType, typename Operator::D2 >::value ||
-									  std::is_same< IOType, typename Operator::D3 >::value ),
-				"grb::collectives::allcombine",
+			NO_CAST_ASSERT_BLAS1( ( !(descr & descriptors::no_casting) ||
+					std::is_same< IOType, typename Operator::D1 >::value ||
+					std::is_same< IOType, typename Operator::D2 >::value ||
+					std::is_same< IOType, typename Operator::D3 >::value
+				), "grb::collectives::allcombine",
 				"Incompatible given value type and operator domains while "
 				"no_casting descriptor was set" );
 
 			// we need access to BSP context
-			internal::BSP1D_Data & data = internal::grb_BSP1D.load();
+			internal::BSP1D_Data &data = internal::grb_BSP1D.load();
 #ifndef BLAS1_RAW
 			const size_t size = internal::getCoordinates( inout ).size();
 #endif
@@ -1113,8 +1234,9 @@ namespace grb {
 		}
 
 		/**
-		 * Schedules a combine operation of a vector of N/P elements of type IOType per process
-		 * to a vector of N elements.
+		 * Schedules a combine operation of a vector of N/P elements of type IOType
+		 * per process to a vector of N elements.
+		 *
 		 * The combine shall be complete by the end of the call. This is a collective
 		 * graphBLAS operation. The BSP costs are as for the LPF #combine.
 		 *
@@ -1123,10 +1245,11 @@ namespace grb {
 		 * @tparam Operator Which operator to use for combining.
 		 * @tparam IOType   The type of the vector elements.
 		 *
-		 * @param[in,out]  inout: The vector of \a N/P elements at each process. At the end of
-		 *                        the call, the root process shall hold the combined vectors.
-		 * @param[in]      op:    The associative operator to combine by.
-		 * @param[in]      root:  The root process.
+		 * @param[in,out]  inout The vector of \a N/P elements at each process. At
+		 *                       the end of the call, the root process shall hold the
+		 *                       combined vectors.
+		 * @param[in]      op    The associative operator to combine by.
+		 * @param[in]      root  The root process.
 		 *
 		 * @returns grb::SUCCESS When the operation succeeds as planned.
 		 * @returns grb::PANIC   When the communication layer unexpectedly fails. When
@@ -1158,32 +1281,37 @@ namespace grb {
 		 * \endparblock
 		 *
 		 */
-		template< Descriptor descr = descriptors::no_operation,
+		template<
+			Descriptor descr = descriptors::no_operation,
 			typename Operator,
 			typename IOType
 #ifndef BLAS1_RAW
 			,
 			typename Coords
 #endif
-			>
+		>
 		RC combine(
 #ifdef BLAS1_RAW
 			IOType * inout,
 			const size_t size,
 #else
-			Vector< IOType, reference, Coords > & inout,
+			Vector< IOType, reference, Coords > &inout,
 #endif
 			const Operator op,
-			const lpf_pid_t root ) {
+			const lpf_pid_t root
+		) {
 			// static sanity check
-			NO_CAST_ASSERT_BLAS1( ( ! ( descr & descriptors::no_casting ) || std::is_same< IOType, typename Operator::D1 >::value || std::is_same< IOType, typename Operator::D2 >::value ||
-									  std::is_same< IOType, typename Operator::D3 >::value ),
-				"grb::collectives::combine",
+			NO_CAST_ASSERT_BLAS1( ( !(descr & descriptors::no_casting) ||
+					std::is_same< IOType, typename Operator::D1 >::value ||
+					std::is_same< IOType, typename Operator::D2 >::value ||
+					std::is_same< IOType, typename Operator::D3 >::value
+				), "grb::collectives::combine",
 				"Incompatible given value type and operator domains while "
-				"no_casting descriptor was set" );
+				"no_casting descriptor was set"
+			);
 
 			// we need access to BSP context
-			internal::BSP1D_Data & data = internal::grb_BSP1D.load();
+			internal::BSP1D_Data &data = internal::grb_BSP1D.load();
 
 			// make sure we can support comms pattern: IOType -> P * IOType
 			lpf_coll_t coll;
@@ -1418,13 +1546,14 @@ namespace grb {
 		}
 
 		/**
-		 * Schedules a reduce operation of a vector of N/P elements of type IOType per process
-		 * to a single element.
+		 * Schedules a reduce operation of a vector of N/P elements of type IOType per
+		 * process to a single element.
+		 *
 		 * The reduce shall be complete by the end of the call. This is a collective
 		 * graphBLAS operation. The BSP costs are as for the LPF #reduce.
 		 *
-		 * Since this is a collective call, there are \a N/P values \a in at each process
-		 * Let these vectors be denoted by \f$ x_s \f$, with
+		 * Since this is a collective call, there are \a N/P values \a in at each
+		 * process. Let these vectors be denoted by \f$ x_s \f$, with
 		 * \f$ s \in \{ 0, 1, \ldots, P-1 \}, \f$ such that \f$ x_s \f$ equals the
 		 * argument \a in on input at the user process with ID \a s. Let
 		 * \f$ \pi:\ \{ 0, 1, \ldots, P-1 \} \to \{ 0, 1, \ldots, P-1 \} \f$ be a
@@ -1463,7 +1592,8 @@ namespace grb {
 		 * \endparblock
 		 *
 		 */
-		template< Descriptor descr = descriptors::no_operation,
+		template<
+			Descriptor descr = descriptors::no_operation,
 			typename Operator,
 			typename InputType,
 			typename IOType
@@ -1471,26 +1601,30 @@ namespace grb {
 			,
 			typename Coords
 #endif
-			>
+		>
 		RC reduce(
 #ifdef BLAS1_RAW
 			const InputType * in,
 			const size_t size,
 #else
-			const Vector< InputType, reference, Coords > & in,
+			const Vector< InputType, reference, Coords > &in,
 #endif
-			IOType & out,
+			IOType &out,
 			const Operator op,
-			const lpf_pid_t root ) {
+			const lpf_pid_t root
+		) {
 			// static sanity check
-			NO_CAST_ASSERT_BLAS1( ( ! ( descr & descriptors::no_casting ) || std::is_same< InputType, typename Operator::D1 >::value || std::is_same< IOType, typename Operator::D2 >::value ||
-									  std::is_same< IOType, typename Operator::D3 >::value ),
-				"grb::collectives::reduce",
+			NO_CAST_ASSERT_BLAS1( ( !(descr & descriptors::no_casting) ||
+					std::is_same< InputType, typename Operator::D1 >::value ||
+					std::is_same< IOType, typename Operator::D2 >::value ||
+					std::is_same< IOType, typename Operator::D3 >::value
+				), "grb::collectives::reduce",
 				"Incompatible given value type and operator domains while "
-				"no_casting descriptor was set" );
+				"no_casting descriptor was set"
+			);
 
 			// we need access to BSP context
-			internal::BSP1D_Data & data = internal::grb_BSP1D.load();
+			internal::BSP1D_Data &data = internal::grb_BSP1D.load();
 
 			// make sure we can support comms pattern: IOType -> P * IOType
 			lpf_coll_t coll;
@@ -1579,7 +1713,8 @@ namespace grb {
 		}
 
 		// reduce to the left
-		template< Descriptor descr = descriptors::no_operation,
+		template<
+			Descriptor descr = descriptors::no_operation,
 			typename Operator,
 			typename InputType,
 			typename IOType
@@ -1587,16 +1722,18 @@ namespace grb {
 			,
 			typename Coords
 #endif
-			>
-		RC reducel( IOType & out,
+		>
+		RC reducel(
+			IOType &out,
 #ifdef BLAS1_RAW
 			const InputType * in,
 			const size_t size,
 #else
-			const Vector< InputType, reference, Coords > & in,
+			const Vector< InputType, reference, Coords > &in,
 #endif
 			const Operator op,
-			const lpf_pid_t root ) {
+			const lpf_pid_t root
+		) {
 #ifdef BLAS1_RAW
 			return reduce( in, size, out, op, root );
 #else
@@ -1605,7 +1742,8 @@ namespace grb {
 		}
 
 		// reduce to the right
-		template< Descriptor descr = descriptors::no_operation,
+		template<
+			Descriptor descr = descriptors::no_operation,
 			typename Operator,
 			typename InputType,
 			typename IOType
@@ -1613,7 +1751,7 @@ namespace grb {
 			,
 			typename Coords
 #endif
-			>
+		>
 		RC reducer(
 #ifdef BLAS1_RAW
 			const InputType * in,
@@ -1621,9 +1759,10 @@ namespace grb {
 #else
 			const Vector< InputType, reference, Coords > & in,
 #endif
-			IOType & out,
+			IOType &out,
 			const Operator op,
-			const lpf_pid_t root ) {
+			const lpf_pid_t root
+		) {
 #ifdef BLAS1_RAW
 			return reduce( in, size, out, op, root );
 #else
@@ -1632,8 +1771,9 @@ namespace grb {
 		}
 
 		/**
-		 * Schedules an allreduce operation of a vector of N/P elements of type IOType per process
-		 * to a single element.
+		 * Schedules an allreduce operation of a vector of N/P elements of type IOType
+		 * per process to a single element.
+		 *
 		 * The allreduce shall be complete by the end of the call. This is a collective
 		 * graphBLAS operation. The BSP costs are as for the LPF #allreduce.
 		 *
@@ -1676,8 +1816,8 @@ namespace grb {
 		 * \endparblock
 		 *
 		 */
-
-		template< Descriptor descr = descriptors::no_operation,
+		template<
+			Descriptor descr = descriptors::no_operation,
 			typename Operator,
 			typename InputType,
 			typename IOType
@@ -1685,25 +1825,29 @@ namespace grb {
 			,
 			typename Coords
 #endif
-			>
+		>
 		RC allreduce(
 #ifdef BLAS1_RAW
 			const InputType * in,
 			const size_t size,
 #else
-			const Vector< InputType, reference, Coords > & in,
+			const Vector< InputType, reference, Coords > &in,
 #endif
-			IOType & out,
-			const Operator op ) {
+			IOType &out,
+			const Operator op
+		) {
 			// static sanity check
-			NO_CAST_ASSERT_BLAS1( ( ! ( descr & descriptors::no_casting ) || std::is_same< InputType, typename Operator::D1 >::value || std::is_same< IOType, typename Operator::D2 >::value ||
-									  std::is_same< IOType, typename Operator::D3 >::value ),
-				"grb::collectives::allreduce",
+			NO_CAST_ASSERT_BLAS1( ( !(descr & descriptors::no_casting) ||
+					std::is_same< InputType, typename Operator::D1 >::value ||
+					std::is_same< IOType, typename Operator::D2 >::value ||
+					std::is_same< IOType, typename Operator::D3 >::value
+				), "grb::collectives::allreduce",
 				"Incompatible given value type and operator domains while "
-				"no_casting descriptor was set" );
+				"no_casting descriptor was set"
+			);
 
 			// we need access to BSP context
-			internal::BSP1D_Data & data = internal::grb_BSP1D.load();
+			internal::BSP1D_Data &data = internal::grb_BSP1D.load();
 
 			// make sure we can support comms pattern: P * IOType
 			lpf_coll_t coll;
@@ -1716,7 +1860,8 @@ namespace grb {
 
 			// reduce our values locally
 			// if casting is required to apply op, foldl will take care of this
-			// note: the no_casting check could be deferred to foldl but this would result in unclear error messages
+			// note: the no_casting check could be deferred to foldl but this would
+			//       result in unclear error messages
 			for( size_t i = 0; i < size; i++ ) {
 #ifdef BLAS1_RAW
 				if( foldl< descr >( out, in[ i ], op ) != SUCCESS ) {
@@ -1755,7 +1900,8 @@ namespace grb {
 					continue;
 				}
 				// if casting is required to apply op, foldl will take care of this
-				// note: the no_casting check could be deferred to foldl but this would result in unclear error messages
+				// note: the no_casting check could be deferred to foldl but this would
+				//       result in unclear error messages
 				if( foldl< descr >( out, buffer[ i ], op ) != SUCCESS ) {
 					return PANIC;
 				}
@@ -1771,7 +1917,8 @@ namespace grb {
 		}
 
 		// allreduce to the left
-		template< Descriptor descr = descriptors::no_operation,
+		template<
+			Descriptor descr = descriptors::no_operation,
 			typename Operator,
 			typename InputType,
 			typename IOType
@@ -1779,15 +1926,17 @@ namespace grb {
 			,
 			typename Coords
 #endif
-			>
-		RC allreducel( IOType & out,
+		>
+		RC allreducel(
+			IOType &out,
 #ifdef BLAS1_RAW
 			const InputType * in,
 			const size_t size,
 #else
-			const Vector< InputType, reference, Coords > & in,
+			const Vector< InputType, reference, Coords > &in,
 #endif
-			const Operator op ) {
+			const Operator op
+		) {
 #ifdef BLAS1_RAW
 			return allreduce( in, size, out, op );
 #else
@@ -1796,7 +1945,8 @@ namespace grb {
 		}
 
 		// allreduce to the right
-		template< Descriptor descr = descriptors::no_operation,
+		template<
+			Descriptor descr = descriptors::no_operation,
 			typename Operator,
 			typename InputType,
 			typename IOType
@@ -1804,7 +1954,7 @@ namespace grb {
 			,
 			typename Coords
 #endif
-			>
+		>
 		RC allreducer(
 #ifdef BLAS1_RAW
 			const InputType * in,
@@ -1812,8 +1962,9 @@ namespace grb {
 #else
 			const Vector< InputType, reference, Coords > & in,
 #endif
-			IOType & out,
-			const Operator op ) {
+			IOType &out,
+			const Operator op
+		) {
 #ifdef BLAS1_RAW
 			return allreduce( in, size, out, op );
 #else
@@ -1824,14 +1975,17 @@ namespace grb {
 		/**
 		 * Schedules a broadcast operation of a vector of N elements of type IOType
 		 * to a vector of N elements per process.
-		 * The broadcast shall be complete by the end of the call. This is a collective
-		 * graphBLAS operation. The BSP costs are as for the LPF #broadcast.
+		 *
+		 * The broadcast shall be complete by the end of the call. This is a
+		 * collective graphBLAS operation. The BSP costs are as for the LPF
+		 * #broadcast.
 		 *
 		 * @tparam descr    The GraphBLAS descriptor.
 		 *                  Default is grb::descriptors::no_operation.
 		 * @tparam IOType   The type of the to-be broadcast vector element values.
 		 *
-		 * @param[in,out] inout On input: the vector at the root process to be broadcast.
+		 * @param[in,out] inout On input: the vector at the root process to be
+		 *                      broadcast.
 		 *                      On output at process \a root: the same value.
 		 *                      On output at non-root processes: the vector at root.
 		 *
@@ -1858,23 +2012,25 @@ namespace grb {
 		 * \endparblock
 		 *
 		 */
-		template< Descriptor descr = descriptors::no_operation,
+		template<
+			Descriptor descr = descriptors::no_operation,
 			typename IOType
 #ifndef BLAS1_RAW
 			,
 			typename Coords
 #endif
-			>
+		>
 		RC broadcast(
 #ifdef BLAS1_RAW
 			IOType * inout,
 			const size_t size,
 #else
-			Vector< IOType, reference, Coords > & inout,
+			Vector< IOType, reference, Coords > &inout,
 #endif
-			const lpf_pid_t root ) {
+			const lpf_pid_t root
+		) {
 			// we need access to BSP context
-			internal::BSP1D_Data & data = internal::grb_BSP1D.load();
+			internal::BSP1D_Data &data = internal::grb_BSP1D.load();
 
 #ifndef BLAS1_RAW
 			const size_t size = internal::getCoordinates( inout ).size();
@@ -1927,3 +2083,4 @@ namespace grb {
 	} // namespace internal
 
 } // namespace grb
+

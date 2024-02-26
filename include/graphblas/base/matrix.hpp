@@ -63,7 +63,8 @@ namespace grb {
 	 * \warning Creating a grb::Matrix of other ALP/GraphBLAS types is not allowed.
 	 */
 	template<
-		typename D, enum Backend implementation,
+		typename D,
+		enum Backend implementation,
 		typename RowIndexType,
 		typename ColIndexType,
 		typename NonzeroIndexType

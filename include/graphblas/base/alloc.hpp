@@ -34,11 +34,11 @@
 #include <graphblas/utils/autodeleter.hpp>
 
 #ifndef _GRB_NO_LIBNUMA
- #include <numa.h> //numa_alloc_interleaved
+ #include <numa.h> // numa_alloc_interleaved
 #endif
 
 #ifndef _GRB_NO_STDIO
- #include <iostream> //std::err
+ #include <iostream> // std::err
 #endif
 
 namespace grb {

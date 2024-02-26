@@ -15,12 +15,16 @@
  * limitations under the License.
  */
 
-/*
+/**
+ * @file
+ *
+ * Defines a series of useful type traits for both STL and ALP iterators.
+ *
+ * \note This is a reorganisation of changes by Alberto Scolari originally made
+ *       to graphblas/type_traits.hpp.
+ *
  * @author A. N. Yzelman
  * @date 20th of July, 2022
- *
- * This is a reorganisation of changes by Alberto Scolari originally made to
- * graphblas/type_traits.hpp.
  */
 
 #ifndef _H_GRB_UTILS_ITERATORS_TYPE_TRAITS
@@ -50,7 +54,8 @@ namespace grb {
 
 			public:
 
-				using iterator_category = typename std::iterator_traits< IterT1 >::iterator_category;
+				using iterator_category =
+					typename std::iterator_traits< IterT1 >::iterator_category;
 
 		};
 
@@ -77,7 +82,12 @@ namespace grb {
 
 			public:
 
-				// STL iterator tags are a hierarchy with std::forward_iterator_tag at the base
+				/**
+				 * The common iterator category.
+				 *
+				 * \internal STL iterator tags are a hierarchy with
+				 *           std::forward_iterator_tag at the base
+				 */
 				typedef typename std::conditional<
 						std::is_base_of< cat1, cats >::value,
 						cat1, cats
@@ -88,16 +98,15 @@ namespace grb {
 		/**
 		 * Used to gauge whether a given type is an ALP matrix iterator.
 		 *
-		 * @tparam MatrixValType Value type of the matrix; if void, does not check for
-		 *                       the presence of a v() method that returns a nonzero
-		 *                       value.
-		 *
-		 * @tparam IterT         The iterator type.
-		 *
 		 * An ALP matrix iterator has the following methods:
 		 *  -# i(),
 		 *  -# j(), and
-		 *  -# v(), iff #MatrixValType is not void
+		 *  -# v(), iff \a MatrixValType is not void.
+		 *
+		 * @tparam MatrixValType Value type of the matrix; if void, does not check for
+		 *                       the presence of a v() method that returns a nonzero
+		 *                       value.
+		 * @tparam IterT         The iterator type.
 		 */
 		template< typename MatrixValType, typename IterT >
 		class is_alp_matrix_iterator {
@@ -156,7 +165,7 @@ namespace grb {
 				using ValueType = decltype( match_v< IterT >( nullptr ) );
 
 				/**
-				 * Whether #IterT is an ALP matrix iterator
+				 * Whether \a IterT is an ALP matrix iterator.
 				 */
 				static constexpr bool value =
 					!std::is_same< RowIndexType, void >::value &&
@@ -197,7 +206,7 @@ namespace grb {
 			public:
 
 				/**
-				 * Whether \a T defines the .v() method and is an ALP matrix iterator.
+				 * Whether \a T defines the .v() method \em and is an ALP matrix iterator.
 				 */
 				static constexpr bool value = !std::is_same<
 						decltype( match< T >( nullptr ) ), void

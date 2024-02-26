@@ -26,7 +26,9 @@
 #include <time.h> //clock_gettime, CLOCK_MONOTONIC, struct timespec
 #include <assert.h>
 
+
 namespace grb {
+
 	namespace utils {
 
 		/**
@@ -102,6 +104,8 @@ namespace grb {
 		}; // end Timer
 
 	} // namespace utils
+
 } // namespace grb
 
 #endif // end `_H_GRB_TIMER'
+

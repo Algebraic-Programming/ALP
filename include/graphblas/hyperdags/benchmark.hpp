@@ -27,10 +27,8 @@
 #ifndef _H_GRB_HYPERDAGS_BENCH
 #define _H_GRB_HYPERDAGS_BENCH
 
-#include <graphblas/base/benchmark.hpp>
 #include <graphblas/rc.hpp>
-
-#include "exec.hpp"
+#include <graphblas/base/benchmark.hpp>
 
 
 namespace grb {
@@ -38,60 +36,27 @@ namespace grb {
 	/** \internal Simply wraps around the underlying Benchmarker implementation. */
 	template< enum EXEC_MODE mode >
 	class Benchmarker< mode, hyperdags > :
-		protected Launcher< mode, hyperdags >, protected internal::BenchmarkerBase
+		public Benchmarker< mode, _GRB_WITH_HYPERDAGS_USING >
 	{
 
 		private:
 
 			typedef Benchmarker< mode, _GRB_WITH_HYPERDAGS_USING > MyBenchmarkerType;
 
-			MyBenchmarkerType benchmarker;
-
 
 		public:
 
-			/** \internal Simple delegation. */
-			Benchmarker(
-				const size_t process_id = 0,
-				const size_t nprocs = 1,
-				const std::string hostname = "localhost",
-				const std::string port = "0"
-			) :
-				benchmarker( process_id, nprocs, hostname, port )
-			{}
+			/**
+			 * \internal Delegates to #grb::Benchmarker constructor. By default, this
+			 *           reverts to the <tt>reference</tt> backend.
+			 */
+			using MyBenchmarkerType::Benchmarker;
 
-			/** \internal Simple delegation. */
-			template< typename U >
-			RC exec( void ( *grb_program )( const void *, const size_t, U & ),
-				const void * const data_in, const size_t in_size,
-				U &data_out,
-				const size_t inner, const size_t outer,
-				const bool broadcast = false
-			) const {
-				return benchmarker.exec(
-					grb_program,
-					data_in, in_size,
-					data_out,
-					inner, outer,
-					broadcast
-				);
-			}
-
-			/** \internal Simple delegation. */
-			template< typename T, typename U >
-			RC exec(
-				void ( *grb_program )( const T &, U & ),
-				const T &data_in, U &data_out,
-				const size_t inner, const size_t outer,
-				const bool broadcast = false
-			) {
-				return benchmarker.exec(
-					grb_program,
-					data_in, data_out,
-					inner, outer,
-					broadcast
-				);
-			}
+			/**
+			 * \internal Delegates to #grb::Benchmarker finalize. By default, this
+			 *           reverts to the <tt>reference</tt> backend.
+			 */
+			using MyBenchmarkerType::finalize;
 
 	};
 

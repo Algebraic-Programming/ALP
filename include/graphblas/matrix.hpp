@@ -47,7 +47,8 @@
 #ifdef _GRB_BACKEND
 namespace grb {
 	template<
-		typename D, enum Backend implementation = config::default_backend,
+		typename D,
+		enum Backend implementation = config::default_backend,
 		typename RowIndexType = config::RowIndexType,
 		typename ColIndexType = config::ColIndexType,
 		typename NonzeroIndexType = config::NonzeroIndexType

@@ -25,6 +25,7 @@
 
 #include <type_traits>
 
+
 namespace grb {
 
 	namespace utils {
@@ -48,7 +49,10 @@ namespace grb {
 		 *
 		 * @return Whether \f$ x \geq 0 \f$ returns \a true.
 		 */
-		template< typename T, typename std::enable_if< ! std::is_unsigned< T >::value, T >::type guard = 0 >
+		template<
+			typename T,
+			typename std::enable_if< !std::is_unsigned< T >::value, T >::type guard = 0
+		>
 		bool is_geq( const T x ) {
 			if( x >= 0 ) {
 				return true;
@@ -71,8 +75,12 @@ namespace grb {
 		 *
 		 * @return This function always returns \a true.
 		 */
-		template< typename T, typename std::enable_if< std::is_unsigned< T >::value, T >::type = 0 >
-		bool is_geq_zero( const T ) {
+		template<
+			typename T,
+			typename std::enable_if< std::is_unsigned< T >::value, T >::type = 0
+		>
+		bool is_geq_zero( const T x ) {
+			(void) x;
 			return true;
 		}
 
@@ -93,8 +101,12 @@ namespace grb {
 		 *                             then delegates to this function.
 		 */
 		template< typename T >
-		bool is_in_range( const T x, const T inclusive_lower_bound, const T exclusive_upper_bound ) {
-			return is_in_normalized_range( x - inclusive_lower_bound, exclusive_upper_bound - inclusive_lower_bound );
+		bool is_in_range(
+			const T x,
+			const T inclusive_lower_bound, const T exclusive_upper_bound
+		) {
+			return is_in_normalized_range( x - inclusive_lower_bound,
+				exclusive_upper_bound - inclusive_lower_bound );
 		}
 
 		/**
@@ -112,14 +124,18 @@ namespace grb {
 		 * \warning These operator should be defined on the type \a T or the code
 		 *          will not compile.
 		 *
-		 * @param[in] x     The value to check whether it is inside the given range.
+		 * @param[in] x                     The value to check whether it is inside
+		 *                                  the given range.
 		 * @param[in] exclusive_upper_bound The value \a x may be less than of.
 		 *
 		 * @return Whether
 		 *           \f$ x \geq 0 \land x < \mathit{exclusive\_upper\_bound} \f$
 		 *         returns \a true.
 		 */
-		template< typename T, typename std::enable_if< ! std::is_unsigned< T >::value, T >::type guard = 0 >
+		template<
+			typename T,
+			typename std::enable_if< !std::is_unsigned< T >::value, T >::type guard = 0
+		>
 		bool is_in_normalized_range( const T x, const T exclusive_upper_bound ) {
 			if( x >= 0 && x < exclusive_upper_bound ) {
 				return true;
@@ -142,7 +158,10 @@ namespace grb {
 		 *
 		 * @return Whether \f$ x < \mathit{exclusive\_upper\_bound} \f$ is \a true.
 		 */
-		template< typename T, typename std::enable_if< std::is_unsigned< T >::value, T >::type = 0 >
+		template<
+			typename T,
+			typename std::enable_if< std::is_unsigned< T >::value, T >::type = 0
+		>
 		bool is_in_normalized_range( const T x, const T exclusive_upper_bound ) {
 			return x < exclusive_upper_bound;
 		}

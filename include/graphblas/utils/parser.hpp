@@ -23,6 +23,7 @@
 #ifndef _H_GRB_UTILS_PARSER
 #define _H_GRB_UTILS_PARSER
 
-#include "graphblas/utils/parser/MatrixFileReader.hpp"
+ #include "graphblas/utils/parser/matrixFileReader.hpp"
 
-#endif //``_H_GRB_UTILS_PARSER''
+#endif
+

@@ -20,10 +20,10 @@
 
 #include <graphblas.hpp>
 #include <graphblas/algorithms/spy.hpp>
-#include <graphblas/utils/parser/MatrixFileReader.hpp>
+#include <graphblas/utils/parser/matrixFileReader.hpp>
 
 
-void grb_program( const void * const fn_p, const size_t fn_length, grb::RC & rc ) {
+void grb_program( const void * const fn_p, const size_t fn_length, grb::RC &rc ) {
 	const char * const fn = static_cast< const char * >(fn_p);
 	if( strnlen( fn, fn_length ) >= fn_length ) {
 		std::cerr << "Error: non-NULL terminated string passed as input file\n";
