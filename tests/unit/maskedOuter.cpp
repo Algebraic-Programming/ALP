@@ -305,20 +305,6 @@ int main( int argc, char ** argv ) {
 	(void)argc;
 	std::cout << "Functional test executable: " << argv[ 0 ] << "\n";
 
-	int error;
-	grb::Launcher< AUTOMATIC > launcher;
-
-	if( launcher.exec( &grbProgram, nullptr, 0, error ) != SUCCESS ) {
-		std::cerr << "Test 1 failed to launch\n";
-		error = 255;
-	}
-	if( error == 0 ) {
-		std::cout << "Test 1 OK\n" << std::endl;
-	} else {
-		std::cerr << std::flush;
-		std::cout << "Test 1 FAILED\n" << std::endl;
-	}
-
 	bool printUsage = false;
 	size_t n = 100;
 
@@ -347,14 +333,27 @@ int main( int argc, char ** argv ) {
 		return 1;
 	}
 
-	error = 0;
+	
+
+	int error = 0;
+	grb::Launcher< AUTOMATIC > launcher;
+
+	if( launcher.exec( &grbProgram, nullptr, 0, error ) != SUCCESS ) {
+		std::cerr << "Test 1 failed to launch\n";
+		error = 255;
+	}
+	if( error != 0 ) {
+		std::cerr << std::flush;
+		std::cout << "Test 1 FAILED\n" << std::endl;
+		return 0;
+	}
 
 	if( launcher.exec( &grb_program_custom_size, n, error ) != SUCCESS ) {
 		std::cerr << "Launching test 2 FAILED\n";
 		error = 255;
 	}
 	if( error == 0 ) {
-		std::cout << "Test 2 OK\n" << std::endl;
+		std::cout << "Test OK\n" << std::endl;
 	} else {
 		std::cerr << std::flush;
 		std::cout << "Test 2 FAILED\n" << std::endl;
