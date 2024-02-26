@@ -1007,8 +1007,7 @@ namespace grb {
 
 			if( !crs_only ) {
 #ifdef _H_GRB_REFERENCE_OMP_BLAS3
-				#pragma omp parallel for simd default(none) \
-					shared(CCS_raw) firstprivate(n)
+				#pragma omp parallel for simd
 #endif
 				for( size_t j = 0; j <= n; ++j ) {
 					CCS_raw.col_start[ j ] = 0;
@@ -1047,22 +1046,15 @@ namespace grb {
 			if( phase == EXECUTE ) {
 				nzc = 0;
 				// retrieve additional buffer
-				auto* const C_col_index = getReferenceBuffer< config::NonzeroIndexType >( n + 1 );
+				config::NonzeroIndexType * const C_col_index =
+					getReferenceBuffer< config::NonzeroIndexType >( n + 1 );
 
 				if( !crs_only ) {
 #ifdef _H_GRB_REFERENCE_OMP_BLAS3
-#pragma omp parallel
+					#pragma omp parallel for simd
 #endif
-					{
-						size_t start = 0;
-						size_t end = n + 1;
-#ifdef _H_GRB_REFERENCE_OMP_BLAS3
-						config::OMP::localRange( start, end, 0, n + 1 );
-						#pragma omp parallel for simd
-#endif
-						for( size_t j = start; j < end; ++j ) {
-							C_col_index[ j ] = 0;
-						}
+					for( size_t j = 0; j < n+1; ++j ) {
+						C_col_index[ j ] = 0;
 					}
 				}
 
@@ -1112,50 +1104,22 @@ namespace grb {
 				CRS_raw.col_start[ 0 ] = 0;
 				for( size_t i = 0; i < m; ++i ) {
 					coors1.clear();
-
-#ifdef _H_GRB_REFERENCE_OMP_BLAS3
-					#pragma omp parallel default(none) \
-							shared(coors1, valbuf) \
-							firstprivate(i, A_raw, dummy_identity)
-#endif
-					{
-#ifdef _H_GRB_REFERENCE_OMP_BLAS3
-						auto local_update = coors1.EMPTY_UPDATE();
-						const size_t maxAsyncAssigns = coors1.maxAsyncAssigns();
-						size_t assigns = 0;
-						#pragma omp for simd schedule( dynamic, config::CACHE_LINE_SIZE::value() ) nowait
-#endif
-						for( size_t k = A_raw.col_start[ i ]; k < A_raw.col_start[ i + 1 ]; ++k ) {
-							const size_t k_col = A_raw.row_index[ k ];
-
-#ifdef _H_GRB_REFERENCE_OMP_BLAS3
-							if( !coors1.asyncAssign( k_col, local_update ) ) {
-								utils::assignValue( valbuf, k_col , A_raw.getValue( k, dummy_identity ) );
-								if( ++assigns == maxAsyncAssigns ) {
-									coors1.joinUpdate( local_update );
-									assigns = 0;
-								}
-							}
-#else
-							if( !coors1.assign( k_col ) ) {
-								utils::assignValue( valbuf, k_col, A_raw.getValue( k, dummy_identity ) );
-							}
-#endif
+					for( size_t k = A_raw.col_start[ i ]; k < A_raw.col_start[ i + 1 ]; ++k ) {
+						const auto k_col = A_raw.row_index[ k ];
+						if( !coors1.assign( k_col ) ) {
+							utils::assignValue( valbuf, k_col, A_raw.getValue( k, dummy_identity ) );
 						}
-#ifdef _H_GRB_REFERENCE_OMP_BLAS3
-						while( !coors1.joinUpdate( local_update ) ) {}
-#endif
 					}
 
 					for( size_t l = B_raw.col_start[ i ]; l < B_raw.col_start[ i + 1 ]; ++l ) {
-						const size_t j = B_raw.row_index[ l ];
+						const auto j = B_raw.row_index[ l ];
 						if( !coors1.assigned( j ) ) { // Union case: ignored
 							continue;
 						}
 
 						const auto valbuf_value_before = valbuf[ j ];
 						OutputType result_value;
-						(void)grb::apply( result_value, valbuf_value_before, B_raw.getValue( l, dummy_identity ), oper );
+						(void) grb::apply( result_value, valbuf_value_before, B_raw.getValue( l, dummy_identity ), oper );
 
 						// update CRS
 						CRS_raw.row_index[ nzc ] = j;
@@ -1170,51 +1134,17 @@ namespace grb {
 						}
 
 						// update count
-						(void)++nzc;
+						(void) ++nzc;
 					}
 
 					CRS_raw.col_start[ i + 1 ] = nzc;
-
 				}
-
-
-#ifdef _DEBUG
-				std::cout << "CRS_raw.col_start = [ ";
-				for( size_t j = 0; j <= m; ++j )
-					std::cout << CRS_raw.col_start[ j ] << " ";
-				std::cout << "]\n";
-				std::cout << "CRS_raw.row_index = [ ";
-				for( size_t j = 0; j < nzc; ++j )
-					std::cout << CRS_raw.row_index[ j ] << " ";
-				std::cout << "]\n";
-				std::cout << "CRS_raw.values    = [ ";
-				for( size_t j = 0; j < nzc; ++j )
-					std::cout << CRS_raw.values[ j ] << " ";
-				std::cout << "]\n";
-				if( !crs_only ) {
-					std::cout << "C_col_index =       [ ";
-					for( size_t j = 0; j < n; ++j )
-						std::cout << C_col_index[ j ] << " ";
-					std::cout << "]\n";
-					std::cout << "CCS_raw.col_start = [ ";
-					for( size_t j = 0; j <= n; ++j )
-						std::cout << CCS_raw.col_start[ j ] << " ";
-					std::cout << "]\n";
-					std::cout << "CCS_raw.row_index = [ ";
-					for( size_t j = 0; j < nzc; ++j )
-						std::cout << CCS_raw.row_index[ j ] << " ";
-					std::cout << "]\n";
-					std::cout << "CCS_raw.values    = [ ";
-					for( size_t j = 0; j < nzc; ++j )
-						std::cout << CCS_raw.values[ j ] << " ";
-					std::cout << "]\n";
-				}
-#endif
 
 #ifndef NDEBUG
 				if( !crs_only ) {
-					for( size_t j = 0; j < n; ++j )
+					for( size_t j = 0; j < n; ++j ) {
 						assert( CCS_raw.col_start[ j + 1 ] - CCS_raw.col_start[ j ] == C_col_index[ j ] );
+					}
 				}
 #endif
 
@@ -1305,7 +1235,6 @@ namespace grb {
 			auto &CRS_raw = internal::getCRS( C );
 			auto &CCS_raw = internal::getCCS( C );
 
-
 			// retrieve buffers
 			char *arr1 = nullptr, *arr3 = nullptr;
 			char *buf1 = nullptr, *buf3 = nullptr;
@@ -1325,7 +1254,7 @@ namespace grb {
 
 			if( !crs_only ) {
 #ifdef _H_GRB_REFERENCE_OMP_BLAS3
-				#pragma omp parallel for simd default(none) shared(CCS_raw) firstprivate(n)
+				#pragma omp parallel for simd
 #endif
 				for( size_t j = 0; j < n + 1; ++j ) {
 					CCS_raw.col_start[ j ] = 0;
@@ -1339,60 +1268,18 @@ namespace grb {
 			// symbolic phase
 			if( phase == RESIZE ) {
 				nzc = 0;
-
-
-#ifdef _H_GRB_REFERENCE_OMP_BLAS3
-				#pragma omp parallel default(none) \
-					shared(coors1, vbuf1, coors2, vbuf3) \
-					firstprivate(A_raw, identity_A, B_raw, identity_B, m) \
-					reduction(+:nzc)
-#endif
-				{
-					for( size_t i = 0; i < m; ++i ) {
-#ifdef _H_GRB_REFERENCE_OMP_BLAS3
-						#pragma omp single
-#endif
-						{
-							coors1.clear();
+				for( size_t i = 0; i < m; ++i ) {
+					coors1.clear();
+					for( size_t k = A_raw.col_start[ i ]; k < A_raw.col_start[ i + 1 ]; ++k ) {
+						const auto k_col = A_raw.row_index[ k ];
+						if( !coors1.assign( k_col ) ) {
+							(void) ++nzc;
 						}
-#ifdef _H_GRB_REFERENCE_OMP_BLAS3
-						#pragma omp barrier
-#endif
-#ifdef _H_GRB_REFERENCE_OMP_BLAS3
-						auto local_update1 = coors1.EMPTY_UPDATE();
-						const size_t maxAsyncAssigns1 = coors1.maxAsyncAssigns();
-						size_t assigns1 = 0;
-						#pragma omp for simd schedule( dynamic, config::CACHE_LINE_SIZE::value() ) nowait
-#endif
-						for( size_t k = A_raw.col_start[ i ]; k < A_raw.col_start[ i + 1 ]; ++k ) {
-							const size_t k_col = A_raw.row_index[ k ];
-#ifdef _H_GRB_REFERENCE_OMP_BLAS3
-							if( !coors1.asyncAssign( k_col, local_update1 ) ) {
-                                utils::assignValue( vbuf1, k_col, A_raw.getValue( k, identity_A ) );
-                                if( ++assigns1 == maxAsyncAssigns1 ) {
-                                    coors1.joinUpdate( local_update1 );
-                                    assigns1 = 0;
-                                }
-                            }
-#else
-							(void)coors1.assign( k_col );
-#endif
-							(void)++nzc;
-						}
-#ifdef _H_GRB_REFERENCE_OMP_BLAS3
-	                    while( !coors1.joinUpdate( local_update1 ) ) {}
-#endif
-
-#ifdef _H_GRB_REFERENCE_OMP_BLAS3
-						#pragma omp barrier
-
-						#pragma omp for simd schedule( dynamic, config::CACHE_LINE_SIZE::value() )
-#endif
-						for( size_t l = B_raw.col_start[ i ]; l < B_raw.col_start[ i + 1 ]; ++l ) {
-							const size_t l_col = B_raw.row_index[ l ];
-							if( !coors1.assigned( l_col ) ) {
-								(void)++nzc;
-							}
+					}
+					for( size_t l = B_raw.col_start[ i ]; l < B_raw.col_start[ i + 1 ]; ++l ) {
+						const size_t l_col = B_raw.row_index[ l ];
+						if( !coors1.assigned( l_col ) ) {
+							(void) ++nzc;
 						}
 					}
 				}
@@ -1407,7 +1294,8 @@ namespace grb {
 			// computational phase
 			if( phase == EXECUTE ) {
 				// retrieve additional buffer
-				auto* const C_col_index = getReferenceBuffer< config::NonzeroIndexType >( n + 1 );
+				config::NonzeroIndexType * const C_col_index =
+					getReferenceBuffer< config::NonzeroIndexType >( n + 1 );
 
 				// perform column-wise nonzero count
 				nzc = 0;
@@ -1415,8 +1303,8 @@ namespace grb {
 					coors1.clear();
 					for( size_t k = A_raw.col_start[ i ]; k < A_raw.col_start[ i + 1 ]; ++k ) {
 						const size_t k_col = A_raw.row_index[ k ];
-						(void)coors1.assign( k_col );
-						(void)++nzc;
+						(void) coors1.assign( k_col );
+						(void) ++nzc;
 
 						if( !crs_only ) {
 							(void) ++CCS_raw.col_start[ k_col + 1 ];
@@ -1425,9 +1313,9 @@ namespace grb {
 					for( size_t l = B_raw.col_start[ i ]; l < B_raw.col_start[ i + 1 ]; ++l ) {
 						const size_t l_col = B_raw.row_index[ l ];
 						if( !coors1.assigned( l_col ) ) {
-							(void)++nzc;
+							(void) ++nzc;
 							if( !crs_only ) {
-								(void)++CCS_raw.col_start[ l_col + 1 ];
+								(void) ++CCS_raw.col_start[ l_col + 1 ];
 							}
 						}
 					}
@@ -1472,66 +1360,17 @@ namespace grb {
 				CRS_raw.col_start[ 0 ] = 0;
 				for( size_t i = 0; i < m; ++i ) {
 					coors1.clear();
+					for( size_t k = A_raw.col_start[ i ]; k < A_raw.col_start[ i + 1 ]; ++k ) {
+						const auto k_col = A_raw.row_index[ k ];
+						(void) coors1.assign( k_col );
+						utils::assignValue( vbuf1, k_col, A_raw.getValue( k, identity_A ) );
+					}
+
 					coors2.clear();
-
-#ifdef _H_GRB_REFERENCE_OMP_BLAS3
-				#pragma omp parallel default(none) \
-						shared(coors1, vbuf1, coors2, vbuf3) \
-						firstprivate(i, A_raw, identity_A, B_raw, identity_B )
-#endif
-					{
-#ifdef _H_GRB_REFERENCE_OMP_BLAS3
-						auto local_update1 = coors1.EMPTY_UPDATE();
-						const size_t maxAsyncAssigns1 = coors1.maxAsyncAssigns();
-						size_t assigns1 = 0;
-						#pragma omp for simd schedule( dynamic, config::CACHE_LINE_SIZE::value() ) nowait
-#endif
-						for( size_t k = A_raw.col_start[ i ]; k < A_raw.col_start[ i + 1 ]; ++k ) {
-							const size_t k_col = A_raw.row_index[ k ];
-
-#ifdef _H_GRB_REFERENCE_OMP_BLAS3
-							if( !coors1.asyncAssign( k_col, local_update1 ) ) {
-								if( ++assigns1 == maxAsyncAssigns1 ) {
-									coors1.joinUpdate( local_update1 );
-									assigns1 = 0;
-								}
-							}
-#else
-							(void)coors1.assign( k_col );
-#endif
-							utils::assignValue( vbuf1, k_col, A_raw.getValue( k, identity_A ) );
-						}
-
-#ifdef _H_GRB_REFERENCE_OMP_BLAS3
-						while( !coors1.joinUpdate( local_update1 )) {}
-#endif
-
-
-#ifdef _H_GRB_REFERENCE_OMP_BLAS3
-						auto local_update2 = coors2.EMPTY_UPDATE();
-						const size_t maxAsyncAssigns2 = coors2.maxAsyncAssigns();
-						size_t assigns2 = 0;
-						#pragma omp for simd schedule( dynamic, config::CACHE_LINE_SIZE::value() ) nowait
-#endif
-						for( size_t k = B_raw.col_start[ i ]; k < B_raw.col_start[ i + 1 ]; ++k ) {
-							const size_t k_col = B_raw.row_index[ k ];
-
-#ifdef _H_GRB_REFERENCE_OMP_BLAS3
-							if( !coors2.asyncAssign( k_col, local_update2 ) ) {
-								utils::assignValue( vbuf3, k_col, B_raw.getValue( k, identity_B ) );
-								if( ++assigns2 == maxAsyncAssigns2 ) {
-									coors2.joinUpdate( local_update2 );
-									assigns2 = 0;
-								}
-							}
-#else
-							(void)coors2.assign( k_col );
-#endif
-							utils::assignValue( vbuf3, k_col, B_raw.getValue( k, identity_B ) );
-						}
-#ifdef _H_GRB_REFERENCE_OMP_BLAS3
-						while( !coors2.joinUpdate( local_update2 )) {}
-#endif
+					for( size_t k = B_raw.col_start[ i ]; k < B_raw.col_start[ i + 1 ]; ++k ) {
+						const auto k_col = B_raw.row_index[ k ];
+						(void) coors2.assign( k_col );
+						utils::assignValue( vbuf3, k_col, B_raw.getValue( k, identity_B ) );
 					}
 
 					for( size_t k = 0; k < coors1.nonzeroes(); ++k ) {
@@ -1540,7 +1379,7 @@ namespace grb {
 						const auto B_val = coors2.assigned(j) ? utils::getValue(vbuf3, j, identity_B) : identity_B;
 
 						OutputType result_value;
-						(void)grb::apply( result_value, A_val, B_val, oper );
+						(void) grb::apply( result_value, A_val, B_val, oper );
 
 						// update CRS
 						CRS_raw.row_index[ nzc ] = j;
@@ -1558,7 +1397,7 @@ namespace grb {
 							CCS_raw.setValue( CCS_index, result_value );
 						}
 						// update count
-						(void)++nzc;
+						(void) ++nzc;
 					}
 					for( size_t k = 0; k < coors2.nonzeroes(); ++k ) {
 						const auto j = coors2.index( k );
@@ -1569,7 +1408,7 @@ namespace grb {
 						const auto B_val = utils::getValue(vbuf3, j, identity_B);
 
 						OutputType result_value;
-						(void)grb::apply( result_value, A_val, B_val, oper );
+						(void) grb::apply( result_value, A_val, B_val, oper );
 
 						// update CRS
 						CRS_raw.row_index[ nzc ] = j;
@@ -1587,52 +1426,19 @@ namespace grb {
 							CCS_raw.setValue( CCS_index, result_value );
 						}
 						// update count
-						(void)++nzc;
+						(void) ++nzc;
 					}
 
 					CRS_raw.col_start[ i + 1 ] = nzc;
 				}
 
-				if( !crs_only ) {
-#ifdef _DEBUG
-					std::cout << "CRS_raw.col_start = [ ";
-					for( size_t j = 0; j <= m; ++j )
-						std::cout << CRS_raw.col_start[ j ] << " ";
-					std::cout << "]\n";
-					std::cout << "CRS_raw.row_index = [ ";
-					for( size_t j = 0; j < nzc; ++j )
-						std::cout << CRS_raw.row_index[ j ] << " ";
-					std::cout << "]\n";
-					std::cout << "CRS_raw.values    = [ ";
-					for( size_t j = 0; j < nzc; ++j )
-						std::cout << CRS_raw.values[ j ] << " ";
-					std::cout << "]\n";
-					if( !crs_only ) {
-						std::cout << "C_col_index =       [ ";
-						for( size_t j = 0; j < n; ++j )
-							std::cout << C_col_index[ j ] << " ";
-						std::cout << "]\n";
-						std::cout << "CCS_raw.col_start = [ ";
-						for( size_t j = 0; j <= n; ++j )
-							std::cout << CCS_raw.col_start[ j ] << " ";
-						std::cout << "]\n";
-						std::cout << "CCS_raw.row_index = [ ";
-						for( size_t j = 0; j < nzc; ++j )
-							std::cout << CCS_raw.row_index[ j ] << " ";
-						std::cout << "]\n";
-						std::cout << "CCS_raw.values    = [ ";
-						for( size_t j = 0; j < nzc; ++j )
-							std::cout << CCS_raw.values[ j ] << " ";
-						std::cout << "]\n";
-					}
-#endif
-
 #ifndef NDEBUG
+				if( !crs_only ) {
 					for( size_t j = 0; j < n; ++j ) {
 						assert( CCS_raw.col_start[ j + 1 ] - CCS_raw.col_start[ j ] == C_col_index[ j ] );
 					}
-#endif
 				}
+#endif
 
 				// set final number of nonzeroes in output matrix
 #ifdef _DEBUG
