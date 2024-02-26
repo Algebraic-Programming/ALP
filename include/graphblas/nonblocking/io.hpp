@@ -1226,7 +1226,7 @@ namespace grb {
 	>
 	RC set(
 		Matrix< OutputType, nonblocking, RIT1, CIT1, NIT1 > &C,
-		const Matrix< MaskType, nonblocking, RIT2, CIT2, NIT2 > &Mask,
+		const Matrix< MaskType, nonblocking, RIT2, CIT2, NIT2 > &M,
 		const Matrix< InputType, nonblocking, RIT2, CIT2, NIT2 > &A,
 		const Phase &phase = EXECUTE
 	) noexcept {
@@ -1246,7 +1246,7 @@ namespace grb {
 		// second, delegate to the reference backend
 		return set< descr >(
 			internal::getRefMatrix( C ),
-			internal::getRefMatrix( Mask ),
+			internal::getRefMatrix( M ),
 			internal::getRefMatrix( A ),
 			phase
 		);

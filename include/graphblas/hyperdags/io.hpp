@@ -411,12 +411,12 @@ namespace grb {
 	>
 	RC set(
 		Matrix< OutputType, hyperdags, RIT1, CIT1, NIT1 > &C,
-		const Matrix< MaskType, hyperdags, RIT2, CIT2, NIT2 > &Mask,
+		const Matrix< MaskType, hyperdags, RIT2, CIT2, NIT2 > &M,
 		const Matrix< InputType, hyperdags, RIT2, CIT2, NIT2 > &A,
 		const Phase &phase = EXECUTE
 	) {
 		const RC ret = set< descr >(
-			internal::getMatrix( C ), internal::getMatrix( Mask ),
+			internal::getMatrix( C ), internal::getMatrix( M ),
 			internal::getMatrix( A ), phase
 		);
 		if( ret != SUCCESS ) { return ret; }
@@ -425,7 +425,7 @@ namespace grb {
 		std::array< const void *, 0 > sourcesP{};
 		std::array< uintptr_t, 3 > sourcesC{
 			getID( internal::getMatrix(A) ),
-			getID( internal::getMatrix(Mask) ),
+			getID( internal::getMatrix(M) ),
 			getID( internal::getMatrix(C) )
 		};
 		std::array< uintptr_t, 1 > destinations{ getID( internal::getMatrix(C) ) };
