@@ -227,7 +227,8 @@ namespace grb {
 	) {
 		assert( phase != TRY );
 
-		const auto coordinatesTranslationFunctions = in.getLocalToGlobalCoordinatesTranslationFunctions();
+		const auto coordinatesTranslationFunctions =
+			in.getLocalToGlobalCoordinatesTranslationFunctions();
 
 		RC ret = internal::select_generic< descr >(
 			internal::getLocal( out ),
@@ -241,8 +242,6 @@ namespace grb {
 		if( phase == RESIZE ) {
 			if( collectives<>::allreduce( ret, operators::any_or< RC >() ) != SUCCESS ) {
 				return PANIC;
-			} else {
-				return SUCCESS;
 			}
 		}
 		assert( phase == EXECUTE );
@@ -265,12 +264,14 @@ namespace grb {
 		const Phase &phase = EXECUTE,
 		const typename std::enable_if<
 				!is_object< Tin >::value &&
-				!is_object< Tout >::value
+				!is_object< Tout >::value &&
+				!is_matrix_selection_operator< PredicateFunction >::value
 		>::type * const = nullptr
 	) {
 		assert( phase != TRY );
 
-		const auto coordinatesTranslationFunctions = in.getLocalToGlobalCoordinatesTranslationFunctions();
+		const auto coordinatesTranslationFunctions =
+			in.getLocalToGlobalCoordinatesTranslationFunctions();
 
 		RC ret = internal::select_generic< descr >(
 			internal::getLocal( out ),
@@ -284,8 +285,6 @@ namespace grb {
 		if( phase == RESIZE ) {
 			if( collectives<>::allreduce( ret, operators::any_or< RC >() ) != SUCCESS ) {
 				return PANIC;
-			} else {
-				return SUCCESS;
 			}
 		}
 		assert( phase == EXECUTE );

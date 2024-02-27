@@ -4312,8 +4312,9 @@ namespace grb {
 
 		};
 
-
-
+		/**
+		 * Implements the is_diagonal matrix selector.
+		 */
 		template<
 			typename D, typename RIT, typename CIT
 		>
@@ -4331,6 +4332,9 @@ namespace grb {
 			}
 		};
 
+		/**
+		 * Implements the strictly lower triangular matrix selector.
+		 */
 		template<
 			typename D, typename RIT, typename CIT
 		>
@@ -4348,6 +4352,9 @@ namespace grb {
 			}
 		};
 
+		/**
+		 * Implements the lower triangular matrix selector.
+		 */
 		template<
 			typename D, typename RIT, typename CIT
 		>
@@ -4365,6 +4372,9 @@ namespace grb {
 			}
 		};
 
+		/**
+		 * Implements the strictly upper triangular matrix selector.
+		 */
 		template<
 			typename D, typename RIT, typename CIT
 		>
@@ -4380,6 +4390,9 @@ namespace grb {
 			)  { return !is_lower_or_diagonal< D, RIT, CIT >::apply( x, y, v ); }
 		};
 
+		/**
+		 * Implements the upper triangular matrix selector.
+		 */
 		template<
 			typename D, typename RIT, typename CIT
 		>
@@ -4396,7 +4409,6 @@ namespace grb {
 		};
 
 	} // namespace operators::select::internal
-
 
 } // namespace grb
 

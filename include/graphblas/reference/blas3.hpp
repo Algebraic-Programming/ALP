@@ -94,7 +94,9 @@ namespace grb {
 				"The descriptors::force_row_major and descriptors::transpose_matrix "
 				"flags cannot be used simultaneously" );
 
-			const auto &in_raw = transpose_input ? internal::getCCS( in ) : internal::getCRS( in );
+			const auto &in_raw = transpose_input
+				? internal::getCCS( in )
+				: internal::getCRS( in );
 			auto &out_crs = internal::getCRS( out );
 			auto &out_ccs = internal::getCCS( out );
 			const size_t
@@ -117,9 +119,7 @@ namespace grb {
 				size_t nzc = 0;
 
 #ifdef _H_GRB_REFERENCE_OMP_BLAS3
-				#pragma omp parallel default(none) \
-					shared(in_raw, row_l2g, col_l2g) \
-					firstprivate(m, op, identity)
+				#pragma omp parallel reduction(+: nzc)
 #endif
 				{
 					size_t start_row = 0;
@@ -139,9 +139,6 @@ namespace grb {
 							}
 						}
 					}
-#ifdef _H_GRB_REFERENCE_OMP_BLAS3
-					#pragma omp atomic
-#endif
 					nzc += local_nzc;
 				}
 				return grb::resize( out, nzc );
@@ -1506,7 +1503,7 @@ namespace grb {
 	RC select(
 		Matrix< Tout, reference, RITout, CITout, NITout > &out,
 		const Matrix< Tin, reference, RITin, CITin, NITin > &in,
-		const SelectionOperator op = SelectionOperator(),
+		const SelectionOperator &op = SelectionOperator(),
 		const Phase &phase = EXECUTE,
 		const typename std::enable_if<
 			!is_object< Tin >::value &&

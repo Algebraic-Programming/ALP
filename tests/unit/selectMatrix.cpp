@@ -214,7 +214,7 @@ RC buildMatrixUniqueWrapper(
 	const size_t nvals,
 	const IOMode io_mode,
 	const typename std::enable_if<
-		!std::is_void<D>::value
+		!std::is_void< D >::value
 	>::type * const = nullptr
 ) {
 	std::vector< D > values( nvals, 1 );
@@ -234,7 +234,7 @@ RC buildMatrixUniqueWrapper(
 	const size_t nvals,
 	const IOMode io_mode,
 	const typename std::enable_if<
-		std::is_void<D>::value
+		std::is_void< D >::value
 	>::type * const = nullptr
 ) {
 	return buildMatrixUnique( mat, row_indices,
@@ -387,7 +387,8 @@ int main( int argc, char** argv ) {
 		}
 	}
 
-	std::cout << std::flush;
-	std::cerr << std::flush << "Test OK" << std::endl;
+	std::cerr << std::flush;
+	std::cout << "Test OK" << std::endl;
 	return 0;
 }
+

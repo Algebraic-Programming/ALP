@@ -582,7 +582,7 @@ namespace grb {
 	RC select(
 		Matrix< Tout, nonblocking, RITout, CITout, NITout > &out,
 		const Matrix< Tin, nonblocking, RITin, CITin, NITin > &in,
-		const Operator op = Operator(),
+		const Operator &op = Operator(),
 		const Phase &phase = EXECUTE
 	) {
 #ifdef _DEBUG
@@ -629,7 +629,7 @@ namespace grb {
 #endif
 		if( internal::NONBLOCKING::warn_if_not_native &&
 				config::PIPELINE::warn_if_not_native
-			) {
+		) {
 			std::cerr << "Warning: selectLambda (nonblocking) currently delegates to a "
 				<< "blocking implementation.\n"
 				<< "         Further similar such warnings will be suppressed.\n";

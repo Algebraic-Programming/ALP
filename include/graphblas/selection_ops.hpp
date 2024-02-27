@@ -32,7 +32,7 @@
 
 namespace grb {
 
-    /**
+	/**
 	 * This namespace holds various standard selection-operators such
 	 * as #grb::operators::is_diagonal or #grb::operators::is_strictly_lower.
 	 */
@@ -85,31 +85,41 @@ namespace grb {
 
 	} // namespace operators::select
 
-
 	template< typename D1, typename D2, typename D3 >
-	struct is_matrix_selection_operator< operators::select::is_diagonal< D1, D2, D3 > > {
+	struct is_matrix_selection_operator<
+		operators::select::is_diagonal< D1, D2, D3 >
+	> {
 		static constexpr bool value = true;
 	};
 
 	template< typename D1, typename D2, typename D3 >
-	struct is_matrix_selection_operator< operators::select::is_strictly_lower< D1, D2, D3 > > {
+	struct is_matrix_selection_operator<
+		operators::select::is_strictly_lower< D1, D2, D3 >
+	> {
 		static constexpr bool value = true;
 	};
 
 	template< typename D1, typename D2, typename D3 >
-	struct is_matrix_selection_operator< operators::select::is_lower_or_diagonal< D1, D2, D3 > > {
+	struct is_matrix_selection_operator<
+		operators::select::is_lower_or_diagonal< D1, D2, D3 >
+	> {
 		static constexpr bool value = true;
 	};
 
 	template< typename D1, typename D2, typename D3 >
-	struct is_matrix_selection_operator< operators::select::is_strictly_upper< D1, D2, D3 > > {
+	struct is_matrix_selection_operator<
+		operators::select::is_strictly_upper< D1, D2, D3 >
+	> {
 		static constexpr bool value = true;
 	};
 
 	template< typename D1, typename D2, typename D3 >
-	struct is_matrix_selection_operator< operators::select::is_upper_or_diagonal< D1, D2, D3 > > {
+	struct is_matrix_selection_operator<
+		operators::select::is_upper_or_diagonal< D1, D2, D3 >
+	> {
 		static constexpr bool value = true;
 	};
+
 } // end namespace grb
 
 #endif // end ``_H_GRB_SELECTION_OPERATORS''

@@ -443,29 +443,20 @@ namespace grb {
 	}
 
 	/**
-	 * Selects elements from a matrix based on a given selection boolean operator,
-	 * out-of-place variant, without accumulating.
+	 * Selects elements from a matrix based on a given selection boolean operator.
 	 *
 	 * This function template is used to select elements from a given input matrix
 	 * based on a provided selection operator. The selected elements are then stored
-	 * in the output matrix.
-	 * The output matrix is cleared before the selection.
+	 * in a different output matrix, making this an out-of-place operation. The
+	 * output matrix is cleared before the selection.
 	 *
 	 * After a successful call to this primitive, the nonzero structure of \a B
 	 * will match the one of \a A without the elements that were not matched by
-	 * the selection operator and all the elements of \a B will result $true$
-	 * when applied to the selection operator.
+	 * the selection operator. All the elements of \a B will result $true$ when
+	 * applied to the selection operator.
 	 *
 	 * Any old entries of \a B will be removed after a successful call to this
 	 * primitive; that is, this primitive is out-of-place.
-	 *
-	 * \note When applying selection on sparse matrices using operators,
-	 *       there is a difference between annihilating already existing
-	 *       non-zero values and accumulating them. This functionality is
-	 *       provided by #grb::select depending on whether one or two
-	 *       operators are provided:
-	 *        - #grb::select( B, A, op, phase ): annihilating,
-	 *        - #grb::select( B, A, op, op, phase ): accumulating.
 	 *
 	 * \note See #grb::selectLambda for a variant of this function that uses a
 	 *       lambda function instead of a selection operator.
@@ -493,8 +484,8 @@ namespace grb {
 	 * @param[out] B       The output matrix. Will be cleared before the selection.
 	 * @param[in]  A       The input matrix.
 	 * @param[in]  op      The selection boolean operator. Pre-defined selection
-	 *                     operators can be found in
-	 *                     the namespace #grb::operators::select.
+	 *                     operators can be found in the namespace
+	 *                     #grb::operators::select.
 	 * @param[in]  phase   The #grb::Phase the call should execute. Optional; the
 	 *                     default parameter is #grb::EXECUTE.
 	 *
@@ -520,10 +511,9 @@ namespace grb {
 	 * Each backend must define performance semantics for this primitive.
 	 *
 	 * @see perfSemantics
-	 *
 	 */
 	template<
-		Descriptor descr,
+		Descriptor descr = descriptors::no_operation,
 		class SelectionOperator,
 		typename Tin,
 		typename RITin, typename CITin, typename NITin,
@@ -532,16 +522,16 @@ namespace grb {
 		Backend backend
 	>
 	RC select(
-		Matrix< Tout, backend, RITout, CITout, NITout >& B,
-		const Matrix< Tin, backend, RITin, CITin, NITin >& A,
+		Matrix< Tout, backend, RITout, CITout, NITout > &B,
+		const Matrix< Tin, backend, RITin, CITin, NITin > &A,
 		const SelectionOperator &op,
-		const Phase& phase = EXECUTE,
+		const Phase &phase = EXECUTE,
 		const typename std::enable_if<
 			!is_object< Tin >::value &&
 			!is_object< Tout >::value &&
 			is_matrix_selection_operator< SelectionOperator >::value
 		>::type * const = nullptr
-		) {
+	) {
 		(void) descr;
 		(void) B;
 		(void) A;
@@ -554,35 +544,24 @@ namespace grb {
 		const bool selected_backend_does_not_support_select = false;
 		assert( selected_backend_does_not_support_select );
 #endif
-		(void) grb::clear( B );
 		return UNSUPPORTED;
 	}
 
-
 	/**
-	 * Selects elements from a matrix based on a given selection function,
-	 * out-of-place variant, without accumulating.
+	 * Selects elements from a matrix based on a given selection function.
 	 *
 	 * This function template is used to select elements from a given input matrix
 	 * based on a provided selection function. The selected elements are then stored
-	 * in the output matrix.
-	 * The output matrix is cleared before the selection.
+	 * in a different output matrix, making this an out-of-place operation. The
+	 * output matrix is cleared before the selection.
 	 *
 	 * After a successful call to this primitive, the nonzero structure of \a B
 	 * will match the one of \a A without the elements that were not matched by
-	 * the selection function and all the elements of \a B will result $true$
-	 * when applied to the selection function.
+	 * the selection function. All the elements of \a B will result $true$ when
+	 * applied to the selection function.
 	 *
 	 * Any old entries of \a B will be removed after a successful call to this
 	 * primitive; that is, this primitive is out-of-place.
-	 *
-	 * \note When applying selection on sparse matrices, there is a difference
-	 *       between annihilating already existing non-zero values and
-	 *       accumulating them. This functionality is provided
-	 *       by #grb::selectLambda depending whether one or two
-	 *       operators are provided:
-	 *        - #grb::selectLambda( B, A, lambda, phase ): annihilating,
-	 *        - #grb::selectLambda( B, A, lambda, lambda, phase ): accumulating.
 	 *
 	 * \note See #grb::select for a variant of this function that uses pre-defined
 	 *       selection operators instead of a lambda function.
@@ -638,7 +617,7 @@ namespace grb {
 	 *
 	 */
 	template<
-		Descriptor descr,
+		Descriptor descr = descriptors::no_operation,
 		class SelectionLambda,
 		typename Tin,
 		typename RITin, typename CITin, typename NITin,
@@ -647,15 +626,15 @@ namespace grb {
 		Backend backend
 	>
 	RC selectLambda(
-		Matrix< Tout, backend, RITout, CITout, NITout >& B,
-		const Matrix< Tin, backend, RITin, CITin, NITin >& A,
+		Matrix< Tout, backend, RITout, CITout, NITout > &B,
+		const Matrix< Tin, backend, RITin, CITin, NITin > &A,
 		const SelectionLambda &lambda,
-		const Phase& phase = EXECUTE,
+		const Phase &phase = EXECUTE,
 		const typename std::enable_if<
 			!is_object< Tin >::value &&
 			!is_object< Tout >::value
 		>::type * const = nullptr
-		) {
+	) {
 		(void) descr;
 		(void) B;
 		(void) A;
@@ -668,7 +647,6 @@ namespace grb {
 		const bool selected_backend_does_not_support_selectLambda = false;
 		assert( selected_backend_does_not_support_selectLambda );
 #endif
-		(void) grb::clear( B );
 		return UNSUPPORTED;
 	}
 

@@ -345,7 +345,7 @@ namespace grb {
 	RC select(
 		Matrix< Tout, hyperdags, RITout, CITout, NITout > &out,
 		const Matrix< Tin, hyperdags, RITin, CITin, NITin > &in,
-		const Operator op = Operator(),
+		const Operator &op = Operator(),
 		const Phase &phase = EXECUTE
 	) {
 		const RC ret = select< descr >(

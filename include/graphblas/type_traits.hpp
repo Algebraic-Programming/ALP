@@ -112,7 +112,7 @@ namespace grb {
 	};
 
 	/**
-	 * Used to inspect whether a given type is an ALP matrix operator for coordinates.
+	 * Used to inspect whether a given type is an ALP matrix selection operator.
 	 *
 	 * @tparam T The type to inspect.
 	 *
