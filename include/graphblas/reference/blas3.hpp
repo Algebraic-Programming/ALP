@@ -30,10 +30,6 @@
 #include "io.hpp"
 #include "matrix.hpp"
 
-#ifdef _H_GRB_REFERENCE_OMP_BLAS3
- #include <omp.h>
-#endif
-
 #define NO_CAST_ASSERT( x, y, z )                                              \
 	static_assert( x,                                                          \
 		"\n\n"                                                                 \
@@ -1204,6 +1200,332 @@ namespace grb {
 			return SUCCESS;
 		}
 
+		template<
+			Descriptor descr = descriptors::no_operation,
+			class Monoid,
+			typename InputType, typename IOType,
+			typename RIT_A, typename CIT_A, typename NIT_A,
+			typename RIT_B, typename CIT_B, typename NIT_B
+		>
+		RC fold_matrix_matrix_unmasked_generic(
+			Matrix< IOType, reference, RIT_A, CIT_A, NIT_A > &A,
+			const Matrix< InputType, reference, RIT_B, CIT_B, NIT_B > &B,
+			const Monoid &monoid = Monoid()
+		) {
+#ifdef _DEBUG
+			std::cout << "In grb::internal::fold_matrix_matrix_unmasked_generic( reference )\n" << std::flush;
+#endif
+
+			if( nnz(B) == 0 || nnz(A) == 0 ) {
+#ifdef _DEBUG
+				std::cout << "One or the two matrices are empty, nothing to compute.\n" << std::flush;
+#endif
+				return SUCCESS;
+			}
+
+			const auto &A_crs_raw = internal::getCRS( A );
+			const auto &A_ccs_raw = internal::getCCS( A );
+			const auto &B_raw = descr & grb::descriptors::transpose_right
+								? internal::getCCS( B )
+								: internal::getCRS( B );
+			const size_t m = nrows( A );
+			const size_t n = ncols( A );
+			const size_t m_B =
+				descr & grb::descriptors::transpose_right || descr & grb::descriptors::transpose_matrix
+					? ncols( B )
+					: nrows( B );
+			const size_t n_B =
+				descr & grb::descriptors::transpose_right || descr & grb::descriptors::transpose_matrix
+					? nrows( B )
+					: ncols( B );
+
+			// Check mask dimensions
+			if( m != m_B || n != n_B ) {
+#ifdef _DEBUG
+							std::cout << "Dimensions of matrices do not match!\n" << std::flush;
+#endif
+				return MISMATCH;
+			}
+
+			RC rc = SUCCESS;
+			RC local_rc = rc;
+			const auto &op = monoid.getOperator();
+
+#ifdef _H_GRB_REFERENCE_OMP_BLAS3
+	#pragma omp parallel default(none) \
+				shared(A_crs_raw, A_ccs_raw, B_raw, rc, std::cout) \
+				firstprivate(local_rc, m, op)
+#endif
+			{
+				size_t start_row = 0;
+				size_t end_row = m;
+#ifdef _H_GRB_REFERENCE_OMP_BLAS3
+				config::OMP::localRange( start_row, end_row, 0, m );
+#endif
+				for( auto i = start_row; i < end_row; ++i ) {
+					auto B_k = B_raw.col_start[ i ];
+					const auto A_k_start = A_crs_raw.col_start[ i ];
+					const auto A_k_end = A_crs_raw.col_start[ i + 1 ];
+					for( auto k = A_k_start; k < A_k_end; ++k ) {
+						const auto j = A_crs_raw.row_index[ k ];
+						/* Increment the mask pointer until we find the right column,
+						* or a lower column  (since the storage withing a row
+						* is sorted in a descending order)
+						*/
+						while( B_k < B_raw.col_start[ i + 1 ] 
+							   && B_raw.row_index[ B_k ] > j
+						) {
+							B_k++;
+						}
+						// Check if we are out of values in B
+						if( B_k >= B_raw.col_start[ i + 1 ] ) {
+#ifdef _DEBUG
+							std::cout << "Not value left in B for this column\n" << std::flush;
+#endif
+							break;
+						}
+						// Check if we found the right column
+						if( B_raw.row_index[ B_k ] != j ) {
+#ifdef _DEBUG
+							std::cout << "Skip B value at: ( " + std::to_string( i )
+										+ ";" + std::to_string( B_raw.row_index[ B_k ] )
+										+ " )\n" << std::flush;
+#endif				
+							continue;
+						}
+
+						// Get B value
+						const auto B_val = B_raw.getValue(
+							B_k,
+							identities::zero< InputType >::value()
+						);
+#ifdef _DEBUG
+						std::cout << "B( " + std::to_string( i ) + ";"
+								+ std::to_string( B_raw.row_index[ B_k ] )
+								+ " ) = " + std::to_string( B_val ) + "\n" << std::flush;
+#endif
+
+						// Get A value
+						const auto a_val_before = A_crs_raw.values[ k ];
+#ifdef _DEBUG
+						std::cout << "A( " + std::to_string( i ) + ";"
+								+ std::to_string( j ) + " ) = "
+								+ std::to_string( a_val_before ) + "\n" << std::flush;
+#endif
+
+						// Compute the fold for this coordinate
+						local_rc = local_rc
+									? local_rc
+									: apply< descr >(
+										A_crs_raw.values[ k ], a_val_before, B_val, op
+									);
+						local_rc = local_rc
+									? local_rc
+									: apply< descr >(
+										A_ccs_raw.values[ k ], a_val_before, B_val, op
+									);
+#ifdef _DEBUG
+						std::cout << "Computing: op(" + std::to_string( a_val_before )
+								+ ", " + std::to_string( a_val_before ) + ") = "
+								+ std::to_string( A_ccs_raw.values[ k ] ) + "\n" << std::flush;
+#endif
+					}
+				}
+
+				if( local_rc != SUCCESS ) {
+#ifdef _H_GRB_REFERENCE_OMP_BLAS3
+	#pragma omp critical
+#endif
+					{ // Reduction with the global return code
+						rc = rc ? rc : local_rc;
+					}
+				}
+			}
+			return rc;
+		}
+
+		template<
+			Descriptor descr = descriptors::no_operation,
+			class Monoid,
+			typename InputType, typename MaskType, typename IOType,
+			typename RIT_A, typename CIT_A, typename NIT_A,
+			typename RIT_M, typename CIT_M, typename NIT_M,
+			typename RIT_B, typename CIT_B, typename NIT_B
+		>
+		RC fold_matrix_matrix_masked_generic(
+			Matrix< IOType, reference, RIT_A, CIT_A, NIT_A > &A,
+			const Matrix< MaskType, reference, RIT_M, CIT_M, NIT_M > &mask,
+			const Matrix< InputType, reference, RIT_B, CIT_B, NIT_B > &B,
+			const Monoid &monoid = Monoid()
+		) {
+			typedef typename std::conditional<
+						std::is_void< MaskType >::value, bool, MaskType
+					>::type MaskIdentityType;
+
+#ifdef _DEBUG
+			std::cout << "In grb::internal::fold_matrix_matrix_masked_generic( reference )\n" << std::flush;
+#endif
+
+			if( nnz(mask) == 0 || nnz(A) == 0 ) {
+				return SUCCESS;
+			}
+
+			// Descriptors aliases
+			constexpr bool transpose_left = descr & grb::descriptors::transpose_left;
+			constexpr bool transpose_right = descr & grb::descriptors::transpose_right;
+
+			auto &A_crs_raw = internal::getCRS( A );
+			auto &A_ccs_raw = internal::getCCS( A );
+			const size_t m = nrows( A );
+			const size_t n = ncols( A );
+
+			const auto &mask_raw = transpose_left 
+								? internal::getCCS( mask ) 
+								: internal::getCRS( mask );
+			const size_t m_mask = transpose_left 
+								? ncols( mask ) 
+								: nrows( mask );
+			const size_t n_mask = transpose_left 
+								? nrows( mask ) 
+								: ncols( mask );
+
+			const auto &B_raw = transpose_right 
+								? internal::getCCS( B ) 
+								: internal::getCRS( B );
+			const size_t m_B = transpose_right 
+								? ncols( B ) 
+								: nrows( B );
+			const size_t n_B = transpose_right 
+								? nrows( B ) 
+								: ncols( B );
+
+			// Check mask dimensions
+			if( m != m_B || n != n_B || m != m_mask || n != n_mask ) {
+#ifdef _DEBUG
+				std::cout << "Dimensions of matrices do not match!\n" << std::flush;
+#endif
+				return MISMATCH;
+			}
+
+			RC rc = SUCCESS;
+			RC local_rc = rc;
+			const auto &op = monoid.getOperator();
+			const InputType A_identity = monoid.template getIdentity< IOType >();
+			const InputType B_identity = monoid.template getIdentity< InputType >();
+
+#ifdef _H_GRB_REFERENCE_OMP_BLAS3
+	#pragma omp parallel default(none) \
+				shared(A_crs_raw, A_ccs_raw, mask_raw, B_raw, rc, std::cout) \
+				firstprivate(local_rc, m, op, A_identity, B_identity)
+#endif
+			{
+				size_t start_row = 0;
+				size_t end_row = m;
+#ifdef _H_GRB_REFERENCE_OMP_BLAS3
+				config::OMP::localRange( start_row, end_row, 0, m );
+#endif
+				for( auto i = start_row; i < end_row; ++i ) {
+					auto B_k = B_raw.col_start[ i ];
+					auto mask_k = mask_raw.col_start[ i ];
+					const auto A_k_start = A_crs_raw.col_start[ i ];
+					const auto A_k_end = A_crs_raw.col_start[ i + 1 ];
+					for( auto A_k = A_k_start; A_k < A_k_end; ++A_k ) {
+						const auto j = A_crs_raw.row_index[ A_k ];
+
+						/* Increment the mask pointer until we find the right column,
+						* or a lower column  (since the storage withing a row
+						* is sorted in a descending order)
+						*/
+						while(
+							mask_k < mask_raw.col_start[ i + 1 ] && mask_raw.row_index[ mask_k ] > j 
+						) {
+							mask_k++;
+						}
+						if( mask_k >= mask_raw.col_start[ i + 1 ] ) {
+#ifdef _DEBUG
+							std::cout << "Not value left in <mask> for this column\n" << std::flush;
+#endif
+							break;
+						}
+
+						const bool mask_has_value = mask_raw.getValue(
+							mask_k,
+							identities::logical_true<MaskIdentityType>::value()
+						);
+						if( mask_raw.row_index[ B_k ] != j || !mask_has_value ) {
+#ifdef _DEBUG
+							std::cout << "Skip <mask> value at: ( " + std::to_string( i ) 
+										+ ";" + std::to_string( mask_raw.row_index[ B_k ] ) 
+										+ " )\n" << std::flush;
+#endif
+							continue;
+						}
+
+						/* Increment the mask pointer until we find the right column,
+						* or a lower column  (since the storage withing a row
+						* is sorted in a descending order)
+						*/
+						while( B_k < B_raw.col_start[ i + 1 ] 
+							   && B_raw.row_index[ B_k ] > j
+						) {
+							B_k++;
+						}
+
+						// Get B value (or identity if not found)
+						InputType B_val = B_identity;
+						if( B_k < B_raw.col_start[ i + 1 ] && B_raw.row_index[ B_k ] == j ) {
+#ifdef _DEBUG
+							std::cout << "Found B value at: ( " + std::to_string( i ) 
+										+ ";" + std::to_string( B_raw.row_index[ B_k ] ) 
+										+ " )\n" << std::flush;
+#endif
+							B_val = B_raw.values[ B_k ];
+							B_k++;
+						} else {
+#ifdef _DEBUG
+							std::cout << "Not found B, using identity: ( " 
+										+ std::to_string( i ) + ";" + std::to_string( j ) 
+										+ " ) = " + std::to_string( B_val ) + "\n" << std::flush;
+#endif
+						}
+
+						// Get A value
+						const IOType A_val = A_crs_raw.getValue( A_k, A_identity );
+#ifdef _DEBUG
+						std::cout << "A( " + std::to_string( i ) + ";" 
+								+ std::to_string( j ) + " ) = " 
+								+ std::to_string( A_val ) + "\n" << std::flush;
+#endif
+
+						// Compute the fold for this coordinate
+						IOType result;
+						local_rc = local_rc 
+									? local_rc 
+									: apply< descr >(
+										result, A_val, B_val, op
+									);
+						A_crs_raw.setValue( A_k, result );
+						A_ccs_raw.setValue( A_k, result );
+#ifdef _DEBUG
+						std::cout << "Computing: op(" + std::to_string( A_val ) 
+								+ ", " + std::to_string( B_val ) + ") = " 
+								+ std::to_string( result ) + "\n" << std::flush;
+#endif
+					}
+				}
+
+				if( local_rc != SUCCESS ){
+#ifdef _H_GRB_REFERENCE_OMP_BLAS3
+	#pragma omp critical
+#endif
+					{ // Reduction with the global return code
+						rc = rc ? rc : local_rc;
+					}
+				}
+			}
+			return rc;
+		}
+
 	} // namespace internal
 
 	/**
@@ -1325,6 +1647,194 @@ namespace grb {
 			C, A, B, mulOp, dummyMonoid, phase
 		);
 	}
+
+	template<
+		Descriptor descr = descriptors::no_operation,
+		class Monoid,
+		typename IOType, typename MaskType, typename InputType,
+		typename RIT_A, typename CIT_A, typename NIT_A,
+		typename RIT_M, typename CIT_M, typename NIT_M,
+		typename RIT_B, typename CIT_B, typename NIT_B
+	>
+	RC foldl(
+		Matrix< IOType, reference, RIT_A, CIT_A, NIT_A > &A,
+		const Matrix< MaskType, reference, RIT_M, CIT_M, NIT_M > &mask,
+		const Matrix< InputType, reference, RIT_B, CIT_B, NIT_B > &B,
+		const Monoid &monoid = Monoid(),
+		const typename std::enable_if<
+			!grb::is_object< IOType >::value &&
+			!grb::is_object< InputType >::value &&
+			!grb::is_object< MaskType >::value &&
+			grb::is_monoid< Monoid >::value, void
+		>::type * const = nullptr
+	) {
+		// static checks
+		static_assert( !std::is_same< IOType, void >::value,
+			"grb::foldl ( reference, IOType <- op( IOType, InputType ): "
+			"the operator version of foldl cannot be used if the "
+			"scalar is of type void"
+		);
+		static_assert( (std::is_same< typename Monoid::D1, IOType >::value),
+			"grb::foldl ( reference, IOType <- op( IOType, InputType ): "
+			"called with a prefactor input type that does not match the first domain of the given operator"
+		);
+		static_assert( (std::is_same< typename Monoid::D2, InputType >::value),
+			"grb::foldr ( reference, IOType <- op( IOType, InputType ): "
+			"called with a prefactor input type that does not match the second domain of the given operator"
+		);
+		static_assert( (std::is_same< typename Monoid::D3, IOType >::value),
+			"grb::foldl ( reference, IOType <- op( IOType, InputType ): "
+			"called with an output type that does not match the output domain of the given operator"
+		);
+
+#ifdef _DEBUG
+		std::cout << "In grb::foldl( reference, matrix, mask, matrix, monoid )\n";
+#endif
+
+		return internal::fold_matrix_matrix_masked_generic< descr, Monoid >(
+			A, mask, B, monoid
+		);
+	}
+
+	template<
+		Descriptor descr = descriptors::no_operation,
+		class Monoid,
+		typename IOType, typename InputType,
+		typename RIT_A, typename CIT_A, typename NIT_A,
+		typename RIT_B, typename CIT_B, typename NIT_B
+	>
+	RC foldl(
+		Matrix< IOType, reference, RIT_A, CIT_A, NIT_A > &A,
+		const Matrix< InputType, reference, RIT_B, CIT_B, NIT_B > &B,
+		const Monoid &monoid = Monoid(),
+		const typename std::enable_if<
+			!grb::is_object< IOType >::value &&
+			!grb::is_object< InputType >::value &&
+			grb::is_monoid< Monoid >::value, void
+		>::type * const = nullptr
+	) {
+		// static checks
+		static_assert( !std::is_same< IOType, void >::value,
+			"grb::foldl ( reference, IOType <- op( IOType, InputType ): "
+			"the operator version of foldl cannot be used if the "
+			"scalar is of type void"
+		);
+		static_assert( (std::is_same< typename Monoid::D1, IOType >::value),
+			"grb::foldl ( reference, IOType <- op( IOType, InputType ): "
+			"called with a prefactor input type that does not match the first domain of the given operator"
+		);
+		static_assert(
+						(std::is_same< typename Monoid::D2, InputType >::value),
+			"grb::foldr ( reference, IOType <- op( IOType, InputType ): "
+			"called with a prefactor input type that does not match the second domain of the given operator"
+		);
+		static_assert( (std::is_same< typename Monoid::D3, IOType >::value),
+			"grb::foldl ( reference, IOType <- op( IOType, InputType ): "
+			"called with an output type that does not match the output domain of the given operator"
+		);
+
+#ifdef _DEBUG
+		std::cout << "In grb::foldl( reference, matrix, matrix, monoid )\n";
+#endif
+
+		return internal::fold_matrix_matrix_unmasked_generic< descr, Monoid >(
+			A, B, monoid
+		);
+	}
+
+	template<
+		Descriptor descr = descriptors::no_operation,
+		class Monoid,
+		typename IOType, typename MaskType, typename InputType,
+		typename RIT_A, typename CIT_A, typename NIT_A,
+		typename RIT_M, typename CIT_M, typename NIT_M,
+		typename RIT_B, typename CIT_B, typename NIT_B
+	>
+	RC foldr(
+		Matrix< IOType, reference, RIT_A, CIT_A, NIT_A > &A,
+		const Matrix< MaskType, reference, RIT_M, CIT_M, NIT_M > &mask,
+		const Matrix< InputType, reference, RIT_B, CIT_B, NIT_B > &B,
+		const Monoid &monoid = Monoid(),
+		const typename std::enable_if<
+			!grb::is_object< IOType >::value &&
+			!grb::is_object< InputType >::value &&
+			!grb::is_object< MaskType >::value &&
+			grb::is_monoid< Monoid >::value, void
+		>::type * const = nullptr
+	) {
+		// static checks
+		static_assert( !std::is_same< IOType, void >::value,
+			"grb::foldr ( reference, IOType <- op( InputType, IOType ): "
+			"the operator version of foldr cannot be used if the "
+			"input matrix is a pattern matrix (of type void)"
+		);
+		static_assert( (std::is_same< typename Monoid::D1, InputType >::value),
+			"grb::foldr ( reference, IOType <- op( InputType, IOType ): "
+			"called with a prefactor input type that does not match the first domain of the given operator"
+		);
+		static_assert( (std::is_same< typename Monoid::D2, IOType >::value),
+			"grb::foldr ( reference, IOType <- op( InputType, IOType ): "
+			"called with a postfactor input type that does not match the second domain of the given operator"
+		);
+		static_assert( (std::is_same< typename Monoid::D3, IOType >::value),
+			"grb::foldr ( reference, IOType <- op( InputType, IOType ): "
+			"called with an output type that does not match the output domain of the given operator"
+		);
+
+#ifdef _DEBUG
+		std::cout << "In grb::foldr( reference, matrix, mask, matrix, monoid )\n";
+#endif
+
+		return internal::fold_matrix_matrix_masked_generic< descr, Monoid >(
+			A, mask, B, monoid
+		);
+	}
+
+	template<
+		Descriptor descr = descriptors::no_operation,
+		class Monoid,
+		typename IOType, typename InputType,
+		typename RIT_A, typename CIT_A, typename NIT_A,
+		typename RIT_B, typename CIT_B, typename NIT_B
+	>
+	RC foldr(
+		Matrix< IOType, reference, RIT_A, CIT_A, NIT_A > &A,
+		const Matrix< InputType, reference, RIT_B, CIT_B, NIT_B > &B,
+		const Monoid &monoid = Monoid(),
+		const typename std::enable_if<
+			!grb::is_object< IOType >::value &&
+			!grb::is_object< InputType >::value &&
+			grb::is_monoid< Monoid >::value, void
+		>::type * const = nullptr
+	) {
+		// static checks
+		static_assert( !std::is_same< IOType, void >::value,
+			"grb::foldr ( reference, IOType <- op( InputType, IOType ): "
+			"the operator version of foldr cannot be used if the "
+			"input matrix is a pattern matrix (of type void)"
+		);
+		static_assert( (std::is_same< typename Monoid::D1, InputType >::value),
+			"grb::foldr ( reference, IOType <- op( InputType, IOType ): "
+			"called with a prefactor input type that does not match the first domain of the given operator"
+		);
+		static_assert( (std::is_same< typename Monoid::D2, IOType >::value),
+			"grb::foldr ( reference, IOType <- op( InputType, IOType ): "
+			"called with a postfactor input type that does not match the second domain of the given operator"
+		);
+		static_assert( (std::is_same< typename Monoid::D3, IOType >::value),
+			"grb::foldr ( reference, IOType <- op( InputType, IOType ): "
+			"called with an output type that does not match the output domain of the given operator"
+		);
+
+#ifdef _DEBUG
+		std::cout << "In grb::foldr( reference, matrix, matrix, monoid )\n";
+#endif
+
+		return internal::fold_matrix_matrix_unmasked_generic< descr, Monoid >(
+			A, B, monoid
+		);
+	}
+
 
 } // namespace grb
 

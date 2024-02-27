@@ -332,6 +332,186 @@ namespace grb {
 		return ret;
 	}
 
+	template<
+		Descriptor descr = descriptors::no_operation,
+		class Monoid,
+		typename IOType, typename MaskType, typename InputType, 
+		typename RIT_A, typename CIT_A, typename NIT_A,
+		typename RIT_M, typename CIT_M, typename NIT_M,
+		typename RIT_B, typename CIT_B, typename NIT_B
+	>
+	RC foldl(
+		Matrix< IOType, hyperdags, RIT_A, CIT_A, NIT_A > &A,
+		const Matrix< MaskType, hyperdags, RIT_M, CIT_M, NIT_M > &mask,
+		const Matrix< InputType, hyperdags, RIT_B, CIT_B, NIT_B > &B,
+		const Monoid &monoid = Monoid(),
+		const typename std::enable_if< 
+			!grb::is_object< IOType >::value &&
+			!grb::is_object< InputType >::value &&
+			!grb::is_object< MaskType >::value &&
+			grb::is_monoid< Monoid >::value, void
+		>::type * const = nullptr
+	) {
+		const RC ret = foldl< descr >(
+			internal::getMatrix( A ),
+			internal::getMatrix( mask ),
+			internal::getMatrix( B ),
+			monoid
+		);
+		if( ret != SUCCESS ) { return ret; }
+		if( nrows( A ) == 0 || ncols( A ) == 0 ) { return ret; }
+		if( nrows( mask ) == 0 || ncols( mask ) == 0 ) { return ret; }
+		if( nrows( B ) == 0 || ncols( B ) == 0 ) { return ret; }
+		std::array< const void *, 0 > sourcesP{};
+		std::array< uintptr_t, 3 > sourcesC{
+			getID( internal::getMatrix(A) ),
+			getID( internal::getMatrix(mask) ),
+			getID( internal::getMatrix(B) )
+		};
+		std::array< uintptr_t, 1 > destinations{ 
+			getID( internal::getMatrix(A) )
+		};
+		internal::hyperdags::generator.addOperation(
+			internal::hyperdags::FOLDL_MATRIX_MASK_MATRIX_MONOID,
+			sourcesP.begin(), sourcesP.end(),
+			sourcesC.begin(), sourcesC.end(),
+			destinations.begin(), destinations.end()
+		);
+		return ret;
+	}
+
+	template<
+		Descriptor descr = descriptors::no_operation,
+		class Monoid,
+		typename IOType, typename InputType, 
+		typename RIT_A, typename CIT_A, typename NIT_A,
+		typename RIT_B, typename CIT_B, typename NIT_B
+	>
+	RC foldl(
+		Matrix< IOType, hyperdags, RIT_A, CIT_A, NIT_A > &A,
+		const Matrix< InputType, hyperdags, RIT_B, CIT_B, NIT_B > &B,
+		const Monoid &monoid = Monoid(),
+		const typename std::enable_if< 
+			!grb::is_object< IOType >::value &&
+			!grb::is_object< InputType >::value &&
+			grb::is_monoid< Monoid >::value, void
+		>::type * const = nullptr
+	) {
+		const RC ret = foldl< descr >(
+			internal::getMatrix( A ),
+			internal::getMatrix( B ),
+			monoid
+		);
+		if( ret != SUCCESS ) { return ret; }
+		if( nrows( A ) == 0 || ncols( A ) == 0 ) { return ret; }
+		if( nrows( B ) == 0 || ncols( B ) == 0 ) { return ret; }
+		std::array< const void *, 0 > sourcesP{};
+		std::array< uintptr_t, 2 > sourcesC{
+			getID( internal::getMatrix(A) ),
+			getID( internal::getMatrix(B) )
+		};
+		std::array< uintptr_t, 1 > destinations{ 
+			getID( internal::getMatrix(A) )
+		};
+		internal::hyperdags::generator.addOperation(
+			internal::hyperdags::FOLDR_MATRIX_MATRIX_MONOID,
+			sourcesP.begin(), sourcesP.end(),
+			sourcesC.begin(), sourcesC.end(),
+			destinations.begin(), destinations.end()
+		);
+		return ret;
+	}
+
+	template<
+		Descriptor descr = descriptors::no_operation,
+		class Monoid,
+		typename IOType, typename MaskType, typename InputType, 
+		typename RIT_A, typename CIT_A, typename NIT_A,
+		typename RIT_M, typename CIT_M, typename NIT_M,
+		typename RIT_B, typename CIT_B, typename NIT_B
+	>
+	RC foldr(
+		Matrix< IOType, hyperdags, RIT_A, CIT_A, NIT_A > &A,
+		const Matrix< MaskType, hyperdags, RIT_M, CIT_M, NIT_M > &mask,
+		const Matrix< InputType, hyperdags, RIT_B, CIT_B, NIT_B > &B,
+		const Monoid &monoid = Monoid(),
+		const typename std::enable_if< 
+			!grb::is_object< IOType >::value &&
+			!grb::is_object< InputType >::value &&
+			!grb::is_object< MaskType >::value &&
+			grb::is_monoid< Monoid >::value, void
+		>::type * const = nullptr
+	) {
+		const RC ret = foldr< descr >(
+			internal::getMatrix( A ),
+			internal::getMatrix( mask ),
+			internal::getMatrix( B ),
+			monoid
+		);
+		if( ret != SUCCESS ) { return ret; }
+		if( nrows( A ) == 0 || ncols( A ) == 0 ) { return ret; }
+		if( nrows( mask ) == 0 || ncols( mask ) == 0 ) { return ret; }
+		if( nrows( B ) == 0 || ncols( B ) == 0 ) { return ret; }
+		std::array< const void *, 0 > sourcesP{};
+		std::array< uintptr_t, 3 > sourcesC{
+			getID( internal::getMatrix(A) ),
+			getID( internal::getMatrix(mask) ),
+			getID( internal::getMatrix(B) )
+		};
+		std::array< uintptr_t, 1 > destinations{ 
+			getID( internal::getMatrix(A) )
+		};
+		internal::hyperdags::generator.addOperation(
+			internal::hyperdags::FOLDR_MATRIX_MASK_MATRIX_MONOID,
+			sourcesP.begin(), sourcesP.end(),
+			sourcesC.begin(), sourcesC.end(),
+			destinations.begin(), destinations.end()
+		);
+		return ret;
+	}
+
+	template<
+		Descriptor descr = descriptors::no_operation,
+		class Monoid,
+		typename IOType, typename InputType, 
+		typename RIT_A, typename CIT_A, typename NIT_A,
+		typename RIT_B, typename CIT_B, typename NIT_B
+	>
+	RC foldr(
+		Matrix< IOType, hyperdags, RIT_A, CIT_A, NIT_A > &A,
+		const Matrix< InputType, hyperdags, RIT_B, CIT_B, NIT_B > &B,
+		const Monoid &monoid = Monoid(),
+		const typename std::enable_if< 
+			!grb::is_object< IOType >::value &&
+			!grb::is_object< InputType >::value &&
+			grb::is_monoid< Monoid >::value, void
+		>::type * const = nullptr
+	) {
+		const RC ret = foldr< descr >(
+			internal::getMatrix( A ),
+			internal::getMatrix( B ),
+			monoid
+		);
+		if( ret != SUCCESS ) { return ret; }
+		if( nrows( A ) == 0 || ncols( A ) == 0 ) { return ret; }
+		if( nrows( B ) == 0 || ncols( B ) == 0 ) { return ret; }
+		std::array< const void *, 0 > sourcesP{};
+		std::array< uintptr_t, 2 > sourcesC{
+			getID( internal::getMatrix(A) ),
+			getID( internal::getMatrix(B) )
+		};
+		std::array< uintptr_t, 1 > destinations{ 
+			getID( internal::getMatrix(A) )
+		};
+		internal::hyperdags::generator.addOperation(
+			internal::hyperdags::FOLDR_MATRIX_MATRIX_MONOID,
+			sourcesP.begin(), sourcesP.end(),
+			sourcesC.begin(), sourcesC.end(),
+			destinations.begin(), destinations.end()
+		);
+		return ret;
+	}
+
 } // end namespace grb
 
 #endif

@@ -32,6 +32,7 @@
 #include <type_traits> //enable_if
 
 #include "graphblas/descriptors.hpp"
+#include "graphblas/identities.hpp"
 #include "graphblas/rc.hpp"
 #include "graphblas/type_traits.hpp"
 
@@ -603,6 +604,38 @@ namespace grb {
 				}
 
 		};
+
+		template< typename MaskType >
+		struct MaskHasValue {
+
+			public:
+				template < Descriptor descr = descriptors::no_operation, typename MaskStruct >
+				MaskHasValue( const MaskStruct& mask_raw, const size_t k ) {
+						bool hasValue = (bool) mask_raw.getValue( k, grb::identities::logical_false<bool>() );
+						if (descr & grb::descriptors::invert_mask) {
+							hasValue = !hasValue;
+						}
+						value = hasValue;
+					}
+
+				bool value;
+		};
+
+		template<>
+		struct MaskHasValue< void > {
+
+			public:
+				template < Descriptor descr = descriptors::no_operation, typename MaskStruct >
+				MaskHasValue( const MaskStruct& mask_raw, const size_t k ) :
+				value(not (descr & grb::descriptors::invert_mask)){
+					(void) mask_raw;
+					(void) k;
+				}
+
+				const bool value;
+
+		};
+
 
 	} // namespace internal
 

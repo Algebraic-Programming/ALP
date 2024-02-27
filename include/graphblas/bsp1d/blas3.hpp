@@ -205,6 +205,161 @@ namespace grb {
 		return internal::checkGlobalErrorStateOrClear( C, ret );
 	}
 
+	template<
+		Descriptor descr = descriptors::no_operation,
+		class Monoid,
+		typename IOType, typename MaskType, typename InputType, 
+		typename RIT_A, typename CIT_A, typename NIT_A,
+		typename RIT_M, typename CIT_M, typename NIT_M,
+		typename RIT_B, typename CIT_B, typename NIT_B
+	>
+	RC foldl(
+		Matrix< IOType, BSP1D, RIT_A, CIT_A, NIT_A > &A,
+		const Matrix< MaskType, BSP1D, RIT_M, CIT_M, NIT_M > &mask,
+		const Matrix< InputType, BSP1D, RIT_B, CIT_B, NIT_B > &B,
+		const Monoid &monoid = Monoid(),
+		const typename std::enable_if< 
+			!grb::is_object< IOType >::value &&
+			!grb::is_object< InputType >::value &&
+			!grb::is_object< MaskType >::value &&
+			grb::is_monoid< Monoid >::value, void
+		>::type * const = nullptr
+	) {
+
+#ifdef _DEBUG
+		std::cout << "In grb::foldl( BSP1D, matrix, mask, matrix, monoid )\n";
+#endif
+		RC rc = SUCCESS;
+
+		if( grb::nnz( A ) == 0 || grb::nnz( mask ) == 0 ) {
+			return rc;
+		}
+
+		// Do local folding
+		rc = foldl< descr >( 
+			internal::getLocal( A ), 
+			internal::getLocal( mask ), 
+			internal::getLocal( B ),
+			monoid
+		);
+
+		return rc;
+	}
+
+	template<
+		Descriptor descr = descriptors::no_operation,
+		class Monoid,
+		typename IOType, typename MaskType, typename InputType, 
+		typename RIT_A, typename CIT_A, typename NIT_A,
+		typename RIT_B, typename CIT_B, typename NIT_B
+	>
+	RC foldl(
+		Matrix< IOType, BSP1D, RIT_A, CIT_A, NIT_A > &A,
+		const Matrix< InputType, BSP1D, RIT_B, CIT_B, NIT_B > &B,
+		const Monoid &monoid = Monoid(),
+		const typename std::enable_if< 
+			!grb::is_object< IOType >::value &&
+			!grb::is_object< InputType >::value &&
+			grb::is_monoid< Monoid >::value, void
+		>::type * const = nullptr
+	) {
+
+#ifdef _DEBUG
+		std::cout << "In grb::foldl( BSP1D, matrix, matrix, monoid )\n";
+#endif
+		RC rc = SUCCESS;
+
+		if( grb::nnz( A ) == 0 || grb::nnz( B ) == 0 ) {
+			return rc;
+		}
+
+		// Do local folding
+		rc = foldl< descr >( 
+			internal::getLocal( A ), 
+			internal::getLocal( B ),
+			monoid
+		);
+
+		return rc;
+	}
+
+	template<
+		Descriptor descr = descriptors::no_operation,
+		class Monoid,
+		typename IOType, typename MaskType, typename InputType, 
+		typename RIT_A, typename CIT_A, typename NIT_A,
+		typename RIT_M, typename CIT_M, typename NIT_M,
+		typename RIT_B, typename CIT_B, typename NIT_B
+	>
+	RC foldr(
+		Matrix< IOType, BSP1D, RIT_A, CIT_A, NIT_A > &A,
+		const Matrix< MaskType, BSP1D, RIT_M, CIT_M, NIT_M > &mask,
+		const Matrix< InputType, BSP1D, RIT_B, CIT_B, NIT_B > &B,
+		const Monoid &monoid = Monoid(),
+		const typename std::enable_if< 
+			!grb::is_object< IOType >::value &&
+			!grb::is_object< InputType >::value &&
+			!grb::is_object< MaskType >::value &&
+			grb::is_monoid< Monoid >::value, void
+		>::type * const = nullptr
+	) {
+
+#ifdef _DEBUG
+		std::cout << "In grb::foldr( BSP1D, matrix, mask, matrix, monoid )\n";
+#endif
+		RC rc = SUCCESS;
+
+		if( grb::nnz( A ) == 0 || grb::nnz( mask ) == 0 ) {
+			return rc;
+		}
+
+		// Do local folding
+		rc = foldr< descr >( 
+			internal::getLocal( A ), 
+			internal::getLocal( mask ), 
+			internal::getLocal( B ), 
+			monoid
+		);		
+
+		return rc;
+	}
+
+	template<
+		Descriptor descr = descriptors::no_operation,
+		class Monoid,
+		typename IOType, typename MaskType, typename InputType, 
+		typename RIT_A, typename CIT_A, typename NIT_A,
+		typename RIT_B, typename CIT_B, typename NIT_B
+	>
+	RC foldr(
+		Matrix< IOType, BSP1D, RIT_A, CIT_A, NIT_A > &A,
+		const Matrix< InputType, BSP1D, RIT_B, CIT_B, NIT_B > &B,
+		const Monoid &monoid = Monoid(),
+		const typename std::enable_if< 
+			!grb::is_object< IOType >::value &&
+			!grb::is_object< InputType >::value &&
+			grb::is_monoid< Monoid >::value, void
+		>::type * const = nullptr
+	) {
+#ifdef _DEBUG
+		std::cout << "In grb::foldr( BSP1D, matrix, matrix, monoid )\n";
+#endif
+		RC rc = SUCCESS;
+
+		if( grb::nnz( A ) == 0 || grb::nnz( B ) == 0 ) {
+			return rc;
+		}
+
+		// Do local folding
+		rc = foldr< descr >( 
+			internal::getLocal( A ), 
+			internal::getLocal( B ), 
+			monoid
+		);
+
+		return rc;
+	}
+
 } // namespace grb
 
 #endif

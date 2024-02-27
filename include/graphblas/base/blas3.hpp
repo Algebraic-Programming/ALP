@@ -443,6 +443,198 @@ namespace grb {
 	}
 
 	/**
+	 * Scales, or \em folds, a matrix into a matrix, using a constant 
+	 * matrix to perform element-wise operations against.
+	 *
+	 * @tparam descr     The descriptor to be used (descriptors::no_operation if
+	 *                   left unspecified).
+	 * @tparam Monoid    The monoid to use.
+	 * @tparam IOType    The type of the elements in the input and output
+	 * 					 ALP/GraphBLAS matrix \a A.
+	 * @tparam MaskType  The type of the elements in the supplied ALP/GraphBLAS
+	 *                   matrix \a mask.
+	 * @tparam InputType The type of the input matrix \a B.
+	 *
+	 * @param[in,out] A     Any ALP/GraphBLAS matrix, which will be scaled.
+	 * 					    Prior value will be considered.
+	 * @param[in]     mask  Any ALP/GraphBLAS matrix.
+	 * @param[in]     B	    Any ALP/GraphBLAS matrix, which will be used to
+	 * 						scale \a A.    
+	 * @param[in]   monoid  The operator under which to perform the element-wise
+	 * 						scaling.
+	 *
+	 * @return grb::SUCCESS  When the call completed successfully.
+	 * @return grb::MISMATCH If A, mask and B don't have the same dimensions.
+	 *
+	 * @see grb::foldr provides similar in-place functionality.
+	 * @see grb::eWiseApply provides out-of-place semantics.
+	 *
+	 * \parblock
+	 * \par Valid descriptors
+	 * - descriptors::no_operation: the default descriptor.
+	 * - descriptors::no_casting: the first domain of
+	 * 	 	\a op must match \a IOType, the second domain of \a op
+	 * 		match \a InputType, the third domain must match \a IOType.
+	 * - descriptors::transpose_left: mask^T will be considered 
+	 * 	 	instead of \a mask.
+	 * - descriptors::transpose_right: B^T will be considered 
+	 * 	 	instead of \a B.
+	 * - descriptors::invert_mask: Not supported yet.
+	 *
+	 * \note Invalid descriptors will be ignored.
+	 *
+	 * \endparblock
+	 *
+	 * \par Performance semantics
+	 * Each backend must define performance semantics for this primitive.
+	 *
+	 * @see perfSemantics
+	 */
+	template<
+		Descriptor descr = descriptors::no_operation,
+		class Monoid,
+		typename IOType, typename MaskType, typename InputType, 
+		typename RIT_A, typename CIT_A, typename NIT_A,
+		typename RIT_M, typename CIT_M, typename NIT_M,
+		typename RIT_B, typename CIT_B, typename NIT_B,
+		Backend backend
+	>
+	RC foldl(
+		Matrix< IOType, backend, RIT_A, CIT_A, NIT_A > &A,
+		const Matrix< MaskType, backend, RIT_M, CIT_M, NIT_M > &mask,
+		const Matrix< InputType, backend, RIT_B, CIT_B, NIT_B > &B,
+		const Monoid &monoid = Monoid(),
+		const typename std::enable_if< 
+			!grb::is_object< IOType >::value &&
+			!grb::is_object< InputType >::value &&
+			!grb::is_object< MaskType >::value &&
+			grb::is_monoid< Monoid >::value, void
+		>::type * const = nullptr
+	) {
+#ifndef NDEBUG
+		const bool should_not_call_base_masked_matrix_matrix_foldl = false;
+		assert( should_not_call_base_masked_matrix_matrix_foldl );
+#endif
+		(void) A;
+		(void) mask;
+		(void) B;
+		(void) monoid;
+		return UNSUPPORTED;
+	}
+
+	/**
+	 * Scales, or \em folds, a matrix into a matrix, using a constant 
+	 * matrix to perform element-wise operations against.
+	 * 
+	 * Left-to-right unmasked variant.
+	 * 
+	 * Please see the masked grb::foldl variant for a full description.
+	 */
+	template<
+		Descriptor descr = descriptors::no_operation,
+		class Monoid,
+		typename IOType, typename InputType, 
+		typename RIT_A, typename CIT_A, typename NIT_A,
+		typename RIT_B, typename CIT_B, typename NIT_B,
+		Backend backend
+	>
+	RC foldl(
+		Matrix< IOType, backend, RIT_A, CIT_A, NIT_A > &A,
+		const Matrix< InputType, backend, RIT_B, CIT_B, NIT_B > &B,
+		const Monoid &monoid = Monoid(),
+		const typename std::enable_if< 
+			!grb::is_object< IOType >::value &&
+			!grb::is_object< InputType >::value &&
+			grb::is_monoid< Monoid >::value, void
+		>::type * const = nullptr
+	) {
+#ifndef NDEBUG
+		const bool should_not_call_base_unmasked_matrix_matrix_foldl = false;
+		assert( should_not_call_base_unmasked_matrix_matrix_foldl );
+#endif
+		(void) A;
+		(void) B;
+		(void) monoid;
+		return UNSUPPORTED;
+	}
+
+	/**
+	 * Scales, or \em folds, a matrix into a matrix, using a constant 
+	 * matrix to perform element-wise operations against.
+	 * 
+	 * Right-to-left masked variant.
+	 * 
+	 * Please see the masked grb::foldl variant for a full description.
+	 */
+	template<
+		Descriptor descr = descriptors::no_operation,
+		class Monoid,
+		typename IOType, typename MaskType, typename InputType, 
+		typename RIT_A, typename CIT_A, typename NIT_A,
+		typename RIT_M, typename CIT_M, typename NIT_M,
+		typename RIT_B, typename CIT_B, typename NIT_B,
+		Backend backend
+	>
+	RC foldr(
+		Matrix< IOType, backend, RIT_A, CIT_A, NIT_A > &A,
+		const Matrix< MaskType, backend, RIT_M, CIT_M, NIT_M > &mask,
+		const Matrix< InputType, backend, RIT_B, CIT_B, NIT_B > &B,
+		const Monoid &monoid = Monoid(),
+		const typename std::enable_if< 
+			!grb::is_object< IOType >::value &&
+			!grb::is_object< InputType >::value &&
+			!grb::is_object< MaskType >::value &&
+			grb::is_monoid< Monoid >::value, void
+		>::type * const = nullptr
+	) {
+#ifndef NDEBUG
+		const bool should_not_call_base_masked_matrix_matrix_foldr = false;
+		assert( should_not_call_base_masked_matrix_matrix_foldr );
+#endif
+		(void) A;
+		(void) mask;
+		(void) B;
+		(void) monoid;
+		return UNSUPPORTED;
+	}
+
+	/**
+	 * Scales, or \em folds, a matrix into a matrix, using a constant 
+	 * matrix to perform element-wise operations against.
+	 * 
+	 * Right-to-left unmasked variant.
+	 * 
+	 * Please see the masked grb::foldl variant for a full description.
+	 */
+	template<
+		Descriptor descr = descriptors::no_operation,
+		class Monoid,
+		typename IOType, typename InputType, 
+		typename RIT_A, typename CIT_A, typename NIT_A,
+		typename RIT_B, typename CIT_B, typename NIT_B,
+		Backend backend
+	>
+	RC foldr(
+		Matrix< IOType, backend, RIT_A, CIT_A, NIT_A > &A,
+		const Matrix< InputType, backend, RIT_B, CIT_B, NIT_B > &B,
+		const Monoid &monoid = Monoid(),
+		const typename std::enable_if< 
+			!grb::is_object< IOType >::value &&
+			!grb::is_object< InputType >::value &&
+			grb::is_monoid< Monoid >::value, void
+		>::type * const = nullptr
+	) {
+#ifndef NDEBUG
+		const bool should_not_call_base_unmasked_matrix_matrix_foldr = false;
+		assert( should_not_call_base_unmasked_matrix_matrix_foldr );
+#endif
+		(void) A;
+		(void) B;
+		(void) monoid;
+		return UNSUPPORTED;
+	}
+
+	/**
 	 * @}
 	 */
 
