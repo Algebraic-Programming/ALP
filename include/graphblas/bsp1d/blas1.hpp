@@ -4523,7 +4523,7 @@ namespace grb {
 		}
 		// in this implementation, the distributions are equal so no need for any
 		// synchronisation
-		return eWiseLambda( f, x, args... );
+		return eWiseLambda< descr >( f, x, args... );
 		// note the sparsity structure will not change by the above call
 	}
 
