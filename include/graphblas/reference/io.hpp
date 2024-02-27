@@ -1225,7 +1225,7 @@ namespace grb {
 
 		char * mask_arr = nullptr;
 		char * mask_buf = nullptr;
-		OutputType * mask_valbuf = nullptr;
+		MaskType * mask_valbuf = nullptr;
 		internal::getMatrixBuffers( mask_arr, mask_buf, mask_valbuf, 1, M );
 
 		internal::Coordinates< reference > mask_coors;
@@ -1234,13 +1234,13 @@ namespace grb {
 		for( size_t i = 0; i < nrows; ++i ) {
 			mask_coors.clear();
 			for( auto k = mask_raw.col_start[ i ]; k < mask_raw.col_start[ i + 1 ]; ++k ) {
-				const size_t k_col = mask_raw.row_index[ k ];
-				if( utils::interpretMask< descr, MaskType >( true, mask_raw.values, k ) ) {
+				const auto k_col = mask_raw.row_index[ k ];
+				if( utils::interpretMatrixMask< descr, MaskType >( true, mask_raw.getValues(), k ) ) {
 					mask_coors.assign( k_col );
 				}
 			}
 			for( auto k = A_raw.col_start[ i ]; k < A_raw.col_start[ i + 1 ]; ++k ) {
-				const size_t k_col = A_raw.row_index[ k ];
+				const auto k_col = A_raw.row_index[ k ];
 				if( mask_coors.assigned( k_col ) ) {
 					nzc++;
 				}
@@ -1275,7 +1275,7 @@ namespace grb {
 		CRS_raw.col_start[ 0 ] = 0;
 
 #ifdef _H_GRB_REFERENCE_OMP_BLAS3
-			#pragma omp parallel for simd
+		#pragma omp parallel for simd
 #endif
 		for( size_t j = 0; j <= ncols; ++j ) {
 			CCS_raw.col_start[ j ] = 0;
@@ -1286,13 +1286,13 @@ namespace grb {
 		for( size_t i = 0; i < nrows; ++i ) {
 			mask_coors.clear();
 			for( auto k = mask_raw.col_start[ i ]; k < mask_raw.col_start[ i + 1 ]; ++k ) {
-				const size_t k_col = mask_raw.row_index[ k ];
-				if( utils::interpretMask< descr, MaskType >( true, mask_raw.values, k ) ) {
+				const auto k_col = mask_raw.row_index[ k ];
+				if( utils::interpretMask< descr, MaskType >( true, mask_raw.getValues(), k ) ) {
 					mask_coors.assign( k_col );
 				}
 			}
 			for( auto k = A_raw.col_start[ i ]; k < A_raw.col_start[ i + 1 ]; ++k ) {
-				const size_t k_col = A_raw.row_index[ k ];
+				const auto k_col = A_raw.row_index[ k ];
 				if( mask_coors.assigned( k_col ) ) {
 					nzc++;
 					CCS_raw.col_start[ k_col + 1 ]++;
@@ -1319,29 +1319,31 @@ namespace grb {
 		for( size_t i = 0; i < nrows; ++i ) {
 			mask_coors.clear();
 			for( auto k = mask_raw.col_start[ i ]; k < mask_raw.col_start[ i + 1 ]; ++k ) {
-				const size_t k_col = mask_raw.row_index[ k ];
-				if( utils::interpretMask< descr, MaskType >( true, mask_raw.values, k ) ) {
+				const auto k_col = mask_raw.row_index[ k ];
+				if( utils::interpretMatrixMask< descr, MaskType >( true, mask_raw.getValues(), k ) ) {
 					mask_coors.assign( k_col );
 				}
 			}
 			for( auto k = A_raw.col_start[ i ]; k < A_raw.col_start[ i + 1 ]; ++k ) {
-				const size_t k_col = A_raw.row_index[ k ];
+				const auto k_col = A_raw.row_index[ k ];
 				if( mask_coors.assigned( k_col ) ) {
 					OutputType val = A_raw.getValue( k, *( (OutputType*) nullptr ) );
 					CRS_raw.row_index[ nzc ] = k_col;
 					CRS_raw.setValue( nzc, val );
-					const size_t CCS_index = C_col_index[ k_col ]++ + CCS_raw.col_start[ k_col ];
+					const size_t CCS_index = C_col_index[ k_col ] + CCS_raw.col_start[ k_col ];
+					C_col_index[ k_col ]++;
 					CCS_raw.row_index[ CCS_index ] = i;
 					CCS_raw.setValue( CCS_index, val );
 					nzc++;
 				}
 			}
 		}
-
+#ifndef NDEBUG
 		for( size_t j = 0; j < ncols; ++j ) {
 			assert( CCS_raw.col_start[ j + 1 ] - CCS_raw.col_start[ j ] ==
 				C_col_index[ j ] );
 		}
+#endif
 
 		internal::setCurrentNonzeroes( C, nzc );
 

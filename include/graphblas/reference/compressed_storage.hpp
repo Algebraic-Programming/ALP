@@ -426,6 +426,16 @@ namespace grb {
 				}
 
 				/**
+				 * @returns The value array.
+				 *
+				 * \warning Does not check for <tt>NULL</tt> pointers.
+				 */
+				D * getValues() const noexcept {
+					return values;
+				}
+
+
+				/**
 				 * @returns The index array.
 				 *
 				 * \warning Does not check for <tt>NULL</tt> pointers.
@@ -1102,6 +1112,13 @@ namespace grb {
 				 * @returns A null pointer (since this is a pattern matrix).
 				 */
 				char * getValues() noexcept {
+					return nullptr;
+				}
+
+				/**
+				 * @returns A null pointer (since this is a pattern matrix).
+				 */
+				char * getValues() const noexcept {
 					return nullptr;
 				}
 
