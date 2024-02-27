@@ -849,7 +849,7 @@ namespace grb {
 		//mask contains only those values that need to be selected from A
 		Matrix< MaskType, reference, RIT, CIT, NIT > mask( nrows, ncols );
 
-		ret = outer( mask, A, rows, cols, grb::operators::zip< MaskType, MaskType, reference >(), Phase::RESIZE );
+		RC ret = outer( mask, A, rows, cols, grb::operators::zip< MaskType, MaskType, reference >(), Phase::RESIZE );
 		if( ret != SUCCESS ) {
 			return ret;
 		}
