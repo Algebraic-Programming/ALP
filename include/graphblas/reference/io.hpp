@@ -1239,6 +1239,9 @@ namespace grb {
 					mask_coors.assign( k_col );
 				}
 			}
+#ifdef _H_GRB_REFERENCE_OMP_BLAS3
+			#pragma omp parallel for reduction(+:nzc)
+#endif
 			for( auto k = A_raw.col_start[ i ]; k < A_raw.col_start[ i + 1 ]; ++k ) {
 				const auto k_col = A_raw.row_index[ k ];
 				if( mask_coors.assigned( k_col ) ) {
