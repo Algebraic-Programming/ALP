@@ -103,7 +103,7 @@ namespace grb::algorithms {
 	 * \f$ \mathcal{O}(m+n)/T+T \f$ while system-wide data movement costs remain
 	 * proportional to \f$ \mathcal{O}(m+n+T) \f$, with usually \f$ m+n \gg T \f$.
 	 * The work-space cost remains \f$ \Theta(1) \f$.
-	 * 
+	 *
 	 * In case of a distributed-memory parallel backend and use of this factory
 	 * class in #grb::PARALLEL I/O \a mode over \f$ P \f$ user processes with
 	 * \f$ T_s \f$ threads at user process \f$ s \f$, thread-local work and data

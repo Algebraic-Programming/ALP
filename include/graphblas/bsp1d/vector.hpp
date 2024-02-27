@@ -351,13 +351,14 @@ namespace grb {
 			internal::Coordinates< _GRB_BSP1D_BACKEND >
 		> & internal::getGlobal< D, C >( const Vector< D, BSP1D, C > & );
 
-		template< typename Func, typename DataType, typename Coords >
+		template< Descriptor, typename Func, typename DataType, typename Coords >
 		friend RC eWiseLambda(
 			const Func,
 			const Vector< DataType, BSP1D, Coords > &
 		);
 
 		template<
+			Descriptor,
 			typename Func,
 			typename DataType1, typename DataType2,
 			typename Coords, typename... Args
@@ -489,6 +490,26 @@ namespace grb {
 
 		/** Memory slot corresponding to the stack in #_buffer. */
 		lpf_memslot_t _stack_slot;
+
+		/**
+		 * The process ID that is locally stored.
+		 *
+		 * Must be strictly smaller than \a _P.
+		 *
+		 * \note This caching is required because we cannot access the thread-local
+		 *       BSP storage from within the operator[] context, as that context is
+		 *       designed to be called from another (possibly threaded) backend.
+		 */
+		size_t _s;
+
+		/**
+		 * The total number of processes this global vector is distributed over.
+		 *
+		 * \note This caching is required because we cannot access the thread-local
+		 *       BSP storage from within the operator[] context, as that context is
+		 *       designed to be called from another (possibly threaded) backend.
+		 */
+		size_t _P;
 
 		/**
 		 * Whether cleared was called without a subsequent call to
@@ -697,7 +718,6 @@ namespace grb {
 				stack = internal::getCoordinates( _global ).getRawStack( tmp );
 				(void) tmp;
 			}
-
 #ifdef _DEBUG
 			std::cout << data.s << ": local and global coordinates are initialised. The "
 				"array size is " << arraySize << " while the stack size is " <<
@@ -821,6 +841,12 @@ namespace grb {
 #endif
 					}
 				}
+			}
+
+			// cache PID and nprocs
+			{
+				_s = data.s;
+				_P = data.P;
 			}
 		}
 
@@ -1949,7 +1975,7 @@ namespace grb {
 		 * @param[in] The operator instance to be used for reduction.
 		 */
 		template< Descriptor descr = descriptors::no_operation, class Acc >
-		RC combine( const Acc & acc ) {
+		RC combine( const Acc &acc ) {
 			// we need access to LPF context
 			internal::BSP1D_Data &data = internal::grb_BSP1D.load();
 			constexpr const bool is_dense = descr & descriptors::dense;
@@ -2269,6 +2295,7 @@ namespace grb {
 			_raw_slot( LPF_INVALID_MEMSLOT ),
 			_assigned_slot( LPF_INVALID_MEMSLOT ),
 			_stack_slot( LPF_INVALID_MEMSLOT ),
+			_s( 0 ), _P( 1 ),
 			_cleared( false ), _became_dense( false ),
 			_nnz_is_dirty( false ),	_global_is_dirty( false )
 		{
@@ -2378,6 +2405,67 @@ namespace grb {
 		}
 
 		/**
+		 * Constructs a BSP1D vector.
+		 *
+		 * @see Full description in base backend.
+		 *
+		 * \internal
+		 * This constructor initialises the local vector and synchronises the global
+		 * vector once.
+		 *
+		 * TODO rewrite below logic using an iterator filter (GitHub PR 233, issue
+		 * 228)
+		 * \endinternal
+		 */
+		Vector( const std::initializer_list< D > &vals )
+			: Vector( vals.size(), vals.size() )
+		{
+#ifdef _DEBUG
+			std::cerr << "In Vector< BSP1D >::Vector( initializer_list ) constructor\n";
+#endif
+			RC ret = SUCCESS;
+			const size_t n = vals.size();
+			const internal::BSP1D_Data &data = internal::grb_BSP1D.cload();
+
+			// Set all the local values
+			for( size_t i = 0; i < vals.size(); i++ ) {
+				const D val = *( vals.begin() + i );
+
+				// check if local
+				// if( (i / x._b) % data.P != data.s ) {
+				if( data.s !=
+					internal::Distribution< BSP1D >::global_index_to_process_id(
+						i, n, data.P
+					)
+				) {
+					continue;
+				}
+
+				// local, so translate index and perform requested operation
+				const size_t local_index =
+					internal::Distribution< BSP1D >::global_index_to_local( i, n, data.P );
+#ifdef _DEBUG
+				std::cout << data.s << ", grb::setElement translates global index "
+					<< i << " to " << local_index << "\n";
+#endif
+				ret = ret
+					? ret
+					: setElement( _local, val, local_index, EXECUTE );
+			}
+
+			// Synchronise once between all processes
+			if( SUCCESS !=
+				collectives< BSP1D >::allreduce( ret, operators::any_or< RC >() )
+			) {
+				throw std::runtime_error( "grb::Vector< BSP1D >::Vector( initializer_list ): "
+					"collective::allreduce failed." );
+			}
+
+			// on successful execute, sync new nnz count
+			updateNnz();
+		}
+
+		/**
 		 * Copy constructor.
 		 *
 		 * Incurs the same costs as the normal constructor, followed by a grb::set.
@@ -2415,6 +2503,7 @@ namespace grb {
 			_n( x._n ), _cap( x._cap ), _nnz( x._nnz ),
 			_raw_slot( x._raw_slot ),
 			_assigned_slot( x._assigned_slot ), _stack_slot( x._stack_slot ),
+			_s( x._s ), _P( x._P ),
 			_cleared( x._cleared ),
 			_became_dense( x._became_dense ),
 			_nnz_is_dirty( x._nnz_is_dirty ),
@@ -2480,6 +2569,8 @@ namespace grb {
 			_n = x._n;
 			_cap = x._cap;
 			_nnz = x._nnz;
+			_s = x._s;
+			_P = x._P;
 			_raw_slot = x._raw_slot;
 			_assigned_slot = x._assigned_slot;
 			_stack_slot = x._stack_slot;
@@ -2603,20 +2694,41 @@ namespace grb {
 		}
 
 		/**
-		 * Implementation simply defers to the reference implementation operator
-		 * overload. This means this function expects local indices, which happens
-		 * automatically when using eWiseLambda.
+		 * Implementation in debug mode checks that the given index is distributed to
+		 * this process, and if not, trips an assert. It proceeds to translate the
+		 * global index \a i to a process-local one, and, using the local index,
+		 * defers to the final backend.
 		 */
 		typename LocalVector::lambda_reference operator[]( const size_t i ) {
+			assert( _s < _P );
+#ifndef NDEBUG
+			// dynamic sanity check
+			const size_t k = internal::Distribution< BSP1D >::global_index_to_process_id(
+				i, _n, _P );
+			assert( _s == k );
+#endif
+			// translate global index to local
+			const size_t local = internal::Distribution< BSP1D >::global_index_to_local(
+				i, _n, _P );
 			// return reference
-			return _local[ i ];
+			return _local[ local ];
 		}
 
 		/** No implementation notes (see above). */
 		const typename LocalVector::lambda_reference
 		operator[]( const size_t i ) const {
+			assert( _s < _P );
+#ifndef NDEBUG
+			// dynamic sanity check
+			const size_t k = internal::Distribution< BSP1D >::global_index_to_process_id(
+				i, _n, _P );
+			assert( _s == k );
+#endif
+			// translate global index to local
+			const size_t local = internal::Distribution< BSP1D >::global_index_to_local(
+				i, _n, _P );
 			// return const reference
-			return _local[ i ];
+			return _local[ local ];
 		}
 
 		/**

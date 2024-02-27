@@ -31,7 +31,6 @@ assert_valid_variables( INCLUDE_INSTALL_DIR NO_NUMA_DEF )
 add_library( backend_headers_nodefs INTERFACE )
 target_include_directories( backend_headers_nodefs INTERFACE
 	$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>
-	$<INSTALL_INTERFACE:.>
 )
 
 # regex to filter all headers files based on the extension and
@@ -55,6 +54,7 @@ set( root_files
 	"graphblas/vector.hpp" "graphblas/synchronizedNonzeroIterator.hpp"
 	"graphblas/nonzeroStorage.hpp"
 )
+
 set( GRB_INCLUDE_INSTALL_DIR "${INCLUDE_INSTALL_DIR}/graphblas")
 install( FILES ${root_files} DESTINATION "${GRB_INCLUDE_INSTALL_DIR}" )
 
@@ -74,7 +74,6 @@ install( DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/graphblas/base/"
 add_library( alp_utils_headers INTERFACE )
 target_include_directories( alp_utils_headers INTERFACE
 	$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>
-	$<INSTALL_INTERFACE:.>
 )
 
 # copy utils headers
@@ -101,6 +100,9 @@ install( TARGETS backend_headers_nodefs EXPORT GraphBLASTargets
 	INCLUDES DESTINATION "${INCLUDE_INSTALL_DIR}"
 )
 
+# the utils library currently depends heavily on other ALP functionalities,
+# but could be easily split out in future; in view of this, export an
+# independent include path (incidentally the same as ALP)
 install( TARGETS alp_utils_headers EXPORT GraphBLASTargets
 	INCLUDES DESTINATION "${INCLUDE_INSTALL_DIR}"
 )
@@ -144,6 +146,7 @@ if( WITH_HYPERDAGS_BACKEND )
 	target_link_libraries( backend_hyperdags_headers INTERFACE "backend_${WITH_HYPERDAGS_USING}_headers" )
 	target_compile_definitions( backend_hyperdags_headers INTERFACE "${HYPERDAGS_INCLUDE_DEFS}" )
 	install( TARGETS backend_hyperdags_headers EXPORT GraphBLASTargets )
+
 	install( DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/graphblas/hyperdags/"
 		DESTINATION "${GRB_INCLUDE_INSTALL_DIR}/hyperdags"
 		FILES_MATCHING REGEX "${HEADERS_REGEX}"
@@ -202,9 +205,7 @@ target_link_libraries( algorithms INTERFACE backend_headers_nodefs )
 
 target_include_directories(
 	algorithms INTERFACE
-
 	$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/graphblas/algorithms>
-	$<INSTALL_INTERFACE:graphblas/algorithms>
 )
 
 install( DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/graphblas/algorithms/"
@@ -219,20 +220,33 @@ install( DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/graphblas/interfaces/"
 
 install( TARGETS algorithms EXPORT GraphBLASTargets )
 
+
+# generate the spblas header with the library prefix
+configure_file( ${CMAKE_CURRENT_SOURCE_DIR}/transition/spblas.h.in
+	${CMAKE_CURRENT_BINARY_DIR}/transition/spblas.h @ONLY
+)
+
 # this target lists the transition path headers
 # these are plain C headers and do not have any dependences
-add_library( transition INTERFACE )
+add_library( transition_headers INTERFACE )
 
-target_include_directories(
-	transition INTERFACE
+target_include_directories( transition_headers INTERFACE
 	$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/transition/>
-	$<INSTALL_INTERFACE:transition/>
+	$<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}/transition/>
+)
+
+set( TRANSITION_INCLUDE_INSTALL_DIR "${INCLUDE_INSTALL_DIR}/transition" )
+
+install( FILES ${CMAKE_CURRENT_BINARY_DIR}/transition/spblas.h
+	DESTINATION "${TRANSITION_INCLUDE_INSTALL_DIR}"
 )
 
 install( DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/transition/"
-	DESTINATION "${GRB_INCLUDE_INSTALL_DIR}/../transition/"
+	DESTINATION "${TRANSITION_INCLUDE_INSTALL_DIR}"
 	FILES_MATCHING REGEX "${HEADERS_REGEX}"
 )
 
-install( TARGETS transition EXPORT GraphBLASTargets )
+install( TARGETS transition_headers EXPORT GraphBLASTargets
+	INCLUDES DESTINATION "${TRANSITION_INCLUDE_INSTALL_DIR}"
+)
 
