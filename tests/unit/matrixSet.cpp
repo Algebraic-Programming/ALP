@@ -43,6 +43,12 @@ void grb_program( const size_t &n, grb::RC &rc ) {
 	grb::Matrix< void > C( n, n );
 	grb::Matrix< void > D( n, n );
 	grb::Matrix< unsigned int > E( n, n );
+	grb::Matrix< int > mask( n, n );
+	grb::Matrix< int > output( n, n );
+	grb::Matrix< int > input( n, n );
+	
+
+	
 	rc = grb::resize( A, 15 );
 	if( rc == SUCCESS ) {
 		rc = grb::buildMatrixUnique( A, I, J, data1, 15, SEQUENTIAL );
@@ -61,6 +67,35 @@ void grb_program( const size_t &n, grb::RC &rc ) {
 			}
 		}
 	}
+
+	size_t I_mask[ 2 * n - 1 ], J_mask[ 2 * n - 1 ];
+	int mask_vals [ 2 * n - 1 ];
+	int input_vals [ 2 * n - 1 ];
+
+	for( size_t k = 0; k < n; ++k ) {
+		I_mask[ k ] = J_mask[ k ] = k;
+		mask_vals[ k ] = 1;
+		input_vals[ k ] = k;
+		if( k < n - 1 ) {
+			I_mask[ n + k ] = k;
+			J_mask[ n + k ] = k + 1;
+			mask_vals [ n + k ] = 0;
+			input_vals[ n + k ] = k;
+		}
+	}
+
+	rc = grb::buildMatrixUnique( mask, I_mask, J_mask, mask_vals, 2 * n - 1, SEQUENTIAL );
+	if( rc != SUCCESS ) {
+		std::cerr << "\t buildMatrixUnique of mask matrix FAILED\n";
+		return;
+	}
+
+	rc = grb::buildMatrixUnique( input, I_mask, J_mask, input_vals, 2 * n - 1, SEQUENTIAL );
+	if( rc != SUCCESS ) {
+		std::cerr << "\t buildMatrixUnique of input matrix FAILED\n";
+		return;
+	}
+
 	if( rc == SUCCESS ) {
 		rc = grb::resize( B, 15 );
 	}
@@ -72,6 +107,9 @@ void grb_program( const size_t &n, grb::RC &rc ) {
 	}
 	if( rc == SUCCESS ) {
 		rc = grb::resize( E, 15 );
+	}
+	if( rc == SUCCESS ) {
+		rc = grb::resize(output, 2 * n - 1 );
 	}
 	if( rc != SUCCESS || grb::nnz( A ) != 15 ) {
 		std::cerr << "\tinitialisation FAILED\n";
@@ -198,6 +236,90 @@ void grb_program( const size_t &n, grb::RC &rc ) {
 			rc = FAILED;
 		}
 	}
+	if( rc != SUCCESS ) {
+		return;
+	}
+
+	//check masked matrix set
+
+	rc = grb::set< descriptors::structural >( output, mask, input );
+	if( rc != SUCCESS ) {
+		std::cerr << "\t grb::set structural (matrix to matrix masked) FAILED\n";
+		return;
+	}
+
+	if( grb::nnz( output ) != 2 * n - 1 ) {
+		std::cerr << "\t unexpected number of output elements ( " << grb::nnz( output ) << " ), expected " << 2 * n - 1 <<".\n";
+		rc = FAILED;
+	}
+
+	for( const auto & triplet : output ) {
+		if( triplet.first.first != triplet.first.second && triplet.first.first != triplet.first.second - 1 ) {
+			std::cerr << "\tunexpected entry at ( " << triplet.first.first << ", " << triplet.first.second << " ), value " << triplet.second << ".\n";
+			rc = FAILED;
+		} if( (int) triplet.first.first != triplet.second ) {
+			std::cerr << "\tunexpected entry at ( " << triplet.first.first << ", " << triplet.first.second << " ) with value " << triplet.second;
+			std::cerr << ", expected value "<< triplet.first.first <<".\n";
+			rc = FAILED;
+		}
+	}
+
+	if( rc != SUCCESS ) {
+		return;
+	}
+
+	
+
+	rc = grb::set( output, mask, input );
+	if( rc != SUCCESS ) {
+		std::cerr << "\t grb::set (matrix to matrix masked) FAILED\n";
+		return;
+	}
+
+	if( grb::nnz( output ) != n ) {
+		std::cerr << "\t unexpected number of output elements ( " << grb::nnz( output ) << " ), expected " << n <<".\n";
+		rc = FAILED;
+	}
+
+	for( const auto & triplet : output ) {
+		if( triplet.first.first != triplet.first.second ) {
+			std::cerr << "\tunexpected entry at ( " << triplet.first.first << ", " << triplet.first.second << " ), value " << triplet.second << ".\n";
+			rc = FAILED;
+		} if( (int) triplet.first.first != triplet.second ) {
+			std::cerr << "\tunexpected entry at ( " << triplet.first.first << ", " << triplet.first.second << " ) with value " << triplet.second;
+			std::cerr << ", expected value "<< triplet.first.first <<".\n";
+			rc = FAILED;
+		}
+	}
+
+	if( rc != SUCCESS ) {
+		return;
+	}
+
+
+
+	rc = grb::set< descriptors::invert_mask >( output, mask, input );
+	if( rc != SUCCESS ) {
+		std::cerr << "\t grb::set invert mask (matrix to matrix masked) FAILED\n";
+		return;
+	}
+
+	if( grb::nnz( output ) != n - 1 ) {
+		std::cerr << "\t unexpected number of output elements ( " << grb::nnz( output ) << " ), expected " << n - 1 <<".\n";
+		rc = FAILED;
+	}
+
+	for( const auto & triplet : output ) {
+		if( triplet.first.first != triplet.first.second - 1 ) {
+			std::cerr << "\tunexpected entry at ( " << triplet.first.first << ", " << triplet.first.second << " ), value " << triplet.second << ".\n";
+			rc = FAILED;
+		} if( (int) triplet.first.first != triplet.second ) {
+			std::cerr << "\tunexpected entry at ( " << triplet.first.first << ", " << triplet.first.second << " ) with value " << triplet.second;
+			std::cerr << ", expected value "<< triplet.first.first <<".\n";
+			rc = FAILED;
+		}
+	}
+
 	if( rc != SUCCESS ) {
 		return;
 	}
