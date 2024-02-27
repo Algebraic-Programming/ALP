@@ -800,6 +800,75 @@ namespace grb {
 	}
 
 	/**
+	 * Selecting a submatrix of matrix \a B based on the given vector of \a rows and \a cols
+	 * Depends on the masked outer product and masked set. Currently, only the structural version is supported.
+	 */
+
+	template<
+		Descriptor descr = descriptors::no_operation,
+		class Operator,
+		typename InputType, typename MaskType, typename OutputType,
+		typename Coords,
+		typename RIT, typename CIT, typename NIT
+	>
+	RC selectSubmatrix(
+		Matrix< OutputType, reference, RIT, CIT, NIT > &B,
+		const Matrix< InputType, reference, RIT, CIT, NIT > &A,
+		const Vector< MaskType, reference, Coords > &rows,
+		const Vector< MaskType, reference, Coords > &cols,
+		const typename std::enable_if<
+			grb::is_operator< Operator >::value &&
+			!grb::is_object< InputType >::value &&
+			!grb::is_object< MaskType >::value &&
+			!grb::is_object< OutputType >::value,
+			void >::type * const = nullptr
+	) {
+		//static asserts
+		static_assert(
+			! ( descr & descriptors::transpose_matrix ),
+			"grb::selectSubmatrix can not be called with descriptors::transpose_matrix"
+		);
+		static_assert(
+			( descr & descriptors::structural ),
+			"Only the structural version is supported for grb::selectSubmatrix"
+		);
+#ifdef _DEBUG
+		std::cout << "In grb::selectSubmatrix (reference)\n";
+#endif
+
+		const size_t nrows = size( rows );
+		const size_t ncols = size( cols );
+		if( nrows != grb::nrows( A ) || nrows != grb::nrows( B ) ) {
+			return MISMATCH;
+		}
+
+		if( ncols != grb::ncols( A ) || ncols != grb::ncols( B ) ) {
+			return MISMATCH;
+		}
+
+		//mask contains only those values that need to be selected from A
+		Matrix< MaskType, reference, RIT, CIT, NIT > mask( nrows, ncols );
+
+		ret = grb::maskedOuter( mask, A, rows, cols, grb::operators::zip< MaskType, MaskType, reference >(), Phase::RESIZE );
+		if( ret != SUCCESS ) {
+			return ret;
+		}
+		ret = grb::maskedOuter( mask, A, rows, cols, grb::operators::zip< MaskType, MaskType, reference >() );
+		if( ret != SUCCESS ) {
+			return ret;
+		}
+
+		ret = grb::set( B, mask, A, Phase::RESIZE );
+		if( ret != SUCCESS ) {
+			return ret;
+		}
+		ret = grb::set( B, mask, A );
+		return ret;
+	}
+
+
+
+	/**
 	 * Outer product of two vectors. Assuming vectors \a u and \a v are oriented
 	 * column-wise, the result matrix \a A will contain \f$ uv^T \f$. This is an
 	 * out-of-place function and will be updated soon to be in-place instead.
