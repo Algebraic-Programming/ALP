@@ -730,7 +730,8 @@ void grb_program( const size_t &n, grb::RC &rc ) {
 
 	// test sparse inverted mask set
 	grb::Vector< bool > mask( n );
-	rc = grb::setElement( mask, true, n / 2 );
+	rc = grb::set( mask, false );
+	rc = rc ? rc : grb::setElement( mask, true, n / 2 );
 	if( rc == SUCCESS ) {
 		rc = grb::set( src, 1.5 );
 		rc = rc ? rc : grb::wait( src );
