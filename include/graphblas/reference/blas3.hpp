@@ -800,6 +800,75 @@ namespace grb {
 	}
 
 	/**
+	 * Selecting a submatrix of matrix \a B based on the given vector of \a rows and \a cols
+	 * Depends on the masked outer product and masked set. Currently, only the structural version is supported.
+	 */
+
+	template<
+		Descriptor descr = descriptors::no_operation,
+		class Operator,
+		typename InputType, typename MaskType, typename OutputType,
+		typename Coords,
+		typename RIT, typename CIT, typename NIT
+	>
+	RC selectSubmatrix(
+		Matrix< OutputType, reference, RIT, CIT, NIT > &B,
+		const Matrix< InputType, reference, RIT, CIT, NIT > &A,
+		const Vector< MaskType, reference, Coords > &rows,
+		const Vector< MaskType, reference, Coords > &cols,
+		const typename std::enable_if<
+			grb::is_operator< Operator >::value &&
+			!grb::is_object< InputType >::value &&
+			!grb::is_object< MaskType >::value &&
+			!grb::is_object< OutputType >::value,
+			void >::type * const = nullptr
+	) {
+		//static asserts
+		static_assert(
+			! ( descr & descriptors::transpose_matrix ),
+			"grb::selectSubmatrix can not be called with descriptors::transpose_matrix"
+		);
+		static_assert(
+			( descr & descriptors::structural ),
+			"Only the structural version is supported for grb::selectSubmatrix"
+		);
+#ifdef _DEBUG
+		std::cout << "In grb::selectSubmatrix (reference)\n";
+#endif
+
+		const size_t nrows = size( rows );
+		const size_t ncols = size( cols );
+		if( nrows != grb::nrows( A ) || nrows != grb::nrows( B ) ) {
+			return MISMATCH;
+		}
+
+		if( ncols != grb::ncols( A ) || ncols != grb::ncols( B ) ) {
+			return MISMATCH;
+		}
+
+		//mask contains only those values that need to be selected from A
+		Matrix< MaskType, reference, RIT, CIT, NIT > mask( nrows, ncols );
+
+		RC ret = outer( mask, A, rows, cols, grb::operators::zip< MaskType, MaskType, reference >(), Phase::RESIZE );
+		if( ret != SUCCESS ) {
+			return ret;
+		}
+		ret = outer( mask, A, rows, cols, grb::operators::zip< MaskType, MaskType, reference >() );
+		if( ret != SUCCESS ) {
+			return ret;
+		}
+
+		ret = set( B, mask, A, Phase::RESIZE );
+		if( ret != SUCCESS ) {
+			return ret;
+		}
+		ret = set( B, mask, A );
+		return ret;
+	}
+
+
+
+	/**
 	 * Outer product of two vectors. Assuming vectors \a u and \a v are oriented
 	 * column-wise, the result matrix \a A will contain \f$ uv^T \f$. This is an
 	 * out-of-place function and will be updated soon to be in-place instead.
@@ -913,6 +982,243 @@ namespace grb {
 		}
 		assert( nnz( A ) == 0 );
 		ret = ret ? ret : grb::mxm( A, u_matrix, v_matrix, mono, mul, phase );
+		return ret;
+	}
+
+
+	/**
+	 * A masked outer product of two vectors. Assuming vectors \a u and \a v are oriented
+	 * column-wise, the result matrix \a A will contain \f$ uv^T \f$, masked to non-zero values from \a mask.
+	 */
+	template<
+		Descriptor descr = descriptors::no_operation,
+		class Operator,
+		typename InputType1, typename InputType2,
+		typename MaskType, typename OutputType,
+		typename Coords,
+		typename RIT, typename CIT, typename NIT
+	>
+	RC outer(
+		Matrix< OutputType, reference, RIT, CIT, NIT > &A,
+		const Matrix< MaskType, reference, RIT, CIT, NIT > &mask,
+		const Vector< InputType1, reference, Coords > &u,
+		const Vector< InputType2, reference, Coords > &v,
+		const Operator &mul = Operator(),
+		const Phase &phase = EXECUTE,
+		const typename std::enable_if<
+			grb::is_operator< Operator >::value &&
+			!grb::is_object< InputType1 >::value &&
+			!grb::is_object< InputType2 >::value &&
+			!grb::is_object< MaskType >::value &&
+			!grb::is_object< OutputType >::value,
+			void >::type * const = nullptr
+	) {
+		// static checks
+		NO_CAST_ASSERT( ( !(descr & descriptors::no_casting) ||
+				std::is_same< typename Operator::D1, InputType1 >::value
+			), "grb::outer",
+			"called with a prefactor vector that does not match the first domain "
+			"of the given multiplication operator" );
+		NO_CAST_ASSERT( ( !(descr & descriptors::no_casting) ||
+				std::is_same< typename Operator::D2, InputType2 >::value
+			), "grb::outer",
+			"called with a postfactor vector that does not match the first domain "
+			"of the given multiplication operator" );
+		NO_CAST_ASSERT( ( !(descr & descriptors::no_casting) ||
+				std::is_same< typename Operator::D3, OutputType >::value
+			), "grb::outer",
+			"called with an output matrix that does not match the output domain of "
+			"the given multiplication operator" );
+		static_assert(
+			! ( descr & descriptors::structural && descr & descriptors::invert_mask ),
+			"grb::outer can not be called with both descriptors::structural "
+			"and descriptors::invert_mask in the masked variant"
+		);
+#ifdef _DEBUG
+		std::cout << "In grb::outer (reference)\n";
+#endif
+
+		const size_t nrows = size( u );
+		const size_t ncols = size( v );
+
+		const size_t m = grb::nrows( mask );
+		const size_t n = grb::ncols( mask );
+
+		if( m == 0 || n == 0 ) {
+			// If the mask has a null size, it will be ignored
+			return outer< descr >( A, u, v, mul, phase );
+		}
+
+		constexpr bool crs_only = descr & descriptors::force_row_major;
+
+		assert( phase != TRY );
+		if( nrows != grb::nrows( A ) || nrows != m ) {
+			return MISMATCH;
+		}
+
+		if( ncols != grb::ncols( A ) || ncols != n ) {
+			return MISMATCH;
+		}
+
+		if( nnz( u ) == 0 || nnz( v ) == 0 ) {
+			clear( A );
+			return SUCCESS;
+		}
+
+
+		const auto &mask_raw = internal::getCRS( mask );
+
+		char * mask_arr = nullptr;
+		char * mask_buf = nullptr;
+		MaskType * mask_valbuf = nullptr;
+		internal::getMatrixBuffers( mask_arr, mask_buf, mask_valbuf, 1, mask );
+
+		internal::Coordinates< reference > mask_coors;
+		mask_coors.set( mask_arr, false, mask_buf, ncols );
+
+		size_t nzc = 0;
+
+#ifdef _H_GRB_REFERENCE_OMP_BLAS3
+		#pragma omp parallel for reduction(+:nzc)
+#endif
+		for( size_t i = 0; i < nrows; ++i ) {
+			if( internal::getCoordinates( u ).assigned( i ) ) {
+				for( auto k = mask_raw.col_start[ i ]; k < mask_raw.col_start[ i + 1 ]; ++k ) {
+					const auto k_col = mask_raw.row_index[ k ];
+					if( 
+						internal::getCoordinates( v ).assigned( k_col ) && 
+						utils::interpretMatrixMask< descr, MaskType >( true, mask_raw.getValues(), k ) 
+					) {
+
+						nzc++;
+					}
+				}
+			}
+		}
+
+		if( phase == RESIZE ) {
+			return resize( A, nzc );
+		}
+
+		assert( phase == EXECUTE );
+		if( capacity( A ) < nzc ) {
+#ifdef _DEBUG
+			std::cout << "\t insufficient capacity to complete "
+				"requested masked outer-product computation\n";
+#endif
+			const RC clear_rc = clear( A );
+			if( clear_rc != SUCCESS ) {
+				return PANIC;
+			} else {
+				return FAILED;
+			}
+		}
+
+		RC ret = SUCCESS;
+		if( phase == EXECUTE ) {
+			ret = grb::clear( A );
+		}
+		assert( nnz( A ) == 0 );
+
+		auto &CRS_raw = internal::getCRS( A );
+		auto &CCS_raw = internal::getCCS( A );
+
+		const InputType1 * __restrict__ const x = internal::getRaw( u );
+		const InputType2 * __restrict__ const y = internal::getRaw( v );
+		config::NonzeroIndexType * A_col_index = internal::template
+			getReferenceBuffer< typename config::NonzeroIndexType >( ncols + 1 );
+
+		CRS_raw.col_start[ 0 ] = 0;
+
+		if( !crs_only ) {
+
+#ifdef _H_GRB_REFERENCE_OMP_BLAS3
+			#pragma omp parallel for simd
+#endif
+			for( size_t j = 0; j <= ncols; ++j ) {
+				CCS_raw.col_start[ j ] = 0;
+			}
+		}
+
+
+		nzc = 0;
+
+		for( size_t i = 0; i < nrows; ++i ) {
+			if( internal::getCoordinates( u ).assigned( i ) ) {
+				for( auto k = mask_raw.col_start[ i ]; k < mask_raw.col_start[ i + 1 ]; ++k ) {
+					const auto k_col = mask_raw.row_index[ k ];
+					if( 
+						internal::getCoordinates( v ).assigned( k_col ) && 
+						utils::interpretMatrixMask< descr, MaskType >( true, mask_raw.getValues(), k )
+					) {
+						nzc++;
+						if( !crs_only ) {
+							CCS_raw.col_start[ k_col + 1 ]++;
+						}
+					}
+				}
+			}
+			CRS_raw.col_start[ i + 1 ] = nzc;
+		}
+
+		if( !crs_only ) {
+			for( size_t j = 1; j < ncols; ++j ) {
+				CCS_raw.col_start[ j + 1 ] += CCS_raw.col_start[ j ];
+			}
+
+
+#ifdef _H_GRB_REFERENCE_OMP_BLAS3
+			#pragma omp parallel for simd
+#endif
+			for( size_t j = 0; j < ncols; ++j ) {
+				A_col_index[ j ] = 0;
+			}
+		}
+
+		// use previously computed CCS offset array to update CCS during the
+		// computational phase
+		nzc = 0;
+		for( size_t i = 0; i < nrows; ++i ) {
+			if( internal::getCoordinates( u ).assigned( i ) ) {
+				for( auto k = mask_raw.col_start[ i ]; k < mask_raw.col_start[ i + 1 ]; ++k ) {
+					const auto k_col = mask_raw.row_index[ k ];
+					if( 
+						internal::getCoordinates( v ).assigned( k_col ) &&
+						utils::interpretMatrixMask< descr, MaskType >( true, mask_raw.getValues(), k )
+					) {
+						OutputType val;
+						grb::apply( val,
+							x[ i ],
+							y[ k_col ],
+							mul );
+						CRS_raw.row_index[ nzc ] = k_col;
+						CRS_raw.setValue( nzc, val );
+						// update CCS
+						if( !crs_only ) {
+							const auto CCS_index = A_col_index[ k_col ] + CCS_raw.col_start[ k_col ];
+							A_col_index[ k_col ]++;
+							CCS_raw.row_index[ CCS_index ] = i;
+							CCS_raw.setValue( CCS_index, val );
+						}
+						// update count
+						nzc++;	
+					}
+				}
+			}
+			CRS_raw.col_start[ i + 1 ] = nzc;
+		}
+
+#ifndef NDEBUG
+		if( !crs_only ) {
+			for( size_t j = 0; j < ncols; ++j ) {
+				assert( CCS_raw.col_start[ j + 1 ] - CCS_raw.col_start[ j ] ==
+					A_col_index[ j ] );
+			}
+		}
+#endif
+
+		internal::setCurrentNonzeroes( A, nzc );
+
 		return ret;
 	}
 

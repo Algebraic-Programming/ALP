@@ -205,6 +205,50 @@ namespace grb {
 		return internal::checkGlobalErrorStateOrClear( C, ret );
 	}
 
+	/** \internal Simply delegates to process-local backend */
+	template<
+		Descriptor descr = descriptors::no_operation,
+		class Operator,
+		typename InputType1, typename InputType2,
+		typename MaskType, typename OutputType,
+		typename Coords,
+		typename RIT, typename CIT, typename NIT
+	>
+	RC outer(
+		Matrix< OutputType, BSP1D, RIT, CIT, NIT > &A,
+		const Matrix< MaskType, BSP1D, RIT, CIT, NIT > &mask,
+		const Vector< InputType1, BSP1D, Coords > &u,
+		const Vector< InputType2, BSP1D, Coords > &v,
+		const Operator &mul = Operator(),
+		const Phase &phase = EXECUTE,
+		const typename std::enable_if<
+			grb::is_operator< Operator >::value &&
+			!grb::is_object< InputType1 >::value &&
+			!grb::is_object< InputType2 >::value &&
+			!grb::is_object< MaskType >::value &&
+			!grb::is_object< OutputType >::value,
+			void >::type * const = nullptr
+	) {
+		assert( phase != TRY );
+		RC ret = outer< descr, Operator >(
+			internal::getLocal( A ),
+			internal::getLocal( mask ),
+			internal::getLocal( u ),
+			internal::getLocal( v ),
+			mul,
+			phase
+		);
+		if( phase == RESIZE ) {
+			if( collectives<>::allreduce( ret, operators::any_or< RC >() ) != SUCCESS ) {
+				return PANIC;
+			} else {
+				return SUCCESS;
+			}
+		}
+		assert( phase == EXECUTE );
+		return internal::checkGlobalErrorStateOrClear( A, ret );
+	}
+
 } // namespace grb
 
 #endif

@@ -215,11 +215,17 @@ std::string grb::internal::hyperdags::toString(
 		case SET_MATRIX_MATRIX_INPUT2:
 			return "set( matrix, matrix, scalar )";
 
+		case SET_MATRIX_MATRIX_MASKED:
+			return "set( matrix, matrix, matrix )";
+
 		case MXM_MATRIX_MATRIX_MATRIX_MONOID:
 			return "mxm( matrix, matrix, matrix, monoid, scalar, scalar )";
 
 		case OUTER:
-			return "outer( matrix, vector, vector, scalar, scalar )";
+			return "outer( matrix, vector, vector, operation )";
+
+		case MASKED_OUTER:
+			return "outer( matrix, matrix, vector, vector, operation )";
 
 		case MXV_VECTOR_VECTOR_MATRIX_VECTOR_VECTOR_R:
 			return "mxv( vector, vector, matrix, vector, vector, ring )";
