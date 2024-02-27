@@ -18,9 +18,15 @@
 
 #include "bench_kernels.h"
 
+
 #ifdef BENCH_KERNELS_OPENMP
 
-void bench_kernels_axpy( double * restrict a, const double alpha, const double * restrict x, const double * restrict y, const size_t n ) {
+void bench_kernels_axpy(
+	double * restrict a,
+	const double alpha, const double * restrict x,
+	const double * restrict y,
+	const size_t n
+) {
 	assert( a != x );
 	assert( a != y );
 	assert( x != y );
@@ -30,7 +36,11 @@ void bench_kernels_axpy( double * restrict a, const double alpha, const double *
 	}
 }
 
-void bench_kernels_dot( double * restrict const alpha, const double * restrict xr, const double * restrict yr, const size_t n ) {
+void bench_kernels_dot(
+	double * restrict const alpha,
+	const double * restrict xr, const double * restrict yr,
+	const size_t n
+) {
 	assert( xr != yr );
 	assert( alpha != xr );
 	assert( alpha != yr );
@@ -62,7 +72,9 @@ void bench_kernels_dot( double * restrict const alpha, const double * restrict x
 	}
 }
 
-void bench_kernels_reduce( double * restrict const alpha, const double * restrict xr, const size_t n ) {
+void bench_kernels_reduce(
+	double * restrict const alpha, const double * restrict xr, const size_t n
+) {
 	assert( alpha != xr );
 	*alpha = xr[ n - 1 ];
 	#pragma omp parallel
@@ -94,7 +106,12 @@ void bench_kernels_reduce( double * restrict const alpha, const double * restric
 
 #else
 
-void bench_kernels_axpy( double * restrict a, const double alpha, const double * restrict x, const double * restrict y, const size_t n ) {
+void bench_kernels_axpy(
+	double * restrict a,
+	const double alpha, const double * restrict x,
+	const double * restrict y,
+	const size_t n
+) {
 	assert( a != x );
 	assert( a != y );
 	assert( x != y );
@@ -103,7 +120,11 @@ void bench_kernels_axpy( double * restrict a, const double alpha, const double *
 	}
 }
 
-void bench_kernels_dot( double * restrict const alpha, const double * restrict xr, const double * restrict yr, const size_t n ) {
+void bench_kernels_dot(
+	double * restrict const alpha,
+	const double * restrict xr, const double * restrict yr,
+	const size_t n
+) {
 	assert( xr != yr );
 	assert( alpha != xr );
 	assert( alpha != yr );
@@ -113,7 +134,9 @@ void bench_kernels_dot( double * restrict const alpha, const double * restrict x
 	}
 }
 
-void bench_kernels_reduce( double * restrict const alpha, const double * restrict xr, const size_t n ) {
+void bench_kernels_reduce(
+	double * restrict const alpha, const double * restrict xr, const size_t n
+) {
 	assert( alpha != xr );
 	*alpha = xr[ n - 1 ];
 	for( size_t i = 0; i < n - 1; ++i ) {

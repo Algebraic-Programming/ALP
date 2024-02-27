@@ -18,7 +18,7 @@
 #include <iostream>
 
 #include "graphblas/utils.hpp"
-#include "graphblas/utils/Timer.hpp"
+#include "graphblas/utils/timer.hpp"
 
 #include "graphblas.hpp"
 

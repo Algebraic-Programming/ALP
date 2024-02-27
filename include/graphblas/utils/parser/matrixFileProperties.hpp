@@ -20,8 +20,8 @@
  * @date 25th, 26th of May, 2017
  */
 
-#ifndef _H_MATRIXFILE_PROPERTIES
-#define _H_MATRIXFILE_PROPERTIES
+#ifndef _H_GRB_UTILS_MATRIXFILE_PROPERTIES
+#define _H_GRB_UTILS_MATRIXFILE_PROPERTIES
 
 #include <map>
 #include <string>
@@ -117,5 +117,5 @@ namespace grb {
 
 } // namespace grb
 
-#endif // end ``_H_MATRIXFILE_PROPERTIES''
+#endif // end ``_H_GRB_UTILS_MATRIXFILE_PROPERTIES''
 

@@ -20,23 +20,26 @@
 
 #include "graphblas.hpp"
 
+
 using namespace grb;
 
 int main( int argc, char ** argv ) {
-	(void)argc;
-	(void)printf( "Functional test executable: %s\n", argv[ 0 ] );
-	bool error = ! ( grb::internal::Distribution< BSP1D >::blocksize() > 0 );
+	(void) argc;
+	(void) printf( "Functional test executable: %s\n", argv[ 0 ] );
+	bool error = !( grb::internal::Distribution< BSP1D >::blocksize() > 0 );
 
 	constexpr const size_t n = 10000000;
-	for( size_t P = 1; ! error && P < 10; ++P ) {
+	for( size_t P = 1; !error && P < 10; ++P ) {
 		size_t offset = 0;
-		for( size_t s = 0; ! error && s < P; ++s ) {
-			error = ! ( offset == grb::internal::Distribution< BSP1D >::local_offset( n, s, P ) );
+		for( size_t s = 0; !error && s < P; ++s ) {
+			error = !(offset == grb::internal::Distribution< BSP1D >::local_offset( n, s, P ));
 			if( error ) {
-				(void)printf( "Error in grb::internal::Distribution< BSP1D "
-							  ">::local_offset( n, s, P ) for n = %zd, s = "
-							  "%zd, and P = %zd\n",
-					n, s, P );
+				(void) printf(
+					"Error in grb::internal::Distribution< BSP1D "
+					">::local_offset( n, s, P ) for n = %zd, s = "
+					"%zd, and P = %zd\n",
+					n, s, P
+				);
 			}
 			const size_t local_n = grb::internal::Distribution< BSP1D >::global_length_to_local( n, s, P );
 			offset += local_n;

@@ -21,6 +21,7 @@
 
 #include "graphblas.hpp"
 
+
 using namespace grb;
 
 static const double data1[ 15 ] = { 4.32, 7.43, 4.32, 6.54, 4.21, 7.65, 7.43, 7.54, 5.32, 6.43, 7.43, 5.42, 1.84, 5.32, 7.43 };

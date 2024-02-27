@@ -20,9 +20,11 @@
  * However, the current version of the PlatformBSP layer does not support this, so this test is currently unused.
  */
 
+#include <mpi.h>
+
 #include <lpf/core.h>
 #include <lpf/mpi.h>
-#include <mpi.h>
+
 #include <sys/wait.h>
 #include <unistd.h>
 

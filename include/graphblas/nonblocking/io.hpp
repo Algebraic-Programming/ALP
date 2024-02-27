@@ -28,8 +28,9 @@
 #define _H_GRB_NONBLOCKING_IO
 
 #include <graphblas/base/io.hpp>
-#include <graphblas/vector.hpp>
-#include <graphblas/matrix.hpp>
+#include <graphblas/reference/io.hpp>
+#include "vector.hpp"
+#include "matrix.hpp"
 
 #include "lazy_evaluation.hpp"
 #include "boolean_dispatcher_io.hpp"
@@ -562,7 +563,7 @@ namespace grb {
 		}
 
 		// do set
-		(void)internal::getCoordinates( x ).assign( i );
+		(void) internal::getCoordinates( x ).assign( i );
 		internal::getRaw( x )[ i ] = static_cast< DataType >( val );
 
 #ifdef _DEBUG
@@ -1387,7 +1388,7 @@ namespace grb {
 	}
 
 	template< typename InputType, typename RIT, typename CIT, typename NIT >
-	RC wait( const Matrix< InputType, nonblocking > &A ) {
+	RC wait( const Matrix< InputType, nonblocking, RIT, CIT, NIT > &A ) {
 		(void) A;
 		//TODO: currently, matrices are read only and no action is required
 		//		once the level-3 primitives are implemented

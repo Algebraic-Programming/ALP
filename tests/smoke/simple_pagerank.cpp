@@ -21,21 +21,61 @@
 
 #include <inttypes.h>
 
-#include <graphblas/algorithms/simple_pagerank.hpp>
-#include <graphblas/utils/Timer.hpp>
-#include <graphblas/utils/parser.hpp>
-
 #include <graphblas.hpp>
+
+#include <graphblas/algorithms/simple_pagerank.hpp>
+
+#include <graphblas/utils/timer.hpp>
+#include <graphblas/utils/parser.hpp>
+#include <graphblas/utils/singleton.hpp>
+
+#include <graphblas/utils/iterators/nonzeroIterator.hpp>
+
 #include <utils/output_verification.hpp>
 
 
 using namespace grb;
 using namespace algorithms;
 
+/** Parser type */
+typedef grb::utils::MatrixFileReader<
+	void,
+	std::conditional<
+		(sizeof(grb::config::RowIndexType) > sizeof(grb::config::ColIndexType)),
+		grb::config::RowIndexType,
+		grb::config::ColIndexType
+	>::type
+> Parser;
+
+/** Nonzero type */
+typedef internal::NonzeroStorage<
+	grb::config::RowIndexType,
+	grb::config::ColIndexType,
+	void
+> NonzeroT;
+
+/** In-memory storage type */
+typedef grb::utils::Singleton<
+	std::pair<
+		// stores n and nz (according to parser)
+		std::pair< size_t, size_t >,
+		// stores the actual nonzeroes
+		std::vector< NonzeroT >
+	>
+> Storage;
+
+/** Default maximum number of iterations. */
+constexpr const size_t max_iters = 1000;
+
+constexpr const double alpha = 0.85;
+
+constexpr const double tol = 1e-7;
+
 struct input {
 	char filename[ 1024 ];
 	bool direct;
 	size_t rep;
+	size_t solver_iterations;
 };
 
 struct output {
@@ -46,6 +86,51 @@ struct output {
 	grb::utils::TimerResults times;
 	PinnedVector< double > pinnedVector;
 };
+
+void ioProgram( const struct input &data_in, bool &success ) {
+	success = false;
+
+	// sanity check on input
+	if( data_in.filename[ 0 ] == '\0' ) {
+		std::cerr << "Error: no file name given as input.\n";
+		return;
+	}
+
+	// Parse and store matrix in singleton class
+	try {
+		auto &data = Storage::getData().second;
+		Parser parser( data_in.filename, data_in.direct );
+		if( parser.m() != parser.n() ) {
+			std::cerr << "Error: input matrix must be square.\n";
+			return;
+		}
+		Storage::getData().first.first = parser.n();
+		try {
+			Storage::getData().first.second = parser.nz();
+		} catch( ... ) {
+			Storage::getData().first.second = parser.entries();
+		}
+		/* Once internal issue #342 is resolved this can be re-enabled
+		for(
+			auto it = parser.begin( PARALLEL );
+			it != parser.end( PARALLEL );
+			++it
+		) {
+			data.push_back( *it );
+		}*/
+		for(
+			auto it = parser.begin( SEQUENTIAL );
+			it != parser.end( SEQUENTIAL );
+			++it
+		) {
+			data.push_back( NonzeroT( *it ) );
+		}
+	} catch( std::exception &e ) {
+		std::cerr << "I/O program failed: " << e.what() << "\n";
+		return;
+	}
+	success = true;
+}
 
 void grbProgram( const struct input &data_in, struct output &out ) {
 
@@ -67,27 +152,31 @@ void grbProgram( const struct input &data_in, struct output &out ) {
 	// assume successful run
 	out.error_code = 0;
 
-	// create local parser
-	grb::utils::MatrixFileReader< void,
-		std::conditional<
-			(
-				sizeof( grb::config::RowIndexType ) > sizeof( grb::config::ColIndexType )
-			),
-			grb::config::RowIndexType,
-			grb::config::ColIndexType
-		>::type
-	> parser( data_in.filename, data_in.direct );
-	assert( parser.m() == parser.n() );
-	const size_t n = parser.n();
-	out.times.io = timer.time();
-	timer.reset();
-
 	// load into GraphBLAS
+	const size_t n = Storage::getData().first.first;
 	Matrix< void > L( n, n );
 	{
-		const RC rc = buildMatrixUnique( L,
-			parser.begin( PARALLEL ), parser.end( PARALLEL ),
+		const auto &data = Storage::getData().second;
+		/* Once internal issue #342 is resolved this can be re-enabled
+		const RC rc = buildMatrixUnique(
+			L,
+			utils::makeNonzeroIterator<
+				grb::config::RowIndexType, grb::config::ColIndexType, void
+			>( data.cbegin() ),
+			utils::makeNonzeroIterator<
+				grb::config::RowIndexType, grb::config::ColIndexType, void
+			>( data.cend() ),
 			PARALLEL
+		);*/
+		const RC rc = buildMatrixUnique(
+			L,
+			utils::makeNonzeroIterator<
+				grb::config::RowIndexType, grb::config::ColIndexType, void
+			>( data.cbegin() ),
+			utils::makeNonzeroIterator<
+				grb::config::RowIndexType, grb::config::ColIndexType, void
+			>( data.cend() ),
+			SEQUENTIAL
 		);
 		if( rc != SUCCESS ) {
 			std::cerr << "Failure: call to buildMatrixUnique did not succeed ("
@@ -98,25 +187,23 @@ void grbProgram( const struct input &data_in, struct output &out ) {
 	}
 
 	// check number of nonzeroes
-	try {
-		const size_t global_nnz = nnz( L );
-		const size_t parser_nnz = parser.nz();
-		if( global_nnz != parser_nnz ) {
-			std::cerr << "Failure: global nnz (" << global_nnz << ") "
-				<< "does not equal parser nnz (" << parser_nnz << ")." << std::endl;
-			out.error_code = 15;
-			return;
-		}
-	} catch( const std::runtime_error & ) {
-		std::cout << "Info: nonzero check skipped as the number of nonzeroes "
-			<< "cannot be derived from the matrix file header. The "
-			<< "grb::Matrix reports "
-			<< nnz( L ) << " nonzeroes.\n";
+	const size_t global_nnz = nnz( L );
+	const size_t parser_nnz = Storage::getData().first.second;
+	if( global_nnz != parser_nnz ) {
+		std::cerr << "Warning: global nnz (" << global_nnz << ") does not equal "
+			<< "parser nnz (" << parser_nnz << "). This could naturally occur if the "
+			<< "input file employs symmetric storage, in which case only roughly one "
+			<< "half of the input is stored (and visible to the parser).\n";
 	}
 
-	// test default pagerank run
+	// I/O done
+	out.times.io = timer.time();
+	timer.reset();
+
+	// set up default pagerank test
 	Vector< double > pr( n );
 	Vector< double > buf1( n ), buf2( n ), buf3( n );
+	Vector< bool > buf4( n );
 	out.times.preamble = timer.time();
 
 	// by default, copy input requested repetitions to output repititions performed
@@ -127,15 +214,18 @@ void grbProgram( const struct input &data_in, struct output &out ) {
 		timer.reset();
 		rc = simple_pagerank< descriptors::no_operation >(
 			pr, L,
-			buf1, buf2, buf3,
-			0.85, 1e-7, 1000,
+			buf1, buf2, buf3, buf4,
+			alpha, tol, data_in.solver_iterations,
 			&( out.iterations ), &( out.residual )
 		);
 		double single_time = timer.time();
-		if( rc != SUCCESS ) {
+		if( !(rc == SUCCESS || rc == FAILED) ) {
 			std::cerr << "Failure: call to simple_pagerank did not succeed "
 				<< "(" << toString( rc ) << ")." << std::endl;
 			out.error_code = 20;
+		}
+		if( rc == FAILED ) {
+			std::cout << "Warning: call to simple_pagerank did not converge\n";
 		}
 		if( rc == SUCCESS ) {
 			rc = collectives<>::reduce( single_time, 0, operators::max< double >() );
@@ -145,8 +235,13 @@ void grbProgram( const struct input &data_in, struct output &out ) {
 		}
 		out.times.useful = single_time;
 		out.rep = static_cast< size_t >( 1000.0 / single_time ) + 1;
-		if( rc == SUCCESS ) {
+		if( rc == SUCCESS || rc == FAILED ) {
 			if( s == 0 ) {
+				if( rc == FAILED ) {
+					std::cout << "Info: cold simple_pagerank did not converge within ";
+				} else {
+					std::cout << "Info: cold simple_pagerank completed within ";
+				}
 				std::cout << "Info: cold pagerank completed within "
 					<< out.iterations << " iterations. Last computed residual is "
 					<< out.residual << ". Time taken was " << single_time
@@ -163,25 +258,24 @@ void grbProgram( const struct input &data_in, struct output &out ) {
 			if( rc == SUCCESS ) {
 				rc = simple_pagerank< descriptors::no_operation >(
 					pr, L,
-					buf1, buf2, buf3,
-					0.85, 1e-7, 1000,
+					buf1, buf2, buf3, buf4,
+					alpha, tol, data_in.solver_iterations,
 					&( out.iterations ), &( out.residual )
 				);
 			}
 		}
 		time_taken = timer.time();
-		if( rc == SUCCESS ) {
-			out.times.useful = time_taken / static_cast< double >( out.rep );
-		}
-		sleep( 1 );
-#ifndef NDEBUG
+		out.times.useful = time_taken / static_cast< double >( out.rep );
 		// print timing at root process
 		if( grb::spmd<>::pid() == 0 ) {
-			std::cout << "Time taken for a " << out.rep
+			std::cout << "Time taken for " << out.rep
 				<< " PageRank calls (hot start): " << out.times.useful << ". "
-				<< "Error code is " << out.error_code << std::endl;
+				<< "Error code is " << grb::toString( rc ) << std::endl;
+			std::cout << "\tnumber of PR iterations: " << out.iterations << "\n";
+			std::cout << "\tmilliseconds per iteration: "
+				<< (out.times.useful / static_cast< double >( out.iterations )) << "\n";
 		}
-#endif
+		sleep( 1 );
 	}
 
 	// start postamble
@@ -210,18 +304,23 @@ void grbProgram( const struct input &data_in, struct output &out ) {
 
 int main( int argc, char ** argv ) {
 	// sanity check
-	if( argc < 3 || argc > 7 ) {
+	if( argc < 3 || argc > 8 ) {
 		std::cout << "Usage: " << argv[ 0 ] << " "
 			<< "<dataset> <direct/indirect> "
-			<< "(inner iterations) (outer iterations) (verification <truth-file>)\n";
+			<< "(inner iterations) (outer iterations) (solver iterations) "
+			<< "(verification <truth-file>)\n";
 		std::cout << "<dataset> and <direct/indirect> are mandatory arguments.\n";
 		std::cout << "(inner iterations) is optional, the default is "
 			<< grb::config::BENCHMARKING::inner() << ". "
-			<< "If set to zero, the program will select a number of iterations "
-			<< "approximately required to take at least one second to complete.\n";
+			<< "If this integer is set to zero, the program will select a number of "
+			<< "inner iterations that results in at least one second of computation "
+			<< "time.\n";
 		std::cout << "(outer iterations) is optional, the default is "
 			<< grb::config::BENCHMARKING::outer()
-			<< ". This value must be strictly larger than 0.\n";
+			<< ". This integer must be strictly larger than 0.\n";
+		std::cout << "(solver iterations) is optional, the default is "
+			<< max_iters
+			<< ". This integer must be strictly larger than 0.\n";
 		std::cout << "(verification <truth-file>) is optional. "
 			<< "The <truth-file> must point to a pre-computed solution that the "
 			<< "computed solution will be verified against." << std::endl;
@@ -233,7 +332,7 @@ int main( int argc, char ** argv ) {
 	struct input in;
 
 	// get file name
-	(void)strncpy( in.filename, argv[ 1 ], 1023 );
+	(void) strncpy( in.filename, argv[ 1 ], 1023 );
 	in.filename[ 1023 ] = '\0';
 
 	// get direct or indirect addressing
@@ -249,9 +348,9 @@ int main( int argc, char ** argv ) {
 	if( argc >= 4 ) {
 		in.rep = strtoumax( argv[ 3 ], &end, 10 );
 		if( argv[ 3 ] == end ) {
-			std::cerr << "Could not parse argument " << argv[ 2 ]
+			std::cerr << "Could not parse argument " << argv[ 3 ]
 				<< " for number of inner experiment repititions." << std::endl;
-			return 2;
+			return 20;
 		}
 	}
 
@@ -260,42 +359,69 @@ int main( int argc, char ** argv ) {
 	if( argc >= 5 ) {
 		outer = strtoumax( argv[ 4 ], &end, 10 );
 		if( argv[ 4 ] == end ) {
-			std::cerr << "Could not parse argument " << argv[ 3 ]
+			std::cerr << "Could not parse argument " << argv[ 4 ]
 				<< " for number of outer experiment repititions." << std::endl;
-			return 4;
+			return 40;
+		}
+	}
+
+	in.solver_iterations = max_iters;
+	if( argc >= 6 ) {
+		in.solver_iterations = strtoumax( argv[ 5 ], &end, 10 );
+		if( argv[ 5 ] == end ) {
+			std::cerr << "Could not parse argument " << argv[ 5 ] << " "
+				<< "for the maximum number of solver iterations." << std::endl;
+			return 50;
 		}
 	}
 
 	// check for verification of the output
 	bool verification = false;
 	char truth_filename[ 1024 ];
-	if( argc >= 6 ) {
-		if( strncmp( argv[ 5 ], "verification", 12 ) == 0 ) {
+	if( argc >= 7 ) {
+		if( strncmp( argv[ 6 ], "verification", 12 ) == 0 ) {
 			verification = true;
-			if( argc >= 7 ) {
-				(void)strncpy( truth_filename, argv[ 6 ], 1023 );
+			if( argc >= 8 ) {
+				(void) strncpy( truth_filename, argv[ 7 ], 1023 );
 				truth_filename[ 1023 ] = '\0';
 			} else {
 				std::cerr << "The verification file was not provided as an argument."
 					<< std::endl;
-				return 5;
+				return 60;
 			}
 		} else {
-			std::cerr << "Could not parse argument \"" << argv[ 5 ] << "\", "
+			std::cerr << "Could not parse argument \"" << argv[ 6 ] << "\", "
 				<< "the optional \"verification\" argument was expected." << std::endl;
-			return 5;
+			return 70;
 		}
 	}
 
 	std::cout << "Executable called with parameters " << in.filename << ", "
-		<< "inner repititions = " << in.rep << ", "
-		<< "and outer reptitions = " << outer << std::endl;
-
-	// the output struct
-	struct output out;
+		<< "inner repetitions = " << in.rep << ", "
+		<< "outer repetitions = " << outer << ", and "
+		<< "solver iterations = " << in.solver_iterations << "." << std::endl;
 
 	// set standard exit code
 	grb::RC rc = SUCCESS;
+
+	// launch I/O
+	{
+		bool success;
+		grb::Launcher< AUTOMATIC > launcher;
+		rc = launcher.exec( &ioProgram, in, success, true );
+		if( rc != SUCCESS ) {
+			std::cerr << "launcher.exec(I/O) returns with non-SUCCESS error code \""
+				<< grb::toString( rc ) << "\"\n";
+			return 73;
+		}
+		if( !success ) {
+			std::cerr << "I/O program caught an exception\n";
+			return 77;
+		}
+	}
+
+	// the output struct
+	struct output out;
 
 	// launch estimator (if requested)
 	if( in.rep == 0 ) {
@@ -307,7 +433,7 @@ int main( int argc, char ** argv ) {
 		if( rc != SUCCESS ) {
 			std::cerr << "launcher.exec returns with non-SUCCESS error code "
 				<< (int)rc << std::endl;
-			return 6;
+			return 80;
 		}
 	}
 

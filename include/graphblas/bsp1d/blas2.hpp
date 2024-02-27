@@ -582,6 +582,7 @@ namespace grb {
 	 * @see grb::eWiseLambda for the user-level specification.
 	 */
 	template<
+		Descriptor descr = descriptors::no_operation,
 		typename Func,
 		typename DataType1, typename RIT, typename CIT, typename NIT,
 		typename DataType2, typename Coords, typename... Args
@@ -606,7 +607,7 @@ namespace grb {
 				return ret;
 			}
 		}
-		return eWiseLambda( f, A, args... );
+		return eWiseLambda< descr >( f, A, args... );
 	}
 
 	/**
@@ -620,6 +621,7 @@ namespace grb {
 	 * the given data type.
 	 */
 	template<
+		Descriptor descr = descriptors::no_operation,
 		typename Func, typename DataType1,
 		typename RIT, typename CIT, typename NIT
 	>
@@ -631,12 +633,15 @@ namespace grb {
 		std::cout << "In grb::eWiseLambda (BSP1D, matrix)\n";
 #endif
 		const internal::BSP1D_Data &data = internal::grb_BSP1D.cload();
-		RC ret = eWiseLambda< internal::Distribution< BSP1D > >(
-			f, internal::getLocal( A ), data.s, data.P
-		);
-		collectives< BSP1D >::allreduce<
-			grb::descriptors::no_casting, grb::operators::any_or< RC >
-		>( ret );
+		const RC ret = internal::eWiseLambda<
+			descr,
+			internal::Distribution< BSP1D >
+		>( f, internal::getLocal( A ), A._m, A._n, data.s, data.P );
+
+		// at this point (i.e., after all checks), the call should never fail
+		assert( ret == SUCCESS );
+
+		// done
 		return ret;
 	}
 

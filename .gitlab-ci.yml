@@ -190,6 +190,9 @@ tests_unit:
   script:
     - cd ./build && make -j$(nproc) tests_unit &> unittests.log
     - ../tests/summarise.sh unittests.log
+  artifacts:
+    paths: [ build/*.log ]
+    expire_in: 1 day
 
 tests_smoke:
   needs: [build_test]
@@ -251,6 +254,9 @@ tests_unit_buildtype_debug:
   script:
     - cd ./build && make -j$(nproc) unittests &> unittests.log
     - ../tests/summarise.sh unittests.log
+  artifacts:
+    paths: [ build/*.log ]
+    expire_in: 1 day
 
 
 ## Additional tests for LPF (on main branches only)
@@ -279,6 +285,9 @@ build_test_lpf:
   script:
     - cd ./build && make -j$(nproc) tests_unit &> unittests.log
     - ../tests/summarise.sh unittests.log
+  artifacts:
+    paths: [ build/*.log ]
+    expire_in: 1 day
 
 # this job triggers in internal CI, where LPF tests run better on runners
 # with a given tag $LPF_PREFERRED_RUNNERS_TAG
@@ -411,7 +420,7 @@ html_coverage_report:
       --output public/index.html
   artifacts:
     expire_in: 4 weeks
-    paths: 
+    paths:
       - public
 
 ## GitLab Pages update job

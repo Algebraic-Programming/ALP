@@ -33,11 +33,11 @@
 #endif
 
 #include "graphblas/blas1.hpp"                 // for grb::size
-#include <graphblas/NonzeroStorage.hpp>
+#include "graphblas/nonzeroStorage.hpp"
 
 // the below transforms an std::vector iterator into an ALP/GraphBLAS-compatible
 // iterator:
-#include "graphblas/utils/iterators/NonzeroIterator.hpp"
+#include "graphblas/utils/iterators/nonzeroIterator.hpp"
 
 #include <graphblas/base/io.hpp>
 #include <graphblas/utils/iterators/utils.hpp>
@@ -446,21 +446,28 @@ namespace grb {
 				std::is_convertible< size_t, DataType >::value,
 			void >::type * const = nullptr
 		) {
+			const size_t n = size( x );
 			if( descr & descriptors::use_index ) {
-				const internal::BSP1D_Data &data = internal::grb_BSP1D.cload();
-				const auto p = data.P;
-				const auto s = data.s;
-				const auto n = grb::size( x );
-				if( old_nnz < size( x ) ) {
-					internal::getCoordinates( internal::getLocal( x ) ).assignAll();
+				// make it ok to call eWiseLambda
+				if( !((descr & descriptors::dense) || old_nnz == n) ) {
+					if( old_nnz < n ) {
+						internal::getCoordinates( internal::getLocal( x ) ).assignAll();
+					}
+					internal::setDense( x );
 				}
-				return eWiseLambda( [ &x, &n, &s, &p ]( const size_t i ) {
-					x[ i ] = internal::Distribution< BSP1D >::local_index_to_global(
-							i, n, s, p
-						);
+				// set-to-index via eWiseLambda
+				return eWiseLambda( [ &x ]( const size_t i ) {
+						x[ i ] = i;
 					}, x );
 			} else {
-				return set< descr >( internal::getLocal( x ), val );
+				// otherwise directly delegate
+				RC ret = set< descr >( internal::getLocal( x ), val );
+				if( !((descr & descriptors::dense) || old_nnz == n) ) {
+					if( ret == SUCCESS ) {
+						internal::setDense( x );
+					}
+				}
+				return ret;
 			}
 		}
 
@@ -478,7 +485,11 @@ namespace grb {
 		) {
 			static_assert( !(descr & descriptors::use_index ),
 				"use_index requires casting from size_t to the vector value type" );
-			return set< descr >( internal::getLocal( x ), val );
+			RC ret = set< descr >( internal::getLocal( x ), val );
+			if( ret == SUCCESS ) {
+				internal::setDense( x );
+			}
+			return ret;
 		}
 
 	} // end namespace internal
@@ -532,13 +543,7 @@ namespace grb {
 
 		// dispatch
 		assert( phase == EXECUTE );
-		RC ret = internal::set_handle_use_index< descr >( x, old_nnz, val );
-		if( ret == SUCCESS ) {
-			internal::setDense( x );
-		}
-
-		// done
-		return ret;
+		return internal::set_handle_use_index< descr >( x, old_nnz, val );
 	}
 
 	/**

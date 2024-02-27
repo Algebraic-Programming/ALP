@@ -153,17 +153,26 @@ add_grb_executables( eWiseMul eWiseMul.cpp
 	BACKENDS reference reference_omp bsp1d hybrid hyperdags nonblocking
 )
 
+add_grb_executables( factories factories.cpp
+	BACKENDS reference reference_omp bsp1d hybrid hyperdags nonblocking
+)
+
 add_grb_executables( muladd muladd.cpp
 	BACKENDS reference reference_omp bsp1d hybrid hyperdags nonblocking
 )
 
 add_grb_executables( mxm mxm.cpp
 	BACKENDS reference reference_omp hyperdags nonblocking #bsp1d hybrid
+	ADDITIONAL_LINK_LIBRARIES test_utils
 )
 
 add_grb_executables( parserTest utilParserTest.cpp
 	BACKENDS reference NO_BACKEND_NAME
 	COMPILE_DEFINITIONS COMPARE
+)
+
+add_grb_executables( iteratorFilter iteratorFilter.cpp
+	BACKENDS reference NO_BACKEND_NAME
 )
 
 add_grb_executables( RBGaussSeidel RBGaussSeidel.cpp
@@ -239,7 +248,14 @@ add_grb_executables( eWiseApply_matrix eWiseApply_matrix.cpp
 	BACKENDS reference reference_omp bsp1d hybrid hyperdags nonblocking
 )
 
+# in the below, test_utils_headers is retained in case CMake is configured to
+# include _DEBUG flags
 add_grb_executables( eWiseApplyMatrixReference eWiseApplyMatrixReference.cpp
+	BACKENDS reference reference_omp hyperdags nonblocking
+	ADDITIONAL_LINK_LIBRARIES test_utils_headers
+)
+
+add_grb_executables( eWiseLambda eWiseLambda.cpp
 	BACKENDS reference reference_omp hyperdags nonblocking
 )
 
@@ -280,6 +296,18 @@ add_grb_executables( pinnedVector pinnedVector.cpp
 	BACKENDS reference reference_omp bsp1d hybrid hyperdags nonblocking
 )
 
+add_grb_executables( parallelRegularIterators parallelRegularIterators.cpp
+	BACKENDS reference reference_omp hyperdags nonblocking bsp1d hybrid
+)
+
+add_grb_executables( adapterIterator adapterIterator.cpp
+	BACKENDS reference reference_omp hyperdags nonblocking bsp1d hybrid
+)
+
+add_grb_executables( vectorFromListConstructor vectorFromListConstructor.cpp
+	BACKENDS reference reference_omp bsp1d hybrid hyperdags nonblocking
+)
+
 # the below targets test successfully when they compile -- they do not need to
 # be executed successfully as part of the unit test suite.
 
@@ -289,6 +317,25 @@ add_grb_executables( properties static_asserts/properties.cpp
 
 add_grb_executables( matrix_type static_asserts/matrix.cpp
 	BACKENDS reference reference_omp bsp1d hybrid hyperdags nonblocking
+)
+
+add_grb_executables( launch_benchmark_auto launcherAndBenchmarker.cpp
+	BACKENDS bsp1d hybrid
+	COMPILE_DEFINITIONS DISTRIBUTED_EXECUTION
+)
+
+add_grb_executables( launch_benchmark_auto launcherAndBenchmarker.cpp
+	BACKENDS reference reference_omp hyperdags nonblocking
+)
+
+add_grb_executables( launch_benchmark_frommpi_manual launcherAndBenchmarker.cpp
+	BACKENDS bsp1d hybrid
+	COMPILE_DEFINITIONS DISTRIBUTED_EXECUTION NO_LPF_AUTO_INIT
+)
+
+add_grb_executables( launch_benchmark_frommpi_manual launcherAndBenchmarker.cpp
+	BACKENDS reference reference_omp hyperdags nonblocking
+	COMPILE_DEFINITIONS NO_LPF_AUTO_INIT
 )
 
 # targets to list and build the test for this category

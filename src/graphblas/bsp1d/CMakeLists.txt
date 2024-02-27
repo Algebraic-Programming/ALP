@@ -75,7 +75,6 @@ endmacro( make_bsp1d_target )
 set( backend_bsp1d_srcs
 	"${backend_reference_srcs}"
 	"${backend_bsp_srcs}"
-	${CMAKE_CURRENT_SOURCE_DIR}/exec.cpp
 	${CMAKE_CURRENT_SOURCE_DIR}/init.cpp
 	${CMAKE_CURRENT_SOURCE_DIR}/config.cpp
 	${CMAKE_CURRENT_SOURCE_DIR}/io.cpp

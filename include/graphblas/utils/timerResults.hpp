@@ -23,12 +23,16 @@
 #ifndef _H_GRB_TIMERRESULTS
 #define _H_GRB_TIMERRESULTS
 
+
 namespace grb {
+
 	namespace utils {
 
 		/**
-		 * A structure holding benchmarking results, with initial io, a preamble time for setup,
-		 * a useful time for actual processing, and a postamble time for cleaning up
+		 * A structure holding benchmark timing results.
+		 *
+		 * It keeps track of initial io, a preamble time for setup, a useful time for
+		 * actual processing, and a postamble time for cleaning up.
 		 */
 		struct TimerResults {
 			double io;
@@ -41,7 +45,7 @@ namespace grb {
 				useful = val;
 				postamble = val;
 			}
-			void accum( TimerResults & times ) {
+			void accum( TimerResults &times ) {
 				io += times.io;
 				preamble += times.preamble;
 				useful += times.useful;
@@ -54,13 +58,13 @@ namespace grb {
 				useful /= loops;
 				postamble /= loops;
 			}
-			void min( const TimerResults & times ) noexcept {
+			void min( const TimerResults &times ) noexcept {
 				io = ( times.io < io ) ? times.io : io;
 				preamble = ( times.preamble < preamble ) ? times.preamble : preamble;
 				useful = ( times.useful < useful ) ? times.useful : useful;
 				postamble = ( times.postamble < postamble ) ? times.postamble : postamble;
 			}
-			void max( const TimerResults & times ) noexcept {
+			void max( const TimerResults &times ) noexcept {
 				io = ( times.io > io ) ? times.io : io;
 				preamble = ( times.preamble > preamble ) ? times.preamble : preamble;
 				useful = ( times.useful > useful ) ? times.useful : useful;
@@ -69,5 +73,8 @@ namespace grb {
 		};
 
 	} // namespace utils
+
 } // namespace grb
+
 #endif // ``_H_GRB_TIMERRESULTS''
+
