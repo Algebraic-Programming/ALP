@@ -215,6 +215,9 @@ std::string grb::internal::hyperdags::toString(
 		case SET_MATRIX_MATRIX_INPUT2:
 			return "set( matrix, matrix, scalar )";
 
+		case SET_MATRIX_MATRIX_MASKED:
+			return "set( matrix, matrix, matrix )";
+
 		case MXM_MATRIX_MATRIX_MATRIX_MONOID:
 			return "mxm( matrix, matrix, matrix, monoid, scalar, scalar )";
 

@@ -403,6 +403,41 @@ namespace grb {
 		return ret;
 	}
 
+	template<
+		Descriptor descr = descriptors::no_operation,
+		typename OutputType, typename MaskType, typename InputType,
+		typename RIT1, typename CIT1, typename NIT1,
+		typename RIT2, typename CIT2, typename NIT2
+	>
+	RC set(
+		Matrix< OutputType, hyperdags, RIT1, CIT1, NIT1 > &C,
+		const Matrix< MaskType, hyperdags, RIT2, CIT2, NIT2 > &M,
+		const Matrix< InputType, hyperdags, RIT2, CIT2, NIT2 > &A,
+		const Phase &phase = EXECUTE
+	) {
+		const RC ret = set< descr >(
+			internal::getMatrix( C ), internal::getMatrix( M ),
+			internal::getMatrix( A ), phase
+		);
+		if( ret != SUCCESS ) { return ret; }
+		if( phase != EXECUTE ) { return ret; }
+		if( nrows( A ) == 0 || ncols( A ) == 0 ) { return ret; }
+		std::array< const void *, 0 > sourcesP{};
+		std::array< uintptr_t, 3 > sourcesC{
+			getID( internal::getMatrix(A) ),
+			getID( internal::getMatrix(M) ),
+			getID( internal::getMatrix(C) )
+		};
+		std::array< uintptr_t, 1 > destinations{ getID( internal::getMatrix(C) ) };
+		internal::hyperdags::generator.addOperation(
+			internal::hyperdags::SET_MATRIX_MATRIX_MASKED,
+			sourcesP.begin(), sourcesP.end(),
+			sourcesC.begin(), sourcesC.end(),
+			destinations.begin(), destinations.end()
+		);
+		return ret;
+	}
+
 	template< typename DataType, typename Coords >
 	RC clear( Vector< DataType, hyperdags, Coords > &x ) {
 		const RC ret = clear( internal::getVector( x ) );
