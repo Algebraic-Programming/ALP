@@ -486,6 +486,7 @@ namespace grb {
 // First include all algebraic structures, which have the benefit of not
 // depending on anything else
 #include <graphblas/ops.hpp>
+#include <graphblas/selection_ops.hpp>
 #include <graphblas/monoid.hpp>
 #include <graphblas/semiring.hpp>
 

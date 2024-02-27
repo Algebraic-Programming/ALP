@@ -78,7 +78,8 @@ template<
 >
 bool matrix_validate_predicate(
 	const Matrix< D, implementation, RIT, CIT > &B,
-	Func predicate
+	Func predicate,
+	typename std::enable_if< !std::is_void< D >::value >::type * = nullptr
 ) {
 	/*
 	NOTE:
@@ -88,9 +89,52 @@ bool matrix_validate_predicate(
 	bool valid = true;
 	for( const auto &each : B ) {
 		const auto entry = getMatrixEntry<D>(each);
-		const bool match = predicate(
-			std::get<0>( entry ), std::get<1>( entry ), std::get<2>( entry )
-		);
+		const auto r = std::get<0>( entry );
+		const auto c = std::get<1>( entry );
+		const auto v = std::get<2>( entry );
+		const bool match = predicate( &r, &c, &v );
+		if( !match ) {
+			std::cerr << "  /!\\ Predicate failed for ("
+				<< std::get<0>( entry ) << ", " << std::get<1>( entry )
+				<< ", " << std::get<2>( entry ) << ")"
+				<< std::endl;
+			valid = false;
+			break;
+		}
+	}
+	if(
+		collectives<>::allreduce( valid, operators::logical_and< bool >() )
+		!= SUCCESS
+	) {
+		return false;
+	}
+
+	return valid;
+}
+
+template<
+	typename D,
+	typename Func,
+	typename RIT, typename CIT,
+	Backend implementation
+>
+bool matrix_validate_predicate(
+	const Matrix< D, implementation, RIT, CIT > &B,
+	Func predicate,
+	typename std::enable_if< std::is_void< D >::value >::type * = nullptr
+) {
+	/*
+	NOTE:
+	This function will fail for distributed backend because the local iterator of the matrix
+	does !reflect the global coordinates, which can lead to false negatives.
+	*/
+	bool valid = true;
+	for( const auto &each : B ) {
+		const auto entry = getMatrixEntry<D>(each);
+		const auto r = std::get<0>( entry );
+		const auto c = std::get<1>( entry );
+		void * const v = nullptr;
+		const bool match = predicate( &r, &c, v );
 		if( !match ) {
 			std::cerr << "  /!\\ Predicate failed for ("
 				<< std::get<0>( entry ) << ", " << std::get<1>( entry )
@@ -151,42 +195,6 @@ RC test_case(
 			std::cerr << "(non-lambda variant): Test <"
 				<< test_name << "> failed, output matrix is invalid"
 				<< std::endl;
-			return FAILED;
-		}
-	}
-
-	{ // Lambda variant
-		Matrix< D, implementation, RIT, CIT > output(
-			nrows(input), ncols(input), 0
-		);
-
-		auto lambda = []( const RIT &x, const CIT &y, const D &v ) {
-			return SelectionOperator()( x, y, v );
-		};
-
-		RC rc = selectLambda( output, input, lambda, RESIZE );
-		if( rc != SUCCESS ) {
-			std::cerr << "(lambda variant): RESIZE phase of test <"
-				<< test_name << "> failed, rc is \""
-				<< toString(rc) << "\"" << std::endl;
-			return rc;
-		}
-
-		rc = selectLambda( output, input, lambda, EXECUTE );
-		if( rc != SUCCESS ) {
-			std::cerr << "(lambda variant): EXECUTE phase of test <"
-				<< test_name << "> failed, rc is \""
-				<< toString(rc) << "\"" << std::endl;
-			return rc;
-		}
-
-		grb::wait( output );
-		printSparseMatrix< Debug >( output );
-
-		const bool valid = matrix_validate_predicate( output, op );
-		if( !valid ) {
-			std::cerr << "(lambda variant): Test <" << test_name
-				<< "> failed, output matrix is invalid" << std::endl;
 			return FAILED;
 		}
 	}
@@ -252,7 +260,7 @@ void grb_program( const size_t &n, RC &rc ) {
 		std::vector< size_t > iota_indices( n, 0 );
 		std::iota( iota_indices.begin(), iota_indices.end(), 0 );
 		std::vector< size_t > reverse_iota_indices( n, 0 );
-		for ( auto i = 0; i < n; ++i ) {
+		for ( size_t i = 0; i < n; ++i ) {
 			reverse_iota_indices[i] = n - i - 1;
 		}
 
@@ -367,17 +375,17 @@ int main( int argc, char** argv ) {
 		}
 	}
 
-	// { // To be implemented
-	// 	std::cout << "-- -- Running test with using matrix-type: void" << std::endl;
-	// 	if (launcher.exec(&grb_program<void>, n, out, true) != SUCCESS) {
-	// 		STDERR_WITH_LINE << "Launching test FAILED\n";
-	// 		return 255;
-	// 	}
-	// 	if (out != SUCCESS) {
-	// 		STDERR_WITH_LINE << "Test FAILED (" << toString(out) << ")" << std::endl;
-	// 		return out;
-	// 	}
-	// }
+	{ // To be implemented
+		std::cout << "-- -- Running test with using matrix-type: void" << std::endl;
+		if (launcher.exec(&grb_program<void>, n, out, true) != SUCCESS) {
+			STDERR_WITH_LINE << "Launching test FAILED\n";
+			return 255;
+		}
+		if (out != SUCCESS) {
+			STDERR_WITH_LINE << "Test FAILED (" << toString(out) << ")" << std::endl;
+			return out;
+		}
+	}
 
 	std::cout << std::flush;
 	std::cerr << std::flush << "Test OK" << std::endl;

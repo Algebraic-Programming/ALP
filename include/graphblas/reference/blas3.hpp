@@ -119,8 +119,7 @@ namespace grb {
 #ifdef _H_GRB_REFERENCE_OMP_BLAS3
 				#pragma omp parallel default(none) \
 					shared(in_raw, row_l2g, col_l2g) \
-					firstprivate(m, op, identity) \
-					reduction(+:nzc)
+					firstprivate(m, op, identity)
 #endif
 				{
 					size_t start_row = 0;
@@ -128,15 +127,22 @@ namespace grb {
 #ifdef _H_GRB_REFERENCE_OMP_BLAS3
 					config::OMP::localRange( start_row, end_row, 0, m );
 #endif
+					size_t local_nzc = 0;
 					for( auto i = start_row; i < end_row; ++i ) {
 						for( auto k = in_raw.col_start[ i ]; k < in_raw.col_start[ i + 1 ]; ++k ) {
 							const auto j = in_raw.row_index[ k ];
+							const auto global_row = row_l2g( i );
+							const auto global_col = col_l2g( j );
 							const auto value = in_raw.getValue( k, identity );
-							if( op( row_l2g( i ), col_l2g( j ), value ) ) {
-								nzc++;
+							if( op( &global_row, &global_col, &value ) ) {
+								(void) ++local_nzc;
 							}
 						}
 					}
+#ifdef _H_GRB_REFERENCE_OMP_BLAS3
+					#pragma omp atomic
+#endif
+					nzc += local_nzc;
 				}
 				return grb::resize( out, nzc );
 			}
@@ -150,13 +156,12 @@ namespace grb {
 			if( !crs_only ) {
 				// Allocate the column counter array
 				char *arr = nullptr, *buf = nullptr;
-				InValuesType *valbuf = nullptr;
+				Tin *valbuf = nullptr;
 				internal::getMatrixBuffers( arr, buf, valbuf, 1, out );
 				col_counter = internal::getReferenceBuffer< config::NonzeroIndexType >( n + 1 );
 
 #ifdef _H_GRB_REFERENCE_OMP_BLAS3
-				#pragma omp parallel for simd default(none) \
-					shared(out_ccs, row_l2g, col_l2g) firstprivate(n)
+				#pragma omp parallel for simd
 #endif
 				for( size_t j = 0; j < n + 1; ++j ) {
 					out_ccs.col_start[ j ] = 0;
@@ -166,9 +171,11 @@ namespace grb {
 				for( size_t i = 0; i < m; ++i ) {
 					for( size_t k = in_raw.col_start[ i ]; k < in_raw.col_start[ i + 1 ]; ++k ) {
 						const auto j = in_raw.row_index[ k ];
+						const auto global_row = row_l2g( i );
+						const auto global_col = col_l2g( j );
 						const auto value = in_raw.getValue( k, identity );
-						if( op( row_l2g( i ), col_l2g( j ), value ) ) {
-							++out_ccs.col_start[ j + 1 ];
+						if( op( &global_row, &global_col, &value ) ) {
+							(void) ++out_ccs.col_start[ j + 1 ];
 						}
 					}
 				}
@@ -180,8 +187,7 @@ namespace grb {
 
 				// Initialise the column counter array with zeros
 #ifdef _H_GRB_REFERENCE_OMP_BLAS3
-				#pragma omp parallel for simd default(none) \
-					shared(col_counter, row_l2g, col_l2g) firstprivate(n)
+				#pragma omp parallel for simd
 #endif
 				for( size_t j = 0; j < n + 1; ++j ) {
 					col_counter[ j ] = 0;
@@ -193,8 +199,10 @@ namespace grb {
 			for( size_t i = 0; i < m; ++i ) {
 				for( size_t k = in_raw.col_start[ i ]; k < in_raw.col_start[ i + 1 ]; ++k ) {
 					const auto j = in_raw.row_index[ k ];
+					const auto global_row = row_l2g( i );
+					const auto global_col = col_l2g( j );
 					const auto value = in_raw.getValue( k, identity );
-					if( not op( row_l2g( i ), col_l2g( j ), value ) ) {
+					if( op( &global_row, &global_col, &value ) ) {
 						continue;
 					}
 #ifdef _DEBUG
@@ -205,7 +213,7 @@ namespace grb {
 					// Update CCS
 					if( !crs_only ) {
 						const auto idx = out_ccs.col_start[ j ] + col_counter[ j ];
-						++col_counter[ j ];
+						(void) ++col_counter[ j ];
 						out_ccs.row_index[ idx ] = i;
 						out_ccs.setValue( idx, value );
 					}
@@ -213,7 +221,7 @@ namespace grb {
 					// Update CRS
 					out_crs.row_index[ nzc ] = j;
 					out_crs.setValue( nzc, value );
-					++nzc;
+					(void) ++nzc;
 				}
 				out_crs.col_start[ i + 1 ] = nzc;
 			}

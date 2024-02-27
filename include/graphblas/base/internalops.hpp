@@ -4295,10 +4295,10 @@ namespace grb {
 			typedef typename OP::column_type CIT;
 
 			template< typename RIT1, typename CIT1, typename D1 >
-			bool operator()( const RIT1 & x, const CIT1 & y, const D1 & v ) const {
-				const RIT a = static_cast< RIT1 >( x );
-				const CIT b = static_cast< CIT1 >( y );
-				return OP::apply( &a, &b, &v );
+			bool operator()( const RIT1 * x, const CIT1 * y, const D1 * v ) const {
+				const RIT a = static_cast< RIT1 >( *x );
+				const CIT b = static_cast< CIT1 >( *y );
+				return OP::apply( &a, &b, v );
 			}
 
 			/**
@@ -4306,34 +4306,10 @@ namespace grb {
 			 * casting is required. This version will be automatically caled whenever
 			 * possible (non-void variant).
 			 */
-			bool operator()( const RIT & x, const CIT & y, D & v ) const {
-				return OP::apply( &x, &y, &v );
+			bool operator()( const RIT * x, const CIT * y, D * v ) const {
+				return OP::apply( x, y, v );
 			}
 
-		};
-
-		template< typename OP >
-		struct MatrixSelectionOperatorBase< OP, void > {
-			typedef typename OP::value_type D;
-			typedef typename OP::row_type RIT;
-			typedef typename OP::column_type CIT;
-
-			template< typename RIT1, typename CIT1, typename Unused = std::nullptr_t >
-			bool apply( const RIT1 & x, const CIT1 & y, Unused& = Unused() ) const {
-				const RIT a = static_cast< RIT1 >( x );
-				const CIT b = static_cast< CIT1 >( y );
-				return OP::apply( &a, &b, nullptr );
-			}
-
-			/**
-			 * This is the high-performance version of apply() in the sense that no
-			 * casting is required. This version will be automatically caled whenever
-			 * possible (void variant).
-			 */
-			template< typename Unused = std::nullptr_t >
-			bool apply( const RIT & x, const CIT & y, Unused& = Unused() ) const {
-				return OP::apply( &x, &y, nullptr );
-			}
 		};
 
 
@@ -4401,7 +4377,7 @@ namespace grb {
 				const row_type * __restrict__ const x,
 				const column_type * __restrict__ const y,
 				const value_type * __restrict__ const v
-			)  { return not is_lower_or_diagonal< D, RIT, CIT >::apply( x, y, v ); }
+			)  { return !is_lower_or_diagonal< D, RIT, CIT >::apply( x, y, v ); }
 		};
 
 		template<
@@ -4416,7 +4392,7 @@ namespace grb {
 				const row_type * __restrict__ const x,
 				const column_type * __restrict__ const y,
 				const value_type * __restrict__ const v
-			) { return not is_strictly_lower< D, RIT, CIT >::apply( x, y, v ); }
+			) { return !is_strictly_lower< D, RIT, CIT >::apply( x, y, v ); }
 		};
 
 	} // namespace operators::select::internal
