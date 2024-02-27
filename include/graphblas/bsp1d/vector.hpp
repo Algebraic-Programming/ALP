@@ -351,13 +351,14 @@ namespace grb {
 			internal::Coordinates< _GRB_BSP1D_BACKEND >
 		> & internal::getGlobal< D, C >( const Vector< D, BSP1D, C > & );
 
-		template< typename Func, typename DataType, typename Coords >
+		template< Descriptor, typename Func, typename DataType, typename Coords >
 		friend RC eWiseLambda(
 			const Func,
 			const Vector< DataType, BSP1D, Coords > &
 		);
 
 		template<
+			Descriptor,
 			typename Func,
 			typename DataType1, typename DataType2,
 			typename Coords, typename... Args
@@ -2291,10 +2292,10 @@ namespace grb {
 			_raw( nullptr ), _assigned( nullptr ),
 			_local_n( 0 ), _offset( 0 ),
 			_n( 0 ), _cap( 0 ), _nnz( 0 ),
-			_s( 0 ), _P( 1 ),
 			_raw_slot( LPF_INVALID_MEMSLOT ),
 			_assigned_slot( LPF_INVALID_MEMSLOT ),
 			_stack_slot( LPF_INVALID_MEMSLOT ),
+			_s( 0 ), _P( 1 ),
 			_cleared( false ), _became_dense( false ),
 			_nnz_is_dirty( false ),	_global_is_dirty( false )
 		{
@@ -2500,9 +2501,9 @@ namespace grb {
 			_buffer( x._buffer ),
 			_local_n( x._local_n ), _offset( x._offset ),
 			_n( x._n ), _cap( x._cap ), _nnz( x._nnz ),
-			_s( x._s ), _P( x._P ),
 			_raw_slot( x._raw_slot ),
 			_assigned_slot( x._assigned_slot ), _stack_slot( x._stack_slot ),
+			_s( x._s ), _P( x._P ),
 			_cleared( x._cleared ),
 			_became_dense( x._became_dense ),
 			_nnz_is_dirty( x._nnz_is_dirty ),

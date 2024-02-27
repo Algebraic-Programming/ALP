@@ -2455,6 +2455,7 @@ namespace grb {
 		 * @see grb::eWiseLambda for the user-level specification.
 		 */
 		template<
+			Descriptor descr,
 			class ActiveDistribution,
 			typename Func,
 			typename DataType, typename RIT, typename CIT, typename NIT
@@ -2465,6 +2466,7 @@ namespace grb {
 			const size_t global_m, const size_t global_n,
 			const size_t s, const size_t P
 		) {
+			(void) descr;
 #ifdef _DEBUG
 			std::cout << "entering grb::eWiseLambda (matrices, reference ). A is "
 				<< grb::nrows( A ) << " by " << grb::ncols( A ) << " and holds "
@@ -2827,6 +2829,7 @@ namespace grb {
 	 * @see grb::eWiseLambda for the user-level specification.
 	 */
 	template<
+		Descriptor descr = descriptors::no_operation,
 		typename Func,
 		typename DataType1, typename RIT, typename CIT, typename NIT
 	>
@@ -2835,8 +2838,10 @@ namespace grb {
 		const Matrix< DataType1, reference, RIT, CIT, NIT > &A
 	) {
 		// dispatch to implementation
-		return internal::eWiseLambda< typename internal::Distribution< reference > >(
-			f, A, A.m, A.n, 0, 1 );
+		return internal::eWiseLambda<
+			descr,
+			typename internal::Distribution< reference >
+		>( f, A, A.m, A.n, 0, 1 );
 	}
 
 	/**
@@ -2846,6 +2851,7 @@ namespace grb {
 	 * @see grb::eWiseLambda for the user-level specification.
 	 */
 	template<
+		Descriptor descr = descriptors::no_operation,
 		typename Func,
 		typename DataType1, typename RIT, typename CIT, typename NIT,
 		typename DataType2,
@@ -2864,8 +2870,19 @@ namespace grb {
 				<< " nor " << ncols( A ) << ").\n";
 			return MISMATCH;
 		}
+
+		if( (descr & descriptors::dense) &&
+		    !internal::getCoordinates(x).isDense()
+		) {
+#ifdef _DEBUG
+			std::cerr << "Error: eWiseLambda called with dense descriptor "
+				<< "on a sparse vector.\n";
+#endif
+			return ILLEGAL;
+		}
+
 		// recurse
-		return eWiseLambda( f, A, args... );
+		return eWiseLambda< descr >( f, A, args... );
 	}
 
 	/** @} */
