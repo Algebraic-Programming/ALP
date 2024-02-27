@@ -301,7 +301,7 @@ void grb_program_custom_size( const size_t &n, int &error ) {
 
 }
 
-static const double mask_void_test1_expect[ 3 ] = { 10, 10, 18 };
+static const double mask_void_test1_expect[ 3 ] = { 4, 10, 24 };
 static const double mask_void_test2_expect[ 3 ] = { 15, 20, 45 };
 
 void grb_program_void( const void *, const size_t in_size, int &error ) {
@@ -399,11 +399,11 @@ void grb_program_void( const void *, const size_t in_size, int &error ) {
 		}
 		for( const auto &pair : out1 ) {
 			size_t i = pair.first;
-			if( pair.second != mask_test1_expect[ i ] ) {
+			if( pair.second != mask_void_test1_expect[ i ] ) {
 				std::cerr << "Premultiplying Result1 by a vector of all ones, "
 					<< "unexpected value " << pair.second << " "
 					<< "at coordinate " << i << ", expected "
-					<< mask_test1_expect[ i ] << ".\n";
+					<< mask_void_test1_expect[ i ] << ".\n";
 				error = 45;
 				break;
 			}
@@ -427,11 +427,11 @@ void grb_program_void( const void *, const size_t in_size, int &error ) {
 		}
 		for( const auto &pair : out2 ) {
 			size_t i = pair.first;
-			if( pair.second != mask_test2_expect[ i ] ) {
+			if( pair.second != mask_void_test2_expect[ i ] ) {
 				std::cerr << "Postmultiplying Result2 by a vector of all ones, "
 					<< "unexpected value " << pair.second << " "
 					<< "at coordinate " << i << ", "
-					<< "expected " << mask_test2_expect[ i ] << ".\n";
+					<< "expected " << mask_void_test2_expect[ i ] << ".\n";
 				error = 70;
 				break;
 			}
