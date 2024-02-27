@@ -10987,8 +10987,8 @@ namespace grb {
 			maximum_data_type_size = std::max( maximum_data_type_size, sizeof( DataType2 ) );
 
 			// continue
-			return eWiseLambda_helper( all_vectors_ptr, maximum_data_type_size, f, x,
-				args... );
+			return eWiseLambda_helper< descr >( all_vectors_ptr, maximum_data_type_size,
+				f, x, args... );
 		}
 
 		template<
