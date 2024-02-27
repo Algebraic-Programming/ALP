@@ -930,6 +930,11 @@ namespace grb {
 			const Matrix< InputType, reference, RIT, CIT, NIT > &A,
 			const Monoid &monoid
 		) {
+			static_assert(
+				!std::is_void< InputType >::value,
+				"This implementation of folding a matrix into a scalar only applies to "
+				"non-pattern matrices. Please submit a bug report."
+			);
 #ifdef _DEBUG
 			std::cout << "In grb::internal::fold_unmasked_generic( reference )\n";
 #endif
@@ -965,6 +970,9 @@ namespace grb {
 #endif
 				for( size_t idx = start; idx < end; ++idx ) {
 					// Get A value
+					// note: default-constructed InputType is fine as default-constructible is
+					//       mandatory for POD types and the callees ensure that this function
+					//       is never called on void matrices.
 					const InputType a_val = A_raw.getValue( idx, InputType() );
 					// Compute the fold for this coordinate
 					if( left_handed ) {
