@@ -336,8 +336,8 @@ void selectSubmatrix( grb::Matrix< int > &B, const grb::Matrix< int > &A, const 
 	grb::maskedOuter( Tmp, A, rows, cols, grb::operators::add< int >(),Phase::RESIZE );
 	grb::maskedOuter( Tmp, A, rows, cols, grb::operators::add< int >() );
 
-	grb::eWiseApply( B, Tmp, A, grb::operators::right_assign< int >(), Phase::RESIZE );
-	grb::eWiseApply( B, Tmp, A, grb::operators::right_assign< int >() );
+	grb::set( B, Tmp, A, Phase::RESIZE );
+	grb::set( B, Tmp, A );
 }
 
 /*void selectRows( grb::Matrix< int > &B, const grb::Matrix< int > &A, const grb::Vector< int > &m, const grb::Vector< int > &z ) {
