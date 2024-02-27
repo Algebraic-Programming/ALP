@@ -234,9 +234,12 @@ int main( int argc, char ** argv ) {
 										 + ";" + std::to_string( n ) + "]" );
 		// Mask: Pattern identity
 		Matrix< void > mask( n, n );
-		assert( SUCCESS ==
+		if( SUCCESS !=
 			buildMatrixUnique( mask, I_coords.data(), I_coords.data(), I_coords.size(), SEQUENTIAL )
-		);
+		) {
+			throw std::runtime_error(
+				"[Line " + std::to_string(__LINE__) + "]: Error building mask" );
+		}
 		// B: Identity
 		Matrix< int > B = I;
 		// Expected matrix: Identity
@@ -275,17 +278,23 @@ int main( int argc, char ** argv ) {
 										+ ";" + std::to_string( n ) + "] * 2" );
 		// Mask: Pattern identity
 		Matrix< void > mask( n, n );
-		assert( SUCCESS ==
+		if( SUCCESS !=
 			buildMatrixUnique( mask, I_coords.data(), I_coords.data(), I_coords.size(), SEQUENTIAL )
-		);
+		) {
+			throw std::runtime_error(
+				"[Line " + std::to_string(__LINE__) + "]: Error building mask" );
+		}
 		// B: Identity
 		Matrix< int > B = I;
 		// Expected matrix: Identity * 2
 		Matrix< int > expected( n, n );
 		std::vector< int > expected_vals( n, 2 );
-		assert( SUCCESS ==
+		if( SUCCESS !=
 			buildMatrixUnique( expected, I_coords.data(), I_coords.data(), expected_vals.data(), expected_vals.size(), SEQUENTIAL )
-		);
+		) {
+			throw std::runtime_error(
+				"[Line " + std::to_string(__LINE__) + "]: Error building mask" );
+		}
 		// Run test
 		std::cout << "-- Running " << label << " --" << std::endl;
 		input<
