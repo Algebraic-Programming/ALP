@@ -334,7 +334,7 @@ namespace grb {
 
 	template<
 		Descriptor descr = descriptors::no_operation,
-		class Monoid,
+		class MonoidOrSemiring,
 		typename InputType, typename IOType, typename MaskType,
 		typename RIT_A, typename CIT_A, typename NIT_A,
 		typename RIT_M, typename CIT_M, typename NIT_M
@@ -343,12 +343,14 @@ namespace grb {
 		const Matrix< InputType, hyperdags, RIT_A, CIT_A, NIT_A > &A,
 		const Matrix< MaskType, hyperdags, RIT_M, CIT_M, NIT_M > &mask,
 		IOType &x,
-		const Monoid &monoid = Monoid(),
-		const typename std::enable_if< !grb::is_object< IOType >::value &&
+		const MonoidOrSemiring &algebra = MonoidOrSemiring(),
+		const typename std::enable_if<
+			!grb::is_object< IOType >::value &&
 			!grb::is_object< InputType >::value &&
-			!grb::is_object< MaskType >::value &&
-			grb::is_monoid< Monoid >::value,
-			void
+			!grb::is_object< MaskType >::value && (
+				grb::is_monoid< MonoidOrSemiring >::value ||
+				grb::is_semiring< MonoidOrSemiring >::value
+			), void
 		>::type * const = nullptr
 	) {
 #ifdef _DEBUG
@@ -362,8 +364,8 @@ namespace grb {
 			return SUCCESS;
 		}
 
-		const RC ret = foldr< descr, Monoid >(
-			internal::getMatrix( A ), internal::getMatrix( mask ), x, monoid
+		const RC ret = foldr< descr, MonoidOrSemiring >(
+			internal::getMatrix( A ), internal::getMatrix( mask ), x, algebra
 		);
 		if( ret != SUCCESS ) {
 			return ret;
@@ -389,18 +391,20 @@ namespace grb {
 
 	template<
 		Descriptor descr = descriptors::no_operation,
-		class Monoid,
+		class MonoidOrSemiring,
 		typename InputType, typename IOType,
 		typename RIT, typename CIT, typename NIT
 	>
 	RC foldr(
 		const Matrix< InputType, hyperdags, RIT, CIT, NIT > &A,
 		IOType &x,
-		const Monoid &monoid = Monoid(),
-		const typename std::enable_if< !grb::is_object< IOType >::value &&
-			!grb::is_object< InputType >::value &&
-			grb::is_monoid< Monoid >::value,
-			void
+		const MonoidOrSemiring &algebra = MonoidOrSemiring(),
+		const typename std::enable_if<
+			!grb::is_object< IOType >::value &&
+			!grb::is_object< InputType >::value && (
+				grb::is_monoid< MonoidOrSemiring >::value ||
+				grb::is_semiring< MonoidOrSemiring >::value
+			), void
 		>::type * const = nullptr
 	) {
 #ifdef _DEBUG
@@ -414,8 +418,8 @@ namespace grb {
 			return SUCCESS;
 		}
 
-		const RC ret = foldr< descr, Monoid >(
-			internal::getMatrix( A ), x, monoid
+		const RC ret = foldr< descr, MonoidOrSemiring >(
+			internal::getMatrix( A ), x, algebra
 		);
 		if( ret != SUCCESS ) {
 			return ret;
@@ -438,7 +442,7 @@ namespace grb {
 
 	template<
 		Descriptor descr = descriptors::no_operation,
-		class Monoid,
+		class MonoidOrSemiring,
 		typename InputType, typename IOType, typename MaskType,
 		typename RIT_A, typename CIT_A, typename NIT_A,
 		typename RIT_M, typename CIT_M, typename NIT_M
@@ -447,13 +451,14 @@ namespace grb {
 		IOType &x,
 		const Matrix< InputType, hyperdags, RIT_A, CIT_A, NIT_A > &A,
 		const Matrix< MaskType, hyperdags, RIT_M, CIT_M, NIT_M > &mask,
-		const Monoid &monoid = Monoid(),
+		const MonoidOrSemiring &algebra = MonoidOrSemiring(),
 		const typename std::enable_if<
 			!grb::is_object< IOType >::value &&
 			!grb::is_object< InputType >::value &&
-			!grb::is_object< MaskType >::value &&
-			grb::is_monoid< Monoid >::value,
-			void
+			!grb::is_object< MaskType >::value && (
+				grb::is_monoid< MonoidOrSemiring >::value ||
+				grb::is_semiring< MonoidOrSemiring >::value
+			), void
 		>::type * const = nullptr
 	) {
 #ifdef _DEBUG
@@ -467,8 +472,8 @@ namespace grb {
 			return SUCCESS;
 		}
 
-		const RC ret = foldl< descr, Monoid >(
-			x, internal::getMatrix( A ), internal::getMatrix( mask ), monoid
+		const RC ret = foldl< descr, MonoidOrSemiring >(
+			x, internal::getMatrix( A ), internal::getMatrix( mask ), algebra
 		);
 		if( ret != SUCCESS ) {
 			return ret;
@@ -494,19 +499,20 @@ namespace grb {
 
 	template<
 		Descriptor descr = descriptors::no_operation,
-		class Monoid,
+		class MonoidOrSemiring,
 		typename InputType, typename IOType,
 		typename RIT, typename CIT, typename NIT
 	>
 	RC foldl(
 		IOType &x,
 		const Matrix< InputType, hyperdags, RIT, CIT, NIT > &A,
-		const Monoid &monoid,
+		const MonoidOrSemiring &algebra,
 		const typename std::enable_if<
 			!grb::is_object< IOType >::value &&
-			!grb::is_object< InputType >::value &&
-			grb::is_monoid< Monoid >::value,
-			void
+			!grb::is_object< InputType >::value && (
+				grb::is_monoid< MonoidOrSemiring >::value ||
+				grb::is_semiring< MonoidOrSemiring >::value
+			), void
 		>::type * const = nullptr
 	) {
 #ifdef _DEBUG
@@ -520,8 +526,8 @@ namespace grb {
 			return SUCCESS;
 		}
 
-		const RC ret = foldl< descr, Monoid >(
-			x, internal::getMatrix( A ), monoid
+		const RC ret = foldl< descr, MonoidOrSemiring >(
+			x, internal::getMatrix( A ), algebra
 		);
 		if( ret != SUCCESS ) {
 			return ret;

@@ -698,6 +698,43 @@ void grb_program( const input< T, M > &in, RC &rc ) {
 	/**
 	 * Test case 16:
 	 *
+	 * Reduction with a dense void mask, with the descriptors::add_identity.
+	 * * Initial value is 0
+	 * * Expected result: 2*n
+	 */
+	{
+		size_t nnz =  nrows( I ) * ncols( I );
+		Matrix< void > dense_mask( nrows( I ), ncols( I ), nnz);
+		std::vector< size_t > rows( nnz ), cols( nnz );
+		Semiring<
+			operators::add< NzType >, operators::mul< NzType >,
+			identities::zero, identities::one
+		> semiring;
+		for( size_t x = 0; x < nrows( I ); x++ ) {
+			std::fill( rows.begin() + x * ncols( I ), rows.begin() + ( x + 1 ) * ncols( I ), x );
+			std::iota( cols.begin() + x * ncols( I ), cols.begin() + ( x + 1 ) * ncols( I ), 0 );
+		}
+		if( SUCCESS !=
+			buildMatrixUnique( dense_mask, rows.data(), cols.data(), rows.size(), SEQUENTIAL )
+		) {
+			std::cerr << "Failed to build dense mask" << std::endl;
+			rc = FAILED;
+			return;
+		}
+		rc = foldLR_test< descriptors::add_identity >(
+			"16",
+			"Reduction with a dense void mask, with the descriptors::add_identity.",
+			I, dense_mask,
+			static_cast< NzType >( 0 ), static_cast< NzType >( n + std::min( nrows( I ), ncols( I ) ) ),
+			semiring,
+			false, false
+		);
+		if( rc ) { return; }
+	}
+
+	/**
+	 * Test case 17:
+	 *
 	 * Reduction with mismatching dimensions between
 	 * an empty void-mask and the input matrix.
 	 * * Expected RC: MISMATCH (masked only)
@@ -707,7 +744,7 @@ void grb_program( const input< T, M > &in, RC &rc ) {
 	{
 		Matrix< void > void_mask( nrows( I ) + 1, ncols( I ) + 1, 0 );
 		rc = foldLR_test(
-			"16",
+			"17",
 			"Reduction with an empty void mask. Mismatching dimensions, should fail.",
 			I, void_mask,
 			static_cast< NzType >( 4 ), static_cast< NzType >( 4 ),
@@ -719,7 +756,7 @@ void grb_program( const input< T, M > &in, RC &rc ) {
 	}
 
 	/**
-	 * Test case 17:
+	 * Test case 18:
 	 *
 	 * Reduction with mismatching dimensions between an empty
 	 * int-mask and the input matrix.
@@ -730,7 +767,7 @@ void grb_program( const input< T, M > &in, RC &rc ) {
 	{
 		Matrix< int > void_mask( nrows( I ) + 1, ncols( I ) + 1, 0 );
 		rc = foldLR_test(
-			"17",
+			"18",
 			"Reduction with an empty int mask. Mismatching dimensions, should fail..",
 			I, void_mask,
 			static_cast< NzType >( 4 ), static_cast< NzType >( 4 ),
@@ -951,8 +988,8 @@ int main( int argc, char ** argv ) {
 	if( rc != SUCCESS ) {
 		std::cout << std::flush << "Test FAILED (rc = " << toString( rc ) << ")" << std::endl;
 		return 19;
-	} else {
-		std::cout << std::flush << "Test OK" << std::endl;
-		return 0;
 	}
+
+	std::cout << std::flush << "Test OK" << std::endl;
+	return 0;
 }
