@@ -1490,6 +1490,7 @@ namespace grb {
 	}
 
 	template<
+		Descriptor descr = descriptors::no_operation,
 		typename Func,
 		typename DataType,
 		typename RIT,
@@ -1514,11 +1515,12 @@ namespace grb {
 		internal::le.execution();
 
 		// second, delegate to the reference backend
-		return eWiseLambda< Func, DataType, RIT, CIT, NIT >(
+		return eWiseLambda< descr, Func, DataType, RIT, CIT, NIT >(
 			f, internal::getRefMatrix( A ) );
 	}
 
 	template<
+		Descriptor descr = descriptors::no_operation,
 		typename Func,
 		typename DataType1,
 		typename RIT,
@@ -1542,7 +1544,7 @@ namespace grb {
 			return MISMATCH;
 		}
 
-		return eWiseLambda( f, A, args... );
+		return eWiseLambda< descr >( f, A, args... );
 	}
 
 	/** @} */
