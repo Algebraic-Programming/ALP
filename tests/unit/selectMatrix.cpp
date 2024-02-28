@@ -78,23 +78,73 @@ std::tuple< const size_t, const size_t, bool > getMatrixEntry(
 }
 
 template<
+	typename T, typename RIT, typename CIT, Backend implementation,
+	typename Predicate
+>
+size_t count_nnz_if(
+	const Matrix< T, implementation, RIT, CIT > &mat,
+	Predicate predicate,
+	const typename std::enable_if< !std::is_void< T >::value >::type * = nullptr
+) {
+	size_t count = 0;
+	for( const auto &each : mat ) {
+		const auto entry = getMatrixEntry< T >( each );
+		const auto r = std::get<0>( entry );
+		const auto c = std::get<1>( entry );
+		const auto v = std::get<2>( entry );
+		if( predicate( &r, &c, &v ) ) {
+			++count;
+		}
+	}
+	return count;
+}
+
+
+template<
+	typename T, typename RIT, typename CIT, Backend implementation,
+	typename Predicate
+>
+size_t count_nnz_if(
+	const Matrix< T, implementation, RIT, CIT > &mat,
+	Predicate predicate,
+	const typename std::enable_if< std::is_void< T >::value >::type * = nullptr
+) {
+	size_t count = 0;
+	for( const auto &each : mat ) {
+		const auto entry = getMatrixEntry< T >( each );
+		const auto r = std::get<0>( entry );
+		const auto c = std::get<1>( entry );
+		void * const v = nullptr;
+		if( predicate( &r, &c, v ) ) {
+			++count;
+		}
+	}
+	return count;
+}
+
+template<
+	typename T,
 	typename D,
 	typename Func,
 	typename RIT, typename CIT,
 	Backend implementation
 >
 bool matrix_validate_predicate(
-	const Matrix< D, implementation, RIT, CIT > &B,
+	const Matrix< T, implementation, RIT, CIT > &src,
+	const Matrix< D, implementation, RIT, CIT > &obtained,
 	Func predicate,
 	typename std::enable_if< !std::is_void< D >::value >::type * = nullptr
 ) {
-	/*
-	NOTE:
-	This function will fail for distributed backend because the local iterator of the matrix
-	does !reflect the global coordinates, which can lead to false negatives.
-	*/
+	const size_t expected_nvals = count_nnz_if( src, predicate );
+	if( expected_nvals != nnz( obtained ) ) {
+		std::cerr << "  /!\\ Expected " << expected_nvals
+			<< " non-zero entries, but obtained " << nnz( obtained )
+			<< std::endl;
+		return false;
+	}
+
 	bool valid = true;
-	for( const auto &each : B ) {
+	for( const auto &each : obtained ) {
 		const auto entry = getMatrixEntry< D >(each);
 		const auto r = std::get<0>( entry );
 		const auto c = std::get<1>( entry );
@@ -120,19 +170,29 @@ bool matrix_validate_predicate(
 }
 
 template<
+	typename T,
 	typename D,
 	typename Func,
 	typename RIT, typename CIT,
 	Backend implementation
 >
 bool matrix_validate_predicate(
-	const Matrix< D, implementation, RIT, CIT > &B,
+	const Matrix< T, implementation, RIT, CIT > &src,
+	const Matrix< D, implementation, RIT, CIT > &obtained,
 	Func predicate,
 	typename std::enable_if< std::is_void< D >::value >::type * = nullptr
 ) {
+	const size_t expected_nvals = count_nnz_if( src, predicate );
+	if( expected_nvals != nnz( obtained ) ) {
+		std::cerr << "  /!\\ Expected " << expected_nvals
+			<< " non-zero entries, but obtained " << nnz( obtained )
+			<< std::endl;
+		return false;
+	}
+
 	bool valid = true;
-	for( const auto &each : B ) {
-		const auto entry = getMatrixEntry<D>(each);
+	for( const auto &each : obtained ) {
+		const auto entry = getMatrixEntry<D>( each );
 		const auto r = std::get<0>( entry );
 		const auto c = std::get<1>( entry );
 		void * const v = nullptr;
@@ -192,7 +252,7 @@ RC test_case(
 
 		printSparseMatrix< Debug >( output );
 
-		const bool valid = matrix_validate_predicate( output, op );
+		const bool valid = matrix_validate_predicate( input, output, op );
 		if( !valid ) {
 			std::cerr << "(non-lambda variant): Test <"
 				<< test_name << "> failed, output matrix is invalid"
