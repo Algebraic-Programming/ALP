@@ -38,7 +38,11 @@
 
 using namespace grb;
 
-//! [Example Data]
+/*
+ *
+ *NOT COMPLETED! WORK IN PROGRESS!
+ *
+ */
 
 static const int adj[ 50 ] = { 1, 10, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 10, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1};
 
