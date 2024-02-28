@@ -1,0 +1,101 @@
+#!/bin/bash
+
+#
+#   Copyright 2021 Huawei Technologies Co., Ltd.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+
+GRB_INSTALL_PATH="/home/belozes/graphblas/install_release"
+INCLUDEDIR="/home/belozes/graphblas/install_release/include"
+BACKENDS=("reference" "reference_omp" "hyperdags" "nonblocking")
+BACKENDCOMPILERS=("/usr/bin/g++" "/usr/bin/g++" "/usr/bin/g++" "/usr/bin/g++")
+BACKENDCFLAGS=("-D_GRB_BACKEND=reference" "-D_GRB_BACKEND=reference_omp" "-D_GRB_BACKEND=hyperdags -D_GRB_WITH_HYPERDAGS_USING=reference -D_GRB_WITH_HYPERDAGS" "-D_GRB_BACKEND=nonblocking -D_GRB_WITH_NONBLOCKING")
+BACKENDLFLAGS=("'/home/belozes/graphblas/install_release/lib/sequential/libgraphblas.a' '/home/belozes/graphblas/install_release/lib/libalp_utils.a' -lnuma" "'/home/belozes/graphblas/install_release/lib/sequential/libgraphblas.a' '/home/belozes/graphblas/install_release/lib/libalp_utils.a' -lnuma" "'/home/belozes/graphblas/install_release/lib/hyperdags/libgraphblas.a' '/home/belozes/graphblas/install_release/lib/libalp_utils.a' -lnuma" "'/home/belozes/graphblas/install_release/lib/sequential/libgraphblas.a' '/home/belozes/graphblas/install_release/lib/libalp_utils.a' -lnuma")
+COMMONCFLAGS="-D_GRB_WITH_REFERENCE -D_GRB_WITH_OMP -fopenmp"
+VERSION="0.7.0"
+
+declare -a ARGS
+LINK=true
+SHOW="eval"
+BACKEND=${BACKENDS[0]}
+CXXSTD=c++11
+
+while [[ $# -gt 0 ]]; do
+	option="$1"
+	shift;
+	case ${option} in
+		-b|--backend)
+			BACKEND=$1
+			shift
+		;;
+		-c)
+			ARGS+=("-c")
+			LINK=false
+		;;
+		--show)
+			SHOW=echo
+		;;
+		--std=*)
+			CXXSTD="${option#*=}"
+			shift
+		;;
+		--version)
+			echo "This is ALP/GraphBLAS version ${VERSION}"
+			echo "This software comes with NO warranty; not even for"
+			echo "MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE."
+			echo "See the license file for details."
+			echo " "
+			ARGS+=("${option}")
+		;;
+		--)
+			break
+		;;
+		*)
+			ARGS+=("${option}")
+		;;
+	esac
+done
+
+BACKENDID=-1
+for i in "${!BACKENDS[@]}"; do
+	if [[ "${BACKENDS[$i]}" = "${BACKEND}" ]]
+	then
+		BACKENDID=$i
+		break
+	fi
+done
+
+if [[ ${BACKENDID} -eq -1 ]]
+then
+	echo "Could not find requested backend \`${BACKEND}'"
+	exit 255
+fi
+
+if [[ ! -d "${INCLUDEDIR}" ]]
+then
+	echo "Could not find GraphBLAS include directory in ${INCLUDEDIR}"
+	exit 255
+fi
+
+LFLAGS=
+if ${LINK}
+then
+	LFLAGS=${BACKENDLFLAGS[${BACKENDID}]}
+fi
+
+COMPILER=${BACKENDCOMPILERS[${BACKENDID}]}
+
+CMD="${COMPILER} -std=${CXXSTD} -I'${INCLUDEDIR}' ${COMMONCFLAGS} ${BACKENDCFLAGS[${BACKENDID}]} "${ARGS[@]}" "$@" ${LFLAGS}"
+
+${SHOW} "${CMD}"
