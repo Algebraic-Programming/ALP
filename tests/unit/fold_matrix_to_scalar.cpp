@@ -15,8 +15,11 @@
  * limitations under the License.
  */
 
-/*
- * Tests for the reduce( Matrix<D>, T, Operator<T,D,T> ) API call
+/**
+ * @file
+ *
+ * Tests for the reducing a Matrix< D > into a scalar of type T for given
+ * monoids or semirings.
  *
  * @author Benjamin Lozes
  * @date 17/05/2023
