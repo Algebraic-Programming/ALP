@@ -89,7 +89,7 @@ if( WITH_NONBLOCKING_BACKEND )
 		# same binary name of KML library
 		# https://www.hikunpeng.com/document/detail/en/kunpengaccel/math-lib/devg-kml/kunpengaccel_kml_16_0011.html
 		add_transition_library( ksolver STATIC "ksolver" ${CMAKE_CURRENT_SOURCE_DIR}/kml_iss.cpp
-			PRIVATE_LINK_LIBRARIES spsolver_nonblocking_static
+			PRIVATE_LINK_LIBRARIES spsolver_shmem_parallel backend_nonblocking
 		)
 	endif()
 endif()

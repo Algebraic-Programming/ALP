@@ -18,6 +18,8 @@
 /**
  * @file
  *
+ * \ingroup TRANS
+ *
  * This is the ALP implementation of a subset of the NIST Sparse BLAS standard.
  * While the API is standardised, this header makes some implementation-specific
  * extensions.
@@ -39,8 +41,9 @@
  *
  * The currently exposed interfaces are:
  *  - \ref SPARSEBLAS;
- *  - \ref SPBLAS; and
- *  - \ref TRANS_SOLVERS.
+ *  - \ref SPBLAS;
+ *  - \ref TRANS_SOLVERS; and
+ *  - the KML_Solver interface kml_iss.h.
  *
  * All of these transition libraries show-case ALP's ability to quickly wrap
  * around external APIs, thus simplifying integration of ALP-backed code with
@@ -49,11 +52,12 @@
  * interfaces, and that in some cases the legacy interface itself is what makes
  * achieving such higher performance impossible.
  *
- * The current transition path interfaces are at an *experimental prototype
- * phase*; in particular, not all primitives in a given standard API are
- * currently implemented. For \ref SPARSEBLAS in particular, additional support
- * or coverage may freely be requested in GitHub issue #14. For other
- * interfaces, feel free to open new issues or to contact the maintainers.
+ * The current transition path interfaces are at a *prototype stage*; in
+ * particular, not all primitives in a given standard API are currently
+ * implemented. For \ref SPARSEBLAS in particular, additional support or
+ * coverage may freely be requested in GitHub issue #14. For other interfaces,
+ * including those we may not cover at all presently, feel welcome to open new
+ * issues or to contact the maintainers.
  */
 
 #ifndef _H_ALP_SPARSEBLAS_NIST

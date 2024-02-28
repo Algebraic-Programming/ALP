@@ -18,8 +18,15 @@
 /**
  * @file
  *
- * Provides the ALP implementation of a subset of the de-facto *_spblas.h
- * standard for sparse linear algebra kernels.
+ * \ingroup TRANS
+ *
+ * Provides the ALP implementation of a subset of the de-facto SpBLAS standard
+ * for sparse linear algebra kernels. On installation, the header file to
+ * include is <tt></alp/install/dir/>include/transition/spblas.h</tt>.
+ *
+ * The prefix of the SpBLAS primitives is configurable via the
+ * <tt>--spblas-prefix=</tt> option to the <tt>bootstrap.sh</tt> script. The
+ * default prefix is <tt>alp_cspblas_*</tt>.
  *
  * @author A. N. Yzelman
  * @date 2023

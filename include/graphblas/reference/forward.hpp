@@ -32,31 +32,33 @@
 #ifndef _H_GRB_REFERENCE_FORWARD
 #define _H_GRB_REFERENCE_FORWARD
 
-namespace grb {
+namespace grb::internal {
 
 	// The eWiseLambda is a friend of matrix but defined in blas2. Therefore it is
 	// forward-declared and this forward definition file included from both
 	// matrix.hpp and blas2.hpp
 	template<
-		class ActiveDistribution = internal::Distribution< reference >,
+		Descriptor,
+		class ActiveDistribution,
 		typename Func, typename DataType,
 		typename RIT, typename CIT, typename NIT
 	>
 	RC eWiseLambda(
-		const Func f,
-		const Matrix< DataType, reference, RIT, CIT, NIT > &A,
-		const size_t s = 0, const size_t P = 1
+		const Func,
+		const Matrix< DataType, reference, RIT, CIT, NIT > &,
+		const size_t, const size_t, const size_t, const size_t
 	);
 
 	template<
-		class ActiveDistribution = internal::Distribution< reference_omp >,
+		Descriptor,
+		class ActiveDistribution,
 		typename Func, typename DataType,
 		typename RIT, typename CIT, typename NIT
 	>
 	RC eWiseLambda(
-		const Func f,
-		const Matrix< DataType, reference_omp, RIT, CIT, NIT > &A,
-		const size_t s = 0, const size_t P = 1
+		const Func,
+		const Matrix< DataType, reference_omp, RIT, CIT, NIT > &,
+		const size_t, const size_t, const size_t, const size_t
 	);
 	// end eWiseLambda declarations
 
