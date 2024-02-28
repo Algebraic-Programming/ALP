@@ -464,7 +464,7 @@ namespace grb {
 	 * @tparam descr              The descriptor to be used. Optional; the default is
 	 *                            #grb::descriptors::no_operation.
 	 * @tparam SelectionOperator  The selection operator type, must be of a type
-	 *                            equivalent to `bool(RIT, CIT, T)` with:
+	 *                            equivalent to `bool(RIT*, CIT*, T*)` with:
 	 *                            - RIT: The row index type of the input matrix,
 	 *                                   or convertible to it.
 	 *                            - CIT: The column index type of the input matrix,
@@ -569,7 +569,7 @@ namespace grb {
 	 * @tparam descr              The descriptor to be used. Optional; the default is
 	 *                            #grb::descriptors::no_operation.
 	 * @tparam SelectionLambda    The selection function type, must be of a type
-	 *                            equivalent to `bool(RIT, CIT, T)` with:
+	 *                            equivalent to `bool(RIT*, CIT*, T*)` with:
 	 *                            - RIT: The row index type of the input matrix,
 	 *                                   or convertible to it.
 	 *                            - CIT: The column index type of the input matrix,

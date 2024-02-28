@@ -123,11 +123,6 @@ bool matrix_validate_predicate(
 	Func predicate,
 	typename std::enable_if< std::is_void< D >::value >::type * = nullptr
 ) {
-	/*
-	NOTE:
-	This function will fail for distributed backend because the local iterator of the matrix
-	does !reflect the global coordinates, which can lead to false negatives.
-	*/
 	bool valid = true;
 	for( const auto &each : B ) {
 		const auto entry = getMatrixEntry<D>(each);
@@ -375,7 +370,7 @@ int main( int argc, char** argv ) {
 		}
 	}
 
-	{ // To be implemented
+	{
 		std::cout << "-- -- Running test with using matrix-type: void" << std::endl;
 		if (launcher.exec(&grb_program<void>, n, out, true) != SUCCESS) {
 			STDERR_WITH_LINE << "Launching test FAILED\n";
