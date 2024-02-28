@@ -38,83 +38,6 @@ namespace grb {
 		template< typename D, typename IND, typename SIZE >
 		class Compressed_Storage;
 
-		namespace {
-
-			/**
-			 * Copies <tt>row_index<tt> and <tt>col_index<tt> from a
-			 * given Compressed_Storage to another.
-			 *
-			 * Performs no safety checking. Performs no (re-)allocations.
-			 *
-			 * @param[out] output The container to copy the coordinates to.
-			 * @param[in]  input  The container to copy the coordinates from.
-			 * @param[in]  nz     The number of nonzeroes in the \a other container.
-			 * @param[in]  m      The index dimension of the \a other container.
-			 * @param[in]  k      The start position to copy from (inclusive).
-			 * @param[in]  end    The end position to copy to (exclusive).
-			 *
-			 * The copy range is 2nz + m + 1, i.e.,
-			 *   -# 0 <= start <  2nz + m + 1
-			 *   -# 0 <  end   <= 2nz + m + 1
-			 *
-			 * Concurrent calls to this function are allowed iff they consist of
-			 * disjoint ranges \a start and \a end. The copy is guaranteed to be
-			 * complete if the union of ranges spans 0 to 2nz + m + 1.
-			 */
-			template<
-				typename OutputType, typename OutputIND, typename OutputSIZE,
-				typename InputType, typename InputIND, typename InputSIZE
-			>
-			static inline void copyCoordinatesFrom(
-				Compressed_Storage< OutputType, OutputIND, OutputSIZE > &output,
-				const Compressed_Storage< InputType, InputIND, InputSIZE > &input,
-				const size_t nz, const size_t m,
-				size_t k, size_t end
-			) {
-				static_assert( std::is_convertible< InputIND, OutputIND >::value,
-					"InputIND must be convertible to OutputIND"
-				);
-				static_assert( std::is_convertible< InputSIZE, OutputSIZE >::value,
-					"InputSIZE must be convertible to OutputSIZE"
-				);
-
-				if( k < nz ) {
-					const size_t loop_end = std::min( nz, end );
-					assert( k <= loop_end );
-#ifdef _H_GRB_REFERENCE_OMP_COMPRESSED_STORAGE
-					#pragma omp for simd
-#endif
-					for( size_t i = k; i < loop_end; ++i ) {
-						output.row_index[ i ] = static_cast< OutputIND >( input.row_index[ i ] );
-					}
-					k = 0;
-				} else {
-					assert( k >= nz );
-					k -= nz;
-				}
-				if( end <= nz ) {
-					return;
-				}
-				end -= nz;
-				if( k < m + 1 ) {
-					const size_t loop_end = std::min( m + 1, end );
-					assert( k <= loop_end );
-#ifdef _H_GRB_REFERENCE_OMP_COMPRESSED_STORAGE
-					#pragma omp for simd
-#endif
-					for( size_t i = k; i < loop_end; ++i ) {
-						output.col_start[ i ] = static_cast< OutputSIZE >( input.col_start[ i ] );
-					}
-#ifndef NDEBUG
-					for( size_t chk = k; chk < loop_end - 1; ++chk ) {
-						assert( input.col_start[ chk ] <= input.col_start[ chk + 1 ] );
-						assert( output.col_start[ chk ] <= output.col_start[ chk + 1 ] );
-					}
-#endif
-				}
-			}
-		} // namespace
-
 		/**
 		 * Basic functionality for a compressed storage format (CRS/CSR or CCS/CSC).
 		 *
@@ -511,6 +434,15 @@ namespace grb {
 				}
 
 				/**
+				 * @returns The value array.
+				 *
+				 * \warning Does not check for <tt>NULL</tt> pointers.
+				 */
+				D * getValues() const noexcept {
+					return values;
+				}
+
+				/**
 				 * @returns The index array.
 				 *
 				 * \warning Does not check for <tt>NULL</tt> pointers.
@@ -611,6 +543,7 @@ namespace grb {
 				 * complete if the union of ranges spans 0 to 2nz + m + 1.
 				 */
 				template<
+					Descriptor descr = descriptors::no_operation,
 					bool useId = true,
 					typename InputType, typename InputIND, typename InputSIZE,
 					typename ValueType
@@ -622,6 +555,16 @@ namespace grb {
 					const ValueType * __restrict__ id,
 					const typename std::enable_if< useId, void >::type * = nullptr
 				) {
+					static_assert(
+						( useId && std::is_convertible< ValueType, D >::value ),
+						"ValueType must be convertible to D"
+					);
+					static_assert( std::is_convertible< InputIND, IND >::value,
+						"InputIND must be convertible to IND"
+					);
+					static_assert( std::is_convertible< InputSIZE, SIZE >::value,
+						"InputSIZE must be convertible to SIZE"
+					);
 #ifdef _DEBUG
 					std::cout << "CompressedStorage::copyFrom (cast) called with range "
 						<< start << "--" << end << ". The identity " << (*id) << " will be used.\n";
@@ -631,7 +574,20 @@ namespace grb {
 					if( k < nz ) {
 						const size_t loop_end = std::min( nz, end );
 						assert( k <= loop_end );
-						std::fill_n( values + k, loop_end - k, *id );
+						GRB_UTIL_IGNORE_CLASS_MEMACCESS; // by the ALP spec, D can only be a POD
+						                                 // type, in which case raw memory copies
+						                                 // are OK
+#ifdef _H_GRB_REFERENCE_OMP_COMPRESSED_STORAGE
+						#pragma omp for simd
+#endif
+						for( size_t i = k; i < loop_end; ++i ) {
+							if( utils::interpretMatrixMask< descr, InputType >(
+									true, other.getValues(), i )
+							) {
+								values[ i ] = static_cast< D >( *id );
+							}
+						}
+						GRB_UTIL_RESTORE_WARNINGS;
 						k = 0;
 					} else {
 						assert( k >= nz );
@@ -642,7 +598,57 @@ namespace grb {
 					}
 					end -= nz;
 
-					copyCoordinatesFrom( *this, other, nz, m, k, end );
+					if( k < nz ) {
+						const size_t loop_end = std::min( nz, end );
+						assert( k <= loop_end );
+						GRB_UTIL_IGNORE_CLASS_MEMACCESS; // by the ALP spec, D can only be a POD
+						                                 // type, in which case raw memory copies
+						                                 // are OK
+#ifdef _H_GRB_REFERENCE_OMP_COMPRESSED_STORAGE
+						#pragma omp for simd
+#endif
+						for( size_t i = k; i < loop_end; ++i ) {
+							if( utils::interpretMatrixMask< descr, InputType >(
+									true, other.getValues(), i )
+							) {
+								row_index[ i ] = static_cast< IND >( other.row_index[ i ] );
+							}
+						}
+						GRB_UTIL_RESTORE_WARNINGS;
+						k = 0;
+					} else {
+						assert( k >= nz );
+						k -= nz;
+					}
+					if( end <= nz ) {
+						return;
+					}
+					end -= nz;
+
+					if( k < m + 1 ) {
+						const size_t loop_end = std::min( m + 1, end );
+						assert( k <= loop_end );
+						GRB_UTIL_IGNORE_CLASS_MEMACCESS; // by the ALP spec, D can only be a POD
+						                                 // type, in which case raw memory copies
+						                                 // are OK
+#ifdef _H_GRB_REFERENCE_OMP_COMPRESSED_STORAGE
+						#pragma omp for simd
+#endif
+						for( size_t i = k; i < loop_end; ++i ) {
+							if( utils::interpretMatrixMask< descr, InputType >(
+									true, other.getValues(), i )
+							) {
+								col_start[ i ] = static_cast< SIZE >( other.col_start[ i ] );
+							}
+						}
+						GRB_UTIL_RESTORE_WARNINGS;
+#ifndef NDEBUG
+						for( size_t chk = k; chk < loop_end - 1; ++chk ) {
+							assert( other.col_start[ chk ] <= col_start[ chk + 1 ] );
+							assert( col_start[ chk ] <= col_start[ chk + 1 ] );
+						}
+#endif
+					}
 				}
 
 				/**
@@ -665,6 +671,7 @@ namespace grb {
 				 * complete if the union of ranges spans 0 to 2nz + m + 1.
 				 */
 				template<
+					Descriptor descr = descriptors::no_operation,
 					bool useId = false,
 					typename InputType, typename InputIND, typename InputSIZE
 				>
@@ -677,6 +684,16 @@ namespace grb {
 					static_assert( !std::is_void< InputType >::value,
 						"InputType must not be void"
 					);
+					static_assert(
+						( !useId && std::is_convertible< InputType, D >::value ),
+						"InputType must be convertible to D"
+					);
+					static_assert( std::is_convertible< InputIND, IND >::value,
+						"InputIND must be convertible to IND"
+					);
+					static_assert( std::is_convertible< InputSIZE, SIZE >::value,
+						"InputSIZE must be convertible to SIZE"
+					);
 #ifdef _DEBUG
 					std::cout << "CompressedStorage::copyFrom called with range "
 						<< start << "--" << end << ". No identity will be used.\n";
@@ -684,14 +701,10 @@ namespace grb {
 					size_t k = start;
 					if( k < nz ) {
 						const size_t loop_end = std::min( nz, end );
-#ifdef _DEBUG
-						std::cout << "\t value range " << k << " -- " << loop_end << "\n";
-#endif
 						assert( k <= loop_end );
-
 						GRB_UTIL_IGNORE_CLASS_MEMACCESS; // by the ALP spec, D can only be a POD
 						                                 // type, in which case raw memory copies
-										 // are OK
+						                                 // are OK
 #ifdef _H_GRB_REFERENCE_OMP_COMPRESSED_STORAGE
 						#pragma omp for simd
 #endif
@@ -710,7 +723,41 @@ namespace grb {
 					}
 					end -= nz;
 
-					copyCoordinatesFrom( *this, other, nz, m, k, end );
+					if( k < nz ) {
+						const size_t loop_end = std::min( nz, end );
+						assert( k <= loop_end );
+#ifdef _H_GRB_REFERENCE_OMP_COMPRESSED_STORAGE
+						#pragma omp for simd
+#endif
+						for( size_t i = k; i < loop_end; ++i ) {
+							row_index[ i ] = static_cast< IND >( other.row_index[ i ] );
+						}
+						k = 0;
+					} else {
+						assert( k >= nz );
+						k -= nz;
+					}
+					if( end <= nz ) {
+						return;
+					}
+					end -= nz;
+
+					if( k < m + 1 ) {
+						const size_t loop_end = std::min( m + 1, end );
+						assert( k <= loop_end );
+#ifdef _H_GRB_REFERENCE_OMP_COMPRESSED_STORAGE
+						#pragma omp for simd
+#endif
+						for( size_t i = k; i < loop_end; ++i ) {
+							col_start[ i ] = static_cast< SIZE >( other.col_start[ i ] );
+						}
+#ifndef NDEBUG
+						for( size_t chk = k; chk < loop_end - 1; ++chk ) {
+							assert( other.col_start[ chk ] <= other.col_start[ chk + 1 ] );
+							assert( col_start[ chk ] <= col_start[ chk + 1 ] );
+						}
+#endif
+					}
 				}
 
 				/**
@@ -1139,6 +1186,12 @@ namespace grb {
 				}
 
 				/**
+				 * @returns A null pointer (since this is a pattern matrix).
+				 */
+				char * getValues() const noexcept {
+					return nullptr;
+				}
+				/**
 				 * @returns The index array.
 				 *
 				 * \warning Does not check for <tt>NULL</tt> pointers.
@@ -1209,6 +1262,7 @@ namespace grb {
 				 * \internal copyFrom specialisation for pattern matrices.
 				 */
 				template<
+					Descriptor = descriptors::no_operation,
 					bool unusedValue = false,
 					typename InputType, typename InputIND, typename InputSIZE,
 					typename UnusedType = std::nullptr_t
@@ -1222,11 +1276,47 @@ namespace grb {
 					// the unusedValue template is meaningless in the case of
 					// pattern matrices, but is retained to keep the API
 					// the same as with the non-pattern case.
+					auto k = start;
 #ifdef _DEBUG
 					std::cout << "CompressedStorage::copyFrom (void) called with range "
 						<< start << "--" << end << "\n";
 #endif
-					copyCoordinatesFrom( *this, other, nz, m, start, end );
+
+					if( k < nz ) {
+						const size_t loop_end = std::min( nz, end );
+						assert( k <= loop_end );
+#ifdef _H_GRB_REFERENCE_OMP_COMPRESSED_STORAGE
+						#pragma omp for simd
+#endif
+						for( size_t i = k; i < loop_end; ++i ) {
+							row_index[ i ] = static_cast< IND >( other.row_index[ i ] );
+						}
+						k = 0;
+					} else {
+						assert( k >= nz );
+						k -= nz;
+					}
+					if( end <= nz ) {
+						return;
+					}
+					end -= nz;
+
+					if( k < m + 1 ) {
+						const size_t loop_end = std::min( m + 1, end );
+						assert( k <= loop_end );
+#ifdef _H_GRB_REFERENCE_OMP_COMPRESSED_STORAGE
+						#pragma omp for simd
+#endif
+						for( size_t i = k; i < loop_end; ++i ) {
+							col_start[ i ] = static_cast< SIZE >( other.col_start[ i ] );
+						}
+#ifndef NDEBUG
+						for( size_t chk = k; chk < loop_end - 1; ++chk ) {
+							assert( other.col_start[ chk ] <= other.col_start[ chk + 1 ] );
+							assert( col_start[ chk ] <= col_start[ chk + 1 ] );
+						}
+#endif
+					}
 				}
 
 				/**

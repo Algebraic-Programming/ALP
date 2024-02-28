@@ -462,6 +462,14 @@ namespace grb {
 #ifdef _DEBUG
 		std::cout << "In grb::set (vector-to-value, masked)\n";
 #endif
+		static_assert(
+			std::is_void< MaskType >::value ||
+			(descr & descriptors::structural) ||
+			std::is_convertible< MaskType, bool > ::value,
+			"grb::set (masked set to value): mask vector must be a "
+			"pattern vector, or have a data-type that is convertible to bool, "
+			"or use the structural descriptor"
+		);
 		// static sanity checks
 		NO_CAST_ASSERT( ( !(descr & descriptors::no_casting) ||
 			std::is_same< DataType, T >::value ), "grb::set (Vector to scalar, masked)",
@@ -1078,7 +1086,7 @@ namespace grb {
 				const size_t start = 0;
 				size_t end = range;
 #endif
-				internal::getCRS( C ).template copyFrom< A_is_mask >(
+				internal::getCRS( C ).template copyFrom< descr, A_is_mask >(
 					internal::getCRS( A ), nz, m, start, end, id
 				);
 				range = internal::getCCS( C ).copyFromRange( nz, n );
@@ -1087,7 +1095,7 @@ namespace grb {
 #else
 				end = range;
 #endif
-				internal::getCCS( C ).template copyFrom< A_is_mask >(
+				internal::getCCS( C ).template copyFrom< descr, A_is_mask >(
 					internal::getCCS( A ), nz, n, start, end, id
 				);
 			}
@@ -1152,12 +1160,26 @@ namespace grb {
 		const Phase &phase = EXECUTE
 	) noexcept {
 		static_assert( !std::is_void< OutputType >::value,
-			"internal::grb::set (masked set to value): cannot have a pattern "
+			"grb::set (masked set to value): cannot have a pattern "
 			"matrix as output"
 		);
 		static_assert( std::is_convertible< ValueType, OutputType >::value,
-			"internal::grb::set (masked set to value): value type cannot be "
+			"grb::set (masked set to value): value type cannot be "
 			"converted to output type"
+		);
+		static_assert(
+			std::is_void< InputType >::value ||
+			std::is_convertible< InputType, bool >::value,
+			"grb::set (masked set to value): mask matrix must be a "
+			"pattern matrix or have a data-type that is convertible to bool"
+		);
+		static_assert(
+			!(
+				( descr & descriptors::structural ) &&
+				( descr & descriptors::invert_mask)
+			),
+			"grb::set (masked set to value): descriptors::structural "
+			"and descriptors::invert_mask cannot be combined"
 		);
 #ifdef _DEBUG
 		std::cout << "Called grb::set (matrix-to-value-masked, reference)\n";
