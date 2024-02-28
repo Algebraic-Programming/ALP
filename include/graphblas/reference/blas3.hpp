@@ -165,17 +165,14 @@ namespace grb {
 				internal::getMatrixBuffers( arr, buf, valbuf, 1, out );
 				col_counter = internal::getReferenceBuffer< config::NonzeroIndexType >( n + 1 );
 
-				if( n + 1 < config::OMP::minLoopSize() ) {
-					for( size_t j = 0; j < n + 1; ++j ) {
-						out_ccs.col_start[ j ] = 0;
-					}
-				} else {
 #ifdef _H_GRB_REFERENCE_OMP_BLAS3
-					#pragma omp parallel for simd
+				const size_t nthreads = ( n + 1 ) < config::OMP::minLoopSize()
+					? 1
+					: config::OMP::threads();
+				#pragma omp parallel for simd num_threads( nthreads )
 #endif
-					for( size_t j = 0; j < n + 1; ++j ) {
-						out_ccs.col_start[ j ] = 0;
-					}
+				for( size_t j = 0; j < n + 1; ++j ) {
+					out_ccs.col_start[ j ] = 0;
 				}
 
 				// Fill CCS.col_start with the number of nonzeros in each column
@@ -198,7 +195,7 @@ namespace grb {
 
 				{ // Initialise the column counter array with zeros
 #ifdef _H_GRB_REFERENCE_OMP_BLAS3
-					const size_t nthreads = m < config::OMP::minLoopSize()
+					const size_t nthreads = ( n + 1 ) < config::OMP::minLoopSize()
 						? 1
 						: config::OMP::threads();
 					#pragma omp parallel for simd num_threads( nthreads )
