@@ -597,11 +597,25 @@ for MODE in ${MODES}; do
 				grep 'Test OK' ${TEST_OUT_DIR}/eWiseApply_matrix_${MODE}_${BACKEND}_${P}_${T} || echo "Test FAILED"
 				echo " "
 
-				echo ">>>      [x]           [ ]       Testing grb::eWiseLambda (matrices)"
-				$runner ${TEST_BIN_DIR}/eWiseMatrix_${MODE}_${BACKEND} &> ${TEST_OUT_DIR}/eWiseMatrix_${MODE}_${BACKEND}_${P}_${T}.log
-				head -1 ${TEST_OUT_DIR}/eWiseMatrix_${MODE}_${BACKEND}_${P}_${T}.log
-				grep 'Test OK' ${TEST_OUT_DIR}/eWiseMatrix_${MODE}_${BACKEND}_${P}_${T}.log || echo "Test FAILED"
+				echo ">>>      [x]           [ ]       Testing grb::id on vectors and matrices"
+				$runner ${TEST_BIN_DIR}/id_${MODE}_${BACKEND} &> ${TEST_OUT_DIR}/id_${MODE}_${BACKEND}_${P}_${T}.log
+				head -1 ${TEST_OUT_DIR}/id_${MODE}_${BACKEND}_${P}_${T}.log
+				grep 'Test OK' ${TEST_OUT_DIR}/id_${MODE}_${BACKEND}_${P}_${T}.log || echo "Test FAILED"
 				echo " "
+
+				echo ">>>      [x]           [ ]       Testing grb::eWiseApply (matrices, Monoid / Operator)"
+				echo "                                  using small matrices (100x100)"
+				$runner ${TEST_BIN_DIR}/eWiseApplyMatrix_variants_${MODE}_${BACKEND} 100 &> ${TEST_OUT_DIR}/eWiseApplyMatrix_variants_small_${MODE}_${BACKEND}_${P}_${T}.log
+				head -1 ${TEST_OUT_DIR}/eWiseApplyMatrix_variants_small_${MODE}_${BACKEND}_${P}_${T}.log
+				grep 'Test OK' ${TEST_OUT_DIR}/eWiseApplyMatrix_variants_small_${MODE}_${BACKEND}_${P}_${T}.log || echo "Test FAILED"
+				echo " "
+
+        echo ">>>      [x]           [ ]       Testing grb::eWiseApply (matrices, Monoid / Operator)"
+        echo "                                  using large matrices (10'000x10'000)"
+        $runner ${TEST_BIN_DIR}/eWiseApplyMatrix_variants_${MODE}_${BACKEND} 10000 &> ${TEST_OUT_DIR}/eWiseApplyMatrix_variants_large_${MODE}_${BACKEND}_${P}_${T}.log
+        head -1 ${TEST_OUT_DIR}/eWiseApplyMatrix_variants_large_${MODE}_${BACKEND}_${P}_${T}.log
+        grep 'Test OK' ${TEST_OUT_DIR}/eWiseApplyMatrix_variants_large_${MODE}_${BACKEND}_${P}_${T}.log || echo "Test FAILED"
+        echo " "
 
 				echo ">>>      [x]           [ ]       Testing grb::zip on two vectors of doubles and"
 				echo "                                 ints of size 10 000 000."

@@ -416,56 +416,6 @@ namespace grb {
 		);
 	}
 
-	namespace internal {
-
-		template<
-			bool allow_void,
-			Descriptor descr,
-			class MulMonoid, class Operator,
-			typename OutputType, typename InputType1, typename InputType2,
-			typename RIT1, typename CIT1, typename NIT1,
-			typename RIT2, typename CIT2, typename NIT2,
-			typename RIT3, typename CIT3, typename NIT3
-		>
-		RC eWiseApply_matrix_generic(
-			Matrix< OutputType, nonblocking, RIT1, CIT1, NIT1 > &C,
-			const Matrix< InputType1, nonblocking, RIT2, CIT2, NIT2 > &A,
-			const Matrix< InputType2, nonblocking, RIT3, CIT3, NIT3 > &B,
-			const Operator &oper,
-			const MulMonoid &mulMonoid,
-			const Phase &phase,
-			const typename std::enable_if<
-				!grb::is_object< OutputType >::value &&
-				!grb::is_object< InputType1 >::value &&
-				!grb::is_object< InputType2 >::value &&
-				grb::is_operator< Operator >::value,
-			void >::type * const = nullptr
-		) {
-			if( internal::NONBLOCKING::warn_if_not_native &&
-				config::PIPELINE::warn_if_not_native
-			) {
-				std::cerr << "Warning: eWiseApply (nonblocking) currently delegates to a "
-					<< "blocking implementation.\n"
-					<< "         Further similar such warnings will be suppressed.\n";
-				internal::NONBLOCKING::warn_if_not_native = false;
-			}
-
-			// nonblocking execution is not supported
-			// first, execute any computation that is not completed
-			le.execution();
-
-			// second, delegate to the reference backend
-			return eWiseApply_matrix_generic<
-					allow_void, descr,
-					MulMonoid, Operator
-				>(
-					getRefMatrix( C ), getRefMatrix( A ), getRefMatrix( B ),
-					oper, mulMonoid, phase
-				);
-		}
-
-	} // namespace internal
-
 	template<
 		Descriptor descr = descriptors::no_operation,
 		class MulMonoid,
@@ -507,11 +457,26 @@ namespace grb {
 		);
 
 #ifdef _DEBUG
-		std::cout << "In grb::eWiseApply_matrix_generic (nonblocking, monoid)\n";
+		std::cout << "In grb::eWiseApply (nonblocking, monoid)\n";
 #endif
+		if( internal::NONBLOCKING::warn_if_not_native && config::PIPELINE::warn_if_not_native ) {
+			std::cerr << "Warning: eWiseApply (nonblocking) currently delegates to a "
+				<< "blocking implementation.\n"
+				<< "         Further similar such warnings will be suppressed.\n";
+			internal::NONBLOCKING::warn_if_not_native = false;
+		}
 
-		return internal::eWiseApply_matrix_generic< true, descr >(
-			C, A, B, mulmono.getOperator(), mulmono, phase
+		// nonblocking execution is not supported
+		// first, execute any computation that is not completed
+		internal::le.execution();
+
+		// second, delegate to the reference backend
+		return eWiseApply< descr >(
+			internal::getRefMatrix( C ),
+			internal::getRefMatrix( A ),
+			internal::getRefMatrix( B ),
+			mulmono,
+			phase
 		);
 	}
 
@@ -535,6 +500,17 @@ namespace grb {
 			grb::is_operator< Operator >::value,
 		void >::type * const = nullptr
 	) {
+		if( internal::NONBLOCKING::warn_if_not_native && config::PIPELINE::warn_if_not_native ) {
+			std::cerr << "Warning: eWiseApply (nonblocking) currently delegates to a "
+				<< "blocking implementation.\n"
+				<< "         Further similar such warnings will be suppressed.\n";
+			internal::NONBLOCKING::warn_if_not_native = false;
+		}
+
+#ifdef _DEBUG
+		std::cout << "In grb::eWiseApply (nonblocking, op)\n";
+#endif
+
 		// static checks
 		NO_CAST_ASSERT( ( !( descr & descriptors::no_casting ) ||
 			std::is_same< typename Operator::D1, InputType1 >::value ),
@@ -554,20 +530,18 @@ namespace grb {
 			"called with an output matrix C that does not match the output domain "
 			"of the given multiplication operator"
 		);
-		static_assert( ( !(
-				std::is_same< InputType1, void >::value ||
-				std::is_same< InputType2, void >::value )
-			), "grb::eWiseApply (nonblocking, matrix <- matrix x matrix, operator): "
-			"the operator version of eWiseApply cannot be used if either of the "
-			"input matrices is a pattern matrix (of type void)"
-		);
 
-		typename grb::Monoid<
-			grb::operators::mul< double >,
-			grb::identities::one
-		> dummyMonoid;
-		return internal::eWiseApply_matrix_generic< false, descr >(
-			C, A, B, mulOp, dummyMonoid, phase
+		// nonblocking execution is not supported
+		// first, execute any computation that is not completed
+		internal::le.execution();
+
+		// second, delegate to the reference backend
+		return eWiseApply< descr >(
+			internal::getRefMatrix( C ),
+			internal::getRefMatrix( A ),
+			internal::getRefMatrix( B ),
+			mulOp,
+			phase
 		);
 	}
 

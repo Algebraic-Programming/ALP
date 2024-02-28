@@ -62,7 +62,7 @@ void bench_kernels_axpy(
 	const size_t n
 );
 
-/** 
+/**
  * Executes the inner-product computation \f$ alpha = (x,y) \f$ with \a x and
  * \a y vectors of length \a n.
  *

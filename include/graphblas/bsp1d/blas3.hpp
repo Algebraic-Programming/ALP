@@ -131,20 +131,21 @@ namespace grb {
 		const Matrix< InputType1, BSP1D, RIT2, CIT2, NIT2 > &A,
 		const Matrix< InputType2, BSP1D, RIT3, CIT3, NIT3 > &B,
 		const MulMonoid &mul,
-		const Phase phase = EXECUTE,
+		const Phase &phase = EXECUTE,
 		const typename std::enable_if<
-			!grb::is_object< OutputType >::value &&
-			!grb::is_object< InputType1 >::value &&
-			!grb::is_object< InputType2 >::value &&
-			grb::is_monoid< MulMonoid >::value,
-		void >::type * const = nullptr
+				!grb::is_object< OutputType >::value &&
+				!grb::is_object< InputType1 >::value &&
+				!grb::is_object< InputType2 >::value &&
+				grb::is_monoid< MulMonoid >::value, void
+			>::type * const = nullptr
 	) {
 		assert( phase != TRY );
 		RC local_rc = SUCCESS;
 		if( phase == RESIZE ) {
 			RC ret = eWiseApply< descr >(
 				internal::getLocal( C ),
-				internal::getLocal( A ), internal::getLocal( B ),
+				internal::getLocal( A ),
+				internal::getLocal( B ),
 				mul,
 				RESIZE
 			);
@@ -157,7 +158,8 @@ namespace grb {
 			assert( phase == EXECUTE );
 			local_rc = eWiseApply< descr >(
 				internal::getLocal( C ),
-				internal::getLocal( A ), internal::getLocal( B ),
+				internal::getLocal( A ),
+				internal::getLocal( B ),
 				mul,
 				EXECUTE
 			);
@@ -179,31 +181,40 @@ namespace grb {
 		const Matrix< InputType1, BSP1D, RIT2, CIT2, NIT2 > &A,
 		const Matrix< InputType2, BSP1D, RIT3, CIT3, NIT3 > &B,
 		const Operator &op,
-		const Phase phase = EXECUTE,
+		const Phase &phase = EXECUTE,
 		const typename std::enable_if<
-			!grb::is_object< OutputType >::value &&
-			!grb::is_object< InputType1 >::value &&
-			!grb::is_object< InputType2 >::value &&
-			grb::is_operator< Operator >::value,
-		void >::type * const = nullptr
+				!grb::is_object< OutputType >::value &&
+				!grb::is_object< InputType1 >::value &&
+				!grb::is_object< InputType2 >::value &&
+				grb::is_operator< Operator >::value, void
+			>::type * const = nullptr
 	) {
 		assert( phase != TRY );
-		RC ret = eWiseApply< descr >(
-			internal::getLocal( C ),
-			internal::getLocal( A ), internal::getLocal( B ),
-			op,
-			phase
-		);
+		RC local_rc = SUCCESS;
 		if( phase == RESIZE ) {
+			RC ret = eWiseApply< descr >(
+				internal::getLocal( C ),
+				internal::getLocal( A ),
+				internal::getLocal( B ),
+				op,
+				RESIZE
+			);
 			if( collectives<>::allreduce( ret, operators::any_or< RC >() ) != SUCCESS ) {
 				return PANIC;
 			} else {
-				return SUCCESS;
+				return ret;
 			}
+		} else {
+			assert( phase == EXECUTE );
+			local_rc = eWiseApply< descr >(
+				internal::getLocal( C ),
+				internal::getLocal( A ),
+				internal::getLocal( B ),
+				op,
+				EXECUTE
+			);
 		}
-		assert( phase == EXECUTE );
-		return internal::checkGlobalErrorStateOrClear( C, ret );
-	}
+		return internal::checkGlobalErrorStateOrClear( C, local_rc );
 
 } // namespace grb
 
