@@ -65,6 +65,9 @@ static const size_t Al_J[ 6 ] = { 0, 3, 2, 5, 4, 1 };
 Function that flips values in a matching matrix M, according to a matrix Alternating, which specifies edges that need to be added
 A describes a graph, while z is a full-rank vector filled with 1's
 
+
+Algorithm 3 from the thesis
+
 */
 void flip(grb::Matrix< int > &M, const grb::Matrix< int > &Alternating, const grb::Matrix< int > &A, const grb::Vector< int > &z) {
 	const size_t n = grb::size( z );
@@ -189,6 +192,8 @@ void flip(grb::Matrix< int > &M, const grb::Matrix< int > &Alternating, const gr
 /*
 A function returning masking the matrix B to only the maximal value in each row.
 In a case of ties, the highest column is picked
+
+Algorithm 1 from the thesis
 */
 void maxPerRow(grb::Matrix< int > &RowMax, const grb::Matrix< int > &B, const grb::Vector< int > &z) {
 	const size_t n = grb::size( z );
@@ -262,6 +267,12 @@ void maxPerRow(grb::Matrix< int > &RowMax, const grb::Matrix< int > &B, const gr
 	grb::eWiseApply( RowMax, B, tmp, grb::operators::left_assign< int >(), Phase::RESIZE );
 	grb::eWiseApply( RowMax, B, tmp, grb::operators::left_assign< int >() );
 }
+
+/*
+
+Following two functions are algorithm 4 from the thesis
+
+*/
 
 void searchOneAugmentations ( grb::Matrix< int > &G1, grb::Matrix< int > &D1, const grb::Matrix< int > &M, const grb::Matrix< int > &A, const grb::Vector< int > &z ) {
 	
@@ -366,6 +377,11 @@ void selectColumns( grb::Matrix< int > &B, const grb::Matrix< int > &A, const gr
 	grb::eWiseApply( B, Tmp, A, grb::operators::right_assign< int >() );
 }*/
 
+/*
+
+Algorithm 5 from the thesis
+
+*/
 
 void findCycle2Augmentations( grb::Matrix< int > &G2C, grb::Matrix< int > &D2C, const grb::Matrix< int > &A, const grb::Matrix< int > &M, const grb::Vector< int > &z ) {
 	const size_t n = grb::size( z );
@@ -468,6 +484,12 @@ void findCycle2Augmentations( grb::Matrix< int > &G2C, grb::Matrix< int > &D2C, 
 	}
 
 }
+
+/*
+
+Algorithm 6 from the thesis, not complete
+
+*/
 
 void findPath2Augmentations( grb::Matrix< int > &G2P, grb::Matrix< int > &D2P, const grb::Matrix< int > &A, const grb::Matrix< int > &M, const grb::Vector< int > &z ) {
 	const size_t n = grb::size( z );
@@ -673,6 +695,7 @@ void findPath2Augmentations( grb::Matrix< int > &G2P, grb::Matrix< int > &D2P, c
 		grb::select( G2P_tmp2l, G2P_tmp1l, grb::operators::is_positive<int,int,int>(), Phase::RESIZE );
 		grb::select( G2P_tmp2l, G2P_tmp1l, grb::operators::is_positive<int,int,int>(), Phase::EXECUTE );
 
+		//Line 14 should be implemented here
 
 	}
 	else {
