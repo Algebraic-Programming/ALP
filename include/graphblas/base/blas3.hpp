@@ -458,9 +458,6 @@ namespace grb {
 	 * Any old entries of \a B will be removed after a successful call to this
 	 * primitive; that is, this primitive is out-of-place.
 	 *
-	 * \note See #grb::selectLambda for a variant of this function that uses a
-	 *       lambda function instead of a selection operator.
-	 *
 	 * @tparam descr              The descriptor to be used. Optional; the default is
 	 *                            #grb::descriptors::no_operation.
 	 * @tparam SelectionOperator  The selection operator type, must be of a type
@@ -483,11 +480,12 @@ namespace grb {
 	 *
 	 * @param[out] B       The output matrix. Will be cleared before the selection.
 	 * @param[in]  A       The input matrix.
-	 * @param[in]  op      The selection boolean operator. Pre-defined selection
-	 *                     operators can be found in the namespace
-	 *                     #grb::operators::select.
+	 * @param[in]  op      The selection boolean operator.
 	 * @param[in]  phase   The #grb::Phase the call should execute. Optional; the
 	 *                     default parameter is #grb::EXECUTE.
+	 *
+	 * \note Pre-defined selection operators can be found in the namespace
+	 *       #grb::operators::select.
 	 *
 	 * @return #grb::SUCCESS  On successful completion of this call.
 	 * @return #grb::MISMATCH Whenever the dimensions of \a A and \a B do
@@ -528,8 +526,7 @@ namespace grb {
 		const Phase &phase = EXECUTE,
 		const typename std::enable_if<
 			!is_object< Tin >::value &&
-			!is_object< Tout >::value &&
-			is_matrix_selection_operator< SelectionOperator >::value
+			!is_object< Tout >::value
 		>::type * const = nullptr
 	) {
 		(void) descr;
@@ -543,109 +540,6 @@ namespace grb {
 #ifndef NDEBUG
 		const bool selected_backend_does_not_support_select = false;
 		assert( selected_backend_does_not_support_select );
-#endif
-		return UNSUPPORTED;
-	}
-
-	/**
-	 * Selects elements from a matrix based on a given selection function.
-	 *
-	 * This function template is used to select elements from a given input matrix
-	 * based on a provided selection function. The selected elements are then stored
-	 * in a different output matrix, making this an out-of-place operation. The
-	 * output matrix is cleared before the selection.
-	 *
-	 * After a successful call to this primitive, the nonzero structure of \a B
-	 * will match the one of \a A without the elements that were not matched by
-	 * the selection function. All the elements of \a B will result $true$ when
-	 * applied to the selection function.
-	 *
-	 * Any old entries of \a B will be removed after a successful call to this
-	 * primitive; that is, this primitive is out-of-place.
-	 *
-	 * \note See #grb::select for a variant of this function that uses pre-defined
-	 *       selection operators instead of a lambda function.
-	 *
-	 * @tparam descr              The descriptor to be used. Optional; the default is
-	 *                            #grb::descriptors::no_operation.
-	 * @tparam SelectionLambda    The selection function type, must be of a type
-	 *                            equivalent to `bool(RIT*, CIT*, T*)` with:
-	 *                            - RIT: The row index type of the input matrix,
-	 *                                   or convertible to it.
-	 *                            - CIT: The column index type of the input matrix,
-	 *                                   or convertible to it.
-	 *                            - T:   The value type of the input matrix, or
-	 *                                   convertible to it.
-	 * @tparam Tin                The value type of the input matrix.
-	 * @tparam RITin              The row index type of the input matrix.
-	 * @tparam CITin              The column index type of the input matrix.
-	 * @tparam NITin              The nonzero index type of the input matrix.
-	 * @tparam Tout	              The value type of the output matrix.
-	 * @tparam RITout             The row index type of the output matrix.
-	 * @tparam CITout             The column index type of the output matrix.
-	 * @tparam NITout             The nonzero index type of the output matrix.
-	 * @tparam backend            The backend to use for the operation.
-	 *
-	 * @param[out] B       The output matrix. Will be cleared before the selection.
-	 * @param[in]  A       The input matrix.
-	 * @param[in]  lambda  The selection function returning a boolean value.
-	 * @param[in]  phase   The #grb::Phase the call should execute. Optional; the
-	 *                     default parameter is #grb::EXECUTE.
-	 *
-	 * @return #grb::SUCCESS  On successful completion of this call.
-	 * @return #grb::MISMATCH Whenever the dimensions of \a A and \a B do
-	 *                        not match. All input data containers are left
-	 *                        untouched if this exit code is returned; it will be
-	 *                        be as though this call was never made.
-	 * @return #grb::FAILED   If \a phase is #grb::EXECUTE, indicates that the
-	 *                        capacity of \a B was insufficient. The output
-	 *                        matrix \a B is cleared, and the call to this function
-	 *                        has no further effects.
-	 * @return #grb::OUTOFMEM If \a phase is #grb::RESIZE, indicates an
-	 *                        out-of-memory exception. The call to this function
-	 *                        shall have no other effects beyond returning this
-	 *                        error code; the previous state of \a B is retained.
-	 * @return #grb::PANIC    A general unmitigable error has been encountered. If
-	 *                        returned, ALP enters an undefined state and the user
-	 *                        program is encouraged to exit as quickly as possible.
-	 *
-	 * \par Performance semantics
-	 *
-	 * Each backend must define performance semantics for this primitive.
-	 *
-	 * @see perfSemantics
-	 *
-	 */
-	template<
-		Descriptor descr = descriptors::no_operation,
-		class SelectionLambda,
-		typename Tin,
-		typename RITin, typename CITin, typename NITin,
-		typename Tout,
-		typename RITout, typename CITout, typename NITout,
-		Backend backend
-	>
-	RC selectLambda(
-		Matrix< Tout, backend, RITout, CITout, NITout > &B,
-		const Matrix< Tin, backend, RITin, CITin, NITin > &A,
-		const SelectionLambda &lambda,
-		const Phase &phase = EXECUTE,
-		const typename std::enable_if<
-			!is_object< Tin >::value &&
-			!is_object< Tout >::value
-		>::type * const = nullptr
-	) {
-		(void) descr;
-		(void) B;
-		(void) A;
-		(void) lambda;
-		(void) phase;
-#ifdef _DEBUG
-		std::cerr << "Selected backend does not implement grb::selectLambda\n";
-#endif
-#ifndef NDEBUG
-		const bool selected_backend_does_not_support_selectLambda = false;
-		assert( selected_backend_does_not_support_selectLambda );
 #endif
 		return UNSUPPORTED;
 	}

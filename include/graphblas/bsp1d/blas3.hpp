@@ -198,7 +198,7 @@ namespace grb {
 			if( collectives<>::allreduce( ret, operators::any_or< RC >() ) != SUCCESS ) {
 				return PANIC;
 			} else {
-				return SUCCESS;
+				return ret;
 			}
 		}
 		assert( phase == EXECUTE );
@@ -220,9 +220,8 @@ namespace grb {
 		const SelectionOperator &op,
 		const Phase &phase = EXECUTE,
 		const typename std::enable_if<
-				!is_object< Tin >::value &&
-				!is_object< Tout >::value &&
-				is_matrix_selection_operator< SelectionOperator >::value
+			!is_object< Tin >::value &&
+			!is_object< Tout >::value
 		>::type * const = nullptr
 	) {
 		assert( phase != TRY );
@@ -242,49 +241,8 @@ namespace grb {
 		if( phase == RESIZE ) {
 			if( collectives<>::allreduce( ret, operators::any_or< RC >() ) != SUCCESS ) {
 				return PANIC;
-			}
-		}
-		assert( phase == EXECUTE );
-		return internal::checkGlobalErrorStateOrClear( out, ret );
-	}
-
-	/** \internal Simply delegates to process-local backend */
-	template<
-		Descriptor descr = descriptors::no_operation,
-		class PredicateFunction,
-		typename Tin,
-		typename RITin, typename CITin, typename NITin,
-		typename Tout,
-		typename RITout, typename CITout, typename NITout
-	>
-	RC selectLambda(
-		Matrix< Tout, BSP1D, RITout, CITout, NITout > &out,
-		const Matrix< Tin, BSP1D, RITin, CITin, NITin > &in,
-		const PredicateFunction &lambda,
-		const Phase &phase = EXECUTE,
-		const typename std::enable_if<
-				!is_object< Tin >::value &&
-				!is_object< Tout >::value &&
-				!is_matrix_selection_operator< PredicateFunction >::value
-		>::type * const = nullptr
-	) {
-		assert( phase != TRY );
-
-		const auto coordinatesTranslationFunctions =
-			in.getLocalToGlobalCoordinatesTranslationFunctions();
-
-		RC ret = internal::select_generic< descr >(
-			internal::getLocal( out ),
-			internal::getLocal( in ),
-			lambda,
-			std::get<0>(coordinatesTranslationFunctions),
-			std::get<1>(coordinatesTranslationFunctions),
-			phase
-		);
-
-		if( phase == RESIZE ) {
-			if( collectives<>::allreduce( ret, operators::any_or< RC >() ) != SUCCESS ) {
-				return PANIC;
+			} else {
+				return ret;
 			}
 		}
 		assert( phase == EXECUTE );

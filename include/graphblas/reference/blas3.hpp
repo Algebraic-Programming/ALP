@@ -106,6 +106,11 @@ namespace grb {
 				m_out = nrows( out ),
 				n_out = ncols( out );
 
+			typedef typename std::conditional< transpose_input, CITin, RITin >::type
+				EffectiveRowType;
+			typedef typename std::conditional< transpose_input, RITin, CITin >::type
+				EffectiveColumnType;
+
 			// Check if the dimensions fit
 			if( m != m_out || n != n_out ) {
 				return MISMATCH;
@@ -119,7 +124,10 @@ namespace grb {
 				size_t nzc = 0;
 
 #ifdef _H_GRB_REFERENCE_OMP_BLAS3
-				#pragma omp parallel firstprivate(m, op, identity)
+				const size_t nthreads = m < config::OMP::minLoopSize()
+					? 1
+					: config::OMP::threads();
+				#pragma omp parallel reduction(+: nzc) num_threads( nthreads )
 #endif
 				{
 					size_t start_row = 0;
@@ -131,8 +139,8 @@ namespace grb {
 					for( auto i = start_row; i < end_row; ++i ) {
 						for( auto k = in_raw.col_start[ i ]; k < in_raw.col_start[ i + 1 ]; ++k ) {
 							const auto j = in_raw.row_index[ k ];
-							const auto global_row = row_l2g( i );
-							const auto global_col = col_l2g( j );
+							const EffectiveRowType global_row = row_l2g( i );
+							const EffectiveColumnType global_col = col_l2g( j );
 							const auto value = in_raw.getValue( k, identity );
 							if( op( &global_row, &global_col, &value ) ) {
 								(void) ++local_nzc;
@@ -157,19 +165,25 @@ namespace grb {
 				internal::getMatrixBuffers( arr, buf, valbuf, 1, out );
 				col_counter = internal::getReferenceBuffer< config::NonzeroIndexType >( n + 1 );
 
+				if( n + 1 < config::OMP::minLoopSize() ) {
+					for( size_t j = 0; j < n + 1; ++j ) {
+						out_ccs.col_start[ j ] = 0;
+					}
+				} else {
 #ifdef _H_GRB_REFERENCE_OMP_BLAS3
-				#pragma omp parallel for simd
+					#pragma omp parallel for simd
 #endif
-				for( size_t j = 0; j < n + 1; ++j ) {
-					out_ccs.col_start[ j ] = 0;
+					for( size_t j = 0; j < n + 1; ++j ) {
+						out_ccs.col_start[ j ] = 0;
+					}
 				}
 
 				// Fill CCS.col_start with the number of nonzeros in each column
 				for( size_t i = 0; i < m; ++i ) {
 					for( size_t k = in_raw.col_start[ i ]; k < in_raw.col_start[ i + 1 ]; ++k ) {
 						const auto j = in_raw.row_index[ k ];
-						const auto global_row = row_l2g( i );
-						const auto global_col = col_l2g( j );
+						const EffectiveRowType global_row = row_l2g( i );
+						const EffectiveColumnType global_col = col_l2g( j );
 						const auto value = in_raw.getValue( k, identity );
 						if( op( &global_row, &global_col, &value ) ) {
 							(void) ++out_ccs.col_start[ j + 1 ];
@@ -183,21 +197,29 @@ namespace grb {
 				}
 
 				// Initialise the column counter array with zeros
+				if( n + 1 < config::OMP::minLoopSize() ) {
+					for( size_t j = 0; j < n + 1; ++j ) {
+						col_counter[ j ] = 0;
+					}
+				} else {
 #ifdef _H_GRB_REFERENCE_OMP_BLAS3
-				#pragma omp parallel for simd
+					#pragma omp parallel for simd
 #endif
-				for( size_t j = 0; j < n + 1; ++j ) {
-					col_counter[ j ] = 0;
+					for( size_t j = 0; j < n + 1; ++j ) {
+						col_counter[ j ] = 0;
+					}
 				}
 			}
 
 			out_crs.col_start[ 0 ] = 0;
 			size_t nzc = 0;
 			for( size_t i = 0; i < m; ++i ) {
-				for( size_t k = in_raw.col_start[ i ]; k < in_raw.col_start[ i + 1 ]; ++k ) {
+				for( size_t k = in_raw.col_start[ i ]; k < in_raw.col_start[ i + 1 ];
+					++k
+				) {
 					const auto j = in_raw.row_index[ k ];
-					const auto global_row = row_l2g( i );
-					const auto global_col = col_l2g( j );
+					const EffectiveRowType global_row = row_l2g( i );
+					const EffectiveColumnType global_col = col_l2g( j );
 					const auto value = in_raw.getValue( k, identity );
 					if( op( &global_row, &global_col, &value ) ) {
 						continue;
@@ -1507,8 +1529,7 @@ namespace grb {
 		const Phase &phase = EXECUTE,
 		const typename std::enable_if<
 			!is_object< Tin >::value &&
-			!is_object< Tout >::value &&
-			is_matrix_selection_operator< SelectionOperator >::value
+			!is_object< Tout >::value
 		>::type * const = nullptr
 	) {
 #ifdef _DEBUG
@@ -1516,8 +1537,8 @@ namespace grb {
 #endif
 
 		static_assert(
-			( std::is_void<Tin>::value && std::is_void<Tout>::value )
-			|| std::is_same<Tin, Tout>::value,
+			(std::is_void< Tin >::value && std::is_void< Tout >::value) ||
+				std::is_same< Tin, Tout >::value,
 			"grb::select (reference): "
 			"input and output matrix types must match"
 		);
@@ -1526,45 +1547,6 @@ namespace grb {
 			out,
 			in,
 			op,
-			[]( size_t i ) { return i; },
-			[]( size_t j ) { return j; },
-			phase
-		);
-	}
-
-	template<
-		Descriptor descr = descriptors::no_operation,
-		class PredicateFunction,
-		typename Tin,
-		typename RITin, typename CITin, typename NITin,
-		typename Tout,
-		typename RITout, typename CITout, typename NITout
-	>
-	RC selectLambda(
-		Matrix< Tout, reference, RITout, CITout, NITout > &out,
-		const Matrix< Tin, reference, RITin, CITin, NITin > &in,
-		const PredicateFunction &lambda,
-		const Phase &phase = EXECUTE,
-		const typename std::enable_if<
-			!is_object< Tin >::value &&
-			!is_object< Tout >::value
-		>::type * const = nullptr
-	) {
-#ifdef _DEBUG
-		std::cout << "In grb::selectLambda( reference )\n";
-#endif
-
-		static_assert(
-			( std::is_void<Tin>::value && std::is_void<Tout>::value )
-			|| std::is_same<Tin, Tout>::value,
-			"grb::selectLambda (reference): "
-			"input and output matrix types must match"
-		);
-
-		return internal::select_generic< descr >(
-			out,
-			in,
-			lambda,
 			[]( size_t i ) { return i; },
 			[]( size_t j ) { return j; },
 			phase

@@ -169,28 +169,7 @@ namespace grb {
 			const Phase &,
 			const typename std::enable_if<
 					!is_object< Tin >::value &&
-					!is_object< Tout >::value &&
-					is_matrix_selection_operator< SelectionOperator >::value
-			>::type * const
-		);
-
-		template<
-			Descriptor,
-			class PredicateFunction,
-			typename Tin,
-			typename RITin, typename CITin, typename NITin,
-			typename Tout,
-			typename RITout, typename CITout, typename NITout
-		>
-		friend RC selectLambda(
-			Matrix< Tout, BSP1D, RITout, CITout, NITout > &,
-			const Matrix< Tin, BSP1D, RITin, CITin, NITin > &,
-			const PredicateFunction &,
-			const Phase &,
-			const typename std::enable_if<
-					!is_object< Tin >::value &&
-					!is_object< Tout >::value &&
-					!is_matrix_selection_operator< PredicateFunction >::value
+					!is_object< Tout >::value
 			>::type * const
 		);
 

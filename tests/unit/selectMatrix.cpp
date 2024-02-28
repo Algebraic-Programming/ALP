@@ -45,8 +45,15 @@ namespace {
 } // namespace
 
 template< typename D >
-std::tuple< const size_t, const size_t, D > getMatrixEntry(
-	const std::pair< const std::pair<size_t, size_t >, D > &entry,
+std::tuple<
+	const typename config::RowIndexType,
+	const typename config::ColIndexType,
+	D
+> getMatrixEntry(
+	const std::pair<
+		const std::pair< config::RowIndexType, config::ColIndexType >,
+		D
+	> &entry,
 	const typename std::enable_if<
 		!std::is_void< D >::value
 	>::type * = nullptr
@@ -88,7 +95,7 @@ bool matrix_validate_predicate(
 	*/
 	bool valid = true;
 	for( const auto &each : B ) {
-		const auto entry = getMatrixEntry<D>(each);
+		const auto entry = getMatrixEntry< D >(each);
 		const auto r = std::get<0>( entry );
 		const auto c = std::get<1>( entry );
 		const auto v = std::get<2>( entry );
@@ -236,13 +243,58 @@ RC buildMatrixUniqueWrapper(
 		col_indices, nvals, io_mode );
 }
 
+template< typename D >
+RC buildMatrices(
+	grb::Matrix< D > &I, grb::Matrix< D > &I_transposed,
+	grb::Matrix< D > &One_row, grb::Matrix< D > &One_col,
+	const size_t n
+) {
+	std::vector< size_t > const_indices_zero( n, 0 );
+	std::vector< size_t > iota_indices( n, 0 );
+	std::iota( iota_indices.begin(), iota_indices.end(), 0 );
+	std::vector< size_t > reverse_iota_indices( n, 0 );
+	for ( size_t i = 0; i < n; ++i ) {
+		reverse_iota_indices[i] = n - i - 1;
+	}
+
+	RC rc = buildMatrixUniqueWrapper(
+		I, iota_indices.data(),
+		iota_indices.data(), n, SEQUENTIAL
+	);
+	printSparseMatrix< Debug >( I, "identity" );
+
+	rc = rc
+		? rc
+		: buildMatrixUniqueWrapper(
+			I_transposed, iota_indices.data(),
+			reverse_iota_indices.data(), n, SEQUENTIAL
+		);
+	printSparseMatrix< Debug >( I_transposed, "transposed-identity" );
+
+	rc = rc
+		? rc
+		: buildMatrixUniqueWrapper(
+			One_row, const_indices_zero.data(),
+			iota_indices.data(), n, SEQUENTIAL
+		);
+	printSparseMatrix< Debug >( One_row, "one-row" );
+
+	rc = rc
+		? rc
+		: buildMatrixUniqueWrapper(
+			One_col, iota_indices.data(),
+			const_indices_zero.data(), n, SEQUENTIAL
+		);
+	printSparseMatrix< Debug >( One_col, "one-column" );
+
+	return rc;
+}
 
 template< typename D >
 void grb_program( const size_t &n, RC &rc ) {
 	const std::string D_name = std::is_void< D >::value
 		? "void"
 		: "non-void";
-	rc = SUCCESS;
 
 	Matrix< D >
 		I( n, n, n ),
@@ -250,47 +302,8 @@ void grb_program( const size_t &n, RC &rc ) {
 		One_row( n, n, n ),
 		One_col( n, n, n );
 
-	{ // Build matrices
-		std::vector< size_t > const_indices_zero( n, 0 );
-		std::vector< size_t > iota_indices( n, 0 );
-		std::iota( iota_indices.begin(), iota_indices.end(), 0 );
-		std::vector< size_t > reverse_iota_indices( n, 0 );
-		for ( size_t i = 0; i < n; ++i ) {
-			reverse_iota_indices[i] = n - i - 1;
-		}
-
-		rc = rc
-			? rc
-			: buildMatrixUniqueWrapper(
-				I, iota_indices.data(),
-				iota_indices.data(), n, SEQUENTIAL
-			);
-		printSparseMatrix< Debug >( I, "identity" );
-
-		rc = rc
-			? rc
-			: buildMatrixUniqueWrapper(
-				I_transposed, iota_indices.data(),
-				reverse_iota_indices.data(), n, SEQUENTIAL
-			);
-		printSparseMatrix< Debug >( I_transposed, "transposed-identity" );
-
-		rc = rc
-			? rc
-			: buildMatrixUniqueWrapper(
-				One_row, const_indices_zero.data(),
-				iota_indices.data(), n, SEQUENTIAL
-			);
-		printSparseMatrix< Debug >( One_row, "one-row" );
-
-		rc = rc
-			? rc
-			: buildMatrixUniqueWrapper(
-				One_col, iota_indices.data(),
-				const_indices_zero.data(), n, SEQUENTIAL
-			);
-		printSparseMatrix< Debug >( One_col, "one-column" );
-	}
+	// Build matrices
+	rc = buildMatrices( I, I_transposed, One_row, One_col, n );
 
 	// Test 01: Select <diagonal>
 	rc = rc ? rc : test_case( I, operators::select::is_diagonal<D>(),
@@ -334,20 +347,96 @@ void grb_program( const size_t &n, RC &rc ) {
 
 	// Test 05: Select <upper-or-diag>
 	rc = rc ? rc : test_case( I, operators::select::is_upper_or_diagonal<D>(),
-	          "Test 05: Select <is_lower_or_diagonal<" + D_name + ">> out of <identity>" );
+	          "Test 05: Select <is_upper_or_diagonal<" + D_name + ">> out of <identity>" );
 	rc = rc ? rc : test_case( I_transposed, operators::select::is_upper_or_diagonal<D>(),
-	          "Test 05: Select <is_lower_or_diagonal<" + D_name + ">> out of <transposed-identity>" );
+	          "Test 05: Select <is_upper_or_diagonal<" + D_name + ">> out of <transposed-identity>" );
 	rc = rc ? rc : test_case( One_row, operators::select::is_upper_or_diagonal<D>(),
-	          "Test 05: Select <is_lower_or_diagonal<" + D_name + ">> out of <one-row>" );
+	          "Test 05: Select <is_upper_or_diagonal<" + D_name + ">> out of <one-row>" );
 	rc = rc ? rc : test_case( One_col, operators::select::is_upper_or_diagonal<D>(),
-	          "Test 05: Select <is_lower_or_diagonal<" + D_name + ">> out of <one-column>" );
+	          "Test 05: Select <is_upper_or_diagonal<" + D_name + ">> out of <one-column>" );
 
-	assert(
-		collectives<>::allreduce( rc, operators::any_or< RC >() ) == SUCCESS
-	);
+	// done
+	if( collectives<>::allreduce( rc, operators::any_or< RC >() ) != SUCCESS ) {
+		rc = PANIC;
+	}
+}
+
+template< typename D >
+void nonvoid_program( const size_t &n, RC &rc ) {
+	static_assert( !std::is_void< D >::value, "Test logic error" );
+	const std::string D_name = "non-void";
+
+	Matrix< D >
+		I( n, n, n ),
+		I_transposed( n, n, n ),
+		One_row( n, n, n ),
+		One_col( n, n, n );
+
+	// Build matrices
+	rc = buildMatrices( I, I_transposed, One_row, One_col, n );
+
+	// Test 06: Select <upper-or-diag> using lambda function
+	typedef grb::config::RowIndexType RIT;
+	typedef grb::config::ColIndexType CIT;
+	rc = rc ? rc : test_case( I, [](const RIT *i, const CIT *j, const D *val) -> bool {
+				(void) val;
+				return *i <= *j;
+			}, "Test 06: Select <is_upper_or_diagonal< " + D_name +
+				" >> out of <identity>"
+		);
+	rc = rc ? rc : test_case( I_transposed, [](const RIT *i, const CIT *j, const D *val) -> bool {
+				(void) val;
+				return *i >= *j;
+			}, "Test 06: Select <is_upper_or_diagonal< " + D_name +
+				" >> out of <transposed-identity>"
+		);
+	rc = rc ? rc : test_case( One_row, [](const RIT *i, const CIT *j, const D *val) -> bool {
+				(void) val;
+				return *i >= *j;
+			}, "Test 06: Select <is_upper_or_diagonal< " + D_name +
+				" >> out of <one-row>"
+		);
+	rc = rc ? rc : test_case( One_col, [](const RIT *i, const CIT *j, const D *val) -> bool {
+				(void) val;
+				return *i >= *j;
+			}, "Test 06: Select <is_upper_or_diagonal< " + D_name +
+				" >> out of <one-column>"
+		);
+
+	// Test 07: Select <strict_lower> using lambda function
+	rc = rc ? rc : test_case( I, [](const RIT *i, const CIT *j, const D *val) -> bool {
+				(void) val;
+				return *i > *j;
+			}, "Test 07: Select <is_strictly_lower< " + D_name +
+				" >> out of <identity>"
+		);
+	rc = rc ? rc : test_case( I_transposed, [](const RIT *i, const CIT *j, const D *val) -> bool {
+				(void) val;
+				return *i > *j;
+			}, "Test 07: Select <is_strictly_lower< " + D_name +
+				" >> out of <transposed-identity>"
+		);
+	rc = rc ? rc : test_case( One_row, [](const RIT *i, const CIT *j, const D *val) -> bool {
+				(void) val;
+				return *i > *j;
+			}, "Test 07: Select <is_strictly_lower< " + D_name +
+				" >> out of <one-row>"
+		);
+	rc = rc ? rc : test_case( One_col, [](const RIT *i, const CIT *j, const D *val) -> bool {
+				(void) val;
+				return *i > *j;
+			}, "Test 07: Select <is_strictly_lower< " + D_name +
+				" >> out of <one-column>"
+		);
+
+	// done
+	if( collectives<>::allreduce( rc, operators::any_or< RC >() ) != SUCCESS ) {
+		rc = PANIC;
+	}
 }
 
 int main( int argc, char** argv ) {
+	sleep(15);
 	(void) argc;
 	(void) argv;
 
@@ -360,11 +449,11 @@ int main( int argc, char** argv ) {
 
 	{
 		std::cout << "-- -- Running test with using matrix-type: int" << std::endl;
-		if (launcher.exec( &grb_program<int>, n, out, true ) != SUCCESS) {
+		if( launcher.exec( &grb_program< int >, n, out, true ) != SUCCESS ) {
 			STDERR_WITH_LINE << "Launching test FAILED\n";
 			return 255;
 		}
-		if (out != SUCCESS) {
+		if( out != SUCCESS ) {
 			STDERR_WITH_LINE << "Test FAILED (" << toString(out) << ")" << std::endl;
 			return out;
 		}
@@ -372,11 +461,24 @@ int main( int argc, char** argv ) {
 
 	{
 		std::cout << "-- -- Running test with using matrix-type: void" << std::endl;
-		if (launcher.exec(&grb_program<void>, n, out, true) != SUCCESS) {
+		if( launcher.exec( &grb_program< void >, n, out, true ) != SUCCESS ) {
 			STDERR_WITH_LINE << "Launching test FAILED\n";
 			return 255;
 		}
-		if (out != SUCCESS) {
+		if( out != SUCCESS ) {
+			STDERR_WITH_LINE << "Test FAILED (" << toString(out) << ")" << std::endl;
+			return out;
+		}
+	}
+
+	{ // extra tests for non-void only, using doubles this time
+		std::cout << "-- -- Running non-void tests with matrix-type: double"
+			<< std::endl;
+		if( launcher.exec( &nonvoid_program< double >, n, out, true ) != SUCCESS ) {
+			STDERR_WITH_LINE << "Launching test FAILED\n";
+			return 255;
+		}
+		if( out != SUCCESS ) {
 			STDERR_WITH_LINE << "Test FAILED (" << toString(out) << ")" << std::endl;
 			return out;
 		}
