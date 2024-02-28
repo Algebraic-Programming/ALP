@@ -1099,8 +1099,10 @@ namespace grb {
 			const Matrix< InputType, reference, RIT_A, CIT_A, NIT_A > &A,
 			const Matrix< MaskType, reference, RIT_M, CIT_M, NIT_M > &mask,
 			const InputType * const one_A = nullptr,
-			const CoordinatesRowTranslator row_union_to_global = CoordinatesRowTranslator(),
-			const CoordinatesColTranslator col_union_to_global = CoordinatesColTranslator(),
+			const CoordinatesRowTranslator &row_union_to_global =
+				CoordinatesRowTranslator(),
+			const CoordinatesColTranslator &col_union_to_global =
+				CoordinatesColTranslator(),
 			const Monoid &monoid = Monoid()
 		) {
 #ifndef NDEBUG
@@ -1172,8 +1174,8 @@ namespace grb {
 				coors.clear();
 
 				for(; mask_k < mask_raw.col_start[ i + 1 ]; ++mask_k ) {
-					if(
-						!utils::interpretMatrixMask< descr, MaskType >( true, mask_raw.getValues(), mask_k )
+					if( !utils::interpretMatrixMask< descr, MaskType >(
+						true, mask_raw.getValues(), mask_k )
 					) { continue; }
 
 					const auto j = mask_raw.row_index[ mask_k ];
@@ -1226,8 +1228,10 @@ namespace grb {
 			IOType &x,
 			const Matrix< InputType, reference, RIT_A, CIT_A, NIT_A > &A,
 			const Matrix< MaskType, reference, RIT_M, CIT_M, NIT_M > &mask,
-			const CoordinatesRowTranslator row_union_to_global = CoordinatesRowTranslator(),
-			const CoordinatesColTranslator col_union_to_global = CoordinatesColTranslator(),
+			const CoordinatesRowTranslator &row_union_to_global =
+				CoordinatesRowTranslator(),
+			const CoordinatesColTranslator &col_union_to_global =
+				CoordinatesColTranslator(),
 			const Ring &ring = Ring()
 		) {
 #ifdef _DEBUG

@@ -37,6 +37,7 @@
 
 #include <graphblas.hpp>
 
+
 using namespace grb;
 
 using NzType = double;
@@ -164,7 +165,7 @@ RC foldr_test(
 	RC expected_unmasked_rc = SUCCESS,
 	RC expected_masked_rc = SUCCESS
 ) {
-	if( SKIP_FOLDR ){ return SUCCESS; }
+	if( SKIP_FOLDR ) { return SUCCESS; }
 	RC rc = SUCCESS;
 
 	// Unmasked variant test
@@ -310,7 +311,8 @@ void grb_program( const input< T, M > &in, RC &rc ) {
 	{
 		rc = foldLR_test(
 			"1",
-			"A simple reduction(+) with the same types for the nzs and the reduction result.",
+			"A simple reduction(+) with the same types for the nzs and the reduction "
+			"result.",
 			I, mask,
 			static_cast< NzType >( 0 ), static_cast< NzType >( n ),
 			Monoid< operators::add< NzType >, identities::zero >()
@@ -328,7 +330,8 @@ void grb_program( const input< T, M > &in, RC &rc ) {
 	{
 		rc = foldLR_test(
 			"2",
-			"A simple reduction(+) with the same types for the nzs and the reduction result.",
+			"A simple reduction(+) with the same types for the nzs and the reduction "
+			"result.",
 			I, mask,
 			static_cast< NzType >( n ), static_cast< NzType >( 2 * n ),
 			Monoid< operators::add< NzType >, identities::zero >()
@@ -347,7 +350,8 @@ void grb_program( const input< T, M > &in, RC &rc ) {
 	{
 		rc = foldl_test(
 			"3",
-			"A simple reduction(+) with different types for the nzs and the reduction result (int <- int + NzType).",
+			"A simple reduction(+) with different types for the nzs and the reduction "
+			"result (int <- int + NzType).",
 			I, mask,
 			static_cast< int >( 0 ), static_cast< int >( n ),
 			Monoid< operators::add< int, NzType, int >, identities::zero >()
@@ -355,7 +359,8 @@ void grb_program( const input< T, M > &in, RC &rc ) {
 		if( rc ) { return; }
 		rc = foldr_test(
 			"3",
-			"A simple reduction(+) with different types for the nzs and the reduction result (int <- NzType + int).",
+			"A simple reduction(+) with different types for the nzs and the reduction "
+			"result (int <- NzType + int).",
 			I, mask,
 			static_cast< int >( 0 ), static_cast< int >( n ),
 			Monoid< operators::add< NzType, int, int >, identities::zero >()
@@ -374,7 +379,8 @@ void grb_program( const input< T, M > &in, RC &rc ) {
 	{
 		rc = foldl_test(
 			"4",
-			"A simple reduction(+) with different types for the nzs and the reduction result (int <- int + NzType).",
+			"A simple reduction(+) with different types for the nzs and the reduction "
+			"result (int <- int + NzType).",
 			I, mask,
 			static_cast< int >( n ), static_cast< int >( 2 * n ),
 			Monoid< operators::add< int, NzType, int >, identities::zero >()
@@ -382,7 +388,8 @@ void grb_program( const input< T, M > &in, RC &rc ) {
 		if( rc ) { return; }
 		rc = foldr_test(
 			"4",
-			"A simple reduction(+) with different types for the nzs and the reduction result (int <- NzType + int).",
+			"A simple reduction(+) with different types for the nzs and the reduction "
+			"result (int <- NzType + int).",
 			I, mask,
 			static_cast< int >( n ), static_cast< int >( 2 * n ),
 			Monoid< operators::add< NzType, int, int >, identities::zero >()
@@ -401,7 +408,8 @@ void grb_program( const input< T, M > &in, RC &rc ) {
 	{
 		rc = foldLR_test(
 			"5",
-			"A simple reduction(*) with the same types for the nzs and the reduction result.",
+			"A simple reduction(*) with the same types for the nzs and the reduction "
+			"result.",
 			I, mask,
 			static_cast< NzType >( 0 ), static_cast< NzType >( 0 ),
 			Monoid< operators::mul< NzType >, identities::one >()
@@ -420,7 +428,8 @@ void grb_program( const input< T, M > &in, RC &rc ) {
 	{
 		rc = foldLR_test(
 			"6",
-			"A simple reduction(*) with the same types for the nzs and the reduction result.",
+			"A simple reduction(*) with the same types for the nzs and the reduction "
+			"result.",
 			I, mask,
 			static_cast< NzType >( 1 ), static_cast< NzType >( 1 ),
 			Monoid< operators::mul< NzType >, identities::one >()
@@ -439,7 +448,8 @@ void grb_program( const input< T, M > &in, RC &rc ) {
 	{
 		rc = foldl_test(
 			"7",
-			"A simple reduction(*) with different types for the nzs and the reduction result (int <- int * NzType).",
+			"A simple reduction(*) with different types for the nzs and the reduction "
+			"result (int <- int * NzType).",
 			I, mask,
 			static_cast< size_t >( 0 ), static_cast< size_t >( 0 ),
 			Monoid< operators::mul< size_t, NzType, size_t >, identities::one >()
@@ -447,7 +457,8 @@ void grb_program( const input< T, M > &in, RC &rc ) {
 		if( rc ) { return; }
 		rc = foldr_test(
 			"7",
-			"A simple reduction(*) with different types for the nzs and the reduction result (int <- int * NzType).",
+			"A simple reduction(*) with different types for the nzs and the reduction "
+			"result (int <- int * NzType).",
 			I, mask,
 			static_cast< size_t >( 0 ), static_cast< size_t >( 0 ),
 			Monoid< operators::mul< NzType, size_t, size_t >, identities::one >()
@@ -466,7 +477,8 @@ void grb_program( const input< T, M > &in, RC &rc ) {
 	{
 		rc = foldl_test(
 			"8",
-			"A simple reduction(*) with different types for the nzs and the reduction result (int <- int * NzType).",
+			"A simple reduction(*) with different types for the nzs and the reduction "
+			"result (int <- int * NzType).",
 			I, mask,
 			static_cast< size_t >( 1 ), static_cast< size_t >( 1 ),
 			Monoid< operators::mul< size_t, NzType, size_t >, identities::one >()
@@ -474,7 +486,8 @@ void grb_program( const input< T, M > &in, RC &rc ) {
 		if( rc ) { return; }
 		rc = foldr_test(
 			"8",
-			"A simple reduction(*) with different types for the nzs and the reduction result (int <- int * NzType).",
+			"A simple reduction(*) with different types for the nzs and the reduction "
+			"result (int <- int * NzType).",
 			I, mask,
 			static_cast< size_t >( 1 ), static_cast< size_t >( 1 ),
 			Monoid< operators::mul< NzType, size_t, size_t >, identities::one >()
@@ -493,7 +506,8 @@ void grb_program( const input< T, M > &in, RC &rc ) {
 	{
 		rc = foldl_test(
 			"9",
-			"A simple reduction(==) with different types for the nzs and the reduction result (bool <- bool == NzType).",
+			"A simple reduction(==) with different types for the nzs and the reduction "
+			"result (bool <- bool == NzType).",
 			I, mask,
 			static_cast< bool >( true ), static_cast< bool >( true ),
 			Monoid< operators::equal< bool, NzType, bool >, identities::logical_true >()
@@ -501,7 +515,8 @@ void grb_program( const input< T, M > &in, RC &rc ) {
 		if( rc ) { return; }
 		rc = foldr_test(
 			"9",
-			"A simple reduction(==) with different types for the nzs and the reduction result (bool <- bool == NzType).",
+			"A simple reduction(==) with different types for the nzs and the reduction "
+			"result (bool <- bool == NzType).",
 			I, mask,
 			static_cast< bool >( true ), static_cast< bool >( true ),
 			Monoid< operators::equal< NzType, bool, bool >, identities::logical_true >()
@@ -520,7 +535,8 @@ void grb_program( const input< T, M > &in, RC &rc ) {
 	{
 		rc = foldl_test(
 			"10",
-			"A simple reduction(||) with different types for the nzs and the reduction result (bool <- bool || NzType).",
+			"A simple reduction(||) with different types for the nzs and the reduction "
+			"result (bool <- bool || NzType).",
 			I, mask,
 			static_cast< bool >( false ), static_cast< bool >( true ),
 			Monoid< operators::logical_or< bool, NzType, bool >, identities::logical_false >()
@@ -528,7 +544,8 @@ void grb_program( const input< T, M > &in, RC &rc ) {
 		if( rc ) { return; }
 		rc = foldr_test(
 			"10",
-			"A simple reduction(||) with different types for the nzs and the reduction result (bool <- bool || NzType).",
+			"A simple reduction(||) with different types for the nzs and the reduction "
+			"result (bool <- bool || NzType).",
 			I, mask,
 			static_cast< bool >( false ), static_cast< bool >( true ),
 			Monoid< operators::logical_or< NzType, bool, bool >, identities::logical_false >()
@@ -567,11 +584,14 @@ void grb_program( const input< T, M > &in, RC &rc ) {
 		Matrix< void > dense_mask( nrows( I ), ncols( I ), nrows( I ) * ncols( I ) );
 		std::vector< size_t > rows( nrows( I ) * ncols( I ) ), cols( nrows( I ) * ncols( I ) );
 		for( size_t x = 0; x < nrows( I ); x++ ) {
-			std::fill( rows.begin() + x * ncols( I ), rows.begin() + ( x + 1 ) * ncols( I ), x );
-			std::iota( cols.begin() + x * ncols( I ), cols.begin() + ( x + 1 ) * ncols( I ), 0 );
+			std::fill( rows.begin() + x * ncols( I ),
+				rows.begin() + ( x + 1 ) * ncols( I ), x );
+			std::iota( cols.begin() + x * ncols( I ),
+				cols.begin() + ( x + 1 ) * ncols( I ), 0 );
 		}
 		if( SUCCESS !=
-			buildMatrixUnique( dense_mask, rows.data(), cols.data(), nrows( I ) * ncols( I ), SEQUENTIAL )
+			buildMatrixUnique( dense_mask, rows.data(), cols.data(),
+				nrows( I ) * ncols( I ), SEQUENTIAL )
 		) {
 			std::cerr << "Failed to build dense mask" << std::endl;
 			rc = FAILED;
@@ -597,14 +617,18 @@ void grb_program( const input< T, M > &in, RC &rc ) {
 	 */
 	{
 		Matrix< int > dense_mask( nrows( I ), ncols( I ), nrows( I ) * ncols( I ) );
-		std::vector< size_t > rows( nrows( I ) * ncols( I ) ), cols( nrows( I ) * ncols( I ) );
+		std::vector< size_t > rows( nrows( I ) * ncols( I ) ),
+			cols( nrows( I ) * ncols( I ) );
 		for( size_t x = 0; x < nrows( I ); x++ ) {
-			std::fill( rows.begin() + x * ncols( I ), rows.begin() + ( x + 1 ) * ncols( I ), x );
-			std::iota( cols.begin() + x * ncols( I ), cols.begin() + ( x + 1 ) * ncols( I ), 0 );
+			std::fill( rows.begin() + x * ncols( I ),
+				rows.begin() + ( x + 1 ) * ncols( I ), x );
+			std::iota( cols.begin() + x * ncols( I ),
+				cols.begin() + ( x + 1 ) * ncols( I ), 0 );
 		}
 		std::vector< int > vals( nrows( I ) * ncols( I ), 1 );
 		if( SUCCESS !=
-			buildMatrixUnique( dense_mask, rows.data(), cols.data(), vals.data(), vals.size(), SEQUENTIAL )
+			buildMatrixUnique( dense_mask, rows.data(), cols.data(), vals.data(),
+				vals.size(), SEQUENTIAL )
 		) {
 			std::cerr << "Failed to build dense mask" << std::endl;
 			rc = FAILED;
@@ -630,18 +654,22 @@ void grb_program( const input< T, M > &in, RC &rc ) {
 	 */
 	{
 		Matrix< int > dense_mask( nrows( I ), ncols( I ), nrows( I ) * ncols( I ) );
-		std::vector< size_t > rows( nrows( I ) * ncols( I ) ), cols( nrows( I ) * ncols( I ) );
+		std::vector< size_t > rows( nrows( I ) * ncols( I ) ),
+			cols( nrows( I ) * ncols( I ) );
 		for( size_t x = 0; x < nrows( I ); x++ ) {
-			std::fill( rows.begin() + x * ncols( I ), rows.begin() + ( x + 1 ) * ncols( I ), x );
-			std::iota( cols.begin() + x * ncols( I ), cols.begin() + ( x + 1 ) * ncols( I ), 0 );
+			std::fill( rows.begin() + x * ncols( I ),
+				rows.begin() + ( x + 1 ) * ncols( I ), x );
+			std::iota( cols.begin() + x * ncols( I ),
+				cols.begin() + ( x + 1 ) * ncols( I ), 0 );
 		}
 		std::vector< int > vals( nrows( I ) * ncols( I ), 0 );
-		for( const auto e : I ) {
+		for( const auto &e : I ) {
 			vals[ e.first.first * ncols( I ) + e.first.second ] = 1;
 			break;
 		}
 		if( SUCCESS !=
-			buildMatrixUnique( dense_mask, rows.data(), cols.data(), vals.data(), vals.size(), SEQUENTIAL )
+			buildMatrixUnique( dense_mask, rows.data(), cols.data(), vals.data(),
+				vals.size(), SEQUENTIAL )
 		) {
 			std::cerr << "Failed to build dense mask" << std::endl;
 			rc = FAILED;
@@ -667,10 +695,13 @@ void grb_program( const input< T, M > &in, RC &rc ) {
 	 */
 	{
 		Matrix< int > dense_mask( nrows( I ), ncols( I ), nrows( I ) * ncols( I ) );
-		std::vector< size_t > rows( nrows( I ) * ncols( I ) ), cols( nrows( I ) * ncols( I ) );
+		std::vector< size_t > rows( nrows( I ) * ncols( I ) ),
+			cols( nrows( I ) * ncols( I ) );
 		for( size_t x = 0; x < nrows( I ); x++ ) {
-			std::fill( rows.begin() + x * ncols( I ), rows.begin() + ( x + 1 ) * ncols( I ), x );
-			std::iota( cols.begin() + x * ncols( I ), cols.begin() + ( x + 1 ) * ncols( I ), 0 );
+			std::fill( rows.begin() + x * ncols( I ),
+				rows.begin() + ( x + 1 ) * ncols( I ), x );
+			std::iota( cols.begin() + x * ncols( I ),
+				cols.begin() + ( x + 1 ) * ncols( I ), 0 );
 		}
 		std::vector< int > vals( nrows( I ) * ncols( I ), 0 );
 		size_t previous_idx = 0;
@@ -678,7 +709,8 @@ void grb_program( const input< T, M > &in, RC &rc ) {
 			previous_idx = e.first.first * ncols( I ) + e.first.second;
 		vals[ previous_idx ] = 1;
 		if( SUCCESS !=
-			buildMatrixUnique( dense_mask, rows.data(), cols.data(), vals.data(), vals.size(), SEQUENTIAL )
+			buildMatrixUnique( dense_mask, rows.data(), cols.data(), vals.data(),
+				vals.size(), SEQUENTIAL )
 		) {
 			std::cerr << "Failed to build dense mask" << std::endl;
 			rc = FAILED;
@@ -711,11 +743,14 @@ void grb_program( const input< T, M > &in, RC &rc ) {
 			identities::zero, identities::one
 		> semiring;
 		for( size_t x = 0; x < nrows( I ); x++ ) {
-			std::fill( rows.begin() + x * ncols( I ), rows.begin() + ( x + 1 ) * ncols( I ), x );
-			std::iota( cols.begin() + x * ncols( I ), cols.begin() + ( x + 1 ) * ncols( I ), 0 );
+			std::fill( rows.begin() + x * ncols( I ),
+				rows.begin() + ( x + 1 ) * ncols( I ), x );
+			std::iota( cols.begin() + x * ncols( I ),
+				cols.begin() + ( x + 1 ) * ncols( I ), 0 );
 		}
 		if( SUCCESS !=
-			buildMatrixUnique( dense_mask, rows.data(), cols.data(), rows.size(), SEQUENTIAL )
+			buildMatrixUnique( dense_mask, rows.data(), cols.data(), rows.size(),
+				SEQUENTIAL )
 		) {
 			std::cerr << "Failed to build dense mask" << std::endl;
 			rc = FAILED;
@@ -725,7 +760,8 @@ void grb_program( const input< T, M > &in, RC &rc ) {
 			"16",
 			"Reduction with a dense void mask, with the descriptors::add_identity.",
 			I, dense_mask,
-			static_cast< NzType >( 0 ), static_cast< NzType >( n + std::min( nrows( I ), ncols( I ) ) ),
+			static_cast< NzType >( 0 ), static_cast< NzType >( n + std::min( nrows( I ),
+				ncols( I ) ) ),
 			semiring,
 			false, false
 		);
@@ -809,7 +845,8 @@ int main( int argc, char ** argv ) {
 		std::iota( I_rows.begin(), I_rows.end(), 0 );
 		std::iota( I_cols.begin(), I_cols.end(), 0 );
 		if( SUCCESS !=
-			buildMatrixUnique( I, I_rows.data(), I_cols.data(), I_vals.data(), I_vals.size(), SEQUENTIAL )
+			buildMatrixUnique( I, I_rows.data(), I_cols.data(), I_vals.data(),
+				I_vals.size(), SEQUENTIAL )
 		) {
 			std::cerr << "Failed to build identity matrix" << std::endl;
 			rc = FAILED;
@@ -817,7 +854,8 @@ int main( int argc, char ** argv ) {
 		}
 		Matrix< void > mask( n, n );
 		if( SUCCESS  !=
-			buildMatrixUnique( mask, I_rows.data(), I_cols.data(), I_rows.size(), SEQUENTIAL )
+			buildMatrixUnique( mask, I_rows.data(), I_cols.data(), I_rows.size(),
+				SEQUENTIAL )
 		) {
 			std::cerr << "Failed to build identity mask" << std::endl;
 			rc = FAILED;
@@ -839,7 +877,8 @@ int main( int argc, char ** argv ) {
 		std::vector< NzType > I_vals( n, 1.f );
 		std::iota( I_cols.begin(), I_cols.end(), 0 );
 		if( SUCCESS !=
-			buildMatrixUnique( I, I_rows.data(), I_cols.data(), I_vals.data(), I_vals.size(), SEQUENTIAL )
+			buildMatrixUnique( I, I_rows.data(), I_cols.data(), I_vals.data(),
+				I_vals.size(), SEQUENTIAL )
 		) {
 			std::cerr << "Failed to build matrix with n 1s on the first row" << std::endl;
 			rc = FAILED;
@@ -847,7 +886,8 @@ int main( int argc, char ** argv ) {
 		}
 		Matrix< void > mask( n, n );
 		if( SUCCESS !=
-			buildMatrixUnique( mask, I_rows.data(), I_cols.data(), I_rows.size(), SEQUENTIAL )
+			buildMatrixUnique( mask, I_rows.data(), I_cols.data(), I_rows.size(),
+				SEQUENTIAL )
 		) {
 			std::cerr << "Failed to build mask with n 1s on the first row" << std::endl;
 			rc = FAILED;
@@ -869,17 +909,21 @@ int main( int argc, char ** argv ) {
 		std::vector< NzType > I_vals( n, 1.f );
 		std::iota( I_rows.begin(), I_rows.end(), 0 );
 		if( SUCCESS !=
-			buildMatrixUnique( I, I_rows.data(), I_cols.data(), I_vals.data(), I_vals.size(), SEQUENTIAL )
+			buildMatrixUnique( I, I_rows.data(), I_cols.data(), I_vals.data(),
+				I_vals.size(), SEQUENTIAL )
 		) {
-			std::cerr << "Failed to build matrix with n 1s on the first column" << std::endl;
+			std::cerr << "Failed to build matrix with n 1s on the first column"
+				<< std::endl;
 			rc = FAILED;
 			return 8;
 		}
 		Matrix< void > mask( n, n );
 		if( SUCCESS !=
-			buildMatrixUnique( mask, I_rows.data(), I_cols.data(), I_rows.size(), SEQUENTIAL )
+			buildMatrixUnique( mask, I_rows.data(), I_cols.data(), I_rows.size(),
+				SEQUENTIAL )
 		) {
-			std::cerr << "Failed to build mask with n 1s on the first column" << std::endl;
+			std::cerr << "Failed to build mask with n 1s on the first column"
+				<< std::endl;
 			rc = FAILED;
 			return 9;
 		}
@@ -900,23 +944,27 @@ int main( int argc, char ** argv ) {
 		std::iota( I_rows.begin() + n, I_rows.end(), 1 );
 		std::iota( I_cols.begin(), I_cols.begin() + n, 0 );
 		if( SUCCESS !=
-			buildMatrixUnique( I, I_rows.data(), I_cols.data(), I_vals.data(), I_vals.size(), SEQUENTIAL )
+			buildMatrixUnique( I, I_rows.data(), I_cols.data(), I_vals.data(),
+				I_vals.size(), SEQUENTIAL )
 		) {
-			std::cerr << "Failed to build matrix with n 1s on the first row and column" << std::endl;
+			std::cerr << "Failed to build matrix with n 1s on the first row and column"
+				<< std::endl;
 			rc = FAILED;
 			return 11;
 		}
 		Matrix< void > mask( n, n );
 		if( SUCCESS !=
-			buildMatrixUnique( mask, I_rows.data(), I_cols.data(), I_rows.size(), SEQUENTIAL )
+			buildMatrixUnique( mask, I_rows.data(), I_cols.data(), I_rows.size(),
+				SEQUENTIAL )
 		) {
-			std::cerr << "Failed to build mask with n 1s on the first row and column" << std::endl;
+			std::cerr << "Failed to build mask with n 1s on the first row and column"
+				<< std::endl;
 			rc = FAILED;
 			return 12;
 		}
 		std::cout << "-- Running test 04: Square matrix of size n = "
 			<< n << ", with n 1s on the first row and column" << std::endl;
-		input< NzType, void > input(I, mask);
+		input< NzType, void > input( I, mask );
 		if( launcher.exec( &grb_program, input, rc, true ) != SUCCESS ) {
 			std::cerr << "Launching test 04 FAILED\n";
 			return 13;
@@ -930,15 +978,18 @@ int main( int argc, char ** argv ) {
 		std::vector< NzType > I_vals( n, 1.f );
 		std::iota( I_cols.begin(), I_cols.end(), 0 );
 		if( SUCCESS !=
-			buildMatrixUnique( I, I_rows.data(), I_cols.data(), I_vals.data(), I_vals.size(), SEQUENTIAL )
+			buildMatrixUnique( I, I_rows.data(), I_cols.data(), I_vals.data(),
+				I_vals.size(), SEQUENTIAL )
 		) {
-			std::cerr << "Failed to build matrix with n 1s on the first row" << std::endl;
+			std::cerr << "Failed to build matrix with n 1s on the first row"
+				<< std::endl;
 			rc = FAILED;
 			return 14;
 		}
 		Matrix< void > mask( 1, n );
 		if( SUCCESS !=
-			buildMatrixUnique( mask, I_rows.data(), I_cols.data(), I_rows.size(), SEQUENTIAL )
+			buildMatrixUnique( mask, I_rows.data(), I_cols.data(), I_rows.size(),
+				SEQUENTIAL )
 		) {
 			std::cerr << "Failed to build mask with n 1s on the first row" << std::endl;
 			rc = FAILED;
@@ -960,15 +1011,18 @@ int main( int argc, char ** argv ) {
 		std::vector< NzType > I_vals( n, 1.f );
 		std::iota( I_rows.begin(), I_rows.end(), 0 );
 		if( SUCCESS !=
-			buildMatrixUnique( I, I_rows.data(), I_cols.data(), I_vals.data(), I_vals.size(), SEQUENTIAL )
+			buildMatrixUnique( I, I_rows.data(), I_cols.data(), I_vals.data(),
+				I_vals.size(), SEQUENTIAL )
 		) {
-			std::cerr << "Failed to build matrix with n 1s on the first column" << std::endl;
+			std::cerr << "Failed to build matrix with n 1s on the first column"
+				<< std::endl;
 			rc = FAILED;
 			return 16;
 		}
 		Matrix< void > mask( n, 1 );
 		if( SUCCESS !=
-			buildMatrixUnique( mask, I_rows.data(), I_cols.data(), I_rows.size(), SEQUENTIAL )
+			buildMatrixUnique( mask, I_rows.data(), I_cols.data(), I_rows.size(),
+				SEQUENTIAL )
 		) {
 			std::cerr << "Failed to build mask with n 1s on the first column" << std::endl;
 			rc = FAILED;
@@ -986,10 +1040,12 @@ int main( int argc, char ** argv ) {
 
 	std::cerr << std::flush;
 	if( rc != SUCCESS ) {
-		std::cout << std::flush << "Test FAILED (rc = " << toString( rc ) << ")" << std::endl;
+		std::cout << std::flush << "Test FAILED (rc = " << toString( rc ) << ")"
+			<< std::endl;
 		return 19;
 	}
 
 	std::cout << std::flush << "Test OK" << std::endl;
 	return 0;
 }
+
