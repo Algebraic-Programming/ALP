@@ -229,36 +229,34 @@ RC test_case(
 ) {
 	std::cout << test_name << std::endl;
 
-	{ // Non-lambda variant
-		Matrix< D, implementation, RIT, CIT > output(
-			nrows( input ), ncols( input ), 0
-		);
+	Matrix< D, implementation, RIT, CIT > output(
+		nrows( input ), ncols( input ), 0
+	);
 
-		RC rc = select( output, input, op, RESIZE );
-		if( rc != SUCCESS ) {
-			std::cerr << "(non-lambda variant): RESIZE phase of test <"
-				<< test_name << "> failed, rc is \""
-				<< toString(rc) << "\"" << std::endl;
-			return rc;
-		}
+	RC rc = select( output, input, op, RESIZE );
+	if( rc != SUCCESS ) {
+		std::cerr << "(non-lambda variant): RESIZE phase of test <"
+			<< test_name << "> failed, rc is \""
+			<< toString(rc) << "\"" << std::endl;
+		return rc;
+	}
 
-		rc = select( output, input, op, EXECUTE );
-		if( rc != SUCCESS ) {
-			std::cerr << "(non-lambda variant): EXECUTE phase of test <"
-				<< test_name << "> failed, rc is \""
-				<< toString(rc) << "\"" << std::endl;
-			return rc;
-		}
+	rc = select( output, input, op, EXECUTE );
+	if( rc != SUCCESS ) {
+		std::cerr << "(non-lambda variant): EXECUTE phase of test <"
+			<< test_name << "> failed, rc is \""
+			<< toString(rc) << "\"" << std::endl;
+		return rc;
+	}
 
-		printSparseMatrix< Debug >( output );
+	printSparseMatrix< Debug >( output );
 
-		const bool valid = matrix_validate_predicate( input, output, op );
-		if( !valid ) {
-			std::cerr << "(non-lambda variant): Test <"
-				<< test_name << "> failed, output matrix is invalid"
-				<< std::endl;
-			return FAILED;
-		}
+	const bool valid = matrix_validate_predicate( input, output, op );
+	if( !valid ) {
+		std::cerr << "(non-lambda variant): Test <"
+			<< test_name << "> failed, output matrix is invalid"
+			<< std::endl;
+		return FAILED;
 	}
 
 	return SUCCESS;
@@ -305,8 +303,10 @@ RC buildMatrixUniqueWrapper(
 
 template< typename D >
 RC buildMatrices(
-	grb::Matrix< D > &I, grb::Matrix< D > &I_transposed,
-	grb::Matrix< D > &One_row, grb::Matrix< D > &One_col,
+	grb::Matrix< D > &I,
+	grb::Matrix< D > &I_transposed,
+	grb::Matrix< D > &One_row,
+	grb::Matrix< D > &One_col,
 	const size_t n
 ) {
 	std::vector< size_t > const_indices_zero( n, 0 );
@@ -351,7 +351,8 @@ RC buildMatrices(
 }
 
 template< typename D >
-void grb_program( const size_t &n, RC &rc ) {
+void grb_program_operators( const size_t &n, RC &rc ) {
+	std::cerr << "Building matrices" << std::endl;
 	const std::string D_name = std::is_void< D >::value
 		? "void"
 		: "non-void";
@@ -364,6 +365,7 @@ void grb_program( const size_t &n, RC &rc ) {
 
 	// Build matrices
 	rc = buildMatrices( I, I_transposed, One_row, One_col, n );
+	std::cerr  << "Matrices built" << std::endl;
 
 	// Test 01: Select <diagonal>
 	rc = rc ? rc : test_case( I, operators::select::is_diagonal<D>(),
@@ -422,7 +424,7 @@ void grb_program( const size_t &n, RC &rc ) {
 }
 
 template< typename D >
-void nonvoid_program( const size_t &n, RC &rc ) {
+void grb_program_lambdas( const size_t &n, RC &rc ) {
 	static_assert( !std::is_void< D >::value, "Test logic error" );
 	const std::string D_name = "non-void";
 
@@ -496,7 +498,6 @@ void nonvoid_program( const size_t &n, RC &rc ) {
 }
 
 int main( int argc, char** argv ) {
-	sleep(15);
 	(void) argc;
 	(void) argv;
 
@@ -509,7 +510,20 @@ int main( int argc, char** argv ) {
 
 	{
 		std::cout << "-- -- Running test with using matrix-type: int" << std::endl;
-		if( launcher.exec( &grb_program< int >, n, out, true ) != SUCCESS ) {
+		if( launcher.exec( &grb_program_operators< int >, n, out, true ) != SUCCESS ) {
+			STDERR_WITH_LINE << "Launching test FAILED\n";
+			return 255;
+		}
+		if( out != SUCCESS ) {
+			STDERR_WITH_LINE << "Test FAILED (" << toString(out) << ")" << std::endl;
+			return out;
+		}
+	}
+
+	{
+		std::cout << "-- -- Running test with using matrix-type: double"
+			<< std::endl;
+		if( launcher.exec( &grb_program_lambdas< double >, n, out, true ) != SUCCESS ) {
 			STDERR_WITH_LINE << "Launching test FAILED\n";
 			return 255;
 		}
@@ -521,20 +535,7 @@ int main( int argc, char** argv ) {
 
 	{
 		std::cout << "-- -- Running test with using matrix-type: void" << std::endl;
-		if( launcher.exec( &grb_program< void >, n, out, true ) != SUCCESS ) {
-			STDERR_WITH_LINE << "Launching test FAILED\n";
-			return 255;
-		}
-		if( out != SUCCESS ) {
-			STDERR_WITH_LINE << "Test FAILED (" << toString(out) << ")" << std::endl;
-			return out;
-		}
-	}
-
-	{ // extra tests for non-void only, using doubles this time
-		std::cout << "-- -- Running non-void tests with matrix-type: double"
-			<< std::endl;
-		if( launcher.exec( &nonvoid_program< double >, n, out, true ) != SUCCESS ) {
+		if( launcher.exec( &grb_program_operators< void >, n, out, true ) != SUCCESS ) {
 			STDERR_WITH_LINE << "Launching test FAILED\n";
 			return 255;
 		}
