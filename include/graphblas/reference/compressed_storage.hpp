@@ -25,10 +25,18 @@
 
 #include <cstring> //std::memcpy
 
+#if reference == reference_omp
+ #define _H_GRB_REFERENCE_OMP_COMPRESSED_STORAGE
+ #include <omp.h>
+#endif
+
 
 namespace grb {
 
 	namespace internal {
+
+		template< typename D, typename IND, typename SIZE >
+		class Compressed_Storage;
 
 		/**
 		 * Basic functionality for a compressed storage format (CRS/CSR or CCS/CSC).
@@ -426,6 +434,15 @@ namespace grb {
 				}
 
 				/**
+				 * @returns The value array.
+				 *
+				 * \warning Does not check for <tt>NULL</tt> pointers.
+				 */
+				D * getValues() const noexcept {
+					return values;
+				}
+
+				/**
 				 * @returns The index array.
 				 *
 				 * \warning Does not check for <tt>NULL</tt> pointers.
@@ -502,13 +519,13 @@ namespace grb {
 				}
 
 				/**
-				 * Copies contents from a given Compressed_Storage.
+				 * Copies coordinates from a given Compressed_Storage, then fills the
+				 * values with the given identity.
 				 *
 				 * Performs no safety checking. Performs no (re-)allocations.
 				 *
-				 * @tparam use_id If set to <tt>true</tt>, use \a id instead of values in
-				 *                \a other.
-				 *
+				 * @tparam use_id   If set to <tt>true</tt>, use \a id instead of values in
+				 *                  \a other.
 				 * @param[in] other The container to copy from.
 				 * @param[in] nz    The number of nonzeroes in the \a other container.
 				 * @param[in] m     The index dimension of the \a other container.
@@ -516,7 +533,134 @@ namespace grb {
 				 * @param[in] end   The end position to copy to (exclusive).
 				 * @param[in] id    A pointer to a value overriding those in \a other.
 				 *                  Will only be used if and only if \a use_id is set
-				 *                  <tt>true</tt>.
+				 *                  to <tt>true</tt>.
+				 * The copy range is 2nz + m + 1, i.e.,
+				 *   -# 0 <= start <  2nz + m + 1
+				 *   -# 0 <  end   <= 2nz + m + 1
+				 *
+				 * Concurrent calls to this function are allowed iff they consist of
+				 * disjoint ranges \a start and \a end. The copy is guaranteed to be
+				 * complete if the union of ranges spans 0 to 2nz + m + 1.
+				 */
+				template<
+					Descriptor descr = descriptors::no_operation,
+					bool useId = true,
+					typename InputType, typename InputIND, typename InputSIZE,
+					typename ValueType
+				>
+				void copyFrom(
+					const Compressed_Storage< InputType, InputIND, InputSIZE > &other,
+					const size_t nz, const size_t m,
+					const size_t start, size_t end,
+					const ValueType * __restrict__ id,
+					const typename std::enable_if< useId, void >::type * = nullptr
+				) {
+					static_assert(
+						( useId && std::is_convertible< ValueType, D >::value ),
+						"ValueType must be convertible to D"
+					);
+					static_assert( std::is_convertible< InputIND, IND >::value,
+						"InputIND must be convertible to IND"
+					);
+					static_assert( std::is_convertible< InputSIZE, SIZE >::value,
+						"InputSIZE must be convertible to SIZE"
+					);
+#ifdef _DEBUG
+					std::cout << "CompressedStorage::copyFrom (cast) called with range "
+						<< start << "--" << end << ". The identity " << (*id) << " will be used.\n";
+#endif
+					assert( start <= end );
+					size_t k = start;
+					if( k < nz ) {
+						const size_t loop_end = std::min( nz, end );
+						assert( k <= loop_end );
+						GRB_UTIL_IGNORE_CLASS_MEMACCESS; // by the ALP spec, D can only be a POD
+						                                 // type, in which case raw memory copies
+						                                 // are OK
+#ifdef _H_GRB_REFERENCE_OMP_COMPRESSED_STORAGE
+						#pragma omp for simd
+#endif
+						for( size_t i = k; i < loop_end; ++i ) {
+							if( utils::interpretMatrixMask< descr, InputType >(
+									true, other.getValues(), i )
+							) {
+								values[ i ] = static_cast< D >( *id );
+							}
+						}
+						GRB_UTIL_RESTORE_WARNINGS;
+						k = 0;
+					} else {
+						assert( k >= nz );
+						k -= nz;
+					}
+					if( end <= nz ) {
+						return;
+					}
+					end -= nz;
+
+					if( k < nz ) {
+						const size_t loop_end = std::min( nz, end );
+						assert( k <= loop_end );
+						GRB_UTIL_IGNORE_CLASS_MEMACCESS; // by the ALP spec, D can only be a POD
+						                                 // type, in which case raw memory copies
+						                                 // are OK
+#ifdef _H_GRB_REFERENCE_OMP_COMPRESSED_STORAGE
+						#pragma omp for simd
+#endif
+						for( size_t i = k; i < loop_end; ++i ) {
+							if( utils::interpretMatrixMask< descr, InputType >(
+									true, other.getValues(), i )
+							) {
+								row_index[ i ] = static_cast< IND >( other.row_index[ i ] );
+							}
+						}
+						GRB_UTIL_RESTORE_WARNINGS;
+						k = 0;
+					} else {
+						assert( k >= nz );
+						k -= nz;
+					}
+					if( end <= nz ) {
+						return;
+					}
+					end -= nz;
+
+					if( k < m + 1 ) {
+						const size_t loop_end = std::min( m + 1, end );
+						assert( k <= loop_end );
+						GRB_UTIL_IGNORE_CLASS_MEMACCESS; // by the ALP spec, D can only be a POD
+						                                 // type, in which case raw memory copies
+						                                 // are OK
+#ifdef _H_GRB_REFERENCE_OMP_COMPRESSED_STORAGE
+						#pragma omp for simd
+#endif
+						for( size_t i = k; i < loop_end; ++i ) {
+							if( utils::interpretMatrixMask< descr, InputType >(
+									true, other.getValues(), i )
+							) {
+								col_start[ i ] = static_cast< SIZE >( other.col_start[ i ] );
+							}
+						}
+						GRB_UTIL_RESTORE_WARNINGS;
+#ifndef NDEBUG
+						for( size_t chk = k; chk < loop_end - 1; ++chk ) {
+							assert( other.col_start[ chk ] <= col_start[ chk + 1 ] );
+							assert( col_start[ chk ] <= col_start[ chk + 1 ] );
+						}
+#endif
+					}
+				}
+
+				/**
+				 * Copies contents from a given Compressed_Storage.
+				 *
+				 * Performs no safety checking. Performs no (re-)allocations.
+				 *
+				 * @param[in] other The container to copy from.
+				 * @param[in] nz    The number of nonzeroes in the \a other container.
+				 * @param[in] m     The index dimension of the \a other container.
+				 * @param[in] start The start position to copy from (inclusive).
+				 * @param[in] end   The end position to copy to (exclusive).
 				 *
 				 * The copy range is 2nz + m + 1, i.e.,
 				 *   -# 0 <= start <  2nz + m + 1
@@ -527,109 +671,66 @@ namespace grb {
 				 * complete if the union of ranges spans 0 to 2nz + m + 1.
 				 */
 				template<
-					bool use_id = false,
-					typename InputType, typename ValueType = char
+					Descriptor descr = descriptors::no_operation,
+					bool useId = false,
+					typename InputType, typename InputIND, typename InputSIZE
 				>
 				void copyFrom(
-					const Compressed_Storage< InputType, IND, SIZE > &other,
+					const Compressed_Storage< InputType, InputIND, InputSIZE > &other,
 					const size_t nz, const size_t m,
 					const size_t start, size_t end,
-					const ValueType * __restrict__ id = nullptr
+					const typename std::enable_if< !useId, void >::type * = nullptr
 				) {
+					static_assert( !std::is_void< InputType >::value,
+						"InputType must not be void"
+					);
+					static_assert(
+						( !useId && std::is_convertible< InputType, D >::value ),
+						"InputType must be convertible to D"
+					);
+					static_assert( std::is_convertible< InputIND, IND >::value,
+						"InputIND must be convertible to IND"
+					);
+					static_assert( std::is_convertible< InputSIZE, SIZE >::value,
+						"InputSIZE must be convertible to SIZE"
+					);
 #ifdef _DEBUG
-					std::cout << "CompressedStorage::copyFrom (cast) called with range "
-						<< start << "--" << end;
-					if( use_id ) {
-						std::cout << ". The identity " << (*id) << " will be used.\n";
-					} else {
-						std::cout << ". No identity will be used.\n";
-					}
+					std::cout << "CompressedStorage::copyFrom called with range "
+						<< start << "--" << end << ". No identity will be used.\n";
 #endif
-					assert( start <= end );
 					size_t k = start;
 					if( k < nz ) {
 						const size_t loop_end = std::min( nz, end );
 						assert( k <= loop_end );
-						for( ; k < loop_end; ++k ) {
-							if( use_id ) {
-								values[ k ] = *id;
-							} else {
-								values[ k ] = other.getValue( k, *id );
-							}
+						GRB_UTIL_IGNORE_CLASS_MEMACCESS; // by the ALP spec, D can only be a POD
+						                                 // type, in which case raw memory copies
+						                                 // are OK
+#ifdef _H_GRB_REFERENCE_OMP_COMPRESSED_STORAGE
+						#pragma omp for simd
+#endif
+						for( size_t i = k; i < loop_end; ++i ) {
+							values[ i ] = static_cast< D >( other.values[ i ] );
 						}
-						k = 0;
-					} else {
-						assert( k >= nz );
-						k -= nz;
-					}
-					if( end <= nz ) {
-						return;
-					}
-					end -= nz;
-					if( k < nz ) {
-						const size_t loop_end = std::min( nz, end );
-						assert( k <= loop_end );
-						(void) std::memcpy(
-							row_index + k,
-							other.row_index + k,
-							(loop_end - k) * sizeof( IND )
-						);
-						k = 0;
-					} else {
-						assert( k >= nz );
-						k -= nz;
-					}
-					if( end <= nz ) {
-						return;
-					}
-					end -= nz;
-					if( k < m + 1 ) {
-						const size_t loop_end = std::min( m + 1, end );
-						assert( k <= loop_end );
-						(void) std::memcpy(
-							col_start + k,
-							other.col_start + k,
-							(loop_end - k) * sizeof( SIZE )
-						);
-					}
-				}
+						GRB_UTIL_RESTORE_WARNINGS;
 
-				/** \internal Specialisation for no cast copy */
-				template< bool use_id = false >
-				void copyFrom(
-					const Compressed_Storage< D, IND, SIZE > &other,
-					const size_t nz, const size_t m,
-					const size_t start, size_t end,
-					const D * __restrict__ id = nullptr
-				) {
-#ifdef _DEBUG
-					std::cout << "CompressedStorage::copyFrom (no-cast) called with range "
-						<< start << "--" << end;
-					if( use_id ) {
-						std::cout << ". The identity " << (*id) << " will be used.\n";
+						k = 0;
 					} else {
-						std::cout << ". No identity will be used.\n";
+						assert( k >= nz );
+						k -= nz;
 					}
-#endif
-					size_t k = start;
+					if( end <= nz ) {
+						return;
+					}
+					end -= nz;
+
 					if( k < nz ) {
 						const size_t loop_end = std::min( nz, end );
-#ifdef _DEBUG
-						std::cout << "\t value range " << k << " -- " << loop_end << "\n";
-#endif
 						assert( k <= loop_end );
-						if( use_id ) {
-							std::fill( values + k, values + loop_end, *id );
-						} else {
-							GRB_UTIL_IGNORE_CLASS_MEMACCESS // by the ALP spec, D can only be POD
-								                        // types. In this case raw memory copies
-											// are OK.
-							(void) std::memcpy(
-								values + k,
-								other.values + k,
-								(loop_end - k) * sizeof( D )
-							);
-							GRB_UTIL_RESTORE_WARNINGS
+#ifdef _H_GRB_REFERENCE_OMP_COMPRESSED_STORAGE
+						#pragma omp for simd
+#endif
+						for( size_t i = k; i < loop_end; ++i ) {
+							row_index[ i ] = static_cast< IND >( other.row_index[ i ] );
 						}
 						k = 0;
 					} else {
@@ -640,37 +741,16 @@ namespace grb {
 						return;
 					}
 					end -= nz;
-					if( k < nz ) {
-						const size_t loop_end = std::min( nz, end );
-#ifdef _DEBUG
-						std::cout << "\t index range " << k << " -- " << loop_end << "\n";
-#endif
-						assert( k <= loop_end );
-						(void) std::memcpy(
-							row_index + k,
-							other.row_index + k,
-							(loop_end - k) * sizeof( IND )
-						);
-						k = 0;
-					} else {
-						assert( k >= nz );
-						k -= nz;
-					}
-					if( end <= nz ) {
-						return;
-					}
-					end -= nz;
+
 					if( k < m + 1 ) {
 						const size_t loop_end = std::min( m + 1, end );
-#ifdef _DEBUG
-						std::cout << "\t start range " << k << " -- " << loop_end << "\n";
-#endif
 						assert( k <= loop_end );
-						(void) std::memcpy(
-							col_start + k,
-							other.col_start + k,
-							(loop_end - k) * sizeof( SIZE )
-						);
+#ifdef _H_GRB_REFERENCE_OMP_COMPRESSED_STORAGE
+						#pragma omp for simd
+#endif
+						for( size_t i = k; i < loop_end; ++i ) {
+							col_start[ i ] = static_cast< SIZE >( other.col_start[ i ] );
+						}
 #ifndef NDEBUG
 						for( size_t chk = k; chk < loop_end - 1; ++chk ) {
 							assert( other.col_start[ chk ] <= other.col_start[ chk + 1 ] );
@@ -1106,6 +1186,12 @@ namespace grb {
 				}
 
 				/**
+				 * @returns A null pointer (since this is a pattern matrix).
+				 */
+				char * getValues() const noexcept {
+					return nullptr;
+				}
+				/**
 				 * @returns The index array.
 				 *
 				 * \warning Does not check for <tt>NULL</tt> pointers.
@@ -1176,29 +1262,35 @@ namespace grb {
 				 * \internal copyFrom specialisation for pattern matrices.
 				 */
 				template<
-					bool use_id = false,
-					typename InputType,
-					typename UnusedType = void
+					Descriptor = descriptors::no_operation,
+					bool unusedValue = false,
+					typename InputType, typename InputIND, typename InputSIZE,
+					typename UnusedType = std::nullptr_t
 				>
 				void copyFrom(
-					const Compressed_Storage< InputType, IND, SIZE > &other,
+					const Compressed_Storage< InputType, InputIND, InputSIZE > &other,
 					const size_t nz, const size_t m, const size_t start, size_t end,
 					const UnusedType * __restrict__ = nullptr
 				) {
-					// the use_id template is meaningless in the case of pattern matrices, but
-					// is retained to keep the API the same as with the non-pattern case.
-					(void) use_id;
+					(void) unusedValue;
+					// the unusedValue template is meaningless in the case of
+					// pattern matrices, but is retained to keep the API
+					// the same as with the non-pattern case.
+					auto k = start;
 #ifdef _DEBUG
 					std::cout << "CompressedStorage::copyFrom (void) called with range "
 						<< start << "--" << end << "\n";
 #endif
-					size_t k = start;
+
 					if( k < nz ) {
 						const size_t loop_end = std::min( nz, end );
-						(void) std::memcpy(
-							row_index + k, other.row_index + k,
-							(loop_end - k) * sizeof( IND )
-						);
+						assert( k <= loop_end );
+#ifdef _H_GRB_REFERENCE_OMP_COMPRESSED_STORAGE
+						#pragma omp for simd
+#endif
+						for( size_t i = k; i < loop_end; ++i ) {
+							row_index[ i ] = static_cast< IND >( other.row_index[ i ] );
+						}
 						k = 0;
 					} else {
 						assert( k >= nz );
@@ -1208,12 +1300,22 @@ namespace grb {
 						return;
 					}
 					end -= nz;
+
 					if( k < m + 1 ) {
 						const size_t loop_end = std::min( m + 1, end );
-						(void) std::memcpy(
-							col_start + k, other.col_start + k,
-							(loop_end - k) * sizeof( SIZE )
-						);
+						assert( k <= loop_end );
+#ifdef _H_GRB_REFERENCE_OMP_COMPRESSED_STORAGE
+						#pragma omp for simd
+#endif
+						for( size_t i = k; i < loop_end; ++i ) {
+							col_start[ i ] = static_cast< SIZE >( other.col_start[ i ] );
+						}
+#ifndef NDEBUG
+						for( size_t chk = k; chk < loop_end - 1; ++chk ) {
+							assert( other.col_start[ chk ] <= other.col_start[ chk + 1 ] );
+							assert( col_start[ chk ] <= col_start[ chk + 1 ] );
+						}
+#endif
 					}
 				}
 

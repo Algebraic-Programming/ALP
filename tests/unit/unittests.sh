@@ -617,6 +617,13 @@ for MODE in ${MODES}; do
 				grep 'Test OK' ${TEST_OUT_DIR}/copyVoidMatrices_${MODE}_${BACKEND}_${P}_${T} || echo "Test FAILED"
 				echo " "
 
+				echo ">>>      [x]           [ ]       Testing copy-constructor of square matrices with mixed-domains"
+				echo "                                 of size 1003."
+				$runner ${TEST_BIN_DIR}/copyMixedDomainsMatrices_${MODE}_${BACKEND} 1003 &> ${TEST_OUT_DIR}/copyMixedDomainsMatrices_${MODE}_${BACKEND}_${P}_${T}
+				head -1 ${TEST_OUT_DIR}/copyMixedDomainsMatrices_${MODE}_${BACKEND}_${P}_${T}
+				grep 'Test OK' ${TEST_OUT_DIR}/copyMixedDomainsMatrices_${MODE}_${BACKEND}_${P}_${T} || echo "Test FAILED"
+				echo " "
+
 				if [ "$BACKEND" = "bsp1d" ] || [ "$BACKEND" = "hybrid" ]; then
 					echo "Additional standardised unit tests not yet supported for the ${BACKEND} backend."
 					echo
