@@ -103,8 +103,9 @@ void grbProgram( const size_t &P, int &exit_status ) {
 	// test default pagerank run
 	Vector< double > pr( n );
 	Vector< double > buf1( n ), buf2( n ), buf3( n );
+	Vector< bool > buf4( n );
 
-	rc = simple_pagerank<>( pr, L, buf1, buf2, buf3 );
+	rc = simple_pagerank<>( pr, L, buf1, buf2, buf3, buf4 );
 
 	// set error code
 	if( rc == FAILED ) {

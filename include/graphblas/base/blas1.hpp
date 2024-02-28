@@ -3737,6 +3737,7 @@ namespace grb {
 	 * @see perfSemantics
 	 */
 	template<
+		Descriptor = descriptors::no_operation,
 		typename Func,
 		typename DataType,
 		Backend backend,
@@ -3745,7 +3746,8 @@ namespace grb {
 	>
 	RC eWiseLambda(
 		const Func f,
-		const Vector< DataType, backend, Coords > & x, Args...
+		const Vector< DataType, backend, Coords > &x,
+		Args...
 	) {
 #ifndef NDEBUG
 		const bool should_not_call_base_vector_ewiselambda = false;

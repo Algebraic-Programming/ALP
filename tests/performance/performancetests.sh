@@ -338,7 +338,7 @@ runMultiplicationKernels()
 			echo "Test DISABLED: no sparse level-3 operations recommended for 1D distributions."
 			echo " "
 		elif [ "$i" -gt "14" ]; then
-			echo "Tests DISABLED: by default, long-running sparse matrix--sparse matrix multiplications are disabled (skipping dataset ${dataSet})."
+			echo "Test DISABLED: by default, long-running sparse matrix--sparse matrix multiplications are disabled (skipping dataset ${dataSet})."
 			echo " "
 		else
 			$runner ${TEST_BIN_DIR}/driver_spmspm_${backend} ${INPUT_DIR}/${dataSet} ${INPUT_DIR}/${dataSet} ${parseMode} &> ${TEST_OUT_DIR}/driver_spmspm_${backend}_${dataSet}
