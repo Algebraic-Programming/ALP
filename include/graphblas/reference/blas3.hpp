@@ -136,11 +136,11 @@ namespace grb {
 					config::OMP::localRange( start_row, end_row, 0, m );
 #endif
 					size_t local_nzc = 0;
-					for( auto i = start_row; i < end_row; ++i ) {
+					for( size_t i = start_row; i < end_row; ++i ) {
 						for( auto k = in_raw.col_start[ i ]; k < in_raw.col_start[ i + 1 ]; ++k ) {
 							const auto j = in_raw.row_index[ k ];
-							const EffectiveRowType global_row = row_l2g( i );
-							const EffectiveColumnType global_col = col_l2g( j );
+							const auto global_row = static_cast< EffectiveRowType >( row_l2g( i ) );
+							const auto global_col = static_cast< EffectiveColumnType >( col_l2g( j ) );
 							const auto value = in_raw.getValue( k, identity );
 							if( op( &global_row, &global_col, &value ) ) {
 								(void) ++local_nzc;
@@ -182,8 +182,8 @@ namespace grb {
 				for( size_t i = 0; i < m; ++i ) {
 					for( size_t k = in_raw.col_start[ i ]; k < in_raw.col_start[ i + 1 ]; ++k ) {
 						const auto j = in_raw.row_index[ k ];
-						const EffectiveRowType global_row = row_l2g( i );
-						const EffectiveColumnType global_col = col_l2g( j );
+						const auto global_row = static_cast< EffectiveRowType >( row_l2g( i ) );
+						const auto global_col = static_cast< EffectiveColumnType >( col_l2g( j ) );
 						const auto value = in_raw.getValue( k, identity );
 						if( op( &global_row, &global_col, &value ) ) {
 							(void) ++out_ccs.col_start[ j + 1 ];
@@ -196,14 +196,12 @@ namespace grb {
 					out_ccs.col_start[ j ] += out_ccs.col_start[ j - 1 ];
 				}
 
-				// Initialise the column counter array with zeros
-				if( n + 1 < config::OMP::minLoopSize() ) {
-					for( size_t j = 0; j < n + 1; ++j ) {
-						col_counter[ j ] = 0;
-					}
-				} else {
+				{ // Initialise the column counter array with zeros
 #ifdef _H_GRB_REFERENCE_OMP_BLAS3
-					#pragma omp parallel for simd
+					const size_t nthreads = m < config::OMP::minLoopSize()
+						? 1
+						: config::OMP::threads();
+					#pragma omp parallel for simd num_threads( nthreads )
 #endif
 					for( size_t j = 0; j < n + 1; ++j ) {
 						col_counter[ j ] = 0;
@@ -218,10 +216,10 @@ namespace grb {
 					++k
 				) {
 					const auto j = in_raw.row_index[ k ];
-					const EffectiveRowType global_row = row_l2g( i );
-					const EffectiveColumnType global_col = col_l2g( j );
+					const auto global_row = static_cast< EffectiveRowType >( row_l2g( i ) );
+					const auto global_col = static_cast< EffectiveColumnType >( col_l2g( j ) );
 					const auto value = in_raw.getValue( k, identity );
-					if( op( &global_row, &global_col, &value ) ) {
+					if( !op( &global_row, &global_col, &value ) ) {
 						continue;
 					}
 #ifdef _DEBUG
