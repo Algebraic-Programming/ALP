@@ -190,9 +190,23 @@ for BACKEND in ${BACKENDS[@]}; do
 			echo "                                 employs the grb::Launcher in automatic mode. It uses"
 			echo "                                 direct-mode file IO."
 			if [ -f ${INPUT_DIR}/gyro_m.mtx ]; then
-				$runner ${TEST_BIN_DIR}/conjugate_gradient_${BACKEND} ${INPUT_DIR}/gyro_m.mtx direct 1 1 10000 verification ${OUTPUT_VERIFICATION_DIR}/conjugate_gradient_out_gyro_m_ref &> ${TEST_OUT_DIR}/conjugate_gradient_${BACKEND}_${P}_${T}.log
+				$runner ${TEST_BIN_DIR}/conjugate_gradient_${BACKEND} ${INPUT_DIR}/gyro_m.mtx direct 1 1 10000 false verification ${OUTPUT_VERIFICATION_DIR}/conjugate_gradient_out_gyro_m_ref &> ${TEST_OUT_DIR}/conjugate_gradient_${BACKEND}_${P}_${T}.log
 				head -1 ${TEST_OUT_DIR}/conjugate_gradient_${BACKEND}_${P}_${T}.log
 				grep 'Test OK' ${TEST_OUT_DIR}/conjugate_gradient_${BACKEND}_${P}_${T}.log || echo "Test FAILED"
+			else
+				echo "Test DISABLED: gyro_m.mtx was not found. To enable, please provide ${INPUT_DIR}/gyro_m.mtx"
+			fi
+			echo " "
+
+			echo ">>>      [x]           [ ]       Testing the Jacobi-preconditioned conjugate gradient algorithm"
+			echo "                                 for the input matrix (17361x17361) taken from gyro_m.mtx. This"
+			echo "                                 test verifies against a ground-truth solution vector. The test"
+			echo "                                 employs the grb::Launcher in automatic mode. It uses"
+			echo "                                 direct-mode file IO."
+			if [ -f ${INPUT_DIR}/gyro_m.mtx ]; then
+				$runner ${TEST_BIN_DIR}/conjugate_gradient_${BACKEND} ${INPUT_DIR}/gyro_m.mtx direct 1 1 10000 true verification ${OUTPUT_VERIFICATION_DIR}/conjugate_gradient_out_gyro_m_ref &> ${TEST_OUT_DIR}/preconditioned_conjugate_gradient_${BACKEND}_${P}_${T}.log
+				head -1 ${TEST_OUT_DIR}/preconditioned_conjugate_gradient_${BACKEND}_${P}_${T}.log
+				grep 'Test OK' ${TEST_OUT_DIR}/preconditioned_conjugate_gradient_${BACKEND}_${P}_${T}.log || echo "Test FAILED"
 			else
 				echo "Test DISABLED: gyro_m.mtx was not found. To enable, please provide ${INPUT_DIR}/gyro_m.mtx"
 			fi
@@ -221,9 +235,24 @@ for BACKEND in ${BACKENDS[@]}; do
 				echo "                                 verifies against a ground-truth solution vector. The test"
 				echo "                                 employs the grb::Launcher in automatic mode. It uses"
 				echo "                                 direct-mode file IO."
-				$runner ${TEST_BIN_DIR}/conjugate_gradient_complex_${BACKEND} ${TEST_DATA_DIR}/${TESTNAME}.mtx direct 1 1 1000 verification ${OUTPUT_VERIFICATION_DIR}/complex_conjugate_conjugate_gradient_out_${TESTNAME}_ref &> ${TEST_OUT_DIR}/conjugate_gradient_complex_${BACKEND}_${P}_${T}.log
+				$runner ${TEST_BIN_DIR}/conjugate_gradient_complex_${BACKEND} ${TEST_DATA_DIR}/${TESTNAME}.mtx direct 1 1 1000 false verification ${OUTPUT_VERIFICATION_DIR}/complex_conjugate_conjugate_gradient_out_${TESTNAME}_ref &> ${TEST_OUT_DIR}/conjugate_gradient_complex_${BACKEND}_${P}_${T}.log
 				head -1 ${TEST_OUT_DIR}/conjugate_gradient_complex_${BACKEND}_${P}_${T}.log
 				grep 'Test OK' ${TEST_OUT_DIR}/conjugate_gradient_complex_${BACKEND}_${P}_${T}.log || echo "Test FAILED"
+			else
+				echo "Test DISABLED: ${TESTNAME}.mtx was not found. To enable, please provide ${TEST_DATA_DIR}/${TESTNAME}.mtx"
+			fi
+			echo " "
+
+			# note the below test relies on the bash variables defined in the previous one
+			if [ -f ${TEST_DATA_DIR}/${TESTNAME}.mtx ]; then
+				echo ">>>      [x]           [ ]       Testing the Jacobi-preconditioned conjugate gradient complex"
+				echo "                                 algorithm for the input matrix (${n}x${m}) taken from"
+				echo "                                 ${TESTNAME}.mtx. This test verifies against a ground-truth"
+				echo "                                 solution vector. The test employs the grb::Launcher in automatic"
+				echo "                                 mode. It uses direct-mode file IO."
+				$runner ${TEST_BIN_DIR}/conjugate_gradient_complex_${BACKEND} ${TEST_DATA_DIR}/${TESTNAME}.mtx direct 1 1 10000 true verification ${OUTPUT_VERIFICATION_DIR}/complex_conjugate_conjugate_gradient_out_${TESTNAME}_ref &> ${TEST_OUT_DIR}/preconditioned_conjugate_gradient_complex_${BACKEND}_${P}_${T}.log
+				head -1 ${TEST_OUT_DIR}/preconditioned_conjugate_gradient_complex_${BACKEND}_${P}_${T}.log
+				grep 'Test OK' ${TEST_OUT_DIR}/preconditioned_conjugate_gradient_complex_${BACKEND}_${P}_${T}.log || echo "Test FAILED"
 			else
 				echo "Test DISABLED: ${TESTNAME}.mtx was not found. To enable, please provide ${TEST_DATA_DIR}/${TESTNAME}.mtx"
 			fi

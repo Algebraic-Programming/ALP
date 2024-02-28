@@ -26,6 +26,7 @@
 
 /**
  * @file
+ *
  * This implements a transition path API to the linear system solvers.
  *
  * @author Alberto Scolari
@@ -42,25 +43,113 @@ class CG_Data {
 
 	private:
 
+		/**
+		 * General (templated) preconditioner handle type.
+		 *
+		 * A preconditioner is assumed to be a plain C function pointer, where
+		 *  -# the function returns an <tt>int</tt> error code (where zero will be
+		 *     interpreted as success);
+		 *  -# the first argument is where the result of applying the preconditioner
+		 *     will be stored. It is a raw vector pointer (e.g., <tt>double *</tt>);
+		 *  -# the second argument contains the data on which the preconditioner
+		 *     action should be computed. It is a raw const vector pointer (e.g.,
+		 *     <tt>const double *</tt>);
+		 *  -# the third argument contains a pointer to any preconditioner data it
+		 *     may require. It is a raw void pointer, meaning, although usually not
+		 *     necessary nor recommended, the preconditioner data may be stateful.
+		 *
+		 * The function signature must match exactly this specification.
+		 */
+		typedef int (*preconditioner_t) (
+			T * const,
+			const T * const,
+			void * const
+		);
+
+		/** The preconditioner type expected by ALP. */
+		using alp_preconditioner_t = std::function< grb::RC(grb::Vector< T >&, const grb::Vector< T >&) >;
+
+		/** Underlying ALP/GraphBLAS matrix type. */
 		typedef grb::Matrix< T, grb::config::default_backend, RSI, RSI, NZI > Matrix;
 
 		// input args
+
+		/** The system size. */
 		size_t size;
+
+		/** The requested relative tolerance. */
 		T tolerance;
+
+		/** The maximum number of iterations. */
 		size_t max_iter;
+
+		/** The system matrix. */
 		Matrix matrix;
 
 		// outputs
+
+		/** The last-known residual. */
 		T residual;
+
+		/** The number of iterations taken. */
 		size_t iters;
 
-		// workspace
+		/** An array of workspace vectors. */
 		std::array< grb::Vector< T >, 3 > workspace;
+
+		/** An optional workspace vector in case of preconditioned CG. */
+		grb::Vector< T > precond_workspace;
+
+		/** Currently active preconditioner. */
+		preconditioner_t preconditioner;
+
+		/** Any required data for the \a preconditioner. */
+		void * preconditioner_data;
+
+
+	protected:
+
+		// helper function(s)
+
+		/**
+		 * Translates a given C-style preconditioner handle to one compatible with
+		 * ALP preconditioners.
+		 */
+		inline alp_preconditioner_t alpified_preconditioner() noexcept {
+			alp_preconditioner_t ret = [this](
+					grb::Vector< T > &out,
+					const grb::Vector< T > &in
+				) {
+					T * const raw_out = grb::internal::getRaw( out );
+					const T * const raw_in = grb::internal::getRaw( in );
+					const int c_rc = (*preconditioner)( raw_out, raw_in, preconditioner_data );
+					if( c_rc != 0 ) {
+						std::cerr << "Warning: user preconditioner returned non-zero error "
+							<< "code: " << c_rc << "\n";
+						return grb::RC::FAILED;
+					}
+					return grb::RC::SUCCESS;
+				};
+			return ret;
+		}
+
 
 	public:
 
+		/** Disable default constructor. */
 		CG_Data() = delete;
 
+		/**
+		 * The Conjugate Gradient solver.
+		 *
+		 * @param[in] n  The system size.
+		 * @param[in] a  The system matrix nonzero values (CRS).
+		 * @param[in] ja The system matrix nonzero column indices (CRS).
+		 * @param[in] ia The system matrix nonzero row offsets (CRS).
+		 *
+		 * The matrix defined by \a a, \a ja, \a ia must be symmetric positive
+		 * definite.
+		 */
 		CG_Data(
 			const size_t n,
 			const T * const a, const RSI * const ja, const NZI * const ia
@@ -69,7 +158,9 @@ class CG_Data {
 			residual( std::numeric_limits< T >::infinity() ), iters( 0 ),
 			workspace( {
 				grb::Vector< T >( n ), grb::Vector< T >( n ), grb::Vector< T >( n )
-			} )
+			} ),
+			precond_workspace( grb::Vector< T >( 0 ) ),
+			preconditioner( nullptr ), preconditioner_data( nullptr )
 		{
 			assert( n > 0 );
 			assert( a != nullptr );
@@ -79,31 +170,109 @@ class CG_Data {
 			std::swap( A, matrix );
 		}
 
+		/** @returns The system size. */
 		size_t getSize() const noexcept { return size; }
 
+		/** @returns The currently active relative tolerance. */
 		T getTolerance() const noexcept { return tolerance; }
 
+		/** @returns The last-known residual. */
 		T getResidual() const noexcept { return residual; }
 
+		/** @returns The number of iterations during the last solve. */
 		size_t getIters() const noexcept { return iters; }
 
+		/**
+		 * Retrieves the currently active preconditioner.
+		 *
+		 * @param[out] in   Where to store the preconditioner.
+		 * @param[out] data Where to store the corresponding data.
+		 */
+		void getPreconditioner( preconditioner_t &in, void * &data ) const noexcept {
+			in = preconditioner;
+			data = preconditioner_data;
+		}
+
+		/**
+		 * Sets the maximum number of iterations a solve call may spend.
+		 *
+		 * @param[in] in The new maximum number of iterations.
+		 */
 		void setMaxIters( const size_t &in ) noexcept { max_iter = in; }
 
+		/**
+		 * Sets the currently active relative tolerance.
+		 *
+		 * @param[in] in The new relative tolerance.
+		 */
 		void setTolerance( const T &in ) noexcept { tolerance = in; }
 
-		grb::RC solve( grb::Vector< T > &x, const grb::Vector< T > &b ) {
+		/**
+		 * Sets the currently active preconditioner.
+		 *
+		 * @param[in] in   The new preconditioner.
+		 * @param[in] data Any associated preconditioner data.
+		 *
+		 * The argument \a in may be <tt>nullptr</tt>, which would indicate no
+		 * preconditioner will be applied.
+		 *
+		 * If \a in is indeed <tt>nullptr</tt>, then \a data must also be
+		 * <tt>nullptr</tt>.
+		 *
+		 * A call to this function may allocate a workspace buffer required for
+		 * preconditioned CG. Such additional allocation can happen at most once for
+		 * every #CG_Data instance.
+		 *
+		 * @throws Exceptions may be thrown from the preconditioner workspace
+		 *         allocation.
+		 */
+		void setPreconditioner( const preconditioner_t in, void * const data ) {
+			preconditioner = in;
+			preconditioner_data = data;
+			assert( !( !preconditioner && preconditioner_data ) );
+			if( grb::size( precond_workspace ) == 0 ) {
+				grb::Vector< T > replace( size );
+				std::swap( replace, precond_workspace );
+			}
+			assert( grb::size( precond_workspace ) == size );
+		}
+
+		/**
+		 * Solves the system \f$ Ax=b \f$ for a given initial guess \a x and a given
+		 * right-hand side \a b.
+		 *
+		 * @param[in,out] x On input, the initial guess to a solution. On output, the
+		 *                  last approximation to the solution.
+		 *
+		 * @param[in]     b The right-hand side \a b.
+		 *
+		 * @returns @see #grb::algorithms::preconditioned_conjugate_gradients.
+		 */
+		grb::RC solve(
+			grb::Vector< T > &x, const grb::Vector< T > &b
+		) {
 			constexpr grb::Descriptor descr =
 				grb::descriptors::dense | grb::descriptors::force_row_major;
-			return grb::algorithms::conjugate_gradient< descr >(
-				x, matrix, b,
-				max_iter, tolerance,
-				iters, residual,
-				workspace[ 0 ], workspace[ 1 ], workspace[ 2 ]
-			);
+			if( preconditioner == nullptr ) {
+				return grb::algorithms::conjugate_gradient< descr >(
+					x, matrix, b,
+					max_iter, tolerance,
+					iters, residual,
+					workspace[ 0 ], workspace[ 1 ], workspace[ 2 ]
+				);
+			} else {
+				return grb::algorithms::preconditioned_conjugate_gradient< descr >(
+					x, matrix, b,
+					alpified_preconditioner(),
+					max_iter, tolerance,
+					iters, residual,
+					workspace[ 0 ], workspace[ 1 ], workspace[ 2 ],
+					precond_workspace
+				);
+			}
 		}
 
 };
-
 
 template< typename T, typename NZI, typename RSI >
 static sparse_err_t sparse_cg_init_impl(
@@ -168,6 +337,50 @@ sparse_err_t sparse_cg_init_dzz(
 	return sparse_cg_init_impl< double, size_t, size_t >( handle, n, a, ja, ia );
 }
 
+template< typename T, typename NZI, typename RSI >
+static sparse_err_t sparse_cg_get_size_impl(
+	const sparse_cg_handle_t handle, size_t * const size
+) {
+	if( handle == nullptr || size == nullptr ) { return NULL_ARGUMENT; }
+	*size = static_cast< CG_Data< T, NZI, RSI > * >( handle )->getSize();
+	return NO_ERROR;
+}
+
+sparse_err_t sparse_cg_get_size_sii(
+	const sparse_cg_handle_t handle, size_t * const size
+) {
+	return sparse_cg_get_size_impl< float, int, int >( handle, size );
+}
+
+sparse_err_t sparse_cg_get_size_siz(
+	const sparse_cg_handle_t handle, size_t * const size
+) {
+	return sparse_cg_get_size_impl< float, size_t, int >( handle, size );
+}
+
+sparse_err_t sparse_cg_get_size_szz(
+	const sparse_cg_handle_t handle, size_t * const size
+) {
+	return sparse_cg_get_size_impl< float, size_t, size_t >( handle, size );
+}
+
+sparse_err_t sparse_cg_get_size_dii(
+	const sparse_cg_handle_t handle, size_t * const size
+) {
+	return sparse_cg_get_size_impl< double, int, int >( handle, size );
+}
+
+sparse_err_t sparse_cg_get_size_diz(
+	const sparse_cg_handle_t handle, size_t * const size
+) {
+	return sparse_cg_get_size_impl< double, size_t, int >( handle, size );
+}
+
+sparse_err_t sparse_cg_get_size_dzz(
+	const sparse_cg_handle_t handle, size_t * const size
+) {
+	return sparse_cg_get_size_impl< double, size_t, size_t >( handle, size );
+}
 
 template< typename T, typename NZI, typename RSI >
 static sparse_err_t sparse_cg_get_tolerance_impl(
@@ -352,6 +565,147 @@ sparse_err_t sparse_cg_get_iter_count_dzz(
 	return sparse_cg_get_iter_count_impl< double, size_t, size_t >( handle, iters );
 }
 
+template< typename T, typename NZI, typename RSI >
+static sparse_err_t sparse_cg_get_preconditioner_impl(
+	sparse_cg_handle_t handle,
+	int (** const preconditioner)( T * const, const T * const, void * const ),
+	void * * const data
+) {
+	if( handle == nullptr || preconditioner == nullptr || data == nullptr ) {
+		return NULL_ARGUMENT;
+	}
+	static_cast< const CG_Data< T, NZI, RSI > * >( handle )->
+		getPreconditioner( *preconditioner, *data );
+	return NO_ERROR;
+}
+
+sparse_err_t sparse_cg_get_preconditioner_sii(
+	const sparse_cg_handle_t handle,
+	sparse_cg_preconditioner_sxx_t * const preconditioner,
+	void * * const data
+) {
+	return sparse_cg_get_preconditioner_impl< float, int, int >(
+		handle, preconditioner, data );
+}
+
+sparse_err_t sparse_cg_get_preconditioner_siz(
+	const sparse_cg_handle_t handle,
+	sparse_cg_preconditioner_sxx_t * const preconditioner,
+	void * * const data
+) {
+	return sparse_cg_get_preconditioner_impl< float, size_t, int >(
+		handle, preconditioner, data );
+}
+
+sparse_err_t sparse_cg_get_preconditioner_szz(
+	const sparse_cg_handle_t handle,
+	sparse_cg_preconditioner_sxx_t * const preconditioner,
+	void * * const data
+) {
+	return sparse_cg_get_preconditioner_impl< float, size_t, size_t >(
+		handle, preconditioner, data );
+}
+
+sparse_err_t sparse_cg_get_preconditioner_dii(
+	const sparse_cg_handle_t handle,
+	sparse_cg_preconditioner_dxx_t * const preconditioner,
+	void * * const data
+) {
+	return sparse_cg_get_preconditioner_impl< double, int, int >(
+		handle, preconditioner, data );
+}
+
+sparse_err_t sparse_cg_get_preconditioner_diz(
+	const sparse_cg_handle_t handle,
+	sparse_cg_preconditioner_dxx_t * const preconditioner,
+	void * * const data
+) {
+	return sparse_cg_get_preconditioner_impl< double, size_t, int >(
+		handle, preconditioner, data );
+}
+
+sparse_err_t sparse_cg_get_preconditioner_dzz(
+	const sparse_cg_handle_t handle,
+	sparse_cg_preconditioner_dxx_t * const preconditioner,
+	void * * const data
+) {
+	return sparse_cg_get_preconditioner_impl< double, size_t, size_t >(
+		handle, preconditioner, data );
+}
+
+// setters
+
+template< typename T, typename NZI, typename RSI >
+static sparse_err_t sparse_cg_set_preconditioner_impl(
+	sparse_cg_handle_t handle,
+	int (*c_precond_p)( T * const, const T * const, void * const ),
+	void * const c_precond_data_p
+) {
+	if( handle == nullptr ) { return NULL_ARGUMENT; }
+	if( !c_precond_p && c_precond_data_p ) { return ILLEGAL_ARGUMENT; }
+	try {
+		static_cast< CG_Data< T, NZI, RSI > * >( handle )->
+			setPreconditioner( c_precond_p, c_precond_data_p );
+	} catch(...) {
+		// spec says ALP vector allocation can only throw due to out-of-memory
+		return OUT_OF_MEMORY;
+	}
+	return NO_ERROR;
+}
+
+sparse_err_t sparse_cg_set_preconditioner_sii(
+	const sparse_cg_handle_t handle,
+	const sparse_cg_preconditioner_sxx_t preconditioner,
+	void * const data
+) {
+	return sparse_cg_set_preconditioner_impl< float, int, int >(
+		handle, preconditioner, data );
+}
+
+sparse_err_t sparse_cg_set_preconditioner_dii(
+	const sparse_cg_handle_t handle,
+	const sparse_cg_preconditioner_dxx_t preconditioner,
+	void * const data
+) {
+	return sparse_cg_set_preconditioner_impl< double, int, int >(
+		handle, preconditioner, data );
+}
+
+sparse_err_t sparse_cg_set_preconditioner_siz(
+	const sparse_cg_handle_t handle,
+	const sparse_cg_preconditioner_sxx_t preconditioner,
+	void * const data
+) {
+	return sparse_cg_set_preconditioner_impl< float, size_t, int >(
+		handle, preconditioner, data );
+}
+
+sparse_err_t sparse_cg_set_preconditioner_diz(
+	const sparse_cg_handle_t handle,
+	const sparse_cg_preconditioner_dxx_t preconditioner,
+	void * const data
+) {
+	return sparse_cg_set_preconditioner_impl< double, size_t, int >(
+		handle, preconditioner, data );
+}
+
+sparse_err_t sparse_cg_set_preconditioner_szz(
+	const sparse_cg_handle_t handle,
+	const sparse_cg_preconditioner_sxx_t preconditioner,
+	void * const data
+) {
+	return sparse_cg_set_preconditioner_impl< float, size_t, size_t >(
+		handle, preconditioner, data );
+}
+
+sparse_err_t sparse_cg_set_preconditioner_dzz(
+	const sparse_cg_handle_t handle,
+	const sparse_cg_preconditioner_dxx_t preconditioner,
+	void * const data
+) {
+	return sparse_cg_set_preconditioner_impl< double, size_t, size_t >(
+		handle, preconditioner, data );
+}
 
 template< typename T, typename NZI, typename RSI >
 static sparse_err_t sparse_cg_set_max_iter_count_impl(

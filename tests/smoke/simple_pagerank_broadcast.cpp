@@ -100,11 +100,13 @@ void grbProgram(
 	// test default pagerank run
 	Vector< double > pr( A.n );
 	Vector< double > buf1( A.n ), buf2( A.n ), buf3( A.n );
+	Vector< bool > buf4( A.n );
 
 	double time_taken;
 	grb::utils::Timer timer;
 	timer.reset();
-	rc = simple_pagerank< descriptors::no_operation >( pr, L, buf1, buf2, buf3 );
+	rc = simple_pagerank< descriptors::no_operation >( pr, L, buf1, buf2, buf3,
+		buf4 );
 	time_taken = timer.time();
 
 	// print timing at root process
@@ -158,7 +160,9 @@ int main( int argc, char ** argv ) {
 		const size_t in_size = s == 0
 			? sizeof( struct input_matrix ) + nz * sizeof( size_t ) * 2
 			: 0;
-		char * data_in = s == 0 ? new char[ in_size ] : NULL;
+		char * data_in = s == 0
+			? new char[ in_size ]
+			: NULL;
 
 		// root process initialises
 		if( s == 0 ) {

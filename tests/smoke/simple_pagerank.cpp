@@ -203,6 +203,7 @@ void grbProgram( const struct input &data_in, struct output &out ) {
 	// set up default pagerank test
 	Vector< double > pr( n );
 	Vector< double > buf1( n ), buf2( n ), buf3( n );
+	Vector< bool > buf4( n );
 	out.times.preamble = timer.time();
 
 	// by default, copy input requested repetitions to output repititions performed
@@ -213,7 +214,7 @@ void grbProgram( const struct input &data_in, struct output &out ) {
 		timer.reset();
 		rc = simple_pagerank< descriptors::no_operation >(
 			pr, L,
-			buf1, buf2, buf3,
+			buf1, buf2, buf3, buf4,
 			alpha, tol, data_in.solver_iterations,
 			&( out.iterations ), &( out.residual )
 		);
@@ -257,7 +258,7 @@ void grbProgram( const struct input &data_in, struct output &out ) {
 			if( rc == SUCCESS ) {
 				rc = simple_pagerank< descriptors::no_operation >(
 					pr, L,
-					buf1, buf2, buf3,
+					buf1, buf2, buf3, buf4,
 					alpha, tol, data_in.solver_iterations,
 					&( out.iterations ), &( out.residual )
 				);

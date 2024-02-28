@@ -2218,7 +2218,7 @@ namespace grb {
 
 #ifndef _H_GRB_REFERENCE_OMP_BLAS2
 		/**
-		 * A nonzero wrapper for use with grb::eWiseLambda over matricies.
+		 * A nonzero wrapper for use with grb::eWiseLambda over matrices.
 		 *
 		 * \internal In the general case, stores a pointer to values. Row and column
 		 *           indices are kept as a copy since doing so is in virtually all
@@ -2448,373 +2448,400 @@ namespace grb {
 				}
 			}
 		}
-	}
 
-	/**
-	 * Straightforward implementation using the column-major layout.
-	 *
-	 * @see grb::eWiseLambda for the user-level specification.
-	 */
-	template<
-		class ActiveDistribution, typename Func,
-		typename DataType, typename RIT, typename CIT, typename NIT
-	>
-	RC eWiseLambda(
-		const Func f,
-		const Matrix< DataType, reference, RIT, CIT, NIT > &A,
-		const size_t s, const size_t P
-	) {
+		/**
+		 * Straightforward implementation using the column-major layout.
+		 *
+		 * @see grb::eWiseLambda for the user-level specification.
+		 */
+		template<
+			Descriptor descr,
+			class ActiveDistribution,
+			typename Func,
+			typename DataType, typename RIT, typename CIT, typename NIT
+		>
+		RC eWiseLambda(
+			const Func f,
+			const Matrix< DataType, reference, RIT, CIT, NIT > &A,
+			const size_t global_m, const size_t global_n,
+			const size_t s, const size_t P
+		) {
+			(void) descr;
 #ifdef _DEBUG
-		std::cout << "entering grb::eWiseLambda (matrices, reference ). A is "
-			<< grb::nrows( A ) << " by " << grb::ncols( A ) << " and holds "
-			<< grb::nnz( A ) << " nonzeroes.\n";
+			std::cout << "entering grb::eWiseLambda (matrices, reference ). A is "
+				<< grb::nrows( A ) << " by " << grb::ncols( A ) << " and holds "
+				<< grb::nnz( A ) << " nonzeroes.\n";
 #endif
-		// check for trivial call
-		if( grb::nrows( A ) == 0 || grb::ncols( A ) == 0 || grb::nnz( A ) == 0 ) {
-			return SUCCESS;
-		}
+			// check for trivial call
+			if( grb::nrows( A ) == 0 || grb::ncols( A ) == 0 || grb::nnz( A ) == 0 ) {
+				return SUCCESS;
+			}
 
 #ifdef _H_GRB_REFERENCE_OMP_BLAS2
-		#pragma omp parallel
+			#pragma omp parallel
 #endif
-		{
-			// prep CRS for overwrite
 			{
-#ifdef _DEBUG
-				std::cout << "\t\t original CRS row start = { ";
-				for( size_t i = 0; i <= A.m; ++i ) {
-					std::cout << A.CRS.col_start[ i ] << " ";
-				}
-				std::cout << "}\n";
-#endif
-				size_t m_start = 0, m_end = A.m;
-#ifdef _H_GRB_REFERENCE_OMP_BLAS2
-				config::OMP::localRange( m_start, m_end, 0, A.m );
-#endif
-				const size_t tmp = A.CRS.col_start[ m_start + 1 ];
-				for( size_t i = m_start + 1; i < m_end; ++i ) {
-					A.CRS.col_start[ i ] = A.CRS.col_start[ i + 1 ];
-				}
-#ifdef _H_GRB_REFERENCE_OMP_BLAS2
-				#pragma omp barrier
-#endif
-				if( m_start < m_end ) {
-					A.CRS.col_start[ m_start ] = tmp;
-				}
-#ifdef _H_GRB_REFERENCE_OMP_BLAS2
-				#pragma omp barrier
-#endif
-#ifdef _DEBUG
- #ifdef _H_GRB_REFERENCE_OMP_BLAS2
-				#pragma omp single
- #endif
+				// prep CRS for overwrite
 				{
-					std::cout << "\t\t shifted CRS row start = { ";
+#ifdef _DEBUG
+					std::cout << "\t\t original CRS row start = { ";
 					for( size_t i = 0; i <= A.m; ++i ) {
 						std::cout << A.CRS.col_start[ i ] << " ";
 					}
 					std::cout << "}\n";
+#endif
+					size_t m_start = 0, m_end = A.m;
+#ifdef _H_GRB_REFERENCE_OMP_BLAS2
+					config::OMP::localRange( m_start, m_end, 0, A.m );
+#endif
+					const size_t tmp = A.CRS.col_start[ m_start + 1 ];
+					for( size_t i = m_start + 1; i < m_end; ++i ) {
+						A.CRS.col_start[ i ] = A.CRS.col_start[ i + 1 ];
+					}
+#ifdef _H_GRB_REFERENCE_OMP_BLAS2
+					#pragma omp barrier
+#endif
+					if( m_start < m_end ) {
+						A.CRS.col_start[ m_start ] = tmp;
+					}
+#ifdef _H_GRB_REFERENCE_OMP_BLAS2
+					#pragma omp barrier
+#endif
+#ifdef _DEBUG
+ #ifdef _H_GRB_REFERENCE_OMP_BLAS2
+					#pragma omp single
+ #endif
+					{
+						std::cout << "\t\t shifted CRS row start = { ";
+						for( size_t i = 0; i <= A.m; ++i ) {
+							std::cout << A.CRS.col_start[ i ] << " ";
+						}
+						std::cout << "}\n";
+					}
+#endif
 				}
-#endif
-			}
 
-			// loop over all nonzeroes using CCS
-			size_t start, end;
+				// loop over all nonzeroes using CCS
+				size_t start, end;
 #ifndef _H_GRB_REFERENCE_OMP_BLAS2
-			start = 0;
-			end = A.CCS.col_start[ A.n ];
+				start = 0;
+				end = A.CCS.col_start[ A.n ];
 #else
-			config::OMP::localRange( start, end, 0, A.CCS.col_start[ A.n ] );
+				config::OMP::localRange( start, end, 0, A.CCS.col_start[ A.n ] );
 #endif
 
-			// while we guarantee a lower bound through the constructors of matrix given
-			// as an argument, we dynamically request the maximum chunk size for
-			// ingesting into CRS to exploit the possibility that larger buffers were
-			// requested by other matrices' constructors.
-			size_t maxChunkSize = internal::reference_bufsize /
-				sizeof( internal::eWiseLambdaNonzero< DataType > );
-			assert( maxChunkSize > 0 );
+				// while we guarantee a lower bound through the constructors of matrix given
+				// as an argument, we dynamically request the maximum chunk size for
+				// ingesting into CRS to exploit the possibility that larger buffers were
+				// requested by other matrices' constructors.
+				size_t maxChunkSize = internal::reference_bufsize /
+					sizeof( internal::eWiseLambdaNonzero< DataType > );
+				assert( maxChunkSize > 0 );
 #ifndef _H_GRB_REFERENCE_OMP_BLAS2
-			const size_t maxLocalChunkSize = maxChunkSize;
-			typename internal::eWiseLambdaNonzero< DataType > * nonzeroes =
-				internal::template getReferenceBuffer<
-					typename internal::eWiseLambdaNonzero< DataType >
-				>( maxChunkSize );
-#else
-			typename internal::eWiseLambdaNonzero< DataType > * nonzeroes = nullptr;
-			size_t maxLocalChunkSize = 0;
-			{
-				typename internal::eWiseLambdaNonzero< DataType > * nonzero_buffer =
+				const size_t maxLocalChunkSize = maxChunkSize;
+				typename internal::eWiseLambdaNonzero< DataType > * nonzeroes =
 					internal::template getReferenceBuffer<
 						typename internal::eWiseLambdaNonzero< DataType >
 					>( maxChunkSize );
-				size_t my_buffer_start = 0, my_buffer_end = maxChunkSize;
-				config::OMP::localRange( my_buffer_start, my_buffer_end, 0, maxChunkSize );
-				maxLocalChunkSize = my_buffer_end - my_buffer_start;
-				assert( maxLocalChunkSize > 0 );
-				nonzeroes = nonzero_buffer + my_buffer_start;
-			}
+#else
+				typename internal::eWiseLambdaNonzero< DataType > * nonzeroes = nullptr;
+				size_t maxLocalChunkSize = 0;
+				{
+					typename internal::eWiseLambdaNonzero< DataType > * nonzero_buffer =
+						internal::template getReferenceBuffer<
+							typename internal::eWiseLambdaNonzero< DataType >
+						>( maxChunkSize );
+					size_t my_buffer_start = 0, my_buffer_end = maxChunkSize;
+					config::OMP::localRange( my_buffer_start, my_buffer_end, 0, maxChunkSize );
+					maxLocalChunkSize = my_buffer_end - my_buffer_start;
+					assert( maxLocalChunkSize > 0 );
+					nonzeroes = nonzero_buffer + my_buffer_start;
+				}
 #endif
 
 #ifdef _DEBUG
  #ifdef _H_GRB_REFERENCE_OMP_BLAS2
-			#pragma omp critical
+				#pragma omp critical
  #endif
-			std::cout << "\t processing range " << start << "--" << end << ".\n";
-			std::cout << "\t COO buffer for updating CRS (we loop over nonzeroes in "
-				<< "CCS) has a maximum size of " << maxChunkSize << "\n";
+				std::cout << "\t processing range " << start << "--" << end << ".\n";
+				std::cout << "\t COO buffer for updating CRS (we loop over nonzeroes in "
+					<< "CCS) has a maximum size of " << maxChunkSize << "\n";
 #endif
 
-			size_t j_start, j_end;
-			if( start < end ) {
-				// find my starting column
-				size_t j_left_range = 0;
-				size_t j_right_range = A.n;
-				j_start = A.n / 2;
-				assert( A.n > 0 );
-				while( j_start < A.n && !(
-						A.CCS.col_start[ j_start ] <= start &&
-						start < A.CCS.col_start[ j_start + 1 ]
-					)
-				) {
+				size_t j_start, j_end;
+				if( start < end ) {
+					// find my starting column
+					size_t j_left_range = 0;
+					size_t j_right_range = A.n;
+					j_start = A.n / 2;
+					assert( A.n > 0 );
+					while( j_start < A.n && !(
+							A.CCS.col_start[ j_start ] <= start &&
+							start < A.CCS.col_start[ j_start + 1 ]
+						)
+					) {
+#ifdef _DEBUG
+ #ifdef _H_GRB_REFERENCE_OMP_BLAS2
+						#pragma omp critical
+ #endif
+						std::cout << "\t binary search for " << start << " in [ " << j_left_range
+							<< ", " << j_right_range << " ) = [ " << A.CCS.col_start[ j_left_range ]
+							<< ", " << A.CCS.col_start[ j_right_range ] << " ). "
+							<< "Currently tried and failed at " << j_start << "\n";
+#endif
+						if( j_right_range == j_left_range ) {
+							assert( false );
+							break;
+						} else if( A.CCS.col_start[ j_start ] > start ) {
+							j_right_range = j_start;
+						} else {
+							j_left_range = j_start + 1;
+						}
+						assert( j_right_range >= j_left_range );
+						j_start = j_right_range - j_left_range;
+						j_start /= 2;
+						j_start += j_left_range;
+					}
 #ifdef _DEBUG
  #ifdef _H_GRB_REFERENCE_OMP_BLAS2
 					#pragma omp critical
+					std::cout << "\t selected j_start = " << j_start << "\n";
  #endif
-					std::cout << "\t binary search for " << start << " in [ " << j_left_range
-						<< ", " << j_right_range << " ) = [ " << A.CCS.col_start[ j_left_range ]
-						<< ", " << A.CCS.col_start[ j_right_range ] << " ). "
-						<< "Currently tried and failed at " << j_start << "\n";
 #endif
-					if( j_right_range == j_left_range ) {
-						assert( false );
-						break;
-					} else if( A.CCS.col_start[ j_start ] > start ) {
-						j_right_range = j_start;
-					} else {
-						j_left_range = j_start + 1;
-					}
-					assert( j_right_range >= j_left_range );
-					j_start = j_right_range - j_left_range;
-					j_start /= 2;
-					j_start += j_left_range;
-				}
+					// find my end column
+					j_left_range = 0;
+					j_right_range = A.n;
+					j_end = A.n / 2;
+					while( j_end < A.n && !(
+							A.CCS.col_start[ j_end ] <= end &&
+							end < A.CCS.col_start[ j_end + 1 ]
+						)
+					) {
 #ifdef _DEBUG
  #ifdef _H_GRB_REFERENCE_OMP_BLAS2
-				#pragma omp critical
-				std::cout << "\t selected j_start = " << j_start << "\n";
+						#pragma omp critical
  #endif
+						std::cout << "\t binary search for " << end << " in [ " << j_left_range
+							<< ", " << j_right_range << " ) = [ " << A.CCS.col_start[ j_left_range ]
+							<< ", " << A.CCS.col_start[ j_right_range ] << " ). "
+							<< "Currently tried and failed at " << j_end << "\n";
 #endif
-				// find my end column
-				j_left_range = 0;
-				j_right_range = A.n;
-				j_end = A.n / 2;
-				while( j_end < A.n && !(
-						A.CCS.col_start[ j_end ] <= end &&
-						end < A.CCS.col_start[ j_end + 1 ]
-					)
-				) {
+						if( j_right_range == j_left_range ) {
+							assert( false );
+							break;
+						} else if( A.CCS.col_start[ j_end ] > end ) {
+							j_right_range = j_end;
+						} else {
+							j_left_range = j_end + 1;
+						}
+						assert( j_right_range >= j_left_range );
+						j_end = j_right_range - j_left_range;
+						j_end /= 2;
+						j_end += j_left_range;
+					}
+					if( j_start > j_end ) {
+						j_start = j_end;
+					}
 #ifdef _DEBUG
  #ifdef _H_GRB_REFERENCE_OMP_BLAS2
 					#pragma omp critical
- #endif
-					std::cout << "\t binary search for " << end << " in [ " << j_left_range
-						<< ", " << j_right_range << " ) = [ " << A.CCS.col_start[ j_left_range ]
-						<< ", " << A.CCS.col_start[ j_right_range ] << " ). "
-						<< "Currently tried and failed at " << j_end << "\n";
-#endif
-					if( j_right_range == j_left_range ) {
-						assert( false );
-						break;
-					} else if( A.CCS.col_start[ j_end ] > end ) {
-						j_right_range = j_end;
-					} else {
-						j_left_range = j_end + 1;
-					}
-					assert( j_right_range >= j_left_range );
-					j_end = j_right_range - j_left_range;
-					j_end /= 2;
-					j_end += j_left_range;
-				}
-				if( j_start > j_end ) {
-					j_start = j_end;
-				}
-#ifdef _DEBUG
- #ifdef _H_GRB_REFERENCE_OMP_BLAS2
-				#pragma omp critical
-				std::cout << "\t selected j_end = " << j_end << "\n";
+					std::cout << "\t selected j_end = " << j_end << "\n";
  #endif
 #endif
 #ifndef NDEBUG
-				assert( j_end <= A.n );
-				assert( start >= A.CCS.col_start[ j_start ] );
-				if( j_start < A.n ) {
-					assert( start <= A.CCS.col_start[ j_start + 1 ] );
-				}
-				assert( end >= A.CCS.col_start[ j_end ] );
-				if( j_end < A.n ) {
-					assert( end <= A.CCS.col_start[ j_end + 1 ] );
-				}
+					assert( j_end <= A.n );
+					assert( start >= A.CCS.col_start[ j_start ] );
+					if( j_start < A.n ) {
+						assert( start <= A.CCS.col_start[ j_start + 1 ] );
+					}
+					assert( end >= A.CCS.col_start[ j_end ] );
+					if( j_end < A.n ) {
+						assert( end <= A.CCS.col_start[ j_end + 1 ] );
+					}
 #endif
 
-				// prepare fields for in-place CRS update
-				size_t pos = 0;
-				constexpr size_t chunkSize_c = grb::config::MEMORY::l1_cache_size() /
-					sizeof( internal::eWiseLambdaNonzero< DataType > );
-				constexpr size_t minChunkSize = chunkSize_c == 0 ? 1 : chunkSize_c;
-				const size_t chunkSize = minChunkSize > maxLocalChunkSize ?
-					maxLocalChunkSize :
-					minChunkSize;
+					// prepare fields for in-place CRS update
+					size_t pos = 0;
+					constexpr size_t chunkSize_c = grb::config::MEMORY::l1_cache_size() /
+						sizeof( internal::eWiseLambdaNonzero< DataType > );
+					constexpr size_t minChunkSize = chunkSize_c == 0 ? 1 : chunkSize_c;
+					const size_t chunkSize = minChunkSize > maxLocalChunkSize ?
+						maxLocalChunkSize :
+						minChunkSize;
 
 #ifdef _DEBUG
  #ifdef _H_GRB_REFERENCE_OMP_BLAS2
 				#pragma omp critical
  #endif
-				{
-					std::cout << "\t elected chunk size for updating the CRS structure is "
-						<< chunkSize << "\n";
-				}
-#endif
-
-				// preamble
-				for(
-					size_t k = start;
-					k < std::min(
-						static_cast< size_t >( A.CCS.col_start[ j_start + 1 ] ), end
-					);
-					++k
-				) {
-					// get row index
-					const size_t i = A.CCS.row_index[ k ];
-#ifdef _DEBUG
-					std::cout << "Processing nonzero at ( " << i << ", " << j_start << " )\n";
-#endif
-					// execute lambda on nonzero
-					const size_t col_pid = ActiveDistribution::offset_to_pid(
-						j_start, A.n, P
-					);
-					const size_t col_off = ActiveDistribution::local_offset(
-						A.n, col_pid, P
-					);
-					const size_t global_i = ActiveDistribution::local_index_to_global(
-						i, A.m, s, P
-					);
-					const size_t global_j = ActiveDistribution::local_index_to_global(
-						j_start - col_off, A.n, col_pid, P
-					);
-					assert( k < A.CCS.col_start[ A.n ] );
-					f( global_i, global_j, A.CCS.values[ k ] );
-
-					// update CRS
-					nonzeroes[ pos++ ] = internal::eWiseLambdaNonzero< DataType >(
-						A.CCS.row_index[ k ], j_start, A.CCS.values[ k ]
-					);
-					if( pos  == chunkSize ) {
-						internal::addToCRS( A, nonzeroes, nonzeroes + chunkSize );
-						pos = 0;
+					{
+						std::cout << "\t elected chunk size for updating the CRS structure is "
+							<< chunkSize << "\n";
 					}
-				}
-				// main loop
-				if( j_start != j_end ) {
-					for( size_t j = j_start + 1; j < j_end; ++j ) {
-						for(
-							size_t k = A.CCS.col_start[ j ];
-							k < static_cast< size_t >( A.CCS.col_start[ j + 1 ] );
-							++k
-						) {
-							// get row index
-							const size_t i = A.CCS.row_index[ k ];
-#ifdef _DEBUG
-							std::cout << "Processing nonzero at ( " << i << ", " << j << " )\n";
 #endif
-							// execute lambda on nonzero
-							const size_t col_pid = ActiveDistribution::offset_to_pid( j, A.n, P );
-							const size_t col_off = ActiveDistribution::local_offset(
-								A.n, col_pid, P
-							);
-							const size_t global_i = ActiveDistribution::local_index_to_global(
-								i, A.m, s, P
-							);
-							const size_t global_j = ActiveDistribution::local_index_to_global(
-								j - col_off, A.n, col_pid, P
-							);
-							assert( k < A.CCS.col_start[ A.n ] );
-							f( global_i, global_j, A.CCS.values[ k ] );
 
-							// update CRS
-							nonzeroes[ pos++ ] = internal::eWiseLambdaNonzero< DataType >(
-								A.CCS.row_index[ k ], j, A.CCS.values[ k ]
-							);
-							if( pos == chunkSize ) {
-								internal::addToCRS( A, nonzeroes, nonzeroes + chunkSize );
-								pos = 0;
+					// preamble
+					for(
+						size_t k = start;
+						k < std::min(
+							static_cast< size_t >( A.CCS.col_start[ j_start + 1 ] ), end
+						);
+						++k
+					) {
+						// get row index
+						const size_t i = A.CCS.row_index[ k ];
+#ifdef _DEBUG
+						std::cout << "Processing nonzero at ( " << i << ", " << j_start << " )\n";
+#endif
+						// execute lambda on nonzero
+						const size_t col_pid = ActiveDistribution::offset_to_pid(
+							j_start, global_n, P
+						);
+						const size_t col_off = ActiveDistribution::local_offset(
+							A.n, col_pid, P
+						);
+						const size_t global_i = ActiveDistribution::local_index_to_global(
+							i, global_m, s, P
+						);
+						const size_t global_j = ActiveDistribution::local_index_to_global(
+							j_start - col_off, global_n, col_pid, P
+						);
+						assert( k < A.CCS.col_start[ A.n ] );
+						f( global_i, global_j, A.CCS.values[ k ] );
+
+						// update CRS
+						nonzeroes[ pos++ ] = internal::eWiseLambdaNonzero< DataType >(
+							A.CCS.row_index[ k ], j_start, A.CCS.values[ k ]
+						);
+						if( pos  == chunkSize ) {
+							internal::addToCRS( A, nonzeroes, nonzeroes + chunkSize );
+							pos = 0;
+						}
+					}
+					// main loop
+					if( j_start != j_end ) {
+						for( size_t j = j_start + 1; j < j_end; ++j ) {
+							for(
+								size_t k = A.CCS.col_start[ j ];
+								k < static_cast< size_t >( A.CCS.col_start[ j + 1 ] );
+								++k
+							) {
+								// get row index
+								const size_t i = A.CCS.row_index[ k ];
+#ifdef _DEBUG
+								std::cout << "Processing nonzero at ( " << i << ", " << j << " )\n";
+#endif
+								// execute lambda on nonzero
+								const size_t col_pid = ActiveDistribution::offset_to_pid( j, A.n, P );
+								const size_t col_off = ActiveDistribution::local_offset(
+									A.n, col_pid, P
+								);
+								const size_t global_i = ActiveDistribution::local_index_to_global(
+									i, global_m, s, P
+								);
+								const size_t global_j = ActiveDistribution::local_index_to_global(
+									j - col_off, global_n, col_pid, P
+								);
+								assert( k < A.CCS.col_start[ A.n ] );
+								f( global_i, global_j, A.CCS.values[ k ] );
+
+								// update CRS
+								nonzeroes[ pos++ ] = internal::eWiseLambdaNonzero< DataType >(
+									A.CCS.row_index[ k ], j, A.CCS.values[ k ]
+								);
+								if( pos == chunkSize ) {
+									internal::addToCRS( A, nonzeroes, nonzeroes + chunkSize );
+									pos = 0;
+								}
 							}
 						}
 					}
-				}
-				// postamble
-				assert( j_end <= A.n );
-				for( size_t k = A.CCS.col_start[ j_end ]; k < end; ++k ) {
-					// get row index
-					const size_t i = A.CCS.row_index[ k ];
+					// postamble
+					assert( j_end <= A.n );
+					for( size_t k = A.CCS.col_start[ j_end ]; k < end; ++k ) {
+						// get row index
+						const size_t i = A.CCS.row_index[ k ];
 #ifdef _DEBUG
-					std::cout << "Processing nonzero at ( " << i << ", " << j_end << " )\n";
+						std::cout << "Processing nonzero at ( " << i << ", " << j_end << " )\n";
 #endif
-					// execute lambda on nonzero
-					const size_t col_pid = ActiveDistribution::offset_to_pid( j_end, A.n, P );
-					const size_t col_off = ActiveDistribution::local_offset( A.n, col_pid, P );
-					const size_t global_i = ActiveDistribution::local_index_to_global(
-						i, A.m, s, P
-					);
-					const size_t global_j = ActiveDistribution::local_index_to_global(
-						j_end - col_off, A.n, col_pid, P
-					);
-					assert( k < A.CCS.col_start[ A.n ] );
-					f( global_i, global_j, A.CCS.values[ k ] );
+						// execute lambda on nonzero
+						const size_t col_pid = ActiveDistribution::offset_to_pid( j_end, A.n, P );
+						const size_t col_off = ActiveDistribution::local_offset( A.n, col_pid, P );
+						const size_t global_i = ActiveDistribution::local_index_to_global(
+							i, global_m, s, P
+						);
+						const size_t global_j = ActiveDistribution::local_index_to_global(
+							j_end - col_off, global_n, col_pid, P
+						);
+						assert( k < A.CCS.col_start[ A.n ] );
+						f( global_i, global_j, A.CCS.values[ k ] );
 
+						// update CRS
+						nonzeroes[ pos++ ] = internal::eWiseLambdaNonzero< DataType >(
+							A.CCS.row_index[ k ], j_end, A.CCS.values[ k ]
+						);
+						if( pos == chunkSize ) {
+							internal::addToCRS( A, nonzeroes, nonzeroes + chunkSize );
+							pos = 0;
+						}
+					}
 					// update CRS
-					nonzeroes[ pos++ ] = internal::eWiseLambdaNonzero< DataType >(
-						A.CCS.row_index[ k ], j_end, A.CCS.values[ k ]
-					);
-					if( pos == chunkSize ) {
-						internal::addToCRS( A, nonzeroes, nonzeroes + chunkSize );
+					if( pos > 0 ) {
+						internal::addToCRS( A, nonzeroes, nonzeroes + pos );
 						pos = 0;
 					}
 				}
-				// update CRS
-				if( pos > 0 ) {
-					internal::addToCRS( A, nonzeroes, nonzeroes + pos );
-					pos = 0;
-				}
-			}
-		} // end pragma omp parallel
+			} // end pragma omp parallel
 
 #ifdef _DEBUG
-		std::cout << "\t exiting grb::eWiseLambda (matrices, reference). Contents:\n";
-		std::cout << "\t\t CRS row start = { ";
-		for( size_t i = 0; i <= A.m; ++i ) {
-			std::cout << A.CRS.col_start[ i ] << " ";
-		}
-		std::cout << "}\n";
-		for( size_t i = 0; i < A.m; ++i ) {
-			for( size_t k = A.CRS.col_start[ i ]; k < A.CRS.col_start[ i + 1 ]; ++k ) {
-				std::cout << "\t\t ( " << i << ", " << A.CRS.row_index[ k ] << " ) = "
-					<< A.CRS.values[ k ] << "\n";
+			std::cout << "\t exiting grb::eWiseLambda (matrices, reference). Contents:\n";
+			std::cout << "\t\t CRS row start = { ";
+			for( size_t i = 0; i <= A.m; ++i ) {
+				std::cout << A.CRS.col_start[ i ] << " ";
 			}
-		}
-		std::cout << "\t\t CCS col start = { ";
-		for( size_t j = 0; j <= A.n; ++j ) {
-			std::cout << A.CCS.col_start[ j ] << " ";
-		}
-		std::cout << "}\n";
-		for( size_t j = 0; j < A.n; ++j ) {
-			for( size_t k = A.CCS.col_start[ j ]; k < A.CCS.col_start[ j + 1 ]; ++k ) {
-				std::cout << "\t\t ( " << A.CCS.row_index[ k ] << ", " << j << " ) = "
-					<< A.CCS.values[ k ] << "\n";
+			std::cout << "}\n";
+			for( size_t i = 0; i < A.m; ++i ) {
+				for( size_t k = A.CRS.col_start[ i ]; k < A.CRS.col_start[ i + 1 ]; ++k ) {
+					std::cout << "\t\t ( " << i << ", " << A.CRS.row_index[ k ] << " ) = "
+						<< A.CRS.values[ k ] << "\n";
+				}
 			}
-		}
+			std::cout << "\t\t CCS col start = { ";
+			for( size_t j = 0; j <= A.n; ++j ) {
+				std::cout << A.CCS.col_start[ j ] << " ";
+			}
+			std::cout << "}\n";
+			for( size_t j = 0; j < A.n; ++j ) {
+				for( size_t k = A.CCS.col_start[ j ]; k < A.CCS.col_start[ j + 1 ]; ++k ) {
+					std::cout << "\t\t ( " << A.CCS.row_index[ k ] << ", " << j << " ) = "
+						<< A.CCS.values[ k ] << "\n";
+				}
+			}
 #endif
-		return SUCCESS;
+			return SUCCESS;
+		}
+
+	} // end grb::internal
+
+	/**
+	 * This function executes the given lambda on a given matrix. It forms the base
+	 * case for the recursion.
+	 *
+	 * @see grb::eWiseLambda for the user-level specification.
+	 */
+	template<
+		Descriptor descr = descriptors::no_operation,
+		typename Func,
+		typename DataType1, typename RIT, typename CIT, typename NIT
+	>
+	RC eWiseLambda(
+		const Func f,
+		const Matrix< DataType1, reference, RIT, CIT, NIT > &A
+	) {
+		// dispatch to implementation
+		return internal::eWiseLambda<
+			descr,
+			typename internal::Distribution< reference >
+		>( f, A, A.m, A.n, 0, 1 );
 	}
 
 	/**
@@ -2824,6 +2851,7 @@ namespace grb {
 	 * @see grb::eWiseLambda for the user-level specification.
 	 */
 	template<
+		Descriptor descr = descriptors::no_operation,
 		typename Func,
 		typename DataType1, typename RIT, typename CIT, typename NIT,
 		typename DataType2,
@@ -2836,14 +2864,25 @@ namespace grb {
 		Args... args
 	) {
 		// do size checking
-		if( !( size( x ) == nrows( A ) || size( x ) == ncols( A ) ) ) {
+		if( !(size( x ) == nrows( A ) || size( x ) == ncols( A )) ) {
 			std::cerr << "Mismatching dimensions: given vector of size " << size( x )
 				<< " has nothing to do with either matrix dimension (" << nrows( A )
 				<< " nor " << ncols( A ) << ").\n";
 			return MISMATCH;
 		}
-		// no need for synchronisation, everything is local in reference implementation
-		return eWiseLambda( f, A, args... );
+
+		if( (descr & descriptors::dense) &&
+		    !internal::getCoordinates(x).isDense()
+		) {
+#ifdef _DEBUG
+			std::cerr << "Error: eWiseLambda called with dense descriptor "
+				<< "on a sparse vector.\n";
+#endif
+			return ILLEGAL;
+		}
+
+		// recurse
+		return eWiseLambda< descr >( f, A, args... );
 	}
 
 	/** @} */

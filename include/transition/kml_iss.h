@@ -18,9 +18,13 @@
 /**
  * @file
  *
- * This exposes the same interface of KML_SOLVER, as documented in
+ * \ingroup TRANS
  *
- * https://www.hikunpeng.com/document/detail/en/kunpengaccel/math-lib/devg-kml/kunpengaccel_kml_16_0287.html
+ * Provides the KML_SOLVER interface for sparse solvers.
+ *
+ * This API is documented at
+ *
+ *  - https://www.hikunpeng.com/document/detail/en/kunpengaccel/math-lib/devg-kml/kunpengaccel_kml_16_0287.html
  *
  * @author Alberto Scolari
  * @date 15/01/2024
@@ -88,8 +92,10 @@ typedef void KmlSolverTask;
 
 
 /**
+ * \internal
  * This macro prefixes all functions with <tt>KmlIssCg</tt> and may be used to
  * reconfigure this default prefix.
+ * \endinternal
  */
 #define KML_CG_PREFIXED( name ) KmlIssCg ## name
 
