@@ -1204,6 +1204,202 @@ namespace grb {
 			return SUCCESS;
 		}
 
+		template<
+			Descriptor descr = descriptors::no_operation,
+			class Operator,
+			bool left_fold,
+			typename InputType, typename IOType,
+			typename RIT, typename CIT, typename NIT
+		>
+		RC scale_unmasked_generic(
+			Matrix< IOType, reference, RIT, CIT, NIT > &A,
+			const InputType &x,
+			const Operator &op = Operator()
+		) {
+#ifdef _DEBUG
+			std::cout << "In grb::internal::scale_unmasked_generic( reference )\n" << std::flush;
+#endif
+
+			if( nnz( A ) == 0 ) {
+#ifdef _DEBUG
+				std::cout << "Matrix is empty, nothing to compute.\n" << std::flush;
+#endif
+				return SUCCESS;
+			}
+
+			constexpr bool crs_only = descr & descriptors::force_row_major;
+
+			const auto &A_crs_raw = internal::getCRS( A );
+			const auto &A_ccs_raw = internal::getCCS( A );
+			const size_t A_nnz = nnz( A );
+
+			RC global_rc = SUCCESS;
+
+#ifdef _H_GRB_REFERENCE_OMP_BLAS3
+			#pragma omp parallel default(none) \
+				shared(A_crs_raw, A_ccs_raw, global_rc) \
+				firstprivate(x, A_nnz, op)
+#endif
+			{
+				RC local_rc = SUCCESS;
+
+#ifdef _H_GRB_REFERENCE_OMP_BLAS3
+				size_t start, end;
+				config::OMP::localRange( start, end, 0, A_nnz );
+#else
+				const size_t start = 0;
+				const size_t end = A_nnz;
+#endif
+				for( size_t idx = start; idx < end; ++idx ) {
+					// CRS section
+					const IOType lhs = left_fold ? A_crs_raw.values[ idx ] : x;
+					const IOType rhs = left_fold ? x : A_crs_raw.values[ idx ];
+					local_rc = local_rc
+						? local_rc
+						: apply< descr >(
+							A_crs_raw.values[ idx ], lhs, rhs, op
+						);
+				}
+
+				for( size_t idx = start; idx < end && !crs_only; ++idx ) {
+					// CCS section
+					const IOType lhs = left_fold ? A_ccs_raw.values[ idx ] : x;
+					const IOType rhs = left_fold ? x : A_ccs_raw.values[ idx ];
+					local_rc = local_rc
+						? local_rc
+						: apply< descr >(
+							A_ccs_raw.values[ idx ], lhs, rhs, op
+						);
+				}
+
+				if( local_rc != SUCCESS ) {
+#ifdef _H_GRB_REFERENCE_OMP_BLAS3
+					#pragma omp critical
+#endif
+					{ // Reduction with the global return code
+						global_rc = global_rc ? global_rc : local_rc;
+					}
+				}
+			}
+
+			return global_rc;
+		}
+
+		template<
+			Descriptor descr = descriptors::no_operation,
+			class Operator,
+			bool left_fold,
+			typename InputType, typename IOType, typename MaskType,
+			typename RIT_A, typename CIT_A, typename NIT_A,
+			typename RIT_M, typename CIT_M, typename NIT_M
+		>
+		RC scale_masked_generic(
+			Matrix< IOType, reference, RIT_A, CIT_A, NIT_A > &A,
+			const Matrix< MaskType, reference, RIT_M, CIT_M, NIT_M > &mask,
+			const InputType &x,
+			const Operator &op = Operator()
+		) {
+#ifdef _DEBUG
+			std::cout << "In grb::internal::scale_masked_generic( reference )\n" << std::flush;
+#endif
+
+			if( nnz(mask) == 0 ) {
+				return SUCCESS;
+			}
+
+			if( descr & descriptors::force_row_major && descr & descriptors::transpose_left ) {
+#ifdef _DEBUG
+				std::cout << "force_row_major and transpose_left are not supported together\n" << std::flush;
+#endif
+				return ILLEGAL;
+			}
+			if( descr & descriptors::force_row_major && descr & descriptors::transpose_right ) {
+#ifdef _DEBUG
+				std::cout << "force_row_major and transpose_right are not supported together\n" << std::flush;
+#endif
+				return ILLEGAL;
+			}
+			constexpr bool crs_only = descr & descriptors::force_row_major;
+
+			const auto &A_crs_raw = internal::getCRS( A );
+			const auto &A_ccs_raw = internal::getCCS( A );
+			const auto &mask_crs_raw = internal::getCRS( mask );
+			const auto &mask_ccs_raw = internal::getCCS( mask );
+			const size_t m = nrows( A );
+			const size_t n = ncols( A );
+			const size_t m_mask = descr & descriptors::transpose_left
+									? ncols( mask )
+									: nrows( mask );
+			const size_t n_mask = descr & descriptors::transpose_left
+									? nrows( mask )
+									: ncols( mask );
+
+			// if no mask is provided, call the unmasked version
+			if( m_mask * n_mask == 0 ) {
+				return scale_unmasked_generic< descr, Operator, false >( A, x, op );
+			}
+
+			// Check mask dimensions
+			if( m != m_mask || n != n_mask ) {
+#ifdef _DEBUG
+				std::cout << "Mask dimensions do not match input matrix dimensions\n" << std::flush;
+#endif
+				return MISMATCH;
+			}
+
+			// Initialise coordinates bitmask
+			char * arr1 = nullptr, * buf1 = nullptr;
+			InputType * vbuf1 = nullptr;
+			internal::getMatrixBuffers( arr1, buf1, vbuf1, 1, A );
+			internal::Coordinates< reference > coors;
+			coors.set( arr1, false, buf1, m );
+
+			RC global_rc = SUCCESS;
+
+			for( size_t i = 0; i < m; ++i ) {
+				coors.clear();
+				for( size_t k = mask_crs_raw.col_start[ i ]; k < mask_crs_raw.col_start[ i + 1 ]; ++k ) {
+					coors.assign( mask_crs_raw.row_index[ k ] );
+				}
+				for( size_t l = A_crs_raw.col_start[ i ]; l < A_crs_raw.col_start[ i + 1 ]; ++l ) {
+					if( !coors.assigned( A_crs_raw.row_index[ l ] ) ) {
+						continue;
+					}
+					const IOType lhs = left_fold ? A_crs_raw.values[ l ] : x;
+					const IOType rhs = left_fold ? x : A_crs_raw.values[ l ];
+					global_rc = global_rc
+						? global_rc
+						: apply< descr >(
+							A_crs_raw.values[ l ], lhs, rhs, op
+						);
+				}
+			}
+
+			if( !crs_only ) {
+				for( size_t i = 0; i < n; ++i ) {
+					// CCS section
+					coors.clear();
+					for( size_t k = mask_ccs_raw.col_start[ i ]; k < mask_ccs_raw.col_start[ i + 1 ]; ++k ) {
+						coors.assign( mask_ccs_raw.row_index[ k ] );
+					}
+					for( size_t l = A_ccs_raw.col_start[ i ]; l < A_ccs_raw.col_start[ i + 1 ]; ++l ) {
+						if( !coors.assigned( A_crs_raw.row_index[ l ] ) ) {
+							continue;
+						}
+						const IOType lhs = left_fold ? A_ccs_raw.values[ l ] : x;
+						const IOType rhs = left_fold ? x : A_ccs_raw.values[ l ];
+						global_rc = global_rc
+							? global_rc
+							: apply< descr >(
+								A_ccs_raw.values[ l ], lhs, rhs, op
+							);
+					}
+				}
+			}
+
+			return global_rc;
+		}
+
 	} // namespace internal
 
 	/**
@@ -1227,7 +1423,8 @@ namespace grb {
 		const Matrix< InputType2, reference, RIT3, CIT3, NIT3 > &B,
 		const MulMonoid &mulmono,
 		const Phase phase = EXECUTE,
-		const typename std::enable_if< !grb::is_object< OutputType >::value &&
+		const typename std::enable_if<
+			!grb::is_object< OutputType >::value &&
 			!grb::is_object< InputType1 >::value &&
 			!grb::is_object< InputType2 >::value &&
 			grb::is_monoid< MulMonoid >::value,
@@ -1284,7 +1481,8 @@ namespace grb {
 		const Matrix< InputType2, reference, RIT3, CIT3, NIT3 > &B,
 		const Operator &mulOp,
 		const Phase phase = EXECUTE,
-		const typename std::enable_if< !grb::is_object< OutputType >::value &&
+		const typename std::enable_if<
+			!grb::is_object< OutputType >::value &&
 			!grb::is_object< InputType1 >::value &&
 			!grb::is_object< InputType2 >::value &&
 			grb::is_operator< Operator >::value,
@@ -1323,6 +1521,209 @@ namespace grb {
 		> dummyMonoid;
 		return internal::eWiseApply_matrix_generic< false, descr >(
 			C, A, B, mulOp, dummyMonoid, phase
+		);
+	}
+
+	template<
+		Descriptor descr = descriptors::no_operation,
+		class Operator,
+		typename IOType, typename MaskType, typename InputType,
+		typename RIT_A, typename CIT_A, typename NIT_A,
+		typename RIT_M, typename CIT_M, typename NIT_M
+	>
+	RC foldl(
+		Matrix< IOType, reference, RIT_A, CIT_A, NIT_A > &A,
+		const Matrix< MaskType, reference, RIT_M, CIT_M, NIT_M > &mask,
+		const InputType &x,
+		const Operator &op = Operator(),
+		const typename std::enable_if<
+			!grb::is_object< IOType >::value &&
+			!grb::is_object< InputType >::value &&
+			!grb::is_object< MaskType >::value &&
+			grb::is_operator< Operator >::value, void
+		>::type * const = nullptr
+	) {
+		// static checks
+		static_assert( !std::is_same< InputType, void >::value,
+			"grb::foldl ( reference, IOType <- op( IOType, InputType ): "
+			"the operator version of foldl cannot be used if the "
+			"input matrix is a pattern matrix (of type void)"
+		);
+		static_assert( !std::is_same< IOType, void >::value,
+			"grb::foldl ( reference, IOType <- op( IOType, InputType ): "
+			"the operator version of foldl cannot be used if the "
+			"scalar is of type void"
+		);
+		static_assert( (std::is_same< typename Operator::D1, IOType >::value),
+			"grb::foldl ( reference, IOType <- op( IOType, InputType ): "
+			"called with a prefactor input type that does not match the first domain of the given operator"
+		);
+		static_assert( (std::is_same< typename Operator::D2, InputType >::value),
+			"grb::foldl ( reference, IOType <- op( IOType, InputType ): "
+			"called with a postfactor input type that does not match the second domain of the given operator"
+		);
+		static_assert( (std::is_same< typename Operator::D3, IOType >::value),
+			"grb::foldl ( reference, IOType <- op( IOType, InputType ): "
+			"called with an output type that does not match the output domain of the given operator"
+		);
+
+#ifdef _DEBUG
+		std::cout << "In grb::foldl (reference, matrix, mask, scalar, op)\n";
+#endif
+
+		return internal::scale_masked_generic< descr, Operator, true >(
+			A, mask, x, op
+		);
+	}
+
+	template<
+		Descriptor descr = descriptors::no_operation,
+		class Operator,
+		typename IOType, typename InputType,
+		typename RIT, typename CIT, typename NIT
+	>
+	RC foldl(
+		Matrix< IOType, reference, RIT, CIT, NIT > &A,
+		const InputType &x,
+		const Operator &op = Operator(),
+		const typename std::enable_if<
+			!grb::is_object< IOType >::value &&
+			!grb::is_object< InputType >::value &&
+			grb::is_operator< Operator >::value, void
+		>::type * const = nullptr
+	) {
+		// static checks
+		// static checks
+		static_assert( !std::is_same< InputType, void >::value,
+			"grb::foldl ( reference, IOType <- op( IOType, InputType ): "
+			"the operator version of foldl cannot be used if the "
+			"input matrix is a pattern matrix (of type void)"
+		);
+		static_assert( !std::is_same< IOType, void >::value,
+			"grb::foldl ( reference, IOType <- op( IOType, InputType ): "
+			"the operator version of foldl cannot be used if the "
+			"scalar is of type void"
+		);
+		static_assert( (std::is_same< typename Operator::D1, IOType >::value),
+			"grb::foldl ( reference, IOType <- op( IOType, InputType ): "
+			"called with a prefactor input type that does not match the first domain of the given operator"
+		);
+		static_assert( (std::is_same< typename Operator::D2, InputType >::value),
+			"grb::foldl ( reference, IOType <- op( IOType, InputType ): "
+			"called with a postfactor input type that does not match the second domain of the given operator"
+		);
+		static_assert( (std::is_same< typename Operator::D3, IOType >::value),
+			"grb::foldl ( reference, IOType <- op( IOType, InputType ): "
+			"called with an output type that does not match the output domain of the given operator"
+		);
+
+#ifdef _DEBUG
+		std::cout << "In grb::foldl (reference, matrix, scalar, op)\n";
+#endif
+
+		return internal::scale_unmasked_generic< descr, Operator, true >(
+			A, x, op
+		);
+	}
+
+	template<
+		Descriptor descr = descriptors::no_operation,
+		class Operator,
+		typename IOType, typename MaskType, typename InputType,
+		typename RIT_A, typename CIT_A, typename NIT_A,
+		typename RIT_M, typename CIT_M, typename NIT_M
+	>
+	RC foldr(
+		Matrix< IOType, reference, RIT_A, CIT_A, NIT_A > &A,
+		const Matrix< MaskType, reference, RIT_M, CIT_M, NIT_M > &mask,
+		const InputType &x,
+		const Operator &op = Operator(),
+		const typename std::enable_if<
+			!grb::is_object< IOType >::value &&
+			!grb::is_object< InputType >::value &&
+			!grb::is_object< MaskType >::value &&
+			grb::is_operator< Operator >::value, void
+		>::type * const = nullptr
+	) {
+		// static checks
+		static_assert( !std::is_same< IOType, void >::value,
+			"grb::foldr ( reference, IOType <- op( InputType, IOType ): "
+			"the operator version of foldr cannot be used if the "
+			"input matrix is a pattern matrix (of type void)"
+		);
+		static_assert( !std::is_same< InputType, void >::value,
+			"grb::foldr ( reference, IOType <- op( InputType, IOType ): "
+			"the operator version of foldr cannot be used if the "
+			"scalar is of type void"
+		);
+		static_assert( (std::is_same< typename Operator::D1, InputType >::value),
+			"grb::foldr ( reference, IOType <- op( InputType, IOType ): "
+			"called with a prefactor input type that does not match the first domain of the given operator"
+		);
+		static_assert( (std::is_same< typename Operator::D2, IOType >::value),
+			"grb::foldr ( reference, IOType <- op( InputType, IOType ): "
+			"called with a postfactor input type that does not match the second domain of the given operator"
+		);
+		static_assert( (std::is_same< typename Operator::D3, IOType >::value),
+			"grb::foldr ( reference, IOType <- op( InputType, IOType ): "
+			"called with an output type that does not match the output domain of the given operator"
+		);
+
+#ifdef _DEBUG
+		std::cout << "In grb::foldr (reference, matrix, mask, scalar, op)\n";
+#endif
+
+		return internal::scale_masked_generic< descr, Operator, false >(
+			A, mask, x, op
+		);
+	}
+
+	template<
+		Descriptor descr = descriptors::no_operation,
+		class Operator,
+		typename IOType, typename InputType,
+		typename RIT, typename CIT, typename NIT
+	>
+	RC foldr(
+		Matrix< IOType, reference, RIT, CIT, NIT > &A,
+		const InputType &x,
+		const Operator &op = Operator(),
+		const typename std::enable_if<
+			!grb::is_object< IOType >::value &&
+			!grb::is_object< InputType >::value &&
+			grb::is_operator< Operator >::value, void
+		>::type * const = nullptr
+	) {
+		// static checks
+		static_assert( !std::is_same< IOType, void >::value,
+			"grb::foldr ( reference, IOType <- op( InputType, IOType ): "
+			"the operator version of foldr cannot be used if the "
+			"input matrix is a pattern matrix (of type void)"
+		);
+		static_assert( !std::is_same< InputType, void >::value,
+			"grb::foldr ( reference, IOType <- op( InputType, IOType ): "
+			"the operator version of foldr cannot be used if the "
+			"scalar is of type void"
+		);
+		static_assert( (std::is_same< typename Operator::D1, InputType >::value),
+			"grb::foldr ( reference, IOType <- op( InputType, IOType ): "
+			"called with a prefactor input type that does not match the first domain of the given operator"
+		);
+		static_assert( (std::is_same< typename Operator::D2, IOType >::value),
+			"grb::foldr ( reference, IOType <- op( InputType, IOType ): "
+			"called with a postfactor input type that does not match the second domain of the given operator"
+		);
+		static_assert( (std::is_same< typename Operator::D3, IOType >::value),
+			"grb::foldr ( reference, IOType <- op( InputType, IOType ): "
+			"called with an output type that does not match the output domain of the given operator"
+		);
+
+#ifdef _DEBUG
+		std::cout << "In grb::foldr (reference, matrix, scalar, op)\n";
+#endif
+
+		return internal::scale_unmasked_generic< descr, Operator, false >(
+			A, x, op
 		);
 	}
 

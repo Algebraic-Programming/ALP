@@ -334,6 +334,203 @@ namespace grb {
 		return ret;
 	}
 
+	template<
+		Descriptor descr = descriptors::no_operation,
+		class Operator,
+		typename IOType, typename MaskType, typename InputType,
+		typename RIT_A, typename CIT_A, typename NIT_A,
+		typename RIT_M, typename CIT_M, typename NIT_M
+	>
+	RC foldl(
+		Matrix< IOType, hyperdags, RIT_A, CIT_A, NIT_A > &A,
+		const Matrix< MaskType, hyperdags, RIT_M, CIT_M, NIT_M > &mask,
+		const InputType &x,
+		const Operator &op = Operator(),
+		const typename std::enable_if<
+			!grb::is_object< IOType >::value &&
+			!grb::is_object< InputType >::value &&
+			!grb::is_object< MaskType >::value &&
+			grb::is_operator< Operator >::value, void
+		>::type * const = nullptr
+	) {
+		if( nrows( A ) == 0 || ncols( A ) == 0 ) { return SUCCESS; }
+		if( nrows( mask ) == 0 || ncols( mask ) == 0 ) { return SUCCESS; }
+
+		const RC ret = foldl< descr >(
+			internal::getMatrix( A ),
+			internal::getMatrix( mask ),
+			x,
+			op
+		);
+		if( ret != SUCCESS ) { return ret; }
+
+		internal::hyperdags::generator.addSource(
+			internal::hyperdags::SCALAR,
+			&x
+		);
+		std::array< const void *, 1 > sourcesP{ &x };
+		std::array< uintptr_t, 2 > sourcesC{
+			getID( internal::getMatrix(A) ),
+			getID( internal::getMatrix(mask) )
+		};
+		std::array< uintptr_t, 1 > destinations{
+			getID( internal::getMatrix(A) )
+		};
+		internal::hyperdags::generator.addOperation(
+			internal::hyperdags::FOLDL_MATRIX_MATRIX_BETA_OP,
+			sourcesP.begin(), sourcesP.end(),
+			sourcesC.begin(), sourcesC.end(),
+			destinations.begin(), destinations.end()
+		);
+
+		return ret;
+	}
+
+	template<
+		Descriptor descr = descriptors::no_operation,
+		class Operator,
+		typename IOType, typename InputType,
+		typename RIT, typename CIT, typename NIT
+	>
+	RC foldl(
+		Matrix< IOType, hyperdags, RIT, CIT, NIT > &A,
+		const InputType &x,
+		const Operator &op = Operator(),
+		const typename std::enable_if<
+			!grb::is_object< IOType >::value &&
+			!grb::is_object< InputType >::value &&
+			grb::is_operator< Operator >::value, void
+		>::type * const = nullptr
+	) {
+		if( nrows( A ) == 0 || ncols( A ) == 0 ) { return SUCCESS; }
+
+		const RC ret = foldl< descr >(
+			internal::getMatrix( A ),
+			x,
+			op
+		);
+		if( ret != SUCCESS ) { return ret; }
+
+		internal::hyperdags::generator.addSource(
+			internal::hyperdags::SCALAR,
+			&x
+		);
+		std::array< const void *, 1 > sourcesP{ &x };
+		std::array< uintptr_t, 1 > sourcesC{
+			getID( internal::getMatrix(A) )
+		};
+		std::array< uintptr_t, 1 > destinations{
+			getID( internal::getMatrix(A) )
+		};
+		internal::hyperdags::generator.addOperation(
+			internal::hyperdags::FOLDL_MATRIX_BETA_OP,
+			sourcesP.begin(), sourcesP.end(),
+			sourcesC.begin(), sourcesC.end(),
+			destinations.begin(), destinations.end()
+		);
+
+		return ret;
+	}
+
+	template<
+		Descriptor descr = descriptors::no_operation,
+		class Operator,
+		typename IOType, typename MaskType, typename InputType,
+		typename RIT_A, typename CIT_A, typename NIT_A,
+		typename RIT_M, typename CIT_M, typename NIT_M
+	>
+	RC foldr(
+		Matrix< IOType, hyperdags, RIT_A, CIT_A, NIT_A > &A,
+		const Matrix< MaskType, hyperdags, RIT_M, CIT_M, NIT_M > &mask,
+		const InputType &x,
+		const Operator &op = Operator(),
+		const typename std::enable_if<
+			!grb::is_object< IOType >::value &&
+			!grb::is_object< InputType >::value &&
+			!grb::is_object< MaskType >::value &&
+			grb::is_operator< Operator >::value, void
+		>::type * const = nullptr
+	) {
+		if( nrows( A ) == 0 || ncols( A ) == 0 ) { return SUCCESS; }
+		if( nrows( mask ) == 0 || ncols( mask ) == 0 ) { return SUCCESS; }
+
+		const RC ret = foldr< descr >(
+			internal::getMatrix( A ),
+			internal::getMatrix( mask ),
+			x,
+			op
+		);
+		if( ret != SUCCESS ) { return ret; }
+
+
+		internal::hyperdags::generator.addSource(
+			internal::hyperdags::SCALAR,
+			&x
+		);
+		std::array< const void *, 1 > sourcesP{ &x };
+		std::array< uintptr_t, 2 > sourcesC{
+			getID( internal::getMatrix(A) ),
+			getID( internal::getMatrix(mask) )
+		};
+		std::array< uintptr_t, 1 > destinations{
+			getID( internal::getMatrix(A) )
+		};
+		internal::hyperdags::generator.addOperation(
+			internal::hyperdags::FOLDR_MATRIX_MATRIX_BETA_OP,
+			sourcesP.begin(), sourcesP.end(),
+			sourcesC.begin(), sourcesC.end(),
+			destinations.begin(), destinations.end()
+		);
+
+		return ret;
+	}
+
+	template<
+		Descriptor descr = descriptors::no_operation,
+		class Operator,
+		typename IOType, typename InputType,
+		typename RIT, typename CIT, typename NIT
+	>
+	RC foldr(
+		Matrix< IOType, hyperdags, RIT, CIT, NIT > &A,
+		const InputType &x,
+		const Operator &op = Operator(),
+		const typename std::enable_if<
+			!grb::is_object< IOType >::value &&
+			!grb::is_object< InputType >::value &&
+			grb::is_operator< Operator >::value, void
+		>::type * const = nullptr
+	) {
+		if( nrows( A ) == 0 || ncols( A ) == 0 ) { return SUCCESS; }
+
+		const RC ret = foldr< descr >(
+			internal::getMatrix( A ),
+			x,
+			op
+		);
+		if( ret != SUCCESS ) { return ret; }
+
+		internal::hyperdags::generator.addSource(
+			internal::hyperdags::SCALAR,
+			&x
+		);
+		std::array< const void *, 1 > sourcesP{ &x };
+		std::array< uintptr_t, 1 > sourcesC{
+			getID( internal::getMatrix(A) )
+		};
+		std::array< uintptr_t, 1 > destinations{
+			getID( internal::getMatrix(A) )
+		};
+		internal::hyperdags::generator.addOperation(
+			internal::hyperdags::FOLDR_MATRIX_BETA_OP,
+			sourcesP.begin(), sourcesP.end(),
+			sourcesC.begin(), sourcesC.end(),
+			destinations.begin(), destinations.end()
+		);
+
+		return ret;
+	}
+
 } // end namespace grb
 
 #endif

@@ -111,7 +111,9 @@ namespace grb {
 			return resize( out, nnz( mask ) );
 		} else {
 			local_rc = grb::set< descr >(
-				internal::getLocal( out ), internal::getLocal( mask ), val
+				internal::getLocal( out ),
+				internal::getLocal( mask ),
+				val
 			);
 		}
 		return internal::checkGlobalErrorStateOrClear( out, local_rc );
@@ -148,7 +150,10 @@ namespace grb {
 				mul,
 				RESIZE
 			);
-			if( collectives<>::allreduce( ret, operators::any_or< RC >() ) != SUCCESS ) {
+			if( collectives<>::allreduce(
+					ret, operators::any_or< RC >()
+				) != SUCCESS )
+			{
 				return PANIC;
 			} else {
 				return ret;
@@ -157,7 +162,8 @@ namespace grb {
 			assert( phase == EXECUTE );
 			local_rc = eWiseApply< descr >(
 				internal::getLocal( C ),
-				internal::getLocal( A ), internal::getLocal( B ),
+				internal::getLocal( A ),
+				internal::getLocal( B ),
 				mul,
 				EXECUTE
 			);
@@ -190,12 +196,16 @@ namespace grb {
 		assert( phase != TRY );
 		RC ret = eWiseApply< descr >(
 			internal::getLocal( C ),
-			internal::getLocal( A ), internal::getLocal( B ),
+			internal::getLocal( A ),
+			internal::getLocal( B ),
 			op,
 			phase
 		);
 		if( phase == RESIZE ) {
-			if( collectives<>::allreduce( ret, operators::any_or< RC >() ) != SUCCESS ) {
+			if( collectives<>::allreduce(
+					ret, operators::any_or< RC >()
+				) != SUCCESS )
+			{
 				return PANIC;
 			} else {
 				return SUCCESS;
@@ -203,6 +213,170 @@ namespace grb {
 		}
 		assert( phase == EXECUTE );
 		return internal::checkGlobalErrorStateOrClear( C, ret );
+	}
+
+	template<
+		Descriptor descr = descriptors::no_operation,
+		class Operator,
+		typename IOType, typename MaskType, typename InputType,
+		typename RIT_A, typename CIT_A, typename NIT_A,
+		typename RIT_M, typename CIT_M, typename NIT_M
+	>
+	RC foldl(
+		Matrix< IOType, BSP1D, RIT_A, CIT_A, NIT_A > &A,
+		const Matrix< MaskType, BSP1D, RIT_M, CIT_M, NIT_M > &mask,
+		const InputType &x,
+		const Operator &op = Operator(),
+		const typename std::enable_if<
+			!grb::is_object< IOType >::value &&
+			!grb::is_object< InputType >::value &&
+			!grb::is_object< MaskType >::value &&
+			grb::is_operator< Operator >::value, void
+		>::type * const = nullptr
+	) {
+
+#ifdef _DEBUG
+		std::cout << "In grb::foldl( BSP1D, matrix, mask, scalar, op )\n";
+#endif
+		if( nnz( A ) == 0 || nnz( mask) == 0 ) {
+#ifdef _DEBUG
+			std::cout << "Matrix / mask is empty, nothing to compute.\n";
+#endif
+			return SUCCESS;
+		}
+
+		// Do local folding
+		RC rc = foldl< descr >(
+			internal::getLocal( A ),
+			internal::getLocal( mask ),
+			x,
+			op
+		);
+		if( collectives<>::allreduce( rc, operators::any_or< RC >() ) != SUCCESS ) {
+			return PANIC;
+		}
+		return SUCCESS;
+	}
+
+	template<
+		Descriptor descr = descriptors::no_operation,
+		class Operator,
+		typename IOType, typename MaskType, typename InputType,
+		typename RIT, typename CIT, typename NIT
+	>
+	RC foldl(
+		Matrix< IOType, BSP1D, RIT, CIT, NIT > &A,
+		const InputType &x,
+		const Operator &op = Operator(),
+		const typename std::enable_if<
+			!grb::is_object< IOType >::value &&
+			!grb::is_object< InputType >::value &&
+			!grb::is_object< MaskType >::value &&
+			grb::is_operator< Operator >::value, void
+		>::type * const = nullptr
+	) {
+
+#ifdef _DEBUG
+		std::cout << "In grb::foldl( BSP1D, matrix, scalar, op )\n";
+#endif
+		if( nnz( A ) == 0 ) {
+#ifdef _DEBUG
+			std::cout << "Matrix is empty, nothing to compute.\n";
+#endif
+			return SUCCESS;
+		}
+
+		// Do local folding
+		RC rc = foldl< descr >(
+			internal::getLocal( A ),
+			x,
+			op
+		);
+		if( collectives<>::allreduce( rc, operators::any_or< RC >() ) != SUCCESS ) {
+			return PANIC;
+		}
+		return SUCCESS;
+	}
+
+	template<
+		Descriptor descr = descriptors::no_operation,
+		class Operator,
+		typename IOType, typename MaskType, typename InputType,
+		typename RIT_A, typename CIT_A, typename NIT_A,
+		typename RIT_M, typename CIT_M, typename NIT_M
+	>
+	RC foldr(
+		Matrix< IOType, BSP1D, RIT_A, CIT_A, NIT_A > &A,
+		const Matrix< MaskType, BSP1D, RIT_M, CIT_M, NIT_M > &mask,
+		const InputType &x,
+		const Operator &op = Operator(),
+		const typename std::enable_if<
+			!grb::is_object< IOType >::value &&
+			!grb::is_object< InputType >::value &&
+			!grb::is_object< MaskType >::value &&
+			grb::is_operator< Operator >::value, void
+		>::type * const = nullptr
+	) {
+
+#ifdef _DEBUG
+		std::cout << "In grb::foldr( BSP1D, matrix, scalar, mask, op )\n";
+#endif
+		if( nnz( A ) == 0 || nnz( mask) == 0 ) {
+#ifdef _DEBUG
+			std::cout << "Matrix / mask is empty, nothing to compute.\n";
+#endif
+			return SUCCESS;
+		}
+
+		// Do local folding
+		RC rc = foldr< descr >(
+			internal::getLocal( A ),
+			internal::getLocal( mask ),
+			x,
+			op
+		);
+		if( collectives<>::allreduce( rc, operators::any_or< RC >() ) != SUCCESS ) {
+			return PANIC;
+		}
+		return SUCCESS;
+	}
+
+	template<
+		Descriptor descr = descriptors::no_operation,
+		class Operator,
+		typename IOType, typename InputType,
+		typename RIT, typename CIT, typename NIT
+	>
+	RC foldr(
+		Matrix< IOType, BSP1D, RIT, CIT, NIT > &A,
+		const InputType &x,
+		const Operator &op = Operator(),
+		const typename std::enable_if<
+			!grb::is_object< IOType >::value &&
+			!grb::is_object< InputType >::value &&
+			grb::is_operator< Operator >::value, void
+		>::type * const = nullptr
+	) {
+#ifdef _DEBUG
+		std::cout << "In grb::foldr( BSP1D, matrix, scalar, op )\n";
+#endif
+		if( nnz( A ) == 0 ) {
+#ifdef _DEBUG
+			std::cout << "Matrix is empty, nothing to compute.\n";
+#endif
+			return SUCCESS;
+		}
+
+		// Do local folding
+		RC rc = foldr< descr >(
+			internal::getLocal( A ),
+			x,
+			op
+		);
+		if( collectives<>::allreduce( rc, operators::any_or< RC >() ) != SUCCESS ) {
+			return PANIC;
+		}
+		return SUCCESS;
 	}
 
 } // namespace grb
