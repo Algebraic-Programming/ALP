@@ -443,6 +443,639 @@ namespace grb {
 	}
 
 	/**
+	 * Reduces, or \em folds, a matrix into a scalar, according to a commutative
+	 * monoid.
+	 *
+	 * Left-to-right masked variant.
+	 *
+	 * Reduction takes place according to a commutative monoid \f$ (\oplus,1) \f$,
+	 * where \f$ \oplus:\ D_1 \times D_2 \to D_3 \f$ with associated identities
+	 * \f$ 1_k in D_k \f$. Usually, \f$ D_k \subseteq D_3, 1 \leq k < 3 \f$,
+	 * though other more exotic structures may be envisioned (and used).
+	 *
+	 * Let \f$ x_0 = x \f$ and let
+	 * \f$ x_{k+1} = \begin{cases}
+	 *   A_k \oplus x_k
+	 *     \text{, if }A_k\text{ is nonzero and }M_k\text{ evaluates true; and};\\
+	 *   x_k\text{, otherwise.}
+	 * \end{cases},\f$
+	 * for all \f$ k \in \{ 0, 1, \ldots, \mathit{nnz(A)}-1 \} \f$.
+	 * Then, \a x is replaced with \f$ x_{\mathit{nnz(A)}} \f$ as defined according
+	 * to the above recursion.
+	 *
+	 * The order in which the nonzeroes \f$ A_k \f$ of \a A are processed is
+	 * undefined.
+	 *
+	 * \note Per this definition, the folding happens in a right-to-left direction.
+	 *       If another direction is wanted, which may have use in cases where
+	 *       \f$ D_1 \f$ differs from \f$ D_2 \f$, then either a monoid with those
+	 *       operator domains switched may be supplied or #grb::foldl may be used
+	 *       instead.
+	 *
+	 * Note that the operator \f$ \oplus \f$ must be associative since it is part
+	 * of a monoid. This algebraic property is exploited when parallelising the
+	 * requested operation. The identity is required when parallelisation requires
+	 * intialisation of process- or thread-local temporaries.
+	 *
+	 * \warning Thus the order of the evaluation of the reduction operation should
+	 *          not be expected to be a \em serial right-to-left evaluation of the
+	 *          computation chain, even if the order of the nonzeroes is considered
+	 *          fixed.
+	 *
+	 * \note That the order of nonzeroes is \em not fixed leads to the requirement
+	 *       that the given \a Monoid must be commutative.
+	 *
+	 * @tparam descr     The descriptor to be used (descriptors::no_operation if
+	 *                   left unspecified).
+	 * @tparam Monoid    The commutative monoid to use for reduction.
+	 * @tparam InputType The type of the elements in the supplied ALP/GraphBLAS
+	 *                   matrix \a A.
+	 * @tparam IOType    The type of the output scalar \a x.
+	 * @tparam MaskType  The type of the elements in the supplied ALP/GraphBLAS
+	 *                   matrix \a mask.
+	 *
+	 * @param[in]      A   Any ALP/GraphBLAS matrix, will be reduced into \a x.
+	 * @param[in]   mask   Any ALP/GraphBLAS matrix, will mask the matrix \a A.
+	 *                     Dimensions must match those of \a A.
+	 * @param[in, out] x   The result of the reduction. The prior value will be
+	 *                     considered during computation; i.e., this is an in-place
+	 *                     operation.
+	 * @param[in] monoid   The commutative monoid under which to perform this
+	 *                     reduction.
+	 *
+	 * @return grb::SUCCESS  When the call completed successfully.
+	 * @return grb::MISMATCH If a \a mask was not empty and does not have size
+	 *                       equal to \a y.
+	 *
+	 * @see grb::foldl provides similar in-place functionality, but folds in a
+	 *                 left-to-right direction.
+	 * @see The same primitive but unmasked is also provided.
+	 *
+	 * \parblock
+	 * \par Valid descriptors
+	 * - descriptors::no_operation: the default descriptor.
+	 * - descriptors::no_casting: the first domain of \a monoid must match
+	 *  \a InputType, the second domain of \a op match \a IOType, the third
+	 *  domain must match \a IOType.
+	 * - descriptors::transpose_matrix: A^T will be considered
+	 *   instead of \a A (unmasked variant only).
+	 * - descriptors::transpose_left: A^T will be considered instead
+	 *   of \a A.
+	 * - descriptors::transpose_right: mask^T will be considered
+	 *   instead of \a mask.
+	 * - descriptors::structural: Any value stored in \a mask is considered
+	 *   to be <tt>true</tt>.
+	 *
+	 * \note Invalid descriptors will be ignored.
+	 *
+	 * \endparblock
+	 *
+	 * \par Performance semantics
+	 * Each backend must define performance semantics for this primitive.
+	 *
+	 * @see perfSemantics
+	 */
+	template<
+		Descriptor descr = descriptors::no_operation,
+		class Monoid,
+		typename InputType, typename IOType, typename MaskType,
+		typename RIT_A, typename CIT_A, typename NIT_A,
+		typename RIT_M, typename CIT_M, typename NIT_M,
+		Backend backend
+	>
+	RC foldr(
+		const Matrix< InputType, backend, RIT_A, CIT_A, NIT_A > &A,
+		const Matrix< MaskType, backend, RIT_M, CIT_M, NIT_M > &mask,
+		IOType &x,
+		const Monoid &monoid = Monoid(),
+		const typename std::enable_if<
+			!grb::is_object< IOType >::value &&
+			!grb::is_object< InputType >::value &&
+			!grb::is_object< MaskType >::value &&
+			grb::is_monoid< Monoid >::value, void
+		>::type * const = nullptr
+	) {
+#ifndef NDEBUG
+		const bool should_not_call_base_scalar_masked_matrix_foldr = false;
+		assert( should_not_call_base_scalar_masked_matrix_foldr );
+#endif
+		(void) A;
+		(void) x;
+		(void) mask;
+		(void) monoid;
+		return UNSUPPORTED;
+	}
+
+	/**
+	 * Reduces, or \em folds, a matrix into a scalar.
+	 *
+	 * Left-to-right unmasked variant.
+	 *
+	 * Please see the masked monoid variant of #grb::foldr for full documentation.
+	 */
+	template<
+		Descriptor descr = descriptors::no_operation,
+		class Monoid,
+		typename InputType, typename IOType,
+		typename RIT, typename CIT, typename NIT,
+		Backend backend
+	>
+	RC foldr(
+		const Matrix< InputType, backend, RIT, CIT, NIT > &A,
+		IOType &x,
+		const Monoid &monoid,
+		const typename std::enable_if<
+			!grb::is_object< IOType >::value &&
+			!grb::is_object< InputType >::value &&
+			grb::is_monoid< Monoid >::value, void
+		>::type * const = nullptr
+	) {
+#ifndef NDEBUG
+		const bool should_not_call_base_scalar_unmasked_matrix_foldr = false;
+		assert( should_not_call_base_scalar_unmasked_matrix_foldr );
+#endif
+		(void) A;
+		(void) x;
+		(void) monoid;
+		return UNSUPPORTED;
+	}
+
+	/**
+	 * Reduces, or \em folds, a matrix into a scalar, according to a given
+	 * semiring.
+	 *
+	 * Left-to-right unmasked variant.
+	 *
+	 * Please see the masked monoid variant of #grb::foldr for full documentation;
+	 * this function behaves as there described using the commutative additive
+	 * monoid of the given semiring.
+	 *
+	 * In addition to what is described for the monoid variant, this function also
+	 * supports the following:
+	 *  -# the #grb::descriptors::add_identity descriptor; and
+	 *  -# <tt>void</tt> matrices \a A.
+	 */
+	template<
+		Descriptor descr = descriptors::no_operation,
+		class Semiring,
+		typename InputType, typename IOType,
+		typename RIT, typename CIT, typename NIT,
+		Backend backend
+	>
+	RC foldr(
+		const Matrix< InputType, backend, RIT, CIT, NIT > &A,
+		IOType &x,
+		const Semiring &semiring,
+		const typename std::enable_if<
+			!grb::is_object< IOType >::value &&
+			!grb::is_object< InputType >::value &&
+			grb::is_semiring< Semiring >::value, void
+		>::type * const = nullptr
+	) {
+#ifndef NDEBUG
+		const bool should_not_call_base_scalar_unmasked_matrix_foldr_ring = false;
+		assert( should_not_call_base_scalar_unmasked_matrix_foldr_ring );
+#endif
+		(void) A;
+		(void) x;
+		(void) semiring;
+		return UNSUPPORTED;
+	}
+
+	/**
+	 * Reduces, or \em folds, a matrix into a scalar, according to a given
+	 * semiring.
+	 *
+	 * Left-to-right masked variant.
+	 *
+	 * Please see the masked monoid variant of #grb::foldr for full documentation;
+	 * this function behaves as there described using the commutative additive
+	 * monoid of the given semiring.
+	 *
+	 * In addition to what is described for the monoid variant, this function also
+	 * supports the following:
+	 *  -# the #grb::descriptors::add_identity descriptor; and
+	 *  -# <tt>void</tt> matrices \a A.
+	 */
+	template<
+		Descriptor descr = descriptors::no_operation,
+		class Semiring,
+		typename InputType, typename IOType, typename MaskType,
+		typename RIT_A, typename CIT_A, typename NIT_A,
+		typename RIT_M, typename CIT_M, typename NIT_M,
+		Backend backend
+	>
+	RC foldr(
+		const Matrix< InputType, backend, RIT_A, CIT_A, NIT_A > &A,
+		const Matrix< MaskType, backend, RIT_M, CIT_M, NIT_M > &mask,
+		IOType &x,
+		const Semiring &semiring = Semiring(),
+		const typename std::enable_if<
+			!grb::is_object< IOType >::value &&
+			!grb::is_object< InputType >::value &&
+			!grb::is_object< MaskType >::value &&
+			grb::is_semiring< Semiring >::value, void
+		>::type * const = nullptr
+	) {
+#ifndef NDEBUG
+		const bool should_not_call_base_scalar_masked_matrix_foldr_ring = false;
+		assert( should_not_call_base_scalar_masked_matrix_foldr_ring );
+#endif
+		(void) A;
+		(void) x;
+		(void) mask;
+		(void) semiring;
+		return UNSUPPORTED;
+	}
+
+	/**
+	 * Reduces, or \em folds, a matrix into a scalar, according to a given
+	 * commutative monoid.
+	 *
+	 * Right-to-left masked variant.
+	 *
+	 * Reduction takes place according to a commutative monoid \f$ (\oplus,1) \f$,
+	 * where \f$ \oplus:\ D_1 \times D_2 \to D_3 \f$ with associated identities
+	 * \f$ 1_k in D_k \f$. Usually, \f$ D_k \subseteq D_3, 1 \leq k < 3 \f$,
+	 * though other more exotic structures may be envisioned (and used).
+	 *
+	 * Let \f$ x_0 = x \f$ and let
+	 * \f$ x_{k+1} = \begin{cases}
+	 *   x_k \oplus A_k
+	 *     \text{, if }A_k\text{ is nonzero and }M_k\text{ evaluates true; and};\\
+	 *   x_k\text{, otherwise.}
+	 * \end{cases},\f$
+	 * for all \f$ k \in \{ 0, 1, \ldots, \mathit{nnz(A)}-1 \} \f$.
+	 * Then, \a x is replaced with \f$ x_{\mathit{nnz(A)}} \f$ as defined according
+	 * to the above recursion.
+	 *
+	 * \note Per this definition, the folding happens in a right-to-left direction.
+	 *       If another direction is wanted, which may have use in cases where
+	 *       \f$ D_1 \f$ differs from \f$ D_2 \f$, then either a monoid with those
+	 *       operator domains switched may be supplied or #grb::foldr may be used
+	 *       instead.
+	 *
+	 * Note that the operator \f$ \oplus \f$ must be associative since it is part
+	 * of a monoid. This algebraic property is exploited when parallelising the
+	 * requested operation. The identity is required when parallelisation requires
+	 * intialisation of process- or thread-local temporaries.
+	 *
+	 * \warning Thus the order of the evaluation of the reduction operation should
+	 *          not be expected to be a \em serial right-to-left evaluation of the
+	 *          computation chain, even if the order of nonzeroes is considered
+	 *          fixed.
+	 *
+	 * \note That the order of nonzeroes is \em not fixed leads to the requirement
+	 *       that the given \a Monoid must be commutative.
+	 *
+	 * @tparam descr     The descriptor to be used (descriptors::no_operation if
+	 *                   left unspecified).
+	 * @tparam Monoid    The commutative monoid to use for reduction.
+	 * @tparam InputType The type of the elements in the supplied ALP/GraphBLAS
+	 *                   matrix \a A.
+	 * @tparam IOType    The type of the output scalar \a x.
+	 * @tparam MaskType  The type of the elements in the supplied ALP/GraphBLAS
+	 *                   matrix \a mask.
+	 *
+	 * @param[in, out] x   The result of the reduction. The prior value will be
+	 *                     considered during computation; i.e., this is an in-place
+	 *                     operation.
+	 * @param[in]      A   Any ALP/GraphBLAS matrix, will be reduced into \a x.
+	 * @param[in]   mask   Any ALP/GraphBLAS matrix, will mask the matrix \a A.
+	 *                     Dimensions must match those of \a A.
+	 * @param[in] monoid   The commutative monoid under which to perform this
+	 *                     reduction.
+	 *
+	 * @return grb::SUCCESS  When the call completed successfully.
+	 * @return grb::MISMATCH If a \a mask was not empty and does not have size
+	 *                       equal to \a y.
+	 *
+	 * @see grb::foldr provides similar in-place functionality, but folds in a
+	 *                 left-to-right direction.
+	 * @see The same primitive but unmasked is also provided.
+	 *
+	 * \parblock
+	 * \par Valid descriptors
+	 * - descriptors::no_operation: the default descriptor.
+	 * - descriptors::no_casting: the first domain of \a monoid must match
+	 *   \a InputType, the second domain of \a op match \a IOType, the third
+	 *    domain must match \a IOType.
+	 * - descriptors::transpose_matrix: A^T will be considered
+	 *   instead of \a A (unmasked variant only).
+	 * - descriptors::transpose_left: A^T will be considered instead
+	 *   of \a A.
+	 * - descriptors::transpose_right: mask^T will be considered
+	 *   instead of \a mask.
+	 * - descriptors::structural: Any value stored in \a mask is considered
+	 *   to be <tt>true</tt>.
+	 *
+	 * \note Invalid descriptors will be ignored.
+	 *
+	 * \endparblock
+	 *
+	 * \par Performance semantics
+	 * Each backend must define performance semantics for this primitive.
+	 *
+	 * @see perfSemantics
+	 */
+	template<
+		Descriptor descr = descriptors::no_operation,
+		class Monoid,
+		typename InputType, typename IOType, typename MaskType,
+		typename RIT_A, typename CIT_A, typename NIT_A,
+		typename RIT_M, typename CIT_M, typename NIT_M,
+		Backend backend
+	>
+	RC foldl(
+		IOType &x,
+		const Matrix< InputType, backend, RIT_A, CIT_A, NIT_A > &A,
+		const Matrix< MaskType, backend, RIT_M, CIT_M, NIT_M > &mask,
+		const Monoid &monoid = Monoid(),
+		const typename std::enable_if<
+			!grb::is_object< IOType >::value &&
+			!grb::is_object< InputType >::value &&
+			!grb::is_object< MaskType >::value &&
+			grb::is_monoid< Monoid >::value, void
+		>::type * const = nullptr
+	) {
+#ifndef NDEBUG
+		const bool should_not_call_base_scalar_matrix_foldl = false;
+		assert( should_not_call_base_scalar_matrix_foldl );
+#endif
+		(void) A;
+		(void) x;
+		(void) mask;
+		(void) monoid;
+		return UNSUPPORTED;
+	}
+
+	/**
+	 * Reduces, or \em folds, a matrix into a scalar.
+	 *
+	 * Right-to-left unmasked variant.
+	 *
+	 * Please see the masked monoid #grb::foldl variant for full documentation.
+	 */
+	template<
+		Descriptor descr = descriptors::no_operation,
+		class Monoid,
+		typename InputType, typename IOType,
+		typename RIT, typename CIT, typename NIT,
+		Backend backend
+	>
+	RC foldl(
+		IOType &x,
+		const Matrix< InputType, backend, RIT, CIT, NIT > &A,
+		const Monoid &monoid,
+		const typename std::enable_if<
+			!grb::is_object< IOType >::value &&
+			!grb::is_object< InputType >::value &&
+			grb::is_monoid< Monoid >::value, void
+		>::type * const = nullptr
+	) {
+#ifndef NDEBUG
+		const bool should_not_call_base_scalar_unmasked_matrix_foldl = false;
+		assert( should_not_call_base_scalar_unmasked_matrix_foldl );
+#endif
+		(void) A;
+		(void) x;
+		(void) monoid;
+		return UNSUPPORTED;
+	}
+
+	/**
+	 * Reduces, or \em folds, a matrix into a scalar, according to a given
+	 * semiring.
+	 *
+	 * Right-to-left masked variant.
+	 *
+	 * Please see the masked monoid variant of #grb::foldl for full documentation;
+	 * this function behaves as there described using the commutative additive
+	 * monoid of the given semiring.
+	 *
+	 * In addition to what is described for the monoid variant, this function also
+	 * supports the following:
+	 *  -# the #grb::descriptors::add_identity descriptor; and
+	 *  -# <tt>void</tt> matrices \a A.
+	 */
+	template<
+		Descriptor descr = descriptors::no_operation,
+		class Semiring,
+		typename InputType, typename IOType, typename MaskType,
+		typename RIT_A, typename CIT_A, typename NIT_A,
+		typename RIT_M, typename CIT_M, typename NIT_M,
+		Backend backend
+	>
+	RC foldl(
+		IOType &x,
+		const Matrix< InputType, backend, RIT_A, CIT_A, NIT_A > &A,
+		const Matrix< MaskType, backend, RIT_M, CIT_M, NIT_M > &mask,
+		const Semiring &semiring = Semiring(),
+		const typename std::enable_if<
+			!grb::is_object< IOType >::value &&
+			!grb::is_object< InputType >::value &&
+			!grb::is_object< MaskType >::value &&
+			grb::is_semiring< Semiring >::value, void
+		>::type * const = nullptr
+	) {
+#ifndef NDEBUG
+		const bool should_not_call_base_scalar_matrix_foldl_ring = false;
+		assert( should_not_call_base_scalar_matrix_foldl_ring );
+#endif
+		(void) A;
+		(void) x;
+		(void) mask;
+		(void) semiring;
+		return UNSUPPORTED;
+	}
+
+	/**
+	 * Reduces, or \em folds, a matrix into a scalar, according to a given
+	 * semiring.
+	 *
+	 * Right-to-left unmasked variant.
+	 *
+	 * Please see the masked monoid variant of #grb::foldl for full documentation;
+	 * this function behaves as there described using the commutative additive
+	 * monoid of the given semiring.
+	 *
+	 * In addition to what is described for the monoid variant, this function also
+	 * supports the following:
+	 *  -# the #grb::descriptors::add_identity descriptor; and
+	 *  -# <tt>void</tt> matrices \a A.
+	 */
+	template<
+		Descriptor descr = descriptors::no_operation,
+		class Semiring,
+		typename InputType, typename IOType,
+		typename RIT, typename CIT, typename NIT,
+		Backend backend
+	>
+	RC foldl(
+		IOType &x,
+		const Matrix< InputType, backend, RIT, CIT, NIT > &A,
+		const Semiring &semiring,
+		const typename std::enable_if<
+			!grb::is_object< IOType >::value &&
+			!grb::is_object< InputType >::value &&
+			grb::is_semiring< Semiring >::value, void
+		>::type * const = nullptr
+	) {
+#ifndef NDEBUG
+		const bool should_not_call_base_scalar_unmasked_matrix_foldl_ring = false;
+		assert( should_not_call_base_scalar_unmasked_matrix_foldl_ring );
+#endif
+		(void) A;
+		(void) x;
+		(void) semiring;
+		return UNSUPPORTED;
+	}
+
+
+#ifndef __DOXYGEN__
+
+	// generic variants for clearer error handling
+
+	template<
+		Descriptor descr = descriptors::no_operation,
+		typename UnknownT,
+		typename InputType, typename IOType,
+		typename RIT, typename CIT, typename NIT,
+		Backend backend
+	>
+	RC foldl(
+		IOType &,
+		const Matrix< InputType, backend, RIT, CIT, NIT > &,
+		const UnknownT,
+		const typename std::enable_if<
+			!grb::is_object< IOType >::value && (
+				grb::is_object< InputType >::value || !(
+					grb::is_semiring< UnknownT >::value ||
+					grb::is_monoid< UnknownT >::value
+				)
+			), void
+		>::type * const = nullptr
+
+	) {
+		static_assert( grb::is_object< InputType >::value,
+			"grb::foldl( scalar, matrix, monoid/semiring ): "
+			"matrix elements are ALP types, which is not allowed"
+		);
+		static_assert( grb::is_monoid< UnknownT >::value ||
+			grb::is_semiring< UnknownT >::value,
+			"grb::foldl( scalar, matrix, monoid/semiring ): "
+			"third argument is not an ALP monoid nor an ALP semiring."
+		);
+		return PANIC;
+	}
+
+	template<
+		Descriptor descr = descriptors::no_operation,
+		typename UnknownT,
+		typename InputType, typename IOType, typename MaskType,
+		typename RIT_A, typename CIT_A, typename NIT_A,
+		typename RIT_M, typename CIT_M, typename NIT_M,
+		Backend backend
+	>
+	RC foldl(
+		IOType &,
+		const Matrix< InputType, backend, RIT_A, CIT_A, NIT_A > &,
+		const Matrix< MaskType, backend, RIT_M, CIT_M, NIT_M > &,
+		const UnknownT,
+		const typename std::enable_if<
+			!grb::is_object< IOType >::value && (
+				grb::is_object< InputType >::value || !(
+					grb::is_semiring< UnknownT >::value ||
+					grb::is_monoid< UnknownT >::value
+				)
+			), void
+		>::type * const = nullptr
+	) {
+		static_assert( grb::is_object< InputType >::value,
+			"grb::foldl( scalar, matrix, monoid/semiring ): "
+			"matrix elements are ALP types, which is not allowed"
+		);
+		static_assert( grb::is_monoid< UnknownT >::value ||
+			grb::is_semiring< UnknownT >::value,
+			"grb::foldl( scalar, matrix, mask, monoid/semiring ): "
+			"fourth argument is not an ALP monoid nor an ALP semiring."
+		);
+		return PANIC;
+	}
+
+	template<
+		Descriptor descr = descriptors::no_operation,
+		typename UnknownT,
+		typename InputType, typename IOType,
+		typename RIT, typename CIT, typename NIT,
+		Backend backend
+	>
+	RC foldr(
+		const Matrix< InputType, backend, RIT, CIT, NIT > &,
+		IOType &,
+		const UnknownT,
+		const typename std::enable_if<
+			!grb::is_object< IOType >::value && (
+				grb::is_object< InputType >::value || !(
+					grb::is_semiring< UnknownT >::value ||
+					grb::is_monoid< UnknownT >::value
+				)
+			), void
+		>::type * const = nullptr
+	) {
+		static_assert( grb::is_object< InputType >::value,
+			"grb::foldl( scalar, matrix, monoid/semiring ): "
+			"matrix elements are ALP types, which is not allowed"
+		);
+		static_assert( grb::is_monoid< UnknownT >::value ||
+			grb::is_semiring< UnknownT >::value,
+			"grb::foldr( matrix, scalar, monoid/semiring ): "
+			"third argument is not an ALP monoid nor an ALP semiring."
+		);
+		return PANIC;
+	}
+
+	template<
+		Descriptor descr = descriptors::no_operation,
+		typename UnknownT,
+		typename InputType, typename IOType, typename MaskType,
+		typename RIT_A, typename CIT_A, typename NIT_A,
+		typename RIT_M, typename CIT_M, typename NIT_M,
+		Backend backend
+	>
+	RC foldr(
+		const Matrix< InputType, backend, RIT_A, CIT_A, NIT_A > &,
+		const Matrix< MaskType, backend, RIT_M, CIT_M, NIT_M > &,
+		IOType &,
+		const UnknownT,
+		const typename std::enable_if<
+			!grb::is_object< IOType >::value && (
+				grb::is_object< InputType >::value || !(
+					grb::is_semiring< UnknownT >::value ||
+					grb::is_monoid< UnknownT >::value
+				)
+			), void
+		>::type * const = nullptr
+	) {
+		static_assert( grb::is_object< IOType >::value,
+			"grb::foldl( scalar, matrix, monoid/semiring ): "
+			"scalar is an ALP type, which is not allowed"
+		);
+		static_assert( grb::is_object< InputType >::value,
+			"grb::foldl( scalar, matrix, monoid/semiring ): "
+			"matrix elements are ALP types, which is not allowed"
+		);
+		static_assert( grb::is_monoid< UnknownT >::value ||
+			grb::is_semiring< UnknownT >::value,
+			"grb::foldr( matrix, mask, scalar, monoid/semiring ): "
+			"fourth argument is not an ALP monoid nor an ALP semiring."
+		);
+		return PANIC;
+	}
+
+#endif
+
+	/**
 	 * @}
 	 */
 
