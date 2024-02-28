@@ -4489,18 +4489,24 @@ namespace grb {
 	 * also distributed which is correct, since all calls are collective there may
 	 * never be a mismatch in globally known vector sizes.
 	 */
-	template< typename Func, typename DataType, typename Coords >
+	template<
+		Descriptor descr = descriptors::no_operation,
+		typename Func, typename DataType, typename Coords
+	>
 	RC eWiseLambda( const Func f, const Vector< DataType, BSP1D, Coords > &x ) {
 		const internal::BSP1D_Data &data = internal::grb_BSP1D.cload();
 		// rely on local lambda, passing in the active global distribution, global
 		// length, and number of user processes
-		return internal::eWiseLambda< typename internal::Distribution< BSP1D > >(
-			f, internal::getLocal( x ), x._n, data.s, data.P );
+		return internal::eWiseLambda<
+			descr,
+			typename internal::Distribution< BSP1D >
+		>( f, internal::getLocal( x ), x._n, data.s, data.P );
 		// note the sparsity structure will not change by the above call
 	}
 
 	/** \internal No implementation notes. */
 	template<
+		Descriptor descr = descriptors::no_operation,
 		typename Func,
 		typename DataType1, typename DataType2, typename Coords,
 		typename... Args
@@ -4517,7 +4523,7 @@ namespace grb {
 		}
 		// in this implementation, the distributions are equal so no need for any
 		// synchronisation
-		return eWiseLambda( f, x, args... );
+		return eWiseLambda< descr >( f, x, args... );
 		// note the sparsity structure will not change by the above call
 	}
 

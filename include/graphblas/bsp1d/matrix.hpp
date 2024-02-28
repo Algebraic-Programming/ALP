@@ -111,6 +111,7 @@ namespace grb {
 		   ********************* */
 
 		template<
+			Descriptor,
 			typename Func, typename DataType1,
 			typename RIT, typename CIT, typename NIT
 		>

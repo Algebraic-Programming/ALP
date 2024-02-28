@@ -60,7 +60,8 @@ namespace grb {
 	) {
 		const RC ret = eWiseApply< descr >(
 			internal::getMatrix( C ),
-			internal::getMatrix( A ), internal::getMatrix( B ),
+			internal::getMatrix( A ),
+			internal::getMatrix( B ),
 			mulmono, phase
 		);
 		if( ret != SUCCESS ) { return ret; }
@@ -105,7 +106,8 @@ namespace grb {
 	) {
 		const RC ret = eWiseApply< descr >(
 			internal::getMatrix( C ),
-			internal::getMatrix( A ), internal::getMatrix( B ),
+			internal::getMatrix( A ),
+			internal::getMatrix( B ),
 			mulOp, phase
 		);
 		if( ret != SUCCESS ) { return ret; }
