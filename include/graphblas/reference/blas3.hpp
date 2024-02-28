@@ -119,7 +119,7 @@ namespace grb {
 				size_t nzc = 0;
 
 #ifdef _H_GRB_REFERENCE_OMP_BLAS3
-				#pragma omp parallel reduction(+: nzc)
+				#pragma omp parallel firstprivate(m, op, identity)
 #endif
 				{
 					size_t start_row = 0;
