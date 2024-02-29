@@ -610,23 +610,17 @@ for MODE in ${MODES}; do
 				grep 'Test OK' ${TEST_OUT_DIR}/zip_large_${MODE}_${BACKEND}_${P}_${T} || echo "Test FAILED"
 				echo " "
 
-        echo ">>>      [x]           [ ]       Testing grb::select on matrices of integers and of size 5'000"
-        $runner ${TEST_BIN_DIR}/selectMatrix_${MODE}_${BACKEND} 5000 &> ${TEST_OUT_DIR}/selectMatrix_${MODE}_${BACKEND}_${P}_${T}_5000
-        head -1 ${TEST_OUT_DIR}/selectMatrix_${MODE}_${BACKEND}_${P}_${T}_5000
-        grep 'Test OK' ${TEST_OUT_DIR}/selectMatrix_${MODE}_${BACKEND}_${P}_${T}_5000 || echo "Test FAILED"
-        echo " "
+				echo ">>>      [x]           [ ]       Testing grb::select on matrices of integers and of size 3"
+				$runner ${TEST_BIN_DIR}/selectMatrix_${MODE}_${BACKEND} 3 &> ${TEST_OUT_DIR}/selectMatrix_${MODE}_${BACKEND}_${P}_${T}_3
+				head -1 ${TEST_OUT_DIR}/selectMatrix_${MODE}_${BACKEND}_${P}_${T}_3
+				grep 'Test OK' ${TEST_OUT_DIR}/selectMatrix_${MODE}_${BACKEND}_${P}_${T}_3 || echo "Test FAILED"
+				echo " "
 
-        echo ">>>      [x]           [ ]       Testing grb::select on matrices of integers and of size 3"
-        $runner ${TEST_BIN_DIR}/selectMatrix_${MODE}_${BACKEND} 3 &> ${TEST_OUT_DIR}/selectMatrix_${MODE}_${BACKEND}_${P}_${T}_3
-        head -1 ${TEST_OUT_DIR}/selectMatrix_${MODE}_${BACKEND}_${P}_${T}_3
-        grep 'Test OK' ${TEST_OUT_DIR}/selectMatrix_${MODE}_${BACKEND}_${P}_${T}_3 || echo "Test FAILED"
-        echo " "
-
-        echo ">>>      [x]           [ ]       Testing grb::select on matrices of integers and of size 5'000"
-        $runner ${TEST_BIN_DIR}/selectMatrix_${MODE}_${BACKEND} 5000 &> ${TEST_OUT_DIR}/selectMatrix_${MODE}_${BACKEND}_${P}_${T}
-        head -1 ${TEST_OUT_DIR}/selectMatrix_${MODE}_${BACKEND}_${P}_${T}
-        grep 'Test OK' ${TEST_OUT_DIR}/selectMatrix_${MODE}_${BACKEND}_${P}_${T} || echo "Test FAILED"
-        echo " "
+				echo ">>>      [x]           [ ]       Testing grb::select on matrices of integers and of size 5'000"
+				$runner ${TEST_BIN_DIR}/selectMatrix_${MODE}_${BACKEND} 5000 &> ${TEST_OUT_DIR}/selectMatrix_${MODE}_${BACKEND}_${P}_${T}
+				head -1 ${TEST_OUT_DIR}/selectMatrix_${MODE}_${BACKEND}_${P}_${T}
+				grep 'Test OK' ${TEST_OUT_DIR}/selectMatrix_${MODE}_${BACKEND}_${P}_${T} || echo "Test FAILED"
+				echo " "
 
 				echo ">>>      [x]           [ ]       Testing copy-constructor of square pattern matrices"
 				echo "                                 of size 1003."
