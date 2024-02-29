@@ -36,6 +36,10 @@
 #include <graphblas/descriptors.hpp>
 #include <graphblas/utils/iscomplex.hpp>
 
+#ifdef _DEBUG
+ #include <iostream>
+#endif
+
 
 namespace grb {
 
