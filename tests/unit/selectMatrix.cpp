@@ -93,12 +93,15 @@ size_t count_nnz_if(
 		const auto c = std::get<1>( entry );
 		const auto v = std::get<2>( entry );
 		if( predicate( &r, &c, &v ) ) {
-			++count;
+			(void) ++count;
 		}
+	}
+	const RC rc = collectives<>::allreduce( count, operators::add< size_t >() );
+	if( rc != SUCCESS ) {
+		throw std::runtime_error( "count_nnz_if: could not all-reduce final count" );
 	}
 	return count;
 }
-
 
 template<
 	typename T, typename RIT, typename CIT, Backend implementation,
@@ -116,8 +119,12 @@ size_t count_nnz_if(
 		const auto c = std::get<1>( entry );
 		void * const v = nullptr;
 		if( predicate( &r, &c, v ) ) {
-			++count;
+			(void) ++count;
 		}
+	}
+	const RC rc = collectives<>::allreduce( count, operators::add< size_t >() );
+	if( rc != SUCCESS ) {
+		throw std::runtime_error( "count_nnz_if: could not all-reduce final count" );
 	}
 	return count;
 }
