@@ -33,7 +33,7 @@ namespace {
 
 	template< bool enabled, typename D >
 	void printSparseMatrix(
-		const Matrix<D> &mat,
+		const Matrix< D > &mat,
 		const std::string &name = "",
 		std::ostream &os = std::cerr
 	) {
@@ -92,7 +92,7 @@ size_t count_nnz_if(
 		const auto r = std::get<0>( entry );
 		const auto c = std::get<1>( entry );
 		const auto v = std::get<2>( entry );
-		if( predicate( &r, &c, &v ) ) {
+		if( predicate( r, c, v ) ) {
 			(void) ++count;
 		}
 	}
@@ -115,10 +115,10 @@ size_t count_nnz_if(
 	size_t count = 0;
 	for( const auto &each : mat ) {
 		const auto entry = getMatrixEntry< T >( each );
-		const auto r = std::get<0>( entry );
-		const auto c = std::get<1>( entry );
-		void * const v = nullptr;
-		if( predicate( &r, &c, v ) ) {
+		const auto r = std::get< 0 >( entry );
+		const auto c = std::get< 1 >( entry );
+		const auto v = std::get< 2 >( entry );
+		if( predicate( r, c, v ) ) {
 			(void) ++count;
 		}
 	}
@@ -156,7 +156,7 @@ bool matrix_validate_predicate(
 		const auto r = std::get<0>( entry );
 		const auto c = std::get<1>( entry );
 		const auto v = std::get<2>( entry );
-		const bool match = predicate( &r, &c, &v );
+		const bool match = predicate( r, c, v );
 		if( !match ) {
 			std::cerr << "  /!\\ Predicate failed for ("
 				<< std::get<0>( entry ) << ", " << std::get<1>( entry )
@@ -199,11 +199,11 @@ bool matrix_validate_predicate(
 
 	bool valid = true;
 	for( const auto &each : obtained ) {
-		const auto entry = getMatrixEntry<D>( each );
+		const auto entry = getMatrixEntry< D >( each );
 		const auto r = std::get<0>( entry );
 		const auto c = std::get<1>( entry );
-		void * const v = nullptr;
-		const bool match = predicate( &r, &c, v );
+		const auto v = std::get<2>( entry );
+		const bool match = predicate( r, c, v );
 		if( !match ) {
 			std::cerr << "  /!\\ Predicate failed for ("
 				<< std::get<0>( entry ) << ", " << std::get<1>( entry )
@@ -375,53 +375,53 @@ void grb_program_operators( const size_t &n, RC &rc ) {
 	std::cerr  << "Matrices built" << std::endl;
 
 	// Test 01: Select <diagonal>
-	rc = rc ? rc : test_case( I, operators::select::is_diagonal<D>(),
+	rc = rc ? rc : test_case( I, operators::select::is_diagonal< D >(),
 	          "Test 01: Select <is_diagonal<" + D_name + ">> out of <identity>" );
-	rc = rc ? rc : test_case( I_transposed, operators::select::is_diagonal<D>(),
+	rc = rc ? rc : test_case( I_transposed, operators::select::is_diagonal< D >(),
 	          "Test 01: Select <is_diagonal<" + D_name + ">> out of <transposed-identity>" );
-	rc = rc ? rc : test_case( One_row, operators::select::is_diagonal<D>(),
+	rc = rc ? rc : test_case( One_row, operators::select::is_diagonal< D >(),
 	          "Test 01: Select <is_diagonal<" + D_name + ">> out of <one-row>" );
-	rc = rc ? rc : test_case( One_col, operators::select::is_diagonal<D>(),
+	rc = rc ? rc : test_case( One_col, operators::select::is_diagonal< D >(),
 	          "Test 01: Select <is_diagonal<" + D_name + ">> out of <one-column>" );
 
 	// Test 02: Select <strict-lower>
-	rc = rc ? rc : test_case( I, operators::select::is_strictly_lower<D>(),
+	rc = rc ? rc : test_case( I, operators::select::is_strictly_lower< D >(),
 	          "Test 02: Select <is_strictly_lower<" + D_name + ">> out of <identity>" );
-	rc = rc ? rc : test_case( I_transposed, operators::select::is_strictly_lower<D>(),
+	rc = rc ? rc : test_case( I_transposed, operators::select::is_strictly_lower< D >(),
 	          "Test 02: Select <is_strictly_lower<" + D_name + ">> out of <transposed-identity>" );
-	rc = rc ? rc : test_case( One_row, operators::select::is_strictly_lower<D>(),
+	rc = rc ? rc : test_case( One_row, operators::select::is_strictly_lower< D >(),
 	          "Test 02: Select <is_strictly_lower<" + D_name + ">> out of <one-row>" );
-	rc = rc ? rc : test_case( One_col, operators::select::is_strictly_lower<D>(),
+	rc = rc ? rc : test_case( One_col, operators::select::is_strictly_lower< D >(),
 	          "Test 02: Select <is_strictly_lower<" + D_name + ">> out of <one-column>" );
 
 	// Test 03: Select <strict-upper>
-	rc = rc ? rc : test_case( I, operators::select::is_strictly_upper<D>(),
+	rc = rc ? rc : test_case( I, operators::select::is_strictly_upper< D >(),
 	          "Test 03: Select <is_strictly_upper<" + D_name + ">> out of <identity>" );
-	rc = rc ? rc : test_case( I_transposed, operators::select::is_strictly_upper<D>(),
+	rc = rc ? rc : test_case( I_transposed, operators::select::is_strictly_upper< D >(),
 	          "Test 03: Select <is_strictly_upper<" + D_name + ">> out of <transposed-identity>" );
-	rc = rc ? rc : test_case( One_row, operators::select::is_strictly_upper<D>(),
+	rc = rc ? rc : test_case( One_row, operators::select::is_strictly_upper< D >(),
 	          "Test 03: Select <is_strictly_upper<" + D_name + ">> out of <one-row>" );
-	rc = rc ? rc : test_case( One_col, operators::select::is_strictly_upper<D>(),
+	rc = rc ? rc : test_case( One_col, operators::select::is_strictly_upper< D >(),
 	          "Test 03: Select <is_strictly_upper<" + D_name + ">> out of <one-column>" );
 
 	// Test 04: Select <lower-or-diag>
-	rc = rc ? rc : test_case( I, operators::select::is_lower_or_diagonal<D>(),
+	rc = rc ? rc : test_case( I, operators::select::is_lower_or_diagonal< D >(),
 	          "Test 04: Select <is_lower_or_diagonal<" + D_name + ">> out of <identity>" );
-	rc = rc ? rc : test_case( I_transposed, operators::select::is_lower_or_diagonal<D>(),
+	rc = rc ? rc : test_case( I_transposed, operators::select::is_lower_or_diagonal< D >(),
 	          "Test 04: Select <is_lower_or_diagonal<" + D_name + ">> out of <transposed-identity>" );
-	rc = rc ? rc : test_case( One_row, operators::select::is_lower_or_diagonal<D>(),
+	rc = rc ? rc : test_case( One_row, operators::select::is_lower_or_diagonal< D >(),
 	          "Test 04: Select <is_lower_or_diagonal<" + D_name + ">> out of <one-row>" );
-	rc = rc ? rc : test_case( One_col, operators::select::is_lower_or_diagonal<D>(),
+	rc = rc ? rc : test_case( One_col, operators::select::is_lower_or_diagonal< D >(),
 			  "Test 04: Select <is_lower_or_diagonal<" + D_name + ">> out of <one-column>" );
 
 	// Test 05: Select <upper-or-diag>
-	rc = rc ? rc : test_case( I, operators::select::is_upper_or_diagonal<D>(),
+	rc = rc ? rc : test_case( I, operators::select::is_upper_or_diagonal< D >(),
 	          "Test 05: Select <is_upper_or_diagonal<" + D_name + ">> out of <identity>" );
-	rc = rc ? rc : test_case( I_transposed, operators::select::is_upper_or_diagonal<D>(),
+	rc = rc ? rc : test_case( I_transposed, operators::select::is_upper_or_diagonal< D >(),
 	          "Test 05: Select <is_upper_or_diagonal<" + D_name + ">> out of <transposed-identity>" );
-	rc = rc ? rc : test_case( One_row, operators::select::is_upper_or_diagonal<D>(),
+	rc = rc ? rc : test_case( One_row, operators::select::is_upper_or_diagonal< D >(),
 	          "Test 05: Select <is_upper_or_diagonal<" + D_name + ">> out of <one-row>" );
-	rc = rc ? rc : test_case( One_col, operators::select::is_upper_or_diagonal<D>(),
+	rc = rc ? rc : test_case( One_col, operators::select::is_upper_or_diagonal< D >(),
 	          "Test 05: Select <is_upper_or_diagonal<" + D_name + ">> out of <one-column>" );
 
 	// done
@@ -447,53 +447,53 @@ void grb_program_lambdas( const size_t &n, RC &rc ) {
 	// Test 06: Select <upper-or-diag> using lambda function
 	typedef grb::config::RowIndexType RIT;
 	typedef grb::config::ColIndexType CIT;
-	rc = rc ? rc : test_case( I, [](const RIT *i, const CIT *j, const D *val) -> bool {
+	rc = rc ? rc : test_case( I, [](const RIT &i, const CIT &j, const D &val) -> bool {
 				(void) val;
-				return *i <= *j;
+				return i <= j;
 			}, "Test 06: Select <is_upper_or_diagonal< " + D_name +
 				" >> out of <identity>"
 		);
-	rc = rc ? rc : test_case( I_transposed, [](const RIT *i, const CIT *j, const D *val) -> bool {
+	rc = rc ? rc : test_case( I_transposed, [](const RIT &i, const CIT &j, const D &val) -> bool {
 				(void) val;
-				return *i >= *j;
+				return i >= j;
 			}, "Test 06: Select <is_upper_or_diagonal< " + D_name +
 				" >> out of <transposed-identity>"
 		);
-	rc = rc ? rc : test_case( One_row, [](const RIT *i, const CIT *j, const D *val) -> bool {
+	rc = rc ? rc : test_case( One_row, [](const RIT &i, const CIT &j, const D &val) -> bool {
 				(void) val;
-				return *i >= *j;
+				return i >= j;
 			}, "Test 06: Select <is_upper_or_diagonal< " + D_name +
 				" >> out of <one-row>"
 		);
-	rc = rc ? rc : test_case( One_col, [](const RIT *i, const CIT *j, const D *val) -> bool {
+	rc = rc ? rc : test_case( One_col, [](const RIT &i, const CIT &j, const D &val) -> bool {
 				(void) val;
-				return *i >= *j;
+				return i >= j;
 			}, "Test 06: Select <is_upper_or_diagonal< " + D_name +
 				" >> out of <one-column>"
 		);
 
 	// Test 07: Select <strict_lower> using lambda function
-	rc = rc ? rc : test_case( I, [](const RIT *i, const CIT *j, const D *val) -> bool {
+	rc = rc ? rc : test_case( I, [](const RIT &i, const CIT &j, const D &val) -> bool {
 				(void) val;
-				return *i > *j;
+				return i > j;
 			}, "Test 07: Select <is_strictly_lower< " + D_name +
 				" >> out of <identity>"
 		);
-	rc = rc ? rc : test_case( I_transposed, [](const RIT *i, const CIT *j, const D *val) -> bool {
+	rc = rc ? rc : test_case( I_transposed, [](const RIT &i, const CIT &j, const D &val) -> bool {
 				(void) val;
-				return *i > *j;
+				return i > j;
 			}, "Test 07: Select <is_strictly_lower< " + D_name +
 				" >> out of <transposed-identity>"
 		);
-	rc = rc ? rc : test_case( One_row, [](const RIT *i, const CIT *j, const D *val) -> bool {
+	rc = rc ? rc : test_case( One_row, [](const RIT &i, const CIT &j, const D &val) -> bool {
 				(void) val;
-				return *i > *j;
+				return i > j;
 			}, "Test 07: Select <is_strictly_lower< " + D_name +
 				" >> out of <one-row>"
 		);
-	rc = rc ? rc : test_case( One_col, [](const RIT *i, const CIT *j, const D *val) -> bool {
+	rc = rc ? rc : test_case( One_col, [](const RIT &i, const CIT &j, const D &val) -> bool {
 				(void) val;
-				return *i > *j;
+				return i > j;
 			}, "Test 07: Select <is_strictly_lower< " + D_name +
 				" >> out of <one-column>"
 		);

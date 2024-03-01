@@ -4295,19 +4295,42 @@ namespace grb {
 			typedef typename OP::column_type CIT;
 
 			template< typename RIT1, typename CIT1, typename D1 >
-			bool operator()( const RIT1 * x, const CIT1 * y, const D1 * v ) const {
-				const RIT a = static_cast< RIT1 >( *x );
-				const CIT b = static_cast< CIT1 >( *y );
-				return OP::apply( &a, &b, v );
+			bool operator()(
+				const RIT1 &x, const CIT1 &y, const D1 &v
+			) const noexcept {
+				const RIT a = static_cast< RIT >( x );
+				const CIT b = static_cast< CIT >( y );
+				const D   c = static_cast< D >( v );
+				return OP::apply( &a, &b, &c );
 			}
 
 			/**
 			 * This is the high-performance version of apply() in the sense that no
-			 * casting is required. This version will be automatically caled whenever
+			 * casting is required. This version will be automatically called whenever
 			 * possible (non-void variant).
 			 */
-			bool operator()( const RIT * x, const CIT * y, D * v ) const {
-				return OP::apply( x, y, v );
+			bool operator()(
+				const RIT &x, const CIT &y, const D &v
+			) const noexcept {
+				return OP::apply( &x, &y, &v );
+			}
+
+		};
+
+		/** This is the void value type variant. */
+		template< typename OP >
+		struct MatrixSelectionOperatorBase< OP, void > {
+			typedef typename OP::row_type RIT;
+			typedef typename OP::column_type CIT;
+
+			template< typename RIT1, typename CIT1, typename D1 >
+			bool operator()(
+				const RIT1 &x, const CIT1 &y, const D1 &v
+			) const noexcept {
+				(void) v;
+				const RIT a = static_cast< RIT >( x );
+				const CIT b = static_cast< CIT >( y );
+				return OP::apply( &a, &b, nullptr );
 			}
 
 		};

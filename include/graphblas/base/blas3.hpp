@@ -458,16 +458,20 @@ namespace grb {
 	 * Any old entries of \a B will be removed after a successful call to this
 	 * primitive; that is, this primitive is out-of-place.
 	 *
-	 * @tparam descr              The descriptor to be used. Optional; the default is
-	 *                            #grb::descriptors::no_operation.
-	 * @tparam SelectionOperator  The selection operator type, must be of a type
-	 *                            equivalent to `bool(RIT*, CIT*, T*)` with:
+	 * @tparam descr              The descriptor to be used. Optional; the default
+	 *                            is #grb::descriptors::no_operation.
+	 * @tparam SelectionOperator  The selection operator type, a function with the
+	 *                            following signature:
+	 *                            `bool( const RIT &, const CIT &, const T & )`.
+	 *                            Here,
 	 *                            - RIT: The row index type of the input matrix,
-	 *                                   or convertible to it.
+	 *                                   or a type that is convertible to it. By
+	 *                                   default, this is an unsigned int.
 	 *                            - CIT: The column index type of the input matrix,
-	 *                                   or convertible to it.
-	 *                            - T:   The value type of the input matrix, or
-	 *                                   convertible to it.
+	 *                                   or a type that is convertible to it. By
+	 *                                   default, this is an unsigned int.
+	 *                            - T:   The value type of the input matrix, or a
+	 *                                   type that is convertible to it.
 	 * @tparam Tin                The value type of the input matrix.
 	 * @tparam RITin              The row index type of the input matrix.
 	 * @tparam CITin              The column index type of the input matrix.

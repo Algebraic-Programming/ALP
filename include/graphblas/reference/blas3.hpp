@@ -138,12 +138,18 @@ namespace grb {
 #endif
 					size_t local_nzc = 0;
 					for( size_t i = start_row; i < end_row; ++i ) {
-						for( auto k = in_raw.col_start[ i ]; k < in_raw.col_start[ i + 1 ]; ++k ) {
+						for(
+							size_t k = in_raw.col_start[ i ];
+							k < in_raw.col_start[ i + 1 ];
+							++k
+						) {
 							const auto j = in_raw.row_index[ k ];
-							const auto global_row = static_cast< EffectiveRowType >( row_l2g( i ) );
-							const auto global_col = static_cast< EffectiveColumnType >( col_l2g( j ) );
+							const auto global_row =
+								static_cast< EffectiveRowType >( row_l2g( i ) );
+							const auto global_col =
+								static_cast< EffectiveColumnType >( col_l2g( j ) );
 							const auto value = in_raw.getValue( k, identity );
-							if( op( &global_row, &global_col, &value ) ) {
+							if( op( global_row, global_col, value ) ) {
 								(void) ++local_nzc;
 							}
 						}
@@ -164,7 +170,8 @@ namespace grb {
 				char *arr = nullptr, *buf = nullptr;
 				Tin *valbuf = nullptr;
 				internal::getMatrixBuffers( arr, buf, valbuf, 1, out );
-				col_counter = internal::getReferenceBuffer< config::NonzeroIndexType >( n + 1 );
+				col_counter =
+					internal::getReferenceBuffer< config::NonzeroIndexType >( n + 1 );
 
 #ifdef _H_GRB_REFERENCE_OMP_BLAS3
 				const size_t nthreads = ( n + 1 ) < config::OMP::minLoopSize()
@@ -181,9 +188,10 @@ namespace grb {
 					for( size_t k = in_raw.col_start[ i ]; k < in_raw.col_start[ i + 1 ]; ++k ) {
 						const auto j = in_raw.row_index[ k ];
 						const auto global_row = static_cast< EffectiveRowType >( row_l2g( i ) );
-						const auto global_col = static_cast< EffectiveColumnType >( col_l2g( j ) );
+						const auto global_col =
+							static_cast< EffectiveColumnType >( col_l2g( j ) );
 						const auto value = in_raw.getValue( k, identity );
-						if( op( &global_row, &global_col, &value ) ) {
+						if( op( global_row, global_col, value ) ) {
 							(void) ++out_ccs.col_start[ j + 1 ];
 						}
 					}
@@ -217,7 +225,7 @@ namespace grb {
 					const auto global_row = static_cast< EffectiveRowType >( row_l2g( i ) );
 					const auto global_col = static_cast< EffectiveColumnType >( col_l2g( j ) );
 					const auto value = in_raw.getValue( k, identity );
-					if( !op( &global_row, &global_col, &value ) ) {
+					if( !op( global_row, global_col, value ) ) {
 						continue;
 					}
 #ifdef _DEBUG
