@@ -432,7 +432,11 @@ void grb_program_operators( const size_t &n, RC &rc ) {
 
 template< typename D >
 void grb_program_lambdas( const size_t &n, RC &rc ) {
-	static_assert( !std::is_void< D >::value, "Test logic error" );
+	typedef typename std::conditional<
+		std::is_void< D >::value,
+			int,
+			D
+		>::type D_safe;
 	const std::string D_name = "non-void";
 
 	Matrix< D >
@@ -447,25 +451,29 @@ void grb_program_lambdas( const size_t &n, RC &rc ) {
 	// Test 06: Select <upper-or-diag> using lambda function
 	typedef grb::config::RowIndexType RIT;
 	typedef grb::config::ColIndexType CIT;
-	rc = rc ? rc : test_case( I, [](const RIT &i, const CIT &j, const D &val) -> bool {
+	rc = rc ? rc : test_case( I,
+			[](const RIT &i, const CIT &j, const D_safe &val) -> bool {
 				(void) val;
 				return i <= j;
 			}, "Test 06: Select <is_upper_or_diagonal< " + D_name +
 				" >> out of <identity>"
 		);
-	rc = rc ? rc : test_case( I_transposed, [](const RIT &i, const CIT &j, const D &val) -> bool {
+	rc = rc ? rc : test_case( I_transposed,
+			[](const RIT &i, const CIT &j, const D_safe &val) -> bool {
 				(void) val;
 				return i >= j;
 			}, "Test 06: Select <is_upper_or_diagonal< " + D_name +
 				" >> out of <transposed-identity>"
 		);
-	rc = rc ? rc : test_case( One_row, [](const RIT &i, const CIT &j, const D &val) -> bool {
+	rc = rc ? rc : test_case( One_row,
+			[](const RIT &i, const CIT &j, const D_safe &val) -> bool {
 				(void) val;
 				return i >= j;
 			}, "Test 06: Select <is_upper_or_diagonal< " + D_name +
 				" >> out of <one-row>"
 		);
-	rc = rc ? rc : test_case( One_col, [](const RIT &i, const CIT &j, const D &val) -> bool {
+	rc = rc ? rc : test_case( One_col,
+			[](const RIT &i, const CIT &j, const D_safe &val) -> bool {
 				(void) val;
 				return i >= j;
 			}, "Test 06: Select <is_upper_or_diagonal< " + D_name +
@@ -473,25 +481,29 @@ void grb_program_lambdas( const size_t &n, RC &rc ) {
 		);
 
 	// Test 07: Select <strict_lower> using lambda function
-	rc = rc ? rc : test_case( I, [](const RIT &i, const CIT &j, const D &val) -> bool {
+	rc = rc ? rc : test_case( I,
+			[](const RIT &i, const CIT &j, const D_safe &val) -> bool {
 				(void) val;
 				return i > j;
 			}, "Test 07: Select <is_strictly_lower< " + D_name +
 				" >> out of <identity>"
 		);
-	rc = rc ? rc : test_case( I_transposed, [](const RIT &i, const CIT &j, const D &val) -> bool {
+	rc = rc ? rc : test_case( I_transposed,
+			[](const RIT &i, const CIT &j, const D_safe &val) -> bool {
 				(void) val;
 				return i > j;
 			}, "Test 07: Select <is_strictly_lower< " + D_name +
 				" >> out of <transposed-identity>"
 		);
-	rc = rc ? rc : test_case( One_row, [](const RIT &i, const CIT &j, const D &val) -> bool {
+	rc = rc ? rc : test_case( One_row,
+			[](const RIT &i, const CIT &j, const D_safe &val) -> bool {
 				(void) val;
 				return i > j;
 			}, "Test 07: Select <is_strictly_lower< " + D_name +
 				" >> out of <one-row>"
 		);
-	rc = rc ? rc : test_case( One_col, [](const RIT &i, const CIT &j, const D &val) -> bool {
+	rc = rc ? rc : test_case( One_col,
+			[](const RIT &i, const CIT &j, const D_safe &val) -> bool {
 				(void) val;
 				return i > j;
 			}, "Test 07: Select <is_strictly_lower< " + D_name +
@@ -528,7 +540,19 @@ int main( int argc, char** argv ) {
 	}
 
 	{
-		std::cout << "-- -- Running test with using matrix-type: double"
+		std::cout << "-- -- Running test with using matrix-type: void" << std::endl;
+		if( launcher.exec( &grb_program_operators< void >, n, out, true ) != SUCCESS ) {
+			STDERR_WITH_LINE << "Launching test FAILED\n";
+			return 255;
+		}
+		if( out != SUCCESS ) {
+			STDERR_WITH_LINE << "Test FAILED (" << toString(out) << ")" << std::endl;
+			return out;
+		}
+	}
+
+	{
+		std::cout << "-- -- Running lambda test with using matrix-type: double"
 			<< std::endl;
 		if( launcher.exec( &grb_program_lambdas< double >, n, out, true ) != SUCCESS ) {
 			STDERR_WITH_LINE << "Launching test FAILED\n";
@@ -541,8 +565,9 @@ int main( int argc, char** argv ) {
 	}
 
 	{
-		std::cout << "-- -- Running test with using matrix-type: void" << std::endl;
-		if( launcher.exec( &grb_program_operators< void >, n, out, true ) != SUCCESS ) {
+		std::cout << "-- -- Running lambda test with using matrix-type: void"
+			<< std::endl;
+		if( launcher.exec( &grb_program_lambdas< void >, n, out, true ) != SUCCESS ) {
 			STDERR_WITH_LINE << "Launching test FAILED\n";
 			return 255;
 		}
