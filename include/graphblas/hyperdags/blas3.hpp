@@ -370,7 +370,7 @@ namespace grb {
 			getID( internal::getMatrix( out ) )
 		};
 		internal::hyperdags::generator.addOperation(
-			internal::hyperdags::SELECT_MATRIX_MATRIX_OP,
+			internal::hyperdags::SELECT_MATRIX_MATRIX,
 			sourcesP.begin(), sourcesP.end(),
 			sourcesC.begin(), sourcesC.end(),
 			destinations.begin(), destinations.end()
