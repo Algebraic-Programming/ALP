@@ -392,7 +392,8 @@ namespace grb {
 		IOType &x,
 		const InputType &y,
 		const OP &op = OP(),
-		const typename std::enable_if< grb::is_operator< OP >::value &&
+		const typename std::enable_if<
+			grb::is_operator< OP >::value &&
 			!grb::is_object< InputType >::value &&
 			!grb::is_object< IOType >::value, void
 		>::type * = nullptr

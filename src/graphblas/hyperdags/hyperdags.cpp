@@ -383,6 +383,18 @@ std::string grb::internal::hyperdags::toString(
 		case SELECT_MATRIX_MATRIX:
 			return "select( matrix, matrix, selection_operator )";
 
+		case FOLDL_SCALAR_MATRIX_MASK_MONOID:
+			return "foldl( scalar, matrix, matrix, monoid )";
+
+		case FOLDL_SCALAR_MATRIX_MONOID:
+			return "foldl( scalar, matrix, monoid )";
+
+		case FOLDR_SCALAR_MATRIX_MASK_MONOID:
+			return "foldr( scalar, matrix, matrix, monoid )";
+
+		case FOLDR_SCALAR_MATRIX_MONOID:
+			return "foldr( scalar, matrix, monoid )";
+
 	}
 	assert( false );
 	return "unknown operation";
