@@ -465,13 +465,26 @@ namespace grb {
 	 *                            `bool( const RIT &, const CIT &, const T & )`.
 	 *                            Here,
 	 *                            - RIT: The row index type of the input matrix,
-	 *                                   or a type that is convertible to it. By
-	 *                                   default, this is an unsigned int.
+	 *                                   or a type that is convertible from it.
 	 *                            - CIT: The column index type of the input matrix,
-	 *                                   or a type that is convertible to it. By
-	 *                                   default, this is an unsigned int.
+	 *                                   or a type that is convertible from it.
 	 *                            - T:   The value type of the input matrix, or a
 	 *                                   type that is convertible to it.
+	 *
+	 * The types for \a RIT and \a CIT are given by
+	 *  -# grb::config::RowIndexType and
+	 *  -# grb::config::ColIndexType,
+	 * respectively. For most use cases, the default is <tt>unsigned int</tt> for
+	 * both types. The safest and most performant choice is therefore to supply an
+	 * operator with the aforementioned two configuration types for \a RIT and
+	 * \a CIT. The most generic safe choice that does not depend on configured
+	 * types is <tt>size_t</tt>, but such use may result in a (slight) performance
+	 * penalty due to internal casting between possibly different index types.
+	 *
+	 * For <tt>void</tt> matrices, the select operator will assume a <tt>bool</tt>
+	 * for \a T. The operator will always receive <tt>true</tt> as the value
+	 * corresponding to the sparse pattern.
+	 *
 	 * @tparam Tin                The value type of the input matrix.
 	 * @tparam RITin              The row index type of the input matrix.
 	 * @tparam CITin              The column index type of the input matrix.
