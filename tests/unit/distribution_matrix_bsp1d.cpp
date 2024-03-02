@@ -44,8 +44,8 @@ void grb_program( const size_t &n, RC &rc ) {
 	Matrix< D, BSP1D > I_distributed( n, n, n );
 	{
 		// Build the identity matrix
-		std::vector< D > values(n, 1);
-		std::vector< size_t > iota_indices(n, 0);
+		std::vector< D > values( n, 1 );
+		std::vector< size_t > iota_indices( n, 0 );
 		std::iota( iota_indices.begin(), iota_indices.end(), 0 );
 		rc = buildMatrixUnique( I_distributed, iota_indices.data(),
 			iota_indices.data(), values.data(), n, SEQUENTIAL );
@@ -130,19 +130,20 @@ int main( int argc, char * * argv ) {
 	std::cout << "This is functional test " << argv[0] << "\n";
 
 	Launcher< AUTOMATIC > launcher;
-	RC out;
+	RC out = SUCCESS;
 	size_t n = std::strtoul( argv[1], nullptr, 10 );
 
 	const RC launch_rc = launcher.exec( &grb_program< int >, n, out, true );
 	if( launch_rc != SUCCESS ) {
-		std::cerr << "Launch test failed\n";
-		out = launch_rc;
+		std::cerr << "Launch test failed" << std::endl;
+		std::cout << "Test FAILED\n" << std::endl;
+		return 10;
 	}
 
 	if( out != SUCCESS ) {
 		std::cerr << std::flush;
 		std::cout << "Test FAILED (" << toString(out) << ")\n" << std::endl;
-		return 20;
+		return 10 + static_cast< int >(launch_rc);
 	}
 
 	std::cout << "Test OK\n" << std::endl;
