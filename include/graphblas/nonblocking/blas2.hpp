@@ -39,10 +39,9 @@
 
 #include <graphblas/reference/compressed_storage.hpp>
 
-#include "coordinates.hpp"
-#include "forward.hpp"
 #include "matrix.hpp"
 #include "vector.hpp"
+#include "coordinates.hpp"
 #include "lazy_evaluation.hpp"
 #include "boolean_dispatcher_blas2.hpp"
 
@@ -1491,7 +1490,7 @@ namespace grb {
 	}
 
 	template<
-		class ActiveDistribution,
+		Descriptor descr = descriptors::no_operation,
 		typename Func,
 		typename DataType,
 		typename RIT,
@@ -1500,9 +1499,7 @@ namespace grb {
 	>
 	RC eWiseLambda(
 		const Func f,
-		const Matrix< DataType, nonblocking, RIT, CIT, NIT > &A,
-		const size_t s,
-		const size_t P
+		const Matrix< DataType, nonblocking, RIT, CIT, NIT > &A
 	) {
 		if( internal::NONBLOCKING::warn_if_not_native &&
 			config::PIPELINE::warn_if_not_native
@@ -1518,11 +1515,12 @@ namespace grb {
 		internal::le.execution();
 
 		// second, delegate to the reference backend
-		return eWiseLambda< ActiveDistribution, Func, DataType, RIT, CIT, NIT >(
-			f, internal::getRefMatrix( A ), s, P );
+		return eWiseLambda< descr, Func, DataType, RIT, CIT, NIT >(
+			f, internal::getRefMatrix( A ) );
 	}
 
 	template<
+		Descriptor descr = descriptors::no_operation,
 		typename Func,
 		typename DataType1,
 		typename RIT,
@@ -1546,7 +1544,7 @@ namespace grb {
 			return MISMATCH;
 		}
 
-		return eWiseLambda( f, A, args... );
+		return eWiseLambda< descr >( f, A, args... );
 	}
 
 	/** @} */

@@ -17,6 +17,7 @@
 
 #include "graphblas/reference/config.hpp"
 
+
 using namespace grb;
 using namespace config;
 
@@ -29,7 +30,7 @@ std::string grb::config::toString( const ALLOC_MODE mode ) {
 	}
 	assert( false );
 	std::cerr << "Warning: unknown memory allocation mode passed to "
-				 "grb::config::toString."
-			  << std::endl;
+		<< "grb::config::toString." << std::endl;
 	return "unknown";
 }
+

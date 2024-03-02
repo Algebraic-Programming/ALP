@@ -404,8 +404,10 @@ namespace grb {
 
 	/** \internal No implementation notes. */
 	template<
-		Descriptor descr = descriptors::no_operation, class Operator,
-		typename IOType, typename InputType, typename Coords
+		Descriptor descr = descriptors::no_operation,
+		class Operator,
+		typename IOType, typename InputType,
+		typename Coords
 	>
 	RC foldr(
 		const Vector< InputType, BSP1D, Coords > &x,
@@ -431,11 +433,21 @@ namespace grb {
 			"the given operator" );
 
 		// dynamic checks
+		constexpr bool dense_descr_is_given = (descr & descriptors::dense);
+		const bool at_least_one_vector_is_sparse =
+			nnz( x ) < size( x ) || nnz( y ) < size( y );
 		if( size( x ) != size( y ) ) {
 			return MISMATCH;
 		}
-		if( descr & descriptors::dense ) {
-			if( nnz( x ) < size( x ) || nnz( y ) < size( y ) ) {
+		if( dense_descr_is_given ) {
+			if( at_least_one_vector_is_sparse ) {
+				return ILLEGAL;
+			}
+		} else if( at_least_one_vector_is_sparse ) {
+			// this is a short-cut for having to do a lot of work only to find out
+			// something is wrong. It does *not* preclude, however, needing to do
+			// the final check near the end of this function
+			if( nnz( x ) != nnz( y ) ) {
 				return ILLEGAL;
 			}
 		}
@@ -445,15 +457,118 @@ namespace grb {
 
 		// simply delegating will yield the correct result
 		assert( phase == EXECUTE );
-		const size_t old_nnz = nnz( internal::getLocal( y ) );
-		const RC ret = foldr< descr >( internal::getLocal( x ), internal::getLocal( y ),
+		RC ret = foldr< descr >( internal::getLocal( x ), internal::getLocal( y ),
 			op, phase );
-		assert( ret == SUCCESS );
-		if( ret != SUCCESS ) {
-			// this implementation does not handle other error cases, which as per the
-			// spec should not occur
-			ret = PANIC;
+
+		// we do not need to sync nnz, as this method cannot generate fill-in
+
+		// if x or y are sparse, however, this method could fail if there are nonzero
+		// positions in either vector that are not populated in the other. A check is
+		// necessary to catch such a violation -- but, gain, only in the sparse case.
+		if( !dense_descr_is_given && at_least_one_vector_is_sparse ) {
+			if( collectives< BSP1D >::allreduce( ret, grb::operators::any_or< RC >() )
+				!= SUCCESS
+			) {
+				return PANIC;
+			}
 		}
+
+		// done
+		return ret;
+	}
+
+	/** No implementation ntoes. */
+	template<
+		Descriptor descr = descriptors::no_operation,
+		class Monoid,
+		typename IOType, typename InputType,
+		typename Coords
+	>
+	RC foldr(
+		const Vector< InputType, BSP1D, Coords > &x,
+		Vector< IOType, BSP1D, Coords > &y,
+		const Monoid &monoid,
+		const Phase &phase = EXECUTE,
+		const typename std::enable_if<
+			grb::is_monoid< Monoid >::value, void
+		>::type * const = nullptr
+	) {
+		// static sanity checks
+		NO_CAST_ASSERT( ( !(descr & descriptors::no_casting) ||
+			std::is_same< IOType, typename Monoid::D2 >::value ), "grb::foldr",
+			"called with an I/O value type that does not match the second domain of "
+			"the given monoid" );
+		NO_CAST_ASSERT( ( !(descr & descriptors::no_casting) ||
+			std::is_same< InputType, typename Monoid::D1 >::value ), "grb::foldr",
+			"called with an input vector value type that does not match the first "
+			"domain of the given monoid" );
+		NO_CAST_ASSERT( ( !(descr & descriptors::no_casting) ||
+			std::is_same< IOType, typename Monoid::D3 >::value ), "grb::foldr",
+			"called with an I/O value type that does not match the third domain of "
+			"the given monoid" );
+
+		// dynamic checks
+		constexpr bool dense_descr_given = (descr & descriptors::dense);
+		const size_t n = size( x );
+		const bool dense_vectors_in = (nnz( x ) == n || nnz(y) == n);
+		if( n != size( y ) ) {
+			return MISMATCH;
+		}
+		if( dense_descr_given && !dense_vectors_in ) {
+			return ILLEGAL;
+		}
+
+		// handle trivial resize phase
+		if( config::IMPLEMENTATION< BSP1D >::fixedVectorCapacities() &&
+			phase == RESIZE
+		) {
+			return SUCCESS;
+		}
+
+		// delegate non-trivial resize as well as any execute
+
+		// option 1: dispatch to dense operator-variant (less overhead)
+		if( dense_descr_given || dense_vectors_in ) {
+			return foldr< descr >( x, y, monoid.getOperator(), phase );
+		}
+
+		// option 2: delegate to underlying backend
+		RC ret = foldr< descr >( internal::getLocal( x ),
+			internal::getLocal( y ), monoid, phase );
+
+		// the only error that could occur is out-of-memory during a resize phase
+		if( phase == RESIZE &&
+			!config::IMPLEMENTATION< BSP1D >::fixedVectorCapacities()
+		) {
+			if( collectives< BSP1D >::allreduce( ret, grb::operators::any_or< RC >() )
+				!= SUCCESS
+			) {
+				return PANIC;
+			}
+			// indeed all other possible errors (MISMATCH, ILLEGAL) should already have
+			// been caught on this backend's level. If they occur on the final backend,
+			// there is a logic error on the BSP1D backend side somewhere.
+			assert( ret == SUCCESS || ret == OUTOFMEM );
+		}
+
+		// handle try and execute
+		if( phase != RESIZE ) {
+			if( ret == SUCCESS ) {
+				// in this case, the number of nonzeroes in the output vector may have
+				// changed (recall that the dense case is not handled here)
+				assert( !dense_vectors_in );
+				ret = internal::updateNnz( y );
+			} else if( ret == FAILED ) {
+				// in this case, the full computation has not completed but the contents of
+				// y do contain a subset of results. Therefore, the number of nonzeroes may
+				// have changed, but we need to take care to still propagate FAILED
+				assert( phase == TRY );
+				const RC subrc = internal::updateNnz( y );
+				if( subrc != SUCCESS ) { ret = PANIC; }
+			}
+		}
+
+		// done
 		return ret;
 	}
 
@@ -762,12 +877,22 @@ namespace grb {
 			"the given operator" );
 
 		// dynamic checks
+		constexpr bool dense_descr_is_given = (descr & descriptors::dense);
+		const bool at_least_one_vector_is_sparse =
+			nnz( x ) < size( x ) || nnz( y ) < size( y );
 		const size_t n = size( x );
 		if( n != size( y ) ) {
 			return MISMATCH;
 		}
-		if( descr & descriptors::dense ) {
-			if( nnz( x ) < n || nnz( y ) < n ) {
+		if( dense_descr_is_given ) {
+			if( at_least_one_vector_is_sparse ) {
+				return ILLEGAL;
+			}
+		} else if( at_least_one_vector_is_sparse ) {
+			// this is a short-cut for having to do a lot of work only to find out
+			// something is wrong. It does *not* preclude, however, needing to do
+			// the final check near the end of this function
+			if( nnz( x ) != nnz( y ) ) {
 				return ILLEGAL;
 			}
 		}
@@ -776,11 +901,22 @@ namespace grb {
 		if( phase == RESIZE ) { return SUCCESS; }
 
 		// simply delegating will yield the correct result
-		const RC ret = foldl< descr >( internal::getLocal( x ),
+		assert( phase == EXECUTE );
+		RC ret = foldl< descr >( internal::getLocal( x ),
 			internal::getLocal( y ), op, phase );
 
-		// the spec forbids that this call can fail, so assert success
-		assert( ret == SUCCESS);
+		// we do not need to sync nnz, as this method cannot generate fill-in
+
+		// if x or y are sparse, however, this method could fail if there are nonzero
+		// positions in either vector that are not populated in the other. A check is
+		// necessary to catch such a violation -- but, gain, only in the sparse case.
+		if( !dense_descr_is_given && at_least_one_vector_is_sparse ) {
+			if( collectives< BSP1D >::allreduce( ret, grb::operators::any_or< RC >() )
+				!= SUCCESS
+			) {
+				return PANIC;
+			}
+		}
 
 		// done
 		return ret;
@@ -837,26 +973,39 @@ namespace grb {
 		// delegate
 		RC ret = SUCCESS;
 		if( (descr | descriptors::dense) || ((nnz( x ) == n) && (nnz( y ) == n)) ) {
-			// dense case
-			ret = foldl( x, y, monoid.getOperator(), phase );
-		} else {
-			// otherwise simply delegating will yield the correct result
-			ret = foldl< descr >( internal::getLocal( x ), internal::getLocal( y ),
-				monoid, phase );
+			// dense case will handle the remainder
+			return foldl( x, y, monoid.getOperator(), phase );
 		}
-		if( !config::IMPLEMENTATION< BSP1D >::fixedVectorCapacities() ) {
-			if( collectives< BSP1D >::allreduce(
-				ret, grb::operators::any_or< RC >()
-			) != SUCCESS ) {
+
+		// otherwise simply delegating will yield the correct result
+		ret = foldl< descr >( internal::getLocal( x ), internal::getLocal( y ),
+			monoid, phase );
+
+		// the only error that could occur non-collectively is OOM during resize
+		if( phase == RESIZE &&
+			!config::IMPLEMENTATION< BSP1D >::fixedVectorCapacities()
+		) {
+			if( collectives< BSP1D >::allreduce( ret, grb::operators::any_or< RC >() )
+				!= SUCCESS
+			) {
 				return PANIC;
 			}
+			// indeed all other possible errors (MISMATCH, ILLEGAL) should already have
+			// been caught on this backend's level. If they occur on the final backend,
+			// there is a logic error on the BSP1D backend side somewhere.
+			assert( ret == SUCCESS || ret == OUTOFMEM );
 		}
 
 		// handle try and execute
 		if( phase != RESIZE ) {
 			if( ret == SUCCESS ) {
+				// x may have a new global number of nonzeroes that needs to be synced
+				// (recall that the dense case is not handled here)
 				ret = internal::updateNnz( x );
 			} else if( ret == FAILED ) {
+				// x may contain useful results that are a subset of the requested
+				// computation. Therefore the nnz may have changed, but we should
+				// take care to continue propagate FAILED
 				const RC subrc = internal::updateNnz( x );
 				if( subrc != SUCCESS ) { ret = PANIC; }
 			}
@@ -4340,15 +4489,24 @@ namespace grb {
 	 * also distributed which is correct, since all calls are collective there may
 	 * never be a mismatch in globally known vector sizes.
 	 */
-	template< typename Func, typename DataType, typename Coords >
+	template<
+		Descriptor descr = descriptors::no_operation,
+		typename Func, typename DataType, typename Coords
+	>
 	RC eWiseLambda( const Func f, const Vector< DataType, BSP1D, Coords > &x ) {
-		// rely on local lambda
-		return eWiseLambda( f, internal::getLocal( x ) );
+		const internal::BSP1D_Data &data = internal::grb_BSP1D.cload();
+		// rely on local lambda, passing in the active global distribution, global
+		// length, and number of user processes
+		return internal::eWiseLambda<
+			descr,
+			typename internal::Distribution< BSP1D >
+		>( f, internal::getLocal( x ), x._n, data.s, data.P );
 		// note the sparsity structure will not change by the above call
 	}
 
 	/** \internal No implementation notes. */
 	template<
+		Descriptor descr = descriptors::no_operation,
 		typename Func,
 		typename DataType1, typename DataType2, typename Coords,
 		typename... Args
@@ -4365,7 +4523,7 @@ namespace grb {
 		}
 		// in this implementation, the distributions are equal so no need for any
 		// synchronisation
-		return eWiseLambda( f, x, args... );
+		return eWiseLambda< descr >( f, x, args... );
 		// note the sparsity structure will not change by the above call
 	}
 

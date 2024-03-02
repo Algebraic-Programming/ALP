@@ -57,9 +57,207 @@
 		"********************************************************************" \
 		"******************************\n" );
 
+
 namespace grb {
 
 	namespace internal {
+
+		/**
+		 * \internal general select implementation that
+		 * all select variants refer to
+		 */
+		template<
+			Descriptor descr,
+			class SelectionOperator,
+			typename Tin,
+			typename RITin, typename CITin, typename NITin,
+			typename Tout,
+			typename RITout, typename CITout, typename NITout
+		>
+		RC select_generic(
+			Matrix< Tout, reference, RITout, CITout, NITout > &out,
+			const Matrix< Tin, reference, RITin, CITin, NITin > &in,
+			const SelectionOperator &op,
+			const std::function< size_t( size_t ) > &row_l2g,
+			const std::function< size_t( size_t ) > &col_l2g,
+			const Phase &phase
+		) {
+			typedef typename std::conditional<
+				std::is_void< Tin >::value,
+				bool,
+				Tin
+			>::type InValuesType;
+			// the identity will only be used for void input matrices
+			// if unused, we initialise it via default-construction, which is always ok
+			// to do since value types must be POD.
+			const InValuesType identity = std::is_void< Tin >::value
+				? true
+				: InValuesType();
+
+			constexpr bool crs_only = descr & descriptors::force_row_major;
+			constexpr bool transpose_input = descr & descriptors::transpose_matrix;
+			static_assert( !(crs_only && transpose_input),
+				"The descriptors::force_row_major and descriptors::transpose_matrix "
+				"flags cannot be used simultaneously" );
+
+			const auto &in_raw = transpose_input
+				? internal::getCCS( in )
+				: internal::getCRS( in );
+			auto &out_crs = internal::getCRS( out );
+			auto &out_ccs = internal::getCCS( out );
+			const size_t
+				m = transpose_input ? ncols( in ) : nrows( in ),
+				n = transpose_input ? nrows( in ) : ncols( in );
+			const size_t
+				m_out = nrows( out ),
+				n_out = ncols( out );
+
+			typedef typename std::conditional< transpose_input, CITin, RITin >::type
+				EffectiveRowType;
+			typedef typename std::conditional< transpose_input, RITin, CITin >::type
+				EffectiveColumnType;
+
+			// Check if the dimensions fit
+			if( m != m_out || n != n_out ) {
+				return MISMATCH;
+			}
+
+			if( m == 0 || n == 0 || nnz(in ) == 0 ) {
+				return SUCCESS;
+			}
+
+			if( phase == RESIZE ) {
+				size_t nzc = 0;
+
+#ifdef _H_GRB_REFERENCE_OMP_BLAS3
+				const size_t nthreads = m < config::OMP::minLoopSize()
+					? 1
+					: config::OMP::threads();
+				#pragma omp parallel reduction(+: nzc) num_threads( nthreads )
+#endif
+				{
+					size_t start_row = 0;
+					size_t end_row = m;
+#ifdef _H_GRB_REFERENCE_OMP_BLAS3
+					config::OMP::localRange( start_row, end_row, 0, m );
+#endif
+					size_t local_nzc = 0;
+					for( size_t i = start_row; i < end_row; ++i ) {
+						for(
+							size_t k = in_raw.col_start[ i ];
+							k < in_raw.col_start[ i + 1 ];
+							++k
+						) {
+							const auto j = in_raw.row_index[ k ];
+							const auto global_row =
+								static_cast< EffectiveRowType >( row_l2g( i ) );
+							const auto global_col =
+								static_cast< EffectiveColumnType >( col_l2g( j ) );
+							const auto value = in_raw.getValue( k, identity );
+							if( op( global_row, global_col, value ) ) {
+								(void) ++local_nzc;
+							}
+						}
+					}
+					nzc += local_nzc;
+				}
+				return grb::resize( out, nzc );
+			}
+
+			// Execute phase only from here on
+			assert( phase == EXECUTE );
+
+			// Declare the column counter array
+			config::NonzeroIndexType * col_counter = nullptr;
+
+			if( !crs_only ) {
+				// Allocate the column counter array
+				char *arr = nullptr, *buf = nullptr;
+				Tin *valbuf = nullptr;
+				internal::getMatrixBuffers( arr, buf, valbuf, 1, out );
+				col_counter =
+					internal::getReferenceBuffer< config::NonzeroIndexType >( n + 1 );
+
+#ifdef _H_GRB_REFERENCE_OMP_BLAS3
+				const size_t nthreads = ( n + 1 ) < config::OMP::minLoopSize()
+					? 1
+					: config::OMP::threads();
+				#pragma omp parallel for simd num_threads( nthreads )
+#endif
+				for( size_t j = 0; j < n + 1; ++j ) {
+					out_ccs.col_start[ j ] = 0;
+				}
+
+				// Fill CCS.col_start with the number of nonzeros in each column
+				for( size_t i = 0; i < m; ++i ) {
+					for( size_t k = in_raw.col_start[ i ]; k < in_raw.col_start[ i + 1 ]; ++k ) {
+						const auto j = in_raw.row_index[ k ];
+						const auto global_row = static_cast< EffectiveRowType >( row_l2g( i ) );
+						const auto global_col =
+							static_cast< EffectiveColumnType >( col_l2g( j ) );
+						const auto value = in_raw.getValue( k, identity );
+						if( op( global_row, global_col, value ) ) {
+							(void) ++out_ccs.col_start[ j + 1 ];
+						}
+					}
+				}
+
+				// Prefix sum of CCS.col_start
+				for( size_t j = 1; j < n + 1; ++j ) {
+					out_ccs.col_start[ j ] += out_ccs.col_start[ j - 1 ];
+				}
+
+				{ // Initialise the column counter array with zeros
+#ifdef _H_GRB_REFERENCE_OMP_BLAS3
+					const size_t nthreads = ( n + 1 ) < config::OMP::minLoopSize()
+						? 1
+						: config::OMP::threads();
+					#pragma omp parallel for simd num_threads( nthreads )
+#endif
+					for( size_t j = 0; j < n + 1; ++j ) {
+						col_counter[ j ] = 0;
+					}
+				}
+			}
+
+			out_crs.col_start[ 0 ] = 0;
+			size_t nzc = 0;
+			for( size_t i = 0; i < m; ++i ) {
+				for( size_t k = in_raw.col_start[ i ]; k < in_raw.col_start[ i + 1 ];
+					++k
+				) {
+					const auto j = in_raw.row_index[ k ];
+					const auto global_row = static_cast< EffectiveRowType >( row_l2g( i ) );
+					const auto global_col = static_cast< EffectiveColumnType >( col_l2g( j ) );
+					const auto value = in_raw.getValue( k, identity );
+					if( !op( global_row, global_col, value ) ) {
+						continue;
+					}
+#ifdef _DEBUG
+					std::cout << "\tKeeping value at: " << row_l2g( i ) << ", "
+						<< col_l2g( j ) << " -> idx=" << nzc << "\n";
+#endif
+
+					// Update CCS
+					if( !crs_only ) {
+						const auto idx = out_ccs.col_start[ j ] + col_counter[ j ];
+						(void) ++col_counter[ j ];
+						out_ccs.row_index[ idx ] = i;
+						out_ccs.setValue( idx, value );
+					}
+
+					// Update CRS
+					out_crs.row_index[ nzc ] = j;
+					out_crs.setValue( nzc, value );
+					(void) ++nzc;
+				}
+				out_crs.col_start[ i + 1 ] = nzc;
+			}
+
+			internal::setCurrentNonzeroes( out, nzc );
+
+			return SUCCESS;
+		}
 
 		/**
 		 * \internal general mxm implementation that all mxm variants refer to
@@ -918,6 +1116,341 @@ namespace grb {
 
 	namespace internal {
 
+		template<
+			Descriptor descr,
+			bool left_handed, class Monoid,
+			typename InputType, typename IOType,
+			typename RIT, typename CIT, typename NIT
+		>
+		RC fold_unmasked_generic(
+			IOType &x,
+			const Matrix< InputType, reference, RIT, CIT, NIT > &A,
+			const Monoid &monoid = Monoid()
+		) {
+			static_assert(
+				!std::is_void< InputType >::value,
+				"This implementation of folding a matrix into a scalar only applies to "
+				"non-pattern matrices. Please submit a bug report."
+			);
+#ifdef _DEBUG
+			std::cout << "In grb::internal::fold_unmasked_generic( reference )\n";
+#endif
+			static_assert( !(descr & descriptors::add_identity),
+				"internal::fold_unmasked_generic should not be called with add_identity descriptor" );
+
+			constexpr bool transpose =
+				descr & grb::descriptors::transpose_matrix ||
+				descr & grb::descriptors::transpose_left;
+
+			assert( !(nnz( A ) == 0 || nrows( A ) == 0 || ncols( A ) == 0) );
+
+			if( (descr & descriptors::force_row_major) && transpose ) {
+				std::cerr << "this implementation requires that force_row_major and "
+					<< "transpose descriptors are mutually exclusive\n";
+				return UNSUPPORTED;
+			}
+
+			const auto &A_raw = transpose ? getCCS( A ) : getCRS( A );
+			const size_t A_nnz = nnz( A );
+
+			const auto &op = monoid.getOperator();
+			RC rc = SUCCESS;
+
+#ifdef _H_GRB_REFERENCE_OMP_BLAS3
+			#pragma omp parallel
+#endif
+			{
+				RC local_rc = rc;
+				size_t start = 0;
+				size_t end = A_nnz;
+				auto local_x = monoid.template getIdentity< typename Monoid::D3 >();
+#ifdef _H_GRB_REFERENCE_OMP_BLAS3
+				config::OMP::localRange( start, end, 0, A_nnz );
+#endif
+				for( size_t idx = start; idx < end; ++idx ) {
+					// Get A value
+					// note: default-constructed InputType is fine as default-constructible is
+					//       mandatory for POD types and the callees ensure that this function
+					//       is never called on void matrices.
+					const InputType a_val = A_raw.getValue( idx, InputType() );
+					// Compute the fold for this coordinate
+					if( left_handed ) {
+						local_rc = grb::foldl< descr >( local_x, a_val, op );
+					} else {
+						local_rc = grb::foldr< descr >( a_val, local_x, op );
+					}
+#ifdef NDEBUG
+					(void) local_rc;
+#else
+					assert( local_rc == RC::SUCCESS );
+#endif
+				}
+
+#ifdef _H_GRB_REFERENCE_OMP_BLAS3
+				#pragma omp critical
+#endif
+				{ // Reduction with the global result (critical section if OpenMP)
+					if( left_handed ) {
+						local_rc = grb::foldl< descr >( x, local_x, op );
+					} else {
+						local_rc = grb::foldr< descr >( local_x, x, op );
+					}
+					assert( local_rc == RC::SUCCESS );
+					rc = rc ? rc : local_rc;
+				}
+			}
+
+			// done
+			return rc;
+		}
+
+		template<
+			Descriptor descr,
+			bool left_handed, class Ring,
+			typename InputType, typename IOType,
+			typename RIT, typename CIT, typename NIT
+		>
+		RC fold_unmasked_generic__add_identity(
+			IOType &x,
+			const Matrix< InputType, reference, RIT, CIT, NIT > &A,
+			const Ring &ring = Ring()
+		) {
+#ifdef _DEBUG
+			std::cout << "In grb::internal::fold_unmasked_generic__add_identity( "
+				<< "reference )\n";
+#endif
+
+			const size_t min_m_n = nrows( A ) > ncols( A )
+				? ncols( A )
+				: nrows( A );
+
+			const auto &zero = left_handed
+				? ring.template getZero< typename Ring::D2 >()
+				: ring.template getZero< typename Ring::D1 >();
+
+			const auto& one = left_handed
+				? ring.template getOne< typename Ring::D2 >()
+				: ring.template getOne< typename Ring::D1 >();
+
+			const auto &op = ring.getAdditiveOperator();
+			RC rc = RC::SUCCESS;
+
+#ifdef _H_GRB_REFERENCE_OMP_BLAS3
+			#pragma omp parallel
+#endif
+			{
+				size_t start = 0;
+				size_t end = min_m_n;
+				RC local_rc = rc;
+				auto local_x = zero;
+#ifdef _H_GRB_REFERENCE_OMP_BLAS3
+				config::OMP::localRange( start, end, 0, min_m_n );
+#endif
+
+				for( size_t k = start; k < end; ++k ) {
+					if( left_handed ) {
+						local_rc = grb::foldl< descr >( local_x, one, op );
+					} else {
+						local_rc = grb::foldr< descr >( one, local_x, op );
+					}
+				}
+
+#ifdef _H_GRB_REFERENCE_OMP_BLAS3
+				#pragma omp critical
+#endif
+				{ // Reduction with the global result (critical section if OpenMP)
+					if( local_rc == RC::SUCCESS ) {
+						if( left_handed ) {
+							local_rc = grb::foldl< descr >( x, local_x, op );
+						} else {
+							local_rc = grb::foldr< descr >( local_x, x, op );
+						}
+					}
+					rc = rc ? rc : local_rc;
+				} // end of the critical region
+
+			} // end of the parallel region
+
+			if( rc != RC::SUCCESS ) {
+				return rc;
+			}
+
+			return internal::fold_unmasked_generic<
+				descr & (~descriptors::add_identity),
+				left_handed,
+				typename Ring::AdditiveMonoid
+			>( x, A );
+		}
+
+		template<
+			Descriptor descr = descriptors::no_operation,
+			bool left_handed, class Monoid,
+			typename InputType, typename IOType, typename MaskType,
+			typename RIT_A, typename CIT_A, typename NIT_A,
+			typename RIT_M, typename CIT_M, typename NIT_M,
+			typename CoordinatesRowTranslator,
+			typename CoordinatesColTranslator
+		>
+		RC fold_masked_generic(
+			IOType &x,
+			const Matrix< InputType, reference, RIT_A, CIT_A, NIT_A > &A,
+			const Matrix< MaskType, reference, RIT_M, CIT_M, NIT_M > &mask,
+			const InputType * const one_A = nullptr,
+			const CoordinatesRowTranslator &row_union_to_global =
+				CoordinatesRowTranslator(),
+			const CoordinatesColTranslator &col_union_to_global =
+				CoordinatesColTranslator(),
+			const Monoid &monoid = Monoid()
+		) {
+#ifndef NDEBUG
+			if( descr & descriptors::add_identity ) {
+				assert( one_A != nullptr );
+			}
+#endif
+#ifdef _DEBUG
+			std::cout << "In grb::internal::fold_masked_generic( reference )\n";
+#endif
+			constexpr bool add_identity = (descr & descriptors::add_identity);
+			constexpr bool transpose_mask = (descr & descriptors::transpose_right);
+			constexpr bool transpose_input = (descr & descriptors::transpose_left);
+
+			const auto &value_zero = left_handed
+				? monoid.template getIdentity< typename Monoid::D2 >()
+				: monoid.template getIdentity< typename Monoid::D1 >();
+			const auto &op = monoid.getOperator();
+
+			assert( !(nnz( mask ) == 0 || nnz( A ) == 0 ||
+				nrows( A ) == 0 || ncols( A ) == 0) );
+
+			if( (descr & descriptors::force_row_major) &&
+				(transpose_mask || transpose_input)
+			) {
+#ifdef _DEBUG
+				std::cerr << "force_row_major and transpose descriptors are mutually "
+					<< "exclusive in this implementation\n";
+#endif
+				return UNSUPPORTED;
+			}
+			const auto &A_raw = transpose_input ? getCCS( A ) : getCRS( A );
+			const size_t m_A = transpose_input ? ncols( A ) : nrows( A );
+			const size_t n_A = transpose_input ? nrows( A ) : ncols( A );
+			const auto &mask_raw = transpose_mask ? getCCS( mask ) : getCRS( mask );
+			const auto &localRow2Global = transpose_input
+				? col_union_to_global
+				: row_union_to_global;
+			const auto &localCol2Global = transpose_input
+				? row_union_to_global
+				: col_union_to_global;
+
+
+#ifndef NDEBUG
+			const size_t m_mask = transpose_mask ? ncols( mask ) : nrows( mask );
+			const size_t n_mask = transpose_mask ? nrows( mask ) : ncols( mask );
+			assert( m_A == m_mask && n_A == n_mask );
+#endif
+
+			// retrieve buffers
+			char * arr = nullptr, * buf = nullptr;
+			InputType * vbuf = nullptr;
+			internal::getMatrixBuffers( arr, buf, vbuf, 1, A );
+			// end buffer retrieval
+
+			// initialisations
+			internal::Coordinates< reference > coors;
+			coors.set( arr, false, buf, n_A );
+			// end initialisations
+
+			RC rc = SUCCESS;
+			// Note for review: by indicating that these two values can only be incremented
+			// by 1, as the col_start arrays are the results of a prefix_sum,
+			// it might simplify optimisation for the compiler
+			auto mask_k = mask_raw.col_start[ 0 ];
+			auto A_k = A_raw.col_start[ 0 ];
+
+			for( size_t i = 0; i < m_A; ++i ) {
+				coors.clear();
+
+				for(; mask_k < mask_raw.col_start[ i + 1 ]; ++mask_k ) {
+					if( !utils::interpretMatrixMask< descr, MaskType >(
+						true, mask_raw.getValues(), mask_k )
+					) { continue; }
+
+					const auto j = mask_raw.row_index[ mask_k ];
+					coors.assign( j );
+				}
+
+				// If there is no value in the mask for this row
+				if( coors.nonzeroes() == 0 ) { continue; }
+
+				for(; A_k < A_raw.col_start[ i + 1 ]; ++A_k ) {
+					const auto j = A_raw.row_index[ A_k ];
+
+					// Skip if the coordinate is not in the mask
+					if( !coors.assigned( j ) ) { continue; }
+
+					const auto global_i = localRow2Global( i );
+					const auto global_j = localCol2Global( j );
+
+					const InputType identity_increment = add_identity &&
+						(
+							( global_i == global_j )
+							? *one_A
+							: value_zero
+						);
+
+					// Get A value
+					const InputType a_val = A_raw.getValue( A_k, identity_increment );
+					// Compute the fold for this coordinate
+					if( left_handed ) {
+						rc = rc ? rc : grb::foldl< descr >( x, a_val + identity_increment, op );
+					} else {
+						rc = rc ? rc : grb::foldr< descr >( a_val + identity_increment, x, op );
+					}
+				}
+			}
+
+			return rc;
+		}
+
+		template<
+			Descriptor descr,
+			bool left_handed, class Ring,
+			typename InputType, typename IOType, typename MaskType,
+			typename RIT_A, typename CIT_A, typename NIT_A,
+			typename RIT_M, typename CIT_M, typename NIT_M,
+			typename CoordinatesRowTranslator,
+			typename CoordinatesColTranslator
+		>
+		RC fold_masked_generic__add_identity(
+			IOType &x,
+			const Matrix< InputType, reference, RIT_A, CIT_A, NIT_A > &A,
+			const Matrix< MaskType, reference, RIT_M, CIT_M, NIT_M > &mask,
+			const CoordinatesRowTranslator &row_union_to_global =
+				CoordinatesRowTranslator(),
+			const CoordinatesColTranslator &col_union_to_global =
+				CoordinatesColTranslator(),
+			const Ring &ring = Ring()
+		) {
+#ifdef _DEBUG
+			std::cout << "In grb::internal::fold_masked_generic__add_identity( "
+				<< "reference )\n";
+#endif
+			const auto& one = left_handed
+				? ring.template getOne< typename Ring::D2 >()
+				: ring.template getOne< typename Ring::D1 >();
+
+			return internal::fold_masked_generic<
+				descr,
+				left_handed,
+				typename Ring::AdditiveMonoid
+			>(
+				x, A, mask,
+				&one,
+				row_union_to_global,
+				col_union_to_global
+			);
+		}
+
 		/**
 		 * \internal general elementwise matrix application that all eWiseApply
 		 *           variants refer to.
@@ -1227,7 +1760,8 @@ namespace grb {
 		const Matrix< InputType2, reference, RIT3, CIT3, NIT3 > &B,
 		const MulMonoid &mulmono,
 		const Phase phase = EXECUTE,
-		const typename std::enable_if< !grb::is_object< OutputType >::value &&
+		const typename std::enable_if<
+			!grb::is_object< OutputType >::value &&
 			!grb::is_object< InputType1 >::value &&
 			!grb::is_object< InputType2 >::value &&
 			grb::is_monoid< MulMonoid >::value,
@@ -1269,7 +1803,6 @@ namespace grb {
 	 *
 	 * \internal Dispatches to internal::eWiseApply_matrix_generic
 	 */
-
 	template<
 		Descriptor descr = grb::descriptors::no_operation,
 		class Operator,
@@ -1284,7 +1817,8 @@ namespace grb {
 		const Matrix< InputType2, reference, RIT3, CIT3, NIT3 > &B,
 		const Operator &mulOp,
 		const Phase phase = EXECUTE,
-		const typename std::enable_if< !grb::is_object< OutputType >::value &&
+		const typename std::enable_if<
+			!grb::is_object< OutputType >::value &&
 			!grb::is_object< InputType1 >::value &&
 			!grb::is_object< InputType2 >::value &&
 			grb::is_operator< Operator >::value,
@@ -1323,6 +1857,609 @@ namespace grb {
 		> dummyMonoid;
 		return internal::eWiseApply_matrix_generic< false, descr >(
 			C, A, B, mulOp, dummyMonoid, phase
+		);
+	}
+
+	template<
+		Descriptor descr = descriptors::no_operation,
+		class SelectionOperator,
+		typename Tin,
+		typename RITin, typename CITin, typename NITin,
+		typename Tout,
+		typename RITout, typename CITout, typename NITout
+	>
+	RC select(
+		Matrix< Tout, reference, RITout, CITout, NITout > &out,
+		const Matrix< Tin, reference, RITin, CITin, NITin > &in,
+		const SelectionOperator &op = SelectionOperator(),
+		const Phase &phase = EXECUTE,
+		const typename std::enable_if<
+			!is_object< Tin >::value &&
+			!is_object< Tout >::value
+		>::type * const = nullptr
+	) {
+#ifdef _DEBUG
+		std::cout << "In grb::select( reference )\n";
+#endif
+		// static sanity checks
+		static_assert(
+			!(descr & descriptors::no_casting) && (
+				(std::is_void< Tin >::value && std::is_void< Tout >::value) ||
+					std::is_same< Tin, Tout >::value
+			),
+			"grb::select (reference): "
+			"input and output matrix types must match"
+		);
+
+		// dispatch
+		return internal::select_generic< descr >(
+			out,
+			in,
+			op,
+			[]( size_t i ) { return i; },
+			[]( size_t j ) { return j; },
+			phase
+		);
+	}
+
+	template<
+		Descriptor descr = descriptors::no_operation,
+		class Monoid,
+		typename InputType, typename IOType, typename MaskType,
+		typename RIT_A, typename CIT_A, typename NIT_A,
+		typename RIT_M, typename CIT_M, typename NIT_M
+	>
+	RC foldr(
+		const Matrix< InputType, reference, RIT_A, CIT_A, NIT_A > &A,
+		const Matrix< MaskType, reference, RIT_M, CIT_M, NIT_M > &mask,
+		IOType &x,
+		const Monoid &monoid = Monoid(),
+		const typename std::enable_if<
+			!grb::is_object< IOType >::value &&
+			!grb::is_object< InputType >::value &&
+			!grb::is_object< MaskType >::value &&
+			grb::is_monoid< Monoid >::value, void
+		>::type * const = nullptr
+	) {
+		// static checks
+		static_assert( !std::is_void< InputType >::value,
+			"grb::foldr( reference, IOType <- [[IOType]], monoid, masked ): "
+			"the provided matrix may not be a pattern matrix."
+			"Possible fix: provide a semiring instead of a ring"
+		);
+		static_assert( grb::is_commutative< Monoid >::value,
+			"grb::foldr( reference, IOType <- [[IOType]], monoid, masked ): "
+			"the provided monoid must be commutative (but is not)"
+		);
+		static_assert( (std::is_same< typename Monoid::D1, InputType >::value),
+			"grb::foldr( reference, IOType <- [[IOType]], monoid, masked ): "
+			"called with a prefactor input type that does not match the first domain of "
+			"the given monoid"
+		);
+		static_assert( (std::is_same< typename Monoid::D2, IOType >::value),
+			"grb::foldr( reference, IOType <- [[IOType]], monoid, masked ): "
+			"called with a postfactor input type that does not match the second domain "
+			"of the given monoid"
+		);
+		static_assert( (std::is_same< typename Monoid::D3, IOType >::value),
+			"grb::foldr( reference, IOType <- [[IOType]], monoid, masked ): "
+			"called with an output type that does not match the output domain of the "
+			"given monoid"
+		);
+		static_assert( !(descr & descriptors::add_identity),
+			"grb::foldr( reference, IOType <- [[IOType]], monoid, masked ): "
+			"the use of the add_identity descriptor requires a semiring, but a monoid "
+			"was given"
+		);
+		static_assert( !(
+				(descr & descriptors::invert_mask) &&
+				(descr & descriptors::structural)
+			), "grb::foldr( reference, IOType <- [[IOType]], monoid, masked ): "
+			"may not select an inverted structural mask for matrices"
+		);
+		static_assert( !(descr & descriptors::add_identity),
+			"grb::foldr( reference, IOType <- [[IOType]], monoid ): "
+			"the use of the add_identity descriptor requires a semiring, but a monoid "
+			"was given"
+		);
+#ifdef _DEBUG
+		std::cout << "In grb::foldr( reference, mask, matrix, monoid )\n";
+#endif
+		// first check whether we can dispatch
+		if( grb::nrows( mask ) == 0 && grb::ncols( mask ) == 0 ) {
+			return foldr< descr >( A, x, monoid );
+		}
+
+		// dynamic checks
+		if( grb::nrows( A ) != grb::nrows( mask ) ||
+			grb::ncols( A ) != grb::ncols( mask )
+		) {
+			return RC::MISMATCH;
+		}
+
+		// check for trivial op
+		if( grb::nnz( A ) == 0 || grb::nnz( mask ) == 0 ||
+			grb::nrows( A ) == 0 || grb::ncols( A ) == 0
+		) {
+			return RC::SUCCESS;
+		}
+
+		// do fold
+		const InputType * const nil = nullptr;
+		return internal::fold_masked_generic< descr, false, Monoid >(
+			x, A, mask,
+			nil,
+			[]( size_t i ){ return i; },
+			[]( size_t i ){ return i; }
+		);
+	}
+
+	template<
+		Descriptor descr = descriptors::no_operation,
+		class Monoid,
+		typename InputType, typename IOType,
+		typename RIT, typename CIT, typename NIT
+	>
+	RC foldr(
+		const Matrix< InputType, reference, RIT, CIT, NIT > &A,
+		IOType &x,
+		const Monoid &monoid = Monoid(),
+		const typename std::enable_if<
+			!grb::is_object< IOType >::value &&
+			!grb::is_object< InputType >::value &&
+			grb::is_monoid< Monoid >::value, void
+		>::type * const = nullptr
+	) {
+		// static checks
+		static_assert( !std::is_void< InputType >::value,
+			"grb::foldr( reference, IOType <- [[IOType]], monoid ): "
+			"the provided matrix may not be a pattern matrix."
+			"Possible fix: provide a semiring instead of a ring"
+		);
+		static_assert( grb::is_commutative< Monoid >::value,
+			"grb::foldr( reference, IOType <- [[IOType]], monoid ): "
+			"the provided monoid must be commutative (but is not)"
+		);
+		static_assert( (std::is_same< typename Monoid::D1, InputType >::value),
+			"grb::foldr( reference, IOType <- [[IOType]], monoid ): "
+			"called with a prefactor input type that does not match the first domain of "
+			"the given monoid"
+		);
+		static_assert( (std::is_same< typename Monoid::D2, IOType >::value),
+			"grb::foldr( reference, IOType <- [[IOType]], monoid ): "
+			"called with a postfactor input type that does not match the second domain "
+			"of the given monoid"
+		);
+		static_assert( (std::is_same< typename Monoid::D3, IOType >::value),
+			"grb::foldr( reference, IOType <- [[IOType]], monoid ): "
+			"called with an output type that does not match the output domain of the "
+			"given monoid"
+		);
+		static_assert( !(descr & descriptors::add_identity),
+			"grb::foldr( reference, IOType <- [[IOType]], monoid ): "
+			"the use of the add_identity descriptor requires a semiring, but a monoid "
+			"was given"
+		);
+#ifdef _DEBUG
+		std::cout << "In grb::foldr( reference, matrix, monoid )\n";
+#endif
+		// check for trivial op
+		if( grb::nnz( A ) == 0 || grb::nrows( A ) == 0 || grb::ncols( A ) == 0 ) {
+			return RC::SUCCESS;
+		}
+
+		// otherwise, go ahead
+		return internal::fold_unmasked_generic< descr, false, Monoid >(
+			x, A, monoid
+		);
+	}
+
+	template<
+		Descriptor descr = descriptors::no_operation,
+		class Semiring,
+		typename InputType, typename IOType,
+		typename RIT, typename CIT, typename NIT
+	>
+	RC foldr(
+		const Matrix< InputType, reference, RIT, CIT, NIT > &A,
+		IOType &x,
+		const Semiring &semiring = Semiring(),
+		const typename std::enable_if<
+			!grb::is_object< IOType >::value &&
+			!grb::is_object< InputType >::value &&
+			grb::is_semiring< Semiring >::value, void
+		>::type * const = nullptr
+	) {
+		// static checks
+		static_assert( (std::is_same< typename Semiring::D3, InputType >::value),
+			"grb::foldr( reference, IOType <- [[IOType]], semiring ): "
+			"called with a prefactor input type that does not match the third domain of "
+			"the given semiring"
+		);
+		static_assert( (std::is_same< typename Semiring::D4, IOType >::value),
+			"grb::foldr( reference, IOType <- [[IOType]], semiring ): "
+			"called with a postfactor input type that does not match the fourth domain "
+			"of the given semiring"
+		);
+		static_assert( (std::is_same< typename Semiring::D4, IOType >::value),
+			"grb::foldr( reference, IOType <- [[IOType]], semiring ): "
+			"called with an output type that does not match the fourth domain of the "
+			"given semiring"
+		);
+#ifdef _DEBUG
+		std::cout << "In grb::foldr( reference, matrix, semiring )\n";
+#endif
+		// check for trivial op
+		if( grb::nnz( A ) == 0 || grb::nrows( A ) == 0 || grb::ncols( A ) == 0 ) {
+			return RC::SUCCESS;
+		}
+
+		// otherwise, go ahead
+		if( descr & descriptors::add_identity ) {
+			return internal::fold_unmasked_generic__add_identity<
+				descr, false, Semiring
+			>(
+				x, A, semiring
+			);
+		}
+		return internal::fold_unmasked_generic<
+			descr & (~descriptors::add_identity),
+			false,
+			typename Semiring::AdditiveMonoid
+		>(
+			x, A, semiring.getAdditiveMonoid()
+		);
+	}
+
+	template<
+		Descriptor descr = descriptors::no_operation,
+		class Semiring,
+		typename InputType, typename IOType, typename MaskType,
+		typename RIT_A, typename CIT_A, typename NIT_A,
+		typename RIT_M, typename CIT_M, typename NIT_M
+	>
+	RC foldr(
+		const Matrix< InputType, reference, RIT_A, CIT_A, NIT_A > &A,
+		const Matrix< MaskType, reference, RIT_M, CIT_M, NIT_M > &mask,
+		IOType &x,
+		const Semiring &semiring = Semiring(),
+		const typename std::enable_if<
+			!grb::is_object< IOType >::value &&
+			!grb::is_object< InputType >::value &&
+			!grb::is_object< MaskType >::value &&
+			grb::is_semiring< Semiring >::value, void
+		>::type * const = nullptr
+	) {
+		// static checks
+		static_assert( (std::is_same< typename Semiring::D3, InputType >::value),
+			"grb::foldr( reference, IOType <- [[IOType]], semiring, masked ): "
+			"called with a prefactor input type that does not match the third domain of "
+			"the given semiring"
+		);
+		static_assert( (std::is_same< typename Semiring::D4, IOType >::value),
+			"grb::foldr( reference, IOType <- [[IOType]], semiring, masked ): "
+			"called with a postfactor input type that does not match the fourth domain "
+			"of the given semiring"
+		);
+		static_assert( (std::is_same< typename Semiring::D4, IOType >::value),
+			"grb::foldr( reference, IOType <- [[IOType]], semiring, masked ): "
+			"called with an output type that does not match the fourth domain of the "
+			"given semiring"
+		);
+		static_assert( !(
+				(descr & descriptors::invert_mask) &&
+				(descr & descriptors::structural)
+			), "grb::foldr( reference, IOType <- [[IOType]], semiring, masked ): "
+			"may not select an inverted structural mask for matrices"
+		);
+		// first check whether we can dispatch
+		if( grb::nrows( mask ) == 0 && grb::ncols( mask ) == 0 ) {
+			return foldr< descr >( A, x, semiring );
+		}
+
+		// dynamic checks
+		if( grb::nrows( A ) != grb::nrows( mask ) ||
+			grb::ncols( A ) != grb::ncols( mask )
+		) {
+			return RC::MISMATCH;
+		}
+
+		// check for trivial op
+		if( grb::nnz( A ) == 0 || grb::nnz( mask ) == 0 ||
+			grb::nrows( A ) == 0 || grb::ncols( A ) == 0
+		) {
+			return RC::SUCCESS;
+		}
+
+		// do fold
+		return internal::fold_masked_generic__add_identity<
+			descr, false, Semiring
+		>(
+			x, A, mask,
+			[](size_t i) { return i; },
+			[](size_t i) { return i; },
+			semiring
+		);
+	}
+
+	template<
+		Descriptor descr = descriptors::no_operation,
+		class Monoid,
+		typename InputType, typename IOType, typename MaskType,
+		typename RIT_A, typename CIT_A, typename NIT_A,
+		typename RIT_M, typename CIT_M, typename NIT_M
+	>
+	RC foldl(
+		IOType &x,
+		const Matrix< InputType, reference, RIT_A, CIT_A, NIT_A > &A,
+		const Matrix< MaskType, reference, RIT_M, CIT_M, NIT_M > &mask,
+		const Monoid &monoid = Monoid(),
+		const typename std::enable_if<
+			!grb::is_object< IOType >::value &&
+			!grb::is_object< InputType >::value &&
+			!grb::is_object< MaskType >::value &&
+			grb::is_monoid< Monoid >::value, void
+		>::type * const = nullptr
+	) {
+		// static checks
+		static_assert( !std::is_void< InputType >::value,
+			"grb::foldl( reference, IOType <- [[IOType]], monoid ): "
+			"the provided matrix may not be a pattern matrix."
+			"Possible fix: provide a semiring instead of a ring"
+		);
+		static_assert( grb::is_commutative< Monoid >::value,
+			"grb::foldl( reference, IOType <- [[IOType]], monoid ): "
+			"the provided monoid must be commutative (but is not)"
+		);
+		static_assert( (std::is_same< typename Monoid::D1, IOType >::value),
+			"grb::foldl( reference, IOType <- [[IOType]], monoid, masked ): "
+			"called with a prefactor input type that does not match the first domain of "
+			"the given monoid"
+		);
+		static_assert( (std::is_same< typename Monoid::D2, InputType >::value),
+			"grb::foldl( reference, IOType <- [[IOType]], monoid, masked ): "
+			"called with a postfactor input type that does not match the second domain "
+			"of the given monoid"
+		);
+		static_assert( (std::is_same< typename Monoid::D3, IOType >::value),
+			"grb::foldl( reference, IOType <- [[IOType]], monoid, masked ): "
+			"called with an output type that does not match the output domain of the "
+			"given monoid"
+		);
+		static_assert( !(
+				(descr & descriptors::invert_mask) &&
+				(descr & descriptors::structural)
+			), "grb::foldl( reference, IOType <- [[IOType]], monoid, masked ): "
+			"may not select an inverted structural mask for matrices"
+		);
+		static_assert( !(descr & descriptors::add_identity),
+			"grb::foldl( reference, IOType <- [[IOType]], monoid ): "
+			"the use of the add_identity descriptor requires a semiring, but a monoid "
+			"was given"
+		);
+#ifdef _DEBUG
+		std::cout << "In grb::foldl( reference, mask, matrix, monoid )\n";
+#endif
+		// first check whether we can dispatch
+		if( grb::nrows( mask ) == 0 && grb::ncols( mask ) == 0 ) {
+			return foldl< descr >( x, A, monoid );
+		}
+
+		// dynamic checks
+		if( grb::nrows( A ) != grb::nrows( mask ) ||
+			grb::ncols( A ) != grb::ncols( mask )
+		) {
+			return RC::MISMATCH;
+		}
+
+		// check for trivial op
+		if( grb::nnz( A ) == 0 || grb::nnz( mask ) == 0 ||
+			grb::nrows( A ) == 0 || grb::ncols( A ) == 0
+		) {
+			return RC::SUCCESS;
+		}
+
+		// do fold
+		const InputType * const nil = nullptr;
+		return internal::fold_masked_generic<
+			descr, true, Monoid
+		>(
+			x, A, mask,
+			nil,
+			[]( size_t i ){ return i; },
+			[]( size_t i ){ return i; }
+		);
+	}
+
+	template<
+		Descriptor descr = descriptors::no_operation,
+		class Monoid,
+		typename InputType, typename IOType,
+		typename RIT, typename CIT, typename NIT
+	>
+	RC foldl(
+		IOType &x,
+		const Matrix< InputType, reference, RIT, CIT, NIT > &A,
+		const Monoid &monoid = Monoid(),
+		const typename std::enable_if<
+			!grb::is_object< IOType >::value &&
+			!grb::is_object< InputType >::value &&
+			grb::is_monoid< Monoid >::value, void
+		>::type * const = nullptr
+	) {
+		// static checks
+		static_assert( !std::is_void< InputType >::value,
+			"grb::foldl( reference, IOType <- [[IOType]], monoid ): "
+			"the provided matrix may not be a pattern matrix."
+			"Possible fix: provide a semiring instead of a ring"
+		);
+		static_assert( grb::is_commutative< Monoid >::value,
+			"grb::foldl( reference, IOType <- [[IOType]], monoid ): "
+			"the provided monoid must be commutative (but is not)"
+		);
+		static_assert( (std::is_same< typename Monoid::D1, IOType >::value),
+			"grb::foldl( reference, IOType <- [[IOType]], monoid ): "
+			"called with a prefactor input type that does not match the first domain of "
+			"the given monoid"
+		);
+		static_assert( (std::is_same< typename Monoid::D2, InputType >::value),
+			"grb::foldl( reference, IOType <- [[IOType]], monoid ): "
+			"called with a postfactor input type that does not match the second domain "
+			"of the given monoid"
+		);
+		static_assert( (std::is_same< typename Monoid::D3, IOType >::value),
+			"grb::foldl( reference, IOType <- [[IOType]], monoid ): "
+			"called with an output type that does not match the output domain of the "
+			"given monoid"
+		);
+		static_assert( !(descr & descriptors::add_identity),
+			"grb::foldl( reference, IOType <- [[IOType]], monoid ): "
+			"the use of the add_identity descriptor requires a semiring, but a monoid "
+			"was given"
+		);
+#ifdef _DEBUG
+		std::cout << "In grb::foldl( reference, matrix, monoid )\n";
+#endif
+		// check for trivial op
+		if( grb::nnz( A ) == 0 || grb::nrows( A ) == 0 || grb::ncols( A ) == 0 ) {
+			return RC::SUCCESS;
+		}
+
+		// do folding
+		return internal::fold_unmasked_generic< descr, true, Monoid >(
+			x, A, monoid
+		);
+	}
+
+	template<
+		Descriptor descr = descriptors::no_operation,
+		class Semiring,
+		typename InputType, typename IOType,
+		typename RIT, typename CIT, typename NIT
+	>
+	RC foldl(
+		IOType &x,
+		const Matrix< InputType, reference, RIT, CIT, NIT > &A,
+		const Semiring &semiring = Semiring(),
+		const typename std::enable_if<
+			!grb::is_object< IOType >::value &&
+			!grb::is_object< InputType >::value &&
+			grb::is_semiring< Semiring >::value, void
+		>::type * const = nullptr
+	) {
+		// static checks
+		static_assert( (std::is_same< typename Semiring::D3, IOType >::value),
+			"grb::foldl( reference, IOType <- [[IOType]], semiring ): "
+			"called with a prefactor input type that does not match the third domain of "
+			"the given semiring"
+		);
+		static_assert( (std::is_same< typename Semiring::D4, InputType >::value),
+			"grb::foldl( reference, IOType <- [[IOType]], semiring ): "
+			"called with a postfactor input type that does not match the fourth domain "
+			"of the given semiring"
+		);
+		static_assert( (std::is_same< typename Semiring::D4, IOType >::value),
+			"grb::foldl( reference, IOType <- [[IOType]], semiring ): "
+			"called with an output type that does not match the fourth domain of the "
+			"given semiring"
+		);
+#ifdef _DEBUG
+		std::cout << "In grb::foldl( reference, matrix, semiring )\n";
+#endif
+		// check for trivial op
+		if( grb::nnz( A ) == 0 || grb::nrows( A ) == 0 || grb::ncols( A ) == 0 ) {
+			return RC::SUCCESS;
+		}
+
+		// do folding
+		if( descr & descriptors::add_identity ) {
+			return internal::fold_unmasked_generic__add_identity<
+				descr, true, Semiring
+			>(
+				x, A, semiring
+			);
+		} else {
+			return internal::fold_unmasked_generic<
+				descr & (~descriptors::add_identity),
+				true,
+				typename Semiring::AdditiveMonoid
+			>(
+				x, A, semiring.getAdditiveMonoid()
+			);
+		}
+	}
+
+	template<
+		Descriptor descr = descriptors::no_operation,
+		class Semiring,
+		typename InputType, typename IOType, typename MaskType,
+		typename RIT_A, typename CIT_A, typename NIT_A,
+		typename RIT_M, typename CIT_M, typename NIT_M
+	>
+	RC foldl(
+		IOType &x,
+		const Matrix< InputType, reference, RIT_A, CIT_A, NIT_A > &A,
+		const Matrix< MaskType, reference, RIT_M, CIT_M, NIT_M > &mask,
+		const Semiring &semiring = Semiring(),
+		const typename std::enable_if<
+			!grb::is_object< IOType >::value &&
+			!grb::is_object< InputType >::value &&
+			!grb::is_object< MaskType >::value &&
+			grb::is_semiring< Semiring >::value, void
+		>::type * const = nullptr
+	) {
+		// static checks
+		static_assert( (std::is_same< typename Semiring::D4, IOType >::value),
+			"grb::foldl( reference, IOType <- [[IOType]], semiring, masked ): "
+			"called with a prefactor input type that does not match the fourth domain "
+			"of the given semiring"
+		);
+		static_assert( (std::is_same< typename Semiring::D4, InputType >::value),
+			"grb::foldl( reference, IOType <- [[IOType]], semiring, masked ): "
+			"called with a postfactor input type that does not match the fourth domain "
+			"of the given semiring"
+		);
+		static_assert( (std::is_same< typename Semiring::D3, IOType >::value),
+			"grb::foldl( reference, IOType <- [[IOType]], semiring, masked ): "
+			"called with an output type that does not match the third domain of the "
+			"given semiring"
+		);
+		static_assert( !(
+				(descr & descriptors::invert_mask) &&
+				(descr & descriptors::structural)
+			), "grb::foldl( reference, IOType <- [[IOType]], semiring, masked ): "
+			"may not select an inverted structural mask for matrices"
+		);
+#ifdef _DEBUG
+		std::cout << "In grb::foldl( reference, mask, matrix, semiring )\n";
+#endif
+		// first check whether we can dispatch
+		if( grb::nrows( mask ) == 0 && grb::ncols( mask ) == 0 ) {
+			return foldl< descr >( x, A, semiring );
+		}
+
+		// dynamic checks
+		if( grb::nrows( A ) != grb::nrows( mask ) ||
+			grb::ncols( A ) != grb::ncols( mask )
+		) {
+			return RC::MISMATCH;
+		}
+
+		// check for trivial op
+		if( grb::nnz( A ) == 0 || grb::nnz( mask ) == 0 ||
+			grb::nrows( A ) == 0 || grb::ncols( A ) == 0
+		) {
+			return RC::SUCCESS;
+		}
+
+		// do fold
+		return internal::fold_masked_generic__add_identity<
+			descr, true, Semiring
+		>(
+			x, A, mask,
+			[](size_t i) { return i; },
+			[](size_t i) { return i; },
+			semiring
 		);
 	}
 

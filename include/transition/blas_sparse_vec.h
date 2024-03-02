@@ -18,9 +18,14 @@
 /**
  * @file
  *
- * This is an ALP-specific extension to the NIST Sparse BLAS standard, which
- * the ALP libsparseblas transition path also introduces to the de-facto spblas
- * standard.
+ * \ingroup TRANS
+ *
+ * This is an ALP-specific extension to the NIST Sparse BLAS standard to support
+ * sparse vectors.
+ *
+ * Both the ALP \ref SPARSEBLAS and \ref SPBLAS transition path libraries have
+ * extensions that make use of the sparse vectors here defined, so that
+ * efficient sparse matrix--sparse vector routines may be employed.
  *
  * @author A. N. Yzelman
  * @date 2023

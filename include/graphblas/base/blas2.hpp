@@ -432,6 +432,7 @@ namespace grb {
 	 * @see perfSemantics
 	 */
 	template<
+		Descriptor = descriptors::no_operation,
 		typename Func, typename DataType,
 		typename RIT, typename CIT, typename NIT,
 		Backend implementation = config::default_backend,
