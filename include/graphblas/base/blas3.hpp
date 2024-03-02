@@ -452,11 +452,13 @@ namespace grb {
 	 *
 	 * After a successful call to this primitive, the nonzero structure of \a B
 	 * will match the one of \a A without the elements that were not matched by
-	 * the selection operator. All the elements of \a B will result $true$ when
+	 * the selection operator. Any values at those positions are copied from \a A
+	 * to \a B. All the elements of \a B will normally return <tt>true</tt> when
 	 * applied to the selection operator.
 	 *
-	 * Any old entries of \a B will be removed after a successful call to this
-	 * primitive; that is, this primitive is out-of-place.
+	 * \note An exception to the last point may occur if the value types of \a A
+	 *       and \a B do not match, while the selection operator depends on those
+	 *       values in a way that makes it behave differently.
 	 *
 	 * @tparam descr              The descriptor to be used. Optional; the default
 	 *                            is #grb::descriptors::no_operation.
@@ -521,6 +523,13 @@ namespace grb {
 	 *                        returned, ALP enters an undefined state and the user
 	 *                        program is encouraged to exit as quickly as possible.
 	 *
+	 * \parblock
+	 * \par Descriptors
+	 *
+	 * Only #grb::descriptors::no_casting is accepted.
+	 * \endparblock
+	 *
+	 * \par Performance semantics
 	 * \par Performance semantics
 	 *
 	 * Each backend must define performance semantics for this primitive.
