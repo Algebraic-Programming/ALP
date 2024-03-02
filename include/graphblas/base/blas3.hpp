@@ -530,7 +530,6 @@ namespace grb {
 	 * \endparblock
 	 *
 	 * \par Performance semantics
-	 * \par Performance semantics
 	 *
 	 * Each backend must define performance semantics for this primitive.
 	 *
