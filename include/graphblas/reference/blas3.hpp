@@ -87,7 +87,12 @@ namespace grb {
 				bool,
 				Tin
 			>::type InValuesType;
-			const InValuesType identity = InValuesType();
+			// the identity will only be used for void input matrices
+			// if unused, we initialise it via default-construction, which is always ok
+			// to do since value types must be POD.
+			const InValuesType identity = std::is_void< Tin >::value
+				? true
+				: InValuesType();
 
 			constexpr bool crs_only = descr & descriptors::force_row_major;
 			constexpr bool transpose_input = descr & descriptors::transpose_matrix;
@@ -1876,14 +1881,17 @@ namespace grb {
 #ifdef _DEBUG
 		std::cout << "In grb::select( reference )\n";
 #endif
-
+		// static sanity checks
 		static_assert(
-			(std::is_void< Tin >::value && std::is_void< Tout >::value) ||
-				std::is_same< Tin, Tout >::value,
+			!(descr & descriptors::no_casting) && (
+				(std::is_void< Tin >::value && std::is_void< Tout >::value) ||
+					std::is_same< Tin, Tout >::value
+			),
 			"grb::select (reference): "
 			"input and output matrix types must match"
 		);
 
+		// dispatch
 		return internal::select_generic< descr >(
 			out,
 			in,
