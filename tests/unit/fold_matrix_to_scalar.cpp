@@ -27,9 +27,9 @@
  * Tests whether the foldl and foldl API calls produce the expected results.
  *
  * The test cases are focused on the following aspects:
- *   * The types of the result, the matrix values and the operator
- * 	 * The initial value of the reduction result
- * 	 * The order of the operands (foldr, foldl)
+ *  - The types of the result, the matrix values and the operator
+ *  - The initial value of the reduction result
+ *  - The order of the operands (foldr, foldl)
  */
 
 #include <chrono>

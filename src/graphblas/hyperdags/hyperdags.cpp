@@ -380,6 +380,9 @@ std::string grb::internal::hyperdags::toString(
 		case GETID_MATRIX:
 			return "getID( matrix )";
 
+		case SELECT_MATRIX_MATRIX:
+			return "select( matrix, matrix, selection_operator )";
+
 		case FOLDL_SCALAR_MATRIX_MASK_MONOID:
 			return "foldl( scalar, matrix, matrix, monoid )";
 

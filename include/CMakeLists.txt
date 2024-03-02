@@ -52,7 +52,7 @@ set( root_files
 	"graphblas/rc.hpp" "graphblas/semiring.hpp" "graphblas/spmd.hpp"
 	"graphblas/tags.hpp" "graphblas/type_traits.hpp" "graphblas/utils.hpp"
 	"graphblas/vector.hpp" "graphblas/synchronizedNonzeroIterator.hpp"
-	"graphblas/nonzeroStorage.hpp"
+	"graphblas/nonzeroStorage.hpp" "graphblas/selection_ops.hpp"
 )
 
 set( GRB_INCLUDE_INSTALL_DIR "${INCLUDE_INSTALL_DIR}/graphblas")

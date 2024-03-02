@@ -443,6 +443,133 @@ namespace grb {
 	}
 
 	/**
+	 * Selects elements from a matrix based on a given selection boolean operator.
+	 *
+	 * This function template is used to select elements from a given input matrix
+	 * based on a provided selection operator. The selected elements are then stored
+	 * in a different output matrix, making this an out-of-place operation. The
+	 * output matrix is cleared before the selection.
+	 *
+	 * After a successful call to this primitive, the nonzero structure of \a B
+	 * will match the one of \a A without the elements that were not matched by
+	 * the selection operator. Any values at those positions are copied from \a A
+	 * to \a B. All the elements of \a B will normally return <tt>true</tt> when
+	 * applied to the selection operator.
+	 *
+	 * \note An exception to the last point may occur if the value types of \a A
+	 *       and \a B do not match, while the selection operator depends on those
+	 *       values in a way that makes it behave differently.
+	 *
+	 * @tparam descr              The descriptor to be used. Optional; the default
+	 *                            is #grb::descriptors::no_operation.
+	 * @tparam SelectionOperator  The selection operator type, a function with the
+	 *                            following signature:
+	 *                            `bool( const RIT &, const CIT &, const T & )`.
+	 *                            Here,
+	 *                            - RIT: The row index type of the input matrix,
+	 *                                   or a type that is convertible from it.
+	 *                            - CIT: The column index type of the input matrix,
+	 *                                   or a type that is convertible from it.
+	 *                            - T:   The value type of the input matrix, or a
+	 *                                   type that is convertible to it.
+	 *
+	 * The types for \a RIT and \a CIT are given by
+	 *  -# grb::config::RowIndexType and
+	 *  -# grb::config::ColIndexType,
+	 * respectively. For most use cases, the default is <tt>unsigned int</tt> for
+	 * both types. The safest and most performant choice is therefore to supply an
+	 * operator with the aforementioned two configuration types for \a RIT and
+	 * \a CIT. The most generic safe choice that does not depend on configured
+	 * types is <tt>size_t</tt>, but such use may result in a (slight) performance
+	 * penalty due to internal casting between possibly different index types.
+	 *
+	 * For <tt>void</tt> matrices, the select operator will assume a <tt>bool</tt>
+	 * for \a T. The operator will always receive <tt>true</tt> as the value
+	 * corresponding to the sparse pattern.
+	 *
+	 * @tparam Tin                The value type of the input matrix.
+	 * @tparam RITin              The row index type of the input matrix.
+	 * @tparam CITin              The column index type of the input matrix.
+	 * @tparam NITin              The nonzero index type of the input matrix.
+	 * @tparam Tout	              The value type of the output matrix.
+	 * @tparam RITout             The row index type of the output matrix.
+	 * @tparam CITout             The column index type of the output matrix.
+	 * @tparam NITout             The nonzero index type of the output matrix.
+	 * @tparam backend            The backend to use for the operation.
+	 *
+	 * @param[out] B       The output matrix. Will be cleared before the selection.
+	 * @param[in]  A       The input matrix.
+	 * @param[in]  op      The selection boolean operator.
+	 * @param[in]  phase   The #grb::Phase the call should execute. Optional; the
+	 *                     default parameter is #grb::EXECUTE.
+	 *
+	 * \note Pre-defined selection operators can be found in the namespace
+	 *       #grb::operators::select.
+	 *
+	 * @return #grb::SUCCESS  On successful completion of this call.
+	 * @return #grb::MISMATCH Whenever the dimensions of \a A and \a B do
+	 *                        not match. All input data containers are left
+	 *                        untouched if this exit code is returned; it will be
+	 *                        be as though this call was never made.
+	 * @return #grb::FAILED   If \a phase is #grb::EXECUTE, indicates that the
+	 *                        capacity of \a B was insufficient. The output
+	 *                        matrix \a B is cleared, and the call to this function
+	 *                        has no further effects.
+	 * @return #grb::OUTOFMEM If \a phase is #grb::RESIZE, indicates an
+	 *                        out-of-memory exception. The call to this function
+	 *                        shall have no other effects beyond returning this
+	 *                        error code; the previous state of \a B is retained.
+	 * @return #grb::PANIC    A general unmitigable error has been encountered. If
+	 *                        returned, ALP enters an undefined state and the user
+	 *                        program is encouraged to exit as quickly as possible.
+	 *
+	 * \parblock
+	 * \par Descriptors
+	 *
+	 * Only #grb::descriptors::no_casting is accepted.
+	 * \endparblock
+	 *
+	 * \par Performance semantics
+	 *
+	 * Each backend must define performance semantics for this primitive.
+	 *
+	 * @see perfSemantics
+	 */
+	template<
+		Descriptor descr = descriptors::no_operation,
+		class SelectionOperator,
+		typename Tin,
+		typename RITin, typename CITin, typename NITin,
+		typename Tout,
+		typename RITout, typename CITout, typename NITout,
+		Backend backend
+	>
+	RC select(
+		Matrix< Tout, backend, RITout, CITout, NITout > &B,
+		const Matrix< Tin, backend, RITin, CITin, NITin > &A,
+		const SelectionOperator &op,
+		const Phase &phase = EXECUTE,
+		const typename std::enable_if<
+			!is_object< Tin >::value &&
+			!is_object< Tout >::value
+		>::type * const = nullptr
+	) {
+		(void) descr;
+		(void) B;
+		(void) A;
+		(void) op;
+		(void) phase;
+#ifdef _DEBUG
+		std::cerr << "Selected backend does not implement grb::select\n";
+#endif
+#ifndef NDEBUG
+		const bool selected_backend_does_not_support_select = false;
+		assert( selected_backend_does_not_support_select );
+#endif
+		return UNSUPPORTED;
+	}
+
+	/**
 	 * Reduces, or \em folds, a matrix into a scalar, according to a commutative
 	 * monoid.
 	 *

@@ -490,17 +490,19 @@ namespace grb {
 
 				EWISELAMBDA_FUNC_VECTOR,
 
+				SELECT_MATRIX_MATRIX,
+
 				FOLDL_SCALAR_MATRIX_MASK_MONOID,
 
 				FOLDL_SCALAR_MATRIX_MONOID,
 
 				FOLDR_SCALAR_MATRIX_MASK_MONOID,
 
-				FOLDR_SCALAR_MATRIX_MONOID,
+				FOLDR_SCALAR_MATRIX_MONOID
 			};
 
 			/** \internal How many operation vertex types exist. */
-			const constexpr size_t numOperationVertexTypes = 110;
+			const constexpr size_t numOperationVertexTypes = 111;
 
 			/** \internal An array of all operation vertex types. */
 			const constexpr enum OperationVertexType
@@ -612,10 +614,11 @@ namespace grb {
 				EWISEMUL_VECTOR_VECTOR_VECTOR_BETA_RING,
 				EWISEMUL_VECTOR_VECTOR_ALPHA_BETA_RING,
 				EWISELAMBDA_FUNC_VECTOR,
+				SELECT_MATRIX_MATRIX,
 				FOLDL_SCALAR_MATRIX_MASK_MONOID,
 				FOLDL_SCALAR_MATRIX_MONOID,
 				FOLDR_SCALAR_MATRIX_MASK_MONOID,
-				FOLDR_SCALAR_MATRIX_MONOID,
+				FOLDR_SCALAR_MATRIX_MONOID
 			};
 
 			/** \internal @returns The operation vertex type as a string. */

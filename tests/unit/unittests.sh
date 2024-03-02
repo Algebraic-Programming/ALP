@@ -616,6 +616,18 @@ for MODE in ${MODES}; do
 				grep 'Test OK' ${TEST_OUT_DIR}/zip_large_${MODE}_${BACKEND}_${P}_${T} || echo "Test FAILED"
 				echo " "
 
+				echo ">>>      [x]           [ ]       Testing grb::select on matrices of integers and of size 3"
+				$runner ${TEST_BIN_DIR}/selectMatrix_${MODE}_${BACKEND} 3 &> ${TEST_OUT_DIR}/selectMatrix_${MODE}_${BACKEND}_${P}_${T}_3
+				head -1 ${TEST_OUT_DIR}/selectMatrix_${MODE}_${BACKEND}_${P}_${T}_3
+				grep 'Test OK' ${TEST_OUT_DIR}/selectMatrix_${MODE}_${BACKEND}_${P}_${T}_3 || echo "Test FAILED"
+				echo " "
+
+				echo ">>>      [x]           [ ]       Testing grb::select on matrices of integers and of size 5'000"
+				$runner ${TEST_BIN_DIR}/selectMatrix_${MODE}_${BACKEND} 5000 &> ${TEST_OUT_DIR}/selectMatrix_${MODE}_${BACKEND}_${P}_${T}
+				head -1 ${TEST_OUT_DIR}/selectMatrix_${MODE}_${BACKEND}_${P}_${T}
+				grep 'Test OK' ${TEST_OUT_DIR}/selectMatrix_${MODE}_${BACKEND}_${P}_${T} || echo "Test FAILED"
+				echo " "
+
 				echo ">>>      [x]           [ ]       Testing copy-constructor of square pattern matrices"
 				echo "                                 of size 1003."
 				$runner ${TEST_BIN_DIR}/copyVoidMatrices_${MODE}_${BACKEND} 1003 &> ${TEST_OUT_DIR}/copyVoidMatrices_${MODE}_${BACKEND}_${P}_${T}
@@ -761,9 +773,15 @@ for MODE in ${MODES}; do
 		if [ "$BACKEND" = "bsp1d" ]; then
 			echo "Additional unit tests for the BSP1D backend:"
 			echo " "
-			echo ">>>      [x]           [ ]       Testing BSP1D distribution for a vector of size 100000"
+			echo ">>>      [x]           [ ]       Testing BSP1D distribution for a vector of size 100 000"
 			echo " "
 			${TEST_BIN_DIR}/distribution_bsp1d_${MODE}
+
+			echo ">>>      [x]           [ ]       Testing BSP1D distribution for an identity matrix of size"
+			echo "                                 7777 x 7777. The test evaluates whether the internal data"
+			echo "                                 structures match the BSP1D distribution"
+			echo " "
+			${TEST_BIN_DIR}/distribution_matrix_bsp1d_${MODE} 7777
 
 			echo ">>>      [x]           [ ]       Testing dense vector times matrix using the double (+,*)"
 			echo "                                 semiring where matrix elements are doubles and vector"

@@ -200,11 +200,55 @@ namespace grb {
 			if( collectives<>::allreduce( ret, operators::any_or< RC >() ) != SUCCESS ) {
 				return PANIC;
 			} else {
-				return SUCCESS;
+				return ret;
 			}
 		}
 		assert( phase == EXECUTE );
 		return internal::checkGlobalErrorStateOrClear( C, ret );
+	}
+
+	/** \internal Simply delegates to process-local backend */
+	template<
+		Descriptor descr = descriptors::no_operation,
+		class SelectionOperator,
+		typename Tin,
+		typename RITin, typename CITin, typename NITin,
+		typename Tout,
+		typename RITout, typename CITout, typename NITout
+	>
+	RC select(
+		Matrix< Tout, BSP1D, RITout, CITout, NITout > &out,
+		const Matrix< Tin, BSP1D, RITin, CITin, NITin > &in,
+		const SelectionOperator &op,
+		const Phase &phase = EXECUTE,
+		const typename std::enable_if<
+			!is_object< Tin >::value &&
+			!is_object< Tout >::value
+		>::type * const = nullptr
+	) {
+		assert( phase != TRY );
+
+		const auto coordinatesTranslationFunctions =
+			in.getLocalToGlobalCoordinatesTranslationFunctions();
+
+		RC ret = internal::select_generic< descr >(
+			internal::getLocal( out ),
+			internal::getLocal( in ),
+			op,
+			std::get<0>(coordinatesTranslationFunctions),
+			std::get<1>(coordinatesTranslationFunctions),
+			phase
+		);
+
+		if( phase == RESIZE ) {
+			if( collectives<>::allreduce( ret, operators::any_or< RC >() ) != SUCCESS ) {
+				return PANIC;
+			} else {
+				return ret;
+			}
+		}
+		assert( phase == EXECUTE );
+		return internal::checkGlobalErrorStateOrClear( out, ret );
 	}
 
 	template<
@@ -923,3 +967,4 @@ namespace grb {
 } // namespace grb
 
 #endif
+

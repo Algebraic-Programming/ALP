@@ -336,6 +336,50 @@ namespace grb {
 
 	template<
 		Descriptor descr = descriptors::no_operation,
+		class Operator,
+		typename Tin,
+		typename RITin, typename CITin, typename NITin,
+		typename Tout,
+		typename RITout, typename CITout, typename NITout
+	>
+	RC select(
+		Matrix< Tout, hyperdags, RITout, CITout, NITout > &out,
+		const Matrix< Tin, hyperdags, RITin, CITin, NITin > &in,
+		const Operator &op = Operator(),
+		const Phase &phase = EXECUTE,
+		const typename std::enable_if<
+			!is_object< Tin >::value &&
+			!is_object< Tout >::value
+		>::type * const = nullptr
+	) {
+		const RC ret = select< descr >(
+			internal::getMatrix( out ),
+			internal::getMatrix( in ),
+			op,
+			phase
+		);
+		if( ret != SUCCESS ) { return ret; }
+		if( phase != EXECUTE ) { return ret; }
+		if( nrows( out ) == 0 || ncols( out ) == 0 ) { return ret; }
+		std::array< const void *, 0 > sourcesP{};
+		std::array< uintptr_t, 2 > sourcesC{
+			getID( internal::getMatrix( in ) ),
+			getID( internal::getMatrix( out ) )
+		};
+		std::array< uintptr_t, 1 > destinations{
+			getID( internal::getMatrix( out ) )
+		};
+		internal::hyperdags::generator.addOperation(
+			internal::hyperdags::SELECT_MATRIX_MATRIX,
+			sourcesP.begin(), sourcesP.end(),
+			sourcesC.begin(), sourcesC.end(),
+			destinations.begin(), destinations.end()
+		);
+		return ret;
+	}
+
+	template<
+		Descriptor descr = descriptors::no_operation,
 		class MonoidOrSemiring,
 		typename InputType, typename IOType, typename MaskType,
 		typename RIT_A, typename CIT_A, typename NIT_A,
