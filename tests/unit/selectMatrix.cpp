@@ -376,53 +376,74 @@ void grb_program_operators( const size_t &n, RC &rc ) {
 
 	// Test 01: Select <diagonal>
 	rc = rc ? rc : test_case( I, operators::select::is_diagonal< D >(),
-	          "Test 01: Select <is_diagonal<" + D_name + ">> out of <identity>" );
+		"Test 01: Select <is_diagonal<" + D_name + ">> out of <identity>" );
 	rc = rc ? rc : test_case( I_transposed, operators::select::is_diagonal< D >(),
-	          "Test 01: Select <is_diagonal<" + D_name + ">> out of <transposed-identity>" );
+		"Test 01: Select <is_diagonal<" + D_name +
+		">> out of <transposed-identity>" );
 	rc = rc ? rc : test_case( One_row, operators::select::is_diagonal< D >(),
-	          "Test 01: Select <is_diagonal<" + D_name + ">> out of <one-row>" );
+		"Test 01: Select <is_diagonal<" + D_name + ">> out of <one-row>" );
 	rc = rc ? rc : test_case( One_col, operators::select::is_diagonal< D >(),
-	          "Test 01: Select <is_diagonal<" + D_name + ">> out of <one-column>" );
+		"Test 01: Select <is_diagonal<" + D_name +
+		">> out of <one-column>" );
 
 	// Test 02: Select <strict-lower>
 	rc = rc ? rc : test_case( I, operators::select::is_strictly_lower< D >(),
-	          "Test 02: Select <is_strictly_lower<" + D_name + ">> out of <identity>" );
-	rc = rc ? rc : test_case( I_transposed, operators::select::is_strictly_lower< D >(),
-	          "Test 02: Select <is_strictly_lower<" + D_name + ">> out of <transposed-identity>" );
+		"Test 02: Select <is_strictly_lower<" + D_name +
+		">> out of <identity>" );
+	rc = rc ? rc : test_case( I_transposed,
+		operators::select::is_strictly_lower< D >(),
+		"Test 02: Select <is_strictly_lower<" + D_name +
+		">> out of <transposed-identity>" );
 	rc = rc ? rc : test_case( One_row, operators::select::is_strictly_lower< D >(),
-	          "Test 02: Select <is_strictly_lower<" + D_name + ">> out of <one-row>" );
+		"Test 02: Select <is_strictly_lower<" + D_name + ">> out of <one-row>" );
 	rc = rc ? rc : test_case( One_col, operators::select::is_strictly_lower< D >(),
-	          "Test 02: Select <is_strictly_lower<" + D_name + ">> out of <one-column>" );
+		"Test 02: Select <is_strictly_lower<" + D_name + ">> out of <one-column>" );
 
 	// Test 03: Select <strict-upper>
 	rc = rc ? rc : test_case( I, operators::select::is_strictly_upper< D >(),
-	          "Test 03: Select <is_strictly_upper<" + D_name + ">> out of <identity>" );
-	rc = rc ? rc : test_case( I_transposed, operators::select::is_strictly_upper< D >(),
-	          "Test 03: Select <is_strictly_upper<" + D_name + ">> out of <transposed-identity>" );
+		"Test 03: Select <is_strictly_upper<" + D_name + ">> out of <identity>" );
+	rc = rc ? rc : test_case( I_transposed,
+		operators::select::is_strictly_upper< D >(),
+		"Test 03: Select <is_strictly_upper<" + D_name +
+		">> out of <transposed-identity>" );
 	rc = rc ? rc : test_case( One_row, operators::select::is_strictly_upper< D >(),
-	          "Test 03: Select <is_strictly_upper<" + D_name + ">> out of <one-row>" );
+		"Test 03: Select <is_strictly_upper<" + D_name +
+		">> out of <one-row>" );
 	rc = rc ? rc : test_case( One_col, operators::select::is_strictly_upper< D >(),
-	          "Test 03: Select <is_strictly_upper<" + D_name + ">> out of <one-column>" );
+		"Test 03: Select <is_strictly_upper<" + D_name +
+		">> out of <one-column>" );
 
 	// Test 04: Select <lower-or-diag>
 	rc = rc ? rc : test_case( I, operators::select::is_lower_or_diagonal< D >(),
-	          "Test 04: Select <is_lower_or_diagonal<" + D_name + ">> out of <identity>" );
-	rc = rc ? rc : test_case( I_transposed, operators::select::is_lower_or_diagonal< D >(),
-	          "Test 04: Select <is_lower_or_diagonal<" + D_name + ">> out of <transposed-identity>" );
-	rc = rc ? rc : test_case( One_row, operators::select::is_lower_or_diagonal< D >(),
-	          "Test 04: Select <is_lower_or_diagonal<" + D_name + ">> out of <one-row>" );
-	rc = rc ? rc : test_case( One_col, operators::select::is_lower_or_diagonal< D >(),
-			  "Test 04: Select <is_lower_or_diagonal<" + D_name + ">> out of <one-column>" );
+		"Test 04: Select <is_lower_or_diagonal<" + D_name + ">> out of <identity>" );
+	rc = rc ? rc : test_case( I_transposed,
+		operators::select::is_lower_or_diagonal< D >(),
+		"Test 04: Select <is_lower_or_diagonal<" + D_name +
+		">> out of <transposed-identity>" );
+	rc = rc ? rc : test_case( One_row,
+		operators::select::is_lower_or_diagonal< D >(),
+		"Test 04: Select <is_lower_or_diagonal<" + D_name + ">> out of <one-row>" );
+	rc = rc ? rc : test_case( One_col,
+		operators::select::is_lower_or_diagonal< D >(),
+		"Test 04: Select <is_lower_or_diagonal<" + D_name +
+		">> out of <one-column>" );
 
 	// Test 05: Select <upper-or-diag>
 	rc = rc ? rc : test_case( I, operators::select::is_upper_or_diagonal< D >(),
-	          "Test 05: Select <is_upper_or_diagonal<" + D_name + ">> out of <identity>" );
-	rc = rc ? rc : test_case( I_transposed, operators::select::is_upper_or_diagonal< D >(),
-	          "Test 05: Select <is_upper_or_diagonal<" + D_name + ">> out of <transposed-identity>" );
-	rc = rc ? rc : test_case( One_row, operators::select::is_upper_or_diagonal< D >(),
-	          "Test 05: Select <is_upper_or_diagonal<" + D_name + ">> out of <one-row>" );
-	rc = rc ? rc : test_case( One_col, operators::select::is_upper_or_diagonal< D >(),
-	          "Test 05: Select <is_upper_or_diagonal<" + D_name + ">> out of <one-column>" );
+	          "Test 05: Select <is_upper_or_diagonal<" + D_name +
+		  ">> out of <identity>" );
+	rc = rc ? rc : test_case( I_transposed,
+		operators::select::is_upper_or_diagonal< D >(),
+	          "Test 05: Select <is_upper_or_diagonal<" + D_name +
+		  ">> out of <transposed-identity>" );
+	rc = rc ? rc : test_case( One_row,
+		operators::select::is_upper_or_diagonal< D >(),
+		"Test 05: Select <is_upper_or_diagonal<" + D_name +
+		">> out of <one-row>" );
+	rc = rc ? rc : test_case( One_col,
+		operators::select::is_upper_or_diagonal< D >(),
+		"Test 05: Select <is_upper_or_diagonal<" + D_name +
+		">> out of <one-column>" );
 
 	// done
 	if( collectives<>::allreduce( rc, operators::any_or< RC >() ) != SUCCESS ) {
@@ -430,11 +451,11 @@ void grb_program_operators( const size_t &n, RC &rc ) {
 	}
 }
 
-template< typename D >
+template< typename D, typename RIT, typename CIT >
 void grb_program_lambdas( const size_t &n, RC &rc ) {
 	typedef typename std::conditional<
 		std::is_void< D >::value,
-			int,
+			bool,
 			D
 		>::type D_safe;
 	const std::string D_name = "non-void";
@@ -449,10 +470,9 @@ void grb_program_lambdas( const size_t &n, RC &rc ) {
 	rc = buildMatrices( I, I_transposed, One_row, One_col, n );
 
 	// Test 06: Select <upper-or-diag> using lambda function
-	typedef grb::config::RowIndexType RIT;
-	typedef grb::config::ColIndexType CIT;
 	rc = rc ? rc : test_case( I,
 			[](const RIT &i, const CIT &j, const D_safe &val) -> bool {
+				assert( !std::is_void< D >::value || val );
 				(void) val;
 				return i <= j;
 			}, "Test 06: Select <is_upper_or_diagonal< " + D_name +
@@ -460,6 +480,7 @@ void grb_program_lambdas( const size_t &n, RC &rc ) {
 		);
 	rc = rc ? rc : test_case( I_transposed,
 			[](const RIT &i, const CIT &j, const D_safe &val) -> bool {
+				assert( !std::is_void< D >::value || val );
 				(void) val;
 				return i >= j;
 			}, "Test 06: Select <is_upper_or_diagonal< " + D_name +
@@ -467,6 +488,7 @@ void grb_program_lambdas( const size_t &n, RC &rc ) {
 		);
 	rc = rc ? rc : test_case( One_row,
 			[](const RIT &i, const CIT &j, const D_safe &val) -> bool {
+				assert( !std::is_void< D >::value || val );
 				(void) val;
 				return i >= j;
 			}, "Test 06: Select <is_upper_or_diagonal< " + D_name +
@@ -474,6 +496,7 @@ void grb_program_lambdas( const size_t &n, RC &rc ) {
 		);
 	rc = rc ? rc : test_case( One_col,
 			[](const RIT &i, const CIT &j, const D_safe &val) -> bool {
+				assert( !std::is_void< D >::value || val );
 				(void) val;
 				return i >= j;
 			}, "Test 06: Select <is_upper_or_diagonal< " + D_name +
@@ -483,6 +506,7 @@ void grb_program_lambdas( const size_t &n, RC &rc ) {
 	// Test 07: Select <strict_lower> using lambda function
 	rc = rc ? rc : test_case( I,
 			[](const RIT &i, const CIT &j, const D_safe &val) -> bool {
+				assert( !std::is_void< D >::value || val );
 				(void) val;
 				return i > j;
 			}, "Test 07: Select <is_strictly_lower< " + D_name +
@@ -490,6 +514,7 @@ void grb_program_lambdas( const size_t &n, RC &rc ) {
 		);
 	rc = rc ? rc : test_case( I_transposed,
 			[](const RIT &i, const CIT &j, const D_safe &val) -> bool {
+				assert( !std::is_void< D >::value || val );
 				(void) val;
 				return i > j;
 			}, "Test 07: Select <is_strictly_lower< " + D_name +
@@ -497,6 +522,7 @@ void grb_program_lambdas( const size_t &n, RC &rc ) {
 		);
 	rc = rc ? rc : test_case( One_row,
 			[](const RIT &i, const CIT &j, const D_safe &val) -> bool {
+				assert( !std::is_void< D >::value || val );
 				(void) val;
 				return i > j;
 			}, "Test 07: Select <is_strictly_lower< " + D_name +
@@ -504,6 +530,7 @@ void grb_program_lambdas( const size_t &n, RC &rc ) {
 		);
 	rc = rc ? rc : test_case( One_col,
 			[](const RIT &i, const CIT &j, const D_safe &val) -> bool {
+				assert( !std::is_void< D >::value || val );
 				(void) val;
 				return i > j;
 			}, "Test 07: Select <is_strictly_lower< " + D_name +
@@ -516,47 +543,18 @@ void grb_program_lambdas( const size_t &n, RC &rc ) {
 	}
 }
 
-int main( int argc, char** argv ) {
-	(void) argc;
-	(void) argv;
-
+template< typename RIT, typename CIT, typename LauncherT >
+RC test_lambda_versions( const size_t &n, LauncherT &launcher ) {
 	RC out = SUCCESS;
-
-	std::cout << "This is functional test " << argv[0] << "\n";
-	Launcher< AUTOMATIC > launcher;
-
-	const size_t n = argc > 1 ? std::strtoul(argv[1], nullptr, 10 ) : 1000;
-
-	{
-		std::cout << "-- -- Running test with using matrix-type: int" << std::endl;
-		if( launcher.exec( &grb_program_operators< int >, n, out, true ) != SUCCESS ) {
-			STDERR_WITH_LINE << "Launching test FAILED\n";
-			return 255;
-		}
-		if( out != SUCCESS ) {
-			STDERR_WITH_LINE << "Test FAILED (" << toString(out) << ")" << std::endl;
-			return out;
-		}
-	}
-
-	{
-		std::cout << "-- -- Running test with using matrix-type: void" << std::endl;
-		if( launcher.exec( &grb_program_operators< void >, n, out, true ) != SUCCESS ) {
-			STDERR_WITH_LINE << "Launching test FAILED\n";
-			return 255;
-		}
-		if( out != SUCCESS ) {
-			STDERR_WITH_LINE << "Test FAILED (" << toString(out) << ")" << std::endl;
-			return out;
-		}
-	}
-
 	{
 		std::cout << "-- -- Running lambda test with using matrix-type: double"
 			<< std::endl;
-		if( launcher.exec( &grb_program_lambdas< double >, n, out, true ) != SUCCESS ) {
+		if( launcher.exec( &grb_program_lambdas<
+				double, RIT, CIT
+			>, n, out, true ) != SUCCESS
+		) {
 			STDERR_WITH_LINE << "Launching test FAILED\n";
-			return 255;
+			return PANIC;
 		}
 		if( out != SUCCESS ) {
 			STDERR_WITH_LINE << "Test FAILED (" << toString(out) << ")" << std::endl;
@@ -567,13 +565,84 @@ int main( int argc, char** argv ) {
 	{
 		std::cout << "-- -- Running lambda test with using matrix-type: void"
 			<< std::endl;
-		if( launcher.exec( &grb_program_lambdas< void >, n, out, true ) != SUCCESS ) {
+		if( launcher.exec( &grb_program_lambdas<
+				void, RIT, CIT
+			>, n, out, true ) != SUCCESS
+		) {
 			STDERR_WITH_LINE << "Launching test FAILED\n";
-			return 255;
+			return PANIC;
 		}
 		if( out != SUCCESS ) {
 			STDERR_WITH_LINE << "Test FAILED (" << toString(out) << ")" << std::endl;
 			return out;
+		}
+	}
+	return out;
+}
+
+int main( int argc, char** argv ) {
+	(void) argc;
+	(void) argv;
+
+	RC out = SUCCESS;
+
+	std::cout << "This is functional test " << argv[0] << "\n";
+	Launcher< AUTOMATIC > launcher;
+
+	const size_t n = argc > 1
+		? std::strtoul( argv[1], nullptr, 10 )
+		: 1000;
+
+	{
+		std::cout << "-- -- Running test with using matrix-type: int" << std::endl;
+		if( launcher.exec( &grb_program_operators< int >, n, out, true )
+			!= SUCCESS
+		) {
+			STDERR_WITH_LINE << "Launching test FAILED\n";
+			return 10;
+		}
+		if( out != SUCCESS ) {
+			STDERR_WITH_LINE << "Test FAILED (" << toString(out) << ")" << std::endl;
+			return 20 + static_cast< int >(out);
+		}
+	}
+
+	{
+		std::cout << "-- -- Running test with using matrix-type: void" << std::endl;
+		if( launcher.exec( &grb_program_operators< void >, n, out, true )
+			!= SUCCESS
+		) {
+			STDERR_WITH_LINE << "Launching test FAILED\n";
+			return 30;
+		}
+		if( out != SUCCESS ) {
+			STDERR_WITH_LINE << "Test FAILED (" << toString(out) << ")" << std::endl;
+			return 40 + static_cast< int >(out);
+		}
+	}
+
+	{
+		std::cout << "-- -- Running test using lambda functions (matching index types)"
+			<< std::endl;
+		assert( out == SUCCESS );
+		out = test_lambda_versions<
+			grb::config::RowIndexType,
+			grb::config::ColIndexType
+		>( n, launcher );
+		if( out != SUCCESS ) {
+			STDERR_WITH_LINE << "Test FAILED (" << toString(out) << ")" << std::endl;
+			return 50 + static_cast< int >(out);
+		}
+	}
+
+	{
+		std::cout << "-- -- Running test using lambda functions (mis-matching index "
+			<< "types)" << std::endl;
+		assert( out == SUCCESS );
+		out = test_lambda_versions< size_t, size_t >( n, launcher );
+		if( out != SUCCESS ) {
+			STDERR_WITH_LINE << "Test FAILED (" << toString(out) << ")" << std::endl;
+			return 60 + static_cast< int >(out);
 		}
 	}
 
