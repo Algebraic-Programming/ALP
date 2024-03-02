@@ -773,13 +773,15 @@ for MODE in ${MODES}; do
 		if [ "$BACKEND" = "bsp1d" ]; then
 			echo "Additional unit tests for the BSP1D backend:"
 			echo " "
-			echo ">>>      [x]           [ ]       Testing BSP1D distribution for a vector of size 100000"
+			echo ">>>      [x]           [ ]       Testing BSP1D distribution for a vector of size 100 000"
 			echo " "
 			${TEST_BIN_DIR}/distribution_bsp1d_${MODE}
 
-			echo ">>>      [x]           [ ]       Testing BSP1D distribution for a matrix of size 7777x7777"
-      echo " "
-      ${TEST_BIN_DIR}/distribution_matrix_bsp1d_${MODE} 7777
+			echo ">>>      [x]           [ ]       Testing BSP1D distribution for an identity matrix of size"
+			echo "                                 7777 x 7777. The test evaluates whether the internal data"
+			echo "                                 structures match the BSP1D distribution"
+			echo " "
+			${TEST_BIN_DIR}/distribution_matrix_bsp1d_${MODE} 7777
 
 			echo ">>>      [x]           [ ]       Testing dense vector times matrix using the double (+,*)"
 			echo "                                 semiring where matrix elements are doubles and vector"
