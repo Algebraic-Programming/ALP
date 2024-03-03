@@ -74,44 +74,69 @@ namespace grb {
 
 		/**
 		 * This is a reducer function of the signature specified by lpf_reducer_t.
+		 *
+		 * @tparam OP    The operator used for reduction
+		 * @tparam foldl Whether the originating call is foldl (<tt>true</tt>), or
+		 *               is foldr instead (<tt>false</tt>)
 		 */
-		template< typename OP >
+		template< typename Operator, bool foldl >
 		void generic_reducer( size_t n, const void * array_p, void * value_p ) {
-			typedef typename OP::D1 lhs_type;
-			typedef typename OP::D2 rhs_type;
-			typedef typename OP::D3 out_type;
+			typedef typename Operator::D1 lhs_type;
+			typedef typename Operator::D2 rhs_type;
+			typedef typename Operator::D3 out_type;
+			static_assert( is_associative< Operator >::value,
+				"A generic reducer requires an associative operator. This is an internal "
+				"error. Please submit a bug report." );
 			static_assert(
-					std::is_same< rhs_type, out_type >::value,
-					"A generic operator-only reducer from an array into a scalar requires the "
-					"RHS and output types to be the same"
+					foldl || std::is_same< rhs_type, out_type >::value,
+					"A generic reducer from an array into a scalar requires the monoid input "
+					"domain corresponding to the scalar (i.e., the RHS domain for foldr) and "
+					"its output type to be the same. This is an internal error. Please submit "
+					"a bug report."
+				);
+			static_assert(
+					(!foldl) || std::is_same< lhs_type, out_type >::value,
+					"A generic reducer from an array into a scalar requires the monoid input "
+					"domain corresponding to the scalar (i.e., the LHS domain for foldl) and "
+					"its output type to be the same. This is an internal error. Please submit "
+					"a bug report."
 				);
 			assert( array_p != value_p );
 
-			const lhs_type * const __restrict__ array =
-				static_cast< const lhs_type * >( array_p );
+			typedef typename std::conditional< foldl, rhs_type, lhs_type >::type
+				array_type;
+			const array_type * const __restrict__ array =
+				static_cast< const array_type * >( array_p );
 			out_type * const __restrict__ value =
 				static_cast< out_type * >( value_p );
 
-			lhs_type left_buffer[ OP::blocksize ];
-
 			// SIMD loop
 			size_t i = 0;
-			while( i + OP::blocksize < n ) {
+			array_type array_buffer[ Operator::blocksize ];
+			while( i + Operator::blocksize < n ) {
 				// load
-				for( size_t k = 0; k < OP::blocksize; ++k ) {
-					left_buffer[ k ] = array[ i + k ];
+				for( size_t k = 0; k < Operator::blocksize; ++k ) {
+					array_buffer[ k ] = array[ i + k ];
 				}
 				// compute
-				for( size_t k = 0; k < OP::blocksize; ++k ) {
-					OP::foldr( left_buffer[ k ], *value );
+				for( size_t k = 0; k < Operator::blocksize; ++k ) {
+					if( foldl ) {
+						Operator::foldl( *value, array_buffer[ k ] );
+					} else {
+						Operator::foldr( array_buffer[ k ], *value );
+					}
 				}
 				// increment
-				i += OP::blocksize;
+				i += Operator::blocksize;
 			}
 
 			// scalar coda
 			for( ; i < n; ++i ) {
-				OP::foldr( array[ i ], *value );
+				if( foldl ) {
+					Operator::foldl( *value, array[ i ] );
+				} else {
+					Operator::foldr( array[ i ], *value );
+				}
 			}
 
 			// done
@@ -135,7 +160,151 @@ namespace grb {
 			collectives() {}
 
 
+		protected:
+
+			/**
+			 * @tparam use_id Whether called by monoid variants, which makes available
+			 *                an identity of type Operator::D3
+			 * @tparam all    Whether to perform all-reduction (<tt>true</tt>) or to
+			 *                perform reduction (<tt>false</tt>).
+			 *
+			 * If \a all is <tt>true</tt> then \a root will not be used.
+			 *
+			 * \todo If bumping to C++17 or higher, then can use constexpr
+			 *       string_view in the last arg
+			 */
+			template<
+				Descriptor descr,
+				typename Operator,
+				typename IOType,
+				bool use_id,
+				bool all
+			>
+			static RC reduce_allreduce_generic(
+				IOType &inout,
+				const lpf_pid_t root,
+				const Operator &op,
+				const typename Operator::D3 * const id,
+				internal::BSP1D_Data &data,
+				const char * const source
+			) {
+				// static sanity checks
+				static_assert( is_associative< Operator >::value,
+					"Internal logic error: reduce_generic requires associative operators."
+					"Please submit a bug report." );
+				static_assert(
+					(std::is_same< typename Operator::D1, typename Operator::D3 >::value) ||
+					(std::is_same< typename Operator::D2, typename Operator::D3 >::value),
+					"grb::collectives::internal::reduce_generic, "
+					"in reduction, the given operator must have at least one of its input "
+					"types equal to its output type. This is an internal error. Please "
+					"submit a bug report."
+				);
+				static_assert(
+					(std::is_same< typename Operator::D1, typename Operator::D2 >::value) ||
+					use_id,
+					"grb::collectives::internal::reduce_generic, "
+					"if not all domains of the operator match, and identity must be given. "
+					"This is an internal error. Please submit a bug report."
+				); // i.e., if triggered, it is likely to mean somehow reduction with
+				   // operators was called, while a monoid was necessary
+
+				// dynamic sanity checks
+				assert( all || root < data.P );
+				assert( !use_id || id != nullptr );
+
+				// catch trivial case early
+				if( data.P == 1 ) {
+					return SUCCESS;
+				}
+
+				// create reduction buffer based on the operator IO type
+				typedef typename Operator::D3 OPIOT;
+				// ensure the global buffer has enough capacity
+				RC rc = data.ensureBufferSize( sizeof( OPIOT ) );
+				// ensure we can execute the requested collective call
+				rc = rc ? rc : data.ensureCollectivesCapacity( 1, sizeof( OPIOT ), 0 );
+				if( all ) {
+					rc = rc ? rc : data.ensureMaxMessages( 2 * data.P - 2 );
+				} else {
+					rc = rc ? rc : data.ensureMaxMessages( data.P - 1 );
+				}
+				// exit on failed preconditions
+				if( rc != SUCCESS ) { return rc; }
+
+				// retrieve buffer area
+				OPIOT * const __restrict__ buffer = data.template getBuffer< OPIOT >();
+
+				// figure out which direction to reduce to
+				constexpr bool left_looking =
+					std::is_same< typename Operator::D1, typename Operator::D3 >::value;
+
+				// copy payload into buffer
+				// rationale: this saves one global registration, which otherwise is likely
+				//            to dominate most uses for this collective call
+				if( use_id ) {
+					if( left_looking ) {
+						(void) apply( *buffer, *id, inout, op );
+					} else {
+						(void) apply( *buffer, inout, *id, op );
+					}
+				} else {
+					// no operator application necessary, they are the same type so we can
+					// just copy
+					*buffer = inout;
+				}
+
+				// get the lpf_reducer_t
+				lpf_reducer_t reducer = &(generic_reducer< Operator, left_looking >);
+
+				// schedule collective
+				lpf_err_t lpf_rc = LPF_SUCCESS;
+				if( all ) {
+#ifdef _DEBUG
+					std::cout << "\tcollectives< BSP >::reduce_allreduce_generic, calls "
+						<< "lpf_allreduce with size " << sizeof(OPIOT) << std::endl;
+#endif
+					(void) root;
+					lpf_rc = lpf_allreduce(
+						data.coll,
+						buffer, data.slot,
+						sizeof(OPIOT),
+						reducer
+					);
+				} else {
+#ifdef _DEBUG
+					std::cout << "\tcollectives< BSP >::reduce_allreduce_generic calls "
+						<< "lpf_reduce with size " << sizeof(OPIOT) << std::endl;
+#endif
+					lpf_rc = lpf_reduce(
+						data.coll,
+						buffer, data.slot,
+						sizeof(OPIOT),
+						reducer,
+						root
+					);
+				}
+
+				// execute collective
+				if( lpf_rc == LPF_SUCCESS ) {
+					lpf_rc = lpf_sync( data.context, LPF_SYNC_DEFAULT );
+				}
+
+				// catch LPF errors
+				rc = internal::checkLPFerror( lpf_rc, source );
+
+				// copy back
+				if( rc == SUCCESS && data.s == static_cast< size_t >( root ) ) {
+					inout = *buffer;
+				}
+
+				// done
+				return SUCCESS;
+			}
+
+
 		public:
+
 
 			/**
 			 * Schedules an allreduce operation of a single object of type IOType per
@@ -157,81 +326,116 @@ namespace grb {
 				Descriptor descr = descriptors::no_operation,
 				typename Operator, typename IOType
 			>
-			static RC allreduce( IOType &inout, const Operator &op = Operator() ) {
-				// We use the operator type to create a matching lpf_reducer_t. As a result,
-				// the operator instance is never explicitly used.
-				(void) op;
+			static RC allreduce(
+				IOType &inout, const Operator &op = Operator(),
+				const typename std::enable_if<
+						grb::is_operator< Operator >::value,
+					void >::type * const = nullptr
+			) {
 #ifdef _DEBUG
 				std::cout << "Entered grb::collectives< BSP >::allreduce with inout = "
 					<< inout << " and op = " << &op << std::endl;
 #endif
 
-				// static sanity check
-				NO_CAST_ASSERT_BLAS0( ( !( descr & descriptors::no_casting ) ||
+				// static sanity checks
+				static_assert( !grb::is_object< IOType >::value,
+					"grb::collectives::allreduce cannot have another ALP object as its scalar "
+					"type!" );
+				static_assert( is_associative< Operator >::value,
+					"grb::collectives::allreduce requires an associative operator" );
+				NO_CAST_ASSERT_BLAS0( ( !(descr & descriptors::no_casting) ||
 						std::is_same< IOType, typename Operator::D1 >::value ||
 						std::is_same< IOType, typename Operator::D2 >::value ||
 						std::is_same< IOType, typename Operator::D3 >::value
 					),
 					"grb::collectives::allreduce",
-					"Incompatible given value type and operator domains while "
-					"no_casting descriptor was set"
+					"Incompatible given value type and monoid domains while the no_casting "
+					"descriptor was set"
+				);
+				NO_CAST_ASSERT_BLAS0(
+					(std::is_same< typename Operator::D1, typename Operator::D2 >::value) &&
+					(std::is_same< typename Operator::D2, typename Operator::D3 >::value),
+					"grb::collectives::allreduce",
+					"In all-reduction, the given operator must have all of its domains equal "
+					"to one another. If different domains are required, a monoid must be "
+					"provided instead"
 				);
 
 				// we need access to LPF context
 				internal::BSP1D_Data &data = internal::grb_BSP1D.load();
 
-				// catch trivial case early
-				if( data.P == 1 ) {
-					return SUCCESS;
-				}
+				// dispatch
+				return reduce_allreduce_generic<
+					descr, Operator, IOType, false, true
+				>(
+					inout, 0, op, nullptr, data,
+					"grb::collectives< BSP >::allreduce (operator)"
+				);
+			}
 
-				// ensure the global buffer has enough capacity
-				RC rc = data.ensureBufferSize( sizeof( IOType ) );
-				// ensure we can execute the requested collective call
-				rc = rc ? rc : data.ensureCollectivesCapacity( 1, sizeof( IOType ), 0 );
-				rc = rc ? rc : data.ensureMaxMessages( 2 * data.P - 2 );
-				// exit on failed preconditions
-				if( rc != SUCCESS ) { return rc; }
-
-				// retrieve buffer area
-				IOType * const __restrict__ buffer = data.template getBuffer< IOType >();
-
-				// copy payload into buffer
-				// rationale: this saves one global registration, which otherwise is likely
-				//            to dominate most uses for this collective call
-				*buffer = inout;
-
-				// get the lpf_reducer_t
-				lpf_reducer_t reducer = &(generic_reducer< Operator >);
-
+			/**
+			 * Schedules an allreduce operation of a single object of type IOType per
+			 * process. The allreduce shall be complete by the end of the call. This is a
+			 * collective graphBLAS operation.
+			 *
+			 * \parblock
+			 * \par Performance semantics:
+			 * -# Problem size N: \f$ P * \mathit{sizeof}(\mathit{IOType}) \f$
+			 * -# local work: \f$ N*Monoid \f$ ;
+			 * -# transferred bytes: \f$ N \f$ ;
+			 * -# BSP cost: \f$ Ng + N*Monoid + l \f$;
+			 * \endparblock
+			 *
+			 * This function may place an alloc of \f$ P\mathit{sizeof}(IOType) \f$ bytes
+			 * if the internal buffer was not sufficiently large.
+			 */
+			template<
+				Descriptor descr = descriptors::no_operation,
+				typename Monoid, typename IOType
+			>
+			static RC allreduce(
+				IOType &inout, const Monoid &monoid = Monoid(),
+				const typename std::enable_if<
+					is_monoid< Monoid >::value,
+				void >::type * const = nullptr
+			) {
 #ifdef _DEBUG
-				std::cout << "\tcollectives< BSP >::allreduce, calls lpf_allreduce with "
-					<< "size " << sizeof(IOType) << std::endl;
+				std::cout << "Entered grb::collectives< BSP >::allreduce with inout = "
+					<< inout << " and monoid = " << &op << std::endl;
 #endif
-				// schedule allreduce
-				lpf_err_t lpf_rc = lpf_allreduce(
-						data.coll,
-						buffer, data.slot,
-						sizeof(IOType),
-						reducer
-					);
+				// static sanity checks
+				static_assert( !grb::is_object< IOType >::value,
+					"grb::collectives::allreduce cannot have another ALP object as its scalar "
+					"type!" );
+				NO_CAST_ASSERT_BLAS0( ( !(descr & descriptors::no_casting) ||
+						std::is_same< IOType, typename Monoid::D1 >::value ||
+						std::is_same< IOType, typename Monoid::D2 >::value ||
+						std::is_same< IOType, typename Monoid::D3 >::value
+					),
+					"grb::collectives::allreduce",
+					"Incompatible given value type and monoid domains while the no_casting "
+					"descriptor was set"
+				);
 
-				// execute allreduce
-				if( lpf_rc == LPF_SUCCESS ) {
-					lpf_rc = lpf_sync( data.context, LPF_SYNC_DEFAULT );
-				}
+				// check whether the monoid has all its domains equal
+				constexpr bool same_domains =
+					std::is_same< typename Monoid::D1, typename Monoid::D2 >::value &&
+					std::is_same< typename Monoid::D2, typename Monoid::D3 >::value;
 
-				// catch LPF errors
-				rc = internal::checkLPFerror( lpf_rc,
-					"grb::collectives< BSP >::allreduce" );
+				// we need access to LPF context
+				internal::BSP1D_Data &data = internal::grb_BSP1D.load();
 
-				// copy back
-				if( rc == SUCCESS ) {
-					inout = *buffer;
-				}
+				// get identity
+				const typename Monoid::D3 id = monoid.template
+					getIdentity< typename Monoid::D3 >();
 
-				// done
-				return rc;
+				// dispatch
+				return reduce_allreduce_generic<
+					descr, typename Monoid::Operator, IOType, !same_domains, true
+				>(
+					inout, 0, monoid.getOperator(), &id, data,
+					"grb::collectives< BSP >::allreduce (monoid)"
+				);
 			}
 
 			/**
@@ -253,20 +457,36 @@ namespace grb {
 			>
 			static RC reduce(
 				IOType &inout, const lpf_pid_t root = 0,
-				const Operator op = Operator()
+				const Operator &op = Operator(),
+				const typename std::enable_if<
+					grb::is_operator< Operator >::value,
+				void >::type * const = nullptr
 			) {
-				// We use the operator type to create a matching lpf_reducer_t. As a result,
-				// the operator instance is never explicitly used.
-				(void) op;
-
-				// static sanity check
+#ifdef _DEBUG
+				std::cout << "Entered grb::collectives< BSP >::reduce with inout = "
+					<< inout << " and op = " << &op << std::endl;
+#endif
+				// static sanity checks
+				static_assert( !grb::is_object< IOType >::value,
+					"grb::collectives::allreduce cannot have another ALP object as its scalar "
+					"type!" );
+				static_assert( is_associative< Operator >::value,
+					"grb::collectives::reduce requires an associative operator" );
 				NO_CAST_ASSERT_BLAS0( ( !(descr & descriptors::no_casting) ||
 						std::is_same< IOType, typename Operator::D1 >::value ||
 						std::is_same< IOType, typename Operator::D2 >::value ||
 						std::is_same< IOType, typename Operator::D3 >::value
 					), "grb::collectives::reduce",
-					"Incompatible given value type and operator domains while "
-					"no_casting descriptor was set"
+					"Incompatible given value type and monoid domains while the no_casting"
+					"descriptor was set"
+				);
+				NO_CAST_ASSERT_BLAS0(
+					(std::is_same< typename Operator::D1, typename Operator::D2 >::value) &&
+					(std::is_same< typename Operator::D2, typename Operator::D3 >::value),
+					"grb::collectives::reduce",
+					"In reduction, the given operator must have all of its domains equal to "
+					"one another. If different domains are required, a monoid must be "
+					"provided instead"
 				);
 
 				// we need access to LPF context
@@ -277,53 +497,82 @@ namespace grb {
 					return ILLEGAL;
 				}
 
-				// catch trivial case early
-				if( data.P == 1 ) {
-					return SUCCESS;
+				// dispatch
+				return reduce_allreduce_generic<
+					descr, Operator, IOType, true, false
+				>(
+					inout, root, op, nullptr, data,
+					"grb::collectives< BSP >::reduce (operator)"
+				);
+			}
+
+			/**
+			 * Schedules a reduce operation of a single object of type IOType per process.
+			 * The reduce shall be complete by the end of the call. This is a collective
+			 * GraphBLAS operation. The BSP costs are as for the LPF lpf_reduce.
+			 *
+			 * \parblock
+			 * \par Performance semantics:
+			 * -# Problem size N: \f$ P * \mathit{sizeof}(\mathit{IOType}) \f$
+			 * -# local work: \f$ N*Monoid \f$ ;
+			 * -# transferred bytes: \f$ N \f$ ;
+			 * -# BSP cost: \f$ Ng + N*Monoid + l \f$;
+			 * \endparblock
+			 */
+			template<
+				Descriptor descr = descriptors::no_operation,
+				typename Monoid, typename IOType
+			>
+			static RC reduce(
+				IOType &inout, const lpf_pid_t root = 0,
+				const Monoid monoid = Monoid(),
+				const typename std::enable_if<
+					is_monoid< Monoid >::value,
+				void >::type * const = nullptr
+			) {
+#ifdef _DEBUG
+				std::cout << "Entered grb::collectives< BSP >::reduce with inout = "
+					<< inout << " and monoid = " << &op << std::endl;
+#endif
+				// static sanity checks
+				static_assert( !grb::is_object< IOType >::value,
+					"grb::collectives::allreduce cannot have another ALP object as its scalar "
+					"type!" );
+				static_assert( is_monoid< Monoid >::value,
+					"grb::collectives::reduce requires a monoid" );
+				NO_CAST_ASSERT_BLAS0( ( !(descr & descriptors::no_casting) ||
+						std::is_same< IOType, typename Monoid::D1 >::value ||
+						std::is_same< IOType, typename Monoid::D2 >::value ||
+						std::is_same< IOType, typename Monoid::D3 >::value
+					), "grb::collectives::reduce",
+					"Incompatible given value type and monoid domains while the no_casting"
+					"descriptor was set"
+				);
+
+				// check whether the monoid has all its domains equal
+				constexpr bool same_domains =
+					std::is_same< typename Monoid::D1, typename Monoid::D2 >::value &&
+					std::is_same< typename Monoid::D2, typename Monoid::D3 >::value;
+
+				// we need access to LPF context
+				internal::BSP1D_Data &data = internal::grb_BSP1D.load();
+
+				// dynamic checks
+				if( root >= data.P ) {
+					return ILLEGAL;
 				}
 
-				// ensure the global buffer has enough capacity
-				RC rc = data.ensureBufferSize( sizeof( IOType ) );
-				// ensure we can execute the requested collective call
-				rc = rc ? rc : data.ensureCollectivesCapacity( 1, sizeof( IOType ), 0 );
-				rc = rc ? rc : data.ensureMaxMessages( data.P - 1 );
-				if( rc != SUCCESS ) { return rc; }
+				// get identity
+				typename Monoid::D3 id = monoid.template
+					getIdentity< typename Monoid::D3 >();
 
-				// retrieve buffer area
-				IOType * const __restrict__ buffer = data.template getBuffer< IOType >();
-
-				// copy payload into buffer
-				// rationale: this saves one global registration, which otherwise is likely
-				//            to dominate most uses for this collective call
-				*buffer = inout;
-
-				// get the lpf_reducer_t
-				lpf_reducer_t reducer = &(generic_reducer< Operator >);
-
-				// schedule allreduce
-				lpf_err_t lpf_rc = lpf_reduce(
-						data.coll,
-						buffer, data.slot,
-						sizeof(IOType),
-						reducer,
-						root
-					);
-
-				// execute allreduce
-				if( lpf_rc == LPF_SUCCESS ) {
-					lpf_rc = lpf_sync( data.context, LPF_SYNC_DEFAULT );
-				}
-
-				// catch LPF errors
-				rc = internal::checkLPFerror( lpf_rc, "grb::collectives< BSP >::reduce" );
-
-				// copy back
-				if( rc == SUCCESS && data.s == static_cast< size_t >( root ) ) {
-					inout = *buffer;
-				}
-
-				// done
-				return SUCCESS;
+				// dispatch
+				return reduce_allreduce_generic<
+					descr, typename Monoid::Operator, IOType, !same_domains, false
+				>(
+					inout, root, monoid.getOperator(), &id, data,
+					"grb::collectives< BSP >::reduce (monoid)"
+				);
 			}
 
 			/**
