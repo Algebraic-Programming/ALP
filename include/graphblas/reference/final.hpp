@@ -40,7 +40,7 @@ namespace grb::internal {
 
 	template<>
 	class maybeParallel< reference_omp > {
-		
+
 		public:
 
 			static void memcpy(

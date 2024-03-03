@@ -117,7 +117,7 @@ namespace grb::internal {
 					}
 				}
 			}
-			
+
 	};
 
 }

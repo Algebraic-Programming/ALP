@@ -83,7 +83,7 @@ namespace grb {
 		 * @param[in] dst_offset   The destination memory slot offset.
 		 * @param[in] size         The number of bytes to transfer. This can be
 		 *                         different on each process.
-		 * @param[in] total        The total number of bytes received by each 
+		 * @param[in] total        The total number of bytes received by each
 		 *                         process.
 		 * @param[in] exclude_self If <tt>false</tt>, this process will gather its
 		 *                         local source to its local destination.
