@@ -852,7 +852,7 @@ grb::RC Pipeline::execution() {
 		#pragma omp parallel num_threads( nthreads )
 		{
 			size_t start, end;
-			config::OMP::localRange( start, end, 0, num_tiles );
+			config::OMP::localRange( start, end, 0, num_tiles, 1 );
 			for( size_t tile_id = start; tile_id < end; ++tile_id ) {
 
 				// compute the lower and upper bounds
