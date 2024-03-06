@@ -21,7 +21,7 @@
 
 int main() {
 	__builtin_cpu_init ();
-
+	int retval = 0;
 	if (__builtin_cpu_supports( "avx512f" ) ) {
 		printf( "AVX512" );
 	} else if ( __builtin_cpu_supports( "avx2" ) ) {
@@ -31,9 +31,9 @@ int main() {
 	} else if ( __builtin_cpu_supports( "sse" ) ) {
 		printf( "sse" );
 	} else {
-		printf( "no SIMD ISA detected!\n" );
-		return 1;
+		printf( "no SIMD ISA detected!" );
+		retval = 1;
 	}
 	printf( "\n" );
-	return 0;
+	return retval;
 }

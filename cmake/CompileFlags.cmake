@@ -35,6 +35,10 @@ assert_defined_variables(
 	TEST_PERFORMANCE_DEFINITIONS TEST_PERFORMANCE_OPTIONS
 )
 
+### ARCH INFO DETECTION
+include( DetectArchInfo )
+assert_valid_variables( SIMD_SIZE L1DCACHE_SIZE CACHE_LINE_SIZE )
+
 # allow only Relase, Debug and Coverage
 set( CMAKE_CONFIGURATION_TYPES "Release;Debug;Coverage" CACHE STRING
 	"Add the configurations that we need" FORCE
@@ -60,10 +64,18 @@ endif()
 
 set( COMMON_OPTS "-g" "-Wall" "-Wextra" )
 
+set( arch_defs "_SIMD_SIZE=${SIMD_SIZE};_L1DCACHE_SIZE=${L1DCACHE_SIZE};_CACHE_LINE_SIZE=${CACHE_LINE_SIZE}" )
+
 # cache variable to allow manual tweaks from CMake cache
 set_valid_string( COMMON_DEFS_Release "${COMMON_COMPILE_DEFINITIONS}" "" )
 set_valid_string( COMMON_DEFS_Debug "${COMMON_COMPILE_DEFINITIONS}" "" )
 set_valid_string( COMMON_DEFS_Coverage "${COMMON_COMPILE_DEFINITIONS}" "" )
+
+list( PREPEND COMMON_DEFS_Release ${arch_defs} )
+list( PREPEND COMMON_DEFS_Debug ${arch_defs} )
+list( PREPEND COMMON_DEFS_Coverage ${arch_defs} )
+
+
 set_valid_string( COMMON_OPTS_Release "${COMMON_COMPILE_OPTIONS}"
 	"${COMMON_OPTS}"
 )

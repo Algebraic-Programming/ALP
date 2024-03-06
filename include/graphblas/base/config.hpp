@@ -28,6 +28,19 @@
 #ifndef _H_GRB_CONFIG_BASE
 #define _H_GRB_CONFIG_BASE
 
+#ifndef _SIMD_SIZE
+ #error "_SIMD_SIZE is not defined"
+#endif
+
+#ifndef _L1DCACHE_SIZE
+ #error "_L1DCACHE_SIZE is not defined"
+#endif
+
+#ifndef _CACHE_LINE_SIZE
+ #error "_CACHE_LINE_SIZE is not defined"
+#endif
+
+
 #include <cstddef> //size_t
 #include <string>
 
@@ -91,7 +104,7 @@ namespace grb {
 				 * The cache line size in bytes. Update this value at compile time to
 				 * reflect the target architecture.
 				 */
-				static constexpr size_t bytes = 64;
+				static constexpr size_t bytes = _CACHE_LINE_SIZE;
 
 			public:
 
@@ -120,7 +133,7 @@ namespace grb {
 				 * The SIMD size, in bytes. Update this value at compile time to reflect
 				 * the target architecture.
 				 */
-				static constexpr size_t bytes = 64;
+				static constexpr size_t bytes = _SIMD_SIZE;
 
 			public:
 
@@ -235,7 +248,7 @@ namespace grb {
 
 				/** @returns the private L1 data cache size, in bytes. */
 				static constexpr size_t l1_cache_size() {
-					return 32768;
+					return _L1DCACHE_SIZE;
 				}
 
 				/**

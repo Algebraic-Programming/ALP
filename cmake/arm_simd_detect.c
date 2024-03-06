@@ -27,6 +27,7 @@ int main() {
 	}
 #endif
 
+	int retval = 0;
 	const unsigned long flags = getauxval( AT_HWCAP );
 #ifdef HWCAP_SVE
 	if( flags & HWCAP_SVE ) {
@@ -36,9 +37,9 @@ int main() {
 	if ( flags & HWCAP_ASIMD ) {
 		printf( "NEON" );
 	} else {
-		printf( "no SIMD ISA detected!\n" );
-		return 1;
+		printf( "no SIMD ISA detected!" );
+		retval = 1;
 	}
 	printf( "\n" );
-	return 0;
+	return retval;
 }
