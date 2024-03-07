@@ -1,0 +1,86 @@
+#!/bin/bash
+
+#
+#   Copyright 2024 Huawei Technologies Co., Ltd.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+
+error_echo() { printf "%s\n" "$*" >&2; }
+
+SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
+
+DEFAULT_SIMD_SIZE="@DEFAULT_SIMD_SIZE@"
+DEFAULT_L1CACHE_SIZE="@DEFAULT_L1CACHE_SIZE@"
+DEFAULT_CACHE_LINE_SIZE="@DEFAULT_CACHE_LINE_SIZE@"
+
+SIMD_ISA_DETECT_APP="@SIMD_ISA_DETECT_APP@"
+L1CACHE_DETECT_APP="@L1CACHE_DETECT_APP@"
+
+SIMD_ISA_DETECT_APP_PATH="${SCRIPT_DIR}/${SIMD_ISA_DETECT_APP}"
+L1CACHE_DETECT_APP_PATH="${SCRIPT_DIR}/${L1CACHE_DETECT_APP}"
+
+errval="1"
+if [[ "${SIMD_ISA_DETECT_APP}" != "OFF" ]]; then
+	simd_isa=$(${SIMD_ISA_DETECT_APP_PATH})
+	errval="$?"
+fi
+
+if [[ "${errval}" == "0" ]]; then
+	# parse simd_isa
+	if [[ "${simd_isa}" == "AVX512" ]]; then
+		SIMD_SIZE=64
+	elif [[ "${simd_isa}" == "AVX2" ]]; then
+		SIMD_SIZE=32
+	elif [[ "${simd_isa}" == "AVX" ]]; then
+		SIMD_SIZE=16
+	elif [[ "${simd_isa}" == "NEON" ]]; then
+		SIMD_SIZE=16
+	elif [[ "${simd_isa}" == "SVE" || "${simd_isa}" == "SVE2" ]]; then
+		error_echo "Detected SIMD ISA is ${simd_isa}": the detection of its implementation-dependant vector size is currently not implemented.
+		error_echo "Applying therefore a standard vector size of ${DEFAULT_SIMD_SIZE}"
+		error_echo "Please, consider filing an issue to the authors"
+		SIMD_SIZE="${DEFAULT_SIMD_SIZE}"
+	fi
+else
+	SIMD_SIZE="${DEFAULT_SIMD_SIZE}"
+fi
+
+errval="1"
+if [[ "${L1CACHE_DETECT_APP}" != "OFF" ]]; then
+	cache_info="$(${L1CACHE_DETECT_APP_PATH})"
+	errval="$?"
+fi
+
+if [[ "${errval}" == "0" ]]; then
+	# parse cache_info
+	regex='[[:space:]]*TYPE:[[:blank:]]*(Data|Unified)[[:space:]]*SIZE:[[:blank:]]*([[:digit:]]+)[[:space:]]*LINE:[[:blank:]]*([[:digit:]]+)[[:blank:]]*'
+	if [[ "${cache_info}" =~ ${regex} ]]; then
+		type="${BASH_REMATCH[1]}"
+		L1DCACHE_SIZE="${BASH_REMATCH[2]}"
+		CACHE_LINE_SIZE="${BASH_REMATCH[3]}"
+	else
+		errval="1"
+		error_echo "Error while detecting L1D cache parameters: applying defaults..."
+	fi
+	if [[ "${type}" == "Unified" ]]; then
+		echo "The L1 cache is Unified, hence it may not be fully available to the application"
+	fi
+fi
+
+if [[ "${errval}" != "0" ]]; then
+	L1DCACHE_SIZE="${DEFAULT_L1CACHE_SIZE}"
+	CACHE_LINE_SIZE="${DEFAULT_CACHE_LINE_SIZE}"
+fi
+
+ARCH_FLAGS="-D_SIMD_SIZE=${SIMD_SIZE} -D_L1DCACHE_SIZE=${L1DCACHE_SIZE} -D_CACHE_LINE_SIZE=${CACHE_LINE_SIZE}"

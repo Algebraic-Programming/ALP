@@ -1,7 +1,7 @@
 #!/bin/bash
 
 #
-#   Copyright 2021 Huawei Technologies Co., Ltd.
+#   Copyright 2024 Huawei Technologies Co., Ltd.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -88,6 +88,12 @@ then
 	exit 255
 fi
 
+. $( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )/arch_info/get_arch_info
+if [[ -z "${ARCH_FLAGS}" ]]; then
+	echo "Cannot get architecture-specific flags!"
+	exit 1
+fi
+
 LFLAGS=
 if ${LINK}
 then
@@ -96,6 +102,6 @@ fi
 
 COMPILER=${BACKENDCOMPILERS[${BACKENDID}]}
 
-CMD="${COMPILER} -std=${CXXSTD} -I'${INCLUDEDIR}' ${COMMONCFLAGS} ${BACKENDCFLAGS[${BACKENDID}]} "${ARGS[@]}" "$@" ${LFLAGS}"
+CMD="${COMPILER} -std=${CXXSTD} ${ARCH_FLAGS} -I'${INCLUDEDIR}' ${COMMONCFLAGS} ${BACKENDCFLAGS[${BACKENDID}]} "${ARGS[@]}" "$@" ${LFLAGS}"
 
 ${SHOW} "${CMD}"

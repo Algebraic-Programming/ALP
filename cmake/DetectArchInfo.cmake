@@ -1,5 +1,5 @@
 #
-#   Copyright 2021 Huawei Technologies Co., Ltd.
+#   Copyright 2024 Huawei Technologies Co., Ltd.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -13,6 +13,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 #
+
+assert_valid_variables( ARCH_DETECT_APPS_DIR )
 
 set( _supported_arches "x86_64;arm" )
 if( NOT CMAKE_SYSTEM_PROCESSOR IN_LIST _supported_arches )
@@ -29,16 +31,17 @@ if( CMAKE_VERSION VERSION_LESS "3.25.0" )
 	set( _dest ${CMAKE_CURRENT_BINARY_DIR} )
 endif()
 
-set( _arch_detect_folder ${CMAKE_CURRENT_BINARY_DIR}/src/arch_info )
-set( _simd_detect_destination ${_arch_detect_folder}/detect_simd_isa )
+set( ARCH_DETECT_APPS_DIR ${CMAKE_CURRENT_BINARY_DIR}/src/arch_info )
+set( _simd_detect_destination detect_simd_isa )
 
+set( SIMD_ISA_DETECT_APP OFF )
 try_compile( COMPILED ${_dest} SOURCES ${CMAKE_SOURCE_DIR}/cmake/${CMAKE_SYSTEM_PROCESSOR}_simd_detect.c
-	COPY_FILE ${_simd_detect_destination}
+	COPY_FILE ${ARCH_DETECT_APPS_DIR}/${_simd_detect_destination}
 	COPY_FILE_ERROR COPY_MSG
 )
 if( COMPILED )
 	execute_process(
-		COMMAND ${_simd_detect_destination}
+		COMMAND ${ARCH_DETECT_APPS_DIR}/${_simd_detect_destination}
 		RESULT_VARIABLE RES
 		OUTPUT_VARIABLE SIMD_ISA
 		OUTPUT_STRIP_TRAILING_WHITESPACE
@@ -49,7 +52,7 @@ if( NOT COMPILED OR ( NOT RES STREQUAL "0" ) OR COPY_MSG )
 	set( SIMD_SIZE ${DEFAULT_SIMD_SIZE} )
 	message( WARNING "Cannot detect SIMD ISA, thus applying default vector size: ${SIMD_SIZE}B" )
 else()
-	set( SIMD_ISA_DETECT_EXE ${_simd_detect_destination} )
+	set( SIMD_ISA_DETECT_APP ${_simd_detect_destination} )
 	if( SIMD_ISA STREQUAL "SVE" OR SIMD_ISA STREQUAL "SVE2" )
 		set( SIMD_SIZE 64 )
 		message( WARNING "Detected SIMD ISA ${SIMD_ISA}, whose size is implementation-dependant and currently not detected. Please, consider filing an issue to the authors. Applying default vector size: ${SIMD_SIZE}B" )
@@ -67,19 +70,20 @@ else()
 	endif()
 endif()
 
+set( L1CACHE_DETECT_APP OFF )
 execute_process(
 	COMMAND ${CMAKE_SOURCE_DIR}/cmake/l1_cache_info.sh
 	RESULT_VARIABLE RES
 	OUTPUT_VARIABLE CACHE_DETECT_OUTPUT
 	OUTPUT_STRIP_TRAILING_WHITESPACE
 )
-file( COPY ${CMAKE_SOURCE_DIR}/cmake/l1_cache_info.sh DESTINATION ${_arch_detect_folder} )
+file( COPY ${CMAKE_SOURCE_DIR}/cmake/l1_cache_info.sh DESTINATION ${ARCH_DETECT_APPS_DIR} )
 if( NOT RES STREQUAL "0" )
 	set( L1CACHE_SIZE ${DEFAULT_L1CACHE_SIZE} )
 	set( CACHE_LINE_SIZE ${DEFAULT_CACHE_LINE_SIZE} )
 	message( WARNING "Cannot detect L1 cache features, thus applying default settigs" )
 else()
-	set( L1CACHE_RUNTIME_DETECT TRUE )
+	set( L1CACHE_DETECT_APP l1_cache_info.sh )
 	string( REGEX MATCHALL
 		"TYPE:[ \t]*(Data|Unified)[ \t\r\n]+SIZE:[ \t]*([0-9]+)[ \t\r\n]+LINE:[ \t]*([0-9]+)[ \t\r\n]*"
 		MATCH_OUTPUT "${CACHE_DETECT_OUTPUT}"

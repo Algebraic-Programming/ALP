@@ -33,6 +33,9 @@ set( ALP_UTILS_LIBRARY_OUTPUT_NAME "alp_utils" )
 set( BINARY_LIBRARIES_INSTALL_DIR "${CMAKE_INSTALL_PREFIX}/lib" )
 set( CMAKE_CONFIGS_INSTALL_DIR "${CMAKE_INSTALL_PREFIX}/cmake" )
 set( NAMESPACE_NAME "ALPGraphBLAS")
+set( ARCH_DETECT_APPS_DIR ${CMAKE_CURRENT_BINARY_DIR}/src/arch_info )
+set( ARCH_DETECT_APPS_INSTALL_DIR ${BIN_INSTALL_DIR}/arch_info )
+
 
 # installation export unit for ALL targets
 install( EXPORT GraphBLASTargets
