@@ -27,9 +27,11 @@ If any of this information cannot be gathered from hardware, a default is used.
 
 assert_valid_variables( ARCH_DETECT_APPS_DIR )
 
-set( _supported_arches "x86_64;arm" )
+set( _supported_arches "x86_64;aarch64" )
 if( NOT CMAKE_SYSTEM_PROCESSOR IN_LIST _supported_arches )
-	message( FATAL_ERROR "Architecture \"${CMAKE_SYSTEM_PROCESSOR}\" not supported" )
+	message( WARNING "Architecture \"${CMAKE_SYSTEM_PROCESSOR}\" not supported" )
+else()
+	set( _supported_arch ON )
 endif()
 
 set( DEFAULT_SIMD_SIZE 64 )
@@ -49,10 +51,12 @@ set( _simd_detect_destination detect_simd_isa )
 set( SIMD_ISA_DETECT_APP OFF )
 # compile and also copy the file to a known folder in order to use it in the
 # installation infrastructure: the grbcxx script needs it
-try_compile( COMPILED ${_dest} SOURCES ${CMAKE_SOURCE_DIR}/cmake/${CMAKE_SYSTEM_PROCESSOR}_simd_detect.c
-	COPY_FILE ${ARCH_DETECT_APPS_DIR}/${_simd_detect_destination}
-	COPY_FILE_ERROR COPY_MSG
-)
+if( _supported_arch )
+	try_compile( COMPILED ${_dest} SOURCES ${CMAKE_SOURCE_DIR}/cmake/${CMAKE_SYSTEM_PROCESSOR}_simd_detect.c
+		COPY_FILE ${ARCH_DETECT_APPS_DIR}/${_simd_detect_destination}
+		COPY_FILE_ERROR COPY_MSG
+	)
+endif()
 if( COMPILED )
 	# attemtp to run the compiled app
 	execute_process(
