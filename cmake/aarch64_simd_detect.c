@@ -26,7 +26,7 @@
  * use, hence the #ifdef on HWCAP2_SVE2.
  * https://docs.kernel.org/arch/arm64/elf_hwcaps.html
  *
- * Also note that SVE (and SVE2) has implementation-dependant vector size, whose
+ * Also note that SVE (and SVE2) has implementation-dependent vector size, whose
  * retrieval is currently not implemented; the build infrastructure properly
  * warns about this case.
  */

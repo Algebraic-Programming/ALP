@@ -48,7 +48,7 @@ if [[ "${errval}" == "0" ]]; then
 	elif [[ "${simd_isa}" == "NEON" ]]; then
 		SIMD_SIZE=16
 	elif [[ "${simd_isa}" == "SVE" || "${simd_isa}" == "SVE2" ]]; then
-		error_echo "Detected SIMD ISA is ${simd_isa}": the detection of its implementation-dependant vector size is currently not implemented.
+		error_echo "Detected SIMD ISA is ${simd_isa}": the detection of its implementation-dependent vector size is currently not implemented.
 		error_echo "Applying therefore a standard vector size of ${DEFAULT_SIMD_SIZE}"
 		error_echo "Please, consider filing an issue to the authors"
 		SIMD_SIZE="${DEFAULT_SIMD_SIZE}"
