@@ -246,9 +246,9 @@ namespace grb {
 			<< local << ". Entering allreduce..." << std::endl;
 #endif
 
-		// do allreduce using \a op
+		// do allreduce
 		if( rc == SUCCESS ) {
-			rc = collectives< BSP1D >::allreduce< descr >( local, monoid.getOperator() );
+			rc = collectives< BSP1D >::allreduce< descr >( local, monoid );
 		}
 
 		// accumulate end result
@@ -4433,8 +4433,7 @@ namespace grb {
 			internal::getLocal( x ), internal::getLocal( y ),
 			addMonoid, anyOp
 		);
-		ret = ret ? ret : collectives< BSP1D >::allreduce(
-			oop, addMonoid.getOperator() );
+		ret = ret ? ret : collectives< BSP1D >::allreduce( oop, addMonoid );
 
 		// fold out-of-place dot product into existing value and exit
 		ret = ret ? ret : foldl( z, oop, addMonoid.getOperator() );

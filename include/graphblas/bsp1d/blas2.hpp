@@ -142,7 +142,7 @@ namespace grb {
 			}
 
 			// delegate to sequential code
-			const auto data = internal::grb_BSP1D.cload();
+			const auto &data = internal::grb_BSP1D.cload();
 			const size_t offset = internal::Distribution< BSP1D >::local_offset(
 				v._n, data.s, data.P
 			);

@@ -425,17 +425,26 @@ namespace grb {
 				return;
 			}
 
-			lpf_coll_t coll;
+			// first, initialise ALP
+			grb::RC grb_rc = grb::init< BSP1D >( s, P, ctx );
+			if( grb_rc != grb::SUCCESS ) {
+				/* LCOV_EXCL_START */
+				std::cerr << "Error: could not initialise ALP/GraphBLAS (BSP1D)\n";
+				assert( false );
+				return;
+				/* LCOV_EXCL_STOP */
+			}
+
 			lpf_err_t brc = LPF_SUCCESS;
+			auto &data = internal::grb_BSP1D.load();
 
 			// initialise collectives if they are needed
 			if( P > 1 && (broadcast_input || dispatcher_needs_broadcast) ) {
-				brc = lpf_init_collectives_for_broadcast( ctx, s, P, 2, coll );
-				if( brc != LPF_SUCCESS ) {
-					std::cerr << __FILE__ << ", " << __LINE__ << ": LPF collective failed"
-						<< std::endl;
+				const size_t bcast_size = sizeof( DispatcherType );
+				if( data.ensureCollectivesCapacity( 1, 0, bcast_size ) != SUCCESS ) {
+					std::cerr << "Error: BSP1D launcher encountered out-of-memory (I)\n";
+					return;
 				}
-				assert( brc == LPF_SUCCESS );
 			}
 
 			// call information for the ALP function, reconstructed from the arguments
@@ -445,7 +454,7 @@ namespace grb {
 			if( P > 1 && dispatcher_needs_broadcast ) {
 				// fetch the dispatcher
 				brc = lpf_register_and_broadcast(
-					ctx, coll,
+					ctx, data.coll,
 					static_cast< void * >( &dispatcher ),
 					sizeof( DispatcherType )
 				);
@@ -465,7 +474,7 @@ namespace grb {
 				if( broadcast_input ) {
 					// user requested broadcast and the input size is user-given: fetch size
 					lpf_err_t brc = lpf_register_and_broadcast(
-							ctx, coll,
+							ctx, data.coll,
 							reinterpret_cast< void * >( &in_size ), sizeof( size_t )
 						);
 					if( brc != LPF_SUCCESS ) {
@@ -503,9 +512,14 @@ namespace grb {
 
 			// set contents of in
 			if( broadcast_input && P > 1 ) {
+				// ensure coll is up to the task
+				if( data.ensureCollectivesCapacity( 1, 0, in_size ) != SUCCESS ) {
+					std::cerr << "Error: BSP1D launcher encountered out-of-memory (II)\n";
+					return;
+				}
 				// retrieve data
 				lpf_err_t brc = lpf_register_and_broadcast(
-						ctx, coll,
+						ctx, data.coll,
 						const_cast< void * >( reinterpret_cast< const void * >( data_in ) ),
 						in_size
 					);
@@ -532,14 +546,6 @@ namespace grb {
 			}
 
 			// at this point, the dispatcher, input, and output are all good to go
-
-			// now, initialise ALP
-			grb::RC grb_rc = grb::init< BSP1D >( s, P, ctx );
-			if( grb_rc != grb::SUCCESS ) {
-				std::cerr << "Error: could not initialise ALP/GraphBLAS" << std::endl;
-				assert( false );
-				return;
-			}
 
 			// retrieve and run the function to be executed
 			assert( args.f_size == 1 );

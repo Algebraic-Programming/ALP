@@ -345,9 +345,8 @@ namespace grb {
 			<< local << ". Entering allreduce..." << std::endl;
 #endif
 
-		// All-reduce using \a op
-		rc = rc ? rc :
-			collectives< BSP1D >::allreduce< descr >( local, monoid.getOperator() );
+		// All-reduce
+		rc = rc ? rc : collectives< BSP1D >::allreduce< descr >( local, monoid );
 
 		// Accumulate end result
 		rc = rc ? rc : foldr( x, local, monoid.getOperator() );
@@ -431,10 +430,9 @@ namespace grb {
 			<< local << ". Entering allreduce..." << std::endl;
 #endif
 
-		// All-reduce using \a op
-		rc = rc ? rc :
-			collectives< BSP1D >::allreduce< descr >( local,
-				semiring.getAdditiveOperator() );
+		// All-reduce
+		rc = rc ? rc : collectives< BSP1D >::allreduce< descr >( local,
+			semiring.getAdditiveMonoid() );
 
 		// Accumulate end result
 		rc = rc ? rc : foldr( x, local, semiring.getAdditiveOperator() );
@@ -513,9 +511,8 @@ namespace grb {
 			<< local << ". Entering allreduce..." << std::endl;
 #endif
 
-		// All-reduce using \a op
-		rc = rc ? rc :
-			collectives< BSP1D >::allreduce< descr >( local, monoid.getOperator() );
+		// All-reduce
+		rc = rc ? rc : collectives< BSP1D >::allreduce< descr >( local, monoid );
 
 		// Accumulate end result
 		rc = rc ? rc : foldr( x, local, monoid.getOperator() );
@@ -575,10 +572,9 @@ namespace grb {
 			<< local << ". Entering allreduce..." << std::endl;
 #endif
 
-		// All-reduce using \a op
-		rc = rc ? rc :
-			collectives< BSP1D >::allreduce< descr >( local,
-				semiring.getAdditiveOperator() );
+		// All-reduce
+		rc = rc ? rc : collectives< BSP1D >::allreduce< descr >( local,
+			semiring.getAdditiveMonoid() );
 
 		// Accumulate end result
 		rc = rc ? rc : foldr( x, local, semiring.getAdditiveOperator() );
@@ -684,9 +680,8 @@ namespace grb {
 			<< local << ". Entering allreduce..." << std::endl;
 #endif
 
-		// All-reduce using \a op
-		rc = rc ? rc : collectives< BSP1D >::allreduce< descr >( local,
-			monoid.getOperator() );
+		// All-reduce
+		rc = rc ? rc : collectives< BSP1D >::allreduce< descr >( local, monoid );
 
 		// Accumulate end result
 		rc = rc ? rc : foldl( x, local, monoid.getOperator() );
@@ -797,9 +792,9 @@ namespace grb {
 			<< local << ". Entering allreduce..." << std::endl;
 #endif
 
-		// All-reduce using \a op
+		// All-reduce
 		rc = rc ? rc : collectives< BSP1D >::allreduce< descr >( local,
-			semiring.getAdditiveOperator() );
+			semiring.getAdditiveMonoid() );
 
 		// Accumulate end result
 		rc = rc ? rc : foldl( x, local, semiring.getAdditiveOperator() );
@@ -882,9 +877,8 @@ namespace grb {
 			<< local << ". Entering allreduce..." << std::endl;
 #endif
 
-		// All-reduce using \a op
-		rc = rc ? rc : collectives< BSP1D >::allreduce< descr >( local,
-			monoid.getOperator() );
+		// All-reduce
+		rc = rc ? rc : collectives< BSP1D >::allreduce< descr >( local, monoid );
 
 		// Accumulate end result
 		rc = rc ? rc : foldl( x, local, monoid.getOperator() );
@@ -953,9 +947,9 @@ namespace grb {
 			<< local << ". Entering allreduce..." << std::endl;
 #endif
 
-		// All-reduce using \a op
+		// All-reduce
 		rc = rc ? rc : collectives< BSP1D >::allreduce< descr >( local,
-			semiring.getAdditiveOperator() );
+			semiring.getAdditiveMonoid() );
 
 		// Accumulate end result
 		rc = rc ? rc : foldl( x, local, semiring.getAdditiveOperator() );

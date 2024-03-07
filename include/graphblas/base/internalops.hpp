@@ -2836,6 +2836,7 @@ namespace grb {
 					/** The output domain. */
 					typedef typename OP::result_type D3;
 
+
 				public:
 
 					/** @return Whether this operator is mathematically associative. */
@@ -2868,7 +2869,10 @@ namespace grb {
 					 * @param[out] z The output element.
 					 */
 					template< typename InputType1, typename InputType2, typename OutputType >
-					static void apply( const InputType1 & x, const InputType2 & y, OutputType & z ) {
+					static void apply(
+						const InputType1 &x, const InputType2 &y,
+						OutputType &z
+					) {
 						const D1 a = static_cast< D1 >( x );
 						const D2 b = static_cast< D2 >( y );
 						D3 temp;
@@ -2881,7 +2885,7 @@ namespace grb {
 					 * casting is required. This version will be automatically caled whenever
 					 * possible.
 					 */
-					static void apply( const D1 & x, const D2 & y, D3 & out ) {
+					static void apply( const D1 &x, const D2 &y, D3 &out ) {
 						OP::apply( &x, &y, &out );
 					}
 
@@ -2946,7 +2950,7 @@ namespace grb {
 					 * @param[in,out] y The value \a x is to be applied against.
 					 */
 					template< typename InputType, typename IOType >
-					static void foldr( const InputType & x, IOType & y ) {
+					static void foldr( const InputType &x, IOType &y ) {
 						typedef typename OperatorBase< OP >::D2 D2;
 						const D2 cache = static_cast< D2 >( y );
 						OperatorBase< OP >::apply( x, cache, y );
@@ -3110,6 +3114,7 @@ namespace grb {
 					typedef typename OperatorBase< OP >::D3 D3;
 					static constexpr size_t blocksize = OperatorBase< OP >::blocksize;
 
+
 				public:
 
 					/**
@@ -3127,7 +3132,7 @@ namespace grb {
 					 * @param[in]     x The value that is to be applied to \a y.
 					 * @param[in,out] y The value \a x is to be applied against.
 					 */
-					static void foldr( const D1 & x, D3 & y ) {
+					static void foldr( const D1 &x, D3 &y ) {
 						OP::foldr( &x, &y );
 					}
 

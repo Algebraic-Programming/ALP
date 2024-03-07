@@ -152,6 +152,19 @@ namespace grb {
 					removals.insert( in );
 				}
 
+				/**
+				 * Clears this DMapper from all entries.
+				 *
+				 * After a call to this function, it shall be as though this instance was
+				 * newly constructed.
+				 */
+				void clear() {
+					counter = 0;
+					mapper.clear();
+					invmap.clear();
+					removals.clear();
+				}
+
 		}; // end ``grb::utils::DMapper''
 
 	} // end namespace ``grb::utils''

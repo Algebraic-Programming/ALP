@@ -120,7 +120,7 @@ namespace grb {
 			>
 			static RC allreduce( IOType &inout, const Operator op = Operator() ) {
 				(void) inout;
-				(void)op;
+				(void) op;
 				return PANIC;
 			}
 

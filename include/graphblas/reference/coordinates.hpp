@@ -505,7 +505,7 @@ namespace grb {
 						// do recount interleaved with stack re-construction
 						for( size_t i = start; i < end; ++i ) {
 							if( _assigned[ i ] ) {
-								(void)++local_count;
+								(void) ++local_count;
 							}
 						}
 						counts[ s ] = local_count;

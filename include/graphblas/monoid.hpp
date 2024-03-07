@@ -53,13 +53,16 @@ namespace grb {
 	template< class _OP, template< typename > class _ID >
 	class Monoid {
 
-		static_assert( grb::is_operator< _OP >::value, "First template argument to Monoid must be a GraphBLAS operator" );
+		static_assert( grb::is_operator< _OP >::value,
+			"First template argument to Monoid must be a GraphBLAS operator" );
 
 		static_assert( grb::is_associative< _OP >::value,
 			"Cannot form a monoid using the given operator since it is not "
 			"associative" );
 
-		static_assert( std::is_same< typename _OP::D1, typename _OP::D3 >::value || std::is_same< typename _OP::D2, typename _OP::D3 >::value,
+		static_assert(
+			std::is_same< typename _OP::D1, typename _OP::D3 >::value ||
+				std::is_same< typename _OP::D2, typename _OP::D3 >::value,
 			"Cannot form a monoid when the output domain does not match at least "
 			"one of its input domains" );
 
@@ -91,7 +94,9 @@ namespace grb {
 		 */
 		Operator op;
 
+
 	public:
+
 		/**
 		 * Constructor that infers a default operator, given the operator type.
 		 * Useful for stateless operators.
@@ -120,6 +125,7 @@ namespace grb {
 		Operator getOperator() const {
 			return op;
 		}
+
 	};
 
 	// type traits
@@ -131,8 +137,11 @@ namespace grb {
 
 	template< class OP, template< typename > class ID >
 	struct has_immutable_nonzeroes< Monoid< OP, ID > > {
-		static const constexpr bool value = grb::is_monoid< Monoid< OP, ID > >::value &&
-			std::is_same< OP, typename grb::operators::logical_or< typename OP::D1, typename OP::D2, typename OP::D3 > >::value;
+		static const constexpr bool value =
+			grb::is_monoid< Monoid< OP, ID > >::value &&
+			std::is_same< OP, typename grb::operators::logical_or<
+				typename OP::D1, typename OP::D2, typename OP::D3
+			> >::value;
 	};
 
 } // namespace grb
