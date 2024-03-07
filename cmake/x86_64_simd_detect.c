@@ -17,7 +17,15 @@
 
 #include <stdio.h>
 
-// from https://gcc.gnu.org/onlinedocs/gcc/x86-Built-in-Functions.html#index-_005f_005fbuiltin_005fcpu_005fsupports-1
+/*
+ * This file detects the SIMD ISA for x86 architectures using compiler built-in functionalities
+ * from https://gcc.gnu.org/onlinedocs/gcc/x86-Built-in-Functions.html#index-_005f_005fbuiltin_005fcpu_005fsupports-1
+ * also supported in clang.
+ * 
+ * Note that the SIMD support can be advertised by the CPU (e.g., via the CPUID
+ * instruction) despite being disabled by the Operating System.
+ * The compiler's built-in functions check both conditions.
+ */
 
 int main() {
 	__builtin_cpu_init ();

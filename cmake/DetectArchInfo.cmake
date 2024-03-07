@@ -14,6 +14,17 @@
 # limitations under the License.
 #
 
+#[===================================================================[
+Detect Architectural Info for the system CPU
+
+Three parameters are detected and used during compilation:
+1. maximum supported size of the SIMD vector
+2. size of the L1 Data cache (shortly L1D)
+3. size of the L1D cache line (typically the same for all caches)
+
+If any of this information cannot be gathered from hardware, a default is used.
+#]===================================================================]
+
 assert_valid_variables( ARCH_DETECT_APPS_DIR )
 
 set( _supported_arches "x86_64;arm" )
@@ -31,15 +42,19 @@ if( CMAKE_VERSION VERSION_LESS "3.25.0" )
 	set( _dest ${CMAKE_CURRENT_BINARY_DIR} )
 endif()
 
+# compile executable to detect SIMD ISA and run it
 set( ARCH_DETECT_APPS_DIR ${CMAKE_CURRENT_BINARY_DIR}/src/arch_info )
 set( _simd_detect_destination detect_simd_isa )
 
 set( SIMD_ISA_DETECT_APP OFF )
+# compile and also copy the file to a known folder in order to use it in the
+# installation infrastructure: the grbcxx script needs it
 try_compile( COMPILED ${_dest} SOURCES ${CMAKE_SOURCE_DIR}/cmake/${CMAKE_SYSTEM_PROCESSOR}_simd_detect.c
 	COPY_FILE ${ARCH_DETECT_APPS_DIR}/${_simd_detect_destination}
 	COPY_FILE_ERROR COPY_MSG
 )
 if( COMPILED )
+	# attemtp to run the compiled app
 	execute_process(
 		COMMAND ${ARCH_DETECT_APPS_DIR}/${_simd_detect_destination}
 		RESULT_VARIABLE RES
@@ -49,9 +64,12 @@ if( COMPILED )
 endif()
 
 if( NOT COMPILED OR ( NOT RES STREQUAL "0" ) OR COPY_MSG )
+	# if we could not compile or run, set defaults
 	set( SIMD_SIZE ${DEFAULT_SIMD_SIZE} )
 	message( WARNING "Cannot detect SIMD ISA, thus applying default vector size: ${SIMD_SIZE}B" )
 else()
+	# set vector size based on detected SIMD ISA and wanr in case of SVE or SVE2
+	# not yet implemented
 	set( SIMD_ISA_DETECT_APP ${_simd_detect_destination} )
 	if( SIMD_ISA STREQUAL "SVE" OR SIMD_ISA STREQUAL "SVE2" )
 		set( SIMD_SIZE 64 )
@@ -71,19 +89,26 @@ else()
 endif()
 
 set( L1CACHE_DETECT_APP OFF )
+# for L1D information, use a Bash script, so just try to run it
 execute_process(
 	COMMAND ${CMAKE_SOURCE_DIR}/cmake/l1_cache_info.sh
 	RESULT_VARIABLE RES
 	OUTPUT_VARIABLE CACHE_DETECT_OUTPUT
 	OUTPUT_STRIP_TRAILING_WHITESPACE
 )
+# copy the script to the build infrastructure, for testing and for installation
 file( COPY ${CMAKE_SOURCE_DIR}/cmake/l1_cache_info.sh DESTINATION ${ARCH_DETECT_APPS_DIR} )
 if( NOT RES STREQUAL "0" )
+	# could not run properly, set defaults
 	set( L1CACHE_SIZE ${DEFAULT_L1CACHE_SIZE} )
 	set( CACHE_LINE_SIZE ${DEFAULT_CACHE_LINE_SIZE} )
 	message( WARNING "Cannot detect L1 cache features, thus applying default settigs" )
 else()
 	set( L1CACHE_DETECT_APP l1_cache_info.sh )
+	# parse multi-lines output and get each info; example output:
+	# TYPE: Data
+	# SIZE: 32768
+	# LINE: 64
 	string( REGEX MATCHALL
 		"TYPE:[ \t]*(Data|Unified)[ \t\r\n]+SIZE:[ \t]*([0-9]+)[ \t\r\n]+LINE:[ \t]*([0-9]+)[ \t\r\n]*"
 		MATCH_OUTPUT "${CACHE_DETECT_OUTPUT}"

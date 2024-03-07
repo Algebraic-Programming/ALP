@@ -18,6 +18,17 @@
 #include <stdio.h>
 #include <sys/auxv.h>
 
+/*
+ * Check the supported SIMD ISA in an ARM architecture, via getauxval():
+ * https://man7.org/linux/man-pages/man3/getauxval.3.html
+ * 
+ * Note that support for SVE2 may be too recent for the kernel/GLIBC version in
+ * use, hence the #ifdef on HWCAP2_SVE2.
+ * Also note that SVE (and SVE2) has implementation-dependant vector size, whose
+ * retrieval is currently not implemented; the build infrastructure properly
+ * warns about this case.
+ */
+
 int main() {
 
 #ifdef HWCAP2_SVE2

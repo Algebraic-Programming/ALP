@@ -88,7 +88,8 @@ then
 	exit 255
 fi
 
-. $( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )/arch_info/get_arch_info
+# the get_arch_info() script MUST populate the ARCH_FLAGS variable with arch-specific flags
+. $( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )/arch_info/get_arch_flags
 if [[ -z "${ARCH_FLAGS}" ]]; then
 	echo "Cannot get architecture-specific flags!"
 	exit 1

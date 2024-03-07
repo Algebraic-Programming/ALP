@@ -97,7 +97,9 @@ list( JOIN runenv_list " " BACKEND_RUNENV_SPACED )
 list( JOIN runner_list " " BACKEND_RUNNER_SPACED )
 configure_file( ${CMAKE_CURRENT_SOURCE_DIR}/grbrun.in ${CMAKE_CURRENT_BINARY_DIR}/grbrun @ONLY )
 
-configure_file( ${CMAKE_CURRENT_SOURCE_DIR}/get_arch_info.in ${ARCH_DETECT_APPS_DIR}/get_arch_info @ONLY )
+# generate script to get architecture-specific flags
+configure_file( ${CMAKE_CURRENT_SOURCE_DIR}/get_arch_flags.in ${ARCH_DETECT_APPS_DIR}/get_arch_flags @ONLY )
+# copy the whole directory with all executables to get arch-specific info
 install( DIRECTORY ${ARCH_DETECT_APPS_DIR}
 	DESTINATION ${BIN_INSTALL_DIR}
 	FILE_PERMISSIONS OWNER_READ OWNER_WRITE OWNER_EXECUTE
@@ -118,7 +120,7 @@ install( FILES ${CMAKE_CURRENT_BINARY_DIR}/setenv
 
 ### GENERATE CMAKE INFRASTRUCTURE INSIDE INSTALLATION DIRECTORY
 
-include(CMakePackageConfigHelpers)
+include( CMakePackageConfigHelpers )
 
 # write file with version information
 write_basic_package_version_file(

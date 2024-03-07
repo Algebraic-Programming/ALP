@@ -32,6 +32,7 @@ L1CACHE_DETECT_APP_PATH="${SCRIPT_DIR}/${L1CACHE_DETECT_APP}"
 
 errval="1"
 if [[ "${SIMD_ISA_DETECT_APP}" != "OFF" ]]; then
+	# call app to detect SIMD ISA
 	simd_isa=$(${SIMD_ISA_DETECT_APP_PATH})
 	errval="$?"
 fi
@@ -58,6 +59,7 @@ fi
 
 errval="1"
 if [[ "${L1CACHE_DETECT_APP}" != "OFF" ]]; then
+	# call app to detect L1D cache info
 	cache_info="$(${L1CACHE_DETECT_APP_PATH})"
 	errval="$?"
 fi

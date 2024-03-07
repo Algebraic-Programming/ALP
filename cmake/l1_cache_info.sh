@@ -16,6 +16,9 @@
 # limitations under the License.
 #
 
+# Detect information about the L1D cache from the SYSFS interface, which is in
+# Linux since 2008
+
 function symbolic_to_bytes {
 	local symbolic_size="$1"
 	local _symbolic_size=${symbolic_size//M/*1024*1024}
@@ -40,6 +43,7 @@ for f in ${INFO_ROOT}/index*; do
 		exit 1
 	fi
 	if [[ "${level}" != "1" ]]; then
+		# if it's not a cache of level 1, skip
 		continue
 	fi
 	type=$(cat ${f}/type)
