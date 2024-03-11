@@ -197,10 +197,44 @@ namespace grb {
 
 		friend class PinnedVector< D, nonblocking >;
 
+		// Native interface friends
+
+		template< typename ValueType, Backend backend >
+		friend Vector<
+			ValueType, backend,
+			internal::Coordinates<
+				config::IMPLEMENTATION< backend >::coordinatesBackend()
+			>
+		> internal::wrapRawVector( const size_t n, ValueType *__restrict__ const
+			raw );
+
+		template< typename ValueType, Backend backend >
+		friend const Vector<
+			ValueType, backend,
+			internal::Coordinates<
+				config::IMPLEMENTATION< backend >::coordinatesBackend()
+			>
+		> internal::wrapRawVector( const size_t n, const ValueType *__restrict__ const raw );
+
 
 		private:
 
 			Vector< D, reference, MyCoordinates > ref;
+
+
+		protected:
+
+			/**
+			 * \internal Internal constructor that wraps around an existing raw dense
+			 *           vector. This constructor results in a dense vector whose
+			 *           structure is immutable. Any invalid use incurs UB; use with care.
+			 */
+			Vector( const size_t n, D *__restrict__ const raw ) : ref( n, raw ) {
+#ifdef _DEBUG
+				std::cerr << "In Vector< nonblocking > constructor that wraps around an "
+					<< "external raw array.\n";
+#endif
+			}
 
 
 		public:
@@ -221,8 +255,14 @@ namespace grb {
 			typedef typename Vector< D, reference, MyCoordinates >::const_iterator
 				const_iterator;
 
-
-			Vector( const size_t n, const size_t nz ) : ref( n, nz ) {}
+			Vector( const size_t n, const size_t nz ) : ref( n, nz ) {
+				// pipeline execution is not required here as this is a grb::Vector
+				// declaration
+#ifdef _DEBUG
+				std::cerr << "In Vector< nonblocking >::Vector( size_t, size_t )"
+					<< " constructor\n";
+#endif
+			}
 
 			Vector( const size_t n ) : Vector( n, n ) {
 
@@ -230,6 +270,15 @@ namespace grb {
 				// declaration
 #ifdef _DEBUG
 				std::cerr << "In Vector< nonblocking >::Vector( size_t ) constructor\n";
+#endif
+			}
+
+			Vector( const std::initializer_list< D > vals ) : ref( vals ) {
+				// pipeline execution is not required here as this is a grb::Vector
+				// declaration
+#ifdef _DEBUG
+				std::cerr << "In Vector< nonblocking >::Vector( initializer_list )"
+					<< " constructor\n";
 #endif
 			}
 

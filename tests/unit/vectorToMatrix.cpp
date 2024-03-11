@@ -18,9 +18,10 @@
 #include <cstdio>
 #include <utility>
 
-#include "graphblas/utils/iterators/MatrixVectorIterator.hpp"
+#include "graphblas/utils/iterators/matrixVectorIterator.hpp"
 
 #include "graphblas.hpp"
+
 
 using namespace grb;
 

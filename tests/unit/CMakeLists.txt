@@ -65,6 +65,11 @@ add_grb_executables( distribution_bsp1d distribution_bsp1d.cpp
 	BACKENDS reference NO_BACKEND_NAME
 )
 
+add_grb_executables( distribution_matrix_bsp1d distribution_matrix_bsp1d.cpp
+	BACKENDS bsp1d NO_BACKEND_NAME
+	ADDITIONAL_LINK_LIBRARIES test_utils
+)
+
 add_grb_executables( distribution distribution.cpp
 	BACKENDS bsp1d NO_BACKEND_NAME
 )
@@ -125,6 +130,10 @@ add_grb_executables( matrixIterator matrixIterator.cpp
 	ADDITIONAL_LINK_LIBRARIES test_utils_headers
 )
 
+add_grb_executables( fold_matrix_to_scalar fold_matrix_to_scalar.cpp
+	BACKENDS reference reference_omp bsp1d hybrid hyperdags nonblocking
+)
+
 add_grb_executables( doubleAssign doubleAssign.cpp
 	BACKENDS reference reference_omp bsp1d hybrid hyperdags nonblocking
 )
@@ -149,12 +158,17 @@ add_grb_executables( eWiseMul eWiseMul.cpp
 	BACKENDS reference reference_omp bsp1d hybrid hyperdags nonblocking
 )
 
+add_grb_executables( factories factories.cpp
+	BACKENDS reference reference_omp bsp1d hybrid hyperdags nonblocking
+)
+
 add_grb_executables( muladd muladd.cpp
 	BACKENDS reference reference_omp bsp1d hybrid hyperdags nonblocking
 )
 
 add_grb_executables( mxm mxm.cpp
 	BACKENDS reference reference_omp hyperdags nonblocking #bsp1d hybrid
+	ADDITIONAL_LINK_LIBRARIES test_utils
 )
 
 add_grb_executables( parserTest utilParserTest.cpp
@@ -162,8 +176,17 @@ add_grb_executables( parserTest utilParserTest.cpp
 	COMPILE_DEFINITIONS COMPARE
 )
 
+add_grb_executables( iteratorFilter iteratorFilter.cpp
+	BACKENDS reference NO_BACKEND_NAME
+)
+
 add_grb_executables( RBGaussSeidel RBGaussSeidel.cpp
 	BACKENDS reference reference_omp bsp1d hybrid hyperdags nonblocking
+)
+
+add_grb_executables( selectMatrix selectMatrix.cpp
+	BACKENDS reference reference_omp bsp1d hybrid hyperdags nonblocking
+	ADDITIONAL_LINK_LIBRARIES test_utils_headers
 )
 
 add_grb_executables( set set.cpp
@@ -242,6 +265,10 @@ add_grb_executables( eWiseApplyMatrixReference eWiseApplyMatrixReference.cpp
 	ADDITIONAL_LINK_LIBRARIES test_utils_headers
 )
 
+add_grb_executables( eWiseLambda eWiseLambda.cpp
+	BACKENDS reference reference_omp hyperdags nonblocking
+)
+
 add_grb_executables( outer outer.cpp
 	BACKENDS reference reference_omp hyperdags nonblocking
 )
@@ -279,6 +306,18 @@ add_grb_executables( pinnedVector pinnedVector.cpp
 	BACKENDS reference reference_omp bsp1d hybrid hyperdags nonblocking
 )
 
+add_grb_executables( parallelRegularIterators parallelRegularIterators.cpp
+	BACKENDS reference reference_omp hyperdags nonblocking bsp1d hybrid
+)
+
+add_grb_executables( adapterIterator adapterIterator.cpp
+	BACKENDS reference reference_omp hyperdags nonblocking bsp1d hybrid
+)
+
+add_grb_executables( vectorFromListConstructor vectorFromListConstructor.cpp
+	BACKENDS reference reference_omp bsp1d hybrid hyperdags nonblocking
+)
+
 # the below targets test successfully when they compile -- they do not need to
 # be executed successfully as part of the unit test suite.
 
@@ -288,6 +327,25 @@ add_grb_executables( properties static_asserts/properties.cpp
 
 add_grb_executables( matrix_type static_asserts/matrix.cpp
 	BACKENDS reference reference_omp bsp1d hybrid hyperdags nonblocking
+)
+
+add_grb_executables( launch_benchmark_auto launcherAndBenchmarker.cpp
+	BACKENDS bsp1d hybrid
+	COMPILE_DEFINITIONS DISTRIBUTED_EXECUTION
+)
+
+add_grb_executables( launch_benchmark_auto launcherAndBenchmarker.cpp
+	BACKENDS reference reference_omp hyperdags nonblocking
+)
+
+add_grb_executables( launch_benchmark_frommpi_manual launcherAndBenchmarker.cpp
+	BACKENDS bsp1d hybrid
+	COMPILE_DEFINITIONS DISTRIBUTED_EXECUTION NO_LPF_AUTO_INIT
+)
+
+add_grb_executables( launch_benchmark_frommpi_manual launcherAndBenchmarker.cpp
+	BACKENDS reference reference_omp hyperdags nonblocking
+	COMPILE_DEFINITIONS NO_LPF_AUTO_INIT
 )
 
 # targets to list and build the test for this category

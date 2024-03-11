@@ -20,7 +20,7 @@
  * @date 29th of March, 2022
  */
 
-#include <graphblas.hpp>
+#include <graphblas/reference/io.hpp>
 
 
 namespace grb {

@@ -22,7 +22,7 @@
 #include <sstream>
 #include <stdexcept>
 
-#include "graphblas/SynchronizedNonzeroIterator.hpp"
+#include "graphblas/synchronizedNonzeroIterator.hpp"
 
 
 /**

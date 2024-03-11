@@ -20,8 +20,8 @@
  * @date 25th of May, 2017
  */
 
-#ifndef _H_MATRIXFILEREADERBASE
-#define _H_MATRIXFILEREADERBASE
+#ifndef _H_GRB_UTILS_MATRIXFILEREADER_BASE
+#define _H_GRB_UTILS_MATRIXFILEREADER_BASE
 
 #include <exception>
 #include <fstream>
@@ -32,7 +32,7 @@
 
 #include <sys/stat.h> //C-style stat, used to check file existance
 
-#include "MatrixFileProperties.hpp"
+#include "matrixFileProperties.hpp"
 
 
 namespace grb {
@@ -172,7 +172,8 @@ namespace grb {
 								// parse first non-comment non-header line
 								std::istringstream iss( line );
 								// set defaults
-								properties._m = properties._n = properties._nz = properties._entries = 0;
+								properties._m = properties._n = properties._nz = properties._entries =
+									0;
 								if( !(iss >> properties._m >> properties._n >> properties._entries) ) {
 									// could not read length line-- let a non-mtx parser try
 									mmfile = false;
@@ -380,5 +381,5 @@ namespace grb {
 
 } // namespace grb
 
-#endif // end ``_H_MATRIXFILEREADERBASE''
+#endif // end ``_H_GRB_UTILS_MATRIXFILEREADER_BASE''
 

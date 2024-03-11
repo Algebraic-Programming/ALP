@@ -25,8 +25,8 @@
 
 #include "graphblas.hpp"
 
-using namespace grb;
 
+using namespace grb;
 
 struct output {
 	int exit_code;
@@ -39,24 +39,28 @@ struct input {
 
 void grbProgram( const struct input &in, struct output &out ) {
 
-	grb::utils::MatrixFileReader< double, size_t > parser( in.filename, in.direct );
+	grb::utils::MatrixFileReader< double, size_t > parser(
+		in.filename, in.direct );
 	const size_t m = parser.m();
 	const size_t n = parser.n();
 	grb::Matrix< double > A( m, n );
 	grb::Vector< double > x( m ), y( n );
 
-	RC return_code = grb::buildMatrixUnique( A, parser.begin(), parser.end(), SEQUENTIAL );
+	RC return_code = grb::buildMatrixUnique( A, parser.begin(), parser.end(),
+		SEQUENTIAL );
 
 	return_code = grb::set( x, 1 );
 	if( return_code != SUCCESS ) {
-		std::cerr << "grb::set (on x) returns bad error code (" << ((int)return_code) << ").\n";
+		std::cerr << "grb::set (on x) returns bad error code ("
+			<< grb::toString( return_code ) << ").\n";
 		out.exit_code = 1;
 		return;
 	}
 
 	return_code = grb::set( y, 2 );
 	if( return_code != SUCCESS ) {
-		std::cerr << "grb::set (on y) returns bad error code (" << ((int)return_code) << ").\n";
+		std::cerr << "grb::set (on y) returns bad error code ("
+			<< grb::toString( return_code ) << ").\n";
 		out.exit_code = 2;
 		return;
 	}
@@ -68,7 +72,8 @@ void grbProgram( const struct input &in, struct output &out ) {
 
 	return_code = grb::vxm< grb::descriptors::no_operation >( y, x, A, reals );
 	if( return_code != SUCCESS ) {
-		std::cerr << "grb::vxm returns bad error code (" << ((int)return_code) << ").\n";
+		std::cerr << "grb::vxm returns bad error code ("
+			<< grb::toString( return_code ) << ").\n";
 		out.exit_code = 3;
 		return;
 	}
@@ -108,17 +113,18 @@ int main( int argc, char ** argv ) {
 	struct input in;
 	struct output out;
 
-	(void)strncpy( in.filename, argv[ 1 ], 1023 );
+	(void) strncpy( in.filename, argv[ 1 ], 1023 );
 	in.filename[ 1023 ] = '\0';
 
 	grb::Launcher< AUTOMATIC > automatic_launcher;
 
-	if( automatic_launcher.exec( &grbProgram, in, out ) != SUCCESS ) {
+	if( automatic_launcher.exec( &grbProgram, in, out, true ) != SUCCESS ) {
 		std::cout << "Test FAILED (launcher did not return SUCCESS).\n" << std::endl;
 		return EXIT_FAILURE;
 	}
 
 	if( out.exit_code != 0 ) {
+		std::cerr << std::flush;
 		std::cout << "Test FAILED (program returned non-zero exit code "
 			<< out.exit_code << "\n" << std::endl;
 	} else {

@@ -30,7 +30,8 @@
 #include <inttypes.h>
 
 #include "graphblas/algorithms/label.hpp"
-#include "graphblas/utils/Timer.hpp"
+
+#include "graphblas/utils/timer.hpp"
 
 #include "graphblas.hpp"
 
@@ -78,11 +79,12 @@ bool init_input( const struct input & data_in ) {
 	J = new size_t[ nz ];
 
 	size_t level = 0,
-		   levels = (size_t)log2( l ); // current tree level and total levels
+		   levels = (size_t) log2( l ); // current tree level and total levels
 	size_t edge = 0,
 		   edges = l; // current edge at this level and total edges at this level
 	for( size_t e = 0; e < ( nz / 2 ); e++ ) {
-		size_t dst = ( e & ~0x01 ) + pow( 2.0, ( levels - level ) ) - floor( edge / 2 );
+		size_t dst = ( e & ~0x01 ) + pow( 2.0, ( levels - level ) )
+			- floor( edge / 2 );
 		I[ e ] = e;
 		J[ e ] = dst;
 		weights[ e ] = 1.0;
@@ -90,12 +92,12 @@ bool init_input( const struct input & data_in ) {
 		I[ e_other ] = dst;
 		J[ e_other ] = e;
 		weights[ e_other ] = 1.0;
-		edge++;
+		(void) ++edge;
 		// update counters when we come to the end of the current tree level
 		if( edge == edges ) {
 			edge = 0;
 			edges = edges / 2;
-			level++;
+			(void) ++level;
 		}
 	}
 
@@ -104,10 +106,10 @@ bool init_input( const struct input & data_in ) {
 
 void free_input() {
 	// clean up datasets
-	delete[] labels;
-	delete[] weights;
-	delete[] I;
-	delete[] J;
+	delete [] labels;
+	delete [] weights;
+	delete [] I;
+	delete [] J;
 }
 
 // main label propagation algorithm
@@ -179,7 +181,7 @@ int main( int argc, char ** argv ) {
 
 	grb::Launcher< AUTOMATIC > launcher;
 
-	enum grb::RC rc = launcher.exec( &grbProgram, in, out );
+	enum grb::RC rc = launcher.exec( &grbProgram, in, out, true );
 	if( rc != SUCCESS ) {
 		std::cerr << "launcher.exec returns with non-SUCCESS error code "
 			<< toString(rc) << std::endl;
@@ -190,10 +192,11 @@ int main( int argc, char ** argv ) {
 
 	// done
 	if( out.error_code != SUCCESS ) {
-		std::cout << "Test FAILED\n\n";
+		std::cerr << std::flush;
+		std::cout << "Test FAILED\n" << std::endl;
 		return 1;
 	}
-	std::cout << "Test OK\n\n";
+	std::cout << "Test OK\n" << std::endl;
 	return 0;
 }
 

@@ -5,3 +5,7 @@ doxygen.log
 /lib/
 flags.mk
 paths.mk
+[Bb]uild*/
+[Oo]bj*/
+[Ii]nstall*/
+cmake-build-*/

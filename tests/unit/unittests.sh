@@ -61,6 +61,24 @@ for MODE in ${MODES}; do
 		fi
 		echo " "
 
+		echo ">>>      [x]           [ ]       Tests the IteratorFilter utility on tiny inputs"
+		${TEST_BIN_DIR}/iteratorFilter_${MODE} 3 &> ${TEST_OUT_DIR}/iteratorFilter_${MODE}_tiny.log
+		head -1 ${TEST_OUT_DIR}/iteratorFilter_${MODE}_tiny.log
+		grep 'Test OK' ${TEST_OUT_DIR}/iteratorFilter_${MODE}_tiny.log || echo "Test FAILED"
+		echo " "
+
+		echo ">>>      [x]           [ ]       Tests the IteratorFilter utility on default input"
+		${TEST_BIN_DIR}/iteratorFilter_${MODE} &> ${TEST_OUT_DIR}/iteratorFilter_${MODE}.log
+		head -1 ${TEST_OUT_DIR}/iteratorFilter_${MODE}.log
+		grep 'Test OK' ${TEST_OUT_DIR}/iteratorFilter_${MODE}.log || echo "Test FAILED"
+		echo " "
+
+		echo ">>>      [x]           [ ]       Tests the IteratorFilter utility on large inputs"
+		${TEST_BIN_DIR}/iteratorFilter_${MODE} 7013 &> ${TEST_OUT_DIR}/iteratorFilter_${MODE}_large.log
+		head -1 ${TEST_OUT_DIR}/iteratorFilter_${MODE}_large.log
+		grep 'Test OK' ${TEST_OUT_DIR}/iteratorFilter_${MODE}_large.log || echo "Test FAILED"
+		echo " "
+
 		echo ">>>      [x]           [ ]       Tests the built-in parser (in graphblas/utils/parser.hpp)"
 		echo "                                 versus the parser in tests/parser.cpp on cit-HepTh.txt."
 		if [ -f ${INPUT_DIR}/cit-HepTh.txt ]; then
@@ -172,6 +190,38 @@ for MODE in ${MODES}; do
 				fi
 				echo "#################################################################"
 				echo " "
+
+				# test utilities first, as some other unit tests depend on them
+
+				echo ">>>      [x]           [ ]       Testing parallel iterators of the grb::utils Range and"
+				echo "                                 ConstantVector containers"
+				$runner ${TEST_BIN_DIR}/parallelRegularIterators_${MODE}_${BACKEND} &> ${TEST_OUT_DIR}/parallelRegularIterators_${MODE}_${BACKEND}_${P}_${T}.log
+				head -1 ${TEST_OUT_DIR}/parallelRegularIterators_${MODE}_${BACKEND}_${P}_${T}.log
+				grep 'Test OK' ${TEST_OUT_DIR}/parallelRegularIterators_${MODE}_${BACKEND}_${P}_${T}.log || echo "Test FAILED"
+				echo " "
+
+				echo ">>>      [x]           [ ]       Testing the adapter iterator from grb::utils::iterators"
+				$runner ${TEST_BIN_DIR}/adapterIterator_${MODE}_${BACKEND} &> ${TEST_OUT_DIR}/adapterIterator_${MODE}_${BACKEND}_${P}_${T}.log
+				head -1 ${TEST_OUT_DIR}/adapterIterator_${MODE}_${BACKEND}_${P}_${T}.log
+				grep 'Test OK' ${TEST_OUT_DIR}/adapterIterator_${MODE}_${BACKEND}_${P}_${T}.log || echo "Test FAILED"
+				echo " "
+
+				# test buildMatrix and factory first, as other unit tests depend on them
+
+				echo ">>>      [x]           [ ]       Testing building a matrix via input iterators"
+				echo "                                 both sequentially and in parallel"
+				$runner ${TEST_BIN_DIR}/buildMatrixUnique_${MODE}_${BACKEND} &> ${TEST_OUT_DIR}/buildMatrixUnique_${MODE}_${BACKEND}_${P}_${T}.log
+				head -1 ${TEST_OUT_DIR}/buildMatrixUnique_${MODE}_${BACKEND}_${P}_${T}.log
+				grep 'Test OK' ${TEST_OUT_DIR}/buildMatrixUnique_${MODE}_${BACKEND}_${P}_${T}.log || echo "Test FAILED"
+				echo " "
+
+				echo ">>>      [x]           [ ]       Testing grb::factories."
+				$runner ${TEST_BIN_DIR}/factories_${MODE}_${BACKEND} &> ${TEST_OUT_DIR}/factories_${MODE}_${BACKEND}_${P}_${T}
+				head -1 ${TEST_OUT_DIR}/factories_${MODE}_${BACKEND}_${P}_${T}
+				grep 'Test OK' ${TEST_OUT_DIR}/factories_${MODE}_${BACKEND}_${P}_${T} || echo "Test FAILED"
+				echo " "
+
+				# order of unit tests below here should not matter / matter less
 
 				echo ">>>      [x]           [ ]       Testing grb::id on vectors and matrices"
 				$runner ${TEST_BIN_DIR}/id_${MODE}_${BACKEND} &> ${TEST_OUT_DIR}/id_${MODE}_${BACKEND}_${P}_${T}.log
@@ -349,11 +399,18 @@ for MODE in ${MODES}; do
 				head -1 ${TEST_OUT_DIR}/muladd_large_${MODE}_${BACKEND}_${P}_${T}
 				grep 'Test OK' ${TEST_OUT_DIR}/muladd_large_${MODE}_${BACKEND}_${P}_${T} || echo "Test FAILED"
 				echo " "
+
 				echo ">>>      [x]           [ ]       Testing grb::buildVector and"
 				echo "                                 grb::buildVectorUnique"
 				$runner ${TEST_BIN_DIR}/buildVector_${MODE}_${BACKEND} &> ${TEST_OUT_DIR}/buildVector_${MODE}_${BACKEND}_${P}_${T}.log
 				head -1 ${TEST_OUT_DIR}/buildVector_${MODE}_${BACKEND}_${P}_${T}.log
 				grep 'Test OK' ${TEST_OUT_DIR}/buildVector_${MODE}_${BACKEND}_${P}_${T}.log || echo "Test FAILED"
+				echo " "
+
+				echo ">>>      [x]           [ ]       Testing grb::Vector( initializer_list ) constructor"
+				$runner ${TEST_BIN_DIR}/vectorFromListConstructor_${MODE}_${BACKEND} &> ${TEST_OUT_DIR}/vectorFromListConstructor_${MODE}_${BACKEND}_${P}_${T}.log
+				head -1 ${TEST_OUT_DIR}/vectorFromListConstructor_${MODE}_${BACKEND}_${P}_${T}.log
+				grep 'Test OK' ${TEST_OUT_DIR}/vectorFromListConstructor_${MODE}_${BACKEND}_${P}_${T}.log || echo "Test FAILED"
 				echo " "
 
 				echo ">>>      [x]           [ ]       Testing grb::vectorToMatrixConverter"
@@ -396,6 +453,12 @@ for MODE in ${MODES}; do
 				$runner ${TEST_BIN_DIR}/matrixSet_${MODE}_${BACKEND} 2> ${TEST_OUT_DIR}/matrixSet_${MODE}_${BACKEND}_${P}_${T}.err 1> ${TEST_OUT_DIR}/matrixSet_${MODE}_${BACKEND}_${P}_${T}.log
 				head -1 ${TEST_OUT_DIR}/matrixSet_${MODE}_${BACKEND}_${P}_${T}.log
 				echo "Test OK" ${TEST_OUT_DIR}/matrixSet_${MODE}_${BACKEND}_${P}_${T}.log || echo "Test FAILED"
+				echo " "
+
+				echo ">>>      [x]           [ ]       Testing grb::foldl+r (scalar, matrix, [mask], monoid)"
+				$runner ${TEST_BIN_DIR}/fold_matrix_to_scalar_${MODE}_${BACKEND} 2> ${TEST_OUT_DIR}/fold_matrix_to_scalar_${MODE}_${BACKEND}_${P}_${T}.err 1> ${TEST_OUT_DIR}/fold_matrix_to_scalar_${MODE}_${BACKEND}_${P}_${T}.log
+				head -1 ${TEST_OUT_DIR}/fold_matrix_to_scalar_${MODE}_${BACKEND}_${P}_${T}.log
+				echo "Test OK" ${TEST_OUT_DIR}/fold_matrix_to_scalar_${MODE}_${BACKEND}_${P}_${T}.log || echo "Test FAILED"
 				echo " "
 
 				echo ">>>      [x]           [ ]       Tests the \`level-0' grb::collectives"
@@ -534,13 +597,6 @@ for MODE in ${MODES}; do
 				grep 'Test OK' ${TEST_OUT_DIR}/wait_large_${MODE}_${BACKEND}_${P}_${T}.log || echo "Test FAILED"
 				echo " "
 
-				echo ">>>      [x]           [ ]       Testing building a matrix via input iterators"
-				echo "                                 both sequentially and in parallel"
-				$runner ${TEST_BIN_DIR}/buildMatrixUnique_${MODE}_${BACKEND} &> ${TEST_OUT_DIR}/buildMatrixUnique_${MODE}_${BACKEND}_${P}_${T}.log
-				head -1 ${TEST_OUT_DIR}/buildMatrixUnique_${MODE}_${BACKEND}_${P}_${T}.log
-				grep 'Test OK' ${TEST_OUT_DIR}/buildMatrixUnique_${MODE}_${BACKEND}_${P}_${T}.log || echo "Test FAILED"
-				echo " "
-
 				echo ">>>      [x]           [ ]       Testing grb::eWiseApply using + on matrices"
 				$runner ${TEST_BIN_DIR}/eWiseApply_matrix_${MODE}_${BACKEND} &> ${TEST_OUT_DIR}/eWiseApply_matrix_${MODE}_${BACKEND}_${P}_${T}
 				head -1 ${TEST_OUT_DIR}/eWiseApply_matrix_${MODE}_${BACKEND}_${P}_${T}
@@ -558,6 +614,18 @@ for MODE in ${MODES}; do
 				$runner ${TEST_BIN_DIR}/zip_${MODE}_${BACKEND} 10000000 &> ${TEST_OUT_DIR}/zip_large_${MODE}_${BACKEND}_${P}_${T}
 				head -1 ${TEST_OUT_DIR}/zip_large_${MODE}_${BACKEND}_${P}_${T}
 				grep 'Test OK' ${TEST_OUT_DIR}/zip_large_${MODE}_${BACKEND}_${P}_${T} || echo "Test FAILED"
+				echo " "
+
+				echo ">>>      [x]           [ ]       Testing grb::select on matrices of integers and of size 3"
+				$runner ${TEST_BIN_DIR}/selectMatrix_${MODE}_${BACKEND} 3 &> ${TEST_OUT_DIR}/selectMatrix_${MODE}_${BACKEND}_${P}_${T}_3
+				head -1 ${TEST_OUT_DIR}/selectMatrix_${MODE}_${BACKEND}_${P}_${T}_3
+				grep 'Test OK' ${TEST_OUT_DIR}/selectMatrix_${MODE}_${BACKEND}_${P}_${T}_3 || echo "Test FAILED"
+				echo " "
+
+				echo ">>>      [x]           [ ]       Testing grb::select on matrices of integers and of size 5'000"
+				$runner ${TEST_BIN_DIR}/selectMatrix_${MODE}_${BACKEND} 5000 &> ${TEST_OUT_DIR}/selectMatrix_${MODE}_${BACKEND}_${P}_${T}
+				head -1 ${TEST_OUT_DIR}/selectMatrix_${MODE}_${BACKEND}_${P}_${T}
+				grep 'Test OK' ${TEST_OUT_DIR}/selectMatrix_${MODE}_${BACKEND}_${P}_${T} || echo "Test FAILED"
 				echo " "
 
 				echo ">>>      [x]           [ ]       Testing copy-constructor of square pattern matrices"
@@ -579,6 +647,12 @@ for MODE in ${MODES}; do
 				$runner ${TEST_BIN_DIR}/mxm_${MODE}_${BACKEND} &> ${TEST_OUT_DIR}/mxm_${MODE}_${BACKEND}_${P}_${T}.log
 				head -1 ${TEST_OUT_DIR}/mxm_${MODE}_${BACKEND}_${P}_${T}.log
 				grep 'Test OK' ${TEST_OUT_DIR}/mxm_${MODE}_${BACKEND}_${P}_${T}.log || echo "Test FAILED"
+				echo " "
+
+				echo ">>>      [x]           [ ]       Testing grb::eWiseLambda on a small matrix"
+				$runner ${TEST_BIN_DIR}/eWiseLambda_${MODE}_${BACKEND} &> ${TEST_OUT_DIR}/eWiseLambda_${MODE}_${BACKEND}_${P}_${T}.log
+				head -1 ${TEST_OUT_DIR}/eWiseLambda_${MODE}_${BACKEND}_${P}_${T}.log
+				grep 'Test OK' ${TEST_OUT_DIR}/eWiseLambda_${MODE}_${BACKEND}_${P}_${T}.log || echo "Test FAILED"
 				echo " "
 
 				echo ">>>      [x]           [ ]       Testing grb::outer on a small matrix"
@@ -645,6 +719,14 @@ for MODE in ${MODES}; do
 				fi
 				echo " "
 
+				echo ">>>      [x]           [ ]       Testing Launcher and Benchmarker, AUTOMATIC mode."
+				test_name=launch_benchmark_auto_${MODE}_${BACKEND}
+				test_log=${TEST_OUT_DIR}/${test_name}_${P}_${T}.log
+				$runner ${TEST_BIN_DIR}/${test_name} &> ${test_log}
+				head -1 ${test_log}
+				grep -i 'Test OK' ${test_log} || echo "Test FAILED"
+				echo " "
+
 				#if [ "$BACKEND" = "reference_omp" ]; then
 				#	echo "Additional standardised unit tests not yet supported for the ${BACKEND} backend"
 				#	echo
@@ -653,15 +735,53 @@ for MODE in ${MODES}; do
 
 				#none here: all unit tests are operational for reference_omp
 
+				if [ "$BACKEND" = "bsp1d" ] || [ "$BACKEND" = "hybrid" ]; then
+					echo ">>>      [x]           [ ]       Testing Launcher and Benchmarker, FROM_MPI mode for distributed backends."
+					test_name=launch_benchmark_frommpi_manual_${MODE}_${BACKEND}
+					test_log=${TEST_OUT_DIR}/launch_benchmark_frommpi_${MODE}_${BACKEND}_${P}_${T}.log
+					$runner ${TEST_BIN_DIR}/${test_name} &> ${test_log}
+					head -1 ${test_log}
+					grep -i 'Test OK' ${test_log} || echo "Test FAILED"
+					echo " "
+				else
+					echo ">>>      [x]           [ ]       Testing Launcher and Benchmarker, MANUAL mode for shared-memory backends."
+					test_log=${TEST_OUT_DIR}/launch_benchmark_manual_${MODE}_${BACKEND}_${P}_${T}.log
+					$runner ${TEST_BIN_DIR}/launch_benchmark_frommpi_manual_${MODE}_${BACKEND} localhost 77770 1 0 &> ${test_log}
+					head -1 ${test_log}
+					grep -i 'Test OK' ${test_log} || echo "Test FAILED"
+					echo " "
+				fi
+
 			done
+
 		done
+
+		if [ "$BACKEND" = "bsp1d" ] || [ "$BACKEND" = "hybrid" ]; then
+			echo ">>>      [x]           [ ]       Testing Launcher and Benchmarker, MANUAL mode for distributed backends."
+			test_name=launch_benchmark_frommpi_manual_${MODE}_${BACKEND}
+			test_log=${TEST_OUT_DIR}/launch_benchmark_manual_${MODE}_${BACKEND}.log
+			bash -c "${MANUALRUN} ${TEST_BIN_DIR}/${test_name} localhost 77770 4 0 &> ${test_log}.0 & \
+				${MANUALRUN} ${TEST_BIN_DIR}/${test_name} localhost 77770 4 3 &> ${test_log}.3 & \
+				${MANUALRUN} ${TEST_BIN_DIR}/${test_name} localhost 77770 4 1 &> ${test_log}.1 & \
+				${MANUALRUN} ${TEST_BIN_DIR}/${test_name} localhost 77770 4 2 &> ${test_log}.2 & \
+				wait"
+			head -1 ${test_log}.0
+			(grep -q 'Test OK' ${test_log}.1 && grep -q 'Test OK' ${test_log}.2 && grep -q 'Test OK' ${test_log}.3 \
+				&& grep -q 'Test OK' ${test_log}.0 && printf "Test OK.\n\n") || (printf "Test FAILED.\n\n")
+		fi
 
 		if [ "$BACKEND" = "bsp1d" ]; then
 			echo "Additional unit tests for the BSP1D backend:"
 			echo " "
-			echo ">>>      [x]           [ ]       Testing BSP1D distribution for a vector of size 100000"
+			echo ">>>      [x]           [ ]       Testing BSP1D distribution for a vector of size 100 000"
 			echo " "
 			${TEST_BIN_DIR}/distribution_bsp1d_${MODE}
+
+			echo ">>>      [x]           [ ]       Testing BSP1D distribution for an identity matrix of size"
+			echo "                                 7777 x 7777. The test evaluates whether the internal data"
+			echo "                                 structures match the BSP1D distribution"
+			echo " "
+			${TEST_BIN_DIR}/distribution_matrix_bsp1d_${MODE} 7777
 
 			echo ">>>      [x]           [ ]       Testing dense vector times matrix using the double (+,*)"
 			echo "                                 semiring where matrix elements are doubles and vector"

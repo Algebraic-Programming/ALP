@@ -60,7 +60,8 @@ namespace grb {
 	) {
 		const RC ret = eWiseApply< descr >(
 			internal::getMatrix( C ),
-			internal::getMatrix( A ), internal::getMatrix( B ),
+			internal::getMatrix( A ),
+			internal::getMatrix( B ),
 			mulmono, phase
 		);
 		if( ret != SUCCESS ) { return ret; }
@@ -105,7 +106,8 @@ namespace grb {
 	) {
 		const RC ret = eWiseApply< descr >(
 			internal::getMatrix( C ),
-			internal::getMatrix( A ), internal::getMatrix( B ),
+			internal::getMatrix( A ),
+			internal::getMatrix( B ),
 			mulOp, phase
 		);
 		if( ret != SUCCESS ) { return ret; }
@@ -325,6 +327,266 @@ namespace grb {
 		std::array< uintptr_t, 1 > destinations{ getID( internal::getMatrix(A) ) };
 		internal::hyperdags::generator.addOperation(
 			internal::hyperdags::ZIP_MATRIX_VECTOR_VECTOR,
+			sourcesP.begin(), sourcesP.end(),
+			sourcesC.begin(), sourcesC.end(),
+			destinations.begin(), destinations.end()
+		);
+		return ret;
+	}
+
+	template<
+		Descriptor descr = descriptors::no_operation,
+		class Operator,
+		typename Tin,
+		typename RITin, typename CITin, typename NITin,
+		typename Tout,
+		typename RITout, typename CITout, typename NITout
+	>
+	RC select(
+		Matrix< Tout, hyperdags, RITout, CITout, NITout > &out,
+		const Matrix< Tin, hyperdags, RITin, CITin, NITin > &in,
+		const Operator &op = Operator(),
+		const Phase &phase = EXECUTE,
+		const typename std::enable_if<
+			!is_object< Tin >::value &&
+			!is_object< Tout >::value
+		>::type * const = nullptr
+	) {
+		const RC ret = select< descr >(
+			internal::getMatrix( out ),
+			internal::getMatrix( in ),
+			op,
+			phase
+		);
+		if( ret != SUCCESS ) { return ret; }
+		if( phase != EXECUTE ) { return ret; }
+		if( nrows( out ) == 0 || ncols( out ) == 0 ) { return ret; }
+		std::array< const void *, 0 > sourcesP{};
+		std::array< uintptr_t, 2 > sourcesC{
+			getID( internal::getMatrix( in ) ),
+			getID( internal::getMatrix( out ) )
+		};
+		std::array< uintptr_t, 1 > destinations{
+			getID( internal::getMatrix( out ) )
+		};
+		internal::hyperdags::generator.addOperation(
+			internal::hyperdags::SELECT_MATRIX_MATRIX,
+			sourcesP.begin(), sourcesP.end(),
+			sourcesC.begin(), sourcesC.end(),
+			destinations.begin(), destinations.end()
+		);
+		return ret;
+	}
+
+	template<
+		Descriptor descr = descriptors::no_operation,
+		class MonoidOrSemiring,
+		typename InputType, typename IOType, typename MaskType,
+		typename RIT_A, typename CIT_A, typename NIT_A,
+		typename RIT_M, typename CIT_M, typename NIT_M
+	>
+	RC foldr(
+		const Matrix< InputType, hyperdags, RIT_A, CIT_A, NIT_A > &A,
+		const Matrix< MaskType, hyperdags, RIT_M, CIT_M, NIT_M > &mask,
+		IOType &x,
+		const MonoidOrSemiring &algebra = MonoidOrSemiring(),
+		const typename std::enable_if<
+			!grb::is_object< IOType >::value &&
+			!grb::is_object< InputType >::value &&
+			!grb::is_object< MaskType >::value && (
+				grb::is_monoid< MonoidOrSemiring >::value ||
+				grb::is_semiring< MonoidOrSemiring >::value
+			), void
+		>::type * const = nullptr
+	) {
+#ifdef _DEBUG
+		std::cout << "In grb::foldr( hyperdags, mask, matrix, monoid/semiring )\n";
+#endif
+
+		if( nrows( A ) == 0 || ncols( A ) == 0 || nnz( A ) == 0 || nnz( mask ) == 0 ) {
+#ifdef _DEBUG
+			std::cout << "Empty matrix, nothing to compute\n";
+#endif
+			return SUCCESS;
+		}
+
+		const RC ret = foldr< descr, MonoidOrSemiring >(
+			internal::getMatrix( A ), internal::getMatrix( mask ), x, algebra
+		);
+		if( ret != SUCCESS ) {
+			return ret;
+		}
+
+		internal::hyperdags::generator.addSource( internal::hyperdags::SCALAR, &x );
+		std::array< const void *, 1 > sourcesP{ &x };
+		std::array< uintptr_t, 2 > sourcesC{
+			getID( internal::getMatrix(A) ),
+			getID( internal::getMatrix(mask) )
+		};
+		std::array< uintptr_t, 0 > destinations{};
+		// NOTE scalar output is ignored
+		// std::array< uintptr_t, 1 > destinations{ &x };
+		internal::hyperdags::generator.addOperation(
+			internal::hyperdags::FOLDR_SCALAR_MATRIX_MASK_MONOID,
+			sourcesP.begin(), sourcesP.end(),
+			sourcesC.begin(), sourcesC.end(),
+			destinations.begin(), destinations.end()
+		);
+		return ret;
+	}
+
+	template<
+		Descriptor descr = descriptors::no_operation,
+		class MonoidOrSemiring,
+		typename InputType, typename IOType,
+		typename RIT, typename CIT, typename NIT
+	>
+	RC foldr(
+		const Matrix< InputType, hyperdags, RIT, CIT, NIT > &A,
+		IOType &x,
+		const MonoidOrSemiring &algebra = MonoidOrSemiring(),
+		const typename std::enable_if<
+			!grb::is_object< IOType >::value &&
+			!grb::is_object< InputType >::value && (
+				grb::is_monoid< MonoidOrSemiring >::value ||
+				grb::is_semiring< MonoidOrSemiring >::value
+			), void
+		>::type * const = nullptr
+	) {
+#ifdef _DEBUG
+		std::cout << "In grb::foldr( hyperdags, matrix, monoid/semiring )\n";
+#endif
+
+		if( nrows( A ) == 0 || ncols( A ) == 0 || nnz( A ) == 0 ) {
+#ifdef _DEBUG
+			std::cout << "Empty matrix, nothing to compute\n";
+#endif
+			return SUCCESS;
+		}
+
+		const RC ret = foldr< descr, MonoidOrSemiring >(
+			internal::getMatrix( A ), x, algebra
+		);
+		if( ret != SUCCESS ) {
+			return ret;
+		}
+
+		internal::hyperdags::generator.addSource( internal::hyperdags::SCALAR, &x );
+		std::array< const void *, 1 > sourcesP{ &x };
+		std::array< uintptr_t, 1 > sourcesC{ getID( internal::getMatrix(A) ) };
+		std::array< uintptr_t, 0 > destinations{};
+		// NOTE scalar output is ignored
+		// std::array< uintptr_t, 1 > destinations{ &x };
+		internal::hyperdags::generator.addOperation(
+			internal::hyperdags::FOLDR_SCALAR_MATRIX_MONOID,
+			sourcesP.begin(), sourcesP.end(),
+			sourcesC.begin(), sourcesC.end(),
+			destinations.begin(), destinations.end()
+		);
+		return ret;
+	}
+
+	template<
+		Descriptor descr = descriptors::no_operation,
+		class MonoidOrSemiring,
+		typename InputType, typename IOType, typename MaskType,
+		typename RIT_A, typename CIT_A, typename NIT_A,
+		typename RIT_M, typename CIT_M, typename NIT_M
+	>
+	RC foldl(
+		IOType &x,
+		const Matrix< InputType, hyperdags, RIT_A, CIT_A, NIT_A > &A,
+		const Matrix< MaskType, hyperdags, RIT_M, CIT_M, NIT_M > &mask,
+		const MonoidOrSemiring &algebra = MonoidOrSemiring(),
+		const typename std::enable_if<
+			!grb::is_object< IOType >::value &&
+			!grb::is_object< InputType >::value &&
+			!grb::is_object< MaskType >::value && (
+				grb::is_monoid< MonoidOrSemiring >::value ||
+				grb::is_semiring< MonoidOrSemiring >::value
+			), void
+		>::type * const = nullptr
+	) {
+#ifdef _DEBUG
+		std::cout << "In grb::foldl( hyperdags, mask, matrix, monoid/semiring )\n";
+#endif
+
+		if( nrows( A ) == 0 || ncols( A ) == 0 || nnz( A ) == 0 || nnz( mask ) == 0 ) {
+#ifdef _DEBUG
+			std::cout << "Empty matrix, nothing to compute\n";
+#endif
+			return SUCCESS;
+		}
+
+		const RC ret = foldl< descr, MonoidOrSemiring >(
+			x, internal::getMatrix( A ), internal::getMatrix( mask ), algebra
+		);
+		if( ret != SUCCESS ) {
+			return ret;
+		}
+
+		internal::hyperdags::generator.addSource( internal::hyperdags::SCALAR, &x );
+		std::array< const void *, 1 > sourcesP{ &x };
+		std::array< uintptr_t, 2 > sourcesC{
+			getID( internal::getMatrix(A) ),
+			getID( internal::getMatrix(mask) )
+		};
+		std::array< uintptr_t, 0 > destinations{};
+		// NOTE scalar output is ignored
+		// std::array< uintptr_t, 1 > destinations{ &x };
+		internal::hyperdags::generator.addOperation(
+			internal::hyperdags::FOLDL_SCALAR_MATRIX_MASK_MONOID,
+			sourcesP.begin(), sourcesP.end(),
+			sourcesC.begin(), sourcesC.end(),
+			destinations.begin(), destinations.end()
+		);
+		return ret;
+	}
+
+	template<
+		Descriptor descr = descriptors::no_operation,
+		class MonoidOrSemiring,
+		typename InputType, typename IOType,
+		typename RIT, typename CIT, typename NIT
+	>
+	RC foldl(
+		IOType &x,
+		const Matrix< InputType, hyperdags, RIT, CIT, NIT > &A,
+		const MonoidOrSemiring &algebra,
+		const typename std::enable_if<
+			!grb::is_object< IOType >::value &&
+			!grb::is_object< InputType >::value && (
+				grb::is_monoid< MonoidOrSemiring >::value ||
+				grb::is_semiring< MonoidOrSemiring >::value
+			), void
+		>::type * const = nullptr
+	) {
+#ifdef _DEBUG
+		std::cout << "In grb::foldl( hyperdags, matrix, monoid/semiring )\n";
+#endif
+
+		if( nrows( A ) == 0 || ncols( A ) == 0 || nnz( A ) == 0 ) {
+#ifdef _DEBUG
+			std::cout << "Empty matrix, nothing to compute\n";
+#endif
+			return SUCCESS;
+		}
+
+		const RC ret = foldl< descr, MonoidOrSemiring >(
+			x, internal::getMatrix( A ), algebra
+		);
+		if( ret != SUCCESS ) {
+			return ret;
+		}
+
+		internal::hyperdags::generator.addSource( internal::hyperdags::SCALAR, &x );
+		std::array< const void *, 1 > sourcesP{ &x };
+		std::array< uintptr_t, 1 > sourcesC{ getID( internal::getMatrix(A) ) };
+		std::array< uintptr_t, 0 > destinations{};
+		// NOTE scalar output is ignored
+		// std::array< uintptr_t, 1 > destinations{ &x };
+		internal::hyperdags::generator.addOperation(
+			internal::hyperdags::FOLDL_SCALAR_MATRIX_MONOID,
 			sourcesP.begin(), sourcesP.end(),
 			sourcesC.begin(), sourcesC.end(),
 			destinations.begin(), destinations.end()

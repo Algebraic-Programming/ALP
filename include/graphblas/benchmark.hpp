@@ -45,7 +45,10 @@
 
 #ifdef _GRB_BACKEND
 namespace grb {
-	template< enum EXEC_MODE mode, enum Backend implementation = config::default_backend >
+	template<
+		enum EXEC_MODE mode,
+		enum Backend implementation = config::default_backend
+	>
 	class Benchmarker;
 }
 #endif
