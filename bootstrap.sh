@@ -80,6 +80,7 @@ the location where LPF is installed"
 	echo "                                        optional; default value is reference"
 	echo "                                        clashes with --no-hyperdags"
 	echo "  --no-nonblocking                    - disables the nonblocking backend"
+	echo "  --no-ascend                         - disables the ascend backend"
 	echo "  --[debug | coverage]-build          - build the project with debug | coverage options (tests will run much slower!)"
 	echo "  --generator=<value>                 - set the generator for CMake (otherwise use CMake's default)"
 	echo "  --show                              - show generation commands instead of running them"
@@ -102,6 +103,7 @@ reference=yes
 hyperdags=yes
 hyperdags_using=reference
 nonblocking=yes
+ascend=yes
 banshee=no
 lpf=no
 show=no
@@ -175,6 +177,9 @@ or assume default paths (--with-lpf)"
 			;;
 	--no-nonblocking)
 			nonblocking=no
+			;;
+	--no-ascend)
+			ascend=no
 			;;
 	--debug-build)
 			debug_build=yes
@@ -286,7 +291,7 @@ CURRENT_DIR="$(pwd)"
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"
 
 # CONFIGURE CMAKE BUILDING INFRASTRUCTURE
-if [[ "${reference}" == "yes" || "${lpf}" == "yes" || "${nonblocking}" == "yes" ]]; then
+if [[ "${reference}" == "yes" || "${lpf}" == "yes" || "${nonblocking}" == "yes" || "${ascend}" == "yes" ]]; then
 	BUILD_DIR="${CURRENT_DIR}"
 
 	printf "Checking for cmake..."
@@ -362,6 +367,9 @@ the current directory before invocation or confirm the deletion of its content w
 	fi
 	if [[ "${nonblocking}" == "no" ]]; then
 		CMAKE_OPTS+=" -DWITH_NONBLOCKING_BACKEND=OFF"
+	fi
+	if [[ "${ascend}" == "no" ]]; then
+		CMAKE_OPTS+=" -DWITH_ASCEND_BACKEND=OFF"
 	fi
 	if [[ "${lpf}" == "yes" ]]; then
 		CMAKE_OPTS+=" -DLPF_INSTALL_PATH='${ABSOLUTE_LPF_INSTALL_PATH}'"

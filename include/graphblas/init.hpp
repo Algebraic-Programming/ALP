@@ -36,6 +36,9 @@
 #ifdef _GRB_WITH_NONBLOCKING
  #include "graphblas/nonblocking/init.hpp"
 #endif
+#ifdef _GRB_WITH_ASCEND
+ #include "graphblas/ascend/init.hpp"
+#endif
 #ifdef _GRB_WITH_LPF
  #include "graphblas/bsp1d/init.hpp"
 #endif

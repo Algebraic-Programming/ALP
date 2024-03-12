@@ -726,7 +726,7 @@ build path, with
         set_target_properties( backend_example_static PROPERTIES ARCHIVE_OUTPUT_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/example_output_dir" )
         ```
 
-1. add the new library to the `libs` target, which allows users to compile all
+7. add the new library to the `libs` target, which allows users to compile all
 backend libraries at once
 
     ```cmake

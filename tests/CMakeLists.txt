@@ -125,6 +125,39 @@ if( WITH_NONBLOCKING_BACKEND )
 endif( WITH_NONBLOCKING_BACKEND )
 
 
+if( WITH_ASCEND_BACKEND )
+
+	assert_defined_targets( backend_shmem_static )
+
+	## ascend static
+	add_library( backend_ascend_static INTERFACE )
+	target_link_libraries( backend_ascend_static INTERFACE backend_shmem_static )
+	target_link_libraries( backend_ascend_static INTERFACE backend_ascend_headers )
+	target_compile_definitions( backend_ascend_static INTERFACE "${ASCEND_SELECTION_DEFS}" )
+
+	install( TARGETS backend_ascend_static
+		EXPORT GraphBLASTargets
+		ARCHIVE DESTINATION "${SHMEM_BACKEND_INSTALL_DIR}"
+	)
+
+	## ascend shared
+	add_library( backend_ascend_shared INTERFACE )
+	target_link_libraries( backend_ascend_shared INTERFACE backend_shmem_shared )
+	target_link_libraries( backend_ascend_shared INTERFACE backend_ascend_headers )
+	target_compile_definitions( backend_ascend_shared INTERFACE "${ASCEND_SELECTION_DEFS}" )
+
+	install( TARGETS backend_ascend_shared
+		EXPORT GraphBLASTargets
+		LIBRARY DESTINATION "${SHMEM_BACKEND_INSTALL_DIR}"
+	)
+
+	# this is an alias for add_grb_executables() to select the backend to link against
+	# DO NOT CHANGE THE ALIAS NAME!
+	add_library( "${ASCEND_BACKEND_DEFAULT_NAME}" ALIAS backend_ascend_static )
+
+endif( WITH_ASCEND_BACKEND )
+
+
 # library with utilities for tests, to be used optionally
 # i.e. NOT linked by default
 add_library( test_utils_headers INTERFACE )

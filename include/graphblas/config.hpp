@@ -35,6 +35,9 @@
 #ifdef _GRB_WITH_NONBLOCKING
  #include "graphblas/nonblocking/config.hpp"
 #endif
+#ifdef _GRB_WITH_ASCEND
+ #include "graphblas/ascend/config.hpp"
+#endif
 #ifdef _GRB_WITH_OMP
  #include "graphblas/omp/config.hpp"
 #endif

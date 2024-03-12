@@ -72,6 +72,15 @@
 #include "coordinates.hpp"
 
 
+// TODO ugly hack, fwd declare ALP::internal::OpGen
+namespace alp {
+	template< size_t process_order, size_t problem_order >
+	class Grid;
+	namespace internal {
+		class OpGen;
+	}
+}
+
 namespace grb {
 
 	namespace internal {
@@ -105,6 +114,11 @@ namespace grb {
 		 */
 		class Pipeline {
 
+			friend class alp::internal::OpGen;
+	template< size_t process_order, size_t problem_order >
+	friend
+				class alp::Grid;
+
 			public:
 
 				// The pipeline is passed by reference such that an out-of-place operation
@@ -119,9 +133,22 @@ namespace grb {
 
 				size_t containers_size;
 				size_t size_of_data_type;
+
+				// per-stage data
 				std::vector< stage_type > stages;
+
+
+			public: //DBG
+
 				std::vector< Opcode > opcodes;
 
+
+			private: //DBG
+
+				std::vector< std::vector< size_t > > stage_inputs;
+				std::vector< size_t > stage_output;
+
+				// per-pipeline data
 				std::set< Coordinates< nonblocking > * > accessed_coordinates;
 				std::set< const void * > input_vectors;
 				std::set< const void * > output_vectors;
@@ -276,10 +303,17 @@ namespace grb {
 					const size_t data_type_size,
 					const bool dense_descr,
 					const bool dense_mask,
+					const size_t output_vector_id,
+					// TODO FIXME is there really a need for pointers?
 					void * const output_vector_ptr,
 					void * const output_aux_vector_ptr,
 					Coordinates< nonblocking > * const coor_output_ptr,
 					Coordinates< nonblocking > * const coor_output_aux_ptr,
+					const size_t input_a_id,
+					const size_t input_b_id,
+					const size_t input_c_id,
+					const size_t input_d_id,
+					// TODO FIXME is there really a need for pointers?
 					const void * const input_a_ptr,
 					const void * const input_b_ptr,
 					const void * const input_c_ptr,
@@ -288,6 +322,8 @@ namespace grb {
 					const Coordinates< nonblocking > * const coor_b_ptr,
 					const Coordinates< nonblocking > * const coor_c_ptr,
 					const Coordinates< nonblocking > * const coor_d_ptr,
+					const size_t input_matrix_id,
+					// TODO FIXME is there really a need for pointers?
 					const void * const input_matrix
 				);
 
