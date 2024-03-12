@@ -40,6 +40,9 @@ set( HEADERS_REGEX ".+\.(hpp|h|hxx|hh|h\\+\\+)$" )
 
 # to avoid flaky acrobatics with regex or glob expressions, copy main files directly
 install( FILES "graphblas.hpp" DESTINATION "${INCLUDE_INSTALL_DIR}" )
+if( WITH_ASCEND_BACKEND )
+	install( FILES "alpAscend.hpp" DESTINATION "${INCLUDE_INSTALL_DIR}" )
+endif()
 set( root_files
 	"graphblas/backends.hpp" "graphblas/benchmark.hpp"
 	"graphblas/blas0.hpp" "graphblas/blas1.hpp" "graphblas/blas2.hpp"
@@ -167,6 +170,21 @@ if( WITH_NONBLOCKING_BACKEND )
 		FILES_MATCHING REGEX "${HEADERS_REGEX}"
 	)
 	install( TARGETS backend_nonblocking_headers EXPORT GraphBLASTargets )
+endif()
+
+if( WITH_ASCEND_BACKEND )
+	add_library( backend_ascend_headers INTERFACE )
+	target_link_libraries( backend_ascend_headers INTERFACE backend_reference_headers )
+	target_compile_definitions( backend_ascend_headers INTERFACE "${ASCEND_INCLUDE_DEFS}" )
+	target_include_directories( backend_ascend_headers INTERFACE
+		$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>
+		$<INSTALL_INTERFACE:.>
+	)
+	install( DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/graphblas/ascend/"
+		DESTINATION "${GRB_INCLUDE_INSTALL_DIR}/ascend"
+		FILES_MATCHING REGEX "${HEADERS_REGEX}"
+	)
+	install( TARGETS backend_ascend_headers EXPORT GraphBLASTargets )
 endif()
 
 if( WITH_BSP1D_BACKEND OR WITH_HYBRID_BACKEND )

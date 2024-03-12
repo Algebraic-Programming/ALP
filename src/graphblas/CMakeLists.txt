@@ -93,6 +93,10 @@ if( WITH_NONBLOCKING_BACKEND )
 	add_subdirectory( nonblocking )
 endif()
 
+if( WITH_ASCEND_BACKEND )
+	add_subdirectory( ascend )
+endif()
+
 if( WITH_BSP1D_BACKEND OR WITH_HYBRID_BACKEND )
 	add_subdirectory( bsp1d )
 endif()
@@ -151,6 +155,9 @@ if( WITH_REFERENCE_BACKEND OR WITH_OMP_BACKEND OR WITH_NONBLOCKING_BACKEND )
 	if( WITH_NONBLOCKING_BACKEND )
 		target_link_libraries( backend_shmem_static PRIVATE ${backend_nonblocking_headers} )
 	endif()
+	if( WITH_ASCEND_BACKEND )
+		target_link_libraries( backend_shmem_static PRIVATE ${backend_ascend_headers} )
+	endif()
 	# this is the actual binary file, i.e. the one to be installed
 	install( TARGETS backend_shmem_static
 		EXPORT GraphBLASTargets
@@ -162,6 +169,9 @@ if( WITH_REFERENCE_BACKEND OR WITH_OMP_BACKEND OR WITH_NONBLOCKING_BACKEND )
 	target_link_libraries( backend_shmem_shared PRIVATE ${backend_shmem_base_headers} )
 	if( WITH_NONBLOCKING_BACKEND )
 		target_link_libraries( backend_shmem_shared PRIVATE ${backend_nonblocking_headers} )
+	endif()
+	if( WITH_ASCEND_BACKEND )
+		target_link_libraries( backend_shmem_shared PRIVATE ${backend_ascend_headers} )
 	endif()
 	install( TARGETS backend_shmem_shared
 		EXPORT GraphBLASTargets

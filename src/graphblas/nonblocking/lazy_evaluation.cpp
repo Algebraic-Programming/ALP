@@ -62,15 +62,22 @@ grb::RC LazyEvaluation::addStage(
 	const Pipeline::stage_type &&func, Opcode opcode,
 	const size_t n, const size_t data_type_size,
 	const bool dense_descr, const bool dense_mask,
+	// TODO FIXME is there really a need for pointers?
+	const size_t output_vector_id,
 	void * const output_vector_ptr, void * const output_aux_vector_ptr,
 	Coordinates< nonblocking > * const coor_output_ptr,
 	Coordinates< nonblocking > * const coor_output_aux_ptr,
+	const size_t input_a_id, const size_t input_b_id,
+	const size_t input_c_id, const size_t input_d_id,
+	// TODO FIXME is there really a need for pointers?
 	const void * const input_a_ptr, const void * const input_b_ptr,
 	const void * const input_c_ptr, const void * const input_d_ptr,
 	const Coordinates< nonblocking > * const coor_a_ptr,
 	const Coordinates< nonblocking > * const coor_b_ptr,
 	const Coordinates< nonblocking > * const coor_c_ptr,
 	const Coordinates< nonblocking > * const coor_d_ptr,
+	const size_t input_matrix_id,
+	// TODO FIXME is there really a need for pointers?
 	const void * const input_matrix
 ) {
 	RC ret = SUCCESS;
@@ -271,6 +278,7 @@ grb::RC LazyEvaluation::addStage(
 			std::vector< Pipeline >::iterator pt = pipelines.begin();
 			pt != pipelines.end(); pt++
 		) {
+			//std::cerr << "*** tic\n"; DBG
 
 			if( ( *pt ).empty() ) {
 				empty_pipeline = &( *pt );
@@ -279,14 +287,17 @@ grb::RC LazyEvaluation::addStage(
 		}
 
 		if( empty_pipeline != nullptr ) {
-			( *empty_pipeline).addStage(
+			//std::cerr << "*** le 1\n"; DBG
+			( *empty_pipeline ).addStage(
 				std::move( func ), opcode,
 				n, data_type_size, dense_descr, dense_mask,
+				output_vector_id,
 				output_vector_ptr, output_aux_vector_ptr,
 				coor_output_ptr, coor_output_aux_ptr,
+				input_a_id, input_b_id, input_c_id, input_d_id,
 				input_a_ptr, input_b_ptr, input_c_ptr, input_d_ptr,
 				coor_a_ptr, coor_b_ptr, coor_c_ptr, coor_d_ptr,
-				input_matrix
+				input_matrix_id, input_matrix
 			);
 
 			// we always execute the pipeline when a scalar is returned
@@ -296,13 +307,17 @@ grb::RC LazyEvaluation::addStage(
 		} else {
 			Pipeline pipeline;
 
+			//std::cerr << "*** le 2\n"; DBG
 			pipeline.addStage(
 				std::move( func ), opcode,
 				n, data_type_size, dense_descr, dense_mask,
+				output_vector_id,
 				output_vector_ptr, output_aux_vector_ptr,
 				coor_output_ptr, coor_output_aux_ptr,
+				input_a_id, input_b_id, input_c_id, input_d_id,
 				input_a_ptr, input_b_ptr, input_c_ptr, input_d_ptr,
 				coor_a_ptr, coor_b_ptr, coor_c_ptr, coor_d_ptr,
+				input_matrix_id,
 				input_matrix
 			);
 
@@ -321,13 +336,17 @@ grb::RC LazyEvaluation::addStage(
 		// the stage is added in the current pipeline which may be empty if it
 		// overwrites the input of SpMV
 		// it is not necessary to deallocate/release this pipeline
+		//std::cerr << "*** le 3\n"; DBG
 		( *ptr ).addStage(
 			std::move( func ), opcode,
 			n, data_type_size, dense_descr, dense_mask,
+			output_vector_id,
 			output_vector_ptr, output_aux_vector_ptr,
 			coor_output_ptr, coor_output_aux_ptr,
+			input_a_id, input_b_id, input_c_id, input_d_id,
 			input_a_ptr, input_b_ptr, input_c_ptr, input_d_ptr,
 			coor_a_ptr, coor_b_ptr, coor_c_ptr, coor_d_ptr,
+			input_matrix_id,
 			input_matrix
 		);
 
@@ -352,13 +371,17 @@ grb::RC LazyEvaluation::addStage(
 
 		// the stage is added in the merged pipeline
 		// it is not necessary to deallocate/release this pipeline
+		// std::cerr << "*** le 4\n"; DBG
 		( *union_pipeline ).addStage(
 			std::move( func ), opcode,
 			n, data_type_size, dense_descr, dense_mask,
+			output_vector_id,
 			output_vector_ptr, output_aux_vector_ptr,
 			coor_output_ptr, coor_output_aux_ptr,
+			input_a_id, input_b_id, input_c_id, input_d_id,
 			input_a_ptr, input_b_ptr, input_c_ptr, input_d_ptr,
 			coor_a_ptr, coor_b_ptr, coor_c_ptr, coor_d_ptr,
+			input_matrix_id,
 			input_matrix
 		);
 

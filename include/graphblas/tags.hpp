@@ -42,6 +42,12 @@ namespace grb {
 	 *       template to grb::Vector and grb::Matrix creates a combinatorial
 	 *       explosion in the number of combinations that must be caught.
 	 *       Are there better alternatives?
+	 *
+	 *       Update 2023: yes there are, see Spampinato et al., ARRAY '23. This
+	 *       file will be removed in future releases when it is replaced by the
+	 *       concept of \em views and particular that of xMFs that prevent the
+	 *       feared combinatorial explosion, both introduced in the aforementioned
+	 *       paper.
 	 */
 	namespace tags {
 
