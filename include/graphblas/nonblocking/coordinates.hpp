@@ -27,14 +27,29 @@
 #ifndef _H_GRB_NONBLOCKING_COORDINATES
 #define _H_GRB_NONBLOCKING_COORDINATES
 
+#ifndef NDEBUG
+#   define ASSERT(condition, message) \
+    do { \
+        if (! (condition)) { \
+            std::cerr << "Assertion `" #condition "` failed in " << __FILE__ \
+                      << " line " << __LINE__ << ": " << message << std::endl; \
+            std::terminate(); \
+        } \
+    } while (false)
+#else
+#   define ASSERT(condition, message) do { } while (false)
+#endif
+
+
 #include <stdexcept> //std::runtime_error
 #include <vector>
 #if defined _DEBUG && ! defined NDEBUG
  #include <set>
 #endif
 
-#include <stddef.h> //size_t
-#include <assert.h>
+#include <cstddef> //size_t
+#include <cassert>
+#include <algorithm>
 
 #include <graphblas/rc.hpp>
 #include <graphblas/backends.hpp>
@@ -48,6 +63,9 @@
 
 #include <graphblas/nonblocking/init.hpp>
 #include <graphblas/nonblocking/analytic_model.hpp>
+#include <iomanip>
+
+// #define _LOCAL_DEBUG
 
 
 namespace grb {
@@ -71,6 +89,10 @@ namespace grb {
 				typedef bool ArrayType;
 
 
+				// TODO: Remove me
+				bool _debug_is_counting_sort_done = false;
+
+
 			private:
 
 				bool * __restrict__ _assigned;
@@ -89,6 +111,9 @@ namespace grb {
 				std::vector< config::VectorIndexType * > local_buffer;
 				config::VectorIndexType * __restrict__ local_new_nnzs;
 				config::VectorIndexType * __restrict__ pref_sum;
+
+				std::vector<config::VectorIndexType> counting_sum;
+
 
 				// the analytic model used during the execution of a pipeline
 				AnalyticModel analytic_model;
@@ -479,6 +504,60 @@ namespace grb {
 					pref_sum = _buffer + num_tiles * ( tile_size + 2 );
 				}
 
+				bool should_use_bitmask_asyncSubsetInit(
+					const size_t /* num_tiles */,
+					const size_t /* tile_id */,
+					const size_t lower_bound,
+					const size_t upper_bound
+				) const noexcept {
+					assert( _cap > 0 );
+					assert( _n <= _cap );
+					assert( lower_bound <= upper_bound );
+					return nonzeroes() * (upper_bound - lower_bound) > size();
+				}
+
+				void _asyncSubsetInit_bitmask(
+						const size_t lower_bound,
+						const size_t upper_bound,
+						const size_t /*tile_id*/,
+						config::VectorIndexType *local_nnzs,
+						config::VectorIndexType *local_stack
+				) noexcept {
+					assert( _cap > 0 );
+
+					for( size_t i = lower_bound; i < upper_bound; ++i ) {
+						if( _assigned[ i ] ) {
+							local_stack[ (*local_nnzs)++ ] = i - lower_bound;
+						}
+					}
+				}
+
+				void _asyncSubsetInit_search(
+						const size_t num_tiles,
+						const std::vector<size_t> &lower_bounds,
+						const std::vector<size_t> &upper_bounds
+				) noexcept {
+					for( size_t tile_id = 0; tile_id < num_tiles; ++tile_id ) {
+						*(local_buffer[ tile_id ]) = 0;
+					}
+					for( size_t i = 0; i < nonzeroes(); ++i ) {
+						const size_t k = _stack[ i ];
+						assert( _assigned[ k ] );
+
+						// Find the tile id of the element
+						const size_t tile_id = getTileId( k, num_tiles, lower_bounds, upper_bounds );
+						assert( tile_id < num_tiles );
+						assert( k < upper_bounds[tile_id] );
+						assert( k >= lower_bounds[tile_id] );
+
+						const size_t lower_bound = lower_bounds[tile_id];
+
+						config::VectorIndexType *local_nnzs = local_buffer[ tile_id ];
+						config::VectorIndexType *local_stack = local_buffer[ tile_id ] + 1;
+						local_stack[ (*local_nnzs)++ ] = k - lower_bound;
+					}
+				}
+
 				/**
 				 * Initialises a Coordinate instance that refers to a subset of this
 				 * coordinates instance. Multiple disjoint subsets may be retrieved
@@ -494,37 +573,48 @@ namespace grb {
 				 *                            (exclusive).
 				 */
 				void asyncSubsetInit(
-					const size_t lower_bound,
-					const size_t upper_bound
+					const size_t num_tiles,
+					const std::vector<size_t> &lower_bound,
+					const std::vector<size_t> &upper_bound
 				) noexcept {
-					if( _cap == 0 ) {
-						return;
+					(void) num_tiles;
+					if( _cap == 0 ) { return; }
+
+#ifdef GRB_ALREADY_DENSE_OPTIMIZATION
+					for( size_t tile_id = 0; tile_id < num_tiles; ++tile_id ) {
+						config::VectorIndexType *local_nnzs = local_buffer[ tile_id ];
+						config::VectorIndexType *local_stack = local_buffer[ tile_id ] + 1;
+
+						*local_nnzs = 0;
+						_asyncSubsetInit_bitmask( lower_bound[tile_id], upper_bound[tile_id], tile_id, local_nnzs, local_stack );
 					}
-
-					const size_t tile_id = lower_bound / analytic_model.getTileSize();
-
-					config::VectorIndexType *local_nnzs = local_buffer[ tile_id ];
-					config::VectorIndexType *local_stack = local_buffer[ tile_id ] + 1;
-
-					*local_nnzs = 0;
-					if( upper_bound - lower_bound < _n ) {
-						for( size_t i = lower_bound; i < upper_bound; ++i ) {
-							if( _assigned[ i ] ) {
-								local_stack[ (*local_nnzs)++ ] = i - lower_bound;
-							}
-						}
-					} else {
-						for( size_t i = 0; i < _n; ++i ) {
-							const size_t k = _stack[ i ];
-							if( lower_bound <= k && k < upper_bound ) {
-								assert( _assigned[ k ] );
-								local_stack[ (*local_nnzs)++ ] = k - lower_bound;
-							}
-						}
+#else
+					_asyncSubsetInit_search( num_tiles, lower_bound, upper_bound );
+#endif
+					for( size_t tile_id = 0; tile_id < num_tiles; ++tile_id ) {
+						local_new_nnzs[ tile_id ] = 0;
 					}
+				}
 
-					// the number of new nonzeroes is initialized here
-					local_new_nnzs[ tile_id ] = 0;
+				static size_t getTileId(
+						size_t k,
+						const size_t num_tiles,
+						const std::vector< size_t > &lower_bounds,
+						const std::vector< size_t > &upper_bounds
+				) {
+					ASSERT( num_tiles > 0, "num_tiles = " << num_tiles );
+					(void) num_tiles;
+					(void) lower_bounds;
+					(void) upper_bounds;
+
+					const auto tile_size = upper_bounds[0] - lower_bounds[0];
+					ASSERT( tile_size > 0, "tile_size = " << tile_size );
+					const size_t tile_id = k / tile_size;
+
+					ASSERT(tile_id < num_tiles, "tile_id = " << tile_id << ", num_tiles = " << num_tiles);
+					ASSERT(k < upper_bounds[tile_id], "k = " << k << ", tile_id = " << tile_id << ", upper_bounds[tile_id] = " << upper_bounds[tile_id]);
+					ASSERT(k >= lower_bounds[tile_id], "k = " << k << ", tile_id = " << tile_id << ", lower_bounds[tile_id] = " << lower_bounds[tile_id]);
+					return tile_id;
 				}
 
 				/**

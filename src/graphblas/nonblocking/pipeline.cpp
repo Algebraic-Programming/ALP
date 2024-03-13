@@ -30,6 +30,8 @@
 #include <graphblas/nonblocking/pipeline.hpp>
 #include <graphblas/nonblocking/analytic_model.hpp>
 
+// #define _LOCAL_DEBUG
+
 
 using namespace grb::internal;
 
@@ -829,6 +831,10 @@ grb::RC Pipeline::execution() {
 
 	lower_bound.resize( num_tiles );
 	upper_bound.resize( num_tiles );
+	for( std::set< internal::Coordinates< nonblocking > * >::iterator vt = vbegin(); vt != vend(); ++vt ) {
+		auto* coords = *vt;
+		coords->_debug_is_counting_sort_done = false;
+	}
 
 	// if all vectors are already dense and there is no out-of-place operation to
 	// make them sparse we avoid paying the overhead for updating the coordinates
@@ -861,31 +867,43 @@ grb::RC Pipeline::execution() {
 					0, containers_size, tile_size, tile_id, num_tiles
 				);
 				assert( lower_bound[ tile_id ] <= upper_bound[ tile_id ] );
+			}
+		}
 
-#ifndef GRB_ALREADY_DENSE_OPTIMIZATION
-				for(
-					std::set< internal::Coordinates< nonblocking > * >::iterator vt = vbegin();
-					vt != vend(); ++vt
-				) {
-					if ( (**vt).size() != getContainersSize() ) {
-						continue;
-					}
-
-					(**vt).asyncSubsetInit( lower_bound[ tile_id ], upper_bound[ tile_id ] );
-				}
+#if defined(_DEBUG) || defined(_LOCAL_DEBUG)
+		fprintf( stderr, "Pipeline::execution(2): check if any of the coordinates will use the search-variant of asyncSubsetInit:\n" );
 #endif
 
-				RC local_ret = SUCCESS;
-				for( std::vector< stage_type >::iterator pt = pbegin();
-					pt != pend(); ++pt
-				) {
-					local_ret = local_ret
-						? local_ret
-						: (*pt)( *this, lower_bound[ tile_id ], upper_bound[ tile_id ] );
-				}
-				if( local_ret != SUCCESS ) {
-					ret = local_ret;
-				}
+#ifndef GRB_ALREADY_DENSE_OPTIMIZATION
+		std::vector< Coordinates< nonblocking > * > accessed_coordinates_vec( accessed_coordinates.begin(), accessed_coordinates.end() );
+		#pragma omp parallel for schedule(dynamic) num_threads(nthreads)
+		for( Coordinates< nonblocking > * vt : accessed_coordinates_vec ) {
+			if( (*vt).size() != getContainersSize() ) { continue; }
+
+			(*vt).asyncSubsetInit( num_tiles, lower_bound, upper_bound );
+		}
+#endif
+		#pragma omp parallel for schedule(dynamic) num_threads(nthreads)
+		for( size_t tile_id = 0; tile_id < num_tiles; ++tile_id ) {
+
+//			// compute the lower and upper bounds
+//			config::OMP::localRange(
+//				lower_bound[ tile_id ], upper_bound[ tile_id ],
+//				0, containers_size, tile_size, tile_id, num_tiles
+//			);
+//			assert( lower_bound[ tile_id ] <= upper_bound[ tile_id ] );
+
+
+			RC local_ret = SUCCESS;
+			for( std::vector< stage_type >::iterator pt = pbegin();
+				pt != pend(); ++pt
+			) {
+				local_ret = local_ret
+					? local_ret
+					: (*pt)( *this, lower_bound[ tile_id ], upper_bound[ tile_id ] );
+			}
+			if( local_ret != SUCCESS ) {
+				ret = local_ret;
 			}
 		}
 	} else {
@@ -911,40 +929,41 @@ grb::RC Pipeline::execution() {
 			(**vt).localCoordinatesInit( am );
 		}
 
-		#pragma omp parallel for schedule( dynamic ) num_threads( nthreads )
-		for( size_t tile_id = 0; tile_id < num_tiles; ++tile_id ) {
+		{ // Initialise the lower and upper bounds
+			#pragma omp parallel for schedule( dynamic ) num_threads( nthreads )
+			for( size_t tile_id = 0; tile_id < num_tiles; ++tile_id ) {
+				config::OMP::localRange(
+						lower_bound[tile_id], upper_bound[tile_id],
+						0, containers_size, tile_size, tile_id, num_tiles
+				);
+				assert(lower_bound[tile_id] <= upper_bound[tile_id]);
+			}
+		}
 
-			config::OMP::localRange(
-				lower_bound[ tile_id ], upper_bound[ tile_id ],
-				0, containers_size, tile_size, tile_id, num_tiles
-			);
-			assert( lower_bound[ tile_id ] <= upper_bound[ tile_id ] );
-
-			for(
-				std::set< internal::Coordinates< nonblocking > * >::iterator vt = vbegin();
-				vt != vend(); ++vt
-			) {
-
-				// skip the initialization of coordinates of different size, which may
-				// happen only for the input of vxm_generic as it's read-only for the
-				// current design
-				// namely, no stage of the same pipeline can overwrite it
-				if ( (**vt).size() != getContainersSize() ) {
+		{
+#if defined(_DEBUG) || defined(_LOCAL_DEBUG)
+			fprintf( stderr, "Pipeline::execution(2): check if any of the coordinates will use the search-variant of asyncSubsetInit:\n" );
+#endif
+			std::vector< Coordinates< nonblocking > * > accessed_coordinates_vec( accessed_coordinates.begin(), accessed_coordinates.end() );
+			#pragma omp parallel for schedule(dynamic) num_threads(nthreads)
+			for( Coordinates< nonblocking > * vt : accessed_coordinates_vec ) {
+				if ( (*vt).size() != getContainersSize() ) {
 					continue;
 				}
 
 #ifdef GRB_ALREADY_DENSE_OPTIMIZATION
-				if( (**vt).isDense() && (
-					!contains_out_of_place_primitive || !outOfPlaceOutput( *vt )
+				if( (*vt).isDense() && (
+					!contains_out_of_place_primitive || !outOfPlaceOutput( vt )
 				) ) {
 					continue;
 				}
 #endif
 
-				(**vt).asyncSubsetInit( lower_bound[ tile_id ], upper_bound[ tile_id ] );
-				initialized_coordinates = true;
+				(*vt).asyncSubsetInit( num_tiles, lower_bound, upper_bound );
 			}
+			initialized_coordinates = true;
 		}
+
 
 		// even if only one vector is sparse, we cannot reuse memory because the first
 		// two arguments that we pass to the lambda functions determine whether we
