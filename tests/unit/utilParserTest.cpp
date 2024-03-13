@@ -23,11 +23,9 @@
 
 int main( int argc, char ** argv ) {
 	std::cout << "Functional test executable: " << argv[ 0 ] << "\n";
-
 	if( argc != 2 ) {
-		std::cerr << "please, give path to west0497.mtx" << std::endl;
-		std::cout << "Test FAILED" << std::endl;
-		return 255;
+		std::cerr << "path to input file west0497.mtx is needed" << std::endl;
+		std::exit( 1 );
 	}
 
 	int ret = 0;

@@ -57,21 +57,27 @@ int main( int argc, char ** argv ) {
 	std::cout << "Functional test executable: " << argv[ 0 ] << "\n";
 
 	if( argc != 5 ) {
-		USE1 USE2 USE3 USE4 USE5
-		return 0;
+		USE1 USE2 USE5 USE3 USE4
+		return -1;
 	}
 
 	// read command-line args
 	char * const host = argv[ 1 ];
-	lpf_pid_t s = static_cast< lpf_pid_t >( atoi( argv[ 2 ] ) );
+	char * const port = argv[ 2 ];
 	lpf_pid_t P = static_cast< lpf_pid_t >( atoi( argv[ 3 ] ) );
-	char * const port = argv[ 4 ];
+	lpf_pid_t s = static_cast< lpf_pid_t >( atoi( argv[ 4 ] ) );
 
 	// input sanity checks
 	if( host == NULL || host[ 0 ] == '\0' ) {
 		std::cerr << "Invalid hostname: " << argv[ 1 ] << std::endl;
 		USE2
 		return 100;
+	}
+	if( port == NULL || port[ 0 ] == '\0' ) {
+		std::cerr << "Invalid value for port name or number: "
+			<< argv[ 2 ] << "." << std::endl;
+		USE5
+		return 400;
 	}
 	if( !grb::utils::is_geq_zero( P ) ) {
 		std::cerr << "Invalid value for #processes: " << argv[ 3 ] << ", "
@@ -80,17 +86,11 @@ int main( int argc, char ** argv ) {
 		return 200;
 	}
 	if( !grb::utils::is_in_normalized_range( s, P ) ) {
-		std::cerr << "Invalid value for PID: " << argv[ 2 ] << ", "
+		std::cerr << "Invalid value for PID: " << argv[ 4 ] << ", "
 			<< "parsed as " << static_cast< size_t >(s) << "."
 			<< std::endl;
 		USE4
 		return 300;
-	}
-	if( port == NULL || port[ 0 ] == '\0' ) {
-		std::cerr << "Invalid value for port name or number: "
-			<< argv[ 4 ] << "." << std::endl;
-		USE5
-		return 400;
 	}
 
 	// initialise MPI

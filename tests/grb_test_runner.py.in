@@ -1,0 +1,248 @@
+#
+#   Copyright 2023 Huawei Technologies Co., Ltd.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+
+### launcher to run one or more commands in parallel and redirect the output
+# to a given file; in case of error, it also informs the Gitlab CI by attaching the test log
+
+import os
+import argparse
+import sys
+import shutil
+import subprocess
+
+if sys.version_info.major < 3 or ( sys.version_info.major == 3 and sys.version_info.minor < 2 ):
+	print( "the Python version is too old" )
+	sys.exit( 1 )
+
+LPFRUN_cmake_list="@LPFRUN_CMD@"
+BACKENDS_cmake_list="none;@AVAILABLE_BACKENDS@"
+CMAKE_SEPARATOR=';'
+LPFRUN=LPFRUN_cmake_list.split( CMAKE_SEPARATOR )
+BACKENDS=BACKENDS_cmake_list.split( CMAKE_SEPARATOR )
+
+MPI_IMPLEMENTATION="@MPI_IMPLEMENTATION@"
+
+LPFRUN_PASSTHROUGH="-mpirun,"
+
+def get_mpi_binding():
+	return [ f"{LPFRUN_PASSTHROUGH}-bind-to", f"{LPFRUN_PASSTHROUGH}none" ]
+
+## the following functions return the runner command and the environment variables to set
+## for each backend
+def get_run_none( processes, threads ):
+	return ( [], None )
+
+def get_run_reference( processes, threads ):
+	return get_run_none( processes, threads )
+
+def get_run_reference_omp( processes, threads ):
+	return ( [], { "OMP_NUM_THREADS": str( threads ) } )
+
+def get_run_nonblocking( processes, threads ):
+	return ( [], { "OMP_NUM_THREADS": str( threads ) } )
+
+def get_run_bsp1d( processes, threads ):
+	return ( LPFRUN + [ "-np", str( processes ) ] + get_mpi_binding(), None )
+
+def get_lpf_pass_down_var_definition( var_name, value ):
+	if "@MPI_IMPLEMENTATION@" == "mpich":
+		return [ f"{LPFRUN_PASSTHROUGH}-genv", LPFRUN_PASSTHROUGH + var_name, LPFRUN_PASSTHROUGH + value ]
+	else:
+		return [ f"{LPFRUN_PASSTHROUGH}-x", f"{LPFRUN_PASSTHROUGH}{var_name}={value}" ]
+
+def get_run_hybrid( processes, threads ):
+	proc, env = get_run_bsp1d( processes, threads )
+	return ( proc + get_lpf_pass_down_var_definition( "OMP_NUM_THREADS", str( threads ) ), env )
+
+def get_run_hyperdags( processes, threads ):
+	if "@WITH_HYPERDAGS_USING@" in BACKENDS:
+		f = getattr( sys.modules[__name__], "get_run_@WITH_HYPERDAGS_USING@" )
+		return f( processes, threads )
+	else:
+		raise Exception( "No Hyperdags backend available" )
+
+get_run_command = {
+	"none" : get_run_none,
+	"reference" : get_run_none,
+	"reference_omp" : get_run_reference_omp,
+	"hyperdags" : get_run_hyperdags,
+	"nonblocking" : get_run_reference_omp,
+	"bsp1d" : get_run_bsp1d,
+	"hybrid" : get_run_hybrid
+}
+
+# check whether the executable passed is an actual executable or a valid command
+def is_path_exe( cmd ):
+	return ( not shutil.which( cmd ) is None )
+
+# basic log facilities
+def log( *largs ):
+	print( ">>", *largs )
+
+def err_log( *largs ):
+	print( "-- ERROR:", *largs )
+	sys.exit( 1 )
+
+# terminate all processes in the list
+def terminate_all( processes ):
+	for p in processes:
+		p.terminate()
+
+parser = argparse.ArgumentParser( description='ALP/GraphBLAS runner' )
+parser.add_argument( '--verbose', action='store_true' )
+parser.add_argument( '--processes', help='Number of processes, for LPF runs', type=int, default=1 )
+parser.add_argument( '--threads', help='Number of threads, for LPF and OpenMP runs', type=int, default=1 )
+parser.add_argument( '--backend', help='Backend', choices=BACKENDS, default="none" )
+parser.add_argument( '--output', help='Output file', required=True )
+parser.add_argument( '--success-string', help='Success string' )
+parser.add_argument( '--output-on-failure', action='store_true', help='Print test output on failure' )
+parser.add_argument( '--parallel-instances', help='Number of parallel instances to run', type=int, choices=range(1, 1000), required=False )
+parser.add_argument( 'cmd', nargs=argparse.REMAINDER )
+
+def verb_log( *largs ):
+	if args.verbose:
+		print( ">-->", *largs )
+
+args = parser.parse_args()
+if len( args.cmd ) == 0:
+	print( "must provide a command" )
+	sys.exit( 1 )
+
+# get launcher and environment
+grb_launcher, grb_env = get_run_command[ args.backend ]( args.processes, args.threads )
+verb_log( f"launcher for backend \"{args.backend}\":", grb_launcher )
+verb_log( "environment:", grb_env )
+
+exe = args.cmd[ 0 ]
+if not is_path_exe( exe ) :
+	err_log( exe, "is not an executable or a known command" )
+
+__args = args.cmd[ 1: ]
+arg_groups = [ __args ] if args.parallel_instances is None else [ __args + [ str( i ) ] for i in range( 0, args.parallel_instances ) ]
+
+runs = len( arg_groups )
+# with more commands to run in parallel, use intermediate output files (to be merged together)
+output_files = [ args.output ] if runs == 1 else [ args.output + "." + str( i ) for i in range( 0, runs ) ]
+
+log( "current directory:", os.getcwd() )
+processes = []
+outputs = []
+# run test(s)
+for i in range( 0, runs ):
+	output = output_files[ i ]
+	f = None
+	full_command = grb_launcher + [ exe ] + arg_groups[ i ]
+	# log basic information to debug and manually reproduce
+	log( "__environment__: ", grb_env )
+	log( "__command__:", " ".join( full_command ) )
+	log( "__output file__:", output )
+	try:
+		# open output file for redirection
+		f = open( output, "w" )
+		outputs.append( f )
+		# run process asynchronously
+		process_handler = subprocess.Popen( full_command, stderr=subprocess.STDOUT, stdout=f, env=grb_env )
+		processes.append( process_handler )
+	except subprocess.SubprocessError as spe:
+		terminate_all( processes )
+		err_log( "cannot run the command:", spe )
+	except IOError as ioe:
+		terminate_all( processes )
+		err_log( "IOError:", ioe )
+	except BaseException as b:
+		terminate_all( processes )
+		err_log( "unknown error:", b )
+
+# if process tests are still running, wait for the end
+# then check error code and close output file
+success = True
+for i in range( 0, runs ):
+	try:
+		p = processes[ i ]
+		p.wait()
+		success = success and ( p.returncode == 0 )
+		if p.returncode != 0:
+			full_command = " ".join( grb_launcher + [ exe ] + arg_groups[ i ] )
+			log( f"ERROR - command: \"{full_command}\", return code:", p.returncode )
+		outputs[ i ].close()
+	except subprocess.SubprocessError as spe:
+		terminate_all( processes )
+		err_log( "cannot wait for the command:", spe )
+	except IOError as ioe:
+		terminate_all( processes )
+		err_log( "IOError:", ioe )
+	except BaseException as b:
+		terminate_all( processes )
+		err_log( "unknown error:", b )
+
+# if test(s) run successfully, check the output
+if success and args.success_string is not None:
+	for out in output_files:
+		grep_command = [ "grep", args.success_string, out ]
+		verb_log( "running:", grep_command )
+		try:
+			grep = subprocess.run( grep_command, stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL )
+			grep_retcode = grep.returncode
+		except BaseException as b:
+			err_log( "error running grep on output file", out, ":", b)
+
+		if grep_retcode != 0:
+			log( "ERROR - success string", f"\"{args.success_string}\"", "not present in",
+				out, "error code", grep_retcode )
+			success = False
+		else:
+			log( "output check successful for", out )
+
+# consolidate outputs from multiple tests into a single file
+if runs > 1:
+	try:
+		log( "consolidating outputs into", args.output )
+		single_out = open( args.output, 'w' )
+		for out in output_files:
+			fout = open( out, 'r' )
+			single_out.write( f"=== content of file {out} ===\n" )
+			shutil.copyfileobj( fout, single_out )
+			single_out.write( "\n" )
+			fout.close()
+			log( f"deleting {out}" )
+			os.remove( out )
+		single_out.close()
+	except IOError as ioe:
+		err_log( "IOError:", ioe )
+	except BaseException as b:
+		err_log( "unknown error:", b )
+
+# print the log on the terminal (if selected) and print the ATTACHMENT for Gitlab CI
+if not success:
+	log( "error running the command(s)" )
+	try:
+		if args.output_on_failure:
+			f = open( args.output, 'r' )
+			log( "=== content of the logfile:", args.output, '\n' )
+			shutil.copyfileobj( f, sys.stdout )
+			log( "=== end content of the logfile:", args.output, '\n' )
+			f.close()
+	except BaseException as b:
+		err_log( "output file does not exist or an I/O error occurred:", b )
+	# if we are running in the CI, attach tes output in case of error
+	ci_path=os.getenv( "CI_PROJECT_DIR" )
+	if ci_path is not None and len( ci_path ) > 0:
+		attach_path = os.path.relpath( args.output, ci_path )
+		# https://docs.gitlab.com/ee/ci/testing/unit_test_reports.html#view-junit-screenshots-on-gitlab
+		log( f"[[ATTACHMENT|{attach_path}]]" )
+	sys.exit( 1 )
+
+log( "run successful" )

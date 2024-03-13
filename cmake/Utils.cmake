@@ -19,6 +19,27 @@
 # defines various utilities used across the entire build infrastructure
 #
 
+include_guard( GLOBAL )
+
+
+function( set_if_else var_name if_value else_value )
+	cmake_parse_arguments( parsed "" "" "CONDITION" "${ARGN}" )
+	if ( "${parsed_CONDITION}" )
+		set( ${var_name} ${if_value} PARENT_SCOPE )
+	else()
+		set( ${var_name} ${else_value} PARENT_SCOPE )
+	endif()
+endfunction()
+
+# set to_assign if variable is defined; otherwise error
+function( set_if_var_valid to_assign variable )
+	if( NOT variable )
+		message( FATAL_ERROR "${variable} is not valid" )
+	endif()
+	set ( "${to_assign}" "${variable}" PARENT_SCOPE )
+endfunction()
+
+
 # asserts that the variable named dirPathVer is set:
 # if it is set to a valid directory path, set it to its absolute path, if not set it to defValue
 # if the given path does not exist or is not a directory, raise an error
@@ -77,15 +98,6 @@ macro( append_if_valid out_name )
 endmacro( append_if_valid )
 
 # set first string if valid, otherwise second
-function( set_valid out_name first second )
-	if( first )
-		set( ${out_name} "${first}" PARENT_SCOPE )
-	else()
-		set( ${out_name} "${second}" PARENT_SCOPE )
-	endif()
-endfunction( set_valid )
-
-# set first string if valid, otherwise second
 function( set_valid_string out_name first second )
 	if( first )
 		set( ${out_name} "${first}" PARENT_SCOPE )
@@ -93,3 +105,9 @@ function( set_valid_string out_name first second )
 		set( ${out_name} "${second}" PARENT_SCOPE )
 	endif()
 endfunction( set_valid_string )
+
+macro( assert_in_list str_name list_name )
+	if( NOT "${${str_name}}" IN_LIST "${list_name}" )
+		message( FATAL_ERROR "The string \"${${str_name}}\" is not among \"${${list_name}}\"" )
+	endif()
+endmacro()

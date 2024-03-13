@@ -14,92 +14,105 @@
 # limitations under the License.
 #
 
+assert_defined_variables( GNN_DATASET_PATH )
+assert_valid_variables( DATASETS_DIR MAX_THREADS )
 
-# write here the name of the category
-# add_grb_executables and add_grb_executable_custom need this information
-set( TEST_CATEGORY "smoke" )
+# ======= CONFIGURATION =======
 
 
-add_grb_executables( manual_hook_hw manual_launcher.cpp
-	hook/hello_world.cpp
-	BACKENDS bsp1d NO_BACKEND_NAME
+# Compute the number of threads for the Hybrid backend
+math( EXPR _HALF_MAX_THREADS "${MAX_THREADS} / 2" OUTPUT_FORMAT DECIMAL )
+set_if_else( _hybrid_threads "2" "${_HALF_MAX_THREADS}" "${_HALF_MAX_THREADS}" LESS_EQUAL "2" )
+
+# Setup the environment for the tests in this directory
+setup_grb_tests_environment(
+	CATEGORY "smoke"
+
+	BSP1D_PROCESSES 5
+	HYBRID_PROCESSES 2
+
+	HYBRID_THREADS "${_hybrid_threads}"
+	REFERENCE_OMP_THREADS "${MAX_THREADS}"
+	NONBLOCKING_THREADS "${MAX_THREADS}"
 )
 
-add_grb_executables( manual_hook_grb_set manual_launcher.cpp
-	hook/grb_launcher.cpp hook/setvector.cpp
-	BACKENDS bsp1d NO_BACKEND_NAME
-)
 
-add_grb_executables( manual_hook_grb_reduce manual_launcher.cpp
-	hook/grb_launcher.cpp ../unit/launcher/reduce.cpp
-	BACKENDS bsp1d NO_BACKEND_NAME
-)
-
-add_grb_executables( manual_hook_grb_dot manual_launcher.cpp
-	hook/grb_launcher.cpp hook/dot.cpp
-	BACKENDS bsp1d NO_BACKEND_NAME
-)
-
-add_grb_executables( manual_hook_grb_collectives_blas0 manual_launcher.cpp
-	hook/grb_launcher.cpp ../unit/launcher/collectives_blas0.cpp
-	BACKENDS bsp1d NO_BACKEND_NAME
-)
-
-add_grb_executables( manual_hook_grb_collectives_blas1 manual_launcher.cpp
-	hook/grb_launcher.cpp hook/collectives_blas1.cpp
-	BACKENDS bsp1d NO_BACKEND_NAME
-)
-
-add_grb_executables( manual_hook_grb_collectives_blas1_raw manual_launcher.cpp
-	hook/grb_launcher.cpp hook/collectives_blas1_raw.cpp
-	BACKENDS bsp1d NO_BACKEND_NAME
-)
+# Verification files
+set( OUTPUT_VERIFICATION_DIR "${CMAKE_CURRENT_SOURCE_DIR}/output_verification" )
+set( TEST_DATA_DIR "${CMAKE_CURRENT_SOURCE_DIR}/test_data" )
 
 add_grb_executables( small_knn ../unit/auto_launcher.cpp
 	hook/knn.cpp
 	BACKENDS reference reference_omp bsp1d hybrid hyperdags nonblocking
 )
+# TODO: Remove the first argument of this test in order to fit te add_grb_tests signature
+foreach( P 1 2 3 4 )
+	add_grb_tests( small_knn small_knn
+		ARGUMENTS ${P}
+		Test_OK_SUCCESS
+		PROCESSES ${P}
+		BACKENDS bsp1d hybrid
+	)
+endforeach()
 
-add_grb_executables( manual_hook_small_knn manual_launcher.cpp
-	hook/grb_launcher.cpp hook/knn.cpp
-	BACKENDS bsp1d NO_BACKEND_NAME
+add_grb_executables( small_pagerank ../unit/auto_launcher.cpp
+	hook/small_simple_pagerank.cpp
+	BACKENDS reference reference_omp bsp1d hybrid hyperdags nonblocking
 )
-
-add_grb_executables( from_mpi_launch_simple_pagerank simple_pagerank_from_mpi.cpp
-	BACKENDS bsp1d NO_BACKEND_NAME
-	ADDITIONAL_LINK_LIBRARIES MPI::MPI_CXX
+add_grb_tests( small_pagerank small_pagerank
+	ARGUMENTS 1
+	Test_OK_SUCCESS
+	BACKENDS reference reference_omp hyperdags nonblocking
+	OUTPUT_VALIDATE grep 'Pagerank vector local to PID 0 on exit is \( 0.106896 0.105862 0.104983 0.104235 0.1036 0.10306 0.102601 0.102211 0.0584396 0.108113 \)' @@TEST_OUTPUT_FILE@@
 )
+# TODO: Remove the first parameter from the test
+foreach( P 1 2 3 4 )
+	add_grb_tests( small_pagerank small_pagerank
+		ARGUMENTS ${P}
+		Test_OK_SUCCESS
+		PROCESSES ${P}
+		BACKENDS bsp1d hybrid
+		OUTPUT_VALIDATE grep 'Pagerank vector local to PID 0 on exit is \( 0.106896 0.105862 0.104983 0.104235 0.1036 0.10306 0.102601 0.102211 0.0584396 0.108113 \)' @@TEST_OUTPUT_FILE@@
+	)
+endforeach()
 
-add_grb_executables( from_mpi_launch_simple_pagerank_multiple_entry simple_pagerank_from_mpi.cpp
-	BACKENDS bsp1d NO_BACKEND_NAME
-	ADDITIONAL_LINK_LIBRARIES MPI::MPI_CXX
-	COMPILE_DEFINITIONS MULTIPLE_ENTRY
+add_grb_executables( simple_pagerank simple_pagerank.cpp
+	BACKENDS reference reference_omp bsp1d hybrid hyperdags nonblocking
+	ADDITIONAL_LINK_LIBRARIES test_utils_headers
 )
-
-add_grb_executables( from_mpi_launch_simple_pagerank_broadcast_pinning_multiple_entry simple_pagerank_broadcast.cpp
-	BACKENDS bsp1d NO_BACKEND_NAME
-	ADDITIONAL_LINK_LIBRARIES MPI::MPI_CXX
-	COMPILE_DEFINITIONS MULTIPLE_ENTRY PINNED_OUTPUT
+add_grb_tests( simple_pagerank_west0497 simple_pagerank
+	ARGUMENTS ${DATASETS_DIR}/west0497.mtx direct 1 1 1000 verification ${OUTPUT_VERIFICATION_DIR}/pagerank_out_west0497_ref
+	REQUIRED_FILES ${DATASETS_DIR}/west0497.mtx ${OUTPUT_VERIFICATION_DIR}/pagerank_out_west0497_ref
+	Test_OK_SUCCESS
+	BACKENDS reference reference_omp bsp1d hybrid hyperdags nonblocking
 )
-
-add_grb_executables( from_mpi_launch_simple_pagerank_broadcast_multiple_entry simple_pagerank_broadcast.cpp
-	BACKENDS bsp1d NO_BACKEND_NAME
-	ADDITIONAL_LINK_LIBRARIES MPI::MPI_CXX
-	COMPILE_DEFINITIONS MULTIPLE_ENTRY
-)
-
-add_grb_executables( from_mpi_launch_simple_pagerank_broadcast simple_pagerank_broadcast.cpp
-	BACKENDS bsp1d NO_BACKEND_NAME
-	ADDITIONAL_LINK_LIBRARIES MPI::MPI_CXX
-)
-
-add_grb_executables( knn knn.cpp ../unit/parser.cpp
+add_grb_tests( simple_pagerank_facebook simple_pagerank
+	ARGUMENTS ${DATASETS_DIR}/facebook_combined.txt direct 1 1
+	REQUIRED_FILES ${DATASETS_DIR}/facebook_combined.txt
+	Test_OK_SUCCESS
 	BACKENDS reference reference_omp bsp1d hybrid hyperdags nonblocking
 )
 
-add_grb_executables( hpcg hpcg.cpp
+add_grb_executables( kcore_decomposition kcore_decomposition.cpp
+	ADDITIONAL_LINK_LIBRARIES test_utils_headers
+	BACKENDS reference reference_omp hyperdags nonblocking bsp1d hybrid
+)
+add_grb_tests( kcore_decomposition kcore_decomposition
+	ARGUMENTS ${DATASETS_DIR}/EPA.mtx direct 1 1 verification ${OUTPUT_VERIFICATION_DIR}/kcore_decomposition_eda_ref
+	REQUIRED_FILES ${DATASETS_DIR}/EPA.mtx ${OUTPUT_VERIFICATION_DIR}/kcore_decomposition_eda_ref
+	Test_OK_SUCCESS
+	BACKENDS reference reference_omp hyperdags nonblocking bsp1d hybrid
+)
+
+add_grb_executables( bicgstab bicgstab.cpp
 	BACKENDS reference reference_omp bsp1d hybrid hyperdags nonblocking
-	ADDITIONAL_LINK_LIBRARIES test_utils
+	ADDITIONAL_LINK_LIBRARIES test_utils_headers
+)
+add_grb_tests( bicgstab bicgstab
+	ARGUMENTS ${DATASETS_DIR}/gyro_m.mtx direct 1 1 10000 verification ${OUTPUT_VERIFICATION_DIR}/conjugate_gradient_out_gyro_m_ref
+	REQUIRED_FILES ${DATASETS_DIR}/gyro_m.mtx ${OUTPUT_VERIFICATION_DIR}/conjugate_gradient_out_gyro_m_ref
+	Test_OK_SUCCESS
+	BACKENDS reference reference_omp bsp1d hybrid hyperdags nonblocking
 )
 
 add_grb_executables( graphchallenge_nn_single_inference graphchallenge_nn_single_inference.cpp
@@ -107,9 +120,56 @@ add_grb_executables( graphchallenge_nn_single_inference graphchallenge_nn_single
 	ADDITIONAL_LINK_LIBRARIES test_utils_headers
 )
 
-add_grb_executables( simple_pagerank simple_pagerank.cpp
+if( GNN_DATASET_PATH )
+	add_grb_tests( graphchallenge_nn_single_inference graphchallenge_nn_single_inference
+		ARGUMENTS ${GNN_DATASET_PATH} 1024 120 294 1 32 indirect 1 1 verification ${OUTPUT_VERIFICATION_DIR}/graphchallenge_nn_out_1024_120_294_32_threshold_ref
+		Test_OK_SUCCESS
+		REQUIRED_FILES ${GNN_DATASET_PATH} ${OUTPUT_VERIFICATION_DIR}/graphchallenge_nn_out_1024_120_294_32_threshold_ref
+		BACKENDS reference reference_omp bsp1d hybrid hyperdags nonblocking
+	)
+	add_grb_tests( graphchallenge_nn_single_inference.threshold graphchallenge_nn_single_inference
+		ARGUMENTS ${GNN_DATASET_PATH} 1024 120 294 1 32 indirect 1 1 verification ${OUTPUT_VERIFICATION_DIR}/graphchallenge_nn_out_1024_120_294_32_threshold_ref
+		Test_OK_SUCCESS
+		REQUIRED_FILES ${GNN_DATASET_PATH} ${OUTPUT_VERIFICATION_DIR}/graphchallenge_nn_out_1024_120_294_32_threshold_ref
+		BACKENDS reference reference_omp bsp1d hybrid hyperdags nonblocking
+	)
+	add_grb_tests( graphchallenge_nn_single_inference.nothreshold graphchallenge_nn_single_inference
+		ARGUMENTS ${GNN_DATASET_PATH} 1024 120 294 0 0 indirect 1 1 verification ${OUTPUT_VERIFICATION_DIR}/graphchallenge_nn_out_1024_120_294_no_threshold_ref
+		Test_OK_SUCCESS
+		REQUIRED_FILES ${GNN_DATASET_PATH} ${OUTPUT_VERIFICATION_DIR}/graphchallenge_nn_out_1024_120_294_no_threshold_ref
+		BACKENDS reference reference_omp bsp1d hybrid hyperdags nonblocking
+	)
+endif()
+
+add_grb_executables( labeltest label_test.cpp
+../unit/parser.cpp
+BACKENDS reference reference_omp bsp1d hybrid hyperdags nonblocking
+)
+
+list( APPEND _LABELTEST_SIZES 8 256 4096 )
+list( APPEND _LABELTEST_RESULTS 4 9 13 )
+foreach( i RANGE 0 2 )
+	list( GET _LABELTEST_SIZES ${i} __SIZE )
+	list( GET _LABELTEST_RESULTS ${i} __RESULT )
+	add_grb_tests( "labeltest.${__SIZE}" labeltest
+		ARGUMENTS ${__SIZE}
+		Test_OK_SUCCESS
+		BACKENDS reference reference_omp bsp1d hybrid hyperdags nonblocking
+		OUTPUT_VALIDATE grep 'converged in ${__RESULT} iterations' @@TEST_OUTPUT_FILE@@
+	)
+endforeach()
+
+add_grb_executables( pregel_pagerank_global pregel_pagerank.cpp
 	BACKENDS reference reference_omp bsp1d hybrid hyperdags nonblocking
 	ADDITIONAL_LINK_LIBRARIES test_utils_headers
+	COMPILE_DEFINITIONS PR_CONVERGENCE_MODE=false
+)
+add_grb_tests( pregel_pagerank_global pregel_pagerank_global
+	ARGUMENTS ${DATASETS_DIR}/west0497.mtx direct 1 1
+	REQUIRED_FILES ${DATASETS_DIR}/west0497.mtx
+	Test_OK_SUCCESS
+	BACKENDS reference reference_omp bsp1d hybrid hyperdags nonblocking
+	OUTPUT_VALIDATE grep '56 iterations to converge' @@TEST_OUTPUT_FILE@@
 )
 
 add_grb_executables( pregel_pagerank_local pregel_pagerank.cpp
@@ -117,26 +177,183 @@ add_grb_executables( pregel_pagerank_local pregel_pagerank.cpp
 	ADDITIONAL_LINK_LIBRARIES test_utils_headers
 	COMPILE_DEFINITIONS PR_CONVERGENCE_MODE=true
 )
-
-add_grb_executables( pregel_pagerank_global pregel_pagerank.cpp
+add_grb_tests( pregel_pagerank_local pregel_pagerank_local
+	ARGUMENTS ${DATASETS_DIR}/west0497.mtx direct 1 1
+	REQUIRED_FILES ${DATASETS_DIR}/west0497.mtx
+	Test_OK_SUCCESS
 	BACKENDS reference reference_omp bsp1d hybrid hyperdags nonblocking
+	OUTPUT_VALIDATE grep '47 iterations to converge' @@TEST_OUTPUT_FILE@@
+)
+
+add_grb_executables( kmeans kmeans.cpp
+	BACKENDS reference reference_omp hyperdags nonblocking
+)
+add_grb_tests( kmeans kmeans
+	ARGUMENTS
+	Test_OK_SUCCESS
+	BACKENDS reference reference_omp hyperdags nonblocking
+)
+add_grb_executables( kcore_decomposition_critical kcore_decomposition.cpp
 	ADDITIONAL_LINK_LIBRARIES test_utils_headers
-	COMPILE_DEFINITIONS PR_CONVERGENCE_MODE=false
+	BACKENDS reference reference_omp
+	COMPILE_DEFINITIONS KCORE_VARIANT=true
+)
+add_grb_tests( kcore_decomposition_critical kcore_decomposition_critical
+	ARGUMENTS ${DATASETS_DIR}/EPA.mtx direct 1 1 verification ${OUTPUT_VERIFICATION_DIR}/kcore_decomposition_eda_ref
+	REQUIRED_FILES ${DATASETS_DIR}/EPA.mtx ${OUTPUT_VERIFICATION_DIR}/kcore_decomposition_eda_ref
+	Test_OK_SUCCESS
+	BACKENDS reference reference_omp
+)
+
+function( generate_hook_test test_name port num_procs src1 )
+	add_grb_executables( "${test_name}" manual_launcher.cpp ${src1} ${ARGN} BACKENDS bsp1d )
+
+	add_grb_tests( "${test_name}" "${test_name}"
+		ARGUMENTS localhost ${port} ${num_procs}
+		Test_OK_SUCCESS
+		PROCESSES 1 PARALLEL_PROCESSES ${num_procs}
+		BACKENDS bsp1d
+	)
+endfunction()
+
+generate_hook_test( manual_hook_hw 7770 4 hook/hello_world.cpp )
+
+generate_hook_test( manual_hook_grb_set 7771 3 hook/grb_launcher.cpp hook/setvector.cpp )
+
+generate_hook_test( manual_hook_grb_reduce 7772 4 hook/grb_launcher.cpp ../unit/launcher/reduce.cpp )
+
+generate_hook_test( manual_hook_grb_dot 7773 4 hook/grb_launcher.cpp hook/dot.cpp )
+
+generate_hook_test( manual_hook_grb_collectives_blas0 7774 4
+	hook/grb_launcher.cpp ../unit/launcher/collectives_blas0.cpp
+)
+
+generate_hook_test( manual_hook_grb_collectives_blas1 7775 4
+	hook/grb_launcher.cpp hook/collectives_blas1.cpp
+)
+
+generate_hook_test( manual_hook_grb_collectives_blas1_raw 7776 4
+	hook/grb_launcher.cpp hook/collectives_blas1_raw.cpp
+)
+
+generate_hook_test( manual_hook_small_knn 7777 4 hook/grb_launcher.cpp hook/knn.cpp )
+
+add_grb_executables( from_mpi_launch_simple_pagerank simple_pagerank_from_mpi.cpp
+	BACKENDS bsp1d
+	ADDITIONAL_LINK_LIBRARIES MPI::MPI_CXX
+)
+add_grb_tests( from_mpi_launch_simple_pagerank from_mpi_launch_simple_pagerank
+	ARGUMENTS
+	PROCESSES "4"
+	BACKENDS bsp1d
+)
+
+add_grb_executables( from_mpi_launch_simple_pagerank_multiple_entry
+	simple_pagerank_from_mpi.cpp
+	BACKENDS bsp1d
+	ADDITIONAL_LINK_LIBRARIES MPI::MPI_CXX
+	COMPILE_DEFINITIONS MULTIPLE_ENTRY
+)
+add_grb_tests( from_mpi_launch_simple_pagerank_multiple_entry
+	from_mpi_launch_simple_pagerank_multiple_entry
+	ARGUMENTS
+	PROCESSES "5"
+	BACKENDS bsp1d
+)
+
+add_grb_executables( from_mpi_launch_simple_pagerank_broadcast_pinning_multiple_entry
+	simple_pagerank_broadcast.cpp
+	BACKENDS bsp1d
+	ADDITIONAL_LINK_LIBRARIES MPI::MPI_CXX
+	COMPILE_DEFINITIONS MULTIPLE_ENTRY PINNED_OUTPUT
+)
+add_grb_tests( from_mpi_launch_simple_pagerank_broadcast_pinning_multiple_entry
+	from_mpi_launch_simple_pagerank_broadcast_pinning_multiple_entry
+	ARGUMENTS
+	PROCESSES "3"
+	BACKENDS bsp1d
+)
+
+add_grb_executables( from_mpi_launch_simple_pagerank_broadcast_multiple_entry simple_pagerank_broadcast.cpp
+	BACKENDS bsp1d
+	ADDITIONAL_LINK_LIBRARIES MPI::MPI_CXX
+	COMPILE_DEFINITIONS MULTIPLE_ENTRY
+)
+add_grb_tests( from_mpi_launch_simple_pagerank_broadcast_multiple_entry from_mpi_launch_simple_pagerank_broadcast_multiple_entry
+	ARGUMENTS
+	PROCESSES "7"
+	BACKENDS bsp1d
+)
+
+add_grb_executables( from_mpi_launch_simple_pagerank_broadcast simple_pagerank_broadcast.cpp
+	BACKENDS bsp1d
+	ADDITIONAL_LINK_LIBRARIES MPI::MPI_CXX
+)
+add_grb_tests( from_mpi_launch_simple_pagerank_broadcast from_mpi_launch_simple_pagerank_broadcast
+	ARGUMENTS
+	PROCESSES "6"
+	BACKENDS bsp1d
+)
+
+add_grb_executables( knn knn.cpp ../unit/parser.cpp
+	BACKENDS reference reference_omp bsp1d hybrid hyperdags nonblocking
+)
+add_grb_tests( knn knn
+	ARGUMENTS 4 ${DATASETS_DIR}/facebook_combined.txt direct 1 1
+	REQUIRED_FILES ${DATASETS_DIR}/facebook_combined.txt
+	Test_OK_SUCCESS
+	BACKENDS reference reference_omp bsp1d hybrid hyperdags nonblocking
+	OUTPUT_VALIDATE grep 'Neighbourhood size is 421' @@TEST_OUTPUT_FILE@@
+)
+
+add_grb_executables( hpcg hpcg.cpp
+	BACKENDS reference reference_omp bsp1d hybrid hyperdags nonblocking
+	ADDITIONAL_LINK_LIBRARIES test_utils
+)
+add_grb_tests( hpcg hpcg
+	ARGUMENTS
+	Test_OK_SUCCESS
+	BACKENDS reference reference_omp bsp1d hybrid hyperdags nonblocking
 )
 
 add_grb_executables( pregel_connected_components pregel_connected_components.cpp
 	BACKENDS reference reference_omp bsp1d hybrid hyperdags nonblocking
+)
+add_grb_tests( pregel_connected_components pregel_connected_components
+	ARGUMENTS ${DATASETS_DIR}/west0497.mtx direct 1 1
+	REQUIRED_FILES ${DATASETS_DIR}/west0497.mtx
+	Test_OK_SUCCESS
+	BACKENDS reference reference_omp bsp1d hybrid hyperdags nonblocking
+	OUTPUT_VALIDATE grep '11 iterations to converge' @@TEST_OUTPUT_FILE@@
 )
 
 add_grb_executables( conjugate_gradient conjugate_gradient.cpp
 	BACKENDS reference reference_omp bsp1d hybrid hyperdags nonblocking
 	ADDITIONAL_LINK_LIBRARIES test_utils_headers
 )
+add_grb_tests( conjugate_gradient conjugate_gradient
+	ARGUMENTS ${DATASETS_DIR}/gyro_m.mtx direct 1 1 10000 false verification ${OUTPUT_VERIFICATION_DIR}/conjugate_gradient_out_gyro_m_ref
+	REQUIRED_FILES ${DATASETS_DIR}/gyro_m.mtx ${OUTPUT_VERIFICATION_DIR}/conjugate_gradient_out_gyro_m_ref
+	Test_OK_SUCCESS
+	BACKENDS reference reference_omp bsp1d hybrid hyperdags nonblocking
+)
+add_grb_tests( preconditioned_conjugate_gradient conjugate_gradient
+	ARGUMENTS ${DATASETS_DIR}/gyro_m.mtx direct 1 1 10000 true verification ${OUTPUT_VERIFICATION_DIR}/conjugate_gradient_out_gyro_m_ref
+	REQUIRED_FILES ${DATASETS_DIR}/gyro_m.mtx ${OUTPUT_VERIFICATION_DIR}/conjugate_gradient_out_gyro_m_ref
+	Test_OK_SUCCESS
+	BACKENDS reference reference_omp bsp1d hybrid hyperdags nonblocking
+)
 
 add_grb_executables( conjugate_gradient_complex conjugate_gradient.cpp
 	BACKENDS reference reference_omp bsp1d hybrid hyperdags nonblocking
 	ADDITIONAL_LINK_LIBRARIES test_utils_headers
 	COMPILE_DEFINITIONS _CG_COMPLEX
+)
+add_grb_tests( conjugate_gradient_complex conjugate_gradient_complex
+	ARGUMENTS ${TEST_DATA_DIR}/rndHermit256.mtx direct 1 1 1000 false verification ${OUTPUT_VERIFICATION_DIR}/complex_conjugate_conjugate_gradient_out_rndHermit256_ref
+	REQUIRED_FILES ${TEST_DATA_DIR}/rndHermit256.mtx ${OUTPUT_VERIFICATION_DIR}/complex_conjugate_conjugate_gradient_out_rndHermit256_ref
+	Test_OK_SUCCESS
+	BACKENDS reference reference_omp bsp1d hybrid hyperdags nonblocking
 )
 
 add_grb_executables( gmres gmres.cpp
@@ -150,35 +367,6 @@ add_grb_executables( gmres_complex gmres.cpp
 	COMPILE_DEFINITIONS _GMRES_COMPLEX
 )
 
-add_grb_executables( bicgstab bicgstab.cpp
-	BACKENDS reference reference_omp bsp1d hybrid hyperdags nonblocking
-	ADDITIONAL_LINK_LIBRARIES test_utils_headers
-)
-
-add_grb_executables( kmeans kmeans.cpp
-	BACKENDS reference reference_omp hyperdags nonblocking
-)
-
-add_grb_executables( labeltest label_test.cpp
-	../unit/parser.cpp
-	BACKENDS reference reference_omp bsp1d hybrid hyperdags nonblocking
-)
-
-add_grb_executables( small_pagerank ../unit/auto_launcher.cpp
-	hook/small_simple_pagerank.cpp
-	BACKENDS reference reference_omp bsp1d hybrid hyperdags nonblocking
-)
-
-add_grb_executables( kcore_decomposition_critical kcore_decomposition.cpp
-	ADDITIONAL_LINK_LIBRARIES test_utils_headers
-	BACKENDS reference reference_omp
-	COMPILE_DEFINITIONS KCORE_VARIANT=true
-)
-
-add_grb_executables( kcore_decomposition kcore_decomposition.cpp
-	ADDITIONAL_LINK_LIBRARIES test_utils_headers
-	BACKENDS reference reference_omp hyperdags nonblocking bsp1d hybrid
-)
 
 # targets to list and build the test for this category
 get_property( smoke_tests_list GLOBAL PROPERTY tests_category_smoke )
@@ -192,21 +380,8 @@ add_custom_target( "build_tests_category_smoke"
 )
 
 # target to run the tests in this category by calling the appropriate runner
-add_custom_target( tests_smoke
-	COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/smoketests.sh
-		${SCRIPTS_COMMON_ARGS}
-		"--test-bin-dir" "\"${CMAKE_CURRENT_BINARY_DIR}\""
-		"--test-out-dir" "\"${CMAKE_CURRENT_BINARY_DIR}/output\""
-		"--output-verification-dir" "\"${CMAKE_CURRENT_SOURCE_DIR}/output_verification\""
-		"--test-data-dir" "\"${CMAKE_CURRENT_SOURCE_DIR}/test_data\""
-
-	WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}"
-	DEPENDS build_tests_category_smoke # add dependency on this target
-	                                   # to automatically build before running
-	COMMAND_EXPAND_LISTS
-	USES_TERMINAL
+add_custom_target( smoketests
+	COMMAND ${CMAKE_CTEST_COMMAND} -L "mode:smoke" --output-on-failure
+	WORKING_DIRECTORY "${PROJECT_BINARY_DIR}"
+	DEPENDS build_tests_category_smoke
 )
-
-# custom target "smoketests" just to keep old naming
-add_custom_target( smoketests DEPENDS tests_smoke )
-

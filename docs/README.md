@@ -39,3 +39,4 @@ external projects:
 * the
 [guide to use ALP/GraphBLAS in your own project](Use_ALPGraphBLAS_in_your_own_project.md)
 * the [guide to use ALP/GraphBLAS transition path](Transition_use.md)
+* technical details for the [Nonblocking backend](Nonblocking_backend.md).

@@ -288,7 +288,7 @@ if( WITH_BSP1D_BACKEND OR WITH_HYBRID_BACKEND )
 	include( AddLPFTargets )
 endif()
 
-# Coverage flags
+### COVERAGE REPORT GENERATION
 if( CMAKE_BUILD_TYPE STREQUAL "Coverage")
 	include( Coverage )
 endif()
@@ -324,29 +324,20 @@ endif()
 add_subdirectory( include )
 
 ### BACKEND IMPLEMENTATIONS
+
 add_subdirectory( src )
+
 
 ### TESTS and EXAMPLES
 
 # specify test categories and the directory where ALL tests are stored
-set( TESTS_EXE_OUTPUT_DIR "${PROJECT_BINARY_DIR}/tests" )
 
-include( AddGRBTests )
+include( AddGRBExecutables )
 
+enable_testing()
 add_subdirectory( tests )
 
 add_subdirectory( examples )
-
-
-### COVERAGE REPORT GENERATION
-
-if( CMAKE_BUILD_TYPE STREQUAL "Coverage")
-	create_coverage_command( "coverage_json" "coverage.json"  "--json-pretty" )
-	create_coverage_command( "coverage_cobertura" "coverage.xml"  "--xml-pretty" )
-	create_coverage_command( "coverage_csv" "coverage.csv"  "--csv" )
-	create_coverage_command( "coverage_coveralls" "coveralls.json"  "--coveralls" )
-	create_coverage_command( "coverage_html" "index.html"  "--html-details" )
-endif()
 
 
 ### DOXYGEN DOCUMENTATION GENERATION

@@ -22,7 +22,7 @@ limitations under the License.
     - [Direct Generation via `cmake`](#direct-generation-via-cmake)
     - [CMake Build Options, Types and Flags](#cmake-build-options-types-and-flags)
   - [Naming conventions for targets](#naming-conventions-for-targets)
-  - [Adding a new test](#adding-a-new-test)
+  - [Adding a new test executable](#adding-a-new-test-executable)
   - [Adding a new backend](#adding-a-new-backend)
     - [1. Add the related project options](#1-add-the-related-project-options)
     - [2. Add the backend-specific variables](#2-add-the-backend-specific-variables)
@@ -165,7 +165,7 @@ As from above, a convenient way to start even for a custom build is from the
 the building command and start from there with the custom options.
 For example:
 
-```cmake
+```bash
 mkdir build_release
 cd build_release
 cmake -DCMAKE_INSTALL_PREFIX=/path/to/install/dir -DCMAKE_BUILD_TYPE=Release \
@@ -350,7 +350,7 @@ Other targets:
 standard tools are available, they are compiled into a PDF found at
 `<ALP/GraphBLAS root>/docs/code/latex/refman.pdf`.
 
-## Adding a new test
+## Adding a new test executable
 
 Test sources are split in categories, whose purpose is explained in the [Testing
 Infrastructure](#the-testing-infrastructure) section.
@@ -382,7 +382,8 @@ the test source files (at least one is required)
 * `BACKENDS reference reference_omp bsp1d hybrid` is the list of all backends
 the test should be compiled against (at least one is required); for each
 backend, an executable target is created following the naming conventions in
-[Naming conventions for targets](#naming-conventions-for-targets)
+[Naming conventions for targets](#naming-conventions-for-targets); also `none`
+is possible as backend name, meaning no backend is actually linked
 * `ADDITIONAL_LINK_LIBRARIES test_utils` (optional) lists additional libraries
 to link (the backend library is linked by default)
 * `COMPILE_DEFINITIONS MY_TEST_KEY=VALUE ANOTHER_TEST_DEFINITION` (optional)
@@ -406,14 +407,6 @@ relevant script**.
 Each script is sub-divided in several sections depending on the backend that is
 assumed to run and on relevant options: hence, you should place your test
 invocation in the relevant section.
-
-Furthermore, you can achieve more control over the test target generation, i.e.,
-the building of tests, by using the function `add_grb_executable_custom`, also
-defined in [cmake/AddGRBTests.cmake](../cmake/AddGRBTests.cmake), which requires
-to specify dependencies manually (thus, building against multiple backends needs
-correspondingly multiple calls of the same function) and is therefore used only
-in special cases.
-
 
 ## Adding a new backend
 
@@ -887,7 +880,8 @@ The coverage infrastructure prescribes additional dependencies:
   -- though the first method is preferable as it provides a more up-to-date
   version) and clearly requires
 * [Python3](https://www.python.org/), available in most Linux distributions
-  (e.g., `apt-get install python3`) or as [pre-built binary](https://github.com/indygreg/python-build-standalone/releases)
+  (e.g., `apt-get install python3`) or as
+  [pre-built binary](https://github.com/indygreg/python-build-standalone/releases)
   for many OSs and architectures
   (e.g., https://github.com/indygreg/python-build-standalone/releases/download/20230116/cpython-3.11.1+20230116-x86_64_v4-unknown-linux-gnu-install_only.tar.gz)
 

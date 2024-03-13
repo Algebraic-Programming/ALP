@@ -62,7 +62,11 @@ To compile ALP, you need the following tools:
 2. LibNUMA development headers
 3. POSIX threads development headers
 4. [CMake](https://cmake.org/download/) version 3.13 or higher, with GNU Make
-(CMake's default build tool on UNIX systems) or any other supported build tool.
+  (CMake's default build tool on UNIX systems) or any other supported build
+   tool
+5. [Python3](https://www.python.org/) for the testing and (optionally) coverage
+   infrastructure; if your distribution does not provide it, you may download
+   [pre-built binaries](https://github.com/indygreg/python-build-standalone/releases)
 
 ## Linking and run-time
 The ALP libraries link against the following libraries:
@@ -100,7 +104,8 @@ For generating the code documentations:
 
 ## Code coverage
 
-For code/test coverage, a native implementation is available using the CMake infrastructure, using `gcovr` and `gcov`/`lcov`.
+For code/test coverage, a native implementation is available using the CMake
+infrastructure, using `gcovr` and `gcov`/`lcov`.
 
 
 # Very quick start
@@ -230,6 +235,8 @@ and lists technical papers.
 - [Development in ALP](#development-in-alp)
 - [Acknowledgements](#acknowledgements)
 - [Citing ALP, ALP/GraphBLAS, and ALP/Pregel](#citing-alp-alpgraphblas-and-alppregel)
+  - [ALP and ALP/GraphBLAS](#alp-and-alpgraphblas)
+  - [ALP/Pregel](#alppregel)
 
 
 # Configuration

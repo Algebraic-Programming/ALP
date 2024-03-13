@@ -25,7 +25,6 @@
 #ifndef _H_GRB_UTILS_OUTPUT_VERIFICATION
 #define _H_GRB_UTILS_OUTPUT_VERIFICATION
 
-#include <graphblas.hpp>
 
 #include <cmath>
 #include <limits>
@@ -34,55 +33,14 @@
 #include <fstream>
 #include <sstream>
 #include <iostream>
+#include <memory>
+#include <algorithm>
+#include <vector>
 
 #include <assert.h>
 
-
-/**
- * Attempts to read in a value from a given file into a given memory
- * location.
- *
- * @tparam T The datatype of the value
- *
- * @param[in]  in  The input file
- * @param[out] out Where to store the read value.
- *
- * @returns 0 on success and 1 on failure.
- *
- * If the function fails, \a out shall not be assigned.
- *
- * \internal This is the overload for reading T data.
- */
-template< typename T >
-int data_fscanf( std::ifstream &in, T * const out ) {
-	return !(in >> *out);
-};
-
-/**
- * Attempts to read in a complex value from a given file into a given memory
- * location.
- *
- * @tparam T The data type to be used in the complex value
- *
- * @param[in]  in  The input file
- * @param[out] out Where to store the read value.
- *
- * @returns 0 on success and 1 on failure.
- *
- * If the function fails, \a out shall not be assigned.
- *
- * \internal This is the overload for reading complex data.
- */
-template< typename T >
-int data_fscanf( std::ifstream &in, std::complex< T > * const out ) {
-	T x, y;
-	if( in >> x >> y ) {
-		*out = std::complex< T >( x, y );
-		return 0;
-	} else {
-		return 1;
-	}
-};
+#include <graphblas.hpp>
+#include "read_dense_vector.hpp"
 
 /**
  * Verifies a dense vector against a ground-truth output vector.
@@ -142,38 +100,11 @@ int vector_verification(
 	assert( c2 > 0 ); assert( c2 < 1 );
 	const constexpr T one = static_cast< T >( 1 );
 
-	// open verification file
-	std::ifstream in;
-	in.open( truth_filename);
-
-	if( !in.is_open() ) {
-		std::stringstream error;
-		error << "Could not open the file \"" << truth_filename << "\"."
-			<< std::endl;
-		throw std::runtime_error(error.str());
-	}
-
 	// read the truth output vector from the input verification file
 	const size_t n = output_vector.size();
-	T * const truth = new T[ n ];
-	if( truth == nullptr ) {
-		std::cerr << "Could not allocate necessary buffer" << std::endl;
-		throw std::bad_alloc();
-	}
+	std::unique_ptr< T[] > truth( new T[ n ] );
 
-	for( size_t i = 0; i < n; i++ ) {
-		const int rc = data_fscanf( in, truth + i );
-		if( rc != 0 ) {
-			std::stringstream error;
-			error << "The verification file looks incomplete. " << "Line i = " << i
-				<< ", data = " << truth[ i ] << ", rc = " << rc << std::endl;
-			delete [] truth;
-			throw std::runtime_error(error.str());
-		}
-	}
-
-	// close verification file
-	in.close();
+	read_dense_vector_to_array( truth_filename, truth.get(), n );
 
 	// compute magnitudes
 	double magnitude2 = 0;
@@ -189,20 +120,13 @@ int vector_verification(
 	magnitude2 = sqrt( magnitude2 );
 
 	// convert the Pinned Vector into raw data
-	T * const raw_output_vector = new T[ n ];
-	bool * const written_to = new bool[ n ];
-	if( raw_output_vector == nullptr || written_to == nullptr ) {
-		std::cerr << "Could not allocate necessary buffers" << std::endl;
-		delete [] truth;
-		throw std::bad_alloc();
-	}
-	for( size_t i = 0; i < n; i++ ) {
-		written_to[ i ] = false;
-	}
+	std::unique_ptr< T[] > raw_output_vector( new T[ n ] );
+
+	std::vector< bool > written_to( n, false );
 
 	for( size_t k = 0; k < output_vector.nonzeroes(); k++ ) {
-		const T &value = output_vector.getNonzeroValue( k, one );
 		const size_t index = output_vector.getNonzeroIndex( k );
+		const T &value = output_vector.getNonzeroValue( k, one );
 		assert( index < n );
 		assert( !written_to[ index ] );
 		raw_output_vector[ index ] = value;
@@ -233,7 +157,7 @@ int vector_verification(
 	// curInfNorm, but prevents a bunch of code duplication for checking the
 	// output at i = 0. We prefer no code duplication.
 	for( size_t i = 0; i < n; i++ ) {
-		const double curInfNorm = fabs( raw_output_vector[ i ] - truth[ i ] );
+		const double curInfNorm = static_cast < double >( std::abs( raw_output_vector[ i ] - truth[ i ] ) );
 		// if any of the variables involved in the condition below is NaN or -NaN
 		// the condition evaluated by the function isless will be false and then
 		// the whole condition of the if-statement will be evaluated to true
@@ -283,14 +207,6 @@ int vector_verification(
 			<< "it reads " << norm2 << " instead\n";
 		ret += 8;
 	}
-
-	// free local buffers
-	assert( truth != nullptr );
-	assert( written_to != nullptr );
-	assert( raw_output_vector != nullptr );
-	delete [] truth;
-	delete [] written_to;
-	delete [] raw_output_vector;
 
 	// perform check and return
 	if( !std::isless( norm2, c1 * magnitude2 + n * eps ) ) {
