@@ -305,8 +305,9 @@ tests_performance_slurm:
     - slurm
   script:
     - *setup_and_build_ndebug_slurm
-    - make -j$(nproc) performancetests |& tee performancetests.log
-    - ../tests/summarise.sh performancetests.log tests/performance/output/benchmarks tests/performance/output/scaling
+    - make -j$(nproc) build_tests_category_performance |& tee performancetests.log
+    - ctest -L "mode:performance" --output-junit performance.xml
+      --output-on-failure &> performancetests.log
   artifacts:
     paths: [ build/*.log ]
     expire_in: 1 month
