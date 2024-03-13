@@ -867,10 +867,13 @@ grb::RC Pipeline::execution() {
 					0, containers_size, tile_size, tile_id, num_tiles
 				);
 				assert( lower_bound[ tile_id ] <= upper_bound[ tile_id ] );
+			}
+		}
 
 #if defined(_DEBUG) || defined(_LOCAL_DEBUG)
-			fprintf( stderr, "Pipeline::execution(2): check if any of the coordinates will use the search-variant of asyncSubsetInit:\n" );
+		fprintf( stderr, "Pipeline::execution(2): check if any of the coordinates will use the search-variant of asyncSubsetInit:\n" );
 #endif
+
 #ifndef GRB_ALREADY_DENSE_OPTIMIZATION
 		std::vector< Coordinates< nonblocking > * > accessed_coordinates_vec( accessed_coordinates.begin(), accessed_coordinates.end() );
 		#pragma omp parallel for schedule(dynamic) num_threads(nthreads)
@@ -891,17 +894,16 @@ grb::RC Pipeline::execution() {
 //			assert( lower_bound[ tile_id ] <= upper_bound[ tile_id ] );
 
 
-				RC local_ret = SUCCESS;
-				for( std::vector< stage_type >::iterator pt = pbegin();
-					pt != pend(); ++pt
-				) {
-					local_ret = local_ret
-						? local_ret
-						: (*pt)( *this, lower_bound[ tile_id ], upper_bound[ tile_id ] );
-				}
-				if( local_ret != SUCCESS ) {
-					ret = local_ret;
-				}
+			RC local_ret = SUCCESS;
+			for( std::vector< stage_type >::iterator pt = pbegin();
+				pt != pend(); ++pt
+			) {
+				local_ret = local_ret
+					? local_ret
+					: (*pt)( *this, lower_bound[ tile_id ], upper_bound[ tile_id ] );
+			}
+			if( local_ret != SUCCESS ) {
+				ret = local_ret;
 			}
 		}
 	} else {
