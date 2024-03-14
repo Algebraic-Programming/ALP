@@ -212,9 +212,6 @@ std::string grb::internal::hyperdags::toString(
 		case SET_MATRIX_MATRIX:
 			return "set( matrix, matrix )";
 
-		case SET_MATRIX_VALUE:
-			return "set( matrix, value )";
-
 		case SET_MATRIX_MATRIX_INPUT2:
 			return "set( matrix, matrix, scalar )";
 

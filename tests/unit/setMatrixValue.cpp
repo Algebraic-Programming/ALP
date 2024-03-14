@@ -20,9 +20,9 @@
 #include <algorithm>
 #include <vector>
 
-#include <graphblas/utils/iterators/MatrixVectorIterator.hpp>
-
 #include <graphblas.hpp>
+
+#include <graphblas/utils/iterators/matrixVectorIterator.hpp>
 
 
 using namespace grb;
@@ -54,10 +54,10 @@ void grb_program( const size_t &n, grb::RC &rc ) {
 	}
 
 	// Try to set the matrix to 2s ( RESIZE )
-	rc = grb::set( Identity, 2UL, Phase::RESIZE );
+	rc = grb::set( Identity, Identity, 2UL, Phase::RESIZE );
 	if( rc != SUCCESS ) {
-		std::cerr << "\t set matrix to 2s ( RESIZE ) FAILED: rc is "
-			<< grb::toString(rc) << "\n";
+		std::cerr << "\t set identity matrix diagonal to 2s ( RESIZE ) FAILED: "
+			<< "rc is " << grb::toString(rc) << "\n";
 		return;
 	}
 	// As the RESIZE phase is useless, the matrix should not be resized.
@@ -69,10 +69,10 @@ void grb_program( const size_t &n, grb::RC &rc ) {
 	}
 
 	// Try to set the matrix to 2s ( EXECUTE )
-	rc = grb::set( Identity, 2UL, Phase::EXECUTE );
+	rc = grb::set( Identity, Identity, 2UL, Phase::EXECUTE );
 	if( rc != SUCCESS ) {
-		std::cerr << "\t set matrix to 2s ( EXECUTE ) FAILED: rc is "
-			<< grb::toString(rc) << "\n";
+		std::cerr << "\t set identity matrix diagonal to 2s ( EXECUTE ) FAILED: "
+			<< "rc is " << grb::toString(rc) << "\n";
 		return;
 	}
 	// Now all values should be 2s

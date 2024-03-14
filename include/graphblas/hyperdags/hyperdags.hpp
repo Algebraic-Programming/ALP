@@ -378,8 +378,6 @@ namespace grb {
 
 				SET_MATRIX_MATRIX,
 
-				SET_MATRIX_VALUE,
-
 				SET_MATRIX_MATRIX_INPUT2,
 
 				MXM_MATRIX_MATRIX_MATRIX_SEMIRING,
@@ -504,7 +502,7 @@ namespace grb {
 			};
 
 			/** \internal How many operation vertex types exist. */
-			const constexpr size_t numOperationVertexTypes = 112;
+			const constexpr size_t numOperationVertexTypes = 111;
 
 			/** \internal An array of all operation vertex types. */
 			const constexpr enum OperationVertexType
@@ -560,7 +558,6 @@ namespace grb {
 				EWISEAPPLY_MATRIX_MATRIX_MATRIX_MULMONOID_PHASE,
 				EWISEAPPLY_MATRIX_MATRIX_MATRIX_OPERATOR_PHASE,
 				SET_MATRIX_MATRIX,
-				SET_MATRIX_VALUE,
 				SET_MATRIX_MATRIX_INPUT2,
 				MXM_MATRIX_MATRIX_MATRIX_SEMIRING,
 				MXM_MATRIX_MATRIX_MATRIX_MONOID,

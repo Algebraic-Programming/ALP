@@ -530,7 +530,7 @@ namespace grb {
 				if( clear_rc != SUCCESS ) {
 					return PANIC;
 				} else {
-					return FAILED;
+					return ILLEGAL;
 				}
 			}
 		}
@@ -603,7 +603,7 @@ namespace grb {
 			if( ret == SUCCESS ) {
 				// on successful local resize, sync new global capacity
 				ret = internal::updateCap( x );
-			} else if( ret == FAILED ) {
+			} else if( ret == ILLEGAL ) {
 				// on any failed local resize, clear vector
 				const RC clear_rc = clear( x );
 				if( clear_rc != SUCCESS ) { ret = PANIC; }
@@ -650,7 +650,7 @@ namespace grb {
 				if( clear_rc != SUCCESS ) {
 					return PANIC;
 				} else {
-					return FAILED;
+					return ILLEGAL;
 				}
 			}
 		}
@@ -748,7 +748,7 @@ namespace grb {
 			assert( phase == EXECUTE );
 			if( ret == SUCCESS ) {
 				ret = internal::updateNnz( x );
-			} else if( ret == FAILED ) {
+			} else if( ret == ILLEGAL ) {
 				const RC clear_rc = clear( x );
 				if( clear_rc != SUCCESS ) {
 					ret = PANIC;
@@ -772,7 +772,11 @@ namespace grb {
 		Vector< OutputType, BSP1D, Coords > &x,
 		const Vector< MaskType, BSP1D, Coords > &mask,
 		const InputType &y,
-		const Phase &phase = EXECUTE
+		const Phase &phase = EXECUTE,
+		const typename std::enable_if<
+			!grb::is_object< OutputType >::value &&
+			!grb::is_object< MaskType >::value
+		>::type * const = nullptr
 	) {
 		// check dispatch to simpler variant
 		if( size( mask ) == 0 ) {
@@ -797,7 +801,9 @@ namespace grb {
 		// all OK, try to do assignment
 		RC ret = set< descr >(
 			internal::getLocal( x ),
-			internal::getLocal( mask ), y, phase
+			internal::getLocal( mask ),
+			y,
+			phase
 		);
 
 		if( collectives< BSP1D >::allreduce( ret, operators::any_or< RC >() )
@@ -814,7 +820,7 @@ namespace grb {
 			assert( phase == EXECUTE );
 			if( ret == SUCCESS ) {
 				ret = internal::updateNnz( x );
-			} else if( ret == FAILED ) {
+			} else if( ret == ILLEGAL ) {
 				const RC clear_rc = clear( x );
 				if( clear_rc != SUCCESS ) {
 					ret = PANIC;
@@ -831,12 +837,19 @@ namespace grb {
 	template<
 		Descriptor descr = descriptors::no_operation,
 		typename DataType, typename RIT, typename CIT, typename NIT,
+		typename MaskType,
 		typename ValueType = DataType
 	>
 	RC set(
-		Matrix< DataType, BSP1D, RIT, CIT, NIT  > &C,
+		Matrix< DataType, BSP1D, RIT, CIT, NIT > &C,
+		const Matrix< MaskType, BSP1D, RIT, CIT, NIT > &mask,
 		const ValueType& val,
-		const Phase &phase = EXECUTE
+		const Phase &phase = EXECUTE,
+		const typename std::enable_if<
+			!grb::is_object< DataType >::value &&
+			!grb::is_object< ValueType >::value &&
+			!grb::is_object< MaskType >::value
+		>::type * const = nullptr
 	) noexcept {
 		const size_t m = nrows( C );
 		const size_t n = ncols( C );
@@ -845,7 +858,7 @@ namespace grb {
 		if( m == 0 || n == 0 || nz == 0 ) { return SUCCESS; }
 
 		RC ret = set< descr >(
-			internal::getLocal( C ), val, phase
+			internal::getLocal( C ), internal::getLocal( mask ), val, phase
 		);
 
 		if( collectives< BSP1D >::allreduce( ret, operators::any_or< RC >() )
@@ -854,11 +867,15 @@ namespace grb {
 			return PANIC;
 		}
 
-		if( phase == EXECUTE ) {
+		if( phase == RESIZE ) {
 			if( ret == SUCCESS ) {
-				ret = internal::updateNnz( x );
-			} else if( ret == FAILED ) {
-				const RC clear_rc = clear( x );
+				ret = internal::updateCap( C );
+			}
+		} else if( phase == EXECUTE ) {
+			if( ret == SUCCESS ) {
+				ret = internal::updateNnz( C );
+			} else if( ret == ILLEGAL ) {
+				const RC clear_rc = clear( C );
 				if( clear_rc != SUCCESS ) {
 					ret = PANIC;
 				}
@@ -1137,17 +1154,17 @@ namespace grb {
 			typename VType
 		>
 		void handleSingleNonzero(
-				const BSP1D_Data &data,
-				const fwd_iterator &start,
-				const IOMode mode,
-				const size_t &rows,
-				const size_t &cols,
-				std::vector< internal::NonzeroStorage< IType, JType, VType > > &cache,
+			const BSP1D_Data &data,
+			const fwd_iterator &start,
+			const IOMode mode,
+			const size_t &rows,
+			const size_t &cols,
+			std::vector< internal::NonzeroStorage< IType, JType, VType > > &cache,
+			std::vector<
 				std::vector<
-					std::vector<
-						internal::NonzeroStorage< IType, JType, VType >
-					>
-				> &outgoing
+					internal::NonzeroStorage< IType, JType, VType >
+				>
+			> &outgoing
 		) {
 			// compute process-local indices (even if remote, for code readability)
 			const size_t global_row_index = start.i();
