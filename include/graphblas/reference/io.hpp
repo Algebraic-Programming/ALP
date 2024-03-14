@@ -971,26 +971,28 @@ namespace grb {
 			Descriptor descr,
 			typename OutputType, typename InputType1,
 			typename InputType2 = const OutputType,
-			typename RIT1, typename CIT1, typename NIT1,
-			typename RIT2, typename CIT2, typename NIT2
+			typename RIT, typename CIT, typename NIT
 		>
 		RC set(
-			Matrix< OutputType, reference, RIT1, CIT1, NIT1 > &C,
-			const Matrix< InputType1, reference, RIT2, CIT2, NIT2 > &A,
+			Matrix< OutputType, reference, RIT, CIT, NIT > &C,
+			const Matrix< InputType1, reference, RIT, CIT, NIT > &A,
 			const InputType2 * __restrict__ id = nullptr
 		) noexcept {
 #ifdef _DEBUG
 			std::cout << "Called grb::set (matrices, reference), execute phase\n";
 #endif
 			// static checks
-			NO_CAST_ASSERT(
+			static_assert(
 				( !( descr & descriptors::no_casting ) ||
-				( !A_is_mask && std::is_same< InputType1, OutputType >::value ) ),
-				"internal::grb::set", "called with non-matching value types"
+					( !A_is_mask && std::is_same< InputType1, OutputType >::value ) ),
+				"internal::grb::set called with non-matching value types. This is an "
+				"internal error. Please submit a bug report."
 			);
-			NO_CAST_ASSERT( ( !( descr & descriptors::no_casting ) ||
-				( A_is_mask && std::is_same< InputType2, OutputType >::value ) ),
-				"internal::grb::set", "Called with non-matching value types"
+			static_assert(
+				( !( descr & descriptors::no_casting ) ||
+					( A_is_mask && std::is_same< InputType2, OutputType >::value ) ),
+				"internal::grb::set called with non-matching value types. This is an "
+				"internal error. Please submit a bug report."
 			);
 
 			// run-time checks
@@ -1067,6 +1069,7 @@ namespace grb {
 						internal::getCCS( A ), nz, n, start, end
 					);
 				}
+
 			}
 			internal::setCurrentNonzeroes( C, nz );
 
@@ -1130,17 +1133,21 @@ namespace grb {
 			!grb::is_object< InputType2 >::value
 		>::type * const = nullptr
 	) noexcept {
-		static_assert( !std::is_same< OutputType, void >::value,
-			"internal::grb::set (masked set to value): cannot have a pattern "
-			"matrix as output" );
 #ifdef _DEBUG
 		std::cout << "Called grb::set (matrix-to-value-masked, reference)\n";
 #endif
 		// static checks
-		NO_CAST_ASSERT( ( !(descr & descriptors::no_casting) ||
-				std::is_same< InputType2, OutputType >::value
-			), "grb::set",
+		NO_CAST_ASSERT(
+			( !(descr & descriptors::no_casting) ||
+				std::is_same< InputType2, OutputType >::value ),
+			"grb::set( matrix, mask, value )",
 			"called with non-matching value types"
+		);
+		NO_CAST_ASSERT(
+			( !(descr & descriptors::no_casting) ||
+				std::is_same< InputType1, bool >::value ),
+			"grb::set( matrix, mask, value )",
+			"called with non-Boolean mask value type"
 		);
 
 		// dynamic checks

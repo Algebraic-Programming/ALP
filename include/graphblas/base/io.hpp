@@ -1100,7 +1100,8 @@ namespace grb {
 	 *                  of nonzeroes in \a mask that evaluate <tt>true</tt>. Any
 	 *                  elements of \a C on input will be erased.
 	 * @param[in]  mask The mask which defines the nonzero structure of \a C on
-	 *                  output.
+	 *                  output. The mask may equal \a C if and only if \a descr
+	 *                  does \em not include #grb::descriptors::invert_mask.
 	 * @param[in]   val The value to set each nonzero of \a C to.
 	 * @param[in] phase Which #grb::Phase the operation is requested. Optional;
 	 *                  the default is #grb::EXECUTE.
