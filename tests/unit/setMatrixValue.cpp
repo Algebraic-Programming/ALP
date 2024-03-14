@@ -22,22 +22,151 @@
 
 #include <graphblas.hpp>
 
-#include <graphblas/utils/iterators/matrixVectorIterator.hpp>
+#include <graphblas/algorithms/matrix_factory.hpp>
 
 
 using namespace grb;
 
-void grb_program( const size_t &n, grb::RC &rc ) {
-	grb::Matrix< int > Identity( n, n, n );
-	std::vector< size_t > Identity_coords( n );
-	std::iota( Identity_coords.begin(), Identity_coords.end(), 0UL );
-	std::vector< int > Identity_vals( n, 1 );
-	if( SUCCESS !=
-		buildMatrixUnique( Identity, Identity_coords.data(),
-			Identity_coords.data(), Identity_vals.data(), n, SEQUENTIAL )
-	) {
-		std::cerr << "\t initialisation (buildMatrixUnique) FAILED: rc is "
-			<< grb::toString(rc) << "\n";
+/**
+ * @tparam left Whether the output matrix is off_diagonal (left) or identity
+ *              (right). The difference in test is that for if selecting left,
+ *              then the capacity of the output may have to resize. If the
+ *              other way around, no resizing is ever needed.
+ */
+template< typename T, bool left >
+void identity_test( const size_t &n, grb::RC &rc ) {
+	rc = SUCCESS;
+	if( n < 2 ) {
+		std::cout << "\t test does not apply for n smaller than 2\n";
+		return;
+	}
+
+	// construct containers
+	grb::Matrix< int > off_diagonal( 0, 0, 0 );
+	grb::Matrix< T > identity( 0, 0, 0 );
+	try {
+		grb::Matrix< int > off_diagonal_alloc =
+			algorithms::matrices< int >::eye( n, n, 7, 1 );
+		grb::Matrix< T > identity_alloc = algorithms::matrices< T >::identity( n );
+		off_diagonal = std::move( off_diagonal_alloc );
+		identity = std::move( identity_alloc );
+	} catch( ... ) {
+		std::cerr << "\t error during construction of the identity matrix\n";
+		rc = FAILED;
+		return;
+	}
+
+	if( nnz( off_diagonal ) != n - 1 ) {
+		std::cerr << "\t verification of off-diagonal construction failed; "
+			"expected " << n << " elements, got " << nnz( off_diagonal ) << "\n";
+		rc = FAILED;
+	}
+	if( nnz( identity ) != n ) {
+		std::cerr << "\t verification of off-diagonal construction failed; "
+			"expected " << n << " elements, got " << nnz( off_diagonal ) << "\n";
+		rc = FAILED;
+	}
+	{
+		RC local_rc = std::all_of( off_diagonal.cbegin(), off_diagonal.cend(),
+			[]( const std::pair< std::pair< size_t, size_t >, int > &entry ) {
+				return entry.second == 7 && entry.first.first + 1 == entry.first.second;
+			} ) ? SUCCESS : FAILED;
+		if( local_rc != SUCCESS ) {
+			std::cerr << "\t verification of off-diagonal construction failed: "
+				<< "at least one unexpected matrix element found\n";
+			if( rc == SUCCESS ) { rc = local_rc; }
+		}
+		local_rc = std::all_of( identity.cbegin(), identity.cend(),
+			[]( const std::pair< std::pair< size_t, size_t >, int > &entry ) {
+				return entry.second == 1 && entry.first.first == entry.first.second;
+			} ) ? SUCCESS : FAILED;
+		if( local_rc != SUCCESS ) {
+			std::cerr << "\t verification of identity construction failed: "
+				<< "at least one unexpected matrix element found\n";
+			if( rc == SUCCESS ) { rc = local_rc; }
+		}
+	}
+	if( rc != SUCCESS ) { return; }
+
+	// perform the set, resize phase
+	if( left ) {
+		rc = grb::set( off_diagonal, identity, 3, RESIZE );
+	} else {
+		rc = grb::set( identity, off_diagonal, 3, RESIZE );
+	}
+	if( rc != SUCCESS ) {
+		std::cerr << "\t resize failed\n";
+		return;
+	}
+
+	// check capacity
+	if( left ) {
+		if( grb::capacity( off_diagonal ) < n ) {
+			std::cerr << "\t resize failed to achieve correct capacity for "
+				<< "off_diagonal\n";
+			rc = FAILED;
+		}
+		return;
+	}
+
+	// perform the set, execute phase
+	if( left ) {
+		rc = grb::set( off_diagonal, identity, 3, EXECUTE );
+	} else {
+		rc = grb::set( identity, off_diagonal, 3, EXECUTE );
+	}
+	if( rc != SUCCESS ) {
+		std::cerr << "\t execute failed\n";
+		return;
+	}
+
+	// check output
+	{
+		const size_t expected_nnz = left ? n : n - 1;
+		const size_t actual_nnz   = left ? nnz( off_diagonal ) : nnz( identity );
+		if( actual_nnz != expected_nnz ) {
+			std::cerr << "\t unexpected number of nonzeroes: got " << actual_nnz << ", "
+				<< "expected " << expected_nnz << "\n";
+			rc = FAILED;
+		}
+		RC local_rc = PANIC;
+		if( left ) {
+			local_rc = std::all_of( off_diagonal.cbegin(), off_diagonal.cend(),
+				[]( const std::pair< std::pair< size_t, size_t >, int > &entry ) {
+					return entry.second == 3 && entry.first.first == entry.first.second;
+				} ) ? SUCCESS : FAILED;
+		} else {
+			local_rc = std::all_of( identity.cbegin(), identity.cend(),
+				[]( const std::pair< std::pair< size_t, size_t >, int > &entry ) {
+					return entry.second == 3 && entry.first.first + 1 == entry.first.second;
+				} ) ? SUCCESS : FAILED;
+		}
+		if( local_rc == FAILED ) {
+			std::cerr << "\t at least one unexpected output entry found\n";
+			if( rc == SUCCESS ) { rc = local_rc; }
+		}
+	}
+
+	// done
+}
+
+void self_identity_test( const size_t &n, grb::RC &rc ) {
+	rc = SUCCESS;
+
+	grb::Matrix< int > Identity( 0, 0, 0 );
+	try {
+		grb::Matrix< int > Identity_alloc =
+			algorithms::matrices< int >::identity( n );
+		Identity = std::move( Identity_alloc );
+	} catch( ... ) {
+		std::cerr << "\t error during construction of the identity matrix\n";
+		rc = FAILED;
+		return;
+	}
+
+	if( nnz( Identity ) != n ) {
+		std::cerr << "\t diagonal has " << nnz( Identity ) << " elements, expected "
+			<< n << "\n";
 		rc = FAILED;
 		return;
 	}
@@ -61,9 +190,9 @@ void grb_program( const size_t &n, grb::RC &rc ) {
 		return;
 	}
 	// As the RESIZE phase is useless, the matrix should not be resized.
-	if( nnz( Identity ) != n ) {
-		std::cerr << "\t unexpected number of nonzeroes in matrix "
-			<< "( " << nnz( Identity ) << " ), expected " << n << "\n";
+	if( capacity( Identity ) < n ) {
+		std::cerr << "\t unexpected matrix capacity: " << capacity( Identity )
+			<< ", expected at least " << n << "\n";
 		rc = FAILED;
 		return;
 	}
@@ -75,15 +204,31 @@ void grb_program( const size_t &n, grb::RC &rc ) {
 			<< "rc is " << grb::toString(rc) << "\n";
 		return;
 	}
+
 	// Now all values should be 2s
-	rc = std::all_of( Identity.cbegin(), Identity.cend(),
-		[]( const std::pair< std::pair< size_t, size_t >, int > &entry ) {
-			return entry.second == 2 && entry.first.first == entry.first.second;
-		} ) ? SUCCESS : FAILED;
+	if( nnz( Identity ) != n ) {
+		std::cerr << "\t Expected " << n << " nonzeroes, got " << nnz( Identity )
+			<< "\n";
+		rc = FAILED;
+	}
+	{
+		const RC local_rc = std::all_of( Identity.cbegin(), Identity.cend(),
+			[]( const std::pair< std::pair< size_t, size_t >, int > &entry ) {
+				return entry.second == 2 && entry.first.first == entry.first.second;
+			} ) ? SUCCESS : FAILED;
+		if( rc == SUCCESS ) {
+			rc = local_rc;
+		} else {
+			std::cout << "\t Entry verification failed\n";
+		}
+	}
 	if( rc != SUCCESS ) {
-		std::cerr << "\t Check of set matrix to 2s ( EXECUTE ) FAILED";
+		std::cerr << "\t Check of set identity matrix diagonal to 2s ( VERIFY ) "
+			<< "FAILED\n";
 		return;
 	}
+
+	// done
 }
 
 int main( int argc, char ** argv ) {
@@ -117,14 +262,106 @@ int main( int argc, char ** argv ) {
 
 	std::cout << "This is functional test " << argv[ 0 ] << "\n";
 	grb::Launcher< AUTOMATIC > launcher;
-	grb::RC out;
-	if( launcher.exec( &grb_program, in, out, true ) != SUCCESS ) {
+	grb::RC out = PANIC;
+	bool failed = false;
+
+	/*std::cout << "\t test 1 (self-masked)\n";
+	if( launcher.exec( &self_identity_test, in, out, true ) != SUCCESS ) {
 		std::cerr << "Launching test FAILED\n" << std::endl;
 		return 255;
 	}
 	if( out != SUCCESS ) {
+		std::cout << "\t\t FAILED\n";
+		failed = true;
+	} else {
+		std::cout << "\t\t OK\n";
+	}*/
+
+	std::cout << "\t test 2 (matching domains, no-op resize)\n";
+	if( launcher.exec( &identity_test< int, false >, in, out, true ) != SUCCESS ) {
+		std::cerr << "Launching test FAILED\n" << std::endl;
+		return 255;
+	}
+	if( out != SUCCESS ) {
+		std::cout << "\t\t FAILED\n";
+		failed = true;
+	} else {
+		std::cout << "\t\t OK\n";
+	}
+
+	std::cout << "\t test 3 (matching domains, resize)\n";
+	if( launcher.exec( &identity_test< int, true >, in, out, true ) != SUCCESS ) {
+		std::cerr << "Launching test FAILED\n" << std::endl;
+		return 255;
+	}
+	if( out != SUCCESS ) {
+		std::cout << "\t\t FAILED\n";
+		failed = true;
+	} else {
+		std::cout << "\t\t OK\n";
+	}
+
+	std::cout << "\t test 4 (mismatching domains, no-op resize)\n";
+	if( launcher.exec( &identity_test< size_t, false >, in, out, true )
+		!= SUCCESS
+	) {
+		std::cerr << "Launching test FAILED\n" << std::endl;
+		return 255;
+	}
+	if( out != SUCCESS ) {
+		std::cout << "\t\t FAILED\n";
+		failed = true;
+	} else {
+		std::cout << "\t\t OK\n";
+	}
+
+	std::cout << "\t test 5 (mismatching domains, resize)\n";
+	if( launcher.exec( &identity_test< double, true >, in, out, true )
+		!= SUCCESS
+	) {
+		std::cerr << "Launching test FAILED\n" << std::endl;
+		return 255;
+	}
+	if( out != SUCCESS ) {
+		std::cout << "\t\t FAILED\n";
+		failed = true;
+	} else {
+		std::cout << "\t\t OK\n";
+	}
+
+	/*std::cout << "\t test 6 (void mask, no-op resize)\n";
+	if( launcher.exec( &identity_test< void, false >, in, out, true )
+		!= SUCCESS
+	) {
+		std::cerr << "Launching test FAILED\n" << std::endl;
+		return 255;
+	}
+	if( out != SUCCESS ) {
+		std::cout << "\t\t FAILED\n";
+		failed = true;
+	} else {
+		std::cout << "\t\t OK\n";
+	}
+
+	std::cout << "\t test 7 (void output, resize)\n";
+	if( launcher.exec( &identity_test< void, true >, in, out, true )
+		!= SUCCESS
+	) {
+		std::cerr << "Launching test FAILED\n" << std::endl;
+		return 255;
+	}
+	if( out != SUCCESS ) {
+		std::cout << "\t\t FAILED\n";
+		failed = true;
+	}
+	} else {
+		std::cout << "\t\t OK\n";
+	}*/
+
+	if( failed ) {
 		std::cerr << std::flush;
-		std::cout << "Test FAILED (" << grb::toString( out ) << ")\n" << std::endl;
+		std::cout << "Test FAILED (last error: " << grb::toString( out ) << ")\n"
+			<< std::endl;
 	} else {
 		std::cout << "Test OK\n" << std::endl;
 	}
