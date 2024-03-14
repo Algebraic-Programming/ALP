@@ -151,6 +151,29 @@ namespace grb {
 		);
 
 		/* *********************
+		       BLAS-2 friends
+		   ********************* */
+
+		template<
+			Descriptor,
+			class SelectionOperator,
+			typename Tin,
+			typename RITin, typename CITin, typename NITin,
+			typename Tout,
+			typename RITout, typename CITout, typename NITout
+		>
+		friend RC select(
+			Matrix< Tout, BSP1D, RITout, CITout, NITout > &,
+			const Matrix< Tin, BSP1D, RITin, CITin, NITin > &,
+			const SelectionOperator &,
+			const Phase &,
+			const typename std::enable_if<
+					!is_object< Tin >::value &&
+					!is_object< Tout >::value
+			>::type * const
+		);
+
+		/* *********************
 		      Internal friends
 		   ********************* */
 
@@ -334,6 +357,42 @@ namespace grb {
 			}
 
 
+		protected:
+
+			/**
+			 * Helper functions to get the global coordinates of this matrix
+			 * from local coordinates.
+			 *
+			 * \return [
+			 *	0: local row index to global row index,
+			 *	1: local column index to global column index,
+			 * ]
+			 */
+			std::tuple<
+				std::function< size_t( size_t ) >,
+				std::function< size_t( size_t ) >
+			> getLocalToGlobalCoordinatesTranslationFunctions() const noexcept {
+				const auto &lpf_data = internal::grb_BSP1D.cload();
+				const size_t rows = nrows( *this );
+				const size_t columns = ncols( *this );
+
+				return std::make_tuple(
+					[ lpf_data, rows ]( const size_t i ) -> size_t {
+						return internal::Distribution< BSP1D >::local_index_to_global(
+							i, rows, lpf_data.s, lpf_data.P );
+					},
+					[ lpf_data, columns ]( const size_t j ) -> size_t {
+						const size_t col_pid = internal::Distribution<>::offset_to_pid(
+							j, columns, lpf_data.P );
+						const size_t col_off = internal::Distribution<>::local_offset(
+							columns, col_pid, lpf_data.P );
+						return internal::Distribution< BSP1D >::local_index_to_global(
+							j - col_off, columns, col_pid, lpf_data.P );
+					}
+				);
+			}
+
+
 		public:
 
 			/** @see Matrix::value_type */
@@ -506,6 +565,39 @@ namespace grb {
 				const IOMode mode = PARALLEL
 			) const {
 				return end( mode );
+			}
+
+			/**
+			 * Helper functions to get the global coordinates of this matrix
+			 * from local coordinates.
+			 *
+			 * \return [
+			 *	0: local row index to global row index,
+			 *	1: local column index to global column index,
+			 * ]
+			 */
+			std::tuple<
+				std::function< size_t( size_t ) >,
+				std::function< size_t( size_t ) >
+			> unionToGlobalCoordinatesTranslators() const noexcept {
+				const auto &lpf_data = internal::grb_BSP1D.cload();
+				const size_t rows = nrows( *this );
+				const size_t columns = ncols( *this );
+
+				return std::make_tuple(
+					[ lpf_data, rows ]( const size_t i ) -> size_t {
+						return internal::Distribution< BSP1D >::local_index_to_global(
+							i, rows, lpf_data.s, lpf_data.P );
+					},
+					[ lpf_data, columns ]( const size_t j ) -> size_t {
+						const size_t col_pid = internal::Distribution<>::offset_to_pid(
+							j, columns, lpf_data.P );
+						const size_t col_off = internal::Distribution<>::local_offset(
+							columns, col_pid, lpf_data.P );
+						return internal::Distribution< BSP1D >::local_index_to_global(
+							j - col_off, columns, col_pid, lpf_data.P );
+					}
+				);
 			}
 
 	};

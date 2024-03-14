@@ -4276,6 +4276,163 @@ namespace grb {
 
 	} // namespace operators
 
+	namespace operators::select::internal {
+
+		/**
+		 * This class takes a generic operator implementation and exposes a more
+		 * convenient operator() function based on it. This function allows arbitrary
+		 * data types being passed as parameters, and automatically handles any
+		 * casting required for the raw operator.
+		 *
+		 * @tparam OP The generic operator implementation.
+		 *
+		 * @see Operator for full details.
+		 */
+		template< typename OP, typename >
+		struct MatrixSelectionOperatorBase {
+			typedef typename OP::value_type D;
+			typedef typename OP::row_type RIT;
+			typedef typename OP::column_type CIT;
+
+			template< typename RIT1, typename CIT1, typename D1 >
+			bool operator()(
+				const RIT1 &x, const CIT1 &y, const D1 &v
+			) const noexcept {
+				const RIT a = static_cast< RIT >( x );
+				const CIT b = static_cast< CIT >( y );
+				const D   c = static_cast< D >( v );
+				return OP::apply( &a, &b, &c );
+			}
+
+			/**
+			 * This is the high-performance version of apply() in the sense that no
+			 * casting is required. This version will be automatically called whenever
+			 * possible (non-void variant).
+			 */
+			bool operator()(
+				const RIT &x, const CIT &y, const D &v
+			) const noexcept {
+				return OP::apply( &x, &y, &v );
+			}
+
+		};
+
+		/** This is the void value type variant. */
+		template< typename OP >
+		struct MatrixSelectionOperatorBase< OP, void > {
+			typedef typename OP::row_type RIT;
+			typedef typename OP::column_type CIT;
+
+			template< typename RIT1, typename CIT1, typename D1 >
+			bool operator()(
+				const RIT1 &x, const CIT1 &y, const D1 &v
+			) const noexcept {
+				(void) v;
+				const RIT a = static_cast< RIT >( x );
+				const CIT b = static_cast< CIT >( y );
+				return OP::apply( &a, &b, nullptr );
+			}
+
+		};
+
+		/**
+		 * Implements the is_diagonal matrix selector.
+		 */
+		template<
+			typename D, typename RIT, typename CIT
+		>
+		struct is_diagonal {
+			typedef D value_type;
+			typedef RIT row_type;
+			typedef CIT column_type;
+
+			static bool apply(
+				const row_type * __restrict__ const x,
+				const column_type * __restrict__ const y,
+				const value_type * __restrict__ const
+			) {
+				return *x == *y;
+			}
+		};
+
+		/**
+		 * Implements the strictly lower triangular matrix selector.
+		 */
+		template<
+			typename D, typename RIT, typename CIT
+		>
+		struct is_strictly_lower {
+			typedef D value_type;
+			typedef RIT row_type;
+			typedef CIT column_type;
+
+			static bool apply(
+				const row_type * __restrict__ const x,
+				const column_type * __restrict__ const y,
+				const value_type * __restrict__ const
+			) {
+				return *x > *y;
+			}
+		};
+
+		/**
+		 * Implements the lower triangular matrix selector.
+		 */
+		template<
+			typename D, typename RIT, typename CIT
+		>
+		struct is_lower_or_diagonal {
+			typedef D value_type;
+			typedef RIT row_type;
+			typedef CIT column_type;
+
+			static bool apply(
+				const row_type * __restrict__ const x,
+				const column_type * __restrict__ const y,
+				const value_type * __restrict__ const
+			) {
+				return *x >= *y;
+			}
+		};
+
+		/**
+		 * Implements the strictly upper triangular matrix selector.
+		 */
+		template<
+			typename D, typename RIT, typename CIT
+		>
+		struct is_strictly_upper {
+			typedef D value_type;
+			typedef RIT row_type;
+			typedef CIT column_type;
+
+			static bool apply(
+				const row_type * __restrict__ const x,
+				const column_type * __restrict__ const y,
+				const value_type * __restrict__ const v
+			)  { return !is_lower_or_diagonal< D, RIT, CIT >::apply( x, y, v ); }
+		};
+
+		/**
+		 * Implements the upper triangular matrix selector.
+		 */
+		template<
+			typename D, typename RIT, typename CIT
+		>
+		struct is_upper_or_diagonal {
+			typedef D value_type;
+			typedef RIT row_type;
+			typedef CIT column_type;
+
+			static bool apply(
+				const row_type * __restrict__ const x,
+				const column_type * __restrict__ const y,
+				const value_type * __restrict__ const v
+			) { return !is_strictly_lower< D, RIT, CIT >::apply( x, y, v ); }
+		};
+
+	} // namespace operators::select::internal
+
 } // namespace grb
 
 #endif // _H_GRB_INTERNAL_OPERATORS_BASE
