@@ -783,7 +783,7 @@ namespace grb {
 				 * @param[in]  k  Where to store the given nonzero value.
 				 * @param[in] val Which value to store.
 				 */
-				inline void setValue( const size_t k, const D & val ) noexcept {
+				inline void setValue( const size_t k, const D &val ) noexcept {
 					values[ k ] = val;
 				}
 
