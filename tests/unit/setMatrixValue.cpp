@@ -262,20 +262,21 @@ int main( int argc, char ** argv ) {
 
 	std::cout << "This is functional test " << argv[ 0 ] << "\n";
 	grb::Launcher< AUTOMATIC > launcher;
-	grb::RC out = PANIC;
+	grb::RC out = PANIC, last_error = SUCCESS;
 	bool failed = false;
 
-	/*std::cout << "\t test 1 (self-masked)\n";
+	std::cout << "\t test 1 (self-masked)\n";
 	if( launcher.exec( &self_identity_test, in, out, true ) != SUCCESS ) {
 		std::cerr << "Launching test FAILED\n" << std::endl;
 		return 255;
 	}
 	if( out != SUCCESS ) {
 		std::cout << "\t\t FAILED\n";
+		last_error = out;
 		failed = true;
 	} else {
 		std::cout << "\t\t OK\n";
-	}*/
+	}
 
 	std::cout << "\t test 2 (matching domains, no-op resize)\n";
 	if( launcher.exec( &identity_test< int, false >, in, out, true ) != SUCCESS ) {
@@ -284,6 +285,7 @@ int main( int argc, char ** argv ) {
 	}
 	if( out != SUCCESS ) {
 		std::cout << "\t\t FAILED\n";
+		last_error = out;
 		failed = true;
 	} else {
 		std::cout << "\t\t OK\n";
@@ -296,6 +298,7 @@ int main( int argc, char ** argv ) {
 	}
 	if( out != SUCCESS ) {
 		std::cout << "\t\t FAILED\n";
+		last_error = out;
 		failed = true;
 	} else {
 		std::cout << "\t\t OK\n";
@@ -310,6 +313,7 @@ int main( int argc, char ** argv ) {
 	}
 	if( out != SUCCESS ) {
 		std::cout << "\t\t FAILED\n";
+		last_error = out;
 		failed = true;
 	} else {
 		std::cout << "\t\t OK\n";
@@ -324,6 +328,7 @@ int main( int argc, char ** argv ) {
 	}
 	if( out != SUCCESS ) {
 		std::cout << "\t\t FAILED\n";
+		last_error = out;
 		failed = true;
 	} else {
 		std::cout << "\t\t OK\n";
@@ -338,6 +343,7 @@ int main( int argc, char ** argv ) {
 	}
 	if( out != SUCCESS ) {
 		std::cout << "\t\t FAILED\n";
+		last_error = out;
 		failed = true;
 	} else {
 		std::cout << "\t\t OK\n";
@@ -352,6 +358,7 @@ int main( int argc, char ** argv ) {
 	}
 	if( out != SUCCESS ) {
 		std::cout << "\t\t FAILED\n";
+		last_error = out;
 		failed = true;
 	}
 	} else {
@@ -360,8 +367,8 @@ int main( int argc, char ** argv ) {
 
 	if( failed ) {
 		std::cerr << std::flush;
-		std::cout << "Test FAILED (last error: " << grb::toString( out ) << ")\n"
-			<< std::endl;
+		std::cout << "Test FAILED (last error: " << grb::toString( last_error )
+			<< ")\n" << std::endl;
 	} else {
 		std::cout << "Test OK\n" << std::endl;
 	}
