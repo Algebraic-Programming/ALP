@@ -66,6 +66,10 @@
 		"************************************************************************" \
 		"**********************\n" );
 
+#ifdef _DEBUG
+ #define _BSP1D_IO_DEBUG
+#endif
+
 
 namespace grb {
 
@@ -851,38 +855,109 @@ namespace grb {
 			!grb::is_object< MaskType >::value
 		>::type * const = nullptr
 	) noexcept {
+#ifdef _BSP1D_IO_DEBUG
+		std::cout << "Called grb::set( matrix, mask, value ) (BSP1D)\n";
+#endif
 		const size_t m = nrows( C );
 		const size_t n = ncols( C );
-		const size_t nz = nnz( C );
 
-		if( m == 0 || n == 0 || nz == 0 ) { return SUCCESS; }
+		// dynamic checks (I)
+		if( m != nrows( mask ) || n != ncols( mask ) ) {
+			return MISMATCH;
+		}
 
-		RC ret = set< descr >(
-			internal::getLocal( C ), internal::getLocal( mask ), val, phase
-		);
+		// catch trivial case
+		if( m == 0 || n == 0 ) { return SUCCESS; }
 
+		// dynamic checks (II)
+		if( nrows( mask ) == 0 || ncols( mask ) == 0 ) {
+			return ILLEGAL;
+		}
+
+#ifdef _BSP1D_IO_DEBUG
+		std::cout << "\t delegating to final backend\n";
+#endif
+		RC ret = SUCCESS;
+		// Take care that local matrices may be empty, even if the global matrix is
+		// not. Processes with empty local matrices will not delegate (no-op).
+		{
+			auto &local_C = internal::getLocal( C );
+			const auto &local_mask = internal::getLocal( mask );
+			const size_t local_m = nrows( local_C );
+			const size_t local_n = ncols( local_C );
+			assert( local_m == nrows( local_mask ) );
+			assert( local_n == ncols( local_mask ) );
+			if( local_m > 0 && local_n > 0 ) {
+				ret = set< descr >(
+					internal::getLocal( C ), internal::getLocal( mask ), val, phase
+				);
+			}
+		}
+
+		// in the self-masked case, there is no way an error could occur
+		if( getID( C ) == getID( mask ) ) {
+#ifdef _BSP1D_IO_DEBUG
+			std::cout << "\t self-masking detected, which allows trivial exit\n";
+#endif
+			assert( ret == SUCCESS );
+			return ret;
+		}
+
+		// in all other cases, in either mode (resize or execute), we must check for
+		// errors
+#ifdef _BSP1D_IO_DEBUG
+		std::cout << "\t all-reducing error code\n";
+#endif
 		if( collectives< BSP1D >::allreduce( ret, operators::any_or< RC >() )
 			!= SUCCESS
 		) {
 			return PANIC;
 		}
 
+#ifdef _BSP1D_IO_DEBUG
+		std::cout << "\t all-reduced error code is " << toString( ret ) << "\n";
+#endif
 		if( phase == RESIZE ) {
 			if( ret == SUCCESS ) {
+#ifdef _BSP1D_IO_DEBUG
+				std::cout << "\t resize phase detected -- synchronising capacity\n";
+#endif
 				ret = internal::updateCap( C );
+				if( ret != SUCCESS ) {
+					std::cerr << "Error updating capacity: " << toString( ret ) << "\n";
+				}
 			}
-		} else if( phase == EXECUTE ) {
+		} else {
+			assert( phase == EXECUTE );
 			if( ret == SUCCESS ) {
+#ifdef _BSP1D_IO_DEBUG
+				std::cout << "\t execute phase detected -- synchronising nnz count\n";
+#endif
 				ret = internal::updateNnz( C );
+				if( ret != SUCCESS ) {
+					std::cerr << "Error updating output number of nonzeroes: "
+						<< toString( ret ) << "\n";
+				}
 			} else if( ret == ILLEGAL ) {
+#ifdef _BSP1D_IO_DEBUG
+				std::cout << "\t delegate returns ILLEGAL, clearing output\n";
+#endif
 				const RC clear_rc = clear( C );
 				if( clear_rc != SUCCESS ) {
 					ret = PANIC;
 				}
 			} else {
+				if( ret != PANIC ) {
+					std::cerr << "Warning: unexpected error code in grb::set( matrix, mask, "
+						<< "value ) (BSP1D). Please submit a bug report.\n";
+				}
 				assert( ret == PANIC );
 			}
 		}
+
+#ifdef _BSP1D_IO_DEBUG
+		std::cout << "\t done; returning " << toString( ret ) << "\n";
+#endif
 
 		// done
 		return ret;
