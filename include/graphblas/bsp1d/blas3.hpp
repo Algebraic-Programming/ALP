@@ -765,18 +765,22 @@ namespace grb {
 		RC rc = SUCCESS;
 		IOType local = semiring.template getZero< IOType >();
 		if( descr & descriptors::add_identity ) {
-			const auto& union_to_global_coordinates_translators =
-				A.unionToGlobalCoordinatesTranslators();
-			rc = internal::fold_masked_generic__add_identity<
-					descr, true, Semiring
-				>(
-					local,
-					internal::getLocal( A ),
-					internal::getLocal( mask ),
-					std::get<0>(union_to_global_coordinates_translators),
-					std::get<1>(union_to_global_coordinates_translators),
-					semiring
-				);
+			const auto &A_local = internal::getLocal( A );
+			const auto &mask_local = internal::getLocal( mask );
+			if( nnz( A_local ) > 0 && nnz( mask_local ) > 0 &&
+				nrows( A_local ) > 0 && ncols( A_local ) > 0
+			) {
+				const auto &union_to_global_coordinates_translators =
+					A.unionToGlobalCoordinatesTranslators();
+				rc = internal::fold_masked_generic__add_identity<
+						descr, true, Semiring
+					>(
+						local, A_local, mask_local,
+						std::get<0>(union_to_global_coordinates_translators),
+						std::get<1>(union_to_global_coordinates_translators),
+						semiring
+					);
+			}
 		} else {
 			rc = foldl< descr & (~descriptors::add_identity) >(
 				local,
