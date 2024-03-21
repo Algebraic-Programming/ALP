@@ -1173,9 +1173,6 @@ namespace grb {
 			!grb::is_object< InputType2 >::value
 		>::type * const = nullptr
 	) noexcept {
-		static_assert( !std::is_same< OutputType, void >::value,
-			"internal::grb::set (masked set to value): cannot have a pattern "
-			"matrix as output" );
 #ifdef _DEBUG
 		std::cout << "Called grb::set (matrix-to-value-masked, nonblocking)\n";
 #endif
@@ -1184,6 +1181,17 @@ namespace grb {
 				std::is_same< InputType2, OutputType >::value
 			), "grb::set",
 			"called with non-matching value types"
+		);
+		NO_CAST_ASSERT(
+			( !(descr & descriptors::no_casting) ||
+				std::is_same< InputType1, bool >::value ),
+			"grb::set( matrix, mask, value )",
+			"called with non-Boolean mask value type"
+		);
+		static_assert( !( (descr & descriptors::structural) &&
+				(descr & descriptors::invert_mask)
+			), "Primitives with matrix outputs may not employ structurally inverted "
+			"masking"
 		);
 
 		// dynamic checks
