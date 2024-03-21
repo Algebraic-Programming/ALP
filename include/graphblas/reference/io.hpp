@@ -1224,6 +1224,11 @@ namespace grb {
 			"grb::set( matrix, mask, value )",
 			"called with non-Boolean mask value type"
 		);
+		static_assert( !( (descr & descriptors::structural) &&
+				(descr & descriptors::invert_mask)
+			), "Primitives with matrix outputs may not employ structurally inverted "
+			"masking"
+		);
 
 		// dynamic checks
 		const size_t m = nrows( A );
