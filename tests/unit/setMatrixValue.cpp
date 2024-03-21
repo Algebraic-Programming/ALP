@@ -27,6 +27,87 @@
 
 using namespace grb;
 
+template< typename T >
+class Expected {
+
+	private:
+
+		T value;
+
+
+	public:
+
+		Expected() : value() {}
+
+		template< typename U >
+		void set( const U &in ) {
+			value = static_cast< T >( in );
+		}
+
+		const T * getPointer() const noexcept {
+			return &value;
+		}
+
+};
+
+template<>
+class Expected< void > {
+
+	public:
+
+		Expected() {}
+
+		template< typename U >
+		void set( const U &in ) {
+			(void) in;
+		}
+
+		inline const void * getPointer() const noexcept {
+			return nullptr;
+		}
+
+};
+
+/**
+ * Checks whether all entries in a given matrix \a A have a given value,
+ * and checks whether all those entries are at an off-diagonal position
+ * defined by \a row_offset.
+ */
+template< typename T >
+RC check_all(
+	grb::Matrix< T > &A,
+	Expected< T > expected_value, const size_t row_offset
+) {
+	const T * const value_p = expected_value.getPointer();
+	return std::all_of( A.cbegin(), A.cend(),
+		[&value_p,&row_offset](
+			const std::pair< std::pair< size_t, size_t >, T > &entry
+		) {
+			return entry.second == *value_p &&
+				entry.first.first + row_offset == entry.first.second;
+		}
+	) ? SUCCESS : FAILED;
+}
+
+/**
+ * This variant is for pattern (void) matrices, and only checks for the
+ * off-diagonal position of the entries. The interface matches that of the
+ * generic check_all.
+ */
+RC check_all(
+	grb::Matrix< void > &A,
+	Expected< void > expected_value, const size_t row_offset
+) {
+	(void) expected_value;
+	return std::all_of( A.cbegin(), A.cend(),
+		[&row_offset](
+			const std::pair< size_t, size_t > &entry
+		) {
+			return entry.first + row_offset == entry.second;
+		}
+	) ? SUCCESS : FAILED;
+}
+
 /**
  * @tparam left Whether the output matrix is off_diagonal (left) or identity
  *              (right). The difference in test is that for if selecting left,
@@ -66,21 +147,23 @@ void identity_test( const size_t &n, grb::RC &rc ) {
 			"expected " << n << " elements, got " << nnz( off_diagonal ) << "\n";
 		rc = FAILED;
 	}
+
+	// set expected values for validating construction
+	Expected< int > expected_left;
+	Expected< T > expected_right;
+	expected_left.set( 7 );
+	expected_right.set( 1 );
+
+	// validate construction
 	{
-		RC local_rc = std::all_of( off_diagonal.cbegin(), off_diagonal.cend(),
-			[]( const std::pair< std::pair< size_t, size_t >, int > &entry ) {
-				return entry.second == 7 && entry.first.first + 1 == entry.first.second;
-			} ) ? SUCCESS : FAILED;
+		RC local_rc = check_all( off_diagonal, expected_left, 1 );
 		if( local_rc != SUCCESS ) {
 			std::cerr << "\t verification of off-diagonal construction failed: "
 				<< "at least one unexpected matrix element found\n";
 			if( rc == SUCCESS ) { rc = local_rc; }
 		}
-		local_rc = std::all_of( identity.cbegin(), identity.cend(),
-			[]( const std::pair< std::pair< size_t, size_t >, int > &entry ) {
-				return entry.second == 1 && entry.first.first == entry.first.second;
-			} ) ? SUCCESS : FAILED;
-		if( local_rc != SUCCESS ) {
+		local_rc = check_all( identity, expected_right, 0 );
+			if( local_rc != SUCCESS ) {
 			std::cerr << "\t verification of identity construction failed: "
 				<< "at least one unexpected matrix element found\n";
 			if( rc == SUCCESS ) { rc = local_rc; }
@@ -98,6 +181,10 @@ void identity_test( const size_t &n, grb::RC &rc ) {
 		std::cerr << "\t resize failed\n";
 		return;
 	}
+
+	// set expected value for tests, accounting for possible void T
+	expected_left.set( 3 );
+	expected_right.set( 3 );
 
 	// check capacity
 	if( left ) {
@@ -131,15 +218,9 @@ void identity_test( const size_t &n, grb::RC &rc ) {
 		}
 		RC local_rc = PANIC;
 		if( left ) {
-			local_rc = std::all_of( off_diagonal.cbegin(), off_diagonal.cend(),
-				[]( const std::pair< std::pair< size_t, size_t >, int > &entry ) {
-					return entry.second == 3 && entry.first.first == entry.first.second;
-				} ) ? SUCCESS : FAILED;
+			local_rc = check_all( off_diagonal, expected_left, 0 );
 		} else {
-			local_rc = std::all_of( identity.cbegin(), identity.cend(),
-				[]( const std::pair< std::pair< size_t, size_t >, int > &entry ) {
-					return entry.second == 3 && entry.first.first + 1 == entry.first.second;
-				} ) ? SUCCESS : FAILED;
+			local_rc = check_all( identity, expected_right, 1 );
 		}
 		if( local_rc == FAILED ) {
 			std::cerr << "\t at least one unexpected output entry found\n";
@@ -334,7 +415,7 @@ int main( int argc, char ** argv ) {
 		std::cout << "\t\t OK\n";
 	}
 
-	/*std::cout << "\t test 6 (void mask, no-op resize)\n";
+	std::cout << "\t test 6 (void mask, no-op resize)\n";
 	if( launcher.exec( &identity_test< void, false >, in, out, true )
 		!= SUCCESS
 	) {
@@ -360,10 +441,9 @@ int main( int argc, char ** argv ) {
 		std::cout << "\t\t FAILED\n";
 		last_error = out;
 		failed = true;
-	}
 	} else {
 		std::cout << "\t\t OK\n";
-	}*/
+	}
 
 	if( failed ) {
 		std::cerr << std::flush;
