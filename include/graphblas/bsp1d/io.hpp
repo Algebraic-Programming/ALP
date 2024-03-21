@@ -855,6 +855,23 @@ namespace grb {
 			!grb::is_object< MaskType >::value
 		>::type * const = nullptr
 	) noexcept {
+		// static checks
+		NO_CAST_ASSERT( ( !(descr & descriptors::no_casting) ||
+				std::is_same< ValueType, DataType >::value
+			), "grb::set",
+			"called with non-matching value types"
+		);
+		NO_CAST_ASSERT(
+			( !(descr & descriptors::no_casting) ||
+				std::is_same< MaskType, bool >::value ),
+			"grb::set( matrix, mask, value )",
+			"called with non-Boolean mask value type"
+		);
+		static_assert( !( (descr & descriptors::structural) &&
+				(descr & descriptors::invert_mask)
+			), "Primitives with matrix outputs may not employ structurally inverted "
+			"masking"
+		);
 #ifdef _BSP1D_IO_DEBUG
 		std::cout << "Called grb::set( matrix, mask, value ) (BSP1D)\n";
 #endif
@@ -888,9 +905,7 @@ namespace grb {
 			assert( local_m == nrows( local_mask ) );
 			assert( local_n == ncols( local_mask ) );
 			if( local_m > 0 && local_n > 0 ) {
-				ret = set< descr >(
-					internal::getLocal( C ), internal::getLocal( mask ), val, phase
-				);
+				ret = set< descr >( local_C, local_mask, val, phase );
 			}
 		}
 
