@@ -83,8 +83,14 @@ RC check_all(
 		[&value_p,&row_offset](
 			const std::pair< std::pair< size_t, size_t >, T > &entry
 		) {
-			return entry.second == *value_p &&
+			const bool ret = entry.second == *value_p &&
 				entry.first.first + row_offset == entry.first.second;
+			if( !ret ) {
+				std::cerr << "Value = " << entry.second << ", expected " << *value_p
+					<< " at coordinates ( " << entry.first.first << ", " << entry.first.second
+					<< " ), expected diagonal with row offset " << row_offset << "\n";
+			}
+			return ret;
 		}
 	) ? SUCCESS : FAILED;
 }
@@ -103,7 +109,13 @@ RC check_all(
 		[&row_offset](
 			const std::pair< size_t, size_t > &entry
 		) {
-			return entry.first + row_offset == entry.second;
+			const bool ret = entry.first + row_offset == entry.second;
+			if( !ret ) {
+				std::cerr << "Value at coordinates ( " << entry.first << ", "
+					<< entry.second << " ), expected diagonal with row offset "
+					<< row_offset << "\n";
+			}
+			return ret;
 		}
 	) ? SUCCESS : FAILED;
 }
