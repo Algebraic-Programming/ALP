@@ -1256,6 +1256,9 @@ namespace grb {
 				>
 			> &outgoing
 		) {
+#ifdef _BSP1D_IO_DEBUG
+			std::cout << "\t\t process " << data.s << " is in handleSingleNonzero\n";
+#endif
 			// compute process-local indices (even if remote, for code readability)
 			const size_t global_row_index = start.i();
 			const size_t row_pid =
@@ -1293,16 +1296,17 @@ namespace grb {
 					column_offset + column_local_index
 				);
 #ifdef _DEBUG
-				std::cout << "Translating nonzero at ( " << start.i() << ", " << start.j()
-					<< " ) to one at ( " << row_local_index << ", "
+				std::cout << "\t\t\t translating nonzero at ( " << start.i() << ", "
+					<< start.j() << " ) to one at ( " << row_local_index << ", "
 					<< ( column_offset + column_local_index ) << " ) at PID "
 					<< row_pid << "\n";
 #endif
 			} else if( mode == PARALLEL ) {
 #ifdef _DEBUG
-				std::cout << "Sending nonzero at ( " << start.i() << ", " << start.j()
-					<< " ) to PID " << row_pid << " at ( " << row_local_index
-					<< ", " << ( column_offset + column_local_index ) << " )\n";
+				std::cout << "\t\t\t sending nonzero at ( " << start.i() << ", "
+					<< start.j() << " ) to PID " << row_pid << " at ( "
+					<< row_local_index << ", " << (column_offset + column_local_index)
+					<< " )\n";
 #endif
 				// send original nonzero to remote owner
 				outgoing[ row_pid ].emplace_back(
@@ -1364,12 +1368,21 @@ namespace grb {
 			> &outgoing,
 			const std::forward_iterator_tag &
 		) {
+#ifdef _BSP1D_IO_DEBUG
+			std::cout << "\t\t process " << data.s
+				<< " is in populateMatrixBuildCachesImpl (forward iterator)\n";
+#endif
+
 			if( mode == PARALLEL ) {
 				outgoing.resize( data.P );
 			}
 
 			// loop over all inputs
 			for( fwd_iterator it = start; it != end; ++it ) {
+#ifdef _BSP1D_IO_DEBUG
+				std::cout << "\t\t\t process " << data.s << " caches nonzero at "
+					<< it << "\n";
+#endif
 				// sanity check on input
 				if( utils::check_input_coordinates( it, rows, cols ) != SUCCESS ) {
 					return MISMATCH;
@@ -1414,6 +1427,10 @@ namespace grb {
 				std::random_access_iterator_tag
 			>::type
 		) {
+#ifdef _BSP1D_IO_DEBUG
+			std::cout << "\t\t process " << data.s
+				<< " is in populateMatrixBuildCachesImpl (random access iterator)\n";
+#endif
 			typedef internal::NonzeroStorage< IType, JType, VType > StorageType;
 
 			RC ret = RC::SUCCESS;
@@ -1466,11 +1483,11 @@ namespace grb {
 				if( data.s == i ) {
 					std::cout << "Process " << data.s << std::endl;
 					for( size_t j = 0; j < num_threads; j++) {
-						std::cout << "\tthread " << j << std::endl;
-							for( lpf_pid_t k = 0; k < data.P; k++) {
-								std::cout << "\t\tnum nnz " << parallel_non_zeroes_ptr[ j ][ k ].size()
-									<< std::endl;
-							}
+						std::cout << "\t thread " << j << std::endl;
+						for( lpf_pid_t k = 0; k < data.P; k++) {
+							std::cout << "\t\t num nnz " << parallel_non_zeroes_ptr[ j ][ k ].size()
+								<< std::endl;
+						}
 					}
 				}
 				const lpf_err_t lpf_err = lpf_sync( data.context, LPF_SYNC_DEFAULT );
@@ -1738,7 +1755,7 @@ namespace grb {
 
 		// get access to user process data on s and P
 		internal::BSP1D_Data &data = internal::grb_BSP1D.load();
-#ifdef _DEBUG
+#ifdef _BSP1D_IO_DEBUG
 		std::cout << "buildMatrixUnique is called from process " << data.s << " "
 			<< "out of " << data.P << " processes total.\n";
 #endif
@@ -1757,7 +1774,7 @@ namespace grb {
 		std::vector< std::vector< StorageType > > outgoing;
 		// NOTE: this copies a lot of the above methodology
 
-#ifdef _DEBUG
+#ifdef _BSP1D_IO_DEBUG
 		const size_t my_offset =
 			internal::Distribution< BSP1D >::local_offset( A._n, data.s, data.P );
 		std::cout << "Local column-wise offset at PID " << data.s << " is "
@@ -1777,11 +1794,11 @@ namespace grb {
 			return ret;
 		}
 
-#ifdef _DEBUG
+#ifdef _BSP1D_IO_DEBUG
 		for( lpf_pid_t i = 0; i < data.P; i++ ) {
 			if( data.s == i ) {
 				std::cout << "Process " << data.s << std::endl;
-				for( lpf_pid_t k = 0; k < data.P; k++) {
+				for( lpf_pid_t k = 0; mode == PARALLEL && k < data.P; k++) {
 					std::cout << "\tnum nnz " << outgoing[ k ].size() << std::endl;
 				}
 				std::cout << "\tcache size " << cache.size() << std::endl;
@@ -1840,7 +1857,7 @@ namespace grb {
 				buffer_sizet[ k ] = outgoing[ k ].size();
 				outgoing_bytes += outgoing[ k ].size() *
 					sizeof( StorageType );
-#ifdef _DEBUG
+#ifdef _BSP1D_IO_DEBUG
 				std::cout << "Process " << data.s << ", which has " << cache.size()
 					<< " local nonzeroes, sends " << buffer_sizet[ k ]
 					<< " nonzeroes to process " << k << "\n";
@@ -1888,7 +1905,7 @@ namespace grb {
 				if( k == data.s ) {
 					continue;
 				}
-#ifdef _DEBUG
+#ifdef _BSP1D_IO_DEBUG
 				std::cout << "Process " << data.s << ", which has " << cache.size()
 					<< " local nonzeroes, sends offset " << buffer_sizet[ k ]
 					<< " to process " << k << "\n";
@@ -1928,7 +1945,7 @@ namespace grb {
 							nullptr, 0,
 							&cache_slot
 						);
-#ifdef _DEBUG
+#ifdef _BSP1D_IO_DEBUG
 				std::cout << data.s << ": address " << &( cache[ 0 ] ) << " (size "
 					<< cache.size() * sizeof( StorageType )
 					<< ") binds to slot " << cache_slot << "\n";
@@ -1954,7 +1971,7 @@ namespace grb {
 						nullptr, 0,
 						&(out_slot[ k ])
 					);
-#ifdef _DEBUG
+#ifdef _BSP1D_IO_DEBUG
 				std::cout << data.s << ": address " << &( outgoing[ k ][ 0 ] ) << " (size "
 					<< outgoing[ k ].size() * sizeof( typename fwd_iterator::value_type )
 					<< ") binds to slot " << out_slot[ k ] << "\n";
@@ -1977,7 +1994,7 @@ namespace grb {
 				if( k == data.s ) {
 					continue;
 				}
-#ifdef _DEBUG
+#ifdef _BSP1D_IO_DEBUG
 				for( size_t s = 0; ret == SUCCESS && s < data.P; ++s ) {
 					if( s == data.s ) {
 						std::cout << data.s << ": lpf_put( ctx, "
@@ -2039,7 +2056,7 @@ namespace grb {
 			}
 		}
 
-#ifdef _DEBUG
+#ifdef _BSP1D_IO_DEBUG
 		std::cout << "Dimensions at PID " << data.s << ": "
 			<< "( " << A._m << ", " << A._n << " ). "
 			<< "Locally cached: " << cache.size() << "\n";
@@ -2059,7 +2076,7 @@ namespace grb {
 			assert( nnz( A._local ) == cache.size() );
 		}
 
-#ifdef _DEBUG
+#ifdef _BSP1D_IO_DEBUG
 		std::cout << "Number of nonzeroes at the local matrix at PID " << data.s
 			<< " is " << nnz( A._local ) << "\n";
 #endif
