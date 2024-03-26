@@ -37,7 +37,7 @@
 
 namespace grb {
 
-	// forward-declare internal getters
+	// forward-declare internal getters and global modifiers
 	namespace internal {
 
 		template< typename D, typename RIT, typename CIT, typename NIT >
@@ -49,6 +49,12 @@ namespace grb {
 		const Matrix< D, _GRB_BSP1D_BACKEND, RIT, CIT, NIT > & getLocal(
 			const Matrix< D, BSP1D, RIT, CIT, NIT > &
 		) noexcept;
+
+		template< typename DataType, typename RIT, typename CIT, typename NIT >
+		RC updateNnz( Matrix< DataType, BSP1D, RIT, CIT, NIT > &A ) noexcept;
+
+		template< typename DataType, typename RIT, typename CIT, typename NIT >
+		RC updateCap( Matrix< DataType, BSP1D, RIT, CIT, NIT > &A ) noexcept;
 
 	} // namespace internal
 
@@ -185,6 +191,13 @@ namespace grb {
 		friend const Matrix< IOType, _GRB_BSP1D_BACKEND, RIT, CIT, NIT > &
 		internal::getLocal( const Matrix< IOType, BSP1D, RIT, CIT, NIT > & ) noexcept;
 
+		template< typename DataType, typename RIT, typename CIT, typename NIT >
+		friend RC internal::updateNnz( Matrix< DataType, BSP1D, RIT, CIT, NIT > & )
+			noexcept;
+
+		template< typename DataType, typename RIT, typename CIT, typename NIT >
+		friend RC internal::updateCap( Matrix< DataType, BSP1D, RIT, CIT, NIT > & )
+			noexcept;
 
 		private:
 
@@ -618,6 +631,26 @@ namespace grb {
 			const Matrix< D, BSP1D, RIT, CIT, NIT > &A
 		) noexcept {
 			return A._local;
+		}
+
+		template< typename DataType, typename RIT, typename CIT, typename NIT >
+		RC updateNnz( Matrix< DataType, BSP1D, RIT, CIT, NIT > &A ) noexcept {
+			(void) A;
+			return SUCCESS; // TODO placeholder
+		}
+
+		template< typename DataType, typename RIT, typename CIT, typename NIT >
+		RC updateCap( Matrix< DataType, BSP1D, RIT, CIT, NIT > &A ) noexcept {
+			size_t new_cap = capacity( internal::getLocal( A ) );
+			const RC ret = collectives< BSP1D >::allreduce(
+				new_cap, grb::operators::add< size_t >() );
+			if( ret == SUCCESS ) {
+#ifdef _DEBUG
+				std::cerr << "\t new global capacity: " << new_cap << "\n";
+#endif
+				A._cap = new_cap;
+			}
+			return ret;
 		}
 
 	} // namespace internal

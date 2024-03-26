@@ -29,6 +29,8 @@
 
 #include <type_traits>
 
+#include "phase.hpp"
+
 
 namespace grb {
 
@@ -135,7 +137,9 @@ namespace grb {
 	 * @tparam T The type to inspect.
 	 *
 	 * An ALP/GraphBLAS object is either an ALP/GraphBLAS container or an ALP
-	 * semiring, monoid, or operator.
+	 * semiring, monoid, or operator. By convention, also GraphBLAS types such as
+	 * the #grb::Phase is considered a GraphBLAS object-- the only exception to
+	 * this is #grb::RC.
 	 *
 	 * @see #grb::is_monoid
 	 * @see #grb::is_semiring
@@ -150,10 +154,18 @@ namespace grb {
 		/**
 		 * Whether the given time is an ALP/GraphBLAS object.
 		 */
-		static const constexpr bool value = is_container< T >::value ||
+		static constexpr bool value = is_container< T >::value ||
 			is_semiring< T >::value ||
 			is_monoid< T >::value ||
 			is_operator< T >::value;
+
+	};
+
+	template<>
+	struct is_object< grb::Phase > {
+
+		static constexpr bool value = true;
+
 	};
 
 	/**

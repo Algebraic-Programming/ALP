@@ -138,10 +138,15 @@ namespace grb {
 						typedef D ValueType;
 
 						/** Base constructor. */
-						ConstIterator() noexcept : values( nullptr ),
+						ConstIterator() noexcept :
+							values( nullptr ),
 							row_index( nullptr ), col_start( nullptr ),
-							k( 0 ), m( 0 ), n( 0 ), row( 1 ), s( 0 ), P( 1 )
+							k( 0 ), m( 0 ), n( 0 ), row( 1 ),
+							s( 0 ), P( 1 )
 						{
+#ifdef _DEBUG
+							std::cout << "Iterator default constructor (generic) called\n";
+#endif
 							nonzero.first.first = 1;
 							nonzero.first.second = 1;
 						}
@@ -783,7 +788,7 @@ namespace grb {
 				 * @param[in]  k  Where to store the given nonzero value.
 				 * @param[in] val Which value to store.
 				 */
-				inline void setValue( const size_t k, const D & val ) noexcept {
+				inline void setValue( const size_t k, const D &val ) noexcept {
 					values[ k ] = val;
 				}
 
@@ -881,14 +886,17 @@ namespace grb {
 #ifdef _DEBUG
 							std::cout << "Iterator default constructor (pattern specialisation) "
 								<< "called\n";
+							nonzero.first = 1;
+							nonzero.second = 1;
 #endif
 						}
 
 						/** Copy constructor. */
 						ConstIterator( const ConstIterator &other ) noexcept :
 							row_index( other.row_index ), col_start( other.col_start ),
-							k( other.k ), m( other.m ), n( other.n ), row( other.row ),
-							s( 0 ), P( 1 ), nonzero( other.nonzero )
+							k( other.k ), m( other.m ), n( other.n ),
+							row( other.row ), s( other.s ), P( other.P ),
+							nonzero( other.nonzero )
 						{
 #ifdef _DEBUG
 							std::cout << "Iterator copy constructor (pattern specialisation) "

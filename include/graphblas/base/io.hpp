@@ -1079,6 +1079,98 @@ namespace grb {
 	}
 
 	/**
+	 * Sets all values of a matrix to the given value at all positions where a
+	 * given mask evaluates <tt>true</tt>.
+	 *
+	 * @tparam descr     The descriptor used for this operation.
+	 * @tparam DataType  The type of each element in the given matrix.
+	 * @tparam MaskType  The type of each element in the given mask.
+	 * @tparam ValueType The type of the given value. Should be convertible
+	 *                   to \a DataType. Optional; default value is \a DataType.
+	 * @tparam backend   The backend selected for executing this primitive.
+	 *
+	 * \parblock
+	 * \par Accepted descriptors
+	 *   -# grb::descriptors::no_operation
+	 *   -# grb::descriptors::no_casting
+	 * \endparblock
+	 *
+	 * @param[out]    C The vector of which nonzeroes are to be set to \a val. The
+	 *                  nonzero structure of \a C will match the nonzero structure
+	 *                  of nonzeroes in \a mask that evaluate <tt>true</tt>. Any
+	 *                  elements of \a C on input will be erased.
+	 * @param[in]  mask The mask which defines the nonzero structure of \a C on
+	 *                  output. The mask may equal \a C if and only if \a descr
+	 *                  does \em not include #grb::descriptors::invert_mask.
+	 * @param[in]   val The value to set each nonzero of \a C to.
+	 * @param[in] phase Which #grb::Phase the operation is requested. Optional;
+	 *                  the default is #grb::EXECUTE.
+	 *
+	 * In #grb::RESIZE mode:
+	 * @returns #grb::SUCCESS When the capacity of \a C has been (made) sufficient
+	 *                        to store the requested output.
+	 * @returns #grb::OUT_OF_MEM When out-of-memory conditions have been met while
+	 *                           executing. If this error code is returned, \a C
+	 *                           shall be unmodified compared to its state at
+	 *                           function entry.
+	 *
+	 * In #grb::EXECUTE mode:
+	 * @returns #grb::SUCCESS When the call completes successfully.
+	 * @returns #grb::ILLEGAL When \a C did not have enough capacity to store the
+	 *                        output of the requested computation.
+	 *
+	 * Either mode may additionally return:
+	 * @returns #grb::MISMATCH In case \a C and \a mask have mismatching sizes.
+	 * @returns #grb::PANIC    In case an unmitigable error was encountered. The
+	 *                         caller is suggested to exit gracefully, and in any
+	 *                         case to not make any further calls to ALP.
+	 *
+	 * When \a descr includes grb::descriptors::no_casting and if \a T does not
+	 * match \a DataType, the code shall not compile. Other acceptable descriptors
+	 * include:
+	 *  - #grb::descriptors::invert_mask, and
+	 *  - #grb::descriptors::structural.
+	 * However, it is forbidden to call this function with both descriptors
+	 * simultaneously; i.e., implementations shall not support
+	 * #grb::descriptors::structural_complement.
+	 *
+	 * \parblock
+	 * \par Performance semantics
+	 * Each backend must define performance semantics for this primitive.
+	 *
+	 * @see perfSemantics
+	 * \endparblock
+	 */
+	template<
+		Descriptor descr = descriptors::no_operation,
+		typename DataType, typename RIT, typename CIT, typename NIT,
+		typename MaskType,
+		typename ValueType = DataType,
+		Backend backend
+	>
+	RC set(
+		Matrix< DataType, backend, RIT, CIT, NIT  > &C,
+		const Matrix< MaskType, backend, RIT, CIT, NIT > &mask,
+		const ValueType& val,
+		const Phase &phase = EXECUTE,
+		const typename std::enable_if<
+			!grb::is_object< DataType >::value &&
+			!grb::is_object< ValueType >::value &&
+			!grb::is_object< MaskType >::value,
+		void >::type * const = nullptr
+	) noexcept {
+#ifndef NDEBUG
+		const bool should_not_call_base_matrix_set = false;
+		assert( should_not_call_base_matrix_set );
+#endif
+		(void) C;
+		(void) mask;
+		(void) val;
+		(void) phase;
+		return UNSUPPORTED;
+	}
+
+	/**
 	 * Sets the element of a given vector at a given position to a given value.
 	 *
 	 * If the input vector \a x already has an element \f$ x_i \f$, that element

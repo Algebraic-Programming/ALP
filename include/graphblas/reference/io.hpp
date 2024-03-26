@@ -967,44 +967,98 @@ namespace grb {
 	namespace internal {
 
 		template<
+			typename OutputType,
+			typename InputType2,
+			typename RIT, typename CIT, typename NIT
+		>
+		RC set_copy_values(
+			Matrix< OutputType, reference, RIT, CIT, NIT > &C,
+			const InputType2 * const value,
+			const size_t nz
+		) noexcept {
+#ifdef _DEBUG
+			std::cout << "Called grb::internal::set_copy_values (matrices, reference), "
+				<< "execute phase\n";
+#endif
+			#pragma omp parallel
+			{
+				size_t start, end;
+#ifdef _H_GRB_REFERENCE_OMP_IO
+				config::OMP::localRange( start, end, 0, nz );
+#else
+				start = 0;
+				end = nz;
+#endif
+				OutputType *__restrict__ const crs = internal::getCRS( C ).values;
+				OutputType *__restrict__ const ccs = internal::getCCS( C ).values;
+				for( size_t k = start; k < end; ++k ) {
+					crs[ k ] = ccs[ k ] = *value;
+				}
+			}
+
+			// done
+			return SUCCESS;
+		}
+
+		template<
+			typename InputType2,
+			typename RIT, typename CIT, typename NIT
+		>
+		RC set_copy_values(
+			Matrix< void, reference, RIT, CIT, NIT > &C,
+			const InputType2 * const value,
+			const size_t nz
+		) noexcept {
+			(void) C;
+			(void) value;
+			(void) nz;
+#ifdef _DEBUG
+			std::cout << "Called grb::internal::set_copy_values (matrices, reference), "
+				<< "void variant\n";
+#endif
+			return SUCCESS;
+		}
+
+		template<
 			bool A_is_mask,
 			Descriptor descr,
 			typename OutputType, typename InputType1,
 			typename InputType2 = const OutputType,
-			typename RIT1, typename CIT1, typename NIT1,
-			typename RIT2, typename CIT2, typename NIT2
+			typename RIT, typename CIT, typename NIT
 		>
-		RC set(
-			Matrix< OutputType, reference, RIT1, CIT1, NIT1 > &C,
-			const Matrix< InputType1, reference, RIT2, CIT2, NIT2 > &A,
+		RC set_copy(
+			Matrix< OutputType, reference, RIT, CIT, NIT > &C,
+			const Matrix< InputType1, reference, RIT, CIT, NIT > &A,
 			const InputType2 * __restrict__ id = nullptr
 		) noexcept {
 #ifdef _DEBUG
-			std::cout << "Called grb::set (matrices, reference), execute phase\n";
+			std::cout << "Called grb::internal::set_copy (matrices, reference), "
+				<< "execute phase\n";
 #endif
 			// static checks
-			NO_CAST_ASSERT(
+			static_assert(
 				( !( descr & descriptors::no_casting ) ||
-				( !A_is_mask && std::is_same< InputType1, OutputType >::value ) ),
-				"internal::grb::set", "called with non-matching value types"
+					( !A_is_mask && std::is_same< InputType1, OutputType >::value ) ),
+				"internal::grb::set called with non-matching value types. This is an "
+				"internal error. Please submit a bug report."
 			);
-			NO_CAST_ASSERT( ( !( descr & descriptors::no_casting ) ||
-				( A_is_mask && std::is_same< InputType2, OutputType >::value ) ),
-				"internal::grb::set", "Called with non-matching value types"
+			static_assert(
+				( !( descr & descriptors::no_casting ) ||
+					( A_is_mask && std::is_same< InputType2, OutputType >::value ) ),
+				"internal::grb::set called with non-matching value types. This is an "
+				"internal error. Please submit a bug report."
 			);
 
 			// run-time checks
 			const size_t m = nrows( A );
 			const size_t n = ncols( A );
-			if( nrows( C ) != m ) {
-				return MISMATCH;
-			}
-			if( ncols( C ) != n ) {
-				return MISMATCH;
-			}
+#ifndef NDEBUG
+			assert( nrows( C ) == m );
+			assert( ncols( C ) == n );
 			if( A_is_mask ) {
 				assert( id != nullptr );
 			}
+#endif
 
 			// catch trivial cases
 			if( m == 0 || n == 0 ) {
@@ -1027,7 +1081,7 @@ namespace grb {
 				if( clear_rc != SUCCESS ) {
 					return PANIC;
 				} else {
-					return FAILED;
+					return ILLEGAL;
 				}
 			}
 
@@ -1067,6 +1121,7 @@ namespace grb {
 						internal::getCCS( A ), nz, n, start, end
 					);
 				}
+
 			}
 			internal::setCurrentNonzeroes( C, nz );
 
@@ -1079,12 +1134,11 @@ namespace grb {
 	template<
 		Descriptor descr = descriptors::no_operation,
 		typename OutputType, typename InputType,
-		typename RIT1, typename CIT1, typename NIT1,
-		typename RIT2, typename CIT2, typename NIT2
+		typename RIT, typename CIT, typename NIT
 	>
 	RC set(
-		Matrix< OutputType, reference, RIT1, CIT1, NIT1 > &C,
-		const Matrix< InputType, reference, RIT2, CIT2, NIT2 > &A,
+		Matrix< OutputType, reference, RIT, CIT, NIT > &C,
+		const Matrix< InputType, reference, RIT, CIT, NIT > &A,
 		const Phase &phase = EXECUTE
 	) noexcept {
 		static_assert( std::is_same< OutputType, void >::value ||
@@ -1102,8 +1156,31 @@ namespace grb {
 				std::is_same< InputType, OutputType >::value
 			), "grb::set",
 			"called with non-matching value types" );
+		static_assert( !((
+				descr & descriptors::invert_mask) &&
+				(descr & descriptors::structural)
+			), "Structural mask inversion for matrix outputs is illegal"
+		);
 
-		// dynamic checks
+		// dynamic checks (I)
+		const size_t m = nrows( A );
+		const size_t n = ncols( A );
+		if( m != nrows( C ) ) {
+			return MISMATCH;
+		}
+		if( n != ncols( C ) ) {
+			return MISMATCH;
+		}
+
+		// check trivial op
+		if( m == 0 || n == 0 ) {
+			return SUCCESS;
+		}
+
+		// dynamic checks (II)
+		if( getID( C ) == getID( A ) ) {
+			return ILLEGAL;
+		}
 		assert( phase != TRY );
 
 		// delegate
@@ -1111,47 +1188,86 @@ namespace grb {
 			return resize( C, nnz( A ) );
 		} else {
 			assert( phase == EXECUTE );
-			return internal::set< false, descr >( C, A );
+			return internal::set_copy< false, descr >( C, A );
 		}
 	}
 
 	template<
 		Descriptor descr = descriptors::no_operation,
 		typename OutputType, typename InputType1, typename InputType2,
-		typename RIT1, typename CIT1, typename NIT1,
-		typename RIT2, typename CIT2, typename NIT2
+		typename RIT, typename CIT, typename NIT
 	>
 	RC set(
-		Matrix< OutputType, reference, RIT1, CIT1, NIT1 > &C,
-		const Matrix< InputType1, reference, RIT2, CIT2, NIT2 > &A,
+		Matrix< OutputType, reference, RIT, CIT, NIT > &C,
+		const Matrix< InputType1, reference, RIT, CIT, NIT > &A,
 		const InputType2 &val,
-		const Phase &phase = EXECUTE
+		const Phase &phase = EXECUTE,
+		const typename std::enable_if<
+			!grb::is_object< OutputType >::value &&
+			!grb::is_object< InputType1 >::value &&
+			!grb::is_object< InputType2 >::value
+		>::type * const = nullptr
 	) noexcept {
-		static_assert( !std::is_same< OutputType, void >::value,
-			"internal::grb::set (masked set to value): cannot have a pattern "
-			"matrix as output" );
 #ifdef _DEBUG
 		std::cout << "Called grb::set (matrix-to-value-masked, reference)\n";
 #endif
 		// static checks
-		NO_CAST_ASSERT( ( !(descr & descriptors::no_casting) ||
-				std::is_same< InputType2, OutputType >::value
-			), "grb::set",
+		NO_CAST_ASSERT(
+			( !(descr & descriptors::no_casting) ||
+				std::is_same< InputType2, OutputType >::value ),
+			"grb::set( matrix, mask, value )",
 			"called with non-matching value types"
+		);
+		NO_CAST_ASSERT(
+			( !(descr & descriptors::no_casting) ||
+				std::is_same< InputType1, bool >::value ),
+			"grb::set( matrix, mask, value )",
+			"called with non-Boolean mask value type"
+		);
+		static_assert( !( (descr & descriptors::structural) &&
+				(descr & descriptors::invert_mask)
+			), "Primitives with matrix outputs may not employ structurally inverted "
+			"masking"
 		);
 
 		// dynamic checks
+		const size_t m = nrows( A );
+		const size_t n = ncols( A );
+		if( n == 0 || m == 0 ) {
+			std::cerr << "Error: grb::set( matrix, mask, scalar ) called with mask = "
+				<< "NO_MASK, which is illegal\n";
+			return ILLEGAL;
+		}
+		if( m != nrows( C ) ) {
+			return MISMATCH;
+		}
+		if( n != ncols( C ) ) {
+			return MISMATCH;
+		}
+
 		assert( phase != TRY );
 
-		// delegate
+		// delegate self-assignment
+		if( getID( C ) == getID( A ) ) {
+			if( std::is_void< OutputType >::value ) {
+				return SUCCESS;
+			} else if( phase == RESIZE ) {
+				return SUCCESS;
+			} else {
+				assert( phase == EXECUTE );
+				return internal::set_copy_values( C, &val, nnz( C ) );
+			}
+		}
+
+		// delegate to other set variants
 		if( phase == RESIZE ) {
 			return resize( C, nnz( A ) );
 		} else {
 			assert( phase == EXECUTE );
 			if( std::is_same< OutputType, void >::value ) {
-				return internal::set< false, descr >( C, A );
+				return internal::set_copy< false, descr >( C, A );
 			} else {
-				return internal::set< true, descr >( C, A, &val );
+				return internal::set_copy< true, descr >( C, A, &val );
 			}
 		}
 	}

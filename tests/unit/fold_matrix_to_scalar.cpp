@@ -818,6 +818,200 @@ void grb_program( const input< T, M > &in, RC &rc ) {
 	}
 }
 
+void dispatcher( const size_t &n, int &rc ) {
+	// assume success
+	rc = 0;
+	RC grb_rc = SUCCESS;
+
+	{ // Identity square-matrix
+		Matrix< NzType > I( n, n );
+		std::vector< size_t > I_rows( n ), I_cols( n );
+		std::vector< NzType > I_vals( n, 1.f );
+		std::iota( I_rows.begin(), I_rows.end(), 0 );
+		std::iota( I_cols.begin(), I_cols.end(), 0 );
+		if( SUCCESS !=
+			buildMatrixUnique( I, I_rows.data(), I_cols.data(), I_vals.data(),
+				I_vals.size(), SEQUENTIAL )
+		) {
+			std::cerr << "Failed to build identity matrix" << std::endl;
+			rc = 20;
+			return;
+		}
+		Matrix< void > mask( n, n );
+		if( SUCCESS  !=
+			buildMatrixUnique( mask, I_rows.data(), I_cols.data(), I_rows.size(),
+				SEQUENTIAL )
+		) {
+			std::cerr << "Failed to build identity mask" << std::endl;
+			rc = 30;
+			return;
+		}
+		std::cout << "-- Running test 01: Identity square matrix of size n = "
+			<< n << std::endl;
+		input< NzType, void > input(I, mask);
+		grb_program( input, grb_rc );
+		std::cout << std::endl;
+	}
+
+	if( !grb_rc ) { // Build a square-matrix with n 1s on the first row
+		Matrix< NzType > I( n, n );
+		std::vector< size_t > I_rows( n, 0 ), I_cols( n );
+		std::vector< NzType > I_vals( n, 1.f );
+		std::iota( I_cols.begin(), I_cols.end(), 0 );
+		if( SUCCESS !=
+			buildMatrixUnique( I, I_rows.data(), I_cols.data(), I_vals.data(),
+				I_vals.size(), SEQUENTIAL )
+		) {
+			std::cerr << "Failed to build matrix with n 1s on the first row" << std::endl;
+			rc = 40;
+			return;
+		}
+		Matrix< void > mask( n, n );
+		if( SUCCESS !=
+			buildMatrixUnique( mask, I_rows.data(), I_cols.data(), I_rows.size(),
+				SEQUENTIAL )
+		) {
+			std::cerr << "Failed to build mask with n 1s on the first row" << std::endl;
+			rc = 50;
+			return;
+		}
+		std::cout << "-- Running test 02: Square matrix of size n = "
+			<< n << ", with n 1s on the first row" << std::endl;
+		input< NzType, void > input(I, mask);
+		grb_program( input, grb_rc );
+		std::cout << std::endl;
+	}
+
+	if( !grb_rc ) { // Square-matrix with n 1s on the first column
+		Matrix< NzType > I( n, n );
+		std::vector< size_t > I_rows( n ), I_cols( n, 0 );
+		std::vector< NzType > I_vals( n, 1.f );
+		std::iota( I_rows.begin(), I_rows.end(), 0 );
+		if( SUCCESS !=
+			buildMatrixUnique( I, I_rows.data(), I_cols.data(), I_vals.data(),
+				I_vals.size(), SEQUENTIAL )
+		) {
+			std::cerr << "Failed to build matrix with n 1s on the first column"
+				<< std::endl;
+			rc = 60;
+			return;
+		}
+		Matrix< void > mask( n, n );
+		if( SUCCESS !=
+			buildMatrixUnique( mask, I_rows.data(), I_cols.data(), I_rows.size(),
+				SEQUENTIAL )
+		) {
+			std::cerr << "Failed to build mask with n 1s on the first column"
+				<< std::endl;
+			rc = 70;
+			return;
+		}
+		std::cout << "-- Running test 03: Square matrix of size n = "
+			<< n << ", with n 1s on the first column" << std::endl;
+		input< NzType, void > input(I, mask);
+		grb_program( input, grb_rc );
+		std::cout << std::endl;
+	}
+
+	if( !grb_rc ) { // Building a square-matrix with n 1s on the first row and column
+		Matrix< NzType > I( n, n );
+		std::vector< size_t > I_rows( 2 * n - 1, 0 ), I_cols( 2 * n - 1, 0 );
+		std::vector< NzType > I_vals( 2 * n - 1, 1.f );
+		std::iota( I_rows.begin() + n, I_rows.end(), 1 );
+		std::iota( I_cols.begin(), I_cols.begin() + n, 0 );
+		if( SUCCESS !=
+			buildMatrixUnique( I, I_rows.data(), I_cols.data(), I_vals.data(),
+				I_vals.size(), SEQUENTIAL )
+		) {
+			std::cerr << "Failed to build matrix with n 1s on the first row and column"
+				<< std::endl;
+			rc = 80;
+			return;
+		}
+		Matrix< void > mask( n, n );
+		if( SUCCESS !=
+			buildMatrixUnique( mask, I_rows.data(), I_cols.data(), I_rows.size(),
+				SEQUENTIAL )
+		) {
+			std::cerr << "Failed to build mask with n 1s on the first row and column"
+				<< std::endl;
+			rc = 90;
+			return;
+		}
+		std::cout << "-- Running test 04: Square matrix of size n = "
+			<< n << ", with n 1s on the first row and column" << std::endl;
+		input< NzType, void > input( I, mask );
+		grb_program( input, grb_rc );
+		std::cout << std::endl;
+	}
+
+	if( !grb_rc ) { // Building a [1 row, n columns] matrix filled with 1s
+		Matrix< NzType > I( 1, n );
+		std::vector< size_t > I_rows( n, 0 ), I_cols( n, 0 );
+		std::vector< NzType > I_vals( n, 1.f );
+		std::iota( I_cols.begin(), I_cols.end(), 0 );
+		if( SUCCESS !=
+			buildMatrixUnique( I, I_rows.data(), I_cols.data(), I_vals.data(),
+				I_vals.size(), SEQUENTIAL )
+		) {
+			std::cerr << "Failed to build matrix with n 1s on the first row"
+				<< std::endl;
+			rc = 100;
+			return;
+		}
+		Matrix< void > mask( 1, n );
+		if( SUCCESS !=
+			buildMatrixUnique( mask, I_rows.data(), I_cols.data(), I_rows.size(),
+				SEQUENTIAL )
+		) {
+			std::cerr << "Failed to build mask with n 1s on the first row" << std::endl;
+			rc = 110;
+			return;
+		}
+		std::cout << "-- Running test 05: [1-row, n = "
+			<< n << " columns] matrix, filled with 1s" << std::endl;
+		input< NzType, void > input(I, mask);
+		grb_program( input, grb_rc );
+		std::cout << std::endl;
+	}
+
+	if( !grb_rc ) { // Building a [n rows, 1 column] matrix filled with 1s
+		Matrix< NzType > I( n, 1 );
+		std::vector< size_t > I_rows( n, 0 ), I_cols( n, 0 );
+		std::vector< NzType > I_vals( n, 1.f );
+		std::iota( I_rows.begin(), I_rows.end(), 0 );
+		if( SUCCESS !=
+			buildMatrixUnique( I, I_rows.data(), I_cols.data(), I_vals.data(),
+				I_vals.size(), SEQUENTIAL )
+		) {
+			std::cerr << "Failed to build matrix with n 1s on the first column"
+				<< std::endl;
+			rc = 120;
+			return;
+		}
+		Matrix< void > mask( n, 1 );
+		if( SUCCESS !=
+			buildMatrixUnique( mask, I_rows.data(), I_cols.data(), I_rows.size(),
+				SEQUENTIAL )
+		) {
+			std::cerr << "Failed to build mask with n 1s on the first column" << std::endl;
+			rc = 130;
+			return;
+		}
+		std::cout << "-- Running test 06: [n = "
+			<< n << " rows, 1 column] matrix, filled with 1s" << std::endl;
+		input< NzType, void > input(I, mask);
+		grb_program( input, grb_rc );
+		std::cout << std::endl;
+	}
+
+	if( grb_rc ) {
+		rc = 1000;
+	} else {
+		assert( rc == 0 );
+	}
+}
+
 int main( int argc, char ** argv ) {
 	// defaults
 	bool printUsage = false;
@@ -834,221 +1028,26 @@ int main( int argc, char ** argv ) {
 		std::cerr << "Usage: " << argv[ 0 ] << " [ n ]\n";
 		std::cerr << "  -n (optional, default is 10): an even integer, the test "
 				  << "size.\n";
-		return 1;
+		return 0;
 	}
 
 	std::cout << "This is functional test " << argv[ 0 ] << "\n";
 	Launcher< AUTOMATIC > launcher;
-	RC rc = SUCCESS;
 
-	if( !rc ) { // Identity square-matrix
-		Matrix< NzType > I( n, n );
-		std::vector< size_t > I_rows( n ), I_cols( n );
-		std::vector< NzType > I_vals( n, 1.f );
-		std::iota( I_rows.begin(), I_rows.end(), 0 );
-		std::iota( I_cols.begin(), I_cols.end(), 0 );
-		if( SUCCESS !=
-			buildMatrixUnique( I, I_rows.data(), I_cols.data(), I_vals.data(),
-				I_vals.size(), SEQUENTIAL )
-		) {
-			std::cerr << "Failed to build identity matrix" << std::endl;
-			rc = FAILED;
-			return 2;
-		}
-		Matrix< void > mask( n, n );
-		if( SUCCESS  !=
-			buildMatrixUnique( mask, I_rows.data(), I_cols.data(), I_rows.size(),
-				SEQUENTIAL )
-		) {
-			std::cerr << "Failed to build identity mask" << std::endl;
-			rc = FAILED;
-			return 3;
-		}
-		std::cout << "-- Running test 01: Identity square matrix of size n = "
-			<< n << std::endl;
-		input< NzType, void > input(I, mask);
-		if( launcher.exec( &grb_program, input, rc, true ) != SUCCESS ) {
-			std::cerr << "Launching test 01 FAILED\n";
-			return 4;
-		}
-		std::cout << std::endl << std::flush;
-	}
-
-	if( !rc ) { // Build a square-matrix with n 1s on the first row
-		Matrix< NzType > I( n, n );
-		std::vector< size_t > I_rows( n, 0 ), I_cols( n );
-		std::vector< NzType > I_vals( n, 1.f );
-		std::iota( I_cols.begin(), I_cols.end(), 0 );
-		if( SUCCESS !=
-			buildMatrixUnique( I, I_rows.data(), I_cols.data(), I_vals.data(),
-				I_vals.size(), SEQUENTIAL )
-		) {
-			std::cerr << "Failed to build matrix with n 1s on the first row" << std::endl;
-			rc = FAILED;
-			return 5;
-		}
-		Matrix< void > mask( n, n );
-		if( SUCCESS !=
-			buildMatrixUnique( mask, I_rows.data(), I_cols.data(), I_rows.size(),
-				SEQUENTIAL )
-		) {
-			std::cerr << "Failed to build mask with n 1s on the first row" << std::endl;
-			rc = FAILED;
-			return 6;
-		}
-		std::cout << "-- Running test 02: Square matrix of size n = "
-			<< n << ", with n 1s on the first row" << std::endl;
-		input< NzType, void > input(I, mask);
-		if( launcher.exec( &grb_program, input, rc, true ) != SUCCESS ) {
-			std::cerr << "Launching test 02 FAILED\n";
-			return 7;
-		}
-		std::cout << std::endl << std::flush;
-	}
-
-	if( !rc ) { // Square-matrix with n 1s on the first column
-		Matrix< NzType > I( n, n );
-		std::vector< size_t > I_rows( n ), I_cols( n, 0 );
-		std::vector< NzType > I_vals( n, 1.f );
-		std::iota( I_rows.begin(), I_rows.end(), 0 );
-		if( SUCCESS !=
-			buildMatrixUnique( I, I_rows.data(), I_cols.data(), I_vals.data(),
-				I_vals.size(), SEQUENTIAL )
-		) {
-			std::cerr << "Failed to build matrix with n 1s on the first column"
-				<< std::endl;
-			rc = FAILED;
-			return 8;
-		}
-		Matrix< void > mask( n, n );
-		if( SUCCESS !=
-			buildMatrixUnique( mask, I_rows.data(), I_cols.data(), I_rows.size(),
-				SEQUENTIAL )
-		) {
-			std::cerr << "Failed to build mask with n 1s on the first column"
-				<< std::endl;
-			rc = FAILED;
-			return 9;
-		}
-		std::cout << "-- Running test 03: Square matrix of size n = "
-			<< n << ", with n 1s on the first column" << std::endl;
-		input< NzType, void > input(I, mask);
-		if( launcher.exec( &grb_program, input, rc, true ) != SUCCESS ) {
-			std::cerr << "Launching test 03 FAILED\n";
-			return 10;
-		}
-		std::cout << std::endl << std::flush;
-	}
-
-	if( !rc ) { // Building a square-matrix with n 1s on the first row and column
-		Matrix< NzType > I( n, n );
-		std::vector< size_t > I_rows( 2 * n - 1, 0 ), I_cols( 2 * n - 1, 0 );
-		std::vector< NzType > I_vals( 2 * n - 1, 1.f );
-		std::iota( I_rows.begin() + n, I_rows.end(), 1 );
-		std::iota( I_cols.begin(), I_cols.begin() + n, 0 );
-		if( SUCCESS !=
-			buildMatrixUnique( I, I_rows.data(), I_cols.data(), I_vals.data(),
-				I_vals.size(), SEQUENTIAL )
-		) {
-			std::cerr << "Failed to build matrix with n 1s on the first row and column"
-				<< std::endl;
-			rc = FAILED;
-			return 11;
-		}
-		Matrix< void > mask( n, n );
-		if( SUCCESS !=
-			buildMatrixUnique( mask, I_rows.data(), I_cols.data(), I_rows.size(),
-				SEQUENTIAL )
-		) {
-			std::cerr << "Failed to build mask with n 1s on the first row and column"
-				<< std::endl;
-			rc = FAILED;
-			return 12;
-		}
-		std::cout << "-- Running test 04: Square matrix of size n = "
-			<< n << ", with n 1s on the first row and column" << std::endl;
-		input< NzType, void > input( I, mask );
-		if( launcher.exec( &grb_program, input, rc, true ) != SUCCESS ) {
-			std::cerr << "Launching test 04 FAILED\n";
-			return 13;
-		}
-		std::cout << std::endl << std::flush;
-	}
-
-	if( !rc ) { // Building a [1 row, n columns] matrix filled with 1s
-		Matrix< NzType > I( 1, n );
-		std::vector< size_t > I_rows( n, 0 ), I_cols( n, 0 );
-		std::vector< NzType > I_vals( n, 1.f );
-		std::iota( I_cols.begin(), I_cols.end(), 0 );
-		if( SUCCESS !=
-			buildMatrixUnique( I, I_rows.data(), I_cols.data(), I_vals.data(),
-				I_vals.size(), SEQUENTIAL )
-		) {
-			std::cerr << "Failed to build matrix with n 1s on the first row"
-				<< std::endl;
-			rc = FAILED;
-			return 14;
-		}
-		Matrix< void > mask( 1, n );
-		if( SUCCESS !=
-			buildMatrixUnique( mask, I_rows.data(), I_cols.data(), I_rows.size(),
-				SEQUENTIAL )
-		) {
-			std::cerr << "Failed to build mask with n 1s on the first row" << std::endl;
-			rc = FAILED;
-			return 11;
-		}
-		std::cout << "-- Running test 05: [1-row, n = "
-			<< n << " columns] matrix, filled with 1s" << std::endl;
-		input< NzType, void > input(I, mask);
-		if( launcher.exec( &grb_program, input, rc, true ) != SUCCESS ) {
-			std::cerr << "Launching test 04 FAILED\n";
-			return 15;
-		}
-		std::cout << std::endl << std::flush;
-	}
-
-	if( !rc ) { // Building a [n rows, 1 column] matrix filled with 1s
-		Matrix< NzType > I( n, 1 );
-		std::vector< size_t > I_rows( n, 0 ), I_cols( n, 0 );
-		std::vector< NzType > I_vals( n, 1.f );
-		std::iota( I_rows.begin(), I_rows.end(), 0 );
-		if( SUCCESS !=
-			buildMatrixUnique( I, I_rows.data(), I_cols.data(), I_vals.data(),
-				I_vals.size(), SEQUENTIAL )
-		) {
-			std::cerr << "Failed to build matrix with n 1s on the first column"
-				<< std::endl;
-			rc = FAILED;
-			return 16;
-		}
-		Matrix< void > mask( n, 1 );
-		if( SUCCESS !=
-			buildMatrixUnique( mask, I_rows.data(), I_cols.data(), I_rows.size(),
-				SEQUENTIAL )
-		) {
-			std::cerr << "Failed to build mask with n 1s on the first column" << std::endl;
-			rc = FAILED;
-			return 17;
-		}
-		std::cout << "-- Running test 06: [n = "
-					<< n << " rows, 1 column] matrix, filled with 1s" << std::endl;
-		input< NzType, void > input(I, mask);
-		if( launcher.exec( &grb_program, input, rc, true ) != SUCCESS ) {
-			std::cerr << "Launching test 06 FAILED\n";
-			return 18;
-		}
-		std::cout << std::endl << std::flush;
+	int rc = 0;
+	const RC launcher_rc = launcher.exec( &dispatcher, n, rc, true );
+	if( launcher_rc != SUCCESS ) {
+		std::cerr << "Error during launch of the test dispatcher\n";
+		return 10;
 	}
 
 	std::cerr << std::flush;
-	if( rc != SUCCESS ) {
-		std::cout << std::flush << "Test FAILED (rc = " << toString( rc ) << ")"
-			<< std::endl;
-		return 19;
+	if( rc != 0 ) {
+		std::cout << std::flush << "Test FAILED\n" << std::endl;
+	} else {
+		std::cout << std::flush << "Test OK" << std::endl;
 	}
 
-	std::cout << std::flush << "Test OK" << std::endl;
-	return 0;
+	return rc;
 }
 

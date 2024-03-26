@@ -15,7 +15,9 @@
  * limitations under the License.
  */
 
-/*
+/**
+ * @file
+ *
  * @author A. N. Yzelman
  */
 
