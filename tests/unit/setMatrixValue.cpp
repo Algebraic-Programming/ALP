@@ -126,7 +126,7 @@ RC check_all(
  *              then the capacity of the output may have to resize. If the
  *              other way around, no resizing is ever needed.
  */
-template< typename T, bool left >
+template< grb::Descriptor descr, typename T, bool left >
 void identity_test( const size_t &n, grb::RC &rc ) {
 	rc = SUCCESS;
 	if( n < 2 ) {
@@ -185,9 +185,9 @@ void identity_test( const size_t &n, grb::RC &rc ) {
 
 	// perform the set, resize phase
 	if( left ) {
-		rc = grb::set( off_diagonal, identity, 3, RESIZE );
+		rc = grb::set< descr >( off_diagonal, identity, 3, RESIZE );
 	} else {
-		rc = grb::set( identity, off_diagonal, 3, RESIZE );
+		rc = grb::set< descr >( identity, off_diagonal, 3, RESIZE );
 	}
 	if( rc != SUCCESS ) {
 		std::cerr << "\t resize failed\n";
@@ -210,9 +210,9 @@ void identity_test( const size_t &n, grb::RC &rc ) {
 
 	// perform the set, execute phase
 	if( left ) {
-		rc = grb::set( off_diagonal, identity, 3, EXECUTE );
+		rc = grb::set< descr >( off_diagonal, identity, 3, EXECUTE );
 	} else {
-		rc = grb::set( identity, off_diagonal, 3, EXECUTE );
+		rc = grb::set< descr >( identity, off_diagonal, 3, EXECUTE );
 	}
 	if( rc != SUCCESS ) {
 		std::cerr << "\t execute failed\n";
@@ -243,6 +243,7 @@ void identity_test( const size_t &n, grb::RC &rc ) {
 	// done
 }
 
+template< grb::Descriptor descr >
 void self_identity_test( const size_t &n, grb::RC &rc ) {
 	rc = SUCCESS;
 
@@ -276,22 +277,22 @@ void self_identity_test( const size_t &n, grb::RC &rc ) {
 	}
 
 	// Try to set the matrix to 2s ( RESIZE )
-	rc = grb::set( Identity, Identity, 2UL, Phase::RESIZE );
+	rc = grb::set< descr >( Identity, Identity, 2UL, grb::Phase::RESIZE );
 	if( rc != SUCCESS ) {
 		std::cerr << "\t set identity matrix diagonal to 2s ( RESIZE ) FAILED: "
 			<< "rc is " << grb::toString(rc) << "\n";
 		return;
 	}
 	// As the RESIZE phase is useless, the matrix should not be resized.
-	if( capacity( Identity ) < n ) {
-		std::cerr << "\t unexpected matrix capacity: " << capacity( Identity )
+	if( grb::capacity( Identity ) < n ) {
+		std::cerr << "\t unexpected matrix capacity: " << grb::capacity( Identity )
 			<< ", expected at least " << n << "\n";
 		rc = FAILED;
 		return;
 	}
 
 	// Try to set the matrix to 2s ( EXECUTE )
-	rc = grb::set( Identity, Identity, 2UL, Phase::EXECUTE );
+	rc = grb::set< descr >( Identity, Identity, 2UL, grb::Phase::EXECUTE );
 	if( rc != SUCCESS ) {
 		std::cerr << "\t set identity matrix diagonal to 2s ( EXECUTE ) FAILED: "
 			<< "rc is " << grb::toString(rc) << "\n";
@@ -299,7 +300,7 @@ void self_identity_test( const size_t &n, grb::RC &rc ) {
 	}
 
 	// Now all values should be 2s
-	if( nnz( Identity ) != n ) {
+	if( grb::nnz( Identity ) != n ) {
 		std::cerr << "\t Expected " << n << " nonzeroes, got " << nnz( Identity )
 			<< "\n";
 		rc = FAILED;
@@ -359,7 +360,10 @@ int main( int argc, char ** argv ) {
 	bool failed = false;
 
 	std::cout << "\t test 1 (self-masked)\n";
-	if( launcher.exec( &self_identity_test, in, out, true ) != SUCCESS ) {
+	if( launcher.exec(
+			&(self_identity_test< grb::descriptors::no_operation >), in, out, true
+		) != SUCCESS
+	) {
 		std::cerr << "Launching test FAILED\n" << std::endl;
 		return 255;
 	}
@@ -371,8 +375,11 @@ int main( int argc, char ** argv ) {
 		std::cout << "\t\t OK\n";
 	}
 
-	std::cout << "\t test 2 (matching domains, no-op resize)\n";
-	if( launcher.exec( &identity_test< int, false >, in, out, true ) != SUCCESS ) {
+	std::cout << "\t test 2 (self-masked, structural)\n";
+	if( launcher.exec(
+			&(self_identity_test< grb::descriptors::structural >), in, out, true
+		) != SUCCESS
+	) {
 		std::cerr << "Launching test FAILED\n" << std::endl;
 		return 255;
 	}
@@ -384,8 +391,11 @@ int main( int argc, char ** argv ) {
 		std::cout << "\t\t OK\n";
 	}
 
-	std::cout << "\t test 3 (matching domains, resize)\n";
-	if( launcher.exec( &identity_test< int, true >, in, out, true ) != SUCCESS ) {
+	std::cout << "\t test 3 (matching domains, no-op resize)\n";
+	if( launcher.exec(
+			&(identity_test< grb::descriptors::no_operation, int, false >), in, out, true
+		) != SUCCESS
+	) {
 		std::cerr << "Launching test FAILED\n" << std::endl;
 		return 255;
 	}
@@ -397,8 +407,42 @@ int main( int argc, char ** argv ) {
 		std::cout << "\t\t OK\n";
 	}
 
-	std::cout << "\t test 4 (mismatching domains, no-op resize)\n";
-	if( launcher.exec( &identity_test< size_t, false >, in, out, true )
+	std::cout << "\t test 4 (matching domains, no-op resize, structural)\n";
+	if( launcher.exec(
+			&(identity_test< grb::descriptors::structural, int, false >), in, out, true
+		) != SUCCESS
+	) {
+		std::cerr << "Launching test FAILED\n" << std::endl;
+		return 255;
+	}
+	if( out != SUCCESS ) {
+		std::cout << "\t\t FAILED\n";
+		last_error = out;
+		failed = true;
+	} else {
+		std::cout << "\t\t OK\n";
+	}
+
+	std::cout << "\t test 5 (matching domains, resize)\n";
+	if( launcher.exec(
+			&(identity_test< grb::descriptors::no_operation, int, true >),
+			in, out, true
+		) != SUCCESS
+	) {
+		std::cerr << "Launching test FAILED\n" << std::endl;
+		return 255;
+	}
+	if( out != SUCCESS ) {
+		std::cout << "\t\t FAILED\n";
+		last_error = out;
+		failed = true;
+	} else {
+		std::cout << "\t\t OK\n";
+	}
+
+	std::cout << "\t test 6 (matching domains, resize, structural)\n";
+	if( launcher.exec(
+			&(identity_test< grb::descriptors::structural, int, true >), in, out, true )
 		!= SUCCESS
 	) {
 		std::cerr << "Launching test FAILED\n" << std::endl;
@@ -412,9 +456,11 @@ int main( int argc, char ** argv ) {
 		std::cout << "\t\t OK\n";
 	}
 
-	std::cout << "\t test 5 (mismatching domains, resize)\n";
-	if( launcher.exec( &identity_test< double, true >, in, out, true )
-		!= SUCCESS
+	std::cout << "\t test 7 (mismatching domains, no-op resize)\n";
+	if( launcher.exec(
+			&(identity_test< grb::descriptors::no_operation, size_t, false >),
+			in, out, true
+		) != SUCCESS
 	) {
 		std::cerr << "Launching test FAILED\n" << std::endl;
 		return 255;
@@ -427,9 +473,11 @@ int main( int argc, char ** argv ) {
 		std::cout << "\t\t OK\n";
 	}
 
-	std::cout << "\t test 6 (void mask, no-op resize)\n";
-	if( launcher.exec( &identity_test< void, false >, in, out, true )
-		!= SUCCESS
+	std::cout << "\t test 8 (mismatching domains, no-op resize, structural)\n";
+	if( launcher.exec(
+			&(identity_test< grb::descriptors::structural, size_t, false >),
+			in, out, true
+		) != SUCCESS
 	) {
 		std::cerr << "Launching test FAILED\n" << std::endl;
 		return 255;
@@ -442,9 +490,96 @@ int main( int argc, char ** argv ) {
 		std::cout << "\t\t OK\n";
 	}
 
-	std::cout << "\t test 7 (void output, resize)\n";
-	if( launcher.exec( &identity_test< void, true >, in, out, true )
-		!= SUCCESS
+	std::cout << "\t test 9 (mismatching domains, resize)\n";
+	if( launcher.exec(
+			&(identity_test< grb::descriptors::no_operation, double, true >),
+			in, out, true
+		) != SUCCESS
+	) {
+		std::cerr << "Launching test FAILED\n" << std::endl;
+		return 255;
+	}
+	if( out != SUCCESS ) {
+		std::cout << "\t\t FAILED\n";
+		last_error = out;
+		failed = true;
+	} else {
+		std::cout << "\t\t OK\n";
+	}
+
+	std::cout << "\t test 10 (mismatching domains, resize, structural)\n";
+	if( launcher.exec(
+			&(identity_test< grb::descriptors::structural, double, true >),
+			in, out, true
+		) != SUCCESS
+	) {
+		std::cerr << "Launching test FAILED\n" << std::endl;
+		return 255;
+	}
+	if( out != SUCCESS ) {
+		std::cout << "\t\t FAILED\n";
+		last_error = out;
+		failed = true;
+	} else {
+		std::cout << "\t\t OK\n";
+	}
+
+	std::cout << "\t test 11 (void mask, no-op resize)\n";
+	if( launcher.exec(
+			&(identity_test< grb::descriptors::no_operation, void, false >),
+			in, out, true
+		) != SUCCESS
+	) {
+		std::cerr << "Launching test FAILED\n" << std::endl;
+		return 255;
+	}
+	if( out != SUCCESS ) {
+		std::cout << "\t\t FAILED\n";
+		last_error = out;
+		failed = true;
+	} else {
+		std::cout << "\t\t OK\n";
+	}
+
+	std::cout << "\t test 12 (void mask, no-op resize, structural)\n";
+	if( launcher.exec(
+			&(identity_test< grb::descriptors::structural, void, false >),
+			in, out, true
+		) != SUCCESS
+	) {
+		std::cerr << "Launching test FAILED\n" << std::endl;
+		return 255;
+	}
+	if( out != SUCCESS ) {
+		std::cout << "\t\t FAILED\n";
+		last_error = out;
+		failed = true;
+	} else {
+		std::cout << "\t\t OK\n";
+	}
+
+	std::cout << "\t test 13 (void mask, resize)\n";
+	if( launcher.exec(
+			&(identity_test< grb::descriptors::no_operation, void, true >),
+			in, out, true
+		) != SUCCESS
+	) {
+		std::cerr << "Launching test FAILED\n" << std::endl;
+		return 255;
+	}
+	if( out != SUCCESS ) {
+		std::cout << "\t\t FAILED\n";
+		last_error = out;
+		failed = true;
+	} else {
+		std::cout << "\t\t OK\n";
+	}
+
+	std::cout << "\t test 14 (void mask, resize, structural)\n";
+	if( launcher.exec(
+			&(identity_test< grb::descriptors::structural, void, true >),
+			in, out, true
+		) != SUCCESS
 	) {
 		std::cerr << "Launching test FAILED\n" << std::endl;
 		return 255;
@@ -461,9 +596,11 @@ int main( int argc, char ** argv ) {
 		std::cerr << std::flush;
 		std::cout << "Test FAILED (last error: " << grb::toString( last_error )
 			<< ")\n" << std::endl;
+		return static_cast< int >(last_error);
 	} else {
 		std::cout << "Test OK\n" << std::endl;
 	}
+
 	return 0;
 }
 
