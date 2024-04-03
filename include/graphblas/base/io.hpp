@@ -1079,29 +1079,36 @@ namespace grb {
 	}
 
 	/**
-	 * Sets all values of a matrix to the given value at all positions where a
+	 * Sets all values of a matrix to the given value at all positions where the
 	 * given mask evaluates <tt>true</tt>.
 	 *
-	 * @tparam descr     The descriptor used for this operation.
-	 * @tparam DataType  The type of each element in the given matrix.
-	 * @tparam MaskType  The type of each element in the given mask.
-	 * @tparam ValueType The type of the given value. Should be convertible
-	 *                   to \a DataType. Optional; default value is \a DataType.
-	 * @tparam backend   The backend selected for executing this primitive.
+	 * @tparam descr The descriptor used for this operation.
 	 *
 	 * \parblock
 	 * \par Accepted descriptors
-	 *   -# grb::descriptors::no_operation
-	 *   -# grb::descriptors::no_casting
+	 *   -# #grb::descriptors::no_operation,
+	 *   -# #grb::descriptors::no_casting,
+	 *   -# #grb::descriptors::invert_mask, and
+	 *   -# #grb::descriptors::structural.
+	 *
+	 * However, and differently from most ALP primtivies, the
+	 * #grb::descriptors::invert_mask and #grb::descriptors::structural are
+	 * mutually exclusive for this primitive.
 	 * \endparblock
 	 *
-	 * @param[out]    C The vector of which nonzeroes are to be set to \a val. The
+	 * @tparam DataType  The type of each element in the given matrix.
+	 * @tparam MaskType  The type of each element in the given mask.
+	 * @tparam ValueType The type of the given value. Should be convertible
+	 *                   to \a DataType.
+	 * @tparam backend   The backend selected for executing this primitive.
+	 *
+	 * @param[out]    C The matrix whose nonzeroes are to be set to \a val. The
 	 *                  nonzero structure of \a C will match the nonzero structure
 	 *                  of nonzeroes in \a mask that evaluate <tt>true</tt>. Any
 	 *                  elements of \a C on input will be erased.
 	 * @param[in]  mask The mask which defines the nonzero structure of \a C on
-	 *                  output. The mask may equal \a C if and only if \a descr
-	 *                  does \em not include #grb::descriptors::invert_mask.
+	 *                  output. The given mask may be the same container as \a C.
+	 *                  The given mask may never be empty.
 	 * @param[in]   val The value to set each nonzero of \a C to.
 	 * @param[in] phase Which #grb::Phase the operation is requested. Optional;
 	 *                  the default is #grb::EXECUTE.
@@ -1125,14 +1132,19 @@ namespace grb {
 	 *                         caller is suggested to exit gracefully, and in any
 	 *                         case to not make any further calls to ALP.
 	 *
-	 * When \a descr includes grb::descriptors::no_casting and if \a T does not
-	 * match \a DataType, the code shall not compile. Other acceptable descriptors
-	 * include:
-	 *  - #grb::descriptors::invert_mask, and
-	 *  - #grb::descriptors::structural.
-	 * However, it is forbidden to call this function with both descriptors
-	 * simultaneously; i.e., implementations shall not support
-	 * #grb::descriptors::structural_complement.
+	 * When \a descr includes #grb::descriptors::no_casting then code shall not
+	 * compile if one of the following conditions are met:
+	 *  -# \a ValueType does not match \a DataType; or
+	 *  -# \a MaskType does not match <tt>bool</tt>.
+	 * In these cases, the code shall not compile: implementations must throw
+	 * a static assertion failure in this case.
+	 *
+	 * Similarly, it is forbidden to call this function with both following
+	 * descriptors simultaneously:
+	 *  - #grb::descriptors::invert_mask \em and #grb::descriptors::structural.
+	 * The use of the #grb::descriptors::structural_complement descriptor hence is
+	 * is forbidden also. Implementations shall throw a static assertion failure
+	 * if the user nonetheless asks for structural mask inversion.
 	 *
 	 * \parblock
 	 * \par Performance semantics
@@ -1145,7 +1157,7 @@ namespace grb {
 		Descriptor descr = descriptors::no_operation,
 		typename DataType, typename RIT, typename CIT, typename NIT,
 		typename MaskType,
-		typename ValueType = DataType,
+		typename ValueType,
 		Backend backend
 	>
 	RC set(
