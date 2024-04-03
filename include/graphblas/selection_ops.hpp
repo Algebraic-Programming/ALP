@@ -140,7 +140,7 @@ namespace grb {
 
 	template< typename D1, typename D2, typename D3 >
 	struct is_matrix_selection_operator<
-	operators::	select::is_strictly_upper< D1, D2, D3 >
+	operators::select::is_strictly_upper< D1, D2, D3 >
 	> {
 		static constexpr bool value = true;
 	};
