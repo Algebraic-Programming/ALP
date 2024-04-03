@@ -73,22 +73,36 @@ class Expected< void > {
  * and checks whether all those entries are at an off-diagonal position
  * defined by \a row_offset.
  */
-template< typename T >
+template< bool no_even_rows, bool no_odd_rows, typename T >
 RC check_all(
 	grb::Matrix< T > &A,
-	Expected< T > expected_value, const size_t row_offset
+	Expected< T > expected_value_even, Expected< T > expected_value_odd,
+	const size_t row_offset
 ) {
-	const T * const value_p = expected_value.getPointer();
+	const T * const even_value_p = expected_value_even.getPointer();
+	const T * const odd_value_p  = expected_value_odd.getPointer();
 	return std::all_of( A.cbegin(), A.cend(),
-		[&value_p,&row_offset](
+		[&even_value_p,&odd_value_p,&row_offset](
 			const std::pair< std::pair< size_t, size_t >, T > &entry
 		) {
-			const bool ret = entry.second == *value_p &&
-				entry.first.first + row_offset == entry.first.second;
+			const T expected_value = entry.first.first % 2 == 0
+				? *even_value_p
+				: *odd_value_p;
+			const bool unexpected = (entry.first.first % 2 == 0 && no_even_rows) ||
+				(entry.first.first % 2 == 1 && no_odd_rows);
+			const bool valMatch = entry.second == expected_value;
+			const bool coorMatch = entry.first.first + row_offset == entry.first.second;
+			const bool ret = valMatch && coorMatch && !unexpected;
 			if( !ret ) {
-				std::cerr << "Value = " << entry.second << ", expected " << *value_p
-					<< " at coordinates ( " << entry.first.first << ", " << entry.first.second
-					<< " ), expected diagonal with row offset " << row_offset << "\n";
+				if( unexpected ) {
+					std::cerr << "Value " << entry.second << " at coordinates ( "
+						<< entry.first.first << ", " << entry.first.second << " ) while no "
+						<< "value was expected at this coordinate.\n";
+				} else {
+					std::cerr << "Value = " << entry.second << ", expected " << expected_value
+						<< " at coordinates ( " << entry.first.first << ", " << entry.first.second
+						<< " ), expected diagonal with row offset " << row_offset << "\n";
+				}
 			}
 			return ret;
 		}
@@ -100,20 +114,32 @@ RC check_all(
  * off-diagonal position of the entries. The interface matches that of the
  * generic check_all.
  */
+template< bool no_even_rows, bool no_odd_rows >
 RC check_all(
 	grb::Matrix< void > &A,
-	Expected< void > expected_value, const size_t row_offset
+	Expected< void > expected_value_even, Expected< void > expected_value_odd,
+	const size_t row_offset
 ) {
-	(void) expected_value;
+	(void) expected_value_even;
+	(void) expected_value_odd;
 	return std::all_of( A.cbegin(), A.cend(),
 		[&row_offset](
 			const std::pair< size_t, size_t > &entry
 		) {
-			const bool ret = entry.first + row_offset == entry.second;
+			const bool unexpected = (entry.first % 2 == 0 && no_even_rows) ||
+				(entry.first % 2 == 1 && no_odd_rows);
+			const bool coorMatch = entry.first + row_offset == entry.second;
+			const bool ret = coorMatch && !unexpected;
 			if( !ret ) {
-				std::cerr << "Value at coordinates ( " << entry.first << ", "
-					<< entry.second << " ), expected diagonal with row offset "
-					<< row_offset << "\n";
+				if( unexpected ) {
+					std::cerr << "Value " << entry.second << " at coordinates ( "
+						<< entry.first << ", " << entry.second << " ) while no "
+						<< "value was expected at this coordinate.\n";
+				} else {
+					std::cerr << "Value at coordinates ( " << entry.first << ", "
+						<< entry.second << " ), expected diagonal with row offset "
+						<< row_offset << "\n";
+				}
 			}
 			return ret;
 		}
@@ -148,6 +174,18 @@ void identity_test( const size_t &n, grb::RC &rc ) {
 		rc = FAILED;
 		return;
 	}
+	grb::eWiseLambda(
+		[&off_diagonal](const size_t i, const size_t j, int &v ) {
+			(void) j;
+			if( i % 2 == 0 ) { v = 0; }
+		}, off_diagonal );
+
+	// at this point:
+	//  - identity is an n by n identity matrix
+	//  - off_diagonal is an n by n matrix with values at coordinates above its
+	//    main diagonal. On even-numbered rows, the value at corresponding
+	//    coordinates is 7. On odd-numbered rows, the value is 0. This helps detect
+	//    differing behaviour for structural vs. non-structural masking.
 
 	if( nnz( off_diagonal ) != n - 1 ) {
 		std::cerr << "\t verification of off-diagonal construction failed; "
@@ -161,20 +199,24 @@ void identity_test( const size_t &n, grb::RC &rc ) {
 	}
 
 	// set expected values for validating construction
-	Expected< int > expected_left;
-	Expected< T > expected_right;
-	expected_left.set( 7 );
-	expected_right.set( 1 );
+	Expected< int > expected_left_odd, expected_left_even;
+	Expected< T > expected_right_odd, expected_right_even;
+	expected_left_odd.set( 7 );
+	expected_left_even.set( 0 );
+	expected_right_odd.set( 1 );
+	expected_right_even.set( 1 );
 
 	// validate construction
 	{
-		RC local_rc = check_all( off_diagonal, expected_left, 1 );
+		RC local_rc = check_all< false, false >(
+			off_diagonal, expected_left_even, expected_left_odd, 1 );
 		if( local_rc != SUCCESS ) {
 			std::cerr << "\t verification of off-diagonal construction failed: "
 				<< "at least one unexpected matrix element found\n";
 			if( rc == SUCCESS ) { rc = local_rc; }
 		}
-		local_rc = check_all( identity, expected_right, 0 );
+		local_rc = check_all< false, false >(
+			identity, expected_right_even, expected_right_odd, 0 );
 			if( local_rc != SUCCESS ) {
 			std::cerr << "\t verification of identity construction failed: "
 				<< "at least one unexpected matrix element found\n";
@@ -194,18 +236,30 @@ void identity_test( const size_t &n, grb::RC &rc ) {
 		return;
 	}
 
-	// set expected value for tests, accounting for possible void T
-	expected_left.set( 3 );
-	expected_right.set( 3 );
-
 	// check capacity
-	if( left ) {
-		if( grb::capacity( off_diagonal ) < n ) {
+	const size_t expected_nnz = left
+		? ((descr & descriptors::invert_mask)
+			? 0
+			: n
+		)
+		: ((descr & descriptors::structural)
+			? (n-1)
+			: ((descr & descriptors::invert_mask)
+				? (n/2)
+				: ((n-1)/2)
+			  )
+		);
+	{
+		const size_t cap = left
+		       ? grb::capacity( off_diagonal )
+		       : grb::capacity( identity );
+		if( cap < expected_nnz ) {
 			std::cerr << "\t resize failed to achieve correct capacity for "
-				<< "off_diagonal\n";
+				<< "off_diagonal: got " << cap << " but require at least " << expected_nnz
+				<< "\n";
 			rc = FAILED;
+			return;
 		}
-		return;
 	}
 
 	// perform the set, execute phase
@@ -219,10 +273,25 @@ void identity_test( const size_t &n, grb::RC &rc ) {
 		return;
 	}
 
+	// set expected value for tests, accounting for possible void T
+	expected_left_odd.set( 3 );
+	expected_left_even.set( 3 );
+	if( descr & descriptors::invert_mask ) {
+		expected_right_even.set( 3 );
+		expected_right_odd.set( 17 );
+		// we use 17 above here as it is a never-encountered value. There should be no
+		// nnzs on odd-numbered rows in this case
+	} else if( descr & descriptors::structural ) {
+		expected_right_even.set( 3 );
+		expected_right_odd.set( 3 );
+	} else {
+		expected_right_even.set( 17 ); // (see above)
+		expected_right_odd.set( 3 );
+	}
+
 	// check output
 	{
-		const size_t expected_nnz = left ? n : n - 1;
-		const size_t actual_nnz   = left ? nnz( off_diagonal ) : nnz( identity );
+		const size_t actual_nnz = left ? nnz( off_diagonal ) : nnz( identity );
 		if( actual_nnz != expected_nnz ) {
 			std::cerr << "\t unexpected number of nonzeroes: got " << actual_nnz << ", "
 				<< "expected " << expected_nnz << "\n";
@@ -230,9 +299,13 @@ void identity_test( const size_t &n, grb::RC &rc ) {
 		}
 		RC local_rc = PANIC;
 		if( left ) {
-			local_rc = check_all( off_diagonal, expected_left, 0 );
+			local_rc = check_all< false, false >(
+				off_diagonal, expected_left_even, expected_left_odd, 0 );
 		} else {
-			local_rc = check_all( identity, expected_right, 1 );
+			constexpr bool flag = (descr & descriptors::invert_mask);
+			constexpr bool nstr = !(descr & descriptors::structural);
+			local_rc = check_all< nstr && !flag, nstr && flag >(
+				identity, expected_right_even, expected_right_odd, 1 );
 		}
 		if( local_rc == FAILED ) {
 			std::cerr << "\t at least one unexpected output entry found\n";
@@ -423,7 +496,23 @@ int main( int argc, char ** argv ) {
 		std::cout << "\t\t OK\n";
 	}
 
-	std::cout << "\t test 5 (matching domains, resize)\n";
+	std::cout << "\t test 5 (matching domains, no-op resize, inverted mask)\n";
+	if( launcher.exec(
+			&(identity_test< grb::descriptors::invert_mask, int, false >), in, out, true
+		) != SUCCESS
+	) {
+		std::cerr << "Launching test FAILED\n" << std::endl;
+		return 255;
+	}
+	if( out != SUCCESS ) {
+		std::cout << "\t\t FAILED\n";
+		last_error = out;
+		failed = true;
+	} else {
+		std::cout << "\t\t OK\n";
+	}
+
+	std::cout << "\t test 6 (matching domains, resize)\n";
 	if( launcher.exec(
 			&(identity_test< grb::descriptors::no_operation, int, true >),
 			in, out, true
@@ -440,7 +529,7 @@ int main( int argc, char ** argv ) {
 		std::cout << "\t\t OK\n";
 	}
 
-	std::cout << "\t test 6 (matching domains, resize, structural)\n";
+	std::cout << "\t test 7 (matching domains, resize, structural)\n";
 	if( launcher.exec(
 			&(identity_test< grb::descriptors::structural, int, true >), in, out, true )
 		!= SUCCESS
@@ -456,7 +545,23 @@ int main( int argc, char ** argv ) {
 		std::cout << "\t\t OK\n";
 	}
 
-	std::cout << "\t test 7 (mismatching domains, no-op resize)\n";
+	std::cout << "\t test 8 (matching domains, resize, inverted mask)\n";
+	if( launcher.exec(
+			&(identity_test< grb::descriptors::invert_mask, int, true >), in, out, true )
+		!= SUCCESS
+	) {
+		std::cerr << "Launching test FAILED\n" << std::endl;
+		return 255;
+	}
+	if( out != SUCCESS ) {
+		std::cout << "\t\t FAILED\n";
+		last_error = out;
+		failed = true;
+	} else {
+		std::cout << "\t\t OK\n";
+	}
+
+	std::cout << "\t test 9 (mismatching domains, no-op resize)\n";
 	if( launcher.exec(
 			&(identity_test< grb::descriptors::no_operation, size_t, false >),
 			in, out, true
@@ -473,7 +578,7 @@ int main( int argc, char ** argv ) {
 		std::cout << "\t\t OK\n";
 	}
 
-	std::cout << "\t test 8 (mismatching domains, no-op resize, structural)\n";
+	std::cout << "\t test 10 (mismatching domains, no-op resize, structural)\n";
 	if( launcher.exec(
 			&(identity_test< grb::descriptors::structural, size_t, false >),
 			in, out, true
@@ -490,7 +595,24 @@ int main( int argc, char ** argv ) {
 		std::cout << "\t\t OK\n";
 	}
 
-	std::cout << "\t test 9 (mismatching domains, resize)\n";
+	std::cout << "\t test 11 (mismatching domains, no-op resize, inverted mask)\n";
+	if( launcher.exec(
+			&(identity_test< grb::descriptors::invert_mask, size_t, false >),
+			in, out, true
+		) != SUCCESS
+	) {
+		std::cerr << "Launching test FAILED\n" << std::endl;
+		return 255;
+	}
+	if( out != SUCCESS ) {
+		std::cout << "\t\t FAILED\n";
+		last_error = out;
+		failed = true;
+	} else {
+		std::cout << "\t\t OK\n";
+	}
+
+	std::cout << "\t test 12 (mismatching domains, resize)\n";
 	if( launcher.exec(
 			&(identity_test< grb::descriptors::no_operation, double, true >),
 			in, out, true
@@ -507,7 +629,7 @@ int main( int argc, char ** argv ) {
 		std::cout << "\t\t OK\n";
 	}
 
-	std::cout << "\t test 10 (mismatching domains, resize, structural)\n";
+	std::cout << "\t test 13 (mismatching domains, resize, structural)\n";
 	if( launcher.exec(
 			&(identity_test< grb::descriptors::structural, double, true >),
 			in, out, true
@@ -524,7 +646,24 @@ int main( int argc, char ** argv ) {
 		std::cout << "\t\t OK\n";
 	}
 
-	std::cout << "\t test 11 (void mask, no-op resize)\n";
+	std::cout << "\t test 14 (mismatching domains, resize, inverted mask)\n";
+	if( launcher.exec(
+			&(identity_test< grb::descriptors::invert_mask, double, true >),
+			in, out, true
+		) != SUCCESS
+	) {
+		std::cerr << "Launching test FAILED\n" << std::endl;
+		return 255;
+	}
+	if( out != SUCCESS ) {
+		std::cout << "\t\t FAILED\n";
+		last_error = out;
+		failed = true;
+	} else {
+		std::cout << "\t\t OK\n";
+	}
+
+	std::cout << "\t test 15 (void mask, no-op resize)\n";
 	if( launcher.exec(
 			&(identity_test< grb::descriptors::no_operation, void, false >),
 			in, out, true
@@ -541,7 +680,7 @@ int main( int argc, char ** argv ) {
 		std::cout << "\t\t OK\n";
 	}
 
-	std::cout << "\t test 12 (void mask, no-op resize, structural)\n";
+	std::cout << "\t test 16 (void mask, no-op resize, structural)\n";
 	if( launcher.exec(
 			&(identity_test< grb::descriptors::structural, void, false >),
 			in, out, true
@@ -558,7 +697,7 @@ int main( int argc, char ** argv ) {
 		std::cout << "\t\t OK\n";
 	}
 
-	std::cout << "\t test 13 (void mask, resize)\n";
+	std::cout << "\t test 17 (void mask, resize)\n";
 	if( launcher.exec(
 			&(identity_test< grb::descriptors::no_operation, void, true >),
 			in, out, true
@@ -575,7 +714,7 @@ int main( int argc, char ** argv ) {
 		std::cout << "\t\t OK\n";
 	}
 
-	std::cout << "\t test 14 (void mask, resize, structural)\n";
+	std::cout << "\t test 18 (void mask, resize, structural)\n";
 	if( launcher.exec(
 			&(identity_test< grb::descriptors::structural, void, true >),
 			in, out, true
@@ -591,6 +730,8 @@ int main( int argc, char ** argv ) {
 	} else {
 		std::cout << "\t\t OK\n";
 	}
+
+	// note: mask inversion with void masks is not possible
 
 	if( failed ) {
 		std::cerr << std::flush;
