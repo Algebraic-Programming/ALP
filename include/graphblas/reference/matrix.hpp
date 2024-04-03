@@ -1177,7 +1177,7 @@ namespace grb {
 					"handle at present. Please submit a bug report."
 				);
 				// compute and return
-				return std::max( (std::max( m, n ) + 1) * globalBufferUnitSize,
+				return std::max( (m + n + 2) * globalBufferUnitSize,
 #ifdef _H_GRB_REFERENCE_OMP_MATRIX
 					config::OMP::threads() * config::CACHE_LINE_SIZE::value() *
 						utils::SizeOf< D >::value
