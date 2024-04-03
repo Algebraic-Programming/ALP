@@ -96,7 +96,7 @@ namespace grb {
 		}
 
 		/**
-		 * Phase 3/3 for OpenMP-based prefix sum.
+		 * Phase 2/3 for OpenMP-based prefix sum.
 		 *
 		 * Should be called from within an OpenMP parallel section and after a call to
 		 * #prefixSum_ompPar_phase1 \em and subsequent OpenMP barrier.
@@ -136,7 +136,7 @@ namespace grb {
 		 * Phase 3/3 for OpenMP-based prefix sum.
 		 *
 		 * Should be called from within an OpenMP parallel section and after a call to
-		 * #prefixSum_ompPar_phase3 \em and subsequent OpenMP barrier.
+		 * #prefixSum_ompPar_phase2 \em and subsequent OpenMP barrier.
 		 *
 		 * See #prefixSum_ompPar for full documentation.
 		 */
@@ -178,14 +178,14 @@ namespace grb {
 		 *
 		 * @param[in,out] ws A single element of type \a T.
 		 *
-		 * The algorithm proceeds in three faces, separated by barriers. To compute
+		 * The algorithm proceeds in three phases, separated by barriers. To compute
 		 * multiple prefix-sums and to save from unnecessarily incurring barriers,
 		 * each of the three phases can also be called manually; see
 		 *  -# prefixSum_OmpPar_phase1,
 		 *  -# prefixSum_OmpPar_phase2, and
 		 *  -# prefixSum_OmpPar_phase3.
-		 * When using these manual calls, barrier synchronisation must be done by the
-		 * user.
+		 * When using these manual calls, barrier synchronisation in-between phases
+		 * must be performed manually by the user.
 		 */
 		template< bool copyEnd, typename T >
 		void prefixSum_ompPar(
@@ -246,6 +246,7 @@ namespace grb {
 			}
 		}
 #endif
+
 	} // end namespace grb::utils
 
 } // end namespace grb
