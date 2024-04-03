@@ -991,7 +991,7 @@ namespace grb {
 			const Phase &phase
 		) noexcept {
 #ifdef _DEBUG_REFERENCE_IO
-			std::cout << "Called grb::internal::set_masked (matrices, reference), ";
+			std::cout << "\t called grb::internal::set_masked (reference), ";
 			if( phase == EXECUTE ) {
 				std::cout << "execute phase\n";
 			} else {
@@ -1072,11 +1072,32 @@ namespace grb {
 							(void) ++local_nz;
 						}
 					}
+#ifdef _DEBUG_REFERENCE_IO
+ #ifdef _H_GRB_REFERENCE_OMP_IO
+					#pragma omp critical
+ #endif
+					{
+ #ifdef _H_GRB_REFERENCE_OMP_IO
+						std::cout << "\t\t thread " << config::OMP::current_thread_ID() << ": "
+ #else
+						std::cout << "\t\t "
+ #endif
+							<< "got range " << start << " to " << end << " and counted " << local_nz
+							<< " nonzeroes\n";
+					}
+#endif
 					min_req_nz += local_nz;
 				}
+#ifdef _DEBUG_REFERENCE_IO
+				std::cout << "\t\t assuring capacity of at least " << min_req_nz << "\n";
+#endif
 				if( grb::capacity( A ) >= min_req_nz ) {
 					return SUCCESS;
 				} else {
+#ifdef _DEBUG_REFERENCE_IO
+					std::cout << "\t\t output matrix capacity insuffient ( "
+						<< grb::capacity( A ) << " ), resizing\n";
+#endif
 					return grb::resize( A, min_req_nz );
 				}
 			} else {
@@ -1385,8 +1406,8 @@ namespace grb {
 			const Matrix< InputType1, reference, RIT, CIT, NIT > &A,
 			const InputType2 * __restrict__ id = nullptr
 		) noexcept {
-#ifdef _DEBUG
-			std::cout << "Called grb::internal::set_copy (matrices, reference), "
+#ifdef _DEBUG_REFERENCE_IO
+			std::cout << "\t called grb::internal::set_copy (reference), "
 				<< "execute phase\n";
 #endif
 			// static checks
@@ -1425,14 +1446,14 @@ namespace grb {
 			}
 			const size_t nz = nnz( A );
 			if( nz == 0 ) {
-#ifdef _DEBUG
+#ifdef _DEBUG_REFERENCE_IO
 				std::cout << "\t input matrix has no nonzeroes, "
 					<< "simply clearing output matrix...\n";
 #endif
 				return clear( C );
 			}
 			if( nz > capacity( C ) ) {
-#ifdef _DEBUG
+#ifdef _DEBUG_REFERENCE_IO
 				std::cout << "\t output matrix does not have sufficient capacity to "
 					<< "complete requested operation\n";
 #endif
@@ -1502,8 +1523,8 @@ namespace grb {
 			const InputType2 * const value,
 			const size_t nz
 		) noexcept {
-#ifdef _DEBUG
-			std::cout << "Called grb::internal::set_copy_values (matrices, reference), "
+#ifdef _DEBUG_REFERENCE_IO
+			std::cout << "\t called grb::internal::set_copy_values (reference), "
 				<< "execute phase\n";
 #endif
 			#pragma omp parallel
@@ -1548,7 +1569,7 @@ namespace grb {
 			(void) value;
 			(void) nz;
 #ifdef _DEBUG
-			std::cout << "Called grb::internal::set_copy_values (matrices, reference), "
+			std::cout << "\t called grb::internal::set_copy_values (reference), "
 				<< "void variant (which is a no-op)\n";
 #endif
 			return SUCCESS;
@@ -1569,6 +1590,9 @@ namespace grb {
 			InputType &val,
 			const Phase &phase
 		) noexcept {
+#ifdef _DEBUG_REFERENCE_IO
+			std::cout << "\t called grb::internal::set_masked (void mask, reference)\n";
+#endif
 			// handle resize
 			if( phase == RESIZE ) {
 				if( grb::capacity( A ) < nnz( mask ) ) {
@@ -1601,7 +1625,7 @@ namespace grb {
 			"writing the non-pattern matrix output. Possible solutions: 1) "
 			"use a (monoid-based) foldl / foldr, 2) use a masked set, or "
 			"3) change the output of grb::set to a pattern matrix also." );
-#ifdef _DEBUG
+#ifdef _DEBUG_REFERENCE_IO
 		std::cout << "Called grb::set (matrix-to-matrix, reference)" << std::endl;
 #endif
 		// static checks
@@ -1661,7 +1685,7 @@ namespace grb {
 			!grb::is_object< InputType2 >::value
 		>::type * const = nullptr
 	) noexcept {
-#ifdef _DEBUG
+#ifdef _DEBUG_REFERENCE_IO
 		std::cout << "Called grb::set (matrix-to-value-masked, reference)\n";
 #endif
 		// static checks
@@ -1697,35 +1721,70 @@ namespace grb {
 		if( n != ncols( C ) ) {
 			return MISMATCH;
 		}
-
 		assert( phase != TRY );
 
+#ifdef _DEBUG_REFERENCE_IO
+		std::cout << "\t starting dispatching logic\n";
+#endif
+
 		// delegate non-structural
-		if( !(descr & descriptors::structural) ) {
+		constexpr bool mask_is_void = std::is_void< InputType1 >::value;
+		if( !mask_is_void && !(descr & descriptors::structural) ) {
+#ifdef _DEBUG_REFERENCE_IO
+			std::cout << "\t dispatching to set_masked "
+				<< "(non-structural, non-void mask)\n";
+#endif
 			return internal::set_masked< descr >( C, A, val, phase );
 		}
 
-		// delegate self-assignment
+		// delegate structural self-assignment
 		if( getID( C ) == getID( A ) ) {
 			if( std::is_void< OutputType >::value ) {
+#ifdef _DEBUG_REFERENCE_IO
+				std::cout << "\t trivial structural self-assignment detected\n";
+#endif
+				// catch trivial self-assignment
 				return SUCCESS;
 			} else if( phase == RESIZE ) {
+#ifdef _DEBUG_REFERENCE_IO
+				std::cout << "\t trivial structural resize phase detected\n";
+#endif
+				// catch trivial resize
 				return SUCCESS;
 			} else {
+#ifdef _DEBUG_REFERENCE_IO
+				std::cout << "\t dispatching structural self-assignment to "
+					<< "set_copy_values\n";
+#endif
+				// mask inversion should be handled as part of non-structural, meaning we
+				// can simply overwrite the values array
+				assert( !(descr & descriptors::invert_mask) );
 				assert( phase == EXECUTE );
-				return internal::set_copy_values< descr >( C, &val, nnz( C ) );
+				return internal::set_copy_values< descr & ~(descriptors::invert_mask) >(
+					C, &val, nnz( C ) );
 			}
 		}
 
+		// at this point, we have structural non-self masking
+		// inversion is not possible
 		// delegate resize and other set variants for execute
+		assert( !(descr & descriptors::invert_mask) );
 		if( phase == RESIZE ) {
+#ifdef _DEBUG_REFERENCE_IO
+			std::cout << "\t delegating resize for structural non-self masking\n";
+#endif
 			return resize( C, nnz( A ) );
 		} else {
+#ifdef _DEBUG_REFERENCE_IO
+			std::cout << "\t dispatching to void or non-void set_copy variant\n";
+#endif
 			assert( phase == EXECUTE );
 			if( std::is_same< OutputType, void >::value ) {
-				return internal::set_copy< false, descr >( C, A );
+				return internal::set_copy< false, descr & ~(descriptors::invert_mask) >(
+					C, A );
 			} else {
-				return internal::set_copy< true, descr >( C, A, &val );
+				return internal::set_copy< true, descr & ~(descriptors::invert_mask) >(
+					C, A, &val );
 			}
 		}
 	}
