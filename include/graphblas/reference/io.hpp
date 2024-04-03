@@ -1173,16 +1173,21 @@ namespace grb {
 							: out_ccs.col_start;
 
 #ifdef _DEBUG_REFERENCE_IO
-						std::cout << "\t Row counts: [ " << out_crs_offsets[ 0 ];
-						for( size_t i = 1; i < m; ++i ) {
-							std::cout << ", " << out_crs_offsets[ i ];
+ #ifdef _H_GRB_REFERENCE_OMP_IO
+						#pragma omp single
+ #endif
+						{
+							std::cout << "\t Row counts: [ " << out_crs_offsets[ 0 ];
+							for( size_t i = 1; i < m; ++i ) {
+								std::cout << ", " << out_crs_offsets[ i ];
+							}
+							std::cout << " ]\n";
+							std::cout << "\t Column counts: [ " << out_ccs_offsets[ 0 ];
+							for( size_t i = 1; i < n; ++i ) {
+								std::cout << ", " << out_ccs_offsets[ i ];
+							}
+							std::cout << " ]\n";
 						}
-						std::cout << " ]\n";
-						std::cout << "\t Column counts: [ " << out_ccs_offsets[ 0 ];
-						for( size_t i = 1; i < n; ++i ) {
-							std::cout << ", " << out_ccs_offsets[ i ];
-						}
-						std::cout << " ]\n";
 #endif
 #ifndef _H_GRB_REFERENCE_OMP_IO
 						utils::template prefixSum_seq< true >( out_crs_offsets, m );
@@ -1213,16 +1218,21 @@ namespace grb {
 						}
 #endif
 #ifdef _DEBUG_REFERENCE_IO
-						std::cout << "\t prefix-summed row counts: [ " << out_crs_offsets[ 0 ];
-						for( size_t i = 1; i < m; ++i ) {
-							std::cout << ", " << out_crs_offsets[ i ];
+ #ifdef _H_GRB_REFERENCE_OMP_IO
+						#pragma omp single
+ #endif
+						{
+							std::cout << "\t prefix-summed row counts: [ " << out_crs_offsets[ 0 ];
+							for( size_t i = 1; i < m; ++i ) {
+								std::cout << ", " << out_crs_offsets[ i ];
+							}
+							std::cout << " ]\n";
+							std::cout << "\t prefix-summed column counts: [ " << out_ccs_offsets[ 0 ];
+							for( size_t i = 1; i < n; ++i ) {
+								std::cout << ", " << out_ccs_offsets[ i ];
+							}
+							std::cout << " ]\n";
 						}
-						std::cout << " ]\n";
-						std::cout << "\t prefix-summed column counts: [ " << out_ccs_offsets[ 0 ];
-						for( size_t i = 1; i < n; ++i ) {
-							std::cout << ", " << out_ccs_offsets[ i ];
-						}
-						std::cout << " ]\n";
 #endif
 					}
 
@@ -1241,16 +1251,19 @@ namespace grb {
 							: out_crs.col_start;
 						for( size_t i = start; i < end; ++i ) {
 							for(
-								size_t k = mask_crs.col_start[ i ];
-								k < mask_crs.col_start[ i + 1 ];
-								++k
+								size_t k = mask_crs.col_start[ i + 1 ];
+								k > mask_crs.col_start[ i ];
+								--k
 							) {
+								assert( k > 0 );
 								const bool mask =
-									utils::interpretMask< descr >( true, mask_crs.values, k );
+									utils::interpretMask< descr >( true, mask_crs.values, k - 1 );
 								if( mask ) {
 									assert( out_crs_offsets[ i ] > 0 );
 									const size_t out_k = --(out_crs_offsets[ i ]);
-									out_crs.row_index[ out_k ] = mask_crs.row_index[ k ];
+									if( !self_masked || out_k != k - 1 ) {
+										out_crs.row_index[ out_k ] = mask_crs.row_index[ k - 1 ];
+									}
 									out_crs.setValue( out_k, val );
 								}
 							}
@@ -1281,16 +1294,19 @@ namespace grb {
 							: out_ccs.col_start;
 						for( size_t j = start; j < end; ++j ) {
 							for(
-								size_t k = mask_ccs.col_start[ j ];
-								k < mask_ccs.col_start[ j + 1 ];
-								++k
+								size_t k = mask_ccs.col_start[ j + 1 ];
+								k > mask_ccs.col_start[ j ];
+								--k
 							) {
+								assert( k > 0 );
 								const bool mask =
-									utils::interpretMask< descr >( true, mask_ccs.values, k );
+									utils::interpretMask< descr >( true, mask_ccs.values, k - 1 );
 								if( mask ) {
 									assert( out_ccs_offsets[ j ] > 0 );
 									const size_t out_k = --(out_ccs_offsets[ j ]);
-									out_ccs.row_index[ out_k ] = mask_ccs.row_index[ k ];
+									if( !self_masked || out_k != k - 1 ) {
+										out_ccs.row_index[ out_k ] = mask_ccs.row_index[ k - 1 ];
+									}
 									out_ccs.setValue( out_k, val );
 								}
 							}
@@ -1307,31 +1323,36 @@ namespace grb {
 						}
 					}
 #ifdef _DEBUG_REFERENCE_IO
-					if( self_masked ) {
-						std::cout << "\t CRS offset buffer: [ " << buffer[ 0 ];
+ #ifdef _H_GRB_REFERENCE_OMP_IO
+					#pragma omp single
+ #endif
+					{
+						if( self_masked ) {
+							std::cout << "\t CRS offset buffer: [ " << buffer[ 0 ];
+							for( size_t i = 1; i <= m; ++i ) {
+								std::cout << ", " << buffer[ i ];
+							}
+							std::cout << " ]\n";
+							std::cout << "\t CCS offset buffer: [ " <<
+								buffer[ m + 1 ];
+							for( size_t j = 1; j <= n; ++j ) {
+								std::cout << ", " << buffer[ m + 1 + j ];
+							}
+							std::cout << " ]\n";
+						}
+						std::cout << "\t new CRS offset array: [ " <<
+							internal::getCRS( A ).col_start[ 0 ];
 						for( size_t i = 1; i <= m; ++i ) {
-							std::cout << ", " << buffer[ i ];
+							std::cout << ", " << internal::getCRS( A ).col_start[ i ];
 						}
 						std::cout << " ]\n";
-						std::cout << "\t CCS offset buffer: [ " <<
-							buffer[ m + 1 ];
+						std::cout << "\t new CCS offset array: [ " <<
+							internal::getCCS( A ).col_start[ 0 ];
 						for( size_t j = 1; j <= n; ++j ) {
-							std::cout << ", " << buffer[ m + 1 + j ];
+							std::cout << ", " << internal::getCCS( A ).col_start[ j ];
 						}
 						std::cout << " ]\n";
 					}
-					std::cout << "\t new CRS offset array: [ " <<
-						internal::getCRS( A ).col_start[ 0 ];
-					for( size_t i = 1; i <= m; ++i ) {
-						std::cout << ", " << internal::getCRS( A ).col_start[ i ];
-					}
-					std::cout << " ]\n";
-					std::cout << "\t new CCS offset array: [ " <<
-						internal::getCCS( A ).col_start[ 0 ];
-					for( size_t j = 1; j <= n; ++j ) {
-						std::cout << ", " << internal::getCCS( A ).col_start[ j ];
-					}
-					std::cout << " ]\n";
 #endif
 				}
 				if( new_nnz != checksum && !(descr & descriptors::force_row_major) ) {
