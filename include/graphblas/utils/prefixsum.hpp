@@ -90,7 +90,9 @@ namespace grb {
 			size_t start, end;
 			config::OMP::localRange( start, end, 0, n,
 				config::CACHE_LINE_SIZE::value() );
-			prefixSum_seq< false >( array, n );
+			if( end > start ) {
+				prefixSum_seq< false >( array + start, end - start );
+			}
 		}
 
 		/**
@@ -109,14 +111,25 @@ namespace grb {
 			T *__restrict__ array, const size_t n,
 			T &myOffset
 		) {
+#ifdef _DEBUG
+			std::cout << "\t entering prefixSum_ompPar_phase2\n";
+#endif
 			(void) copyEnd;
 			T dummy, offset_index;
 			myOffset = 0;
 			for( size_t k = 0; k < config::OMP::current_thread_ID(); ++k ) {
 				config::OMP::localRange( dummy, offset_index, 0, n,
 					config::CACHE_LINE_SIZE::value(), k );
-				myOffset += array[ offset_index ];
+				if( offset_index > dummy ) {
+					assert( offset_index > 0 );
+					myOffset += array[ offset_index - 1 ];
+				}
 			}
+#ifdef _DEBUG
+			#pragma omp critical
+			std::cout << "\t\t thread " << config::OMP::current_thread_ID()
+				<< " offset is " << myOffset << std::endl;
+#endif
 		}
 
 		/**
@@ -135,7 +148,7 @@ namespace grb {
 			size_t start, end;
 			config::OMP::localRange( start, end, 0, n,
 				config::CACHE_LINE_SIZE::value() );
-			for( size_t i = start; i < end - 1; ++i ) {
+			for( size_t i = start; i < end; ++i ) {
 				array[ i ] += myOffset;
 			}
 			if( copyEnd && start < n && end == n ) {
