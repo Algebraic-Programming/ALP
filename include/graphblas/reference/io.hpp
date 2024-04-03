@@ -25,6 +25,8 @@
 
 #include <graphblas/base/io.hpp>
 
+#include <graphblas/utils/prefixsum.hpp>
+
 #include "vector.hpp"
 #include "matrix.hpp"
 
@@ -47,6 +49,10 @@
 		"********************************************************************" \
 		"********************************************************************" \
 		"******************************\n" );
+
+#ifdef _DEBUG
+ #define _DEBUG_REFERENCE_IO
+#endif
 
 
 namespace grb {
@@ -966,59 +972,386 @@ namespace grb {
 
 	namespace internal {
 
+		/**
+		 * This function should be called for masked calls to set-matrix-to-value. It
+		 * provides the most generic implementation where masks need to be interpreted
+		 * and may result in an nnz(output) that is smaller than nnz(mask).
+		 *
+		 * This function also supports self-masking.
+		 */
 		template<
-			typename OutputType,
-			typename InputType2,
+			Descriptor descr,
+			typename OutputType, typename InputType1, typename InputType2,
 			typename RIT, typename CIT, typename NIT
 		>
-		RC set_copy_values(
-			Matrix< OutputType, reference, RIT, CIT, NIT > &C,
-			const InputType2 * const value,
-			const size_t nz
+		RC set_masked(
+			Matrix< OutputType, reference, RIT, CIT, NIT > &A,
+			const Matrix< InputType1, reference, RIT, CIT, NIT > &mask,
+			InputType2 &val,
+			const Phase &phase
 		) noexcept {
+#ifdef _DEBUG_REFERENCE_IO
+			std::cout << "Called grb::internal::set_masked (matrices, reference), ";
+			if( phase == EXECUTE ) {
+				std::cout << "execute phase\n";
+			} else {
+				assert( phase == RESIZE );
+				std::cout << "resize phase\n";
+			}
+			std::cout << "\t Mask has " << grb::nnz( mask ) << " nonzeroes\n";
+#endif
+			// static checks
+			static_assert( !(descr & descriptors::no_casting) ||
+					std::is_same< InputType1, bool >::value,
+				"grb::internal::set_masked called with non-matching mask types. This is an "
+				"internal error. Please submit a bug report."
+			);
+			static_assert( !(descr & descriptors::no_casting) ||
+					std::is_same< OutputType, InputType2 >::value,
+				"grb::internal::set_masked called with non-matching output and value "
+				"types. This is an internal error. Please submit a bug report."
+			);
+			static_assert( !((descr & descriptors::invert_mask) &&
+					(descr & descriptors::structural)),
+				"grb::internal::set_masked called with structural inversion. This is an "
+				"internal error. Please submit a bug report."
+			);
+			static_assert( !std::is_void< InputType1 >::value,
+				"grb::internal::set_masked called with void mask type. This is an internal "
+				"error. Please submit a bug report."
+			);
+
+			// run-time checks
+			const size_t m = nrows( A );
+			const size_t n = ncols( A );
+#ifndef NDEBUG
+			assert( nrows( mask ) == m );
+			assert( ncols( mask ) == n );
+#endif
+
+			// catch trivial cases
+			const size_t nz = nnz( mask );
+			if( m == 0 || n == 0 ) {
+				return SUCCESS;
+			}
+			if( nz == 0 ) {
 #ifdef _DEBUG
-			std::cout << "Called grb::internal::set_copy_values (matrices, reference), "
-				<< "execute phase\n";
+				std::cout << "\t mask has no nonzeroes, simply clearing output matrix...\n";
 #endif
-			#pragma omp parallel
-			{
-				size_t start, end;
-#ifdef _H_GRB_REFERENCE_OMP_IO
-				config::OMP::localRange( start, end, 0, nz );
-#else
-				start = 0;
-				end = nz;
-#endif
-				OutputType *__restrict__ const crs = internal::getCRS( C ).values;
-				OutputType *__restrict__ const ccs = internal::getCCS( C ).values;
-				for( size_t k = start; k < end; ++k ) {
-					crs[ k ] = ccs[ k ] = *value;
-				}
+				return grb::clear( A );
 			}
 
-			// done
-			return SUCCESS;
-		}
+			// check if self-masked
+			const bool self_masked = getID( A ) == getID( mask );
 
-		template<
-			typename InputType2,
-			typename RIT, typename CIT, typename NIT
-		>
-		RC set_copy_values(
-			Matrix< void, reference, RIT, CIT, NIT > &C,
-			const InputType2 * const value,
-			const size_t nz
-		) noexcept {
-			(void) C;
-			(void) value;
-			(void) nz;
-#ifdef _DEBUG
-			std::cout << "Called grb::internal::set_copy_values (matrices, reference), "
-				<< "void variant\n";
+			// retrieve separate buffer if self-masked
+			NIT * const buffer = self_masked
+				? internal::template getReferenceBuffer< NIT >( m + n + 2 )
+				: nullptr;
+
+			// resize phase first
+			if( phase == RESIZE ) {
+				// compute number of nonzeroes
+				size_t min_req_nz = 0;
+#ifdef _H_GRB_REFERENCE_OMP_IO
+				#pragma omp parallel reduction( + : min_req_nz )
 #endif
+				{
+					size_t local_nz = 0;
+					size_t start, end;
+#ifdef _H_GRB_REFERENCE_OMP_IO
+					config::OMP::localRange( start, end, 0, nz );
+#else
+					start = 0;
+					end = nz;
+#endif
+					InputType1 *__restrict__ const crs = internal::getCRS( mask ).values;
+					for( size_t k = start; k < end; ++k ) {
+						const bool nonzero = utils::interpretMask< descr >( true, crs, k );
+						if( nonzero ) {
+							(void) ++local_nz;
+						}
+					}
+					min_req_nz += local_nz;
+				}
+				if( grb::capacity( A ) >= min_req_nz ) {
+					return SUCCESS;
+				} else {
+					return grb::resize( A, min_req_nz );
+				}
+			} else {
+				// execute phase
+				assert( phase == EXECUTE );
+				size_t new_nnz = 0, checksum = 0;
+#ifdef _H_GRB_REFERENCE_OMP_IO
+				#pragma omp parallel
+#endif
+				{
+					size_t start, end, local_nz = 0, local_checksum = 0;
+					// first, use CRS to compute row count
+					{
+#ifdef _H_GRB_REFERENCE_OMP_IO
+						config::OMP::localRange( start, end, 0, m );
+#else
+						start = 0;
+						end = m;
+#endif
+						const auto &mask_crs = internal::getCRS( mask );
+						NIT *__restrict__ const out_crs_offsets = self_masked
+							? buffer
+							: internal::getCRS( A ).col_start;
+						for( size_t i = start; i < end; ++i ) {
+							// reset output count
+							out_crs_offsets[ i ] = 0;
+							for(
+								size_t k = mask_crs.col_start[ i ];
+								k < mask_crs.col_start[ i + 1 ];
+								++k
+							) {
+								const bool mask =
+									utils::interpretMask< descr >( true, mask_crs.values, k );
+								if( mask ) {
+									(void) ++out_crs_offsets[ i ];
+									(void) ++local_nz;
+								}
+							}
+						}
+					}
+					if( !(descr & descriptors::force_row_major) ) {
+						// I also need a column count, so get that too
+#ifdef _H_GRB_REFERENCE_OMP_IO
+						config::OMP::localRange( start, end, 0, n );
+#else
+						start = 0;
+						end = n;
+#endif
+						const auto &mask_ccs = internal::getCCS( mask );
+						NIT *__restrict__ const out_ccs_offsets = self_masked
+							? buffer + m + 1
+							: internal::getCCS( A ).col_start;
+						for( size_t j = start; j < end; ++j ) {
+							// reset output count
+							out_ccs_offsets[ j ] = 0;
+							for(
+								size_t k = mask_ccs.col_start[ j ];
+								k < mask_ccs.col_start[ j + 1 ];
+								++k
+							) {
+								const bool mask =
+									utils::interpretMask< descr >( true, mask_ccs.values, k );
+								if( mask ) {
+									(void) ++out_ccs_offsets[ j ];
+									(void) ++local_checksum;
+								}
+							}
+						}
+					}
+#ifdef _H_GRB_REFERENCE_OMP_IO
+					#pragma omp critical
+#endif
+					{
+						new_nnz += local_nz;
+						checksum += local_checksum;
+					}
+#ifdef _DEBUG_REFERENCE_IO
+					std::cout << "\t New nonzero count (checksum): " << new_nnz << " ("
+						<< checksum << ")\n";
+#endif
+					// we assume here a happy path and first try to complete the computation
+					// (we could also have first evaluated whether new_nz == checksum and quit
+					// early if not, but we elect to not incur such overhead in the happy path)
+
+					// first, make the row- and column-counts cumulative
+					{
+						auto &out_crs = internal::getCRS( A );
+						auto &out_ccs = internal::getCCS( A );
+						NIT *__restrict__ const out_crs_offsets = self_masked
+							? buffer
+							: out_crs.col_start;
+						NIT *__restrict__ const out_ccs_offsets = self_masked
+							? buffer + m + 1
+							: out_ccs.col_start;
+
+#ifdef _DEBUG_REFERENCE_IO
+						std::cout << "\t Row counts: [ " << out_crs_offsets[ 0 ];
+						for( size_t i = 1; i < m; ++i ) {
+							std::cout << ", " << out_crs_offsets[ i ];
+						}
+						std::cout << " ]\n";
+						std::cout << "\t Column counts: [ " << out_ccs_offsets[ 0 ];
+						for( size_t i = 1; i < n; ++i ) {
+							std::cout << ", " << out_ccs_offsets[ i ];
+						}
+						std::cout << " ]\n";
+#endif
+#ifndef _H_GRB_REFERENCE_OMP_IO
+						utils::template prefixSum_seq< true >( out_crs_offsets, m );
+						if( !(descr & descriptors::force_row_major) ) {
+							utils::template prefixSum_seq< true >( out_ccs_offsets, n );
+						}
+#else
+						size_t crs_ws, ccs_ws;
+						utils::template prefixSum_ompPar_phase1< true >( out_crs_offsets, m,
+							crs_ws );
+						if( !(descr & descriptors::force_row_major) ) {
+							utils::template prefixSum_ompPar_phase1< true >( out_ccs_offsets, n,
+								ccs_ws );
+						}
+						#pragma omp barrier
+						utils::template prefixSum_ompPar_phase2< true >( out_crs_offsets, m,
+							crs_ws );
+						if( !(descr & descriptors::force_row_major) ) {
+							utils::template prefixSum_ompPar_phase2< true >( out_ccs_offsets, n,
+								ccs_ws );
+						}
+						#pragma omp barrier
+						utils::template prefixSum_ompPar_phase3< true >( out_crs_offsets, m,
+							crs_ws );
+						if( !(descr & descriptors::force_row_major) ) {
+							utils::template prefixSum_ompPar_phase3< true >( out_ccs_offsets, n,
+								ccs_ws );
+						}
+#endif
+#ifdef _DEBUG_REFERENCE_IO
+						std::cout << "\t prefix-summed row counts: [ " << out_crs_offsets[ 0 ];
+						for( size_t i = 1; i < m; ++i ) {
+							std::cout << ", " << out_crs_offsets[ i ];
+						}
+						std::cout << " ]\n";
+						std::cout << "\t prefix-summed column counts: [ " << out_ccs_offsets[ 0 ];
+						for( size_t i = 1; i < n; ++i ) {
+							std::cout << ", " << out_ccs_offsets[ i ];
+						}
+						std::cout << " ]\n";
+#endif
+					}
+
+					// second, populate the output matrix accordingly
+					{
+#ifdef _H_GRB_REFERENCE_OMP_IO
+						config::OMP::localRange( start, end, 0, m );
+#else
+						start = 0;
+						end = m;
+#endif
+						const auto &mask_crs = internal::getCRS( mask );
+						auto &out_crs = internal::getCRS( A );
+						NIT *__restrict__ const out_crs_offsets = self_masked
+							? buffer
+							: out_crs.col_start;
+						for( size_t i = start; i < end; ++i ) {
+							for(
+								size_t k = mask_crs.col_start[ i ];
+								k < mask_crs.col_start[ i + 1 ];
+								++k
+							) {
+								const bool mask =
+									utils::interpretMask< descr >( true, mask_crs.values, k );
+								if( mask ) {
+									assert( out_crs_offsets[ i ] > 0 );
+									const size_t out_k = --(out_crs_offsets[ i ]);
+									out_crs.row_index[ out_k ] = mask_crs.row_index[ k ];
+									out_crs.setValue( out_k, val );
+								}
+							}
+						}
+						// if self-masked, only now can we copy-back the offset arrays
+						if( self_masked ) {
+							assert( out_crs.col_start != out_crs_offsets );
+							for( size_t i = start; i < end; ++i ) {
+								out_crs.col_start[ i ] = out_crs_offsets[ i ];
+							}
+							if( start < m && end == m ) {
+								out_crs.col_start[ m ] = out_crs_offsets[ m ];
+							}
+						}
+					}
+					if( !(descr & descriptors::force_row_major) ) {
+						// I also need a column count, so get that too
+#ifdef _H_GRB_REFERENCE_OMP_IO
+						config::OMP::localRange( start, end, 0, n );
+#else
+						start = 0;
+						end = n;
+#endif
+						const auto &mask_ccs = internal::getCCS( mask );
+						auto &out_ccs = internal::getCCS( A );
+						NIT *__restrict__ const out_ccs_offsets = self_masked
+							? buffer + m + 1
+							: out_ccs.col_start;
+						for( size_t j = start; j < end; ++j ) {
+							for(
+								size_t k = mask_ccs.col_start[ j ];
+								k < mask_ccs.col_start[ j + 1 ];
+								++k
+							) {
+								const bool mask =
+									utils::interpretMask< descr >( true, mask_ccs.values, k );
+								if( mask ) {
+									assert( out_ccs_offsets[ j ] > 0 );
+									const size_t out_k = --(out_ccs_offsets[ j ]);
+									out_ccs.row_index[ out_k ] = mask_ccs.row_index[ k ];
+									out_ccs.setValue( out_k, val );
+								}
+							}
+						}
+						// if self-masked, only now can we copy-back the offset arrays
+						if( self_masked ) {
+							assert( out_ccs.col_start != out_ccs_offsets );
+							for( size_t j = start; j < end; ++j ) {
+								out_ccs.col_start[ j ] = out_ccs_offsets[ j ];
+							}
+							if( start < n && end == n ) {
+								out_ccs.col_start[ n ] = out_ccs_offsets[ n ];
+							}
+						}
+					}
+#ifdef _DEBUG_REFERENCE_IO
+					if( self_masked ) {
+						std::cout << "\t CRS offset buffer: [ " << buffer[ 0 ];
+						for( size_t i = 1; i <= m; ++i ) {
+							std::cout << ", " << buffer[ i ];
+						}
+						std::cout << " ]\n";
+						std::cout << "\t CCS offset buffer: [ " <<
+							buffer[ m + 1 ];
+						for( size_t j = 1; j <= n; ++j ) {
+							std::cout << ", " << buffer[ m + 1 + j ];
+						}
+						std::cout << " ]\n";
+					}
+					std::cout << "\t new CRS offset array: [ " <<
+						internal::getCRS( A ).col_start[ 0 ];
+					for( size_t i = 1; i <= m; ++i ) {
+						std::cout << ", " << internal::getCRS( A ).col_start[ i ];
+					}
+					std::cout << " ]\n";
+					std::cout << "\t new CCS offset array: [ " <<
+						internal::getCCS( A ).col_start[ 0 ];
+					for( size_t j = 1; j <= n; ++j ) {
+						std::cout << ", " << internal::getCCS( A ).col_start[ j ];
+					}
+					std::cout << " ]\n";
+#endif
+				}
+				if( new_nnz != checksum && !(descr & descriptors::force_row_major) ) {
+					std::cerr << "Error: new nonzeroes in CRS and CCS do not agree\n";
+					assert( false );
+					return PANIC;
+				}
+				internal::setCurrentNonzeroes( A, new_nnz );
+			}
+
+			// all OK
 			return SUCCESS;
 		}
 
+		/**
+		 * This function should be called for self-masked calls to grb::set( matrix ),
+		 * for calls to masked grb::set< descr >( matrix ) where \a descr includes the
+		 * #grb::descriptors::structural, as well as for non-masked calls to the
+		 * matrix #grb::set.
+		 */
 		template<
 			bool A_is_mask,
 			Descriptor descr,
@@ -1037,16 +1370,21 @@ namespace grb {
 #endif
 			// static checks
 			static_assert(
-				( !( descr & descriptors::no_casting ) ||
+				( !(descr & descriptors::no_casting) ||
 					( !A_is_mask && std::is_same< InputType1, OutputType >::value ) ),
-				"internal::grb::set called with non-matching value types. This is an "
+				"grb::internal::set_copy called with non-matching value types. This is an "
 				"internal error. Please submit a bug report."
 			);
 			static_assert(
-				( !( descr & descriptors::no_casting ) ||
+				( !(descr & descriptors::no_casting) ||
 					( A_is_mask && std::is_same< InputType2, OutputType >::value ) ),
-				"internal::grb::set called with non-matching value types. This is an "
+				"grb::internal::set_copy called with non-matching value types. This is an "
 				"internal error. Please submit a bug report."
+			);
+			static_assert(
+				!(descr & descriptors::invert_mask), "internal::grb::set_copy called with "
+				"the invert_mask descriptor. This is an internal error; please submit a "
+				"bug report."
 			);
 
 			// run-time checks
@@ -1127,6 +1465,100 @@ namespace grb {
 
 			// done
 			return SUCCESS;
+		}
+
+		/**
+		 * A variation of set_copy that only touches the CRS and CCS value arrays.
+		 */
+		template<
+			grb::Descriptor descr,
+			typename OutputType,
+			typename InputType2,
+			typename RIT, typename CIT, typename NIT
+		>
+		RC set_copy_values(
+			Matrix< OutputType, reference, RIT, CIT, NIT > &C,
+			const InputType2 * const value,
+			const size_t nz
+		) noexcept {
+#ifdef _DEBUG
+			std::cout << "Called grb::internal::set_copy_values (matrices, reference), "
+				<< "execute phase\n";
+#endif
+			#pragma omp parallel
+			{
+				size_t start, end;
+#ifdef _H_GRB_REFERENCE_OMP_IO
+				config::OMP::localRange( start, end, 0, nz );
+#else
+				start = 0;
+				end = nz;
+#endif
+				OutputType *__restrict__ const crs = internal::getCRS( C ).values;
+				OutputType *__restrict__ const ccs = internal::getCCS( C ).values;
+				for( size_t k = start; k < end; ++k ) {
+					crs[ k ] = *value;
+					if( !(descr & descriptors::force_row_major) ) {
+						ccs[ k ] = *value;
+					}
+				}
+			}
+
+			// done
+			return SUCCESS;
+		}
+
+		/**
+		 * Variation of set_copy_values for void matrices, which translates to a
+		 * no-op.
+		 */
+		template<
+			grb::Descriptor descr,
+			typename InputType2,
+			typename RIT, typename CIT, typename NIT
+		>
+		RC set_copy_values(
+			Matrix< void, reference, RIT, CIT, NIT > &C,
+			const InputType2 * const value,
+			const size_t nz
+		) noexcept {
+			(void) descr;
+			(void) C;
+			(void) value;
+			(void) nz;
+#ifdef _DEBUG
+			std::cout << "Called grb::internal::set_copy_values (matrices, reference), "
+				<< "void variant (which is a no-op)\n";
+#endif
+			return SUCCESS;
+		}
+
+		/**
+		 * Variation of set_masked for void masks, which translates to a call to
+		 * set_copy with the structural descriptor.
+		 */
+		template<
+			Descriptor descr,
+			typename OutputType, typename InputType,
+			typename RIT, typename CIT, typename NIT
+		>
+		RC set_masked(
+			Matrix< OutputType, reference, RIT, CIT, NIT > &A,
+			const Matrix< void, reference, RIT, CIT, NIT > &mask,
+			InputType &val,
+			const Phase &phase
+		) noexcept {
+			// handle resize
+			if( phase == RESIZE ) {
+				if( grb::capacity( A ) < nnz( mask ) ) {
+					return grb::resize( A, nnz( mask ) );
+				} else {
+					return SUCCESS;
+				}
+			}
+			// delegate to structural set_copy
+			assert( phase == EXECUTE );
+			return set_copy< true, descr | descriptors::structural >( A, mask, &val );
 		}
 
 	} // end namespace internal::grb
@@ -1247,6 +1679,11 @@ namespace grb {
 
 		assert( phase != TRY );
 
+		// delegate non-structural
+		if( !(descr & descriptors::structural) ) {
+			return internal::set_masked< descr >( C, A, val, phase );
+		}
+
 		// delegate self-assignment
 		if( getID( C ) == getID( A ) ) {
 			if( std::is_void< OutputType >::value ) {
@@ -1255,11 +1692,11 @@ namespace grb {
 				return SUCCESS;
 			} else {
 				assert( phase == EXECUTE );
-				return internal::set_copy_values( C, &val, nnz( C ) );
+				return internal::set_copy_values< descr >( C, &val, nnz( C ) );
 			}
 		}
 
-		// delegate to other set variants
+		// delegate resize and other set variants for execute
 		if( phase == RESIZE ) {
 			return resize( C, nnz( A ) );
 		} else {
