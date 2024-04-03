@@ -503,8 +503,8 @@ namespace grb {
 	 * @param[in]  phase   The #grb::Phase the call should execute. Optional; the
 	 *                     default parameter is #grb::EXECUTE.
 	 *
-	 * \note Pre-defined selection operators can be found in the namespace
-	 *       #grb::operators::select.
+	 * \note Pre-defined selection operators can be found in the
+	 *       #grb::operators::select namespace.
 	 *
 	 * @return #grb::SUCCESS  On successful completion of this call.
 	 * @return #grb::MISMATCH Whenever the dimensions of \a A and \a B do

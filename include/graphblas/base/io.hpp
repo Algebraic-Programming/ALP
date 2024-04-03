@@ -1107,12 +1107,12 @@ namespace grb {
 	 *                  the default is #grb::EXECUTE.
 	 *
 	 * In #grb::RESIZE mode:
-	 * @returns #grb::SUCCESS When the capacity of \a C has been (made) sufficient
-	 *                        to store the requested output.
-	 * @returns #grb::OUT_OF_MEM When out-of-memory conditions have been met while
-	 *                           executing. If this error code is returned, \a C
-	 *                           shall be unmodified compared to its state at
-	 *                           function entry.
+	 * @returns #grb::SUCCESS  When the capacity of \a C has been (made) sufficient
+	 *                         to store the requested output.
+	 * @returns #grb::OUTOFMEM When out-of-memory conditions have been met while
+	 *                         executing. If this error code is returned, \a C
+	 *                         shall be unmodified compared to its state at
+	 *                         function entry.
 	 *
 	 * In #grb::EXECUTE mode:
 	 * @returns #grb::SUCCESS When the call completes successfully.

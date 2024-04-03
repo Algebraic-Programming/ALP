@@ -30,14 +30,24 @@
 #include "internalops.hpp"
 #include "type_traits.hpp"
 
-namespace grb {
+
+namespace grb::operators {
 
 	/**
-	 * This namespace holds various standard selection-operators such
-	 * as #grb::operators::is_diagonal or #grb::operators::is_strictly_lower.
+	 * This namespace holds various standard matrix selection operators:
+	 *  - #grb::operators::select::is_diagonal,
+	 *  - #grb::operators::select::is_strictly_lower,
+	 *  - #grb::operators::select::is_lower_or_diagonal,
+	 *  - #grb::operators::select::is_strictly_upper,
+	 *  - #grb::operators::select::is_upper_or_diagonal
+	 *
+	 * These operators may be provided as selection operators to #grb::select.
 	 */
-	namespace operators::select {
+	namespace select {
 
+		/**
+		 * A matrix selection operator that selects the matrix diagonal.
+		 */
 		template<
 			typename D,
 			typename RIT = config::RowIndexType,
@@ -47,6 +57,10 @@ namespace grb {
 			internal::is_diagonal< D, RIT, CIT >, D
 		> {};
 
+		/**
+		 * A matrix selection operator that selects the strictly lower triangular
+		 * part.
+		 */
 		template<
 			typename D,
 			typename RIT = config::RowIndexType,
@@ -56,6 +70,11 @@ namespace grb {
 			internal::is_strictly_lower< D, RIT, CIT >, D
 		> {};
 
+		/**
+		 * A matrix selection operator that selects the lower triangular part.
+		 *
+		 * This includes the matrix diagonal.
+		 */
 		template<
 			typename D,
 			typename RIT = config::RowIndexType,
@@ -65,6 +84,10 @@ namespace grb {
 			internal::is_lower_or_diagonal< D, RIT, CIT >, D
 		> {};
 
+		/**
+		 * A matrix selection operator that selects the strictly upper triangular
+		 * part.
+		 */
 		template<
 			typename D,
 			typename RIT = config::RowIndexType,
@@ -74,6 +97,11 @@ namespace grb {
 			internal::is_strictly_upper< D, RIT, CIT >, D
 		> {};
 
+		/**
+		 * A matrix selection operator that selects the upper triangular part.
+		 *
+		 * This includes the matrix diagonal.
+		 */
 		template<
 			typename D,
 			typename RIT = config::RowIndexType,
