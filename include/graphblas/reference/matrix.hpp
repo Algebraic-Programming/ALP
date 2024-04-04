@@ -179,6 +179,30 @@ namespace grb {
 			return reinterpret_cast< CIT * >(A.coorArr[ 3 ]);
 		}
 
+		/**
+		 * \internal
+		 * Retrieves the row-wise SPA value buffer.
+		 * \endinternal
+		 */
+		template< typename InputType, typename RIT, typename CIT, typename NIT >
+		InputType * getMatrixRowValueBuffer(
+			const grb::Matrix< InputType, reference, RIT, CIT, NIT > &A
+		) noexcept {
+			return A.valbuf[ 0 ];
+		}
+
+		/**
+		 * \internal
+		 * Retrieves the row-wise SPA value buffer.
+		 * \endinternal
+		 */
+		template< typename InputType, typename RIT, typename CIT, typename NIT >
+		InputType * getMatrixColValueBuffer(
+			const grb::Matrix< InputType, reference, RIT, CIT, NIT > &A
+		) noexcept {
+			return A.valbuf[ 1 ];
+		}
+
 		template<
 			Descriptor descr,
 			bool input_dense, bool output_dense,
@@ -1154,6 +1178,16 @@ namespace grb {
 
 		template< typename InputType, typename RIT, typename CIT, typename NIT >
 		friend CIT * internal::getMatrixColBuffer(
+			const grb::Matrix< InputType, reference, RIT, CIT, NIT > &A
+		) noexcept;
+
+		template< typename InputType, typename RIT, typename CIT, typename NIT >
+		friend InputType * internal::getMatrixRowValueBuffer(
+			const grb::Matrix< InputType, reference, RIT, CIT, NIT > &A
+		) noexcept;
+
+		template< typename InputType, typename RIT, typename CIT, typename NIT >
+		friend InputType * internal::getMatrixColValueBuffer(
 			const grb::Matrix< InputType, reference, RIT, CIT, NIT > &A
 		) noexcept;
 
