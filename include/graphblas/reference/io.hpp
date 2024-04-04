@@ -1271,20 +1271,21 @@ namespace grb {
 						auto &out_crs = internal::getCRS( A );
 						for( size_t i = start; i < end; ++i ) {
 							for(
-								size_t k = mask_crs.col_start[ i + 1 ];
-								k > mask_crs.col_start[ i ];
-								--k
+								size_t k = mask_crs.col_start[ i ];
+								k < mask_crs.col_start[ i + 1 ];
+								++k
 							) {
-								assert( k > 0 );
 								const bool mask =
-									utils::interpretMask< descr >( true, mask_crs.values, k - 1 );
+									utils::interpretMask< descr >( true, mask_crs.values, k );
 								if( mask ) {
 									assert( out_crs_offsets[ i ] > 0 );
 									const size_t out_k = --(out_crs_offsets[ i ]);
-									if( !self_masked || out_k != k - 1 ) {
-										out_crs.row_index[ out_k ] = mask_crs.row_index[ k - 1 ];
+									if( self_masked ) {
+										buffer_row_ind[ out_k ] = mask_crs.row_index[ k ];
+									} else {
+										out_crs.row_index[ out_k ] = mask_crs.row_index[ k ];
+										out_crs.setValue( out_k, val );
 									}
-									out_crs.setValue( out_k, val );
 								}
 							}
 						}
@@ -1311,20 +1312,21 @@ namespace grb {
 						auto &out_ccs = internal::getCCS( A );
 						for( size_t j = start; j < end; ++j ) {
 							for(
-								size_t k = mask_ccs.col_start[ j + 1 ];
-								k > mask_ccs.col_start[ j ];
-								--k
+								size_t k = mask_ccs.col_start[ j ];
+								k < mask_ccs.col_start[ j + 1 ];
+								++k
 							) {
-								assert( k > 0 );
 								const bool mask =
-									utils::interpretMask< descr >( true, mask_ccs.values, k - 1 );
+									utils::interpretMask< descr >( true, mask_ccs.values, k );
 								if( mask ) {
 									assert( out_ccs_offsets[ j ] > 0 );
 									const size_t out_k = --(out_ccs_offsets[ j ]);
-									if( !self_masked || out_k != k - 1 ) {
-										out_ccs.row_index[ out_k ] = mask_ccs.row_index[ k - 1 ];
+									if( self_masked ) {
+										buffer_col_ind[ out_k ] = mask_ccs.row_index[ k ];
+									} else {
+										out_ccs.row_index[ out_k ] = mask_ccs.row_index[ k ];
+										out_ccs.setValue( out_k, val );
 									}
-									out_ccs.setValue( out_k, val );
 								}
 							}
 						}
@@ -1371,6 +1373,23 @@ namespace grb {
 						std::cout << " ]\n";
 					}
 #endif
+					// if self-masked, we can now finally set the value arrays
+					if( self_masked ) {
+						auto &out_crs = internal::getCRS( A );
+						auto &out_ccs = internal::getCCS( A );
+#ifdef _H_GRB_REFERENCE_OMP_IO
+						config::OMP::localRange( start, end, 0, new_nnz );
+#else
+						start = 0;
+						end = new_nnz;
+#endif
+						for( size_t k = start; k < end; ++k ) {
+							out_crs.setValue( k, val );
+							if( !(descr & descriptors::force_row_major) ) {
+								out_ccs.setValue( k, val );
+							}
+						}
+					}
 				}
 				if( new_nnz != checksum && !(descr & descriptors::force_row_major) ) {
 					std::cerr << "Error: new nonzeroes in CRS and CCS do not agree\n";
