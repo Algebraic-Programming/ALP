@@ -1186,6 +1186,10 @@ namespace grb {
 						checksum += local_checksum;
 					}
 #ifdef _DEBUG_REFERENCE_IO
+ #ifdef _H_GRB_REFERENCE_OMP_IO
+					#pragma omp barrier
+					#pragma omp single
+ #endif
 					std::cout << "\t New nonzero count (checksum): " << new_nnz << " ("
 						<< checksum << ")\n";
 #endif
@@ -1280,28 +1284,34 @@ namespace grb {
 								if( mask ) {
 									assert( out_crs_offsets[ i ] > 0 );
 									const size_t out_k = --(out_crs_offsets[ i ]);
+#ifdef _DEBUG_REFERENCE_IO
+ #ifdef _H_GRB_REFERENCE_OMP_IO
+									#pragma omp critical
+ #endif
+									std::cout << "Nonzero on row " << i << ", column "
+										<< mask_crs.row_index[ k ] << " will be written to k = " << out_k
+										<< "\n";
+#endif
 									if( self_masked ) {
 										buffer_row_ind[ out_k ] = mask_crs.row_index[ k ];
 									} else {
 										out_crs.row_index[ out_k ] = mask_crs.row_index[ k ];
 										out_crs.setValue( out_k, val );
 									}
+								} else {
+#ifdef _DEBUG_REFERENCE_IO
+ #ifdef _H_GRB_REFERENCE_OMP_IO
+									#pragma omp critical
+ #endif
+									std::cout << "Nonzero on row " << i << ", column "
+										<< mask_crs.row_index[ k ] << ", value "
+										<< mask_crs.values[ k ] << " does not evaluate true\n";
+#endif
 								}
-							}
-						}
-						// if self-masked, only now can we copy-back the offset arrays
-						if( self_masked ) {
-							assert( out_crs.col_start != out_crs_offsets );
-							for( size_t i = start; i < end; ++i ) {
-								out_crs.col_start[ i ] = out_crs_offsets[ i ];
-							}
-							if( start < m && end == m ) {
-								out_crs.col_start[ m ] = out_crs_offsets[ m ];
 							}
 						}
 					}
 					if( !(descr & descriptors::force_row_major) ) {
-						// I also need a column count, so get that too
 #ifdef _H_GRB_REFERENCE_OMP_IO
 						config::OMP::localRange( start, end, 0, n );
 #else
@@ -1330,19 +1340,10 @@ namespace grb {
 								}
 							}
 						}
-						// if self-masked, only now can we copy-back the offset arrays
-						if( self_masked ) {
-							assert( out_ccs.col_start != out_ccs_offsets );
-							for( size_t j = start; j < end; ++j ) {
-								out_ccs.col_start[ j ] = out_ccs_offsets[ j ];
-							}
-							if( start < n && end == n ) {
-								out_ccs.col_start[ n ] = out_ccs_offsets[ n ];
-							}
-						}
 					}
 #ifdef _DEBUG_REFERENCE_IO
  #ifdef _H_GRB_REFERENCE_OMP_IO
+					#pragma omp barrier
 					#pragma omp single
  #endif
 					{
@@ -1359,24 +1360,41 @@ namespace grb {
 							}
 							std::cout << " ]\n";
 						}
-						std::cout << "\t new CRS offset array: [ " <<
-							internal::getCRS( A ).col_start[ 0 ];
-						for( size_t i = 1; i <= m; ++i ) {
-							std::cout << ", " << internal::getCRS( A ).col_start[ i ];
-						}
-						std::cout << " ]\n";
-						std::cout << "\t new CCS offset array: [ " <<
-							internal::getCCS( A ).col_start[ 0 ];
-						for( size_t j = 1; j <= n; ++j ) {
-							std::cout << ", " << internal::getCCS( A ).col_start[ j ];
-						}
-						std::cout << " ]\n";
 					}
 #endif
-					// if self-masked, we can now finally set the value arrays
+					// if self-masked, we can now finally copy back the offset and index
+					// arrays, while we can also now set the value arrays
 					if( self_masked ) {
 						auto &out_crs = internal::getCRS( A );
 						auto &out_ccs = internal::getCCS( A );
+#ifdef _H_GRB_REFERENCE_OMP_IO
+						// first make sure write-outs to the buffer_{row,col}_ind have completed
+						#pragma omp barrier
+						config::OMP::localRange( start, end, 0, m );
+#else
+						start = 0;
+						end = m;
+#endif
+						assert( out_crs.col_start != out_crs_offsets );
+						for( size_t i = start; i < end; ++i ) {
+							out_crs.col_start[ i ] = out_crs_offsets[ i ];
+						}
+						if( start < m && end == m ) {
+							out_crs.col_start[ m ] = out_crs_offsets[ m ];
+						}
+#ifdef _H_GRB_REFERENCE_OMP_IO
+						config::OMP::localRange( start, end, 0, n );
+#else
+						start = 0;
+						end = n;
+#endif
+						assert( out_ccs.col_start != out_ccs_offsets );
+						for( size_t j = start; j < end; ++j ) {
+							out_ccs.col_start[ j ] = out_ccs_offsets[ j ];
+						}
+						if( start < n && end == n ) {
+							out_ccs.col_start[ n ] = out_ccs_offsets[ n ];
+						}
 #ifdef _H_GRB_REFERENCE_OMP_IO
 						config::OMP::localRange( start, end, 0, new_nnz );
 #else
@@ -1385,10 +1403,43 @@ namespace grb {
 #endif
 						for( size_t k = start; k < end; ++k ) {
 							out_crs.setValue( k, val );
+							out_crs.row_index[ k ] = buffer_row_ind[ k ];
 							if( !(descr & descriptors::force_row_major) ) {
 								out_ccs.setValue( k, val );
+								out_ccs.row_index[ k ] = buffer_col_ind[ k ];
 							}
 						}
+#ifdef _DEBUG_REFERENCE_IO
+ #ifdef _H_GRB_REFERENCE_OMP_IO
+						#pragma omp barrier
+						#pragma omp single
+ #endif
+						{
+							std::cout << "\t new CRS offset array: [ " <<
+								internal::getCRS( A ).col_start[ 0 ];
+							for( size_t i = 1; i <= m; ++i ) {
+								std::cout << ", " << internal::getCRS( A ).col_start[ i ];
+							}
+							std::cout << " ]\n";
+							std::cout << "\t new CCS offset array: [ " <<
+								internal::getCCS( A ).col_start[ 0 ];
+							for( size_t j = 1; j <= n; ++j ) {
+								std::cout << ", " << internal::getCCS( A ).col_start[ j ];
+							}
+							std::cout << " ]\n";
+							std::cout << "CRS index array: [ " << out_crs.row_index[ 0 ];
+							for( size_t k = 1; k < new_nnz; ++k ) {
+								std::cout << ", " << out_crs.row_index[ k ];
+							}
+							std::cout << " ]\n";
+							size_t value = 17;
+							std::cout << "CRS value array: [ " << out_crs.getValue( 0, 17 );
+							for( size_t k = 1; k < new_nnz; ++k ) {
+								std::cout << ", " << out_crs.getValue( k, 17 );
+							}
+							std::cout << " ]\n";
+						}
+#endif
 					}
 				}
 				if( new_nnz != checksum && !(descr & descriptors::force_row_major) ) {
