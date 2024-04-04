@@ -1434,7 +1434,6 @@ namespace grb {
 								std::cout << ", " << out_crs.row_index[ k ];
 							}
 							std::cout << " ]\n";
-							size_t value = 17;
 							std::cout << "CRS value array: [ " << out_crs.getValue( 0, 17 );
 							for( size_t k = 1; k < new_nnz; ++k ) {
 								std::cout << ", " << out_crs.getValue( k, 17 );
