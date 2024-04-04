@@ -1102,51 +1102,19 @@ namespace grb {
 		return ret;
 	}
 
-	namespace internal {
-
-		template<
-			bool A_is_mask,
-			Descriptor descr,
-			typename OutputType,
-			typename InputType1, typename InputType2 = const OutputType,
-			typename RIT1, typename CIT1, typename NIT1,
-			typename RIT2, typename CIT2, typename NIT2
-		>
-		RC set(
-			Matrix< OutputType, nonblocking, RIT1, CIT1, NIT1 > &C,
-			const Matrix< InputType1, nonblocking, RIT2, CIT2, NIT2 > &A,
-			const InputType2 * __restrict__ id = nullptr
-		) noexcept {
-			if( internal::NONBLOCKING::warn_if_not_native &&
-				config::PIPELINE::warn_if_not_native
-			) {
-				std::cerr << "Warning: set (matrix copy, nonblocking) currently delegates "
-					<< "to a blocking implementation.\n"
-					<< "         Further similar such warnings will be suppressed.\n";
-				internal::NONBLOCKING::warn_if_not_native = false;
-			}
-
-			// nonblocking execution is not supported
-			// first, execute any computation that is not completed
-			grb::internal::le.execution();
-
-			// second, delegate to the reference backend
-			return set< A_is_mask, descr, OutputType, InputType1, InputType2 >(
-				internal::getRefMatrix( C ), internal::getRefMatrix( A ), id );
-		}
-
-	} // end namespace internal::grb
-
 	template<
 		Descriptor descr = descriptors::no_operation,
 		typename OutputType, typename InputType,
-		typename RIT1, typename CIT1, typename NIT1,
-		typename RIT2, typename CIT2, typename NIT2
+		typename RIT, typename CIT, typename NIT
 	>
 	RC set(
-		Matrix< OutputType, nonblocking, RIT1, CIT1, NIT1 > &C,
-		const Matrix< InputType, nonblocking, RIT2, CIT2, NIT2 > &A,
-		const Phase &phase = EXECUTE
+		Matrix< OutputType, nonblocking, RIT, CIT, NIT > &C,
+		const Matrix< InputType, nonblocking, RIT, CIT, NIT > &A,
+		const Phase &phase = EXECUTE,
+		const typename std::enable_if<
+			!grb::is_object< OutputType >::value &&
+			!grb::is_object< InputType >::value,
+		void >::type * const = nullptr
 	) noexcept {
 		static_assert( std::is_same< OutputType, void >::value ||
 			!std::is_same< InputType, void >::value,
@@ -1167,30 +1135,47 @@ namespace grb {
 		// dynamic checks
 		assert( phase != TRY );
 
+		if( internal::NONBLOCKING::warn_if_not_native &&
+			config::PIPELINE::warn_if_not_native
+		) {
+			std::cerr << "Warning: set (matrix copy, nonblocking) currently delegates "
+				<< "to a blocking implementation.\n"
+				<< "         Further similar such warnings will be suppressed.\n";
+			internal::NONBLOCKING::warn_if_not_native = false;
+		}
+
+		// nonblocking execution is not supported
+		// first, execute any computation that is not completed
+		grb::internal::le.execution();
+
 		// delegate
 		if( phase == RESIZE ) {
-			return resize( C, nnz( A ) );
+			return resize( internal::getRefMatrix( C ), nnz( A ) );
 		} else {
 			assert( phase == EXECUTE );
-			return internal::set< false, descr >( C, A );
+			return set< descr >(
+				internal::getRefMatrix( C ),
+				internal::getRefMatrix( A )
+			);
 		}
 	}
 
 	template<
 		Descriptor descr = descriptors::no_operation,
 		typename OutputType, typename InputType1, typename InputType2,
-		typename RIT1, typename CIT1, typename NIT1,
-		typename RIT2, typename CIT2, typename NIT2
+		typename RIT, typename CIT, typename NIT
 	>
 	RC set(
-		Matrix< OutputType, nonblocking, RIT1, CIT1, NIT1 > &C,
-		const Matrix< InputType1, nonblocking, RIT2, CIT2, NIT2 > &A,
+		Matrix< OutputType, nonblocking, RIT, CIT, NIT > &C,
+		const Matrix< InputType1, nonblocking, RIT, CIT, NIT > &A,
 		const InputType2 &val,
-		const Phase &phase = EXECUTE
+		const Phase &phase = EXECUTE,
+		const typename std::enable_if<
+			!grb::is_object< OutputType >::value &&
+			!grb::is_object< InputType1 >::value &&
+			!grb::is_object< InputType2 >::value
+		>::type * const = nullptr
 	) noexcept {
-		static_assert( !std::is_same< OutputType, void >::value,
-			"internal::grb::set (masked set to value): cannot have a pattern "
-			"matrix as output" );
 #ifdef _DEBUG
 		std::cout << "Called grb::set (matrix-to-value-masked, nonblocking)\n";
 #endif
@@ -1200,21 +1185,37 @@ namespace grb {
 			), "grb::set",
 			"called with non-matching value types"
 		);
+		NO_CAST_ASSERT(
+			( !(descr & descriptors::no_casting) ||
+				std::is_same< InputType1, bool >::value ),
+			"grb::set( matrix, mask, value )",
+			"called with non-Boolean mask value type"
+		);
+		static_assert( !( (descr & descriptors::structural) &&
+				(descr & descriptors::invert_mask)
+			), "Primitives with matrix outputs may not employ structurally inverted "
+			"masking"
+		);
 
 		// dynamic checks
 		assert( phase != TRY );
 
-		// delegate
-		if( phase == RESIZE ) {
-			return resize( C, nnz( A ) );
-		} else {
-			assert( phase == EXECUTE );
-			if( std::is_same< OutputType, void >::value ) {
-				return internal::set< false, descr >( C, A );
-			} else {
-				return internal::set< true, descr >( C, A, &val );
-			}
+		if( internal::NONBLOCKING::warn_if_not_native &&
+			config::PIPELINE::warn_if_not_native
+		) {
+			std::cerr << "Warning: set (matrix copy, nonblocking) currently delegates "
+				<< "to a blocking implementation.\n"
+				<< "         Further similar such warnings will be suppressed.\n";
+			internal::NONBLOCKING::warn_if_not_native = false;
 		}
+
+		// nonblocking execution is not supported
+		// first, execute any computation that is not completed
+		grb::internal::le.execution();
+
+		// delegate
+		return set< descr >(
+			internal::getRefMatrix( C ), internal::getRefMatrix( A ), val, phase );
 	}
 
 	template<
