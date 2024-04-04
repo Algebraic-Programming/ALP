@@ -432,6 +432,65 @@ void self_identity_test( const size_t &n, grb::RC &rc ) {
 	// done
 }
 
+template< grb::Descriptor descr >
+void self_void_test( const size_t &n, grb::RC &rc ) {
+	rc = SUCCESS;
+
+	grb::Matrix< void > Identity( 0, 0, 0 );
+	try {
+		grb::Matrix< void > Identity_alloc =
+			algorithms::matrices< void >::identity( n );
+		Identity = std::move( Identity_alloc );
+	} catch( ... ) {
+		std::cerr << "\t error during construction of the identity matrix\n";
+		rc = FAILED;
+		return;
+	}
+	if( rc != SUCCESS ) {
+		std::cerr << "\t error during application of element-wise lambda-- test "
+			<< "could not initialise\n";
+		return;
+	}
+
+	if( nnz( Identity ) != n ) {
+		std::cerr << "\t diagonal has " << nnz( Identity ) << " elements, expected "
+			<< n << "\n";
+		rc = FAILED;
+		return;
+	}
+
+	for( const auto &pair : Identity ) {
+		if( pair.first != pair.second ) {
+			std::cerr << "Identity matrix has a non-diagonal entry\n";
+			rc = FAILED;
+			return;
+		}
+	}
+
+	rc = grb::set( Identity, Identity, 2UL, grb::Phase::RESIZE );
+	rc = rc ? rc : grb::set( Identity, Identity, 2UL, grb::Phase::EXECUTE );
+	if( rc != SUCCESS ) {
+		std::cerr << "Error during call to grb::set: " << grb::toString( rc )
+			<< "\n";
+		return;
+	}
+
+	if( nnz( Identity ) != n ) {
+		std::cerr << "\t Result has " << nnz( Identity ) << " elements, expected "
+			<< n << "\n";
+		rc = FAILED;
+		return;
+	}
+
+	for( const auto &pair : Identity ) {
+		if( pair.first != pair.second ) {
+			std::cerr << "Result has a non-diagonal entry, expected diagonal only\n";
+			rc = FAILED;
+			return;
+		}
+	}
+}
+
 int main( int argc, char ** argv ) {
 	// defaults
 	bool printUsage = false;
@@ -465,6 +524,44 @@ int main( int argc, char ** argv ) {
 	grb::Launcher< AUTOMATIC > launcher;
 	grb::RC out = PANIC, last_error = SUCCESS;
 	bool failed = false;
+
+	// these next two tests are called test 0 since the requested operation, while
+	// legal, actually translate to no-ops
+	std::cout << "\t test 0A (self-masked, void output and void mask)\n";
+	if( launcher.exec(
+			&(self_void_test< grb::descriptors::no_operation >), in, out, true
+		) != SUCCESS
+	) {
+		std::cerr << "Launching test FAILED\n" << std::endl;
+		return 255;
+	}
+	if( out != SUCCESS ) {
+		std::cout << "\t\t FAILED\n";
+		last_error = out;
+		failed = true;
+	} else {
+		std::cout << "\t\t OK\n";
+	}
+
+	std::cout << "\t test 0B (self-masked, void output and void mask, "
+		<< "explicit structural descriptor)\n";
+	if( launcher.exec(
+			&(self_void_test< grb::descriptors::structural>), in, out, true
+		) != SUCCESS
+	) {
+		std::cerr << "Launching test FAILED\n" << std::endl;
+		return 255;
+	}
+	if( out != SUCCESS ) {
+		std::cout << "\t\t FAILED\n";
+		last_error = out;
+		failed = true;
+	} else {
+		std::cout << "\t\t OK\n";
+	}
+
+	std::cout << "\t (test 0C does not exist: "
+		<< "void inverted masks are not allowed)\n";
 
 	std::cout << "\t test 1A (self-masked)\n";
 	if( launcher.exec(
