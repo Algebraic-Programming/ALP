@@ -66,16 +66,21 @@ namespace grb {
 
 		/**
 		 * These are all user process local data elements required to successfully
-		 * execute parallel GraphBLAS calls.
+		 * execute parallel ALP calls.
 		 *
 		 * \warning For compatibility with POSIX Threads thread-local storage, this
-		 *          class should be a struct in the sense that it should \em not
-		 *          rely on constructors setting \a const private values, for
-		 *          instance.
+		 *          class should be POD.
+		 *
+		 * For safety we disallow copy and move constructor / assignment.
+		 *
+		 * The intended use is as a thread-local context that controls all state
+		 * relevant to distributed-memory parallel execution and communication: see
+		 * #grb_BSP1D.
 		 */
 		class BSP1D_Data {
 
 			private:
+
 				/** Number of slots taken */
 				size_t regs_taken;
 
@@ -187,6 +192,27 @@ namespace grb {
 
 				/** Mapper to assign IDs to BSP1D containers .*/
 				utils::DMapper< uintptr_t > mapper;
+
+				/**
+				 * This class is default-constructible.
+				 *
+				 * The user should manually make sure to call #initialize before any
+				 * attempted use of the thus-constructed instance.
+				 */
+				BSP1D_Data() = default;
+
+				/**
+				 * Copy-construction is not allowed.
+				 */
+				BSP1D_Data( const BSP1D_Data & ) = delete;
+
+				/**
+				 * Copy-assignment is not allowed.
+				 */
+				BSP1D_Data & operator=( const BSP1D_Data & ) = delete;
+
+				// move construction and assignment will not be generated since the copy
+				// constructor and copy assigment have been deleted (cf. C++11)
 
 				/**
 				 * Initialises all fields.
