@@ -369,7 +369,11 @@ namespace grb {
 	RC set(
 		Matrix< OutputType, hyperdags, RIT1, CIT1, NIT1 > &C,
 		const Matrix< InputType, hyperdags, RIT2, CIT2, NIT2 > &A,
-		const Phase &phase = EXECUTE
+		const Phase &phase = EXECUTE,
+		const typename std::enable_if<
+			!grb::is_object< OutputType >::value &&
+			!grb::is_object< InputType >::value,
+		void >::type * const = nullptr
 	) {
 		const RC ret = set< descr >(
 			internal::getMatrix( C ), internal::getMatrix( A ), phase

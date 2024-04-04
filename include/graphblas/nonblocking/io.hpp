@@ -1111,7 +1111,11 @@ namespace grb {
 	RC set(
 		Matrix< OutputType, nonblocking, RIT1, CIT1, NIT1 > &C,
 		const Matrix< InputType, nonblocking, RIT2, CIT2, NIT2 > &A,
-		const Phase &phase = EXECUTE
+		const Phase &phase = EXECUTE,
+		const typename std::enable_if<
+			!grb::is_object< OutputType >::value &&
+			!grb::is_object< InputType >::value,
+		void >::type * const = nullptr
 	) noexcept {
 		static_assert( std::is_same< OutputType, void >::value ||
 			!std::is_same< InputType, void >::value,
