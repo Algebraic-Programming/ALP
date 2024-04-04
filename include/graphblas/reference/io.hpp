@@ -595,15 +595,16 @@ namespace grb {
 		const T val,
 		const size_t i,
 		const Phase &phase = EXECUTE,
-		const typename std::enable_if< !grb::is_object< DataType >::value &&
-			!grb::is_object< T >::value, void >::type * const = nullptr
+		const typename std::enable_if<
+			!grb::is_object< DataType >::value &&
+			!grb::is_object< T >::value, void
+		>::type * const = nullptr
 	) {
 		// static sanity checks
 		NO_CAST_ASSERT( ( !(descr & descriptors::no_casting) ||
 				std::is_same< DataType, T >::value ),
 			"grb::set (Vector, at index)",
-			"called with a value type that does not match that of the given "
-			"vector"
+			"called with a value type that does not match that of the given vector"
 		);
 		if( phase == RESIZE ) {
 			return SUCCESS;
