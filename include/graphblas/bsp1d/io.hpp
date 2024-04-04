@@ -910,9 +910,10 @@ namespace grb {
 		}
 
 		// in the self-masked case, there is no way an error could occur
-		if( getID( C ) == getID( mask ) ) {
+		if( (descr & descriptors::structural) && getID( C ) == getID( mask ) ) {
 #ifdef _BSP1D_IO_DEBUG
-			std::cout << "\t self-masking detected, which allows trivial exit\n";
+			std::cout << "\t structural self-masking detected, which allows trivial "
+				"exit\n"; // since the nnz nor capacity would never change
 #endif
 			assert( ret == SUCCESS );
 			return ret;
