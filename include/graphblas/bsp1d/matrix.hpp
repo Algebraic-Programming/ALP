@@ -390,11 +390,11 @@ namespace grb {
 				const size_t columns = ncols( *this );
 
 				return std::make_tuple(
-					[ &lpf_data, &rows ]( const size_t i ) -> size_t {
+					[ &lpf_data, rows ]( const size_t i ) -> size_t {
 						return internal::Distribution< BSP1D >::local_index_to_global(
 							i, rows, lpf_data.s, lpf_data.P );
 					},
-					[ &lpf_data, &columns ]( const size_t j ) -> size_t {
+					[ &lpf_data, columns ]( const size_t j ) -> size_t {
 						const size_t col_pid = internal::Distribution<>::offset_to_pid(
 							j, columns, lpf_data.P );
 						const size_t col_off = internal::Distribution<>::local_offset(
