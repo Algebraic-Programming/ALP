@@ -1136,12 +1136,14 @@ namespace grb {
 	 * compile if one of the following conditions are met:
 	 *  -# \a ValueType does not match \a DataType; or
 	 *  -# \a MaskType does not match <tt>bool</tt>.
+	 *
 	 * In these cases, the code shall not compile: implementations must throw
 	 * a static assertion failure in this case.
 	 *
 	 * Similarly, it is forbidden to call this function with both following
 	 * descriptors simultaneously:
 	 *  - #grb::descriptors::invert_mask \em and #grb::descriptors::structural.
+	 *
 	 * The use of the #grb::descriptors::structural_complement descriptor hence is
 	 * is forbidden also. Implementations shall throw a static assertion failure
 	 * if the user nonetheless asks for structural mask inversion.
