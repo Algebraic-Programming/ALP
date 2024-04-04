@@ -1127,6 +1127,7 @@ namespace grb {
 	 *                        output of the requested computation.
 	 *
 	 * Either mode may additionally return:
+	 * @returns #grb::ILLEGAL  In case the given \a mask was empty.
 	 * @returns #grb::MISMATCH In case \a C and \a mask have mismatching sizes.
 	 * @returns #grb::PANIC    In case an unmitigable error was encountered. The
 	 *                         caller is suggested to exit gracefully, and in any
