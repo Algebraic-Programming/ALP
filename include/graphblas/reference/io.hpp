@@ -1044,10 +1044,27 @@ namespace grb {
 			// check if self-masked
 			const bool self_masked = getID( A ) == getID( mask );
 
-			// retrieve separate buffer if self-masked
-			NIT * const buffer = self_masked
-				? internal::template getReferenceBuffer< NIT >( m + n + 2 )
-				: nullptr;
+			// retrieve separate buffer if self-masked, point to existing buffers if not
+			RIT *__restrict__ buffer_row_ind = nullptr;
+			CIT *__restrict__ buffer_col_ind = nullptr;
+			NIT *__restrict__ out_crs_offsets = nullptr;
+			NIT *__restrict__ out_ccs_offsets = nullptr;
+			if( self_masked ) {
+				buffer_row_ind = internal::getMatrixRowBuffer( A );
+				buffer_col_ind = internal::getMatrixColBuffer( A );
+				const size_t bufsize = (m + n + 2) * sizeof( NIT ) + sizeof( int );
+				char * buffer_raw =
+					internal::template getReferenceBuffer< char >( bufsize );
+				out_crs_offsets = reinterpret_cast< NIT * >( buffer_raw );
+				const size_t offset = sizeof( int ) - (((m + 1) * sizeof( NIT )) % sizeof( int ));
+				out_ccs_offsets = reinterpret_cast< NIT * >(
+					buffer_raw + (m + 1) * sizeof( NIT ) + offset );
+			} else {
+				(void) buffer_row_ind;
+				(void) buffer_col_ind;
+				out_crs_offsets = internal::getCRS( A ).col_start;
+				out_ccs_offsets = internal::getCCS( A ).col_start;
+			}
 
 			// resize phase first
 			if( phase == RESIZE ) {
@@ -1118,9 +1135,6 @@ namespace grb {
 						end = m;
 #endif
 						const auto &mask_crs = internal::getCRS( mask );
-						NIT *__restrict__ const out_crs_offsets = self_masked
-							? buffer
-							: internal::getCRS( A ).col_start;
 						for( size_t i = start; i < end; ++i ) {
 							// reset output count
 							out_crs_offsets[ i ] = 0;
@@ -1147,9 +1161,6 @@ namespace grb {
 						end = n;
 #endif
 						const auto &mask_ccs = internal::getCCS( mask );
-						NIT *__restrict__ const out_ccs_offsets = self_masked
-							? buffer + m + 1
-							: internal::getCCS( A ).col_start;
 						for( size_t j = start; j < end; ++j ) {
 							// reset output count
 							out_ccs_offsets[ j ] = 0;
@@ -1184,15 +1195,6 @@ namespace grb {
 
 					// first, make the row- and column-counts cumulative
 					{
-						auto &out_crs = internal::getCRS( A );
-						auto &out_ccs = internal::getCCS( A );
-						NIT *__restrict__ const out_crs_offsets = self_masked
-							? buffer
-							: out_crs.col_start;
-						NIT *__restrict__ const out_ccs_offsets = self_masked
-							? buffer + m + 1
-							: out_ccs.col_start;
-
 #ifdef _DEBUG_REFERENCE_IO
  #ifdef _H_GRB_REFERENCE_OMP_IO
 						#pragma omp single
@@ -1267,9 +1269,6 @@ namespace grb {
 #endif
 						const auto &mask_crs = internal::getCRS( mask );
 						auto &out_crs = internal::getCRS( A );
-						NIT *__restrict__ const out_crs_offsets = self_masked
-							? buffer
-							: out_crs.col_start;
 						for( size_t i = start; i < end; ++i ) {
 							for(
 								size_t k = mask_crs.col_start[ i + 1 ];
@@ -1310,9 +1309,6 @@ namespace grb {
 #endif
 						const auto &mask_ccs = internal::getCCS( mask );
 						auto &out_ccs = internal::getCCS( A );
-						NIT *__restrict__ const out_ccs_offsets = self_masked
-							? buffer + m + 1
-							: out_ccs.col_start;
 						for( size_t j = start; j < end; ++j ) {
 							for(
 								size_t k = mask_ccs.col_start[ j + 1 ];
@@ -1349,15 +1345,15 @@ namespace grb {
  #endif
 					{
 						if( self_masked ) {
-							std::cout << "\t CRS offset buffer: [ " << buffer[ 0 ];
+							std::cout << "\t CRS offset buffer: [ " << out_crs_offsets[ 0 ];
 							for( size_t i = 1; i <= m; ++i ) {
-								std::cout << ", " << buffer[ i ];
+								std::cout << ", " << out_crs_offsets[ i ];
 							}
 							std::cout << " ]\n";
 							std::cout << "\t CCS offset buffer: [ " <<
-								buffer[ m + 1 ];
+								out_ccs_offsets[ 0 ];
 							for( size_t j = 1; j <= n; ++j ) {
-								std::cout << ", " << buffer[ m + 1 + j ];
+								std::cout << ", " << out_ccs_offsets [ j ];
 							}
 							std::cout << " ]\n";
 						}
