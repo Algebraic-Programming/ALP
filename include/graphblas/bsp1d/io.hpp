@@ -893,7 +893,7 @@ namespace grb {
 			const size_t local_m = nrows( local_A );
 			const size_t local_n = ncols( local_A );
 			if( local_m > 0 && local_n > 0 ) {
-				ret = set< descr >( internal::getLocal( C ), A, phase );
+				ret = set< descr >( internal::getLocal( C ), local_A, phase );
 			}
 		}
 
