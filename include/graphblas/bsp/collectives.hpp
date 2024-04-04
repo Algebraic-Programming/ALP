@@ -67,6 +67,10 @@
 		"************************************************************************" \
 		"**********************\n" );
 
+#ifdef _DEBUG
+ #define _DEBUG_BSP_COLLECTIVES
+#endif
+
 
 namespace grb {
 
@@ -208,6 +212,16 @@ namespace grb {
 					"This is an internal error. Please submit a bug report."
 				); // i.e., if triggered, it is likely to mean somehow reduction with
 				   // operators was called, while a monoid was necessary
+#ifdef _DEBUG_BSP_COLLECTIVES
+				{
+					for( lpf_pid_t k = 0; k < data.P; ++k ) {
+						if( k == data.s ) {
+							std::cout << "\t " << k << ": called reduce_allreduce_generic\n";
+						}
+						lpf_sync( data.context, LPF_SYNC_DEFAULT );
+					}
+				}
+#endif
 
 				// dynamic sanity checks
 				assert( all || root < data.P );
@@ -215,6 +229,9 @@ namespace grb {
 
 				// catch trivial case early
 				if( data.P == 1 ) {
+#ifdef _DEBUG_BSP_COLLECTIVES
+					std::cout << "\t\t trivial no-op case: P == 1\n";
+#endif
 					return SUCCESS;
 				}
 
@@ -226,11 +243,23 @@ namespace grb {
 				rc = rc ? rc : data.ensureCollectivesCapacity( 1, sizeof( OPIOT ), 0 );
 				if( all ) {
 					rc = rc ? rc : data.ensureMaxMessages( 2 * data.P - 2 );
+#ifdef _DEBUG_BSP_COLLECTIVES
+					std::cout << "\t\t asked for hmax = " << (2*data.P-2) << "\n";
+#endif
 				} else {
 					rc = rc ? rc : data.ensureMaxMessages( data.P - 1 );
+#ifdef _DEBUG_BSP_COLLECTIVES
+					std::cout << "\t\t asked for hmax = " << (data.P - 1) << "\n";
+#endif
 				}
 				// exit on failed preconditions
-				if( rc != SUCCESS ) { return rc; }
+				if( rc != SUCCESS ) {
+#ifdef _DEBUG_BSP_COLLECTIVES
+					std::cout << "\t\t could not reserve enough capacity: "
+						<< grb::toString( rc ) << "\n";
+#endif
+					return rc;
+				}
 
 				// retrieve buffer area
 				OPIOT * const __restrict__ buffer = data.template getBuffer< OPIOT >();
@@ -260,8 +289,8 @@ namespace grb {
 				// schedule collective
 				lpf_err_t lpf_rc = LPF_SUCCESS;
 				if( all ) {
-#ifdef _DEBUG
-					std::cout << "\tcollectives< BSP >::reduce_allreduce_generic, calls "
+#ifdef _DEBUG_BSP_COLLECTIVES
+					std::cout << "\t\t collectives< BSP >::reduce_allreduce_generic, calls "
 						<< "lpf_allreduce with size " << sizeof(OPIOT) << std::endl;
 #endif
 					(void) root;
@@ -272,8 +301,8 @@ namespace grb {
 						reducer
 					);
 				} else {
-#ifdef _DEBUG
-					std::cout << "\tcollectives< BSP >::reduce_allreduce_generic calls "
+#ifdef _DEBUG_BSP_COLLECTIVES
+					std::cout << "\t\t collectives< BSP >::reduce_allreduce_generic calls "
 						<< "lpf_reduce with size " << sizeof(OPIOT) << std::endl;
 #endif
 					lpf_rc = lpf_reduce(
@@ -294,8 +323,14 @@ namespace grb {
 				rc = internal::checkLPFerror( lpf_rc, source );
 
 				// copy back
-				if( rc == SUCCESS && data.s == static_cast< size_t >( root ) ) {
-					inout = *buffer;
+				if( all ) {
+					if( rc == SUCCESS ) {
+						inout = *buffer;
+					}
+				} else {
+					if( rc == SUCCESS && data.s == static_cast< size_t >( root ) ) {
+						inout = *buffer;
+					}
 				}
 
 				// done
@@ -332,9 +367,10 @@ namespace grb {
 						grb::is_operator< Operator >::value,
 					void >::type * const = nullptr
 			) {
-#ifdef _DEBUG
+#ifdef _DEBUG_BSP_COLLECTIVES
 				std::cout << "Entered grb::collectives< BSP >::allreduce with inout = "
-					<< inout << " and op = " << &op << std::endl;
+					<< inout << " (byte size " << sizeof(inout) << ") and op = " << &op
+					<< std::endl;
 #endif
 
 				// static sanity checks
@@ -365,12 +401,16 @@ namespace grb {
 				internal::BSP1D_Data &data = internal::grb_BSP1D.load();
 
 				// dispatch
-				return reduce_allreduce_generic<
+				const RC ret = reduce_allreduce_generic<
 					descr, Operator, IOType, false, true
 				>(
 					inout, 0, op, nullptr, data,
 					"grb::collectives< BSP >::allreduce (operator)"
 				);
+#ifdef _DEBUG_BSP_COLLECTIVES
+				std::cout << "\t\t returning inout = " << inout << "\n";
+#endif
+				return ret;
 			}
 
 			/**
@@ -399,9 +439,10 @@ namespace grb {
 					is_monoid< Monoid >::value,
 				void >::type * const = nullptr
 			) {
-#ifdef _DEBUG
+#ifdef _DEBUG_BSP_COLLECTIVES
 				std::cout << "Entered grb::collectives< BSP >::allreduce with inout = "
-					<< inout << " and monoid = " << &op << std::endl;
+					<< inout << " (byte size " << sizeof(inout) << ") and monoid = " << &monoid
+					<< std::endl;
 #endif
 				// static sanity checks
 				static_assert( !grb::is_object< IOType >::value,
@@ -430,12 +471,17 @@ namespace grb {
 					getIdentity< typename Monoid::D3 >();
 
 				// dispatch
-				return reduce_allreduce_generic<
+				const RC ret = reduce_allreduce_generic<
 					descr, typename Monoid::Operator, IOType, !same_domains, true
 				>(
 					inout, 0, monoid.getOperator(), &id, data,
 					"grb::collectives< BSP >::allreduce (monoid)"
 				);
+
+#ifdef _DEBUG_BSP_COLLECTIVES
+				std::cout << "\t\t returning inout = " << inout << "\n";
+#endif
+				return ret;
 			}
 
 			/**
@@ -462,7 +508,7 @@ namespace grb {
 					grb::is_operator< Operator >::value,
 				void >::type * const = nullptr
 			) {
-#ifdef _DEBUG
+#ifdef _DEBUG_BSP_COLLECTIVES
 				std::cout << "Entered grb::collectives< BSP >::reduce with inout = "
 					<< inout << " and op = " << &op << std::endl;
 #endif
@@ -530,9 +576,10 @@ namespace grb {
 					is_monoid< Monoid >::value,
 				void >::type * const = nullptr
 			) {
-#ifdef _DEBUG
+#ifdef _DEBUG_BSP_COLLECTIVES
 				std::cout << "Entered grb::collectives< BSP >::reduce with inout = "
-					<< inout << " and monoid = " << &op << std::endl;
+					<< inout << " (byte size " << sizeof(IOType) << ") and monoid = "
+					<< &monoid << std::endl;
 #endif
 				// static sanity checks
 				static_assert( !grb::is_object< IOType >::value,
