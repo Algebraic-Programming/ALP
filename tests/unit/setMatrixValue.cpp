@@ -14,6 +14,17 @@
  * limitations under the License.
  */
 
+/**
+ * @file
+ *
+ * Tests the grb::set( matrix, mask, value ) primitive under all permissable
+ * descriptors.
+ *
+ * @author Benjamin Lozes
+ * @author A. N. Yzelman
+ * @date August 31st, 2023
+ */
+
 #include <iostream>
 #include <sstream>
 #include <numeric>
