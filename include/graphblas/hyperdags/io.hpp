@@ -363,12 +363,11 @@ namespace grb {
 	template<
 		Descriptor descr = descriptors::no_operation,
 		typename OutputType, typename InputType,
-		typename RIT1, typename CIT1, typename NIT1,
-		typename RIT2, typename CIT2, typename NIT2
+		typename RIT, typename CIT, typename NIT
 	>
 	RC set(
-		Matrix< OutputType, hyperdags, RIT1, CIT1, NIT1 > &C,
-		const Matrix< InputType, hyperdags, RIT2, CIT2, NIT2 > &A,
+		Matrix< OutputType, hyperdags, RIT, CIT, NIT > &C,
+		const Matrix< InputType, hyperdags, RIT, CIT, NIT > &A,
 		const Phase &phase = EXECUTE,
 		const typename std::enable_if<
 			!grb::is_object< OutputType >::value &&
