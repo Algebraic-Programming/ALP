@@ -39,7 +39,7 @@
 namespace grb::internal {
 
 	template<>
-	class maybeParallel< reference_omp > {
+	class FinalBackend< reference_omp > {
 
 		public:
 
@@ -76,7 +76,7 @@ namespace grb::internal {
 			) {
 				(void) op;
 				if( rows < config::OMP::minLoopSize() ) {
-					maybeParallel< reference >::foldMatrixToVector( out, matrix, cols, rows,
+					FinalBackend< reference >::foldMatrixToVector( out, matrix, cols, rows,
 						skip, op );
 					return;
 				}

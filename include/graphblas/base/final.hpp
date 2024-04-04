@@ -52,7 +52,7 @@ namespace grb::internal {
 	 * Therefore, only parallel final backends should override this class.
 	 */
 	template< grb::Backend backend >
-	class maybeParallel {
+	class FinalBackend {
 
 		public:
 

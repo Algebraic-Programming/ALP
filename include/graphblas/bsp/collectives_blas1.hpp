@@ -335,7 +335,7 @@ namespace grb {
 				char * const out_p = reinterpret_cast< char * >(out);
 #endif
 				if( out_p + data.s * size != in_p ) {
-					internal::maybeParallel< _GRB_BSP1D_BACKEND >::memcpy(
+					internal::FinalBackend< _GRB_BSP1D_BACKEND >::memcpy(
 						out_p + data.s * size, in_p, bsize );
 				}
 			}
@@ -669,12 +669,12 @@ namespace grb {
 					const size_t offset = root * ( size / procs );
 #ifdef BLAS1_RAW
 					if( out + offset != in + offset ) {
-						internal::maybeParallel< _GRB_BSP1D_BACKEND >::memcpy(
+						internal::FinalBackend< _GRB_BSP1D_BACKEND >::memcpy(
 							out + offset, in + offset, bsize );
 					}
 #else
 					if( internal::getRaw(out) + offset != internal::getRaw(in) + offset ) {
-						internal::maybeParallel< _GRB_BSP1D_BACKEND >::memcpy(
+						internal::FinalBackend< _GRB_BSP1D_BACKEND >::memcpy(
 							internal::getRaw( out ) + offset,
 							internal::getRaw( in ) + offset,
 							bsize
@@ -976,7 +976,7 @@ namespace grb {
 				const void * const in_p = internal::getRaw( in );
 				void * const out_p = internal::getRaw( out ) + data.s * size;
 #endif
-				internal::maybeParallel< _GRB_BSP1D_BACKEND >::memcpy( out_p, in_p, bsize );
+				internal::FinalBackend< _GRB_BSP1D_BACKEND >::memcpy( out_p, in_p, bsize );
 				internal::getCoordinates( out ).template assignAll< true >();
 			}
 
@@ -1332,10 +1332,10 @@ namespace grb {
 
 					// combine results into output vector
 #ifdef BLAS1_RAW
-					internal::maybeParallel< _GRB_BSP1D_BACKEND >::foldMatrixToVector< descr >(
+					internal::FinalBackend< _GRB_BSP1D_BACKEND >::foldMatrixToVector< descr >(
 							inout, results, data.P, size, data.s, op );
 #else
-					internal::maybeParallel< _GRB_BSP1D_BACKEND >::foldMatrixToVector< descr >(
+					internal::FinalBackend< _GRB_BSP1D_BACKEND >::foldMatrixToVector< descr >(
 							internal::getRaw(inout), results, data.P, size, data.s, op );
 #endif
 					break;
@@ -1369,11 +1369,11 @@ namespace grb {
 					// step 2: combine the chunks
 					if( lpf_rc == SUCCESS ) {
 #ifdef BLAS1_RAW
-						internal::maybeParallel< _GRB_BSP1D_BACKEND >::
+						internal::FinalBackend< _GRB_BSP1D_BACKEND >::
 							foldMatrixToVector< descr >( inout + offset,
 								results, data.P, my_chunk, data.s, op );
 #else
-						internal::maybeParallel< _GRB_BSP1D_BACKEND >::
+						internal::FinalBackend< _GRB_BSP1D_BACKEND >::
 							foldMatrixToVector< descr >( internal::getRaw( inout ) + offset,
 								results, data.P, my_chunk, data.s, op );
 #endif
@@ -1614,10 +1614,10 @@ namespace grb {
 				// copy input to buffer
 				size_t pos = ( data.s == root ) ? data.s : 0;
 #ifdef BLAS1_RAW
-				internal::maybeParallel< _GRB_BSP1D_BACKEND >::memcpy(
+				internal::FinalBackend< _GRB_BSP1D_BACKEND >::memcpy(
 					buffer + pos * size, inout, size );
 #else
-				internal::maybeParallel< _GRB_BSP1D_BACKEND >::memcpy(
+				internal::FinalBackend< _GRB_BSP1D_BACKEND >::memcpy(
 					buffer + pos * size, internal::getRaw( inout ), size );
 #endif
 
@@ -1630,10 +1630,10 @@ namespace grb {
 				// fold everything: root only
 				if( lpf_rc == LPF_SUCCESS && data.s == root ) {
 #ifdef BLAS1_RAW
-					internal::maybeParallel< _GRB_BSP1D_BACKEND >::
+					internal::FinalBackend< _GRB_BSP1D_BACKEND >::
 						foldMatrixToVector< descr >( inout, buffer, data.P, size, data.s, op );
 #else
-					internal::maybeParallel< _GRB_BSP1D_BACKEND >::
+					internal::FinalBackend< _GRB_BSP1D_BACKEND >::
 						foldMatrixToVector< descr >( internal::getRaw(inout), buffer, data.P,
 							size, data.s, op );
 					internal::getCoordinates( inout ).template assignAll< true >();
@@ -1692,11 +1692,11 @@ namespace grb {
 				if( is_core && lpf_rc == LPF_SUCCESS ) {
 					for( size_t k = 1; k < core_count; ++k ) {
 #ifdef BLAS1_RAW
-						internal::maybeParallel< _GRB_BSP1D_BACKEND >::
+						internal::FinalBackend< _GRB_BSP1D_BACKEND >::
 							foldMatrixToVector< descr >( inout,
 								buffer + ((data.s + k) % data.P) * size, 1, size, 1, op );
 #else
-						internal::maybeParallel< _GRB_BSP1D_BACKEND >::
+						internal::FinalBackend< _GRB_BSP1D_BACKEND >::
 							foldMatrixToVector< descr >( internal::getRaw(inout),
 								buffer + ((data.s + k) % data.P) * size, 1, size, 1, op );
 #endif
@@ -1721,11 +1721,11 @@ namespace grb {
 				if( data.s == root ) {
 					for( size_t k = hop; k < data.P; k += hop ) {
 #ifdef BLAS1_RAW
-						internal::maybeParallel< _GRB_BSP1D_BACKEND >::
+						internal::FinalBackend< _GRB_BSP1D_BACKEND >::
 							foldMatrixToVector< descr >( inout,
 								buffer + ((k + root) % data.P) * size, 1, size, 1, op );
 #else
-						internal::maybeParallel< _GRB_BSP1D_BACKEND >::
+						internal::FinalBackend< _GRB_BSP1D_BACKEND >::
 							foldMatrixToVector< descr >( internal::getRaw(inout),
 								buffer + ((k + root) % data.P) * size, 1, size, 1, op );
 #endif
@@ -1769,11 +1769,11 @@ namespace grb {
 				// step 2: combine the chunks and write to the root process
 				if( lpf_rc == LPF_SUCCESS ) {
 #ifdef BLAS1_RAW
-					internal::maybeParallel< _GRB_BSP1D_BACKEND >::
+					internal::FinalBackend< _GRB_BSP1D_BACKEND >::
 						foldMatrixToVector< descr >( inout + offset,
 							buffer, data.P, my_chunk, data.s, op );
 #else
-					internal::maybeParallel< _GRB_BSP1D_BACKEND >::
+					internal::FinalBackend< _GRB_BSP1D_BACKEND >::
 						foldMatrixToVector< descr >( internal::getRaw(inout) + offset,
 							buffer, data.P, my_chunk, data.s, op );
 #endif
