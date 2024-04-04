@@ -46,6 +46,9 @@ void grbProgram( const size_t &P, int &exit_status ) {
 	timer.reset();
 
 	// broadcast
+	if( spmd<>::pid() == 0 ) {
+		std::cout << "\t testing broadcast\n";
+	}
 	{
 		d = 0;
 		if( s == root ) {
@@ -67,6 +70,9 @@ void grbProgram( const size_t &P, int &exit_status ) {
 	}
 
 	// reduce
+	if( spmd<>::pid() == 0 ) {
+		std::cout << "\t testing reduce\n";
+	}
 	{
 		d = pi;
 		rc = grb::collectives<>::reduce( d, root, oper );
@@ -88,6 +94,9 @@ void grbProgram( const size_t &P, int &exit_status ) {
 	}
 
 	// allreduce
+	if( spmd<>::pid() == 0 ) {
+		std::cout << "\t testing allreduce\n";
+	}
 	{
 		d = pi;
 		rc = grb::collectives<>::allreduce( d, oper );
