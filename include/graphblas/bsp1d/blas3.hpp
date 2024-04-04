@@ -29,6 +29,10 @@
 
 #include "matrix.hpp"
 
+#ifdef _DEBUG
+ #define _DEBUG_BSP1D_BLAS3
+#endif
+
 
 namespace grb {
 
@@ -153,11 +157,35 @@ namespace grb {
 			!is_object< Tout >::value
 		>::type * const = nullptr
 	) {
-		assert( phase != TRY );
+#ifdef _DEBUG_BSP1D_BLAS3
+		std::cout << "called grb::select( matrix, matrix, selection_op ) (BSP1D)\n";
+#endif
+		// static assertions
+		static_assert( !(descr & descriptors::no_casting) ||
+				std::is_same< Tout, Tin >::value,
+			"grb::select( matrix, matrix, selection_op ): called with no_casting "
+			"descriptor but non-matching matrix data types" );
 
+		// dynamic checks
+		assert( phase != TRY );
+		const size_t m = nrows( out );
+		const size_t n = ncols( out );
+		if( m != nrows( in ) || n != ncols( in ) ) {
+			return MISMATCH;
+		}
+
+		// check trivial dispatch
+		if( m == 0 || n == 0 ) {
+			return SUCCESS;
+		}
+
+#ifdef _DEBUG_BSP1D_BLAS3
+		std::cout << "\t nnz( in ) = " << nnz( in ) << "\n";
+		std::cout << "\t nnz( getLocal( in ) ) = " << nnz( internal::getLocal( in ) ) << "\n";
+#endif
+		// dispatch to final backend
 		const auto coordinatesTranslationFunctions =
 			in.getLocalToGlobalCoordinatesTranslationFunctions();
-
 		RC ret = internal::select_generic< descr >(
 			internal::getLocal( out ),
 			internal::getLocal( in ),
@@ -167,15 +195,38 @@ namespace grb {
 			phase
 		);
 
+#ifdef _DEBUG_BSP1D_BLAS3
+		std::cout << "\t nnz( getLocal( out ) ) after local dispatch is "
+			<< nnz( internal::getLocal( out ) ) << "\n";
+#endif
+		// synchronise error code
+		if( collectives<>::allreduce( ret, operators::any_or< RC >() ) != SUCCESS ) {
+			return PANIC;
+		}
+
+		// handle success and errors
 		if( phase == RESIZE ) {
-			if( collectives<>::allreduce( ret, operators::any_or< RC >() ) != SUCCESS ) {
-				return PANIC;
-			} else {
-				return ret;
+			if( ret == SUCCESS ) {
+				ret = internal::updateCap( out );
+			} else if( ret != OUTOFMEM && ret != PANIC ) {
+				std::cerr << "Error: unexpected error code encountered: "
+					<< grb::toString( ret ) << "\n";
+				ret = PANIC;
+			}
+		} else {
+			if( ret == SUCCESS ) {
+				ret = internal::updateNnz( out );
+			} else if( ret == ILLEGAL ) {
+				ret = clear( out );
 			}
 		}
-		assert( phase == EXECUTE );
-		return internal::checkGlobalErrorStateOrClear( out, ret );
+
+#ifdef _DEBUG_BSP1D_BLAS3
+		std::cout << "\t nnz( out ) after global status handling is "
+			<< nnz( out ) << "\n";
+#endif
+		// done
+		return ret;
 	}
 
 	template<
@@ -233,7 +284,7 @@ namespace grb {
 			), "grb::foldr( BSP1D, IOType <- [[IOType]], monoid, masked ): "
 			"may not select an inverted structural mask for matrices"
 		);
-#ifdef _DEBUG
+#ifdef _DEBUG_BSP1D_BLAS3
 		std::cout << "In grb::foldr( BSP1D, matrix, mask, monoid )\n";
 #endif
 		// first check whether we can dispatch
@@ -267,7 +318,7 @@ namespace grb {
 #ifndef NDEBUG
 		rc = internal::assertSyncedRC( rc );
 #endif
-#ifdef _DEBUG
+#ifdef _DEBUG_BSP1D_BLAS3
 		std::cout << "After process-local delegation, local value has become "
 			<< local << ". Entering allreduce..." << std::endl;
 #endif
@@ -318,7 +369,7 @@ namespace grb {
 			), "grb::foldr( BSP1D, IOType <- [[IOType]], semiring, masked ): "
 			"may not select an inverted structural mask for matrices"
 		);
-#ifdef _DEBUG
+#ifdef _DEBUG_BSP1D_BLAS3
 		std::cout << "In grb::foldr( BSP1D, matrix, mask, semiring )\n";
 #endif
 		// first check whether we can dispatch
@@ -352,7 +403,7 @@ namespace grb {
 #ifndef NDEBUG
 		rc = internal::assertSyncedRC( rc );
 #endif
-#ifdef _DEBUG
+#ifdef _DEBUG_BSP1D_BLAS3
 		std::cout << "After process-local delegation, local value has become "
 			<< local << ". Entering allreduce..." << std::endl;
 #endif
@@ -413,7 +464,7 @@ namespace grb {
 			"the use of the add_identity descriptor requires a semiring, but a monoid "
 			"was given"
 		);
-#ifdef _DEBUG
+#ifdef _DEBUG_BSP1D_BLAS3
 		std::cout << "In grb::foldr( BSP1D, matrix, monoid )\n";
 #endif
 
@@ -433,7 +484,7 @@ namespace grb {
 #ifndef NDEBUG
 		rc = internal::assertSyncedRC( rc );
 #endif
-#ifdef _DEBUG
+#ifdef _DEBUG_BSP1D_BLAS3
 		std::cout << "After process-local delegation, local value has become "
 			<< local << ". Entering allreduce..." << std::endl;
 #endif
@@ -474,7 +525,7 @@ namespace grb {
 			"called with a postfactor input type that does not match the fourth domain "
 			"of the given semiring"
 		);
-#ifdef _DEBUG
+#ifdef _DEBUG_BSP1D_BLAS3
 		std::cout << "In grb::foldr( BSP1D, matrix, semiring )\n";
 #endif
 
@@ -494,7 +545,7 @@ namespace grb {
 #ifndef NDEBUG
 		rc = internal::assertSyncedRC( rc );
 #endif
-#ifdef _DEBUG
+#ifdef _DEBUG_BSP1D_BLAS3
 		std::cout << "After process-local delegation, local value has become "
 			<< local << ". Entering allreduce..." << std::endl;
 #endif
@@ -565,7 +616,7 @@ namespace grb {
 			), "grb::foldl( BSP1D, IOType <- [[IOType]], monoid, masked ): "
 			"may not select an inverted structural mask for matrices"
 		);
-#ifdef _DEBUG
+#ifdef _DEBUG_BSP1D_BLAS3
 		std::cout << "In grb::foldl( BSP1D, matrix, mask, monoid )\n";
 #endif
 		// first check whether we can dispatch
@@ -584,7 +635,7 @@ namespace grb {
 		if( nnz( A ) == 0 || grb::nnz( mask ) == 0 ||
 			grb::nrows( A ) == 0 || grb::ncols( A ) == 0
 		) {
-#ifdef _DEBUG
+#ifdef _DEBUG_BSP1D_BLAS3
 			std::cout << "Input matrix has no entries; returning identity" << std::endl;
 #endif
 			return SUCCESS;
@@ -602,7 +653,7 @@ namespace grb {
 #ifndef NDEBUG
 		rc = internal::assertSyncedRC( rc );
 #endif
-#ifdef _DEBUG
+#ifdef _DEBUG_BSP1D_BLAS3
 		std::cout << "After process-local delegation, local value has become "
 			<< local << ". Entering allreduce..." << std::endl;
 #endif
@@ -658,7 +709,7 @@ namespace grb {
 			), "grb::foldl( BSP1D, IOType <- [[IOType]], semiring, masked ): "
 			"may not select an inverted structural mask for matrices"
 		);
-#ifdef _DEBUG
+#ifdef _DEBUG_BSP1D_BLAS3
 		std::cout << "In grb::foldl( BSP1D, matrix, mask, semiring )\n";
 #endif
 		// first check whether we can dispatch
@@ -677,7 +728,7 @@ namespace grb {
 		if( nnz( A ) == 0 || grb::nnz( mask ) == 0 ||
 			grb::nrows( A ) == 0 || grb::ncols( A ) == 0
 		) {
-#ifdef _DEBUG
+#ifdef _DEBUG_BSP1D_BLAS3
 			std::cout << "Input matrix has no entries; returning identity" << std::endl;
 #endif
 			return SUCCESS;
@@ -718,7 +769,7 @@ namespace grb {
 #ifndef NDEBUG
 		rc = internal::assertSyncedRC( rc );
 #endif
-#ifdef _DEBUG
+#ifdef _DEBUG_BSP1D_BLAS3
 		std::cout << "After process-local delegation, local value has become "
 			<< local << ". Entering allreduce..." << std::endl;
 #endif
@@ -780,13 +831,13 @@ namespace grb {
 			"the use of the add_identity descriptor requires a semiring, but a monoid "
 			"was given"
 		);
-#ifdef _DEBUG
+#ifdef _DEBUG_BSP1D_BLAS3
 		std::cout << "In grb::foldl( BSP1D, matrix, monoid )\n";
 #endif
 
 		// check for trivial op
 		if( nnz( A ) == 0 || nrows( A ) == 0 || ncols( A ) == 0 ) {
-#ifdef _DEBUG
+#ifdef _DEBUG_BSP1D_BLAS3
 			std::cout << "Input matrix has no entries; returning identity" << std::endl;
 #endif
 			return SUCCESS;
@@ -803,7 +854,7 @@ namespace grb {
 #ifndef NDEBUG
 		rc = internal::assertSyncedRC( rc );
 #endif
-#ifdef _DEBUG
+#ifdef _DEBUG_BSP1D_BLAS3
 		std::cout << "After process-local delegation, local value has become "
 			<< local << ". Entering allreduce..." << std::endl;
 #endif
@@ -850,13 +901,13 @@ namespace grb {
 			"called with an output type that does not match the fourth domain of the "
 			"given semiring"
 		);
-#ifdef _DEBUG
+#ifdef _DEBUG_BSP1D_BLAS3
 		std::cout << "In grb::foldl( BSP1D, matrix, semiring )\n";
 #endif
 
 		// check for trivial op
 		if( nnz( A ) == 0 || nrows( A ) == 0 || ncols( A ) == 0 ) {
-#ifdef _DEBUG
+#ifdef _DEBUG_BSP1D_BLAS3
 			std::cout << "Input matrix has no entries; returning identity" << std::endl;
 #endif
 			return SUCCESS;
@@ -873,7 +924,7 @@ namespace grb {
 #ifndef NDEBUG
 		rc = internal::assertSyncedRC( rc );
 #endif
-#ifdef _DEBUG
+#ifdef _DEBUG_BSP1D_BLAS3
 		std::cout << "After process-local delegation, local value has become "
 			<< local << ". Entering allreduce..." << std::endl;
 #endif
