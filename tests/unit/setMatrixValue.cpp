@@ -337,6 +337,9 @@ void self_identity_test( const size_t &n, grb::RC &rc ) {
 	}
 	rc = grb::eWiseLambda(
 		[&Identity](const size_t i, const size_t j, int &v ) {
+#ifdef NDEBUG
+			(void) j;
+#endif
 			assert( i == j );
 			assert( v == 1 );
 			if( i % 2 == 0 ) {
