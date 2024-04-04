@@ -545,7 +545,7 @@ namespace grb {
 
 				// dispatch
 				return reduce_allreduce_generic<
-					descr, Operator, IOType, true, false
+					descr, Operator, IOType, false, false
 				>(
 					inout, root, op, nullptr, data,
 					"grb::collectives< BSP >::reduce (operator)"
