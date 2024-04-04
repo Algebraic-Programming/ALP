@@ -181,9 +181,9 @@ namespace grb {
 		 * The algorithm proceeds in three phases, separated by barriers. To compute
 		 * multiple prefix-sums and to save from unnecessarily incurring barriers,
 		 * each of the three phases can also be called manually; see
-		 *  -# prefixSum_OmpPar_phase1,
-		 *  -# prefixSum_OmpPar_phase2, and
-		 *  -# prefixSum_OmpPar_phase3.
+		 *  -# #prefixSum_ompPar_phase1,
+		 *  -# #prefixSum_ompPar_phase2, and
+		 *  -# #prefixSum_ompPar_phase3.
 		 * When using these manual calls, barrier synchronisation in-between phases
 		 * must be performed manually by the user.
 		 */
