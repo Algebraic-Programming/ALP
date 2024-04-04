@@ -838,6 +838,100 @@ namespace grb {
 		return ret;
 	}
 
+	/**
+	 * The implementation can trivially rely on the final backend, however, the
+	 * capacity or nonzero count of the output can differ. The below implementation
+	 * mostly deals with that logic. The logic can generally not be avoided for
+	 * this primitive, which means that at least one synchronisation overhead is
+	 * mandatory.
+	 */
+	template<
+		Descriptor descr = descriptors::no_operation,
+		typename OutputType, typename RIT, typename CIT, typename NIT,
+		typename InputType
+	>
+	RC set(
+		Matrix< OutputType, BSP1D, RIT, CIT, NIT  > &C,
+		const Matrix< InputType, BSP1D, RIT, CIT, NIT > &A,
+		const Phase &phase = EXECUTE,
+		const typename std::enable_if<
+			!grb::is_object< OutputType >::value &&
+			!grb::is_object< InputType >::value,
+		void >::type * const = nullptr
+	) noexcept {
+		// static checks
+		NO_CAST_ASSERT( ( !(descr & descriptors::no_casting) ||
+				std::is_same< OutputType, InputType >::value
+			), "grb::set (matrix, matrix )",
+			"called with non-matching value types"
+		);
+#ifdef _BSP1D_IO_DEBUG
+		std::cout << "Called grb::set( matrix, matrix ) (BSP1D)\n";
+#endif
+		const size_t m = nrows( C );
+		const size_t n = ncols( C );
+
+		// dynamic checks (I)
+		if( m != nrows( A ) || n != ncols( A ) ) {
+			return MISMATCH;
+		}
+
+		// catch trivial case
+		if( m == 0 || n == 0 ) { return SUCCESS; }
+
+		// dynamic checks (II)
+		if( getID( A ) == getID( C ) ) {
+			return ILLEGAL;
+		}
+
+#ifdef _BSP1D_IO_DEBUG
+		std::cout << "\t delegating to final backend\n";
+#endif
+		RC ret = SUCCESS;
+		{
+			const auto &local_A = internal::getLocal( A );
+			const size_t local_m = nrows( local_A );
+			const size_t local_n = ncols( local_A );
+			if( local_m > 0 && local_n > 0 ) {
+				ret = set< descr >( internal::getLocal( C ), A, phase );
+			}
+		}
+
+		// synchronise error status
+		if( collectives< BSP1D >::allreduce( ret, operators::any_or< RC >() )
+			!= SUCCESS
+		) {
+			return PANIC;
+		}
+
+		// global logic for handling both success and error cases
+		if( phase == RESIZE ) {
+			if( ret == SUCCESS ) {
+				ret = internal::updateCap( C );
+			}
+		} else {
+			assert( phase == EXECUTE );
+			if( ret == SUCCESS ) {
+				ret = internal::updateNnz( C );
+			} else if( ret == ILLEGAL ) {
+				ret = clear( C );
+			} else {
+				std::cerr << "Error: unexpected error code in grb::set( matrix, matrix ) "
+					"(BSP1D). Please submit a bug report.\n";
+				assert( false );
+				ret = PANIC;
+			}
+		}
+
+		// done
+		return ret;
+	}
+
+	/**
+	 * The implementation can trivially rely on the final backend, however, the
+	 * capacity or nonzero count of the output can in some cases differ. The below
+	 * implementation mostly deals with that logic.
+	 */
 	template<
 		Descriptor descr = descriptors::no_operation,
 		typename DataType, typename RIT, typename CIT, typename NIT,
@@ -858,7 +952,7 @@ namespace grb {
 		// static checks
 		NO_CAST_ASSERT( ( !(descr & descriptors::no_casting) ||
 				std::is_same< ValueType, DataType >::value
-			), "grb::set",
+			), "grb::set( matrix, mask, value )",
 			"called with non-matching value types"
 		);
 		NO_CAST_ASSERT(
