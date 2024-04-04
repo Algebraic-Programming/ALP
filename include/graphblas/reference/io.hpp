@@ -1368,7 +1368,8 @@ namespace grb {
 						auto &out_crs = internal::getCRS( A );
 						auto &out_ccs = internal::getCCS( A );
 #ifdef _H_GRB_REFERENCE_OMP_IO
-						// first make sure write-outs to the buffer_{row,col}_ind have completed
+						// first make sure write-outs to the buffer_{row,col}_ind and
+						// out_{crs,ccs}_offsets arrays have all completed
 						#pragma omp barrier
 						config::OMP::localRange( start, end, 0, m );
 #else
@@ -1531,8 +1532,21 @@ namespace grb {
 				}
 			}
 
+			// simple analytic model to prevent using too many threads
+			// relies on the minimum loop size OMP config variable, and makes sure that
+			// active cores will have at least CACHE_LINE_SIZE elements to operate on
+			const size_t minRange = std::min(
+					internal::getCRS( C ).copyFromRange( nz, m ),
+					internal::getCCS( C ).copyFromRange( nz, n )
+				);
+			const size_t nthreads = minRange < config::OMP::minLoopSize()
+				? 1
+				: std::max( static_cast< size_t >(1),
+					minRange / config::CACHE_LINE_SIZE::value()
+				);
+
 #ifdef _H_GRB_REFERENCE_OMP_IO
-			#pragma omp parallel
+			#pragma omp parallel num_threads( nthreads )
 #endif
 			{
 				size_t range = internal::getCRS( C ).copyFromRange( nz, m );
@@ -1593,7 +1607,15 @@ namespace grb {
 			std::cout << "\t called grb::internal::set_copy_values (reference), "
 				<< "execute phase\n";
 #endif
-			#pragma omp parallel
+			// basic analytic model that only uses threads if there are at least cache
+			// line size elements that it could locally process. Also employs the
+			// minimum loop size config.
+			const size_t nthreads = nz < config::OMP::minLoopSize()
+				? 1
+				: std::max( static_cast< size_t >(1),
+					nz / config::CACHE_LINE_SIZE::value() );
+
+			#pragma omp parallel num_threads( nthreads )
 			{
 				size_t start, end;
 #ifdef _H_GRB_REFERENCE_OMP_IO
