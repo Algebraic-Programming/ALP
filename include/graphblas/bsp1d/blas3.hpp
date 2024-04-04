@@ -94,79 +94,6 @@ namespace grb {
 		return internal::checkGlobalErrorStateOrClear( out, local_rc );
 	}
 
-	/** \internal Simply delegates to process-local backend. */
-	template<
-		Descriptor descr = descriptors::no_operation,
-		typename DataType1, typename DataType2, typename DataType3,
-		typename RIT1, typename CIT1, typename NIT1,
-		typename RIT2, typename CIT2, typename NIT2
-	>
-	RC set(
-		Matrix< DataType1, BSP1D, RIT1, CIT1, NIT1 > &out,
-		const Matrix< DataType2, BSP1D, RIT2, CIT2, NIT2 > &mask,
-		const DataType3 &val,
-		const Phase &phase = EXECUTE
-	) noexcept {
-		assert( phase != TRY );
-		RC local_rc = SUCCESS;
-		if( phase == RESIZE ) {
-			return resize( out, nnz( mask ) );
-		} else {
-			local_rc = grb::set< descr >(
-				internal::getLocal( out ), internal::getLocal( mask ), val
-			);
-		}
-		return internal::checkGlobalErrorStateOrClear( out, local_rc );
-	}
-
-	/** \internal Simply delegates to process-local backend */
-	template<
-		Descriptor descr = descriptors::no_operation,
-		class MulMonoid,
-		typename OutputType, typename InputType1, typename InputType2,
-		typename RIT1, typename CIT1, typename NIT1,
-		typename RIT2, typename CIT2, typename NIT2,
-		typename RIT3, typename CIT3, typename NIT3
-	>
-	RC eWiseApply(
-		Matrix< OutputType, BSP1D, RIT1, CIT1, NIT1 > &C,
-		const Matrix< InputType1, BSP1D, RIT2, CIT2, NIT2 > &A,
-		const Matrix< InputType2, BSP1D, RIT3, CIT3, NIT3 > &B,
-		const MulMonoid &mul,
-		const Phase phase = EXECUTE,
-		const typename std::enable_if<
-			!grb::is_object< OutputType >::value &&
-			!grb::is_object< InputType1 >::value &&
-			!grb::is_object< InputType2 >::value &&
-			grb::is_monoid< MulMonoid >::value,
-		void >::type * const = nullptr
-	) {
-		assert( phase != TRY );
-		RC local_rc = SUCCESS;
-		if( phase == RESIZE ) {
-			RC ret = eWiseApply< descr >(
-				internal::getLocal( C ),
-				internal::getLocal( A ), internal::getLocal( B ),
-				mul,
-				RESIZE
-			);
-			if( collectives<>::allreduce( ret, operators::any_or< RC >() ) != SUCCESS ) {
-				return PANIC;
-			} else {
-				return ret;
-			}
-		} else {
-			assert( phase == EXECUTE );
-			local_rc = eWiseApply< descr >(
-				internal::getLocal( C ),
-				internal::getLocal( A ), internal::getLocal( B ),
-				mul,
-				EXECUTE
-			);
-		}
-		return internal::checkGlobalErrorStateOrClear( C, local_rc );
-	}
-
 	/** \internal Simply delegates to process-local backend */
 	template<
 		Descriptor descr = descriptors::no_operation,
@@ -765,18 +692,22 @@ namespace grb {
 		RC rc = SUCCESS;
 		IOType local = semiring.template getZero< IOType >();
 		if( descr & descriptors::add_identity ) {
-			const auto& union_to_global_coordinates_translators =
-				A.unionToGlobalCoordinatesTranslators();
-			rc = internal::fold_masked_generic__add_identity<
-					descr, true, Semiring
-				>(
-					local,
-					internal::getLocal( A ),
-					internal::getLocal( mask ),
-					std::get<0>(union_to_global_coordinates_translators),
-					std::get<1>(union_to_global_coordinates_translators),
-					semiring
-				);
+			const auto &A_local = internal::getLocal( A );
+			const auto &mask_local = internal::getLocal( mask );
+			if( nnz( A_local ) > 0 && nnz( mask_local ) > 0 &&
+				nrows( A_local ) > 0 && ncols( A_local ) > 0
+			) {
+				const auto &union_to_global_coordinates_translators =
+					A.unionToGlobalCoordinatesTranslators();
+				rc = internal::fold_masked_generic__add_identity<
+						descr, true, Semiring
+					>(
+						local, A_local, mask_local,
+						std::get<0>(union_to_global_coordinates_translators),
+						std::get<1>(union_to_global_coordinates_translators),
+						semiring
+					);
+			}
 		} else {
 			rc = foldl< descr & (~descriptors::add_identity) >(
 				local,

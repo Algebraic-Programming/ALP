@@ -70,7 +70,7 @@ namespace grb {
 	 *                  argument is optional; its default is #grb::EXECUTE.
 	 *
 	 * @return #grb::SUCCESS  If the computation completed as intended.
-	 * @return #grb::FAILED   If the capacity of \a C was insufficient to store the
+	 * @return #grb::ILLEGAL  If the capacity of \a C was insufficient to store the
 	 *                        output of multiplying \a A and \a B. If this code is
 	 *                        returned, \a C on output appears cleared.
 	 * @return #grb::OUTOFMEM If \a phase is #grb::RESIZE and an out-of-error
@@ -503,8 +503,8 @@ namespace grb {
 	 * @param[in]  phase   The #grb::Phase the call should execute. Optional; the
 	 *                     default parameter is #grb::EXECUTE.
 	 *
-	 * \note Pre-defined selection operators can be found in the namespace
-	 *       #grb::operators::select.
+	 * \note Pre-defined selection operators can be found in the
+	 *       #grb::operators::select namespace.
 	 *
 	 * @return #grb::SUCCESS  On successful completion of this call.
 	 * @return #grb::MISMATCH Whenever the dimensions of \a A and \a B do

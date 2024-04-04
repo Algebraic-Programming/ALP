@@ -81,7 +81,9 @@ namespace grb {
 	 *   1. f( A, ..., EXECUTE ), which shall always be successful if it somehow
 	 *      is guaranteed that \a A has enough capacity prior to the call. If
 	 *      \a A did not have enough capacity, the call to \a f shall fail and
-	 *      the contents of \a A, after function exit, shall be cleared.
+	 *      the contents of \a A, after function exit, shall be cleared. Failure
+	 *      is indicated by the #grb::ILLEGAL error code (since it indicates a
+	 *      container with invalid capacity was used for output).
 	 *   2. a successful call to f( A, ..., RESIZE ) shall guarantee that a
 	 *      following call to f( A, ..., EXECUTE ) is successful;
 	 *   3. a call to f( A, ..., TRY ), which may or may not succeed. If the call
@@ -122,7 +124,7 @@ namespace grb {
 	 * \code
 	 * resize( B, nnz( A ) );
 	 * set( B, A );
-	 * if( f( A, ..., EXECUTE ) == FAILED ) {
+	 * if( f( A, ..., EXECUTE ) == ILLEGAL ) {
 	 *     f( B, ..., RESIZE );
 	 *     std::swap( A, B );
 	 * }
@@ -131,7 +133,7 @@ namespace grb {
 	 * \code
 	 * resize( B, nnz( A ) );
 	 * set( B, A );
-	 * while( f( A, ..., EXECUTE ) == FAILED ) {
+	 * while( f( A, ..., EXECUTE ) == ILLEGAL ) {
 	 *     resize( A, capacity( A ) + 1 );
 	 *     set( A, B );
 	 * }

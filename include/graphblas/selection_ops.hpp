@@ -30,60 +30,92 @@
 #include "internalops.hpp"
 #include "type_traits.hpp"
 
+
 namespace grb {
 
-	/**
-	 * This namespace holds various standard selection-operators such
-	 * as #grb::operators::is_diagonal or #grb::operators::is_strictly_lower.
-	 */
-	namespace operators::select {
+	namespace operators {
 
-		template<
-			typename D,
-			typename RIT = config::RowIndexType,
-			typename CIT = config::ColIndexType
-		>
-		struct is_diagonal : public internal::MatrixSelectionOperatorBase<
-			internal::is_diagonal< D, RIT, CIT >, D
-		> {};
+		/**
+		 * This namespace holds various standard matrix selection operators:
+		 *  - #grb::operators::select::is_diagonal,
+		 *  - #grb::operators::select::is_strictly_lower,
+		 *  - #grb::operators::select::is_lower_or_diagonal,
+		 *  - #grb::operators::select::is_strictly_upper,
+		 *  - #grb::operators::select::is_upper_or_diagonal
+		 *
+		 * These operators may be provided as selection operators to #grb::select.
+		 */
+		namespace select {
 
-		template<
-			typename D,
-			typename RIT = config::RowIndexType,
-			typename CIT = config::ColIndexType
-		>
-		struct is_strictly_lower : public internal::MatrixSelectionOperatorBase<
-			internal::is_strictly_lower< D, RIT, CIT >, D
-		> {};
+			/**
+			 * A matrix selection operator that selects the matrix diagonal.
+			 */
+			template<
+				typename D,
+				typename RIT = config::RowIndexType,
+				typename CIT = config::ColIndexType
+			>
+			struct is_diagonal : public internal::MatrixSelectionOperatorBase<
+				internal::is_diagonal< D, RIT, CIT >, D
+			> {};
 
-		template<
-			typename D,
-			typename RIT = config::RowIndexType,
-			typename CIT = config::ColIndexType
-		>
-		struct is_lower_or_diagonal : public internal::MatrixSelectionOperatorBase<
-			internal::is_lower_or_diagonal< D, RIT, CIT >, D
-		> {};
+			/**
+			 * A matrix selection operator that selects the strictly lower triangular
+			 * part.
+			 */
+			template<
+				typename D,
+				typename RIT = config::RowIndexType,
+				typename CIT = config::ColIndexType
+			>
+			struct is_strictly_lower : public internal::MatrixSelectionOperatorBase<
+				internal::is_strictly_lower< D, RIT, CIT >, D
+			> {};
 
-		template<
-			typename D,
-			typename RIT = config::RowIndexType,
-			typename CIT = config::ColIndexType
-		>
-		struct is_strictly_upper : public internal::MatrixSelectionOperatorBase<
-			internal::is_strictly_upper< D, RIT, CIT >, D
-		> {};
+			/**
+			 * A matrix selection operator that selects the lower triangular part.
+			 *
+			 * This includes the matrix diagonal.
+			 */
+			template<
+				typename D,
+				typename RIT = config::RowIndexType,
+				typename CIT = config::ColIndexType
+			>
+			struct is_lower_or_diagonal : public internal::MatrixSelectionOperatorBase<
+				internal::is_lower_or_diagonal< D, RIT, CIT >, D
+			> {};
 
-		template<
-			typename D,
-			typename RIT = config::RowIndexType,
-			typename CIT = config::ColIndexType
-		>
-		struct is_upper_or_diagonal : public internal::MatrixSelectionOperatorBase<
-			internal::is_upper_or_diagonal< D, RIT, CIT >, D
-		> {};
+			/**
+			 * A matrix selection operator that selects the strictly upper triangular
+			 * part.
+			 */
+			template<
+				typename D,
+				typename RIT = config::RowIndexType,
+				typename CIT = config::ColIndexType
+			>
+			struct is_strictly_upper : public internal::MatrixSelectionOperatorBase<
+				internal::is_strictly_upper< D, RIT, CIT >, D
+			> {};
 
-	} // namespace operators::select
+			/**
+			 * A matrix selection operator that selects the upper triangular part.
+			 *
+			 * This includes the matrix diagonal.
+			 */
+			template<
+				typename D,
+				typename RIT = config::RowIndexType,
+				typename CIT = config::ColIndexType
+			>
+			struct is_upper_or_diagonal : public internal::MatrixSelectionOperatorBase<
+				internal::is_upper_or_diagonal< D, RIT, CIT >, D
+			> {};
+
+		} // end namespace grb::operators::select
+
+	} // end namespace grb::operators
 
 	template< typename D1, typename D2, typename D3 >
 	struct is_matrix_selection_operator<
@@ -108,7 +140,7 @@ namespace grb {
 
 	template< typename D1, typename D2, typename D3 >
 	struct is_matrix_selection_operator<
-		operators::select::is_strictly_upper< D1, D2, D3 >
+	operators::select::is_strictly_upper< D1, D2, D3 >
 	> {
 		static constexpr bool value = true;
 	};
