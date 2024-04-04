@@ -38,6 +38,7 @@
 namespace grb::internal {
 
 	namespace {
+
 		/**
 		 * This function assumes lpf_rc is materialised from calls to lpf_sync,
 		 * lpf_register_*, lpf_deregister, LPF collectives, lpf_get, and/or lpf_put.
@@ -61,7 +62,7 @@ namespace grb::internal {
 		 * \todo If we bump to C++17 we can use constexpr std::string_view
 		 * \endinternal
 		 */
-		inline RC checkLPFerror( const lpf_err_t lpf_rc, const std::string source ) {
+		inline RC checkLPFerror( const lpf_err_t lpf_rc, const char * const source ) {
 			if( lpf_rc != LPF_SUCCESS ) {
 				// failure at this point cannot be mitigated and possibly violates LPF spec
 				/* LCOV_EXCL_START */

@@ -881,7 +881,9 @@ namespace grb {
 		RC dense_synchronize(
 			internal::Coordinates< _GRB_BSP1D_BACKEND > &global_coordinates
 		) const {
-			const auto data = internal::grb_BSP1D.cload();
+#ifndef NDEBUG
+			const auto &data = internal::grb_BSP1D.cload();
+#endif
 			assert( data.P > 1 );
 
 #ifdef _DEBUG
@@ -921,7 +923,9 @@ namespace grb {
 		RC array_synchronize(
 			internal::Coordinates< _GRB_BSP1D_BACKEND > &global_coordinates
 		) const {
-			const auto data = internal::grb_BSP1D.cload();
+#ifndef NDEBUG
+			const auto &data = internal::grb_BSP1D.cload();
+#endif
 			assert( data.P > 1 );
 
 #ifdef _DEBUG
@@ -2654,7 +2658,7 @@ namespace grb {
 		 * @see Vector::cbegin
 		 */
 		const_iterator cbegin() const {
-			const auto data = internal::grb_BSP1D.cload();
+			const auto &data = internal::grb_BSP1D.cload();
 			return _local.template cbegin< BSP1D >( data.s, data.P );
 		}
 
@@ -2673,7 +2677,7 @@ namespace grb {
 		 * @see Vector::cend
 		 */
 		const_iterator cend() const {
-			const auto data = internal::grb_BSP1D.cload();
+			const auto &data = internal::grb_BSP1D.cload();
 			return _local.template cend< BSP1D >( data.s, data.P );
 		}
 
