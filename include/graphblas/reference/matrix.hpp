@@ -150,6 +150,35 @@ namespace grb {
 			valbuf = const_cast< InputType * >( A.valbuf[ k ] );
 		}
 
+		/**
+		 * \internal
+		 * Retrieves the row-wise SPA stack interpreted as a row index array of size m
+		 * \endinternal
+		 */
+		template< typename InputType, typename RIT, typename CIT, typename NIT >
+		RIT * getMatrixRowBuffer(
+			const grb::Matrix< InputType, reference, RIT, CIT, NIT > &A
+		) noexcept {
+			assert( internal::Coordinates< reference >::bufferSize( A.m ) >=
+				A.m * sizeof( RIT ) );
+			return reinterpret_cast< RIT * >(A.coorArr[ 2 ]);
+		}
+
+		/**
+		 * \internal
+		 * Retrieves the column-wise SPA stack interpreted as a buffer of row indices
+		 * of size n + 1
+		 * \endinternal
+		 */
+		template< typename InputType, typename RIT, typename CIT, typename NIT >
+		CIT * getMatrixColBuffer(
+			const grb::Matrix< InputType, reference, RIT, CIT, NIT > &A
+		) noexcept {
+			assert( internal::Coordinates< reference >::bufferSize( A.n ) >=
+				A.n * sizeof( CIT ) );
+			return reinterpret_cast< CIT * >(A.coorArr[ 3 ]);
+		}
+
 		template<
 			Descriptor descr,
 			bool input_dense, bool output_dense,
@@ -1116,6 +1145,16 @@ namespace grb {
 			char *&, char *&, InputType *&,
 			const unsigned int,
 			const grb::Matrix< InputType, reference, RIT, CIT, NIT > &
+		) noexcept;
+
+		template< typename InputType, typename RIT, typename CIT, typename NIT >
+		friend RIT * internal::getMatrixRowBuffer(
+			const grb::Matrix< InputType, reference, RIT, CIT, NIT > &A
+		) noexcept;
+
+		template< typename InputType, typename RIT, typename CIT, typename NIT >
+		friend CIT * internal::getMatrixColBuffer(
+			const grb::Matrix< InputType, reference, RIT, CIT, NIT > &A
 		) noexcept;
 
 		friend const grb::Matrix<
