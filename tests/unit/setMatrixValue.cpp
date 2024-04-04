@@ -174,11 +174,16 @@ void identity_test( const size_t &n, grb::RC &rc ) {
 		rc = FAILED;
 		return;
 	}
-	grb::eWiseLambda(
+	rc = grb::eWiseLambda(
 		[&off_diagonal](const size_t i, const size_t j, int &v ) {
 			(void) j;
 			if( i % 2 == 0 ) { v = 0; }
 		}, off_diagonal );
+	if( rc != SUCCESS ) {
+		std::cerr << "\t error during application of element-wise lambda-- test "
+			<< "could not initialise\n";
+		return;
+	}
 
 	// at this point:
 	//  - identity is an n by n identity matrix
@@ -330,6 +335,19 @@ void self_identity_test( const size_t &n, grb::RC &rc ) {
 		rc = FAILED;
 		return;
 	}
+	rc = grb::eWiseLambda(
+		[&Identity](const size_t i, const size_t j, int &v ) {
+			assert( i == j );
+			assert( v == 1 );
+			if( i % 2 == 0 ) {
+				v = 0;
+			}
+		}, Identity );
+	if( rc != SUCCESS ) {
+		std::cerr << "\t error during application of element-wise lambda-- test "
+			<< "could not initialise\n";
+		return;
+	}
 
 	if( nnz( Identity ) != n ) {
 		std::cerr << "\t diagonal has " << nnz( Identity ) << " elements, expected "
@@ -338,21 +356,36 @@ void self_identity_test( const size_t &n, grb::RC &rc ) {
 		return;
 	}
 
-	// Check first if the matrix is correctly initialised with 1s
-	rc = std::all_of( Identity.cbegin(), Identity.cend(),
-		[]( const std::pair< std::pair< size_t, size_t >, int > &entry ) {
-			return entry.second == 1 && entry.first.first == entry.first.second;
-		} ) ? SUCCESS : FAILED;
+	// Check first if the matrix is correctly initialised
+	Expected< int > expected_even, expected_odd;
+	expected_even.set( 0 );
+	expected_odd.set( 1 );
+	rc = check_all< false, false >(
+		Identity, expected_even, expected_odd, 0 );
 	if( rc != SUCCESS ) {
-		std::cerr << "\t initialisation (buildMatrixUnique check) FAILED: rc is "
+		std::cerr << "\t initialisation FAILED: rc is "
 			<< grb::toString(rc) << "\n";
 		return;
 	}
 
 	// Try to set the matrix to 2s ( RESIZE )
+	size_t expected_nnz;
+	if( descr & descriptors::structural ) {
+		expected_nnz = n;
+		expected_even.set( 2 );
+		expected_odd.set( 2 );
+	} else if( descr & descriptors::invert_mask ) {
+		expected_nnz = ( n + 1 ) / 2;
+		expected_even.set( 2 );
+		expected_odd.set( 17 ); // never-encountered value
+	} else {
+		expected_nnz = n / 2;
+		expected_even.set( 17 );
+		expected_odd.set( 2 );
+	}
 	rc = grb::set< descr >( Identity, Identity, 2UL, grb::Phase::RESIZE );
 	if( rc != SUCCESS ) {
-		std::cerr << "\t set identity matrix diagonal to 2s ( RESIZE ) FAILED: "
+		std::cerr << "\t set identity matrix diagonal to 2 (RESIZE phase) FAILED: "
 			<< "rc is " << grb::toString(rc) << "\n";
 		return;
 	}
@@ -373,20 +406,21 @@ void self_identity_test( const size_t &n, grb::RC &rc ) {
 	}
 
 	// Now all values should be 2s
-	if( grb::nnz( Identity ) != n ) {
-		std::cerr << "\t Expected " << n << " nonzeroes, got " << nnz( Identity )
-			<< "\n";
+	if( grb::nnz( Identity ) != expected_nnz ) {
+		std::cerr << "\t Expected " << expected_nnz << " nonzeroes, "
+			<< "got " << nnz( Identity ) << "\n";
 		rc = FAILED;
 	}
 	{
-		const RC local_rc = std::all_of( Identity.cbegin(), Identity.cend(),
-			[]( const std::pair< std::pair< size_t, size_t >, int > &entry ) {
-				return entry.second == 2 && entry.first.first == entry.first.second;
-			} ) ? SUCCESS : FAILED;
+		constexpr bool nstr = !(descr & descriptors::structural);
+		constexpr bool invm = descr & descriptors::invert_mask;
+		const RC local_rc = check_all< nstr && !invm, nstr && invm >(
+			Identity, expected_even, expected_odd, 0 );
+		if( local_rc ) {
+			std::cout << "\t Entry verification failed\n";
+		}
 		if( rc == SUCCESS ) {
 			rc = local_rc;
-		} else {
-			std::cout << "\t Entry verification failed\n";
 		}
 	}
 	if( rc != SUCCESS ) {
@@ -432,7 +466,7 @@ int main( int argc, char ** argv ) {
 	grb::RC out = PANIC, last_error = SUCCESS;
 	bool failed = false;
 
-	std::cout << "\t test 1 (self-masked)\n";
+	std::cout << "\t test 1A (self-masked)\n";
 	if( launcher.exec(
 			&(self_identity_test< grb::descriptors::no_operation >), in, out, true
 		) != SUCCESS
@@ -448,7 +482,7 @@ int main( int argc, char ** argv ) {
 		std::cout << "\t\t OK\n";
 	}
 
-	std::cout << "\t test 2 (self-masked, structural)\n";
+	std::cout << "\t test 1B (self-masked, structural)\n";
 	if( launcher.exec(
 			&(self_identity_test< grb::descriptors::structural >), in, out, true
 		) != SUCCESS
@@ -464,7 +498,23 @@ int main( int argc, char ** argv ) {
 		std::cout << "\t\t OK\n";
 	}
 
-	std::cout << "\t test 3 (matching domains, no-op resize)\n";
+	std::cout << "\t test 1C (self-masked, inverted mask)\n";
+	if( launcher.exec(
+			&(self_identity_test< grb::descriptors::invert_mask >), in, out, true
+		) != SUCCESS
+	) {
+		std::cerr << "Launching test FAILED\n" << std::endl;
+		return 255;
+	}
+	if( out != SUCCESS ) {
+		std::cout << "\t\t FAILED\n";
+		last_error = out;
+		failed = true;
+	} else {
+		std::cout << "\t\t OK\n";
+	}
+
+	std::cout << "\t test 2A (matching domains, no-op resize)\n";
 	if( launcher.exec(
 			&(identity_test< grb::descriptors::no_operation, int, false >), in, out, true
 		) != SUCCESS
@@ -480,7 +530,7 @@ int main( int argc, char ** argv ) {
 		std::cout << "\t\t OK\n";
 	}
 
-	std::cout << "\t test 4 (matching domains, no-op resize, structural)\n";
+	std::cout << "\t test 2B (matching domains, no-op resize, structural)\n";
 	if( launcher.exec(
 			&(identity_test< grb::descriptors::structural, int, false >), in, out, true
 		) != SUCCESS
@@ -496,7 +546,7 @@ int main( int argc, char ** argv ) {
 		std::cout << "\t\t OK\n";
 	}
 
-	std::cout << "\t test 5 (matching domains, no-op resize, inverted mask)\n";
+	std::cout << "\t test 2C (matching domains, no-op resize, inverted mask)\n";
 	if( launcher.exec(
 			&(identity_test< grb::descriptors::invert_mask, int, false >), in, out, true
 		) != SUCCESS
@@ -512,7 +562,7 @@ int main( int argc, char ** argv ) {
 		std::cout << "\t\t OK\n";
 	}
 
-	std::cout << "\t test 6 (matching domains, resize)\n";
+	std::cout << "\t test 3A (matching domains, resize)\n";
 	if( launcher.exec(
 			&(identity_test< grb::descriptors::no_operation, int, true >),
 			in, out, true
@@ -529,7 +579,7 @@ int main( int argc, char ** argv ) {
 		std::cout << "\t\t OK\n";
 	}
 
-	std::cout << "\t test 7 (matching domains, resize, structural)\n";
+	std::cout << "\t test 3B (matching domains, resize, structural)\n";
 	if( launcher.exec(
 			&(identity_test< grb::descriptors::structural, int, true >), in, out, true )
 		!= SUCCESS
@@ -545,7 +595,7 @@ int main( int argc, char ** argv ) {
 		std::cout << "\t\t OK\n";
 	}
 
-	std::cout << "\t test 8 (matching domains, resize, inverted mask)\n";
+	std::cout << "\t test 3C (matching domains, resize, inverted mask)\n";
 	if( launcher.exec(
 			&(identity_test< grb::descriptors::invert_mask, int, true >), in, out, true )
 		!= SUCCESS
@@ -561,7 +611,7 @@ int main( int argc, char ** argv ) {
 		std::cout << "\t\t OK\n";
 	}
 
-	std::cout << "\t test 9 (mismatching domains, no-op resize)\n";
+	std::cout << "\t test 4A (mismatching domains, no-op resize)\n";
 	if( launcher.exec(
 			&(identity_test< grb::descriptors::no_operation, size_t, false >),
 			in, out, true
@@ -578,7 +628,7 @@ int main( int argc, char ** argv ) {
 		std::cout << "\t\t OK\n";
 	}
 
-	std::cout << "\t test 10 (mismatching domains, no-op resize, structural)\n";
+	std::cout << "\t test 4B (mismatching domains, no-op resize, structural)\n";
 	if( launcher.exec(
 			&(identity_test< grb::descriptors::structural, size_t, false >),
 			in, out, true
@@ -595,7 +645,7 @@ int main( int argc, char ** argv ) {
 		std::cout << "\t\t OK\n";
 	}
 
-	std::cout << "\t test 11 (mismatching domains, no-op resize, inverted mask)\n";
+	std::cout << "\t test 4C (mismatching domains, no-op resize, inverted mask)\n";
 	if( launcher.exec(
 			&(identity_test< grb::descriptors::invert_mask, size_t, false >),
 			in, out, true
@@ -612,7 +662,7 @@ int main( int argc, char ** argv ) {
 		std::cout << "\t\t OK\n";
 	}
 
-	std::cout << "\t test 12 (mismatching domains, resize)\n";
+	std::cout << "\t test 5A (mismatching domains, resize)\n";
 	if( launcher.exec(
 			&(identity_test< grb::descriptors::no_operation, double, true >),
 			in, out, true
@@ -629,7 +679,7 @@ int main( int argc, char ** argv ) {
 		std::cout << "\t\t OK\n";
 	}
 
-	std::cout << "\t test 13 (mismatching domains, resize, structural)\n";
+	std::cout << "\t test 5B (mismatching domains, resize, structural)\n";
 	if( launcher.exec(
 			&(identity_test< grb::descriptors::structural, double, true >),
 			in, out, true
@@ -646,7 +696,7 @@ int main( int argc, char ** argv ) {
 		std::cout << "\t\t OK\n";
 	}
 
-	std::cout << "\t test 14 (mismatching domains, resize, inverted mask)\n";
+	std::cout << "\t test 5C (mismatching domains, resize, inverted mask)\n";
 	if( launcher.exec(
 			&(identity_test< grb::descriptors::invert_mask, double, true >),
 			in, out, true
@@ -663,7 +713,7 @@ int main( int argc, char ** argv ) {
 		std::cout << "\t\t OK\n";
 	}
 
-	std::cout << "\t test 15 (void mask, no-op resize)\n";
+	std::cout << "\t test 6A (void mask, no-op resize)\n";
 	if( launcher.exec(
 			&(identity_test< grb::descriptors::no_operation, void, false >),
 			in, out, true
@@ -680,7 +730,7 @@ int main( int argc, char ** argv ) {
 		std::cout << "\t\t OK\n";
 	}
 
-	std::cout << "\t test 16 (void mask, no-op resize, structural)\n";
+	std::cout << "\t test 6B (void mask, no-op resize, structural)\n";
 	if( launcher.exec(
 			&(identity_test< grb::descriptors::structural, void, false >),
 			in, out, true
@@ -697,7 +747,10 @@ int main( int argc, char ** argv ) {
 		std::cout << "\t\t OK\n";
 	}
 
-	std::cout << "\t test 17 (void mask, resize)\n";
+	std::cout << "\t (test 6C does not exist: "
+		<< "void masks with inversion is not supported)\n";
+
+	std::cout << "\t test 7A (void mask, resize)\n";
 	if( launcher.exec(
 			&(identity_test< grb::descriptors::no_operation, void, true >),
 			in, out, true
@@ -714,7 +767,7 @@ int main( int argc, char ** argv ) {
 		std::cout << "\t\t OK\n";
 	}
 
-	std::cout << "\t test 18 (void mask, resize, structural)\n";
+	std::cout << "\t test 7B (void mask, resize, structural)\n";
 	if( launcher.exec(
 			&(identity_test< grb::descriptors::structural, void, true >),
 			in, out, true
@@ -731,7 +784,8 @@ int main( int argc, char ** argv ) {
 		std::cout << "\t\t OK\n";
 	}
 
-	// note: mask inversion with void masks is not possible
+	std::cout << "\t (test 7C does not exist: "
+		<< "void masks with inversion is not supported)\n";
 
 	if( failed ) {
 		std::cerr << std::flush;
