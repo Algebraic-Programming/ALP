@@ -40,9 +40,34 @@
  *
  * Several other programming interfaces are under design at present.
  *
- * For authors who contributed to ALP, please see the NOTICE file.
+ * Additionally, to ease integration with existing software, ALP defines
+ * so-called \ref TRANS libraries. Such libraries may be employed to replace
+ * existing libraries, therefore benefitting of ALP-optimised software without
+ * having to change any source code-- simply switch out the library linked
+ * against, and transparently enjoy speedups such as enabled by the nonblocking
+ * backend.
  *
- * Contact:
+ * The \ref TRANS libraries are presently in a prototype stage. Presently, the
+ * following interfaces are (partially) implemented:
+ *  -# the \ref SPARSEBLAS standard (partial);
+ *  -# the \ref SPBLAS de-facto standard (partial);
+ *  -# the \ref TRANS_SOLVERS CRS/CSR-based sparse solver API (CG and PCG); and
+ *  -# the \ref kml_iss.h "KML Sparse Solver API".
+ *
+ * These transition path libraries are built and installed by default. Both
+ * sequential and shared-memory parallel libraries are provided.
+ *
+ * The maintainers are happy to consider requests for expanding the currently
+ * available transition paths, both in terms of missing functions in the
+ * presently available libraries, as well as of additional libraries; please
+ * feel free to submit feature requests on GitHub or Gitee, and/or to contact
+ * the maintainers.
+ *
+ * For the many authors who contributed to ALP, please see the NOTICE file
+ * distributed with ALP. The underwrited would like to take the opportunity here
+ * to express their sincere thanks for the many contributors over the years.
+ *
+ * Project contact information:
  *  - https://github.com/Algebraic-Programming/ALP
  *  - https://gitee.com/CSL-ALP/graphblas/
  *  - albertjan.yzelman@huawei.com
@@ -488,6 +513,7 @@ namespace grb {
 #include <graphblas/ops.hpp>
 #include <graphblas/monoid.hpp>
 #include <graphblas/semiring.hpp>
+#include <graphblas/selection_ops.hpp>
 
 // Then include containers. If containers rely on ALP/GraphBLAS primitives that
 // are defined as free functions, then container implementations must forward-

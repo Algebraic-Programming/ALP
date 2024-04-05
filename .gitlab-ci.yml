@@ -24,6 +24,36 @@ variables:
       - "yes"
       - "no"
     description: "Enable compilation using multiple compilers"
+  SLURM_TESTS_ENABLED:
+    value: "no"
+    options:
+      - "yes"
+      - "no"
+    description: "Enable test on the Slurm cluster"
+  CI_SLURM_PARTITION:
+    value: "Zen3"
+    description: "Partition to use (if using Slurm)"
+  CI_SLURM_NNODES:
+    value: "1"
+    description: "Number of nodes to request (if using Slurm)"
+  CI_SLURM_NTASKS:
+    value: "1"
+    description: "Number of tasks to request (if using Slurm)"
+  CI_SLURM_CPUS_PER_TASK:
+    value: "64"
+    description: "Number of CPUs per task (if using Slurm)"
+  CI_SLURM_MEM_PER_NODE:
+    value: "64G"
+    description: "Memory per node (if using Slurm)"
+  CI_SLURM_TIMELIMIT:
+    value: "00-10:00:00" # 10 hours
+    description: "Time limit for the job (if using Slurm)"
+  SLURM_JOB_START_TIMEOUT_SECONDS:
+    value: "3600" # 1 hour timeout to switch from PENDING to RUNNING
+    description: "Allowed time for the job to switch from PENDING to RUNNING (if using Slurm)"
+  SLURM_DATASETS_DIR_PATH:
+    value: "/storage/datasets/graphs-and-sparse-matrices"
+    description: "Path to the datasets directory (if using Slurm)"
   COVERAGE_ENABLED:
     value: "no"
     options:
@@ -190,6 +220,9 @@ tests_unit:
   script:
     - cd ./build && make -j$(nproc) tests_unit &> unittests.log
     - ../tests/summarise.sh unittests.log
+  artifacts:
+    paths: [ build/*.log ]
+    expire_in: 1 day
 
 tests_smoke:
   needs: [build_test]
@@ -234,6 +267,28 @@ gitleaks:
   script: gitleaks detect -v --source .
 
 
+## Jobs running on Slurm cluster
+
+# factored out command to download the datasets, cmake, and build in non-debug mode
+.setup_and_build_ndebug_slurm: &setup_and_build_ndebug_slurm
+  - mkdir -p install build && cd ./build
+  - ../bootstrap.sh --prefix=../install --with-datasets=${SLURM_DATASETS_DIR_PATH} --no-hyperdags
+  - make -j$(nproc)
+
+tests_performance_slurm:
+  rules:
+    - if: $SLURM_TESTS_ENABLED == "yes"
+  tags:
+    - slurm
+  script:
+    - *setup_and_build_ndebug_slurm
+    - make -j$(nproc) performancetests |& tee performancetests.log
+    - ../tests/summarise.sh performancetests.log tests/performance/output/benchmarks tests/performance/output/scaling
+  artifacts:
+    paths: [ build/*.log ]
+    expire_in: 1 month
+
+
 ## Additional tests specific to main branches only
 
 tests_performance:
@@ -251,6 +306,9 @@ tests_unit_buildtype_debug:
   script:
     - cd ./build && make -j$(nproc) unittests &> unittests.log
     - ../tests/summarise.sh unittests.log
+  artifacts:
+    paths: [ build/*.log ]
+    expire_in: 1 day
 
 
 ## Additional tests for LPF (on main branches only)
@@ -279,6 +337,9 @@ build_test_lpf:
   script:
     - cd ./build && make -j$(nproc) tests_unit &> unittests.log
     - ../tests/summarise.sh unittests.log
+  artifacts:
+    paths: [ build/*.log ]
+    expire_in: 1 day
 
 # this job triggers in internal CI, where LPF tests run better on runners
 # with a given tag $LPF_PREFERRED_RUNNERS_TAG
@@ -354,7 +415,7 @@ coverage_matrix:
     - echo "-- NONBLOCKING=${backends_array[3]}"
 
     - rm -rf build install && mkdir -p install build && cd build
-    - cmake -DCMAKE_INSTALL_PREFIX='../install' 
+    - cmake -DCMAKE_INSTALL_PREFIX='../install'
       -DCMAKE_BUILD_TYPE=Coverage
       -DDATASETS_DIR=${ALP_DATASETS}
       -DWITH_HYPERDAGS_BACKEND=${backends_array[0]}
@@ -411,7 +472,7 @@ html_coverage_report:
       --output public/index.html
   artifacts:
     expire_in: 4 weeks
-    paths: 
+    paths:
       - public
 
 ## GitLab Pages update job

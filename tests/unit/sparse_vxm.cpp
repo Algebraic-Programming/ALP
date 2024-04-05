@@ -90,7 +90,8 @@ static grb::RC setupSparseMatrix(
 	}
 
 	// load into GraphBLAS
-	rc = grb::buildMatrixUnique( mx, &(I[ 0 ]), &(J[ 0 ]), mxValues, elems, SEQUENTIAL );
+	rc = grb::buildMatrixUnique( mx, &(I[ 0 ]), &(J[ 0 ]), mxValues, elems,
+		SEQUENTIAL );
 	if( rc == SUCCESS && elems != nnz( mx ) ) {
 		rc = PANIC;
 	}

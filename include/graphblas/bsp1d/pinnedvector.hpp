@@ -142,7 +142,7 @@ namespace grb {
 				_buffered_values( mode == PARALLEL ? x._raw + x._offset : x._raw ),
 				_mode( mode ), _length( x._global._coordinates.size() )
 			{
-				const auto data = internal::grb_BSP1D.cload();
+				const auto &data = internal::grb_BSP1D.cload();
 				_s = data.s;
 				_P = data.P;
 				if( mode != PARALLEL ) {

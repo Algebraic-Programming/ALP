@@ -624,7 +624,7 @@ void grbProgram( const void *, const size_t, int &error ) {
 		error = 1;
 	}
 	RC rc_red = collectives<>::allreduce( error,
-		grb::operators::any_or< grb::RC >() );
+		grb::operators::any_or< int >() );
 	if ( rc_red != SUCCESS ) {
 		std::cerr << "Cannot reduce error code, communication issue!" << std::endl;
 		std::abort();

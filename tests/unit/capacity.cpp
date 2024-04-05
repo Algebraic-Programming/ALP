@@ -172,7 +172,8 @@ void grb_program( const size_t &n, grb::RC &rc ) {
 		const size_t one = 1;
 		const size_t * const start_ind = &one;
 		const size_t * const end_ind = start_ind + 1;
-		rc = buildMatrixUnique( mat,
+		rc = buildMatrixUnique(
+			mat,
 			start_ind, end_ind,
 			start_ind, end_ind,
 			start_val, end_val,
@@ -183,7 +184,10 @@ void grb_program( const size_t &n, grb::RC &rc ) {
 		grb::nnz( vec ) != 1 ||
 		grb::nnz( mat ) != 1
 	  ) {
-		std::cerr << "\t error during intitialisation of clear-semantics test\n";
+		std::cerr << "\t error during intitialisation of clear-semantics test:\n"
+			<< "\t  - rc is " << grb::toString( rc ) << ", expected SUCCESS\n"
+			<< "\t  - grb::nnz( vec ) is " << grb::nnz( vec ) << ", expected 1\n"
+			<< "\t  - grb::nnz( mat ) is " << grb::nnz( mat ) << ", expected 1\n";
 		if( rc != grb::SUCCESS ) { rc = grb::FAILED; }
 		return;
 	}
@@ -267,13 +271,13 @@ int main( int argc, char ** argv ) {
 	if( argc == 2 ) {
 		size_t read;
 		std::istringstream ss( argv[ 1 ] );
-		if( ! ( ss >> read ) ) {
+		if( !(ss >> read) ) {
 			std::cerr << "Error parsing first argument\n";
 			printUsage = true;
-		} else if( ! ss.eof() ) {
+		} else if( !ss.eof() ) {
 			std::cerr << "Error parsing first argument\n";
 			printUsage = true;
-		} else if( read % 2 != 0 ) {
+		} else if( (read % 2) != 0 ) {
 			std::cerr << "Given value for n is odd\n";
 			printUsage = true;
 		} else {
@@ -283,22 +287,24 @@ int main( int argc, char ** argv ) {
 	}
 	if( printUsage ) {
 		std::cerr << "Usage: " << argv[ 0 ] << " [n]\n";
-		std::cerr << "  -n (optional, default is 100): an even integer, the "
-					 "test size.\n";
+		std::cerr << "  -n (optional, default is 100): an even integer, the test "
+			<< "test size.\n";
 		return 1;
 	}
 
 	std::cout << "This is functional test " << argv[ 0 ] << "\n";
 	grb::Launcher< grb::AUTOMATIC > launcher;
 	grb::RC out;
-	if( launcher.exec( &grb_program, in, out, true ) != grb::SUCCESS ) {
-		std::cerr << "Launching test FAILED\n";
-		return 255;
+	const grb::RC launch_rc = launcher.exec( &grb_program, in, out, true );
+	if( launch_rc != grb::SUCCESS ) {
+		std::cerr << "Launch test failed\n";
+		out = launch_rc;
 	}
 	if( out != grb::SUCCESS ) {
-		std::cout << "Test FAILED (" << grb::toString( out ) << ")" << std::endl;
+		std::cerr << std::flush;
+		std::cout << "Test FAILED (" << grb::toString( out ) << ")\n" << std::endl;
 	} else {
-		std::cout << "Test OK" << std::endl;
+		std::cout << "Test OK\n" << std::endl;
 	}
 	return 0;
 }

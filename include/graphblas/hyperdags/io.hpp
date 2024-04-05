@@ -33,6 +33,9 @@ namespace grb {
 
 	// input:
 
+	/**
+	 * This function inherits the performance semantics of the underlying backend.
+	 */
 	template<
 		Descriptor descr = descriptors::no_operation,
 		typename InputType, typename fwd_iterator, typename Coords,
@@ -64,6 +67,9 @@ namespace grb {
 		return ret;
 	}
 
+	/**
+	 * This function inherits the performance semantics of the underlying backend.
+	 */
 	template<
 		Descriptor descr = descriptors::no_operation,
 		typename InputType, typename fwd_iterator1, typename fwd_iterator2,
@@ -101,6 +107,9 @@ namespace grb {
 		return ret;
 	}
 
+	/**
+	 * This function inherits the performance semantics of the underlying backend.
+	 */
 	template<
 		Descriptor descr = descriptors::no_operation,
 		typename InputType, typename RIT, typename CIT, typename NIT,
@@ -133,6 +142,9 @@ namespace grb {
 		return ret;
 	}
 
+	/**
+	 * This function inherits the performance semantics of the underlying backend.
+	 */
 	template<
 		Descriptor descr = descriptors::no_operation,
 		typename DataType,
@@ -174,13 +186,17 @@ namespace grb {
 		return ret;
 	}
 
+	/**
+	 * This function inherits the performance semantics of the underlying backend.
+	 */
 	template<
 		Descriptor descr = descriptors::no_operation,
 		typename DataType, typename Coords,
 		typename T
 	>
 	RC set(
-		Vector< DataType, hyperdags, Coords > &x, const T val,
+		Vector< DataType, hyperdags, Coords > &x,
+		const T val,
 		const Phase &phase = EXECUTE,
 		const typename std::enable_if<
 			!grb::is_object< DataType >::value &&
@@ -219,6 +235,9 @@ namespace grb {
 		return ret;
 	}
 
+	/**
+	 * This function inherits the performance semantics of the underlying backend.
+	 */
 	template<
 		Descriptor descr = descriptors::no_operation,
 		typename DataType, typename MaskType, typename T,
@@ -261,6 +280,9 @@ namespace grb {
 		return ret;
 	}
 
+	/**
+	 * This function inherits the performance semantics of the underlying backend.
+	 */
 	template<
 		Descriptor descr = descriptors::no_operation,
 		typename OutputType, typename MaskType, typename InputType,
@@ -302,6 +324,9 @@ namespace grb {
 		return ret;
 	}
 
+	/**
+	 * This function inherits the performance semantics of the underlying backend.
+	 */
 	template<
 		Descriptor descr = descriptors::no_operation,
 		typename OutputType, typename InputType, typename Coords
@@ -332,16 +357,22 @@ namespace grb {
 		return ret;
 	}
 
+	/**
+	 * This function inherits the performance semantics of the underlying backend.
+	 */
 	template<
 		Descriptor descr = descriptors::no_operation,
 		typename OutputType, typename InputType,
-		typename RIT1, typename CIT1, typename NIT1,
-		typename RIT2, typename CIT2, typename NIT2
+		typename RIT, typename CIT, typename NIT
 	>
 	RC set(
-		Matrix< OutputType, hyperdags, RIT1, CIT1, NIT1 > &C,
-		const Matrix< InputType, hyperdags, RIT2, CIT2, NIT2 > &A,
-		const Phase &phase = EXECUTE
+		Matrix< OutputType, hyperdags, RIT, CIT, NIT > &C,
+		const Matrix< InputType, hyperdags, RIT, CIT, NIT > &A,
+		const Phase &phase = EXECUTE,
+		const typename std::enable_if<
+			!grb::is_object< OutputType >::value &&
+			!grb::is_object< InputType >::value,
+		void >::type * const = nullptr
 	) {
 		const RC ret = set< descr >(
 			internal::getMatrix( C ), internal::getMatrix( A ), phase
@@ -364,17 +395,24 @@ namespace grb {
 		return ret;
 	}
 
+	/**
+	 * This function inherits the performance semantics of the underlying backend.
+	 */
 	template<
 		Descriptor descr = descriptors::no_operation,
 		typename OutputType, typename InputType1, typename InputType2,
-		typename RIT1, typename CIT1, typename NIT1,
-		typename RIT2, typename CIT2, typename NIT2
+		typename RIT, typename CIT, typename NIT
 	>
 	RC set(
-		Matrix< OutputType, hyperdags, RIT1, CIT1, NIT1 > &C,
-		const Matrix< InputType1, hyperdags, RIT2, CIT2, NIT2 > &A,
+		Matrix< OutputType, hyperdags, RIT, CIT, NIT > &C,
+		const Matrix< InputType1, hyperdags, RIT, CIT, NIT > &A,
 		const InputType2 &val,
-		const Phase &phase = EXECUTE
+		const Phase &phase = EXECUTE,
+		const typename std::enable_if<
+			!grb::is_object< OutputType >::value &&
+			!grb::is_object< InputType1 >::value &&
+			!grb::is_object< InputType2 >::value
+		>::type * const = nullptr
 	) {
 		const RC ret = set< descr >(
 			internal::getMatrix( C ), internal::getMatrix( A ),
@@ -402,6 +440,9 @@ namespace grb {
 		return ret;
 	}
 
+	/**
+	 * This function inherits the performance semantics of the underlying backend.
+	 */
 	template< typename DataType, typename Coords >
 	RC clear( Vector< DataType, hyperdags, Coords > &x ) {
 		const RC ret = clear( internal::getVector( x ) );
@@ -419,6 +460,9 @@ namespace grb {
 		return ret;
 	}
 
+	/**
+	 * This function inherits the performance semantics of the underlying backend.
+	 */
 	template< typename InputType, typename RIT, typename CIT, typename NIT >
 	RC clear( Matrix< InputType, hyperdags, RIT, CIT, NIT > &A ) noexcept {
 		const RC ret = clear( internal::getMatrix(A) );
@@ -485,6 +529,9 @@ namespace grb {
 
 	// resizers:
 
+	/**
+	 * This function inherits the performance semantics of the underlying backend.
+	 */
 	template< typename InputType, typename Coords >
 	RC resize(
 		Vector< InputType, hyperdags, Coords > &x,
@@ -509,6 +556,9 @@ namespace grb {
 		return ret;
 	}
 
+	/**
+	 * This function inherits the performance semantics of the underlying backend.
+	 */
 	template< typename InputType, typename RIT, typename CIT, typename NIT >
 	RC resize(
 		Matrix< InputType, hyperdags, RIT, CIT, NIT > &A,
@@ -535,10 +585,13 @@ namespace grb {
 
 	// nonblocking I/O:
 
+	/**
+	 * This function inherits the performance semantics of the underlying backend.
+	 */
 	template<>
 	RC wait< hyperdags >();
 
-	/** \internal Dispatch to base wait implementation */
+	/** Dispatches to the base wait implementation; i.e., ignores its arguments! */
 	template<
 		typename InputType, typename Coords,
 		typename ... Args
@@ -551,7 +604,7 @@ namespace grb {
 		return wait( args... );
 	}
 
-	/** \internal Dispatch to base wait implementation */
+	/** Dispatches to the base wait implementation; i.e., ignores its arguments! */
 	template<
 		typename InputType, typename RIT, typename CIT, typename NIT,
 		typename... Args

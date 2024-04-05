@@ -150,6 +150,59 @@ namespace grb {
 			valbuf = const_cast< InputType * >( A.valbuf[ k ] );
 		}
 
+		/**
+		 * \internal
+		 * Retrieves the row-wise SPA stack interpreted as a row index array of size m
+		 * \endinternal
+		 */
+		template< typename InputType, typename RIT, typename CIT, typename NIT >
+		RIT * getMatrixRowBuffer(
+			const grb::Matrix< InputType, reference, RIT, CIT, NIT > &A
+		) noexcept {
+			assert( internal::Coordinates< reference >::bufferSize( A.m ) >=
+				A.m * sizeof( RIT ) );
+			return reinterpret_cast< RIT * >(A.coorArr[ 2 ]);
+		}
+
+		/**
+		 * \internal
+		 * Retrieves the column-wise SPA stack interpreted as a buffer of row indices
+		 * of size n + 1
+		 * \endinternal
+		 */
+		template< typename InputType, typename RIT, typename CIT, typename NIT >
+		CIT * getMatrixColBuffer(
+			const grb::Matrix< InputType, reference, RIT, CIT, NIT > &A
+		) noexcept {
+			assert( internal::Coordinates< reference >::bufferSize( A.n ) >=
+				A.n * sizeof( CIT ) );
+			return reinterpret_cast< CIT * >(A.coorArr[ 3 ]);
+		}
+
+		/**
+		 * \internal
+		 * Retrieves the row-wise SPA value buffer.
+		 * \endinternal
+		 */
+		template< typename InputType, typename RIT, typename CIT, typename NIT >
+		InputType * getMatrixRowValueBuffer(
+			const grb::Matrix< InputType, reference, RIT, CIT, NIT > &A
+		) noexcept {
+			return A.valbuf[ 0 ];
+		}
+
+		/**
+		 * \internal
+		 * Retrieves the row-wise SPA value buffer.
+		 * \endinternal
+		 */
+		template< typename InputType, typename RIT, typename CIT, typename NIT >
+		InputType * getMatrixColValueBuffer(
+			const grb::Matrix< InputType, reference, RIT, CIT, NIT > &A
+		) noexcept {
+			return A.valbuf[ 1 ];
+		}
+
 		template<
 			Descriptor descr,
 			bool input_dense, bool output_dense,
@@ -897,6 +950,7 @@ namespace grb {
 	) noexcept;
 
 	template<
+		Descriptor,
 		class ActiveDistribution, typename Func, typename DataType,
 		typename RIT, typename CIT, typename NIT
 	>
@@ -933,7 +987,7 @@ namespace grb {
 			"Cannot create an ALP matrix of ALP objects!" );
 
 		/* *********************
-			BLAS2 friends
+			I/O friends
 		   ********************* */
 
 		template< typename DataType, typename RIT, typename CIT, typename NIT >
@@ -962,14 +1016,45 @@ namespace grb {
 			const size_t
 		) noexcept;
 
+		template< typename InputType, typename RIT, typename CIT, typename NIT >
+		friend uintptr_t getID(
+			const Matrix< InputType, reference, RIT, CIT, NIT > &
+		);
+
 		template<
-			class ActiveDistribution, typename Func, typename DataType,
-			typename RIT, typename CIT, typename NIT
+			Descriptor descr, typename InputType,
+			typename RIT, typename CIT, typename NIT,
+			typename fwd_iterator
+		>
+		friend RC buildMatrixUnique(
+			Matrix< InputType, reference, RIT, CIT, NIT > &,
+			fwd_iterator, const fwd_iterator,
+			const IOMode
+		);
+
+		/* *********************
+			BLAS2 friends
+		   ********************* */
+
+		template<
+			Descriptor,
+			typename Func,
+			typename DataType1, typename RIT, typename CIT, typename NIT
 		>
 		friend RC eWiseLambda(
 			const Func,
+			const Matrix< DataType1, reference, RIT, CIT, NIT > &
+		);
+
+		template<
+			Descriptor,
+			class ActiveDistribution, typename Func, typename DataType,
+			typename RIT, typename CIT, typename NIT
+		>
+		friend RC internal::eWiseLambda(
+			const Func,
 			const Matrix< DataType, reference, RIT, CIT, NIT > &,
-			const size_t, const size_t
+			const size_t, const size_t, const size_t, const size_t
 		);
 
 		template<
@@ -1026,19 +1111,8 @@ namespace grb {
 		);
 
 		/* ********************
-			IO friends
+		     Internal friends
 		   ******************** */
-
-		template<
-			Descriptor descr, typename InputType,
-			typename RIT, typename CIT, typename NIT,
-			typename fwd_iterator
-		>
-		friend RC buildMatrixUnique(
-			Matrix< InputType, reference, RIT, CIT, NIT > &,
-			fwd_iterator, const fwd_iterator,
-			const IOMode
-		);
 
 		friend internal::Compressed_Storage< D, RowIndexType, NonzeroIndexType > &
 		internal::getCRS<>(
@@ -1098,13 +1172,24 @@ namespace grb {
 		) noexcept;
 
 		template< typename InputType, typename RIT, typename CIT, typename NIT >
-		friend uintptr_t getID(
-			const Matrix< InputType, reference, RIT, CIT, NIT > &
-		);
+		friend RIT * internal::getMatrixRowBuffer(
+			const grb::Matrix< InputType, reference, RIT, CIT, NIT > &A
+		) noexcept;
 
-		/* *************************
-		   Friend internal functions
-		   ************************* */
+		template< typename InputType, typename RIT, typename CIT, typename NIT >
+		friend CIT * internal::getMatrixColBuffer(
+			const grb::Matrix< InputType, reference, RIT, CIT, NIT > &A
+		) noexcept;
+
+		template< typename InputType, typename RIT, typename CIT, typename NIT >
+		friend InputType * internal::getMatrixRowValueBuffer(
+			const grb::Matrix< InputType, reference, RIT, CIT, NIT > &A
+		) noexcept;
+
+		template< typename InputType, typename RIT, typename CIT, typename NIT >
+		friend InputType * internal::getMatrixColValueBuffer(
+			const grb::Matrix< InputType, reference, RIT, CIT, NIT > &A
+		) noexcept;
 
 		friend const grb::Matrix<
 			D, reference,
@@ -1165,7 +1250,7 @@ namespace grb {
 					"handle at present. Please submit a bug report."
 				);
 				// compute and return
-				return std::max( (std::max( m, n ) + 1) * globalBufferUnitSize,
+				return std::max( (m + n + 2) * globalBufferUnitSize,
 #ifdef _H_GRB_REFERENCE_OMP_MATRIX
 					config::OMP::threads() * config::CACHE_LINE_SIZE::value() *
 						utils::SizeOf< D >::value

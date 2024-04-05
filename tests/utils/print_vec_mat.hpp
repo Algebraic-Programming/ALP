@@ -68,17 +68,18 @@ template< typename T, enum grb::Backend B >
 void print_vector(
 	const grb::Vector< T, B > &x,
 	size_t limit = 10UL,
-	const char * const head = nullptr
+	const std::string &head = "",
+	std::ostream& os = std::cout
 ) {
 	size_t x_size = grb::size( x );
 	limit = limit == 0 ? x_size : std::min( x_size, limit );
 
-	if( head != nullptr ) {
-		std::cout << "<<< " << head << " >>>" << std::endl;
+	if( !head.empty() ) {
+		os << "<<< " << head << " >>>" << std::endl;
 	}
-	std::cout << "=== VECTOR ===" << std::endl;
+	os << "=== VECTOR ===" << std::endl;
 	if( x_size == 0 ) {
-		std::cout << "(size 0 vector)";
+		os << "(size 0 vector)";
 	}
 
 	typename grb::Vector< T, B >::const_iterator it = x.cbegin();
@@ -86,10 +87,10 @@ void print_vector(
 
 	size_t previous_nnz = it == end ? limit : it->first;
 	if( previous_nnz == 0 ) {
-		std::cout << it->second;
+		os << it->second;
 		(void) ++it;
 	} else if( x_size > 0 ) {
-		std::cout << 0;
+		os << 0;
 	}
 	size_t next_nnz, position;
 	next_nnz = it == end ? limit : it->first;
@@ -98,18 +99,18 @@ void print_vector(
 		size_t zero_streak = std::min( next_nnz, limit );
 		// print sequence of zeroes
 		for( ; position < zero_streak; ++position ) {
-			std::cout << ", ";
-			std::cout << 0;
+			os << ", ";
+			os << 0;
 		}
 		if( position < limit ) {
-			std::cout << ", ";
-			std::cout << it->second;
+			os << ", ";
+			os << it->second;
 			(void) ++position;
 			(void) ++it;
 			next_nnz = it->first;
 		}
 	}
-	std::cout << std::endl << "==============" << std::endl << std::endl;
+	os << std::endl << "==============" << std::endl << std::endl;
 }
 
 /**
@@ -131,24 +132,25 @@ template< typename T, enum grb::Backend B >
 void print_vector(
 	const grb::PinnedVector< T, B > &v,
 	const size_t limit = 10UL,
-	const char * const head = nullptr
+	const std::string &head = "",
+	std::ostream& os = std::cout
 ) {
 	static_assert( !std::is_same< T, void >::value,
 		"Cannot print the values of a void vector"
 	);
-	if( head != nullptr ) {
-		std::cout << "<<< " << head << " >>>" << std::endl;
+	if( !head.empty() ) {
+		os << "<<< " << head << " >>>" << std::endl;
 	}
-	std::cout << "First " << limit << " nonzeroes of x are: ( ";
+	os << "First " << limit << " nonzeroes of x are: ( ";
 	size_t k = 0;
 	if( k < v.nonzeroes() && limit > 0 ) {
-		std::cout << v.getNonzeroValue( k++ );
+		os << v.getNonzeroValue( k++ );
 	}
 	for( size_t nnzs = 1; nnzs < limit && k < v.nonzeroes(); k++ ) {
-		std::cout << ", " << v.getNonzeroValue( k );
+		os << ", " << v.getNonzeroValue( k );
 		(void) ++nnzs;
 	}
-	std::cout << " )" << std::endl;
+	os << " )" << std::endl;
 }
 
 /**
@@ -256,7 +258,8 @@ template<
 void print_matrix(
 	const grb::Matrix< T, B > &mat,
 	const size_t limit = 0,
-	const char * const head = nullptr
+	const std::string &head = "",
+	std::ostream& os = std::cout
 ) {
 	const size_t rows = grb::nrows( mat );
 	const size_t cols = grb::ncols( mat );
@@ -274,25 +277,25 @@ void print_matrix(
 		}
 	}
 
-	if( head != nullptr ) {
+	if( !head.empty() ) {
 		std::cout << "<<< " << head << " >>>" << std::endl;
 	}
-	std::cout << "=== MATRIX ===" << std::endl;
-	std::cout << "Size: " << rows << " x " << cols << std::endl;
+	os << "=== MATRIX ===" << std::endl;
+	os << "Size: " << rows << " x " << cols << std::endl;
 	for( size_t i = 0; i < row_limit; ++i ) {
 		for( size_t j = 0; j < col_limit; ++j ) {
 			bool assigned = dump[ i ][ j ].first;
 			auto val = dump[ i ][ j ].second;
 			if( assigned ) {
-				std::cout << val;
+				os << val;
 			} else {
-				std::cout << "_";
+				os << "_";
 			}
-			std::cout << " ";
+			os << " ";
 		}
-		std::cout << std::endl;
+		os << std::endl;
 	}
-	std::cout << "==============" << std::endl << std::endl;
+	os << "==============" << std::endl << std::endl;
 }
 
 /**
@@ -322,7 +325,8 @@ template<
 void print_matrix(
 	const grb::Matrix< T, B > &mat,
 	size_t limit = 0,
-	const char * head = nullptr
+	const std::string &head = "",
+	std::ostream& os = std::cout
 ) {
 	const size_t rows = grb::nrows( mat );
 	const size_t cols = grb::ncols( mat );
@@ -336,23 +340,23 @@ void print_matrix(
 		assigned[ row ][ col ] = ( row < row_limit && col < col_limit );
 	}
 
-	if( head != nullptr ) {
-		std::cout << "<<< " << head << " >>>" << std::endl;
+	if( !head.empty() ) {
+		os << "<<< " << head << " >>>" << std::endl;
 	}
-	std::cout << "=== PATTERN-MATRIX ===" << std::endl;
-	std::cout << "Size: " << rows << " x " << cols << std::endl;
+	os << "=== PATTERN-MATRIX ===" << std::endl;
+	os << "Size: " << rows << " x " << cols << std::endl;
 	for( size_t i = 0; i < row_limit; ++i ) {
 		for( size_t j = 0; j < col_limit; ++j ) {
 			if( assigned[ i ][ j ] ) {
-				std::cout << "X";
+				os << "X";
 			} else {
-				std::cout << "_";
+				os << "_";
 			}
-			std::cout << " ";
+			os << " ";
 		}
-		std::cout << std::endl;
+		os << std::endl;
 	}
-	std::cout << "==============" << std::endl << std::endl;
+	os << "==============" << std::endl << std::endl;
 }
 
 namespace {

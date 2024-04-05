@@ -36,6 +36,10 @@
 #include <graphblas/descriptors.hpp>
 #include <graphblas/utils/iscomplex.hpp>
 
+#ifdef _DEBUG
+ #include <iostream>
+#endif
+
 
 namespace grb {
 
@@ -370,6 +374,39 @@ namespace grb {
 			const bool &assigned,
 			const void * const,
 			const size_t
+		) {
+			// set default mask to false
+			bool ret = assigned;
+			// check whether we should return the inverted value
+			if( descriptor & descriptors::invert_mask ) {
+				return !ret;
+			} else {
+				return ret;
+			}
+		}
+
+		/** Specialisation for void-valued matrice's masks */
+		template< Descriptor descriptor, typename MatrixDataType, typename ValuesType >
+		static bool interpretMatrixMask(
+			const bool &assigned,
+			const ValuesType * const values,
+			const size_t k,
+			typename std::enable_if<
+				!std::is_void< MatrixDataType >::value
+			>::type * = nullptr
+		) {
+			return interpretMask< descriptor, ValuesType >( assigned, values, k );
+		}
+
+		/** Specialisation for void-valued matrice's masks */
+		template< Descriptor descriptor, typename MatrixDataType, typename ValuesType >
+		static bool interpretMatrixMask(
+			const bool &assigned,
+			const ValuesType * const,
+			const size_t,
+			typename std::enable_if<
+				std::is_void< MatrixDataType >::value
+			>::type * = nullptr
 		) {
 			// set default mask to false
 			bool ret = assigned;

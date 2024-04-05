@@ -66,6 +66,10 @@
 		"************************************************************************" \
 		"**********************\n" );
 
+#ifdef _DEBUG
+ #define _BSP1D_IO_DEBUG
+#endif
+
 
 namespace grb {
 
@@ -446,21 +450,28 @@ namespace grb {
 				std::is_convertible< size_t, DataType >::value,
 			void >::type * const = nullptr
 		) {
+			const size_t n = size( x );
 			if( descr & descriptors::use_index ) {
-				const internal::BSP1D_Data &data = internal::grb_BSP1D.cload();
-				const auto p = data.P;
-				const auto s = data.s;
-				const auto n = grb::size( x );
-				if( old_nnz < size( x ) ) {
-					internal::getCoordinates( internal::getLocal( x ) ).assignAll();
+				// make it ok to call eWiseLambda
+				if( !((descr & descriptors::dense) || old_nnz == n) ) {
+					if( old_nnz < n ) {
+						internal::getCoordinates( internal::getLocal( x ) ).assignAll();
+					}
+					internal::setDense( x );
 				}
-				return eWiseLambda( [ &x, &n, &s, &p ]( const size_t i ) {
-					x[ i ] = internal::Distribution< BSP1D >::local_index_to_global(
-							i, n, s, p
-						);
+				// set-to-index via eWiseLambda
+				return eWiseLambda( [ &x ]( const size_t i ) {
+						x[ i ] = i;
 					}, x );
 			} else {
-				return set< descr >( internal::getLocal( x ), val );
+				// otherwise directly delegate
+				RC ret = set< descr >( internal::getLocal( x ), val );
+				if( !((descr & descriptors::dense) || old_nnz == n) ) {
+					if( ret == SUCCESS ) {
+						internal::setDense( x );
+					}
+				}
+				return ret;
 			}
 		}
 
@@ -478,7 +489,11 @@ namespace grb {
 		) {
 			static_assert( !(descr & descriptors::use_index ),
 				"use_index requires casting from size_t to the vector value type" );
-			return set< descr >( internal::getLocal( x ), val );
+			RC ret = set< descr >( internal::getLocal( x ), val );
+			if( ret == SUCCESS ) {
+				internal::setDense( x );
+			}
+			return ret;
 		}
 
 	} // end namespace internal
@@ -519,7 +534,7 @@ namespace grb {
 				if( clear_rc != SUCCESS ) {
 					return PANIC;
 				} else {
-					return FAILED;
+					return ILLEGAL;
 				}
 			}
 		}
@@ -532,13 +547,7 @@ namespace grb {
 
 		// dispatch
 		assert( phase == EXECUTE );
-		RC ret = internal::set_handle_use_index< descr >( x, old_nnz, val );
-		if( ret == SUCCESS ) {
-			internal::setDense( x );
-		}
-
-		// done
-		return ret;
+		return internal::set_handle_use_index< descr >( x, old_nnz, val );
 	}
 
 	/**
@@ -560,11 +569,25 @@ namespace grb {
 			!grb::is_object< T >::value, void
 		>::type * const = nullptr
 	) {
+		// static sanity check
+		NO_CAST_ASSERT( ( !(descr & descriptors::no_casting) ||
+				std::is_same< DataType, T >::value ),
+			"grb::set (Vector, at index, BSP1D)",
+			"called with a value type that does not match that of the given vector"
+		);
+
+		// dynamic sanity check
 		const size_t n = size( x );
-		// sanity check
 		if( i >= n ) {
 			return MISMATCH;
 		}
+		if( descr & descriptors::dense ) {
+			if( nnz( x ) < n ) {
+				return ILLEGAL;
+			}
+		}
+
+		assert( n > 0 );
 
 		// prepare return code and get access to BSP1D data
 		RC ret = SUCCESS;
@@ -598,18 +621,22 @@ namespace grb {
 			if( ret == SUCCESS ) {
 				// on successful local resize, sync new global capacity
 				ret = internal::updateCap( x );
-			} else if( ret == FAILED ) {
-				// on any failed local resize, clear vector
-				const RC clear_rc = clear( x );
-				if( clear_rc != SUCCESS ) { ret = PANIC; }
-			} else {
-				assert( ret == PANIC );
+			} else if( ret != OUTOFMEM && ret != PANIC ) {
+				std::cerr << "Error: unexpected error code in grb::setElement (BSP1D): "
+					<< grb::toString( ret ) << ". Please submit a bug report.\n";
+				ret = PANIC;
 			}
 		} else {
 			assert( phase == EXECUTE );
 			if( ret == SUCCESS ) {
 				// on successful execute, sync new nnz count
 				ret = internal::updateNnz( x );
+			} else if( ret == ILLEGAL ) {
+				ret = clear( x );
+			} else if( ret != PANIC ) {
+				std::cerr << "Error: unexpected error code in grb::setElement (BSP1D): "
+					<< grb::toString( ret ) << ". Please submit a bug report.\n";
+				ret = PANIC;
 			}
 		}
 
@@ -645,7 +672,7 @@ namespace grb {
 				if( clear_rc != SUCCESS ) {
 					return PANIC;
 				} else {
-					return FAILED;
+					return ILLEGAL;
 				}
 			}
 		}
@@ -743,7 +770,7 @@ namespace grb {
 			assert( phase == EXECUTE );
 			if( ret == SUCCESS ) {
 				ret = internal::updateNnz( x );
-			} else if( ret == FAILED ) {
+			} else if( ret == ILLEGAL ) {
 				const RC clear_rc = clear( x );
 				if( clear_rc != SUCCESS ) {
 					ret = PANIC;
@@ -767,7 +794,11 @@ namespace grb {
 		Vector< OutputType, BSP1D, Coords > &x,
 		const Vector< MaskType, BSP1D, Coords > &mask,
 		const InputType &y,
-		const Phase &phase = EXECUTE
+		const Phase &phase = EXECUTE,
+		const typename std::enable_if<
+			!grb::is_object< OutputType >::value &&
+			!grb::is_object< MaskType >::value
+		>::type * const = nullptr
 	) {
 		// check dispatch to simpler variant
 		if( size( mask ) == 0 ) {
@@ -792,7 +823,9 @@ namespace grb {
 		// all OK, try to do assignment
 		RC ret = set< descr >(
 			internal::getLocal( x ),
-			internal::getLocal( mask ), y, phase
+			internal::getLocal( mask ),
+			y,
+			phase
 		);
 
 		if( collectives< BSP1D >::allreduce( ret, operators::any_or< RC >() )
@@ -809,7 +842,7 @@ namespace grb {
 			assert( phase == EXECUTE );
 			if( ret == SUCCESS ) {
 				ret = internal::updateNnz( x );
-			} else if( ret == FAILED ) {
+			} else if( ret == ILLEGAL ) {
 				const RC clear_rc = clear( x );
 				if( clear_rc != SUCCESS ) {
 					ret = PANIC;
@@ -818,6 +851,241 @@ namespace grb {
 				assert( ret == PANIC );
 			}
 		}
+
+		// done
+		return ret;
+	}
+
+	/**
+	 * The implementation can trivially rely on the final backend, however, the
+	 * capacity or nonzero count of the output can differ. The below implementation
+	 * mostly deals with that logic. The logic can generally not be avoided for
+	 * this primitive, which means that at least one synchronisation overhead is
+	 * mandatory.
+	 */
+	template<
+		Descriptor descr = descriptors::no_operation,
+		typename OutputType, typename RIT, typename CIT, typename NIT,
+		typename InputType
+	>
+	RC set(
+		Matrix< OutputType, BSP1D, RIT, CIT, NIT  > &C,
+		const Matrix< InputType, BSP1D, RIT, CIT, NIT > &A,
+		const Phase &phase = EXECUTE,
+		const typename std::enable_if<
+			!grb::is_object< OutputType >::value &&
+			!grb::is_object< InputType >::value,
+		void >::type * const = nullptr
+	) noexcept {
+		// static checks
+		NO_CAST_ASSERT( ( !(descr & descriptors::no_casting) ||
+				std::is_same< OutputType, InputType >::value
+			), "grb::set (matrix, matrix )",
+			"called with non-matching value types"
+		);
+#ifdef _BSP1D_IO_DEBUG
+		std::cout << "Called grb::set( matrix, matrix ) (BSP1D)\n";
+#endif
+		const size_t m = nrows( C );
+		const size_t n = ncols( C );
+
+		// dynamic checks (I)
+		if( m != nrows( A ) || n != ncols( A ) ) {
+			return MISMATCH;
+		}
+
+		// catch trivial case
+		if( m == 0 || n == 0 ) { return SUCCESS; }
+
+		// dynamic checks (II)
+		if( getID( A ) == getID( C ) ) {
+			return ILLEGAL;
+		}
+
+#ifdef _BSP1D_IO_DEBUG
+		std::cout << "\t delegating to final backend\n";
+#endif
+		RC ret = SUCCESS;
+		{
+			const auto &local_A = internal::getLocal( A );
+			const size_t local_m = nrows( local_A );
+			const size_t local_n = ncols( local_A );
+			if( local_m > 0 && local_n > 0 ) {
+				ret = set< descr >( internal::getLocal( C ), local_A, phase );
+			}
+		}
+
+		// synchronise error status
+		if( collectives< BSP1D >::allreduce( ret, operators::any_or< RC >() )
+			!= SUCCESS
+		) {
+			return PANIC;
+		}
+
+		// global logic for handling both success and error cases
+		if( phase == RESIZE ) {
+			if( ret == SUCCESS ) {
+				ret = internal::updateCap( C );
+			}
+		} else {
+			assert( phase == EXECUTE );
+			if( ret == SUCCESS ) {
+				ret = internal::updateNnz( C );
+			} else if( ret == ILLEGAL ) {
+				ret = clear( C );
+			} else {
+				std::cerr << "Error: unexpected error code in grb::set( matrix, matrix ) "
+					"(BSP1D). Please submit a bug report.\n";
+				assert( false );
+				ret = PANIC;
+			}
+		}
+
+		// done
+		return ret;
+	}
+
+	/**
+	 * The implementation can trivially rely on the final backend, however, the
+	 * capacity or nonzero count of the output can in some cases differ. The below
+	 * implementation mostly deals with that logic.
+	 */
+	template<
+		Descriptor descr = descriptors::no_operation,
+		typename DataType, typename RIT, typename CIT, typename NIT,
+		typename MaskType,
+		typename ValueType = DataType
+	>
+	RC set(
+		Matrix< DataType, BSP1D, RIT, CIT, NIT > &C,
+		const Matrix< MaskType, BSP1D, RIT, CIT, NIT > &mask,
+		const ValueType& val,
+		const Phase &phase = EXECUTE,
+		const typename std::enable_if<
+			!grb::is_object< DataType >::value &&
+			!grb::is_object< ValueType >::value &&
+			!grb::is_object< MaskType >::value
+		>::type * const = nullptr
+	) noexcept {
+		// static checks
+		NO_CAST_ASSERT( ( !(descr & descriptors::no_casting) ||
+				std::is_same< ValueType, DataType >::value
+			), "grb::set( matrix, mask, value )",
+			"called with non-matching value types"
+		);
+		NO_CAST_ASSERT(
+			( !(descr & descriptors::no_casting) ||
+				std::is_same< MaskType, bool >::value ),
+			"grb::set( matrix, mask, value )",
+			"called with non-Boolean mask value type"
+		);
+		static_assert( !( (descr & descriptors::structural) &&
+				(descr & descriptors::invert_mask)
+			), "Primitives with matrix outputs may not employ structurally inverted "
+			"masking"
+		);
+#ifdef _BSP1D_IO_DEBUG
+		std::cout << "Called grb::set( matrix, mask, value ) (BSP1D)\n";
+#endif
+		const size_t m = nrows( C );
+		const size_t n = ncols( C );
+
+		// dynamic checks (I)
+		if( m != nrows( mask ) || n != ncols( mask ) ) {
+			return MISMATCH;
+		}
+
+		// catch trivial case
+		if( m == 0 || n == 0 ) { return SUCCESS; }
+
+		// dynamic checks (II)
+		if( nrows( mask ) == 0 || ncols( mask ) == 0 ) {
+			return ILLEGAL;
+		}
+
+#ifdef _BSP1D_IO_DEBUG
+		std::cout << "\t delegating to final backend\n";
+#endif
+		RC ret = SUCCESS;
+		// Take care that local matrices may be empty, even if the global matrix is
+		// not. Processes with empty local matrices will not delegate (no-op).
+		{
+			auto &local_C = internal::getLocal( C );
+			const auto &local_mask = internal::getLocal( mask );
+			const size_t local_m = nrows( local_C );
+			const size_t local_n = ncols( local_C );
+			assert( local_m == nrows( local_mask ) );
+			assert( local_n == ncols( local_mask ) );
+			if( local_m > 0 && local_n > 0 ) {
+				ret = set< descr >( local_C, local_mask, val, phase );
+			}
+		}
+
+		// in the self-masked case, there is no way an error could occur
+		if( (descr & descriptors::structural) && getID( C ) == getID( mask ) ) {
+#ifdef _BSP1D_IO_DEBUG
+			std::cout << "\t structural self-masking detected, which allows trivial "
+				"exit\n"; // since the nnz nor capacity would never change
+#endif
+			assert( ret == SUCCESS );
+			return ret;
+		}
+
+		// in all other cases, in either mode (resize or execute), we must check for
+		// errors
+#ifdef _BSP1D_IO_DEBUG
+		std::cout << "\t all-reducing error code\n";
+#endif
+		if( collectives< BSP1D >::allreduce( ret, operators::any_or< RC >() )
+			!= SUCCESS
+		) {
+			return PANIC;
+		}
+
+#ifdef _BSP1D_IO_DEBUG
+		std::cout << "\t all-reduced error code is " << toString( ret ) << "\n";
+#endif
+		if( phase == RESIZE ) {
+			if( ret == SUCCESS ) {
+#ifdef _BSP1D_IO_DEBUG
+				std::cout << "\t resize phase detected -- synchronising capacity\n";
+#endif
+				ret = internal::updateCap( C );
+				if( ret != SUCCESS ) {
+					std::cerr << "Error updating capacity: " << toString( ret ) << "\n";
+				}
+			}
+		} else {
+			assert( phase == EXECUTE );
+			if( ret == SUCCESS ) {
+#ifdef _BSP1D_IO_DEBUG
+				std::cout << "\t execute phase detected -- synchronising nnz count\n";
+#endif
+				ret = internal::updateNnz( C );
+				if( ret != SUCCESS ) {
+					std::cerr << "Error updating output number of nonzeroes: "
+						<< toString( ret ) << "\n";
+				}
+			} else if( ret == ILLEGAL ) {
+#ifdef _BSP1D_IO_DEBUG
+				std::cout << "\t delegate returns ILLEGAL, clearing output\n";
+#endif
+				const RC clear_rc = clear( C );
+				if( clear_rc != SUCCESS ) {
+					ret = PANIC;
+				}
+			} else {
+				if( ret != PANIC ) {
+					std::cerr << "Warning: unexpected error code in grb::set( matrix, mask, "
+						<< "value ) (BSP1D). Please submit a bug report.\n";
+				}
+				assert( ret == PANIC );
+			}
+		}
+
+#ifdef _BSP1D_IO_DEBUG
+		std::cout << "\t done; returning " << toString( ret ) << "\n";
+#endif
 
 		// done
 		return ret;
@@ -1089,18 +1357,21 @@ namespace grb {
 			typename VType
 		>
 		void handleSingleNonzero(
-				const BSP1D_Data &data,
-				const fwd_iterator &start,
-				const IOMode mode,
-				const size_t &rows,
-				const size_t &cols,
-				std::vector< internal::NonzeroStorage< IType, JType, VType > > &cache,
+			const BSP1D_Data &data,
+			const fwd_iterator &start,
+			const IOMode mode,
+			const size_t &rows,
+			const size_t &cols,
+			std::vector< internal::NonzeroStorage< IType, JType, VType > > &cache,
+			std::vector<
 				std::vector<
-					std::vector<
-						internal::NonzeroStorage< IType, JType, VType >
-					>
-				> &outgoing
+					internal::NonzeroStorage< IType, JType, VType >
+				>
+			> &outgoing
 		) {
+#ifdef _BSP1D_IO_DEBUG
+			std::cout << "\t\t process " << data.s << " is in handleSingleNonzero\n";
+#endif
 			// compute process-local indices (even if remote, for code readability)
 			const size_t global_row_index = start.i();
 			const size_t row_pid =
@@ -1138,16 +1409,17 @@ namespace grb {
 					column_offset + column_local_index
 				);
 #ifdef _DEBUG
-				std::cout << "Translating nonzero at ( " << start.i() << ", " << start.j()
-					<< " ) to one at ( " << row_local_index << ", "
+				std::cout << "\t\t\t translating nonzero at ( " << start.i() << ", "
+					<< start.j() << " ) to one at ( " << row_local_index << ", "
 					<< ( column_offset + column_local_index ) << " ) at PID "
 					<< row_pid << "\n";
 #endif
 			} else if( mode == PARALLEL ) {
 #ifdef _DEBUG
-				std::cout << "Sending nonzero at ( " << start.i() << ", " << start.j()
-					<< " ) to PID " << row_pid << " at ( " << row_local_index
-					<< ", " << ( column_offset + column_local_index ) << " )\n";
+				std::cout << "\t\t\t sending nonzero at ( " << start.i() << ", "
+					<< start.j() << " ) to PID " << row_pid << " at ( "
+					<< row_local_index << ", " << (column_offset + column_local_index)
+					<< " )\n";
 #endif
 				// send original nonzero to remote owner
 				outgoing[ row_pid ].emplace_back(
@@ -1209,12 +1481,21 @@ namespace grb {
 			> &outgoing,
 			const std::forward_iterator_tag &
 		) {
+#ifdef _BSP1D_IO_DEBUG
+			std::cout << "\t\t process " << data.s
+				<< " is in populateMatrixBuildCachesImpl (forward iterator)\n";
+#endif
+
 			if( mode == PARALLEL ) {
 				outgoing.resize( data.P );
 			}
 
 			// loop over all inputs
 			for( fwd_iterator it = start; it != end; ++it ) {
+#ifdef _BSP1D_IO_DEBUG
+				std::cout << "\t\t\t process " << data.s << " caches nonzero at "
+					<< *it << "\n";
+#endif
 				// sanity check on input
 				if( utils::check_input_coordinates( it, rows, cols ) != SUCCESS ) {
 					return MISMATCH;
@@ -1259,6 +1540,10 @@ namespace grb {
 				std::random_access_iterator_tag
 			>::type
 		) {
+#ifdef _BSP1D_IO_DEBUG
+			std::cout << "\t\t process " << data.s
+				<< " is in populateMatrixBuildCachesImpl (random access iterator)\n";
+#endif
 			typedef internal::NonzeroStorage< IType, JType, VType > StorageType;
 
 			RC ret = RC::SUCCESS;
@@ -1311,11 +1596,11 @@ namespace grb {
 				if( data.s == i ) {
 					std::cout << "Process " << data.s << std::endl;
 					for( size_t j = 0; j < num_threads; j++) {
-						std::cout << "\tthread " << j << std::endl;
-							for( lpf_pid_t k = 0; k < data.P; k++) {
-								std::cout << "\t\tnum nnz " << parallel_non_zeroes_ptr[ j ][ k ].size()
-									<< std::endl;
-							}
+						std::cout << "\t thread " << j << std::endl;
+						for( lpf_pid_t k = 0; k < data.P; k++) {
+							std::cout << "\t\t num nnz " << parallel_non_zeroes_ptr[ j ][ k ].size()
+								<< std::endl;
+						}
 					}
 				}
 				const lpf_err_t lpf_err = lpf_sync( data.context, LPF_SYNC_DEFAULT );
@@ -1583,7 +1868,7 @@ namespace grb {
 
 		// get access to user process data on s and P
 		internal::BSP1D_Data &data = internal::grb_BSP1D.load();
-#ifdef _DEBUG
+#ifdef _BSP1D_IO_DEBUG
 		std::cout << "buildMatrixUnique is called from process " << data.s << " "
 			<< "out of " << data.P << " processes total.\n";
 #endif
@@ -1602,7 +1887,7 @@ namespace grb {
 		std::vector< std::vector< StorageType > > outgoing;
 		// NOTE: this copies a lot of the above methodology
 
-#ifdef _DEBUG
+#ifdef _BSP1D_IO_DEBUG
 		const size_t my_offset =
 			internal::Distribution< BSP1D >::local_offset( A._n, data.s, data.P );
 		std::cout << "Local column-wise offset at PID " << data.s << " is "
@@ -1622,11 +1907,11 @@ namespace grb {
 			return ret;
 		}
 
-#ifdef _DEBUG
+#ifdef _BSP1D_IO_DEBUG
 		for( lpf_pid_t i = 0; i < data.P; i++ ) {
 			if( data.s == i ) {
 				std::cout << "Process " << data.s << std::endl;
-				for( lpf_pid_t k = 0; k < data.P; k++) {
+				for( lpf_pid_t k = 0; mode == PARALLEL && k < data.P; k++) {
 					std::cout << "\tnum nnz " << outgoing[ k ].size() << std::endl;
 				}
 				std::cout << "\tcache size " << cache.size() << std::endl;
@@ -1685,7 +1970,7 @@ namespace grb {
 				buffer_sizet[ k ] = outgoing[ k ].size();
 				outgoing_bytes += outgoing[ k ].size() *
 					sizeof( StorageType );
-#ifdef _DEBUG
+#ifdef _BSP1D_IO_DEBUG
 				std::cout << "Process " << data.s << ", which has " << cache.size()
 					<< " local nonzeroes, sends " << buffer_sizet[ k ]
 					<< " nonzeroes to process " << k << "\n";
@@ -1733,7 +2018,7 @@ namespace grb {
 				if( k == data.s ) {
 					continue;
 				}
-#ifdef _DEBUG
+#ifdef _BSP1D_IO_DEBUG
 				std::cout << "Process " << data.s << ", which has " << cache.size()
 					<< " local nonzeroes, sends offset " << buffer_sizet[ k ]
 					<< " to process " << k << "\n";
@@ -1773,7 +2058,7 @@ namespace grb {
 							nullptr, 0,
 							&cache_slot
 						);
-#ifdef _DEBUG
+#ifdef _BSP1D_IO_DEBUG
 				std::cout << data.s << ": address " << &( cache[ 0 ] ) << " (size "
 					<< cache.size() * sizeof( StorageType )
 					<< ") binds to slot " << cache_slot << "\n";
@@ -1799,7 +2084,7 @@ namespace grb {
 						nullptr, 0,
 						&(out_slot[ k ])
 					);
-#ifdef _DEBUG
+#ifdef _BSP1D_IO_DEBUG
 				std::cout << data.s << ": address " << &( outgoing[ k ][ 0 ] ) << " (size "
 					<< outgoing[ k ].size() * sizeof( typename fwd_iterator::value_type )
 					<< ") binds to slot " << out_slot[ k ] << "\n";
@@ -1822,7 +2107,7 @@ namespace grb {
 				if( k == data.s ) {
 					continue;
 				}
-#ifdef _DEBUG
+#ifdef _BSP1D_IO_DEBUG
 				for( size_t s = 0; ret == SUCCESS && s < data.P; ++s ) {
 					if( s == data.s ) {
 						std::cout << data.s << ": lpf_put( ctx, "
@@ -1884,7 +2169,7 @@ namespace grb {
 			}
 		}
 
-#ifdef _DEBUG
+#ifdef _BSP1D_IO_DEBUG
 		std::cout << "Dimensions at PID " << data.s << ": "
 			<< "( " << A._m << ", " << A._n << " ). "
 			<< "Locally cached: " << cache.size() << "\n";
@@ -1904,7 +2189,7 @@ namespace grb {
 			assert( nnz( A._local ) == cache.size() );
 		}
 
-#ifdef _DEBUG
+#ifdef _BSP1D_IO_DEBUG
 		std::cout << "Number of nonzeroes at the local matrix at PID " << data.s
 			<< " is " << nnz( A._local ) << "\n";
 #endif

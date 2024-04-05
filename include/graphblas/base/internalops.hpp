@@ -2761,7 +2761,7 @@ namespace grb {
 					 *               initialised.
 					 * @param[out] c The output. Must be pre-allocated.
 					 *
-					 * At the end of the operation, \f$ c = \conjugate_mul\{a,b\} \f$.
+					 * At the end of the operation, \f$ c = \bar{ab} \f$.
 					 */
 					static void apply(
 						const IN1 * __restrict__ const a,
@@ -2836,6 +2836,7 @@ namespace grb {
 					/** The output domain. */
 					typedef typename OP::result_type D3;
 
+
 				public:
 
 					/** @return Whether this operator is mathematically associative. */
@@ -2868,7 +2869,10 @@ namespace grb {
 					 * @param[out] z The output element.
 					 */
 					template< typename InputType1, typename InputType2, typename OutputType >
-					static void apply( const InputType1 & x, const InputType2 & y, OutputType & z ) {
+					static void apply(
+						const InputType1 &x, const InputType2 &y,
+						OutputType &z
+					) {
 						const D1 a = static_cast< D1 >( x );
 						const D2 b = static_cast< D2 >( y );
 						D3 temp;
@@ -2881,7 +2885,7 @@ namespace grb {
 					 * casting is required. This version will be automatically caled whenever
 					 * possible.
 					 */
-					static void apply( const D1 & x, const D2 & y, D3 & out ) {
+					static void apply( const D1 &x, const D2 &y, D3 &out ) {
 						OP::apply( &x, &y, &out );
 					}
 
@@ -2946,7 +2950,7 @@ namespace grb {
 					 * @param[in,out] y The value \a x is to be applied against.
 					 */
 					template< typename InputType, typename IOType >
-					static void foldr( const InputType & x, IOType & y ) {
+					static void foldr( const InputType &x, IOType &y ) {
 						typedef typename OperatorBase< OP >::D2 D2;
 						const D2 cache = static_cast< D2 >( y );
 						OperatorBase< OP >::apply( x, cache, y );
@@ -3110,6 +3114,7 @@ namespace grb {
 					typedef typename OperatorBase< OP >::D3 D3;
 					static constexpr size_t blocksize = OperatorBase< OP >::blocksize;
 
+
 				public:
 
 					/**
@@ -3127,7 +3132,7 @@ namespace grb {
 					 * @param[in]     x The value that is to be applied to \a y.
 					 * @param[in,out] y The value \a x is to be applied against.
 					 */
-					static void foldr( const D1 & x, D3 & y ) {
+					static void foldr( const D1 &x, D3 &y ) {
 						OP::foldr( &x, &y );
 					}
 
@@ -4275,6 +4280,163 @@ namespace grb {
 		} // namespace internal
 
 	} // namespace operators
+
+	namespace operators::select::internal {
+
+		/**
+		 * This class takes a generic operator implementation and exposes a more
+		 * convenient operator() function based on it. This function allows arbitrary
+		 * data types being passed as parameters, and automatically handles any
+		 * casting required for the raw operator.
+		 *
+		 * @tparam OP The generic operator implementation.
+		 *
+		 * @see Operator for full details.
+		 */
+		template< typename OP, typename >
+		struct MatrixSelectionOperatorBase {
+			typedef typename OP::value_type D;
+			typedef typename OP::row_type RIT;
+			typedef typename OP::column_type CIT;
+
+			template< typename RIT1, typename CIT1, typename D1 >
+			bool operator()(
+				const RIT1 &x, const CIT1 &y, const D1 &v
+			) const noexcept {
+				const RIT a = static_cast< RIT >( x );
+				const CIT b = static_cast< CIT >( y );
+				const D   c = static_cast< D >( v );
+				return OP::apply( &a, &b, &c );
+			}
+
+			/**
+			 * This is the high-performance version of apply() in the sense that no
+			 * casting is required. This version will be automatically called whenever
+			 * possible (non-void variant).
+			 */
+			bool operator()(
+				const RIT &x, const CIT &y, const D &v
+			) const noexcept {
+				return OP::apply( &x, &y, &v );
+			}
+
+		};
+
+		/** This is the void value type variant. */
+		template< typename OP >
+		struct MatrixSelectionOperatorBase< OP, void > {
+			typedef typename OP::row_type RIT;
+			typedef typename OP::column_type CIT;
+
+			template< typename RIT1, typename CIT1, typename D1 >
+			bool operator()(
+				const RIT1 &x, const CIT1 &y, const D1 &v
+			) const noexcept {
+				(void) v;
+				const RIT a = static_cast< RIT >( x );
+				const CIT b = static_cast< CIT >( y );
+				return OP::apply( &a, &b, nullptr );
+			}
+
+		};
+
+		/**
+		 * Implements the is_diagonal matrix selector.
+		 */
+		template<
+			typename D, typename RIT, typename CIT
+		>
+		struct is_diagonal {
+			typedef D value_type;
+			typedef RIT row_type;
+			typedef CIT column_type;
+
+			static bool apply(
+				const row_type * __restrict__ const x,
+				const column_type * __restrict__ const y,
+				const value_type * __restrict__ const
+			) {
+				return *x == *y;
+			}
+		};
+
+		/**
+		 * Implements the strictly lower triangular matrix selector.
+		 */
+		template<
+			typename D, typename RIT, typename CIT
+		>
+		struct is_strictly_lower {
+			typedef D value_type;
+			typedef RIT row_type;
+			typedef CIT column_type;
+
+			static bool apply(
+				const row_type * __restrict__ const x,
+				const column_type * __restrict__ const y,
+				const value_type * __restrict__ const
+			) {
+				return *x > *y;
+			}
+		};
+
+		/**
+		 * Implements the lower triangular matrix selector.
+		 */
+		template<
+			typename D, typename RIT, typename CIT
+		>
+		struct is_lower_or_diagonal {
+			typedef D value_type;
+			typedef RIT row_type;
+			typedef CIT column_type;
+
+			static bool apply(
+				const row_type * __restrict__ const x,
+				const column_type * __restrict__ const y,
+				const value_type * __restrict__ const
+			) {
+				return *x >= *y;
+			}
+		};
+
+		/**
+		 * Implements the strictly upper triangular matrix selector.
+		 */
+		template<
+			typename D, typename RIT, typename CIT
+		>
+		struct is_strictly_upper {
+			typedef D value_type;
+			typedef RIT row_type;
+			typedef CIT column_type;
+
+			static bool apply(
+				const row_type * __restrict__ const x,
+				const column_type * __restrict__ const y,
+				const value_type * __restrict__ const v
+			)  { return !is_lower_or_diagonal< D, RIT, CIT >::apply( x, y, v ); }
+		};
+
+		/**
+		 * Implements the upper triangular matrix selector.
+		 */
+		template<
+			typename D, typename RIT, typename CIT
+		>
+		struct is_upper_or_diagonal {
+			typedef D value_type;
+			typedef RIT row_type;
+			typedef CIT column_type;
+
+			static bool apply(
+				const row_type * __restrict__ const x,
+				const column_type * __restrict__ const y,
+				const value_type * __restrict__ const v
+			) { return !is_strictly_lower< D, RIT, CIT >::apply( x, y, v ); }
+		};
+
+	} // namespace operators::select::internal
 
 } // namespace grb
 

@@ -548,9 +548,9 @@ namespace grb {
 			typename Monoid::D3 global =
 				monoid.template getIdentity< typename Monoid::D3 >();
 
-			size_t local_reduced_size = sysconf( _SC_NPROCESSORS_ONLN ) *
+			size_t local_reduced_size = NONBLOCKING::numThreads() *
 				config::CACHE_LINE_SIZE::value();
-			IOType local_reduced[ local_reduced_size ];
+			typename Monoid::D3 local_reduced[ local_reduced_size ];
 
 			for(
 				size_t i = 0;
@@ -10550,7 +10550,7 @@ namespace grb {
 				typename AddMonoid::D3 reduced =
 					addMonoid.template getIdentity< typename AddMonoid::D3 >();
 
-				size_t reduced_size = sysconf( _SC_NPROCESSORS_ONLN ) *
+				size_t reduced_size = NONBLOCKING::numThreads() *
 					config::CACHE_LINE_SIZE::value();
 				typename AddMonoid::D3 array_reduced[ reduced_size ];
 
@@ -10987,8 +10987,8 @@ namespace grb {
 			maximum_data_type_size = std::max( maximum_data_type_size, sizeof( DataType2 ) );
 
 			// continue
-			return eWiseLambda_helper( all_vectors_ptr, maximum_data_type_size, f, x,
-				args... );
+			return eWiseLambda_helper< descr >( all_vectors_ptr, maximum_data_type_size,
+				f, x, args... );
 		}
 
 		template<
@@ -11030,7 +11030,7 @@ namespace grb {
 		std::vector< const void * > all_vectors_ptr;
 
 		// invoke the helper function to store the pointers
-		return internal::eWiseLambda_helper( all_vectors_ptr, 0, f, x, y, args...);
+		return internal::eWiseLambda_helper< descr >( all_vectors_ptr, 0, f, x, y, args...);
 	}
 
 	template<
@@ -11068,7 +11068,7 @@ namespace grb {
 #endif
 			Coords local_x;
 			const size_t local_n = upper_bound - lower_bound;
-			size_t local_x_nz;
+			size_t local_x_nz = 0;
 			bool sparse = false;
 
 #ifdef GRB_ALREADY_DENSE_OPTIMIZATION
