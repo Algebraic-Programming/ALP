@@ -881,7 +881,7 @@ namespace grb {
 		RC dense_synchronize(
 			internal::Coordinates< _GRB_BSP1D_BACKEND > &global_coordinates
 		) const {
-#ifndef NDEBUG
+#if !defined NDEBUG || defined _DEBUG
 			const auto &data = internal::grb_BSP1D.cload();
 #endif
 			assert( data.P > 1 );
@@ -923,7 +923,7 @@ namespace grb {
 		RC array_synchronize(
 			internal::Coordinates< _GRB_BSP1D_BACKEND > &global_coordinates
 		) const {
-#ifndef NDEBUG
+#if !defined NDEBUG || defined _DEBUG
 			const auto &data = internal::grb_BSP1D.cload();
 #endif
 			assert( data.P > 1 );
