@@ -1494,7 +1494,7 @@ namespace grb {
 			for( fwd_iterator it = start; it != end; ++it ) {
 #ifdef _BSP1D_IO_DEBUG
 				std::cout << "\t\t\t process " << data.s << " caches nonzero at "
-					<< *it << "\n";
+					<< start.i() << ", " << start.j() << "\n";
 #endif
 				// sanity check on input
 				if( utils::check_input_coordinates( it, rows, cols ) != SUCCESS ) {

@@ -353,6 +353,9 @@ namespace grb {
 
 			/** Implements move constructor and assign-from-temporary. */
 			void moveFromOther( self_type &&other ) {
+				// make sure we had no pointer and (thus) no ID
+				assert( _ptr == nullptr );
+
 				// copy fields
 				_id = other._id;
 				_ptr = other._ptr;
@@ -507,8 +510,8 @@ namespace grb {
 					<< "\t ID is " << _id << "\n";
 #endif
 				if( _m > 0 && _n > 0 ) {
-#ifdef _DEBUG
-					std::cerr << "\t removing ID...\n";
+#ifdef _DEBUG_BSP1D_MATRIX
+					std::cerr << "\t matrix destructor: removing ID...\n";
 #endif
 					assert( _ptr != nullptr );
 					auto &data = internal::grb_BSP1D.load();
@@ -521,6 +524,17 @@ namespace grb {
 
 			/** Assign-from-temporary. */
 			self_type& operator=( self_type &&other ) noexcept {
+				if( _m > 0 && _n > 0 ) {
+#ifdef _DEBUG_BSP1D_MATRIX
+					std::cerr << "\t move-assignment: removing ID...\n";
+#endif
+					assert( _ptr != nullptr );
+					auto &data = internal::grb_BSP1D.load();
+					assert( _id != std::numeric_limits< uintptr_t >::max() );
+					data.mapper.remove( _id );
+					delete [] _ptr;
+					_ptr = nullptr;
+				}
 				moveFromOther( std::forward< self_type >(other) );
 				return *this;
 			}
