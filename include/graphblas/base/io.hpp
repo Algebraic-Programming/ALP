@@ -1305,6 +1305,14 @@ namespace grb {
 	 *                  the default is #grb::EXECUTE.
 	 *
 	 * @return #grb::SUCCESS   Upon successful execution of this operation.
+	 * @return #grb::OUTOFMEM  If the capacity of \a x could not be resized to
+	 *                         store a new value at coordinate \a i while \a phase
+	 *                         is #grb::RESIZE.
+	 * @return #grb::ILLEGAL   If the capacity of \a x is insufficient to store a
+	 *                         new value at coordinate \a i while \a phase is
+	 *                         #grb::EXECUTE.
+	 * @return #grb::ILLEGAL   If \a x on input is not dense while the
+	 *                         #grb::descriptors::dense descriptor was given.
 	 * @return #grb::MISMATCH  If \a i is greater or equal than the dimension of
 	 *                         \a x.
 	 *

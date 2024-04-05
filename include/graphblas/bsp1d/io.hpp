@@ -569,11 +569,25 @@ namespace grb {
 			!grb::is_object< T >::value, void
 		>::type * const = nullptr
 	) {
+		// static sanity check
+		NO_CAST_ASSERT( ( !(descr & descriptors::no_casting) ||
+				std::is_same< DataType, T >::value ),
+			"grb::set (Vector, at index, BSP1D)",
+			"called with a value type that does not match that of the given vector"
+		);
+
+		// dynamic sanity check
 		const size_t n = size( x );
-		// sanity check
 		if( i >= n ) {
 			return MISMATCH;
 		}
+		if( descr & descriptors::dense ) {
+			if( nnz( x ) < n ) {
+				return ILLEGAL;
+			}
+		}
+
+		assert( n > 0 );
 
 		// prepare return code and get access to BSP1D data
 		RC ret = SUCCESS;
@@ -607,18 +621,22 @@ namespace grb {
 			if( ret == SUCCESS ) {
 				// on successful local resize, sync new global capacity
 				ret = internal::updateCap( x );
-			} else if( ret == ILLEGAL ) {
-				// on any failed local resize, clear vector
-				const RC clear_rc = clear( x );
-				if( clear_rc != SUCCESS ) { ret = PANIC; }
-			} else {
-				assert( ret == PANIC );
+			} else if( ret != OUTOFMEM && ret != PANIC ) {
+				std::cerr << "Error: unexpected error code in grb::setElement (BSP1D): "
+					<< grb::toString( ret ) << ". Please submit a bug report.\n";
+				ret = PANIC;
 			}
 		} else {
 			assert( phase == EXECUTE );
 			if( ret == SUCCESS ) {
 				// on successful execute, sync new nnz count
 				ret = internal::updateNnz( x );
+			} else if( ret == ILLEGAL ) {
+				ret = clear( x );
+			} else if( ret != PANIC ) {
+				std::cerr << "Error: unexpected error code in grb::setElement (BSP1D): "
+					<< grb::toString( ret ) << ". Please submit a bug report.\n";
+				ret = PANIC;
 			}
 		}
 
@@ -1476,7 +1494,7 @@ namespace grb {
 			for( fwd_iterator it = start; it != end; ++it ) {
 #ifdef _BSP1D_IO_DEBUG
 				std::cout << "\t\t\t process " << data.s << " caches nonzero at "
-					<< it << "\n";
+					<< *it << "\n";
 #endif
 				// sanity check on input
 				if( utils::check_input_coordinates( it, rows, cols ) != SUCCESS ) {

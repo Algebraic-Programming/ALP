@@ -30,20 +30,26 @@
 #include <lpf/core.h>
 
 #include <graphblas/phase.hpp>
-#include <graphblas/backends.hpp>
-#include <graphblas/base/pinnedvector.hpp>
-#include <graphblas/collectives.hpp>
 #include <graphblas/config.hpp>
+#include <graphblas/backends.hpp>
+#include <graphblas/collectives.hpp>
+#include <graphblas/type_traits.hpp>
+
+#include <graphblas/base/pinnedvector.hpp>
+
 #include <graphblas/reference/blas1-raw.hpp>
 #include <graphblas/reference/coordinates.hpp>
 #include <graphblas/reference/vector.hpp>
-#include <graphblas/type_traits.hpp>
+
+#include <graphblas/bsp/internal-collectives.hpp>
+#include <graphblas/bsp/collectives_blas1_vec.hpp>
+
 #include <graphblas/utils/alloc.hpp>
 #include <graphblas/utils/autodeleter.hpp>
 
+#include "init.hpp"
 #include "config.hpp"
 #include "distribution.hpp"
-#include "init.hpp"
 
 #ifdef _DEBUG
  #include "spmd.hpp"
@@ -370,28 +376,6 @@ namespace grb {
 			Args const &... args
 		);
 
-		/* *********************
-		    Level-1 collectives
-		          friends
-		   ********************* */
-
-		template<
-			Descriptor,
-			class Ring,
-			typename OutputType, typename InputType1, typename InputType2
-		>
-		friend RC internal::allreduce( OutputType &,
-			const Vector< InputType1, BSP1D, C > &,
-			const Vector< InputType2, BSP1D, C > &,
-			RC( reducer )(
-				OutputType &,
-				const Vector< InputType1, BSP1D, C > &,
-				const Vector< InputType2, BSP1D, C > &,
-				const Ring &
-			),
-			const Ring &
-		);
-
 		/* ********************
 		         IO friends
 		   ******************** */
@@ -695,6 +679,10 @@ namespace grb {
 				nz < _local_n ? nz : _local_n
 			);
 
+#ifdef _DEBUG
+			std::cout << "\t grb::Vector< T, BSP1D, C >::initialize, reference "
+				<< "initialisations have completed" << std::endl;
+#endif
 			// retrieve global capacity
 			size_t global_cap = capacity( _local );
 			if( collectives< BSP1D >::allreduce(
@@ -705,6 +693,11 @@ namespace grb {
 				throw std::runtime_error( "Synchronising global capacity failed" );
 			}
 			_cap = global_cap;
+
+#ifdef _DEBUG
+			std::cout << "\t grb::Vector< T, BSP1D, C >::initialize, global capacity is "
+				<< _cap << std::endl;
+#endif
 
 			// now set remaining fields
 			_n = cap_in;
@@ -888,7 +881,9 @@ namespace grb {
 		RC dense_synchronize(
 			internal::Coordinates< _GRB_BSP1D_BACKEND > &global_coordinates
 		) const {
-			const auto data = internal::grb_BSP1D.cload();
+#ifndef NDEBUG
+			const auto &data = internal::grb_BSP1D.cload();
+#endif
 			assert( data.P > 1 );
 
 #ifdef _DEBUG
@@ -928,7 +923,9 @@ namespace grb {
 		RC array_synchronize(
 			internal::Coordinates< _GRB_BSP1D_BACKEND > &global_coordinates
 		) const {
-			const auto data = internal::grb_BSP1D.cload();
+#ifndef NDEBUG
+			const auto &data = internal::grb_BSP1D.cload();
+#endif
 			assert( data.P > 1 );
 
 #ifdef _DEBUG
@@ -2661,7 +2658,7 @@ namespace grb {
 		 * @see Vector::cbegin
 		 */
 		const_iterator cbegin() const {
-			const auto data = internal::grb_BSP1D.cload();
+			const auto &data = internal::grb_BSP1D.cload();
 			return _local.template cbegin< BSP1D >( data.s, data.P );
 		}
 
@@ -2680,7 +2677,7 @@ namespace grb {
 		 * @see Vector::cend
 		 */
 		const_iterator cend() const {
-			const auto data = internal::grb_BSP1D.cload();
+			const auto &data = internal::grb_BSP1D.cload();
 			return _local.template cend< BSP1D >( data.s, data.P );
 		}
 

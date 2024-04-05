@@ -15,7 +15,11 @@
  * limitations under the License.
  */
 
-/*
+/**
+ * @file
+ *
+ * Provides a C++ wrapper around pthread get/set-specific.
+ *
  * @author A. N. Yzelman
  * @date 8th of August, 2016
  */
@@ -47,6 +51,7 @@ static void cpp_deleter( void * data ) {
 }
 
 namespace grb {
+
 	namespace utils {
 
 		/**
@@ -60,136 +65,139 @@ namespace grb {
 		 * see cload(). To inspect and possibly modify the currently stored value,
 		 * see load().
 		 *
-		 * @tparam T          The type of the value to store. An instance of this
-		 *                    type, when deleted, must not throw exceptions.
+		 * @tparam T The type of the value to store. An instance of this type, when
+		 *           deleted, must not throw exceptions.
 		 */
 		template< typename T >
 		class ThreadLocalStorage {
 
-		private:
-			/** The POSIX Thread key for the global store. */
-			pthread_key_t _key;
+			private:
 
-			/**
-			 * Whether or not on destruction of an instance of this class, whether the
-			 * data accessible by load() and cload() should be cleared using the
-			 * standard C++ \a delete operator. The default is false, indicating that
-			 * the user is responsible for the management of memory given to any
-			 * instance of this class.
-			 */
-			bool autodelete;
+				/** The POSIX Thread key for the global store. */
+				pthread_key_t _key;
 
-			/**
-			 * This function deletes the currently stored value, iff \a autodelete is
-			 * \a true.
-			 */
-			void checkDelete() const noexcept {
-				if( autodelete ) {
-					delete &load();
+				/**
+				 * Whether or not on destruction of an instance of this class, whether the
+				 * data accessible by load() and cload() should be cleared using the
+				 * standard C++ \a delete operator. The default is false, indicating that
+				 * the user is responsible for the management of memory given to any
+				 * instance of this class.
+				 */
+				bool autodelete;
+
+				/**
+				 * This function deletes the currently stored value iff \a autodelete is
+				 * \a true.
+				 */
+				void checkDelete() const noexcept {
+					if( autodelete ) {
+						delete &load();
+					}
 				}
-			}
 
-			/**
-			 * Wrapper around setspecific.
-			 *
-			 * @throws Runtime error whenever the associated call to
-			 *         \a pthread_setspecfic fails.
-			 */
-			void set( T & x ) const {
-				const int rc = pthread_setspecific( _key, static_cast< const void * >( &x ) );
-				if( rc != 0 ) {
-					throw std::runtime_error( "Error during call to "
-											  "pthread_setspecific." );
+				/**
+				 * Wrapper around setspecific.
+				 *
+				 * @throws Runtime error whenever the associated call to
+				 *         \a pthread_setspecfic fails.
+				 */
+				void set( T &x ) const {
+					const int rc = pthread_setspecific( _key,
+						static_cast< const void * >( &x ) );
+					if( rc != 0 ) {
+						throw std::runtime_error( "Error during call to pthread_setspecific." );
+					}
 				}
-			}
 
-		public:
-			/**
-			 * The base constructor-- this calls pthread_key_create.
-			 *
-			 * After calling this constructor, a call to load() or cload() without a
-			 * preceding call to store() will lead to undefined behaviour.
-			 *
-			 * @throws Runtime error whenever the associated call to
-			 *         \a pthread_key_create fails.
-			 */
-			ThreadLocalStorage() : autodelete( false ) {
-				const int rc = pthread_key_create( &_key, NULL );
-				if( rc != 0 ) {
-					throw std::runtime_error( "Error during call to "
-											  "pthread_key_create." );
+
+			public:
+
+				/**
+				 * The base constructor-- this calls pthread_key_create.
+				 *
+				 * After calling this constructor, a call to load() or cload() without a
+				 * preceding call to store() will lead to undefined behaviour.
+				 *
+				 * @throws Runtime error whenever the associated call to
+				 *         \a pthread_key_create fails.
+				 */
+				ThreadLocalStorage() : autodelete( false ) {
+					const int rc = pthread_key_create( &_key, nullptr );
+					if( rc != 0 ) {
+						throw std::runtime_error( "Error during call to pthread_key_create." );
+					}
 				}
-			}
 
-			/**
-			 * The base destructor-- this calls pthread_key_delete.
-			 *
-			 * @throws Runtime error whenever the associated call to
-			 *         \a pthread_key_delete fails.
-			 */
-			~ThreadLocalStorage() noexcept {
-				checkDelete();
-				const int rc = pthread_key_delete( _key );
-				if( rc != 0 ) {
-					std::cerr << "[warn] grb::utils::ThreadLocalStorage() "
-								 "destructor: could not delete "
-								 "pthread_key_t.\n";
+				/**
+				 * The base destructor-- this calls pthread_key_delete.
+				 *
+				 * @throws Runtime error whenever the associated call to
+				 *         \a pthread_key_delete fails.
+				 */
+				~ThreadLocalStorage() noexcept {
+					checkDelete();
+					const int rc = pthread_key_delete( _key );
+					if( rc != 0 ) {
+						std::cerr << "[warn] grb::utils::ThreadLocalStorage() destructor: could "
+							<< "not delete pthread_key_t.\n";
+					}
 				}
-			}
 
-			/**
-			 * Binds a default value of type \a T to this ThreadLocalStorage.
-			 *
-			 * The default value is obtained by calling the default constructor of \a T.
-			 *
-			 * This value is automatically freed on any next call to store() or on
-			 * destruction of this ThreadLocalStorage.
-			 *
-			 * @throws Runtime error whenever the associated call to
-			 *         \a pthread_setspecfic fails.
-			 */
-			void store() {
-				checkDelete();
-				autodelete = true;
-				T * x = new T();
-				set( *x );
-			}
+				/**
+				 * Binds a default value of type \a T to this ThreadLocalStorage.
+				 *
+				 * The default value is obtained by calling the default constructor of \a T.
+				 *
+				 * This value is automatically freed on any next call to store() or on
+				 * destruction of this ThreadLocalStorage.
+				 *
+				 * @throws Runtime error whenever the associated call to
+				 *         \a pthread_setspecfic fails.
+				 */
+				void store() {
+					checkDelete();
+					autodelete = true;
+					T * x = new T();
+					set( *x );
+				}
 
-			/**
-			 * Binds a new given value local to this ThreadLocalStorage.
-			 *
-			 * After a call to this function, calls to load() and cload() are legal.
-			 *
-			 * @param[in] x The value to store.
-			 *
-			 * \warning The user must make sure that the data corresponding to the
-			 *          stored value \a x remains valid for at least the lifetime
-			 *          of this instance of ThreadLocalStorage. In particular, a
-			 *          user should never store a temporary.
-			 *
-			 * @throws Runtime error whenever the associated call to
-			 *         \a pthread_setspecfic fails.
-			 */
-			void store( T & x ) {
-				checkDelete();
-				autodelete = false;
-				set( x );
-			}
+				/**
+				 * Binds a new given value local to this ThreadLocalStorage.
+				 *
+				 * After a call to this function, calls to load() and cload() are legal.
+				 *
+				 * @param[in] x The value to store.
+				 *
+				 * \warning The user must make sure that the data corresponding to the
+				 *          stored value \a x remains valid for at least the lifetime
+				 *          of this instance of ThreadLocalStorage. In particular, a
+				 *          user should never store a temporary.
+				 *
+				 * @throws Runtime error whenever the associated call to
+				 *         \a pthread_setspecfic fails.
+				 */
+				void store( T &x ) {
+					checkDelete();
+					autodelete = false;
+					set( x );
+				}
 
-			/** @return A reference to the value stored at this thread. */
-			T & load() const noexcept {
-				void * const pointer = pthread_getspecific( _key );
-				return *static_cast< T * >( pointer );
-			}
+				/** @return A reference to the value stored at this thread. */
+				T & load() const noexcept {
+					void * const pointer = pthread_getspecific( _key );
+					return *static_cast< T * >( pointer );
+				}
 
-			/** @return A const-reference to the value stored at this thread. */
-			const T & cload() const noexcept {
-				return load();
-			}
+				/** @return A const-reference to the value stored at this thread. */
+				const T & cload() const noexcept {
+					return load();
+				}
 
 		}; // end ThreadLocalStorage
 
 	} // namespace utils
+
 } // namespace grb
 
 #endif // _H_GRB_UTILS_THREADLOCALSTORAGE
+

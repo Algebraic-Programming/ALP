@@ -511,7 +511,7 @@ namespace grb {
 	 *                        not match. All input data containers are left
 	 *                        untouched if this exit code is returned; it will be
 	 *                        be as though this call was never made.
-	 * @return #grb::FAILED   If \a phase is #grb::EXECUTE, indicates that the
+	 * @return #grb::ILLEGAL  If \a phase is #grb::EXECUTE, indicates that the
 	 *                        capacity of \a B was insufficient. The output
 	 *                        matrix \a B is cleared, and the call to this function
 	 *                        has no further effects.

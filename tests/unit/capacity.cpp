@@ -172,7 +172,8 @@ void grb_program( const size_t &n, grb::RC &rc ) {
 		const size_t one = 1;
 		const size_t * const start_ind = &one;
 		const size_t * const end_ind = start_ind + 1;
-		rc = buildMatrixUnique( mat,
+		rc = buildMatrixUnique(
+			mat,
 			start_ind, end_ind,
 			start_ind, end_ind,
 			start_val, end_val,
@@ -183,7 +184,10 @@ void grb_program( const size_t &n, grb::RC &rc ) {
 		grb::nnz( vec ) != 1 ||
 		grb::nnz( mat ) != 1
 	  ) {
-		std::cerr << "\t error during intitialisation of clear-semantics test\n";
+		std::cerr << "\t error during intitialisation of clear-semantics test:\n"
+			<< "\t  - rc is " << grb::toString( rc ) << ", expected SUCCESS\n"
+			<< "\t  - grb::nnz( vec ) is " << grb::nnz( vec ) << ", expected 1\n"
+			<< "\t  - grb::nnz( mat ) is " << grb::nnz( mat ) << ", expected 1\n";
 		if( rc != grb::SUCCESS ) { rc = grb::FAILED; }
 		return;
 	}

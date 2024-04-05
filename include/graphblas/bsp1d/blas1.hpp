@@ -33,8 +33,8 @@
 #include "distribution.hpp"
 #include "vector.hpp"
 
-#define NO_CAST_ASSERT( x, y, z )                                                  \
-	static_assert( x,                                                              \
+#define NO_CAST_ASSERT( x, y, z )                                                          \
+	static_assert( x,                                                                  \
 		"\n\n"                                                                     \
 		"************************************************************************" \
 		"************************************************************************" \
@@ -61,7 +61,8 @@ namespace grb {
 
 	/** \internal No implementation notes. */
 	template<
-		Descriptor descr = descriptors::no_operation, class Monoid,
+		Descriptor descr = descriptors::no_operation,
+		class Monoid,
 		typename InputType, typename IOType, typename MaskType,
 		typename Coords
 	>
@@ -70,7 +71,8 @@ namespace grb {
 		const Vector< MaskType, BSP1D, Coords > &mask,
 		IOType &beta,
 		const Monoid &monoid,
-		const typename std::enable_if< !grb::is_object< IOType >::value &&
+		const typename std::enable_if<
+			!grb::is_object< IOType >::value &&
 			grb::is_monoid< Monoid >::value, void
 		>::type * const = nullptr
 	) {
@@ -111,9 +113,9 @@ namespace grb {
 		RC rc = foldr< descr >( internal::getLocal( x ), internal::getLocal( mask ),
 			local, monoid );
 
-		// do allreduce using \a op
+		// do allreduce
 		if( rc == SUCCESS ) {
-			rc = collectives< BSP1D >::allreduce< descr >( local, monoid.getOperator() );
+			rc = collectives< BSP1D >::allreduce< descr >( local, monoid );
 		}
 
 		// accumulate end result
@@ -127,7 +129,8 @@ namespace grb {
 
 	/** \internal No implementation notes. */
 	template<
-		Descriptor descr = descriptors::no_operation, class Monoid,
+		Descriptor descr = descriptors::no_operation,
+		class Monoid,
 		typename InputType, typename IOType,
 		typename Coords
 	>
@@ -135,7 +138,8 @@ namespace grb {
 		const Vector< InputType, BSP1D, Coords > &x,
 		IOType &beta,
 		const Monoid &monoid,
-		const typename std::enable_if< !grb::is_object< IOType >::value &&
+		const typename std::enable_if<
+			!grb::is_object< IOType >::value &&
 			grb::is_monoid< Monoid >::value, void
 		>::type * const = nullptr
 	) {
@@ -166,9 +170,9 @@ namespace grb {
 		// do local foldr
 		RC rc = foldr< descr >( internal::getLocal( x ), local, monoid );
 
-		// do allreduce using \a op
+		// do allreduce
 		if( rc == SUCCESS ) {
-			rc = collectives< BSP1D >::allreduce< descr >( local, monoid.getOperator() );
+			rc = collectives< BSP1D >::allreduce< descr >( local, monoid );
 		}
 
 		// accumulate end result
@@ -182,7 +186,8 @@ namespace grb {
 
 	/** \internal No implementation notes. */
 	template<
-		Descriptor descr = descriptors::no_operation, class Monoid,
+		Descriptor descr = descriptors::no_operation,
+		class Monoid,
 		typename IOType, typename InputType, typename MaskType,
 		typename Coords
 	>
@@ -191,7 +196,8 @@ namespace grb {
 		const Vector< InputType, BSP1D, Coords > &y,
 		const Vector< MaskType, BSP1D, Coords > &mask,
 		const Monoid &monoid,
-		const typename std::enable_if< !grb::is_object< IOType >::value &&
+		const typename std::enable_if<
+			!grb::is_object< IOType >::value &&
 			!grb::is_object< MaskType >::value &&
 			grb::is_monoid< Monoid >::value, void
 		>::type * const = nullptr
@@ -246,9 +252,9 @@ namespace grb {
 			<< local << ". Entering allreduce..." << std::endl;
 #endif
 
-		// do allreduce using \a op
+		// do allreduce
 		if( rc == SUCCESS ) {
-			rc = collectives< BSP1D >::allreduce< descr >( local, monoid.getOperator() );
+			rc = collectives< BSP1D >::allreduce< descr >( local, monoid );
 		}
 
 		// accumulate end result
@@ -300,7 +306,8 @@ namespace grb {
 		Vector< IOType, BSP1D, Coords > &y,
 		const Operator &op,
 		const Phase &phase = EXECUTE,
-		const typename std::enable_if< !grb::is_object< InputType >::value &&
+		const typename std::enable_if<
+			!grb::is_object< InputType >::value &&
 			grb::is_operator< Operator >::value, void
 		>::type * const = nullptr
 	) {
@@ -337,7 +344,8 @@ namespace grb {
 
 	/** \internal No implementation notes. */
 	template<
-		Descriptor descr = descriptors::no_operation, class Monoid,
+		Descriptor descr = descriptors::no_operation,
+		class Monoid,
 		typename IOType, typename Coords, typename InputType
 	>
 	RC foldr(
@@ -345,7 +353,8 @@ namespace grb {
 		Vector< IOType, BSP1D, Coords > &y,
 		const Monoid &monoid,
 		const Phase &phase = EXECUTE,
-		const typename std::enable_if< !grb::is_object< InputType >::value &&
+		const typename std::enable_if<
+			!grb::is_object< InputType >::value &&
 			grb::is_monoid< Monoid >::value, void
 		>::type * const = nullptr
 	) {
@@ -583,7 +592,8 @@ namespace grb {
 		const InputType &beta,
 		const Operator &op,
 		const Phase &phase = EXECUTE,
-		const typename std::enable_if< !grb::is_object< InputType >::value &&
+		const typename std::enable_if<
+			!grb::is_object< InputType >::value &&
 			grb::is_operator< Operator >::value, void
 		>::type * const = nullptr
 	) {
@@ -628,7 +638,8 @@ namespace grb {
 		const InputType &beta,
 		const Monoid &monoid,
 		const Phase &phase = EXECUTE,
-		const typename std::enable_if< !grb::is_object< InputType >::value &&
+		const typename std::enable_if<
+			!grb::is_object< InputType >::value &&
 			grb::is_monoid< Monoid >::value, void
 		>::type * const = nullptr
 	) {
@@ -697,7 +708,8 @@ namespace grb {
 		const InputType &beta,
 		const Operator &op,
 		const Phase &phase = EXECUTE,
-		const typename std::enable_if< !grb::is_object< InputType >::value &&
+		const typename std::enable_if<
+			!grb::is_object< InputType >::value &&
 			grb::is_operator< Operator >::value, void
 		>::type * const = nullptr
 	) {
@@ -760,7 +772,8 @@ namespace grb {
 		const InputType &beta,
 		const Monoid &monoid,
 		const Phase &phase = EXECUTE,
-		const typename std::enable_if< !grb::is_object< InputType >::value &&
+		const typename std::enable_if<
+			!grb::is_object< InputType >::value &&
 			grb::is_monoid< Monoid >::value, void
 		>::type * const = nullptr
 	) {
@@ -1027,7 +1040,8 @@ namespace grb {
 		const Vector< InputType, BSP1D, Coords > &y,
 		const OP &op = OP(),
 		const Phase &phase = EXECUTE,
-		const typename std::enable_if< grb::is_operator< OP >::value &&
+		const typename std::enable_if<
+			grb::is_operator< OP >::value &&
 			!grb::is_object< IOType >::value &&
 			!grb::is_object< MaskType >::value &&
 			!grb::is_object< InputType >::value, void
@@ -1113,7 +1127,8 @@ namespace grb {
 		const Vector< InputType, BSP1D, Coords > &y,
 		const Monoid &monoid = Monoid(),
 		const Phase &phase = EXECUTE,
-		const typename std::enable_if< grb::is_monoid< Monoid >::value &&
+		const typename std::enable_if<
+			grb::is_monoid< Monoid >::value &&
 			!grb::is_object< IOType >::value &&
 			!grb::is_object< MaskType >::value &&
 			!grb::is_object< InputType >::value, void
@@ -2090,7 +2105,8 @@ namespace grb {
 
 	/** \internal Does not require communication. */
 	template<
-		Descriptor descr = descriptors::no_operation, class Monoid,
+		Descriptor descr = descriptors::no_operation,
+		class Monoid,
 		typename OutputType, typename InputType1, typename InputType2,
 		typename Coords
 	>
@@ -2697,7 +2713,8 @@ namespace grb {
 	 *          monoid, followed by a call to grb::eWiseMul.
 	 */
 	template<
-		Descriptor descr = descriptors::no_operation, class Ring,
+		Descriptor descr = descriptors::no_operation,
+		class Ring,
 		typename InputType1, typename InputType2,
 		typename InputType3, typename OutputType,
 		typename Coords
@@ -2709,7 +2726,8 @@ namespace grb {
 		const Vector< InputType3, BSP1D, Coords > &y,
 		const Ring &ring = Ring(),
 		const Phase &phase = EXECUTE,
-		const typename std::enable_if< !grb::is_object< OutputType >::value &&
+		const typename std::enable_if<
+			!grb::is_object< OutputType >::value &&
 			!grb::is_object< InputType1 >::value &&
 			!grb::is_object< InputType2 >::value &&
 			!grb::is_object< InputType3 >::value &&
@@ -2767,7 +2785,8 @@ namespace grb {
 	 *          the additive monoid.
 	 */
 	template<
-		Descriptor descr = descriptors::no_operation, class Ring,
+		Descriptor descr = descriptors::no_operation,
+		class Ring,
 		typename InputType1, typename InputType2, typename OutputType,
 		typename Coords
 	>
@@ -2777,7 +2796,8 @@ namespace grb {
 		const Vector< InputType2, BSP1D, Coords > &x,
 		const Ring &ring = Ring(),
 		const Phase &phase = EXECUTE,
-		const typename std::enable_if< !grb::is_object< OutputType >::value &&
+		const typename std::enable_if<
+			!grb::is_object< OutputType >::value &&
 			!grb::is_object< InputType1 >::value &&
 			!grb::is_object< InputType2 >::value &&
 			grb::is_semiring< Ring >::value,
@@ -2816,7 +2836,8 @@ namespace grb {
 	 *          monoid, followed by a call to grb::eWiseMul.
 	 */
 	template<
-		Descriptor descr = descriptors::no_operation, class Ring,
+		Descriptor descr = descriptors::no_operation,
+		class Ring,
 		typename InputType1, typename InputType2,
 		typename InputType3, typename OutputType,
 		typename Coords
@@ -2828,7 +2849,8 @@ namespace grb {
 		const Vector< InputType3, BSP1D, Coords > &y,
 		const Ring &ring = Ring(),
 		const Phase &phase = EXECUTE,
-		const typename std::enable_if< !grb::is_object< OutputType >::value &&
+		const typename std::enable_if<
+			!grb::is_object< OutputType >::value &&
 			!grb::is_object< InputType1 >::value &&
 			!grb::is_object< InputType2 >::value &&
 			!grb::is_object< InputType3 >::value &&
@@ -2871,7 +2893,8 @@ namespace grb {
 	 *          monoid, followed by a call to grb::eWiseMul.
 	 */
 	template<
-		Descriptor descr = descriptors::no_operation, class Ring,
+		Descriptor descr = descriptors::no_operation,
+		class Ring,
 		typename InputType1, typename InputType2,
 		typename InputType3, typename OutputType,
 		typename Coords
@@ -2883,7 +2906,8 @@ namespace grb {
 		const Vector< InputType3, BSP1D, Coords > &y,
 		const Ring &ring = Ring(),
 		const Phase &phase = EXECUTE,
-		const typename std::enable_if< !grb::is_object< OutputType >::value &&
+		const typename std::enable_if<
+			!grb::is_object< OutputType >::value &&
 			!grb::is_object< InputType1 >::value &&
 			!grb::is_object< InputType2 >::value &&
 			!grb::is_object< InputType3 >::value &&
@@ -2926,7 +2950,8 @@ namespace grb {
 	 *          monoid, followed by a call to grb::eWiseMul.
 	 */
 	template<
-		Descriptor descr = descriptors::no_operation, class Ring,
+		Descriptor descr = descriptors::no_operation,
+		class Ring,
 		typename InputType1, typename InputType2,
 		typename InputType3, typename OutputType,
 		typename Coords
@@ -2937,7 +2962,8 @@ namespace grb {
 		const InputType3 gamma,
 		const Ring &ring = Ring(),
 		const Phase &phase = EXECUTE,
-		const typename std::enable_if< !grb::is_object< OutputType >::value &&
+		const typename std::enable_if<
+			!grb::is_object< OutputType >::value &&
 			!grb::is_object< InputType1 >::value &&
 			!grb::is_object< InputType2 >::value &&
 			!grb::is_object< InputType3 >::value &&
@@ -2975,7 +3001,8 @@ namespace grb {
 	 *          monoid, followed by a call to grb::eWiseMul.
 	 */
 	template<
-		Descriptor descr = descriptors::no_operation, class Ring,
+		Descriptor descr = descriptors::no_operation,
+		class Ring,
 		typename InputType1, typename InputType2, typename InputType3,
 		typename OutputType, typename Coords
 	>
@@ -2997,7 +3024,9 @@ namespace grb {
 		if( n != grb::size( a ) ) {
 			return MISMATCH;
 		}
-		if( config::IMPLEMENTATION< BSP1D >::fixedVectorCapacities() && phase == RESIZE ) {
+		if( config::IMPLEMENTATION< BSP1D >::fixedVectorCapacities() &&
+			phase == RESIZE
+		) {
 			return SUCCESS;
 		}
 		if( phase == RESIZE ) {
@@ -3021,7 +3050,8 @@ namespace grb {
 	 *          monoid, followed by a call to grb::eWiseMul.
 	 */
 	template<
-		Descriptor descr = descriptors::no_operation, class Ring,
+		Descriptor descr = descriptors::no_operation,
+		class Ring,
 		typename InputType1, typename InputType2, typename InputType3,
 		typename OutputType, typename Coords
 	>
@@ -3032,7 +3062,8 @@ namespace grb {
 		const InputType3 gamma,
 		const Ring &ring = Ring(),
 		const Phase &phase = EXECUTE,
-		const typename std::enable_if< !grb::is_object< OutputType >::value &&
+		const typename std::enable_if<
+			!grb::is_object< OutputType >::value &&
 			!grb::is_object< InputType1 >::value &&
 			!grb::is_object< InputType2 >::value &&
 			!grb::is_object< InputType3 >::value &&
@@ -3043,7 +3074,9 @@ namespace grb {
 		if( n != grb::size( x ) ) {
 			return MISMATCH;
 		}
-		if( config::IMPLEMENTATION< BSP1D >::fixedVectorCapacities() && phase == RESIZE ) {
+		if( config::IMPLEMENTATION< BSP1D >::fixedVectorCapacities() &&
+			phase == RESIZE
+		) {
 			return SUCCESS;
 		}
 		if( phase == RESIZE ) {
@@ -3067,7 +3100,8 @@ namespace grb {
 	 *          monoid, followed by a call to grb::eWiseMul.
 	 */
 	template<
-		Descriptor descr = descriptors::no_operation, class Ring,
+		Descriptor descr = descriptors::no_operation,
+		class Ring,
 		typename InputType1, typename InputType2, typename InputType3,
 		typename OutputType, typename Coords
 	>
@@ -3077,7 +3111,8 @@ namespace grb {
 		const Vector< InputType3, BSP1D, Coords > & y,
 		const Ring &ring = Ring(),
 		const Phase &phase = EXECUTE,
-		const typename std::enable_if< !grb::is_object< OutputType >::value &&
+		const typename std::enable_if<
+			!grb::is_object< OutputType >::value &&
 			!grb::is_object< InputType1 >::value &&
 			!grb::is_object< InputType2 >::value &&
 			!grb::is_object< InputType3 >::value &&
@@ -3088,7 +3123,9 @@ namespace grb {
 		if( n != grb::size( y ) ) {
 			return MISMATCH;
 		}
-		if( config::IMPLEMENTATION< BSP1D >::fixedVectorCapacities() && phase == RESIZE ) {
+		if( config::IMPLEMENTATION< BSP1D >::fixedVectorCapacities() &&
+			phase == RESIZE
+		) {
 			return SUCCESS;
 		}
 		if( phase == RESIZE ) {
@@ -3110,7 +3147,8 @@ namespace grb {
 	 *          monoid, followed by a call to grb::eWiseMul.
 	 */
 	template<
-		Descriptor descr = descriptors::no_operation, class Ring,
+		Descriptor descr = descriptors::no_operation,
+		class Ring,
 		typename InputType1, typename InputType2, typename InputType3,
 		typename OutputType, typename Coords
 	>
@@ -3120,14 +3158,17 @@ namespace grb {
 		const InputType3 gamma,
 		const Ring &ring = Ring(),
 		const Phase &phase = EXECUTE,
-		const typename std::enable_if< !grb::is_object< OutputType >::value &&
+		const typename std::enable_if<
+			!grb::is_object< OutputType >::value &&
 			!grb::is_object< InputType1 >::value &&
 			!grb::is_object< InputType2 >::value &&
 			!grb::is_object< InputType3 >::value &&
 			grb::is_semiring< Ring >::value,
 		void >::type * const = nullptr
 	) {
-		if( config::IMPLEMENTATION< BSP1D >::fixedVectorCapacities() && phase == RESIZE ) {
+		if( config::IMPLEMENTATION< BSP1D >::fixedVectorCapacities() &&
+			phase == RESIZE
+		) {
 			return SUCCESS;
 		}
 		if( phase == RESIZE ) {
@@ -3141,7 +3182,8 @@ namespace grb {
 
 	/** \internal Requires syncing of output nonzero count. */
 	template<
-		Descriptor descr = descriptors::no_operation, class Ring,
+		Descriptor descr = descriptors::no_operation,
+		class Ring,
 		typename InputType1, typename InputType2, typename OutputType,
 		typename Coords
 	>
@@ -3151,7 +3193,8 @@ namespace grb {
 		const Vector< InputType2, BSP1D, Coords > &y,
 		const Ring &ring = Ring(),
 		const Phase &phase = EXECUTE,
-		const typename std::enable_if< !grb::is_object< OutputType >::value &&
+		const typename std::enable_if<
+			!grb::is_object< OutputType >::value &&
 			!grb::is_object< InputType1 >::value &&
 			!grb::is_object< InputType2 >::value &&
 			grb::is_semiring< Ring >::value, void
@@ -3225,7 +3268,8 @@ namespace grb {
 
 	/** \internal Requires syncing of output nonzero count. */
 	template<
-		Descriptor descr = descriptors::no_operation, class Ring,
+		Descriptor descr = descriptors::no_operation,
+		class Ring,
 		typename InputType1, typename InputType2, typename OutputType,
 		typename Coords
 	>
@@ -3235,7 +3279,8 @@ namespace grb {
 		const Vector< InputType2, BSP1D, Coords > &y,
 		const Ring &ring = Ring(),
 		const Phase &phase = EXECUTE,
-		const typename std::enable_if< !grb::is_object< OutputType >::value &&
+		const typename std::enable_if<
+			!grb::is_object< OutputType >::value &&
 			!grb::is_object< InputType1 >::value &&
 			!grb::is_object< InputType2 >::value &&
 			grb::is_semiring< Ring >::value, void
@@ -3303,7 +3348,8 @@ namespace grb {
 
 	/** \internal Requires syncing of output nonzero count. */
 	template<
-		Descriptor descr = descriptors::no_operation, class Ring,
+		Descriptor descr = descriptors::no_operation,
+		class Ring,
 		typename InputType1, typename InputType2, typename OutputType,
 		typename Coords
 	>
@@ -3313,7 +3359,8 @@ namespace grb {
 		const InputType2 beta,
 		const Ring &ring = Ring(),
 		const Phase &phase = EXECUTE,
-		const typename std::enable_if< !grb::is_object< OutputType >::value &&
+		const typename std::enable_if<
+			!grb::is_object< OutputType >::value &&
 			!grb::is_object< InputType1 >::value &&
 			!grb::is_object< InputType2 >::value &&
 			grb::is_semiring< Ring >::value, void
@@ -3391,7 +3438,8 @@ namespace grb {
 		const InputType2 beta,
 		const Ring &ring = Ring(),
 		const Phase &phase = EXECUTE,
-		const typename std::enable_if< !grb::is_object< OutputType >::value &&
+		const typename std::enable_if<
+			!grb::is_object< OutputType >::value &&
 			!grb::is_object< InputType1 >::value &&
 			!grb::is_object< InputType2 >::value &&
 			grb::is_semiring< Ring >::value, void
@@ -3463,7 +3511,8 @@ namespace grb {
 		const Vector< InputType2, BSP1D, Coords > &y,
 		const Ring &ring = Ring(),
 		const Phase &phase = EXECUTE,
-		const typename std::enable_if< !grb::is_object< OutputType >::value &&
+		const typename std::enable_if<
+			!grb::is_object< OutputType >::value &&
 			!grb::is_object< InputType1 >::value &&
 			!grb::is_object< InputType2 >::value &&
 			grb::is_semiring< Ring >::value, void
@@ -3552,7 +3601,8 @@ namespace grb {
 		const Vector< InputType2, BSP1D, Coords > &y,
 		const Ring &ring = Ring(),
 		const Phase &phase = EXECUTE,
-		const typename std::enable_if< !grb::is_object< OutputType >::value &&
+		const typename std::enable_if<
+			!grb::is_object< OutputType >::value &&
 			!grb::is_object< InputType1 >::value &&
 			!grb::is_object< InputType2 >::value &&
 			grb::is_semiring< Ring >::value, void
@@ -3644,7 +3694,8 @@ namespace grb {
 		const InputType2 beta,
 		const Ring &ring = Ring(),
 		const Phase &phase = EXECUTE,
-		const typename std::enable_if< !grb::is_object< OutputType >::value &&
+		const typename std::enable_if<
+			!grb::is_object< OutputType >::value &&
 			!grb::is_object< InputType1 >::value &&
 			!grb::is_object< InputType2 >::value &&
 			grb::is_semiring< Ring >::value, void
@@ -3736,7 +3787,8 @@ namespace grb {
 		const InputType2 beta,
 		const Ring &ring = Ring(),
 		const Phase &phase = EXECUTE,
-		const typename std::enable_if< !grb::is_object< OutputType >::value &&
+		const typename std::enable_if<
+			!grb::is_object< OutputType >::value &&
 			!grb::is_object< InputType1 >::value &&
 			!grb::is_object< InputType2 >::value &&
 			grb::is_semiring< Ring >::value, void
@@ -3832,7 +3884,8 @@ namespace grb {
 		const Vector< InputType3, BSP1D, Coords > &y,
 		const Ring &ring = Ring(),
 		const Phase &phase = EXECUTE,
-		const typename std::enable_if< !grb::is_object< OutputType >::value &&
+		const typename std::enable_if<
+			!grb::is_object< OutputType >::value &&
 			!grb::is_object< MaskType >::value &&
 			!grb::is_object< InputType1 >::value &&
 			!grb::is_object< InputType2 >::value &&
@@ -3860,7 +3913,9 @@ namespace grb {
 		if( n != grb::size( m ) ) {
 			return MISMATCH;
 		}
-		if( config::IMPLEMENTATION< BSP1D >::fixedVectorCapacities() && phase == RESIZE ) {
+		if( config::IMPLEMENTATION< BSP1D >::fixedVectorCapacities() &&
+			phase == RESIZE
+		) {
 			return SUCCESS;
 		}
 
@@ -3869,7 +3924,9 @@ namespace grb {
 			internal::getLocal( a ), internal::getLocal( x ), internal::getLocal( y ),
 			ring, phase
 		);
-		if( config::IMPLEMENTATION< BSP1D >::fixedVectorCapacities() && phase == RESIZE ) {
+		if( config::IMPLEMENTATION< BSP1D >::fixedVectorCapacities() &&
+			phase == RESIZE
+		) {
 			if( collectives< BSP1D >::allreduce(
 				ret, grb::operators::any_or< RC >()
 			) != SUCCESS ) {
@@ -3892,7 +3949,8 @@ namespace grb {
 	 *          monoid, followed by a call to grb::eWiseMul.
 	 */
 	template<
-		Descriptor descr = descriptors::no_operation, class Ring,
+		Descriptor descr = descriptors::no_operation,
+		class Ring,
 		typename InputType1, typename InputType2,
 		typename InputType3,
 		typename OutputType, typename MaskType,
@@ -3906,7 +3964,8 @@ namespace grb {
 		const Vector< InputType3, BSP1D, Coords > &y,
 		const Ring &ring = Ring(),
 		const Phase &phase = EXECUTE,
-		const typename std::enable_if< !grb::is_object< OutputType >::value &&
+		const typename std::enable_if<
+			!grb::is_object< OutputType >::value &&
 			!grb::is_object< MaskType >::value &&
 			!grb::is_object< InputType1 >::value &&
 			!grb::is_object< InputType2 >::value &&
@@ -3921,7 +3980,9 @@ namespace grb {
 		if( n != grb::size( y ) ) {
 			return MISMATCH;
 		}
-		if( config::IMPLEMENTATION< BSP1D >::fixedVectorCapacities() && phase == RESIZE ) {
+		if( config::IMPLEMENTATION< BSP1D >::fixedVectorCapacities() &&
+			phase == RESIZE
+		) {
 			return SUCCESS;
 		}
 
@@ -3930,7 +3991,9 @@ namespace grb {
 			alpha, internal::getLocal( x ), internal::getLocal( y ),
 			ring, phase
 		);
-		if( config::IMPLEMENTATION< BSP1D >::fixedVectorCapacities() && phase == RESIZE ) {
+		if( config::IMPLEMENTATION< BSP1D >::fixedVectorCapacities() &&
+			phase == RESIZE
+		) {
 			if( collectives< BSP1D >::allreduce(
 				ret, grb::operators::any_or< RC >()
 			) != SUCCESS ) {
@@ -3953,7 +4016,8 @@ namespace grb {
 	 *          monoid, followed by a call to grb::eWiseMul.
 	 */
 	template<
-		Descriptor descr = descriptors::no_operation, class Ring,
+		Descriptor descr = descriptors::no_operation,
+		class Ring,
 		typename InputType1, typename InputType2, typename InputType3,
 		typename OutputType, typename MaskType,
 		typename Coords
@@ -4023,7 +4087,8 @@ namespace grb {
 	 *          monoid, followed by a call to grb::eWiseMul.
 	 */
 	template<
-		Descriptor descr = descriptors::no_operation, class Ring,
+		Descriptor descr = descriptors::no_operation,
+		class Ring,
 		typename InputType1, typename InputType2, typename InputType3,
 		typename OutputType, typename MaskType, typename Coords
 	>
@@ -4035,7 +4100,8 @@ namespace grb {
 		const InputType3 gamma,
 		const Ring &ring = Ring(),
 		const Phase &phase = EXECUTE,
-		const typename std::enable_if< !grb::is_object< OutputType >::value &&
+		const typename std::enable_if<
+			!grb::is_object< OutputType >::value &&
 			!grb::is_object< MaskType >::value &&
 			!grb::is_object< InputType1 >::value &&
 			!grb::is_object< InputType2 >::value &&
@@ -4085,7 +4151,8 @@ namespace grb {
 	 *          monoid, followed by a call to grb::eWiseMul.
 	 */
 	template<
-		Descriptor descr = descriptors::no_operation, class Ring,
+		Descriptor descr = descriptors::no_operation,
+		class Ring,
 		typename InputType1, typename InputType2, typename InputType3,
 		typename OutputType, typename MaskType, typename Coords
 	>
@@ -4097,7 +4164,8 @@ namespace grb {
 		const InputType3 gamma,
 		const Ring &ring = Ring(),
 		const Phase &phase = EXECUTE,
-		const typename std::enable_if< !grb::is_object< OutputType >::value &&
+		const typename std::enable_if<
+			!grb::is_object< OutputType >::value &&
 			!grb::is_object< MaskType >::value &&
 			!grb::is_object< InputType1 >::value &&
 			!grb::is_object< InputType2 >::value &&
@@ -4119,7 +4187,9 @@ namespace grb {
 		if( n != grb::size( m ) ) {
 			return MISMATCH;
 		}
-		if( config::IMPLEMENTATION< BSP1D >::fixedVectorCapacities() && phase == RESIZE ) {
+		if( config::IMPLEMENTATION< BSP1D >::fixedVectorCapacities() &&
+			phase == RESIZE
+		) {
 			return SUCCESS;
 		}
 
@@ -4128,7 +4198,9 @@ namespace grb {
 			internal::getLocal( a ), beta, gamma,
 			ring, phase
 		);
-		if( config::IMPLEMENTATION< BSP1D >::fixedVectorCapacities() && phase == RESIZE ) {
+		if( config::IMPLEMENTATION< BSP1D >::fixedVectorCapacities() &&
+			phase == RESIZE
+		) {
 			if( collectives< BSP1D >::allreduce(
 				ret, grb::operators::any_or< RC >()
 			) != SUCCESS ) {
@@ -4151,7 +4223,8 @@ namespace grb {
 	 *          monoid, followed by a call to grb::eWiseMul.
 	 */
 	template<
-		Descriptor descr = descriptors::no_operation, class Ring,
+		Descriptor descr = descriptors::no_operation,
+		class Ring,
 		typename InputType1, typename InputType2, typename InputType3,
 		typename OutputType, typename MaskType, typename Coords
 	>
@@ -4163,7 +4236,8 @@ namespace grb {
 		const InputType3 gamma,
 		const Ring &ring = Ring(),
 		const Phase &phase = EXECUTE,
-		const typename std::enable_if< !grb::is_object< OutputType >::value &&
+		const typename std::enable_if<
+			!grb::is_object< OutputType >::value &&
 			!grb::is_object< MaskType >::value &&
 			!grb::is_object< InputType1 >::value &&
 			!grb::is_object< InputType2 >::value &&
@@ -4185,7 +4259,9 @@ namespace grb {
 		if( n != grb::size( m ) ) {
 			return MISMATCH;
 		}
-		if( config::IMPLEMENTATION< BSP1D >::fixedVectorCapacities() && phase == RESIZE ) {
+		if( config::IMPLEMENTATION< BSP1D >::fixedVectorCapacities() &&
+			phase == RESIZE
+		) {
 			return SUCCESS;
 		}
 
@@ -4194,7 +4270,9 @@ namespace grb {
 			alpha, internal::getLocal( x ), gamma,
 			ring, phase
 		);
-		if( config::IMPLEMENTATION< BSP1D >::fixedVectorCapacities() && phase == RESIZE ) {
+		if( config::IMPLEMENTATION< BSP1D >::fixedVectorCapacities() &&
+			phase == RESIZE
+		) {
 			if( collectives< BSP1D >::allreduce(
 				ret, grb::operators::any_or< RC >()
 			) != SUCCESS ) {
@@ -4217,7 +4295,8 @@ namespace grb {
 	 *          monoid, followed by a call to grb::eWiseMul.
 	 */
 	template<
-		Descriptor descr = descriptors::no_operation, class Ring,
+		Descriptor descr = descriptors::no_operation,
+		class Ring,
 		typename InputType1, typename InputType2, typename InputType3,
 		typename OutputType, typename MaskType, typename Coords
 	>
@@ -4229,7 +4308,8 @@ namespace grb {
 		const Vector< InputType3, BSP1D, Coords > &y,
 		const Ring &ring = Ring(),
 		const Phase &phase = EXECUTE,
-		const typename std::enable_if< !grb::is_object< OutputType >::value &&
+		const typename std::enable_if<
+			!grb::is_object< OutputType >::value &&
 			!grb::is_object< MaskType >::value &&
 			!grb::is_object< InputType1 >::value &&
 			!grb::is_object< InputType2 >::value &&
@@ -4251,7 +4331,9 @@ namespace grb {
 		if( n != grb::size( m ) ) {
 			return MISMATCH;
 		}
-		if( config::IMPLEMENTATION< BSP1D >::fixedVectorCapacities() && phase == RESIZE ) {
+		if( config::IMPLEMENTATION< BSP1D >::fixedVectorCapacities() &&
+			phase == RESIZE
+		) {
 			return SUCCESS;
 		}
 
@@ -4260,7 +4342,9 @@ namespace grb {
 			alpha, beta, internal::getLocal( y ),
 			ring, phase
 		);
-		if( config::IMPLEMENTATION< BSP1D >::fixedVectorCapacities() && phase == RESIZE ) {
+		if( config::IMPLEMENTATION< BSP1D >::fixedVectorCapacities() &&
+			phase == RESIZE
+		) {
 			if( collectives< BSP1D >::allreduce(
 				ret, grb::operators::any_or< RC >()
 			) != SUCCESS ) {
@@ -4283,7 +4367,8 @@ namespace grb {
 	 *          monoid, followed by a call to grb::eWiseMul.
 	 */
 	template<
-		Descriptor descr = descriptors::no_operation, class Ring,
+		Descriptor descr = descriptors::no_operation,
+		class Ring,
 		typename InputType1, typename InputType2, typename InputType3,
 		typename OutputType, typename MaskType, typename Coords
 	>
@@ -4295,7 +4380,8 @@ namespace grb {
 		const InputType3 gamma,
 		const Ring &ring = Ring(),
 		const Phase &phase = EXECUTE,
-		const typename std::enable_if< !grb::is_object< OutputType >::value &&
+		const typename std::enable_if<
+			!grb::is_object< OutputType >::value &&
 			!grb::is_object< MaskType >::value &&
 			!grb::is_object< InputType1 >::value &&
 			!grb::is_object< InputType2 >::value &&
@@ -4314,7 +4400,9 @@ namespace grb {
 		if( n != grb::size( m ) ) {
 			return MISMATCH;
 		}
-		if( config::IMPLEMENTATION< BSP1D >::fixedVectorCapacities() && phase == RESIZE ) {
+		if( config::IMPLEMENTATION< BSP1D >::fixedVectorCapacities() &&
+			phase == RESIZE
+		) {
 			return SUCCESS;
 		}
 
@@ -4408,7 +4496,8 @@ namespace grb {
 		const Vector< InputType2, BSP1D, Coords > &y,
 		const AddMonoid &addMonoid,
 		const AnyOp &anyOp,
-		const typename std::enable_if< !grb::is_object< InputType1 >::value &&
+		const typename std::enable_if<
+			!grb::is_object< InputType1 >::value &&
 			!grb::is_object< InputType2 >::value &&
 			!grb::is_object< OutputType >::value &&
 			grb::is_monoid< AddMonoid >::value &&
@@ -4433,8 +4522,7 @@ namespace grb {
 			internal::getLocal( x ), internal::getLocal( y ),
 			addMonoid, anyOp
 		);
-		ret = ret ? ret : collectives< BSP1D >::allreduce(
-			oop, addMonoid.getOperator() );
+		ret = ret ? ret : collectives< BSP1D >::allreduce( oop, addMonoid );
 
 		// fold out-of-place dot product into existing value and exit
 		ret = ret ? ret : foldl( z, oop, addMonoid.getOperator() );
@@ -4537,7 +4625,8 @@ namespace grb {
 		const Vector< T, BSP1D, Coords > &x,
 		const Vector< U, BSP1D, Coords > &y,
 		const Phase &phase = EXECUTE,
-		const typename std::enable_if< !grb::is_object< T >::value &&
+		const typename std::enable_if<
+			!grb::is_object< T >::value &&
 			!grb::is_object< U >::value, void
 		>::type * const = nullptr
 	) {
@@ -4572,7 +4661,8 @@ namespace grb {
 		Vector< U, BSP1D, Coords > &y,
 		const Vector< std::pair< T, U >, BSP1D, Coords > &in,
 		const Phase &phase = EXECUTE,
-		const typename std::enable_if< !grb::is_object< T >::value &&
+		const typename std::enable_if<
+			!grb::is_object< T >::value &&
 			!grb::is_object< U >::value, void
 		>::type * const = nullptr
 	) {
