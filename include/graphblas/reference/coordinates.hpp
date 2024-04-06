@@ -25,10 +25,11 @@
 
 #include <stddef.h> //size_t
 
-#include <stdexcept> //std::runtime_error
+#include <algorithm> // std::max
+#include <stdexcept> // std::runtime_error
 
 #include <assert.h>
-#include <string.h> //memcpy
+#include <string.h> // memcpy
 
 #include <graphblas/backends.hpp>
 #include <graphblas/base/coordinates.hpp>
@@ -134,6 +135,132 @@ namespace grb {
 					Update update = _buffer;
 					update += tid * bs;
 					return update;
+				}
+#endif
+
+				/**
+				 * Shared header function for the set, set_seq, and set_ompPar functions.
+				 *
+				 * \warning This function does not set _buf
+				 */
+				void set_shared_header(
+					void * const arr, void * const buf, const size_t dim
+				) noexcept {
+					// catch trivial case
+					if( arr == nullptr || buf == nullptr ) {
+						assert( arr == nullptr );
+						assert( buf == nullptr );
+						assert( dim == 0 );
+						_assigned = nullptr;
+						_stack = nullptr;
+						_buffer = nullptr;
+						_n = 0;
+						_cap = 0;
+						_buf = 0;
+						return;
+					}
+
+					// _assigned has no alignment issues, take directly from input buffer
+					assert( reinterpret_cast< uintptr_t >( _assigned ) % sizeof( bool ) == 0 );
+					_assigned = static_cast< bool * >( arr );
+					// ...but _stack does have potential alignment issues:
+					char * buf_raw = static_cast< char * >( buf );
+					constexpr const size_t size = sizeof( StackType );
+					const size_t mod = reinterpret_cast< uintptr_t >( buf_raw ) % size;
+					if( mod != 0 ) {
+						buf_raw += size - mod;
+					}
+					_stack = reinterpret_cast< StackType * >( buf_raw );
+					// no alignment issues between stack and buffer, so just shift by dim:
+					_buffer = _stack + dim;
+					// initialise
+					_n = 0;
+					_cap = dim;
+				}
+
+				/**
+				 * Shared inner-most code for the set, set_seq, and set_ompPar functions.
+				 *
+				 * Sets the assigned array to false within the given start and end bounds.
+				 */
+				inline void set_kernel( const size_t start, const size_t end ) noexcept {
+					// initialise _assigned only if necessary
+					if( _cap > 0 && start < end ) {
+						for( size_t i = start; i < end; ++i ) {
+							_assigned[ i ] = false;
+						}
+					}
+				}
+
+				inline void clear_header() noexcept {
+#ifndef NDEBUG
+					if( _n == _cap && _assigned == nullptr && _cap > 0 ) {
+						const bool dense_coordinates_may_not_call_clear = false;
+						assert( dense_coordinates_may_not_call_clear );
+					}
+#endif
+				}
+
+				inline void clear_oh_n_kernel( const size_t start, const size_t end ) noexcept {
+					for( size_t i = start; i < end; ++i ) {
+						_assigned[ i ] = false;
+					}
+				}
+
+#ifdef _H_GRB_REFERENCE_OMP_COORDINATES
+				void clear_oh_n_ompPar() noexcept {
+					size_t start, end;
+					config::OMP::localRange( start, end, 0, _cap );
+					clear_oh_n_kernel( start, end );
+				}
+
+				void clear_oh_n_omp() noexcept {
+					if( _cap < config::OMP::minLoopSize() ) {
+						clear_oh_n_kernel( 0, _cap );
+					} else {
+						const size_t nblocks = _cap / config::CACHE_LINE_SIZE::value();
+						const size_t nthreads = std::max( static_cast< size_t >( 1 ),
+							(_cap % config::CACHE_LINE_SIZE::value() == 0) ? nblocks : nblocks + 1 );
+						#pragma omp parallel num_threads( nthreads )
+						{
+							clear_oh_n_ompPar();
+						}
+					}
+				}
+#endif
+
+				inline void clear_oh_nz_seq() noexcept {
+					for( size_t k = 0; k < _n; ++k ) {
+						_assigned[ _stack[ k ] ] = false;
+					}
+				}
+
+#ifdef _H_GRB_REFERENCE_OMP_COORDINATES
+				inline void clear_oh_nz_ompPar() noexcept {
+					// dynamic schedule since performance may differ significantly depending
+					// on the un-orderedness of the _stack
+					#pragma omp for schedule( dynamic, config::CACHE_LINE_SIZE::value() )
+					for( size_t k = 0; k < _n; ++k ) {
+						_assigned[ _stack[ k ] ] = false;
+					}
+				}
+
+				void clear_oh_nz_omp() noexcept {
+					if( _n < config::OMP::minLoopSize() ) {
+						clear_oh_nz_seq();
+					} else {
+						// use a simple analytic model to determine nthreads
+						const size_t bsize = _n / config::CACHE_LINE_SIZE::value();
+						const size_t nthreads = std::max( static_cast< size_t >( 1 ),
+							(_n % config::CACHE_LINE_SIZE::value() == 0)
+								? bsize
+								: bsize + 1
+							);
+						#pragma omp parallel num_threads( nthreads )
+						{
+							clear_oh_nz_ompPar();
+						}
+					}
 				}
 #endif
 
@@ -337,36 +464,7 @@ namespace grb {
 					void * const arr, bool arr_initialized,
 					void * const buf, const size_t dim
 				) noexcept {
-					// catch trivial case
-					if( arr == nullptr || buf == nullptr ) {
-						assert( arr == nullptr );
-						assert( buf == nullptr );
-						assert( dim == 0 );
-						_assigned = nullptr;
-						_stack = nullptr;
-						_buffer = nullptr;
-						_n = 0;
-						_cap = 0;
-						_buf = 0;
-						return;
-					}
-
-					// _assigned has no alignment issues, take directly from input buffer
-					assert( reinterpret_cast< uintptr_t >( _assigned ) % sizeof( bool ) == 0 );
-					_assigned = static_cast< bool * >( arr );
-					// ...but _stack does have potential alignment issues:
-					char * buf_raw = static_cast< char * >( buf );
-					constexpr const size_t size = sizeof( StackType );
-					const size_t mod = reinterpret_cast< uintptr_t >( buf_raw ) % size;
-					if( mod != 0 ) {
-						buf_raw += size - mod;
-					}
-					_stack = reinterpret_cast< StackType * >( buf_raw );
-					// no alignment issues between stack and buffer, so just shift by dim:
-					_buffer = _stack + dim;
-					// initialise
-					_n = 0;
-					_cap = dim;
+					set_shared_header( arr, buf, dim );
 					_buf = config::IMPLEMENTATION< reference >::vectorBufferSize(
 						_cap,
 #ifdef _H_GRB_REFERENCE_OMP_COORDINATES
@@ -375,25 +473,65 @@ namespace grb {
 						1
 #endif
 					);
-					// and initialise _assigned (but only if necessary)
-					if( dim > 0 && !arr_initialized ) {
+					if( arr_initialized ) { return; }
 #ifdef _H_GRB_REFERENCE_OMP_COORDINATES
-						#pragma omp parallel
-						{
-							size_t start, end;
-							config::OMP::localRange( start, end, 0, dim );
+					#pragma omp parallel
+					{
+						size_t start, end;
+						config::OMP::localRange( start, end, 0, dim );
 #else
-							const size_t start = 0;
-							const size_t end = dim;
+						const size_t start = 0;
+						const size_t end = dim;
 #endif
-							for( size_t i = start; i < end; ++i ) {
-								_assigned[ i ] = false;
-							}
+						set_kernel( start, end );
 #ifdef _H_GRB_REFERENCE_OMP_COORDINATES
-						}
+					}
 #endif
+				}
+
+				/**
+				 * Sets the data structure.
+				 *
+				 * This variant of #set assumes this instance will only ever be used by a
+				 * single thread.
+				 */
+				void set_seq(
+					void * const arr, bool arr_initialized,
+					void * const buf, const size_t dim
+				) noexcept {
+					set_shared_header( arr, buf, dim );
+					_buf = config::IMPLEMENTATION< reference >::vectorBufferSize( _cap, 1 );
+					if( !arr_initialized ) {
+						set_kernel( 0, dim );
 					}
 				}
+
+#ifdef _H_GRB_REFERENCE_OMP_COORDINATES
+				/**
+				 * Sets the data structure.
+				 *
+				 * This variant of #set assumes this instance will be called from within a
+				 * parallel OMP section. It (thus) assumes the initialised instance may be
+				 * referred to by multiple threads.
+				 */
+				void set_ompPar(
+					void * const arr, bool arr_initialized,
+					void * const buf, const size_t dim
+				) noexcept {
+					size_t start, end;
+					config::OMP::localRange( start, end, 0, dim );
+					#pragma omp single
+					{
+						set_shared_header( arr, buf, dim );
+						_buf = config::IMPLEMENTATION< reference >::vectorBufferSize( _cap,
+							config::OMP::threads() );
+					}
+					#pragma omp barrier
+					if( !arr_initialized ) {
+						set_kernel( start, end );
+					}
+				}
+#endif
 
 				/**
 				 * Sets this data structure to a dummy placeholder for a dense structure.
@@ -1240,7 +1378,7 @@ namespace grb {
 						return true;
 					}
 #else
-					(void)localUpdate;
+					(void) localUpdate;
 					return assign( i );
 #endif
 				}
@@ -1501,48 +1639,31 @@ namespace grb {
 				 *
 				 * This function may be called on instances with any (other) state.
 				 */
-				inline void clear() noexcept {
+				void clear() noexcept {
+					clear_header();
 					if( _n == _cap ) {
-#ifndef NDEBUG
-						if( _assigned == nullptr && _cap > 0 ) {
-							const bool dense_coordinates_may_not_call_clear = false;
-							assert( dense_coordinates_may_not_call_clear );
-						}
-#endif
 #ifdef _H_GRB_REFERENCE_OMP_COORDINATES
-						#pragma omp parallel
-						{
-							size_t start, end;
-							config::OMP::localRange( start, end, 0, _cap );
+						clear_oh_n_omp();
 #else
-							const size_t start = 0;
-							const size_t end = _cap;
-#endif
-							for( size_t i = start; i < end; ++i ) {
-								_assigned[ i ] = false;
-							}
-#ifdef _H_GRB_REFERENCE_OMP_COORDINATES
-						}
+						clear_oh_n_kernel( 0, _cap );
 #endif
 					} else {
 #ifdef _H_GRB_REFERENCE_OMP_COORDINATES
-						if( _n < config::OMP::minLoopSize() ) {
-#endif
-							for( size_t k = 0; k < _n; ++k ) {
-								_assigned[ _stack[ k ] ] = false;
-							}
-#ifdef _H_GRB_REFERENCE_OMP_COORDINATES
-						} else {
-							// dynamic schedule since performance may differ significantly depending
-							// on the un-orderedness of the _stack
-							#pragma omp parallel for schedule( dynamic, config::CACHE_LINE_SIZE::value() )
-							for( size_t k = 0; k < _n; ++k ) {
-								_assigned[ _stack[ k ] ] = false;
-							}
-						}
+						clear_oh_nz_omp();
+#else
+						clear_oh_nz_seq();
 #endif
 					}
 					_n = 0;
+				}
+
+				void clear_seq() noexcept {
+					clear_header();
+					if( _n == _cap ) {
+						clear_oh_n_kernel( 0, _cap );
+					} else {
+						clear_oh_nz_seq();
+					}
 				}
 
 				/**
