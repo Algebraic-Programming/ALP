@@ -115,7 +115,7 @@ namespace grb {
 			std::cout << "\t entering prefixSum_ompPar_phase2\n";
 #endif
 			(void) copyEnd;
-			T dummy, offset_index;
+			size_t dummy, offset_index;
 			myOffset = 0;
 			for( size_t k = 0; k < config::OMP::current_thread_ID(); ++k ) {
 				config::OMP::localRange( dummy, offset_index, 0, n,
