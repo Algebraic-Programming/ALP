@@ -261,7 +261,31 @@ namespace grb {
 			return SUCCESS;
 		}
 
-		RC mxm_generic_ompPar_get_rowCount() {
+		template<
+			Descriptor descr, bool crs_only, grb::Phase phase,
+			typename D,
+			typename RIT, typename CIT, typename NIT,
+			typename InputType1, typename InputType2,
+			typename IND, typename SIZE
+		>
+		RC mxm_generic_ompPar_get_row_col_counts(
+			size_t &nzc,
+			Compressed_Storage< D, IND, SIZE > &CRS,
+			Compressed_Storage< D, IND, SIZE > &CCS,
+			const size_t n, const size_t m,
+			const Matrix< InputType1, reference, RIT, CIT, NIT > &A,
+			const Matrix< InputType2, reference, RIT, CIT, NIT > &B,
+			char * const arr, char * const buf
+		) {
+			constexpr bool trans_left = descr & descriptors::transpose_left;
+			constexpr bool trans_right = descr & descriptors::transpose_right;
+			const auto &A_raw = !trans_left
+				? internal::getCRS( A )
+				: internal::getCCS( A );
+			const auto &B_raw = !trans_right
+				? internal::getCRS( B )
+				: internal::getCCS( B );
+
 			// local loop bounds
 			size_t start, end;
 
@@ -269,40 +293,40 @@ namespace grb {
 
 			// local SPA
 			internal::Coordinates< reference > coors;
-			coors.set( arr, false, buf, n );
+			coors.set_seq( arr, false, buf, n );
 
 			if( !crs_only ) {
 #ifdef _H_GRB_REFERENCE_OMP_BLAS3
 				config::OMP::localRange( start, end, 0, n + 1 );
 #else
-				const size_t start = 0;
-				const size_t end = n + 1;
+				start = 0;
+				end = n + 1;
 #endif
 				for( size_t j = start; j < end; ++j ) {
-					CCS_raw.col_start[ j ] = 0;
+					CCS.col_start[ j ] = 0;
 				}
 			}
 
 #ifdef _H_GRB_REFERENCE_OMP_BLAS3
-				config::OMP::localRange( start, end, 0, m );
+			config::OMP::localRange( start, end, 0, m );
 #else
-				const size_t start = 0;
-				const size_t end = m;
+			start = 0;
+			end = m;
 #endif
 
 			// counting sort, first step
-			size_t nzc = 0; // output nonzero count
+			nzc = 0; // output nonzero count
 			if( crs_only && phase == RESIZE && start < end && start == 0 ) {
 				// we are using an auxialiary CRS that we cannot resize ourselves
 				// instead, we update the offset array only
-				CRS_raw.col_start[ 0 ] = 0;
+				CRS.col_start[ 0 ] = 0;
 			}
 			// if crs_only, then the below implements its resize phase
 			// if not crs_only, then the below is both crucial for the resize phase,
 			// as well as for enabling the insertions of output values in the output CCS
 			if( (crs_only && phase == RESIZE) || !crs_only ) {
 				for( size_t i = start; i < end; ++i ) {
-					coors.clear();
+					coors.clear_seq();
 					for( auto k = A_raw.col_start[ i ]; k < A_raw.col_start[ i + 1 ]; ++k ) {
 						const size_t k_col = A_raw.row_index[ k ];
 						for(
@@ -314,7 +338,7 @@ namespace grb {
 							if( !coors.assign( l_col ) ) {
 								(void) ++nzc;
 								if( !crs_only ) {
-									(void) ++CCS_raw.col_start[ l_col + 1 ];
+									(void) ++CCS.col_start[ l_col + 1 ];
 								}
 							}
 						}
@@ -322,19 +346,20 @@ namespace grb {
 					if( crs_only && phase == RESIZE ) {
 						// we are using an auxialiary CRS that we cannot resize ourselves
 						// instead, we update the offset array only
-						CRS_raw.col_start[ i + 1 ] = nzc;
+						CRS.col_start[ i + 1 ] = nzc;
 					}
 				}
 
 				// now do prefix sum phases 2 & 3 (the above code does phase 1 in-place)
 				{
-					//TODO what type? ps_ws;
+					NIT ps_ws;
 					#pragma omp barrier
-					utils::prefixSum_ompPar_phase2< true >( CRS_row.col_start, m, ps_ws );
+					utils::prefixSum_ompPar_phase2< true >( CRS.col_start, m, ps_ws );
 					#pragma omp barrier
-					utils::prefixSum_ompPar_phase3< true >( CRS_row.col_start, m, ps_ws );
+					utils::prefixSum_ompPar_phase3< true >( CRS.col_start, m, ps_ws );
 				}
 			}
+			return SUCCESS;
 		}
 
 		/**
@@ -347,14 +372,12 @@ namespace grb {
 			class Operator,
 			class MulMonoid,
 			typename OutputType, typename InputType1, typename InputType2,
-			typename RIT1, typename CIT1, typename NIT1,
-			typename RIT2, typename CIT2, typename NIT2,
-			typename RIT3, typename CIT3, typename NIT3
+			typename RIT, typename CIT, typename NIT
 		>
 		RC mxm_generic(
-			Matrix< OutputType, reference, RIT1, CIT1, NIT1 > &C,
-			const Matrix< InputType1, reference, RIT2, CIT2, NIT2 > &A,
-			const Matrix< InputType2, reference, RIT3, CIT3, NIT3 > &B,
+			Matrix< OutputType, reference, RIT, CIT, NIT > &C,
+			const Matrix< InputType1, reference, RIT, CIT, NIT > &A,
+			const Matrix< InputType2, reference, RIT, CIT, NIT > &B,
 			const Operator &oper,
 			const Monoid &monoid,
 			const MulMonoid &mulMonoid,
@@ -417,37 +440,96 @@ namespace grb {
 			auto &CCS_raw = internal::getCCS( C );
 
 			OutputType * valbuf = nullptr;
-			config::NonzeroIndexType * C_col_index = internal::template
-				getReferenceBuffer< typename config::NonzeroIndexType >( n + 1 );
+			NIT * C_col_index = internal::template
+				getReferenceBuffer< NIT >( n + 1 );
 
+#ifdef _H_GRB_REFERENCE_OMP_BLAS3
 			// derive number of threads
-			const size_t nthreads = 1; // TODO
-
-			// prepare thread-local data structures
-			char * arr = nullptr;
-			char * buf = nullptr;
+			size_t nthreads = 1;
+			size_t bufferOffset = (n + 1) * sizeof( NIT );
+			size_t paddedSPASize;
+			size_t arrayShift = 0;
+			// compute paddedSPASize
 			{
-				// one thread uses the standard matrix buffer
-				if( start < end && start == 0 ) {
-					internal::getMatrixBuffers( arr, buf, valbuf, 1, C );
-				} else {
-					// other threads use the global buffer to create additional SPAs
-					// TODO
+				paddedSPASize =
+					internal::Coordinates< reference >::arraySize( n ) +
+					internal::Coordinates< reference >::stackSize( n );
+				size_t shift =
+					internal::Coordinates< reference >::arraySize( n ) % sizeof(int);
+				if( shift != 0 ) {
+					arrayShift = sizeof(int) - shift;
+					paddedSPASize += arrayShift;
+				}
+				shift = internal::Coordinates< reference >::stackSize( n ) % sizeof(int);
+				if( shift != 0 ) {
+					paddedSPASize += sizeof(int) - shift;
 				}
 			}
+			// compute nthreads
+			{
+				const size_t shift = bufferOffset % sizeof(int);
+				if( shift != 0 ) {
+					bufferOffset += sizeof(int) - shift;
+				}
+				const size_t freeBufferSize = internal::getCurrentBufferSize< char >() -
+					bufferOffset;
+				nthreads += freeBufferSize / paddedSPASize;
+			}
+ #ifdef _DEBUG
+			std::cout << "\t mxm_generic will use " << nthreads << " threads\n";
+ #endif
+#endif
 
 			// resize phase logic
 			if( phase == RESIZE ) {
+				size_t nzc = 0;
 #ifdef _H_GRB_REFERENCE_OMP_BLAS3
 				#pragma omp parallel num_threads( nthreads )
 #endif
 				{
 					// get thread-local buffers
-					mxm_generic_ompPar_get_rowcount( CRS_raw, arr, buf  );
+					char * arr = nullptr;
+					char * buf = nullptr;
+					// one thread uses the standard matrix buffer
+					internal::getMatrixBuffers( arr, buf, valbuf, 1, C );
+#ifdef _H_GRB_REFERENCE_OMP_BLAS3
+					// other threads use the global buffer to create additional SPAs
+					{
+						const size_t t = config::OMP::current_thread_ID();
+ #ifndef NDEBUG
+						const size_t T = config::OMP::current_threads();
+						assert( t < T );
+ #endif
+						if( t > 0 ) {
+							char * rawBuffer = internal::template
+								getReferenceBuffer< char >( bufferOffset + nthreads * paddedSPASize ) +
+								bufferOffset;
+							assert( t > 0 );
+							assert( reinterpret_cast< uintptr_t >(rawBuffer) % sizeof(int) == 0 );
+							rawBuffer += (t - 1) * paddedSPASize;
+							assert( reinterpret_cast< uintptr_t >(rawBuffer) % sizeof(int) == 0 );
+							arr = rawBuffer;
+							rawBuffer += arrayShift;
+							assert( reinterpret_cast< uintptr_t >(rawBuffer) % sizeof(int) == 0 );
+							buf = rawBuffer;
+						}
+					}
+#endif
+
+					// do count
+					size_t local_nzc;
+					mxm_generic_ompPar_get_row_col_counts< descr, crs_only, RESIZE >(
+						local_nzc, CRS_raw, CCS_raw,
+						m, n, A, B,
+						arr, buf
+					);
+					#pragma omp atomic update
+					nzc += local_nzc;
 				}
 				if( !crs_only ) {
 					// do final resize
-					const RC ret = grb::resize( C, CRS_raw.col_start[ m ] );
+					assert( nzc == CRS_raw.col_start[ m ] );
+					const RC ret = grb::resize( C, nzc );
 					return ret;
 				} else {
 					// we are using an auxiliary CRS that we cannot resize
@@ -459,155 +541,217 @@ namespace grb {
 			// execute phase logic
 			assert( phase == EXECUTE );
 			bool clear_at_exit = false;
+			RC ret = SUCCESS;
+			size_t nzc = 0;
 #ifdef _H_GRB_REFERENCE_OMP_BLAS3
-			#pragma omp parallel num_threads( nthreads )
+			#pragma omp parallel num_threads( nthreads ) reduction( + : nzc )
 #endif
 			{
-				size_t start, end;
+				size_t start, end, local_nzc;
 				RC local_rc = SUCCESS;
+
+				// get thread-local buffers
+				char * arr = nullptr;
+				char * buf = nullptr;
+				// one thread uses the standard matrix buffer
+				internal::getMatrixBuffers( arr, buf, valbuf, 1, C );
+#ifdef _H_GRB_REFERENCE_OMP_BLAS3
+				// other threads use the global buffer to create additional SPAs
+				{
+					const size_t t = config::OMP::current_thread_ID();
+ #ifndef NDEBUG
+					const size_t T = config::OMP::current_threads();
+					assert( t < T );
+ #endif
+					if( t > 0 ) {
+						char * rawBuffer = internal::template
+							getReferenceBuffer< char >( bufferOffset + nthreads * paddedSPASize ) +
+							bufferOffset;
+						assert( t > 0 );
+						assert( reinterpret_cast< uintptr_t >(rawBuffer) % sizeof(int) == 0 );
+						rawBuffer += (t - 1) * paddedSPASize;
+						assert( reinterpret_cast< uintptr_t >(rawBuffer) % sizeof(int) == 0 );
+						arr = rawBuffer;
+						rawBuffer += arrayShift;
+						assert( reinterpret_cast< uintptr_t >(rawBuffer) % sizeof(int) == 0 );
+						buf = rawBuffer;
+					}
+				}
+#endif
 
 				// phase 1: symbolic phase
 
-				local_rc = mxm_generic_ompPar_get_rowcount( nzc, CRS_raw );
+				local_rc = mxm_generic_ompPar_get_row_col_counts<
+					descr, crs_only, EXECUTE
+				>(
+					local_nzc, CRS_raw, CCS_raw,
+					m, n, A, B,
+					arr, buf
+				);
 
-				// phase 2: computational phase
-
-				assert( phase == EXECUTE );
-				if( local_rc == SUCCESS && grb::capacity( C ) < nzc ) {
-#ifdef _DEBUG
-					std::cerr << "\t not enough capacity to execute requested operation\n";
-#endif
-					local_rc = FAILED;
+				if( local_rc != SUCCESS ) {
+					std::cerr << "mxm_generic_ompPar_get_row_col_counts returned " <<
+						grb::toString( local_rc );
+				} else if( static_cast< size_t >(CRS_raw.col_start[ m ]) >
+					grb::capacity( C )
+				) {
+					std::cerr << "mxm_generic: not enough capacity in output matrix while "
+						<< "phase is EXECUTE\n";
+					#pragma omp atomic write
 					clear_at_exit = true;
-				}
+				} else {
+					// phase 2: computational phase
 
-				// prefix sum for C_col_index,
-				// set CCS_raw.col_start to all zero
+					// get thread-local SPA
+					internal::Coordinates< reference > coors;
+					coors.set_seq( arr, false, buf, n );
+
+					// prefix sum for C_col_index, fused with setting CCS_raw.col_start to zero
 #ifdef _H_GRB_REFERENCE_OMP_BLAS3
-				config::OMP::localRange( start, end, 0, n );
+					config::OMP::localRange( start, end, 0, n );
 #else
-				start = 0;
-				end = n;
+					start = 0;
+					end = n;
 #endif
 #ifndef NDEBUG
-				if( !crs_only && start < end && start == 0 ) {
-					assert( CCS_raw.col_start[ 0 ] == 0 );
-				}
-#endif
-				C_col_index[ start ] = 0;
-				for( size_t j = start + 1; j < end; ++j ) {
-					if( !crs_only ) {
-						CCS_raw.col_start[ j + 1 ] += CCS_raw.col_start[ j ];
+					if( !crs_only && start < end && start == 0 ) {
+						assert( CCS_raw.col_start[ 0 ] == 0 );
 					}
-					C_col_index[ j ] = 0;
-				}
+#endif
+					C_col_index[ start ] = 0;
+					for( size_t j = start + 1; j < end; ++j ) {
+						if( !crs_only ) {
+							CCS_raw.col_start[ j + 1 ] += CCS_raw.col_start[ j ];
+						}
+						C_col_index[ j ] = 0;
+					}
 
-				// now finish up prefix-sum on CCS_raw
-				{
-					// TODO type ps_ws;
-					#pragma omp barrier
-					utils::prefixSum_ompPar_phase2< true >( CCS_raw.col_start, n, ps_ws );
-					#pragma omp barrier
-					utils::prefixSum_ompPar_phase3< true >( CCS_raw.col_start, n, ps_ws );
-				}
+					// now finish up prefix-sum on CCS_raw
+					{
+						NIT ps_ws;
+						#pragma omp barrier
+						utils::prefixSum_ompPar_phase2< true >( CCS_raw.col_start, n, ps_ws );
+						#pragma omp barrier
+						utils::prefixSum_ompPar_phase3< true >( CCS_raw.col_start, n, ps_ws );
+					}
 #ifndef NDEBUG
-				if( !crs_only && start < end && end == n ) {
-					assert( CCS_raw.col_start[ n ] == nzc );
-				}
+					if( !crs_only && start < end && end == n ) {
+						assert( CRS_raw.col_start[ m ] == CCS_raw.col_start[ n ] );
+					}
 #endif
 
-#ifndef NDEBUG
-				const size_t old_nzc = nzc;
-#endif
-				// use previously computed CCS offset array to update CCS during the
-				// computational phase
+					// use previously computed CCS offset array to update CCS during the
+					// computational phase
 #ifdef _H_GRB_REFERENCE_OMP_BLAS3
-				config::OMP::localRange( start, end, 0, m );
+					config::OMP::localRange( start, end, 0, m );
 #else
-				start = 0;
-				end = m;
+					start = 0;
+					end = m;
 #endif
-				nzc = 0;
-				if( start < end && start == 0 ) {
-					CRS_raw.col_start[ 0 ] = 0;
-				}
-				for( size_t i = start; i < end; ++i ) {
-					coors.clear();
-					for( auto k = A_raw.col_start[ i ]; k < A_raw.col_start[ i + 1 ]; ++k ) {
-						const size_t k_col = A_raw.row_index[ k ];
-						for( auto l = B_raw.col_start[ k_col ];
-							l < B_raw.col_start[ k_col + 1 ];
-							++l
-						) {
-							const size_t l_col = B_raw.row_index[ l ];
+					local_nzc = CRS_raw.col_start[ start ];
+					if( start < end && start == 0 ) {
+						CRS_raw.col_start[ 0 ] = 0;
+					}
+					for( size_t i = start; i < end; ++i ) {
+						coors.clear_seq();
+						for( auto k = A_raw.col_start[ i ]; k < A_raw.col_start[ i + 1 ]; ++k ) {
+							const size_t k_col = A_raw.row_index[ k ];
+							for( auto l = B_raw.col_start[ k_col ];
+								l < B_raw.col_start[ k_col + 1 ];
+								++l
+							) {
+								const size_t l_col = B_raw.row_index[ l ];
 #ifdef _DEBUG
-							std::cout << "\t A( " << i << ", " << k_col << " ) = "
-								<< A_raw.getValue( k,
-									mulMonoid.template getIdentity< typename Operator::D1 >() )
-								<< " will be multiplied with B( " << k_col << ", " << l_col << " ) = "
-								<< B_raw.getValue( l,
-									mulMonoid.template getIdentity< typename Operator::D2 >() )
-								<< " to accumulate into C( " << i << ", " << l_col << " )\n";
+								std::cout << "\t A( " << i << ", " << k_col << " ) = "
+									<< A_raw.getValue( k,
+										mulMonoid.template getIdentity< typename Operator::D1 >() )
+									<< " will be multiplied with B( " << k_col << ", " << l_col << " ) = "
+									<< B_raw.getValue( l,
+										mulMonoid.template getIdentity< typename Operator::D2 >() )
+									<< " to accumulate into C( " << i << ", " << l_col << " )\n";
 #endif
-							if( !coors.assign( l_col ) ) {
-								valbuf[ l_col ] = monoid.template getIdentity< OutputType >();
-								(void) grb::apply( valbuf[ l_col ],
-									A_raw.getValue( k,
-										mulMonoid.template getIdentity< typename Operator::D1 >() ),
-									B_raw.getValue( l,
-										mulMonoid.template getIdentity< typename Operator::D2 >() ),
-									oper );
-							} else {
-								OutputType temp = monoid.template getIdentity< OutputType >();
-								(void) grb::apply( temp,
-									A_raw.getValue( k,
-										mulMonoid.template getIdentity< typename Operator::D1 >() ),
-									B_raw.getValue( l,
-										mulMonoid.template getIdentity< typename Operator::D2 >() ),
-									oper );
-								(void) grb::foldl( valbuf[ l_col ], temp, monoid.getOperator() );
+								if( !coors.assign( l_col ) ) {
+									valbuf[ l_col ] = monoid.template getIdentity< OutputType >();
+									(void) grb::apply( valbuf[ l_col ],
+										A_raw.getValue( k,
+											mulMonoid.template getIdentity< typename Operator::D1 >() ),
+										B_raw.getValue( l,
+											mulMonoid.template getIdentity< typename Operator::D2 >() ),
+										oper );
+								} else {
+									OutputType temp = monoid.template getIdentity< OutputType >();
+									(void) grb::apply( temp,
+										A_raw.getValue( k,
+											mulMonoid.template getIdentity< typename Operator::D1 >() ),
+										B_raw.getValue( l,
+											mulMonoid.template getIdentity< typename Operator::D2 >() ),
+										oper );
+									(void) grb::foldl( valbuf[ l_col ], temp, monoid.getOperator() );
+								}
+							}
+						}
+						for( size_t k = 0; k < coors.nonzeroes(); ++k ) {
+							const size_t j = coors.index( k );
+							// update CRS
+							CRS_raw.row_index[ local_nzc ] = j;
+							CRS_raw.setValue( local_nzc, valbuf[ j ] );
+							// update CCS
+							if( !crs_only ) {
+#ifdef _H_GRB_REFERENCE_OMP_BLAS3
+								// TODO It may be better to switch to a parallel transposition to update
+								//      the CCS if there are too many threads (FIXME)
+								#pragma omp critical
+#endif
+								{
+									const size_t CCS_index = C_col_index[ j ]++ + CCS_raw.col_start[ j ];
+									CCS_raw.row_index[ CCS_index ] = i;
+									CCS_raw.setValue( CCS_index, valbuf[ j ] );
+								}
+							}
+							// update count
+							(void) ++local_nzc;
+						}
+						assert( CRS_raw.col_start[ i + 1 ] == local_nzc );
+					}
+#ifndef NDEBUG
+ #ifdef _H_GRB_REFERENCE_OMP_BLAS3
+					#pragma omp barrier
+					#pragma omp single
+ #endif
+					{
+						if( !crs_only ) {
+							for( size_t j = 0; j < n; ++j ) {
+								assert( CCS_raw.col_start[ j + 1 ] - CCS_raw.col_start[ j ] ==
+									C_col_index[ j ] );
 							}
 						}
 					}
-					for( size_t k = 0; k < coors.nonzeroes(); ++k ) {
-						assert( nzc < old_nzc );
-						const size_t j = coors.index( k );
-						// update CRS
-						CRS_raw.row_index[ nzc ] = j;
-						CRS_raw.setValue( nzc, valbuf[ j ] );
-						// update CCS
-						if( !crs_only ) {
-							const size_t CCS_index = C_col_index[ j ]++ + CCS_raw.col_start[ j ];
-							CCS_raw.row_index[ CCS_index ] = i;
-							CCS_raw.setValue( CCS_index, valbuf[ j ] );
-						}
-						// update count
-						(void) ++nzc;
-					}
-					CRS_raw.col_start[ i + 1 ] = nzc;
-				}
-#ifndef NDEBUG
+#endif
 #ifdef _H_GRB_REFERENCE_OMP_BLAS3
-				#pragma omp barrier
-				#pragma omp single
+					#pragma omp critical
 #endif
-				{
-					if( !crs_only ) {
-						for( size_t j = 0; j < n; ++j ) {
-							assert( CCS_raw.col_start[ j + 1 ] - CCS_raw.col_start[ j ] ==
-								C_col_index[ j ] );
+					{
+						nzc += local_nzc;
+						if( local_rc != SUCCESS && ret == SUCCESS ) {
+							ret = local_rc;
 						}
 					}
 				}
-				assert( nzc == old_nzc );
-#endif
 			}
 
-			// set final number of nonzeroes in output matrix
-			internal::setCurrentNonzeroes( C, nzc );
+			if( ret == SUCCESS ) {
+				assert( !clear_at_exit );
+				// set final number of nonzeroes in output matrix
+				internal::setCurrentNonzeroes( C, nzc );
+			}
+
+			if( clear_at_exit ) {
+				const RC clear_rc = clear( C );
+				if( clear_rc != SUCCESS ) { return PANIC; }
+			}
 
 			// done
-			return SUCCESS;
+			return ret;
 		}
 
 	} // end namespace grb::internal
