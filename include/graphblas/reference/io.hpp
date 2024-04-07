@@ -1542,9 +1542,13 @@ namespace grb {
 				);
 			const size_t nthreads = minRange < config::OMP::minLoopSize()
 				? 1
-				: std::max( static_cast< size_t >(1),
-					minRange / config::CACHE_LINE_SIZE::value()
-				);
+				: std::min(
+						config::OMP::threads(),
+						std::max(
+							static_cast< size_t >(1),
+							minRange / config::CACHE_LINE_SIZE::value()
+						)
+					);
 			#pragma omp parallel num_threads( nthreads )
 #endif
 			{
@@ -1612,9 +1616,13 @@ namespace grb {
 			// minimum loop size config.
 			const size_t nthreads = nz < config::OMP::minLoopSize()
 				? 1
-				: std::max( static_cast< size_t >(1),
-					nz / config::CACHE_LINE_SIZE::value() );
-
+				: std::min(
+						config::OMP::threads(),
+						std::max(
+							static_cast< size_t >(1),
+							nz / config::CACHE_LINE_SIZE::value()
+						)
+					  );
 			#pragma omp parallel num_threads( nthreads )
 #endif
 			{

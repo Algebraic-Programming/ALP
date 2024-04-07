@@ -112,7 +112,8 @@ namespace grb {
 				n = transpose_input ? nrows( in ) : ncols( in );
 			const size_t
 				m_out = nrows( out ),
-				n_out = ncols( out );
+				n_out = ncols( out ),
+				nz = nnz( in );
 
 			typedef typename std::conditional< transpose_input, CITin, RITin >::type
 				EffectiveRowType;
@@ -134,7 +135,11 @@ namespace grb {
 #ifdef _H_GRB_REFERENCE_OMP_BLAS3
 				const size_t nthreads = m < config::OMP::minLoopSize()
 					? 1
-					: config::OMP::threads();
+					: std::min(
+							config::OMP::threads(),
+							nz / config::CACHE_LINE_SIZE::value()
+						  );
+
 				#pragma omp parallel reduction(+: nzc) num_threads( nthreads )
 #endif
 				{
@@ -183,7 +188,10 @@ namespace grb {
 #ifdef _H_GRB_REFERENCE_OMP_BLAS3
 				const size_t nthreads = ( n + 1 ) < config::OMP::minLoopSize()
 					? 1
-					: config::OMP::threads();
+					: std::min(
+							config::OMP::threads(),
+							nz / config::CACHE_LINE_SIZE::value()
+						);
 				#pragma omp parallel for simd num_threads( nthreads )
 #endif
 				for( size_t j = 0; j < n + 1; ++j ) {
@@ -213,7 +221,10 @@ namespace grb {
 #ifdef _H_GRB_REFERENCE_OMP_BLAS3
 					const size_t nthreads = ( n + 1 ) < config::OMP::minLoopSize()
 						? 1
-						: config::OMP::threads();
+						: std::min(
+								config::OMP::threads(),
+								n / config::CACHE_LINE_SIZE::value()
+							);
 					#pragma omp parallel for simd num_threads( nthreads )
 #endif
 					for( size_t j = 0; j < n + 1; ++j ) {
@@ -474,6 +485,9 @@ namespace grb {
 				const size_t freeBufferSize = internal::getCurrentBufferSize< char >() -
 					bufferOffset;
 				nthreads += freeBufferSize / paddedSPASize;
+				if( nthreads > config::OMP::threads() ) {
+					nthreads = config::OMP::threads();
+				}
 			}
  #ifdef _DEBUG
 			std::cout << "\t mxm_generic will use " << nthreads << " threads\n";

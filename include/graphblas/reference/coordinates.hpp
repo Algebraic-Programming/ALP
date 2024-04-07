@@ -219,8 +219,13 @@ namespace grb {
 						clear_oh_n_kernel( 0, _cap );
 					} else {
 						const size_t nblocks = _cap / config::CACHE_LINE_SIZE::value();
-						const size_t nthreads = std::max( static_cast< size_t >( 1 ),
-							(_cap % config::CACHE_LINE_SIZE::value() == 0) ? nblocks : nblocks + 1 );
+						const size_t nthreads = std::min(
+								config::OMP::threads(),
+								std::max(
+									static_cast< size_t >( 1 ),
+									(_cap % config::CACHE_LINE_SIZE::value() == 0) ? nblocks : nblocks + 1
+								)
+							);
 						#pragma omp parallel num_threads( nthreads )
 						{
 							clear_oh_n_ompPar();
@@ -251,10 +256,14 @@ namespace grb {
 					} else {
 						// use a simple analytic model to determine nthreads
 						const size_t bsize = _n / config::CACHE_LINE_SIZE::value();
-						const size_t nthreads = std::max( static_cast< size_t >( 1 ),
-							(_n % config::CACHE_LINE_SIZE::value() == 0)
-								? bsize
-								: bsize + 1
+						const size_t nthreads = std::min(
+								config::OMP::threads(),
+								std::max(
+									static_cast< size_t >( 1 ),
+									(_n % config::CACHE_LINE_SIZE::value() == 0)
+										? bsize
+										: bsize + 1
+								)
 							);
 						#pragma omp parallel num_threads( nthreads )
 						{

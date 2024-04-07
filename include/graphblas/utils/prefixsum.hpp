@@ -229,11 +229,15 @@ namespace grb {
 		 */
 		template< bool copyEnd, typename T >
 		void prefixSum_omp( T *__restrict__ array, const size_t n ) {
-			const size_t nthreads = std::max( static_cast< size_t >(1),
-				n % grb::config::CACHE_LINE_SIZE::value() == 0
-					? n / grb::config::CACHE_LINE_SIZE::value()
-					: n / grb::config::CACHE_LINE_SIZE::value() + 1
-			);
+			const size_t nthreads = std::min(
+					config::OMP::threads(),
+					std::max(
+						static_cast< size_t >(1),
+						n % grb::config::CACHE_LINE_SIZE::value() == 0
+							? n / grb::config::CACHE_LINE_SIZE::value()
+							: n / grb::config::CACHE_LINE_SIZE::value() + 1
+					)
+				);
 			if( n < grb::config::OMP::minLoopSize() || nthreads == 1 ) {
 				prefixSum_seq< copyEnd >( array, n );
 			} else {
