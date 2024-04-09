@@ -102,6 +102,13 @@ add_grb_executables( hpcg hpcg.cpp
 	ADDITIONAL_LINK_LIBRARIES test_utils
 )
 
+if( TARGET amgcl )
+	add_grb_executables( amg amg.cpp
+		BACKENDS reference reference_omp bsp1d hybrid
+		ADDITIONAL_LINK_LIBRARIES amgcl test_utils
+	)
+endif()
+
 add_grb_executables( graphchallenge_nn_single_inference graphchallenge_nn_single_inference.cpp
 	BACKENDS reference reference_omp bsp1d hybrid hyperdags nonblocking
 	ADDITIONAL_LINK_LIBRARIES test_utils_headers
