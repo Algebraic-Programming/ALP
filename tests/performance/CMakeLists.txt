@@ -26,6 +26,7 @@ set( TEST_CATEGORY "performance" )
 add_library( bench_kernels OBJECT bench_kernels.c bench_kernels.h )
 add_library( bench_kernels_omp OBJECT bench_kernels.c bench_kernels.h )
 target_compile_definitions( bench_kernels_omp PRIVATE BENCH_KERNELS_OPENMP )
+target_link_libraries( bench_kernels_omp PRIVATE test_performance_flags OpenMP::OpenMP_C )
 
 add_grb_executables( fma fma.cpp $<TARGET_OBJECTS:bench_kernels>
 	BACKENDS reference NO_BACKEND_NAME
