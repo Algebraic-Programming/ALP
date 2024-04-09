@@ -104,7 +104,7 @@ add_grb_executables( hpcg hpcg.cpp
 
 if( TARGET amgcl )
 	add_grb_executables( amg amg.cpp
-		BACKENDS reference reference_omp bsp1d hybrid
+		BACKENDS reference reference_omp bsp1d hybrid nonblocking
 		ADDITIONAL_LINK_LIBRARIES amgcl test_utils
 	)
 endif()

@@ -110,6 +110,7 @@ option( GNN_DATASET_PATH "Directory with the GraphChallengeDataset dataset" )
 option( SPBLAS_PREFIX "Prefix for SparseBLAS library" OFF )
 option( ENABLE_SOLVER_LIB "Compile solver library against the reference and nonblocking backends" ON )
 option( ENABLE_EXTRA_SOLVER_LIBS "Compile solver library against the reference_omp backend, in addition to reference and nonblocking" OFF )
+option( ENABLE_AMGCL "Linak with AMGCL library" OFF )
 
 
 ### CHECK THE OPTIONS ARE COHERENT
@@ -241,8 +242,21 @@ endif()
 
 ### CHECK DEPENDENCIES
 
-# find amgcl
-find_package( AMGCL )
+# AMGCL
+if( ENABLE_AMGCL )
+       # try to find amgcl
+       find_package( AMGCL )
+       if( NOT AMGCL_FOUND )
+              include(FetchContent)
+	      FetchContent_Declare(
+                     amgcl
+		     GIT_REPOSITORY https://github.com/ddemidov/amgcl.git
+		     GIT_TAG        c71ab45
+              )
+              FetchContent_MakeAvailable(amgcl)
+       endif()
+endif()
+
 
 # always look for math and rt libraries
 find_package( LibM REQUIRED )
