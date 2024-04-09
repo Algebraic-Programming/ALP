@@ -112,6 +112,13 @@ void test( const struct Input &in, struct Output &out ) {
 		timer.reset();
 		// benchmark templated axpy
 		for( size_t i = 0; i < out.reps_used; ++i ) {
+			out.error = grb::set( zv, 0 );
+			if( out.error != grb::SUCCESS ) {
+				std::cerr << "Error during clearing of zv "
+					<< grb::toString( out.error ) << std::endl;
+				std::cout << "Test FAILED\n" << std::endl;
+				return;
+			}
 			(void) grb::eWiseMulAdd< grb::descriptors::dense >( zv, alpha, xv, yv,
 				reals );
 		}
@@ -306,26 +313,33 @@ int main( int argc, char ** argv ) {
 	// start functional test
 	std::cout << "\nBenchmark label: grb::eWiseApply (axpy) of size " << in.n
 		<< std::endl;
+	out.error = SUCCESS;
 	grb::RC rc = bench.exec( &(test< TEMPLATED >), in, out, 1, outer, true );
-	if( rc == SUCCESS ) {
-		std::cout << "\nBenchmark label: grb::eWiseLambda (axpy) of size " << in.n
-			<< std::endl;
-		rc = bench.exec( &(test< LAMBDA >), in, out, 1, outer, true );
-	}
-	if( rc == SUCCESS ) {
-		std::cout << "\nBenchmark label: compiler-optimised axpy of size " << in.n
-			<< std::endl;
-		rc = bench.exec( &(test< RAW >), in, out, 1, outer, true );
-	}
-	if( rc != SUCCESS ) {
-		std::cerr << "Error launching test; exec returns " << grb::toString( rc )
-			<< "." << std::endl;
+	if( rc != SUCCESS || out.error != SUCCESS ) {
+		std::cerr << "Functional test exits with nonzero exit code. "
+			<< "Benchmarker reports: " << grb::toString( rc )
+			<< "; test reports:"  << grb::toString( out.error ) << "." << std::endl;
 		std::cout << "Test FAILED\n" << std::endl;
 		return EXIT_FAILURE;
 	}
-	if( out.error != SUCCESS ) {
+	std::cout << "\nBenchmark label: grb::eWiseLambda (axpy) of size " << in.n
+		<< std::endl;
+	rc = bench.exec( &(test< LAMBDA >), in, out, 1, outer, true );
+		if( rc != SUCCESS || out.error != SUCCESS ) {
 		std::cerr << "Functional test exits with nonzero exit code. "
-			<< "Reason: " << grb::toString( out.error ) << "." << std::endl;
+			<< "Benchmarker reports: " << grb::toString( rc )
+			<< "; test reports:"  << grb::toString( out.error ) << "." << std::endl;
+		std::cout << "Test FAILED\n" << std::endl;
+		return EXIT_FAILURE;
+	}
+
+	std::cout << "\nBenchmark label: compiler-optimised axpy of size " << in.n
+		<< std::endl;
+	rc = bench.exec( &(test< RAW >), in, out, 1, outer, true );
+	if( rc != SUCCESS || out.error != SUCCESS ) {
+		std::cerr << "Functional test exits with nonzero exit code. "
+			<< "Benchmarker reports: " << grb::toString( rc )
+			<< "; test reports:"  << grb::toString( out.error ) << "." << std::endl;
 		std::cout << "Test FAILED\n" << std::endl;
 		return EXIT_FAILURE;
 	}
