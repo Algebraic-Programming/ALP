@@ -1673,6 +1673,7 @@ namespace grb {
 					} else {
 						clear_oh_nz_seq();
 					}
+					_n = 0;
 				}
 
 				/**
