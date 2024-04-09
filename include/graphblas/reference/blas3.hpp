@@ -110,10 +110,11 @@ namespace grb {
 			const size_t
 				m = transpose_input ? ncols( in ) : nrows( in ),
 				n = transpose_input ? nrows( in ) : ncols( in );
-			const size_t
-				m_out = nrows( out ),
-				n_out = ncols( out ),
-				nz = nnz( in );
+			const size_t m_out = nrows( out );
+			const size_t n_out = ncols( out );
+#ifdef _H_GRB_REFERENCE_OMP_BLAS3
+			const size_t nz = nnz( in );
+#endif
 
 			typedef typename std::conditional< transpose_input, CITin, RITin >::type
 				EffectiveRowType;
