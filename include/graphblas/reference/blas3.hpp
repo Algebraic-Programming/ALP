@@ -273,6 +273,12 @@ namespace grb {
 			return SUCCESS;
 		}
 
+		/**
+		 * This is a rather specialised function for computing local nonzero counts,
+		 * a cumulative row-count array, and a direct column-count array. Furthermore,
+		 * the latter two are only computed when \a phase is EXECUTE, and if it is,
+		 * the latter is only computed when \a crs_only is <tt>false</tt>.
+		 */
 		template<
 			Descriptor descr, bool crs_only, grb::Phase phase,
 			typename D,
@@ -289,6 +295,10 @@ namespace grb {
 			const Matrix< InputType2, reference, RIT, CIT, NIT > &B,
 			char * const arr, char * const buf
 		) {
+			// static sanity checks
+			static_assert( phase == RESIZE || phase == EXECUTE, "Only resize and execute "
+				"phases are currently supported." );
+
 			constexpr bool trans_left = descr & descriptors::transpose_left;
 			constexpr bool trans_right = descr & descriptors::transpose_right;
 			const auto &A_raw = !trans_left
@@ -307,7 +317,7 @@ namespace grb {
 			internal::Coordinates< reference > coors;
 			coors.set_seq( arr, false, buf, n );
 
-			if( !crs_only ) {
+			if( !crs_only && phase == EXECUTE ) {
 #ifdef _H_GRB_REFERENCE_OMP_BLAS3
 				config::OMP::localRange( start, end, 0, n + 1 );
 #else
@@ -328,48 +338,42 @@ namespace grb {
 
 			// counting sort, first step
 			nzc = 0; // output nonzero count
-			if( crs_only && phase == RESIZE && start < end && start == 0 ) {
-				// we are using an auxialiary CRS that we cannot resize ourselves
-				// instead, we update the offset array only
+			if( start < end && start == 0 && phase == EXECUTE ) {
 				CRS.col_start[ 0 ] = 0;
 			}
 			// if crs_only, then the below implements its resize phase
 			// if not crs_only, then the below is both crucial for the resize phase,
 			// as well as for enabling the insertions of output values in the output CCS
-			if( (crs_only && phase == RESIZE) || !crs_only ) {
-				for( size_t i = start; i < end; ++i ) {
-					coors.clear_seq();
-					for( auto k = A_raw.col_start[ i ]; k < A_raw.col_start[ i + 1 ]; ++k ) {
-						const size_t k_col = A_raw.row_index[ k ];
-						for(
-							auto l = B_raw.col_start[ k_col ];
-							l < B_raw.col_start[ k_col + 1 ];
-							++l
-						) {
-							const size_t l_col = B_raw.row_index[ l ];
-							if( !coors.assign( l_col ) ) {
-								(void) ++nzc;
-								if( !crs_only ) {
-									(void) ++CCS.col_start[ l_col + 1 ];
-								}
+			for( size_t i = start; i < end; ++i ) {
+				coors.clear_seq();
+				for( auto k = A_raw.col_start[ i ]; k < A_raw.col_start[ i + 1 ]; ++k ) {
+					const size_t k_col = A_raw.row_index[ k ];
+					for(
+						auto l = B_raw.col_start[ k_col ];
+						l < B_raw.col_start[ k_col + 1 ];
+						++l
+					) {
+						const size_t l_col = B_raw.row_index[ l ];
+						if( !coors.assign( l_col ) ) {
+							(void) ++nzc;
+							if( !crs_only && phase == EXECUTE ) {
+								(void) ++CCS.col_start[ l_col + 1 ];
 							}
 						}
 					}
-					if( crs_only && phase == RESIZE ) {
-						// we are using an auxialiary CRS that we cannot resize ourselves
-						// instead, we update the offset array only
-						CRS.col_start[ i + 1 ] = nzc;
-					}
 				}
+				if( phase == EXECUTE ) {
+					CRS.col_start[ i + 1 ] = nzc;
+				}
+			}
 
-				// now do prefix sum phases 2 & 3 (the above code does phase 1 in-place)
-				{
-					NIT ps_ws;
-					#pragma omp barrier
-					utils::prefixSum_ompPar_phase2< true >( CRS.col_start, m, ps_ws );
-					#pragma omp barrier
-					utils::prefixSum_ompPar_phase3< true >( CRS.col_start, m, ps_ws );
-				}
+			// now do prefix sum phases 2 & 3 (the above code does phase 1 in-place)
+			if( phase == EXECUTE ) {
+				NIT ps_ws;
+				#pragma omp barrier
+				utils::prefixSum_ompPar_phase2< false >( CRS.col_start, m + 1, ps_ws );
+				#pragma omp barrier
+				utils::prefixSum_ompPar_phase3< false >( CRS.col_start, m + 1, ps_ws );
 			}
 			return SUCCESS;
 		}
@@ -543,12 +547,22 @@ namespace grb {
 				}
 				if( !crs_only ) {
 					// do final resize
-					assert( nzc == CRS_raw.col_start[ m ] );
 					const RC ret = grb::resize( C, nzc );
 					return ret;
 				} else {
 					// we are using an auxiliary CRS that we cannot resize
 					// instead, we updated the offset array in the above and can now exit
+					// TODO FIXME This assumes crs_only is only used for non-owning views,
+					//            which may not always be true.
+					static bool print_warning_once = false;
+					if( !print_warning_once ) {
+						std::cerr << "Warning: grb::mxm( reference ): current implementation has "
+						       << "that force_row_major implies a non-owning view of the output "
+						       << "storage. If this is not a correct assumption in your use case, "
+						       << "please submit a bug report.\n";
+						print_warning_once = true;
+					}
+					CRS_raw.col_start[ m ] = nzc;
 					return SUCCESS;
 				}
 			}
@@ -557,9 +571,8 @@ namespace grb {
 			assert( phase == EXECUTE );
 			bool clear_at_exit = false;
 			RC ret = SUCCESS;
-			size_t nzc = 0;
 #ifdef _H_GRB_REFERENCE_OMP_BLAS3
-			#pragma omp parallel num_threads( nthreads ) reduction( + : nzc )
+			#pragma omp parallel num_threads( nthreads )
 #endif
 			{
 				size_t start, end, local_nzc;
@@ -645,9 +658,9 @@ namespace grb {
 					{
 						NIT ps_ws;
 						#pragma omp barrier
-						utils::prefixSum_ompPar_phase2< true >( CCS_raw.col_start, n, ps_ws );
+						utils::prefixSum_ompPar_phase2< false >( CCS_raw.col_start, n + 1, ps_ws );
 						#pragma omp barrier
-						utils::prefixSum_ompPar_phase3< true >( CCS_raw.col_start, n, ps_ws );
+						utils::prefixSum_ompPar_phase3< false >( CCS_raw.col_start, n + 1, ps_ws );
 					}
 #ifndef NDEBUG
 					if( !crs_only && start < end && end == n ) {
@@ -746,7 +759,6 @@ namespace grb {
 					#pragma omp critical
 #endif
 					{
-						nzc += local_nzc;
 						if( local_rc != SUCCESS && ret == SUCCESS ) {
 							ret = local_rc;
 						}
@@ -756,8 +768,11 @@ namespace grb {
 
 			if( ret == SUCCESS ) {
 				assert( !clear_at_exit );
+				if( !crs_only ) {
+					assert( CRS_raw.col_start[ m ] == CCS_raw.col_start[ n ] );
+				}
 				// set final number of nonzeroes in output matrix
-				internal::setCurrentNonzeroes( C, nzc );
+				internal::setCurrentNonzeroes( C, CRS_raw.col_start[ m ] );
 			}
 
 			if( clear_at_exit ) {
