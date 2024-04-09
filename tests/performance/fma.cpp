@@ -112,6 +112,13 @@ void test( const struct Input &in, struct Output &out ) {
 		timer.reset();
 		// benchmark templated axpy
 		for( size_t i = 0; i < out.reps_used; ++i ) {
+			out.error = grb::set( zv, 0 );
+			if( out.error != grb::SUCCESS ) {
+				std::cerr << "Error during clearing of zv "
+					<< grb::toString( out.error ) << std::endl;
+				std::cout << "Test FAILED\n" << std::endl;
+				return;
+			}
 			(void) grb::eWiseMulAdd< grb::descriptors::dense >( zv, alpha, xv, yv,
 				reals );
 		}
