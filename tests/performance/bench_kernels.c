@@ -30,7 +30,7 @@ void bench_kernels_axpy(
 	assert( a != x );
 	assert( a != y );
 	assert( x != y );
-	#pragma omp parallel for schedule(static,8)
+	#pragma omp parallel for schedule(static)
 	for( size_t i = 0; i < n; ++i ) {
 		a[ i ] = alpha * x[ i ] + y[ i ];
 	}
