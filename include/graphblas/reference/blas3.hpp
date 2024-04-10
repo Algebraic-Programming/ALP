@@ -59,6 +59,10 @@
 		"********************************************************************" \
 		"******************************\n" );
 
+#ifdef _DEBUG
+ #define _DEBUG_REFERENCE_BLAS3
+#endif
+
 
 namespace grb {
 
@@ -247,7 +251,7 @@ namespace grb {
 					if( !op( global_row, global_col, value ) ) {
 						continue;
 					}
-#ifdef _DEBUG
+#ifdef _DEBUG_REFERENCE_BLAS3
 					std::cout << "\tKeeping value at: " << row_l2g( i ) << ", "
 						<< col_l2g( j ) << " -> idx=" << nzc << "\n";
 #endif
@@ -290,7 +294,7 @@ namespace grb {
 			size_t &nzc,
 			Compressed_Storage< D, IND, SIZE > &CRS,
 			Compressed_Storage< D, IND, SIZE > &CCS,
-			const size_t n, const size_t m,
+			const size_t m, const size_t n,
 			const Matrix< InputType1, reference, RIT, CIT, NIT > &A,
 			const Matrix< InputType2, reference, RIT, CIT, NIT > &B,
 			char * const arr, char * const buf
@@ -416,7 +420,7 @@ namespace grb {
 				"void)"
 			);
 
-#ifdef _DEBUG
+#ifdef _DEBUG_REFERENCE_BLAS3
 			std::cout << "In grb::internal::mxm_generic (reference, unmasked)\n";
 #endif
 
@@ -494,7 +498,7 @@ namespace grb {
 					nthreads = config::OMP::threads();
 				}
 			}
- #ifdef _DEBUG
+ #ifdef _DEBUG_REFERENCE_BLAS3
 			std::cout << "\t mxm_generic will use " << nthreads << " threads\n";
  #endif
 #endif
@@ -528,9 +532,11 @@ namespace grb {
 							rawBuffer += (t - 1) * paddedSPASize;
 							assert( reinterpret_cast< uintptr_t >(rawBuffer) % sizeof(int) == 0 );
 							arr = rawBuffer;
+							rawBuffer += internal::Coordinates< reference >::stackSize( n );
 							rawBuffer += arrayShift;
 							assert( reinterpret_cast< uintptr_t >(rawBuffer) % sizeof(int) == 0 );
 							buf = rawBuffer;
+							assert( buf != arr );
 						}
 					}
 #endif
@@ -600,9 +606,11 @@ namespace grb {
 						rawBuffer += (t - 1) * paddedSPASize;
 						assert( reinterpret_cast< uintptr_t >(rawBuffer) % sizeof(int) == 0 );
 						arr = rawBuffer;
+						rawBuffer += internal::Coordinates< reference >::stackSize( n );
 						rawBuffer += arrayShift;
 						assert( reinterpret_cast< uintptr_t >(rawBuffer) % sizeof(int) == 0 );
 						buf = rawBuffer;
+						assert( buf != arr );
 					}
 				}
 #endif
@@ -689,7 +697,7 @@ namespace grb {
 								++l
 							) {
 								const size_t l_col = B_raw.row_index[ l ];
-#ifdef _DEBUG
+#ifdef _DEBUG_REFERENCE_BLAS3
 								std::cout << "\t A( " << i << ", " << k_col << " ) = "
 									<< A_raw.getValue( k,
 										mulMonoid.template getIdentity< typename Operator::D1 >() )
@@ -827,7 +835,7 @@ namespace grb {
 			"called with an output matrix C that does not match the output domain "
 			"of the given operator" );
 
-#ifdef _DEBUG
+#ifdef _DEBUG_REFERENCE_BLAS3
 		std::cout << "In grb::mxm (reference, unmasked, semiring)\n";
 #endif
 
@@ -928,7 +936,7 @@ namespace grb {
 			const Phase &phase
 		) {
 			assert( !(descr & descriptors::force_row_major) );
-#ifdef _DEBUG
+#ifdef _DEBUG_REFERENCE_BLAS3
 			std::cout << "In matrix_zip_generic (reference, vectors-to-matrix)\n";
 #endif
 			assert( phase != TRY );
@@ -940,7 +948,7 @@ namespace grb {
 			assert( phase == EXECUTE );
 			const RC clear_rc = clear( A );
 			if( nnz( x ) > capacity( A ) ) {
-#ifdef _DEBUG
+#ifdef _DEBUG_REFERENCE_BLAS3
 				std::cout << "\t output matrix did not have sufficient capacity to "
 					<< "complete the requested computation\n";
 #endif
@@ -1294,7 +1302,7 @@ namespace grb {
 			), "grb::outerProduct",
 			"called with an output matrix that does not match the output domain of "
 			"the given multiplication operator" );
-#ifdef _DEBUG
+#ifdef _DEBUG_REFERENCE_BLAS3
 		std::cout << "In grb::outer (reference)\n";
 #endif
 
@@ -1316,7 +1324,7 @@ namespace grb {
 
 		assert( phase == EXECUTE );
 		if( capacity( A ) < nnz( u ) * nnz( v ) ) {
-#ifdef _DEBUG
+#ifdef _DEBUG_REFERENCE_BLAS3
 			std::cout << "\t insufficient capacity to complete "
 				"requested outer-product computation\n";
 #endif
@@ -1385,7 +1393,7 @@ namespace grb {
 				"This implementation of folding a matrix into a scalar only applies to "
 				"non-pattern matrices. Please submit a bug report."
 			);
-#ifdef _DEBUG
+#ifdef _DEBUG_REFERENCE_BLAS3
 			std::cout << "In grb::internal::fold_unmasked_generic( reference )\n";
 #endif
 			static_assert( !(descr & descriptors::add_identity),
@@ -1468,7 +1476,7 @@ namespace grb {
 			const Matrix< InputType, reference, RIT, CIT, NIT > &A,
 			const Ring &ring = Ring()
 		) {
-#ifdef _DEBUG
+#ifdef _DEBUG_REFERENCE_BLAS3
 			std::cout << "In grb::internal::fold_unmasked_generic__add_identity( "
 				<< "reference )\n";
 #endif
@@ -1560,7 +1568,7 @@ namespace grb {
 				assert( one_A != nullptr );
 			}
 #endif
-#ifdef _DEBUG
+#ifdef _DEBUG_REFERENCE_BLAS3
 			std::cout << "In grb::internal::fold_masked_generic( reference )\n";
 #endif
 			constexpr bool add_identity = (descr & descriptors::add_identity);
@@ -1578,7 +1586,7 @@ namespace grb {
 			if( (descr & descriptors::force_row_major) &&
 				(transpose_mask || transpose_input)
 			) {
-#ifdef _DEBUG
+#ifdef _DEBUG_REFERENCE_BLAS3
 				std::cerr << "force_row_major and transpose descriptors are mutually "
 					<< "exclusive in this implementation\n";
 #endif
@@ -1684,7 +1692,7 @@ namespace grb {
 				CoordinatesColTranslator(),
 			const Ring &ring = Ring()
 		) {
-#ifdef _DEBUG
+#ifdef _DEBUG_REFERENCE_BLAS3
 			std::cout << "In grb::internal::fold_masked_generic__add_identity( "
 				<< "reference )\n";
 #endif
@@ -1749,7 +1757,7 @@ namespace grb {
 				"is a pattern matrix (of type void)" );
 			assert( phase != TRY );
 
-#ifdef _DEBUG
+#ifdef _DEBUG_REFERENCE_BLAS3
 			std::cout << "In grb::internal::eWiseApply_matrix_generic\n";
 #endif
 
@@ -1778,7 +1786,7 @@ namespace grb {
 			auto &C_raw = internal::getCRS( C );
 			auto &CCS_raw = internal::getCCS( C );
 
-#ifdef _DEBUG
+#ifdef _DEBUG_REFERENCE_BLAS3
 			std::cout << "\t\t A offset array = { ";
 			for( size_t i = 0; i <= m_A; ++i ) {
 				std::cout << A_raw.col_start[ i ] << " ";
@@ -1884,7 +1892,7 @@ namespace grb {
 
 				// check capacity
 				if( nzc > capacity( C ) ) {
-#ifdef _DEBUG
+#ifdef _DEBUG_REFERENCE_BLAS3
 					std::cout << "\t detected insufficient capacity "
 						<< "for requested operation\n";
 #endif
@@ -1926,7 +1934,7 @@ namespace grb {
 				for( size_t i = 0; i < m; ++i ) {
 					coors1.clear();
 					coors2.clear();
-#ifdef _DEBUG
+#ifdef _DEBUG_REFERENCE_BLAS3
 					std::cout << "\t The elements ";
 #endif
 					for( size_t k = A_raw.col_start[ i ]; k < A_raw.col_start[ i + 1 ]; ++k ) {
@@ -1934,12 +1942,12 @@ namespace grb {
 						coors1.assign( k_col );
 						valbuf[ k_col ] = A_raw.getValue( k,
 							mulMonoid.template getIdentity< typename Operator::D1 >() );
-#ifdef _DEBUG
+#ifdef _DEBUG_REFERENCE_BLAS3
 						std::cout << "A( " << i << ", " << k_col << " ) = " << A_raw.getValue( k,
 							mulMonoid.template getIdentity< typename Operator::D1 >() ) << ", ";
 #endif
 					}
-#ifdef _DEBUG
+#ifdef _DEBUG_REFERENCE_BLAS3
 					std::cout << "are multiplied pairwise with ";
 #endif
 					for( size_t l = B_raw.col_start[ i ]; l < B_raw.col_start[ i + 1 ]; ++l ) {
@@ -1948,14 +1956,14 @@ namespace grb {
 							coors2.assign( l_col );
 							(void)grb::apply( valbuf[ l_col ], valbuf[ l_col ], B_raw.getValue( l,
 								mulMonoid.template getIdentity< typename Operator::D2 >() ), oper );
-#ifdef _DEBUG
+#ifdef _DEBUG_REFERENCE_BLAS3
 							std::cout << "B( " << i << ", " << l_col << " ) = " << B_raw.getValue( l,
 								mulMonoid.template getIdentity< typename Operator::D2 >() )
 							<< " to yield C( " << i << ", " << l_col << " ), ";
 #endif
 						}
 					}
-#ifdef _DEBUG
+#ifdef _DEBUG_REFERENCE_BLAS3
 					std::cout << "\n";
 #endif
 					for( size_t k = 0; k < coors2.nonzeroes(); ++k ) {
@@ -1971,7 +1979,7 @@ namespace grb {
 						(void)++nzc;
 					}
 					C_raw.col_start[ i + 1 ] = nzc;
-#ifdef _DEBUG
+#ifdef _DEBUG_REFERENCE_BLAS3
 					std::cout << "\n";
 #endif
 				}
@@ -2040,7 +2048,7 @@ namespace grb {
 			"of the monoid operator"
 		);
 
-#ifdef _DEBUG
+#ifdef _DEBUG_REFERENCE_BLAS3
 		std::cout << "In grb::eWiseApply_matrix_generic (reference, monoid)\n";
 #endif
 
@@ -2131,7 +2139,7 @@ namespace grb {
 			!is_object< Tout >::value
 		>::type * const = nullptr
 	) {
-#ifdef _DEBUG
+#ifdef _DEBUG_REFERENCE_BLAS3
 		std::cout << "In grb::select( reference )\n";
 #endif
 		// static sanity checks
@@ -2215,7 +2223,7 @@ namespace grb {
 			"the use of the add_identity descriptor requires a semiring, but a monoid "
 			"was given"
 		);
-#ifdef _DEBUG
+#ifdef _DEBUG_REFERENCE_BLAS3
 		std::cout << "In grb::foldr( reference, mask, matrix, monoid )\n";
 #endif
 		// first check whether we can dispatch
@@ -2293,7 +2301,7 @@ namespace grb {
 			"the use of the add_identity descriptor requires a semiring, but a monoid "
 			"was given"
 		);
-#ifdef _DEBUG
+#ifdef _DEBUG_REFERENCE_BLAS3
 		std::cout << "In grb::foldr( reference, matrix, monoid )\n";
 #endif
 		// check for trivial op
@@ -2339,7 +2347,7 @@ namespace grb {
 			"called with an output type that does not match the fourth domain of the "
 			"given semiring"
 		);
-#ifdef _DEBUG
+#ifdef _DEBUG_REFERENCE_BLAS3
 		std::cout << "In grb::foldr( reference, matrix, semiring )\n";
 #endif
 		// check for trivial op
@@ -2490,7 +2498,7 @@ namespace grb {
 			"the use of the add_identity descriptor requires a semiring, but a monoid "
 			"was given"
 		);
-#ifdef _DEBUG
+#ifdef _DEBUG_REFERENCE_BLAS3
 		std::cout << "In grb::foldl( reference, mask, matrix, monoid )\n";
 #endif
 		// first check whether we can dispatch
@@ -2570,7 +2578,7 @@ namespace grb {
 			"the use of the add_identity descriptor requires a semiring, but a monoid "
 			"was given"
 		);
-#ifdef _DEBUG
+#ifdef _DEBUG_REFERENCE_BLAS3
 		std::cout << "In grb::foldl( reference, matrix, monoid )\n";
 #endif
 		// check for trivial op
@@ -2616,7 +2624,7 @@ namespace grb {
 			"called with an output type that does not match the fourth domain of the "
 			"given semiring"
 		);
-#ifdef _DEBUG
+#ifdef _DEBUG_REFERENCE_BLAS3
 		std::cout << "In grb::foldl( reference, matrix, semiring )\n";
 #endif
 		// check for trivial op
@@ -2683,7 +2691,7 @@ namespace grb {
 			), "grb::foldl( reference, IOType <- [[IOType]], semiring, masked ): "
 			"may not select an inverted structural mask for matrices"
 		);
-#ifdef _DEBUG
+#ifdef _DEBUG_REFERENCE_BLAS3
 		std::cout << "In grb::foldl( reference, mask, matrix, semiring )\n";
 #endif
 		// first check whether we can dispatch
