@@ -54,6 +54,7 @@ set( HYPERDAGS_SELECTION_DEFS
 	"_GRB_WITH_HYPERDAGS_USING=${WITH_HYPERDAGS_USING}"
 )
 set( NONBLOCKING_SELECTION_DEFS "_GRB_BACKEND=nonblocking" )
+set( DENSE_SELECTION_DEFS "_GRB_BACKEND=reference_dense" )
 set( BSP1D_SELECTION_DEFS
 		"_GRB_BACKEND=BSP1D"
 		"_GRB_BSP1D_BACKEND=reference"
@@ -62,7 +63,6 @@ set( HYBRID_SELECTION_DEFS
 		"_GRB_BACKEND=BSP1D"
 		"_GRB_BSP1D_BACKEND=reference_omp"
 )
-set( DENSE_SELECTION_DEFS "_GRB_BACKEND=reference_dense" )
 
 # definition to set if not depending on libnuma
 set( NO_NUMA_DEF "_GRB_NO_LIBNUMA" )
@@ -106,6 +106,8 @@ endif()
 if( WITH_HYBRID_BACKEND )
 	list( APPEND AVAILABLE_BACKENDS "hybrid" )
 endif()
+
+message( STATUS "\n######### Configured with the following backends: #########\n${AVAILABLE_BACKENDS}\n" )
 
 # add your own here!
 
