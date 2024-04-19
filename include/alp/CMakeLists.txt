@@ -22,6 +22,7 @@
 # set a default backend (if they want to do so).
 #
 assert_defined_variables( ALP_REFERENCE_INCLUDE_DEFS WITH_ALP_REFERENCE_BACKEND_HEADERS )
+assert_defined_variables( ALP_OMP_INCLUDE_DEFS WITH_ALP_OMP_BACKEND_HEADERS )
 assert_valid_variables( INCLUDE_INSTALL_DIR )
 
 # to avoid flaky acrobatics with regex or glob expressions, copy main files directly
@@ -87,6 +88,22 @@ endif()
 if( WITH_ALP_REFERENCE_BACKEND )
 	install( DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/alp/reference"
 		DESTINATION "${ALP_INCLUDE_INSTALL_DIR}/alp_reference"
+		FILES_MATCHING REGEX "${HEADERS_REGEX}"
+	)
+endif()
+
+if( WITH_ALP_OMP_BACKEND_HEADERS )
+	add_library( backend_alp_omp_headers INTERFACE )
+	target_link_libraries( backend_alp_omp_headers INTERFACE backend_headers_nodefs )
+	target_link_libraries( backend_alp_omp_headers INTERFACE OpenMP::OpenMP_CXX )
+	target_compile_definitions( backend_alp_omp_headers INTERFACE "${ALP_OMP_INCLUDE_DEFS}" )
+
+	install( TARGETS backend_alp_omp_headers EXPORT GraphBLASTargets )
+endif()
+
+if( WITH_ALP_OMP_BACKEND )
+	install( DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/alp/omp"
+		DESTINATION "${ALP_INCLUDE_INSTALL_DIR}/alp_omp"
 		FILES_MATCHING REGEX "${HEADERS_REGEX}"
 	)
 endif()

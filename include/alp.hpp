@@ -134,7 +134,7 @@
 // clang-format re-ordering
 #if 1
 // load active configuration
-// #include <alp/config.hpp> //defines _ALP_BACKEND and _WITH_BSP
+ #include <alp/config.hpp> //defines _ALP_BACKEND
 #endif
 
 // #pragma message "Included ALP.hpp"
