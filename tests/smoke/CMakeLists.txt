@@ -296,7 +296,7 @@ add_custom_target( smoketests DEPENDS tests_smoke )
 
 set( ALP_SCRIPTS_COMMON_ARGS "--backends" )
 
-foreach( b ${AVAILABLE_BACKENDS} )
+foreach( b ${AVAILABLE_TEST_BACKENDS} )
 	string( FIND ${b} "alp" alp_pos_in_b )
 	# message("alp_pos_in_b = ${alp_pos_in_b}")
 	if( "${alp_pos_in_b}" STREQUAL "-1" )
