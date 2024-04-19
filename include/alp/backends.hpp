@@ -40,7 +40,12 @@ namespace alp {
 		/**
 		 * The ALP reference backend.
 		 */
-		reference
+		reference,
+
+		/**
+		 * The ALP OpenMP backend.
+		 */
+		omp,
 
 	};
 
