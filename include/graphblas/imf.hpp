@@ -29,14 +29,16 @@
  * according to \f$f\f$ by multiplying \f$A\f$ by \f$G_f\f$ from the left:
  * \f[\tilde{A} = G_f\cdot A,\quad \tilde{A}\in R^{n\times N}\f]
  *      
- * \note In this draft we use integer maps. A symbolic version of them could be 
+ * \note The idea of parametrized matrices to express matrix accesses at 
+ *       a higher level of mathematical abstractions is inspired by the 
+ *       SPIRAL literature (Franchetti et al. SPIRAL: Extreme Performance Portability. 
+ *       http://spiral.net/doc/papers/08510983_Spiral_IEEE_Final.pdf). 
+ *       Similar affine formulations are also used in the polyhedral 
+ *       compilation literature to express concepts such as access
+ *       relations.
+ *       In this draft we use integer maps. A symbolic version of them could be 
  *       defined using external libraries such as the Integer Set Library (isl 
  *       \link https://libisl.sourceforge.io/).
- *       The idea of parametrized matrices to express matrix accesses at 
- *       a higher level of mathematical abstractions is inspired by the 
- *       SPIRAL literature (cite?). Similar although more general concepts 
- *       also exist in the polyhedral compilation literature (e.g., access
- *       relations, cite).
  *       
  */
 
@@ -44,6 +46,10 @@
 #define _H_GRB_IMF
 
 #include <memory>
+#include <vector>
+#include <algorithm>
+#include <stdexcept>
+
 
 namespace grb {
 
@@ -102,6 +108,27 @@ namespace grb {
                     return IMF::isSame( other )
                         && b == dynamic_cast< const Strided & >( other ).b
                         && s == dynamic_cast< const Strided & >( other ).s;
+                }
+        };
+
+        class Select: public IMF {
+
+            public:
+                std::vector< size_t > select;
+
+                size_t map(size_t i) {
+                    return select.at( i );
+                }
+
+                Select(size_t N, std::vector< size_t > & select): IMF( select.size(), N ), select( select ) {
+                    if ( *std::max_element( select.cbegin(), select.cend() ) >= N) {
+                        throw std::runtime_error("IMF Select beyond range.");
+                    }
+                }
+
+                virtual bool isSame( const IMF & other ) const {
+                    return IMF::isSame( other )
+                        && select == dynamic_cast< const Select & >( other ).select;
                 }
         };
 

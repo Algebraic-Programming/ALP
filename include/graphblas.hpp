@@ -526,6 +526,7 @@ namespace grb {
 // declare those.
 #include <graphblas/vector.hpp>
 #include <graphblas/matrix.hpp>
+#include <graphblas/scalar.hpp>
 
 // The aforementioned forward declarations must be in sync with the
 // declarations of the user primitives defined as free functions in the below.

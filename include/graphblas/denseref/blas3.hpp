@@ -26,10 +26,13 @@
 #include <type_traits> //for std::enable_if
 
 #include <graphblas/base/blas3.hpp>
+#include <graphblas/descriptors.hpp>
 
 #include "io.hpp"
 #include "matrix.hpp"
+#include "vector.hpp"
 
+#ifndef NO_CAST_ASSERT
 #define NO_CAST_ASSERT( x, y, z )                                              \
 	static_assert( x,                                                          \
 		"\n\n"                                                                 \
@@ -52,6 +55,7 @@
 		"********************************************************************" \
 		"********************************************************************" \
 		"******************************\n" );
+#endif
 
 namespace grb {
 	namespace internal {
@@ -106,9 +110,9 @@ namespace grb {
 				return MISMATCH;
 			}
 
-			const auto A_raw = grb::getRaw( A );
-			const auto B_raw = grb::getRaw( B );
-			auto C_raw = grb::getRaw( C );
+			const auto A_raw = grb::internal::getRaw( A );
+			const auto B_raw = grb::internal::getRaw( B );
+			auto C_raw = grb::internal::getRaw( C );
 
 			std::cout << "Multiplying dense matrices.\n";
 
@@ -136,11 +140,12 @@ namespace grb {
 			typename OutputType, typename InputType1, typename InputType2,
 			class Operator, class Monoid,
 			typename OutputStructure, typename InputStructure1, typename InputStructure2,
+			typename OutputStorage, typename InputStorage1, typename InputStorage2,
 			typename OutputView, typename InputView1, typename InputView2
 		>
-		RC mxm_generic( StructuredMatrix< OutputType, OutputStructure, storage::Dense, OutputView, reference_dense > &C,
-			const StructuredMatrix< InputType1, InputStructure1, storage::Dense, InputView1, reference_dense > &A,
-			const StructuredMatrix< InputType2, InputStructure2, storage::Dense, InputView2, reference_dense > &B,
+		RC mxm_generic( StructuredMatrix< OutputType, OutputStructure, OutputStorage, OutputView, reference_dense > &C,
+			const StructuredMatrix< InputType1, InputStructure1, InputStorage1, InputView1, reference_dense > &A,
+			const StructuredMatrix< InputType2, InputStructure2, InputStorage2, InputView2, reference_dense > &B,
 			const Operator &oper,
 			const Monoid &monoid,
 			const MulMonoid &mulMonoid,
@@ -172,7 +177,7 @@ namespace grb {
 			class MulMonoid,
 			typename OutputType, typename InputType1, typename InputType2,
 			class Operator, class Monoid,
-			typename OutputView = view::Identity< void >, typename InputView1 = view::Identity< void >, typename InputView2 = view::Identity< void >
+			typename OutputView = view::Original< void >, typename InputView1 = view::Original< void >, typename InputView2 = view::Original< void >
 		>
 		RC mxm_generic( StructuredMatrix< OutputType, structures::General, storage::Dense, OutputView, reference_dense > &C,
 			const StructuredMatrix< InputType1, structures::General, storage::Dense, InputView1, reference_dense > &A,
@@ -237,14 +242,43 @@ namespace grb {
 	} // namespace internal
 
 	/**
-	 * \internal grb::mxm, semiring version.
-	 * Dispatches to internal::mxm_generic
+	 * Dense Matrix-Matrix multiply between unstructured containers.
+	 * Version with semiring parameter.
+	 *
+	 * @tparam descr      The descriptors under which to perform the computation.
+	 * @tparam OutputType The type of elements in the output matrix.
+	 * @tparam InputType1 The type of elements in the left-hand side input
+	 *                    matrix.
+	 * @tparam InputType2 The type of elements in the right-hand side input
+	 *                    matrix.
+	 * @tparam Semiring   The semiring under which to perform the
+	 *                    multiplication.
+	 * @tparam Backend    The backend that should perform the computation.
+	 *
+	 * @returns SUCCESS If the computation completed as intended.
+	 * @returns FAILED  If the call was not not preceded by one to
+	 *                  #grb::resize( C, A, B ); \em and the current capacity of
+	 *                  \a C was insufficient to store the multiplication of \a A
+	 *                  and \a B. The contents of \a C shall be undefined (which
+	 *                  is why #FAILED is returned instead of #ILLEGAL-- this
+	 *                  error has side effects).
+	 *
+	 * @param[out] C 	The output matrix \f$ C = AB \f$ when the function returns
+	 *               	#SUCCESS.
+	 * @param[in]  A 	The left-hand side input matrix \f$ A \f$.
+	 * @param[in]  B 	The left-hand side input matrix \f$ B \f$.
+	 * @param[in] ring  (Optional.) The semiring under which the computation should
+	 *                             proceed.
+	 * @param phase 	The execution phase.
 	 */
-	template< typename OutputType, typename InputType1, typename InputType2, class Semiring >
+	template< Descriptor descr = descriptors::no_operation,
+			  typename OutputType, typename InputType1, typename InputType2, 
+			  class Semiring >
 	RC mxm( Matrix< OutputType, reference_dense > & C,
 		const Matrix< InputType1, reference_dense > & A,
 		const Matrix< InputType2, reference_dense > & B,
 		const Semiring & ring = Semiring(),
+		const PHASE &phase = NUMERICAL,
 		const typename std::enable_if< ! grb::is_object< OutputType >::value && ! grb::is_object< InputType1 >::value && ! grb::is_object< InputType2 >::value && grb::is_semiring< Semiring >::value,
 			void >::type * const = NULL ) {
 
@@ -256,38 +290,67 @@ namespace grb {
 	}
 
 	/**
-	 * \internal grb::mxm semiring version for dense Structured Matrices
+	 * Dense Matrix-Matrix multiply between structured matrices.
+	 * Version with semiring parameter.
+	 *
+	 * @tparam descr      		The descriptors under which to perform the computation.
+	 * @tparam OutputStructMatT The structured matrix type of the output matrix.
+	 * @tparam InputStructMatT1 The structured matrix type of the the left-hand side input
+	 *                    		matrix.
+	 * @tparam InputStructMatT2 The structured matrix type of the right-hand side input
+	 *                    		matrix.
+	 * @tparam Semiring   		The semiring under which to perform the
+	 *                    		multiplication.
+	 *
+	 * @returns SUCCESS  If the computation completed as intended.
+	 * @returns MISMATCH Whenever the structures or dimensions of \a A, \a B, and \a C do
+ *                       not match. All input data containers are left
+ *                       untouched if this exit code is returned; it will be
+ *                       as though this call was never made.
+	 *
+	 * @param[out] C 	The output matrix \f$ C = AB \f$ when the function returns
+	 *               	#SUCCESS.
+	 * @param[in]  A 	The left-hand side input matrix \f$ A \f$.
+	 * @param[in]  B 	The left-hand side input matrix \f$ B \f$.
+	 * @param[in] ring  (Optional.) The semiring under which the computation should
+	 *                             proceed.
+	 * @param phase 	The execution phase.
 	 */
-	template< typename OutputType, typename InputType1, typename InputType2, class Semiring,
-		typename OutputStructure, typename OutputView = view::Identity< void >,
-		typename InputStructure1, typename InputView1 = view::Identity< void >,
-		typename InputStructure2, typename InputView2 = view::Identity< void > >
-	RC mxm( StructuredMatrix< OutputType, OutputStructure, storage::Dense, OutputView, reference_dense > & C,
-		const StructuredMatrix< InputType1, InputStructure1, storage::Dense, InputView1, reference_dense > & A,
-		const StructuredMatrix< InputType2, InputStructure2, storage::Dense, InputView2, reference_dense > & B,
+	template< Descriptor descr = descriptors::no_operation, 
+			  typename OutputStructMatT, 
+			  typename InputStructMatT1, 
+			  typename InputStructMatT2, 
+			  class Semiring>
+	RC mxm( OutputStructMatT & C,
+		const InputStructMatT1 & A,
+		const InputStructMatT2 & B,
 		const Semiring & ring = Semiring(),
-		const typename std::enable_if< ! grb::is_object< OutputType >::value && ! grb::is_object< InputType1 >::value && ! grb::is_object< InputType2 >::value && grb::is_semiring< Semiring >::value,
+		const PHASE &phase = NUMERICAL,
+		const typename std::enable_if< ! grb::is_object< typename OutputStructMatT::value_type >::value && ! grb::is_object< typename InputStructMatT1::value_type >::value && ! grb::is_object< typename InputStructMatT2::value_type >::value && grb::is_semiring< Semiring >::value,
 			void >::type * const = NULL ) {
+		(void)phase;
 		// TODO: How should we handle multiplication of combinations of Structures and Storage schemes?
 		return internal::mxm_generic< true >( C, A, B, ring.getMultiplicativeOperator(), ring.getAdditiveMonoid(), ring.getMultiplicativeMonoid() );
 	}
 
 	/**
-	 * \internal mxm implementation with additive monoid and multiplicative operator
-	 * Dispatches to internal::mxm_generic
+	 * Dense Matrix-Matrix multiply between structured matrices.
+	 * Version with additive monoid and multiplicative operator
 	 */
-	template< typename OutputType, typename InputType1, typename InputType2, class Operator, class Monoid,
-		typename OutputStructure, typename OutputView = view::Identity< void >,
-		typename InputStructure1, typename InputView1 = view::Identity< void >,
-		typename InputStructure2, typename InputView2 = view::Identity< void > >
-	RC mxm( StructuredMatrix< OutputType, OutputStructure, storage::Dense, OutputView, reference_dense > & C,
-		const StructuredMatrix< InputType1, InputStructure1, storage::Dense, InputView1, reference_dense > & A,
-		const StructuredMatrix< InputType2, InputStructure2, storage::Dense, InputView2, reference_dense > & B,
+	template< typename OutputStructMatT, 
+			  typename InputStructMatT1, 
+			  typename InputStructMatT2, 
+			  class Operator, class Monoid >
+	RC mxm( OutputStructMatT & C,
+		const InputStructMatT1 & A,
+		const InputStructMatT2 & B,
 		const Operator & mulOp,
 		const Monoid & addM,
-		const typename std::enable_if< ! grb::is_object< OutputType >::value && ! grb::is_object< InputType1 >::value && ! grb::is_object< InputType2 >::value &&
+		const PHASE &phase = NUMERICAL,
+		const typename std::enable_if< ! grb::is_object< typename OutputStructMatT::value_type >::value && ! grb::is_object< typename InputStructMatT1::value_type >::value && ! grb::is_object< typename InputStructMatT2::value_type >::value &&
 		                               grb::is_operator< Operator >::value && grb::is_monoid< Monoid >::value,
 			void >::type * const = NULL ) {
+		(void)phase;
 		// TODO: How should we handle multiplication of combinations of Structures and Storage schemes?
 		return internal::mxm_generic< true >( C, A, B, mulOp, addM, Monoid() );
 	}
@@ -383,20 +446,43 @@ namespace grb {
 	} // namespace internal
 
 	/**
-	 * Computes \f$ C = A . B \f$ for a given monoid.
-	 *
-	 * \internal Allows pattern matrix inputs.
-	 *
-	 * \internal Dispatches to internal::eWiseApply_matrix_generic
-	 */
+	 * @brief Computes \f$ C = A . B \f$ for a given monoid.
+	 * 
+	 * @tparam descr      		The descriptor to be used (descriptors::no_operation
+	 *                    		if left unspecified).
+	 * @tparam OutputType 		The element type of the output matrix
+	 * @tparam InputType1 		The element type of the left-hand side matrix
+	 * @tparam InputType2 		The element type of the right-hand side matrix
+	 * @tparam OutputStructure 	The structure of the output matrix
+	 * @tparam InputStructure1 	The structure of the left-hand side matrix
+	 * @tparam InputStructure2  The structure of the right-hand matrix
+	 * @tparam OutputStorage 	The type of storage scheme of the output matrix
+	 * @tparam InputStorage1 	The type of storage scheme of the left-hand side matrix
+	 * @tparam InputStorage2 	The type of storage scheme of the right-hand side matrix
+	 * @tparam OutputView 		The type of view of the output matrix
+	 * @tparam InputView1 		The type of view of the left-hand matrix
+	 * @tparam InputView2 		The type of view of the right-hand matrix
+	 * @tparam MulMonoid 		The type of monoid used for this element-wise operation
+	 * 
+	 * @param C 		The output structured matrix
+	 * @param A 		The left-hand side structured matrix
+	 * @param B 		The right-hand side structured matrix
+	 * @param mulmono 	The monoid used in the element-wise operation
+	 * @param phase 	The execution phase 
+	 * 
+	 * @return grb::MISMATCH Whenever the structures or dimensions of \a A, \a B, and \a C do
+	 *                       not match. All input data containers are left
+	 *                       untouched if this exit code is returned; it will be
+	 *                       as though this call was never made.
+	 * @return grb::SUCCESS  On successful completion of this call.
+ 	 */
 	template<
 		Descriptor descr = descriptors::no_operation,
 		typename OutputType, typename InputType1, typename InputType2,
 		typename OutputStructure, typename InputStructure1, typename InputStructure2,
 		typename OutputStorage, typename InputStorage1, typename InputStorage2,
 		typename OutputView, typename InputView1, typename InputView2,
-		class MulMonoid
-	>
+		class MulMonoid >
 	RC eWiseApply( StructuredMatrix< OutputType, OutputStructure, OutputStorage, OutputView, reference_dense > &C,
 		const StructuredMatrix< InputType1, InputStructure1, InputStorage1, InputView1, reference_dense > &A,
 		const StructuredMatrix< InputType2, InputStructure2, InputStorage2, InputView2, reference_dense > &B,
@@ -411,25 +497,25 @@ namespace grb {
 		// static checks
 		NO_CAST_ASSERT( ( !( descr & descriptors::no_casting ) ||
 			std::is_same< typename MulMonoid::D1, InputType1 >::value ),
-			"grb::eWiseApply (reference, matrix <- matrix x matrix, monoid)",
+			"grb::eWiseApply (reference_dense, matrix <- matrix x matrix, monoid)",
 			"called with a prefactor input matrix A that does not match the first "
 			"domain of the monoid operator"
 		);
 		NO_CAST_ASSERT( ( !( descr & descriptors::no_casting ) ||
 			std::is_same< typename MulMonoid::D2, InputType2 >::value ),
-			"grb::eWiseApply (reference, matrix <- matrix x matrix, monoid)",
+			"grb::eWiseApply (reference_dense, matrix <- matrix x matrix, monoid)",
 			"called with a postfactor input matrix B that does not match the "
 			"second domain of the monoid operator"
 		);
 		NO_CAST_ASSERT( ( !( descr & descriptors::no_casting ) ||
 			std::is_same< typename MulMonoid::D3, OutputType >::value ),
-			"grb::eWiseApply (reference, matrix <- matrix x matrix, monoid)",
+			"grb::eWiseApply (reference_dense, matrix <- matrix x matrix, monoid)",
 			"called with an output matrix C that does not match the output domain "
 			"of the monoid operator"
 		);
 
 #ifdef _DEBUG
-		std::cout << "In grb::eWiseApply_matrix_generic (reference, monoid)\n";
+		std::cout << "In grb::eWiseApply_matrix_generic (reference_dense, monoid)\n";
 #endif
 
 		return internal::eWiseApply_matrix_generic< true, false, false, descr >(
@@ -437,12 +523,11 @@ namespace grb {
 		);
 	}
 
+
 	/**
 	 * Computes \f$ C = alpha . B \f$ for a given monoid.
 	 *
-	 * \internal Allows pattern matrix inputs.
-	 *
-	 * \internal Dispatches to internal::eWiseApply_matrix_generic
+	 * Case where \a A is a scalar.
 	 */
 	template<
 		Descriptor descr = descriptors::no_operation,
@@ -450,8 +535,7 @@ namespace grb {
 		typename OutputStructure, typename InputStructure2,
 		typename OutputStorage, typename InputStorage2,
 		typename OutputView, typename InputView2,
-		class MulMonoid
-	>
+		class MulMonoid >
 	RC eWiseApply( StructuredMatrix< OutputType, OutputStructure, OutputStorage, OutputView, reference_dense > &C,
 		const InputType1 &alpha,
 		const StructuredMatrix< InputType2, InputStructure2, InputStorage2, InputView2, reference_dense > &B,
@@ -487,7 +571,7 @@ namespace grb {
 		std::cout << "In grb::eWiseApply_matrix_generic (reference_dense, monoid)\n";
 #endif
 
-		const StructuredMatrix< InputType1, structures::General, storage::Dense, view::Identity< void >, reference_dense> * no_matrix = nullptr;
+		const StructuredMatrix< InputType1, structures::General, storage::Dense, view::Original< void >, reference_dense > * no_matrix = nullptr;
 		return internal::eWiseApply_matrix_generic< true, true, false, descr >(
 			&C,
 			no_matrix,
@@ -501,9 +585,7 @@ namespace grb {
 /**
 	 * Computes \f$ C = A . beta \f$ for a given monoid.
 	 *
-	 * \internal Allows pattern matrix inputs.
-	 *
-	 * \internal Dispatches to internal::eWiseApply_matrix_generic
+	 * Case where \a B is a scalar.
 	 */
 	template<
 		Descriptor descr = descriptors::no_operation,
@@ -511,8 +593,7 @@ namespace grb {
 		typename OutputStructure, typename InputStructure1,
 		typename OutputStorage, typename InputStorage1,
 		typename OutputView, typename InputView1,
-		class MulMonoid
-	>
+		class MulMonoid >
 	RC eWiseApply( StructuredMatrix< OutputType, OutputStructure, OutputStorage, OutputView, reference_dense > &C,
 		const StructuredMatrix< InputType1, InputStructure1, InputStorage1, InputView1, reference_dense > &A,
 		const InputType2 &beta,
@@ -548,7 +629,7 @@ namespace grb {
 		std::cout << "In grb::eWiseApply_matrix_generic (reference_dense, monoid)\n";
 #endif
 
-		const StructuredMatrix< InputType2, structures::General, storage::Dense, view::Identity< void >, reference_dense> * no_matrix = nullptr;
+		const StructuredMatrix< InputType2, structures::General, storage::Dense, view::Original< void >, reference_dense > * no_matrix = nullptr;
 		return internal::eWiseApply_matrix_generic< true, false, true, descr >(
 			&C,
 			&A,
@@ -560,23 +641,139 @@ namespace grb {
 	}
 
 	/**
-	 * Outer product of two vectors. Assuming vectors \a u and \a v are oriented
-	 * column-wise, the result matrix \a A will contain \f$ uv^T \f$.
+	 * Calculates the element-wise addition of two structured matrices, \f$ C = A + B \f$,
+	 * under the selected semiring.
 	 *
-	 * \internal Implemented via mxm as a multiplication of a column vector with
-	 *           a row vector.
+	 * @tparam descr      		The descriptor to be used (descriptors::no_operation
+	 *                    		if left unspecified).
+	 * @tparam OutputType 		The element type of the output matrix
+	 * @tparam InputType1 		The element type of the left-hand side matrix
+	 * @tparam InputType2 		The element type of the right-hand side matrix
+	 * @tparam OutputStructure 	The structure of the output matrix
+	 * @tparam InputStructure1 	The structure of the left-hand side matrix
+	 * @tparam InputStructure2  The structure of the right-hand matrix
+	 * @tparam OutputStorage 	The type of storage scheme of the output matrix
+	 * @tparam InputStorage1 	The type of storage scheme of the left-hand side matrix
+	 * @tparam InputStorage2 	The type of storage scheme of the right-hand side matrix
+	 * @tparam OutputView 		The type of view of the output matrix
+	 * @tparam InputView1 		The type of view of the left-hand matrix
+	 * @tparam InputView2 		The type of view of the right-hand matrix
+	 * @tparam Ring       		The semiring type to perform the element-wise addition
+	 *                    		on.
+	 *
+	 * @param[out]  C  The output vector of type \a OutputType. This may be a
+	 *                 sparse vector.
+	 * @param[in]   x  The left-hand input vector of type \a InputType1. This may
+	 *                 be a sparse vector.
+	 * @param[in]   y  The right-hand input vector of type \a InputType2. This may
+	 *                 be a sparse vector.
+	 * @param[in] ring The generalized semiring under which to perform this
+	 *                 element-wise operation.
+	 *
+	 * @return grb::MISMATCH Whenever the dimensions of \a x, \a y, and \a z do
+	 *                       not match. All input data containers are left
+	 *                       untouched; it will be as though this call was never
+	 *                       made.
+	 * @return grb::SUCCESS  On successful completion of this call.
+	 *
+	 * \note Invalid descriptors will be ignored.
+	 * 
+	//  * \parblock
+	//  * \par Performance semantics
+	//  *      -# This call takes \f$ \Theta(n) \f$ work, where \f$ n \f$ equals the
+	//  *         size of the vectors \a x, \a y, and \a z. The constant factor
+	//  *         depends on the cost of evaluating the addition operator. A good
+	//  *         implementation uses vectorised instructions whenever the input
+	//  *         domains, the output domain, and the the additive operator used
+	//  *         allow for this.
+	//  *
+	//  *      -# This call will not result in additional dynamic memory allocations.
+	//  *         No system calls will be made.
+	//  *
+	//  *      -# This call takes \f$ \mathcal{O}(1) \f$ memory beyond the memory
+	//  *         used by the application at the point of a call to this function.
+	//  *
+	//  *      -# This call incurs at most
+	//  *         \f$ n( \mathit{sizeof}(
+	//  *             \mathit{InputType1} +
+	//  *             \mathit{InputType2} +
+	//  *             \mathit{OutputType}
+	//  *           ) + \mathcal{O}(1) \f$
+	//  *         bytes of data movement. A good implementation will stream \a x or
+	//  *         \a y into \a z to apply the additive operator in-place, whenever
+	//  *         the input domains, the output domain, and the operator used allow
+	//  *         for this.
+	//  * \endparblock
 	 */
-	template< Descriptor descr = descriptors::no_operation,
-		typename InputType1, typename InputType2, typename OutputType,
-		typename OutputStructure,
+	template<
+		Descriptor descr = descriptors::no_operation,
+		typename OutputType, typename InputType1, typename InputType2,
+		typename OutputStructure, typename InputStructure1, typename InputStructure2,
 		typename OutputStorage, typename InputStorage1, typename InputStorage2,
 		typename OutputView, typename InputView1, typename InputView2,
-		typename InputCoords1, typename InputCoords2, class Operator >
+		typename Ring>
+	RC eWiseAdd( StructuredMatrix< OutputType, OutputStructure, OutputStorage, OutputView, reference_dense > &C,
+		const StructuredMatrix< InputType1, InputStructure1, InputStorage1, InputView1, reference_dense > &A,
+		const StructuredMatrix< InputType2, InputStructure2, InputStorage2, InputView2, reference_dense > &B,
+		const Ring & ring = Ring(),
+		const typename std::enable_if< ! grb::is_object< OutputType >::value && ! grb::is_object< InputType1 >::value && ! grb::is_object< InputType2 >::value && grb::is_semiring< Ring >::value,
+			void >::type * const = NULL ) {
+		// static sanity checks
+		NO_CAST_OP_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename Ring::D4, OutputType >::value ), "grb::eWiseAdd",
+			"called with an output vector with element type that does not match the "
+			"fourth domain of the given semiring" );
+		NO_CAST_OP_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename Ring::D3, InputType1 >::value ), "grb::eWiseAdd",
+			"called with a left-hand side input vector with element type that does not "
+			"match the third domain of the given semiring" );
+		NO_CAST_OP_ASSERT( ( ! ( descr & descriptors::no_casting ) || std::is_same< typename Ring::D4, OutputType >::value ), "grb::eWiseAdd",
+			"called with a right-hand side input vector with element type that does "
+			"not match the fourth domain of the given semiring" );
+	#ifdef _DEBUG
+		std::cout << "eWiseAdd (reference_dense, StrMat <- StrMat + StrMat) dispatches to eWiseApply( reference_dense, StrMat <- StrMat . StrMat ) using additive monoid\n";
+	#endif
+		return eWiseApply< descr >( C, A, B, ring.getAdditiveMonoid() );
+	}
+
+	/**
+	 * @brief  Outer product of two vectors. The result matrix \a A will contain \f$ uv^T \f$.
+	 * 
+	 * @tparam descr      	The descriptor to be used (descriptors::no_operation
+	 *                    	if left unspecified).
+	 * @tparam InputType1 	The value type of the left-hand vector.
+	 * @tparam InputType2 	The value type of the right-hand scalar.
+	 * @tparam OutputType 	The value type of the ouput vector.
+	 * @tparam InputStructure1  The Structure type applied to the left-hand vector.
+	 * @tparam InputStructure2  The Structure type applied to the right-hand vector.
+	 * @tparam OutputStructure1 The Structure type applied to the output vector.
+	 * @tparam InputStorage1    The Storage type applied to the left-hand vector.
+	 * @tparam InputStorage2    The Storage type applied to the right-hand vector.
+	 * @tparam OutputStorage1   The Storage type applied to the output vector.
+	 * @tparam InputView1       The view type applied to the left-hand vector.
+	 * @tparam InputView2       The view type applied to the right-hand vector.
+	 * @tparam OutputView1      The view type applied to the output vector.
+	 * @tparam Operator         The operator type used for this element-wise operation.
+	 *  
+	 * @param A      The output structured matrix 
+	 * @param u      The left-hand side vector view
+	 * @param v 	 The right-hand side vector view
+	 * @param mul 	 The operator
+	 * @param phase  The execution phase 
+	 * 
+	 * @return grb::MISMATCH Whenever the structures or dimensions of \a A, \a u, and \a v do
+	 *                       not match. All input data containers are left
+	 *                       untouched if this exit code is returned; it will be
+	 *                       as though this call was never made.
+	 * @return grb::SUCCESS  On successful completion of this call.
+	 */
+	template< Descriptor descr = descriptors::no_operation,
+		typename OutputType, typename InputType1, typename InputType2,
+		typename OutputStructure, typename InputStructure1, typename InputStructure2,
+		typename OutputStorage, typename InputStorage1, typename InputStorage2,
+		typename OutputView, typename InputView1, typename InputView2, class Operator >
 	RC outer( StructuredMatrix< OutputType, OutputStructure, OutputStorage, OutputView, reference_dense > & A,
-		const VectorView< InputType1, InputView1, InputStorage1, reference_dense, InputCoords1 > & u,
-		const VectorView< InputType2, InputView2, InputStorage2, reference_dense, InputCoords2 > & v,
+		const VectorView< InputType1, InputStructure1, InputStorage1, InputView1, reference_dense > & u,
+		const VectorView< InputType2, InputStructure2, InputStorage2, InputView2, reference_dense > & v,
 		const Operator & mul = Operator(),
-		const PHASE & phase = NUMERICAL,
 		const typename std::enable_if< grb::is_operator< Operator >::value && ! grb::is_object< InputType1 >::value && ! grb::is_object< InputType2 >::value && ! grb::is_object< OutputType >::value,
 			void >::type * const = NULL ) {
 		// static checks
@@ -601,8 +798,8 @@ namespace grb {
 			return MISMATCH;
 		}
 
-		grb::StructuredMatrix< InputType1, structures::General, storage::Dense, view::Identity< void >, reference_dense > u_matrix( nrows, 1 );
-		grb::StructuredMatrix< InputType2, structures::General, storage::Dense, view::Identity< void >, reference_dense > v_matrix( 1, ncols );
+		grb::StructuredMatrix< InputType1, structures::General, storage::Dense, view::Original< void >, reference_dense > u_matrix( nrows, 1 );
+		grb::StructuredMatrix< InputType2, structures::General, storage::Dense, view::Original< void >, reference_dense > v_matrix( 1, ncols );
 
 		// auto u_converter = grb::utils::makeVectorToMatrixConverter< InputType1 >( u, []( const size_t & ind, const InputType1 & val ) {
 		// 	return std::make_pair( std::make_pair( ind, 0 ), val );
@@ -617,7 +814,6 @@ namespace grb {
 
 		grb::Monoid< grb::operators::left_assign< OutputType >, grb::identities::zero > mono;
 
-		(void)phase;
 		return grb::mxm( A, u_matrix, v_matrix, mul, mono );
 	}
 

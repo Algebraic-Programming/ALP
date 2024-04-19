@@ -418,6 +418,20 @@ namespace grb {
 			}
 		}
 
+		/**
+		 * @brief Simple range [ \a start, \a end) with optional \a stride.
+		 * 
+		 */
+		struct range {
+			size_t start, end, stride;
+
+			range(size_t start, size_t end, size_t stride=1): start( start ), end( end ), stride( stride ) {}
+
+			inline size_t count() const {
+				return (end - start)/stride;
+			}
+		};
+
 	} // namespace utils
 
 } // namespace grb

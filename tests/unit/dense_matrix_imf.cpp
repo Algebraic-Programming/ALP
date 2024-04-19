@@ -43,8 +43,7 @@ void grb_program( const size_t & n, grb::RC & rc ) {
 	try {
 		auto Aview = grb::get_view< grb::structures::General >(
 			A,
-			std::make_shared< grb::imf::Strided >( n, 2, 1, 1 ),
-			std::make_shared< grb::imf::Strided >( n, 4, 1, 1 )
+			grb::utils::range(1,3), grb::utils::range(1,5)
 		);
 		std::cout << "\tSUCCESS\n";
 	} catch( const std::exception & e ) {
@@ -74,8 +73,8 @@ void grb_program( const size_t & n, grb::RC & rc ) {
 	try {
 		auto Uview1 = grb::get_view< grb::structures::UpperTriangular >(
 			U,
-			std::make_shared< grb::imf::Strided >( n, 2, 1, 1 ),
-			std::make_shared< grb::imf::Strided >( n, 2, 1, 1 ) );
+			grb::utils::range(1,3), grb::utils::range(1,3)
+		);
 		std::cout << "\tSUCCESS\n";
 	} catch( const std::exception & e ) {
 		std::cerr << e.what() << "\n";
@@ -92,8 +91,8 @@ void grb_program( const size_t & n, grb::RC & rc ) {
 	try {
 		auto Uview2 = grb::get_view< grb::structures::General >(
 			U,
-			std::make_shared< grb::imf::Strided >( n, 2, 0, 1 ),
-			std::make_shared< grb::imf::Strided >( n, 2, 3, 1 ) );
+			grb::utils::range(0,2), grb::utils::range(3,5)
+		);
 		std::cout << "\tSUCCESS\n";
 	} catch( const std::exception & e ) {
 		std::cerr << e.what() << "\n";
@@ -101,17 +100,17 @@ void grb_program( const size_t & n, grb::RC & rc ) {
 
 	// Invalid block -  selecting a block that is not UpperTriangular
 	std::cout << "Gather to UpperTriangular (expect failure)\n"
-	"|x  x  x  A  A  x|\n"
-	"|.  x  x  A  A  x|\n"
-	"|.  .  x  x  x  x|\n"
+	"|x  x  x  x  x  x|\n"
+	"|.  A  A  A  A  x|\n"
+	"|.  A  A  A  A  x|\n"
 	"|.  .  .  x  x  x|\n"
 	"|.  .  .  .  x  x|\n"
 	"|.  .  .  .  .  x|\n";
 	try {
 		auto Uview3 = grb::get_view< grb::structures::UpperTriangular >(
 			U,
-			std::make_shared< grb::imf::Strided >( n, 2, 0, 1 ),
-			std::make_shared< grb::imf::Strided >( n, 2, 3, 1 ) );
+			grb::utils::range(1,3), grb::utils::range(1,5)
+		);
 		std::cout << "\tSUCCESS\n";
 	} catch( const std::exception & e ) {
 		std::cerr << e.what() << "\n";
@@ -128,8 +127,8 @@ void grb_program( const size_t & n, grb::RC & rc ) {
 	try {
 		auto Uview4 = grb::get_view< grb::structures::General >(
 			U,
-			std::make_shared< grb::imf::Strided >( n, 2, 4, 1 ),
-			std::make_shared< grb::imf::Strided >( n, 2, 0, 1 ) );
+			grb::utils::range(4,n), grb::utils::range(0,2)
+		);
 		std::cout << "\tSUCCESS\n";
 	} catch( const std::exception & e ) {
 		std::cerr << e.what() << "\n";
