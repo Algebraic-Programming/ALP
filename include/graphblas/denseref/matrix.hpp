@@ -23,11 +23,83 @@
 #ifndef _H_GRB_DENSEREF_MATRIX
 #define _H_GRB_DENSEREF_MATRIX
 
+#include <graphblas/backends.hpp>
+#include <graphblas/base/matrix.hpp>
+#include <graphblas/config.hpp>
+#include <graphblas/utils.hpp>
+#include <graphblas/ops.hpp>
+#include <graphblas/rc.hpp>
+//#include <graphblas/reference/blas1.hpp>
+//#include <graphblas/reference/compressed_storage.hpp>
+//#include <graphblas/reference/init.hpp>
+#include <graphblas/type_traits.hpp>
+#include <graphblas/utils/autodeleter.hpp>
+//#include <graphblas/utils/pattern.hpp> //for help with dealing with pattern matrix input
+
 namespace grb {
 
 	/** \internal TODO */
 	template< typename T >
 	class Matrix< T, reference_dense > {
+	private:
+		/** Our own type. */
+		typedef Matrix< T, reference_dense > self_type;
+
+		/**
+		* The number of rows.
+		*
+		* \internal Not declared const to be able to implement move in an elegant way.
+		*/
+		size_t m;
+
+		/**
+		* The number of columns.
+		*
+		* \internal Not declared const to be able to implement move in an elegant way.
+		*/
+		size_t n;
+
+		/** Whether the container presently is uninitialized. */
+		bool initialized;
+
+		std::vector< T > container;
+	public:
+		/** @see Matrix::value_type */
+		typedef T value_type;
+
+		/** @see Matrix::Matrix() */
+		Matrix( const size_t rows, const size_t columns ): m( rows ), n( columns ), initialized( false ) {
+
+		}
+
+		/** @see Matrix::Matrix( const Matrix & ) */
+		Matrix( const Matrix< T, reference_dense > &other ) : Matrix( other.m, other.n ) {
+			initialized = other.initialized;
+		}
+
+		/** @see Matrix::Matrix( Matrix&& ). */
+		Matrix( self_type &&other ) noexcept {
+			moveFromOther( std::forward< self_type >(other) );
+		}
+
+		/** * Move from temporary. */
+		self_type& operator=( self_type &&other ) noexcept {
+			moveFromOther( std::forward< self_type >(other) );
+			return *this;
+		}
+
+		/** @see Matrix::~Matrix(). */
+		~Matrix() {
+
+		}
+
+	};
+
+	// template specialisation for GraphBLAS type traits
+	template< typename T >
+	struct is_container< Matrix< T, reference_dense > > {
+		/** A reference_dense Matrix is a GraphBLAS object. */
+		static const constexpr bool value = true;
 	};
 
 } // end namespace ``grb''
