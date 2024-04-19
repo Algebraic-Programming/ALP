@@ -33,7 +33,7 @@
  #include "graphblas/nonblocking/coordinates.hpp"
 #endif
 #ifdef _GRB_WITH_LPF
-// #include <graphblas/bsp1d/coordinates.hpp>
+ // #include <graphblas/bsp1d/coordinates.hpp>
 #endif
 #ifdef _GRB_WITH_BANSHEE
  #include <graphblas/banshee/coordinates.hpp>

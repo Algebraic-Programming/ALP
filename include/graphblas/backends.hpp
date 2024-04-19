@@ -217,7 +217,13 @@ namespace grb {
 		 *       selectable.
 		 * \endinternal
 		 */
-		banshee_ssr
+		banshee_ssr,
+
+		/**
+		 * The ALP/Dense backend. This is no longer a proper GraphBLAS implementation, as it assumes
+		 * all containers are dense. No ``missing'' entries in containers are allowed.
+		 */
+		reference_dense
 
 	};
 

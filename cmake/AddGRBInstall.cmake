@@ -121,6 +121,13 @@ if( WITH_REFERENCE_BACKEND )
 	)
 endif()
 
+if( WITH_DENSE_BACKEND )
+	addBackendWrapperGenOptions( "reference_dense"
+		COMPILE_DEFINITIONS "${DENSE_SELECTION_DEFS}"
+		LINK_FLAGS "${SHMEM_BACKEND_INSTALL_DIR}/lib${BACKEND_LIBRARY_OUTPUT_NAME}.a"
+	)
+endif()
+
 if( WITH_OMP_BACKEND )
 	addBackendWrapperGenOptions( "reference_omp"
 		COMPILE_DEFINITIONS "${REFERENCE_OMP_SELECTION_DEFS}"
