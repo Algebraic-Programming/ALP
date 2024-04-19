@@ -15,20 +15,26 @@
  * limitations under the License.
  */
 
-/*
- * @author A. N. Yzelman
- * @date 14th of January, 2022
- */
+#ifndef _H_GRB_SCALAR
+#define _H_GRB_SCALAR
 
-#ifndef _H_GRB_DENSEREF_BENCH
-#define _H_GRB_DENSEREF_BENCH
+#include "base/config.hpp"
+#include "base/scalar.hpp"
 
-#include <graphblas/rc.hpp>
-#include <graphblas/base/benchmark.hpp>
+// now include all specialisations contained in the backend directories:
+#ifdef _GRB_WITH_DENSEREF
+ #include <graphblas/denseref/scalar.hpp>
+#endif
 
+// specify default only if requested during compilation
+#ifdef _GRB_BACKEND
 namespace grb {
 
-} // end namespace ``grb''
+	template< typename T, typename Structure = structures::General, enum Backend backend = config::default_backend >
+	class Scalar;
 
-#endif // end ``_H_GRB_DENSEREF_BENCH''
+}
+#endif
+
+#endif // end ``_H_GRB_SCALAR''
 
