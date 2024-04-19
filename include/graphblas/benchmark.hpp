@@ -29,6 +29,7 @@
 // include specialisations
 #ifdef _GRB_WITH_REFERENCE
  #include "graphblas/reference/benchmark.hpp"
+ #include "graphblas/denseref/benchmark.hpp"
 #endif
 #ifdef _GRB_WITH_HYPERDAGS
  #include "graphblas/hyperdags/benchmark.hpp"

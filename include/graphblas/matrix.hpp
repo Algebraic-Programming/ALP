@@ -29,6 +29,7 @@
 // now include all specialisations contained in the backend directories:
 #ifdef _GRB_WITH_REFERENCE
  #include <graphblas/reference/matrix.hpp>
+ #include <graphblas/denseref/matrix.hpp>
 #endif
 #ifdef _GRB_WITH_HYPERDAGS
  #include <graphblas/hyperdags/matrix.hpp>

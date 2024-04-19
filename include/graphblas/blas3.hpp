@@ -29,6 +29,7 @@
 // now include all specialisations contained in the backend directories:
 #ifdef _GRB_WITH_REFERENCE
  #include <graphblas/reference/blas3.hpp>
+ #include <graphblas/denseref/blas3.hpp>
 #endif
 #ifdef _GRB_WITH_HYPERDAGS
  #include <graphblas/hyperdags/blas3.hpp>

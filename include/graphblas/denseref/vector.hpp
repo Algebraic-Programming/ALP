@@ -17,30 +17,20 @@
 
 /*
  * @author A. N. Yzelman
- * @date 29th of March 2017
+ * @date 14th of January 2022
  */
 
-#ifndef _H_GRB_BLAS1
-#define _H_GRB_BLAS1
+#ifndef _H_GRB_DENSEREF_VECTOR
+#define _H_GRB_DENSEREF_VECTOR
 
-#include <graphblas/base/blas1.hpp>
+namespace grb {
 
-#ifdef _GRB_WITH_REFERENCE
- #include <graphblas/reference/blas1.hpp>
- #include <graphblas/denseref/blas1.hpp>
-#endif
-#ifdef _GRB_WITH_HYPERDAGS
- #include <graphblas/hyperdags/blas1.hpp>
-#endif
-#ifdef _GRB_WITH_NONBLOCKING
- #include "graphblas/nonblocking/blas1.hpp"
-#endif
-#ifdef _GRB_WITH_BANSHEE
- #include <graphblas/banshee/blas1.hpp>
-#endif
-#ifdef _GRB_WITH_LPF
- #include <graphblas/bsp1d/blas1.hpp>
-#endif
+	/** \internal TODO */
+	template< typename T >
+	class Vector< T, reference_dense, void > {
+	};
 
-#endif // end ``_H_GRB_BLAS1''
+} // end namespace ``grb''
+
+#endif // end ``_H_GRB_DENSEREF_VECTOR''
 

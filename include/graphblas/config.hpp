@@ -28,6 +28,7 @@
 // include all active configurations
 #ifdef _GRB_WITH_REFERENCE
  #include "graphblas/reference/config.hpp"
+ #include "graphblas/denseref/config.hpp"
 #endif
 #ifdef _GRB_WITH_HYPERDAGS
  #include "graphblas/hyperdags/config.hpp"

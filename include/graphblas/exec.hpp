@@ -28,7 +28,8 @@
 
 // include template specialisations
 #ifdef _GRB_WITH_REFERENCE
- #include "graphblas/reference/exec.hpp"
+  #include "graphblas/reference/exec.hpp"
+ #include "graphblas/denseref/exec.hpp"
 #endif
 #ifdef _GRB_WITH_HYPERDAGS
  #include "graphblas/hyperdags/exec.hpp"

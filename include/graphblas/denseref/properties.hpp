@@ -17,30 +17,25 @@
 
 /*
  * @author A. N. Yzelman
- * @date 29th of March 2017
+ * @date 14th of January 2022
  */
 
-#ifndef _H_GRB_BLAS1
-#define _H_GRB_BLAS1
+#ifndef _H_GRB_DENSEREF_PROPERTIES
+#define _H_GRB_DENSEREF_PROPERTIES
 
-#include <graphblas/base/blas1.hpp>
+#include <graphblas/base/properties.hpp>
 
-#ifdef _GRB_WITH_REFERENCE
- #include <graphblas/reference/blas1.hpp>
- #include <graphblas/denseref/blas1.hpp>
-#endif
-#ifdef _GRB_WITH_HYPERDAGS
- #include <graphblas/hyperdags/blas1.hpp>
-#endif
-#ifdef _GRB_WITH_NONBLOCKING
- #include "graphblas/nonblocking/blas1.hpp"
-#endif
-#ifdef _GRB_WITH_BANSHEE
- #include <graphblas/banshee/blas1.hpp>
-#endif
-#ifdef _GRB_WITH_LPF
- #include <graphblas/bsp1d/blas1.hpp>
-#endif
+namespace grb {
 
-#endif // end ``_H_GRB_BLAS1''
+	/** \internal No implementation notes. */
+	template<>
+	class Properties< reference_dense > {
+	public:
+		/** No implementation notes. */
+		constexpr static bool writableCaptured = true;
+	};
+
+} // namespace grb
+
+#endif // end `_H_GRB_DENSEREF_PROPERTIES''
 
