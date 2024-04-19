@@ -37,7 +37,7 @@ project( GraphBLAS
 	DESCRIPTION "The ultimate engine for sparse computation"
 	LANGUAGES CXX C
 )
-set( CMAKE_CXX_STANDARD 11 )
+set( CMAKE_CXX_STANDARD 14 )
 set( CMAKE_CXX_STANDARD_REQUIRED ON )
 
 # install within the build directory by default (NOT to /usr/local or the likes)

@@ -948,6 +948,9 @@ namespace grb {
 			}
 	};
 
+	template< typename T, typename View, typename StorageSchemeType, enum Backend backend, typename C >
+	class VectorView { };
+
 } // end namespace ``grb''
 
 #endif // _H_GRB_VECTOR_BASE

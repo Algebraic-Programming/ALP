@@ -17,34 +17,41 @@
 
 #include <iostream>
 #include <sstream>
-#include <string>
-#include <type_traits>
 #include <vector>
 
 #include <graphblas.hpp>
 
+using namespace grb;
+
 void grb_program( const size_t & n, grb::RC & rc ) {
+	grb::Semiring< grb::operators::add< double >, grb::operators::mul< double >, grb::identities::zero, grb::identities::one > ring;
+
+	std::cout << "\tTesting dense Identity and Zero matrices\n";
 	// initialize test
-	grb::Matrix< double, grb::reference_dense > M( n, n );
+	grb::StructuredMatrix< double, structures::Square > A( n );
+	grb::StructuredMatrix< double, structures::Square > C( n );
+	auto I = grb::I< double >( n );
+	auto Zero = grb::Zero< double >( n, n );
 
-	size_t elems = grb::internal::DataElementsCalculator< double, grb::storage::Dense::full >::calculate( M );
-	std::cout << "Matrix< Dense::full, structure::General> " << n << " x " << n << " can be stored with " << elems << " elements.\n";
+	// Initialize input matrix
+	std::vector< double > A_data( n * n, 1 );
+	rc = grb::buildMatrix( A, A_data.begin(), A_data.end() );
 
-	elems = grb::internal::DataElementsCalculator< double, grb::storage::Dense::full, grb::structures::Triangular >::calculate( M );
-	std::cout << "Matrix< Dense::full, structure::Triangular> " << n << " x " << n << " can be stored with " << elems << " elements.\n";
+	if( rc == SUCCESS ) {
+		grb::mxm( C, A, I, ring );
+		// C should be equal to A
+	}
 
-	// The following call does not work because the template cannot figure out that UpperTriangular is also Triangular.
-	// TODO: fix it
-	// grb::internal::DataElementsCalculator< double, grb::storage::Dense::full, grb::structures::UpperTriangular >::calculate( M );
-	// std::cout << "Matrix< Dense::full, structure::UpperTriangular> " << n << " x " << n << " can be stored with " << elems << " elements.\n";
-
-	rc = grb::SUCCESS;
+	if (rc == SUCCESS ) {
+		grb::mxm( C, A, Zero, ring );
+		// C should be a zero
+	}
 }
 
 int main( int argc, char ** argv ) {
 	// defaults
 	bool printUsage = false;
-	size_t in = 5;
+	size_t in = 100;
 
 	// error checking
 	if( argc > 2 ) {
@@ -75,16 +82,17 @@ int main( int argc, char ** argv ) {
 	}
 
 	std::cout << "This is functional test " << argv[ 0 ] << "\n";
-	grb::Launcher< grb::AUTOMATIC > launcher;
+	grb::Launcher< AUTOMATIC > launcher;
 	grb::RC out;
-	if( launcher.exec( &grb_program, in, out, true ) != grb::SUCCESS ) {
+	if( launcher.exec( &grb_program, in, out, true ) != SUCCESS ) {
 		std::cerr << "Launching test FAILED\n";
 		return 255;
 	}
-	if( out != grb::SUCCESS ) {
+	if( out != SUCCESS ) {
 		std::cerr << "Test FAILED (" << grb::toString( out ) << ")" << std::endl;
 	} else {
 		std::cout << "Test OK" << std::endl;
 	}
 	return 0;
 }
+
