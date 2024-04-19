@@ -29,9 +29,6 @@
 #ifdef _GRB_WITH_REFERENCE
  #include <graphblas/reference/io.hpp>
 #endif
-#ifdef _GRB_WITH_DENSEREF
- #include <graphblas/denseref/io.hpp>
-#endif
 #ifdef _GRB_WITH_HYPERDAGS
  #include <graphblas/hyperdags/io.hpp>
 #endif

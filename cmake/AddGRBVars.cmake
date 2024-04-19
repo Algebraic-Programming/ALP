@@ -33,7 +33,7 @@ set( BSP1D_BACKEND_DEFAULT_NAME "backend_bsp1d" )
 set( HYBRID_BACKEND_DEFAULT_NAME "backend_hybrid" )
 set( HYPERDAGS_BACKEND_DEFAULT_NAME "backend_hyperdags" )
 set( NONBLOCKING_BACKEND_DEFAULT_NAME "backend_nonblocking" )
-set( DENSEREF_BACKEND_DEFAULT_NAME "backend_reference_dense" )
+set( ALP_REFERENCE_BACKEND_DEFAULT_NAME "backend_alp_reference" )
 
 
 ### COMPILER DEFINITIONS FOR HEADERS INCLUSION AND FOR BACKEND SELECTION
@@ -44,7 +44,7 @@ set( REFERENCE_OMP_INCLUDE_DEFS "_GRB_WITH_OMP" )
 set( HYPERDAGS_INCLUDE_DEFS "_GRB_WITH_HYPERDAGS" )
 set( NONBLOCKING_INCLUDE_DEFS "_GRB_WITH_NONBLOCKING" )
 set( LPF_INCLUDE_DEFS "_GRB_WITH_LPF" )
-set( DENSEREF_INCLUDE_DEFS "_GRB_WITH_DENSEREF" )
+set( ALP_REFERENCE_INCLUDE_DEFS "_ALP_WITH_REFERENCE" )
 
 # compiler definitions to select a backend
 set( REFERENCE_SELECTION_DEFS "_GRB_BACKEND=reference" )
@@ -54,7 +54,7 @@ set( HYPERDAGS_SELECTION_DEFS
 	"_GRB_WITH_HYPERDAGS_USING=${WITH_HYPERDAGS_USING}"
 )
 set( NONBLOCKING_SELECTION_DEFS "_GRB_BACKEND=nonblocking" )
-set( DENSEREF_SELECTION_DEFS "_GRB_BACKEND=reference_dense" )
+set( ALP_REFERENCE_SELECTION_DEFS "_ALP_BACKEND=reference" )
 set( BSP1D_SELECTION_DEFS
 		"_GRB_BACKEND=BSP1D"
 		"_GRB_BSP1D_BACKEND=reference"
@@ -68,7 +68,7 @@ set( HYBRID_SELECTION_DEFS
 set( NO_NUMA_DEF "_GRB_NO_LIBNUMA" )
 
 ### **ALL** BACKENDS, EVEN IF NOT ENABLED BY USER
-set( ALL_BACKENDS "reference" "reference_omp" "hyperdags" "nonblocking" "bsp1d" "hybrid" "reference_dense" )
+set( ALL_BACKENDS "reference" "reference_omp" "hyperdags" "nonblocking" "bsp1d" "hybrid" "alp_reference" )
 
 # list of user-enabled backends, for tests and wrapper scripts (do not change!)
 set( AVAILABLE_BACKENDS "" )
@@ -94,8 +94,8 @@ if( WITH_NONBLOCKING_BACKEND )
 	list( APPEND AVAILABLE_BACKENDS "nonblocking" )
 endif()
 
-if( WITH_DENSEREF_BACKEND )
-	list( APPEND AVAILABLE_BACKENDS "reference_dense" )
+if( WITH_ALP_REFERENCE_BACKEND )
+	list( APPEND AVAILABLE_BACKENDS "alp_reference" )
 endif()
 
 # distributed memory backends

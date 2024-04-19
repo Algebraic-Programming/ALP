@@ -37,11 +37,7 @@
 #include <graphblas/descriptors.hpp>
 #include <graphblas/ops.hpp>
 #include <graphblas/rc.hpp>
-#include <graphblas/density.hpp>
-#include <graphblas/structures.hpp>
 #include <graphblas/utils.hpp>
-#include <graphblas/views.hpp>
-#include <graphblas/imf.hpp>
 
 
 namespace grb {
@@ -395,79 +391,6 @@ namespace grb {
 			const_iterator end() const {}
 
 	};
-
-template< typename InputType, Backend backend >
-RC clear( Matrix< InputType, backend > & A ) noexcept {
-	// this is the generic stub implementation
-	return UNSUPPORTED;
-}
-
-template< typename T, typename Structure, enum Density density, typename View, enum Backend backend >
-class StructuredMatrix {
-
-	/**
-	 * The two following members define the \em logical layout of a structured matrix:
-	 * Its structure and access relations. This is enabled only if the structured matrix
-	 * does not define a View on another matrix.
-	 */
-	using structure = Structure;
-	/**
-	 * A pair of pointers to index mapping functions (see imf.hpp) that express the
-	 * logical access to the structured matrix.
-	 */
-	std::shared_ptr<imf::IMF> imf_l, imf_r;
-
-	/**
-	 * When a structured matrix instanciate a \em container it defines a new \em physical
-	 * (concrete?) layout. This is characterized by an ALP container (aka a \a Matrix) and a 
-	 * storage scheme that defines a unique interpretation of its content.
-	 * The combination of the logical and physical layout of a structured matrix enables to
-	 * identify a precise mapping between an element in the structured matrix and a position
-	 * wihtin one or more 1/2D-arrays that store it.
-	 */
-    Matrix< T, reference_dense > * _container;
-
-	/**
-	 * A container's storage scheme. \a storage_scheme is not exposed to the user as an option
-	 * but can defined by ALP at different points in the execution depending on the \a backend choice.
-	 * For example, if the container is associated to an I/O matrix, with a reference backend
-	 * it might be set to reflect the storage scheme of the user data as specified at buildMatrix.
-	 * If \a backend is set to \a mlir then the scheme could be fixed by the JIT compiler to effectively
-	 * support its optimization strategy.
-	 * At construction time and until the moment the scheme decision is made it may be set to
-	 * an appropriate default choice, e.g. if \a density is \a Density::Dense then
-	 * \a Density::Dense::full could be used.
-	 * \internal \todo Revisit this. The change of storage scheme type to enum (dense/sparse) and
-	 * implementing storage mapping functions requires a change of this spec.
-	 */
-	// Storage storage_scheme;
-
-	/**
-	 * When a structured matrix defines a View over another matrix, it contains a pointer
-	 * to the latter. Its type can be identified via the View parameter.
-	 */
-	using target_type = typename std::enable_if<! std::is_same<View, view::Original<void> >::value, typename View::applied_to>::type;
-	target_type * ref;
-
-	public :
-
-	StructuredMatrix( const size_t m, const size_t n );
-
-	StructuredMatrix( const StructuredMatrix< T, Structure, density, View, backend > & other );
-
-	StructuredMatrix( StructuredMatrix< T, Structure, density, View, backend > && other );
-
-	~StructuredMatrix();
-
-}; // class StructuredMatrix
-
-/**
- * Check if type \a T is a StructuredMatrix.
- */
-template< typename T >
-struct is_structured_matrix : std::false_type {};
-template< typename T, typename Structure, enum Density density, typename View, enum Backend backend >
-struct is_structured_matrix< StructuredMatrix< T, Structure, density, View, backend > > : std::true_type {};
 
 } // end namespace ``grb''
 

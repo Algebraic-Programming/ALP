@@ -30,9 +30,6 @@
 #ifdef _GRB_WITH_REFERENCE
  #include "graphblas/reference/exec.hpp"
 #endif
-#ifdef _GRB_WITH_DENSEREF
- #include "graphblas/denseref/exec.hpp"
-#endif
 #ifdef _GRB_WITH_HYPERDAGS
  #include "graphblas/hyperdags/exec.hpp"
 #endif
