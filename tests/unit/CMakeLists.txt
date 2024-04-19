@@ -246,14 +246,27 @@ add_grb_executables( spy spy.cpp
 	BACKENDS reference reference_omp hyperdags nonblocking
 )
 
+add_grb_executables( dense_constant_matrices dense_constant_matrices.cpp
+	BACKENDS reference_dense
+)
+
+add_grb_executables( dense_dot_norm2 dense_dot_norm2.cpp
+	BACKENDS reference_dense
+)
+
 add_grb_executables( dense_matrix_imf dense_matrix_imf.cpp
 	BACKENDS reference_dense
 )
-add_grb_executables( dense_matrix_allocation_size dense_matrix_allocation_size.cpp
+
+add_grb_executables( dense_matrix_eWiseApply dense_matrix_eWiseApply.cpp
 	BACKENDS reference_dense
 )
 
 add_grb_executables( dense_mxm dense_mxm.cpp
+	BACKENDS reference_dense
+)
+
+add_grb_executables( dense_outer dense_outer.cpp
 	BACKENDS reference_dense
 )
 

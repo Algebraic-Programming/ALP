@@ -31,9 +31,9 @@
 #ifdef _GRB_WITH_REFERENCE
  #include <graphblas/reference/vector.hpp>
 #endif
-// #ifdef _GRB_WITH_DENSE
-//  #include <graphblas/denseref/vector.hpp>
-// #endif
+#ifdef _GRB_WITH_DENSEREF
+ #include <graphblas/denseref/vector.hpp>
+#endif
 #ifdef _GRB_WITH_HYPERDAGS
  #include <graphblas/hyperdags/vector.hpp>
 #endif
@@ -59,6 +59,13 @@ namespace grb {
 		>
 	>
 	class Vector;
+
+	/*
+	 * The default value of \a StorageSchemeType could also be made conditional (Dense or Sparse) depending on \a config::default_backend
+	 */
+	// template< typename T, typename View = view::Identity< void >, typename StorageSchemeType = storage::Dense, enum Backend backend = config::default_backend, typename C = internal::DefaultCoordinates >
+	template< typename T, typename View =  view::Identity< void >, typename StorageSchemeType = storage::Dense, enum Backend backend = config::default_backend, typename C = void >
+	class VectorView;
 
 }
 #endif

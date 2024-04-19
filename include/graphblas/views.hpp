@@ -29,6 +29,7 @@
 #ifndef _H_GRB_VIEWS
 #define _H_GRB_VIEWS
 
+#include <algorithm>
 #include <utility>
 
 namespace grb {
@@ -52,6 +53,16 @@ namespace grb {
 
 			static std::pair< size_t, size_t > dims( std::pair< size_t, size_t > dims_pair ) {
 				return std::make_pair( dims_pair.second, dims_pair.first );
+			}
+		};
+
+		template< typename OriginalType >
+		struct Diagonal {
+
+			using applied_to = OriginalType;
+
+			static size_t getLength( std::pair< size_t, size_t > dims_pair ) {
+				return std::min( dims_pair.first, dims_pair.second );
 			}
 		};
 
