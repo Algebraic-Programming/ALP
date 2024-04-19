@@ -949,9 +949,6 @@ namespace grb {
 			}
 	};
 
-	template< typename T, typename Structure, enum Density density, typename View, enum Backend backend >
-	class VectorView { };
-
 } // end namespace ``grb''
 
 #endif // _H_GRB_VECTOR_BASE

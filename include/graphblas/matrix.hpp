@@ -30,9 +30,6 @@
 #ifdef _GRB_WITH_REFERENCE
  #include <graphblas/reference/matrix.hpp>
 #endif
-#ifdef _GRB_WITH_DENSEREF
- #include <graphblas/denseref/matrix.hpp>
-#endif
 #ifdef _GRB_WITH_HYPERDAGS
  #include <graphblas/hyperdags/matrix.hpp>
 #endif
@@ -57,12 +54,6 @@ namespace grb {
 		typename NonzeroIndexType = config::NonzeroIndexType
 	>
 	class Matrix;
-
-	/*
-	 * The default value of \a density could also be made conditional (Dense or Sparse) depending on \a config::default_backend
-	 */
-	template< typename T, typename Structure, enum Density density = Density::Dense, typename View = view::Original< void >, enum Backend backend = config::default_backend >
-	class StructuredMatrix;
 
 } // namespace grb
 #endif

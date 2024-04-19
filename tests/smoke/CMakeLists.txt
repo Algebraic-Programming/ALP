@@ -180,6 +180,54 @@ add_grb_executables( kcore_decomposition kcore_decomposition.cpp
 	BACKENDS reference reference_omp hyperdags nonblocking bsp1d hybrid
 )
 
+add_grb_executables( alp_gemm alp_gemm.cpp
+	BACKENDS alp_reference
+)
+
+add_grb_executables( alp_cholesky alp_cholesky.cpp
+	BACKENDS alp_reference
+)
+
+add_grb_executables( alp_zhetrd alp_zhetrd.cpp
+        BACKENDS alp_reference
+)
+
+add_grb_executables( alp_zhetrd_complex alp_zhetrd.cpp
+        BACKENDS alp_reference
+        COMPILE_DEFINITIONS _COMPLEX
+)
+
+add_grb_executables( alp_zgeqrf alp_zgeqrf.cpp
+        BACKENDS alp_reference
+)
+
+add_grb_executables( alp_zgeqrf_complex alp_zgeqrf.cpp
+        BACKENDS alp_reference
+	COMPILE_DEFINITIONS _COMPLEX
+)
+
+add_grb_executables( alp_dstedc alp_stedc.cpp
+        BACKENDS alp_reference
+)
+
+add_grb_executables( alp_backsubstitution alp_backsubstitution.cpp
+        BACKENDS alp_reference
+)
+
+add_grb_executables( alp_backsubstitution_complex alp_backsubstitution.cpp
+        BACKENDS alp_reference
+	COMPILE_DEFINITIONS _COMPLEX
+)
+
+add_grb_executables( alp_forwardsubstitution alp_forwardsubstitution.cpp
+        BACKENDS alp_reference
+)
+
+add_grb_executables( alp_forwardsubstitution_complex alp_forwardsubstitution.cpp
+        BACKENDS alp_reference
+	COMPILE_DEFINITIONS _COMPLEX
+)
+
 # targets to list and build the test for this category
 get_property( smoke_tests_list GLOBAL PROPERTY tests_category_smoke )
 add_custom_target( "list_tests_category_smoke"

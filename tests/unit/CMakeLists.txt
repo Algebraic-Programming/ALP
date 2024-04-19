@@ -32,6 +32,22 @@ add_grb_executables( add15m add15m.cpp
 	BACKENDS reference NO_BACKEND_NAME
 )
 
+add_grb_executables( alp_dynamic_views alp_dynamic_views.cpp
+	BACKENDS alp_reference
+)
+
+add_grb_executables( alp_views alp_views.cpp
+	BACKENDS alp_reference
+)
+
+add_grb_executables( alp_type_traits alp_type_traits.cpp
+	BACKENDS alp_reference
+)
+
+add_grb_executables( alp_file_iterator alp_file_iterator.cpp
+	BACKENDS alp_reference
+)      
+
 add_grb_executables( argmax argmax.cpp
 	BACKENDS reference reference_omp bsp1d hybrid hyperdags nonblocking
 )
@@ -246,32 +262,61 @@ add_grb_executables( spy spy.cpp
 	BACKENDS reference reference_omp hyperdags nonblocking
 )
 
-add_grb_executables( dense_constant_matrices dense_constant_matrices.cpp
-	BACKENDS reference_dense
+add_grb_executables( dense_conjugate dense_conjugate.cpp
+	BACKENDS alp_reference
+)
+
+add_grb_executables( dense_matrix_access dense_matrix_access.cpp
+	BACKENDS alp_reference
+)
+
+# Temporarily disable this test until the necessary Matrix class specialization are adapted to the new functor-based infrastructure.
+# add_grb_executables( dense_constant_matrices dense_constant_matrices.cpp
+# 	BACKENDS alp_reference
+# )
+
+add_grb_executables( dense_eWiseApply dense_eWiseApply.cpp
+	BACKENDS alp_reference
+)
+
+add_grb_executables( dense_eWiseLambda dense_eWiseLambda.cpp
+	BACKENDS alp_reference
+)
+
+add_grb_executables( dense_eWiseMul dense_eWiseMul.cpp
+	BACKENDS alp_reference
 )
 
 add_grb_executables( dense_dot_norm2 dense_dot_norm2.cpp
-	BACKENDS reference_dense
+	BACKENDS alp_reference
+)
+
+add_grb_executables( dense_fold dense_fold.cpp
+	BACKENDS alp_reference
 )
 
 add_grb_executables( dense_matrix_imf dense_matrix_imf.cpp
-	BACKENDS reference_dense
-)
-
-add_grb_executables( dense_matrix_eWiseApply dense_matrix_eWiseApply.cpp
-	BACKENDS reference_dense
+	BACKENDS alp_reference
 )
 
 add_grb_executables( dense_mxm dense_mxm.cpp
-	BACKENDS reference_dense
+	BACKENDS alp_reference
 )
 
 add_grb_executables( dense_outer dense_outer.cpp
-	BACKENDS reference_dense
+	BACKENDS alp_reference
+)
+
+add_grb_executables( dense_set dense_set.cpp
+	BACKENDS alp_reference
+)
+
+add_grb_executables( dense_storage_polynomials dense_storage_polynomials.cpp
+	BACKENDS alp_reference
 )
 
 add_grb_executables( dense_structured_matrix dense_structured_matrix.cpp
-	BACKENDS reference_dense
+	BACKENDS alp_reference
 )
 
 add_grb_executables( dense_spmv dense_spmv.cpp

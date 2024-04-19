@@ -31,9 +31,6 @@
 #ifdef _GRB_WITH_REFERENCE
  #include <graphblas/reference/vector.hpp>
 #endif
-#ifdef _GRB_WITH_DENSEREF
- #include <graphblas/denseref/vector.hpp>
-#endif
 #ifdef _GRB_WITH_HYPERDAGS
  #include <graphblas/hyperdags/vector.hpp>
 #endif
@@ -59,12 +56,6 @@ namespace grb {
 		>
 	>
 	class Vector;
-
-	/*
-	 * The default value of \a density could also be made conditional (Dense or Sparse) depending on \a config::default_backend
-	 */
-	template< typename T, typename Structure = structures::General, enum Density density = Density::Dense, typename View = view::Original< void >, enum Backend backend = config::default_backend >
-	class VectorView;
 
 }
 #endif

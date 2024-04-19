@@ -108,6 +108,10 @@ install( TARGETS alp_utils_headers EXPORT GraphBLASTargets
 	INCLUDES DESTINATION "${INCLUDE_INSTALL_DIR}"
 )
 
+if( WITH_ALP_REFERENCE_BACKEND_HEADERS )
+	add_subdirectory( alp )
+endif()
+
 if( WITH_REFERENCE_BACKEND_HEADERS )
 	add_library( backend_reference_headers INTERFACE )
 	target_link_libraries( backend_reference_headers INTERFACE backend_headers_nodefs )
@@ -118,17 +122,6 @@ if( WITH_REFERENCE_BACKEND_HEADERS )
 	target_link_libraries( backend_reference_headers INTERFACE OpenMP::OpenMP_CXX )
 
 	install( TARGETS backend_reference_headers EXPORT GraphBLASTargets )
-endif()
-
-if( WITH_DENSEREF_BACKEND )
-	add_library( backend_reference_dense_headers INTERFACE )
-	target_link_libraries( backend_reference_dense_headers INTERFACE backend_headers_nodefs )
-	target_compile_definitions( backend_reference_dense_headers INTERFACE "${DENSEREF_INCLUDE_DEFS}" )
-	install( TARGETS backend_reference_dense_headers EXPORT GraphBLASTargets )
-	install( DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/graphblas/denseref"
-		DESTINATION "${GRB_INCLUDE_INSTALL_DIR}/denseref"
-		FILES_MATCHING REGEX "${HEADERS_REGEX}"
-	)
 endif()
 
 if( WITH_REFERENCE_BACKEND OR WITH_OMP_BACKEND )

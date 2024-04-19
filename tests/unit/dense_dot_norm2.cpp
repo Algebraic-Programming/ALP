@@ -18,129 +18,187 @@
 #include <iostream>
 #include <sstream>
 
-#include <graphblas.hpp>
+#include <alp.hpp>
 
-using namespace grb;
+using namespace alp;
 
-void grb_program( const size_t &n, grb::RC &rc ) {
+// uncomment next line to disable some set()
+// #define TEMP_DISABLE_SET
 
-	// repeatedly used containers
-	grb::VectorView< double > left( n );
-	grb::VectorView< double > right( n );
+typedef double T1;
 
-	// test 1, init
-	grb::Semiring<
-		grb::operators::add< double >, grb::operators::mul< double >,
-		grb::identities::zero, grb::identities::one
-	> ring;
-	// rc = grb::set( left, 1.5 ); // left = 1.5 everywhere
-	// rc = rc ? rc : grb::set( right, -1.0 );
-	// if( rc != SUCCESS ) {
-	// 	std::cerr << "\t test 1 (dense, regular semiring): initialisation FAILED\n";
-	// 	return;
-	// }
-	Scalar< double > out( 2.55 );
+const T1 testval1 = 1.5;
+const T1 testval2 = -1;
+const T1 testval3 = 2.;
 
-	// test 1, exec
-	rc = grb::dot( out, left, right, ring );
-	if( rc != SUCCESS ) {
-		std::cerr << "\t test 1 (dense, regular semiring): dot FAILED\n";
-		return;
+void alp_program( const size_t &n, alp::RC &rc ) {
+
+	{
+		alp::Vector< T1 > left( n );
+		alp::Vector< T1 > right( n );
+
+		alp::Semiring<
+			alp::operators::add< double >, alp::operators::mul< double >,
+			alp::identities::zero, alp::identities::one
+		> ring;
+
+		// test 1, init
+		rc = SUCCESS;
+#ifndef TEMP_DISABLE_SET
+		rc = rc ? rc : alp::set( left, Scalar< T1 >( testval1 ) );
+		rc = rc ? rc : alp::set( right, Scalar< T1 >( testval2 ) );
+#else
+		std::vector< T1 > left_data( n );
+		std::vector< T1 > right_data( n );
+
+		std::fill( left_data.begin(), left_data.end(), testval1 );
+		std::fill( right_data.begin(), right_data.end(), testval2 );
+
+		rc = rc ? rc : alp::buildVector( left, left_data.begin(), left_data.end() );
+		rc = rc ? rc : alp::buildVector( right, right_data.begin(), right_data.end() );
+#endif
+		if( rc != SUCCESS ) {
+			std::cerr << "\t test 1 (dense, regular semiring): initialisation FAILED\n";
+			return;
+		}
+
+		// test 1, exec
+		Scalar< T1 > out( 0 );
+		rc = alp::dot( out, left, right, ring );
+		if( rc != SUCCESS ) {
+			std::cerr << "\t test 1 (dense, regular semiring): dot FAILED\n";
+			return;
+		}
+
+		// test 1, check
+		if( static_cast< T1 >( testval1 * testval2 * n ) != *out ) {
+			std::cerr << "\t test 1 (dense, regular semiring): unexpected output "
+				  << "( " << *out << ", expected "
+				  << ( static_cast< T1 >( testval1 * testval2 * n ) )
+				  << " )\n";
+			rc = FAILED;
+			return;
+		}
 	}
 
-	// // test 1, check
-	// const double expected = 2.55 - static_cast< double >( n + n / 2 );
-	// if( !utils::equals( out, expected, 2 * n + 1 ) ) {
-	// 	std::cerr << "\t test 1 (dense, regular semiring): unexpected output "
-	// 		<< "( " << out << ", expected "
-	// 		<< ( 2.55 - static_cast< double >(n + n/2) )
-	// 		<< " )\n";
-	// 	rc = FAILED;
-	// }
-	// if( rc != SUCCESS ) {
-	// 	return;
-	// }
+	{
+		alp::Vector< T1 > left( n );
+		alp::Vector< T1 > right( n );
 
-	// test 2, init
-	// grb::Semiring<
-	// 	grb::operators::add< double >, grb::operators::left_assign_if< double, bool, double >,
-	// 	grb::identities::zero, grb::identities::logical_true
-	// > pattern_sum_if;
-	// rc = grb::clear( left );
-	// rc = rc ? rc : grb::clear( right );
-	// for( size_t i = 0; 2 * i < n; ++i ) {
-	// 	rc = rc ? rc : grb::setElement( left, 2.0, 2 * i );
-	// 	rc = rc ? rc : grb::setElement( right, 1.0, 2 * i );
-	// }
-	// if( rc != SUCCESS ) {
-	// 	std::cerr << "\t test 2 (sparse, non-standard semiring) initialisation FAILED\n";
-	// 	return;
-	// }
-	// out = 0;
+		//test 2, init
+		alp::Semiring<
+			alp::operators::add< double >,
+			alp::operators::left_assign_if< T1, bool, T1 >,
+			alp::identities::zero, alp::identities::logical_true
+		> pattern_sum_if;
+		rc = SUCCESS;
+#ifndef TEMP_DISABLE_SET
+		rc = rc ? rc : alp::set( left, Scalar< T1 >( 0 ) );
+		rc = rc ? rc : alp::set( right, Scalar< T1 >( 1 ) );
+#else
+		// temp initialization
+		std::vector< T1 > left_data( n );
+		std::vector< T1 > right_data( n );
+		std::fill( left_data.begin(), left_data.end(), static_cast< T1 >( 0 ) );
+		std::fill( right_data.begin(), right_data.end(), static_cast< T1 >( 1 ) );
+		rc = rc ? rc : alp::buildVector( left, left_data.begin(), left_data.end() );
+		rc = rc ? rc : alp::buildVector( right, right_data.begin(), right_data.end() );
+#endif
 
-	// // test 2, exec
-	// rc = grb::dot( out, left, right, pattern_sum_if );
-	// if( rc != SUCCESS ) {
-	// 	std::cerr << "\t test 2 (sparse, non-standard semiring) dot FAILED\n";
-	// 	return;
-	// }
+		auto left_view_even = alp::get_view( left, alp::utils::range( 0, n, 2 ) );
+		rc = rc ? rc : alp::set( left_view_even, Scalar< T1 >( testval3 ) );  // needs an implementation
+		if( rc != SUCCESS ) {
+			std::cerr << "\t test 2 (sparse, non-standard semiring) "
+				  << "initialisation FAILED\n";
+			return;
+		}
 
-	// // test 2, check
-	// if( !utils::equals( out, static_cast< double >( n ), 2 * n ) ) {
-	// 	std::cerr << "\t test 2 (sparse, non-standard semiring), "
-	// 		<< "unexpected output: " << out << ", expected " << n
-	// 		<< ".\n";
-	// 	rc = FAILED;
-	// 	return;
-	// }
+		// test 2, exec
+		Scalar< T1 > out( 0 );
+		rc = alp::dot( out, left, right, pattern_sum_if );
+		if( rc != SUCCESS ) {
+			std::cerr << "\t test 2 (sparse, non-standard semiring) dot FAILED\n";
+			return;
+		}
 
-	// // test 3, init
-	// grb::Semiring<
-	// 	grb::operators::add< int >, grb::operators::mul< int >,
-	// 	grb::identities::zero, grb::identities::one
-	// > intRing;
-	// grb::Vector< int > x( n ), y( n );
-	// rc = grb::set( x, 1 );
-	// rc = rc ? rc : grb::set( y, 2 );
-	// if( rc != grb::SUCCESS ) {
-	// 	std::cerr << "\t test 3 (dense integer vectors) initialisation FAILED\n";
-	// 	return;
-	// }
-	// int alpha = 0;
+		// test 2, check
+		if( testval3 * static_cast< T1 >( n ) != *out * 2  ) {
+			std::cerr << "\t test 2 (sparse, non-standard semiring), "
+				  << "unexpected output: " << *out << ", expected " << n
+				  << ".\n";
+			rc = FAILED;
+			return;
+		}
+	}
 
-	// // test 3, exec
-	// rc = grb::dot( alpha, x, y, intRing );
-	// if( rc != grb::SUCCESS ) {
-	// 	std::cerr << "\t test 3 (dense integer vectors) dot FAILED\n";
-	// 	return;
-	// }
+	Scalar< int > alpha( 0 );
+	alp::Semiring<
+		alp::operators::add< int >, alp::operators::mul< int >,
+		alp::identities::zero, alp::identities::one
+	> intRing;
 
-	// // test 3, check
-	// if( alpha != 2 * static_cast< int >(n) ) {
-	// 	std::cerr << "\t test 3 (dense integer vectors) unexpected value "
-	// 		<< alpha << ", expected 2 * n = " << (2*n) << ".\n";
-	// 	rc = FAILED;
-	// 	return;
-	// }
+	{
+		// test 3, init
+		rc = SUCCESS;
 
-	// // test 4, init
-	// grb::Vector< int > empty_left( 0 ), empty_right( 0 );
-	// // retain old value of alpha
+		alp::Vector< int > x( n ), y( n );
 
-	// // test 4, exec
-	// rc = grb::dot( alpha, empty_left, empty_right, intRing );
-	// if( rc != SUCCESS ) {
-	// 	std::cerr << "\t test 4 (empty vectors) dot FAILED\n";
-	// 	return;
-	// }
+#ifndef TEMP_DISABLE_SET
+		rc = alp::set( x, Scalar< T1 >( 1 ) );
+		rc = rc ? rc : alp::set( y, Scalar< T1 >( 2 ) );
+#else
+		// temp initialization
+		std::vector< T1 > x_data( n ), y_data( n );
+		std::fill( x_data.begin(), x_data.end(), 1 );
+		std::fill( y_data.begin(), y_data.end(), 2 );
+		rc = rc ? rc : alp::buildVector( x, x_data.begin(), x_data.end() );
+		rc = rc ? rc : alp::buildVector( y, y_data.begin(), y_data.end() );
+#endif
 
-	// // test 4, check
-	// if( alpha != 2 * static_cast< int >(n) ) {
-	// 	std::cerr << "\t test 4 (empty vectors) unexpected value "
-	// 		<< alpha << ", expected 2 * n = " << (2*n) << ".\n";
-	// 	rc = FAILED;
-	// 	return;
-	// }
+		if( rc != alp::SUCCESS ) {
+			std::cerr << "\t test 3 (dense integer vectors) initialisation FAILED\n";
+			return;
+		}
+
+		// test 3, exec
+		rc = alp::dot( alpha, x, y, intRing );
+		if( rc != alp::SUCCESS ) {
+			std::cerr << "\t test 3 (dense integer vectors) dot FAILED\n";
+			return;
+		}
+
+		// test 3, check
+		if( *alpha != 2 * static_cast< int >( n ) ) {
+			std::cerr << "\t test 3 (dense integer vectors) unexpected value "
+				  << *alpha << ", expected 2 * n = " << ( 2 * n) << ".\n";
+			rc = FAILED;
+			return;
+		}
+	}
+
+	{
+		// test 4, init
+		alp::Vector< int > empty_left( 0 );
+		alp::Vector< int > empty_right( 0 );
+		internal::setInitialized( empty_left, true );
+		internal::setInitialized( empty_right, true );
+
+		// test 4, exec
+		rc = alp::dot( alpha, empty_left, empty_right, intRing );
+		if( rc != SUCCESS ) {
+			std::cerr << "\t test 4 (empty vectors) dot FAILED\n";
+			return;
+		}
+
+		// test 4, check
+		if( *alpha != 2 * static_cast< int >(n) ) {
+			std::cerr << "\t test 4 (empty vectors) unexpected value "
+				  << *alpha << ", expected 2 * n = " << ( 2 * n ) << ".\n";
+			rc = FAILED;
+			return;
+		}
+	}
+
 
 }
 
@@ -178,14 +236,14 @@ int main( int argc, char ** argv ) {
 	}
 
 	std::cout << "This is functional test " << argv[ 0 ] << "\n";
-	grb::Launcher< AUTOMATIC > launcher;
-	grb::RC out;
-	if( launcher.exec( &grb_program, in, out, true ) != SUCCESS ) {
+	alp::Launcher< AUTOMATIC > launcher;
+	alp::RC out;
+	if( launcher.exec( &alp_program, in, out, true ) != SUCCESS ) {
 		std::cerr << "Launching test FAILED\n";
 		return 255;
 	}
 	if( out != SUCCESS ) {
-		std::cerr << "Test FAILED (" << grb::toString( out ) << ")" << std::endl;
+		std::cerr << "Test FAILED (" << alp::toString( out ) << ")" << std::endl;
 	} else {
 		std::cout << "Test OK" << std::endl;
 	}

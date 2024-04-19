@@ -34,9 +34,6 @@
 #ifdef _GRB_WITH_REFERENCE
  #include <graphblas/reference/pinnedvector.hpp>
 #endif
-#ifdef _GRB_WITH_DENSE
- #include <graphblas/denseref/pinnedvector.hpp>
-#endif
 #ifdef _GRB_WITH_HYPERDAGS
  #include <graphblas/hyperdags/pinnedvector.hpp>
 #endif
