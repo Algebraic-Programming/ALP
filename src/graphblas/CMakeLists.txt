@@ -93,6 +93,10 @@ if( WITH_NONBLOCKING_BACKEND )
 	add_subdirectory( nonblocking )
 endif()
 
+if( WITH_DENSE_BACKEND )
+	add_subdirectory( denseref )
+endif()
+
 if( WITH_BSP1D_BACKEND OR WITH_HYBRID_BACKEND )
 	add_subdirectory( bsp1d )
 endif()

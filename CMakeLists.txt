@@ -50,6 +50,7 @@ endif()
 ### CONFIGURATION OPTIONS
 # to choose backends and dependencies
 option( WITH_REFERENCE_BACKEND "With Reference backend" ON )
+option( WITH_DENSE_BACKEND "With Dense backend" ON )
 option( WITH_OMP_BACKEND "With OMP backend" ON )
 option( WITH_HYPERDAGS_BACKEND "With Hyperdags backend" ON )
 if( WITH_HYPERDAGS_BACKEND )
