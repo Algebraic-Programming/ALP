@@ -26,7 +26,7 @@
 #include <algorithm>   // for std::min/max
 #include <type_traits> // for std::enable_if
 
-#include <graphblas/utils/iscomplex.hpp> // use from grb
+#include <alp/utils/iscomplex.hpp>
 
 #include <alp/descriptors.hpp>
 #include <alp/structures.hpp>
@@ -1501,7 +1501,7 @@ namespace alp {
 				internal::apply(
 					result,
 					x[ i ],
-					grb::utils::is_complex< InputType2 >::conjugate( y[ j ] ),
+					alp::utils::is_complex< InputType2 >::conjugate( y[ j ] ),
 					mul
 				);
 			};
@@ -1538,7 +1538,7 @@ namespace alp {
 	Matrix<
 		typename Operator::D3,
 		typename std::conditional<
-			grb::utils::is_complex< typename Operator::D3 >::value,
+			alp::utils::is_complex< typename Operator::D3 >::value,
 			alp::structures::Hermitian,
 			alp::structures::Symmetric
 		>::type,
@@ -1567,7 +1567,7 @@ namespace alp {
 				//set( ret, alp::identities::zero );
 				internal::apply(
 					result, x[ i ],
-					grb::utils::is_complex< InputType >::conjugate( x[ j ] ),
+					alp::utils::is_complex< InputType >::conjugate( x[ j ] ),
 					mul
 				);
 			};
@@ -1579,7 +1579,7 @@ namespace alp {
 		return Matrix<
 			typename Operator::D3,
 			typename std::conditional<
-				grb::utils::is_complex< typename Operator::D3 >::value,
+				alp::utils::is_complex< typename Operator::D3 >::value,
 				alp::structures::Hermitian,
 				alp::structures::Symmetric
 			>::type,

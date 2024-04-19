@@ -23,8 +23,8 @@
 #include <cmath>
 #include <iomanip>
 
-#include <graphblas/utils/Timer.hpp>
-#include <graphblas/utils/iscomplex.hpp> // use from grb
+#include <graphblas/utils/timer.hpp>
+#include <graphblas/utils/iscomplex.hpp>
 
 #include "lapacke.h"
 

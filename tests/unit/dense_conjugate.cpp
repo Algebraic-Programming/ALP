@@ -24,6 +24,7 @@
 #include <complex>
 
 #include <alp.hpp>
+#include <alp/utils/iscomplex.hpp>
 #include "../utils/print_alp_containers.hpp"
 
 typedef float BaseScalarType;
@@ -57,7 +58,7 @@ void init_matrix( MatrixType &M ) {
 			if( r < c ) {
 				alp::internal::access( M, alp::internal::getStorageIndex( M, r, c ) ) = val;
 				if( r != c ) {
-					alp::internal::access( M, alp::internal::getStorageIndex( M, c, r ) ) = grb::utils::is_complex< value_type >::conjugate( val );
+					alp::internal::access( M, alp::internal::getStorageIndex( M, c, r ) ) = alp::utils::is_complex< value_type >::conjugate( val );
 				}
 			} else if ( r == c ) {
 				alp::internal::access( M, alp::internal::getStorageIndex( M, r, c ) ) = std::real( val );
@@ -120,7 +121,7 @@ alp::RC check_if_same( const MatrixType1 &A, const MatrixType2 &B, const Ring &r
 template<
 	typename T,
 	typename Structure = typename std::conditional<
-		grb::utils::is_complex< T >::value,
+		alp::utils::is_complex< T >::value,
 		alp::structures::Hermitian,
 		// Should be Symmetric.
 		// Temporarily using Square until fold is fixed to support folding symmetric onto more general structures

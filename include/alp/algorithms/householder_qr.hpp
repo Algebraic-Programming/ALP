@@ -18,7 +18,7 @@
 #include <sstream>
 
 #include <alp.hpp>
-#include <graphblas/utils/iscomplex.hpp> // use from grb
+#include <alp/utils/iscomplex.hpp>
 #ifdef DEBUG
 #include "../tests/utils/print_alp_containers.hpp"
 #endif
@@ -167,7 +167,7 @@ namespace alp {
 				// ===== Calculate reflector Qk =====
 				// Q_k = identity( n )
 				typedef typename std::conditional<
-					grb::utils::is_complex< D >::value,
+					alp::utils::is_complex< D >::value,
 					structures::Hermitian,
 					structures::Symmetric
 				>::type SymmOrHerm;
@@ -222,7 +222,7 @@ namespace alp {
 
 				// Qtmp = Q * conjugate(transpose(Qk))
 				rc = rc ? rc : alp::set( Qtmp, zero );
-				if( grb::utils::is_complex< D >::value ) {
+				if( alp::utils::is_complex< D >::value ) {
 					rc = rc ? rc : alp::mxm(
 						Qtmp,
 						Q,

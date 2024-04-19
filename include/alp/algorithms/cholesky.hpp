@@ -19,7 +19,7 @@
 #include <iomanip>
 
 #include <alp.hpp>
-#include <graphblas/utils/iscomplex.hpp> // use from grb
+#include <alp/utils/iscomplex.hpp>
 #include <alp/algorithms/forwardsubstitution.hpp>
 #include <alp/algorithms/fused_mxm_foldl.hpp>
 #include "../../../tests/utils/print_alp_containers.hpp"
@@ -58,10 +58,10 @@ namespace alp {
 				//       with structures::SymmetricPositiveDefinitePositiveDefinite
 				(
 					(
-						!grb::utils::is_complex< D >::value &&
+						!alp::utils::is_complex< D >::value &&
 						structures::is_a< typename MatH::structure, structures::SymmetricPositiveDefinite >::value
 					) || (
-						grb::utils::is_complex< D >::value &&
+						alp::utils::is_complex< D >::value &&
 						structures::is_a< typename MatH::structure, structures::HermitianPositiveDefinite >::value
 					)
 				) &&

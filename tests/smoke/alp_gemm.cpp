@@ -20,7 +20,7 @@
 #include <utility>
 #include <vector>
 
-#include <graphblas/utils/Timer.hpp>
+#include <graphblas/utils/timer.hpp>
 #include <alp.hpp>
 #include <alp/algorithms/gemm.hpp>
 #include "../utils/print_alp_containers.hpp"

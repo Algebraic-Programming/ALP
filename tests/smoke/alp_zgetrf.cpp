@@ -24,10 +24,10 @@
 #include <iomanip>
 #endif
 
-#include <graphblas/utils/Timer.hpp>
+#include <graphblas/utils/timer.hpp>
 #include <alp.hpp>
 #include <alp/algorithms/householder_lu.hpp>
-#include <graphblas/utils/iscomplex.hpp> // use from grb
+#include <alp/utils/iscomplex.hpp> // use from grb
 #ifdef DEBUG
 #include "../utils/print_alp_containers.hpp"
 #endif
@@ -58,7 +58,7 @@ std::vector< T > generate_rectangular_matrix_data(
 	size_t N,
 	size_t M,
 	const typename std::enable_if<
-		grb::utils::is_complex< T >::value,
+		alp::utils::is_complex< T >::value,
 		void
 	>::type * const = nullptr
 ) {
@@ -80,7 +80,7 @@ std::vector< T >  generate_rectangular_matrix_data(
 	size_t N,
 	size_t M,
 	const typename std::enable_if<
-		!grb::utils::is_complex< T >::value,
+		!alp::utils::is_complex< T >::value,
 		void
 	>::type * const = nullptr
 ) {

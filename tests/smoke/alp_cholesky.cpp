@@ -25,9 +25,9 @@
 #include <iomanip>
 #endif
 
-#include <graphblas/utils/Timer.hpp>
+#include <graphblas/utils/timer.hpp>
 #include <alp.hpp>
-#include <graphblas/utils/iscomplex.hpp> // use from grb
+#include <alp/utils/iscomplex.hpp>
 #include <alp/algorithms/cholesky.hpp>
 #include <alp/utils/parser/MatrixFileReader.hpp>
 #include "../utils/print_alp_containers.hpp"
@@ -80,7 +80,7 @@ void generate_symmherm_pos_def_mat_data_full( size_t N, std::vector<T> &data ) {
 	for( size_t i = 0; i < N; ++i ) {
 		for( size_t j = i; j < N; ++j ) {
 			data[ i * N + j ] = random_value< T >();
-			data[ j * N + i ] += grb::utils::is_complex< T >::conjugate( data[ i * N + j ] );
+			data[ j * N + i ] += alp::utils::is_complex< T >::conjugate( data[ i * N + j ] );
 			if( i == j ) {
 				data[ j * N + i ] += static_cast< T >( N );
 			}
@@ -96,7 +96,7 @@ void generate_symmherm_pos_def_mat_data(
 	size_t N,
 	std::vector< T > &mat_data,
 	const typename std::enable_if<
-		grb::utils::is_complex< T >::value,
+		alp::utils::is_complex< T >::value,
 		void
 	>::type * const = nullptr
 ) {
@@ -111,7 +111,7 @@ void generate_symmherm_pos_def_mat_data(
 	size_t N,
 	std::vector< T > &mat_data,
 	const typename std::enable_if<
-		!grb::utils::is_complex< T >::value,
+		!alp::utils::is_complex< T >::value,
 		void
 	>::type * const = nullptr
 ) {
@@ -121,7 +121,7 @@ void generate_symmherm_pos_def_mat_data(
 		for( size_t j = i; j < N; ++j ) {
 			mat_data[ k ] = random_value< T >();
 			if( i == j ) {
-				mat_data[ k ] += grb::utils::is_complex< T >::conjugate( mat_data[ k ] );
+				mat_data[ k ] += alp::utils::is_complex< T >::conjugate( mat_data[ k ] );
 				mat_data[ k ] += static_cast< T >( N );
 			}
 			++k;

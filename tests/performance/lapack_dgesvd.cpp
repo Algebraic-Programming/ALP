@@ -20,7 +20,7 @@
 #include <sstream>
 #include <vector>
 
-#include <graphblas/utils/Timer.hpp>
+#include <graphblas/utils/timer.hpp>
 
 #include "lapacke.h"
 

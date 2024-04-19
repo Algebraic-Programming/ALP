@@ -23,7 +23,7 @@
 #ifndef _H_ALP_BASE_BLAS1
 #define _H_ALP_BASE_BLAS1
 
-#include <graphblas/utils/iscomplex.hpp> // use from grb
+#include <alp/utils/iscomplex.hpp>
 
 #include <alp/backends.hpp>
 #include <alp/descriptors.hpp>
@@ -838,7 +838,7 @@ namespace alp {
 		const Vector< InputType, InputStructure, Density::Dense, InputView, InputImfR, InputImfC, backend > &y,
 		const Ring &ring = Ring(),
 		const std::enable_if_t<
-			std::is_floating_point< OutputType >::value || grb::utils::is_complex< OutputType >::value
+			std::is_floating_point< OutputType >::value || alp::utils::is_complex< OutputType >::value
 		> * const = nullptr
 	) {
 		(void) x;
@@ -860,7 +860,7 @@ namespace alp {
 		const Vector< InputType, InputStructure, Density::Dense, InputView, InputImfR, InputImfC, backend > &y,
 		const Ring &ring = Ring(),
 		const std::enable_if_t<
-			std::is_floating_point< OutputType >::value || grb::utils::is_complex< OutputType >::value
+			std::is_floating_point< OutputType >::value || alp::utils::is_complex< OutputType >::value
 		> * const = nullptr
 	) {
 		(void) x;
