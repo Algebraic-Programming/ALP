@@ -29,6 +29,7 @@
 #include <alp/views.hpp>
 #include <alp/storage.hpp>
 
+
 namespace alp {
 
 	/**
@@ -115,6 +116,17 @@ namespace alp {
 	template< typename T >
 	struct is_monoid {
 		/** Base case: an arbitrary type is not a monoid. */
+		static const constexpr bool value = false;
+	};
+
+	/**
+	 * Used to inspect whether a given type is an ALP relation.
+	 *
+	 * @tparam T The type to inspect.
+	 */
+	template< typename T >
+	struct is_relation {
+		/** Base case: an arbitrary type is not a relation. */
 		static const constexpr bool value = false;
 	};
 

@@ -24,7 +24,9 @@
 #define _H_ALP_REFERENCE_BENCH
 
 #include <alp/rc.hpp>
+
 #include <alp/base/benchmark.hpp>
+
 
 namespace alp {
 

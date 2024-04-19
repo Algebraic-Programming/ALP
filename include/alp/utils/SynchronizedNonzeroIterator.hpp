@@ -23,15 +23,15 @@
 #ifndef _H_ALP_SYNCHRONIZEDNONZEROITERATOR
 #define _H_ALP_SYNCHRONIZEDNONZEROITERATOR
 
-#include <utility> //std::pair
-
-#include <assert.h>
-
 #ifdef _DEBUG
 #ifndef _ALP_NO_STDIO
 #include <iostream>
 #endif
 #endif
+#include <utility> //std::pair
+
+#include <assert.h>
+
 
 namespace alp {
 	namespace utils {

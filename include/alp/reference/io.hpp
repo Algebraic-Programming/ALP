@@ -23,8 +23,15 @@
 #ifndef _H_ALP_REFERENCE_IO
 #define _H_ALP_REFERENCE_IO
 
+#include <type_traits>
+
 #include <alp/base/io.hpp>
+
+#include "blas1.hpp"
+#include "blas2.hpp"
 #include "matrix.hpp"
+#include "scalar.hpp"
+#include "vector.hpp"
 
 #define NO_CAST_ASSERT( x, y, z )                                              \
 	static_assert( x,                                                          \
@@ -42,6 +49,7 @@
 		"********************************************************************" \
 		"********************************************************************" \
 		"******************************\n" );
+
 
 namespace alp {
 
@@ -451,7 +459,16 @@ namespace alp {
 
 		// foldl requires left-hand side to be initialized prior to the call
 		internal::setInitialized( x, true );
-		return foldl( x, val, alp::operators::right_assign< DataType >() );
+
+		// return foldl( x, val, alp::operators::right_assign< DataType >() );
+		const size_t n = size( x );
+		for ( size_t i = 0; i < n; ++i ) {
+			x[ i ] = internal::template ValueOrIndex< descr, DataType, T >::
+				getFromScalar( *val, i );
+		}
+	
+		return SUCCESS;
+
 	}
 
 	/**

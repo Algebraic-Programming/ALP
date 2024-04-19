@@ -20,12 +20,14 @@
 
 #include <functional>
 
-#include <alp/backends.hpp>
-#include <alp/base/matrix.hpp>
 #include <alp/config.hpp>
+#include <alp/backends.hpp>
+#include <alp/imf.hpp>
 #include <alp/type_traits.hpp>
 #include <alp/utils.hpp>
-#include <alp/imf.hpp>
+
+#include <alp/base/matrix.hpp>
+
 
 namespace alp {
 

@@ -16,27 +16,17 @@
  */
 
 /*
- * @author A. N. Yzelman
- * @date 14th of January 2022
+ * @author D. G. Spampinato
+ * @date 3 of November, 2022
  */
 
-#ifndef _H_ALP_REFERENCE_PROPERTIES
-#define _H_ALP_REFERENCE_PROPERTIES
+#ifndef _H_ALP_INTERNAL_RELATIONS
+#define _H_ALP_INTERNAL_RELATIONS
 
-#include <alp/base/properties.hpp>
+// certain backends may want to specialize these functionalities,
+// e.g., for specific targets, e.g. to exploit dedicated hardware
+// features
+#include "base/internalrels.hpp"
 
-
-namespace alp {
-
-	/** \internal No implementation notes. */
-	template<>
-	class Properties< reference > {
-	public:
-		/** No implementation notes. */
-		constexpr static bool writableCaptured = true;
-	};
-
-} // namespace alp
-
-#endif // end `_H_ALP_REFERENCE_PROPERTIES''
+#endif
 

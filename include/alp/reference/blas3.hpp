@@ -26,14 +26,17 @@
 #include <algorithm>   // for std::min/max
 #include <type_traits> // for std::enable_if
 
-#include <alp/base/blas3.hpp>
-#include <alp/descriptors.hpp>
-#include <alp/structures.hpp>
-#include <alp/blas0.hpp>
 #include <graphblas/utils/iscomplex.hpp> // use from grb
 
+#include <alp/descriptors.hpp>
+#include <alp/structures.hpp>
+
+#include <alp/base/blas3.hpp>
+
+#include "blas0.hpp"
 #include "io.hpp"
 #include "matrix.hpp"
+#include "scalar.hpp"
 #include "vector.hpp"
 
 #define NO_CAST_ASSERT( x, y, z )                                              \
@@ -81,6 +84,7 @@
 		"********************************************************************" \
 		"********************************************************************" \
 		"******************************\n" );
+
 
 namespace alp {
 	namespace internal {

@@ -15,6 +15,8 @@
  * limitations under the License.
  */
 
+#include <sstream>
+
 #include <alp/descriptors.hpp>
 
 std::string alp::descriptors::toString( const alp::Descriptor descr ) {

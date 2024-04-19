@@ -31,22 +31,23 @@
 #include <vector>
 
 #include <alp/backends.hpp>
-#include <alp/base/matrix.hpp>
 #include <alp/config.hpp>
+#include <alp/density.hpp>
+#include <alp/imf.hpp>
 #include <alp/ops.hpp>
 #include <alp/rc.hpp>
+#include <alp/structures.hpp>
 #include <alp/type_traits.hpp>
 #include <alp/utils.hpp>
-#include <alp/utils/autodeleter.hpp>
-//#include <alp/utils/pattern.hpp> //for help with dealing with pattern matrix input
-#include <alp/vector.hpp>
-#include <alp/storage.hpp>
-#include <alp/structures.hpp>
-#include <alp/density.hpp>
 #include <alp/views.hpp>
-#include <alp/imf.hpp>
+
+#include <alp/base/matrix.hpp>
+
 #include "functorbasedmatrix.hpp"
+#include "storage.hpp"
 #include "storagebasedmatrix.hpp"
+#include "vector.hpp"
+
 
 namespace alp {
 
@@ -699,14 +700,14 @@ namespace alp {
 	>
 	typename internal::new_container_type_from<
 		typename SourceMatrix::template view_type< view::gather >::type
-	>::template change_structure< structures::Square >::type
+	>::template change_structure< structures::Diagonal >::type
 	::template view_type< view::diagonal >::type
 	get_view( SourceMatrix &source ) {
 
 		const size_t source_rows = nrows( source );
 		const size_t source_cols = ncols( source );
 		const size_t smaller_dimension = std::min( source_rows, source_cols );
-		auto square_view = get_view< structures::Square >( source, utils::range( 0, smaller_dimension ), utils::range( 0, smaller_dimension ) );
+		auto square_view = get_view< structures::Diagonal >( source, utils::range( 0, smaller_dimension ), utils::range( 0, smaller_dimension ) );
 		return get_view< view::diagonal >( square_view );
 	}
 

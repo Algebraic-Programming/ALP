@@ -23,7 +23,8 @@
 #ifndef _H_ALP_MATRIX
 #define _H_ALP_MATRIX
 
-#include "base/config.hpp"
+#include "config.hpp"
+
 #include "base/matrix.hpp"
 
 // now include all specialisations contained in the backend directories:

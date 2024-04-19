@@ -28,6 +28,7 @@
 
 #include <alp/amf-based/storage.hpp>
 
+
 namespace alp {
 
 	namespace internal {
@@ -67,6 +68,20 @@ namespace alp {
 			typedef storage::polynomials::PackedFactory< storage::LOWER, storage::ROW_WISE > factory_type;
 		};
 
+		/** Specialization for upper-trapezoidal matrix */
+		template<>
+		struct determine_poly_factory< structures::UpperTrapezoidal, imf::Id, imf::Id, reference > {
+
+			typedef storage::polynomials::FullFactory<> factory_type;
+		};
+
+		/** Specialization for lower-trapezoidal matrix */
+		template<>
+		struct determine_poly_factory< structures::LowerTrapezoidal, imf::Id, imf::Id, reference > {
+
+			typedef storage::polynomials::FullFactory<> factory_type;
+		};
+
 		/** Specialization for symmetric matrix */
 		template<>
 		struct determine_poly_factory< structures::Symmetric, imf::Id, imf::Id, reference > {
@@ -77,6 +92,20 @@ namespace alp {
 		/** Specialization for hermitian matrix */
 		template<>
 		struct determine_poly_factory< structures::Hermitian, imf::Id, imf::Id, reference > {
+
+			typedef storage::polynomials::FullFactory<> factory_type;
+		};
+
+		/** Specialization for symmetric positive definite matrix */
+		template<>
+		struct determine_poly_factory< structures::SymmetricPositiveDefinite, imf::Id, imf::Id, reference > {
+
+			typedef storage::polynomials::PackedFactory< storage::UPPER, storage::ROW_WISE > factory_type;
+		};
+
+		/** Specialization for hermitian positive definite matrix */
+		template<>
+		struct determine_poly_factory< structures::HermitianPositiveDefinite, imf::Id, imf::Id, reference > {
 
 			typedef storage::polynomials::FullFactory<> factory_type;
 		};

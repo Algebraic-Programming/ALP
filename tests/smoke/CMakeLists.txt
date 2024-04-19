@@ -188,6 +188,11 @@ add_grb_executables( alp_cholesky alp_cholesky.cpp
 	BACKENDS alp_reference
 )
 
+# add_grb_executables( alp_cholesky_complex alp_cholesky.cpp
+# 	BACKENDS alp_reference
+# 	COMPILE_DEFINITIONS _COMPLEX
+# )
+
 add_grb_executables( alp_zhetrd alp_zhetrd.cpp
         BACKENDS alp_reference
 )
@@ -202,6 +207,15 @@ add_grb_executables( alp_zgeqrf alp_zgeqrf.cpp
 )
 
 add_grb_executables( alp_zgeqrf_complex alp_zgeqrf.cpp
+        BACKENDS alp_reference
+	COMPILE_DEFINITIONS _COMPLEX
+)
+
+add_grb_executables( alp_zgetrf alp_zgetrf.cpp
+        BACKENDS alp_reference
+)
+
+add_grb_executables( alp_zgetrf_complex alp_zgetrf.cpp
         BACKENDS alp_reference
 	COMPILE_DEFINITIONS _COMPLEX
 )
@@ -227,6 +241,19 @@ add_grb_executables( alp_forwardsubstitution_complex alp_forwardsubstitution.cpp
         BACKENDS alp_reference
 	COMPILE_DEFINITIONS _COMPLEX
 )
+
+add_grb_executables( alp_syevd alp_zheevd.cpp
+        BACKENDS alp_reference
+)
+
+add_grb_executables( alp_potri alp_potri.cpp
+        BACKENDS alp_reference
+)
+
+add_grb_executables( alp_potri_complex alp_potri.cpp
+        BACKENDS alp_reference
+	COMPILE_DEFINITIONS _COMPLEX
+)      
 
 # targets to list and build the test for this category
 get_property( smoke_tests_list GLOBAL PROPERTY tests_category_smoke )

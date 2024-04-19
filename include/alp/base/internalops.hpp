@@ -23,13 +23,12 @@
 #ifndef _H_ALP_INTERNAL_OPERATORS_BASE
 #define _H_ALP_INTERNAL_OPERATORS_BASE
 
-#include <alp/utils/suppressions.h>
-
 #include <type_traits>
 #include <utility>
 
 #include <alp/type_traits.hpp>
 #include <alp/utils.hpp>
+#include <alp/utils/suppressions.h>
 
 #include "config.hpp"
 
@@ -1449,7 +1448,6 @@ namespace alp {
 				 * At the end of the operation, \f$ c = \min\{a,b\} \f$.
 				 */
 				static void apply( const left_type * __restrict__ const a, const right_type * __restrict__ const b, result_type * __restrict__ const c ) {
-					printf( "Hello from mul\n" );
 					if( *a || *b ) {
 						*c = static_cast< OUT >( true );
 					} else {

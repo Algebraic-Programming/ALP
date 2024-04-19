@@ -27,9 +27,11 @@
 
 #include <alp.hpp>
 #include <graphblas/utils/iscomplex.hpp> // use from grb
-#include <alp/algorithms/cholesky.hpp>
+#include <alp/algorithms/symherm_posdef_inverse.hpp>
 #include <alp/utils/parser/MatrixFileReader.hpp>
+#ifdef DEBUG
 #include "../utils/print_alp_containers.hpp"
+#endif
 
 using namespace alp;
 
@@ -64,8 +66,8 @@ std::complex< BaseScalarType > random_value< std::complex< BaseScalarType > >() 
 
 
 struct inpdata {
-	std::string fname="";
-	size_t N=0;
+	std::string fname = "";
+	size_t N = 0;
 };
 
 
@@ -131,74 +133,63 @@ void generate_symmherm_pos_def_mat_data(
 }
 
 
-/** Check the solution by calculating the
- *  Frobenius norm of (H-U^TU)
- */
+//** check the solution by calculating the Frobenius norm of (I - H^-1 x H) */
 template<
-	typename MatSymmType,
-	typename MatUpTriangType,
-	typename T = typename MatSymmType::value_type,
-	typename Ring = Semiring< operators::add< T >, operators::mul< T >, identities::zero, identities::one >,
-	typename Minus = operators::subtract< T >
+	typename MatH,
+	typename D = typename MatH::value_type,
+	typename Ring = Semiring< operators::add< D >, operators::mul< D >, identities::zero, identities::one >,
+	typename Minus = operators::subtract< D >,
+	std::enable_if_t<
+		is_matrix< MatH >::value &&
+		// TODO: structures::Symmetric should be replced
+		//       rewith structures::SymmetricPositiveDefinite
+		(
+			(
+				!grb::utils::is_complex< D >::value &&
+				structures::is_a< typename MatH::structure, structures::Symmetric >::value
+			) || (
+				grb::utils::is_complex< D >::value &&
+				structures::is_a< typename MatH::structure, structures::Hermitian >::value
+			)
+		) &&
+		is_semiring< Ring >::value &&
+		is_operator< Minus >::value
+	> * = nullptr
 >
-alp::RC check_cholesky_solution(
-	const MatSymmType &H,
-	MatUpTriangType &U,
+alp::RC check_inverse_solution(
+	const MatH &Hinv,
+	const MatH &H,
 	const Ring &ring = Ring(),
 	const Minus &minus = Minus()
 ) {
 	alp::RC rc = SUCCESS;
-	const Scalar< T > zero( ring.template getZero< T >() );
-	const Scalar< T > one( ring.template getOne< T >() );
+	const Scalar< D > zero( ring.template getZero< D >() );
+	const Scalar< D > one( ring.template getOne< D >() );
 	const size_t N = nrows( H );
-	MatSymmType UTU( N );
-	rc = rc ? rc : alp::set( UTU, zero );
-	auto UT = alp::get_view< alp::view::transpose >( U );
+
+	alp::Matrix< D, structures::Square, Dense > HxHinv( N );
+	rc = rc ? rc : alp::set( HxHinv, zero );
+	rc = rc ? rc : alp::mxm( HxHinv, H, Hinv, ring );
 #ifdef DEBUG
-	print_matrix( "  UTU  ", UTU );
-	print_matrix( "  U   ", U );
-	print_matrix( "  UT   ", UT );
-#endif
-	auto UTstar = alp::conjugate( UT );
-	rc = rc ? rc : alp::mxm( UTU, UTstar, U, ring );
-#ifdef DEBUG
-	print_matrix( " << UTU >> ", UTU );
+	print_matrix( std::string("  HxHinv  "), HxHinv );
 #endif
 
-	MatSymmType HminsUUt( N );
-	rc = rc ? rc : alp::set( HminsUUt, zero );
-
-	// UTU = -UTU
-	Scalar< T > alpha( zero );
-	rc = rc ? rc : foldl( alpha, one, minus );
-	rc = rc ? rc : foldl( UTU, alpha, ring.getMultiplicativeOperator() );
-
-#ifdef DEBUG
-	print_matrix( "  -UTU  ", UTU );
-#endif
-
-	// HminsUUt = H - UTU
-	rc = rc ? rc : alp::eWiseApply(
-		HminsUUt, H, UTU,
-		ring.getAdditiveMonoid()
-	);
-#ifdef DEBUG
-	print_matrix( " << H - UTU  >> ", HminsUUt );
-#endif
+	auto HxHinvdiag = alp::get_view< alp::view::diagonal >( HxHinv );
+	rc = rc ? rc : foldl( HxHinvdiag, one, minus );
 
 	//Frobenius norm
-	T fnorm = 0;
+	D fnorm = 0;
 	rc = rc ? rc : alp::eWiseLambda(
-		[ &fnorm ]( const size_t i, const size_t j, T &val ) {
+		[ &fnorm ]( const size_t i, const size_t j, D &val ) {
 			(void) i;
 			(void) j;
 			fnorm += val * val;
 		},
-		HminsUUt
+		HxHinv
 	);
 	fnorm = std::sqrt( fnorm );
 #ifdef DEBUG
-	std::cout << " FrobeniusNorm(H-U^TU) = " << fnorm << "\n";
+	std::cout << " FrobeniusNorm(I - H^-1 x H) = " << fnorm << "\n";
 #endif
 	if( tol < std::abs( fnorm ) ) {
 		std::cout << "The Frobenius norm is too large. "
@@ -219,6 +210,7 @@ void alp_program( const inpdata &unit, alp::RC &rc ) {
 		alp::identities::one
 	> ring;
 	const alp::Scalar< ScalarType > zero_scalar( ring.getZero< ScalarType >() );
+	const alp::Scalar< ScalarType > one_scalar( ring.getOne< ScalarType >() );
 
 	size_t N = 0;
 	if( !unit.fname.empty() ) {
@@ -233,21 +225,21 @@ void alp_program( const inpdata &unit, alp::RC &rc ) {
 		N = unit.N;
 	}
 
-	alp::Matrix< ScalarType, structures::UpperTriangular, Dense > U( N );
 	alp::Matrix< ScalarType, HermitianOrSymmetricPD, Dense > H( N );
+	alp::Matrix< ScalarType, HermitianOrSymmetricPD, Dense > Hinv( N );
 
 	if( !unit.fname.empty() ) {
 		alp::utils::MatrixFileReader< ScalarType > parser_A( unit.fname );
 		rc = rc ? rc : alp::buildMatrix( H, parser_A.begin(), parser_A.end() );
 	} else if( unit.N != 0 )  {
 		std::srand( RNDSEED );
-		std::vector< ScalarType > matrix_data2( ( N * ( N + 1 ) ) / 2 );
+		std::vector< ScalarType > matrix_data( ( N * ( N + 1 ) ) / 2 );
 		// Hermitian is currently using full storage
 		if( grb::utils::is_complex< ScalarType >::value ) {
-			matrix_data2.resize( N * N );
+			matrix_data.resize( N * N );
 		}
-		generate_symmherm_pos_def_mat_data< ScalarType >( N, matrix_data2 );
-		rc = rc ? rc : alp::buildMatrix( H, matrix_data2.begin(), matrix_data2.end() );
+		generate_symmherm_pos_def_mat_data< ScalarType >( N, matrix_data );
+		rc = rc ? rc : alp::buildMatrix( H, matrix_data.begin(), matrix_data.end() );
 	}
 
 	if( !internal::getInitialized( H ) ) {
@@ -256,66 +248,11 @@ void alp_program( const inpdata &unit, alp::RC &rc ) {
 	}
 
 #ifdef DEBUG
-	print_matrix( std::string( "  H  " ), H );
-	print_matrix( std::string( "  U  " ), U );
+	print_matrix( std::string(" << H >> "), H );
 #endif
 
-	rc = rc ? rc : alp::set( U, zero_scalar	);
-
-	if( !internal::getInitialized( U ) ) {
-		std::cout << " Matrix U is not initialized\n";
-		return;
-	}
-
- 	rc = rc ? rc : algorithms::cholesky_uptr( U, H, ring );
-#ifdef DEBUG
- 	print_matrix( std::string("  U  " ), U );
-#endif
- 	rc = rc ? rc : check_cholesky_solution( H, U, ring );
-
-	// TODO
-	// rest of cholesky algorithms are not implemented for complex version
-	// they require vector views on conjugate()
-
-	rc = rc ? rc : alp::set( U, zero_scalar	);
-	// test blocked version, for bs = 1, 2, 4, 8 ... N
-	for( size_t bs = 1; bs <= N; bs = std::min( bs * 2, N ) ) {
-		rc = rc ? rc : algorithms::cholesky_uptr_blk( U, H, bs, ring );
-		rc = rc ? rc : check_cholesky_solution( H, U, ring );
-		if( bs == N ) {
-			break;
-		}
-	}
-
-	// test non-blocked inplace version
-	alp::Matrix< ScalarType, structures::Square, Dense > Uip_original( N );
-	alp::Matrix< ScalarType, structures::Square, Dense > Uip( N );
-	std::srand( RNDSEED );
-	{
-		std::vector< ScalarType > matrix_data( N * N );
-		generate_symmherm_pos_def_mat_data_full< ScalarType >( N, matrix_data );
-		rc = rc ? rc : alp::buildMatrix( Uip, matrix_data.begin(), matrix_data.end() );
-	}
-	rc = rc ? rc : alp::set( Uip_original, Uip );
-#ifdef DEBUG
-	print_matrix( " Uip(input) ", Uip );
-#endif
-	rc = rc ? rc : algorithms::cholesky_uptr( Uip, ring );
-#ifdef DEBUG
-	print_matrix( " Uip(output) ", Uip );
-#endif
-	auto UipUpTr = get_view< structures::UpperTriangular >( Uip );
-	rc = rc ? rc : check_cholesky_solution( Uip_original, UipUpTr, ring );
-
-	// test non-blocked inplace version, bs = 1, 2, 4, 8 ... N
-	for( size_t bs = 1; bs <= N; bs = std::min( bs * 2, N ) ) {
-		rc = rc ? rc : alp::set( Uip, Uip_original );
-		rc = rc ? rc : algorithms::cholesky_uptr_blk( Uip, bs, ring );
-		rc = rc ? rc : check_cholesky_solution( Uip_original, UipUpTr, ring );
-		if( bs == N ) {
-			break;
-		}
-	}
+	rc = rc ? rc : algorithms::symherm_posdef_inverse( Hinv, H, ring );
+ 	rc = rc ? rc : check_inverse_solution( Hinv, H, ring );
 }
 
 int main( int argc, char **argv ) {

@@ -35,6 +35,8 @@
 #include <type_traits>
 
 #include "imf.hpp"
+#include "views.hpp"
+
 
 namespace alp {
 
@@ -438,7 +440,7 @@ namespace alp {
 			// Can create Band only out of tuple of intervals
 			static_assert( sizeof(IntervalTuple *) == 0, "Non-tuple type provided." ); 
 		};
-		
+
 		template < typename... Intervals >
 		struct tuple_to_band< std::tuple< Intervals... > > {
 			typedef Band< Intervals... > type;
@@ -493,6 +495,22 @@ namespace alp {
 			using inferred_structures = tuple_cat< std::tuple< SymmetricPositiveDefinite >, Symmetric::inferred_structures >::type;
 		};
 
+		template<>
+		struct isInstantiable< General, SymmetricPositiveDefinite > : public isInstantiable< General, Symmetric > {
+		};
+
+		template<>
+		struct isInstantiable< SymmetricPositiveDefinite, General > : public isInstantiable< Symmetric, General > {
+		};
+
+		template<>
+		struct isInstantiable< SymmetricPositiveDefinite, SymmetricPositiveDefinite > : public isInstantiable< Symmetric, Symmetric > {
+		};
+
+		template<>
+		struct isInstantiable< Square, SymmetricPositiveDefinite > : public isInstantiable< Square, Symmetric > {
+		};
+
 		struct Hermitian: BaseStructure {
 
 			typedef std::tuple< OpenInterval > band_intervals;
@@ -507,6 +525,57 @@ namespace alp {
 				return imf_r.isSame(imf_c);
 			};
 		};
+
+		template<>
+		struct isInstantiable< Square, Hermitian > {
+			template< typename ImfR, typename ImfC >
+			static bool check( const ImfR &imf_r, const ImfC &imf_c ) {
+				return ( imf_r.n == imf_c.n );
+			};
+		};
+
+		template<>
+		struct isInstantiable< Hermitian, General > {
+			template< typename ImfR, typename ImfC >
+			static bool check( const ImfR &imf_r, const ImfC &imf_c ) {
+				return (
+					( imf_r.map( imf_r.n - 1 ) <= imf_c.map( 0 ) ) ||
+					( imf_c.map( imf_c.n - 1 ) <= imf_r.map( 0 ) )
+				);
+			};
+		};
+
+		template<>
+		struct isInstantiable< General, Hermitian > {
+			template< typename ImfR, typename ImfC >
+			static bool check( const ImfR &imf_r, const ImfC &imf_c ) {
+				return ( imf_r.n == imf_c.n );
+			};
+		};
+
+		struct HermitianPositiveDefinite: BaseStructure {
+
+			typedef std::tuple< OpenInterval > band_intervals;
+
+			using inferred_structures = tuple_cat< std::tuple< HermitianPositiveDefinite >, Hermitian::inferred_structures >::type;
+		};
+
+		template<>
+		struct isInstantiable< General, HermitianPositiveDefinite > : public isInstantiable< General, Hermitian > {
+		};
+
+		template<>
+		struct isInstantiable< HermitianPositiveDefinite, General > : public isInstantiable< Hermitian, General > {
+		};
+
+		template<>
+		struct isInstantiable< HermitianPositiveDefinite, HermitianPositiveDefinite > : public isInstantiable< Hermitian, Hermitian > {
+		};
+
+		template<>
+		struct isInstantiable< Square, HermitianPositiveDefinite > : public isInstantiable< Square, Hermitian > {
+		};
+
 
 		struct Trapezoidal: BaseStructure {
 
@@ -525,6 +594,46 @@ namespace alp {
 			using inferred_structures = tuple_cat< std::tuple< LowerTrapezoidal >, Trapezoidal::inferred_structures >::type;
 		};
 
+		struct Diagonal;
+
+		template<>
+		struct isInstantiable< LowerTrapezoidal, Diagonal > {
+			template< typename ImfR, typename ImfC >
+			static bool check( const ImfR &imf_r, const ImfC &imf_c ) {
+				static_assert( std::is_base_of< imf::Strided, ImfR >::value && std::is_base_of< imf::Strided, ImfC >::value );
+				return ( ( imf_r.n == imf_c.n ) && ( imf_r.b == imf_c.b ) && ( imf_r.s == imf_c.s ) );
+			};
+		};
+
+		template<>
+		struct isInstantiable< LowerTrapezoidal, LowerTrapezoidal > {
+			template< typename ImfR, typename ImfC >
+			static bool check( const ImfR &imf_r, const ImfC &imf_c ) {
+				return ( imf_c.map( 0 ) <= imf_r.map( imf_r.n - 1 ) );
+			};
+		};
+
+		template<>
+		struct isInstantiable< General, LowerTrapezoidal > {
+			template< typename ImfR, typename ImfC >
+			static bool check( const ImfR &imf_r, const ImfC &imf_c ) {
+				(void) imf_r;
+				(void) imf_c;
+				return true;
+			};
+		};
+
+		template<>
+		struct isInstantiable< LowerTrapezoidal, Square  > {
+			template< typename ImfR, typename ImfC >
+			static bool check( const ImfR &imf_r, const ImfC &imf_c ) {
+				return (
+					( imf_r.n == imf_c.n ) &&
+					( imf_c.map( imf_c.n - 1 ) <= imf_r.map( 0 ) )
+				);
+			};
+		};
+
 		struct LowerTriangular: BaseStructure {
 
 			typedef std::tuple< LeftOpenInterval< 1 > > band_intervals;
@@ -540,12 +649,31 @@ namespace alp {
 			};
 		};
 
+		template<>
+		struct isInstantiable< LowerTriangular, LowerTriangular > {
+			template< typename ImfR, typename ImfC >
+			static bool check( const ImfR &imf_r, const ImfC &imf_c ) {
+				return imf_r.isSame(imf_c);
+			};
+		};
+
+
 		struct UpperTrapezoidal: BaseStructure {
 
 			typedef std::tuple< RightOpenInterval< 0 > > band_intervals;
 
 			using inferred_structures = tuple_cat< std::tuple< UpperTrapezoidal >, Trapezoidal::inferred_structures >::type;
 
+		};
+
+		template<>
+		struct isInstantiable< General, UpperTrapezoidal > {
+			template< typename ImfR, typename ImfC >
+			static bool check( const ImfR &imf_r, const ImfC &imf_c ) {
+				(void) imf_r;
+				(void) imf_c;
+				return true;
+			};
 		};
 
 		struct UpperTriangular: BaseStructure {
