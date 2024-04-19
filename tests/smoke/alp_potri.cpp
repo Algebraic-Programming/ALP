@@ -25,9 +25,9 @@
 #include <iomanip>
 #endif
 
-#include <graphblas/utils/Timer.hpp>
+#include <graphblas/utils/timer.hpp>
 #include <alp.hpp>
-#include <graphblas/utils/iscomplex.hpp> // use from grb
+#include <alp/utils/iscomplex.hpp>
 #include <alp/algorithms/symherm_posdef_inverse.hpp>
 #include <alp/utils/parser/MatrixFileReader.hpp>
 #ifdef DEBUG
@@ -83,7 +83,7 @@ void generate_symmherm_pos_def_mat_data_full(
 	for( size_t i = 0; i < N; ++i ) {
 		for( size_t j = i; j < N; ++j ) {
 			mat_data[ i * N + j ] = random_value< T >();
-			mat_data[ j * N + i ] += grb::utils::is_complex< T >::conjugate( mat_data[ i * N + j ] );
+			mat_data[ j * N + i ] += alp::utils::is_complex< T >::conjugate( mat_data[ i * N + j ] );
 			if( i == j ) {
 				mat_data[ j * N + i ] += static_cast< T >( N );
 			}
@@ -99,7 +99,7 @@ void generate_symmherm_pos_def_mat_data(
 	size_t N,
 	std::vector< T > &mat_data,
 	const typename std::enable_if<
-		grb::utils::is_complex< T >::value,
+		alp::utils::is_complex< T >::value,
 		void
 	>::type * const = nullptr
 ) {
@@ -114,7 +114,7 @@ void generate_symmherm_pos_def_mat_data(
 	size_t N,
 	std::vector< T > &mat_data,
 	const typename std::enable_if<
-		!grb::utils::is_complex< T >::value,
+		!alp::utils::is_complex< T >::value,
 		void
 	>::type * const = nullptr
 ) {
@@ -124,7 +124,7 @@ void generate_symmherm_pos_def_mat_data(
 		for( size_t j = i; j < N; ++j ) {
 			mat_data[ k ] = random_value< T >();
 			if( i == j ) {
-				mat_data[ k ] += grb::utils::is_complex< T >::conjugate( mat_data[ k ] );
+				mat_data[ k ] += alp::utils::is_complex< T >::conjugate( mat_data[ k ] );
 				mat_data[ k ] += static_cast< T >( N );
 			}
 			++k;
@@ -145,10 +145,10 @@ template<
 		//       rewith structures::SymmetricPositiveDefinite
 		(
 			(
-				!grb::utils::is_complex< D >::value &&
+				!alp::utils::is_complex< D >::value &&
 				structures::is_a< typename MatH::structure, structures::Symmetric >::value
 			) || (
-				grb::utils::is_complex< D >::value &&
+				alp::utils::is_complex< D >::value &&
 				structures::is_a< typename MatH::structure, structures::Hermitian >::value
 			)
 		) &&
@@ -241,7 +241,7 @@ void alp_program( const inpdata &unit, alp::RC &rc ) {
 			std::srand( RNDSEED );
 			std::vector< ScalarType > matrix_data( ( N * ( N + 1 ) ) / 2 );
 			// Hermitian is currently using full storage
-			if( grb::utils::is_complex< ScalarType >::value ) {
+			if( alp::utils::is_complex< ScalarType >::value ) {
 				matrix_data.resize( N * N );
 			}
 			generate_symmherm_pos_def_mat_data< ScalarType >( N, matrix_data );

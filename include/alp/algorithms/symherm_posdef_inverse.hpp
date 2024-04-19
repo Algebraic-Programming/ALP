@@ -15,6 +15,7 @@
  */
 
 #include <alp/algorithms/cholesky.hpp>
+#include <alp/utils/iscomplex.hpp>
 
 namespace alp {
 
@@ -43,10 +44,10 @@ namespace alp {
 				is_matrix< MatH >::value &&
 				(
 					(
-						!grb::utils::is_complex< D >::value &&
+						!alp::utils::is_complex< D >::value &&
 						structures::is_a< typename MatH::structure, structures::SymmetricPositiveDefinite >::value
 					) || (
-						grb::utils::is_complex< D >::value &&
+						alp::utils::is_complex< D >::value &&
 						structures::is_a< typename MatH::structure, structures::HermitianPositiveDefinite >::value
 					)
 				) &&

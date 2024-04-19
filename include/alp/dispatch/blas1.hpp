@@ -35,7 +35,7 @@
 #include "blas0.hpp"
 #include "blas2.hpp"
 
-#include <graphblas/utils/iscomplex.hpp> // use from grb
+#include <alp/utils/iscomplex.hpp>
 
 #define NO_CAST_ASSERT( x, y, z )                                              \
 	static_assert( x,                                                          \
@@ -140,7 +140,7 @@ namespace alp {
 				(void) j;
 				internal::apply(
 					result, x[ i ],
-					grb::utils::is_complex< InputType2 >::conjugate( y[ i ] ),
+					alp::utils::is_complex< InputType2 >::conjugate( y[ i ] ),
 					anyOp
 				);
 			};
@@ -465,7 +465,7 @@ namespace alp {
 		std::function< void( DataType &, const size_t, const size_t ) > data_lambda =
 			[ &x ]( DataType &result, const size_t i, const size_t j ) {
 				(void) j;
-				result = grb::utils::is_complex< DataType >::conjugate( x[ i ] );
+				result = alp::utils::is_complex< DataType >::conjugate( x[ i ] );
 			};
 
 		std::function< bool() > init_lambda =

@@ -22,7 +22,7 @@
 #ifndef _H_ALP_BLAS3_BASE
 #define _H_ALP_BLAS3_BASE
 
-#include <graphblas/utils/iscomplex.hpp> // use from grb
+#include <alp/utils/iscomplex.hpp>
 
 #include <alp/backends.hpp>
 #include <alp/identities.hpp>
@@ -306,7 +306,7 @@ namespace alp {
 	Matrix<
 		typename Operator::D3,
 		typename std::conditional<
-			grb::utils::is_complex< typename Operator::D3 >::value,
+			alp::utils::is_complex< typename Operator::D3 >::value,
 			alp::structures::Hermitian,
 			alp::structures::Symmetric
 		>::type,

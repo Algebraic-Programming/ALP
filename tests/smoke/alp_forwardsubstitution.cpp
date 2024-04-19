@@ -24,10 +24,10 @@
 #include <iomanip>
 #endif
 
-#include <graphblas/utils/Timer.hpp>
+#include <graphblas/utils/timer.hpp>
 #include <alp.hpp>
 #include <alp/algorithms/forwardsubstitution.hpp>
-#include <graphblas/utils/iscomplex.hpp> // use from grb
+#include <alp/utils/iscomplex.hpp> // use from grb
 #ifdef DEBUG
 #include "../utils/print_alp_containers.hpp"
 #endif
@@ -80,7 +80,7 @@ std::vector< T > generate_data( size_t N ) {
 template<
 	typename T,
 	const typename std::enable_if<
-		!grb::utils::is_complex< T >::value,
+		!alp::utils::is_complex< T >::value,
 		void
 	>::type * const = nullptr
 >
@@ -103,7 +103,7 @@ std::vector< T > generate_lpd_matrix( size_t N ) {
 template<
 	typename T,
 	const typename std::enable_if<
-		grb::utils::is_complex< T >::value,
+		alp::utils::is_complex< T >::value,
 		void
 	>::type * const = nullptr
 >

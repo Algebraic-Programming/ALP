@@ -23,10 +23,10 @@
 #include <iomanip>
 #endif
 
-#include <graphblas/utils/Timer.hpp>
+#include <graphblas/utils/timer.hpp>
 #include <alp.hpp>
 #include <alp/algorithms/householder_tridiag.hpp>
-#include <graphblas/utils/iscomplex.hpp> // use from grb
+#include <alp/utils/iscomplex.hpp>
 #include "../utils/print_alp_containers.hpp"
 
 //once TEMPDISABLE is removed the code should be in the final version
@@ -65,7 +65,7 @@ template<
 std::vector< T > generate_symmherm_matrix_data(
 	size_t N,
 	const typename std::enable_if<
-		grb::utils::is_complex< T >::value,
+		alp::utils::is_complex< T >::value,
 		void
 	>::type * const = nullptr
 ) {
@@ -76,7 +76,7 @@ std::vector< T > generate_symmherm_matrix_data(
 		for( size_t j = i; j < N; ++j ) {
 			T val( std::rand(), std::rand() );
 			data[ i * N + j ] = val / std::abs( val );
-			data[ j * N + i ] += grb::utils::is_complex< T >::conjugate( data[ i * N + j ] );
+			data[ j * N + i ] += alp::utils::is_complex< T >::conjugate( data[ i * N + j ] );
 		}
 	}
 	return data;
@@ -89,7 +89,7 @@ template<
 std::vector< T >  generate_symmherm_matrix_data(
 	size_t N,
 	const typename std::enable_if<
-		!grb::utils::is_complex< T >::value,
+		!alp::utils::is_complex< T >::value,
 		void
 	>::type * const = nullptr
 ) {

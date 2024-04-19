@@ -36,7 +36,6 @@
 #include <graphblas/descriptors.hpp>
 #include <graphblas/ops.hpp>
 #include <graphblas/rc.hpp>
-#include <graphblas/density.hpp>
 
 
 namespace grb {

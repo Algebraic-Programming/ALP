@@ -19,7 +19,7 @@
 #include <sstream>
 #include <vector>
 
-#include <graphblas/utils/Timer.hpp>
+#include <graphblas/utils/timer.hpp>
 
 #include <alp_blas.h> // for gemm
 

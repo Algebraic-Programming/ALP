@@ -25,7 +25,7 @@
 
 #include <cstddef>
 
-#include <graphblas/utils/iscomplex.hpp>
+#include <alp/utils/iscomplex.hpp>
 
 #include <alp/backends.hpp>
 #include <alp/rc.hpp>
@@ -1049,7 +1049,7 @@ namespace alp {
 
 		std::function< void( DataType &, const size_t, const size_t ) > data_lambda =
 			[ &A ]( DataType &result, const size_t i, const size_t j ) {
-				result = grb::utils::is_complex< DataType >::conjugate(
+				result = alp::utils::is_complex< DataType >::conjugate(
 					internal::access( A, internal::getStorageIndex( A, i, j ) )
 				);
 			};
@@ -1097,7 +1097,7 @@ namespace alp {
 
 		std::function< void( DataType &, const size_t, const size_t ) > data_lambda =
 			[ &A ]( DataType &result, const size_t i, const size_t j ) {
-				result = grb::utils::is_complex< DataType >::conjugate(
+				result = alp::utils::is_complex< DataType >::conjugate(
 					internal::access( A, internal::getStorageIndex( A, i, j ) )
 				);
 			};

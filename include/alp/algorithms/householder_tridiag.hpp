@@ -18,7 +18,7 @@
 #include <sstream>
 
 #include <alp.hpp>
-#include <graphblas/utils/iscomplex.hpp> // use from grb
+#include <alp/utils/iscomplex.hpp>
 #include "../tests/utils/print_alp_containers.hpp"
 
 namespace alp {
@@ -171,7 +171,7 @@ namespace alp {
 
 				// Qk = Qk - vvt ( expanded: I - 2 * vvt )
 				auto Qk_view = get_view< SymmOrHermType >( Qk, utils::range( k + 1, n ), utils::range( k + 1, n ) );
-				if ( grb::utils::is_complex< D >::value ) {
+				if ( alp::utils::is_complex< D >::value ) {
 					rc = rc ? rc : foldl( Qk_view, alp::get_view< alp::view::transpose >( vvt ), minus );
 				} else {
 					rc = rc ? rc : foldl( Qk_view, vvt, minus );
