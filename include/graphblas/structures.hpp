@@ -28,8 +28,24 @@
 #include <tuple>
 #include <type_traits>
 
+#include "imf.hpp"
+
 namespace grb {
 
+	template< typename T, typename Structure, typename Storage, typename View, enum Backend backend >
+	class StructuredMatrix;
+
+	/**
+	 * Collects all ALP matrix structures.
+	 * 
+	 * A matrix structure is characterized by having a member type \a inferred_structures.
+	 * \a inferred_structures is a tuple used to define a partial order over the 
+	 * structures based on their logical implication. So if having structure \f$B\f$ implies
+	 * also having structure \f$A\f$ than 
+	 * \code
+	 * is_same< B::inferred_structures, std::tuple<A, B> >::value == true
+	 * \endcode
+	 */
 	namespace structures {
 
 		template< typename... Tuples >
@@ -38,7 +54,7 @@ namespace grb {
 		};
 
 		/**
-		 * Check if a structure is part of a given tuple.
+		 * Check if a structure \a Structure is part of a given \a std::tuple \a Tuple.
 		 */
 		template< typename Structure, typename Tuple >
 		struct is_in;
@@ -85,11 +101,20 @@ namespace grb {
 			south_west
 		};
 
-		/**
-		 * List of ALP matrix structures.
-		 */
+		struct UpperTriangular;
+
+		struct General {
+			using inferred_structures = std::tuple< General >;
+
+			template< typename T, typename Storage, typename View, enum Backend backend >
+			static bool isInstantiableFrom( const StructuredMatrix< T, UpperTriangular, Storage, View, backend > & M, grb::imf::IMF & imf_l, grb::imf::IMF & imf_r ) {
+				(void)M;
+				return imf_l.map( 0 ) <= imf_r.map( imf_r.N );
+			}
+		};
+
 		struct Square {
-			using inferred_structures = std::tuple< Square >;
+			using inferred_structures = structures::tuple_cat< std::tuple< Square >, General::inferred_structures >::type;
 		};
 
 		struct Symmetric {
@@ -106,6 +131,15 @@ namespace grb {
 
 		struct UpperTriangular {
 			using inferred_structures = structures::tuple_cat< std::tuple< UpperTriangular >, Triangular::inferred_structures >::type;
+
+			// Maybe we can consider inheritance here to allow calling checks in base classes.
+			// For example, in all cases we should check if IMFs do not overflow the original container.
+			// (if it is actually necessary. Maybe we want to assume that the user knows what he is doing)
+			template< typename T, typename Storage, typename View, enum Backend backend >
+			static bool isInstantiableFrom( const StructuredMatrix< T, UpperTriangular, Storage, View, backend > & M, const grb::imf::IMF & imf_l, const grb::imf::IMF & imf_r ) {
+				(void)M;
+				return imf_l.isSame(imf_r);
+			}
 		};
 
 		struct Diagonal {
@@ -113,7 +147,7 @@ namespace grb {
 		};
 
 		struct FullRank {
-			using inferred_structures = std::tuple< FullRank >;
+			using inferred_structures = structures::tuple_cat< std::tuple< FullRank >, General::inferred_structures >::type;
 		};
 
 		struct NonSingular {

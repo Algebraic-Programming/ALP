@@ -23,7 +23,20 @@
 #ifndef _H_GRB_DENSEREF_IO
 #define _H_GRB_DENSEREF_IO
 
+#include <graphblas/base/io.hpp>
+#include "matrix.hpp"
+
 namespace grb {
+
+	template< typename InputType, typename fwd_iterator >
+	RC buildMatrix( Matrix< InputType, reference_dense > & A, fwd_iterator start, const fwd_iterator end ) {
+		return A.template buildMatrixUnique( start, end );
+	}
+
+	template< typename InputType, typename Structure, typename Storage, typename View, typename fwd_iterator >
+	RC buildMatrix( StructuredMatrix< InputType, Structure, Storage, View, reference_dense > & A, const fwd_iterator & start, const fwd_iterator & end ) noexcept {
+		return A.template buildMatrixUnique( start, end );
+	}
 
 } // end namespace ``grb''
 

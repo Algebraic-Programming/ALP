@@ -21,7 +21,9 @@
  *       conceived and noteworthy enough to be recorded for future consideration.
  *       A static view represents a particular \em perspective on a container that
  *       can be defined at compile-time and that can always be applied to a container
- *       irrespective of features such as its dimensions.
+ *       irrespective of dynamic features such as its dimensions.
+ * 		 A View provides information about the structured matrix it is applied to,
+ *       including its type (member type \a applied_to), or how read its dimensions.
  */
 
 #ifndef _H_GRB_VIEWS
@@ -46,10 +48,9 @@ namespace grb {
 		template< typename OriginalType >
 		struct Transpose {
 
-			using applied_to = original_view;
-			using dims_retval_type = std::pair< size_t, size_t >
+			using applied_to = OriginalType;
 
-				static dims_retval_type dims( std::pair< size_t, size_t > dims_pair ) {
+			static std::pair< size_t, size_t > dims( std::pair< size_t, size_t > dims_pair ) {
 				return std::make_pair( dims_pair.second, dims_pair.first );
 			}
 		};

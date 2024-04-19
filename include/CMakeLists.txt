@@ -120,7 +120,7 @@ if( WITH_REFERENCE_BACKEND_HEADERS )
 	install( TARGETS backend_reference_headers EXPORT GraphBLASTargets )
 endif()
 
-if( WITH_DENSE_BACKEND )
+if( WITH_DENSEREF_BACKEND )
 	add_library( backend_reference_dense_headers INTERFACE )
 	target_link_libraries( backend_reference_dense_headers INTERFACE backend_headers_nodefs )
 	target_compile_definitions( backend_reference_dense_headers INTERFACE "${DENSEREF_INCLUDE_DEFS}" )

@@ -23,14 +23,32 @@
 
 using namespace grb;
 
+template< typename Structure >
+void print_matrix( const grb::StructuredMatrix< double, Structure > & A) {
+	(void)A;
+	// if( ! grb::internal::getInitialized< double >( A ) ) {
+	// 	std::cout << "Matrix is uninitialized, nothing to print.\n";
+	// 	return;
+	// }
+	// const double * Araw = grb::getRaw( internal::getContainer( A ) );
+	// for( size_t row = 0; row < grb::nrows( A ); ++row ) {
+	// 	for( size_t col = 0; col < grb::ncols( A ); ++col ) {
+	// 		std::cout << Araw[row * grb::ncols( A ) + col] << " ";
+	// 	}
+	// 	std::cout << "\n";
+	// }
+}
+
 void grb_program( const size_t & n, grb::RC & rc ) {
 	grb::Semiring< grb::operators::add< double >, grb::operators::mul< double >, grb::identities::zero, grb::identities::one > ring;
 
 	std::cout << "\tTesting dense mxm\n";
 	// initialize test
-	grb::Matrix< double > A( n, n );
-	grb::Matrix< double > B( n, n );
-	grb::Matrix< double > C( n, n );
+	grb::StructuredMatrix< double, structures::General > A( n, n );
+	grb::StructuredMatrix< double, structures::General > B( n, n );
+	grb::StructuredMatrix< double, structures::General > C( n, n );
+	std::vector< double > A_data( n * n, 1 );
+	std::vector< double > B_data( n * n, 1 );
 
 	std::cout << "_GRB_BACKEND = " << _GRB_BACKEND << "\n";
 	
@@ -38,11 +56,27 @@ void grb_program( const size_t & n, grb::RC & rc ) {
 		std::cout << "_GRB_WITH_REFERENCE defined\n";
 	#endif
 
-	#ifdef _GRB_WITH_DENSE
-		std::cout << "_GRB_WITH_DENSE defined\n";
+	#ifdef _GRB_WITH_DENSEREF
+		std::cout << "_GRB_WITH_DENSEREF defined\n";
 	#endif
 
-	rc = grb::SUCCESS;
+	// Initialize input matrices
+	rc = grb::buildMatrix( A, A_data.begin(), A_data.end() );
+	if( rc == SUCCESS ) {
+		rc = grb::buildMatrix( B, B_data.begin(), B_data.end() );
+	}
+	
+
+	std::cout << "Output matrix nrows = " << nrows( C ) << ", ncols = " << ncols( C ) << "\n";
+
+	// Test printing of an uninitialized matrix
+	print_matrix( C );
+
+	if( rc == SUCCESS ) {
+		rc = grb::mxm( C, A, B, ring );
+	}
+
+	print_matrix( C );
 
 }
 
