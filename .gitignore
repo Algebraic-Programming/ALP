@@ -9,3 +9,4 @@ paths.mk
 [Oo]bj*/
 [Ii]nstall*/
 cmake-build-*/
+.vscode/
