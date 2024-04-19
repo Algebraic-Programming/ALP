@@ -21,7 +21,7 @@
 
 #include <graphblas/utils/Timer.hpp>
 
-#include <alp_blas.h> // for gemm
+#include "lapacke.h"
 
 typedef double ScalarType;
 constexpr ScalarType tol = 1.e-10;
@@ -32,86 +32,101 @@ struct inpdata {
   	size_t repeat=1;
 };
 
-template< typename T >
-void print(const char * name, const std::vector<T> &matrix, int M, int N )
+void print(const char * name, const double* matrix, int N)
 {
-  std::cout <<  name << " = array ( [\n";
-  for (int i = 0; i < M; i++){
-    std::cout << "  [";
+  printf("\nMatrix %s size %d :\n", name, N);
+  printf(" %s = array ( [", name);
+  for (int i = 0; i < N; i++){
+  printf("\n  [");
     for (int j = 0; j < N; j++){
-      std::cout << matrix[i * N + j ] << ", ";
+      printf("%.10f, ", matrix[j*N + i]);
     }
-    std::cout << " ],\n";
+    printf(" ],");
   }
-  std::cout << "\n])\n";
+  printf("\n])\n");
 }
 
 
-
-/** gnerate random rectangular matrix data */
+//** generate vector or upper/lower triangular part of an SPD matrix */
 template< typename T >
-void generate_random_matrix_data( size_t n, std::vector<T> &data ) {
-	if( data.size() != n ) {
-	        std::cout << "Error: generate_random_matrix_data: Provided container does not have adequate size\n";
+void generate_vec_or_spd_matrix_full( size_t N, std::vector<T> &data ) {
+	if( data.size() == N ) {
+		for( size_t i = 0; i < N; ++i ) {
+			data[ i ] = static_cast< T >( std::rand() ) / static_cast< T >( RAND_MAX );
+		}
+	} else if( data.size() == N * N ) {
+		for( size_t i = 0; i < N; ++i ) {
+			for( size_t j = 0; j < N; ++j ) {
+				size_t k = i * N + j;
+				if( i <= j ) {
+					data[ k ] = static_cast< T >( std::rand() ) / static_cast< T >( RAND_MAX );
+				}
+				if( i == j ) {
+					data[ k ] = data[ k ] + static_cast< T >( N );
+				}
+				if( i > j ) {
+					data[ i * N + j ] = data[ j * N + i ];
+				}
+
+			}
+		}
+	} else {
+		std::cout << "Error: generate_spd_matrix_full: Provided container does not have adequate size\n";
 	}
-        for( size_t i = 0; i < n; ++i ) {
-                data[ i ] = static_cast< T >( std::rand() ) / static_cast< T >( RAND_MAX );
-        }
+
 }
+
+
 
 void alp_program( const inpdata &unit, bool &rc ) {
-  rc = true;
+	rc = true;
 
-  const size_t N = unit.N;
-  const size_t K = 1 * N;
-  const size_t M = 1 * N;
-  grb::utils::Timer timer;
-  timer.reset();
-  double times;
-
-  std::vector< ScalarType > Amatrix_data( N * K );
-  std::vector< ScalarType > Bmatrix_data( K * M );
-  std::vector< ScalarType > Cmatrix_data( N * M );
-  generate_random_matrix_data( N * K, Amatrix_data );
-  generate_random_matrix_data( K * M, Bmatrix_data );
-
-  // print("A ", Amatrix_data, N, K );
-  // print("B ", Bmatrix_data, K, M );
-  // print("C ", Cmatrix_data, N, M );
+	int N = unit.N;
+	grb::utils::Timer timer;
+	timer.reset();
+	double times;
 
 
-  std::cout << "Testing cblas_dgemm for C(" << N << " x " << M
-	    << ") +=   A(" << N << " x " << K
-	    << ") x B(" << K << " x " << M
-	    << ")  "  << unit.repeat << " times.\n";
+	std::cout << "Testing dsyevd_  ( " << N << " x " << N << " )\n";
+	std::cout << "Test repeated " << unit.repeat << " times.\n";
 
-   times = 0;
+	char jobz = 'V';
+	char uplo = 'U';
+	std::vector< ScalarType > mat_a( N * N );
+	generate_vec_or_spd_matrix_full( N, mat_a );
+	std::vector< ScalarType > vec_w( N );
+	ScalarType wopt;
+	int lwork = -1;
+	int iwopt;
+	int liwork = -1;
+	int info;
+	
+	dsyevd_(&jobz, &uplo, &N, &( mat_a[0] ), &N, &( vec_w[0] ), &wopt, &lwork, &iwopt, &liwork, &info);
+	lwork = (int)wopt;
+	std::vector< ScalarType > work( lwork );
+	liwork = iwopt;
+	std::vector< int > iwork( liwork );
+	
+	times = 0;
 
 	for( size_t j = 0; j < unit.repeat; ++j ) {
+	  std::vector< ScalarType > mat_a_work( mat_a );
 	  timer.reset();
-	  cblas_dgemm(
-		CblasRowMajor,
-		CblasNoTrans,
-		CblasNoTrans,
-		N,
-		M,
-		K,
-		1,
-		&(Amatrix_data[0]),
-		K,
-		&(Bmatrix_data[0]),
-		M,
-		1,
-		&(Cmatrix_data[0]),
-		M
-	  );
+	  dsyevd_(&jobz, &uplo, &N, &( mat_a_work[0] ), &N, &( vec_w[0] ), &( work[0] ), &lwork, &( iwork[0] ), &liwork, &info);
 	  times += timer.time();
+	  if( info != 0 ) {
+	    std::cout << " info = " << info << "\n";
+	    rc = false;
+	    return;
+	  }
 	}
+
 
 	std::cout << " time (ms, total) = " << times << "\n";
 	std::cout << " time (ms, per repeat) = " << times / unit.repeat  << "\n";
 
-	// print("C ", Cmatrix_data, N, M );
+	//print("matrix_data", &(matrix_data[0]), N);
+
 }
 
 int main( int argc, char ** argv ) {
@@ -160,7 +175,6 @@ int main( int argc, char ** argv ) {
 	      }
 
 	    }
-
 
 	  }
 

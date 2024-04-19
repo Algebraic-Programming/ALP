@@ -287,8 +287,8 @@ void alp_program( const inpdata &unit, alp::RC &rc ) {
 		rc = rc ? rc : check_solution( A, X, B );
 	}
 
-	std::cout << " times(total) = " << times << "\n";
-	std::cout << " times(per repeat) = " << times / unit.repeat  << "\n";
+	std::cout << " time (ms, total) = " << times << "\n";
+	std::cout << " time (ms, per repeat) = " << times / unit.repeat  << "\n";
 
 }
 
