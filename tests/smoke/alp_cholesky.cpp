@@ -73,17 +73,16 @@ struct inpdata {
  *   positive definite matrix for in-place tests
  */
 template< typename T >
-void generate_symmherm_pos_def_mat_data_full(
-	size_t N,
-	std::vector< T > &mat_data
-) {
-	std::fill( mat_data.begin(), mat_data.end(), static_cast< T >( 0 ) );
+void generate_symmherm_pos_def_mat_data_full( size_t N, std::vector<T> &data ) {
+	if( data.size() != N * N ) {
+		std::cout << "Error: generate_spd_matrix_full: Provided container does not have adequate size\n";
+	}
 	for( size_t i = 0; i < N; ++i ) {
 		for( size_t j = i; j < N; ++j ) {
-			mat_data[ i * N + j ] = random_value< T >();
-			mat_data[ j * N + i ] += grb::utils::is_complex< T >::conjugate( mat_data[ i * N + j ] );
+			data[ i * N + j ] = random_value< T >();
+			data[ j * N + i ] += grb::utils::is_complex< T >::conjugate( data[ i * N + j ] );
 			if( i == j ) {
-				mat_data[ j * N + i ] += static_cast< T >( N );
+				data[ j * N + i ] += static_cast< T >( N );
 			}
 		}
 	}
@@ -153,14 +152,18 @@ alp::RC check_cholesky_solution(
 	const size_t N = nrows( H );
 	MatSymmType UTU( N );
 	rc = rc ? rc : alp::set( UTU, zero );
-	auto UT = alp::get_view< alp::view::transpose >( U );
+
+	Matrix< T, structures::UpperTriangular > Ustar( N );
+	rc = rc ? rc : alp::set( Ustar, alp::conjugate( U ) );
+	auto UstarT = alp::get_view< alp::view::transpose >( U );
+
 #ifdef DEBUG
 	print_matrix( "  UTU  ", UTU );
 	print_matrix( "  U   ", U );
-	print_matrix( "  UT   ", UT );
+	print_matrix( "  UstarT   ", UstarT );
 #endif
-	auto UTstar = alp::conjugate( UT );
-	rc = rc ? rc : alp::mxm( UTU, UTstar, U, ring );
+
+	rc = rc ? rc : alp::mxm( UTU, UstarT, U, ring );
 #ifdef DEBUG
 	print_matrix( " << UTU >> ", UTU );
 #endif
@@ -241,13 +244,15 @@ void alp_program( const inpdata &unit, alp::RC &rc ) {
 		rc = rc ? rc : alp::buildMatrix( H, parser_A.begin(), parser_A.end() );
 	} else if( unit.N != 0 )  {
 		std::srand( RNDSEED );
-		std::vector< ScalarType > matrix_data2( ( N * ( N + 1 ) ) / 2 );
-		// Hermitian is currently using full storage
-		if( grb::utils::is_complex< ScalarType >::value ) {
-			matrix_data2.resize( N * N );
-		}
-		generate_symmherm_pos_def_mat_data< ScalarType >( N, matrix_data2 );
-		rc = rc ? rc : alp::buildMatrix( H, matrix_data2.begin(), matrix_data2.end() );
+#ifdef _ALP_WITH_REFERENCE
+		std::vector< ScalarType > matrix_data( ( N * ( N + 1 ) ) / 2 );
+		generate_symmherm_pos_def_mat_data( N, matrix_data );
+#endif
+#ifdef _ALP_WITH_DISPATCH
+		std::vector< ScalarType > matrix_data( N * N );
+		generate_symmherm_pos_def_mat_data_full( N, matrix_data );
+#endif
+		rc = rc ? rc : alp::buildMatrix( H, matrix_data.begin(), matrix_data.end() );
 	}
 
 	if( !internal::getInitialized( H ) ) {

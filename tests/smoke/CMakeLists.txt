@@ -185,7 +185,7 @@ add_grb_executables( alp_gemm alp_gemm.cpp
 )
 
 add_grb_executables( alp_cholesky alp_cholesky.cpp
-	BACKENDS alp_reference
+	BACKENDS alp_reference alp_dispatch
 )
 
 # add_grb_executables( alp_cholesky_complex alp_cholesky.cpp

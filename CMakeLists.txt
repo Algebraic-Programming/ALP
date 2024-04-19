@@ -51,6 +51,7 @@ endif()
 # to choose backends and dependencies
 option( WITH_REFERENCE_BACKEND "With Reference backend" ON )
 option( WITH_ALP_REFERENCE_BACKEND "With Reference Dense backend" ON )
+option( WITH_ALP_DISPATCH_BACKEND "With Dispatch Dense backend" OFF )
 option( WITH_OMP_BACKEND "With OMP backend" ON )
 option( WITH_HYPERDAGS_BACKEND "With Hyperdags backend" ON )
 if( WITH_HYPERDAGS_BACKEND )
@@ -269,6 +270,10 @@ if( WITH_BSP1D_BACKEND OR WITH_HYBRID_BACKEND )
 	find_package( LPF REQUIRED )
 endif( )
 
+if( WITH_ALP_DISPATCH_BACKEND )
+	include( Blas )
+endif( )
+
 
 ### SETTINGS FOR COMPILATION
 
@@ -306,6 +311,7 @@ include( Transition )
 # by default no headers are built
 set( WITH_REFERENCE_BACKEND_HEADERS OFF )
 set( WITH_ALP_REFERENCE_BACKEND_HEADERS OFF )
+set( WITH_ALP_DISPATCH_BACKEND_HEADERS OFF )
 set( WITH_OMP_BACKEND_HEADERS OFF )
 set( WITH_HYPERDAGS_BACKEND_HEADERS OFF )
 set( WITH_ALP_OMP_BACKEND_HEADERS OFF )
@@ -327,6 +333,10 @@ endif()
 
 if( WITH_ALP_REFERENCE_BACKEND )
 	set( WITH_ALP_REFERENCE_BACKEND_HEADERS ON )
+endif()
+
+if( WITH_ALP_DISPATCH_BACKEND )
+	set( WITH_ALP_DISPATCH_BACKEND_HEADERS ON )
 endif()
 
 if( WITH_ALP_OMP_BACKEND )

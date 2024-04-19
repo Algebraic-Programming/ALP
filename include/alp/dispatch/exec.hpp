@@ -17,18 +17,23 @@
 
 /*
  * @author A. N. Yzelman
- * @date 29th of March 2017
+ * @date 14th of January 2022
  */
 
-#ifndef _H_ALP_BLAS1
-#define _H_ALP_BLAS1
+#ifndef _H_ALP_DISPATCH_EXEC
+#define _H_ALP_DISPATCH_EXEC
 
-#ifdef _ALP_WITH_REFERENCE
- #include <alp/reference/blas1.hpp>
-#endif
-#ifdef _ALP_WITH_DISPATCH
- #include <alp/dispatch/blas1.hpp>
-#endif
+#include <alp/backends.hpp>
+#include <alp/base/exec.hpp>
+#include <alp/reference/exec.hpp> // dispatch launcher is using reference launcher
+#include "init.hpp"
 
-#endif // end ``_H_ALP_BLAS1''
+namespace alp {
+
+	template< EXEC_MODE mode >
+	class Launcher< mode, dispatch > : public Launcher< mode, reference > {};
+
+} // end namespace ``alp''
+
+#endif // end ``_H_ALP_DISPATCH_EXEC''
 

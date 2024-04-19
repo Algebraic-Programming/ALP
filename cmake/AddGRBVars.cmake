@@ -34,6 +34,7 @@ set( HYBRID_BACKEND_DEFAULT_NAME "backend_hybrid" )
 set( HYPERDAGS_BACKEND_DEFAULT_NAME "backend_hyperdags" )
 set( NONBLOCKING_BACKEND_DEFAULT_NAME "backend_nonblocking" )
 set( ALP_REFERENCE_BACKEND_DEFAULT_NAME "backend_alp_reference" )
+set( ALP_DISPATCH_BACKEND_DEFAULT_NAME "backend_alp_dispatch" )
 set( ALP_OMP_BACKEND_DEFAULT_NAME "backend_alp_omp" )
 
 
@@ -46,6 +47,7 @@ set( HYPERDAGS_INCLUDE_DEFS "_GRB_WITH_HYPERDAGS" )
 set( NONBLOCKING_INCLUDE_DEFS "_GRB_WITH_NONBLOCKING" )
 set( LPF_INCLUDE_DEFS "_GRB_WITH_LPF" )
 set( ALP_REFERENCE_INCLUDE_DEFS "_ALP_WITH_REFERENCE" )
+set( ALP_DISPATCH_INCLUDE_DEFS "_ALP_WITH_DISPATCH" )
 set( ALP_OMP_INCLUDE_DEFS "_ALP_WITH_OMP;_ALP_OMP_WITH_REFERENCE" )
 
 # compiler definitions to select a backend
@@ -57,6 +59,7 @@ set( HYPERDAGS_SELECTION_DEFS
 )
 set( NONBLOCKING_SELECTION_DEFS "_GRB_BACKEND=nonblocking" )
 set( ALP_REFERENCE_SELECTION_DEFS "_ALP_BACKEND=reference" )
+set( ALP_DISPATCH_SELECTION_DEFS "_ALP_BACKEND=dispatch" )
 set( ALP_OMP_SELECTION_DEFS
 		"_ALP_BACKEND=omp"
 		"_ALP_SECONDARY_BACKEND=reference"
@@ -74,7 +77,7 @@ set( HYBRID_SELECTION_DEFS
 set( NO_NUMA_DEF "_GRB_NO_LIBNUMA" )
 
 ### **ALL** BACKENDS, EVEN IF NOT ENABLED BY USER
-set( ALL_BACKENDS "reference" "reference_omp" "hyperdags" "nonblocking" "bsp1d" "hybrid" "alp_reference" "alp_omp" )
+set( ALL_BACKENDS "reference" "reference_omp" "hyperdags" "nonblocking" "bsp1d" "hybrid" "alp_reference" "alp_dispatch" "alp_omp" )
 
 # list of user-enabled backends, for tests and wrapper scripts (do not change!)
 set( AVAILABLE_BACKENDS "" )
@@ -102,6 +105,10 @@ endif()
 
 if( WITH_ALP_REFERENCE_BACKEND )
 	list( APPEND AVAILABLE_BACKENDS "alp_reference" )
+endif()
+
+if( WITH_ALP_DISPATCH_BACKEND )
+	list( APPEND AVAILABLE_BACKENDS "alp_dispatch" )
 endif()
 
 if( WITH_ALP_OMP_BACKEND )

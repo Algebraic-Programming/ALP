@@ -21,6 +21,7 @@
 #include <alp.hpp>
 #include <graphblas/utils/iscomplex.hpp> // use from grb
 #include <alp/algorithms/forwardsubstitution.hpp>
+#include <alp/algorithms/fused_mxm_foldl.hpp>
 #include "../../../tests/utils/print_alp_containers.hpp"
 
 namespace alp {
@@ -76,6 +77,9 @@ namespace alp {
 			const Minus &minus = Minus(),
 			const Divide &divide = Divide()
 		) {
+#ifdef DEBUG
+			std::cout << "Entered cholesky_uptr out-of-place non-blocked version.\n";
+#endif
 			RC rc = SUCCESS;
 
 			if(
@@ -217,6 +221,9 @@ namespace alp {
 			const Ring &ring = Ring(),
 			const Minus &minus = Minus()
 		) {
+#ifdef DEBUG
+			std::cout << "Entered cholesky_upr out-of-place blocked version.\n";
+#endif
 			const Scalar< D > zero( ring.template getZero< D >() );
 
 			if(
@@ -324,6 +331,9 @@ namespace alp {
 			const Minus &minus = Minus(),
 			const Divide &divide = Divide()
 		) {
+#ifdef DEBUG
+			std::cout << "Entered cholesky_upr in-place non-blocked version.\n";
+#endif
 			const Scalar< D > zero( ring.template getZero< D >() );
 
 			RC rc = SUCCESS;
@@ -413,6 +423,9 @@ namespace alp {
 			const Ring &ring = Ring(),
 			const Minus &minus = Minus()
 		) {
+#ifdef DEBUG
+			std::cout << "Entered cholesky_upr in-place blocked version.\n";
+#endif
 			const Scalar< D > zero( ring.template getZero< D >() );
 
 			RC rc = SUCCESS;
@@ -465,27 +478,11 @@ namespace alp {
 				}
 #endif
 
-				Matrix< D, structures::SymmetricPositiveDefinite, Dense > Reflector( ncols( A12 ) );
-				rc = rc ? rc : set( Reflector, zero );
+				auto A22UT = get_view< structures::Symmetric >( U, range2, range2 );
+				rc = rc ? rc : algorithms::fused_symm_mxm_foldl( A22UT, A12, ring, minus );
 #ifdef DEBUG
 				if( rc != SUCCESS ) {
-					std::cout << "set(2) failed\n";
-					return rc;
-				}
-#endif
-				rc = rc ? rc : mxm( Reflector, get_view< alp::view::transpose >( A12 ), A12, ring );
-#ifdef DEBUG
-				if( rc != SUCCESS ) {
-					std::cout << "mxm failed\n";
-					return rc;
-				}
-#endif
-				auto A22UT = get_view< structures::SymmetricPositiveDefinite >( U, range2, range2 );
-
-				rc = rc ? rc : foldl( A22UT, Reflector, minus );
-#ifdef DEBUG
-				if( rc != SUCCESS ) {
-					std::cout << "foldl failed\n";
+					std::cout << "algorithms::fused_symm_mxm_foldl failed\n";
 					return rc;
 				}
 #endif
@@ -493,7 +490,6 @@ namespace alp {
 
 			return rc;
 		}
-
 
 	} // namespace algorithms
 } // namespace alp
