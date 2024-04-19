@@ -24,20 +24,22 @@
 #define _H_ALP_MATRIX_BASE
 
 #include <iterator>
-#include <stddef.h>
+#include <memory>
 #include <type_traits>
 #include <utility>
-#include <memory>
+
+#include <stddef.h>
 
 #include <alp/backends.hpp>
+#include <alp/density.hpp>
 #include <alp/descriptors.hpp>
+#include <alp/imf.hpp>
 #include <alp/ops.hpp>
 #include <alp/rc.hpp>
-#include <alp/density.hpp>
 #include <alp/structures.hpp>
 #include <alp/utils.hpp>
 #include <alp/views.hpp>
-#include <alp/imf.hpp>
+
 
 namespace alp {
 

@@ -23,14 +23,17 @@
 #ifndef _H_ALP_BASE_BLAS1
 #define _H_ALP_BASE_BLAS1
 
-#include <alp/rc.hpp>
-#include <alp/ops.hpp>
-#include <alp/phase.hpp>
-#include <alp/monoid.hpp>
+#include <graphblas/utils/iscomplex.hpp> // use from grb
+
 #include <alp/backends.hpp>
-#include <alp/semiring.hpp>
 #include <alp/descriptors.hpp>
 #include <alp/internalops.hpp>
+#include <alp/monoid.hpp>
+#include <alp/ops.hpp>
+#include <alp/phase.hpp>
+#include <alp/rc.hpp>
+#include <alp/semiring.hpp>
+
 
 namespace alp {
 
@@ -77,7 +80,10 @@ namespace alp {
 			!alp::is_object< InputType >::value && !alp::is_object< IOType >::value && alp::is_monoid< Monoid >::value
 		> * const = nullptr
 	) {
-		return foldr( x, Scalar< IOType >( beta ), monoid );
+		(void) x;
+		(void) beta;
+		(void) monoid;
+		return UNSUPPORTED;
 	}
 
 	/**
@@ -122,7 +128,7 @@ namespace alp {
 			!alp::is_object< InputType >::value && ! alp::is_object< IOType >::value && alp::is_operator< OP >::value
 		> * const = nullptr
 	) {
-		(void) alhpa;
+		(void) alpha;
 		(void) y;
 		(void) op;
 		return UNSUPPORTED;
@@ -339,7 +345,7 @@ namespace alp {
 		> * const = nullptr
 	) {
 		(void) z;
-		(void) alhpa;
+		(void) alpha;
 		(void) beta;
 		(void) monoid;
 		return UNSUPPORTED;
@@ -403,7 +409,7 @@ namespace alp {
 		> * const = nullptr
 	) {
 		(void) z;
-		(void) alhpa;
+		(void) alpha;
 		(void) y;
 		(void) monoid;
 		return UNSUPPORTED;
@@ -577,7 +583,8 @@ namespace alp {
 		typename OutputType, typename OutputStructure, typename OutputView, typename OutputImfR, typename OutputImfC,
 		typename InputType1, typename InputStructure1, typename InputView1, typename InputImfR1, typename InputImfC1,
 		typename InputType2, typename InputStructure2,
-		class Ring
+		class Ring,
+		Backend backend
 	>
 	RC eWiseMul(
 		Vector< OutputType, OutputStructure, Density::Dense, OutputView, OutputImfR, OutputImfC, backend > &z,
@@ -607,7 +614,8 @@ namespace alp {
 		typename OutputType, typename OutputStructure,
 		typename InputType1, typename InputStructure1, typename InputView1, typename InputImfR1, typename InputImfC1,
 		typename InputType2, typename InputStructure2, typename InputView2, typename InputImfR2, typename InputImfC2,
-		class AddMonoid, class AnyOp
+		class AddMonoid, class AnyOp,
+		Backend backend
 	>
 	RC dot(
 		Scalar< OutputType, OutputStructure, backend > &z,
@@ -651,7 +659,7 @@ namespace alp {
 			!alp::is_object< InputType2 >::value &&
 			alp::is_monoid< AddMonoid >::value &&
 			alp::is_operator< AnyOp >::value
-		>::type * const = nullptr
+		> * const = nullptr
 	) {
 		return UNSUPPORTED;
 	}
@@ -678,14 +686,14 @@ namespace alp {
 			!alp::is_object< InputType1 >::value &&
 			!alp::is_object< InputType2 >::value &&
 			!alp::is_object< IOType >::value &&
-			alp::is_semiring< Ring >::value,
+			alp::is_semiring< Ring >::value
 		> * const = nullptr
 	) {
-		return alp::dot< descr >( x,
-			left, right,
-			ring.getAdditiveMonoid(),
-			ring.getMultiplicativeOperator()
-		);
+		(void) x;
+		(void) left;
+		(void) right;
+		(void) ring;
+		return UNSUPPORTED;
 	}
 
 	/** C++ scalar specialization. */
@@ -705,7 +713,7 @@ namespace alp {
 			!alp::is_object< InputType1 >::value &&
 			!alp::is_object< InputType2 >::value &&
 			!alp::is_object< IOType >::value &&
-			alp::is_semiring< Ring >::value,
+			alp::is_semiring< Ring >::value
 		> * const = nullptr
 	) {
 		(void) x;
@@ -741,7 +749,7 @@ namespace alp {
 		(void) f;
 		(void) x;
 		(void) y;
-		(void) args;
+		// (void) args;
 		return UNSUPPORTED;
 	}
 
@@ -811,7 +819,7 @@ namespace alp {
 	) noexcept {
 		(void) permutation;
 		(void) toSort;
-		(void) cmp
+		(void) cmp;
 		return UNSUPPORTED;
 	}
 

@@ -23,11 +23,10 @@
 #ifndef _H_ALP_MONOID
 #define _H_ALP_MONOID
 
+#include <cstddef> //size_t
 #ifdef _DEBUG
 #include <cstdio>
 #endif
-
-#include <cstddef> //size_t
 #include <cstdlib> //posix_memalign, rand
 #include <type_traits>
 
@@ -36,6 +35,7 @@
 #include <alp/identities.hpp>
 #include <alp/ops.hpp>
 #include <alp/type_traits.hpp>
+
 
 /**
  * The main Sparse Library namespace.

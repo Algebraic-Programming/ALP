@@ -24,8 +24,10 @@
 #define _H_ALP_REFERENCE_EXEC
 
 #include <alp/backends.hpp>
+
 #include <alp/base/exec.hpp>
-#include <alp/reference/init.hpp>
+
+#include "init.hpp"
 
 namespace alp {
 

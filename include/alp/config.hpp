@@ -23,8 +23,6 @@
 #ifndef _H_ALP_CONFIG
 #define _H_ALP_CONFIG
 
-#include "base/config.hpp"
-
 // include all active configurations
 #ifdef _ALP_WITH_REFERENCE
  #include "alp/reference/config.hpp"

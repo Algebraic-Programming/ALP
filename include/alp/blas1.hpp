@@ -23,13 +23,6 @@
 #ifndef _H_ALP_BLAS1
 #define _H_ALP_BLAS1
 
-#include <alp/backends.hpp>
-#include <alp/config.hpp>
-#include <alp/rc.hpp>
-#include <alp/type_traits.hpp>
-
-#include "base/vector.hpp"
-
 #ifdef _ALP_WITH_REFERENCE
  #include <alp/reference/blas1.hpp>
 #endif

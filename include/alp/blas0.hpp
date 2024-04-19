@@ -23,12 +23,9 @@
 #ifndef _H_ALP_BLAS0
 #define _H_ALP_BLAS0
 
-#include "base/blas0.hpp"
-
 // now include all specialisations contained in the backend directories:
 #ifdef _ALP_WITH_REFERENCE
  #include <alp/reference/blas0.hpp>
 #endif
-
 
 #endif // end ``_H_ALP_BLAS0''

@@ -23,7 +23,8 @@
 #ifndef _H_ALP_EXEC
 #define _H_ALP_EXEC
 
-#include "base/config.hpp"
+#include "config.hpp"
+
 #include "base/exec.hpp"
 
 // include template specialisations

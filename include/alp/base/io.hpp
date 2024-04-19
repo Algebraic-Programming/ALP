@@ -28,7 +28,9 @@
 #include <alp/utils/SynchronizedNonzeroIterator.hpp>
 
 #include "matrix.hpp"
+#include "scalar.hpp"
 #include "vector.hpp"
+
 
 namespace alp {
 
