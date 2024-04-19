@@ -23,6 +23,7 @@
 #
 assert_defined_variables( ALP_REFERENCE_INCLUDE_DEFS WITH_ALP_REFERENCE_BACKEND_HEADERS )
 assert_defined_variables( ALP_OMP_INCLUDE_DEFS WITH_ALP_OMP_BACKEND_HEADERS )
+assert_defined_variables( ALP_DISPATCH_INCLUDE_DEFS WITH_ALP_DISPATCH_BACKEND_HEADERS )
 assert_valid_variables( INCLUDE_INSTALL_DIR )
 
 # to avoid flaky acrobatics with regex or glob expressions, copy main files directly
@@ -88,6 +89,22 @@ endif()
 if( WITH_ALP_REFERENCE_BACKEND )
 	install( DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/alp/reference"
 		DESTINATION "${ALP_INCLUDE_INSTALL_DIR}/alp_reference"
+		FILES_MATCHING REGEX "${HEADERS_REGEX}"
+	)
+endif()
+
+if( WITH_ALP_DISPATCH_BACKEND_HEADERS )
+	add_library( backend_alp_dispatch_headers INTERFACE )
+	target_link_libraries( backend_alp_dispatch_headers INTERFACE backend_headers_nodefs )
+	target_compile_definitions( backend_alp_dispatch_headers INTERFACE "${ALP_DISPATCH_INCLUDE_DEFS}" )
+	target_link_libraries( backend_alp_dispatch_headers INTERFACE ${BLAS_LIBRARIES} )
+
+	install( TARGETS backend_alp_dispatch_headers EXPORT GraphBLASTargets )
+endif()
+
+if( WITH_ALP_DISPATCH_BACKEND )
+	install( DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/alp/dispatch"
+		DESTINATION "${ALP_INCLUDE_INSTALL_DIR}/alp_dispatch"
 		FILES_MATCHING REGEX "${HEADERS_REGEX}"
 	)
 endif()

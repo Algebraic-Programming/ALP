@@ -15,20 +15,28 @@
  * limitations under the License.
  */
 
-/*
- * @author A. N. Yzelman
- * @date 29th of March 2017
- */
+#include <alp/dispatch/init.hpp>
+#include <alp/rc.hpp>
 
-#ifndef _H_ALP_BLAS1
-#define _H_ALP_BLAS1
+template<>
+alp::RC alp::init< alp::dispatch >( const size_t s, const size_t P, void * const data ) {
+	// we don't use any implementation-specific init data
+	(void)data;
+	// print output
+	std::cerr << "Info: alp::init (dispatch) called.\n";
+	// sanity checks
+	if( P > 1 ) {
+		return alp::UNSUPPORTED;
+	}
+	if( s > 0 ) {
+		return alp::PANIC;
+	}
+	// done
+	return alp::SUCCESS;
+}
 
-#ifdef _ALP_WITH_REFERENCE
- #include <alp/reference/blas1.hpp>
-#endif
-#ifdef _ALP_WITH_DISPATCH
- #include <alp/dispatch/blas1.hpp>
-#endif
 
-#endif // end ``_H_ALP_BLAS1''
-
+template<>
+alp::RC alp::finalize< alp::dispatch >() {
+	return alp::SUCCESS;
+}
