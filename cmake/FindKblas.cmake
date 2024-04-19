@@ -34,10 +34,12 @@ creates a target Kblas::Kblas to link against libkblas
 # documentation of find_library() https://cmake.org/cmake/help/latest/command/find_library.html
 
 if(NOT KBLAS_IMPL)
-	set(KBLAS_IMPL "nolocking")
+	set(KBLAS_IMPL "locking")
 else()
-	if(NOT ${KBLAS_IMPL} IN_LIST "locking;nolocking;omp;pthread")
-		message(ERROR "wrong kblas implementation requested")
+	#if( "${KBLAS_IMPL}" IN_LIST "locking;nolocking;omp;pthread" )
+	if( NOT "${KBLAS_IMPL}" MATCHES "^(locking|nolocking|omp|pthread)$")
+		message( "KBLAS_IMPL =  ${KBLAS_IMPL}")
+		message(ERROR " wrong kblas implementation requested")
 	endif()
 endif()
 
@@ -72,6 +74,7 @@ find_library( KBLAS_LIBRARY
 	HINTS "${KBLAS_ROOT_DIR}/lib/kblas/${KBLAS_IMPL}" # start looking from KBLAS_ROOT_DIR, the most likely place
 	DOC "KBLAS library"
 )
+set( BLAS_LIBRARIES ${KBLAS_LIBRARY} )
 
 find_library( GFORTRAN_LIBRARY
 	NAMES gfortran # hence, CMake looks for libgfortran.so, libgfortran.so.<some version>,
@@ -90,7 +93,7 @@ find_package_handle_standard_args( Kblas
 # if we found the library, create a dedicated target with all needed information
 if( Kblas_FOUND )
 	# do not show these variables as cached ones
-	mark_as_advanced( KBLAS_ROOT_DIR KBLAS_INCLUDE_DIR KBLAS_LIBRARY )
+	mark_as_advanced( KBLAS_ROOT_DIR KBLAS_INCLUDE_DIR KBLAS_LIBRARY BLAS_LIBRARIES )
 
 	# create an imported target, i.e. a target NOT built internally, as from
 	# https://cmake.org/cmake/help/latest/command/add_library.html#imported-libraries
@@ -120,7 +123,7 @@ if( Kblas_FOUND )
 			find_package(OpenMP REQUIRED)
 		endif()
 	        target_link_libraries(Kblas::Kblas INTERFACE OpenMP::OpenMP_C)
-	elif(${KBLAS_IMPL} STREQUAL "pthread")
+	elseif(${KBLAS_IMPL} STREQUAL "pthread")
 		if(NOT Threads_FOUND)
 			find_package(Threads REQUIRED)
 		endif()

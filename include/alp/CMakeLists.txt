@@ -93,17 +93,27 @@ if( WITH_ALP_REFERENCE_BACKEND )
 	)
 endif()
 
+if( WITH_ALP_DISPATCH_BACKEND_HEADERS OR ( WITH_ALP_OMP_BACKEND_HEADERS AND ( "${_ALP_SECONDARY_BACKEND}" EQUAL "dispatch" ) ) )
+	install( FILES "${CMAKE_BINARY_DIR}/blas_wrapper/alp_blas.h" DESTINATION "${INCLUDE_INSTALL_DIR}/blas_wrapper" )
+
+	install(
+		TARGETS cblas EXPORT GraphBLASTargets
+		INCLUDES DESTINATION "${INCLUDE_INSTALL_DIR}/blas_wrapper"
+	)
+endif()
+
+
 if( WITH_ALP_DISPATCH_BACKEND_HEADERS )
 	add_library( backend_alp_dispatch_headers INTERFACE )
 	target_link_libraries( backend_alp_dispatch_headers INTERFACE backend_headers_nodefs )
 	target_compile_definitions( backend_alp_dispatch_headers INTERFACE "${ALP_DISPATCH_INCLUDE_DEFS}" )
-	target_link_libraries( backend_alp_dispatch_headers INTERFACE ${BLAS_LIBRARIES} )
-
+	target_link_libraries( backend_alp_dispatch_headers INTERFACE cblas )
+	
 	install( TARGETS backend_alp_dispatch_headers EXPORT GraphBLASTargets )
 endif()
 
 if( WITH_ALP_DISPATCH_BACKEND )
-	install( DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/alp/dispatch"
+	install( DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/dispatch"
 		DESTINATION "${ALP_INCLUDE_INSTALL_DIR}/alp_dispatch"
 		FILES_MATCHING REGEX "${HEADERS_REGEX}"
 	)
@@ -113,6 +123,7 @@ if( WITH_ALP_OMP_BACKEND_HEADERS )
 	add_library( backend_alp_omp_headers INTERFACE )
 	target_link_libraries( backend_alp_omp_headers INTERFACE backend_headers_nodefs )
 	target_link_libraries( backend_alp_omp_headers INTERFACE OpenMP::OpenMP_CXX )
+	target_link_libraries( backend_alp_omp_headers INTERFACE cblas )
 	target_compile_definitions( backend_alp_omp_headers INTERFACE "${ALP_OMP_INCLUDE_DEFS}" )
 
 	install( TARGETS backend_alp_omp_headers EXPORT GraphBLASTargets )

@@ -23,8 +23,8 @@
  *
  */
 
-#ifndef _H_ALP_REFERENCE_STORAGE
-#define _H_ALP_REFERENCE_STORAGE
+#ifndef _H_ALP_DISPATCH_STORAGE
+#define _H_ALP_DISPATCH_STORAGE
 
 #include <alp/amf-based/storage.hpp>
 
@@ -50,4 +50,4 @@ namespace alp {
 
 } // namespace alp
 
-#endif // _H_ALP_REFERENCE_STORAGE
+#endif // _H_ALP_DISPATCH_STORAGE

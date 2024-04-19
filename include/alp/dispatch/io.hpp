@@ -24,9 +24,10 @@
 #define _H_ALP_DISPATCH_IO
 
 #include <alp/base/io.hpp>
-#include <alp/vector.hpp>
-#include <alp/scalar.hpp>
 #include "matrix.hpp"
+#include "scalar.hpp"
+#include "vector.hpp"
+#include "blas2.hpp"
 
 #define NO_CAST_ASSERT( x, y, z )                                              \
 	static_assert( x,                                                          \
@@ -121,7 +122,7 @@ namespace alp {
 			!std::is_same< OutputType, void >::value,
 			"alp::set (set to value): cannot have a pattern matrix as output"
 		);
-#ifdef _DEBUG
+#ifndef NDEBUG
 		std::cout << "Called alp::set (matrix-to-matrix, dispatch)" << std::endl;
 #endif
 		// static checks

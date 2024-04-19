@@ -24,6 +24,7 @@
 #include <iomanip>
 #endif
 
+#include <graphblas/utils/Timer.hpp>
 #include <alp.hpp>
 #include <alp/algorithms/householder_qr.hpp>
 #include <graphblas/utils/iscomplex.hpp> // use from grb
@@ -45,6 +46,11 @@ using ScalarType = BaseScalarType;
 
 constexpr BaseScalarType tol = 1.e-10;
 constexpr size_t RNDSEED = 1;
+
+struct inpdata {
+	size_t N = 0;
+	size_t repeat = 1;
+};
 
 //** generate random rectangular matrix data: complex version */
 template< typename T >
@@ -217,95 +223,134 @@ RC check_solution(
 
 
 
-void alp_program( const size_t &unit, alp::RC &rc ) {
+void alp_program( const inpdata &unit, alp::RC &rc ) {
 	rc = SUCCESS;
 
-	alp::Semiring<
-		alp::operators::add< ScalarType >,
-		alp::operators::mul< ScalarType >,
-		alp::identities::zero,
-		alp::identities::one
-	> ring;
+	grb::utils::Timer timer;
+	timer.reset();
+	double times = 0;
 
-	// dimensions of sqare matrices H, Q and R
-	const size_t N = unit;
-	const size_t M = 2 * unit;
+	for( size_t j = 0; j < unit.repeat; ++j ) {
 
-	alp::Matrix< ScalarType, Orthogonal > Q( N );
-	alp::Matrix< ScalarType, General > R( N, M );
-	alp::Matrix< ScalarType, General > H( N, M );
-	{
-		std::srand( RNDSEED );
-		auto matrix_data = generate_rectangular_matrix_data< ScalarType >( N, M );
-		rc = rc ? rc : alp::buildMatrix( H, matrix_data.begin(), matrix_data.end() );
-	}
+		alp::Semiring<
+			alp::operators::add< ScalarType >,
+			alp::operators::mul< ScalarType >,
+			alp::identities::zero,
+			alp::identities::one
+			> ring;
+
+		// dimensions of sqare matrices H, Q and R
+		const size_t N = unit.N;
+		const size_t M = 2 * unit.N;
+
+		alp::Matrix< ScalarType, Orthogonal > Q( N );
+		alp::Matrix< ScalarType, General > R( N, M );
+		alp::Matrix< ScalarType, General > H( N, M );
+		{
+			std::srand( RNDSEED );
+			auto matrix_data = generate_rectangular_matrix_data< ScalarType >( N, M );
+			rc = rc ? rc : alp::buildMatrix( H, matrix_data.begin(), matrix_data.end() );
+		}
 #ifdef DEBUG
-	print_matrix( " input matrix H ", H );
+		print_matrix( " input matrix H ", H );
 #endif
 
-	rc = rc ? rc : algorithms::householder_qr( H, Q, R, ring );
+		timer.reset();
 
+		rc = rc ? rc : algorithms::householder_qr( H, Q, R, ring );
+
+		times += timer.time();
 
 #ifdef DEBUG
-	print_matrix( " << Q >> ", Q );
-	print_matrix( " << R >> ", R );
+		print_matrix( " << Q >> ", Q );
+		print_matrix( " << R >> ", R );
 #endif
 
-	rc = check_overlap( Q );
-	if( rc != SUCCESS ) {
-		std::cout << "Error: mratrix Q is not orthogonal\n";
+		rc = check_overlap( Q );
+		if( rc != SUCCESS ) {
+			std::cout << "Error: mratrix Q is not orthogonal\n";
+			return;
+		}
+
+		rc = check_solution( H, Q, R );
+		if( rc != SUCCESS ) {
+			std::cout << "Error: solution numerically wrong\n";
+			return;
+		}
+
 	}
 
-	rc = check_solution( H, Q, R );
-	if( rc != SUCCESS ) {
-		std::cout << "Error: solution numerically wrong\n";
-	}
+	std::cout << " times(total) = " << times << "\n";
+	std::cout << " times(per repeat) = " << times / unit.repeat  << "\n";
 }
 
 int main( int argc, char **argv ) {
 	// defaults
 	bool printUsage = false;
-	size_t in = 5;
+	inpdata in;
 
 	// error checking
-	if( argc > 2 ) {
-		printUsage = true;
-	}
-	if( argc == 2 ) {
-		size_t read;
-		std::istringstream ss( argv[ 1 ] );
-		if( ! ( ss >> read ) ) {
-			std::cerr << "Error parsing first argument\n";
+	if(
+		( argc == 3 ) || ( argc == 5 )
+	) {
+		std::string readflag;
+		std::istringstream ss1( argv[ 1 ] );
+		std::istringstream ss2( argv[ 2 ] );
+		if( ! ( ( ss1 >> readflag ) &&  ss1.eof() ) ) {
+			std::cerr << "Error parsing\n";
 			printUsage = true;
-		} else if( ! ss.eof() ) {
-			std::cerr << "Error parsing first argument\n";
-			printUsage = true;
-		} else if( read % 2 != 0 ) {
-			std::cerr << "Given value for n is odd\n";
+		} else if(
+			readflag != std::string( "-n" )
+		) {
+			std::cerr << "Given first argument is unknown\n";
 			printUsage = true;
 		} else {
-			// all OK
-			in = read;
+			if( ! ( ( ss2 >> in.N ) &&  ss2.eof() ) ) {
+				std::cerr << "Error parsing\n";
+				printUsage = true;
+			}
 		}
+
+		if( argc == 5 ) {
+			std::string readflag;
+			std::istringstream ss1( argv[ 3 ] );
+			std::istringstream ss2( argv[ 4 ] );
+			if( ! ( ( ss1 >> readflag ) &&  ss1.eof() ) ) {
+				std::cerr << "Error parsing\n";
+				printUsage = true;
+			} else if(
+				readflag != std::string( "-repeat" )
+			) {
+				std::cerr << "Given third argument is unknown\n";
+				printUsage = true;
+			} else {
+				if( ! ( ( ss2 >> in.repeat ) &&  ss2.eof() ) ) {
+					std::cerr << "Error parsing\n";
+					printUsage = true;
+				}
+			}
+		}
+
+	} else {
+		std::cout << "Wrong number of arguments\n";
+		printUsage = true;
 	}
+
 	if( printUsage ) {
-		std::cerr << "Usage: " << argv[ 0 ] << " [n]\n";
-		std::cerr << "  -n (optional, default is 100): an even integer, the "
-					 "test size.\n";
+		std::cerr << "Usage: \n";
+		std::cerr << "       " << argv[ 0 ] << " -n N \n";
+		std::cerr << "      or  \n";
+		std::cerr << "       " << argv[ 0 ] << " -n N   -repeat N \n";
 		return 1;
 	}
 
-	std::cout << "This is functional test " << argv[ 0 ] << "\n";
-	alp::Launcher< AUTOMATIC > launcher;
-	alp::RC out;
-	if( launcher.exec( &alp_program, in, out, true ) != SUCCESS ) {
-		std::cerr << "Launching test FAILED\n";
-		return 255;
-	}
-	if( out != SUCCESS ) {
-		std::cerr << "Test FAILED (" << alp::toString( out ) << ")" << std::endl;
+	alp::RC rc = alp::SUCCESS;
+	alp_program( in, rc );
+	if( rc == alp::SUCCESS ) {
+		std::cout << "Test OK\n";
+		return 0;
 	} else {
-		std::cout << "Test OK" << std::endl;
+		std::cout << "Test FAILED\n";
+		return 1;
 	}
-	return 0;
 }
