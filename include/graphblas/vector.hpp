@@ -31,9 +31,9 @@
 #ifdef _GRB_WITH_REFERENCE
  #include <graphblas/reference/vector.hpp>
 #endif
-#ifdef _GRB_WITH_DENSE
- #include <graphblas/denseref/vector.hpp>
-#endif
+// #ifdef _GRB_WITH_DENSE
+//  #include <graphblas/denseref/vector.hpp>
+// #endif
 #ifdef _GRB_WITH_HYPERDAGS
  #include <graphblas/hyperdags/vector.hpp>
 #endif

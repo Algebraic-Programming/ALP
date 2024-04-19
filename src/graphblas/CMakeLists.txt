@@ -93,7 +93,7 @@ if( WITH_NONBLOCKING_BACKEND )
 	add_subdirectory( nonblocking )
 endif()
 
-if( WITH_DENSE_BACKEND )
+if( WITH_DENSEREF_BACKEND )
 	add_subdirectory( denseref )
 endif()
 
