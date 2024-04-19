@@ -25,17 +25,18 @@
 
 #include <algorithm>   // for std::min/max
 #include <type_traits> // for std::enable_if
-#include <cblas.h> // for gemm
+#include <alp_blas.h> // for cblas_?gemm
 
 #include <alp/base/blas3.hpp>
 #include <alp/descriptors.hpp>
 #include <alp/structures.hpp>
-#include <alp/blas0.hpp>
-#include <graphblas/utils/iscomplex.hpp> // use from grb
 
+#include "blas0.hpp"
 #include "io.hpp"
 #include "matrix.hpp"
 #include "vector.hpp"
+
+#include <graphblas/utils/iscomplex.hpp> // use from grb
 
 #define NO_CAST_ASSERT( x, y, z )                                              \
 	static_assert( x,                                                          \
@@ -449,7 +450,31 @@ namespace alp {
 				return MISMATCH;
 			}
 
+#if 0
 			return mxm_band_generic< 0, 0 >( C, A, B, oper, monoid, mulMonoid );
+#else
+			// \todo Check that the ring is using standard + and * operators
+			(void) oper;
+			(void) monoid;
+			(void) mulMonoid;
+
+
+#ifndef NDEBUG
+			std::cout << "Calling cblas_dgemm" << std::endl;
+#endif
+			cblas_dgemm(
+				CblasRowMajor, CblasNoTrans, CblasNoTrans,
+				m, n, k,
+				1,
+				internal::getRawPointerToFirstElement( A ), internal::getLeadingDimension( A ),
+				internal::getRawPointerToFirstElement( B ), internal::getLeadingDimension( B ),
+				1,
+				internal::getRawPointerToFirstElement( C ), internal::getLeadingDimension( C )
+			);
+
+			return SUCCESS;
+#endif
+
 		}
 
 	} // namespace internal
@@ -496,29 +521,8 @@ namespace alp {
 			void >::type * const = NULL ) {
 		(void)phase;
 
-#if 1
 		return internal::mxm_generic< false >( C, A, B, ring.getMultiplicativeOperator(), ring.getAdditiveMonoid(), ring.getMultiplicativeMonoid() );
 
-#else
-		// \todo Check that the ring is using standard + and * operators
-		(void) ring;
-
-		// Offload to blas gemm
-		const size_t m = nrows( C );
-		const size_t n = ncols( C );
-		const size_t k = ncols( A );
-		
-		cblas_dgemm(
-			CblasRowMajor, CblasNoTrans, CblasNoTrans,
-			m, n, k,
-			1,
-			internal::getRawPointerToFirstElement( A ), internal::getLeadingDimension( A ),
-			internal::getRawPointerToFirstElement( B ), internal::getLeadingDimension( B ),
-			1,
-			internal::getRawPointerToFirstElement( C ), internal::getLeadingDimension( C )
-		);
-		return SUCCESS;
-#endif
 	}
 
 	/**

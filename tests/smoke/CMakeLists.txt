@@ -294,3 +294,39 @@ add_custom_target( tests_smoke
 # custom target "smoketests" just to keep old naming
 add_custom_target( smoketests DEPENDS tests_smoke )
 
+set( ALP_SCRIPTS_COMMON_ARGS "--backends" )
+
+foreach( b ${AVAILABLE_BACKENDS} )
+	string( FIND ${b} "alp" alp_pos_in_b )
+	# message("alp_pos_in_b = ${alp_pos_in_b}")
+	if( "${alp_pos_in_b}" STREQUAL "-1" )
+		continue()
+	endif()
+	# message("Adding ALP backend ${b} to the test list")
+	get_property( bt GLOBAL PROPERTY tests_backend_${b} )
+	list( APPEND ALP_TEST_BACKENDS "${bt}" )
+	list( APPEND ALP_SCRIPTS_COMMON_ARGS ${b} )
+endforeach()
+
+# message("ALP backends enabled for testing: ${ALP_SCRIPTS_COMMON_ARGS}")
+# message("Collected ALP test targets: ${ALP_TEST_BACKENDS}")
+
+set( alp_smoke_tests_list ${ALP_TEST_BACKENDS})
+list(APPEND S_minus_T ${ALP_TEST_BACKENDS})
+list(REMOVE_ITEM S_minus_T ${smoke_tests_list})
+list(REMOVE_ITEM alp_smoke_tests_list ${S_minus_T} )
+
+add_custom_target( smoketests_alp
+	COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/smoketests.sh
+		${ALP_SCRIPTS_COMMON_ARGS}
+		"--test-bin-dir" "\"${CMAKE_CURRENT_BINARY_DIR}\""
+		"--test-out-dir" "\"${CMAKE_CURRENT_BINARY_DIR}/output\""
+		"--output-verification-dir" "\"${CMAKE_CURRENT_SOURCE_DIR}/output_verification\""
+		"--test-data-dir" "\"${CMAKE_CURRENT_SOURCE_DIR}/test_data\""
+
+	WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}"
+	DEPENDS ${alp_smoke_tests_list} # add dependency on this target
+	                                   # to automatically build before running
+	COMMAND_EXPAND_LISTS
+	USES_TERMINAL
+)

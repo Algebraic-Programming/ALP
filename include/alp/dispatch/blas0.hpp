@@ -25,12 +25,15 @@
 
 #include <type_traits> // std::enable_if, std::is_same
 
-#include <alp/base/blas0.hpp>
 #include <alp/backends.hpp>
-#include <alp/rc.hpp>
 #include <alp/descriptors.hpp>
+#include <alp/rc.hpp>
 #include <alp/type_traits.hpp>
-#include <alp/scalar.hpp>
+
+#include <alp/base/blas0.hpp>
+
+#include "scalar.hpp"
+
 #include <alp/reference/blas0.hpp> // for internal apply and fold
 
 #define NO_CAST_ASSERT( x, y, z )                                              \

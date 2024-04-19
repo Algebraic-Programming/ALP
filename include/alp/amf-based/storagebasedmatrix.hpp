@@ -32,7 +32,13 @@
  * @todo This should not happen given the hierarchy of concepts. Fix by splitting
  * \a internal::Vector from the various vector.hpp
  */
+
+#if defined( _ALP_WITH_REFERENCE ) || defined( _ALP_OMP_WITH_REFERENCE )
  #include <alp/reference/vector.hpp>
+#endif
+#if defined( _ALP_WITH_DISPATCH ) || defined( _ALP_OMP_WITH_DISPATCH )
+ #include <alp/dispatch/vector.hpp>
+#endif
 
 
 namespace alp {

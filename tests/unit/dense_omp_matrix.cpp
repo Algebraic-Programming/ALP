@@ -37,7 +37,7 @@ void alp_program( const size_t &n, alp::RC &rc ) {
 	std::cout << "\tStarting dense OMP matrix test with size: " << n << " x " << n <<  "\n";
 
 	// create the matrix
-	alp::Matrix< float, alp::structures::General > M( n, n );
+	alp::Matrix< T, alp::structures::General > M( n, n );
 
 	// set all matrix elements to 1
 	rc = rc ? rc : alp::set( M, alp::Scalar< T >( ring.template getOne< T >() ) );

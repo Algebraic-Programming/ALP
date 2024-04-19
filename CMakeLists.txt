@@ -270,11 +270,6 @@ if( WITH_BSP1D_BACKEND OR WITH_HYBRID_BACKEND )
 	find_package( LPF REQUIRED )
 endif( )
 
-if( WITH_ALP_DISPATCH_BACKEND )
-	include( Blas )
-endif( )
-
-
 ### SETTINGS FOR COMPILATION
 
 set( TEST_CATEGORIES "unit" "smoke" "performance" )
@@ -286,6 +281,10 @@ set( TEST_CATEGORIES "unit" "smoke" "performance" )
 # (NOT imported via 'add_subdirectory()') here for variables to be in the same
 # scope and propagate down to the other files
 include( AddGRBVars )
+
+if( WITH_ALP_DISPATCH_BACKEND )
+        include( Blas )
+endif( )
 
 # here, add information for wrappers generated during installation
 include( AddGRBInstall )

@@ -132,9 +132,23 @@ if( WITH_ALP_REFERENCE_BACKEND )
 endif()
 
 if( WITH_ALP_DISPATCH_BACKEND )
+	set( _blas_libraries ${BLAS_LIBRARIES} )
+	foreach( _lib ${BLAS_LIBRARIES} )
+		get_filename_component(_path ${_lib} DIRECTORY)
+		set( _path " -Wl,-rpath ${_path}"  )
+		list(APPEND _lib_lists ${_path} )
+	endforeach()
+	#list( TRANSFORM _blas_libraries PREPEND "-l" )
+	list( JOIN _lib_lists " " _blas_rpaths )
+	list( JOIN _blas_libraries " " _blas_link_libs )
+	set( _cxx_additional_includes " -I${INCLUDE_INSTALL_DIR}/blas_wrapper " )
+	if( NOT ${KBLAS_INCLUDE_DIR} STREQUAL "" )
+		set( _cxx_additional_includes " -I${KBLAS_INCLUDE_DIR} ${_cxx_additional_includes}" )
+	endif()
 	addBackendWrapperGenOptions( "alp_dispatch"
 		COMPILE_DEFINITIONS "ALP_DISPATCH_INCLUDE_DEFS" "${ALP_DISPATCH_SELECTION_DEFS}"
-		LINK_FLAGS "${ALP_DISPATCH_BACKEND_INSTALL_DIR}/lib${BACKEND_LIBRARY_OUTPUT_NAME}.a" "-lblas"
+		LINK_FLAGS "${ALP_DISPATCH_BACKEND_INSTALL_DIR}/lib${BACKEND_LIBRARY_OUTPUT_NAME}.a ${_blas_link_libs} ${_blas_rpaths}"
+		COMPILE_OPTIONS "${_cxx_additional_includes}"
 	)
 endif()
 

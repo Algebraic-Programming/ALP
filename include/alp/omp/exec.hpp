@@ -30,6 +30,10 @@
 #ifdef _ALP_OMP_WITH_REFERENCE
  #include <alp/reference/init.hpp>
 #endif
+#ifdef _ALP_OMP_WITH_DISPATCH
+ #include <alp/dispatch/init.hpp>
+#endif
+
 namespace alp {
 
 	/**

@@ -22,9 +22,11 @@
 #include <alp/base/matrix.hpp>
 #include <alp/amf-based/matrix.hpp>
 #include <alp/config.hpp>
-#include <alp/storage.hpp>
 #include <alp/structures.hpp>
 #include <alp/imf.hpp>
+
+#include "storage.hpp"
+
 
 namespace alp {
 

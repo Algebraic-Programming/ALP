@@ -28,7 +28,12 @@
 
 #include <cmath>
 
-#include <alp/amf-based/storage.hpp>
+#ifdef _ALP_OMP_WITH_REFERENCE
+ #include <alp/amf-based/storage.hpp>
+#endif
+#ifdef _ALP_OMP_WITH_DISPATCH
+ #include <alp/dispatch/storage.hpp>
+#endif
 
 namespace alp {
 
@@ -385,7 +390,9 @@ namespace alp {
 					imf_r( imf_r ), imf_c( imf_c ),
 					num_threads( num_threads ),
 					distribution( imf_r.n, imf_c.n, num_threads ) {
+#ifdef DEBUG
 					std::cout << "Entering AMF normal constructor\n";
+#endif
 				}
 
 				AMF( const AMF & ) = delete;
@@ -398,7 +405,9 @@ namespace alp {
 					imf_c( std::move( amf.imf_c ) ),
 					num_threads( amf.num_threads ),
 					distribution( std::move( amf.distribution ) ) {
+#ifdef DEBUG
 					std::cout << "Entering OMP AMF move constructor\n";
+#endif
 				}
 
 				const Distribution_2_5D &getDistribution() const {
