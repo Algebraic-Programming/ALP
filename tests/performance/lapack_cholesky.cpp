@@ -85,7 +85,11 @@ void alp_program( const inpdata &unit, bool &rc ) {
 	generate_spd_matrix_full( N, matrix_data );
 	//print("matrix_data", &(matrix_data[0]), N);
 
-	char uplo='L';
+
+	std::cout << "Testing dpotrf_ for U^T * U = S, with S SPD of size ( " << N << " x " << N << " )\n";
+	std::cout << "Test repeated " << unit.repeat << " times.\n";
+
+	char uplo='U';
 	int info;
 
 	times = 0;
@@ -103,8 +107,8 @@ void alp_program( const inpdata &unit, bool &rc ) {
 	}
 
 
-	std::cout << " times(total) = " << times << "\n";
-	std::cout << " times(per repeat) = " << times / unit.repeat  << "\n";
+	std::cout << " time (ms, total) = " << times << "\n";
+	std::cout << " time (ms, per repeat) = " << times / unit.repeat  << "\n";
 
 	//print("matrix_data", &(matrix_data[0]), N);
 

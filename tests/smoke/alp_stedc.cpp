@@ -20,11 +20,12 @@
 
 #include <graphblas/utils/Timer.hpp>
 #include <alp.hpp>
-#include <alp/algorithms/symm_tridiag_eigensolver.hpp>
+//#include <alp/algorithms/symm_tridiag_eigensolver.hpp>
+#include <alp/algorithms/qr_eigensolver.hpp>
 #include <graphblas/utils/iscomplex.hpp> // use from grb
-#ifdef DEBUG
+//#ifdef DEBUG
 #include "../utils/print_alp_containers.hpp"
-#endif
+//#endif
 
 using namespace alp;
 
@@ -85,7 +86,7 @@ std::vector< T >  generate_symmherm_tridiag_matrix_data(
 	std::vector< T > data( N * N );
 	for( size_t i = 0; i < N; ++i ) {
 		for( size_t j = i; ( j < N ) && ( j <= i + 1 ); ++j ) {
-			T val = static_cast< T >( std::rand() )  / RAND_MAX;
+			T val = static_cast< T >( std::rand() )  / RAND_MAX  * .001;
 			data[ i * N + j ] = val;
 			data[ j * N + i ] += grb::utils::is_complex< T >::conjugate( data[ i * N + j ] );
 		}
@@ -270,7 +271,8 @@ void alp_program( const inpdata &unit, alp::RC &rc ) {
 
 		timer.reset();
 
-		rc = rc ? rc : algorithms::symm_tridiag_dac_eigensolver( T, Q, d, ring );
+		// rc = rc ? rc : algorithms::symm_tridiag_dac_eigensolver( T, Q, d, ring );
+                rc = rc ? rc : algorithms::qr_eigensolver( T, Q, d, ring );
 
 		times += timer.time();
 
@@ -282,22 +284,21 @@ void alp_program( const inpdata &unit, alp::RC &rc ) {
 		// the algorithm should return correct eigenvalues
 		// but for larger matrices (n>20) a more stable calculations
 		// of eigenvectors is needed
-		// therefore we disable numerical correctness check in this version
 
-		// rc = check_overlap( Q );
-		// if( rc != SUCCESS ) {
-		// 	std::cout << "Error: mratrix Q is not orthogonal\n";
-		// }
+		rc = check_overlap( Q );
+		if( rc != SUCCESS ) {
+			std::cout << "Error: mratrix Q is not orthogonal\n";
+		}
 
-		// rc = check_solution( T, Q, d );
-		// if( rc != SUCCESS ) {
-		// 	std::cout << "Error: solution numerically wrong\n";
-		// }
+		rc = check_solution( T, Q, d );
+		if( rc != SUCCESS ) {
+			std::cout << "Error: solution numerically wrong\n";
+		}
 
 	}
 
-	std::cout << " times(total) = " << times << "\n";
-	std::cout << " times(per repeat) = " << times / unit.repeat  << "\n";
+	std::cout << " time (ms, total) = " << times << "\n";
+	std::cout << " time (ms, per repeat) = " << times / unit.repeat  << "\n";
 }
 
 int main( int argc, char **argv ) {

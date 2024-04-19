@@ -26,7 +26,8 @@
 #include <graphblas/utils/Timer.hpp>
 #include <alp.hpp>
 #include <alp/algorithms/householder_tridiag.hpp>
-#include <alp/algorithms/symm_tridiag_eigensolver.hpp>
+// #include <alp/algorithms/symm_tridiag_eigensolver.hpp>
+#include <alp/algorithms/qr_eigensolver.hpp>
 #include <graphblas/utils/iscomplex.hpp> // use from grb
 #include "../utils/print_alp_containers.hpp"
 
@@ -47,7 +48,7 @@ using HermitianOrSymmetricTridiagonal = structures::SymmetricTridiagonal;
 using HermitianOrSymmetric = structures::Symmetric;
 #endif
 
-constexpr BaseScalarType tol = 1.e-10;
+constexpr BaseScalarType tol = 1.e-5;
 constexpr size_t RNDSEED = 1;
 
 struct inpdata {
@@ -91,7 +92,7 @@ std::vector< T >  generate_symmherm_matrix_data(
 	for( size_t i = 0; i < N; ++i ) {
 		for( size_t j = i; j < N; ++j ) {
 			//data[ k ] = static_cast< T >( i + j*j ); // easily reproducible
-			data[ k ] = static_cast< T >( std::rand() )  / RAND_MAX;
+			data[ k ] = static_cast< T >( std::rand() )  / RAND_MAX  * .001;
 			++k;
 		}
 	}
@@ -281,15 +282,15 @@ void alp_program( const inpdata &unit, alp::RC &rc ) {
 		rc = rc ? rc : set( Q1, zero );
 		rc = rc ? rc : set( Q2, zero );
 		rc = rc ? rc : set( Q, zero );
-		rc = rc ? rc : algorithms::householder_tridiag( Q1, T, H, ring );
 
 		timer.reset();
+		rc = rc ? rc : algorithms::householder_tridiag( Q1, T, H, ring );
 
-		rc = rc ? rc : algorithms::symm_tridiag_dac_eigensolver( T, Q2, d, ring );
-
-		times += timer.time();
+		// rc = rc ? rc : algorithms::symm_tridiag_dac_eigensolver( T, Q2, d, ring );
+		rc = rc ? rc : algorithms::qr_eigensolver( T, Q2, d, ring );
 
 		rc = rc ? rc : alp::mxm( Q, Q1, Q2, ring );
+		times += timer.time();
 
 #ifdef DEBUG
 		print_matrix( "  Q1 ", Q1 );
@@ -301,21 +302,20 @@ void alp_program( const inpdata &unit, alp::RC &rc ) {
 		// the algorithm should return correct eigenvalues
 		// but for larger matrices (n>20) a more stable calculations
 		// of eigenvectors is needed
-		// therefore we disable numerical correctness check in this version
 
-		// rc = check_overlap( Q );
-		// if( rc != SUCCESS ) {
-		// 	std::cout << "Error: mratrix Q is not orthogonal\n";
-		// }
+		rc = check_overlap( Q );
+		if( rc != SUCCESS ) {
+			std::cout << "Error: matrix Q is not orthogonal\n";
+		}
 
-		// rc = check_solution( H, Q, d );
-		// if( rc != SUCCESS ) {
-		// 	std::cout << "Error: solution numerically wrong\n";
-		// }
+		rc = check_solution( H, Q, d );
+		if( rc != SUCCESS ) {
+			std::cout << "Error: solution numerically wrong\n";
+		}
 	}
 
-	std::cout << " times(total) = " << times << "\n";
-	std::cout << " times(per repeat) = " << times / unit.repeat  << "\n";
+	std::cout << " time (ms, total) = " << times << "\n";
+	std::cout << " time (ms, per repeat) = " << times / unit.repeat  << "\n";
 
 }
 

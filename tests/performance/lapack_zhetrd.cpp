@@ -19,12 +19,18 @@
 #include <sstream>
 #include <vector>
 
+#include <complex>
+#include <cmath>
+#include <iomanip>
+
 #include <graphblas/utils/Timer.hpp>
+#include <graphblas/utils/iscomplex.hpp> // use from grb
 
-#include <alp_blas.h> // for gemm
+#include "lapacke.h"
 
-typedef double ScalarType;
-constexpr ScalarType tol = 1.e-10;
+using BaseScalarType = double;
+using ScalarType = std::complex< BaseScalarType >;
+constexpr BaseScalarType tol = 1.e-10;
 constexpr size_t RNDSEED = 1;
 
 struct inpdata {
@@ -32,86 +38,80 @@ struct inpdata {
   	size_t repeat=1;
 };
 
-template< typename T >
-void print(const char * name, const std::vector<T> &matrix, int M, int N )
-{
-  std::cout <<  name << " = array ( [\n";
-  for (int i = 0; i < M; i++){
-    std::cout << "  [";
-    for (int j = 0; j < N; j++){
-      std::cout << matrix[i * N + j ] << ", ";
-    }
-    std::cout << " ],\n";
-  }
-  std::cout << "\n])\n";
-}
 
-
-
-/** gnerate random rectangular matrix data */
-template< typename T >
-void generate_random_matrix_data( size_t n, std::vector<T> &data ) {
-	if( data.size() != n ) {
-	        std::cout << "Error: generate_random_matrix_data: Provided container does not have adequate size\n";
+//** generate vector or upper/lower triangular part of an SPD matrix */
+template<
+	typename T
+>
+void generate_symmherm_matrix_data(
+	size_t N,
+	std::vector< T > &data,
+	const typename std::enable_if<
+		grb::utils::is_complex< T >::value,
+		void
+	>::type * const = nullptr
+) {
+	std::fill(data.begin(), data.end(), static_cast< T >( 0 ) );
+	std::srand( RNDSEED );
+	for( size_t i = 0; i < N; ++i ) {
+		for( size_t j = i; j < N; ++j ) {
+			T val( std::rand(), std::rand() );
+			data[ i * N + j ] = val / std::abs( val );
+			data[ j * N + i ] += grb::utils::is_complex< T >::conjugate( data[ i * N + j ] );
+		}
 	}
-        for( size_t i = 0; i < n; ++i ) {
-                data[ i ] = static_cast< T >( std::rand() ) / static_cast< T >( RAND_MAX );
-        }
 }
+
+
 
 void alp_program( const inpdata &unit, bool &rc ) {
-  rc = true;
+	rc = true;
 
-  const size_t N = unit.N;
-  const size_t K = 1 * N;
-  const size_t M = 1 * N;
-  grb::utils::Timer timer;
-  timer.reset();
-  double times;
-
-  std::vector< ScalarType > Amatrix_data( N * K );
-  std::vector< ScalarType > Bmatrix_data( K * M );
-  std::vector< ScalarType > Cmatrix_data( N * M );
-  generate_random_matrix_data( N * K, Amatrix_data );
-  generate_random_matrix_data( K * M, Bmatrix_data );
-
-  // print("A ", Amatrix_data, N, K );
-  // print("B ", Bmatrix_data, K, M );
-  // print("C ", Cmatrix_data, N, M );
+	int N = unit.N;
+	grb::utils::Timer timer;
+	timer.reset();
+	double times;
 
 
-  std::cout << "Testing cblas_dgemm for C(" << N << " x " << M
-	    << ") +=   A(" << N << " x " << K
-	    << ") x B(" << K << " x " << M
-	    << ")  "  << unit.repeat << " times.\n";
+	std::cout << "Testing zhetrd_  ( " << N << " x " << N << " )\n";
+	std::cout << "Test repeated " << unit.repeat << " times.\n";
 
-   times = 0;
+	char uplo = 'U';
+	std::vector< ScalarType > mat_a( N * N );
+	generate_symmherm_matrix_data( N, mat_a );
+	std::vector< BaseScalarType > vec_d( N );
+	std::vector< BaseScalarType > vec_e( N - 1 );
+	std::vector< ScalarType > vec_tau( N - 1 );
+	ScalarType wopt;
+	int lwork = -1;
+	int info;
+	
+	zhetrd_(&uplo, &N, ( lapack_complex_double * )( &( mat_a[0] ) ), &N, 
+		&( vec_d[0] ), &( vec_e[0] ), ( lapack_complex_double * )( &( vec_tau[0] ) ), ( lapack_complex_double * )( &( wopt ) ), &lwork, &info);
+	lwork = (int)( wopt.real() );
+	std::vector< ScalarType > work( lwork );
+	
+	times = 0;
 
 	for( size_t j = 0; j < unit.repeat; ++j ) {
+	  std::vector< ScalarType > mat_a_work( mat_a );
 	  timer.reset();
-	  cblas_dgemm(
-		CblasRowMajor,
-		CblasNoTrans,
-		CblasNoTrans,
-		N,
-		M,
-		K,
-		1,
-		&(Amatrix_data[0]),
-		K,
-		&(Bmatrix_data[0]),
-		M,
-		1,
-		&(Cmatrix_data[0]),
-		M
-	  );
+	  zhetrd_(&uplo, &N, ( lapack_complex_double * )( &( mat_a_work[0] ) ), &N, 
+	  	&( vec_d[0] ), &( vec_e[0] ), ( lapack_complex_double * )( &( vec_tau[0] ) ), ( lapack_complex_double * )( &( work[0] ) ), &lwork, &info);
 	  times += timer.time();
+	  if( info != 0 ) {
+	    std::cout << " info = " << info << "\n";
+	    rc = false;
+	    return;
+	  }
 	}
+
 
 	std::cout << " time (ms, total) = " << times << "\n";
 	std::cout << " time (ms, per repeat) = " << times / unit.repeat  << "\n";
 
-	// print("C ", Cmatrix_data, N, M );
+	//print("matrix_data", &(matrix_data[0]), N);
+
 }
 
 int main( int argc, char ** argv ) {
@@ -160,7 +160,6 @@ int main( int argc, char ** argv ) {
 	      }
 
 	    }
-
 
 	  }
 

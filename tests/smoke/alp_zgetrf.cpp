@@ -244,8 +244,8 @@ void alp_program( const inpdata &unit, alp::RC &rc ) {
 	}
 	for( size_t i = 0; i < 3; ++i ) {
 		std::cout << " Matrix " << m_arr[ i ] << " x " << n_arr[ i ] << "\n";
-		std::cout << " times(total) = " << times[ i ] << "\n";
-		std::cout << " times(per repeat) = " << times[ i ] / unit.repeat  << "\n";
+		std::cout << " time (ms, total) = " << times[ i ] << "\n";
+		std::cout << " time (ms, per repeat) = " << times[ i ] / unit.repeat  << "\n";
 	}
 }
 
