@@ -54,6 +54,9 @@ namespace grb {
 			/** @see Vector::value_type. */
 			typedef T value_type;
 
+			/** @see Vector::lambda_reference */
+			typedef T& lambda_reference;
+
 			/**
 			 * The default ALP scalar constructor.
 			 *
@@ -162,6 +165,60 @@ namespace grb {
 			 */
 			Scalar( Scalar &&other ) noexcept {
 				(void)other;
+			}
+
+			/**
+			 * Returns a lambda reference to the value of this Scalar. The user
+			 * ensures that the requested reference only corresponds to a pre-existing
+			 * nonzero in this scalar, <em>or undefined behaviour will occur</em>.
+			 * This addresses the sparse specialization of scalars. In the dense
+			 * context, scalar is considered to have a nonzero value \em iff initialized.
+			 *
+			 * A lambda reference to the value of this scalar is only valid when used
+			 * inside a lambda function evaluated via grb::eWiseLambda. Outside this
+			 * scope the returned reference incurs undefined behaviour.
+			 *
+			 *
+			 * \warning In parallel contexts the use of a returned lambda reference
+			 *          outside the context of an eWiseLambda will incur at least one of
+			 *          the following ill effects: it may
+			 *            -# fail outright,
+			 *            -# work on stale data,
+			 *            -# work on incorrect data, or
+			 *            -# incur high communication costs to guarantee correctness.
+			 *          In short, such usage causes undefined behaviour. Implementers are
+			 *          \em not advised to provide GAS-like functionality through this
+			 *          interface, as it invites bad programming practices and bad
+			 *          algorithm design decisions. This operator is instead intended to
+			 *          provide for generic BLAS0-type operations only.
+			 *
+			 * \note    For I/O, use the iterator retrieved via cbegin() instead of
+			 *          relying on a lambda_reference.
+			 *
+			 * @return      A lambda reference to the value of this scalar
+			 *
+			 * \par Example.
+			 * See grb::eWiseLambda() for a practical and useful example.
+			 *
+			 * \warning There is no similar concept in the official GraphBLAS specs.
+			 *
+			 * @see lambda_reference For more details on the returned reference type.
+			 * @see grb::eWiseLambda For one legal way in which to use the returned
+			 *      #lambda_reference.
+			 */
+			lambda_reference operator*() noexcept {
+#ifndef _GRB_NO_EXCEPTIONS
+				assert( false ); // Requesting lambda reference of unimplemented Scalar backend.
+#endif
+			}
+
+			/** Returns a constant reference to the scalar value.
+			 * See the non-constant variant for further details.
+			 */
+			const lambda_reference operator*() const noexcept {
+#ifndef _GRB_NO_EXCEPTIONS
+				assert( false ); // Requesting lambda reference of unimplemented Scalar backend.
+#endif
 			}
 
 	}; // class Scalar

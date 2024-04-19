@@ -425,11 +425,22 @@ namespace grb {
 		struct range {
 			size_t start, end, stride;
 
+			range(): start( 0 ), end( std::numeric_limits< size_t >::max() ), stride( 1 ) {}
+
 			range(size_t start, size_t end, size_t stride=1): start( start ), end( end ), stride( stride ) {}
 
 			inline size_t count() const {
 				return (end - start)/stride;
 			}
+
+			inline bool is_full() const {
+				return ( count() == std::numeric_limits< size_t >::max() );
+			}
+
+			inline bool is_empty() const {
+				return ( count() == 0 );
+			}
+
 		};
 
 	} // namespace utils
