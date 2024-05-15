@@ -24,6 +24,7 @@
 #define _H_GRB_REFERENCE_INIT
 
 #include <new>
+#include <cstdint>
 #include <algorithm>
 
 #include <graphblas/base/init.hpp>

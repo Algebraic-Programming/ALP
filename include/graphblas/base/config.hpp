@@ -33,6 +33,7 @@
 
 #include <assert.h>
 #include <unistd.h> //sysconf
+#include <cstdint> // for uintptr_t
 
 #include <graphblas/backends.hpp>
 
