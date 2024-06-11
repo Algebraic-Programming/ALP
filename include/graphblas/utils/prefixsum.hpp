@@ -145,6 +145,11 @@ namespace grb {
 			T *__restrict__ array, const size_t n,
 			T &myOffset
 		) {
+#ifdef _DEBUG
+			std::cout << "\t entering prefixSum_ompPar_phase3\n"
+				<< "\t\t computed offset is " << myOffset << "\n"
+				<< "\t\t my thread ID is " << omp_get_thread_num() << "\n";
+#endif
 			size_t start, end;
 			config::OMP::localRange( start, end, 0, n,
 				config::CACHE_LINE_SIZE::value() );
