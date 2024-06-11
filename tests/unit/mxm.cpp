@@ -36,9 +36,9 @@ void grb_program( const size_t &n, grb::RC &rc ) {
 
 	// initialize test
 	const grb::Matrix< double > A = matrices< double >::eye( n, n, 1, 1 );
-	const grb::Matrix< double > B = matrices< double >::eye( n, n, 0, 2 );
+	const grb::Matrix< double > B = matrices< double >::eye( n, n, 2, 2 );
 	grb::Matrix< double > C( n, n );
-	grb::Matrix< double > C_expected = matrices< double >::eye( n, n, 2, 1 );
+	grb::Matrix< double > C_expected = matrices< double >::eye( n, n, 2, 3 );
 
 	// compute with the semiring mxm
 	std::cout << "\tVerifying the semiring version of mxm\n";
@@ -58,12 +58,14 @@ void grb_program( const size_t &n, grb::RC &rc ) {
 
 	// check CRS output
 	if( utils::compare_crs( C, C_expected ) != SUCCESS ) {
-		std::cerr << "Error: unexpected CRS output\n";
+		std::cerr << "Error detected while comparing output to ground-truth CRS\n";
+		rc = FAILED;
 	}
 
 	// check CCS output
 	if( utils::compare_ccs( C, C_expected ) != SUCCESS ) {
-		std::cerr << "Error: unexpected CCS output\n";
+		std::cerr << "Error detected while comparing output to ground-truth CCS\n";
+		rc = FAILED;
 	}
 
 	// compute with the operator-monoid mxm
@@ -93,12 +95,14 @@ void grb_program( const size_t &n, grb::RC &rc ) {
 
 	// check CRS output
 	if( utils::compare_crs( C, C_expected ) != SUCCESS ) {
-		std::cerr << "Error: unexpected CRS output\n";
+		std::cerr << "Error detected while comparing output to ground-truth CRS\n";
+		rc = FAILED;
 	}
 
 	// check CCS output
 	if( utils::compare_ccs( C, C_expected ) != SUCCESS ) {
-		std::cerr << "Error: unexpected CCS output\n";
+		std::cerr << "Error detected while comparing output to ground-truth CCS\n";
+		rc = FAILED;
 	}
 }
 
