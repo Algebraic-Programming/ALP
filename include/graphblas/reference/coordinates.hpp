@@ -20,7 +20,8 @@
  * @date 5th of July, 2017
  */
 
-#if !defined _H_GRB_REFERENCE_COORDINATES || defined _H_GRB_REFERENCE_OMP_COORDINATES
+#if !defined _H_GRB_REFERENCE_COORDINATES ||\
+	defined _H_GRB_REFERENCE_OMP_COORDINATES
 #define _H_GRB_REFERENCE_COORDINATES
 
 #include <stddef.h> //size_t
@@ -749,7 +750,8 @@ namespace grb {
 						return PANIC;
 					}
 #ifdef _DEBUG_REFERENCE_COORDINATES
-					std::cout << "Entering Coordinates::rebuildFromStack (reference backend, non-void version). New stack count: " << new_nz << ".\n";
+					std::cout << "Entering Coordinates::rebuildFromStack (reference backend, "
+						<< "non-void version). New stack count: " << new_nz << ".\n";
 					std::cout << "\t stack contents: ( ";
 					for( size_t k = 0; k < new_nz; ++k ) {
 						std::cout << _stack[ k ] << " ";
@@ -789,8 +791,10 @@ namespace grb {
 							#pragma omp critical
  #endif
 							{
-								std::cout << "\tProcessing global stack element " << k << " which has index " << i << "."
-									<< " _assigned[ index ] = " << _assigned[ i ] << " and value[ index ] will be set to " << packed_in[ k ] << ".\n";
+								std::cout << "\tProcessing global stack element " << k
+									<< " which has index " << i << ". _assigned[ index ] = "
+									<< _assigned[ i ] << " and value[ index ] will be set to "
+									<< packed_in[ k ] << ".\n";
 							}
 #endif
 							assert( i < _cap );
@@ -815,12 +819,14 @@ namespace grb {
 				 * of this class.
 				 *
 				 * This variant does not perform on the fly copies of packed into unpacked
-				 * nonzero arrays. It does, however, employ the same interface as the version
-				 * that does so as to simplify the life of callees.
+				 * nonzero arrays. It does, however, employ the same interface as the
+				 * version that does so as to simplify the life of callees.
 				 *
 				 * @param[in]  new_nz The number of nonzeroes in #_stack.
 				 */
-				RC rebuildFromStack( void * const, const void * const, const size_t new_nz ) {
+				RC rebuildFromStack(
+					void * const, const void * const, const size_t new_nz
+				) {
 					if( _assigned == nullptr && _cap > 0 && _n == _cap ) {
 						std::cerr << "Coordinates< reference >::rebuildFromStack called from a "
 							<< "dense coordinate instance!\n";
@@ -888,7 +894,8 @@ namespace grb {
 					const DataType * const array_in
 				) const {
 #ifdef _DEBUG_REFERENCE_COORDINATES
-					std::cout << "Called Coordinates::packValues (reference backend, non-void version)\n";
+					std::cout << "Called Coordinates::packValues (reference backend, "
+						<< "non-void version)\n";
 #endif
 					assert( stack_out != nullptr );
 					assert( packed_out != nullptr );
@@ -1064,18 +1071,23 @@ namespace grb {
 					// if dense, do a direct assign of our local structures
 					if( dense || localSparsity.isDense() ) {
 #ifdef _DEBUG_REFERENCE_COORDINATES
-						if( !dense ) { std::cout << "\t our possibly sparse local coordinates were found to be dense\n"; }
+						if( !dense ) {
+							std::cout << "\t our possibly sparse local coordinates were found to be "
+								<< "dense\n";
+						}
 #endif
 						assert( localSparsity._n == localSparsity._cap );
-						// if we are dense ourselves, just memset everything and set our stack ourselves
-						// this is a Theta(n) operation which touches exactly n data elements
+						// If we are dense ourselves, just memset everything and set our stack
+						// ourselves. This is a Theta(n) operation which touches exactly n data
+						// elements.
 						if( isDense() ) {
 #ifdef _DEBUG_REFERENCE_COORDINATES
 							std::cout << "\t We are dense ourselves\n";
 #endif
 #ifdef _H_GRB_REFERENCE_OMP_COORDINATES
-							// is this not totally unnecessary if assuming our structure was cleared first,
-							// and isn't that always the case making this branch therefore dead code?
+							// is this not totally unnecessary if assuming our structure was cleared
+							// first, and isn't that always the case making this branch therefore
+							// dead code?
 							// internal issue #262
 							#pragma omp parallel
 							{
@@ -1200,7 +1212,7 @@ namespace grb {
 									}
 								}
 								// this nonzero has become invalid, ignore it
-								(void)++k;
+								(void) ++k;
 								// and continue the loop
 							}
 						}
@@ -1605,7 +1617,10 @@ namespace grb {
 				 *
 				 * @return The nonzero index the i-th nonzero corresponds to.
 				 */
-				inline StackType asyncCopy( const Coordinates &x, const size_t &i ) noexcept {
+				inline StackType asyncCopy(
+					const Coordinates &x,
+					const size_t &i
+				) noexcept {
 #ifndef NDEBUG
 					if( _assigned == nullptr && _cap > 0 && _n == _cap ) {
 						const bool dense_coordinate_may_not_call_asyncCopy = false;
