@@ -42,7 +42,11 @@
  #include <omp.h>
 #endif
 
-#if defined _DEBUG && ! defined NDEBUG
+#ifdef _DEBUG
+ #define _DEBUG_REFERENCE_COORDINATES
+#endif
+
+#if defined _DEBUG_REFERENCE_COORDINATES && ! defined NDEBUG
  #include <set>
 #endif
 
@@ -236,6 +240,12 @@ namespace grb {
 
 				inline void clear_oh_nz_seq() noexcept {
 					for( size_t k = 0; k < _n; ++k ) {
+#ifdef _DEBUG_REFERENCE_COORDINATES
+ #ifdef _H_GRB_REFERENCE_OMP_COORDINATES
+						#pragma omp critical
+ #endif
+						std::cout << "\t\t\t\t clearing position " << k << "\n";
+#endif
 						_assigned[ _stack[ k ] ] = false;
 					}
 				}
@@ -592,7 +602,7 @@ namespace grb {
 				 *                 valid state.
 				 */
 				void rebuild( const bool dense ) noexcept {
-#ifdef _DEBUG
+#ifdef _DEBUG_REFERENCE_COORDINATES
 					std::cout << "Coordinates::rebuild called with dense = " << dense << "\n";
 #endif
 					// catch most trivial case: a vector of dimension 0 (empty vector)
@@ -608,7 +618,7 @@ namespace grb {
 #endif
 					// catch the other trivial-ish case (since can delegate)
 					if( dense && _n != _cap ) {
-#ifdef _DEBUG
+#ifdef _DEBUG_REFERENCE_COORDINATES
 						std::cout << "rebuildSparsity: dense case\n";
 #endif
 						assignAll();
@@ -621,7 +631,7 @@ namespace grb {
 					#pragma omp parallel
 #endif
 					{
-#ifdef _DEBUG
+#ifdef _DEBUG_REFERENCE_COORDINATES
  #ifdef _H_GRB_REFERENCE_OMP_COORDINATES
 						#pragma omp single
  #endif
@@ -645,7 +655,7 @@ namespace grb {
 						assert( start <= end );
 						assert( end <= _cap );
 #endif
-#ifdef _DEBUG
+#ifdef _DEBUG_REFERENCE_COORDINATES
 						std::cout << "Coordinates::rebuild: thread " << s << " has range "
 							<< start << "--" << end << "\n";
 #endif
@@ -656,7 +666,7 @@ namespace grb {
 							}
 						}
 						counts[ s ] = local_count;
-#ifdef _DEBUG
+#ifdef _DEBUG_REFERENCE_COORDINATES
  #ifdef _H_GRB_REFERENCE_OMP_COORDINATES
 						#pragma omp critical
  #endif
@@ -670,12 +680,12 @@ namespace grb {
 						{
 #endif
 
-#ifdef _DEBUG
+#ifdef _DEBUG_REFERENCE_COORDINATES
 							std::cout << "Coordinates::rebuild: thread 0 found " << counts[ 0 ]
 								<< " nonzeroes.\n";
 #endif
 							for( size_t k = 1; k < P; ++k ) {
-#ifdef _DEBUG
+#ifdef _DEBUG_REFERENCE_COORDINATES
 								std::cout << "Coordinates::rebuild: thread " << k << " found "
 									<< counts[ k ] << " nonzeroes.\n";
 #endif
@@ -694,10 +704,10 @@ namespace grb {
 							}
 						}
 						assert( local_count == counts[ s ] );
-#ifdef _DEBUG
-#ifdef _H_GRB_REFERENCE_OMP_COORDINATES
+#ifdef _DEBUG_REFERENCE_COORDINATES
+ #ifdef _H_GRB_REFERENCE_OMP_COORDINATES
 						#pragma omp single
-#endif
+ #endif
 						std::cout << "\tnew nonzero count: " << _n << "\n";
 #endif
 					} // end sparse version
@@ -738,7 +748,7 @@ namespace grb {
 #endif
 						return PANIC;
 					}
-#ifdef _DEBUG
+#ifdef _DEBUG_REFERENCE_COORDINATES
 					std::cout << "Entering Coordinates::rebuildFromStack (reference backend, non-void version). New stack count: " << new_nz << ".\n";
 					std::cout << "\t stack contents: ( ";
 					for( size_t k = 0; k < new_nz; ++k ) {
@@ -749,7 +759,7 @@ namespace grb {
 					assert( array_out != nullptr );
 					assert( packed_in != nullptr );
 					_n = new_nz;
-#if defined _DEBUG && ! defined NDEBUG
+#if defined _DEBUG_REFERENCE_COORDINATES && ! defined NDEBUG
 					{
 						// this is an extra and costly check only enabled with _DEBUG mode
 						std::set< size_t > indices;
@@ -774,7 +784,7 @@ namespace grb {
 #endif
 						for( size_t k = start; k < end; ++k ) {
 							const size_t i = _stack[ k ];
-#ifdef _DEBUG
+#ifdef _DEBUG_REFERENCE_COORDINATES
  #ifdef _H_GRB_REFERENCE_OMP_COORDINATES
 							#pragma omp critical
  #endif
@@ -820,7 +830,7 @@ namespace grb {
 #endif
 						return PANIC;
 					}
-#if defined _DEBUG && ! defined NDEBUG
+#if defined _DEBUG_REFERENCE_COORDINATES && ! defined NDEBUG
 					{
 						// this is an extra and costly check only enabled with _DEBUG mode
 						std::set< size_t > indices;
@@ -877,7 +887,7 @@ namespace grb {
 					DataType * const packed_out,
 					const DataType * const array_in
 				) const {
-#ifdef _DEBUG
+#ifdef _DEBUG_REFERENCE_COORDINATES
 					std::cout << "Called Coordinates::packValues (reference backend, non-void version)\n";
 #endif
 					assert( stack_out != nullptr );
@@ -896,7 +906,7 @@ namespace grb {
 							for( size_t i = start; i < end; ++i ) {
 								stack_out[ i ] = i + offset;
 								packed_out[ i ] = array_in[ i ];
-#ifdef _DEBUG
+#ifdef _DEBUG_REFERENCE_COORDINATES
  #ifdef _H_GRB_REFERENCE_OMP_COORDINATES
 								#pragma omp critical
  #endif
@@ -932,7 +942,7 @@ namespace grb {
 								assert( i < _cap );
 								stack_out[ k ] = i + offset;
 								packed_out[ k ] = array_in[ i ];
-#ifdef _DEBUG
+#ifdef _DEBUG_REFERENCE_COORDINATES
  #ifdef _H_GRB_REFERENCE_OMP_COORDINATES
 								#pragma omp critical
  #endif
@@ -1044,7 +1054,7 @@ namespace grb {
 						assert( dense_coordinates_may_not_call_rebuildGlobalSparsity );
 					}
 #endif
-#ifdef _DEBUG
+#ifdef _DEBUG_REFERENCE_COORDINATES
 					std::cout << "rebuildGlobalSparsity called with ";
 					if( dense ) { std::cout << "a dense local coordinate structure "; }
 					else { std::cout << "a possibly sparse local coordinate structure "; }
@@ -1053,14 +1063,14 @@ namespace grb {
 					assert( localSparsity._cap <= _cap );
 					// if dense, do a direct assign of our local structures
 					if( dense || localSparsity.isDense() ) {
-#ifdef _DEBUG
+#ifdef _DEBUG_REFERENCE_COORDINATES
 						if( !dense ) { std::cout << "\t our possibly sparse local coordinates were found to be dense\n"; }
 #endif
 						assert( localSparsity._n == localSparsity._cap );
 						// if we are dense ourselves, just memset everything and set our stack ourselves
 						// this is a Theta(n) operation which touches exactly n data elements
 						if( isDense() ) {
-#ifdef _DEBUG
+#ifdef _DEBUG_REFERENCE_COORDINATES
 							std::cout << "\t We are dense ourselves\n";
 #endif
 #ifdef _H_GRB_REFERENCE_OMP_COORDINATES
@@ -1114,14 +1124,14 @@ namespace grb {
 						}
 					}
 
-#ifdef _DEBUG
+#ifdef _DEBUG_REFERENCE_COORDINATES
 					std::cout << "\t our local coordinates are sparse\n";
 #endif
 					// at this point we are either sparse or dense. When dense,
 					// localCoordinates cannot be dense; otherwise the above code would have
 					// kicked in. We handle this case first:
 					if( isDense() ) {
-#ifdef _DEBUG
+#ifdef _DEBUG_REFERENCE_COORDINATES
 						std::cout << "\t our own coordinates were dense\n";
 #endif
 						// this is an O(n) loop. It touches n+n/p data elements.
@@ -1160,7 +1170,7 @@ namespace grb {
 						}
 #endif
 					} else {
-#ifdef _DEBUG
+#ifdef _DEBUG_REFERENCE_COORDINATES
 						std::cout << "\t our own sparsity structure was sparse\n";
 #endif
 						// we are sparse. Loop over our own nonzeroes and then use #_assigned
@@ -1197,7 +1207,7 @@ namespace grb {
 					}
 					// in both cases, we need to rebuild the stack. We copy it from
 					// localCoordinates:
-#ifdef _DEBUG
+#ifdef _DEBUG_REFERENCE_COORDINATES
 					std::cout << "\t rebuilding stack\n";
 #endif
 #ifdef _H_GRB_REFERENCE_OMP_COORDINATES
@@ -1217,7 +1227,7 @@ namespace grb {
 						}
 					}
 					_n = localSparsity.nonzeroes();
-#ifdef _DEBUG
+#ifdef _DEBUG_REFERENCE_COORDINATES
 					std::cout << "\t final debug-mode sanity check on output stack before "
 						<< "exit...";
 					for( size_t i = 0; i < _n; ++i ) {
@@ -1429,7 +1439,7 @@ namespace grb {
 #ifdef _H_GRB_REFERENCE_OMP_COORDINATES
 					const int t = omp_get_thread_num();
 					const int T = omp_get_num_threads();
-#ifdef _DEBUG
+#ifdef _DEBUG_REFERENCE_COORDINATES
 					#pragma omp critical
 					std::cout << t << ": joinUpdate called. Has " << _n << " nonzeroes on "
 						<< "entry. Thread-local stack has " << update[ 0 ] << " nonzeroes.\n";
@@ -1440,7 +1450,7 @@ namespace grb {
 					// reset the thread-local stack and get current number of elements
 					const size_t elements = resetUpdate( update );
 					pfBuf[ t ] = elements;
-#ifdef _DEBUG
+#ifdef _DEBUG_REFERENCE_COORDINATES
 					#pragma omp critical
 					std::cout << "\t Thread " << t << " has " << elements << " elements\n";
 #endif
@@ -1450,7 +1460,7 @@ namespace grb {
 					// compute prefix sum of stack elements
 					#pragma omp single
 					{
-#ifdef _DEBUG
+#ifdef _DEBUG_REFERENCE_COORDINATES
 						std::cout << "\t Nonzero counts on entry of prefix-sum "
 								 "computation: ";
 						for( int k = 0; k <= T; ++k ) {
@@ -1466,7 +1476,7 @@ namespace grb {
 							assert( pfBuf[ k ] <= _cap );
 						}
 						pfBuf[ 0 ] = 0;
-#ifdef _DEBUG
+#ifdef _DEBUG_REFERENCE_COORDINATES
 						std::cout << "\t Prefix sums: ";
 						for( int k = 0; k <= T; ++k ) {
 							std::cout << pfBuf[ k ] << " ";
@@ -1477,7 +1487,7 @@ namespace grb {
 
 					// catch trivial case
 					if( pfBuf[ T ] == 0 ) {
-#ifdef _DEBUG
+#ifdef _DEBUG_REFERENCE_COORDINATES
 						std::cout << "\t " << t << ": No updates to perform. "
 							<< "Exiting joinUpdate with TRUE\n";
 #endif
@@ -1496,7 +1506,7 @@ namespace grb {
 						pfBuf[ T ] :
 						global_start + global_bs;
 					const size_t global_length = global_end - global_start;
-#ifdef _DEBUG
+#ifdef _DEBUG_REFERENCE_COORDINATES
 					#pragma omp critical
 					std::cout << "\t Thread " << t << " has range "
 						<< global_start << " -- " << global_end << "\n";
@@ -1522,7 +1532,7 @@ namespace grb {
 						for( size_t t_cur = t_start; t_cur < t_end; ++t_cur ) {
 							// The below is a _DEBUG statement that is extremely noisy, yet sometimes
 							// useful. Hence kept disabled by default.
-/*#ifdef _DEBUG
+/*#ifdef _DEBUG_REFERENCE_COORDINATES
 							#pragma omp critical
 							{
 								std::cout << "\t Thread " << t << " processing nonzero " << global_count
@@ -1555,7 +1565,7 @@ namespace grb {
 						assert( _n <= _cap );
 					}
 
-#ifdef _DEBUG
+#ifdef _DEBUG_REFERENCE_COORDINATES
 					#pragma omp critical
 					std::cout << "\t Thread " << t << " exiting joinUpdate. "
 						<< "New nonzero count is " << _n << "\n";
@@ -1668,6 +1678,13 @@ namespace grb {
 
 				void clear_seq() noexcept {
 					clear_header();
+#ifdef _DEBUG_REFERENCE_COORDINATES
+ #ifdef _H_GRB_REFERENCE_OMP_COORDINATES
+					#pragma omp critical
+ #endif
+					std::cout << "\t\t\t clearing " << _n << << " nonzeroes from SPA. "
+						<< "Total capacity is " << _cap << "\n";
+#endif
 					if( _n == _cap ) {
 						clear_oh_n_kernel( 0, _cap );
 					} else {
