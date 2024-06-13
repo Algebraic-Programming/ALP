@@ -352,7 +352,7 @@ namespace grb {
 			// we employ a block-cyclic distribution on the start arrays
 			// the below for-loop, however, at iteration i, writes to index i + 1
 			// so we offset the ranges
-			if( start < end && phase == EXECUTE) {
+			if( start < end ) {
 				if( start > 0 ) {
 					(void) --start;
 				}
@@ -377,6 +377,11 @@ namespace grb {
 			//    as well as for enabling the insertions of output values in the output
 			//    CCS
 			for( size_t i = start; i < end; ++i ) {
+#ifdef _H_GRB_REFERENCE_OMP_BLAS3
+ #ifdef _DEBUG_REFERENCE_BLAS3
+				#pragma omp critical
+ #endif
+#endif
 				coors.clear_seq();
 				for(
 					auto k = A_raw.col_start[ i ];
@@ -429,6 +434,239 @@ namespace grb {
 				utils::prefixSum_ompPar_phase3< false >( CRS.col_start, m + 1, ps_ws );
 			}
 			return SUCCESS;
+		}
+
+#ifndef _H_GRB_REFERENCE_OMP_BLAS3
+		/**
+		 * Meta-data for global buffer management for use with #grb::mxm.
+		 *
+		 * This meta-data is the same for both the sequential (reference) and shared-
+		 * memory parallel (reference_omp) backends.
+		 *
+		 * This class contains all meta-data necessary to interpret the global buffer
+		 * as an array of sparse accumulators (SPAs). The length of the array is given
+		 * by a call to #threads(), minus one. It is called that since a call to
+		 * #threads() retrieves how many threads can be used to process the call to
+		 * #grb::mxm.
+		 *
+		 * Each SPA has the layout (bitarray, stack, valueArray). These are packed in a
+		 * padded byte array, such that each bit array, stack, and value array is
+		 * aligned on sizeof(int) bytes.
+		 *
+		 * @tparam NIT       The nonzero index type.
+		 * @tparam ValueType The output matrix value type.
+		 */
+		template< typename NIT, typename ValueType >
+		class MXM_BufferMetaData {
+
+			private:
+
+				/** The size of the SPA */
+				size_t n;
+
+				/** The number of threads supported during a call to #grb::mxm */
+				size_t nthreads;
+
+				/** The initial buffer offset */
+				size_t bufferOffset;
+
+				/** The size of a single SPA, including bytes needed for padding */
+				size_t paddedSPASize;
+
+				/** The number of bytes to pad the SPA array with */
+				size_t arrayShift;
+
+				/** The number of bytes to pad the SPA stack with */
+				size_t stackShift;
+
+
+			public:
+
+				/**
+				 * Base constructor.
+				 *
+				 * @param[in] _n The length of the SPA
+				 */
+				MXM_BufferMetaData( const size_t _n ) : n( _n ) {
+					// compute bufferOffset
+					bufferOffset = (n + 1) * sizeof( NIT );
+
+					// compute value buffer size
+					const size_t valBufSize = n * sizeof( ValueType );
+
+					// compute paddedSPASize
+					paddedSPASize =
+						internal::Coordinates< reference >::arraySize( n ) +
+						internal::Coordinates< reference >::stackSize( n ) +
+						valBufSize;
+					size_t shift =
+						internal::Coordinates< reference >::arraySize( n ) % sizeof(int);
+					if( shift != 0 ) {
+						arrayShift = sizeof(int) - shift;
+						paddedSPASize += arrayShift;
+					}
+					shift = internal::Coordinates< reference >::stackSize( n ) % sizeof(int);
+					if( shift != 0 ) {
+						stackShift = sizeof(int) - shift;
+						paddedSPASize += stackShift;
+					}
+					shift = valBufSize % sizeof(int);
+					if( shift != 0 ) {
+						paddedSPASize += (sizeof(int) - shift);
+					}
+
+					// pad bufferOffset
+					shift = bufferOffset % sizeof(int);
+					if( shift != 0 ) {
+						bufferOffset += (sizeof(int) - shift);
+					}
+
+					// compute free buffer size
+					const size_t freeBufferSize = internal::getCurrentBufferSize< char >() -
+						bufferOffset;
+
+					// compute max number of threads
+					nthreads = 1 + freeBufferSize / paddedSPASize;
+					if( nthreads > config::OMP::threads() ) {
+						nthreads = config::OMP::threads();
+					}
+				}
+
+				/** @returns The maximum number of supported threads during #grb::mxm */
+				size_t threads() const noexcept {
+					return nthreads;
+				}
+
+				/** @returns The initial global buffer offset, in bytes */
+				size_t getBufferOffset() const noexcept {
+					return bufferOffset;
+				}
+
+				/** @returns The size of a single SPA, including padding, and in bytes */
+				size_t getPaddedSPASize() const noexcept {
+					return paddedSPASize;
+				}
+
+				/**
+				 * Shifts a pointer into the global buffer by the bit-array size and its
+				 * padding.
+				 *
+				 * @param[in,out] raw On input: an aligned pointer into the global buffer.
+				 *                    On output: an aligned pointer past the bit-array
+				 *                    position.
+				 */
+				void applyArrayShift( char * &raw ) const noexcept {
+					raw += internal::Coordinates< reference >::arraySize( n );
+					raw += arrayShift;
+				}
+
+				/**
+				 * Shifts a pointer into the global buffer by the stack size and its
+				 * padding.
+				 *
+				 * @param[in,out] raw On input: an aligned pointer into the global buffer.
+				 *                    On output: an aligned pointer past the stack position.
+				 */
+				void applyStackShift( char * &raw ) const noexcept {
+					raw += internal::Coordinates< reference >::stackSize( n );
+					raw += stackShift;
+				}
+
+		};
+#endif
+
+		/**
+		 * Retrieves the SPA buffers for the calling thread.
+		 *
+		 * \warning This function must be called from within an OpenMP parallel
+		 *          section.
+		 *
+		 * @param[out]    arr Where the bit-array may be located.
+		 * @param[out]    buf Where the stack may be located.
+		 * @param[out] valbuf Where the value buffer may be located.
+		 *
+		 * All above pointers are aligned on sizeof(int) bytes.
+		 *
+		 * @param[in] md Meta-data for global buffer management.
+		 * @param[in]  C The output matrix.
+		 *
+		 * One thread uses the buffers pre-allocated with the matrix \a C, thus
+		 * ensuring at least one thread may perform the #grb::mxm. Any remainder
+		 * threads can only help process the #grb::mxm if there is enough global
+		 * buffer memory available.
+		 *
+		 *
+		 * \note The global memory has size \f$ \Omega( \mathit{nz} ) \f$, which may
+		 *       be several factors (or even asymptotically greater than)
+		 *       \f$ \max\{ m, n \} \f$.
+		 *
+		 * \note In case the application stores multiple matrices, the global buffer
+		 *       may additionally be greater than the above note indicates if at least
+		 *       one of the other matrices is significantly (or asymptotically) larger
+		 *       than the one involved with the #grb::mxm.
+		 */
+		template<
+			typename OutputType,
+			typename RIT, typename CIT, typename NIT
+		>
+		void mxm_ompPar_getSPABuffers(
+			char * &arr, char * &buf, OutputType * &valbuf,
+			const struct MXM_BufferMetaData< NIT, OutputType > &md,
+			Matrix< OutputType, reference, RIT, CIT, NIT > &C
+		) {
+#ifdef _H_GRB_REFERENCE_OMP_BLAS3
+			// other threads use the global buffer to create additional SPAs
+			{
+				const size_t t = config::OMP::current_thread_ID();
+ #ifndef NDEBUG
+				const size_t T = config::OMP::current_threads();
+				assert( t < T );
+ #endif
+				if( t > 0 ) {
+ #ifdef _DEBUG_REFERENCE_BLAS3
+					#pragma omp critical
+					std::cout << "\t Thread " << t << " gets buffers from global buffer\n";
+ #endif
+					char * rawBuffer = internal::template getReferenceBuffer< char >(
+							md.getBufferOffset() + md.threads() * md.getPaddedSPASize() ) +
+						md.getBufferOffset();
+					assert( reinterpret_cast< uintptr_t >(rawBuffer) % sizeof(int) == 0 );
+					rawBuffer += (t - 1) * md.getPaddedSPASize();
+					assert( reinterpret_cast< uintptr_t >(rawBuffer) % sizeof(int) == 0 );
+					arr = rawBuffer;
+					md.applyArrayShift( rawBuffer );
+					assert( reinterpret_cast< uintptr_t >(rawBuffer) % sizeof(int) == 0 );
+					buf = rawBuffer;
+					md.applyStackShift( rawBuffer );
+					assert( reinterpret_cast< uintptr_t >(rawBuffer) % sizeof(int) == 0 );
+					assert( buf != arr );
+					valbuf = reinterpret_cast< OutputType * >(rawBuffer);
+					assert( static_cast< void * >(valbuf) != static_cast< void * >(buf) );
+				} else {
+ #ifdef _DEBUG_REFERENCE_BLAS3
+					#pragma omp critical
+					std::cout << "\t Thread " << t << " gets buffers from matrix storage\n";
+ #endif
+					// one thread uses the standard matrix buffer
+					internal::getMatrixBuffers( arr, buf, valbuf, 1, C );
+				}
+ #ifdef _DEBUG_REFERENCE_BLAS3
+				#pragma omp critical
+				{
+					std::cout << "\t Thread " << t << " has SPA array @ "
+						<< static_cast< void * >( arr ) << " and SPA stack @ "
+						<< static_cast< void * >( buf ) << " and SPA values @ "
+						<< static_cast< void * >( valbuf ) << "\n";
+				}
+ #endif
+			}
+#else
+ #ifdef _DEBUG_REFERENCE_BLAS3
+			std::cout << "\t Reference backend gets buffers from global buffer\n";
+ #endif
+			internal::getMatrixBuffers( arr, buf, valbuf, 1, C );
+			(void) md;
+#endif
 		}
 
 		/**
@@ -508,45 +746,13 @@ namespace grb {
 			auto &CRS_raw = internal::getCRS( C );
 			auto &CCS_raw = internal::getCCS( C );
 
-			OutputType * valbuf = nullptr;
 			NIT * C_col_index = internal::template
 				getReferenceBuffer< NIT >( n + 1 );
 
+			MXM_BufferMetaData< NIT, OutputType > bufferMD( n );
 #ifdef _H_GRB_REFERENCE_OMP_BLAS3
 			// derive number of threads
-			size_t nthreads = 1;
-			size_t bufferOffset = (n + 1) * sizeof( NIT );
-			size_t paddedSPASize = 0;
-			size_t arrayShift = 0;
-			// compute paddedSPASize
-			{
-				paddedSPASize =
-					internal::Coordinates< reference >::arraySize( n ) +
-					internal::Coordinates< reference >::stackSize( n );
-				size_t shift =
-					internal::Coordinates< reference >::arraySize( n ) % sizeof(int);
-				if( shift != 0 ) {
-					arrayShift = sizeof(int) - shift;
-					paddedSPASize += arrayShift;
-				}
-				shift = internal::Coordinates< reference >::stackSize( n ) % sizeof(int);
-				if( shift != 0 ) {
-					paddedSPASize += sizeof(int) - shift;
-				}
-			}
-			// compute nthreads
-			{
-				const size_t shift = bufferOffset % sizeof(int);
-				if( shift != 0 ) {
-					bufferOffset += sizeof(int) - shift;
-				}
-				const size_t freeBufferSize = internal::getCurrentBufferSize< char >() -
-					bufferOffset;
-				nthreads += freeBufferSize / paddedSPASize;
-				if( nthreads > config::OMP::threads() ) {
-					nthreads = config::OMP::threads();
-				}
-			}
+			size_t nthreads = bufferMD.threads();
  #ifdef _DEBUG_REFERENCE_BLAS3
 			std::cout << "\t mxm_generic will use " << nthreads << " threads\n";
  #endif
@@ -562,32 +768,8 @@ namespace grb {
 					// get thread-local buffers
 					char * arr = nullptr;
 					char * buf = nullptr;
-					// one thread uses the standard matrix buffer
-					internal::getMatrixBuffers( arr, buf, valbuf, 1, C );
-#ifdef _H_GRB_REFERENCE_OMP_BLAS3
-					// other threads use the global buffer to create additional SPAs
-					{
-						const size_t t = config::OMP::current_thread_ID();
- #ifndef NDEBUG
-						const size_t T = config::OMP::current_threads();
-						assert( t < T );
- #endif
-						if( t > 0 ) {
-							char * rawBuffer = internal::template
-								getReferenceBuffer< char >( bufferOffset + nthreads * paddedSPASize ) +
-								bufferOffset;
-							assert( reinterpret_cast< uintptr_t >(rawBuffer) % sizeof(int) == 0 );
-							rawBuffer += (t - 1) * paddedSPASize;
-							assert( reinterpret_cast< uintptr_t >(rawBuffer) % sizeof(int) == 0 );
-							arr = rawBuffer;
-							rawBuffer += internal::Coordinates< reference >::arraySize( n );
-							rawBuffer += arrayShift;
-							assert( reinterpret_cast< uintptr_t >(rawBuffer) % sizeof(int) == 0 );
-							buf = rawBuffer;
-							assert( buf != arr );
-						}
-					}
-#endif
+					OutputType * valbuf = nullptr;
+					mxm_ompPar_getSPABuffers( arr, buf, valbuf, bufferMD, C );
 
 					// do count
 					size_t local_nzc;
@@ -635,32 +817,15 @@ namespace grb {
 				// get thread-local buffers
 				char * arr = nullptr;
 				char * buf = nullptr;
-				// one thread uses the standard matrix buffer
-				internal::getMatrixBuffers( arr, buf, valbuf, 1, C );
-#ifdef _H_GRB_REFERENCE_OMP_BLAS3
-				// other threads use the global buffer to create additional SPAs
-				{
-					const size_t t = config::OMP::current_thread_ID();
- #ifndef NDEBUG
-					const size_t T = config::OMP::current_threads();
-					assert( t < T );
+				OutputType * valbuf = nullptr;
+				mxm_ompPar_getSPABuffers( arr, buf, valbuf, bufferMD, C );
+#ifdef _DEBUG_REFERENCE_BLAS3
+ #ifdef _H_GRB_REFERENCE_OMP_BLAS3
+				#pragma omp critical
  #endif
-					if( t > 0 ) {
-						char * rawBuffer = internal::template
-							getReferenceBuffer< char >( bufferOffset + nthreads * paddedSPASize ) +
-							bufferOffset;
-						assert( t > 0 );
-						assert( reinterpret_cast< uintptr_t >(rawBuffer) % sizeof(int) == 0 );
-						rawBuffer += (t - 1) * paddedSPASize;
-						assert( reinterpret_cast< uintptr_t >(rawBuffer) % sizeof(int) == 0 );
-						arr = rawBuffer;
-						rawBuffer += internal::Coordinates< reference >::arraySize( n );
-						rawBuffer += arrayShift;
-						assert( reinterpret_cast< uintptr_t >(rawBuffer) % sizeof(int) == 0 );
-						buf = rawBuffer;
-						assert( buf != arr );
-					}
-				}
+				std::cout << "\t\t arr @ " << static_cast< void * >(arr) << ", "
+					<< "buf @ " << static_cast< void * >(buf) << ", "
+					<< "vbf @ " << static_cast< void * >(valbuf) << "\n";
 #endif
 
 				// phase 1: symbolic phase
@@ -790,10 +955,20 @@ namespace grb {
 						CRS_raw.col_start[ 0 ] = 0;
 					}
 					for( size_t i = start; i < end; ++i ) {
+#ifdef _H_GRB_REFERENCE_OMP_BLAS3
+ #ifdef _DEBUG_REFERENCE_BLAS3
+						#pragma omp critical
+ #endif
+#endif
 						coors.clear_seq();
 #ifdef _DEBUG_REFERENCE_BLAS3
+ #ifdef _H_GRB_REFERENCE_OMP_BLAS3
+						#pragma omp critical
+ #endif
 						std::cout << "\t mxm processes row " << i << " which contains "
-							<< (A_raw.col_start[ i + 1 ] - A_raw.col_start[ i ]) << " nonzeroes\n";
+							<< (A_raw.col_start[ i + 1 ] - A_raw.col_start[ i ]) << " nonzeroes\n"
+							<< "\t\t valbuf @ " << static_cast< void * >(valbuf) << ", t = "
+							<< omp_get_thread_num() << "\n";
 #endif
 						for( auto k = A_raw.col_start[ i ]; k < A_raw.col_start[ i + 1 ]; ++k ) {
 							const size_t k_col = A_raw.row_index[ k ];
@@ -803,6 +978,9 @@ namespace grb {
 							) {
 								const size_t l_col = B_raw.row_index[ l ];
 #ifdef _DEBUG_REFERENCE_BLAS3
+ #ifdef _H_GRB_REFERENCE_OMP_BLAS3
+								#pragma omp critical
+ #endif
 								std::cout << "\t A( " << i << ", " << k_col << " ) = "
 									<< A_raw.getValue( k,
 										mulMonoid.template getIdentity< typename Operator::D1 >() )
@@ -820,6 +998,9 @@ namespace grb {
 											mulMonoid.template getIdentity< typename Operator::D2 >() ),
 										oper );
 #ifdef _DEBUG_REFERENCE_BLAS3
+ #ifdef _H_GRB_REFERENCE_OMP_BLAS3
+									#pragma omp critical
+ #endif
 									std::cout << "\t C( " << i << ", " << l_col << " ) now reads "
 										<< valbuf[ l_col ] << "\n";
 #endif
@@ -833,10 +1014,15 @@ namespace grb {
 										oper );
 									(void) grb::foldl( valbuf[ l_col ], temp, monoid.getOperator() );
 #ifdef _DEBUG_REFERENCE_BLAS3
-									std::cout << "\t C( " << i << ", " << l_col << " ) += " << temp
-										<< "\n";
-									std::cout << "\t C( " << i << ", " << l_col << " ) now reads "
-										<< valbuf[ l_col ] << "\n";
+ #ifdef _H_GRB_REFERENCE_OMP_BLAS3
+									#pragma omp critical
+ #endif
+									{
+										std::cout << "\t C( " << i << ", " << l_col << " ) += " << temp
+											<< "\n";
+										std::cout << "\t C( " << i << ", " << l_col << " ) now reads "
+											<< valbuf[ l_col ] << "\n";
+									}
 #endif
 								}
 							}
@@ -1943,7 +2129,9 @@ namespace grb {
 			coors2.set( arr2, false, buf2, n );
 #ifdef _H_GRB_REFERENCE_OMP_BLAS3
 			#pragma omp parallel
+#endif
 			{
+#ifdef _H_GRB_REFERENCE_OMP_BLAS3
 				size_t start, end;
 				config::OMP::localRange( start, end, 0, n + 1 );
 #else
@@ -1953,9 +2141,7 @@ namespace grb {
 				for( size_t j = start; j < end; ++j ) {
 					CCS_raw.col_start[ j ] = 0;
 				}
-#ifdef _H_GRB_REFERENCE_OMP_BLAS3
 			}
-#endif
 			// end initialisations
 
 			// nonzero count
@@ -2029,7 +2215,9 @@ namespace grb {
 				// set C_col_index to all zero
 #ifdef _H_GRB_REFERENCE_OMP_BLAS3
 				#pragma omp parallel
+#endif
 				{
+#ifdef _H_GRB_REFERENCE_OMP_BLAS3
 					size_t start, end;
 					config::OMP::localRange( start, end, 0, n );
 #else
@@ -2039,9 +2227,7 @@ namespace grb {
 					for( size_t j = start; j < end; ++j ) {
 						C_col_index[ j ] = 0;
 					}
-#ifdef _H_GRB_REFERENCE_OMP_BLAS3
 				}
-#endif
 
 				// do computations
 				size_t nzc = 0;
@@ -2063,18 +2249,23 @@ namespace grb {
 #endif
 					}
 #ifdef _DEBUG_REFERENCE_BLAS3
-					std::cout << "are multiplied pairwise with ";
+					std::cout << "are multiplied pairwise with:\n";
 #endif
 					for( size_t l = B_raw.col_start[ i ]; l < B_raw.col_start[ i + 1 ]; ++l ) {
 						const size_t l_col = B_raw.row_index[ l ];
 						if( coors1.assigned( l_col ) ) {
 							coors2.assign( l_col );
-							(void)grb::apply( valbuf[ l_col ], valbuf[ l_col ], B_raw.getValue( l,
-								mulMonoid.template getIdentity< typename Operator::D2 >() ), oper );
+							(void) grb::foldl( valbuf[ l_col ], B_raw.getValue(
+									l,
+									mulMonoid.template getIdentity< typename Operator::D2 >()
+								),
+							oper );
 #ifdef _DEBUG_REFERENCE_BLAS3
-							std::cout << "B( " << i << ", " << l_col << " ) = " << B_raw.getValue( l,
-								mulMonoid.template getIdentity< typename Operator::D2 >() )
-							<< " to yield C( " << i << ", " << l_col << " ), ";
+							std::cout << "\t\t B( " << i << ", " << l_col << " ) = "
+								<< B_raw.getValue(
+									l, mulMonoid.template getIdentity< typename Operator::D2 >() )
+								<< " to yield C( " << i << ", " << l_col << " ) = " << valbuf[ l_col ]
+								<< "\n";
 #endif
 						}
 					}
@@ -2091,7 +2282,7 @@ namespace grb {
 						CCS_raw.row_index[ CCS_index ] = i;
 						CCS_raw.setValue( CCS_index, valbuf[ j ] );
 						// update count
-						(void)++nzc;
+						(void) ++nzc;
 					}
 					C_raw.col_start[ i + 1 ] = nzc;
 #ifdef _DEBUG_REFERENCE_BLAS3
@@ -2101,7 +2292,8 @@ namespace grb {
 
 #ifndef NDEBUG
 				for( size_t j = 0; j < n; ++j ) {
-					assert( CCS_raw.col_start[ j + 1 ] - CCS_raw.col_start[ j ] == C_col_index[ j ] );
+					assert( CCS_raw.col_start[ j + 1 ] - CCS_raw.col_start[ j ] ==
+						C_col_index[ j ] );
 				}
 #endif
 
