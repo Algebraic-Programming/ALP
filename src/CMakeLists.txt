@@ -28,9 +28,12 @@ add_subdirectory( transition )
 ### BUILD WRAPPER SCRIPTS FOR INSTALLATION
 
 assert_valid_variables( AVAILABLE_BACKENDS CMAKE_INSTALL_PREFIX INCLUDE_INSTALL_DIR
-	VERSION BIN_INSTALL_DIR
+	VERSION BIN_INSTALL_DIR DEFAULT_SIMD_SIZE DEFAULT_L1CACHE_SIZE
+	DEFAULT_CACHE_LINE_SIZE ARCH_DETECT_APPS_DIR
 )
-assert_defined_variables( COMMON_WRAPPER_DEFINITIONS COMMON_WRAPPER_OPTIONS )
+assert_defined_variables( COMMON_WRAPPER_DEFINITIONS COMMON_WRAPPER_OPTIONS
+	SIMD_ISA_DETECT_APP L1CACHE_DETECT_APP
+)
 
 if( WITH_BSP1D_BACKEND OR WITH_HYBRID_BACKEND )
 	assert_valid_variables( LPFRUN_CMD MANUALRUN )
@@ -94,6 +97,16 @@ list( JOIN runenv_list " " BACKEND_RUNENV_SPACED )
 list( JOIN runner_list " " BACKEND_RUNNER_SPACED )
 configure_file( ${CMAKE_CURRENT_SOURCE_DIR}/grbrun.in ${CMAKE_CURRENT_BINARY_DIR}/grbrun @ONLY )
 
+# generate script to get architecture-specific flags
+configure_file( ${CMAKE_CURRENT_SOURCE_DIR}/get_arch_flags.in ${ARCH_DETECT_APPS_DIR}/get_arch_flags @ONLY )
+# copy the whole directory with all executables to get arch-specific info
+install( DIRECTORY ${ARCH_DETECT_APPS_DIR}
+	DESTINATION ${BIN_INSTALL_DIR}
+	FILE_PERMISSIONS OWNER_READ OWNER_WRITE OWNER_EXECUTE
+		GROUP_READ GROUP_EXECUTE
+		WORLD_READ WORLD_EXECUTE
+)
+
 # install them to the install folder with execute permission
 install( FILES ${CMAKE_CURRENT_BINARY_DIR}/setenv
 	${CMAKE_CURRENT_BINARY_DIR}/grbcxx
@@ -107,7 +120,7 @@ install( FILES ${CMAKE_CURRENT_BINARY_DIR}/setenv
 
 ### GENERATE CMAKE INFRASTRUCTURE INSIDE INSTALLATION DIRECTORY
 
-include(CMakePackageConfigHelpers)
+include( CMakePackageConfigHelpers )
 
 # write file with version information
 write_basic_package_version_file(
