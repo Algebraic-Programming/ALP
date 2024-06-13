@@ -50,10 +50,18 @@ namespace grb {
 				const size_t m, const size_t n,
 				const size_t small_m, const size_t small_n
 			) {
+				// static checks
 				static_assert( std::is_same< InputType, bool >::value ||
 					std::is_same< InputType, void >::value,
 					"Error in call to internal::spy_from_bool_or_void_input"
 				);
+
+				// dynamic checks
+				assert( grb::nnz( out ) == 0 );
+				assert( grb::nrows( out ) == small_m );
+				assert( grb::ncols( out ) == small_n );
+				assert( grb::nrows( in ) == m );
+				assert( grb::ncols( in ) == n );
 
 				// Q must be n by small_n
 				grb::Matrix< unsigned char > Q( n, small_n );
