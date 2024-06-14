@@ -76,6 +76,14 @@ namespace grb {
 		nonblocking,
 
 		/**
+		 * The Ascend backend. This is not a true ALP implementation -- programs
+		 * compiled using this backend generate AscendC code. This backend may require
+		 * the use of ALP/Ascend-specific primitives as it currently operates without
+		 * compiler support.
+		 */
+		ascend,
+
+		/**
 		 * \internal
 		 * A shared-memory parallel distribution based on a row-wise 1D block-cyclic
 		 * data distribution using shared vector data.

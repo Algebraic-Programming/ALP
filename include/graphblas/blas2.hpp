@@ -39,6 +39,9 @@
 #ifdef _GRB_WITH_NONBLOCKING
  #include "graphblas/nonblocking/blas2.hpp"
 #endif
+#ifdef _GRB_WITH_ASCEND
+ #include "graphblas/ascend/blas2.hpp"
+#endif
 #ifdef _GRB_WITH_BANSHEE
  #include <graphblas/banshee/blas2.hpp>
 #endif

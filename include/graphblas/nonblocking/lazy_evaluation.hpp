@@ -43,10 +43,17 @@ namespace grb {
 		 */
 		class LazyEvaluation {
 
-			private:
+			friend class alp::internal::OpGen;
+
+
+			//private:
+			public: // DBG
 
 				/** Multiple pipelines may be maintained at any time. */
 				std::vector< Pipeline > pipelines;
+
+
+			private: // DBG
 
 				/** Stores the pipelines that share data with the new stage. */
 				std::vector< std::vector< Pipeline >::iterator > shared_data_pipelines;
@@ -116,10 +123,15 @@ namespace grb {
 					const size_t data_type_size,
 					const bool dense_descr,
 					const bool dense_mask,
+					const size_t output_container_id,
+					// TODO FIXME is there really a need for pointers?
 					void * const output_container_ptr,
 					void * const output_aux_container_ptr,
 					Coordinates< nonblocking > * const coor_output_ptr,
 					Coordinates< nonblocking > * const coor_output_aux_ptr,
+					const size_t input_a_id, const size_t input_b_id,
+					const size_t input_c_id, const size_t input_d_id,
+					// TODO FIXME is there really a need for pointers?
 					const void * const input_a_ptr,
 					const void * const input_b_ptr,
 					const void * const input_c_ptr,
@@ -128,6 +140,8 @@ namespace grb {
 					const Coordinates< nonblocking > * const coor_b_ptr,
 					const Coordinates< nonblocking > * const coor_c_ptr,
 					const Coordinates< nonblocking > * const coor_d_ptr,
+					const size_t input_matrix_id,
+					// TODO FIXME is there really a need for pointers?
 					const void * const input_matrix
 				);
 

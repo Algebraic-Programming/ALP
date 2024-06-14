@@ -36,6 +36,9 @@
 #ifdef _GRB_WITH_NONBLOCKING
  #include "graphblas/nonblocking/benchmark.hpp"
 #endif
+#ifdef _GRB_WITH_ASCEND
+ #include "graphblas/ascend/benchmark.hpp"
+#endif
 #ifdef _GRB_WITH_BANSHEE
  #include "graphblas/banshee/benchmark.hpp"
 #endif

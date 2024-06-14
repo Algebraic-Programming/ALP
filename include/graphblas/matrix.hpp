@@ -36,6 +36,9 @@
 #ifdef _GRB_WITH_NONBLOCKING
  #include "graphblas/nonblocking/matrix.hpp"
 #endif
+#ifdef _GRB_WITH_ASCEND
+ #include "graphblas/ascend/matrix.hpp"
+#endif
 #ifdef _GRB_WITH_LPF
  #include <graphblas/bsp1d/matrix.hpp>
 #endif

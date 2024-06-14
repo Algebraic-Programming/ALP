@@ -131,14 +131,19 @@ namespace grb {
 			 *         `minus infinity'.
 			 */
 			static constexpr D value() {
-				return std::numeric_limits< D >::min() == 0 ? 0 : ( std::numeric_limits< D >::has_infinity ? -std::numeric_limits< D >::infinity() : std::numeric_limits< D >::min() );
+				return std::numeric_limits< D >::min() == 0
+					? 0
+					: ( std::numeric_limits< D >::has_infinity
+							? -std::numeric_limits< D >::infinity()
+							: std::numeric_limits< D >::min() );
 			}
 		};
 		template< typename K, typename V >
 		class negative_infinity< std::pair< K, V > > {
 		public:
 			static constexpr std::pair< K, V > value() {
-				return std::make_pair( negative_infinity< K >::value(), negative_infinity< V >::value() );
+				return std::make_pair( negative_infinity< K >::value(),
+					negative_infinity< V >::value() );
 			}
 		};
 
@@ -149,9 +154,11 @@ namespace grb {
 		 */
 		template< typename D >
 		class logical_false {
-			static_assert( std::is_convertible< bool, D >::value, "Cannot form identity under the requested domain" );
+			static_assert( std::is_convertible< bool, D >::value,
+				"Cannot form identity under the requested domain" );
 
-		public:
+		public: 
+
 			/**
 			 * @tparam D The domain of the value to return.
 			 * @return The identity under the standard logical OR operator, i.e.,
@@ -176,7 +183,8 @@ namespace grb {
 		 */
 		template< typename D >
 		class logical_true {
-			static_assert( std::is_convertible< bool, D >::value, "Cannot form identity under the requested domain" );
+			static_assert( std::is_convertible< bool, D >::value,
+				"Cannot form identity under the requested domain" );
 
 		public:
 			/**
@@ -192,11 +200,13 @@ namespace grb {
 		class logical_true< std::pair< K, V > > {
 		public:
 			static constexpr std::pair< K, V > value() {
-				return std::make_pair( logical_true< K >::value(), logical_true< V >::value() );
+				return std::make_pair( logical_true< K >::value(),
+					logical_true< V >::value() );
 			}
 		};
 
 	} // namespace identities
+
 } // namespace grb
 
 #endif

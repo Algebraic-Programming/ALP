@@ -32,8 +32,8 @@
 #ifdef _GRB_WITH_NONBLOCKING
  #include "graphblas/nonblocking/coordinates.hpp"
 #endif
-#ifdef _GRB_WITH_LPF
-// #include <graphblas/bsp1d/coordinates.hpp>
+#ifdef _GRB_WITH_ASCEND
+ #include "graphblas/ascend/coordinates.hpp"
 #endif
 #ifdef _GRB_WITH_BANSHEE
  #include <graphblas/banshee/coordinates.hpp>

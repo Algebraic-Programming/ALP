@@ -45,6 +45,7 @@
 #include <graphblas/base/coordinates.hpp>
 
 #include <graphblas/reference/config.hpp>
+#include <graphblas/omp/config.hpp>
 
 #include <graphblas/nonblocking/init.hpp>
 #include <graphblas/nonblocking/analytic_model.hpp>
