@@ -488,11 +488,24 @@ namespace grb {
 				 * @param[in] _n The length of the SPA
 				 */
 				MXM_BufferMetaData( const size_t _n ) : n( _n ) {
+ #ifdef _DEBUG_REFERENCE_BLAS3
+					#pragma omp critical
+					std::cout << "\t\t\t computing padded buffer size for a SPA of length "
+						<< n << "...\n";
+ #endif
 					// compute bufferOffset
 					bufferOffset = (n + 1) * sizeof( NIT );
 
 					// compute value buffer size
 					const size_t valBufSize = n * sizeof( ValueType );
+
+ #ifdef _DEBUG_REFERENCE_BLAS3
+					std::cout << "\t\t\t\t bit-array size has byte-size " <<
+						internal::Coordinates< reference >::arraySize( n ) << "\n";
+					std::cout << "\t\t\t\t stack has byte-size " <<
+						internal::Coordinates< reference >::stackSize( n ) << "\n";
+					std::cout << "\t\t\t\t value buffer has byte-size " << valBufSize << "\n";
+ #endif
 
 					// compute paddedSPASize
 					paddedSPASize =
@@ -527,6 +540,12 @@ namespace grb {
 
 					// compute max number of threads
 					nthreads = 1 + freeBufferSize / paddedSPASize;
+ #ifdef _DEBUG_REFERENCE_BLAS3
+					#pragma omp critical
+					std::cout << "\t\t\t free buffer size: " << freeBufferSize
+						<< ", (padded) SPA size: " << paddedSPASize
+						<< " -> supported #threads: " << nthreads << "\n";
+ #endif
 					if( nthreads > config::OMP::threads() ) {
 						nthreads = config::OMP::threads();
 					}
@@ -537,14 +556,26 @@ namespace grb {
 					return nthreads;
 				}
 
-				/** @returns The initial global buffer offset, in bytes */
-				size_t getBufferOffset() const noexcept {
-					return bufferOffset;
-				}
-
-				/** @returns The size of a single SPA, including padding, and in bytes */
-				size_t getPaddedSPASize() const noexcept {
-					return paddedSPASize;
+				/**
+				 * Requests and returns a global buffer required for a thread-local SPA.
+				 *
+				 * @param[in] t The thread ID. Must be larger than 0.
+				 *
+				 * \note Thread 0 employs the SPA allocated with the output matrix.
+				 *
+				 * @returns Pointer into the global buffer starting at the area reserved for
+				 *          the SPA of thread \a t.
+				 */
+				char * getSPABuffers( size_t t ) const noexcept {
+					assert( t > 0 );
+					(void) --t;
+					char * raw = internal::template getReferenceBuffer< char >(
+						bufferOffset + nthreads * paddedSPASize );
+					assert( reinterpret_cast< uintptr_t >(raw) % sizeof(int) == 0 );
+					raw += bufferOffset;
+					assert( reinterpret_cast< uintptr_t >(raw) % sizeof(int) == 0 );
+					raw += t * paddedSPASize;
+					return raw;
 				}
 
 				/**
@@ -627,11 +658,7 @@ namespace grb {
 					#pragma omp critical
 					std::cout << "\t Thread " << t << " gets buffers from global buffer\n";
  #endif
-					char * rawBuffer = internal::template getReferenceBuffer< char >(
-							md.getBufferOffset() + md.threads() * md.getPaddedSPASize() ) +
-						md.getBufferOffset();
-					assert( reinterpret_cast< uintptr_t >(rawBuffer) % sizeof(int) == 0 );
-					rawBuffer += (t - 1) * md.getPaddedSPASize();
+					char * rawBuffer = md.getSPABuffers( t );
 					assert( reinterpret_cast< uintptr_t >(rawBuffer) % sizeof(int) == 0 );
 					arr = rawBuffer;
 					md.applyArrayShift( rawBuffer );
@@ -753,9 +780,9 @@ namespace grb {
 #ifdef _H_GRB_REFERENCE_OMP_BLAS3
 			// derive number of threads
 			size_t nthreads = bufferMD.threads();
- #ifdef _DEBUG_REFERENCE_BLAS3
+ //#ifdef _DEBUG_REFERENCE_BLAS3
 			std::cout << "\t mxm_generic will use " << nthreads << " threads\n";
- #endif
+ //#endif DBG
 #endif
 
 			// resize phase logic
@@ -1048,6 +1075,13 @@ namespace grb {
 							// update count
 							(void) ++local_nzc;
 						}
+#ifdef _DEBUG_REFERENCE_BLAS3
+ #ifdef _H_GRB_REFERENCE_OMP_BLAS3
+						#pragma omp critical
+ #endif
+						std::cout << "\t wrote out " << (local_nzc - CRS_raw.col_start[ i ])
+							<< " nonzeroes to row " << i << "\n";
+#endif
 						assert( CRS_raw.col_start[ i + 1 ] == local_nzc );
 					}
 #ifndef NDEBUG

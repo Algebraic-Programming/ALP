@@ -242,10 +242,8 @@ namespace grb {
 				inline void clear_oh_nz_seq() noexcept {
 					for( size_t k = 0; k < _n; ++k ) {
 #ifdef _DEBUG_REFERENCE_COORDINATES
- #ifdef _H_GRB_REFERENCE_OMP_COORDINATES
-						#pragma omp critical
- #endif
-						std::cout << "\t\t\t\t clearing position " << k << "\n";
+						std::cout << "\t\t\t\t clearing position " << k << ", index "
+							<< _stack[ k ] << "\n";
 #endif
 						_assigned[ _stack[ k ] ] = false;
 					}
@@ -1694,10 +1692,7 @@ namespace grb {
 				void clear_seq() noexcept {
 					clear_header();
 #ifdef _DEBUG_REFERENCE_COORDINATES
- #ifdef _H_GRB_REFERENCE_OMP_COORDINATES
-					#pragma omp critical
- #endif
-					std::cout << "\t\t\t clearing " << _n << << " nonzeroes from SPA. "
+					std::cout << "\t\t\t clearing " << _n << " nonzeroes from SPA. "
 						<< "Total capacity is " << _cap << "\n";
 #endif
 					if( _n == _cap ) {
