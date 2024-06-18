@@ -485,9 +485,23 @@ namespace grb {
 				/**
 				 * Base constructor.
 				 *
-				 * @param[in] _n The length of the SPA
+				 * @param[in] _n          The length of the SPA
+				 * @param[in] max_threads The maximum number of threads.
+				 *
+				 * \note \a max_threads is a separate input since there might be a need to
+				 *       cap the maximum number of threads used based on some analytic
+				 *       performance model. Rather than putting such a performance model
+				 *       within this class, we make it an obligatory input parameter
+				 *       instead.
+				 *
+				 * \note It is always valid to pass <tt>config::OMP::threads()</tt>.
+				 *
+				 * \note This class \em will, however, cap the number of threads returned
+				 *       to \a _n.
 				 */
-				MXM_BufferMetaData( const size_t _n ) : n( _n ) {
+				MXM_BufferMetaData( const size_t _n, const size_t max_threads )
+					: n( _n ), arrayShift( 0 ), stackShift( 0 )
+				{
  #ifdef _DEBUG_REFERENCE_BLAS3
 					#pragma omp critical
 					std::cout << "\t\t\t computing padded buffer size for a SPA of length "
@@ -544,10 +558,17 @@ namespace grb {
 					#pragma omp critical
 					std::cout << "\t\t\t free buffer size: " << freeBufferSize
 						<< ", (padded) SPA size: " << paddedSPASize
-						<< " -> supported #threads: " << nthreads << "\n";
+						<< " -> supported #threads: " << nthreads << ". "
+						<< " The shifts for the bit-array and the stack are " << arrayShift
+						<< ", respectively, " << stackShift << "."
+						<< "\n";
  #endif
-					if( nthreads > config::OMP::threads() ) {
-						nthreads = config::OMP::threads();
+					// cap the final number of selected threads
+					if( nthreads > max_threads ) {
+						nthreads = max_threads;
+					}
+					if( nthreads > n ) {
+						nthreads = n;
 					}
 				}
 
@@ -587,8 +608,15 @@ namespace grb {
 				 *                    position.
 				 */
 				void applyArrayShift( char * &raw ) const noexcept {
-					raw += internal::Coordinates< reference >::arraySize( n );
-					raw += arrayShift;
+					const size_t totalShift =
+						internal::Coordinates< reference >::arraySize( n ) +
+						arrayShift;
+ #ifdef _DEBUG_REFERENCE_BLAS3
+					std::cout << "\t\t\t shifting input pointer with "
+						<< internal::Coordinates< reference >::arraySize( n ) << " + "
+						<< arrayShift << " = " << totalShift << "bytes \n";
+ #endif
+					raw += totalShift;
 				}
 
 				/**
@@ -599,8 +627,15 @@ namespace grb {
 				 *                    On output: an aligned pointer past the stack position.
 				 */
 				void applyStackShift( char * &raw ) const noexcept {
-					raw += internal::Coordinates< reference >::stackSize( n );
-					raw += stackShift;
+					const size_t totalShift =
+						internal::Coordinates< reference >::stackSize( n ) +
+						stackShift;
+ #ifdef _DEBUG_REFERENCE_BLAS3
+					std::cout << "\t\t\t shifting input pointer with "
+						<< internal::Coordinates< reference >::arraySize( n ) << " + "
+						<< stackShift << " = " << totalShift << "bytes \n";
+ #endif
+					raw += totalShift;
 				}
 
 		};
@@ -661,9 +696,15 @@ namespace grb {
 					char * rawBuffer = md.getSPABuffers( t );
 					assert( reinterpret_cast< uintptr_t >(rawBuffer) % sizeof(int) == 0 );
 					arr = rawBuffer;
+ #ifdef _DEBUG_REFERENCE_BLAS3
+					#pragma omp critical
+ #endif
 					md.applyArrayShift( rawBuffer );
 					assert( reinterpret_cast< uintptr_t >(rawBuffer) % sizeof(int) == 0 );
 					buf = rawBuffer;
+ #ifdef _DEBUG_REFERENCE_BLAS3
+					#pragma omp critical
+ #endif
 					md.applyStackShift( rawBuffer );
 					assert( reinterpret_cast< uintptr_t >(rawBuffer) % sizeof(int) == 0 );
 					assert( buf != arr );
@@ -776,7 +817,28 @@ namespace grb {
 			NIT * C_col_index = internal::template
 				getReferenceBuffer< NIT >( n + 1 );
 
-			MXM_BufferMetaData< NIT, OutputType > bufferMD( n );
+			// a basic analytic model based on the number of nonzeroes
+			size_t max_threads = config::OMP::threads();
+			{
+				size_t target_nnz = 0;
+				if( phase == EXECUTE ) {
+					target_nnz = grb::capacity( C );
+				} else {
+					assert( phase == RESIZE );
+					target_nnz = std::max( grb::nnz( A ), grb::nnz( B ) );
+				}
+				const size_t nnz_based_nthreads =
+					target_nnz / config::CACHE_LINE_SIZE::value();
+				if( nnz_based_nthreads < max_threads ) {
+					max_threads = nnz_based_nthreads;
+				}
+#ifdef _DEBUG_REFERENCE_BLAS3
+				std::cout << "\t simple analytic model selects max threads of "
+					<< max_threads << "\n";
+#endif
+			}
+
+			MXM_BufferMetaData< NIT, OutputType > bufferMD( n, max_threads );
 #ifdef _H_GRB_REFERENCE_OMP_BLAS3
 			// derive number of threads
 			size_t nthreads = bufferMD.threads();
