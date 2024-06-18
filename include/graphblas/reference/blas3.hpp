@@ -287,7 +287,7 @@ namespace grb {
 			Descriptor descr, bool crs_only, grb::Phase phase,
 			typename D,
 			typename RIT, typename CIT, typename NIT,
-			typename InputType1, typename InputType2,
+			typename InputType1, typename InputType2, typename OutputType,
 			typename IND, typename SIZE
 		>
 		RC mxm_generic_ompPar_get_row_col_counts(
@@ -297,6 +297,7 @@ namespace grb {
 			const size_t m, const size_t n,
 			const Matrix< InputType1, reference, RIT, CIT, NIT > &A,
 			const Matrix< InputType2, reference, RIT, CIT, NIT > &B,
+			const Matrix< OutputType, reference, RIT, CIT, NIT > &C,
 			char * const arr, char * const buf
 		) {
 			// static sanity checks
@@ -383,6 +384,27 @@ namespace grb {
  #endif
 #endif
 				coors.clear_seq();
+				{
+					const auto &C_CRS = internal::getCRS( C );
+					for(
+						auto k = C_CRS.col_start[ i ];
+						k < C_CRS.col_start[ i + 1 ];
+						++k
+					) {
+						const auto index = C_CRS.row_index[ k ];
+						if( !coors.assign( index ) ) {
+							(void) ++nzc;
+							if( !crs_only && phase == EXECUTE ) {
+#ifdef _H_GRB_REFERENCE_OMP_BLAS3
+								#pragma omp atomic update
+#else
+								(void)
+#endif
+									++CCS.col_start[ index + 1 ];
+							}
+						}
+					}
+				}
 				for(
 					auto k = A_raw.col_start[ i ];
 					k < A_raw.col_start[ i + 1 ];
@@ -403,7 +425,7 @@ namespace grb {
 #else
 								(void)
 #endif
-								++CCS.col_start[ l_col + 1 ];
+									++CCS.col_start[ l_col + 1 ];
 							}
 						}
 					}
@@ -864,7 +886,7 @@ namespace grb {
 					size_t local_nzc;
 					mxm_generic_ompPar_get_row_col_counts< descr, crs_only, RESIZE >(
 						local_nzc, CRS_raw, CCS_raw,
-						m, n, A, B,
+						m, n, A, B, C,
 						arr, buf
 					);
 					#pragma omp atomic update
@@ -923,7 +945,7 @@ namespace grb {
 					descr, crs_only, EXECUTE
 				>(
 					local_nzc, CRS_raw, CCS_raw,
-					m, n, A, B,
+					m, n, A, B, C,
 					arr, buf
 				);
 
@@ -1131,7 +1153,10 @@ namespace grb {
 #endif
 								{
 									atomic_offset = C_col_index[ j ];
-									C_col_index[ j ]++;
+#ifndef _H_GRB_REFERENCE_OMP_BLAS3
+									(void)
+#endif
+										C_col_index[ j ]++;
 								}
 								const size_t CCS_index = atomic_offset + CCS_raw.col_start[ j ];
 								CCS_raw.row_index[ CCS_index ] = i;
