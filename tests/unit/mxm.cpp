@@ -35,8 +35,8 @@ void grb_program( const size_t &n, grb::RC &rc ) {
 	> ring;
 
 	// initialize test
-	const grb::Matrix< double > A = matrices< double >::eye( n, n, 1, 1 );
-	const grb::Matrix< double > B = matrices< double >::eye( n, n, 2, 2 );
+	grb::Matrix< double > A = matrices< double >::eye( n, n, 1, 1 );
+	grb::Matrix< double > B = matrices< double >::eye( n, n, 2, 2 );
 	grb::Matrix< double > C( n, n );
 	grb::Matrix< double > C_expected = matrices< double >::eye( n, n, 2, 3 );
 
@@ -47,14 +47,12 @@ void grb_program( const size_t &n, grb::RC &rc ) {
 	if( rc == SUCCESS ) {
 		rc = grb::mxm( C, A, B, ring );
 		if( rc != SUCCESS ) {
-			std::cerr << "Call to grb::mxm FAILED\n";
+			std::cerr << "Call to grb::mxm( ..., RESIZE ) I FAILED\n";
 		}
 	} else {
-		std::cerr << "Call to grb::resize FAILED\n";
+		std::cerr << "Call to grb::mxm( ..., EXECUTE ) I FAILED\n";
 	}
-	if( rc != SUCCESS ) {
-		return;
-	}
+	if( rc != SUCCESS ) { return; }
 
 	// check CRS output
 	if( utils::compare_crs( C, C_expected ) != SUCCESS ) {
@@ -67,11 +65,13 @@ void grb_program( const size_t &n, grb::RC &rc ) {
 		std::cerr << "Error detected while comparing output to ground-truth CCS\n";
 		rc = FAILED;
 	}
+	if( rc != SUCCESS ) { return; }
 
 	// compute with the operator-monoid mxm
 	std::cout << "\tVerifying the operator-monoid version of mxm\n";
 
-	rc = grb::mxm(
+	rc = grb::clear( C );
+	rc = rc ? rc : grb::mxm(
 		C, A, B,
 		ring.getAdditiveMonoid(),
 		ring.getMultiplicativeOperator(),
@@ -79,19 +79,17 @@ void grb_program( const size_t &n, grb::RC &rc ) {
 	);
 	if( rc == SUCCESS ) {
 		rc = grb::mxm(
-			C, A, B,
-			ring.getAdditiveMonoid(),
-			ring.getMultiplicativeOperator()
-		);
+				C, A, B,
+				ring.getAdditiveMonoid(),
+				ring.getMultiplicativeOperator()
+			);
 		if( rc != SUCCESS ) {
-			std::cerr << "Call to grb::mxm FAILED\n";
+			std::cerr << "Call to grb::mxm( ..., EXECUTE ) II FAILED\n";
 		}
 	} else {
-		std::cerr << "Call to grb::resize FAILED\n";
+		std::cerr << "Call to grb::mxm( ..., RESIZE ) II FAILED\n";
 	}
-	if( rc != SUCCESS ) {
-		return;
-	}
+	if( rc != SUCCESS ) { return; }
 
 	// check CRS output
 	if( utils::compare_crs( C, C_expected ) != SUCCESS ) {
@@ -104,6 +102,102 @@ void grb_program( const size_t &n, grb::RC &rc ) {
 		std::cerr << "Error detected while comparing output to ground-truth CCS\n";
 		rc = FAILED;
 	}
+	if( rc != SUCCESS ) { return; }
+
+	// check in-place behaviour using the semiring
+	std::cout << "\tVerifying in-place behaviour of mxm (using semirings)\n"
+		<< "\t\tin this test, the output nonzero structure is unchanged\n"
+		<< "\t\talso in this test, we skip RESIZE as we know a priori the capacity "
+		<< "is sufficient\n";
+
+	{
+		grb::Matrix< double > replace = matrices< double >::eye( n, n, 4, 3 );
+		std::swap( replace, C_expected );
+	}
+
+	rc = grb::mxm( C, A, B, ring, EXECUTE );
+	if( rc != SUCCESS ) {
+		std::cerr << "Call to grb::mxm( .., EXECUTE ) III FAILED\n";
+	}
+	if( rc != SUCCESS ) { return; }
+
+	// check CRS and CCS output
+	if( utils::compare_crs( C, C_expected ) != SUCCESS ) {
+		std::cerr << "Error detected while comparing output to ground-truth CRS\n";
+		rc = FAILED;
+	}
+	if( utils::compare_ccs( C, C_expected ) != SUCCESS ) {
+		std::cerr << "Error detected while comparing output to ground-truth CCS\n";
+		rc = FAILED;
+	}
+	if( rc != SUCCESS ) { return; }
+
+	// check in-place behaviour using the monoid-operator variant
+	std::cout << "\tVerifying in-place behaviour of mxm (using monoid-op)\n"
+		<< "\t\tin this test, the output nonzero structure changes";
+
+	const size_t expected_nz = grb::nnz( C ) + n;
+	// replace A, B with (scaled) identities
+	{
+		grb::Matrix< double > replace = matrices< double >::eye( n, n, 3, 0 );
+		std::swap( A, replace );
+	}
+	{
+		grb::Matrix< double > replace = matrices< double >::identity( n );
+		std::swap( B, replace );
+	}
+
+	rc = grb::mxm(
+			C, A, B,
+			ring.getAdditiveMonoid(),
+			ring.getMultiplicativeOperator(),
+			RESIZE
+		);
+	if( rc == SUCCESS ) {
+		rc = grb::mxm(
+				C, A, B,
+				ring.getAdditiveMonoid(),
+				ring.getMultiplicativeOperator(),
+				EXECUTE
+			);
+		if( rc != SUCCESS ) {
+			std::cerr << "Call to grb::mxm( ..., EXECUTE ) IV FAILED\n";
+		}
+	} else {
+		std::cerr << "Call to grb::mxm( ..., RESIZE ) IV FAILED\n";
+	}
+	if( rc != SUCCESS ) { return; }
+
+	// ``manual'' check
+	if( expected_nz != grb::nnz( C ) ) {
+		std::cerr << "Expected " << expected_nz << " nonzeroes, got "
+			<< grb::nnz( C ) << "\n";
+		rc = FAILED;
+	}
+	for( const auto &pair : C ) {
+		const size_t &i = pair.first.first;
+		const size_t &j = pair.first.second;
+		const size_t &v = pair.second;
+		if( i == j ) {
+			if( v != 3 ) {
+				std::cerr << "\t expected value 3 at position ( " << i << ", " << j
+					<< " ), got " << v << "\n";
+				rc = FAILED;
+			}
+		} else if( i + 3 == j ) {
+			if( v != 4 ) {
+				std::cerr << "\t expected value 4 at position ( " << i << ", " << j
+					<< " ), got " << v << "\n";
+			}
+			rc = FAILED;
+		} else {
+			std::cerr << "\t expected no entry at position ( " << i << ", " << j
+				<< " ), but got one with value " << v << "\n";
+			rc = FAILED;
+		}
+	}
+	if( rc != SUCCESS ) { return; }
+
 }
 
 int main( int argc, char ** argv ) {
