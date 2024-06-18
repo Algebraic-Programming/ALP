@@ -1123,16 +1123,19 @@ namespace grb {
 							CRS_raw.setValue( local_nzc, valbuf[ j ] );
 							// update CCS
 							if( !crs_only ) {
+								size_t atomic_offset;
 #ifdef _H_GRB_REFERENCE_OMP_BLAS3
-								// TODO It may be better to switch to a parallel transposition to update
-								//      the CCS if there are too many threads (FIXME)
-								#pragma omp critical
+								// TODO It may be better to switch to a parallel transposition
+								//      if there are too many threads / conflict updates (FIXME)
+								#pragma omp atomic capture
 #endif
 								{
-									const size_t CCS_index = C_col_index[ j ]++ + CCS_raw.col_start[ j ];
-									CCS_raw.row_index[ CCS_index ] = i;
-									CCS_raw.setValue( CCS_index, valbuf[ j ] );
+									atomic_offset = C_col_index[ j ];
+									C_col_index[ j ]++;
 								}
+								const size_t CCS_index = atomic_offset + CCS_raw.col_start[ j ];
+								CCS_raw.row_index[ CCS_index ] = i;
+								CCS_raw.setValue( CCS_index, valbuf[ j ] );
 							}
 							// update count
 							(void) ++local_nzc;
