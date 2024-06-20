@@ -42,6 +42,17 @@ namespace grb {
 		/** OpenMP defaults and utilities for internal use. */
 		class OMP {
 
+			private:
+
+				static inline size_t nblocks(
+					const size_t start, const size_t end,
+					const size_t block_size
+				) {
+					const size_t n = end - start;
+					return blocks = n / block_size + ( n % block_size > 0 ? 1 : 0 );
+				}
+
+
 			public:
 
 				/**
@@ -141,8 +152,7 @@ namespace grb {
 					assert( block_size > 0 );
 					assert( T > 0 );
 					assert( t < T );
-					const size_t n = end - start;
-					const size_t blocks = n / block_size + ( n % block_size > 0 ? 1 : 0 );
+					const size_t blocks = nblocks( start, end, block_size );
 					const size_t blocks_per_thread = blocks / T + ( blocks % T > 0 ? 1 : 0 );
 					local_start = start + t * blocks_per_thread * block_size;
 					local_end = local_start + blocks_per_thread * block_size;
@@ -162,6 +172,35 @@ namespace grb {
 					assert( local_end <= end );
 					assert( local_start <= local_end );
 				}
+
+				/**
+				 * @returns Given a range that is to be distributed across the available
+				 *          threads, how many thread-local ranges will be non-empty.
+				 *
+				 * The following parameters are mandatory:
+				 *
+				 * @param[in] start      The lowest index of the global range (inclusive)
+				 * @param[in] end        The lowest index that is out of the global range
+				 *
+				 * The following parameters are optional:
+				 *
+				 * @param[in] block_size Local ranges should be a multiple of this value
+				 * @param[in] T          The total number of threads
+				 *
+				 * The default values are the same as for #localRange.
+				 */
+				static inline size_t nranges(
+					const size_t start, const size_t end,
+					const size_t block_size = config::CACHE_LINE_SIZE::value(),
+					const size_t T = current_threads()
+				) {
+					assert( start <= end );
+					assert( block_size > 0 );
+					assert( T > 0 );
+					const size_t blocks = nblocks( start, end, block_size );
+					return std::min( blocks, T );
+				}
+
 		};
 
 	} // namespace config
