@@ -49,7 +49,7 @@ namespace grb {
 					const size_t block_size
 				) {
 					const size_t n = end - start;
-					return blocks = n / block_size + ( n % block_size > 0 ? 1 : 0 );
+					return n / block_size + ( n % block_size > 0 ? 1 : 0 );
 				}
 
 
