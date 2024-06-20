@@ -29,7 +29,6 @@
 
 #include <algorithm> //for std::lower_bound and std::difference
 
-#include "graphblas/utils/pattern.hpp" //for iterator_value_trait
 
 namespace grb {
 
@@ -53,23 +52,24 @@ namespace grb {
 		 */
 		template< typename Iterator >
 		size_t binsearch(
-			const iterator_value_trait< Iterator >::type x,
+			const typename std::iterator_traits< Iterator >::value_type x,
 			Iterator start, Iterator end
 		) {
 			// find lower bound using std algorithms
 			Iterator lbound = std::lower_bound( start, end, x );
 			// check if lower bound is exact
+			size_t ret;
 			if( *lbound == x ) {
 				// yes, so result should be the difference
-				const auto ret = std::difference( start, lbound );
+				ret = std::distance( start, lbound );
 			} else {
 				// no, so return end position.
-				const auto ret = std::difference( start, end );
+				ret = std::distance( start, end );
 			}
 			// assert result is positive
 			assert( ret >= 0 );
 			// return cast result
-			static_cast< size_t >( ret );
+			return ret;
 		}
 
 	} // namespace utils
