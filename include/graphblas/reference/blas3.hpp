@@ -27,6 +27,9 @@
 #include <type_traits> //for std::enable_if
 
 #include <graphblas/base/blas3.hpp>
+#include <graphblas/base/final.hpp>
+
+#include <graphblas/utils/unordered_memmove.hpp>
 #include <graphblas/utils/iterators/matrixVectorIterator.hpp>
 
 #include "io.hpp"
@@ -298,7 +301,8 @@ namespace grb {
 			const Matrix< InputType1, reference, RIT, CIT, NIT > &A,
 			const Matrix< InputType2, reference, RIT, CIT, NIT > &B,
 			const Matrix< OutputType, reference, RIT, CIT, NIT > &C,
-			char * const arr, char * const buf
+			char * const arr, char * const buf,
+			bool inplace
 		) {
 			// static sanity checks
 			static_assert( phase == RESIZE || phase == EXECUTE, "Only resize and execute "
@@ -346,7 +350,7 @@ namespace grb {
 
 			// output nonzero count
 			if( start < end && start == 0 && phase == EXECUTE ) {
-				CRS.col_start[ 0 ] = 0;
+				CRS.col_start[ 0 ] = 0; // DBG FIXME TODO
 			}
 			nzc = 0;
 
@@ -384,7 +388,7 @@ namespace grb {
  #endif
 #endif
 				coors.clear_seq();
-				{
+				if( inplace ) {
 					const auto &C_CRS = internal::getCRS( C );
 					for(
 						auto k = C_CRS.col_start[ i ];
@@ -392,6 +396,7 @@ namespace grb {
 						++k
 					) {
 						const auto index = C_CRS.row_index[ k ];
+						if( index == static_cast< CIT >(n) ) { break; }
 						if( !coors.assign( index ) ) {
 							(void) ++nzc;
 							if( !crs_only && phase == EXECUTE ) {
@@ -481,7 +486,13 @@ namespace grb {
 		template< typename NIT, typename ValueType >
 		class MXM_BufferMetaData {
 
+			static_assert( sizeof(NIT) % sizeof(int) == 0, "Unsupported type for NIT; "
+				"please submit a bug report!" );
+
 			private:
+
+				/** The size of the offset array */
+				size_t m;
 
 				/** The size of the SPA */
 				size_t n;
@@ -507,7 +518,8 @@ namespace grb {
 				/**
 				 * Base constructor.
 				 *
-				 * @param[in] _n          The length of the SPA
+				 * @param[in] _m          The length of the offset array.
+				 * @param[in] _n          The length of the SPA.
 				 * @param[in] max_threads The maximum number of threads.
 				 *
 				 * \note \a max_threads is a separate input since there might be a need to
@@ -521,16 +533,18 @@ namespace grb {
 				 * \note This class \em will, however, cap the number of threads returned
 				 *       to \a _n.
 				 */
-				MXM_BufferMetaData( const size_t _n, const size_t max_threads )
-					: n( _n ), arrayShift( 0 ), stackShift( 0 )
-				{
+				MXM_BufferMetaData(
+					const size_t _m, const size_t _n,
+					const size_t max_threads
+				) : m( _m ), n( _n ), arrayShift( 0 ), stackShift( 0 ) {
  #ifdef _DEBUG_REFERENCE_BLAS3
 					#pragma omp critical
 					std::cout << "\t\t\t computing padded buffer size for a SPA of length "
-						<< n << "...\n";
+						<< n << " while leaving space for an additional offset buffer of length "
+						<< std::max( m, n ) << "...\n";
  #endif
 					// compute bufferOffset
-					bufferOffset = (n + 1) * sizeof( NIT );
+					bufferOffset = (std::max( m, n ) + 1) * sizeof( NIT );
 
 					// compute value buffer size
 					const size_t valBufSize = n * sizeof( ValueType );
@@ -619,6 +633,26 @@ namespace grb {
 					assert( reinterpret_cast< uintptr_t >(raw) % sizeof(int) == 0 );
 					raw += t * paddedSPASize;
 					return raw;
+				}
+
+				/**
+				 * @returns the column offset buffer.
+				 *
+				 * \warning This buffer overlaps with the CRS offset buffer. The caller
+				 *          must ensure to only ever use one at a time.
+				 */
+				NIT * getColOffsetBuffer() const noexcept {
+					return internal::template getReferenceBuffer< NIT >( n + 1 );
+				}
+
+				/**
+				 * @returns the row offset buffer.
+				 *
+				 * \warning This buffer overlaps with the CCS offset buffer. The caller
+				 *          must ensure to only ever use one at a time.
+				 */
+				NIT * getRowOffsetBuffer() const noexcept {
+					return internal::template getReferenceBuffer< NIT >( m + 1 );
 				}
 
 				/**
@@ -760,6 +794,47 @@ namespace grb {
 		}
 
 		/**
+		 * Given a computed new row_start array, moves the old index and value arrays
+		 * to new offsets. This leaves precisely enough space for the mxm algorithm to
+		 * inject new nonzeroes at the right location for every row.
+		 *
+		 * The mxm algorithm must know the old bounds, but we do not want to keep the
+		 * \a oldOffsets buffer around for too long-- and we do not have to. If there
+		 * are gaps that should contain new nonzero entries, we can indicate the first
+		 * such gap element in the index array by putting the corresponding matrix
+		 * size there-- this value is an invalid index, and thus is taken as an
+		 * encoding for the original boundary.
+		 */
+		template<
+			typename OutputType,
+			typename RIT, typename CIT, typename NIT
+		>
+		void mxm_ompPar_shiftByOffset(
+			Matrix< OutputType, reference, RIT, CIT, NIT > &C,
+			const NIT *__restrict__ const oldOffsets
+		) {
+			const auto &CRS = internal::getCRS( C );
+			const size_t m = grb::nrows( C );
+			const size_t n = grb::ncols( C );
+			// TODO can I pass some buffers from somewhere?
+			//      YES: the SPA buffers are unused, so we can supply those (TODO)
+			grb::utils::unordered_memmove_ompPar(
+				CRS.row_index, oldOffsets, CRS.col_start, m );
+			if( !std::is_void< OutputType >::value ) {
+				grb::utils::unordered_memmove_ompPar(
+					CRS.values, oldOffsets, CRS.col_start, m );
+			}
+			size_t start, end;
+			config::OMP::localRange( start, end, 0, m );
+			for( size_t i = start; i < end; ++i ) {
+				if( oldOffsets[ i + 1 ] != CRS.col_start[ i + 1 ] ) {
+					assert( oldOffsets[ i + 1 ] < CRS.col_start[ i + 1 ] );
+					CRS.row_index[ oldOffsets[ i + 1 ] ] = n;
+				}
+			}
+		}
+
+		/**
 		 * \internal general mxm implementation that all mxm variants refer to
 		 */
 		template<
@@ -836,8 +911,7 @@ namespace grb {
 			auto &CRS_raw = internal::getCRS( C );
 			auto &CCS_raw = internal::getCCS( C );
 
-			NIT * C_col_index = internal::template
-				getReferenceBuffer< NIT >( n + 1 );
+			const bool inplace = grb::nnz( C ) > 0;
 
 			// a basic analytic model based on the number of nonzeroes
 			size_t max_threads = config::OMP::threads();
@@ -860,7 +934,8 @@ namespace grb {
 #endif
 			}
 
-			MXM_BufferMetaData< NIT, OutputType > bufferMD( n, max_threads );
+			MXM_BufferMetaData< NIT, OutputType > bufferMD( m, n, max_threads );
+
 #ifdef _H_GRB_REFERENCE_OMP_BLAS3
 			// derive number of threads
 			size_t nthreads = bufferMD.threads();
@@ -887,7 +962,8 @@ namespace grb {
 					mxm_generic_ompPar_get_row_col_counts< descr, crs_only, RESIZE >(
 						local_nzc, CRS_raw, CCS_raw,
 						m, n, A, B, C,
-						arr, buf
+						arr, buf,
+						inplace
 					);
 					#pragma omp atomic update
 					nzc += local_nzc;
@@ -937,16 +1013,36 @@ namespace grb {
 				std::cout << "\t\t arr @ " << static_cast< void * >(arr) << ", "
 					<< "buf @ " << static_cast< void * >(buf) << ", "
 					<< "vbf @ " << static_cast< void * >(valbuf) << "\n";
+
+				#pragma omp barrier
+				#pragma omp single
+				{
+					std::cout << "\t\t CRS_raw original start array = { "
+						<< CRS_raw.col_start[ 0 ];
+					for( size_t i = 1; i <= m; ++i ) {
+						std::cout << ", " << CRS_raw.col_start[ i ];
+					}
+					std::cout << " }\n";
+				}
 #endif
 
 				// phase 1: symbolic phase
+
+				NIT * originalRowOffsets = nullptr;
+				if( inplace ) {
+					// first save old row offsets
+					originalRowOffsets = bufferMD.getRowOffsetBuffer();
+					grb::internal::FinalBackend< reference >::memcpy(
+						originalRowOffsets, CRS_raw.col_start, (m + 1) * sizeof(NIT) );
+				}
 
 				local_rc = mxm_generic_ompPar_get_row_col_counts<
 					descr, crs_only, EXECUTE
 				>(
 					local_nzc, CRS_raw, CCS_raw,
 					m, n, A, B, C,
-					arr, buf
+					arr, buf,
+					inplace
 				);
 
 #ifdef _DEBUG_REFERENCE_BLAS3
@@ -977,7 +1073,17 @@ namespace grb {
 					#pragma omp atomic write
 					clear_at_exit = true;
 				} else {
-					// phase 2: computational phase
+					// phase 2 (optional): in-place shift (make room for new nonzeroes)
+
+					if( inplace ) {
+						mxm_ompPar_shiftByOffset( C, originalRowOffsets );
+						#pragma omp barrier
+					}
+
+					// phase 3: computational phase
+
+					// get thread-shared column offset buffer
+					NIT * const C_col_index = bufferMD.getColOffsetBuffer();
 
 					// get thread-local SPA
 					internal::Coordinates< reference > coors;
@@ -1072,6 +1178,20 @@ namespace grb {
  #endif
 #endif
 						coors.clear_seq();
+						if( inplace ) {
+							for(
+								auto k = CRS_raw.col_start[ i ];
+								k < CRS_raw.col_start[ i + 1 ];
+								++k
+							) {
+								const auto index = CRS_raw.row_index[ k ];
+								if( index == static_cast< NIT >(n) ) { break; }
+								if( !coors.assign( index ) ) {
+									valbuf[ index ] = CRS_raw.getValue( index,
+										monoid.template getIdentity< OutputType >() );
+								}
+							}
+						}
 #ifdef _DEBUG_REFERENCE_BLAS3
  #ifdef _H_GRB_REFERENCE_OMP_BLAS3
 						#pragma omp critical
@@ -1142,6 +1262,11 @@ namespace grb {
 							const size_t j = coors.index( k );
 							// update CRS
 							CRS_raw.row_index[ local_nzc ] = j;
+							// this above index store is superfluous for some entries in the
+							// in-place case, but we, at this point, have lost the information which
+							// part of the row_index array did not need updating. We could prevent it
+							// at the cost of m+1 memory, but we chose not to expend that and just
+							// take this hit
 							CRS_raw.setValue( local_nzc, valbuf[ j ] );
 							// update CCS
 							if( !crs_only ) {
