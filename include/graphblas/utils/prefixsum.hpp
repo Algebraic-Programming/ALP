@@ -27,7 +27,10 @@
 #ifndef _H_GRB_UTILS_PREFIXSUM
 #define _H_GRB_UTILS_PREFIXSUM
 
-#include <graphblas/omp/config.hpp>
+#ifdef _GRB_WITH_OMP
+ #include <graphblas/omp/config.hpp>
+#endif
+
 #include <graphblas/base/config.hpp>
 
 #include <cstddef>
