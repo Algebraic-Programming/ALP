@@ -162,7 +162,7 @@ namespace grb {
 			) {
 				// dynamic checks
  #ifndef NDEBUG
-				const size_t upper = src_offsets[ batches + 1 ];
+				const size_t upper = src_offsets[ batches ];
 				for( size_t i = 0; i < batches; ++i ) {
 					assert( dst_offsets[ i ] >= upper );
 				}
@@ -233,8 +233,11 @@ namespace grb {
 			}
 
 			/** @returns The parallelism of the above function. */
-			template< typename T, typename IND >
-			void unordered_memmove_ompPar_case2_inplace_parallelism() {
+			template< typename IND >
+			void unordered_memmove_ompPar_case2_inplace_parallelism(
+				const IND * const src_offsets,
+				const IND * const dst_offsets
+			) {
 				return config::OMP::nranges( *dst_offsets - *src_offsets );
 			}
 
@@ -328,48 +331,71 @@ namespace grb {
 			if( batches == 0 ) { return; }
 
 			// prelims
-			const size_t upper = src_offsets[ batches ];
+			const IND upper = src_offsets[ batches ];
 			size_t batch = batches - 1;
 			size_t not_processed = batches;
 
 			do {
 				if( dst_offsets[ batch ] >= upper ) {
-					// we are in case 1 -- check how many batches we can process
-					while( batch > 0 && dst_offsets[ batch - 1 ] >= upper ) { (void) --batch; }
-					// process them
-					internal::unordered_memmove_ompPar_case1(
-						source,
-						src_offsets + batch,
-						dst_offsets + batch,
-						not_processed - batch
-					);
+					// we are in case 1
+					size_t nbatches;
+					// first check that movement is non-trivial
+					if( src_offsets[ batch ] < dst_offsets[ batch ] ) {
+						// check how many batches we can process
+						while(
+							batch > 0 && dst_offsets[ batch - 1 ] >= upper &&
+							src_offsets[ batch ] < dst_offsets[ batch ]
+						) { (void) --batch; }
+						nbatches = not_processed - batch;
+						std::cout << "\t\t will process " << nbatches << " batches in case 1\n"; // DBG
+						// process them
+						internal::unordered_memmove_ompPar_case1(
+							source,
+							src_offsets + batch,
+							dst_offsets + batch,
+							nbatches
+						);
+					} else {
+						std::cout << "\t\t trivial batch detected I -- skipping\n"; // DBG
+						assert( src_offsets[ batch ] == dst_offsets[ batch ] );
+						nbatches = 1;
+					}
 
-					// progress to next batch (which will be case 2 or end)
-					not_processed -= not_processed - batch;
+					// progress to next batch (which will be case 2, trivial, or end)
+					not_processed -= nbatches;
 					(void) --batch;
-				}
-				if( not_processed > 0 ) {
-					// we are in case 2
+				} else {
 					assert( dst_offsets[ batch ] < src_offsets[ batch + 1 ] );
-					/*const size_t head_move_parallelism =
-						internal::unordered_memmove_case2_inplace_parallelism(
-							src_offsets + batch, dst_offsets + batch );
-					const size_t buffered_parallelism =
-						internal::unordered_memmove_case2_buffered_cost(
-							source, src_offsets, dst_offsets,
-							not_processed, workspace_size
-						);
-					if( buffered_parallelism > head_move_parallelism ) {
-						batch = internal::unordered_memmove_case2_buffered(
-							source, src_offsets, dst_offsets,
-							not_processed, workspace, workspace_size
-						);
-					} else {TODO */
-						internal::unordered_memmove_case2_inplace(
-							source, src_offsets + batch, dst_offsets + batch );
-						(void) --batch;
-						(void) --not_processed;
-					// } TODO
+					// first check if movement is non-trivial
+					if( src_offsets[ batch ] < dst_offsets[ batch ] ) {
+						// we are in case 2
+						assert( dst_offsets[ batch ] < src_offsets[ batch + 1 ] );
+						(void) workspace;
+						(void) workspace_size;
+						/*const size_t head_move_parallelism =
+							internal::unordered_memmove_case2_inplace_parallelism(
+								src_offsets + batch, dst_offsets + batch );
+						const size_t buffered_parallelism =
+							internal::unordered_memmove_case2_buffered_cost(
+								source, src_offsets, dst_offsets,
+								not_processed, workspace_size
+							);
+						if( buffered_parallelism > head_move_parallelism ) {
+							batch = internal::unordered_memmove_case2_buffered(
+								source, src_offsets, dst_offsets,
+								not_processed, workspace, workspace_size
+							);
+						} else {TODO */
+							std::cout << "\t\t will handle case-2 batch in-place\n"; // DBG
+							internal::unordered_memmove_ompPar_case2_inplace(
+								source, src_offsets + batch, dst_offsets + batch );
+						// } TODO
+					} else {
+						std::cout << "\t\t trivial batch detected II -- skipping\n"; // DBG
+						assert( src_offsets[ batch ] == dst_offsets[ batch ] );
+					}
+					(void) --batch;
+					(void) --not_processed;
 				}
 			} while( not_processed > 0 );
 
@@ -422,7 +448,7 @@ namespace grb {
 
 			// if too small, do not spawn any parallel region
 			if( n < config::OMP::minLoopSize() ) {
-				unordered_memmove_seq( source, src_offset, dst_offset, batches,
+				unordered_memmove_seq( source, src_offsets, dst_offsets, batches,
 					workspace, workspace_size );
 				return;
 			}
