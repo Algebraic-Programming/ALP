@@ -52,7 +52,10 @@ namespace grb {
 		 * @return How many times \a start may be incremented before \a x is found.
 		 */
 		template< typename Iterator >
-		size_t binsearch( const iterator_value_trait< Iterator >::type x, Iterator start, Iterator end ) {
+		size_t binsearch(
+			const iterator_value_trait< Iterator >::type x,
+			Iterator start, Iterator end
+		) {
 			// find lower bound using std algorithms
 			Iterator lbound = std::lower_bound( start, end, x );
 			// check if lower bound is exact
