@@ -1189,6 +1189,11 @@ namespace grb {
 								if( !coors.assign( index ) ) {
 									valbuf[ index ] = CRS_raw.getValue( index,
 										monoid.template getIdentity< OutputType >() );
+								} else {
+#ifndef NDEBUG
+									const bool repeated_column_indices_detected = false;
+									assert( repeated_column_indices_detected );
+#endif
 								}
 							}
 						}

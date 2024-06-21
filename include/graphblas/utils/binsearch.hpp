@@ -66,8 +66,6 @@ namespace grb {
 				// no, so return end position.
 				ret = std::distance( start, end );
 			}
-			// assert result is positive
-			assert( ret >= 0 );
 			// return cast result
 			return ret;
 		}
