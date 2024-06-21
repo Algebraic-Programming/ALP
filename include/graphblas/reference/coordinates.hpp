@@ -649,11 +649,14 @@ namespace grb {
 						counts = _buffer;
 #endif
 						size_t start, end;
-						config::OMP::localRange( start, end, 0, _cap );
 #ifdef _H_GRB_REFERENCE_OMP_COORDINATES
+						config::OMP::localRange( start, end, 0, _cap );
+#else
+						start = 0;
+						end = _cap;
+#endif
 						assert( start <= end );
 						assert( end <= _cap );
-#endif
 #ifdef _DEBUG_REFERENCE_COORDINATES
 						std::cout << "Coordinates::rebuild: thread " << s << " has range "
 							<< start << "--" << end << "\n";
