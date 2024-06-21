@@ -714,70 +714,89 @@ namespace grb {
 	}
 
 	/**
-	 * Resizes the nonzero capacity of this matrix. Any current contents of the
-	 * matrix are \em not retained.
+	 * Resizes the nonzero capacity of this matrix.
 	 *
 	 * @tparam InputType The type of elements contained in the matrix \a A.
-	 * @tparam backend  The backend of the matrix \a A.
+	 * @tparam backend   The backend corresponding to the matrix \a A.
+	 *
+	 * The size of an ALP matrix is immutable after construction. This function
+	 * only adapts the capacity of the matrix, i.e., the maximum number of
+	 * nonzeroes that the matrix may contain.
+	 *
+	 * Any current matrix contents are retained after a call to this function.
 	 *
 	 * @param[out]   A   The matrix whose capacity is to be resized.
 	 * @param[in] new_nz The number of nonzeroes this matrix is to contain. After
-	 *                   a successful call, the container will have space for <em>
-	 *                   at least</em> \a new_nz nonzeroes.
+	 *                   a successful call, the container will have space for
+	 *                   <em>at least</em> \a new_nz nonzeroes.
 	 *
 	 * The requested \a new_nz must be smaller or equal to product of the number
-	 * of rows and columns.
+	 * of rows and columns. The requested \a new_nz must be equal or greater than
+	 * the current number of nonzeroes in \a A. The only exception follows:
 	 *
-	 * After a call to this function, the matrix shall not contain any nonzeroes.
-	 * This is the case even after an unsuccessful call, with the exception for
-	 * cases where #grb::PANIC is returned-- see below.
+	 * \note if the matrix \a A has size zero, meaning either zero rows or zero
+	 *       columns (or, as the preceding implies, both), then any call to this
+	 *       function on \a A will always return #grb::SUCCESS, even if a value
+	 *       for \a new_nz was given that violates the aforementioned constraints.
 	 *
-	 * The size of this matrix is fixed. By a call to this function, only the
-	 * maximum number of nonzeroes that the matrix may contain can be adapted.
+	 * Additionally, and without exception, \a new_nz must not exceed any
+	 * configured limitations-- such as, for example, those implied by the
+	 * #grb::config::NonzeroIndexType configuration setting. If such a case is
+	 * encountered, the backend may return #grb::UNSUPPORTED and is encouraged to
+	 * give the user feedback on the encoutered limitation via, e.g., the standard
+	 * error stream.
 	 *
-	 * If the matrix has size zero, meaning either zero rows or zero columns (or,
-	 * as the preceding implies, both), then all calls to this function will be
-	 * equivalent to a call to grb::clear. In particular, any value of \a new_nz
-	 * shall be ignored, even ones that would normally be considered illegal
-	 * (which would be any nonzero value in the case of an empty container).
+	 * A request for less capacity than currently is allocated may or may not be
+	 * ignored by the implementing backend. A backend
+	 *   1. \em must define memory usage semantics that may be proportional to the
+	 *      requested capacity;
+	 *   2. \em could define memory usage semantics that are \em not proportional
+	 *      to the requested capacity.
 	 *
-	 * A request for less capacity than currently already may be allocated,
-	 * may or may not be ignored. A backend
-	 *   1. must define memory usage semantics that may be proportional to the
-	 *      requested capacity, and therefore must free any memory that the user
-	 *      has deemed unnecessary. However, a backend
-	 *   2. could define memory usage semantics that are \em not proportional to
-	 *      the requested capacity, and in that case a performant implementation
-	 *      may choose not to free memory that the user has deemed unnecessary.
+	 * \note The above two constraints allow for backends that dynamically free
+	 *       memory on resizes to smaller capacity, \em and allow for backends that
+	 *       ignore requests to resize to smaller capacities.
 	 *
-	 * \note However, useful implementations will almost surely define storage
-	 *       costs that are proportional to \a new_nz, and in such cases resizing
-	 *       to smaller capacity must indeed free up unused memory.
+	 * \note For matrices, useful backend implementations surely define memory
+	 *       usage semantics where matrix storage is proportional to \a new_nz and
+	 *       not \f$ mn \f$.
 	 *
-	 * @returns ILLEGAL  When \a new_nz is larger than admissable and \a A was
+	 * @returns SUCCESS  If \a A is empty.
+	 * @returns ILLEGAL  When \a new_nz is larger than admissable and \a A is
 	 *                   non-empty. The capacity of \a A remains unchanged while
-	 *                   its contents have been cleared.
-	 * @returns OUTOFMEM When the required memory memory could not be allocated.
-	 *                   The capacity of \a A remains unchanged while its contents
-	 *                   have been cleared.
-	 * @returns PANIC    When allocation fails for any other reason. The matrix
-	 *                   \a A as well as ALP/GraphBLAS, enters an undefined state.
-	 * @returns SUCCESS  If \a A is non-empty and when sufficient capacity for
-	 *                   resizing was available. The matrix \a A has obtained the
-	 *                   requested (or a larger) capacity. Its previous contents,
-	 *                   if any, have been cleared.
+	 *                   its contents remain unchanged also.
+	 * @returns ILLEGAL  When \a new_nz is smaller than the current number of
+	 *                   nonzeroes in \a A and \a A was is non-empty. The capacity
+	 *                   of \a A remains unchanged while its contents remain
+	 *                   unchanged also.
+	 * @returns OUTOFMEM When the required memory memory could not be allocated and
+	 *                   \a A is non-empty. The capacity of \a A remains unchanged
+	 *                   while its contents remain unchanged also.
+	 * @returns PANIC    When the call fails for any other and unmitigible reason.
+	 *                   The matrix \a A as well as ALP/GraphBLAS as a whole enters
+	 *                   an undefined state.
+	 * @returns SUCCESS  If \a A is non-empty and the requested matrix capacity
+	 *                   could successfully be guaranteed. The contents of \a A are
+	 *                   unchanged.
+	 *
+	 * @returns UNSUPPORTED If the backend is unable to fulfill the request due to
+	 *                      any inherent limitation in its implementation. This
+	 *                      error behaves the same as #grb::OUTOFMEM for this
+	 *                      particular primitive.
 	 *
 	 * \parblock
 	 * \par Performance semantics.
-	 * Each backend must define performance semantics for this primitive.
+	 *
+	 * A backend must define performance semantics for this primitive.
 	 *
 	 * @see perfSemantics
 	 * \endparblock
 	 *
-	 * \warning For useful backends, this function will indeed imply system calls
-	 *          and incur \f$ \Theta( \mathit{new\_nz} ) \f$ work and data movement
-	 *          costs. It is thus to be considered an expensive function, and
-	 *          should be used sparingly and only when absolutely necessary.
+	 * \warning For useful backends, this function \em will result in system calls
+	 *          such as for memory allocation, and incur
+	 *            \f$ \mathcal{O}( \mathit{new\_nz} ) \f$ work and data movement.
+	 *          This function should hence be considered expensive, and therefore
+	 *          be used only when absolutely necessary.
 	 */
 	template<
 		typename InputType, Backend backend,
