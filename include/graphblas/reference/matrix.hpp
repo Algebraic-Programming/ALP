@@ -165,7 +165,7 @@ namespace grb {
 		) noexcept {
 			assert( internal::Coordinates< reference >::bufferSize( A.m ) >=
 				A.m * sizeof( RIT ) );
-			return reinterpret_cast< RIT * >(A.coorArr[ 2 ]);
+			return reinterpret_cast< RIT * >(A.coorArr[ 0 ]);
 		}
 
 		/**
@@ -180,7 +180,7 @@ namespace grb {
 		) noexcept {
 			assert( internal::Coordinates< reference >::bufferSize( A.n ) >=
 				A.n * sizeof( CIT ) );
-			return reinterpret_cast< CIT * >(A.coorArr[ 3 ]);
+			return reinterpret_cast< CIT * >(A.coorArr[ 1 ]);
 		}
 
 		/**
