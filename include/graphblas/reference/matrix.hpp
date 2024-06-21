@@ -22,20 +22,21 @@
 #if !defined _H_GRB_REFERENCE_MATRIX || defined _H_GRB_REFERENCE_OMP_MATRIX
 #define _H_GRB_REFERENCE_MATRIX
 
+#include <cmath>
+#include <limits>
 #include <numeric> //std::accumulate
 #include <sstream> //std::stringstream
-#include <algorithm>
-#include <functional>
-#include <limits>
-#include <stdexcept>
 #include <utility>
 #include <iterator>
-#include <cmath>
+#include <algorithm>
+#include <stdexcept>
+#include <functional>
 
 #include <assert.h>
 
 #include <graphblas/backends.hpp>
 #include <graphblas/base/matrix.hpp>
+#include <graphblas/base/final.hpp>
 #include <graphblas/config.hpp>
 #include <graphblas/utils.hpp>
 #include <graphblas/ops.hpp>
@@ -1644,7 +1645,7 @@ namespace grb {
 			/** @see grb::resize() */
 			RC resize( const size_t nonzeroes ) {
 				// check for trivial case
-				if( m == 0 || n == 0 || nonzeroes == 0 ) {
+				if( m == 0 || n == 0 ) {
 					// simply do not do anything and return
 					return SUCCESS;
 				}
@@ -1654,11 +1655,15 @@ namespace grb {
 					return SUCCESS;
 				}
 
+				// check internal limitation
 				if( nonzeroes >= static_cast< size_t >(
 						std::numeric_limits< NonzeroIndexType >::max()
 					)
 				) {
-					return OVERFLW;
+					std::cerr << "Error: requested capacity exceeds the maximum representable "
+						<< "nonzero index. Please set grb::config::NonzeroIndexType to a wider "
+						<< "integer type.\n";
+					return UNSUPPORTED;
 				}
 
 				// allocate and catch errors
@@ -1666,7 +1671,6 @@ namespace grb {
 				size_t sizes[ 4 ];
 				// cache old allocation data
 				size_t old_sizes[ 4 ] = { 0, 0, 0, 0 };
-				size_t freed = 0;
 				if( cap > 0 ) {
 					CRS.getAllocSize( &( old_sizes[ 0 ] ), cap );
 					CCS.getAllocSize( &( old_sizes[ 2 ] ), cap );
@@ -1682,12 +1686,13 @@ namespace grb {
 					<< "times " << n << " matrix.\n";
 
 				// do allocation
+				utils::AutoDeleter< char > new_deleters[ 4 ];
 				RC ret = utils::alloc(
-					"grb::Matrix< T, reference >::resize", description.str(),
-					alloc[ 0 ], sizes[ 0 ], true, _deleter[ 2 ],
-					alloc[ 1 ], sizes[ 1 ], true, _deleter[ 3 ],
-					alloc[ 2 ], sizes[ 2 ], true, _deleter[ 4 ],
-					alloc[ 3 ], sizes[ 3 ], true, _deleter[ 5 ]
+					"grb::Matrix< T, reference >::resize", description.str(), // should go in
+					alloc[ 0 ], sizes[ 0 ], true, new_deleters[ 0 ], // _deleter[ 2 ]
+					alloc[ 1 ], sizes[ 1 ], true, new_deleters[ 1 ], // _deleter[ 3 ],
+					alloc[ 2 ], sizes[ 2 ], true, new_deleters[ 2 ], // _deleter[ 4 ],
+					alloc[ 3 ], sizes[ 3 ], true, new_deleters[ 3 ]  // _deleter[ 5 ]
 				);
 
 				if( ret != SUCCESS ) {
@@ -1695,17 +1700,28 @@ namespace grb {
 					return ret;
 				}
 
+				// copy old data
+				internal::FinalBackend< reference >::memcpy(
+					alloc[ 0 ], CRS.row_index, old_sizes[ 0 ] );
+				internal::FinalBackend< reference >::memcpy(
+					alloc[ 1 ], CRS.values, old_sizes[ 1 ] );
+				internal::FinalBackend< reference >::memcpy(
+					alloc[ 2 ], CCS.row_index, old_sizes[ 2 ] );
+				internal::FinalBackend< reference >::memcpy(
+					alloc[ 3 ], CCS.values, old_sizes[ 3 ] );
+
 				// put allocated arrays in their intended places
 				CRS.replace( alloc[ 0 ], alloc[ 1 ] );
 				CCS.replace( alloc[ 2 ], alloc[ 3 ] );
+				_deleter[ 2 ] = std::move( new_deleters[ 0 ] );
+				_deleter[ 3 ] = std::move( new_deleters[ 1 ] );
+				_deleter[ 4 ] = std::move( new_deleters[ 2 ] );
+				_deleter[ 5 ] = std::move( new_deleters[ 3 ] );
 
 				// if we had old data emplaced
 				if( cap > 0 ) {
-					for( unsigned int i = 0; i < 4; ++i ) {
-						if( old_sizes[ i ] > 0 ) {
-							freed += sizes[ i ];
-						}
-					}
+					const size_t freed = old_sizes[ 0 ] + old_sizes[ 1 ] +
+						old_sizes[ 2 ] + old_sizes[ 3 ];
 					if( config::MEMORY::report( "grb::Matrix< T, reference >::resize",
 						"freed (or will eventually free)", freed, false )
 					) {
