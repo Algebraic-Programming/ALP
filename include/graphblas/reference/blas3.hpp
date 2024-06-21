@@ -1054,6 +1054,11 @@ namespace grb {
 						std::cout << ", " << CRS_raw.col_start[ i ];
 					}
 					std::cout << " }\n";
+					std::cout << "\t\t CRS_raw values array = { " << CRS_raw.values[ 0 ];
+					for( size_t k = 1; k < CRS_raw.col_start[ m ]; ++k ) {
+						std::cout << ", " << CRS_raw.values[ k ];
+					}
+					std::cout << " }\n";
 					std::cout << "\t\t CCS column counts = { " << CCS_raw.col_start[ 0 ];
 					for( size_t i = 1; i <= n; ++i ) {
 						std::cout << ", " << CCS_raw.col_start[ i ];
@@ -1179,6 +1184,16 @@ namespace grb {
 #endif
 						coors.clear_seq();
 						if( inplace ) {
+#ifdef _DEBUG_REFERENCE_BLAS3
+ #ifdef _H_GRB_REFERENCE_OMP_BLAS3
+							#pragma omp critical
+ #endif
+							std::cout << "\t\t in-place mxm, output matrix has "
+								<< (CRS_raw.col_start[ i + 1 ] - CRS_raw.col_start[ i ])
+								<< " nonzeroes on row " << i << " at offset "
+								<< CRS_raw.col_start[ i ] << " to " << CRS_raw.col_start[ i + 1 ]
+								<< "\n";
+#endif
 							for(
 								auto k = CRS_raw.col_start[ i ];
 								k < CRS_raw.col_start[ i + 1 ];
@@ -1187,8 +1202,14 @@ namespace grb {
 								const auto index = CRS_raw.row_index[ k ];
 								if( index == static_cast< NIT >(n) ) { break; }
 								if( !coors.assign( index ) ) {
-									valbuf[ index ] = CRS_raw.getValue( index,
+									valbuf[ index ] = CRS_raw.getValue( k,
 										monoid.template getIdentity< OutputType >() );
+#ifdef _DEBUG_REFERENCE_BLAS3
+ #ifdef _H_GRB_REFERENCE_OMP_BLAS3
+									#pragma omp critical
+ #endif
+									std::cout << "\t\t\t caching nonzero value at index " << index << ": " << valbuf[ index ] << "\n";
+#endif
 								} else {
 #ifndef NDEBUG
 									const bool repeated_column_indices_detected = false;
