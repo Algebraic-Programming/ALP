@@ -276,16 +276,15 @@ namespace grb {
 			<< "\t matrix is " << nrows(A) << " by " << ncols(A) << "\n"
 			<< "\t requested capacity is " << new_nz << "\n";
 #endif
-		RC ret = clear( A );
-		if( ret != SUCCESS ) { return ret; }
-
 		const size_t m = nrows( A );
 		const size_t n = ncols( A );
+
 		// catch trivial case
 		if( m == 0 || n == 0 ) {
 			return SUCCESS;
 		}
-		// catch illegal input
+
+		// catch illegal (overflow)
 		if( new_nz / m > n ||
 			new_nz / n > m ||
 			(new_nz / m == n && (new_nz % m > 0)) ||
@@ -298,11 +297,17 @@ namespace grb {
 			return ILLEGAL;
 		}
 
-		// delegate
-		ret = A.resize( new_nz );
+		// catch illegal (underflow)
+		if( new_nz < grb::nnz( A ) ) {
+#ifdef _DEBUG
+			std::cerr << "\t requesting lower capacity than required by current "
+				<< "contents\n";
+#endif
+			return ILLEGAL;
+		}
 
-		// done
-		return ret;
+		// delegate
+		return A.resize( new_nz );
 	}
 
 	namespace internal {
@@ -888,7 +893,7 @@ namespace grb {
 		// make the vector empty unless the dense descriptor is provided
 		const bool mask_is_dense = (descr & descriptors::structural) &&
 			!(descr & descriptors::invert_mask) && (
-				(descr && descriptors::dense) ||
+				(descr & descriptors::dense) ||
 				nnz( mask ) == grb::size( mask )
 			);
 		if( !((descr & descriptors::dense) && mask_is_dense) ) {
