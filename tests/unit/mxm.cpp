@@ -134,7 +134,7 @@ void grb_program( const size_t &n, grb::RC &rc ) {
 
 	// check in-place behaviour using the monoid-operator variant
 	std::cout << "\tVerifying in-place behaviour of mxm (using monoid-op)\n"
-		<< "\t\tin this test, the output nonzero structure changes";
+		<< "\t\tin this test, the output nonzero structure changes\n";
 
 	const size_t expected_nz = grb::nnz( C ) + n;
 	// replace A, B with (scaled) identities
