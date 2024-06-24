@@ -1701,6 +1701,28 @@ namespace grb {
 				}
 
 				// copy old data
+#ifdef _H_GRB_REFERENCE_OMP_MATRIX
+				#pragma omp parallel
+#endif
+				{
+					const size_t nz = CRS.row_index[ m ];
+					assert( nz == CCS.row_index[ n ] );
+					size_t start, end;
+#ifdef _H_GRB_REFERENCE_OMP_MATRIX
+					config::OMP::localRange( start, end, 0, nz );
+#else
+					start = 0;
+					end = nz;
+#endif
+					RowIndexType * const new_crs_start_array = alloc[ 0 ];
+					ColIndexType * const new_ccs_start_array = alloc[ 2 ];
+					D * const new_crs_value_array = alloc[ 1 ];
+					D * const new_ccs_value_array = alloc[ 3 ];
+					for( size_t k = start; k < end; ++k ) {
+						// TODO
+					}
+				}
+
 				internal::FinalBackend< reference >::memcpy(
 					alloc[ 0 ], CRS.row_index, old_sizes[ 0 ] );
 				if( !std::is_void< D >::value ) {
