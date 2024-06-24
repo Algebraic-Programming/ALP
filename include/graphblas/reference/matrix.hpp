@@ -1703,12 +1703,16 @@ namespace grb {
 				// copy old data
 				internal::FinalBackend< reference >::memcpy(
 					alloc[ 0 ], CRS.row_index, old_sizes[ 0 ] );
-				internal::FinalBackend< reference >::memcpy(
-					alloc[ 1 ], CRS.values, old_sizes[ 1 ] );
+				if( !std::is_void< D >::value ) {
+					internal::FinalBackend< reference >::memcpy(
+						alloc[ 1 ], CRS.getValues(), old_sizes[ 1 ] );
+				}
 				internal::FinalBackend< reference >::memcpy(
 					alloc[ 2 ], CCS.row_index, old_sizes[ 2 ] );
-				internal::FinalBackend< reference >::memcpy(
-					alloc[ 3 ], CCS.values, old_sizes[ 3 ] );
+				if( !std::is_void< D >::value ) {
+					internal::FinalBackend< reference >::memcpy(
+						alloc[ 3 ], CCS.getValues(), old_sizes[ 3 ] );
+				}
 
 				// put allocated arrays in their intended places
 				CRS.replace( alloc[ 0 ], alloc[ 1 ] );
