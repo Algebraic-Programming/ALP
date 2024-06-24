@@ -136,7 +136,6 @@ void grb_program( const size_t &n, grb::RC &rc ) {
 	std::cout << "\tVerifying in-place behaviour of mxm (using monoid-op)\n"
 		<< "\t\tin this test, the output nonzero structure changes\n";
 
-	const size_t expected_nz = grb::nnz( C ) + n;
 	// replace A, B with (scaled) identities
 	{
 		grb::Matrix< double > replace = matrices< double >::eye( n, n, 3, 0 );
@@ -169,6 +168,7 @@ void grb_program( const size_t &n, grb::RC &rc ) {
 	if( rc != SUCCESS ) { return; }
 
 	// ``manual'' check
+	size_t expected_nz = grb::nnz( C ) + n;
 	if( expected_nz != grb::nnz( C ) ) {
 		std::cerr << "Expected " << expected_nz << " nonzeroes, got "
 			<< grb::nnz( C ) << "\n";
@@ -188,6 +188,79 @@ void grb_program( const size_t &n, grb::RC &rc ) {
 			if( v != 4 ) {
 				std::cerr << "\t expected value 4 at position ( " << i << ", " << j
 					<< " ), got " << v << "\n";
+			}
+			rc = FAILED;
+		} else {
+			std::cerr << "\t expected no entry at position ( " << i << ", " << j
+				<< " ), but got one with value " << v << "\n";
+			rc = FAILED;
+		}
+	}
+	if( rc != SUCCESS ) { return; }
+
+	std::cout << "\tVerifying in-place behaviour of mxm (using semiring)\n"
+		<< "\t\tin this test, both nonzero structure and existing nonzeroes change\n";
+	{
+		const size_t i[ 2 ] = { 0, n - 1 };
+		const size_t j[ 2 ] = { 0, 0 };
+		const double v[ 2 ] = { 2.0, 2.0 };
+		grb::Matrix< double > replaces_A( n, n );
+		rc = grb::buildMatrixUnique( replaces_A, i, i + 2, j, j + 2, v, v + 2,
+			grb::PARALLEL );
+		if( rc == grb::SUCCESS ) { std::swap( A, replaces_A ); }
+	}
+	if( rc != grb::SUCCESS ) {
+		std::cerr << "Experiment setup FAILED\n";
+		return;
+	}
+
+	rc = grb::mxm( C, A, B, ring, grb::RESIZE );
+	if( rc != grb::SUCCESS ) {
+		std::cerr << "Call to grb::mxm( ..., RESIZE ) V FAILED\n";
+		return;
+	}
+	rc = grb::mxm( C, A, B, ring );
+	if( rc != SUCCESS ) {
+		std::cerr << "Call to grb::mxm( ..., EXECUTE ) V FAILED\n";
+		return;
+	}
+
+	// ``manual'' check
+	(void) ++expected_nz;
+	if( expected_nz != grb::nnz( C ) ) {
+		std::cerr << "Expected " << expected_nz << " nonzeroes, got "
+			<< grb::nnz( C ) << "\n";
+		rc = FAILED;
+	}
+	for( const auto &pair : C ) {
+		const size_t &i = pair.first.first;
+		const size_t &j = pair.first.second;
+		const size_t &v = pair.second;
+		if( i == 0 && j == 0 ) {
+			// note: this branch checks existing nonzero value mutation
+			if( v != 5 ) {
+				std::cerr << "\t expected value 5 at position ( 0, 0 ), got " << v << "\n";
+				rc = FAILED;
+			}
+		} else if( i == j ) {
+			// note: this branch checks unchanged nonzero value mutation
+			if( v != 3 ) {
+				std::cerr << "\t expected value 3 at position ( " << i << ", " << j
+					<< " ), got " << v << "\n";
+				rc = FAILED;
+			}
+		} else if( i + 3 == j ) {
+			// note: this branch checks unchanged nonzero value mutation
+			if( v != 4 ) {
+				std::cerr << "\t expected value 4 at position ( " << i << ", " << j
+					<< " ), got " << v << "\n";
+			}
+			rc = FAILED;
+		} else if( i == n - 1 && j == 0 ) {
+			// note: this branch checks nonzero structure mutation
+			if( v != 2 ) {
+				std::cerr << "\t expected value 2 at position ( " << (n - 1 ) << ", 0 ), "
+					<< "got " << v << "\n";
 			}
 			rc = FAILED;
 		} else {
