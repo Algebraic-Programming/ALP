@@ -1668,7 +1668,7 @@ namespace grb {
 
 				// allocate and catch errors
 				char * alloc[ 4 ] = { nullptr, nullptr, nullptr, nullptr };
-				size_t sizes[ 4 ];
+				size_t sizes[ 4 ] = { 0, 0, 0, 0 };
 				// cache old allocation data
 				size_t old_sizes[ 4 ] = { 0, 0, 0, 0 };
 				if( cap > 0 ) {
@@ -1714,26 +1714,27 @@ namespace grb {
 					start = 0;
 					end = nz;
 #endif
-					RowIndexType * const new_crs_start_array = alloc[ 0 ];
-					ColIndexType * const new_ccs_start_array = alloc[ 2 ];
-					D * const new_crs_value_array = alloc[ 1 ];
-					D * const new_ccs_value_array = alloc[ 3 ];
-					for( size_t k = start; k < end; ++k ) {
-						// TODO
+					RowIndexType * const new_crs_index_array =
+						reinterpret_cast< RowIndexType * >(alloc[ 0 ]);
+					ColIndexType * const new_ccs_index_array =
+						reinterpret_cast< ColIndexType * >(alloc[ 2 ]);
+					D * new_crs_value_array, * new_ccs_value_array;
+					if( std::is_void< D >::value ) {
+						new_crs_value_array = new_ccs_value_array = nullptr;
+					} else {
+						new_crs_value_array = reinterpret_cast< D * >(alloc[ 1 ]);
+						new_ccs_value_array = reinterpret_cast< D * >(alloc[ 3 ]);
 					}
-				}
-
-				internal::FinalBackend< reference >::memcpy(
-					alloc[ 0 ], CRS.row_index, old_sizes[ 0 ] );
-				if( !std::is_void< D >::value ) {
-					internal::FinalBackend< reference >::memcpy(
-						alloc[ 1 ], CRS.getValues(), old_sizes[ 1 ] );
-				}
-				internal::FinalBackend< reference >::memcpy(
-					alloc[ 2 ], CCS.row_index, old_sizes[ 2 ] );
-				if( !std::is_void< D >::value ) {
-					internal::FinalBackend< reference >::memcpy(
-						alloc[ 3 ], CCS.getValues(), old_sizes[ 3 ] );
+					D * const src_crs_vals = CRS.getValues();
+					D * const src_ccs_vals = CCS.getValues();
+					for( size_t k = start; k < end; ++k ) {
+						new_crs_index_array[ k ] = CRS.row_index[ k ];
+						new_ccs_index_array[ k ] = CCS.row_index[ k ];
+						if( !std::is_void< D >::value ) {
+							new_crs_value_array[ k ] = src_crs_vals[ k ];
+							new_ccs_value_array[ k ] = src_ccs_vals[ k ];
+						}
+					}
 				}
 
 				// put allocated arrays in their intended places
