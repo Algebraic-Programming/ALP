@@ -100,6 +100,48 @@ namespace grb {
 			ValType *__restrict__ const buf3 = nullptr
 		);
 
+		template< typename D >
+		struct MatrixResizeCopy {
+
+			MatrixResizeCopy() = delete;
+
+			/**
+			 * Helper function to copy values. Non-void variant.
+			 */
+			static inline void copyValue(
+				D *__restrict__ const x,
+				const D *__restrict__ y,
+				const size_t k
+			) {
+				assert( x != y );
+				x[ k ] = y[ k ];
+			}
+
+		};
+
+		template<>
+		struct MatrixResizeCopy< void > {
+
+			MatrixResizeCopy() = delete;
+
+			/**
+			 * Helper function to copy values. Void variant.
+			 */
+			static inline void copyValue(
+				void * const x,
+				const void * const y,
+				const size_t k
+			) {
+				(void) k;
+				assert( x != y );
+#ifdef NDEBUG
+				(void) x;
+				(void) y;
+#endif
+			}
+
+		};
+
 	} // end namespace internal
 #endif
 
@@ -1730,10 +1772,10 @@ namespace grb {
 					for( size_t k = start; k < end; ++k ) {
 						new_crs_index_array[ k ] = CRS.row_index[ k ];
 						new_ccs_index_array[ k ] = CCS.row_index[ k ];
-						if( !std::is_void< D >::value ) {
-							new_crs_value_array[ k ] = src_crs_vals[ k ];
-							new_ccs_value_array[ k ] = src_ccs_vals[ k ];
-						}
+						internal::MatrixResizeCopy< D >::copyValue(
+							new_crs_value_array, src_crs_vals, k );
+						internal::MatrixResizeCopy< D >::copyValue(
+							new_ccs_value_array, src_ccs_vals, k );
 					}
 				}
 
