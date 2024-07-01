@@ -331,7 +331,7 @@ namespace grb {
 			if( batches == 0 ) { return; }
 
 			// prelims
-			const IND upper = src_offsets[ batches ];
+			IND upper = src_offsets[ batches ];
 			size_t batch = batches - 1;
 			size_t not_processed = batches;
 
@@ -364,8 +364,8 @@ namespace grb {
 					// progress to next batch (which will be case 2, trivial, or end)
 					not_processed -= nbatches;
 					(void) --batch;
+					upper = src_offsets[ batch ];
 				} else {
-					assert( dst_offsets[ batch ] < src_offsets[ batch + 1 ] );
 					// first check if movement is non-trivial
 					if( src_offsets[ batch ] < dst_offsets[ batch ] ) {
 						// we are in case 2
@@ -394,8 +394,9 @@ namespace grb {
 						std::cout << "\t\t trivial batch detected II -- skipping\n"; // DBG
 						assert( src_offsets[ batch ] == dst_offsets[ batch ] );
 					}
-					(void) --batch;
 					(void) --not_processed;
+					(void) --batch;
+					upper = src_offsets[ batch ];
 				}
 			} while( not_processed > 0 );
 
