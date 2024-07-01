@@ -818,11 +818,21 @@ namespace grb {
 			const size_t n = grb::ncols( C );
 			// TODO can I pass some buffers from somewhere?
 			//      YES: the SPA buffers are unused, so we can supply those (TODO)
+#ifdef _H_GRB_REFERENCE_OMP_BLAS3
 			grb::utils::unordered_memmove_ompPar(
 				CRS.row_index, oldOffsets, CRS.col_start, m );
+#else
+			grb::utils::unordered_memmove_seq(
+				CRS.row_index, oldOffsets, CRS.col_start, m );
+#endif
 			if( !std::is_void< OutputType >::value ) {
+#ifdef _H_GRB_REFERENCE_OMP_BLAS3
 				grb::utils::unordered_memmove_ompPar(
 					CRS.values, oldOffsets, CRS.col_start, m );
+#else
+				grb::utils::unordered_memmove_seq(
+					CRS.values, oldOffsets, CRS.col_start, m );
+#endif
 			}
 			size_t start, end;
 			config::OMP::localRange( start, end, 0, m );
