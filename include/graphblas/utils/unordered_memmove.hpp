@@ -134,7 +134,7 @@ namespace grb {
 
 			// we work from the last batch to the first, thus consecutively freeing up
 			// space for each successive move of a batch
-			for( size_t i = batches - i; i < batches; --i ) {
+			for( size_t i = batches - 1; i < batches; --i ) {
 				// simply cast the single-batch operation back to a call to memmove
 				const size_t nelems = src_offsets[ i + 1 ] - src_offsets[ i ];
 				const size_t bsize = nelems * sizeof( T );
@@ -363,8 +363,8 @@ namespace grb {
 
 					// progress to next batch (which will be case 2, trivial, or end)
 					not_processed -= nbatches;
-					(void) --batch;
 					upper = src_offsets[ batch ];
+					(void) --batch;
 				} else {
 					// first check if movement is non-trivial
 					if( src_offsets[ batch ] < dst_offsets[ batch ] ) {
@@ -395,8 +395,8 @@ namespace grb {
 						assert( src_offsets[ batch ] == dst_offsets[ batch ] );
 					}
 					(void) --not_processed;
-					(void) --batch;
 					upper = src_offsets[ batch ];
+					(void) --batch;
 				}
 			} while( not_processed > 0 );
 
