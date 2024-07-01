@@ -162,9 +162,9 @@ namespace grb {
 			) {
 				// dynamic checks
  #ifndef NDEBUG
-				const size_t upper = src_offsets[ batches ];
+				const size_t upper = static_cast< size_t >(src_offsets[ batches ]);
 				for( size_t i = 0; i < batches; ++i ) {
-					assert( dst_offsets[ i ] >= upper );
+					assert( static_cast< size_t >(dst_offsets[ i ]) >= upper );
 				}
  #endif
 				// partition the source elements across threads
@@ -174,8 +174,8 @@ namespace grb {
 					src_offsets[ 0 ], src_offsets[ batches ]
 				);
 				if( start < end ) {
-					assert( start < src_offsets[ batches ] );
-					assert( end <= src_offsets[ batches ] );
+					assert( start < static_cast< size_t >(src_offsets[ batches ]) );
+					assert( end <= static_cast< size_t >(src_offsets[ batches ] ));
 					const size_t my_start_batch =
 						grb::utils::binsearch( start, src_offsets, src_offsets + batches );
 					const size_t my_end_batch =
@@ -183,10 +183,10 @@ namespace grb {
 					assert( my_start_batch < batches );
 					assert( my_end_batch <= batches );
 					assert( my_start_batch < my_end_batch );
-					assert( src_offsets[ my_start_batch ] <= start );
-					assert( start < src_offsets[ my_start_batch + 1 ] );
-					assert( src_offsets[ my_end_batch - 1 ] <= end );
-					assert( end <= src_offsets[ my_end_batch ] );
+					assert( static_cast< size_t >(src_offsets[ my_start_batch ]) <= start );
+					assert( start < static_cast< size_t >(src_offsets[ my_start_batch + 1 ]) );
+					assert( static_cast< size_t >(src_offsets[ my_end_batch - 1 ]) <= end );
+					assert( end <= static_cast< size_t >(src_offsets[ my_end_batch ]) );
 					(void) std::memcpy(
 						source + dst_offsets[ my_start_batch ] +
 							start - src_offsets[ my_start_batch ],

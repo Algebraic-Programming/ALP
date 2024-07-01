@@ -1748,7 +1748,7 @@ namespace grb {
 #endif
 				{
 					const size_t nz = CRS.row_index[ m ];
-					assert( nz == CCS.row_index[ n ] );
+					assert( nz == static_cast< size_t >(CCS.row_index[ n ]) );
 					size_t start, end;
 #ifdef _H_GRB_REFERENCE_OMP_MATRIX
 					config::OMP::localRange( start, end, 0, nz );
@@ -1772,10 +1772,12 @@ namespace grb {
 					for( size_t k = start; k < end; ++k ) {
 						new_crs_index_array[ k ] = CRS.row_index[ k ];
 						new_ccs_index_array[ k ] = CCS.row_index[ k ];
-						internal::MatrixResizeCopy< D >::copyValue(
-							new_crs_value_array, src_crs_vals, k );
-						internal::MatrixResizeCopy< D >::copyValue(
-							new_ccs_value_array, src_ccs_vals, k );
+						if( !std::is_void< D >::value ) {
+							internal::MatrixResizeCopy< D >::copyValue(
+								new_crs_value_array, src_crs_vals, k );
+							internal::MatrixResizeCopy< D >::copyValue(
+								new_ccs_value_array, src_ccs_vals, k );
+						}
 					}
 				}
 

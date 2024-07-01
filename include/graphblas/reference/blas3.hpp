@@ -1323,7 +1323,7 @@ namespace grb {
 						std::cout << "\t wrote out " << (local_nzc - CRS_raw.col_start[ i ])
 							<< " nonzeroes to row " << i << "\n";
 #endif
-						assert( CRS_raw.col_start[ i + 1 ] == local_nzc );
+						assert( static_cast< size_t >(CRS_raw.col_start[ i + 1 ]) == local_nzc );
 					}
 #ifndef NDEBUG
  #ifdef _H_GRB_REFERENCE_OMP_BLAS3
