@@ -161,8 +161,7 @@ void grb_program( const size_t &n, grb::RC &rc ) {
 
 	// prepare for testing clear semantics while resizing to max capacity
 	if( grb::spmd<>::pid() == 0 ) {
-		std::cerr << "\t Testing resize to max capacity as well as "
-			<< "testing implicit clear semantics...\n";
+		std::cerr << "\t Testing resize to max capacity...\n";
 	}
 	rc = setElement( vec, 3.14, n / 2 );
 	if( rc == grb::SUCCESS ) {
@@ -217,14 +216,14 @@ void grb_program( const size_t &n, grb::RC &rc ) {
 			<< (2*n*n) << "\n";
 		rc = grb::FAILED;
 	}
-	if( grb::nnz( vec ) != 0 ) {
+	if( grb::nnz( vec ) != 1 ) {
 		std::cerr << "\t vector contains " << grb::nnz( vec ) << " nonzeroes, "
-			<< "expected zero\n";
+			<< "expected one\n";
 		rc = grb::FAILED;
 	}
-	if( grb::nnz( mat ) != 0 ) {
+	if( grb::nnz( mat ) != 1 ) {
 		std::cerr << "\t matrix contains " << grb::nnz( mat ) << " nonzeroes, "
-			<< "expected zero\n";
+			<< "expected one\n";
 		rc = grb::FAILED;
 	}
 	if( rc != grb::SUCCESS ) { return; }
