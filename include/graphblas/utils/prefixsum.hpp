@@ -58,7 +58,6 @@ namespace grb {
 		 * Computation will happen in-place.
 		 *
 		 * @param[in] n The size of \a array (in number of elements).
-		 * 
 		 */
 		template< bool copyEnd, typename T >
 		void prefixSum_seq(
@@ -107,13 +106,22 @@ namespace grb {
 		 * Should be followed with an OpenMP barrier before a subsequent call to
 		 * #prefixSum_ompPar_phase3.
 		 *
-		 * See #prefixSum_ompPar for full documentation.
+		 * See #prefixSum_ompPar for full documentation. This call has one extra
+		 * optional template argument:
+		 *
+		 * @tparam shiftedLeft If set to <tt>true</tt>, then \a array is assumed to
+		 *                     have all its entries shifted one position to the left.
+		 *
+		 * \note This template argument is useful when fusing a call to this function
+		 *       with a shift-to-the-right operation such as done in the #grb::mxm
+		 *       implementation. The benefit is performance (saves one barrier).
 		 */
-		template< bool copyEnd, typename T >
+		template< bool copyEnd, typename T, bool shiftedLeft = false >
 		void prefixSum_ompPar_phase2(
 			T *__restrict__ array, const size_t n,
 			T &myOffset
 		) {
+			constexpr size_t shift = shiftedLeft ? 0 : 1;
 #ifdef _DEBUG
 			std::cout << "\t entering prefixSum_ompPar_phase2\n";
 #endif
@@ -125,7 +133,7 @@ namespace grb {
 					config::CACHE_LINE_SIZE::value(), k );
 				if( offset_index > dummy ) {
 					assert( offset_index > 0 );
-					myOffset += array[ offset_index - 1 ];
+					myOffset += array[ offset_index - shift ];
 				}
 			}
 #ifdef _DEBUG
