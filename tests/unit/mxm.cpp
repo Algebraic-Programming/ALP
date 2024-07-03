@@ -135,6 +135,7 @@ void grb_program( const size_t &n, grb::RC &rc ) {
 	// check in-place behaviour using the monoid-operator variant
 	std::cout << "\tVerifying in-place behaviour of mxm (using monoid-op)\n"
 		<< "\t\tin this test, the output nonzero structure changes\n";
+	size_t expected_nz = grb::nnz( C ) + n;
 
 	// replace A, B with (scaled) identities
 	{
@@ -165,10 +166,13 @@ void grb_program( const size_t &n, grb::RC &rc ) {
 	} else {
 		std::cerr << "Call to grb::mxm( ..., RESIZE ) IV FAILED\n";
 	}
-	if( rc != SUCCESS ) { return; }
+	if( rc != SUCCESS ) {
+		std::cerr << "Call to grb::mxm( ..., EXECUTE ) IV FAILED: "
+			<< grb::toString( rc ) << "\n";
+		return;
+	}
 
 	// ``manual'' check
-	size_t expected_nz = grb::nnz( C ) + n;
 	if( expected_nz != grb::nnz( C ) ) {
 		std::cerr << "Expected " << expected_nz << " nonzeroes, got "
 			<< grb::nnz( C ) << "\n";
@@ -188,15 +192,18 @@ void grb_program( const size_t &n, grb::RC &rc ) {
 			if( v != 4 ) {
 				std::cerr << "\t expected value 4 at position ( " << i << ", " << j
 					<< " ), got " << v << "\n";
+				rc = FAILED;
 			}
-			rc = FAILED;
 		} else {
 			std::cerr << "\t expected no entry at position ( " << i << ", " << j
 				<< " ), but got one with value " << v << "\n";
 			rc = FAILED;
 		}
 	}
-	if( rc != SUCCESS ) { return; }
+	if( rc != SUCCESS ) {
+		std::cerr << "Test IV did not pass verification\n";
+		return;
+	}
 
 	std::cout << "\tVerifying in-place behaviour of mxm (using semiring)\n"
 		<< "\t\tin this test, both nonzero structure and existing nonzeroes change\n";
@@ -254,22 +261,25 @@ void grb_program( const size_t &n, grb::RC &rc ) {
 			if( v != 4 ) {
 				std::cerr << "\t expected value 4 at position ( " << i << ", " << j
 					<< " ), got " << v << "\n";
+				rc = FAILED;
 			}
-			rc = FAILED;
 		} else if( i == n - 1 && j == 0 ) {
 			// note: this branch checks nonzero structure mutation
 			if( v != 2 ) {
 				std::cerr << "\t expected value 2 at position ( " << (n - 1 ) << ", 0 ), "
 					<< "got " << v << "\n";
+				rc = FAILED;
 			}
-			rc = FAILED;
 		} else {
 			std::cerr << "\t expected no entry at position ( " << i << ", " << j
 				<< " ), but got one with value " << v << "\n";
 			rc = FAILED;
 		}
 	}
-	if( rc != SUCCESS ) { return; }
+	if( rc != SUCCESS ) {
+		std::cerr << "Test V did not pass verification\n";
+		return;
+	}
 
 }
 
