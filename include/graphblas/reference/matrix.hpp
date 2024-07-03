@@ -1711,6 +1711,7 @@ namespace grb {
 				// allocate and catch errors
 				char * alloc[ 4 ] = { nullptr, nullptr, nullptr, nullptr };
 				size_t sizes[ 4 ] = { 0, 0, 0, 0 };
+
 				// cache old allocation data
 				size_t old_sizes[ 4 ] = { 0, 0, 0, 0 };
 				if( cap > 0 ) {
@@ -1747,8 +1748,8 @@ namespace grb {
 				#pragma omp parallel
 #endif
 				{
-					const size_t nz = CRS.row_index[ m ];
-					assert( nz == static_cast< size_t >(CCS.row_index[ n ]) );
+					const size_t nz = CRS.col_start[ m ];
+					assert( nz == static_cast< size_t >(CCS.col_start[ n ]) );
 					size_t start, end;
 #ifdef _H_GRB_REFERENCE_OMP_MATRIX
 					config::OMP::localRange( start, end, 0, nz );
@@ -1757,15 +1758,15 @@ namespace grb {
 					end = nz;
 #endif
 					RowIndexType * const new_crs_index_array =
-						reinterpret_cast< RowIndexType * >(alloc[ 0 ]);
+						reinterpret_cast< RowIndexType * >(alloc[ 1 ]);
 					ColIndexType * const new_ccs_index_array =
-						reinterpret_cast< ColIndexType * >(alloc[ 2 ]);
+						reinterpret_cast< ColIndexType * >(alloc[ 3 ]);
 					D * new_crs_value_array, * new_ccs_value_array;
 					if( std::is_void< D >::value ) {
 						new_crs_value_array = new_ccs_value_array = nullptr;
 					} else {
-						new_crs_value_array = reinterpret_cast< D * >(alloc[ 1 ]);
-						new_ccs_value_array = reinterpret_cast< D * >(alloc[ 3 ]);
+						new_crs_value_array = reinterpret_cast< D * >(alloc[ 0 ]);
+						new_ccs_value_array = reinterpret_cast< D * >(alloc[ 2 ]);
 					}
 					D * const src_crs_vals = CRS.getValues();
 					D * const src_ccs_vals = CCS.getValues();
