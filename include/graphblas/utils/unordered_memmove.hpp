@@ -135,8 +135,11 @@ namespace grb {
 			// we work from the last batch to the first, thus consecutively freeing up
 			// space for each successive move of a batch
 			for( size_t i = batches - 1; i < batches; --i ) {
-				// simply cast the single-batch operation back to a call to memmove
+				// skip trivial cases
+				if( src_offsets[ i ] == dst_offsets[ i ] ) { continue; }
 				const size_t nelems = src_offsets[ i + 1 ] - src_offsets[ i ];
+				if( nelems == 0 ) { continue; }
+				// simply cast the single-batch operation back to a call to memmove
 				const size_t bsize = nelems * sizeof( T );
 				(void) std::memmove(
 					source + dst_offsets[ i ], source + src_offsets[ i ], bsize );
