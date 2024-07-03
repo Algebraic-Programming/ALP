@@ -1748,14 +1748,13 @@ namespace grb {
 				#pragma omp parallel
 #endif
 				{
-					const size_t nz = CRS.col_start[ m ];
-					assert( nz == static_cast< size_t >(CCS.col_start[ n ]) );
+					const size_t old_nz = nz;
 					size_t start, end;
 #ifdef _H_GRB_REFERENCE_OMP_MATRIX
-					config::OMP::localRange( start, end, 0, nz );
+					config::OMP::localRange( start, end, 0, old_nz );
 #else
 					start = 0;
-					end = nz;
+					end = old_nz;
 #endif
 					RowIndexType * const new_crs_index_array =
 						reinterpret_cast< RowIndexType * >(alloc[ 1 ]);
@@ -1870,8 +1869,9 @@ namespace grb {
 				if( _start == _end || m == 0 || n == 0 ) {
 					return SUCCESS;
 				}
+
 				// keep count of nonzeroes
-				nz = 0;
+				size_t local_nz = 0;
 
 				// counting sort, phase 1
 				clear_cxs_offsets();
@@ -1881,23 +1881,19 @@ namespace grb {
 					}
 					(void) ++( CRS.col_start[ it.i() ] );
 					(void) ++( CCS.col_start[ it.j() ] );
-					(void) ++nz;
+					(void) ++local_nz;
 				}
 
 				// check if we can indeed store nz values
-				if( nz >= static_cast< size_t >(
+				if( local_nz >= static_cast< size_t >(
 						std::numeric_limits< grb::config::NonzeroIndexType >::max()
 					)
 				) {
 					return OVERFLW;
 				}
 
-				// put final entries in offset arrays
-				CRS.col_start[ m ] = nz;
-				CCS.col_start[ n ] = nz;
-
 				// allocate enough space
-				resize( nz );
+				resize( local_nz );
 
 				// make counting sort array cumulative
 				for( size_t i = 1; i < m; ++i ) {
@@ -1916,6 +1912,10 @@ namespace grb {
 #endif
 					CCS.col_start[ i ] += CCS.col_start[ i - 1 ];
 				}
+
+				// put final entries in offset arrays
+				CRS.col_start[ m ] = local_nz;
+				CCS.col_start[ n ] = local_nz;
 
 				// counting sort, phase 2
 				fwd_iterator it = _start;
@@ -1945,6 +1945,9 @@ namespace grb {
 						<< "." << std::endl;
 				}
 #endif
+				// record nonzero count
+				nz = local_nz;
+
 				// done
 				return SUCCESS;
 			}
