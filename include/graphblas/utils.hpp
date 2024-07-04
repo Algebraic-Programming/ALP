@@ -265,7 +265,7 @@ namespace grb {
 				 * If \a T is <tt>void</tt>, this value equals 0 and
 				 * equal to <tt>sizeof(T)</tt> otherwise.
 				 */
-				static constexpr const size_t value = sizeof( T );
+				static constexpr size_t value = sizeof( T );
 
 		};
 
@@ -275,7 +275,7 @@ namespace grb {
 
 			public:
 
-				static constexpr const size_t value = 0;
+				static constexpr size_t value = 0;
 
 		};
 
