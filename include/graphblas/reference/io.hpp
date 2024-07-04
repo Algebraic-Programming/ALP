@@ -218,7 +218,7 @@ namespace grb {
 #endif
 		// this cannot wait until after the below check, as the spec defines that
 		// anything is OK for an empty vector
-		if( new_nz == 0 ) { return grb::clear( x ); }
+		if( grb::size( x ) == 0 ) { return grb::SUCCESS; }
 
 		// check if we have a mismatch
 		if( new_nz > grb::size( x ) ) {
@@ -227,13 +227,20 @@ namespace grb {
 				<< "expected a value smaller than or equal to "
 				<< size( x ) << "\n";
 #endif
-			return ILLEGAL;
+			return grb::ILLEGAL;
+		}
+		if( new_nz < grb::nnz( x ) ) {
+#ifdef _DEBUG
+			std::cerr << "\t requested capacity of " << new_nz << ", "
+				<< "expected a value larger than or equal to "
+				<< grb::nnz( x ) << "\n";
+#endif
+			return grb::ILLEGAL;
 		}
 
 		// in the reference implementation, vectors are of static size
-		// so this function immediately succeeds. However, all existing contents
-		// must be removed
-		return grb::clear( x );
+		// so this function immediately succeeds.
+		return grb::SUCCESS;
 	}
 
 	/**

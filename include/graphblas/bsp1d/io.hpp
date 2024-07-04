@@ -254,20 +254,17 @@ namespace grb {
 	) noexcept {
 #ifdef _DEBUG
 		std::cerr << "In grb::resize (vector, BSP1D)\n"
-			<< "\t vector size is " << size(x) << "\n"
+			<< "\t vector size is " << grb::size(x) << "\n"
 			<< "\t requested capacity is " << new_nz << "\n";
 #endif
 
 		// check trivial op
-		const size_t n = size( x );
-		if( n == 0 ) {
-			return clear( x );
-		}
+		const size_t n = grb::size( x );
+		if( n == 0 ) { return grb::SUCCESS; }
 
 		// check if we have a mismatch
-		if( new_nz > n ) {
-			return ILLEGAL;
-		}
+		if( new_nz > n ) { return ILLEGAL; }
+		if( new_nz < grb::nnz( x ) ) { return ILLEGAL; }
 
 		// if \a new_nz is larger than local capacity, correct to local max
 		const size_t local_size = grb::size( internal::getLocal( x ) );
@@ -300,9 +297,6 @@ namespace grb {
 		// we have success, so get actual new global capacity
 		rc = internal::updateCap( x );
 		if( rc != SUCCESS ) { return PANIC; }
-		x._nnz = 0;
-		x._cleared = true;
-		x._global_is_dirty = true;
 
 		// delegate
 		return rc;
