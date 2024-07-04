@@ -248,7 +248,7 @@ void identity_test( const size_t &n, grb::RC &rc ) {
 		rc = grb::set< descr >( identity, off_diagonal, 3, RESIZE );
 	}
 	if( rc != SUCCESS ) {
-		std::cerr << "\t resize failed\n";
+		std::cerr << "\t resize failed: " << grb::toString( rc ) << "\n";
 		return;
 	}
 
