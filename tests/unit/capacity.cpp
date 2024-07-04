@@ -233,25 +233,76 @@ void grb_program( const size_t &n, grb::RC &rc ) {
 		std::cerr << "\t Testing resize to zero...\n";
 	}
 
-	rc = grb::resize( vec, 0 );
-	if( rc != grb::SUCCESS ) {
-		std::cerr << "\t error during vector resize (II): "
-			<< grb::toString( rc ) << "\n";
-		rc = grb::FAILED;
+	{
+		const size_t old_cap = grb::capacity( vec );
+		rc = grb::resize( vec, 0 );
+		if( rc != grb::ILLEGAL ) {
+			std::cerr << "\t error during vector resize (II): " << grb::toString( rc )
+				<< ", expected ILLEGAL (since vector has elements)\n";
+			rc = grb::FAILED;
+		} else {
+			rc = grb::SUCCESS;
+		}
+		if( old_cap != grb::capacity( vec ) ) {
+			std::cerr << "\t error during vector resize (II): capacity was modified\n";
+			rc = grb::FAILED;
+		}
 	}
-	// implementations and backends may or may not resize to smaller capacities, so
-	// we only test here if the call doesn't somehow fail. Any returned value is OK
-	(void) grb::capacity( vec );
 	if( rc != grb::SUCCESS ) { return; }
-	rc = grb::resize( mat, 0 );
+
+	rc = grb::clear( vec );
 	if( rc != grb::SUCCESS ) {
-		std::cerr << "\t error during matrix resize (III): "
-			<< grb::toString( rc ) << "\n";
+		std::cerr << "\t error during setting up vector resize (III) test\n";
 		rc = grb::FAILED;
+	} else {
+		rc = grb::resize( vec, 0 );
+		if( rc != grb::SUCCESS ) {
+			std::cerr << "\t error during vector resize (III): "
+				<< grb::toString( rc ) << ", expected SUCCESS\n";
+			rc = grb::FAILED;
+		} else {
+			// implementations and backends may or may not resize to smaller capacities, so
+			// we only test here if the call doesn't somehow fail. Any returned value is OK
+			(void) grb::capacity( vec );
+		}
 	}
-	// implementations and backends may or may not resize to smaller capacities, so
-	// we only test here if the call doesn't somehow fail. Any returned value is OK
-	(void) grb::capacity( mat );
+	if( rc != grb::SUCCESS ) { return; }
+
+	{
+		const size_t old_cap = grb::capacity( mat );
+		rc = grb::resize( mat, 0 );
+		if( rc != grb::ILLEGAL ) {
+			std::cerr << "\t error during matrix resize (III): "
+				<< grb::toString( rc ) << ", expected ILLEGAL (since matrix has elements)\n";
+			rc = grb::FAILED;
+		} else {
+			rc = grb::SUCCESS;
+		}
+		if( old_cap != grb::capacity( mat ) ) {
+			std::cerr << "\t error during matrix resize (III): capacity was modified\n";
+			rc = grb::FAILED;
+		}
+	}
+	if( rc != grb::SUCCESS ) { return; }
+
+	rc = grb::clear( mat );
+	if( rc != grb::SUCCESS ) {
+		std::cerr << "\t error during matrix resize (IV) setup: " << grb::toString(rc)
+			<< "\n";
+		rc = grb::FAILED;
+	} else {
+		rc = grb::resize( mat, 0 );
+		if( rc != grb::SUCCESS ) {
+			std::cerr << "\t error during matrix resize (IV): " << grb::toString( rc )
+				<< ", expected SUCCESS\n";
+			rc = grb::FAILED;
+		} else {
+			// implementations and backends may or may not resize to smaller capacities,
+			// so we only test here if the call doesn't somehow fail. Any returned value
+			// is OK
+			(void) grb::capacity( mat );
+		}
+	}
 	if( rc != grb::SUCCESS ) { return; }
 
 	// done
