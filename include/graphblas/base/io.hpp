@@ -631,11 +631,12 @@ namespace grb {
 	}
 
 	/**
-	 * Resizes the nonzero capacity of this vector. Any current contents of the
-	 * vector are \em not retained.
+	 * Resizes the nonzero capacity of this vector.
 	 *
-	 * @tparam InputType The type of elements contained in the matrix \a A.
-	 * @tparam backend  The backend of the matrix \a A.
+	 * Any current contents of the vector are retained.
+	 *
+	 * @tparam InputType The type of elements contained in the vector \a x.
+	 * @tparam backend   The backend of the vector \a x.
 	 *
 	 * \internal
 	 *    @tparam Coords How sparse coordinates are stored.
@@ -647,42 +648,57 @@ namespace grb {
 	 *                   for \a new_nz nonzeroes.
 	 *
 	 * The requested \a new_nz must be smaller than or equal to the size of \a x.
+	 * It must also be larger or equal to the current number of nonzeroes in \a x.
 	 *
-	 * Even for non-successful calls to this function, the vector after the call
-	 * shall not contain any nonzeroes; only if #grb::PANIC is returned shall the
-	 * resulting state of \a x be undefined.
-	 *
-	 * The size of this vector is fixed. By a call to this function, only the
-	 * maximum number of nonzeroes that the vector may contain can be adapted.
+	 * \note The size of this vector is fixed. By a call to this function, only the
+	 *       maximum number of nonzeroes that the vector may contain can be
+	 *       adapted.
 	 *
 	 * If the vector has size zero, all calls to this function will be equivalent
-	 * to a call to grb::clear. In particular, any value for \a new_nz shall be
-	 * ignored, even ones that would normally be considered illegal (which would
-	 * be any nonzero value in the case of an empty container).
+	 * to a no-op. In particular, any value for \a new_nz shall be ignored, even
+	 * ones that would normally be considered illegal.
 	 *
 	 * A request for less capacity than currently already may be allocated, may
-	 * or may not be ignored. A backend
-	 *   1. must define memory usage semantics that may be proportional
-	 *      to the requested capacity, and therefore must free any memory that the
-	 *      user has deemed unnecessary. However, a backend
-	 *   2. could define memory usage semantics that are \em not proportional to
-	 *      the requested capacity, and in that case a performant implementation
-	 *      may choose not to free memory that the user has deemed unnecessary.
+	 * or may not be ignored. More precisely,
+	 *   1. backends must define memory usage semantics for containers that may be
+	 *      proportional to its capacity and may free any memory that the user has
+	 *      deemed unnecessary, \em if indeed the call to resize results in a
+	 *      shrunk capacity. Both the definition of container memory semantics
+	 *      being proportional to capacities as well as the option of implementing
+	 *      capacity reductions (instead of simply ignoring such resize requests),
+	 *      are backend implementation choices and totally optional behaviour.
+	 *   2. Backends (thus) could define memory usage semantics that are \em not
+	 *      proportional to the requested capacity \em and (therefore) ignore user
+	 *      requests that attempt to free up unused memory via calls to this
+	 *      function.
 	 *
-	 * @returns ILLEGAL  When \a new_nz is larger than admissable and \a x was
-	 *                   non-empty. The vector \a x is cleared, but its capacity
-	 *                   remains unchanged.
+	 * \note If a user program must absolutely make sure to release memory, then
+	 *       the following pattern always works no matter what backend is selected:
+	 *       <tt>{ grb::Vector< T > empty( 0 ); std::swap( to_free, empty ); }</tt>
+	 *
+	 * \note The above pattern is trivially adapted to request non-empty vectors
+	 *       with some preferred capacity that may be lower than a current
+	 *       capacity.
+	 *
+	 * @returns SUCCESS  When \a is empty. The input \a new_nz is ignored.
+	 * @returns ILLEGAL  When \a new_nz is larger than admissable and \a x is
+	 *                   non-empty. Other than returning this error code, the call
+	 *                   to this function shall not have any other effects.
+	 * @returns ILLEGAL  When \a new_nz is smaller than the current number of
+	 *                   elements in \a x, and \a x is non-empty. Other than
+	 *                   returning this error code, the call to this function shall
+	 *                   not have any other effects.
 	 * @returns OUTOFMEM When the required memory memory could not be allocated.
-	 *                   The vector \a x is cleared, but its capacity remains
-	 *                   unchanged.
-	 * @returns SUCCESS  If \a x is empty (i.e., has #grb::size zero).
-	 * @returns PANIC    When allocation fails for any other reason. The vector
-	 *                   \a x, as well as ALP/GraphBLAS, enters an undefined
-	 *                   state.
-	 * @returns SUCCESS  If \a x is non-empty and when sufficient capacity for
-	 *                   the resize operation was available. The vector \a x has
-	 *                   obtained a capacity of at least \a new_nz \em while all
-	 *                   nonzeroes it previously contained, if any, are cleared.
+	 *                   Other than returning thi error code, the call to this
+	 *                   function shall not have any other effects.
+	 * @returns PANIC    When the resize operation fails for any other reason. The
+	 *                   vector \a x, as well as the ALP framework as a whole,
+	 *                   enters an undefined state.
+	 * @returns SUCCESS  If \a x is non-empty and when sufficient capacity was
+	 *                   already available, or when sufficient capacity has been
+	 *                   allocated. After the call returns, the vector \a x has a
+	 *                   capacity of <em>at least</em> \a new_nz. Any previous
+	 *                   contents furthermore remain.
 	 *
 	 * \parblock
 	 * \par Performance semantics.
