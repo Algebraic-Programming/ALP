@@ -1063,15 +1063,21 @@ namespace grb {
 			NIT *__restrict__ out_crs_offsets = nullptr;
 			NIT *__restrict__ out_ccs_offsets = nullptr;
 			if( self_masked ) {
-				buffer_row_ind = internal::getMatrixRowBuffer( A );
-				buffer_col_ind = internal::getMatrixColBuffer( A );
-				const size_t bufsize = (m + n + 2) * sizeof( NIT ) + sizeof( int );
+				out_crs_offsets = internal::getMatrixRowBuffer( A );
+				out_ccs_offsets = internal::getMatrixColBuffer( A );
+				const size_t bufsize = ( sizeof( RIT ) + sizeof( CIT ) ) * nz + sizeof( int );
 				char * buffer_raw =
 					internal::template getReferenceBuffer< char >( bufsize );
-				out_crs_offsets = reinterpret_cast< NIT * >( buffer_raw );
-				const size_t offset = sizeof( int ) - (((m + 1) * sizeof( NIT )) % sizeof( int ));
-				out_ccs_offsets = reinterpret_cast< NIT * >(
-					buffer_raw + (m + 1) * sizeof( NIT ) + offset );
+				buffer_row_ind = reinterpret_cast< RIT * >( buffer_raw );
+				buffer_raw += sizeof( RIT ) * nz;
+				{
+					const size_t shift =
+						reinterpret_cast< uintptr_t >(buffer_raw) % sizeof(int);
+					if( shift > 0 ) {
+						buffer_raw += (sizeof(int) - shift);
+					}
+				}
+				buffer_col_ind = reinterpret_cast< CIT * >( buffer_raw );
 			} else {
 				(void) buffer_row_ind;
 				(void) buffer_col_ind;
@@ -1305,6 +1311,7 @@ namespace grb {
 										<< mask_crs.row_index[ k ] << " will be written to k = " << out_k
 										<< "\n";
 #endif
+									assert( out_k <= out_crs.col_start[ m ] );
 									if( self_masked ) {
 										buffer_row_ind[ out_k ] = mask_crs.row_index[ k ];
 									} else {

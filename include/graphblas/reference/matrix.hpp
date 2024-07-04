@@ -34,20 +34,22 @@
 
 #include <assert.h>
 
-#include <graphblas/backends.hpp>
 #include <graphblas/base/matrix.hpp>
 #include <graphblas/base/final.hpp>
-#include <graphblas/config.hpp>
-#include <graphblas/utils.hpp>
-#include <graphblas/ops.hpp>
+
 #include <graphblas/rc.hpp>
-#include <graphblas/reference/compressed_storage.hpp>
-#include <graphblas/reference/init.hpp>
+#include <graphblas/ops.hpp>
+#include <graphblas/config.hpp>
+#include <graphblas/backends.hpp>
 #include <graphblas/type_traits.hpp>
+
+#include <graphblas/utils.hpp>
 #include <graphblas/utils/autodeleter.hpp>
 #include <graphblas/utils/DMapper.hpp>
-#include <graphblas/type_traits.hpp>
 #include <graphblas/utils/iterators/utils.hpp>
+
+#include <graphblas/reference/init.hpp>
+#include <graphblas/reference/compressed_storage.hpp>
 
 #include "NonzeroWrapper.hpp"
 #include "forward.hpp"
@@ -61,18 +63,6 @@ namespace grb {
 
 #ifndef _H_GRB_REFERENCE_OMP_MATRIX
 	namespace internal {
-
-		template< typename D >
-		class SizeOf {
-		public:
-			static constexpr size_t value = sizeof( D );
-		};
-
-		template<>
-		class SizeOf< void > {
-		public:
-			static constexpr size_t value = 0;
-		};
 
 		template<
 			typename ValType, typename ColType, typename IndType,
@@ -199,31 +189,28 @@ namespace grb {
 
 		/**
 		 * \internal
-		 * Retrieves the row-wise SPA stack interpreted as a row index array of size m
+		 * Retrieves the row-wise SPA value array interpreted as a nonzero index array
+		 * of size m.
 		 * \endinternal
 		 */
 		template< typename InputType, typename RIT, typename CIT, typename NIT >
-		RIT * getMatrixRowBuffer(
+		NIT * getMatrixRowBuffer(
 			const grb::Matrix< InputType, reference, RIT, CIT, NIT > &A
 		) noexcept {
-			assert( internal::Coordinates< reference >::bufferSize( A.m ) >=
-				A.m * sizeof( RIT ) );
-			return reinterpret_cast< RIT * >(A.coorArr[ 0 ]);
+			return reinterpret_cast< NIT * >(A.valbuf[ 0 ]);
 		}
 
 		/**
 		 * \internal
-		 * Retrieves the column-wise SPA stack interpreted as a buffer of row indices
-		 * of size n + 1
+		 * Retrieves the column-wise SPA value array interpreted as a nonzero index
+		 * array of size n.
 		 * \endinternal
 		 */
 		template< typename InputType, typename RIT, typename CIT, typename NIT >
-		CIT * getMatrixColBuffer(
+		NIT * getMatrixColBuffer(
 			const grb::Matrix< InputType, reference, RIT, CIT, NIT > &A
 		) noexcept {
-			assert( internal::Coordinates< reference >::bufferSize( A.n ) >=
-				A.n * sizeof( CIT ) );
-			return reinterpret_cast< CIT * >(A.coorArr[ 1 ]);
+			return reinterpret_cast< NIT * >(A.valbuf[ 1 ]);
 		}
 
 		/**
@@ -1219,12 +1206,12 @@ namespace grb {
 		) noexcept;
 
 		template< typename InputType, typename RIT, typename CIT, typename NIT >
-		friend RIT * internal::getMatrixRowBuffer(
+		friend NIT * internal::getMatrixRowBuffer(
 			const grb::Matrix< InputType, reference, RIT, CIT, NIT > &A
 		) noexcept;
 
 		template< typename InputType, typename RIT, typename CIT, typename NIT >
-		friend CIT * internal::getMatrixColBuffer(
+		friend NIT * internal::getMatrixColBuffer(
 			const grb::Matrix< InputType, reference, RIT, CIT, NIT > &A
 		) noexcept;
 
@@ -1486,12 +1473,18 @@ namespace grb {
 					}
 					// get sizes of arrays that we need to allocate
 					size_t sizes[ 12 ];
+					const size_t valBufElemSize =
+						sizeof( NonzeroIndexType ) > utils::SizeOf< D >::value
+							? sizeof( NonzeroIndexType )
+							: utils::SizeOf< D >::value;
+					// the below are the buffer sizes of the row & column SPAs
+					// the value buffer may furthermore be reused as a row/col offset buffer
 					sizes[ 0 ] = internal::Coordinates< reference >::arraySize( rows );
 					sizes[ 1 ] = internal::Coordinates< reference >::arraySize( cols );
 					sizes[ 2 ] = internal::Coordinates< reference >::bufferSize( rows );
 					sizes[ 3 ] = internal::Coordinates< reference >::bufferSize( cols );
-					sizes[ 4 ] = rows * internal::SizeOf< D >::value;
-					sizes[ 5 ] = cols * internal::SizeOf< D >::value;
+					sizes[ 4 ] = (rows + 1) * valBufElemSize;
+					sizes[ 5 ] = (cols + 1) * valBufElemSize;
 					CRS.getStartAllocSize( &( sizes[ 6 ] ), rows );
 					CCS.getStartAllocSize( &( sizes[ 7 ] ), cols );
 					if( cap_in > 0 ) {
@@ -1519,8 +1512,8 @@ namespace grb {
 					);
 				} else {
 					const size_t sizes[ 2 ] = {
-						rows * internal::SizeOf< D >::value,
-						cols * internal::SizeOf< D >::value
+						rows * utils::SizeOf< D >::value,
+						cols * utils::SizeOf< D >::value
 					};
 					coorArr[ 0 ] = coorArr[ 1 ] = nullptr;
 					coorBuf[ 0 ] = coorBuf[ 1 ] = nullptr;
