@@ -1738,7 +1738,12 @@ namespace grb {
 
 				// copy old data
 #ifdef _H_GRB_REFERENCE_OMP_MATRIX
-				#pragma omp parallel
+				size_t nthreads = 1;
+				if( nz > config::OMP::minLoopSize() ) {
+					nthreads = std::max( static_cast< size_t >(1),
+						config::OMP::nranges( 0, nz ) );
+				}
+				#pragma omp parallel num_threads( nthreads )
 #endif
 				{
 					const size_t old_nz = nz;
@@ -1763,6 +1768,7 @@ namespace grb {
 					D * const src_crs_vals = CRS.getValues();
 					D * const src_ccs_vals = CCS.getValues();
 					for( size_t k = start; k < end; ++k ) {
+						assert( k < old_nz );
 						new_crs_index_array[ k ] = CRS.row_index[ k ];
 						new_ccs_index_array[ k ] = CCS.row_index[ k ];
 						if( !std::is_void< D >::value ) {
@@ -1981,7 +1987,17 @@ namespace grb {
 					// no need to clean here, since we did not allocate any additional memory
 					return RC::OVERFLW;
 				}
-				// after checkign it's possible, store it
+
+				// ensure enough space
+				RC ret = resize( _nz );
+				if( ret != SUCCESS ) {
+#ifdef _DEBUG_REFERENCE_MATRIX
+					std::cerr << "\t cannot resize the matrix to store the nonzeroes\n";
+#endif
+					return ret;
+				}
+
+				// after checking storage is possible, store it
 				nz = _nz;
 
 				// for small sizes, delegate to sequential routine
@@ -2000,14 +2016,6 @@ namespace grb {
 				CRS.col_start[ m ] = nz;
 				CCS.col_start[ n ] = nz;
 
-				// allocate enough space
-				RC ret = resize( nz );
-				if( ret != SUCCESS ) {
-#ifdef _DEBUG_REFERENCE_MATRIX
-					std::cerr << "cannot resize the matrix to store the nonzero" << std::endl;
-#endif
-					return ret;
-				}
 				ret = internal::populate_storage<
 					true, ColIndexType, RowIndexType
 				>( n, m, nz, _start, CCS );
