@@ -1712,7 +1712,7 @@ namespace grb {
 			// handle resize
 			if( phase == RESIZE ) {
 				if( grb::capacity( A ) < nnz( mask ) ) {
-					return grb::resize( A, nnz( mask ) );
+					return grb::resize( A, std::max( nnz( A ), nnz( mask ) ) );
 				} else {
 					return SUCCESS;
 				}
@@ -1782,7 +1782,7 @@ namespace grb {
 
 		// delegate
 		if( phase == RESIZE ) {
-			return resize( C, nnz( A ) );
+			return grb::resize( C, std::max( nnz( C ), nnz( A ) ) );
 		} else {
 			assert( phase == EXECUTE );
 			return internal::set_copy< false, descr >( C, A );
@@ -1893,7 +1893,7 @@ namespace grb {
 #ifdef _DEBUG_REFERENCE_IO
 			std::cout << "\t delegating resize for structural non-self masking\n";
 #endif
-			return resize( C, nnz( A ) );
+			return resize( C, std::max( nnz( C ), nnz( A ) ) );
 		} else {
 #ifdef _DEBUG_REFERENCE_IO
 			std::cout << "\t dispatching to void or non-void set_copy variant\n";
