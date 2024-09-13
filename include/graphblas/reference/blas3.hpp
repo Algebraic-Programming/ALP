@@ -550,17 +550,30 @@ namespace grb {
 				utils::prefixSum_ompPar_phase2< false, NIT >( CRS.col_start, m, ps_ws );
 				#pragma omp barrier
 				// first shift right
-				for( size_t i = end - 1; i >= start && i < end; --i ) {
-					CRS.col_start[ i + 1 ] = CRS.col_start[ i ];
-				}
-				if( start > 0 ) {
-					CRS.col_start[ start ] = cached_left;
-				} else {
-					assert( start == 0 );
-					if( end > start ) {
+				if( end > start ) {
+					if( end == m ) {
+						CRS.col_start[ end ] = CRS.col_start[ end - 1 ];
+					}
+					for( size_t i = end - 2; i >= start && i < end - 1; --i ) {
+						CRS.col_start[ i + 1 ] = CRS.col_start[ i ];
+					}
+					if( start > 0 ) {
+						CRS.col_start[ start ] = cached_left;
+					} else {
+						assert( start == 0 );
 						CRS.col_start[ 0 ] = 0;
 					}
 				}
+#ifdef _DEBUG_REFERENCE_BLAS3
+				#pragma omp single
+				{
+					std::cout << "\t\t\t CRS start array after shift: " << CRS.col_start[ 0 ];
+					for( size_t i = 1; i <= m; ++i ) {
+						std::cout << ", " << CRS.col_start[ i ];
+					}
+					std::cout << "\n";
+				}
+#endif
 				// then finalise prefix-sum
 				utils::prefixSum_ompPar_phase3< false, NIT >( CRS.col_start + 1, m, ps_ws );
 #else
