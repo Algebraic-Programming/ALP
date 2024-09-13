@@ -281,6 +281,122 @@ namespace grb {
 		}
 
 		/**
+		 * This is a inner-loop kernel definition that is taken outside in order to
+		 * reduce code duplication
+		 */
+		template<
+			bool crs_only, grb::Phase phase,
+			typename D, typename IND, typename SIZE,
+			typename AStorageT, typename BStorageT
+		>
+		inline void mxm_generic_ompPar_get_row_col_counts_kernel(
+			size_t &nzc,
+			Compressed_Storage< D, IND, SIZE > &CRS,
+			Compressed_Storage< D, IND, SIZE > &CCS,
+			AStorageT &A_raw, BStorageT &B_raw,
+			const size_t n,
+			bool inplace,
+			internal::Coordinates< reference > &coors,
+			const size_t i, const size_t end_offset
+		) {
+#ifdef _H_GRB_REFERENCE_OMP_BLAS3
+ #ifdef _DEBUG_REFERENCE_BLAS3
+			#pragma omp critical
+ #endif
+#endif
+			coors.clear_seq();
+			if( inplace ) {
+#ifdef _DEBUG_REFERENCE_BLAS3
+ #ifdef _H_GRB_REFERENCE_OMP_BLAS3
+				#pragma omp critical
+ #endif
+				std::cout << "\t\t\t looking for pre-existing nonzeroes on row " << i
+					<< " in the CRS array range " << CRS.col_start[ i ] << " -- "
+					<< end_offset << "\n";
+#endif
+				for(
+					auto k = CRS.col_start[ i ];
+					k < static_cast< SIZE >(end_offset);
+					++k
+				) {
+					const auto index = CRS.row_index[ k ];
+					if( static_cast< size_t >(index) == n ) {
+						break;
+					}
+#ifdef _DEBUG_REFERENCE_BLAS3
+ #ifdef _H_GRB_REFERENCE_OMP_BLAS3
+					#pragma omp critical
+ #endif
+					std::cout << "\t\t\t\t recording pre-existing nonzero ( " << i << ", "
+						<< index << " )\n";
+#endif
+					if( !coors.assign( index ) ) {
+						(void) ++nzc;
+						if( !crs_only && phase == EXECUTE ) {
+#ifdef _H_GRB_REFERENCE_OMP_BLAS3
+							#pragma omp atomic update
+#else
+							(void)
+#endif
+								++CCS.col_start[ index + 1 ];
+#ifdef _DEBUG_REFERENCE_BLAS3
+ #ifdef _H_GRB_REFERENCE_OMP_BLAS3
+							#pragma omp critical
+							std::cout << "\t\t\t updated col count at " << index << " to "
+								<< CCS.col_start[ index + 1 ] << "\n"; // note that printed info may be
+							                                               // stale due to data race
+ #endif
+#endif
+						}
+					}
+				}
+			}
+			for(
+				auto k = A_raw.col_start[ i ];
+				k < A_raw.col_start[ i + 1 ];
+				++k
+			) {
+				const size_t k_col = A_raw.row_index[ k ];
+				for(
+					auto l = B_raw.col_start[ k_col ];
+					l < B_raw.col_start[ k_col + 1 ];
+					++l
+				) {
+					const size_t l_col = B_raw.row_index[ l ];
+					if( !coors.assign( l_col ) ) {
+#ifdef _DEBUG_REFERENCE_BLAS3
+ #ifdef _H_GRB_REFERENCE_OMP_BLAS3
+						#pragma omp critical
+ #endif
+						std::cout << "\t\t\t recording new nonzero ( " << i << ", " << l_col
+							<< " )\n";
+#endif
+						(void) ++nzc;
+						if( !crs_only && phase == EXECUTE ) {
+#ifdef _H_GRB_REFERENCE_OMP_BLAS3
+							#pragma omp atomic update
+#else
+							(void)
+#endif
+								++CCS.col_start[ l_col + 1 ];
+#ifdef _DEBUG_REFERENCE_BLAS3
+ #ifdef _H_GRB_REFERENCE_OMP_BLAS3
+							#pragma omp critical
+							std::cout << "\t\t\t updated col count at " << l_col << " to "
+								<< CCS.col_start[ l_col + 1 ] << "\n"; // note that printed info may be
+							                                               // stale due to data race
+ #endif
+#endif
+						}
+					}
+				}
+			}
+			if( phase == EXECUTE ) {
+				CRS.col_start[ i ] = nzc;
+			}
+		}
+
+		/**
 		 * This is a rather specialised function for computing local nonzero counts,
 		 * a cumulative row-count array, and a direct column-count array. Furthermore,
 		 * the latter two are only computed when \a phase is EXECUTE, and if it is,
@@ -304,6 +420,8 @@ namespace grb {
 			char * const arr, char * const buf,
 			bool inplace
 		) {
+			(void) C;
+
 			// static sanity checks
 			static_assert( phase == RESIZE || phase == EXECUTE, "Only resize and execute "
 				"phases are currently supported." );
@@ -345,6 +463,7 @@ namespace grb {
 				}
 			}
 
+			// loop over all rows + 1 (CRS start/offsets array range)
 #ifdef _H_GRB_REFERENCE_OMP_BLAS3
 			config::OMP::localRange( start, end, 0, m + 1 );
 #else
@@ -352,30 +471,20 @@ namespace grb {
 			end = m + 1;
 #endif
 
-			// output nonzero count
-			if( start < end && start == 0 && phase == EXECUTE ) {
-				CRS.col_start[ 0 ] = 0; // DBG FIXME TODO
-			}
+			// keeps track of nonzero count for each row we process
 			nzc = 0;
 
-			// we employ a block-cyclic distribution on the start arrays
-			// the below for-loop, however, at iteration i, writes to index i + 1
-			// so we offset the ranges
-			if( start < end ) {
-				if( start > 0 ) {
-					(void) --start;
-				}
-				(void) --end;
-			}
-
 #ifdef _DEBUG_REFERENCE_BLAS3
+ #ifdef _H_GRB_REFERENCE_OMP_BLAS3
+			#pragma omp critical
+ #endif
 			std::cout << "\t\t\t Thread "
  #ifdef _H_GRB_REFERENCE_OMP_BLAS3
 				<< omp_get_thread_num()
  #else
 				<< "0"
  #endif
-				<< " after shifting start, end has range " << start << "--" << end << "\n";
+				<< " has range " << start << "--" << end << "\n";
 #endif
 
 			// note: in the OpenMP case, the following statement must precede the barrier
@@ -385,9 +494,8 @@ namespace grb {
 			const IND cached_end_offset = C_CRS.col_start[ end ];
 
 #ifdef _H_GRB_REFERENCE_OMP_BLAS3
-			// the below for-loop may write to non-local locations in CCS.col_start. We
-			// must therefore ensure the below loop is only processed when all threads
-			// are done with initialising CCS.col_start.
+			// the below for-loop may write to 1) non-local locations in CCS.col_start and
+			// 2) C_CRS.col_start[ end ]. We must therefore sync.
 			#pragma omp barrier
 #endif
 
@@ -397,195 +505,49 @@ namespace grb {
 			//    as well as for enabling the insertions of output values in the output
 			//    CCS
 			for( size_t i = start; i < end - 1; ++i ) {
-#ifdef _H_GRB_REFERENCE_OMP_BLAS3
- #ifdef _DEBUG_REFERENCE_BLAS3
-				#pragma omp critical
- #endif
-#endif
-				coors.clear_seq();
-				if( inplace ) {
-#ifdef _DEBUG_REFERENCE_BLAS3
- #ifdef _H_GRB_REFERENCE_OMP_BLAS3
-					#pragma omp critical
- #endif
-					std::cout << "\t\t\t looking for pre-existing nonzeroes on row " << i
-						<< " in the CRS array range " << C_CRS.col_start[ i ] << " -- "
-						<< C_CRS.col_start[ i + 1 ] << "\n";
-#endif
-					for(
-						auto k = C_CRS.col_start[ i ];
-						k < C_CRS.col_start[ i + 1 ];
-						++k
-					) {
-						const auto index = C_CRS.row_index[ k ];
-						if( static_cast< size_t >(index) == n ) {
-							break;
-						}
-#ifdef _DEBUG_REFERENCE_BLAS3
- #ifdef _H_GRB_REFERENCE_OMP_BLAS3
-						#pragma omp critical
- #endif
-						std::cout << "\t\t\t\t recording pre-existing nonzero ( " << i << ", "
-							<< index << " )\n";
-#endif
-						if( !coors.assign( index ) ) {
-							(void) ++nzc;
-							if( !crs_only && phase == EXECUTE ) {
-#ifdef _H_GRB_REFERENCE_OMP_BLAS3
-								#pragma omp atomic update
-#else
-								(void)
-#endif
-									++CCS.col_start[ index + 1 ];
-							}
-						}
-					}
-				}
-				for(
-					auto k = A_raw.col_start[ i ];
-					k < A_raw.col_start[ i + 1 ];
-					++k
-				) {
-					const size_t k_col = A_raw.row_index[ k ];
-					for(
-						auto l = B_raw.col_start[ k_col ];
-						l < B_raw.col_start[ k_col + 1 ];
-						++l
-					) {
-						const size_t l_col = B_raw.row_index[ l ];
-						if( !coors.assign( l_col ) ) {
-#ifdef _DEBUG_REFERENCE_BLAS3
- #ifdef _H_GRB_REFERENCE_OMP_BLAS3
-							#pragma omp critical
- #endif
-							std::cout << "\t\t\t recording new nonzero ( " << i << ", " << l_col
-								<< " )\n";
-#endif
-							(void) ++nzc;
-							if( !crs_only && phase == EXECUTE ) {
-#ifdef _H_GRB_REFERENCE_OMP_BLAS3
-								#pragma omp atomic update
-#else
-								(void)
-#endif
-									++CCS.col_start[ l_col + 1 ];
-							}
-						}
-					}
-				}
-				if( phase == EXECUTE ) {
-					CRS.col_start[ i ] = nzc;
-				}
+				mxm_generic_ompPar_get_row_col_counts_kernel< crs_only, phase >(
+					nzc, CRS, CCS, A_raw, B_raw, n, inplace,
+					coors, i, CRS.col_start[ i + 1 ]
+				);
 			}
-
-			// the below code block is not so nice duplication, but seems unavoidable if
-			// not wanting to introduce an if-branch in the above loop, and since we care
-			// about the performance of this particular kernel...
-
-			{
-				const size_t i = end - 1;
-#ifdef _H_GRB_REFERENCE_OMP_BLAS3
- #ifdef _DEBUG_REFERENCE_BLAS3
-				#pragma omp critical
- #endif
-#endif
-				coors.clear_seq();
-				if( inplace ) {
-#ifdef _DEBUG_REFERENCE_BLAS3
- #ifdef _H_GRB_REFERENCE_OMP_BLAS3
-					#pragma omp critical
- #endif
-					std::cout << "\t\t\t looking for pre-existing nonzeroes on row " << i
-						<< " in the CRS array range " << C_CRS.col_start[ i ] << " -- "
-						<< cached_end_offset << "\n";
-#endif
-					for(
-						auto k = C_CRS.col_start[ i ];
-						k < cached_end_offset;
-						++k
-					) {
-						const auto index = C_CRS.row_index[ k ];
-						if( static_cast< size_t >(index) == n ) { break; }
-#ifdef _DEBUG_REFERENCE_BLAS3
- #ifdef _H_GRB_REFERENCE_OMP_BLAS3
-						#pragma omp critical
- #endif
-						std::cout << "\t\t\t\t recording pre-existing nonzero ( " << i << ", "
-							<< index << " )\n";
-#endif
-						if( !coors.assign( index ) ) {
-							(void) ++nzc;
-							if( !crs_only && phase == EXECUTE ) {
-#ifdef _H_GRB_REFERENCE_OMP_BLAS3
-								#pragma omp atomic update
-#else
-								(void)
-#endif
-									++CCS.col_start[ index + 1 ];
-							}
-						}
-					}
-				}
-				for(
-					auto k = A_raw.col_start[ i ];
-					k < A_raw.col_start[ i + 1 ];
-					++k
-				) {
-					const size_t k_col = A_raw.row_index[ k ];
-					for(
-						auto l = B_raw.col_start[ k_col ];
-						l < B_raw.col_start[ k_col + 1 ];
-						++l
-					) {
-						const size_t l_col = B_raw.row_index[ l ];
-						if( !coors.assign( l_col ) ) {
-#ifdef _DEBUG_REFERENCE_BLAS3
- #ifdef _H_GRB_REFERENCE_OMP_BLAS3
-							#pragma omp critical
- #endif
-							std::cout << "\t\t\t recording new nonzero ( " << i << ", " << l_col
-								<< " )\n";
-#endif
-							(void) ++nzc;
-							if( !crs_only && phase == EXECUTE ) {
-#ifdef _H_GRB_REFERENCE_OMP_BLAS3
-								#pragma omp atomic update
-#else
-								(void)
-#endif
-									++CCS.col_start[ l_col + 1 ];
-							}
-						}
-					}
-				}
-				if( phase == EXECUTE ) {
-					CRS.col_start[ i ] = nzc;
-				}
-			}
+			mxm_generic_ompPar_get_row_col_counts_kernel< crs_only, phase >(
+				nzc, CRS, CCS, A_raw, B_raw, n, inplace,
+				coors, end - 1, cached_end_offset
+			);
 
 #ifdef _DEBUG_REFERENCE_BLAS3
+ #ifdef _H_GRB_REFERENCE_OMP_BLAS3
 			#pragma omp barrier
 			#pragma omp single
+ #endif
 			{
-				std::cout << "\t\t\t CRS start array, locally prefixed = { "
-					<< CRS.col_start[ 0 ];
-				for( size_t i = 1; i <= m; ++i ) {
-					std::cout << ", " << CRS.col_start[ i ];
+				if( phase == EXECUTE ) {
+					std::cout << "\t\t\t CRS start array, locally prefixed = { "
+						<< CRS.col_start[ 0 ];
+					for( size_t i = 1; i <= m; ++i ) {
+						std::cout << ", " << CRS.col_start[ i ];
+					}
+					std::cout << " }\n";
 				}
-				std::cout << " }\n";
 			}
 #endif
 			// now do prefix sum phases 2 & 3
 			// the above code does phase 1 in-place, but ends with the CRS.col_start
 			// array shifted one position to the left (which should be corrected)
 			if( phase == EXECUTE ) {
+#ifdef _DEBUG_REFERENCE_BLAS3
+ #ifdef _H_GRB_REFERENCE_OMP_BLAS3
+				#pragma omp single
+ #endif
+				std::cout << "\t\t\t shifting the CRS start array...\n";
+#endif
 #ifdef _H_GRB_REFERENCE_OMP_BLAS3
 				NIT ps_ws, cached_left = nzc;
 				if( start > 0 ) {
 					cached_left = CRS.col_start[ start - 1 ];
 				}
 				#pragma omp barrier
-				utils::prefixSum_ompPar_phase2< false, NIT, true >( CRS.col_start, m + 1, ps_ws );
+				utils::prefixSum_ompPar_phase2< false, NIT >( CRS.col_start, m, ps_ws );
 				#pragma omp barrier
 				// first shift right
 				for( size_t i = end - 2; i >= start && i < end - 1; --i ) {
@@ -593,15 +555,32 @@ namespace grb {
 				}
 				if( start > 0 ) {
 					CRS.col_start[ start ] = cached_left;
+				} else {
+					assert( start == 0 );
+					if( end > start ) {
+						CRS.col_start[ 0 ] = 0;
+					}
 				}
-				if( start == 0 && end > start ) { CRS.col_start[ 0 ] = 0; }
 				// then finalise prefix-sum
-				utils::prefixSum_ompPar_phase3< false >( CRS.col_start, m + 1, ps_ws );
+				utils::prefixSum_ompPar_phase3< false, NIT >( CRS.col_start + 1, m, ps_ws );
 #else
+				// in the sequential phase, only a shift is needed
 				for( size_t i = end - 1; i < end; --i ) {
 					CRS.col_start[ i + 1 ] = CRS.col_start[ i ];
 				}
 				CRS.col_start[ 0 ] = 0;
+#endif
+#ifdef _DEBUG_REFERENCE_BLAS3
+ #ifdef _H_GRB_REFERENCE_OMP_BLAS3
+				#pragma omp single
+ #endif
+				{
+					std::cout << "\t\t\t final CRS start array: " << CRS.col_start[ 0 ];
+					for( size_t i = 1; i <= m; ++i ) {
+						std::cout << ", " << CRS.col_start[ i ];
+					}
+					std::cout << "\n";
+				}
 #endif
 			}
 			return SUCCESS;
@@ -962,6 +941,23 @@ namespace grb {
 			const size_t n = grb::ncols( C );
 			// TODO can I pass some buffers from somewhere?
 			//      YES: the SPA buffers are unused, so we can supply those (TODO)
+#ifdef _DEBUG_REFERENCE_BLAS3
+ #ifdef _H_GRB_REFERENCE_OMP_BLAS3
+			for( size_t s = 0; s < omp_get_num_threads(); ++s ) {
+				if( s == omp_get_thread_num() )
+ #endif
+				{
+					std::cout << "\t\t\t column indices before shift: " << CRS.row_index[ 0 ];
+					for( size_t i = 1; i < CRS.col_start[ m ]; ++i ) {
+						std::cout << ", " << CRS.row_index[ i ];
+					}
+					std::cout << std::endl;
+				}
+ #ifdef _H_GRB_REFERENCE_OMP_BLAS3
+				#pragma omp barrier
+			}
+ #endif
+#endif
 #ifdef _H_GRB_REFERENCE_OMP_BLAS3
 			grb::utils::unordered_memmove_ompPar(
 				CRS.row_index, oldOffsets, CRS.col_start, m );
@@ -985,13 +981,51 @@ namespace grb {
 			start = 0;
 			end = m;
 #endif
+#ifdef _DEBUG_REFERENCE_BLAS3
+ #ifdef _H_GRB_REFERENCE_OMP_BLAS3
+			for( size_t s = 0; s < omp_get_num_threads(); ++s ) {
+				if( s == omp_get_thread_num() )
+ #endif
+				{
+					std::cout << "\t\t\t column indices after shift: "
+						<< CRS.row_index[ 0 ];
+					for( size_t i = 1; i < CRS.col_start[ m ]; ++i ) {
+						std::cout << ", " << CRS.row_index[ i ];
+					}
+					std::cout << std::endl;
+				}
+ #ifdef _H_GRB_REFERENCE_OMP_BLAS3
+				#pragma omp barrier
+			}
+ #endif
+#endif
 			for( size_t i = start; i < end; ++i ) {
 				const size_t nelems = oldOffsets[ i + 1 ] - oldOffsets[ i ];
-				const size_t space =  CRS.col_start[ i + 1 ] - CRS.col_start[ i ];
-				if( space > nelems ) {
-					CRS.row_index[ CRS.col_start[ i ] + nelems ] = n;
+				const size_t space  = CRS.col_start[ i + 1 ] - CRS.col_start[ i ];
+				// NOTE this could lead to thread-imbalance, and parallelisnig over the sum
+				//      of space - nelems may be better (FIXME)
+				for( size_t k = nelems; k < space; ++k ) {
+					CRS.row_index[ CRS.col_start[ i ] + k ] = n;
 				}
 			}
+#ifdef _DEBUG_REFERENCE_BLAS3
+ #ifdef _H_GRB_REFERENCE_OMP_BLAS3
+			for( size_t s = 0; s < omp_get_num_threads(); ++s ) {
+				if( s == omp_get_thread_num() )
+ #endif
+				{
+					std::cout << "\t\t\t column indices after shift and fill: "
+						<< CRS.row_index[ 0 ];
+					for( size_t i = 1; i < CRS.col_start[ m ]; ++i ) {
+						std::cout << ", " << CRS.row_index[ i ];
+					}
+					std::cout << std::endl;
+				}
+ #ifdef _H_GRB_REFERENCE_OMP_BLAS3
+				#pragma omp barrier
+			}
+ #endif
+#endif
 		}
 
 		/**
@@ -1382,7 +1416,8 @@ namespace grb {
  #ifdef _H_GRB_REFERENCE_OMP_BLAS3
 									#pragma omp critical
  #endif
-									std::cout << "\t\t\t pre-existing nonzero value at index " << index << ": " << valbuf[ index ] << "\n";
+									std::cout << "\t\t\t pre-existing nonzero at "
+										<< i << ", " << index << ": value = " << valbuf[ index ] << "\n";
 #endif
 								} else {
 #ifndef NDEBUG
@@ -1458,6 +1493,13 @@ namespace grb {
 								}
 							}
 						}
+#ifdef _DEBUG_REFERENCE_BLAS3
+ #ifdef _H_GRB_REFERENCE_OMP_BLAS3
+						#pragma omp critical
+ #endif
+						std::cout << "\t will write out " << coors.nonzeroes() << " nonzeroes "
+							<< "to row " << i << "\n";
+#endif
 						for( size_t k = 0; k < coors.nonzeroes(); ++k ) {
 							const size_t j = coors.index( k );
 							// update CRS
@@ -1484,6 +1526,7 @@ namespace grb {
 										C_col_index[ j ]++;
 								}
 								const size_t CCS_index = atomic_offset + CCS_raw.col_start[ j ];
+								assert( CCS_index < CCS_raw.col_start[ j + 1 ] );
 								CCS_raw.row_index[ CCS_index ] = i;
 								CCS_raw.setValue( CCS_index, valbuf[ j ] );
 							}

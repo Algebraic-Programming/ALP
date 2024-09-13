@@ -50,6 +50,10 @@
 
 #include <cstring>
 
+#ifdef _DEBUG
+ #define _DEBUG_UTILS_UNORDERED_MEMMOVE
+#endif
+
 
 namespace grb {
 
@@ -182,7 +186,7 @@ namespace grb {
 					const size_t my_start_batch =
 						grb::utils::binsearch( start, src_offsets, src_offsets + batches );
 					const size_t my_end_batch =
-						grb::utils::binsearch( end, src_offsets, src_offsets + batches );
+						grb::utils::binsearch( end, src_offsets, src_offsets + batches + 1 );
 					assert( my_start_batch < batches );
 					assert( my_end_batch <= batches );
 					assert( my_start_batch < my_end_batch );
@@ -203,10 +207,15 @@ namespace grb {
 							(src_offsets[ k + 1 ] - src_offsets[ k ]) * sizeof( T )
 						);
 					}
+					/*std::cout << "** copying " << source[ src_offsets[ my_end_batch - 1 ] ]
+						<< " from offset " << src_offsets[ my_end_batch - 1 ]
+						<< " to offset " << dst_offsets[(my_end_batch-1)] << "\n"; // DBG*/
+					const size_t nElemsInTail = src_offsets[ my_end_batch ] -
+						src_offsets[ my_end_batch - 1 ];
 					(void) std::memcpy(
 						source + dst_offsets[ my_end_batch - 1 ],
 						source + src_offsets[ my_end_batch - 1 ],
-						(end - src_offsets[ my_end_batch ]) * sizeof( T )
+						nElemsInTail * sizeof( T )
 					);
 				}
 			}
@@ -285,6 +294,10 @@ namespace grb {
 			T * const workspace = nullptr,
 			const size_t workspace_size = 0
 		) {
+#ifdef _DEBUG_UTILS_UNORDERED_MEMMOVE
+			#pragma omp single
+			std::cout << "\t In parallel unordered memmove: " << batches << " batches\n";
+#endif
 			// In the parallel case, things get more complicated. The main idea is still
 			// to work from the last batch to the first batch, in order to free up space
 			// in the array that is potentially / likely overwritten by subsequent batch
@@ -350,7 +363,26 @@ namespace grb {
 							src_offsets[ batch ] < dst_offsets[ batch ]
 						) { (void) --batch; }
 						nbatches = not_processed - batch;
-						std::cout << "\t\t will process " << nbatches << " batches in case 1\n"; // DBG
+#ifdef _DEBUG_UTILS_UNORDERED_MEMMOVE
+						#pragma omp single
+						{
+							std::cout << "\t\t will process " << nbatches << " conflict-free batches in case 1\n"
+								<< "\t\t\t starting from source offset " << src_offsets[ batch ]
+								<< " to source offset " << upper << ", copying this range into "
+								<< " destination offset " << dst_offsets[ batch ] << " to "
+								<< "destination offset " << dst_offsets[ batch + nbatches ] << "\n";
+							std::cout << "\t\t\t before: " << source[ 0 ];
+							for( size_t i = 1; i < dst_offsets[ batches ]; ++i ) {
+								if( i == src_offsets[ batches ] ) {
+									std::cout << " || ";
+								} else {
+									std::cout << ", ";
+								}
+								std::cout << source[ i ];
+							}
+							std::cout << "\n";
+						}
+#endif
 						// process them
 						internal::unordered_memmove_ompPar_case1(
 							source,
@@ -358,8 +390,30 @@ namespace grb {
 							dst_offsets + batch,
 							nbatches
 						);
+#ifdef _DEBUG_UTILS_UNORDERED_MEMMOVE
+						#pragma omp single
+						{
+							std::cout << "\t\t\t after: " << source[ 0 ];
+							for( size_t i = 1; i < dst_offsets[ batches ]; ++i ) {
+								if( i == src_offsets[ batches ] ) {
+									std::cout << " || ";
+								} else {
+									std::cout << ", ";
+								}
+								std::cout << source[ i ];
+							}
+							std::cout << "\n";
+						}
+#endif
 					} else {
-						std::cout << "\t\t trivial batch detected I -- skipping\n"; // DBG
+#ifdef _DEBUG_UTILS_UNORDERED_MEMMOVE
+						#pragma omp single
+						{
+							std::cout << "\t\t trivial batch detected I -- skipping\n"
+								<< "\t\t\t The trivial batch has source offset " << src_offsets[ batch ]
+								<< " and destination offset " << dst_offsets[ batch ] << "\n";
+						}
+#endif
 						assert( src_offsets[ batch ] == dst_offsets[ batch ] );
 						nbatches = 1;
 					}
@@ -389,12 +443,28 @@ namespace grb {
 								not_processed, workspace, workspace_size
 							);
 						} else {TODO */
-							std::cout << "\t\t will handle case-2 batch in-place\n"; // DBG
+#ifdef _DEBUG_UTILS_UNORDERED_MEMMOVE
+							#pragma omp single
+							{
+								std::cout << "\t\t batch " << batch << " will be handled via a head-move\n"
+									<< "\t\t\t head-move has source offset " << src_offsets[ batch ]
+									<< " and destination offset " << dst_offsets[ batch ]
+									<< ". It contains " << (src_offsets[ batch + 1 ] - src_offsets[ batch ])
+									<< " elements.\n";
+							}
+#endif
 							internal::unordered_memmove_ompPar_case2_inplace(
 								source, src_offsets + batch, dst_offsets + batch );
 						// } TODO
 					} else {
-						std::cout << "\t\t trivial batch detected II -- skipping\n"; // DBG
+#ifdef _DEBUG_UTILS_UNORDERED_MEMMOVE
+						#pragma omp single
+						{
+							std::cout << "\t\t trivial batch detected II -- skipping\n"
+								<< "\t\t\t The trivial batch has source offset " << src_offsets[ batch ]
+								<< " and destination offset " << dst_offsets[ batch ] << "\n";
+						}
+#endif
 						assert( src_offsets[ batch ] == dst_offsets[ batch ] );
 					}
 					(void) --not_processed;
@@ -403,6 +473,10 @@ namespace grb {
 				}
 			} while( not_processed > 0 );
 
+#ifdef _DEBUG_UTILS_UNORDERED_MEMMOVE
+			#pragma omp single
+			std::cout << "\t\t unordered memmove: complete\n";
+#endif
 			// done
 		}
 

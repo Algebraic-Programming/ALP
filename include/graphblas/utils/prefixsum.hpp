@@ -36,6 +36,10 @@
 #include <cstddef>
 #include <algorithm>
 
+#ifdef _DEBUG
+ #define _DEBUG_UTILS_PREFIXSUM
+#endif
+
 
 namespace grb {
 
@@ -109,20 +113,13 @@ namespace grb {
 		 * See #prefixSum_ompPar for full documentation. This call has one extra
 		 * optional template argument:
 		 *
-		 * @tparam shiftedLeft If set to <tt>true</tt>, then \a array is assumed to
-		 *                     have all its entries shifted one position to the left.
-		 *
-		 * \note This template argument is useful when fusing a call to this function
-		 *       with a shift-to-the-right operation such as done in the #grb::mxm
-		 *       implementation. The benefit is performance (saves one barrier).
 		 */
-		template< bool copyEnd, typename T, bool shiftedLeft = false >
+		template< bool copyEnd, typename T >
 		void prefixSum_ompPar_phase2(
 			T *__restrict__ array, const size_t n,
 			T &myOffset
 		) {
-			constexpr size_t shift = shiftedLeft ? 0 : 1;
-#ifdef _DEBUG
+#ifdef _DEBUG_UTILS_PREFIXSUM
 			std::cout << "\t entering prefixSum_ompPar_phase2\n";
 #endif
 			(void) copyEnd;
@@ -133,13 +130,15 @@ namespace grb {
 					config::CACHE_LINE_SIZE::value(), k );
 				if( offset_index > dummy ) {
 					assert( offset_index > 0 );
-					myOffset += array[ offset_index - shift ];
+					offset_index -= 1;
+					myOffset += array[ offset_index ];
 				}
 			}
-#ifdef _DEBUG
+#ifdef _DEBUG_UTILS_PREFIXSUM
 			#pragma omp critical
 			std::cout << "\t\t thread " << config::OMP::current_thread_ID()
-				<< " offset is " << myOffset << std::endl;
+				<< " offset is " << myOffset << ", dummy is " << dummy << ", and "
+				<< "offset_index is " << offset_index << "\n";
 #endif
 		}
 
@@ -156,14 +155,16 @@ namespace grb {
 			T *__restrict__ array, const size_t n,
 			T &myOffset
 		) {
-#ifdef _DEBUG
-			std::cout << "\t entering prefixSum_ompPar_phase3\n"
-				<< "\t\t computed offset is " << myOffset << "\n"
-				<< "\t\t my thread ID is " << omp_get_thread_num() << "\n";
-#endif
 			size_t start, end;
 			config::OMP::localRange( start, end, 0, n,
 				config::CACHE_LINE_SIZE::value() );
+#ifdef _DEBUG_UTILS_PREFIXSUM
+			#pragma omp critical
+			std::cout << "\t entering prefixSum_ompPar_phase3\n"
+				<< "\t\t computed offset is " << myOffset << "\n"
+				<< "\t\t my thread ID is " << omp_get_thread_num() << "\n"
+				<< "\t\t my range is " << start << " -- " << end << "\n";
+#endif
 			for( size_t i = start; i < end; ++i ) {
 				array[ i ] += myOffset;
 			}
