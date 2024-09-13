@@ -293,9 +293,9 @@ namespace grb {
 			size_t &nzc,
 			Compressed_Storage< D, IND, SIZE > &CRS,
 			Compressed_Storage< D, IND, SIZE > &CCS,
-			AStorageT &A_raw, BStorageT &B_raw,
+			const AStorageT &A_raw, const BStorageT &B_raw,
 			const size_t n,
-			bool inplace,
+			const bool inplace,
 			internal::Coordinates< reference > &coors,
 			const size_t i, const size_t end_offset
 		) {
@@ -465,10 +465,10 @@ namespace grb {
 
 			// loop over all rows + 1 (CRS start/offsets array range)
 #ifdef _H_GRB_REFERENCE_OMP_BLAS3
-			config::OMP::localRange( start, end, 0, m + 1 );
+			config::OMP::localRange( start, end, 0, m );
 #else
 			start = 0;
-			end = m + 1;
+			end = m;
 #endif
 
 			// keeps track of nonzero count for each row we process
@@ -550,7 +550,7 @@ namespace grb {
 				utils::prefixSum_ompPar_phase2< false, NIT >( CRS.col_start, m, ps_ws );
 				#pragma omp barrier
 				// first shift right
-				for( size_t i = end - 2; i >= start && i < end - 1; --i ) {
+				for( size_t i = end - 1; i >= start && i < end; --i ) {
 					CRS.col_start[ i + 1 ] = CRS.col_start[ i ];
 				}
 				if( start > 0 ) {
@@ -564,7 +564,7 @@ namespace grb {
 				// then finalise prefix-sum
 				utils::prefixSum_ompPar_phase3< false, NIT >( CRS.col_start + 1, m, ps_ws );
 #else
-				// in the sequential phase, only a shift is needed
+				// in the sequential case, only a shift is needed
 				for( size_t i = end - 1; i < end; --i ) {
 					CRS.col_start[ i + 1 ] = CRS.col_start[ i ];
 				}
