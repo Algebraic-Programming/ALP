@@ -30,12 +30,14 @@ It is presently also behind the main ALP development branch. After this branch
 has a fully matured stable version, merger of this branch into mainline
 development is likely only to take place after the dialect for dense linear
 algebra has been fully merged. This, in turn, requires further refactoring
-within this development branch. Alternatively, once code has sufficiently
-matured, we may offer it as a separate project outside of the main ALP branch.
+within this development branch.
+
+Alternatively, once code in this branch has sufficiently matured, we may offer
+it as a separate project outside of the main ALP branch.
 
 # Using the p-Laplacian spectral partitioner
 
-Please see the [dedicated READMA](README_pLaplacian.md).
+Please see its [dedicated README](README_pLaplacian.md).
 
 # Minimal requirements
 

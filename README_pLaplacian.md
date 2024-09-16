@@ -113,5 +113,5 @@ The purpose of this is to verify correct results across different runs, making s
 The hessian matrix is now calculated and stored in the EcuGrad() function. It is then reused multiple times in the EcuHess() function, leading to roughly 10 times speedup.
 
 ## OLD/NEW Version
-If you want to run the old version, you can compile with the flag -DPLOLD. Works for both serial and omp, but is an order of magnitude slower than the new version. The old algorithm can be found in [this file](/include/graphblas/algorithms/ROPTLIB/Grassmann_pLap_old.hpp)
+If you want to run the old version, you can compile with the flag -DPLOLD. Works for both serial and omp, but is an order of magnitude slower than the new version. The old algorithm can be found in [this file](/include/graphblas/algorithms/ROPTLIB/Grassmann_pLap_old.hpp).
 
