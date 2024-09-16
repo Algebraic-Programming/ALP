@@ -399,7 +399,6 @@ namespace grb {
 					<< nzc << " [thread " << omp_get_thread_num() << "]\n";
  #endif
 #endif
-				assert( nzc != 164 ); // DBG
 				CRS.col_start[ i ] = nzc;
 			}
 		}
@@ -518,10 +517,12 @@ namespace grb {
 					coors, i, CRS.col_start[ i + 1 ]
 				);
 			}
-			mxm_generic_ompPar_get_row_col_counts_kernel< crs_only, phase >(
-				nzc, CRS, CCS, A_raw, B_raw, n, inplace,
-				coors, end - 1, cached_end_offset
-			);
+			if( end > start ) {
+				mxm_generic_ompPar_get_row_col_counts_kernel< crs_only, phase >(
+					nzc, CRS, CCS, A_raw, B_raw, n, inplace,
+					coors, end - 1, cached_end_offset
+				);
+			}
 
 #ifdef _DEBUG_REFERENCE_BLAS3
  #ifdef _H_GRB_REFERENCE_OMP_BLAS3
