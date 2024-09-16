@@ -328,7 +328,7 @@ namespace grb {
 					#pragma omp critical
  #endif
 					std::cout << "\t\t\t\t recording pre-existing nonzero ( " << i << ", "
-						<< index << " )\n";
+						<< index << " ) [thread " << omp_get_thread_num() << "]\n";
 #endif
 					if( !coors.assign( index ) ) {
 						(void) ++nzc;
@@ -392,6 +392,14 @@ namespace grb {
 				}
 			}
 			if( phase == EXECUTE ) {
+#ifdef _DEBUG_REFERENCE_BLAS3
+ #ifdef _H_GRB_REFERENCE_OMP_BLAS3
+				#pragma omp critical
+				std::cout << "\t\t\t recording row " << i << " start offset: "
+					<< nzc << " [thread " << omp_get_thread_num() << "]\n";
+ #endif
+#endif
+				assert( nzc != 164 ); // DBG
 				CRS.col_start[ i ] = nzc;
 			}
 		}
@@ -1285,7 +1293,9 @@ namespace grb {
 					grb::capacity( C )
 				) {
 					std::cerr << "mxm_generic: not enough capacity in output matrix while "
-						<< "phase is EXECUTE\n";
+						<< "phase is EXECUTE\n"
+						<< "\t capacity: " << grb::capacity( C ) << "\n"
+						<< "\t required: " << CRS_raw.col_start[ m ] << "\n";
  #ifdef _H_GRB_REFERENCE_OMP_BLAS3
 					#pragma omp atomic write
  #endif
