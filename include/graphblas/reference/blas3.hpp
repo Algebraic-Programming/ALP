@@ -300,6 +300,8 @@ namespace grb {
 			const size_t i, const size_t end_offset
 		) {
 #ifdef _H_GRB_REFERENCE_OMP_BLAS3
+//			const size_t dbgt = omp_get_num_threads(); // DBG
+//			omp_set_num_threads( 1 ); // DBG
  #ifdef _DEBUG_REFERENCE_BLAS3
 			#pragma omp critical
  #endif
@@ -401,6 +403,9 @@ namespace grb {
 #endif
 				CRS.col_start[ i ] = nzc;
 			}
+/*#ifdef _H_GRB_REFERENCE_OMP_BLAS3
+			omp_set_num_threads( dbgt ); // DBG
+#endif*/
 		}
 
 		/**
@@ -473,6 +478,12 @@ namespace grb {
 			// loop over all rows + 1 (CRS start/offsets array range)
 #ifdef _H_GRB_REFERENCE_OMP_BLAS3
 			config::OMP::localRange( start, end, 0, m );
+			/*if( omp_get_thread_num() == 0 ) {
+				start = 0;
+				end = m;
+			} else {
+				start = end = m;
+			} // DBG <-- IF ENABLING THIS, IT WORKS!!!*/
 #else
 			start = 0;
 			end = m;
@@ -523,6 +534,9 @@ namespace grb {
 					coors, end - 1, cached_end_offset
 				);
 			}
+			#pragma omp barrier // TODO This seems to fix the issue, confirming...
+//			std::cout << "!!!!!!!! " << end << "\n"; // DBG
+//			assert( omp_get_thread_num() > 0 || end == 100 || CRS.col_start[ 63 ] != 63 ); // DBG
 
 #ifdef _DEBUG_REFERENCE_BLAS3
  #ifdef _H_GRB_REFERENCE_OMP_BLAS3
@@ -551,6 +565,7 @@ namespace grb {
 				std::cout << "\t\t\t shifting the CRS start array...\n";
 #endif
 #ifdef _H_GRB_REFERENCE_OMP_BLAS3
+//#if 0 // DBG
 				NIT ps_ws, cached_left = nzc;
 				if( start > 0 ) {
 					cached_left = CRS.col_start[ start - 1 ];
@@ -587,6 +602,10 @@ namespace grb {
 				utils::prefixSum_ompPar_phase3< false, NIT >( CRS.col_start + 1, m, ps_ws );
 #else
 				// in the sequential case, only a shift is needed
+ /*#ifdef _H_GRB_REFERENCE_OMP_BLAS3
+				#pragma omp barrier // DBG
+				#pragma omp single  // DBG
+ #endif*/
 				for( size_t i = end - 1; i < end; --i ) {
 					CRS.col_start[ i + 1 ] = CRS.col_start[ i ];
 				}
@@ -958,6 +977,10 @@ namespace grb {
 			Matrix< OutputType, reference, RIT, CIT, NIT > &C,
 			const NIT *__restrict__ const oldOffsets
 		) {
+/*#ifdef _H_GRB_REFERENCE_OMP_BLAS3
+			const size_t dbgt = omp_get_num_threads(); // DBG
+			omp_set_num_threads( 1 ); // DBG
+#endif*/
 			const auto &CRS = internal::getCRS( C );
 			const size_t m = grb::nrows( C );
 			const size_t n = grb::ncols( C );
@@ -1048,6 +1071,9 @@ namespace grb {
 			}
  #endif
 #endif
+/*#ifdef _H_GRB_REFERENCE_OMP_BLAS3
+			omp_set_num_threads( dbgt ); // DBG
+#endif*/
 		}
 
 		/**
@@ -1262,6 +1288,8 @@ namespace grb {
 					arr, buf,
 					inplace
 				);
+
+//				assert( CRS_raw.col_start[ 64 ] != 63 ); // DBG
 
 #ifdef _DEBUG_REFERENCE_BLAS3
  #ifdef _H_GRB_REFERENCE_OMP_BLAS3
