@@ -296,7 +296,22 @@ namespace grb {
 		) {
 #ifdef _DEBUG_UTILS_UNORDERED_MEMMOVE
 			#pragma omp single
-			std::cout << "\t In parallel unordered memmove: " << batches << " batches\n";
+			{
+				std::cout << "\t In parallel unordered memmove: " << batches
+					<< " batches\n";
+				if( batches > 0 ) {
+					std::cout << "\t\t src_offsets = { " << src_offsets[ 0 ];
+					for( size_t i = 1; i < batches; ++i ) {
+						std::cout << ", " << src_offsets[ i ];
+					}
+					std::cout << " }\n";
+					std::cout << "\t\t dst_offsets = { " << dst_offsets[ 0 ];
+					for( size_t i = 1; i < batches; ++i ) {
+						std::cout << ", " << dst_offsets[ i ];
+					}
+					std::cout << " }\n";
+				}
+			}
 #endif
 			// In the parallel case, things get more complicated. The main idea is still
 			// to work from the last batch to the first batch, in order to free up space
@@ -370,7 +385,12 @@ namespace grb {
 								<< "\t\t\t starting from source offset " << src_offsets[ batch ]
 								<< " to source offset " << upper << ", copying this range into "
 								<< " destination offset " << dst_offsets[ batch ] << " to "
-								<< "destination offset " << dst_offsets[ batch + nbatches ] << "\n";
+								<< "destination offset " << dst_offsets[ batch + nbatches ] << "\n"
+								<< "\t\t\t batch: " << batch << " > 0\n"
+								<< "\t\t\t dst_offsets[ batch - 1 ]: "
+								<< dst_offsets[ batch - 1 ] << " >= upper: " << upper << "\n"
+								<< "\t\t\t src_offsets[ batch ]: " << src_offsets[ batch ] << " < "
+								<< "dst_offsets[ batch ]: " << dst_offsets[ batch ] << "\n";
 							std::cout << "\t\t\t before: " << source[ 0 ];
 							for( size_t i = 1; i < dst_offsets[ batches ]; ++i ) {
 								if( i == src_offsets[ batches ] ) {
@@ -411,7 +431,9 @@ namespace grb {
 						{
 							std::cout << "\t\t trivial batch detected I -- skipping\n"
 								<< "\t\t\t The trivial batch has source offset " << src_offsets[ batch ]
-								<< " and destination offset " << dst_offsets[ batch ] << "\n";
+								<< " and destination offset " << dst_offsets[ batch ] << "\n"
+								<< "\t\t\t src_offsets[ batch ]: " << src_offsets[ batch ] << " < "
+								<< "dst_offsets[ batch ]: " << dst_offsets[ batch ] << "\n";
 						}
 #endif
 						assert( src_offsets[ batch ] == dst_offsets[ batch ] );
