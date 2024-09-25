@@ -1770,6 +1770,7 @@ namespace grb {
 			if( clear_at_exit ) {
 				const RC clear_rc = clear( C );
 				if( clear_rc != SUCCESS ) { return PANIC; }
+				return FAILED;
 			}
 
 			// done
