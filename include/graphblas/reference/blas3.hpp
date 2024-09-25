@@ -1056,12 +1056,18 @@ namespace grb {
 				const size_t space  = CRS.col_start[ i + 1 ] - CRS.col_start[ i ];
 				assert( oldOffsets[ i + 1 ] >= oldOffsets[ i ] );
 				assert( CRS.col_start[ i + 1 ] >= CRS.col_start[ i ] );
-				// NOTE this could lead to thread-imbalance, and parallelising over the sum
-				//      of space - nelems may be better (FIXME)
-				// DBG TODO FIXME -- actually, even better: we only need to set n on the first instance, not on all space - nelems instances!
+#ifndef NDEBUG
+				// in debug mode, set the entire range to be able to easier catch any
+				// related memory issues
 				for( size_t k = nelems; k < space; ++k ) {
 					CRS.row_index[ CRS.col_start[ i ] + k ] = n;
 				}
+#else
+				// in performance mode, set only the minimum number of elements
+				if( space > nelems ) {
+					CRS.row_index[ CRS.col_start[ i ] + nelems ] = n;
+				}
+#endif
 			}
 #ifdef _DEBUG_REFERENCE_BLAS3
  #ifdef _H_GRB_REFERENCE_OMP_BLAS3
@@ -1491,7 +1497,9 @@ namespace grb {
 								++k
 							) {
 								const auto index = CRS_raw.row_index[ k ];
-								if( index == static_cast< NIT >(n) ) { break; }
+								if( index == static_cast< NIT >(n) ) {
+									break;
+								}
 								if( !coors.assign( index ) ) {
 									valbuf[ index ] = CRS_raw.getValue( k,
 										monoid.template getIdentity< OutputType >() );
