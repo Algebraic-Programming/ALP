@@ -1390,51 +1390,45 @@ namespace grb {
 					}
 #endif
 
-					// TODO FIXME I am pretty sure the below should go in an if( !crs_only ) block DBG
-
-					// this is a manually fused for-loop from start to end
-					C_col_index[ start ] = 0;
-					if( start < end ) {
-						for( size_t j = start + 1; j < end - 1; ++j ) {
-							if( !crs_only ) {
+					if( !crs_only ) {
+						// this is a manually fused for-loop from start to end
+						C_col_index[ start ] = 0;
+						if( start < end ) {
+							for( size_t j = start + 1; j < end - 1; ++j ) {
 								CCS_raw.col_start[ j ] += CCS_raw.col_start[ j - 1 ];
+								C_col_index[ j ] = 0;
 							}
-							C_col_index[ j ] = 0;
-						}
-						if( !crs_only ) {
 							CCS_raw.col_start[ end - 1 ] += CCS_raw.col_start[ end - 2 ];
+							if( end <= n ) {
+								C_col_index[ end - 1 ] = 0;
+							}
 						}
-						if( end <= n ) {
-							C_col_index[ end - 1 ] = 0;
-						}
-					}
-					// end manually fused for-loop
+						// end manually fused for-loop
 
 #ifdef _DEBUG_REFERENCE_BLAS3
  #ifdef _H_GRB_REFERENCE_OMP_BLAS3
-					#pragma omp barrier
-					#pragma omp single
+						#pragma omp barrier
+						#pragma omp single
  #endif
-					{
-						std::cout << "\t\t CCS start array, locally prefixed = { "
-							<< CCS_raw.col_start[ 0 ];
-						for( size_t i = 1; i <= n; ++i ) {
-							std::cout << ", " << CCS_raw.col_start[ i ];
+						{
+							std::cout << "\t\t CCS start array, locally prefixed = { "
+								<< CCS_raw.col_start[ 0 ];
+							for( size_t i = 1; i <= n; ++i ) {
+								std::cout << ", " << CCS_raw.col_start[ i ];
+							}
+							std::cout << " }\n";
 						}
-						std::cout << " }\n";
-					}
 #endif
 
-					// now finish up prefix-sum on CCS_raw
+						// now finish up prefix-sum on CCS_raw
 #ifdef _H_GRB_REFERENCE_OMP_BLAS3
-					if( !crs_only ) {
 						NIT ps_ws;
 						#pragma omp barrier
 						utils::prefixSum_ompPar_phase2< false >( CCS_raw.col_start, n + 1, ps_ws );
 						#pragma omp barrier
 						utils::prefixSum_ompPar_phase3< false >( CCS_raw.col_start, n + 1, ps_ws );
-					}
 #endif
+					}
 #ifdef _DEBUG_REFERENCE_BLAS3
  #ifdef _H_GRB_REFERENCE_OMP_BLAS3
 					#pragma omp barrier
