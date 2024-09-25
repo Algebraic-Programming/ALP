@@ -534,10 +534,6 @@ namespace grb {
 					coors, end - 1, cached_end_offset
 				);
 			}
-//			std::cout << ">>>> " << cached_end_offset << " " << CRS.col_start[ end - 1 ] << "\n"; // DBG
-//			#pragma omp barrier // TODO This is fix option #1 DBG FIXME. It is probably preferable over option #2 below
-//			std::cout << "!!!!!!!! " << end << "\n"; // DBG
-//			assert( omp_get_thread_num() > 0 || end == 100 || CRS.col_start[ 63 ] != 63 ); // DBG
 
 #ifdef _DEBUG_REFERENCE_BLAS3
  #ifdef _H_GRB_REFERENCE_OMP_BLAS3
@@ -681,6 +677,43 @@ namespace grb {
 				/** The number of bytes to pad the SPA stack with */
 				size_t stackShift;
 
+				/**
+				 * Given a number of used bytes of the buffer, calculate the available
+				 * remainder buffer and return it.
+				 *
+				 * @param[in]  osize     The size of the buffer (in bytes) that is already
+				 *                       in use.
+				 * @param[out] remainder Pointer to any remainder buffer.
+				 * @param[out] rsize     The size of the remainder buffer.
+				 *
+				 * If no buffer space is left, \a remainder will be set to <tt>nullptr</tt>
+				 * and \a size to <tt>0</tt>.
+				 */
+				void retrieveRemainderBuffer(
+					const size_t osize,
+					void * &remainder, size_t &rsize
+				) const noexcept {
+					const size_t size = internal::template getCurrentBufferSize< char >();
+					char * rem = internal::template getReferenceBuffer< char >( size );
+					size_t rsize_calc = size - osize;
+					rem += osize;
+					const size_t mod = reinterpret_cast< uintptr_t >(rem) % sizeof(int);
+					if( mod ) {
+						const size_t shift = sizeof(int) - mod;
+						if( rsize_calc >= shift ) {
+							rsize_calc -= shift;
+							rem += rsize;
+						} else {
+							rsize_calc = 0;
+							rem = nullptr;
+						}
+					}
+					assert( !(reinterpret_cast< uintptr_t >(rem) % sizeof(int)) );
+					// write out
+					remainder = rem;
+					rsize = rsize_calc;
+				}
+
 
 			public:
 
@@ -805,23 +838,82 @@ namespace grb {
 				}
 
 				/**
-				 * @returns the column offset buffer.
+				 * Retrieves the column offset buffer.
+				 *
+				 * @param[out] remainder Returns any remainder buffer beyond that of the row
+				 *                       offset buffer.
+				 * @param[out] rsize     The remainder buffer size \a remainder points to.
+				 *
+				 * If \a remainder is not a <tt>nullptr</tt> then neither should \a rsize,
+				 * and vice versa.
+				 *
+				 * Retrieving any remainder buffer is optional. The default is to not ask
+				 * for them.
+				 *
+				 * \warning If all buffer memory is used for the column offsets, it may be
+				 *          that \a remainder equals <tt>nullptr</tt> and <tt>rsize</tt>
+				 *          zero.
+				 *
+				 * \warning This buffer is only guaranteed exclusive if only the retrieved
+				 *          column buffer is used. In particular, if also requesting (and
+				 *          using) SPA buffers, the remainder buffer area is shared with
+				 *          those SPA buffers, and data races are likely to occur. In other
+				 *          words: be very careful with any use of these remainder buffers.
+				 *
+				 * @returns The column offset buffer.
 				 *
 				 * \warning This buffer overlaps with the CRS offset buffer. The caller
 				 *          must ensure to only ever use one at a time.
 				 */
-				NIT * getColOffsetBuffer() const noexcept {
-					return internal::template getReferenceBuffer< NIT >( n + 1 );
+				NIT * getColOffsetBuffer(
+					void * * const remainder = nullptr,
+					size_t * const rsize = nullptr
+				) const noexcept {
+					NIT * const ret = internal::template getReferenceBuffer< NIT >( n + 1 );
+					if( remainder != nullptr || rsize != nullptr ) {
+						assert( remainder != nullptr && rsize != nullptr );
+						retrieveRemainderBuffer( (m + 1) * sizeof(NIT), *remainder, *rsize );
+					}
+					return ret;
 				}
 
 				/**
-				 * @returns the row offset buffer.
+				 * Retrieves the row offset buffer.
+				 *
+				 * @param[out] remainder Returns any remainder buffer beyond that of the row
+				 *                       offset buffer.
+				 * @param[out] rsize     The remainder buffer size \a remainder points to.
+				 *
+				 * If \a remainder is not a <tt>nullptr</tt> then neither should \a rsize,
+				 * and vice versa.
+				 *
+				 * Retrieving any remainder buffer is optional. The default is to not ask
+				 * for them.
+				 *
+				 * \warning If all buffer memory is used for the row offsets, it may be that
+				 *          \a remainder equals <tt>nullptr</tt> and <tt>rsize</tt> zero.
+				 *
+				 * \warning This buffer is only guaranteed exclusive if only the retrieved
+				 *          row buffer is used. In particular, if also requesting (and
+				 *          using) SPA buffers, the remainder buffer area is shared with
+				 *          those SPA buffers, and data races are likely to occur. In other
+				 *          words: be very careful with any use of these remainder buffers.
+				 *
+				 * @returns The row offset buffer.
 				 *
 				 * \warning This buffer overlaps with the CCS offset buffer. The caller
 				 *          must ensure to only ever use one at a time.
 				 */
-				NIT * getRowOffsetBuffer() const noexcept {
-					return internal::template getReferenceBuffer< NIT >( m + 1 );
+				NIT * getRowOffsetBuffer(
+					void * * const remainder = nullptr,
+					size_t * const rsize = nullptr
+				) const noexcept {
+					NIT * const ret = internal::template getReferenceBuffer< NIT >( m + 1 );
+					if( remainder != nullptr || rsize != nullptr ) {
+						assert( remainder != nullptr && rsize != nullptr );
+						retrieveRemainderBuffer( (m + 1) * sizeof(NIT), *remainder, *rsize );
+					}
+					return ret;
 				}
 
 				/**
@@ -982,7 +1074,8 @@ namespace grb {
 		>
 		void mxm_ompPar_shiftByOffset(
 			Matrix< OutputType, reference, RIT, CIT, NIT > &C,
-			const NIT *__restrict__ const oldOffsets
+			const NIT *__restrict__ const oldOffsets,
+			void * const buffer, const size_t bufferSize
 		) {
 /*#ifdef _H_GRB_REFERENCE_OMP_BLAS3
 			const size_t dbgt = omp_get_num_threads(); // DBG
@@ -991,8 +1084,6 @@ namespace grb {
 			const auto &CRS = internal::getCRS( C );
 			const size_t m = grb::nrows( C );
 			const size_t n = grb::ncols( C );
-			// TODO can I pass some buffers from somewhere?
-			//      YES: the SPA buffers are unused, so we can supply those (TODO)
 #ifdef _DEBUG_REFERENCE_BLAS3
  #ifdef _H_GRB_REFERENCE_OMP_BLAS3
 			for( size_t s = 0; s < omp_get_num_threads(); ++s ) {
@@ -1010,20 +1101,26 @@ namespace grb {
 			}
  #endif
 #endif
-#ifdef _H_GRB_REFERENCE_OMP_BLAS3
-			grb::utils::unordered_memmove_ompPar(
-				CRS.row_index, oldOffsets, CRS.col_start, m );
-#else
-			grb::utils::unordered_memmove_seq(
-				CRS.row_index, oldOffsets, CRS.col_start, m );
-#endif
-			if( !std::is_void< OutputType >::value ) {
+			{
+				RIT * const workspace = reinterpret_cast< RIT * >(buffer);
+				const size_t workspaceSize = bufferSize / sizeof(RIT);
 #ifdef _H_GRB_REFERENCE_OMP_BLAS3
 				grb::utils::unordered_memmove_ompPar(
-					CRS.values, oldOffsets, CRS.col_start, m );
+					CRS.row_index, oldOffsets, CRS.col_start, m, workspace, workspaceSize );
 #else
 				grb::utils::unordered_memmove_seq(
-					CRS.values, oldOffsets, CRS.col_start, m );
+					CRS.row_index, oldOffsets, CRS.col_start, m, workspace, workspaceSize );
+#endif
+			}
+			if( !std::is_void< OutputType >::value ) {
+				OutputType * const workspace = reinterpret_cast< OutputType * >(buffer);
+				const size_t workspaceSize = bufferSize / sizeof(OutputType);
+#ifdef _H_GRB_REFERENCE_OMP_BLAS3
+				grb::utils::unordered_memmove_ompPar(
+					CRS.values, oldOffsets, CRS.col_start, m, workspace, workspaceSize );
+#else
+				grb::utils::unordered_memmove_seq(
+					CRS.values, oldOffsets, CRS.col_start, m, workspace, workspaceSize );
 #endif
 			}
 			size_t start, end;
@@ -1289,9 +1386,12 @@ namespace grb {
 				// phase 1: symbolic phase
 
 				NIT * originalRowOffsets = nullptr;
+				void * shiftBuffer = nullptr;
+				size_t shiftBufferSize = 0;
 				if( inplace ) {
 					// first save old row offsets
-					originalRowOffsets = bufferMD.getRowOffsetBuffer();
+					originalRowOffsets = bufferMD.getRowOffsetBuffer(
+						&shiftBuffer, &shiftBufferSize );
 					grb::internal::FinalBackend< reference >::memcpy(
 						originalRowOffsets, CRS_raw.col_start, (m + 1) * sizeof(NIT) );
 				}
@@ -1361,13 +1461,13 @@ namespace grb {
 						// that operates on the CCS since that code reuses the buffer in which
 						// originalRowOffsets resides. For the same reason, this code block also
 						// cannot be interleaved with the below code block.
-						// This does indicate a latency - memory tradeoff opportunity, however,
-						// this implementation presently does not attempt to take benefit.
+						// While this does indicate a latency - memory tradeoff opportunity, this
+						// implementation presently does not attempt to take benefit.
  #ifdef _H_GRB_REFERENCE_OMP_BLAS3
 						#pragma omp barrier
  #endif
-
-						mxm_ompPar_shiftByOffset( C, originalRowOffsets );
+						mxm_ompPar_shiftByOffset( C, originalRowOffsets,
+							shiftBuffer, shiftBufferSize );
  #ifdef _H_GRB_REFERENCE_OMP_BLAS3
 						#pragma omp barrier
  #endif
