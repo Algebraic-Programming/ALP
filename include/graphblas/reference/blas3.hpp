@@ -534,7 +534,8 @@ namespace grb {
 					coors, end - 1, cached_end_offset
 				);
 			}
-			#pragma omp barrier // TODO This seems to fix the issue, confirming...
+//			std::cout << ">>>> " << cached_end_offset << " " << CRS.col_start[ end - 1 ] << "\n"; // DBG
+//			#pragma omp barrier // TODO This is fix option #1 DBG FIXME. It is probably preferable over option #2 below
 //			std::cout << "!!!!!!!! " << end << "\n"; // DBG
 //			assert( omp_get_thread_num() > 0 || end == 100 || CRS.col_start[ 63 ] != 63 ); // DBG
 
@@ -567,10 +568,10 @@ namespace grb {
 #ifdef _H_GRB_REFERENCE_OMP_BLAS3
 //#if 0 // DBG
 				NIT ps_ws, cached_left = nzc;
+				#pragma omp barrier
 				if( start > 0 ) {
 					cached_left = CRS.col_start[ start - 1 ];
 				}
-				#pragma omp barrier
 				utils::prefixSum_ompPar_phase2< false, NIT >( CRS.col_start, m, ps_ws );
 				#pragma omp barrier
 				// first shift right
@@ -598,14 +599,18 @@ namespace grb {
 					std::cout << "\n";
 				}
 #endif
+				#pragma omp barrier // TODO FIXME DBG
+				                    // this barrier prevents a segfault caused by element 64 being overwritten by a shift-to-right
+				                    // a better fix that does not cost a barrier would be great
+						    // in fact, the shift-to-right can probably be fused with the below phase 3
 				// then finalise prefix-sum
 				utils::prefixSum_ompPar_phase3< false, NIT >( CRS.col_start + 1, m, ps_ws );
 #else
 				// in the sequential case, only a shift is needed
  /*#ifdef _H_GRB_REFERENCE_OMP_BLAS3
-				#pragma omp barrier // DBG
-				#pragma omp single  // DBG
- #endif*/
+	//			#pragma omp barrier // DBG
+	//			#pragma omp single  // DBG
+ #endif*/// DBG
 				for( size_t i = end - 1; i < end; --i ) {
 					CRS.col_start[ i + 1 ] = CRS.col_start[ i ];
 				}
@@ -968,6 +973,8 @@ namespace grb {
 		 * such gap element in the index array by putting the corresponding matrix
 		 * size there-- this value is an invalid index, and thus is taken as an
 		 * encoding for the original boundary.
+		 *
+		 * \note This function is friendly towards sequential code flows.
 		 */
 		template<
 			typename OutputType,
@@ -1047,8 +1054,11 @@ namespace grb {
 			for( size_t i = start; i < end; ++i ) {
 				const size_t nelems = oldOffsets[ i + 1 ] - oldOffsets[ i ];
 				const size_t space  = CRS.col_start[ i + 1 ] - CRS.col_start[ i ];
-				// NOTE this could lead to thread-imbalance, and parallelisnig over the sum
+				assert( oldOffsets[ i + 1 ] >= oldOffsets[ i ] );
+				assert( CRS.col_start[ i + 1 ] >= CRS.col_start[ i ] );
+				// NOTE this could lead to thread-imbalance, and parallelising over the sum
 				//      of space - nelems may be better (FIXME)
+				// DBG TODO FIXME -- actually, even better: we only need to set n on the first instance, not on all space - nelems instances!
 				for( size_t k = nelems; k < space; ++k ) {
 					CRS.row_index[ CRS.col_start[ i ] + k ] = n;
 				}
@@ -1280,6 +1290,11 @@ namespace grb {
 						originalRowOffsets, CRS_raw.col_start, (m + 1) * sizeof(NIT) );
 				}
 
+				{
+					config::OMP::localRange( start, end, 0, m );
+	//				std::cout << "#### " << CRS_raw.col_start[ end ] << " " << CRS_raw.col_start[ end - 1 ] << "\n"; // DBG
+				}
+
 				local_rc = mxm_generic_ompPar_get_row_col_counts<
 					descr, crs_only, EXECUTE
 				>(
@@ -1333,6 +1348,19 @@ namespace grb {
 					// phase 2 (optional): in-place shift (make room for new nonzeroes)
 
 					if( inplace ) {
+						// shifting requires CRS.col_start be finalised, but the function that
+						// populates that (get_row_col_counts) does not end with a barrier (for
+						// performance in the out-of-place case).
+						// This barrier can also not be moved until after the below code block
+						// that operates on the CCS since that code reuses the buffer in which
+						// originalRowOffsets resides. For the same reason, this code block also
+						// cannot be interleaved with the below code block.
+						// This does indicate a latency - memory tradeoff opportunity, however,
+						// this implementation presently does not attempt to take benefit.
+ #ifdef _H_GRB_REFERENCE_OMP_BLAS3
+						#pragma omp barrier
+ #endif
+
 						mxm_ompPar_shiftByOffset( C, originalRowOffsets );
  #ifdef _H_GRB_REFERENCE_OMP_BLAS3
 						#pragma omp barrier
@@ -1361,6 +1389,8 @@ namespace grb {
 						assert( CCS_raw.col_start[ 0 ] == 0 );
 					}
 #endif
+
+					// TODO FIXME I am pretty sure the below should go in an if( !crs_only ) block DBG
 
 					// this is a manually fused for-loop from start to end
 					C_col_index[ start ] = 0;
@@ -1428,14 +1458,21 @@ namespace grb {
 					// computational phase
 #ifdef _H_GRB_REFERENCE_OMP_BLAS3
 					config::OMP::localRange( start, end, 0, m );
+					/*if( omp_get_thread_num() == 0 ) {
+						start = 0;
+						end = m;
+						std::cout << "!!!! " << CRS_raw.col_start[ end ] << " " << CRS_raw.col_start[ end - 1 ] << "\n"; // DBG
+					} else {
+						start = end = m;
+					} // DBG with this code, the bug still persists(!!!)*/
 #else
 					start = 0;
 					end = m;
 #endif
-					local_nzc = CRS_raw.col_start[ start ];
 					if( start < end && start == 0 ) {
 						CRS_raw.col_start[ 0 ] = 0;
 					}
+					local_nzc = CRS_raw.col_start[ start ];
 					for( size_t i = start; i < end; ++i ) {
 #ifdef _H_GRB_REFERENCE_OMP_BLAS3
  #ifdef _DEBUG_REFERENCE_BLAS3
