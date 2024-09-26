@@ -48,7 +48,8 @@
 
 #include <graphblas/utils/binsearch.hpp>
 
-#include <cstring>
+#include <algorithm> // for std::min
+#include <cstring>   // for std::memcpy
 
 #ifdef _DEBUG
  #define _DEBUG_UTILS_UNORDERED_MEMMOVE
@@ -389,13 +390,16 @@ namespace grb {
 				// check if we can get away with handling fewer batches than suggested
 				suggested_start = utils::maxarg(
 					[&bsize,&src_offsets,&end] (size_t start ) {
-						return config::OMP::nranges( 0,
-							std::min( bsize, src_offsets[ end ] - src_offsets[ start ] ) );
+						return config::OMP::nranges(
+							0, std::min( static_cast< IND >(bsize),
+								src_offsets[ end ] - src_offsets[ start ] )
+						);
 					}, suggested_start, end
 				);
 				// return parallelism on the (potentially updated) suggested start
-				return config::OMP::nranges( 0,
-					std::min( bsize, src_offsets[ end ] - src_offsets[ suggested_start ] ) );
+				return config::OMP::nranges(
+					0, std::min( static_cast< IND >(bsize),
+						src_offsets[ end ] - src_offsets[ suggested_start ] ) );
 			}
 
 		} // end namespace grb::utils::internal
