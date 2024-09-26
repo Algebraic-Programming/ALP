@@ -1526,6 +1526,11 @@ namespace grb {
 						#pragma omp barrier
 						utils::prefixSum_ompPar_phase3< false >( CCS_raw.col_start, n + 1, ps_ws );
 #endif
+					} else {
+						// The above code issues multiple barriers for prefix-summing over CCS.
+						// One of those barrier is also needed to prevent race conditions between
+						// row-counting and the below execution phase. We issue that barrier here.
+						#pragma omp barrier
 					}
 #ifdef _DEBUG_REFERENCE_BLAS3
  #ifdef _H_GRB_REFERENCE_OMP_BLAS3
