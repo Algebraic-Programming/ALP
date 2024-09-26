@@ -27,7 +27,7 @@
 #ifndef _H_GRB_UTILS_BINSEARCH
 #define _H_GRB_UTILS_BINSEARCH
 
-#include <algorithm> //for std::lower_bound and std::difference
+#include <algorithm> //for std::lower_bound and std::distance
 
 
 namespace grb {
@@ -70,8 +70,55 @@ namespace grb {
 			return ret;
 		}
 
+		/**
+		 * Given a monotonic decreasing function \a f, find the last argument in a
+		 * given collection that returns the largest output. The collection should
+		 * be ordered in a way that guarantees the monotonicity of \a f.
+		 *
+		 * This function proceeds using binary search, and thus completes in
+		 * logarithmic time.
+		 *
+		 * @param[in] f The monotonic decreasing function
+		 * @param[in] l An iterator to the first argument in the collection
+		 * @param[in] h An iterator matching \a l in end-position
+		 *
+		 * The iterator-pair \a l and \a h should be random access iterators--
+		 * otherwise binary search cannot be performed.
+		 */
+		template< typename F, typename V >
+		V maxarg( const F &f, V l, V h ) {
+			// make upper bound inclusive
+			(void) --h;
+			while( true ) {
+				// check for trivial solution
+				if( f( h ) == f( l ) ) {
+					return h;
+				}
+				// get half point
+				const size_t half = ( h - l ) / 2;
+				// if we would make a zero step, quit
+				if( half == 0 ) {
+					return l;
+				}
+				// get mid point iterator
+				V m = l + half;
+				// modify l and h according to value at m
+				if( f( l ) == f( m ) ) {
+					// in this case, look from midpoint onwards
+					l = m;
+				} else {
+					// assert monotonicity
+					assert( f( m ) < f( l ) ) ;
+					// in this case, look before midpoint
+					h = m;
+				}
+				// and recurse
+			}
+		}
+
 	} // namespace utils
 
 } // namespace grb
 
 #endif // end ``_H_GRB_UTILS_BINSEARCH''
+
