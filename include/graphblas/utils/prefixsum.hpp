@@ -110,9 +110,7 @@ namespace grb {
 		 * Should be followed with an OpenMP barrier before a subsequent call to
 		 * #prefixSum_ompPar_phase3.
 		 *
-		 * See #prefixSum_ompPar for full documentation. This call has one extra
-		 * optional template argument:
-		 *
+		 * See #prefixSum_ompPar for full documentation.
 		 */
 		template< bool copyEnd, typename T >
 		void prefixSum_ompPar_phase2(
