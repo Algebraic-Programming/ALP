@@ -174,6 +174,38 @@ namespace grb {
 		}
 
 		/**
+		 * Phase 3/3 for OpenMP-based prefix sum that also shifts the array right by
+		 * one position.
+		 *
+		 * Should be called from within an OpenMP parallel section and after a call to
+		 * #prefixSum_ompPar_phase2 \em and subsequent OpenMP barrier.
+		 *
+		 * @See #prefixSum_ompPar for full documentation.
+		 */
+		template< typename T >
+		void prefixSum_ompPar_phase3_shiftRight(
+			T *__restrict__ array, const size_t n,
+			T &myOffset
+		) {
+			size_t start, end;
+			config::OMP::localRange( start, end, 0, n,
+				config::CACHE_LINE_SIZE::value() );
+			if( end > start ) {
+				if( end == n ) {
+					array[ n ] = array[ n - 1 ] + myOffset;
+				}
+				for( size_t i = end - 2; i >= start && i < end - 1; --i ) {
+					array[ i + 1 ] = array[ i ] + myOffset;
+				}
+				if( start > 0 ) {
+					array[ start ] = myOffset;
+				} else {
+					array[ 0 ] = 0;
+				}
+			}
+		}
+
+		/**
 		 * Prefix-sum to be called from within an OpenMP parallel section.
 		 *
 		 * @tparam copyEnd Whether the last entry of the prefix-sum array, after it

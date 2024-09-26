@@ -563,15 +563,15 @@ namespace grb {
 #endif
 #ifdef _H_GRB_REFERENCE_OMP_BLAS3
 //#if 0 // DBG
-				NIT ps_ws, cached_left = nzc;
+				NIT ps_ws; //, cached_left = nzc; DBG test and remove
 				#pragma omp barrier
-				if( start > 0 ) {
+				/*if( start > 0 ) {
 					cached_left = CRS.col_start[ start - 1 ];
-				}
+				}*/// DBG test and remove
 				utils::prefixSum_ompPar_phase2< false, NIT >( CRS.col_start, m, ps_ws );
 				#pragma omp barrier
 				// first shift right
-				if( end > start ) {
+				/*if( end > start ) { TODO FIXME DBG check if fused variant works OK
 					if( end == m ) {
 						CRS.col_start[ end ] = CRS.col_start[ end - 1 ];
 					}
@@ -600,7 +600,8 @@ namespace grb {
 				                    // a better fix that does not cost a barrier would be great
 						    // in fact, the shift-to-right can probably be fused with the below phase 3
 				// then finalise prefix-sum
-				utils::prefixSum_ompPar_phase3< false, NIT >( CRS.col_start + 1, m, ps_ws );
+				utils::prefixSum_ompPar_phase3< false, NIT >( CRS.col_start + 1, m, ps_ws );*///TODO FIXME DBG
+				utils::prefixSum_ompPar_phase3_shiftRight< NIT >( CRS.col_start, m, ps_ws );
 #else
 				// in the sequential case, only a shift is needed
  /*#ifdef _H_GRB_REFERENCE_OMP_BLAS3
