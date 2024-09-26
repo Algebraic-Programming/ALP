@@ -148,6 +148,9 @@ namespace grb {
 #ifdef _DEBUG
 		std::cerr << "In grb::resize (vector, nonblocking)\n";
 #endif
+		// check for no-op
+		if( grb::size( x ) == 0 ) { return SUCCESS; }
+
 		// check if we have a mismatch
 		if( new_nz > grb::size( x ) ) {
 #ifdef _DEBUG

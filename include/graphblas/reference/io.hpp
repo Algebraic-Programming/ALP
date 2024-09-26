@@ -216,6 +216,8 @@ namespace grb {
 #ifdef _DEBUG
 		std::cerr << "In grb::resize (vector, reference)\n";
 #endif
+		if( grb::size( x ) == 0 ) { return grb::SUCCESS; }
+
 		// check if we have a mismatch
 		if( new_nz > grb::size( x ) ) {
 #ifdef _DEBUG
