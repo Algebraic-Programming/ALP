@@ -341,10 +341,6 @@ namespace grb {
 			<< "\t current capacity is " << capacity( A ) << "\n"
 			<< "\t requested new capacity is " << new_nz << "\n";
 #endif
-
-		RC ret = clear( A );
-		if( ret != SUCCESS ) { return ret; }
-
 		// check trivial case and new_nz
 		{
 			const size_t m = nrows( A );
@@ -363,6 +359,9 @@ namespace grb {
 				return ILLEGAL;
 			}
 		}
+
+		// initialise return code
+		RC ret = SUCCESS;
 
 		// delegate to local resize
 		size_t old_capacity = capacity( internal::getLocal( A ) );

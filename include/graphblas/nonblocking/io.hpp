@@ -165,9 +165,8 @@ namespace grb {
 		}
 
 		// in the nonblocking implementation, vectors are of static size
-		// so this function immediately succeeds. However, all existing contents
-		// must be removed
-		return grb::clear( x );
+		// so this function immediately succeeds.
+		return SUCCESS;
 	}
 
 	template<
