@@ -175,6 +175,12 @@ add_grb_executables( mxm mxm.cpp
 	ADDITIONAL_LINK_LIBRARIES test_utils
 )
 
+add_grb_executables( mxm_crs mxm.cpp
+	BACKENDS reference reference_omp
+	ADDITIONAL_LINK_LIBRARIES test_utils
+	COMPILE_DEFINITIONS TEST_CRS_ONLY
+)
+
 add_grb_executables( parserTest utilParserTest.cpp
 	BACKENDS reference NO_BACKEND_NAME
 	COMPILE_DEFINITIONS COMPARE

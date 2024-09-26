@@ -28,6 +28,7 @@
 using namespace grb;
 using namespace grb::algorithms;
 
+template< Descriptor descr >
 void grb_program( const size_t &n, grb::RC &rc ) {
 	grb::Semiring<
 		grb::operators::add< double >, grb::operators::mul< double >,
@@ -43,9 +44,9 @@ void grb_program( const size_t &n, grb::RC &rc ) {
 	// compute with the semiring mxm
 	std::cout << "\tVerifying the semiring version of mxm\n";
 
-	rc = grb::mxm( C, A, B, ring, RESIZE );
+	rc = grb::mxm< descr >( C, A, B, ring, RESIZE );
 	if( rc == SUCCESS ) {
-		rc = grb::mxm( C, A, B, ring );
+		rc = grb::mxm< descr >( C, A, B, ring );
 		if( rc != SUCCESS ) {
 			std::cerr << "Call to grb::mxm( ..., RESIZE ) I FAILED\n";
 		}
@@ -71,14 +72,14 @@ void grb_program( const size_t &n, grb::RC &rc ) {
 	std::cout << "\tVerifying the operator-monoid version of mxm\n";
 
 	rc = grb::clear( C );
-	rc = rc ? rc : grb::mxm(
+	rc = rc ? rc : grb::mxm< descr >(
 		C, A, B,
 		ring.getAdditiveMonoid(),
 		ring.getMultiplicativeOperator(),
 		RESIZE
 	);
 	if( rc == SUCCESS ) {
-		rc = grb::mxm(
+		rc = grb::mxm< descr >(
 				C, A, B,
 				ring.getAdditiveMonoid(),
 				ring.getMultiplicativeOperator()
@@ -115,7 +116,7 @@ void grb_program( const size_t &n, grb::RC &rc ) {
 		std::swap( replace, C_expected );
 	}
 
-	rc = grb::mxm( C, A, B, ring, EXECUTE );
+	rc = grb::mxm< descr >( C, A, B, ring, EXECUTE );
 	if( rc != SUCCESS ) {
 		std::cerr << "Call to grb::mxm( .., EXECUTE ) III FAILED\n";
 	}
@@ -147,14 +148,14 @@ void grb_program( const size_t &n, grb::RC &rc ) {
 		std::swap( B, replace );
 	}
 
-	rc = grb::mxm(
+	rc = grb::mxm< descr >(
 			C, A, B,
 			ring.getAdditiveMonoid(),
 			ring.getMultiplicativeOperator(),
 			RESIZE
 		);
 	if( rc == SUCCESS ) {
-		rc = grb::mxm(
+		rc = grb::mxm< descr >(
 				C, A, B,
 				ring.getAdditiveMonoid(),
 				ring.getMultiplicativeOperator(),
@@ -221,12 +222,12 @@ void grb_program( const size_t &n, grb::RC &rc ) {
 		return;
 	}
 
-	rc = grb::mxm( C, A, B, ring, grb::RESIZE );
+	rc = grb::mxm< descr >( C, A, B, ring, grb::RESIZE );
 	if( rc != grb::SUCCESS ) {
 		std::cerr << "Call to grb::mxm( ..., RESIZE ) V FAILED\n";
 		return;
 	}
-	rc = grb::mxm( C, A, B, ring );
+	rc = grb::mxm< descr >( C, A, B, ring );
 	if( rc != SUCCESS ) {
 		std::cerr << "Call to grb::mxm( ..., EXECUTE ) V FAILED\n";
 		return;
@@ -319,7 +320,14 @@ int main( int argc, char ** argv ) {
 	std::cout << "This is functional test " << argv[ 0 ] << "\n";
 	grb::Launcher< AUTOMATIC > launcher;
 	grb::RC out;
-	if( launcher.exec( &grb_program, in, out, true ) != SUCCESS ) {
+	if(
+#ifdef TEST_CRS_ONLY
+		launcher.exec( &(grb_program< descriptors::force_row_major >), in, out, true )
+#else
+		launcher.exec( &(grb_program< descriptors::no_operation >), in, out, true )
+#endif
+			!= SUCCESS
+	) {
 		std::cerr << "Launching test FAILED\n";
 		return 255;
 	}
