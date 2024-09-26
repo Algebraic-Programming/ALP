@@ -207,9 +207,6 @@ namespace grb {
 							(src_offsets[ k + 1 ] - src_offsets[ k ]) * sizeof( T )
 						);
 					}
-					/*std::cout << "** copying " << source[ src_offsets[ my_end_batch - 1 ] ]
-						<< " from offset " << src_offsets[ my_end_batch - 1 ]
-						<< " to offset " << dst_offsets[(my_end_batch-1)] << "\n"; // DBG*/
 					const size_t nElemsInTail = src_offsets[ my_end_batch ] -
 						src_offsets[ my_end_batch - 1 ];
 					(void) std::memcpy(
@@ -246,11 +243,159 @@ namespace grb {
 
 			/** @returns The parallelism of the above function. */
 			template< typename IND >
-			void unordered_memmove_ompPar_case2_inplace_parallelism(
+			size_t unordered_memmove_ompPar_case2_inplace_parallelism(
 				const IND * const src_offsets,
 				const IND * const dst_offsets
 			) {
-				return config::OMP::nranges( *dst_offsets - *src_offsets );
+				return config::OMP::nranges( *src_offsets, *dst_offsets );
+			}
+
+			/**
+			 * Implementation of an unordered memmove using an auxiliary buffer.
+			 *
+			 * This variant actually preserves the order.
+			 *
+			 * It handles correctly the case where the supplied buffer may be smaller
+			 * than the payload that needs moving. In such cases, this code still
+			 * performs buffered moves.
+			 *
+			 * \warning Whether to use a buffer or not hence is not a concern this
+			 *          function deals with-- call this function only if you are certain
+			 *          that a buffered approach is best.
+			 */
+			template< typename T, typename IND >
+			void unordered_memmove_ompPar_case2_buffered(
+				T * const source,
+				const IND * const src_offsets,
+				const IND * const dst_offsets,
+				const size_t startBatch, size_t endBatch,
+				T * const buffer,
+				const size_t bsize
+			) {
+				// gEnd and gStart always point to indices in the source array
+				size_t gStart = src_offsets[ startBatch ];
+				size_t gEnd = src_offsets[ endBatch ];
+				if( (src_offsets[ endBatch ] - src_offsets[ 0 ]) >
+					static_cast< IND >(bsize)
+				) {
+					gStart = gEnd - bsize;
+				}
+				while( gEnd > gStart ) {
+
+					// perform the copy-from-source-to-buffer, in parallel
+					size_t lStart, lEnd;
+					config::OMP::localRange( lStart, lEnd, gStart, gEnd );
+					if( lEnd > lStart ) {
+						assert( lStart >= gStart );
+						(void) std::memcpy( buffer + lStart - gStart, source + lStart,
+							(lEnd - lStart) * sizeof( T ) );
+					}
+
+					// barrier since every thread must be done with buffering the sources,
+					// before we start to paint over them in the next phase
+					#pragma omp barrier
+
+					// copy from buffer back to source, now at the dst_offsets
+
+					if( lEnd > lStart ) {
+						// first figure out what batch lStart corresponds to
+						size_t lStartBatch = std::lower_bound(
+								src_offsets, src_offsets + endBatch + 1, lStart
+							) - src_offsets;
+						assert( src_offsets[ endBatch ] >= lStart );
+						if( src_offsets[ lStartBatch ] > static_cast< IND >(lStart) ) {
+							assert( lStartBatch > 0 );
+							(void) --lStartBatch;
+							assert( src_offsets[ lStartBatch ] < lStart );
+						}
+						assert( lStartBatch >= startBatch );
+						assert( lStartBatch <= endBatch );
+
+						// same for lEnd
+						size_t lEndBatch = std::lower_bound(
+								src_offsets, src_offsets + endBatch + 1, lEnd
+							) - src_offsets;
+						assert( lEndBatch >= startBatch );
+						assert( lEndBatch <= endBatch );
+
+						// process first batch if it is incomplete
+						size_t lCurBatch = lStartBatch;
+						const size_t dOffset = lStart - src_offsets[ lStartBatch ];
+						size_t bOffset = lStart - gStart;
+						assert( lStart >= gStart );
+						if( dOffset > 0 ) {
+							const size_t nElems = src_offsets[ lStartBatch + 1 ] - lStart;
+							(void) std::memcpy(
+								source + dst_offsets[ lStartBatch ] + dOffset,
+								buffer + bOffset,
+								nElems * sizeof( T )
+							);
+							bOffset += nElems;
+							(void) ++lCurBatch;
+						}
+
+						// process complete batches
+						for( ; lCurBatch < lEndBatch - 1; ++lCurBatch ) {
+							assert( lStart <= src_offsets[ lCurBatch ] );
+							assert( lEnd >= src_offsets[ lCurBatch + 1 ] );
+							const size_t nElems =
+								(src_offsets[ lCurBatch + 1 ] - src_offsets[ lCurBatch ]);
+							(void) std::memcpy(
+								source + dst_offsets[ lCurBatch ],
+								buffer + bOffset,
+								nElems * sizeof( T )
+							);
+							bOffset += nElems;
+						}
+
+						// process last batch, which may be incomplete
+						assert( lEnd > src_offsets[ lEndBatch - 1 ] );
+						assert( lEnd <= src_offsets[ lEndBatch ] );
+						(void) std::memcpy(
+							source + dst_offsets[ lEndBatch - 1 ],
+							buffer + bOffset,
+							(lEnd - src_offsets[ lEndBatch - 1 ]) * sizeof( T )
+						);
+					}
+
+					// move to next block
+					gEnd = gStart;
+					gStart = 0;
+					if( gEnd > bsize ) {
+						gStart = gEnd - bsize;
+					} else {
+						gStart = 0;
+						// this case also requires a barrier, as the distribution of the buffer
+						// amongst threads may differ
+						#pragma omp barrier
+					}
+				}
+			}
+
+			/**
+			 * @returns The parallelism of the above function.
+			 *
+			 * @param[in,out] suggested_start On input, which batch the callee is
+			 *                                guessing might be good to start from. On
+			 *                                output, from which batch onwards maximum
+			 *                                parallelism is already realised.
+			 */
+			template< typename IND >
+			size_t unordered_memmove_ompPar_case2_buffered_parallelism(
+				const IND * const src_offsets,
+				size_t &suggested_start, const size_t end,
+				const size_t bsize
+			) {
+				// check if we can get away with handling fewer batches than suggested
+				suggested_start = utils::maxarg(
+					[&bsize,&src_offsets,&end] (size_t start ) {
+						return config::OMP::nranges( 0,
+							std::min( bsize, src_offsets[ end ] - src_offsets[ start ] ) );
+					}, suggested_start, end
+				);
+				// return parallelism on the (potentially updated) suggested start
+				return config::OMP::nranges( 0,
+					std::min( bsize, src_offsets[ end ] - src_offsets[ suggested_start ] ) );
 			}
 
 		} // end namespace grb::utils::internal
@@ -451,20 +596,38 @@ namespace grb {
 						assert( dst_offsets[ batch ] < src_offsets[ batch + 1 ] );
 						(void) workspace;
 						(void) workspace_size;
-						/*const size_t head_move_parallelism =
-							internal::unordered_memmove_case2_inplace_parallelism(
+						const size_t head_move_parallelism =
+							internal::unordered_memmove_ompPar_case2_inplace_parallelism(
 								src_offsets + batch, dst_offsets + batch );
+						size_t buffered_start_batch = batch / 2;
 						const size_t buffered_parallelism =
-							internal::unordered_memmove_case2_buffered_cost(
-								source, src_offsets, dst_offsets,
-								not_processed, workspace_size
-							);
+							internal::unordered_memmove_ompPar_case2_buffered_parallelism(
+								src_offsets, buffered_start_batch, batch + 1, workspace_size );
 						if( buffered_parallelism > head_move_parallelism ) {
-							batch = internal::unordered_memmove_case2_buffered(
+#ifdef _DEBUG_UTILS_UNORDERED_MEMMOVE
+							#pragma omp single
+							{
+								std::cout << "\t\t batch " << batch << " will be handled via a "
+									<< "buffered memmove.\n";
+							}
+#endif
+
+							internal::unordered_memmove_ompPar_case2_buffered(
 								source, src_offsets, dst_offsets,
-								not_processed, workspace, workspace_size
+								buffered_start_batch, batch + 1,
+								workspace, workspace_size
 							);
-						} else {TODO */
+							// if we handled more than one batch here, record that
+							//
+							// recall that the batch and not_processed variables will be
+							// decremented-by-one in the shared coda below, hence the if-statement
+							// and the off-by-one update here
+							if( batch + 1 - buffered_start_batch > 1 ) {
+								const size_t diff = batch - buffered_start_batch;
+								batch -= diff;
+								not_processed -= diff;
+							}
+						} else {
 #ifdef _DEBUG_UTILS_UNORDERED_MEMMOVE
 							#pragma omp single
 							{
@@ -477,7 +640,7 @@ namespace grb {
 #endif
 							internal::unordered_memmove_ompPar_case2_inplace(
 								source, src_offsets + batch, dst_offsets + batch );
-						// } TODO
+						}
 					} else {
 #ifdef _DEBUG_UTILS_UNORDERED_MEMMOVE
 						#pragma omp single
