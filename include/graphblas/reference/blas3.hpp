@@ -1760,10 +1760,29 @@ namespace grb {
 			}
 
 			if( clear_at_exit ) {
+#ifdef _DEBUG_REFERENCE_BLAS3
+				std::cout << "\t mxm_generic is about to exit with FAILED "
+					<< "(and will clear the output matrix)\n";
+#endif
 				const RC clear_rc = clear( C );
 				if( clear_rc != SUCCESS ) { return PANIC; }
 				return FAILED;
 			}
+
+#ifdef _DEBUG_REFERENCE_BLAS3
+			std::cout << "\t mxm_generic is exiting with RC " << grb::toString( ret )
+				<< " and output contents:\n";
+			std::cout << "\t\t CRS index array = { " << CRS_raw.row_index[ 0 ];
+			for( size_t i = 1; i < CRS_raw.col_start[ m ]; ++i ) {
+				std::cout << ", " << CRS_raw.row_index[ i ];
+			}
+			std::cout << " }\n";
+			std::cout << "\t\t CRS values array = { " << CRS_raw.getValue( 0, 1 );
+			for( size_t i = 1; i < CRS_raw.col_start[ m ]; ++i ) {
+				std::cout << ", " << CRS_raw.getValue( i, 1 );
+			}
+			std::cout << " }\n";
+#endif
 
 			// done
 			return ret;
