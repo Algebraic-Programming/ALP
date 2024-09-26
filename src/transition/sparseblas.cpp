@@ -738,6 +738,7 @@ int EXTBLAS_dusmsm(
 	const enum blas_trans_type transb, const blas_sparse_matrix B,
 	blas_sparse_matrix C
 ) {
+	constexpr grb::Descriptor minDescr = grb::descriptors::no_operation;
 	grb::Semiring<
 		grb::operators::add< double >, grb::operators::mul< double >,
 		grb::identities::zero, grb::identities::one
@@ -774,17 +775,19 @@ int EXTBLAS_dusmsm(
 
 	// resize phase
 	if( transa == blas_no_trans && transb == blas_no_trans ) {
-		rc = grb::mxm( *(matC->A), *(matA->A), *(matB->A), ring, grb::RESIZE );
+		rc = grb::mxm< minDescr >( *(matC->A), *(matA->A), *(matB->A), ring,
+			grb::RESIZE );
 	} else if( transa != blas_no_trans && transb == blas_no_trans ) {
-		rc = grb::mxm< grb::descriptors::transpose_left >(
+		rc = grb::mxm< minDescr | grb::descriptors::transpose_left >(
 			*(matC->A), *(matA->A), *(matB->A), ring, grb::RESIZE );
 	} else if( transa == blas_no_trans && transb != blas_no_trans ) {
-		rc = grb::mxm< grb::descriptors::transpose_right >(
+		rc = grb::mxm< minDescr | grb::descriptors::transpose_right >(
 			*(matC->A), *(matA->A), *(matB->A), ring, grb::RESIZE );
 	} else {
 		assert( transa != blas_no_trans );
 		assert( transb != blas_no_trans );
 		rc = grb::mxm<
+			minDescr |
 			grb::descriptors::transpose_left |
 			grb::descriptors::transpose_right
 		>( *(matC->A), *(matA->A), *(matB->A), ring, grb::RESIZE );
@@ -797,17 +800,18 @@ int EXTBLAS_dusmsm(
 
 	// execute phase
 	if( transa == blas_no_trans && transb == blas_no_trans ) {
-		rc = grb::mxm( *(matC->A), *(matA->A), *(matB->A), ring );
+		rc = grb::mxm< minDescr >( *(matC->A), *(matA->A), *(matB->A), ring );
 	} else if( transa != blas_no_trans && transb == blas_no_trans ) {
-		rc = grb::mxm< grb::descriptors::transpose_left >(
+		rc = grb::mxm< minDescr | grb::descriptors::transpose_left >(
 			*(matC->A), *(matA->A), *(matB->A), ring );
 	} else if( transa == blas_no_trans && transb != blas_no_trans ) {
-		rc = grb::mxm< grb::descriptors::transpose_right >(
+		rc = grb::mxm< minDescr | grb::descriptors::transpose_right >(
 			*(matC->A), *(matA->A), *(matB->A), ring );
 	} else {
 		assert( transa != blas_no_trans );
 		assert( transb != blas_no_trans );
 		rc = grb::mxm<
+			minDescr |
 			grb::descriptors::transpose_left |
 			grb::descriptors::transpose_right
 		>( *(matC->A), *(matA->A), *(matB->A), ring );
