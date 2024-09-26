@@ -216,10 +216,6 @@ namespace grb {
 #ifdef _DEBUG
 		std::cerr << "In grb::resize (vector, reference)\n";
 #endif
-		// this cannot wait until after the below check, as the spec defines that
-		// anything is OK for an empty vector
-		if( grb::size( x ) == 0 ) { return grb::SUCCESS; }
-
 		// check if we have a mismatch
 		if( new_nz > grb::size( x ) ) {
 #ifdef _DEBUG

@@ -300,8 +300,6 @@ namespace grb {
 			const size_t i, const size_t end_offset
 		) {
 #ifdef _H_GRB_REFERENCE_OMP_BLAS3
-//			const size_t dbgt = omp_get_num_threads(); // DBG
-//			omp_set_num_threads( 1 ); // DBG
  #ifdef _DEBUG_REFERENCE_BLAS3
 			#pragma omp critical
  #endif
@@ -403,9 +401,6 @@ namespace grb {
 #endif
 				CRS.col_start[ i ] = nzc;
 			}
-/*#ifdef _H_GRB_REFERENCE_OMP_BLAS3
-			omp_set_num_threads( dbgt ); // DBG
-#endif*/
 		}
 
 		/**
@@ -478,12 +473,6 @@ namespace grb {
 			// loop over all rows + 1 (CRS start/offsets array range)
 #ifdef _H_GRB_REFERENCE_OMP_BLAS3
 			config::OMP::localRange( start, end, 0, m );
-			/*if( omp_get_thread_num() == 0 ) {
-				start = 0;
-				end = m;
-			} else {
-				start = end = m;
-			} // DBG <-- IF ENABLING THIS, IT WORKS!!!*/
 #else
 			start = 0;
 			end = m;
@@ -559,55 +548,16 @@ namespace grb {
  #ifdef _H_GRB_REFERENCE_OMP_BLAS3
 				#pragma omp single
  #endif
-				std::cout << "\t\t\t shifting the CRS start array...\n";
+				std::cout << "\t\t\t shifting and prefix-summing the CRS start array...\n";
 #endif
 #ifdef _H_GRB_REFERENCE_OMP_BLAS3
-//#if 0 // DBG
-				NIT ps_ws; //, cached_left = nzc; DBG test and remove
+				NIT ps_ws;
 				#pragma omp barrier
-				/*if( start > 0 ) {
-					cached_left = CRS.col_start[ start - 1 ];
-				}*/// DBG test and remove
 				utils::prefixSum_ompPar_phase2< false, NIT >( CRS.col_start, m, ps_ws );
 				#pragma omp barrier
-				// first shift right
-				/*if( end > start ) { TODO FIXME DBG check if fused variant works OK
-					if( end == m ) {
-						CRS.col_start[ end ] = CRS.col_start[ end - 1 ];
-					}
-					for( size_t i = end - 2; i >= start && i < end - 1; --i ) {
-						CRS.col_start[ i + 1 ] = CRS.col_start[ i ];
-					}
-					if( start > 0 ) {
-						CRS.col_start[ start ] = cached_left;
-					} else {
-						assert( start == 0 );
-						CRS.col_start[ 0 ] = 0;
-					}
-				}
-#ifdef _DEBUG_REFERENCE_BLAS3
-				#pragma omp single
-				{
-					std::cout << "\t\t\t CRS start array after shift: " << CRS.col_start[ 0 ];
-					for( size_t i = 1; i <= m; ++i ) {
-						std::cout << ", " << CRS.col_start[ i ];
-					}
-					std::cout << "\n";
-				}
-#endif
-				#pragma omp barrier // TODO FIXME DBG
-				                    // this barrier prevents a segfault caused by element 64 being overwritten by a shift-to-right
-				                    // a better fix that does not cost a barrier would be great
-						    // in fact, the shift-to-right can probably be fused with the below phase 3
-				// then finalise prefix-sum
-				utils::prefixSum_ompPar_phase3< false, NIT >( CRS.col_start + 1, m, ps_ws );*///TODO FIXME DBG
 				utils::prefixSum_ompPar_phase3_shiftRight< NIT >( CRS.col_start, m, ps_ws );
 #else
 				// in the sequential case, only a shift is needed
- /*#ifdef _H_GRB_REFERENCE_OMP_BLAS3
-	//			#pragma omp barrier // DBG
-	//			#pragma omp single  // DBG
- #endif*/// DBG
 				for( size_t i = end - 1; i < end; --i ) {
 					CRS.col_start[ i + 1 ] = CRS.col_start[ i ];
 				}
@@ -1078,10 +1028,6 @@ namespace grb {
 			const NIT *__restrict__ const oldOffsets,
 			void * const buffer, const size_t bufferSize
 		) {
-/*#ifdef _H_GRB_REFERENCE_OMP_BLAS3
-			const size_t dbgt = omp_get_num_threads(); // DBG
-			omp_set_num_threads( 1 ); // DBG
-#endif*/
 			const auto &CRS = internal::getCRS( C );
 			const size_t m = grb::nrows( C );
 			const size_t n = grb::ncols( C );
@@ -1185,9 +1131,6 @@ namespace grb {
 			}
  #endif
 #endif
-/*#ifdef _H_GRB_REFERENCE_OMP_BLAS3
-			omp_set_num_threads( dbgt ); // DBG
-#endif*/
 		}
 
 		/**
@@ -1296,9 +1239,9 @@ namespace grb {
 #ifdef _H_GRB_REFERENCE_OMP_BLAS3
 			// derive number of threads
 			size_t nthreads = bufferMD.threads();
- //#ifdef _DEBUG_REFERENCE_BLAS3
+ #ifdef _DEBUG_REFERENCE_BLAS3
 			std::cout << "\t mxm_generic will use " << nthreads << " threads\n";
- //#endif DBG
+ #endif
 #endif
 
 			// resize phase logic
@@ -1391,7 +1334,6 @@ namespace grb {
 
 				{
 					config::OMP::localRange( start, end, 0, m );
-	//				std::cout << "#### " << CRS_raw.col_start[ end ] << " " << CRS_raw.col_start[ end - 1 ] << "\n"; // DBG
 				}
 
 				local_rc = mxm_generic_ompPar_get_row_col_counts<
@@ -1402,8 +1344,6 @@ namespace grb {
 					arr, buf,
 					inplace
 				);
-
-//				assert( CRS_raw.col_start[ 64 ] != 63 ); // DBG
 
 #ifdef _DEBUG_REFERENCE_BLAS3
  #ifdef _H_GRB_REFERENCE_OMP_BLAS3
@@ -1556,13 +1496,6 @@ namespace grb {
 					// computational phase
 #ifdef _H_GRB_REFERENCE_OMP_BLAS3
 					config::OMP::localRange( start, end, 0, m );
-					/*if( omp_get_thread_num() == 0 ) {
-						start = 0;
-						end = m;
-						std::cout << "!!!! " << CRS_raw.col_start[ end ] << " " << CRS_raw.col_start[ end - 1 ] << "\n"; // DBG
-					} else {
-						start = end = m;
-					} // DBG with this code, the bug still persists(!!!)*/
 #else
 					start = 0;
 					end = m;

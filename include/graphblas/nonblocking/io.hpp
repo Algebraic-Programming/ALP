@@ -148,18 +148,20 @@ namespace grb {
 #ifdef _DEBUG
 		std::cerr << "In grb::resize (vector, nonblocking)\n";
 #endif
-		// this cannot wait until after the below check, as the spec defines that
-		// anything is OK for an empty vector
-		if( new_nz == 0 ) {
-			return grb::clear( x );
-		}
-
 		// check if we have a mismatch
 		if( new_nz > grb::size( x ) ) {
 #ifdef _DEBUG
 			std::cerr << "\t requested capacity of " << new_nz << ", "
 				<< "expected a value smaller than or equal to "
 				<< size( x ) << "\n";
+#endif
+			return ILLEGAL;
+		}
+		if( new_nz < grb::nnz( x ) ) {
+#ifdef _DEBUG
+			std::cerr << "\t requested capacity of " << new_nz << ", "
+				<< "expected a value larger than or equal to "
+				<< grb::nnz( x ) << "\n";
 #endif
 			return ILLEGAL;
 		}
