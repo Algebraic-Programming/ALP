@@ -61,12 +61,14 @@ void grb_program( const size_t &n, grb::RC &rc ) {
 		rc = FAILED;
 	}
 
+#ifndef TEST_CRS_ONLY
 	// check CCS output
 	if( utils::compare_ccs( C, C_expected ) != SUCCESS ) {
 		std::cerr << "Error detected while comparing output to ground-truth CCS\n";
 		rc = FAILED;
 	}
 	if( rc != SUCCESS ) { return; }
+#endif
 
 	// compute with the operator-monoid mxm
 	std::cout << "\tVerifying the operator-monoid version of mxm\n";
@@ -98,12 +100,14 @@ void grb_program( const size_t &n, grb::RC &rc ) {
 		rc = FAILED;
 	}
 
+#ifndef TEST_CRS_ONLY
 	// check CCS output
 	if( utils::compare_ccs( C, C_expected ) != SUCCESS ) {
 		std::cerr << "Error detected while comparing output to ground-truth CCS\n";
 		rc = FAILED;
 	}
 	if( rc != SUCCESS ) { return; }
+#endif
 
 	// check in-place behaviour using the semiring
 	std::cout << "\tVerifying in-place behaviour of mxm (using semirings)\n"
@@ -127,11 +131,13 @@ void grb_program( const size_t &n, grb::RC &rc ) {
 		std::cerr << "Error detected while comparing output to ground-truth CRS\n";
 		rc = FAILED;
 	}
+#ifndef TEST_CRS_ONLY
 	if( utils::compare_ccs( C, C_expected ) != SUCCESS ) {
 		std::cerr << "Error detected while comparing output to ground-truth CCS\n";
 		rc = FAILED;
 	}
 	if( rc != SUCCESS ) { return; }
+#endif
 
 	// check in-place behaviour using the monoid-operator variant
 	std::cout << "\tVerifying in-place behaviour of mxm (using monoid-op)\n"
