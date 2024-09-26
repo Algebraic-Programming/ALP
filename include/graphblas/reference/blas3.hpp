@@ -1237,6 +1237,7 @@ namespace grb {
 
 			// get whether we are required to stick to CRS
 			constexpr bool crs_only = descr & descriptors::force_row_major;
+			constexpr bool non_owning = descr & descriptors::non_owning_view;
 
 			// static checks
 			static_assert( !(crs_only && trans_left), "Cannot (presently) transpose A "
@@ -1323,25 +1324,16 @@ namespace grb {
 					#pragma omp atomic update
 					nzc += local_nzc;
 				}
-				if( !crs_only ) {
+
+				if( non_owning ) {
+					// we are using an auxiliary CRS that we cannot resize
+					// instead, we updated the offset array in the above and can now exit
+					CRS_raw.col_start[ m ] = nzc;
+					return SUCCESS;
+				} else {
 					// do final resize
 					const RC ret = grb::resize( C, nzc );
 					return ret;
-				} else {
-					// we are using an auxiliary CRS that we cannot resize
-					// instead, we updated the offset array in the above and can now exit
-					// TODO FIXME This assumes crs_only is only used for non-owning views,
-					//            which may not always be true.
-					static bool print_warning_once = false;
-					if( !print_warning_once ) {
-						std::cerr << "Warning: grb::mxm( reference ): current implementation has "
-						       << "that force_row_major implies a non-owning view of the output "
-						       << "storage. If this is not a correct assumption in your use case, "
-						       << "please submit a bug report.\n";
-						print_warning_once = true;
-					}
-					CRS_raw.col_start[ m ] = nzc;
-					return SUCCESS;
 				}
 			}
 

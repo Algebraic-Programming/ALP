@@ -239,6 +239,18 @@ namespace grb {
 		static constexpr Descriptor force_row_major = 8192;
 
 		/**
+		 * \internal Indicates that the container is retrieved via the native
+		 *           interface, and thus that ALP does not control the associated
+		 *           memory.
+		 *
+		 * \warning Only few select primitives handle this descriptor properly, such
+		 *          as #grb::mxm in RESIZE mode for the reference backend. If the use
+		 *          of this descriptor does not have the intended effect, please
+		 *          contact the maintainers.
+		 */
+		static constexpr Descriptor non_owning_view = 16384;
+
+		/**
 		 * Translates a descriptor into a string.
 		 *
 		 * @param[in] descr The input descriptor.
