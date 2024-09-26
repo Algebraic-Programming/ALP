@@ -689,7 +689,7 @@ namespace grb {
 	 *                   returning this error code, the call to this function shall
 	 *                   not have any other effects.
 	 * @returns OUTOFMEM When the required memory memory could not be allocated.
-	 *                   Other than returning thi error code, the call to this
+	 *                   Other than returning this error code, the call to this
 	 *                   function shall not have any other effects.
 	 * @returns PANIC    When the resize operation fails for any other reason. The
 	 *                   vector \a x, as well as the ALP framework as a whole,
