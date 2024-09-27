@@ -144,6 +144,24 @@ namespace grb {
 			> >::value;
 	};
 
+	// after all of the standard definitions, declare some standard monoids
+
+	namespace monoids {
+
+		template< typename D1, typename D2 = D1, typename D3 = D2 >
+		using PLUS = grb::Monoid<
+			grb::operators::add< D1, D2, D3 >,
+			grb::identities::zero
+		>;
+
+		template< typename D1, typename D2 = D1, typename D3 = D2 >
+		using TIMES = grb::Monoid<
+			grb::operators::mul< D1, D2, D3 >,
+			grb::identities::one
+		>;
+
+	}
+
 } // namespace grb
 
 #endif
