@@ -120,24 +120,17 @@ int update_spmv_dot(
 	}
 #endif
 
-	// get ALP versions of input and output containers
+	// get ALP versions of (input/)output containers
 	grb::Vector< double > alp_p =
 		grb::internal::template wrapRawVector< double >( n, p );
 	grb::Vector< double > alp_u =
 		grb::internal::template wrapRawVector< double >( n, u );
 	double &alp_alpha = *alpha;
 
-	// then input vectors and matrix
+	// do first op
 	const grb::Vector< double > alp_z =
 		grb::internal::template wrapRawVector< double >( n, z );
-	const grb::Vector< double > alp_q = grb::internal::wrapRawVector( n, q );
-	const MyMatrixType alp_A = grb::internal::wrapCRSMatrix( iv, ij, ia, n, n );
-
-	// we use fall-through return-code checking
-	grb::RC ret = grb::SUCCESS;
-
-	// do first op
-	ret = ret ? ret : grb::foldr< grb::descriptors::dense >(
+	grb::RC ret = grb::foldr< grb::descriptors::dense >(
 		*beta, alp_p,
 		dblTimesMonoid
 	);
@@ -145,20 +138,120 @@ int update_spmv_dot(
 		alp_z, alp_p,
 		dblPlusMonoid
 	);
+	if( ret != grb::SUCCESS ) {
+		std::cerr << "ALP/Fuselets update_spmv_dot encountered error at operation 1: "
+			<< grb::toString( ret ) << "\n";
+		return 1;
+	}
 
 	// do second op
-	ret = ret ? ret : grb::mxv( alp_u, alp_A, alp_p, dblSemiring );
+	const MyMatrixType alp_A = grb::internal::wrapCRSMatrix( iv, ij, ia, n, n );
+	ret = grb::mxv<
+		grb::descriptors::dense | grb::descriptors::force_row_major
+	>( alp_u, alp_A, alp_p, dblSemiring );
+	if( ret != grb::SUCCESS ) {
+		std::cerr << "ALP/Fuselets update_spmv_dot encountered error at operation 2: "
+			<< grb::toString( ret ) << "\n";
+		return 2;
+	}
 
 	// do third op
-	ret = ret ? ret : grb::dot( alp_alpha, alp_u, alp_q, dblSemiring );
+	const grb::Vector< double > alp_q = grb::internal::wrapRawVector( n, q );
+	ret = grb::dot< grb::descriptors::dense >(
+		alp_alpha, alp_u, alp_q, dblSemiring );
+	if( ret != grb::SUCCESS ) {
+		std::cerr << "ALP/Fuselets update_spmv_dot encountered error at operation 3: "
+			<< grb::toString( ret ) << "\n";
+		return 3;
+	}
 
 	// done
+	ret = grb::wait();
 	if( ret == grb::SUCCESS ) {
 		return 0;
 	} else {
 		std::cerr << "ALP/Fuselets update_spmv_dot encountered error: "
 			<< grb::toString( ret ) << "\n";
 		return 255;
+	}
+}
+
+int update_update_norm2(
+	double * const x, double * const r, double * const norm2, // outputs
+	const double alpha, const double * const p,               // input 1
+	const double beta, const double * const u,                // input 2
+	const size_t n                                            // size
+) {
+	// catch trivial op
+	if( n == 0 ) {
+		return 0;
+	}
+
+	// simple dynamic sanity checks
+	assert( x != nullptr );
+	assert( r != nullptr );
+	assert( norm2 != nullptr );
+	assert( p != nullptr );
+	assert( u != nullptr );
+
+	// get (input/)output containers
+	grb::Vector< double > alp_x =
+		grb::internal::template wrapRawVector< double >( n, x );
+	grb::Vector< double > alp_r =
+		grb::internal::template wrapRawVector< double >( n, r );
+	double &alp_norm2 = *norm2;
+
+	// perform operation 1
+	const grb::Vector< double > alp_p =
+		grb::internal::template wrapRawVector< double >( n, p );
+	grb::RC ret = grb::foldr< grb::descriptors::dense >(
+		static_cast< double >(1) / alpha, alp_x, dblTimesMonoid ); // 1/alpha x
+	ret = ret ? ret : grb::foldr< grb::descriptors::dense >(
+		alp_p, alp_x, dblPlusMonoid );                             // p + 1/alpha x
+	ret = ret ? ret : grb::foldr< grb::descriptors::dense >(
+		alpha, alp_x, dblTimesMonoid );                            // alpha p + x
+	// this sequence costs n more divisions and affects numerical error
+	// propagation-- the alternative is to pre-compute alpha p in a buffer, but
+	// then we should be given such a buffer
+	if( ret != grb::SUCCESS ) {
+		std::cerr << "ALP/Fuselets update_spmv_dot encountered error at operation 1: "
+			<< grb::toString( ret ) << "\n";
+		return 1;
+	}
+
+	// perform operation 2
+	const grb::Vector< double > alp_u =
+		grb::internal::template wrapRawVector< double >( n, u );
+	ret = grb::foldr< grb::descriptors::dense >(
+		static_cast< double >(1) / beta, alp_r, dblTimesMonoid ); // 1/beta r
+	ret = ret ? ret : grb::foldr< grb::descriptors::dense >(
+		alp_u, alp_r, dblPlusMonoid );                            // u + 1/beta r
+	ret = ret ? ret : grb::foldr< grb::descriptors::dense >(
+		beta, alp_r, dblTimesMonoid );                            // beta u + r
+	// same remark as above applies
+	if( ret != grb::SUCCESS ) {
+		std::cerr << "ALP/Fuselets update_spmv_dot encountered error at operation 2: "
+			<< grb::toString( ret ) << "\n";
+		return 2;
+	}
+
+	// perform operation 3
+	ret = grb::dot< grb::descriptors::dense >(
+		alp_norm2, alp_r, alp_r, dblSemiring );
+	if( ret != grb::SUCCESS ) {
+		std::cerr << "ALP/Fuselets update_spmv_dot encountered error at operation 3: "
+			<< grb::toString( ret ) << "\n";
+		return 3;
+	}
+
+	// done
+	ret = grb::wait();
+	if( ret != grb::SUCCESS ) {
+		std::cerr << "ALP/Fuselets update_spmv_dot encountered error: "
+			<< grb::toString( ret ) << "\n";
+		return 255;
+	} else {
+		return 0;
 	}
 }
 

@@ -133,6 +133,41 @@ extern "C" {
 		const size_t n                                            // size
 	);
 
+	/**
+	 * Computes \f$ x, r, \mathit{norm} \f$ from:
+	 *
+	 *  - \f$ x = \alpha p + x \f$,
+	 *  - \f$ r = \beta u + r \f$,
+	 *  - \f$ \mathit{norm} = ||r||_2^2 \f$.
+	 *
+	 * @param[in,out] x     The input and output vector $\f x \f$
+	 * @param[in,out] r     The input and output vector $\f r \f$
+	 * @param[out]    norm2 The 2-norm-squared of \f$ r \f$
+	 *
+	 * The pointers \a x and \a r should be pointers to arrays, while \a norm2
+	 * should be a pointer to a scalar.
+	 *
+	 * @param[in] alpha The input scalar \f$ \alpha \f$
+	 * @param[in] p     The input vector \f$ p \f$
+	 *
+	 * The pointer \a alpha should point to a scalar while \a p should point to an
+	 * array.
+	 *
+	 * @param[in] beta The input scalar \f$ \beta \f$
+	 * @param[in] u    The input vector \f$ u \f$
+	 *
+	 * The pointer \a beta should point to a scalar while \a u should point to an
+	 * array.
+	 *
+	 * @param[in] n The size of the vectors \a x, \a r, \a p, and \a u.
+	 */
+	int update_update_norm2(
+		double * const x, double * const r, double * const norm2, // outputs
+		const double alpha, const double * const p,               // input 1
+		const double beta, const double * const u,                // input 2
+		const size_t n                                            // size
+	);
+
 #ifdef __cplusplus
 } // end extern "C"
 #endif
