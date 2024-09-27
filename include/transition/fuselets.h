@@ -41,9 +41,97 @@
 #ifndef _H_ALP_FUSELETS
 #define _H_ALP_FUSELETS
 
+#include <stddef.h> // for size_t
+
 #ifdef __cplusplus
 extern "C" {
 #endif
+
+	/**
+	 * Initialisation routine that should be called before calling any fuselets.
+	 *
+	 * A user application shall
+	 *  1. call this function after application start and before calling any
+	 *     fuselets, as well as
+	 *  2. call this function after a call to #finalize_fuselets and before any
+	 *     subsequent calls to fuselets.
+	 * This function shall not be called in any other case.
+	 *
+	 * \note For example, it is not legal to call this function twice without an
+	 *       call to #finalize_fuselets in between.
+	 *
+	 * To ensure proper clean-up before application termination, all calls to this
+	 * function should be matched with a call to #finalize_fuselets.
+	 *
+	 * @returns Zero, if the initialisation has proceeded successfully.
+	 * @returns Any other value, if initialisation has failed. In this case,
+	 *          it shall be as though this call had never occurred. In particular,
+	 *          any subsequent calls to fuselets shall (thus) induce undefined
+	 *          behaviour.
+	 *
+	 * The recommendation is to call this function once and as soon as possible
+	 * after the application <tt>main</tt> function has started.
+	 */
+	int initialize_fuselets();
+
+	/**
+	 * Cleans up fuselet resources.
+	 *
+	 * It may only be called once after every call to #initialize_fuselets. Cannot
+	 * follow another call to #finalize_fuselets without a call to
+	 * #initialize_fuselets in between.
+	 *
+	 * The recommendation is to call this function once and just before the
+	 * application <tt>main</tt> function terminates.
+	 */
+	int finalize_fuselets();
+
+	/**
+	 * Computes \f$ p, u, \alpha \f$ from:
+	 *
+	 *  - \f$ p = z + \beta p \f$,
+	 *  - \f$ u = Ap \f$,
+	 *  - \f$ \alpha = (u,q) \f$.
+	 *
+	 * @param[in,out] p  The input and output vector \f$ p \f$
+	 * @param[out]    u  The output vector \f$ u \f$
+	 * @param[out] alpha The output scalar \f$ \alpha \f$
+	 *
+	 * The pointers \a p and \a u should be pointers to arrays, while \a alpha
+	 * should be a pointer to a scalar.
+	 *
+	 * @param[in]   z  The input vector \f$ z \f$
+	 * @param[in] beta The input scalar \f$ \beta \f$
+	 *
+	 * The pointers \a z should point to an array while \a beta points to a scalar.
+	 *
+	 * @param[in] ia The CRS row offset array of \f$ A \f$
+	 * @param[in] ij The CRS column index array of \f$ A \f$
+	 * @param[in] iv The CRS value array of \f$ A \f$
+	 *
+	 * The pointers \a ia, \a ij, and \a iv correspond to a CRS of \f$ A \f$.
+	 *
+	 * @param[in] q The input vector \f$ q \f$
+	 *
+	 * The pointer \a q points to an array.
+	 *
+	 * @param[in] n The row-wise \em and column-wise dimension of \a A
+	 *
+	 * The size of the arrays \a p, \a u, \a z, and \a q is \f$ n \f$. The size of
+	 * the array \f$ ia \f$ is \f$ n + 1 \f$. The size of the arrays \a ij and
+	 * \a iv is <tt>ia[n]</tt>.
+	 *
+	 * @returns Zero if and only if the call executed successfully.
+	 * @returns A nonzero error code otherwise.
+	 */
+	int update_spmv_dot(
+		double * const p, double * const u, double * const alpha, // outputs
+		const double * const z, const double * const beta,        // input 1
+		const size_t * const ia, const unsigned int * const ij,
+		const double * const iv,                                  // input 2
+		const double * const q,                                   // input 3
+		const size_t n                                            // size
+	);
 
 #ifdef __cplusplus
 } // end extern "C"
