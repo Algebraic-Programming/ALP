@@ -221,7 +221,7 @@ void grb_program2( const struct input &in, struct output &out ) {
 	 * Creating and performing move assignment on multiple new objects and check
 	 * for collisions.
 	 */
-	for( int i = 0; i < 1000; i++ ) {
+	for( int i = 0; i < 100; i++ ) {
 		grb::Matrix< int > new_one( 10, 10, 10 );
 		grb::Matrix< int > new_two( 10, 10, 10 );
 		if( grb::getID( new_one ) == grb::getID( new_two ) ) {

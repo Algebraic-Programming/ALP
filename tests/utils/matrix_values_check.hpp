@@ -371,12 +371,18 @@ namespace grb {
 
 		template< typename D1, typename D2 >
 		RC compare_crs( const Matrix< D1 > &A, const Matrix< D2> &B ) {
-			if( nrows( A ) != nrows( B ) || ncols( A ) != ncols( B ) ) {
-				std::cerr << "Error: matrices have different dimensions\n";
+			const size_t m = nrows( A );
+			const size_t n = ncols( A );
+			if( m != nrows( B ) || n != ncols( B ) ) {
+				std::cerr << "Error: matrices have different dimensions:\n"
+					<< "\t row count " << m << " != " << nrows( B ) << ";\n"
+					<< "\t col count " << n << " != " << ncols( B ) << "\n";
 				return FAILED;
 			}
-			if ( nnz( A ) != nnz( B ) ) {
-				std::cerr << "Error: matrices have different number of non-zeroes\n";
+			const size_t nz = nnz( A );
+			if( nz != nnz( B ) ) {
+				std::cerr << "Error: matrices have different number of non-zeroes:\n"
+					<< "\t " << nz << " != " << nnz( B ) << "\n";
 				return FAILED;
 			}
 

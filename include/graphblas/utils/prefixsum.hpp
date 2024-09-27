@@ -27,11 +27,18 @@
 #ifndef _H_GRB_UTILS_PREFIXSUM
 #define _H_GRB_UTILS_PREFIXSUM
 
-#include <graphblas/omp/config.hpp>
+#ifdef _GRB_WITH_OMP
+ #include <graphblas/omp/config.hpp>
+#endif
+
 #include <graphblas/base/config.hpp>
 
 #include <cstddef>
 #include <algorithm>
+
+#ifdef _DEBUG
+ #define _DEBUG_UTILS_PREFIXSUM
+#endif
 
 
 namespace grb {
@@ -55,7 +62,6 @@ namespace grb {
 		 * Computation will happen in-place.
 		 *
 		 * @param[in] n The size of \a array (in number of elements).
-		 * 
 		 */
 		template< bool copyEnd, typename T >
 		void prefixSum_seq(
@@ -111,24 +117,26 @@ namespace grb {
 			T *__restrict__ array, const size_t n,
 			T &myOffset
 		) {
-#ifdef _DEBUG
+#ifdef _DEBUG_UTILS_PREFIXSUM
 			std::cout << "\t entering prefixSum_ompPar_phase2\n";
 #endif
 			(void) copyEnd;
-			T dummy, offset_index;
+			size_t dummy, offset_index;
 			myOffset = 0;
 			for( size_t k = 0; k < config::OMP::current_thread_ID(); ++k ) {
 				config::OMP::localRange( dummy, offset_index, 0, n,
 					config::CACHE_LINE_SIZE::value(), k );
 				if( offset_index > dummy ) {
 					assert( offset_index > 0 );
-					myOffset += array[ offset_index - 1 ];
+					offset_index -= 1;
+					myOffset += array[ offset_index ];
 				}
 			}
-#ifdef _DEBUG
+#ifdef _DEBUG_UTILS_PREFIXSUM
 			#pragma omp critical
 			std::cout << "\t\t thread " << config::OMP::current_thread_ID()
-				<< " offset is " << myOffset << std::endl;
+				<< " offset is " << myOffset << ", dummy is " << dummy << ", and "
+				<< "offset_index is " << offset_index << "\n";
 #endif
 		}
 
@@ -148,11 +156,50 @@ namespace grb {
 			size_t start, end;
 			config::OMP::localRange( start, end, 0, n,
 				config::CACHE_LINE_SIZE::value() );
+#ifdef _DEBUG_UTILS_PREFIXSUM
+			#pragma omp critical
+			std::cout << "\t entering prefixSum_ompPar_phase3\n"
+				<< "\t\t computed offset is " << myOffset << "\n"
+				<< "\t\t my thread ID is " << omp_get_thread_num() << "\n"
+				<< "\t\t my range is " << start << " -- " << end << "\n";
+#endif
 			for( size_t i = start; i < end; ++i ) {
 				array[ i ] += myOffset;
 			}
 			if( copyEnd && start < n && end == n ) {
 				array[ n ] = array[ n - 1 ];
+			}
+		}
+
+		/**
+		 * Phase 3/3 for OpenMP-based prefix sum that also shifts the array right by
+		 * one position.
+		 *
+		 * Should be called from within an OpenMP parallel section and after a call to
+		 * #prefixSum_ompPar_phase2 \em and subsequent OpenMP barrier.
+		 *
+		 * @See #prefixSum_ompPar for full documentation.
+		 */
+		template< typename T >
+		void prefixSum_ompPar_phase3_shiftRight(
+			T *__restrict__ array, const size_t n,
+			T &myOffset
+		) {
+			size_t start, end;
+			config::OMP::localRange( start, end, 0, n,
+				config::CACHE_LINE_SIZE::value() );
+			if( end > start ) {
+				if( end == n ) {
+					array[ n ] = array[ n - 1 ] + myOffset;
+				}
+				for( size_t i = end - 2; i >= start && i < end - 1; --i ) {
+					array[ i + 1 ] = array[ i ] + myOffset;
+				}
+				if( start > 0 ) {
+					array[ start ] = myOffset;
+				} else {
+					array[ 0 ] = 0;
+				}
 			}
 		}
 
@@ -229,11 +276,15 @@ namespace grb {
 		 */
 		template< bool copyEnd, typename T >
 		void prefixSum_omp( T *__restrict__ array, const size_t n ) {
-			const size_t nthreads = std::max( static_cast< size_t >(1),
-				n % grb::config::CACHE_LINE_SIZE::value() == 0
-					? n / grb::config::CACHE_LINE_SIZE::value()
-					: n / grb::config::CACHE_LINE_SIZE::value() + 1
-			);
+			const size_t nthreads = std::min(
+					config::OMP::threads(),
+					std::max(
+						static_cast< size_t >(1),
+						n % grb::config::CACHE_LINE_SIZE::value() == 0
+							? n / grb::config::CACHE_LINE_SIZE::value()
+							: n / grb::config::CACHE_LINE_SIZE::value() + 1
+					)
+				);
 			if( n < grb::config::OMP::minLoopSize() || nthreads == 1 ) {
 				prefixSum_seq< copyEnd >( array, n );
 			} else {

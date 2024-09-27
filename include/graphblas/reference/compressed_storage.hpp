@@ -766,7 +766,6 @@ namespace grb {
 					return static_cast< ReturnType >( values[ k ] );
 				}
 
-#ifdef _DEBUG
 				/**
 				 * For _DEBUG tracing, define a function that prints the value to a string.
 				 *
@@ -779,7 +778,6 @@ namespace grb {
 					oss << "values[ " << k << " ] = " << values[ k ];
 					return oss.str();
 				}
-#endif
 
 				/**
 				 * Helper function to set a nonzero value. Only records the value itself,
@@ -1316,7 +1314,6 @@ namespace grb {
 					return identity;
 				}
 
-#ifdef _DEBUG
 				/**
 				 * For _DEBUG tracing, define a function that prints the value to a string.
 				 *
@@ -1325,7 +1322,6 @@ namespace grb {
 				inline std::string getPrintValue( const size_t ) const noexcept {
 					return "\"1\"";
 				}
-#endif
 
 				/**
 				 * Specialisation for void matrices: function translates to no-op.

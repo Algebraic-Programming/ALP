@@ -260,7 +260,7 @@ SPBLAS_RET_T SPBLAS_NAME( dcsrmultcsr )(
 
 	// declare minimum necessary descriptors
 	constexpr const grb::Descriptor minDescr = grb::descriptors::dense |
-		grb::descriptors::force_row_major;
+		grb::descriptors::force_row_major | grb::descriptors::non_owning_view;
 
 	// determine matrix size
 	const int m = *m_p;

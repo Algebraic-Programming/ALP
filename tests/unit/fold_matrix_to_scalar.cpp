@@ -708,8 +708,9 @@ void grb_program( const input< T, M > &in, RC &rc ) {
 		}
 		std::vector< int > vals( nrows( I ) * ncols( I ), 0 );
 		size_t previous_idx = 0;
-		for( const auto e : I )
+		for( const auto &e : I ) {
 			previous_idx = e.first.first * ncols( I ) + e.first.second;
+		}
 		vals[ previous_idx ] = 1;
 		if( SUCCESS !=
 			buildMatrixUnique( dense_mask, rows.data(), cols.data(), vals.data(),

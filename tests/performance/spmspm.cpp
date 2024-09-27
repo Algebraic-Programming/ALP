@@ -156,6 +156,7 @@ void ioProgram( const struct input &data_in, bool &success ) {
 	success = true;
 }
 
+template< Descriptor descr = descriptors::no_operation >
 void grbProgram( const struct input &data_in, struct output &out ) {
 	// get user process ID
 	const size_t s = spmd<>::pid();
@@ -278,9 +279,9 @@ void grbProgram( const struct input &data_in, struct output &out ) {
 
 		grb::utils::Timer subtimer;
 		subtimer.reset();
-		rc = rc ? rc : grb::mxm( C, A, B, ring, RESIZE );
+		rc = rc ? rc : grb::mxm< descr >( C, A, B, ring, RESIZE );
 		assert( rc == SUCCESS );
-		rc = rc ? rc : grb::mxm( C, A, B, ring );
+		rc = rc ? rc : grb::mxm< descr >( C, A, B, ring );
 		assert( rc == SUCCESS );
 		double single_time = subtimer.time();
 
@@ -330,26 +331,13 @@ void grbProgram( const struct input &data_in, struct output &out ) {
 	double time_taken;
 	timer.reset();
 
-#ifndef NDEBUG
-	rc = rc ? rc : grb::mxm( C, A, B, ring, RESIZE );
+	rc = rc ? rc : grb::mxm< descr >( C, A, B, ring, RESIZE );
 	assert( rc == SUCCESS );
-	rc = rc ? rc : grb::mxm( C, A, B, ring );
+	rc = rc ? rc : grb::mxm< descr >( C, A, B, ring );
 	assert( rc == SUCCESS );
-#else
-	(void) grb::mxm( C, A, B, ring, RESIZE );
-	(void) grb::mxm( C, A, B, ring );
-#endif
 
 	time_taken = timer.time();
-	if( rc == SUCCESS ) {
-		out.times.useful = time_taken / static_cast< double >( out.rep );
-	}
-	// print timing at root process
-	if( grb::spmd<>::pid() == 0 ) {
-		std::cout << "Time taken for a " << out.rep << " "
-			<< "mxm calls (hot start): " << out.times.useful << ". "
-			<< "Error code is " << out.error_code << std::endl;
-	}
+	out.times.useful = time_taken / static_cast< double >( out.rep );
 
 	// start postamble
 	timer.reset();
@@ -364,6 +352,12 @@ void grbProgram( const struct input &data_in, struct output &out ) {
 		return;
 	}
 
+	// print timing at root process
+	if( grb::spmd<>::pid() == 0 ) {
+		std::cout << "Time taken for a " << out.rep << " "
+			<< "mxm calls (hot start): " << out.times.useful << ". "
+			<< "Error code is " << out.error_code << std::endl;
+	}
 	// finish timing
 	time_taken = timer.time();
 	out.times.postamble = time_taken;
@@ -385,14 +379,18 @@ void grbProgram( const struct input &data_in, struct output &out ) {
 
 int main( int argc, char ** argv ) {
 	// sanity check
-	if( argc < 3 || argc > 7 ) {
+	if( argc < 4 || argc > 7 ) {
 		std::cout << "Usage: " << argv[ 0 ] << " <datasetL> <datasetR> "
-			<< "<direct/indirect> (inner iterations) (outer iterations) "
+			<< "<direct/indirect> (CRS only) "
+			<< "(inner iterations) (outer iterations) "
 			<< "(verification <truth-file>)\n";
 		std::cout << "<datasetL>, <datasetR>, and <direct/indirect> are mandatory "
 			<< "arguments.\n";
 		std::cout << "<datasetL> is the left matrix of the multiplication and "
 			<< "<datasetR> is the right matrix \n";
+		std::cout << "(CRS only) is optional, the efault is 0. The only other "
+			<< "possible value is 1, in which case only the CRS-portion of the output "
+			<< "matrix shall be computed.\n";
 		std::cout << "(inner iterations) is optional, the default is "
 			<< grb::config::BENCHMARKING::inner() << ". "
 			<< "If set to zero, the program will select a number of iterations "
@@ -432,13 +430,24 @@ int main( int argc, char ** argv ) {
 		}
 	}
 
+	bool crs_only_rt = false;
+	if( argc >= 5 ) {
+		if( strncmp( argv[ 4 ], "1", 1 ) == 0 ) {
+			crs_only_rt = true;
+		} else if( strncmp( argv[ 4 ], "0", 1 ) != 0 ) {
+			std::cerr << "Error: could not parse fourth argument \"" << argv[ 4 ] << ", "
+				<< "expected \"0\" or \"1\"\n";
+			return 15;
+		}
+	}
+
 	// get inner number of iterations
 	in.rep = grb::config::BENCHMARKING::inner();
 	char * end = nullptr;
-	if( argc >= 5 ) {
-		in.rep = strtoumax( argv[ 4 ], &end, 10 );
-		if( argv[ 4 ] == end ) {
-			std::cerr << "Could not parse argument " << argv[ 4 ] << " "
+	if( argc >= 6 ) {
+		in.rep = strtoumax( argv[ 5 ], &end, 10 );
+		if( argv[ 5 ] == end ) {
+			std::cerr << "Could not parse argument " << argv[ 5 ] << " "
 				<< "for number of inner experiment repetitions." << std::endl;
 			return 20;
 		}
@@ -446,10 +455,10 @@ int main( int argc, char ** argv ) {
 
 	// get outer number of iterations
 	size_t outer = grb::config::BENCHMARKING::outer();
-	if( argc >= 6 ) {
-		outer = strtoumax( argv[ 5 ], &end, 10 );
-		if( argv[ 5 ] == end ) {
-			std::cerr << "Could not parse argument " << argv[ 5 ] << " "
+	if( argc >= 7 ) {
+		outer = strtoumax( argv[ 6 ], &end, 10 );
+		if( argv[ 6 ] == end ) {
+			std::cerr << "Could not parse argument " << argv[ 6 ] << " "
 				<< "for number of outer experiment repetitions." << std::endl;
 			return 30;
 		}
@@ -459,7 +468,15 @@ int main( int argc, char ** argv ) {
 		<< in.filenameL << ", right matrix B = " << in.filenameR << ", "
 		<< "inner repititions = " << in.rep
 		<< ", and outer reptitions = " << outer
-		<< std::endl;
+		<< ". ";
+	if( crs_only_rt ) {
+		std::cout << "If applicable to this backend, only the CRS portion of the "
+			<< "output shall be computed.\n";
+	} else {
+		std::cout << "For backends that employ Gustavson's sparse matrix storage, "
+			<< "the output is constructed using both CRS and CCS.\n";
+	}
+	std::cout << std::endl;
 
 	// the output struct
 	struct output out;
@@ -485,7 +502,12 @@ int main( int argc, char ** argv ) {
 	// launch estimator (if requested)
 	if( in.rep == 0 ) {
 		grb::Launcher< AUTOMATIC > launcher;
-		rc = launcher.exec( &grbProgram, in, out, true );
+		if( crs_only_rt ) {
+			rc = launcher.exec( &(grbProgram< descriptors::force_row_major >),
+				in, out, true );
+		} else {
+			rc = launcher.exec( &grbProgram, in, out, true );
+		}
 		if( rc == SUCCESS ) {
 			in.rep = out.rep;
 		}
@@ -499,7 +521,12 @@ int main( int argc, char ** argv ) {
 	// launch benchmark
 	if( rc == SUCCESS ) {
 		grb::Benchmarker< AUTOMATIC > benchmarker;
-		rc = benchmarker.exec( &grbProgram, in, out, 1, outer, true );
+		if( crs_only_rt ) {
+			rc = benchmarker.exec( &(grbProgram< descriptors::force_row_major >),
+				in, out, 1, outer, true );
+		} else {
+			rc = benchmarker.exec( &grbProgram, in, out, 1, outer, true );
+		}
 	}
 	if( rc != SUCCESS ) {
 		std::cerr << "benchmarker.exec returns with non-SUCCESS error code "

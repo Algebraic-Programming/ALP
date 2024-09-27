@@ -27,6 +27,9 @@
 #include <type_traits> //for std::enable_if
 
 #include <graphblas/base/blas3.hpp>
+#include <graphblas/base/final.hpp>
+
+#include <graphblas/utils/unordered_memmove.hpp>
 #include <graphblas/utils/iterators/matrixVectorIterator.hpp>
 
 #include "io.hpp"
@@ -58,6 +61,10 @@
 		"********************************************************************" \
 		"********************************************************************" \
 		"******************************\n" );
+
+#ifdef _DEBUG
+ #define _DEBUG_REFERENCE_BLAS3
+#endif
 
 
 namespace grb {
@@ -110,9 +117,11 @@ namespace grb {
 			const size_t
 				m = transpose_input ? ncols( in ) : nrows( in ),
 				n = transpose_input ? nrows( in ) : ncols( in );
-			const size_t
-				m_out = nrows( out ),
-				n_out = ncols( out );
+			const size_t m_out = nrows( out );
+			const size_t n_out = ncols( out );
+#ifdef _H_GRB_REFERENCE_OMP_BLAS3
+			const size_t nz = nnz( in );
+#endif
 
 			typedef typename std::conditional< transpose_input, CITin, RITin >::type
 				EffectiveRowType;
@@ -134,7 +143,11 @@ namespace grb {
 #ifdef _H_GRB_REFERENCE_OMP_BLAS3
 				const size_t nthreads = m < config::OMP::minLoopSize()
 					? 1
-					: config::OMP::threads();
+					: std::min(
+							config::OMP::threads(),
+							nz / config::CACHE_LINE_SIZE::value()
+						  );
+
 				#pragma omp parallel reduction(+: nzc) num_threads( nthreads )
 #endif
 				{
@@ -183,7 +196,10 @@ namespace grb {
 #ifdef _H_GRB_REFERENCE_OMP_BLAS3
 				const size_t nthreads = ( n + 1 ) < config::OMP::minLoopSize()
 					? 1
-					: config::OMP::threads();
+					: std::min(
+							config::OMP::threads(),
+							nz / config::CACHE_LINE_SIZE::value()
+						);
 				#pragma omp parallel for simd num_threads( nthreads )
 #endif
 				for( size_t j = 0; j < n + 1; ++j ) {
@@ -213,7 +229,10 @@ namespace grb {
 #ifdef _H_GRB_REFERENCE_OMP_BLAS3
 					const size_t nthreads = ( n + 1 ) < config::OMP::minLoopSize()
 						? 1
-						: config::OMP::threads();
+						: std::min(
+								config::OMP::threads(),
+								n / config::CACHE_LINE_SIZE::value()
+							);
 					#pragma omp parallel for simd num_threads( nthreads )
 #endif
 					for( size_t j = 0; j < n + 1; ++j ) {
@@ -235,7 +254,7 @@ namespace grb {
 					if( !op( global_row, global_col, value ) ) {
 						continue;
 					}
-#ifdef _DEBUG
+#ifdef _DEBUG_REFERENCE_BLAS3
 					std::cout << "\tKeeping value at: " << row_l2g( i ) << ", "
 						<< col_l2g( j ) << " -> idx=" << nzc << "\n";
 #endif
@@ -262,6 +281,859 @@ namespace grb {
 		}
 
 		/**
+		 * This is a inner-loop kernel definition that is taken outside in order to
+		 * reduce code duplication
+		 */
+		template<
+			bool crs_only, grb::Phase phase,
+			typename D, typename IND, typename SIZE,
+			typename AStorageT, typename BStorageT
+		>
+		inline void mxm_generic_ompPar_get_row_col_counts_kernel(
+			size_t &nzc,
+			Compressed_Storage< D, IND, SIZE > &CRS,
+			Compressed_Storage< D, IND, SIZE > &CCS,
+			const AStorageT &A_raw, const BStorageT &B_raw,
+			const size_t n,
+			const bool inplace,
+			internal::Coordinates< reference > &coors,
+			const size_t i, const size_t end_offset
+		) {
+#ifdef _H_GRB_REFERENCE_OMP_BLAS3
+ #ifdef _DEBUG_REFERENCE_BLAS3
+			#pragma omp critical
+ #endif
+#endif
+			coors.clear_seq();
+			if( inplace ) {
+#ifdef _DEBUG_REFERENCE_BLAS3
+ #ifdef _H_GRB_REFERENCE_OMP_BLAS3
+				#pragma omp critical
+ #endif
+				std::cout << "\t\t\t looking for pre-existing nonzeroes on row " << i
+					<< " in the CRS array range " << CRS.col_start[ i ] << " -- "
+					<< end_offset << "\n";
+#endif
+				for(
+					auto k = CRS.col_start[ i ];
+					k < static_cast< SIZE >(end_offset);
+					++k
+				) {
+					const auto index = CRS.row_index[ k ];
+					if( static_cast< size_t >(index) == n ) {
+						break;
+					}
+#ifdef _DEBUG_REFERENCE_BLAS3
+ #ifdef _H_GRB_REFERENCE_OMP_BLAS3
+					#pragma omp critical
+ #endif
+					std::cout << "\t\t\t\t recording pre-existing nonzero ( " << i << ", "
+						<< index << " ) [thread " << omp_get_thread_num() << "]\n";
+#endif
+					if( !coors.assign( index ) ) {
+						(void) ++nzc;
+						if( !crs_only && phase == EXECUTE ) {
+#ifdef _H_GRB_REFERENCE_OMP_BLAS3
+							#pragma omp atomic update
+#else
+							(void)
+#endif
+								++CCS.col_start[ index + 1 ];
+#ifdef _DEBUG_REFERENCE_BLAS3
+ #ifdef _H_GRB_REFERENCE_OMP_BLAS3
+							#pragma omp critical
+							std::cout << "\t\t\t updated col count at " << index << " to "
+								<< CCS.col_start[ index + 1 ] << "\n"; // note that printed info may be
+							                                               // stale due to data race
+ #endif
+#endif
+						}
+					}
+				}
+			}
+			for(
+				auto k = A_raw.col_start[ i ];
+				k < A_raw.col_start[ i + 1 ];
+				++k
+			) {
+				const size_t k_col = A_raw.row_index[ k ];
+				for(
+					auto l = B_raw.col_start[ k_col ];
+					l < B_raw.col_start[ k_col + 1 ];
+					++l
+				) {
+					const size_t l_col = B_raw.row_index[ l ];
+					if( !coors.assign( l_col ) ) {
+#ifdef _DEBUG_REFERENCE_BLAS3
+ #ifdef _H_GRB_REFERENCE_OMP_BLAS3
+						#pragma omp critical
+ #endif
+						std::cout << "\t\t\t recording new nonzero ( " << i << ", " << l_col
+							<< " )\n";
+#endif
+						(void) ++nzc;
+						if( !crs_only && phase == EXECUTE ) {
+#ifdef _H_GRB_REFERENCE_OMP_BLAS3
+							#pragma omp atomic update
+#else
+							(void)
+#endif
+								++CCS.col_start[ l_col + 1 ];
+#ifdef _DEBUG_REFERENCE_BLAS3
+ #ifdef _H_GRB_REFERENCE_OMP_BLAS3
+							#pragma omp critical
+							std::cout << "\t\t\t updated col count at " << l_col << " to "
+								<< CCS.col_start[ l_col + 1 ] << "\n"; // note that printed info may be
+							                                               // stale due to data race
+ #endif
+#endif
+						}
+					}
+				}
+			}
+			if( phase == EXECUTE ) {
+#ifdef _DEBUG_REFERENCE_BLAS3
+ #ifdef _H_GRB_REFERENCE_OMP_BLAS3
+				#pragma omp critical
+				std::cout << "\t\t\t recording row " << i << " start offset: "
+					<< nzc << " [thread " << omp_get_thread_num() << "]\n";
+ #endif
+#endif
+				CRS.col_start[ i ] = nzc;
+			}
+		}
+
+		/**
+		 * This is a rather specialised function for computing local nonzero counts,
+		 * a cumulative row-count array, and a direct column-count array. Furthermore,
+		 * the latter two are only computed when \a phase is EXECUTE, and if it is,
+		 * the latter is only computed when \a crs_only is <tt>false</tt>.
+		 */
+		template<
+			Descriptor descr, bool crs_only, grb::Phase phase,
+			typename D,
+			typename RIT, typename CIT, typename NIT,
+			typename InputType1, typename InputType2, typename OutputType,
+			typename IND, typename SIZE
+		>
+		RC mxm_generic_ompPar_get_row_col_counts(
+			size_t &nzc,
+			Compressed_Storage< D, IND, SIZE > &CRS,
+			Compressed_Storage< D, IND, SIZE > &CCS,
+			const size_t m, const size_t n,
+			const Matrix< InputType1, reference, RIT, CIT, NIT > &A,
+			const Matrix< InputType2, reference, RIT, CIT, NIT > &B,
+			const Matrix< OutputType, reference, RIT, CIT, NIT > &C,
+			char * const arr, char * const buf,
+			bool inplace
+		) {
+			(void) C;
+
+			// static sanity checks
+			static_assert( phase == RESIZE || phase == EXECUTE, "Only resize and execute "
+				"phases are currently supported." );
+
+#ifdef _DEBUG_REFERENCE_BLAS3
+			std::cout << "\t\t Entering mxm_generic_ompPar_get_row_col_counts, "
+				<< "inplace = " << inplace << ", phase = ";
+			if( phase == RESIZE ) { std::cout <<"RESIZE\n"; }
+			else if( phase == EXECUTE ) { std::cout << "EXECUTE\n"; }
+			else { std::cout << "UNKNOWN\n"; }
+#endif
+			constexpr bool trans_left = descr & descriptors::transpose_left;
+			constexpr bool trans_right = descr & descriptors::transpose_right;
+			const auto &A_raw = !trans_left
+				? internal::getCRS( A )
+				: internal::getCCS( A );
+			const auto &B_raw = !trans_right
+				? internal::getCRS( B )
+				: internal::getCCS( B );
+
+			// local loop bounds
+			size_t start, end;
+
+			// initialisations
+
+			// local SPA
+			internal::Coordinates< reference > coors;
+			coors.set_seq( arr, false, buf, n );
+
+			if( !crs_only && phase == EXECUTE ) {
+#ifdef _H_GRB_REFERENCE_OMP_BLAS3
+				config::OMP::localRange( start, end, 0, n + 1 );
+#else
+				start = 0;
+				end = n + 1;
+#endif
+				for( size_t j = start; j < end; ++j ) {
+					CCS.col_start[ j ] = 0;
+				}
+			}
+
+			// loop over all rows + 1 (CRS start/offsets array range)
+#ifdef _H_GRB_REFERENCE_OMP_BLAS3
+			config::OMP::localRange( start, end, 0, m );
+#else
+			start = 0;
+			end = m;
+#endif
+
+			// keeps track of nonzero count for each row we process
+			nzc = 0;
+
+#ifdef _DEBUG_REFERENCE_BLAS3
+ #ifdef _H_GRB_REFERENCE_OMP_BLAS3
+			#pragma omp critical
+ #endif
+			std::cout << "\t\t\t Thread "
+ #ifdef _H_GRB_REFERENCE_OMP_BLAS3
+				<< omp_get_thread_num()
+ #else
+				<< "0"
+ #endif
+				<< " has range " << start << "--" << end << "\n";
+#endif
+
+			// note: in the OpenMP case, the following statement must precede the barrier
+			//       that follows it. We cache the upper bound that may be overwritten by
+			//       a sibling thread.
+			const auto &C_CRS = internal::getCRS( C );
+			const IND cached_end_offset = C_CRS.col_start[ end ];
+
+#ifdef _H_GRB_REFERENCE_OMP_BLAS3
+			// the below for-loop may write to 1) non-local locations in CCS.col_start and
+			// 2) C_CRS.col_start[ end ]. We must therefore sync.
+			#pragma omp barrier
+#endif
+
+			// counting sort, first step
+			//  - if crs_only, then the below implements its resize phase
+			//  - if not crs_only, then the below is both crucial for the resize phase,
+			//    as well as for enabling the insertions of output values in the output
+			//    CCS
+			for( size_t i = start; i < end - 1; ++i ) {
+				mxm_generic_ompPar_get_row_col_counts_kernel< crs_only, phase >(
+					nzc, CRS, CCS, A_raw, B_raw, n, inplace,
+					coors, i, CRS.col_start[ i + 1 ]
+				);
+			}
+			if( end > start ) {
+				mxm_generic_ompPar_get_row_col_counts_kernel< crs_only, phase >(
+					nzc, CRS, CCS, A_raw, B_raw, n, inplace,
+					coors, end - 1, cached_end_offset
+				);
+			}
+
+#ifdef _DEBUG_REFERENCE_BLAS3
+ #ifdef _H_GRB_REFERENCE_OMP_BLAS3
+			#pragma omp barrier
+			#pragma omp single
+ #endif
+			{
+				if( phase == EXECUTE ) {
+					std::cout << "\t\t\t CRS start array, locally prefixed = { "
+						<< CRS.col_start[ 0 ];
+					for( size_t i = 1; i <= m; ++i ) {
+						std::cout << ", " << CRS.col_start[ i ];
+					}
+					std::cout << " }\n";
+				}
+			}
+#endif
+			// now do prefix sum phases 2 & 3
+			// the above code does phase 1 in-place, but ends with the CRS.col_start
+			// array shifted one position to the left (which should be corrected)
+			if( phase == EXECUTE ) {
+#ifdef _DEBUG_REFERENCE_BLAS3
+ #ifdef _H_GRB_REFERENCE_OMP_BLAS3
+				#pragma omp single
+ #endif
+				std::cout << "\t\t\t shifting and prefix-summing the CRS start array...\n";
+#endif
+#ifdef _H_GRB_REFERENCE_OMP_BLAS3
+				NIT ps_ws;
+				#pragma omp barrier
+				utils::prefixSum_ompPar_phase2< false, NIT >( CRS.col_start, m, ps_ws );
+				#pragma omp barrier
+				utils::prefixSum_ompPar_phase3_shiftRight< NIT >( CRS.col_start, m, ps_ws );
+#else
+				// in the sequential case, only a shift is needed
+				for( size_t i = end - 1; i < end; --i ) {
+					CRS.col_start[ i + 1 ] = CRS.col_start[ i ];
+				}
+				CRS.col_start[ 0 ] = 0;
+#endif
+#ifdef _DEBUG_REFERENCE_BLAS3
+ #ifdef _H_GRB_REFERENCE_OMP_BLAS3
+				#pragma omp single
+ #endif
+				{
+					std::cout << "\t\t\t final CRS start array: " << CRS.col_start[ 0 ];
+					for( size_t i = 1; i <= m; ++i ) {
+						std::cout << ", " << CRS.col_start[ i ];
+					}
+					std::cout << "\n";
+				}
+#endif
+			}
+			return SUCCESS;
+		}
+
+#ifndef _H_GRB_REFERENCE_OMP_BLAS3
+		/**
+		 * Meta-data for global buffer management for use with #grb::mxm.
+		 *
+		 * This meta-data is the same for both the sequential (reference) and shared-
+		 * memory parallel (reference_omp) backends.
+		 *
+		 * This class contains all meta-data necessary to interpret the global buffer
+		 * as an array of sparse accumulators (SPAs). The length of the array is given
+		 * by a call to #threads(), minus one. It is called that since a call to
+		 * #threads() retrieves how many threads can be used to process the call to
+		 * #grb::mxm.
+		 *
+		 * Each SPA has the layout (bitarray, stack, valueArray). These are packed in a
+		 * padded byte array, such that each bit array, stack, and value array is
+		 * aligned on sizeof(int) bytes.
+		 *
+		 * @tparam NIT       The nonzero index type.
+		 * @tparam ValueType The output matrix value type.
+		 */
+		template< typename NIT, typename ValueType >
+		class MXM_BufferMetaData {
+
+			static_assert( sizeof(NIT) % sizeof(int) == 0, "Unsupported type for NIT; "
+				"please submit a bug report!" );
+
+			private:
+
+				/** The size of the offset array */
+				size_t m;
+
+				/** The size of the SPA */
+				size_t n;
+
+				/** The number of threads supported during a call to #grb::mxm */
+				size_t nthreads;
+
+				/** The initial buffer offset */
+				size_t bufferOffset;
+
+				/** The size of a single SPA, including bytes needed for padding */
+				size_t paddedSPASize;
+
+				/** The number of bytes to pad the SPA array with */
+				size_t arrayShift;
+
+				/** The number of bytes to pad the SPA stack with */
+				size_t stackShift;
+
+				/**
+				 * Given a number of used bytes of the buffer, calculate the available
+				 * remainder buffer and return it.
+				 *
+				 * @param[in]  osize     The size of the buffer (in bytes) that is already
+				 *                       in use.
+				 * @param[out] remainder Pointer to any remainder buffer.
+				 * @param[out] rsize     The size of the remainder buffer.
+				 *
+				 * If no buffer space is left, \a remainder will be set to <tt>nullptr</tt>
+				 * and \a size to <tt>0</tt>.
+				 */
+				void retrieveRemainderBuffer(
+					const size_t osize,
+					void * &remainder, size_t &rsize
+				) const noexcept {
+					const size_t size = internal::template getCurrentBufferSize< char >();
+					char * rem = internal::template getReferenceBuffer< char >( size );
+					size_t rsize_calc = size - osize;
+					rem += osize;
+					const size_t mod = reinterpret_cast< uintptr_t >(rem) % sizeof(int);
+					if( mod ) {
+						const size_t shift = sizeof(int) - mod;
+						if( rsize_calc >= shift ) {
+							rsize_calc -= shift;
+							rem += rsize;
+						} else {
+							rsize_calc = 0;
+							rem = nullptr;
+						}
+					}
+					assert( !(reinterpret_cast< uintptr_t >(rem) % sizeof(int)) );
+					// write out
+					remainder = rem;
+					rsize = rsize_calc;
+				}
+
+
+			public:
+
+				/**
+				 * Base constructor.
+				 *
+				 * @param[in] _m          The length of the offset array.
+				 * @param[in] _n          The length of the SPA.
+				 * @param[in] max_threads The maximum number of threads.
+				 *
+				 * \note \a max_threads is a separate input since there might be a need to
+				 *       cap the maximum number of threads used based on some analytic
+				 *       performance model. Rather than putting such a performance model
+				 *       within this class, we make it an obligatory input parameter
+				 *       instead.
+				 *
+				 * \note It is always valid to pass <tt>config::OMP::threads()</tt>.
+				 *
+				 * \note This class \em will, however, cap the number of threads returned
+				 *       to \a _n.
+				 */
+				MXM_BufferMetaData(
+					const size_t _m, const size_t _n,
+					const size_t max_threads
+				) : m( _m ), n( _n ), arrayShift( 0 ), stackShift( 0 ) {
+ #ifdef _DEBUG_REFERENCE_BLAS3
+					#pragma omp critical
+					std::cout << "\t\t\t computing padded buffer size for a SPA of length "
+						<< n << " while leaving space for an additional offset buffer of length "
+						<< std::max( m, n ) << "...\n";
+ #endif
+					// compute bufferOffset
+					bufferOffset = (std::max( m, n ) + 1) * sizeof( NIT );
+
+					// compute value buffer size
+					const size_t valBufSize = n * sizeof( ValueType );
+
+ #ifdef _DEBUG_REFERENCE_BLAS3
+					std::cout << "\t\t\t\t bit-array size has byte-size " <<
+						internal::Coordinates< reference >::arraySize( n ) << "\n";
+					std::cout << "\t\t\t\t stack has byte-size " <<
+						internal::Coordinates< reference >::stackSize( n ) << "\n";
+					std::cout << "\t\t\t\t value buffer has byte-size " << valBufSize << "\n";
+ #endif
+
+					// compute paddedSPASize
+					paddedSPASize =
+						internal::Coordinates< reference >::arraySize( n ) +
+						internal::Coordinates< reference >::stackSize( n ) +
+						valBufSize;
+					size_t shift =
+						internal::Coordinates< reference >::arraySize( n ) % sizeof(int);
+					if( shift != 0 ) {
+						arrayShift = sizeof(int) - shift;
+						paddedSPASize += arrayShift;
+					}
+					shift = internal::Coordinates< reference >::stackSize( n ) % sizeof(int);
+					if( shift != 0 ) {
+						stackShift = sizeof(int) - shift;
+						paddedSPASize += stackShift;
+					}
+					shift = valBufSize % sizeof(int);
+					if( shift != 0 ) {
+						paddedSPASize += (sizeof(int) - shift);
+					}
+
+					// pad bufferOffset
+					shift = bufferOffset % sizeof(int);
+					if( shift != 0 ) {
+						bufferOffset += (sizeof(int) - shift);
+					}
+
+					// compute free buffer size
+					const size_t freeBufferSize = internal::getCurrentBufferSize< char >() -
+						bufferOffset;
+
+					// compute max number of threads
+					nthreads = 1 + freeBufferSize / paddedSPASize;
+ #ifdef _DEBUG_REFERENCE_BLAS3
+					#pragma omp critical
+					std::cout << "\t\t\t free buffer size: " << freeBufferSize
+						<< ", (padded) SPA size: " << paddedSPASize
+						<< " -> supported #threads: " << nthreads << ". "
+						<< " The shifts for the bit-array and the stack are " << arrayShift
+						<< ", respectively, " << stackShift << "."
+						<< "\n";
+ #endif
+					// cap the final number of selected threads
+					if( nthreads > max_threads ) {
+						nthreads = max_threads;
+					}
+					if( nthreads > n ) {
+						nthreads = n;
+					}
+				}
+
+				/** @returns The maximum number of supported threads during #grb::mxm */
+				size_t threads() const noexcept {
+					return nthreads;
+				}
+
+				/**
+				 * Requests and returns a global buffer required for a thread-local SPA.
+				 *
+				 * @param[in] t The thread ID. Must be larger than 0.
+				 *
+				 * \note Thread 0 employs the SPA allocated with the output matrix.
+				 *
+				 * @returns Pointer into the global buffer starting at the area reserved for
+				 *          the SPA of thread \a t.
+				 */
+				char * getSPABuffers( size_t t ) const noexcept {
+					assert( t > 0 );
+					(void) --t;
+					char * raw = internal::template getReferenceBuffer< char >(
+						bufferOffset + nthreads * paddedSPASize );
+					assert( reinterpret_cast< uintptr_t >(raw) % sizeof(int) == 0 );
+					raw += bufferOffset;
+					assert( reinterpret_cast< uintptr_t >(raw) % sizeof(int) == 0 );
+					raw += t * paddedSPASize;
+					return raw;
+				}
+
+				/**
+				 * Retrieves the column offset buffer.
+				 *
+				 * @param[out] remainder Returns any remainder buffer beyond that of the row
+				 *                       offset buffer.
+				 * @param[out] rsize     The remainder buffer size \a remainder points to.
+				 *
+				 * If \a remainder is not a <tt>nullptr</tt> then neither should \a rsize,
+				 * and vice versa.
+				 *
+				 * Retrieving any remainder buffer is optional. The default is to not ask
+				 * for them.
+				 *
+				 * \warning If all buffer memory is used for the column offsets, it may be
+				 *          that \a remainder equals <tt>nullptr</tt> and <tt>rsize</tt>
+				 *          zero.
+				 *
+				 * \warning This buffer is only guaranteed exclusive if only the retrieved
+				 *          column buffer is used. In particular, if also requesting (and
+				 *          using) SPA buffers, the remainder buffer area is shared with
+				 *          those SPA buffers, and data races are likely to occur. In other
+				 *          words: be very careful with any use of these remainder buffers.
+				 *
+				 * @returns The column offset buffer.
+				 *
+				 * \warning This buffer overlaps with the CRS offset buffer. The caller
+				 *          must ensure to only ever use one at a time.
+				 */
+				NIT * getColOffsetBuffer(
+					void * * const remainder = nullptr,
+					size_t * const rsize = nullptr
+				) const noexcept {
+					NIT * const ret = internal::template getReferenceBuffer< NIT >( n + 1 );
+					if( remainder != nullptr || rsize != nullptr ) {
+						assert( remainder != nullptr && rsize != nullptr );
+						retrieveRemainderBuffer( (m + 1) * sizeof(NIT), *remainder, *rsize );
+					}
+					return ret;
+				}
+
+				/**
+				 * Retrieves the row offset buffer.
+				 *
+				 * @param[out] remainder Returns any remainder buffer beyond that of the row
+				 *                       offset buffer.
+				 * @param[out] rsize     The remainder buffer size \a remainder points to.
+				 *
+				 * If \a remainder is not a <tt>nullptr</tt> then neither should \a rsize,
+				 * and vice versa.
+				 *
+				 * Retrieving any remainder buffer is optional. The default is to not ask
+				 * for them.
+				 *
+				 * \warning If all buffer memory is used for the row offsets, it may be that
+				 *          \a remainder equals <tt>nullptr</tt> and <tt>rsize</tt> zero.
+				 *
+				 * \warning This buffer is only guaranteed exclusive if only the retrieved
+				 *          row buffer is used. In particular, if also requesting (and
+				 *          using) SPA buffers, the remainder buffer area is shared with
+				 *          those SPA buffers, and data races are likely to occur. In other
+				 *          words: be very careful with any use of these remainder buffers.
+				 *
+				 * @returns The row offset buffer.
+				 *
+				 * \warning This buffer overlaps with the CCS offset buffer. The caller
+				 *          must ensure to only ever use one at a time.
+				 */
+				NIT * getRowOffsetBuffer(
+					void * * const remainder = nullptr,
+					size_t * const rsize = nullptr
+				) const noexcept {
+					NIT * const ret = internal::template getReferenceBuffer< NIT >( m + 1 );
+					if( remainder != nullptr || rsize != nullptr ) {
+						assert( remainder != nullptr && rsize != nullptr );
+						retrieveRemainderBuffer( (m + 1) * sizeof(NIT), *remainder, *rsize );
+					}
+					return ret;
+				}
+
+				/**
+				 * Shifts a pointer into the global buffer by the bit-array size and its
+				 * padding.
+				 *
+				 * @param[in,out] raw On input: an aligned pointer into the global buffer.
+				 *                    On output: an aligned pointer past the bit-array
+				 *                    position.
+				 */
+				void applyArrayShift( char * &raw ) const noexcept {
+					const size_t totalShift =
+						internal::Coordinates< reference >::arraySize( n ) +
+						arrayShift;
+ #ifdef _DEBUG_REFERENCE_BLAS3
+					std::cout << "\t\t\t shifting input pointer with "
+						<< internal::Coordinates< reference >::arraySize( n ) << " + "
+						<< arrayShift << " = " << totalShift << "bytes \n";
+ #endif
+					raw += totalShift;
+				}
+
+				/**
+				 * Shifts a pointer into the global buffer by the stack size and its
+				 * padding.
+				 *
+				 * @param[in,out] raw On input: an aligned pointer into the global buffer.
+				 *                    On output: an aligned pointer past the stack position.
+				 */
+				void applyStackShift( char * &raw ) const noexcept {
+					const size_t totalShift =
+						internal::Coordinates< reference >::stackSize( n ) +
+						stackShift;
+ #ifdef _DEBUG_REFERENCE_BLAS3
+					std::cout << "\t\t\t shifting input pointer with "
+						<< internal::Coordinates< reference >::arraySize( n ) << " + "
+						<< stackShift << " = " << totalShift << "bytes \n";
+ #endif
+					raw += totalShift;
+				}
+
+		};
+#endif
+
+		/**
+		 * Retrieves the SPA buffers for the calling thread.
+		 *
+		 * \warning This function must be called from within an OpenMP parallel
+		 *          section.
+		 *
+		 * @param[out]    arr Where the bit-array may be located.
+		 * @param[out]    buf Where the stack may be located.
+		 * @param[out] valbuf Where the value buffer may be located.
+		 *
+		 * All above pointers are aligned on sizeof(int) bytes.
+		 *
+		 * @param[in] md Meta-data for global buffer management.
+		 * @param[in]  C The output matrix.
+		 *
+		 * One thread uses the buffers pre-allocated with the matrix \a C, thus
+		 * ensuring at least one thread may perform the #grb::mxm. Any remainder
+		 * threads can only help process the #grb::mxm if there is enough global
+		 * buffer memory available.
+		 *
+		 *
+		 * \note The global memory has size \f$ \Omega( \mathit{nz} ) \f$, which may
+		 *       be several factors (or even asymptotically greater than)
+		 *       \f$ \max\{ m, n \} \f$.
+		 *
+		 * \note In case the application stores multiple matrices, the global buffer
+		 *       may additionally be greater than the above note indicates if at least
+		 *       one of the other matrices is significantly (or asymptotically) larger
+		 *       than the one involved with the #grb::mxm.
+		 */
+		template<
+			typename OutputType,
+			typename RIT, typename CIT, typename NIT
+		>
+		void mxm_ompPar_getSPABuffers(
+			char * &arr, char * &buf, OutputType * &valbuf,
+			const struct MXM_BufferMetaData< NIT, OutputType > &md,
+			Matrix< OutputType, reference, RIT, CIT, NIT > &C
+		) {
+#ifdef _H_GRB_REFERENCE_OMP_BLAS3
+			// other threads use the global buffer to create additional SPAs
+			{
+				const size_t t = config::OMP::current_thread_ID();
+ #ifndef NDEBUG
+				const size_t T = config::OMP::current_threads();
+				assert( t < T );
+ #endif
+				if( t > 0 ) {
+ #ifdef _DEBUG_REFERENCE_BLAS3
+					#pragma omp critical
+					std::cout << "\t Thread " << t << " gets buffers from global buffer\n";
+ #endif
+					char * rawBuffer = md.getSPABuffers( t );
+					assert( reinterpret_cast< uintptr_t >(rawBuffer) % sizeof(int) == 0 );
+					arr = rawBuffer;
+ #ifdef _DEBUG_REFERENCE_BLAS3
+					#pragma omp critical
+ #endif
+					md.applyArrayShift( rawBuffer );
+					assert( reinterpret_cast< uintptr_t >(rawBuffer) % sizeof(int) == 0 );
+					buf = rawBuffer;
+ #ifdef _DEBUG_REFERENCE_BLAS3
+					#pragma omp critical
+ #endif
+					md.applyStackShift( rawBuffer );
+					assert( reinterpret_cast< uintptr_t >(rawBuffer) % sizeof(int) == 0 );
+					assert( buf != arr );
+					valbuf = reinterpret_cast< OutputType * >(rawBuffer);
+					assert( static_cast< void * >(valbuf) != static_cast< void * >(buf) );
+				} else {
+ #ifdef _DEBUG_REFERENCE_BLAS3
+					#pragma omp critical
+					std::cout << "\t Thread " << t << " gets buffers from matrix storage\n";
+ #endif
+					// one thread uses the standard matrix buffer
+					internal::getMatrixBuffers( arr, buf, valbuf, 1, C );
+				}
+ #ifdef _DEBUG_REFERENCE_BLAS3
+				#pragma omp critical
+				{
+					std::cout << "\t Thread " << t << " has SPA array @ "
+						<< static_cast< void * >( arr ) << " and SPA stack @ "
+						<< static_cast< void * >( buf ) << " and SPA values @ "
+						<< static_cast< void * >( valbuf ) << "\n";
+				}
+ #endif
+			}
+#else
+ #ifdef _DEBUG_REFERENCE_BLAS3
+			std::cout << "\t Reference backend gets buffers from global buffer\n";
+ #endif
+			internal::getMatrixBuffers( arr, buf, valbuf, 1, C );
+			(void) md;
+#endif
+		}
+
+		/**
+		 * Given a computed new row_start array, moves the old index and value arrays
+		 * to new offsets. This leaves precisely enough space for the mxm algorithm to
+		 * inject new nonzeroes at the right location for every row.
+		 *
+		 * The mxm algorithm must know the old bounds, but we do not want to keep the
+		 * \a oldOffsets buffer around for too long-- and we do not have to. If there
+		 * are gaps that should contain new nonzero entries, we can indicate the first
+		 * such gap element in the index array by putting the corresponding matrix
+		 * size there-- this value is an invalid index, and thus is taken as an
+		 * encoding for the original boundary.
+		 *
+		 * \note This function is friendly towards sequential code flows.
+		 */
+		template<
+			typename OutputType,
+			typename RIT, typename CIT, typename NIT
+		>
+		void mxm_ompPar_shiftByOffset(
+			Matrix< OutputType, reference, RIT, CIT, NIT > &C,
+			const NIT *__restrict__ const oldOffsets,
+			void * const buffer, const size_t bufferSize
+		) {
+			const auto &CRS = internal::getCRS( C );
+			const size_t m = grb::nrows( C );
+			const size_t n = grb::ncols( C );
+#ifdef _DEBUG_REFERENCE_BLAS3
+ #ifdef _H_GRB_REFERENCE_OMP_BLAS3
+			for( size_t s = 0; s < omp_get_num_threads(); ++s ) {
+				if( s == omp_get_thread_num() )
+ #endif
+				{
+					std::cout << "\t\t\t column indices before shift: " << CRS.row_index[ 0 ];
+					for( size_t i = 1; i < CRS.col_start[ m ]; ++i ) {
+						std::cout << ", " << CRS.row_index[ i ];
+					}
+					std::cout << std::endl;
+				}
+ #ifdef _H_GRB_REFERENCE_OMP_BLAS3
+				#pragma omp barrier
+			}
+ #endif
+#endif
+			{
+				RIT * const workspace = reinterpret_cast< RIT * >(buffer);
+				const size_t workspaceSize = bufferSize / sizeof(RIT);
+#ifdef _H_GRB_REFERENCE_OMP_BLAS3
+				grb::utils::unordered_memmove_ompPar(
+					CRS.row_index, oldOffsets, CRS.col_start, m, workspace, workspaceSize );
+#else
+				grb::utils::unordered_memmove_seq(
+					CRS.row_index, oldOffsets, CRS.col_start, m, workspace, workspaceSize );
+#endif
+			}
+			if( !std::is_void< OutputType >::value ) {
+				OutputType * const workspace = reinterpret_cast< OutputType * >(buffer);
+				const size_t workspaceSize = bufferSize / sizeof(OutputType);
+#ifdef _H_GRB_REFERENCE_OMP_BLAS3
+				grb::utils::unordered_memmove_ompPar(
+					CRS.values, oldOffsets, CRS.col_start, m, workspace, workspaceSize );
+#else
+				grb::utils::unordered_memmove_seq(
+					CRS.values, oldOffsets, CRS.col_start, m, workspace, workspaceSize );
+#endif
+			}
+			size_t start, end;
+#ifdef _H_GRB_REFERENCE_OMP_BLAS3
+			config::OMP::localRange( start, end, 0, m );
+#else
+			start = 0;
+			end = m;
+#endif
+#ifdef _DEBUG_REFERENCE_BLAS3
+ #ifdef _H_GRB_REFERENCE_OMP_BLAS3
+			for( size_t s = 0; s < omp_get_num_threads(); ++s ) {
+				if( s == omp_get_thread_num() )
+ #endif
+				{
+					std::cout << "\t\t\t column indices after shift: "
+						<< CRS.row_index[ 0 ];
+					for( size_t i = 1; i < CRS.col_start[ m ]; ++i ) {
+						std::cout << ", " << CRS.row_index[ i ];
+					}
+					std::cout << std::endl;
+				}
+ #ifdef _H_GRB_REFERENCE_OMP_BLAS3
+				#pragma omp barrier
+			}
+ #endif
+#endif
+			for( size_t i = start; i < end; ++i ) {
+				const size_t nelems = oldOffsets[ i + 1 ] - oldOffsets[ i ];
+				const size_t space  = CRS.col_start[ i + 1 ] - CRS.col_start[ i ];
+				assert( oldOffsets[ i + 1 ] >= oldOffsets[ i ] );
+				assert( CRS.col_start[ i + 1 ] >= CRS.col_start[ i ] );
+#ifndef NDEBUG
+				// in debug mode, set the entire range to be able to easier catch any
+				// related memory issues
+				for( size_t k = nelems; k < space; ++k ) {
+					CRS.row_index[ CRS.col_start[ i ] + k ] = n;
+				}
+#else
+				// in performance mode, set only the minimum number of elements
+				if( space > nelems ) {
+					CRS.row_index[ CRS.col_start[ i ] + nelems ] = n;
+				}
+#endif
+			}
+#ifdef _DEBUG_REFERENCE_BLAS3
+ #ifdef _H_GRB_REFERENCE_OMP_BLAS3
+			for( size_t s = 0; s < omp_get_num_threads(); ++s ) {
+				if( s == omp_get_thread_num() )
+ #endif
+				{
+					std::cout << "\t\t\t column indices after shift and fill: "
+						<< CRS.row_index[ 0 ];
+					for( size_t i = 1; i < CRS.col_start[ m ]; ++i ) {
+						std::cout << ", " << CRS.row_index[ i ];
+					}
+					std::cout << std::endl;
+				}
+ #ifdef _H_GRB_REFERENCE_OMP_BLAS3
+				#pragma omp barrier
+			}
+ #endif
+#endif
+		}
+
+		/**
 		 * \internal general mxm implementation that all mxm variants refer to
 		 */
 		template<
@@ -271,14 +1143,12 @@ namespace grb {
 			class Operator,
 			class MulMonoid,
 			typename OutputType, typename InputType1, typename InputType2,
-			typename RIT1, typename CIT1, typename NIT1,
-			typename RIT2, typename CIT2, typename NIT2,
-			typename RIT3, typename CIT3, typename NIT3
+			typename RIT, typename CIT, typename NIT
 		>
 		RC mxm_generic(
-			Matrix< OutputType, reference, RIT1, CIT1, NIT1 > &C,
-			const Matrix< InputType1, reference, RIT2, CIT2, NIT2 > &A,
-			const Matrix< InputType2, reference, RIT3, CIT3, NIT3 > &B,
+			Matrix< OutputType, reference, RIT, CIT, NIT > &C,
+			const Matrix< InputType1, reference, RIT, CIT, NIT > &A,
+			const Matrix< InputType2, reference, RIT, CIT, NIT > &B,
 			const Operator &oper,
 			const Monoid &monoid,
 			const MulMonoid &mulMonoid,
@@ -301,7 +1171,7 @@ namespace grb {
 				"void)"
 			);
 
-#ifdef _DEBUG
+#ifdef _DEBUG_REFERENCE_BLAS3
 			std::cout << "In grb::internal::mxm_generic (reference, unmasked)\n";
 #endif
 
@@ -311,6 +1181,7 @@ namespace grb {
 
 			// get whether we are required to stick to CRS
 			constexpr bool crs_only = descr & descriptors::force_row_major;
+			constexpr bool non_owning = descr & descriptors::non_owning_view;
 
 			// static checks
 			static_assert( !(crs_only && trans_left), "Cannot (presently) transpose A "
@@ -337,200 +1208,523 @@ namespace grb {
 			const auto &B_raw = !trans_right
 				? internal::getCRS( B )
 				: internal::getCCS( B );
-			auto &C_raw = internal::getCRS( C );
+			auto &CRS_raw = internal::getCRS( C );
 			auto &CCS_raw = internal::getCCS( C );
 
-			char * arr = nullptr;
-			char * buf = nullptr;
-			OutputType * valbuf = nullptr;
-			internal::getMatrixBuffers( arr, buf, valbuf, 1, C );
-			config::NonzeroIndexType * C_col_index = internal::template
-				getReferenceBuffer< typename config::NonzeroIndexType >( n + 1 );
+			const bool inplace = grb::nnz( C ) > 0;
 
-			// initialisations
-			internal::Coordinates< reference > coors;
-			coors.set( arr, false, buf, n );
-
-			if( !crs_only ) {
-#ifdef _H_GRB_REFERENCE_OMP_BLAS3
-				#pragma omp parallel
-				{
-					size_t start, end;
-					config::OMP::localRange( start, end, 0, n + 1 );
-#else
-					const size_t start = 0;
-					const size_t end = n + 1;
-#endif
-					for( size_t j = start; j < end; ++j ) {
-						CCS_raw.col_start[ j ] = 0;
-					}
-#ifdef _H_GRB_REFERENCE_OMP_BLAS3
+			// a basic analytic model based on the number of nonzeroes
+			size_t max_threads = config::OMP::threads();
+			{
+				size_t target_nnz = 0;
+				if( phase == EXECUTE ) {
+					target_nnz = grb::capacity( C );
+				} else {
+					assert( phase == RESIZE );
+					target_nnz = std::max( grb::nnz( A ), grb::nnz( B ) );
 				}
+				const size_t nnz_based_nthreads =
+					target_nnz / config::CACHE_LINE_SIZE::value();
+				if( nnz_based_nthreads < max_threads ) {
+					max_threads = nnz_based_nthreads;
+				}
+#ifdef _DEBUG_REFERENCE_BLAS3
+				std::cout << "\t simple analytic model selects max threads of "
+					<< max_threads << "\n";
 #endif
 			}
-			// end initialisations
 
-			// symbolic phase (counting sort, step 1)
-			size_t nzc = 0; // output nonzero count
-			if( crs_only && phase == RESIZE ) {
-				// we are using an auxialiary CRS that we cannot resize ourselves
-				// instead, we update the offset array only
-				C_raw.col_start[ 0 ] = 0;
-			}
-			// if crs_only, then the below implements its resize phase
-			// if not crs_only, then the below is both crucial for the resize phase,
-			// as well as for enabling the insertions of output values in the output CCS
-			if( (crs_only && phase == RESIZE) || !crs_only ) {
-				for( size_t i = 0; i < m; ++i ) {
-					coors.clear();
-					for( auto k = A_raw.col_start[ i ]; k < A_raw.col_start[ i + 1 ]; ++k ) {
-						const size_t k_col = A_raw.row_index[ k ];
-						for(
-							auto l = B_raw.col_start[ k_col ];
-							l < B_raw.col_start[ k_col + 1 ];
-							++l
-						) {
-							const size_t l_col = B_raw.row_index[ l ];
-							if( !coors.assign( l_col ) ) {
-								(void) ++nzc;
-								if( !crs_only ) {
-									(void) ++CCS_raw.col_start[ l_col + 1 ];
-								}
-							}
-						}
-					}
-					if( crs_only && phase == RESIZE ) {
-						// we are using an auxialiary CRS that we cannot resize ourselves
-						// instead, we update the offset array only
-						C_raw.col_start[ i + 1 ] = nzc;
-					}
-				}
-			}
+			MXM_BufferMetaData< NIT, OutputType > bufferMD( m, n, max_threads );
 
+#ifdef _H_GRB_REFERENCE_OMP_BLAS3
+			// derive number of threads
+			size_t nthreads = bufferMD.threads();
+ #ifdef _DEBUG_REFERENCE_BLAS3
+			std::cout << "\t mxm_generic will use " << nthreads << " threads\n";
+ #endif
+#endif
+
+			// resize phase logic
 			if( phase == RESIZE ) {
-				if( !crs_only ) {
+				size_t nzc = 0;
+#ifdef _H_GRB_REFERENCE_OMP_BLAS3
+				#pragma omp parallel num_threads( nthreads )
+#endif
+				{
+					// get thread-local buffers
+					char * arr = nullptr;
+					char * buf = nullptr;
+					OutputType * valbuf = nullptr;
+					mxm_ompPar_getSPABuffers( arr, buf, valbuf, bufferMD, C );
+
+					// do count
+					size_t local_nzc;
+					mxm_generic_ompPar_get_row_col_counts< descr, crs_only, RESIZE >(
+						local_nzc, CRS_raw, CCS_raw,
+						m, n, A, B, C,
+						arr, buf,
+						inplace
+					);
+					#pragma omp atomic update
+					nzc += local_nzc;
+				}
+
+				if( non_owning ) {
+					// we are using an auxiliary CRS that we cannot resize
+					// instead, we updated the offset array in the above and can now exit
+					CRS_raw.col_start[ m ] = nzc;
+					return SUCCESS;
+				} else {
 					// do final resize
 					const RC ret = grb::resize( C, nzc );
 					return ret;
-				} else {
-					// we are using an auxiliary CRS that we cannot resize
-					// instead, we updated the offset array in the above and can now exit
-					return SUCCESS;
 				}
 			}
 
-			// computational phase
+			// execute phase logic
 			assert( phase == EXECUTE );
-			if( grb::capacity( C ) < nzc ) {
-#ifdef _DEBUG
-				std::cerr << "\t not enough capacity to execute requested operation\n";
+			bool clear_at_exit = false;
+			RC ret = SUCCESS;
+#ifdef _H_GRB_REFERENCE_OMP_BLAS3
+			#pragma omp parallel num_threads( nthreads )
 #endif
-				const RC clear_rc = grb::clear( C );
-				if( clear_rc != SUCCESS ) {
-					return PANIC;
+			{
+				size_t start, end, local_nzc;
+				RC local_rc = SUCCESS;
+
+				// get thread-local buffers
+				char * arr = nullptr;
+				char * buf = nullptr;
+				OutputType * valbuf = nullptr;
+				mxm_ompPar_getSPABuffers( arr, buf, valbuf, bufferMD, C );
+#ifdef _DEBUG_REFERENCE_BLAS3
+ #ifdef _H_GRB_REFERENCE_OMP_BLAS3
+				#pragma omp critical
+ #endif
+				std::cout << "\t\t arr @ " << static_cast< void * >(arr) << ", "
+					<< "buf @ " << static_cast< void * >(buf) << ", "
+					<< "vbf @ " << static_cast< void * >(valbuf) << "\n";
+
+ #ifdef _H_GRB_REFERENCE_OMP_BLAS3
+				#pragma omp barrier
+				#pragma omp single
+ #endif
+				{
+					std::cout << "\t\t CRS_raw original start array = { "
+						<< CRS_raw.col_start[ 0 ];
+					for( size_t i = 1; i <= m; ++i ) {
+						std::cout << ", " << CRS_raw.col_start[ i ];
+					}
+					std::cout << " }\n";
+				}
+#endif
+
+				// phase 1: symbolic phase
+
+				NIT * originalRowOffsets = nullptr;
+				void * shiftBuffer = nullptr;
+				size_t shiftBufferSize = 0;
+				if( inplace ) {
+					// first save old row offsets
+					originalRowOffsets = bufferMD.getRowOffsetBuffer(
+						&shiftBuffer, &shiftBufferSize );
+					grb::internal::FinalBackend< reference >::memcpy(
+						originalRowOffsets, CRS_raw.col_start, (m + 1) * sizeof(NIT) );
+				}
+
+				{
+					config::OMP::localRange( start, end, 0, m );
+				}
+
+				local_rc = mxm_generic_ompPar_get_row_col_counts<
+					descr, crs_only, EXECUTE
+				>(
+					local_nzc, CRS_raw, CCS_raw,
+					m, n, A, B, C,
+					arr, buf,
+					inplace
+				);
+
+#ifdef _DEBUG_REFERENCE_BLAS3
+ #ifdef _H_GRB_REFERENCE_OMP_BLAS3
+				#pragma omp barrier
+				#pragma omp single
+ #endif
+				{
+					std::cout << "\t\t CRS_raw start array = { " << CRS_raw.col_start[ 0 ];
+					for( size_t i = 1; i <= m; ++i ) {
+						std::cout << ", " << CRS_raw.col_start[ i ];
+					}
+					std::cout << " }\n";
+					std::cout << "\t\t CRS_raw values array = { " << CRS_raw.values[ 0 ];
+					for( size_t k = 1; k < CRS_raw.col_start[ m ]; ++k ) {
+						std::cout << ", " << CRS_raw.values[ k ];
+					}
+					std::cout << " }\n";
+					std::cout << "\t\t CCS column counts = { " << CCS_raw.col_start[ 0 ];
+					for( size_t i = 1; i <= n; ++i ) {
+						std::cout << ", " << CCS_raw.col_start[ i ];
+					}
+					std::cout << " }\n";
+				}
+#endif
+
+				if( local_rc != SUCCESS ) {
+					std::cerr << "mxm_generic_ompPar_get_row_col_counts returned " <<
+						grb::toString( local_rc );
+				} else if( static_cast< size_t >(CRS_raw.col_start[ m ]) >
+					grb::capacity( C )
+				) {
+					std::cerr << "mxm_generic: not enough capacity in output matrix while "
+						<< "phase is EXECUTE\n"
+						<< "\t capacity: " << grb::capacity( C ) << "\n"
+						<< "\t required: " << CRS_raw.col_start[ m ] << "\n";
+ #ifdef _H_GRB_REFERENCE_OMP_BLAS3
+					#pragma omp atomic write
+ #endif
+					clear_at_exit = true;
 				} else {
-					return FAILED;
-				}
-			}
+					// phase 2 (optional): in-place shift (make room for new nonzeroes)
 
-			// prefix sum for C_col_index,
-			// set CCS_raw.col_start to all zero
-#ifndef NDEBUG
-			if( !crs_only ) {
-				assert( CCS_raw.col_start[ 0 ] == 0 );
-			}
-#endif
-			C_col_index[ 0 ] = 0;
-			for( size_t j = 1; j < n; ++j ) {
-				if( !crs_only ) {
-					CCS_raw.col_start[ j + 1 ] += CCS_raw.col_start[ j ];
-				}
-				C_col_index[ j ] = 0;
-			}
-#ifndef NDEBUG
-			if( !crs_only ) {
-				assert( CCS_raw.col_start[ n ] == nzc );
-			}
+					if( inplace ) {
+						// shifting requires CRS.col_start be finalised, but the function that
+						// populates that (get_row_col_counts) does not end with a barrier (for
+						// performance in the out-of-place case).
+						// This barrier can also not be moved until after the below code block
+						// that operates on the CCS since that code reuses the buffer in which
+						// originalRowOffsets resides. For the same reason, this code block also
+						// cannot be interleaved with the below code block.
+						// While this does indicate a latency - memory tradeoff opportunity, this
+						// implementation presently does not attempt to take benefit.
+ #ifdef _H_GRB_REFERENCE_OMP_BLAS3
+						#pragma omp barrier
+ #endif
+						mxm_ompPar_shiftByOffset( C, originalRowOffsets,
+							shiftBuffer, shiftBufferSize );
+ #ifdef _H_GRB_REFERENCE_OMP_BLAS3
+						#pragma omp barrier
+ #endif
+					}
+
+					// phase 3: computational phase
+
+					// get thread-shared column offset buffer
+					NIT * const C_col_index = bufferMD.getColOffsetBuffer();
+
+					// get thread-local SPA
+					internal::Coordinates< reference > coors;
+					coors.set_seq( arr, false, buf, n );
+
+					// prefix sum for C_col_index, fused with setting CCS_raw.col_start to zero
+#ifdef _H_GRB_REFERENCE_OMP_BLAS3
+					config::OMP::localRange( start, end, 0, n + 1 );
+#else
+					start = 0;
+					end = n + 1;
 #endif
 
 #ifndef NDEBUG
-			const size_t old_nzc = nzc;
+					if( !crs_only && start < end && start == 0 ) {
+						assert( CCS_raw.col_start[ 0 ] == 0 );
+					}
 #endif
-			// use previously computed CCS offset array to update CCS during the
-			// computational phase
-			nzc = 0;
-			C_raw.col_start[ 0 ] = 0;
-			for( size_t i = 0; i < m; ++i ) {
-				coors.clear();
-				for( auto k = A_raw.col_start[ i ]; k < A_raw.col_start[ i + 1 ]; ++k ) {
-					const size_t k_col = A_raw.row_index[ k ];
-					for( auto l = B_raw.col_start[ k_col ];
-						l < B_raw.col_start[ k_col + 1 ];
-						++l
-					) {
-						const size_t l_col = B_raw.row_index[ l ];
-#ifdef _DEBUG
-						std::cout << "\t A( " << i << ", " << k_col << " ) = "
-							<< A_raw.getValue( k,
-								mulMonoid.template getIdentity< typename Operator::D1 >() )
-							<< " will be multiplied with B( " << k_col << ", " << l_col << " ) = "
-							<< B_raw.getValue( l,
-								mulMonoid.template getIdentity< typename Operator::D2 >() )
-							<< " to accumulate into C( " << i << ", " << l_col << " )\n";
+
+					if( !crs_only ) {
+						// this is a manually fused for-loop from start to end
+						C_col_index[ start ] = 0;
+						if( start < end ) {
+							for( size_t j = start + 1; j < end - 1; ++j ) {
+								CCS_raw.col_start[ j ] += CCS_raw.col_start[ j - 1 ];
+								C_col_index[ j ] = 0;
+							}
+							CCS_raw.col_start[ end - 1 ] += CCS_raw.col_start[ end - 2 ];
+							if( end <= n ) {
+								C_col_index[ end - 1 ] = 0;
+							}
+						}
+						// end manually fused for-loop
+
+#ifdef _DEBUG_REFERENCE_BLAS3
+ #ifdef _H_GRB_REFERENCE_OMP_BLAS3
+						#pragma omp barrier
+						#pragma omp single
+ #endif
+						{
+							std::cout << "\t\t CCS start array, locally prefixed = { "
+								<< CCS_raw.col_start[ 0 ];
+							for( size_t i = 1; i <= n; ++i ) {
+								std::cout << ", " << CCS_raw.col_start[ i ];
+							}
+							std::cout << " }\n";
+						}
 #endif
-						if( !coors.assign( l_col ) ) {
-							valbuf[ l_col ] = monoid.template getIdentity< OutputType >();
-							(void) grb::apply( valbuf[ l_col ],
-								A_raw.getValue( k,
-									mulMonoid.template getIdentity< typename Operator::D1 >() ),
-								B_raw.getValue( l,
-									mulMonoid.template getIdentity< typename Operator::D2 >() ),
-								oper );
-						} else {
-							OutputType temp = monoid.template getIdentity< OutputType >();
-							(void) grb::apply( temp,
-								A_raw.getValue( k,
-									mulMonoid.template getIdentity< typename Operator::D1 >() ),
-								B_raw.getValue( l,
-									mulMonoid.template getIdentity< typename Operator::D2 >() ),
-								oper );
-							(void) grb::foldl( valbuf[ l_col ], temp, monoid.getOperator() );
+
+						// now finish up prefix-sum on CCS_raw
+#ifdef _H_GRB_REFERENCE_OMP_BLAS3
+						NIT ps_ws;
+						#pragma omp barrier
+						utils::prefixSum_ompPar_phase2< false >( CCS_raw.col_start, n + 1, ps_ws );
+						#pragma omp barrier
+						utils::prefixSum_ompPar_phase3< false >( CCS_raw.col_start, n + 1, ps_ws );
+#endif
+					} else {
+						// The above code issues multiple barriers for prefix-summing over CCS.
+						// One of those barrier is also needed to prevent race conditions between
+						// row-counting and the below execution phase. We issue that barrier here.
+						#pragma omp barrier
+					}
+#ifdef _DEBUG_REFERENCE_BLAS3
+ #ifdef _H_GRB_REFERENCE_OMP_BLAS3
+					#pragma omp barrier
+					#pragma omp single
+ #endif
+					{
+						std::cout << "\t\t CCS start array = { " << CCS_raw.col_start[ 0 ];
+						for( size_t i = 1; i <= n; ++i ) {
+							std::cout << ", " << CCS_raw.col_start[ i ];
+						}
+						std::cout << " }\n";
+					}
+#endif
+#ifndef NDEBUG
+					if( !crs_only && start < end && end == n + 1 ) {
+						assert( CRS_raw.col_start[ m ] == CCS_raw.col_start[ n ] );
+					}
+#endif
+
+					// use previously computed CCS offset array to update CCS during the
+					// computational phase
+#ifdef _H_GRB_REFERENCE_OMP_BLAS3
+					config::OMP::localRange( start, end, 0, m );
+#else
+					start = 0;
+					end = m;
+#endif
+					if( start < end && start == 0 ) {
+						CRS_raw.col_start[ 0 ] = 0;
+					}
+					local_nzc = CRS_raw.col_start[ start ];
+					for( size_t i = start; i < end; ++i ) {
+#ifdef _H_GRB_REFERENCE_OMP_BLAS3
+ #ifdef _DEBUG_REFERENCE_BLAS3
+						#pragma omp critical
+ #endif
+#endif
+						coors.clear_seq();
+						if( inplace ) {
+#ifdef _DEBUG_REFERENCE_BLAS3
+ #ifdef _H_GRB_REFERENCE_OMP_BLAS3
+							#pragma omp critical
+ #endif
+							std::cout << "\t\t in-place mxm, output matrix has "
+								<< (CRS_raw.col_start[ i + 1 ] - CRS_raw.col_start[ i ])
+								<< " nonzeroes on row " << i << " at offset "
+								<< CRS_raw.col_start[ i ] << " to " << CRS_raw.col_start[ i + 1 ]
+								<< "\n";
+#endif
+							for(
+								auto k = CRS_raw.col_start[ i ];
+								k < CRS_raw.col_start[ i + 1 ];
+								++k
+							) {
+								const auto index = CRS_raw.row_index[ k ];
+								if( index == static_cast< NIT >(n) ) {
+									break;
+								}
+								if( !coors.assign( index ) ) {
+									valbuf[ index ] = CRS_raw.getValue( k,
+										monoid.template getIdentity< OutputType >() );
+#ifdef _DEBUG_REFERENCE_BLAS3
+ #ifdef _H_GRB_REFERENCE_OMP_BLAS3
+									#pragma omp critical
+ #endif
+									std::cout << "\t\t\t pre-existing nonzero at "
+										<< i << ", " << index << ": value = " << valbuf[ index ] << "\n";
+#endif
+								} else {
+#ifndef NDEBUG
+									const bool repeated_column_indices_detected = false;
+									assert( repeated_column_indices_detected );
+#endif
+								}
+							}
+						}
+#ifdef _DEBUG_REFERENCE_BLAS3
+ #ifdef _H_GRB_REFERENCE_OMP_BLAS3
+						#pragma omp critical
+ #endif
+						std::cout << "\t\t mxm processes row " << i << " which contains "
+							<< (A_raw.col_start[ i + 1 ] - A_raw.col_start[ i ]) << " nonzeroes\n"
+							<< "\t\t valbuf @ " << static_cast< void * >(valbuf) << ", t = "
+							<< omp_get_thread_num() << "\n";
+#endif
+						for( auto k = A_raw.col_start[ i ]; k < A_raw.col_start[ i + 1 ]; ++k ) {
+							const size_t k_col = A_raw.row_index[ k ];
+							for( auto l = B_raw.col_start[ k_col ];
+								l < B_raw.col_start[ k_col + 1 ];
+								++l
+							) {
+								const size_t l_col = B_raw.row_index[ l ];
+#ifdef _DEBUG_REFERENCE_BLAS3
+ #ifdef _H_GRB_REFERENCE_OMP_BLAS3
+								#pragma omp critical
+ #endif
+								std::cout << "\t A( " << i << ", " << k_col << " ) = "
+									<< A_raw.getValue( k,
+										mulMonoid.template getIdentity< typename Operator::D1 >() )
+									<< " will be multiplied with B( " << k_col << ", " << l_col << " ) = "
+									<< B_raw.getValue( l,
+										mulMonoid.template getIdentity< typename Operator::D2 >() )
+									<< " to accumulate into C( " << i << ", " << l_col << " )\n";
+#endif
+								if( !coors.assign( l_col ) ) {
+									valbuf[ l_col ] = monoid.template getIdentity< OutputType >();
+									(void) grb::apply( valbuf[ l_col ],
+										A_raw.getValue( k,
+											mulMonoid.template getIdentity< typename Operator::D1 >() ),
+										B_raw.getValue( l,
+											mulMonoid.template getIdentity< typename Operator::D2 >() ),
+										oper );
+#ifdef _DEBUG_REFERENCE_BLAS3
+ #ifdef _H_GRB_REFERENCE_OMP_BLAS3
+									#pragma omp critical
+ #endif
+									std::cout << "\t C( " << i << ", " << l_col << " ) now reads "
+										<< valbuf[ l_col ] << "\n";
+#endif
+								} else {
+									OutputType temp = monoid.template getIdentity< OutputType >();
+									(void) grb::apply( temp,
+										A_raw.getValue( k,
+											mulMonoid.template getIdentity< typename Operator::D1 >() ),
+										B_raw.getValue( l,
+											mulMonoid.template getIdentity< typename Operator::D2 >() ),
+										oper );
+									(void) grb::foldl( valbuf[ l_col ], temp, monoid.getOperator() );
+#ifdef _DEBUG_REFERENCE_BLAS3
+ #ifdef _H_GRB_REFERENCE_OMP_BLAS3
+									#pragma omp critical
+ #endif
+									{
+										std::cout << "\t C( " << i << ", " << l_col << " ) += " << temp
+											<< "\n";
+										std::cout << "\t C( " << i << ", " << l_col << " ) now reads "
+											<< valbuf[ l_col ] << "\n";
+									}
+#endif
+								}
+							}
+						}
+#ifdef _DEBUG_REFERENCE_BLAS3
+ #ifdef _H_GRB_REFERENCE_OMP_BLAS3
+						#pragma omp critical
+ #endif
+						std::cout << "\t will write out " << coors.nonzeroes() << " nonzeroes "
+							<< "to row " << i << "\n";
+#endif
+						for( size_t k = 0; k < coors.nonzeroes(); ++k ) {
+							const size_t j = coors.index( k );
+							// update CRS
+							CRS_raw.row_index[ local_nzc ] = j;
+							// this above index store is superfluous for some entries in the
+							// in-place case, but we, at this point, have lost the information which
+							// part of the row_index array did not need updating. We could prevent it
+							// at the cost of m+1 memory, but we chose not to expend that and just
+							// take this hit
+							CRS_raw.setValue( local_nzc, valbuf[ j ] );
+							// update CCS
+							if( !crs_only ) {
+								size_t atomic_offset;
+#ifdef _H_GRB_REFERENCE_OMP_BLAS3
+								// TODO It may be better to switch to a parallel transposition
+								//      if there are too many threads / conflict updates (FIXME)
+								#pragma omp atomic capture
+#endif
+								{
+									atomic_offset = C_col_index[ j ];
+#ifndef _H_GRB_REFERENCE_OMP_BLAS3
+									(void)
+#endif
+										C_col_index[ j ]++;
+								}
+								const size_t CCS_index = atomic_offset + CCS_raw.col_start[ j ];
+								assert( CCS_index < CCS_raw.col_start[ j + 1 ] );
+								CCS_raw.row_index[ CCS_index ] = i;
+								CCS_raw.setValue( CCS_index, valbuf[ j ] );
+							}
+							// update count
+							(void) ++local_nzc;
+						}
+#ifdef _DEBUG_REFERENCE_BLAS3
+ #ifdef _H_GRB_REFERENCE_OMP_BLAS3
+						#pragma omp critical
+ #endif
+						std::cout << "\t wrote out " << (local_nzc - CRS_raw.col_start[ i ])
+							<< " nonzeroes to row " << i << "\n";
+#endif
+						assert( static_cast< size_t >(CRS_raw.col_start[ i + 1 ]) == local_nzc );
+					}
+#ifndef NDEBUG
+ #ifdef _H_GRB_REFERENCE_OMP_BLAS3
+					#pragma omp barrier
+					#pragma omp single
+ #endif
+					{
+						if( !crs_only ) {
+							for( size_t j = 0; j < n; ++j ) {
+								assert( CCS_raw.col_start[ j + 1 ] - CCS_raw.col_start[ j ] ==
+									C_col_index[ j ] );
+							}
+						}
+					}
+#endif
+#ifdef _H_GRB_REFERENCE_OMP_BLAS3
+					#pragma omp critical
+#endif
+					{
+						if( local_rc != SUCCESS && ret == SUCCESS ) {
+							ret = local_rc;
 						}
 					}
 				}
-				for( size_t k = 0; k < coors.nonzeroes(); ++k ) {
-					assert( nzc < old_nzc );
-					const size_t j = coors.index( k );
-					// update CRS
-					C_raw.row_index[ nzc ] = j;
-					C_raw.setValue( nzc, valbuf[ j ] );
-					// update CCS
-					if( !crs_only ) {
-						const size_t CCS_index = C_col_index[ j ]++ + CCS_raw.col_start[ j ];
-						CCS_raw.row_index[ CCS_index ] = i;
-						CCS_raw.setValue( CCS_index, valbuf[ j ] );
-					}
-					// update count
-					(void) ++nzc;
-				}
-				C_raw.col_start[ i + 1 ] = nzc;
 			}
 
-#ifndef NDEBUG
-			if( !crs_only ) {
-				for( size_t j = 0; j < n; ++j ) {
-					assert( CCS_raw.col_start[ j + 1 ] - CCS_raw.col_start[ j ] ==
-						C_col_index[ j ] );
+			if( ret == SUCCESS ) {
+				assert( !clear_at_exit );
+				if( !crs_only ) {
+					assert( CRS_raw.col_start[ m ] == CCS_raw.col_start[ n ] );
 				}
+				// set final number of nonzeroes in output matrix
+				internal::setCurrentNonzeroes( C, CRS_raw.col_start[ m ] );
 			}
-			assert( nzc == old_nzc );
+
+			if( clear_at_exit ) {
+#ifdef _DEBUG_REFERENCE_BLAS3
+				std::cout << "\t mxm_generic is about to exit with FAILED "
+					<< "(and will clear the output matrix)\n";
+#endif
+				const RC clear_rc = clear( C );
+				if( clear_rc != SUCCESS ) { return PANIC; }
+				return FAILED;
+			}
+
+#ifdef _DEBUG_REFERENCE_BLAS3
+			std::cout << "\t mxm_generic is exiting with RC " << grb::toString( ret )
+				<< " and output contents:\n";
+			std::cout << "\t\t CRS index array = { " << CRS_raw.row_index[ 0 ];
+			for( size_t i = 1; i < CRS_raw.col_start[ m ]; ++i ) {
+				std::cout << ", " << CRS_raw.row_index[ i ];
+			}
+			std::cout << " }\n";
+			std::cout << "\t\t CRS values array = { " << CRS_raw.getValue( 0, 1 );
+			for( size_t i = 1; i < CRS_raw.col_start[ m ]; ++i ) {
+				std::cout << ", " << CRS_raw.getValue( i, 1 );
+			}
+			std::cout << " }\n";
 #endif
 
-			// set final number of nonzeroes in output matrix
-			internal::setCurrentNonzeroes( C, nzc );
-
 			// done
-			return SUCCESS;
+			return ret;
 		}
 
 	} // end namespace grb::internal
@@ -576,7 +1770,7 @@ namespace grb {
 			"called with an output matrix C that does not match the output domain "
 			"of the given operator" );
 
-#ifdef _DEBUG
+#ifdef _DEBUG_REFERENCE_BLAS3
 		std::cout << "In grb::mxm (reference, unmasked, semiring)\n";
 #endif
 
@@ -677,7 +1871,7 @@ namespace grb {
 			const Phase &phase
 		) {
 			assert( !(descr & descriptors::force_row_major) );
-#ifdef _DEBUG
+#ifdef _DEBUG_REFERENCE_BLAS3
 			std::cout << "In matrix_zip_generic (reference, vectors-to-matrix)\n";
 #endif
 			assert( phase != TRY );
@@ -689,7 +1883,7 @@ namespace grb {
 			assert( phase == EXECUTE );
 			const RC clear_rc = clear( A );
 			if( nnz( x ) > capacity( A ) ) {
-#ifdef _DEBUG
+#ifdef _DEBUG_REFERENCE_BLAS3
 				std::cout << "\t output matrix did not have sufficient capacity to "
 					<< "complete the requested computation\n";
 #endif
@@ -1043,7 +2237,7 @@ namespace grb {
 			), "grb::outerProduct",
 			"called with an output matrix that does not match the output domain of "
 			"the given multiplication operator" );
-#ifdef _DEBUG
+#ifdef _DEBUG_REFERENCE_BLAS3
 		std::cout << "In grb::outer (reference)\n";
 #endif
 
@@ -1065,7 +2259,7 @@ namespace grb {
 
 		assert( phase == EXECUTE );
 		if( capacity( A ) < nnz( u ) * nnz( v ) ) {
-#ifdef _DEBUG
+#ifdef _DEBUG_REFERENCE_BLAS3
 			std::cout << "\t insufficient capacity to complete "
 				"requested outer-product computation\n";
 #endif
@@ -1134,7 +2328,7 @@ namespace grb {
 				"This implementation of folding a matrix into a scalar only applies to "
 				"non-pattern matrices. Please submit a bug report."
 			);
-#ifdef _DEBUG
+#ifdef _DEBUG_REFERENCE_BLAS3
 			std::cout << "In grb::internal::fold_unmasked_generic( reference )\n";
 #endif
 			static_assert( !(descr & descriptors::add_identity),
@@ -1217,7 +2411,7 @@ namespace grb {
 			const Matrix< InputType, reference, RIT, CIT, NIT > &A,
 			const Ring &ring = Ring()
 		) {
-#ifdef _DEBUG
+#ifdef _DEBUG_REFERENCE_BLAS3
 			std::cout << "In grb::internal::fold_unmasked_generic__add_identity( "
 				<< "reference )\n";
 #endif
@@ -1230,7 +2424,7 @@ namespace grb {
 				? ring.template getZero< typename Ring::D2 >()
 				: ring.template getZero< typename Ring::D1 >();
 
-			const auto& one = left_handed
+			const auto &one = left_handed
 				? ring.template getOne< typename Ring::D2 >()
 				: ring.template getOne< typename Ring::D1 >();
 
@@ -1309,7 +2503,7 @@ namespace grb {
 				assert( one_A != nullptr );
 			}
 #endif
-#ifdef _DEBUG
+#ifdef _DEBUG_REFERENCE_BLAS3
 			std::cout << "In grb::internal::fold_masked_generic( reference )\n";
 #endif
 			constexpr bool add_identity = (descr & descriptors::add_identity);
@@ -1327,7 +2521,7 @@ namespace grb {
 			if( (descr & descriptors::force_row_major) &&
 				(transpose_mask || transpose_input)
 			) {
-#ifdef _DEBUG
+#ifdef _DEBUG_REFERENCE_BLAS3
 				std::cerr << "force_row_major and transpose descriptors are mutually "
 					<< "exclusive in this implementation\n";
 #endif
@@ -1433,7 +2627,7 @@ namespace grb {
 				CoordinatesColTranslator(),
 			const Ring &ring = Ring()
 		) {
-#ifdef _DEBUG
+#ifdef _DEBUG_REFERENCE_BLAS3
 			std::cout << "In grb::internal::fold_masked_generic__add_identity( "
 				<< "reference )\n";
 #endif
@@ -1498,7 +2692,7 @@ namespace grb {
 				"is a pattern matrix (of type void)" );
 			assert( phase != TRY );
 
-#ifdef _DEBUG
+#ifdef _DEBUG_REFERENCE_BLAS3
 			std::cout << "In grb::internal::eWiseApply_matrix_generic\n";
 #endif
 
@@ -1527,7 +2721,7 @@ namespace grb {
 			auto &C_raw = internal::getCRS( C );
 			auto &CCS_raw = internal::getCCS( C );
 
-#ifdef _DEBUG
+#ifdef _DEBUG_REFERENCE_BLAS3
 			std::cout << "\t\t A offset array = { ";
 			for( size_t i = 0; i <= m_A; ++i ) {
 				std::cout << A_raw.col_start[ i ] << " ";
@@ -1569,7 +2763,9 @@ namespace grb {
 			coors2.set( arr2, false, buf2, n );
 #ifdef _H_GRB_REFERENCE_OMP_BLAS3
 			#pragma omp parallel
+#endif
 			{
+#ifdef _H_GRB_REFERENCE_OMP_BLAS3
 				size_t start, end;
 				config::OMP::localRange( start, end, 0, n + 1 );
 #else
@@ -1579,9 +2775,7 @@ namespace grb {
 				for( size_t j = start; j < end; ++j ) {
 					CCS_raw.col_start[ j ] = 0;
 				}
-#ifdef _H_GRB_REFERENCE_OMP_BLAS3
 			}
-#endif
 			// end initialisations
 
 			// nonzero count
@@ -1633,7 +2827,7 @@ namespace grb {
 
 				// check capacity
 				if( nzc > capacity( C ) ) {
-#ifdef _DEBUG
+#ifdef _DEBUG_REFERENCE_BLAS3
 					std::cout << "\t detected insufficient capacity "
 						<< "for requested operation\n";
 #endif
@@ -1655,7 +2849,9 @@ namespace grb {
 				// set C_col_index to all zero
 #ifdef _H_GRB_REFERENCE_OMP_BLAS3
 				#pragma omp parallel
+#endif
 				{
+#ifdef _H_GRB_REFERENCE_OMP_BLAS3
 					size_t start, end;
 					config::OMP::localRange( start, end, 0, n );
 #else
@@ -1665,9 +2861,7 @@ namespace grb {
 					for( size_t j = start; j < end; ++j ) {
 						C_col_index[ j ] = 0;
 					}
-#ifdef _H_GRB_REFERENCE_OMP_BLAS3
 				}
-#endif
 
 				// do computations
 				size_t nzc = 0;
@@ -1675,7 +2869,7 @@ namespace grb {
 				for( size_t i = 0; i < m; ++i ) {
 					coors1.clear();
 					coors2.clear();
-#ifdef _DEBUG
+#ifdef _DEBUG_REFERENCE_BLAS3
 					std::cout << "\t The elements ";
 #endif
 					for( size_t k = A_raw.col_start[ i ]; k < A_raw.col_start[ i + 1 ]; ++k ) {
@@ -1683,28 +2877,33 @@ namespace grb {
 						coors1.assign( k_col );
 						valbuf[ k_col ] = A_raw.getValue( k,
 							mulMonoid.template getIdentity< typename Operator::D1 >() );
-#ifdef _DEBUG
+#ifdef _DEBUG_REFERENCE_BLAS3
 						std::cout << "A( " << i << ", " << k_col << " ) = " << A_raw.getValue( k,
 							mulMonoid.template getIdentity< typename Operator::D1 >() ) << ", ";
 #endif
 					}
-#ifdef _DEBUG
-					std::cout << "are multiplied pairwise with ";
+#ifdef _DEBUG_REFERENCE_BLAS3
+					std::cout << "are multiplied pairwise with:\n";
 #endif
 					for( size_t l = B_raw.col_start[ i ]; l < B_raw.col_start[ i + 1 ]; ++l ) {
 						const size_t l_col = B_raw.row_index[ l ];
 						if( coors1.assigned( l_col ) ) {
 							coors2.assign( l_col );
-							(void)grb::apply( valbuf[ l_col ], valbuf[ l_col ], B_raw.getValue( l,
-								mulMonoid.template getIdentity< typename Operator::D2 >() ), oper );
-#ifdef _DEBUG
-							std::cout << "B( " << i << ", " << l_col << " ) = " << B_raw.getValue( l,
-								mulMonoid.template getIdentity< typename Operator::D2 >() )
-							<< " to yield C( " << i << ", " << l_col << " ), ";
+							(void) grb::foldl( valbuf[ l_col ], B_raw.getValue(
+									l,
+									mulMonoid.template getIdentity< typename Operator::D2 >()
+								),
+							oper );
+#ifdef _DEBUG_REFERENCE_BLAS3
+							std::cout << "\t\t B( " << i << ", " << l_col << " ) = "
+								<< B_raw.getValue(
+									l, mulMonoid.template getIdentity< typename Operator::D2 >() )
+								<< " to yield C( " << i << ", " << l_col << " ) = " << valbuf[ l_col ]
+								<< "\n";
 #endif
 						}
 					}
-#ifdef _DEBUG
+#ifdef _DEBUG_REFERENCE_BLAS3
 					std::cout << "\n";
 #endif
 					for( size_t k = 0; k < coors2.nonzeroes(); ++k ) {
@@ -1717,17 +2916,18 @@ namespace grb {
 						CCS_raw.row_index[ CCS_index ] = i;
 						CCS_raw.setValue( CCS_index, valbuf[ j ] );
 						// update count
-						(void)++nzc;
+						(void) ++nzc;
 					}
 					C_raw.col_start[ i + 1 ] = nzc;
-#ifdef _DEBUG
+#ifdef _DEBUG_REFERENCE_BLAS3
 					std::cout << "\n";
 #endif
 				}
 
 #ifndef NDEBUG
 				for( size_t j = 0; j < n; ++j ) {
-					assert( CCS_raw.col_start[ j + 1 ] - CCS_raw.col_start[ j ] == C_col_index[ j ] );
+					assert( CCS_raw.col_start[ j + 1 ] - CCS_raw.col_start[ j ] ==
+						C_col_index[ j ] );
 				}
 #endif
 
@@ -1789,7 +2989,7 @@ namespace grb {
 			"of the monoid operator"
 		);
 
-#ifdef _DEBUG
+#ifdef _DEBUG_REFERENCE_BLAS3
 		std::cout << "In grb::eWiseApply_matrix_generic (reference, monoid)\n";
 #endif
 
@@ -1880,7 +3080,7 @@ namespace grb {
 			!is_object< Tout >::value
 		>::type * const = nullptr
 	) {
-#ifdef _DEBUG
+#ifdef _DEBUG_REFERENCE_BLAS3
 		std::cout << "In grb::select( reference )\n";
 #endif
 		// static sanity checks
@@ -1964,7 +3164,7 @@ namespace grb {
 			"the use of the add_identity descriptor requires a semiring, but a monoid "
 			"was given"
 		);
-#ifdef _DEBUG
+#ifdef _DEBUG_REFERENCE_BLAS3
 		std::cout << "In grb::foldr( reference, mask, matrix, monoid )\n";
 #endif
 		// first check whether we can dispatch
@@ -2042,7 +3242,7 @@ namespace grb {
 			"the use of the add_identity descriptor requires a semiring, but a monoid "
 			"was given"
 		);
-#ifdef _DEBUG
+#ifdef _DEBUG_REFERENCE_BLAS3
 		std::cout << "In grb::foldr( reference, matrix, monoid )\n";
 #endif
 		// check for trivial op
@@ -2088,7 +3288,7 @@ namespace grb {
 			"called with an output type that does not match the fourth domain of the "
 			"given semiring"
 		);
-#ifdef _DEBUG
+#ifdef _DEBUG_REFERENCE_BLAS3
 		std::cout << "In grb::foldr( reference, matrix, semiring )\n";
 #endif
 		// check for trivial op
@@ -2239,7 +3439,7 @@ namespace grb {
 			"the use of the add_identity descriptor requires a semiring, but a monoid "
 			"was given"
 		);
-#ifdef _DEBUG
+#ifdef _DEBUG_REFERENCE_BLAS3
 		std::cout << "In grb::foldl( reference, mask, matrix, monoid )\n";
 #endif
 		// first check whether we can dispatch
@@ -2319,7 +3519,7 @@ namespace grb {
 			"the use of the add_identity descriptor requires a semiring, but a monoid "
 			"was given"
 		);
-#ifdef _DEBUG
+#ifdef _DEBUG_REFERENCE_BLAS3
 		std::cout << "In grb::foldl( reference, matrix, monoid )\n";
 #endif
 		// check for trivial op
@@ -2365,7 +3565,7 @@ namespace grb {
 			"called with an output type that does not match the fourth domain of the "
 			"given semiring"
 		);
-#ifdef _DEBUG
+#ifdef _DEBUG_REFERENCE_BLAS3
 		std::cout << "In grb::foldl( reference, matrix, semiring )\n";
 #endif
 		// check for trivial op
@@ -2432,7 +3632,7 @@ namespace grb {
 			), "grb::foldl( reference, IOType <- [[IOType]], semiring, masked ): "
 			"may not select an inverted structural mask for matrices"
 		);
-#ifdef _DEBUG
+#ifdef _DEBUG_REFERENCE_BLAS3
 		std::cout << "In grb::foldl( reference, mask, matrix, semiring )\n";
 #endif
 		// first check whether we can dispatch

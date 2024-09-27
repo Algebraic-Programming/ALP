@@ -22,6 +22,7 @@
 
 #include "graphblas/rc.hpp"
 
+
 std::string grb::toString( const grb::RC code ) {
 	std::string ret;
 	switch( code ) {

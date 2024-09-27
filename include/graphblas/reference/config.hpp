@@ -269,7 +269,8 @@ namespace grb {
 				 * interleaved alloc so that any thread has uniform access on average.
 				 */
 				static constexpr ALLOC_MODE sharedAllocMode() {
-					// return ALLOC_MODE::ALIGNED; //DBG
+					// return ALLOC_MODE::ALIGNED;
+					//  ^- commented but retained since often useful for performance debugging
 					return ALLOC_MODE::INTERLEAVED;
 				}
 

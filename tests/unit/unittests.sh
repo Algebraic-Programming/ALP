@@ -158,6 +158,7 @@ for MODE in ${MODES}; do
 				fi
 
 				if [ "$BACKEND" = "reference" ] || [ "${BACKEND}" = "reference_omp" ]; then
+
 					echo "#################################################################"
 					echo "# Starting unit tests specific to the ${BACKEND} backend"
 					echo "#   using ${MODE} mode"
@@ -175,6 +176,15 @@ for MODE in ${MODES}; do
 					head -1 ${TEST_OUT_DIR}/eWiseApplyMatrixReference_${MODE}_${BACKEND}_${T}.log
 					grep 'Test OK' ${TEST_OUT_DIR}/eWiseApplyMatrixReference_${MODE}_${BACKEND}_${T}.log || echo "Test FAILED"
 					echo " "
+
+					echo ">>>      [x]           [ ]       Testing BLAS3 grb::mxm (unmasked) on simple matrices"
+					echo "                                 of size 100 x 100 using the (+,*) semiring over"
+					echo "                                 doubles. This test uses the force_row_major descriptor"
+					$runner ${TEST_BIN_DIR}/mxm_crs_${MODE}_${BACKEND} &> ${TEST_OUT_DIR}/mxm_crs_${MODE}_${BACKEND}_${P}_${T}.log
+					head -1 ${TEST_OUT_DIR}/mxm_crs_${MODE}_${BACKEND}_${P}_${T}.log
+					grep 'Test OK' ${TEST_OUT_DIR}/mxm_crs_${MODE}_${BACKEND}_${P}_${T}.log || echo "Test FAILED"
+					echo " "
+
 				fi
 
 				echo "#################################################################"

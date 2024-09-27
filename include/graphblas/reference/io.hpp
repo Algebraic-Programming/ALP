@@ -216,9 +216,7 @@ namespace grb {
 #ifdef _DEBUG
 		std::cerr << "In grb::resize (vector, reference)\n";
 #endif
-		// this cannot wait until after the below check, as the spec defines that
-		// anything is OK for an empty vector
-		if( new_nz == 0 ) { return grb::clear( x ); }
+		if( grb::size( x ) == 0 ) { return grb::SUCCESS; }
 
 		// check if we have a mismatch
 		if( new_nz > grb::size( x ) ) {
@@ -227,13 +225,20 @@ namespace grb {
 				<< "expected a value smaller than or equal to "
 				<< size( x ) << "\n";
 #endif
-			return ILLEGAL;
+			return grb::ILLEGAL;
+		}
+		if( new_nz < grb::nnz( x ) ) {
+#ifdef _DEBUG
+			std::cerr << "\t requested capacity of " << new_nz << ", "
+				<< "expected a value larger than or equal to "
+				<< grb::nnz( x ) << "\n";
+#endif
+			return grb::ILLEGAL;
 		}
 
 		// in the reference implementation, vectors are of static size
-		// so this function immediately succeeds. However, all existing contents
-		// must be removed
-		return grb::clear( x );
+		// so this function immediately succeeds.
+		return grb::SUCCESS;
 	}
 
 	/**
@@ -276,16 +281,15 @@ namespace grb {
 			<< "\t matrix is " << nrows(A) << " by " << ncols(A) << "\n"
 			<< "\t requested capacity is " << new_nz << "\n";
 #endif
-		RC ret = clear( A );
-		if( ret != SUCCESS ) { return ret; }
-
 		const size_t m = nrows( A );
 		const size_t n = ncols( A );
+
 		// catch trivial case
 		if( m == 0 || n == 0 ) {
 			return SUCCESS;
 		}
-		// catch illegal input
+
+		// catch illegal (overflow)
 		if( new_nz / m > n ||
 			new_nz / n > m ||
 			(new_nz / m == n && (new_nz % m > 0)) ||
@@ -298,11 +302,17 @@ namespace grb {
 			return ILLEGAL;
 		}
 
-		// delegate
-		ret = A.resize( new_nz );
+		// catch illegal (underflow)
+		if( new_nz < grb::nnz( A ) ) {
+#ifdef _DEBUG
+			std::cerr << "\t requesting lower capacity than required by current "
+				<< "contents\n";
+#endif
+			return ILLEGAL;
+		}
 
-		// done
-		return ret;
+		// delegate
+		return A.resize( new_nz );
 	}
 
 	namespace internal {
@@ -888,7 +898,7 @@ namespace grb {
 		// make the vector empty unless the dense descriptor is provided
 		const bool mask_is_dense = (descr & descriptors::structural) &&
 			!(descr & descriptors::invert_mask) && (
-				(descr && descriptors::dense) ||
+				(descr & descriptors::dense) ||
 				nnz( mask ) == grb::size( mask )
 			);
 		if( !((descr & descriptors::dense) && mask_is_dense) ) {
@@ -1051,15 +1061,21 @@ namespace grb {
 			NIT *__restrict__ out_crs_offsets = nullptr;
 			NIT *__restrict__ out_ccs_offsets = nullptr;
 			if( self_masked ) {
-				buffer_row_ind = internal::getMatrixRowBuffer( A );
-				buffer_col_ind = internal::getMatrixColBuffer( A );
-				const size_t bufsize = (m + n + 2) * sizeof( NIT ) + sizeof( int );
+				out_crs_offsets = internal::getMatrixRowBuffer( A );
+				out_ccs_offsets = internal::getMatrixColBuffer( A );
+				const size_t bufsize = ( sizeof( RIT ) + sizeof( CIT ) ) * nz + sizeof( int );
 				char * buffer_raw =
 					internal::template getReferenceBuffer< char >( bufsize );
-				out_crs_offsets = reinterpret_cast< NIT * >( buffer_raw );
-				const size_t offset = sizeof( int ) - (((m + 1) * sizeof( NIT )) % sizeof( int ));
-				out_ccs_offsets = reinterpret_cast< NIT * >(
-					buffer_raw + (m + 1) * sizeof( NIT ) + offset );
+				buffer_row_ind = reinterpret_cast< RIT * >( buffer_raw );
+				buffer_raw += sizeof( RIT ) * nz;
+				{
+					const size_t shift =
+						reinterpret_cast< uintptr_t >(buffer_raw) % sizeof(int);
+					if( shift > 0 ) {
+						buffer_raw += (sizeof(int) - shift);
+					}
+				}
+				buffer_col_ind = reinterpret_cast< CIT * >( buffer_raw );
 			} else {
 				(void) buffer_row_ind;
 				(void) buffer_col_ind;
@@ -1293,6 +1309,7 @@ namespace grb {
 										<< mask_crs.row_index[ k ] << " will be written to k = " << out_k
 										<< "\n";
 #endif
+									assert( out_k <= out_crs.col_start[ m ] );
 									if( self_masked ) {
 										buffer_row_ind[ out_k ] = mask_crs.row_index[ k ];
 									} else {
@@ -1542,9 +1559,13 @@ namespace grb {
 				);
 			const size_t nthreads = minRange < config::OMP::minLoopSize()
 				? 1
-				: std::max( static_cast< size_t >(1),
-					minRange / config::CACHE_LINE_SIZE::value()
-				);
+				: std::min(
+						config::OMP::threads(),
+						std::max(
+							static_cast< size_t >(1),
+							minRange / config::CACHE_LINE_SIZE::value()
+						)
+					);
 			#pragma omp parallel num_threads( nthreads )
 #endif
 			{
@@ -1612,9 +1633,13 @@ namespace grb {
 			// minimum loop size config.
 			const size_t nthreads = nz < config::OMP::minLoopSize()
 				? 1
-				: std::max( static_cast< size_t >(1),
-					nz / config::CACHE_LINE_SIZE::value() );
-
+				: std::min(
+						config::OMP::threads(),
+						std::max(
+							static_cast< size_t >(1),
+							nz / config::CACHE_LINE_SIZE::value()
+						)
+					  );
 			#pragma omp parallel num_threads( nthreads )
 #endif
 			{
@@ -1685,7 +1710,7 @@ namespace grb {
 			// handle resize
 			if( phase == RESIZE ) {
 				if( grb::capacity( A ) < nnz( mask ) ) {
-					return grb::resize( A, nnz( mask ) );
+					return grb::resize( A, std::max( nnz( A ), nnz( mask ) ) );
 				} else {
 					return SUCCESS;
 				}
@@ -1755,7 +1780,7 @@ namespace grb {
 
 		// delegate
 		if( phase == RESIZE ) {
-			return resize( C, nnz( A ) );
+			return grb::resize( C, std::max( nnz( C ), nnz( A ) ) );
 		} else {
 			assert( phase == EXECUTE );
 			return internal::set_copy< false, descr >( C, A );
@@ -1866,7 +1891,7 @@ namespace grb {
 #ifdef _DEBUG_REFERENCE_IO
 			std::cout << "\t delegating resize for structural non-self masking\n";
 #endif
-			return resize( C, nnz( A ) );
+			return resize( C, std::max( nnz( C ), nnz( A ) ) );
 		} else {
 #ifdef _DEBUG_REFERENCE_IO
 			std::cout << "\t dispatching to void or non-void set_copy variant\n";
