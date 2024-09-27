@@ -91,14 +91,16 @@ extern "C" {
 	 *
 	 *  - \f$ p = z + \beta p \f$,
 	 *  - \f$ u = Ap \f$,
-	 *  - \f$ \alpha = (u,q) \f$.
+	 *  - \f$ \alpha = (u,p) \f$.
 	 *
 	 * @param[in,out] p  The input and output vector \f$ p \f$
 	 * @param[out]    u  The output vector \f$ u \f$
 	 * @param[out] alpha The output scalar \f$ \alpha \f$
 	 *
 	 * The pointers \a p and \a u should be pointers to arrays, while \a alpha
-	 * should be a pointer to a scalar.
+	 * should be a pointer to a scalar. The contents of \a u need \em not be zeroed
+	 * out(!)-- this fuselet will reset the vector. Similarly, the initial value of
+	 * \a alpha will be ignored.
 	 *
 	 * @param[in]   z  The input vector \f$ z \f$
 	 * @param[in] beta The input scalar \f$ \beta \f$
@@ -122,7 +124,7 @@ extern "C" {
 	 */
 	int update_spmv_dot(
 		double * const p, double * const u, double * const alpha, // outputs
-		const double * const z, const double * const beta,        // input 1
+		const double * const z, const double beta,                // input 1
 		const size_t * const ia, const unsigned int * const ij,
 		const double * const iv,                                  // input 2
 		const size_t n                                            // size
@@ -140,7 +142,8 @@ extern "C" {
 	 * @param[out]    norm2 The 2-norm-squared of \f$ r \f$
 	 *
 	 * The pointers \a x and \a r should be pointers to arrays, while \a norm2
-	 * should be a pointer to a scalar.
+	 * should be a pointer to a scalar. The initial value of \a norm2 will be
+	 * ignored.
 	 *
 	 * @param[in] alpha The input scalar \f$ \alpha \f$
 	 * @param[in] p     The input vector \f$ p \f$

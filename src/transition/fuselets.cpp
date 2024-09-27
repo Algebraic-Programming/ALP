@@ -81,7 +81,7 @@ int finalize_fuselets() {
 
 int update_spmv_dot(
 	double * const p, double * const u, double * const alpha,
-	const double * const z, const double * const beta,
+	const double * const z, const double beta,
 	const size_t * const ia, const unsigned int * const ij,
 	const double * const iv,
 	const size_t n
@@ -129,7 +129,7 @@ int update_spmv_dot(
 	const grb::Vector< double > alp_z =
 		grb::internal::template wrapRawVector< double >( n, z );
 	grb::RC ret = grb::foldr< grb::descriptors::dense >(
-		*beta, alp_p,
+		beta, alp_p,
 		dblTimesMonoid
 	);
 	ret = ret ? ret : grb::foldr< grb::descriptors::dense >(
@@ -144,7 +144,8 @@ int update_spmv_dot(
 
 	// do second op
 	const MyMatrixType alp_A = grb::internal::wrapCRSMatrix( iv, ij, ia, n, n );
-	ret = grb::mxv<
+	ret = grb::set< grb::descriptors::dense >( alp_u, 0.0 );
+	ret = ret ? ret : grb::mxv<
 		grb::descriptors::dense | grb::descriptors::force_row_major
 	>( alp_u, alp_A, alp_p, dblSemiring );
 	if( ret != grb::SUCCESS ) {
@@ -154,6 +155,7 @@ int update_spmv_dot(
 	}
 
 	// do third op
+	alp_alpha = 0.0;
 	ret = grb::dot< grb::descriptors::dense >(
 		alp_alpha, alp_u, alp_p, dblSemiring );
 	if( ret != grb::SUCCESS ) {
@@ -233,6 +235,7 @@ int update_update_norm2(
 	}
 
 	// perform operation 3
+	alp_norm2 = 0.0;
 	ret = grb::dot< grb::descriptors::dense >(
 		alp_norm2, alp_r, alp_r, dblSemiring );
 	if( ret != grb::SUCCESS ) {
