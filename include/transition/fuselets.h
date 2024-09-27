@@ -137,8 +137,8 @@ extern "C" {
 	 *  - \f$ r = \beta u + r \f$,
 	 *  - \f$ \mathit{norm} = ||r||_2^2 \f$.
 	 *
-	 * @param[in,out] x     The input and output vector $\f x \f$
-	 * @param[in,out] r     The input and output vector $\f r \f$
+	 * @param[in,out] x     The input and output vector \f$ x \f$
+	 * @param[in,out] r     The input and output vector \f$ r \f$
 	 * @param[out]    norm2 The 2-norm-squared of \f$ r \f$
 	 *
 	 * The pointers \a x and \a r should be pointers to arrays, while \a norm2
