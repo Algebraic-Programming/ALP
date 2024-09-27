@@ -111,15 +111,11 @@ extern "C" {
 	 *
 	 * The pointers \a ia, \a ij, and \a iv correspond to a CRS of \f$ A \f$.
 	 *
-	 * @param[in] q The input vector \f$ q \f$
-	 *
-	 * The pointer \a q points to an array.
-	 *
 	 * @param[in] n The row-wise \em and column-wise dimension of \a A
 	 *
-	 * The size of the arrays \a p, \a u, \a z, and \a q is \f$ n \f$. The size of
-	 * the array \f$ ia \f$ is \f$ n + 1 \f$. The size of the arrays \a ij and
-	 * \a iv is <tt>ia[n]</tt>.
+	 * The size of the arrays \a p, \a u, and \a z is \f$ n \f$. The size of the
+	 * array \f$ ia \f$ is \f$ n + 1 \f$. The size of the arrays \a ij and * \a iv
+	 * is <tt>ia[n]</tt>.
 	 *
 	 * @returns Zero if and only if the call executed successfully.
 	 * @returns A nonzero error code otherwise.
@@ -129,7 +125,6 @@ extern "C" {
 		const double * const z, const double * const beta,        // input 1
 		const size_t * const ia, const unsigned int * const ij,
 		const double * const iv,                                  // input 2
-		const double * const q,                                   // input 3
 		const size_t n                                            // size
 	);
 

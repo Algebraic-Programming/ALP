@@ -84,7 +84,6 @@ int update_spmv_dot(
 	const double * const z, const double * const beta,
 	const size_t * const ia, const unsigned int * const ij,
 	const double * const iv,
-	const double * const q,
 	const size_t n
 ) {
 	// typedef our matrix type, which depends on the above argument types
@@ -108,7 +107,6 @@ int update_spmv_dot(
 	assert( ij != nullptr );
 	assert( iv != nullptr );
 	assert( ij[ n ] / n <= n );
-	assert( q != nullptr );
 #ifndef NDEBUG
 	// we employ defensive programming and perform expensive input checks when
 	// compiled in debug mode:
@@ -156,9 +154,8 @@ int update_spmv_dot(
 	}
 
 	// do third op
-	const grb::Vector< double > alp_q = grb::internal::wrapRawVector( n, q );
 	ret = grb::dot< grb::descriptors::dense >(
-		alp_alpha, alp_u, alp_q, dblSemiring );
+		alp_alpha, alp_u, alp_p, dblSemiring );
 	if( ret != grb::SUCCESS ) {
 		std::cerr << "ALP/Fuselets update_spmv_dot encountered error at operation 3: "
 			<< grb::toString( ret ) << "\n";
