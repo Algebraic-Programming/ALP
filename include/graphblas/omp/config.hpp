@@ -91,6 +91,15 @@ namespace grb {
 				}
 
 				/**
+				 * @returns The maximum number of threads reported by OpenMP.
+				 *
+				 * This function can be called from any context.
+				 */
+				static size_t maxThreads() {
+					return omp_get_max_threads();
+				}
+
+				/**
 				 * @returns The number of threads in the current OpenMP parallel section.
 				 *
 				 * This function must be called from a parallel context.
