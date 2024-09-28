@@ -28,9 +28,8 @@ add_subdirectory( transition )
 ### BUILD WRAPPER SCRIPTS FOR INSTALLATION
 
 assert_valid_variables( AVAILABLE_BACKENDS CMAKE_INSTALL_PREFIX INCLUDE_INSTALL_DIR
-	VERSION BIN_INSTALL_DIR
+	VERSION BIN_INSTALL_DIR COMMON_LFLAGS_POST
 )
-assert_defined_variables( COMMON_WRAPPER_DEFINITIONS COMMON_WRAPPER_OPTIONS )
 
 if( WITH_BSP1D_BACKEND OR WITH_HYBRID_BACKEND )
 	assert_valid_variables( LPFRUN_CMD MANUALRUN )
@@ -52,16 +51,19 @@ endmacro( joinAndAppend )
 # of values to be stored inside the wrappers
 foreach( backend ${AVAILABLE_BACKENDS} )
 	assert_valid_variables( ${backend}_WRAPPER_COMPILER_COMMAND )
-	assert_defined_variables( ${backend}_WRAPPER_RUNENV ${backend}_WRAPPER_RUNNER
+	assert_defined_variables( ${backend}_WRAPPER_RUNNER ${backend}_WRAPPER_LINK_FLAGS
 		${backend}_WRAPPER_COMPILE_DEFINITIONS ${backend}_WRAPPER_COMPILE_OPTIONS
-		${backend}_WRAPPER_LINK_FLAGS
 	)
 
 	list( APPEND backend_list "\"${backend}\"" )
 	joinAndAppend( compiler_list ${backend}_WRAPPER_COMPILER_COMMAND )
+	joinAndAppend( library_dir ${backend}_LIB_DIR )
 
-	joinAndAppend( runenv_list ${backend}_WRAPPER_RUNENV )
 	joinAndAppend( runner_list ${backend}_WRAPPER_RUNNER )
+
+	string( TOUPPER ${backend} _bname )
+	list( APPEND backend_dir_list "ALP_${_bname}_LIBRARY_PATH=\"${${backend}_LIB_DIR}\"" )
+	joinAndAppend( runenv_list ${backend}_LIB_DIR )
 	set( compile_options "${${backend}_WRAPPER_COMPILE_DEFINITIONS}" )
 	list( TRANSFORM compile_options PREPEND "-D" )
 	list( APPEND compile_options ${${backend}_WRAPPER_COMPILE_OPTIONS} )
@@ -75,23 +77,28 @@ endforeach( )
 # sourcing the resulting setenv makes the quotes seem as part of the
 # executable name. Until this is fixed, we do not support spaces in
 # the LPF install path (FIXME)
-list( JOIN backend_list " " AVAILABLE_BACKENDS_SPACED )
+
+macro( joinWithNewLine inListName outListName )
+	list( JOIN ${inListName} "\n" tmp_spaced )
+	set( ${outListName} "\n${tmp_spaced}\n" )
+endmacro( joinWithNewLine )
+
+joinWithNewLine( backend_list AVAILABLE_BACKENDS_SPACED )
 list( JOIN LPFRUN_CMD " " LPFRUN_CMD_SPACED )
 list( JOIN MANUALRUN " " MANUALRUN_SPACED )
+joinWithNewLine( backend_dir_list BACKEND_DIR_LIST )
 configure_file( ${CMAKE_CURRENT_SOURCE_DIR}/setenv.in ${CMAKE_CURRENT_BINARY_DIR}/setenv @ONLY )
 
-set( cflags "${COMMON_WRAPPER_DEFINITIONS}" )
-list( TRANSFORM cflags PREPEND "-D" )
-list( APPEND cflags "${COMMON_WRAPPER_OPTIONS}" )
-joinAndAppend( COMMON_FLAGS_SPACED cflags )
+joinWithNewLine( compiler_list BACKEND_COMPILERS_SPACED )
+joinWithNewLine( library_dir LIBRARY_DIRS_SPACED )
 
-list( JOIN compiler_list " " BACKEND_COMPILERS_SPACED )
-list( JOIN compile_options_list " " BACKEND_CFLAGS_SPACED )
-list( JOIN link_flags_list " " BACKEND_LFLAGS_SPACED )
+joinWithNewLine( compile_options_list BACKEND_CFLAGS_SPACED )
+joinWithNewLine( link_flags_list BACKEND_LFLAGS_SPACED )
+list( JOIN COMMON_LFLAGS_POST " " COMMON_LFLAGS_POST_SPACED )
 configure_file( ${CMAKE_CURRENT_SOURCE_DIR}/grbcxx.in ${CMAKE_CURRENT_BINARY_DIR}/grbcxx @ONLY )
 
-list( JOIN runenv_list " " BACKEND_RUNENV_SPACED )
-list( JOIN runner_list " " BACKEND_RUNNER_SPACED )
+joinWithNewLine( runenv_list BACKEND_RUNENV_SPACED )
+joinWithNewLine( runner_list BACKEND_RUNNER_SPACED )
 configure_file( ${CMAKE_CURRENT_SOURCE_DIR}/grbrun.in ${CMAKE_CURRENT_BINARY_DIR}/grbrun @ONLY )
 
 # install them to the install folder with execute permission
@@ -107,7 +114,7 @@ install( FILES ${CMAKE_CURRENT_BINARY_DIR}/setenv
 
 ### GENERATE CMAKE INFRASTRUCTURE INSIDE INSTALLATION DIRECTORY
 
-include(CMakePackageConfigHelpers)
+include( CMakePackageConfigHelpers )
 
 # write file with version information
 write_basic_package_version_file(

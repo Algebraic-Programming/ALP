@@ -16,20 +16,55 @@
 # limitations under the License.
 #
 
-GRB_INSTALL_PATH="@CMAKE_INSTALL_PREFIX@"
 INCLUDEDIR="@INCLUDE_INSTALL_DIR@"
 BACKENDS=(@AVAILABLE_BACKENDS_SPACED@)
 BACKENDCOMPILERS=(@BACKEND_COMPILERS_SPACED@)
 BACKENDCFLAGS=(@BACKEND_CFLAGS_SPACED@)
 BACKENDLFLAGS=(@BACKEND_LFLAGS_SPACED@)
-COMMONCFLAGS=@COMMON_FLAGS_SPACED@
 VERSION="@VERSION@"
+BACKEND_LIBRARY_OUTPUT_NAME="@BACKEND_LIBRARY_OUTPUT_NAME@"
+LIBRARY_DIRS=(@LIBRARY_DIRS_SPACED@)
+UTILS_LIBRARY_NAME="@ALP_UTILS_LIBRARY_OUTPUT_NAME@"
+UTILS_LIBRARY_DIR="@ALP_UTILS_INSTALL_DIR@"
 
 declare -a ARGS
-LINK=true
+LINK="dynamic"
 SHOW="eval"
 BACKEND=${BACKENDS[0]}
 CXXSTD=c++11
+help="no"
+
+function print_help {
+	local this_bin="$1"
+	local BACKEND=$2
+	local COMPILER=$3
+	local help_arg="--help"
+	if [[ "${BACKEND}" == "bsp1d" || "${BACKEND}" == "hybrid" ]]; then
+		# LPF's lpfcxx doesn't recognize "--help", just "-help"
+		help_arg="-help"
+	fi
+	local ALL_BACKENDS="${BACKENDS[@]}"
+
+	echo "* Compiles an ALP/GraphBLAS application by calling an underlying compiler and by passing needed flags."
+	echo
+	echo "Usage: ${this_bin} [ALP-specific options...] [--] <compiler arguments...>"
+	echo
+	echo "ALP-specific options:"
+	echo "  -b,--backend <backend>  compile against the ALP/GraphBLAS backend <backend>;"
+	echo "                          possible values: ${ALL_BACKENDS// /, };"
+	echo "                          default: ${BACKENDS[0]}"
+	echo "  --link-alp-static       link the specified ALP/GraphBLAS backend and the utility library statically (default linking is dynamic)"
+	echo "  --show                  show the full compilation command WITHOUT executing it"
+	echo "  --version               display the current ALP/GraphBLAS version"
+	echo "  --help                  display this help"
+	echo "  -- <args...>            pass all the following <args...> arguments directly to the underlying compiler"
+	echo
+	echo "* Selected backend: ${BACKEND}"
+	echo "* Underlying compiler: ${COMPILER}"
+	echo "* Underlying compiler help:"
+	echo
+	exec ${COMPILER} ${help_arg}
+}
 
 while [[ $# -gt 0 ]]; do
 	option="$1"
@@ -39,16 +74,14 @@ while [[ $# -gt 0 ]]; do
 			BACKEND=$1
 			shift
 		;;
-		-c)
-			ARGS+=("-c")
-			LINK=false
+		--link-alp-static)
+			LINK="static"
 		;;
 		--show)
 			SHOW=echo
 		;;
 		--std=*)
 			CXXSTD="${option#*=}"
-			shift
 		;;
 		--version)
 			echo "This is ALP/GraphBLAS version ${VERSION}"
@@ -57,6 +90,9 @@ while [[ $# -gt 0 ]]; do
 			echo "See the license file for details."
 			echo " "
 			ARGS+=("${option}")
+		;;
+		--help)
+			help="yes"
 		;;
 		--)
 			break
@@ -75,6 +111,7 @@ for i in "${!BACKENDS[@]}"; do
 		break
 	fi
 done
+COMPILER="${BACKENDCOMPILERS[${BACKENDID}]}"
 
 if [[ ${BACKENDID} -eq -1 ]]
 then
@@ -82,20 +119,32 @@ then
 	exit 255
 fi
 
+if [[ "${help}" == "yes" ]]; then
+	full_path="$0"
+	# try calling realpath (if it exists) to get the full path
+	real_path="$(realpath $0 2>&1)"
+	if [[ "$?" == "0" ]]; then
+		full_path=${real_path}
+	fi
+	print_help "${full_path}" "${BACKEND}" "${COMPILER}"
+	exit 0
+fi
+
+
 if [[ ! -d "${INCLUDEDIR}" ]]
 then
 	echo "Could not find GraphBLAS include directory in ${INCLUDEDIR}"
 	exit 255
 fi
 
-LFLAGS=
-if ${LINK}
-then
-	LFLAGS=${BACKENDLFLAGS[${BACKENDID}]}
+if [[ "${LINK}" == "dynamic" ]]; then
+	LIB="-l${UTILS_LIBRARY_NAME} -L '${UTILS_LIBRARY_DIR}' -l${BACKEND_LIBRARY_OUTPUT_NAME} -L '${LIBRARY_DIRS[${BACKENDID}]}'"
+else
+	LIB="'${UTILS_LIBRARY_DIR}/lib${UTILS_LIBRARY_NAME}.a'  '${LIBRARY_DIRS[${BACKENDID}]}/lib${BACKEND_LIBRARY_OUTPUT_NAME}.a'"
 fi
+LFLAGS="${LIB} ${BACKENDLFLAGS[${BACKENDID}]} @COMMON_LFLAGS_POST_SPACED@"
 
-COMPILER=${BACKENDCOMPILERS[${BACKENDID}]}
-
-CMD="${COMPILER} -std=${CXXSTD} -I'${INCLUDEDIR}' ${COMMONCFLAGS} ${BACKENDCFLAGS[${BACKENDID}]} "${ARGS[@]}" "$@" ${LFLAGS}"
+CMD="${COMPILER} -std=${CXXSTD} -I'${INCLUDEDIR}' ${BACKENDCFLAGS[${BACKENDID}]} ${ARGS[@]} "$@" ${LFLAGS}"
 
 ${SHOW} "${CMD}"
+
