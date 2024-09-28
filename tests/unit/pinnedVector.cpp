@@ -214,7 +214,8 @@ void grbProgram( const struct input< T > &in, struct output< T > &out ) {
 		case LEAST_SPARSE_CLEARED:
 			{
 				Vector< bool > mask( n );
-				rc = grb::setElement( mask, true, n/2 );
+				rc = grb::set( mask, false );
+				rc = rc ? rc : grb::setElement( mask, true, n/2 );
 				rc = rc ? rc : grb::set<
 						grb::descriptors::invert_mask
 					>( nonempty, mask, in.element );
