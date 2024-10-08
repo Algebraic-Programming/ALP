@@ -45,21 +45,17 @@
 
 
 template< typename T >
-using MySemiring = grb::semirings::PLUS_TIMES< T >;
+using MySemiring = grb::semirings::plusTimes< T >;
 
 template< typename T >
-using MyAddMonoid = grb::monoids::PLUS< T >;
+using MyAddMonoid = grb::monoids::plus< T >;
 
 template< typename T >
-using MyTimesMonoid = grb::monoids::TIMES< T >;
+using MyTimesMonoid = grb::monoids::times< T >;
 
-typedef MySemiring< double > DBL_SEMIRING;
-typedef MyAddMonoid< double > DBL_PLUS_MONOID;
-typedef MyTimesMonoid< double > DBL_TIMES_MONOID;
-
-static DBL_SEMIRING dblSemiring;
-static DBL_PLUS_MONOID dblPlusMonoid;
-static DBL_TIMES_MONOID dblTimesMonoid;
+static MySemiring< double > dblSemiring;
+static MyAddMonoid< double > dblPlusMonoid;
+static MyTimesMonoid< double > dblTimesMonoid;
 
 int initialize_fuselets() {
 	const grb::RC rc = grb::init();

@@ -388,7 +388,7 @@ namespace grb {
 	namespace semirings {
 
 		template< typename D1, typename D2 = D1, typename D3 = D2, typename D4 = D3 >
-		using PLUS_TIMES = grb::Semiring<
+		using plusTimes = grb::Semiring<
 			grb::operators::add< D1, D2, D3 >,
 			grb::operators::mul< D3, D4, D4 >,
 			grb::identities::zero, grb::identities::one
