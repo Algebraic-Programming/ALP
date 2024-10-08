@@ -255,3 +255,73 @@ int update_update_norm2(
 	}
 }
 
+int double_update(
+	double * const p,
+	const double alpha, const double * const r,
+	const double beta, const double * const v,
+	const double gamma,
+	const size_t n
+) {
+	// check trivial op
+	if( n == 0 ) {
+		return 0;
+	}
+
+	// dynamic checks
+	assert( p != nullptr );
+	assert( r != nullptr );
+	assert( v != nullptr );
+	grb::Vector< double > alp_p =
+		grb::internal::template wrapRawVector< double >( n, p );
+	const grb::Vector< double > alp_r =
+		grb::internal::template wrapRawVector< double >( n, r );
+	const grb::Vector< double > alp_v =
+		grb::internal::template wrapRawVector< double >( n, v );
+
+	grb::RC rc = grb::SUCCESS;
+	// p = gamma * p
+	if( gamma != 1.0 ) {
+		rc = grb::foldr( gamma, alp_p, dblTimesMonoid );
+	} else if( gamma == 0.0 || gamma == -0.0 ) {
+		rc = grb::set( alp_p, 0 );
+	}
+
+	if( beta != 0.0 && beta != -0.0 ) {
+		if( beta != 1.0 ) {
+			// p = (gamma .* p) / beta
+			rc = rc ? rc :
+				grb::foldr( static_cast< double >(1.0) / beta, alp_p, dblTimesMonoid );
+		}
+		// p = v + (gamma .* p) / beta
+		rc = rc ? rc : grb::foldr( alp_v, alp_p, dblPlusMonoid );
+		if( beta != 1.0 ) {
+			// p = beta .* v + gamma .* p
+			rc = rc ? rc : grb::foldr( beta, alp_p, dblTimesMonoid );
+		}
+	}
+
+	if( alpha != 0.0 && beta != -0.0 ) {
+		if( alpha != 1.0 ) {
+			// p = (beta .* v + gamma .* p) / alpha
+			rc = rc ? rc :
+				grb::foldr( static_cast< double >(1.0) / alpha, alp_p, dblTimesMonoid );
+		}
+		// p = r + (beta .* v + gamma .* p) / alpha
+		rc = rc ? rc : grb::foldr( alp_r, alp_p, dblPlusMonoid );
+		if( alpha != 1.0 ) {
+			// p = alpha .* r + beta .* v + gamma .* p
+			rc = rc ? rc : grb::foldr( alpha, alp_p, dblTimesMonoid );
+		}
+	}
+
+	// done
+	rc = rc ? rc : grb::wait();
+	if( rc != grb::SUCCESS ) {
+		std::cerr << "ALP/Fuselets double_update encountered error: "
+			<< grb::toString( rc ) << "\n";
+		return 255;
+	} else {
+		return 0;
+	}
+}
+

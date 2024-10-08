@@ -105,7 +105,7 @@ extern "C" {
 	 * @param[in]   z  The input vector \f$ z \f$
 	 * @param[in] beta The input scalar \f$ \beta \f$
 	 *
-	 * The pointers \a z should point to an array while \a beta points to a scalar.
+	 * The pointer \a z should point to an array while \a beta is a scalar.
 	 *
 	 * @param[in] ia The CRS row offset array of \f$ A \f$
 	 * @param[in] ij The CRS column index array of \f$ A \f$
@@ -148,14 +148,12 @@ extern "C" {
 	 * @param[in] alpha The input scalar \f$ \alpha \f$
 	 * @param[in] p     The input vector \f$ p \f$
 	 *
-	 * The pointer \a alpha should point to a scalar while \a p should point to an
-	 * array.
+	 * Here, \a alpha is a scalar while \a p is a pointer to an array.
 	 *
 	 * @param[in] beta The input scalar \f$ \beta \f$
 	 * @param[in] u    The input vector \f$ u \f$
 	 *
-	 * The pointer \a beta should point to a scalar while \a u should point to an
-	 * array.
+	 * Here, \a beta is a scalar while \a u is a pointer to an array.
 	 *
 	 * @param[in] n The size of the vectors \a x, \a r, \a p, and \a u.
 	 */
@@ -164,6 +162,34 @@ extern "C" {
 		const double alpha, const double * const p,               // input 1
 		const double beta, const double * const u,                // input 2
 		const size_t n                                            // size
+	);
+
+	/**
+	 * Computes \f$ p \f$ from:
+	 *
+	 *  - \f$ p = \alpha r + \beta v + \gamma p \f$
+	 *
+	 * @param[in,out] p     The input and output vector \f$ p \f$
+	 *
+	 * The pointer \a p should be a poitner to an array.
+	 *
+	 * @param[in] alpha The input scalar \f$ \alpha \f$
+	 * @param[in] r     The input vector \f$ r \f$
+	 * @param[in] beta  The input scalar \f$ \beta \f$
+	 * @param[in] v     The input vector \f$ v \f$
+	 * @param[in] gamma The input scalar \f$ \gamma \f$
+	 *
+	 * Here, \a alpha, \a beta, \a gamma are scalars while \a p, \a r, and \a v are
+	 * pointers to arrays.
+	 *
+	 * @param[in] n The size of the vectors \a p, \a r, and \a v.
+	 */
+	int double_update(
+		double * const p,                           // output
+		const double alpha, const double * const r, // input 1
+		const double beta, const double * const v,  // input 2
+		const double gamma,                         // input 3
+		const size_t n                              // size
 	);
 
 #ifdef __cplusplus
