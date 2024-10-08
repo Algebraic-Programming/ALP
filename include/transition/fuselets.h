@@ -86,6 +86,10 @@ extern "C" {
 	 */
 	int finalize_fuselets();
 
+	int spmv_dot(); // TODO
+
+	int spmv_dot_dot(); // TODO
+
 	/**
 	 * Computes \f$ p, u, \alpha \f$ from:
 	 *
@@ -191,6 +195,8 @@ extern "C" {
 		const double gamma,                         // input 3
 		const size_t n                              // size
 	);
+
+	int doubleUpdate_update_dot(); // TODO
 
 #ifdef __cplusplus
 } // end extern "C"
