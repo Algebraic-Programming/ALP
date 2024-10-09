@@ -277,7 +277,7 @@ int double_update(
 	grb::RC rc = grb::SUCCESS;
 	// p = gamma * p
 	if( gamma != 1.0 ) {
-		rc = grb::foldr( gamma, alp_p, dblTimesMonoid );
+		rc = grb::foldr< grb::descriptors::dense >( gamma, alp_p, dblTimesMonoid );
 	} else if( gamma == 0.0 || gamma == -0.0 ) {
 		rc = grb::set( alp_p, 0 );
 	}
@@ -286,13 +286,17 @@ int double_update(
 		if( beta != 1.0 ) {
 			// p = (gamma .* p) / beta
 			rc = rc ? rc :
-				grb::foldr( static_cast< double >(1.0) / beta, alp_p, dblTimesMonoid );
+				grb::foldr< grb::descriptors::dense >(
+					static_cast< double >(1.0) / beta, alp_p, dblTimesMonoid
+				);
 		}
 		// p = v + (gamma .* p) / beta
-		rc = rc ? rc : grb::foldr( alp_v, alp_p, dblPlusMonoid );
+		rc = rc ? rc : grb::foldr< grb::descriptors::dense >(
+			alp_v, alp_p, dblPlusMonoid );
 		if( beta != 1.0 ) {
 			// p = beta .* v + gamma .* p
-			rc = rc ? rc : grb::foldr( beta, alp_p, dblTimesMonoid );
+			rc = rc ? rc : grb::foldr< grb::descriptors::dense >(
+				beta, alp_p, dblTimesMonoid );
 		}
 	}
 
@@ -300,13 +304,16 @@ int double_update(
 		if( alpha != 1.0 ) {
 			// p = (beta .* v + gamma .* p) / alpha
 			rc = rc ? rc :
-				grb::foldr( static_cast< double >(1.0) / alpha, alp_p, dblTimesMonoid );
+				grb::foldr< grb::descriptors::dense >(
+					static_cast< double >(1.0) / alpha, alp_p, dblTimesMonoid );
 		}
 		// p = r + (beta .* v + gamma .* p) / alpha
-		rc = rc ? rc : grb::foldr( alp_r, alp_p, dblPlusMonoid );
+		rc = rc ? rc : grb::foldr< grb::descriptors::dense >(
+			alp_r, alp_p, dblPlusMonoid );
 		if( alpha != 1.0 ) {
 			// p = alpha .* r + beta .* v + gamma .* p
-			rc = rc ? rc : grb::foldr( alpha, alp_p, dblTimesMonoid );
+			rc = rc ? rc : grb::foldr< grb::descriptors::dense >(
+				alpha, alp_p, dblTimesMonoid );
 		}
 	}
 
