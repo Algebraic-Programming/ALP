@@ -42,7 +42,8 @@
  * snippets from other fuselets:
  *  - writing the spec for a new fuselet: 12 minutes
  *  - implementing the new fuselet: 8 minutes
- * (This was measured for spmv_dot_norm2.)
+ * (This was measured for spmv_dot_norm2. It does include code with proper error
+ * handling, but does not include any time required for testing the result.)
  */
 
 #ifndef _H_ALP_FUSELETS
