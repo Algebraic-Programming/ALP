@@ -501,3 +501,121 @@ int double_update(
 	}
 }
 
+int doubleUpdate_update_dot(
+	double * const x, double * const r, double * const theta,
+	const double beta, const double * const y,
+	const double omega, const double * const z,
+	const double alpha,
+	const double eta, const double * const t,
+	const double zeta,
+	const size_t n
+) {
+	// check trivial dispatch
+	if( n == 0 ) {
+		return 0;
+	}
+
+	// dynamic checks
+	assert( x != nullptr );
+	assert( r != nullptr );
+	assert( theta != nullptr );
+	assert( y != nullptr );
+	assert( z != nullptr );
+	assert( t != nullptr );
+
+	// get outputs first
+	grb::Vector< double > alp_x =
+		grb::internal::template wrapRawVector< double >( n, x );
+	grb::Vector< double > alp_r =
+		grb::internal::template wrapRawVector< double >( n, r );
+	double &alp_theta = *theta;
+
+	// do first operation
+	grb::RC rc = grb::SUCCESS;
+	const grb::Vector< double > alp_z =
+		grb::internal::template wrapRawVector< double >( n, z );
+	const grb::Vector< double > alp_y =
+		grb::internal::template wrapRawVector< double >( n, y );
+	if( alpha == 0.0 || alpha == -0.0 ) {
+		rc = grb::set< grb::descriptors::dense >( alp_x, 0.0 );
+	} else if( alpha != 1.0 ) {
+		rc = grb::foldr< grb::descriptors::dense >( alpha, alp_x, dblTimesMonoid );
+	}
+	if( omega != 0.0 && omega != -0.0 ) {
+		if( omega != 1.0 ) {
+			rc = rc ? rc : grb::foldr< grb::descriptors::dense >(
+				static_cast< double >(1.0) / omega, alp_x, dblTimesMonoid );
+		}
+		rc = rc ? rc : grb::foldr< grb::descriptors::dense >(
+			alp_z, alp_x, dblPlusMonoid );
+		if( omega != 1.0 ) {
+			rc = rc ? rc : grb::foldr< grb::descriptors::dense >(
+				omega, alp_x, dblTimesMonoid );
+		}
+	}
+	if( beta != 0.0 && beta != -0.0 ) {
+		if( beta != 1.0 ) {
+			rc = rc ? rc : grb::foldr< grb::descriptors::dense >(
+				static_cast< double >(1.0) / beta, alp_x, dblTimesMonoid );
+		}
+		rc = rc ? rc : grb::foldr< grb::descriptors::dense >(
+			alp_z, alp_x, dblPlusMonoid );
+		if( beta != 1.0 ) {
+			rc = rc ? rc : grb::foldr< grb::descriptors::dense >(
+				beta, alp_x, dblTimesMonoid );
+		}
+	}
+	if( rc != grb::SUCCESS ) {
+		std::cerr << "ALP/Fuselets doubleUpdate_update_dot "
+			<< "encountered error at operation 1: " << grb::toString( rc ) << "\n";
+		return 10;
+	}
+
+	// perform operation 2:
+	const grb::Vector< double > alp_t =
+		grb::internal::template wrapRawVector< double >( n, t );
+	if( zeta == 0.0 || zeta == -0.0 ) {
+		rc = grb::set< grb::descriptors::dense >( alp_r, 0.0 );
+	} else if( zeta != 1.0 ) {
+		rc = grb::foldr< grb::descriptors::dense >(
+			zeta, alp_r, dblTimesMonoid );
+	}
+	if( eta != 0.0 && eta != -0.0 ) {
+		if( eta != 1.0 ) {
+			rc = rc ? rc : grb::foldr< grb::descriptors::dense >(
+				static_cast< double >(1.0) / eta, alp_r, dblTimesMonoid );
+		}
+		rc = rc ? rc : grb::foldr< grb::descriptors::dense >(
+			alp_t, alp_r, dblPlusMonoid );
+		if( eta != 1.0 ) {
+			rc = rc ? rc : grb::foldr< grb::descriptors::dense >(
+				eta, alp_r, dblTimesMonoid );
+		}
+	}
+	if( rc != grb::SUCCESS ) {
+		std::cerr << "ALP/Fuselets doubleUpdate_update_dot "
+			<< "encountered error at operation 2: " << grb::toString( rc ) << "\n";
+		return 20;
+	}
+
+	// perform last op:
+	alp_theta = 0.0;
+	rc = grb::dot< grb::descriptors::dense >(
+		alp_theta, alp_r, alp_r, dblSemiring );
+	if( rc != grb::SUCCESS ) {
+		std::cerr << "ALP/Fuselets doubleUpdate_update_dot "
+			<< "encountered error at operation 3: " << grb::toString( rc ) << "\n";
+		return 30;
+	}
+
+	// done
+	rc = grb::wait( alp_x, alp_r );
+	if( rc != grb::SUCCESS ) {
+		std::cerr << "ALP/Fuselets doubleUpdate_update_dot encountered error: "
+			<< grb::toString( rc ) << "\n";
+		return 255;
+	} else {
+		return 0;
+	}
+}
+

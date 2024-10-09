@@ -262,7 +262,7 @@ extern "C" {
 	 *
 	 * @param[in,out] p     The input and output vector \f$ p \f$
 	 *
-	 * The pointer \a p should be a poitner to an array.
+	 * The pointer \a p should be a pointer to an array.
 	 *
 	 * @param[in] alpha The input scalar \f$ \alpha \f$
 	 * @param[in] r     The input vector \f$ r \f$
@@ -286,7 +286,46 @@ extern "C" {
 		const size_t n                              // size
 	);
 
-	int doubleUpdate_update_dot(); // TODO
+	/**
+	 * Computes \f$ x, r, \theta \f$ from:
+	 *
+	 *  - \f$ x = \beta y + \omega z + \alpha x \f$,
+	 *  - \f$ r = \eta t + \zeta r \f$,
+	 *  - \f$ \theta = ||r||_2^2 \f$.
+	 *
+	 * @param[in,out] x     The input and output vector \f$ x \f$
+	 * @param[in,out] r     The input and output vector \f$ r \f$
+	 * @param[out]    theta The output scalar \f$ \theta \f$
+	 *
+	 * Here, \a x and \a r are pointers to arrays while \a theta is a pointer to
+	 * a scalar. Any initial contents of what \a theta points to, will be ignored.
+	 * If any initial contents of \a x should be ignored, set \a alpha to zero. If
+	 * any initial contents of \a r should be ignored, set \a zeta to zero.
+	 *
+	 * @param[in] beta  The input scalar \f$ \beta \f$
+	 * @param[in] y     The input vector \f$ y \f$
+	 * @param[in] omega The input scalar \f$ \omega \f$
+	 * @param[in] z     The input vector \f$ z \f$
+	 * @param[in] alpha The input scalar \f$ \alpha \f$
+	 *
+	 * @param[in] eta  The input scalar \f$ \eta \f$
+	 * @param[in] t    The input vector \f$ t \f$
+	 * @param[in] zeta The input scalar \f$ \zeta \f$
+	 *
+	 * @param[in] n The vector size (in number of elements).
+	 *
+	 * The sizes of the vectors \a x, \a r, \a y, \a z, and \a t point to, should
+	 * equal \a n.
+	 */
+	int doubleUpdate_update_dot(
+		double * const x, double * const r, double * const theta, // output
+		const double beta, const double * const y,
+		const double omega, const double * const z,
+		const double alpha,                                       // input 1
+		const double eta, const double * const t,
+		const double zeta,                                        // input 2
+		const size_t n                                            // size
+	);
 
 #ifdef __cplusplus
 } // end extern "C"
