@@ -36,6 +36,13 @@
  * @{
  *
  * \todo add documentation
+ *
+ * Typical example work estimation for adding a new fuselets, assuming
+ * familiarity with the use of ALP and allowing copying (and modifying)
+ * snippets from other fuselets:
+ *  - writing the spec for a new fuselet: 12 minutes
+ *  - implementing the new fuselet: 8 minutes
+ * (This was measured for spmv_dot_norm2.)
  */
 
 #ifndef _H_ALP_FUSELETS
