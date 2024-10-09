@@ -75,6 +75,85 @@ int finalize_fuselets() {
 	}
 }
 
+int spmv_dot(
+	double * const v, double * const beta,
+	const size_t * const ia, const unsigned int * const ij,
+	const double * const iv, const double * const y,
+	const double alpha,
+	const double * const r,
+	const size_t n
+) {
+	// typedef our matrix type, which depends on the above argument types
+	typedef grb::Matrix<
+			double,                       // the matrix value type
+			grb::config::default_backend, // use the compile-time selected backend (nonblocking)
+			unsigned int, unsigned int,   // the types of the row- and column-indices
+			size_t                        // the type of the ia array
+		> MyMatrixType;
+
+	// catch trivial op
+	if( n == 0 ) {
+		return 0;
+	}
+
+	// dynamic checks
+	assert( v != nullptr );
+	assert( alpha != nullptr );
+	assert( ia != nullptr );
+	assert( ij != nullptr );
+	assert( iv != nullptr );
+	assert( r != nullptr );
+
+	grb::Vector< double > alp_v =
+		grb::internal::template wrapRawVector< double >( n, v );
+	const MyMatrixType alp_A = grb::internal::wrapCRSMatrix( iv, ij, ia, n, n );
+	const grb::Vector< double > alp_y =
+		grb::internal::template wrapRawVector< double >( n, y );
+
+	// perform operation 1
+	grb::RC rc = grb::SUCCESS;
+	if( alpha == 0.0 || alpha == -0.0 ) {
+		rc = grb::set< grb::descriptors::dense >( alp_v, 0.0 );
+	} else {
+		rc = grb::foldr< grb::descriptors::dense >( alpha, alp_v, dblTimesMonoid );
+	}
+
+	rc = rc ? rc : grb::mxv<
+			grb::descriptors::dense | grb::descriptors::force_row_major
+		>(
+			alp_v, alp_A, alp_y, dblSemiring
+		);
+
+	if( rc != grb::SUCCESS ) {
+		std::cerr << "ALP/Fuselets spmv_dot encountered error at operation 1: "
+			<< grb::toString( rc ) << "\n";
+		return 10;
+	}
+
+	// perform operation 2
+	const grb::Vector< double > alp_r =
+		grb::internal::template wrapRawVector< double >( n, r );
+	double &alp_beta = *beta;
+	alp_beta = 0.0;
+	rc = rc ? rc : grb::dot< grb::descriptors::dense >(
+		alp_beta, alp_r, alp_v, dblSemiring );
+	if( rc != grb::SUCCESS ) {
+		std::cerr << "ALP/Fuselets spmv_dot encountered error at operation 2: "
+			<< grb::toString( rc ) << "\n";
+		return 20;
+	}
+
+	// done
+	rc = rc ? rc : grb::wait( alp_v );
+	if( rc != grb::SUCCESS ) {
+		std::cerr << "ALP/Fuselets spmv_dot encountered error: "
+			<< grb::toString( rc ) << "\n";
+		return 255;
+	} else {
+		return 0;
+	}
+}
+
 int update_spmv_dot(
 	double * const p, double * const u, double * const alpha,
 	const double * const z, const double beta,
@@ -161,7 +240,7 @@ int update_spmv_dot(
 	}
 
 	// done
-	ret = grb::wait();
+	ret = grb::wait( alp_p, alp_u );
 	if( ret == grb::SUCCESS ) {
 		return 0;
 	} else {
@@ -241,7 +320,7 @@ int update_update_norm2(
 	}
 
 	// done
-	ret = grb::wait();
+	ret = grb::wait( alp_x, alp_r );
 	if( ret != grb::SUCCESS ) {
 		std::cerr << "ALP/Fuselets update_spmv_dot encountered error: "
 			<< grb::toString( ret ) << "\n";
@@ -318,7 +397,7 @@ int double_update(
 	}
 
 	// done
-	rc = rc ? rc : grb::wait();
+	rc = rc ? rc : grb::wait( alp_p );
 	if( rc != grb::SUCCESS ) {
 		std::cerr << "ALP/Fuselets double_update encountered error: "
 			<< grb::toString( rc ) << "\n";

@@ -86,8 +86,52 @@ extern "C" {
 	 */
 	int finalize_fuselets();
 
-	int spmv_dot(); // TODO
+	/**
+	 * Computes \f$ v, \beta \f$ from:
+	 *
+	 *  - \f$ v = Ay + \alpha v \f$,
+	 *  - \f$ \beta = (r,v) \f$.
+	 *
+	 * @param[in,out] v    The input and output vector \f$ v \f$
+	 * @param[out]    beta The output scalar \f$ \beta \f$
+	 *
+	 * The pointer \a v should point to an array, while the pointer \a beta should
+	 * point to a scalar. In the case the initial values of \a v should be ignored,
+	 * set the argument \a alpha to zero.
+	 *
+	 * @param[in] alpha The input scalar \f$ \alpha \f$
+	 * @param[in] ia    The CRS row offset array of \f$ A \f$
+	 * @param[in] ij    The CRS column index array of \f$ A \f$
+	 * @param[in] iv    The CRS value array of \f$ A \f$
+	 * @param[in] y     The input vector \f$ y \f$
+	 *
+	 * Here, \a alpha is a scalar value. The pointers \a ia, \a ij, and \a iv
+	 * correspond to a CRS of \f$ A \f$. The pointer \a y should point to an array.
+	 *
+	 * @param[in] r The input vector \f$ r \f$
+	 *
+	 * The pointer \a r should point to an array.
+	 *
+	 * @param[in] n The row-wise \em and column-wise dimension of \f$ A \f$
+	 *
+	 * The sizes of the arrays pointed to by \a v, \a y, and \a r should have size
+	 * \f$ n \f$.
+	 *
+	 * @returns Zero if and only if the call executed successfully.
+	 * @returns A nonzero error code otherwise.
+	 */
+	int spmv_dot(
+		double * const v, double * const beta,                    // outputs
+		const size_t * const ia, const unsigned int * const ij,
+		const double * const iv, const double * const y,
+		const double alpha,                                       // input 1
+		const double * const r,                                   // input 2
+		const size_t n                                            // size
+	);
 
+	/**
+	 * Computes \f$ something \f$
+	 */
 	int spmv_dot_dot(); // TODO
 
 	/**
@@ -160,6 +204,9 @@ extern "C" {
 	 * Here, \a beta is a scalar while \a u is a pointer to an array.
 	 *
 	 * @param[in] n The size of the vectors \a x, \a r, \a p, and \a u.
+	 *
+	 * @returns Zero if and only if the call executed successfully.
+	 * @returns A nonzero error code otherwise.
 	 */
 	int update_update_norm2(
 		double * const x, double * const r, double * const norm2, // outputs
@@ -187,6 +234,9 @@ extern "C" {
 	 * pointers to arrays.
 	 *
 	 * @param[in] n The size of the vectors \a p, \a r, and \a v.
+	 *
+	 * @returns Zero if and only if the call executed successfully.
+	 * @returns A nonzero error code otherwise.
 	 */
 	int double_update(
 		double * const p,                           // output
