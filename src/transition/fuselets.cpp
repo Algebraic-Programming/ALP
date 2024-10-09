@@ -99,10 +99,11 @@ int spmv_dot(
 
 	// dynamic checks
 	assert( v != nullptr );
-	assert( alpha != nullptr );
+	assert( beta != nullptr );
 	assert( ia != nullptr );
 	assert( ij != nullptr );
 	assert( iv != nullptr );
+	assert( y != nullptr );
 	assert( r != nullptr );
 
 	grb::Vector< double > alp_v =
@@ -180,10 +181,12 @@ int spmv_dot_norm2(
 
 	// dynamic checks
 	assert( v != nullptr );
-	assert( alpha != nullptr );
+	assert( beta != nullptr );
+	assert( gamma != nullptr );
 	assert( ia != nullptr );
 	assert( ij != nullptr );
 	assert( iv != nullptr );
+	assert( y != nullptr );
 	assert( r != nullptr );
 
 	grb::Vector< double > alp_v =
@@ -440,6 +443,8 @@ int double_update(
 	assert( p != nullptr );
 	assert( r != nullptr );
 	assert( v != nullptr );
+
+	// get container views
 	grb::Vector< double > alp_p =
 		grb::internal::template wrapRawVector< double >( n, p );
 	const grb::Vector< double > alp_r =
