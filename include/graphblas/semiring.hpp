@@ -385,14 +385,397 @@ namespace grb {
 
 	// after all of the standard definitions, declare some standard semirings
 
+	/**
+	 * A namespace that contains a set of standard semirings.
+	 *
+	 * Standard semirings include:
+	 *  - #plusTimes, for numerical linear algebra
+	 *  - #minPlus, for, e.g., shortest-path graph queries
+	 *  - #maxPlus, for, e.g., longest-path graph queries
+	 *  - #minTimes, for, e.g., least-reliable-path graph queries
+	 *  - #maxTimes, for, e.g., most-reliable-path graph queries,
+	 *  - #boolean, for, e.g., reachability graph queries.
+	 *  - etc.
+	 *
+	 * A list of all pre-defined semirings, in addition to the above, follows:
+	 * #minMax, #maxMin, #plusMin, #lorLand, #landLor, #lxorLand, #lxnorLor,
+	 * #neLand, and #eqLor.
+	 *
+	 * \note Here, lor stands for logical-or and land stands for logical-and, while
+	 *       ne stands for not-equal and eq for equal.
+	 *
+	 * \note The #lorLand semiring over the Boolean domains is the same as the
+	 *       #boolean semiring.
+	 *
+	 * \note The #lxorLand semiring is the same as the #neLand semiring.
+	 *
+	 * \note The #lxnorLor semiring is the same as the #eqLor semiring.
+	 *
+	 * \warning Some of these pre-defined semirings are not proper semirings over
+	 *          all domains. For example, the #maxPlus semiring over unsigned
+	 *          integers would have both max and + identities be zero, and thus
+	 *          cannot act as an annihilator over +.
+	 *
+	 * \warning While ALP does a best-effort in catching erroneous semirings, by
+	 *          virtue of templates it cannot catch all erroneous semirings. E.g.,
+	 *          continuing the above #maxPlus semiring example: even if ALP
+	 *          prevents the definition of #maxPlus semirings over unsigned types
+	 *          by relying on the <tt>std::is_unsigned</tt> type trait, a user
+	 *          could still define their own unsigned integer type that erroneously
+	 *          overloads this type trait to <tt>false</tt>. We cannot catch such
+	 *          errors and consider those programming errors.
+	 *
+	 * \note We do not pre-define any improper semiring, such as plusMin, that do
+	 *       appear in the GraphBLAS C specification. Instead, ALP has, for every
+	 *       primitive that takes a semiring, a variant of that primitive that
+	 *       instead of a semiring, takes 1) a cummutative monoid as an additive
+	 *       operator, and 2) any binary operator as the multiplicative operator.
+	 *       These variants do not (and may not) rely on the additive identity
+	 *       being an annihilator over the multiplicative operation, and do not
+	 *       (may not) rely on any distributive property over the two operations.
+	 *
+	 * Each semiring except #boolean takes up to four domains as template
+	 * arguments, while semirings as a pure mathematical concept take only a single
+	 * domain. The first three domains indicate the left-hand input domain, the
+	 * right-hand input domain, and the output domain of the multiplicative monoid,
+	 * respectively. The third and fourth domains indicate the left-hand and right-
+	 * hand input domain of the additive monoid. The fourth domain also indicates
+	 * the output domain of the additive monoid.
+	 *
+	 * \note This particular extension of semirings to four domains is rooted in
+	 *       C-Monoid categories. All useful mixed-domain semirings ALP has
+	 *       presently been applied with are C-Monoid categories, while since
+	 *       assuming this underlying algebra, the ALP code base that relates to
+	 *       algebraic structures, algebraic type traits, and their application,
+	 *       has simplified significantly.
+	 */
 	namespace semirings {
 
+		/**
+		 * The plusTimes semiring.
+		 *
+		 * Uses \em addition (plus) as the additive commutative monoid and
+		 * \em multiplication (times) as the multiplicative monoid. The identities
+		 * for each monoid are zero and one, respectively.
+		 *
+		 * The three domains of the multiplicative monoid are:
+		 *
+		 * @tparam D1 The left-hand input domain of the multiplicative monoid
+		 * @tparam D2 The right-hand input domain of the multiplicative monoid
+		 * @tparam D3 The output domain of the multiplicative monoid
+		 *
+		 * The domains of the additive monoid are \a D3 and:
+		 *
+		 * @tparam D4 The right-hand input domain of the additive monoid, as well as
+		 *            the output domain of the additive monoid.
+		 */
 		template< typename D1, typename D2 = D1, typename D3 = D2, typename D4 = D3 >
 		using plusTimes = grb::Semiring<
-			grb::operators::add< D1, D2, D3 >,
-			grb::operators::mul< D3, D4, D4 >,
+			grb::operators::add< D3, D4, D4 >,
+			grb::operators::mul< D1, D2, D3 >,
 			grb::identities::zero, grb::identities::one
 		>;
+
+		/**
+		 * The minPlus semiring.
+		 *
+		 * Uses \em min as the additive commutative monoid and \em addition as the
+		 * multiplicative monoid. The identities for each monoid are \f$ \infty \f$
+		 * and zero, respectively.
+		 *
+		 * The three domains of the multiplicative monoid are:
+		 *
+		 * @tparam D1 The left-hand input domain of the multiplicative monoid
+		 * @tparam D2 The right-hand input domain of the multiplicative monoid
+		 * @tparam D3 The output domain of the multiplicative monoid
+		 *
+		 * The domains of the additive monoid are \a D3 and:
+		 *
+		 * @tparam D4 The right-hand input domain of the additive monoid, as well as
+		 *            the output domain of the additive monoid.
+		 */
+		template< typename D1, typename D2 = D1, typename D3 = D2, typename D4 = D3 >
+		using minPlus = grb::Semiring<
+			grb::operators::min< D3, D4, D4 >,
+			grb::operators::add< D1, D2, D3 >,
+			grb::identities::infinity, grb::identities::zero
+		>;
+
+		/**
+		 * The maxPlus semiring.
+		 *
+		 * Uses \em max as the additive commutative monoid and \em addition as the
+		 * multiplicative monoid. The identities for each monoid are \f$ -\infty \f$
+		 * and zero, respectively.
+		 *
+		 * The three domains of the multiplicative monoid are:
+		 *
+		 * @tparam D1 The left-hand input domain of the multiplicative monoid
+		 * @tparam D2 The right-hand input domain of the multiplicative monoid
+		 * @tparam D3 The output domain of the multiplicative monoid
+		 *
+		 * The domains of the additive monoid are \a D3 and:
+		 *
+		 * @tparam D4 The right-hand input domain of the additive monoid, as well as
+		 *            the output domain of the additive monoid.
+		 */
+		template< typename D1, typename D2 = D1, typename D3 = D2, typename D4 = D3 >
+		using maxPlus = grb::Semiring<
+			grb::operators::max< D3, D4, D4 >,
+			grb::operators::add< D1, D2, D3 >,
+			grb::identities::negative_infinity, grb::identities::zero
+		>;
+
+		/**
+		 * The minTimes semiring.
+		 *
+		 * Uses \em min as the additive commutative monoid and \em multiplication as
+		 * the multiplicative monoid. The identities for each monoid are
+		 * \f$ \infty \f$ and one, respectively.
+		 *
+		 * The three domains of the multiplicative monoid are:
+		 *
+		 * @tparam D1 The left-hand input domain of the multiplicative monoid
+		 * @tparam D2 The right-hand input domain of the multiplicative monoid
+		 * @tparam D3 The output domain of the multiplicative monoid
+		 *
+		 * The domains of the additive monoid are \a D3 and:
+		 *
+		 * @tparam D4 The right-hand input domain of the additive monoid, as well as
+		 *            the output domain of the additive monoid.
+		 */
+		template< typename D1, typename D2 = D1, typename D3 = D2, typename D4 = D3 >
+		using minTimes = grb::Semiring<
+			grb::operators::min< D3, D4, D4 >,
+			grb::operators::mul< D1, D2, D3 >,
+			grb::identities::infinity, grb::identities::one
+		>;
+
+		/**
+		 * The maxTimes semiring.
+		 *
+		 * Uses \em max as the additive commutative monoid and \em multiplication as
+		 * the multiplicative monoid. The identities for each monoid are
+		 * \f$ -infty \f$ and one, respectively.
+		 *
+		 * The three domains of the multiplicative monoid are:
+		 *
+		 * @tparam D1 The left-hand input domain of the multiplicative monoid
+		 * @tparam D2 The right-hand input domain of the multiplicative monoid
+		 * @tparam D3 The output domain of the multiplicative monoid
+		 *
+		 * The domains of the additive monoid are \a D3 and:
+		 *
+		 * @tparam D4 The right-hand input domain of the additive monoid, as well as
+		 *            the output domain of the additive monoid.
+		 */
+		template< typename D1, typename D2 = D1, typename D3 = D2, typename D4 = D3 >
+		using maxTimes = grb::Semiring<
+			grb::operators::max< D3, D4, D4 >,
+			grb::operators::mul< D1, D2, D3 >,
+			grb::identities::negative_infinity, grb::identities::one
+		>;
+
+		/**
+		 * The minMax semiring.
+		 *
+		 * Uses \em min as the additive commutative monoid and \em max as the
+		 * multiplicative monoid. The identities for each monoid are \f$ \infty \f$
+		 * and \f$ -\infty \f$, respectively.
+		 *
+		 * The three domains of the multiplicative monoid are:
+		 *
+		 * @tparam D1 The left-hand input domain of the multiplicative monoid
+		 * @tparam D2 The right-hand input domain of the multiplicative monoid
+		 * @tparam D3 The output domain of the multiplicative monoid
+		 *
+		 * The domains of the additive monoid are \a D3 and:
+		 *
+		 * @tparam D4 The right-hand input domain of the additive monoid, as well as
+		 *            the output domain of the additive monoid.
+		 */
+		template< typename D1, typename D2 = D1, typename D3 = D2, typename D4 = D3 >
+		using minMax = grb::Semiring<
+			grb::operators::min< D3, D4, D4 >,
+			grb::operators::max< D1, D2, D3 >,
+			grb::identities::infinity, grb::identities::negative_infinity
+		>;
+
+		/**
+		 * The maxMin semiring.
+		 *
+		 * Uses \em max as the additive commutative monoid and \em min as the
+		 * multiplicative monoid. The identities for each monoid are \f$ -\infty \f$
+		 * and \f$ \infty \f$, respectively.
+		 *
+		 * The three domains of the multiplicative monoid are:
+		 *
+		 * @tparam D1 The left-hand input domain of the multiplicative monoid
+		 * @tparam D2 The right-hand input domain of the multiplicative monoid
+		 * @tparam D3 The output domain of the multiplicative monoid
+		 *
+		 * The domains of the additive monoid are \a D3 and:
+		 *
+		 * @tparam D4 The right-hand input domain of the additive monoid, as well as
+		 *            the output domain of the additive monoid.
+		 */
+		template< typename D1, typename D2 = D1, typename D3 = D2, typename D4 = D3 >
+		using maxMin = grb::Semiring<
+			grb::operators::max< D3, D4, D4 >,
+			grb::operators::min< D1, D2, D3 >,
+			grb::identities::negative_infinity, grb::identities::infinity
+		>;
+
+		/**
+		 * The logical-or logical-and semiring.
+		 *
+		 * Uses \em or as the additive commutative monoid and \em and as the
+		 * multiplicative monoid. The identities for each monoid are \em false and
+		 * \em true, respectively.
+		 *
+		 * The three domains of the multiplicative monoid are:
+		 *
+		 * @tparam D1 The left-hand input domain of the multiplicative monoid
+		 * @tparam D2 The right-hand input domain of the multiplicative monoid
+		 * @tparam D3 The output domain of the multiplicative monoid
+		 *
+		 * The domains of the additive monoid are \a D3 and:
+		 *
+		 * @tparam D4 The right-hand input domain of the additive monoid, as well as
+		 *            the output domain of the additive monoid.
+		 */
+		template< typename D1, typename D2 = D1, typename D3 = D2, typename D4 = D3 >
+		using lorLand = grb::Semiring<
+			grb::operators::logical_or< D3, D4, D4 >,
+			grb::operators::logical_and< D1, D2, D3 >,
+			grb::identities::logical_false, grb::identities::logical_true
+		>;
+
+		/**
+		 * The Boolean semiring.
+		 *
+		 * Uses \em or as the additive commutative monoid and \em and as the
+		 * multiplicative monoid. The identities for each monoid are \em false and
+		 * \em true, respectively. All domains are fixed to <tt>bool</tt>.
+		 */
+		using boolean = lorLand< bool >;
+
+		/**
+		 * The logical-and logical-or semiring.
+		 *
+		 * Uses \em and as the additive commutative monoid and \em or as the
+		 * multiplicative monoid. The identities for each monoid are \em true and
+		 * em false, respectively.
+		 *
+		 * The three domains of the multiplicative monoid are:
+		 *
+		 * @tparam D1 The left-hand input domain of the multiplicative monoid
+		 * @tparam D2 The right-hand input domain of the multiplicative monoid
+		 * @tparam D3 The output domain of the multiplicative monoid
+		 *
+		 * The domains of the additive monoid are \a D3 and:
+		 *
+		 * @tparam D4 The right-hand input domain of the additive monoid, as well as
+		 *            the output domain of the additive monoid.
+		 */
+		template< typename D1, typename D2 = D1, typename D3 = D2, typename D4 = D3 >
+		using landLor = grb::Semiring<
+			grb::operators::logical_and< D3, D3, D4 >,
+			grb::operators::logical_or< D1, D2, D3 >,
+			grb::identities::logical_true, grb::identities::logical_false
+		>;
+
+		/**
+		 * The exclusive-logical-or logical-and semiring.
+		 *
+		 * Uses <em>not-equals</em> as the additive commutative monoid and logical-and
+		 * as the multiplicative monoid. The identities for each monoid are \em false
+		 * and \em true, respectively.
+		 *
+		 * The three domains of the multiplicative monoid are:
+		 *
+		 * @tparam D1 The left-hand input domain of the multiplicative monoid
+		 * @tparam D2 The right-hand input domain of the multiplicative monoid
+		 * @tparam D3 The output domain of the multiplicative monoid
+		 *
+		 * The domains of the additive monoid are \a D3 and:
+		 *
+		 * @tparam D4 The right-hand input domain of the additive monoid, as well as
+		 *            the output domain of the additive monoid.
+		 */
+		template< typename D1, typename D2 = D1, typename D3 = D2, typename D4 = D3 >
+		using lxorLand = grb::Semiring<
+			grb::operators::not_equal< D3, D3, D4 >,
+			grb::operators::logical_and< D1, D2, D3 >,
+			grb::identities::logical_false, grb::identities::logical_true
+		>;
+
+		/**
+		 * The not-equals logical-and semiring.
+		 *
+		 * Uses <em>not-equal</em> as the additive commutative monoid and \em and as
+		 * the multiplicative monoid. The identities for each monoid are \em false and
+		 * \em true, respectively.
+		 *
+		 * The three domains of the multiplicative monoid are:
+		 *
+		 * @tparam D1 The left-hand input domain of the multiplicative monoid
+		 * @tparam D2 The right-hand input domain of the multiplicative monoid
+		 * @tparam D3 The output domain of the multiplicative monoid
+		 *
+		 * The domains of the additive monoid are \a D3 and:
+		 *
+		 * @tparam D4 The right-hand input domain of the additive monoid, as well as
+		 *            the output domain of the additive monoid.
+		 */
+		template< typename D1, typename D2 = D1, typename D3 = D2, typename D4 = D3 >
+		using neLand = lxorLand< D1, D2, D3, D4 >;
+
+		/**
+		 * The negated-exclusive-or logical-or semring.
+		 *
+		 * Uses <em>negated exclusive or</em> as the additive commutative monoid and
+		 * \em or as the multiplicative monoid. The identities for each monoid are
+		 * \em true and \em false, respectively.
+		 *
+		 * The three domains of the multiplicative monoid are:
+		 *
+		 * @tparam D1 The left-hand input domain of the multiplicative monoid
+		 * @tparam D2 The right-hand input domain of the multiplicative monoid
+		 * @tparam D3 The output domain of the multiplicative monoid
+		 *
+		 * The domains of the additive monoid are \a D3 and:
+		 *
+		 * @tparam D4 The right-hand input domain of the additive monoid, as well as
+		 *            the output domain of the additive monoid.
+		 */
+		template< typename D1, typename D2 = D1, typename D3 = D2, typename D4 = D3 >
+		using xnorLor = grb::Semiring<
+			grb::operators::equal< D3, D4, D4 >,
+			grb::operators::logical_or< D1, D2, D3 >,
+			grb::identities::logical_true, grb::identities::logical_false
+		>;
+
+		/**
+		 * The equals logical-or semiring.
+		 *
+		 * Uses \em equals as the additive commutative monoid and \em or as the
+		 * multiplicative monoid. The identities for each monoid are \em true and
+		 * \em false, respectively.
+		 *
+		 * The three domains of the multiplicative monoid are:
+		 *
+		 * @tparam D1 The left-hand input domain of the multiplicative monoid
+		 * @tparam D2 The right-hand input domain of the multiplicative monoid
+		 * @tparam D3 The output domain of the multiplicative monoid
+		 *
+		 * The domains of the additive monoid are \a D3 and:
+		 *
+		 * @tparam D4 The right-hand input domain of the additive monoid, as well as
+		 *            the output domain of the additive monoid.
+		 */
+		template< typename D1, typename D2 = D1, typename D3 = D2, typename D4 = D3 >
+		using eqLor = xnorLor< D1, D2, D3, D4 >;
 
 	}
 
