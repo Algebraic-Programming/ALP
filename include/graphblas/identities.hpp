@@ -55,91 +55,130 @@ namespace grb {
 		/** Standard identity for numerical addition. */
 		template< typename D >
 		class zero {
-			static_assert( std::is_convertible< int, D >::value, "Cannot form identity under the requested domain" );
 
-		public:
-			/**
-			 * @tparam D The domain of the value to return.
-			 * @return The identity under standard addition (i.e., `zero').
-			 */
-			static constexpr D value() {
-				return static_cast< D >( 0 );
-			}
+			static_assert( std::is_convertible< int, D >::value,
+				"Cannot form identity under the requested domain" );
+
+			public:
+
+				/**
+				 * @tparam D The domain of the value to return.
+				 * @return The identity under standard addition (i.e., `zero').
+				 */
+				static constexpr D value() {
+					return static_cast< D >( 0 );
+				}
+
 		};
+
 		template< typename K, typename V >
 		class zero< std::pair< K, V > > {
-		public:
-			static constexpr std::pair< K, V > value() {
-				return std::make_pair( zero< K >::value(), zero< V >::value() );
-			}
+
+			public:
+
+				static constexpr std::pair< K, V > value() {
+					return std::make_pair( zero< K >::value(), zero< V >::value() );
+				}
+
 		};
 
 		/** Standard identity for numerical multiplication. */
 		template< typename D >
 		class one {
-			static_assert( std::is_convertible< int, D >::value, "Cannot form identity under the requested domain" );
 
-		public:
-			/**
-			 * @tparam D The domain of the value to return.
-			 * @return The identity under standard multiplication (i.e., `one').
-			 */
-			static constexpr D value() {
-				return static_cast< D >( 1 );
-			}
+			static_assert( std::is_convertible< int, D >::value,
+				"Cannot form identity under the requested domain" );
+
+			public:
+
+				/**
+				 * @tparam D The domain of the value to return.
+				 * @return The identity under standard multiplication (i.e., `one').
+				 */
+				static constexpr D value() {
+					return static_cast< D >( 1 );
+				}
+
 		};
+
 		template< typename K, typename V >
 		class one< std::pair< K, V > > {
-		public:
-			static constexpr std::pair< K, V > value() {
-				return std::make_pair( one< K >::value(), one< V >::value() );
-			}
+
+			public:
+
+				static constexpr std::pair< K, V > value() {
+					return std::make_pair( one< K >::value(), one< V >::value() );
+				}
+
 		};
 
 		/** Standard identity for the minimum operator. */
 		template< typename D >
 		class infinity {
-			static_assert( std::is_arithmetic< D >::value, "Cannot form identity under the requested domain" );
 
-		public:
-			/**
-			 * @tparam D The domain of the value to return.
-			 * @return The identity under the standard min operator (i.e., `infinity'),
-			 *         of type \a D.
-			 */
-			static constexpr D value() {
-				return std::numeric_limits< D >::has_infinity ? std::numeric_limits< D >::infinity() : std::numeric_limits< D >::max();
-			}
+			static_assert( std::is_arithmetic< D >::value,
+				"Cannot form identity under the requested domain" );
+
+			public:
+
+				/**
+				 * @tparam D The domain of the value to return.
+				 * @return The identity under the standard min operator (i.e., `infinity'),
+				 *         of type \a D.
+				 */
+				static constexpr D value() {
+					return std::numeric_limits< D >::has_infinity
+						? std::numeric_limits< D >::infinity()
+						: std::numeric_limits< D >::max();
+				}
+
 		};
+
 		template< typename K, typename V >
 		class infinity< std::pair< K, V > > {
-		public:
-			static constexpr std::pair< K, V > value() {
-				return std::make_pair( infinity< K >::value(), infinity< V >::value() );
-			}
+
+			public:
+
+				static constexpr std::pair< K, V > value() {
+					return std::make_pair( infinity< K >::value(), infinity< V >::value() );
+				}
+
 		};
 
 		/** Standard identity for the maximum operator. */
 		template< typename D >
 		class negative_infinity {
+
 			static_assert( std::is_arithmetic< D >::value, "Cannot form identity under the requested domain" );
 
-		public:
-			/**
-			 * @tparam D The domain of the value to return.
-			 * @return The identity under the standard max operator, i.e.,
-			 *         `minus infinity'.
-			 */
-			static constexpr D value() {
-				return std::numeric_limits< D >::min() == 0 ? 0 : ( std::numeric_limits< D >::has_infinity ? -std::numeric_limits< D >::infinity() : std::numeric_limits< D >::min() );
-			}
+			public:
+
+				/**
+				 * @tparam D The domain of the value to return.
+				 * @return The identity under the standard max operator, i.e.,
+				 *         `minus infinity'.
+				 */
+				static constexpr D value() {
+					return std::numeric_limits< D >::min() == 0
+						? 0
+						: ( std::numeric_limits< D >::has_infinity
+							? -std::numeric_limits< D >::infinity()
+							: std::numeric_limits< D >::min()
+						);
+				}
+
 		};
+
 		template< typename K, typename V >
 		class negative_infinity< std::pair< K, V > > {
-		public:
+
+			public:
+
 			static constexpr std::pair< K, V > value() {
-				return std::make_pair( negative_infinity< K >::value(), negative_infinity< V >::value() );
+				return std::make_pair( negative_infinity< K >::value(),
+					negative_infinity< V >::value() );
 			}
+
 		};
 
 		/**
@@ -149,24 +188,33 @@ namespace grb {
 		 */
 		template< typename D >
 		class logical_false {
-			static_assert( std::is_convertible< bool, D >::value, "Cannot form identity under the requested domain" );
 
-		public:
-			/**
-			 * @tparam D The domain of the value to return.
-			 * @return The identity under the standard logical OR operator, i.e.,
-			 *         \a false.
-			 */
-			static const constexpr D value() {
-				return static_cast< D >( false );
-			}
+			static_assert( std::is_convertible< bool, D >::value,
+				"Cannot form identity under the requested domain" );
+
+			public:
+
+				/**
+				 * @tparam D The domain of the value to return.
+				 * @return The identity under the standard logical OR operator, i.e.,
+				 *         \a false.
+				 */
+				static const constexpr D value() {
+					return static_cast< D >( false );
+				}
+
 		};
+
 		template< typename K, typename V >
 		class logical_false< std::pair< K, V > > {
-		public:
-			static constexpr std::pair< K, V > value() {
-				return std::make_pair( logical_false< K >::value(), logical_false< V >::value() );
-			}
+
+			public:
+
+				static constexpr std::pair< K, V > value() {
+					return std::make_pair( logical_false< K >::value(),
+						logical_false< V >::value() );
+				}
+
 		};
 
 		/**
@@ -176,27 +224,37 @@ namespace grb {
 		 */
 		template< typename D >
 		class logical_true {
-			static_assert( std::is_convertible< bool, D >::value, "Cannot form identity under the requested domain" );
 
-		public:
-			/**
-			 * @tparam D The domain of the value to return.
-			 * @return The identity under the standard logical AND operator, i.e.,
-			 *         \a true.
-			 */
-			static constexpr D value() {
-				return static_cast< D >( true );
-			}
+			static_assert( std::is_convertible< bool, D >::value,
+				"Cannot form identity under the requested domain" );
+
+			public:
+
+				/**
+				 * @tparam D The domain of the value to return.
+				 * @return The identity under the standard logical AND operator, i.e.,
+				 *         \a true.
+				 */
+				static constexpr D value() {
+					return static_cast< D >( true );
+				}
+
 		};
+
 		template< typename K, typename V >
 		class logical_true< std::pair< K, V > > {
-		public:
-			static constexpr std::pair< K, V > value() {
-				return std::make_pair( logical_true< K >::value(), logical_true< V >::value() );
-			}
+
+			public:
+
+				static constexpr std::pair< K, V > value() {
+					return std::make_pair( logical_true< K >::value(),
+						logical_true< V >::value() );
+				}
+
 		};
 
 	} // namespace identities
+
 } // namespace grb
 
 #endif
