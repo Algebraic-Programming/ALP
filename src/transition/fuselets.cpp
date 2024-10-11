@@ -75,21 +75,22 @@ int finalize_fuselets() {
 	}
 }
 
-int spmv_dot(
+template< typename OffsetT, typename IndexT, typename ValueT >
+static int spmv_dot(
 	double * const v, double * const beta,
-	const size_t * const ia, const unsigned int * const ij,
-	const double * const iv, const double * const y,
+	const OffsetT * const ia, const IndexT * const ij,
+	const ValueT * const iv, const double * const y,
 	const double alpha,
 	const double * const r,
 	const size_t n
 ) {
 	// typedef our matrix type, which depends on the above argument types
 	typedef grb::Matrix<
-			double,                       // the matrix value type
+			ValueT,                       // the matrix value type
 			grb::config::default_backend, // use the compile-time selected backend
 			                              // (set by CMakeLists.txt: nonblocking)
-			unsigned int, unsigned int,   // the types of the row- and column-indices
-			size_t                        // the type of the ia array
+			IndexT, IndexT,               // the types of the row- and column-indices
+			OffsetT                       // the type of the ia array
 		> MyMatrixType;
 
 	// catch trivial op
@@ -156,22 +157,47 @@ int spmv_dot(
 	}
 }
 
-int spmv_dot_norm2(
-	double * const v,
-	double * const beta, double * const gamma,
+int spmv_dot_dsu(
+	double * const v, double * const beta,
 	const size_t * const ia, const unsigned int * const ij,
 	const double * const iv, const double * const y,
 	const double alpha,
 	const double * const r,
 	const size_t n
 ) {
+	return spmv_dot< size_t, unsigned int, double >(
+		v, beta, ia, ij, iv, y, alpha, r, n );
+}
+
+int spmv_dot_dii(
+	double * const v, double * const beta,
+	const int * const ia, const int * const ij,
+	const double * const iv, const double * const y,
+	const double alpha,
+	const double * const r,
+	const size_t n
+) {
+	return spmv_dot< int, int, double >(
+		v, beta, ia, ij, iv, y, alpha, r, n );
+}
+
+template< typename OffsetT, typename IndexT, typename ValueT >
+static int spmv_dot_norm2(
+	double * const v,
+	double * const beta, double * const gamma,
+	const OffsetT * const ia, const IndexT * const ij,
+	const ValueT * const iv, const double * const y,
+	const double alpha,
+	const double * const r,
+	const size_t n
+) {
 	// typedef our matrix type, which depends on the above argument types
 	typedef grb::Matrix<
-			double,                       // the matrix value type
+			ValueT,                       // the matrix value type
 			grb::config::default_backend, // use the compile-time selected backend
 			                              // (set by CMakeLists.txt: nonblocking)
-			unsigned int, unsigned int,   // the types of the row- and column-indices
-			size_t                        // the type of the ia array
+			IndexT, IndexT,               // the types of the row- and column-indices
+			OffsetT                       // the type of the ia array
 		> MyMatrixType;
 
 	// catch trivial op
@@ -250,20 +276,48 @@ int spmv_dot_norm2(
 	}
 }
 
-int update_spmv_dot(
+int spmv_dot_norm2_dsu(
+	double * const v,
+	double * const beta, double * const gamma,
+	const size_t * const ia, const unsigned int * const ij,
+	const double * const iv, const double * const y,
+	const double alpha,
+	const double * const r,
+	const size_t n
+) {
+	return spmv_dot_norm2< size_t, unsigned int, double >(
+		v, beta, gamma, ia, ij, iv, y, alpha, r, n );
+}
+
+int spmv_dot_norm2_dii(
+	double * const v,
+	double * const beta, double * const gamma,
+	const int * const ia, const int * const ij,
+	const double * const iv, const double * const y,
+	const double alpha,
+	const double * const r,
+	const size_t n
+) {
+	return spmv_dot_norm2< int, int, double >(
+		v, beta, gamma, ia, ij, iv, y, alpha, r, n );
+}
+
+template< typename OffsetT, typename IndexT, typename ValueT >
+static int update_spmv_dot(
 	double * const p, double * const u, double * const alpha,
 	const double * const z, const double beta,
-	const size_t * const ia, const unsigned int * const ij,
-	const double * const iv,
+	const OffsetT * const ia, const IndexT * const ij,
+	const ValueT * const iv,
 	const size_t n
 ) {
 	// typedef our matrix type, which depends on the above argument types
+	// typedef our matrix type, which depends on the above argument types
 	typedef grb::Matrix<
-			double,                       // the matrix value type
+			ValueT,                       // the matrix value type
 			grb::config::default_backend, // use the compile-time selected backend
 			                              // (set by CMakeLists.txt: nonblocking)
-			unsigned int, unsigned int,   // the types of the row- and column-indices
-			size_t                        // the type of the ia array
+			IndexT, IndexT,               // the types of the row- and column-indices
+			OffsetT                       // the type of the ia array
 		> MyMatrixType;
 
 	// catch trivial op
@@ -345,6 +399,27 @@ int update_spmv_dot(
 			<< grb::toString( ret ) << "\n";
 		return 255;
 	}
+}
+
+int update_spmv_dot_dsu(
+	double * const p, double * const u, double * const alpha,
+	const double * const z, const double beta,
+	const size_t * const ia, const unsigned int * const ij,
+	const double * const iv,
+	const size_t n
+) {
+	return update_spmv_dot< size_t, unsigned int, double >(
+		p, u, alpha, z, beta, ia, ij, iv, n );
+}
+
+int update_spmv_dot_dii(
+	double * const p, double * const u, double * const alpha,
+	const double * const z, const double beta,
+	const int * const ia, const int * const ij, const double * const iv,
+	const size_t n
+) {
+	return update_spmv_dot< int, int, double >(
+		p, u, alpha, z, beta, ia, ij, iv, n );
 }
 
 int update_update_norm2(

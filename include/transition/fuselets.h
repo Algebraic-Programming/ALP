@@ -37,6 +37,23 @@
  *
  * \todo add documentation
  *
+ * \note For matrices, we assume the de-facto standard Compressed Row Storage.
+ *       This formats consists of three arrays: a row offset array, a column
+ *       index array, and, for non-pattern matrices, a value array. The element
+ *       types of the former two arrays can have multiple sensible values:
+ *        - 64-bit unsigned integers for the offset array (s), default-sized
+ *          (usually 32-bit) integers (i), or default-sized unsigned integers
+ *          (u).
+ *        - 64-bit unsigned integers for the column indices (s), default-sized
+ *          (usually 32-bit) integers instead (i), or default-sized unsigned
+ *          integers (u).
+ *       For values, we presently only support double-precision (d). At present,
+ *       in summary, for every fuselet that takes matrix input, we support dsu
+ *       and dii variants.
+ *
+ * \note The implementation in <tt>src/transition/fuselets.cpp</tt> demonstrates
+ *       how these types may be modified if necessary.
+ *
  * Typical example work estimation for adding a new fuselets, assuming
  * familiarity with the use of ALP and allowing copying (and modifying)
  * snippets from other fuselets:
@@ -128,7 +145,7 @@ extern "C" {
 	 * @returns Zero if and only if the call executed successfully.
 	 * @returns A nonzero error code otherwise.
 	 */
-	int spmv_dot(
+	int spmv_dot_dsu(
 		double * const v, double * const beta,                    // outputs
 		const size_t * const ia, const unsigned int * const ij,
 		const double * const iv, const double * const y,
@@ -172,7 +189,7 @@ extern "C" {
 	 * @returns Zero if and only if the call executed successfully.
 	 * @returns A nonzero error code otherwise.
 	 */
-	int spmv_dot_norm2(
+	int spmv_dot_norm2_dsu(
 		double * const v,
 		double * const beta, double * const gamma,              // outputs
 		const size_t * const ia, const unsigned int * const ij,
@@ -218,7 +235,7 @@ extern "C" {
 	 * @returns Zero if and only if the call executed successfully.
 	 * @returns A nonzero error code otherwise.
 	 */
-	int update_spmv_dot(
+	int update_spmv_dot_dsu(
 		double * const p, double * const u, double * const alpha, // outputs
 		const double * const z, const double beta,                // input 1
 		const size_t * const ia, const unsigned int * const ij,
