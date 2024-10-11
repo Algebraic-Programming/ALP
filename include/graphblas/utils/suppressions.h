@@ -45,6 +45,10 @@
   _Pragma( "GCC diagnostic push" ) ;\
   _Pragma( "GCC diagnostic ignored \"-Wclass-memaccess\"" );\
 
+ #define GRB_UTIL_IGNORE_INT_IN_BOOL_CONTEXT \
+  _Pragma( "GCC diagnostic push" ) ;\
+  _Pragma( "GCC diagnostic ignored \"-Wint-in-bool-context\"" );\
+
  #define GRB_UTIL_RESTORE_WARNINGS \
   _Pragma( "GCC diagnostic pop" );\
 
@@ -54,6 +58,7 @@
  #define GRB_UTIL_IGNORE_STRING_TRUNCATION
  #define GRB_UTIL_IGNORE_CLASS_MEMACCESS
  #define GRB_UTIL_RESTORE_WARNINGS
+ #define GRB_UTIL_IGNORE_INT_IN_BOOL_CONTEXT
 #endif
 
 #endif // end ``_H_GRB_UTILS_SUPRESSIONS''
