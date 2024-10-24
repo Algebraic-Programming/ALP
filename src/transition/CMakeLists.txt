@@ -92,5 +92,8 @@ if( WITH_NONBLOCKING_BACKEND )
 			PRIVATE_LINK_LIBRARIES spsolver_shmem_parallel backend_nonblocking
 		)
 	endif()
+	add_transition_library( fuselets STATIC "fuselets" ${CMAKE_CURRENT_SOURCE_DIR}/fuselets.cpp
+		PRIVATE_LINK_LIBRARIES backend_nonblocking
+	)
 endif()
 
