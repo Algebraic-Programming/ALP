@@ -24,10 +24,6 @@
  * @date 24th of October, 2024
  */
 
-/*#include <graphblas/utils/suppressions.h>
-GRB_UTIL_IGNORE_INT_IN_BOOL_CONTEXT
-TODO FIXME CHECK if still needed for monoids*/
-
 #include <graphblas.hpp>
 
 #include <iostream>
