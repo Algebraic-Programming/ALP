@@ -386,7 +386,7 @@ namespace grb {
 	// after all of the standard definitions, declare some standard semirings
 
 	/**
-	 * A namespace that contains a set of standard semirings.
+	 * A name space that contains a set of standard semirings.
 	 *
 	 * Standard semirings include:
 	 *  - #plusTimes, for numerical linear algebra
@@ -399,7 +399,7 @@ namespace grb {
 	 *
 	 * A list of all pre-defined semirings, in addition to the above, follows:
 	 * #minMax, #maxMin, #plusMin, #lorLand, #landLor, #lxorLand, #lxnorLor,
-	 * #neLand, and #eqLor.
+	 * #lneqLand, and #leqLor.
 	 *
 	 * \note Here, lor stands for logical-or and land stands for logical-and, while
 	 *       ne stands for not-equal and eq for equal.
@@ -407,9 +407,9 @@ namespace grb {
 	 * \note The #lorLand semiring over the Boolean domains is the same as the
 	 *       #boolean semiring.
 	 *
-	 * \note The #lxorLand semiring is the same as the #neLand semiring.
+	 * \note The #lxorLand semiring is the same as the #lneqLand semiring.
 	 *
-	 * \note The #lxnorLor semiring is the same as the #eqLor semiring.
+	 * \note The #lxnorLor semiring is the same as the #leqLor semiring.
 	 *
 	 * \warning Some of these pre-defined semirings are not proper semirings over
 	 *          all domains. For example, the #maxPlus semiring over unsigned
@@ -627,6 +627,31 @@ namespace grb {
 		>;
 
 		/**
+		 * The plusMin semiring.
+		 *
+		 * Uses \em plus as the additive commutative monoid and \em min as the
+		 * multiplicative monoid. The identities for each monoid are \f$ 0 \f$ and
+		 * \f$ \infty \f$, respectively.
+		 *
+		 * The three domains of the multiplicative monoid are:
+		 *
+		 * @tparam D1 The left-hand input domain of the multiplicative monoid
+		 * @tparam D2 The right-hand input domain of the multiplicative monoid
+		 * @tparam D3 The output domain of the multiplicative monoid
+		 *
+		 * The domains of the additive monoid are \a D3 and:
+		 *
+		 * @tparam D4 The right-hand input domain of the additive monoid, as well as
+		 *            the output domain of the additive monoid.
+		 */
+		template< typename D1, typename D2 = D1, typename D3 = D2, typename D4 = D3 >
+		using plusMin = grb::Semiring<
+			grb::operators::add< D3, D4, D4 >,
+			grb::operators::min< D1, D2, D3 >,
+			grb::identities::zero, grb::identities::infinity
+		>;
+
+		/**
 		 * The logical-or logical-and semiring.
 		 *
 		 * Uses \em or as the additive commutative monoid and \em and as the
@@ -729,7 +754,7 @@ namespace grb {
 		 *            the output domain of the additive monoid.
 		 */
 		template< typename D1, typename D2 = D1, typename D3 = D2, typename D4 = D3 >
-		using neLand = lxorLand< D1, D2, D3, D4 >;
+		using lneqLand = lxorLand< D1, D2, D3, D4 >;
 
 		/**
 		 * The negated-exclusive-or logical-or semring.
@@ -750,7 +775,7 @@ namespace grb {
 		 *            the output domain of the additive monoid.
 		 */
 		template< typename D1, typename D2 = D1, typename D3 = D2, typename D4 = D3 >
-		using xnorLor = grb::Semiring<
+		using lxnorLor = grb::Semiring<
 			grb::operators::equal< D3, D4, D4 >,
 			grb::operators::logical_or< D1, D2, D3 >,
 			grb::identities::logical_true, grb::identities::logical_false
@@ -775,7 +800,7 @@ namespace grb {
 		 *            the output domain of the additive monoid.
 		 */
 		template< typename D1, typename D2 = D1, typename D3 = D2, typename D4 = D3 >
-		using eqLor = xnorLor< D1, D2, D3, D4 >;
+		using leqLor = lxnorLor< D1, D2, D3, D4 >;
 
 	}
 
