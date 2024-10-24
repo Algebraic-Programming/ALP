@@ -51,6 +51,12 @@ for MODE in ${MODES}; do
 		echo "                                 field (double, integers, and floats)"
 		${TEST_BIN_DIR}/mul15m_${MODE}
 
+		echo ">>>      [x]           [ ]       Testing pre-defined monoids"
+		${TEST_BIN_DIR}/monoids_${MODE} &> ${TEST_OUT_DIR}/monoids_${MODE}.log
+		head -1 ${TEST_OUT_DIR}/monoids_${MODE}.log
+		grep 'Test OK' ${TEST_OUT_DIR}/monoids_${MODE}.log || echo "Test FAILED"
+		echo " "
+
 		echo ">>>      [x]           [ ]       Testing pre-defined semirings"
 		${TEST_BIN_DIR}/semirings_${MODE} &> ${TEST_OUT_DIR}/semirings_${MODE}.log
 		head -1 ${TEST_OUT_DIR}/semirings_${MODE}.log

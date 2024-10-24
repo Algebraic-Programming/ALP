@@ -190,6 +190,10 @@ add_grb_executables( iteratorFilter iteratorFilter.cpp
 	BACKENDS reference NO_BACKEND_NAME
 )
 
+add_grb_executables( monoids monoids.cpp
+	BACKENDS reference NO_BACKEND_NAME
+)
+
 add_grb_executables( semirings semirings.cpp
 	BACKENDS reference NO_BACKEND_NAME
 )
