@@ -183,6 +183,37 @@ bool runTests() {
 		}
 	}
 
+	// check commutativity of additive monoid
+	{
+		typename Semiring::D4 left, right;
+		if(
+			grb::apply(
+				left,
+				ring.template getZero< typename Semiring::D3 >(),
+				ring.template getOne< typename Semiring::D4 >(),
+				ring.getAdditiveOperator()
+			) != grb::SUCCESS
+		) {
+			std::cerr << "Unexpected error in test VII (1)\n";
+			return false;
+		}
+		if(
+			grb::apply(
+				right,
+				ring.template getOne< typename Semiring::D3 >(),
+				ring.template getZero< typename Semiring::D4 >(),
+				ring.getAdditiveOperator()
+			) != grb::SUCCESS
+		) {
+			std::cerr << "Unexpected error in test VII (2)\n";
+			return false;
+		}
+		if( left != right ) {
+			std::cerr << "Non-commutative behaviour of the additive monoid detected\n";
+			return false;
+		}
+	}
+
 	// all OK
 	return true;
 }
