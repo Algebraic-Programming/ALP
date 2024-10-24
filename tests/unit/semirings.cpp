@@ -239,6 +239,153 @@ int main( int argc, char ** argv ) {
 		ok = false;
 	}
 
+	std::cout << "\t testing grb::semirings::minPlus over size_ts:\n";
+	if( runTests< grb::semirings::minPlus< size_t > >() ) {
+		std::cout << "\t\tOK\n";
+	} else {
+		ok = false;
+	}
+
+	std::cout << "\t testing grb::semirings::minPlus over integers:\n";
+	if( runTests< grb::semirings::minPlus< int > >() ) {
+		std::cout << "\t\tOK\n";
+	} else {
+		ok = false;
+	}
+
+	std::cout << "\t testing grb::semirings::minPlus over doubles:\n";
+	if( runTests< grb::semirings::minPlus< double > >() ) {
+		std::cout << "\t\tOK\n";
+	} else {
+		ok = false;
+	}
+
+	std::cout << "\t testing grb::semirings::maxPlus over integers:\n";
+	if( runTests< grb::semirings::maxPlus< int > >() ) {
+		std::cout << "\t\tOK\n";
+	} else {
+		ok = false;
+	}
+
+	std::cout << "\t testing grb::semirings::maxPlus over doubles:\n";
+	if( runTests< grb::semirings::maxPlus< double > >() ) {
+		std::cout << "\t\tOK\n";
+	} else {
+		ok = false;
+	}
+
+	std::cout << "\t testing grb::semirings::minTimes over unsigned integers:\n";
+	if( runTests< grb::semirings::minTimes< unsigned int > >() ) {
+		std::cout << "\t\tOK\n";
+	} else {
+		ok = false;
+	}
+
+	std::cout << "\t testing grb::semirings::minMax over unsigned integers:\n";
+	if( runTests< grb::semirings::minMax< unsigned int > >() ) {
+		std::cout << "\t\tOK\n";
+	} else {
+		ok = false;
+	}
+
+	std::cout << "\t testing grb::semirings::minMax over 64-bit integers:\n";
+	if( runTests< grb::semirings::minMax< int64_t > >() ) {
+		std::cout << "\t\tOK\n";
+	} else {
+		ok = false;
+	}
+
+	std::cout << "\t testing grb::semirings::minMax over floats:\n";
+	if( runTests< grb::semirings::minMax< float > >() ) {
+		std::cout << "\t\tOK\n";
+	} else {
+		ok = false;
+	}
+
+	std::cout << "\t testing grb::semirings::maxMin over size_ts:\n";
+	if( runTests< grb::semirings::maxMin< size_t > >() ) {
+		std::cout << "\t\tOK\n";
+	} else {
+		ok = false;
+	}
+
+	std::cout << "\t testing grb::semirings::maxMin over short integers:\n";
+	if( runTests< grb::semirings::maxMin< short int > >() ) {
+		std::cout << "\t\tOK\n";
+	} else {
+		ok = false;
+	}
+
+	std::cout << "\t testing grb::semirings::maxMin over doubles:\n";
+	if( runTests< grb::semirings::maxMin< double > >() ) {
+		std::cout << "\t\tOK\n";
+	} else {
+		ok = false;
+	}
+
+	std::cout << "\t testing grb::semirings::maxTimes over size_ts:\n";
+	if( runTests< grb::semirings::maxTimes< size_t > >() ) {
+		std::cout << "\t\tOK\n";
+	} else {
+		ok = false;
+	}
+
+	std::cout << "\t testing grb::semirings::plusMin over unsigned integers:\n";
+	if( runTests< grb::semirings::plusMin< unsigned int > >() ) {
+		std::cout << "\t\tOK\n";
+	} else {
+		ok = false;
+	}
+
+	std::cout << "\t testing grb::semirings::lorLand over Booleans:\n";
+	if( runTests< grb::semirings::lorLand< bool > >() ) {
+		std::cout << "\t\tOK\n";
+	} else {
+		ok = false;
+	}
+
+	std::cout << "\t testing grb::semirings::boolean:\n";
+	if( runTests< grb::semirings::boolean >() ) {
+		std::cout << "\t\tOK\n";
+	} else {
+		ok = false;
+	}
+
+	std::cout << "\t testing grb::semirings::landLor over Booleans:\n";
+	if( runTests< grb::semirings::landLor< bool > >() ) {
+		std::cout << "\t\tOK\n";
+	} else {
+		ok = false;
+	}
+
+	std::cout << "\t testing grb::semirings::lxorLand over Booleans:\n";
+	if( runTests< grb::semirings::lxorLand< bool > >() ) {
+		std::cout << "\t\tOK\n";
+	} else {
+		ok = false;
+	}
+
+	std::cout << "\t testing grb::semirings::lneqLand over Booleans:\n";
+	if( runTests< grb::semirings::lneqLand< bool > >() ) {
+		std::cout << "\t\tOK\n";
+	} else {
+		ok = false;
+	}
+
+	std::cout << "\t testing grb::semirings::lxnorLor over Booleans:\n";
+	if( runTests< grb::semirings::lxnorLor< bool > >() ) {
+		std::cout << "\t\tOK\n";
+	} else {
+		ok = false;
+	}
+
+	std::cout << "\t testing grb::semirings::leqLor over Booleans:\n";
+	if( runTests< grb::semirings::leqLor< bool > >() ) {
+		std::cout << "\t\tOK\n";
+	} else {
+		ok = false;
+	}
+
 	// done
 	if( ok ) {
 		std::cout << "Test OK\n" << std::endl;
