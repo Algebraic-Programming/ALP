@@ -218,6 +218,78 @@ bool runTests() {
 	return true;
 }
 
+template<
+	template< typename D1, typename D2 = D1, typename D3 = D2, typename D4 = D3 >
+	class Semiring
+>
+bool runTestsAllDomains() {
+	std::cout << "\t\t testing over doubles:\n";
+	if( runTests< Semiring< double > >() ) {
+		std::cout << "\t\t OK\n";
+	} else {
+		std::cout << "\t\t ERR\n";
+		return false;
+	}
+
+	std::cout << "\t\t testing over floats:\n";
+	if( runTests< Semiring< float > >() ) {
+		std::cout << "\t\t OK\n";
+	} else {
+		std::cout << "\t\t ERR\n";
+		return false;
+	}
+
+	std::cout << "\t\t testing over short ints:\n";
+	if( runTests< Semiring< short int > >() ) {
+		std::cout << "\t\t OK\n";
+	} else {
+		std::cout << "\t\t ERR\n";
+		return false;
+	}
+
+	std::cout << "\t\t testing over integers:\n";
+	if( runTests< Semiring< int > >() ) {
+		std::cout << "\t\t OK\n";
+	} else {
+		std::cout << "\t\t ERR\n";
+		return false;
+	}
+
+	std::cout << "\t\t testing over 64-bit integers:\n";
+	if( runTests< Semiring< int64_t > >() ) {
+		std::cout << "\t\t OK\n";
+	} else {
+		std::cout << "\t\t ERR\n";
+		return false;
+	}
+
+	std::cout << "\t\t testing over short unsigned integers:\n";
+	if( runTests< Semiring< short unsigned int > >() ) {
+		std::cout << "\t\t OK\n";
+	} else {
+		std::cout << "\t\t ERR\n";
+		return false;
+	}
+
+	std::cout << "\t\t testing over unsigned integers:\n";
+	if( runTests< Semiring< unsigned int > >() ) {
+		std::cout << "\t\t OK\n";
+	} else {
+		std::cout << "\t\t ERR\n";
+		return false;
+	}
+
+	std::cout << "\t\t testing over size_ts:\n";
+	if( runTests< Semiring< size_t > >() ) {
+		std::cout << "\t\t OK\n";
+	} else {
+		std::cout << "\t\t ERR\n";
+		return false;
+	}
+
+	return true;
+}
+
 int main( int argc, char ** argv ) {
 	if( argc > 1 ) {
 		std::cerr << "This test does not expect any arguments\n"
@@ -227,192 +299,115 @@ int main( int argc, char ** argv ) {
 
 	std::cout << "This is functional test " << argv[ 0 ] << "\n";
 	bool ok = true;
-	
-	std::cout << "\t testing grb::semirings::plusTimes over doubles:\n";
-	if( runTests< grb::semirings::plusTimes< double > >() ) {
-		std::cout << "\t\tOK\n";
+
+	std::cout << "\t testing grb::semirings::plusTimes...\n";
+	if( runTestsAllDomains< grb::semirings::plusTimes >() ) {
+		std::cout << "\t OK\n";
 	} else {
 		ok = false;
 	}
 
-	std::cout << "\t testing grb::semirings::plusTimes over floats:\n";
-	if( runTests< grb::semirings::plusTimes< float > >() ) {
-		std::cout << "\t\tOK\n";
-	} else {
-		ok = false;
-	}
-
-	std::cout << "\t testing grb::semirings::plusTimes over size_ts:\n";
-	if( runTests< grb::semirings::plusTimes< size_t > >() ) {
-		std::cout << "\t\tOK\n";
-	} else {
-		ok = false;
-	}
-
-	std::cout << "\t testing grb::semirings::plusTimes over unsigned integers:\n";
-	if( runTests< grb::semirings::plusTimes< unsigned > >() ) {
-		std::cout << "\t\tOK\n";
-	} else {
-		ok = false;
-	}
-
-	std::cout << "\t testing grb::semirings::plusTimes over integers:\n";
-	if( runTests< grb::semirings::plusTimes< int > >() ) {
-		std::cout << "\t\tOK\n";
-	} else {
-		ok = false;
-	}
-
-	std::cout << "\t testing grb::semirings::plusTimes over Booleans:\n";
-	if( runTests< grb::semirings::plusTimes< bool > >() ) {
-		std::cout << "\t\tOK\n";
-	} else {
-		ok = false;
-	}
-
-	std::cout << "\t testing grb::semirings::minPlus over size_ts:\n";
-	if( runTests< grb::semirings::minPlus< size_t > >() ) {
-		std::cout << "\t\tOK\n";
-	} else {
-		ok = false;
-	}
-
-	std::cout << "\t testing grb::semirings::minPlus over integers:\n";
-	if( runTests< grb::semirings::minPlus< int > >() ) {
-		std::cout << "\t\tOK\n";
-	} else {
-		ok = false;
-	}
-
-	std::cout << "\t testing grb::semirings::minPlus over doubles:\n";
-	if( runTests< grb::semirings::minPlus< double > >() ) {
-		std::cout << "\t\tOK\n";
+	std::cout << "\t testing grb::semirings::minPlus...\n";
+	if( runTestsAllDomains< grb::semirings::minPlus >() ) {
+		std::cout << "\t OK\n";
 	} else {
 		ok = false;
 	}
 
 	std::cout << "\t testing grb::semirings::maxPlus over integers:\n";
 	if( runTests< grb::semirings::maxPlus< int > >() ) {
-		std::cout << "\t\tOK\n";
+		std::cout << "\t OK\n";
 	} else {
 		ok = false;
 	}
 
 	std::cout << "\t testing grb::semirings::maxPlus over doubles:\n";
 	if( runTests< grb::semirings::maxPlus< double > >() ) {
-		std::cout << "\t\tOK\n";
+		std::cout << "\t OK\n";
 	} else {
 		ok = false;
 	}
 
 	std::cout << "\t testing grb::semirings::minTimes over unsigned integers:\n";
 	if( runTests< grb::semirings::minTimes< unsigned int > >() ) {
-		std::cout << "\t\tOK\n";
+		std::cout << "\t OK\n";
 	} else {
 		ok = false;
 	}
 
-	std::cout << "\t testing grb::semirings::minMax over unsigned integers:\n";
-	if( runTests< grb::semirings::minMax< unsigned int > >() ) {
-		std::cout << "\t\tOK\n";
+	std::cout << "\t testing grb::semirings::minMax...\n";
+	if( runTestsAllDomains< grb::semirings::minMax >() ) {
+		std::cout << "\t OK\n";
 	} else {
 		ok = false;
 	}
 
-	std::cout << "\t testing grb::semirings::minMax over 64-bit integers:\n";
-	if( runTests< grb::semirings::minMax< int64_t > >() ) {
-		std::cout << "\t\tOK\n";
-	} else {
-		ok = false;
-	}
-
-	std::cout << "\t testing grb::semirings::minMax over floats:\n";
-	if( runTests< grb::semirings::minMax< float > >() ) {
-		std::cout << "\t\tOK\n";
-	} else {
-		ok = false;
-	}
-
-	std::cout << "\t testing grb::semirings::maxMin over size_ts:\n";
-	if( runTests< grb::semirings::maxMin< size_t > >() ) {
-		std::cout << "\t\tOK\n";
-	} else {
-		ok = false;
-	}
-
-	std::cout << "\t testing grb::semirings::maxMin over short integers:\n";
-	if( runTests< grb::semirings::maxMin< short int > >() ) {
-		std::cout << "\t\tOK\n";
-	} else {
-		ok = false;
-	}
-
-	std::cout << "\t testing grb::semirings::maxMin over doubles:\n";
-	if( runTests< grb::semirings::maxMin< double > >() ) {
-		std::cout << "\t\tOK\n";
+	std::cout << "\t testing grb::semirings::maxMin...\n";
+	if( runTestsAllDomains< grb::semirings::maxMin >() ) {
+		std::cout << "\t OK\n";
 	} else {
 		ok = false;
 	}
 
 	std::cout << "\t testing grb::semirings::maxTimes over size_ts:\n";
 	if( runTests< grb::semirings::maxTimes< size_t > >() ) {
-		std::cout << "\t\tOK\n";
+		std::cout << "\t OK\n";
 	} else {
 		ok = false;
 	}
 
 	std::cout << "\t testing grb::semirings::plusMin over unsigned integers:\n";
 	if( runTests< grb::semirings::plusMin< unsigned int > >() ) {
-		std::cout << "\t\tOK\n";
+		std::cout << "\t OK\n";
 	} else {
 		ok = false;
 	}
 
 	std::cout << "\t testing grb::semirings::lorLand over Booleans:\n";
 	if( runTests< grb::semirings::lorLand< bool > >() ) {
-		std::cout << "\t\tOK\n";
+		std::cout << "\t OK\n";
 	} else {
 		ok = false;
 	}
 
 	std::cout << "\t testing grb::semirings::boolean:\n";
 	if( runTests< grb::semirings::boolean >() ) {
-		std::cout << "\t\tOK\n";
+		std::cout << "\t OK\n";
 	} else {
 		ok = false;
 	}
 
 	std::cout << "\t testing grb::semirings::landLor over Booleans:\n";
 	if( runTests< grb::semirings::landLor< bool > >() ) {
-		std::cout << "\t\tOK\n";
+		std::cout << "\t OK\n";
 	} else {
 		ok = false;
 	}
 
 	std::cout << "\t testing grb::semirings::lxorLand over Booleans:\n";
 	if( runTests< grb::semirings::lxorLand< bool > >() ) {
-		std::cout << "\t\tOK\n";
+		std::cout << "\t OK\n";
 	} else {
 		ok = false;
 	}
 
 	std::cout << "\t testing grb::semirings::lneqLand over Booleans:\n";
 	if( runTests< grb::semirings::lneqLand< bool > >() ) {
-		std::cout << "\t\tOK\n";
+		std::cout << "\t OK\n";
 	} else {
 		ok = false;
 	}
 
 	std::cout << "\t testing grb::semirings::lxnorLor over Booleans:\n";
 	if( runTests< grb::semirings::lxnorLor< bool > >() ) {
-		std::cout << "\t\tOK\n";
+		std::cout << "\t OK\n";
 	} else {
 		ok = false;
 	}
 
 	std::cout << "\t testing grb::semirings::leqLor over Booleans:\n";
 	if( runTests< grb::semirings::leqLor< bool > >() ) {
-		std::cout << "\t\tOK\n";
+		std::cout << "\t OK\n";
 	} else {
 		ok = false;
 	}
