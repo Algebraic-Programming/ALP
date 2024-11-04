@@ -1239,7 +1239,7 @@ namespace grb {
 							utils::template prefixSum_seq< true >( out_ccs_offsets, n );
 						}
 #else
-						size_t crs_ws, ccs_ws;
+						NIT crs_ws, ccs_ws;
 						utils::template prefixSum_ompPar_phase1< true >( out_crs_offsets, m,
 							crs_ws );
 						if( !(descr & descriptors::force_row_major) ) {
