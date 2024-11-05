@@ -274,15 +274,22 @@ void Pipeline::addStage(
 		const Pipeline::stage_type &&func, const Opcode opcode,
 		const size_t n, const size_t data_type_size,
 		const bool dense_descr, const bool dense_mask,
+		const size_t output_vector_id,
+		// TODO FIXME is there really a need for pointers?
 		void * const output_vector_ptr, void * const output_aux_vector_ptr,
 		Coordinates< nonblocking > * const coor_output_ptr,
 		Coordinates< nonblocking > * const coor_output_aux_ptr,
+		const size_t input_a_id, const size_t input_b_id,
+		const size_t input_c_id, const size_t input_d_id,
+		// TODO FIXME is there really a need for pointers?
 		const void * const input_a_ptr, const void * const input_b_ptr,
 		const void * const input_c_ptr, const void * const input_d_ptr,
 		const Coordinates< nonblocking > * const coor_a_ptr,
 		const Coordinates< nonblocking > * const coor_b_ptr,
 		const Coordinates< nonblocking > * const coor_c_ptr,
 		const Coordinates< nonblocking > * const coor_d_ptr,
+		const size_t input_matrix_id,
+		// TODO FIXME is there really a need for pointers?
 		const void * const input_matrix
 ) {
 	assert( stages.size() != 0 || containers_size == 0);
@@ -305,39 +312,50 @@ void Pipeline::addStage(
 		size_of_data_type = data_type_size;
 	}
 
+#ifndef NDEBUG
+	const size_t num_stage = stages.size();
+#endif
 	stages.push_back( std::move( func ) );
 	opcodes.push_back( opcode );
+	assert( opcodes.size() == num_stage + 1 );
 
 	if( output_vector_ptr != nullptr ) {
 		output_vectors.insert( output_vector_ptr );
+		stage_output.push_back( output_vector_id );
 	}
 
 	if( output_aux_vector_ptr != nullptr ) {
 		output_vectors.insert( output_aux_vector_ptr );
+		std::cerr << "Warning: ALP/Ascend does not handle output_aux_vectors yet, please submit a bug report\n";
 	}
 
 	// special treatment for an SpMV operation as the input must not be overwritten
 	// by another stage of the pipeline
+	std::vector< size_t > inputIDs;
 	if( opcode == Opcode::BLAS2_VXM_GENERIC ) {
 
 		if( input_a_ptr != nullptr ) {
 			input_vectors.insert( input_a_ptr );
 			vxm_input_vectors.insert( input_a_ptr );
+			inputIDs.push_back( input_a_id );
 		}
 
 		if( input_b_ptr != nullptr ) {
 			input_vectors.insert( input_b_ptr );
 			vxm_input_vectors.insert( input_b_ptr );
+			inputIDs.push_back( input_b_id );
 		}
 
 		if( input_c_ptr != nullptr ) {
 			input_vectors.insert( input_c_ptr );
 			vxm_input_vectors.insert( input_c_ptr );
+			inputIDs.push_back( input_c_id );
 		}
 
 		if( input_d_ptr != nullptr ) {
 			input_vectors.insert( input_d_ptr );
 			vxm_input_vectors.insert( input_d_ptr );
+			inputIDs.push_back( input_d_id );
 		}
 
 		// in the current implementation that supports level-1 and level-2 operations
@@ -346,24 +364,32 @@ void Pipeline::addStage(
 		//      moved
 		if( input_matrix != nullptr ) {
 			input_matrices.insert( input_matrix );
+			inputIDs.push_back( input_matrix_id );
 		}
 	} else {
 		if( input_a_ptr != nullptr ) {
 			input_vectors.insert( input_a_ptr );
+			inputIDs.push_back( input_a_id );
 		}
 
 		if( input_b_ptr != nullptr ) {
 			input_vectors.insert( input_b_ptr );
+			inputIDs.push_back( input_b_id );
 		}
 
 		if( input_c_ptr != nullptr ) {
 			input_vectors.insert( input_c_ptr );
+			inputIDs.push_back( input_c_id );
 		}
 
 		if( input_d_ptr != nullptr ) {
 			input_vectors.insert( input_d_ptr );
+			inputIDs.push_back( input_d_id );
 		}
 	}
+	assert( inputIDs.size() != 0 );
+	stage_inputs.push_back( inputIDs );
+	assert( stage_inputs.size() + 1 == num_stages );
 
 	// update all the sets of the pipeline by adding the entries of the new stage
 	if( coor_a_ptr != nullptr ) {
@@ -755,6 +781,8 @@ grb::RC Pipeline::verifyDenseDescriptor() {
 }
 
 grb::RC Pipeline::execution() {
+	//throw std::runtime_error( "DBG" );
+
 	RC ret = SUCCESS;
 
 	// if the pipeline is empty, nothing needs to be executed

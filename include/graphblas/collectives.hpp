@@ -36,6 +36,9 @@
 #ifdef _GRB_WITH_NONBLOCKING
  #include "graphblas/nonblocking/collectives.hpp"
 #endif
+#ifdef _GRB_WITH_ASCEND
+ #include "graphblas/ascend/collectives.hpp"
+#endif
 #ifdef _GRB_WITH_LPF
  #include <graphblas/bsp/collectives.hpp>
 #endif

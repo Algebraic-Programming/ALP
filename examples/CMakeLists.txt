@@ -14,7 +14,7 @@
 # limitations under the License.
 #
 
-assert_defined_variables( WITH_REFERENCE_BACKEND WITH_OMP_BACKEND )
+assert_defined_variables( WITH_REFERENCE_BACKEND WITH_OMP_BACKEND WITH_ASCEND_BACKEND )
 
 # target listing all examples, to build them at once with 'make examples'
 add_custom_target( examples)
@@ -29,5 +29,59 @@ if( WITH_OMP_BACKEND )
 	add_executable( sp_reference_omp sp.cpp )
 	target_link_libraries( sp_reference_omp backend_reference_omp common_flags )
 	add_dependencies( examples sp_reference_omp )
+endif()
+
+if( WITH_ASCEND_BACKEND )
+	add_executable( alp_ascend_addOp_ascend unittests/alp_ascend_addOp.cpp )
+	target_link_libraries( alp_ascend_addOp_ascend backend_ascend common_flags )
+	add_dependencies( examples alp_ascend_addOp_ascend )
+endif()
+
+if( WITH_ASCEND_BACKEND )
+	add_executable( alp_ascend_addOpv1_ascend unittests/alp_ascend_addOpv1.cpp )
+	target_link_libraries( alp_ascend_addOpv1_ascend backend_ascend common_flags )
+	add_dependencies( examples alp_ascend_addOpv1_ascend )
+endif()
+
+if( WITH_ASCEND_BACKEND )
+	add_executable( alp_ascend_movedataOpv01_ascend unittests/alp_ascend_movedataOpv01.cpp )
+	target_link_libraries( alp_ascend_movedataOpv01_ascend backend_ascend common_flags )
+	add_dependencies( examples alp_ascend_movedataOpv01_ascend )
+endif()
+
+if( WITH_ASCEND_BACKEND )
+	add_executable( alp_ascend_softmaxOp_ascend unittests/alp_ascend_softmaxOp.cpp )
+	target_link_libraries( alp_ascend_softmaxOp_ascend backend_ascend common_flags )
+	add_dependencies( examples alp_ascend_softmaxOp_ascend )
+endif()
+
+if( WITH_ASCEND_BACKEND )
+	add_executable( alp_ascend_softmaxOpv1_ascend unittests/alp_ascend_softmaxOpv1.cpp )
+	target_link_libraries( alp_ascend_softmaxOpv1_ascend backend_ascend common_flags )
+	add_dependencies( examples alp_ascend_softmaxOpv1_ascend )
+endif()
+
+if( WITH_ASCEND_BACKEND )
+	add_executable( alp_ascend_softmaxOpv3_ascend unittests/alp_ascend_softmaxOpv3.cpp )
+	target_link_libraries( alp_ascend_softmaxOpv3_ascend backend_ascend common_flags )
+	add_dependencies( examples alp_ascend_softmaxOpv3_ascend )
+endif()
+
+if( WITH_ASCEND_BACKEND )
+	add_executable( alp_ascend_softmaxOpv4_ascend unittests/alp_ascend_softmaxOpv4.cpp )
+	target_link_libraries( alp_ascend_softmaxOpv4_ascend backend_ascend common_flags )
+	add_dependencies( examples alp_ascend_softmaxOpv4_ascend )
+endif()      
+
+if( WITH_ASCEND_BACKEND )
+	add_executable( alp_ascend_onlinesoftmaxOp_ascend unittests/alp_ascend_onlinesoftmaxOp.cpp )
+	target_link_libraries( alp_ascend_onlinesoftmaxOp_ascend backend_ascend common_flags )
+	add_dependencies( examples alp_ascend_onlinesoftmaxOp_ascend )
+endif()      
+
+if( WITH_ASCEND_BACKEND )
+	add_executable( ascend_flashattentionOp_ascend ascend_flashattentionOp.cpp )
+	target_link_libraries( ascend_flashattentionOp_ascend backend_ascend common_flags )
+	#add_dependencies( examples ascend_flashattentionOp_ascend )
 endif()
 

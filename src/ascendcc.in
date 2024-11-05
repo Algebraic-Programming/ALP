@@ -1,0 +1,125 @@
+#!/bin/bash
+
+#
+#   Copyright 2021 Huawei Technologies Co., Ltd.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+
+if [ -z "${ASCEND_TOOLKIT_INSTALL_PATH}" ]; then
+	echo "Please set ASCEND_TOOLKIT_INSTALL_PATH"
+	echo '	- for example, issue: export ASCEND_TOOLKIT_INSTALL_PATH="/home/yzelman/Packages/CANN/x86_64/ascend-toolkit/latest/"'
+	exit 255
+fi
+
+#example path:
+#ASCEND_TOOLKIT_INSTALL_PATH="/home/yzelman/Packages/CANN/ascend-toolkit/latest/"
+
+if [ ! -d "${ASCEND_TOOLKIT_INSTALL_PATH}" ]; then
+	echo "Error: ASCEND_TOOLKIT_INSTALL_PATH (${ASCEND_TOOLKIT_INSTALL_PATH}) does not exist"
+	exit 255
+fi
+
+ASCEND_TOOLKIT_INSTALL_PATH=${ASCEND_TOOLKIT_INSTALL_PATH}/
+echo "Info: using ASCEND_TOOLKIT_INSTALL_PATH=${ASCEND_TOOLKIT_INSTALL_PATH}"
+
+ASCEND_COMPILER="${ASCEND_TOOLKIT_INSTALL_PATH}/compiler/ccec_compiler/bin/ccec"
+
+BACKENDS=( "910B" "910" )
+ASCEND_CXXFLAGS="-xcce -DTILING_KEY_VAR=0 -O2 -std=c++17 -fPIC -pthread"
+ASCEND_CCECFLAGS_LIST=( "--cce-aicore-arch=dav-c220-cube -mllvm -cce-aicore-function-stack-size=16000 -mllvm -cce-aicore-record-overflow=false -mllvm -cce-aicore-addr-transform --cce-auto-sync" \
+	"--cce-aicore-arch=dav-c100 --cce-auto-sync" )
+ASCEND_CCECFLAGS_LLIST=( "--cce-fatobj-link --cce-aicore-arch=dav-c220-cube" \
+	"--cce-fatobj-link --cce-aicore-arch=dav-c100" )
+ASCEND_LFLAGS_LIST=( "-L${ASCEND_TOOLKIT_INSTALL_PATH}runtime/lib64 -L${ASCEND_TOOLKIT_INSTALL_PATH}tools/simulator/Ascend910B1/lib -L${ASCEND_TOOLKIT_INSTALL_PATH}tools/tikicpulib/lib/Ascend910B1 -lstdc++ -lruntime -lascendcl" \
+	"-L${ASCEND_TOOLKIT_INSTALL_PATH}runtime/lib64 -L${ASCEND_TOOLKIT_INSTALL_PATH}tools/simulator/Ascend910A/lib -L${ASCEND_TOOLKIT_INSTALL_PATH}tools/tikicpulib/lib/Ascend910A -lstdc++ -lruntime -lascendcl" )
+ASCEND_IFLAGS="-I${ASCEND_TOOLKIT_INSTALL_PATH}acllib/include -I${ASCEND_TOOLKIT_INSTALL_PATH}compiler/tikcpp/tikcfw -I${ASCEND_TOOLKIT_INSTALL_PATH}compiler/tikcpp/tikcfw/impl -I${ASCEND_TOOLKIT_INSTALL_PATH}compiler/tikcpp/tikcfw/interface -I${ASCEND_TOOLKIT_INSTALL_PATH}tools/tikicpulib/lib/include"
+
+declare -a ARGS
+SHOW="eval"
+BACKEND=${BACKENDS[0]}
+LINK=true
+
+while [[ $# -gt 0 ]]; do
+	option="$1"
+	shift;
+	case ${option} in
+		-b|--backend)
+			BACKEND=$1
+			shift
+		;;
+		-c)
+			ARGS+=("-c")
+			LINK=false
+		;;
+		--show)
+			SHOW="echo"
+		;;
+		--version)
+			echo "This is ALP/Ascend"
+			echo " "
+			echo "This software comes with NO warranty; not even for"
+			echo "MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE."
+			echo "See the license file for details."
+			echo " "
+			ARGS+=("${option}")
+		;;
+		--)
+			break
+		;;
+		*)
+			ARGS+=( "${option}" )
+		;;
+	esac
+done
+
+BACKENDID=-1
+for i in "${!BACKENDS[@]}"; do
+	if [[ "${BACKENDS[$i]}" = "${BACKEND}" ]]
+	then
+		BACKENDID=$i
+		break
+	fi
+done
+
+echo "Info: compiling for ${BACKEND}"
+
+if [[ ${BACKENDID} -eq -1 ]]
+then
+	echo "Could not find requested backend \`${BACKEND}'"
+	exit 255
+fi
+
+ASCEND_CCECFLAGS=${ASCEND_CCECFLAGS_LIST[$i]}
+
+if ${LINK}
+then
+	CMD="${ASCEND_COMPILER} ${ASCEND_CCECFLAGS_LLIST[$i]} "${ARGS[@]}" "$@" ${ASCEND_LFLAGS_LIST[$i]}"
+else
+	CMD="${ASCEND_COMPILER} ${ASCEND_CXXFLAGS} ${ASCEND_CCECFLAGS} ${ASCEND_IFLAGS} "${ARGS[@]}" "$@" ${LFLAGS}"
+fi
+
+${SHOW} "${CMD}"
+
+#Ascend 910B, -c:
+#/home/yzelman/Packages/CANN/ascend-toolkit/latest/compiler/ccec_compiler/bin/ccec -xcce -DTILING_KEY_VAR=0 -I"/home/yzelman/Packages/CANN/ascend-toolkit/latest/acllib/include" -I"/home/yzelman/Packages/CANN/ascend-toolkit/latest/compiler/tikcpp/tikcfw" -I"/home/yzelman/Packages/CANN/ascend-toolkit/latest/compiler/tikcpp/tikcfw/impl" -I"/home/yzelman/Packages/CANN/ascend-toolkit/latest/compiler/tikcpp/tikcfw/interface" -I"/home/yzelman/Packages/CANN/ascend-toolkit/latest/tools/tikicpulib/lib/include" -O2 -std=c++17 --cce-aicore-arch=dav-c220-cube -mllvm -cce-aicore-function-stack-size=16000 -mllvm -cce-aicore-record-overflow=false -mllvm -cce-aicore-addr-transform --cce-auto-sync -fPIC -pthread -o CMakeFiles/add_custom_npu.dir/__/__/add_custom.cpp.o -c /home/yzelman/Documents/Ascend/samples-master/cplusplus/level1_single_api/4_op_dev/6_ascendc_custom_op/kernel_invocation/Add/add_custom.cpp
+
+#Ascend 910B, link:
+#/home/yzelman/Packages/CANN/ascend-toolkit/latest/compiler/ccec_compiler/bin/ccec --cce-fatobj-link --cce-aicore-arch=dav-c220-cube    CMakeFiles/add_custom_npu.dir/__/__/add_custom.cpp.o CMakeFiles/add_custom_npu.dir/__/__/main.cpp.o -o ../../../add_custom_npu  -L"/home/yzelman/Packages/CANN/ascend-toolkit/latest/runtime/lib64" -L"/home/yzelman/Packages/CANN/ascend-toolkit/latest/tools/simulator/Ascend910B1/lib" -L"/home/yzelman/Packages/CANN/ascend-toolkit/latest/tools/tikicpulib/lib/Ascend910B1" -lstdc++ -lruntime -lascendcl
+
+#Ascend 910, -c:
+#cd /home/yzelman/Documents/Ascend/samples-master/cplusplus/level1_single_api/4_op_dev/6_ascendc_custom_op/kernel_invocation/Add/build/cmake/npu && /home/yzelman/Packages/CANN/ascend-toolkit/latest/compiler/ccec_compiler/bin/ccec -xcce -DTILING_KEY_VAR=0  -I"/home/yzelman/Packages/CANN/ascend-toolkit/latest/acllib/include" -I"/home/yzelman/Packages/CANN/ascend-toolkit/latest/compiler/tikcpp/tikcfw" -I"/home/yzelman/Packages/CANN/ascend-toolkit/latest/compiler/tikcpp/tikcfw/impl" -I"/home/yzelman/Packages/CANN/ascend-toolkit/latest/compiler/tikcpp/tikcfw/interface" -I"/home/yzelman/Packages/CANN/ascend-toolkit/latest/tools/tikicpulib/lib/include"  -O2 -std=c++17 --cce-aicore-arch=dav-c100  --cce-auto-sync -fPIC -pthread -o CMakeFiles/add_custom_npu.dir/__/__/add_custom.cpp.o -c /home/yzelman/Documents/Ascend/samples-master/cplusplus/level1_single_api/4_op_dev/6_ascendc_custom_op/kernel_invocation/Add/add_custom.cpp
+
+#Ascend 910, link:
+#/home/yzelman/Packages/CANN/ascend-toolkit/latest/compiler/ccec_compiler/bin/ccec --cce-fatobj-link --cce-aicore-arch=dav-c100    CMakeFiles/add_custom_npu.dir/__/__/add_custom.cpp.o CMakeFiles/add_custom_npu.dir/__/__/main.cpp.o -o ../../../add_custom_npu  -L"/home/yzelman/Packages/CANN/ascend-toolkit/latest/runtime/lib64" -L"/home/yzelman/Packages/CANN/ascend-toolkit/latest/tools/simulator/Ascend910A/lib" -L"/home/yzelman/Packages/CANN/ascend-toolkit/latest/tools/tikicpulib/lib/Ascend910A" -lstdc++ -lruntime -lascendcl
+

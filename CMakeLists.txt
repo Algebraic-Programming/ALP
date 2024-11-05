@@ -37,7 +37,7 @@ project( GraphBLAS
 	DESCRIPTION "The ultimate engine for sparse computation"
 	LANGUAGES CXX C
 )
-set( CMAKE_CXX_STANDARD 11 )
+set( CMAKE_CXX_STANDARD 14 )
 set( CMAKE_CXX_STANDARD_REQUIRED ON )
 
 # install within the build directory by default (NOT to /usr/local or the likes)
@@ -52,13 +52,14 @@ endif()
 option( WITH_REFERENCE_BACKEND "With Reference backend" ON )
 option( WITH_OMP_BACKEND "With OMP backend" ON )
 option( WITH_HYPERDAGS_BACKEND "With Hyperdags backend" ON )
+option( WITH_ASCEND_BACKEND "With Ascend backend" ON )
 if( WITH_HYPERDAGS_BACKEND )
 	if( NOT DEFINED WITH_HYPERDAGS_USING )
 		set( WITH_HYPERDAGS_USING "reference" )
 	endif()
 endif()
 option( WITH_NONBLOCKING_BACKEND "With Nonblocking backend" ON )
-option( WITH_NUMA "With NUMA support" ON )
+option( WITH_NUMA "With NUMA support" OFF )
 option( LPF_INSTALL_PATH "Path to the LPF tools for the BSP1D and Hybrid backends" OFF )
 # the following options depend on LPF_INSTALL_PATH being set
 include(CMakeDependentOption)
@@ -190,6 +191,12 @@ if( WITH_HYBRID_BACKEND )
 		set( WITH_OMP_BACKEND ON )
 		message( STATUS "Enabling compilation of reference_omp backend: required by hybrid" )
 	endif()
+endif()
+
+# Enable nonblocking backend if ascend is active
+if( WITH_ASCEND_BACKEND )
+	set( WITH_NONBLOCKING_BACKEND ON )
+	message( STATUS "Enabling compilation of nonblocking backend: required by the Ascend backend" )
 endif()
 
 # Enabling reference_omp backend if non-blocking is active
