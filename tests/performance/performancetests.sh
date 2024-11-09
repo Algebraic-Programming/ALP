@@ -196,6 +196,14 @@ if [[ -z $DATASETTORUN && ( -z "$EXPTYPE" || "$EXPTYPE" == "KERNEL" ) ]]; then
 	tail -2 ${TEST_OUT_DIR}/dot-openmp
 	egrep 'label|Overall timings|0,' ${TEST_OUT_DIR}/dot-openmp | grep -v Outer >> ${TEST_OUT_DIR}/benchmarks
 
+	echo ">>>      [ ]           [x]       Testing fuselets versus standard reference_omp using a"
+	echo "                                 problem size of 10 000 000."
+	echo " "
+	${TEST_BIN_DIR}/fuselets 10000000 10 30 &> ${TEST_OUT_DIR}/fuselets
+	head -1 ${TEST_OUT_DIR}/fuselets
+	tail -2 ${TEST_OUT_DIR}/fuselets
+	egrep 'label|Overall timings|0,' ${TEST_OUT_DIR}/fuselets | grep -v Outer >> ${TEST_OUT_DIR}/benchmarks
+
 fi
 
 # start definition of helper functions for remainder performance tests
