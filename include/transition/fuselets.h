@@ -155,6 +155,18 @@ extern "C" {
 	);
 
 	/**
+	 * @see spmv_dot_dii
+	 */
+	int spmv_dot_dii(
+		double * const v, double * const beta,
+		const int * const ia, const int * const ij,
+		const double * const iv, const double * const y,
+		const double alpha,
+		const double * const r,
+		const size_t n
+	);
+
+	/**
 	 * Computes \f$ v, \beta, \gamma \f$ from:
 	 *  - \f$ v = Ay + \alpha v \f$,
 	 *  - \f$ \beta = (v,r) \f$,
@@ -199,6 +211,17 @@ extern "C" {
 		const size_t n                                          // size
 	);
 
+	/** @see spmv_dot_norm2_dsu */
+	int spmv_dot_norm2_dii(
+		double * const v,
+		double * const beta, double * const gamma,
+		const int * const ia, const int * const ij,
+		const double * const iv, const double * const y,
+		const double alpha,
+		const double * const r,
+		const size_t n
+	);
+
 	/**
 	 * Computes \f$ p, u, \alpha \f$ from:
 	 *
@@ -241,6 +264,14 @@ extern "C" {
 		const size_t * const ia, const unsigned int * const ij,
 		const double * const iv,                                  // input 2
 		const size_t n                                            // size
+	);
+
+	/** @see update_spmv_dot_dsu */
+	int update_spmv_dot_dii(
+		double * const p, double * const u, double * const alpha,
+		const double * const z, const double beta,
+		const int * const ia, const int * const ij, const double * const iv,
+		const size_t n
 	);
 
 	/**
