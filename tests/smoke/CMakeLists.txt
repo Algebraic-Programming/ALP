@@ -55,6 +55,11 @@ add_grb_executables( manual_hook_grb_collectives_blas1_raw manual_launcher.cpp
 	BACKENDS bsp1d NO_BACKEND_NAME
 )
 
+add_grb_executables( fuselets_smoke ../performance/fuselets.cpp
+	BACKENDS reference_omp NO_BACKEND_NAME
+	ADDITIONAL_LINK_LIBRARIES fuselets
+)
+
 add_grb_executables( small_knn ../unit/auto_launcher.cpp
 	hook/knn.cpp
 	BACKENDS reference reference_omp bsp1d hybrid hyperdags nonblocking

@@ -427,6 +427,15 @@ for BACKEND in ${BACKENDS[@]}; do
 				echo " "
 			fi
 
+			if [ "$BACKEND" = "reference_omp" ]; then
+				echo "Non-standard reference-omp specific smoke tests:"
+				echo " "
+				echo ">>>      [x]           [ ]       Tests fuselets"
+				$runner ${TEST_BIN_DIR}/fuselets_smoke 100 1 1 &> ${TEST_OUT_DIR}/fuselets.log
+				head -1 ${TEST_OUT_DIR}/fuselets.log
+				grep "Test OK" ${TEST_OUT_DIR}/fuselets.log || echo "Test FAILED"
+				echo " "
+			fi
 		done
 	done
 
