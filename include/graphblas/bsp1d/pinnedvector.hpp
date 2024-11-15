@@ -138,7 +138,8 @@ namespace grb {
 			/** \internal No implementation notes. */
 			template< typename Coords >
 			PinnedVector( const Vector< IOType, BSP1D, Coords > &x, const IOMode mode ) :
-				_raw_deleter( x._raw_deleter ), _stack_deleter( x._buffer_deleter ),
+				_raw_deleter( x._raw_deleter ),
+				_stack_deleter( x._buffer_deleter ),
 				_buffered_values( mode == PARALLEL ? x._raw + x._offset : x._raw ),
 				_mode( mode ), _length( x._global._coordinates.size() )
 			{

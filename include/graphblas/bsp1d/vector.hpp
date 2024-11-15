@@ -597,6 +597,7 @@ namespace grb {
 				// or both be non-NULL.
 				assert( !( raw_in != nullptr || assigned_in != nullptr ||
 					buffer_in != nullptr ) );
+				throw std::invalid_argument( "input arrays cannot be nullptr" );
 			}
 #endif
 
@@ -604,7 +605,7 @@ namespace grb {
 #ifdef _DEBUG
 				std::cerr << "\t illegal initial capacity requested\n";
 #endif
-				throw std::runtime_error( toString( ILLEGAL ) );
+				throw std::invalid_argument( toString( ILLEGAL ) );
 			}
 
 			// if no vector was provided, create a new one
@@ -613,7 +614,7 @@ namespace grb {
 				std::stringstream sstream;
 				sstream << ", for a vector of size " << cap_in;
 				// declare new assigned array as char *
-				char * new_assigned = nullptr;
+				// char * new_assigned = nullptr;
 
 				const size_t bufferSize =
 					internal::Coordinates< _GRB_BSP1D_BACKEND >::bufferSize( _local_n ) +
@@ -625,11 +626,6 @@ namespace grb {
 						true, _assigned_deleter )
 					.alloc( bufferSize, true, _buffer_deleter );
 				const RC rc = allocator.getLastAllocationResult();
-				allocator.printReport( "grb::Vector< T, BSP1D, C > (initialize)",
-					sstream.str().c_str() );
-				_raw = _raw_deleter.get();
-				new_assigned = _assigned_deleter.get();
-				_buffer = _buffer_deleter.get();
 				// identify error and throw
 				if( rc == OUTOFMEM ) {
 					throw std::runtime_error( "Out-of-memory during BSP1D Vector memory "
@@ -639,7 +635,11 @@ namespace grb {
 						"memory allocation" );
 				}
 				// all OK, so set and exit
-				_assigned = reinterpret_cast< bool * >(new_assigned);
+				allocator.printReport( "grb::Vector< T, BSP1D, C > (initialize)",
+					sstream.str().c_str() );
+				_raw = _raw_deleter.get();
+				_assigned = reinterpret_cast< bool * >( _assigned_deleter.get() );
+				_buffer = _buffer_deleter.get();
 			} else {
 				// note that this does not catch overlapping cases, nor multiply-used memory areas
 				// checking for all of this is way too expensive.
@@ -663,8 +663,7 @@ namespace grb {
 			// generate ID
 			assert( cap_in > 0 );
 			_id = data.mapper.insert(
-				reinterpret_cast< uintptr_t >(_assigned)
-			);
+				reinterpret_cast< typename internal::BSP1DMapper::IDType >( _assigned ) );
 
 			// delegate to sequential implementation
 			_global.initialize( &_id, _raw, _assigned, false, _buffer, cap_in, nz );
@@ -736,8 +735,8 @@ namespace grb {
 							// array-based combine
 							_local_n * data.P * (
 								sizeof( D ) +
-								sizeof( internal::Coordinates< _GRB_BSP1D_BACKEND >::ArrayType
-							) )
+								sizeof( internal::Coordinates< _GRB_BSP1D_BACKEND >::ArrayType )
+							)
 						) ) != SUCCESS ) {
 					throw std::runtime_error( "Error during resizing of global GraphBLAS buffer" );
 				}
@@ -2441,6 +2440,8 @@ namespace grb {
 
 			// done
 		}
+
+		Vector( const PinnedVector< D, BSP1D > & pv ) noexcept	{}
 
 		/**
 		 * Copy-assignment.
