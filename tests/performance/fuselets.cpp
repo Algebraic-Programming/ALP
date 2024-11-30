@@ -165,6 +165,107 @@ void test_spmv_dot( const struct Input &in, struct Output &out ) {
 	out.error = rc;
 }
 
+void test_spmv_dot_norm2(
+	const struct Input &in, struct Output &out
+) {
+	grb::utils::Timer timer;
+
+	// I/O phase is empty
+	out.times.io = 0;
+
+	// start preamble
+	timer.reset();
+	grb::Vector< double > xv( in.n ), yv( in.n ), zv( in.n );
+	grb::Matrix< double > Am =
+		grb::algorithms::matrices< double >::eye( in.n, in.n, 2.0, 1 );
+	grb::RC rc = grb::set< grb::descriptors::use_index >( xv, 0.0 );
+	rc = rc ? rc : grb::set( yv, 0.0 );
+	rc = rc ? rc : grb::set( zv, 2.0 );
+	if( rc != grb::SUCCESS ) {
+		std::cerr << "\t test_spmv_dot_norm2: Initialisation FAILED (I)\n";
+		our.error = grb::FAILED;
+		return;
+	}
+
+	double * const x = xv.raw(), * const y = yv.raw(), * const z = zv.raw();
+	const auto &A = grb::internal::getCRS( Am );
+	const auto * const av = A.values;
+	const auto * const ai = A.col_start;
+	const auto * const aj = A.row_index;
+	double beta, gamma;
+	beta = gamma = 0.0;
+
+	rc = initialize_fuselets() == 0 ? grb::SUCCESS : grb::FAILED;
+
+	// verify
+	if( rc == grb::SUCCESS ) {
+		// A and x are as in the above test
+		// y is dense with entries 4.23 everywhere
+		// z is dense with entries twos everywhere
+		// therefore, as in the above, after spmv_dot_norm2, the output
+		//  - z should be dense with values (3, 5, 7, ..., 2(n-1), 1)
+		//  - beta should be zero
+		// new to the above, gamma should read norm2-squared of z
+		beta = 1.13;
+		gamma = 2.17;
+		const int fuselet_rc = spmv_dot_norm2_dsu(
+			z, &beta, &gamma,
+			ai, aj, av,
+			x, 0.5, y,
+			in.n
+		);
+		if( fuselet_rc != 0 ) {
+			std::cerr << "\t test_spmv_dot_norm2: verification FAILED (I)\n";
+			out.error = grb::FAILED;
+			return;
+		}
+		if( beta != 0.0 || beta != -0.0 ) {
+			std::cerr << "\t test_spmv_dot_norm2: verification FAILED (II)\n";
+			out.error = grb::FAILED;
+			return;
+		}
+		double check_gamma = z[ in.n - 1];
+		check_gamma *= check_gamma;
+		if( z[ in.n - 1 ] != 1.0 ) {
+			std::cerr << "\t test_spmv_dot_norm2: verification FAILED (III)\n"
+				<< "\t\t expected: 1.0, got: " << z[ in.n - 1 ] << "\n";
+			out.error = grb::FAILED;
+			return;
+		}
+		for( size_t i = 0; i < in.n - 1; ++i ) {
+			check_gamma += z[ i ] * z[ i ];
+			if( z[ i ] != static_cast< double >( 2 * (i + 1) + 1 ) ) {
+				std::cerr << "\t test_spmv_dot_norm2: verification FAILED (IV)\n"
+					<< "\t\t expected: " << ( 2 * ( i + 1 ) + 1 ) << ", got: "
+					<< z[ i ] << " at position " << i << "\n";
+				out.error = grb::FAILED;
+				return;
+			}
+		}
+		if( !grb::equals( gamma, check_gamma, 2 * in.n - 1) ) {
+			std::cerr << "\t test_spmv_dot_norm2: verification FAILED (V)\n"
+				<< "\t\t expected: " << check_gamma << ", got: " << gamma << \n";
+			out.error = grb::FAILED;
+			return;
+		}
+	}
+
+	out.times.preamble = timer.time();
+	// end preamble
+
+	if( rc != grb::SUCCESS ) {
+		std::cerr << "\t test_spmv_dot_norm2: error during test initialisation (II)\n";
+		out.error = grb::FAILED;
+		return;
+	}
+
+	// benchmark
+
+	timer.reset();
+	// TODO implement from here
+
+}
+
 int main( int argc, char ** argv ) {
 	// sanity check on program args
 	if( argc < 2 || argc > 4 ) {
