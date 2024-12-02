@@ -41,6 +41,52 @@ struct Input {
 	size_t rep;
 };
 
+template< typename T >
+static grb::Matrix< T > setupUpperDiagonalMatrix( const size_t n, const T value ) {
+	return grb::algorithms::matrices< double >::eye( n, n, value, 1 );
+}
+
+template< typename T >
+static grb::RC setupVectors(
+	grb::Vector< T > &x,
+	grb::Vector< T > &y,
+	grb::Vector< T > &z
+) {
+	grb::RC rc = grb::set< grb::descriptors::use_index >( x, 0.0 );
+	rc = rc ? rc : grb::set( y, 0.0 );
+	rc = rc ? rc : grb::set( z, 2.0 );
+	return rc;
+}
+
+template< typename T >
+static void getCRS(
+	const grb::Matrix< T > &Am,
+	const T * &av, const size_t * &ai, const unsigned int * &aj
+) {
+	const auto &A = grb::internal::getCRS( Am );
+	av = A.values;
+	ai = A.col_start;
+	aj = A.row_index;
+}
+
+static grb::RC verifySpMV( const double * const y, const size_t n ) {
+	if( y[ n - 1 ] != 1.0 ) {
+		std::cerr << "\t\t error during SpMV output verification (I)\n"
+			<< "\t\t\t expected: 1.0, got: " << y[ n - 1 ]
+			<< " at position " << (n-1) << "\n";
+		return grb::FAILED;
+	}
+	for( size_t i = 0; i < n - 1; ++i ) {
+		if( y[ i ] != static_cast< double >( 2 * (i + 1) + 1 ) ) {
+			std::cerr << "\t\t errpr during SpMV output verification (II)\n"
+				<< "\t\t\t expected: " << ( 2 * ( i + 1 ) + 1 ) << ", got: " << y[ i ]
+				<< " at position " << i << "\n";
+			return grb::FAILED;
+		}
+	}
+	return grb::SUCCESS;
+}
+
 void test_spmv_dot( const struct Input &in, struct Output &out ) {
 	grb::utils::Timer timer;
 	grb::Semiring<
@@ -54,17 +100,18 @@ void test_spmv_dot( const struct Input &in, struct Output &out ) {
 	// start preamble
 	timer.reset();
 	grb::Vector< double > xv( in.n ), yv( in.n ), zv( in.n );
-	grb::Matrix< double > Am =
-		grb::algorithms::matrices< double >::eye( in.n, in.n, 2.0, 1 );
-	grb::RC rc = grb::set< grb::descriptors::use_index >( xv, 0.0 );
-	rc = rc ? rc : grb::set( yv, 2.0 );
-	rc = rc ? rc : grb::set( zv, 0.0 );
+	grb::Matrix< double > Am = setupUpperDiagonalMatrix( in.n, 2.0 );
+	grb::RC rc = setupVectors( xv, zv, yv );
+	if( rc != grb::SUCCESS ) {
+		std::cerr << "\t test_spmv_dot: test initialisation FAILED (I)\n";
+		out.error = grb::FAILED;
+		return;
+	}
 
 	double * const x = xv.raw(), * const y = yv.raw(), * const z = zv.raw();
-	const auto &A = grb::internal::getCRS( Am );
-	const auto * const av = A.values;
-	const auto * const ai = A.col_start;
-	const auto * const aj = A.row_index;
+	const double * av = nullptr;
+	const size_t * ai = nullptr; const unsigned int * aj = nullptr;
+	getCRS( Am, av, ai, aj );
 	double beta = 0.0;
 
 	rc = rc ? rc : (initialize_fuselets() == 0 ? grb::SUCCESS : grb::FAILED);
@@ -87,29 +134,19 @@ void test_spmv_dot( const struct Input &in, struct Output &out ) {
 			in.n
 		);
 		if( fuselet_rc != 0 ) {
-			std::cerr << "Error during verification (I)\n";
+			std::cerr << "\t test_spmv_dot: verification FAILED (I)\n";
 			out.error = grb::FAILED;
 			return;
 		}
 		if( beta != 0.0 || beta != -0.0 ) {
-			std::cerr << "Error during verification (II)\n";
+			std::cerr << "\t test_spmv_dot: verification FAILED (II)\n";
 			out.error = grb::FAILED;
 			return;
 		}
-		if( y[ in.n - 1 ] != 1.0 ) {
-			std::cerr << "Error during verification (III)\n"
-				<< "\t expected: 1.0, got: " << y[ in.n - 1 ] << "\n";
-			out.error = grb::FAILED;
+		out.error = verifySpMV( y, in.n );
+		if( out.error != grb::SUCCESS ) {
+			std::cerr << "\t test_spmv_dot: verification FAILED (III)\n";
 			return;
-		}
-		for( size_t i = 0; i < in.n - 1; ++i ) {
-			if( y[ i ] != static_cast< double >( 2 * (i + 1) + 1 ) ) {
-				std::cerr << "Error during verification (IV)\n"
-					<< "\t expected: " << ( 2 * ( i + 1 ) + 1 ) << ", got: " << y[ i ]
-					<< " at position " << i << "\n";
-				out.error = grb::FAILED;
-				return;
-			}
 		}
 	}
 
@@ -117,7 +154,7 @@ void test_spmv_dot( const struct Input &in, struct Output &out ) {
 	// end preamble
 
 	if( rc != grb::SUCCESS ) {
-		std::cerr << "Error during test initialisation\n";
+		std::cerr << "\t test_spmv_dot: test initialisation FAILED (II)\n";
 		out.error = rc;
 		return;
 	}
@@ -156,13 +193,10 @@ void test_spmv_dot( const struct Input &in, struct Output &out ) {
 	out.times.useful =
 		static_cast< double >(slow - fast) / static_cast< double >(in.rep);
 
-	// postamble
+	// postamble, and done
 	timer.reset();
-	rc = finalize_fuselets() == 0? grb::SUCCESS : grb::PANIC;
+	out.error = finalize_fuselets() == 0 ? grb::SUCCESS : grb::PANIC;
 	out.times.postamble = timer.time();
-
-	// done
-	out.error = rc;
 }
 
 void test_spmv_dot_norm2(
@@ -176,22 +210,18 @@ void test_spmv_dot_norm2(
 	// start preamble
 	timer.reset();
 	grb::Vector< double > xv( in.n ), yv( in.n ), zv( in.n );
-	grb::Matrix< double > Am =
-		grb::algorithms::matrices< double >::eye( in.n, in.n, 2.0, 1 );
-	grb::RC rc = grb::set< grb::descriptors::use_index >( xv, 0.0 );
-	rc = rc ? rc : grb::set( yv, 0.0 );
-	rc = rc ? rc : grb::set( zv, 2.0 );
+	grb::Matrix< double > Am = setupUpperDiagonalMatrix( in.n, 2.0 );
+	grb::RC rc = setupVectors( xv, yv, zv );
 	if( rc != grb::SUCCESS ) {
-		std::cerr << "\t test_spmv_dot_norm2: Initialisation FAILED (I)\n";
-		our.error = grb::FAILED;
+		std::cerr << "\t test_spmv_dot_norm2: test initialisation FAILED (I)\n";
+		out.error = grb::FAILED;
 		return;
 	}
 
 	double * const x = xv.raw(), * const y = yv.raw(), * const z = zv.raw();
-	const auto &A = grb::internal::getCRS( Am );
-	const auto * const av = A.values;
-	const auto * const ai = A.col_start;
-	const auto * const aj = A.row_index;
+	const double * av = nullptr;
+	const size_t * ai = nullptr; const unsigned int * aj = nullptr;
+	getCRS( Am, av, ai, aj );
 	double beta, gamma;
 	beta = gamma = 0.0;
 
@@ -226,26 +256,18 @@ void test_spmv_dot_norm2(
 		}
 		double check_gamma = z[ in.n - 1];
 		check_gamma *= check_gamma;
-		if( z[ in.n - 1 ] != 1.0 ) {
+		for( size_t i = 0; i < in.n - 1; ++i ) {
+			check_gamma += z[ i ] * z[ i ];
+		}
+		if( !grb::utils::equals( gamma, check_gamma, 2 * in.n - 1) ) {
 			std::cerr << "\t test_spmv_dot_norm2: verification FAILED (III)\n"
-				<< "\t\t expected: 1.0, got: " << z[ in.n - 1 ] << "\n";
+				<< "\t\t expected: " << check_gamma << ", got: " << gamma << "\n";
 			out.error = grb::FAILED;
 			return;
 		}
-		for( size_t i = 0; i < in.n - 1; ++i ) {
-			check_gamma += z[ i ] * z[ i ];
-			if( z[ i ] != static_cast< double >( 2 * (i + 1) + 1 ) ) {
-				std::cerr << "\t test_spmv_dot_norm2: verification FAILED (IV)\n"
-					<< "\t\t expected: " << ( 2 * ( i + 1 ) + 1 ) << ", got: "
-					<< z[ i ] << " at position " << i << "\n";
-				out.error = grb::FAILED;
-				return;
-			}
-		}
-		if( !grb::equals( gamma, check_gamma, 2 * in.n - 1) ) {
-			std::cerr << "\t test_spmv_dot_norm2: verification FAILED (V)\n"
-				<< "\t\t expected: " << check_gamma << ", got: " << gamma << \n";
-			out.error = grb::FAILED;
+		out.error = verifySpMV( z, in.n );
+		if( out.error != grb::SUCCESS ) {
+			std::cerr << "\t test_spmv_dot_norm2: verification FAILED (IV)\n";
 			return;
 		}
 	}
@@ -254,7 +276,7 @@ void test_spmv_dot_norm2(
 	// end preamble
 
 	if( rc != grb::SUCCESS ) {
-		std::cerr << "\t test_spmv_dot_norm2: error during test initialisation (II)\n";
+		std::cerr << "\t test_spmv_dot_norm2: test initialisation FAILED (II)\n";
 		out.error = grb::FAILED;
 		return;
 	}
@@ -262,8 +284,42 @@ void test_spmv_dot_norm2(
 	// benchmark
 
 	timer.reset();
-	// TODO implement from here
+	for( size_t i = 0; i < in.rep; ++i ) {
+		beta = gamma = 0.0;
+		(void) spmv_dot_norm2_dsu(
+			z, &beta, &gamma,
+			ai, aj, av,
+			x, 0.5, y,
+			in.n
+		);
+	}
+	const double fast = timer.time();
 
+	timer.reset();
+	for( size_t i = 0; i < in.rep; ++i ) {
+		grb::semirings::plusTimes< double > plusTimes_FP64;
+		(void) grb::foldr< grb::descriptors::dense >( 0.5, zv,
+			grb::operators::mul< double >() );
+		(void) grb::mxv< grb::descriptors::dense >( zv, Am, xv,
+			grb::semirings::plusTimes< double >() );
+		beta = gamma = 0.0;
+		(void) grb::dot< grb::descriptors::dense >( beta, yv, zv, plusTimes_FP64 );
+		(void) grb::dot< grb::descriptors::dense >( gamma, zv, zv, plusTimes_FP64 );
+		(void) grb::wait();
+	}
+	const double slow = timer.time();
+
+	// record speedup:
+	std::cout << "\t test_spmv_dot_norm2 (" << in.rep << " repetitions):\n"
+		<< "\t\t reference_omp: " << slow << " ms.\n"
+		<< "\t\t fuselets: " << fast << " ms.\n";
+	out.times.useful =
+		static_cast< double >(slow - fast) / static_cast< double >(in.rep);
+
+	// postamble, and done
+	timer.reset();
+	out.error = finalize_fuselets() == 0 ? grb::SUCCESS : grb::PANIC;
+	out.times.postamble = timer.time();
 }
 
 int main( int argc, char ** argv ) {
@@ -321,6 +377,12 @@ int main( int argc, char ** argv ) {
 		<< std::endl;
 	grb::RC rc = bench.exec( &(test_spmv_dot), in, out, 1, outer, true );
 
+	if( rc == grb::SUCCESS ) {
+		std::cout << "\nBenchmark label: spmd_dot_norm2 of size " << in.n
+			<< std::endl;
+		rc = bench.exec( &(test_spmv_dot_norm2), in, out, 1, outer, true );
+	}
+
 	if( rc != grb::SUCCESS ) {
 		std::cerr << "Test launch failed: " << grb::toString( rc ) << std::endl;
 		std::cout << "Test FAILED\n" << std::endl;
@@ -335,7 +397,8 @@ int main( int argc, char ** argv ) {
 	}
 
 	std::cout << "NOTE: please check the above performance figures manually-- "
-		<< "the useful timings should positive, indicating speedup.\n";
+		<< "the useful timings should positive, indicating speedup for fuselets vs. "
+		<< "regular blocking execution (for large enough vector lengths)\n";
 
 	// done
 	std::cout << "Test OK\n" << std::endl;
