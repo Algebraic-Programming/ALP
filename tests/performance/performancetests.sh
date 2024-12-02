@@ -197,9 +197,9 @@ if [[ -z $DATASETTORUN && ( -z "$EXPTYPE" || "$EXPTYPE" == "KERNEL" ) ]]; then
 	egrep 'label|Overall timings|0,' ${TEST_OUT_DIR}/dot-openmp | grep -v Outer >> ${TEST_OUT_DIR}/benchmarks
 
 	echo ">>>      [x]           [x]       Testing fuselets versus standard reference_omp using a"
-	echo "                                 problem size of 10 000 000."
+	echo "                                 problem size of 100 000 000."
 	echo " "
-	${TEST_BIN_DIR}/fuselets 10000000 10 30 &> ${TEST_OUT_DIR}/fuselets
+	${TEST_BIN_DIR}/fuselets 100000000 10 30 &> ${TEST_OUT_DIR}/fuselets
 	head -1 ${TEST_OUT_DIR}/fuselets
 	grep "Test OK" ${TEST_OUT_DIR}/fuselets || echo "Test FAILED"
 	echo " "
