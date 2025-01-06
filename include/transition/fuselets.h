@@ -56,7 +56,7 @@
  *          to <tt>true</tt>).
  *
  * While the presently-implemented fuselets were requested for accelerating a
- * pre-existing distributed-memory solver, the implementation of the fuselets,
+ * pre-existing distributed-memory solver, the implementation of the fuselets
  * demonstrates how effectively ALP can be used for code generation. The tiny
  * size of the implementation is particularly compelling, with typical gains
  * between 50 to 200 percent (1.5-3x), depending on the vector sizes as well as
