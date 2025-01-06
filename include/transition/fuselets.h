@@ -35,7 +35,41 @@
  * \ingroup TRANS
  * @{
  *
- * \todo add documentation
+ * While Algebraic Programming is a programming model at its core, one may,
+ * as indeed any programming model can be employed, use ALP to generate
+ * libraries. Fuselets use the ALP nonblocking backend by Mastoras et al. [1,2]
+ * in particular to generate a set of fused kernels that mix dense level-1 BLAS
+ * operations with `level-2' Sparse BLAS operations.
+ *
+ * While the presently-implemented fuselets were requested for accelerating a
+ * pre-existing distributed-memory solver, the implementation of the fuselets,
+ * in particular its exceedingly small size, demonstrates how effectively ALP
+ * can be used for code generation. On local installations, users interested in
+ * defining their own fuselets may directly edit the following files to add any
+ * new functions they require:
+ *  - <tt>include/transition/fuselets.h</tt>, and
+ *  - <tt>src/transition/fuselets.cpp</tt>.
+ * After any such edits, simply issue <tt>make install</tt> again, which will
+ * update your installed fuselets to include your newly-defined routines.
+ *
+ * The exposed API for the fuselets is standard C.
+ *
+ * \warning Any application that relies on fuselets is \em strongly encouraged
+ *          to enable standard OpenMP thread pinning (such as, for example,
+ *          achieved by setting the <tt>OMP_PROC_BIND</tt> environment variable
+ *          to <tt>true</tt>.
+ *
+ *
+ * For fuselets that take matrix inputs, we here assume standard Compressed Row
+ * Storage (CRS), also known as Compressed Sparse Rows (CSR). The fuselets
+ * currently defined use a different postfix to distinguish between the possible
+ * types one may use for each of the three standard CRS arrays. For example, the
+ * postfix <tt>_dsu</tt> indicates a double-precision nonzero value array (d),
+ * an offset array of type <tt>size_t</tt> (s), and a column index array of type
+ * <tt>unsigned int</tt> (u)-- while the postfix <tt>_dii</tt> indicates arrays
+ * of type <tt>double</tt>, <tt>int</tt>, and <tt>int</tt>, respectively. More
+ * details about the presently provided variants may be found in the following
+ * note.
  *
  * \note For matrices, we assume the de-facto standard Compressed Row Storage.
  *       This formats consists of three arrays: a row offset array, a column
@@ -59,8 +93,10 @@
  * snippets from other fuselets:
  *  - writing the spec for a new fuselet: 12 minutes
  *  - implementing the new fuselet: 8 minutes
- * (This was measured for spmv_dot_norm2. It does include code with proper error
- * handling, but does not include any time required for testing the result.)
+
+ * \note This was measured for spmv_dot_norm2. It include code with proper error
+ *       handling, but does not include time required for writing and adding
+ *       automated tests.
  */
 
 #ifndef _H_ALP_FUSELETS
