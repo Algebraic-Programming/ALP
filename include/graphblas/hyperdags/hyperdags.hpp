@@ -30,6 +30,7 @@
 #include <map>
 #include <set>
 #include <vector>
+#include <cstdint> // uintptr_t
 #include <ostream>
 #include <iostream>
 #include <type_traits>
