@@ -581,7 +581,7 @@ int double_update(
 	}
 }
 
-int doubleUpdate_update_dot(
+int doubleUpdate_update_norm2(
 	double * const x, double * const r, double * const theta,
 	const double beta, const double * const y,
 	const double omega, const double * const z,

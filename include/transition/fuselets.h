@@ -373,7 +373,7 @@ extern "C" {
 	 * The sizes of the vectors \a x, \a r, \a y, \a z, and \a t point to, should
 	 * equal \a n.
 	 */
-	int doubleUpdate_update_dot(
+	int doubleUpdate_update_norm2(
 		double * const x, double * const r, double * const theta, // output
 		const double beta, const double * const y,
 		const double omega, const double * const z,
