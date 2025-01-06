@@ -605,6 +605,262 @@ void test_update_update_norm2(
 	out.times.postamble = timer.time();
 }
 
+void test_double_update(
+	const struct Input &in, struct Output &out
+) {
+	grb::utils::Timer timer;
+
+	// I/O phase is empty
+	out.times.io = 0;
+
+	// start preamble
+	timer.reset();
+	grb::Vector< double > rv( in.n ), vv( in.n ), pv( in.n );
+	grb::RC rc = setupVectors( rv, vv, pv );
+	double alpha, beta, gamma;
+	alpha = 2.0;
+	beta = 17.7;
+	gamma = 0.5;
+	if( rc != grb::SUCCESS ) {
+		std::cerr << "\t test_double_update: initalisation FAILED (I)\n";
+		out.error = rc;
+		return;
+	}
+
+	rc = (initialize_fuselets() == 0 ? grb::SUCCESS : grb::FAILED);
+	if( rc != grb::SUCCESS ) {
+		std::cerr << "\t test_double_update: initialisation FAILED (II)\n";
+		out.error = rc;
+		return;
+	}
+
+	// On successful initialisation, the vector data are as follows:
+	//  - r is a dense vector (0, 1, 2, ..., in.n-1)
+	//  - v is a dense vector with values zero (0)
+	//  - p is a dense vector with values two (2)
+	// hence the expected output of applying the update_update_norm2 fuselet:
+	//  - p is a dense vector (1, 3, 5, ..., 2*in.n-1)
+
+	// get raw pointers to vector data
+	double * const p = pv.raw();
+	const double * const r = rv.raw();
+	const double * const v = vv.raw();
+
+	// verify
+	{
+		const int fuselet_rc = double_update(
+			p, alpha, r, beta, v, gamma,
+			in.n
+		);
+		if( fuselet_rc != 0 ) {
+			std::cerr << "\t double_update: verification FAILED (I)\n";
+			out.error = grb::FAILED;
+			return;
+		}
+		bool fail = false;
+		for( size_t i = 0; i < in.n; ++i ) {
+			if( !grb::utils::equals( p[ i ], 2*static_cast< double >(i)+1, 5 ) ) {
+				fail = true;
+				std::cerr << "\t\t p[ " << i << " ]: expected "
+					<< (i*2+1) << ", got " << p[ i ] << "\n";
+			}
+		}
+		if( fail ) {
+			std::cerr << "\t double_update: verification FAILED (II)\n";
+			out.error = grb::FAILED;
+			return;
+		}
+	}
+
+	// benchmark
+	{
+		timer.reset();
+		for( size_t i = 0; i < in.rep; ++i ) {
+			(void) double_update(
+				p, alpha, r, beta, v, gamma,
+				in.n
+			);
+		}
+		const double fast = timer.time();
+
+		timer.reset();
+		for( size_t i = 0; i < in.rep; ++i ) {
+			grb::semirings::plusTimes< double > plusTimes_FP64;
+			(void) grb::foldr< grb::descriptors::dense >( gamma, pv,
+				grb::monoids::times< double >() );
+			(void) grb::eWiseMul< grb::descriptors::dense >( pv, alpha, rv,
+				plusTimes_FP64 );
+			(void) grb::eWiseMul< grb::descriptors::dense >( pv, beta, vv,
+				plusTimes_FP64 );
+			(void) grb::wait();
+		}
+
+		const double slow = timer.time();
+
+		// record speedup:
+		std::cout << "\t test_double_update (" << in.rep << " repetitions):\n"
+			<< "\t\t reference_omp: " << slow << " ms.\n"
+			<< "\t\t fuselets: " << fast << " ms.\n";
+		out.times.useful =
+			static_cast< double >(slow - fast) / static_cast< double >(in.rep);
+	}
+
+	// postamble, and done
+	timer.reset();
+	out.error = finalize_fuselets() == 0 ? grb::SUCCESS : grb::PANIC;
+	out.times.postamble = timer.time();
+}
+
+void test_doubleUpdate_update_norm2(
+	const struct Input &in, struct Output &out
+) {
+	grb::utils::Timer timer;
+
+	// I/O phase is empty
+	out.times.io = 0;
+
+	// start preamble
+	timer.reset();
+	grb::Vector< double > xv( in.n ), rv( in.n ), yv( in.n ), zv( in.n ),
+		tv( in.n );
+	grb::RC rc = setupVectors( xv, rv, yv );
+	rc = rc ? rc : grb::set( rv, 0.5 );
+	rc = rc ? rc : grb::set( zv, 1.0 );
+	rc = rc ? rc : grb::set( tv, -1.0 );
+	double theta, beta, omega, alpha, eta, zeta;
+	theta = 17.7;
+	if( rc != grb::SUCCESS ) {
+		std::cerr << "\t test_doubleUpdate_update_norm2: initalisation FAILED (I)\n";
+		out.error = rc;
+		return;
+	}
+
+	rc = (initialize_fuselets() == 0 ? grb::SUCCESS : grb::FAILED);
+	if( rc != grb::SUCCESS ) {
+		std::cerr << "\t test_doubleUpdate_update_norm2: initialisation FAILED (II)\n";
+		out.error = rc;
+		return;
+	}
+
+	// On successful initialisation, the scalar and vector data are as follows:
+	beta = 0.5;
+	omega = -1.0;
+	alpha = 2.0;
+	eta = 1.0;
+	zeta = 2.0;
+	theta = 3.14;
+	//  - x is a dense vector (0, 1, 2, ..., in.n-1)
+	//  - r is a dense vector with values 0.5 everywhere
+	//  - y is a dense vector with values two (2)
+	//  - z is a dense vector with values one (1)
+	//  - t is a dense vector with values minus one (-1)
+	// hence the expected output of applying the update_update_norm2 fuselet:
+	//  - x is a dense vector (0, 2, ..., 2*in.n-2)
+	//  - r is a dense vector with values zero (0)
+	//  - theta will be zero
+
+	// get raw pointers to vector data
+	double * const x = xv.raw();
+	double * const r = rv.raw();
+	const double * const y = yv.raw();
+	const double * const z = zv.raw();
+	const double * const t = tv.raw();
+
+	// verify
+	{
+		constexpr double zero = 0.0;
+		const int fuselet_rc = doubleUpdate_update_norm2(
+			x, r, &theta,
+			beta, y,
+			omega, z,
+			alpha,
+			eta, t,
+			zeta,
+			in.n
+		);
+		if( fuselet_rc != 0 ) {
+			std::cerr << "\t double_update: verification FAILED (I)\n";
+			out.error = grb::FAILED;
+			return;
+		}
+		bool fail = false;
+		for( size_t i = 0; i < in.n; ++i ) {
+			if( !grb::utils::equals( x[ i ], 2*static_cast< double >(i), 5 ) ) {
+				fail = true;
+				std::cerr << "\t\t x[ " << i << " ]: expected "
+					<< (i*2) << ", got " << x[ i ] << "\n";
+			}
+			if( !grb::utils::equals( r[ i ], zero, 3 ) ) {
+				fail = true;
+				std::cerr << "\t\t r[ " << i << " ]: expected zero, got "
+					<< r[ i ] << "\n";
+			}
+		}
+		if( fail ) {
+			std::cerr << "\t doubleUpdate_update_norm2: verification FAILED (II)\n";
+			out.error = grb::FAILED;
+			return;
+		}
+		if( !grb::utils::equals( theta, zero, 2 * in.n - 1 ) ) {
+			std::cerr << "\t doubleUpdate_update_norm2: verification FAILED (III)\n"
+				<< "\t\t expected zero, got " << theta << "\n";
+			out.error = grb::FAILED;
+			return;
+		}
+	}
+
+	// benchmark
+	{
+		timer.reset();
+		for( size_t i = 0; i < in.rep; ++i ) {
+			theta = 3.14;
+			(void) doubleUpdate_update_norm2(
+				x, r, &theta,
+				beta, y,
+				omega, z,
+				alpha,
+				eta, t,
+				zeta,
+				in.n
+			);
+		}
+		const double fast = timer.time();
+
+		timer.reset();
+		for( size_t i = 0; i < in.rep; ++i ) {
+			grb::semirings::plusTimes< double > plusTimes_FP64;
+			(void) grb::foldr< grb::descriptors::dense >( alpha, xv,
+				grb::monoids::times< double >() );
+			(void) grb::eWiseMul< grb::descriptors::dense >( xv, omega, zv,
+				plusTimes_FP64 );
+			(void) grb::eWiseMul< grb::descriptors::dense >( xv, beta, yv,
+				plusTimes_FP64 );
+			(void) grb::foldr< grb::descriptors::dense >( zeta, rv,
+				grb::monoids::times< double >() );
+			(void) grb::eWiseMul< grb::descriptors::dense >( rv, eta, tv,
+				plusTimes_FP64 );
+			theta = 3.17;
+			(void) grb::dot< grb::descriptors::dense >( theta, rv, rv,
+				plusTimes_FP64 );
+			(void) grb::wait();
+		}
+
+		const double slow = timer.time();
+
+		// record speedup:
+		std::cout << "\t test_doubleUpdate_update_norm2 (" << in.rep << " repetitions):"
+			<< "\n\t\t reference_omp: " << slow << " ms.\n"
+			<< "\t\t fuselets: " << fast << " ms.\n";
+		out.times.useful =
+			static_cast< double >(slow - fast) / static_cast< double >(in.rep);
+	}
+
+	// postamble, and done
+	timer.reset();
+	out.error = finalize_fuselets() == 0 ? grb::SUCCESS : grb::PANIC;
+	out.times.postamble = timer.time();
+}
+
 int main( int argc, char ** argv ) {
 	// sanity check on program args
 	if( argc < 2 || argc > 4 ) {
@@ -678,6 +934,18 @@ int main( int argc, char ** argv ) {
 		rc = bench.exec( &(test_update_update_norm2), in, out, 1, outer, true );
 	}
 
+	if( rc == grb::SUCCESS ) {
+		std::cout << "\nBenchmark label: double_update of size " << in.n
+			<< std::endl;
+		rc = bench.exec( &(test_double_update), in, out, 1, outer, true );
+	}
+
+	if( rc == grb::SUCCESS ) {
+		std::cout << "\nBenchmark label: doubleUpdate_update_norm2 of size " << in.n
+			<< std::endl;
+		rc = bench.exec( &(test_doubleUpdate_update_norm2), in, out, 1, outer, true );
+	}
+
 	if( rc != grb::SUCCESS ) {
 		std::cerr << "Test launch failed: " << grb::toString( rc ) << std::endl;
 		std::cout << "Test FAILED\n" << std::endl;
@@ -691,7 +959,7 @@ int main( int argc, char ** argv ) {
 		return EXIT_FAILURE;
 	}
 
-	std::cout << "NOTE: please check the above performance figures manually-- "
+	std::cout << "\nNOTE: please check the above performance figures manually-- "
 		<< "the useful timings should positive, indicating speedup for fuselets vs. "
 		<< "regular blocking execution (for large enough vector lengths)\n";
 
