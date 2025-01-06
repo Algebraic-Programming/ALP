@@ -322,6 +322,162 @@ void test_spmv_dot_norm2(
 	out.times.postamble = timer.time();
 }
 
+void test_update_spmv_dot(
+	const struct Input &in, struct Output &out
+) {
+	grb::utils::Timer timer;
+
+	// I/O phase is empty
+	out.times.io = 0;
+
+	// start preamble
+	timer.reset();
+	grb::Vector< double > xv( in.n ), yv( in.n ), zv( in.n );
+	grb::Matrix< double > Am = setupUpperDiagonalMatrix( in.n, 2.0 );
+	grb::RC rc = setupVectors( xv, yv, zv );
+	rc = rc ? rc : grb::set< grb::descriptors::dense >( yv, 4.23 );
+	if( rc != grb::SUCCESS ) {
+		std::cerr << "\t test_spmv_dot_norm2: test initialisation FAILED (I)\n";
+		out.error = grb::FAILED;
+		return;
+	}
+
+	double * const x = xv.raw(), * const y = yv.raw(), * const z = zv.raw();
+	const double * av = nullptr;
+	const size_t * ai = nullptr; const unsigned int * aj = nullptr;
+	getCRS( Am, av, ai, aj );
+	double beta, gamma;
+	beta = -1.615;
+	gamma = 1.17;
+
+	rc = initialize_fuselets() == 0 ? grb::SUCCESS : grb::FAILED;
+
+	// verify
+	if( rc == grb::SUCCESS ) {
+		// A and x are as in the above test:
+		//  - A has values 2 above its diagonal
+		//  - x is a dense vector with values (0, 1, ..., n-1)
+		// y is dense with entries 4.23 everywhere
+		// z is dense with entries twos everywhere
+		// therefore, after update_spmv_dot_dsu, the output
+		//  - z should be dense with value one (1.0) everywhere
+		//  - x should be dense with value two (2.0) everywhere
+		//     - except at its last position, which should read zero (0)
+		//  - gamma should read 2.0 * (n-1)
+		const int fuselet_rc = update_spmv_dot_dsu(
+			z, x, &gamma,
+			y, beta,
+			ai, aj, av,
+			in.n
+		);
+		if( fuselet_rc != 0 ) {
+			std::cerr << "\t update_spmv_dot: verification FAILED (I)\n";
+			out.error = grb::FAILED;
+			return;
+		}
+		{
+			bool fail = false;
+			for( size_t i = 0; i < in.n; ++i ) {
+				if( !grb::utils::equals( z[ i ], 1.0, 3 ) ) {
+					fail = true;
+					std::cerr << "\t\t z[ " << i << " ], expected one, got "
+						<< z[ i ] << "\n";
+				}
+			}
+			if( fail ) {
+				std::cerr << "\t update_spmv_dot: verification FAILED (II)\n";
+				out.error = grb::FAILED;
+				return;
+			}
+		}
+		double check_gamma = z[ in.n - 1 ] * x[ in.n - 1 ];
+		for( size_t i = 0; i < in.n - 1; ++i ) {
+			check_gamma += z[ i ] * x[ i ];
+		}
+		if( !grb::utils::equals( gamma, check_gamma, 2 * in.n - 1 ) ) {
+			std::cerr << "\t update_spmv_dot: verification FAILED (III)\n"
+				<< "\t\t expected: " << check_gamma << ", got: " << gamma << "\n";
+			out.error = grb::FAILED;
+			return;
+		}
+		{
+			bool fail = false;
+			constexpr double zero = 0.0;
+			constexpr double two = 2.0;
+			if( !grb::utils::equals( x[ in.n - 1 ], zero, 4 ) ) {
+				fail = true;
+				std::cerr << "\t\t x[ " << (in.n-1) << " ] (last entry) "
+				       << "expected zero, got " << x[ in.n - 1 ] << "\n";
+			}
+			for( size_t i = 0; i < in.n - 1; ++i ) {
+				if( !grb::utils::equals( x[ i ], two, 4 ) ) {
+					fail = true;
+					std::cerr << "\t\t x[ " << i << " ] expected 2.0, got "
+						<< x[ i ] << "\n";
+				}
+			}
+			if( fail ) {
+				std::cerr << "\t update_spmv_dot: verification FAILED (IV)\n";
+				out.error = grb::FAILED;
+				return;
+			}
+		}
+	}
+
+	out.times.preamble = timer.time();
+	// end preamble
+
+	if( rc != grb::SUCCESS ) {
+		std::cerr << "\t update_spmv_dot: test initialisation FAILED (II)\n";
+		out.error = grb::FAILED;
+		return;
+	}
+
+	// benchmark
+
+	timer.reset();
+	for( size_t i = 0; i < in.rep; ++i ) {
+		beta = -1.615;
+		gamma = 1.17;
+		(void) update_spmv_dot_dsu(
+			z, x, &gamma,
+			y, beta,
+			ai, aj, av,
+			in.n
+		);
+	}
+	const double fast = timer.time();
+
+	timer.reset();
+	for( size_t i = 0; i < in.rep; ++i ) {
+		beta = -1.615;
+		gamma = 1.17;
+		grb::semirings::plusTimes< double > plusTimes_FP64;
+		(void) grb::foldr< grb::descriptors::dense >( beta, zv,
+			grb::operators::mul< double >() );
+		(void) grb::foldr< grb::descriptors::dense >( yv, zv,
+			grb::operators::add< double >() );
+		(void) grb::set< grb::descriptors::dense >( xv, 0.0 );
+		(void) grb::mxv< grb::descriptors::dense >( xv, Am, zv, plusTimes_FP64 );
+		gamma = 0.0;
+		(void) grb::dot< grb::descriptors::dense >( gamma, zv, xv, plusTimes_FP64 );
+		(void) grb::wait();
+	}
+	const double slow = timer.time();
+
+	// record speedup:
+	std::cout << "\t test_update_spmv_dot (" << in.rep << " repetitions):\n"
+		<< "\t\t reference_omp: " << slow << " ms.\n"
+		<< "\t\t fuselets: " << fast << " ms.\n";
+	out.times.useful =
+		static_cast< double >(slow - fast) / static_cast< double >(in.rep);
+
+	// postamble, and done
+	timer.reset();
+	out.error = finalize_fuselets() == 0 ? grb::SUCCESS : grb::PANIC;
+	out.times.postamble = timer.time();
+}
+
 int main( int argc, char ** argv ) {
 	// sanity check on program args
 	if( argc < 2 || argc > 4 ) {
@@ -378,9 +534,15 @@ int main( int argc, char ** argv ) {
 	grb::RC rc = bench.exec( &(test_spmv_dot), in, out, 1, outer, true );
 
 	if( rc == grb::SUCCESS ) {
-		std::cout << "\nBenchmark label: spmd_dot_norm2 of size " << in.n
+		std::cout << "\nBenchmark label: spmv_dot_norm2 of size " << in.n
 			<< std::endl;
 		rc = bench.exec( &(test_spmv_dot_norm2), in, out, 1, outer, true );
+	}
+
+	if( rc == grb::SUCCESS ) {
+		std::cout << "\nBenchmark label: update_spmv_dot of size " << in.n
+			<< std::endl;
+		rc = bench.exec( &(test_update_spmv_dot), in, out, 1, outer, true );
 	}
 
 	if( rc != grb::SUCCESS ) {
