@@ -478,6 +478,133 @@ void test_update_spmv_dot(
 	out.times.postamble = timer.time();
 }
 
+void test_update_update_norm2(
+	const struct Input &in, struct Output &out
+) {
+	grb::utils::Timer timer;
+
+	// I/O phase is empty
+	out.times.io = 0;
+
+	// start preamble
+	timer.reset();
+	grb::Vector< double > xv( in.n ), pv( in.n ), rv( in.n ), uv( in.n );
+	grb::RC rc = setupVectors( xv, pv, rv );
+	rc = rc ? rc : grb::set( uv, 1.0 );
+	double alpha, beta;
+	alpha = 5.0;
+	beta = -2.0;
+	if( rc != grb::SUCCESS ) {
+		std::cerr << "\t test_update_update_norm2: initalisation FAILED (I)\n";
+		out.error = rc;
+		return;
+	}
+
+	rc = (initialize_fuselets() == 0 ? grb::SUCCESS : grb::FAILED);
+	if( rc != grb::SUCCESS ) {
+		std::cerr << "\t test_update_update_norm2: initialisation FAILED (II)\n";
+		out.error = rc;
+		return;
+	}
+
+	// On successful initialisation, the vector data are as follows:
+	//  - x is a dense vector (0, 1, 2, ..., in.n-1)
+	//  - p is a dense vector with values zero (0)
+	//  - r is a dense vector with values two (2)
+	//  - u is a dense vector with values one (1)
+	// hence the expected output of applying the update_update_norm2 fuselet:
+	//  - x is a dense vector (0, 1, 2, ..., in.n-1),
+	//  - r is a dense vector (0, 0, ..., 0), and therefore
+	//  - the norm should be zero also
+
+	// get raw pointers to vector data
+	double * const x = xv.raw();
+	double * const r = rv.raw();
+	const double * const p = pv.raw();
+	const double * const u = uv.raw();
+
+	// verify
+	{
+		double norm = 50.0;
+		const int fuselet_rc = update_update_norm2(
+			x, r, &norm,
+			alpha, p,
+			beta, u,
+			in.n
+		);
+		if( fuselet_rc != 0 ) {
+			std::cerr << "\t update_update_norm2: verification FAILED (I)\n";
+			out.error = grb::FAILED;
+			return;
+		}
+		if( norm != 0.0 || norm != -0.0 ) {
+			std::cerr << "\t update_update_norm2: verification FAILED (II)\n";
+			out.error = grb::FAILED;
+			return;
+		}
+		bool fail = false;
+		for( size_t i = 0; i < in.n; ++i ) {
+			constexpr double zero = 0.0;
+			if( !grb::utils::equals( x[ i ], static_cast< double >(i), 3 ) ) {
+				fail = true;
+				std::cerr << "\t\t x[ " << i << " ]: expected " << i << ", got " << x[ i ]
+					<< "\n";
+			}
+			if( !grb::utils::equals( r[ i ], zero, 3 ) ) {
+				fail = true;
+				std::cerr << "\t\t r[ " << i << " ]: expected zero, got " << r[ i ] << "\n";
+			}
+		}
+		if( fail ) {
+			std::cerr << "\t update_update_norm2: verification FAILED (III)\n";
+			out.error = grb::FAILED;
+			return;
+		}
+	}
+
+	// benchmark
+	{
+		timer.reset();
+		for( size_t i = 0; i < in.rep; ++i ) {
+			double norm2 = 167;
+			(void) update_update_norm2(
+				x, r, &norm2,
+				alpha, p,
+				beta, u,
+				in.n
+			);
+		}
+		const double fast = timer.time();
+
+		timer.reset();
+		for( size_t i = 0; i < in.rep; ++i ) {
+			double norm2 = 167;
+			grb::semirings::plusTimes< double > plusTimes_FP64;
+			(void) grb::eWiseMul< grb::descriptors::dense >( xv, alpha, pv,
+				plusTimes_FP64 );
+			(void) grb::eWiseMul< grb::descriptors::dense >( rv, beta, uv,
+				plusTimes_FP64 );
+			norm2 = 0.0;
+			(void) grb::dot< grb::descriptors::dense >( norm2, rv, rv, plusTimes_FP64 );
+			(void) grb::wait();
+		}
+
+		const double slow = timer.time();
+
+		// record speedup:
+		std::cout << "\t test_update_update_norm2 (" << in.rep << " repetitions):\n"
+			<< "\t\t reference_omp: " << slow << " ms.\n"
+			<< "\t\t fuselets: " << fast << " ms.\n";
+		out.times.useful =
+			static_cast< double >(slow - fast) / static_cast< double >(in.rep);
+	}
+
+	// postamble, and done
+	timer.reset();
+	out.error = finalize_fuselets() == 0 ? grb::SUCCESS : grb::PANIC;
+	out.times.postamble = timer.time();
+}
+
 int main( int argc, char ** argv ) {
 	// sanity check on program args
 	if( argc < 2 || argc > 4 ) {
@@ -543,6 +670,12 @@ int main( int argc, char ** argv ) {
 		std::cout << "\nBenchmark label: update_spmv_dot of size " << in.n
 			<< std::endl;
 		rc = bench.exec( &(test_update_spmv_dot), in, out, 1, outer, true );
+	}
+
+	if( rc == grb::SUCCESS ) {
+		std::cout << "\nBenchmark label: update_update_norm2 of size " << in.n
+			<< std::endl;
+		rc = bench.exec( &(test_update_update_norm2), in, out, 1, outer, true );
 	}
 
 	if( rc != grb::SUCCESS ) {
