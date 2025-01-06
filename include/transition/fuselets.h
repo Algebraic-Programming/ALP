@@ -35,30 +35,55 @@
  * \ingroup TRANS
  * @{
  *
- * While Algebraic Programming is a programming model at its core, one may,
- * as indeed any programming model can be employed, use ALP to generate
- * libraries. Fuselets use the ALP nonblocking backend by Mastoras et al. [1,2]
- * in particular to generate a set of fused kernels that mix dense level-1 BLAS
- * operations with `level-2' Sparse BLAS operations.
+ * While Algebraic Programming (ALP) is a programming model at its core, one
+ * may also use ALP to generate libraries callable from any application code,
+ * even if said application is not written using ALP.
  *
- * While the presently-implemented fuselets were requested for accelerating a
- * pre-existing distributed-memory solver, the implementation of the fuselets,
- * in particular its exceedingly small size, demonstrates how effectively ALP
- * can be used for code generation. On local installations, users interested in
- * defining their own fuselets may directly edit the following files to add any
- * new functions they require:
- *  - <tt>include/transition/fuselets.h</tt>, and
- *  - <tt>src/transition/fuselets.cpp</tt>.
- * After any such edits, simply issue <tt>make install</tt> again, which will
- * update your installed fuselets to include your newly-defined routines.
+ * Fuselets use the ALP nonblocking backend by Mastoras et al. [1,2] in
+ * particular to generate a set of fused kernels that mix dense level-1 BLAS
+ * operations with `level-2' Sparse BLAS operations. The fused kernels exhibit
+ * higher performance due to enhanced data reuse. An example of a fuselet is a
+ * dense vector update, followed by a sparse matrix--vector multiplication,
+ * finally followed by a dot-product of two dense vectors: #update_spmv_dot.
  *
- * The exposed API for the fuselets is standard C.
+ * The exposed API for the fuselets is standard C. The header may also be safely
+ * included from standard C++. In standard configuration, ALP builds and
+ * installs both static and dynamic fuselet libraries.
  *
  * \warning Any application that relies on fuselets is \em strongly encouraged
  *          to enable standard OpenMP thread pinning (such as, for example,
  *          achieved by setting the <tt>OMP_PROC_BIND</tt> environment variable
- *          to <tt>true</tt>.
+ *          to <tt>true</tt>).
  *
+ * While the presently-implemented fuselets were requested for accelerating a
+ * pre-existing distributed-memory solver, the implementation of the fuselets,
+ * demonstrates how effectively ALP can be used for code generation. The tiny
+ * size of the implementation is particularly compelling, with typical gains
+ * between 50 to 200 percent (1.5-3x), depending on the vector sizes as well as
+ * the nonzero-to-size ratio [1,2], as well as on the depth of the fuselets.
+ *
+ * \note The maximum pipeline depth in the pre-defined fuselets here provided,
+ *       is three. This pipeline depth forms a simple upper bound on achievable
+ *       speedup.
+ *
+ * If using fuselets for scientific work, please cite the related papers [1,2];
+ * and please refer to the same papers for more details about the nonblocking
+ * backend:
+ *
+ * [1] Design and implementation for nonblocking execution in GraphBLAS:
+ *     tradeoffs and performance by Aristeidis Mastoras, Sotiris Anagnostidis,
+ *     and A. N. Yzelman, ACM Transactions on Architecture and Code Optimization
+ *     (TACO) 20, 1, Article 6 (2023).
+ * [2] Nonblocking execution in GraphBLAS by Aristeidis Mastoras, Sotiris
+ *     Anagnostidis, and A. N. Yzelman in IPDPSW, pp. 230-233, IEEE (2022).
+ *
+ * Users interested in defining their own fuselets may directly edit the
+ * following files to add any new functions they require:
+ *  - <tt>include/transition/fuselets.h</tt>, and
+ *  - <tt>src/transition/fuselets.cpp</tt>.
+ * After any such edits, simply issue <tt>make install</tt> again, which will
+ * update your installed fuselets to include your newly-defined routines, thus
+ * providing an easily-customisable extensible framework.
  *
  * For fuselets that take matrix inputs, we here assume standard Compressed Row
  * Storage (CRS), also known as Compressed Sparse Rows (CSR). The fuselets
@@ -66,37 +91,38 @@
  * types one may use for each of the three standard CRS arrays. For example, the
  * postfix <tt>_dsu</tt> indicates a double-precision nonzero value array (d),
  * an offset array of type <tt>size_t</tt> (s), and a column index array of type
- * <tt>unsigned int</tt> (u)-- while the postfix <tt>_dii</tt> indicates arrays
- * of type <tt>double</tt>, <tt>int</tt>, and <tt>int</tt>, respectively. More
- * details about the presently provided variants may be found in the following
- * note.
+ * <tt>unsigned int</tt> (u). The postfix <tt>_dii</tt> instead indicates arrays
+ * of type <tt>double</tt>, <tt>int</tt>, and <tt>int</tt>, respectively.
  *
- * \note For matrices, we assume the de-facto standard Compressed Row Storage.
- *       This formats consists of three arrays: a row offset array, a column
- *       index array, and, for non-pattern matrices, a value array. The element
- *       types of the former two arrays can have multiple sensible values:
+ * More details about the presently provided variants may be found in the
+ * following note.
+ *
+ * \note The de-facto industry-standard Compressed Row Storage (CRS) comprises
+ *       three arrays: a row offset array, a column index array, and, for
+ *       non-pattern matrices, a value array. The element types of the former
+ *       two arrays can have multiple sensible values:
  *        - 64-bit unsigned integers for the offset array (s), default-sized
  *          (usually 32-bit) integers (i), or default-sized unsigned integers
  *          (u).
  *        - 64-bit unsigned integers for the column indices (s), default-sized
  *          (usually 32-bit) integers instead (i), or default-sized unsigned
  *          integers (u).
- *       For values, we presently only support double-precision (d). At present,
- *       in summary, for every fuselet that takes matrix input, we support dsu
- *       and dii variants.
+ *       For values, we presently only support double-precision (d). All postfix
+ *       combinations presently supported are <tt>_dsu</tt> and <tt>_dii</tt>.
  *
- * \note The implementation in <tt>src/transition/fuselets.cpp</tt> demonstrates
- *       how these types may be modified if necessary.
+ * \note Other postfix combinations are easily provided; if unclear how or if a
+ *       presently missing combination should be of wide interest, please create
+ *       a feature requests and/or contact the maintainers.
  *
  * Typical example work estimation for adding a new fuselets, assuming
- * familiarity with the use of ALP and allowing copying (and modifying)
- * snippets from other fuselets:
+ * familiarity with the use of ALP and allowing copying code snippets from
+ * pre-existing fuselets:
  *  - writing the spec for a new fuselet: 12 minutes
  *  - implementing the new fuselet: 8 minutes
 
- * \note This was measured for spmv_dot_norm2. It include code with proper error
- *       handling, but does not include time required for writing and adding
- *       automated tests.
+ * \note This was measured for spmv_dot_norm2. While the code includes proper
+ *       error handling, it does not include time required for writing and
+ *       adding automated tests.
  */
 
 #ifndef _H_ALP_FUSELETS
