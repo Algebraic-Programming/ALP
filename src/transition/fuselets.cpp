@@ -623,26 +623,20 @@ int doubleUpdate_update_norm2(
 	}
 	if( omega != 0.0 && omega != -0.0 ) {
 		if( omega != 1.0 ) {
+			rc = rc ? rc : grb::eWiseMul< grb::descriptors::dense >(
+				alp_x, omega, alp_z, dblSemiring );
+		} else {
 			rc = rc ? rc : grb::foldr< grb::descriptors::dense >(
-				static_cast< double >(1.0) / omega, alp_x, dblTimesMonoid );
-		}
-		rc = rc ? rc : grb::foldr< grb::descriptors::dense >(
-			alp_z, alp_x, dblPlusMonoid );
-		if( omega != 1.0 ) {
-			rc = rc ? rc : grb::foldr< grb::descriptors::dense >(
-				omega, alp_x, dblTimesMonoid );
+				alp_z, alp_x, dblPlusMonoid );
 		}
 	}
 	if( beta != 0.0 && beta != -0.0 ) {
 		if( beta != 1.0 ) {
+			rc = rc ? rc : grb::eWiseMul< grb::descriptors::dense >(
+				alp_x, beta, alp_y, dblSemiring );
+		} else {
 			rc = rc ? rc : grb::foldr< grb::descriptors::dense >(
-				static_cast< double >(1.0) / beta, alp_x, dblTimesMonoid );
-		}
-		rc = rc ? rc : grb::foldr< grb::descriptors::dense >(
-			alp_z, alp_x, dblPlusMonoid );
-		if( beta != 1.0 ) {
-			rc = rc ? rc : grb::foldr< grb::descriptors::dense >(
-				beta, alp_x, dblTimesMonoid );
+				alp_z, alp_x, dblPlusMonoid );
 		}
 	}
 	if( rc != grb::SUCCESS ) {
