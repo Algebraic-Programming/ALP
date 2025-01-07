@@ -633,14 +633,11 @@ int doubleUpdate_update_norm2(
 	}
 	if( eta != 0.0 && eta != -0.0 ) {
 		if( eta != 1.0 ) {
+			rc = rc ? rc : grb::eWiseMul< grb::descriptors::dense >(
+				alp_r, eta, alp_t, dblSemiring );
+		} else {
 			rc = rc ? rc : grb::foldr< grb::descriptors::dense >(
-				static_cast< double >(1.0) / eta, alp_r, dblTimesMonoid );
-		}
-		rc = rc ? rc : grb::foldr< grb::descriptors::dense >(
-			alp_t, alp_r, dblPlusMonoid );
-		if( eta != 1.0 ) {
-			rc = rc ? rc : grb::foldr< grb::descriptors::dense >(
-				eta, alp_r, dblTimesMonoid );
+				alp_t, alp_r, dblPlusMonoid );
 		}
 	}
 	if( rc != grb::SUCCESS ) {
