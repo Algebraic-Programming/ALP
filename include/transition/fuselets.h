@@ -44,7 +44,7 @@
  * operations with `level-2' Sparse BLAS operations. The fused kernels exhibit
  * higher performance due to enhanced data reuse. An example of a fuselet is a
  * dense vector update, followed by a sparse matrix--vector multiplication,
- * finally followed by a dot-product of two dense vectors: #update_spmv_dot.
+ * finally followed by a dot-product of two dense vectors: #update_spmv_dot_dsu.
  *
  * The exposed API for the fuselets is standard C. The header may also be safely
  * included from standard C++. In standard configuration, ALP builds and
