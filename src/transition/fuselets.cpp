@@ -450,15 +450,8 @@ int update_update_norm2(
 	// perform operation 1
 	const grb::Vector< double > alp_p =
 		grb::internal::template wrapRawVector< double >( n, p );
-	grb::RC ret = grb::foldr< grb::descriptors::dense >(
-		static_cast< double >(1) / alpha, alp_x, dblTimesMonoid ); // 1/alpha x
-	ret = ret ? ret : grb::foldr< grb::descriptors::dense >(
-		alp_p, alp_x, dblPlusMonoid );                             // p + 1/alpha x
-	ret = ret ? ret : grb::foldr< grb::descriptors::dense >(
-		alpha, alp_x, dblTimesMonoid );                            // alpha p + x
-	// this sequence costs n more divisions and affects numerical error
-	// propagation-- the alternative is to pre-compute alpha p in a buffer, but
-	// then we should be given such a buffer
+	grb::RC ret = grb::eWiseMul< grb::descriptors::dense >(
+		alp_x, alpha, alp_p, dblSemiring );
 	if( ret != grb::SUCCESS ) {
 		std::cerr << "ALP/Fuselets update_spmv_dot encountered error at operation 1: "
 			<< grb::toString( ret ) << "\n";
@@ -468,13 +461,8 @@ int update_update_norm2(
 	// perform operation 2
 	const grb::Vector< double > alp_u =
 		grb::internal::template wrapRawVector< double >( n, u );
-	ret = grb::foldr< grb::descriptors::dense >(
-		static_cast< double >(1) / beta, alp_r, dblTimesMonoid ); // 1/beta r
-	ret = ret ? ret : grb::foldr< grb::descriptors::dense >(
-		alp_u, alp_r, dblPlusMonoid );                            // u + 1/beta r
-	ret = ret ? ret : grb::foldr< grb::descriptors::dense >(
-		beta, alp_r, dblTimesMonoid );                            // beta u + r
-	// same remark as above applies
+	ret = grb::eWiseMul< grb::descriptors::dense >(
+		alp_r, beta, alp_u, dblSemiring );
 	if( ret != grb::SUCCESS ) {
 		std::cerr << "ALP/Fuselets update_spmv_dot encountered error at operation 2: "
 			<< grb::toString( ret ) << "\n";
@@ -537,36 +525,25 @@ int double_update(
 
 	if( beta != 0.0 && beta != -0.0 ) {
 		if( beta != 1.0 ) {
-			// p = (gamma .* p) / beta
-			rc = rc ? rc :
-				grb::foldr< grb::descriptors::dense >(
-					static_cast< double >(1.0) / beta, alp_p, dblTimesMonoid
-				);
-		}
-		// p = v + (gamma .* p) / beta
-		rc = rc ? rc : grb::foldr< grb::descriptors::dense >(
-			alp_v, alp_p, dblPlusMonoid );
-		if( beta != 1.0 ) {
 			// p = beta .* v + gamma .* p
+			rc = rc ? rc : grb::eWiseMul< grb::descriptors::dense >(
+				alp_p, beta, alp_v, dblSemiring );
+		} else {
+			// p = v + (gamma .* p)
 			rc = rc ? rc : grb::foldr< grb::descriptors::dense >(
-				beta, alp_p, dblTimesMonoid );
+				alp_v, alp_p, dblPlusMonoid );
 		}
 	}
 
 	if( alpha != 0.0 && beta != -0.0 ) {
 		if( alpha != 1.0 ) {
-			// p = (beta .* v + gamma .* p) / alpha
-			rc = rc ? rc :
-				grb::foldr< grb::descriptors::dense >(
-					static_cast< double >(1.0) / alpha, alp_p, dblTimesMonoid );
-		}
-		// p = r + (beta .* v + gamma .* p) / alpha
-		rc = rc ? rc : grb::foldr< grb::descriptors::dense >(
-			alp_r, alp_p, dblPlusMonoid );
-		if( alpha != 1.0 ) {
 			// p = alpha .* r + beta .* v + gamma .* p
+			rc = rc ? rc : grb::eWiseMul< grb::descriptors::dense >(
+				alp_p, alpha, alp_r, dblSemiring );
+		} else {
+			// p = r + (beta .* v + gamma .* p)
 			rc = rc ? rc : grb::foldr< grb::descriptors::dense >(
-				alpha, alp_p, dblTimesMonoid );
+				alp_r, alp_p, dblPlusMonoid );
 		}
 	}
 
