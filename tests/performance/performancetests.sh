@@ -199,11 +199,11 @@ if [[ -z $DATASETTORUN && ( -z "$EXPTYPE" || "$EXPTYPE" == "KERNEL" ) ]]; then
 	echo ">>>      [x]           [x]       Testing fuselets versus standard reference_omp using a"
 	echo "                                 problem size of 100 000 000."
 	echo " "
-	${TEST_BIN_DIR}/fuselets 100000000 1 30 &> ${TEST_OUT_DIR}/fuselets
-	head -1 ${TEST_OUT_DIR}/fuselets
-	grep "Test OK" ${TEST_OUT_DIR}/fuselets || echo "Test FAILED"
+	${TEST_BIN_DIR}/fuselets_performance 100000000 1 30 &> ${TEST_OUT_DIR}/fuselets_performance
+	head -1 ${TEST_OUT_DIR}/fuselets_performance
+	grep "Test OK" ${TEST_OUT_DIR}/fuselets_performance || echo "Test FAILED"
 	echo " "
-	egrep 'label|Overall timings|0,' ${TEST_OUT_DIR}/fuselets | grep -v Outer >> ${TEST_OUT_DIR}/benchmarks
+	egrep 'label|Overall timings|0,' ${TEST_OUT_DIR}/fuselets_performance | grep -v Outer >> ${TEST_OUT_DIR}/benchmarks
 
 fi
 

@@ -56,7 +56,7 @@ add_grb_executables( dot-openmp dot.cpp $<TARGET_OBJECTS:bench_kernels_omp>
 	ADDITIONAL_LINK_LIBRARIES backend_headers_nodefs OpenMP::OpenMP_CXX
 )
 
-add_grb_executables( fuselets fuselets.cpp $<TARGET_OBJECTS:fuselets>
+add_grb_executables( fuselets_performance fuselets.cpp $<TARGET_OBJECTS:fuselets>
 	BACKENDS reference_omp NO_BACKEND_NAME
 	ADDITIONAL_LINK_LIBRARIES fuselets
 )
