@@ -33,8 +33,13 @@ add_grb_executables( fma fma.cpp $<TARGET_OBJECTS:bench_kernels>
 	ADDITIONAL_LINK_LIBRARIES "rt"
 )
 
-add_grb_executables( fma-openmp fma.cpp $<TARGET_OBJECTS:bench_kernels_omp>
+add_grb_executables( fma-blocking fma.cpp $<TARGET_OBJECTS:bench_kernels_omp>
 	BACKENDS reference_omp NO_BACKEND_NAME
+	ADDITIONAL_LINK_LIBRARIES OpenMP::OpenMP_CXX "rt"
+)
+
+add_grb_executables( fma-nonblocking fma.cpp $<TARGET_OBJECTS:bench_kernels_omp>
+	BACKENDS nonblocking NO_BACKEND_NAME
 	ADDITIONAL_LINK_LIBRARIES OpenMP::OpenMP_CXX "rt"
 )
 

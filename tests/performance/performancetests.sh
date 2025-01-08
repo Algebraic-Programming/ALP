@@ -174,10 +174,18 @@ if [[ -z $DATASETTORUN && ( -z "$EXPTYPE" || "$EXPTYPE" == "KERNEL" ) ]]; then
 	echo ">>>      [ ]           [x]       Testing semiring axpy versus hardcoded axpy over"
 	echo "                                 10 000 000 doubles, using the OpenMP reference backend"
 	echo " "
-	${TEST_BIN_DIR}/fma-openmp &> ${TEST_OUT_DIR}/fma-openmp 10000000 0
-	head -1 ${TEST_OUT_DIR}/fma-openmp
-	tail -2 ${TEST_OUT_DIR}/fma-openmp
-	egrep 'label|Overall timings|0,' ${TEST_OUT_DIR}/fma-openmp | grep -v Outer >> ${TEST_OUT_DIR}/benchmarks
+	${TEST_BIN_DIR}/fma-blocking &> ${TEST_OUT_DIR}/fma-blocking 10000000 0
+	head -1 ${TEST_OUT_DIR}/fma-blocking
+	tail -2 ${TEST_OUT_DIR}/fma-blocking
+	egrep 'label|Overall timings|0,' ${TEST_OUT_DIR}/fma-blocking | grep -v Outer >> ${TEST_OUT_DIR}/benchmarks
+
+	echo ">>>      [ ]           [x]       Testing semiring axpy versus hardcoded axpy over"
+	echo "                                 10 000 000 doubles, using the nonblocking backend"
+	echo " "
+	${TEST_BIN_DIR}/fma-nonblocking &> ${TEST_OUT_DIR}/fma-nonblocking 10000000 0
+	head -1 ${TEST_OUT_DIR}/fma-nonblocking
+	tail -2 ${TEST_OUT_DIR}/fma-nonblocking
+	egrep 'label|Overall timings|0,' ${TEST_OUT_DIR}/fma-nonblocking | grep -v Outer >> ${TEST_OUT_DIR}/benchmarks
 
 	echo ">>>      [ ]           [x]       Testing monoid reduce versus hardcoded reduce over"
 	echo "                                 10 000 000 doubles, using the OpenMP reference backend"

@@ -30,9 +30,25 @@ void bench_kernels_axpy(
 	assert( a != x );
 	assert( a != y );
 	assert( x != y );
-	#pragma omp parallel for schedule(static)
-	for( size_t i = 0; i < n; ++i ) {
-		a[ i ] = alpha * x[ i ] + y[ i ];
+	#pragma omp parallel
+	{
+		const size_t P = omp_get_num_threads();
+		const size_t s = omp_get_thread_num();
+		const size_t chunk = (n % P == 0) ? (n/P) : (n/P) + 1;
+		size_t start = chunk * s;
+		if( start > n - 1 ) {
+			start = n - 1;
+		}
+		size_t end = start + chunk;
+		if( end > n - 1 ) {
+			end = n - 1;
+		}
+		assert( start <= end );
+		if( start != end ) {
+			for( size_t i = start; i < end; ++i ) {
+				a[ i ] = alpha * x[ i ] + y[ i ];
+			}
+		}
 	}
 }
 

@@ -87,13 +87,15 @@ void test( const struct Input &in, struct Output &out ) {
 	// set constant multiplicant to x
 	const double alpha = 2.0;
 
+	// WARNING: ALP incurs performance loss unless compiled using the nonblockings
+	//          backend
 	if( mode == TEMPLATED ) {
 		double ttime = timer.time();
 		// get cache `hot'
-		out.error = grb::eWiseMulAdd< grb::descriptors::dense >( zv, alpha, xv, yv,
-			reals );
+		out.error = grb::set< grb::descriptors::dense >( zv, yv );
+		out.error = grb::eWiseMul< grb::descriptors::dense >( zv, alpha, xv, reals );
 		if( out.error != SUCCESS ) {
-			std::cerr << "grb::eWiseMulAdd returns non-SUCCESS exit code "
+			std::cerr << "grb::eWiseMul returns non-SUCCESS exit code "
 				<< grb::toString( out.error ) << "." << std::endl;
 			std::cout << "Test FAILED\n" << std::endl;
 			return;
@@ -108,24 +110,7 @@ void test( const struct Input &in, struct Output &out ) {
 		} else {
 			out.reps_used = in.rep;
 		}
-		out.times.preamble = timer.time();
-		timer.reset();
-		// benchmark templated axpy
-		for( size_t i = 0; i < out.reps_used; ++i ) {
-			out.error = grb::set( zv, 0 );
-			if( out.error != grb::SUCCESS ) {
-				std::cerr << "Error during clearing of zv "
-					<< grb::toString( out.error ) << std::endl;
-				std::cout << "Test FAILED\n" << std::endl;
-				return;
-			}
-			(void) grb::eWiseMulAdd< grb::descriptors::dense >( zv, alpha, xv, yv,
-				reals );
-		}
-		out.times.useful = timer.time() / static_cast< double >( out.reps_used );
-
-		// postamble
-		timer.reset();
+		// verify
 		double checksum = 0;
 		for( size_t i = 0; i < in.n; ++i ) {
 			checksum += z[ i ];
@@ -138,7 +123,19 @@ void test( const struct Input &in, struct Output &out ) {
 			}
 		}
 		std::cout << "Checksum: " << checksum << std::endl;
-		out.times.postamble = timer.time();
+		out.times.preamble = timer.time();
+
+		// benchmark ALP axpy
+		timer.reset();
+		for( size_t i = 0; i < out.reps_used; ++i ) {
+			// zv[ i ] = alpha * xv[ i ] + yv[ i ]
+			(void) grb::set< grb::descriptors::dense >( zv, yv );
+			(void) grb::eWiseMul< grb::descriptors::dense >( zv, alpha, xv, reals );
+		}
+		out.times.useful = timer.time() / static_cast< double >( out.reps_used );
+
+		// postamble
+		out.times.postamble = 0;
 	}
 
 	if( mode == LAMBDA ) {
@@ -146,6 +143,7 @@ void test( const struct Input &in, struct Output &out ) {
 		// get cache `hot'
 		out.error = grb::eWiseLambda(
 			[ &zv, &alpha, &xv, &yv, &reals ]( const size_t i ) {
+				// zv[ i ] = alpha * xv[ i ] + yv[ i ]
 				(void) grb::apply( zv[ i ], alpha, xv[ i ],
 					reals.getMultiplicativeOperator() );
 				(void) grb::foldl( zv[ i ], yv[ i ], reals.getAdditiveOperator() );
@@ -311,8 +309,8 @@ int main( int argc, char ** argv ) {
 	grb::Benchmarker< AUTOMATIC > bench;
 
 	// start functional test
-	std::cout << "\nBenchmark label: grb::eWiseApply (axpy) of size " << in.n
-		<< std::endl;
+	std::cout << "\nBenchmark label: grb::set + grb::eWiseMul (axpy) of size "
+		<< in.n << std::endl;
 	out.error = SUCCESS;
 	grb::RC rc = bench.exec( &(test< TEMPLATED >), in, out, 1, outer, true );
 	if( rc != SUCCESS || out.error != SUCCESS ) {
@@ -320,17 +318,17 @@ int main( int argc, char ** argv ) {
 			<< "Benchmarker reports: " << grb::toString( rc )
 			<< "; test reports:"  << grb::toString( out.error ) << "." << std::endl;
 		std::cout << "Test FAILED\n" << std::endl;
-		return EXIT_FAILURE;
+		return 40;
 	}
 	std::cout << "\nBenchmark label: grb::eWiseLambda (axpy) of size " << in.n
 		<< std::endl;
 	rc = bench.exec( &(test< LAMBDA >), in, out, 1, outer, true );
-		if( rc != SUCCESS || out.error != SUCCESS ) {
+	if( rc != SUCCESS || out.error != SUCCESS ) {
 		std::cerr << "Functional test exits with nonzero exit code. "
 			<< "Benchmarker reports: " << grb::toString( rc )
 			<< "; test reports:"  << grb::toString( out.error ) << "." << std::endl;
 		std::cout << "Test FAILED\n" << std::endl;
-		return EXIT_FAILURE;
+		return 50;
 	}
 
 	std::cout << "\nBenchmark label: compiler-optimised axpy of size " << in.n
@@ -341,7 +339,7 @@ int main( int argc, char ** argv ) {
 			<< "Benchmarker reports: " << grb::toString( rc )
 			<< "; test reports:"  << grb::toString( out.error ) << "." << std::endl;
 		std::cout << "Test FAILED\n" << std::endl;
-		return EXIT_FAILURE;
+		return 60;
 	}
 
 	std::cout << "NOTE: please check the above performance figures manually-- "
