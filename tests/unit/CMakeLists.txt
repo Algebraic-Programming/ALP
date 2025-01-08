@@ -190,6 +190,14 @@ add_grb_executables( iteratorFilter iteratorFilter.cpp
 	BACKENDS reference NO_BACKEND_NAME
 )
 
+add_grb_executables( monoids monoids.cpp
+	BACKENDS reference NO_BACKEND_NAME
+)
+
+add_grb_executables( semirings semirings.cpp
+	BACKENDS reference NO_BACKEND_NAME
+)
+
 add_grb_executables( RBGaussSeidel RBGaussSeidel.cpp
 	BACKENDS reference reference_omp bsp1d hybrid hyperdags nonblocking
 )

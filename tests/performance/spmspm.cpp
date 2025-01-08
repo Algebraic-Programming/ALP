@@ -305,7 +305,7 @@ void grbProgram( const struct input &data_in, struct output &out ) {
 			if( s == 0 ) {
 				std::cout << "Info: cold mxm completed"
 					<< ". Time taken was " << single_time << " ms. "
-					<< "Deduced inner repetitions parameter of " << out.rep << " "
+					<< "Deduced inner repetitions parameter of " << deduced_inner_reps << " "
 					<< "to take 1 second or more per inner benchmark.\n";
 				out.rep = deduced_inner_reps;
 			}

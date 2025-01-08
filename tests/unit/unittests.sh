@@ -51,6 +51,18 @@ for MODE in ${MODES}; do
 		echo "                                 field (double, integers, and floats)"
 		${TEST_BIN_DIR}/mul15m_${MODE}
 
+		echo ">>>      [x]           [ ]       Testing pre-defined monoids"
+		${TEST_BIN_DIR}/monoids_${MODE} &> ${TEST_OUT_DIR}/monoids_${MODE}.log
+		head -1 ${TEST_OUT_DIR}/monoids_${MODE}.log
+		grep 'Test OK' ${TEST_OUT_DIR}/monoids_${MODE}.log || echo "Test FAILED"
+		echo " "
+
+		echo ">>>      [x]           [ ]       Testing pre-defined semirings"
+		${TEST_BIN_DIR}/semirings_${MODE} &> ${TEST_OUT_DIR}/semirings_${MODE}.log
+		head -1 ${TEST_OUT_DIR}/semirings_${MODE}.log
+		grep 'Test OK' ${TEST_OUT_DIR}/semirings_${MODE}.log || echo "Test FAILED"
+		echo " "
+
 		echo ">>>      [x]           [ ]       Tests the built-in parser on the west0497 MatrixMarket file"
 		if [ -f ${INPUT_DIR}/west0497.mtx ]; then
 			${TEST_BIN_DIR}/parserTest_${MODE} ${INPUT_DIR}/west0497.mtx 2> ${TEST_OUT_DIR}/parserTest_${MODE}.err 1> ${TEST_OUT_DIR}/parserTest_${MODE}.out

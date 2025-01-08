@@ -41,6 +41,8 @@
 
 #include <assert.h>
 
+#include <cstdint> // for uintptr_t
+
 
 namespace grb {
 

@@ -56,6 +56,11 @@ add_grb_executables( dot-openmp dot.cpp $<TARGET_OBJECTS:bench_kernels_omp>
 	ADDITIONAL_LINK_LIBRARIES backend_headers_nodefs OpenMP::OpenMP_CXX
 )
 
+add_grb_executables( fuselets_performance fuselets.cpp
+	BACKENDS reference_omp NO_BACKEND_NAME
+	ADDITIONAL_LINK_LIBRARIES fuselets
+)
+
 add_grb_executables( scaling scaling.cpp
 	../unit/parser.cpp
 	BACKENDS reference reference_omp bsp1d hybrid hyperdags nonblocking

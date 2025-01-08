@@ -170,6 +170,12 @@
  *  -# #grb::Monoid, and
  *  -# #grb::Semiring.
  *
+ * A list of standard operators, monoids, and semirings are provided in their
+ * respective name spaces:
+ *  -# #grb::operators,
+ *  -# #grb::monoids, and
+ *  -# #grb::semirings.
+ *
  * Binary operators are parametrised in two input domains and one output domain,
  * \f$ D_1 \times D_2 \to D_3 \f$. The \f$ D_i \f$ are given as template
  * arguments to the operator. A #grb::Monoid is composed from a binary operator
