@@ -93,7 +93,7 @@ void bench_kernels_reduce(
 	assert( alpha != xr );
 	*alpha = xr[ n - 1 ];
 	double global_alpha = 0.0;
-	#pragma omp parallel
+	#pragma omp parallel reduction(+:global_alpha)
 	{
 		const size_t P = omp_get_num_threads();
 		const size_t s = omp_get_thread_num();
