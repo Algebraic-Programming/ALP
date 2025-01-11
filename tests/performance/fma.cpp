@@ -101,25 +101,40 @@ void test( const struct Input &in, struct Output &out ) {
 	}
 
 	{
-		bool sane = true;
+		size_t errors = 0;
+		bool suppress = false;
 		for( size_t i = 0; i < in.n; ++i ) {
 			if( x[ i ] != static_cast< double >( i ) ) {
-				std::cerr << "Unexpected value x[ " << i << " ] = " << x[ i ] << ", "
-					<< "expected " << i << ". Test initialisation FAILED\n";
-				sane = false;
+				if( !suppress ) {
+					std::cerr << "Unexpected value x[ " << i << " ] = " << x[ i ] << ", "
+						<< "expected " << i << ". Test initialisation FAILED\n";
+				}
+				(void) ++errors;
 			}
 			if( y[ i ] != 1.0 ) {
-				std::cerr << "Unexpected value y[ " << i << " ] = " << y[ i ] << ", "
-					<< "expected " << i << ". Test initialisation FAILED\n";
-				sane = false;
+				if( !suppress ) {
+					std::cerr << "Unexpected value y[ " << i << " ] = " << y[ i ] << ", "
+						<< "expected " << i << ". Test initialisation FAILED\n";
+				}
+				(void) ++errors;
 			}
 			if( z[i ] != 0.0 || z[ i ] != -0.0 ) {
-				std::cerr << "Unexpected value z[ " << z << " ] = " << z[ i ] << ", "
-					<< "expected " << i << ". Test initalisation FAILED\n";
-				sane = false;
+				if( !suppress ) {
+					std::cerr << "Unexpected value z[ " << z << " ] = " << z[ i ] << ", "
+						<< "expected " << i << ". Test initalisation FAILED\n";
+				}
+				(void) ++errors;
+			}
+			if( !suppress && errors > 50 ) {
+				std::cerr << "More than 50 errors emitted; suppressing further output\n";
+				suppress = true;
 			}
 		}
-		if( !sane ) {
+		if( errors ) {
+			if( suppress && errors > 50 ) {
+				std::cerr << "A total of " << errors << " verification errors found during "
+					<< "initialisation.\n";
+			}
 			out.error = grb::FAILED;
 			return;
 		}
