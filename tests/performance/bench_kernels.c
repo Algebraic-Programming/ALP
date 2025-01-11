@@ -92,6 +92,7 @@ void bench_kernels_reduce(
 ) {
 	assert( alpha != xr );
 	*alpha = xr[ n - 1 ];
+	double global_alpha = 0.0;
 	#pragma omp parallel
 	{
 		const size_t P = omp_get_num_threads();
@@ -111,12 +112,10 @@ void bench_kernels_reduce(
 			for( size_t i = start; i < end - 1; ++i ) {
 				local_alpha += xr[ i ];
 			}
-			#pragma omp critical
-			{
-				*alpha += local_alpha;
-			}
+			global_alpha += local_alpha;
 		}
 	}
+	*alpha += global_alpha;
 }
 
 #else
