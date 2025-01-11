@@ -40,7 +40,7 @@ static grb::RC dense_tests(
 	ret = ret ? ret : grb::clear( src );
 	ret = ret ? ret : grb::clear( dst );
 	if( ret != SUCCESS ) {
-		std::cerr << "\t initalisation of dense tests FAILED\n";
+		std::cerr << "\t initialisation of dense tests FAILED\n";
 		return ret;
 	}
 
