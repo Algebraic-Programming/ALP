@@ -40,8 +40,8 @@ void bench_kernels_axpy(
 			start = n - 1;
 		}
 		size_t end = start + chunk;
-		if( end > n - 1 ) {
-			end = n - 1;
+		if( end > n ) {
+			end = n;
 		}
 		assert( start <= end );
 		if( start != end ) {
@@ -61,7 +61,8 @@ void bench_kernels_dot(
 	assert( alpha != xr );
 	assert( alpha != yr );
 	*alpha = xr[ n - 1 ] * yr[ n - 1];
-	#pragma omp parallel
+	double global_alpha = 0;
+	#pragma omp parallel reduction(+:global_alpha)
 	{
 		const size_t P = omp_get_num_threads();
 		const size_t s = omp_get_thread_num();
@@ -80,12 +81,10 @@ void bench_kernels_dot(
 			for( size_t i = start; i < end - 1; ++i ) {
 				local_alpha += xr[ i ] * yr[ i ];
 			}
-			#pragma omp critical
-			{
-				*alpha += local_alpha;
-			}
+			global_alpha += local_alpha;
 		}
 	}
+	*alpha += global_alpha;
 }
 
 void bench_kernels_reduce(
