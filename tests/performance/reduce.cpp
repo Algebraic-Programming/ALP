@@ -266,7 +266,13 @@ int main( int argc, char ** argv ) {
 		rc = bench.exec( &(test< LAMBDA >), in, out, 1, outer, true );
 	}
 	if( rc == SUCCESS ) {
-		std::cout << "\nBenchmark label: compiler-optimised reduce-to-scalar of size "
+		std::cout << "\nBenchmark label: ";
+		if( bench_kernels_parallel() ) {
+			std::cout << "parallel (OpenMP) ";
+		} else {
+			std::cout << "sequential (C) ";
+		}
+		std::cout << "compiler-optimised reduce-to-scalar of size "
 			<< in.n << std::endl;
 		rc = bench.exec( &(test< RAW >), in, out, 1, outer, true );
 	}

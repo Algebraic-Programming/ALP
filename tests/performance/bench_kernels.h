@@ -18,7 +18,7 @@
 
 #include <omp.h>
 #include <assert.h>
-#include <stddef.h> //for size_t
+#include <stddef.h> // for size_t
 
 
 #ifdef __cplusplus
@@ -41,9 +41,13 @@ extern "C" {
 		double * __restrict__ const, const double * __restrict__, const size_t
 	);
 
+	bool bench_kernels_parallel();
+
 }
 
 #else
+
+#include <stdbool.h> // for bool
 
 /**
  * Executes \f$ a = \alpha x + y \f$ for \a a, \a x, and \a y vectors of
@@ -88,6 +92,9 @@ void bench_kernels_dot (
 void bench_kernels_reduce(
 	double * restrict const alpha, const double * restrict x, const size_t n
 );
+
+/** @returns Whether the kernels defined here are (shared-memory) parallel. */
+bool bench_kernels_parallel();
 
 #endif
 

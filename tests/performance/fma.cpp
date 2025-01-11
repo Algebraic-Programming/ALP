@@ -382,8 +382,13 @@ int main( int argc, char ** argv ) {
 		return 50;
 	}
 
-	std::cout << "\nBenchmark label: compiler-optimised axpy of size " << in.n
-		<< std::endl;
+	std::cout << "\nBenchmark label: ";
+	if( bench_kernels_parallel() ) {
+		std::cout << "parallel (OpenMP) ";
+	} else {
+		std::cout << "sequential (C) ";
+	}
+	std::cout << "compiler-optimised axpy of size " << in.n << std::endl;
 	rc = bench.exec( &(test< RAW >), in, out, 1, outer, true );
 	if( rc != SUCCESS || out.error != SUCCESS ) {
 		std::cerr << "Functional test exits with nonzero exit code. "

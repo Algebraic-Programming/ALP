@@ -463,8 +463,14 @@ int main( int argc, char ** argv ) {
 	}
 
 	// start benchmark test 1
-	std::cout << "\nBenchmark label: compiler-optimised dot product on raw "
-		<< "arrays of size " << in.n << std::endl;
+	std::cout << "\nBenchmark label: ";
+	if( bench_kernels_parallel() ) {
+		std::cout << "parallel (OpenMP) ";
+	} else {
+		std::cout << "sequential (C) ";
+	}
+	std::cout << "compiler-optimised dot product on raw arrays of size " << in.n
+		<< std::endl;
 	if( bench.exec( &bench_raw, in, out, 1, outer, true ) != SUCCESS ) {
 		std::cerr << "Error launching raw benchmark test.\nTest FAILED." << std::endl;
 		return 60;

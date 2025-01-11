@@ -21,6 +21,8 @@
 
 #ifdef BENCH_KERNELS_OPENMP
 
+bool bench_kernels_parallel() { return true; }
+
 void bench_kernels_axpy(
 	double * restrict a,
 	const double alpha, const double * restrict x,
@@ -119,6 +121,8 @@ void bench_kernels_reduce(
 }
 
 #else
+
+bool bench_kernels_parallel() { return false; }
 
 void bench_kernels_axpy(
 	double * restrict a,
