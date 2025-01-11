@@ -84,16 +84,59 @@ void test( const struct Input &in, struct Output &out ) {
 		return;
 	}
 
+	if( grb::nnz( yv ) != in.n || grb::nnz( zv ) != in.n ) {
+		std::cerr << "Unexpected number of nonzeroes in yv or zv: expected " << in.n
+			<< ", got " << grb::nnz(yv) << " and " << grb::nnz(zv) << "\n";
+		std::cout << "Test FAILED\n" << std::endl;
+		out.error = grb::FAILED;
+		return;
+	}
+
+	if( grb::nnz( xv ) != in.n ) {
+		std::cerr << "Unexpected number of nonzeroes in xv: expected " << in.n
+			<< ", got " << grb::nnz(xv) << "\n";
+		std::cout << "Test FAILED\n" << std::endl;
+		out.error = grb::FAILED;
+		return;
+	}
+
+	{
+		bool sane = true;
+		for( size_t i = 0; i < in.n; ++i ) {
+			if( x[ i ] != static_cast< double >( i ) ) {
+				std::cerr << "Unexpected value x[ " << i << " ] = " << x[ i ] << ", "
+					<< "expected " << i << ". Test initialisation FAILED\n";
+				sane = false;
+			}
+			if( y[ i ] != 1.0 ) {
+				std::cerr << "Unexpected value y[ " << i << " ] = " << y[ i ] << ", "
+					<< "expected " << i << ". Test initialisation FAILED\n";
+				sane = false;
+			}
+			if( z[i ] != 0.0 || z[ i ] != -0.0 ) {
+				std::cerr << "Unexpected value z[ " << z << " ] = " << z[ i ] << ", "
+					<< "expected " << i << ". Test initalisation FAILED\n";
+				sane = false;
+			}
+		}
+		if( !sane ) {
+			out.error = grb::FAILED;
+			return;
+		}
+	}
+
 	// set constant multiplicant to x
 	const double alpha = 2.0;
 
-	// WARNING: ALP incurs performance loss unless compiled using the nonblockings
+	// WARNING: ALP incurs performance loss unless compiled using the nonblocking
 	//          backend
 	if( mode == TEMPLATED ) {
 		double ttime = timer.time();
 		// get cache `hot'
 		out.error = grb::set< grb::descriptors::dense >( zv, yv );
-		out.error = grb::eWiseMul< grb::descriptors::dense >( zv, alpha, xv, reals );
+		out.error = out.error ? out.error :
+			grb::eWiseMul< grb::descriptors::dense >( zv, alpha, xv, reals );
+		out.error = out.error ? out.error : grb::wait();
 		if( out.error != SUCCESS ) {
 			std::cerr << "grb::eWiseMul returns non-SUCCESS exit code "
 				<< grb::toString( out.error ) << "." << std::endl;
@@ -103,10 +146,10 @@ void test( const struct Input &in, struct Output &out ) {
 		// use this to infer number of inner iterations, if requested to be computed
 		ttime = timer.time() - ttime;
 		if( in.rep == 0 ) {
-			out.reps_used = static_cast< size_t >( 1000.0 / ttime ) + 1;
-			std::cout << "Auto-selected " << out.reps_used << " inner repititions "
-				<< "of approx. " << ttime << " ms. each (to achieve around 1 second of "
-				<< "inner loop wall-clock time).\n";
+			out.reps_used = static_cast< size_t >( 100.0 / ttime ) + 1;
+			std::cout << "Auto-selected " << out.reps_used << " inner repetitions "
+				<< "of approximately " << ttime << " ms. each in order to achieve around "
+				<< "100 ms. of inner-loop wall-clock time.\n";
 		} else {
 			out.reps_used = in.rep;
 		}
@@ -131,6 +174,7 @@ void test( const struct Input &in, struct Output &out ) {
 			// zv[ i ] = alpha * xv[ i ] + yv[ i ]
 			(void) grb::set< grb::descriptors::dense >( zv, yv );
 			(void) grb::eWiseMul< grb::descriptors::dense >( zv, alpha, xv, reals );
+			(void) grb::wait();
 		}
 		out.times.useful = timer.time() / static_cast< double >( out.reps_used );
 
@@ -149,6 +193,7 @@ void test( const struct Input &in, struct Output &out ) {
 				(void) grb::foldl( zv[ i ], yv[ i ], reals.getAdditiveOperator() );
 			},
 			zv, xv, yv );
+		out.error = out.error ? out.error : grb::wait();
 		if( out.error != SUCCESS ) {
 			std::cerr << "grb::eWiseLambda returns non-SUCCESS exit code "
 				<< grb::toString( out.error ) << ".\n";
@@ -157,29 +202,14 @@ void test( const struct Input &in, struct Output &out ) {
 		// use this to infer number of inner iterations, if requested to be computed
 		ltime = timer.time() - ltime;
 		if( in.rep == 0 ) {
-			out.reps_used = static_cast< size_t >( 1000.0 / ltime ) + 1;
-			std::cout << "Auto-selected " << out.reps_used << " inner repititions "
-				<< "of approx. " << ltime << " ms. each (to achieve around 1 second of "
-				<< "inner loop wall-clock time).\n";
+			out.reps_used = static_cast< size_t >( 100.0 / ltime ) + 1;
+			std::cout << "Auto-selected " << out.reps_used << " inner repetitions "
+				<< "of approx. " << ltime << " ms. each in order to achieve around "
+				<< "100 ms. of inner loop wall-clock time.\n";
 		} else {
 			out.reps_used = in.rep;
 		}
-		out.times.preamble = timer.time();
-		timer.reset();
-		// benchmark templated axpy
-		for( size_t i = 0; i < out.reps_used; ++i ) {
-			(void) grb::eWiseLambda(
-				[ &zv, &alpha, &xv, &yv, &reals ]( const size_t i ) {
-					(void) grb::apply( zv[ i ], alpha, xv[ i ],
-						reals.getMultiplicativeOperator() );
-					(void) grb::foldl( zv[ i ], yv[ i ], reals.getAdditiveOperator() );
-				}, zv, xv, yv
-			);
-		}
-		out.times.useful = timer.time() / static_cast< double >( out.reps_used );
-
-		// postamble
-		timer.reset();
+		// do verification
 		double checksum = 0;
 		for( size_t i = 0; i < in.n; ++i ) {
 			checksum += z[ i ];
@@ -192,11 +222,27 @@ void test( const struct Input &in, struct Output &out ) {
 			}
 		}
 		std::cout << "Checksum: " << checksum << std::endl;
-		out.times.postamble = timer.time();
+		out.times.preamble = timer.time();
+		timer.reset();
+		// benchmark templated axpy
+		for( size_t i = 0; i < out.reps_used; ++i ) {
+			(void) grb::eWiseLambda(
+				[ &zv, &alpha, &xv, &yv, &reals ]( const size_t i ) {
+					(void) grb::apply( zv[ i ], alpha, xv[ i ],
+						reals.getMultiplicativeOperator() );
+					(void) grb::foldl( zv[ i ], yv[ i ], reals.getAdditiveOperator() );
+				}, zv, xv, yv
+			);
+			(void) grb::wait();
+		}
+		out.times.useful = timer.time() / static_cast< double >( out.reps_used );
+
+		// postamble
+		out.times.postamble = 0;
 	}
 
 	if( mode == RAW ) {
-		double * a = NULL;
+		double * a = nullptr;
 		int prc = posix_memalign(
 			(void **)&a,
 			grb::config::CACHE_LINE_SIZE::value(),
@@ -221,23 +267,15 @@ void test( const struct Input &in, struct Output &out ) {
 		// use this to infer number of inner iterations, if requested to be computed
 		ctime = timer.time() - ctime;
 		if( in.rep == 0 ) {
-			out.reps_used = static_cast< size_t >( 1000.0 / ctime ) + 1;
-			std::cout << "Auto-selected " << out.reps_used << " inner repititions "
-				<< "of approx. " << ctime << " ms. each (to achieve around 1 second of "
-				<< "inner loop wall-clock time).\n";
+			out.reps_used = static_cast< size_t >( 100.0 / ctime ) + 1;
+			std::cout << "Auto-selected " << out.reps_used << " inner repetitions "
+				<< "of approx. " << ctime << " ms. each in order to achieve around "
+				<< "100 ms. of inner-loop wall-clock time.\n";
 		} else {
 			out.reps_used = in.rep;
+			out.times.preamble = timer.time();
 		}
-		out.times.preamble = timer.time();
-		timer.reset();
-		// benchmark raw axpy
-		for( size_t k = 0; k < out.reps_used; ++k ) {
-			bench_kernels_axpy( a, alpha, x, y, in.n );
-		}
-		out.times.useful = timer.time() / static_cast< double >( out.reps_used );
-
-		// postamble
-		timer.reset();
+		// do verification
 		double checksum = 0;
 		for( size_t i = 0; i < in.n; ++i ) {
 			const double expected = alpha * x[ i ] + y[ i ];
@@ -250,6 +288,17 @@ void test( const struct Input &in, struct Output &out ) {
 			}
 		}
 		std::cout << "Checksum: " << checksum << std::endl;
+		out.times.preamble = timer.time();
+		timer.reset();
+
+		// benchmark raw axpy
+		for( size_t k = 0; k < out.reps_used; ++k ) {
+			bench_kernels_axpy( a, alpha, x, y, in.n );
+		}
+		out.times.useful = timer.time() / static_cast< double >( out.reps_used );
+
+		// postamble
+		timer.reset();
 		free( a );
 		out.times.postamble = timer.time();
 	}
@@ -272,7 +321,7 @@ int main( int argc, char ** argv ) {
 	struct Output out;
 
 	// get vector length
-	char * end = NULL;
+	char * end = nullptr;
 	in.n = strtoumax( argv[ 1 ], &end, 10 );
 	if( argv[ 1 ] == end ) {
 		std::cerr << "Could not parse argument " << argv[ 1 ] << " "
@@ -287,7 +336,7 @@ int main( int argc, char ** argv ) {
 		in.rep = strtoumax( argv[ 2 ], &end, 10 );
 		if( argv[ 2 ] == end ) {
 			std::cerr << "Could not parse argument " << argv[ 2 ] << " "
-				<< "for number of inner experiment repititions." << std::endl;
+				<< "for number of inner experiment repetitions." << std::endl;
 			std::cout << "Test FAILED\n" << std::endl;
 			return 20;
 		}
@@ -299,7 +348,7 @@ int main( int argc, char ** argv ) {
 		outer = strtoumax( argv[ 3 ], &end, 10 );
 		if( argv[ 3 ] == end ) {
 			std::cerr << "Could not parse argument " << argv[ 3 ] << " "
-				<< "for number of outer experiment repititions." << std::endl;
+				<< "for number of outer experiment repetitions." << std::endl;
 			std::cout << "Test FAILED\n" << std::endl;
 			return 30;
 		}
@@ -309,8 +358,9 @@ int main( int argc, char ** argv ) {
 	grb::Benchmarker< AUTOMATIC > bench;
 
 	// start functional test
-	std::cout << "\nBenchmark label: grb::set + grb::eWiseMul (axpy) of size "
-		<< in.n << std::endl;
+	std::cout << "\nBenchmark label: grb::set + grb::eWiseMul (axpy, "
+		<< grb::toString( grb::config::default_backend ) << ") of size " << in.n
+		<< std::endl;
 	out.error = SUCCESS;
 	grb::RC rc = bench.exec( &(test< TEMPLATED >), in, out, 1, outer, true );
 	if( rc != SUCCESS || out.error != SUCCESS ) {
@@ -320,7 +370,8 @@ int main( int argc, char ** argv ) {
 		std::cout << "Test FAILED\n" << std::endl;
 		return 40;
 	}
-	std::cout << "\nBenchmark label: grb::eWiseLambda (axpy) of size " << in.n
+	std::cout << "\nBenchmark label: grb::eWiseLambda (axpy, "
+		<< grb::toString( grb::config::default_backend ) << ") of size " << in.n
 		<< std::endl;
 	rc = bench.exec( &(test< LAMBDA >), in, out, 1, outer, true );
 	if( rc != SUCCESS || out.error != SUCCESS ) {
@@ -342,8 +393,10 @@ int main( int argc, char ** argv ) {
 		return 60;
 	}
 
-	std::cout << "NOTE: please check the above performance figures manually-- "
-		<< "the timings should approximately match.\n";
+	std::cout << "\nNOTE: please check the above performance figures manually-- "
+		<< "the eWiseLambda and compiler-optimised timings should approximately "
+		<< "match while that of the grb::set + grb::eWiseMul should only approx. "
+		<< "match when the nonblocking backend is employed\n\n";
 
 	// done
 	std::cout << "Test OK\n" << std::endl;
