@@ -118,25 +118,35 @@ namespace grb {
 
 		/**
 		 * Indicates that all input and output vectors to an ALP/GraphBLAS primitive
-		 * are structurally dense.
+		 * are structurally dense when initially supplied to the primitive.
 		 *
 		 * If a user passes this descriptor but one or more vectors to the call are
-		 * \em not structurally dense, then #ILLEGAL shall be returned.
+		 * \em not structurally dense, then #ILLEGAL shall be returned. In blocking
+		 * mode, the call that returns #ILLEGAL for this reason shall not have any
+		 * other side-effects. For backends that supply nonblocking execution, the
+		 * contents of the outputs after returning #ILLEGAL shall be undefined: both
+		 * the number of nonzeroes and the values of any nonzeroes are undefined.
+		 * When #ILLEGAL is returned from a call that was given this descriptor, users
+		 * are hence encouraged to clear the output before any further use.
 		 *
 		 * \warning <em>All vectors</em> includes any vectors that operate as masks.
 		 *          Thus if the primitive is to operate with structurally sparse masks
-		 *          but with otherwise dense vectors, then the dense descriptor may
-		 *          \em not be defined.
+		 *          the dense descriptor may \em not be given.
 		 *
 		 * \warning For in-place operations with vector outputs --which are all
-		 *          ALP/GraphBLAS primitives with vector outputs except grb::set and
-		 *          grb::eWiseApply-- the output vector is also an input vector. Thus
-		 *          passing this descriptor to such primitive indicates that also the
-		 *          output vector is structurally dense.
+		 *          ALP primitives with vector outputs except set and eWiseApply-- the
+		 *          output vector is also an input vector. Thus passing this
+		 *          descriptor to such primitive indicates that also the output vector
+		 *          on input is structurally dense.
 		 *
 		 * \warning For out-of-place operations with vector output(s), passing this
-		 *          descriptor also demands that the output vectors are already
-		 *          dense.
+		 *          descriptor also demands that the output vector on input are
+		 *          already dense.
+		 *
+		 * \warning For out-of-place operations, it may be that supplying the dense
+		 *          descriptor as well as an output vector that was initially dense
+		 *          (in addition to only passing dense inputs and dense masks) results
+		 *          in sparse output.
 		 *
 		 * \warning Vectors with explicit zeroes (under the semiring passed to the
 		 *          related primitive) will be computed with explicitly.
@@ -144,7 +154,7 @@ namespace grb {
 		 * The benefits of using this descriptor whenever possible are two-fold:
 		 *   1) less run-time overhead as code handling sparsity is disabled;
 		 *   2) smaller binary sizes as code handling structurally sparse vectors is
-		 *      not emitted (unless required elsewhere).
+		 *      not emitted (unless required elsewhere in the program).
 		 *
 		 * The consistent use of this descriptor is hence strongly encouraged.
 		 */
