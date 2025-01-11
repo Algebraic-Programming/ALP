@@ -648,7 +648,7 @@ namespace grb {
 #endif
 					for( size_t i = lower_bound; i < upper_bound; ++i ) {
 						if( !out_is_void && !in_is_void ) {
-							dst[ i ] = src[ i ];
+							dst[ i ] = internal::setIndexOrValue< descr, OutputType >( i, src[ i ] );
 						}
 					}
 				}
