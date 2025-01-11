@@ -28,10 +28,10 @@ static grb::RC dense_tests(
 	// for the subtests that return ILLEGAL due to incorrect usage of the dense
 	// descriptor and in the case of nonblocking execution, the output vector may
 	// be modified due to side effects. Therefore, for some of the subtests below,
-	// the ouput vector is reset while some additional checks are disabled
+	// the ouput vector is reset explicitly
 	constexpr bool nonblocking_execution =
 		grb::Properties<>::isNonblockingExecution;
-	constexpr bool dense = grb::descriptors::dense | grb::descriptors::use_index;
+	constexpr auto dense = grb::descriptors::dense | grb::descriptors::use_index;
 
 	assert( grb::size( dst ) == grb::size( src ) );
 	grb::Vector< bool > full_mask( grb::size( dst ) );
@@ -79,7 +79,7 @@ static grb::RC dense_tests(
 	// 29) dense+invert, dense output, one_mask, dense input vector: expects ILL
 	// 30) dense+invert, dense output, full_mask, dense input vector: expects OK
 
-	std::cerr << "\b subtest 1:";
+	std::cerr << "\t dense subtest 1:";
 	ret = grb::set< dense >( dst, 1.0 );
 	ret = ret ? ret : grb::wait( dst );
 	if( ret != grb::ILLEGAL ) {
