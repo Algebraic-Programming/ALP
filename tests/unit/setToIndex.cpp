@@ -780,6 +780,7 @@ static grb::RC dense_tests(
 
 void grb_program( const size_t &n, grb::RC &rc ) {
 	grb::Vector< double > dst( n ), src( n );
+	grb::Vector< bool > one_mask( n ), full_mask( n );
 
 	// subtest overview (all have use_index as additional descriptor to the below-
 	// mentioned):
@@ -820,52 +821,31 @@ void grb_program( const size_t &n, grb::RC &rc ) {
 
 	// TODO: revise all tests according to the above table
 
-	rc = grb::set( src, 1.5 ); // src = 1.5 everywhere
-	rc = rc ? rc : grb::wait( src );
-	if( rc != SUCCESS ) {
-		std::cerr << "\tset-to-value FAILED\n";
-	} else {
-		if( nnz( src ) != n ) {
-			std::cerr << "\t (set-to-value) unexpected number of nonzeroes "
-				<< nnz( src ) << ", expected " << n << "\n";
-			rc = FAILED;
-		}
-		for( const auto &pair : src ) {
-			if( pair.second != 1.5 ) {
-				std::cerr << "\t (set-to-value) unexpected entry "
-					<< "( " << pair.first << ", " << pair.second << " ), "
-					<< "expected value 1.5.\n";
-				rc = FAILED;
-			}
-		}
-	}
-	if( rc != SUCCESS ) {
+	std::cerr << "\t general subtest 1:";
+	rc = grb::clear( dst );
+	rc = rc ? rc : grb::clear( src );
+	rc = rc ? rc : grb::setElement( dst, 0, 0 );
+	rc = rc ? rc : grb::setElement( src, 3.14, grb::size( src ) / 2 );
+	rc = rc ? rc : grb::wait( dst, src );
+	rc = rc ? rc : expect_one( dst, 0, 0 );
+	rc = rc ? rc : expect_one( src, grb::size( src ) / 2, 3.14 );
+	rc = rc ? rc : grb::setElement( one_mask, true, grb::size( one_mask ) / 2 );
+	rc = rc ? rc : grb::set( full_mask, false );
+	if( rc != grb::SUCCESS ) {
+		std::cerr << " test initialisation FAILED: " << grb::toString( rc ) << "\n";
 		return;
 	}
+	rc = grb::set< use_index >( dst, 1.0 );
+	if( rc != grb::SUCCESS ) {
+		std::cerr << " expected SUCCESS, got " << grb::toString( rc ) << "\n";
+		rc = grb::FAILED;
+		return;
+	}
+	rc = expect_full( dst );
+	if( rc != grb::SUCCESS ) { return; }
 
-	// test set-to-index
-	rc = grb::set< grb::descriptors::use_index >( dst, 2 );
-	rc = rc ? rc : grb::wait( dst );
-	if( rc != SUCCESS ) {
-		std::cerr << "\tset-to-index FAILED\n";
-	} else {
-		if( nnz( dst ) != n ) {
-			std::cerr << "\t (set-to-index) unexpected number of nonzeroes "
-				<< nnz( dst ) << ", expected " << n << "\n";
-			rc = FAILED;
-		}
-		for( const auto &pair : dst ) {
-			if( pair.second != pair.first ) {
-				std::cerr << "\t (set-to-index) unexpected entry "
-					<< "( " << pair.first << ", " << pair.second << " ), "
-					<< "expected value " << static_cast< double >( pair.first ) << ".\n";
-				rc = FAILED;
-			}
-		}
-	}
-	if( rc != SUCCESS ) {
-		return;
-	}
+	std::cerr << "\b 2:";
+	// TODO from here
 
 	// test set overwrite
 	rc = grb::set( dst, src );
