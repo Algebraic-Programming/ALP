@@ -21,6 +21,14 @@
 #include <graphblas.hpp>
 
 
+static bool expect_success( const grb::RC rc ) {
+	if( rc != grb::SUCCESS ) {
+		std::cerr << " expected SUCCESS, got " << grb:toString( rc ) << "\n";
+		return false;
+	}
+	return true;
+}
+
 static grb::RC expect_full(
 	grb::Vector< double > &dst
 ) {
@@ -819,8 +827,6 @@ void grb_program( const size_t &n, grb::RC &rc ) {
 	constexpr auto use_index = grb::descriptors::use_index;
 	constexpr auto invert = grb::descriptors::invert_mask | use_index;
 
-	// TODO: revise all tests according to the above table
-
 	std::cerr << "\t general subtest 1:";
 	rc = grb::clear( dst );
 	rc = rc ? rc : grb::clear( src );
@@ -836,15 +842,62 @@ void grb_program( const size_t &n, grb::RC &rc ) {
 		return;
 	}
 	rc = grb::set< use_index >( dst, 1.0 );
-	if( rc != grb::SUCCESS ) {
-		std::cerr << " expected SUCCESS, got " << grb::toString( rc ) << "\n";
-		rc = grb::FAILED;
-		return;
-	}
-	rc = expect_full( dst );
+	rc = rc ? rc : grb::wait( dst );
 	if( rc != grb::SUCCESS ) { return; }
 
 	std::cerr << "\b 2:";
+	rc = grb::clear( dst );
+	rc = rc ? rc : grb::wait();
+	rc = rc ? rc : expect_none( dst );
+	if( rc != grb::SUCCESS ) {
+		std::cerr << " error initialising test: " << grb::toString( rc ) << "\n";
+		return;
+	}
+	rc = grb::set< use_index >( dst, one_mask, src );
+	rc = rc ? rc : grb::wait();
+	if( !expect_success( rc ) ) { return; }
+	const size_t half_size = grb::size( one_mask ) / 2;
+	rc = expect_one( dst, half_size, half_size );
+	if( rc != grb::SUCCESS ) { return; }
+
+	std::cerr << "\b 3:";
+	rc = grb::clear( dst );
+	rc = rc ? rc : grb::set( dst, one_mask, 3.14 );
+	rc = rc ? rc : grb::wait( dst );
+	rc = rc ? rc : expect_one( dst, half_size, 3.14 );
+	if( rc != grb::SUCCESS ) {
+		std::cerr << " error initialising test\n";
+		return;
+	}
+	rc = grb::set< use_index >( dst, full_mask, 7.0 );
+	rc = rc ? rc : grb::wait( dst );
+	if( !expect_success( rc ) ) { return; }
+	rc = expect_none( dst );
+	if( rc != grb::SUCCESS ) { return; }
+
+	std::cerr << "\b 4:";
+	rc = grb::set< use_index >( dst, src );
+	rc = rc ? rc : grb::wait( dst );
+	if( !expect_success( rc ) ) { return; }
+	rc = expect_one( dst, half_size, half_size );
+	if( rc != grb::SUCCESS ) { return; }
+
+	std::cerr << "\b 5:";
+	rc = grb::clear( dst );
+	rc = rc ? rc : grb::setElement( dst, 3.14, grb::size( dst ) - 1 );
+	rc = rc ? rc : grb::wait( dst );
+	rc = rc ? rc : expect_one( dst, grb::size( dst ) - 1, 3.14 );
+	if( rc != grb::SUCCESS ) {
+		std::cerr << " test initialisation FAILED: " << grb::toString( rc ) << "\n";
+		return;
+	}
+	rc = grb::set< use_index >( dst, one_mask, src );
+	rc = rc ? rc : grb::wait( dst );
+	if( !expect_success( rc ) ) { return; }
+	rc = expect_one( dst, half_size, half_size );
+	if( rc != grb::SUCCESS ) { return; }
+
+	std::cerr << "\b 6:";
 	// TODO from here
 
 	// test set overwrite
