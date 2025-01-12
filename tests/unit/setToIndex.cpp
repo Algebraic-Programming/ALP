@@ -21,6 +21,106 @@
 #include <graphblas.hpp>
 
 
+static grb::RC expect_full(
+	grb::Vector< double > &dst
+) {
+	grb::RC ret = grb::SUCCESS;
+	if( grb::nnz( dst ) != grb::size( dst ) ) {
+		std::cerr << " expected " << grb::size( dst ) << " values, got "
+			<< grb::nnz( dst ) << "\n";
+		ret = grb::FAILED;
+	}
+	for( const auto &pair : dst ) {
+		if( pair.first != pair.second ) {
+			std::cerr << " unexpected output pair ( " << pair.first << ", "
+				<< pair.second << " ); expected index to match value\n";
+			ret = grb::FAILED;
+		}
+	}
+	return ret;
+}
+
+static grb::RC expect_none(
+	grb::Vector< double > &dst
+) {
+	grb::RC ret = grb::SUCCESS;
+	if( grb::nnz( dst ) != 0 ) {
+		std::cerr << " expected zero values, got " << grb::nnz( dst ) << "\n";
+		ret = grb::FAILED;
+	}
+	for( const auto &pair : dst ) {
+		std::cerr << " unexpected output pair ( " << pair.first << ", "
+			<< pair.second << " ); expected none\n";
+		ret = grb::FAILED;
+	}
+	return ret;
+}
+
+static grb::RC expect_one(
+	grb::Vector< double > &dst,
+	const size_t expected_index,
+	const double expected_value
+) {
+	grb::RC ret = grb::SUCCESS;
+	if( grb::nnz( dst ) != 1 ) {
+		std::cerr << " expected one value, got " << grb::nnz( dst ) << "\n";
+		ret = grb::FAILED;
+	}
+	for( const auto &pair : dst ) {
+		if( pair.first != expected_index || pair.second != expected_value ) {
+			std::cerr << " unexpected output pair ( " << pair.first << ", "
+				<< pair.second << " ); expected index " << expected_index
+				<< " and value " << expected_value << "\n";
+			ret = grb::FAILED;
+		}
+	}
+	return ret;
+}
+
+static grb::RC expect_all_but_one(
+	grb::Vector< double > &dst,
+	const size_t unexpected_index
+) {
+	grb::RC ret = grb::SUCCESS;
+	if( grb::nnz( dst ) + 1 != grb::size( dst ) ) {
+		std::cerr << " expected " << (grb::size( dst ) - 1) << " values, got "
+			<< grb::nnz( dst ) << "\n";
+		ret = grb::FAILED;
+	}
+	for( const auto &pair : dst ) {
+		if( pair.first == unexpected_index ) {
+			std::cerr << " unexpected output pair ( " << pair.first << ", "
+				<< pair.second << " ); unexpected index\n";
+			ret = grb::FAILED;
+		} else if( pair.first != pair.second ) {
+			std::cerr << " unexpected output pair ( " << pair.first << ", "
+				<< pair.second << " ); expected index to match value\n";
+			ret = grb::FAILED;
+		}
+	}
+	return ret;
+}
+
+static grb::RC expect_constant(
+	grb::Vector< double > &dst,
+	const double expected_value
+) {
+	grb::RC ret = grb::SUCCESS;
+	if( grb::nnz( dst ) != grb::size( dst ) ) {
+		std::cerr << " expected " << grb::size( dst ) << " values, got "
+			<< grb::nnz( dst ) << "\n";
+		ret = grb::FAILED;
+	}
+	for( const auto &pair : dst ) {
+		if( pair.second != expected_value ) {
+			std::cerr << " unexpected output pair ( " << pair.first << ", "
+				<< pair.second << " ); expected value " << expected_value << "\n";
+			ret = grb::FAILED;
+		}
+	}
+	return ret;
+}
+
 static grb::RC dense_tests(
 	grb::Vector< double > &dst,
 	grb::Vector< double > &src
@@ -98,6 +198,8 @@ static grb::RC dense_tests(
 			return grb::FAILED;
 		}
 	}
+	ret = expect_none( dst );
+	if( ret != grb::SUCCESS ) { return grb::FAILED; }
 
 	std::cerr << "\b 2:";
 	ret = grb::set< dense >( dst, one_mask, 1.0 );
@@ -112,12 +214,9 @@ static grb::RC dense_tests(
 			std::cerr << " unexpected failure of grb::clear( dst )\n";
 			return grb::FAILED;
 		}
-	} else {
-		if( grb::nnz( dst ) != 0 ) {
-			std::cerr << " expected 0, got " << grb::nnz( dst ) << "\n";
-			return grb::FAILED;
-		}
 	}
+	ret = expect_none( dst );
+	if( ret != grb::SUCCESS ) { return grb::FAILED; }
 
 	std::cerr << "\b 3:";
 	ret = grb::set< dense >( dst, full_mask, 1.0 );
@@ -132,12 +231,9 @@ static grb::RC dense_tests(
 			std::cerr << " unexpected failure of grb::clear( dst )\n";
 			return grb::FAILED;
 		}
-	} else {
-		if( grb::nnz( dst ) != 0 ) {
-			std::cerr << " expected 0, got " << grb::nnz( dst ) << "\n";
-			return grb::FAILED;
-		}
 	}
+	ret = expect_none( dst );
+	if( ret != grb::SUCCESS ) { return grb::FAILED; }
 
 	std::cerr << "\b 4:";
 	ret = grb::set< dense >( dst, src );
@@ -152,12 +248,9 @@ static grb::RC dense_tests(
 			std::cerr << " unexpected failure of grb::clear( dst )\n";
 			return grb::FAILED;
 		}
-	} else {
-		if( grb::nnz( dst ) != 0 ) {
-			std::cerr << " expected 0, got " << grb::nnz( dst ) << "\n";
-			return grb::FAILED;
-		}
 	}
+	ret = expect_none( dst );
+	if( ret != grb::SUCCESS ) { return grb::FAILED; }
 
 	std::cerr << "\b 5:";
 	ret = grb::set< dense >( dst, one_mask, src );
@@ -172,12 +265,9 @@ static grb::RC dense_tests(
 			std::cerr << " unexpected failure of grb::clear( dst )\n";
 			return grb::FAILED;
 		}
-	} else {
-		if( grb::nnz( dst ) != 0 ) {
-			std::cerr << " expected 0, got " << grb::nnz( dst ) << "\n";
-			return grb::FAILED;
-		}
 	}
+	ret = expect_none( dst );
+	if( ret != grb::SUCCESS ) { return grb::FAILED; }
 
 	std::cerr << "\b 6:";
 	ret = grb::set< dense >( dst, full_mask, src );
@@ -192,12 +282,9 @@ static grb::RC dense_tests(
 			std::cerr << " unexpected failure of grb::clear( dst )\n";
 			return grb::FAILED;
 		}
-	} else {
-		if( grb::nnz( dst ) != 0 ) {
-			std::cerr << " expected 0, got " << grb::nnz( dst ) << "\n";
-			return grb::FAILED;
-		}
 	}
+	ret = expect_none( dst );
+	if( ret != grb::SUCCESS ) { return grb::FAILED; }
 
 	std::cerr << "\b 7:";
 	ret = grb::set( src, 3.14 );
@@ -206,19 +293,7 @@ static grb::RC dense_tests(
 		std::cerr << " could not initialise test:" << grb::toString( ret ) << "\n";
 		return grb::FAILED;
 	}
-	ret = grb::SUCCESS;
-	if( grb::nnz( src ) != n ) {
-		std::cerr << " expected " << n << " nonzeroes, got " << grb::nnz( src )
-			<< "\n";
-		ret = grb::FAILED;
-	}
-	for( const auto &pair : src ) {
-		if( pair.first != 3.14 ) {
-			std::cerr << " unexpected output pair ( " << pair.first << ", "
-				<< pair.second << " ), expected values 3.14 only\n";
-			ret = grb::FAILED;
-		}
-	}
+	ret = expect_constant( src, 3.14 );
 	if( ret != grb::SUCCESS ) {
 		std::cerr << "\t could not initialise test\n";
 		return grb::FAILED;
@@ -237,19 +312,8 @@ static grb::RC dense_tests(
 			return grb::FAILED;
 		}
 	}
-	ret = grb::SUCCESS;
-	if( grb::nnz( dst ) != 0 ) {
-		std::cerr << " expected 0 values, got " << grb::nnz( dst ) << "\n";
-		ret = grb::FAILED;
-	}
-	for( const auto &pair : dst ) {
-		std::cerr << " unexpected output pair ( " << pair.first << ", " << pair.second
-			<< " ): expected no pairs\n";
-		ret = grb::FAILED;
-	}
-	if( ret != grb::SUCCESS ) {
-		return grb::FAILED;
-	}
+	ret = expect_none( dst );
+	if( ret != grb::SUCCESS ) { return grb::FAILED; }
 
 	std::cerr << "\b 8:";
 	ret = grb::set< dense >( dst, one_mask, src );
@@ -266,19 +330,8 @@ static grb::RC dense_tests(
 			return grb::FAILED;
 		}
 	}
-	ret = grb::SUCCESS;
-	if( grb::nnz( dst ) != 0 ) {
-		std::cerr << " expected zero values, got " << grb::nnz( dst ) << "\n";
-		ret = grb::FAILED;
-	}
-	for( const auto &pair : dst ) {
-		std::cerr << " unexpected pair ( " << pair.first << ", " << pair.second
-			<< "; expected none\n";
-		ret = grb::FAILED;
-	}
-	if( ret != grb::SUCCESS ) {
-		return grb::FAILED;
-	}
+	ret = expect_none( dst );
+	if( ret != grb::SUCCESS ) { return grb::FAILED; }
 
 	std::cerr << "\b 9:";
 	ret = grb::set< dense >( dst, full_mask, src );
@@ -296,19 +349,8 @@ static grb::RC dense_tests(
 			return grb::FAILED;
 		}
 	}
-	ret = grb::SUCCESS;
-	if( grb::nnz( dst ) != 0 ) {
-		std::cerr << " expected 0 values, got " << grb::nnz( dst ) << "\n";
-		ret = grb::FAILED;
-	}
-	for( const auto &pair : dst ) {
-		std::cerr << " unexpected pair ( " << pair.first << ", " << pair.second
-			<< " ); expected none\n";
-		ret = grb::FAILED;
-	}
-	if( ret != grb::SUCCESS ) {
-		return grb::FAILED;
-	}
+	ret = expect_none( dst );
+	if( ret != grb::SUCCESS ) { return grb::FAILED; }
 
 	std::cerr << "\b 10:";
 	ret = grb::set( dst, 0 );
@@ -323,18 +365,7 @@ static grb::RC dense_tests(
 		std::cerr << " expected SUCCESS, got " << grb::toString( ret ) << "\n";
 		return grb::FAILED;
 	}
-	if( grb::nnz( dst ) != grb::size( dst ) ) {
-		std::cerr << " expected " << grb::size( dst ) << ", got " << grb::nnz( dst )
-			<< "\n";
-		return grb::FAILED;
-	}
-	for( const auto &pair : dst ) {
-		if( pair.second != pair.first ) {
-			std::cerr << "\t unexpected output pair ( " << pair.first << ", "
-				<< pair.second << " )\n";
-			ret = grb::FAILED;
-		}
-	}
+	ret = expect_full( dst );
 	if( ret != grb::SUCCESS ) { return ret; }
 
 	std::cerr << "\b 11:";
@@ -351,19 +382,7 @@ static grb::RC dense_tests(
 			return grb::FAILED;
 		}
 	}
-	ret = grb::SUCCESS;
-	if( grb::nnz( dst ) != grb::size( dst ) ) {
-		std::cerr << " expected " << grb::size( dst ) << ", got " << grb::nnz( dst )
-			<< "\n";
-		ret = grb::FAILED;
-	}
-	for( const auto &pair : dst ) {
-		if( pair.second != pair.first ) {
-			std::cerr << "\t unexpected output pair ( " << pair.first << ", "
-				<< pair.second << " )\n"
-			ret = grb::FAILED;
-		}
-	}
+	ret = expect_full( dst );
 	if( ret != grb::SUCCESS ) { return ret; }
 
 	std::cerr << "\b 12:";
@@ -373,16 +392,7 @@ static grb::RC dense_tests(
 		std::cerr << " expected SUCCESS, got " << grb::toString( ret ) << "\n";
 		return grb::FAILED;
 	}
-	ret = grb::SUCCESS;
-	if( grb::nnz( dst ) != 0 ) {
-		std::cerr << " expected 0, got " << grb::nnz( dst ) << "\n";
-		ret = grb::FAILED;
-	}
-	for( const auto &pair : dst ) {
-		std::cerr << "\t unexpected output pair ( " << pair.first << ", "
-			<< pair.second << " ); expected none\n";
-		ret = grb::FAILED;
-	}
+	ret = expect_none( dst );
 	if( ret != grb::SUCCESS ) { return ret; }
 
 	std::cerr << "\b 13:";
@@ -390,6 +400,7 @@ static grb::RC dense_tests(
 	ret = ret ? ret : grb::clear( src );
 	ret = ret ? ret : grb::setElement( src, 3.14, grb::size( src ) / 2 );
 	ret = ret ? ret : grb::wait( dst, src );
+	ret = ret ? ret : expect_one( src, grb::size( src ) / 2, 3.14 );
 	if( ret != grb::SUCCESS ) {
 		std::cerr << " unexpected failure at test initialisation: "
 			<< grb::toString( ret ) << "\n";
@@ -407,18 +418,7 @@ static grb::RC dense_tests(
 			return grb::FAILED;
 		}
 	}
-	if( grb::nnz( dst ) != grb::size( dst ) ) {
-		std::cerr << " expected " << grb::size( dst ) << ", got " << grb::nnz( dst )
-			<< "\n";
-		return grb::FAILED;
-	}
-	for( const auto &pair : src ) {
-		if( 0.0 != pair.second ) {
-			std::cerr << " unexpected output pair ( " << pair.first << ", "
-				<< pair.second << " ); expected zero values\n";
-			return grb::FAILED;
-		}
-	}
+	ret = expect_constant( dst, 0 );
 	if( ret != grb::SUCCESS ) { return grb::FAILED; }
 
 	std::cerr << "\b 14:";
@@ -435,18 +435,8 @@ static grb::RC dense_tests(
 			return grb::FAILED;
 		}
 	}
-	if( grb::nnz( dst ) != grb::size( dst )  ) {
-		std::cerr << " expected " << grb::size( dst ) << ", got " << grb::nnz( dst )
-			<< "\n";
-		return grb::FAILED;
-	}
-	for( const auto &pair : src ) {
-		if( 0.0 != pair.second ) {
-			std::cerr << " unexpected output pair ( " << pair.first << ", "
-				<< pair.second << " ); expected zero values\n";
-			return grb::FAILED;
-		}
-	}
+	ret = expect_constant( dst, 0 );
+	if( ret != grb::SUCCESS ) { return grb::FAILED; }
 
 	std::cerr << "\b 15:";
 	ret = grb::set< dense >( dst, full_mask, src );
@@ -462,22 +452,13 @@ static grb::RC dense_tests(
 			return grb::FAILED;
 		}
 	}
-	if( grb::nnz( dst ) != grb::size( dst ) ) {
-		std::cerr << " expected " << grb::size( dst ) << ", got " << nnz( dst )
-			<< "\n";
-		return grb::FAILED;
-	}
-	for( const auto &pair : src ) {
-		if( 0.0 != pair.second ) {
-			std::cerr << " unexpected output pair ( " << pair.first << ", "
-				<< pair.second << " ); expected zero values only\n";
-			return grb::FAILED;
-		}
-	}
+	ret = expect_constant( dst, 0 );
+	if( ret != grb::SUCCESS ) { return grb::FAILED; }
 
 	std::cerr << "\b 16: ";
 	ret = grb::set( src, 3.14 );
 	ret = ret ? ret : grb::wait( src );
+	ret = ret ? ret : expect_constant( src, 3.14 );
 	if( ret != grb::SUCCESS ) {
 		std::cerr << " could not initialise test: " << grb::toString( ret ) << "\n";
 		return grb::FAILED;
@@ -488,19 +469,7 @@ static grb::RC dense_tests(
 		std::cerr << " expected SUCCESS, got " << grb::toString( ret ) << "\n";
 		return grb::FAILED;
 	}
-	ret = grb::SUCCESS;
-	if( grb::nnz( dst ) != grb::size( dst ) ) {
-		std::cerr << " expected " << grb::size( dst ) << " values, got "
-			<< grb::nnz( dst ) << "\n";
-		ret = grb::FAILED;
-	}
-	for( const auto &pair : dst ) {
-		if( pair.first != pair.second ) {
-			std::cerr << " unexpected output pair ( " << pair.first << ", "
-				<< pair.second << " )\n";
-			ret = grb::FAILED;
-		}
-	}
+	ret = expected_full( dst );
 	if( ret != grb::SUCCESS ) { return grb::FAILED; }
 
 	std::cerr << "\b 17:";
@@ -519,19 +488,7 @@ static grb::RC dense_tests(
 			return grb::FAILED;
 		}
 	}
-	ret = grb::SUCCESS;
-	if( grb::nnz( dst ) != grb::size( dst ) ) {
-		std::cerr << " unexpected number of values; expected " << grb::size( dst )
-			<< ", got " << grb::nnz( dst ) << "\n";
-		ret = grb::FAILED;
-	}
-	for( const auto &pair : dst ) {
-		if( pair.first != pair.second ) {
-			std::cerr << " unexpected output pair ( " << pair.first << ", " << pair.second
-				<< " )\n";
-			ret = grb::FAILED;
-		}
-	}
+	ret = expect_full( dst );
 	if( ret != grb::SUCCESS ) { return grb::FAILED; }
 
 	std::cerr << "\b 18:";
@@ -541,21 +498,13 @@ static grb::RC dense_tests(
 		std::cerr << " expected SUCCESS, got " << grb::toString( ret ) << "\n";
 		return grb::FAILED;
 	}
-	ret = grb::SUCCESS;
-	if( grb::nnz( dst ) != 0 ) {
-		std::cerr << " expected zero values, got " << grb::nnz( dst ) << "\n";
-		ret = grb::FAILED;
-	}
-	for( const auto &pair : dst ) {
-		std::cerr << " unexpected output pair ( " << pair.first << ", " << pair.second
-			<< " ); expected none\n";
-		ret = grb::FAILED;
-	}
+	ret = expect_none( dst );
 	if( ret != grb::SUCCESS ) { return grb::FAILED; }
 
 	std::cerr << "\b 19:";
 	ret = grb::clear( dst );
 	ret = ret ? ret : grb::wait( dst );
+	ret = ret ? ret : expect_none( dst );
 	if( ret != grb::SUCCESS ) {
 		std::cerr << " unexpected error at grb::clear( dst ): "
 			<< grb::toString( ret ) << "\n";
@@ -577,16 +526,7 @@ static grb::RC dense_tests(
 			return ret;
 		}
 	}
-	ret = grb::SUCCESS;
-	if( grb::nnz( dst ) != 0 ) {
-		std::cerr << " expected zero values, got " << grb::nnz( dst ) << "\n";
-		ret = grb::FAILED;
-	}
-	for( const auto &pair : dst ) {
-		std::cerr << "\t unexpected output pair ( " << pair.first << ", "
-			<< pair.second << " ): expected none\n";
-		ret = grb::FAILED;
-	}
+	ret = expect_none( dst );
 	if( ret != grb::SUCCESS ) { return grb::FAILED; }
 
 	std::cerr << "\b 20:";
@@ -605,22 +545,14 @@ static grb::RC dense_tests(
 			return ret;
 		}
 	}
-	ret = grb::SUCCESS;
-	if( grb::nnz( dst ) != 0 ) {
-		std::cerr << " expected zero values, got " << grb::nnz( dst ) << "\n";
-		ret = grb::FAILED;
-	}
-	for( const auto &pair : dst ) {
-		std::cerr << "\t unexpected output pair ( " << pair.first << ", "
-			<< pair.second << " ): expected none\n";
-		ret = grb::FAILED;
-	}
+	ret = expect_none( dst );
 	if( ret != grb::SUCCESS ) { return ret; }
 
 	std::cerr << "\b 21:";
 	ret = grb::clear( src );
 	ret = ret ? ret : grb::setElement( src, 100, grb::size( src ) / 2 );
 	ret = ret ? ret : grb::wait( src );
+	ret = ret ? ret : expect_one( src, grb::size( src ) / 2, 100 );
 	if( ret != grb::SUCCESS ) {
 		std::cerr << " unexpected error initialising test: "
 			<< grb::toString( ret ) << "\n";
@@ -642,16 +574,7 @@ static grb::RC dense_tests(
 			return ret;
 		}
 	}
-	ret = grb::SUCCESS;
-	if( grb::nnz( dst ) != 0 ) {
-		std::cerr << " expected zero values, got " << grb::nnz( dst ) << "\n";
-		ret = grb::FAILED;
-	}
-	for( const auto &pair : dst ) {
-		std::cerr << "\t unexpected output pair ( " << pair.first << ", "
-			<< pair.second << " ): expected none\n";
-		ret = grb::FAILED;
-	}
+	ret = expect_none( dst );
 	if( ret != grb::SUCCESS ) { return grb::FAILED; }
 
 	std::cerr << "\b 22:";
@@ -670,21 +593,13 @@ static grb::RC dense_tests(
 			return ret;
 		}
 	}
-	ret = grb::SUCCESS;
-	if( grb::nnz( dst ) != 0 ) {
-		std::cerr << " expected zero values, got " << grb::nnz( dst ) << "\n";
-		ret = grb::FAILED;
-	}
-	for( const auto &pair : dst ) {
-		std::cerr << "\t unexpected output pair ( " << pair.first << ", "
-			<< pair.second << " ): expected none\n";
-		ret = grb::FAILED;
-	}
+	ret = expect_none( dst );
 	if( ret != grb::SUCCESS ) { return ret; }
 
 	std::cerr << "\b 23:";
 	ret = grb::set( src, 1.17 );
 	ret = ret ? ret : grb::wait( src );
+	ret = ret ? ret : expect_constant( src, 1.17 );
 	if( ret != grb::SUCCESS ) {
 		std::cerr << " unexpected error initialising test: "
 			<< grb::toString( ret ) << "\n";
@@ -706,16 +621,7 @@ static grb::RC dense_tests(
 			return ret;
 		}
 	}
-	ret = grb::SUCCESS;
-	if( grb::nnz( dst ) != 0 ) {
-		std::cerr << " expected zero values, got " << grb::nnz( dst ) << "\n";
-		ret = grb::FAILED;
-	}
-	for( const auto &pair : dst ) {
-		std::cerr << "\t unexpected output pair ( " << pair.first << ", "
-			<< pair.second << " ): expected none\n";
-		ret = grb::FAILED;
-	}
+	ret = expect_none( dst );
 	if( ret != grb::SUCCESS ) { return grb::FAILED; }
 
 	std::cerr << "\b 24:";
@@ -734,21 +640,13 @@ static grb::RC dense_tests(
 			return ret;
 		}
 	}
-	ret = grb::SUCCESS;
-	if( grb::nnz( dst ) != 0 ) {
-		std::cerr << " expected zero values, got " << grb::nnz( dst ) << "\n";
-		ret = grb::FAILED;
-	}
-	for( const auto &pair : dst ) {
-		std::cerr << "\t unexpected output pair ( " << pair.first << ", "
-			<< pair.second << " ): expected none\n";
-		ret = grb::FAILED;
-	}
+	ret = expect_none( dst );
 	if( ret != grb::SUCCESS ) { return ret; }
 
 	std::cerr << "\b 25:";
 	ret = grb::set( dst, 0 );
 	ret = ret ? ret : grb::wait( dst );
+	ret = ret ? ret : expect_constant( dst, 0 );
 	if( ret != grb::SUCCESS ) {
 		std::cerr << " unexpected error at grb::set( dst ): "
 			<< grb::toString( ret ) << "\n";
@@ -770,19 +668,7 @@ static grb::RC dense_tests(
 			return ret;
 		}
 	}
-	ret = grb::SUCCESS;
-	if( grb::nnz( dst ) != grb::size( dst ) ) {
-		std::cerr << " expected " << grb::size( dst ) << " values, got "
-			<< grb::nnz( dst ) << "\n";
-		ret = grb::FAILED;
-	}
-	for( const auto &pair : dst ) {
-		if( pair.second != 0.0 ) {
-			std::cerr << "\t unexpected output pair ( " << pair.first << ", "
-				<< pair.second << " ): expected only zero values\n";
-		}
-		ret = grb::FAILED;
-	}
+	ret = expect_constant( dst, 0 );
 	if( ret != grb::SUCCESS ) { return grb::FAILED; }
 
 	std::cerr << "\b 26:";
@@ -792,25 +678,14 @@ static grb::RC dense_tests(
 		std::cerr << " expected SUCCESS, got " << grb::toString( ret ) << "\n";
 		return grb::FAILED;
 	}
-	ret = grb::SUCCESS;
-	if( grb::nnz( dst ) != grb::size( dst ) ) {
-		std::cerr << " expected " << grb::size( dst ) << " values, got "
-			<< grb::nnz( dst ) << "\n";
-		ret = grb::FAILED;
-	}
-	for( const auto &pair : dst ) {
-		if( pair.first != pair.second ) {
-			std::cerr << "\t unexpected output pair ( " << pair.first << ", "
-				<< pair.second << " )\n";
-			ret = grb::FAILED;
-		}
-	}
+	ret = expect_full( dst );
 	if( ret != grb::SUCCESS ) { return ret; }
 
 	std::cerr << "\b 27:";
 	ret = grb::clear( src );
 	ret = ret ? ret : grb::setElement( src, 100, grb::size( src ) / 2 );
 	ret = ret ? ret : grb::wait( src );
+	ret = ret ? ret : expect_one( src, grb::size( src ) / 2, 100 );
 	if( ret != grb::SUCCESS ) {
 		std::cerr << " unexpected error initialising test: "
 			<< grb::toString( ret ) << "\n";
@@ -833,19 +708,7 @@ static grb::RC dense_tests(
 			return ret;
 		}
 	}
-	ret = grb::SUCCESS;
-	if( grb::nnz( dst ) != grb::size( dst ) ) {
-		std::cerr << " expected " << grb::size( dst ) << " values, got "
-			<< grb::nnz( dst ) << "\n";
-		ret = grb::FAILED;
-	}
-	for( const auto &pair : dst ) {
-		if( pair.first != pair.second ) {
-			std::cerr << "\t unexpected output pair ( " << pair.first << ", "
-				<< pair.second << " ): expected none\n";
-			ret = grb::FAILED;
-		}
-	}
+	ret = expect_full( dst );
 	if( ret != grb::SUCCESS ) { return grb::FAILED; }
 
 	std::cerr << "\b 28:";
@@ -863,24 +726,13 @@ static grb::RC dense_tests(
 			return grb::FAILED;
 		}
 	}
-	ret = grb::SUCCESS;
-	if( grb::nnz( dst ) != grb::size( dst ) ) {
-		std::cerr << " expected " << grb::size( dst ) << " values, got "
-			<< grb::nnz( dst ) << "\n";
-		ret = grb::FAILED;
-	}
-	for( const auto &pair : dst ) {
-		if( pair.first != pair.second ) {
-			std::cerr << "\t unexpected output pair ( " << pair.first << ", "
-				<< pair.second << " )\n";
-			ret = grb::FAILED;
-		}
-	}
+	ret = expect_full( dst );
 	if( ret != grb::SUCCESS ) { return ret; }
 
 	std::cerr << "\b 29:";
 	ret = grb::set( src, 2.17 );
 	ret = ret ? ret : grb::wait( src );
+	ret = ret ? ret : expect_constant( src, 2.17 );
 	if( ret != grb::SUCCESS ) {
 		std::cerr << " unexpected error initialising test: "
 			<< grb::toString( ret ) << "\n";
@@ -902,24 +754,13 @@ static grb::RC dense_tests(
 			return ret;
 		}
 	}
-	ret = grb::SUCCESS;
-	if( grb::nnz( dst ) != grb::size( dst ) ) {
-		std::cerr << " expected " << grb::size( dst ) << " values, got "
-			<< grb::nnz( dst ) << "\n";
-		ret = grb::FAILED;
-	}
-	for( const auto &pair : dst ) {
-		if( pair.first != pair.second ) {
-			std::cerr << "\t unexpected output pair ( " << pair.first << ", "
-				<< pair.second << " ): expected none\n";
-			ret = grb::FAILED;
-		}
-	}
+	ret = expect_full( dst );
 	if( ret != grb::SUCCESS ) { return grb::FAILED; }
 
 	std::cerr << "\b 30:";
 	ret = grb::set( dst, 0 );
 	ret = ret ? ret : grb::wait( dst );
+	ret = ret ? ret : expect_constant( dst, 0 );
 	if( ret != grb::SUCCESS ) {
 		std::cerr << " error initialising test: " << grb::toString( ret ) << "\n";
 		return grb::FAILED;
@@ -930,19 +771,7 @@ static grb::RC dense_tests(
 		std::cerr << " expected SUCCESS, got " << grb::toString( ret ) << "\n";
 		return grb::FAILED;
 	}
-	ret = grb::SUCCESS;
-	if( grb::nnz( dst ) != grb::size( dst ) ) {
-		std::cerr << " expected " << grb::size( dst ) << " values, got "
-			<< grb::nnz( dst ) << "\n";
-		ret = grb::FAILED;
-	}
-	for( const auto &pair : dst ) {
-		if( pair.first != pair.second ) {
-			std::cerr << "\t unexpected output pair ( " << pair.first << ", "
-				<< pair.second << " )\n";
-			ret = grb::FAILED;
-		}
-	}
+	ret = expect_full( dst );
 	if( ret != grb::SUCCESS ) { return ret; }
 
 	std::cerr << "\b OK\n";
