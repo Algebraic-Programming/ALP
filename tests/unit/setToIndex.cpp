@@ -1125,7 +1125,71 @@ void grb_program( const size_t &n, grb::RC &rc ) {
 	rc = expect_none( dst );
 	if( rc != grb::SUCCESS ) { return; }
 
-	std::cerr<< "\b 21:";
+	std::cerr<< "\b 21A:";
+	rc = grb::clear( src );
+	rc = rc ? rc : grb::wait( src );
+	if( rc != grb::SUCCESS || grb::nnz( src ) != 0 ) {
+		std::cerr << " test initialisation FAILED\n";
+		if( rc != grb::SUCCESS ) {
+			rc = grb::FAILED;
+		}
+		return;
+	}
+	rc = grb::set< invert >( dst, one_mask, src );
+	rc = rc ? rc : grb::wait( dst );
+	if( !expect_success( rc ) ) { return; }
+	rc = expect_none( dst );
+	if( rc != grb::SUCCESS ) { return; }
+
+	std::cerr << "\n 21B:";
+	rc = grb::setElement( src, 3.14, half_size );
+	rc = rc ? rc : grb::wait( src );
+	{
+		bool initFailed = rc != grb::SUCCESS;
+		if( grb::nnz( src ) != 1 ) { initFailed = true; }
+		if( (src.cbegin())->first != half_size ) { initFailed = true; }
+		if( (src.cbegin())->second != 3.14 ) { initFailed = true; }
+		if( (++(src.cbegin())) != src.cend() ) { initFailed = true; }
+		if( initFailed && rc == grb::SUCCESS ) { rc = grb::FAILED; }
+		if( initFailed ) {
+			std::cerr << " test initialisation FAILED\n";
+			return;
+		}
+	}
+	rc = grb::set< invert >( dst, one_mask, src );
+	rc = rc ? rc : grb::wait( dst );
+	if( !expect_success( rc ) ) { return; }
+	rc = expect_none( dst );
+	if( rc != grb::SUCCESS ) { return ; }
+
+	std::cerr < "\b 21C:";
+	rc = grb::setElement( src, 7.17, 0 );
+	rc = rc ? rc : grb::wait( src );
+	{
+		bool initFailed = grb::SUCCESS != rc;
+		if( grb::nnz( src ) != 2 ) { initFailed = true; }
+		auto it = src.cbegin();
+		if( it->first != 0 || it->first != half_size ) { initFailed = true; }
+		if( it->first == 0 && it->second != 7.17 ) { initFailed = true; }
+		if( it->first == half_size && it->second != 3.14 ) { initFailed = true; }
+		(void) ++it;
+		if( it->first != 0 || it->first != half_size ) { initFailed = true; }
+		if( it->first == 0 && it->second != 7.17 ) { initFailed = true; }
+		if( it->first == half_size && it->second != 3.14 ) { initFailed = true; }
+		if( (++it) != src.cend() ) { initFailed = true; }
+		if( initFailed && rc == grb::SUCCESS ) { rc = grb::FAILED; }
+		if( initFailed ) {
+			std::cerr << " test initialisation FAILED\n";
+			return;
+		}
+	}
+	rc = grb::set< invert >( dst, one_mask, src );
+	rc = rc ? rc : grb::set( dst );
+	if( !expect_success( rc ) ) { return; }
+	rc = expect_one( dst, 0, 0 );
+	if( rc != grb::SUCCESS ) { return; }
+
+	std::cerr << "\b 22:";
 	// TODO
 
 	// test behaviour under dense descriptor
