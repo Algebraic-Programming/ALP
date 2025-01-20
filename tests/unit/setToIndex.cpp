@@ -169,7 +169,7 @@ static grb::RC dense_tests(
 	// 12) dense, dense output, full_mask, scalar input value: expects OK
 	// 13) dense, dense output, no mask, sparse input vector: expects ILLEGAL
 	// 14) dense, dense output, one_mask, sparse input vector: expects ILLEGAL
-	// 15) dense, dense output, full_mask, sparse input vector: expects ILLEGAL 
+	// 15) dense, dense output, full_mask, sparse input vector: expects ILLEGAL
 	// 16) dense, dense output, no mask, dense input vector: expects OK
 	// 17) dense, dense output, one_mask, dense input vector: expects ILLEGAL
 	// 18) dense, dense output, full_mask, dense input vector: expects OK
