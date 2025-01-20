@@ -23,7 +23,7 @@
 
 static bool expect_success( const grb::RC rc ) {
 	if( rc != grb::SUCCESS ) {
-		std::cerr << " expected SUCCESS, got " << grb:toString( rc ) << "\n";
+		std::cerr << " expected SUCCESS, got " << grb::toString( rc ) << "\n";
 		return false;
 	}
 	return true;
@@ -148,7 +148,7 @@ static grb::RC dense_tests(
 	ret = ret ? ret : grb::setElement( one_mask, false, size( dst ) / 2 );
 	ret = ret ? ret : grb::clear( src );
 	ret = ret ? ret : grb::clear( dst );
-	if( ret != SUCCESS ) {
+	if( ret != grb::SUCCESS ) {
 		std::cerr << "\t initialisation of dense tests FAILED\n";
 		return ret;
 	}
@@ -286,7 +286,7 @@ static grb::RC dense_tests(
 	}
 	if( nonblocking_execution ) {
 		ret = grb::clear( dst );
-		if( ret != SUCCESS ) {
+		if( ret != grb::SUCCESS ) {
 			std::cerr << " unexpected failure of grb::clear( dst )\n";
 			return grb::FAILED;
 		}
@@ -422,7 +422,7 @@ static grb::RC dense_tests(
 	if( nonblocking_execution ) {
 		ret = grb::set( dst, 0 );
 		if( ret != grb::SUCCESS ) {
-			std::cerr << " unexpected failure of grb::set( dst )\n";
+			std::cerr << " unexpected failure of grb::set( dst, 0 )\n";
 			return grb::FAILED;
 		}
 	}
@@ -439,7 +439,7 @@ static grb::RC dense_tests(
 	if( nonblocking_execution ) {
 		ret = grb::set( dst, 0 );
 		if( ret != grb::SUCCESS ) {
-			std::cerr << " unexpected failure of grb::set( dst )\n";
+			std::cerr << " unexpected failure of grb::set( dst, 0 )\n";
 			return grb::FAILED;
 		}
 	}
@@ -456,7 +456,7 @@ static grb::RC dense_tests(
 	if( nonblocking_execution ) {
 		ret = grb::set( dst, 0 );
 		if( ret != grb::SUCCESS ) {
-			std::cerr << " unexpected failure of grb::set( dst )\n";
+			std::cerr << " unexpected failure of grb::set( dst, 0 )\n";
 			return grb::FAILED;
 		}
 	}
@@ -477,7 +477,7 @@ static grb::RC dense_tests(
 		std::cerr << " expected SUCCESS, got " << grb::toString( ret ) << "\n";
 		return grb::FAILED;
 	}
-	ret = expected_full( dst );
+	ret = expect_full( dst );
 	if( ret != grb::SUCCESS ) { return grb::FAILED; }
 
 	std::cerr << "\b 17:";
@@ -518,15 +518,15 @@ static grb::RC dense_tests(
 			<< grb::toString( ret ) << "\n";
 		return ret;
 	}
-	ret = grb::set< dense | descriptors::invert_mask >( dst, one_mask, 3.14 );
+	ret = grb::set< dense | grb::descriptors::invert_mask >( dst, one_mask, 3.14 );
 	ret = ret ? ret : grb::wait( dst );
 	if( ret != grb::ILLEGAL ) {
 		std::cerr << " expected ILLEGAL, got " << grb::toString( ret ) << "\n";
 		ret = grb::FAILED;
-		return;
+		return ret;
 	}
 	if( nonblocking_execution ) {
-		ret = grb::clear( dst, 0 );
+		ret = grb::clear( dst );
 		if( ret != grb::SUCCESS ) {
 			std::cerr << " unexpected error at grb::clear: " << grb::toString( ret )
 				<< "\n";
@@ -538,14 +538,14 @@ static grb::RC dense_tests(
 	if( ret != grb::SUCCESS ) { return grb::FAILED; }
 
 	std::cerr << "\b 20:";
-	ret = grb::set< dense | descriptors::invert_mask >( dst, full_mask, 1.0 );
+	ret = grb::set< dense | grb::descriptors::invert_mask >( dst, full_mask, 1.0 );
 	ret = ret ? ret : grb::wait( dst );
 	if( ret != grb::ILLEGAL ) {
 		std::cerr << " expected ILLEGAL, got " << grb::toString( ret ) << "\n";
 		return grb::FAILED;
 	}
 	if( nonblocking_execution ) {
-		ret = grb::clear( dst, 0 );
+		ret = grb::clear( dst );
 		if( ret != grb::SUCCESS ) {
 			std::cerr << " unexpected error at grb::clear: " << grb::toString( ret )
 				<< "\n";
@@ -566,15 +566,15 @@ static grb::RC dense_tests(
 			<< grb::toString( ret ) << "\n";
 		return ret;
 	}
-	ret = grb::set< dense | descriptors::invert_mask >( dst, one_mask, src );
+	ret = grb::set< dense | grb::descriptors::invert_mask >( dst, one_mask, src );
 	ret = ret ? ret : grb::wait( dst );
 	if( ret != grb::ILLEGAL ) {
 		std::cerr << " expected ILLEGAL, got " << grb::toString( ret ) << "\n";
 		ret = grb::FAILED;
-		return;
+		return ret;
 	}
 	if( nonblocking_execution ) {
-		ret = grb::clear( dst, 0 );
+		ret = grb::clear( dst );
 		if( ret != grb::SUCCESS ) {
 			std::cerr << " unexpected error at grb::clear: " << grb::toString( ret )
 				<< "\n";
@@ -586,14 +586,14 @@ static grb::RC dense_tests(
 	if( ret != grb::SUCCESS ) { return grb::FAILED; }
 
 	std::cerr << "\b 22:";
-	ret = grb::set< dense | descriptors::invert_mask >( dst, full_mask, src );
+	ret = grb::set< dense | grb::descriptors::invert_mask >( dst, full_mask, src );
 	ret = ret ? ret : grb::wait( dst );
 	if( ret != grb::ILLEGAL ) {
 		std::cerr << " expected ILLEGAL, got " << grb::toString( ret ) << "\n";
 		return grb::FAILED;
 	}
 	if( nonblocking_execution ) {
-		ret = grb::clear( dst, 0 );
+		ret = grb::clear( dst );
 		if( ret != grb::SUCCESS ) {
 			std::cerr << " unexpected error at grb::clear: " << grb::toString( ret )
 				<< "\n";
@@ -613,15 +613,15 @@ static grb::RC dense_tests(
 			<< grb::toString( ret ) << "\n";
 		return ret;
 	}
-	ret = grb::set< dense | descriptors::invert_mask >( dst, one_mask, src );
+	ret = grb::set< dense | grb::descriptors::invert_mask >( dst, one_mask, src );
 	ret = ret ? ret : grb::wait( dst );
 	if( ret != grb::ILLEGAL ) {
 		std::cerr << " expected ILLEGAL, got " << grb::toString( ret ) << "\n";
 		ret = grb::FAILED;
-		return;
+		return ret;
 	}
 	if( nonblocking_execution ) {
-		ret = grb::clear( dst, 0 );
+		ret = grb::clear( dst );
 		if( ret != grb::SUCCESS ) {
 			std::cerr << " unexpected error at grb::clear: " << grb::toString( ret )
 				<< "\n";
@@ -633,14 +633,14 @@ static grb::RC dense_tests(
 	if( ret != grb::SUCCESS ) { return grb::FAILED; }
 
 	std::cerr << "\b 24:";
-	ret = grb::set< dense | descriptors::invert_mask >( dst, full_mask, src );
+	ret = grb::set< dense | grb::descriptors::invert_mask >( dst, full_mask, src );
 	ret = ret ? ret : grb::wait( dst );
 	if( ret != grb::ILLEGAL ) {
 		std::cerr << " expected ILLEGAL, got " << grb::toString( ret ) << "\n";
 		return grb::FAILED;
 	}
 	if( nonblocking_execution ) {
-		ret = grb::clear( dst, 0 );
+		ret = grb::clear( dst );
 		if( ret != grb::SUCCESS ) {
 			std::cerr << " unexpected error at grb::clear: " << grb::toString( ret )
 				<< "\n";
@@ -656,16 +656,16 @@ static grb::RC dense_tests(
 	ret = ret ? ret : grb::wait( dst );
 	ret = ret ? ret : expect_constant( dst, 0 );
 	if( ret != grb::SUCCESS ) {
-		std::cerr << " unexpected error at grb::set( dst ): "
+		std::cerr << " unexpected error at grb::set( dst, 0 ): "
 			<< grb::toString( ret ) << "\n";
 		return ret;
 	}
-	ret = grb::set< dense | descriptors::invert_mask >( dst, one_mask, 3.14 );
+	ret = grb::set< dense | grb::descriptors::invert_mask >( dst, one_mask, 3.14 );
 	ret = ret ? ret : grb::wait( dst );
 	if( ret != grb::ILLEGAL ) {
 		std::cerr << " expected ILLEGAL, got " << grb::toString( ret ) << "\n";
 		ret = grb::FAILED;
-		return;
+		return ret;
 	}
 	if( nonblocking_execution ) {
 		ret = grb::set( dst, 0 );
@@ -680,7 +680,7 @@ static grb::RC dense_tests(
 	if( ret != grb::SUCCESS ) { return grb::FAILED; }
 
 	std::cerr << "\b 26:";
-	ret = grb::set< dense | descriptors::invert_mask >( dst, full_mask, 1.0 );
+	ret = grb::set< dense | grb::descriptors::invert_mask >( dst, full_mask, 1.0 );
 	ret = ret ? ret : grb::wait( dst );
 	if( ret != grb::SUCCESS ) {
 		std::cerr << " expected SUCCESS, got " << grb::toString( ret ) << "\n";
@@ -699,12 +699,12 @@ static grb::RC dense_tests(
 			<< grb::toString( ret ) << "\n";
 		return ret;
 	}
-	ret = grb::set< dense | descriptors::invert_mask >( dst, one_mask, src );
+	ret = grb::set< dense | grb::descriptors::invert_mask >( dst, one_mask, src );
 	ret = ret ? ret : grb::wait( dst );
 	if( ret != grb::ILLEGAL ) {
 		std::cerr << " expected ILLEGAL, got " << grb::toString( ret ) << "\n";
 		ret = grb::FAILED;
-		return;
+		return ret;
 	}
 	if( nonblocking_execution ) {
 		ret = grb::set< grb::descriptors::use_index >( dst, 77 );
@@ -720,14 +720,14 @@ static grb::RC dense_tests(
 	if( ret != grb::SUCCESS ) { return grb::FAILED; }
 
 	std::cerr << "\b 28:";
-	ret = grb::set< dense | descriptors::invert_mask >( dst, full_mask, src );
+	ret = grb::set< dense | grb::descriptors::invert_mask >( dst, full_mask, src );
 	ret = ret ? ret : grb::wait( dst );
 	if( ret != grb::ILLEGAL ) {
 		std::cerr << " expected ILLEGAL, got " << grb::toString( ret ) << "\n";
 		return grb::FAILED;
 	}
 	if( nonblocking_execution ) {
-		ret = grb::set< grb::descriptors:use_index( dst, 0 );
+		ret = grb::set< grb::descriptors::use_index >( dst, 0 );
 		if( ret != grb::SUCCESS ) {
 			std::cerr << " unexpected error at grb::set< use_index >( dst ): "
 				<< grb::toString( ret ) << "\n";
@@ -746,12 +746,12 @@ static grb::RC dense_tests(
 			<< grb::toString( ret ) << "\n";
 		return ret;
 	}
-	ret = grb::set< dense | descriptors::invert_mask >( dst, one_mask, src );
+	ret = grb::set< dense | grb::descriptors::invert_mask >( dst, one_mask, src );
 	ret = ret ? ret : grb::wait( dst );
 	if( ret != grb::ILLEGAL ) {
 		std::cerr << " expected ILLEGAL, got " << grb::toString( ret ) << "\n";
 		ret = grb::FAILED;
-		return;
+		return ret;
 	}
 	if( nonblocking_execution ) {
 		ret = grb::set< grb::descriptors::use_index >( dst, 1 );
@@ -773,7 +773,7 @@ static grb::RC dense_tests(
 		std::cerr << " error initialising test: " << grb::toString( ret ) << "\n";
 		return grb::FAILED;
 	}
-	ret = grb::set< dense | descriptors::invert_mask >( dst, full_mask, src );
+	ret = grb::set< dense | grb::descriptors::invert_mask >( dst, full_mask, src );
 	ret = ret ? ret : grb::wait( dst );
 	if( ret != grb::SUCCESS ) {
 		std::cerr << " expected SUCCESS, got " << grb::toString( ret ) << "\n";
@@ -783,7 +783,7 @@ static grb::RC dense_tests(
 	if( ret != grb::SUCCESS ) { return ret; }
 
 	std::cerr << "\b OK\n";
-	return SUCCESS;
+	return grb::SUCCESS;
 }
 
 void grb_program( const size_t &n, grb::RC &rc ) {
@@ -907,7 +907,7 @@ void grb_program( const size_t &n, grb::RC &rc ) {
 	}
 	rc = grb::set< use_index >( dst, full_mask, src );
 	rc = rc ? rc : grb::wait( dst );
-	if( !expect_success ) { return; }
+	if( !expect_success( rc ) ) { return; }
 	rc = expect_one( dst, half_size, half_size );
 	if( rc != grb::SUCCESS ) { return; }
 
@@ -921,7 +921,7 @@ void grb_program( const size_t &n, grb::RC &rc ) {
 	}
 	rc = grb::set< use_index >( dst, src );
 	rc = rc ? rc : grb::wait( dst );
-	if( !expect_success ) { return; }
+	if( !expect_success( rc ) ) { return; }
 	rc = expect_full( dst );
 	if( rc != grb::SUCCESS ) { return; }
 
@@ -935,14 +935,14 @@ void grb_program( const size_t &n, grb::RC &rc ) {
 		return;
 	}
 	rc = grb::set< use_index >( dst, one_mask, src );
-	rc = rc ? rc : grb::wait( rc );
+	rc = rc ? rc : grb::wait( dst );
 	if( !expect_success( rc ) ) { return; }
 	rc = expect_one( dst, half_size, half_size );
 	if( rc != grb::SUCCESS ) { return; }
 
 	std::cerr << "\b 9:";
 	rc = grb::set< use_index >( dst, full_mask, src );
-	rc = rc ? rc : grb::wait( rc );
+	rc = rc ? rc : grb::wait( dst );
 	if( !expect_success( rc ) ) { return; }
 	rc = expect_none( dst );
 	if( rc != grb::SUCCESS ) { return; }
@@ -1016,7 +1016,7 @@ void grb_program( const size_t &n, grb::RC &rc ) {
 	}
 	rc = grb::set< use_index >( dst, full_mask, src );
 	rc = rc ? rc : grb::wait( dst );
-	if( !expect_success ) { return; }
+	if( !expect_success( rc ) ) { return; }
 	rc = expect_none( dst );
 	if( rc != grb::SUCCESS ) { return; }
 
@@ -1162,7 +1162,7 @@ void grb_program( const size_t &n, grb::RC &rc ) {
 	rc = expect_none( dst );
 	if( rc != grb::SUCCESS ) { return ; }
 
-	std::cerr < "\b 21C:";
+	std::cerr << "\b 21C:";
 	rc = grb::setElement( src, 7.17, 0 );
 	rc = rc ? rc : grb::wait( src );
 	{
@@ -1184,7 +1184,7 @@ void grb_program( const size_t &n, grb::RC &rc ) {
 		}
 	}
 	rc = grb::set< invert >( dst, one_mask, src );
-	rc = rc ? rc : grb::set( dst );
+	rc = rc ? rc : grb::wait( dst );
 	if( !expect_success( rc ) ) { return; }
 	rc = expect_one( dst, 0, 0 );
 	if( rc != grb::SUCCESS ) { return; }
@@ -1216,7 +1216,7 @@ void grb_program( const size_t &n, grb::RC &rc ) {
 	if( rc != grb::SUCCESS ) { return; }
 
 	std::cerr << "\b 24:";
-	rc = grb:set< invert >( dst, full_mask, src );
+	rc = grb::set< invert >( dst, full_mask, src );
 	rc = rc ? rc : grb::wait();
 	if( !expect_success( rc ) ) { return; }
 	rc = expect_none( dst );
@@ -1271,7 +1271,7 @@ void grb_program( const size_t &n, grb::RC &rc ) {
 	rc = rc ? rc : grb::setElement( src, 7.17, 0 );
 	rc = rc ? rc : grb::setElement( src, 7.07, half_size );
 	rc = rc ? rc : grb::wait( dst, src );
-	rc = rc ? rc : expect_full( dst, 3.14 );
+	rc = rc ? rc : expect_constant( dst, 3.14 );
 	if( rc == grb::SUCCESS ) {
 		if( grb::nnz( src ) != 2 ) {
 			std::cerr << " expected two entries in src\n";
@@ -1293,12 +1293,12 @@ void grb_program( const size_t &n, grb::RC &rc ) {
 			}
 		}
 	}
-	if( rc = grb::SUCCESS ) {
+	if( rc == grb::SUCCESS ) {
 		std::cerr << " test initialisation FAILED\n";
 		return;
 	}
 	rc = grb::set< invert >( dst, one_mask, src );
-	rc = rc ? grb::wait( dst );
+	rc = rc ? rc : grb::wait( dst );
 	if( !expect_success( rc ) ) { return; }
 	rc = expect_one( dst, 0, 0 );
 	if( rc != grb::SUCCESS ) { return; }
@@ -1386,14 +1386,14 @@ int main( int argc, char ** argv ) {
 	}
 
 	std::cout << "This is functional test " << argv[ 0 ] << "\n";
-	grb::Launcher< AUTOMATIC > launcher;
+	grb::Launcher< grb::AUTOMATIC > launcher;
 	grb::RC out;
-	if( launcher.exec( &grb_program, in, out, true ) != SUCCESS ) {
+	if( launcher.exec( &grb_program, in, out, true ) != grb::SUCCESS ) {
 		std::cerr << "Launching test FAILED\n";
 		return 255;
 	}
-	if( out != SUCCESS ) {
-		std::cerr << std::fflush;
+	if( out != grb::SUCCESS ) {
+		std::cerr << std::flush;
 		std::cout << "Test FAILED (" << grb::toString( out ) << ")\n" << std::endl;
 	} else {
 		std::cout << "Test OK\n" << std::endl;
