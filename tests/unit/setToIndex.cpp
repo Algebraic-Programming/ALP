@@ -1190,7 +1190,160 @@ void grb_program( const size_t &n, grb::RC &rc ) {
 	if( rc != grb::SUCCESS ) { return; }
 
 	std::cerr << "\b 22:";
-	// TODO
+	rc = grb::set< invert >( dst, full_mask, src );
+	rc = rc ? rc : grb::wait( dst );
+	if( !expect_success( rc ) ) { return; }
+	rc = expect_none( dst );
+	if( rc != grb::SUCCESS ) { return; }
+
+	std::cerr << "\b 23:";
+	rc = grb::set( src, 3.14 );
+	rc = rc ? rc : grb::wait( src );
+	{
+		bool initFailed = grb::SUCCESS != rc;
+		if( !initFailed && grb::nnz( src ) != grb::size( src ) ) { initFailed = true; }
+		if( expect_constant( src, 3.14 ) != grb::SUCCESS ) { initFailed = true; }
+		if( initFailed && rc == grb::SUCCESS ) { rc = grb::FAILED; }
+		if( initFailed ) {
+			std::cerr << " test initialisation FAILED\n";
+			return;
+		}
+	}
+	rc = grb::set< invert >( dst, one_mask, src );
+	rc = rc ? rc : grb::wait( dst );
+	if( !expect_success( rc ) ) { return; }
+	rc = expect_one( dst, 0, 0 );
+	if( rc != grb::SUCCESS ) { return; }
+
+	std::cerr << "\b 24:";
+	rc = grb:set< invert >( dst, full_mask, src );
+	rc = rc ? rc : grb::wait();
+	if( !expect_success( rc ) ) { return; }
+	rc = expect_none( dst );
+	if( rc != grb::SUCCESS ) { return; }
+
+	std::cerr << "\b 25:";
+	rc = grb::set( dst, 3.14 );
+	rc = rc ? rc : grb::wait( dst );
+	rc = rc ? rc : expect_constant( dst, 3.14 );
+	if( rc != grb::SUCCESS ) {
+		std::cerr << " test initialisation FAILED\n";
+		return;
+	}
+	rc = grb::set< invert >( dst, one_mask, 7.17 );
+	rc = rc ? rc : grb::wait( dst );
+	if( !expect_success( rc ) ) { return; }
+	rc = expect_all_but_one( dst, half_size );
+	if( rc != grb::SUCCESS ) { return; }
+
+	std::cerr << "\b 26:";
+	rc = grb::set( dst, 3.14 );
+	rc = rc ? rc : grb::wait( dst );
+	rc = rc ? rc : expect_constant( dst, 3.14 );
+	if( rc != grb::SUCCESS ) {
+		std::cerr << " test initialisation FAILED\n";
+		return;
+	}
+	rc = grb::set< invert >( dst, full_mask, 7.17 );
+	rc = rc ? rc : grb::wait( dst );
+	if( !expect_success( rc ) ) { return; }
+	rc = expect_none( dst );
+	if( rc != grb::SUCCESS ) { return; }
+
+	std::cerr << "\b 27A:";
+	rc = grb::set( dst, 3.14 );
+	rc = rc ? rc : grb::clear( src );
+	rc = rc ? rc : grb::wait( dst, src );
+	rc = rc ? rc : expect_constant( dst, 3.14 );
+	rc = rc ? rc : expect_none( src );
+	if( rc != grb::SUCCESS ) {
+		std::cerr << " test initialisation FAILED\n";
+		return;
+	}
+	rc = grb::set< invert >( dst, one_mask, src );
+	rc = rc ? rc : grb::wait( dst );
+	if( !expect_success( rc ) ) { return; }
+	rc = expect_none( dst );
+	if( rc != grb::SUCCESS ) { return; }
+
+	std::cerr << "\b 27B:";
+	rc = grb::set( dst, 3.14 );
+	rc = rc ? rc : grb::setElement( src, 7.17, 0 );
+	rc = rc ? rc : grb::setElement( src, 7.07, half_size );
+	rc = rc ? rc : grb::wait( dst, src );
+	rc = rc ? rc : expect_full( dst, 3.14 );
+	if( rc == grb::SUCCESS ) {
+		if( grb::nnz( src ) != 2 ) {
+			std::cerr << " expected two entries in src\n";
+			rc = grb::FAILED;
+		}
+		for( const auto &pair : src ) {
+			if( pair.first != 0 && pair.first != half_size ) {
+				std::cerr << " expected only entries at position 0 or " << half_size
+					<< "\n";
+				rc = grb::FAILED;
+			}
+			if( pair.first == 0 && pair.second != 7.17 ) {
+				std::cerr << " expected value 7.17 at position 0\n";
+				rc = grb::FAILED;
+			}
+			if( pair.first == half_size && pair.second != 7.07 ) {
+				std::cerr << " expected value 7.07 at position " << half_size << "\n";
+				rc = grb::FAILED;
+			}
+		}
+	}
+	if( rc = grb::SUCCESS ) {
+		std::cerr << " test initialisation FAILED\n";
+		return;
+	}
+	rc = grb::set< invert >( dst, one_mask, src );
+	rc = rc ? grb::wait( dst );
+	if( !expect_success( rc ) ) { return; }
+	rc = expect_one( dst, 0, 0 );
+	if( rc != grb::SUCCESS ) { return; }
+
+	std::cerr << "\b 28:";
+	rc = grb::set( dst, 3.14 );
+	rc = rc ? rc : grb::wait( dst );
+	rc = rc ? rc : expect_constant( dst, 3.14 );
+	if( rc != grb::SUCCESS ) {
+		std::cerr << " test initialisation FAILED\n";
+		return;
+	}
+	rc = grb::set< invert >( dst, full_mask, src );
+	rc = rc ? rc : grb::wait( dst );
+	if( !expect_success( rc ) ) { return; }
+	rc = expect_none( dst );
+	if( rc != grb::SUCCESS ) { return; }
+
+	std::cerr << "\b 29:";
+	rc = grb::set( dst, 3.14 );
+	rc = rc ? rc : grb::set( src, 7.17 );
+	rc = rc ? rc : expect_constant( dst, 3.14 );
+	rc = rc ? rc : expect_constant( src, 7.17 );
+	if( rc != grb::SUCCESS ) {
+		std::cerr << " test initialisation FAILED\n";
+		return;
+	}
+	rc = grb::set< invert >( dst, one_mask, src );
+	rc = rc ? rc : grb::wait( dst );
+	if( !expect_success( rc ) ) { return; }
+	rc = expect_all_but_one( dst, half_size );
+	if( rc != grb::SUCCESS ) { return; }
+
+	std::cerr << "\b 30:";
+	rc = grb::set( dst, 3.14 );
+	rc = rc ? rc : expect_constant( dst, 3.14 );
+	if( rc != grb::SUCCESS ) {
+		std::cerr << " test initialisation FAILED\n";
+		return;
+	}
+	rc = grb::set< invert >( dst, full_mask, src );
+	rc = rc ? rc : grb::wait( dst );
+	if( !expect_success( rc ) ) { return; }
+	rc = expect_none( dst );
+	if( rc != grb::SUCCESS ) { return; }
 
 	// test behaviour under dense descriptor
 	rc = dense_tests( dst, src );
