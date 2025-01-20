@@ -274,6 +274,13 @@ for MODE in ${MODES}; do
 				grep 'Test OK' ${TEST_OUT_DIR}/set_${MODE}_${BACKEND}_${P}_${T}.log || echo "Test FAILED"
 				echo " "
 
+				echo ">>>      [x]           [ ]       Testing grb::set on vectors of doubles of size"
+				echo "                                 1 000 002 using the use_index descriptor."
+				$runner ${TEST_BIN_DIR}/setToIndex_${MODE}_${BACKEND} 1000002 &> ${TEST_OUT_DIR}/setToIndex_${MODE}_${BACKEND}_${P}_${T}.log
+				head -1 ${TEST_OUT_DIR}/setToIndex_${MODE}_${BACKEND}_${P}_${T}.log
+				grep 'Test OK' ${TEST_OUT_DIR}/setToIndex_${MODE}_${BACKEND}_${P}_${T}.log || echo "Test FAILED"
+				echo " "
+
 				echo ">>>      [x]           [ ]       Testing the grb::pinnedVector on fundamental and"
 				echo "                                 non-fundamental value types."
 				$runner ${TEST_BIN_DIR}/pinnedVector_${MODE}_${BACKEND} &> ${TEST_OUT_DIR}/pinnedVector_${MODE}_${BACKEND}_${P}_${T}.log
