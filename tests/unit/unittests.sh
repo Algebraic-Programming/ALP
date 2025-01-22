@@ -165,7 +165,7 @@ for MODE in ${MODES}; do
 				elif [ "${BACKEND}" = "hybrid" ]; then
 					runner="${runner} ${MPI_PASS_ENV} ${LPFRUN_PASSTHROUGH}OMP_NUM_THREADS=${T}"
 					runner="${runner} ${BIND_PROCESSES_TO_MULTIPLE_HW_THREADS}${T}"
-				elif [ "$BACKEND" = "reference_omp" ]; then
+				elif [ "$BACKEND" = "reference_omp" ] || [ "$BACKEND" = "nonblocking" ]; then
 					export OMP_NUM_THREADS=${T}
 				fi
 
