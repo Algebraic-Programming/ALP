@@ -443,7 +443,10 @@ namespace grb {
 		class ValueOrIndex;
 
 		/* Version where use_index is allowed. */
-		template< grb::Descriptor descr, typename OutputType, typename D >
+		template<
+			grb::Descriptor descr,
+			typename OutputType, typename D
+		>
 		class ValueOrIndex<
 			descr,
 			OutputType, D,
