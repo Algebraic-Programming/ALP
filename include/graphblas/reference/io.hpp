@@ -1649,7 +1649,6 @@ namespace grb {
 	 */
 	template<
 		Descriptor descr = descriptors::no_operation,
-		class ActiveDistribution = internal::Distribution< reference >,
 		typename DataType, typename T,
 		typename Coords
 	>
@@ -1738,7 +1737,6 @@ namespace grb {
 	 */
 	template<
 		Descriptor descr = descriptors::no_operation,
-		class ActiveDistribution = internal::Distribution< reference >,
 		typename OutputType, typename InputType, typename Coords
 	>
 	RC set(
