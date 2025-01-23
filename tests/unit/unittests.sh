@@ -165,7 +165,7 @@ for MODE in ${MODES}; do
 				elif [ "${BACKEND}" = "hybrid" ]; then
 					runner="${runner} ${MPI_PASS_ENV} ${LPFRUN_PASSTHROUGH}OMP_NUM_THREADS=${T}"
 					runner="${runner} ${BIND_PROCESSES_TO_MULTIPLE_HW_THREADS}${T}"
-				elif [ "$BACKEND" = "reference_omp" ]; then
+				elif [ "$BACKEND" = "reference_omp" ] || [ "$BACKEND" = "nonblocking" ]; then
 					export OMP_NUM_THREADS=${T}
 				fi
 
@@ -272,6 +272,13 @@ for MODE in ${MODES}; do
 				$runner ${TEST_BIN_DIR}/set_${MODE}_${BACKEND} 1000000 &> ${TEST_OUT_DIR}/set_${MODE}_${BACKEND}_${P}_${T}.log
 				head -1 ${TEST_OUT_DIR}/set_${MODE}_${BACKEND}_${P}_${T}.log
 				grep 'Test OK' ${TEST_OUT_DIR}/set_${MODE}_${BACKEND}_${P}_${T}.log || echo "Test FAILED"
+				echo " "
+
+				echo ">>>      [x]           [ ]       Testing grb::set on vectors of doubles of size"
+				echo "                                 1 000 002 using the use_index descriptor."
+				$runner ${TEST_BIN_DIR}/setToIndex_${MODE}_${BACKEND} 1000002 &> ${TEST_OUT_DIR}/setToIndex_${MODE}_${BACKEND}_${P}_${T}.log
+				head -1 ${TEST_OUT_DIR}/setToIndex_${MODE}_${BACKEND}_${P}_${T}.log
+				grep 'Test OK' ${TEST_OUT_DIR}/setToIndex_${MODE}_${BACKEND}_${P}_${T}.log || echo "Test FAILED"
 				echo " "
 
 				echo ">>>      [x]           [ ]       Testing the grb::pinnedVector on fundamental and"

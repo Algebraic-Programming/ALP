@@ -443,29 +443,17 @@ namespace grb {
 				std::is_convertible< size_t, DataType >::value,
 			void >::type * const = nullptr
 		) {
+			const internal::BSP1D_Data &data = internal::grb_BSP1D.cload();
 			const size_t n = size( x );
-			if( descr & descriptors::use_index ) {
-				// make it ok to call eWiseLambda
-				if( !((descr & descriptors::dense) || old_nnz == n) ) {
-					if( old_nnz < n ) {
-						internal::getCoordinates( internal::getLocal( x ) ).assignAll();
-					}
+			RC ret = internal::set_to_value<
+				descr, internal::Distribution< BSP1D >
+			>( internal::getLocal( x ), val, Phase::EXECUTE, data.s, data.P );
+			if( !((descr & descriptors::dense) || old_nnz == n) ) {
+				if( ret == SUCCESS ) {
 					internal::setDense( x );
 				}
-				// set-to-index via eWiseLambda
-				return eWiseLambda( [ &x ]( const size_t i ) {
-						x[ i ] = i;
-					}, x );
-			} else {
-				// otherwise directly delegate
-				RC ret = set< descr >( internal::getLocal( x ), val );
-				if( !((descr & descriptors::dense) || old_nnz == n) ) {
-					if( ret == SUCCESS ) {
-						internal::setDense( x );
-					}
-				}
-				return ret;
 			}
+			return ret;
 		}
 
 		/** This is the variant that cannot handle use_index. */
@@ -671,8 +659,10 @@ namespace grb {
 		}
 
 		// all OK, try to do assignment
-		RC ret = set< descr >( internal::getLocal( x ),
-			internal::getLocal( y ), phase );
+		const internal::BSP1D_Data &data = internal::grb_BSP1D.cload();
+		RC ret = internal::set_vector_to_vector<
+			descr, internal::Distribution< BSP1D >
+		>( internal::getLocal( x ), internal::getLocal( y ), phase, data.s, data.P );
 
 		// in resize mode, we hit two collectives and otherwise none
 		if( phase == RESIZE ) {
@@ -743,10 +733,13 @@ namespace grb {
 		// rather keep it simple and provide just the generic implementation here
 
 		// all OK, try to do assignment
-		RC ret = set< descr >(
+		const internal::BSP1D_Data &data = internal::grb_BSP1D.cload();
+		RC ret = internal::set_vector_to_vector_masked<
+			descr, internal::Distribution< BSP1D >
+		>(
 			internal::getLocal( x ), internal::getLocal( mask ),
-			internal::getLocal( y ),
-			phase
+			internal::getLocal( y ), phase,
+			data.s, data.P
 		);
 
 		if( collectives< BSP1D >::allreduce( ret, operators::any_or< RC >() )
@@ -814,11 +807,14 @@ namespace grb {
 		// on capacity pre-check, see above
 
 		// all OK, try to do assignment
-		RC ret = set< descr >(
+		const internal::BSP1D_Data &data = internal::grb_BSP1D.cload();
+		RC ret = internal::set_to_value_masked<
+			descr, internal::Distribution< BSP1D >
+		>(
 			internal::getLocal( x ),
 			internal::getLocal( mask ),
-			y,
-			phase
+			y, phase,
+			data.s, data.P
 		);
 
 		if( collectives< BSP1D >::allreduce( ret, operators::any_or< RC >() )

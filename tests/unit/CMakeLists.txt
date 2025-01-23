@@ -211,6 +211,10 @@ add_grb_executables( set set.cpp
 	BACKENDS reference reference_omp bsp1d hybrid hyperdags nonblocking
 )
 
+add_grb_executables( setToIndex setToIndex.cpp
+	BACKENDS reference reference_omp bsp1d hybrid hyperdags nonblocking
+)
+
 add_grb_executables( sparse_mxv sparse_mxv.cpp
 	BACKENDS reference reference_omp bsp1d hybrid hyperdags nonblocking
 )

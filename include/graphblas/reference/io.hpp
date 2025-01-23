@@ -318,30 +318,43 @@ namespace grb {
 	namespace internal {
 
 #ifndef _H_GRB_REFERENCE_OMP_IO
-		template< Descriptor descr,
+		template<
+			Descriptor descr,
+			class ActiveDistribution,
 			typename OutputType, typename IndexType, typename ValueType
 		>
-		OutputType setIndexOrValue( const IndexType &index, const ValueType &value,
+		OutputType setIndexOrValue(
+			const IndexType &index, const ValueType &value, const IndexType &n,
+			const size_t &s, const size_t &P,
 			const typename std::enable_if<
 				std::is_convertible< IndexType, OutputType >::value,
 			void >::type * const = nullptr
 		) {
 			if( descr & grb::descriptors::use_index ) {
-				return static_cast< OutputType >( index );
+				return static_cast< OutputType >(
+					ActiveDistribution::local_index_to_global( index, n, s, P )
+				);
 			} else {
 				return static_cast< OutputType >( value );
 			}
 		}
 
-		template< Descriptor descr,
+		template<
+			Descriptor descr,
+			class ActiveDistribution,
 			typename OutputType, typename IndexType, typename ValueType
 		>
-		OutputType setIndexOrValue( const IndexType &index, const ValueType &value,
+		OutputType setIndexOrValue(
+			const IndexType &index, const ValueType &value, const IndexType &n,
+			const size_t &s, const size_t &P,
 			const typename std::enable_if<
 				!std::is_convertible< IndexType, OutputType >::value,
 			void >::type * const = nullptr
 		) {
-			(void)index;
+			(void) index;
+			(void) n;
+			(void) s;
+			(void) P;
 			static_assert( !( descr & grb::descriptors::use_index ),
 				"use_index descriptor passed while the index type cannot be cast "
 				"to the output type" );
@@ -350,237 +363,6 @@ namespace grb {
 #endif
 
 	} // namespace internal
-
-	/**
-	 * Sets all elements of a vector to the given value.
-	 *
-	 * Unmasked variant.
-	 *
-	 * \parblock
-	 * \par Performance semantics
-	 * A call to this function using the execute phase:
-	 *   -# consists of \f$ \Theta(n) \f$ work;
-	 *   -# moves \f$ \Theta(n) \f$ bytes of memory intra-process;
-	 *   -# does not allocate nor free any dynamic memory;
-	 *   -# shall not make any system calls.
-	 * Here, \f$ n \f$ is equal to #grb::size( x ).
-	 *
-	 * A call to this function using the try phase is as defined above, but with
-	 * every big-Theta bound replaced by a big-Oh bound.
-	 *
-	 * A call to this function using the resize phase:
-	 *   -# consists of \f$ \mathcal{O}(n) \f$ work;
-	 *   -# moves \f$ \mathcal{O}(n) \f$ data intra-process;
-	 *   -# may allocate and free dynamic memory, and thus may make the associated
-	 *      system calls.
-	 *
-	 * Note that this is a single user process backend, and hence trivially no
-	 * inter-process costs will occur.
-	 * \endparblock
-	 */
-	template<
-		Descriptor descr = descriptors::no_operation,
-		typename DataType, typename T,
-		typename Coords
-	>
-	RC set(
-		Vector< DataType, reference, Coords > &x,
-		const T val,
-		const Phase &phase = EXECUTE,
-		const typename std::enable_if<
-			!grb::is_object< DataType >::value &&
-			!grb::is_object< T >::value,
-		void >::type * const = nullptr
-	) {
-		// static sanity checks
-		NO_CAST_ASSERT( ( !(descr & descriptors::no_casting) ||
-				std::is_same< DataType, T >::value
-			), "grb::set (Vector, unmasked)",
-			"called with a value type that does not match that of the given vector"
-		);
-
-		// dynamic checks
-		const size_t n = size( x );
-		if( (descr & descriptors::dense) && nnz( x ) < n ) {
-			return ILLEGAL;
-		}
-
-		if( phase == RESIZE ) {
-			return SUCCESS;
-		}
-		assert( phase == EXECUTE );
-
-		// pre-cast value to be copied
-		const DataType toCopy = static_cast< DataType >( val );
-
-		// make vector dense if it was not already
-		if( !(descr & descriptors::dense) ) {
-			internal::getCoordinates( x ).assignAll();
-		}
-		DataType * const raw = internal::getRaw( x );
-
-#ifdef _H_GRB_REFERENCE_OMP_IO
-		#pragma omp parallel
-		{
-			size_t start, end;
-			config::OMP::localRange( start, end, 0, n );
-#else
-			const size_t start = 0;
-			const size_t end = n;
-#endif
-			for( size_t i = start; i < end; ++ i ) {
-				raw[ i ] = internal::template ValueOrIndex< descr, DataType, DataType >::
-					getFromScalar( toCopy, i );
-			}
-#ifdef _H_GRB_REFERENCE_OMP_IO
-		}
-#endif
-		// sanity check
-		assert( internal::getCoordinates( x ).nonzeroes() ==
-			internal::getCoordinates( x ).size() );
-
-		// done
-		return SUCCESS;
-	}
-
-	/**
-	 * Sets all elements of a vector to the given value.
-	 *
-	 * Masked variant.
-	 *
-	 * \parblock
-	 * \par Performance semantics
-	 * A call to this function
-	 *   -# consists of \f$ \Theta( nnz( m ) ) \f$ work;
-	 *   -# moves \f$ \Theta( nnz( m ) ) \f$ bytes of memory;
-	 *   -# does not allocate nor free any dynamic memory;
-	 *   -# shall not make any system calls.
-	 * If grb::descriptors::invert_mask is given, then \f$ nnz( m ) \f$ in the
-	 * above shall be interpreted as \f$ size( m ) \f$ instead.
-	 * \endparblock
-	 *
-	 * \todo Revise the above to account for different phases.
-	 */
-	template<
-		Descriptor descr = descriptors::no_operation,
-		typename DataType, typename MaskType, typename T,
-		typename Coords
-	>
-	RC set(
-		Vector< DataType, reference, Coords > &x,
-		const Vector< MaskType, reference, Coords > &m,
-		const T val,
-		const Phase &phase = EXECUTE,
-		const typename std::enable_if<
-			!grb::is_object< DataType >::value && !grb::is_object< T >::value,
-		void >::type * const = nullptr
-	) {
-#ifdef _DEBUG
-		std::cout << "In grb::set (vector-to-value, masked)\n";
-#endif
-		// static sanity checks
-		NO_CAST_ASSERT( ( !(descr & descriptors::no_casting) ||
-			std::is_same< DataType, T >::value ), "grb::set (Vector to scalar, masked)",
-			"called with a value type that does not match that of the given "
-			"vector"
-		);
-
-		// catch empty mask
-		if( size( m ) == 0 ) {
-			return set< descr >( x, val, phase );
-		}
-
-		// dynamic sanity checks
-		const size_t sizex = size( x );
-		if( sizex != size( m ) ) {
-			return MISMATCH;
-		}
-		if( (descr & descriptors::dense) &&
-			(nnz( x ) < sizex || nnz( m ) < sizex)
-		) {
-			return ILLEGAL;
-		}
-
-		// handle trivial resize
-		if( phase == RESIZE ) {
-			return SUCCESS;
-		}
-		assert( phase == EXECUTE );
-
-		// make the vector empty unless the dense descriptor is provided
-		const bool mask_is_dense = (descr & descriptors::structural) &&
-			!(descr & descriptors::invert_mask) && (
-				(descr & descriptors::dense) ||
-				nnz( m ) == sizex
-			);
-		if( !((descr & descriptors::dense) && mask_is_dense) ) {
-			internal::getCoordinates( x ).clear();
-		} else if( mask_is_dense ) {
-			// dispatch to faster variant if mask is structurally dense
-			return set< descr >( x, val, phase );
-		}
-
-		// pre-cast value to be copied and get coordinate handles
-		const DataType toCopy = static_cast< DataType >( val );
-		DataType * const raw = internal::getRaw( x );
-		auto &coors = internal::getCoordinates( x );
-		const auto &m_coors = internal::getCoordinates( m );
-		const MaskType * const m_p = internal::getRaw( m );
-
-#ifdef _H_GRB_REFERENCE_OMP_IO
-		#pragma omp parallel
-		{
-			auto localUpdate = coors.EMPTY_UPDATE();
-			const size_t maxAsyncAssigns = coors.maxAsyncAssigns();
-			size_t asyncAssigns = 0;
-#endif
-			const bool loop_over_vector_length = (descr & descriptors::invert_mask) ||
-				( 4 * m_coors.nonzeroes() > 3 * m_coors.size() );
-#ifdef _DEBUG
-			if( loop_over_vector_length ) {
-				std::cout << "\t using loop of size n (the vector length)\n";
-			} else {
-				std::cout << "\t using loop of size nz (the number of nonzeroes in the vector)\n";
-			}
-#endif
-			const size_t n = loop_over_vector_length ?
-				coors.size() :
-				m_coors.nonzeroes();
-#ifdef _H_GRB_REFERENCE_OMP_IO
-			// since masks are irregularly structured, use dynamic schedule to ensure
-			// load balance
-			#pragma omp for schedule( dynamic,config::CACHE_LINE_SIZE::value() ) nowait
-#endif
-			for( size_t k = 0; k < n; ++k ) {
-				const size_t index = loop_over_vector_length ? k : m_coors.index( k );
-				if( !m_coors.template mask< descr >( index, m_p ) ) {
-					continue;
-				}
-#ifdef _H_GRB_REFERENCE_OMP_IO
-				if( !coors.asyncAssign( index, localUpdate ) ) {
-					(void) ++asyncAssigns;
-				}
-				if( asyncAssigns == maxAsyncAssigns ) {
-					(void) coors.joinUpdate( localUpdate );
-					asyncAssigns = 0;
-				}
-#else
-				(void) coors.assign( index );
-#endif
-				raw[ index ] = internal::ValueOrIndex<
-						descr, DataType, DataType
-					>::getFromScalar(
-						toCopy, index
-					);
-			}
-#ifdef _H_GRB_REFERENCE_OMP_IO
-			while( !coors.joinUpdate( localUpdate ) ) {}
-		} // end pragma omp parallel
-#endif
-
-		// done
-		return SUCCESS;
-	}
 
 	/**
 	 * Sets the element of a given vector at a given position to a given value.
@@ -640,345 +422,6 @@ namespace grb {
 
 		// done
 		return SUCCESS;
-	}
-
-	/**
-	 * Sets the content of a given vector \a x to be equal to that of
-	 * another given vector \a y.
-	 *
-	 * Unmasked variant.
-	 *
-	 * \parblock
-	 * \par Performance semantics
-	 * A call to this function
-	 *   -# consists of \f$ \Theta(n) \f$ work;
-	 *   -# moves \f$ \Theta(n) \f$ bytes of memory;
-	 *   -# does not allocate nor free any dynamic memory;
-	 *   -# shall not make any system calls.
-	 * \endparblock
-	 *
-	 * \todo Check and, if needed, revise performance semantics.
-	 */
-	template< Descriptor descr = descriptors::no_operation,
-		typename OutputType, typename InputType, typename Coords >
-	RC set(
-		Vector< OutputType, reference, Coords > &x,
-		const Vector< InputType, reference, Coords > &y,
-		const Phase &phase = EXECUTE
-	) {
-		// static sanity checks
-		NO_CAST_ASSERT( ( !(descr & descriptors::no_casting) ||
-				std::is_same< OutputType, InputType >::value ),
-			"grb::copy (Vector)",
-			"called with vector parameters whose element data types do not match"
-		);
-		constexpr bool out_is_void = std::is_void< OutputType >::value;
-		constexpr bool in_is_void = std::is_void< OutputType >::value;
-		static_assert( !in_is_void || out_is_void,
-			"grb::set (reference, vector <- vector, masked): "
-			"if input is void, then the output must be also" );
-		static_assert( !(descr & descriptors::use_index) || !out_is_void,
-			"grb::set (reference, vector <- vector, masked): "
-			"use_index descriptor cannot be set if output vector is void" );
-
-		// check contract
-		const size_t n = size( x );
-		if( n != size( y ) ) {
-			return MISMATCH;
-		}
-		// check trivial op
-		// note: the below check cannot move after the check that uses getID
-		if( n == 0 ) {
-			return SUCCESS;
-		}
-		// continue contract checks
-		if( getID( x ) == getID( y ) ) {
-			return ILLEGAL;
-		}
-		if( descr & descriptors::dense ) {
-			if( nnz( y ) < size( y ) || nnz( x ) < size( x ) ) {
-				return ILLEGAL;
-			}
-		}
-
-		// on resize
-		if( phase == RESIZE ) {
-			return SUCCESS;
-		}
-
-		// on execute
-		assert( phase == EXECUTE );
-
-		// get raw value arrays
-		OutputType * __restrict__ const dst = internal::getRaw( x );
-		const InputType * __restrict__ const src = internal::getRaw( y );
-
-		// make the vector empty unless the dense descriptor is provided
-		if( !(descr & descriptors::dense) ) {
-			internal::getCoordinates( x ).clear();
-		}
-
-		// get #nonzeroes
-		const size_t nz = nnz( y );
-#ifdef _DEBUG
-		std::cout << "grb::set called with source vector containing "
-			<< nz << " nonzeroes." << std::endl;
-#endif
-
-#ifndef NDEBUG
-		if( src == nullptr ) {
-			assert( dst == nullptr );
-		}
-#endif
-		// first copy contents
-		if( src == nullptr && dst == nullptr ) {
-			// if both source and destination are dense void vectors, this is a no-op
-			if( (descr & descriptors::dense) || (
-					nnz( x ) == size( x ) && nz == size( y )
-				)
-			) {
-				return SUCCESS;
-			}
-			// otherwise, copy source nonzero pattern to destination:
-#ifdef _H_GRB_REFERENCE_OMP_IO
-			#pragma omp parallel
-			{
-				size_t start, end;
-				config::OMP::localRange( start, end, 0, nz );
-#else
-				const size_t start = 0;
-				const size_t end = nz;
-#endif
-				for( size_t i = start; i < end; ++i ) {
-					(void) internal::getCoordinates( x ).asyncCopy(
-						internal::getCoordinates( y ), i );
-				}
-#ifdef _H_GRB_REFERENCE_OMP_IO
-			}
-#endif
-		} else {
-			// if the output is a void vector that is furthermore dense, then this is
-			// actually also a no-op:
-			if( (descr & descriptors::dense) && out_is_void ) {
-				return SUCCESS;
-			}
-			// otherwise, the regular copy variant:
-#ifdef _H_GRB_REFERENCE_OMP_IO
-			#pragma omp parallel
-			{
-				size_t start, end;
-				config::OMP::localRange( start, end, 0, nz );
-#else
-				const size_t start = 0;
-				const size_t end = nz;
-#endif
-				for( size_t i = start; i < end; ++i ) {
-					size_t index;
-					if( !(descr & descriptors::dense) ) {
-						index = internal::getCoordinates( x ).asyncCopy(
-							internal::getCoordinates( y ), i );
-					} else {
-						index = i;
-					}
-					if( !out_is_void && !in_is_void ) {
-						dst[ index ] = internal::setIndexOrValue< descr, OutputType >(
-							index, src[ index ] );
-					}
-				}
-#ifdef _H_GRB_REFERENCE_OMP_IO
-			}
-#endif
-		}
-
-		// set number of nonzeroes
-		if( !(descr & descriptors::dense) ) {
-			internal::getCoordinates( x ).joinCopy( internal::getCoordinates( y ) );
-		}
-
-		// done
-		return SUCCESS;
-	}
-
-	/**
-	 * Sets the content of a given vector \a x to be equal to that of
-	 * another given vector \a y.
-	 *
-	 * Masked variant.
-	 *
-	 * \parblock
-	 * \par Performance semantics
-	 * A call to this function
-	 *   -# consists of \f$ \Theta( \min\{ nnz( mask ), nnz( y ) \} ) \f$ work;
-	 *   -# moves \f$ \Theta( \min\{ nnz( mask ), nnz( y ) \} ) \f$ bytes of memory;
-	 *   -# does not allocate nor free any dynamic memory;
-	 *   -# shall not make any system calls.
-	 * If grb::descriptors::invert_mask is given, then \f$ nnz( mask ) \f$ in the
-	 * above shall be considered equal to \f$ nnz( y ) \f$.
-	 * \endparblock
-	 *
-	 * \todo Check and, if needed, revise performance semantics.
-	 */
-	template<
-		Descriptor descr = descriptors::no_operation,
-		typename OutputType, typename MaskType, typename InputType,
-		typename Coords
-	>
-	RC set(
-		Vector< OutputType, reference, Coords > &x,
-		const Vector< MaskType, reference, Coords > &mask,
-		const Vector< InputType, reference, Coords > &y,
-		const Phase &phase = EXECUTE,
-		const typename std::enable_if< !grb::is_object< OutputType >::value &&
-			!grb::is_object< MaskType >::value &&
-			!grb::is_object< InputType >::value,
-		void >::type * const = nullptr
-	) {
-		// static sanity checks
-		NO_CAST_ASSERT( ( !(descr & descriptors::no_casting) ||
-			std::is_same< OutputType, InputType >::value ),
-			"grb::set (Vector)",
-			"called with vector parameters whose element data types do not match" );
-		NO_CAST_ASSERT( ( !(descr & descriptors::no_casting) ||
-			std::is_same< MaskType, bool >::value ),
-			"grb::set (Vector)",
-			"called with non-bool mask element types" );
-		constexpr bool out_is_void = std::is_void< OutputType >::value;
-		constexpr bool in_is_void = std::is_void< OutputType >::value;
-		static_assert( !in_is_void || out_is_void,
-			"grb::set (reference, vector <- vector, masked): "
-			"if input is void, then the output must be also" );
-		static_assert( !(descr & descriptors::use_index) || !out_is_void,
-			"grb::set (reference, vector <- vector, masked): "
-			"use_index descriptor cannot be set if output vector is void" );
-
-		// catch contract violations
-		const size_t size = grb::size( y );
-		if( size != grb::size( x ) ) {
-			return MISMATCH;
-		}
-		if( size == 0 ) {
-			return SUCCESS;
-		}
-		if( getID( x ) == getID( y ) ) {
-			return ILLEGAL;
-		}
-		if( descr & descriptors::dense ) {
-			if( nnz( x ) < grb::size( x ) ||
-				nnz( y ) < grb::size( y ) ||
-				nnz( mask ) < grb::size( mask )
-			) {
-				return ILLEGAL;
-			}
-		}
-
-		// delegate if possible
-		if( grb::size( mask ) == 0 ) {
-			return set( x, y );
-		}
-
-		// additional contract check
-		if( size != grb::size( mask ) ) {
-			return MISMATCH;
-		}
-
-		// on resize
-		if( phase == RESIZE ) {
-			return SUCCESS;
-		}
-
-		// on execute
-		assert( phase == EXECUTE );
-		RC ret = SUCCESS;
-
-		// handle non-trivial, fully masked vector copy
-		const auto &m_coors = internal::getCoordinates( mask );
-		const auto &y_coors = internal::getCoordinates( y );
-		auto &x_coors = internal::getCoordinates( x );
-
-		// make the vector empty unless the dense descriptor is provided
-		const bool mask_is_dense = (descr & descriptors::structural) &&
-			!(descr & descriptors::invert_mask) && (
-				(descr & descriptors::dense) ||
-				nnz( mask ) == grb::size( mask )
-			);
-		if( !((descr & descriptors::dense) && mask_is_dense) ) {
-			internal::getCoordinates( x ).clear();
-		}
-
-		// choose optimal loop size
-		const bool loop_over_y = (descr & descriptors::invert_mask) ||
-			( y_coors.nonzeroes() < m_coors.nonzeroes() );
-		const size_t n = loop_over_y ? y_coors.nonzeroes() : m_coors.nonzeroes();
-
-#ifdef _H_GRB_REFERENCE_OMP_IO
-		// keeps track of updates of the sparsity pattern
-		#pragma omp parallel
-		{
-			// keeps track of nonzeroes that the mask ignores
-			internal::Coordinates< reference >::Update local_update =
-				x_coors.EMPTY_UPDATE();
-			const size_t maxAsyncAssigns = x_coors.maxAsyncAssigns();
-			size_t asyncAssigns = 0;
-			RC local_rc = SUCCESS;
-			// since masks are irregularly structured, use dynamic schedule to ensure
-			// load balance
-			#pragma omp for schedule( dynamic, config::CACHE_LINE_SIZE::value() ) nowait
-			for( size_t k = 0; k < n; ++k ) {
-				const size_t i = loop_over_y ? y_coors.index( k ) : m_coors.index( k );
-				// if not masked, continue
-				if( !m_coors.template mask< descr >( i, internal::getRaw( mask ) ) ) {
-					continue;
-				}
-				// if source has nonzero
-				if( loop_over_y || y_coors.assigned( i ) ) {
-					// get value
-					if( !out_is_void && !in_is_void ) {
-						internal::getRaw( x )[ i ] =
-							internal::ValueOrIndex< descr, OutputType, InputType >::getFromArray(
-								internal::getRaw( y ), [] (const size_t i) {return i;}, i
-							);
-					}
-					// check if destination has nonzero
-					if( !x_coors.asyncAssign( i, local_update ) ) {
-						(void) ++asyncAssigns;
-					}
-				}
-				if( asyncAssigns == maxAsyncAssigns ) {
-					const bool was_empty = x_coors.joinUpdate( local_update );
-#ifdef NDEBUG
-					(void) was_empty;
-#else
-					assert( !was_empty );
-#endif
-					asyncAssigns = 0;
-				}
-			}
-			while( !x_coors.joinUpdate( local_update ) ) {}
-			if( local_rc != SUCCESS ) {
-				ret = local_rc;
-			}
-		} // end omp parallel for
-#else
-		for( size_t k = 0; k < n; ++k ) {
-			const size_t i = loop_over_y ? y_coors.index( k ) : m_coors.index( k );
-			if( !m_coors.template mask< descr >( i, internal::getRaw( mask ) ) ) {
-				continue;
-			}
-			if( loop_over_y || internal::getCoordinates( y ).assigned( i ) ) {
-				if( !out_is_void && !in_is_void ) {
-					// get value
-					(void) x_coors.assign( i );
-					internal::getRaw( x )[ i ] =
-						internal::ValueOrIndex< descr, OutputType, InputType >::getFromArray(
-							internal::getRaw( y ), [] (const size_t i) {return i;}, i
-						);
-				}
-			}
-		}
-#endif
-
-		// done
-		return ret;
 	}
 
 	namespace internal {
@@ -1720,7 +1163,663 @@ namespace grb {
 			return set_copy< true, descr | descriptors::structural >( A, mask, &val );
 		}
 
+		template<
+			Descriptor descr,
+			class ActiveDistribution,
+			typename DataType, typename T,
+			typename Coords
+		>
+		RC set_to_value(
+			Vector< DataType, reference, Coords > &x,
+			const T val,
+			const Phase &phase,
+			const size_t s, const size_t P
+		) {
+			// dynamic checks
+			const size_t n = size( x );
+			if( (descr & descriptors::dense) && nnz( x ) < n ) {
+				return ILLEGAL;
+			}
+
+			if( phase == RESIZE ) {
+				return SUCCESS;
+			}
+			assert( phase == EXECUTE );
+
+			// pre-cast value to be copied
+			const DataType toCopy = static_cast< DataType >( val );
+
+			// make vector dense if it was not already
+			if( !(descr & descriptors::dense) ) {
+				internal::getCoordinates( x ).assignAll();
+			}
+			DataType * const raw = internal::getRaw( x );
+
+#ifdef _H_GRB_REFERENCE_OMP_IO
+			#pragma omp parallel
+			{
+				size_t start, end;
+				config::OMP::localRange( start, end, 0, n );
+#else
+				const size_t start = 0;
+				const size_t end = n;
+#endif
+				for( size_t i = start; i < end; ++ i ) {
+					raw[ i ] = internal::template ValueOrIndex< descr, DataType, DataType >::
+						getFromScalar( toCopy,
+							ActiveDistribution::local_index_to_global( i, n, s, P )
+						);
+				}
+#ifdef _H_GRB_REFERENCE_OMP_IO
+			}
+#endif
+			// sanity check
+			assert( internal::getCoordinates( x ).nonzeroes() ==
+				internal::getCoordinates( x ).size() );
+
+			// done
+			return SUCCESS;
+		}
+
+		template<
+			Descriptor descr,
+			class ActiveDistribution,
+			typename DataType, typename MaskType, typename T,
+			typename Coords
+		>
+		RC set_to_value_masked(
+			Vector< DataType, reference, Coords > &x,
+			const Vector< MaskType, reference, Coords > &m,
+			const T val,
+			const Phase &phase,
+			const size_t s, const size_t P
+		) {
+			// catch empty mask
+			if( size( m ) == 0 ) {
+				return internal::set_to_value< descr, ActiveDistribution >(
+					x, val, phase, s, P );
+			}
+
+			// dynamic sanity checks
+			const size_t sizex = size( x );
+			if( sizex != size( m ) ) {
+				return MISMATCH;
+			}
+			if( (descr & descriptors::dense) &&
+				(nnz( x ) < sizex || nnz( m ) < sizex)
+			) {
+				return ILLEGAL;
+			}
+
+			// handle trivial resize
+			if( phase == RESIZE ) {
+				return SUCCESS;
+			}
+			assert( phase == EXECUTE );
+
+			// make the vector empty unless the dense descriptor is provided
+			const bool mask_is_dense = (descr & descriptors::structural) &&
+				!(descr & descriptors::invert_mask) && (
+					(descr & descriptors::dense) ||
+					nnz( m ) == sizex
+				);
+			if( !((descr & descriptors::dense) && mask_is_dense) ) {
+				internal::getCoordinates( x ).clear();
+			} else if( mask_is_dense ) {
+				// dispatch to faster variant if mask is structurally dense
+				return set_to_value< descr, ActiveDistribution >(
+					x, val, phase, s, P );
+			}
+
+			// pre-cast value to be copied and get coordinate handles
+			const DataType toCopy = static_cast< DataType >( val );
+			DataType * const raw = internal::getRaw( x );
+			auto &coors = internal::getCoordinates( x );
+			const auto &m_coors = internal::getCoordinates( m );
+			const MaskType * const m_p = internal::getRaw( m );
+
+#ifdef _H_GRB_REFERENCE_OMP_IO
+			#pragma omp parallel
+			{
+				auto localUpdate = coors.EMPTY_UPDATE();
+				const size_t maxAsyncAssigns = coors.maxAsyncAssigns();
+				size_t asyncAssigns = 0;
+#endif
+				const bool loop_over_vector_length = (descr & descriptors::invert_mask) ||
+					(4 * m_coors.nonzeroes() > 3 * m_coors.size());
+#ifdef _DEBUG
+				if( loop_over_vector_length ) {
+					std::cout << "\t using loop of size n (the vector length)\n";
+				} else {
+					std::cout << "\t using loop of size nz (the number of nonzeroes in the vector)\n";
+				}
+#endif
+				const size_t n = loop_over_vector_length ?
+					coors.size() :
+					m_coors.nonzeroes();
+#ifdef _H_GRB_REFERENCE_OMP_IO
+				// since masks are irregularly structured, use dynamic schedule to ensure
+				// load balance
+				#pragma omp for schedule( dynamic,config::CACHE_LINE_SIZE::value() ) nowait
+#endif
+				for( size_t k = 0; k < n; ++k ) {
+					const size_t index = loop_over_vector_length ? k : m_coors.index( k );
+					if( !m_coors.template mask< descr >( index, m_p ) ) {
+						continue;
+					}
+#ifdef _H_GRB_REFERENCE_OMP_IO
+					if( !coors.asyncAssign( index, localUpdate ) ) {
+						(void) ++asyncAssigns;
+					}
+					if( asyncAssigns == maxAsyncAssigns ) {
+						(void) coors.joinUpdate( localUpdate );
+						asyncAssigns = 0;
+					}
+#else
+					(void) coors.assign( index );
+#endif
+					raw[ index ] = internal::ValueOrIndex<
+							descr, DataType, DataType
+						>::getFromScalar(
+							toCopy, ActiveDistribution::local_index_to_global( index, n, s, P )
+						);
+				}
+#ifdef _H_GRB_REFERENCE_OMP_IO
+				while( !coors.joinUpdate( localUpdate ) ) {}
+			} // end pragma omp parallel
+#endif
+
+			// done
+			return SUCCESS;
+		}
+
+		template<
+			Descriptor descr,
+			class ActiveDistribution,
+			typename OutputType, typename InputType, typename Coords
+		>
+		RC set_vector_to_vector(
+			Vector< OutputType, reference, Coords > &x,
+			const Vector< InputType, reference, Coords > &y,
+			const Phase &phase,
+			const size_t s, const size_t P
+		) {
+			constexpr bool out_is_void = std::is_void< OutputType >::value;
+			constexpr bool in_is_void = std::is_void< OutputType >::value;
+
+			// check contract
+			const size_t n = size( x );
+			if( n != size( y ) ) {
+				return MISMATCH;
+			}
+			// check trivial op
+			// note: the below check cannot move after the check that uses getID
+			if( n == 0 ) {
+				return SUCCESS;
+			}
+			// continue contract checks
+			if( getID( x ) == getID( y ) ) {
+				return ILLEGAL;
+			}
+			if( descr & descriptors::dense ) {
+				if( nnz( y ) < size( y ) || nnz( x ) < size( x ) ) {
+					return ILLEGAL;
+				}
+			}
+
+			// on resize
+			if( phase == RESIZE ) {
+				return SUCCESS;
+			}
+
+			// on execute
+			assert( phase == EXECUTE );
+
+			// get raw value arrays
+			OutputType * __restrict__ const dst = internal::getRaw( x );
+			const InputType * __restrict__ const src = internal::getRaw( y );
+
+			// make the vector empty unless the dense descriptor is provided
+			if( !(descr & descriptors::dense) ) {
+				internal::getCoordinates( x ).clear();
+			}
+
+			// get #nonzeroes
+			const size_t nz = nnz( y );
+#ifdef _DEBUG
+			std::cout << "grb::set called with source vector containing "
+				<< nz << " nonzeroes." << std::endl;
+#endif
+
+#ifndef NDEBUG
+			if( src == nullptr ) {
+				assert( dst == nullptr );
+			}
+#endif
+			// first copy contents
+			if( src == nullptr && dst == nullptr ) {
+				// if both source and destination are dense void vectors, this is a no-op
+				if( (descr & descriptors::dense) || (
+						nnz( x ) == size( x ) && nz == size( y )
+					)
+				) {
+					return SUCCESS;
+				}
+				// otherwise, copy source nonzero pattern to destination:
+#ifdef _H_GRB_REFERENCE_OMP_IO
+				#pragma omp parallel
+				{
+					size_t start, end;
+					config::OMP::localRange( start, end, 0, nz );
+#else
+					const size_t start = 0;
+					const size_t end = nz;
+#endif
+					for( size_t i = start; i < end; ++i ) {
+						(void) internal::getCoordinates( x ).asyncCopy(
+							internal::getCoordinates( y ), i );
+					}
+#ifdef _H_GRB_REFERENCE_OMP_IO
+				}
+#endif
+			} else {
+				// if the output is a void vector that is furthermore dense, then this is
+				// actually also a no-op:
+				if( (descr & descriptors::dense) && out_is_void ) {
+					return SUCCESS;
+				}
+				// otherwise, the regular copy variant:
+#ifdef _H_GRB_REFERENCE_OMP_IO
+				#pragma omp parallel
+				{
+					size_t start, end;
+					config::OMP::localRange( start, end, 0, nz );
+#else
+					const size_t start = 0;
+					const size_t end = nz;
+#endif
+					for( size_t i = start; i < end; ++i ) {
+						size_t index;
+						if( !(descr & descriptors::dense) ) {
+							index = internal::getCoordinates( x ).asyncCopy(
+								internal::getCoordinates( y ), i );
+						} else {
+							index = i;
+						}
+						if( !out_is_void && !in_is_void ) {
+							dst[ index ] = internal::setIndexOrValue<
+								descr, ActiveDistribution, OutputType
+							>( index, src[ index ], n, s, P );
+						}
+					}
+#ifdef _H_GRB_REFERENCE_OMP_IO
+				}
+#endif
+			}
+
+			// set number of nonzeroes
+			if( !(descr & descriptors::dense) ) {
+				internal::getCoordinates( x ).joinCopy( internal::getCoordinates( y ) );
+			}
+
+			// done
+			return SUCCESS;
+		}
+
+		template<
+			Descriptor descr,
+			class ActiveDistribution,
+			typename OutputType, typename MaskType, typename InputType,
+			typename Coords
+		>
+		RC set_vector_to_vector_masked(
+			Vector< OutputType, reference, Coords > &x,
+			const Vector< MaskType, reference, Coords > &mask,
+			const Vector< InputType, reference, Coords > &y,
+			const Phase &phase,
+			const size_t s, const size_t P
+		) {
+			constexpr bool out_is_void = std::is_void< OutputType >::value;
+			constexpr bool in_is_void = std::is_void< OutputType >::value;
+
+			// catch contract violations
+			const size_t size = grb::size( y );
+			if( size != grb::size( x ) ) {
+				return MISMATCH;
+			}
+			if( size == 0 ) {
+				return SUCCESS;
+			}
+			if( getID( x ) == getID( y ) ) {
+				return ILLEGAL;
+			}
+			if( descr & descriptors::dense ) {
+				if( nnz( x ) < grb::size( x ) ||
+					nnz( y ) < grb::size( y ) ||
+					nnz( mask ) < grb::size( mask )
+				) {
+					return ILLEGAL;
+				}
+			}
+
+			// delegate if possible
+			if( grb::size( mask ) == 0 ) {
+				return set_vector_to_vector<
+					descr, ActiveDistribution
+				>( x, y, phase, s, P );
+			}
+
+			// additional contract check
+			if( size != grb::size( mask ) ) {
+				return MISMATCH;
+			}
+
+			// on resize
+			if( phase == RESIZE ) {
+				return SUCCESS;
+			}
+
+			// on execute
+			assert( phase == EXECUTE );
+			RC ret = SUCCESS;
+
+			// handle non-trivial, fully masked vector copy
+			const auto &m_coors = internal::getCoordinates( mask );
+			const auto &y_coors = internal::getCoordinates( y );
+			auto &x_coors = internal::getCoordinates( x );
+
+			// make the vector empty unless the dense descriptor is provided
+			const bool mask_is_dense = (descr & descriptors::structural) &&
+				!(descr & descriptors::invert_mask) && (
+					(descr & descriptors::dense) ||
+					nnz( mask ) == grb::size( mask )
+				);
+			if( !((descr & descriptors::dense) && mask_is_dense) ) {
+				internal::getCoordinates( x ).clear();
+			}
+
+			// choose optimal loop size
+			const bool loop_over_y = (descr & descriptors::invert_mask) ||
+				(y_coors.nonzeroes() < m_coors.nonzeroes());
+			const size_t n = loop_over_y ? y_coors.nonzeroes() : m_coors.nonzeroes();
+
+#ifdef _H_GRB_REFERENCE_OMP_IO
+			// keeps track of updates of the sparsity pattern
+			#pragma omp parallel
+			{
+				// keeps track of nonzeroes that the mask ignores
+				internal::Coordinates< reference >::Update local_update =
+					x_coors.EMPTY_UPDATE();
+				const size_t maxAsyncAssigns = x_coors.maxAsyncAssigns();
+				size_t asyncAssigns = 0;
+				RC local_rc = SUCCESS;
+				// since masks are irregularly structured, use dynamic schedule to ensure
+				// load balance
+				#pragma omp for schedule( dynamic, config::CACHE_LINE_SIZE::value() ) nowait
+				for( size_t k = 0; k < n; ++k ) {
+					const size_t i = loop_over_y ? y_coors.index( k ) : m_coors.index( k );
+					// if not masked, continue
+					if( !m_coors.template mask< descr >( i, internal::getRaw( mask ) ) ) {
+						continue;
+					}
+					// if source has nonzero
+					if( loop_over_y || y_coors.assigned( i ) ) {
+						// get value
+						if( !out_is_void && !in_is_void ) {
+							internal::getRaw( x )[ i ] =
+								internal::ValueOrIndex< descr, OutputType, InputType >::getFromArray(
+									internal::getRaw( y ), [&size, &s, &P] (const size_t i) {
+										return ActiveDistribution::local_index_to_global( i, size, s, P );
+									}, i
+								);
+						}
+						// check if destination has nonzero
+						if( !x_coors.asyncAssign( i, local_update ) ) {
+							(void) ++asyncAssigns;
+						}
+					}
+					if( asyncAssigns == maxAsyncAssigns ) {
+						const bool was_empty = x_coors.joinUpdate( local_update );
+#ifdef NDEBUG
+						(void) was_empty;
+#else
+						assert( !was_empty );
+#endif
+						asyncAssigns = 0;
+					}
+				}
+				while( !x_coors.joinUpdate( local_update ) ) {}
+				if( local_rc != SUCCESS ) {
+					ret = local_rc;
+				}
+			} // end omp parallel for
+#else
+			for( size_t k = 0; k < n; ++k ) {
+				const size_t i = loop_over_y ? y_coors.index( k ) : m_coors.index( k );
+				if( !m_coors.template mask< descr >( i, internal::getRaw( mask ) ) ) {
+					continue;
+				}
+				if( loop_over_y || internal::getCoordinates( y ).assigned( i ) ) {
+					if( !out_is_void && !in_is_void ) {
+						// get value
+						(void) x_coors.assign( i );
+						internal::getRaw( x )[ i ] =
+							internal::ValueOrIndex< descr, OutputType, InputType >::getFromArray(
+								internal::getRaw( y ), [&size, &s, &P] (const size_t i) {
+									return ActiveDistribution::local_index_to_global( i, size, s, P );
+								}, i
+							);
+					}
+				}
+			}
+#endif
+
+			// done
+			return ret;
+		}
+
 	} // end namespace internal::grb
+
+	/**
+	 * Sets all elements of a vector to the given value.
+	 *
+	 * Unmasked variant.
+	 *
+	 * \parblock
+	 * \par Performance semantics
+	 * A call to this function using the execute phase:
+	 *   -# consists of \f$ \Theta(n) \f$ work;
+	 *   -# moves \f$ \Theta(n) \f$ bytes of memory intra-process;
+	 *   -# does not allocate nor free any dynamic memory;
+	 *   -# shall not make any system calls.
+	 * Here, \f$ n \f$ is equal to #grb::size( x ).
+	 *
+	 * A call to this function using the try phase is as defined above, but with
+	 * every big-Theta bound replaced by a big-Oh bound.
+	 *
+	 * A call to this function using the resize phase:
+	 *   -# consists of \f$ \mathcal{O}(n) \f$ work;
+	 *   -# moves \f$ \mathcal{O}(n) \f$ data intra-process;
+	 *   -# may allocate and free dynamic memory, and thus may make the associated
+	 *      system calls.
+	 *
+	 * Note that this is a single user process backend, and hence trivially no
+	 * inter-process costs will occur.
+	 * \endparblock
+	 */
+	template<
+		Descriptor descr = descriptors::no_operation,
+		typename DataType, typename T,
+		typename Coords
+	>
+	RC set(
+		Vector< DataType, reference, Coords > &x,
+		const T val,
+		const Phase &phase = EXECUTE,
+		const typename std::enable_if<
+			!grb::is_object< DataType >::value &&
+			!grb::is_object< T >::value,
+		void >::type * const = nullptr
+	) {
+		// static sanity checks
+		NO_CAST_ASSERT( ( !(descr & descriptors::no_casting) ||
+				std::is_same< DataType, T >::value
+			), "grb::set (Vector, unmasked)",
+			"called with a value type that does not match that of the given vector"
+		);
+		return internal::set_to_value< descr, internal::Distribution< reference > >(
+			x, val, phase, 0, 1 );
+	}
+
+	/**
+	 * Sets all elements of a vector to the given value.
+	 *
+	 * Masked variant.
+	 *
+	 * \parblock
+	 * \par Performance semantics
+	 * A call to this function
+	 *   -# consists of \f$ \Theta( nnz( m ) ) \f$ work;
+	 *   -# moves \f$ \Theta( nnz( m ) ) \f$ bytes of memory;
+	 *   -# does not allocate nor free any dynamic memory;
+	 *   -# shall not make any system calls.
+	 * If grb::descriptors::invert_mask is given, then \f$ nnz( m ) \f$ in the
+	 * above shall be interpreted as \f$ size( m ) \f$ instead.
+	 * \endparblock
+	 *
+	 * \todo Revise the above to account for different phases.
+	 */
+	template<
+		Descriptor descr = descriptors::no_operation,
+		typename DataType, typename MaskType, typename T,
+		typename Coords
+	>
+	RC set(
+		Vector< DataType, reference, Coords > &x,
+		const Vector< MaskType, reference, Coords > &m,
+		const T val,
+		const Phase &phase = EXECUTE,
+		const typename std::enable_if<
+			!grb::is_object< DataType >::value && !grb::is_object< T >::value,
+		void >::type * const = nullptr
+	) {
+#ifdef _DEBUG
+		std::cout << "In grb::set (vector-to-value, masked)\n";
+#endif
+		// static sanity checks
+		NO_CAST_ASSERT( ( !(descr & descriptors::no_casting) ||
+			std::is_same< DataType, T >::value ), "grb::set (Vector to scalar, masked)",
+			"called with a value type that does not match that of the given "
+			"vector"
+		);
+
+		return internal::set_to_value_masked<
+			descr, internal::Distribution< reference >
+		>( x, m, val, phase, 0, 1 );
+	}
+
+	/**
+	 * Sets the content of a given vector \a x to be equal to that of
+	 * another given vector \a y.
+	 *
+	 * Unmasked variant.
+	 *
+	 * \parblock
+	 * \par Performance semantics
+	 * A call to this function
+	 *   -# consists of \f$ \Theta(n) \f$ work;
+	 *   -# moves \f$ \Theta(n) \f$ bytes of memory;
+	 *   -# does not allocate nor free any dynamic memory;
+	 *   -# shall not make any system calls.
+	 * \endparblock
+	 *
+	 * \todo Check and, if needed, revise performance semantics.
+	 */
+	template<
+		Descriptor descr = descriptors::no_operation,
+		typename OutputType, typename InputType, typename Coords
+	>
+	RC set(
+		Vector< OutputType, reference, Coords > &x,
+		const Vector< InputType, reference, Coords > &y,
+		const Phase &phase = EXECUTE
+	) {
+		// static sanity checks
+		NO_CAST_ASSERT( ( !(descr & descriptors::no_casting) ||
+				std::is_same< OutputType, InputType >::value ),
+			"grb::set (Vector)",
+			"called with vector parameters whose element data types do not match"
+		);
+		constexpr bool out_is_void = std::is_void< OutputType >::value;
+		constexpr bool in_is_void = std::is_void< OutputType >::value;
+		static_assert( !in_is_void || out_is_void,
+			"grb::set (reference, vector <- vector, masked): "
+			"if input is void, then the output must be also" );
+		static_assert( !(descr & descriptors::use_index) || !out_is_void,
+			"grb::set (reference, vector <- vector, masked): "
+			"use_index descriptor cannot be set if output vector is void" );
+
+		return internal::set_vector_to_vector<
+			descr, internal::Distribution< reference >
+		>( x, y, phase, 0, 1 );
+	}
+
+	/**
+	 * Sets the content of a given vector \a x to be equal to that of
+	 * another given vector \a y.
+	 *
+	 * Masked variant.
+	 *
+	 * \parblock
+	 * \par Performance semantics
+	 * A call to this function
+	 *   -# consists of \f$ \Theta( \min\{ nnz( mask ), nnz( y ) \} ) \f$ work;
+	 *   -# moves \f$ \Theta( \min\{ nnz( mask ), nnz( y ) \} ) \f$ bytes of memory;
+	 *   -# does not allocate nor free any dynamic memory;
+	 *   -# shall not make any system calls.
+	 * If grb::descriptors::invert_mask is given, then \f$ nnz( mask ) \f$ in the
+	 * above shall be considered equal to \f$ nnz( y ) \f$.
+	 * \endparblock
+	 *
+	 * \todo Check and, if needed, revise performance semantics.
+	 */
+	template<
+		Descriptor descr = descriptors::no_operation,
+		typename OutputType, typename MaskType, typename InputType,
+		typename Coords
+	>
+	RC set(
+		Vector< OutputType, reference, Coords > &x,
+		const Vector< MaskType, reference, Coords > &mask,
+		const Vector< InputType, reference, Coords > &y,
+		const Phase &phase = EXECUTE,
+		const typename std::enable_if< !grb::is_object< OutputType >::value &&
+			!grb::is_object< MaskType >::value &&
+			!grb::is_object< InputType >::value,
+		void >::type * const = nullptr
+	) {
+		// static sanity checks
+		NO_CAST_ASSERT( ( !(descr & descriptors::no_casting) ||
+			std::is_same< OutputType, InputType >::value ),
+			"grb::set (Vector)",
+			"called with vector parameters whose element data types do not match" );
+		NO_CAST_ASSERT( ( !(descr & descriptors::no_casting) ||
+			std::is_same< MaskType, bool >::value ),
+			"grb::set (Vector)",
+			"called with non-bool mask element types" );
+		constexpr bool out_is_void = std::is_void< OutputType >::value;
+		constexpr bool in_is_void = std::is_void< OutputType >::value;
+		static_assert( !in_is_void || out_is_void,
+			"grb::set (reference, vector <- vector, masked): "
+			"if input is void, then the output must be also" );
+		static_assert( !(descr & descriptors::use_index) || !out_is_void,
+			"grb::set (reference, vector <- vector, masked): "
+			"use_index descriptor cannot be set if output vector is void" );
+
+		return internal::set_vector_to_vector_masked<
+			descr, internal::Distribution< reference >
+		>( x, mask, y, phase, 0, 1 );
+	}
 
 	template<
 		Descriptor descr = descriptors::no_operation,

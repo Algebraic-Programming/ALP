@@ -634,8 +634,9 @@ namespace grb {
 							(void) local_x.assign( index - lower_bound );
 						}
 						if( !out_is_void && !in_is_void ) {
-							dst[ index ] = internal::setIndexOrValue< descr, OutputType >( index,
-								src[ index ] );
+							dst[ index ] = internal::setIndexOrValue<
+								descr, internal::Distribution< nonblocking >, OutputType
+							>( index, src[ index ], size( x ), 0, 1 );
 						}
 					}
 				}
@@ -648,7 +649,9 @@ namespace grb {
 #endif
 					for( size_t i = lower_bound; i < upper_bound; ++i ) {
 						if( !out_is_void && !in_is_void ) {
-							dst[ i ] = src[ i ];
+							dst[ i ] = internal::setIndexOrValue<
+								descr, internal::Distribution< nonblocking >, OutputType
+							>( i, src[ i ], size( x ), 0, 1 );
 						}
 					}
 				}
