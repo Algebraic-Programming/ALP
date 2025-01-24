@@ -21,6 +21,8 @@
 
 #ifdef BENCH_KERNELS_OPENMP
 
+bool bench_kernels_parallel() { return true; }
+
 void bench_kernels_axpy(
 	double * restrict a,
 	const double alpha, const double * restrict x,
@@ -30,9 +32,25 @@ void bench_kernels_axpy(
 	assert( a != x );
 	assert( a != y );
 	assert( x != y );
-	#pragma omp parallel for schedule(static,8)
-	for( size_t i = 0; i < n; ++i ) {
-		a[ i ] = alpha * x[ i ] + y[ i ];
+	#pragma omp parallel
+	{
+		const size_t P = omp_get_num_threads();
+		const size_t s = omp_get_thread_num();
+		const size_t chunk = (n % P == 0) ? (n/P) : (n/P) + 1;
+		size_t start = chunk * s;
+		if( start > n - 1 ) {
+			start = n - 1;
+		}
+		size_t end = start + chunk;
+		if( end > n ) {
+			end = n;
+		}
+		assert( start <= end );
+		if( start != end ) {
+			for( size_t i = start; i < end; ++i ) {
+				a[ i ] = alpha * x[ i ] + y[ i ];
+			}
+		}
 	}
 }
 
@@ -45,7 +63,8 @@ void bench_kernels_dot(
 	assert( alpha != xr );
 	assert( alpha != yr );
 	*alpha = xr[ n - 1 ] * yr[ n - 1];
-	#pragma omp parallel
+	double global_alpha = 0;
+	#pragma omp parallel reduction(+:global_alpha)
 	{
 		const size_t P = omp_get_num_threads();
 		const size_t s = omp_get_thread_num();
@@ -64,12 +83,10 @@ void bench_kernels_dot(
 			for( size_t i = start; i < end - 1; ++i ) {
 				local_alpha += xr[ i ] * yr[ i ];
 			}
-			#pragma omp critical
-			{
-				*alpha += local_alpha;
-			}
+			global_alpha += local_alpha;
 		}
 	}
+	*alpha += global_alpha;
 }
 
 void bench_kernels_reduce(
@@ -77,7 +94,8 @@ void bench_kernels_reduce(
 ) {
 	assert( alpha != xr );
 	*alpha = xr[ n - 1 ];
-	#pragma omp parallel
+	double global_alpha = 0.0;
+	#pragma omp parallel reduction(+:global_alpha)
 	{
 		const size_t P = omp_get_num_threads();
 		const size_t s = omp_get_thread_num();
@@ -96,15 +114,15 @@ void bench_kernels_reduce(
 			for( size_t i = start; i < end - 1; ++i ) {
 				local_alpha += xr[ i ];
 			}
-			#pragma omp critical
-			{
-				*alpha += local_alpha;
-			}
+			global_alpha += local_alpha;
 		}
 	}
+	*alpha += global_alpha;
 }
 
 #else
+
+bool bench_kernels_parallel() { return false; }
 
 void bench_kernels_axpy(
 	double * restrict a,

@@ -26,14 +26,21 @@ set( TEST_CATEGORY "performance" )
 add_library( bench_kernels OBJECT bench_kernels.c bench_kernels.h )
 add_library( bench_kernels_omp OBJECT bench_kernels.c bench_kernels.h )
 target_compile_definitions( bench_kernels_omp PRIVATE BENCH_KERNELS_OPENMP )
+target_link_libraries( bench_kernels PRIVATE test_performance_flags )
+target_link_libraries( bench_kernels_omp PRIVATE test_performance_flags OpenMP::OpenMP_C )
 
 add_grb_executables( fma fma.cpp $<TARGET_OBJECTS:bench_kernels>
 	BACKENDS reference NO_BACKEND_NAME
 	ADDITIONAL_LINK_LIBRARIES "rt"
 )
 
-add_grb_executables( fma-openmp fma.cpp $<TARGET_OBJECTS:bench_kernels_omp>
+add_grb_executables( fma-blocking fma.cpp $<TARGET_OBJECTS:bench_kernels_omp>
 	BACKENDS reference_omp NO_BACKEND_NAME
+	ADDITIONAL_LINK_LIBRARIES OpenMP::OpenMP_CXX "rt"
+)
+
+add_grb_executables( fma-nonblocking fma.cpp $<TARGET_OBJECTS:bench_kernels_omp>
+	BACKENDS nonblocking NO_BACKEND_NAME
 	ADDITIONAL_LINK_LIBRARIES OpenMP::OpenMP_CXX "rt"
 )
 
