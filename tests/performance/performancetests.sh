@@ -150,26 +150,26 @@ if [[ -z $DATASETTORUN && ( -z "$EXPTYPE" || "$EXPTYPE" == "KERNEL" ) ]]; then
 	echo ">>>      [ ]           [x]       Testing semiring axpy versus hardcoded axpy over"
 	echo "                                 100 000 000 doubles"
 	echo " "
-	${TEST_BIN_DIR}/fma 100000000 0 &> ${TEST_OUT_DIR}/fma
-	head -1 ${TEST_OUT_DIR}/fma
-	tail -2 ${TEST_OUT_DIR}/fma
-	egrep 'label|Overall timings|0,' ${TEST_OUT_DIR}/fma | grep -v Outer >> ${TEST_OUT_DIR}/benchmarks
+	${TEST_BIN_DIR}/fma-sequential 100000000 0 &> ${TEST_OUT_DIR}/fma-sequential
+	head -1 ${TEST_OUT_DIR}/fma-sequential
+	tail -2 ${TEST_OUT_DIR}/fma-sequential
+	egrep 'label|Overall timings|0,' ${TEST_OUT_DIR}/fma-sequential | grep -v Outer >> ${TEST_OUT_DIR}/benchmarks
 
 	echo ">>>      [ ]           [x]       Testing monoid reduce versus hardcoded reduce over"
 	echo "                                 100 000 000 doubles"
 	echo " "
-	${TEST_BIN_DIR}/reduce 100000000 0 &> ${TEST_OUT_DIR}/reduce
-	head -1 ${TEST_OUT_DIR}/reduce
-	tail -2 ${TEST_OUT_DIR}/reduce
-	egrep 'label|Overall timings|0,' ${TEST_OUT_DIR}/reduce | grep -v Outer >> ${TEST_OUT_DIR}/benchmarks
+	${TEST_BIN_DIR}/reduce-sequential 100000000 0 &> ${TEST_OUT_DIR}/reduce-sequential
+	head -1 ${TEST_OUT_DIR}/reduce-sequential
+	tail -2 ${TEST_OUT_DIR}/reduce-sequential
+	egrep 'label|Overall timings|0,' ${TEST_OUT_DIR}/reduce-sequential | grep -v Outer >> ${TEST_OUT_DIR}/benchmarks
 
 	echo ">>>      [ ]           [x]       Testing semiring dot product versus its hardcoded variant"
 	echo "                                 over 100 000 000 doubles"
 	echo " "
-	${TEST_BIN_DIR}/dot 100000000 0 &> ${TEST_OUT_DIR}/dot
-	head -1 ${TEST_OUT_DIR}/dot
-	tail -2 ${TEST_OUT_DIR}/dot
-	egrep 'label|Overall timings|0,' ${TEST_OUT_DIR}/dot | grep -v Outer >> ${TEST_OUT_DIR}/benchmarks
+	${TEST_BIN_DIR}/dot-sequential 100000000 0 &> ${TEST_OUT_DIR}/dot-sequential
+	head -1 ${TEST_OUT_DIR}/dot-sequential
+	tail -2 ${TEST_OUT_DIR}/dot-sequential
+	egrep 'label|Overall timings|0,' ${TEST_OUT_DIR}/dot-sequential | grep -v Outer >> ${TEST_OUT_DIR}/benchmarks
 
 	echo ">>>      [ ]           [x]       Testing semiring axpy versus hardcoded axpy over"
 	echo "                                 100 000 000 doubles, using the OpenMP reference backend"
