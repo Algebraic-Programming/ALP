@@ -261,7 +261,7 @@ class CG_Data {
 					workspace[ 0 ], workspace[ 1 ], workspace[ 2 ]
 				);
 			} else {
-				return grb::algorithms::preconditioned_conjugate_gradient< descr >(
+				return grb::algorithms::preconditioned_conjugate_gradient< descr, 2 >(
 					x, matrix, b,
 					alpified_preconditioner(),
 					max_iter, tolerance,

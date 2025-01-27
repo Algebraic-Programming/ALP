@@ -45,11 +45,18 @@ namespace grb {
 		 * positive definite.
 		 *
 		 * @tparam descr          The user descriptor
-		 * @tparam preconditioned Whether to apply any given preconditioners.
+		 * @tparam preconditioned Nonzero to apply any given preconditioners, zero to
+		 *                        not apply preconditioning and ignore related
+		 *                        arguments, two if the preconditioner action may be
+		 *                        native.
 		 *
-		 * \note The default value for \a preconditioned is <tt>true</tt> and it is
+		 * \note The default value for \a preconditioned is <tt>1</tt> and it is
 		 *       normally not necessary to override this value: if wishing to call a
 		 *       non-preconditioned CG, please see #conjugate_gradient.
+		 *
+		 * \note Native in the above means the preconditioner action may not consist
+		 *       of pure ALP code. In this case a nonblocking implementation should
+		 *       take care to not attempt to fuse across the preconditioner action.
 		 *
 		 * @tparam IOType         The input/output vector nonzero type
 		 * @tparam ResidualType   The type of the residual
@@ -98,8 +105,8 @@ namespace grb {
 		 * achieved by constructing \a Minv so that the condition number of
 		 * \f$ M^{-1}A \f$ is much smaller than that of \f$ A \f$.
 		 *
-		 * @param[in]     Minv           The preconditioner action if
-		 *                               \a preconditioned equals <tt>true</tt>.
+		 * @param[in]     Minv           The preconditioner action, used only if
+		 *                               \a preconditioned is nonzero.
 		 *
 		 * If \a A is \f$ n \times n \f$, then \a x and \a b must have matching length
 		 * \f$ n \f$. The vector \a x furthermore must have a capacity of \f$ n \f$.
@@ -123,7 +130,7 @@ namespace grb {
 		 * @param[in,out] temp           A temporary vector of the same size as \a x.
 		 * @param[in,out] temp_precond   A temporary vector of the same size as \a x.
 		 *
-		 * \note If \a preconditioned is <tt>false</tt>, then both \a Minv and
+		 * \note If \a preconditioned is <tt>0</tt>, then both \a Minv and
 		 *       \a temp_precond are ignored. In this case, \a temp_precond need not
 		 *       have the same length as \a x, nor need it have full capacity.
 		 *
@@ -175,7 +182,7 @@ namespace grb {
 		 */
 		template<
 			Descriptor descr = descriptors::no_operation,
-			bool preconditioned = true,
+			int preconditioned = 1,
 			typename IOType,
 			typename ResidualType,
 			typename NonzeroType,
@@ -344,6 +351,9 @@ namespace grb {
 			// z = M^-1r
 			if( preconditioned ) {
 				ret = ret ? ret : grb::set( z, 0 ); // also ensures z is dense, henceforth
+				if( preconditioned == 2 ) {
+					ret = ret ? ret : grb::wait( z, r );
+				}
 				ret = ret ? ret : Minv( z, r );
 			} // else, z equals r (by reference)
 
@@ -443,6 +453,9 @@ namespace grb {
 				// beta = r' * z
 				if( preconditioned ) {
 					beta = zero;
+					if( preconditioned == 2 ) {
+						ret = ret ? ret : grb::wait( z, r );
+					}
 					ret = ret ? ret : Minv( z, r ); assert( ret == grb::SUCCESS );
 					ret = ret ? ret : grb::dot< descr_dense >(
 							beta,
@@ -572,7 +585,7 @@ namespace grb {
 			grb::Vector< IOType, backend > dummy_buffer( 0 );
 
 			// call PCG with preconditioning disabled
-			return preconditioned_conjugate_gradient< descr, false >(
+			return preconditioned_conjugate_gradient< descr, 0 >(
 					x, A, b,
 					dummy_preconditioner,
 					max_iterations, tol,
