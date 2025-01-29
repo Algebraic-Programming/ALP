@@ -1223,10 +1223,10 @@ namespace grb {
 	 * mutually exclusive for this primitive.
 	 * \endparblock
 	 *
-	 * @tparam DataType  The type of each element in the given matrix.
-	 * @tparam MaskType  The type of each element in the given mask.
-	 * @tparam ValueType The type of the given value. Should be convertible
-	 *                   to \a DataType.
+	 * @tparam OutputType The type of each element in the given matrix.
+	 * @tparam MaskType   The type of each element in the given mask.
+	 * @tparam ValueType  The type of the given value. Should be convertible
+	 *                    to \a OutputType.
 	 * @tparam RIT       The integer type for encoding row indices.
 	 * @tparam CIT       The integer type for encoding column indices.
 	 * @tparam NIT       The integer type for encoding nonzero indices.
@@ -1265,7 +1265,7 @@ namespace grb {
 	 *
 	 * When \a descr includes #grb::descriptors::no_casting then code shall not
 	 * compile if one of the following conditions are met:
-	 *  -# \a ValueType does not match \a DataType; or
+	 *  -# \a ValueType does not match \a OutputType; or
 	 *  -# \a MaskType does not match <tt>bool</tt>.
 	 *
 	 * In these cases, the code shall not compile: implementations must throw
@@ -1297,18 +1297,18 @@ namespace grb {
 	 */
 	template<
 		Descriptor descr = descriptors::no_operation,
-		typename OutputType, typename InputType, typename ValueType,
+		typename OutputType, typename MaskType, typename ValueType,
 		typename RIT1, typename CIT1, typename NIT1,
 		typename RIT2, typename CIT2, typename NIT2,
 		Backend backend
 	>
 	RC set(
 		Matrix< OutputType, backend, RIT1, CIT1, NIT1 > &C,
-		const Matrix< InputType, backend, RIT2, CIT2, NIT2 > &mask,
+		const Matrix< MaskType, backend, RIT2, CIT2, NIT2 > &mask,
 		const ValueType &val,
 		const Phase &phase = EXECUTE,
 		const typename std::enable_if<
-			!grb::is_object< DataType >::value &&
+			!grb::is_object< OutputType >::value &&
 			!grb::is_object< ValueType >::value &&
 			!grb::is_object< MaskType >::value,
 		void >::type * const = nullptr

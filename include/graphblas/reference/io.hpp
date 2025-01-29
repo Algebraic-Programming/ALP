@@ -925,13 +925,13 @@ namespace grb {
 			bool A_is_mask,
 			Descriptor descr,
 			typename OutputType, typename InputType1,
-			typename InputType2 = const OutputType,
+			typename InputType2,
 			typename RIT, typename CIT, typename NIT
 		>
 		RC set_copy(
 			Matrix< OutputType, reference, RIT, CIT, NIT > &C,
 			const Matrix< InputType1, reference, RIT, CIT, NIT > &A,
-			const InputType2 * __restrict__ id = nullptr
+			const InputType2 * __restrict__ id
 		) noexcept {
 #ifndef NDEBUG
 			if( A_is_mask ) {
@@ -1028,7 +1028,7 @@ namespace grb {
 				internal::getCRS( C ).template copyFrom< descr, A_is_mask >(
 					internal::getCRS( A ), nz, m, start, end, id
 				);
-				range = internal::getCCS( C ).copyFromRange( descr, nz, n );
+				range = internal::getCCS( C ).copyFromRange( nz, n );
 #ifdef _H_GRB_REFERENCE_OMP_IO
 				config::OMP::localRange( start, end, 0, range );
 #else
@@ -1885,7 +1885,8 @@ namespace grb {
 			return grb::resize( C, std::max( nnz( C ), nnz( A ) ) );
 		} else {
 			assert( phase == EXECUTE );
-			return internal::set_copy< false, descr >( C, A );
+			const OutputType * const dummy = nullptr;
+			return internal::set_copy< false, descr >( C, A, dummy );
 		}
 	}
 
@@ -2020,13 +2021,10 @@ namespace grb {
 			std::cout << "\t dispatching to void or non-void set_copy variant\n";
 #endif
 			assert( phase == EXECUTE );
-			if( std::is_same< OutputType, void >::value ) {
-				return internal::set_copy< false, descr & ~(descriptors::invert_mask) >(
-					C, A );
-			} else {
-				return internal::set_copy< true, descr & ~(descriptors::invert_mask) >(
-					C, A, &val );
-			}
+			constexpr bool outputIsVoid = std::is_void< OutputType >::value;
+			return internal::set_copy<
+				!outputIsVoid, descr & ~(descriptors::invert_mask)
+			>( C, A, &val );
 		}
 	}
 

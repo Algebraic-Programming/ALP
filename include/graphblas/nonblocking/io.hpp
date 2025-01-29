@@ -1176,7 +1176,7 @@ namespace grb {
 	>
 	RC set(
 		Matrix< OutputType, nonblocking, RIT1, CIT1, NIT1 > &C,
-		const Matrix< InputType, nonblocking, RIT2, CIT2, NIT2 > &A,
+		const Matrix< InputType1, nonblocking, RIT2, CIT2, NIT2 > &A,
 		const InputType2 &val,
 		const Phase &phase = EXECUTE,
 		const typename std::enable_if<
@@ -1190,7 +1190,7 @@ namespace grb {
 #endif
 		// static checks
 		NO_CAST_ASSERT( ( !(descr & descriptors::no_casting) ||
-				std::is_same< ValueType, OutputType >::value
+				std::is_same< InputType2, OutputType >::value
 			), "grb::set",
 			"called with non-matching value types"
 		);
