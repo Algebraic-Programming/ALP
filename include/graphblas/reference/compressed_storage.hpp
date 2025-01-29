@@ -30,6 +30,10 @@
  #include <omp.h>
 #endif
 
+#ifdef _DEBUG
+ #define _DEBUG_REFERENCE_COMPRESSED_STORAGE
+#endif
+
 
 namespace grb {
 
@@ -152,7 +156,7 @@ namespace grb {
 							k( 0 ), m( 0 ), n( 0 ), row( 1 ),
 							s( 0 ), P( 1 )
 						{
-#ifdef _DEBUG
+#ifdef _DEBUG_REFERENCE_COMPRESSED_STORAGE
 							std::cout << "Iterator default constructor (generic) called\n";
 #endif
 							nonzero.first.first = 1;
@@ -167,7 +171,7 @@ namespace grb {
 							row( other.row ), s( other.s ), P( other.P ),
 							nonzero( other.nonzero )
 						{
-#ifdef _DEBUG
+#ifdef _DEBUG_REFERENCE_COMPRESSED_STORAGE
 							std::cout << "Matrix< reference >::const_iterator copy-constructor "
 								<< "called\n";
 #endif
@@ -175,7 +179,7 @@ namespace grb {
 
 						/** Move constructor. */
 						ConstIterator( ConstIterator &&other ) {
-#ifdef _DEBUG
+#ifdef _DEBUG_REFERENCE_COMPRESSED_STORAGE
 							std::cout << "Matrix< reference >::const_iterator move-constructor "
 								<< "called\n";
 #endif
@@ -202,7 +206,7 @@ namespace grb {
 							m( _m ), n( _n ),
 							s( _s ), P( _P )
 						{
-#ifdef _DEBUG
+#ifdef _DEBUG_REFERENCE_COMPRESSED_STORAGE
 							std::cout << "Compressed_Storage::Const_Iterator constructor called, "
 								<< "with storage " << ( &_storage ) << ", "
 								<< "m " << _m << ", n " << _n << ", and end " << end << ".\n";
@@ -220,7 +224,7 @@ namespace grb {
 							}
 
 							if( row < m ) {
-#ifdef _DEBUG
+#ifdef _DEBUG_REFERENCE_COMPRESSED_STORAGE
 								std::cout << "\tInitial pair, pre-translated at " << row << ", "
 									<< row_index[ k ] << " with value " << values[ k ] << ". "
 									<< "P = " << P << ", row = " << row << ".\n";
@@ -234,7 +238,7 @@ namespace grb {
 								nonzero.first.second = ActiveDistribution::local_index_to_global(
 									row_index[ k ] - col_off, n, col_pid, P );
 								nonzero.second = values[ k ];
-#ifdef _DEBUG
+#ifdef _DEBUG_REFERENCE_COMPRESSED_STORAGE
 								std::cout << "\tInitial pair at " << nonzero.first.first << ", "
 									<< nonzero.first.second << " with value " << nonzero.second << ". "
 									<< "P = " << P << ", row = " << row << ".\n";
@@ -244,7 +248,7 @@ namespace grb {
 
 						/** Copy assignment. */
 						ConstIterator & operator=( const ConstIterator &other ) noexcept {
-#ifdef _DEBUG
+#ifdef _DEBUG_REFERENCE_COMPRESSED_STORAGE
 							std::cout << "Matrix (reference) const-iterator copy-assign operator "
 								<< "called\n";
 #endif
@@ -263,7 +267,7 @@ namespace grb {
 
 						/** Move assignment. */
 						ConstIterator & operator=( ConstIterator &&other ) {
-#ifdef _DEBUG
+#ifdef _DEBUG_REFERENCE_COMPRESSED_STORAGE
 							std::cout << "Matrix (reference) const-iterator move-assign operator "
 								<< "called\n";
 #endif
@@ -282,7 +286,7 @@ namespace grb {
 
 						/** Whether two iterators compare equal. */
 						bool operator==( const ConstIterator &other ) const noexcept {
-#ifdef _DEBUG
+#ifdef _DEBUG_REFERENCE_COMPRESSED_STORAGE
 							std::cout << "Compressed_Storage::Const_Iterator operator== called "
 								<< "with k ( " << k << ", " << other.k << " ), "
 								<< " m ( " << m << ", " << other.m << " )\n";
@@ -308,7 +312,7 @@ namespace grb {
 
 						/** Whether two iterators do not compare equal. */
 						bool operator!=( const ConstIterator &other ) const noexcept {
-#ifdef _DEBUG
+#ifdef _DEBUG_REFERENCE_COMPRESSED_STORAGE
 							std::cout << "Compressed_Storage::Const_Iterator operator!= called "
 								<< "with k ( " << k << ", " << other.k << " ), "
 								<< "row ( " << row << ", " << other.row << " ), "
@@ -333,7 +337,7 @@ namespace grb {
 
 						/** Move to the next iterator. */
 						ConstIterator & operator++() noexcept {
-#ifdef _DEBUG
+#ifdef _DEBUG_REFERENCE_COMPRESSED_STORAGE
 							std::cout << "Compressed_Storage::operator++ called\n";
 #endif
 							if( row == m ) {
@@ -346,7 +350,7 @@ namespace grb {
 								(void) ++row;
 							}
 							if( row < m ) {
-#ifdef _DEBUG
+#ifdef _DEBUG_REFERENCE_COMPRESSED_STORAGE
 								std::cout << "\tupdated triple, pre-translated at ( " << row << ", "
 									<< row_index[ k ] << " ): " << values[ k ] << "\n";
 #endif
@@ -361,7 +365,7 @@ namespace grb {
 								nonzero.first.second = ActiveDistribution::local_index_to_global(
 									row_index[ k ] - col_off, n, col_pid, P );
 								nonzero.second = values[ k ];
-#ifdef _DEBUG
+#ifdef _DEBUG_REFERENCE_COMPRESSED_STORAGE
 								std::cout << "\tupdated triple at ( " << nonzero.first.first << ", "
 									<< nonzero.first.second << " ): " << nonzero.second << "\n";
 #endif
@@ -573,7 +577,7 @@ namespace grb {
 						"internal logic error: InputSIZE must be convertible to SIZE. "
 						"Please submit a bug report"
 					);
-#ifdef _DEBUG
+#ifdef _DEBUG_REFERENCE_COMPRESSED_STORAGE
 					std::cout << "CompressedStorage::copyFrom (cast) called with range "
 						<< start << "--" << end << ". The identity " << (*id)
 						<< " will be used.\n";
@@ -680,8 +684,8 @@ namespace grb {
 				 * complete if the union of ranges spans 0 to 2nz + m + 1.
 				 */
 				template<
-					Descriptor descr = descriptors::no_operation,
-					bool useId = false,
+					Descriptor descr,
+					bool useId,
 					typename InputType, typename InputIND, typename InputSIZE
 				>
 				void copyFrom(
@@ -691,19 +695,23 @@ namespace grb {
 					const typename std::enable_if< !useId, void >::type * = nullptr
 				) {
 					static_assert( !std::is_void< InputType >::value,
-						"InputType must not be void"
+						"Internal logic error: InputType must not be void. "
+						"Please submit a bug report."
 					);
 					static_assert(
 						( !useId && std::is_convertible< InputType, D >::value ),
-						"InputType must be convertible to D"
+						"Internal logic error: InputType must be convertible to D"
+						"Please submit a bug report."
 					);
 					static_assert( std::is_convertible< InputIND, IND >::value,
-						"InputIND must be convertible to IND"
+						"Internal logic error: InputIND must be convertible to IND"
+						"Please submit a bug report."
 					);
 					static_assert( std::is_convertible< InputSIZE, SIZE >::value,
-						"InputSIZE must be convertible to SIZE"
+						"Internal logic error: InputSIZE must be convertible to SIZE"
+						"Please submit a bug report."
 					);
-#ifdef _DEBUG
+#ifdef _DEBUG_REFERENCE_COMPRESSED_STORAGE
 					std::cout << "CompressedStorage::copyFrom called with range "
 						<< start << "--" << end << ". No identity will be used.\n";
 #endif
@@ -785,7 +793,7 @@ namespace grb {
 				void recordValue( const size_t &pos, const bool row, const fwd_it &it ) {
 					row_index[ pos ] = row ? it.i() : it.j();
 					values[ pos ] = it.v();
-#ifdef _DEBUG
+#ifdef _DEBUG_REFERENCE_COMPRESSED_STORAGE
 					std::cout << "\t nonzero at position " << it.i() << " by " << it.j()
 						<< " is stored at position " << pos << " has value " << it.v() << ".\n";
 #endif
@@ -956,7 +964,7 @@ namespace grb {
 							k( 0 ), m( 0 ), n( 0 ), row( 1 ),
 							s( 0 ), P( 1 )
 						{
-#ifdef _DEBUG
+#ifdef _DEBUG_REFERENCE_COMPRESSED_STORAGE
 							std::cout << "Iterator default constructor (pattern specialisation) "
 								<< "called\n";
 							nonzero.first = 1;
@@ -971,7 +979,7 @@ namespace grb {
 							row( other.row ), s( other.s ), P( other.P ),
 							nonzero( other.nonzero )
 						{
-#ifdef _DEBUG
+#ifdef _DEBUG_REFERENCE_COMPRESSED_STORAGE
 							std::cout << "Iterator copy constructor (pattern specialisation) "
 								<< "called\n";
 #endif
@@ -979,7 +987,7 @@ namespace grb {
 
 						/** Move constructor. */
 						ConstIterator( ConstIterator &&other ) {
-#ifdef _DEBUG
+#ifdef _DEBUG_REFERENCE_COMPRESSED_STORAGE
 							std::cout << "Iterator move constructor (pattern specialisation) "
 								<< "called\n";
 #endif
@@ -1004,7 +1012,7 @@ namespace grb {
 							k( 0 ), m( _m ), n( _n ),
 							s( _s ), P( _P )
 						{
-#ifdef _DEBUG
+#ifdef _DEBUG_REFERENCE_COMPRESSED_STORAGE
 							std::cout << "Iterator constructor (pattern specialisation) called\n";
 #endif
 							if( _nz == 0 || _m == 0 || _n == 0 || end ) {
@@ -1033,7 +1041,7 @@ namespace grb {
 
 						/** Copy assignment. */
 						ConstIterator & operator=( const ConstIterator &other ) noexcept {
-#ifdef _DEBUG
+#ifdef _DEBUG_REFERENCE_COMPRESSED_STORAGE
 							std::cout << "Iterator copy-assign operator (pattern specialisation) "
 								<< "called\n";
 #endif
@@ -1051,7 +1059,7 @@ namespace grb {
 
 						/** Move assignment. */
 						ConstIterator & operator=( ConstIterator &&other ) {
-#ifdef _DEBUG
+#ifdef _DEBUG_REFERENCE_COMPRESSED_STORAGE
 							std::cout << "Iterator move-assign operator (pattern specialisation) "
 								<< "called\n";
 #endif
@@ -1288,7 +1296,7 @@ namespace grb {
 					// pattern matrices, but is retained to keep the API
 					// the same as with the non-pattern case.
 					auto k = start;
-#ifdef _DEBUG
+#ifdef _DEBUG_REFERENCE_COMPRESSED_STORAGE
 					std::cout << "CompressedStorage::copyFrom (void) called with range "
 						<< start << "--" << end << "\n";
 #endif
@@ -1346,7 +1354,7 @@ namespace grb {
 				void recordValue( const size_t &pos, const bool row, const fwd_it &it ) {
 					row_index[ pos ] = row ? it.i() : it.j();
 					// values are ignored for pattern matrices
-#ifdef _DEBUG
+#ifdef _DEBUG_REFERENCE_COMPRESSED_STORAGE
 					std::cout << "\t nonzero at position " << it.i() << " by " << it.j()
 						<< " is stored at position " << pos << ". "
 						<< "It records no nonzero value as this is a pattern matrix.\n";
