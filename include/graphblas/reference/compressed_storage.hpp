@@ -548,8 +548,8 @@ namespace grb {
 				 * complete if the union of ranges spans 0 to 2nz + m + 1.
 				 */
 				template<
-					Descriptor descr = descriptors::no_operation,
-					bool useId = true,
+					Descriptor descr,
+					bool useId,
 					typename InputType, typename InputIND, typename InputSIZE,
 					typename ValueType
 				>
@@ -562,17 +562,21 @@ namespace grb {
 				) {
 					static_assert(
 						( useId && std::is_convertible< ValueType, D >::value ),
-						"ValueType must be convertible to D"
+						"internal logic error: ValueType must be convertible to D. Please submit "
+						"a bug report"
 					);
 					static_assert( std::is_convertible< InputIND, IND >::value,
-						"InputIND must be convertible to IND"
+						"internal logic error: InputIND must be convertible to IND. "
+						"Please submit a bug report"
 					);
 					static_assert( std::is_convertible< InputSIZE, SIZE >::value,
-						"InputSIZE must be convertible to SIZE"
+						"internal logic error: InputSIZE must be convertible to SIZE. "
+						"Please submit a bug report"
 					);
 #ifdef _DEBUG
 					std::cout << "CompressedStorage::copyFrom (cast) called with range "
-						<< start << "--" << end << ". The identity " << (*id) << " will be used.\n";
+						<< start << "--" << end << ". The identity " << (*id)
+						<< " will be used.\n";
 #endif
 					assert( start <= end );
 					size_t k = start;
