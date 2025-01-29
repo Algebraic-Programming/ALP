@@ -1279,10 +1279,6 @@ namespace grb {
 	 * is forbidden also. Implementations shall throw a static assertion failure
 	 * if the user nonetheless asks for structural mask inversion.
 	 *
-	 * \warning Mask-modifier descriptors, such as #grb::descriptors::invert_mask
-	 *          are not accepted while #grb::descriptors::structural is in fact
-	 *          implied by this specification.
-	 *
 	 * \parblock
 	 * \par Performance semantics
 	 * Each backend must define performance semantics for this primitive.
