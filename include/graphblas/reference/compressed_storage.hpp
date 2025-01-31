@@ -23,7 +23,8 @@
 #ifndef _H_GRB_REFERENCE_COMPRESSED_STORAGE
 #define _H_GRB_REFERENCE_COMPRESSED_STORAGE
 
-#include <cstring> //std::memcpy
+#include <cstring> // std::memcpy
+#include <algorithm> // std::copy_n
 
 #ifdef _DEBUG
  #define _DEBUG_REFERENCE_COMPRESSED_STORAGE
@@ -711,14 +712,7 @@ namespace grb {
 					if( k < nz ) {
 						const size_t loop_end = std::min( nz, end );
 						assert( k <= loop_end );
-						GRB_UTIL_IGNORE_CLASS_MEMACCESS; // by the ALP spec, D can only be a POD
-						                                 // type, in which case raw memory copies
-						                                 // are OK
-						for( size_t i = k; i < loop_end; ++i ) {
-							values[ i ] = static_cast< D >( other.values[ i ] );
-						}
-						GRB_UTIL_RESTORE_WARNINGS;
-
+						std::copy_n( other.values + k, loop_end - k, values + k );
 						k = 0;
 					} else {
 						assert( k >= nz );
@@ -732,9 +726,7 @@ namespace grb {
 					if( k < nz ) {
 						const size_t loop_end = std::min( nz, end );
 						assert( k <= loop_end );
-						for( size_t i = k; i < loop_end; ++i ) {
-							row_index[ i ] = static_cast< IND >( other.row_index[ i ] );
-						}
+						std::copy_n( other.row_index + k, loop_end - k, row_index + k );
 						k = 0;
 					} else {
 						assert( k >= nz );
@@ -748,9 +740,7 @@ namespace grb {
 					if( k < m + 1 ) {
 						const size_t loop_end = std::min( m + 1, end );
 						assert( k <= loop_end );
-						for( size_t i = k; i < loop_end; ++i ) {
-							col_start[ i ] = static_cast< SIZE >( other.col_start[ i ] );
-						}
+						std::copy_n( other.col_start + k, loop_end - k, col_start + k );
 #ifndef NDEBUG
 						for( size_t chk = k; chk < loop_end - 1; ++chk ) {
 							assert( other.col_start[ chk ] <= other.col_start[ chk + 1 ] );
@@ -1287,9 +1277,7 @@ namespace grb {
 					if( k < nz ) {
 						const size_t loop_end = std::min( nz, end );
 						assert( k <= loop_end );
-						for( size_t i = k; i < loop_end; ++i ) {
-							row_index[ i ] = static_cast< IND >( other.row_index[ i ] );
-						}
+						(void) std::copy_n( other.row_index + k, loop_end - k, row_index + k );
 						k = 0;
 					} else {
 						assert( k >= nz );
@@ -1303,9 +1291,7 @@ namespace grb {
 					if( k < m + 1 ) {
 						const size_t loop_end = std::min( m + 1, end );
 						assert( k <= loop_end );
-						for( size_t i = k; i < loop_end; ++i ) {
-							col_start[ i ] = static_cast< SIZE >( other.col_start[ i ] );
-						}
+						(void) std::copy_n( other.col_start + k, loop_end - k, col_start + k );
 #ifndef NDEBUG
 						for( size_t chk = k; chk < loop_end - 1; ++chk ) {
 							assert( other.col_start[ chk ] <= other.col_start[ chk + 1 ] );
