@@ -564,9 +564,9 @@ namespace grb {
 					const ValueType * __restrict__ id,
 					const typename std::enable_if< useId, void >::type * = nullptr
 				) {
-					static_assert( useId && std::is_convertible< ValueType, D >::value,
-						"internal logic error: ValueType must be convertible to D. Please submit "
-						"a bug report"
+					static_assert( std::is_convertible< ValueType, D >::value,
+						"internal logic error: ValueType must be convertible to D. "
+						"Please submit a bug report"
 					);
 					static_assert( std::is_convertible< InputIND, IND >::value,
 						"internal logic error: InputIND must be convertible to IND. "
