@@ -2147,6 +2147,7 @@ namespace grb {
 				#pragma omp parallel
 #endif
 				{
+					const char * const dummy = nullptr;
 					size_t range = CRS.copyFromRange( nz, m );
 #ifdef _H_GRB_REFERENCE_OMP_MATRIX
 					size_t start, end;
@@ -2156,7 +2157,7 @@ namespace grb {
 					size_t end = range;
 #endif
 					CRS.template copyFrom< descriptors::no_operation, false >(
-						other.CRS, nz, m, start, end );
+						other.CRS, nz, m, start, end, dummy );
 					range = CCS.copyFromRange( nz, n );
 #ifdef _H_GRB_REFERENCE_OMP_MATRIX
 					config::OMP::localRange( start, end, 0, range );
@@ -2164,7 +2165,7 @@ namespace grb {
 					end = range;
 #endif
 					CCS.template copyFrom< descriptors::no_operation, false >(
-						other.CCS, nz, n, start, end );
+						other.CCS, nz, n, start, end, dummy );
 				}
 			}
 
