@@ -524,8 +524,12 @@ namespace grb {
 				}
 
 				/**
-				 * Copies coordinates from a given Compressed_Storage, then fills the
-				 * values with the given identity.
+				 * Copies coordinates from a given #Compressed_Storage, \a other.
+				 *
+				 * Optionally, fills the values with a given identity instead of the values
+				 * from \a other; see \a use_id.
+				 *
+				 * Via SFINAE, this variant applies only to \a use_id <tt>true</tt>.
 				 *
 				 * Performs no safety checking. Performs no (re-)allocations.
 				 *
@@ -560,8 +564,7 @@ namespace grb {
 					const ValueType * __restrict__ id,
 					const typename std::enable_if< useId, void >::type * = nullptr
 				) {
-					static_assert(
-						( useId && std::is_convertible< ValueType, D >::value ),
+					static_assert( useId && std::is_convertible< ValueType, D >::value,
 						"internal logic error: ValueType must be convertible to D. Please submit "
 						"a bug report"
 					);
@@ -575,8 +578,8 @@ namespace grb {
 					);
 #ifdef _DEBUG_REFERENCE_COMPRESSED_STORAGE
 					std::cout << "CompressedStorage::copyFrom (cast) called with range "
-						<< start << "--" << end << ". The identity " << (*id)
-						<< " will be used.\n";
+						<< start << "--" << end << ". The identity " << (*id) << " will be used "
+						<< ".\n";
 #endif
 					assert( start <= end );
 					size_t k = start;
@@ -654,6 +657,11 @@ namespace grb {
 				/**
 				 * Copies contents from a given Compressed_Storage.
 				 *
+				 * Optionally, fills the values with a given identity instead of the values
+				 * from \a other; see \a use_id.
+				 *
+				 * Via SFINAE, this variant applies only to \a use_id <tt>false</tt>.
+				 *
 				 * Performs no safety checking. Performs no (re-)allocations.
 				 *
 				 * @param[in] other The container to copy from.
@@ -712,7 +720,7 @@ namespace grb {
 					if( k < nz ) {
 						const size_t loop_end = std::min( nz, end );
 						assert( k <= loop_end );
-						std::copy_n( other.values + k, loop_end - k, values + k );
+						(void) std::copy_n( other.values + k, loop_end - k, values + k );
 						k = 0;
 					} else {
 						assert( k >= nz );
@@ -726,7 +734,7 @@ namespace grb {
 					if( k < nz ) {
 						const size_t loop_end = std::min( nz, end );
 						assert( k <= loop_end );
-						std::copy_n( other.row_index + k, loop_end - k, row_index + k );
+						(void) std::copy_n( other.row_index + k, loop_end - k, row_index + k );
 						k = 0;
 					} else {
 						assert( k >= nz );
@@ -740,7 +748,7 @@ namespace grb {
 					if( k < m + 1 ) {
 						const size_t loop_end = std::min( m + 1, end );
 						assert( k <= loop_end );
-						std::copy_n( other.col_start + k, loop_end - k, col_start + k );
+						(void) std::copy_n( other.col_start + k, loop_end - k, col_start + k );
 #ifndef NDEBUG
 						for( size_t chk = k; chk < loop_end - 1; ++chk ) {
 							assert( other.col_start[ chk ] <= other.col_start[ chk + 1 ] );
@@ -1254,15 +1262,15 @@ namespace grb {
 				 * \internal copyFrom specialisation for pattern matrices.
 				 */
 				template<
-					Descriptor = descriptors::no_operation,
-					bool unusedValue = false,
+					Descriptor,
+					bool unusedValue,
 					typename InputType, typename InputIND, typename InputSIZE,
-					typename UnusedType = std::nullptr_t
+					typename UnusedType
 				>
 				void copyFrom(
 					const Compressed_Storage< InputType, InputIND, InputSIZE > &other,
 					const size_t nz, const size_t m, const size_t start, size_t end,
-					const UnusedType * __restrict__ = nullptr
+					const UnusedType * __restrict__
 				) {
 					(void) unusedValue;
 					// the unusedValue template is meaningless in the case of

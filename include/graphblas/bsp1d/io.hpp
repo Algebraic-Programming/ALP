@@ -1723,7 +1723,7 @@ namespace grb {
 				// each thread writes to a different interval of the destination array
 				// give pointers to hint at memmove whenever possible
 				// (StorageType should be trivially copyable)
-				std::copy_n(
+				(void) std::copy_n(
 					local_out.data(), num_nnz_local,
 					out.data() + first_nnz_local
 				);
