@@ -23,12 +23,20 @@
 #ifndef _H_GRB_REFERENCE_COMPRESSED_STORAGE
 #define _H_GRB_REFERENCE_COMPRESSED_STORAGE
 
-#include <cstring> //std::memcpy
+#include <cstring> // std::memcpy
+#include <algorithm> // std::copy_n
+
+#ifdef _DEBUG
+ #define _DEBUG_REFERENCE_COMPRESSED_STORAGE
+#endif
 
 
 namespace grb {
 
 	namespace internal {
+
+		template< typename D, typename IND, typename SIZE >
+		class Compressed_Storage;
 
 		/**
 		 * Basic functionality for a compressed storage format (CRS/CSR or CCS/CSC).
@@ -144,7 +152,7 @@ namespace grb {
 							k( 0 ), m( 0 ), n( 0 ), row( 1 ),
 							s( 0 ), P( 1 )
 						{
-#ifdef _DEBUG
+#ifdef _DEBUG_REFERENCE_COMPRESSED_STORAGE
 							std::cout << "Iterator default constructor (generic) called\n";
 #endif
 							nonzero.first.first = 1;
@@ -159,7 +167,7 @@ namespace grb {
 							row( other.row ), s( other.s ), P( other.P ),
 							nonzero( other.nonzero )
 						{
-#ifdef _DEBUG
+#ifdef _DEBUG_REFERENCE_COMPRESSED_STORAGE
 							std::cout << "Matrix< reference >::const_iterator copy-constructor "
 								<< "called\n";
 #endif
@@ -167,7 +175,7 @@ namespace grb {
 
 						/** Move constructor. */
 						ConstIterator( ConstIterator &&other ) {
-#ifdef _DEBUG
+#ifdef _DEBUG_REFERENCE_COMPRESSED_STORAGE
 							std::cout << "Matrix< reference >::const_iterator move-constructor "
 								<< "called\n";
 #endif
@@ -194,7 +202,7 @@ namespace grb {
 							m( _m ), n( _n ),
 							s( _s ), P( _P )
 						{
-#ifdef _DEBUG
+#ifdef _DEBUG_REFERENCE_COMPRESSED_STORAGE
 							std::cout << "Compressed_Storage::Const_Iterator constructor called, "
 								<< "with storage " << ( &_storage ) << ", "
 								<< "m " << _m << ", n " << _n << ", and end " << end << ".\n";
@@ -212,7 +220,7 @@ namespace grb {
 							}
 
 							if( row < m ) {
-#ifdef _DEBUG
+#ifdef _DEBUG_REFERENCE_COMPRESSED_STORAGE
 								std::cout << "\tInitial pair, pre-translated at " << row << ", "
 									<< row_index[ k ] << " with value " << values[ k ] << ". "
 									<< "P = " << P << ", row = " << row << ".\n";
@@ -226,7 +234,7 @@ namespace grb {
 								nonzero.first.second = ActiveDistribution::local_index_to_global(
 									row_index[ k ] - col_off, n, col_pid, P );
 								nonzero.second = values[ k ];
-#ifdef _DEBUG
+#ifdef _DEBUG_REFERENCE_COMPRESSED_STORAGE
 								std::cout << "\tInitial pair at " << nonzero.first.first << ", "
 									<< nonzero.first.second << " with value " << nonzero.second << ". "
 									<< "P = " << P << ", row = " << row << ".\n";
@@ -236,7 +244,7 @@ namespace grb {
 
 						/** Copy assignment. */
 						ConstIterator & operator=( const ConstIterator &other ) noexcept {
-#ifdef _DEBUG
+#ifdef _DEBUG_REFERENCE_COMPRESSED_STORAGE
 							std::cout << "Matrix (reference) const-iterator copy-assign operator "
 								<< "called\n";
 #endif
@@ -255,7 +263,7 @@ namespace grb {
 
 						/** Move assignment. */
 						ConstIterator & operator=( ConstIterator &&other ) {
-#ifdef _DEBUG
+#ifdef _DEBUG_REFERENCE_COMPRESSED_STORAGE
 							std::cout << "Matrix (reference) const-iterator move-assign operator "
 								<< "called\n";
 #endif
@@ -274,7 +282,7 @@ namespace grb {
 
 						/** Whether two iterators compare equal. */
 						bool operator==( const ConstIterator &other ) const noexcept {
-#ifdef _DEBUG
+#ifdef _DEBUG_REFERENCE_COMPRESSED_STORAGE
 							std::cout << "Compressed_Storage::Const_Iterator operator== called "
 								<< "with k ( " << k << ", " << other.k << " ), "
 								<< " m ( " << m << ", " << other.m << " )\n";
@@ -300,7 +308,7 @@ namespace grb {
 
 						/** Whether two iterators do not compare equal. */
 						bool operator!=( const ConstIterator &other ) const noexcept {
-#ifdef _DEBUG
+#ifdef _DEBUG_REFERENCE_COMPRESSED_STORAGE
 							std::cout << "Compressed_Storage::Const_Iterator operator!= called "
 								<< "with k ( " << k << ", " << other.k << " ), "
 								<< "row ( " << row << ", " << other.row << " ), "
@@ -325,7 +333,7 @@ namespace grb {
 
 						/** Move to the next iterator. */
 						ConstIterator & operator++() noexcept {
-#ifdef _DEBUG
+#ifdef _DEBUG_REFERENCE_COMPRESSED_STORAGE
 							std::cout << "Compressed_Storage::operator++ called\n";
 #endif
 							if( row == m ) {
@@ -338,7 +346,7 @@ namespace grb {
 								(void) ++row;
 							}
 							if( row < m ) {
-#ifdef _DEBUG
+#ifdef _DEBUG_REFERENCE_COMPRESSED_STORAGE
 								std::cout << "\tupdated triple, pre-translated at ( " << row << ", "
 									<< row_index[ k ] << " ): " << values[ k ] << "\n";
 #endif
@@ -353,7 +361,7 @@ namespace grb {
 								nonzero.first.second = ActiveDistribution::local_index_to_global(
 									row_index[ k ] - col_off, n, col_pid, P );
 								nonzero.second = values[ k ];
-#ifdef _DEBUG
+#ifdef _DEBUG_REFERENCE_COMPRESSED_STORAGE
 								std::cout << "\tupdated triple at ( " << nonzero.first.first << ", "
 									<< nonzero.first.second << " ): " << nonzero.second << "\n";
 #endif
@@ -516,13 +524,17 @@ namespace grb {
 				}
 
 				/**
-				 * Copies contents from a given Compressed_Storage.
+				 * Copies coordinates from a given #Compressed_Storage, \a other.
+				 *
+				 * Optionally, fills the values with a given identity instead of the values
+				 * from \a other; see \a use_id.
+				 *
+				 * Via SFINAE, this variant applies only to \a use_id <tt>true</tt>.
 				 *
 				 * Performs no safety checking. Performs no (re-)allocations.
 				 *
-				 * @tparam use_id If set to <tt>true</tt>, use \a id instead of values in
-				 *                \a other.
-				 *
+				 * @tparam use_id   If set to <tt>true</tt>, use \a id instead of values in
+				 *                  \a other.
 				 * @param[in] other The container to copy from.
 				 * @param[in] nz    The number of nonzeroes in the \a other container.
 				 * @param[in] m     The index dimension of the \a other container.
@@ -530,7 +542,133 @@ namespace grb {
 				 * @param[in] end   The end position to copy to (exclusive).
 				 * @param[in] id    A pointer to a value overriding those in \a other.
 				 *                  Will only be used if and only if \a use_id is set
-				 *                  <tt>true</tt>.
+				 *                  to <tt>true</tt>.
+				 * The copy range is 2nz + m + 1, i.e.,
+				 *   -# 0 <= start <  2nz + m + 1
+				 *   -# 0 <  end   <= 2nz + m + 1
+				 *
+				 * Concurrent calls to this function are allowed iff they consist of
+				 * disjoint ranges \a start and \a end. The copy is guaranteed to be
+				 * complete if the union of ranges spans 0 to 2nz + m + 1.
+				 */
+				template<
+					Descriptor descr,
+					bool useId,
+					typename InputType, typename InputIND, typename InputSIZE,
+					typename ValueType
+				>
+				void copyFrom(
+					const Compressed_Storage< InputType, InputIND, InputSIZE > &other,
+					const size_t nz, const size_t m,
+					const size_t start, size_t end,
+					const ValueType * __restrict__ id,
+					const typename std::enable_if< useId, void >::type * = nullptr
+				) {
+					static_assert( std::is_convertible< ValueType, D >::value,
+						"internal logic error: ValueType must be convertible to D. "
+						"Please submit a bug report"
+					);
+					static_assert( std::is_convertible< InputIND, IND >::value,
+						"internal logic error: InputIND must be convertible to IND. "
+						"Please submit a bug report"
+					);
+					static_assert( std::is_convertible< InputSIZE, SIZE >::value,
+						"internal logic error: InputSIZE must be convertible to SIZE. "
+						"Please submit a bug report"
+					);
+#ifdef _DEBUG_REFERENCE_COMPRESSED_STORAGE
+					std::cout << "CompressedStorage::copyFrom (cast) called with range "
+						<< start << "--" << end << ". The identity " << (*id) << " will be used "
+						<< ".\n";
+#endif
+					assert( start <= end );
+					size_t k = start;
+					if( k < nz ) {
+						const size_t loop_end = std::min( nz, end );
+						assert( k <= loop_end );
+						GRB_UTIL_IGNORE_CLASS_MEMACCESS; // by the ALP spec, D can only be a POD
+						                                 // type, in which case raw memory copies
+						                                 // are OK
+						for( size_t i = k; i < loop_end; ++i ) {
+							if( utils::interpretMatrixMask< descr, InputType >(
+									true, other.getValues(), i )
+							) {
+								values[ i ] = static_cast< D >( *id );
+							}
+						}
+						GRB_UTIL_RESTORE_WARNINGS;
+						k = 0;
+					} else {
+						assert( k >= nz );
+						k -= nz;
+					}
+					if( end <= nz ) {
+						return;
+					}
+					end -= nz;
+
+					if( k < nz ) {
+						const size_t loop_end = std::min( nz, end );
+						assert( k <= loop_end );
+						GRB_UTIL_IGNORE_CLASS_MEMACCESS; // by the ALP spec, D can only be a POD
+						                                 // type, in which case raw memory copies
+						                                 // are OK
+						for( size_t i = k; i < loop_end; ++i ) {
+							if( utils::interpretMatrixMask< descr, InputType >(
+									true, other.getValues(), i )
+							) {
+								row_index[ i ] = static_cast< IND >( other.row_index[ i ] );
+							}
+						}
+						GRB_UTIL_RESTORE_WARNINGS;
+						k = 0;
+					} else {
+						assert( k >= nz );
+						k -= nz;
+					}
+					if( end <= nz ) {
+						return;
+					}
+					end -= nz;
+
+					if( k < m + 1 ) {
+						const size_t loop_end = std::min( m + 1, end );
+						assert( k <= loop_end );
+						GRB_UTIL_IGNORE_CLASS_MEMACCESS; // by the ALP spec, D can only be a POD
+						                                 // type, in which case raw memory copies
+						                                 // are OK
+						for( size_t i = k; i < loop_end; ++i ) {
+							if( utils::interpretMatrixMask< descr, InputType >(
+									true, other.getValues(), i )
+							) {
+								col_start[ i ] = static_cast< SIZE >( other.col_start[ i ] );
+							}
+						}
+						GRB_UTIL_RESTORE_WARNINGS;
+#ifndef NDEBUG
+						for( size_t chk = k; chk < loop_end - 1; ++chk ) {
+							assert( other.col_start[ chk ] <= col_start[ chk + 1 ] );
+							assert( col_start[ chk ] <= col_start[ chk + 1 ] );
+						}
+#endif
+					}
+				}
+
+				/**
+				 * Copies contents from a given Compressed_Storage.
+				 *
+				 * Optionally, fills the values with a given identity instead of the values
+				 * from \a other; see \a use_id.
+				 *
+				 * Via SFINAE, this variant applies only to \a use_id <tt>false</tt>.
+				 *
+				 * Performs no safety checking. Performs no (re-)allocations.
+				 *
+				 * @param[in] other The container to copy from.
+				 * @param[in] nz    The number of nonzeroes in the \a other container.
+				 * @param[in] m     The index dimension of the \a other container.
+				 * @param[in] start The start position to copy from (inclusive).
+				 * @param[in] end   The end position to copy to (exclusive).
 				 *
 				 * The copy range is 2nz + m + 1, i.e.,
 				 *   -# 0 <= start <  2nz + m + 1
@@ -541,110 +679,48 @@ namespace grb {
 				 * complete if the union of ranges spans 0 to 2nz + m + 1.
 				 */
 				template<
-					bool use_id = false,
-					typename InputType, typename ValueType = char
+					Descriptor descr,
+					bool useId,
+					typename InputType, typename InputIND, typename InputSIZE,
+					typename ValueType
 				>
 				void copyFrom(
-					const Compressed_Storage< InputType, IND, SIZE > &other,
+					const Compressed_Storage< InputType, InputIND, InputSIZE > &other,
 					const size_t nz, const size_t m,
 					const size_t start, size_t end,
-					const ValueType * __restrict__ id = nullptr
+					const ValueType * __restrict__ id,
+					const typename std::enable_if< !useId, void >::type * = nullptr
 				) {
-#ifdef _DEBUG
-					std::cout << "CompressedStorage::copyFrom (cast) called with range "
-						<< start << "--" << end;
-					if( use_id ) {
-						std::cout << ". The identity " << (*id) << " will be used.\n";
-					} else {
-						std::cout << ". No identity will be used.\n";
-					}
+					(void) id;
+#ifdef _DEBUG_REFERENCE_COMPRESSED_STORAGE
+					std::cout << "CompressedStorage::copyFrom called with range "
+						<< start << "--" << end << ". No identity will be used.\n";
 #endif
-					assert( start <= end );
-					size_t k = start;
-					if( k < nz ) {
-						const size_t loop_end = std::min( nz, end );
-						assert( k <= loop_end );
-						for( ; k < loop_end; ++k ) {
-							if( use_id ) {
-								values[ k ] = *id;
-							} else {
-								values[ k ] = other.getValue( k, *id );
-							}
-						}
-						k = 0;
-					} else {
-						assert( k >= nz );
-						k -= nz;
-					}
-					if( end <= nz ) {
-						return;
-					}
-					end -= nz;
-					if( k < nz ) {
-						const size_t loop_end = std::min( nz, end );
-						assert( k <= loop_end );
-						(void) std::memcpy(
-							row_index + k,
-							other.row_index + k,
-							(loop_end - k) * sizeof( IND )
-						);
-						k = 0;
-					} else {
-						assert( k >= nz );
-						k -= nz;
-					}
-					if( end <= nz ) {
-						return;
-					}
-					end -= nz;
-					if( k < m + 1 ) {
-						const size_t loop_end = std::min( m + 1, end );
-						assert( k <= loop_end );
-						(void) std::memcpy(
-							col_start + k,
-							other.col_start + k,
-							(loop_end - k) * sizeof( SIZE )
-						);
-					}
-				}
+					// static checks
+					static_assert( !std::is_void< InputType >::value,
+						"Internal logic error: InputType must not be void. "
+						"Please submit a bug report."
+					);
+					static_assert(
+						( !useId && std::is_convertible< InputType, D >::value ),
+						"Internal logic error: InputType must be convertible to D"
+						"Please submit a bug report."
+					);
+					static_assert( std::is_convertible< InputIND, IND >::value,
+						"Internal logic error: InputIND must be convertible to IND"
+						"Please submit a bug report."
+					);
+					static_assert( std::is_convertible< InputSIZE, SIZE >::value,
+						"Internal logic error: InputSIZE must be convertible to SIZE"
+						"Please submit a bug report."
+					);
 
-				/** \internal Specialisation for no cast copy */
-				template< bool use_id = false >
-				void copyFrom(
-					const Compressed_Storage< D, IND, SIZE > &other,
-					const size_t nz, const size_t m,
-					const size_t start, size_t end,
-					const D * __restrict__ id = nullptr
-				) {
-#ifdef _DEBUG
-					std::cout << "CompressedStorage::copyFrom (no-cast) called with range "
-						<< start << "--" << end;
-					if( use_id ) {
-						std::cout << ". The identity " << (*id) << " will be used.\n";
-					} else {
-						std::cout << ". No identity will be used.\n";
-					}
-#endif
+					// do copy
 					size_t k = start;
 					if( k < nz ) {
 						const size_t loop_end = std::min( nz, end );
-#ifdef _DEBUG
-						std::cout << "\t value range " << k << " -- " << loop_end << "\n";
-#endif
 						assert( k <= loop_end );
-						if( use_id ) {
-							std::fill( values + k, values + loop_end, *id );
-						} else {
-							GRB_UTIL_IGNORE_CLASS_MEMACCESS // by the ALP spec, D can only be POD
-								                        // types. In this case raw memory copies
-											// are OK.
-							(void) std::memcpy(
-								values + k,
-								other.values + k,
-								(loop_end - k) * sizeof( D )
-							);
-							GRB_UTIL_RESTORE_WARNINGS
-						}
+						(void) std::copy_n( other.values + k, loop_end - k, values + k );
 						k = 0;
 					} else {
 						assert( k >= nz );
@@ -654,17 +730,11 @@ namespace grb {
 						return;
 					}
 					end -= nz;
+
 					if( k < nz ) {
 						const size_t loop_end = std::min( nz, end );
-#ifdef _DEBUG
-						std::cout << "\t index range " << k << " -- " << loop_end << "\n";
-#endif
 						assert( k <= loop_end );
-						(void) std::memcpy(
-							row_index + k,
-							other.row_index + k,
-							(loop_end - k) * sizeof( IND )
-						);
+						(void) std::copy_n( other.row_index + k, loop_end - k, row_index + k );
 						k = 0;
 					} else {
 						assert( k >= nz );
@@ -674,17 +744,11 @@ namespace grb {
 						return;
 					}
 					end -= nz;
+
 					if( k < m + 1 ) {
 						const size_t loop_end = std::min( m + 1, end );
-#ifdef _DEBUG
-						std::cout << "\t start range " << k << " -- " << loop_end << "\n";
-#endif
 						assert( k <= loop_end );
-						(void) std::memcpy(
-							col_start + k,
-							other.col_start + k,
-							(loop_end - k) * sizeof( SIZE )
-						);
+						(void) std::copy_n( other.col_start + k, loop_end - k, col_start + k );
 #ifndef NDEBUG
 						for( size_t chk = k; chk < loop_end - 1; ++chk ) {
 							assert( other.col_start[ chk ] <= other.col_start[ chk + 1 ] );
@@ -710,7 +774,7 @@ namespace grb {
 				void recordValue( const size_t &pos, const bool row, const fwd_it &it ) {
 					row_index[ pos ] = row ? it.i() : it.j();
 					values[ pos ] = it.v();
-#ifdef _DEBUG
+#ifdef _DEBUG_REFERENCE_COMPRESSED_STORAGE
 					std::cout << "\t nonzero at position " << it.i() << " by " << it.j()
 						<< " is stored at position " << pos << " has value " << it.v() << ".\n";
 #endif
@@ -881,7 +945,7 @@ namespace grb {
 							k( 0 ), m( 0 ), n( 0 ), row( 1 ),
 							s( 0 ), P( 1 )
 						{
-#ifdef _DEBUG
+#ifdef _DEBUG_REFERENCE_COMPRESSED_STORAGE
 							std::cout << "Iterator default constructor (pattern specialisation) "
 								<< "called\n";
 							nonzero.first = 1;
@@ -896,7 +960,7 @@ namespace grb {
 							row( other.row ), s( other.s ), P( other.P ),
 							nonzero( other.nonzero )
 						{
-#ifdef _DEBUG
+#ifdef _DEBUG_REFERENCE_COMPRESSED_STORAGE
 							std::cout << "Iterator copy constructor (pattern specialisation) "
 								<< "called\n";
 #endif
@@ -904,7 +968,7 @@ namespace grb {
 
 						/** Move constructor. */
 						ConstIterator( ConstIterator &&other ) {
-#ifdef _DEBUG
+#ifdef _DEBUG_REFERENCE_COMPRESSED_STORAGE
 							std::cout << "Iterator move constructor (pattern specialisation) "
 								<< "called\n";
 #endif
@@ -929,7 +993,7 @@ namespace grb {
 							k( 0 ), m( _m ), n( _n ),
 							s( _s ), P( _P )
 						{
-#ifdef _DEBUG
+#ifdef _DEBUG_REFERENCE_COMPRESSED_STORAGE
 							std::cout << "Iterator constructor (pattern specialisation) called\n";
 #endif
 							if( _nz == 0 || _m == 0 || _n == 0 || end ) {
@@ -958,7 +1022,7 @@ namespace grb {
 
 						/** Copy assignment. */
 						ConstIterator & operator=( const ConstIterator &other ) noexcept {
-#ifdef _DEBUG
+#ifdef _DEBUG_REFERENCE_COMPRESSED_STORAGE
 							std::cout << "Iterator copy-assign operator (pattern specialisation) "
 								<< "called\n";
 #endif
@@ -976,7 +1040,7 @@ namespace grb {
 
 						/** Move assignment. */
 						ConstIterator & operator=( ConstIterator &&other ) {
-#ifdef _DEBUG
+#ifdef _DEBUG_REFERENCE_COMPRESSED_STORAGE
 							std::cout << "Iterator move-assign operator (pattern specialisation) "
 								<< "called\n";
 #endif
@@ -1198,29 +1262,30 @@ namespace grb {
 				 * \internal copyFrom specialisation for pattern matrices.
 				 */
 				template<
-					bool use_id = false,
-					typename InputType,
-					typename UnusedType = void
+					Descriptor,
+					bool unusedValue,
+					typename InputType, typename InputIND, typename InputSIZE,
+					typename UnusedType
 				>
 				void copyFrom(
-					const Compressed_Storage< InputType, IND, SIZE > &other,
+					const Compressed_Storage< InputType, InputIND, InputSIZE > &other,
 					const size_t nz, const size_t m, const size_t start, size_t end,
-					const UnusedType * __restrict__ = nullptr
+					const UnusedType * __restrict__
 				) {
-					// the use_id template is meaningless in the case of pattern matrices, but
-					// is retained to keep the API the same as with the non-pattern case.
-					(void) use_id;
-#ifdef _DEBUG
+					(void) unusedValue;
+					// the unusedValue template is meaningless in the case of
+					// pattern matrices, but is retained to keep the API
+					// the same as with the non-pattern case.
+					auto k = start;
+#ifdef _DEBUG_REFERENCE_COMPRESSED_STORAGE
 					std::cout << "CompressedStorage::copyFrom (void) called with range "
 						<< start << "--" << end << "\n";
 #endif
-					size_t k = start;
+
 					if( k < nz ) {
 						const size_t loop_end = std::min( nz, end );
-						(void) std::memcpy(
-							row_index + k, other.row_index + k,
-							(loop_end - k) * sizeof( IND )
-						);
+						assert( k <= loop_end );
+						(void) std::copy_n( other.row_index + k, loop_end - k, row_index + k );
 						k = 0;
 					} else {
 						assert( k >= nz );
@@ -1230,12 +1295,17 @@ namespace grb {
 						return;
 					}
 					end -= nz;
+
 					if( k < m + 1 ) {
 						const size_t loop_end = std::min( m + 1, end );
-						(void) std::memcpy(
-							col_start + k, other.col_start + k,
-							(loop_end - k) * sizeof( SIZE )
-						);
+						assert( k <= loop_end );
+						(void) std::copy_n( other.col_start + k, loop_end - k, col_start + k );
+#ifndef NDEBUG
+						for( size_t chk = k; chk < loop_end - 1; ++chk ) {
+							assert( other.col_start[ chk ] <= other.col_start[ chk + 1 ] );
+							assert( col_start[ chk ] <= col_start[ chk + 1 ] );
+						}
+#endif
 					}
 				}
 
@@ -1255,7 +1325,7 @@ namespace grb {
 				void recordValue( const size_t &pos, const bool row, const fwd_it &it ) {
 					row_index[ pos ] = row ? it.i() : it.j();
 					// values are ignored for pattern matrices
-#ifdef _DEBUG
+#ifdef _DEBUG_REFERENCE_COMPRESSED_STORAGE
 					std::cout << "\t nonzero at position " << it.i() << " by " << it.j()
 						<< " is stored at position " << pos << ". "
 						<< "It records no nonzero value as this is a pattern matrix.\n";

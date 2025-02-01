@@ -1134,7 +1134,8 @@ namespace grb {
 		std::cout << "Called grb::set (matrix-to-matrix, nonblocking)" << std::endl;
 #endif
 		// static checks
-		NO_CAST_ASSERT( ( !(descr & descriptors::no_casting) ||
+		NO_CAST_ASSERT(
+			( !(descr & descriptors::no_casting) ||
 				std::is_same< InputType, OutputType >::value
 			), "grb::set",
 			"called with non-matching value types" );
@@ -1170,11 +1171,12 @@ namespace grb {
 	template<
 		Descriptor descr = descriptors::no_operation,
 		typename OutputType, typename InputType1, typename InputType2,
-		typename RIT, typename CIT, typename NIT
+		typename RIT1, typename CIT1, typename NIT1,
+		typename RIT2, typename CIT2, typename NIT2
 	>
 	RC set(
-		Matrix< OutputType, nonblocking, RIT, CIT, NIT > &C,
-		const Matrix< InputType1, nonblocking, RIT, CIT, NIT > &A,
+		Matrix< OutputType, nonblocking, RIT1, CIT1, NIT1 > &C,
+		const Matrix< InputType1, nonblocking, RIT2, CIT2, NIT2 > &A,
 		const InputType2 &val,
 		const Phase &phase = EXECUTE,
 		const typename std::enable_if<
