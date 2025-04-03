@@ -338,6 +338,102 @@ namespace grb {
 	}
 
 	/**
+	 * Computes \f$ x + y \f$, where \f$ y \f$ is solved from \f$ Ty=b \f$.
+	 *
+	 * Here, \f$ T, b \f$ are given while \f$ T \f$ additionally must be either
+	 * lower- or upper-triangular. The output contribution by \f$ y \f$ furthermore
+	 * may be masked.
+	 *
+	 * @param[in,out] x  On input: a vector with sufficient capacity to store the
+	 *                   union of any pre-existing nonzeroes in \f$ x \f$ plus the
+	 *                   (masked) result of \f$ y \f$ when #grb::EXECUTE is
+	 *                   given.
+	 *                   On output: the result of the computation when
+	 *                   #grb::EXECUTE is given, or a vector with the exact same
+	 *                   contents as on input but with the capacity resized to
+	 *                   ensure it could store the result of the requested
+	 *                   computation if #grb::RESIZE is given.
+	 * @param[in] x_mask The mask that acts on \f$ y \f$. This vector has either
+	 *                   size zero or size equal to that of \a x.
+	 *
+	 * \note If \a x_mask has size zero, it is interpreted as though the operation
+	 *       unmasked.
+	 *
+	 * @param[in] T       The upper- or lower-triangular input matrix. This must be
+	 *                    a square matrix with size equal to that of \a x.
+	 * @param[in] b       The right-hand side input vector. Its size must be equal
+	 *                    to that of \a x.
+	 * @param[in] forward Whether to perform forward substitution (i.e., \f$ T \f$
+	 *                    is lower-triangular), or to perform backward substitution
+	 *                    instead (i.e., \f$ T \f$ is upper-triangular).
+	 *
+	 * \note With the structural information ALP/Dense passes as template
+	 *       information, \a forward would not be required.
+	 *
+	 * @param[in] semiring    The semiring under which to perform the SpTrsv.
+	 * @param[in] subtraction The inverse of the additive operator of \a semiring.
+	 * @param[in] division    The inverse of the multiplicative operator of
+	 *                        \a semiring.
+	 *
+	 * \note That is, this operation in fact requires a field structure and not a
+	 *       semiring. A future extension to ALP may provide such a structure
+	 *       explicitly.
+	 *
+	 * @param[in] phase       The requested phase of the computation. Only
+	 *                        #grb::EXECUTE and #grb::RESIZE are supported.
+	 *
+	 * \todo Expand documentation.
+	 */
+	template<
+		Descriptor descr = descriptors::no_operation,
+		class Semiring,
+		class Subtraction,
+		class Division,
+		typename IOType, typename InputType1, typename InputType2,
+		typename InputType3, typename InputType4,
+		typename Coords, typename RIT, typename CIT, typename NIT,
+		Backend backend
+	>
+	RC sptrsv(
+		Vector< IOType, backend, Coords > &x,
+		const Vector< InputType3, backend, Coords > &x_mask,
+		const Matrix< InputType2, backend, RIT, CIT, NIT > &T,
+		const Vector< InputType1, backend, Coords > &b,
+		const bool forward,
+		const Semiring &semiring = Semiring(),
+		const Subtraction &subtraction = Subtraction(),
+		const Division &division = Division(),
+		const Phase &phase = EXECUTE,
+		const typename std::enable_if<
+			grb::is_semiring< Semiring >::value &&
+			grb::is_operator< Subtraction >::value &&
+			grb::is_operator< Division >::value &&
+			!grb::is_object< IOType >::value &&
+			!grb::is_object< InputType1 >::value &&
+			!grb::is_object< InputType2 >::value &&
+			!grb::is_object< InputType3 >::value &&
+			!grb::is_object< InputType4 >::value,
+		void >::type * const = nullptr
+	) {
+#ifdef _DEBUG
+		std::cerr << "Selected backend does not implement masked grb::sptrsv\n";
+#endif
+#ifndef NDEBUG
+		const bool selected_backend_does_not_support_masked_sptrsv = false;
+		assert( selected_backend_does_not_support_masked_sptrsv );
+#endif
+		(void) x;
+		(void) x_mask;
+		(void) T;
+		(void) b;
+		(void) semiring;
+		(void) subtraction;
+		(void) division;
+		(void) phase;
+		return UNSUPPORTED;
+	}
+
+	/**
 	 * Executes an arbitrary element-wise user-defined function \a f on all
 	 * nonzero elements of a given matrix \a A.
 	 *
