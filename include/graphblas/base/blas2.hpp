@@ -340,6 +340,8 @@ namespace grb {
 	/**
 	 * Computes \f$ x \f$ from \f$ Tx=b \f$.
 	 *
+	 * \warning This is an experimental feature.
+	 *
 	 * Here, \f$ T, b \f$ are given while \f$ T \f$ additionally must be either
 	 * lower- or upper-triangular. The output \f$ x \f$ may furthermore be masked.
 	 *
@@ -432,6 +434,8 @@ namespace grb {
 
 	/**
 	 * Computes \f$ x \f$ from \f$ Tx = b \f$, unmasked variant.
+	 *
+	 * \warning This is an experimental feature.
 	 *
 	 * \todo Extend documentation
 	 */
