@@ -2231,15 +2231,23 @@ namespace grb {
 			const Semiring &semiring,
 			const Subtraction &subtraction
 		) {
-			constexpr auto one = Semiring::template getOne< typename Semiring::D2 >();
+			constexpr auto one =
+				Semiring::template One< typename Semiring::D2 >::value();
 			for( size_t k = crs.col_start[ i ]; k < crs.col_start[ i + 1 ]; ++k ) {
 				const typename Semiring::D2 val = crs.template getValue( k, one );
 				const auto &ind = crs.row_index[ k ];
-				if( ind == i ) {
+				if( static_cast< size_t >(ind) == i ) {
+ #ifdef _DEBUG
+					std::cout << "\tskipping nonzero at " << i ", " << i << "\n";
+ #endif
 					divBy = val;
 					continue;
 				}
-				const typename Semiring::D3 tmp;
+ #ifdef _DEBUG
+				std::cout << "\t x[ " << i << " ] (" << x[i] << ") -= " << val << "* x[ "
+					<< ind << " ] (" << x[ind] << ")\n";
+ #endif
+				typename Semiring::D3 tmp;
 				(void) grb::apply( tmp, val, x[ ind ],
 					semiring.getMultiplicativeOperator() );
 				(void) grb::foldl( x[ i ], tmp, subtraction );
@@ -2278,7 +2286,6 @@ namespace grb {
 
 			// get required data handles
 			IOType * const v_raw = internal::getRaw( xb );
-			size_t new_nz = 0;
 
 			// switch forward or backward solve
 			if( forward ) {
@@ -2287,6 +2294,10 @@ namespace grb {
 					IOType divBy = semiring.template getZero< IOType >();
 					assert( crs.col_start[ i ] <= crs.col_start[ i + 1 ] );
 					sptrsv_kernel( crs, i, v_raw, divBy, semiring, subtraction );
+#ifdef _DEBUG
+					std::cout << "\t" << v_raw[ i ] << " will be normalised with " << divBy
+						<< "\n";
+#endif
 					(void) grb::foldl( v_raw[ i ], divBy, division );
 				}
 			} else {
@@ -2295,6 +2306,10 @@ namespace grb {
 					IOType divBy = semiring.template getZero< IOType >();
 					assert( ccs.col_start[ i ] <= ccs.col_start[ i + 1 ] );
 					sptrsv_kernel( ccs, i, v_raw, divBy, semiring, subtraction );
+#ifdef _DEBUG
+					std::cout << "\t" << v_raw[ i ] << " will be normalised with " << divBy
+						<< "\n";
+#endif
 					(void) grb::foldl( v_raw[ i ], divBy, division );
 				}
 			}
@@ -2325,14 +2340,25 @@ namespace grb {
 			const Division &division,
 			const Phase &phase
 		) {
+			// static checks
 			static_assert( masked || sparse, "Internal logic error; please submit a bug "
 				"report" );
+
+			//dynamic checks
 			assert( grb::size( xb ) == n );
 			assert( !masked || grb::size( mask ) == n );
 			assert( grb::nrows( T ) == n );
 			assert( grb::ncols( T ) == n );
+
 			(void) masked;
 			(void) sparse;
+#ifdef NDEBUG
+			(void) xb;
+			(void) mask;
+			(void) T;
+			(void) n;
+#endif
+			(void) forward;
 			(void) semiring;
 			(void) subtraction;
 			(void) division;
@@ -2389,11 +2415,11 @@ namespace grb {
 
 		// check dense dispatch
 		if( dense || grb::nnz( xb ) == n ) {
-			return internal::dense_unmasked_sptrsv< descr >( xb, T, forward, semiring,
+			return internal::dense_unmasked_sptrsv< descr >( xb, T, n, forward, semiring,
 				subtraction, division, phase );
 		} else {
 			grb::Vector< IOType, reference, Coords > no_mask( 0 );
-			return internal::generic_sptrsv< descr, false, true >( xb, no_mask, T,
+			return internal::generic_sptrsv< descr, false, true >( xb, no_mask, T, n,
 				forward, semiring, subtraction, division, phase );
 		}
 	}
