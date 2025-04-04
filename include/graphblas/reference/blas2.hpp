@@ -2233,6 +2233,7 @@ namespace grb {
 		) {
 			constexpr auto one =
 				Semiring::template One< typename Semiring::D1 >::value();
+			// TODO could do some ALP-style vectorisation here
 			for( size_t k = crs.col_start[ i ]; k < crs.col_start[ i + 1 ]; ++k ) {
 				const typename Semiring::D1 val = crs.template getValue( k, one );
 				const auto &ind = crs.row_index[ k ];
@@ -2260,10 +2261,10 @@ namespace grb {
 			Descriptor descr,
 			class Semiring, class Subtraction, class Division,
 			typename IOType, typename InputType1,
-			typename Coords, typename RIT, typename CIT, typename NIT
+			typename RIT, typename CIT, typename NIT
 		>
 		RC dense_unmasked_sptrsv(
-			Vector< IOType, reference, Coords > &xb,
+			IOType *__restrict__ const v_raw,
 			const Matrix< InputType1, reference, RIT, CIT, NIT > &T,
 			const size_t &n,
 			const bool forward,
@@ -2273,8 +2274,6 @@ namespace grb {
 			const Phase &phase
 		) {
 			// dynamic sanity checks
-			assert( grb::size( xb ) == n );
-			assert( grb::nnz( xb ) == n );
 			assert( grb::nrows( T ) == n );
 			assert( grb::ncols( T ) == n );
 
@@ -2283,9 +2282,6 @@ namespace grb {
 
 			// only execute and resize are supported
 			assert( phase == grb::EXECUTE );
-
-			// get required data handles
-			IOType * const v_raw = internal::getRaw( xb );
 
 			// switch forward or backward solve
 			if( forward ) {
@@ -2415,7 +2411,9 @@ namespace grb {
 
 		// check dense dispatch
 		if( dense || grb::nnz( xb ) == n ) {
-			return internal::dense_unmasked_sptrsv< descr >( xb, T, n, forward, semiring,
+			IOType * const xb_p = internal::getRaw( xb );
+			return internal::dense_unmasked_sptrsv< descr >(
+				xb_p, T, n, forward, semiring,
 				subtraction, division, phase );
 		} else {
 			grb::Vector< IOType, reference, Coords > no_mask( 0 );
