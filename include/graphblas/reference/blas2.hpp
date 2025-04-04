@@ -2232,9 +2232,9 @@ namespace grb {
 			const Subtraction &subtraction
 		) {
 			constexpr auto one =
-				Semiring::template One< typename Semiring::D2 >::value();
+				Semiring::template One< typename Semiring::D1 >::value();
 			for( size_t k = crs.col_start[ i ]; k < crs.col_start[ i + 1 ]; ++k ) {
-				const typename Semiring::D2 val = crs.template getValue( k, one );
+				const typename Semiring::D1 val = crs.template getValue( k, one );
 				const auto &ind = crs.row_index[ k ];
 				if( static_cast< size_t >(ind) == i ) {
  #ifdef _DEBUG
