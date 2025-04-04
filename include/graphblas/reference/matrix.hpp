@@ -49,6 +49,7 @@
 #include <graphblas/utils/iterators/utils.hpp>
 
 #include <graphblas/reference/init.hpp>
+#include <graphblas/reference/SptrsvSchedule.hpp>
 #include <graphblas/reference/compressed_storage.hpp>
 
 #include "NonzeroWrapper.hpp"
@@ -235,6 +236,18 @@ namespace grb {
 			const grb::Matrix< InputType, reference, RIT, CIT, NIT > &A
 		) noexcept {
 			return A.valbuf[ 1 ];
+		}
+
+		/**
+		 * \internal
+		 * Retrieves an optimised sptrsv-specific schedule.
+		 * \endinternal
+		 */
+		template< typename InputType, typename RIT, typename CIT, typename NIT >
+		const internal::SptrsvSchedule< NIT > * getSptrsvData(
+			const grb::Matrix< InputType, reference, RIT, CIT, NIT > &A
+		) noexcept {
+			return A.sptrsvSchedule;
 		}
 
 		template<
@@ -1225,6 +1238,11 @@ namespace grb {
 			const grb::Matrix< InputType, reference, RIT, CIT, NIT > &A
 		) noexcept;
 
+		template< typename InputType, typename RIT, typename CIT, typename NIT >
+		friend const internal::SptrsvSchedule< NIT > * internal::getSptrsvData(
+			const grb::Matrix< InputType, reference, RIT, CIT, NIT > &A
+		) noexcept;
+
 		friend const grb::Matrix<
 			D, reference,
 			ColIndexType, ColIndexType, NonzeroIndexType
@@ -1352,12 +1370,18 @@ namespace grb {
 			utils::AutoDeleter< char > _local_deleter[ 6 ];
 
 			/**
+			 * Optimised schedule for sptrsv operations on this matrix.
+			 */
+			internal::SptrsvSchedule< NonzeroIndexType > * sptrsvSchedule;
+
+			/**
 			 * Internal constructor for manual construction of matrices.
 			 *
 			 * Should be followed by a manual call to #initialize.
 			 */
 			Matrix() : id( std::numeric_limits< uintptr_t >::max() ),
-				remove_id( false ), m( 0 ), n( 0 ), cap( 0 ), nz( 0 )
+				remove_id( false ), m( 0 ), n( 0 ), cap( 0 ), nz( 0 ),
+				sptrsvSchedule( nullptr )
 			{}
 
 			/**
@@ -1403,7 +1427,7 @@ namespace grb {
 				id( std::numeric_limits< uintptr_t >::max() ), remove_id( false ),
 				m( _m ), n( _n ), cap( _cap ), nz( _offset_array[ _m ] ),
 				coorArr{ nullptr, buf1 }, coorBuf{ nullptr, buf2 },
-				valbuf{ nullptr, buf3 }
+				valbuf{ nullptr, buf3 }, sptrsvSchedule( nullptr )
 			{
 				assert( (_m > 0 && _n > 0) || _column_indices[ 0 ] == 0 );
 				CRS.replace( _values, _column_indices );
@@ -1596,6 +1620,8 @@ namespace grb {
 					_deleter[ i ] = std::move( other._deleter[ i ] );
 					_local_deleter[ i ] = std::move( other._local_deleter[ i ] );
 				}
+				if( sptrsvSchedule ) { delete sptrsvSchedule; }
+				sptrsvSchedule = other.sptrsvSchedule;
 
 				// invalidate other fields
 				for( unsigned int i = 0; i < 2; ++i ) {
@@ -1608,6 +1634,7 @@ namespace grb {
 				other.n = 0;
 				other.cap = 0;
 				other.nz = 0;
+				other.sptrsvSchedule = nullptr;
 			}
 
 			/**
@@ -2227,6 +2254,9 @@ namespace grb {
 					std::cout << "destructor: removing ID " << id << "\n";
 #endif
 					internal::reference_mapper.remove( id );
+				}
+				if( sptrsvSchedule ) {
+					delete sptrsvSchedule;
 				}
 			}
 

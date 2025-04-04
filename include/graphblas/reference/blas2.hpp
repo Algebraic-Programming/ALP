@@ -2256,17 +2256,17 @@ namespace grb {
 		}
 #endif
 
-		/** \internal Specialised dense unmasked sptrsv implementation */
+		/** \internal Specialised dense unmasked sptrsv implementation, sequential */
 		template<
-			Descriptor descr,
+			Descriptor descr, bool maybe_offset,
 			class Semiring, class Subtraction, class Division,
 			typename IOType, typename InputType1,
 			typename RIT, typename CIT, typename NIT
 		>
-		RC dense_unmasked_sptrsv(
+		RC dense_unmasked_sequential_sptrsv(
 			IOType *__restrict__ const v_raw,
 			const Matrix< InputType1, reference, RIT, CIT, NIT > &T,
-			const size_t &n,
+			const size_t offset, const size_t &n,
 			const bool forward,
 			const Semiring &semiring,
 			const Subtraction &subtraction,
@@ -2286,33 +2286,116 @@ namespace grb {
 			// switch forward or backward solve
 			if( forward ) {
 				const auto &crs = internal::getCRS( T );
-				for( size_t i = 0; i < n; ++i ) {
-					IOType divBy = semiring.template getZero< IOType >();
-					assert( crs.col_start[ i ] <= crs.col_start[ i + 1 ] );
-					sptrsv_kernel( crs, i, v_raw, divBy, semiring, subtraction );
+				if( maybe_offset ) {
+					for( size_t i = 0; i < n; ++i ) {
+						IOType divBy = semiring.template getZero< IOType >();
+						assert( crs.col_start[ i ] <= crs.col_start[ i + 1 ] );
+						sptrsv_kernel( crs, i, v_raw, divBy, semiring, subtraction );
 #ifdef _DEBUG
-					std::cout << "\t" << v_raw[ i ] << " will be normalised with " << divBy
-						<< "\n";
+						std::cout << "\t" << v_raw[ i ] << " will be normalised with " << divBy
+							<< "\n";
 #endif
-					(void) grb::foldl( v_raw[ i ], divBy, division );
+						(void) grb::foldl( v_raw[ i ], divBy, division );
+					}
+				} else {
+					for( size_t i = offset; i < n; ++i ) {
+						IOType divBy = semiring.template getZero< IOType >();
+						assert( crs.col_start[ i ] <= crs.col_start[ i + 1 ] );
+						sptrsv_kernel( crs, i, v_raw, divBy, semiring, subtraction );
+#ifdef _DEBUG
+						std::cout << "\t" << v_raw[ i ] << " will be normalised with " << divBy
+							<< "\n";
+#endif
+						(void) grb::foldl( v_raw[ i ], divBy, division );
+					}
 				}
 			} else {
 				const auto &ccs = internal::getCCS( T );
-				for( size_t i = n - 1; i < n; --i ) {
-					IOType divBy = semiring.template getZero< IOType >();
-					assert( ccs.col_start[ i ] <= ccs.col_start[ i + 1 ] );
-					sptrsv_kernel( ccs, i, v_raw, divBy, semiring, subtraction );
+				if( !maybe_offset || offset == 0 ) {
+					for( size_t i = n - 1; i < n; --i ) {
+						IOType divBy = semiring.template getZero< IOType >();
+						assert( ccs.col_start[ i ] <= ccs.col_start[ i + 1 ] );
+						sptrsv_kernel( ccs, i, v_raw, divBy, semiring, subtraction );
 #ifdef _DEBUG
-					std::cout << "\t" << v_raw[ i ] << " will be normalised with " << divBy
-						<< "\n";
+						std::cout << "\t" << v_raw[ i ] << " will be normalised with " << divBy
+							<< "\n";
 #endif
-					(void) grb::foldl( v_raw[ i ], divBy, division );
+						(void) grb::foldl( v_raw[ i ], divBy, division );
+					}
+				} else {
+					for( size_t i = n - 1 + offset; i >= offset; --i ) {
+						IOType divBy = semiring.template getZero< IOType >();
+						assert( ccs.col_start[ i ] <= ccs.col_start[ i + 1 ] );
+						sptrsv_kernel( ccs, i, v_raw, divBy, semiring, subtraction );
+#ifdef _DEBUG
+						std::cout << "\t" << v_raw[ i ] << " will be normalised with " << divBy
+							<< "\n";
+#endif
+						(void) grb::foldl( v_raw[ i ], divBy, division );
+					}
 				}
 			}
 
 			// done
 			return grb::SUCCESS;
 		}
+
+#ifdef _H_GRB_REFERENCE_OMP_BLAS2
+		/** \internal Specialised dense unmasked sptrsv implementation, OpenMP */
+		template<
+			Descriptor descr,
+			class Semiring, class Subtraction, class Division,
+			typename IOType, typename InputType1,
+			typename RIT, typename CIT, typename NIT
+		>
+		RC dense_unmasked_omp_sptrsv(
+			IOType *__restrict__ const v_raw,
+			const Matrix< InputType1, reference, RIT, CIT, NIT > &T,
+			const size_t &n,
+			const bool forward,
+			const Semiring &semiring,
+			const Subtraction &subtraction,
+			const Division &division,
+			const Phase &phase
+		) {
+			// dynamic sanity checks
+			assert( grb::nrows( T ) == n );
+			assert( grb::ncols( T ) == n );
+
+			// in dense unmasked, resize is a no-op
+			if( phase == grb::RESIZE ) { return grb::SUCCESS; }
+
+			// get SpTrsv schedule
+			const SptrsvSchedule< NIT > *sptrsvSchedule_p =
+				internal::getSptrsvData( T );
+			const SptrsvSchedule< NIT > &sptrsv = sptrsvSchedule_p == nullptr ?
+				SptrsvSchedule< NIT >( n ) : *sptrsvSchedule_p;
+
+			// only execute and resize are supported
+			assert( phase == grb::EXECUTE );
+
+			// start parallel section
+			grb::RC ret = grb::SUCCESS;
+			#pragma omp parallel num_threads(sptrsv.nThreads)
+			{
+				const int s = omp_get_thread_num();
+				const NIT *__restrict__ data =
+					reinterpret_cast< const NIT * >(sptrsv.data[ s ]);
+				for( size_t i = 0; i < sptrsv.supersteps; ++i ) {
+					const size_t lo = static_cast< size_t >( *data++ );
+					const size_t no = static_cast< size_t >( *data++ );
+					assert( lo < n );
+					assert( no + lo <= n );
+					ret = ret ? ret : dense_unmasked_sequential_sptrsv< descr, true >(
+						v_raw, T, lo, no, forward, semiring, subtraction, division, phase );
+					#pragma omp barrier
+				}
+			}
+
+			// done
+			return ret;
+		}
+#endif
 
 		/**
 		 * \internal Implements sparse masked, sparse unmasked, and dense masked
@@ -2412,9 +2495,13 @@ namespace grb {
 		// check dense dispatch
 		if( dense || grb::nnz( xb ) == n ) {
 			IOType * const xb_p = internal::getRaw( xb );
-			return internal::dense_unmasked_sptrsv< descr >(
-				xb_p, T, n, forward, semiring,
-				subtraction, division, phase );
+#ifndef _H_GRB_REFERENCE_OMP_BLAS2
+			return internal::dense_unmasked_sequential_sptrsv< descr, false >(
+				xb_p, T, 0, n, forward, semiring, subtraction, division, phase );
+#else
+			return internal::dense_unmasked_omp_sptrsv< descr >(
+				xb_p, T, n, forward, semiring, subtraction, division, phase );
+#endif
 		} else {
 			grb::Vector< IOType, reference, Coords > no_mask( 0 );
 			return internal::generic_sptrsv< descr, false, true >( xb, no_mask, T, n,
