@@ -338,31 +338,33 @@ namespace grb {
 	}
 
 	/**
-	 * Computes \f$ x + y \f$, where \f$ y \f$ is solved from \f$ Ty=b \f$.
+	 * Computes \f$ x \f$ from \f$ Tx=b \f$.
 	 *
 	 * Here, \f$ T, b \f$ are given while \f$ T \f$ additionally must be either
-	 * lower- or upper-triangular. The output contribution by \f$ y \f$ furthermore
-	 * may be masked.
+	 * lower- or upper-triangular. The output \f$ x \f$ may furthermore be masked.
 	 *
-	 * @param[in,out] x  On input: a vector with sufficient capacity to store the
-	 *                   union of any pre-existing nonzeroes in \f$ x \f$ plus the
-	 *                   (masked) result of \f$ y \f$ when #grb::EXECUTE is
-	 *                   given.
-	 *                   On output: the result of the computation when
-	 *                   #grb::EXECUTE is given, or a vector with the exact same
-	 *                   contents as on input but with the capacity resized to
-	 *                   ensure it could store the result of the requested
-	 *                   computation if #grb::RESIZE is given.
-	 * @param[in] x_mask The mask that acts on \f$ y \f$. This vector has either
+	 * @param[in,out] xb On input: the vector b. On output: the vector x.
+	 *                   When #grb::EXECUTE is given this vector must have
+	 *                   sufficient capacity to store both any pre-existing
+	 *                   nonzeroes in \f$ b \f$ plus the nonzeroes in the (masked)
+	 *                   result of \f$ x \f$.
+	 *                   When #grb::RESIZE is given, the vector contents are
+	 *                   unchanged, however its capacity may be enlarged in order
+	 *                   to ensure the above-described condition.
+	 *
+	 * \note On input, \a xb may contain both implicit and explicit zeroes.
+	 *
+	 * \note On output, \a xb may contain both implicit and explicit zeroes, even
+	 *       if on input it did not.
+	 *
+	 * @param[in] mask   The mask that acts on \f$ x \f$. This vector has either
 	 *                   size zero or size equal to that of \a x.
 	 *
-	 * \note If \a x_mask has size zero, it is interpreted as though the operation
+	 * \note If \a mask has size zero, it is interpreted as though the operation
 	 *       unmasked.
 	 *
 	 * @param[in] T       The upper- or lower-triangular input matrix. This must be
-	 *                    a square matrix with size equal to that of \a x.
-	 * @param[in] b       The right-hand side input vector. Its size must be equal
-	 *                    to that of \a x.
+	 *                    a square matrix with size equal to that of \a xb.
 	 * @param[in] forward Whether to perform forward substitution (i.e., \f$ T \f$
 	 *                    is lower-triangular), or to perform backward substitution
 	 *                    instead (i.e., \f$ T \f$ is upper-triangular).
@@ -390,15 +392,13 @@ namespace grb {
 		class Subtraction,
 		class Division,
 		typename IOType, typename InputType1, typename InputType2,
-		typename InputType3, typename InputType4,
 		typename Coords, typename RIT, typename CIT, typename NIT,
 		Backend backend
 	>
 	RC sptrsv(
-		Vector< IOType, backend, Coords > &x,
-		const Vector< InputType3, backend, Coords > &x_mask,
-		const Matrix< InputType2, backend, RIT, CIT, NIT > &T,
-		const Vector< InputType1, backend, Coords > &b,
+		Vector< IOType, backend, Coords > &xb,
+		const Vector< InputType2, backend, Coords > &mask,
+		const Matrix< InputType1, backend, RIT, CIT, NIT > &T,
 		const bool forward,
 		const Semiring &semiring = Semiring(),
 		const Subtraction &subtraction = Subtraction(),
@@ -410,9 +410,7 @@ namespace grb {
 			grb::is_operator< Division >::value &&
 			!grb::is_object< IOType >::value &&
 			!grb::is_object< InputType1 >::value &&
-			!grb::is_object< InputType2 >::value &&
-			!grb::is_object< InputType3 >::value &&
-			!grb::is_object< InputType4 >::value,
+			!grb::is_object< InputType2 >::value,
 		void >::type * const = nullptr
 	) {
 #ifdef _DEBUG
@@ -422,10 +420,9 @@ namespace grb {
 		const bool selected_backend_does_not_support_masked_sptrsv = false;
 		assert( selected_backend_does_not_support_masked_sptrsv );
 #endif
-		(void) x;
-		(void) x_mask;
+		(void) xb;
+		(void) mask;
 		(void) T;
-		(void) b;
 		(void) semiring;
 		(void) subtraction;
 		(void) division;
