@@ -197,6 +197,19 @@ for MODE in ${MODES}; do
 					grep 'Test OK' ${TEST_OUT_DIR}/mxm_crs_${MODE}_${BACKEND}_${P}_${T}.log || echo "Test FAILED"
 					echo " "
 
+					echo ">>>      [x]           [ ]       Testing grb::sptrsv (unmasked, dense vectors) on"
+					echo "                                 small simple matrices, re-entrant"
+					$runner ${TEST_BIN_DIR}/dense_sptrsv_${MODE}_${BACKEND} 10 1000 3 &> ${TEST_OUT_DIR}/dense_sptrsv_${MODE}_${BACKEND}_${T}.log
+					head -1 ${TEST_OUT_DIR}/dense_sptrsv_${MODE}_${BACKEND}_${T}.log
+					grep 'Test OK' ${TEST_OUT_DIR}/dense_sptrsv_${MODE}_${BACKEND}_${T}.log || echo "Test FAILED"
+					echo " "
+
+					echo ">>>      [x]           [ ]       Testing grb::sptrsv (unmasked, dense vectors) on"
+					echo "                                 large simple matrices, re-entrant"
+					$runner ${TEST_BIN_DIR}/dense_sptrsv_${MODE}_${BACKEND} 1000000 1 3 &> ${TEST_OUT_DIR}/dense_sptrsv_large_${MODE}_${BACKEND}_${T}.log
+					head -1 ${TEST_OUT_DIR}/dense_sptrsv_large_${MODE}_${BACKEND}_${T}.log
+					grep 'Test OK' ${TEST_OUT_DIR}/dense_sptrsv_large_${MODE}_${BACKEND}_${T}.log || echo "Test FAILED"
+					echo " "
 				fi
 
 				echo "#################################################################"
