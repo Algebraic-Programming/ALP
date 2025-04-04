@@ -431,6 +431,52 @@ namespace grb {
 	}
 
 	/**
+	 * Computes \f$ x \f$ from \f$ Tx = b \f$, unmasked variant.
+	 *
+	 * \todo Extend documentation
+	 */
+	template<
+		Descriptor descr = descriptors::no_operation,
+		class Semiring,
+		class Subtraction,
+		class Division,
+		typename IOType, typename InputType1,
+		typename Coords, typename RIT, typename CIT, typename NIT,
+		Backend backend
+	>
+	RC sptrsv(
+		Vector< IOType, backend, Coords > &xb,
+		const Matrix< InputType1, backend, RIT, CIT, NIT > &T,
+		const bool forward,
+		const Semiring &semiring = Semiring(),
+		const Subtraction &subtraction = Subtraction(),
+		const Division &division = Division(),
+		const Phase &phase = EXECUTE,
+		const typename std::enable_if<
+			grb::is_semiring< Semiring >::value &&
+			grb::is_operator< Subtraction >::value &&
+			grb::is_operator< Division >::value &&
+			!grb::is_object< IOType >::value &&
+			!grb::is_object< InputType1 >::value,
+		void >::type * const = nullptr
+	) {
+#ifdef _DEBUG
+		std::cerr << "Selected backend does not implement masked grb::sptrsv\n";
+#endif
+#ifndef NDEBUG
+		const bool selected_backend_does_not_support_unmasked_sptrsv = false;
+		assert( selected_backend_does_not_support_unmasked_sptrsv );
+#endif
+		(void) xb;
+		(void) T;
+		(void) semiring;
+		(void) subtraction;
+		(void) division;
+		(void) phase;
+		return UNSUPPORTED;
+	}
+
+	/**
 	 * Executes an arbitrary element-wise user-defined function \a f on all
 	 * nonzero elements of a given matrix \a A.
 	 *
