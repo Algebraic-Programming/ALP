@@ -1448,6 +1448,7 @@ namespace grb {
 				const size_t rows, const size_t cols,
 				const size_t cap_in
 			) {
+				sptrsvSchedule = nullptr;
 #ifdef _DEBUG_REFERENCE_MATRIX
 				std::cerr << "\t in Matrix< reference >::initialize...\n"
 					<< "\t\t matrix size " << rows << " by " << cols << "\n"
@@ -1620,7 +1621,6 @@ namespace grb {
 					_deleter[ i ] = std::move( other._deleter[ i ] );
 					_local_deleter[ i ] = std::move( other._local_deleter[ i ] );
 				}
-				if( sptrsvSchedule ) { delete sptrsvSchedule; }
 				sptrsvSchedule = other.sptrsvSchedule;
 
 				// invalidate other fields
