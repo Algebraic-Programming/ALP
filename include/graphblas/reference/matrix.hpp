@@ -1380,8 +1380,7 @@ namespace grb {
 			 * Should be followed by a manual call to #initialize.
 			 */
 			Matrix() : id( std::numeric_limits< uintptr_t >::max() ),
-				remove_id( false ), m( 0 ), n( 0 ), cap( 0 ), nz( 0 ),
-				sptrsvSchedule( nullptr )
+				remove_id( false ), m( 0 ), n( 0 ), cap( 0 ), nz( 0 )
 			{}
 
 			/**
@@ -1448,6 +1447,7 @@ namespace grb {
 				const size_t rows, const size_t cols,
 				const size_t cap_in
 			) {
+				// SpTrsvSchedule should be manually set always by a requested tuning phase
 				sptrsvSchedule = nullptr;
 #ifdef _DEBUG_REFERENCE_MATRIX
 				std::cerr << "\t in Matrix< reference >::initialize...\n"
