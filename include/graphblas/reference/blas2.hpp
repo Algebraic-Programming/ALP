@@ -2217,6 +2217,260 @@ namespace grb {
 	namespace internal {
 
 #ifndef _H_GRB_REFERENCE_OMP_BLAS2
+		/** Backend-independent sptrsv kernel code. */
+		template<
+			typename IOType, typename InputType1,
+			typename IND, typename NIT,
+			class Semiring, class Subtraction
+		>
+		inline void sptrsv_kernel(
+			const Compressed_Storage< InputType1, IND, NIT > &crs,
+			const size_t i,
+			IOType * const x,
+			IOType &divBy,
+			const Semiring &semiring,
+			const Subtraction &subtraction
+		) {
+			constexpr auto one = Semiring::template getOne< typename Semiring::D2 >();
+			for( size_t k = crs.col_start[ i ]; k < crs.col_start[ i + 1 ]; ++k ) {
+				const typename Semiring::D2 val = crs.template getValue( k, one );
+				const auto &ind = crs.row_index[ k ];
+				if( ind == i ) {
+					divBy = val;
+					continue;
+				}
+				const typename Semiring::D3 tmp;
+				(void) grb::apply( tmp, val, x[ ind ],
+					semiring.getMultiplicativeOperator() );
+				(void) grb::foldl( x[ i ], tmp, subtraction );
+			}
+		}
+#endif
+
+		/** \internal Specialised dense unmasked sptrsv implementation */
+		template<
+			Descriptor descr,
+			class Semiring, class Subtraction, class Division,
+			typename IOType, typename InputType1,
+			typename Coords, typename RIT, typename CIT, typename NIT
+		>
+		RC dense_unmasked_sptrsv(
+			Vector< IOType, reference, Coords > &xb,
+			const Matrix< InputType1, reference, RIT, CIT, NIT > &T,
+			const size_t &n,
+			const bool forward,
+			const Semiring &semiring,
+			const Subtraction &subtraction,
+			const Division &division,
+			const Phase &phase
+		) {
+			// dynamic sanity checks
+			assert( grb::size( xb ) == n );
+			assert( grb::nnz( xb ) == n );
+			assert( grb::nrows( T ) == n );
+			assert( grb::ncols( T ) == n );
+
+			// in dense unmasked, resize is a no-op
+			if( phase == grb::RESIZE ) { return grb::SUCCESS; }
+
+			// only execute and resize are supported
+			assert( phase == grb::EXECUTE );
+
+			// get required data handles
+			IOType * const v_raw = internal::getRaw( xb );
+			size_t new_nz = 0;
+
+			// switch forward or backward solve
+			if( forward ) {
+				const auto &crs = internal::getCRS( T );
+				for( size_t i = 0; i < n; ++i ) {
+					IOType divBy = semiring.template getZero< IOType >();
+					assert( crs.col_start[ i ] <= crs.col_start[ i + 1 ] );
+					sptrsv_kernel( crs, i, v_raw, divBy, semiring, subtraction );
+					(void) grb::foldl( v_raw[ i ], divBy, division );
+				}
+			} else {
+				const auto &ccs = internal::getCCS( T );
+				for( size_t i = n - 1; i < n; --i ) {
+					IOType divBy = semiring.template getZero< IOType >();
+					assert( ccs.col_start[ i ] <= ccs.col_start[ i + 1 ] );
+					sptrsv_kernel( ccs, i, v_raw, divBy, semiring, subtraction );
+					(void) grb::foldl( v_raw[ i ], divBy, division );
+				}
+			}
+
+			// done
+			return grb::SUCCESS;
+		}
+
+		/**
+		 * \internal Implements sparse masked, sparse unmasked, and dense masked
+		 *           sptrsv.
+		 */
+		template<
+			Descriptor descr,
+			bool masked, bool sparse,
+			class Semiring, class Subtraction, class Division,
+			typename IOType, typename InputType1, typename InputType2,
+			typename Coords, typename RIT, typename CIT, typename NIT
+		>
+		RC generic_sptrsv(
+			Vector< IOType, reference, Coords > &xb,
+			const Vector< InputType2, reference, Coords > &mask,
+			const Matrix< InputType1, reference, RIT, CIT, NIT > &T,
+			const size_t &n,
+			const bool forward,
+			const Semiring &semiring,
+			const Subtraction &subtraction,
+			const Division &division,
+			const Phase &phase
+		) {
+			static_assert( masked || sparse, "Internal logic error; please submit a bug "
+				"report" );
+			assert( grb::size( xb ) == n );
+			assert( !masked || grb::size( mask ) == n );
+			assert( grb::nrows( T ) == n );
+			assert( grb::ncols( T ) == n );
+			(void) masked;
+			(void) sparse;
+			(void) semiring;
+			(void) subtraction;
+			(void) division;
+			(void) phase;
+			std::cerr << "Warning: masked sptrsv not yet implemented\n";
+			return grb::UNSUPPORTED;
+		}
+
+	} // end grb::internal
+
+	template<
+		Descriptor descr = descriptors::no_operation,
+		class Semiring, class Subtraction, class Division,
+		typename IOType, typename InputType1,
+		typename Coords, typename RIT, typename CIT, typename NIT
+	>
+	RC sptrsv(
+		Vector< IOType, reference, Coords > &xb,
+		const Matrix< InputType1, reference, RIT, CIT, NIT > &T,
+		const bool forward,
+		const Semiring &semiring = Semiring(),
+		const Subtraction &subtraction = Subtraction(),
+		const Division &division = Division(),
+		const Phase &phase = EXECUTE,
+		const typename std::enable_if<
+			grb::is_semiring< Semiring >::value &&
+			grb::is_operator< Subtraction >::value &&
+			grb::is_operator< Division >::value &&
+			!grb::is_object< IOType >::value &&
+			!grb::is_object< InputType1 >::value,
+		void >::type * const = nullptr
+	) {
+		// check contract
+		constexpr bool dense = descr & descriptors::dense;
+		const size_t n = size( xb );
+		if( grb::nrows( T ) != n ) {
+			std::cerr << "Error, sptrsv (unmasked): matrix should have a number of rows "
+				<< "equal to the size of the input/output vector\n";
+			return grb::ILLEGAL;
+		}
+		if( grb::ncols( T ) != n ) {
+			std::cerr << "Error, sptrsv (unmasked): matrix should have a number of "
+				<< "columns equal to the size of the input/output vector\n";
+			return grb::ILLEGAL;
+		}
+		if( dense && grb::nnz( xb ) < n ) {
+			std::cerr << "Error, sptrsv (unmasked): sparse vector given in conjunction "
+				<< "with a dense descriptor\n";
+			return grb::ILLEGAL;
+		}
+
+		// check trivial
+		if( n == 0 ) { return grb::SUCCESS; }
+
+		// check dense dispatch
+		if( dense || grb::nnz( xb ) == n ) {
+			return internal::dense_unmasked_sptrsv< descr >( xb, T, forward, semiring,
+				subtraction, division, phase );
+		} else {
+			grb::Vector< IOType, reference, Coords > no_mask( 0 );
+			return internal::generic_sptrsv< descr, false, true >( xb, no_mask, T,
+				forward, semiring, subtraction, division, phase );
+		}
+	}
+
+	template<
+		Descriptor descr = descriptors::no_operation,
+		class Semiring,
+		class Subtraction,
+		class Division,
+		typename IOType, typename InputType1, typename InputType2,
+		typename Coords, typename RIT, typename CIT, typename NIT
+	>
+	RC sptrsv(
+		Vector< IOType, reference, Coords > &xb,
+		const Vector< InputType2, reference, Coords > &mask,
+		const Matrix< InputType1, reference, RIT, CIT, NIT > &T,
+		const bool forward,
+		const Semiring &semiring = Semiring(),
+		const Subtraction &subtraction = Subtraction(),
+		const Division &division = Division(),
+		const Phase &phase = EXECUTE,
+		const typename std::enable_if<
+			grb::is_semiring< Semiring >::value &&
+			grb::is_operator< Subtraction >::value &&
+			grb::is_operator< Division >::value &&
+			!grb::is_object< IOType >::value &&
+			!grb::is_object< InputType1 >::value &&
+			!grb::is_object< InputType2 >::value,
+		void >::type * const = nullptr
+	) {
+		// check if can forward
+		if( grb::size( mask ) == 0 ) {
+			return sptrsv< descr >( xb, T, forward, semiring, subtraction, division,
+				phase );
+		}
+
+		// check contract
+		constexpr bool dense = descr & descriptors::dense;
+		const size_t n = size( xb );
+		if( grb::size( mask ) != n ) {
+			std::cerr << "Error, grb::sptrsv (masked): mask and input/output vector "
+				<< "should have the same size\n";
+			return grb::ILLEGAL;
+		}
+		if( grb::nrows( T ) != n ) {
+			std::cerr << "Error, grb::sptrsv (masked): matrix should have a number of "
+				<< "rows equal to the size of the input/output vector\n";
+			return grb::ILLEGAL;
+		}
+		if( grb::ncols( T ) != n ) {
+			std::cerr << "Error, grb::sptrsv (masked): matrix should have a number of "
+				<< "columns equal to the size of the input/output vector\n";
+			return grb::ILLEGAL;
+		}
+		if( dense && grb::nnz( mask ) < n ) {
+			std::cerr << "Error, grb::sptrsv (masked): sparse mask but dense descriptor "
+				<< "was given\n";
+			return grb::ILLEGAL;
+		}
+		if( dense && grb::nnz( xb ) < n ) {
+			std::cerr << "Error, grb::sptrsv (masked): sparse input vector given but "
+				"dense descriptor was given\n";
+			return grb::ILLEGAL;
+		}
+
+		if( dense || (grb::nnz( xb ) == n && grb::nnz( mask ) == n) ) {
+			return internal::generic_sptrsv< descr, true, false >( xb, mask, T, n,
+				forward, semiring, subtraction, division, phase );
+		} else {
+			return internal::generic_sptrsv< descr, true, true >( xb, mask, T, n,
+				forward, semiring, subtraction, division, phase );
+		}
+	}
+
+	namespace internal {
+
+#ifndef _H_GRB_REFERENCE_OMP_BLAS2
 		/**
 		 * A nonzero wrapper for use with grb::eWiseLambda over matrices.
 		 *
