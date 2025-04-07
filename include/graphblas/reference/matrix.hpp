@@ -251,6 +251,85 @@ namespace grb {
 		}
 
 		template<
+			typename InputType, typename RIT, typename CIT, typename NIT
+		>
+		void allocateSptrsvSchedule(
+			grb::Matrix< InputType, reference, RIT, CIT, NIT > &A,
+			const size_t nSteps, const size_t nThreads
+		) {
+			if( A.sptrsvSchedule == nullptr ) {
+				throw std::runtime_error( "SptrsvSchedule was not initialised" );
+			}
+			auto &sptrsv = *(A.sptrsvSchedule);
+			if( sptrsv.nThreads != nThreads ) {
+				throw std::runtime_error( "SptrsvSchedule was allocated with different "
+					"nThreads" );
+			}
+			sptrsv.supersteps = nSteps;
+
+			#pragma omp parallel
+			{
+				const size_t actualNumThreads = omp_get_num_threads();
+				if( actualNumThreads != nThreads ) {
+					throw std::runtime_error( "Unexpected number of threads" );
+				}
+				const size_t s = omp_get_thread_num();
+				if( sptrsv.data[ s ] ) {
+					throw std::runtime_error( "A thread-local schedule already existed" );
+				}
+				sptrsv.alloc( s );
+			}
+		}
+
+		template<
+			typename InputType, typename RIT, typename CIT, typename NIT,
+			typename LoIt, typename HiIt
+		>
+		void setSptrsvSchedule(
+			grb::Matrix< InputType, reference, RIT, CIT, NIT > &A,
+			LoIt lo, const LoIt &lo_end, HiIt hi, const HiIt &hi_end,
+			const size_t nThreads
+		) {
+			if( A.sptrsvSchedule == nullptr ) {
+				throw std::runtime_error( "SptrsvSchedule was not initialised" );
+			}
+			auto &sptrsv = *(A.sptrsvSchedule);
+			if( sptrsv.nThreads != nThreads ) {
+				throw std::runtime_error( "SptrsvSchedule was allocated with different "
+					"nThreads" );
+			}
+
+			#pragma omp parallel
+			{
+				const size_t actualNumThreads = omp_get_num_threads();
+				if( actualNumThreads != nThreads ) {
+					throw std::runtime_error( "Unexpected number of threads" );
+				}
+				const size_t s = omp_get_thread_num();
+				NIT *__restrict__ const array = reinterpret_cast< NIT * >(sptrsv.data[ s ]);
+				assert( lo != lo_end );
+				assert( hi != hi_end );
+				size_t count = 0;
+				do {
+					const NIT l = *lo++;
+					const NIT h = *hi++;
+					assert( h >= l );
+					const NIT n = h - l;
+					if( count >= sptrsv.supersteps ) {
+						throw std::runtime_error( "Too many supersteps" );
+					}
+					*array++ = l;
+					*array++ = n;
+					(void) count++;
+					if( lo == lo_end ) { assert( hi == hi_end ); }
+				} while( lo != lo_end && hi != hi_end );
+				if( count != sptrsv.supersteps ) {
+					throw std::runtime_error( "Unexpected number of supersteps" );
+				}
+			}
+		}
+
+		template<
 			Descriptor descr,
 			bool input_dense, bool output_dense,
 			bool masked,
@@ -1242,6 +1321,24 @@ namespace grb {
 		friend const internal::SptrsvSchedule< NIT > * internal::getSptrsvData(
 			const grb::Matrix< InputType, reference, RIT, CIT, NIT > &A
 		) noexcept;
+
+		template<
+			typename InputType, typename RIT, typename CIT, typename NIT
+		>
+		friend void internal::allocateSptrsvSchedule(
+			grb::Matrix< InputType, reference, RIT, CIT, NIT > &A,
+			const size_t nSteps, const size_t nThreads
+		);
+
+		template<
+			typename InputType, typename RIT, typename CIT, typename NIT,
+			typename LoIt, typename HiIt
+		>
+		friend void internal::setSptrsvSchedule(
+			grb::Matrix< InputType, reference, RIT, CIT, NIT > &A,
+			LoIt lo, const LoIt &lo_end, HiIt hi, const HiIt &hi_end,
+			const size_t nThreads
+		);
 
 		friend const grb::Matrix<
 			D, reference,

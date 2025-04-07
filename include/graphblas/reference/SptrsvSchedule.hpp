@@ -50,27 +50,6 @@ namespace grb {
 					interpreted[ 1 ] = n;
 				}
 
-				/**
-				 * Allocates a thread-local chunk of data.
-				 *
-				 * Must be called from within the thread that will use it(!)
-				 */
-				void alloc( const size_t s ) {
-					assert( s < nThreads );
-					assert( supersteps > 0 );
-					assert( _deleters.size() >= s );
-					assert( data.size() >= s );
-					assert( data[ s ] == nullptr );
-					const grb::RC rc = utils::alloc(
-						"grb::internal::SptrsvSchedule (default constructor)",
-						"default thread-local data allocation",
-						data[ s ], supersteps * sizeof(NIT), false, _deleters[ s ]
-					);
-					if( rc != grb::SUCCESS ) {
-						throw std::bad_alloc();
-					}
-				}
-
 				/** Fixed-size buffer for realising the default schedule. */
 				NIT default_schedule[2];
 
@@ -82,10 +61,8 @@ namespace grb {
 
 				/**
 				 * The number of threads the schedule is designed for.
-				 *
-				 * \note Uses int as per OpenMP spec.
 				 */
-				int nThreads;
+				size_t nThreads;
 
 				/** One data pointer per thread. */
 				std::vector< char * > data;
@@ -135,6 +112,27 @@ namespace grb {
 					assert( nThreads != 0 );
 					if( nThreads == 1 ) {
 						assert( supersteps == 1 );
+					}
+				}
+
+				/**
+				 * Allocates a thread-local chunk of data.
+				 *
+				 * Must be called from within the thread that will use it(!)
+				 */
+				void alloc( const size_t s ) {
+					assert( s < nThreads );
+					assert( supersteps > 0 );
+					assert( _deleters.size() >= s );
+					assert( data.size() >= s );
+					assert( data[ s ] == nullptr );
+					const grb::RC rc = utils::alloc(
+						"grb::internal::SptrsvSchedule (default constructor)",
+						"default thread-local data allocation",
+						data[ s ], supersteps * sizeof(NIT), false, _deleters[ s ]
+					);
+					if( rc != grb::SUCCESS ) {
+						throw std::bad_alloc();
 					}
 				}
 
