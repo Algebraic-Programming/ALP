@@ -44,14 +44,22 @@ namespace grb {
 				/** Computes and initialises a trivial schedule. */
 				void initTrivial( const NIT n ) {
 					assert( data[ 0 ] == nullptr );
-					data[ 0 ] = &(default_schedule[0]);
+					data[ 0 ] = reinterpret_cast< char * >( &(default_schedule[0]) );
 					NIT * const interpreted = reinterpret_cast< NIT * >(data[0]);
 					interpreted[ 0 ] = 0;
 					interpreted[ 1 ] = n;
 				}
 
-				/** Allocates a thread-local chunk of data. */
+				/**
+				 * Allocates a thread-local chunk of data.
+				 *
+				 * Must be called from within the thread that will use it(!)
+				 */
 				void alloc( const size_t s ) {
+					assert( s < nThreads );
+					assert( supersteps > 0 );
+					assert( _deleters.size() >= s );
+					assert( data.size() >= s );
 					assert( data[ s ] == nullptr );
 					const grb::RC rc = utils::alloc(
 						"grb::internal::SptrsvSchedule (default constructor)",
