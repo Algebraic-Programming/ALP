@@ -44,18 +44,27 @@ namespace grb {
 				/** Computes and initialises a trivial schedule. */
 				void initTrivial( const NIT n ) {
 					assert( data[ 0 ] == nullptr );
-					const grb::RC rc = utils::alloc(
-						"grb::internal::SptrsvSchedule (default constructor)",
-						"default thread-local data allocation",
-						data[ 0 ], 2 * sizeof(NIT), false, _deleters[ 0 ]
-					);
-					if( rc != grb::SUCCESS ) {
-						throw std::bad_alloc();
-					}
+					data[ 0 ] = &(default_schedule[0]);
 					NIT * const interpreted = reinterpret_cast< NIT * >(data[0]);
 					interpreted[ 0 ] = 0;
 					interpreted[ 1 ] = n;
 				}
+
+				/** Allocates a thread-local chunk of data. */
+				void alloc( const size_t s ) {
+					assert( data[ s ] == nullptr );
+					const grb::RC rc = utils::alloc(
+						"grb::internal::SptrsvSchedule (default constructor)",
+						"default thread-local data allocation",
+						data[ s ], supersteps * sizeof(NIT), false, _deleters[ s ]
+					);
+					if( rc != grb::SUCCESS ) {
+						throw std::bad_alloc();
+					}
+				}
+
+				/** Fixed-size buffer for realising the default schedule. */
+				NIT default_schedule[2];
 
 
 			public:
@@ -99,13 +108,26 @@ namespace grb {
 				 * a single-superstep schedule that assigns all work to the first thread.
 				 */
 				SptrsvSchedule( const NIT n, const size_t T ) :
-					_deleters( T ), supersteps( 0 ), nThreads( T ), data( T )
+					_deleters( T ), supersteps( 1 ), nThreads( T ), data( T )
 				{
 					data[ 0 ] = nullptr;
 					if( T == 0 || T > std::numeric_limits< int >::max() ) {
 						throw std::runtime_error( "Invalid number of threads" );
 					}
 					initTrivial( n );
+				}
+
+				/**
+				 * Base destructor.
+				 *
+				 * Dynamic memory is freed through the #_deleters.
+				 */
+				~SptrsvSchedule() {
+					// sanity checks only
+					assert( nThreads != 0 );
+					if( nThreads == 1 ) {
+						assert( supersteps == 1 );
+					}
 				}
 
 		};
