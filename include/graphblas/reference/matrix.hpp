@@ -282,12 +282,11 @@ namespace grb {
 		}
 
 		template<
-			typename InputType, typename RIT, typename CIT, typename NIT,
-			typename LoIt, typename HiIt
+			typename InputType, typename RIT, typename CIT, typename NIT, typename It
 		>
 		void setSptrsvSchedule(
 			grb::Matrix< InputType, reference, RIT, CIT, NIT > &A,
-			LoIt lo, const LoIt &lo_end, HiIt hi, const HiIt &hi_end,
+			It bounds, const It &bounds_end,
 			const size_t nThreads
 		) {
 			if( A.sptrsvSchedule == nullptr ) {
@@ -307,12 +306,11 @@ namespace grb {
 				}
 				const size_t s = omp_get_thread_num();
 				NIT *__restrict__ const array = reinterpret_cast< NIT * >(sptrsv.data[ s ]);
-				assert( lo != lo_end );
-				assert( hi != hi_end );
+				assert( bounds != bounds_end );
 				size_t count = 0;
 				do {
-					const NIT l = (*lo++)[s];
-					const NIT h = (*hi++)[s];
+					const NIT l = (*bounds)[s][0];
+					const NIT h = (*bounds)[s][1];
 					assert( h >= l );
 					const NIT n = h - l;
 					if( count >= sptrsv.supersteps ) {
@@ -321,8 +319,8 @@ namespace grb {
 					*array++ = l;
 					*array++ = n;
 					(void) count++;
-					if( lo == lo_end ) { assert( hi == hi_end ); }
-				} while( lo != lo_end && hi != hi_end );
+					(void) bounds++;
+				} while( bounds != bounds_end );
 				if( count != sptrsv.supersteps ) {
 					throw std::runtime_error( "Unexpected number of supersteps" );
 				}
