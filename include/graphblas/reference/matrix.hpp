@@ -305,7 +305,8 @@ namespace grb {
 					throw std::runtime_error( "Unexpected number of threads" );
 				}
 				const size_t s = omp_get_thread_num();
-				NIT *__restrict__ const array = reinterpret_cast< NIT * >(sptrsv.data[ s ]);
+				// get buffer as an array of NIT, which we will write to in one pass
+				NIT *__restrict__ array = reinterpret_cast< NIT * >(sptrsv.data[ s ]);
 				assert( bounds != bounds_end );
 				size_t count = 0;
 				do {
