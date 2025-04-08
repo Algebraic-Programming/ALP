@@ -1329,12 +1329,11 @@ namespace grb {
 		);
 
 		template<
-			typename InputType, typename RIT, typename CIT, typename NIT,
-			typename LoIt, typename HiIt
+			typename InputType, typename RIT, typename CIT, typename NIT, typename It
 		>
 		friend void internal::setSptrsvSchedule(
 			grb::Matrix< InputType, reference, RIT, CIT, NIT > &A,
-			LoIt lo, const LoIt &lo_end, HiIt hi, const HiIt &hi_end,
+			It bounds, const It &bounds_end,
 			const size_t nThreads
 		);
 
