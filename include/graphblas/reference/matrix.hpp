@@ -311,8 +311,8 @@ namespace grb {
 				assert( hi != hi_end );
 				size_t count = 0;
 				do {
-					const NIT l = *lo++;
-					const NIT h = *hi++;
+					const NIT l = (*lo++)[s];
+					const NIT h = (*hi++)[s];
 					assert( h >= l );
 					const NIT n = h - l;
 					if( count >= sptrsv.supersteps ) {
