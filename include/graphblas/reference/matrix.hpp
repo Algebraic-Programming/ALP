@@ -255,22 +255,25 @@ namespace grb {
 		>
 		void allocateSptrsvSchedule(
 			grb::Matrix< InputType, reference, RIT, CIT, NIT > &A,
-			const size_t nSteps, const size_t nThreads
+			const size_t nSteps, const NIT n, const size_t nThreads
 		) {
-			if( A.sptrsvSchedule == nullptr ) {
-				throw std::runtime_error( "SptrsvSchedule was not initialised" );
+			if( A.sptrsvSchedule != nullptr ) {
+				throw std::runtime_error( "SptrsvSchedule was already initialised" );
 			}
+			A.sptrsvSchedule = new SptrsvSchedule<NIT>(n, nThreads);
+
 			auto &sptrsv = *(A.sptrsvSchedule);
-			if( sptrsv.nThreads != nThreads ) {
-				throw std::runtime_error( "SptrsvSchedule was allocated with different "
-					"nThreads" );
-			}
+
 			sptrsv.supersteps = nSteps;
+
+			// disable default trivial schedule
+			sptrsv.data[ 0 ] = nullptr;
 
 			#pragma omp parallel
 			{
 				const size_t actualNumThreads = omp_get_num_threads();
-				if( actualNumThreads != nThreads ) {
+
+				if( actualNumThreads < nThreads ) {
 					throw std::runtime_error( "Unexpected number of threads" );
 				}
 				const size_t s = omp_get_thread_num();
@@ -306,6 +309,7 @@ namespace grb {
 				}
 				const size_t s = omp_get_thread_num();
 				// get buffer as an array of NIT, which we will write to in one pass
+				assert( sptrsv.data[ s ] != nullptr );
 				NIT *__restrict__ array = reinterpret_cast< NIT * >(sptrsv.data[ s ]);
 				assert( bounds != bounds_end );
 				size_t count = 0;
@@ -1326,7 +1330,7 @@ namespace grb {
 		>
 		friend void internal::allocateSptrsvSchedule(
 			grb::Matrix< InputType, reference, RIT, CIT, NIT > &A,
-			const size_t nSteps, const size_t nThreads
+			const size_t nSteps,  const NIT n, const size_t nThreads
 		);
 
 		template<

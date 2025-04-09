@@ -2368,8 +2368,9 @@ namespace grb {
 			// get SpTrsv schedule
 			const SptrsvSchedule< NIT > *sptrsvSchedule_p =
 				internal::getSptrsvData( T );
+			const SptrsvSchedule< NIT > default_schedule (n);
 			const SptrsvSchedule< NIT > &sptrsv = sptrsvSchedule_p == nullptr ?
-				SptrsvSchedule< NIT >( n ) : *sptrsvSchedule_p;
+				default_schedule : *sptrsvSchedule_p;
 
 			// only execute and resize are supported
 			assert( phase == grb::EXECUTE );

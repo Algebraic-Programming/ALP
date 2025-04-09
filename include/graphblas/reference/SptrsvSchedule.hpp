@@ -53,6 +53,16 @@ namespace grb {
 				/** Fixed-size buffer for realising the default schedule. */
 				NIT default_schedule[2];
 
+				void moveImpl( SptrsvSchedule && toMove ) {
+					_deleters = std::move( toMove._deleters );
+					default_schedule = std::move( toMove.default_schedule );
+					supersteps = toMove.supersteps;
+					nThreads = toMove.nThreads;
+					data = std::move( toMove.data );
+					toMove.supersteps = 0;
+					toMove.nThreads = 0;
+				}
+
 
 			public:
 
@@ -66,6 +76,15 @@ namespace grb {
 
 				/** One data pointer per thread. */
 				std::vector< char * > data;
+
+				SptrsvSchedule( SptrsvSchedule && toMove ) {
+					moveImpl( toMove );
+				}
+
+				SptrsvSchedule& operator=( SptrsvSchedule &&toMove ) {
+					moveImpl( toMove );
+					return *this;
+				}
 
 				/**
 				 * Base constructor.
@@ -93,9 +112,9 @@ namespace grb {
 				 * a single-superstep schedule that assigns all work to the first thread.
 				 */
 				SptrsvSchedule( const NIT n, const size_t T ) :
-					_deleters( T ), supersteps( 1 ), nThreads( T ), data( T )
+					_deleters( T ), supersteps( 1 ), nThreads( T ), data( T , nullptr )
 				{
-					data[ 0 ] = nullptr;
+					//data[ 0 ] = nullptr;
 					if( T == 0 || T > std::numeric_limits< int >::max() ) {
 						throw std::runtime_error( "Invalid number of threads" );
 					}
@@ -129,7 +148,7 @@ namespace grb {
 					const grb::RC rc = utils::alloc(
 						"grb::internal::SptrsvSchedule (default constructor)",
 						"default thread-local data allocation",
-						data[ s ], supersteps * sizeof(NIT), false, _deleters[ s ]
+						data[ s ], 2 * supersteps * sizeof(NIT), false, _deleters[ s ]
 					);
 					if( rc != grb::SUCCESS ) {
 						throw std::bad_alloc();
