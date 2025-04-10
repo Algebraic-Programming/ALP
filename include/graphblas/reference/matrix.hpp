@@ -359,7 +359,7 @@ namespace grb {
 						*array++ = l;
 						*array++ = n;
 						(void) ++nRanges;
-						assert( nRanges < sptrsv.nRanges[ s ] );
+						assert( nRanges <= sptrsv.nRanges[ s ] );
 					}
 					// store the number of ranges in the end array
 					assert( count < sptrsv.supersteps );
