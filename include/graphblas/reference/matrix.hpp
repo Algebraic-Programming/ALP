@@ -326,7 +326,6 @@ namespace grb {
 				}
 				const size_t s = omp_get_thread_num();
 				// get buffer as an array of NIT, which we will write to in one pass
-				assert( sptrsv.data[ s ] != nullptr );
 				NIT *__restrict__ array = reinterpret_cast< NIT * >(sptrsv.data[ s ]);
 				// get the number of ranges for a given superstep at this thread that this
 				// function should populate
