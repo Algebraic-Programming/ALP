@@ -335,29 +335,27 @@ namespace grb {
 				// start ingestion
 				size_t count = 0;
 				do {
-					assert( bounds->size() <= nThreads );
+					assert( bounds->size() == nThreads );
 					size_t nRanges = 0;
-					if( bounds->size() >= s ) {
-						// get this superstep's and this thread's vector v[s]
-						const auto &v = (*bounds)[s];
-						// go range-by-range
-						for( auto it = v.cbegin(); it != v.cend(); ++it ) {
-							// we have a range, parse it
-							const NIT l = *it++;
-							assert( it != v.cend() );
-							const NIT h = *it + 1;
-							assert( h >= l );
-							const NIT n = h - l;
-							if( count >= sptrsv.supersteps ) {
-								throw std::runtime_error( "Too many supersteps" );
-							}
-							// store it
-							*array++ = l;
-							*array++ = n;
-							// TODO we do not / cannot double-check nRanges with the data we have
-							//      stored at the moment. This may potentially by fixed (FIXME).
-							(void) ++nRanges;
+					// get this superstep's and this thread's vector v[s]
+					const auto &v = (*bounds)[s];
+					// go range-by-range
+					for( auto it = v.cbegin(); it != v.cend(); ++it ) {
+						// we have a range, parse it
+						const NIT l = *it++;
+						assert( it != v.cend() );
+						const NIT h = *it + 1;
+						assert( h >= l );
+						const NIT n = h - l;
+						if( count >= sptrsv.supersteps ) {
+							throw std::runtime_error( "Too many supersteps" );
 						}
+						// store it
+						*array++ = l;
+						*array++ = n;
+						// TODO we do not / cannot double-check nRanges with the data we have
+						//      stored at the moment. This may potentially by fixed (FIXME).
+						(void) ++nRanges;
 					}
 					// store the number of ranges in the end array
 					*end++ = nRanges;
