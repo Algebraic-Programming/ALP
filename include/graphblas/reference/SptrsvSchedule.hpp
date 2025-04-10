@@ -194,14 +194,14 @@ namespace grb {
 							"grb::internal::SptrsvSchedule (default constructor)",
 							"default thread-local data allocation, variant I",
 							data[ s ], 2 * nRanges_in * sizeof(NIT), false, _deleters[ s ],
-							endPositions[ s ], supersteps * sizeof( NIT ), false, _deleters[ s + T ]
+							endPositions[ s ], supersteps * sizeof( NIT ), false, _deleters[ s + nThreads ]
 						);
 					} else {
 						data[ s ] = nullptr;
 						rc = utils::alloc(
 							"grb::internal::SptrsvSchedule (default constructor)",
 							"default thread-local data allocation, variant II",
-							endPositions[ s ], supersteps * sizeof( NIT ), false, _deleters[ s + T ]
+							endPositions[ s ], supersteps * sizeof( NIT ), false, _deleters[ s + nThreads ]
 						);
 					}
 					if( rc != grb::SUCCESS ) {
