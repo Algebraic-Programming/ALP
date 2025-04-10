@@ -291,6 +291,19 @@ namespace grb {
 			}
 		}
 
+		/**
+		 * This schedule ingestion method expects the schedule as an iterator-pair
+		 * over a container of doubly-nested vectors. Each such vector v iterated
+		 * over, corresponds to a superstep. For a given superstep's v, v[s][k] has
+		 * that s indicates the thread ID and k indicates the floor( k / 2 )-th range
+		 * to be processed in that superstep and at that thread. Even-numbered k
+		 * indicate lower bounds of the range, while odd k indicate their upper
+		 * bounds.
+		 *
+		 * \note This is not an ideal way to pass around schedules, as it assumes the
+		 *       container element types are doubly-nested STL vectors-- it is hence
+		 *       not a generic approach.
+		 */
 		template<
 			typename InputType, typename RIT, typename CIT, typename NIT, typename It
 		>
@@ -318,20 +331,41 @@ namespace grb {
 				// get buffer as an array of NIT, which we will write to in one pass
 				assert( sptrsv.data[ s ] != nullptr );
 				NIT *__restrict__ array = reinterpret_cast< NIT * >(sptrsv.data[ s ]);
+				// get the number of ranges for a given superstep at this thread that this
+				// function should populate
+				NIT *__restrict__ end = reinterpret_cast< NIT * >(sptrsv.endPositions[ s ]);
+				// dynamic assertion: there should be at least one superstep
 				assert( bounds != bounds_end );
+				// start ingestion
 				size_t count = 0;
 				do {
-					const NIT l = (*bounds)[s][0];
-					const NIT h = (*bounds)[s][1];
-					assert( h >= l );
-					const NIT n = h - l;
-					if( count >= sptrsv.supersteps ) {
-						throw std::runtime_error( "Too many supersteps" );
+					assert( bounds->size() == nThreads );
+					// get this superstep's and this thread's vector v[s]
+					const auto &v = (*bounds)[s];
+					// go range-by-range
+					size_t nRanges = 0;
+					for( auto it = v.cbegin(); it != v.cend(); ++it ) {
+						// we have a range, parse it
+						const NIT l = *it++;
+						assert( it != v.cend() );
+						const NIT h = *it + 1;
+						assert( h >= l );
+						const NIT n = h - l;
+						if( count >= sptrsv.supersteps ) {
+							throw std::runtime_error( "Too many supersteps" );
+						}
+						// store it
+						*array++ = l;
+						*array++ = n;
+						// TODO we do not / cannot double-check nRanges with the data we have
+						//      stored at the moment. This may potentially by fixed (FIXME).
+						(void) ++nRanges;
 					}
-					*array++ = l;
-					*array++ = n;
-					(void) count++;
-					(void) bounds++;
+					// store the number of ranges in the end array
+					*end++ = nRanges;
+					// forward to the next superstep
+					(void) ++count;
+					(void) ++bounds;
 				} while( bounds != bounds_end );
 				if( count != sptrsv.supersteps ) {
 					throw std::runtime_error( "Unexpected number of supersteps" );
