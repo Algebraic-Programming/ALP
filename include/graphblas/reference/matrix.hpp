@@ -275,16 +275,15 @@ namespace grb {
 			#pragma omp parallel
 			{
 				auto localIt = nRanges;
-				std::advance( localIt, s );
+				const size_t s = omp_get_thread_num();
 				const size_t actualNumThreads = omp_get_num_threads();
-
 				if( actualNumThreads < nThreads ) {
 					throw std::runtime_error( "Unexpected number of threads" );
 				}
+				std::advance( localIt, s );
 				if( *localIt <= 0 ) {
 					throw std::runtime_error( "Unexpected number of ranges" );
 				}
-				const size_t s = omp_get_thread_num();
 				if( sptrsv.data[ s ] || sptrsv.endPositions[ s ] ) {
 					throw std::runtime_error( "A thread-local schedule already existed" );
 				}

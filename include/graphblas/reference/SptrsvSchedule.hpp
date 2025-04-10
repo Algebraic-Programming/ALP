@@ -60,7 +60,7 @@ namespace grb {
 					default_schedule[ 2 ] = 1;
 					// set pointers to trivial schedule
 					data[ 0 ] = reinterpret_cast< char * >( &(default_schedule[0]) );
-					endPostions[ 0 ] = reinterpret_cast< char * >( &(default_schedule[2]) );
+					endPositions[ 0 ] = reinterpret_cast< char * >( &(default_schedule[2]) );
 					// verify trivial schedule
 #ifndef NDEBUG
 					{
@@ -104,7 +104,7 @@ namespace grb {
 				std::vector< char * > data;
 
 				/** One end-position array per thread. */
-				std::vector< char * > endPostions;
+				std::vector< char * > endPositions;
 
 				/** Move constructor. */
 				SptrsvSchedule( SptrsvSchedule &&toMove ) {
