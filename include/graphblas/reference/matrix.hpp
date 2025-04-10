@@ -306,7 +306,7 @@ namespace grb {
 		>
 		void setSptrsvSchedule(
 			grb::Matrix< InputType, reference, RIT, CIT, NIT > &A,
-			It bounds, const It &bounds_end,
+			const It &bounds_begin, const It &bounds_end,
 			const size_t nThreads
 		) {
 			if( A.sptrsvSchedule == nullptr ) {
@@ -320,6 +320,7 @@ namespace grb {
 
 			#pragma omp parallel
 			{
+				It bounds = bounds_begin;
 				const size_t actualNumThreads = omp_get_num_threads();
 				if( actualNumThreads != nThreads ) {
 					throw std::runtime_error( "Unexpected number of threads" );
