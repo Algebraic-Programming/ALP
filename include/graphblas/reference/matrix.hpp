@@ -1378,7 +1378,7 @@ namespace grb {
 		>
 		friend void internal::setSptrsvSchedule(
 			grb::Matrix< InputType, reference, RIT, CIT, NIT > &A,
-			It bounds, const It &bounds_end,
+			const It &bounds, const It &bounds_end,
 			const size_t nThreads
 		);
 
