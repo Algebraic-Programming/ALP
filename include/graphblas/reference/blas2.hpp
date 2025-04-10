@@ -2384,6 +2384,7 @@ namespace grb {
 					reinterpret_cast< const NIT * >(sptrsv.data[ s ]);
 				const NIT *__restrict__ const end =
 					reinterpret_cast< const NIT * >(sptrsv.endPositions[ s ]);
+				assert( end != nullptr );
 				for( size_t i = 0; i < sptrsv.supersteps; ++i ) {
 					for( size_t k = 0; k < end[ i ]; ++k ) {
 						const size_t lo = static_cast< size_t >( *data++ );

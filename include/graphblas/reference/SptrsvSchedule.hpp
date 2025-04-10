@@ -179,12 +179,22 @@ namespace grb {
 					assert( data.size() >= s );
 					assert( data[ s ] == nullptr );
 					assert( endPositions[ s ] == nullptr );
-					const grb::RC rc = utils::alloc(
-						"grb::internal::SptrsvSchedule (default constructor)",
-						"default thread-local data allocation",
-						data[ s ], 2 * nRanges * sizeof(NIT), false, _deleters[ s ],
-						endPositions[ s ], supersteps * sizeof( NIT ), false, _deleters[ 2 * s ]
-					);
+					grb::RC rc = grb::SUCCESS;
+					if( nRanges > 0 ) {
+						rc = utils::alloc(
+							"grb::internal::SptrsvSchedule (default constructor)",
+							"default thread-local data allocation, variant I",
+							data[ s ], 2 * nRanges * sizeof(NIT), false, _deleters[ s ],
+							endPositions[ s ], supersteps * sizeof( NIT ), false, _deleters[ 2 * s ]
+						);
+					} else {
+						data[ s ] = nullptr;
+						rc = utils::alloc(
+							"grb::internal::SptrsvSchedule (default constructor)",
+							"default thread-local data allocation, variant II",
+							endPositions[ s ], supersteps * sizeof( NIT ), false, _deleters[ 2 * s ]
+						);
+					}
 					if( rc != grb::SUCCESS ) {
 						throw std::bad_alloc();
 					}

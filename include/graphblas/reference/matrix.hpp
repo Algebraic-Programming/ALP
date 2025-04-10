@@ -281,9 +281,6 @@ namespace grb {
 					throw std::runtime_error( "Unexpected number of threads" );
 				}
 				std::advance( localIt, s );
-				if( *localIt <= 0 ) {
-					throw std::runtime_error( "Unexpected number of ranges" );
-				}
 				if( sptrsv.data[ s ] || sptrsv.endPositions[ s ] ) {
 					throw std::runtime_error( "A thread-local schedule already existed" );
 				}
