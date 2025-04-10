@@ -1367,11 +1367,13 @@ namespace grb {
 		) noexcept;
 
 		template<
-			typename InputType, typename RIT, typename CIT, typename NIT
+			typename InputType, typename RIT, typename CIT, typename NIT,
+			typename NumRangesIt
 		>
 		friend void internal::allocateSptrsvSchedule(
 			grb::Matrix< InputType, reference, RIT, CIT, NIT > &A,
-			const size_t nSteps,  const NIT n, const size_t nThreads
+			const NIT n, const size_t nThreads, const size_t nSteps,
+			const NumRangesIt nRanges, const NumRangesIt nRanges_end
 		);
 
 		template<
