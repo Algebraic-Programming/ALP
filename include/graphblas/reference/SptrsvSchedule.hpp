@@ -41,24 +41,50 @@ namespace grb {
 				/** One deleter for each chunk of thread-local data. */
 				std::vector< utils::AutoDeleter< char > > _deleters;
 
+				/**
+				 * Fixed-size buffer for realising the default schedule.
+				 *
+				 * The first two positions are reserved for the range of the default
+				 * schedule, while the last position is reserved for the end-position of
+				 * the default schedule.
+				 */
+				NIT default_schedule[ 3 ];
+
 				/** Computes and initialises a trivial schedule. */
 				void initTrivial( const NIT n ) {
+					// dynamic sanity check
 					assert( data[ 0 ] == nullptr );
+					// set trivial schedule
+					default_schedule[ 0 ] = 0;
+					default_schedule[ 1 ] = n;
+					default_schedule[ 2 ] = 1;
+					// set pointers to trivial schedule
 					data[ 0 ] = reinterpret_cast< char * >( &(default_schedule[0]) );
-					NIT * const interpreted = reinterpret_cast< NIT * >(data[0]);
-					interpreted[ 0 ] = 0;
-					interpreted[ 1 ] = n;
+					endPostions[ 0 ] = reinterpret_cast< char * >( &(default_schedule[2]) );
+					// verify trivial schedule
+#ifndef NDEBUG
+					{
+						NIT * const interpreted = reinterpret_cast< NIT * >(data[0]);
+						assert( interpreted[ 0 ] == 0 );
+						assert( interpreted[ 1 ] == n );
+					}
+					{
+						NIT * const interpreted = reinterpret_cast< NIT * >(endPositions[0]);
+						assert( *interpreted == 1 );
+					}
+#endif
 				}
 
-				/** Fixed-size buffer for realising the default schedule. */
-				NIT default_schedule[2];
-
-				void moveImpl( SptrsvSchedule && toMove ) {
+				/**
+				 * Implementation of move construction and assignment.
+				 */
+				void moveImpl( SptrsvSchedule &&toMove ) {
 					_deleters = std::move( toMove._deleters );
 					default_schedule = std::move( toMove.default_schedule );
 					supersteps = toMove.supersteps;
 					nThreads = toMove.nThreads;
 					data = std::move( toMove.data );
+					endPositions = std::move( toMove.endPositions );
 					toMove.supersteps = 0;
 					toMove.nThreads = 0;
 				}
@@ -77,13 +103,12 @@ namespace grb {
 				/** One data pointer per thread. */
 				std::vector< char * > data;
 
-				SptrsvSchedule( SptrsvSchedule && toMove ) {
-					moveImpl( toMove );
-				}
+				/** One end-position array per thread. */
+				std::vector< char * > endPostions;
 
-				SptrsvSchedule& operator=( SptrsvSchedule &&toMove ) {
+				/** Move constructor. */
+				SptrsvSchedule( SptrsvSchedule &&toMove ) {
 					moveImpl( toMove );
-					return *this;
 				}
 
 				/**
@@ -96,9 +121,11 @@ namespace grb {
 				 * first (and only) thread.
 				 */
 				SptrsvSchedule( const NIT n ) :
-					_deleters( 1 ), supersteps( 1 ), nThreads( 1 ), data( 1 )
+					_deleters( 1 ), supersteps( 1 ), nThreads( 1 ),
+					data( 1 ), endPositions( 1 )
 				{
 					data[ 0 ] = nullptr;
+					endPositions[ 0 ] = nullptr;
 					initTrivial( n );
 				}
 
@@ -112,9 +139,9 @@ namespace grb {
 				 * a single-superstep schedule that assigns all work to the first thread.
 				 */
 				SptrsvSchedule( const NIT n, const size_t T ) :
-					_deleters( T ), supersteps( 1 ), nThreads( T ), data( T , nullptr )
+					_deleters( 2 * T ), supersteps( 1 ), nThreads( T ),
+					data( T, nullptr ), endPositions( T, nullptr )
 				{
-					//data[ 0 ] = nullptr;
 					if( T == 0 || T > std::numeric_limits< int >::max() ) {
 						throw std::runtime_error( "Invalid number of threads" );
 					}
@@ -134,21 +161,29 @@ namespace grb {
 					}
 				}
 
+				/** Move assignment. */
+				SptrsvSchedule& operator=( SptrsvSchedule &&toMove ) {
+					moveImpl( toMove );
+					return *this;
+				}
+
 				/**
 				 * Allocates a thread-local chunk of data.
 				 *
 				 * Must be called from within the thread that will use it(!)
 				 */
-				void alloc( const size_t s ) {
+				void alloc( const size_t s, const size_t nRanges ) {
 					assert( s < nThreads );
 					assert( supersteps > 0 );
 					assert( _deleters.size() >= s );
 					assert( data.size() >= s );
 					assert( data[ s ] == nullptr );
+					assert( endPositions[ s ] == nullptr );
 					const grb::RC rc = utils::alloc(
 						"grb::internal::SptrsvSchedule (default constructor)",
 						"default thread-local data allocation",
-						data[ s ], 2 * supersteps * sizeof(NIT), false, _deleters[ s ]
+						data[ s ], 2 * nRanges * sizeof(NIT), false, _deleters[ s ],
+						endPositions[ s ], supersteps * sizeof( NIT ), false, _deleters[ 2 * s ]
 					);
 					if( rc != grb::SUCCESS ) {
 						throw std::bad_alloc();

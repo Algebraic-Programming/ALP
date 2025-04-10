@@ -251,11 +251,13 @@ namespace grb {
 		}
 
 		template<
-			typename InputType, typename RIT, typename CIT, typename NIT
+			typename InputType, typename RIT, typename CIT, typename NIT,
+			typename NumRangesIt
 		>
 		void allocateSptrsvSchedule(
 			grb::Matrix< InputType, reference, RIT, CIT, NIT > &A,
-			const size_t nSteps, const NIT n, const size_t nThreads
+			const NIT n, const size_t nThreads, const size_t nSteps,
+			const NumRangesIt nRanges, const NumRangesIt nRanges_end
 		) {
 			if( A.sptrsvSchedule != nullptr ) {
 				throw std::runtime_error( "SptrsvSchedule was already initialised" );
@@ -268,19 +270,25 @@ namespace grb {
 
 			// disable default trivial schedule
 			sptrsv.data[ 0 ] = nullptr;
+			sptrsv.endPositions[ 0 ] = nullptr;
 
 			#pragma omp parallel
 			{
+				auto localIt = nRanges;
+				std::advance( localIt, s );
 				const size_t actualNumThreads = omp_get_num_threads();
 
 				if( actualNumThreads < nThreads ) {
 					throw std::runtime_error( "Unexpected number of threads" );
 				}
+				if( *localIt <= 0 ) {
+					throw std::runtime_error( "Unexpected number of ranges" );
+				}
 				const size_t s = omp_get_thread_num();
-				if( sptrsv.data[ s ] ) {
+				if( sptrsv.data[ s ] || sptrsv.endPositions[ s ] ) {
 					throw std::runtime_error( "A thread-local schedule already existed" );
 				}
-				sptrsv.alloc( s );
+				sptrsv.alloc( s, *localIt );
 			}
 		}
 
