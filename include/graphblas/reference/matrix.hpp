@@ -356,10 +356,10 @@ namespace grb {
 							throw std::runtime_error( "Too many supersteps" );
 						}
 						// store it
+						assert( nRanges < sptrsv.nRanges[ s ] );
 						*array++ = l;
 						*array++ = n;
 						(void) ++nRanges;
-						assert( nRanges <= sptrsv.nRanges[ s ] );
 					}
 					// store the number of ranges in the end array
 					assert( count < sptrsv.supersteps );
