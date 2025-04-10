@@ -58,6 +58,7 @@ namespace grb {
 					default_schedule[ 0 ] = 0;
 					default_schedule[ 1 ] = n;
 					default_schedule[ 2 ] = 1;
+					nRanges[ 0 ] = 1;
 					// set pointers to trivial schedule
 					data[ 0 ] = reinterpret_cast< char * >( &(default_schedule[0]) );
 					endPositions[ 0 ] = reinterpret_cast< char * >( &(default_schedule[2]) );
@@ -85,6 +86,7 @@ namespace grb {
 					nThreads = toMove.nThreads;
 					data = std::move( toMove.data );
 					endPositions = std::move( toMove.endPositions );
+					nRanges = std::move( toMove.nRanges );
 					toMove.supersteps = 0;
 					toMove.nThreads = 0;
 				}
@@ -106,6 +108,9 @@ namespace grb {
 				/** One end-position array per thread. */
 				std::vector< char * > endPositions;
 
+				/** The total number of ranges per thread. */
+				std::vector< NIT > nRanges;
+
 				/** Move constructor. */
 				SptrsvSchedule( SptrsvSchedule &&toMove ) {
 					moveImpl( toMove );
@@ -122,7 +127,7 @@ namespace grb {
 				 */
 				SptrsvSchedule( const NIT n ) :
 					_deleters( 1 ), supersteps( 1 ), nThreads( 1 ),
-					data( 1 ), endPositions( 1 )
+					data( 1 ), endPositions( 1 ), nRanges( 1 )
 				{
 					data[ 0 ] = nullptr;
 					endPositions[ 0 ] = nullptr;
@@ -140,7 +145,7 @@ namespace grb {
 				 */
 				SptrsvSchedule( const NIT n, const size_t T ) :
 					_deleters( 2 * T ), supersteps( 1 ), nThreads( T ),
-					data( T, nullptr ), endPositions( T, nullptr )
+					data( T, nullptr ), endPositions( T, nullptr ), nRanges( T, 0 )
 				{
 					if( T == 0 || T > std::numeric_limits< int >::max() ) {
 						throw std::runtime_error( "Invalid number of threads" );
@@ -172,19 +177,23 @@ namespace grb {
 				 *
 				 * Must be called from within the thread that will use it(!)
 				 */
-				void alloc( const size_t s, const size_t nRanges ) {
+				void alloc( const size_t s, const size_t nRanges_in ) {
 					assert( s < nThreads );
 					assert( supersteps > 0 );
 					assert( _deleters.size() >= s );
 					assert( data.size() >= s );
 					assert( data[ s ] == nullptr );
 					assert( endPositions[ s ] == nullptr );
+					if( nRanges[ s ] != nRanges_in ) {
+						throw std::runtime_error( "Given nRanges differs from the one given at "
+							"allocation time" );
+					}
 					grb::RC rc = grb::SUCCESS;
-					if( nRanges > 0 ) {
+					if( nRanges_in > 0 ) {
 						rc = utils::alloc(
 							"grb::internal::SptrsvSchedule (default constructor)",
 							"default thread-local data allocation, variant I",
-							data[ s ], 2 * nRanges * sizeof(NIT), false, _deleters[ s ],
+							data[ s ], 2 * nRanges_in * sizeof(NIT), false, _deleters[ s ],
 							endPositions[ s ], supersteps * sizeof( NIT ), false, _deleters[ 2 * s ]
 						);
 					} else {

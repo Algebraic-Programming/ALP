@@ -267,6 +267,10 @@ namespace grb {
 			auto &sptrsv = *(A.sptrsvSchedule);
 
 			sptrsv.supersteps = nSteps;
+			{
+				std::vector< NIT > tmp( nRanges, nRanges_end );
+				sptrsv.nRanges = std::move( tmp );
+			}
 
 			// disable default trivial schedule
 			sptrsv.data[ 0 ] = nullptr;
@@ -354,11 +358,11 @@ namespace grb {
 						// store it
 						*array++ = l;
 						*array++ = n;
-						// TODO we do not / cannot double-check nRanges with the data we have
-						//      stored at the moment. This may potentially by fixed (FIXME).
 						(void) ++nRanges;
+						assert( nRanges < sptrsv.nRanges[ s ] );
 					}
 					// store the number of ranges in the end array
+					assert( count < sptrsv.supersteps );
 					*end++ = nRanges;
 					// forward to the next superstep
 					(void) ++count;
