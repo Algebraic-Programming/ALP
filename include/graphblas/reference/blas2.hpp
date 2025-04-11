@@ -2377,6 +2377,7 @@ namespace grb {
 			if( sptrsv.is_simple ) {
 				#pragma omp parallel num_threads(sptrsv.nThreads)
 				{
+					grb::RC local_rc = grb::SUCCESS;
 					const int s = omp_get_thread_num();
 					const NIT *__restrict__ data =
 						reinterpret_cast< const NIT * >(sptrsv.data[ s ]);
@@ -2386,14 +2387,21 @@ namespace grb {
 						const size_t no = static_cast< size_t >( *data++ );
 						assert( lo < n );
 						assert( no + lo <= n );
-						ret = ret ? ret : dense_unmasked_sequential_sptrsv< descr, true >(
-							v_raw, T, lo, no, forward, semiring, subtraction, division, phase );
+						local_rc = local_rc
+							? local_rc
+							: dense_unmasked_sequential_sptrsv< descr, true >(
+								v_raw, T, lo, no, forward, semiring, subtraction, division, phase );
 						#pragma omp barrier
+					}
+					if( local_rc != grb::SUCCESS ) {
+						#pragma omp atomic write
+						ret = local_rc;
 					}
 				}
 			} else {
 				#pragma omp parallel num_threads(sptrsv.nThreads)
 				{
+					grb::RC local_rc = grb::SUCCESS;
 					const int s = omp_get_thread_num();
 					const NIT *__restrict__ data =
 						reinterpret_cast< const NIT * >(sptrsv.data[ s ]);
@@ -2406,10 +2414,16 @@ namespace grb {
 							const size_t no = static_cast< size_t >( *data++ );
 							assert( lo < n );
 							assert( no + lo <= n );
-							ret = ret ? ret : dense_unmasked_sequential_sptrsv< descr, true >(
-								v_raw, T, lo, no, forward, semiring, subtraction, division, phase );
+							local_rc = local_rc
+								? local_rc
+								: dense_unmasked_sequential_sptrsv< descr, true >(
+									v_raw, T, lo, no, forward, semiring, subtraction, division, phase );
 						}
 						#pragma omp barrier
+					}
+					if( local_rc != grb::SUCCESS ) {
+						#pragma omp atomic write
+						ret = local_rc;
 					}
 				}
 			}
