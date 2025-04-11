@@ -2286,7 +2286,7 @@ namespace grb {
 			// switch forward or backward solve
 			if( forward ) {
 				const auto &crs = internal::getCRS( T );
-				if( maybe_offset ) {
+				if( !maybe_offset ) {
 					for( size_t i = 0; i < n; ++i ) {
 						IOType divBy = semiring.template getZero< IOType >();
 						assert( crs.col_start[ i ] <= crs.col_start[ i + 1 ] );
