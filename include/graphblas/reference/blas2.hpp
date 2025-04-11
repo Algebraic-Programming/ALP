@@ -2373,24 +2373,44 @@ namespace grb {
 
 			// start parallel section
 			grb::RC ret = grb::SUCCESS;
-			#pragma omp parallel num_threads(sptrsv.nThreads)
-			{
-				const int s = omp_get_thread_num();
-				const NIT *__restrict__ data =
-					reinterpret_cast< const NIT * >(sptrsv.data[ s ]);
-				const NIT *__restrict__ const end =
-					reinterpret_cast< const NIT * >(sptrsv.endPositions[ s ]);
-				assert( end != nullptr );
-				for( size_t i = 0; i < sptrsv.supersteps; ++i ) {
-					for( size_t k = 0; k < end[ i ]; ++k ) {
+
+			if( sptrsv.is_simple ) {
+				#pragma omp parallel num_threads(sptrsv.nThreads)
+				{
+					const int s = omp_get_thread_num();
+					const NIT *__restrict__ data =
+						reinterpret_cast< const NIT * >(sptrsv.data[ s ]);
+					assert( data != nullptr );
+					for( size_t i = 0; i < sptrsv.supersteps; ++i ) {
 						const size_t lo = static_cast< size_t >( *data++ );
 						const size_t no = static_cast< size_t >( *data++ );
 						assert( lo < n );
 						assert( no + lo <= n );
 						ret = ret ? ret : dense_unmasked_sequential_sptrsv< descr, true >(
 							v_raw, T, lo, no, forward, semiring, subtraction, division, phase );
+						#pragma omp barrier
 					}
-					#pragma omp barrier
+				}
+			} else {
+				#pragma omp parallel num_threads(sptrsv.nThreads)
+				{
+					const int s = omp_get_thread_num();
+					const NIT *__restrict__ data =
+						reinterpret_cast< const NIT * >(sptrsv.data[ s ]);
+					const NIT *__restrict__ const end =
+						reinterpret_cast< const NIT * >(sptrsv.endPositions[ s ]);
+					assert( end != nullptr );
+					for( size_t i = 0; i < sptrsv.supersteps; ++i ) {
+						for( size_t k = 0; k < end[ i ]; ++k ) {
+							const size_t lo = static_cast< size_t >( *data++ );
+							const size_t no = static_cast< size_t >( *data++ );
+							assert( lo < n );
+							assert( no + lo <= n );
+							ret = ret ? ret : dense_unmasked_sequential_sptrsv< descr, true >(
+								v_raw, T, lo, no, forward, semiring, subtraction, division, phase );
+						}
+						#pragma omp barrier
+					}
 				}
 			}
 

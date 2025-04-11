@@ -74,6 +74,8 @@ namespace grb {
 						assert( *interpreted == 1 );
 					}
 #endif
+					// note that this is a trivial schedule
+					is_simple = true;
 				}
 
 				/**
@@ -82,17 +84,22 @@ namespace grb {
 				void moveImpl( SptrsvSchedule &&toMove ) {
 					_deleters = std::move( toMove._deleters );
 					default_schedule = std::move( toMove.default_schedule );
+					is_simple = toMove.is_simple;
 					supersteps = toMove.supersteps;
 					nThreads = toMove.nThreads;
 					data = std::move( toMove.data );
 					endPositions = std::move( toMove.endPositions );
 					nRanges = std::move( toMove.nRanges );
+					toMove.is_simple = false;
 					toMove.supersteps = 0;
 					toMove.nThreads = 0;
 				}
 
 
 			public:
+
+				/** Whether the schedule is simple.*/
+				bool is_simple;
 
 				/** Number of schedule steps. */
 				size_t supersteps;
@@ -126,7 +133,7 @@ namespace grb {
 				 * first (and only) thread.
 				 */
 				SptrsvSchedule( const NIT n ) :
-					_deleters( 1 ), supersteps( 1 ), nThreads( 1 ),
+					_deleters( 1 ), is_simple( false ), supersteps( 1 ), nThreads( 1 ),
 					data( 1 ), endPositions( 1 ), nRanges( 1 )
 				{
 					data[ 0 ] = nullptr;
@@ -144,7 +151,7 @@ namespace grb {
 				 * a single-superstep schedule that assigns all work to the first thread.
 				 */
 				SptrsvSchedule( const NIT n, const size_t T ) :
-					_deleters( 2 * T ), supersteps( 1 ), nThreads( T ),
+					_deleters( 2 * T ), is_simple( false ), supersteps( 1 ), nThreads( T ),
 					data( T, nullptr ), endPositions( T, nullptr ), nRanges( T, 0 )
 				{
 					if( T == 0 || T > std::numeric_limits< int >::max() ) {

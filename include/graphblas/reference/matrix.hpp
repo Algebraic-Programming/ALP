@@ -322,8 +322,10 @@ namespace grb {
 					"nThreads" );
 			}
 
+			sptrsv.is_simple = true;
 			#pragma omp parallel
 			{
+				bool simple_local = true;
 				It bounds = bounds_begin;
 				const size_t actualNumThreads = omp_get_num_threads();
 				if( actualNumThreads != nThreads ) {
@@ -363,6 +365,9 @@ namespace grb {
 					}
 					// store the number of ranges in the end array
 					assert( count < sptrsv.supersteps );
+					if( nRanges != 1 ) {
+						simple_local = false;
+					}
 					*end++ = nRanges;
 					// forward to the next superstep
 					(void) ++count;
@@ -370,6 +375,10 @@ namespace grb {
 				} while( bounds != bounds_end );
 				if( count != sptrsv.supersteps ) {
 					throw std::runtime_error( "Unexpected number of supersteps" );
+				}
+				if( !simple_local ) {
+					#pragma omp critical
+					sptrsv.is_simple = false;
 				}
 			}
 		}
