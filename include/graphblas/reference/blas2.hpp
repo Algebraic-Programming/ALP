@@ -2358,10 +2358,6 @@ namespace grb {
 			const Division &division,
 			const Phase &phase
 		) {
-			// dynamic sanity checks
-			assert( grb::nrows( T ) == n );
-			assert( grb::ncols( T ) == n );
-
 			// in dense unmasked, resize is a no-op
 			if( phase == grb::RESIZE ) { return grb::SUCCESS; }
 
