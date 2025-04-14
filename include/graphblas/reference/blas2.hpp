@@ -2233,7 +2233,70 @@ namespace grb {
 		) {
 			constexpr auto one =
 				Semiring::template One< typename Semiring::D1 >::value();
-			// TODO could do some ALP-style vectorisation here
+
+			// NOTE: explicit vectorisation seems to cause significant slowdowns.
+			//       disabled but retained for future reference / more successful
+			//       optimisation
+			/*
+			// constants
+			constexpr size_t ind_blocksize =
+				grb::config::SIMD_BLOCKSIZE< IND >::value();
+			constexpr size_t blocksize = ind_blocksize < Semiring::blocksize
+				? ind_blocksize : Semiring::blocksize;
+			// constant bufer
+			IND cur_ind[ blocksize ];
+			// SIMD set
+			for( size_t r = 0; r < blocksize; ++r ) {
+				cur_ind[ r ] = i;
+			}
+			for( ; k + Semiring::blocksize < crs.col_start[ i + 1 ];
+				k += Semiring::blocksize
+			) {
+				typename Semiring::D1 values[ blocksize ];
+				typename Semiring::D3 tmp[ blocksize ];
+				IOType x_simd[ blocksize ];
+				IND indices[ blocksize ];
+				bool match[ blocksize ];
+				// streaming loads
+				for( size_t r = 0; r < blocksize; ++r ) {
+					values[ r ] = crs.template getValue( k + r, one );
+				}
+				for( size_t r = 0; r < blocksize; ++r ) {
+					indices[ r ] = crs.row_index[ k + r ];
+				}
+				// SIMD compute
+				for( size_t r = 0; r < blocksize; ++r ) {
+					match[ r ] = cur_ind[ r ] != indices[ r ];
+				}
+				// gather
+				for( size_t r = 0; r < blocksize; ++r ) {
+					if( match[ r ] ) {
+						x_simd[ r ] = x[ indices[ r ] ];
+					}
+				}
+				// masked SIMD compute
+				for( size_t r = 0; r < blocksize; ++r ) {
+					if( match[ r ] ) {
+						tmp[ r ] = values[ r ] * x_simd[ r ];
+					}
+				}
+				// masked SIMD reduce
+				for( size_t r = 0; r < blocksize; ++r ) {
+					if( match[ r ] ) {
+						reduced += tmp[ r ];
+					}
+				}
+				// diagonal detection; SIMD invert and reduce
+				for( size_t r = 0; r < blocksize; ++r ) {
+					match[ r ] = !match[ r ];
+				}
+				for( size_t r = 0; r < blocksize; ++r ) {
+					if( match[ r ] ) {
+						divBy += values[ r ];
+					}
+				}
+			}*/
+
 			for( size_t k = crs.col_start[ i ]; k < crs.col_start[ i + 1 ]; ++k ) {
 				const typename Semiring::D1 val = crs.template getValue( k, one );
 				const auto &ind = crs.row_index[ k ];
