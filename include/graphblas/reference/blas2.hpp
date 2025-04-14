@@ -2298,8 +2298,8 @@ namespace grb {
 						(void) grb::foldl( v_raw[ i ], divBy, division );
 					}
 				} else {
-					for( size_t j = 0; j < n; ++j ) {
-						const size_t i = j + offset;
+					const size_t end = n + offset;
+					for( size_t i = offset; i < end; ++i ) {
 						IOType divBy = semiring.template getZero< IOType >();
 						assert( crs.col_start[ i ] <= crs.col_start[ i + 1 ] );
 						sptrsv_kernel( crs, i, v_raw, divBy, semiring, subtraction );
