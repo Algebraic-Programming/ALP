@@ -2225,8 +2225,8 @@ namespace grb {
 		>
 		inline void sptrsv_kernel(
 			const Compressed_Storage< InputType1, IND, NIT > &crs,
-			const size_t i,
-			IOType * const x,
+			const size_t &i,
+			IOType *__restrict__ const &x,
 			IOType &divBy,
 			const Semiring &semiring,
 			const Subtraction &subtraction
@@ -2327,10 +2327,10 @@ namespace grb {
 			typename RIT, typename CIT, typename NIT
 		>
 		RC dense_unmasked_sequential_sptrsv(
-			IOType *__restrict__ const v_raw,
+			IOType *__restrict__ const &v_raw,
 			const Matrix< InputType1, reference, RIT, CIT, NIT > &T,
-			const size_t offset, const size_t &n,
-			const bool forward,
+			const size_t &offset, const size_t &n,
+			const bool &forward,
 			const Semiring &semiring,
 			const Subtraction &subtraction,
 			const Division &division,
@@ -2413,10 +2413,10 @@ namespace grb {
 			typename RIT, typename CIT, typename NIT
 		>
 		RC dense_unmasked_omp_sptrsv(
-			IOType *__restrict__ const v_raw,
+			IOType *__restrict__ const &v_raw,
 			const Matrix< InputType1, reference, RIT, CIT, NIT > &T,
 			const size_t &n,
-			const bool forward,
+			const bool &forward,
 			const Semiring &semiring,
 			const Subtraction &subtraction,
 			const Division &division,
@@ -2474,8 +2474,8 @@ namespace grb {
 					assert( end != nullptr );
 					for( size_t i = 0; i < sptrsv.supersteps; ++i ) {
 						for( size_t k = 0; k < end[ i ]; ++k ) {
-							const size_t lo = static_cast< size_t >( *data++ );
-							const size_t no = static_cast< size_t >( *data++ );
+							const size_t &lo = static_cast< size_t >( *data++ );
+							const size_t &no = static_cast< size_t >( *data++ );
 							assert( lo < n );
 							assert( no + lo <= n );
 							local_rc = local_rc
