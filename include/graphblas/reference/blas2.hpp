@@ -2599,8 +2599,43 @@ namespace grb {
 			return internal::dense_unmasked_sequential_sptrsv< descr, false >(
 				xb_p, T, 0, n, forward, semiring, subtraction, division, phase );
 #else
+			// The below code is only for testing (DBG):
+ #if 0
+			if( phase == grb::RESIZE ) { return grb::SUCCESS; }
+			const auto sptrsv = internal::getSptrsvData( T );
+			#pragma omp parallel num_threads(sptrsv->nThreads)
+			{
+				const auto &crs = internal::getCRS( T );
+				const int *__restrict__ schedule = reinterpret_cast< int * >(
+					sptrsv->data[ omp_get_thread_num() ] );
+				for( size_t step = 0; step < sptrsv->supersteps; ++step ) {
+					const int &lo = *schedule++;
+					const int &no = *schedule++;
+					const int upper_limit = lo + no;
+					for( int row_idx = lo; row_idx < upper_limit; ++row_idx ) {
+						// if not sorted, enable this variant instead:
+						// IOType div = 0;
+						// for( unsigned int k = crs.col_start[ row_idx ]; k < crs.col_start[ row_idx + 1 ]; ++k ) {
+						for( unsigned int k = crs.col_start[ row_idx ]; k < crs.col_start[ row_idx + 1 ] - 1; ++k ) {
+							const int &j = crs.row_index[ k ];
+							const double &value = crs.values[ k ];
+							// if not sorted, enable this if-else:
+							// if( j == row_idx ) {
+							//	div = value;
+							// } else {
+								xb_p[ row_idx ] -= value * xb_p[ j ];
+							//}
+						}
+						xb_p[ row_idx ] /= crs.values[ crs.col_start[ row_idx + 1 ] - 1 ];
+					}
+					#pragma omp barrier
+				}
+			}
+			return grb::SUCCESS;
+ #else
 			return internal::dense_unmasked_omp_sptrsv< descr >(
 				xb_p, T, n, forward, semiring, subtraction, division, phase );
+ #endif
 #endif
 		} else {
 			grb::Vector< IOType, reference, Coords > no_mask( 0 );
