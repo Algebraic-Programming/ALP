@@ -322,6 +322,30 @@ namespace grb {
 					"nThreads" );
 			}
 
+			// re-sort A
+			{
+				const auto &crs = internal::getCRS( A );
+				for( size_t i = 0; i < A.m; ++i ) {
+					std::vector< std::pair< int, double > > pairs;
+					for( size_t k = crs.col_start[ i ]; k < crs.col_start[ i + 1 ]; ++k ) {
+						pairs.push_back( std::make_pair( crs.row_index[ k ], crs.values[ k ] ) );
+					}
+					std::sort( pairs.begin(), pairs.end(),
+						[]( const std::pair< int, double > &left, const std::pair< int, double > &right ) {
+							return left.first < right.first;
+						} );
+					auto it = pairs.cbegin();
+					//std::cout << "Row " << i << ": ";
+					for( size_t k = crs.col_start[ i ]; k < crs.col_start[ i + 1 ]; ++k, ++it ) {
+						//std::cout << it->first << ", ";
+						assert( it != pairs.cend() );
+						crs.row_index[ k ] = it->first;
+						crs.values[ k ] = it->second;
+					}
+					//std::cout << std::endl;
+				}
+			}
+
 			sptrsv.is_simple = true;
 			#pragma omp parallel
 			{
