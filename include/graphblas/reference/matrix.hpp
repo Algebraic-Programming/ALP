@@ -322,9 +322,16 @@ namespace grb {
 					"nThreads" );
 			}
 
-			// re-sort A
+			// re-sort A, CRS first
 			{
 				const auto &crs = internal::getCRS( A );
+				const size_t nThreads = A.m < config::OMP::minLoopSize()
+					? 1
+					: std::min(
+						config::OMP::threads(),
+						A.nz / config::CACHE_LINE_SIZE::value()
+					);
+				#pragma omp parallel for num_threads( nThreads )
 				for( size_t i = 0; i < A.m; ++i ) {
 					std::vector< std::pair< int, double > > pairs;
 					for( size_t k = crs.col_start[ i ]; k < crs.col_start[ i + 1 ]; ++k ) {
@@ -335,14 +342,38 @@ namespace grb {
 							return left.first < right.first;
 						} );
 					auto it = pairs.cbegin();
-					//std::cout << "Row " << i << ": ";
 					for( size_t k = crs.col_start[ i ]; k < crs.col_start[ i + 1 ]; ++k, ++it ) {
-						//std::cout << it->first << ", ";
 						assert( it != pairs.cend() );
 						crs.row_index[ k ] = it->first;
 						crs.values[ k ] = it->second;
 					}
-					//std::cout << std::endl;
+				}
+			}
+			// then CCS
+			{
+				const auto &ccs = internal::getCCS( A );
+				const size_t nThreads = A.n < config::OMP::minLoopSize()
+					? 1
+					: std::min(
+						config::OMP::threads(),
+						A.nz / config::CACHE_LINE_SIZE::value()
+					);
+				#pragma omp parallel for num_threads( nThreads )
+				for( size_t i = 0; i < A.n; ++i ) {
+					std::vector< std::pair< int, double > > pairs;
+					for( size_t k = ccs.col_start[ i ]; k < ccs.col_start[ i + 1 ]; ++k ) {
+						pairs.push_back( std::make_pair( ccs.row_index[ k ], ccs.values[ k ] ) );
+					}
+					std::sort( pairs.begin(), pairs.end(),
+						[]( const std::pair< int, double > &left, const std::pair< int, double > &right ) {
+							return left.first < right.first;
+						} );
+					auto it = pairs.cbegin();
+					for( size_t k = ccs.col_start[ i ]; k < ccs.col_start[ i + 1 ]; ++k, ++it ) {
+						assert( it != pairs.cend() );
+						ccs.row_index[ k ] = it->first;
+						ccs.values[ k ] = it->second;
+					}
 				}
 			}
 
