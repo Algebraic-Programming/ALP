@@ -2523,15 +2523,31 @@ namespace grb {
 					const NIT *__restrict__ data =
 						reinterpret_cast< const NIT * >(sptrsv.data[ s ]);
 					assert( data != nullptr );
-					for( size_t i = 0; i < sptrsv.supersteps; ++i ) {
-						const size_t lo = static_cast< size_t >( *data++ );
-						const size_t no = static_cast< size_t >( *data++ );
-						assert( lo < n );
-						assert( no + lo <= n );
-						local_rc = local_rc
-							? local_rc
-							: dense_unmasked_sequential_sptrsv< descr, true, 1 >(
-								v_raw, T, lo, no, forward, semiring, subtraction, division, phase );
+					if( sptrsv.is_sorted ) {
+						for( size_t i = 0; i < sptrsv.supersteps; ++i ) {
+							const size_t lo = static_cast< size_t >( *data++ );
+							const size_t no = static_cast< size_t >( *data++ );
+							assert( lo < n );
+							assert( no + lo <= n );
+							local_rc = local_rc ? local_rc : dense_unmasked_sequential_sptrsv<
+									descr, true, config::tuning::SpTRSV::sortingMode
+								>(
+									v_raw, T, lo, no, forward, semiring, subtraction, division, phase
+								);
+						}
+						#pragma omp barrier
+					} else {
+						for( size_t i = 0; i < sptrsv.supersteps; ++i ) {
+							const size_t lo = static_cast< size_t >( *data++ );
+							const size_t no = static_cast< size_t >( *data++ );
+							assert( lo < n );
+							assert( no + lo <= n );
+							local_rc = local_rc ? local_rc : dense_unmasked_sequential_sptrsv<
+								descr, true, 0
+							>(
+								v_raw, T, lo, no, forward, semiring, subtraction, division, phase
+							);
+						}
 						#pragma omp barrier
 					}
 					if( local_rc != grb::SUCCESS ) {
@@ -2549,18 +2565,36 @@ namespace grb {
 					const NIT *__restrict__ const end =
 						reinterpret_cast< const NIT * >(sptrsv.endPositions[ s ]);
 					assert( end != nullptr );
-					for( size_t i = 0; i < sptrsv.supersteps; ++i ) {
-						for( size_t k = 0; k < end[ i ]; ++k ) {
-							const size_t &lo = static_cast< size_t >( *data++ );
-							const size_t &no = static_cast< size_t >( *data++ );
-							assert( lo < n );
-							assert( no + lo <= n );
-							local_rc = local_rc
-								? local_rc
-								: dense_unmasked_sequential_sptrsv< descr, true, 1 >(
-									v_raw, T, lo, no, forward, semiring, subtraction, division, phase );
+					if( sptrsv.is_sorted ) {
+						for( size_t i = 0; i < sptrsv.supersteps; ++i ) {
+							for( size_t k = 0; k < end[ i ]; ++k ) {
+								const size_t &lo = static_cast< size_t >( *data++ );
+								const size_t &no = static_cast< size_t >( *data++ );
+								assert( lo < n );
+								assert( no + lo <= n );
+								local_rc = local_rc ? local_rc : dense_unmasked_sequential_sptrsv<
+										descr, true, config::tuning::SpTRSV::sortingMode
+									>(
+										v_raw, T, lo, no, forward, semiring, subtraction, division, phase
+									);
+							}
+							#pragma omp barrier
 						}
-						#pragma omp barrier
+					} else {
+						for( size_t i = 0; i < sptrsv.supersteps; ++i ) {
+							for( size_t k = 0; k < end[ i ]; ++k ) {
+								const size_t &lo = static_cast< size_t >( *data++ );
+								const size_t &no = static_cast< size_t >( *data++ );
+								assert( lo < n );
+								assert( no + lo <= n );
+								local_rc = local_rc ? local_rc : dense_unmasked_sequential_sptrsv<
+										descr, true, 0
+									>(
+										v_raw, T, lo, no, forward, semiring, subtraction, division, phase
+									);
+							}
+							#pragma omp barrier
+						}
 					}
 					if( local_rc != grb::SUCCESS ) {
 						#pragma omp atomic write

@@ -322,59 +322,110 @@ namespace grb {
 					"nThreads" );
 			}
 
-			// re-sort A, CRS first
-			{
-				const auto &crs = internal::getCRS( A );
-				const size_t nThreads = A.m < config::OMP::minLoopSize()
-					? 1
-					: std::min(
-						config::OMP::threads(),
-						A.nz / config::CACHE_LINE_SIZE::value()
-					);
-				#pragma omp parallel for num_threads( nThreads )
-				for( size_t i = 0; i < A.m; ++i ) {
-					std::vector< std::pair< int, double > > pairs;
-					for( size_t k = crs.col_start[ i ]; k < crs.col_start[ i + 1 ]; ++k ) {
-						pairs.push_back( std::make_pair( crs.row_index[ k ], crs.values[ k ] ) );
-					}
-					std::sort( pairs.begin(), pairs.end(),
-						[]( const std::pair< int, double > &left, const std::pair< int, double > &right ) {
-							return left.first < right.first;
-						} );
-					auto it = pairs.cbegin();
-					for( size_t k = crs.col_start[ i ]; k < crs.col_start[ i + 1 ]; ++k, ++it ) {
-						assert( it != pairs.cend() );
-						crs.row_index[ k ] = it->first;
-						crs.values[ k ] = it->second;
-					}
-				}
-			}
-			// then CCS
-			{
-				const auto &ccs = internal::getCCS( A );
-				const size_t nThreads = A.n < config::OMP::minLoopSize()
-					? 1
-					: std::min(
-						config::OMP::threads(),
-						A.nz / config::CACHE_LINE_SIZE::value()
-					);
-				#pragma omp parallel for num_threads( nThreads )
-				for( size_t i = 0; i < A.n; ++i ) {
-					std::vector< std::pair< int, double > > pairs;
-					for( size_t k = ccs.col_start[ i ]; k < ccs.col_start[ i + 1 ]; ++k ) {
-						pairs.push_back( std::make_pair( ccs.row_index[ k ], ccs.values[ k ] ) );
-					}
-					std::sort( pairs.begin(), pairs.end(),
-						[]( const std::pair< int, double > &left, const std::pair< int, double > &right ) {
-							return left.first < right.first;
-						} );
-					auto it = pairs.cbegin();
-					for( size_t k = ccs.col_start[ i ]; k < ccs.col_start[ i + 1 ]; ++k, ++it ) {
-						assert( it != pairs.cend() );
-						ccs.row_index[ k ] = it->first;
-						ccs.values[ k ] = it->second;
+			// re-sort A, if enabled
+			sptrsv.is_sorted = true;
+			if( config::tuning::SpTRSV::sortingMode == 2 ) {
+				// CRS first
+				{
+					const auto &crs = internal::getCRS( A );
+					const size_t nThreads = A.m < config::OMP::minLoopSize()
+						? 1
+						: std::min(
+							config::OMP::threads(),
+							A.nz / config::CACHE_LINE_SIZE::value()
+						);
+					#pragma omp parallel for num_threads( nThreads )
+					for( size_t i = 0; i < A.m; ++i ) {
+						std::vector< std::pair< int, double > > pairs;
+						for( size_t k = crs.col_start[ i ]; k < crs.col_start[ i + 1 ]; ++k ) {
+							pairs.push_back( std::make_pair( crs.row_index[ k ], crs.values[ k ] ) );
+						}
+						std::sort( pairs.begin(), pairs.end(),
+							[]( const std::pair< int, double > &left, const std::pair< int, double > &right ) {
+								return left.first < right.first;
+							} );
+						auto it = pairs.cbegin();
+						for( size_t k = crs.col_start[ i ]; k < crs.col_start[ i + 1 ]; ++k, ++it ) {
+							assert( it != pairs.cend() );
+							crs.row_index[ k ] = it->first;
+							crs.values[ k ] = it->second;
+						}
 					}
 				}
+				// then CCS
+				{
+					const auto &ccs = internal::getCCS( A );
+					const size_t nThreads = A.n < config::OMP::minLoopSize()
+						? 1
+						: std::min(
+							config::OMP::threads(),
+							A.nz / config::CACHE_LINE_SIZE::value()
+						);
+					#pragma omp parallel for num_threads( nThreads )
+					for( size_t i = 0; i < A.n; ++i ) {
+						std::vector< std::pair< int, double > > pairs;
+						for( size_t k = ccs.col_start[ i ]; k < ccs.col_start[ i + 1 ]; ++k ) {
+							pairs.push_back( std::make_pair( ccs.row_index[ k ], ccs.values[ k ] ) );
+						}
+						std::sort( pairs.begin(), pairs.end(),
+							[]( const std::pair< int, double > &left, const std::pair< int, double > &right ) {
+								return left.first < right.first;
+							} );
+						auto it = pairs.cbegin();
+						for( size_t k = ccs.col_start[ i ]; k < ccs.col_start[ i + 1 ]; ++k, ++it ) {
+							assert( it != pairs.cend() );
+							ccs.row_index[ k ] = it->first;
+							ccs.values[ k ] = it->second;
+						}
+					}
+				}
+			} else if( config::tuning::SpTRSV::sortingMode == 1 ) {
+				{
+					const auto &crs = internal::getCRS( A );
+					const size_t nThreads = A.m < config::OMP::minLoopSize()
+						? 1
+						: std::min(
+							config::OMP::threads(),
+							A.nz / config::CACHE_LINE_SIZE::value()
+						);
+					#pragma omp parallel for num_threads( nThreads )
+					for( size_t i = 0; i < A.m; ++i ) {
+						const auto index_it = std::find(
+							crs.row_index + crs.col_start[ i ],
+							crs.row_index + crs.col_start[ i + 1 ],
+							i
+						);
+						if( !std::is_void< InputType >::value ) {
+							const size_t index = std::distance( crs.row_index, index_it );
+							std::swap( crs.values[ index ], crs.values[ crs.col_start[ i ] ] );
+						}
+						std::swap( *index_it, crs.row_index[ crs.col_start[ i ] ] );
+					}
+				}
+				{
+					const auto &ccs = internal::getCCS( A );
+					const size_t nThreads = A.n < config::OMP::minLoopSize()
+						? 1
+						: std::min(
+							config::OMP::threads(),
+							A.nz / config::CACHE_LINE_SIZE::value()
+						);
+					#pragma omp parallel for num_threads( nThreads )
+					for( size_t i = 0; i < A.n; ++i ) {
+						const auto index_it = std::find(
+							ccs.row_index + ccs.col_start[ i ],
+							ccs.row_index + ccs.col_start[ i + 1 ],
+							i
+						);
+						if( !std::is_void< InputType >::value ) {
+							const size_t index = std::distance( ccs.row_index, index_it );
+							std::swap( ccs.values[ index ], ccs.values[ ccs.col_start[ i ] ] );
+						}
+						std::swap( *index_it, ccs.row_index[ ccs.col_start[ i ] ] );
+					}
+				}
+			} else {
+				sptrsv.is_sorted = false;
 			}
 
 			sptrsv.is_simple = true;
