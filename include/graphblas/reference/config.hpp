@@ -354,7 +354,7 @@ namespace grb {
 				 * also applied to the CCS (in which case the above three points apply with
 				 * `rows' substituted by `columns').
 				 */
-				static constexpr int sortingMode = 2;
+				static constexpr int sortingMode = 0;
 
 			};
 
