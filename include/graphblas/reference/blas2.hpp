@@ -2368,13 +2368,13 @@ namespace grb {
 		template<
 			Descriptor descr, bool maybe_offset, int sorted, bool forward,
 			class Semiring, class Subtraction, class Division,
-			typename IOType, typename InputType1,
+			typename IOPtrType, typename InputType1,
 			typename RIT, typename CIT, typename NIT
 		>
 		RC dense_unmasked_sequential_sptrsv(
-			IOType *__restrict__ const &v_raw,
+			const IOPtrType &v_raw,
 			const Matrix< InputType1, reference, RIT, CIT, NIT > &T,
-			const size_t &offset, const size_t &n,
+			const NIT &offset, const NIT &n,
 			const Semiring &semiring,
 			const Subtraction &subtraction,
 			const Division &division,
@@ -2384,11 +2384,16 @@ namespace grb {
 			static_assert( sorted >= 0 && sorted < 3, "Invalid value for sorted; this "
 				"an internal error, please submit a bug report" );
 
-			// in dense unmasked, resize is a no-op
-			if( phase == grb::RESIZE ) { return grb::SUCCESS; }
-
 			// only execute and resize are supported
 			assert( phase == grb::EXECUTE );
+#ifdef NDEBUG
+			(void) phase;
+#endif
+
+			// get value type from the pointer
+			typedef typename std::remove_reference<
+				decltype( *std::declval< IOPtrType >() )
+			>::type IOType;
 
 			// in case of pattern matrices, get 1 from the semiring
 			const IOType one = semiring.getMultiplicativeMonoid().template
@@ -2404,17 +2409,13 @@ namespace grb {
 							// in this case we will auto-detect the diagonal item
 							divBy = semiring.template getZero< IOType >();
 						} else {
-							divBy = getDiagonalEntry<
-								IOType, sorted, forward, InputType1, RIT, NIT
-							> (
-								crs, i, one
-							);
+							divBy = getDiagonalEntry< IOType, sorted, forward >( crs, i, one );
 						}
 						assert( crs.col_start[ i ] <= crs.col_start[ i + 1 ] );
 						sptrsv_kernel< sorted, forward >( crs, i, v_raw, divBy, semiring,
 							subtraction );
 #ifdef _DEBUG
-						std::cout << "\t" << v_raw[ i ] << " will be normalised with " << divBy
+						std::cout << "\trow v_raw[ " << i << " ] = " << v_raw[ i ] << " will be normalised with " << divBy
 							<< "\n";
 #endif
 						(void) grb::foldl( v_raw[ i ], divBy, division );
@@ -2432,7 +2433,7 @@ namespace grb {
 						sptrsv_kernel< sorted, forward >( crs, i, v_raw, divBy, semiring,
 							subtraction );
 #ifdef _DEBUG
-						std::cout << "\t" << v_raw[ i ] << " will be normalised with " << divBy
+						std::cout << "\trow v_raw[ " << i << " ] = " << v_raw[ i ] << " will be normalised with " << divBy
 							<< "\n";
 #endif
 						(void) grb::foldl( v_raw[ i ], divBy, division );
@@ -2490,7 +2491,7 @@ namespace grb {
 			typename RIT, typename CIT, typename NIT
 		>
 		RC dense_unmasked_omp_sptrsv(
-			IOType *__restrict__ const &v_raw,
+			IOType * const &v_raw,
 			const Matrix< InputType1, reference, RIT, CIT, NIT > &T,
 			const size_t &n,
 			const Semiring &semiring,
@@ -2524,8 +2525,8 @@ namespace grb {
 					assert( data != nullptr );
 					if( sptrsv.is_sorted ) {
 						for( size_t i = 0; i < sptrsv.supersteps; ++i ) {
-							const size_t lo = static_cast< size_t >( *data++ );
-							const size_t no = static_cast< size_t >( *data++ );
+							const auto &lo = *data++;
+							const auto &no = *data++;
 							assert( lo < n );
 							assert( no + lo <= n );
 							local_rc = local_rc ? local_rc : dense_unmasked_sequential_sptrsv<
@@ -2533,12 +2534,12 @@ namespace grb {
 								>(
 									v_raw, T, lo, no, semiring, subtraction, division, phase
 								);
+							#pragma omp barrier
 						}
-						#pragma omp barrier
 					} else {
 						for( size_t i = 0; i < sptrsv.supersteps; ++i ) {
-							const size_t lo = static_cast< size_t >( *data++ );
-							const size_t no = static_cast< size_t >( *data++ );
+							const NIT &lo = *data++;
+							const NIT &no = *data++;
 							assert( lo < n );
 							assert( no + lo <= n );
 							local_rc = local_rc ? local_rc : dense_unmasked_sequential_sptrsv<
@@ -2546,8 +2547,8 @@ namespace grb {
 							>(
 								v_raw, T, lo, no, semiring, subtraction, division, phase
 							);
+							#pragma omp barrier
 						}
-						#pragma omp barrier
 					}
 					if( local_rc != grb::SUCCESS ) {
 						#pragma omp atomic write
@@ -2567,8 +2568,8 @@ namespace grb {
 					if( sptrsv.is_sorted ) {
 						for( size_t i = 0; i < sptrsv.supersteps; ++i ) {
 							for( size_t k = 0; k < end[ i ]; ++k ) {
-								const size_t &lo = static_cast< size_t >( *data++ );
-								const size_t &no = static_cast< size_t >( *data++ );
+								const NIT &lo = *data++;
+								const NIT &no = *data++;
 								assert( lo < n );
 								assert( no + lo <= n );
 								local_rc = local_rc ? local_rc : dense_unmasked_sequential_sptrsv<
@@ -2582,8 +2583,8 @@ namespace grb {
 					} else {
 						for( size_t i = 0; i < sptrsv.supersteps; ++i ) {
 							for( size_t k = 0; k < end[ i ]; ++k ) {
-								const size_t &lo = static_cast< size_t >( *data++ );
-								const size_t &no = static_cast< size_t >( *data++ );
+								const NIT &lo = *data++;
+								const NIT &no = *data++;
 								assert( lo < n );
 								assert( no + lo <= n );
 								local_rc = local_rc ? local_rc : dense_unmasked_sequential_sptrsv<
@@ -2702,21 +2703,26 @@ namespace grb {
 		// check trivial
 		if( n == 0 ) { return grb::SUCCESS; }
 
+		// in the dense variant, resize does nothing
+		if( phase == grb::RESIZE ) { return grb::SUCCESS; }
+
 		// check dense dispatch
 		if( dense || grb::nnz( xb ) == n ) {
-			IOType * const xb_p = internal::getRaw( xb );
 #ifndef _H_GRB_REFERENCE_OMP_BLAS2
+			IOType *__restrict__ const xb_p = internal::getRaw( xb );
+			const NIT lo = 0;
+			const NIT no = n;
 			if( forward ) {
 				return internal::dense_unmasked_sequential_sptrsv< descr, false, 0, true >(
-					xb_p, T, 0, n, semiring, subtraction, division, phase );
+					xb_p, T, lo, no, semiring, subtraction, division, phase );
 			} else {
 				return internal::dense_unmasked_sequential_sptrsv< descr, false, 0, false >(
-					xb_p, T, 0, n, semiring, subtraction, division, phase );
+					xb_p, T, lo, no, semiring, subtraction, division, phase );
 			}
 #else
+			IOType * const xb_p = internal::getRaw( xb );
 			// The below code is only for testing (DBG):
  #if 0
-			if( phase == grb::RESIZE ) { return grb::SUCCESS; }
 			const auto sptrsv = internal::getSptrsvData( T );
 			#pragma omp parallel num_threads(sptrsv->nThreads)
 			{
@@ -2741,6 +2747,7 @@ namespace grb {
 								xb_p[ row_idx ] -= value * xb_p[ j ];
 							//}
 						}
+						#pragma omp critical
 						xb_p[ row_idx ] /= crs.values[ crs.col_start[ row_idx + 1 ] - 1 ];
 					}
 					#pragma omp barrier
