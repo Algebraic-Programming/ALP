@@ -412,16 +412,18 @@ namespace grb {
 						);
 					#pragma omp parallel for num_threads( nThreads )
 					for( size_t i = 0; i < A.n; ++i ) {
-						const auto index_it = std::find(
-							ccs.row_index + ccs.col_start[ i ],
-							ccs.row_index + ccs.col_start[ i + 1 ],
-							i
-						);
-						if( !std::is_void< InputType >::value ) {
-							const size_t index = std::distance( ccs.row_index, index_it );
-							std::swap( ccs.values[ index ], ccs.values[ ccs.col_start[ i ] ] );
+						const auto start = ccs.row_index + ccs.col_start[ i ];
+						const auto end = ccs.row_index + ccs.col_start[ i + 1 ];
+						const auto index_it = std::find( start, end, i );
+						if( index_it == end ) {
+							throw std::runtime_error( "No diagonal element present" );
+						} else if( index_it != start ) {
+							if( !std::is_void< InputType >::value ) {
+								const size_t index = std::distance( ccs.row_index, index_it );
+								std::swap( ccs.values[ index ], ccs.values[ ccs.col_start[ i ] ] );
+							}
+							std::swap( *index_it, ccs.row_index[ ccs.col_start[ i ] ] );
 						}
-						std::swap( *index_it, ccs.row_index[ ccs.col_start[ i ] ] );
 					}
 				}
 			} else {
