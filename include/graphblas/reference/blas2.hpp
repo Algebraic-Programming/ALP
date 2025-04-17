@@ -2217,8 +2217,17 @@ namespace grb {
 	namespace internal {
 
 #ifndef _H_GRB_REFERENCE_OMP_BLAS2
-		/** Backend-independent sptrsv kernel code. */
+		/**
+		 * Backend-independent sptrsv kernel code.
+		 *
+		 * @tparam sorted 0: the matrix rows are not sorted,
+		 *                1: the matrix rows have diagonal elements at position 0,
+		 *                2: the matrix rows are sorted.
+		 *
+		 * \note The above description assumes CRS.
+		 */
 		template<
+			int sorted,
 			typename IOType, typename InputType1,
 			typename IND, typename NIT,
 			class Semiring, class Subtraction
@@ -2227,10 +2236,14 @@ namespace grb {
 			const Compressed_Storage< InputType1, IND, NIT > &crs,
 			const size_t &i,
 			IOType *__restrict__ const &x,
+			const bool &forward,
 			IOType &divBy,
 			const Semiring &semiring,
 			const Subtraction &subtraction
 		) {
+			// static assertions
+			static_assert( sorted >= 0 && sorted < 3, "Illegal value for sorted; this "
+				"is an internal error, please submit a bug report" );
 			constexpr auto one =
 				Semiring::template One< typename Semiring::D1 >::value();
 
@@ -2297,15 +2310,29 @@ namespace grb {
 				}
 			}*/
 
-			for( size_t k = crs.col_start[ i ]; k < crs.col_start[ i + 1 ]; ++k ) {
+			if( sorted ) {
+				(void) divBy;
+			}
+			assert( crs.col_start[ i + 1 ] > crs.col_start[ i ] );
+			const size_t start = (!sorted) ? crs.col_start[ i ] : (
+				(sorted == 1) ? (crs.col_start[ i ] + 1) : (
+					forward ? crs.col_start[ i ] : (crs.col_start[ i ] + 1) )
+				);
+			const size_t end = (!sorted) ? crs.col_start[ i + 1 ] : (
+				(sorted == 1) ? crs.col_start[ i + 1 ] : (
+					forward ? (crs.col_start[ i + 1 ] - 1) : crs.col_start[ i + 1 ] )
+				);
+			for( size_t k = start; k < end; ++k ) {
 				const typename Semiring::D1 val = crs.template getValue( k, one );
 				const auto &ind = crs.row_index[ k ];
-				if( static_cast< size_t >(ind) == i ) {
+				if( !sorted ) {
+					if( static_cast< size_t >(ind) == i ) {
  #ifdef _DEBUG
-					std::cout << "\tskipping nonzero at " << i ", " << i << "\n";
+						std::cout << "\tskipping nonzero at " << i ", " << i << "\n";
  #endif
-					divBy = val;
-					continue;
+						divBy = val;
+						continue;
+					}
 				}
  #ifdef _DEBUG
 				std::cout << "\t x[ " << i << " ] (" << x[i] << ") -= " << val << "* x[ "
@@ -2317,11 +2344,27 @@ namespace grb {
 				(void) grb::foldl( x[ i ], tmp, subtraction );
 			}
 		}
-#endif
+
+		template<
+			typename IOType, int sorted,
+			typename VIT, typename RCIT, typename NIT
+		>
+		inline static IOType getDiagonalEntry(
+			const Compressed_Storage< VIT, RCIT, NIT > &storage, const size_t &i,
+			const bool &forward, const IOType &one
+		) {
+			assert( sorted >= 1 && sorted < 3 );
+			assert( storage.col_start[ i + 1 ] > storage.col_start[ i ] );
+			const size_t diag_index = sorted == 1 ? storage.col_start[ i ] : (
+				forward ? (storage.col_start[ i + 1 ] - 1) : storage.col_start[ i ] );
+			assert( storage.col_index[ diag_index ] == i );
+			return storage.template getValue( diag_index, one );
+		}
+#endif // end ifndef _H_GRB_REFERENCE_OMP_BLAS2
 
 		/** \internal Specialised dense unmasked sptrsv implementation, sequential */
 		template<
-			Descriptor descr, bool maybe_offset,
+			Descriptor descr, bool maybe_offset, int sorted,
 			class Semiring, class Subtraction, class Division,
 			typename IOType, typename InputType1,
 			typename RIT, typename CIT, typename NIT
@@ -2336,6 +2379,10 @@ namespace grb {
 			const Division &division,
 			const Phase &phase
 		) {
+			// static sanity checks
+			static_assert( sorted >= 0 && sorted < 3, "Invalid value for sorted; this "
+				"an internal error, please submit a bug report" );
+
 			// dynamic sanity checks
 			assert( grb::nrows( T ) == n );
 			assert( grb::ncols( T ) == n );
@@ -2346,14 +2393,26 @@ namespace grb {
 			// only execute and resize are supported
 			assert( phase == grb::EXECUTE );
 
+			// in case of pattern matrices, get 1 from the semiring
+			const IOType one = semiring.getMultiplicativeMonoid().template
+				getIdentity< IOType >();
+
 			// switch forward or backward solve
 			if( forward ) {
 				const auto &crs = internal::getCRS( T );
-				if( !maybe_offset ) {
+				if( !maybe_offset || offset == 0 ) {
 					for( size_t i = 0; i < n; ++i ) {
-						IOType divBy = semiring.template getZero< IOType >();
+						IOType divBy;
+						if( !sorted ) {
+							// in this case we will auto-detect the diagonal item
+							divBy = semiring.template getZero< IOType >();
+						} else {
+							divBy = getDiagonalEntry< IOType, sorted, InputType1, RIT, NIT >(
+								crs, i, forward, one );
+						}
 						assert( crs.col_start[ i ] <= crs.col_start[ i + 1 ] );
-						sptrsv_kernel( crs, i, v_raw, divBy, semiring, subtraction );
+						sptrsv_kernel< sorted >( crs, i, v_raw, forward, divBy, semiring,
+							subtraction );
 #ifdef _DEBUG
 						std::cout << "\t" << v_raw[ i ] << " will be normalised with " << divBy
 							<< "\n";
@@ -2363,9 +2422,15 @@ namespace grb {
 				} else {
 					const size_t end = n + offset;
 					for( size_t i = offset; i < end; ++i ) {
-						IOType divBy = semiring.template getZero< IOType >();
+						IOType divBy;
+						if( !sorted ) {
+							divBy = semiring.template getZero< IOType >();
+						} else {
+							divBy = getDiagonalEntry< IOType, sorted >( crs, i, forward, one );
+						}
 						assert( crs.col_start[ i ] <= crs.col_start[ i + 1 ] );
-						sptrsv_kernel( crs, i, v_raw, divBy, semiring, subtraction );
+						sptrsv_kernel< sorted >( crs, i, v_raw, forward, divBy, semiring,
+							subtraction );
 #ifdef _DEBUG
 						std::cout << "\t" << v_raw[ i ] << " will be normalised with " << divBy
 							<< "\n";
@@ -2377,9 +2442,15 @@ namespace grb {
 				const auto &ccs = internal::getCCS( T );
 				if( !maybe_offset || offset == 0 ) {
 					for( size_t i = n - 1; i < n; --i ) {
-						IOType divBy = semiring.template getZero< IOType >();
+						IOType divBy;
+						if( !sorted ) {
+							divBy = semiring.template getZero< IOType >();
+						} else {
+							divBy = getDiagonalEntry< IOType, sorted >( ccs, i, forward, one );
+						}
 						assert( ccs.col_start[ i ] <= ccs.col_start[ i + 1 ] );
-						sptrsv_kernel( ccs, i, v_raw, divBy, semiring, subtraction );
+						sptrsv_kernel< sorted >( ccs, i, v_raw, forward, divBy, semiring,
+							subtraction );
 #ifdef _DEBUG
 						std::cout << "\t" << v_raw[ i ] << " will be normalised with " << divBy
 							<< "\n";
@@ -2388,9 +2459,15 @@ namespace grb {
 					}
 				} else {
 					for( size_t i = n - 1 + offset; i >= offset; --i ) {
-						IOType divBy = semiring.template getZero< IOType >();
+						IOType divBy;
+						if( !sorted ) {
+							divBy = semiring.template getZero< IOType >();
+						} else {
+							divBy = getDiagonalEntry< IOType, sorted >( ccs, i, forward, one );
+						}
 						assert( ccs.col_start[ i ] <= ccs.col_start[ i + 1 ] );
-						sptrsv_kernel( ccs, i, v_raw, divBy, semiring, subtraction );
+						sptrsv_kernel< sorted >( ccs, i, v_raw, forward, divBy, semiring,
+							subtraction );
 #ifdef _DEBUG
 						std::cout << "\t" << v_raw[ i ] << " will be normalised with " << divBy
 							<< "\n";
@@ -2453,7 +2530,7 @@ namespace grb {
 						assert( no + lo <= n );
 						local_rc = local_rc
 							? local_rc
-							: dense_unmasked_sequential_sptrsv< descr, true >(
+							: dense_unmasked_sequential_sptrsv< descr, true, 1 >(
 								v_raw, T, lo, no, forward, semiring, subtraction, division, phase );
 						#pragma omp barrier
 					}
@@ -2480,7 +2557,7 @@ namespace grb {
 							assert( no + lo <= n );
 							local_rc = local_rc
 								? local_rc
-								: dense_unmasked_sequential_sptrsv< descr, true >(
+								: dense_unmasked_sequential_sptrsv< descr, true, 1 >(
 									v_raw, T, lo, no, forward, semiring, subtraction, division, phase );
 						}
 						#pragma omp barrier
@@ -2596,7 +2673,7 @@ namespace grb {
 		if( dense || grb::nnz( xb ) == n ) {
 			IOType * const xb_p = internal::getRaw( xb );
 #ifndef _H_GRB_REFERENCE_OMP_BLAS2
-			return internal::dense_unmasked_sequential_sptrsv< descr, false >(
+			return internal::dense_unmasked_sequential_sptrsv< descr, false, 0 >(
 				xb_p, T, 0, n, forward, semiring, subtraction, division, phase );
 #else
 			// The below code is only for testing (DBG):
