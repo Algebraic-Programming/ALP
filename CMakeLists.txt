@@ -321,6 +321,9 @@ if( WITH_OMP_BACKEND OR WITH_HYBRID_BACKEND )
 	set( WITH_OMP_BACKEND_HEADERS ON )
 endif()
 
+
+add_subdirectory(python)
+
 add_subdirectory( include )
 
 ### BACKEND IMPLEMENTATIONS
@@ -376,4 +379,8 @@ add_dependencies( docs userdocs devdocs )
 
 message( "Tests enabled for backends: ${AVAILABLE_TEST_BACKENDS}" )
 message( "Enabled backend targets: ${AVAILABLE_BACKENDS}\n" )
+
+
+
+
 
