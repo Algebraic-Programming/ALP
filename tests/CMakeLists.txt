@@ -163,6 +163,8 @@ if( GNN_DATASET_PATH )
 	)
 endif()
 
+add_subdirectory( python )
+
 add_subdirectory( unit )
 
 add_subdirectory( smoke )

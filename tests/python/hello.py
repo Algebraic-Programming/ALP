@@ -1,3 +1,3 @@
-import hello
-print(hello.say_hello())
+import python2alp
+print(python2alp.say_hello())
 # Output: Hello, world from C++!
