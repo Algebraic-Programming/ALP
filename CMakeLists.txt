@@ -322,12 +322,11 @@ if( WITH_OMP_BACKEND OR WITH_HYBRID_BACKEND )
 endif()
 
 
-add_subdirectory(python)
-
 add_subdirectory( include )
 
 ### BACKEND IMPLEMENTATIONS
 add_subdirectory( src )
+
 
 ### TESTS and EXAMPLES
 
@@ -338,6 +337,7 @@ include( AddGRBTests )
 
 add_subdirectory( tests )
 
+add_subdirectory(python)
 add_subdirectory( examples )
 
 
