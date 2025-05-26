@@ -3,13 +3,9 @@ project(python_module LANGUAGES CXX)
 
 add_subdirectory(extern/pybind11)
 
-pybind11_add_module(python2alp python2alp.cpp)
-pybind11_add_module(numpy2alp numpy2alp.cpp)
-
 assert_defined_variables( WITH_REFERENCE_BACKEND WITH_OMP_BACKEND )
 
 # target listing all examples, to build them at once with 'make examples'
-add_custom_target( examples_python)
 
 
 if( WITH_REFERENCE_BACKEND )
@@ -22,6 +18,14 @@ if( WITH_REFERENCE_BACKEND )
 	# (Optional) If you need extra compile flags or C++ standard:
 	 set_target_properties(${PYALP_MODULE_NAME} PROPERTIES CXX_STANDARD 14 CXX_STANDARD_REQUIRED YES)
 	# target_compile_options(conjugate_gradient_python PRIVATE -Wall -Wextra)
+
+	add_custom_command(TARGET ${PYALP_MODULE_NAME} POST_BUILD
+	    COMMAND ${CMAKE_COMMAND} -E echo ""
+	    COMMAND ${CMAKE_COMMAND} -E echo "============================================================"
+	    COMMAND ${CMAKE_COMMAND} -E echo "Build complete!"
+	    COMMAND ${CMAKE_COMMAND} -E echo "To use the Python bindings, append ${CMAKE_BINARY_DIR}/python to your PYTHONPATH:"
+	    COMMAND ${CMAKE_COMMAND} -E echo "============================================================"
+	)
 
 endif()
 
@@ -37,6 +41,14 @@ if( WITH_OMP_BACKEND )
 	set_target_properties(${PYALP_MODULE_NAME} PROPERTIES CXX_STANDARD 14 CXX_STANDARD_REQUIRED YES)
 	# target_compile_options(conjugate_gradient_python PRIVATE -Wall -Wextra)
 
+	add_custom_command(TARGET ${PYALP_MODULE_NAME} POST_BUILD
+	    COMMAND ${CMAKE_COMMAND} -E echo ""
+	    COMMAND ${CMAKE_COMMAND} -E echo "============================================================"
+	    COMMAND ${CMAKE_COMMAND} -E echo "Build complete!"
+	    COMMAND ${CMAKE_COMMAND} -E echo "To use the Python bindings, append ${CMAKE_BINARY_DIR}/python to your PYTHONPATH:"
+	    COMMAND ${CMAKE_COMMAND} -E echo "============================================================"
+	)
+
 endif()
 
 
@@ -50,6 +62,14 @@ if( WITH_NONBLOCKING_BACKEND )
 	# (Optional) If you need extra compile flags or C++ standard:
 	set_target_properties(${PYALP_MODULE_NAME} PROPERTIES CXX_STANDARD 14 CXX_STANDARD_REQUIRED YES)
 	# target_compile_options(conjugate_gradient_python PRIVATE -Wall -Wextra)
+
+	add_custom_command(TARGET ${PYALP_MODULE_NAME} POST_BUILD
+	    COMMAND ${CMAKE_COMMAND} -E echo ""
+	    COMMAND ${CMAKE_COMMAND} -E echo "============================================================"
+	    COMMAND ${CMAKE_COMMAND} -E echo "Build complete!"
+	    COMMAND ${CMAKE_COMMAND} -E echo "To use the Python bindings, append ${CMAKE_BINARY_DIR}/python to your PYTHONPATH:"
+	    COMMAND ${CMAKE_COMMAND} -E echo "============================================================"
+	)
 
 endif()
 

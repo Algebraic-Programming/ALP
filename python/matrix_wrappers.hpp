@@ -74,6 +74,7 @@ void buildMatrix(
     assert( nnz == info_v.size );
 
     grb::RC io_rc;
+    (void)io_rc;
     io_rc = grb::buildMatrixUnique( M, data_ptr_i, data_ptr_j , data_ptr_v, nnz, grb::SEQUENTIAL );
     assert( io_rc == grb::SUCCESS );
 }

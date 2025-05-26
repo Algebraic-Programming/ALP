@@ -62,6 +62,7 @@ conjugate_gradient(
 	    std::cout << "conjugate_gradient:  start \n";
 	// get user process ID
 	const size_t s = grb::spmd<>::pid();
+	(void)s;
 	assert( s < grb::spmd<>::nprocs() );
 
 	// get input n

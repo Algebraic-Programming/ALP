@@ -35,6 +35,7 @@ void buildVector(grb::Vector< ScalarType >& V, py::array_t<ScalarType> arrv) {
     ScalarType* data_ptr_v = static_cast<ScalarType*>(info_v.ptr);
 
     grb::RC io_rc;
+    (void)io_rc;
     io_rc = grb::buildVector( V, data_ptr_v, data_ptr_v + info_v.size, grb::SEQUENTIAL );
     assert( io_rc == grb::SUCCESS );
 }
