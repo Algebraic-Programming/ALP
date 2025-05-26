@@ -11,27 +11,45 @@ assert_defined_variables( WITH_REFERENCE_BACKEND WITH_OMP_BACKEND )
 # target listing all examples, to build them at once with 'make examples'
 add_custom_target( examples_python)
 
+
 if( WITH_REFERENCE_BACKEND )
-	add_executable( sp_reference_python sp.cpp )
-	target_link_libraries( sp_reference_python backend_reference common_flags )
+	set(PYALP_MODULE_NAME pyalp_ref)
+
+	pybind11_add_module( ${PYALP_MODULE_NAME} pyalp.cpp conjugate_gradient.hpp matrix_wrappers.hpp utils.hpp vector_wrappers.hpp )
+	target_compile_definitions(${PYALP_MODULE_NAME} PRIVATE PYALP_MODULE_NAME=${PYALP_MODULE_NAME})
+	# Link your required libraries
+	target_link_libraries(${PYALP_MODULE_NAME} PRIVATE backend_shmem_shared backend_reference common_flags)
+	# (Optional) If you need extra compile flags or C++ standard:
+	 set_target_properties(${PYALP_MODULE_NAME} PROPERTIES CXX_STANDARD 14 CXX_STANDARD_REQUIRED YES)
+	# target_compile_options(conjugate_gradient_python PRIVATE -Wall -Wextra)
+
 endif()
 
 
-if( WITH_REFERENCE_BACKEND )
+if( WITH_OMP_BACKEND )
+	set(PYALP_MODULE_NAME pyalp_omp)
 
-
-	pybind11_add_module( conjugate_gradient_python conjugate_gradient.cpp )
-	#target_compile_definitions(conjugate_gradient_python common_flags)
-
+	pybind11_add_module( ${PYALP_MODULE_NAME} pyalp.cpp conjugate_gradient.hpp matrix_wrappers.hpp utils.hpp vector_wrappers.hpp )
+	target_compile_definitions( ${PYALP_MODULE_NAME} PRIVATE PYALP_MODULE_NAME=${PYALP_MODULE_NAME})
 	# Link your required libraries
-	target_link_libraries(conjugate_gradient_python PRIVATE backend_shmem_shared backend_reference common_flags)
+	target_link_libraries(${PYALP_MODULE_NAME} PRIVATE backend_shmem_shared backend_reference_omp common_flags)
 	# (Optional) If you need extra compile flags or C++ standard:
-	# set_target_properties(conjugate_gradient_python PROPERTIES CXX_STANDARD 17 CXX_STANDARD_REQUIRED YES)
+	set_target_properties(${PYALP_MODULE_NAME} PROPERTIES CXX_STANDARD 14 CXX_STANDARD_REQUIRED YES)
 	# target_compile_options(conjugate_gradient_python PRIVATE -Wall -Wextra)
 
+endif()
 
-	#add_executable( conjugate_gradient_python conjugate_gradient.cpp )
-	#target_link_libraries( conjugate_gradient_python backend_reference common_flags )
+
+if( WITH_NONBLOCKING_BACKEND )
+	set(PYALP_MODULE_NAME pyalp_nonblocking)
+
+	pybind11_add_module( ${PYALP_MODULE_NAME} pyalp.cpp conjugate_gradient.hpp matrix_wrappers.hpp utils.hpp vector_wrappers.hpp )
+	target_compile_definitions( ${PYALP_MODULE_NAME} PRIVATE PYALP_MODULE_NAME=${PYALP_MODULE_NAME})
+	# Link your required libraries
+	target_link_libraries(${PYALP_MODULE_NAME} PRIVATE backend_shmem_shared backend_reference_omp common_flags)
+	# (Optional) If you need extra compile flags or C++ standard:
+	set_target_properties(${PYALP_MODULE_NAME} PROPERTIES CXX_STANDARD 14 CXX_STANDARD_REQUIRED YES)
+	# target_compile_options(conjugate_gradient_python PRIVATE -Wall -Wextra)
 
 endif()
 
