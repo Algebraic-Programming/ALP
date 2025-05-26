@@ -163,7 +163,9 @@ if( GNN_DATASET_PATH )
 	)
 endif()
 
-add_subdirectory( python )
+if( ENABLE_PYALP )
+	add_subdirectory( python )
+endif()
 
 add_subdirectory( unit )
 
