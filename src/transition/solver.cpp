@@ -148,7 +148,7 @@ class CG_Data {
 		 *           per both the C and C++ specifications.
 		 */
 		static size_t workspaceSize( const size_t n ) {
-			return 3 * sizeof( T ) + 2 * sizeof( int );
+			return 3 * n * sizeof( T ) + 2 * sizeof( int );
 		}
 
 		/** Disable default constructor. */
@@ -196,27 +196,29 @@ class CG_Data {
 			}
 			Matrix A = grb::internal::wrapCRSMatrix( a, ja, ia, n, n );
 			std::swap( A, matrix );
-			char * workspace_ptr = buffer;
+			char * workspace_ptr = static_cast< char * >(buffer);
 			assert( static_cast< char * >(buffer) + buffer_size >= workspace_ptr + n );
 			{
 				T * const workspace_vector = reinterpret_cast< T * >(workspace_ptr);
-				grb::Vector< T > tmp = grb::internal::wrapVector( workspace_vector );
+				grb::Vector< T > tmp = grb::internal::wrapRawVector( n, workspace_vector );
 				std::swap( workspace[ 0 ], tmp );
 			}
 			workspace_ptr += n * sizeof( T );
-			workspace_ptr += (sizeof(int) - (workspace_ptr % sizeof(int)));
+			workspace_ptr +=
+				(sizeof(int) - (reinterpret_cast<uintptr_t>(workspace_ptr) % sizeof(int)));
 			assert( static_cast< char * >(buffer) + buffer_size >= workspace_ptr + n );
 			{
 				T * const workspace_vector = reinterpret_cast< T * >(workspace_ptr);
-				grb::Vector< T > tmp = grb::internal::wrapVector( workspace_vector );
+				grb::Vector< T > tmp = grb::internal::wrapRawVector( n, workspace_vector );
 				std::swap( workspace[ 1 ], tmp );
 			}
 			workspace_ptr += n * sizeof( T );
-			workspace_ptr += (sizeof(int) - (workspace_ptr % sizeof(int)));
+			workspace_ptr +=
+				(sizeof(int) - (reinterpret_cast<uintptr_t>(workspace_ptr) % sizeof(int)));
 			assert( static_cast< char * >(buffer) + buffer_size >= workspace_ptr + n );
 			{
 				T * const workspace_vector = reinterpret_cast< T * >(workspace_ptr);
-				grb::Vector< T > tmp = grb::internal::wrapVector( workspace_vector );
+				grb::Vector< T > tmp = grb::internal::wrapRawVector( n, workspace_vector );
 				std::swap( workspace[ 2 ], tmp );
 			}
 		}
@@ -328,7 +330,8 @@ class CG_Data {
 template< typename T, typename NZI, typename RSI >
 static sparse_err_t sparse_cg_init_impl(
 	sparse_cg_handle_t * const handle, const size_t n,
-	const T * const a, const RSI * const ja, const NZI * const ia
+	const T * const a, const RSI * const ja, const NZI * const ia,
+	void * const buffer, const size_t bufferSize
 ) {
 	if( n == 0 ) { return ILLEGAL_ARGUMENT; }
 	if( handle == nullptr || a == nullptr || ja == nullptr || ia == nullptr ) {
@@ -336,7 +339,7 @@ static sparse_err_t sparse_cg_init_impl(
 	}
 	try {
 		*handle = static_cast< void * >(
-			new CG_Data< T, NZI, RSI >( n, a, ja, ia ) );
+			new CG_Data< T, NZI, RSI >( n, a, ja, ia, buffer, bufferSize ) );
 	} catch( std::exception &e ) {
 		// the grb::Matrix constructor may only throw on out of memory errors
 		std::cerr << "Error: " << e.what() << "\n";
@@ -346,46 +349,67 @@ static sparse_err_t sparse_cg_init_impl(
 	return NO_ERROR;
 }
 
+template< typename T, typename NZI, typename RSI >
+static sparse_err_t sparse_cg_init_impl_no_buffer(
+	sparse_cg_handle_t * const handle, const size_t n,
+	const T * const a, const RSI * const ja, const NZI * const ia
+) {
+	const size_t allocSize = CG_Data< T, NZI, RSI >::workspaceSize( n );
+	void * buffer = nullptr;
+	try {
+		buffer = static_cast< void * >(new char[ allocSize ]);
+	} catch( ... ) {
+		std::cerr << "Error allocating workspace buffer\n";
+		return OUT_OF_MEMORY;
+	}
+	const sparse_err_t rc = sparse_cg_init_impl(
+		handle, n, a, ja, ia, buffer, allocSize );
+	if( rc != NO_ERROR ) {
+		delete [] static_cast< char * >(buffer);
+	}
+	return rc;
+}
+
 sparse_err_t sparse_cg_init_sii(
 	sparse_cg_handle_t * const handle, const size_t n,
 	const float * const a, const int * const ja, const int * const ia
 ) {
-	return sparse_cg_init_impl< float, int, int >( handle, n, a, ja, ia );
+	return sparse_cg_init_impl_no_buffer< float, int, int >( handle, n, a, ja, ia );
 }
 
 sparse_err_t sparse_cg_init_dii(
 	sparse_cg_handle_t * const handle, const size_t n,
 	const double * const a, const int * const ja, const int * const ia
 ) {
-	return sparse_cg_init_impl< double, int, int >( handle, n, a, ja, ia );
+	return sparse_cg_init_impl_no_buffer< double, int, int >( handle, n, a, ja, ia );
 }
 
 sparse_err_t sparse_cg_init_siz(
 	sparse_cg_handle_t * const handle, const size_t n,
 	const float * const a, const int * const ja, const size_t * const ia
 ) {
-	return sparse_cg_init_impl< float, size_t, int >( handle, n, a, ja, ia );
+	return sparse_cg_init_impl_no_buffer< float, size_t, int >( handle, n, a, ja, ia );
 }
 
 sparse_err_t sparse_cg_init_diz(
 	sparse_cg_handle_t * const handle, const size_t n,
 	const double * const a, const int * const ja, const size_t * const ia
 ) {
-	return sparse_cg_init_impl< double, size_t, int >( handle, n, a, ja, ia );
+	return sparse_cg_init_impl_no_buffer< double, size_t, int >( handle, n, a, ja, ia );
 }
 
 sparse_err_t sparse_cg_init_szz(
 	sparse_cg_handle_t * const handle, const size_t n,
 	const float * const a, const size_t * const ja, const size_t * const ia
 ) {
-	return sparse_cg_init_impl< float, size_t, size_t >( handle, n, a, ja, ia );
+	return sparse_cg_init_impl_no_buffer< float, size_t, size_t >( handle, n, a, ja, ia );
 }
 
 sparse_err_t sparse_cg_init_dzz(
 	sparse_cg_handle_t * const handle, const size_t n,
 	const double * const a, const size_t * const ja, const size_t * const ia
 ) {
-	return sparse_cg_init_impl< double, size_t, size_t >( handle, n, a, ja, ia );
+	return sparse_cg_init_impl_no_buffer< double, size_t, size_t >( handle, n, a, ja, ia );
 }
 
 template< typename T, typename NZI, typename RSI >
