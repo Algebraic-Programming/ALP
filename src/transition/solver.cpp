@@ -16,11 +16,12 @@
  */
 
 
-#include <assert.h>
 #include <array>
 
 #include <graphblas.hpp>
 #include <graphblas/algorithms/conjugate_gradient.hpp>
+
+#include <assert.h>
 
 #include "solver.h"
 
@@ -136,6 +137,20 @@ class CG_Data {
 
 	public:
 
+		/**
+		 * The size, in bytes, required as a work space for the PCG algorithm.
+		 *
+		 * @param[in] n The linear system size.
+		 *
+		 * @returns The required size, in bytes.
+		 *
+		 * \internal Note that the space for two additional integers is required as
+		 *           per both the C and C++ specifications.
+		 */
+		static size_t workspaceSize( const size_t n ) {
+			return 3 * sizeof( T ) + 2 * sizeof( int );
+		}
+
 		/** Disable default constructor. */
 		CG_Data() = delete;
 
@@ -149,16 +164,26 @@ class CG_Data {
 		 *
 		 * The matrix defined by \a a, \a ja, \a ia must be symmetric positive
 		 * definite.
+		 *
+		 * @param[in] buffer The workspace required by this algorithm. This must
+		 *                   point to a valid memory region that can be used
+		 *                   exclusively by ALP. The size of the memory region (in
+		 *                   bytes) must be greater or equal to that returned by
+		 *                   #workspaceSize( n ) with \a n equal to the value passed
+		 *                   to this constructor.
+		 *
+		 * @param[in] buffer_size The size of the given \a buffer. Used for sanity
+		 *                        checking the use of the buffer.
+		 *
+		 * \warning The sanity check is weaker if not compiled in debug mode.
 		 */
 		CG_Data(
 			const size_t n,
-			const T * const a, const RSI * const ja, const NZI * const ia
+			const T * const a, const RSI * const ja, const NZI * const ia,
+			void * const buffer, const size_t buffer_size
 		) :
 			size( n ), tolerance( 1e-5 ), max_iter( 1000 ), matrix( 0, 0 ),
 			residual( std::numeric_limits< T >::infinity() ), iters( 0 ),
-			workspace( {
-				grb::Vector< T >( n ), grb::Vector< T >( n ), grb::Vector< T >( n )
-			} ),
 			precond_workspace( grb::Vector< T >( 0 ) ),
 			preconditioner( nullptr ), preconditioner_data( nullptr )
 		{
@@ -166,8 +191,34 @@ class CG_Data {
 			assert( a != nullptr );
 			assert( ja != nullptr );
 			assert( ia != nullptr );
+			if( buffer_size >= workspaceSize( n ) ) {
+				throw std::invalid_argument( "The given buffer size is too small" );
+			}
 			Matrix A = grb::internal::wrapCRSMatrix( a, ja, ia, n, n );
 			std::swap( A, matrix );
+			char * workspace_ptr = buffer;
+			assert( static_cast< char * >(buffer) + buffer_size >= workspace_ptr + n );
+			{
+				T * const workspace_vector = reinterpret_cast< T * >(workspace_ptr);
+				grb::Vector< T > tmp = grb::internal::wrapVector( workspace_vector );
+				std::swap( workspace[ 0 ], tmp );
+			}
+			workspace_ptr += n * sizeof( T );
+			workspace_ptr += (sizeof(int) - (workspace_ptr % sizeof(int)));
+			assert( static_cast< char * >(buffer) + buffer_size >= workspace_ptr + n );
+			{
+				T * const workspace_vector = reinterpret_cast< T * >(workspace_ptr);
+				grb::Vector< T > tmp = grb::internal::wrapVector( workspace_vector );
+				std::swap( workspace[ 1 ], tmp );
+			}
+			workspace_ptr += n * sizeof( T );
+			workspace_ptr += (sizeof(int) - (workspace_ptr % sizeof(int)));
+			assert( static_cast< char * >(buffer) + buffer_size >= workspace_ptr + n );
+			{
+				T * const workspace_vector = reinterpret_cast< T * >(workspace_ptr);
+				grb::Vector< T > tmp = grb::internal::wrapVector( workspace_vector );
+				std::swap( workspace[ 2 ], tmp );
+			}
 		}
 
 		/** @returns The system size. */
