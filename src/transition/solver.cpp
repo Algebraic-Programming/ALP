@@ -17,6 +17,7 @@
 
 
 #include <array>
+#include <stdexcept>
 
 #include <graphblas.hpp>
 #include <graphblas/algorithms/conjugate_gradient.hpp>
@@ -141,14 +142,20 @@ class CG_Data {
 		 * The size, in bytes, required as a work space for the PCG algorithm.
 		 *
 		 * @param[in] n The linear system size.
+		 * @param[in] preconditioned Whether the solver may be called with a
+		 *                           preconditioner.
 		 *
 		 * @returns The required size, in bytes.
 		 *
 		 * \internal Note that the space for two additional integers is required as
 		 *           per both the C and C++ specifications.
 		 */
-		static size_t workspaceSize( const size_t n ) {
-			return 3 * n * sizeof( T ) + 2 * sizeof( int );
+		static size_t workspaceSize( const size_t n, const bool preconditioned ) {
+			if( preconditioned ) {
+				return 4 * n * sizeof( T ) + 3 * sizeof( int );
+			} else {
+				return 3 * n * sizeof( T ) + 2 * sizeof( int );
+			}
 		}
 
 		/** Disable default constructor. */
@@ -191,7 +198,7 @@ class CG_Data {
 			assert( a != nullptr );
 			assert( ja != nullptr );
 			assert( ia != nullptr );
-			if( buffer_size >= workspaceSize( n ) ) {
+			if( buffer_size < workspaceSize( n, false ) ) {
 				throw std::invalid_argument( "The given buffer size is too small" );
 			}
 			Matrix A = grb::internal::wrapCRSMatrix( a, ja, ia, n, n );
@@ -220,6 +227,15 @@ class CG_Data {
 				T * const workspace_vector = reinterpret_cast< T * >(workspace_ptr);
 				grb::Vector< T > tmp = grb::internal::wrapRawVector( n, workspace_vector );
 				std::swap( workspace[ 2 ], tmp );
+			}
+			if( buffer_size >= workspaceSize( n, true ) ) {
+				workspace_ptr += n * sizeof( T );
+				workspace_ptr +=
+					(sizeof(int) - (reinterpret_cast<uintptr_t>(workspace_ptr) % sizeof(int)));
+				assert( static_cast< char * >(buffer) + buffer_size >= workspace_ptr + n );
+				T * const workspace_vector = reinterpret_cast< T * >(workspace_ptr);
+				grb::Vector< T > tmp = grb::internal::wrapRawVector( n, workspace_vector );
+				std::swap( precond_workspace, tmp );
 			}
 		}
 
@@ -354,7 +370,9 @@ static sparse_err_t sparse_cg_init_impl_no_buffer(
 	sparse_cg_handle_t * const handle, const size_t n,
 	const T * const a, const RSI * const ja, const NZI * const ia
 ) {
-	const size_t allocSize = CG_Data< T, NZI, RSI >::workspaceSize( n );
+	// we pass true here, since we want to support the entire solver transition
+	// path API out of the box
+	const size_t allocSize = CG_Data< T, NZI, RSI >::workspaceSize( n, true );
 	void * buffer = nullptr;
 	try {
 		buffer = static_cast< void * >(new char[ allocSize ]);
