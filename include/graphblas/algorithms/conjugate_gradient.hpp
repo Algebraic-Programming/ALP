@@ -354,7 +354,8 @@ namespace grb {
 				bnorm,
 				b, b,
 				ring.getAdditiveMonoid(),
-				grb::operators::conjugate_left_mul< IOType >() );
+					grb::operators::conjugate_left_mul< IOType >()
+				);
 			assert( ret == grb::SUCCESS );
 
 			// get residual. In the preconditioned case, the resulting scalar is *not*
