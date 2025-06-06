@@ -351,9 +351,9 @@ namespace grb {
 			// bnorm = b' * b;
 			bnorm = zero;
 			ret = ret ? ret : grb::dot< descr_dense >(
-				bnorm,
-				b, b,
-				ring.getAdditiveMonoid(),
+					bnorm,
+					b, b,
+					ring.getAdditiveMonoid(),
 					grb::operators::conjugate_left_mul< IOType >()
 				);
 			assert( ret == grb::SUCCESS );
