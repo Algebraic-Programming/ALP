@@ -28,6 +28,7 @@
 #ifndef _H_GRB_NONBLOCKING_INIT
 #define _H_GRB_NONBLOCKING_INIT
 
+#include <omp.h>
 #include <graphblas/base/init.hpp>
 #include <graphblas/utils/DMapper.hpp>
 
@@ -134,7 +135,7 @@ namespace grb {
 				 * The maximum number of threads available in the system.
 				 */
 				static size_t numThreads() {
-					return num_threads;
+					return omp_get_max_threads();
 				}
 
 		};
