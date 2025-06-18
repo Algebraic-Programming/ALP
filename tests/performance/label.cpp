@@ -268,8 +268,10 @@ void grbProgram( const struct input &data_in, struct output &out ) {
 	out.times.preamble = timer.time();
 
 	// run and time experiment
+	grb::wait();
 	timer.reset();
 	algorithms::label( f, y, W, n, l );
+	grb::wait();
 	out.times.useful = timer.time();
 
 	// output result

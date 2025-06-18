@@ -202,6 +202,7 @@ void grbProgram( const struct input &data_in, struct output &out ) {
 		rc = rc ? rc : mxv( y, A, x, ring );
 		assert( rc == SUCCESS );
 
+		grb::wait();
 		double single_time = subtimer.time();
 		if( rc != SUCCESS ) {
 			std::cerr << "Failure: call to mxv did not succeed ("
@@ -243,6 +244,7 @@ void grbProgram( const struct input &data_in, struct output &out ) {
 		(void) mxv( y, A, x, ring );
 #endif
 	}
+	grb::wait();
 	time_taken = timer.time();
 	if( rc == SUCCESS ) {
 		out.times.useful = time_taken / static_cast< double >( out.rep );

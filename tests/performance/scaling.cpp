@@ -128,11 +128,13 @@ void grbProgram( const struct input &data_in, struct output &out ) {
 			if( out.error_code == SUCCESS ) {
 				out.error_code = setupSparseMatrix( mx, n );
 			}
+			grb::wait();
 			out.times.preamble = timer.time();
 			timer.reset();
 			for( size_t i = 0; out.error_code == SUCCESS && i < data_in.rep; ++i ) {
 				out.error_code = mxv< descr >( vy, mx, vx, ring );
 			}
+			grb::wait();
 			out.times.useful = timer.time() / static_cast< double >( data_in.rep );
 			// done
 			out.times.postamble = 0;
@@ -150,12 +152,14 @@ void grbProgram( const struct input &data_in, struct output &out ) {
 			if( out.error_code == SUCCESS ) {
 				out.error_code = setupSparseMatrix( mx, n );
 			}
+			grb::wait();
 			out.times.preamble = timer.time();
 			timer.reset();
 			for( size_t i = 0; out.error_code == SUCCESS && i < data_in.rep; ++i ) {
 				out.error_code = mxv< descr | descriptors::transpose_matrix >(
 					vy, mx, vx, ring );
 			}
+			grb::wait();
 			out.times.useful = timer.time() / static_cast< double >( data_in.rep );
 			// done
 			out.times.postamble = 0;
@@ -173,11 +177,13 @@ void grbProgram( const struct input &data_in, struct output &out ) {
 			if( out.error_code == SUCCESS ) {
 				out.error_code = setupSparseMatrix( mx, n );
 			}
+			grb::wait();
 			out.times.preamble = timer.time();
 			timer.reset();
 			for( size_t i = 0; out.error_code == SUCCESS && i < data_in.rep; ++i ) {
 				out.error_code = vxm< descr >( vy, vx, mx, ring );
 			}
+			grb::wait();
 			out.times.useful = timer.time() / static_cast< double >( data_in.rep );
 			// done
 			out.times.postamble = 0;
@@ -195,12 +201,14 @@ void grbProgram( const struct input &data_in, struct output &out ) {
 			if( out.error_code == SUCCESS ) {
 				out.error_code = setupSparseMatrix( mx, n );
 			}
+			grb::wait();
 			out.times.preamble = timer.time();
 			timer.reset();
 			for( size_t i = 0; out.error_code == SUCCESS && i < data_in.rep; ++i ) {
 				out.error_code = vxm< descr | descriptors::transpose_matrix >(
 					vy, vx, mx, ring );
 			}
+			grb::wait();
 			out.times.useful = timer.time() / static_cast< double >( data_in.rep );
 			// done
 			out.times.postamble = 0;

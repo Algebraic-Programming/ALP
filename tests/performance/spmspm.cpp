@@ -283,6 +283,7 @@ void grbProgram( const struct input &data_in, struct output &out ) {
 		assert( rc == SUCCESS );
 		rc = rc ? rc : grb::mxm< descr >( C, A, B, ring );
 		assert( rc == SUCCESS );
+		grb::wait();
 		double single_time = subtimer.time();
 
 		if( rc != SUCCESS ) {
@@ -336,6 +337,7 @@ void grbProgram( const struct input &data_in, struct output &out ) {
 	rc = rc ? rc : grb::mxm< descr >( C, A, B, ring );
 	assert( rc == SUCCESS );
 
+	grb::wait();
 	time_taken = timer.time();
 	out.times.useful = time_taken / static_cast< double >( out.rep );
 

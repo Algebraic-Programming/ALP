@@ -74,6 +74,7 @@ void test( const struct Input &in, struct Output &out ) {
 	const double expected = in.n * ( in.n - 1 ) / 2;
 
 	if( mode == TEMPLATED ) {
+		grb::wait();
 		double ttime = timer.time();
 		// get cache `hot'
 		out.error = grb::foldl< grb::descriptors::dense >( alpha, xv, realm );
@@ -83,6 +84,7 @@ void test( const struct Input &in, struct Output &out ) {
 			return;
 		}
 		// use this to infer number of inner iterations, if requested to be computed
+		grb::wait();
 		ttime = timer.time() - ttime;
 		if( in.rep == 0 ) {
 			out.reps_used = static_cast< size_t >( 100.0 / ttime ) + 1;
@@ -99,6 +101,7 @@ void test( const struct Input &in, struct Output &out ) {
 			alpha = 0.0;
 			(void) grb::foldl< grb::descriptors::dense >( alpha, xv, realm );
 		}
+		grb::wait();
 		out.times.useful = timer.time() / static_cast< double >( out.reps_used );
 
 		// postamble
@@ -132,6 +135,7 @@ void test( const struct Input &in, struct Output &out ) {
 			return;
 		}
 		// use this to infer number of inner iterations, if requested to be computed
+		grb::wait();
 		ltime = timer.time() - ltime;
 		if( in.rep == 0 ) {
 			out.reps_used = static_cast< size_t >( 100.0 / ltime ) + 1;
@@ -152,6 +156,7 @@ void test( const struct Input &in, struct Output &out ) {
 				},
 				xv );
 		}
+		grb::wait();
 		out.times.useful = timer.time() / static_cast< double >( out.reps_used );
 
 		// postamble
@@ -173,6 +178,7 @@ void test( const struct Input &in, struct Output &out ) {
 		// get cache `hot'
 		bench_kernels_reduce( &alpha, x, in.n );
 		// use this to infer number of inner iterations, if requested to be computed
+		grb::wait();
 		ctime = timer.time() - ctime;
 		if( in.rep == 0 ) {
 			out.reps_used = static_cast< size_t >( 100.0 / ctime ) + 1;
@@ -188,6 +194,7 @@ void test( const struct Input &in, struct Output &out ) {
 		for( size_t k = 0; k < out.reps_used; ++k ) {
 			bench_kernels_reduce( &alpha, x, in.n );
 		}
+		grb::wait();
 		out.times.useful = timer.time() / static_cast< double >( out.reps_used );
 
 		// postamble

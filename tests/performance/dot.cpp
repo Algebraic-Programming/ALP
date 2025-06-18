@@ -109,9 +109,11 @@ void functional_test( const struct test_input &in, struct test_output &out ) {
 		grb::operators::add< double >, grb::operators::mul< double >,
 		grb::identities::zero, grb::identities::one
 	> reals;
+	grb::wait();
 	timer.reset();
 	double alpha = 0.0;
 	const RC rc = grb::dot( alpha, xv, yv, reals );
+	grb::wait();
 	out.time = timer.time();
 	if( rc != SUCCESS ) {
 		std::cerr << "Call to grb::dot failed with error " << grb::toString( rc )
@@ -154,6 +156,7 @@ void functional_test( const struct test_input &in, struct test_output &out ) {
 void bench_templated( const struct bench_input &in, struct bench_output &out ) {
 	out.error_code = 0;
 	grb::utils::Timer timer;
+	grb::wait();
 	timer.reset();
 
 	// declare graphBLAS data structures
@@ -169,6 +172,7 @@ void bench_templated( const struct bench_input &in, struct bench_output &out ) {
 		out.error_code = 103;
 	}
 	if( out.error_code ) {
+		grb::wait();
 		out.times.preamble = timer.time();
 		return;
 	}
@@ -184,21 +188,25 @@ void bench_templated( const struct bench_input &in, struct bench_output &out ) {
 		std::cerr << "Call to grb::dot failed with error " << grb::toString( rc )
 			<< std::endl;
 		out.error_code = 201;
+		grb::wait();
 		out.times.preamble = timer.time();
 		return;
 	}
 
 	// done with preamble, start useful work
+	grb::wait();
 	out.times.preamble = timer.time();
 	timer.reset();
 
 	// benchmark hot runs
 	double ttime = 0;
 	for( size_t i = 0; i < in.rep; ++i ) {
+		grb::wait();
 		timer.reset();
 		alpha = 0.0;
 		const enum RC grc = grb::dot< grb::descriptors::dense >( alpha, xv, yv,
 			reals );
+		grb::wait();
 		ttime += timer.time() / static_cast< double >( in.rep );
 
 		// sanity checks
@@ -228,6 +236,7 @@ void bench_templated( const struct bench_input &in, struct bench_output &out ) {
 void bench_lambda( const struct bench_input &in, struct bench_output &out ) {
 	out.error_code = 0;
 	grb::utils::Timer timer;
+	grb::wait();
 	timer.reset();
 
 	// declare graphBLAS data structures
@@ -245,6 +254,7 @@ void bench_lambda( const struct bench_input &in, struct bench_output &out ) {
 		return;
 	}
 	if( out.error_code ) {
+		grb::wait();
 		out.times.preamble = timer.time();
 		return;
 	}
@@ -268,18 +278,21 @@ void bench_lambda( const struct bench_input &in, struct bench_output &out ) {
 	if( rc != SUCCESS ) {
 		std::cerr << "Error during call to grb::eWiseLambda, error: "
 			<< grb::toString( rc ) << std::endl;
+		grb::wait();
 		out.times.preamble = timer.time();
 		out.error_code = 203;
 		return;
 	}
 
 	// done with preamble, start useful work
+	grb::wait();
 	out.times.preamble = timer.time();
 	timer.reset();
 
 	// now do a hot run
 	double ltime = 0.0;
 	for( size_t k = 0; k < in.rep; ++k ) {
+		grb::wait();
 		timer.reset();
 		alpha = reals.template getZero< double >();
 		const enum RC grc = grb::eWiseLambda(
@@ -298,6 +311,7 @@ void bench_lambda( const struct bench_input &in, struct bench_output &out ) {
 			},
 			xv
 		);
+		grb::wait();
 		ltime += timer.time() / static_cast< double >( in.rep );
 
 		bool sane = true;
@@ -326,6 +340,7 @@ void bench_lambda( const struct bench_input &in, struct bench_output &out ) {
 void bench_raw( const struct bench_input &in, struct bench_output &out ) {
 	out.error_code = 0;
 	grb::utils::Timer timer;
+	grb::wait();
 	timer.reset();
 
 	// declare raw data structures
@@ -359,14 +374,17 @@ void bench_raw( const struct bench_input &in, struct bench_output &out ) {
 	bench_kernels_dot( &alpha, xr, yr, n );
 
 	// done with preamble, start useful work
+	grb::wait();
 	out.times.preamble = timer.time();
 	timer.reset();
 
 	// now do hot run
 	double ctime = 0.0;
 	for( size_t k = 0; k < in.rep; ++k ) {
+		grb::wait();
 		timer.reset();
 		bench_kernels_dot( &alpha, xr, yr, n );
+		grb::wait();
 		ctime += timer.time() / static_cast< double >( in.rep );
 
 		if( !grb::utils::equals( in.check, alpha, 2 * n ) ) {

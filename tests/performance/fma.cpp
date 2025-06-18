@@ -146,6 +146,7 @@ void test( const struct Input &in, struct Output &out ) {
 	// WARNING: ALP incurs performance loss unless compiled using the nonblocking
 	//          backend
 	if( mode == TEMPLATED ) {
+		grb::wait();
 		double ttime = timer.time();
 		// get cache `hot'
 		out.error = grb::set< grb::descriptors::dense >( zv, yv );
@@ -198,6 +199,7 @@ void test( const struct Input &in, struct Output &out ) {
 	}
 
 	if( mode == LAMBDA ) {
+		grb::wait();
 		double ltime = timer.time();
 		// get cache `hot'
 		out.error = grb::eWiseLambda(
@@ -276,6 +278,7 @@ void test( const struct Input &in, struct Output &out ) {
 			a[ i ] = 0;
 		}
 
+		grb::wait();
 		double ctime = timer.time();
 		// get cache `hot'
 		bench_kernels_axpy( a, alpha, x, y, in.n );
