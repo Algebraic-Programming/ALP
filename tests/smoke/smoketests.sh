@@ -39,7 +39,12 @@ echo "**************************************************************************
 echo "      FUNCTIONAL    PERFORMANCE                       DESCRIPTION      "
 echo "----------------------------------------------------------------------------------------"
 echo " "
+# run non alp_ backends
 for BACKEND in ${BACKENDS[@]}; do
+	if [ "${BACKEND:0:4}" == "alp_" ]; then
+	    continue
+	fi
+	
 	if [ "$BACKEND" = "bsp1d" ]; then
 		if [ -z "${LPFRUN}" ]; then
 			echo "LPFRUN is not set!"
@@ -609,7 +614,182 @@ for BACKEND in ${BACKENDS[@]}; do
 	fi
 done
 
+for BACKEND in ${BACKENDS[@]}; do
+	# Temporarily execute tests only for alp_reference backend
+	# until all backends start supporting all smoke tests.
+	if [ "${BACKEND}" != "alp_reference" ]; then
+		continue
+	fi
+
+	runner=
+	echo "#################################################################"
+	echo "# Starting standardised smoke tests for the ${BACKEND} backend"
+	if [ "x${runner}" != "x" ]; then
+	    echo "#   using runner \`\`$runner''"
+	fi
+	echo "#################################################################"
+	echo " "
+	NREPEAT=20
+	NTEST_CHOLESKY=100
+	echo ">>>      [x]           [ ]       Tests Cholesky decomposition for a random"
+	echo "                                 symmetric positive definite matrix (${NTEST_CHOLESKY}x${NTEST_CHOLESKY})."
+	bash -c "$runner ${TEST_BIN_DIR}/alp_cholesky_${BACKEND}  -n ${NTEST_CHOLESKY} -repeat ${NREPEAT} &> ${TEST_OUT_DIR}/alp_cholesky_${BACKEND}.log"  || { echo -e "Test returned error.\nTest FAILED." && exit 1; }
+	[[ "${SMOKE_PRINT_TIME}" == "ON" ]] && head -4 ${TEST_OUT_DIR}/alp_cholesky_${BACKEND}.log
+	grep 'Test OK' ${TEST_OUT_DIR}/alp_cholesky_${BACKEND}.log  || { echo -e "Test returned wrong output.\nTest FAILED" && exit 1 ; }
+	echo " "
+
+	# disabled until all versions are implemented
+	# NTEST_CHOLESKY_COMPLEX=30
+	# echo ">>>      [x]           [ ]       Tests Cholesky decomposition for a random"
+	# echo "                                 hermitian positive definite matrix (${NTEST_CHOLESKY_COMPLEX}x${NTEST_CHOLESKY_COMPLEX})."
+	# bash -c "$runner ${TEST_BIN_DIR}/alp_cholesky_complex_${BACKEND}  -n ${NTEST_CHOLESKY_COMPLEX} -repeat ${NREPEAT} &> ${TEST_OUT_DIR}/alp_cholesky_complex_${BACKEND}.log"
+	# [[ "${SMOKE_PRINT_TIME}" == "ON" ]] && head -1 ${TEST_OUT_DIR}/alp_cholesky_complex_${BACKEND}.log
+	# grep 'Test OK' ${TEST_OUT_DIR}/alp_cholesky_complex_${BACKEND}.log || echo "Test FAILED"
+	# echo " "
+
+	NTEST_POTRI=100
+	echo ">>>      [x]           [ ]       Tests inverse of a random"
+	echo "                                 symmetric positive definite matrix (${NTEST_POTRI}x${NTEST_POTRI})."
+	bash -c "$runner ${TEST_BIN_DIR}/alp_potri_${BACKEND} -n ${NTEST_POTRI} -repeat ${NREPEAT} &> ${TEST_OUT_DIR}/alp_potri_${BACKEND}.log"  || { echo -e "Test returned error.\nTest FAILED." && exit 1; }
+	[[ "${SMOKE_PRINT_TIME}" == "ON" ]] && head -4 ${TEST_OUT_DIR}/alp_potri_${BACKEND}.log
+	grep 'Test OK' ${TEST_OUT_DIR}/alp_potri_${BACKEND}.log || echo "Test FAILED"  || { echo -e "Test returned wrong output.\nTest FAILED" && exit 1 ; }
+	echo " "
+
+	NTEST_POTRI_COMPLEX=100
+	echo ">>>      [x]           [ ]       Tests inverse of a random"
+	echo "                                 hermitian positive definite matrix (${NTEST_POTRI_COMPLEX}x${NTEST_POTRI_COMPLEX})."
+	bash -c "$runner ${TEST_BIN_DIR}/alp_potri_complex_${BACKEND} -n ${NTEST_POTRI_COMPLEX} -repeat ${NREPEAT} &> ${TEST_OUT_DIR}/alp_potri_complex_${BACKEND}.log"  || { echo -e "Test returned error.\nTest FAILED." && exit 1; }
+	[[ "${SMOKE_PRINT_TIME}" == "ON" ]] && head -4 ${TEST_OUT_DIR}/alp_potri_complex_${BACKEND}.log
+	grep 'Test OK' ${TEST_OUT_DIR}/alp_potri_complex_${BACKEND}.log || echo "Test FAILED"  || { echo -e "Test returned wrong output.\nTest FAILED" && exit 1 ; }
+	echo " "
+	
+	NTEST_GEMM=100
+	echo ">>>      [x]           [ ]       Tests Gemm on matrix (${NTEST_GEMM}x${NTEST_GEMM}x${NTEST_GEMM})."
+	bash -c "$runner ${TEST_BIN_DIR}/alp_gemm_${BACKEND} -n ${NTEST_GEMM} -repeat ${NREPEAT} &> ${TEST_OUT_DIR}/alp_gemm_${BACKEND}.log"  || { echo -e "Test returned error.\nTest FAILED." && exit 1; }
+	[[ "${SMOKE_PRINT_TIME}" == "ON" ]] && head -14 ${TEST_OUT_DIR}/alp_gemm_${BACKEND}.log
+	grep 'Test OK' ${TEST_OUT_DIR}/alp_gemm_${BACKEND}.log  || { echo -e "Test returned wrong output.\nTest FAILED" && exit 1 ; }
+	echo " "
+
+	NTEST_HOUSEHOLDER=100
+	echo ">>>      [x]           [ ]       Tests dsytrd (Householder tridiagonalisaiton) on"
+	echo ">>>                              a real, random symmetric matrix (${NTEST_HOUSEHOLDER}x${NTEST_HOUSEHOLDER})."
+	bash -c "$runner ${TEST_BIN_DIR}/alp_zhetrd_${BACKEND} -n ${NTEST_HOUSEHOLDER} -repeat ${NREPEAT} &> ${TEST_OUT_DIR}/alp_zhetrd_${BACKEND}.log"  || { echo -e "Test returned error.\nTest FAILED." && exit 1; }
+	[[ "${SMOKE_PRINT_TIME}" == "ON" ]] && head -3 ${TEST_OUT_DIR}/alp_zhetrd_${BACKEND}.log
+	grep 'Test OK' ${TEST_OUT_DIR}/alp_zhetrd_${BACKEND}.log  || { echo -e "Test returned wrong output.\nTest FAILED" && exit 1 ; }
+	echo " "
+
+	NTEST_HOUSEHOLDER_COMPLEX=100
+	echo ">>>      [x]           [ ]       Tests zhetrd (Householder tridiagonalisaiton) on"
+	echo ">>>                              a complex, random hermitian matrix (${NTEST_HOUSEHOLDER_COMPLEX}x${NTEST_HOUSEHOLDER_COMPLEX})."
+	bash -c "$runner ${TEST_BIN_DIR}/alp_zhetrd_complex_${BACKEND} -n ${NTEST_HOUSEHOLDER_COMPLEX} -repeat ${NREPEAT} &> ${TEST_OUT_DIR}/alp_zhetrd_complex_${BACKEND}.log"
+	[[ "${SMOKE_PRINT_TIME}" == "ON" ]] && head -3 ${TEST_OUT_DIR}/alp_zhetrd_complex_${BACKEND}.log
+	grep 'Test OK' ${TEST_OUT_DIR}/alp_zhetrd_complex_${BACKEND}.log || echo "Test FAILED"
+	echo " "
+
+	NTEST_HOUSEHOLDER=100
+	echo ">>>      [x]           [ ]       Tests dgeqrf (Householder QR decomposition) on"
+	echo ">>>                              a random real general matrix (${NTEST_HOUSEHOLDER}x$((2*NTEST_HOUSEHOLDER)))."
+	bash -c "$runner ${TEST_BIN_DIR}/alp_zgeqrf_${BACKEND} -n ${NTEST_HOUSEHOLDER} -repeat ${NREPEAT} &> ${TEST_OUT_DIR}/alp_zgeqrf_${BACKEND}.log"  || { echo -e "Test returned error.\nTest FAILED." && exit 1; }
+	[[ "${SMOKE_PRINT_TIME}" == "ON" ]] && head -4 ${TEST_OUT_DIR}/alp_zgeqrf_${BACKEND}.log
+	grep 'Test OK' ${TEST_OUT_DIR}/alp_zgeqrf_${BACKEND}.log  || { echo -e "Test returned wrong output.\nTest FAILED" && exit 1 ; }
+	echo " "
+
+	NTEST_HOUSEHOLDER_COMPLEX=100
+	echo ">>>      [x]           [ ]       Tests zgeqrf (Householder QR decomposition) on"
+	echo ">>>                              a random complex general matrix (${NTEST_HOUSEHOLDER_COMPLEX}x$((2*NTEST_HOUSEHOLDER_COMPLEX)))."
+	bash -c "$runner ${TEST_BIN_DIR}/alp_zgeqrf_complex_${BACKEND} -n ${NTEST_HOUSEHOLDER_COMPLEX} -repeat ${NREPEAT} &> ${TEST_OUT_DIR}/alp_zgeqrf_complex_${BACKEND}.log"  || { echo -e "Test returned error.\nTest FAILED." && exit 1; }
+	[[ "${SMOKE_PRINT_TIME}" == "ON" ]] && head -4 ${TEST_OUT_DIR}/alp_zgeqrf_complex_${BACKEND}.log
+	grep 'Test OK' ${TEST_OUT_DIR}/alp_zgeqrf_complex_${BACKEND}.log  || { echo -e "Test returned wrong output.\nTest FAILED" && exit 1 ; }
+	echo " "
+
+	NTEST_HOUSEHOLDER=100
+	echo ">>>      [x]           [ ]       Tests dgetrf (Householder LU decomposition) on"
+	echo ">>>                              a random real general matrices of sizes (${NTEST_HOUSEHOLDER}x$((2*NTEST_HOUSEHOLDER))),"
+	echo ">>>                              (${NTEST_HOUSEHOLDER} x ${NTEST_HOUSEHOLDER}) and ($((2*NTEST_HOUSEHOLDER)) x ${NTEST_HOUSEHOLDER})."
+	bash -c "$runner ${TEST_BIN_DIR}/alp_zgetrf_${BACKEND} -n ${NTEST_HOUSEHOLDER} -repeat ${NREPEAT} &> ${TEST_OUT_DIR}/alp_zgetrf_${BACKEND}.log"  || { echo -e "Test returned error.\nTest FAILED." && exit 1; }
+	[[ "${SMOKE_PRINT_TIME}" == "ON" ]] && head -9 ${TEST_OUT_DIR}/alp_zgetrf_${BACKEND}.log
+	grep 'Test OK' ${TEST_OUT_DIR}/alp_zgetrf_${BACKEND}.log  || { echo -e "Test returned wrong output.\nTest FAILED" && exit 1 ; }
+	echo " "
+
+	NTEST_HOUSEHOLDER_COMPLEX=100
+	echo ">>>      [x]           [ ]       Tests zgetrf (Householder LU decomposition) on"
+	echo ">>>                              random complex general matrices of sizes (${NTEST_HOUSEHOLDER_COMPLEX}x$((2*NTEST_HOUSEHOLDER_COMPLEX))),"
+	echo ">>>                              (${NTEST_HOUSEHOLDER_COMPLEX} x ${NTEST_HOUSEHOLDER_COMPLEX}) and ($((2*NTEST_HOUSEHOLDER_COMPLEX)) x ${NTEST_HOUSEHOLDER_COMPLEX})."
+	bash -c "$runner ${TEST_BIN_DIR}/alp_zgetrf_complex_${BACKEND} -n ${NTEST_HOUSEHOLDER_COMPLEX} -repeat ${NREPEAT} &> ${TEST_OUT_DIR}/alp_zgetrf_complex_${BACKEND}.log"  || { echo -e "Test returned error.\nTest FAILED." && exit 1; }
+	[[ "${SMOKE_PRINT_TIME}" == "ON" ]] && head -9 ${TEST_OUT_DIR}/alp_zgetrf_complex_${BACKEND}.log
+	grep 'Test OK' ${TEST_OUT_DIR}/alp_zgetrf_complex_${BACKEND}.log  || { echo -e "Test returned wrong output.\nTest FAILED" && exit 1 ; }
+	echo " "
+	
+	NTEST_DIVCON=100
+	echo ">>>      [x]           [ ]       Tests dstedc (tridiagonal eigensolver) on"
+	echo ">>>                              random tridiagonal real symmetric matrices of sizes (${NTEST_DIVCON}x${NTEST_DIVCON})."
+	bash -c "$runner ${TEST_BIN_DIR}/alp_dstedc_${BACKEND} -n ${NTEST_DIVCON} -repeat 1 &> ${TEST_OUT_DIR}/alp_dstedc_${BACKEND}.log"  || { echo -e "Test returned error.\nTest FAILED." && exit 1; }
+	[[ "${SMOKE_PRINT_TIME}" == "ON" ]] && head -4 ${TEST_OUT_DIR}/alp_dstedc_${BACKEND}.log
+	grep 'Test OK' ${TEST_OUT_DIR}/alp_dstedc_${BACKEND}.log || { echo -e "Test returned wrong output.\nTest FAILED" && exit 1 ; }
+	echo " "
+
+	NTEST_DIVCON=100
+	echo ">>>      [x]           [ ]       Tests syevd (symmetric eigensolver) on"
+	echo ">>>                              a random real symmetric matrix (${NTEST_DIVCON}x${NTEST_DIVCON})."
+	bash -c "$runner ${TEST_BIN_DIR}/alp_syevd_${BACKEND} -n ${NTEST_DIVCON} -repeat 1 &> ${TEST_OUT_DIR}/alp_syevd_${BACKEND}.log"  || { echo -e "Test returned error.\nTest FAILED." && exit 1; }
+	[[ "${SMOKE_PRINT_TIME}" == "ON" ]] && head -4 ${TEST_OUT_DIR}/alp_syevd_${BACKEND}.log
+	grep 'Test OK' ${TEST_OUT_DIR}/alp_syevd_${BACKEND}.log || { echo -e "Test returned wrong output.\nTest FAILED" && exit 1 ; }
+	echo " "
+
+	NTEST_BACKSUB=100
+	echo ">>>      [x]           [ ]       Tests dtrsv and dtrsm (Triangular linear system solve using backsubstitution ) on"
+	echo ">>>                              a random upper tridiagonal real matrix (${NTEST_BACKSUB}x${NTEST_BACKSUB})."
+	bash -c "$runner ${TEST_BIN_DIR}/alp_backsubstitution_${BACKEND} -n ${NTEST_BACKSUB} -repeat ${NREPEAT} &> ${TEST_OUT_DIR}/alp_backsubstitution_${BACKEND}.log"   || { echo -e "Test returned error.\nTest FAILED." && exit 1; }
+	[[ "${SMOKE_PRINT_TIME}" == "ON" ]] && head -4 ${TEST_OUT_DIR}/alp_backsubstitution_${BACKEND}.log
+	grep 'Test OK' ${TEST_OUT_DIR}/alp_backsubstitution_${BACKEND}.log  || { echo -e "Test returned wrong output.\nTest FAILED" && exit 1 ; }
+	echo " "
+
+	NTEST_BACKSUB=100
+	echo ">>>      [x]           [ ]       Tests ztrsv and ztrsm (Triangular linear system solve using backsubstitution ) on"
+	echo ">>>                              a random upper tridiagonal complex matrix (${NTEST_BACKSUB}x${NTEST_BACKSUB})."
+	bash -c "$runner ${TEST_BIN_DIR}/alp_backsubstitution_complex_${BACKEND} -n ${NTEST_BACKSUB} -repeat ${NREPEAT} &> ${TEST_OUT_DIR}/alp_backsubstitution_complex_${BACKEND}.log"   || { echo -e "Test returned error.\nTest FAILED." && exit 1; }
+	[[ "${SMOKE_PRINT_TIME}" == "ON" ]] && head -4 ${TEST_OUT_DIR}/alp_backsubstitution_complex_${BACKEND}.log
+	grep 'Test OK' ${TEST_OUT_DIR}/alp_backsubstitution_complex_${BACKEND}.log  || { echo -e "Test returned wrong output.\nTest FAILED" && exit 1 ; }
+	echo " "
+
+	NTEST_FORWARDSUB=100
+	echo ">>>      [x]           [ ]       Tests dtrsv and dtrsm (Triangular linear system solve using forwardsubstitution ) on"
+	echo ">>>                              a random lower tridiagonal real matrix (${NTEST_FORWARDSUB}x${NTEST_FORWARDSUB})."
+	bash -c "$runner ${TEST_BIN_DIR}/alp_forwardsubstitution_${BACKEND} -n ${NTEST_FORWARDSUB} -repeat ${NREPEAT} &> ${TEST_OUT_DIR}/alp_forwardsubstitution_${BACKEND}.log"  || { echo -e "Test returned error.\nTest FAILED." && exit 1; }
+	[[ "${SMOKE_PRINT_TIME}" == "ON" ]] && head -4 ${TEST_OUT_DIR}/alp_forwardsubstitution_${BACKEND}.log
+	grep 'Test OK' ${TEST_OUT_DIR}/alp_forwardsubstitution_${BACKEND}.log || { echo -e "Test returned wrong output.\nTest FAILED" && exit 1 ; }
+	echo " "
+
+	NTEST_FORWARDSUB=100
+	echo ">>>      [x]           [ ]       Tests ztrsv and ztrsm (Triangular linear system solve using forwardsubstitution ) on"
+	echo ">>>                              a random lower tridiagonal complex matrix (${NTEST_FORWARDSUB}x${NTEST_FORWARDSUB})."
+	bash -c "$runner ${TEST_BIN_DIR}/alp_forwardsubstitution_complex_${BACKEND} -n ${NTEST_FORWARDSUB} -repeat ${NREPEAT} &> ${TEST_OUT_DIR}/alp_forwardsubstitution_complex_${BACKEND}.log"  || { echo -e "Test returned error.\nTest FAILED." && exit 1; }
+	[[ "${SMOKE_PRINT_TIME}" == "ON" ]] && head -4 ${TEST_OUT_DIR}/alp_forwardsubstitution_complex_${BACKEND}.log
+	grep 'Test OK' ${TEST_OUT_DIR}/alp_forwardsubstitution_complex_${BACKEND}.log || { echo -e "Test returned wrong output.\nTest FAILED" && exit 1 ; }
+	echo " "
+
+	NTEST_SVD=100
+	echo ">>>      [x]           [ ]       Tests dgesvd (Singular value decomposition) on"
+	echo ">>>                              a real, random general matrices of sizes (${NTEST_SVD}x$((2*NTEST_SVD))),"
+	echo ">>>                              (${NTEST_SVD} x ${NTEST_SVD}) and ($((2*NTEST_SVD)) x ${NTEST_SVD})."
+	bash -c "$runner ${TEST_BIN_DIR}/alp_zgesvd_${BACKEND} -n ${NTEST_SVD} -repeat ${NREPEAT} &> ${TEST_OUT_DIR}/alp_zgesvd_${BACKEND}.log"  || { echo -e "Test returned error.\nTest FAILED." && exit 1; }
+	[[ "${SMOKE_PRINT_TIME}" == "ON" ]] && head -9 ${TEST_OUT_DIR}/alp_zgesvd_${BACKEND}.log
+	grep 'Test OK' ${TEST_OUT_DIR}/alp_zgesvd_${BACKEND}.log || { echo -e "Test returned wrong output.\nTest FAILED" && exit 1 ; }
+	echo " "
+
+	NTEST_SVD_COMPLEX=100
+	echo ">>>      [x]           [ ]       Tests zgesvd (Singular value decomposition) on"
+	echo ">>>                              a complex, random general matrices of sizes (${NTEST_SVD_COMPLEX}x$((2*NTEST_SVD_COMPLEX))),"
+	echo ">>>                              (${NTEST_SVD_COMPLEX} x ${NTEST_SVD_COMPLEX}) and ($((2*NTEST_SVD_COMPLEX)) x ${NTEST_SVD_COMPLEX})."
+	bash -c "$runner ${TEST_BIN_DIR}/alp_zgesvd_complex_${BACKEND} -n ${NTEST_SVD_COMPLEX} -repeat ${NREPEAT} &> ${TEST_OUT_DIR}/alp_zgesvd_complex_${BACKEND}.log"  || { echo -e "Test returned error.\nTest FAILED." && exit 1; }
+	[[ "${SMOKE_PRINT_TIME}" == "ON" ]] && head -9 ${TEST_OUT_DIR}/alp_zgesvd_complex_${BACKEND}.log
+	grep 'Test OK' ${TEST_OUT_DIR}/alp_zgesvd_complex_${BACKEND}.log || { echo -e "Test returned wrong output.\nTest FAILED" && exit 1 ; }
+	echo " "
+
+done
+
 echo "*****************************************************************************************"
 echo "All smoke tests done."
 echo " "
+
 

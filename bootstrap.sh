@@ -74,6 +74,7 @@ the location where LPF is installed"
 	echo "  --with-banshee=<path/>              - path to the the tools to compile the banshee backend"
 	echo "  --with-snitch=<path/>               - path to the tools for Snitch support within the banshee backend"
 	echo "  --with-datasets=<path/>             - path to the main testing datasets (use tools/downloadDatasets.sh to download)"
+	echo "  --no-alp-reference                  - to compile without support for dense algebraic programming"
 	echo "  --no-reference                      - disables the reference and reference_omp backends"
 	echo "  --no-hyperdags                      - disables the hyperdags backend"
 	echo "  --with-hyperdags-using=<backend>    - uses the given backend reference for HyperDAG generation"
@@ -104,6 +105,9 @@ hyperdags_using=reference
 nonblocking=yes
 banshee=no
 lpf=no
+alp_reference=yes
+alp_dispatch=yes
+alp_omp=yes
 show=no
 FLAGS=$''
 LPF_INSTALL_PATH=
@@ -162,6 +166,9 @@ or assume default paths (--with-lpf)"
 			;;
 	--with-datasets=*)
 			DATASETS_PATH="${arg#--with-datasets=}"
+			;;
+	--no-alp-reference)
+			alp_reference=no
 			;;
 	--no-reference)
 			reference=no
@@ -362,6 +369,21 @@ the current directory before invocation or confirm the deletion of its content w
 	fi
 	if [[ "${nonblocking}" == "no" ]]; then
 		CMAKE_OPTS+=" -DWITH_NONBLOCKING_BACKEND=OFF"
+	fi
+	if [[ "${alp_reference}" == "no" ]]; then
+		CMAKE_OPTS+=" -DWITH_ALP_REFERENCE_BACKEND=OFF"
+	else
+		CMAKE_OPTS+=" -DWITH_ALP_REFERENCE_BACKEND=ON"
+	fi
+	if [[ "${alp_dispatch}" == "no" ]]; then
+		CMAKE_OPTS+=" -DWITH_ALP_DISPATCH_BACKEND=OFF"
+	else
+		CMAKE_OPTS+=" -DWITH_ALP_DISPATCH_BACKEND=ON"
+	fi
+	if [[ "${alp_omp}" == "no" ]]; then
+		CMAKE_OPTS+=" -DWITH_ALP_OMP_BACKEND=OFF"
+	else
+		CMAKE_OPTS+=" -DWITH_ALP_OMP_BACKEND=ON"
 	fi
 	if [[ "${lpf}" == "yes" ]]; then
 		CMAKE_OPTS+=" -DLPF_INSTALL_PATH='${ABSOLUTE_LPF_INSTALL_PATH}'"

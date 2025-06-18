@@ -37,7 +37,7 @@ project( GraphBLAS
 	DESCRIPTION "The ultimate engine for sparse computation"
 	LANGUAGES CXX C
 )
-set( CMAKE_CXX_STANDARD 11 )
+set( CMAKE_CXX_STANDARD 14 )
 set( CMAKE_CXX_STANDARD_REQUIRED ON )
 
 # install within the build directory by default (NOT to /usr/local or the likes)
@@ -50,6 +50,8 @@ endif()
 ### CONFIGURATION OPTIONS
 # to choose backends and dependencies
 option( WITH_REFERENCE_BACKEND "With Reference backend" ON )
+option( WITH_ALP_REFERENCE_BACKEND "With Reference Dense backend" OFF )
+option( WITH_ALP_DISPATCH_BACKEND "With Dispatch Dense backend" OFF )
 option( WITH_OMP_BACKEND "With OMP backend" ON )
 option( WITH_HYPERDAGS_BACKEND "With Hyperdags backend" ON )
 if( WITH_HYPERDAGS_BACKEND )
@@ -58,6 +60,7 @@ if( WITH_HYPERDAGS_BACKEND )
 	endif()
 endif()
 option( WITH_NONBLOCKING_BACKEND "With Nonblocking backend" ON )
+option( WITH_ALP_OMP_BACKEND "With OMP Dense backend" OFF )
 option( WITH_NUMA "With NUMA support" ON )
 option( LPF_INSTALL_PATH "Path to the LPF tools for the BSP1D and Hybrid backends" OFF )
 # the following options depend on LPF_INSTALL_PATH being set
@@ -267,7 +270,6 @@ if( WITH_BSP1D_BACKEND OR WITH_HYBRID_BACKEND )
 	find_package( LPF REQUIRED )
 endif( )
 
-
 ### SETTINGS FOR COMPILATION
 
 set( TEST_CATEGORIES "unit" "smoke" "performance" )
@@ -279,6 +281,10 @@ set( TEST_CATEGORIES "unit" "smoke" "performance" )
 # (NOT imported via 'add_subdirectory()') here for variables to be in the same
 # scope and propagate down to the other files
 include( AddGRBVars )
+
+if( WITH_ALP_DISPATCH_BACKEND )
+        include( Blas )
+endif( )
 
 # here, add information for wrappers generated during installation
 include( AddGRBInstall )
@@ -303,8 +309,11 @@ include( Transition )
 
 # by default no headers are built
 set( WITH_REFERENCE_BACKEND_HEADERS OFF )
+set( WITH_ALP_REFERENCE_BACKEND_HEADERS OFF )
+set( WITH_ALP_DISPATCH_BACKEND_HEADERS OFF )
 set( WITH_OMP_BACKEND_HEADERS OFF )
 set( WITH_HYPERDAGS_BACKEND_HEADERS OFF )
+set( WITH_ALP_OMP_BACKEND_HEADERS OFF )
 
 # activate headers based on requested backends
 if( WITH_REFERENCE_BACKEND OR WITH_BSP1D_BACKEND OR WITH_NONBLOCKING_BACKEND )
@@ -319,6 +328,18 @@ endif()
 if( WITH_OMP_BACKEND OR WITH_HYBRID_BACKEND )
 	# both reference_omp and hynrid backends need reference headers
 	set( WITH_OMP_BACKEND_HEADERS ON )
+endif()
+
+if( WITH_ALP_REFERENCE_BACKEND )
+	set( WITH_ALP_REFERENCE_BACKEND_HEADERS ON )
+endif()
+
+if( WITH_ALP_DISPATCH_BACKEND )
+	set( WITH_ALP_DISPATCH_BACKEND_HEADERS ON )
+endif()
+
+if( WITH_ALP_OMP_BACKEND )
+	set( WITH_ALP_OMP_BACKEND_HEADERS ON )
 endif()
 
 add_subdirectory( include )

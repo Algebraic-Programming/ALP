@@ -21,6 +21,9 @@ See the License for the specific language governing permissions and
 limitations under the License.
 </pre>
 
+# ALP/Dense Testing Guide
+
+Please visit [The ALP/Dense Tests](alpdense.md) for the lastest information about testing the prototype ALP/Dense interface and backends.
 
 This distribution contains the C++ Algebraic Programming (ALP) framework, and
 provides the ALP/GraphBLAS, ALP/Pregel, and Sparse BLAS programming interfaces.

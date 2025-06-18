@@ -28,15 +28,16 @@
 #define _H_GRB_MATRIX_BASE
 
 #include <iterator>
-
 #include <stddef.h>
-
+#include <type_traits>
 #include <utility>
+#include <memory>
 
 #include <graphblas/backends.hpp>
 #include <graphblas/descriptors.hpp>
 #include <graphblas/ops.hpp>
 #include <graphblas/rc.hpp>
+#include <graphblas/utils.hpp>
 
 
 namespace grb {

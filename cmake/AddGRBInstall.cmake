@@ -45,6 +45,9 @@ install( EXPORT GraphBLASTargets
 set( ALP_UTILS_INSTALL_DIR "${BINARY_LIBRARIES_INSTALL_DIR}" )
 set( SHMEM_BACKEND_INSTALL_DIR "${BINARY_LIBRARIES_INSTALL_DIR}/sequential" )
 set( HYPERDAGS_BACKEND_INSTALL_DIR "${BINARY_LIBRARIES_INSTALL_DIR}/hyperdags" )
+set( ALP_REFERENCE_BACKEND_INSTALL_DIR "${BINARY_LIBRARIES_INSTALL_DIR}/alp/reference" )
+set( ALP_DISPATCH_BACKEND_INSTALL_DIR "${BINARY_LIBRARIES_INSTALL_DIR}/alp/dispatch" )
+set( ALP_OMP_BACKEND_INSTALL_DIR "${BINARY_LIBRARIES_INSTALL_DIR}/alp/omp" )
 set( BSP1D_BACKEND_INSTALL_DIR "${BINARY_LIBRARIES_INSTALL_DIR}/spmd" )
 set( HYBRID_BACKEND_INSTALL_DIR "${BINARY_LIBRARIES_INSTALL_DIR}/hybrid" )
 
@@ -121,6 +124,34 @@ if( WITH_REFERENCE_BACKEND )
 	)
 endif()
 
+if( WITH_ALP_REFERENCE_BACKEND )
+	addBackendWrapperGenOptions( "alp_reference"
+		COMPILE_DEFINITIONS "ALP_REFERENCE_INCLUDE_DEFS" "${ALP_REFERENCE_SELECTION_DEFS}"
+		LINK_FLAGS "${ALP_REFERENCE_BACKEND_INSTALL_DIR}/lib${BACKEND_LIBRARY_OUTPUT_NAME}.a"
+	)
+endif()
+
+if( WITH_ALP_DISPATCH_BACKEND )
+	set( _blas_libraries ${BLAS_LIBRARIES} )
+	foreach( _lib ${BLAS_LIBRARIES} )
+		get_filename_component(_path ${_lib} DIRECTORY)
+		set( _path " -Wl,-rpath ${_path}"  )
+		list(APPEND _lib_lists ${_path} )
+	endforeach()
+	#list( TRANSFORM _blas_libraries PREPEND "-l" )
+	list( JOIN _lib_lists " " _blas_rpaths )
+	list( JOIN _blas_libraries " " _blas_link_libs )
+	set( _cxx_additional_includes " -I${INCLUDE_INSTALL_DIR}/blas_wrapper " )
+	if( NOT ${KBLAS_INCLUDE_DIR} STREQUAL "" )
+		set( _cxx_additional_includes " -I${KBLAS_INCLUDE_DIR} ${_cxx_additional_includes}" )
+	endif()
+	addBackendWrapperGenOptions( "alp_dispatch"
+		COMPILE_DEFINITIONS "ALP_DISPATCH_INCLUDE_DEFS" "${ALP_DISPATCH_SELECTION_DEFS}"
+		LINK_FLAGS "${ALP_DISPATCH_BACKEND_INSTALL_DIR}/lib${BACKEND_LIBRARY_OUTPUT_NAME}.a ${_blas_link_libs} ${_blas_rpaths}"
+		COMPILE_OPTIONS "${_cxx_additional_includes}"
+	)
+endif()
+
 if( WITH_OMP_BACKEND )
 	addBackendWrapperGenOptions( "reference_omp"
 		COMPILE_DEFINITIONS "${REFERENCE_OMP_SELECTION_DEFS}"
@@ -142,6 +173,14 @@ if( WITH_NONBLOCKING_BACKEND )
 	addBackendWrapperGenOptions( "nonblocking"
 		COMPILE_DEFINITIONS "${NONBLOCKING_SELECTION_DEFS};${NONBLOCKING_INCLUDE_DEFS}"
 		LINK_FLAGS "'${SHMEM_BACKEND_INSTALL_DIR}/lib${BACKEND_LIBRARY_OUTPUT_NAME}.a'"
+			"'${ALP_UTILS_INSTALL_DIR}/lib${ALP_UTILS_LIBRARY_OUTPUT_NAME}.a'" "${NUMA_LFLAG}"
+	)
+endif()
+
+if( WITH_ALP_OMP_BACKEND )
+	addBackendWrapperGenOptions( "alp_omp"
+		COMPILE_DEFINITIONS "${ALP_OMP_SELECTION_DEFS}"
+		LINK_FLAGS "'${ALP_OMP_BACKEND_INSTALL_DIR}/lib${BACKEND_LIBRARY_OUTPUT_NAME}.a'"
 			"'${ALP_UTILS_INSTALL_DIR}/lib${ALP_UTILS_LIBRARY_OUTPUT_NAME}.a'" "${NUMA_LFLAG}"
 	)
 endif()

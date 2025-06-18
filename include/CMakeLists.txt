@@ -75,6 +75,7 @@ install( DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/graphblas/base/"
 add_library( alp_utils_headers INTERFACE )
 target_include_directories( alp_utils_headers INTERFACE
 	$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>
+	$<INSTALL_INTERFACE:.>
 )
 
 # copy utils headers
@@ -107,6 +108,11 @@ install( TARGETS backend_headers_nodefs EXPORT GraphBLASTargets
 install( TARGETS alp_utils_headers EXPORT GraphBLASTargets
 	INCLUDES DESTINATION "${INCLUDE_INSTALL_DIR}"
 )
+if( WITH_ALP_REFERENCE_BACKEND_HEADERS OR
+	WITH_ALP_OMP_BACKEND_HEADERS
+)
+	add_subdirectory( alp )
+endif()
 
 if( WITH_REFERENCE_BACKEND_HEADERS )
 	add_library( backend_reference_headers INTERFACE )
