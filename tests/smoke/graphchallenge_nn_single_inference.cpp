@@ -379,6 +379,7 @@ void grbProgram( const struct input &data_in, struct output &out ) {
 	}
 
 	// we are done with the preamble
+	grb::wait();
 	out.times.preamble += timer.time();
 
 	// by default, copy input requested repetitions to output repititions performed
@@ -387,6 +388,7 @@ void grbProgram( const struct input &data_in, struct output &out ) {
 	// time a single call
 	RC rc = SUCCESS;
 	if( out.rep == 0 ) {
+		grb::wait();
 		timer.reset();
 		if( data_in.thresholded ) {
 			rc = sparse_nn_single_inference(
@@ -401,6 +403,7 @@ void grbProgram( const struct input &data_in, struct output &out ) {
 				temp
 			);
 		}
+		grb::wait();
 		double single_time = timer.time();
 		if( rc != SUCCESS ) {
 			std::cerr << "Failure: call to sparse_nn_single_inference did not succeed ("
@@ -426,6 +429,7 @@ void grbProgram( const struct input &data_in, struct output &out ) {
 	} else {
 		// do benchmark
 		double time_taken;
+		grb::wait();
 		timer.reset();
 		for( size_t i = 0; i < out.rep && rc == SUCCESS; ++i ) {
 			if( rc == SUCCESS ) {
@@ -443,6 +447,7 @@ void grbProgram( const struct input &data_in, struct output &out ) {
 				}
 			}
 		}
+		grb::wait();
 		time_taken = timer.time();
 		if( rc == SUCCESS ) {
 			out.times.useful = time_taken / static_cast< double >( out.rep );
@@ -459,6 +464,7 @@ void grbProgram( const struct input &data_in, struct output &out ) {
 	}
 
 	// start postamble
+	grb::wait();
 	timer.reset();
 
 	// set error code

@@ -174,6 +174,7 @@ void grbProgram( const struct input &data_in, struct output &out ) {
 		}
 	}
 	out.times.io = timer.time();
+	grb::wait();
 	timer.reset();
 
 	// set source to approx. middle vertex
@@ -191,6 +192,7 @@ void grbProgram( const struct input &data_in, struct output &out ) {
 		neighbourhood, A, source, data_in.k,
 		buf1
 	);
+	grb::wait();
 	time_taken = timer.time();
 	out.times.useful = time_taken;
 	out.rep = static_cast< size_t >( 100.0 / time_taken ) + 1;

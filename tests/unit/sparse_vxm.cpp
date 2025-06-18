@@ -187,6 +187,7 @@ void grbProgram( const struct input &data_in, struct output &out ) {
 		case 1: {
 			// do experiment
 			out.times.io = 0;
+			grb::wait();
 			timer.reset();
 			if( out.error_code == SUCCESS ) {
 				out.error_code = grb::setElement( vx, 1, n / 2 );
@@ -194,11 +195,13 @@ void grbProgram( const struct input &data_in, struct output &out ) {
 			if( out.error_code == SUCCESS ) {
 				out.error_code = setupSparseMatrix< 1 >( mx, chk, n );
 			}
+			grb::wait();
 			out.times.preamble = timer.time();
 			timer.reset();
 			for( size_t i = 0; out.error_code == SUCCESS && i < data_in.rep; ++i ) {
 				out.error_code = mxv( vy, mx, vx, ring );
 			}
+			grb::wait();
 			out.times.useful = timer.time() / static_cast< double >( data_in.rep );
 			// check result
 			if( out.error_code == SUCCESS ) {
@@ -213,6 +216,7 @@ void grbProgram( const struct input &data_in, struct output &out ) {
 		case 2: {
 			// do experiment
 			out.times.io = 0;
+			grb::wait();
 			timer.reset();
 			if( out.error_code == SUCCESS ) {
 				out.error_code = grb::setElement( vx, 1, n / 2 );
@@ -220,11 +224,13 @@ void grbProgram( const struct input &data_in, struct output &out ) {
 			if( out.error_code == SUCCESS ) {
 				out.error_code = setupSparseMatrix< 2 >( mx, chk, n );
 			}
+			grb::wait();
 			out.times.preamble = timer.time();
 			timer.reset();
 			for( size_t i = 0; out.error_code == SUCCESS && i < data_in.rep; ++i ) {
 				out.error_code = mxv< descriptors::transpose_matrix >( vy, mx, vx, ring );
 			}
+			grb::wait();
 			out.times.useful = timer.time() / static_cast< double >( data_in.rep );
 			// check result
 			if( out.error_code == SUCCESS ) {
@@ -239,6 +245,7 @@ void grbProgram( const struct input &data_in, struct output &out ) {
 		case 3: {
 			// do experiment
 			out.times.io = 0;
+			grb::wait();
 			timer.reset();
 			if( out.error_code == SUCCESS ) {
 				out.error_code = grb::setElement( vx, 1, n / 2 );
@@ -246,11 +253,13 @@ void grbProgram( const struct input &data_in, struct output &out ) {
 			if( out.error_code == SUCCESS ) {
 				out.error_code = setupSparseMatrix< 3 >( mx, chk, n );
 			}
+			grb::wait();
 			out.times.preamble = timer.time();
 			timer.reset();
 			for( size_t i = 0; out.error_code == SUCCESS && i < data_in.rep; ++i ) {
 				out.error_code = vxm( vy, vx, mx, ring );
 			}
+			grb::wait();
 			out.times.useful = timer.time() / static_cast< double >( data_in.rep );
 			// check result
 			if( out.error_code == SUCCESS ) {
@@ -265,6 +274,7 @@ void grbProgram( const struct input &data_in, struct output &out ) {
 		case 4: {
 			// do experiment
 			out.times.io = 0;
+			grb::wait();
 			timer.reset();
 			if( out.error_code == SUCCESS ) {
 				out.error_code = grb::setElement( vx, 1, n / 2 );
@@ -272,11 +282,13 @@ void grbProgram( const struct input &data_in, struct output &out ) {
 			if( out.error_code == SUCCESS ) {
 				out.error_code = setupSparseMatrix< 4 >( mx, chk, n );
 			}
+			grb::wait();
 			out.times.preamble = timer.time();
 			timer.reset();
 			for( size_t i = 0; out.error_code == SUCCESS && i < data_in.rep; ++i ) {
 				out.error_code = vxm< descriptors::transpose_matrix >( vy, vx, mx, ring );
 			}
+			grb::wait();
 			out.times.useful = timer.time() / static_cast< double >( data_in.rep );
 			// check result
 			if( out.error_code == SUCCESS ) {

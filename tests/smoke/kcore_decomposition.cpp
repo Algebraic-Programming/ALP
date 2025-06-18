@@ -200,6 +200,7 @@ void grbProgram( const struct input &data_in, struct output &out ) {
 
 	RC rc = SUCCESS;
 	if( out.rep == 0 ) {
+		grb::wait();
 		timer.reset();
 #ifdef KCORE_VARIANT
 		rc = kcore_decomposition<
@@ -210,6 +211,7 @@ void grbProgram( const struct input &data_in, struct output &out ) {
 		rc = kcore_decomposition( L, core, d, t, u, st, k );
 #endif
 
+		grb::wait();
 		double single_time = timer.time();
 		if( rc != SUCCESS ) {
 			std::cerr << "Failure: call to kcore_decomposition did not succeed "
@@ -235,6 +237,7 @@ void grbProgram( const struct input &data_in, struct output &out ) {
 	} else {
 		// do benchmark
 		double time_taken;
+		grb::wait();
 		timer.reset();
 		for( size_t i = 0; i < out.rep && rc == SUCCESS; ++i ) {
 			if( rc == SUCCESS ) {
@@ -248,6 +251,7 @@ void grbProgram( const struct input &data_in, struct output &out ) {
 #endif
 			}
 		}
+		grb::wait();
 		time_taken = timer.time();
 		if( rc == SUCCESS ) {
 			out.times.useful = time_taken / static_cast< double >( out.rep );
@@ -264,6 +268,7 @@ void grbProgram( const struct input &data_in, struct output &out ) {
 	}
 
 	// start postamble
+	grb::wait();
 	timer.reset();
 
 	// set error code

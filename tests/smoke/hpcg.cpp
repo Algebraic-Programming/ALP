@@ -223,6 +223,7 @@ void grbProgram( const simulation_input &in, struct output &out ) {
 	// get user process ID
 	assert( spmd<>::pid() < spmd<>::nprocs() );
 	grb::utils::Timer timer;
+	grb::wait();
 	timer.reset();
 
 	// assume successful run
@@ -266,17 +267,20 @@ void grbProgram( const simulation_input &in, struct output &out ) {
 	}
 #endif
 
+	grb::wait();
 	out.times.preamble = timer.time();
 
 	const bool with_preconditioning = !(in.no_preconditioning);
 	if( in.evaluation_run ) {
 		out.test_repetitions = 0;
+		grb::wait();
 		timer.reset();
 		rc = rc ? rc : hpcg(
 			*hpcg_state, with_preconditioning,
 			in.smoother_steps, in.smoother_steps, in.max_iterations, 0.0,
 			out.performed_iterations, out.residual
 		);
+		grb::wait();
 		double single_time = timer.time();
 		if( rc == SUCCESS ) {
 			rc = collectives<>::reduce( single_time, 0, operators::max< double >() );
@@ -285,6 +289,7 @@ void grbProgram( const simulation_input &in, struct output &out ) {
 		out.test_repetitions = static_cast< size_t >( 1000.0 / single_time ) + 1;
 	} else {
 		// do benchmark
+		grb::wait();
 		timer.reset();
 		for( size_t i = 0; i < in.test_repetitions && rc == SUCCESS; ++i ) {
 			rc = rc ? rc : set( x, 0.0 );
@@ -299,6 +304,7 @@ void grbProgram( const simulation_input &in, struct output &out ) {
 				break;
 			}
 		}
+		grb::wait();
 		double time_taken = timer.time();
 		out.times.useful = time_taken / static_cast< double >( out.test_repetitions );
 		// sleep( 1 );
@@ -323,6 +329,7 @@ void grbProgram( const simulation_input &in, struct output &out ) {
 	}
 
 	// start postamble
+	grb::wait();
 	timer.reset();
 
 	Semiring<
@@ -342,6 +349,7 @@ void grbProgram( const simulation_input &in, struct output &out ) {
 		new PinnedVector< double >( x, SEQUENTIAL ) );
 
 	// finish timing
+	grb::wait();
 	const double time_taken = timer.time();
 	out.times.postamble = time_taken;
 }

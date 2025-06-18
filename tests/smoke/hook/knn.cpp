@@ -119,9 +119,11 @@ void grbProgram( const size_t &P, int &exit_status ) {
 
 	std::cout << "Now passing into grb::algorithms::knn with source = "
 		<< ( n - 4 ) << " for benchmark...\n";
+	grb::wait();
 	timer.reset();
 	benchtimer.reset();
 	rc = knn< descriptors::no_operation >( neighbourhood, L, n - 4, 1, buf1 );
+	grb::wait();
 	benchtimer.reset();
 	time_taken = timer.time();
 

@@ -149,9 +149,11 @@ void grbProgram( const struct input &data_in, struct output &out ) {
 		return;
 	}
 	out.times.preamble = timer.time();
+	grb::wait();
 	timer.reset();
 
 	algorithms::label( f, y, W, n, l );
+	grb::wait();
 	out.times.useful = timer.time();
 	timer.reset();
 	out.f = PinnedVector< double >( f, SEQUENTIAL );

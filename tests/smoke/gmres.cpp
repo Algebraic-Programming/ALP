@@ -463,6 +463,7 @@ void grbProgram( const struct input &data_in, struct output &out ) {
 	}
 
 	out.time_io += timer.time();
+	grb::wait();
 	timer.reset();
 
 	// read RHS vector
@@ -488,6 +489,7 @@ void grbProgram( const struct input &data_in, struct output &out ) {
 				std::cout << "RHS vector: buildVector failed!\n ";
 			}
 		}
+		grb::wait();
 		out.time_io += timer.time();
 		timer.reset();
 	} else {
@@ -495,6 +497,7 @@ void grbProgram( const struct input &data_in, struct output &out ) {
 		grb::set( b, zero );
 		rc = rc ? rc : grb::mxv( b, A, x, ring );
 		grb::set( x, zero );
+		grb::wait();
 		out.time_preamble += timer.time();
 		timer.reset();
 	}
@@ -515,6 +518,7 @@ void grbProgram( const struct input &data_in, struct output &out ) {
 		}
 		grb::set( x, zero );
 
+		grb::wait();
 		out.time_preamble += timer.time();
 		timer.reset();
 
@@ -545,6 +549,7 @@ void grbProgram( const struct input &data_in, struct output &out ) {
 			);
 		}
 
+		grb::wait();
 		out.time_gmres += timer.time();
 		timer.reset();
 

@@ -197,6 +197,7 @@ void grbProgram( const struct input &data_in, struct output &out ) {
 
 	// I/O done
 	out.times.io = timer.time();
+	grb::wait();
 	timer.reset();
 
 	// set up test of default BiCGstab
@@ -212,6 +213,7 @@ void grbProgram( const struct input &data_in, struct output &out ) {
 	set( x, static_cast< double >( 1 ) / static_cast< double >( n ) );
 	set( b, static_cast< double >( 1 ) );
 
+	grb::wait();
 	out.times.preamble = timer.time();
 
 	// by default, copy input requested repetitions to output repititions performed
@@ -219,6 +221,7 @@ void grbProgram( const struct input &data_in, struct output &out ) {
 	// time a single call
 	RC rc = SUCCESS;
 	if( out.rep == 0 ) {
+		grb::wait();
 		timer.reset();
 		rc = bicgstab(
 			x, L, b,
@@ -227,6 +230,7 @@ void grbProgram( const struct input &data_in, struct output &out ) {
 			r, buf1, buf2, buf3, buf4, buf5,
 			ring, minus, divide
 		);
+		grb::wait();
 		double single_time = timer.time();
 		if( !(rc == SUCCESS || rc == FAILED) ) {
 			std::cerr << "Failure: call to BiCGstab not succeed ("
@@ -260,6 +264,7 @@ void grbProgram( const struct input &data_in, struct output &out ) {
 	} else {
 		// do benchmark
 		double time_taken;
+		grb::wait();
 		timer.reset();
 		for( size_t i = 0; i < out.rep && rc == SUCCESS; ++i ) {
 
@@ -274,6 +279,7 @@ void grbProgram( const struct input &data_in, struct output &out ) {
 				);
 			}
 		}
+		grb::wait();
 		time_taken = timer.time();
 		out.times.useful = time_taken / static_cast< double >( out.rep );
 		// print timing at root process
@@ -290,6 +296,7 @@ void grbProgram( const struct input &data_in, struct output &out ) {
 	}
 
 	// start postamble
+	grb::wait();
 	timer.reset();
 
 	// set error code

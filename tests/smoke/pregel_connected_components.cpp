@@ -183,9 +183,11 @@ void grbProgram( const struct input &data_in, struct output &out ) {
 	grb::RC rc = grb::SUCCESS;
 	// time a single call
 	if( out.rep == 0 ) {
+		grb::wait();
 		timer.reset();
 	        rc = grb::algorithms::pregel::ConnectedComponents< size_t >::execute(
 			pregel, cc, pregel.numVertices() );
+		grb::wait();
 		double single_time = timer.time();
 		if( rc != SUCCESS ) {
 			std::cerr << "Failure: call to Pregel ConnectedAlgorithms did not succeed "
@@ -218,6 +220,7 @@ void grbProgram( const struct input &data_in, struct output &out ) {
 			? grb::Vector< size_t >( n )
 			: grb::Vector< size_t >( 0 );
 		out.times.preamble += timer.time();
+		grb::wait();
 		timer.reset();
 		for( size_t i = 0; i < out.rep && rc == SUCCESS; ++i ) {
 			if( rc == SUCCESS ) {
@@ -235,6 +238,7 @@ void grbProgram( const struct input &data_in, struct output &out ) {
 				);
 			}
 		}
+		grb::wait();
 		time_taken = timer.time();
 		if( rc == SUCCESS ) {
 			out.times.useful = time_taken / static_cast< double >( out.rep );

@@ -192,6 +192,7 @@ void grbProgram( const struct input &data_in, struct output &out ) {
 			double, PR_CONVERGENCE_MODE
 		>::program;
 
+	grb::wait();
 	out.times.preamble = timer.time();
 
 	// by default, copy input requested repetitions to output repititions performed
@@ -200,6 +201,7 @@ void grbProgram( const struct input &data_in, struct output &out ) {
 	// time a single call
 	RC rc = set( pr, 0 );
 	if( out.rep == 0 ) {
+		grb::wait();
 		timer.reset();
 	        rc = pregel.template execute<
 				grb::operators::add< double >,
@@ -210,6 +212,7 @@ void grbProgram( const struct input &data_in, struct output &out ) {
 				out.iterations,
 				out_buffer
 		        );
+		grb::wait();
 		double single_time = timer.time();
 		if( rc != SUCCESS ) {
 			std::cerr << "Failure: call to pregel_pagerank did not succeed "
@@ -237,6 +240,7 @@ void grbProgram( const struct input &data_in, struct output &out ) {
 	} else {
 		// do benchmark
 		double time_taken;
+		grb::wait();
 		timer.reset();
 		for( size_t i = 0; i < out.rep && rc == SUCCESS; ++i ) {
 			rc = grb::set( pr, 0 );
@@ -246,6 +250,7 @@ void grbProgram( const struct input &data_in, struct output &out ) {
 					);
 			}
 		}
+		grb::wait();
 		time_taken = timer.time();
 		if( rc == SUCCESS ) {
 			out.times.useful = time_taken / static_cast< double >( out.rep );

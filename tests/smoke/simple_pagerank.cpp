@@ -211,6 +211,7 @@ void grbProgram( const struct input &data_in, struct output &out ) {
 	// time a single call
 	RC rc = SUCCESS;
 	if( out.rep == 0 ) {
+		grb::wait();
 		timer.reset();
 		rc = simple_pagerank< descriptors::no_operation >(
 			pr, L,
@@ -218,6 +219,7 @@ void grbProgram( const struct input &data_in, struct output &out ) {
 			alpha, tol, data_in.solver_iterations,
 			&( out.iterations ), &( out.residual )
 		);
+		grb::wait();
 		double single_time = timer.time();
 		if( !(rc == SUCCESS || rc == FAILED) ) {
 			std::cerr << "Failure: call to simple_pagerank did not succeed "
@@ -252,6 +254,7 @@ void grbProgram( const struct input &data_in, struct output &out ) {
 	} else {
 		// do benchmark
 		double time_taken;
+		grb::wait();
 		timer.reset();
 		for( size_t i = 0; i < out.rep && rc == SUCCESS; ++i ) {
 			rc = grb::clear( pr );
@@ -264,6 +267,7 @@ void grbProgram( const struct input &data_in, struct output &out ) {
 				);
 			}
 		}
+		grb::wait();
 		time_taken = timer.time();
 		out.times.useful = time_taken / static_cast< double >( out.rep );
 		// print timing at root process
