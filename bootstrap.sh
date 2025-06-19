@@ -105,9 +105,9 @@ hyperdags_using=reference
 nonblocking=yes
 banshee=no
 lpf=no
-alp_reference=yes
-alp_dispatch=yes
-alp_omp=yes
+alp_reference=no
+alp_dispatch=no
+alp_omp=no
 show=no
 FLAGS=$''
 LPF_INSTALL_PATH=
@@ -169,6 +169,11 @@ or assume default paths (--with-lpf)"
 			;;
 	--no-alp-reference)
 			alp_reference=no
+			;;
+	--no-dense)
+			alp_reference=no
+			alp_dispatch=no
+			alp_omp=no
 			;;
 	--no-reference)
 			reference=no
