@@ -170,6 +170,11 @@ or assume default paths (--with-lpf)"
 	--no-alp-reference)
 			alp_reference=no
 			;;
+	--no-dense)
+			alp_reference=no
+			alp_dispatch=no
+			alp_omp=no
+			;;
 	--no-reference)
 			reference=no
 			;;

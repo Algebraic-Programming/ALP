@@ -115,7 +115,7 @@ workflow:
 #  before_script:
 #    - yum -y update && yum -y groupinstall "Development Tools" && yum -y install make autoconf cmake numactl-devel
 #  script:
-#    - rm -rf build install && mkdir -p install build && cd ./build && ../bootstrap.sh --prefix=../install && make -j$(nproc) && make -j$(nproc) build_tests_all
+#    - rm -rf build install && mkdir -p install build && cd ./build && ../bootstrap.sh --prefix=../install --no-dense && make -j$(nproc) && make -j$(nproc) build_tests_all
 #    - *strip_symbols
 #  artifacts:
 #    paths:
@@ -131,7 +131,7 @@ workflow:
 #  before_script:
 #    - yum -y update && yum -y groupinstall "Development Tools" && yum -y install make autoconf cmake numactl-devel
 #  script:
-#    - mkdir -p install build && cd ./build && ../bootstrap.sh --prefix=../install --debug-build && make -j$(nproc) && make -j$(nproc) build_tests_all
+#    - mkdir -p install build && cd ./build && ../bootstrap.sh --prefix=../install --debug-build --no-dense && make -j$(nproc) && make -j$(nproc) build_tests_all
 #  rules:
 #    - if: $EXTRA_TESTS_ENABLED == "yes"
 
@@ -187,7 +187,7 @@ workflow:
 
 build_test:
   script:
-    - mkdir -p install build && cd ./build && ../bootstrap.sh --prefix=../install --with-datasets=${ALP_DATASETS}
+    - mkdir -p install build && cd ./build && ../bootstrap.sh --prefix=../install --with-datasets=${ALP_DATASETS} --no-dense
       && make -j$(nproc) build_tests_all
     - *strip_symbols
   artifacts:
@@ -238,7 +238,7 @@ test_installation:
 
 build_test_buildtype_debug:
   script:
-    - mkdir -p install build && cd ./build && ../bootstrap.sh --prefix=../install --with-datasets=${ALP_DATASETS}
+    - mkdir -p install build && cd ./build && ../bootstrap.sh --prefix=../install --with-datasets=${ALP_DATASETS} --no-dense
       --debug-build && make -j$(nproc) && make -j$(nproc) build_tests_all
     - *strip_symbols
   artifacts:
@@ -272,7 +272,7 @@ gitleaks:
 # factored out command to download the datasets, cmake, and build in non-debug mode
 .setup_and_build_ndebug_slurm: &setup_and_build_ndebug_slurm
   - mkdir -p install build && cd ./build
-  - ../bootstrap.sh --prefix=../install --with-datasets=${SLURM_DATASETS_DIR_PATH} --no-hyperdags
+  - ../bootstrap.sh --prefix=../install --with-datasets=${SLURM_DATASETS_DIR_PATH} --no-hyperdags --no-dense
   - make -j$(nproc)
 
 tests_performance_slurm:
@@ -318,7 +318,7 @@ build_test_lpf:
     - if: $LPF_TESTS_ENABLED == "yes"
   script:
 # build only LPF-related tests
-    - mkdir -p install build && cd ./build && ../bootstrap.sh --with-lpf=${LPF_PATH} --no-nonblocking --no-reference
+    - mkdir -p install build && cd ./build && ../bootstrap.sh --with-lpf=${LPF_PATH} --no-nonblocking --no-reference --no-dense
       --no-hyperdags --prefix=../install --with-datasets=${ALP_DATASETS} && make -j$(nproc) build_tests_all
     - *strip_symbols
   artifacts:
@@ -389,7 +389,7 @@ build_test_gcc_versions:
         #   VER: [11,12,13,14]
   script:
     - mkdir -p install build && cd ./build &&
-      CXX=${CXX_COMPILER}-${VER} CC=${CC_COMPILER}-${VER} ../bootstrap.sh
+      CXX=${CXX_COMPILER}-${VER} CC=${CC_COMPILER}-${VER} ../bootstrap.sh --no-dense
       --prefix=../install --with-datasets=${ALP_DATASETS}
       --with-lpf=${LPF_BASE_PATH}/build_mpich_${CC_COMPILER}_${VER}/install &&
       make -j$(nproc) build_tests_all
