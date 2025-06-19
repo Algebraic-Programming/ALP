@@ -71,17 +71,17 @@ namespace alp {
 
 		template<
 			typename MatrixType,
-			std::enable_if_t< internal::is_storage_based< MatrixType >::value > * = nullptr
+			std::enable_if_t< internal::is_storage_based< MatrixType >::value > *
 		>
 		size_t getStorageDimensions( const MatrixType &A ) noexcept;
 
 		template< typename MatrixType,
-			std::enable_if_t< is_matrix< MatrixType>::value > * = nullptr
+			std::enable_if_t< is_matrix< MatrixType>::value > *
 		>
 		bool getInitialized( const MatrixType &A ) noexcept;
 
 		template< typename MatrixType,
-			std::enable_if_t< is_matrix< MatrixType>::value > * = nullptr
+			std::enable_if_t< is_matrix< MatrixType>::value > *
 		>
 		void setInitialized( MatrixType &, const bool ) noexcept;
 
@@ -109,17 +109,17 @@ namespace alp {
 
 		template<
 			typename MatrixType,
-			std::enable_if_t< internal::is_storage_based< MatrixType >::value > * = nullptr
+			std::enable_if_t< internal::is_storage_based< MatrixType >::value > *
 		>
 		size_t getStorageDimensions( const MatrixType &A ) noexcept;
 
 		template< typename MatrixType,
-			std::enable_if_t< is_matrix< MatrixType>::value > * = nullptr
+			std::enable_if_t< is_matrix< MatrixType>::value > *
 		>
 		bool getInitialized( const MatrixType &A ) noexcept;
 
 		template< typename MatrixType,
-			std::enable_if_t< is_matrix< MatrixType>::value > * = nullptr
+			std::enable_if_t< is_matrix< MatrixType>::value > *
 		>
 		void setInitialized( MatrixType &, const bool ) noexcept;
 		/**
@@ -1067,7 +1067,7 @@ namespace alp {
 
 		template<
 			typename MatrixType,
-			std::enable_if_t< is_matrix< MatrixType>::value > * = nullptr
+			std::enable_if_t< is_matrix< MatrixType>::value > *
 		>
 		bool getInitialized( const MatrixType &A ) noexcept {
 			return static_cast< const MatrixBase< typename MatrixType::base_type > & >( A ).template getInitialized();
@@ -1075,7 +1075,7 @@ namespace alp {
 
 		template<
 			typename MatrixType,
-			std::enable_if_t< is_matrix< MatrixType>::value > * = nullptr
+			std::enable_if_t< is_matrix< MatrixType>::value > *
 		>
 		void setInitialized( MatrixType &A, const bool initialized ) noexcept {
 			return static_cast< MatrixBase< typename MatrixType::base_type > & >( A ).template setInitialized( initialized );
@@ -1102,7 +1102,7 @@ namespace alp {
 		 */
 		template<
 			typename MatrixType,
-			std::enable_if_t< is_matrix< MatrixType >::value > * = nullptr
+			std::enable_if_t< is_matrix< MatrixType >::value > *
 		>
 		typename MatrixType::const_access_type access( const MatrixType &A, const typename MatrixType::storage_index_type &storageIndex ) {
 			return static_cast<
@@ -1113,7 +1113,7 @@ namespace alp {
 		/** Non-constant variant. **/
 		template<
 			typename MatrixType,
-			std::enable_if_t< is_matrix< MatrixType >::value > * = nullptr
+			std::enable_if_t< is_matrix< MatrixType >::value > *
 		>
 		typename MatrixType::access_type access( MatrixType &A, const typename MatrixType::storage_index_type &storageIndex ) {
 			return static_cast<
@@ -1139,7 +1139,7 @@ namespace alp {
 		 */
 		template<
 			typename MatrixType,
-			std::enable_if< is_matrix< MatrixType >::value > * = nullptr
+			std::enable_if< is_matrix< MatrixType >::value > *
 		>
 		typename MatrixType::storage_index_type getStorageIndex( const MatrixType &A, const size_t i, const size_t j, const size_t s, const size_t P ) {
 			return static_cast< const MatrixBase< typename MatrixType::base_type > & >( A ).template getStorageIndex< typename MatrixType::storage_index_type >( i, j, s, P );
@@ -1212,7 +1212,7 @@ namespace alp {
 			size_t band_index, typename MatrixType,
 			std::enable_if_t<
 				is_matrix< MatrixType >::value
-			> * = nullptr
+			> *
 		>
 		std::pair< size_t, size_t > calculate_row_coordinate_limits( const MatrixType &A ) {
 
@@ -1249,7 +1249,7 @@ namespace alp {
 			size_t band_index, typename MatrixType,
 			std::enable_if_t<
 				is_matrix< MatrixType >::value
-			> * = nullptr
+			> *
 		>
 		std::pair< size_t, size_t > calculate_column_coordinate_limits( const MatrixType &A, const size_t row ) {
 

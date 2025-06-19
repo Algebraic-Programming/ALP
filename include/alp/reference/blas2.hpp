@@ -327,7 +327,7 @@ namespace alp {
 			typename DataType, typename Structure, typename View, typename ImfR, typename ImfC,
 			std::enable_if_t<
 				BandIndex >= std::tuple_size< typename Structure::band_intervals >::value
-			> * = nullptr
+			> *
 		>
 		RC eWiseLambda(
 			const Func f,
