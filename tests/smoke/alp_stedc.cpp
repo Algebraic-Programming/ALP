@@ -18,7 +18,7 @@
 #include <sstream>
 #include <vector>
 
-#include <graphblas/utils/Timer.hpp>
+#include <graphblas/utils/timer.hpp>
 #include <alp.hpp>
 //#include <alp/algorithms/symm_tridiag_eigensolver.hpp>
 #include <alp/algorithms/qr_eigensolver.hpp>

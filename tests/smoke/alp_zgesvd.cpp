@@ -24,7 +24,7 @@
 #include <iomanip>
 #endif
 
-#include <graphblas/utils/Timer.hpp>
+#include <graphblas/utils/timer.hpp>
 #include <alp.hpp>
 #include <alp/algorithms/svd.hpp>
 #include <graphblas/utils/iscomplex.hpp> // use from grb

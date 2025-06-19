@@ -23,7 +23,7 @@
 #include <iomanip>
 #endif
 
-#include <graphblas/utils/Timer.hpp>
+#include <graphblas/utils/timer.hpp>
 #include <alp.hpp>
 #include <alp/algorithms/householder_tridiag.hpp>
 // #include <alp/algorithms/symm_tridiag_eigensolver.hpp>

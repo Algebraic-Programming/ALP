@@ -23,7 +23,7 @@
 #include <iomanip>
 #endif
 
-#include <graphblas/utils/Timer.hpp>
+#include <graphblas/utils/timer.hpp>
 #include <alp.hpp>
 #include <alp/algorithms/householder_tridiag.hpp>
 #include <graphblas/utils/iscomplex.hpp> // use from grb

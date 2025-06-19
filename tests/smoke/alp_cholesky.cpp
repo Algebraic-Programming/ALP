@@ -25,7 +25,7 @@
 #include <iomanip>
 #endif
 
-#include <graphblas/utils/Timer.hpp>
+#include <graphblas/utils/timer.hpp>
 #include <alp.hpp>
 #include <graphblas/utils/iscomplex.hpp> // use from grb
 #include <alp/algorithms/cholesky.hpp>

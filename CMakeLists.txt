@@ -50,7 +50,7 @@ endif()
 ### CONFIGURATION OPTIONS
 # to choose backends and dependencies
 option( WITH_REFERENCE_BACKEND "With Reference backend" ON )
-option( WITH_ALP_REFERENCE_BACKEND "With Reference Dense backend" OFF )
+option( WITH_ALP_REFERENCE_BACKEND "With Reference Dense backend" ON )
 option( WITH_ALP_DISPATCH_BACKEND "With Dispatch Dense backend" OFF )
 option( WITH_OMP_BACKEND "With OMP backend" ON )
 option( WITH_HYPERDAGS_BACKEND "With Hyperdags backend" ON )
@@ -135,7 +135,11 @@ if( NOT WITH_REFERENCE_BACKEND AND
 	NOT WITH_NONBLOCKING_BACKEND AND
 	NOT WITH_BSP1D_BACKEND AND
 	NOT WITH_HYBRID_BACKEND AND
-	NOT WITH_HYPERDAGS_BACKEND )
+	NOT WITH_HYPERDAGS_BACKEND AND
+	NOT WITH_ALP_REFERENCE_BACKEND AND
+	NOT WITH_ALP_DISPATCH_BACKEND AND
+	NOT WITH_ALP_OMP_BACKEND )
+	# at least one backend should be enabled
 	message( FATAL_ERROR "At least one backend should be enabled")
 endif()
 
@@ -158,6 +162,15 @@ if( WITH_BSP1D_BACKEND )
 endif()
 if( WITH_HYBRID_BACKEND )
 	list( APPEND AVAILABLE_TEST_BACKENDS "hybrid" )
+endif()
+if( WITH_ALP_REFERENCE_BACKEND )
+	list( APPEND AVAILABLE_TEST_BACKENDS "alp_reference" )
+endif()
+if( WITH_ALP_DISPATCH_BACKEND )
+	list( APPEND AVAILABLE_TEST_BACKENDS "alp_dispatch" )
+endif()
+if( WITH_ALP_OMP_BACKEND )
+	list( APPEND AVAILABLE_TEST_BACKENDS "alp_omp" )
 endif()
 
 # Enable backends based on features
