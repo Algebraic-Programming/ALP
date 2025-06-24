@@ -17,7 +17,7 @@ jobs:
       run: sudo apt-get install -y libnuma-dev
 
     - name: Configure
-      run: mkdir build && cd build && ../bootstrap.sh --prefix=../install --debug-build
+      run: mkdir build && cd build && ../bootstrap.sh --prefix=../install --debug-build  --no-dense
 
     - name: Build
       working-directory: ${{github.workspace}}/build
