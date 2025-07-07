@@ -146,10 +146,13 @@ void test( const struct Input &in, struct Output &out ) {
 	// WARNING: ALP incurs performance loss unless compiled using the nonblocking
 	//          backend
 	if( mode == TEMPLATED ) {
-		grb::wait();
+		// flush any pending ops
+		out.error = grb::wait();
+		// start timing using a cold run to get the cache `hot' and get an early
+		// run-time estimate
 		double ttime = timer.time();
-		// get cache `hot'
-		out.error = grb::set< grb::descriptors::dense >( zv, yv );
+		out.error = out.error ? out.error :
+			grb::set< grb::descriptors::dense >( zv, yv );
 		out.error = out.error ? out.error :
 			grb::eWiseMul< grb::descriptors::dense >( zv, alpha, xv, reals );
 		out.error = out.error ? out.error : grb::wait();
@@ -199,10 +202,12 @@ void test( const struct Input &in, struct Output &out ) {
 	}
 
 	if( mode == LAMBDA ) {
-		grb::wait();
+		// flush any pending ops
+		out.error = grb::wait();
+		// start timing using a cold run to get the cache `hot' and get an early
+		// run-time estimate
 		double ltime = timer.time();
-		// get cache `hot'
-		out.error = grb::eWiseLambda(
+		out.error = out.errror ? out.error : grb::eWiseLambda(
 			[ &zv, &alpha, &xv, &yv, &reals ]( const size_t i ) {
 				// zv[ i ] = alpha * xv[ i ] + yv[ i ]
 				(void) grb::apply( zv[ i ], alpha, xv[ i ],
@@ -278,7 +283,6 @@ void test( const struct Input &in, struct Output &out ) {
 			a[ i ] = 0;
 		}
 
-		grb::wait();
 		double ctime = timer.time();
 		// get cache `hot'
 		bench_kernels_axpy( a, alpha, x, y, in.n );
