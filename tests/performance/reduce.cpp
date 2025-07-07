@@ -100,7 +100,10 @@ void test( const struct Input &in, struct Output &out ) {
 		for( size_t i = 0; i < out.reps_used; ++i ) {
 			alpha = 0.0;
 			out.error = grb::foldl< grb::descriptors::dense >( alpha, xv, realm );
-			out.error = out.error ? out.error : grb::wait();
+			// avoid overhead of calling wait if not required
+			if( grb::Properties<>::isNonblockingExecution ) {
+				out.error = out.error ? out.error : grb::wait();
+			}
 			if( out.error != grb::SUCCESS ) {
 				std::cerr << "grb::foldl returns " << grb::toString( out.error )
 					<< " during hot benchmark loop; exiting with error!\n";
@@ -160,7 +163,10 @@ void test( const struct Input &in, struct Output &out ) {
 						(void)grb::foldl( alpha, xv[ i ], realm.getOperator() );
 					},
 				xv );
-			out.error = out.error ? out.error : grb::wait();
+			// avoid overhead of calling wait if not required
+			if( grb::Properties<>::isNonblockingExecution ) {
+				out.error = out.error ? out.error : grb::wait();
+			}
 			if( out.error != grb::SUCCESS ) {
 				std::cerr << "grb::foldl returns " << grb::toString( out.error )
 					<< " during hot benchmark loop; exiting with error!\n";
