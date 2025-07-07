@@ -207,7 +207,7 @@ void test( const struct Input &in, struct Output &out ) {
 		// start timing using a cold run to get the cache `hot' and get an early
 		// run-time estimate
 		double ltime = timer.time();
-		out.error = out.errror ? out.error : grb::eWiseLambda(
+		out.error = out.error ? out.error : grb::eWiseLambda(
 			[ &zv, &alpha, &xv, &yv, &reals ]( const size_t i ) {
 				// zv[ i ] = alpha * xv[ i ] + yv[ i ]
 				(void) grb::apply( zv[ i ], alpha, xv[ i ],
