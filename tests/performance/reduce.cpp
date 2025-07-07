@@ -160,7 +160,7 @@ void test( const struct Input &in, struct Output &out ) {
 			alpha = realm.template getIdentity< double >();
 			out.error = grb::eWiseLambda(
 					[ &alpha, &xv, &realm ]( const size_t i ) {
-						(void)grb::foldl( alpha, xv[ i ], realm.getOperator() );
+						(void) grb::foldl( alpha, xv[ i ], realm.getOperator() );
 					},
 				xv );
 			// avoid overhead of calling wait if not required
