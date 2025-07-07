@@ -167,7 +167,6 @@ void functional_test( const struct test_input &in, struct test_output &out ) {
 void bench_templated( const struct bench_input &in, struct bench_output &out ) {
 	out.error_code = 0;
 	grb::utils::Timer timer;
-	grb::wait();
 	timer.reset();
 
 	// declare graphBLAS data structures
@@ -252,7 +251,6 @@ void bench_templated( const struct bench_input &in, struct bench_output &out ) {
 void bench_lambda( const struct bench_input &in, struct bench_output &out ) {
 	out.error_code = 0;
 	grb::utils::Timer timer;
-	grb::wait();
 	timer.reset();
 
 	// declare graphBLAS data structures
@@ -364,7 +362,6 @@ void bench_lambda( const struct bench_input &in, struct bench_output &out ) {
 void bench_raw( const struct bench_input &in, struct bench_output &out ) {
 	out.error_code = 0;
 	grb::utils::Timer timer;
-	grb::wait();
 	timer.reset();
 
 	// declare raw data structures
