@@ -90,16 +90,28 @@ void functional_test( const struct test_input &in, struct test_output &out ) {
 		free( xr );
 		return;
 	}
-	if( grb::set< grb::descriptors::use_index >( xv, yv ) != grb::SUCCESS ) {
+	if( grb::wait() != grb::SUCCESS ) {
 		out.error_code = 101;
 		free( yr );
 		free( xr );
 		return;
 	}
+	if( grb::set< grb::descriptors::use_index >( xv, yv ) != grb::SUCCESS ) {
+		out.error_code = 105;
+		free( yr );
+		free( xr );
+		return;
+	}
+	if( grb::wait() != grb::SUCCESS ) {
+		out.error_code = 106;
+		free( yr );
+		free( xr );
+		return;
+	}
 	for( size_t i = 0; i < n; ++i ) {
-		xr[ i ] = (double)i;
+		xr[ i ] = static_cast< double >( i );
 		yr[ i ] = 0.5;
-		check += 0.5 * (double)i;
+		check += 0.5 * static_cast< double >( i );
 	}
 	out.check = check;
 
@@ -109,11 +121,10 @@ void functional_test( const struct test_input &in, struct test_output &out ) {
 		grb::operators::add< double >, grb::operators::mul< double >,
 		grb::identities::zero, grb::identities::one
 	> reals;
-	grb::wait();
 	timer.reset();
 	double alpha = 0.0;
-	const RC rc = grb::dot( alpha, xv, yv, reals );
-	grb::wait();
+	RC rc = grb::dot( alpha, xv, yv, reals );
+	rc = rc ? rc : grb::wait();
 	out.time = timer.time();
 	if( rc != SUCCESS ) {
 		std::cerr << "Call to grb::dot failed with error " << grb::toString( rc )
@@ -166,13 +177,18 @@ void bench_templated( const struct bench_input &in, struct bench_output &out ) {
 
 	// set input
 	if( grb::set< grb::descriptors::no_operation >( yv, 0.5 ) != grb::SUCCESS ) {
-		out.error_code = 102;
+		out.error_code = 110;
+	}
+	if( grb::wait() != grb::SUCCESS ) {
+		out.error_code = 111;
 	}
 	if( grb::set< grb::descriptors::use_index >( xv, 0 ) != grb::SUCCESS ) {
-		out.error_code = 103;
+		out.error_code = 115;
+	}
+	if( grb::wait() != grb::SUCCESS ) {
+		out.error_code = 116;
 	}
 	if( out.error_code ) {
-		grb::wait();
 		out.times.preamble = timer.time();
 		return;
 	}
@@ -183,30 +199,30 @@ void bench_templated( const struct bench_input &in, struct bench_output &out ) {
 		grb::identities::zero, grb::identities::one
 	> reals;
 	double alpha = 0.0;
-	const enum RC rc = grb::dot< grb::descriptors::dense >( alpha, xv, yv, reals );
+	RC rc = grb::dot< grb::descriptors::dense >( alpha, xv, yv, reals );
+	rc = rc ? rc : grb::wait();
 	if( rc != SUCCESS ) {
 		std::cerr << "Call to grb::dot failed with error " << grb::toString( rc )
 			<< std::endl;
 		out.error_code = 201;
-		grb::wait();
 		out.times.preamble = timer.time();
 		return;
 	}
 
 	// done with preamble, start useful work
-	grb::wait();
 	out.times.preamble = timer.time();
 	timer.reset();
 
 	// benchmark hot runs
 	double ttime = 0;
 	for( size_t i = 0; i < in.rep; ++i ) {
-		grb::wait();
 		timer.reset();
 		alpha = 0.0;
-		const enum RC grc = grb::dot< grb::descriptors::dense >( alpha, xv, yv,
-			reals );
-		grb::wait();
+		RC grc = grb::dot< grb::descriptors::dense >( alpha, xv, yv, reals );
+		// only wait if we must (avoid perfhit if wait is a guaranteed no-op)
+		if( grb::Properties<>::isNonblockingExecution ) {
+			grc = grc ? grc : grb::wait();
+		}
 		ttime += timer.time() / static_cast< double >( in.rep );
 
 		// sanity checks
@@ -246,15 +262,22 @@ void bench_lambda( const struct bench_input &in, struct bench_output &out ) {
 
 	// set input
 	if( grb::set< grb::descriptors::no_operation >( yv, 0.5 ) != grb::SUCCESS ) {
-		out.error_code = 104;
+		out.error_code = 120;
+		return;
+	}
+	if( grb::wait() != grb::SUCCESS ) {
+		out.error_code = 121;
 		return;
 	}
 	if( grb::set< grb::descriptors::use_index >( xv, 0 ) != grb::SUCCESS ) {
-		out.error_code = 105;
+		out.error_code = 125;
+		return;
+	}
+	if( grb::wait() != grb::SUCCESS ) {
+		out.error_code = 126;
 		return;
 	}
 	if( out.error_code ) {
-		grb::wait();
 		out.times.preamble = timer.time();
 		return;
 	}
@@ -265,7 +288,7 @@ void bench_lambda( const struct bench_input &in, struct bench_output &out ) {
 		grb::identities::zero, grb::identities::one
 	> reals;
 	double alpha = reals.template getZero< double >();
-	const RC rc = grb::eWiseLambda< grb::descriptors::dense >(
+	RC rc = grb::eWiseLambda< grb::descriptors::dense >(
 		[ &xv, &yv, &alpha, &reals ]( const size_t i ) {
 			double temp = 0.0;
 			const auto mul_op = reals.getMultiplicativeOperator();
@@ -275,27 +298,25 @@ void bench_lambda( const struct bench_input &in, struct bench_output &out ) {
 		},
 		xv
 	);
-	if( rc != SUCCESS ) {
+	rc = rc ? rc : grb::wait();
+	if( rc != grb::SUCCESS ) {
 		std::cerr << "Error during call to grb::eWiseLambda, error: "
 			<< grb::toString( rc ) << std::endl;
-		grb::wait();
 		out.times.preamble = timer.time();
 		out.error_code = 203;
 		return;
 	}
 
 	// done with preamble, start useful work
-	grb::wait();
 	out.times.preamble = timer.time();
 	timer.reset();
 
 	// now do a hot run
 	double ltime = 0.0;
 	for( size_t k = 0; k < in.rep; ++k ) {
-		grb::wait();
 		timer.reset();
 		alpha = reals.template getZero< double >();
-		const enum RC grc = grb::eWiseLambda(
+		RC grc = grb::eWiseLambda(
 			[ &xv, &yv, &alpha, &reals ]( const size_t i ) {
 				double temp = xv[ i ];
 				const auto mul_op = reals.getMultiplicativeOperator();
@@ -311,7 +332,10 @@ void bench_lambda( const struct bench_input &in, struct bench_output &out ) {
 			},
 			xv
 		);
-		grb::wait();
+		// only wait if we have to (avoid minor overhead if not required to wait)
+		if( grb::Properties<>::isNonblockingExecution ) {
+			grc = grc ? grc : grb::wait();
+		}
 		ltime += timer.time() / static_cast< double >( in.rep );
 
 		bool sane = true;
@@ -381,10 +405,8 @@ void bench_raw( const struct bench_input &in, struct bench_output &out ) {
 	// now do hot run
 	double ctime = 0.0;
 	for( size_t k = 0; k < in.rep; ++k ) {
-		grb::wait();
 		timer.reset();
 		bench_kernels_dot( &alpha, xr, yr, n );
-		grb::wait();
 		ctime += timer.time() / static_cast< double >( in.rep );
 
 		if( !grb::utils::equals( in.check, alpha, 2 * n ) ) {
@@ -428,7 +450,7 @@ int main( int argc, char ** argv ) {
 	in.n = strtoumax( argv[ 1 ], &end, 10 );
 	if( argv[ 1 ] == end ) {
 		std::cerr << "Could not parse argument " << argv[ 1 ] << " for vector "
-			<< "length.\n Test FAILED." << std::endl;
+			<< "length.\n Test FAILED\n" << std::endl;
 		return 10;
 	}
 	test_in.n = in.n;
@@ -439,7 +461,7 @@ int main( int argc, char ** argv ) {
 		in.rep = strtoumax( argv[ 2 ], &end, 10 );
 		if( argv[ 2 ] == end ) {
 			std::cerr << "Could not parse argument " << argv[ 2 ] << " for number of "
-				<< "inner experiment repititions.\n Test FAILED." << std::endl;
+				<< "inner experiment repititions.\n Test FAILED\n" << std::endl;
 			return 20;
 		}
 	}
@@ -450,7 +472,7 @@ int main( int argc, char ** argv ) {
 		outer = strtoumax( argv[ 3 ], &end, 10 );
 		if( argv[ 3 ] == end ) {
 			std::cerr << "Could not parse argument " << argv[ 3 ] << " for number of "
-				<< "outer experiment repititions.\n Test FAILED." << std::endl;
+				<< "outer experiment repititions.\n Test FAILED\n" << std::endl;
 			return 30;
 		}
 	}
@@ -461,12 +483,12 @@ int main( int argc, char ** argv ) {
 
 	// start functional test
 	if( launch.exec( &functional_test, test_in, test_out, true ) != SUCCESS ) {
-		std::cerr << "Error launching functional test.\n Test FAILED." << std::endl;
+		std::cerr << "Error launching functional test.\n Test FAILED\n" << std::endl;
 		return 30;
 	}
 	if( test_out.error_code != 0 ) {
 		std::cerr << "Functional test exits with nonzero exit code " << out.error_code
-			<< "\nTest FAILED." << std::endl;
+			<< "\nTest FAILED\n" << std::endl;
 		return out.error_code;
 	}
 
@@ -490,12 +512,13 @@ int main( int argc, char ** argv ) {
 	std::cout << "compiler-optimised dot product on raw arrays of size " << in.n
 		<< std::endl;
 	if( bench.exec( &bench_raw, in, out, 1, outer, true ) != SUCCESS ) {
-		std::cerr << "Error launching raw benchmark test.\nTest FAILED." << std::endl;
+		std::cerr << "Error launching raw benchmark test.\nTest FAILED\n"
+			<< std::endl;
 		return 60;
 	}
 	if( out.error_code != 0 ) {
 		std::cerr << "Raw benchmark test exits with nonzero exit code "
-			<< out.error_code << "\nTest FAILED." << std::endl;
+			<< out.error_code << "\nTest FAILED\n" << std::endl;
 		return out.error_code;
 	}
 
@@ -504,13 +527,13 @@ int main( int argc, char ** argv ) {
 		<< grb::toString( grb::config::default_backend ) << ") of size " << in.n
 		<< std::endl;
 	if( bench.exec( &bench_templated, in, out, 1, outer, true ) != SUCCESS ) {
-		std::cerr << "Error launching templated benchmark test.\n Test FAILED."
+		std::cerr << "Error launching templated benchmark test.\n Test FAILED\n"
 			<< std::endl;
 		return 40;
 	}
 	if( out.error_code != 0 ) {
 		std::cerr << "Templated benchmark test exits with nonzero exit code "
-			<< out.error_code << "\nTest FAILED." << std::endl;
+			<< out.error_code << "\nTest FAILED\n" << std::endl;
 		return out.error_code;
 	}
 
@@ -520,7 +543,7 @@ int main( int argc, char ** argv ) {
 			<< grb::toString( grb::config::default_backend ) << ") of size " << in.n
 			<< std::endl;
 		if( bench.exec( &bench_lambda, in, out, 1, outer, true ) != SUCCESS ) {
-			std::cerr << "Error launching lambda benchmark test.\nTest FAILED."
+			std::cerr << "Error launching lambda benchmark test.\nTest FAILED\n"
 				<< std::endl;
 			return 50;
 		}
