@@ -145,7 +145,6 @@ void grbProgram( const struct input &data_in, struct output &out ) {
 
 	// get input n
 	grb::utils::Timer timer;
-	grb::wait();
 	timer.reset();
 
 	// sanity checks on input
@@ -187,6 +186,7 @@ void grbProgram( const struct input &data_in, struct output &out ) {
 			>( data.cend() ),
 			PARALLEL
 		);*/
+		io_rc = io_rc ? io_rc : wait();
 		if( io_rc != SUCCESS ) {
 			std::cerr << "Failure: call to buildMatrixUnique did not succeed "
 				<< "(" << toString( io_rc ) << ")." << std::endl;
@@ -196,9 +196,8 @@ void grbProgram( const struct input &data_in, struct output &out ) {
 		if( data_in.jacobi_precond ) {
 			assert( io_rc == SUCCESS );
 			io_rc = grb::set( diag, 0 );
-			io_rc = io_rc
-				? io_rc
-				: grb::eWiseLambda( [&diag,&L](
+			io_rc = io_rc ? io_rc :
+				eWiseLambda( [&diag,&L](
 						const size_t i, const size_t j, ScalarType &v
 					) {
 						if( i == j ) {
@@ -206,6 +205,7 @@ void grbProgram( const struct input &data_in, struct output &out ) {
 						}
 					}, L, diag
 				);
+			io_rc = io_rc ? io_rc : wait();
 			if( io_rc != SUCCESS ) {
 				std::cerr << "Failure: extracting diagonal did not succeed ("
 					<< toString( io_rc ) << ").\n";
@@ -226,7 +226,6 @@ void grbProgram( const struct input &data_in, struct output &out ) {
 	}
 
 	// I/O done
-	grb::wait();
 	out.times.io = timer.time();
 	timer.reset();
 
@@ -242,18 +241,16 @@ void grbProgram( const struct input &data_in, struct output &out ) {
 						grb::operators::mul< ScalarType >() );
 			};
 
-	set( x, static_cast< ScalarType >( 1 ) / static_cast< ScalarType >( n ) );
-	set( b, static_cast< ScalarType >( 1 ) );
-
-	grb::wait();
+	RC rc = set( x,
+		static_cast< ScalarType >( 1 ) / static_cast< ScalarType >( n ) );
+	rc = rc ? rc : set( b, static_cast< ScalarType >( 1 ) );
+	rc = rc ? rc : wait();
 	out.times.preamble = timer.time();
 
 	// by default, copy input requested repetitions to output repititions performed
 	out.rep = data_in.rep;
 	// time a single call
-	RC rc = SUCCESS;
 	if( out.rep == 0 ) {
-		grb::wait();
 		timer.reset();
 		if( data_in.jacobi_precond ) {
 			rc = preconditioned_conjugate_gradient(
@@ -271,7 +268,7 @@ void grbProgram( const struct input &data_in, struct output &out ) {
 				r, u, temp
 			);
 		}
-		grb::wait();
+		rc = rc ? rc : wait();
 		double single_time = timer.time();
 		if( !(rc == SUCCESS || rc == FAILED) ) {
 			std::cerr << "Failure: call to conjugate_gradient did not succeed ("
@@ -304,7 +301,6 @@ void grbProgram( const struct input &data_in, struct output &out ) {
 		}
 	} else {
 		// do benchmark
-		grb::wait();
 		timer.reset();
 		for( size_t i = 0; i < out.rep && rc == SUCCESS; ++i ) {
 
@@ -329,8 +325,10 @@ void grbProgram( const struct input &data_in, struct output &out ) {
 					);
 				}
 			}
+			if( Properties<>::isNonblockingExecution ) {
+				rc = rc ? rc : wait();
+			}
 		}
-		grb::wait();
 		const double time_taken = timer.time();
 		out.times.useful = time_taken / static_cast< double >( out.rep );
 		// print timing at root process
@@ -347,7 +345,6 @@ void grbProgram( const struct input &data_in, struct output &out ) {
 	}
 
 	// start postamble
-	grb::wait();
 	timer.reset();
 
 	// set error code
