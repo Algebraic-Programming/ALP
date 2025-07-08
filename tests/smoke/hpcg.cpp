@@ -223,12 +223,11 @@ void grbProgram( const simulation_input &in, struct output &out ) {
 	// get user process ID
 	assert( spmd<>::pid() < spmd<>::nprocs() );
 	grb::utils::Timer timer;
-	grb::wait();
 	timer.reset();
 
 	// assume successful run
 	out.error_code = SUCCESS;
-	RC rc { SUCCESS };
+	RC rc = SUCCESS;
 
 	// wrap hpcg_data inside a unique_ptr to forget about cleaning chores
 	std::unique_ptr< hpcg_data< double, double, double > > hpcg_state;
@@ -259,6 +258,7 @@ void grbProgram( const simulation_input &in, struct output &out ) {
 		grb::identities::zero, grb::identities::one
 	>() );
 	rc = rc ? rc : set( x, 0.0 );
+	rc = rc ? rc : wait();
 
 #ifdef HPCG_PRINT_SYSTEM
 	if( spmd<>::pid() == 0 ) {
@@ -267,20 +267,18 @@ void grbProgram( const simulation_input &in, struct output &out ) {
 	}
 #endif
 
-	grb::wait();
 	out.times.preamble = timer.time();
 
 	const bool with_preconditioning = !(in.no_preconditioning);
 	if( in.evaluation_run ) {
 		out.test_repetitions = 0;
-		grb::wait();
 		timer.reset();
 		rc = rc ? rc : hpcg(
 			*hpcg_state, with_preconditioning,
 			in.smoother_steps, in.smoother_steps, in.max_iterations, 0.0,
 			out.performed_iterations, out.residual
 		);
-		grb::wait();
+		rc = rc ? rc : wait();
 		double single_time = timer.time();
 		if( rc == SUCCESS ) {
 			rc = collectives<>::reduce( single_time, 0, operators::max< double >() );
@@ -289,7 +287,6 @@ void grbProgram( const simulation_input &in, struct output &out ) {
 		out.test_repetitions = static_cast< size_t >( 1000.0 / single_time ) + 1;
 	} else {
 		// do benchmark
-		grb::wait();
 		timer.reset();
 		for( size_t i = 0; i < in.test_repetitions && rc == SUCCESS; ++i ) {
 			rc = rc ? rc : set( x, 0.0 );
@@ -299,15 +296,14 @@ void grbProgram( const simulation_input &in, struct output &out ) {
 				in.smoother_steps, in.smoother_steps, in.max_iterations, 0.0,
 				out.performed_iterations, out.residual
 			);
-			(void) ++(out.test_repetitions);
-			if( rc != SUCCESS ) {
-				break;
+			if( Properties<>::isNonblockingExecution ) {
+				rc = rc ? rc : wait();
 			}
+			(void) ++(out.test_repetitions);
 		}
-		grb::wait();
 		double time_taken = timer.time();
 		out.times.useful = time_taken / static_cast< double >( out.test_repetitions );
-		// sleep( 1 );
+		sleep( 1 );
 	}
 
 	if( spmd<>::pid() == 0 ) {
@@ -329,17 +325,17 @@ void grbProgram( const simulation_input &in, struct output &out ) {
 	}
 
 	// start postamble
-	grb::wait();
 	timer.reset();
 
 	Semiring<
 		grb::operators::add< double >, grb::operators::mul< double >,
 		grb::identities::zero, grb::identities::one
 	> ring;
-	rc = rc ? rc : grb::set( b, 1.0 );
+	rc = rc ? rc : set( b, 1.0 );
 	out.square_norm_diff = 0.0;
-	rc = rc ? rc : grb::eWiseMul( b, -1.0, x, ring );
-	rc = rc ? rc : grb::dot( out.square_norm_diff, b, b, ring );
+	rc = rc ? rc : eWiseMul( b, -1.0, x, ring );
+	rc = rc ? rc : dot( out.square_norm_diff, b, b, ring );
+	rc = rc ? rc : wait();
 
 	// set error code
 	out.error_code = rc;
@@ -349,7 +345,6 @@ void grbProgram( const simulation_input &in, struct output &out ) {
 		new PinnedVector< double >( x, SEQUENTIAL ) );
 
 	// finish timing
-	grb::wait();
 	const double time_taken = timer.time();
 	out.times.postamble = time_taken;
 }
