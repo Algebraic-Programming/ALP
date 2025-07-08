@@ -45,14 +45,14 @@ struct input {
 };
 
 struct output {
-	enum grb::RC error_code;
-	grb::utils::TimerResults times;
+	RC error_code;
+	utils::TimerResults times;
 };
 
 template< size_t mode >
-static grb::RC setupSparseMatrix(
-	grb::Matrix< double > &mx,
-	grb::Vector< double > &c,
+static RC setupSparseMatrix(
+	Matrix< double > &mx,
+	Vector< double > &c,
 	const size_t n
 ) {
 	std::vector< double > chk;
@@ -61,7 +61,7 @@ static grb::RC setupSparseMatrix(
 	chk.resize( n );
 	std::fill( chk.begin(), chk.end(), 0 );
 	// reserve space in mx
-	grb::RC rc = grb::resize( mx, elems );
+	RC rc = resize( mx, elems );
 	if( rc != SUCCESS ) {
 		return rc;
 	}
@@ -90,13 +90,13 @@ static grb::RC setupSparseMatrix(
 	}
 
 	// load into GraphBLAS
-	rc = grb::buildMatrixUnique( mx, &(I[ 0 ]), &(J[ 0 ]), mxValues, elems,
+	rc = buildMatrixUnique( mx, &(I[ 0 ]), &(J[ 0 ]), mxValues, elems,
 		SEQUENTIAL );
 	if( rc == SUCCESS && elems != nnz( mx ) ) {
 		rc = PANIC;
 	}
 	if( rc == SUCCESS ) {
-		rc = grb::buildVector( c, chk.begin(), chk.end(), SEQUENTIAL );
+		rc = buildVector( c, chk.begin(), chk.end(), SEQUENTIAL );
 	}
 	if( rc == SUCCESS && nnz( c ) != n ) {
 		rc = PANIC;
@@ -111,7 +111,7 @@ static grb::RC setupSparseMatrix(
 	return rc;
 }
 
-static enum grb::RC checkResult( const grb::Vector< double > &left, const grb::Vector< double > &right ) {
+static RC checkResult( const Vector< double > &left, const Vector< double > &right ) {
 	std::cout << "checkResult called on the following two vectors:\n";
 	std::cout << "\tLeft vector (" << nnz( left ) << "/" << size( left ) << ") reads:\n";
 	for( const std::pair< size_t, double > &pair : left ) {
@@ -121,22 +121,22 @@ static enum grb::RC checkResult( const grb::Vector< double > &left, const grb::V
 	for( const std::pair< size_t, double > &pair : right ) {
 		std::cout << "\t\t" << pair.first << " " << pair.second << "\n";
 	}
-	enum grb::RC ret = SUCCESS;
-	if( grb::size( left ) != grb::size( right ) ) {
+	RC ret = SUCCESS;
+	if( size( left ) != size( right ) ) {
 		std::cout << "Left vector does not equal the size of the right vector.\n";
 		return FAILED;
 	}
-	if( grb::nnz( left ) != grb::size( left ) ) {
+	if( nnz( left ) != size( left ) ) {
 		std::cout << "Left vector is not dense.\n";
 		return FAILED;
 	}
-	grb::Vector< double > diff( grb::size( left ) );
-	grb::Monoid< grb::operators::add< double >, grb::identities::zero > addMonoid;
+	Vector< double > diff( size( left ) );
+	Monoid< operators::add< double >, identities::zero > addMonoid;
 	if( ret == SUCCESS ) {
-		ret = grb::set( diff, left );
+		ret = set( diff, left );
 	}
 	if( ret == SUCCESS ) {
-		ret = grb::eWiseLambda( [ &diff, &right ]( const size_t i ) {
+		ret = eWiseLambda( [ &diff, &right ]( const size_t i ) {
 				diff[ i ] = std::abs( diff[ i ] - right[ i ] );
 			},
 			right, diff
@@ -148,7 +148,7 @@ static enum grb::RC checkResult( const grb::Vector< double > &left, const grb::V
 	}
 	if( ret == SUCCESS ) {
 		double equal = 0;
-		ret = grb::foldl( equal, diff, NO_MASK, addMonoid );
+		ret = foldl( equal, diff, NO_MASK, addMonoid );
 		if( ret == SUCCESS && std::abs( equal ) > std::numeric_limits< double >::epsilon() ) {
 			std::cout << "The difference vector has 1-norm " << equal << "!\n";
 			ret = FAILED;
@@ -159,13 +159,13 @@ static enum grb::RC checkResult( const grb::Vector< double > &left, const grb::V
 
 // main label propagation algorithm
 void grbProgram( const struct input &data_in, struct output &out ) {
-	grb::utils::Timer timer;
+	utils::Timer timer;
 
 	const size_t s = spmd<>::pid();
 #ifndef NDEBUG
 	assert( s < spmd<>::nprocs() );
 #else
-	(void)s;
+	(void) s;
 #endif
 
 	// get input n and test case
@@ -174,11 +174,11 @@ void grbProgram( const struct input &data_in, struct output &out ) {
 	out.error_code = SUCCESS;
 
 	// setup
-	grb::Vector< double > vx( n ), vy( n ), chk( n );
-	grb::Matrix< double > mx( n, n );
+	Vector< double > vx( n ), vy( n ), chk( n );
+	Matrix< double > mx( n, n );
 	Semiring<
-		grb::operators::add< double >, grb::operators::mul< double >,
-		grb::identities::zero, grb::identities::one
+		operators::add< double >, operators::mul< double >,
+		identities::zero, identities::one
 	> ring;
 
 	switch( test ) {
@@ -187,21 +187,19 @@ void grbProgram( const struct input &data_in, struct output &out ) {
 		case 1: {
 			// do experiment
 			out.times.io = 0;
-			grb::wait();
 			timer.reset();
-			if( out.error_code == SUCCESS ) {
-				out.error_code = grb::setElement( vx, 1, n / 2 );
-			}
-			if( out.error_code == SUCCESS ) {
-				out.error_code = setupSparseMatrix< 1 >( mx, chk, n );
-			}
-			grb::wait();
+			out.error_code = setElement( vx, 1, n / 2 );
+			out.error_code = out.error_code ? out.error_code :
+				setupSparseMatrix< 1 >( mx, chk, n );
+			out.error_code = out.error_code ? out.error_code : wait();
 			out.times.preamble = timer.time();
 			timer.reset();
 			for( size_t i = 0; out.error_code == SUCCESS && i < data_in.rep; ++i ) {
 				out.error_code = mxv( vy, mx, vx, ring );
+				if( Properties<>::isNonblockingExecution ) {
+					out.error_code = out.error_code ? out.error_code : wait();
+				}
 			}
-			grb::wait();
 			out.times.useful = timer.time() / static_cast< double >( data_in.rep );
 			// check result
 			if( out.error_code == SUCCESS ) {
@@ -216,21 +214,19 @@ void grbProgram( const struct input &data_in, struct output &out ) {
 		case 2: {
 			// do experiment
 			out.times.io = 0;
-			grb::wait();
 			timer.reset();
-			if( out.error_code == SUCCESS ) {
-				out.error_code = grb::setElement( vx, 1, n / 2 );
-			}
-			if( out.error_code == SUCCESS ) {
-				out.error_code = setupSparseMatrix< 2 >( mx, chk, n );
-			}
-			grb::wait();
+			out.error_code = setElement( vx, 1, n / 2 );
+			out.error_code = out.error_code ? out.error_code :
+				setupSparseMatrix< 2 >( mx, chk, n );
+			out.error_code = out.error_code ? out.error_code : wait();
 			out.times.preamble = timer.time();
 			timer.reset();
 			for( size_t i = 0; out.error_code == SUCCESS && i < data_in.rep; ++i ) {
 				out.error_code = mxv< descriptors::transpose_matrix >( vy, mx, vx, ring );
+				if( Properties<>::isNonblockingExecution ) {
+					out.error_code = out.error_code ? out.error_code : wait();
+				}
 			}
-			grb::wait();
 			out.times.useful = timer.time() / static_cast< double >( data_in.rep );
 			// check result
 			if( out.error_code == SUCCESS ) {
@@ -245,21 +241,19 @@ void grbProgram( const struct input &data_in, struct output &out ) {
 		case 3: {
 			// do experiment
 			out.times.io = 0;
-			grb::wait();
 			timer.reset();
-			if( out.error_code == SUCCESS ) {
-				out.error_code = grb::setElement( vx, 1, n / 2 );
-			}
-			if( out.error_code == SUCCESS ) {
-				out.error_code = setupSparseMatrix< 3 >( mx, chk, n );
-			}
-			grb::wait();
+			out.error_code = setElement( vx, 1, n / 2 );
+			out.error_code = out.error_code ? out.error_code :
+				setupSparseMatrix< 3 >( mx, chk, n );
+			out.error_code = out.error_code ? out.error_code : wait();
 			out.times.preamble = timer.time();
 			timer.reset();
 			for( size_t i = 0; out.error_code == SUCCESS && i < data_in.rep; ++i ) {
 				out.error_code = vxm( vy, vx, mx, ring );
+				if( Properties<>::isNonblockingExecution ) {
+					out.error_code = out.error_code ? out.error_code : wait();
+				}
 			}
-			grb::wait();
 			out.times.useful = timer.time() / static_cast< double >( data_in.rep );
 			// check result
 			if( out.error_code == SUCCESS ) {
@@ -274,21 +268,19 @@ void grbProgram( const struct input &data_in, struct output &out ) {
 		case 4: {
 			// do experiment
 			out.times.io = 0;
-			grb::wait();
 			timer.reset();
-			if( out.error_code == SUCCESS ) {
-				out.error_code = grb::setElement( vx, 1, n / 2 );
-			}
-			if( out.error_code == SUCCESS ) {
-				out.error_code = setupSparseMatrix< 4 >( mx, chk, n );
-			}
-			grb::wait();
+			out.error_code = setElement( vx, 1, n / 2 );
+			out.error_code = out.error_code ? out.error_code :
+				setupSparseMatrix< 4 >( mx, chk, n );
+			out.error_code = out.error_code ? out.error_code : wait();
 			out.times.preamble = timer.time();
 			timer.reset();
 			for( size_t i = 0; out.error_code == SUCCESS && i < data_in.rep; ++i ) {
 				out.error_code = vxm< descriptors::transpose_matrix >( vy, vx, mx, ring );
+				if( Properties<>::isNonblockingExecution ) {
+					out.error_code = out.error_code ? out.error_code : wait();
+				}
 			}
-			grb::wait();
 			out.times.useful = timer.time() / static_cast< double >( data_in.rep );
 			// check result
 			if( out.error_code == SUCCESS ) {
@@ -319,8 +311,8 @@ int main( int argc, char ** argv ) {
 	struct input in;
 	in.n = atoi( argv[ 1 ] );
 	in.test = atoi( argv[ 2 ] );
-	in.rep = grb::config::BENCHMARKING::inner();
-	size_t outer = grb::config::BENCHMARKING::outer();
+	in.rep = config::BENCHMARKING::inner();
+	size_t outer = config::BENCHMARKING::outer();
 	char * end = NULL;
 	if( argc >= 4 ) {
 		in.rep = strtoumax( argv[ 3 ], &end, 10 );
@@ -365,8 +357,8 @@ int main( int argc, char ** argv ) {
 	// run the program one time to infer number of inner repititions
 	if( in.rep == 0 ) {
 		in.rep = 1;
-		grb::Launcher< AUTOMATIC > launcher;
-		const enum grb::RC rc = launcher.exec( &grbProgram, in, out, true );
+		Launcher< AUTOMATIC > launcher;
+		const RC rc = launcher.exec( &grbProgram, in, out, true );
 		if( rc != SUCCESS ) {
 			std::cerr << "launcher.exec returns with non-SUCCESS error code "
 				<< (int)rc << std::endl;
@@ -380,8 +372,8 @@ int main( int argc, char ** argv ) {
 	}
 
 	// start benchmarks
-	grb::Benchmarker< AUTOMATIC > benchmarker;
-	const enum grb::RC rc = benchmarker.exec( &grbProgram, in, out, 1, outer, true );
+	Benchmarker< AUTOMATIC > benchmarker;
+	const RC rc = benchmarker.exec( &grbProgram, in, out, 1, outer, true );
 	if( rc != SUCCESS ) {
 		std::cerr << "launcher.exec returns with non-SUCCESS error code "
 			<< (int)rc << std::endl;
