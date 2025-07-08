@@ -34,9 +34,6 @@
 #include <utils/output_verification.hpp>
 
 
-using namespace grb;
-using namespace algorithms;
-
 /** Parser type */
 typedef grb::utils::MatrixFileReader<
 	void,
@@ -48,7 +45,7 @@ typedef grb::utils::MatrixFileReader<
 > Parser;
 
 /** Nonzero type */
-typedef internal::NonzeroStorage<
+typedef grb::internal::NonzeroStorage<
 	grb::config::RowIndexType,
 	grb::config::ColIndexType,
 	void
@@ -84,7 +81,7 @@ struct output {
 	size_t iterations;
 	double residual;
 	grb::utils::TimerResults times;
-	PinnedVector< double > pinnedVector;
+	grb::PinnedVector< double > pinnedVector;
 };
 
 void ioProgram( const struct input &data_in, bool &success ) {
@@ -119,8 +116,8 @@ void ioProgram( const struct input &data_in, bool &success ) {
 			data.push_back( *it );
 		}*/
 		for(
-			auto it = parser.begin( SEQUENTIAL );
-			it != parser.end( SEQUENTIAL );
+			auto it = parser.begin( grb::SEQUENTIAL );
+			it != parser.end( grb::SEQUENTIAL );
 			++it
 		) {
 			data.push_back( NonzeroT( *it ) );
@@ -135,8 +132,8 @@ void ioProgram( const struct input &data_in, bool &success ) {
 void grbProgram( const struct input &data_in, struct output &out ) {
 
 	// get user process ID
-	const size_t s = spmd<>::pid();
-	assert( s < spmd<>::nprocs() );
+	const size_t s = grb::spmd<>::pid();
+	assert( s < grb::spmd<>::nprocs() );
 
 	// get input n
 	grb::utils::Timer timer;
@@ -145,7 +142,7 @@ void grbProgram( const struct input &data_in, struct output &out ) {
 	// sanity checks on input
 	if( data_in.filename[ 0 ] == '\0' ) {
 		std::cerr << s << ": no file name given as input." << std::endl;
-		out.error_code = ILLEGAL;
+		out.error_code = grb::ILLEGAL;
 		return;
 	}
 
@@ -154,7 +151,7 @@ void grbProgram( const struct input &data_in, struct output &out ) {
 
 	// load into GraphBLAS
 	const size_t n = Storage::getData().first.first;
-	Matrix< void > L( n, n );
+	grb::Matrix< void > L( n, n );
 	{
 		const auto &data = Storage::getData().second;
 		/* Once internal issue #342 is resolved this can be re-enabled
@@ -168,26 +165,27 @@ void grbProgram( const struct input &data_in, struct output &out ) {
 			>( data.cend() ),
 			PARALLEL
 		);*/
-		const RC rc = buildMatrixUnique(
+		grb::RC rc = grb::buildMatrixUnique(
 			L,
-			utils::makeNonzeroIterator<
+			grb::utils::makeNonzeroIterator<
 				grb::config::RowIndexType, grb::config::ColIndexType, void
 			>( data.cbegin() ),
-			utils::makeNonzeroIterator<
+			grb::utils::makeNonzeroIterator<
 				grb::config::RowIndexType, grb::config::ColIndexType, void
 			>( data.cend() ),
-			SEQUENTIAL
+			grb::SEQUENTIAL
 		);
-		if( rc != SUCCESS ) {
+		rc = rc ? rc : grb::wait();
+		if( rc != grb::SUCCESS ) {
 			std::cerr << "Failure: call to buildMatrixUnique did not succeed ("
-				<< toString( rc ) << ")." << std::endl;
+				<< grb::toString( rc ) << ")." << std::endl;
 			out.error_code = 10;
 			return;
 		}
 	}
 
 	// check number of nonzeroes
-	const size_t global_nnz = nnz( L );
+	const size_t global_nnz = grb::nnz( L );
 	const size_t parser_nnz = Storage::getData().first.second;
 	if( global_nnz != parser_nnz ) {
 		std::cerr << "Warning: global nnz (" << global_nnz << ") does not equal "
@@ -201,45 +199,45 @@ void grbProgram( const struct input &data_in, struct output &out ) {
 	timer.reset();
 
 	// set up default pagerank test
-	Vector< double > pr( n );
-	Vector< double > buf1( n ), buf2( n ), buf3( n );
-	Vector< bool > buf4( n );
+	grb::Vector< double > pr( n );
+	grb::Vector< double > buf1( n ), buf2( n ), buf3( n );
+	grb::Vector< bool > buf4( n );
 	out.times.preamble = timer.time();
 
 	// by default, copy input requested repetitions to output repititions performed
 	out.rep = data_in.rep;
 	// time a single call
-	RC rc = SUCCESS;
+	grb::RC rc = grb::SUCCESS;
 	if( out.rep == 0 ) {
-		grb::wait();
 		timer.reset();
-		rc = simple_pagerank< descriptors::no_operation >(
+		rc = grb::algorithms::simple_pagerank< grb::descriptors::no_operation >(
 			pr, L,
 			buf1, buf2, buf3, buf4,
 			alpha, tol, data_in.solver_iterations,
 			&( out.iterations ), &( out.residual )
 		);
-		grb::wait();
+		rc = rc ? rc : grb::wait();
 		double single_time = timer.time();
-		if( !(rc == SUCCESS || rc == FAILED) ) {
+		if( !(rc == grb::SUCCESS || rc == grb::FAILED) ) {
 			std::cerr << "Failure: call to simple_pagerank did not succeed "
-				<< "(" << toString( rc ) << ")." << std::endl;
+				<< "(" << grb::toString( rc ) << ")." << std::endl;
 			out.error_code = 20;
 		}
-		if( rc == FAILED ) {
+		if( rc == grb::FAILED ) {
 			std::cout << "Warning: call to simple_pagerank did not converge\n";
 		}
-		if( rc == SUCCESS ) {
-			rc = collectives<>::reduce( single_time, 0, operators::max< double >() );
+		if( rc == grb::SUCCESS ) {
+			rc = grb::collectives<>::reduce( single_time, 0,
+				grb::operators::max< double >() );
 		}
-		if( rc != SUCCESS ) {
+		if( rc != grb::SUCCESS ) {
 			out.error_code = 25;
 		}
 		out.times.useful = single_time;
 		out.rep = static_cast< size_t >( 1000.0 / single_time ) + 1;
-		if( rc == SUCCESS || rc == FAILED ) {
+		if( rc == grb::SUCCESS || rc == grb::FAILED ) {
 			if( s == 0 ) {
-				if( rc == FAILED ) {
+				if( rc == grb::FAILED ) {
 					std::cout << "Info: cold simple_pagerank did not converge within ";
 				} else {
 					std::cout << "Info: cold simple_pagerank completed within ";
@@ -254,20 +252,20 @@ void grbProgram( const struct input &data_in, struct output &out ) {
 	} else {
 		// do benchmark
 		double time_taken;
-		grb::wait();
 		timer.reset();
-		for( size_t i = 0; i < out.rep && rc == SUCCESS; ++i ) {
+		for( size_t i = 0; i < out.rep && rc == grb::SUCCESS; ++i ) {
 			rc = grb::clear( pr );
-			if( rc == SUCCESS ) {
-				rc = simple_pagerank< descriptors::no_operation >(
+			rc = rc ? rc :
+				grb::algorithms::simple_pagerank< grb::descriptors::no_operation >(
 					pr, L,
 					buf1, buf2, buf3, buf4,
 					alpha, tol, data_in.solver_iterations,
 					&( out.iterations ), &( out.residual )
 				);
+			if( grb::Properties<>::isNonblockingExecution ) {
+				rc = rc ? rc : grb::wait();
 			}
 		}
-		grb::wait();
 		time_taken = timer.time();
 		out.times.useful = time_taken / static_cast< double >( out.rep );
 		// print timing at root process
@@ -286,17 +284,17 @@ void grbProgram( const struct input &data_in, struct output &out ) {
 	timer.reset();
 
 	// set error code
-	if( rc == FAILED ) {
+	if( rc == grb::FAILED ) {
 		out.error_code = 30;
 		// no convergence, but will print output
-	} else if( rc != SUCCESS ) {
-		std::cerr << "Benchmark run returned error: " << toString( rc ) << "\n";
+	} else if( rc != grb::SUCCESS ) {
+		std::cerr << "Benchmark run returned error: " << grb::toString( rc ) << "\n";
 		out.error_code = 35;
 		return;
 	}
 
 	// output
-	out.pinnedVector = PinnedVector< double >( pr, SEQUENTIAL );
+	out.pinnedVector = grb::PinnedVector< double >( pr, grb::SEQUENTIAL );
 
 	// finish timing
 	const double time_taken = timer.time();
@@ -406,14 +404,14 @@ int main( int argc, char ** argv ) {
 		<< "solver iterations = " << in.solver_iterations << "." << std::endl;
 
 	// set standard exit code
-	grb::RC rc = SUCCESS;
+	grb::RC rc = grb::SUCCESS;
 
 	// launch I/O
 	{
 		bool success;
-		grb::Launcher< AUTOMATIC > launcher;
+		grb::Launcher< grb::AUTOMATIC > launcher;
 		rc = launcher.exec( &ioProgram, in, success, true );
-		if( rc != SUCCESS ) {
+		if( rc != grb::SUCCESS ) {
 			std::cerr << "launcher.exec(I/O) returns with non-SUCCESS error code \""
 				<< grb::toString( rc ) << "\"\n";
 			return 73;
@@ -429,24 +427,24 @@ int main( int argc, char ** argv ) {
 
 	// launch estimator (if requested)
 	if( in.rep == 0 ) {
-		grb::Launcher< AUTOMATIC > launcher;
+		grb::Launcher< grb::AUTOMATIC > launcher;
 		rc = launcher.exec( &grbProgram, in, out, true );
-		if( rc == SUCCESS ) {
+		if( rc == grb::SUCCESS ) {
 			in.rep = out.rep;
 		}
-		if( rc != SUCCESS ) {
+		if( rc != grb::SUCCESS ) {
 			std::cerr << "launcher.exec returns with non-SUCCESS error code "
-				<< (int)rc << std::endl;
+				<< grb::toString( rc ) << std::endl;
 			return 80;
 		}
 	}
 
 	// launch benchmark
-	if( rc == SUCCESS ) {
-		grb::Benchmarker< AUTOMATIC > benchmarker;
+	if( rc == grb::SUCCESS ) {
+		grb::Benchmarker< grb::AUTOMATIC > benchmarker;
 		rc = benchmarker.exec( &grbProgram, in, out, 1, outer, true );
 	}
-	if( rc != SUCCESS ) {
+	if( rc != grb::SUCCESS ) {
 		std::cerr << "benchmarker.exec returns with non-SUCCESS error code "
 			<< grb::toString( rc ) << std::endl;
 		return 8;
