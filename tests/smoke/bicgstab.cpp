@@ -157,7 +157,7 @@ void grbProgram( const struct input &data_in, struct output &out ) {
 	Matrix< double > L( n, n );
 	{
 		const auto &data = Storage::getData().second;
-		const RC rc = buildMatrixUnique(
+		RC rc = buildMatrixUnique(
 			L,
 			utils::makeNonzeroIterator<
 				grb::config::RowIndexType, grb::config::ColIndexType, double
