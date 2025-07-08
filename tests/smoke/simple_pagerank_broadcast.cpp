@@ -107,7 +107,9 @@ void grbProgram(
 	timer.reset();
 	rc = simple_pagerank< descriptors::no_operation >( pr, L, buf1, buf2, buf3,
 		buf4 );
-	grb::wait();
+	if( Properties<>::isNonblockingExecution ) {
+		rc = rc ? rc : wait();
+	}
 	time_taken = timer.time();
 
 	// print timing at root process
