@@ -202,10 +202,12 @@ void grbProgram( const struct input &data_in, struct output &out ) {
 		rc = rc ? rc : mxv( y, A, x, ring );
 		assert( rc == SUCCESS );
 
-		grb::wait();
+		rc = rc ? rc : grb::wait();
+		assert( rc == SUCCESS );
+
 		double single_time = subtimer.time();
 		if( rc != SUCCESS ) {
-			std::cerr << "Failure: call to mxv did not succeed ("
+			std::cerr << "Failure: out-of-place mxv did not succeed ("
 				<< toString( rc ) << ")." << std::endl;
 			out.error_code = 20;
 		}
@@ -234,38 +236,38 @@ void grbProgram( const struct input &data_in, struct output &out ) {
 	double time_taken;
 	timer.reset();
 	for( size_t i = 0; i < out.rep && rc == SUCCESS; ++i ) {
-#ifndef NDEBUG
 		rc = rc ? rc : set( y, static_cast< double >( 0 ) );
 		assert( rc == SUCCESS );
 		rc = rc ? rc : mxv( y, A, x, ring );
 		assert( rc == SUCCESS );
-#else
-		(void) set( y, static_cast< double >( 0 ) );
-		(void) mxv( y, A, x, ring );
-#endif
+		if( grb::Properties<>::isNonblockingExecution ) {
+			rc = rc ? rc : wait();
+			assert( rc == SUCCESS );
+		}
 	}
-	grb::wait();
 	time_taken = timer.time();
-	if( rc == SUCCESS ) {
+	if( rc == grb::SUCCESS ) {
 		out.times.useful = time_taken / static_cast< double >( out.rep );
-	}
-	// print timing at root process
-	if( grb::spmd<>::pid() == 0 ) {
-		std::cout << "Time taken for a " << out.rep << " "
-			<< "Mxv calls (hot start): " << out.times.useful << ". "
-			<< "Error code is " << out.error_code << std::endl;
+		// print timing at root process
+		if( grb::spmd<>::pid() == 0 ) {
+			std::cout << "Time taken for a " << out.rep << " "
+				<< "mxv calls (hot, out of place): " << out.times.useful
+				<< ". Error code is " << out.error_code << std::endl;
+		}
+	} else {
+		if( grb::spmd<>::pid() == 0 ) {
+			std::cout << "Encountered error code " << out.error_code << "; timings not "
+				<< "available.\n";
+		}
 	}
 
 	// start postamble
 	timer.reset();
 
 	// set error code
-	if( rc == FAILED ) {
-		out.error_code = 30;
-		// no convergence, but will print output
-	} else if( rc != SUCCESS ) {
+	if( rc != SUCCESS ) {
 		std::cerr << "Benchmark run returned error: " << toString( rc ) << "\n";
-		out.error_code = 35;
+		out.error_code = 30;
 		return;
 	}
 
