@@ -357,16 +357,16 @@ void grbProgram( const struct input &data_in, struct output &out ) {
 		> realRing;
 
 		rc = grb::set( vout, 1.0 );
-		assert( rc == SUCCESS );
+		assert( rc == grb::SUCCESS );
 
 		rc = rc ? rc : grb::clear( vin );
-		assert( rc == SUCCESS );
+		assert( rc == grb::SUCCESS );
 
 		rc = rc ? rc : grb::vxm( vin, vout, Lvin, realRing );
-		assert( rc == SUCCESS );
+		assert( rc == grb::SUCCESS );
 
 		rc = rc ? rc : grb::clear( vout );
-		assert( rc == SUCCESS );
+		assert( rc == grb::SUCCESS );
 
 		rc = rc ? rc : grb::wait();
 		if( rc != grb::SUCCESS ) {
