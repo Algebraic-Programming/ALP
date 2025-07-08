@@ -36,9 +36,6 @@
 #include <utils/output_verification.hpp>
 
 
-using namespace grb;
-using namespace algorithms;
-
 /** Parser type */
 typedef grb::utils::MatrixFileReader<
 	double,
@@ -86,7 +83,7 @@ struct output {
 	size_t rep;
 	size_t iterations;
 	grb::utils::TimerResults times;
-	PinnedVector< double > pinnedVector;
+	grb::PinnedVector< double > pinnedVector;
 };
 
 void ioProgram( const struct input &data_in, int &rc ) {
@@ -167,8 +164,8 @@ void ioProgram( const struct input &data_in, int &rc ) {
 				fileContents.first = parser.entries();
 			}
 			for(
-				auto it = parser.cbegin( SEQUENTIAL );
-				it != parser.cend( SEQUENTIAL );
+				auto it = parser.cbegin( grb::SEQUENTIAL );
+				it != parser.cend( grb::SEQUENTIAL );
 				++it
 			) {
 				fileContents.second.push_back( NonzeroT( *it ) );
@@ -209,8 +206,8 @@ void ioProgram( const struct input &data_in, int &rc ) {
 			fileContents.first = parser.entries();
 		}
 		for(
-			auto it = parser.cbegin( SEQUENTIAL );
-			it != parser.cend( SEQUENTIAL );
+			auto it = parser.cbegin( grb::SEQUENTIAL );
+			it != parser.cend( grb::SEQUENTIAL );
 			++it
 		) {
 			fileContents.second.push_back( NonzeroT( *it ) );
@@ -236,10 +233,9 @@ void ioProgram( const struct input &data_in, int &rc ) {
 }
 
 void grbProgram( const struct input &data_in, struct output &out ) {
-
 	// get user process ID
-	const size_t s = spmd<>::pid();
-	assert( s < spmd<>::nprocs() );
+	const size_t s = grb::spmd<>::pid();
+	assert( s < grb::spmd<>::nprocs() );
 
 	// get input n
 	grb::utils::Timer timer;
@@ -251,22 +247,22 @@ void grbProgram( const struct input &data_in, struct output &out ) {
 	std::vector< double > &biases = Storage::getData().first;
 	std::vector< grb::Matrix< double > > L;
 
-	// load into GraphBLAS
+	// load into ALP/GraphBLAS
 	const size_t n = data_in.neurons;
 	for( size_t i = 0; i < data_in.layers; i++ ) {
 		L.push_back( grb::Matrix< double >( n, n ) );
 		assert( Storage::getData().second.size() == data_in.layers + 1 );
 		const size_t parser_nz = (Storage::getData().second)[ i ].first;
 		const auto &data = (Storage::getData().second)[ i ].second;
-		const RC rc = buildMatrixUnique(
+		grb::RC rc = grb::buildMatrixUnique(
 			L[ i ],
-			utils::makeNonzeroIterator<
+			grb::utils::makeNonzeroIterator<
 				grb::config::RowIndexType, grb::config::ColIndexType, double
 			>( data.cbegin() ),
-			utils::makeNonzeroIterator<
+			grb::utils::makeNonzeroIterator<
 				grb::config::RowIndexType, grb::config::ColIndexType, double
 			>( data.cend() ),
-			SEQUENTIAL
+			grb::SEQUENTIAL
 		);
 		// See internal issue #342 for re-enabling the below
 		//const RC rc = buildMatrixUnique(
@@ -279,14 +275,15 @@ void grbProgram( const struct input &data_in, struct output &out ) {
 		//	>( data.cend() ),
 		//	PARALLEL
 		//);
-		if( rc != SUCCESS ) {
+		rc = rc ? rc : grb::wait();
+		if( rc != grb::SUCCESS ) {
 			std::cerr << "Failure: call to buildMatrixUnique did not succeed ("
-				<< toString( rc ) << ")." << std::endl;
+				<< grb::toString( rc ) << ")." << std::endl;
 			out.error_code = 5;
 			return;
 		}
 		// check number of nonzeroes
-		const size_t global_nnz = nnz( L[ i ] );
+		const size_t global_nnz = grb::nnz( L[ i ] );
 		if( global_nnz != parser_nz ) {
 			std::cerr << "Failure: ALP/GraphBLAS matrix nnz (" << global_nnz << ") "
 				<< "does not equal parser nnz (" << parser_nz << ")!\n";
@@ -312,15 +309,15 @@ void grbProgram( const struct input &data_in, struct output &out ) {
 		grb::Matrix< double > Lvin( n, n );
 		const size_t parser_nz = (Storage::getData().second)[ data_in.layers ].first;
 		const auto &data = (Storage::getData().second)[ data_in.layers ].second;
-		RC rc = buildMatrixUnique(
+		grb::RC rc = grb::buildMatrixUnique(
 			Lvin,
-			utils::makeNonzeroIterator<
+			grb::utils::makeNonzeroIterator<
 				grb::config::RowIndexType, grb::config::ColIndexType, double
 			>( data.cbegin() ),
-			utils::makeNonzeroIterator<
+			grb::utils::makeNonzeroIterator<
 				grb::config::RowIndexType, grb::config::ColIndexType, double
 			>( data.cend() ),
-			SEQUENTIAL
+			grb::SEQUENTIAL
 		);
 		// See internal issue #342 for re-enabling the below
 		//const RC rc = buildMatrixUnique(
@@ -333,13 +330,13 @@ void grbProgram( const struct input &data_in, struct output &out ) {
 		//	>( data.cend() ),
 		//	PARALLEL
 		//);
-		if( rc != SUCCESS ) {
+		if( rc != grb::SUCCESS ) {
 			std::cerr << "Failure: call to buildMatrixUnique did not succeed ("
-				<< toString( rc ) << ")." << std::endl;
+				<< grb::toString( rc ) << ")." << std::endl;
 			return;
 		}
 		// check number of nonzeroes
-		const size_t global_nnz = nnz( Lvin );
+		const size_t global_nnz = grb::nnz( Lvin );
 		if( global_nnz != parser_nz ) {
 			std::cerr << "Failure: ALP/GraphBLAS matrix nnz (" << global_nnz << ") "
 				<< "does not equal parser nnz (" << parser_nz << ")!\n";
@@ -371,7 +368,8 @@ void grbProgram( const struct input &data_in, struct output &out ) {
 		rc = rc ? rc : grb::clear( vout );
 		assert( rc == SUCCESS );
 
-		if( rc != SUCCESS ) {
+		rc = rc ? rc : grb::wait();
+		if( rc != grb::SUCCESS ) {
 			std::cerr << "Error: could not convert the input vector format\n";
 			out.error_code = 17;
 			return;
@@ -379,46 +377,45 @@ void grbProgram( const struct input &data_in, struct output &out ) {
 	}
 
 	// we are done with the preamble
-	grb::wait();
 	out.times.preamble += timer.time();
 
 	// by default, copy input requested repetitions to output repititions performed
 	out.rep = data_in.rep;
 
 	// time a single call
-	RC rc = SUCCESS;
+	grb::RC rc = grb::SUCCESS;
 	if( out.rep == 0 ) {
-		grb::wait();
 		timer.reset();
 		if( data_in.thresholded ) {
-			rc = sparse_nn_single_inference(
+			rc = grb::algorithms::sparse_nn_single_inference(
 				vout, vin, L,
 				biases, data_in.threshold,
 				temp
 			);
 		} else {
-			rc = sparse_nn_single_inference(
+			rc = grb::algorithms::sparse_nn_single_inference(
 				vout, vin, L,
 				biases,
 				temp
 			);
 		}
-		grb::wait();
+		rc = rc ? rc : grb::wait();
 		double single_time = timer.time();
-		if( rc != SUCCESS ) {
+		if( rc != grb::SUCCESS ) {
 			std::cerr << "Failure: call to sparse_nn_single_inference did not succeed ("
-				<< toString( rc ) << ")." << std::endl;
+				<< grb::toString( rc ) << ")." << std::endl;
 			out.error_code = 20;
 		}
-		if( rc == SUCCESS ) {
-			rc = collectives<>::reduce( single_time, 0, operators::max< double >() );
+		if( rc == grb::SUCCESS ) {
+			rc = grb::collectives<>::reduce( single_time, 0,
+				grb::operators::max< double >() );
 		}
-		if( rc != SUCCESS ) {
+		if( rc != grb::SUCCESS ) {
 			out.error_code = 25;
 		}
 		out.times.useful = single_time;
 		out.rep = static_cast< size_t >( 1000.0 / single_time ) + 1;
-		if( rc == SUCCESS ) {
+		if( rc == grb::SUCCESS ) {
 			if( s == 0 ) {
 				std::cout << "Info: cold sparse_nn_single_inference completed within "
 					<< out.iterations << " iterations. Time taken was "
@@ -429,27 +426,28 @@ void grbProgram( const struct input &data_in, struct output &out ) {
 	} else {
 		// do benchmark
 		double time_taken;
-		grb::wait();
 		timer.reset();
-		for( size_t i = 0; i < out.rep && rc == SUCCESS; ++i ) {
-			if( rc == SUCCESS ) {
+		for( size_t i = 0; i < out.rep && rc == grb::SUCCESS; ++i ) {
+			if( rc == grb::SUCCESS ) {
 				if( data_in.thresholded ) {
-					rc = sparse_nn_single_inference(
+					rc = grb::algorithms::sparse_nn_single_inference(
 						vout, vin, L,
 						biases, data_in.threshold,
 						temp
 					);
 				} else {
-					rc = sparse_nn_single_inference(
+					rc = grb::algorithms::sparse_nn_single_inference(
 						vout, vin, L,
 						biases, temp
 					);
 				}
 			}
+			if( grb::Properties<>::isNonblockingExecution ) {
+				rc = rc ? rc : grb::wait();
+			}
 		}
-		grb::wait();
 		time_taken = timer.time();
-		if( rc == SUCCESS ) {
+		if( rc == grb::SUCCESS ) {
 			out.times.useful = time_taken / static_cast< double >( out.rep );
 		}
 		sleep( 1 );
@@ -464,21 +462,20 @@ void grbProgram( const struct input &data_in, struct output &out ) {
 	}
 
 	// start postamble
-	grb::wait();
 	timer.reset();
 
 	// set error code
-	if( rc == FAILED ) {
+	if( rc == grb::FAILED ) {
 		out.error_code = 30;
 		// no convergence, but will print output
-	} else if( rc != SUCCESS ) {
-		std::cerr << "Benchmark run returned error: " << toString( rc ) << "\n";
+	} else if( rc != grb::SUCCESS ) {
+		std::cerr << "Benchmark run returned error: " << grb::toString( rc ) << "\n";
 		out.error_code = 35;
 		return;
 	}
 
 	// output
-	out.pinnedVector = PinnedVector< double >( vout, SEQUENTIAL );
+	out.pinnedVector = grb::PinnedVector< double >( vout, grb::SEQUENTIAL );
 
 	// finish timing
 	const double time_taken = timer.time();
@@ -606,14 +603,14 @@ int main( int argc, char ** argv ) {
 	struct output out;
 
 	// set standard exit code
-	grb::RC rc = SUCCESS;
+	grb::RC rc = grb::SUCCESS;
 
 	// perform I/O
 	{
 		int error_code;
-		grb::Launcher< AUTOMATIC > launcher;
+		grb::Launcher< grb::AUTOMATIC > launcher;
 		rc = launcher.exec( &ioProgram, in, error_code, true );
-		if( rc != SUCCESS ) {
+		if( rc != grb::SUCCESS ) {
 			std::cerr << "launcher.exec(I/O) returns with non-SUCCESS error code \""
 				<< grb::toString( rc ) << "\"\n";
 			return 73;
@@ -626,12 +623,12 @@ int main( int argc, char ** argv ) {
 
 	// launch estimator (if requested)
 	if( in.rep == 0 ) {
-		grb::Launcher< AUTOMATIC > launcher;
+		grb::Launcher< grb::AUTOMATIC > launcher;
 		rc = launcher.exec( &grbProgram, in, out, true );
-		if( rc == SUCCESS ) {
+		if( rc == grb::SUCCESS ) {
 			in.rep = out.rep;
 		}
-		if( rc != SUCCESS ) {
+		if( rc != grb::SUCCESS ) {
 			std::cerr << "launcher.exec returns with non-SUCCESS error code "
 				<< (int)rc << std::endl;
 			return 80;
@@ -639,11 +636,11 @@ int main( int argc, char ** argv ) {
 	}
 
 	// launch benchmark
-	if( rc == SUCCESS ) {
-		grb::Benchmarker< AUTOMATIC > benchmarker;
+	if( rc == grb::SUCCESS ) {
+		grb::Benchmarker< grb::AUTOMATIC > benchmarker;
 		rc = benchmarker.exec( &grbProgram, in, out, 1, outer, true );
 	}
-	if( rc != SUCCESS ) {
+	if( rc != grb::SUCCESS ) {
 		std::cerr << "benchmarker.exec returns with non-SUCCESS error code "
 			<< grb::toString( rc ) << std::endl;
 		return 90;
