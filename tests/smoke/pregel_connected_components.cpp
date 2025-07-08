@@ -32,9 +32,6 @@
 #include <graphblas/utils/iterators/nonzeroIterator.hpp>
 
 
-using namespace grb;
-using namespace algorithms;
-
 /** Parser type */
 typedef grb::utils::MatrixFileReader<
 	void,
@@ -46,7 +43,7 @@ typedef grb::utils::MatrixFileReader<
 > Parser;
 
 /** Nonzero type */
-typedef internal::NonzeroStorage<
+typedef grb::internal::NonzeroStorage<
 	grb::config::RowIndexType,
 	grb::config::ColIndexType,
 	void
@@ -73,7 +70,7 @@ struct output {
 	size_t rep;
 	size_t iterations;
 	grb::utils::TimerResults times;
-	PinnedVector< size_t > pinnedVector;
+	grb::PinnedVector< size_t > pinnedVector;
 };
 
 void ioProgram( const struct input &data_in, bool &success ) {
@@ -108,8 +105,8 @@ void ioProgram( const struct input &data_in, bool &success ) {
 			data.push_back( *it );
 		}*/
 		for(
-			auto it = parser.begin( SEQUENTIAL );
-			it != parser.end( SEQUENTIAL );
+			auto it = parser.begin( grb::SEQUENTIAL );
+			it != parser.end( grb::SEQUENTIAL );
 			++it
 		) {
 			data.push_back( NonzeroT( *it ) );
@@ -124,8 +121,8 @@ void ioProgram( const struct input &data_in, bool &success ) {
 void grbProgram( const struct input &data_in, struct output &out ) {
 
 	// get user process ID
-	const size_t s = spmd<>::pid();
-	assert( s < spmd<>::nprocs() );
+	const size_t s = grb::spmd<>::pid();
+	assert( s < grb::spmd<>::nprocs() );
 
 	// get input n
 	grb::utils::Timer timer;
@@ -150,13 +147,13 @@ void grbProgram( const struct input &data_in, struct output &out ) {
 	);*/
         grb::interfaces::Pregel< void > pregel(
 		n, n,
-		utils::makeNonzeroIterator<
+		grb::utils::makeNonzeroIterator<
 			grb::config::RowIndexType, grb::config::ColIndexType, void
 		>( data.cbegin() ),
-		utils::makeNonzeroIterator<
+		grb::utils::makeNonzeroIterator<
 			grb::config::RowIndexType, grb::config::ColIndexType, void
 		>( data.cend() ),
-		SEQUENTIAL
+		grb::SEQUENTIAL
 	);
 	{
 		const size_t parser_nnz = Storage::getData().first.second;
@@ -183,26 +180,27 @@ void grbProgram( const struct input &data_in, struct output &out ) {
 	grb::RC rc = grb::SUCCESS;
 	// time a single call
 	if( out.rep == 0 ) {
-		grb::wait();
 		timer.reset();
 	        rc = grb::algorithms::pregel::ConnectedComponents< size_t >::execute(
 			pregel, cc, pregel.numVertices() );
-		grb::wait();
+		rc = rc ? rc : grb::wait();
 		double single_time = timer.time();
-		if( rc != SUCCESS ) {
+		if( rc != grb::SUCCESS ) {
 			std::cerr << "Failure: call to Pregel ConnectedAlgorithms did not succeed "
-				<< "(" << toString( rc ) << ")." << std::endl;
+				<< "(" << grb::toString( rc ) << ")." << std::endl;
 			out.error_code = 20;
 		}
-		if( rc == SUCCESS ) {
-			rc = collectives<>::reduce( single_time, 0, operators::max< double >() );
+		if( rc == grb::SUCCESS ) {
+			rc = grb::collectives<>::reduce( single_time, 0,
+				grb::operators::max< double >() );
+			rc = rc ? rc : grb::wait();
 		}
-		if( rc != SUCCESS ) {
+		if( rc != grb::SUCCESS ) {
 			out.error_code = 25;
 		}
 		out.times.useful = single_time;
 		out.rep = static_cast< size_t >( 1000.0 / single_time ) + 1;
-		if( rc == SUCCESS ) {
+		if( rc == grb::SUCCESS ) {
 			if( s == 0 ) {
 				std::cout << "Info: cold connected components completed within "
 					<< out.iterations << " iterations. "
@@ -216,31 +214,30 @@ void grbProgram( const struct input &data_in, struct output &out ) {
 		double time_taken;
 		timer.reset();
 		grb::Vector< size_t > in_msgs( n ), out_msgs( n );
-		grb::Vector< size_t > out_buffer = interfaces::config::out_sparsify
+		grb::Vector< size_t > out_buffer = grb::interfaces::config::out_sparsify
 			? grb::Vector< size_t >( n )
 			: grb::Vector< size_t >( 0 );
 		out.times.preamble += timer.time();
-		grb::wait();
 		timer.reset();
-		for( size_t i = 0; i < out.rep && rc == SUCCESS; ++i ) {
-			if( rc == SUCCESS ) {
-				grb::set< grb::descriptors::use_index >( cc, 0 );
-				rc = pregel.template execute<
-					grb::operators::max< size_t >,
-					grb::identities::negative_infinity
-				>(
-					&(grb::algorithms::pregel::ConnectedComponents< size_t >::program),
-					cc,
-					grb::algorithms::pregel::ConnectedComponents< size_t >::Data(),
-					in_msgs, out_msgs,
-					out.iterations,
-					out_buffer
-				);
+		for( size_t i = 0; i < out.rep && rc == grb::SUCCESS; ++i ) {
+			rc = grb::set< grb::descriptors::use_index >( cc, 0 );
+			rc = rc ? rc : pregel.template execute<
+				grb::operators::max< size_t >,
+				grb::identities::negative_infinity
+			>(
+				&(grb::algorithms::pregel::ConnectedComponents< size_t >::program),
+				cc,
+				grb::algorithms::pregel::ConnectedComponents< size_t >::Data(),
+				in_msgs, out_msgs,
+				out.iterations,
+				out_buffer
+			);
+			if( grb::Properties<>::isNonblockingExecution ) {
+				rc = rc ? rc : grb::wait();
 			}
 		}
-		grb::wait();
 		time_taken = timer.time();
-		if( rc == SUCCESS ) {
+		if( rc == grb::SUCCESS ) {
 			out.times.useful = time_taken / static_cast< double >( out.rep );
 		}
 		sleep( 1 );
@@ -258,17 +255,17 @@ void grbProgram( const struct input &data_in, struct output &out ) {
 	timer.reset();
 
 	// set error code
-	if( rc == FAILED ) {
+	if( rc == grb::FAILED ) {
 		out.error_code = 30;
 		// no convergence, but will print output
-	} else if( rc != SUCCESS ) {
-		std::cerr << "Benchmark run returned error: " << toString( rc ) << "\n";
+	} else if( rc != grb::SUCCESS ) {
+		std::cerr << "Benchmark run returned error: " << grb::toString( rc ) << "\n";
 		out.error_code = 35;
 		return;
 	}
 
 	// output
-	out.pinnedVector = PinnedVector< size_t >( cc, SEQUENTIAL );
+	out.pinnedVector = grb::PinnedVector< size_t >( cc, grb::SEQUENTIAL );
 
 	// finish timing
 	const double time_taken = timer.time();
@@ -371,14 +368,14 @@ int main( int argc, char ** argv ) {
 	struct output out;
 
 	// set standard exit code
-	grb::RC rc = SUCCESS;
+	grb::RC rc = grb::SUCCESS;
 
 	// run I/O program
 	{
 		bool success;
-		grb::Launcher< AUTOMATIC > launcher;
+		grb::Launcher< grb::AUTOMATIC > launcher;
 		rc = launcher.exec( &ioProgram, in, success, true );
-		if( rc != SUCCESS ) {
+		if( rc != grb::SUCCESS ) {
 			std::cerr << "launcher.exec(I/O) returns with non-SUCCESS error code \""
 				<< grb::toString( rc ) << "\"\n";
 			return 60;
@@ -391,12 +388,12 @@ int main( int argc, char ** argv ) {
 
 	// launch estimator (if requested)
 	if( in.rep == 0 ) {
-		grb::Launcher< AUTOMATIC > launcher;
+		grb::Launcher< grb::AUTOMATIC > launcher;
 		rc = launcher.exec( &grbProgram, in, out, true );
-		if( rc == SUCCESS ) {
+		if( rc == grb::SUCCESS ) {
 			in.rep = out.rep;
 		}
-		if( rc != SUCCESS ) {
+		if( rc != grb::SUCCESS ) {
 			std::cerr << "launcher.exec returns with non-SUCCESS error code "
 				<< grb::toString( rc ) << std::endl;
 			return 80;
@@ -404,18 +401,17 @@ int main( int argc, char ** argv ) {
 	}
 
 	// launch benchmark
-	if( rc == SUCCESS ) {
-		grb::Benchmarker< AUTOMATIC > benchmarker;
+	if( rc == grb::SUCCESS ) {
+		grb::Benchmarker< grb::AUTOMATIC > benchmarker;
 		rc = benchmarker.exec( &grbProgram, in, out, 1, outer, true );
 	}
-	if( rc != SUCCESS ) {
+	if( rc != grb::SUCCESS ) {
 		std::cerr << "benchmarker.exec returns with non-SUCCESS error code "
 			<< grb::toString( rc ) << std::endl;
 		return 90;
 	} else if( out.error_code == 0 ) {
 		std::cout << "Benchmark completed successfully and took "
 			<< out.iterations << " iterations to converge.\n";
-			//<< "with residual " << out.residual << ".\n";
 	}
 
 	const size_t n = out.pinnedVector.size();
