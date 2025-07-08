@@ -33,9 +33,6 @@
 #include <utils/output_verification.hpp>
 
 
-using namespace grb;
-using namespace algorithms;
-
 /** Parser type */
 typedef grb::utils::MatrixFileReader<
 	void,
@@ -109,8 +106,8 @@ void ioProgram( const struct input &data_in, bool &success ) {
 			data.push_back( *it );
 		}*/
 		for(
-			auto it = parser.begin( SEQUENTIAL );
-			it != parser.end( SEQUENTIAL );
+			auto it = parser.begin( grb::SEQUENTIAL );
+			it != parser.end( grb::SEQUENTIAL );
 			++it
 		) {
 			data.push_back( NonzeroT( *it ) );
@@ -125,8 +122,8 @@ void ioProgram( const struct input &data_in, bool &success ) {
 void grbProgram( const struct input &data_in, struct output &out ) {
 
 	// get user process ID
-	const size_t s = spmd<>::pid();
-	assert( s < spmd<>::nprocs() );
+	const size_t s = grb::spmd<>::pid();
+	assert( s < grb::spmd<>::nprocs() );
 
 	// get input n
 	grb::utils::Timer timer;
@@ -157,16 +154,17 @@ void grbProgram( const struct input &data_in, struct output &out ) {
 			>( data.cend() ),
 			PARALLEL
 		);*/
-		const grb::RC rc = buildMatrixUnique(
+		grb::RC rc = grb::buildMatrixUnique(
 			L,
-			utils::makeNonzeroIterator<
+			grb::utils::makeNonzeroIterator<
 				grb::config::RowIndexType, grb::config::ColIndexType, void
 			>( data.cbegin() ),
-			utils::makeNonzeroIterator<
+			grb::utils::makeNonzeroIterator<
 				grb::config::RowIndexType, grb::config::ColIndexType, void
 			>( data.cend() ),
 			grb::SEQUENTIAL
 		);
+		rc = rc ? rc : grb::wait();
 		if( rc != grb::SUCCESS ) {
 			std::cerr << "Failure: call to buildMatrixUnique did not succeed ("
 				<< toString( rc ) << ")." << std::endl;
@@ -176,7 +174,7 @@ void grbProgram( const struct input &data_in, struct output &out ) {
 	}
 
 	// check number of nonzeroes
-	if( nnz( L ) != parser_nnz ) {
+	if( grb::nnz( L ) != parser_nnz ) {
 		std::cerr << "Warning: matrix nnz (" << nnz( L ) << ") does not equal "
 			<< "parser nnz (" << parser_nnz << "). This could naturally occur if the "
 			<< "input file employs symmetric storage, in which case only roughly one "
@@ -198,35 +196,34 @@ void grbProgram( const struct input &data_in, struct output &out ) {
 	// by default, copy input requested repetitions to output repititions performed
 	out.rep = data_in.rep;
 
-	RC rc = SUCCESS;
+	grb::RC rc = grb::SUCCESS;
 	if( out.rep == 0 ) {
-		grb::wait();
 		timer.reset();
 #ifdef KCORE_VARIANT
-		rc = kcore_decomposition<
+		rc = grb::algorithms::kcore_decomposition<
 				grb::descriptors::no_operation,
 				KCORE_VARIANT
 			>( L, core, d, t, u, st, k );
 #else
-		rc = kcore_decomposition( L, core, d, t, u, st, k );
+		rc = grb::algorithms::kcore_decomposition( L, core, d, t, u, st, k );
 #endif
-
-		grb::wait();
+		rc = rc ? rc : grb::wait();
 		double single_time = timer.time();
-		if( rc != SUCCESS ) {
+		if( rc != grb::SUCCESS ) {
 			std::cerr << "Failure: call to kcore_decomposition did not succeed "
-				<< "(" << toString( rc ) << ")." << std::endl;
+				<< "(" << grb::toString( rc ) << ")." << std::endl;
 			out.error_code = 20;
 		}
-		if( rc == SUCCESS ) {
-			rc = collectives<>::reduce( single_time, 0, operators::max< double >() );
+		if( rc == grb::SUCCESS ) {
+			rc = grb::collectives<>::reduce( single_time, 0,
+				grb::operators::max< double >() );
 		}
-		if( rc != SUCCESS ) {
+		if( rc != grb::SUCCESS ) {
 			out.error_code = 25;
 		}
 		out.times.useful = single_time;
 		out.rep = static_cast< size_t >( 1000.0 / single_time ) + 1;
-		if( rc == SUCCESS ) {
+		if( rc == grb::SUCCESS ) {
 			if( s == 0 ) {
 				std::cout << "Info: cold k-core decomposition completed within "
 					<< k << " coreness levels. Time taken was " << single_time
@@ -237,23 +234,22 @@ void grbProgram( const struct input &data_in, struct output &out ) {
 	} else {
 		// do benchmark
 		double time_taken;
-		grb::wait();
 		timer.reset();
-		for( size_t i = 0; i < out.rep && rc == SUCCESS; ++i ) {
-			if( rc == SUCCESS ) {
+		for( size_t i = 0; i < out.rep && rc == grb::SUCCESS; ++i ) {
 #ifdef KCORE_VARIANT
-				rc = kcore_decomposition<
-						grb::descriptors::no_operation,
-						KCORE_VARIANT
-					>( L, core, d, t, u, st, k );
+			rc = grb::algorithms::kcore_decomposition<
+					grb::descriptors::no_operation,
+					KCORE_VARIANT
+				>( L, core, d, t, u, st, k );
 #else
-				rc = kcore_decomposition( L, core, d, t, u, st, k );
+			rc = grb::algorithms::kcore_decomposition( L, core, d, t, u, st, k );
 #endif
+			if( grb::Properties<>::isNonblockingExecution ) {
+				rc = rc ? rc : grb::wait();
 			}
 		}
-		grb::wait();
 		time_taken = timer.time();
-		if( rc == SUCCESS ) {
+		if( rc == grb::SUCCESS ) {
 			out.times.useful = time_taken / static_cast< double >( out.rep );
 		}
 		sleep( 1 );
@@ -268,21 +264,20 @@ void grbProgram( const struct input &data_in, struct output &out ) {
 	}
 
 	// start postamble
-	grb::wait();
 	timer.reset();
 
 	// set error code
-	if( rc == FAILED ) {
+	if( rc == grb::FAILED ) {
 		out.error_code = 30;
 		// no convergence, but will print output
-	} else if( rc != SUCCESS ) {
-		std::cerr << "Benchmark run returned error: " << toString( rc ) << "\n";
+	} else if( rc != grb::SUCCESS ) {
+		std::cerr << "Benchmark run returned error: " << grb::toString( rc ) << "\n";
 		out.error_code = 35;
 		return;
 	}
 
 	// output
-	out.pinnedVector = PinnedVector< int >( core, SEQUENTIAL );
+	out.pinnedVector = grb::PinnedVector< int >( core, grb::SEQUENTIAL );
 	out.k = k;
 
 	// finish timing
@@ -382,14 +377,14 @@ int main( int argc, char ** argv ) {
 	struct output out;
 
 	// set standard exit code
-	grb::RC rc = SUCCESS;
+	grb::RC rc = grb::SUCCESS;
 
 	// launch I/O
 	{
-		grb::Launcher< AUTOMATIC > launcher;
+		grb::Launcher< grb::AUTOMATIC > launcher;
 		bool success;
 		rc = launcher.exec( &ioProgram, in, success, true );
-		if( rc != SUCCESS ) {
+		if( rc != grb::SUCCESS ) {
 			std::cerr << "Error during execution of the I/O program\n";
 			return 60;
 		}
@@ -401,24 +396,24 @@ int main( int argc, char ** argv ) {
 
 	// launch estimator (if requested)
 	if( in.rep == 0 ) {
-		grb::Launcher< AUTOMATIC > launcher;
+		grb::Launcher< grb::AUTOMATIC > launcher;
 		rc = launcher.exec( &grbProgram, in, out, true );
-		if( rc == SUCCESS ) {
+		if( rc == grb::SUCCESS ) {
 			in.rep = out.rep;
 		}
-		if( rc != SUCCESS ) {
+		if( rc != grb::SUCCESS ) {
 			std::cerr << "launcher.exec returns with non-SUCCESS error code "
-				<< (int)rc << std::endl;
+				<< grb::toString(rc) << std::endl;
 			return 80;
 		}
 	}
 
 	// launch benchmark
-	if( rc == SUCCESS ) {
-		grb::Benchmarker< AUTOMATIC > benchmarker;
+	if( rc == grb::SUCCESS ) {
+		grb::Benchmarker< grb::AUTOMATIC > benchmarker;
 		rc = benchmarker.exec( &grbProgram, in, out, 1, outer, true );
 	}
-	if( rc != SUCCESS ) {
+	if( rc != grb::SUCCESS ) {
 		std::cerr << "benchmarker.exec returns with non-SUCCESS error code "
 			<< grb::toString( rc ) << std::endl;
 		return 90;
