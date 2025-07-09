@@ -57,7 +57,7 @@ using namespace algorithms;
 
 void grbProgram( const size_t &P, int &exit_status ) {
 	const size_t s = spmd<>::pid();
-	(void)P;
+	(void) P;
 
 	grb::utils::Timer benchtimer;
 	benchtimer.reset();
@@ -93,6 +93,7 @@ void grbProgram( const size_t &P, int &exit_status ) {
 	// load into GraphBLAS
 	Matrix< void > L( n, n );
 	RC rc = buildMatrixUnique( L, LI, LJ, nz, SEQUENTIAL );
+	rc = rc ? rc : wait();
 	if( rc != SUCCESS ) {
 		std::cerr << "Error: building L failed\n";
 		exit_status = 1;
@@ -122,6 +123,9 @@ void grbProgram( const size_t &P, int &exit_status ) {
 	timer.reset();
 	benchtimer.reset();
 	rc = knn< descriptors::no_operation >( neighbourhood, L, n - 4, 1, buf1 );
+	if( Properties<>::isNonblockingExecution ) {
+		rc = rc ? rc : wait();
+	}
 	benchtimer.reset();
 	time_taken = timer.time();
 
@@ -141,6 +145,7 @@ void grbProgram( const size_t &P, int &exit_status ) {
 
 	rc = collectives<>::allreduce< descriptors::no_casting >(
 		time_taken, operators::max< double >() );
+	rc = rc ? rc : wait();
 	if( rc != SUCCESS ) {
 		std::cerr << "Error: could not allreduce timings\n";
 		exit_status = 5;

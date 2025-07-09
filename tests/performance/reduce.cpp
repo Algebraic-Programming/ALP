@@ -60,9 +60,10 @@ void test( const struct Input &in, struct Output &out ) {
 	{
 		grb::Vector< int > dummy( in.n );
 		out.error = grb::set( dummy, 0 );
-		if( out.error == grb::SUCCESS ) {
-			out.error = grb::set< grb::descriptors::use_index >( xv, dummy );
-		}
+		out.error = out.error ? out.error :
+			grb::set< grb::descriptors::use_index >( xv, dummy );
+		out.error = out.error ? out.error :
+			grb::wait();
 	}
 	if( out.error != grb::SUCCESS ) {
 		return;
@@ -77,6 +78,7 @@ void test( const struct Input &in, struct Output &out ) {
 		double ttime = timer.time();
 		// get cache `hot'
 		out.error = grb::foldl< grb::descriptors::dense >( alpha, xv, realm );
+		out.error = out.error ? out.error : grb::wait();
 		if( out.error != SUCCESS ) {
 			std::cerr << "grb::foldl returns non-SUCCESS exit code "
 				<< grb::toString( out.error ) << ".\n";
@@ -97,7 +99,16 @@ void test( const struct Input &in, struct Output &out ) {
 		// benchmark templated axpy
 		for( size_t i = 0; i < out.reps_used; ++i ) {
 			alpha = 0.0;
-			(void) grb::foldl< grb::descriptors::dense >( alpha, xv, realm );
+			out.error = grb::foldl< grb::descriptors::dense >( alpha, xv, realm );
+			// avoid overhead of calling wait if not required
+			if( grb::Properties<>::isNonblockingExecution ) {
+				out.error = out.error ? out.error : grb::wait();
+			}
+			if( out.error != grb::SUCCESS ) {
+				std::cerr << "grb::foldl returns " << grb::toString( out.error )
+					<< " during hot benchmark loop; exiting with error!\n";
+				return;
+			}
 		}
 		out.times.useful = timer.time() / static_cast< double >( out.reps_used );
 
@@ -122,10 +133,11 @@ void test( const struct Input &in, struct Output &out ) {
 		// get cache `hot'
 		alpha = realm.template getIdentity< double >();
 		out.error = grb::eWiseLambda(
-			[ &alpha, &xv, &realm ]( const size_t i ) {
-				(void) grb::foldl( alpha, xv[ i ], realm.getOperator() );
-			},
+				[ &alpha, &xv, &realm ]( const size_t i ) {
+					(void) grb::foldl( alpha, xv[ i ], realm.getOperator() );
+				},
 			xv );
+		out.error = out.error ? out.error : grb::wait();
 		if( out.error != SUCCESS ) {
 			std::cerr << "grb::eWiseLambda returns non-SUCCESS exit code "
 				<< grb::toString( out.error ) << ".\n";
@@ -146,18 +158,27 @@ void test( const struct Input &in, struct Output &out ) {
 		// benchmark templated axpy
 		for( size_t i = 0; i < out.reps_used; ++i ) {
 			alpha = realm.template getIdentity< double >();
-			(void)grb::eWiseLambda(
-				[ &alpha, &xv, &realm ]( const size_t i ) {
-					(void)grb::foldl( alpha, xv[ i ], realm.getOperator() );
-				},
+			out.error = grb::eWiseLambda(
+					[ &alpha, &xv, &realm ]( const size_t i ) {
+						(void) grb::foldl( alpha, xv[ i ], realm.getOperator() );
+					},
 				xv );
+			// avoid overhead of calling wait if not required
+			if( grb::Properties<>::isNonblockingExecution ) {
+				out.error = out.error ? out.error : grb::wait();
+			}
+			if( out.error != grb::SUCCESS ) {
+				std::cerr << "grb::foldl returns " << grb::toString( out.error )
+					<< " during hot benchmark loop; exiting with error!\n";
+				return;
+			}
 		}
 		out.times.useful = timer.time() / static_cast< double >( out.reps_used );
 
 		// postamble
 		timer.reset();
 		for( size_t i = 0; i < in.n; ++i ) {
-			if( ! grb::utils::equals( expected, alpha, in.n - 1 ) ) {
+			if( !grb::utils::equals( expected, alpha, in.n - 1 ) ) {
 				std::cout << expected << " (expected) does not equal " << alpha
 					<< " (eWiseLambda).\n";
 				out.error = FAILED;

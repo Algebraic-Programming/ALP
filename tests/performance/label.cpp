@@ -255,6 +255,7 @@ void grbProgram( const struct input &data_in, struct output &out ) {
 
 	// create the symmetric weight matrix W, representing the weighted graph
 	rc = rc ? rc : resize( W, nz );
+	rc = rc ? rc : grb::wait();
 	if( rc != SUCCESS ) {
 		std::cerr << "\tinitialisation FAILED\n";
 		out.error_code = rc;
@@ -269,7 +270,11 @@ void grbProgram( const struct input &data_in, struct output &out ) {
 
 	// run and time experiment
 	timer.reset();
-	algorithms::label( f, y, W, n, l );
+	rc = algorithms::label( f, y, W, n, l );
+	// wait only if required (avoid minor overhead if not required)
+	if( grb::Properties<>::isNonblockingExecution ) {
+		rc = rc ? rc : grb::wait();
+	}
 	out.times.useful = timer.time();
 
 	// output result
