@@ -22,6 +22,7 @@
 #include <graphblas.hpp>
 #include <graphblas/algorithms/conjugate_gradient.hpp>
 
+#include <numa.h>
 #include <assert.h>
 
 #include "solver.h"
@@ -46,10 +47,37 @@ class CGWorkspaceDeleter {
 
 	private:
 
+		/** Whether we own the workspace data. */
+		const bool owning;
+
+		/**
+		 * Whether the workspace data was allocated NUMA-aware, and if so, what the
+		 * allocation size was.
+		 */
+		const size_t numa;
+
+
 	public:
 
-		void operator()( const void * ptr ) {
-			delete [] static_cast<const char*>(ptr);
+		CGWorkspaceDeleter() = delete;
+
+		CGWorkspaceDeleter( const bool &owning_in, const size_t &numa_in ) :
+			owning( owning_in ), numa( numa_in )
+		{}
+
+		void operator()( void * ptr ) {
+			assert( !( !owning && numa ) );
+			if( owning ) {
+#ifndef _GRB_NO_LIBNUMA
+				if( numa ) {
+					numa_free( ptr, numa );
+				} else {
+#endif
+					delete [] static_cast< char * >(ptr);
+#ifndef _GRB_NO_LIBNUMA
+				}
+#endif
+			}
 		}
 
 };
@@ -409,21 +437,35 @@ template< typename T, typename NZI, typename RSI >
 static sparse_err_t sparse_cg_init_impl_no_buffer(
 	sparse_cg_handle_t * const handle, const size_t n,
 	const T * const a, const RSI * const ja, const NZI * const ia,
-	bool support_preconditioning
+	const bool support_preconditioning, const bool numa
 ) {
-	// we pass true here, since we want to support the entire solver transition
-	// path API out of the box
 	const size_t allocSize = CG_Data< T, NZI, RSI >::
 		workspaceSize( n, support_preconditioning );
 	void * buffer = nullptr;
-	try {
-		buffer = static_cast< void * >(new char[ allocSize ]);
-	} catch( ... ) {
-		std::cerr << "Error allocating workspace buffer\n";
-		return OUT_OF_MEMORY;
+#ifdef _GRB_NO_LIBNUMA
+	if( numa ) {
+		std::cerr << "Warning: solver transition path was requested to perform "
+			<< "NUMA-aware allocation, but ALP was compiled without libnuma.\n";
 	}
+#else
+	if( numa ) {
+		buffer = numa_alloc_interleaved( allocSize );
+		if( buffer == NULL ) { return OUT_OF_MEMORY; }
+	} else {
+#endif
+		try {
+			buffer = static_cast< void * >(new char[ allocSize ]);
+		} catch( ... ) {
+			std::cerr << "Error allocating workspace buffer\n";
+			return OUT_OF_MEMORY;
+		}
+#ifndef _GRB_NO_LIBNUMA
+	}
+#endif
 	const sparse_err_t rc = sparse_cg_init_impl(
-		handle, n, a, ja, ia, buffer, allocSize, CGWorkspaceDeleter() );
+		handle, n, a, ja, ia, buffer, allocSize,
+		CGWorkspaceDeleter( true, numa ? allocSize : 0 )
+	);
 	if( rc != NO_ERROR ) {
 		delete [] static_cast< char * >(buffer);
 	}
@@ -432,98 +474,110 @@ static sparse_err_t sparse_cg_init_impl_no_buffer(
 
 sparse_err_t sparse_cg_init_nop_sii(
 	sparse_cg_handle_t * const handle, const size_t n,
-	const float * const a, const int * const ja, const int * const ia
+	const float * const a, const int * const ja, const int * const ia,
+	const bool numa
 ) {
 	return sparse_cg_init_impl_no_buffer< float, int, int >( handle, n, a, ja, ia,
-		false );
+		false, numa );
 }
 
 sparse_err_t sparse_cg_init_nop_dii(
 	sparse_cg_handle_t * const handle, const size_t n,
-	const double * const a, const int * const ja, const int * const ia
+	const double * const a, const int * const ja, const int * const ia,
+	const bool numa
 ) {
 	return sparse_cg_init_impl_no_buffer< double, int, int >( handle, n, a, ja, ia,
-		false );
+		false, numa );
 }
 
 sparse_err_t sparse_cg_init_nop_siz(
 	sparse_cg_handle_t * const handle, const size_t n,
-	const float * const a, const int * const ja, const size_t * const ia
+	const float * const a, const int * const ja, const size_t * const ia,
+	const bool numa
 ) {
 	return sparse_cg_init_impl_no_buffer< float, size_t, int >( handle, n, a, ja,
-		ia, false );
+		ia, false, numa );
 }
 
 sparse_err_t sparse_cg_init_nop_diz(
 	sparse_cg_handle_t * const handle, const size_t n,
-	const double * const a, const int * const ja, const size_t * const ia
+	const double * const a, const int * const ja, const size_t * const ia,
+	const bool numa
 ) {
 	return sparse_cg_init_impl_no_buffer< double, size_t, int >( handle, n, a, ja,
-		ia, false );
+		ia, false, numa );
 }
 
 sparse_err_t sparse_cg_init_nop_szz(
 	sparse_cg_handle_t * const handle, const size_t n,
-	const float * const a, const size_t * const ja, const size_t * const ia
+	const float * const a, const size_t * const ja, const size_t * const ia,
+	const bool numa
 ) {
 	return sparse_cg_init_impl_no_buffer< float, size_t, size_t >( handle, n, a, ja,
-		ia, false );
+		ia, false, numa );
 }
 
 sparse_err_t sparse_cg_init_nop_dzz(
 	sparse_cg_handle_t * const handle, const size_t n,
-	const double * const a, const size_t * const ja, const size_t * const ia
+	const double * const a, const size_t * const ja, const size_t * const ia,
+	const bool numa
 ) {
 	return sparse_cg_init_impl_no_buffer< double, size_t, size_t >( handle, n, a, ja,
-		ia, false );
+		ia, false, numa );
 }
 
 sparse_err_t sparse_cg_init_sii(
 	sparse_cg_handle_t * const handle, const size_t n,
-	const float * const a, const int * const ja, const int * const ia
+	const float * const a, const int * const ja, const int * const ia,
+	const bool numa
 ) {
 	return sparse_cg_init_impl_no_buffer< float, int, int >( handle, n, a, ja, ia,
-		true );
+		true, numa );
 }
 
 sparse_err_t sparse_cg_init_dii(
 	sparse_cg_handle_t * const handle, const size_t n,
-	const double * const a, const int * const ja, const int * const ia
+	const double * const a, const int * const ja, const int * const ia,
+	const bool numa
 ) {
 	return sparse_cg_init_impl_no_buffer< double, int, int >( handle, n, a, ja, ia,
-		true );
+		true, numa );
 }
 
 sparse_err_t sparse_cg_init_siz(
 	sparse_cg_handle_t * const handle, const size_t n,
-	const float * const a, const int * const ja, const size_t * const ia
+	const float * const a, const int * const ja, const size_t * const ia,
+	const bool numa
 ) {
 	return sparse_cg_init_impl_no_buffer< float, size_t, int >( handle, n, a, ja,
-		ia, true );
+		ia, true, numa );
 }
 
 sparse_err_t sparse_cg_init_diz(
 	sparse_cg_handle_t * const handle, const size_t n,
-	const double * const a, const int * const ja, const size_t * const ia
+	const double * const a, const int * const ja, const size_t * const ia,
+	const bool numa
 ) {
 	return sparse_cg_init_impl_no_buffer< double, size_t, int >( handle, n, a, ja,
-		ia, true );
+		ia, true, numa );
 }
 
 sparse_err_t sparse_cg_init_szz(
 	sparse_cg_handle_t * const handle, const size_t n,
-	const float * const a, const size_t * const ja, const size_t * const ia
+	const float * const a, const size_t * const ja, const size_t * const ia,
+	const bool numa
 ) {
 	return sparse_cg_init_impl_no_buffer< float, size_t, size_t >( handle, n, a, ja,
-		ia, true );
+		ia, true, numa );
 }
 
 sparse_err_t sparse_cg_init_dzz(
 	sparse_cg_handle_t * const handle, const size_t n,
-	const double * const a, const size_t * const ja, const size_t * const ia
+	const double * const a, const size_t * const ja, const size_t * const ia,
+	const bool numa
 ) {
 	return sparse_cg_init_impl_no_buffer< double, size_t, size_t >( handle, n, a, ja,
-		ia, true );
+		ia, true, numa );
 }
 
 template< typename T, typename NZI, typename RSI >

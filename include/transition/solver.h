@@ -230,6 +230,10 @@ typedef int (*sparse_cg_preconditioner_dxx_t) (
  * @param[in]  a      The nonzero values of the system matrix.
  * @param[in]  ja     The column indices of the nonzeroes of the system matrix.
  * @param[in]  ia     The row offset array of the system matrix.
+ * @param[in]  numa   Whether the CG handle should employ more than one NUMA
+ *                    domain, in which case any memory allocated during
+ *                    construction of this handle will attempt to employ NUMA-
+ *                    aware allocation.
  *
  * This variant is for single-precision floating point nonzeroes and integer
  * \a ja and \a ia arrays, as also indicated by the <tt>sii</tt> postfix.
@@ -252,7 +256,8 @@ typedef int (*sparse_cg_preconditioner_dxx_t) (
  */
 sparse_err_t sparse_cg_init_sii(
 	sparse_cg_handle_t * const handle, const size_t n,
-	const float * const a, const int * const ja, const int * const ia
+	const float * const a, const int * const ja, const int * const ia,
+	const bool numa
 );
 
 /**
@@ -271,7 +276,8 @@ sparse_err_t sparse_cg_init_sii(
  */
 sparse_err_t sparse_cg_init_nop_sii(
 	sparse_cg_handle_t * const handle, const size_t n,
-	const float * const a, const int * const ja, const int * const ia
+	const float * const a, const int * const ja, const int * const ia,
+	const bool numa
 );
 
 /**
@@ -284,7 +290,8 @@ sparse_err_t sparse_cg_init_nop_sii(
  */
 sparse_err_t sparse_cg_init_dii(
 	sparse_cg_handle_t * const handle, const size_t n,
-	const double * const a, const int * const ja, const int * const ia
+	const double * const a, const int * const ja, const int * const ia,
+	const bool numa
 );
 
 /**
@@ -303,7 +310,8 @@ sparse_err_t sparse_cg_init_dii(
  */
 sparse_err_t sparse_cg_init_nop_dii(
 	sparse_cg_handle_t * const handle, const size_t n,
-	const double * const a, const int * const ja, const int * const ia
+	const double * const a, const int * const ja, const int * const ia,
+	const bool numa
 );
 
 /**
@@ -317,7 +325,8 @@ sparse_err_t sparse_cg_init_nop_dii(
  */
 sparse_err_t sparse_cg_init_siz(
 	sparse_cg_handle_t * const handle, const size_t n,
-	const float * const a, const int * const ja, const size_t * const ia
+	const float * const a, const int * const ja, const size_t * const ia,
+	const bool numa
 );
 
 /**
@@ -336,7 +345,8 @@ sparse_err_t sparse_cg_init_siz(
  */
 sparse_err_t sparse_cg_init_nop_siz(
 	sparse_cg_handle_t * const handle, const size_t n,
-	const float * const a, const int * const ja, const size_t * const ia
+	const float * const a, const int * const ja, const size_t * const ia,
+	const bool numa
 );
 
 /**
@@ -350,7 +360,8 @@ sparse_err_t sparse_cg_init_nop_siz(
  */
 sparse_err_t sparse_cg_init_diz(
 	sparse_cg_handle_t * const handle, const size_t n,
-	const double * const a, const int * const ja, const size_t * const ia
+	const double * const a, const int * const ja, const size_t * const ia,
+	const bool numa
 );
 
 /**
@@ -369,7 +380,8 @@ sparse_err_t sparse_cg_init_diz(
  */
 sparse_err_t sparse_cg_init_nop_diz(
 	sparse_cg_handle_t * const handle, const size_t n,
-	const double * const a, const int * const ja, const size_t * const ia
+	const double * const a, const int * const ja, const size_t * const ia,
+	const bool numa
 );
 
 /**
@@ -383,7 +395,8 @@ sparse_err_t sparse_cg_init_nop_diz(
  */
 sparse_err_t sparse_cg_init_szz(
 	sparse_cg_handle_t * const handle, const size_t n,
-	const float * const a, const size_t * const ja, const size_t * const ia
+	const float * const a, const size_t * const ja, const size_t * const ia,
+	const bool numa
 );
 
 /**
@@ -402,7 +415,8 @@ sparse_err_t sparse_cg_init_szz(
  */
 sparse_err_t sparse_cg_init_nop_szz(
 	sparse_cg_handle_t * const handle, const size_t n,
-	const float * const a, const size_t * const ja, const size_t * const ia
+	const float * const a, const size_t * const ja, const size_t * const ia,
+	const bool numa
 );
 
 /**
@@ -416,7 +430,8 @@ sparse_err_t sparse_cg_init_nop_szz(
  */
 sparse_err_t sparse_cg_init_dzz(
 	sparse_cg_handle_t * const handle, const size_t n,
-	const double * const a, const size_t * const ja, const size_t * const ia
+	const double * const a, const size_t * const ja, const size_t * const ia,
+	const bool numa
 );
 
 /**
@@ -435,7 +450,8 @@ sparse_err_t sparse_cg_init_dzz(
  */
 sparse_err_t sparse_cg_init_nop_dzz(
 	sparse_cg_handle_t * const handle, const size_t n,
-	const double * const a, const size_t * const ja, const size_t * const ia
+	const double * const a, const size_t * const ja, const size_t * const ia,
+	const bool numa
 );
 
 // Note that szi and dzi are skipped on purpose. Such variants would not seem
