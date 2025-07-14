@@ -314,43 +314,77 @@ namespace grb {
 					std::cerr << "Error: at least one CG iteration must be requested\n";
 					return grb::ILLEGAL;
 				}
+
+				// dense descriptor
+				if( descr & grb::descriptors::dense ) {
+					if( grb::nnz( x ) != grb::size( x ) ) {
+						std::cerr << "Error: x was sparse while the dense descriptor was given\n";
+						return grb::ILLEGAL;
+					}
+					if( grb::nnz( b ) != grb::size( b ) ) {
+						std::cerr << "Error: b was sparse while the dense descriptor was given\n";
+						return grb::ILLEGAL;
+					}
+					if( grb::nnz( r ) != grb::size( r ) ) {
+						std::cerr << "Error: r was sparse while the dense descriptor was given\n";
+						return grb::ILLEGAL;
+					}
+					if( grb::nnz( temp ) != grb::size( temp ) ) {
+						std::cerr << "Error: temp was sparse while the dense descriptor was "
+							<< "given\n";
+						return grb::ILLEGAL;
+					}
+					if( preconditioned &&
+						(grb::nnz( temp_precond ) != grb::size( temp_precond ))
+					) {
+						std::cerr << "Error: temp_precond was sparse while the dense descriptor "
+							<< "was given\n";
+						return grb::ILLEGAL;
+					}
+				}
 			}
 
 			// set pure output fields to neutral defaults
 			iterations = 0;
 			residual = std::numeric_limits< double >::infinity();
 
-			// make x and b structurally dense (if not already) so that the remainder
+			// declare internal scalars
+			IOType sigma, bnorm, alpha, beta;
+
+			// make x structurally dense (if not already) so that the remainder
 			// algorithm can safely use the dense descriptor for faster operations
-			{
-				RC rc = grb::SUCCESS;
+			grb::RC ret = grb::SUCCESS;
+			if( !(descr & grb::descriptors::dense) ) {
 				if( nnz( x ) != n ) {
-					rc = grb::set< descriptors::invert_mask | descriptors::structural >(
+					ret = grb::set< descriptors::invert_mask | descriptors::structural >(
 						x, x, zero
 					);
+					assert( ret == grb::SUCCESS );
 				}
-				if( rc != grb::SUCCESS ) { return rc; }
 				assert( nnz( x ) == n );
 			}
 
-			IOType sigma, bnorm, alpha, beta;
-
 			// r = b - temp;
-			grb::RC ret = grb::set( temp, 0 ); assert( ret == grb::SUCCESS );
+			ret = ret ? ret : grb::set< descr >( temp, 0 );
+			assert( ret == grb::SUCCESS );
 			ret = ret ? ret : grb::mxv< descr_dense >( temp, A, x, ring );
 			assert( ret == grb::SUCCESS );
-			ret = ret ? ret : grb::set( r, zero ); assert( ret == grb::SUCCESS );
-			// note: no dense descriptor since we actually allow sparse b
-			ret = ret ? ret : grb::foldl( r, b, ring.getAdditiveMonoid() );
-			// from here onwards, r, temp, x are dense and will remain so
-			assert( nnz( r ) == n );
-			assert( nnz( temp ) == n );
+			ret = ret ? ret : grb::set< descr >( r, zero );
+			assert( ret == grb::SUCCESS );
+			// note: no forced dense descriptor since we actually allow sparse b
+			//       but if b was already dense and the dense descriptor was given, we
+			//       will respect that
+			ret = ret ? ret : grb::foldl< descr >( r, b, ring.getAdditiveMonoid() );
+			// note: at this point, r and temp are guaranteed dense, so we force a dense
+			//       descriptor
 			ret = ret ? ret : grb::foldl< descr_dense >( r, temp, minus );
 			assert( ret == grb::SUCCESS );
 
 			// bnorm = b' * b;
+			// Note that b can be structurally sparse (unless otherwise guaranteed by the
+			// user).
 			bnorm = zero;
-			ret = ret ? ret : grb::dot< descr_dense >(
+			ret = ret ? ret : grb::dot< descr >(
 					bnorm,
 					b, b,
 					ring.getAdditiveMonoid(),
@@ -381,7 +415,9 @@ namespace grb {
 
 			// z = M^-1r
 			if( preconditioned ) {
-				ret = ret ? ret : grb::set( z, 0 ); // also ensures z is dense, henceforth
+				ret = ret ? ret : grb::set< descr >( z, 0 );
+				// henceforth, also z is structurally dense and we can force a dense
+				// descriptor for it
 				if( preconditioned == 2 ) {
 					ret = ret ? ret : grb::wait( z, r );
 				}
@@ -389,10 +425,12 @@ namespace grb {
 			} // else, z equals r (by reference)
 
 			// u = z;
-			ret = ret ? ret : grb::set( u, z );
+			ret = ret ? ret : grb::set< descr >( u, z );
 			assert( ret == grb::SUCCESS );
-			// from here onwards, u is dense; i.e., all vectors are dense from now on,
-			// and we can freely use the dense descriptor in the subsequent
+			// henceforth, also u is structurally dense -- in fact, henceforth, all
+			// vectors in this algorithm except b are now guaranteed dense. We may
+			// hence liberally force the use of the dense descriptor in the main while
+			// loop of the CG (since it does not refer to b).
 
 			// sigma = r' * z;
 			sigma = zero;
@@ -435,7 +473,7 @@ namespace grb {
 				assert( ret == grb::SUCCESS );
 
 				// alpha = sigma / beta;
-				ret = ret ? ret : grb::apply( alpha, sigma, beta, divide );
+				ret = ret ? ret : grb::apply< descr >( alpha, sigma, beta, divide );
 				assert( ret == grb::SUCCESS );
 
 				// x = x + alpha * u;
@@ -489,7 +527,7 @@ namespace grb {
 				}
 
 				// alpha = beta / sigma;
-				ret = ret ? ret : grb::apply( alpha, beta, sigma, divide );
+				ret = ret ? ret : grb::apply< descr >( alpha, beta, sigma, divide );
 				assert( ret == grb::SUCCESS );
 
 				// u_next = z + beta * u_previous;
