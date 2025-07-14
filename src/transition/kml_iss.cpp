@@ -116,6 +116,14 @@ static int sparse_err_t_2_int( const sparse_err_t err ) {
 			result = KMLSS_BAD_N;
 			break;
 		}
+		case ILLEGAL_METHOD:
+		{
+			// there is no case where this error should be exposed to a KML API user;
+			// rather, if encountered, it indicates an error in translating the KML API
+			// to the solver transition path
+			result = KMLSS_INTERNAL_ERROR;
+			break;
+		}
 		case OUT_OF_MEMORY:
 		{
 			result = KMLSS_NO_MEMORY;

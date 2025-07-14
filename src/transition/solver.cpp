@@ -36,6 +36,25 @@
  */
 
 /**
+ * Implements the various ways the CG workspace data may be freed.
+ *
+ * At the moment, always assumes that the workspace buffer is allocated by the
+ * transition path itself, using the standard C++ array allocation mechanism.
+ * The matching deleter action employs the matching standard C++ array deleter.
+ */
+class CGWorkspaceDeleter {
+
+	private:
+
+	public:
+
+		void operator()( const void * ptr ) {
+			delete [] static_cast<const char*>(ptr);
+		}
+
+};
+
+/**
  * @tparam T   The nonzero value type.
  * @tparam NZI The nonzero index type.
  * @tparam RSI The row and column index type.
@@ -107,6 +126,14 @@ class CG_Data {
 
 		/** Any required data for the \a preconditioner. */
 		void * preconditioner_data;
+
+		// destructor data
+
+		/** The given buffer during construction. */
+		void * _buffer;
+
+		/** How to handle \a _buffer on destruction. */
+		CGWorkspaceDeleter _buffer_deleter;
 
 
 	protected:
@@ -182,17 +209,25 @@ class CG_Data {
 		 * @param[in] buffer_size The size of the given \a buffer. Used for sanity
 		 *                        checking the use of the buffer.
 		 *
+		 *
+		 * @param[in] buffer_deleter How the given \a buffer should be deleted on
+		 *                           destruction of this instance.
+		 *
+		 * \note If the buffer is not to be owned by this instance, then a no-op
+		 *       \a buffer_deleter should be given.
+		 *
 		 * \warning The sanity check is weaker if not compiled in debug mode.
 		 */
 		CG_Data(
 			const size_t n,
 			const T * const a, const RSI * const ja, const NZI * const ia,
-			void * const buffer, const size_t buffer_size
+			void * const buffer, const size_t buffer_size, const D &buffer_deleter
 		) :
 			size( n ), tolerance( 1e-5 ), max_iter( 1000 ), matrix( 0, 0 ),
 			residual( std::numeric_limits< T >::infinity() ), iters( 0 ),
 			precond_workspace( grb::Vector< T >( 0 ) ),
-			preconditioner( nullptr ), preconditioner_data( nullptr )
+			preconditioner( nullptr ), preconditioner_data( nullptr ),
+			_buffer( buffer ), _buffer_deleter( buffer_deleter )
 		{
 			assert( n > 0 );
 			assert( a != nullptr );
@@ -237,6 +272,12 @@ class CG_Data {
 				grb::Vector< T > tmp = grb::internal::wrapRawVector( n, workspace_vector );
 				std::swap( precond_workspace, tmp );
 			}
+		}
+
+		/** Destroys this CG solve handle. */
+		~CG_Data() {
+			// call the deleter on the buffer pointer (which may be a no-op)
+			_buffer_deleter( _buffer );
 		}
 
 		/** @returns The system size. */
@@ -296,13 +337,12 @@ class CG_Data {
 		 *         allocation.
 		 */
 		void setPreconditioner( const preconditioner_t in, void * const data ) {
+			if( grb::size( precond_workspace ) == 0 ) {
+				throw std::logic_error( "CG handle has no preconditioned solve support" );
+			}
 			preconditioner = in;
 			preconditioner_data = data;
 			assert( !( !preconditioner && preconditioner_data ) );
-			if( grb::size( precond_workspace ) == 0 ) {
-				grb::Vector< T > replace( size );
-				std::swap( replace, precond_workspace );
-			}
 			assert( grb::size( precond_workspace ) == size );
 		}
 
@@ -347,15 +387,15 @@ template< typename T, typename NZI, typename RSI >
 static sparse_err_t sparse_cg_init_impl(
 	sparse_cg_handle_t * const handle, const size_t n,
 	const T * const a, const RSI * const ja, const NZI * const ia,
-	void * const buffer, const size_t bufferSize
+	void * const buffer, const size_t bufferSize, const CGWorkspaceDeleter &deleter
 ) {
 	if( n == 0 ) { return ILLEGAL_ARGUMENT; }
 	if( handle == nullptr || a == nullptr || ja == nullptr || ia == nullptr ) {
 		return NULL_ARGUMENT;
 	}
 	try {
-		*handle = static_cast< void * >(
-			new CG_Data< T, NZI, RSI >( n, a, ja, ia, buffer, bufferSize ) );
+		*handle = static_cast< void * >( new CG_Data< T, NZI, RSI, D >(
+			n, a, ja, ia, buffer, bufferSize, deleter ) );
 	} catch( std::exception &e ) {
 		// the grb::Matrix constructor may only throw on out of memory errors
 		std::cerr << "Error: " << e.what() << "\n";
@@ -368,11 +408,13 @@ static sparse_err_t sparse_cg_init_impl(
 template< typename T, typename NZI, typename RSI >
 static sparse_err_t sparse_cg_init_impl_no_buffer(
 	sparse_cg_handle_t * const handle, const size_t n,
-	const T * const a, const RSI * const ja, const NZI * const ia
+	const T * const a, const RSI * const ja, const NZI * const ia,
+	bool support_preconditioning
 ) {
 	// we pass true here, since we want to support the entire solver transition
 	// path API out of the box
-	const size_t allocSize = CG_Data< T, NZI, RSI >::workspaceSize( n, true );
+	const size_t allocSize = CG_Data< T, NZI, RSI >::
+		workspaceSize( n, support_preconditioning );
 	void * buffer = nullptr;
 	try {
 		buffer = static_cast< void * >(new char[ allocSize ]);
@@ -381,53 +423,107 @@ static sparse_err_t sparse_cg_init_impl_no_buffer(
 		return OUT_OF_MEMORY;
 	}
 	const sparse_err_t rc = sparse_cg_init_impl(
-		handle, n, a, ja, ia, buffer, allocSize );
+		handle, n, a, ja, ia, buffer, allocSize, CGWorkspaceDeleter() );
 	if( rc != NO_ERROR ) {
 		delete [] static_cast< char * >(buffer);
 	}
 	return rc;
 }
 
+sparse_err_t sparse_cg_init_nop_sii(
+	sparse_cg_handle_t * const handle, const size_t n,
+	const float * const a, const int * const ja, const int * const ia
+) {
+	return sparse_cg_init_impl_no_buffer< float, int, int >( handle, n, a, ja, ia,
+		false );
+}
+
+sparse_err_t sparse_cg_init_nop_dii(
+	sparse_cg_handle_t * const handle, const size_t n,
+	const double * const a, const int * const ja, const int * const ia
+) {
+	return sparse_cg_init_impl_no_buffer< double, int, int >( handle, n, a, ja, ia,
+		false );
+}
+
+sparse_err_t sparse_cg_init_nop_siz(
+	sparse_cg_handle_t * const handle, const size_t n,
+	const float * const a, const int * const ja, const size_t * const ia
+) {
+	return sparse_cg_init_impl_no_buffer< float, size_t, int >( handle, n, a, ja,
+		ia, false );
+}
+
+sparse_err_t sparse_cg_init_nop_diz(
+	sparse_cg_handle_t * const handle, const size_t n,
+	const double * const a, const int * const ja, const size_t * const ia
+) {
+	return sparse_cg_init_impl_no_buffer< double, size_t, int >( handle, n, a, ja,
+		ia, false );
+}
+
+sparse_err_t sparse_cg_init_nop_szz(
+	sparse_cg_handle_t * const handle, const size_t n,
+	const float * const a, const size_t * const ja, const size_t * const ia
+) {
+	return sparse_cg_init_impl_no_buffer< float, size_t, size_t >( handle, n, a, ja,
+		ia, false );
+}
+
+sparse_err_t sparse_cg_init_nop_dzz(
+	sparse_cg_handle_t * const handle, const size_t n,
+	const double * const a, const size_t * const ja, const size_t * const ia
+) {
+	return sparse_cg_init_impl_no_buffer< double, size_t, size_t >( handle, n, a, ja,
+		ia, false );
+}
+
 sparse_err_t sparse_cg_init_sii(
 	sparse_cg_handle_t * const handle, const size_t n,
 	const float * const a, const int * const ja, const int * const ia
 ) {
-	return sparse_cg_init_impl_no_buffer< float, int, int >( handle, n, a, ja, ia );
+	return sparse_cg_init_impl_no_buffer< float, int, int >( handle, n, a, ja, ia,
+		true );
 }
 
 sparse_err_t sparse_cg_init_dii(
 	sparse_cg_handle_t * const handle, const size_t n,
 	const double * const a, const int * const ja, const int * const ia
 ) {
-	return sparse_cg_init_impl_no_buffer< double, int, int >( handle, n, a, ja, ia );
+	return sparse_cg_init_impl_no_buffer< double, int, int >( handle, n, a, ja, ia,
+		true );
 }
 
 sparse_err_t sparse_cg_init_siz(
 	sparse_cg_handle_t * const handle, const size_t n,
 	const float * const a, const int * const ja, const size_t * const ia
 ) {
-	return sparse_cg_init_impl_no_buffer< float, size_t, int >( handle, n, a, ja, ia );
+	return sparse_cg_init_impl_no_buffer< float, size_t, int >( handle, n, a, ja,
+		ia, true );
 }
 
 sparse_err_t sparse_cg_init_diz(
 	sparse_cg_handle_t * const handle, const size_t n,
 	const double * const a, const int * const ja, const size_t * const ia
 ) {
-	return sparse_cg_init_impl_no_buffer< double, size_t, int >( handle, n, a, ja, ia );
+	return sparse_cg_init_impl_no_buffer< double, size_t, int >( handle, n, a, ja,
+		ia, true );
 }
 
 sparse_err_t sparse_cg_init_szz(
 	sparse_cg_handle_t * const handle, const size_t n,
 	const float * const a, const size_t * const ja, const size_t * const ia
 ) {
-	return sparse_cg_init_impl_no_buffer< float, size_t, size_t >( handle, n, a, ja, ia );
+	return sparse_cg_init_impl_no_buffer< float, size_t, size_t >( handle, n, a, ja,
+		ia, true );
 }
 
 sparse_err_t sparse_cg_init_dzz(
 	sparse_cg_handle_t * const handle, const size_t n,
 	const double * const a, const size_t * const ja, const size_t * const ia
 ) {
-	return sparse_cg_init_impl_no_buffer< double, size_t, size_t >( handle, n, a, ja, ia );
+	return sparse_cg_init_impl_no_buffer< double, size_t, size_t >( handle, n, a, ja,
+		ia, true );
 }
 
 template< typename T, typename NZI, typename RSI >
@@ -618,7 +714,8 @@ static sparse_err_t sparse_cg_get_iter_count_impl(
 	const sparse_cg_handle_t handle, size_t * const iters
 ) {
 	if( handle == nullptr || iters == nullptr ) { return NULL_ARGUMENT; }
-	*iters = static_cast< CG_Data< T, NZI, RSI > * >( handle )->getIters();
+	*iters =
+		static_cast< CG_Data< T, NZI, RSI > * >( handle )->getIters();
 	return NO_ERROR;
 }
 
@@ -739,9 +836,13 @@ static sparse_err_t sparse_cg_set_preconditioner_impl(
 	try {
 		static_cast< CG_Data< T, NZI, RSI > * >( handle )->
 			setPreconditioner( c_precond_p, c_precond_data_p );
-	} catch(...) {
-		// spec says ALP vector allocation can only throw due to out-of-memory
-		return OUT_OF_MEMORY;
+	} catch( std::logic_error &e ) {
+		std::cerr << e.what() << "\n";
+		return ILLEGAL_METHOD;
+	} catch( std::exception &e ) {
+		std::cerr << e.what() << "\n";
+		std::cerr << "This is an unexpected error; please submit a bug report\n";
+		return UNKNOWN;
 	}
 	return NO_ERROR;
 }
@@ -805,8 +906,7 @@ static sparse_err_t sparse_cg_set_max_iter_count_impl(
 	sparse_cg_handle_t handle, const size_t max_iters
 ) {
 	if( handle == nullptr ) { return NULL_ARGUMENT; }
-	static_cast< CG_Data< T, NZI, RSI > * >( handle )->
-		setMaxIters( max_iters );
+	static_cast< CG_Data< T, NZI, RSI > * >( handle )->setMaxIters( max_iters );
 	return NO_ERROR;
 }
 
