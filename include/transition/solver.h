@@ -133,6 +133,11 @@ typedef enum {
 	ILLEGAL_ARGUMENT,
 
 	/**
+	 * Illegal method was called.
+	 */
+	ILLEGAL_METHOD,
+
+	/**
 	 * Out of memory error detected during call.
 	 */
 	OUT_OF_MEMORY,
@@ -251,6 +256,25 @@ sparse_err_t sparse_cg_init_sii(
 );
 
 /**
+ * Variant of #sparse_cg_init_sii that results in a #sparse_cg_handle_t that
+ * does not support preconditioned solves. Handles constructed using this call
+ * require less memory.
+ *
+ * To have a handle returned by this function be used for a preconditioned solve
+ * anyway, the handle must first be destroyed and then re-created using a call
+ * to #sparse_cg_init_sii.
+ *
+ * \note Rationale: the transition path API opted to have this feature
+ *       implemented via a separate constructor call to make the fact that
+ *       resulting handles cannot be used for preconditioned solves as explicit
+ *       as possible.
+ */
+sparse_err_t sparse_cg_init_nop_sii(
+	sparse_cg_handle_t * const handle, const size_t n,
+	const float * const a, const int * const ja, const int * const ia
+);
+
+/**
  * Initialises a #sparse_cg_handle_t object.
  *
  * This variant is for double-precision floating point nonzeroes and integer
@@ -259,6 +283,25 @@ sparse_err_t sparse_cg_init_sii(
  * @see #sparse_cg_init_sii for full documentation.
  */
 sparse_err_t sparse_cg_init_dii(
+	sparse_cg_handle_t * const handle, const size_t n,
+	const double * const a, const int * const ja, const int * const ia
+);
+
+/**
+ * Variant of #sparse_cg_init_dii that results in a #sparse_cg_handle_t that
+ * does not support preconditioned solves. Handles constructed using this call
+ * require less memory.
+ *
+ * To have a handle returned by this function be used for a preconditioned solve
+ * anyway, the handle must first be destroyed and then re-created using a call
+ * to #sparse_cg_init_dii.
+ *
+ * \note Rationale: the transition path API opted to have this feature
+ *       implemented via a separate constructor call to make the fact that
+ *       resulting handles cannot be used for preconditioned solves as explicit
+ *       as possible.
+ */
+sparse_err_t sparse_cg_init_nop_dii(
 	sparse_cg_handle_t * const handle, const size_t n,
 	const double * const a, const int * const ja, const int * const ia
 );
@@ -278,6 +321,25 @@ sparse_err_t sparse_cg_init_siz(
 );
 
 /**
+ * Variant of #sparse_cg_init_siz that results in a #sparse_cg_handle_t that
+ * does not support preconditioned solves. Handles constructed using this call
+ * require less memory.
+ *
+ * To have a handle returned by this function be used for a preconditioned solve
+ * anyway, the handle must first be destroyed and then re-created using a call
+ * to #sparse_cg_init_siz.
+ *
+ * \note Rationale: the transition path API opted to have this feature
+ *       implemented via a separate constructor call to make the fact that
+ *       resulting handles cannot be used for preconditioned solves as explicit
+ *       as possible.
+ */
+sparse_err_t sparse_cg_init_nop_siz(
+	sparse_cg_handle_t * const handle, const size_t n,
+	const float * const a, const int * const ja, const size_t * const ia
+);
+
+/**
  * Initialises a #sparse_cg_handle_t object.
  *
  * This variant is for double-precision floating point nonzeroes,
@@ -287,6 +349,25 @@ sparse_err_t sparse_cg_init_siz(
  * @see #sparse_cg_init_sii for full documentation.
  */
 sparse_err_t sparse_cg_init_diz(
+	sparse_cg_handle_t * const handle, const size_t n,
+	const double * const a, const int * const ja, const size_t * const ia
+);
+
+/**
+ * Variant of #sparse_cg_init_diz that results in a #sparse_cg_handle_t that
+ * does not support preconditioned solves. Handles constructed using this call
+ * require less memory.
+ *
+ * To have a handle returned by this function be used for a preconditioned solve
+ * anyway, the handle must first be destroyed and then re-created using a call
+ * to #sparse_cg_init_diz.
+ *
+ * \note Rationale: the transition path API opted to have this feature
+ *       implemented via a separate constructor call to make the fact that
+ *       resulting handles cannot be used for preconditioned solves as explicit
+ *       as possible.
+ */
+sparse_err_t sparse_cg_init_nop_diz(
 	sparse_cg_handle_t * const handle, const size_t n,
 	const double * const a, const int * const ja, const size_t * const ia
 );
@@ -306,6 +387,25 @@ sparse_err_t sparse_cg_init_szz(
 );
 
 /**
+ * Variant of #sparse_cg_init_szz that results in a #sparse_cg_handle_t that
+ * does not support preconditioned solves. Handles constructed using this call
+ * require less memory.
+ *
+ * To have a handle returned by this function be used for a preconditioned solve
+ * anyway, the handle must first be destroyed and then re-created using a call
+ * to #sparse_cg_init_szz.
+ *
+ * \note Rationale: the transition path API opted to have this feature
+ *       implemented via a separate constructor call to make the fact that
+ *       resulting handles cannot be used for preconditioned solves as explicit
+ *       as possible.
+ */
+sparse_err_t sparse_cg_init_nop_szz(
+	sparse_cg_handle_t * const handle, const size_t n,
+	const float * const a, const size_t * const ja, const size_t * const ia
+);
+
+/**
  * Initialises a #sparse_cg_handle_t object.
  *
  * This variant is for double-precision floating point nonzeroes and
@@ -315,6 +415,25 @@ sparse_err_t sparse_cg_init_szz(
  * @see #sparse_cg_init_sii for full documentation.
  */
 sparse_err_t sparse_cg_init_dzz(
+	sparse_cg_handle_t * const handle, const size_t n,
+	const double * const a, const size_t * const ja, const size_t * const ia
+);
+
+/**
+ * Variant of #sparse_cg_init_dzz that results in a #sparse_cg_handle_t that
+ * does not support preconditioned solves. Handles constructed using this call
+ * require less memory.
+ *
+ * To have a handle returned by this function be used for a preconditioned solve
+ * anyway, the handle must first be destroyed and then re-created using a call
+ * to #sparse_cg_init_dzz.
+ *
+ * \note Rationale: the transition path API opted to have this feature
+ *       implemented via a separate constructor call to make the fact that
+ *       resulting handles cannot be used for preconditioned solves as explicit
+ *       as possible.
+ */
+sparse_err_t sparse_cg_init_nop_dzz(
 	sparse_cg_handle_t * const handle, const size_t n,
 	const double * const a, const size_t * const ja, const size_t * const ia
 );
