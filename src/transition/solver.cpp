@@ -221,7 +221,7 @@ class CG_Data {
 		CG_Data(
 			const size_t n,
 			const T * const a, const RSI * const ja, const NZI * const ia,
-			void * const buffer, const size_t buffer_size, const D &buffer_deleter
+			void * const buffer, const size_t buffer_size, const CGWorkspaceDeleter &buffer_deleter
 		) :
 			size( n ), tolerance( 1e-5 ), max_iter( 1000 ), matrix( 0, 0 ),
 			residual( std::numeric_limits< T >::infinity() ), iters( 0 ),
@@ -394,7 +394,7 @@ static sparse_err_t sparse_cg_init_impl(
 		return NULL_ARGUMENT;
 	}
 	try {
-		*handle = static_cast< void * >( new CG_Data< T, NZI, RSI, D >(
+		*handle = static_cast< void * >( new CG_Data< T, NZI, RSI >(
 			n, a, ja, ia, buffer, bufferSize, deleter ) );
 	} catch( std::exception &e ) {
 		// the grb::Matrix constructor may only throw on out of memory errors
