@@ -358,9 +358,12 @@ namespace grb {
 				);
 			assert( ret == grb::SUCCESS );
 
-			// get residual. In the preconditioned case, the resulting scalar is *not*
-			// used for subsequent operations. Therefore, we first compute the residual
-			// using alpha as a temporary scalar
+			// get effective tolerance
+			if( ret == grb::SUCCESS ) {
+				tol *= std::sqrt( grb::utils::is_complex< IOType >::modulus( bnorm ) );
+			}
+
+			// get residual
 			alpha = zero;
 			ret = ret ? ret : grb::dot< descr_dense >(
 					alpha,
@@ -402,10 +405,8 @@ namespace grb {
 
 			assert( ret == grb::SUCCESS );
 
-			// get effective tolerance and exit on any error during prelude
-			if( ret == grb::SUCCESS ) {
-				tol *= std::sqrt( grb::utils::is_complex< IOType >::modulus( bnorm ) );
-			} else {
+			// exit on any error during prelude
+			if( ret != grb::SUCCESS ) {
 				std::cerr << "Warning: preconditioned CG caught error during prelude ("
 					<< grb::toString( ret ) << ")\n";
 				return ret;
