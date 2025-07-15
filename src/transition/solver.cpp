@@ -237,7 +237,6 @@ class CG_Data {
 		 * @param[in] buffer_size The size of the given \a buffer. Used for sanity
 		 *                        checking the use of the buffer.
 		 *
-		 *
 		 * @param[in] buffer_deleter How the given \a buffer should be deleted on
 		 *                           destruction of this instance.
 		 *
@@ -261,6 +260,9 @@ class CG_Data {
 			assert( a != nullptr );
 			assert( ja != nullptr );
 			assert( ia != nullptr );
+			constexpr size_t align = (64 % sizeof(int) == 0)
+				?  64
+				: (64 + (sizeof(int) - (64 % sizeof(int))));
 			if( buffer_size < workspaceSize( n, false ) ) {
 				throw std::invalid_argument( "The given buffer size is too small" );
 			}
@@ -275,7 +277,7 @@ class CG_Data {
 			}
 			workspace_ptr += n * sizeof( T );
 			workspace_ptr +=
-				(sizeof(int) - (reinterpret_cast<uintptr_t>(workspace_ptr) % sizeof(int)));
+				(align - (reinterpret_cast<uintptr_t>(workspace_ptr) % align));
 			assert( static_cast< char * >(buffer) + buffer_size >= workspace_ptr + n );
 			{
 				T * const workspace_vector = reinterpret_cast< T * >(workspace_ptr);
@@ -284,7 +286,7 @@ class CG_Data {
 			}
 			workspace_ptr += n * sizeof( T );
 			workspace_ptr +=
-				(sizeof(int) - (reinterpret_cast<uintptr_t>(workspace_ptr) % sizeof(int)));
+				(align - (reinterpret_cast<uintptr_t>(workspace_ptr) % align));
 			assert( static_cast< char * >(buffer) + buffer_size >= workspace_ptr + n );
 			{
 				T * const workspace_vector = reinterpret_cast< T * >(workspace_ptr);
@@ -294,7 +296,7 @@ class CG_Data {
 			if( buffer_size >= workspaceSize( n, true ) ) {
 				workspace_ptr += n * sizeof( T );
 				workspace_ptr +=
-					(sizeof(int) - (reinterpret_cast<uintptr_t>(workspace_ptr) % sizeof(int)));
+					(align - (reinterpret_cast<uintptr_t>(workspace_ptr) % align));
 				assert( static_cast< char * >(buffer) + buffer_size >= workspace_ptr + n );
 				T * const workspace_vector = reinterpret_cast< T * >(workspace_ptr);
 				grb::Vector< T > tmp = grb::internal::wrapRawVector( n, workspace_vector );
@@ -440,7 +442,7 @@ static sparse_err_t sparse_cg_init_impl_no_buffer(
 	const bool support_preconditioning, const bool numa
 ) {
 	const size_t allocSize = CG_Data< T, NZI, RSI >::
-		workspaceSize( n, support_preconditioning );
+		workspaceSize( n, support_preconditioning ) + 256; // TODO hide this const
 	void * buffer = nullptr;
 #ifdef _GRB_NO_LIBNUMA
 	if( numa ) {
