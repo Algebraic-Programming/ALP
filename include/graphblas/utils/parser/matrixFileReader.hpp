@@ -129,6 +129,8 @@ namespace grb {
 						T val;
 						// read until we drop
 						while( (infile >> row >> col >> val) ) {
+							assert( row >= 0 );
+							assert( col >= 0 );
 							(void) ++properties._entries;
 							(void) ++properties._nz;
 							// if symmetric, count non-diagonal entries twice
@@ -170,11 +172,11 @@ namespace grb {
 								++properties._nz;
 							}
 							// update dimensions
-							if( row > properties._m ) {
-								properties._m = row;
+							if( static_cast< size_t >( row ) > properties._m ) {
+								properties._m = static_cast< size_t >( row );
 							}
-							if( col > properties._n ) {
-								properties._n = col;
+							if( static_cast< size_t >( col ) > properties._n ) {
+								properties._n = static_cast< size_t >( col );
 							}
 						}
 						// correct _m and _n
