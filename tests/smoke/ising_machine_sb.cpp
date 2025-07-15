@@ -72,9 +72,15 @@ int main( int argc, char ** argv ) {
         nonzero_values[i] = static_cast<IOType>(rand()) / RAND_MAX; // random value between 0 and 1
         sumJ2_test+=nonzero_values[i]*nonzero_values[i];
     }
+#ifdef DEBUG
+    // for debugging purposes, print sumJ2_test
     std::cout << "sumJ2_test: " << sumJ2_test << '\n';
+#endif
     IOType xi_test = 0.5 / std::sqrt( sumJ2_test / static_cast<IOType>( N - 1 )  );
+#ifdef DEBUG
+    // for debugging purposes, print xi_test
     std::cout << "xi_test: " << xi_test << '\n';
+#endif
 
     grb::RC rc = grb::SUCCESS;
     rc = rc ? rc : buildMatrixUnique(J, row_indices.data(), col_indices.data(), nonzero_values.data(), Nz, grb::SEQUENTIAL);

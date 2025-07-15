@@ -38,9 +38,7 @@
 namespace grb {
 	namespace algorithms {
 
-		using IOType = double;                    // arithmetic scalar
-		using Vec    = grb::Vector< IOType >;
-		using Mat    = grb::Matrix< IOType >;
+
 
 		// // Custom unary operator for sign extraction
 		// struct signum {
@@ -49,12 +47,13 @@ namespace grb {
 		// 	}
 		// };
 
-		// // Custom unary operator for hard clipping to [-1,1]
-		// struct clip11 {
-		// 	constexpr IOType operator()( const IOType x ) const noexcept {
-		// 		return std::min<IOType>( 1.0, std::max<IOType>( -1.0, x ) );
-		// 	}
-		// };
+		// Custom unary operator for hard clipping to [-1,1]
+		template< typename IOType >
+		struct clip11 {
+			constexpr IOType operator()( const IOType x ) const noexcept {
+				return std::min<IOType>( 1.0, std::max<IOType>( -1.0, x ) );
+			}
+		};
 
 		// // Unary predicate to build a structural mask |x|>1
 		// struct abs_gt1 {
@@ -67,6 +66,7 @@ namespace grb {
 		*  bSB — core optimisation routine                             *
 		*-------------------------------------------------------------*/
 			template<
+				Descriptor descr = descriptors::no_operation,
 				typename IsingHType,
 				typename IOType,
 				typename RSI, typename NZI, Backend backend,
@@ -94,6 +94,8 @@ namespace grb {
 				const std::function< IOType( IOType ) > &sqrtX =
 					std_sqrt< IOType, IOType >
 			) {
+
+			constexpr const Descriptor descr_dense = descr | descriptors::dense;
 
 			const std::size_t N = grb::nrows(J);
 
@@ -124,16 +126,20 @@ namespace grb {
 				std::cerr << "Error in eWiseLambda for sumJ2: " << rc << '\n';
 				return rc;
 			}
+#ifdef DEBUG
 			// for debugging purposes, print sumJ2
 			std::cout << "sumJ2: " << sumJ2 << '\n';
+#endif
 
 			// rewrite this to use graphblas language
 			rc = rc ? rc : grb::foldl( sumJ2, static_cast<IOType>( N - 1 ), divide );
 			IOType xi = 0.5;
 			sumJ2 = sqrtX( sumJ2 );
 			rc = rc ? rc : grb::foldl( xi, sumJ2, divide );
+#ifdef DEBUG
 			// for debugging purposes, print xi
 			std::cout << "xi: " << xi << '\n';
+#endif
 
 			/* ---- iteration variables ---- */
 			IOType ps  = p_init;
@@ -141,51 +147,71 @@ namespace grb {
 			// assert len of energies == N
 			assert( energies.size() == num_iters );
 
+			// TODO: move these to the aggument list of bSB
 			// Vec Jx( N ), temp( N ), mask( N );  // workspace vectors
-			grb::Vector< IOType, backend > Jx( N ), temp( N ), mask( N );
+			grb::Vector< IOType, backend > Jx( N ), temp( N );
+			grb::Vector< bool, backend > mask( N );
 
 			for ( std::size_t iter = 0; iter < num_iters; ++iter ) {
 
-			//     /* y_comp += ((-1+ps)*x_comp + xi*(Jx + h)) * dt */
+			    /* y_comp += ((-1+ps)*x_comp + xi*(Jx + h)) * dt */
 
-			//     // Jx ← J * x_comp
-			//     GRB_TRY( mxv( Jx, J, x_comp ) );
+			    // Jx ← J * x_comp
+				rc = rc ? rc : grb::mxv< descr_dense >( Jx, J, x_comp, ring );
+				assert( rc == grb::SUCCESS );
 
-			//     // temp ← Jx + h
-			//     GRB_TRY( eWiseApply< descriptors::no_operation >(
-			//         temp, Jx, h, operators::add< IOType >()
-			//     ) );
+			    // temp ← Jx + h
+			    rc = rc ? rc : grb::eWiseApply< descr_dense >(
+			        temp, Jx, h, ring.getAdditiveMonoid()
+			    );
+				assert( rc == grb::SUCCESS );
 
-			//     // temp ← xi * temp
-			//     GRB_TRY( apply( temp, temp, [&]( IOType v ){ return xi * v; } ) );
+			    // temp ← xi * temp
+			    rc = rc ? rc : grb::foldl< descr_dense >( 
+					temp, xi, ring.getMultiplicativeMonoid() 
+				);
+				assert( rc == grb::SUCCESS );
 
-			//     // temp ← temp + (-1+ps) * x_comp
-			//     const IOType scale = -1.0 + ps;
-			//     GRB_TRY( eWiseApply(
-			//         temp, temp, x_comp,
-			//         [&]( IOType a, IOType b ){ return a + scale * b; }
-			//     ) );
+			    // temp ← temp + (-1+ps) * x_comp
+			    const IOType scale = -1.0 + ps;
+				rc = rc ? rc : grb::eWiseMul< descr_dense >( temp, scale, x_comp, ring );
+				assert( rc == grb::SUCCESS );
 
-			//     // y_comp += dt * temp
-			//     GRB_TRY( apply( temp, temp, [&]( IOType v ){ return v * dt; } ) );
-			//     GRB_TRY( eWiseApply(
-			//         y_comp, y_comp, temp, operators::add< IOType >()
-			//     ) );
+			    // y_comp += dt * temp
+			    rc = rc ? rc : grb::eWiseMul< descr_dense >( y_comp, dt, temp, ring );
+				assert( rc == grb::SUCCESS );
 
-			//     /* x_comp += dt * y_comp */
-			//     GRB_TRY( apply( temp, y_comp, [&]( IOType v ){ return v * dt; } ) );
-			//     GRB_TRY( eWiseApply(
-			//         x_comp, x_comp, temp, operators::add< IOType >()
-			//     ) );
+			    /* x_comp += dt * y_comp */
+			    rc = rc ? rc : grb::eWiseMul< descr_dense >( x_comp, dt, y_comp, ring );
+				assert( rc == grb::SUCCESS );
 
-			//     /* y_comp[ |x|>1 ] = 0 */
-			//     GRB_TRY( apply( mask, x_comp, abs_gt1() ) );     // bool structural mask
-			//     GRB_TRY( eWiseApply< descriptors::structural >(
-			//         y_comp, mask, [&]( IOType, bool ){ return 0.0; }
-			//     ) );
+			    /* y_comp[ |x|>1 ] = 0 */
+				// mask = np.abs(x_comp) > 1
+			    rc = rc ? rc : grb::eWiseLambda< descr_dense >( [&mask, &x_comp]( const size_t i ) {
+					(void) i;
+					// rewrite this to use graphblas language
+					mask[i] = std::abs(x_comp[i]) > 1;
+					}, mask 
+				);
+				assert( rc == grb::SUCCESS );
 
-			//     /* x_comp = clip( x_comp ) */
-			//     GRB_TRY( apply( x_comp, x_comp, clip11() ) );
+				// y_comp[ mask ] = 0
+			    rc = rc ? rc : grb::eWiseLambda< descr_dense >( [&mask, &y_comp]( const size_t i ) {
+					(void) i;
+					// rewrite this to use graphblas language
+					if(mask[i]) {
+						y_comp[i] = 0;
+					}
+					}, y_comp 
+				);
+				assert( rc == grb::SUCCESS );
+
+			    /* x_comp = clip( x_comp ) */
+				rc = rc ? rc : grb::eWiseLambda< descr_dense >( [&x_comp]( const size_t i ) {
+					(void) i;
+					x_comp[i] = clip11<IOType>()( x_comp[i] );	}, x_comp 
+				);
+				assert( rc == grb::SUCCESS );
 
 			//     /* Energy evaluation */
 			//     Vec sol( N );
