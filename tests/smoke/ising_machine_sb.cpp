@@ -78,6 +78,8 @@ using JType = int;
 
 
 int main( int argc, char ** argv ) {
+    (void)argc;
+    (void)argv; //suppress unused parameter warnings
 
     /* --- Initialise ALP/GraphBLAS --- */
     if( grb::init() != grb::SUCCESS ) {

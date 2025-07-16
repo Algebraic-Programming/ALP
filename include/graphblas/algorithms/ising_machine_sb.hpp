@@ -117,6 +117,7 @@ namespace grb {
 			const Minus & minus = Minus(),
 			const Divide & divide = Divide(),
 			const std::function< IOType( IOType ) > & sqrtX = std_sqrt< IOType, IOType > ) {
+			(void)minus; // suppress unused parameter warning
 
 			constexpr const Descriptor descr_dense = descr | descriptors::dense;
 
