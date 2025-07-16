@@ -42,12 +42,13 @@ namespace grb {
 		void vector_print( grb::Vector< IOType, backend > & x_comp, const std::string & vector_name ) {
 			grb::PinnedVector< IOType > pinnedVector;
 			pinnedVector = grb::PinnedVector< IOType >( x_comp, grb::SEQUENTIAL );
-			std::cout << "First 10 nonzeroes of " << vector_name << " are: ( ";
+			std::cout << "First 10 nonzeroes of " << vector_name << " = [ ";
 			for( size_t k = 0; k < pinnedVector.nonzeroes() && k < 10; ++k ) {
 				const IOType & nonzeroValue = pinnedVector.getNonzeroValue( k );
-				std::cout << nonzeroValue << " ";
+				std::cout << nonzeroValue;
+				if(k!=pinnedVector.nonzeroes()-1) std::cout << ", ";
 			}
-			std::cout << ")" << std::endl;
+			std::cout << "]" << std::endl;
 		}
 
 
@@ -104,6 +105,11 @@ namespace grb {
 			const IOType p_end,
 			const std::size_t num_iters,
 			const IOType dt,
+			// workspace vectors
+			grb::Vector< IOType, backend > & Jx,
+    		grb::Vector< IOType, backend > & temp,
+			grb::Vector< bool, backend > & mask,
+			grb::Vector< IOType, backend > & sol,
 			// default semiring, minus, divide
 			const Ring & ring = Ring(),
 			const Minus & minus = Minus(),
@@ -124,13 +130,19 @@ namespace grb {
 			// TODO: check that J is symmetric once properly implemented
 			//assert( grb::is_symmetric(J) );
 
+			// initialize workspace vectors
+			grb::set( Jx, ring.template getZero< IOType >() );
+			grb::set( temp, ring.template getZero< IOType >() );
+			grb::set( mask, false );
+			grb::set( sol, ring.template getZero< IOType >() );
+
 			// print pinned vector x_comp
 			// for debugging purposes, print x_comp
-//#ifdef DEBUG
+#ifdef DEBUG
 			vector_print( x_comp, "x_comp" );
 			vector_print( y_comp, "y_comp" );
 			vector_print( h, "h" );
-//#endif
+#endif
 
 			// assert that energies is of length num_iters
 			assert( energies.size() == num_iters );
@@ -142,30 +154,31 @@ namespace grb {
 			grb::RC rc = grb::SUCCESS;
 			/* ---- pre-compute ---- */
 			IOType sumJ2 = ring.template getZero< IOType >();
-			rc = rc ? rc : grb::eWiseLambda( [&J, &sumJ2]( const size_t i, const size_t j, IOType& v ) {
+			rc = rc ? rc : grb::eWiseLambda( [&J, &sumJ2, &ring]( const size_t i, const size_t j, IOType& v ) {
 				(void) i;
 				(void) j;
-				// rewrite this to use graphblas language
-				sumJ2 += v*v;
+				IOType v2;
+				apply( v2, v, v, ring.getMultiplicativeOperator() );
+				foldl( sumJ2, v2, ring.getAdditiveOperator() );
 			}, J );
 			if( rc != grb::SUCCESS ) {
 				std::cerr << "Error in eWiseLambda for sumJ2: " << rc << '\n';
 				return rc;
 			}
-//#ifdef DEBUG
+#ifdef DEBUG
 			// for debugging purposes, print sumJ2
 			std::cout << "sumJ2: " << sumJ2 << '\n';
-//#endif
+#endif
 
 			// rewrite this to use graphblas language
 			rc = rc ? rc : grb::foldl( sumJ2, static_cast<IOType>( N - 1 ), divide );
 			IOType xi = 0.5;
 			sumJ2 = sqrtX( sumJ2 );
 			rc = rc ? rc : grb::foldl( xi, sumJ2, divide );
-//#ifdef DEBUG
+#ifdef DEBUG
 			// for debugging purposes, print xi
 			std::cout << "xi: " << xi << '\n';
-//#endif
+#endif
 
 			/* ---- iteration variables ---- */
 			IOType ps  = p_init;
@@ -173,69 +186,60 @@ namespace grb {
 			// assert len of energies == N
 			assert( energies.size() == num_iters );
 
-			// TODO: move these to the aggument list of bSB
-			// Vec Jx( N ), temp( N ), mask( N );  // workspace vectors
-			grb::Vector< IOType, backend > Jx( N ), temp( N );
-			grb::Vector< bool, backend > mask( N );
-			grb::Vector< IOType, backend > sol( N );
-
-			grb::set( Jx, ring.template getZero< IOType >() );
-			grb::set( temp, ring.template getZero< IOType >() );
-			grb::set( mask, false );
-			grb::set( sol, 0 );
-
 			for ( std::size_t iter = 0; iter < num_iters; ++iter ) {
 
 			    /* y_comp += ((-1+ps)*x_comp + xi*(Jx + h)) * dt */
 
 			    // Jx ← J * x_comp
+				grb::set( Jx, ring.template getZero< IOType >() );
 				rc = rc ? rc : grb::mxv< descr_dense >( Jx, J, x_comp, ring );
 				assert( rc == grb::SUCCESS );
-//#ifdef DEBUG
+#ifdef DEBUG
 				vector_print( Jx, "Jx" );
-//#endif
+#endif
 
 			    // temp ← Jx + h
+				grb::set( temp, ring.template getZero< IOType >() );
 			    rc = rc ? rc : grb::eWiseApply< descr_dense >(
 			        temp, Jx, h, ring.getAdditiveMonoid()
 			    );
 				assert( rc == grb::SUCCESS );
-//#ifdef DEBUG
+#ifdef DEBUG
 				vector_print( temp, "temp = Jx + h" );
-//#endif
+#endif
 
 			    // temp ← xi * temp
 			    rc = rc ? rc : grb::foldl< descr_dense >( 
 					temp, xi, ring.getMultiplicativeMonoid() 
 				);
 				assert( rc == grb::SUCCESS );
-//#ifdef DEBUG
+#ifdef DEBUG
 				vector_print( temp, "xi * temp" );
-//#endif
+#endif
 
 
 			    // temp ← temp + (-1+ps) * x_comp
 			    const IOType scale = -1.0 + ps;
 				rc = rc ? rc : grb::eWiseMul< descr_dense >( temp, scale, x_comp, ring );
 				assert( rc == grb::SUCCESS );
-//#ifdef DEBUG
+#ifdef DEBUG
 				std::cout << "scale: " << scale << '\n';
 				vector_print( temp, "temp + (-1+ps) * x_comp" );
-//#endif
+#endif
 
 			    // y_comp += dt * temp
 			    rc = rc ? rc : grb::eWiseMul< descr_dense >( y_comp, dt, temp, ring );
 				assert( rc == grb::SUCCESS );
-//#ifdef DEBUG
+#ifdef DEBUG
 				vector_print( y_comp, "y_comp" );
-//#endif
+#endif
 
 			    /* x_comp += dt * y_comp */
 			    rc = rc ? rc : grb::eWiseMul< descr_dense >( x_comp, dt, y_comp, ring );
 				assert( rc == grb::SUCCESS );
-//#ifdef DEBUG
+#ifdef DEBUG
 				vector_print( x_comp, "x_comp" );
-//#endif
+#endif
 
 			    /* y_comp[ |x|>1 ] = 0 */
 				// mask = np.abs(x_comp) > 1
@@ -246,9 +250,9 @@ namespace grb {
 					}, mask 
 				);
 				assert( rc == grb::SUCCESS );
-//#ifdef DEBUG
+#ifdef DEBUG
 				vector_print( mask, "mask" );
-//#endif
+#endif
 
 				// y_comp[ mask ] = 0
 			    rc = rc ? rc : grb::eWiseLambda< descr_dense >( [&mask, &y_comp]( const size_t i ) {
@@ -262,59 +266,64 @@ namespace grb {
 				assert( rc == grb::SUCCESS );
 
 			    /* x_comp = clip( x_comp ) */
-				rc = rc ? rc : grb::eWiseLambda< descr_dense >( 
-					[&x_comp]( const size_t i ) {
-						(void) i;
-						// TODO: rewrite in terms of foldl and foldr
-						x_comp[i] = std::min<IOType>( 1.0, std::max<IOType>( -1.0, x_comp[i] ) ); 
-					}, 
-					x_comp 
-				);
+				foldl( x_comp, static_cast<IOType>(-1), grb::operators::max < IOType >() );
+				foldl( x_comp, static_cast<IOType>(1), grb::operators::min < IOType >() );
+				// alternatively, we could use eWiseLambda:
+				// rc = rc ? rc : grb::eWiseLambda< descr_dense >( 
+				// 	[&x_comp]( const size_t i ) {
+				// 		(void) i;
+				// 		foldl( x_comp[i], static_cast<IOType>(-1), grb::operators::max < IOType >() );
+				// 		foldl( x_comp[i], static_cast<IOType>(1), grb::operators::min < IOType >() );
+				// 		//x_comp[i] = std::min<IOType>( 1.0, std::max<IOType>( -1.0, x_comp[i] ) ); 
+				// 	}, x_comp
+				// );
 				assert( rc == grb::SUCCESS );
+//#ifdef DEBUG
+				std::cout << "i =  " << iter << "\n ";
+				vector_print( x_comp, "x_comp_alp " );
+				vector_print( y_comp, "y_comp_alp" );
+//#endif
 
 			    /* Energy evaluation */
-				// sol[i] = sign(x_comp[i]); which in graphblas is: 	
-				
-
+				// sol[i] = sign(x_comp[i]); which in graphblas is:
 				rc = rc ? rc : grb::eWiseLambda< descr_dense >( 
 					[&sol,&x_comp]( const size_t i ) {
 						(void) i;
-						// TODO: rewrite in terms of foldl and foldr
 						sol[i] = sign(x_comp[i]);
 					}, 
 					sol
 				);
 				assert( rc == grb::SUCCESS );
-//#ifdef DEBUG
+#ifdef DEBUG
 				vector_print( sol, "sol" );
-//#endif
+#endif
 
 
 			    // temp ← J * sol
 				rc = rc ? rc : grb::set( temp, ring.template getZero< IOType >() );
 				rc = rc ? rc : grb::mxv< descr_dense >( temp, J, sol, ring );
 				assert( rc == grb::SUCCESS );
-//#ifdef DEBUG
+#ifdef DEBUG
 				vector_print( temp, "temp = J * sol" );
-//#endif
+#endif
 			    // e = -0.5 * sol.dot(temp)   –  h.dot(sol)
 			    IOType dot1 = 0.0, dot2 = 0.0;
 				rc = rc ? rc : grb::dot< descr_dense >( dot1, sol, temp, ring );
 				assert( rc == grb::SUCCESS );
-//#ifdef DEBUG
+#ifdef DEBUG
 				std::cout << "dot1: " << dot1 << '\n';
-//#endif
+#endif
 
 				rc = rc ? rc : grb::dot< descr_dense >( dot2, h, sol, ring );
 				assert( rc == grb::SUCCESS );
-//#ifdef DEBUG
+#ifdef DEBUG
 				std::cout << "dot2: " << dot2 << '\n';
-//#endif
+#endif
 
 				IOType e = -0.5 * dot1 - dot2;
-//#ifdef DEBUG
+#ifdef DEBUG
 				std::cout << "e: " << e << '\n';
-//#endif
+#endif
 				energies[ iter ] = e;
 			    ps += dps;
 			}
