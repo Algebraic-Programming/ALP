@@ -124,12 +124,9 @@ namespace grb {
 			const std::size_t N = grb::nrows(J);
 
 			assert( grb::ncols(J) == N );
-			assert( grb::nrows(h) == N );
-			assert( grb::ncols(h) == 1 );
-			assert( grb::nrows(x_comp) == N );
-			assert( grb::ncols(x_comp) == 1 );
-			assert( grb::nrows(y_comp) == N );
-			assert( grb::ncols(y_comp) == 1 );
+			assert( grb::size(h) == N );
+			assert( grb::size(x_comp) == N );
+			assert( grb::size(y_comp) == N );
 			// TODO: check that J is symmetric once properly implemented
 			//assert( grb::is_symmetric(J) );
 
