@@ -137,7 +137,7 @@ namespace grb {
 
 			// print pinned vector x_comp
 			// for debugging purposes, print x_comp
-#ifdef DEBUG
+#ifdef DEBUG_IMSB
 			vector_print( x_comp, "x_comp" );
 			vector_print( y_comp, "y_comp" );
 			vector_print( h, "h" );
@@ -164,7 +164,7 @@ namespace grb {
 				std::cerr << "Error in eWiseLambda for sumJ2: " << rc << '\n';
 				return rc;
 			}
-#ifdef DEBUG
+#ifdef DEBUG_IMSB
 			// for debugging purposes, print sumJ2
 			std::cout << "sumJ2: " << sumJ2 << '\n';
 #endif
@@ -174,7 +174,7 @@ namespace grb {
 			IOType xi = 0.5;
 			sumJ2 = sqrtX( sumJ2 );
 			rc = rc ? rc : grb::foldl( xi, sumJ2, divide );
-#ifdef DEBUG
+#ifdef DEBUG_IMSB
 			// for debugging purposes, print xi
 			std::cout << "xi: " << xi << '\n';
 #endif
@@ -193,7 +193,7 @@ namespace grb {
 				grb::set( Jx, ring.template getZero< IOType >() );
 				rc = rc ? rc : grb::mxv< descr_dense >( Jx, J, x_comp, ring );
 				assert( rc == grb::SUCCESS );
-#ifdef DEBUG
+#ifdef DEBUG_IMSB
 				vector_print( Jx, "Jx" );
 #endif
 
@@ -203,7 +203,7 @@ namespace grb {
 			        temp, Jx, h, ring.getAdditiveMonoid()
 			    );
 				assert( rc == grb::SUCCESS );
-#ifdef DEBUG
+#ifdef DEBUG_IMSB
 				vector_print( temp, "temp = Jx + h" );
 #endif
 
@@ -212,7 +212,7 @@ namespace grb {
 					temp, xi, ring.getMultiplicativeMonoid() 
 				);
 				assert( rc == grb::SUCCESS );
-#ifdef DEBUG
+#ifdef DEBUG_IMSB
 				vector_print( temp, "xi * temp" );
 #endif
 
@@ -221,7 +221,7 @@ namespace grb {
 			    const IOType scale = -1.0 + ps;
 				rc = rc ? rc : grb::eWiseMul< descr_dense >( temp, scale, x_comp, ring );
 				assert( rc == grb::SUCCESS );
-#ifdef DEBUG
+#ifdef DEBUG_IMSB
 				std::cout << "scale: " << scale << '\n';
 				vector_print( temp, "temp + (-1+ps) * x_comp" );
 #endif
@@ -229,14 +229,14 @@ namespace grb {
 			    // y_comp += dt * temp
 			    rc = rc ? rc : grb::eWiseMul< descr_dense >( y_comp, dt, temp, ring );
 				assert( rc == grb::SUCCESS );
-#ifdef DEBUG
+#ifdef DEBUG_IMSB
 				vector_print( y_comp, "y_comp" );
 #endif
 
 			    /* x_comp += dt * y_comp */
 			    rc = rc ? rc : grb::eWiseMul< descr_dense >( x_comp, dt, y_comp, ring );
 				assert( rc == grb::SUCCESS );
-#ifdef DEBUG
+#ifdef DEBUG_IMSB
 				vector_print( x_comp, "x_comp" );
 #endif
 
@@ -249,7 +249,7 @@ namespace grb {
 					}, mask 
 				);
 				assert( rc == grb::SUCCESS );
-#ifdef DEBUG
+#ifdef DEBUG_IMSB
 				vector_print( mask, "mask" );
 #endif
 
@@ -277,7 +277,7 @@ namespace grb {
 				// 	}, x_comp
 				// );
 				assert( rc == grb::SUCCESS );
-#ifdef DEBUG
+#ifdef DEBUG_IMSB
 				std::cout << "i =  " << iter << "\n ";
 				vector_print( x_comp, "x_comp_alp " );
 				vector_print( y_comp, "y_comp_alp" );
@@ -293,7 +293,7 @@ namespace grb {
 					sol
 				);
 				assert( rc == grb::SUCCESS );
-#ifdef DEBUG
+#ifdef DEBUG_IMSB
 				vector_print( sol, "sol" );
 #endif
 
@@ -302,7 +302,7 @@ namespace grb {
 				rc = rc ? rc : grb::set( temp_int, ring.template getZero< IsingHType >() );
 				rc = rc ? rc : grb::mxv< descr_dense >( temp_int, J, sol, ring );
 				assert( rc == grb::SUCCESS );
-#ifdef DEBUG
+#ifdef DEBUG_IMSB
 				vector_print( temp_int, "temp = J * sol" );
 #endif
 			    // e = -0.5 * sol.dot(temp)   –  h.dot(sol)
@@ -310,18 +310,18 @@ namespace grb {
 				IOType dot2 = 0;
 				rc = rc ? rc : grb::dot< descr_dense >( dot1, sol, temp_int, ring );
 				assert( rc == grb::SUCCESS );
-#ifdef DEBUG
+#ifdef DEBUG_IMSB
 				std::cout << "dot1: " << dot1 << '\n';
 #endif
 
 				rc = rc ? rc : grb::dot< descr_dense >( dot2, h, sol, ring );
 				assert( rc == grb::SUCCESS );
-#ifdef DEBUG
+#ifdef DEBUG_IMSB
 				std::cout << "dot2: " << dot2 << '\n';
 #endif
 
 				IOType e = -0.5 * dot1 - dot2;
-#ifdef DEBUG
+#ifdef DEBUG_IMSB
 				std::cout << "e: " << e << '\n';
 #endif
 				energies[ iter ] = e;
