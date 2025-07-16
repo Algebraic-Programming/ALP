@@ -41,12 +41,22 @@ using namespace grb;
 using namespace algorithms;
 
 
+// test data from python implementation
+constexpr std::size_t N = 10;
+constexpr std::size_t Nz = 54;
+static const size_t i_arr[ Nz ] ={0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 2, 2, 2, 2, 2, 3, 3, 3, 3, 3, 3, 3, 3, 4, 4, 4, 4, 4, 5, 5, 5, 5, 5, 5, 6, 6, 6, 6, 6, 7, 7, 7, 7, 7, 8, 8, 8, 8, 9, 9, 9, 9, 9};
+static const size_t j_arr[ Nz ] ={0, 2, 3, 4, 5, 1, 4, 5, 6, 7, 9, 0, 2, 4, 6, 9, 0, 3, 4, 5, 6, 7, 8, 9, 0, 1, 2, 3, 4, 0, 1, 3, 5, 6, 8, 1, 2, 3, 5, 6, 1, 3, 7, 8, 9, 3, 5, 7, 8, 1, 2, 3, 7, 9};
+static const double v_arr[ Nz ]={-1,  1,  1, -1, -1, -1, -1,  1,  1,  1,  1,  1, -1, -1, -1, -1,  1,1,  1,  1, -1, -1,  1,  1, -1, -1, -1,  1,  1, -1,  1,  1, -1, -1,-1,  1, -1, -1, -1, -1,  1, -1, -1,  1, -1,  1, -1,  1,  1,  1, -1,1, -1,  1};
+
+static const double  h_arr[ N ]={ 1, -1,  1, -1,  1,  1, -1,  1,  1,  1};
+static const double x_arr[ N ]={-0.0996, -0.0315,  0.0572,  0.0630,  0.0087, -0.0143, -0.0170, -0.0411, 0.0433, -0.0298};
+static const double y_arr[ N ]={ 0.0373,  0.0540,  0.0486, -0.0877, -0.0418, -0.0261,  0.0018, -0.0710, 0.0507, -0.0483};
 
 using IOType = double;
+using JType = double;
+
 
 int main( int argc, char ** argv ) {
-    constexpr std::size_t N = 100;
-    constexpr std::size_t Nz = 400;
 
     /* --- Initialise ALP/GraphBLAS --- */
     if( grb::init() != grb::SUCCESS ) {
@@ -58,56 +68,28 @@ int main( int argc, char ** argv ) {
     grb::Matrix<IOType> J( N, N, Nz );
     grb::Vector<IOType> h( N );
     grb::Vector<IOType> x0( N ), y0( N ); // initialy 
-    // ... populate J with random values
-    // generate random nonzero locations and values for J
-    std::vector<std::size_t> row_indices(Nz);
-    std::vector<std::size_t> col_indices(Nz);
-    std::vector<IOType> nonzero_values(Nz);
-    // TODO: make sure there are not duplicate entries in J and J is symmetric
-
-    IOType sumJ2_test = 0;
-    for( std::size_t i = 0; i < Nz; ++i ) {
-        row_indices[i] = rand() % N;
-        col_indices[i] = rand() % N;
-        nonzero_values[i] = static_cast<IOType>(rand()) / RAND_MAX; // random value between 0 and 1
-        sumJ2_test+=nonzero_values[i]*nonzero_values[i];
-    }
-#ifdef DEBUG
-    // for debugging purposes, print sumJ2_test
-    std::cout << "sumJ2_test: " << sumJ2_test << '\n';
-#endif
-    IOType xi_test = 0.5 / std::sqrt( sumJ2_test / static_cast<IOType>( N - 1 )  );
-#ifdef DEBUG
-    // for debugging purposes, print xi_test
-    std::cout << "xi_test: " << xi_test << '\n';
-#endif
-
+    // ... populate J with test (random) values
     grb::RC rc = grb::SUCCESS;
-    rc = rc ? rc : buildMatrixUnique(J, row_indices.data(), col_indices.data(), nonzero_values.data(), Nz, grb::SEQUENTIAL);
+    rc = rc ? rc : buildMatrixUnique( J, &( i_arr[ 0 ] ), &( j_arr[ 0 ] ), &( v_arr[ 0 ] ), Nz, grb::SEQUENTIAL );
+
     if(rc != grb::SUCCESS) {
         std::cerr << "matrix build failed\n";
         return grb::RC::PANIC;
     }
 
     // Fill h, x0, y0 with random values using buildVector
-    std::vector<IOType> h_buffer(N), x0_buffer(N), y0_buffer(N);
-    for( std::size_t i = 0; i < N; ++i ) {
-        h_buffer[i]  = static_cast<IOType>(rand()) / RAND_MAX;
-        x0_buffer[i] = static_cast<IOType>(rand()) / RAND_MAX / 0.2 - 0.1;
-        y0_buffer[i] = static_cast<IOType>(rand()) / RAND_MAX / 0.2 - 0.1;
-    }
-    rc = rc ? rc : buildVector(h, h_buffer.begin(), h_buffer.end(), grb::SEQUENTIAL);
-    rc = rc ? rc : buildVector(x0, x0_buffer.begin(), x0_buffer.end(), grb::SEQUENTIAL);
-    rc = rc ? rc : buildVector(y0, y0_buffer.begin(), y0_buffer.end(), grb::SEQUENTIAL);
+    rc = rc ? rc : buildVector(h, h_arr, h_arr + N, grb::SEQUENTIAL);
+    rc = rc ? rc : buildVector(x0, x_arr, x_arr + N, grb::SEQUENTIAL);
+    rc = rc ? rc : buildVector(y0, y_arr, y_arr + N, grb::SEQUENTIAL);
     if(rc != grb::SUCCESS) {
         std::cerr << "Vector build failed\n";
         return grb::RC::PANIC;
     }
-
-    const IOType p0  = 0.1;
-    const IOType p1  = 1.0;
-    const std::size_t num_iters = 1000;
-    const IOType dt  = 0.01;
+    
+    const IOType p0  = 0.;
+    const IOType p1  = 1.1;
+    const std::size_t num_iters = 10;
+    const IOType dt  = 0.25;
 
     // energies is array of length num_iters, initialized to 0
     std::vector< IOType > energies( num_iters, 0 );
@@ -119,7 +101,10 @@ int main( int argc, char ** argv ) {
     if( rc != grb::SUCCESS ) {
         std::cerr << "bSB returned error code " << rc << '\n';
     } else {
-        std::cout << "Final energy = " << energies[num_iters-1] << '\n';
+        // print all energies
+        for (std::size_t i = 0; i < num_iters; ++i) {
+           std::cout << "Energy at iteration " << i << " = " << energies[i] << '\n';
+        }
     }
 
     grb::finalize();

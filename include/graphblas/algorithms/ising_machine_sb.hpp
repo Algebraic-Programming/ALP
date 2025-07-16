@@ -38,6 +38,17 @@
 namespace grb {
 	namespace algorithms {
 
+		template< typename IOType, Backend backend >
+		void vector_print( grb::Vector< IOType, backend > & x_comp, const std::string & vector_name ) {
+			grb::PinnedVector< IOType > pinnedVector;
+			pinnedVector = grb::PinnedVector< IOType >( x_comp, grb::SEQUENTIAL );
+			std::cout << "First 10 nonzeroes of " << vector_name << " are: ( ";
+			for( size_t k = 0; k < pinnedVector.nonzeroes() && k < 10; ++k ) {
+				const IOType & nonzeroValue = pinnedVector.getNonzeroValue( k );
+				std::cout << nonzeroValue << " ";
+			}
+			std::cout << ")" << std::endl;
+		}
 
 
 		// // Custom unary operator for sign extraction
@@ -46,6 +57,9 @@ namespace grb {
 		// 		return ( x > 0 ) - ( x < 0 );
 		// 	}
 		// };
+		inline int sign(double x) {
+			return (x > 0) - (x < 0);
+		}
 
 		// Custom unary operator for hard clipping to [-1,1]
 		template< typename IOType >
@@ -63,37 +77,38 @@ namespace grb {
 		// };
 
 		/*-------------------------------------------------------------*
-		*  bSB — core optimisation routine                             *
-		*-------------------------------------------------------------*/
-			template<
-				Descriptor descr = descriptors::no_operation,
-				typename IsingHType,
-				typename IOType,
-				typename RSI, typename NZI, Backend backend,
-				class Ring = Semiring<
-					grb::operators::add< IOType >, grb::operators::mul< IOType >,
-					grb::identities::zero, grb::identities::one
-				>,
-				class Minus = operators::subtract< IOType >,
-				class Divide = operators::divide< IOType >
-			>
-			grb::RC bSB(
-				std::vector< IOType > & energies, // output length num_iters
-				grb::Vector< IOType, backend > & x_comp,      // in/out, size N
-				grb::Vector< IOType, backend > & y_comp,      // in/out, size N
-				const grb::Matrix< IsingHType, backend, RSI, RSI, NZI > &          J,           // NxN, symmetric
-				const grb::Vector< IOType, backend > &          h,           // size N
-				const IOType         p_init,
-				const IOType         p_end,
-				const std::size_t    num_iters,
-				const IOType         dt,
-				// default semiring, minus, divide
-				const Ring &ring = Ring(),
-				const Minus &minus = Minus(),
-				const Divide &divide = Divide(),
-				const std::function< IOType( IOType ) > &sqrtX =
-					std_sqrt< IOType, IOType >
-			) {
+		 *  bSB — core optimisation routine                             *
+		 *-------------------------------------------------------------*/
+		template< Descriptor descr = descriptors::no_operation,
+			typename IsingHType,
+			typename IOType,
+			typename RSI,
+			typename NZI,
+			Backend backend,
+			class Ring = Semiring< 
+				grb::operators::add< IOType >, 
+				grb::operators::mul< IOType >, 
+				grb::identities::zero, 
+				grb::identities::one 
+			>,
+			class Minus = operators::subtract< IOType >,
+			class Divide = operators::divide< IOType > 
+		>
+		grb::RC bSB( std::vector< IOType > & energies,                   // output length num_iters
+			grb::Vector< IOType, backend > & x_comp,                     // in/out, size N
+			grb::Vector< IOType, backend > & y_comp,                     // in/out, size N
+			const grb::Matrix< IsingHType, backend, RSI, RSI, NZI > & J, // NxN, symmetric
+			// TODO: make h const
+			grb::Vector< IOType, backend > & h,                    // size N
+			const IOType p_init,
+			const IOType p_end,
+			const std::size_t num_iters,
+			const IOType dt,
+			// default semiring, minus, divide
+			const Ring & ring = Ring(),
+			const Minus & minus = Minus(),
+			const Divide & divide = Divide(),
+			const std::function< IOType( IOType ) > & sqrtX = std_sqrt< IOType, IOType > ) {
 
 			constexpr const Descriptor descr_dense = descr | descriptors::dense;
 
@@ -108,6 +123,17 @@ namespace grb {
 			assert( grb::ncols(y_comp) == 1 );
 			// TODO: check that J is symmetric once properly implemented
 			//assert( grb::is_symmetric(J) );
+
+			// print pinned vector x_comp
+			// for debugging purposes, print x_comp
+//#ifdef DEBUG
+			vector_print( x_comp, "x_comp" );
+			vector_print( y_comp, "y_comp" );
+			vector_print( h, "h" );
+//#endif
+
+			// assert that energies is of length num_iters
+			assert( energies.size() == num_iters );
 
 			if ( num_iters < 1 ) {
 				return grb::SUCCESS;
@@ -126,20 +152,20 @@ namespace grb {
 				std::cerr << "Error in eWiseLambda for sumJ2: " << rc << '\n';
 				return rc;
 			}
-#ifdef DEBUG
+//#ifdef DEBUG
 			// for debugging purposes, print sumJ2
 			std::cout << "sumJ2: " << sumJ2 << '\n';
-#endif
+//#endif
 
 			// rewrite this to use graphblas language
 			rc = rc ? rc : grb::foldl( sumJ2, static_cast<IOType>( N - 1 ), divide );
 			IOType xi = 0.5;
 			sumJ2 = sqrtX( sumJ2 );
 			rc = rc ? rc : grb::foldl( xi, sumJ2, divide );
-#ifdef DEBUG
+//#ifdef DEBUG
 			// for debugging purposes, print xi
 			std::cout << "xi: " << xi << '\n';
-#endif
+//#endif
 
 			/* ---- iteration variables ---- */
 			IOType ps  = p_init;
@@ -151,6 +177,12 @@ namespace grb {
 			// Vec Jx( N ), temp( N ), mask( N );  // workspace vectors
 			grb::Vector< IOType, backend > Jx( N ), temp( N );
 			grb::Vector< bool, backend > mask( N );
+			grb::Vector< IOType, backend > sol( N );
+
+			grb::set( Jx, ring.template getZero< IOType >() );
+			grb::set( temp, ring.template getZero< IOType >() );
+			grb::set( mask, false );
+			grb::set( sol, 0 );
 
 			for ( std::size_t iter = 0; iter < num_iters; ++iter ) {
 
@@ -159,31 +191,51 @@ namespace grb {
 			    // Jx ← J * x_comp
 				rc = rc ? rc : grb::mxv< descr_dense >( Jx, J, x_comp, ring );
 				assert( rc == grb::SUCCESS );
+//#ifdef DEBUG
+				vector_print( Jx, "Jx" );
+//#endif
 
 			    // temp ← Jx + h
 			    rc = rc ? rc : grb::eWiseApply< descr_dense >(
 			        temp, Jx, h, ring.getAdditiveMonoid()
 			    );
 				assert( rc == grb::SUCCESS );
+//#ifdef DEBUG
+				vector_print( temp, "temp = Jx + h" );
+//#endif
 
 			    // temp ← xi * temp
 			    rc = rc ? rc : grb::foldl< descr_dense >( 
 					temp, xi, ring.getMultiplicativeMonoid() 
 				);
 				assert( rc == grb::SUCCESS );
+//#ifdef DEBUG
+				vector_print( temp, "xi * temp" );
+//#endif
+
 
 			    // temp ← temp + (-1+ps) * x_comp
 			    const IOType scale = -1.0 + ps;
 				rc = rc ? rc : grb::eWiseMul< descr_dense >( temp, scale, x_comp, ring );
 				assert( rc == grb::SUCCESS );
+//#ifdef DEBUG
+				std::cout << "scale: " << scale << '\n';
+				vector_print( temp, "temp + (-1+ps) * x_comp" );
+//#endif
 
 			    // y_comp += dt * temp
 			    rc = rc ? rc : grb::eWiseMul< descr_dense >( y_comp, dt, temp, ring );
 				assert( rc == grb::SUCCESS );
+//#ifdef DEBUG
+				vector_print( y_comp, "y_comp" );
+//#endif
 
 			    /* x_comp += dt * y_comp */
 			    rc = rc ? rc : grb::eWiseMul< descr_dense >( x_comp, dt, y_comp, ring );
 				assert( rc == grb::SUCCESS );
+//#ifdef DEBUG
+				vector_print( x_comp, "x_comp" );
+//#endif
 
 			    /* y_comp[ |x|>1 ] = 0 */
 				// mask = np.abs(x_comp) > 1
@@ -194,6 +246,9 @@ namespace grb {
 					}, mask 
 				);
 				assert( rc == grb::SUCCESS );
+//#ifdef DEBUG
+				vector_print( mask, "mask" );
+//#endif
 
 				// y_comp[ mask ] = 0
 			    rc = rc ? rc : grb::eWiseLambda< descr_dense >( [&mask, &y_comp]( const size_t i ) {
@@ -207,29 +262,60 @@ namespace grb {
 				assert( rc == grb::SUCCESS );
 
 			    /* x_comp = clip( x_comp ) */
-				rc = rc ? rc : grb::eWiseLambda< descr_dense >( [&x_comp]( const size_t i ) {
-					(void) i;
-					x_comp[i] = clip11<IOType>()( x_comp[i] );	}, x_comp 
+				rc = rc ? rc : grb::eWiseLambda< descr_dense >( 
+					[&x_comp]( const size_t i ) {
+						(void) i;
+						// TODO: rewrite in terms of foldl and foldr
+						x_comp[i] = std::min<IOType>( 1.0, std::max<IOType>( -1.0, x_comp[i] ) ); 
+					}, 
+					x_comp 
 				);
 				assert( rc == grb::SUCCESS );
 
-			//     /* Energy evaluation */
-			//     Vec sol( N );
-			//     GRB_TRY( apply( sol, x_comp, signum() ) );
+			    /* Energy evaluation */
+				// sol[i] = sign(x_comp[i]); which in graphblas is: 	
+				
 
-			//     // temp ← J * sol
-			//     GRB_TRY( mxv( temp, J, sol ) );
+				rc = rc ? rc : grb::eWiseLambda< descr_dense >( 
+					[&sol,&x_comp]( const size_t i ) {
+						(void) i;
+						// TODO: rewrite in terms of foldl and foldr
+						sol[i] = sign(x_comp[i]);
+					}, 
+					sol
+				);
+				assert( rc == grb::SUCCESS );
+//#ifdef DEBUG
+				vector_print( sol, "sol" );
+//#endif
 
-			//     // e = -0.5 * sol^T * temp  –  h^T * sol
-			//     IOType dot1 = 0.0, dot2 = 0.0;
-			//     GRB_TRY( foldl( dot1, sol, temp, operators::add< IOType >(),
-			//                     operators::mul< IOType >() ) );
-			//     GRB_TRY( foldl( dot2, h, sol, operators::add< IOType >(),
-			//                     operators::mul< IOType >() ) );
 
-					energies[ iter ] = iter; // just for testing purposes 
-			//     energies[ iter ] = -0.5 * dot1 - dot2;
+			    // temp ← J * sol
+				rc = rc ? rc : grb::set( temp, ring.template getZero< IOType >() );
+				rc = rc ? rc : grb::mxv< descr_dense >( temp, J, sol, ring );
+				assert( rc == grb::SUCCESS );
+//#ifdef DEBUG
+				vector_print( temp, "temp = J * sol" );
+//#endif
+			    // e = -0.5 * sol.dot(temp)   –  h.dot(sol)
+			    IOType dot1 = 0.0, dot2 = 0.0;
+				rc = rc ? rc : grb::dot< descr_dense >( dot1, sol, temp, ring );
+				assert( rc == grb::SUCCESS );
+//#ifdef DEBUG
+				std::cout << "dot1: " << dot1 << '\n';
+//#endif
 
+				rc = rc ? rc : grb::dot< descr_dense >( dot2, h, sol, ring );
+				assert( rc == grb::SUCCESS );
+//#ifdef DEBUG
+				std::cout << "dot2: " << dot2 << '\n';
+//#endif
+
+				IOType e = -0.5 * dot1 - dot2;
+//#ifdef DEBUG
+				std::cout << "e: " << e << '\n';
+//#endif
+				energies[ iter ] = e;
 			    ps += dps;
 			}
 
