@@ -58,7 +58,8 @@ namespace grb {
 		// 		return ( x > 0 ) - ( x < 0 );
 		// 	}
 		// };
-		inline int sign(double x) {
+		template< typename IType, typename ReturnType >
+		inline ReturnType sign(IType x) {
 			return (x > 0) - (x < 0);
 		}
 
@@ -100,7 +101,7 @@ namespace grb {
 			grb::Vector< IOType, backend > & y_comp,                     // in/out, size N
 			const grb::Matrix< IsingHType, backend, RSI, RSI, NZI > & J, // NxN, symmetric
 			// TODO: make h const
-			grb::Vector< IOType, backend > & h,                    // size N
+			grb::Vector< IsingHType, backend > & h,                    // size N
 			const IOType p_init,
 			const IOType p_end,
 			const std::size_t num_iters,
@@ -108,8 +109,9 @@ namespace grb {
 			// workspace vectors
 			grb::Vector< IOType, backend > & Jx,
     		grb::Vector< IOType, backend > & temp,
+			grb::Vector< IsingHType, backend > & temp_int,
 			grb::Vector< bool, backend > & mask,
-			grb::Vector< IOType, backend > & sol,
+			grb::Vector< IsingHType, backend > & sol,
 			// default semiring, minus, divide
 			const Ring & ring = Ring(),
 			const Minus & minus = Minus(),
@@ -130,11 +132,8 @@ namespace grb {
 			// TODO: check that J is symmetric once properly implemented
 			//assert( grb::is_symmetric(J) );
 
-			// initialize workspace vectors
-			grb::set( Jx, ring.template getZero< IOType >() );
-			grb::set( temp, ring.template getZero< IOType >() );
-			grb::set( mask, false );
-			grb::set( sol, ring.template getZero< IOType >() );
+			grb::set( sol, ring.template getZero< IsingHType >() );
+			grb::set( mask, ring.template getZero< bool >() );
 
 			// print pinned vector x_comp
 			// for debugging purposes, print x_comp
@@ -154,10 +153,10 @@ namespace grb {
 			grb::RC rc = grb::SUCCESS;
 			/* ---- pre-compute ---- */
 			IOType sumJ2 = ring.template getZero< IOType >();
-			rc = rc ? rc : grb::eWiseLambda( [&J, &sumJ2, &ring]( const size_t i, const size_t j, IOType& v ) {
+			rc = rc ? rc : grb::eWiseLambda( [&J, &sumJ2, &ring]( const size_t i, const size_t j, IsingHType& v ) {
 				(void) i;
 				(void) j;
-				IOType v2;
+				IsingHType v2;
 				apply( v2, v, v, ring.getMultiplicativeOperator() );
 				foldl( sumJ2, v2, ring.getAdditiveOperator() );
 			}, J );
@@ -278,18 +277,18 @@ namespace grb {
 				// 	}, x_comp
 				// );
 				assert( rc == grb::SUCCESS );
-//#ifdef DEBUG
+#ifdef DEBUG
 				std::cout << "i =  " << iter << "\n ";
 				vector_print( x_comp, "x_comp_alp " );
 				vector_print( y_comp, "y_comp_alp" );
-//#endif
+#endif
 
 			    /* Energy evaluation */
 				// sol[i] = sign(x_comp[i]); which in graphblas is:
 				rc = rc ? rc : grb::eWiseLambda< descr_dense >( 
 					[&sol,&x_comp]( const size_t i ) {
 						(void) i;
-						sol[i] = sign(x_comp[i]);
+						sol[i] = sign<IOType, IsingHType>(x_comp[i]);
 					}, 
 					sol
 				);
@@ -300,15 +299,16 @@ namespace grb {
 
 
 			    // temp ← J * sol
-				rc = rc ? rc : grb::set( temp, ring.template getZero< IOType >() );
-				rc = rc ? rc : grb::mxv< descr_dense >( temp, J, sol, ring );
+				rc = rc ? rc : grb::set( temp_int, ring.template getZero< IsingHType >() );
+				rc = rc ? rc : grb::mxv< descr_dense >( temp_int, J, sol, ring );
 				assert( rc == grb::SUCCESS );
 #ifdef DEBUG
-				vector_print( temp, "temp = J * sol" );
+				vector_print( temp_int, "temp = J * sol" );
 #endif
 			    // e = -0.5 * sol.dot(temp)   –  h.dot(sol)
-			    IOType dot1 = 0.0, dot2 = 0.0;
-				rc = rc ? rc : grb::dot< descr_dense >( dot1, sol, temp, ring );
+			    IsingHType dot1 = 0;
+				IOType dot2 = 0;
+				rc = rc ? rc : grb::dot< descr_dense >( dot1, sol, temp_int, ring );
 				assert( rc == grb::SUCCESS );
 #ifdef DEBUG
 				std::cout << "dot1: " << dot1 << '\n';

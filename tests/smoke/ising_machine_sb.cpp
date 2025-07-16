@@ -52,12 +52,12 @@ static const size_t j_arr[ Nz ] = {
     0, 2, 3, 4, 5, 1, 4, 5, 6, 7, 9, 0, 2, 4, 6, 9, 0, 3, 4, 5, 6, 7, 8, 9, 0, 1, 2, 
     3, 4, 0, 1, 3, 5, 6, 8, 1, 2, 3, 5, 6, 1, 3, 7, 8, 9, 3, 5, 7, 8, 1, 2, 3, 7, 9
 };
-static const double v_arr[ Nz ] = { 
+static const int v_arr[ Nz ] = { 
     -1,  1,  1, -1, -1, -1, -1,  1,  1,  1,  1,  1, -1, -1, -1, -1,  1,  1,  1,  1, -1, -1,  1,  1, -1, -1, -1,  
     1,  1, -1,  1,  1, -1, -1, -1,  1, -1, -1, -1, -1,  1, -1, -1,  1, -1,  1, -1,  1,  1,  1, -1,  1, -1,  1
 };
 
-static const double  h_arr[ N ] = { 1, -1,  1, -1,  1,  1, -1,  1,  1,  1 };
+static const int h_arr[ N ] = { 1, -1,  1, -1,  1,  1, -1,  1,  1,  1 };
 static const double x_arr[ N ] = { -0.0996, -0.0315,  0.0572,  0.0630,  0.0087, -0.0143, -0.0170, -0.0411, 0.0433, -0.0298 };
 static const double y_arr[ N ] = {  0.0373,  0.0540,  0.0486, -0.0877, -0.0418, -0.0261,  0.0018, -0.0710, 0.0507, -0.0483 };
 
@@ -74,7 +74,7 @@ static const double energies_ref[ num_iters ] = {
 };
 
 using IOType = double;
-using JType = double;
+using JType = int;
 
 
 int main( int argc, char ** argv ) {
@@ -86,8 +86,8 @@ int main( int argc, char ** argv ) {
     }
 
     /* --- Problem setup (toy) --- */
-    grb::Matrix<IOType> J( N, N, Nz );
-    grb::Vector<IOType> h( N );
+    grb::Matrix<JType> J( N, N, Nz );
+    grb::Vector<JType> h( N );
     grb::Vector<IOType> x0( N ), y0( N ); // initialy 
     // ... populate J with test (random) values
     grb::RC rc = grb::SUCCESS;
@@ -116,12 +116,14 @@ int main( int argc, char ** argv ) {
 
 	grb::Vector< IOType > Jx( N );
     grb::Vector< IOType > temp( N );
+    grb::Vector< JType > temp_int( N );
 	grb::Vector< bool > mask( N );
-	grb::Vector< IOType > sol( N );
+    // TODO: make sol int type
+	grb::Vector< JType > sol( N );
 
     rc = rc ? rc : bSB(
         energies, x0, y0, J, h, p0, p1, num_iters, dt,
-        Jx, temp, mask, sol
+        Jx, temp, temp_int, mask, sol
     );
 
 
@@ -137,6 +139,8 @@ int main( int argc, char ** argv ) {
                 return -1;  
            }
         }
+        std::cout << "All energies match reference values.\n";
+        std::cout << "TEST OK\n"; 
     }
 
     grb::finalize();
