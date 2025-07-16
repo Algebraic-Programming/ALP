@@ -348,6 +348,37 @@ namespace grb {
 			ret = ret ? ret : grb::foldl< descr_dense >( r, temp, minus );
 			assert( ret == grb::SUCCESS );
 
+			// bnorm = b' * b;
+			bnorm = zero;
+			ret = ret ? ret : grb::dot< descr_dense >(
+					bnorm,
+					b, b,
+					ring.getAdditiveMonoid(),
+					grb::operators::conjugate_left_mul< IOType >()
+				);
+			assert( ret == grb::SUCCESS );
+
+			// get effective tolerance
+			if( ret == grb::SUCCESS ) {
+				tol *= std::sqrt( grb::utils::is_complex< IOType >::modulus( bnorm ) );
+			}
+
+			// get residual
+			alpha = zero;
+			ret = ret ? ret : grb::dot< descr_dense >(
+					alpha,
+					r, r,
+					ring.getAdditiveMonoid(),
+					grb::operators::conjugate_left_mul< IOType >()
+				);
+			assert( ret == grb::SUCCESS );
+			residual = grb::utils::is_complex< IOType >::modulus( alpha );
+
+			// check residual for early exit
+			if( ret == grb::SUCCESS ) {
+				if( sqrt( residual ) < tol ) { return ret; }
+			}
+
 			// z = M^-1r
 			if( preconditioned ) {
 				ret = ret ? ret : grb::set( z, 0 ); // also ensures z is dense, henceforth
@@ -374,19 +405,8 @@ namespace grb {
 
 			assert( ret == grb::SUCCESS );
 
-			// bnorm = b' * b;
-			bnorm = zero;
-			ret = ret ? ret : grb::dot< descr_dense >(
-				bnorm,
-				b, b,
-				ring.getAdditiveMonoid(),
-				grb::operators::conjugate_left_mul< IOType >() );
-			assert( ret == grb::SUCCESS );
-
-			// get effective tolerance and exit on any error during prelude
-			if( ret == grb::SUCCESS ) {
-				tol *= std::sqrt( grb::utils::is_complex< IOType >::modulus( bnorm ) );
-			} else {
+			// exit on any error during prelude
+			if( ret != grb::SUCCESS ) {
 				std::cerr << "Warning: preconditioned CG caught error during prelude ("
 					<< grb::toString( ret ) << ")\n";
 				return ret;
