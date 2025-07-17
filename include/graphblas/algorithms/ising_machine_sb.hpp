@@ -151,7 +151,7 @@ namespace grb {
 			grb::RC rc = grb::SUCCESS;
 			/* ---- pre-compute ---- */
 			IOType sumJ2 = ring.template getZero< IOType >();
-			rc = rc ? rc : grb::eWiseLambda( [&J, &sumJ2, &ring]( const size_t i, const size_t j, IsingHType& v ) {
+			rc = rc ? rc : grb::eWiseLambda( [&sumJ2, &ring]( const size_t i, const size_t j, IsingHType& v ) {
 				(void) i;
 				(void) j;
 				IsingHType v2;
@@ -168,10 +168,10 @@ namespace grb {
 #endif
 
 			// rewrite this to use graphblas language
-			rc = rc ? rc : grb::foldl( sumJ2, static_cast<IOType>( N - 1 ), divide );
+			rc = rc ? rc : grb::foldl< descr_dense >( sumJ2, static_cast<IOType>( N - 1 ), divide );
 			IOType xi = 0.5;
 			sumJ2 = sqrtX( sumJ2 );
-			rc = rc ? rc : grb::foldl( xi, sumJ2, divide );
+			rc = rc ? rc : grb::foldl< descr_dense >( xi, sumJ2, divide );
 #ifdef DEBUG_IMSB
 			// for debugging purposes, print xi
 			std::cout << "xi: " << xi << '\n';
@@ -243,8 +243,8 @@ namespace grb {
 			    rc = rc ? rc : grb::eWiseLambda< descr_dense >( [&mask, &x_comp]( const size_t i ) {
 					(void) i;
 					// rewrite this to use graphblas language
-					mask[i] = std::abs(x_comp[i]) > 1;
-					}, mask 
+					mask[i] = std::abs(x_comp[i]) <= 1;
+					}, mask, x_comp
 				);
 				assert( rc == grb::SUCCESS );
 #ifdef DEBUG_IMSB
@@ -252,19 +252,14 @@ namespace grb {
 #endif
 
 				// y_comp[ mask ] = 0
-			    rc = rc ? rc : grb::eWiseLambda< descr_dense >( [&mask, &y_comp]( const size_t i ) {
-					(void) i;
-					// rewrite this to use graphblas language
-					if(mask[i]) {
-						y_comp[i] = 0;
-					}
-					}, y_comp 
-				);
+				//rc = rc ? rc : grb::set< (descr_dense/* |descriptors::structural */) >( y_comp, mask, ring.template getZero< IOType >() );
+				rc = rc ? rc : grb::foldl< descr_dense >( y_comp, mask, ring.getMultiplicativeOperator() );
+
 				assert( rc == grb::SUCCESS );
 
 			    /* x_comp = clip( x_comp ) */
-				foldl( x_comp, static_cast<IOType>(-1), grb::operators::max < IOType >() );
-				foldl( x_comp, static_cast<IOType>(1), grb::operators::min < IOType >() );
+				foldl< descr_dense >( x_comp, static_cast<IOType>(-1), grb::operators::max < IOType >() );
+				foldl< descr_dense >( x_comp, static_cast<IOType>(1), grb::operators::min < IOType >() );
 				// alternatively, we could use eWiseLambda:
 				// rc = rc ? rc : grb::eWiseLambda< descr_dense >( 
 				// 	[&x_comp]( const size_t i ) {
@@ -288,14 +283,12 @@ namespace grb {
 						(void) i;
 						sol[i] = sign<IOType, IsingHType>(x_comp[i]);
 					}, 
-					sol
+					sol, x_comp
 				);
 				assert( rc == grb::SUCCESS );
 #ifdef DEBUG_IMSB
 				vector_print( sol, "sol" );
 #endif
-
-
 			    // temp ← J * sol
 				rc = rc ? rc : grb::set( temp_int, ring.template getZero< IsingHType >() );
 				rc = rc ? rc : grb::mxv< descr_dense >( temp_int, J, sol, ring );
