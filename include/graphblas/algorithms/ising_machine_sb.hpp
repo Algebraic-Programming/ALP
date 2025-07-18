@@ -228,7 +228,7 @@ namespace grb {
 			    rc = rc ? rc : grb::eWiseMul< descr_dense >( y_comp, dt, temp, ring );
 				assert( rc == grb::SUCCESS );
 #ifdef DEBUG_IMSB
-				vector_print( y_comp, "y_comp" );
+				vector_print( y_comp, "y_comp (a)" );
 #endif
 
 			    /* x_comp += dt * y_comp */
@@ -243,23 +243,25 @@ namespace grb {
 			    rc = rc ? rc : grb::eWiseLambda< descr_dense >( [&mask, &x_comp]( const size_t i ) {
 					(void) i;
 					// rewrite this to use graphblas language
-					mask[i] = std::abs(x_comp[i]) <= 1;
+					mask[i] = std::abs(x_comp[i]) > 1;
 					}, mask, x_comp
 				);
 				assert( rc == grb::SUCCESS );
 #ifdef DEBUG_IMSB
 				vector_print( mask, "mask" );
 #endif
-
-				// y_comp[ mask ] = 0
-				//rc = rc ? rc : grb::set< (descr_dense/* |descriptors::structural */) >( y_comp, mask, ring.template getZero< IOType >() );
-				rc = rc ? rc : grb::foldl< descr_dense >( y_comp, mask, ring.getMultiplicativeOperator() );
-
+				rc = rc ? rc : grb::foldl< descr_dense >(  
+					y_comp, mask, ring.template getZero< IOType >(), 
+					grb::operators::right_assign<bool,IOType,IOType>()
+				);
+#ifdef DEBUG_IMSB
+				vector_print( y_comp, "y_comp (b)" );
+#endif
 				assert( rc == grb::SUCCESS );
 
 			    /* x_comp = clip( x_comp ) */
-				foldl< descr_dense >( x_comp, static_cast<IOType>(-1), grb::operators::max < IOType >() );
-				foldl< descr_dense >( x_comp, static_cast<IOType>(1), grb::operators::min < IOType >() );
+				rc = rc ? rc : foldl< descr_dense >( x_comp, static_cast<IOType>(-1), grb::operators::max < IOType >() );
+				rc = rc ? rc : foldl< descr_dense >( x_comp, static_cast<IOType>(1), grb::operators::min < IOType >() );
 				// alternatively, we could use eWiseLambda:
 				// rc = rc ? rc : grb::eWiseLambda< descr_dense >( 
 				// 	[&x_comp]( const size_t i ) {
