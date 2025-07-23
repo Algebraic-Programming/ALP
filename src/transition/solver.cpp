@@ -431,6 +431,8 @@ static sparse_err_t sparse_cg_init_impl(
 	if( handle == nullptr || a == nullptr || ja == nullptr || ia == nullptr ) {
 		return NULL_ARGUMENT;
 	}
+	if( buffer == nullptr ) { return NULL_ARGUMENT; }
+	// TODO bounds-check bufferSize
 	try {
 		*handle = static_cast< void * >( new CG_Data< T, NZI, RSI >(
 			n, a, ja, ia, buffer, bufferSize, deleter ) );
@@ -480,6 +482,60 @@ static sparse_err_t sparse_cg_init_impl_no_buffer(
 		delete [] static_cast< char * >(buffer);
 	}
 	return rc;
+}
+
+sparse_err_t sparse_cg_manual_init_sii(
+	sparse_cg_handle_t * const handle, const size_t n,
+	const float * const a, const int * const ja, const int * const ia,
+	void * workspace, const size_t workspace_size
+) {
+	return sparse_cg_init_impl< float, int, int >( handle, n, a, ja, ia,
+		workspace, workspace_size, CGWorkspaceDeleter( false, false ) );
+}
+
+sparse_err_t sparse_cg_manual_init_dii(
+	sparse_cg_handle_t * const handle, const size_t n,
+	const double * const a, const int * const ja, const int * const ia,
+	void * workspace, const size_t workspace_size
+) {
+	return sparse_cg_init_impl< double, int, int >( handle, n, a, ja, ia,
+		workspace, workspace_size, CGWorkspaceDeleter( false, false ) );
+}
+
+sparse_err_t sparse_cg_manual_init_siz(
+	sparse_cg_handle_t * const handle, const size_t n,
+	const float * const a, const int * const ja, const size_t * const ia,
+	void * workspace, const size_t workspace_size
+) {
+	return sparse_cg_init_impl< float, size_t, int >( handle, n, a, ja, ia,
+		workspace, workspace_size, CGWorkspaceDeleter( false, false ) );
+}
+
+sparse_err_t sparse_cg_manual_init_diz(
+	sparse_cg_handle_t * const handle, const size_t n,
+	const double * const a, const int * const ja, const size_t * const ia,
+	void * workspace, const size_t workspace_size
+) {
+	return sparse_cg_init_impl< double, size_t, int >( handle, n, a, ja, ia,
+		workspace, workspace_size, CGWorkspaceDeleter( false, false ) );
+}
+
+sparse_err_t sparse_cg_manual_init_szz(
+	sparse_cg_handle_t * const handle, const size_t n,
+	const float * const a, const size_t * const ja, const size_t * const ia,
+	void * workspace, const size_t workspace_size
+) {
+	return sparse_cg_init_impl< float, size_t, size_t >( handle, n, a, ja, ia,
+		workspace, workspace_size, CGWorkspaceDeleter( false, false ) );
+}
+
+sparse_err_t sparse_cg_manual_init_dzz(
+	sparse_cg_handle_t * const handle, const size_t n,
+	const double * const a, const size_t * const ja, const size_t * const ia,
+	void * workspace, const size_t workspace_size
+) {
+	return sparse_cg_init_impl< double, size_t, size_t >( handle, n, a, ja, ia,
+		workspace, workspace_size, CGWorkspaceDeleter( false, false ) );
 }
 
 sparse_err_t sparse_cg_init_opt_sii(

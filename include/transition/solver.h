@@ -332,7 +332,7 @@ sparse_err_t sparse_cg_init_sii(
 sparse_err_t sparse_cg_manual_init_sii(
 	sparse_cg_handle_t * const handle, const size_t n,
 	const float * const a, const int * const ja, const int * const ia,
-	const void * workspace, const size_t workspace_size
+	void * workspace, const size_t workspace_size
 );
 
 /**
@@ -369,7 +369,7 @@ sparse_err_t sparse_cg_init_dii(
 sparse_err_t sparse_cg_manual_init_dii(
 	sparse_cg_handle_t * const handle, const size_t n,
 	const float * const a, const int * const ja, const int * const ia,
-	const void * workspace, const size_t workspace_size
+	void * workspace, const size_t workspace_size
 );
 
 /**
@@ -407,7 +407,7 @@ sparse_err_t sparse_cg_init_siz(
 sparse_err_t sparse_cg_manual_init_siz(
 	sparse_cg_handle_t * const handle, const size_t n,
 	const float * const a, const int * const ja, const int * const ia,
-	const void * workspace, const size_t workspace_size
+	void * workspace, const size_t workspace_size
 );
 
 /**
@@ -445,7 +445,7 @@ sparse_err_t sparse_cg_init_diz(
 sparse_err_t sparse_cg_manual_init_diz(
 	sparse_cg_handle_t * const handle, const size_t n,
 	const float * const a, const int * const ja, const int * const ia,
-	const void * workspace, const size_t workspace_size
+	void * workspace, const size_t workspace_size
 );
 
 /**
@@ -483,7 +483,7 @@ sparse_err_t sparse_cg_init_szz(
 sparse_err_t sparse_cg_manual_init_szz(
 	sparse_cg_handle_t * const handle, const size_t n,
 	const float * const a, const int * const ja, const int * const ia,
-	const void * workspace, const size_t workspace_size
+	void * workspace, const size_t workspace_size
 );
 
 /**
@@ -521,7 +521,7 @@ sparse_err_t sparse_cg_init_dzz(
 sparse_err_t sparse_cg_manual_init_dzz(
 	sparse_cg_handle_t * const handle, const size_t n,
 	const float * const a, const int * const ja, const int * const ia,
-	const void * workspace, const size_t workspace_size
+	void * workspace, const size_t workspace_size
 );
 
 /**
