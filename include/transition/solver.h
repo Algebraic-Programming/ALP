@@ -369,7 +369,7 @@ sparse_err_t sparse_cg_init_diz(
  *
  * @see #sparse_cg_init_sii for full documentation.
  */
-sparse_err_t sparse_cg_init_szz(
+sparse_err_t sparse_cg_init_opt_szz(
 	sparse_cg_handle_t * const handle, const size_t n,
 	const float * const a, const size_t * const ja, const size_t * const ia,
 	const bool precon, const bool numa
