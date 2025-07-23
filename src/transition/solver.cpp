@@ -367,12 +367,20 @@ class CG_Data {
 		 *         allocation.
 		 */
 		void setPreconditioner( const preconditioner_t in, void * const data ) {
-			if( grb::size( precond_workspace ) == 0 ) {
-				throw std::logic_error( "CG handle has no preconditioned solve support" );
-			}
 			preconditioner = in;
 			preconditioner_data = data;
 			assert( !( !preconditioner && preconditioner_data ) );
+			if( grb::size( precond_workspace ) == 0 ) {
+				// note -- using the ALP default vector allocation here is the only
+				// convenient option: otherwise has to implement buffer management
+				// for this vector only. If it is important that this vector be allocated
+				// without a SPA, then the user should set the precond hint to true.
+				grb::Vector< T > replace( size );
+				std::swap( replace, precond_workspace );
+				std::cerr << "Warning: allocating additional workspace to handle CG solves "
+					<< "with preconditioning. To prevent this on-demand allocation, set the "
+					<< "precond option during CG solver handle creation to true.\n";
+			}
 			assert( grb::size( precond_workspace ) == size );
 		}
 
@@ -886,9 +894,6 @@ static sparse_err_t sparse_cg_set_preconditioner_impl(
 	try {
 		static_cast< CG_Data< T, NZI, RSI > * >( handle )->
 			setPreconditioner( c_precond_p, c_precond_data_p );
-	} catch( std::logic_error &e ) {
-		std::cerr << e.what() << "\n";
-		return ILLEGAL_METHOD;
 	} catch( std::exception &e ) {
 		std::cerr << e.what() << "\n";
 		std::cerr << "This is an unexpected error; please submit a bug report\n";
