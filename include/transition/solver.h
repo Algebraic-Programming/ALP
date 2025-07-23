@@ -133,11 +133,6 @@ typedef enum {
 	ILLEGAL_ARGUMENT,
 
 	/**
-	 * Illegal method was called.
-	 */
-	ILLEGAL_METHOD,
-
-	/**
 	 * Out of memory error detected during call.
 	 */
 	OUT_OF_MEMORY,
