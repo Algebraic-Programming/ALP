@@ -260,6 +260,13 @@ typedef int (*sparse_cg_preconditioner_dxx_t) (
  * @returns #NO_ERROR         If initialisation of the handle proceeded
  *                            successfully. Only in this case shall \a handle
  *                            henceforth be a \em valid handle.
+ *
+ * On returning #NO_ERROR, \a handle shall correspond to an initialised (P)CG
+ * solver instance. Note that this handle contains workspace memory that are
+ * necessary for auxiliary vectors required by the CG algorithm. When
+ * preconditioning is employed, four such workspace vectors of size \a n are
+ * required; otherwise, only three such vectors are required. This memory will
+ * be freed on a call to #sparse_cg_destroy_sii.
  */
 sparse_err_t sparse_cg_init_opt_sii(
 	sparse_cg_handle_t * const handle, const size_t n,
@@ -268,7 +275,7 @@ sparse_err_t sparse_cg_init_opt_sii(
 );
 
 /**
- * Variant of #sparse_cg_init_sii that results in a #sparse_cg_handle_t with
+ * Variant of #sparse_cg_init_opt_sii that results in a #sparse_cg_handle_t with
  * default hints (with preconditioning and with NUMA).
  *
  * @see sparse_cg_init_opt_sii for full details.
@@ -276,6 +283,56 @@ sparse_err_t sparse_cg_init_opt_sii(
 sparse_err_t sparse_cg_init_sii(
 	sparse_cg_handle_t * const handle, const size_t n,
 	const float * const a, const int * const ja, const int * const ia
+);
+
+/**
+ * Variant of #sparse_cg_init_opt_sii that does not allocate workspace, but
+ * instead employs given user memory as its workspace memory.
+ *
+ * This variant of initialisation guarantees no additional dynamic memory
+ * allocation will be performed. A call to #sparse_cg_destroy_sii will likewise
+ * \em not free up the given \a workspace memory.
+ *
+ * @param[in,out] workspace The user-supplied memory that will be used as the
+ *                          work space for the returned PCG solver \a handle.
+ *
+ * Previous contents of the given \a workspace will be ignored, and, when given
+ * to this function, should be considered lost. On a successful call, the given
+ * memory should be considered to be under the sole custody of the PCG solver
+ * \a handle until the time the handle is destroyed; at that point, the
+ * ownership of the given memory will be returned to the callee. If the call to
+ * this function is not successful, the ownership of the memory region returns
+ * to the callee immediately. For as long as ownership of the memory region is
+ * not with the callee, the contents of the memory region are undefined.
+ *
+ * @param[in] workspace_size The size of the memory pointed to by \a workspace.
+ *
+ * The given workspace must have byte size greater than or equal to the value
+ * returned by a call to #sparse_cg_workspace_size_s.
+ *
+ * \note For variants that use double-precision values, the workspace must have
+ *       byte size greater than or equal to the value returned by a call to
+ *       #sparse_cg_workspace_size_d.
+ *
+ * \note Note that the hints that can be supplied to #sparse_cg_init_opt_sii
+ *       affect its internal workspace allocation mechanisms. Therefore, those
+ *       hints do not apply to this PCG solver initialisation variant.
+ *
+ * In addition to the possible return codes defined by #sparse_cg_init_opt_sii,
+ * a call to this variant may furthermore return:
+ *
+ * @returns #NULL_ARGUMENT    If \a workspace equals <tt>NULL</tt>.
+ * @returns #ILLEGAL_ARGUMENT If \a workspace_size is smaller than required.
+ *
+ * Different from the specification of #sparse_cg_init_opt_sii, this variant
+ * may never return #OUT_OF_MEMORY.
+ *
+ * For further details, see #sparse_cg_init_opt_sii.
+ */
+sparse_err_t sparse_cg_manual_init_sii(
+	sparse_cg_handle_t * const handle, const size_t n,
+	const float * const a, const int * const ja, const int * const ia,
+	const void * workspace, const size_t workspace_size
 );
 
 /**
@@ -293,7 +350,7 @@ sparse_err_t sparse_cg_init_opt_dii(
 );
 
 /**
- * Variant of #sparse_cg_init_dii that results in a #sparse_cg_handle_t with
+ * Variant of #sparse_cg_init_opt_dii that results in a #sparse_cg_handle_t with
  * default hints (with preconditioning and with NUMA).
  *
  * @see sparse_cg_init_opt_dii for full details.
@@ -301,6 +358,18 @@ sparse_err_t sparse_cg_init_opt_dii(
 sparse_err_t sparse_cg_init_dii(
 	sparse_cg_handle_t * const handle, const size_t n,
 	const double * const a, const int * const ja, const int * const ia
+);
+
+/**
+ * Variant of #sparse_cg_init_opt_dii that does not allocate workspace, but
+ * instead employs given user memory as its workspace memory.
+ *
+ * @see #sparse_cg_manual_init_sii for full details.
+ */
+sparse_err_t sparse_cg_manual_init_dii(
+	sparse_cg_handle_t * const handle, const size_t n,
+	const float * const a, const int * const ja, const int * const ia,
+	const void * workspace, const size_t workspace_size
 );
 
 /**
@@ -319,7 +388,7 @@ sparse_err_t sparse_cg_init_opt_siz(
 );
 
 /**
- * Variant of #sparse_cg_init_siz that results in a #sparse_cg_handle_t with
+ * Variant of #sparse_cg_init_opt_siz that results in a #sparse_cg_handle_t with
  * default hints (with preconditioning and with NUMA).
  *
  * @see sparse_cg_init_opt_siz for full details.
@@ -327,6 +396,18 @@ sparse_err_t sparse_cg_init_opt_siz(
 sparse_err_t sparse_cg_init_siz(
 	sparse_cg_handle_t * const handle, const size_t n,
 	const float * const a, const int * const ja, const size_t * const ia
+);
+
+/**
+ * Variant of #sparse_cg_init_opt_siz that does not allocate workspace, but
+ * instead employs given user memory as its workspace memory.
+ *
+ * @see #sparse_cg_manual_init_sii for full details.
+ */
+sparse_err_t sparse_cg_manual_init_siz(
+	sparse_cg_handle_t * const handle, const size_t n,
+	const float * const a, const int * const ja, const int * const ia,
+	const void * workspace, const size_t workspace_size
 );
 
 /**
@@ -345,7 +426,7 @@ sparse_err_t sparse_cg_init_opt_diz(
 );
 
 /**
- * Variant of #sparse_cg_init_diz that results in a #sparse_cg_handle_t with
+ * Variant of #sparse_cg_init_opt_diz that results in a #sparse_cg_handle_t with
  * default hints (with preconditioning and with NUMA).
  *
  * @see sparse_cg_init_opt_diz for full details.
@@ -353,6 +434,18 @@ sparse_err_t sparse_cg_init_opt_diz(
 sparse_err_t sparse_cg_init_diz(
 	sparse_cg_handle_t * const handle, const size_t n,
 	const double * const a, const int * const ja, const size_t * const ia
+);
+
+/**
+ * Variant of #sparse_cg_init_opt_siz that does not allocate workspace, but
+ * instead employs given user memory as its workspace memory.
+ *
+ * @see #sparse_cg_manual_init_sii for full details.
+ */
+sparse_err_t sparse_cg_manual_init_diz(
+	sparse_cg_handle_t * const handle, const size_t n,
+	const float * const a, const int * const ja, const int * const ia,
+	const void * workspace, const size_t workspace_size
 );
 
 /**
@@ -371,7 +464,7 @@ sparse_err_t sparse_cg_init_opt_szz(
 );
 
 /**
- * Variant of #sparse_cg_init_szz that results in a #sparse_cg_handle_t with
+ * Variant of #sparse_cg_init_opt_szz that results in a #sparse_cg_handle_t with
  * default hints (with preconditioning and with NUMA).
  *
  * @see sparse_cg_init_opt_szz for full details.
@@ -379,6 +472,18 @@ sparse_err_t sparse_cg_init_opt_szz(
 sparse_err_t sparse_cg_init_szz(
 	sparse_cg_handle_t * const handle, const size_t n,
 	const float * const a, const size_t * const ja, const size_t * const ia
+);
+
+/**
+ * Variant of #sparse_cg_init_opt_siz that does not allocate workspace, but
+ * instead employs given user memory as its workspace memory.
+ *
+ * @see #sparse_cg_manual_init_sii for full details.
+ */
+sparse_err_t sparse_cg_manual_init_szz(
+	sparse_cg_handle_t * const handle, const size_t n,
+	const float * const a, const int * const ja, const int * const ia,
+	const void * workspace, const size_t workspace_size
 );
 
 /**
@@ -397,15 +502,73 @@ sparse_err_t sparse_cg_init_opt_dzz(
 );
 
 /**
- * Variant of #sparse_cg_init_dzz that results in a #sparse_cg_handle_t with
+ * Variant of #sparse_cg_init_opt_dzz that results in a #sparse_cg_handle_t with
  * default hints (with preconditioning and with NUMA).
  *
  * @see sparse_cg_init_opt_dzz for full details.
  */
-sparse_err_t sparse_cg_init_nop_dzz(
+sparse_err_t sparse_cg_init_dzz(
 	sparse_cg_handle_t * const handle, const size_t n,
 	const double * const a, const size_t * const ja, const size_t * const ia
 );
+
+/**
+ * Variant of #sparse_cg_init_opt_siz that does not allocate workspace, but
+ * instead employs given user memory as its workspace memory.
+ *
+ * @see #sparse_cg_manual_init_sii for full details.
+ */
+sparse_err_t sparse_cg_manual_init_dzz(
+	sparse_cg_handle_t * const handle, const size_t n,
+	const float * const a, const int * const ja, const int * const ia,
+	const void * workspace, const size_t workspace_size
+);
+
+/**
+ * Returns the minimum workspace size required when manually supplying a
+ * workspace for PCG solvers to initialise with.
+ *
+ * Those so-called manual initialisation functions are the following:
+ *  - #sparse_cg_manual_init_sii,
+ *  - #sparse_cg_manual_init_siz, and
+ *  - #sparse_cg_manual_init_szz.
+ *
+ * @param[in] precon Whether the solver is expected to use a preconditioner.
+ *
+ * \note If preconditioning is required, the solver requires a larger work
+ *       space. Note, however, that even if not enough workspace is supplied
+ *       for a preconditioned solve, nonetheless requesting a preconditioned
+ *       solve will still execute -- it will then dynamically allocate memory
+ *       on the fly.
+ *
+ * A call to this function never fails.
+ *
+ * @returns The workspace size in bytes.
+ */
+size_t sparse_cg_workspace_size_s( const bool precon );
+
+/**
+ * Returns the minimum workspace size required when manually supplying a
+ * workspace for PCG solvers to initialise with.
+ *
+ * Those so-called manual initialisation functions are the following:
+ *  - #sparse_cg_manual_init_dii,
+ *  - #sparse_cg_manual_init_diz, and
+ *  - #sparse_cg_manual_init_dzz.
+ *
+ * @param[in] precon Whether the solver is expected to use a preconditioner.
+ *
+ * \note If preconditioning is required, the solver requires a larger work
+ *       space. Note, however, that even if not enough workspace is supplied
+ *       for a preconditioned solve, nonetheless requesting a preconditioned
+ *       solve will still execute -- it will then dynamically allocate memory
+ *       on the fly.
+ *
+ * A call to this function never fails.
+ *
+ * @returns The workspace size in bytes.
+ */
+size_t sparse_cg_workspace_size_d( const bool precon );
 
 // Note that szi and dzi are skipped on purpose. Such variants would not seem
 // sensible, though could easily be provided if they do turn out to be needed
