@@ -474,112 +474,106 @@ static sparse_err_t sparse_cg_init_impl_no_buffer(
 	return rc;
 }
 
-sparse_err_t sparse_cg_init_nop_sii(
+sparse_err_t sparse_cg_init_opt_sii(
 	sparse_cg_handle_t * const handle, const size_t n,
 	const float * const a, const int * const ja, const int * const ia,
-	const bool numa
+	const bool precond, const bool numa
 ) {
 	return sparse_cg_init_impl_no_buffer< float, int, int >( handle, n, a, ja, ia,
-		false, numa );
+		precond, numa );
 }
 
-sparse_err_t sparse_cg_init_nop_dii(
+sparse_err_t sparse_cg_init_opt_dii(
 	sparse_cg_handle_t * const handle, const size_t n,
 	const double * const a, const int * const ja, const int * const ia,
-	const bool numa
+	const bool precond, const bool numa
 ) {
 	return sparse_cg_init_impl_no_buffer< double, int, int >( handle, n, a, ja, ia,
-		false, numa );
+		precond, numa );
 }
 
-sparse_err_t sparse_cg_init_nop_siz(
+sparse_err_t sparse_cg_init_opt_siz(
 	sparse_cg_handle_t * const handle, const size_t n,
 	const float * const a, const int * const ja, const size_t * const ia,
-	const bool numa
+	const bool precond, const bool numa
 ) {
 	return sparse_cg_init_impl_no_buffer< float, size_t, int >( handle, n, a, ja,
-		ia, false, numa );
+		ia, precond, numa );
 }
 
-sparse_err_t sparse_cg_init_nop_diz(
+sparse_err_t sparse_cg_init_opt_diz(
 	sparse_cg_handle_t * const handle, const size_t n,
 	const double * const a, const int * const ja, const size_t * const ia,
-	const bool numa
+	const bool precond, const bool numa
 ) {
 	return sparse_cg_init_impl_no_buffer< double, size_t, int >( handle, n, a, ja,
-		ia, false, numa );
+		ia, precond, numa );
 }
 
-sparse_err_t sparse_cg_init_nop_szz(
+sparse_err_t sparse_cg_init_opt_szz(
 	sparse_cg_handle_t * const handle, const size_t n,
 	const float * const a, const size_t * const ja, const size_t * const ia,
-	const bool numa
+	const bool precond, const bool numa
 ) {
 	return sparse_cg_init_impl_no_buffer< float, size_t, size_t >( handle, n, a, ja,
-		ia, false, numa );
+		ia, precond, numa );
 }
 
-sparse_err_t sparse_cg_init_nop_dzz(
+sparse_err_t sparse_cg_init_opt_dzz(
 	sparse_cg_handle_t * const handle, const size_t n,
 	const double * const a, const size_t * const ja, const size_t * const ia,
-	const bool numa
+	const bool precond, const bool numa
 ) {
 	return sparse_cg_init_impl_no_buffer< double, size_t, size_t >( handle, n, a, ja,
-		ia, false, numa );
+		ia, precond, numa );
 }
 
 sparse_err_t sparse_cg_init_sii(
 	sparse_cg_handle_t * const handle, const size_t n,
-	const float * const a, const int * const ja, const int * const ia,
-	const bool numa
+	const float * const a, const int * const ja, const int * const ia
 ) {
 	return sparse_cg_init_impl_no_buffer< float, int, int >( handle, n, a, ja, ia,
-		true, numa );
+		true, true );
 }
 
 sparse_err_t sparse_cg_init_dii(
 	sparse_cg_handle_t * const handle, const size_t n,
-	const double * const a, const int * const ja, const int * const ia,
-	const bool numa
+	const double * const a, const int * const ja, const int * const ia
 ) {
 	return sparse_cg_init_impl_no_buffer< double, int, int >( handle, n, a, ja, ia,
-		true, numa );
+		true, true );
 }
 
 sparse_err_t sparse_cg_init_siz(
 	sparse_cg_handle_t * const handle, const size_t n,
-	const float * const a, const int * const ja, const size_t * const ia,
-	const bool numa
+	const float * const a, const int * const ja, const size_t * const ia
 ) {
 	return sparse_cg_init_impl_no_buffer< float, size_t, int >( handle, n, a, ja,
-		ia, true, numa );
+		ia, true, true );
 }
 
 sparse_err_t sparse_cg_init_diz(
 	sparse_cg_handle_t * const handle, const size_t n,
-	const double * const a, const int * const ja, const size_t * const ia,
-	const bool numa
+	const double * const a, const int * const ja, const size_t * const ia
 ) {
 	return sparse_cg_init_impl_no_buffer< double, size_t, int >( handle, n, a, ja,
-		ia, true, numa );
+		ia, true, true );
 }
 
 sparse_err_t sparse_cg_init_szz(
 	sparse_cg_handle_t * const handle, const size_t n,
-	const float * const a, const size_t * const ja, const size_t * const ia,
-	const bool numa
+	const float * const a, const size_t * const ja, const size_t * const ia
 ) {
 	return sparse_cg_init_impl_no_buffer< float, size_t, size_t >( handle, n, a, ja,
-		ia, true, numa );
+		ia, true, true );
 }
 
 sparse_err_t sparse_cg_init_dzz(
 	sparse_cg_handle_t * const handle, const size_t n,
-	const double * const a, const size_t * const ja, const size_t * const ia,
-	const bool numa
+	const double * const a, const size_t * const ja, const size_t * const ia
 ) {
 	return sparse_cg_init_impl_no_buffer< double, size_t, size_t >( handle, n, a, ja,
-		ia, true, numa );
+		ia, true, true );
 }
 
 template< typename T, typename NZI, typename RSI >
