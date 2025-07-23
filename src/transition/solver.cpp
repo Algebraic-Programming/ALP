@@ -435,7 +435,9 @@ static sparse_err_t sparse_cg_init_impl(
 		return NULL_ARGUMENT;
 	}
 	if( buffer == nullptr ) { return NULL_ARGUMENT; }
-	// TODO bounds-check bufferSize
+	if( bufferSize < CG_Data< T, NZI, RSI >::workspaceSize( n, false ) ) {
+		return ILLEGAL_ARGUMENT;
+	}
 	try {
 		*handle = static_cast< void * >( new CG_Data< T, NZI, RSI >(
 			n, a, ja, ia, buffer, bufferSize, deleter ) );
