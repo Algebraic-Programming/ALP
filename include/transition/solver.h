@@ -533,6 +533,8 @@ sparse_err_t sparse_cg_manual_init_dzz(
  *  - #sparse_cg_manual_init_siz, and
  *  - #sparse_cg_manual_init_szz.
  *
+ * @param[in] n      The maximum system size the solver will be initialised
+ *                   with.
  * @param[in] precon Whether the solver is expected to use a preconditioner.
  *
  * \note If preconditioning is required, the solver requires a larger work
@@ -545,7 +547,7 @@ sparse_err_t sparse_cg_manual_init_dzz(
  *
  * @returns The workspace size in bytes.
  */
-size_t sparse_cg_workspace_size_s( const bool precon );
+size_t sparse_cg_workspace_size_s( const size_t n, const bool precon );
 
 /**
  * Returns the minimum workspace size required when manually supplying a
@@ -556,6 +558,8 @@ size_t sparse_cg_workspace_size_s( const bool precon );
  *  - #sparse_cg_manual_init_diz, and
  *  - #sparse_cg_manual_init_dzz.
  *
+ * @param[in] n      The maximum system size the solver will be initialised
+ *                   with.
  * @param[in] precon Whether the solver is expected to use a preconditioner.
  *
  * \note If preconditioning is required, the solver requires a larger work
@@ -568,7 +572,7 @@ size_t sparse_cg_workspace_size_s( const bool precon );
  *
  * @returns The workspace size in bytes.
  */
-size_t sparse_cg_workspace_size_d( const bool precon );
+size_t sparse_cg_workspace_size_d( const size_t n, const bool precon );
 
 // Note that szi and dzi are skipped on purpose. Such variants would not seem
 // sensible, though could easily be provided if they do turn out to be needed

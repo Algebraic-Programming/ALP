@@ -206,10 +206,12 @@ class CG_Data {
 		 *           per both the C and C++ specifications.
 		 */
 		static size_t workspaceSize( const size_t n, const bool preconditioned ) {
+			static_assert( grb::config::CACHE_LINE_SIZE::value() >= sizeof(int),
+				"Unhandled padding case; please submit a bug report" );
 			if( preconditioned ) {
-				return 4 * n * sizeof( T ) + 3 * sizeof( int );
+				return 4 * n * sizeof( T ) + 3 * grb::config::CACHE_LINE_SIZE::value();
 			} else {
-				return 3 * n * sizeof( T ) + 2 * sizeof( int );
+				return 3 * n * sizeof( T ) + 2 * grb::config::CACHE_LINE_SIZE::value();
 			}
 		}
 
@@ -260,9 +262,10 @@ class CG_Data {
 			assert( a != nullptr );
 			assert( ja != nullptr );
 			assert( ia != nullptr );
-			constexpr size_t align = (64 % sizeof(int) == 0)
-				?  64
-				: (64 + (sizeof(int) - (64 % sizeof(int))));
+			constexpr size_t L = grb::config::CACHE_LINE_SIZE::value();
+			constexpr size_t align = (L % sizeof(int) == 0)
+				?  L
+				: (L + (sizeof(int) - (L % sizeof(int))));
 			if( buffer_size < workspaceSize( n, false ) ) {
 				throw std::invalid_argument( "The given buffer size is too small" );
 			}
@@ -445,6 +448,14 @@ static sparse_err_t sparse_cg_init_impl(
 	return NO_ERROR;
 }
 
+size_t sparse_cg_workspace_size_s( const size_t n, const bool precon ) {
+	return CG_Data< float, size_t, size_t >::workspaceSize( n, precon );
+}
+
+size_t sparse_cg_workspace_size_d( const size_t n, const bool precon ) {
+	return CG_Data< double, size_t, size_t >::workspaceSize( n, precon );
+}
+
 template< typename T, typename NZI, typename RSI >
 static sparse_err_t sparse_cg_init_impl_no_buffer(
 	sparse_cg_handle_t * const handle, const size_t n,
@@ -452,7 +463,7 @@ static sparse_err_t sparse_cg_init_impl_no_buffer(
 	const bool support_preconditioning, const bool numa
 ) {
 	const size_t allocSize = CG_Data< T, NZI, RSI >::
-		workspaceSize( n, support_preconditioning ) + 256; // TODO hide this const
+		workspaceSize( n, support_preconditioning );
 	void * buffer = nullptr;
 #ifdef _GRB_NO_LIBNUMA
 	if( numa ) {
