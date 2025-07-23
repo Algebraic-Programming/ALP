@@ -205,7 +205,9 @@ class CG_Data {
 		 * \internal Note that the space for two additional integers is required as
 		 *           per both the C and C++ specifications.
 		 */
-		static size_t workspaceSize( const size_t n, const bool preconditioned ) {
+		static size_t workspaceSize(
+			const size_t n, const bool preconditioned
+		) noexcept {
 			static_assert( grb::config::CACHE_LINE_SIZE::value() >= sizeof(int),
 				"Unhandled padding case; please submit a bug report" );
 			if( preconditioned ) {

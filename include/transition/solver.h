@@ -341,7 +341,7 @@ sparse_err_t sparse_cg_manual_init_sii(
  * This variant is for double-precision floating point nonzeroes and integer
  * \a ja and \a ia arrays, as also indicated by the <tt>dii</tt> postfix.
  *
- * @see #sparse_cg_init_sii for full documentation.
+ * @see #sparse_cg_init_opt_sii for full documentation.
  */
 sparse_err_t sparse_cg_init_opt_dii(
 	sparse_cg_handle_t * const handle, const size_t n,
@@ -368,7 +368,7 @@ sparse_err_t sparse_cg_init_dii(
  */
 sparse_err_t sparse_cg_manual_init_dii(
 	sparse_cg_handle_t * const handle, const size_t n,
-	const float * const a, const int * const ja, const int * const ia,
+	const double * const a, const int * const ja, const int * const ia,
 	void * workspace, const size_t workspace_size
 );
 
@@ -379,7 +379,7 @@ sparse_err_t sparse_cg_manual_init_dii(
  * <tt>size_t</tt>-valued \a ja, and integer-valued \a ia, as also indicated by
  * the <tt>siz</tt> postfix.
  *
- * @see #sparse_cg_init_sii for full documentation.
+ * @see #sparse_cg_init_opt_sii for full documentation.
  */
 sparse_err_t sparse_cg_init_opt_siz(
 	sparse_cg_handle_t * const handle, const size_t n,
@@ -406,7 +406,7 @@ sparse_err_t sparse_cg_init_siz(
  */
 sparse_err_t sparse_cg_manual_init_siz(
 	sparse_cg_handle_t * const handle, const size_t n,
-	const float * const a, const int * const ja, const int * const ia,
+	const float * const a, const int * const ja, const size_t * const ia,
 	void * workspace, const size_t workspace_size
 );
 
@@ -417,7 +417,7 @@ sparse_err_t sparse_cg_manual_init_siz(
  * <tt>size_t</tt>-valued \a ja, and integer-valued \a ia, as also indicated by
  * the <tt>diz</tt> postfix.
  *
- * @see #sparse_cg_init_sii for full documentation.
+ * @see #sparse_cg_init_opt_sii for full documentation.
  */
 sparse_err_t sparse_cg_init_opt_diz(
 	sparse_cg_handle_t * const handle, const size_t n,
@@ -444,7 +444,7 @@ sparse_err_t sparse_cg_init_diz(
  */
 sparse_err_t sparse_cg_manual_init_diz(
 	sparse_cg_handle_t * const handle, const size_t n,
-	const float * const a, const int * const ja, const int * const ia,
+	const double * const a, const int * const ja, const size_t * const ia,
 	void * workspace, const size_t workspace_size
 );
 
@@ -455,7 +455,7 @@ sparse_err_t sparse_cg_manual_init_diz(
  * <tt>size_t</tt>-valued \a ja and \a ia, as also indicated by the <tt>szz</tt>
  * postfix.
  *
- * @see #sparse_cg_init_sii for full documentation.
+ * @see #sparse_cg_init_opt_sii for full documentation.
  */
 sparse_err_t sparse_cg_init_opt_szz(
 	sparse_cg_handle_t * const handle, const size_t n,
@@ -482,7 +482,7 @@ sparse_err_t sparse_cg_init_szz(
  */
 sparse_err_t sparse_cg_manual_init_szz(
 	sparse_cg_handle_t * const handle, const size_t n,
-	const float * const a, const int * const ja, const int * const ia,
+	const float * const a, const size_t * const ja, const size_t * const ia,
 	void * workspace, const size_t workspace_size
 );
 
@@ -493,7 +493,7 @@ sparse_err_t sparse_cg_manual_init_szz(
  * <tt>size_t</tt>-valued \a ja and \a ia, as also indicated by the <tt>dzz</tt>
  * postfix.
  *
- * @see #sparse_cg_init_sii for full documentation.
+ * @see #sparse_cg_init_opt_sii for full documentation.
  */
 sparse_err_t sparse_cg_init_opt_dzz(
 	sparse_cg_handle_t * const handle, const size_t n,
@@ -520,7 +520,7 @@ sparse_err_t sparse_cg_init_dzz(
  */
 sparse_err_t sparse_cg_manual_init_dzz(
 	sparse_cg_handle_t * const handle, const size_t n,
-	const float * const a, const int * const ja, const int * const ia,
+	const double * const a, const size_t * const ja, const size_t * const ia,
 	void * workspace, const size_t workspace_size
 );
 
