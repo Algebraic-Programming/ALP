@@ -37,11 +37,15 @@
  */
 
 /**
- * Implements the various ways the CG workspace data may be freed.
+ * Implements the various ways the CG workspace data may (or may not) be freed.
  *
- * At the moment, always assumes that the workspace buffer is allocated by the
- * transition path itself, using the standard C++ array allocation mechanism.
- * The matching deleter action employs the matching standard C++ array deleter.
+ * This deleter at present considers that
+ *  -# the solver does not own the workspace data (and hence may not free it);
+ *  -# the solver has allocated the workspace data using standard C++ array
+ *     allocation mechanisms, for which this class provides the matching
+ *     standard C++ array deleter; and
+ *  -# the solver has allocated the workspace data using libNUMA, for which this
+ *     class provides a call to the matching libNUMA free.
  */
 class CGWorkspaceDeleter {
 
@@ -53,18 +57,44 @@ class CGWorkspaceDeleter {
 		/**
 		 * Whether the workspace data was allocated NUMA-aware, and if so, what the
 		 * allocation size was.
+		 *
+		 * \note The allocation size is required for a call to the libNUMA free
+		 *       function.
 		 */
 		const size_t numa;
 
 
 	public:
 
+		/** Default construction is not allowed. */
 		CGWorkspaceDeleter() = delete;
 
-		CGWorkspaceDeleter( const bool &owning_in, const size_t &numa_in ) :
+		/**
+		 * Explicit constructor that requires all information necessary to determine
+		 * how the workspace should be deleted.
+		 *
+		 * @param[in] owning_in Whether the solver owns the workspace buffer.
+		 * @param[in] numa_in   Zero if libNUMA was not used for allocating the
+		 *                      workspace bufer, and the allocation size otherwise.
+		 *
+		 * If \a owning_in is <tt>false</tt>, the input to \a numa_in is ignored.
+		 *
+		 * \note In that case, the user is reponsible for freeing memory, which indeed
+		 *       could have been done in a myriad of other ways besides those this
+		 *       deleter knows about.
+		 *
+		 * \internal In case ALP is compiled without libNUMA support, the standard C++
+		 *           array mechanism will be assumed always.
+		 */
+		CGWorkspaceDeleter( const bool &owning_in, const size_t &numa_in ) noexcept :
 			owning( owning_in ), numa( numa_in )
 		{}
 
+		/**
+		 * Implements the correct action for freeing the workspace data.
+		 *
+		 * @param[in] ptr Pointer to the workspace memory to be deleted.
+		 */
 		void operator()( void * ptr ) {
 			assert( !( !owning && numa ) );
 			if( owning ) {
@@ -83,6 +113,11 @@ class CGWorkspaceDeleter {
 };
 
 /**
+ * The class behind the PCG solver handle.
+ *
+ * More precisely, a valid PCG solver handle is a C void pointer to an instance
+ * of this class.
+ *
  * @tparam T   The nonzero value type.
  * @tparam NZI The nonzero index type.
  * @tparam RSI The row and column index type.
@@ -197,13 +232,19 @@ class CG_Data {
 		 * The size, in bytes, required as a work space for the PCG algorithm.
 		 *
 		 * @param[in] n The linear system size.
-		 * @param[in] preconditioned Whether the solver may be called with a
-		 *                           preconditioner.
+		 * @param[in] preconditioned Whether the solver is expected to be called with
+		 *                           a preconditioner.
 		 *
 		 * @returns The required size, in bytes.
 		 *
 		 * \internal Note that the space for two additional integers is required as
-		 *           per both the C and C++ specifications.
+		 *           per both the C and C++ specifications. However, we here also
+		 *           prevent false sharing between different workspace vectors, and so
+		 *           actually align on the cache line size boundary.
+		 *
+		 * \warning The current implementation assumes that the cache line size is a
+		 *          multiple of <tt>sizeof(int)</tt>. If this assertion ever fails,
+		 *          an error will be thrown at compile time (<tt>static_assert</tt>).
 		 */
 		static size_t workspaceSize(
 			const size_t n, const bool preconditioned
@@ -239,15 +280,19 @@ class CG_Data {
 		 *                   to this constructor.
 		 *
 		 * @param[in] buffer_size The size of the given \a buffer. Used for sanity
-		 *                        checking the use of the buffer.
+		 *                        checking the intended use of the buffer.
 		 *
 		 * @param[in] buffer_deleter How the given \a buffer should be deleted on
 		 *                           destruction of this instance.
 		 *
-		 * \note If the buffer is not to be owned by this instance, then a no-op
-		 *       \a buffer_deleter should be given.
+		 * \note If the buffer is not to be owned by this instance, then a non-owning
+		 *       \a buffer_deleter should be given; see #CGWorkspaceDeleter for
+		 *       details.
 		 *
-		 * \warning The sanity check is weaker if not compiled in debug mode.
+		 * \internal The sanity check is weaker if not compiled in debug mode so
+		 *           should be done explicitly \em before entering this constructor.
+		 *
+		 * \internal This constructor may throw exceptions.
 		 */
 		CG_Data(
 			const size_t n,
@@ -494,7 +539,15 @@ static sparse_err_t sparse_cg_init_impl_no_buffer(
 		CGWorkspaceDeleter( true, numa ? allocSize : 0 )
 	);
 	if( rc != NO_ERROR ) {
-		delete [] static_cast< char * >(buffer);
+#ifndef _GRB_NO_LIBNUMA
+		if( numa ) {
+			numa_free( buffer, allocSize );
+		} else {
+#endif
+			delete [] static_cast< char * >(buffer);
+#ifndef _GRB_NO_LIBNUMA
+		}
+#endif
 	}
 	return rc;
 }
@@ -965,10 +1018,11 @@ static sparse_err_t sparse_cg_set_preconditioner_impl(
 	try {
 		static_cast< CG_Data< T, NZI, RSI > * >( handle )->
 			setPreconditioner( c_precond_p, c_precond_data_p );
-	} catch( std::exception &e ) {
-		std::cerr << e.what() << "\n";
-		std::cerr << "This is an unexpected error; please submit a bug report\n";
-		return UNKNOWN;
+	} catch( ... ) {
+		// by virtue of the ALP interface guarantees, the only possible exception is
+		// due to out-of-memory conditions (when allocating an on-demand vector
+		// workspace for preconditioned solves).
+		return OUT_OF_MEMORY;
 	}
 	return NO_ERROR;
 }
