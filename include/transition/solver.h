@@ -303,7 +303,8 @@ sparse_err_t sparse_cg_init_sii(
  * ownership of the given memory will be returned to the callee. If the call to
  * this function is not successful, the ownership of the memory region returns
  * to the callee immediately. For as long as ownership of the memory region is
- * not with the callee, the contents of the memory region are undefined.
+ * not with the callee, the contents of the memory region are undefined while
+ * code not controlled by ALP is not allowed to write into the memory region.
  *
  * @param[in] workspace_size The size of the memory pointed to by \a workspace.
  *
@@ -316,7 +317,7 @@ sparse_err_t sparse_cg_init_sii(
  *
  * \note Note that the hints that can be supplied to #sparse_cg_init_opt_sii
  *       affect its internal workspace allocation mechanisms. Therefore, those
- *       hints do not apply to this PCG solver initialisation variant.
+ *       hints do not apply to this manual PCG solver initialisation variant.
  *
  * In addition to the possible return codes defined by #sparse_cg_init_opt_sii,
  * a call to this variant may furthermore return:
@@ -532,20 +533,21 @@ sparse_err_t sparse_cg_manual_init_dzz(
  *  - #sparse_cg_manual_init_sii,
  *  - #sparse_cg_manual_init_siz, and
  *  - #sparse_cg_manual_init_szz.
+ * This is the variant for PCG solvers that operate on single-precision values.
  *
  * @param[in] n      The maximum system size the solver will be initialised
  *                   with.
  * @param[in] precon Whether the solver is expected to use a preconditioner.
  *
  * \note If preconditioning is required, the solver requires a larger work
- *       space. Note, however, that even if not enough workspace is supplied
- *       for a preconditioned solve, nonetheless requesting a preconditioned
- *       solve will still execute -- it will then dynamically allocate memory
- *       on the fly.
+ *       space. Note, however, that even if initially not enough workspace is
+ *       supplied for a preconditioned solve, nonetheless requesting a
+ *       preconditioned solve will still execute -- it will then dynamically
+ *       allocate memory on the fly.
  *
  * A call to this function never fails.
  *
- * @returns The workspace size in bytes.
+ * @returns The required workspace size in bytes.
  */
 size_t sparse_cg_workspace_size_s( const size_t n, const bool precon );
 
@@ -557,20 +559,21 @@ size_t sparse_cg_workspace_size_s( const size_t n, const bool precon );
  *  - #sparse_cg_manual_init_dii,
  *  - #sparse_cg_manual_init_diz, and
  *  - #sparse_cg_manual_init_dzz.
+ * This is the variant for PCG solvers that operate on double-precision values.
  *
  * @param[in] n      The maximum system size the solver will be initialised
  *                   with.
  * @param[in] precon Whether the solver is expected to use a preconditioner.
  *
  * \note If preconditioning is required, the solver requires a larger work
- *       space. Note, however, that even if not enough workspace is supplied
- *       for a preconditioned solve, nonetheless requesting a preconditioned
- *       solve will still execute -- it will then dynamically allocate memory
- *       on the fly.
+ *       space. Note, however, that even if initially not enough workspace is
+ *       supplied for a preconditioned solve, nonetheless requesting a
+ *       preconditioned solve will still execute -- it will then dynamically
+ *       allocate memory on the fly.
  *
  * A call to this function never fails.
  *
- * @returns The workspace size in bytes.
+ * @returns The required workspace size in bytes.
  */
 size_t sparse_cg_workspace_size_d( const size_t n, const bool precon );
 
