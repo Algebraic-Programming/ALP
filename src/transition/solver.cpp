@@ -16,11 +16,14 @@
  */
 
 
-#include <assert.h>
 #include <array>
+#include <stdexcept>
 
 #include <graphblas.hpp>
 #include <graphblas/algorithms/conjugate_gradient.hpp>
+
+#include <numa.h>
+#include <assert.h>
 
 #include "solver.h"
 
@@ -34,6 +37,87 @@
  */
 
 /**
+ * Implements the various ways the CG workspace data may (or may not) be freed.
+ *
+ * This deleter at present considers that
+ *  -# the solver does not own the workspace data (and hence may not free it);
+ *  -# the solver has allocated the workspace data using standard C++ array
+ *     allocation mechanisms, for which this class provides the matching
+ *     standard C++ array deleter; and
+ *  -# the solver has allocated the workspace data using libNUMA, for which this
+ *     class provides a call to the matching libNUMA free.
+ */
+class CGWorkspaceDeleter {
+
+	private:
+
+		/** Whether we own the workspace data. */
+		const bool owning;
+
+		/**
+		 * Whether the workspace data was allocated NUMA-aware, and if so, what the
+		 * allocation size was.
+		 *
+		 * \note The allocation size is required for a call to the libNUMA free
+		 *       function.
+		 */
+		const size_t numa;
+
+
+	public:
+
+		/** Default construction is not allowed. */
+		CGWorkspaceDeleter() = delete;
+
+		/**
+		 * Explicit constructor that requires all information necessary to determine
+		 * how the workspace should be deleted.
+		 *
+		 * @param[in] owning_in Whether the solver owns the workspace buffer.
+		 * @param[in] numa_in   Zero if libNUMA was not used for allocating the
+		 *                      workspace bufer, and the allocation size otherwise.
+		 *
+		 * If \a owning_in is <tt>false</tt>, the input to \a numa_in is ignored.
+		 *
+		 * \note In that case, the user is reponsible for freeing memory, which indeed
+		 *       could have been done in a myriad of other ways besides those this
+		 *       deleter knows about.
+		 *
+		 * \internal In case ALP is compiled without libNUMA support, the standard C++
+		 *           array mechanism will be assumed always.
+		 */
+		CGWorkspaceDeleter( const bool &owning_in, const size_t &numa_in ) noexcept :
+			owning( owning_in ), numa( numa_in )
+		{}
+
+		/**
+		 * Implements the correct action for freeing the workspace data.
+		 *
+		 * @param[in] ptr Pointer to the workspace memory to be deleted.
+		 */
+		void operator()( void * ptr ) {
+			assert( !( !owning && numa ) );
+			if( owning ) {
+#ifndef _GRB_NO_LIBNUMA
+				if( numa ) {
+					numa_free( ptr, numa );
+				} else {
+#endif
+					delete [] static_cast< char * >(ptr);
+#ifndef _GRB_NO_LIBNUMA
+				}
+#endif
+			}
+		}
+
+};
+
+/**
+ * The class behind the PCG solver handle.
+ *
+ * More precisely, a valid PCG solver handle is a C void pointer to an instance
+ * of this class.
+ *
  * @tparam T   The nonzero value type.
  * @tparam NZI The nonzero index type.
  * @tparam RSI The row and column index type.
@@ -106,6 +190,14 @@ class CG_Data {
 		/** Any required data for the \a preconditioner. */
 		void * preconditioner_data;
 
+		// destructor data
+
+		/** The given buffer during construction. */
+		void * _buffer;
+
+		/** How to handle \a _buffer on destruction. */
+		CGWorkspaceDeleter _buffer_deleter;
+
 
 	protected:
 
@@ -136,6 +228,36 @@ class CG_Data {
 
 	public:
 
+		/**
+		 * The size, in bytes, required as a work space for the PCG algorithm.
+		 *
+		 * @param[in] n The linear system size.
+		 * @param[in] preconditioned Whether the solver is expected to be called with
+		 *                           a preconditioner.
+		 *
+		 * @returns The required size, in bytes.
+		 *
+		 * \internal Note that the space for two additional integers is required as
+		 *           per both the C and C++ specifications. However, we here also
+		 *           prevent false sharing between different workspace vectors, and so
+		 *           actually align on the cache line size boundary.
+		 *
+		 * \warning The current implementation assumes that the cache line size is a
+		 *          multiple of <tt>sizeof(int)</tt>. If this assertion ever fails,
+		 *          an error will be thrown at compile time (<tt>static_assert</tt>).
+		 */
+		static size_t workspaceSize(
+			const size_t n, const bool preconditioned
+		) noexcept {
+			static_assert( grb::config::CACHE_LINE_SIZE::value() >= sizeof(int),
+				"Unhandled padding case; please submit a bug report" );
+			if( preconditioned ) {
+				return 4 * n * sizeof( T ) + 3 * grb::config::CACHE_LINE_SIZE::value();
+			} else {
+				return 3 * n * sizeof( T ) + 2 * grb::config::CACHE_LINE_SIZE::value();
+			}
+		}
+
 		/** Disable default constructor. */
 		CG_Data() = delete;
 
@@ -149,25 +271,93 @@ class CG_Data {
 		 *
 		 * The matrix defined by \a a, \a ja, \a ia must be symmetric positive
 		 * definite.
+		 *
+		 * @param[in] buffer The workspace required by this algorithm. This must
+		 *                   point to a valid memory region that can be used
+		 *                   exclusively by ALP. The size of the memory region (in
+		 *                   bytes) must be greater or equal to that returned by
+		 *                   #workspaceSize( n ) with \a n equal to the value passed
+		 *                   to this constructor.
+		 *
+		 * @param[in] buffer_size The size of the given \a buffer. Used for sanity
+		 *                        checking the intended use of the buffer.
+		 *
+		 * @param[in] buffer_deleter How the given \a buffer should be deleted on
+		 *                           destruction of this instance.
+		 *
+		 * \note If the buffer is not to be owned by this instance, then a non-owning
+		 *       \a buffer_deleter should be given; see #CGWorkspaceDeleter for
+		 *       details.
+		 *
+		 * \internal The sanity check is weaker if not compiled in debug mode so
+		 *           should be done explicitly \em before entering this constructor.
+		 *
+		 * \internal This constructor may throw exceptions.
 		 */
 		CG_Data(
 			const size_t n,
-			const T * const a, const RSI * const ja, const NZI * const ia
+			const T * const a, const RSI * const ja, const NZI * const ia,
+			void * const buffer, const size_t buffer_size, const CGWorkspaceDeleter &buffer_deleter
 		) :
 			size( n ), tolerance( 1e-5 ), max_iter( 1000 ), matrix( 0, 0 ),
 			residual( std::numeric_limits< T >::infinity() ), iters( 0 ),
-			workspace( {
-				grb::Vector< T >( n ), grb::Vector< T >( n ), grb::Vector< T >( n )
-			} ),
 			precond_workspace( grb::Vector< T >( 0 ) ),
-			preconditioner( nullptr ), preconditioner_data( nullptr )
+			preconditioner( nullptr ), preconditioner_data( nullptr ),
+			_buffer( buffer ), _buffer_deleter( buffer_deleter )
 		{
 			assert( n > 0 );
 			assert( a != nullptr );
 			assert( ja != nullptr );
 			assert( ia != nullptr );
+			constexpr size_t L = grb::config::CACHE_LINE_SIZE::value();
+			constexpr size_t align = (L % sizeof(int) == 0)
+				?  L
+				: (L + (sizeof(int) - (L % sizeof(int))));
+			if( buffer_size < workspaceSize( n, false ) ) {
+				throw std::invalid_argument( "The given buffer size is too small" );
+			}
 			Matrix A = grb::internal::wrapCRSMatrix( a, ja, ia, n, n );
 			std::swap( A, matrix );
+			char * workspace_ptr = static_cast< char * >(buffer);
+			assert( static_cast< char * >(buffer) + buffer_size >= workspace_ptr + n );
+			{
+				T * const workspace_vector = reinterpret_cast< T * >(workspace_ptr);
+				grb::Vector< T > tmp = grb::internal::wrapRawVector( n, workspace_vector );
+				std::swap( workspace[ 0 ], tmp );
+			}
+			workspace_ptr += n * sizeof( T );
+			workspace_ptr +=
+				(align - (reinterpret_cast<uintptr_t>(workspace_ptr) % align));
+			assert( static_cast< char * >(buffer) + buffer_size >= workspace_ptr + n );
+			{
+				T * const workspace_vector = reinterpret_cast< T * >(workspace_ptr);
+				grb::Vector< T > tmp = grb::internal::wrapRawVector( n, workspace_vector );
+				std::swap( workspace[ 1 ], tmp );
+			}
+			workspace_ptr += n * sizeof( T );
+			workspace_ptr +=
+				(align - (reinterpret_cast<uintptr_t>(workspace_ptr) % align));
+			assert( static_cast< char * >(buffer) + buffer_size >= workspace_ptr + n );
+			{
+				T * const workspace_vector = reinterpret_cast< T * >(workspace_ptr);
+				grb::Vector< T > tmp = grb::internal::wrapRawVector( n, workspace_vector );
+				std::swap( workspace[ 2 ], tmp );
+			}
+			if( buffer_size >= workspaceSize( n, true ) ) {
+				workspace_ptr += n * sizeof( T );
+				workspace_ptr +=
+					(align - (reinterpret_cast<uintptr_t>(workspace_ptr) % align));
+				assert( static_cast< char * >(buffer) + buffer_size >= workspace_ptr + n );
+				T * const workspace_vector = reinterpret_cast< T * >(workspace_ptr);
+				grb::Vector< T > tmp = grb::internal::wrapRawVector( n, workspace_vector );
+				std::swap( precond_workspace, tmp );
+			}
+		}
+
+		/** Destroys this CG solve handle. */
+		~CG_Data() {
+			// call the deleter on the buffer pointer (which may be a no-op)
+			_buffer_deleter( _buffer );
 		}
 
 		/** @returns The system size. */
@@ -231,8 +421,15 @@ class CG_Data {
 			preconditioner_data = data;
 			assert( !( !preconditioner && preconditioner_data ) );
 			if( grb::size( precond_workspace ) == 0 ) {
+				// note -- using the ALP default vector allocation here is the only
+				// convenient option: otherwise has to implement buffer management
+				// for this vector only. If it is important that this vector be allocated
+				// without a SPA, then the user should set the precond hint to true.
 				grb::Vector< T > replace( size );
 				std::swap( replace, precond_workspace );
+				std::cerr << "Warning: allocating additional workspace to handle CG solves "
+					<< "with preconditioning. To prevent this on-demand allocation, set the "
+					<< "precond option during CG solver handle creation to true.\n";
 			}
 			assert( grb::size( precond_workspace ) == size );
 		}
@@ -277,15 +474,20 @@ class CG_Data {
 template< typename T, typename NZI, typename RSI >
 static sparse_err_t sparse_cg_init_impl(
 	sparse_cg_handle_t * const handle, const size_t n,
-	const T * const a, const RSI * const ja, const NZI * const ia
+	const T * const a, const RSI * const ja, const NZI * const ia,
+	void * const buffer, const size_t bufferSize, const CGWorkspaceDeleter &deleter
 ) {
 	if( n == 0 ) { return ILLEGAL_ARGUMENT; }
 	if( handle == nullptr || a == nullptr || ja == nullptr || ia == nullptr ) {
 		return NULL_ARGUMENT;
 	}
+	if( buffer == nullptr ) { return NULL_ARGUMENT; }
+	if( bufferSize < CG_Data< T, NZI, RSI >::workspaceSize( n, false ) ) {
+		return ILLEGAL_ARGUMENT;
+	}
 	try {
-		*handle = static_cast< void * >(
-			new CG_Data< T, NZI, RSI >( n, a, ja, ia ) );
+		*handle = static_cast< void * >( new CG_Data< T, NZI, RSI >(
+			n, a, ja, ia, buffer, bufferSize, deleter ) );
 	} catch( std::exception &e ) {
 		// the grb::Matrix constructor may only throw on out of memory errors
 		std::cerr << "Error: " << e.what() << "\n";
@@ -295,46 +497,215 @@ static sparse_err_t sparse_cg_init_impl(
 	return NO_ERROR;
 }
 
+size_t sparse_cg_workspace_size_s( const size_t n, const bool precon ) {
+	return CG_Data< float, size_t, size_t >::workspaceSize( n, precon );
+}
+
+size_t sparse_cg_workspace_size_d( const size_t n, const bool precon ) {
+	return CG_Data< double, size_t, size_t >::workspaceSize( n, precon );
+}
+
+template< typename T, typename NZI, typename RSI >
+static sparse_err_t sparse_cg_init_impl_no_buffer(
+	sparse_cg_handle_t * const handle, const size_t n,
+	const T * const a, const RSI * const ja, const NZI * const ia,
+	const bool support_preconditioning, const bool numa
+) {
+	const size_t allocSize = CG_Data< T, NZI, RSI >::
+		workspaceSize( n, support_preconditioning );
+	void * buffer = nullptr;
+#ifdef _GRB_NO_LIBNUMA
+	if( numa ) {
+		std::cerr << "Warning: solver transition path was requested to perform "
+			<< "NUMA-aware allocation, but ALP was compiled without libnuma.\n";
+	}
+#else
+	if( numa ) {
+		buffer = numa_alloc_interleaved( allocSize );
+		if( buffer == NULL ) { return OUT_OF_MEMORY; }
+	} else {
+#endif
+		try {
+			buffer = static_cast< void * >(new char[ allocSize ]);
+		} catch( ... ) {
+			std::cerr << "Error allocating workspace buffer\n";
+			return OUT_OF_MEMORY;
+		}
+#ifndef _GRB_NO_LIBNUMA
+	}
+#endif
+	const sparse_err_t rc = sparse_cg_init_impl(
+		handle, n, a, ja, ia, buffer, allocSize,
+		CGWorkspaceDeleter( true, numa ? allocSize : 0 )
+	);
+	if( rc != NO_ERROR ) {
+#ifndef _GRB_NO_LIBNUMA
+		if( numa ) {
+			numa_free( buffer, allocSize );
+		} else {
+#endif
+			delete [] static_cast< char * >(buffer);
+#ifndef _GRB_NO_LIBNUMA
+		}
+#endif
+	}
+	return rc;
+}
+
+sparse_err_t sparse_cg_manual_init_sii(
+	sparse_cg_handle_t * const handle, const size_t n,
+	const float * const a, const int * const ja, const int * const ia,
+	void * workspace, const size_t workspace_size
+) {
+	return sparse_cg_init_impl< float, int, int >( handle, n, a, ja, ia,
+		workspace, workspace_size, CGWorkspaceDeleter( false, false ) );
+}
+
+sparse_err_t sparse_cg_manual_init_dii(
+	sparse_cg_handle_t * const handle, const size_t n,
+	const double * const a, const int * const ja, const int * const ia,
+	void * workspace, const size_t workspace_size
+) {
+	return sparse_cg_init_impl< double, int, int >( handle, n, a, ja, ia,
+		workspace, workspace_size, CGWorkspaceDeleter( false, false ) );
+}
+
+sparse_err_t sparse_cg_manual_init_siz(
+	sparse_cg_handle_t * const handle, const size_t n,
+	const float * const a, const int * const ja, const size_t * const ia,
+	void * workspace, const size_t workspace_size
+) {
+	return sparse_cg_init_impl< float, size_t, int >( handle, n, a, ja, ia,
+		workspace, workspace_size, CGWorkspaceDeleter( false, false ) );
+}
+
+sparse_err_t sparse_cg_manual_init_diz(
+	sparse_cg_handle_t * const handle, const size_t n,
+	const double * const a, const int * const ja, const size_t * const ia,
+	void * workspace, const size_t workspace_size
+) {
+	return sparse_cg_init_impl< double, size_t, int >( handle, n, a, ja, ia,
+		workspace, workspace_size, CGWorkspaceDeleter( false, false ) );
+}
+
+sparse_err_t sparse_cg_manual_init_szz(
+	sparse_cg_handle_t * const handle, const size_t n,
+	const float * const a, const size_t * const ja, const size_t * const ia,
+	void * workspace, const size_t workspace_size
+) {
+	return sparse_cg_init_impl< float, size_t, size_t >( handle, n, a, ja, ia,
+		workspace, workspace_size, CGWorkspaceDeleter( false, false ) );
+}
+
+sparse_err_t sparse_cg_manual_init_dzz(
+	sparse_cg_handle_t * const handle, const size_t n,
+	const double * const a, const size_t * const ja, const size_t * const ia,
+	void * workspace, const size_t workspace_size
+) {
+	return sparse_cg_init_impl< double, size_t, size_t >( handle, n, a, ja, ia,
+		workspace, workspace_size, CGWorkspaceDeleter( false, false ) );
+}
+
+sparse_err_t sparse_cg_init_opt_sii(
+	sparse_cg_handle_t * const handle, const size_t n,
+	const float * const a, const int * const ja, const int * const ia,
+	const bool precond, const bool numa
+) {
+	return sparse_cg_init_impl_no_buffer< float, int, int >( handle, n, a, ja, ia,
+		precond, numa );
+}
+
+sparse_err_t sparse_cg_init_opt_dii(
+	sparse_cg_handle_t * const handle, const size_t n,
+	const double * const a, const int * const ja, const int * const ia,
+	const bool precond, const bool numa
+) {
+	return sparse_cg_init_impl_no_buffer< double, int, int >( handle, n, a, ja, ia,
+		precond, numa );
+}
+
+sparse_err_t sparse_cg_init_opt_siz(
+	sparse_cg_handle_t * const handle, const size_t n,
+	const float * const a, const int * const ja, const size_t * const ia,
+	const bool precond, const bool numa
+) {
+	return sparse_cg_init_impl_no_buffer< float, size_t, int >( handle, n, a, ja,
+		ia, precond, numa );
+}
+
+sparse_err_t sparse_cg_init_opt_diz(
+	sparse_cg_handle_t * const handle, const size_t n,
+	const double * const a, const int * const ja, const size_t * const ia,
+	const bool precond, const bool numa
+) {
+	return sparse_cg_init_impl_no_buffer< double, size_t, int >( handle, n, a, ja,
+		ia, precond, numa );
+}
+
+sparse_err_t sparse_cg_init_opt_szz(
+	sparse_cg_handle_t * const handle, const size_t n,
+	const float * const a, const size_t * const ja, const size_t * const ia,
+	const bool precond, const bool numa
+) {
+	return sparse_cg_init_impl_no_buffer< float, size_t, size_t >( handle, n, a, ja,
+		ia, precond, numa );
+}
+
+sparse_err_t sparse_cg_init_opt_dzz(
+	sparse_cg_handle_t * const handle, const size_t n,
+	const double * const a, const size_t * const ja, const size_t * const ia,
+	const bool precond, const bool numa
+) {
+	return sparse_cg_init_impl_no_buffer< double, size_t, size_t >( handle, n, a, ja,
+		ia, precond, numa );
+}
+
 sparse_err_t sparse_cg_init_sii(
 	sparse_cg_handle_t * const handle, const size_t n,
 	const float * const a, const int * const ja, const int * const ia
 ) {
-	return sparse_cg_init_impl< float, int, int >( handle, n, a, ja, ia );
+	return sparse_cg_init_impl_no_buffer< float, int, int >( handle, n, a, ja, ia,
+		true, true );
 }
 
 sparse_err_t sparse_cg_init_dii(
 	sparse_cg_handle_t * const handle, const size_t n,
 	const double * const a, const int * const ja, const int * const ia
 ) {
-	return sparse_cg_init_impl< double, int, int >( handle, n, a, ja, ia );
+	return sparse_cg_init_impl_no_buffer< double, int, int >( handle, n, a, ja, ia,
+		true, true );
 }
 
 sparse_err_t sparse_cg_init_siz(
 	sparse_cg_handle_t * const handle, const size_t n,
 	const float * const a, const int * const ja, const size_t * const ia
 ) {
-	return sparse_cg_init_impl< float, size_t, int >( handle, n, a, ja, ia );
+	return sparse_cg_init_impl_no_buffer< float, size_t, int >( handle, n, a, ja,
+		ia, true, true );
 }
 
 sparse_err_t sparse_cg_init_diz(
 	sparse_cg_handle_t * const handle, const size_t n,
 	const double * const a, const int * const ja, const size_t * const ia
 ) {
-	return sparse_cg_init_impl< double, size_t, int >( handle, n, a, ja, ia );
+	return sparse_cg_init_impl_no_buffer< double, size_t, int >( handle, n, a, ja,
+		ia, true, true );
 }
 
 sparse_err_t sparse_cg_init_szz(
 	sparse_cg_handle_t * const handle, const size_t n,
 	const float * const a, const size_t * const ja, const size_t * const ia
 ) {
-	return sparse_cg_init_impl< float, size_t, size_t >( handle, n, a, ja, ia );
+	return sparse_cg_init_impl_no_buffer< float, size_t, size_t >( handle, n, a, ja,
+		ia, true, true );
 }
 
 sparse_err_t sparse_cg_init_dzz(
 	sparse_cg_handle_t * const handle, const size_t n,
 	const double * const a, const size_t * const ja, const size_t * const ia
 ) {
-	return sparse_cg_init_impl< double, size_t, size_t >( handle, n, a, ja, ia );
+	return sparse_cg_init_impl_no_buffer< double, size_t, size_t >( handle, n, a, ja,
+		ia, true, true );
 }
 
 template< typename T, typename NZI, typename RSI >
@@ -525,7 +896,8 @@ static sparse_err_t sparse_cg_get_iter_count_impl(
 	const sparse_cg_handle_t handle, size_t * const iters
 ) {
 	if( handle == nullptr || iters == nullptr ) { return NULL_ARGUMENT; }
-	*iters = static_cast< CG_Data< T, NZI, RSI > * >( handle )->getIters();
+	*iters =
+		static_cast< CG_Data< T, NZI, RSI > * >( handle )->getIters();
 	return NO_ERROR;
 }
 
@@ -646,8 +1018,10 @@ static sparse_err_t sparse_cg_set_preconditioner_impl(
 	try {
 		static_cast< CG_Data< T, NZI, RSI > * >( handle )->
 			setPreconditioner( c_precond_p, c_precond_data_p );
-	} catch(...) {
-		// spec says ALP vector allocation can only throw due to out-of-memory
+	} catch( ... ) {
+		// by virtue of the ALP interface guarantees, the only possible exception is
+		// due to out-of-memory conditions (when allocating an on-demand vector
+		// workspace for preconditioned solves).
 		return OUT_OF_MEMORY;
 	}
 	return NO_ERROR;
@@ -712,8 +1086,7 @@ static sparse_err_t sparse_cg_set_max_iter_count_impl(
 	sparse_cg_handle_t handle, const size_t max_iters
 ) {
 	if( handle == nullptr ) { return NULL_ARGUMENT; }
-	static_cast< CG_Data< T, NZI, RSI > * >( handle )->
-		setMaxIters( max_iters );
+	static_cast< CG_Data< T, NZI, RSI > * >( handle )->setMaxIters( max_iters );
 	return NO_ERROR;
 }
 
