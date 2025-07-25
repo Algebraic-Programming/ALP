@@ -3132,9 +3132,11 @@ namespace grb {
 			(void) n;
 #endif
 #ifndef GRB_NO_NOOP_CHECKS
-			static_assert( !internal::maybe_noop< OP >::value, "Warning: you may be "
-				"generating an output vector with uninitialised values. Define "
-				"the GRB_NO_NOOP_CHECKS macro to disable this check.\n" );
+			static_assert(
+				(descr & descriptors::dense) || !internal::maybe_noop< OP >::value,
+				"Warning: you may be generating an output vector with uninitialised values."
+				" (Define the GRB_NO_NOOP_CHECKS macro to disable this check.)\n"
+			);
 #endif
 			// assertions
 			assert( !masked || mask_coors != nullptr );
