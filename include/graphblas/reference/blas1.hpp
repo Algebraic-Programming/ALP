@@ -2975,6 +2975,13 @@ namespace grb {
 #ifdef _DEBUG
 			std::cout << "\t internal::dense_apply_generic called\n";
 #endif
+#ifndef GRB_NO_NOOP_CHECKS
+			static_assert(
+				!internal::maybe_noop< OP >::value,
+				"Warning: you may be generating an output vector with uninitialised values."
+				" (Define the GRB_NO_NOOP_CHECKS macro to disable this check.)\n"
+			);
+#endif
 			static_assert( !(left_scalar && left_sparse),
 				"The left-hand side must be scalar OR sparse, but cannot be both!" );
 			static_assert( !(right_scalar && right_sparse),
