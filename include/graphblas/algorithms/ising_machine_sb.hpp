@@ -252,7 +252,7 @@ namespace grb {
 #endif
 				rc = rc ? rc : grb::foldl< descr_dense >(  
 					y_comp, mask, ring.template getZero< IOType >(), 
-					grb::operators::right_assign<bool,IOType,IOType>()
+					grb::operators::right_assign<IOType>()
 				);
 #ifdef DEBUG_IMSB
 				vector_print( y_comp, "y_comp (b)" );
