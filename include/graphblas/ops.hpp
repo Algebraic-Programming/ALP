@@ -76,7 +76,8 @@ namespace grb {
 		 *
 		 * \warning Therefore, this operator may propagate the use of uninitialised
 		 *          values if not used with care. Ensuring its use with in-place
-		 *          primitives is recommended.
+		 *          primitives is recommended; it should \em not be used with
+		 *          #grb::eWiseApply.
 		 */
 		template<
 			typename D1, typename D2 = D1, typename D3 = D2,
@@ -132,7 +133,8 @@ namespace grb {
 		 *
 		 * \warning Therefore, this operator may propagate the use of uninitialised
 		 *          values if not used with care. Ensuring its use with in-place
-		 *          primitives is recommended.
+		 *          primitives is recommended; it should \em not be used with
+		 *          #grb::eWiseApply.
 		 */
 		template<
 			typename D1, typename D2 = D1, typename D3 = D2,
