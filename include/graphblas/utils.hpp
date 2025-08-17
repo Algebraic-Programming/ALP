@@ -384,7 +384,7 @@ namespace grb {
 				return ret;
 			}
 		}
-		/** Specialisation for void-valued matrice's masks */
+		/** Specialisation for void-valued matrix masks */
 		template<
 			Descriptor descriptor,
 			typename MatrixDataType, typename ValuesType
@@ -400,7 +400,7 @@ namespace grb {
 			return interpretMask< descriptor, ValuesType >( assigned, values, k );
 		}
 
-		/** Specialisation for void-valued matrice's masks */
+		/** Specialisation for void-valued matrix masks */
 		template<
 			Descriptor descriptor,
 			typename MatrixDataType, typename ValuesType
