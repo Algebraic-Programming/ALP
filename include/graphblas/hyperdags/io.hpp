@@ -447,12 +447,13 @@ namespace grb {
 		Descriptor descr = descriptors::no_operation,
 		typename OutputType, typename MaskType, typename InputType,
 		typename RIT1, typename CIT1, typename NIT1,
-		typename RIT2, typename CIT2, typename NIT2
+		typename RIT2, typename CIT2, typename NIT2,
+		typename RIT3, typename CIT3, typename NIT3
 	>
 	RC set(
 		Matrix< OutputType, hyperdags, RIT1, CIT1, NIT1 > &C,
 		const Matrix< MaskType, hyperdags, RIT2, CIT2, NIT2 > &M,
-		const Matrix< InputType, hyperdags, RIT2, CIT2, NIT2 > &A,
+		const Matrix< InputType, hyperdags, RIT3, CIT3, NIT3 > &A,
 		const Phase &phase = EXECUTE
 	) {
 		const RC ret = set< descr >(
