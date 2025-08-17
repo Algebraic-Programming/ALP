@@ -1321,6 +1321,37 @@ namespace grb {
 		return UNSUPPORTED;
 	}
 
+	/** TODO add specification */
+	template<
+		Descriptor descr = descriptors::no_operation,
+		typename OutputType, typename MaskType, typename ValueType,
+		typename RIT1, typename CIT1, typename NIT1,
+		typename RIT2, typename CIT2, typename NIT2,
+		typename RIT3, typename CIT3, typename NIT3,
+		Backend backend
+	>
+	RC set(
+		Matrix< OutputType, backend, RIT1, CIT1, NIT1 > &C,
+		const Matrix< MaskType, backend, RIT2, CIT2, NIT2 > &mask,
+		const Matrix< ValueType, backend, RIT3, CIT3, NIT3 > &A,
+		const Phase &phase = EXECUTE,
+		const typename std::enable_if<
+			!grb::is_object< OutputType >::value &&
+			!grb::is_object< ValueType >::value &&
+			!grb::is_object< MaskType >::value,
+		void >::type * const = nullptr
+	) noexcept {
+#ifndef NDEBUG
+		const bool should_not_call_base_matrix_masked_matrix_set = false;
+		assert( should_not_call_base_matrix_masked_matrix_set );
+#endif
+		(void) C;
+		(void) mask;
+		(void) A;
+		(void) phase;
+		return UNSUPPORTED;
+	}
+
 	/**
 	 * Sets the element of a given vector at a given position to a given value.
 	 *

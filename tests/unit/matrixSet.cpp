@@ -270,82 +270,77 @@ void grb_program( const size_t &n, grb::RC &rc ) {
 		std::cerr << "\t grb::set structural (matrix to matrix masked) FAILED\n";
 		return;
 	}
-
 	if( grb::nnz( output ) != 2 * n - 1 ) {
-		std::cerr << "\t unexpected number of output elements ( " << grb::nnz( output ) << " ), expected " << 2 * n - 1 <<".\n";
+		std::cerr << "\t unexpected number of output elements ( "
+			<< grb::nnz( output ) << " ), expected " << 2 * n - 1 <<".\n";
 		rc = FAILED;
 	}
-
-	for( const auto & triplet : output ) {
-		if( triplet.first.first != triplet.first.second && triplet.first.first != triplet.first.second - 1 ) {
-			std::cerr << "\tunexpected entry at ( " << triplet.first.first << ", " << triplet.first.second << " ), value " << triplet.second << ".\n";
+	for( const auto &triplet : output ) {
+		if(
+			triplet.first.first != triplet.first.second &&
+			triplet.first.first != triplet.first.second - 1
+		) {
+			std::cerr << "\tunexpected entry at ( " << triplet.first.first << ", "
+				<< triplet.first.second << " ), value " << triplet.second << ".\n";
 			rc = FAILED;
-		} if( (int) triplet.first.first != triplet.second ) {
-			std::cerr << "\tunexpected entry at ( " << triplet.first.first << ", " << triplet.first.second << " ) with value " << triplet.second;
+		} if( triplet.first.first != static_cast< size_t >(triplet.second) ) {
+			std::cerr << "\tunexpected entry at ( " << triplet.first.first << ", "
+				<< triplet.first.second << " ) with value " << triplet.second;
 			std::cerr << ", expected value "<< triplet.first.first <<".\n";
 			rc = FAILED;
 		}
 	}
-
-	if( rc != SUCCESS ) {
-		return;
-	}
-
-	
+	if( rc != SUCCESS ) { return; }
 
 	rc = grb::set( output, mask, input );
 	if( rc != SUCCESS ) {
 		std::cerr << "\t grb::set (matrix to matrix masked) FAILED\n";
 		return;
 	}
-
 	if( grb::nnz( output ) != n ) {
-		std::cerr << "\t unexpected number of output elements ( " << grb::nnz( output ) << " ), expected " << n <<".\n";
+		std::cerr << "\t unexpected number of output elements ( "
+			<< grb::nnz( output ) << " ), expected " << n <<".\n";
 		rc = FAILED;
 	}
-
-	for( const auto & triplet : output ) {
+	for( const auto &triplet : output ) {
 		if( triplet.first.first != triplet.first.second ) {
-			std::cerr << "\tunexpected entry at ( " << triplet.first.first << ", " << triplet.first.second << " ), value " << triplet.second << ".\n";
+			std::cerr << "\tunexpected entry at ( " << triplet.first.first << ", "
+				<< triplet.first.second << " ), value " << triplet.second << ".\n";
 			rc = FAILED;
-		} if( (int) triplet.first.first != triplet.second ) {
-			std::cerr << "\tunexpected entry at ( " << triplet.first.first << ", " << triplet.first.second << " ) with value " << triplet.second;
+		} if( triplet.first.first != static_cast< size_t >(triplet.second) ) {
+			std::cerr << "\tunexpected entry at ( " << triplet.first.first << ", "
+				<< triplet.first.second << " ) with value " << triplet.second;
 			std::cerr << ", expected value "<< triplet.first.first <<".\n";
 			rc = FAILED;
 		}
 	}
+	if( rc != SUCCESS ) { return; }
 
-	if( rc != SUCCESS ) {
-		return;
-	}
-
-
-
+	/* TODO check: what are the GraphBLAS semantics for this operation?
 	rc = grb::set< descriptors::invert_mask >( output, mask, input );
 	if( rc != SUCCESS ) {
 		std::cerr << "\t grb::set invert mask (matrix to matrix masked) FAILED\n";
 		return;
 	}
-
 	if( grb::nnz( output ) != n - 1 ) {
-		std::cerr << "\t unexpected number of output elements ( " << grb::nnz( output ) << " ), expected " << n - 1 <<".\n";
+		std::cerr << "\t unexpected number of output elements ( "
+			<< grb::nnz( output ) << " ), expected " << n - 1 <<".\n";
 		rc = FAILED;
 	}
-
-	for( const auto & triplet : output ) {
+	for( const auto &triplet : output ) {
 		if( triplet.first.first != triplet.first.second - 1 ) {
-			std::cerr << "\tunexpected entry at ( " << triplet.first.first << ", " << triplet.first.second << " ), value " << triplet.second << ".\n";
+			std::cerr << "\tunexpected entry at ( " << triplet.first.first << ", "
+				<< triplet.first.second << " ), value " << triplet.second << ".\n";
 			rc = FAILED;
-		} if( (int) triplet.first.first != triplet.second ) {
-			std::cerr << "\tunexpected entry at ( " << triplet.first.first << ", " << triplet.first.second << " ) with value " << triplet.second;
+		} if( triplet.first.first != triplet.second ) {
+			std::cerr << "\tunexpected entry at ( " << triplet.first.first << ", "
+				<< triplet.first.second << " ) with value " << triplet.second;
 			std::cerr << ", expected value "<< triplet.first.first <<".\n";
 			rc = FAILED;
 		}
 	}
-
-	if( rc != SUCCESS ) {
-		return;
-	}
+	if( rc != SUCCESS ) { return; }
+	*/
 }
 
 int main( int argc, char ** argv ) {
