@@ -47,8 +47,6 @@ void grb_program( const size_t &n, grb::RC &rc ) {
 	grb::Matrix< int > output( n, n );
 	grb::Matrix< int > input( n, n );
 	
-
-	
 	rc = grb::resize( A, 15 );
 	if( rc == SUCCESS ) {
 		rc = grb::buildMatrixUnique( A, I, J, data1, 15, SEQUENTIAL );
@@ -71,14 +69,19 @@ void grb_program( const size_t &n, grb::RC &rc ) {
 		}
 	}
 
+	// initialise data for masked-set tests
+	//  - mask will be an n by n matrix with its diagonal set to 1 and its
+	//    superdiagonal set to 0.
+	//  - input will be an n by n matrix with each element on its diagonal and
+	//    superdiagonal set to its row index (meaning the entries on row 0 have
+	//    value 0).
 	size_t I_mask[ 2 * n - 1 ], J_mask[ 2 * n - 1 ];
 	int mask_vals [ 2 * n - 1 ];
 	int input_vals [ 2 * n - 1 ];
-
 	for( size_t k = 0; k < n; ++k ) {
 		I_mask[ k ] = J_mask[ k ] = k;
 		mask_vals[ k ] = 1;
-		input_vals[ k ] = k;
+		input_vals[ k ] = static_cast< int >( k );
 		if( k < n - 1 ) {
 			I_mask[ n + k ] = k;
 			J_mask[ n + k ] = k + 1;
@@ -86,14 +89,14 @@ void grb_program( const size_t &n, grb::RC &rc ) {
 			input_vals[ n + k ] = k;
 		}
 	}
-
-	rc = grb::buildMatrixUnique( mask, I_mask, J_mask, mask_vals, 2 * n - 1, SEQUENTIAL );
+	rc = grb::buildMatrixUnique( mask, I_mask, J_mask, mask_vals, 2 * n - 1,
+		SEQUENTIAL );
 	if( rc != SUCCESS ) {
 		std::cerr << "\t buildMatrixUnique of mask matrix FAILED\n";
 		return;
 	}
-
-	rc = grb::buildMatrixUnique( input, I_mask, J_mask, input_vals, 2 * n - 1, SEQUENTIAL );
+	rc = grb::buildMatrixUnique( input, I_mask, J_mask, input_vals, 2 * n - 1,
+		SEQUENTIAL );
 	if( rc != SUCCESS ) {
 		std::cerr << "\t buildMatrixUnique of input matrix FAILED\n";
 		return;
@@ -316,7 +319,6 @@ void grb_program( const size_t &n, grb::RC &rc ) {
 	}
 	if( rc != SUCCESS ) { return; }
 
-	/* TODO check: what are the GraphBLAS semantics for this operation?
 	rc = grb::set< descriptors::invert_mask >( output, mask, input );
 	if( rc != SUCCESS ) {
 		std::cerr << "\t grb::set invert mask (matrix to matrix masked) FAILED\n";
@@ -332,7 +334,7 @@ void grb_program( const size_t &n, grb::RC &rc ) {
 			std::cerr << "\tunexpected entry at ( " << triplet.first.first << ", "
 				<< triplet.first.second << " ), value " << triplet.second << ".\n";
 			rc = FAILED;
-		} if( triplet.first.first != triplet.second ) {
+		} if( triplet.first.first != static_cast< size_t >(triplet.second) ) {
 			std::cerr << "\tunexpected entry at ( " << triplet.first.first << ", "
 				<< triplet.first.second << " ) with value " << triplet.second;
 			std::cerr << ", expected value "<< triplet.first.first <<".\n";
@@ -340,7 +342,6 @@ void grb_program( const size_t &n, grb::RC &rc ) {
 		}
 	}
 	if( rc != SUCCESS ) { return; }
-	*/
 }
 
 int main( int argc, char ** argv ) {
