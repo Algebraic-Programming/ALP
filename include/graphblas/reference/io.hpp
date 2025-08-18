@@ -2032,30 +2032,32 @@ namespace grb {
 		Descriptor descr = descriptors::no_operation,
 		typename OutputType, typename MaskType, typename InputType,
 		typename RIT1, typename CIT1, typename NIT1,
-		typename RIT2, typename CIT2, typename NIT2
+		typename RIT2, typename CIT2, typename NIT2,
+		typename RIT3, typename CIT3, typename NIT3
 	>
 	RC set(
 		Matrix< OutputType, reference, RIT1, CIT1, NIT1 > &C,
 		const Matrix< MaskType, reference, RIT2, CIT2, NIT2 > &M,
-		const Matrix< InputType, reference, RIT2, CIT2, NIT2 > &A,
+		const Matrix< InputType, reference, RIT3, CIT3, NIT3 > &A,
 		const Phase &phase = EXECUTE
 	) noexcept {
-		static_assert( !std::is_void< OutputType >::value,
-			"grb::set (masked set to matrix): cannot have a pattern "
-			"matrix as output" );
-		static_assert( std::is_convertible< InputType, OutputType >::value,
+		// static checks
+		static_assert(
+			!std::is_void< InputType >::value ||
+				std::is_void< OutputType >::value, "grb::set( masked set to matrix ): "
+			"cannot have a pattern matrix as input unless the output is also a pattern "
+			"matrix"
+		);
+		static_assert(
+			std::is_convertible< InputType, OutputType >::value,
 			"grb::set (masked set to matrix): input type cannot be "
 			"converted to output type"
 		);
 		static_assert(
-			! ( descr & descriptors::structural && descr & descriptors::invert_mask ),
-			"grb::set can not be called with both descriptors::structural "
-			"and descriptors::invert_mask in the masked variant"
+			!(descr & descriptors::structural && (descr & descriptors::invert_mask)),
+			"grb::set (masked set to matrix) may not be called with both the structural "
+			"and invert_mask descriptors set"
 		);
-#ifdef _DEBUG
-		std::cout << "Called grb::set (matrix-to-matrix-masked, reference)\n";
-#endif
-		// static checks
 		NO_CAST_ASSERT( ( !(descr & descriptors::no_casting) ||
 				std::is_same< InputType, OutputType >::value
 			), "grb::set",
@@ -2063,24 +2065,23 @@ namespace grb {
 		);
 
 		// dynamic checks
+#ifdef _DEBUG
+		std::cout << "Called grb::set (matrix-to-matrix-masked, reference)\n";
+#endif
 		assert( phase != TRY );
-
 		const size_t nrows = grb::nrows( C );
 		const size_t ncols = grb::ncols( C );
-
 		const size_t m = grb::nrows( M );
 		const size_t n = grb::ncols( M );
 
-		/*grb::Monoid<
-			grb::operators::left_assign< OutputType >,
-			grb::identities::zero
-		> dummyMonoid;*/
-
+		// check for trivial dispatch first (otherwise the below checks fail when they
+		// should not)
 		if( m == 0 || n == 0 ) {
-			// If the mask has a null size, it will be ignored
+			// If the mask is empty, ignore it
 			return set< descr >( C, A, phase );
 		}
 
+		// dynamic checks, continued
 		if( nrows != grb::nrows( A ) || nrows != m ) {
 			return MISMATCH;
 		}
@@ -2089,20 +2090,21 @@ namespace grb {
 			return MISMATCH;
 		}
 
-		const auto &mask_raw = internal::getCRS( M );
-
-		const auto &A_raw = internal::getCRS( A );
-
+		// go for implementation, preliminaries:
 		size_t nzc = 0;
-
 		char * mask_arr = nullptr;
 		char * mask_buf = nullptr;
 		MaskType * mask_valbuf = nullptr;
-		internal::getMatrixBuffers( mask_arr, mask_buf, mask_valbuf, 1, M );
-
+		const auto &A_raw = internal::getCRS( A );
+		const auto &mask_raw = internal::getCRS( M );
 		internal::Coordinates< reference > mask_coors;
+		internal::getMatrixBuffers( mask_arr, mask_buf, mask_valbuf, 1, M );
 		mask_coors.set( mask_arr, false, mask_buf, ncols );
 
+		// we now have one (guaranteed) SPA, which is mask_coors. We now are going to
+		// check how many more SPAs ideally we would like (for reference_omp), and
+		// then go about trying to get those. If, finally, we get just this one SPA,
+		// we will go into this mostly-sequential code (essentially, big-Omega nrows):
 		for( size_t i = 0; i < nrows; ++i ) {
 			mask_coors.clear();
 			for( auto k = mask_raw.col_start[ i ]; k < mask_raw.col_start[ i + 1 ]; ++k ) {
@@ -2112,22 +2114,24 @@ namespace grb {
 				}
 			}
 #ifdef _H_GRB_REFERENCE_OMP_BLAS3
-			#pragma omp parallel for reduction(+:nzc)
+			#pragma omp parallel for reduction( +: nzc ) \
+				schedule( dynamic, config::CACHE_LINE_SIZE::value() )
 #endif
 			for( auto k = A_raw.col_start[ i ]; k < A_raw.col_start[ i + 1 ]; ++k ) {
 				const auto k_col = A_raw.row_index[ k ];
 				if( mask_coors.assigned( k_col ) ) {
-					nzc++;
+					(void) nzc++;
 				}
 			}
 		}
 
+		// we now have a count. If we're in the resize phase that means we're done:
 		if( phase == RESIZE ) {
 			return resize( C, nzc );
 		}
 
+		// otherwise, we now compute the output. We start with checking capacity
 		assert( phase == EXECUTE );
-
 		if( capacity( C ) < nzc ) {
 #ifdef _DEBUG
 			std::cout << "\t insufficient capacity to complete "
@@ -2137,26 +2141,29 @@ namespace grb {
 			if( clear_rc != SUCCESS ) {
 				return PANIC;
 			} else {
-				return FAILED;
+				return ILLEGAL;
 			}
 		}
 
+		// get output CRS and CCS structures
+		// TODO: check for crs_only descriptor
 		auto &CRS_raw = internal::getCRS( C );
 		auto &CCS_raw = internal::getCCS( C );
-
 		config::NonzeroIndexType * C_col_index = internal::template
 			getReferenceBuffer< typename config::NonzeroIndexType >( ncols + 1 );
-
 		CRS_raw.col_start[ 0 ] = 0;
 
 #ifdef _H_GRB_REFERENCE_OMP_BLAS3
+		// TODO ALPify the below
 		#pragma omp parallel for simd
 #endif
 		for( size_t j = 0; j <= ncols; ++j ) {
 			CCS_raw.col_start[ j ] = 0;
+			C_col_index[ j ] = 0;
 		}
 
-
+		// do counting sort, phase 1 -- also this loop should employ the same
+		// parallelisation strategy during counting
 		nzc = 0;
 		for( size_t i = 0; i < nrows; ++i ) {
 			mask_coors.clear();
@@ -2169,33 +2176,30 @@ namespace grb {
 			for( auto k = A_raw.col_start[ i ]; k < A_raw.col_start[ i + 1 ]; ++k ) {
 				const auto k_col = A_raw.row_index[ k ];
 				if( mask_coors.assigned( k_col ) ) {
-					nzc++;
-					CCS_raw.col_start[ k_col + 1 ]++;
+					(void) nzc++;
+					(void) (CCS_raw.col_start[ k_col + 1 ])++;
 				}
 			}
 			CRS_raw.col_start[ i + 1 ] = nzc;
 		}
 
+		// TODO this is a prefix sum -- use the OMP utility function here to
+		//      parallelise it
 		for( size_t j = 1; j < ncols; ++j ) {
 			CCS_raw.col_start[ j + 1 ] += CCS_raw.col_start[ j ];
 		}
 
-#ifdef _H_GRB_REFERENCE_OMP_BLAS3
-		#pragma omp parallel for simd
-#endif
-		for( size_t j = 0; j < ncols; ++j ) {
-			C_col_index[ j ] = 0;
-		}
-
-
-		// use previously computed CCS offset array to update CCS during the
-		// computational phase
+		// do counting sort, phase 2 -- use previously computed CCS offset array to
+		// update CCS during the computational phase. Also this loop should employ
+		// the same (multiple-SPA) parallelisation strategy as above
 		nzc = 0;
 		for( size_t i = 0; i < nrows; ++i ) {
 			mask_coors.clear();
 			for( auto k = mask_raw.col_start[ i ]; k < mask_raw.col_start[ i + 1 ]; ++k ) {
 				const auto k_col = mask_raw.row_index[ k ];
-				if( utils::interpretMatrixMask< descr, MaskType >( true, mask_raw.getValues(), k ) ) {
+				if( utils::interpretMatrixMask< descr, MaskType >(
+					true, mask_raw.getValues(), k )
+				) {
 					mask_coors.assign( k_col );
 				}
 			}
@@ -2206,29 +2210,27 @@ namespace grb {
 					CRS_raw.row_index[ nzc ] = k_col;
 					CRS_raw.setValue( nzc, val );
 					const size_t CCS_index = C_col_index[ k_col ] + CCS_raw.col_start[ k_col ];
-					C_col_index[ k_col ]++;
+					(void) C_col_index[ k_col ]++;
 					CCS_raw.row_index[ CCS_index ] = i;
 					CCS_raw.setValue( CCS_index, val );
-					nzc++;
+					(void) nzc++;
 				}
 			}
 		}
 #ifndef NDEBUG
+ #ifdef _H_GRB_REFERENCE_OMP_BLAS3
+		#pragma omp parallel schedule( static, config::CACHE_LINE_SIZE::value() )
 		for( size_t j = 0; j < ncols; ++j ) {
 			assert( CCS_raw.col_start[ j + 1 ] - CCS_raw.col_start[ j ] ==
 				C_col_index[ j ] );
 		}
+ #endif
 #endif
-
 		internal::setCurrentNonzeroes( C, nzc );
 
+		// done
 		return SUCCESS;
 	}
-
-
-
-
-	
 
 	/**
 	 * Ingests raw data into a GraphBLAS vector.
