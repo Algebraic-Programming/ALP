@@ -91,10 +91,16 @@ namespace grb {
 				grb::operators::add< IOType >, 
 				grb::operators::mul< IOType >, 
 				grb::identities::zero, 
-				grb::identities::one 
+				grb::identities::one
 			>,
 			class Minus = operators::subtract< IOType >,
-			class Divide = operators::divide< IOType > 
+			class Divide = operators::divide< IOType >,
+			class RingIType = Semiring< 
+				grb::operators::add< IsingHType >, 
+				grb::operators::mul< IsingHType >, 
+				grb::identities::zero, 
+				grb::identities::one
+			>
 		>
 		grb::RC bSB( std::vector< IOType > & energies,                   // output length num_iters
 			grb::Vector< IOType, backend > & x_comp,                     // in/out, size N
@@ -106,7 +112,8 @@ namespace grb {
 			const IOType p_end,
 			const std::size_t num_iters,
 			const IOType dt,
-			// workspace vectors
+			// workspace
+			grb::Matrix< IsingHType, backend, RSI, RSI, NZI > & J2,
 			grb::Vector< IOType, backend > & Jx,
     		grb::Vector< IOType, backend > & temp,
 			grb::Vector< IsingHType, backend > & temp_int,
@@ -116,6 +123,9 @@ namespace grb {
 			const Ring & ring = Ring(),
 			const Minus & minus = Minus(),
 			const Divide & divide = Divide(),
+			const IOType zero = 0,
+			const RingIType & ringIType = RingIType(),
+			const IsingHType zero_itype = 0,
 			const std::function< IOType( IOType ) > & sqrtX = std_sqrt< IOType, IOType > ) {
 			(void)minus; // suppress unused parameter warning
 
@@ -127,10 +137,14 @@ namespace grb {
 			assert( grb::size(h) == N );
 			assert( grb::size(x_comp) == N );
 			assert( grb::size(y_comp) == N );
+
+			assert( grb::capacity(J) == grb::capacity(J2) );
+			assert( grb::ncols(J) == grb::ncols(J2) );
+			assert( grb::nrows(J) == grb::nrows(J2) );
 			// TODO: check that J is symmetric once properly implemented
 			//assert( grb::is_symmetric(J) );
 
-			grb::set( sol, ring.template getZero< IsingHType >() );
+			grb::set( sol, zero_itype );
 			grb::set( mask, ring.template getZero< bool >() );
 
 			// print pinned vector x_comp
@@ -149,15 +163,19 @@ namespace grb {
 			}
 
 			grb::RC rc = grb::SUCCESS;
+
 			/* ---- pre-compute ---- */
-			IOType sumJ2 = ring.template getZero< IOType >();
-			rc = rc ? rc : grb::eWiseLambda( [&sumJ2, &ring]( const size_t i, const size_t j, IsingHType& v ) {
+			rc = rc ? rc : grb::set( J2, J );
+			assert( rc == grb::SUCCESS );
+			rc = rc ? rc : grb::eWiseLambda( [&ring]( const size_t i, const size_t j, IsingHType& v ) {
 				(void) i;
 				(void) j;
-				IsingHType v2;
-				apply( v2, v, v, ring.getMultiplicativeOperator() );
-				foldl( sumJ2, v2, ring.getAdditiveOperator() );
-			}, J );
+				apply( v, v, v, ring.getMultiplicativeOperator() );
+			}, J2 );
+			assert( rc == grb::SUCCESS );
+
+			IsingHType sumJ2 = zero_itype;
+			rc = rc ? rc : grb::foldl( sumJ2, J2, ringIType.getAdditiveMonoid() );
 			if( rc != grb::SUCCESS ) {
 				std::cerr << "Error in eWiseLambda for sumJ2: " << rc << '\n';
 				return rc;
@@ -167,11 +185,11 @@ namespace grb {
 			std::cout << "sumJ2: " << sumJ2 << '\n';
 #endif
 
-			// rewrite this to use graphblas language
 			rc = rc ? rc : grb::foldl< descr_dense >( sumJ2, static_cast<IOType>( N - 1 ), divide );
 			IOType xi = 0.5;
-			sumJ2 = sqrtX( sumJ2 );
-			rc = rc ? rc : grb::foldl< descr_dense >( xi, sumJ2, divide );
+			IOType sqrt_sumJ2 = zero_itype;
+			sqrt_sumJ2 = sqrtX( static_cast<IOType>( sumJ2 ) );
+			rc = rc ? rc : grb::foldl< descr_dense >( xi, sqrt_sumJ2, divide );
 #ifdef DEBUG_IMSB
 			// for debugging purposes, print xi
 			std::cout << "xi: " << xi << '\n';
@@ -187,17 +205,17 @@ namespace grb {
 
 			    /* y_comp += ((-1+ps)*x_comp + xi*(Jx + h)) * dt */
 
-			    // Jx ← J * x_comp
-				grb::set( Jx, ring.template getZero< IOType >() );
+			    // Jx <- J * x_comp
+				grb::set( Jx, zero );
 				rc = rc ? rc : grb::mxv< descr_dense >( Jx, J, x_comp, ring );
 				assert( rc == grb::SUCCESS );
 #ifdef DEBUG_IMSB
 				vector_print( Jx, "Jx" );
 #endif
 
-			    // temp ← Jx + h
-				grb::set( temp, ring.template getZero< IOType >() );
-			    rc = rc ? rc : grb::eWiseApply< descr_dense >(
+			    // temp <- Jx + h
+				grb::set( temp, zero );
+			    rc = rc ? rc : grb::eWiseApply(
 			        temp, Jx, h, ring.getAdditiveMonoid()
 			    );
 				assert( rc == grb::SUCCESS );
@@ -205,7 +223,7 @@ namespace grb {
 				vector_print( temp, "temp = Jx + h" );
 #endif
 
-			    // temp ← xi * temp
+			    // temp <- xi * temp
 			    rc = rc ? rc : grb::foldl< descr_dense >( 
 					temp, xi, ring.getMultiplicativeMonoid() 
 				);
@@ -213,9 +231,7 @@ namespace grb {
 #ifdef DEBUG_IMSB
 				vector_print( temp, "xi * temp" );
 #endif
-
-
-			    // temp ← temp + (-1+ps) * x_comp
+			    // temp <- temp + (-1+ps) * x_comp
 			    const IOType scale = -1.0 + ps;
 				rc = rc ? rc : grb::eWiseMul< descr_dense >( temp, scale, x_comp, ring );
 				assert( rc == grb::SUCCESS );
@@ -251,7 +267,7 @@ namespace grb {
 				vector_print( mask, "mask" );
 #endif
 				rc = rc ? rc : grb::foldl< descr_dense >(  
-					y_comp, mask, ring.template getZero< IOType >(), 
+					y_comp, mask, zero, 
 					grb::operators::right_assign<IOType>()
 				);
 #ifdef DEBUG_IMSB
@@ -262,15 +278,6 @@ namespace grb {
 			    /* x_comp = clip( x_comp ) */
 				rc = rc ? rc : foldl< descr_dense >( x_comp, static_cast<IOType>(-1), grb::operators::max < IOType >() );
 				rc = rc ? rc : foldl< descr_dense >( x_comp, static_cast<IOType>(1), grb::operators::min < IOType >() );
-				// alternatively, we could use eWiseLambda:
-				// rc = rc ? rc : grb::eWiseLambda< descr_dense >( 
-				// 	[&x_comp]( const size_t i ) {
-				// 		(void) i;
-				// 		foldl( x_comp[i], static_cast<IOType>(-1), grb::operators::max < IOType >() );
-				// 		foldl( x_comp[i], static_cast<IOType>(1), grb::operators::min < IOType >() );
-				// 		//x_comp[i] = std::min<IOType>( 1.0, std::max<IOType>( -1.0, x_comp[i] ) ); 
-				// 	}, x_comp
-				// );
 				assert( rc == grb::SUCCESS );
 #ifdef DEBUG_IMSB
 				std::cout << "i =  " << iter << "\n ";
@@ -291,8 +298,8 @@ namespace grb {
 #ifdef DEBUG_IMSB
 				vector_print( sol, "sol" );
 #endif
-			    // temp ← J * sol
-				rc = rc ? rc : grb::set( temp_int, ring.template getZero< IsingHType >() );
+			    // temp <- J * sol
+				rc = rc ? rc : grb::set( temp_int, zero_itype );
 				rc = rc ? rc : grb::mxv< descr_dense >( temp_int, J, sol, ring );
 				assert( rc == grb::SUCCESS );
 #ifdef DEBUG_IMSB

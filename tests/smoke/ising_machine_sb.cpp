@@ -119,13 +119,19 @@ int main( int argc, char ** argv ) {
 	grb::Vector< IOType > Jx( N );
     grb::Vector< IOType > temp( N );
     grb::Vector< JType > temp_int( N );
-	grb::Vector< bool > mask( N );
+    grb::Vector< bool > mask( N );
+    grb::Matrix< JType > J2( N, N );
+    rc = rc ? rc : grb::resize( J2, grb::nnz(J) );
+    if(rc != grb::SUCCESS) {
+        std::cerr << "Matrix resize failed for J2\n";
+        return grb::RC::PANIC;
+    }
     // TODO: make sol int type
-	grb::Vector< JType > sol( N );
+    grb::Vector< JType > sol( N );
 
     rc = rc ? rc : bSB(
         energies, x0, y0, J, h, p0, p1, num_iters, dt,
-        Jx, temp, temp_int, mask, sol
+        J2, Jx, temp, temp_int, mask, sol
     );
 
 
