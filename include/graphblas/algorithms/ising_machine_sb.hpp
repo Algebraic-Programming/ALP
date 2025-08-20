@@ -119,6 +119,7 @@ namespace grb {
 			grb::Vector< IsingHType, backend > & temp_int,
 			grb::Vector< bool, backend > & mask,
 			grb::Vector< IsingHType, backend > & sol,
+			size_t & iterations,
 			// default semiring, minus, divide
 			const Ring & ring = Ring(),
 			const Minus & minus = Minus(),
@@ -201,7 +202,7 @@ namespace grb {
 			// assert len of energies == N
 			assert( energies.size() == num_iters );
 
-			for ( std::size_t iter = 0; iter < num_iters; ++iter ) {
+			for ( iterations = 0; iterations < num_iters; ++iterations ) {
 
 			    /* y_comp += ((-1+ps)*x_comp + xi*(Jx + h)) * dt */
 
@@ -324,7 +325,7 @@ namespace grb {
 #ifdef DEBUG_IMSB
 				std::cout << "e: " << e << '\n';
 #endif
-				energies[ iter ] = e;
+				energies[ iterations ] = e;
 			    ps += dps;
 			}
 

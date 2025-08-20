@@ -43,25 +43,59 @@ using namespace algorithms;
 using IOType = double;
 using JType = int;
 
+/** Parser type */
+typedef grb::utils::MatrixFileReader<
+	JType,
+	std::conditional<
+		(sizeof(grb::config::RowIndexType) > sizeof(grb::config::ColIndexType)),
+		grb::config::RowIndexType,
+		grb::config::ColIndexType
+	>::type
+> Parser;
+
+/** Nonzero type */
+typedef internal::NonzeroStorage<
+	grb::config::RowIndexType,
+	grb::config::ColIndexType,
+	JType
+> NonzeroT;
+
+/** In-memory storage type using tuple */
+typedef grb::utils::Singleton<
+    std::tuple<
+        size_t,                    // n (rows/columns)
+        size_t,                    // nz (nonzeros)
+        std::vector<NonzeroT>,     // matrix data
+        std::vector<JType>,        // h vector
+        std::vector<IOType>,       // x vector
+        std::vector<IOType>        // y vector
+        // Add more types as needed
+    >
+> Storage;
+
+// Access using std::get
+// auto& n = std::get<0>(Storage::getData());
+// auto& nz = std::get<1>(Storage::getData());
+// auto& matrix_data = std::get<2>(Storage::getData());
 
 namespace test_data {
     // test data from python implementation
     constexpr const std::size_t max_iters = 100;
 
     constexpr std::size_t N = 10;
-    constexpr std::size_t Nz = 54;
-    static const size_t i_arr[ Nz ] = {
-        0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 2, 2, 2, 2, 2, 3, 3, 3, 3, 3, 3, 3, 3, 4, 4, 4, 
-        4, 4, 5, 5, 5, 5, 5, 5, 6, 6, 6, 6, 6, 7, 7, 7, 7, 7, 8, 8, 8, 8, 9, 9, 9, 9, 9
-    };
-    static const size_t j_arr[ Nz ] = { 
-        0, 2, 3, 4, 5, 1, 4, 5, 6, 7, 9, 0, 2, 4, 6, 9, 0, 3, 4, 5, 6, 7, 8, 9, 0, 1, 2, 
-        3, 4, 0, 1, 3, 5, 6, 8, 1, 2, 3, 5, 6, 1, 3, 7, 8, 9, 3, 5, 7, 8, 1, 2, 3, 7, 9
-    };
-    static const int v_arr[ Nz ] = { 
-        -1,  1,  1, -1, -1, -1, -1,  1,  1,  1,  1,  1, -1, -1, -1, -1,  1,  1,  1,  1, -1, -1,  1,  1, -1, -1, -1,  
-        1,  1, -1,  1,  1, -1, -1, -1,  1, -1, -1, -1, -1,  1, -1, -1,  1, -1,  1, -1,  1,  1,  1, -1,  1, -1,  1
-    };
+    // constexpr std::size_t Nz = 54;
+    // static const size_t i_arr[ Nz ] = {
+    //     0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 2, 2, 2, 2, 2, 3, 3, 3, 3, 3, 3, 3, 3, 4, 4, 4, 
+    //     4, 4, 5, 5, 5, 5, 5, 5, 6, 6, 6, 6, 6, 7, 7, 7, 7, 7, 8, 8, 8, 8, 9, 9, 9, 9, 9
+    // };
+    // static const size_t j_arr[ Nz ] = { 
+    //     0, 2, 3, 4, 5, 1, 4, 5, 6, 7, 9, 0, 2, 4, 6, 9, 0, 3, 4, 5, 6, 7, 8, 9, 0, 1, 2, 
+    //     3, 4, 0, 1, 3, 5, 6, 8, 1, 2, 3, 5, 6, 1, 3, 7, 8, 9, 3, 5, 7, 8, 1, 2, 3, 7, 9
+    // };
+    // static const int v_arr[ Nz ] = { 
+    //     -1,  1,  1, -1, -1, -1, -1,  1,  1,  1,  1,  1, -1, -1, -1, -1,  1,  1,  1,  1, -1, -1,  1,  1, -1, -1, -1,  
+    //     1,  1, -1,  1,  1, -1, -1, -1,  1, -1, -1, -1, -1,  1, -1, -1,  1, -1,  1, -1,  1,  1,  1, -1,  1, -1,  1
+    // };
 
     static const int h_arr[ N ] = { 1, -1,  1, -1,  1,  1, -1,  1,  1,  1 };
     static const double x_arr[ N ] = { -0.0996, -0.0315,  0.0572,  0.0630,  0.0087, -0.0143, -0.0170, -0.0411, 0.0433, -0.0298 };
@@ -91,6 +125,7 @@ namespace test_data {
 
 struct input {
     // contains the command line arguments
+    std::string filename;
 	bool direct;
 	size_t rep;
 };
@@ -104,6 +139,41 @@ struct output {
     std::unique_ptr< PinnedVector< JType > > pinnedRefSolutionVector;
 };
 
+
+void ioProgram( const struct input &data_in, bool &success ) {
+	success = false;
+	// Parse and store matrix in singleton class
+	auto &data = std::get<2>(Storage::getData());
+	try {
+		Parser parser( data_in.filename, data_in.direct );
+		assert( parser.m() == parser.n() );
+		std::get<0>(Storage::getData()) = parser.n();
+		try {
+			std::get<1>(Storage::getData()) = parser.nz();
+		} catch( ... ) {
+			std::get<1>(Storage::getData()) = parser.entries();
+		}
+		/* Once internal issue #342 is resolved this can be re-enabled
+		for(
+			auto it = parser.begin( PARALLEL );
+			it != parser.end( PARALLEL );
+			++it
+		) {
+			data.push_back( *it );
+		}*/
+		for(
+			auto it = parser.begin( SEQUENTIAL );
+			it != parser.end( SEQUENTIAL );
+			++it
+		) {
+			data.push_back( NonzeroT( *it ) );
+		}
+	} catch( std::exception &e ) {
+		std::cerr << "I/O program failed: " << e.what() << "\n";
+		return;
+	}
+	success = true;
+}
 
 void grbProgram(
     const struct input &data_in, 
@@ -124,16 +194,51 @@ void grbProgram(
 	timer.reset();
 
     /* --- Problem setup --- */
-    grb::Matrix<JType> J( N, N, Nz );
     grb::Vector<JType> h( N );
     grb::Vector<IOType> x0( N ), y0( N ); // initialy 
     // ... populate J with test (random) values
     grb::RC rc = grb::SUCCESS;
-    rc = rc ? rc : buildMatrixUnique( J, &( i_arr[ 0 ] ), &( j_arr[ 0 ] ), &( v_arr[ 0 ] ), Nz, grb::SEQUENTIAL );
-    if(rc != grb::SUCCESS) {
-        std::cerr << "matrix build failed\n";
-        return;
-    }
+    // rc = rc ? rc : buildMatrixUnique( J, &( i_arr[ 0 ] ), &( j_arr[ 0 ] ), &( v_arr[ 0 ] ), Nz, grb::SEQUENTIAL );
+    // if(rc != grb::SUCCESS) {
+    //     std::cerr << "matrix build failed\n";
+    //     return;
+    // }
+
+
+	// load into GraphBLAS
+	const size_t n = std::get<0>(Storage::getData());
+    grb::Matrix<JType> J( n, n );
+	{
+		const auto &data = std::get<2>(Storage::getData());
+		RC io_rc = buildMatrixUnique(
+			J,
+			utils::makeNonzeroIterator<
+				grb::config::RowIndexType, grb::config::ColIndexType, JType
+			>( data.cbegin() ),
+			utils::makeNonzeroIterator<
+				grb::config::RowIndexType, grb::config::ColIndexType, JType
+			>( data.cend() ),
+			SEQUENTIAL
+		);
+		/* Once internal issue #342 is resolved this can be re-enabled
+		RC io_rc = buildMatrixUnique(
+			J,
+			utils::makeNonzeroIterator<
+				grb::config::RowIndexType, grb::config::ColIndexType, JType
+			>( data.cbegin() ),
+			utils::makeNonzeroIterator<
+				grb::config::RowIndexType, grb::config::ColIndexType, JType
+			>( data.cend() ),
+			PARALLEL
+		);*/
+		io_rc = io_rc ? io_rc : wait();
+		if( io_rc != SUCCESS ) {
+			std::cerr << "Failure: call to buildMatrixUnique did not succeed "
+				<< "(" << toString( io_rc ) << ")." << std::endl;
+			out.error_code = 5;
+			return;
+		}
+	}
 
     // Fill h, x0, y0 with random values using buildVector
     rc = rc ? rc : buildVector(h, h_arr, h_arr + N, grb::SEQUENTIAL);
@@ -297,6 +402,7 @@ int main( int argc, char ** argv ) {
 
 	// the input struct
 	struct input in;
+    in.filename = "/home/d/Scratch/SA/ising_machine.mtx";
 
 	// get inner number of iterations
 	in.rep = grb::config::BENCHMARKING::inner();
@@ -314,6 +420,22 @@ int main( int argc, char ** argv ) {
 
 	// set standard exit code
 	grb::RC rc = SUCCESS;
+
+	// launch I/O
+	{
+		bool success;
+		grb::Launcher< AUTOMATIC > launcher;
+		rc = launcher.exec( &ioProgram, in, success, true );
+		if( rc != SUCCESS ) {
+			std::cerr << "launcher.exec(I/O) returns with non-SUCCESS error code \""
+				<< grb::toString( rc ) << "\"\n";
+			return 73;
+		}
+		if( !success ) {
+			std::cerr << "I/O program caught an exception\n";
+			return 77;
+		}
+	}
 
 	// the output struct
 	struct output out;
