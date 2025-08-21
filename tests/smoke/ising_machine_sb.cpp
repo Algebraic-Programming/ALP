@@ -72,7 +72,6 @@ typedef grb::utils::Singleton<
         // Add more types as needed
     >
 > Storage;
-
 // Access using std::get
 // auto& n = std::get<0>(Storage::getData());
 // auto& nz = std::get<1>(Storage::getData());
@@ -80,27 +79,49 @@ typedef grb::utils::Singleton<
 
 namespace test_data {
     // test data from python implementation
+	constexpr const std::size_t n = 10;
+	
+	const std::vector<JType> h_array_data = { 1, -1, 1, -1, 1, 1, -1, 1, 1, 1 };
+	const std::vector<IOType> x_array_data = {
+		-0.0996, -0.0315, 0.0572, 0.0630, 0.0087,
+		-0.0143, -0.0170, -0.0411, 0.0433, -0.0298
+	};
+	const std::vector<IOType> y_array_data = {
+		0.0373, 0.0540, 0.0486, -0.0877, -0.0418,
+		-0.0261, 0.0018, -0.0710, 0.0507, -0.0483
+	};
+	const std::vector<JType> sol_ref_data = { 1, -1, 1, 1, 1, -1, -1, -1, 1, 1 };
+	const std::vector<std::pair< std::pair< size_t, size_t >, JType > > j_matrix_data = {
+		{{1, 1}, -1}, {{2, 2}, -1}, {{3, 1}, 1}, {{3, 3}, -1},
+		{{4, 1}, 1}, {{4, 4}, 1}, {{5, 1}, -1}, {{5, 2}, -1},
+		{{5, 3}, -1}, {{5, 4}, 1}, {{5, 5}, 1},
+		{{6, 1}, -1	}, {{6, 2}, 1}, {{6, 4}, 1},
+		{{6, 6}, -1}, {{7, 2}, 1}, {{7, 3}, -1},
+		{{7, 4}, -1}, {{7, 6}, -1},
+		{{7, 7}, -1}, {{8, 2}, 1},
+		{{8, 4}, -1}, {{8, 8}, -1},
+		{{9, 4}, 1}, {{9, 6}, -1},
+		{{9, 8}, 1}, {{9, 9}, 1},
+		{{10, 2}, 1}, {{10, 3}, -1},
+		{{10, 4}, 1}, {{10, 8}, -1},
+		{{10, 10}, 1}
+		,
+		// since matrix is symmetric, we can add the symmetric entries
+		{{1, 3}, 1}, 
+		{{1, 4}, 1}, {{1, 5}, -1}, {{2, 5}, -1},
+		{{3, 5}, -1}, {{4, 5}, 1},
+		{{1, 6}, -1	}, {{2, 6}, 1}, {{4, 6}, 1},
+		{{2, 7}, 1}, {{3, 7}, -1},
+		{{4, 7}, -1}, {{6, 7}, -1},
+		{{2, 8}, 1},
+		{{4, 8}, -1},
+		{{4, 9}, 1}, {{6, 9}, -1},
+		{{8, 9}, 1},
+		{{2, 10}, 1}, {{3, 10}, -1},
+		{{4, 10}, 1}, {{8, 10}, -1}
+	};
+
     constexpr const std::size_t max_iters = 100;
-
-    constexpr std::size_t N = 10;
-    // constexpr std::size_t Nz = 54;
-    // static const size_t i_arr[ Nz ] = {
-    //     0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 2, 2, 2, 2, 2, 3, 3, 3, 3, 3, 3, 3, 3, 4, 4, 4, 
-    //     4, 4, 5, 5, 5, 5, 5, 5, 6, 6, 6, 6, 6, 7, 7, 7, 7, 7, 8, 8, 8, 8, 9, 9, 9, 9, 9
-    // };
-    // static const size_t j_arr[ Nz ] = { 
-    //     0, 2, 3, 4, 5, 1, 4, 5, 6, 7, 9, 0, 2, 4, 6, 9, 0, 3, 4, 5, 6, 7, 8, 9, 0, 1, 2, 
-    //     3, 4, 0, 1, 3, 5, 6, 8, 1, 2, 3, 5, 6, 1, 3, 7, 8, 9, 3, 5, 7, 8, 1, 2, 3, 7, 9
-    // };
-    // static const int v_arr[ Nz ] = { 
-    //     -1,  1,  1, -1, -1, -1, -1,  1,  1,  1,  1,  1, -1, -1, -1, -1,  1,  1,  1,  1, -1, -1,  1,  1, -1, -1, -1,  
-    //     1,  1, -1,  1,  1, -1, -1, -1,  1, -1, -1, -1, -1,  1, -1, -1,  1, -1,  1, -1,  1,  1,  1, -1,  1, -1,  1
-    // };
-
-    static const int h_arr[ N ] = { 1, -1,  1, -1,  1,  1, -1,  1,  1,  1 };
-    static const double x_arr[ N ] = { -0.0996, -0.0315,  0.0572,  0.0630,  0.0087, -0.0143, -0.0170, -0.0411, 0.0433, -0.0298 };
-    static const double y_arr[ N ] = {  0.0373,  0.0540,  0.0486, -0.0877, -0.0418, -0.0261,  0.0018, -0.0710, 0.0507, -0.0483 };
-
     const std::size_t num_iters = 100;
     static const double energies_ref[ num_iters ] = { 
         -3,  -3,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,  -1,
@@ -113,9 +134,6 @@ namespace test_data {
         -11, -11, -11, -11, -11, -11, -11, -11, -11
     };
 
-    static const int sol_ref_data[ N ] = { 
-        1, -1,  1,  1,  1, -1, -1, -1,  1,  1
-    };
 
     const IOType p0  = 0.;
     const IOType p1  = 1.1;
@@ -124,11 +142,17 @@ namespace test_data {
 } // namespace test_data
 
 struct input {
-    // contains the command line arguments
-    std::string filename;
+	// contains the command line arguments related data
+	static bool use_default_data;
+	std::string filename_Jmatrix;
+	std::string filename_h;
+	std::string filename_x;
+	std::string filename_y;
 	bool direct;
 	size_t rep;
 };
+
+bool input::use_default_data = false;
 
 struct output {
 	int error_code = 0;
@@ -139,13 +163,11 @@ struct output {
     std::unique_ptr< PinnedVector< JType > > pinnedRefSolutionVector;
 };
 
-
-void ioProgram( const struct input &data_in, bool &success ) {
-	success = false;
-	// Parse and store matrix in singleton class
-	auto &data = std::get<2>(Storage::getData());
+template< typename Dtype >
+void read_matrix_data(const std::string &filename, std::vector<Dtype> &data, bool direct) {
+    // Implementation for reading matrix data from file
 	try {
-		Parser parser( data_in.filename, data_in.direct );
+		Parser parser( filename, direct );
 		assert( parser.m() == parser.n() );
 		std::get<0>(Storage::getData()) = parser.n();
 		try {
@@ -166,12 +188,114 @@ void ioProgram( const struct input &data_in, bool &success ) {
 			it != parser.end( SEQUENTIAL );
 			++it
 		) {
-			data.push_back( NonzeroT( *it ) );
+			data.push_back( Dtype( *it ) );
+			// print last data element
+			std::cout << "read_matrix_data_from_file: " << data.back().first.first << ", "
+				<< data.back().first.second << ", " << data.back().second << "\n";
 		}
 	} catch( std::exception &e ) {
 		std::cerr << "I/O program failed: " << e.what() << "\n";
 		return;
 	}
+}
+
+template< typename NonzeroT, typename IType, typename VType >
+void read_matrix_data_from_array(
+	const std::vector<std::pair< std::pair< IType, IType >, VType > > &array,
+	std::vector<NonzeroT> &data
+) {
+	// Implementation for reading matrix data from array
+	try {
+		for (const auto &entry : array) {
+			//std::cout << "read_matrix_data_from_array: " << entry.first.first << ", " << entry.first.second << ", " << entry.second << "\n";
+			// since 			
+			// data.push_back( Dtype( *it ) );
+			// print last data element
+			// std::cout << "read_matrix_data: " << it->first.first << ", " << it->first.second << ", " << it->second << "\n";
+			// we want the same here
+			data.emplace_back(
+				NonzeroT( entry.first.first-1, entry.first.second-1, entry.second )
+			);
+			// print last data element from std::vector<NonzeroT> data
+			std::cout << "read_matrix_data_from_array: " << data.back().first.first << ", "
+				<< data.back().first.second << ", " << data.back().second << "\n";
+		}
+		std::get<0>(Storage::getData()) = test_data::n;
+		std::get<1>(Storage::getData()) = data.size();
+	} catch (const std::exception &e) {
+		std::cerr << "Failed to read matrix data from array: " << e.what() << "\n";
+		return;
+	}
+}
+
+template< typename Dtype >
+void read_vector_data(const std::string &filename, std::vector<Dtype> &data) {
+    // Implementation for reading vector data from file
+    try {
+        std::ifstream file( filename );
+        if( !file.is_open() ) {
+            std::cerr << "Failed to open vector file: " << filename << "\n";
+            return;
+        }
+        std::string line;
+        while( std::getline( file, line ) ) {
+            if( line.empty() ) continue; // skip empty lines
+            std::istringstream iss( line );
+            Dtype v;
+            if( !(iss >> v) ) {
+                throw std::runtime_error( "Failed to parse line in vector file" );
+            }
+            data.push_back( v );
+        }
+    } catch( std::exception &e ) {
+        std::cerr << "I/O program failed: " << e.what() << "\n";
+        return;
+    }
+}
+
+
+template< typename Dtype >
+void read_vector_data_from_array(
+	const std::vector<Dtype> &array, std::vector<Dtype> &data
+) {
+	// Implementation for reading vector data from array
+	try {
+		for (size_t i = 0; i < array.size(); ++i) {
+			data.push_back(array[i]);
+		}
+	} catch (const std::exception &e) {
+		std::cerr << "Failed to read vector data from array: " << e.what() << "\n";
+		return;
+	}
+}
+
+void ioProgram( const struct input &data_in, bool &success ) {
+    using namespace test_data;
+	success = false;
+	// Parse and store matrix in singleton class
+	auto &Jdata = std::get<2>(Storage::getData());
+    // Read and store h vector in singleton class
+    auto &h = std::get<3>(Storage::getData());
+    auto &x = std::get<4>(Storage::getData());
+    auto &y = std::get<5>(Storage::getData());
+
+    if(data_in.use_default_data){
+        // if no file provided, use default data from file_content
+		// TODO: for now use matrix data file
+		//read_matrix_data<NonzeroT>( data_in.filename_Jmatrix, Jdata, data_in.direct );
+		read_matrix_data_from_array<NonzeroT>( test_data::j_matrix_data, Jdata );
+        read_vector_data_from_array<JType>( test_data::h_array_data, h );
+        read_vector_data_from_array<IOType>( test_data::x_array_data, x );
+        read_vector_data_from_array<IOType>( test_data::y_array_data, y );
+
+    } else {
+        // read from files if provided
+        read_matrix_data<NonzeroT>( data_in.filename_Jmatrix, Jdata, data_in.direct );
+        read_vector_data<JType>( data_in.filename_h, h );
+        read_vector_data<IOType>( data_in.filename_x, x );
+        read_vector_data<IOType>( data_in.filename_y, y );
+    }
+
 	success = true;
 }
 
@@ -194,19 +318,14 @@ void grbProgram(
 	timer.reset();
 
     /* --- Problem setup --- */
-    grb::Vector<JType> h( N );
-    grb::Vector<IOType> x0( N ), y0( N ); // initialy 
+    const size_t n = std::get<0>(Storage::getData());
+	std::cout << "n = " << n << std::endl;
+    grb::Vector<JType> h( n );
+    grb::Vector<IOType> x0( n ), y0( n ); // initialy
     // ... populate J with test (random) values
     grb::RC rc = grb::SUCCESS;
-    // rc = rc ? rc : buildMatrixUnique( J, &( i_arr[ 0 ] ), &( j_arr[ 0 ] ), &( v_arr[ 0 ] ), Nz, grb::SEQUENTIAL );
-    // if(rc != grb::SUCCESS) {
-    //     std::cerr << "matrix build failed\n";
-    //     return;
-    // }
 
-
-	// load into GraphBLAS
-	const size_t n = std::get<0>(Storage::getData());
+    // load into GraphBLAS
     grb::Matrix<JType> J( n, n );
 	{
 		const auto &data = std::get<2>(Storage::getData());
@@ -238,12 +357,47 @@ void grbProgram(
 			out.error_code = 5;
 			return;
 		}
+
+		// print matrix
+		if( s == 0 ) {
+			std::cout << "Matrix J:\n";
+			print_matrix( J);
+		}
 	}
 
-    // Fill h, x0, y0 with random values using buildVector
-    rc = rc ? rc : buildVector(h, h_arr, h_arr + N, grb::SEQUENTIAL);
-    rc = rc ? rc : buildVector(x0, x_arr, x_arr + N, grb::SEQUENTIAL);
-    rc = rc ? rc : buildVector(y0, y_arr, y_arr + N, grb::SEQUENTIAL);
+    // build vector h with data from singleton
+    {
+        const auto &h_data = std::get<3>(Storage::getData());
+		rc = rc ? rc : buildVector(
+			h,
+			h_data.cbegin(),
+			h_data.cend(),
+			SEQUENTIAL
+		);
+    }
+
+    // build vector x with data from singleton
+    {
+        const auto &x_data = std::get<4>(Storage::getData());
+        rc = rc ? rc : buildVector(
+            x0, 
+            x_data.cbegin(), 
+            x_data.cend(), 
+            SEQUENTIAL
+        );
+    }
+
+    // build vector y with data from singleton
+    {
+        const auto &y_data = std::get<5>(Storage::getData());
+        rc = rc ? rc : buildVector(
+            y0, 
+            y_data.cbegin(), 
+            y_data.cend(), 
+            SEQUENTIAL
+        );
+    }       
+
     if(rc != grb::SUCCESS) {
         std::cerr << "Vector build failed\n";
         return;
@@ -252,19 +406,20 @@ void grbProgram(
     // energies is array of length num_iters, initialized to 0
     std::vector< IOType > energies( num_iters, 0 );
 
-    grb::Vector< IOType > Jx( N );
-    grb::Vector< IOType > temp( N );
-    grb::Vector< JType > temp_int( N );
-    grb::Vector< bool > mask( N );
-    grb::Matrix< JType > J2( N, N );
+    grb::Vector< IOType > Jx( n );
+    grb::Vector< IOType > temp( n );
+    grb::Vector< JType > temp_int( n );
+    grb::Vector< bool > mask( n );
+    grb::Matrix< JType > J2( n, n );
     rc = rc ? rc : grb::resize( J2, grb::nnz(J) );
     if(rc != grb::SUCCESS) {
         std::cerr << "Matrix resize failed for J2\n";
         return;
     }
-    grb::Vector< JType > sol( N );
-    grb::Vector< JType > sol_ref( N );
-    rc = rc ? rc : buildVector(sol_ref, sol_ref_data, sol_ref_data + N, grb::SEQUENTIAL);
+    grb::Vector< JType > sol( n );
+    // TODO: enable sol_ref
+    // grb::Vector< JType > sol_ref( N );
+    // rc = rc ? rc : buildVector(sol_ref, sol_ref_data, sol_ref_data + N, grb::SEQUENTIAL);
 
     out.times.preamble = timer.time();
 
@@ -353,8 +508,9 @@ void grbProgram(
 		return;
 	}
 
-	out.pinnedRefSolutionVector = std::unique_ptr< PinnedVector< JType > >(
-		new PinnedVector< JType >( sol_ref, SEQUENTIAL ) );
+    // TODO: enable sol_ref
+	// out.pinnedRefSolutionVector = std::unique_ptr< PinnedVector< JType > >(
+	// 	new PinnedVector< JType >( sol_ref, SEQUENTIAL ) );
 
 	// output
 	out.pinnedSolutionVector = std::unique_ptr< PinnedVector< JType > >(
@@ -371,9 +527,9 @@ void grbProgram(
     } else {
         // print all energies
         for (std::size_t i = 0; i < num_iters; ++i) {
-#ifdef DEBUG_IMSB
+//#ifdef DEBUG_IMSB
            std::cout << "Energy at iteration " << i << " = " << energies[i] << '\n';
-#endif
+//#endif
            if( energies[i] != energies_ref[i]) {
 #ifdef DEBUG_IMSB
                std::cerr << "Error: Energy at iteration " << i << " does not match reference value.\n";
@@ -402,7 +558,11 @@ int main( int argc, char ** argv ) {
 
 	// the input struct
 	struct input in;
-    in.filename = "/home/d/Scratch/SA/ising_machine.mtx";
+    in.filename_Jmatrix = "/home/d/Scratch/SA/ising_machine.mtx";
+    in.filename_h = "/home/d/Scratch/SA/h_vector.dat";
+    in.filename_x = "/home/d/Scratch/SA/x_vector.dat";
+    in.filename_y = "/home/d/Scratch/SA/y_vector.dat";
+    in.use_default_data = true; // use default data from files
 
 	// get inner number of iterations
 	in.rep = grb::config::BENCHMARKING::inner();
@@ -479,7 +639,8 @@ int main( int argc, char ** argv ) {
 		if( solution.size() > 0 ) {
 			print_vector( solution, 30, "SOLUTION" );
             // expected solution from sol_ref_data
-            print_vector( solution_ref, 30, "EXPECTED SOLUTION" );
+            // TODO: enable sol_ref
+            // print_vector( solution_ref, 30, "EXPECTED SOLUTION" );
 		} else {
 			std::cerr << "ERROR: solution contains no values" << std::endl;
 		}
