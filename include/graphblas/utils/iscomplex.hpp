@@ -49,65 +49,65 @@ namespace grb {
 		template< typename C >
 		class is_complex {
 
-					static_assert(
-						std::is_arithmetic< C >::value,
-						"is_complex: C is not a numerical (arithmetic) type"
-					);
+			static_assert(
+				std::is_arithmetic< C >::value,
+				"is_complex: C is not a numerical (arithmetic) type"
+			);
 
-					public:
+			public:
 
-						/**
-						 * If \a value is <tt>false</tt>, the type will be \a C.
-						 * If \a value is <tt>true</tt>, the type will be C::value_type.
-						 */
-						typedef C type;
+				/**
+				 * If \a value is <tt>false</tt>, the type will be \a C.
+				 * If \a value is <tt>true</tt>, the type will be C::value_type.
+				 */
+				typedef C type;
 
-						/** Whether the type \a C is std::complex */
-						static constexpr const bool value = false;
+				/** Whether the type \a C is std::complex */
+				static constexpr const bool value = false;
 
-						/**
-						 * @returns The conjugate of a given value if \a C is a complex type, or
-						 *          the given value if \a C is not complex.
-						 */
-						static C conjugate( const C &x ) noexcept {
-							return x;
-						}
+				/**
+				 * @returns The conjugate of a given value if \a C is a complex type, or
+				 *          the given value if \a C is not complex.
+				 */
+				static C conjugate( const C &x ) noexcept {
+					return x;
+				}
 
-						/**
-						 * @returns The absolute value of a given value if \a C is a complex type,
-						 *          or the given value if \a C is not complex.
-						 */
-						static C modulus( const C &x ) noexcept {
-							return( x > 0 ? x : -x );
-						}
+				/**
+				 * @returns The absolute value of a given value if \a C is a complex type,
+				 *          or the given value if \a C is not complex.
+				 */
+				static C modulus( const C &x ) noexcept {
+					return( x > 0 ? x : -x );
+				}
 
-						/**
-						 * @returns The absolute value squared of a given value.
-						 */
-						static C norm( const C &x ) noexcept {
-							return x * x;
-						}
+				/**
+				 * @returns The absolute value squared of a given value.
+				 */
+				static C norm( const C &x ) noexcept {
+					return x * x;
+				}
 
-						/**
-						 * @returns The polar coordinates of a given value.
-						 *
-						 * The first argument in the returned pair is the magnitude, while the
-						 * second is the phase.
-						 */
-						static std::pair< C, C > polar( const C &x ) noexcept {
-							std::pair< C, C > ret{ std::abs( x ), x < 0 ? M_PI : 0 };
-							return ret;
-						}
+				/**
+				 * @returns The polar coordinates of a given value.
+				 *
+				 * The first argument in the returned pair is the magnitude, while the
+				 * second is the phase.
+				 */
+				static std::pair< C, C > polar( const C &x ) noexcept {
+					std::pair< C, C > ret{ std::abs( x ), x < 0 ? M_PI : 0 };
+					return ret;
+				}
 
-						/**
-						 * @returns The multiplicative inverse of a given value.
-						 */
-						static C inverse( const C &x ) noexcept {
-							constexpr C one = 1;
-							return one / x;
-						}
+				/**
+				 * @returns The multiplicative inverse of a given value.
+				 */
+				static C inverse( const C &x ) noexcept {
+					constexpr C one = 1;
+					return one / x;
+				}
 
-				};
+		};
 
 		/** \internal The specialisation for std::complex types. */
 		template< typename T >
