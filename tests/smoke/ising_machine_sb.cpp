@@ -18,7 +18,7 @@
 #include <exception>
 #include <iostream>
 #include <vector>
-
+#include <cmath>
 
 #include <inttypes.h>
 
@@ -68,7 +68,8 @@ typedef grb::utils::Singleton<
         std::vector<NonzeroT>,     // matrix data
         std::vector<JType>,        // h vector
         std::vector<IOType>,       // x vector
-        std::vector<IOType>        // y vector
+        std::vector<IOType>,       // y vector
+        std::vector<JType>        // sol_ref vector
         // Add more types as needed
     >
 > Storage;
@@ -91,33 +92,23 @@ namespace test_data {
 		-0.0261, 0.0018, -0.0710, 0.0507, -0.0483
 	};
 	const std::vector<JType> sol_ref_data = { 1, -1, 1, 1, 1, -1, -1, -1, 1, 1 };
+	// matrix in format of list of nested pairs ((i, j), value)
 	const std::vector<std::pair< std::pair< size_t, size_t >, JType > > j_matrix_data = {
 		{{1, 1}, -1}, {{2, 2}, -1}, {{3, 1}, 1}, {{3, 3}, -1},
 		{{4, 1}, 1}, {{4, 4}, 1}, {{5, 1}, -1}, {{5, 2}, -1},
 		{{5, 3}, -1}, {{5, 4}, 1}, {{5, 5}, 1},
 		{{6, 1}, -1	}, {{6, 2}, 1}, {{6, 4}, 1},
 		{{6, 6}, -1}, {{7, 2}, 1}, {{7, 3}, -1},
-		{{7, 4}, -1}, {{7, 6}, -1},
-		{{7, 7}, -1}, {{8, 2}, 1},
-		{{8, 4}, -1}, {{8, 8}, -1},
-		{{9, 4}, 1}, {{9, 6}, -1},
-		{{9, 8}, 1}, {{9, 9}, 1},
-		{{10, 2}, 1}, {{10, 3}, -1},
-		{{10, 4}, 1}, {{10, 8}, -1},
-		{{10, 10}, 1}
-		,
-		// since matrix is symmetric, we can add the symmetric entries
-		{{1, 3}, 1}, 
-		{{1, 4}, 1}, {{1, 5}, -1}, {{2, 5}, -1},
-		{{3, 5}, -1}, {{4, 5}, 1},
-		{{1, 6}, -1	}, {{2, 6}, 1}, {{4, 6}, 1},
-		{{2, 7}, 1}, {{3, 7}, -1},
-		{{4, 7}, -1}, {{6, 7}, -1},
-		{{2, 8}, 1},
-		{{4, 8}, -1},
-		{{4, 9}, 1}, {{6, 9}, -1},
-		{{8, 9}, 1},
-		{{2, 10}, 1}, {{3, 10}, -1},
+		{{7, 4}, -1}, {{7, 6}, -1}, {{7, 7}, -1}, {{8, 2}, 1},
+		{{8, 4}, -1}, {{8, 8}, -1}, {{9, 4}, 1}, {{9, 6}, -1},
+		{{9, 8}, 1}, {{9, 9}, 1}, {{10, 2}, 1}, {{10, 3}, -1},
+		{{10, 4}, 1}, {{10, 8}, -1}, {{10, 10}, 1},
+		// since matrix is symmetric, we add the symmetric entries
+		{{1, 3}, 1}, {{1, 4}, 1}, {{1, 5}, -1}, {{2, 5}, -1},
+		{{3, 5}, -1}, {{4, 5}, 1}, {{1, 6}, -1	}, {{2, 6}, 1}, {{4, 6}, 1},
+		{{2, 7}, 1}, {{3, 7}, -1}, {{4, 7}, -1}, {{6, 7}, -1},
+		{{2, 8}, 1}, {{4, 8}, -1}, {{4, 9}, 1}, {{6, 9}, -1},
+		{{8, 9}, 1}, {{2, 10}, 1}, {{3, 10}, -1},
 		{{4, 10}, 1}, {{8, 10}, -1}
 	};
 
@@ -134,7 +125,6 @@ namespace test_data {
         -11, -11, -11, -11, -11, -11, -11, -11, -11
     };
 
-
     const IOType p0  = 0.;
     const IOType p1  = 1.1;
     const IOType dt  = 0.25;
@@ -150,6 +140,17 @@ struct input {
 	std::string filename_y;
 	bool direct;
 	size_t rep;
+	size_t outer; // number of outer repetitions for benchmarking
+	// number of iterations for Ising machine SB
+	size_t num_iters;
+	// p0, p1, dt parameters for Ising machine SB
+	IOType p0;
+	IOType p1;
+	IOType dt;
+	// whether to verify output against reference data
+	bool verify;
+	// filename of reference solution vector (not implemented)
+	std::string filename_ref_solution;
 };
 
 bool input::use_default_data = false;
@@ -189,9 +190,11 @@ void read_matrix_data(const std::string &filename, std::vector<Dtype> &data, boo
 			++it
 		) {
 			data.push_back( Dtype( *it ) );
-			// print last data element
-			std::cout << "read_matrix_data_from_file: " << data.back().first.first << ", "
+#ifdef DEBUG_IMSB
+			// print last data element from std::vector<NonzeroT> data
+			std::cout << "read_matrix_data: " << data.back().first.first << ", "
 				<< data.back().first.second << ", " << data.back().second << "\n";
+#endif
 		}
 	} catch( std::exception &e ) {
 		std::cerr << "I/O program failed: " << e.what() << "\n";
@@ -207,18 +210,14 @@ void read_matrix_data_from_array(
 	// Implementation for reading matrix data from array
 	try {
 		for (const auto &entry : array) {
-			//std::cout << "read_matrix_data_from_array: " << entry.first.first << ", " << entry.first.second << ", " << entry.second << "\n";
-			// since 			
-			// data.push_back( Dtype( *it ) );
-			// print last data element
-			// std::cout << "read_matrix_data: " << it->first.first << ", " << it->first.second << ", " << it->second << "\n";
-			// we want the same here
 			data.emplace_back(
 				NonzeroT( entry.first.first-1, entry.first.second-1, entry.second )
 			);
+#ifdef DEBUG_IMSB
 			// print last data element from std::vector<NonzeroT> data
 			std::cout << "read_matrix_data_from_array: " << data.back().first.first << ", "
 				<< data.back().first.second << ", " << data.back().second << "\n";
+#endif
 		}
 		std::get<0>(Storage::getData()) = test_data::n;
 		std::get<1>(Storage::getData()) = data.size();
@@ -270,6 +269,7 @@ void read_vector_data_from_array(
 }
 
 void ioProgram( const struct input &data_in, bool &success ) {
+
     using namespace test_data;
 	success = false;
 	// Parse and store matrix in singleton class
@@ -278,22 +278,28 @@ void ioProgram( const struct input &data_in, bool &success ) {
     auto &h = std::get<3>(Storage::getData());
     auto &x = std::get<4>(Storage::getData());
     auto &y = std::get<5>(Storage::getData());
+	auto &sol = std::get<6>(Storage::getData());
 
     if(data_in.use_default_data){
         // if no file provided, use default data from file_content
-		// TODO: for now use matrix data file
-		//read_matrix_data<NonzeroT>( data_in.filename_Jmatrix, Jdata, data_in.direct );
 		read_matrix_data_from_array<NonzeroT>( test_data::j_matrix_data, Jdata );
         read_vector_data_from_array<JType>( test_data::h_array_data, h );
         read_vector_data_from_array<IOType>( test_data::x_array_data, x );
         read_vector_data_from_array<IOType>( test_data::y_array_data, y );
-
+        read_vector_data_from_array<JType>( test_data::sol_ref_data, sol );
     } else {
         // read from files if provided
         read_matrix_data<NonzeroT>( data_in.filename_Jmatrix, Jdata, data_in.direct );
         read_vector_data<JType>( data_in.filename_h, h );
         read_vector_data<IOType>( data_in.filename_x, x );
         read_vector_data<IOType>( data_in.filename_y, y );
+		if(data_in.verify) {
+			if(data_in.filename_ref_solution.empty()) {
+				std::cerr << "Reference solution file not provided for verification\n";
+				return;
+			}
+		}
+		read_vector_data<JType>( data_in.filename_ref_solution, sol );
     }
 
 	success = true;
@@ -311,15 +317,10 @@ void grbProgram(
 
     grb::utils::Timer timer;
 	timer.reset();
-    // TODO: IO goes here
-
-	// I/O done
-	out.times.io = timer.time();
-	timer.reset();
 
     /* --- Problem setup --- */
     const size_t n = std::get<0>(Storage::getData());
-	std::cout << "n = " << n << std::endl;
+	std::cout << "problem size n = " << n << "\n";
     grb::Vector<JType> h( n );
     grb::Vector<IOType> x0( n ), y0( n ); // initialy
     // ... populate J with test (random) values
@@ -358,11 +359,12 @@ void grbProgram(
 			return;
 		}
 
-		// print matrix
-		if( s == 0 ) {
-			std::cout << "Matrix J:\n";
-			print_matrix( J);
-		}
+#ifdef DEBUG_IMSB
+	if( s == 0 ) {
+		std::cout << "Matrix J:\n";
+		print_matrix( J);
+	}
+#endif
 	}
 
     // build vector h with data from singleton
@@ -417,11 +419,21 @@ void grbProgram(
         return;
     }
     grb::Vector< JType > sol( n );
-    // TODO: enable sol_ref
-    // grb::Vector< JType > sol_ref( N );
-    // rc = rc ? rc : buildVector(sol_ref, sol_ref_data, sol_ref_data + N, grb::SEQUENTIAL);
-
-    out.times.preamble = timer.time();
+    grb::Vector< JType > sol_ref( n );
+	if(data_in.verify) {
+		// build vector sol_ref with data from singleton
+		const auto &sol_ref_data = std::get<6>(Storage::getData());
+		rc = rc ? rc : buildVector(
+			sol_ref,
+			sol_ref_data.cbegin(),
+			sol_ref_data.cend(),
+			grb::SEQUENTIAL
+		);
+	} 
+    if(rc != grb::SUCCESS) {
+        std::cerr << "Vector build failed\n";
+        return;
+    }
 
 	rc = rc ? rc : wait();
 	out.times.preamble = timer.time();
@@ -477,7 +489,7 @@ void grbProgram(
                     J2, Jx, temp, temp_int, mask, sol, out.iterations
                 );
 			}
-			if( Properties<>::isNonblockingExecution ) {
+			if( grb::Properties<>::isNonblockingExecution ) {
 				rc = rc ? rc : wait();
 			}
 		}
@@ -508,9 +520,8 @@ void grbProgram(
 		return;
 	}
 
-    // TODO: enable sol_ref
-	// out.pinnedRefSolutionVector = std::unique_ptr< PinnedVector< JType > >(
-	// 	new PinnedVector< JType >( sol_ref, SEQUENTIAL ) );
+	out.pinnedRefSolutionVector = std::unique_ptr< PinnedVector< JType > >(
+		new PinnedVector< JType >( sol_ref, SEQUENTIAL ) );
 
 	// output
 	out.pinnedSolutionVector = std::unique_ptr< PinnedVector< JType > >(
@@ -525,23 +536,27 @@ void grbProgram(
     if( rc != grb::SUCCESS ) {
         std::cerr << "bSB returned error code " << rc << '\n';
     } else {
-        // print all energies
-        for (std::size_t i = 0; i < num_iters; ++i) {
-//#ifdef DEBUG_IMSB
-           std::cout << "Energy at iteration " << i << " = " << energies[i] << '\n';
-//#endif
-           if( energies[i] != energies_ref[i]) {
-#ifdef DEBUG_IMSB
-               std::cerr << "Error: Energy at iteration " << i << " does not match reference value.\n";
-               std::cerr << "Expected: " << energies_ref[i] << ", got: " << energies[i] << '\n';
-#endif
-               out.error_code = 40;
-               return ;
-           }
-        }
-        std::cout << "All energies match reference values.\n";
-        std::cout << "TEST OK\n"; 
-    }
+		if (data_in.verify) {
+			// print all energies
+			for (std::size_t i = 0; i < num_iters; ++i) {
+	#ifdef DEBUG_IMSB
+			std::cout << "Energy at iteration " << i << " = " << energies[i] << '\n';
+	#endif
+			if( energies[i] != energies_ref[i]) {
+	#ifdef DEBUG_IMSB
+				std::cerr << "Error: Energy at iteration " << i << " does not match reference value.\n";
+				std::cerr << "Expected: " << energies_ref[i] << ", got: " << energies[i] << '\n';
+	#endif
+				out.error_code = 40;
+				return ;
+			}
+			}
+			std::cout << "All energies match reference values.\n";
+			std::cout << "TEST OK\n"; 
+		} else {
+			std::cout << "No verification performed (verification disabled).\n";
+	}
+}
 
     	// set error code
 	out.error_code = rc;
@@ -549,40 +564,265 @@ void grbProgram(
 }
 
 
-int main( int argc, char ** argv ) {
-    // TODO: add argument parsing for input file, direct/indirect addressing, etc.
-    // for now, just print the executable name
-    (void) argc; // unused
-    (void) argv; // unused
-	std::cout << "Test executable: " << argv[ 0 ] << std::endl;
+// supported command line arguments
+void printhelp( char *progname ) {
+	std::cout << " Use: \n";
+	std::cout << progname << " [--use-default-data] [--j-matrix-fname STR] [--h-fname STR] [--x-fname STR] [--y-fname STR] [--no-direct] [--num-iters INT] [--p0 FLOAT] [--p1 FLOAT] [--dt FLOAT] [--test-rep INT] [--test-outer-rep INT] [--verify] [--ref-solution-fname STR]\n";
+	std::cout << "\n";
+	std::cout << " --use-default-data (no argument): use hardcoded default data from the test_data namespace for internal tests\n";
+	// input data parameters (mandatory if --use-default-data is not used)
+	std::cout << "\n";
+	std::cout << "input data parameters (mandatory if --use-default-data is not used):\n";
+	std::cout << " --j-matrix-fname STR: filename of J matrix in matrix market format\n";
+	std::cout << " --h-fname STR: filename of h vector, where vector elements are stored line-by-line\n";
+	std::cout << " --x-fname STR: filename of x vector, where vector elements are stored line-by-line\n";
+	std::cout << " --y-fname STR: filename of y vector, where vector elements are stored line-by-line\n";
+	std::cout << " --ref-solution-fname STR: mandatory if --verify is used and --use-default-data is not used. (not implemented) filename of reference solution vector, where vector elements are stored line-by-line\n";
+	std::cout << " --no-direct (no argument): disable direct addressing\n";
+	// either --use-default-data or input data parameters must be provided
+	std::cout << "\n";
+	std::cout << "either --use-default-data or input data parameters must be provided\n";
+	// solver parameters can be set via command-line arguments or will use defaults if not provided
+	std::cout << "\n";
+	std::cout << "solver parameters (can be set via command-line arguments or will use defaults):\n";
+	std::cout << " --p0 FLOAT: p0 parameter, default " << test_data::p0 << "\n";
+	std::cout << " --p1 FLOAT: p1 parameter, default " << test_data::p1 << "\n";
+	std::cout << " --dt FLOAT: dt parameter, default " << test_data::dt << "\n";
+	std::cout << " --num-iters INT: number of iterations, default " << test_data::num_iters << " \n";
+	// performance testing parameters (optional)
+	std::cout << "\n";
+	std::cout << "performance testing parameters (optional):\n";
+	std::cout << " --test-rep INT: consecutive test inner algorithm repetitions, default 1\n";
+	std::cout << " --test-outer-rep INT: consecutive test outer (including IO) algorithm repetitions, default 1\n";
+	// numerical verification parameters (optional)
+	std::cout << "\n";
+	std::cout << "numerical verification parameters (optional):\n";
+	std::cout << " --verify (no argument): verify output against reference solution\n";
+	// other parameters
+	std::cout << "\n";
+	std::cout << "other parameters:\n";
+	std::cout << " --help, -h, -? (no argument): print this help message\n";
+}
 
-	// the input struct
-	struct input in;
-    in.filename_Jmatrix = "/home/d/Scratch/SA/ising_machine.mtx";
-    in.filename_h = "/home/d/Scratch/SA/h_vector.dat";
-    in.filename_x = "/home/d/Scratch/SA/x_vector.dat";
-    in.filename_y = "/home/d/Scratch/SA/y_vector.dat";
-    in.use_default_data = true; // use default data from files
-
+bool parse_arguments(
+	input &in,
+	int argc,
+	char **argv
+) {
+	in.filename_Jmatrix.clear();
+	in.filename_h.clear();
+	in.filename_x.clear();
+	in.filename_y.clear();
+	in.filename_ref_solution.clear();
+	in.direct = true;
 	// get inner number of iterations
 	in.rep = grb::config::BENCHMARKING::inner();
-
 	// get outer number of iterations
-	size_t outer = grb::config::BENCHMARKING::outer();
+	in.outer = grb::config::BENCHMARKING::outer();
+	in.p0 = 0.0;
+	in.p1 = 0.0;
+	in.dt = 0.0;
+	in.num_iters = 0;
+	in.verify = false;
 
-	// check for verification of the output
-	// bool verification = false;
+	bool jmatrix_set = false, h_set = false, x_set = false, y_set = false, refsol_set = false;
 
-	std::cout << "Executable called with parameters "
-		<< "inner repititions = " << in.rep << ", "
-		<< "outer reptitions = " << outer << ", "
-		<< std::endl;
+	for( int i = 1; i < argc; ++i ) {
+		std::string arg( argv[ i ] );
+		if( arg == "--use-default-data" ) {
+			in.use_default_data = true;
+		} else if( arg == "--j-matrix-fname" ) {
+			if( i + 1 < argc ) {
+				in.filename_Jmatrix = std::string( argv[ ++i ] );
+				in.use_default_data = false;
+				jmatrix_set = true;
+			} else {
+				std::cerr << "--j-matrix-fname requires an argument\n";
+				return false;
+			}
+		} else if( arg == "--h-fname" ) {
+			if( i + 1 < argc ) {
+				in.filename_h = std::string( argv[ ++i ] );
+				in.use_default_data = false;
+				h_set = true;
+			} else {
+				std::cerr << "--h-fname requires an argument\n";
+				return false;
+			}
+		} else if( arg == "--x-fname" ) {
+			if( i + 1 < argc ) {
+				in.filename_x = std::string( argv[ ++i ] );
+				in.use_default_data = false;
+				x_set = true;
+			} else {
+				std::cerr << "--x-fname requires an argument\n";
+				return false;
+			}
+		} else if( arg == "--y-fname" ) {
+			if( i + 1 < argc ) {
+				in.filename_y = std::string( argv[ ++i ] );
+				in.use_default_data = false;
+				y_set = true;
+			} else {
+				std::cerr << "--y-fname requires an argument\n";
+				return false;
+			}
+		} else if( arg == "--no-direct" ) {
+			in.direct = false;
+		} else if( arg == "--test-rep" ) {
+			if( i + 1 < argc ) {
+				int r = atoi( argv[ ++i ] );
+				if( r < 0 ) {
+					std::cerr << "--test-rep requires a non-negative integer argument\n";
+					return false;
+				}
+				in.rep = static_cast< size_t >( r );
+			} else {
+				std::cerr << "--test-rep requires an argument\n";
+				return false;
+			}
+		} else if( arg == "--test-outer-rep" ) {
+			if( i + 1 < argc ) {
+				int r = atoi( argv[ ++i ] );
+				if( r < 1 ) {
+					std::cerr << "--test-outer-rep requires a positive integer argument\n";
+					return false;
+				}
+				in.outer = static_cast< size_t >( r );
+			} else {
+				std::cerr << "--test-outer-rep requires an argument\n";
+				return false;
+			}
+		} else if( arg == "--p0" ) {
+			if( i + 1 < argc ) {
+				in.p0 = atof( argv[ ++i ] );
+			} else {
+				std::cerr << "--p0 requires a FLOAT argument\n";
+				return false;
+			}
+		} else if( arg == "--p1" ) {
+			if( i + 1 < argc ) {
+				in.p1 = atof( argv[ ++i ] );
+			} else {
+				std::cerr << "--p1 requires a FLOAT argument\n";
+				return false;
+			}
+		} else if( arg == "--dt" ) {
+			if( i + 1 < argc ) {
+				in.dt = atof( argv[ ++i ] );
+			} else {
+				std::cerr << "--dt requires a FLOAT argument\n";
+				return false;
+			}
+		} else if( arg == "--num-iters" ) {
+			if( i + 1 < argc ) {
+				int niter = atoi( argv[ ++i ] );
+				if( niter < 1 ) {
+					std::cerr << "--num-iters requires a positive integer argument\n";
+					return false;
+				}
+				in.num_iters = static_cast< size_t >( niter );
+			} else {
+				std::cerr << "--num-iters requires an argument\n";
+				return false;
+			}
+		} else if( arg == "--verify" ) {
+			in.verify = true;
+		} else if( arg == "--ref-solution-fname" ) {
+			if( i + 1 < argc ) {
+				in.filename_ref_solution = std::string( argv[ ++i ] );
+				refsol_set = true;
+			} else {
+				std::cerr << "--ref-solution-fname requires an argument\n";
+				return false;
+			}
+		} else if( arg == "--help" || arg == "-h" || arg == "-?" ) {
+			printhelp( argv[ 0 ] );
+			return false;
+		} else {
+			std::cerr << "unknown command line argument \"" << arg << "\"\n";
+			return false;
+		}
+	}
+
+	// Check that either --use-default-data or all input data parameters are provided
+	if( !in.use_default_data ) {
+		if( !(jmatrix_set && h_set && x_set && y_set) ) {
+			std::cerr << "Error: Either --use-default-data or all input data parameters (--j-matrix-fname, --h-fname, --x-fname, --y-fname) must be provided.\n";
+			return false;
+		}
+	}
+
+	// Ensure reference solution filename is provided if verification is requested and not using default data
+	if( in.verify && !in.use_default_data ) {
+		if( !refsol_set || in.filename_ref_solution.empty() ) {
+			std::cerr << "Error: --ref-solution-fname STR is mandatory if --verify is used and --use-default-data is not used.\n";
+			return false;
+		}
+	}
+
+	// set defaults for solver parameters if not set
+	if( in.p0 == 0.0 && in.p1 == 0.0 && in.dt == 0.0 ) {
+		in.p0 = test_data::p0;
+		in.p1 = test_data::p1;
+		in.dt = test_data::dt;
+	}
+	if( in.num_iters == 0 ) {
+		in.num_iters = test_data::num_iters;
+	}
+	return true;
+}
+
+
+void print_cmd_paramaters( const input &in) {
+	// print paramerters
+	std::cout << "Parameters:\n";
+	std::cout << " --use-default-data: " << (in.use_default_data ? "true" : "false") << "\n";
+	if( !in.use_default_data ) {
+		std::cout << " --j-matrix-fname: " << in.filename_Jmatrix << "\n";
+		std::cout << " --h-fname: " << in.filename_h << "\n";
+		std::cout << " --x-fname: " << in.filename_x << "\n";
+		std::cout << " --y-fname: " << in.filename_y << "\n";
+	}
+	std::cout << " --no-direct: " << (in.direct ? "false" : "true") << "\n";
+	std::cout << " --p0: " << in.p0 << "\n";
+	std::cout << " --p1: " << in.p1 << "\n";
+	std::cout << " --dt: " << in.dt << "\n";
+	std::cout << " --num-iters: " << in.num_iters << "\n";
+	std::cout << " --test-rep: " << in.rep << "\n";
+	std::cout << " --test-outer-rep: " << in.outer << "\n";
+	std::cout << " --verify: " << (in.verify ? "true" : "false") << "\n";
+	if( in.verify ) {
+		std::cout << " --ref-solution-fname: " << in.filename_ref_solution << "\n";
+	}
+	std::cout << "\n";
+}
+
+int main( int argc, char ** argv ) {
+	std::cout << "Test executable: " << argv[ 0 ] << std::endl;
+
+	input  in;
+	output out;
+
+	if( !parse_arguments( in, argc, argv ) ) {
+		std::cerr << "error parsing command line arguments\n";
+		printhelp( argv[0] );
+		return 1;
+	}
+
+#ifdef DEBUG_IMSB
+	// print paramerters
+	print_cmd_paramaters( in );
+#endif
 
 	// set standard exit code
 	grb::RC rc = SUCCESS;
 
 	// launch I/O
 	{
+		grb::utils::Timer timer;
+		timer.reset();
+
 		bool success;
 		grb::Launcher< AUTOMATIC > launcher;
 		rc = launcher.exec( &ioProgram, in, success, true );
@@ -595,10 +835,10 @@ int main( int argc, char ** argv ) {
 			std::cerr << "I/O program caught an exception\n";
 			return 77;
 		}
+		// I/O done
+		out.times.io = timer.time();
+		timer.reset();
 	}
-
-	// the output struct
-	struct output out;
 
 	// launch estimator (if requested)
 	if( in.rep == 0 ) {
@@ -617,7 +857,7 @@ int main( int argc, char ** argv ) {
 	// launch benchmark
 	if( rc == SUCCESS ) {
 		grb::Benchmarker< AUTOMATIC > benchmarker;
-		rc = benchmarker.exec( &grbProgram, in, out, 1, outer, true );
+		rc = benchmarker.exec( &grbProgram, in, out, 1, in.outer, true );
 	}
 	if( rc != SUCCESS ) {
 		std::cerr << "benchmarker.exec returns with non-SUCCESS error code "
@@ -630,6 +870,7 @@ int main( int argc, char ** argv ) {
 
 	std::cout << "Error code is " << out.error_code << ".\n";
 
+	// inspect output vector
 	if( !(out.pinnedSolutionVector) ) {
 		std::cerr << "no output vector to inspect" << std::endl;
 	} else {
@@ -638,21 +879,38 @@ int main( int argc, char ** argv ) {
 		std::cout << "Size of x is " << solution.size() << std::endl;
 		if( solution.size() > 0 ) {
 			print_vector( solution, 30, "SOLUTION" );
-            // expected solution from sol_ref_data
-            // TODO: enable sol_ref
-            // print_vector( solution_ref, 30, "EXPECTED SOLUTION" );
 		} else {
 			std::cerr << "ERROR: solution contains no values" << std::endl;
 		}
+		if( in.verify && (solution_ref.size() > 0) ) {
+			print_vector( solution_ref, 30, "REFERENCE SOLUTION" );
+		}
 	}
 
-
-	if( out.error_code != 0 ) {
-		std::cerr << std::flush;
-		std::cout << "Test FAILED\n";
-	} 
-    
-    std::cout << "Test OK\n";
+	// verify output vector if requested
+	if( in.verify ) {
+		const PinnedVector< JType > &solution = *(out.pinnedSolutionVector);
+        const PinnedVector< JType > &solution_ref = *(out.pinnedRefSolutionVector);
+		assert(solution.size() == solution_ref.size());
+		assert(solution.size() == std::get<0>(Storage::getData()));
+		JType norm2 = 0;
+		for( size_t i = 0; i < solution.size(); i++ ) {
+			JType diff = solution.getNonzeroValue(i) - solution_ref.getNonzeroValue(i);
+			norm2 += diff * diff;
+		}
+		out.error_code = ( norm2 == 0 ) ? 0 : 50;
+		if( out.error_code == 0 ) {
+			std::cout << "Output vector verificaton was successful!\n";
+			std::cout << "Test OK\n";
+		} else {
+			std::cerr << std::flush;
+			std::cout << "Verification FAILED\n";
+			std::cout << "Test FAILED\n";
+		}
+	} else {
+		std::cout << "Output vector verificaton was not requested!\n";
+		std::cout << "Test OK\n";
+	}	
 
 	// done
 	return out.error_code;
