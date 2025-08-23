@@ -2220,11 +2220,11 @@ namespace grb {
 #ifndef NDEBUG
  #ifdef _H_GRB_REFERENCE_OMP_BLAS3
 		#pragma omp parallel schedule( static, config::CACHE_LINE_SIZE::value() )
+ #endif
 		for( size_t j = 0; j < ncols; ++j ) {
 			assert( CCS_raw.col_start[ j + 1 ] - CCS_raw.col_start[ j ] ==
 				C_col_index[ j ] );
 		}
- #endif
 #endif
 		internal::setCurrentNonzeroes( C, nzc );
 
