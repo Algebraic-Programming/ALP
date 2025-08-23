@@ -684,6 +684,47 @@ void grb_program( const size_t &n, grb::RC &rc ) {
 	if( masked_tests( rc, outputVoid, maskBool, inputVoid, n ) != grb::SUCCESS ) {
 		return;
 	}
+
+	std::cout << "\t testing set( matrix, mask, matrix ), int-to-void, casting "
+		<< "(sort of), empty mask\n";
+	if( masked_tests( rc, outputVoid, maskEmpty, input, n ) != grb::SUCCESS ) {
+		return;
+	}
+
+	std::cout << "\t testing set( matrix, mask, matrix ), int-to-void, casting "
+		<< "(sort of), non-empty mask\n";
+	if( masked_tests( rc, outputVoid, mask, input, n ) != grb::SUCCESS ) {
+		return;
+	}
+
+	std::cout << "\t testing set( matrix, mask, matrix ), int-to-void, casting "
+		<< "(sort of), Boolean mask\n";
+	if( masked_tests( rc, outputVoid, maskBool, input, n ) != grb::SUCCESS ) {
+		return;
+	}
+
+	std::cout << "\t testing set( matrix, mask, matrix ), float-to-void, casting "
+		<< "(sort of), empty mask\n";
+	if(
+		masked_tests( rc, outputVoid, maskEmpty, inputFloat, n ) !=
+			grb::SUCCESS
+	) {
+		return;
+	}
+
+	std::cout << "\t testing set( matrix, mask, matrix ), float-to-void, casting "
+		<< "(sort of), non-empty mask\n";
+	if( masked_tests( rc, outputVoid, mask, inputFloat, n ) != grb::SUCCESS ) {
+		return;
+	}
+
+	std::cout << "\t testing set( matrix, mask, matrix ), float-to-void, casting "
+		<< "(sort of), Boolean mask\n";
+	if( masked_tests( rc, outputVoid, maskBool, inputFloat, n ) != grb::SUCCESS ) {
+		return;
+	}
+
+	// done
 }
 
 int main( int argc, char ** argv ) {
