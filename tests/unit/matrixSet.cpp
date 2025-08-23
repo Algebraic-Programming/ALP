@@ -29,7 +29,10 @@ static const size_t I[ 15 ] = { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 9, 9, 8, 7, 6 };
 static const size_t J[ 15 ] = { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 0, 5, 7, 5, 1 };
 
 /** Generic implementation of masked tests */
-template< typename Tout, typename Tmask, typename Tin >
+template<
+	Descriptor descr = descriptors::no_operation,
+	typename Tout, typename Tmask, typename Tin
+>
 RC masked_tests_generic_impl(
 	RC &rc, grb::Matrix< Tout > &output,
 	const grb::Matrix< Tmask > &mask, const grb::Matrix< Tin > &input,
@@ -38,7 +41,7 @@ RC masked_tests_generic_impl(
 	const bool emptyMask = grb::nrows( mask ) == 0 || grb::ncols( mask ) == 0;
 
 	std::cout << "\t\t with structural descriptor\n";
-	rc = grb::set< descriptors::structural >( output, mask, input );
+	rc = grb::set< descr | descriptors::structural >( output, mask, input );
 	if( rc != SUCCESS ) {
 		std::cerr << "\t grb::set structural (matrix to matrix masked) FAILED\n";
 		return rc;
@@ -67,7 +70,7 @@ RC masked_tests_generic_impl(
 	if( rc != SUCCESS ) { return rc; }
 
 	std::cout << "\t\t without descriptor\n";
-	rc = grb::set( output, mask, input );
+	rc = grb::set< descr >( output, mask, input );
 	if( rc != SUCCESS ) {
 		std::cerr << "\t grb::set (matrix to matrix masked) FAILED\n";
 		return rc;
@@ -115,7 +118,10 @@ RC masked_tests_generic_impl(
 }
 
 /** Implementation of masked tests for non-void masks (nvm). */
-template< typename Tout, typename Tmask, typename Tin >
+template<
+	Descriptor descr = descriptors::no_operation,
+	typename Tout, typename Tmask, typename Tin
+>
 RC masked_tests_nvm_impl(
 	RC &rc, grb::Matrix< Tout > &output,
 	const grb::Matrix< Tmask > &mask, const grb::Matrix< Tin > &input,
@@ -124,7 +130,7 @@ RC masked_tests_nvm_impl(
 	const bool emptyMask = grb::nrows( mask ) == 0 || grb::ncols( mask ) == 0;
 
 	std::cout << "\t\t with invert_mask descriptor\n";
-	rc = grb::set< descriptors::invert_mask >( output, mask, input );
+	rc = grb::set< descr | descriptors::invert_mask >( output, mask, input );
 	if( rc != SUCCESS ) {
 		std::cerr << "\t grb::set invert mask (matrix to matrix masked) FAILED\n";
 		return rc;
@@ -184,7 +190,7 @@ RC masked_tests(
 	return masked_tests_nvm_impl( rc, output, mask, input, n );
 }
 
-/** Specialised dispatched for masked tests with void masks */
+/** Specialised dispatch for masked tests with void masks */
 template< typename Tout, typename Tin >
 RC masked_tests(
 	RC &rc, grb::Matrix< Tout > &output,
@@ -194,6 +200,31 @@ RC masked_tests(
 	const grb::RC ret = masked_tests_generic_impl( rc, output, mask, input, n );
 	std::cout << "\t\t invert_mask descriptor SKIPPED\n";
 	return ret;
+}
+
+/** Specialised dispatch for masked tests with no-cast domains */
+template< typename T >
+RC masked_tests(
+	RC &rc, grb::Matrix< T > &output,
+	const grb::Matrix< bool > &mask, const grb::Matrix< T > &input,
+	const size_t n
+) {
+	if( masked_tests_generic_impl( rc, output, mask, input, n ) != SUCCESS ) {
+		return rc;
+	}
+	if( masked_tests_nvm_impl( rc, output, mask, input, n ) != SUCCESS ) {
+		return rc;
+	}
+	std::cout << "\t re-running previous tests with no_casting descriptor\n";
+	if(
+		masked_tests_generic_impl< descriptors::no_casting >(
+			rc, output, mask, input, n
+		) != SUCCESS
+	) {
+		return rc;
+	}
+	return masked_tests_nvm_impl< descriptors::no_casting >(
+			rc, output, mask, input, n );
 }
 
 void grb_program( const size_t &n, grb::RC &rc ) {
