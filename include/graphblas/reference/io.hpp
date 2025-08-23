@@ -2050,7 +2050,8 @@ namespace grb {
 			"matrix"
 		);
 		static_assert(
-			std::is_convertible< InputType, OutputType >::value,
+			std::is_convertible< InputType, OutputType >::value ||
+				std::is_void< OutputType >::value,
 			"grb::set (masked set to matrix): input type cannot be "
 			"converted to output type"
 		);
