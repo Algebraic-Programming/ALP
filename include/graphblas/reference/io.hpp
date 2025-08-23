@@ -2066,7 +2066,7 @@ namespace grb {
 		);
 
 		// dynamic checks
-#ifdef _DEBUG
+#ifdef _DEBUG_REFERENCE_IO
 		std::cout << "Called grb::set (matrix-to-matrix-masked, reference)\n";
 #endif
 		assert( phase != TRY );
@@ -2078,6 +2078,9 @@ namespace grb {
 		// check for trivial dispatch first (otherwise the below checks fail when they
 		// should not)
 		if( m == 0 || n == 0 ) {
+#ifdef _DEBUG_REFERENCE_IO
+			std::cout << "\t delegating to unmasked matrix-to-matrix set, reference\n";
+#endif
 			// If the mask is empty, ignore it
 			return set< descr >( C, A, phase );
 		}
