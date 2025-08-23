@@ -956,9 +956,9 @@ namespace grb {
 				"internal error. Please submit a bug report."
 			);
 			static_assert(
-				!(descr & descriptors::invert_mask), "internal::grb::set_copy called with "
-				"the invert_mask descriptor. This is an internal error; please submit a "
-				"bug report."
+				!A_is_mask || !(descr & descriptors::invert_mask),
+				"internal::grb::set_copy called with the invert_mask descriptor. This is "
+				"an internal error; please submit a bug report."
 			);
 
 			// run-time checks
