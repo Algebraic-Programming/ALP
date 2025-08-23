@@ -2207,13 +2207,13 @@ namespace grb {
 			for( auto k = A_raw.col_start[ i ]; k < A_raw.col_start[ i + 1 ]; ++k ) {
 				const auto k_col = A_raw.row_index[ k ];
 				if( mask_coors.assigned( k_col ) ) {
-					OutputType val = A_raw.getValue( k, *( (OutputType*) nullptr ) );
+					constexpr int zero = 0;
 					CRS_raw.row_index[ nzc ] = k_col;
-					CRS_raw.setValue( nzc, val );
+					CRS_raw.setValue( nzc, A_raw.getValue( k, zero ) );
 					const size_t CCS_index = C_col_index[ k_col ] + CCS_raw.col_start[ k_col ];
 					(void) C_col_index[ k_col ]++;
 					CCS_raw.row_index[ CCS_index ] = i;
-					CCS_raw.setValue( CCS_index, val );
+					CCS_raw.setValue( CCS_index, A_raw.getValue( k, zero ) );
 					(void) nzc++;
 				}
 			}
