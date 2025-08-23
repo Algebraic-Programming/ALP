@@ -470,6 +470,30 @@ void grb_program( const size_t &n, grb::RC &rc ) {
 	std::cout << "\t testing set( matrix, mask, matrix ), non-void, no-cast, "
 		<< "non-empty mask\n";
 	if( masked_tests( rc, output, mask, input, n ) != grb::SUCCESS ) { return; }
+
+	std::cout << "\t testing set( matrix, mask, matrix ), non-void, no-cast, "
+		<< "non-empty Boolean mask\n";
+	if( masked_tests( rc, output, maskBool, input, n ) != grb::SUCCESS ) {
+		return;
+	}
+
+	std::cout << "\t testing set( matrix, mask, matrix ), non-void, casting from "
+		<< "float to int, empty mask\n";
+	if( masked_tests( rc, output, maskEmpty, inputFloat, n ) != grb::SUCCESS ) {
+		return;
+	}
+
+	std::cout << "\t testing set( matrix, mask, matrix ), non-void, casting from "
+		<< "float to int, non-empty mask\n";
+	if( masked_tests( rc, output, mask, inputFloat, n ) != grb::SUCCESS ) {
+		return;
+	}
+
+	std::cout << "\t testing set( matrix, mask, matrix ), non-void, casting from "
+		<< "float to int, non-empty Boolean mask\n";
+	if( masked_tests( rc, output, maskBool, inputFloat, n ) != grb::SUCCESS ) {
+		return;
+	}
 }
 
 int main( int argc, char ** argv ) {
