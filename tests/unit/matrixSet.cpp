@@ -117,6 +117,83 @@ RC masked_tests_generic_impl(
 	return rc;
 }
 
+/** Specialisation for void output */
+template<
+	Descriptor descr = descriptors::no_operation,
+	typename Tmask, typename Tin
+>
+RC masked_tests_generic_impl(
+	RC &rc, grb::Matrix< void > &output,
+	const grb::Matrix< Tmask > &mask, const grb::Matrix< Tin > &input,
+	const size_t n
+) {
+	const bool emptyMask = grb::nrows( mask ) == 0 || grb::ncols( mask ) == 0;
+
+	std::cout << "\t\t with structural descriptor\n";
+	rc = grb::set< descr | descriptors::structural >( output, mask, input );
+	if( rc != SUCCESS ) {
+		std::cerr << "\t grb::set structural (matrix to matrix masked) FAILED\n";
+		return rc;
+	}
+	if( grb::nnz( output ) != 2 * n - 1 ) {
+		std::cerr << "\t unexpected number of output elements ( "
+			<< grb::nnz( output ) << " ), expected " << 2 * n - 1 <<".\n";
+		rc = FAILED;
+	}
+	for( const auto &triplet : output ) {
+		if(
+			triplet.first != triplet.second &&
+			triplet.first != triplet.second - 1
+		) {
+			std::cerr << "\t unexpected entry at ( " << triplet.first << ", "
+				<< triplet.second << " ), no value (pattern matrix).\n";
+			rc = FAILED;
+		}
+	}
+	if( rc != SUCCESS ) { return rc; }
+
+	std::cout << "\t\t without descriptor\n";
+	rc = grb::set< descr >( output, mask, input );
+	if( rc != SUCCESS ) {
+		std::cerr << "\t grb::set (matrix to matrix masked) FAILED\n";
+		return rc;
+	}
+	if( emptyMask ) {
+		if( grb::nnz( output ) != 2 * n - 1 ) {
+			std::cerr << "\t unexpected number of output elements ( "
+				<< grb::nnz( output ) << " ), expected " << 2 * n - 1 <<".\n";
+			rc = FAILED;
+		}
+	} else {
+		if( grb::nnz( output ) != n ) {
+			std::cerr << "\t unexpected number of output elements ( "
+				<< grb::nnz( output ) << " ), expected " << n <<".\n";
+			rc = FAILED;
+		}
+	}
+	for( const auto &triplet : output ) {
+		if( emptyMask ) {
+			if( triplet.first != triplet.second &&
+				triplet.first != triplet.second - 1
+			) {
+				std::cerr << "\t unexpected entry at ( " << triplet.first << ", "
+					<< triplet.second << " ), no value (pattern matrix).\n";
+				rc = FAILED;
+			}
+		} else {
+			if( triplet.first != triplet.second ) {
+				std::cerr << "\t unexpected entry at ( " << triplet.first << ", "
+					<< triplet.second << " ), no value (pattern matrix).\n";
+				rc = FAILED;
+			}
+		}
+	}
+	if( rc != SUCCESS ) { return rc; }
+
+	// done
+	return rc;
+}
+
 /** Implementation of masked tests for non-void masks (nvm). */
 template<
 	Descriptor descr = descriptors::no_operation,
@@ -169,6 +246,60 @@ RC masked_tests_nvm_impl(
 				<< triplet.first.second << " ) with value " << triplet.second;
 			std::cerr << ", expected value "<< triplet.first.first <<".\n";
 			rc = FAILED;
+		}
+	}
+	if( rc != SUCCESS ) { return rc; }
+
+	// done
+	return rc;
+}
+
+/** Specialisation for void output */
+template<
+	Descriptor descr = descriptors::no_operation,
+	typename Tmask, typename Tin
+>
+RC masked_tests_nvm_impl(
+	RC &rc, grb::Matrix< void > &output,
+	const grb::Matrix< Tmask > &mask, const grb::Matrix< Tin > &input,
+	const size_t n
+) {
+	const bool emptyMask = grb::nrows( mask ) == 0 || grb::ncols( mask ) == 0;
+
+	std::cout << "\t\t with invert_mask descriptor\n";
+	rc = grb::set< descr | descriptors::invert_mask >( output, mask, input );
+	if( rc != SUCCESS ) {
+		std::cerr << "\t grb::set invert mask (matrix to matrix masked) FAILED\n";
+		return rc;
+	}
+	if( emptyMask ) {
+		if( grb::nnz( output ) != 2 * n - 1 ) {
+			std::cerr << "\t unexpected number of output elements ( "
+				<< grb::nnz( output ) << " ), expected " << 2 * n - 1 <<".\n";
+			rc = FAILED;
+		}
+	} else {
+		if( grb::nnz( output ) != n - 1 ) {
+			std::cerr << "\t unexpected number of output elements ( "
+				<< grb::nnz( output ) << " ), expected " << n - 1 <<".\n";
+			rc = FAILED;
+		}
+	}
+	for( const auto &triplet : output ) {
+		if( emptyMask ) {
+			if( triplet.first != triplet.second &&
+				triplet.first != triplet.second - 1
+			) {
+				std::cerr << "\t unexpected entry at ( " << triplet.first << ", "
+					<< triplet.second << " ), no value (pattern matrix).\n";
+				rc = FAILED;
+			}
+		} else {
+			if( triplet.first != triplet.second - 1 ) {
+				std::cerr << "\t unexpected entry at ( " << triplet.first << ", "
+					<< triplet.second << " ), no value (pattern matrix).\n";
+				rc = FAILED;
+			}
 		}
 	}
 	if( rc != SUCCESS ) { return rc; }
@@ -282,7 +413,7 @@ void grb_program( const size_t &n, grb::RC &rc ) {
 	rc = rc ? rc : grb::resize( C, 15 );
 	rc = rc ? rc : grb::resize( D, 15 );
 	rc = rc ? rc : grb::resize( E, 15 );
-	rc = rc ? rc : grb::resize(output, 2 * n - 1 );
+	rc = rc ? rc : grb::resize( output, 15 );
 	if( rc != SUCCESS || grb::nnz( A ) != 15 ) {
 		std::cerr << "\tinitialisation FAILED\n";
 		return;
@@ -338,12 +469,14 @@ void grb_program( const size_t &n, grb::RC &rc ) {
 		std::cerr << "\t buildMatrixUnique of inputFloat matrix FAILED\n";
 		return;
 	}
-	try {
-		inputVoid = grb::algorithms::matrices< void >::identity( n );
-	} catch( ... ) {
-		std::cerr << "\t constructing inputVoid FAILED\n";
+	rc = grb::resize( inputVoid, 2 * n - 1 );
+	rc = rc ? rc : grb::resize( outputVoid, 2 * n - 1 );
+	if( rc != SUCCESS ) {
+		std::cerr << "\t error resizing matrices for masked tests\n";
 		return;
 	}
+	// postpone materialisation of inputVoid since it relies on unmasked grb::set
+	// (which is itself unit-tested later)
 
 	std::cout << "\t test initialisation complete\n";
 
@@ -490,7 +623,15 @@ void grb_program( const size_t &n, grb::RC &rc ) {
 	}
 	if( rc != SUCCESS ) { return; }
 
-	//check masked matrix set
+	// check masked matrix set
+	// first, finish initialisation
+	rc = grb::set( inputVoid, input );
+	rc = rc ? rc : grb::resize( output, 2 * n - 1 );
+	if( rc != SUCCESS || grb::nnz( inputVoid ) != 2 * n - 1 ) {
+		std::cerr << "\t error in inputVoid (an earlier test likely failed)\n";
+		if( rc == SUCCESS ) { rc = FAILED; }
+		return;
+	}
 
 	std::cout << "\t testing set( matrix, mask, matrix ), non-void, no-cast, "
 		<< "empty mask\n";
@@ -523,6 +664,24 @@ void grb_program( const size_t &n, grb::RC &rc ) {
 	std::cout << "\t testing set( matrix, mask, matrix ), non-void, casting from "
 		<< "float to int, non-empty Boolean mask\n";
 	if( masked_tests( rc, output, maskBool, inputFloat, n ) != grb::SUCCESS ) {
+		return;
+	}
+
+	std::cout << "\t testing set( matrix, mask, matrix ), void-to-void (no cast), "
+		<< "empty mask\n";
+	if( masked_tests( rc, outputVoid, maskEmpty, inputVoid, n ) != grb::SUCCESS ) {
+		return;
+	}
+
+	std::cout << "\t testing set( matrix, mask, matrix ), void-to-void (no cast), "
+		<< "non-empty mask\n";
+	if( masked_tests( rc, outputVoid, mask, inputVoid, n ) != grb::SUCCESS ) {
+		return;
+	}
+
+	std::cout << "\t testing set( matrix, mask, matrix ), void-to-void (no cast), "
+		<< "non-empty Boolean mask\n";
+	if( masked_tests( rc, outputVoid, maskBool, inputVoid, n ) != grb::SUCCESS ) {
 		return;
 	}
 }
