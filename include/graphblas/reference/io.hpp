@@ -951,7 +951,8 @@ namespace grb {
 			);
 			static_assert(
 				( !(descr & descriptors::no_casting) ||
-					( A_is_mask && std::is_same< InputType2, OutputType >::value ) ),
+					( A_is_mask && std::is_same< InputType2, OutputType >::value ) ||
+					( !A_is_mask && std::is_same< InputType1, OutputType >::value ) ),
 				"grb::internal::set_copy called with non-matching value types. This is an "
 				"internal error. Please submit a bug report."
 			);
