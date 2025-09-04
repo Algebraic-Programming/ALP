@@ -15,6 +15,31 @@
 #
 
 #
+# Enable tracing for GraphBLAS functions
+#
+option(GRB_ENABLE_TRACING "Enable tracing for GraphBLAS functions" OFF)
+if(GRB_ENABLE_TRACING)
+    # Append to both backend and test definitions
+    if(DEFINED ADDITIONAL_BACKEND_DEFINITIONS)
+        set(ADDITIONAL_BACKEND_DEFINITIONS "${ADDITIONAL_BACKEND_DEFINITIONS};_GRB_ENABLE_TRACING=1" 
+            CACHE STRING "Updated with tracing flag" FORCE)
+    else()
+        set(ADDITIONAL_BACKEND_DEFINITIONS "_GRB_ENABLE_TRACING=1" 
+            CACHE STRING "Set tracing flag" FORCE)
+    endif()
+
+    if(DEFINED ADDITIONAL_TEST_DEFINITIONS)
+        set(ADDITIONAL_TEST_DEFINITIONS "${ADDITIONAL_TEST_DEFINITIONS};_GRB_ENABLE_TRACING=1" 
+            CACHE STRING "Updated with tracing flag" FORCE)
+    else()
+        set(ADDITIONAL_TEST_DEFINITIONS "_GRB_ENABLE_TRACING=1" 
+            CACHE STRING "Set tracing flag" FORCE)
+    endif()
+    
+    message(STATUS "GraphBLAS tracing enabled (_GRB_ENABLE_TRACING=1)")
+endif()
+
+#
 # Generic compilation flags
 #
 # Compilation flags are ALWAYS passed to consuming targets (backends, tests)

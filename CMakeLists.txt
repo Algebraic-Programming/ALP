@@ -110,6 +110,7 @@ option( GNN_DATASET_PATH "Directory with the GraphChallengeDataset dataset" )
 option( SPBLAS_PREFIX "Prefix for SparseBLAS library" OFF )
 option( ENABLE_SOLVER_LIB "Compile solver library against the reference and nonblocking backends" ON )
 option( ENABLE_EXTRA_SOLVER_LIBS "Compile solver library against the reference_omp backend, in addition to reference and nonblocking" OFF )
+option( GRB_ENABLE_TRACING "Enable tracing for GraphBLAS functions" OFF )
 
 
 ### CHECK THE OPTIONS ARE COHERENT
@@ -376,4 +377,18 @@ add_dependencies( docs userdocs devdocs )
 
 message( "Tests enabled for backends: ${AVAILABLE_TEST_BACKENDS}" )
 message( "Enabled backend targets: ${AVAILABLE_BACKENDS}\n" )
+
+# if( GRB_ENABLE_TRACING )
+#     # Add as a global compile definition that affects all targets
+#     add_compile_definitions(_GRB_ENABLE_TRACING=1)
+    
+#     # Also add to COMMON_COMPILE_DEFINITIONS for any code that uses it directly
+#     if( COMMON_COMPILE_DEFINITIONS )
+#         set( COMMON_COMPILE_DEFINITIONS "${COMMON_COMPILE_DEFINITIONS};_GRB_ENABLE_TRACING=1" CACHE STRING "Updated with tracing flag" FORCE)
+#     else()
+#         set( COMMON_COMPILE_DEFINITIONS "_GRB_ENABLE_TRACING=1" CACHE STRING "Set tracing flag" FORCE)
+#     endif()
+    
+#     message( STATUS "GraphBLAS tracing enabled" )
+# endif()
 

@@ -551,5 +551,11 @@ namespace grb {
  #include <graphblas/bsp/spmd.hpp>
 #endif
 
+#ifdef _GRB_ENABLE_TRACING
+ // collects various cost utilities
+#include <graphblas/cost/cost_factory.hpp>
+#endif // end _GRB_ENABLE_TRACING
+
+
 #endif // end ``_H_GRAPHBLAS''
 
