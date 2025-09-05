@@ -4,13 +4,36 @@
 #include <functional>
 #include <vector>
 #include <type_traits>
+#include <unordered_map>
+#include <typeindex>
 
 // Define a compile-time toggle
 #ifndef _GRB_ENABLE_TRACING
 #define _GRB_ENABLE_TRACING 0  // Default to off
 #endif
 
-#if _GRB_ENABLE_TRACING
+#ifdef _GRB_ENABLE_TRACING
+
+namespace detail {
+    template<size_t... Ints>
+    struct index_sequence {
+        using type = index_sequence;
+        static constexpr size_t size() noexcept { return sizeof...(Ints); }
+    };
+    
+    // Index sequence builder via recursion
+    template<size_t N, size_t... Ints>
+    struct make_index_sequence_helper : make_index_sequence_helper<N-1, N-1, Ints...> {};
+    
+    template<size_t... Ints>
+    struct make_index_sequence_helper<0, Ints...> {
+        using type = index_sequence<Ints...>;
+    };
+    
+    template<size_t N>
+    using make_index_sequence = typename make_index_sequence_helper<N>::type;
+}
+
 
 // First, save the original functions before we redefine them
 namespace grb {
@@ -19,6 +42,27 @@ namespace grb {
     }
 }
 
+// Forward declarations for the function objects (moved to the top)
+struct EWiseApplyFunc;
+struct FoldlFunc;
+struct FoldrFunc;
+struct DotFunc;
+struct SetFunc;
+struct ApplyFunc;
+struct MxvFunc;
+
+// Function to get cost predictor name (moved before its usage)
+template<typename Func>
+std::string getCostPredictorName() {
+    if (std::is_same<Func, EWiseApplyFunc>::value) return "eWiseApply";
+    if (std::is_same<Func, FoldlFunc>::value) return "foldl";
+    if (std::is_same<Func, FoldrFunc>::value) return "foldr";
+    if (std::is_same<Func, DotFunc>::value) return "dot";
+    if (std::is_same<Func, SetFunc>::value) return "set";
+    if (std::is_same<Func, ApplyFunc>::value) return "apply";
+    if (std::is_same<Func, MxvFunc>::value) return "mxv";
+    return "unknown";
+}
 
 // Type trait to check if we can call grb::size on a type
 template<typename T, typename = void>
@@ -96,15 +140,6 @@ getMatrixInfoString(const T&) {
     return " ";
 }
 
-// Helper for printing argument types
-template<typename... Args>
-void printArgTypes(Args&&... args);
-
-// Base case
-void printArgTypesHelper() {
-    // End of recursion
-}
-
 // Helper to get type names
 template<typename T>
 std::string getTypeName() {
@@ -155,6 +190,15 @@ std::string getTypeName() {
     return type_name;
 }
 
+// Forward declaration for printArgTypes
+template<typename... Args>
+void printArgTypes(Args&&... args);
+
+// Base case
+void printArgTypesHelper() {
+    // End of recursion
+}
+
 // Recursive case
 template<typename T, typename... Args>
 void printArgTypesHelper(T&& arg, Args&&... args) {
@@ -189,60 +233,86 @@ void printArgTypes(Args&&... args) {
     std::cout << std::endl;
 }
 
-// Function tracer class template for handling tracing logic
-template<typename Func>
-class FunctionTracer {
-public:
-    FunctionTracer(const std::string& name) : name_(name) {}
+// Cost prediction framework
+// Base template for cost prediction
+template<typename Func, typename... Args>
+struct CostPredictor {
+    // Helper to get argument type names for diagnostic purposes
+    template<typename T>
+    static std::string getArgTypeName() {
+        return getTypeName<T>();
+    }
     
-    // Version for non-templated calls
-    template<typename... Args>
-    auto operator()(Args&&... args) const
-        -> decltype(std::declval<Func>()(std::forward<Args>(args)...)) {
-        std::cout << "[TRACING] Entering function: " << name_ << " with " 
-                  << sizeof...(args) << " arguments" << std::endl;
-        
-        printArgTypes(std::forward<Args>(args)...);
-        
-        auto start = std::chrono::high_resolution_clock::now();
-        Func func;
-        auto result = func(std::forward<Args>(args)...);
-        auto end = std::chrono::high_resolution_clock::now();
-        
-        auto duration = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
-        std::cout << "[TRACING] Exiting function: " << name_ << " (took " 
-                  << duration.count() << "μs)" << std::endl;
-        
+    // Helper to build a comma-separated list of argument type names
+    template<size_t... Is>
+    static std::string getArgTypeNamesHelper(detail::index_sequence<Is...>) {
+        std::string result;
+        // Use fold expression in C++17, but for C++11 we need this workaround
+        using expander = int[];
+        (void)expander{0, (void(
+            result += (Is == 0 ? "" : ", ") + getArgTypeName<typename std::tuple_element<Is, std::tuple<Args...>>::type>()
+        ), 0)...};
         return result;
     }
     
-    // Version for templated calls with descriptor
-    template<unsigned int descr, typename... Args>
-    auto withDescriptor(Args&&... args) const
-        -> decltype(std::declval<Func>().template withDescriptor<descr>(std::forward<Args>(args)...)) {
-        std::string descriptor_name = std::to_string(descr);
-        if (descr == grb::descriptors::dense) descriptor_name = "dense";
-        if (descr == grb::descriptors::structural) descriptor_name = "structural";
-        
-        std::cout << "[TRACING] Entering function: " << name_ << "<" << descriptor_name << "> with " 
-                  << sizeof...(args) << " arguments" << std::endl;
-        
-        printArgTypes(std::forward<Args>(args)...);
-        
-        auto start = std::chrono::high_resolution_clock::now();
-        Func func;
-        auto result = func.template withDescriptor<descr>(std::forward<Args>(args)...);
-        auto end = std::chrono::high_resolution_clock::now();
-        
-        auto duration = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
-        std::cout << "[TRACING] Exiting function: " << name_ << "<" << descriptor_name << "> (took " 
-                  << duration.count() << "μs)" << std::endl;
-        
-        return result;
+    static std::string getArgTypeNames() {
+        return getArgTypeNamesHelper(detail::make_index_sequence<sizeof...(Args)>{});
     }
     
+    // Rest of the implementation remains the same
+    static double predict(const Args&... args) {
+        // Enhanced diagnostic message with function name and argument types
+        std::string funcName = getCostPredictorName<Func>();
+        std::string argTypes = getArgTypeNames();
+        
+        std::cout << "[WARNING] *** MISSING COST MODEL ***" << std::endl;
+        std::cout << "[WARNING] No specialized cost model for: " << funcName << std::endl;
+        std::cout << "[WARNING] With argument types: " << argTypes << std::endl;
+        std::cout << "[WARNING] To fix this, add a specialization like:" << std::endl;
+        std::cout << "[WARNING] template<...appropriate template params...>" << std::endl;
+        std::cout << "[WARNING] struct CostPredictor<" << funcName << "Func, " << argTypes << "> {" << std::endl;
+        std::cout << "[WARNING]     static double predict(...) { ... }" << std::endl;
+        std::cout << "[WARNING] };" << std::endl;
+        
+        return 1.0; // Default cost
+    }
+};
+
+// Special case for the void template parameters - needed for SFINAE detection
+template<>
+struct CostPredictor<void, void> {
+    static double predict() {
+        // Always fail with a clear message
+        // TODO:: enable assertions in the final code 
+        // static_assert(!std::is_same<void, void>::value, 
+        //     "Non-implemented cost function detected");
+        return 1.0;
+    }
+};
+// Type trait to detect if a specialized cost predictor exists
+template<typename Func, typename... Args>
+struct has_specialized_cost_predictor {
 private:
-    std::string name_;
+    // Test function - returns true_type if specialized, false_type if base template
+    template<typename F, typename... A>
+    static constexpr auto test(int) 
+        -> decltype(
+            CostPredictor<F, A...>::predict(std::declval<A>()...),
+            std::integral_constant<bool, 
+                !std::is_same<
+                    decltype(&CostPredictor<F, A...>::predict),
+                    decltype(&CostPredictor<void, void>::predict)
+                >::value
+            >()
+        );
+    
+    // Fallback function
+    template<typename F, typename... A>
+    static constexpr std::false_type test(...);
+
+public:
+    // Result of the test
+    static constexpr bool value = decltype(test<Func, Args...>(0))::value;
 };
 
 // Function object wrappers for each GraphBLAS function
@@ -344,6 +414,177 @@ struct MxvFunc {
     }
 };
 
+// Specializations of CostPredictor for different function/argument combinations
+// Specialization for eWiseApply with two vectors
+template<typename T1, typename T2, typename Op>
+struct CostPredictor<EWiseApplyFunc, grb::Vector<T1>, grb::Vector<T2>, Op> {
+    static double predict(const grb::Vector<T1>& v1, const grb::Vector<T2>& v2, const Op&) {
+        try {
+            // TODO: Implement proper cost model for eWiseApply based on operation complexity
+            size_t size1 = grb::size(v1);
+            return static_cast<double>(size1); // Placeholder - you'll provide real formula
+        } catch(...) {
+            return 1.0; // Fallback value
+        }
+    }
+};
+
+// Specialization for foldl on vectors
+template<typename T1, typename Monoid>
+struct CostPredictor<FoldlFunc, grb::Vector<T1>, grb::Vector<T1>, Monoid> {
+    static double predict(const grb::Vector<T1>& v1, const grb::Vector<T1>& v2, const Monoid&) {
+        try {
+            // TODO: Implement proper cost model for foldl that accounts for monoid complexity
+            size_t size1 = grb::size(v1);
+            size_t size2 = grb::size(v2);
+            return static_cast<double>(size1 + size2); // Placeholder
+        } catch(...) {
+            return 1.0; // Fallback value
+        }
+    }
+};
+
+// Specialization for dot product
+template<typename T1, typename T2, typename Ring>
+struct CostPredictor<DotFunc, T1&, const grb::Vector<T2>&, const grb::Vector<T2>&, const Ring&> {
+    static double predict(T1&, const grb::Vector<T2>& v1, const grb::Vector<T2>& v2, const Ring&) {
+        try {
+            // TODO: Implement proper cost model for dot product based on sparsity patterns
+            size_t size1 = grb::size(v1);
+            size_t size2 = grb::size(v2);
+            return static_cast<double>(size1 + size2); // Placeholder
+        } catch(...) {
+            return 1.0; // Fallback value
+        }
+    }
+};
+
+// Specialization for matrix-vector multiplication
+template<typename T1, typename T2, typename Ring>
+struct CostPredictor<MxvFunc, grb::Vector<T1>&, const grb::Matrix<T2>&, const grb::Vector<T1>&, const Ring&> {
+    static double predict(grb::Vector<T1>&, const grb::Matrix<T2>& m, const grb::Vector<T1>& v, const Ring&) {
+        try {
+            // TODO: Implement proper cost model for mxv based on matrix structure and sparsity
+            size_t nnz = grb::nnz(m);
+            size_t vec_size = grb::size(v);
+            return static_cast<double>(2.0 * nnz + vec_size); // Placeholder
+        } catch(...) {
+            return 1.0; // Fallback value
+        }
+    }
+};
+
+// Specialization for eWiseApply with three vectors and an operator
+template<typename T, typename Op>
+struct CostPredictor<EWiseApplyFunc, grb::Vector<T>, grb::Vector<T>, grb::Vector<T>, Op> {
+    static double predict(const grb::Vector<T>& v1, const grb::Vector<T>& v2, const grb::Vector<T>& v3, const Op&) {
+        try {
+            // TODO: Implement proper cost model for eWiseApply with 3 vectors
+            size_t size1 = grb::size(v1);
+            size_t size2 = grb::size(v2);
+            size_t size3 = grb::size(v3);
+            return static_cast<double>(size1 + size2 + size3); // Placeholder
+        } catch(...) {
+            return 1.0; // Fallback value
+        }
+    }
+};
+
+// Function tracer class template for handling tracing logic
+template<typename Func>
+class FunctionTracer {
+public:
+    FunctionTracer(const std::string& name) : name_(name) {}
+    
+    // Version for non-templated calls
+    template<typename... Args>
+    auto operator()(Args&&... args) const
+        -> decltype(std::declval<Func>()(std::forward<Args>(args)...)) {
+        std::cout << "[TRACING] Entering function: " << name_ << " with " 
+                  << sizeof...(args) << " arguments" << std::endl;
+        
+        printArgTypes(std::forward<Args>(args)...);
+        
+        // Predict the cost
+        double predicted_cost = CostPredictor<Func, typename std::decay<Args>::type...>::predict(args...);
+        
+        // Check if we used a specialized predictor
+        bool has_specialized = has_specialized_cost_predictor<Func, typename std::decay<Args>::type...>::value;
+        
+        std::cout << "[TRACING] Predicted cost: " << predicted_cost 
+                  << " units (cost model: " << getCostPredictorName<Func>();
+        
+        if (!has_specialized) {
+            std::cout << " - DEFAULT MODEL";
+        }
+        
+        std::cout << ")" << std::endl;
+        
+        auto start = std::chrono::high_resolution_clock::now();
+        Func func;
+        auto result = func(std::forward<Args>(args)...);
+        auto end = std::chrono::high_resolution_clock::now();
+        
+        auto duration = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
+        std::cout << "[TRACING] Exiting function: " << name_ << " (took " 
+                  << duration.count() << "μs)" << std::endl;
+        
+        // Calculate and report cost/time ratio
+        double cost_time_ratio = predicted_cost / static_cast<double>(duration.count());
+        std::cout << "[TRACING] Cost/time ratio: " << cost_time_ratio 
+                  << " cost units per microsecond" << std::endl;
+        
+        return result;
+    }
+    
+    // Version for templated calls with descriptor
+    template<unsigned int descr, typename... Args>
+    auto withDescriptor(Args&&... args) const
+        -> decltype(std::declval<Func>().template withDescriptor<descr>(std::forward<Args>(args)...)) {
+        std::string descriptor_name = std::to_string(descr);
+        if (descr == grb::descriptors::dense) descriptor_name = "dense";
+        if (descr == grb::descriptors::structural) descriptor_name = "structural";
+        
+        std::cout << "[TRACING] Entering function: " << name_ << "<" << descriptor_name << "> with " 
+                  << sizeof...(args) << " arguments" << std::endl;
+        
+        printArgTypes(std::forward<Args>(args)...);
+        
+        // Predict the cost
+        double predicted_cost = CostPredictor<Func, typename std::decay<Args>::type...>::predict(args...);
+        
+        // Check if we used a specialized predictor
+        bool has_specialized = has_specialized_cost_predictor<Func, typename std::decay<Args>::type...>::value;
+        
+        std::cout << "[TRACING] Predicted cost: " << predicted_cost 
+                  << " units (cost model: " << getCostPredictorName<Func>();
+        
+        if (!has_specialized) {
+            std::cout << " - DEFAULT MODEL";
+        }
+        
+        std::cout << ")" << std::endl;
+        
+        auto start = std::chrono::high_resolution_clock::now();
+        Func func;
+        auto result = func.template withDescriptor<descr>(std::forward<Args>(args)...);
+        auto end = std::chrono::high_resolution_clock::now();
+        
+        auto duration = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
+        std::cout << "[TRACING] Exiting function: " << name_ << "<" << descriptor_name << "> (took " 
+                  << duration.count() << "μs)" << std::endl;
+        
+        // Calculate and report cost/time ratio
+        double cost_time_ratio = predicted_cost / static_cast<double>(duration.count());
+        std::cout << "[TRACING] Cost/time ratio: " << cost_time_ratio 
+                  << " cost units per microsecond" << std::endl;
+        
+        return result;
+    }
+    
+private:
+    std::string name_;
+};
 
 // Now redefine the functions in the grb namespace with tracing
 namespace grb {
