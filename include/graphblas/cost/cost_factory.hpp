@@ -734,22 +734,60 @@ struct CostPredictor< FoldrFunc, grb::Vector< T1 >, T1, Monoid > {
 	}
 };
 
-// Specialization for dot product
-template<typename T1, typename T2, typename Ring>
-struct CostPredictor<DotFunc, T1&, const grb::Vector<T2>&, const grb::Vector<T2>&, const Ring&> {
-    static double predict(T1&, const grb::Vector<T2>& v1, const grb::Vector<T2>& v2, const Ring&) {
+// Specializations for dot product
+// Catch-all specialization for dot with exactly 5 arguments of any type
+template<typename T0, typename VecType, typename MonoidType, typename OpType>
+struct CostPredictor<DotFunc, T0, VecType, VecType, MonoidType, OpType> {
+    static double predict(T0 result, VecType v1, VecType v2, MonoidType monoid, OpType op) {
+        std::cout << "[TRACING] Using catch-all 5-argument dot predictor" << std::endl;
+        
+        // Extract type information for diagnostics
+        std::string t1_name = getTypeName<VecType>();
+        std::string t2_name = getTypeName<VecType>();
+        std::string t3_name = getTypeName<MonoidType>();
+        std::string t4_name = getTypeName<OpType>();
+        
+        std::cout << "[TRACING] Arg types: " << getTypeName<T0>() << ", " 
+                  << t1_name << ", " << t2_name << ", " 
+                  << t3_name << ", " << t4_name << std::endl;
+        
         try {
-			size_t n = grb::size( v1 ), size_data = sizeof(T2);
-			cost_models::HW_model::HWParameters hw_model = cost_models::HW_model::get_hw_params_for_threads( 1, dis_system_params );
-			cost_models::k_multi_bsp::AlgoParameters_p algo_model = cost_models::k_multi_bsp::get_params_dot(n, size_data);
-			return cost_models::k_multi_bsp::predict_cost( &hw_model, algo_model, 1 );
-		} catch(...) {
+            // Try to get the size of the vectors
+            size_t n = 0;
+            if (t1_name.find("Vector") != std::string::npos) {
+                try { n = grb::size(v1); } catch(...) {}
+            }
+            
+            if (n == 0 && t2_name.find("Vector") != std::string::npos) {
+                try { n = grb::size(v2); } catch(...) {}
+            }
+            
+            if (n == 0) {
+                return 1.0; // Fallback if size can't be determined
+            }
+            
+            // Check for conjugate operations
+            bool is_conjugate = t4_name.find("conjugate") != std::string::npos;
+            
+            // Use appropriate cost model
+            cost_models::HW_model::HWParameters hw_model = 
+                cost_models::HW_model::get_hw_params_for_threads(1, dis_system_params);
+            cost_models::k_multi_bsp::AlgoParameters_p algo_model = 
+                cost_models::k_multi_bsp::get_params_dot(n, sizeof(double));
+            
+            double base_cost = cost_models::k_multi_bsp::predict_cost(&hw_model, algo_model, 1);
+            
+            // Additional cost for conjugate operations
+            double multiplier = is_conjugate ? 1.0 : 1.0;
+            return base_cost * multiplier;
+            
+        } catch(...) {
             return 1.0; // Fallback value
         }
     }
 };
 
-// Specialization for matrix-vector multiplication
+/// Specialization for matrix-vector multiplication
 template<typename T1, typename T2, typename Ring>
 struct CostPredictor<MxvFunc, grb::Vector<T1>&, const grb::Matrix<T2>&, const grb::Vector<T1>&, const Ring&> {
     static double predict(grb::Vector<T1>& y, const grb::Matrix<T2>& A, const grb::Vector<T1>& x, const Ring&) {
@@ -862,7 +900,7 @@ public:
         
         std::cout << "[TRACING] Predicted cost: " << predicted_cost 
                   << " units (cost model: " << getCostPredictorName<Func>();
-        
+
         if (!has_specialized) {
             std::cout << " - DEFAULT MODEL";
         }
