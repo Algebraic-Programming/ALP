@@ -263,6 +263,10 @@ struct CostPredictor {
     
     // Rest of the implementation remains the same
     static double predict(const Args&... args) {
+        // Silence unused parameter warnings with a fold-expression-like trick
+        int unused[] = { 0, (void(args), 0)... };
+        (void)unused;  // Silence unused variable warning
+
         // Enhanced diagnostic message with function name and argument types
         std::string funcName = getCostPredictorName<Func>();
         std::string argTypes = getArgTypeNames();
@@ -576,7 +580,7 @@ public:
     template<typename... Args>
     auto operator()(Args&&... args) const
         -> decltype(std::declval<Func>()(std::forward<Args>(args)...)) {
-        std::cout << "[TRACING] Entering function: " << name_ << " with " 
+        std::cout << "\n[TRACING] Entering function: " << name_ << " with " 
                   << sizeof...(args) << " arguments" << std::endl;
         
         printArgTypes(std::forward<Args>(args)...);
@@ -621,7 +625,7 @@ public:
         if (descr == grb::descriptors::dense) descriptor_name = "dense";
         if (descr == grb::descriptors::structural) descriptor_name = "structural";
         
-        std::cout << "[TRACING] Entering function: " << name_ << "<" << descriptor_name << "> with " 
+        std::cout << "\n[TRACING] Entering function: " << name_ << "<" << descriptor_name << "> with " 
                   << sizeof...(args) << " arguments" << std::endl;
         
         printArgTypes(std::forward<Args>(args)...);
