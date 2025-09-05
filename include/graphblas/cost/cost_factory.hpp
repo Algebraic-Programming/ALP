@@ -786,6 +786,36 @@ struct CostPredictor<DotFunc, T0, grb::Vector<VecType>, grb::Vector<VecType>, Mo
 };
 
 /*=====================================================================*/
+/*---------------------------------apply-------------------------------*/
+// Specialization for apply with three scalar doubles and divide operator
+template<>
+struct CostPredictor<ApplyFunc, double, double, double, grb::operators::divide<double, double, double, grb::reference>> {
+    static double predict(double z, double x, double y, 
+                         const grb::operators::divide<double, double, double, grb::reference>& op) {
+        std::cout << "[TRACING] Using specialized apply(double, double, double, divide) predictor" << std::endl;
+        // For simple scalar operations, the cost is minimal
+        // TODO: Implement proper cost model for specialized apply
+        return 0.01; // Very small cost for scalar arithmetic
+    }
+};
+
+// Generic specialization for apply with scalar values
+template<typename T, typename Op>
+struct CostPredictor<ApplyFunc, T, T, T, Op> {
+    static double predict(T z, T x, T y, const Op& op) {
+        std::cout << "[TRACING] Using generic scalar apply predictor" << std::endl;
+        // Check if this is a fundamental type (scalar)
+        if (std::is_fundamental<T>::value) {
+            // For simple scalar operations, the cost is minimal
+            // TODO: Implement proper cost model for specialized apply
+            return 0.01; // Very small cost for scalar arithmetic
+        }
+        return 1.0; // Default cost for non-scalar types
+    }
+};
+
+
+/*=====================================================================*/
 /*----------------------------------mxv--------------------------------*/
 // Specialization for mxv with Semiring
 template<typename T, typename SRingType>
