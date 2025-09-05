@@ -142,6 +142,188 @@ getMatrixInfoString(const T&) {
     return " ";
 }
 
+// Primary template for operator name traits - default case
+template<typename T>
+struct OperatorNameTrait {
+    static std::string name() { return typeid(T).name(); }
+};
+
+// Specializations for common GraphBLAS operators
+// Basic arithmetic operators
+template<typename... Args> 
+struct OperatorNameTrait<grb::operators::add<Args...>> {
+    static std::string name() { return "operators::add"; }
+};
+
+template<typename... Args> 
+struct OperatorNameTrait<grb::operators::mul<Args...>> {
+    static std::string name() { return "operators::mul"; }
+};
+
+template<typename... Args> 
+struct OperatorNameTrait<grb::operators::subtract<Args...>> {
+    static std::string name() { return "operators::subtract"; }
+};
+
+template<typename... Args> 
+struct OperatorNameTrait<grb::operators::divide<Args...>> {
+    static std::string name() { return "operators::divide"; }
+};
+
+template<typename... Args> 
+struct OperatorNameTrait<grb::operators::divide_reverse<Args...>> {
+    static std::string name() { return "operators::divide_reverse"; }
+};
+
+// Min/Max operators
+template<typename... Args> 
+struct OperatorNameTrait<grb::operators::min<Args...>> {
+    static std::string name() { return "operators::min"; }
+};
+
+template<typename... Args> 
+struct OperatorNameTrait<grb::operators::max<Args...>> {
+    static std::string name() { return "operators::max"; }
+};
+
+// Logical operators
+template<typename... Args> 
+struct OperatorNameTrait<grb::operators::logical_or<Args...>> {
+    static std::string name() { return "operators::logical_or"; }
+};
+
+template<typename... Args> 
+struct OperatorNameTrait<grb::operators::logical_and<Args...>> {
+    static std::string name() { return "operators::logical_and"; }
+};
+
+template<typename... Args> 
+struct OperatorNameTrait<grb::operators::any_or<Args...>> {
+    static std::string name() { return "operators::any_or"; }
+};
+
+// Comparison operators
+template<typename... Args> 
+struct OperatorNameTrait<grb::operators::equal<Args...>> {
+    static std::string name() { return "operators::equal"; }
+};
+
+template<typename... Args> 
+struct OperatorNameTrait<grb::operators::not_equal<Args...>> {
+    static std::string name() { return "operators::not_equal"; }
+};
+
+template<typename... Args> 
+struct OperatorNameTrait<grb::operators::less_than<Args...>> {
+    static std::string name() { return "operators::less_than"; }
+};
+
+template<typename... Args> 
+struct OperatorNameTrait<grb::operators::greater_than<Args...>> {
+    static std::string name() { return "operators::greater_than"; }
+};
+
+template<typename... Args> 
+struct OperatorNameTrait<grb::operators::leq<Args...>> {
+    static std::string name() { return "operators::leq"; }
+};
+
+template<typename... Args> 
+struct OperatorNameTrait<grb::operators::geq<Args...>> {
+    static std::string name() { return "operators::geq"; }
+};
+
+// Other common operators
+template<typename... Args> 
+struct OperatorNameTrait<grb::operators::abs_diff<Args...>> {
+    static std::string name() { return "operators::abs_diff"; }
+};
+
+template<typename... Args> 
+struct OperatorNameTrait<grb::operators::square_diff<Args...>> {
+    static std::string name() { return "operators::square_diff"; }
+};
+
+template<typename... Args> 
+struct OperatorNameTrait<grb::operators::relu<Args...>> {
+    static std::string name() { return "operators::relu"; }
+};
+
+// Assignment operators
+template<typename... Args> 
+struct OperatorNameTrait<grb::operators::left_assign<Args...>> {
+    static std::string name() { return "operators::left_assign"; }
+};
+
+template<typename... Args> 
+struct OperatorNameTrait<grb::operators::right_assign<Args...>> {
+    static std::string name() { return "operators::right_assign"; }
+};
+
+template<typename... Args> 
+struct OperatorNameTrait<grb::operators::left_assign_if<Args...>> {
+    static std::string name() { return "operators::left_assign_if"; }
+};
+
+template<typename... Args> 
+struct OperatorNameTrait<grb::operators::right_assign_if<Args...>> {
+    static std::string name() { return "operators::right_assign_if"; }
+};
+
+// Special purpose operators
+template<typename... Args> 
+struct OperatorNameTrait<grb::operators::argmin<Args...>> {
+    static std::string name() { return "operators::argmin"; }
+};
+
+template<typename... Args> 
+struct OperatorNameTrait<grb::operators::argmax<Args...>> {
+    static std::string name() { return "operators::argmax"; }
+};
+
+template<typename... Args> 
+struct OperatorNameTrait<grb::operators::zip<Args...>> {
+    static std::string name() { return "operators::zip"; }
+};
+
+template<typename... Args> 
+struct OperatorNameTrait<grb::operators::equal_first<Args...>> {
+    static std::string name() { return "operators::equal_first"; }
+};
+
+// Complex operators
+template<typename... Args> 
+struct OperatorNameTrait<grb::operators::conjugate_mul<Args...>> {
+    static std::string name() { return "operators::conjugate_mul"; }
+};
+
+template<typename... Args> 
+struct OperatorNameTrait<grb::operators::conjugate_left_mul<Args...>> {
+    static std::string name() { return "operators::conjugate_left_mul"; }
+};
+
+template<typename... Args> 
+struct OperatorNameTrait<grb::operators::conjugate_right_mul<Args...>> {
+    static std::string name() { return "operators::conjugate_right_mul"; }
+};
+
+// Template to check if type is a GraphBLAS operator
+template<typename T>
+struct is_graphblas_operator {
+private:
+    template<typename U>
+    static auto test(int) -> decltype(
+        std::declval<U>().template getAdditiveOperator<void>(), 
+        std::true_type{}
+    );
+    
+    template<typename>
+    static std::false_type test(...);
+    
+public:
+    static constexpr bool value = decltype(test<T>(0))::value || grb::is_operator<T>::value;
+};
+
 // Helper to get type names
 template<typename T>
 std::string getTypeName() {
@@ -176,18 +358,60 @@ std::string getTypeName() {
     if (std::is_same<T, grb::Matrix<char>>::value) return "Matrix<char>";
     if (std::is_same<T, grb::Matrix<bool>>::value) return "Matrix<bool>";
     
-    // GraphBLAS Operator detection
-    if (std::is_same<T, grb::operators::add<double>>::value) return "operators::add<double>";
-    if (std::is_same<T, grb::operators::add<float>>::value) return "operators::add<float>";
-    if (std::is_same<T, grb::operators::add<int>>::value) return "operators::add<int>";
-    if (std::is_same<T, grb::operators::mul<double>>::value) return "operators::mul<double>";
-    if (std::is_same<T, grb::operators::mul<float>>::value) return "operators::mul<float>";
-    if (std::is_same<T, grb::operators::mul<int>>::value) return "operators::mul<int>";
+    // Use operator traits for all operators
+    if (grb::is_operator<T>::value) {
+        return OperatorNameTrait<T>::name() + "<...>";
+    }
     
-    // Generic fallbacks
+    // Check for semiring
+    if (grb::is_semiring<T>::value) {
+        return "Semiring<...>";
+    }
+    
+    // Better fallback mechanism - extract type name from mangled name
     if (type_name.find("Vector") != std::string::npos) return "Vector<...>";
     if (type_name.find("Matrix") != std::string::npos) return "Matrix<...>";
-    if (type_name.find("operators::") != std::string::npos) return "operators::...";
+    
+    // Improved operator detection in mangled names
+    if (type_name.find("operators") != std::string::npos) {
+        // Try to extract the operator name
+        const std::vector<std::pair<std::string, std::string>> op_names = {
+            {"add", "operators::add<...>"},
+            {"mul", "operators::mul<...>"},
+            {"subtract", "operators::subtract<...>"},
+            {"divide", "operators::divide<...>"},
+            {"min", "operators::min<...>"},
+            {"max", "operators::max<...>"},
+            {"identity", "operators::identity"},
+            {"logical_or", "operators::logical_or"},
+            {"logical_and", "operators::logical_and"},
+            {"any_or", "operators::any_or"},
+            {"equal", "operators::equal<...>"},
+            {"not_equal", "operators::not_equal<...>"},
+            {"less_than", "operators::less_than<...>"},
+            {"greater_than", "operators::greater_than<...>"},
+            {"leq", "operators::leq<...>"},
+            {"geq", "operators::geq<...>"},
+            {"abs_diff", "operators::abs_diff<...>"},
+            {"square_diff", "operators::square_diff<...>"},
+            {"relu", "operators::relu<...>"},
+            {"argmin", "operators::argmin<...>"},
+            {"argmax", "operators::argmax<...>"},
+            {"left_assign", "operators::left_assign<...>"},
+            {"right_assign", "operators::right_assign<...>"},
+            {"left_assign_if", "operators::left_assign_if<...>"},
+            {"right_assign_if", "operators::right_assign_if<...>"}
+        };
+        
+        for (const auto& op : op_names) {
+            if (type_name.find(op.first) != std::string::npos) {
+                return op.second;
+            }
+        }
+        
+        // Generic fallback for operators
+        return "operators::...";
+    }
     
     return type_name;
 }
