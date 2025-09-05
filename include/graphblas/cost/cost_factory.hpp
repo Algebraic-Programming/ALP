@@ -12,47 +12,81 @@
 
 #if _GRB_ENABLE_TRACING
 
+// Define macros to generate tracing code for a given function
+#define SAVE_ORIGINAL_FUNCTION(func_name) \
+    /* Save original function with descriptor */ \
+    template<unsigned int descr, typename... Args> \
+    auto func_name(Args&&... args) \
+        -> decltype(grb::func_name<descr>(std::forward<Args>(args)...)) { \
+        return grb::func_name<descr>(std::forward<Args>(args)...); \
+    } \
+    \
+    /* Save original function without descriptor */ \
+    template<typename... Args> \
+    auto func_name(Args&&... args) \
+        -> decltype(grb::func_name(std::forward<Args>(args)...)) { \
+        return grb::func_name(std::forward<Args>(args)...); \
+    }
+
+#define DEFINE_TRACED_FUNCTION(func_name) \
+    /* Override with descriptor */ \
+    template<unsigned int descr, typename... Args> \
+    auto func_name(Args&&... args) \
+        -> decltype(original::func_name<descr>(std::forward<Args>(args)...)) { \
+        \
+        std::string descriptor_name = std::to_string(descr); \
+        if (descr == descriptors::dense) descriptor_name = "dense"; \
+        if (descr == descriptors::structural) descriptor_name = "structural"; \
+        \
+        std::cout << "[TRACING] Entering function: " << #func_name << "<" << descriptor_name << "> with " \
+                  << sizeof...(args) << " arguments" << std::endl; \
+        \
+        printArgTypes(std::forward<Args>(args)...); \
+        \
+        auto start = std::chrono::high_resolution_clock::now(); \
+        auto result = original::func_name<descr>(std::forward<Args>(args)...); \
+        auto end = std::chrono::high_resolution_clock::now(); \
+        \
+        auto duration = std::chrono::duration_cast<std::chrono::microseconds>(end - start); \
+        std::cout << "[TRACING] Exiting function: " << #func_name << "<" << descriptor_name << "> (took " \
+                  << duration.count() << "μs)" << std::endl; \
+        \
+        return result; \
+    } \
+    \
+    /* Override without descriptor */ \
+    template<typename... Args> \
+    auto func_name(Args&&... args) \
+        -> decltype(original::func_name(std::forward<Args>(args)...)) { \
+        \
+        std::cout << "[TRACING] Entering function: " << #func_name << " with " \
+                  << sizeof...(args) << " arguments" << std::endl; \
+        \
+        printArgTypes(std::forward<Args>(args)...); \
+        \
+        auto start = std::chrono::high_resolution_clock::now(); \
+        auto result = original::func_name(std::forward<Args>(args)...); \
+        auto end = std::chrono::high_resolution_clock::now(); \
+        \
+        auto duration = std::chrono::duration_cast<std::chrono::microseconds>(end - start); \
+        std::cout << "[TRACING] Exiting function: " << #func_name << " (took " \
+                  << duration.count() << "μs)" << std::endl; \
+        \
+        return result; \
+    }
+
 // First, save the original functions before we redefine them
 namespace grb {
     namespace original {
-        // Save original eWiseApply
-        template<unsigned int descr, typename... Args>
-        auto eWiseApply(Args&&... args)
-            -> decltype(grb::eWiseApply<descr>(std::forward<Args>(args)...)) {
-            return grb::eWiseApply<descr>(std::forward<Args>(args)...);
-        }
-        
-        template<typename... Args>
-        auto eWiseApply(Args&&... args)
-            -> decltype(grb::eWiseApply(std::forward<Args>(args)...)) {
-            return grb::eWiseApply(std::forward<Args>(args)...);
-        }
-        
-        // Save original foldl
-        template<unsigned int descr, typename... Args>
-        auto foldl(Args&&... args)
-            -> decltype(grb::foldl<descr>(std::forward<Args>(args)...)) {
-            return grb::foldl<descr>(std::forward<Args>(args)...);
-        }
-        
-        template<typename... Args>
-        auto foldl(Args&&... args)
-            -> decltype(grb::foldl(std::forward<Args>(args)...)) {
-            return grb::foldl(std::forward<Args>(args)...);
-        }
-        
-        // Save original dot
-        template<unsigned int descr, typename... Args>
-        auto dot(Args&&... args)
-            -> decltype(grb::dot<descr>(std::forward<Args>(args)...)) {
-            return grb::dot<descr>(std::forward<Args>(args)...);
-        }
-        
-        template<typename... Args>
-        auto dot(Args&&... args)
-            -> decltype(grb::dot(std::forward<Args>(args)...)) {
-            return grb::dot(std::forward<Args>(args)...);
-        }
+        // Save all original functions using macros
+        SAVE_ORIGINAL_FUNCTION(eWiseApply)
+        SAVE_ORIGINAL_FUNCTION(foldl)
+        SAVE_ORIGINAL_FUNCTION(dot)
+        // Add the new functions we want to trace
+        SAVE_ORIGINAL_FUNCTION(foldr)
+        SAVE_ORIGINAL_FUNCTION(set)
+        SAVE_ORIGINAL_FUNCTION(apply)
+        SAVE_ORIGINAL_FUNCTION(mxv)
     }
 }
 
@@ -80,12 +114,15 @@ std::string getTypeName() {
     if (std::is_same<T, grb::Vector<long>>::value) return "Vector<long>";
     if (std::is_same<T, grb::Vector<unsigned long>>::value) return "Vector<unsigned long>";
     
-    // GraphBLAS Matrix type detection - explicit common cases
+    // GraphBLAS Matrix type detection - expanded for more types
     if (std::is_same<T, grb::Matrix<double>>::value) return "Matrix<double>";
     if (std::is_same<T, grb::Matrix<float>>::value) return "Matrix<float>";
     if (std::is_same<T, grb::Matrix<int>>::value) return "Matrix<int>";
     if (std::is_same<T, grb::Matrix<unsigned int>>::value) return "Matrix<unsigned int>";
     if (std::is_same<T, grb::Matrix<long>>::value) return "Matrix<long>";
+    if (std::is_same<T, grb::Matrix<unsigned long>>::value) return "Matrix<unsigned long>";
+    if (std::is_same<T, grb::Matrix<char>>::value) return "Matrix<char>";
+    if (std::is_same<T, grb::Matrix<bool>>::value) return "Matrix<bool>";
     
     // GraphBLAS Operator detection
     if (std::is_same<T, grb::operators::add<double>>::value) return "operators::add<double>";
@@ -136,6 +173,49 @@ getSizeString(const T&) {
     return " ";
 }
 
+// Add these type traits to detect Matrix types safely
+template<typename T, typename = void>
+struct has_grb_matrix_functions : std::false_type {};
+
+// Specialization for types where grb::nnz(T), grb::nrows(T), and grb::ncols(T) are valid
+template<typename T>
+struct has_grb_matrix_functions<T, 
+    typename std::enable_if<
+        !std::is_same<
+            decltype(grb::nnz(std::declval<T>())),
+            void
+        >::value &&
+        !std::is_same<
+            decltype(grb::nrows(std::declval<T>())),
+            void
+        >::value &&
+        !std::is_same<
+            decltype(grb::ncols(std::declval<T>())),
+            void
+        >::value
+    >::type
+> : std::true_type {};
+
+// Helper to get matrix dimensions and nnz if available
+template<typename T>
+typename std::enable_if<has_grb_matrix_functions<T>::value, std::string>::type
+getMatrixInfoString(const T& arg) {
+    try {
+        return "[rows=" + std::to_string(grb::nrows(arg)) + 
+               ",cols=" + std::to_string(grb::ncols(arg)) +
+               ",nnz=" + std::to_string(grb::nnz(arg)) + "] ";
+    } catch(...) {
+        return " ";
+    }
+}
+
+// Helper for types that don't support matrix functions
+template<typename T>
+typename std::enable_if<!has_grb_matrix_functions<T>::value, std::string>::type
+getMatrixInfoString(const T&) {
+    return " ";
+}
+
 // Helper for printing argument types
 template<typename... Args>
 void printArgTypes(Args&&... args);
@@ -151,8 +231,21 @@ void printArgTypesHelper(T&& arg, Args&&... args) {
     // Get the type name
     std::string type_name = getTypeName<typename std::decay<T>::type>();
     
-    // Print the type name and size if available
-    std::cout << type_name << getSizeString<typename std::remove_reference<T>::type>(arg);
+    // Print the type name
+    std::cout << type_name;
+    
+    // If it's a Matrix type, print matrix dimensions and nnz
+    if (type_name.find("Matrix<") != std::string::npos) {
+        std::cout << getMatrixInfoString<typename std::remove_reference<T>::type>(arg);
+    }
+    // Otherwise if it's a Vector type, print its size
+    else if (type_name.find("Vector<") != std::string::npos) {
+        std::cout << getSizeString<typename std::remove_reference<T>::type>(arg);
+    }
+    // For other types, just print a space
+    else {
+        std::cout << " ";
+    }
     
     // Continue with remaining arguments
     printArgTypesHelper(std::forward<Args>(args)...);
@@ -168,144 +261,15 @@ void printArgTypes(Args&&... args) {
 
 // Now redefine the functions in the grb namespace with tracing
 namespace grb {
-    // Override eWiseApply with descriptor
-    template<unsigned int descr, typename... Args>
-    auto eWiseApply(Args&&... args)
-        -> decltype(original::eWiseApply<descr>(std::forward<Args>(args)...)) {
-        
-        std::string descriptor_name = std::to_string(descr);
-        if (descr == descriptors::dense) descriptor_name = "dense";
-        if (descr == descriptors::structural) descriptor_name = "structural";
-        
-        std::cout << "[TRACING] Entering function: eWiseApply<" << descriptor_name << "> with " 
-                  << sizeof...(args) << " arguments" << std::endl;
-        
-        printArgTypes(std::forward<Args>(args)...);
-        
-        auto start = std::chrono::high_resolution_clock::now();
-        auto result = original::eWiseApply<descr>(std::forward<Args>(args)...);
-        auto end = std::chrono::high_resolution_clock::now();
-        
-        auto duration = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
-        std::cout << "[TRACING] Exiting function: eWiseApply<" << descriptor_name << "> (took " 
-                  << duration.count() << "μs)" << std::endl;
-        
-        return result;
-    }
-    
-    // Override eWiseApply without descriptor
-    template<typename... Args>
-    auto eWiseApply(Args&&... args)
-        -> decltype(original::eWiseApply(std::forward<Args>(args)...)) {
-        
-        std::cout << "[TRACING] Entering function: eWiseApply with " 
-                  << sizeof...(args) << " arguments" << std::endl;
-        
-        printArgTypes(std::forward<Args>(args)...);
-        
-        auto start = std::chrono::high_resolution_clock::now();
-        auto result = original::eWiseApply(std::forward<Args>(args)...);
-        auto end = std::chrono::high_resolution_clock::now();
-        
-        auto duration = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
-        std::cout << "[TRACING] Exiting function: eWiseApply (took " 
-                  << duration.count() << "μs)" << std::endl;
-        
-        return result;
-    }
-    
-    // Override foldl with descriptor
-    template<unsigned int descr, typename... Args>
-    auto foldl(Args&&... args)
-        -> decltype(original::foldl<descr>(std::forward<Args>(args)...)) {
-        
-        std::string descriptor_name = std::to_string(descr);
-        if (descr == descriptors::dense) descriptor_name = "dense";
-        if (descr == descriptors::structural) descriptor_name = "structural";
-        
-        std::cout << "[TRACING] Entering function: foldl<" << descriptor_name << "> with " 
-                  << sizeof...(args) << " arguments" << std::endl;
-        
-        printArgTypes(std::forward<Args>(args)...);
-        
-        auto start = std::chrono::high_resolution_clock::now();
-        auto result = original::foldl<descr>(std::forward<Args>(args)...);
-        auto end = std::chrono::high_resolution_clock::now();
-        
-        auto duration = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
-        std::cout << "[TRACING] Exiting function: foldl<" << descriptor_name << "> (took " 
-                  << duration.count() << "μs)" << std::endl;
-        
-        return result;
-    }
-    
-    // Override foldl without descriptor
-    template<typename... Args>
-    auto foldl(Args&&... args)
-        -> decltype(original::foldl(std::forward<Args>(args)...)) {
-        
-        std::cout << "[TRACING] Entering function: foldl with " 
-                  << sizeof...(args) << " arguments" << std::endl;
-        
-        printArgTypes(std::forward<Args>(args)...);
-        
-        auto start = std::chrono::high_resolution_clock::now();
-        auto result = original::foldl(std::forward<Args>(args)...);
-        auto end = std::chrono::high_resolution_clock::now();
-        
-        auto duration = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
-        std::cout << "[TRACING] Exiting function: foldl (took " 
-                  << duration.count() << "μs)" << std::endl;
-        
-        return result;
-    }
-    
-    // Override dot with descriptor
-    template<unsigned int descr, typename... Args>
-    auto dot(Args&&... args)
-        -> decltype(original::dot<descr>(std::forward<Args>(args)...)) {
-        
-        std::string descriptor_name = std::to_string(descr);
-        if (descr == descriptors::dense) descriptor_name = "dense";
-        if (descr == descriptors::structural) descriptor_name = "structural";
-        
-        std::cout << "[TRACING] Entering function: dot<" << descriptor_name << "> with " 
-                  << sizeof...(args) << " arguments" << std::endl;
-        
-        printArgTypes(std::forward<Args>(args)...);
-        
-        auto start = std::chrono::high_resolution_clock::now();
-        auto result = original::dot<descr>(std::forward<Args>(args)...);
-        auto end = std::chrono::high_resolution_clock::now();
-        
-        auto duration = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
-        std::cout << "[TRACING] Exiting function: dot<" << descriptor_name << "> (took " 
-                  << duration.count() << "μs)" << std::endl;
-        
-        return result;
-    }
-    
-    // Override dot without descriptor
-    template<typename... Args>
-    auto dot(Args&&... args)
-        -> decltype(original::dot(std::forward<Args>(args)...)) {
-        
-        std::cout << "[TRACING] Entering function: dot with " 
-                  << sizeof...(args) << " arguments" << std::endl;
-        
-        printArgTypes(std::forward<Args>(args)...);
-        
-        auto start = std::chrono::high_resolution_clock::now();
-        auto result = original::dot(std::forward<Args>(args)...);
-        auto end = std::chrono::high_resolution_clock::now();
-        
-        auto duration = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
-        std::cout << "[TRACING] Exiting function: dot (took " 
-                  << duration.count() << "μs)" << std::endl;
-        
-        return result;
-    }
+    // Define all traced functions using macros
+    DEFINE_TRACED_FUNCTION(eWiseApply)
+    DEFINE_TRACED_FUNCTION(foldl)
+    DEFINE_TRACED_FUNCTION(dot)
+    // Add the new functions we want to trace
+    DEFINE_TRACED_FUNCTION(foldr)
+    DEFINE_TRACED_FUNCTION(set)
+    DEFINE_TRACED_FUNCTION(apply)
+    DEFINE_TRACED_FUNCTION(mxv)
 }
 
 #endif // _GRB_ENABLE_TRACING
-
