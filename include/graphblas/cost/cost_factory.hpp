@@ -7,6 +7,8 @@
 #include <unordered_map>
 #include <typeindex>
 
+#include "hw_params_arm920.hpp"
+
 // Define a compile-time toggle
 #ifndef _GRB_ENABLE_TRACING
 #define _GRB_ENABLE_TRACING 0  // Default to off
@@ -415,33 +417,93 @@ struct MxvFunc {
 };
 
 // Specializations of CostPredictor for different function/argument combinations
-// Specialization for eWiseApply with two vectors
-template<typename T1, typename T2, typename Op>
-struct CostPredictor<EWiseApplyFunc, grb::Vector<T1>, grb::Vector<T2>, Op> {
-    static double predict(const grb::Vector<T1>& v1, const grb::Vector<T2>& v2, const Op&) {
+
+/*=====================================================================*/
+/*--------------------------------foldl--------------------------------*/
+template<typename T1, typename Monoid>
+struct CostPredictor<FoldlFunc, grb::Vector<T1>, grb::Vector<T1>, Monoid> {
+    static double predict(grb::Vector<T1>& v1, const grb::Vector<T1>& v2, const Monoid&) {
         try {
-            // TODO: Implement proper cost model for eWiseApply based on operation complexity
-            size_t size1 = grb::size(v1);
-            return static_cast<double>(size1); // Placeholder - you'll provide real formula
-        } catch(...) {
+			size_t n = grb::size( v1 ), size_data = sizeof( T1 );
+			cost_models::HW_model::HWParameters hw_model = cost_models::HW_model::get_hw_params_for_threads( 1, dis_system_params );
+			cost_models::k_multi_bsp::AlgoParameters_p algo_model = cost_models::k_multi_bsp::get_params_foldl( n, size_data , 1, 1);
+			return cost_models::k_multi_bsp::predict_cost( &hw_model, algo_model, 1 );
+		} catch(...) {
             return 1.0; // Fallback value
         }
     }
 };
 
-// Specialization for foldl on vectors
-template<typename T1, typename Monoid>
-struct CostPredictor<FoldlFunc, grb::Vector<T1>, grb::Vector<T1>, Monoid> {
-    static double predict(const grb::Vector<T1>& v1, const grb::Vector<T1>& v2, const Monoid&) {
-        try {
-            // TODO: Implement proper cost model for foldl that accounts for monoid complexity
-            size_t size1 = grb::size(v1);
-            size_t size2 = grb::size(v2);
-            return static_cast<double>(size1 + size2); // Placeholder
-        } catch(...) {
-            return 1.0; // Fallback value
-        }
-    }
+template< typename T1, typename Monoid >
+struct CostPredictor< FoldlFunc, T1, grb::Vector< T1 >, Monoid > {
+	static double predict( T1 & v1, const grb::Vector< T1 > & v2, const Monoid & ) {
+		try {
+			size_t n = grb::size( v2 ), size_data = sizeof( T1 );
+			cost_models::HW_model::HWParameters hw_model = cost_models::HW_model::get_hw_params_for_threads( 1, dis_system_params );
+			cost_models::k_multi_bsp::AlgoParameters_p algo_model = cost_models::k_multi_bsp::get_params_foldl( n, size_data, 0, 1 );
+			return cost_models::k_multi_bsp::predict_cost( &hw_model, algo_model, 1 );
+		} catch( ... ) {
+			return 1.0; // Fallback value
+		}
+	}
+};
+
+template< typename T1, typename Monoid >
+struct CostPredictor< FoldlFunc, grb::Vector< T1 >, T1, Monoid > {
+	static double predict(grb::Vector< T1 > & v1, const T1 & v2, const Monoid & ) {
+		try {
+			size_t n = grb::size( v1 ), size_data = sizeof( T1 );
+			cost_models::HW_model::HWParameters hw_model = cost_models::HW_model::get_hw_params_for_threads( 1, dis_system_params );
+			cost_models::k_multi_bsp::AlgoParameters_p algo_model = cost_models::k_multi_bsp::get_params_foldl( n, size_data, 1, 0 );
+			return cost_models::k_multi_bsp::predict_cost( &hw_model, algo_model, 1 );
+		} catch( ... ) {
+			return 1.0; // Fallback value
+		}
+	}
+};
+
+/*=====================================================================*/
+/*--------------------------------foldr--------------------------------*/
+template< typename T1, typename Monoid >
+struct CostPredictor< FoldrFunc, grb::Vector< T1 >, grb::Vector< T1 >, Monoid > {
+	static double predict( grb::Vector< T1 > & v1, const grb::Vector< T1 > & v2, const Monoid & ) {
+		try {
+			size_t n = grb::size( v1 ), size_data = sizeof( T1 );
+			cost_models::HW_model::HWParameters hw_model = cost_models::HW_model::get_hw_params_for_threads( 1, dis_system_params );
+			cost_models::k_multi_bsp::AlgoParameters_p algo_model = cost_models::k_multi_bsp::get_params_foldr( n, size_data, 1, 1 );
+			return cost_models::k_multi_bsp::predict_cost( &hw_model, algo_model, 1 );
+		} catch( ... ) {
+			return 1.0; // Fallback value
+		}
+	}
+};
+
+template< typename T1, typename Monoid >
+struct CostPredictor< FoldrFunc, T1, grb::Vector< T1 >, Monoid > {
+	static double predict( T1 & v1, const grb::Vector< T1 > & v2, const Monoid & ) {
+		try {
+			size_t n = grb::size( v2 ), size_data = sizeof( T1 );
+			cost_models::HW_model::HWParameters hw_model = cost_models::HW_model::get_hw_params_for_threads( 1, dis_system_params );
+			cost_models::k_multi_bsp::AlgoParameters_p algo_model = cost_models::k_multi_bsp::get_params_foldr( n, size_data, 0, 1 );
+			return cost_models::k_multi_bsp::predict_cost( &hw_model, algo_model, 1 );
+		} catch( ... ) {
+			return 1.0; // Fallback value
+		}
+	}
+};
+
+template< typename T1, typename Monoid >
+struct CostPredictor< FoldrFunc, grb::Vector< T1 >, T1, Monoid > {
+	static double predict( grb::Vector< T1 > & v1, const T1 & v2, const Monoid & ) {
+		try {
+			size_t n = grb::size( v1 ), size_data = sizeof( T1 );
+			cost_models::HW_model::HWParameters hw_model = cost_models::HW_model::get_hw_params_for_threads( 1, dis_system_params );
+			cost_models::k_multi_bsp::AlgoParameters_p algo_model = cost_models::k_multi_bsp::get_params_foldr( n, size_data, 1, 0 );
+			return cost_models::k_multi_bsp::predict_cost( &hw_model, algo_model, 1 );
+		} catch( ... ) {
+			return 1.0; // Fallback value
+		}
+	}
 };
 
 // Specialization for dot product
@@ -449,11 +511,11 @@ template<typename T1, typename T2, typename Ring>
 struct CostPredictor<DotFunc, T1&, const grb::Vector<T2>&, const grb::Vector<T2>&, const Ring&> {
     static double predict(T1&, const grb::Vector<T2>& v1, const grb::Vector<T2>& v2, const Ring&) {
         try {
-            // TODO: Implement proper cost model for dot product based on sparsity patterns
-            size_t size1 = grb::size(v1);
-            size_t size2 = grb::size(v2);
-            return static_cast<double>(size1 + size2); // Placeholder
-        } catch(...) {
+			size_t n = grb::size( v1 ), size_data = sizeof(T2);
+			cost_models::HW_model::HWParameters hw_model = cost_models::HW_model::get_hw_params_for_threads( 1, dis_system_params );
+			cost_models::k_multi_bsp::AlgoParameters_p algo_model = cost_models::k_multi_bsp::get_params_dot(n, size_data);
+			return cost_models::k_multi_bsp::predict_cost( &hw_model, algo_model, 1 );
+		} catch(...) {
             return 1.0; // Fallback value
         }
     }
@@ -462,16 +524,31 @@ struct CostPredictor<DotFunc, T1&, const grb::Vector<T2>&, const grb::Vector<T2>
 // Specialization for matrix-vector multiplication
 template<typename T1, typename T2, typename Ring>
 struct CostPredictor<MxvFunc, grb::Vector<T1>&, const grb::Matrix<T2>&, const grb::Vector<T1>&, const Ring&> {
-    static double predict(grb::Vector<T1>&, const grb::Matrix<T2>& m, const grb::Vector<T1>& v, const Ring&) {
+    static double predict(grb::Vector<T1>& y, const grb::Matrix<T2>& A, const grb::Vector<T1>& x, const Ring&) {
         try {
-            // TODO: Implement proper cost model for mxv based on matrix structure and sparsity
-            size_t nnz = grb::nnz(m);
-            size_t vec_size = grb::size(v);
-            return static_cast<double>(2.0 * nnz + vec_size); // Placeholder
-        } catch(...) {
+            size_t nnz = grb::nnz(A), m = grb::size(y), n = grb::size(x), size_idx = sizeof(size_t), size_data = sizeof(T1);
+			cost_models::HW_model::HWParameters hw_model = cost_models::HW_model::get_hw_params_for_threads(1, dis_system_params);
+			cost_models::k_multi_bsp::AlgoParameters_p algo_model = cost_models::k_multi_bsp::get_params_csr(nnz, n, m, size_idx, size_data);
+			return cost_models::k_multi_bsp::predict_cost(&hw_model, algo_model, 1);
+		} catch(...) {
             return 1.0; // Fallback value
         }
     }
+};
+
+// Specialization for eWiseApply with two vectors
+template< typename T1, typename T2, typename Op >
+struct CostPredictor< EWiseApplyFunc, grb::Vector< T1 >, grb::Vector< T2 >, Op > {
+	static double predict( const grb::Vector< T1 > & v1, const grb::Vector< T2 > & v2, const Op & ) {
+		try {
+			size_t n = grb::size( v1 ), size_data = sizeof( T1 );
+			cost_models::HW_model::HWParameters hw_model = cost_models::HW_model::get_hw_params_for_threads( 1, dis_system_params );
+			cost_models::k_multi_bsp::AlgoParameters_p algo_model = cost_models::k_multi_bsp::get_params_eWiseApply( n, size_data, 1, 0);
+			return cost_models::k_multi_bsp::predict_cost( &hw_model, algo_model, 1 );
+		} catch( ... ) {
+			return 1.0; // Fallback value
+		}
+	}
 };
 
 // Specialization for eWiseApply with three vectors and an operator
@@ -479,12 +556,11 @@ template<typename T, typename Op>
 struct CostPredictor<EWiseApplyFunc, grb::Vector<T>, grb::Vector<T>, grb::Vector<T>, Op> {
     static double predict(const grb::Vector<T>& v1, const grb::Vector<T>& v2, const grb::Vector<T>& v3, const Op&) {
         try {
-            // TODO: Implement proper cost model for eWiseApply with 3 vectors
-            size_t size1 = grb::size(v1);
-            size_t size2 = grb::size(v2);
-            size_t size3 = grb::size(v3);
-            return static_cast<double>(size1 + size2 + size3); // Placeholder
-        } catch(...) {
+			size_t n = grb::size( v1 ), size_data = sizeof(T);
+			cost_models::HW_model::HWParameters hw_model = cost_models::HW_model::get_hw_params_for_threads( 1, dis_system_params );
+			cost_models::k_multi_bsp::AlgoParameters_p algo_model = cost_models::k_multi_bsp::get_params_eWiseApply( n, size_data, 1, 1 );
+			return cost_models::k_multi_bsp::predict_cost( &hw_model, algo_model, 1 );
+		} catch(...) {
             return 1.0; // Fallback value
         }
     }
