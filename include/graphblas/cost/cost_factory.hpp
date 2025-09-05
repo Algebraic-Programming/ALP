@@ -12,133 +12,13 @@
 
 #if _GRB_ENABLE_TRACING
 
-// Define macros to generate tracing code for a given function
-#define SAVE_ORIGINAL_FUNCTION(func_name) \
-    /* Save original function with descriptor */ \
-    template<unsigned int descr, typename... Args> \
-    auto func_name(Args&&... args) \
-        -> decltype(grb::func_name<descr>(std::forward<Args>(args)...)) { \
-        return grb::func_name<descr>(std::forward<Args>(args)...); \
-    } \
-    \
-    /* Save original function without descriptor */ \
-    template<typename... Args> \
-    auto func_name(Args&&... args) \
-        -> decltype(grb::func_name(std::forward<Args>(args)...)) { \
-        return grb::func_name(std::forward<Args>(args)...); \
-    }
-
-#define DEFINE_TRACED_FUNCTION(func_name) \
-    /* Override with descriptor */ \
-    template<unsigned int descr, typename... Args> \
-    auto func_name(Args&&... args) \
-        -> decltype(original::func_name<descr>(std::forward<Args>(args)...)) { \
-        \
-        std::string descriptor_name = std::to_string(descr); \
-        if (descr == descriptors::dense) descriptor_name = "dense"; \
-        if (descr == descriptors::structural) descriptor_name = "structural"; \
-        \
-        std::cout << "[TRACING] Entering function: " << #func_name << "<" << descriptor_name << "> with " \
-                  << sizeof...(args) << " arguments" << std::endl; \
-        \
-        printArgTypes(std::forward<Args>(args)...); \
-        \
-        auto start = std::chrono::high_resolution_clock::now(); \
-        auto result = original::func_name<descr>(std::forward<Args>(args)...); \
-        auto end = std::chrono::high_resolution_clock::now(); \
-        \
-        auto duration = std::chrono::duration_cast<std::chrono::microseconds>(end - start); \
-        std::cout << "[TRACING] Exiting function: " << #func_name << "<" << descriptor_name << "> (took " \
-                  << duration.count() << "μs)" << std::endl; \
-        \
-        return result; \
-    } \
-    \
-    /* Override without descriptor */ \
-    template<typename... Args> \
-    auto func_name(Args&&... args) \
-        -> decltype(original::func_name(std::forward<Args>(args)...)) { \
-        \
-        std::cout << "[TRACING] Entering function: " << #func_name << " with " \
-                  << sizeof...(args) << " arguments" << std::endl; \
-        \
-        printArgTypes(std::forward<Args>(args)...); \
-        \
-        auto start = std::chrono::high_resolution_clock::now(); \
-        auto result = original::func_name(std::forward<Args>(args)...); \
-        auto end = std::chrono::high_resolution_clock::now(); \
-        \
-        auto duration = std::chrono::duration_cast<std::chrono::microseconds>(end - start); \
-        std::cout << "[TRACING] Exiting function: " << #func_name << " (took " \
-                  << duration.count() << "μs)" << std::endl; \
-        \
-        return result; \
-    }
-
 // First, save the original functions before we redefine them
 namespace grb {
     namespace original {
-        // Save all original functions using macros
-        SAVE_ORIGINAL_FUNCTION(eWiseApply)
-        SAVE_ORIGINAL_FUNCTION(foldl)
-        SAVE_ORIGINAL_FUNCTION(dot)
-        // Add the new functions we want to trace
-        SAVE_ORIGINAL_FUNCTION(foldr)
-        SAVE_ORIGINAL_FUNCTION(set)
-        SAVE_ORIGINAL_FUNCTION(apply)
-        SAVE_ORIGINAL_FUNCTION(mxv)
+        using namespace grb;  // This brings in all the original functions
     }
 }
 
-// Helper to get type names
-template<typename T>
-std::string getTypeName() {
-    std::string type_name = typeid(T).name();
-    
-    // Simple demangling for common types
-    if (std::is_same<T, double>::value) return "double";
-    if (std::is_same<T, float>::value) return "float";
-    if (std::is_same<T, int>::value) return "int";
-    if (std::is_same<T, unsigned int>::value) return "unsigned int";
-    if (std::is_same<T, long>::value) return "long";
-    if (std::is_same<T, unsigned long>::value) return "unsigned long";
-    if (std::is_same<T, size_t>::value) return "size_t";
-    if (std::is_same<T, char>::value) return "char";
-    if (std::is_same<T, bool>::value) return "bool";
-    
-    // GraphBLAS Vector type detection - explicit common cases
-    if (std::is_same<T, grb::Vector<double>>::value) return "Vector<double>";
-    if (std::is_same<T, grb::Vector<float>>::value) return "Vector<float>";
-    if (std::is_same<T, grb::Vector<int>>::value) return "Vector<int>";
-    if (std::is_same<T, grb::Vector<unsigned int>>::value) return "Vector<unsigned int>";
-    if (std::is_same<T, grb::Vector<long>>::value) return "Vector<long>";
-    if (std::is_same<T, grb::Vector<unsigned long>>::value) return "Vector<unsigned long>";
-    
-    // GraphBLAS Matrix type detection - expanded for more types
-    if (std::is_same<T, grb::Matrix<double>>::value) return "Matrix<double>";
-    if (std::is_same<T, grb::Matrix<float>>::value) return "Matrix<float>";
-    if (std::is_same<T, grb::Matrix<int>>::value) return "Matrix<int>";
-    if (std::is_same<T, grb::Matrix<unsigned int>>::value) return "Matrix<unsigned int>";
-    if (std::is_same<T, grb::Matrix<long>>::value) return "Matrix<long>";
-    if (std::is_same<T, grb::Matrix<unsigned long>>::value) return "Matrix<unsigned long>";
-    if (std::is_same<T, grb::Matrix<char>>::value) return "Matrix<char>";
-    if (std::is_same<T, grb::Matrix<bool>>::value) return "Matrix<bool>";
-    
-    // GraphBLAS Operator detection
-    if (std::is_same<T, grb::operators::add<double>>::value) return "operators::add<double>";
-    if (std::is_same<T, grb::operators::add<float>>::value) return "operators::add<float>";
-    if (std::is_same<T, grb::operators::add<int>>::value) return "operators::add<int>";
-    if (std::is_same<T, grb::operators::mul<double>>::value) return "operators::mul<double>";
-    if (std::is_same<T, grb::operators::mul<float>>::value) return "operators::mul<float>";
-    if (std::is_same<T, grb::operators::mul<int>>::value) return "operators::mul<int>";
-    
-    // Generic fallbacks
-    if (type_name.find("Vector") != std::string::npos) return "Vector<...>";
-    if (type_name.find("Matrix") != std::string::npos) return "Matrix<...>";
-    if (type_name.find("operators::") != std::string::npos) return "operators::...";
-    
-    return type_name;
-}
 
 // Type trait to check if we can call grb::size on a type
 template<typename T, typename = void>
@@ -225,6 +105,56 @@ void printArgTypesHelper() {
     // End of recursion
 }
 
+// Helper to get type names
+template<typename T>
+std::string getTypeName() {
+    std::string type_name = typeid(T).name();
+    
+    // Simple demangling for common types
+    if (std::is_same<T, double>::value) return "double";
+    if (std::is_same<T, float>::value) return "float";
+    if (std::is_same<T, int>::value) return "int";
+    if (std::is_same<T, unsigned int>::value) return "unsigned int";
+    if (std::is_same<T, long>::value) return "long";
+    if (std::is_same<T, unsigned long>::value) return "unsigned long";
+    if (std::is_same<T, size_t>::value) return "size_t";
+    if (std::is_same<T, char>::value) return "char";
+    if (std::is_same<T, bool>::value) return "bool";
+    
+    // GraphBLAS Vector type detection - explicit common cases
+    if (std::is_same<T, grb::Vector<double>>::value) return "Vector<double>";
+    if (std::is_same<T, grb::Vector<float>>::value) return "Vector<float>";
+    if (std::is_same<T, grb::Vector<int>>::value) return "Vector<int>";
+    if (std::is_same<T, grb::Vector<unsigned int>>::value) return "Vector<unsigned int>";
+    if (std::is_same<T, grb::Vector<long>>::value) return "Vector<long>";
+    if (std::is_same<T, grb::Vector<unsigned long>>::value) return "Vector<unsigned long>";
+    
+    // GraphBLAS Matrix type detection - expanded for more types
+    if (std::is_same<T, grb::Matrix<double>>::value) return "Matrix<double>";
+    if (std::is_same<T, grb::Matrix<float>>::value) return "Matrix<float>";
+    if (std::is_same<T, grb::Matrix<int>>::value) return "Matrix<int>";
+    if (std::is_same<T, grb::Matrix<unsigned int>>::value) return "Matrix<unsigned int>";
+    if (std::is_same<T, grb::Matrix<long>>::value) return "Matrix<long>";
+    if (std::is_same<T, grb::Matrix<unsigned long>>::value) return "Matrix<unsigned long>";
+    if (std::is_same<T, grb::Matrix<char>>::value) return "Matrix<char>";
+    if (std::is_same<T, grb::Matrix<bool>>::value) return "Matrix<bool>";
+    
+    // GraphBLAS Operator detection
+    if (std::is_same<T, grb::operators::add<double>>::value) return "operators::add<double>";
+    if (std::is_same<T, grb::operators::add<float>>::value) return "operators::add<float>";
+    if (std::is_same<T, grb::operators::add<int>>::value) return "operators::add<int>";
+    if (std::is_same<T, grb::operators::mul<double>>::value) return "operators::mul<double>";
+    if (std::is_same<T, grb::operators::mul<float>>::value) return "operators::mul<float>";
+    if (std::is_same<T, grb::operators::mul<int>>::value) return "operators::mul<int>";
+    
+    // Generic fallbacks
+    if (type_name.find("Vector") != std::string::npos) return "Vector<...>";
+    if (type_name.find("Matrix") != std::string::npos) return "Matrix<...>";
+    if (type_name.find("operators::") != std::string::npos) return "operators::...";
+    
+    return type_name;
+}
+
 // Recursive case
 template<typename T, typename... Args>
 void printArgTypesHelper(T&& arg, Args&&... args) {
@@ -259,17 +189,258 @@ void printArgTypes(Args&&... args) {
     std::cout << std::endl;
 }
 
+// Function tracer class template for handling tracing logic
+template<typename Func>
+class FunctionTracer {
+public:
+    FunctionTracer(const std::string& name) : name_(name) {}
+    
+    // Version for non-templated calls
+    template<typename... Args>
+    auto operator()(Args&&... args) const
+        -> decltype(std::declval<Func>()(std::forward<Args>(args)...)) {
+        std::cout << "[TRACING] Entering function: " << name_ << " with " 
+                  << sizeof...(args) << " arguments" << std::endl;
+        
+        printArgTypes(std::forward<Args>(args)...);
+        
+        auto start = std::chrono::high_resolution_clock::now();
+        Func func;
+        auto result = func(std::forward<Args>(args)...);
+        auto end = std::chrono::high_resolution_clock::now();
+        
+        auto duration = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
+        std::cout << "[TRACING] Exiting function: " << name_ << " (took " 
+                  << duration.count() << "μs)" << std::endl;
+        
+        return result;
+    }
+    
+    // Version for templated calls with descriptor
+    template<unsigned int descr, typename... Args>
+    auto withDescriptor(Args&&... args) const
+        -> decltype(std::declval<Func>().template withDescriptor<descr>(std::forward<Args>(args)...)) {
+        std::string descriptor_name = std::to_string(descr);
+        if (descr == grb::descriptors::dense) descriptor_name = "dense";
+        if (descr == grb::descriptors::structural) descriptor_name = "structural";
+        
+        std::cout << "[TRACING] Entering function: " << name_ << "<" << descriptor_name << "> with " 
+                  << sizeof...(args) << " arguments" << std::endl;
+        
+        printArgTypes(std::forward<Args>(args)...);
+        
+        auto start = std::chrono::high_resolution_clock::now();
+        Func func;
+        auto result = func.template withDescriptor<descr>(std::forward<Args>(args)...);
+        auto end = std::chrono::high_resolution_clock::now();
+        
+        auto duration = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
+        std::cout << "[TRACING] Exiting function: " << name_ << "<" << descriptor_name << "> (took " 
+                  << duration.count() << "μs)" << std::endl;
+        
+        return result;
+    }
+    
+private:
+    std::string name_;
+};
+
+// Function object wrappers for each GraphBLAS function
+struct EWiseApplyFunc {
+    template<typename... Args>
+    auto operator()(Args&&... args) const
+        -> decltype(grb::original::eWiseApply(std::forward<Args>(args)...)) {
+        return grb::original::eWiseApply(std::forward<Args>(args)...);
+    }
+    
+    template<unsigned int descr, typename... Args>
+    auto withDescriptor(Args&&... args) const
+        -> decltype(grb::original::eWiseApply<descr>(std::forward<Args>(args)...)) {
+        return grb::original::eWiseApply<descr>(std::forward<Args>(args)...);
+    }
+};
+
+struct FoldlFunc {
+    template<typename... Args>
+    auto operator()(Args&&... args) const
+        -> decltype(grb::original::foldl(std::forward<Args>(args)...)) {
+        return grb::original::foldl(std::forward<Args>(args)...);
+    }
+    
+    template<unsigned int descr, typename... Args>
+    auto withDescriptor(Args&&... args) const
+        -> decltype(grb::original::foldl<descr>(std::forward<Args>(args)...)) {
+        return grb::original::foldl<descr>(std::forward<Args>(args)...);
+    }
+};
+
+struct FoldrFunc {
+    template<typename... Args>
+    auto operator()(Args&&... args) const
+        -> decltype(grb::original::foldr(std::forward<Args>(args)...)) {
+        return grb::original::foldr(std::forward<Args>(args)...);
+    }
+    
+    template<unsigned int descr, typename... Args>
+    auto withDescriptor(Args&&... args) const
+        -> decltype(grb::original::foldr<descr>(std::forward<Args>(args)...)) {
+        return grb::original::foldr<descr>(std::forward<Args>(args)...);
+    }
+};
+
+struct DotFunc {
+    template<typename... Args>
+    auto operator()(Args&&... args) const
+        -> decltype(grb::original::dot(std::forward<Args>(args)...)) {
+        return grb::original::dot(std::forward<Args>(args)...);
+    }
+    
+    template<unsigned int descr, typename... Args>
+    auto withDescriptor(Args&&... args) const
+        -> decltype(grb::original::dot<descr>(std::forward<Args>(args)...)) {
+        return grb::original::dot<descr>(std::forward<Args>(args)...);
+    }
+};
+
+struct SetFunc {
+    template<typename... Args>
+    auto operator()(Args&&... args) const
+        -> decltype(grb::original::set(std::forward<Args>(args)...)) {
+        return grb::original::set(std::forward<Args>(args)...);
+    }
+    
+    template<unsigned int descr, typename... Args>
+    auto withDescriptor(Args&&... args) const
+        -> decltype(grb::original::set<descr>(std::forward<Args>(args)...)) {
+        return grb::original::set<descr>(std::forward<Args>(args)...);
+    }
+};
+
+struct ApplyFunc {
+    template<typename... Args>
+    auto operator()(Args&&... args) const
+        -> decltype(grb::original::apply(std::forward<Args>(args)...)) {
+        return grb::original::apply(std::forward<Args>(args)...);
+    }
+    
+    template<unsigned int descr, typename... Args>
+    auto withDescriptor(Args&&... args) const
+        -> decltype(grb::original::apply<descr>(std::forward<Args>(args)...)) {
+        return grb::original::apply<descr>(std::forward<Args>(args)...);
+    }
+};
+
+struct MxvFunc {
+    template<typename... Args>
+    auto operator()(Args&&... args) const
+        -> decltype(grb::original::mxv(std::forward<Args>(args)...)) {
+        return grb::original::mxv(std::forward<Args>(args)...);
+    }
+    
+    template<unsigned int descr, typename... Args>
+    auto withDescriptor(Args&&... args) const
+        -> decltype(grb::original::mxv<descr>(std::forward<Args>(args)...)) {
+        return grb::original::mxv<descr>(std::forward<Args>(args)...);
+    }
+};
+
+
 // Now redefine the functions in the grb namespace with tracing
 namespace grb {
-    // Define all traced functions using macros
-    DEFINE_TRACED_FUNCTION(eWiseApply)
-    DEFINE_TRACED_FUNCTION(foldl)
-    DEFINE_TRACED_FUNCTION(dot)
-    // Add the new functions we want to trace
-    DEFINE_TRACED_FUNCTION(foldr)
-    DEFINE_TRACED_FUNCTION(set)
-    DEFINE_TRACED_FUNCTION(apply)
-    DEFINE_TRACED_FUNCTION(mxv)
+    // Create tracers for each function
+    static const FunctionTracer<EWiseApplyFunc> eWiseApplyTracer("eWiseApply");
+    static const FunctionTracer<FoldlFunc> foldlTracer("foldl");
+    static const FunctionTracer<FoldrFunc> foldrTracer("foldr");
+    static const FunctionTracer<DotFunc> dotTracer("dot");
+    static const FunctionTracer<SetFunc> setTracer("set");
+    static const FunctionTracer<ApplyFunc> applyTracer("apply");
+    static const FunctionTracer<MxvFunc> mxvTracer("mxv");
+    
+    // Non-templated versions
+    template<typename... Args>
+    auto eWiseApply(Args&&... args)
+        -> decltype(original::eWiseApply(std::forward<Args>(args)...)) {
+        return eWiseApplyTracer(std::forward<Args>(args)...);
+    }
+    
+    template<typename... Args>
+    auto foldl(Args&&... args)
+        -> decltype(original::foldl(std::forward<Args>(args)...)) {
+        return foldlTracer(std::forward<Args>(args)...);
+    }
+    
+    template<typename... Args>
+    auto foldr(Args&&... args)
+        -> decltype(original::foldr(std::forward<Args>(args)...)) {
+        return foldrTracer(std::forward<Args>(args)...);
+    }
+    
+    template<typename... Args>
+    auto dot(Args&&... args)
+        -> decltype(original::dot(std::forward<Args>(args)...)) {
+        return dotTracer(std::forward<Args>(args)...);
+    }
+    
+    template<typename... Args>
+    auto set(Args&&... args)
+        -> decltype(original::set(std::forward<Args>(args)...)) {
+        return setTracer(std::forward<Args>(args)...);
+    }
+    
+    template<typename... Args>
+    auto apply(Args&&... args)
+        -> decltype(original::apply(std::forward<Args>(args)...)) {
+        return applyTracer(std::forward<Args>(args)...);
+    }
+    
+    template<typename... Args>
+    auto mxv(Args&&... args)
+        -> decltype(original::mxv(std::forward<Args>(args)...)) {
+        return mxvTracer(std::forward<Args>(args)...);
+    }
+    
+    // Templated versions with descriptor
+    template<unsigned int descr, typename... Args>
+    auto eWiseApply(Args&&... args)
+        -> decltype(original::eWiseApply<descr>(std::forward<Args>(args)...)) {
+        return eWiseApplyTracer.template withDescriptor<descr>(std::forward<Args>(args)...);
+    }
+    
+    template<unsigned int descr, typename... Args>
+    auto foldl(Args&&... args)
+        -> decltype(original::foldl<descr>(std::forward<Args>(args)...)) {
+        return foldlTracer.template withDescriptor<descr>(std::forward<Args>(args)...);
+    }
+    
+    template<unsigned int descr, typename... Args>
+    auto foldr(Args&&... args)
+        -> decltype(original::foldr<descr>(std::forward<Args>(args)...)) {
+        return foldrTracer.template withDescriptor<descr>(std::forward<Args>(args)...);
+    }
+    
+    template<unsigned int descr, typename... Args>
+    auto dot(Args&&... args)
+        -> decltype(original::dot<descr>(std::forward<Args>(args)...)) {
+        return dotTracer.template withDescriptor<descr>(std::forward<Args>(args)...);
+    }
+    
+    template<unsigned int descr, typename... Args>
+    auto set(Args&&... args)
+        -> decltype(original::set<descr>(std::forward<Args>(args)...)) {
+        return setTracer.template withDescriptor<descr>(std::forward<Args>(args)...);
+    }
+    
+    template<unsigned int descr, typename... Args>
+    auto apply(Args&&... args)
+        -> decltype(original::apply<descr>(std::forward<Args>(args)...)) {
+        return applyTracer.template withDescriptor<descr>(std::forward<Args>(args)...);
+    }
+    
+    template<unsigned int descr, typename... Args>
+    auto mxv(Args&&... args)
+        -> decltype(original::mxv<descr>(std::forward<Args>(args)...)) {
+        return mxvTracer.template withDescriptor<descr>(std::forward<Args>(args)...);
+    }
 }
 
 #endif // _GRB_ENABLE_TRACING
