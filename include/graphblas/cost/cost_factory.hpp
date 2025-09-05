@@ -737,13 +737,11 @@ struct CostPredictor< FoldrFunc, grb::Vector< T1 >, T1, Monoid > {
 // Specializations for dot product
 // Catch-all specialization for dot with exactly 5 arguments of any type
 template<typename T0, typename VecType, typename MonoidType, typename OpType>
-struct CostPredictor<DotFunc, T0, VecType, VecType, MonoidType, OpType> {
-    static double predict(T0 result, VecType v1, VecType v2, MonoidType monoid, OpType op) {
-        std::cout << "[TRACING] Using catch-all 5-argument dot predictor" << std::endl;
-        
+struct CostPredictor<DotFunc, T0, grb::Vector<VecType>, grb::Vector<VecType>, MonoidType, OpType> {
+    static double predict(T0 result, grb::Vector<VecType> v1, grb::Vector<VecType> v2, MonoidType monoid, OpType op) {
         // Extract type information for diagnostics
-        std::string t1_name = getTypeName<VecType>();
-        std::string t2_name = getTypeName<VecType>();
+        std::string t1_name = getTypeName<grb::Vector<VecType>>();
+        std::string t2_name = getTypeName<grb::Vector<VecType>>();
         std::string t3_name = getTypeName<MonoidType>();
         std::string t4_name = getTypeName<OpType>();
         
