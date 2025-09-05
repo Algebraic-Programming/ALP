@@ -830,6 +830,59 @@ struct CostPredictor<EWiseApplyFunc, grb::Vector<T>, grb::Vector<T>, grb::Vector
     }
 };
 
+/*=====================================================================*/
+/*----------------------------------set--------------------------------*/
+// Specialization for set with Vector<double> to Vector<double>
+template<>
+struct CostPredictor<SetFunc, grb::Vector<double>, grb::Vector<double>> {
+    static double predict(const grb::Vector<double>& dst, const grb::Vector<double>& src) {
+        try {
+            // TODO: Implement proper cost model for vector-to-vector set operation
+            std::cout << "[TRACING] Using specialized set(Vector<double>, Vector<double>) predictor" << std::endl;
+            size_t n = grb::size(dst);
+            // return dummy cost
+            // TODO: Implement proper cost model for vector-to-vector set operation
+            return 1.0;
+        } catch(...) {
+            return 1.0; // Fallback value
+        }
+    }
+};
+
+// Generic specialization for set with any Vector<T> to Vector<T>
+template<typename T>
+struct CostPredictor<SetFunc, grb::Vector<T>, grb::Vector<T>> {
+    static double predict(const grb::Vector<T>& dst, const grb::Vector<T>& src) {
+        try {
+            // TODO: Implement proper cost model for vector-to-vector set operation
+            std::cout << "[TRACING] Using specialized set(Vector<T>, Vector<T>) predictor" << std::endl;
+            size_t n = grb::size(dst);
+            // return dummy cost
+            // TODO: Implement proper cost model for vector-to-vector set operation
+            return 1.0;
+        } catch(...) {
+            return 1.0; // Fallback value
+        }
+    }
+};
+
+// Specialization for set with Vector<T> to scalar
+template<typename T>
+struct CostPredictor<SetFunc, grb::Vector<T>, T> {
+    static double predict(const grb::Vector<T>& dst, const T& scalar) {
+        try {
+            // TODO: Implement proper cost model for vector-to-scalar set operation
+            std::cout << "[TRACING] Using specialized set(Vector<T>, scalar) predictor" << std::endl;
+            size_t n = grb::size(dst);
+            // return dummy cost
+            // TODO: Implement proper cost model for vector-to-scalar set operation
+            return 1.0;
+        } catch(...) {
+            return 1.0; // Fallback value
+        }
+    }
+};
+
 // Function tracer class template for handling tracing logic
 template<typename Func>
 class FunctionTracer {
