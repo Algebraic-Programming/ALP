@@ -142,169 +142,25 @@ getMatrixInfoString(const T&) {
     return " ";
 }
 
-// Primary template for operator name traits - default case
+// Primary template for operator name traits - delegates to existing traits when possible
 template<typename T>
 struct OperatorNameTrait {
-    static std::string name() { return typeid(T).name(); }
-};
-
-// Specializations for common GraphBLAS operators
-// Basic arithmetic operators
-template<typename... Args> 
-struct OperatorNameTrait<grb::operators::add<Args...>> {
-    static std::string name() { return "operators::add"; }
-};
-
-template<typename... Args> 
-struct OperatorNameTrait<grb::operators::mul<Args...>> {
-    static std::string name() { return "operators::mul"; }
-};
-
-template<typename... Args> 
-struct OperatorNameTrait<grb::operators::subtract<Args...>> {
-    static std::string name() { return "operators::subtract"; }
-};
-
-template<typename... Args> 
-struct OperatorNameTrait<grb::operators::divide<Args...>> {
-    static std::string name() { return "operators::divide"; }
-};
-
-template<typename... Args> 
-struct OperatorNameTrait<grb::operators::divide_reverse<Args...>> {
-    static std::string name() { return "operators::divide_reverse"; }
-};
-
-// Min/Max operators
-template<typename... Args> 
-struct OperatorNameTrait<grb::operators::min<Args...>> {
-    static std::string name() { return "operators::min"; }
-};
-
-template<typename... Args> 
-struct OperatorNameTrait<grb::operators::max<Args...>> {
-    static std::string name() { return "operators::max"; }
-};
-
-// Logical operators
-template<typename... Args> 
-struct OperatorNameTrait<grb::operators::logical_or<Args...>> {
-    static std::string name() { return "operators::logical_or"; }
-};
-
-template<typename... Args> 
-struct OperatorNameTrait<grb::operators::logical_and<Args...>> {
-    static std::string name() { return "operators::logical_and"; }
-};
-
-template<typename... Args> 
-struct OperatorNameTrait<grb::operators::any_or<Args...>> {
-    static std::string name() { return "operators::any_or"; }
-};
-
-// Comparison operators
-template<typename... Args> 
-struct OperatorNameTrait<grb::operators::equal<Args...>> {
-    static std::string name() { return "operators::equal"; }
-};
-
-template<typename... Args> 
-struct OperatorNameTrait<grb::operators::not_equal<Args...>> {
-    static std::string name() { return "operators::not_equal"; }
-};
-
-template<typename... Args> 
-struct OperatorNameTrait<grb::operators::less_than<Args...>> {
-    static std::string name() { return "operators::less_than"; }
-};
-
-template<typename... Args> 
-struct OperatorNameTrait<grb::operators::greater_than<Args...>> {
-    static std::string name() { return "operators::greater_than"; }
-};
-
-template<typename... Args> 
-struct OperatorNameTrait<grb::operators::leq<Args...>> {
-    static std::string name() { return "operators::leq"; }
-};
-
-template<typename... Args> 
-struct OperatorNameTrait<grb::operators::geq<Args...>> {
-    static std::string name() { return "operators::geq"; }
-};
-
-// Other common operators
-template<typename... Args> 
-struct OperatorNameTrait<grb::operators::abs_diff<Args...>> {
-    static std::string name() { return "operators::abs_diff"; }
-};
-
-template<typename... Args> 
-struct OperatorNameTrait<grb::operators::square_diff<Args...>> {
-    static std::string name() { return "operators::square_diff"; }
-};
-
-template<typename... Args> 
-struct OperatorNameTrait<grb::operators::relu<Args...>> {
-    static std::string name() { return "operators::relu"; }
-};
-
-// Assignment operators
-template<typename... Args> 
-struct OperatorNameTrait<grb::operators::left_assign<Args...>> {
-    static std::string name() { return "operators::left_assign"; }
-};
-
-template<typename... Args> 
-struct OperatorNameTrait<grb::operators::right_assign<Args...>> {
-    static std::string name() { return "operators::right_assign"; }
-};
-
-template<typename... Args> 
-struct OperatorNameTrait<grb::operators::left_assign_if<Args...>> {
-    static std::string name() { return "operators::left_assign_if"; }
-};
-
-template<typename... Args> 
-struct OperatorNameTrait<grb::operators::right_assign_if<Args...>> {
-    static std::string name() { return "operators::right_assign_if"; }
-};
-
-// Special purpose operators
-template<typename... Args> 
-struct OperatorNameTrait<grb::operators::argmin<Args...>> {
-    static std::string name() { return "operators::argmin"; }
-};
-
-template<typename... Args> 
-struct OperatorNameTrait<grb::operators::argmax<Args...>> {
-    static std::string name() { return "operators::argmax"; }
-};
-
-template<typename... Args> 
-struct OperatorNameTrait<grb::operators::zip<Args...>> {
-    static std::string name() { return "operators::zip"; }
-};
-
-template<typename... Args> 
-struct OperatorNameTrait<grb::operators::equal_first<Args...>> {
-    static std::string name() { return "operators::equal_first"; }
-};
-
-// Complex operators
-template<typename... Args> 
-struct OperatorNameTrait<grb::operators::conjugate_mul<Args...>> {
-    static std::string name() { return "operators::conjugate_mul"; }
-};
-
-template<typename... Args> 
-struct OperatorNameTrait<grb::operators::conjugate_left_mul<Args...>> {
-    static std::string name() { return "operators::conjugate_left_mul"; }
-};
-
-template<typename... Args> 
-struct OperatorNameTrait<grb::operators::conjugate_right_mul<Args...>> {
-    static std::string name() { return "operators::conjugate_right_mul"; }
+    // For operators that have a defined operator_name trait
+    template<typename U = T>
+    static auto name_impl(int) -> 
+        decltype(std::string(operator_name<U>::name)) {
+        return std::string(operator_name<U>::name);
+    }
+    
+    // Fallback for types without an operator_name trait
+    template<typename U = T>
+    static std::string name_impl(...) {
+        return typeid(U).name();
+    }
+    
+    static std::string name() {
+        return name_impl<T>(0);
+    }
 };
 
 // Template to check if type is a GraphBLAS operator

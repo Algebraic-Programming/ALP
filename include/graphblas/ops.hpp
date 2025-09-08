@@ -1210,6 +1210,149 @@ namespace grb {
 		static constexpr bool value = OP::is_commutative();
 	};
 
+	// define name type traits for all operators defined
+	template< typename OP >
+	struct operator_name;
+
+	// Assignment operators
+	template< typename D1, typename D2, typename D3 >
+	struct operator_name< operators::left_assign< D1, D2, D3 > > {
+		static constexpr const char* name = "operators::left_assign";
+	};
+
+	template< typename D1, typename D2, typename D3 >
+	struct operator_name< operators::right_assign< D1, D2, D3 > > {
+		static constexpr const char* name = "operators::right_assign";
+	};
+
+	template< typename D1, typename D2, typename D3 >
+	struct operator_name< operators::left_assign_if< D1, D2, D3 > > {
+		static constexpr const char* name = "operators::left_assign_if";
+	};
+
+	template< typename D1, typename D2, typename D3 >
+	struct operator_name< operators::right_assign_if< D1, D2, D3 > > {
+		static constexpr const char* name = "operators::right_assign_if";
+	};
+
+	// Additional arithmetic operators
+	template< typename D1, typename D2, typename D3 >
+	struct operator_name< operators::divide_reverse< D1, D2, D3 > > {
+		static constexpr const char* name = "operators::divide_reverse";
+	};
+
+	// Min/max operators
+	template< typename D1, typename D2, typename D3 >
+	struct operator_name< operators::min< D1, D2, D3 > > {
+		static constexpr const char* name = "operators::min";
+	};
+
+	template< typename D1, typename D2, typename D3 >
+	struct operator_name< operators::max< D1, D2, D3 > > {
+		static constexpr const char* name = "operators::max";
+	};
+
+	// Comparison operators
+	template< typename D1, typename D2, typename D3 >
+	struct operator_name< operators::equal< D1, D2, D3 > > {
+		static constexpr const char* name = "operators::equal";
+	};
+
+	template< typename D1, typename D2, typename D3 >
+	struct operator_name< operators::not_equal< D1, D2, D3 > > {
+		static constexpr const char* name = "operators::not_equal";
+	};
+
+	template< typename D1, typename D2, typename D3 >
+	struct operator_name< operators::less_than< D1, D2, D3 > > {
+		static constexpr const char* name = "operators::less_than";
+	};
+
+	template< typename D1, typename D2, typename D3 >
+	struct operator_name< operators::leq< D1, D2, D3 > > {
+		static constexpr const char* name = "operators::leq";
+	};
+
+	template< typename D1, typename D2, typename D3 >
+	struct operator_name< operators::greater_than< D1, D2, D3 > > {
+		static constexpr const char* name = "operators::greater_than";
+	};
+
+	template< typename D1, typename D2, typename D3 >
+	struct operator_name< operators::geq< D1, D2, D3 > > {
+		static constexpr const char* name = "operators::geq";
+	};
+
+	// Logical operators
+	template< typename D1, typename D2, typename D3 >
+	struct operator_name< operators::any_or< D1, D2, D3 > > {
+		static constexpr const char* name = "operators::any_or";
+	};
+
+	template< typename D1, typename D2, typename D3 >
+	struct operator_name< operators::logical_or< D1, D2, D3 > > {
+		static constexpr const char* name = "operators::logical_or";
+	};
+
+	template< typename D1, typename D2, typename D3 >
+	struct operator_name< operators::logical_and< D1, D2, D3 > > {
+		static constexpr const char* name = "operators::logical_and";
+	};
+
+	// Mathematical operators
+	template< typename D1, typename D2, typename D3 >
+	struct operator_name< operators::abs_diff< D1, D2, D3 > > {
+		static constexpr const char* name = "operators::abs_diff";
+	};
+
+	template< typename D1, typename D2, typename D3 >
+	struct operator_name< operators::square_diff< D1, D2, D3 > > {
+		static constexpr const char* name = "operators::square_diff";
+	};
+
+	template< typename D1, typename D2, typename D3 >
+	struct operator_name< operators::relu< D1, D2, D3 > > {
+		static constexpr const char* name = "operators::relu";
+	};
+
+	// Complex number operators
+	template< typename D1, typename D2, typename D3, bool conj_left >
+	struct operator_name< operators::conjugate_mul< D1, D2, D3, conj_left > > {
+		static constexpr const char* name = "operators::conjugate_mul";
+	};
+
+	template< typename D1, typename D2, typename D3 >
+	struct operator_name< operators::conjugate_left_mul< D1, D2, D3 > > {
+		static constexpr const char* name = "operators::conjugate_left_mul";
+	};
+
+	template< typename D1, typename D2, typename D3 >
+	struct operator_name< operators::conjugate_right_mul< D1, D2, D3 > > {
+		static constexpr const char* name = "operators::conjugate_right_mul";
+	};
+
+	// Utility operators
+	template< typename IN1, typename IN2 >
+	struct operator_name< operators::zip< IN1, IN2 > > {
+		static constexpr const char* name = "operators::zip";
+	};
+
+	template< typename D1, typename D2, typename D3 >
+	struct operator_name< operators::equal_first< D1, D2, D3 > > {
+		static constexpr const char* name = "operators::equal_first";
+	};
+
+	// Argument operators
+	template< typename IType, typename VType >
+	struct operator_name< operators::argmin< IType, VType > > {
+		static constexpr const char* name = "operators::argmin";
+	};
+
+	template< typename IType, typename VType >
+	struct operator_name< operators::argmax< IType, VType > > {
+		static constexpr const char* name = "operators::argmax";
+	};
+
 	// internal type traits follow
 
 	namespace internal {
