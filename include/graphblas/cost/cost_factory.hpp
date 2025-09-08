@@ -203,7 +203,8 @@ std::string getTypeName() {
     if (std::is_same<T, grb::Vector<unsigned int>>::value) return "Vector<unsigned int>";
     if (std::is_same<T, grb::Vector<long>>::value) return "Vector<long>";
     if (std::is_same<T, grb::Vector<unsigned long>>::value) return "Vector<unsigned long>";
-    
+    if (std::is_same<T, grb::Vector<bool>>::value) return "Vector<bool>";
+
     // GraphBLAS Matrix type detection - expanded for more types
     if (std::is_same<T, grb::Matrix<double>>::value) return "Matrix<double>";
     if (std::is_same<T, grb::Matrix<float>>::value) return "Matrix<float>";
