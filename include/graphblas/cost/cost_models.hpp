@@ -912,7 +912,7 @@ namespace HW_model
         double predict_cost(HW_model::HWParameters_p hw_params,
                             AlgoParameters_p algo_params,
                             size_t target_threads,
-                            const std::string &stream_aggregator = "sum")
+                            const std::string &stream_aggregator = "max")
         {
             std::cout << "===== Multi-BSP Kernel Cost Prediction =====\n\n";
             std::cout << "Threads: " << target_threads << "\n";
@@ -1013,116 +1013,132 @@ namespace HW_model
         /*=====================================================================*/
         /*--------------------------------COO----------------------------------*/
         AlgoParameters_p get_params_coo(uint64_t nz, uint64_t n,
-                                        uint64_t m, size_t idx_size, size_t dtype_size)
+                                        uint64_t m, size_t x_dsize, size_t y_dsize,
+                                        size_t A_dsize, size_t A_rowidx_size, size_t A_colidx_size)
         {
             AlgoParameters_p spmv_coo = new AlgoParameters();
             spmv_coo->n = nz;
             spmv_coo->num_v = 1;
-            spmv_coo->b_foot = (2 * idx_size + dtype_size) * nz + dtype_size * (m + n);
+            spmv_coo->b_foot = (A_dsize + A_rowidx_size + A_colidx_size) * nz
+                + y_dsize * m + x_dsize * n;
             Superstep_p ss_coo = new Superstep();
             ss_coo->nv = nz;
             ss_coo->ops_scalar = 2;
             ss_coo->ops_SIMD = 0;
             ss_coo->lvl = 0;
             ss_coo->ks = 5;
-            ss_coo->hi_rep = 2;
-            ss_coo->hi = {idx_size, idx_size, dtype_size};
+            ss_coo->hi_rep = 0;
+            ss_coo->hi = {A_rowidx_size, A_colidx_size, A_dsize, x_dsize, y_dsize};
             spmv_coo->ss_v.push_back(ss_coo);
             return spmv_coo;
         }
 
-        AlgoParameters_p get_params_coo_batched(uint64_t nz, uint64_t n, uint64_t m, size_t idx_size, size_t dtype_size, uint64_t batch_sz)
+        AlgoParameters_p get_params_coo_batched(uint64_t nz, uint64_t n,
+                                                uint64_t m, size_t x_dsize, size_t y_dsize,
+                                                size_t A_dsize, size_t A_rowidx_size, size_t A_colidx_size, size_t batch_sz)
         {
-            AlgoParameters_p spmv_coo = new AlgoParameters();
-            spmv_coo->n = nz / batch_sz;
-            spmv_coo->num_v = 1;
-            spmv_coo->b_foot = (2 * idx_size + dtype_size) * nz + dtype_size * (m + n);
-            Superstep_p ss_coo = new Superstep();
-            ss_coo->nv = nz / batch_sz;
-            ss_coo->ops_scalar = 2 * batch_sz;
-            ss_coo->ops_SIMD = 0;
-            ss_coo->lvl = 0;
-            ss_coo->ks = 2 * batch_sz + 3;
-            ss_coo->hi_rep = 2 * batch_sz - 1;                                                          // 5 streams
-            ss_coo->hi = {idx_size * batch_sz, idx_size * batch_sz, dtype_size * batch_sz, dtype_size}; // 8 bytes per stream
-            spmv_coo->ss_v.push_back(ss_coo);
-            return spmv_coo;
+            printf("get_params_coo_batched not implemented, falling back to get_params_coo\n", batch_sz);
+            return get_params_coo(nz, n, m, x_dsize, y_dsize, A_dsize, A_rowidx_size, A_colidx_size);
+
+            // AlgoParameters_p spmv_coo = new AlgoParameters();
+            // spmv_coo->n = nz / batch_sz;
+            // spmv_coo->num_v = 1;
+            // spmv_coo->b_foot = (2 * idx_size + dtype_size) * nz + dtype_size * (m + n);
+            // Superstep_p ss_coo = new Superstep();
+            // ss_coo->nv = nz / batch_sz;
+            // ss_coo->ops_scalar = 2 * batch_sz;
+            // ss_coo->ops_SIMD = 0;
+            // ss_coo->lvl = 0;
+            // ss_coo->ks = 2 * batch_sz + 3;
+            // ss_coo->hi_rep = 2 * batch_sz - 1;                                                          // 5 streams
+            // ss_coo->hi = {idx_size * batch_sz, idx_size * batch_sz, dtype_size * batch_sz, dtype_size}; // 8 bytes per stream
+            // spmv_coo->ss_v.push_back(ss_coo);
+            // return spmv_coo;
         }
 
         /*=====================================================================*/
         /*--------------------------------CSR----------------------------------*/
 
-        AlgoParameters_p get_params_csr(uint64_t nz, uint64_t n, uint64_t m, size_t idx_size, size_t dtype_size)
+        AlgoParameters_p get_params_csr(uint64_t nz, uint64_t n,
+                                        uint64_t m, size_t x_dsize, size_t y_dsize,
+                                        size_t A_dsize, size_t A_rowptr_size, size_t A_colidx_size, size_t batch_sz)
         {
-            AlgoParameters_p spmv_csr = new AlgoParameters();
-            spmv_csr->n = nz;    // Same number of non-zeros
-            spmv_csr->num_v = 2; // Two superstep types
-            spmv_csr->b_foot = (idx_size + dtype_size) * nz + dtype_size * (m + n) + idx_size * (m + 1);
-            // Superstep A (pipelined) - internal loop
-            Superstep_p ss_A = new Superstep();
-            ss_A->nv = (nz > m) ? nz - m : 0;
-            ss_A->ops_scalar = 2;
-            ss_A->ops_SIMD = 0;
-            ss_A->lvl = 0;
-            ss_A->ks = 3;
-            ss_A->hi_rep = 1;
-            ss_A->hi = {idx_size, dtype_size};
+        AlgoParameters_p spmv_csr = new AlgoParameters();
+        spmv_csr->n = nz;    // Same number of non-zeros
+        spmv_csr->num_v = 2; // Two superstep types
+        spmv_csr->b_foot = (A_colidx_size + A_dsize) * nz + A_rowptr_size * (m + 1)
+            + y_dsize * m + x_dsize * n;
+        // Superstep A (pipelined) - internal loop
+        Superstep_p ss_A = new Superstep();
+        ss_A->nv = (nz > m) ? nz - m : 0;
+        ss_A->ops_scalar = 2;
+        ss_A->ops_SIMD = 0;
+        ss_A->lvl = 0;
+        ss_A->ks = 3;
+        ss_A->hi_rep = 0;
+        ss_A->hi = {A_colidx_size, A_dsize, x_dsize};
 
-            // Superstep A + B (pipelined)  - internal loop + row processing + y write
-            Superstep_p ss_AB = new Superstep();
-            ss_AB->nv = m;
-            ss_AB->ops_scalar = 2;
-            ss_AB->ops_SIMD = 0;
-            ss_AB->lvl = 0;
-            ss_AB->ks = 5;
-            ss_AB->hi_rep = 2;
-            ss_AB->hi = {idx_size, idx_size, dtype_size};
+        // Superstep A + B (pipelined)  - internal loop + row processing + y write
+        Superstep_p ss_AB = new Superstep();
+        ss_AB->nv = m;
+        ss_AB->ops_scalar = 2;
+        ss_AB->ops_SIMD = 0;
+        ss_AB->lvl = 0;
+        ss_AB->ks = 5;
+        ss_AB->hi_rep = 0;
+        ss_AB->hi = {A_rowptr_size, y_dsize, A_colidx_size, A_dsize, x_dsize};
 
-            spmv_csr->ss_v.push_back(ss_A);
-            spmv_csr->ss_v.push_back(ss_AB);
-            return spmv_csr;
+        spmv_csr->ss_v.push_back(ss_A);
+        spmv_csr->ss_v.push_back(ss_AB);
+        return spmv_csr;
         }
 
-        AlgoParameters_p get_params_csr_batched(uint64_t nz, uint64_t n, uint64_t m, size_t idx_size, size_t dtype_size, uint64_t batch_size)
+        AlgoParameters_p get_params_csr_batched(uint64_t nz, uint64_t n,
+                                                uint64_t m, size_t x_dsize, size_t y_dsize,
+                                                size_t A_dsize, size_t A_rowptr_size, size_t A_colidx_size, size_t batch_sz)
         {
-            AlgoParameters_p spmv_csr = new AlgoParameters();
-            spmv_csr->n = nz / batch_size; // Same number of non-zeros
-            spmv_csr->num_v = 2;           // Two superstep types
-            spmv_csr->b_foot = (idx_size + dtype_size) * nz + dtype_size * (m + n) + idx_size * (m + 1);
-            if (nz < batch_size * n)
-            {
-                throw std::invalid_argument("Batch size too large for the given matrix dimensions.");
-            }
+            printf("get_params_csr_batched not implemented, falling back to get_params_csr\n", batch_sz);
+            return get_params_coo(nz, n, m, x_dsize, y_dsize, A_dsize, A_rowptr_size, A_colidx_size);
 
-            // Superstep A (pipelined) - internal loop
-            Superstep_p ss_A = new Superstep();
-            ss_A->nv = nz / batch_size - m;
-            ss_A->ops_scalar = 2 * batch_size;
-            ss_A->ops_SIMD = 0;
-            ss_A->lvl = 0;
-            ss_A->ks = 2 + batch_size;
-            ss_A->hi_rep = batch_size - 1;
-            ss_A->hi = /* A */ {idx_size * batch_size, dtype_size * batch_size, dtype_size};
+            // AlgoParameters_p spmv_csr = new AlgoParameters();
+            // spmv_csr->n = nz / batch_sz; // Same number of non-zeros
+            // spmv_csr->num_v = 2;           // Two superstep types
+            // spmv_csr->b_foot = (idx_size + dtype_size) * nz + dtype_size * (m + n) + idx_size * (m + 1);
+            // if (nz < batch_sz * n)
+            // {
+            //     throw std::invalid_argument("Batch size too large for the given matrix dimensions.");
+            // }
 
-            // Superstep A + B (pipelined)  - internal loop + row processing + y write
-            Superstep_p ss_AB = new Superstep();
-            ss_AB->nv = m;
-            ss_AB->ops_scalar = 2 * batch_size;
-            ss_AB->ops_SIMD = 0;
-            ss_AB->lvl = 0;
-            // Assuming that rowPtr and y are also batched/accessed consecutively (works for cachelines...not easy algorithmically)
-            ss_AB->ks = 4 + batch_size;
-            ss_AB->hi_rep = batch_size - 1;
-            ss_AB->hi = /* B */ {idx_size, dtype_size,
-                                /* A */ idx_size * batch_size, dtype_size * batch_size, dtype_size};
+            // // Superstep A (pipelined) - internal loop
+            // Superstep_p ss_A = new Superstep();
+            // ss_A->nv = nz / batch_sz - m;
+            // ss_A->ops_scalar = 2 * batch_sz;
+            // ss_A->ops_SIMD = 0;
+            // ss_A->lvl = 0;
+            // ss_A->ks = 2 + batch_sz;
+            // ss_A->hi_rep = batch_sz - 1;
+            // ss_A->hi = /* A */ {idx_size * batch_sz, dtype_size * batch_sz, dtype_size};
 
-            spmv_csr->ss_v.push_back(ss_A);
-            spmv_csr->ss_v.push_back(ss_AB);
-            return spmv_csr;
+            // // Superstep A + B (pipelined)  - internal loop + row processing + y write
+            // Superstep_p ss_AB = new Superstep();
+            // ss_AB->nv = m;
+            // ss_AB->ops_scalar = 2 * batch_sz;
+            // ss_AB->ops_SIMD = 0;
+            // ss_AB->lvl = 0;
+            // // Assuming that rowPtr and y are also batched/accessed consecutively (works for cachelines...not easy algorithmically)
+            // ss_AB->ks = 4 + batch_sz;
+            // ss_AB->hi_rep = batch_sz - 1;
+            // ss_AB->hi = /* B */ {idx_size, dtype_size,
+            //                     /* A */ idx_size * batch_size, dtype_size * batch_size, dtype_size};
+
+            // spmv_csr->ss_v.push_back(ss_A);
+            // spmv_csr->ss_v.push_back(ss_AB);
+            // return spmv_csr;
         }
         /*=====================================================================*/
         /*--------------------------------set----------------------------------*/
-        AlgoParameters_p get_params_set(uint64_t n, bool y_vec, size_t dtype_size, bool i)
+        AlgoParameters_p get_params_set(uint64_t n, bool y_vec, size_t x_dsize,
+            size_t y_dsize, bool i)
         {
             AlgoParameters_p algo_p = new AlgoParameters();
             algo_p->n = 1;
@@ -1137,18 +1153,21 @@ namespace HW_model
                 ss_A->lvl = 0;
                 ss_A->ks = 1;
                 ss_A->hi_rep = 0;
-                ss_A->hi = {dtype_size};
+                ss_A->hi = {x_dsize};
             }
             else
             {
-                algo_p->b_foot = dtype_size * n + (y_vec ? dtype_size * n : 0);
+                algo_p->b_foot = x_dsize * n + (y_vec ? y_dsize * n : 0);
                 ss_A->nv = 1;
                 ss_A->ops_scalar = 0;
                 ss_A->ops_SIMD = 0;
                 ss_A->lvl = 0;
                 ss_A->ks = 1 + (y_vec ? 1 : 0);
-                ss_A->hi_rep = 0 + (y_vec ? 1 : 0);
-                ss_A->hi = {dtype_size*n};
+                ss_A->hi_rep = 0;
+                if (y_vec)
+                    ss_A->hi = {x_dsize * n, y_dsize * n};
+                else
+                    ss_A->hi = {x_dsize * n};
             }
             algo_p->ss_v.push_back(ss_A);
             return algo_p;
@@ -1193,137 +1212,158 @@ namespace HW_model
         }
         /*=====================================================================*/
         /*--------------------------------eWiseApply--------------------------------*/
-        AlgoParameters_p get_params_eWiseApply(uint64_t n, size_t dtype_size, bool x_vec, bool y_vec)
+        AlgoParameters_p get_params_eWiseApply(uint64_t n, size_t z_dsize, size_t x_dsize,
+            size_t y_dsize, bool x_vec, bool y_vec)
         {
             AlgoParameters_p algo_p = new AlgoParameters();
             algo_p->n = 1;
             algo_p->num_v = 1;
             Superstep_p ss_A = new Superstep();
-            algo_p->b_foot = dtype_size * n + 
-                (x_vec ? dtype_size * n : 0) + (y_vec ? dtype_size * n : 0);
+            algo_p->b_foot = z_dsize * n + 
+                (x_vec ? x_dsize * n : 0) + (y_vec ? y_dsize * n : 0);
             ss_A->nv = 1;
             ss_A->ops_scalar = 0;
             ss_A->ops_SIMD = n;
             ss_A->lvl = 0;
             ss_A->ks = 1 + (x_vec ? 1 : 0) + (y_vec ? 1 : 0);
-            ss_A->hi_rep = 0 + (x_vec ? 1 : 0) + (y_vec ? 1 : 0);
-            ss_A->hi = {dtype_size * n};
+            ss_A->hi_rep = 0;
+            if (x_vec && y_vec)
+                ss_A->hi = {z_dsize * n, x_dsize * n, y_dsize * n};
+            else if (x_vec)
+                ss_A->hi = {z_dsize * n, x_dsize * n};
+            else if (y_vec)
+                ss_A->hi = {z_dsize * n, y_dsize * n};
             algo_p->ss_v.push_back(ss_A);
             return algo_p;
         }
         /*=====================================================================*/
         /*--------------------------------foldl--------------------------------*/
-        AlgoParameters_p get_params_foldl(uint64_t n, size_t dtype_size, bool x_vec, bool y_vec)
+        AlgoParameters_p get_params_foldl(uint64_t n,
+            size_t x_dsize, size_t y_dsize, bool x_vec, bool y_vec)
         {
             AlgoParameters_p algo_p = new AlgoParameters();
             algo_p->n = 1;
             algo_p->num_v = 1;
             Superstep_p ss_A = new Superstep();
-            algo_p->b_foot = dtype_size * n +
-                             (x_vec ? dtype_size * n : 0) + (y_vec ? dtype_size * n : 0);
+            algo_p->b_foot = (x_vec ? 2 * x_dsize * n : 0) + (y_vec ? y_dsize * n : 0);
             ss_A->nv = 1;
             ss_A->ops_scalar = 0;
             ss_A->ops_SIMD = n;
             ss_A->lvl = 0;
-            ss_A->ks = 0 + (x_vec ? 1 : 0) + (y_vec ? 1 : 0);
-            ss_A->hi_rep = -1 + (x_vec ? 1 : 0) + (y_vec ? 1 : 0);
-            ss_A->hi = {dtype_size * n};
+            ss_A->ks = (x_vec ? 1 : 0) + (y_vec ? 1 : 0);
+            ss_A->hi_rep = 0;
+            if (x_vec && y_vec)
+                ss_A->hi = {x_dsize * n, y_dsize * n};
+            else if (x_vec)
+                ss_A->hi = {x_dsize * n};
+            else if (y_vec)
+                ss_A->hi = {y_dsize * n};
             algo_p->ss_v.push_back(ss_A);
             return algo_p;
         }
         /*=====================================================================*/
         /*--------------------------------foldr--------------------------------*/
-        AlgoParameters_p get_params_foldr(uint64_t n, size_t dtype_size, bool x_vec, bool y_vec)
+        AlgoParameters_p get_params_foldr(uint64_t n,
+            size_t x_dsize, size_t y_dsize, bool x_vec, bool y_vec)
         {
             AlgoParameters_p algo_p = new AlgoParameters();
             algo_p->n = 1;
             algo_p->num_v = 1;
             Superstep_p ss_A = new Superstep();
-            algo_p->b_foot = dtype_size * n +
-                             (x_vec ? dtype_size * n : 0) + (y_vec ? dtype_size * n : 0);
+            algo_p->b_foot = (x_vec ? x_dsize * n : 0) + (y_vec ? 2 * y_dsize * n : 0);
             ss_A->nv = 1;
             ss_A->ops_scalar = 0;
             ss_A->ops_SIMD = n;
             ss_A->lvl = 0;
-            ss_A->ks = 0 + (x_vec ? 1 : 0) + (y_vec ? 1 : 0);
-            ss_A->hi_rep = -1 + (x_vec ? 1 : 0) + (y_vec ? 1 : 0);
-            ss_A->hi = {dtype_size * n};
+            ss_A->ks = (x_vec ? 1 : 0) + (y_vec ? 1 : 0);
+            ss_A->hi_rep = 0;
+            if (x_vec && y_vec)
+                ss_A->hi = {x_dsize * n, y_dsize * n};
+            else if (x_vec)
+                ss_A->hi = {x_dsize * n};
+            else if (y_vec)
+                ss_A->hi = {y_dsize * n};
             algo_p->ss_v.push_back(ss_A);
             return algo_p;
         }
         /*=====================================================================*/
         /*---------------------------------dot---------------------------------*/
-        AlgoParameters_p get_params_dot(uint64_t n, size_t dtype_size)
+        AlgoParameters_p get_params_dot(uint64_t n,
+            size_t z_dsize, size_t x_dsize, size_t y_dsize)
         {
             AlgoParameters_p algo_p = new AlgoParameters();
             algo_p->n = 1;
             algo_p->num_v = 1;
             Superstep_p ss_A = new Superstep();
-            algo_p->b_foot = 2 * dtype_size * n;
+            algo_p->b_foot = y_dsize * n + x_dsize * n;
             ss_A->nv = 1;
             ss_A->ops_scalar = 0;
             ss_A->ops_SIMD = 2 * n;
             ss_A->lvl = 0;
             ss_A->ks = 2;
-            ss_A->hi_rep = 1;
-            ss_A->hi = {dtype_size * n};
+            ss_A->hi_rep = 0;
+            ss_A->hi = {y_dsize * n, x_dsize * n};
             algo_p->ss_v.push_back(ss_A);
             return algo_p;
         }
         /*=====================================================================*/
         /*---------------------------------add---------------------------------*/
-        AlgoParameters_p get_params_add(uint64_t n, size_t dtype_size)
+        AlgoParameters_p get_params_add(uint64_t n, size_t z_dsize, size_t x_dsize, size_t y_dsize)
         {
             AlgoParameters_p algo_p = new AlgoParameters();
             algo_p->n = 1;
             algo_p->num_v = 1;
             Superstep_p ss_A = new Superstep();
-            algo_p->b_foot = 3 * dtype_size * n;
+            algo_p->b_foot = (z_dsize + y_dsize + x_dsize) * n;
             ss_A->nv = 1;
             ss_A->ops_scalar = 0;
             ss_A->ops_SIMD = n;
             ss_A->lvl = 0;
             ss_A->ks = 3;
-            ss_A->hi_rep = 2;
-            ss_A->hi = {dtype_size * n};
+            ss_A->hi_rep = 0;
+            ss_A->hi = {z_dsize * n, x_dsize * n, y_dsize * n};
             algo_p->ss_v.push_back(ss_A);
             return algo_p;
         }
         /*=====================================================================*/
         /*---------------------------------mul---------------------------------*/
-        AlgoParameters_p get_params_mul(uint64_t n, size_t dtype_size)
+        AlgoParameters_p get_params_mul(uint64_t n, size_t z_dsize, size_t x_dsize, size_t y_dsize)
         {
             AlgoParameters_p algo_p = new AlgoParameters();
             algo_p->n = 1;
             algo_p->num_v = 1;
             Superstep_p ss_A = new Superstep();
-            algo_p->b_foot = 3 * dtype_size * n;
+            algo_p->b_foot = (z_dsize + y_dsize + x_dsize) * n;
             ss_A->nv = 1;
             ss_A->ops_scalar = 0;
             ss_A->ops_SIMD = n;
             ss_A->lvl = 0;
             ss_A->ks = 3;
-            ss_A->hi_rep = 2;
-            ss_A->hi = {dtype_size * n};
+            ss_A->hi_rep = 0;
+            ss_A->hi = {z_dsize * n, x_dsize * n, y_dsize * n};
             algo_p->ss_v.push_back(ss_A);
             return algo_p;
         }
         /*=====================================================================*/
         /*--------------------------------muladd-------------------------------*/
-        AlgoParameters_p get_params_muladd(uint64_t n, size_t dtype_size, bool a_vec)
+        AlgoParameters_p get_params_muladd(uint64_t n,
+            size_t z_dsize, size_t a_dsize, size_t x_dsize, size_t y_dsize, bool a_vec)
         {
             AlgoParameters_p algo_p = new AlgoParameters();
             algo_p->n = 1;
             algo_p->num_v = 1;
             Superstep_p ss_A = new Superstep();
-            algo_p->b_foot = 3 * dtype_size * n + (a_vec ? dtype_size * n : 0);
+            algo_p->b_foot = (z_dsize + x_dsize + y_dsize) * n + (a_vec ? a_dsize * n : 0);
             ss_A->nv = 1;
             ss_A->ops_scalar = 0;
             ss_A->ops_SIMD = 2 * n;
             ss_A->lvl = 0;
             ss_A->ks = 3 + (a_vec ? 1 : 0);
-            ss_A->hi_rep = 2 + (a_vec ? 1 : 0);
-            ss_A->hi = {dtype_size * n};
+            ss_A->hi_rep = 0;
+            if (a_vec)
+                ss_A->hi = {z_dsize * n, x_dsize * n, y_dsize * n, a_dsize * n};
+            else
+                ss_A->hi = {z_dsize * n, x_dsize * n, y_dsize * n};
             algo_p->ss_v.push_back(ss_A);
             return algo_p;
         }
