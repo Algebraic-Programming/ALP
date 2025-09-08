@@ -11,6 +11,7 @@
 #include <cmath>
 #include <cstdint>
 
+#define DEBUG_COST_MODELS
 // Utility functions that may be used across different models
 namespace cost_models {
 
@@ -755,7 +756,7 @@ namespace HW_model
         /*==================================================================*/
     } 
 
-    // Multi-BSP performance model
+    // k-Multi-BSP performance model
     namespace k_multi_bsp
     {
         // Superstep structure
@@ -927,7 +928,7 @@ namespace HW_model
                             const std::string &stream_aggregator = "sum")
         {
 #ifdef DEBUG_COST_MODELS
-            std::cout << "===== Multi-BSP Kernel Cost Prediction =====\n\n";
+            std::cout << "===== k-Multi-BSP Kernel Cost Prediction =====\n\n";
             std::cout << "Threads: " << target_threads << "\n";
             std::cout << "Stream aggregator: " << stream_aggregator << "\n";
 #endif
