@@ -538,7 +538,7 @@ struct CostPredictor< SetFunc, grb::Vector< T1 >, grb::Vector< T2 > > {
 };
 
 template< typename T1, typename T2 >
-struct CostPredictor< SetFunc, grb::Vector< T1 >, T2 & > {
+struct CostPredictor< SetFunc, grb::Vector< T1 >, T2 > { 
     static double predict( grb::Vector< T1 > & x, T2 & y ){
         try {
             size_t n = grb::nnz( x );
@@ -553,7 +553,7 @@ struct CostPredictor< SetFunc, grb::Vector< T1 >, T2 & > {
 };
 
 template< typename T1, typename T2, typename T3 >
-struct CostPredictor< SetFunc, grb::Vector< T1 >, T2 &, T3 & > {
+struct CostPredictor< SetFunc, grb::Vector< T1 >, T2 &, T3 > {
     static double predict( grb::Vector< T1 > & x, T2 & y, T3 & idx ){
         try {
             size_t n = grb::nnz( x );
@@ -656,7 +656,7 @@ struct CostPredictor< FoldlFunc, grb::Vector< T1 >, grb::Vector< T2 >, Monoid > 
 };
 
 template< typename T1, typename T2, typename Monoid >
-struct CostPredictor< FoldlFunc, T1 &, grb::Vector< T2 >, Monoid > {
+struct CostPredictor< FoldlFunc, T1 , grb::Vector< T2 >, Monoid > {
 	static double predict( T1 & x, const grb::Vector< T2 > & y, const Monoid & ) {
         try {
             size_t n = grb::size( y );
@@ -671,7 +671,7 @@ struct CostPredictor< FoldlFunc, T1 &, grb::Vector< T2 >, Monoid > {
 };
 
 template< typename T1, typename T2, typename Monoid >
-struct CostPredictor< FoldlFunc, grb::Vector< T1 >, T2 &, Monoid > {
+struct CostPredictor< FoldlFunc, grb::Vector< T1 >, T2 , Monoid > {
 	static double predict(grb::Vector< T1 > & x, const T2 & y, const Monoid & ) {
         try {
             size_t n = grb::size( x );
