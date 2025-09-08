@@ -145,14 +145,14 @@ getMatrixInfoString(const T&) {
 // Primary template for operator name traits - delegates to existing traits when possible
 template<typename T>
 struct OperatorNameTrait {
-    // For operators that have a defined operator_name trait
+    // For operators that have a defined grb::operator_name trait
     template<typename U = T>
     static auto name_impl(int) -> 
-        decltype(std::string(operator_name<U>::name)) {
-        return std::string(operator_name<U>::name);
+        decltype(std::string(grb::operator_name<U>::name)) {
+        return std::string(grb::operator_name<U>::name);
     }
     
-    // Fallback for types without an operator_name trait
+    // Fallback for types without an grb::operator_name trait
     template<typename U = T>
     static std::string name_impl(...) {
         return typeid(U).name();
