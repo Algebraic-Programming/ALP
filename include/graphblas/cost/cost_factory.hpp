@@ -553,21 +553,6 @@ struct CostPredictor< SetFunc, grb::Vector< T1 >, T2 > {
     }
 };
 
-template< typename T1, typename T2, typename T3 >
-struct CostPredictor< SetFunc, grb::Vector< T1 >, T2 &, T3 > {
-    static double predict( grb::Vector< T1 > & x, T2 & y, T3 & idx ){
-        try {
-            size_t n = grb::nnz( x );
-            cost_models::HW_model::HWParameters hw_model = cost_models::HW_model::get_hw_params_for_threads( 1, dis_system_params );
-
-            cost_models::k_multi_bsp::AlgoParameters_p algo_model = cost_models::k_multi_bsp::get_params_set( n, 0, sizeof( T1 ), sizeof( T2 ), idx );
-            return cost_models::k_multi_bsp::predict_cost( &hw_model, algo_model, 1 );
-        } catch( ... ) {
-            return 1.0; // Fallback value
-        }
-    }
-};
-
 /*=====================================================================*/
 /*--------------------------------clear--------------------------------*/
 
