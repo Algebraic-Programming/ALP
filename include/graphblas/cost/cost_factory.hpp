@@ -572,10 +572,10 @@ struct CostPredictor< SetFunc, grb::Vector< T1 >, T2 &, T3 & > {
 
 /*=====================================================================*/
 /*--------------------------------apply--------------------------------*/
-template< typename T1, typename T2, typename T3 >
-struct CostPredictor< ApplyFunc, T1 &, T2 &, T3 & > {
-    static double predict( T1 & x, T2 & y, T3 & idx ){
-            try {
+template< typename T1, typename T2, typename T3, typename Op >
+struct CostPredictor< ApplyFunc, T1, T2, T3, Op > {
+    static double predict( T1 & x, T2 y, T3 z, const Op &op ){
+        try {
             cost_models::HW_model::HWParameters hw_model = cost_models::HW_model::get_hw_params_for_threads( 1, dis_system_params );
             cost_models::k_multi_bsp::AlgoParameters_p algo_model = cost_models::k_multi_bsp::get_params_apply();
             return cost_models::k_multi_bsp::predict_cost( &hw_model, algo_model, 1 );
@@ -590,7 +590,7 @@ struct CostPredictor< ApplyFunc, T1 &, T2 &, T3 & > {
 
 // Specialization for eWiseApply with two vectors and y scalar
 template< typename T1, typename T2, typename T3, typename Op >
-struct CostPredictor< EWiseApplyFunc, grb::Vector< T1 >, grb::Vector< T2 >, T3 &, Op > {
+struct CostPredictor< EWiseApplyFunc, grb::Vector< T1 >, grb::Vector< T2 >, T3, Op > {
 	static double predict( const grb::Vector< T1 > & z, const grb::Vector< T2 > & x, T3 & y, const Op & ) {
 		try {
 			size_t n = grb::size( z );
@@ -606,7 +606,7 @@ struct CostPredictor< EWiseApplyFunc, grb::Vector< T1 >, grb::Vector< T2 >, T3 &
 
 // Specialization for eWiseApply with two vectors and x scalar
 template< typename T1, typename T2, typename T3, typename Op >
-struct CostPredictor< EWiseApplyFunc, grb::Vector< T1 >, T2 &, grb::Vector< T3 >, Op > {
+struct CostPredictor< EWiseApplyFunc, grb::Vector< T1 >, T2, grb::Vector< T3 >, Op > {
 	static double predict( const grb::Vector< T1 > & z, T2 & x, const grb::Vector< T3 > & y, const Op & ) {
 		try {
 			size_t n = grb::size( z );
@@ -702,8 +702,8 @@ struct CostPredictor< FoldrFunc, grb::Vector< T1 > , grb::Vector< T2 > , Monoid 
 };
 
 template< typename T1, typename T2, typename Monoid >
-struct CostPredictor< FoldrFunc, T1 &, grb::Vector< T2 > , Monoid > {
-	static double predict(const T1 & x, grb::Vector< T2 > & y, const Monoid & ) {
+struct CostPredictor< FoldrFunc, T1, grb::Vector< T2 >, Monoid > {
+	static double predict( T1 & x, grb::Vector< T2 > & y, const Monoid & ) {
 		try {
 			size_t n = grb::size( y );
 			cost_models::HW_model::HWParameters hw_model = cost_models::HW_model::get_hw_params_for_threads( 1, dis_system_params );
@@ -716,7 +716,7 @@ struct CostPredictor< FoldrFunc, T1 &, grb::Vector< T2 > , Monoid > {
 };
 
 template< typename T1, typename T2, typename Monoid >
-struct CostPredictor< FoldrFunc, grb::Vector< T1 > , T2 &, Monoid > {
+struct CostPredictor< FoldrFunc, grb::Vector< T1 > , T2, Monoid > {
 	static double predict(const grb::Vector< T1 > & x, T2 & y, const Monoid & ) {
 		try {
 			size_t n = grb::size( x );
