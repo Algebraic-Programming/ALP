@@ -1,0 +1,13 @@
+{
+    "files.associations": {
+        "bit": "cpp",
+        "compare": "cpp",
+        "concepts": "cpp",
+        "cstddef": "cpp",
+        "cwchar": "cpp",
+        "new": "cpp",
+        "string_view": "cpp",
+        "tuple": "cpp",
+        "type_traits": "cpp"
+    }
+}

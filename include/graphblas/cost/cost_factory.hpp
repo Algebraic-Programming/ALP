@@ -645,511 +645,430 @@ struct MxvFunc {
 };
 
 // Specializations of CostPredictor for different function/argument combinations
-
 /*=====================================================================*/
-/*--------------------------------foldl--------------------------------*/
-template<typename T1, typename Monoid>
-struct CostPredictor<FoldlFunc, grb::Vector<T1>, grb::Vector<T1>, Monoid> {
-    static double predict(grb::Vector<T1>& v1, const grb::Vector<T1>& v2, const Monoid&) {
+/*--------------------------------mxv--------------------------------*/
+
+template< typename T1, typename T2, typename T3, grb::Backend Backend, typename RowIndexType, typename ColIndexType, typename NonzeroIndexType, typename SRingType >
+struct CostPredictor< MxvFunc, grb::Vector< T1 >, grb::Matrix< T2, Backend, RowIndexType, ColIndexType, NonzeroIndexType >, grb::Vector< T3 >, SRingType > {
+	static double predict( const grb::Vector< T1 > & y, const grb::Matrix< T2, Backend, RowIndexType, ColIndexType, NonzeroIndexType > & A, const grb::Vector< T3 > & x, const SRingType & ring ) {
         try {
-			size_t n = grb::size( v1 ), size_data = sizeof( T1 );
-			cost_models::HW_model::HWParameters hw_model = cost_models::HW_model::get_hw_params_for_threads( 1, dis_system_params );
-			cost_models::k_multi_bsp::AlgoParameters_p algo_model = cost_models::k_multi_bsp::get_params_foldl( n, size_data , 1, 1);
+            size_t nnz = grb::nnz( A ), m = grb::size( y ), n = grb::size( x );
+            cost_models::HW_model::HWParameters hw_model = cost_models::HW_model::get_hw_params_for_threads( 1, dis_system_params );
+			cost_models::k_multi_bsp::AlgoParameters_p algo_model = cost_models::k_multi_bsp::get_params_csr(
+				nnz, n, m, sizeof( T1 ), sizeof( T3 ), sizeof( T2 ), sizeof( NonzeroIndexType ), sizeof( RowIndexType ) );
 			return cost_models::k_multi_bsp::predict_cost( &hw_model, algo_model, 1 );
-		} catch(...) {
-            return 1.0; // Fallback value
-        }
-    }
-};
-
-template< typename T1, typename Monoid >
-struct CostPredictor< FoldlFunc, T1, grb::Vector< T1 >, Monoid > {
-	static double predict( T1 & v1, const grb::Vector< T1 > & v2, const Monoid & ) {
-		try {
-			size_t n = grb::size( v2 ), size_data = sizeof( T1 );
-			cost_models::HW_model::HWParameters hw_model = cost_models::HW_model::get_hw_params_for_threads( 1, dis_system_params );
-			cost_models::k_multi_bsp::AlgoParameters_p algo_model = cost_models::k_multi_bsp::get_params_foldl( n, size_data, 0, 1 );
-			return cost_models::k_multi_bsp::predict_cost( &hw_model, algo_model, 1 );
-		} catch( ... ) {
-			return 1.0; // Fallback value
-		}
-	}
-};
-
-template< typename T1, typename Monoid >
-struct CostPredictor< FoldlFunc, grb::Vector< T1 >, T1, Monoid > {
-	static double predict(grb::Vector< T1 > & v1, const T1 & v2, const Monoid & ) {
-		try {
-			size_t n = grb::size( v1 ), size_data = sizeof( T1 );
-			cost_models::HW_model::HWParameters hw_model = cost_models::HW_model::get_hw_params_for_threads( 1, dis_system_params );
-			cost_models::k_multi_bsp::AlgoParameters_p algo_model = cost_models::k_multi_bsp::get_params_foldl( n, size_data, 1, 0 );
-			return cost_models::k_multi_bsp::predict_cost( &hw_model, algo_model, 1 );
-		} catch( ... ) {
-			return 1.0; // Fallback value
-		}
-	}
-};
-
-/*=====================================================================*/
-/*--------------------------------foldr--------------------------------*/
-template< typename T1, typename Monoid >
-struct CostPredictor< FoldrFunc, grb::Vector< T1 >, grb::Vector< T1 >, Monoid > {
-	static double predict( grb::Vector< T1 > & v1, const grb::Vector< T1 > & v2, const Monoid & ) {
-		try {
-			size_t n = grb::size( v1 ), size_data = sizeof( T1 );
-			cost_models::HW_model::HWParameters hw_model = cost_models::HW_model::get_hw_params_for_threads( 1, dis_system_params );
-			cost_models::k_multi_bsp::AlgoParameters_p algo_model = cost_models::k_multi_bsp::get_params_foldr( n, size_data, 1, 1 );
-			return cost_models::k_multi_bsp::predict_cost( &hw_model, algo_model, 1 );
-		} catch( ... ) {
-			return 1.0; // Fallback value
-		}
-	}
-};
-
-template< typename T1, typename Monoid >
-struct CostPredictor< FoldrFunc, T1, grb::Vector< T1 >, Monoid > {
-	static double predict( T1 & v1, const grb::Vector< T1 > & v2, const Monoid & ) {
-		try {
-			size_t n = grb::size( v2 ), size_data = sizeof( T1 );
-			cost_models::HW_model::HWParameters hw_model = cost_models::HW_model::get_hw_params_for_threads( 1, dis_system_params );
-			cost_models::k_multi_bsp::AlgoParameters_p algo_model = cost_models::k_multi_bsp::get_params_foldr( n, size_data, 0, 1 );
-			return cost_models::k_multi_bsp::predict_cost( &hw_model, algo_model, 1 );
-		} catch( ... ) {
-			return 1.0; // Fallback value
-		}
-	}
-};
-
-template< typename T1, typename Monoid >
-struct CostPredictor< FoldrFunc, grb::Vector< T1 >, T1, Monoid > {
-	static double predict( grb::Vector< T1 > & v1, const T1 & v2, const Monoid & ) {
-		try {
-			size_t n = grb::size( v1 ), size_data = sizeof( T1 );
-			cost_models::HW_model::HWParameters hw_model = cost_models::HW_model::get_hw_params_for_threads( 1, dis_system_params );
-			cost_models::k_multi_bsp::AlgoParameters_p algo_model = cost_models::k_multi_bsp::get_params_foldr( n, size_data, 1, 0 );
-			return cost_models::k_multi_bsp::predict_cost( &hw_model, algo_model, 1 );
-		} catch( ... ) {
-			return 1.0; // Fallback value
-		}
-	}
-};
-
-// Specializations for dot product
-// Catch-all specialization for dot with exactly 5 arguments of any type
-template<typename T0, typename VecType, typename MonoidType, typename OpType>
-struct CostPredictor<DotFunc, T0, grb::Vector<VecType>, grb::Vector<VecType>, MonoidType, OpType> {
-    static double predict(T0 result, grb::Vector<VecType> v1, grb::Vector<VecType> v2, MonoidType monoid, OpType op) {
-        // Extract type information for diagnostics
-        std::string t1_name = getTypeName<grb::Vector<VecType>>();
-        std::string t2_name = getTypeName<grb::Vector<VecType>>();
-        std::string t3_name = getTypeName<MonoidType>();
-        std::string t4_name = getTypeName<OpType>();
-        
-        std::cout << "[TRACING] Arg types: " << getTypeName<T0>() << ", " 
-                  << t1_name << ", " << t2_name << ", " 
-                  << t3_name << ", " << t4_name << std::endl;
-        
-        try {
-            // Try to get the size of the vectors
-            size_t n = 0;
-            if (t1_name.find("Vector") != std::string::npos) {
-                try { n = grb::size(v1); } catch(...) {}
-            }
-            
-            if (n == 0 && t2_name.find("Vector") != std::string::npos) {
-                try { n = grb::size(v2); } catch(...) {}
-            }
-            
-            if (n == 0) {
-                return 1.0; // Fallback if size can't be determined
-            }
-            
-            // Check for conjugate operations
-            bool is_conjugate = t3_name.find("conjugate") != std::string::npos;
-            
-            // Use appropriate cost model
-            cost_models::HW_model::HWParameters hw_model = 
-                cost_models::HW_model::get_hw_params_for_threads(1, dis_system_params);
-            cost_models::k_multi_bsp::AlgoParameters_p algo_model = 
-                cost_models::k_multi_bsp::get_params_dot(n, sizeof(double));
-            
-            double base_cost = cost_models::k_multi_bsp::predict_cost(&hw_model, algo_model, 1);
-            
-            // Additional cost for conjugate operations
-            double multiplier = is_conjugate ? 1.0 : 1.0;
-            return base_cost * multiplier;
-            
-        } catch(...) {
+        } catch( ... ) {
             return 1.0; // Fallback value
         }
     }
 };
 
 /*=====================================================================*/
-/*---------------------------------apply-------------------------------*/
-// Specialization for apply with three scalar doubles and divide operator
-template<>
-struct CostPredictor<ApplyFunc, double, double, double, grb::operators::divide<double, double, double, grb::reference>> {
-    static double predict(double z, double x, double y, 
-                         const grb::operators::divide<double, double, double, grb::reference>& op) {
-        std::cout << "[TRACING] Using specialized apply(double, double, double, divide) predictor" << std::endl;
-        // For simple scalar operations, the cost is minimal
-        // TODO: Implement proper cost model for specialized apply
-        return 0.01; // Very small cost for scalar arithmetic
-    }
-};
+/*--------------------------------set--------------------------------*/
 
-// Generic specialization for apply with scalar values
-template<typename T, typename Op>
-struct CostPredictor<ApplyFunc, T, T, T, Op> {
-    static double predict(T z, T x, T y, const Op& op) {
-        std::cout << "[TRACING] Using generic scalar apply predictor" << std::endl;
-        // Check if this is a fundamental type (scalar)
-        if (std::is_fundamental<T>::value) {
-            // For simple scalar operations, the cost is minimal
-            // TODO: Implement proper cost model for specialized apply
-            return 0.01; // Very small cost for scalar arithmetic
-        }
-        return 1.0; // Default cost for non-scalar types
-    }
-};
+template< typename T1, typename T2 >
+struct CostPredictor< SetFunc, grb::Vector< T1 > &, grb::Vector< T2 > & > {
+    static double predict( grb::Vector< T1 > & x, grb::Vector< T2 > & y ){
+    try {
+        size_t n = grb::nnz( x );
+        cost_models::HW_model::HWParameters hw_model = cost_models::HW_model::get_hw_params_for_threads( 1, dis_system_params );
 
-
-/*=====================================================================*/
-/*----------------------------------mxv--------------------------------*/
-// Updated mxv cost predictor with access to all Matrix template parameters
-template<
-    typename T,
-    grb::Backend Backend,
-    typename RowIndexType,
-    typename ColIndexType, 
-    typename NonzeroIndexType,
-    typename SRingType
->
-struct CostPredictor<
-    MxvFunc, 
-    grb::Vector<T>, 
-    grb::Matrix<T, Backend, RowIndexType, ColIndexType, NonzeroIndexType>, 
-    grb::Vector<T>, 
-    SRingType
-> {
-    static double predict(
-        const grb::Vector<T>& y, 
-        const grb::Matrix<T, Backend, RowIndexType, ColIndexType, NonzeroIndexType>& A, 
-        const grb::Vector<T>& x, 
-        const SRingType& ring
-    ) {
-        try {
-            std::cout << "[TRACING] Using specialized mxv with full Matrix type parameters" << std::endl;
-            
-            // Matrix dimensions
-            size_t nnz = grb::nnz(A);
-            size_t m = grb::nrows(A);
-            size_t n = grb::ncols(A);
-            
-            // Now we have direct access to the index types
-            size_t row_idx_size = sizeof(RowIndexType);
-            size_t col_idx_size = sizeof(ColIndexType);
-            size_t nonzero_idx_size = sizeof(NonzeroIndexType);
-            size_t size_data = sizeof(T);
-            
-            // Use the maximum index size for cost estimation
-            size_t size_idx = std::max({row_idx_size, col_idx_size, nonzero_idx_size});
-            
-            std::cout << "[TRACING] Matrix info: nnz=" << nnz 
-                      << ", m=" << m << ", n=" << n 
-                      << ", row_idx_size=" << row_idx_size
-                      << ", col_idx_size=" << col_idx_size
-                      << ", nonzero_idx_size=" << nonzero_idx_size
-                      << ", data_size=" << size_data << std::endl;
-            
-            cost_models::HW_model::HWParameters hw_model = 
-                cost_models::HW_model::get_hw_params_for_threads(1, dis_system_params);
-            cost_models::k_multi_bsp::AlgoParameters_p algo_model = 
-                cost_models::k_multi_bsp::get_params_csr(nnz, n, m, size_idx, size_data);
-            
-            return cost_models::k_multi_bsp::predict_cost(&hw_model, algo_model, 1);
-        } catch(...) {
-            return 1.0; // Fallback value
-        }
-    }
-};
-
-// Specialization for eWiseApply with two vectors
-template< typename T1, typename T2, typename Op >
-struct CostPredictor< EWiseApplyFunc, grb::Vector< T1 >, grb::Vector< T2 >, Op > {
-	static double predict( const grb::Vector< T1 > & v1, const grb::Vector< T2 > & v2, const Op & ) {
-		try {
-			size_t n = grb::size( v1 ), size_data = sizeof( T1 );
-			cost_models::HW_model::HWParameters hw_model = cost_models::HW_model::get_hw_params_for_threads( 1, dis_system_params );
-			cost_models::k_multi_bsp::AlgoParameters_p algo_model = cost_models::k_multi_bsp::get_params_eWiseApply( n, size_data, 1, 0);
-			return cost_models::k_multi_bsp::predict_cost( &hw_model, algo_model, 1 );
-		} catch( ... ) {
-			return 1.0; // Fallback value
-		}
-	}
-};
-
-// Specialization for eWiseApply with three vectors and an operator
-template<typename T, typename Op>
-struct CostPredictor<EWiseApplyFunc, grb::Vector<T>, grb::Vector<T>, grb::Vector<T>, Op> {
-    static double predict(const grb::Vector<T>& v1, const grb::Vector<T>& v2, const grb::Vector<T>& v3, const Op&) {
-        try {
-			size_t n = grb::size( v1 ), size_data = sizeof(T);
-			cost_models::HW_model::HWParameters hw_model = cost_models::HW_model::get_hw_params_for_threads( 1, dis_system_params );
-			cost_models::k_multi_bsp::AlgoParameters_p algo_model = cost_models::k_multi_bsp::get_params_eWiseApply( n, size_data, 1, 1 );
-			return cost_models::k_multi_bsp::predict_cost( &hw_model, algo_model, 1 );
-		} catch(...) {
-            return 1.0; // Fallback value
-        }
-    }
-};
-
-/*=====================================================================*/
-/*----------------------------------set--------------------------------*/
-// Specialization for set with Vector<double> to Vector<double>
-template<>
-struct CostPredictor<SetFunc, grb::Vector<double>, grb::Vector<double>> {
-    static double predict(const grb::Vector<double>& dst, const grb::Vector<double>& src) {
-        try {
-            // TODO: Implement proper cost model for vector-to-vector set operation
-            std::cout << "[TRACING] Using specialized set(Vector<double>, Vector<double>) predictor" << std::endl;
-            size_t n = grb::size(dst);
-            // return dummy cost
-            // TODO: Implement proper cost model for vector-to-vector set operation
-            return 1.0;
-        } catch(...) {
-            return 1.0; // Fallback value
-        }
-    }
-};
-
-// Generic specialization for set with any Vector<T> to Vector<T>
-template<typename T>
-struct CostPredictor<SetFunc, grb::Vector<T>, grb::Vector<T>> {
-    static double predict(const grb::Vector<T>& dst, const grb::Vector<T>& src) {
-        try {
-            // TODO: Implement proper cost model for vector-to-vector set operation
-            std::cout << "[TRACING] Using specialized set(Vector<T>, Vector<T>) predictor" << std::endl;
-            size_t n = grb::size(dst);
-            // return dummy cost
-            // TODO: Implement proper cost model for vector-to-vector set operation
-            return 1.0;
-        } catch(...) {
-            return 1.0; // Fallback value
-        }
-    }
-};
-
-// Specialization for set with Vector<T> to scalar
-template<typename T>
-struct CostPredictor<SetFunc, grb::Vector<T>, T> {
-    static double predict(const grb::Vector<T>& dst, const T& scalar) {
-        try {
-            // TODO: Implement proper cost model for vector-to-scalar set operation
-            std::cout << "[TRACING] Using specialized set(Vector<T>, scalar) predictor" << std::endl;
-            size_t n = grb::size(dst);
-            // return dummy cost
-            // TODO: Implement proper cost model for vector-to-scalar set operation
-            return 1.0;
-        } catch(...) {
-            return 1.0; // Fallback value
-        }
-    }
-};
-
-// Function tracer class template for handling tracing logic
-template<typename Func>
-class FunctionTracer {
-public:
-    FunctionTracer(const std::string& name) : name_(name) {}
-    
-    // Version for non-templated calls
-    template<typename... Args>
-    auto operator()(Args&&... args) const
-        -> decltype(std::declval<Func>()(std::forward<Args>(args)...)) {
-        std::cout << "\n[TRACING] Entering function: " << name_ << " with " 
-                  << sizeof...(args) << " arguments" << std::endl;
-        
-        printArgTypes(std::forward<Args>(args)...);
-        
-        // Predict the cost
-        double predicted_cost = CostPredictor<Func, typename std::decay<Args>::type...>::predict(args...);
-        
-        // Check if we used a specialized predictor
-        bool has_specialized = has_specialized_cost_predictor<Func, typename std::decay<Args>::type...>::value;
-        
-        std::cout << "[TRACING] Predicted cost: " << predicted_cost 
-                  << " units (cost model: " << getCostPredictorName<Func>();
-        
-        if (!has_specialized) {
-            std::cout << " - DEFAULT MODEL";
-        }
-        
-        std::cout << ")" << std::endl;
-        
-        auto start = std::chrono::high_resolution_clock::now();
-        Func func;
-        auto result = func(std::forward<Args>(args)...);
-        auto end = std::chrono::high_resolution_clock::now();
-        
-        auto duration = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
-        std::cout << "[TRACING] Exiting function: " << name_ << " (took " 
-                  << duration.count() << "μs)" << std::endl;
-        
-        // Calculate and report cost/time ratio
-        double cost_time_ratio = predicted_cost / static_cast<double>(duration.count());
-        std::cout << "[TRACING] Cost/time ratio: " << cost_time_ratio 
-                  << " cost units per microsecond" << std::endl;
-        
-        return result;
-    }
-    
-    // Version for templated calls with descriptor
-    template<unsigned int descr, typename... Args>
-    auto withDescriptor(Args&&... args) const
-        -> decltype(std::declval<Func>().template withDescriptor<descr>(std::forward<Args>(args)...)) {
-        std::string descriptor_name = std::to_string(descr);
-        if (descr == grb::descriptors::dense) descriptor_name = "dense";
-        if (descr == grb::descriptors::structural) descriptor_name = "structural";
-        
-        std::cout << "\n[TRACING] Entering function: " << name_ << "<" << descriptor_name << "> with " 
-                  << sizeof...(args) << " arguments" << std::endl;
-        
-        printArgTypes(std::forward<Args>(args)...);
-        
-        // Predict the cost
-        double predicted_cost = CostPredictor<Func, typename std::decay<Args>::type...>::predict(args...);
-        
-        // Check if we used a specialized predictor
-        bool has_specialized = has_specialized_cost_predictor<Func, typename std::decay<Args>::type...>::value;
-        
-        std::cout << "[TRACING] Predicted cost: " << predicted_cost 
-                  << " units (cost model: " << getCostPredictorName<Func>();
-
-        if (!has_specialized) {
-            std::cout << " - DEFAULT MODEL";
-        }
-        
-        std::cout << ")" << std::endl;
-        
-        auto start = std::chrono::high_resolution_clock::now();
-        Func func;
-        auto result = func.template withDescriptor<descr>(std::forward<Args>(args)...);
-        auto end = std::chrono::high_resolution_clock::now();
-        
-        auto duration = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
-        std::cout << "[TRACING] Exiting function: " << name_ << "<" << descriptor_name << "> (took " 
-                  << duration.count() << "μs)" << std::endl;
-        
-        // Calculate and report cost/time ratio
-        double cost_time_ratio = predicted_cost / static_cast<double>(duration.count());
-        std::cout << "[TRACING] Cost/time ratio: " << cost_time_ratio 
-                  << " cost units per microsecond" << std::endl;
-        
-        return result;
-    }
-    
-private:
-    std::string name_;
-};
-
-// Now redefine the functions in the grb namespace with tracing
-namespace grb {
-    // Create tracers for each function
-    static const FunctionTracer<EWiseApplyFunc> eWiseApplyTracer("eWiseApply");
-    static const FunctionTracer<FoldlFunc> foldlTracer("foldl");
-    static const FunctionTracer<FoldrFunc> foldrTracer("foldr");
-    static const FunctionTracer<DotFunc> dotTracer("dot");
-    static const FunctionTracer<SetFunc> setTracer("set");
-    static const FunctionTracer<ApplyFunc> applyTracer("apply");
-    static const FunctionTracer<MxvFunc> mxvTracer("mxv");
-    
-    // Non-templated versions
-    template<typename... Args>
-    auto eWiseApply(Args&&... args)
-        -> decltype(original::eWiseApply(std::forward<Args>(args)...)) {
-        return eWiseApplyTracer(std::forward<Args>(args)...);
-    }
-    
-    template<typename... Args>
-    auto foldl(Args&&... args)
-        -> decltype(original::foldl(std::forward<Args>(args)...)) {
-        return foldlTracer(std::forward<Args>(args)...);
-    }
-    
-    template<typename... Args>
-    auto foldr(Args&&... args)
-        -> decltype(original::foldr(std::forward<Args>(args)...)) {
-        return foldrTracer(std::forward<Args>(args)...);
-    }
-    
-    template<typename... Args>
-    auto dot(Args&&... args)
-        -> decltype(original::dot(std::forward<Args>(args)...)) {
-        return dotTracer(std::forward<Args>(args)...);
-    }
-    
-    template<typename... Args>
-    auto set(Args&&... args)
-        -> decltype(original::set(std::forward<Args>(args)...)) {
-        return setTracer(std::forward<Args>(args)...);
-    }
-    
-    template<typename... Args>
-    auto apply(Args&&... args)
-        -> decltype(original::apply(std::forward<Args>(args)...)) {
-        return applyTracer(std::forward<Args>(args)...);
-    }
-    
-    template<typename... Args>
-    auto mxv(Args&&... args)
-        -> decltype(original::mxv(std::forward<Args>(args)...)) {
-        return mxvTracer(std::forward<Args>(args)...);
-    }
-    
-    // Templated versions with descriptor
-    template<unsigned int descr, typename... Args>
-    auto eWiseApply(Args&&... args)
-        -> decltype(original::eWiseApply<descr>(std::forward<Args>(args)...)) {
-        return eWiseApplyTracer.template withDescriptor<descr>(std::forward<Args>(args)...);
-    }
-    
-    template<unsigned int descr, typename... Args>
-    auto foldl(Args&&... args)
-        -> decltype(original::foldl<descr>(std::forward<Args>(args)...)) {
-        return foldlTracer.template withDescriptor<descr>(std::forward<Args>(args)...);
-    }
-    
-    template<unsigned int descr, typename... Args>
-    auto foldr(Args&&... args)
-        -> decltype(original::foldr<descr>(std::forward<Args>(args)...)) {
-        return foldrTracer.template withDescriptor<descr>(std::forward<Args>(args)...);
-    }
-    
-    template<unsigned int descr, typename... Args>
-    auto dot(Args&&... args)
-        -> decltype(original::dot<descr>(std::forward<Args>(args)...)) {
-        return dotTracer.template withDescriptor<descr>(std::forward<Args>(args)...);
-    }
-    
-    template<unsigned int descr, typename... Args>
-    auto set(Args&&... args)
-        -> decltype(original::set<descr>(std::forward<Args>(args)...)) {
-        return setTracer.template withDescriptor<descr>(std::forward<Args>(args)...);
-    }
-    
-    template<unsigned int descr, typename... Args>
-    auto apply(Args&&... args)
-        -> decltype(original::apply<descr>(std::forward<Args>(args)...)) {
-        return applyTracer.template withDescriptor<descr>(std::forward<Args>(args)...);
-    }
-    
-    template<unsigned int descr, typename... Args>
-    auto mxv(Args&&... args)
-        -> decltype(original::mxv<descr>(std::forward<Args>(args)...)) {
-        return mxvTracer.template withDescriptor<descr>(std::forward<Args>(args)...);
+        cost_models::k_multi_bsp::AlgoParameters_p algo_model = cost_models::k_multi_bsp::get_params_set( n, 1, sizeof( T1 ), sizeof( T2 ), 0 );
+        return cost_models::k_multi_bsp::predict_cost( &hw_model, algo_model, 1 );
+    } catch( ... ) {
+        return 1.0; // Fallback value
     }
 }
+};
+
+template< typename T1, typename T2 >
+struct CostPredictor< SetFunc, grb::Vector< T1 > &, T2 & > {
+    static double predict( grb::Vector< T1 > & x, T2 & y ){
+        try {
+        size_t n = grb::nnz( x );
+        cost_models::HW_model::HWParameters hw_model = cost_models::HW_model::get_hw_params_for_threads( 1, dis_system_params );
+
+        cost_models::k_multi_bsp::AlgoParameters_p algo_model = cost_models::k_multi_bsp::get_params_set( n, 0, sizeof( T1 ), sizeof( T2 ), 0 );
+        return cost_models::k_multi_bsp::predict_cost( &hw_model, algo_model, 1 );
+    } catch( ... ) {
+        return 1.0; // Fallback value
+    }
+}
+};
+
+template< typename T1, typename T2, typename T3 >
+struct CostPredictor< SetFunc, grb::Vector< T1 > &, T2 &, T3 & > {
+    static double predict( grb::Vector< T1 > & x, T2 & y, T3 & idx ){
+        try {
+        size_t n = grb::nnz( x );
+        cost_models::HW_model::HWParameters hw_model = cost_models::HW_model::get_hw_params_for_threads( 1, dis_system_params );
+
+        cost_models::k_multi_bsp::AlgoParameters_p algo_model = cost_models::k_multi_bsp::get_params_set( n, 0, sizeof( T1 ), sizeof( T2 ), idx );
+        return cost_models::k_multi_bsp::predict_cost( &hw_model, algo_model, 1 );
+    } catch( ... ) {
+        return 1.0; // Fallback value
+    }
+}
+};
+
+/*=====================================================================*/
+/*--------------------------------clear--------------------------------*/
+
+/*=====================================================================*/
+/*--------------------------------apply--------------------------------*/
+template< typename T1, typename T2, typename T3 >
+struct CostPredictor< ApplyFunc, T1 &, T2 &, T3 & > {
+    static double predict( T1 & x, T2 & y, T3 & idx ){
+        try {
+        cost_models::HW_model::HWParameters hw_model = cost_models::HW_model::get_hw_params_for_threads( 1, dis_system_params );
+        cost_models::k_multi_bsp::AlgoParameters_p algo_model = cost_models::k_multi_bsp::get_params_apply();
+        return cost_models::k_multi_bsp::predict_cost( &hw_model, algo_model, 1 );
+    } catch( ... ) {
+        return 1.0; // Fallback value
+    }
+}
+};
+		/*=====================================================================*/
+		/*--------------------------------foldl--------------------------------*/
+		// template<typename T1, typename Monoid>
+		// struct CostPredictor<FoldlFunc, grb::Vector<T1>, grb::Vector<T1>, Monoid> {
+		//     static double predict(grb::Vector<T1>& v1, const grb::Vector<T1>& v2, const Monoid&) {
+		//         try {
+		// 			size_t n = grb::size( v1 ), size_data = sizeof( T1 );
+		// 			cost_models::HW_model::HWParameters hw_model = cost_models::HW_model::get_hw_params_for_threads( 1, dis_system_params );
+		// 			cost_models::k_multi_bsp::AlgoParameters_p algo_model = cost_models::k_multi_bsp::get_params_foldl( n, size_data , 1, 1);
+		// 			return cost_models::k_multi_bsp::predict_cost( &hw_model, algo_model, 1 );
+		// 		} catch(...) {
+		//             return 1.0; // Fallback value
+		//         }
+		//     }
+		// };
+
+		// template< typename T1, typename Monoid >
+		// struct CostPredictor< FoldlFunc, T1, grb::Vector< T1 >, Monoid > {
+		// 	static double predict( T1 & v1, const grb::Vector< T1 > & v2, const Monoid & ) {
+		// 		try {
+		// 			size_t n = grb::size( v2 ), size_data = sizeof( T1 );
+		// 			cost_models::HW_model::HWParameters hw_model = cost_models::HW_model::get_hw_params_for_threads( 1, dis_system_params );
+		// 			cost_models::k_multi_bsp::AlgoParameters_p algo_model = cost_models::k_multi_bsp::get_params_foldl( n, size_data, 0, 1 );
+		// 			return cost_models::k_multi_bsp::predict_cost( &hw_model, algo_model, 1 );
+		// 		} catch( ... ) {
+		// 			return 1.0; // Fallback value
+		// 		}
+		// 	}
+		// };
+
+		// template< typename T1, typename Monoid >
+		// struct CostPredictor< FoldlFunc, grb::Vector< T1 >, T1, Monoid > {
+		// 	static double predict(grb::Vector< T1 > & v1, const T1 & v2, const Monoid & ) {
+		// 		try {
+		// 			size_t n = grb::size( v1 ), size_data = sizeof( T1 );
+		// 			cost_models::HW_model::HWParameters hw_model = cost_models::HW_model::get_hw_params_for_threads( 1, dis_system_params );
+		// 			cost_models::k_multi_bsp::AlgoParameters_p algo_model = cost_models::k_multi_bsp::get_params_foldl( n, size_data, 1, 0 );
+		// 			return cost_models::k_multi_bsp::predict_cost( &hw_model, algo_model, 1 );
+		// 		} catch( ... ) {
+		// 			return 1.0; // Fallback value
+		// 		}
+		// 	}
+		// };
+
+		// /*=====================================================================*/
+		// /*--------------------------------foldr--------------------------------*/
+		// template< typename T1, typename Monoid >
+		// struct CostPredictor< FoldrFunc, grb::Vector< T1 >, grb::Vector< T1 >, Monoid > {
+		// 	static double predict( grb::Vector< T1 > & v1, const grb::Vector< T1 > & v2, const Monoid & ) {
+		// 		try {
+		// 			size_t n = grb::size( v1 ), size_data = sizeof( T1 );
+		// 			cost_models::HW_model::HWParameters hw_model = cost_models::HW_model::get_hw_params_for_threads( 1, dis_system_params );
+		// 			cost_models::k_multi_bsp::AlgoParameters_p algo_model = cost_models::k_multi_bsp::get_params_foldr( n, size_data, 1, 1 );
+		// 			return cost_models::k_multi_bsp::predict_cost( &hw_model, algo_model, 1 );
+		// 		} catch( ... ) {
+		// 			return 1.0; // Fallback value
+		// 		}
+		// 	}
+		// };
+
+		// template< typename T1, typename Monoid >
+		// struct CostPredictor< FoldrFunc, T1, grb::Vector< T1 >, Monoid > {
+		// 	static double predict( T1 & v1, const grb::Vector< T1 > & v2, const Monoid & ) {
+		// 		try {
+		// 			size_t n = grb::size( v2 ), size_data = sizeof( T1 );
+		// 			cost_models::HW_model::HWParameters hw_model = cost_models::HW_model::get_hw_params_for_threads( 1, dis_system_params );
+		// 			cost_models::k_multi_bsp::AlgoParameters_p algo_model = cost_models::k_multi_bsp::get_params_foldr( n, size_data, 0, 1 );
+		// 			return cost_models::k_multi_bsp::predict_cost( &hw_model, algo_model, 1 );
+		// 		} catch( ... ) {
+		// 			return 1.0; // Fallback value
+		// 		}
+		// 	}
+		// };
+
+		// template< typename T1, typename Monoid >
+		// struct CostPredictor< FoldrFunc, grb::Vector< T1 >, T1, Monoid > {
+		// 	static double predict( grb::Vector< T1 > & v1, const T1 & v2, const Monoid & ) {
+		// 		try {
+		// 			size_t n = grb::size( v1 ), size_data = sizeof( T1 );
+		// 			cost_models::HW_model::HWParameters hw_model = cost_models::HW_model::get_hw_params_for_threads( 1, dis_system_params );
+		// 			cost_models::k_multi_bsp::AlgoParameters_p algo_model = cost_models::k_multi_bsp::get_params_foldr( n, size_data, 1, 0 );
+		// 			return cost_models::k_multi_bsp::predict_cost( &hw_model, algo_model, 1 );
+		// 		} catch( ... ) {
+		// 			return 1.0; // Fallback value
+		// 		}
+		// 	}
+		// };
+
+		// // Specializations for dot product
+		// // Catch-all specialization for dot with exactly 5 arguments of any type
+		// template<typename T0, typename VecType, typename MonoidType, typename OpType>
+		// struct CostPredictor<DotFunc, T0, VecType, VecType, MonoidType, OpType> {
+		//     static double predict(T0 result, VecType v1, VecType v2, MonoidType monoid, OpType op) {
+		//         std::cout << "[TRACING] Using catch-all 5-argument dot predictor" << std::endl;
+
+		//         // Extract type information for diagnostics
+		//         std::string t1_name = getTypeName<VecType>();
+		//         std::string t2_name = getTypeName<VecType>();
+		//         std::string t3_name = getTypeName<MonoidType>();
+		//         std::string t4_name = getTypeName<OpType>();
+
+		//         std::cout << "[TRACING] Arg types: " << getTypeName<T0>() << ", "
+		//                   << t1_name << ", " << t2_name << ", "
+		//                   << t3_name << ", " << t4_name << std::endl;
+
+		//         try {
+		//             // Try to get the size of the vectors
+		//             size_t n = 0;
+		//             if (t1_name.find("Vector") != std::string::npos) {
+		//                 try { n = grb::size(v1); } catch(...) {}
+		//             }
+
+		//             if (n == 0 && t2_name.find("Vector") != std::string::npos) {
+		//                 try { n = grb::size(v2); } catch(...) {}
+		//             }
+
+		//             if (n == 0) {
+		//                 return 1.0; // Fallback if size can't be determined
+		//             }
+
+		//             // Check for conjugate operations
+		//             bool is_conjugate = t4_name.find("conjugate") != std::string::npos;
+
+		//             // Use appropriate cost model
+		//             cost_models::HW_model::HWParameters hw_model =
+		//                 cost_models::HW_model::get_hw_params_for_threads(1, dis_system_params);
+		//             cost_models::k_multi_bsp::AlgoParameters_p algo_model =
+		//                 cost_models::k_multi_bsp::get_params_dot(n, sizeof(double));
+
+		//             double base_cost = cost_models::k_multi_bsp::predict_cost(&hw_model, algo_model, 1);
+
+		//             // Additional cost for conjugate operations
+		//             double multiplier = is_conjugate ? 1.0 : 1.0;
+		//             return base_cost * multiplier;
+
+		//         } catch(...) {
+		//             return 1.0; // Fallback value
+		//         }
+		//     }
+		// };
+
+		// // Specialization for eWiseApply with two vectors
+		// template< typename T1, typename T2, typename Op >
+		// struct CostPredictor< EWiseApplyFunc, grb::Vector< T1 >, grb::Vector< T2 >, Op > {
+		// 	static double predict( const grb::Vector< T1 > & v1, const grb::Vector< T2 > & v2, const Op & ) {
+		// 		try {
+		// 			size_t n = grb::size( v1 ), size_data = sizeof( T1 );
+		// 			cost_models::HW_model::HWParameters hw_model = cost_models::HW_model::get_hw_params_for_threads( 1, dis_system_params );
+		// 			cost_models::k_multi_bsp::AlgoParameters_p algo_model = cost_models::k_multi_bsp::get_params_eWiseApply( n, size_data, 1, 0);
+		// 			return cost_models::k_multi_bsp::predict_cost( &hw_model, algo_model, 1 );
+		// 		} catch( ... ) {
+		// 			return 1.0; // Fallback value
+		// 		}
+		// 	}
+		// };
+
+		// // Specialization for eWiseApply with three vectors and an operator
+		// template<typename T, typename Op>
+		// struct CostPredictor<EWiseApplyFunc, grb::Vector<T>, grb::Vector<T>, grb::Vector<T>, Op> {
+		//     static double predict(const grb::Vector<T>& v1, const grb::Vector<T>& v2, const grb::Vector<T>& v3, const Op&) {
+		//         try {
+		// 			size_t n = grb::size( v1 ), size_data = sizeof(T);
+		// 			cost_models::HW_model::HWParameters hw_model = cost_models::HW_model::get_hw_params_for_threads( 1, dis_system_params );
+		// 			cost_models::k_multi_bsp::AlgoParameters_p algo_model = cost_models::k_multi_bsp::get_params_eWiseApply( n, size_data, 1, 1 );
+		// 			return cost_models::k_multi_bsp::predict_cost( &hw_model, algo_model, 1 );
+		// 		} catch(...) {
+		//             return 1.0; // Fallback value
+		//         }
+		//     }
+		// };
+
+		// Function tracer class template for handling tracing logic
+		template< typename Func >
+		class FunctionTracer {
+		public:
+			FunctionTracer( const std::string & name ) : name_( name ) {}
+
+			// Version for non-templated calls
+			template< typename... Args >
+			auto operator()( Args &&... args ) const -> decltype( std::declval< Func >()( std::forward< Args >( args )... ) ) {
+				std::cout << "\n[TRACING] Entering function: " << name_ << " with " << sizeof...( args ) << " arguments" << std::endl;
+
+				printArgTypes( std::forward< Args >( args )... );
+
+				// Predict the cost
+				double predicted_cost = CostPredictor< Func, typename std::decay< Args >::type... >::predict( args... );
+
+				// Check if we used a specialized predictor
+				bool has_specialized = has_specialized_cost_predictor< Func, typename std::decay< Args >::type... >::value;
+
+				std::cout << "[TRACING] Predicted cost: " << predicted_cost << " units (cost model: " << getCostPredictorName< Func >();
+
+				if( ! has_specialized ) {
+					std::cout << " - DEFAULT MODEL";
+				}
+
+				std::cout << ")" << std::endl;
+
+				auto start = std::chrono::high_resolution_clock::now();
+				Func func;
+				auto result = func( std::forward< Args >( args )... );
+				auto end = std::chrono::high_resolution_clock::now();
+
+				auto duration = std::chrono::duration_cast< std::chrono::microseconds >( end - start );
+				std::cout << "[TRACING] Exiting function: " << name_ << " (took " << duration.count() << "μs)" << std::endl;
+
+				// Calculate and report cost/time ratio
+				double cost_time_ratio = predicted_cost / static_cast< double >( duration.count() );
+				std::cout << "[TRACING] Cost/time ratio: " << cost_time_ratio << " cost units per microsecond" << std::endl;
+
+				return result;
+			}
+
+			// Version for templated calls with descriptor
+			template< unsigned int descr, typename... Args >
+			auto withDescriptor( Args &&... args ) const -> decltype( std::declval< Func >().template withDescriptor< descr >( std::forward< Args >( args )... ) ) {
+				std::string descriptor_name = std::to_string( descr );
+				if( descr == grb::descriptors::dense )
+					descriptor_name = "dense";
+				if( descr == grb::descriptors::structural )
+					descriptor_name = "structural";
+
+				std::cout << "\n[TRACING] Entering function: " << name_ << "<" << descriptor_name << "> with " << sizeof...( args ) << " arguments" << std::endl;
+
+				printArgTypes( std::forward< Args >( args )... );
+
+				// Predict the cost
+				double predicted_cost = CostPredictor< Func, typename std::decay< Args >::type... >::predict( args... );
+
+				// Check if we used a specialized predictor
+				bool has_specialized = has_specialized_cost_predictor< Func, typename std::decay< Args >::type... >::value;
+
+				std::cout << "[TRACING] Predicted cost: " << predicted_cost << " units (cost model: " << getCostPredictorName< Func >();
+
+				if( ! has_specialized ) {
+					std::cout << " - DEFAULT MODEL";
+				}
+
+				std::cout << ")" << std::endl;
+
+				auto start = std::chrono::high_resolution_clock::now();
+				Func func;
+				auto result = func.template withDescriptor< descr >( std::forward< Args >( args )... );
+				auto end = std::chrono::high_resolution_clock::now();
+
+				auto duration = std::chrono::duration_cast< std::chrono::microseconds >( end - start );
+				std::cout << "[TRACING] Exiting function: " << name_ << "<" << descriptor_name << "> (took " << duration.count() << "μs)" << std::endl;
+
+				// Calculate and report cost/time ratio
+				double cost_time_ratio = predicted_cost / static_cast< double >( duration.count() );
+				std::cout << "[TRACING] Cost/time ratio: " << cost_time_ratio << " cost units per microsecond" << std::endl;
+
+				return result;
+			}
+
+		private:
+			std::string name_;
+		};
+
+		// Now redefine the functions in the grb namespace with tracing
+		namespace grb {
+			// Create tracers for each function
+			static const FunctionTracer< EWiseApplyFunc > eWiseApplyTracer( "eWiseApply" );
+			static const FunctionTracer< FoldlFunc > foldlTracer( "foldl" );
+			static const FunctionTracer< FoldrFunc > foldrTracer( "foldr" );
+			static const FunctionTracer< DotFunc > dotTracer( "dot" );
+			static const FunctionTracer< SetFunc > setTracer( "set" );
+			static const FunctionTracer< ApplyFunc > applyTracer( "apply" );
+			static const FunctionTracer< MxvFunc > mxvTracer( "mxv" );
+
+			// Non-templated versions
+			template< typename... Args >
+			auto eWiseApply( Args &&... args ) -> decltype( original::eWiseApply( std::forward< Args >( args )... ) ) {
+				return eWiseApplyTracer( std::forward< Args >( args )... );
+			}
+
+			template< typename... Args >
+			auto foldl( Args &&... args ) -> decltype( original::foldl( std::forward< Args >( args )... ) ) {
+				return foldlTracer( std::forward< Args >( args )... );
+			}
+
+			template< typename... Args >
+			auto foldr( Args &&... args ) -> decltype( original::foldr( std::forward< Args >( args )... ) ) {
+				return foldrTracer( std::forward< Args >( args )... );
+			}
+
+			template< typename... Args >
+			auto dot( Args &&... args ) -> decltype( original::dot( std::forward< Args >( args )... ) ) {
+				return dotTracer( std::forward< Args >( args )... );
+			}
+
+			template< typename... Args >
+			auto set( Args &&... args ) -> decltype( original::set( std::forward< Args >( args )... ) ) {
+				return setTracer( std::forward< Args >( args )... );
+			}
+
+			template< typename... Args >
+			auto apply( Args &&... args ) -> decltype( original::apply( std::forward< Args >( args )... ) ) {
+				return applyTracer( std::forward< Args >( args )... );
+			}
+
+			template< typename... Args >
+			auto mxv( Args &&... args ) -> decltype( original::mxv( std::forward< Args >( args )... ) ) {
+				return mxvTracer( std::forward< Args >( args )... );
+			}
+
+			// Templated versions with descriptor
+			template< unsigned int descr, typename... Args >
+			auto eWiseApply( Args &&... args ) -> decltype( original::eWiseApply< descr >( std::forward< Args >( args )... ) ) {
+				return eWiseApplyTracer.template withDescriptor< descr >( std::forward< Args >( args )... );
+			}
+
+			template< unsigned int descr, typename... Args >
+			auto foldl( Args &&... args ) -> decltype( original::foldl< descr >( std::forward< Args >( args )... ) ) {
+				return foldlTracer.template withDescriptor< descr >( std::forward< Args >( args )... );
+			}
+
+			template< unsigned int descr, typename... Args >
+			auto foldr( Args &&... args ) -> decltype( original::foldr< descr >( std::forward< Args >( args )... ) ) {
+				return foldrTracer.template withDescriptor< descr >( std::forward< Args >( args )... );
+			}
+
+			template< unsigned int descr, typename... Args >
+			auto dot( Args &&... args ) -> decltype( original::dot< descr >( std::forward< Args >( args )... ) ) {
+				return dotTracer.template withDescriptor< descr >( std::forward< Args >( args )... );
+			}
+
+			template< unsigned int descr, typename... Args >
+			auto set( Args &&... args ) -> decltype( original::set< descr >( std::forward< Args >( args )... ) ) {
+				return setTracer.template withDescriptor< descr >( std::forward< Args >( args )... );
+			}
+
+			template< unsigned int descr, typename... Args >
+			auto apply( Args &&... args ) -> decltype( original::apply< descr >( std::forward< Args >( args )... ) ) {
+				return applyTracer.template withDescriptor< descr >( std::forward< Args >( args )... );
+			}
+
+			template< unsigned int descr, typename... Args >
+			auto mxv( Args &&... args ) -> decltype( original::mxv< descr >( std::forward< Args >( args )... ) ) {
+				return mxvTracer.template withDescriptor< descr >( std::forward< Args >( args )... );
+			}
+		}
 
 #endif // _GRB_ENABLE_TRACING

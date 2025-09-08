@@ -1060,8 +1060,8 @@ namespace HW_model
         /*--------------------------------CSR----------------------------------*/
 
         AlgoParameters_p get_params_csr(uint64_t nz, uint64_t n,
-                                        uint64_t m, size_t x_dsize, size_t y_dsize,
-                                        size_t A_dsize, size_t A_rowptr_size, size_t A_colidx_size, size_t batch_sz)
+                                        uint64_t m, size_t y_dsize, size_t x_dsize,
+                                        size_t A_dsize, size_t A_rowptr_size, size_t A_colidx_size)
         {
         AlgoParameters_p spmv_csr = new AlgoParameters();
         spmv_csr->n = nz;    // Same number of non-zeros
