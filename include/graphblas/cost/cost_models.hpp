@@ -107,6 +107,7 @@ namespace HW_model
     void hw_params_print(const HWParameters_p hw_params)
     {
         // Hardware parameters
+#ifdef DEBUG_COST_MODELS
         std::cout << "\nHardware parameters:\n";
         std::cout << "  - Levels (d): " << hw_params->d << "\n";
         for (size_t i = 0; i < hw_params->d; i++)
@@ -120,6 +121,7 @@ namespace HW_model
             std::cout << "    - Processing units (p): " << hw_params->p[i] << "\n";
             std::cout << "    - Max streams (kmax): " << hw_params->kmax[i] << "\n";
         }
+#endif
     }
 }
 /*=====================================================================*/
@@ -145,6 +147,7 @@ namespace HW_model
         void algo_params_print(AlgoParameters_p algo_params)
         {
             // Algorithm parameters
+#ifdef DEBUG_COST_MODELS
             std::cout << "\nHierarchical Roofline Model Parameters:\n";
 
             // Compute operations
@@ -175,6 +178,7 @@ namespace HW_model
             {
                 std::cout << "  - Target memory level: auto\n";
             }
+#endif
         }
 
         // Adjust memory level for supersteps
@@ -216,8 +220,10 @@ namespace HW_model
         double predict_cost(HW_model::HWParameters_p hw_params,
                         AlgoParameters_p algo_params,
                         size_t target_threads){
+#ifdef DEBUG_COST_MODELS
             std::cout << "===== Hierarchical Roofline Cost Prediction =====\n\n";
             std::cout << "Threads: " << target_threads << "\n";
+#endif
 
             algo_params_validate(algo_params);
             algo_params_print(algo_params);
@@ -435,6 +441,7 @@ namespace HW_model
         void algo_params_print(AlgoParameters_p algo_params)
         {
             // Algorithm parameters
+#ifdef DEBUG_COST_MODELS
             std::cout << "\nHierarchical Latency-Aware Roofline Model Parameters:\n";
             
             // Compute operations
@@ -486,6 +493,7 @@ namespace HW_model
             } else {
                 std::cout << "  - Target memory level: auto\n";
             }
+#endif
         }
 
         // Adjust memory level for supersteps
@@ -529,8 +537,10 @@ namespace HW_model
                             AlgoParameters_p algo_params,
                             size_t target_threads)
         {
+#ifdef DEBUG_COST_MODELS
             std::cout << "===== Hierarchical Roofline Cost Prediction =====\n\n";
             std::cout << "Threads: " << target_threads << "\n";
+#endif
 
             algo_params_validate(algo_params);
             algo_params_print(algo_params);
@@ -800,6 +810,7 @@ namespace HW_model
         void algo_params_print(AlgoParameters_p algo_params)
         {
             // Algorithm parameters
+#ifdef DEBUG_COST_MODELS
             std::cout << "\nAlgorithm parameters:\n";
             std::cout << "  - Total supersteps (n): " << algo_params->n << "\n";
             std::cout << "  - Superstep variations (num_v): " << algo_params->num_v << "\n";
@@ -838,6 +849,7 @@ namespace HW_model
 
                 std::cout << "    - Volume per superstep: " << HW_model::format_bytes(sum_hi) << "\n";
             }
+#endif
         }
 
         // // Calculate memory footprint
@@ -912,11 +924,13 @@ namespace HW_model
         double predict_cost(HW_model::HWParameters_p hw_params,
                             AlgoParameters_p algo_params,
                             size_t target_threads,
-                            const std::string &stream_aggregator = "max")
+                            const std::string &stream_aggregator = "sum")
         {
+#ifdef DEBUG_COST_MODELS
             std::cout << "===== Multi-BSP Kernel Cost Prediction =====\n\n";
             std::cout << "Threads: " << target_threads << "\n";
             std::cout << "Stream aggregator: " << stream_aggregator << "\n";
+#endif
 
             algo_params_validate(algo_params);
             algo_params_print(algo_params);
@@ -927,8 +941,9 @@ namespace HW_model
 
             // Calculate cost for each superstep type
             double total_cost = 0.0;
-            std::cout << "\nComputation breakdown by superstep type:\n";
-
+#ifdef DEBUG_COST_MODELS
+			std::cout << "\nComputation breakdown by superstep type:\n";
+#endif
             for (size_t t = 0; t < algo_params->ss_v.size(); t++)
             {
                 Superstep_p ss = algo_params->ss_v[t];
@@ -987,8 +1002,8 @@ namespace HW_model
                 // Total cost for all supersteps of this type
                 double type_cost = num_supersteps / target_threads * superstep_cost;
                 total_cost += type_cost;
-
-                // Print details
+#ifdef DEBUG_COST_MODELS
+				// Print details
                 std::cout << "Superstep type " << (t + 1) << " (level " << lvl << "):\n";
                 std::cout << "  - Count: " << num_supersteps << "\n";
                 std::cout << "  - " << (stream_aggregator == "sum" ? "Sum of" : "Max") << " access size: "
@@ -1000,14 +1015,17 @@ namespace HW_model
                 std::cout << "  - Total cost: "
                           << std::scientific << std::setprecision(4)
                           << type_cost << " seconds\n";
-            }
+#endif
+			}
+#ifdef DEBUG_COST_MODELS
 
-            std::cout << "\nMemory footprint: " << HW_model::format_bytes(algo_params->b_foot) << "\n";
+			std::cout << "\nMemory footprint: " << HW_model::format_bytes(algo_params->b_foot) << "\n";
             // Print final summary
             std::cout << "\nTotal cost: "
                       << std::scientific << std::setprecision(4)
                       << total_cost << " seconds\n";
-            return total_cost;
+#endif
+			return total_cost;
         }
 
         /*=====================================================================*/
