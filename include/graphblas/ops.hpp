@@ -1331,17 +1331,6 @@ namespace grb {
 		static constexpr const char* name = "operators::conjugate_right_mul";
 	};
 
-	// Utility operators
-	template< typename IN1, typename IN2 >
-	struct operator_name< operators::zip< IN1, IN2 > > {
-		static constexpr const char* name = "operators::zip";
-	};
-
-	template< typename D1, typename D2, typename D3 >
-	struct operator_name< operators::equal_first< D1, D2, D3 > > {
-		static constexpr const char* name = "operators::equal_first";
-	};
-
 	// Argument operators
 	template< typename IType, typename VType >
 	struct operator_name< operators::argmin< IType, VType > > {
@@ -1351,6 +1340,37 @@ namespace grb {
 	template< typename IType, typename VType >
 	struct operator_name< operators::argmax< IType, VType > > {
 		static constexpr const char* name = "operators::argmax";
+	};
+
+	// Basic arithmetic operators
+	template< typename D1, typename D2, typename D3 >
+	struct operator_name< operators::add< D1, D2, D3 > > {
+	    static constexpr const char* name = "operators::add";
+	};
+
+	template< typename D1, typename D2, typename D3 >
+	struct operator_name< operators::mul< D1, D2, D3 > > {
+	    static constexpr const char* name = "operators::mul";
+	};
+
+	template< typename D1, typename D2, typename D3 >
+	struct operator_name< operators::subtract< D1, D2, D3 > > {
+	    static constexpr const char* name = "operators::subtract";
+	};
+
+	template< typename D1, typename D2, typename D3 >
+	struct operator_name< operators::divide< D1, D2, D3 > > {
+	    static constexpr const char* name = "operators::divide";
+	};
+	// Utility operators
+	template< typename IN1, typename IN2 >
+	struct operator_name< operators::zip< IN1, IN2 > > {
+		static constexpr const char* name = "operators::zip";
+	};
+
+	template< typename D1, typename D2, typename D3 >
+	struct operator_name< operators::equal_first< D1, D2, D3 > > {
+		static constexpr const char* name = "operators::equal_first";
 	};
 
 	// internal type traits follow
