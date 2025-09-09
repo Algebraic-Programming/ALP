@@ -809,6 +809,7 @@ public:
 		auto start = std::chrono::high_resolution_clock::now();
 		Func func;
 		auto result = func( std::forward< Args >( args )... );
+        #pragma omp barrier
 		auto end = std::chrono::high_resolution_clock::now();
 
 		auto duration = std::chrono::duration_cast< std::chrono::microseconds >( end - start );
