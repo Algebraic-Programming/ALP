@@ -14,6 +14,11 @@
 #define _GRB_ENABLE_TRACING 0  // Default to off
 #endif
 
+// Add this near the top of the file, after other #defines
+#ifndef _GRB_COST_MODEL_TEST_MODE
+#define _GRB_COST_MODEL_TEST_MODE 0  // Default to off
+#endif
+
 #ifdef _GRB_ENABLE_TRACING
 
 namespace detail {
@@ -34,17 +39,47 @@ namespace detail {
     
     template<size_t N>
     using make_index_sequence = typename make_index_sequence_helper<N>::type;
+
+    template<typename T>
+    struct is_internal_lambda {
+        static constexpr bool value = false;
+    };
+    
+    // // Detect the specific lambda types used in fold operations
+    // template<unsigned int descr, bool left, bool sparse, bool masked, bool monoid, 
+    //          typename MaskType, typename IOType, typename IType, typename OP, typename Coords>
+    // struct is_internal_lambda<grb::internal::fold_from_vector_to_vector_generic<descr, left, sparse, masked, monoid, 
+    //                              MaskType, IOType, IType, OP, Coords>> {
+    //     static constexpr bool value = true;
+    // };
+
 }
 
 
 // First, save the original functions before we redefine them
 namespace grb {
     namespace original {
-        using namespace grb;  // This brings in all the original functions
+        // Don't use "using namespace grb" as it creates ambiguity
+        // Instead, explicitly import only the original grb functions
+        using grb::eWiseApply;
+        using grb::foldl;
+        using grb::foldr;
+        using grb::dot;
+        using grb::set;
+        using grb::apply;
+        using grb::mxv;
+        using grb::eWiseAdd;
+        using grb::vxm;
+        using grb::eWiseLambda;
+        using grb::mxm;
+        using grb::zip;
+        using grb::outer;
+        using grb::select;
+        using grb::clear;
     }
 }
 
-// Forward declarations for the function objects (moved to the top)
+// Forward declarations for the function objects
 struct EWiseApplyFunc;
 struct FoldlFunc;
 struct FoldrFunc;
@@ -52,10 +87,45 @@ struct DotFunc;
 struct SetFunc;
 struct ApplyFunc;
 struct MxvFunc;
+struct EWiseAddFunc; 
+struct VxmFunc;
+struct EWiseLambdaFunc;
+struct MxmFunc;
+struct ZipFunc;
+struct OuterFunc;
+struct SelectFunc;
+struct ClearFunc;
+
+// Type trait to check at compile time if a function has a corresponding tracer
+template<typename Func>
+struct has_tracer {
+    static constexpr bool value = false;
+};
+
+// Specializations for each supported function
+template<> struct has_tracer<EWiseApplyFunc> { static constexpr bool value = true; };
+template<> struct has_tracer<FoldlFunc> { static constexpr bool value = true; };
+template<> struct has_tracer<FoldrFunc> { static constexpr bool value = true; };
+template<> struct has_tracer<DotFunc> { static constexpr bool value = true; };
+template<> struct has_tracer<SetFunc> { static constexpr bool value = true; };
+template<> struct has_tracer<ApplyFunc> { static constexpr bool value = true; };
+template<> struct has_tracer<MxvFunc> { static constexpr bool value = true; };
+template<> struct has_tracer<EWiseAddFunc> { static constexpr bool value = true; };
+template<> struct has_tracer<VxmFunc> { static constexpr bool value = true; };
+template<> struct has_tracer<EWiseLambdaFunc> { static constexpr bool value = true; };
+template<> struct has_tracer<MxmFunc> { static constexpr bool value = true; };
+template<> struct has_tracer<ZipFunc> { static constexpr bool value = true; };
+template<> struct has_tracer<OuterFunc> { static constexpr bool value = true; };
+template<> struct has_tracer<SelectFunc> { static constexpr bool value = true; };
+template<> struct has_tracer<ClearFunc> { static constexpr bool value = true; };
 
 // Function to get cost predictor name (moved before its usage)
 template<typename Func>
 std::string getCostPredictorName() {
+    // At compile time, verify this function has a tracer
+    // static_assert(has_tracer<Func>::value, 
+    //     "Function not registered in cost factory. Add specialization for this function type.");
+        
     if (std::is_same<Func, EWiseApplyFunc>::value) return "eWiseApply";
     if (std::is_same<Func, FoldlFunc>::value) return "foldl";
     if (std::is_same<Func, FoldrFunc>::value) return "foldr";
@@ -63,9 +133,18 @@ std::string getCostPredictorName() {
     if (std::is_same<Func, SetFunc>::value) return "set";
     if (std::is_same<Func, ApplyFunc>::value) return "apply";
     if (std::is_same<Func, MxvFunc>::value) return "mxv";
+    if (std::is_same<Func, EWiseAddFunc>::value) return "eWiseAdd";
+    if (std::is_same<Func, VxmFunc>::value) return "vxm";
+    if (std::is_same<Func, EWiseLambdaFunc>::value) return "eWiseLambda";
+    if (std::is_same<Func, MxmFunc>::value) return "mxm";
+    if (std::is_same<Func, ZipFunc>::value) return "zip";
+    if (std::is_same<Func, OuterFunc>::value) return "outer";
+    if (std::is_same<Func, SelectFunc>::value) return "select";
+    if (std::is_same<Func, ClearFunc>::value) return "clear";
+    
+    // This should never be reached due to the static_assert above
     return "unknown";
 }
-
 // Type trait to check if we can call grb::size on a type
 template<typename T, typename = void>
 struct has_grb_size : std::false_type {};
@@ -342,7 +421,6 @@ struct CostPredictor {
         return getArgTypeNamesHelper(detail::make_index_sequence<sizeof...(Args)>{});
     }
     
-    // Rest of the implementation remains the same
     static double predict(const Args&... args) {
         // Silence unused parameter warnings with a fold-expression-like trick
         int unused[] = { 0, (void(args), 0)... };
@@ -360,7 +438,10 @@ struct CostPredictor {
         std::cout << "[WARNING] struct CostPredictor<" << funcName << "Func, " << argTypes << "> {" << std::endl;
         std::cout << "[WARNING]     static double predict(...) { ... }" << std::endl;
         std::cout << "[WARNING] };" << std::endl;
-        
+
+        // throw and error
+        std::cerr << "[ERROR] Missing cost model for this function." << std::endl;
+        throw std::runtime_error("Missing cost model");
         return 1.0; // Default cost
     }
 };
@@ -373,7 +454,9 @@ struct CostPredictor<void, void> {
         // TODO:: enable assertions in the final code 
         // static_assert(!std::is_same<void, void>::value, 
         //     "Non-implemented cost function detected");
-        return 1.0;
+        std::cerr << "[ERROR] Missing cost model for this function." << std::endl;
+        throw std::runtime_error("Missing cost model");
+        // return 1.0;
     }
 };
 // Type trait to detect if a specialized cost predictor exists
@@ -501,21 +584,135 @@ struct MxvFunc {
     }
 };
 
+struct EWiseAddFunc {
+    template<typename... Args>
+    auto operator()(Args&&... args) const
+        -> decltype(grb::original::eWiseAdd(std::forward<Args>(args)...)) {
+        return grb::original::eWiseAdd(std::forward<Args>(args)...);
+    }
+    
+    template<unsigned int descr, typename... Args>
+    auto withDescriptor(Args&&... args) const
+        -> decltype(grb::original::eWiseAdd<descr>(std::forward<Args>(args)...)) {
+        return grb::original::eWiseAdd<descr>(std::forward<Args>(args)...);
+    }
+};
+
+struct VxmFunc {
+    template<typename... Args>
+    auto operator()(Args&&... args) const
+        -> decltype(grb::original::vxm(std::forward<Args>(args)...)) {
+        return grb::original::vxm(std::forward<Args>(args)...);
+    }
+    
+    template<unsigned int descr, typename... Args>
+    auto withDescriptor(Args&&... args) const
+        -> decltype(grb::original::vxm<descr>(std::forward<Args>(args)...)) {
+        return grb::original::vxm<descr>(std::forward<Args>(args)...);
+    }
+};
+
+struct EWiseLambdaFunc {
+    template<typename... Args>
+    auto operator()(Args&&... args) const
+        -> decltype(grb::original::eWiseLambda(std::forward<Args>(args)...)) {
+        return grb::original::eWiseLambda(std::forward<Args>(args)...);
+    }
+    
+    template<unsigned int descr, typename... Args>
+    auto withDescriptor(Args&&... args) const
+        -> decltype(grb::original::eWiseLambda<descr>(std::forward<Args>(args)...)) {
+        return grb::original::eWiseLambda<descr>(std::forward<Args>(args)...);
+    }
+};
+
+struct MxmFunc {
+    template<typename... Args>
+    auto operator()(Args&&... args) const
+        -> decltype(grb::original::mxm(std::forward<Args>(args)...)) {
+        return grb::original::mxm(std::forward<Args>(args)...);
+    }
+    
+    template<unsigned int descr, typename... Args>
+    auto withDescriptor(Args&&... args) const
+        -> decltype(grb::original::mxm<descr>(std::forward<Args>(args)...)) {
+        return grb::original::mxm<descr>(std::forward<Args>(args)...);
+    }
+};
+
+struct ZipFunc {
+    template<typename... Args>
+    auto operator()(Args&&... args) const
+        -> decltype(grb::original::zip(std::forward<Args>(args)...)) {
+        return grb::original::zip(std::forward<Args>(args)...);
+    }
+    
+    template<unsigned int descr, typename... Args>
+    auto withDescriptor(Args&&... args) const
+        -> decltype(grb::original::zip<descr>(std::forward<Args>(args)...)) {
+        return grb::original::zip<descr>(std::forward<Args>(args)...);
+    }
+};
+
+struct OuterFunc {
+    template<typename... Args>
+    auto operator()(Args&&... args) const
+        -> decltype(grb::original::outer(std::forward<Args>(args)...)) {
+        return grb::original::outer(std::forward<Args>(args)...);
+    }
+    
+    template<unsigned int descr, typename... Args>
+    auto withDescriptor(Args&&... args) const
+        -> decltype(grb::original::outer<descr>(std::forward<Args>(args)...)) {
+        return grb::original::outer<descr>(std::forward<Args>(args)...);
+    }
+};
+
+struct SelectFunc {
+    template<typename... Args>
+    auto operator()(Args&&... args) const
+        -> decltype(grb::original::select(std::forward<Args>(args)...)) {
+        return grb::original::select(std::forward<Args>(args)...);
+    }
+    
+    template<unsigned int descr, typename... Args>
+    auto withDescriptor(Args&&... args) const
+        -> decltype(grb::original::select<descr>(std::forward<Args>(args)...)) {
+        return grb::original::select<descr>(std::forward<Args>(args)...);
+    }
+};
+
+struct ClearFunc {
+    template<typename... Args>
+    auto operator()(Args&&... args) const
+        -> decltype(grb::original::clear(std::forward<Args>(args)...)) {
+        return grb::original::clear(std::forward<Args>(args)...);
+    }
+    
+    template<unsigned int descr, typename... Args>
+    auto withDescriptor(Args&&... args) const
+        -> decltype(grb::original::clear<descr>(std::forward<Args>(args)...)) {
+        return grb::original::clear<descr>(std::forward<Args>(args)...);
+    }
+};
+
 // Specializations of CostPredictor for different function/argument combinations
 /*=====================================================================*/
 /*--------------------------------mxv--------------------------------*/
 
 template< typename T1, typename T2, typename T3, grb::Backend Backend, typename RowIndexType, typename ColIndexType, typename NonzeroIndexType, typename SRingType >
 struct CostPredictor< MxvFunc, grb::Vector< T1 >, grb::Matrix< T2, Backend, RowIndexType, ColIndexType, NonzeroIndexType >, grb::Vector< T3 >, SRingType > {
-	static double predict( const grb::Vector< T1 > & y, const grb::Matrix< T2, Backend, RowIndexType, ColIndexType, NonzeroIndexType > & A, const grb::Vector< T3 > & x, const SRingType & ring ) {
+    static double predict( const grb::Vector< T1 > & y, const grb::Matrix< T2, Backend, RowIndexType, ColIndexType, NonzeroIndexType > & A, const grb::Vector< T3 > & x, const SRingType & ring ) {
         try {
             size_t nnz = grb::nnz( A ), m = grb::size( y ), n = grb::size( x );
             cost_models::HW_model::HWParameters hw_model = cost_models::HW_model::get_hw_params_for_threads( 1, dis_system_params );
-			cost_models::k_multi_bsp::AlgoParameters_p algo_model = cost_models::k_multi_bsp::get_params_csr(
-				nnz, n, m, sizeof( T1 ), sizeof( T3 ), sizeof( T2 ), sizeof( NonzeroIndexType ), sizeof( RowIndexType ) );
-			return cost_models::k_multi_bsp::predict_cost( &hw_model, algo_model, 1 );
-        } catch( ... ) {
-            return 1.0; // Fallback value
+            cost_models::k_multi_bsp::AlgoParameters_p algo_model = cost_models::k_multi_bsp::get_params_csr(
+                nnz, n, m, sizeof( T1 ), sizeof( T3 ), sizeof( T2 ), sizeof( NonzeroIndexType ), sizeof( RowIndexType ) );
+            return cost_models::k_multi_bsp::predict_cost( &hw_model, algo_model, 1 );
+        } catch(const std::exception& e) {
+            throw std::runtime_error("Error in CostPredictor<MxvFunc>: " + std::string(e.what()));
+        } catch(...) {
+            throw std::runtime_error("Unknown error in CostPredictor<MxvFunc> with Matrix");
         }
     }
 };
@@ -532,23 +729,27 @@ struct CostPredictor< SetFunc, grb::Vector< T1 >, grb::Vector< T2 > > {
 
             cost_models::k_multi_bsp::AlgoParameters_p algo_model = cost_models::k_multi_bsp::get_params_set( n, 1, sizeof( T1 ), sizeof( T2 ), 0 );
             return cost_models::k_multi_bsp::predict_cost( &hw_model, algo_model, 1 );
-        } catch( ... ) {
-            return 1.0; // Fallback value
+        } catch(const std::exception& e) {
+            throw std::runtime_error("Error in CostPredictor<SetFunc, Vector, Vector>: " + std::string(e.what()));
+        } catch(...) {
+            throw std::runtime_error("Unknown error in CostPredictor<SetFunc> with Vector to Vector");
         }
     }
 };
 
-template< typename T1, typename T2 >
-struct CostPredictor< SetFunc, grb::Vector< T1 >, T2 > { 
-    static double predict( grb::Vector< T1 > & x, T2 & y ){
+template< typename T1 >
+struct CostPredictor< SetFunc, grb::Vector< T1 >, T1 > { 
+    static double predict( grb::Vector< T1 > & x, T1 & y ){
         try {
 			size_t n = grb::size( x );
 			cost_models::HW_model::HWParameters hw_model = cost_models::HW_model::get_hw_params_for_threads( 1, dis_system_params );
 
-            cost_models::k_multi_bsp::AlgoParameters_p algo_model = cost_models::k_multi_bsp::get_params_set( n, 0, sizeof( T1 ), sizeof( T2 ), 0 );
+            cost_models::k_multi_bsp::AlgoParameters_p algo_model = cost_models::k_multi_bsp::get_params_set( n, 0, sizeof( T1 ), sizeof( T1 ), 0 );
             return cost_models::k_multi_bsp::predict_cost( &hw_model, algo_model, 1 );
-        } catch( ... ) {
-            return 1.0; // Fallback value
+        } catch(const std::exception& e) {
+            throw std::runtime_error("Error in CostPredictor<SetFunc, Vector, scalar>: " + std::string(e.what()));
+        } catch(...) {
+            throw std::runtime_error("Unknown error in CostPredictor<SetFunc> with Vector to scalar");
         }
     }
 };
@@ -565,8 +766,10 @@ struct CostPredictor< ApplyFunc, T1, T2, T3, Op > {
             cost_models::HW_model::HWParameters hw_model = cost_models::HW_model::get_hw_params_for_threads( 1, dis_system_params );
             cost_models::k_multi_bsp::AlgoParameters_p algo_model = cost_models::k_multi_bsp::get_params_apply();
             return cost_models::k_multi_bsp::predict_cost( &hw_model, algo_model, 1 );
-        } catch( ... ) {
-            return 1.0; // Fallback value
+        } catch(const std::exception& e) {
+            throw std::runtime_error("Error in CostPredictor<ApplyFunc>: " + std::string(e.what()));
+        } catch(...) {
+            throw std::runtime_error("Unknown error in CostPredictor<ApplyFunc>");
         }
     }
 };
@@ -584,9 +787,11 @@ struct CostPredictor< EWiseApplyFunc, grb::Vector< T1 >, grb::Vector< T2 >, T3, 
 			cost_models::k_multi_bsp::AlgoParameters_p algo_model = cost_models::k_multi_bsp::get_params_eWiseApply( n, 
                 sizeof( T1 ), sizeof( T2 ), sizeof( T3 ), 1, 0 );
 			return cost_models::k_multi_bsp::predict_cost( &hw_model, algo_model, 1 );
-		} catch( ... ) {
-			return 1.0; // Fallback value
-		}
+		} catch(const std::exception& e) {
+            throw std::runtime_error("Error in CostPredictor<EWiseApplyFunc, Vector, Vector, scalar>: " + std::string(e.what()));
+        } catch(...) {
+            throw std::runtime_error("Unknown error in CostPredictor<EWiseApplyFunc> with Vector, Vector, scalar");
+        }
 	}
 };
 
@@ -600,9 +805,11 @@ struct CostPredictor< EWiseApplyFunc, grb::Vector< T1 >, T2, grb::Vector< T3 >, 
 			cost_models::k_multi_bsp::AlgoParameters_p algo_model = cost_models::k_multi_bsp::get_params_eWiseApply
                 ( n, sizeof( T1 ), sizeof( T2 ), sizeof( T3 ), 0, 1 );
 			return cost_models::k_multi_bsp::predict_cost( &hw_model, algo_model, 1 );
-		} catch( ... ) {
-			return 1.0; // Fallback value
-		}
+		} catch(const std::exception& e) {
+            throw std::runtime_error("Error in CostPredictor<EWiseApplyFunc, Vector, scalar, Vector>: " + std::string(e.what()));
+        } catch(...) {
+            throw std::runtime_error("Unknown error in CostPredictor<EWiseApplyFunc> with Vector, scalar, Vector");
+        }
 	}
 };
 
@@ -616,9 +823,11 @@ struct CostPredictor< EWiseApplyFunc, grb::Vector< T1 >, grb::Vector< T2 > , grb
 			cost_models::k_multi_bsp::AlgoParameters_p algo_model = cost_models::k_multi_bsp::get_params_eWiseApply
                 ( n, sizeof( T1 ), sizeof( T2 ), sizeof( T3 ), 0, 1 );
 			return cost_models::k_multi_bsp::predict_cost( &hw_model, algo_model, 1 );
-		} catch( ... ) {
-			return 1.0; // Fallback value
-		}
+		} catch(const std::exception& e) {
+            throw std::runtime_error("Error in CostPredictor<EWiseApplyFunc, Vector, Vector, Vector>: " + std::string(e.what()));
+        } catch(...) {
+            throw std::runtime_error("Unknown error in CostPredictor<EWiseApplyFunc> with three Vectors");
+        }
 	}
 };
 
@@ -635,8 +844,10 @@ struct CostPredictor< FoldlFunc, grb::Vector< T1 >, grb::Vector< T2 >, Monoid > 
 			cost_models::k_multi_bsp::AlgoParameters_p algo_model = cost_models::k_multi_bsp::get_params_foldl
                 ( n, sizeof( T1 ), sizeof( T2 ), 1, 1 );
 			return cost_models::k_multi_bsp::predict_cost( &hw_model, algo_model, 1 );
+        } catch(const std::exception& e) {
+            throw std::runtime_error("Error in CostPredictor<FoldlFunc, Vector, Vector>: " + std::string(e.what()));
         } catch(...) {
-            return 1.0; // Fallback value
+            throw std::runtime_error("Unknown error in CostPredictor<FoldlFunc> with Vector, Vector");
         }
     }
 };
@@ -650,8 +861,10 @@ struct CostPredictor< FoldlFunc, T1 , grb::Vector< T2 >, Monoid > {
 			cost_models::k_multi_bsp::AlgoParameters_p algo_model = cost_models::k_multi_bsp::get_params_foldl
                 ( n, sizeof( T1 ), sizeof( T2 ), 0, 1 );
 			return cost_models::k_multi_bsp::predict_cost( &hw_model, algo_model, 1 );
-        } catch( ... ) {
-            return 1.0; // Fallback value
+        } catch(const std::exception& e) {
+            throw std::runtime_error("Error in CostPredictor<FoldlFunc, scalar, Vector>: " + std::string(e.what()));
+        } catch(...) {
+            throw std::runtime_error("Unknown error in CostPredictor<FoldlFunc> with scalar, Vector");
         }
     }
 };
@@ -665,8 +878,10 @@ struct CostPredictor< FoldlFunc, grb::Vector< T1 >, T2 , Monoid > {
 			cost_models::k_multi_bsp::AlgoParameters_p algo_model = cost_models::k_multi_bsp::get_params_foldl
                 ( n, sizeof( T1 ), sizeof( T2 ), 1, 0 );
 			return cost_models::k_multi_bsp::predict_cost( &hw_model, algo_model, 1 );
-		} catch( ... ) {
-            return 1.0; // Fallback value
+		} catch(const std::exception& e) {
+            throw std::runtime_error("Error in CostPredictor<FoldlFunc, Vector, scalar>: " + std::string(e.what()));
+        } catch(...) {
+            throw std::runtime_error("Unknown error in CostPredictor<FoldlFunc> with Vector, scalar");
         }
     }
 };
@@ -681,9 +896,11 @@ struct CostPredictor< FoldrFunc, grb::Vector< T1 > , grb::Vector< T2 > , Monoid 
 			cost_models::HW_model::HWParameters hw_model = cost_models::HW_model::get_hw_params_for_threads( 1, dis_system_params );
 			cost_models::k_multi_bsp::AlgoParameters_p algo_model = cost_models::k_multi_bsp::get_params_foldr( n, sizeof( T1 ), sizeof( T2 ), 1, 1 );
 			return cost_models::k_multi_bsp::predict_cost( &hw_model, algo_model, 1 );
-		} catch( ... ) {
-			return 1.0; // Fallback value
-		}
+		} catch(const std::exception& e) {
+            throw std::runtime_error("Error in CostPredictor<FoldrFunc, Vector, Vector>: " + std::string(e.what()));
+        } catch(...) {
+            throw std::runtime_error("Unknown error in CostPredictor<FoldrFunc> with Vector, Vector");
+        }
 	}
 };
 
@@ -695,9 +912,11 @@ struct CostPredictor< FoldrFunc, T1, grb::Vector< T2 >, Monoid > {
 			cost_models::HW_model::HWParameters hw_model = cost_models::HW_model::get_hw_params_for_threads( 1, dis_system_params );
 			cost_models::k_multi_bsp::AlgoParameters_p algo_model = cost_models::k_multi_bsp::get_params_foldr( n, sizeof( T1 ), sizeof( T2 ), 0, 1 );
 			return cost_models::k_multi_bsp::predict_cost( &hw_model, algo_model, 1 );
-		} catch( ... ) {
-			return 1.0; // Fallback value
-		}
+		} catch(const std::exception& e) {
+            throw std::runtime_error("Error in CostPredictor<FoldrFunc, scalar, Vector>: " + std::string(e.what()));
+        } catch(...) {
+            throw std::runtime_error("Unknown error in CostPredictor<FoldrFunc> with scalar, Vector");
+        }
 	}
 };
 
@@ -709,9 +928,11 @@ struct CostPredictor< FoldrFunc, grb::Vector< T1 >, T2, Monoid > {
 			cost_models::HW_model::HWParameters hw_model = cost_models::HW_model::get_hw_params_for_threads( 1, dis_system_params );
 			cost_models::k_multi_bsp::AlgoParameters_p algo_model = cost_models::k_multi_bsp::get_params_foldr( n, sizeof( T1 ), sizeof( T2 ), 1, 0 );
 			return cost_models::k_multi_bsp::predict_cost( &hw_model, algo_model, 1 );
-		} catch( ... ) {
-			return 1.0; // Fallback value
-		}
+		} catch(const std::exception& e) {
+            throw std::runtime_error("Error in CostPredictor<FoldrFunc, Vector, scalar>: " + std::string(e.what()));
+        } catch(...) {
+            throw std::runtime_error("Unknown error in CostPredictor<FoldrFunc> with Vector, scalar");
+        }
 	}
 };
 
@@ -746,7 +967,7 @@ struct CostPredictor< DotFunc, T0, T1, T2, MonoidType, OpType > {
             }
 
             if (n == 0) {
-                return 1.0; // Fallback if size can't be determined
+                throw std::runtime_error("Could not determine vector size");
             }
 
             // Check for conjugate operations
@@ -764,8 +985,10 @@ struct CostPredictor< DotFunc, T0, T1, T2, MonoidType, OpType > {
             double multiplier = is_conjugate ? 1.0 : 1.0;
             return base_cost * multiplier;
 
+        } catch(const std::exception& e) {
+            throw std::runtime_error("Error in CostPredictor<DotFunc>: " + std::string(e.what()));
         } catch(...) {
-            return 1.0; // Fallback value
+            throw std::runtime_error("Unknown error in CostPredictor<DotFunc> with 5 arguments");
         }
     }
 };
@@ -783,7 +1006,12 @@ struct CostPredictor< DotFunc, T0, T1, T2, MonoidType, OpType > {
 template< typename Func >
 class FunctionTracer {
 public:
-	FunctionTracer( const std::string & name ) : name_( name ) {}
+    FunctionTracer(const std::string& name) : name_(name) {
+        // This static_assert will fail at compile time if the function doesn't have a tracer
+        static_assert(has_tracer<Func>::value, 
+            "Missing tracer implementation for a GraphBLAS function. "
+            "Please add appropriate entries in cost_factory.hpp for this function.");
+    }
 
 	// Version for non-templated calls
 	template< typename... Args >
@@ -793,18 +1021,39 @@ public:
 		printArgTypes( std::forward< Args >( args )... );
 
 		// Predict the cost
-		double predicted_cost = CostPredictor< Func, typename std::decay< Args >::type... >::predict( args... );
+		double predicted_cost = 0.0;
+		bool has_specialized = false;
+		
+		try {
+			predicted_cost = CostPredictor< Func, typename std::decay< Args >::type... >::predict( args... );
+			has_specialized = has_specialized_cost_predictor< Func, typename std::decay< Args >::type... >::value;
+			
+			std::cout << "[TRACING] Predicted cost: " << predicted_cost << " units (cost model: " << getCostPredictorName< Func >();
 
-		// Check if we used a specialized predictor
-		bool has_specialized = has_specialized_cost_predictor< Func, typename std::decay< Args >::type... >::value;
+			if( !has_specialized ) {
+				std::cout << " - DEFAULT MODEL";
+			}
 
-		std::cout << "[TRACING] Predicted cost: " << predicted_cost << " units (cost model: " << getCostPredictorName< Func >();
-
-		if( ! has_specialized ) {
-			std::cout << " - DEFAULT MODEL";
+			std::cout << ")" << std::endl;
+		} catch(const std::exception& e) {
+			std::cout << "[ERROR] Cost prediction failed: " << e.what() << std::endl;
+			
+			// In test mode, return FAILED rather than propagating the exception
+			#if _GRB_COST_MODEL_TEST_MODE
+				return grb::FAILED;
+			#else
+				throw; // Re-throw in normal mode
+			#endif
+		} catch(...) {
+			std::cout << "[ERROR] Cost prediction failed with unknown exception" << std::endl;
+			
+			// In test mode, return FAILED rather than propagating the exception
+			#if _GRB_COST_MODEL_TEST_MODE
+				return grb::FAILED;
+			#else
+				throw; // Re-throw in normal mode
+			#endif
 		}
-
-		std::cout << ")" << std::endl;
 
 		auto start = std::chrono::high_resolution_clock::now();
 		Func func;
@@ -825,44 +1074,65 @@ public:
 	// Version for templated calls with descriptor
 	template< unsigned int descr, typename... Args >
 	auto withDescriptor( Args &&... args ) const -> decltype( std::declval< Func >().template withDescriptor< descr >( std::forward< Args >( args )... ) ) {
-		std::string descriptor_name = std::to_string( descr );
-		if( descr == grb::descriptors::dense )
-			descriptor_name = "dense";
-		if( descr == grb::descriptors::structural )
-			descriptor_name = "structural";
+    std::string descriptor_name = std::to_string( descr );
+    if( descr == grb::descriptors::dense )
+        descriptor_name = "dense";
+    if( descr == grb::descriptors::structural )
+        descriptor_name = "structural";
 
-		std::cout << "\n[TRACING] Entering function: " << name_ << "<" << descriptor_name << "> with " << sizeof...( args ) << " arguments" << std::endl;
+    std::cout << "\n[TRACING] Entering function: " << name_ << "<" << descriptor_name << "> with " << sizeof...( args ) << " arguments" << std::endl;
 
-		printArgTypes( std::forward< Args >( args )... );
+    printArgTypes( std::forward< Args >( args )... );
 
-		// Predict the cost
-		double predicted_cost = CostPredictor< Func, typename std::decay< Args >::type... >::predict( args... );
+    // Predict the cost
+    double predicted_cost = 0.0;
+    bool has_specialized = false;
+    
+    try {
+        predicted_cost = CostPredictor< Func, typename std::decay< Args >::type... >::predict( args... );
+        has_specialized = has_specialized_cost_predictor< Func, typename std::decay< Args >::type... >::value;
+        
+        std::cout << "[TRACING] Predicted cost: " << predicted_cost << " units (cost model: " << getCostPredictorName< Func >();
 
-		// Check if we used a specialized predictor
-		bool has_specialized = has_specialized_cost_predictor< Func, typename std::decay< Args >::type... >::value;
+        if( !has_specialized ) {
+            std::cout << " - DEFAULT MODEL";
+        }
 
-		std::cout << "[TRACING] Predicted cost: " << predicted_cost << " units (cost model: " << getCostPredictorName< Func >();
+        std::cout << ")" << std::endl;
+    } catch(const std::exception& e) {
+        std::cout << "[ERROR] Cost prediction failed: " << e.what() << std::endl;
+        
+        // In test mode, return FAILED rather than propagating the exception
+        #if _GRB_COST_MODEL_TEST_MODE
+            return grb::FAILED;
+        #else
+            throw; // Re-throw in normal mode
+        #endif
+    } catch(...) {
+        std::cout << "[ERROR] Cost prediction failed with unknown exception" << std::endl;
+        
+        // In test mode, return FAILED rather than propagating the exception
+        #if _GRB_COST_MODEL_TEST_MODE
+            return grb::FAILED;
+        #else
+            throw; // Re-throw in normal mode
+        #endif
+    }
 
-		if( ! has_specialized ) {
-			std::cout << " - DEFAULT MODEL";
-		}
+    auto start = std::chrono::high_resolution_clock::now();
+    Func func;
+    auto result = func.template withDescriptor< descr >( std::forward< Args >( args )... );
+    auto end = std::chrono::high_resolution_clock::now();
 
-		std::cout << ")" << std::endl;
+    auto duration = std::chrono::duration_cast< std::chrono::microseconds >( end - start );
+    std::cout << "[TRACING] Exiting function: " << name_ << "<" << descriptor_name << "> (took " << duration.count() << "μs)" << std::endl;
 
-		auto start = std::chrono::high_resolution_clock::now();
-		Func func;
-		auto result = func.template withDescriptor< descr >( std::forward< Args >( args )... );
-		auto end = std::chrono::high_resolution_clock::now();
+    // Calculate and report cost/time ratio
+    double cost_time_ratio = predicted_cost / static_cast< double >( duration.count() );
+    std::cout << "[TRACING] Cost/time ratio: " << cost_time_ratio << " cost units per microsecond" << std::endl;
 
-		auto duration = std::chrono::duration_cast< std::chrono::microseconds >( end - start );
-		std::cout << "[TRACING] Exiting function: " << name_ << "<" << descriptor_name << "> (took " << duration.count() << "μs)" << std::endl;
-
-		// Calculate and report cost/time ratio
-		double cost_time_ratio = predicted_cost / static_cast< double >( duration.count() );
-		std::cout << "[TRACING] Cost/time ratio: " << cost_time_ratio << " cost units per microsecond" << std::endl;
-
-		return result;
-	}
+    return result;
+}
 
 private:
 	std::string name_;
@@ -878,6 +1148,16 @@ private:
 			static const FunctionTracer< SetFunc > setTracer( "set" );
 			static const FunctionTracer< ApplyFunc > applyTracer( "apply" );
 			static const FunctionTracer< MxvFunc > mxvTracer( "mxv" );
+            static const FunctionTracer< EWiseAddFunc > eWiseAddTracer( "eWiseAdd" );
+            static const FunctionTracer< VxmFunc > vxmTracer( "vxm" );
+            static const FunctionTracer< EWiseLambdaFunc > eWiseLambdaTracer( "eWiseLambda" );
+            static const FunctionTracer< MxmFunc > mxmTracer( "mxm" );
+            static const FunctionTracer< ZipFunc > zipTracer( "zip" );
+            static const FunctionTracer< OuterFunc > outerTracer( "outer" );
+            static const FunctionTracer< SelectFunc > selectTracer( "select" );
+            static const FunctionTracer< ClearFunc > clearTracer( "clear" );
+
+
 
 			// Non-templated versions
 			template< typename... Args >
@@ -915,7 +1195,46 @@ private:
 				return mxvTracer( std::forward< Args >( args )... );
 			}
 
-			// Templated versions with descriptor
+            template< typename... Args >
+            auto eWiseAdd( Args &&... args ) -> decltype( original::eWiseAdd( std::forward< Args >( args )... ) ) {
+                return eWiseAddTracer( std::forward< Args >( args )... );
+            }
+
+            template< typename... Args >
+            auto vxm( Args &&... args ) -> decltype( original::vxm( std::forward< Args >( args )... ) ) {
+                return vxmTracer( std::forward< Args >( args )... );
+            }
+
+            template<typename... Args>
+            auto eWiseLambda(Args&&... args) -> decltype(original::eWiseLambda(std::forward<Args>(args)...)) {
+                return original::eWiseLambda(std::forward<Args>(args)...);
+            }
+
+            template< typename... Args >
+            auto mxm( Args &&... args ) -> decltype( original::mxm( std::forward< Args >( args )... ) ) {
+                return mxmTracer( std::forward< Args >( args )... );
+            }
+
+            template< typename... Args >
+            auto zip( Args &&... args ) -> decltype( original::zip( std::forward< Args >( args )... ) ) {
+                return zipTracer( std::forward< Args >( args )... );
+            }
+
+            template< typename... Args >
+            auto outer( Args &&... args ) -> decltype( original::outer( std::forward< Args >( args )... ) ) {
+                return outerTracer( std::forward< Args >( args )... );
+            }
+
+            template< typename... Args >
+            auto select( Args &&... args ) -> decltype( original::select( std::forward< Args >( args )... ) ) {
+                return selectTracer( std::forward< Args >( args )... );
+            }
+
+            template< typename... Args >
+            auto clear( Args &&... args ) -> decltype( original::clear( std::forward< Args >( args )... ) ) {
+                return clearTracer( std::forward< Args >( args )... );
+            }
+
 			template< unsigned int descr, typename... Args >
 			auto eWiseApply( Args &&... args ) -> decltype( original::eWiseApply< descr >( std::forward< Args >( args )... ) ) {
 				return eWiseApplyTracer.template withDescriptor< descr >( std::forward< Args >( args )... );
@@ -950,6 +1269,41 @@ private:
 			auto mxv( Args &&... args ) -> decltype( original::mxv< descr >( std::forward< Args >( args )... ) ) {
 				return mxvTracer.template withDescriptor< descr >( std::forward< Args >( args )... );
 			}
+
+            template< unsigned int descr, typename... Args >
+            auto eWiseAdd( Args &&... args ) -> decltype( original::eWiseAdd< descr >( std::forward< Args >( args )... ) ) {
+                return eWiseAddTracer.template withDescriptor< descr >( std::forward< Args >( args )... );
+            }
+
+            template< unsigned int descr, typename... Args >
+            auto vxm( Args &&... args ) -> decltype( original::vxm< descr >( std::forward< Args >( args )... ) ) {
+                return vxmTracer.template withDescriptor< descr >( std::forward< Args >( args )... );
+            }
+
+            template< unsigned int descr, typename... Args >
+            auto mxm( Args &&... args ) -> decltype( original::mxm< descr >( std::forward< Args >( args )... ) ) {
+                return mxmTracer.template withDescriptor< descr >( std::forward< Args >( args )... );
+            }
+
+            template< unsigned int descr, typename... Args >
+            auto zip( Args &&... args ) -> decltype( original::zip< descr >( std::forward< Args >( args )... ) ) {
+                return zipTracer.template withDescriptor< descr >( std::forward< Args >( args )... );
+            }
+
+            template< unsigned int descr, typename... Args >
+            auto outer( Args &&... args ) -> decltype( original::outer< descr >( std::forward< Args >( args )... ) ) {
+                return outerTracer.template withDescriptor< descr >( std::forward< Args >( args )... );
+            }
+
+            template< unsigned int descr, typename... Args >
+            auto select( Args &&... args ) -> decltype( original::select< descr >( std::forward< Args >( args )... ) ) {
+                return selectTracer.template withDescriptor< descr >( std::forward< Args >( args )... );
+            }
+
+            template< unsigned int descr, typename... Args >
+            auto clear( Args &&... args ) -> decltype( original::clear< descr >( std::forward< Args >( args )... ) ) {
+                return clearTracer.template withDescriptor< descr >( std::forward< Args >( args )... );
+            }
 		}
 
 #endif // _GRB_ENABLE_TRACING
