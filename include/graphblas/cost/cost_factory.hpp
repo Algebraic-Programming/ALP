@@ -1207,7 +1207,7 @@ private:
 
             template<typename... Args>
             auto eWiseLambda(Args&&... args) -> decltype(original::eWiseLambda(std::forward<Args>(args)...)) {
-                return original::eWiseLambda(std::forward<Args>(args)...);
+                return eWiseLambdaTracer(std::forward<Args>(args)...);
             }
 
             template< typename... Args >
@@ -1235,6 +1235,7 @@ private:
                 return clearTracer( std::forward< Args >( args )... );
             }
 
+            // Templated versions with descriptor
 			template< unsigned int descr, typename... Args >
 			auto eWiseApply( Args &&... args ) -> decltype( original::eWiseApply< descr >( std::forward< Args >( args )... ) ) {
 				return eWiseApplyTracer.template withDescriptor< descr >( std::forward< Args >( args )... );
@@ -1269,6 +1270,12 @@ private:
 			auto mxv( Args &&... args ) -> decltype( original::mxv< descr >( std::forward< Args >( args )... ) ) {
 				return mxvTracer.template withDescriptor< descr >( std::forward< Args >( args )... );
 			}
+
+            // TODO: Enable when eWiseLambda bug is fixed
+            // template< unsigned int descr, typename... Args >
+            // auto eWiseLambda( Args &&... args ) -> decltype( original::eWiseLambda< descr >( std::forward< Args >( args )... ) ) {
+            //     return eWiseLambdaTracer.template withDescriptor< descr >( std::forward< Args >( args )... );
+            // }
 
             template< unsigned int descr, typename... Args >
             auto eWiseAdd( Args &&... args ) -> decltype( original::eWiseAdd< descr >( std::forward< Args >( args )... ) ) {
