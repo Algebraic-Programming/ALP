@@ -60,22 +60,22 @@ namespace detail {
 namespace grb {
     namespace original {
         // Don't use "using namespace grb" as it creates ambiguity
-        // Instead, explicitly import only the original grb functions
-        using grb::eWiseApply;
-        using grb::foldl;
-        using grb::foldr;
-        using grb::dot;
-        using grb::set;
-        using grb::apply;
-        using grb::mxv;
-        using grb::eWiseAdd;
-        using grb::vxm;
-        using grb::eWiseLambda;
-        using grb::mxm;
-        using grb::zip;
-        using grb::outer;
-        using grb::select;
-        using grb::clear;
+        using ::grb::eWiseApply;
+        using ::grb::foldl;
+        using ::grb::foldr;
+        //using ::grb::dot;
+        using ::grb::set;
+        using ::grb::apply;
+        using ::grb::mxv;
+        using ::grb::eWiseAdd;
+        using ::grb::vxm;
+        using ::grb::eWiseLambda;
+        //typedef ::grb::eWiseLambda eWiseLambda_original;
+        using ::grb::mxm;
+        using ::grb::zip;
+        using ::grb::outer;
+        using ::grb::select;
+        using ::grb::clear;
     }
 }
 
@@ -439,9 +439,12 @@ struct CostPredictor {
         std::cout << "[WARNING]     static double predict(...) { ... }" << std::endl;
         std::cout << "[WARNING] };" << std::endl;
 
-        // throw and error
-        std::cerr << "[ERROR] Missing cost model for this function." << std::endl;
-        throw std::runtime_error("Missing cost model");
+        // error if _GRB_COST_MODEL_TEST_MODE is enabled
+        if (_GRB_COST_MODEL_TEST_MODE) {
+            std::cerr << "[ERROR] Missing cost model for this function." << std::endl;
+            // print function name
+            std::cerr << "[ERROR] Function name: " << funcName << std::endl;
+        }
         return 1.0; // Default cost
     }
 };
@@ -455,6 +458,8 @@ struct CostPredictor<void, void> {
         // static_assert(!std::is_same<void, void>::value, 
         //     "Non-implemented cost function detected");
         std::cerr << "[ERROR] Missing cost model for this function." << std::endl;
+        // print function name
+        std::cerr << "[ERROR] Function name: " << getCostPredictorName<void>() << std::endl;
         throw std::runtime_error("Missing cost model");
         // return 1.0;
     }
@@ -489,210 +494,210 @@ public:
 struct EWiseApplyFunc {
     template<typename... Args>
     auto operator()(Args&&... args) const
-        -> decltype(grb::original::eWiseApply(std::forward<Args>(args)...)) {
-        return grb::original::eWiseApply(std::forward<Args>(args)...);
+        -> decltype(::grb::eWiseApply(std::forward<Args>(args)...)) {
+        return ::grb::eWiseApply(std::forward<Args>(args)...);
     }
     
     template<unsigned int descr, typename... Args>
     auto withDescriptor(Args&&... args) const
-        -> decltype(grb::original::eWiseApply<descr>(std::forward<Args>(args)...)) {
-        return grb::original::eWiseApply<descr>(std::forward<Args>(args)...);
+        -> decltype(::grb::eWiseApply<descr>(std::forward<Args>(args)...)) {
+        return ::grb::eWiseApply<descr>(std::forward<Args>(args)...);
     }
 };
 
 struct FoldlFunc {
     template<typename... Args>
     auto operator()(Args&&... args) const
-        -> decltype(grb::original::foldl(std::forward<Args>(args)...)) {
-        return grb::original::foldl(std::forward<Args>(args)...);
+        -> decltype(::grb::original::foldl(std::forward<Args>(args)...)) {
+        return ::grb::original::foldl(std::forward<Args>(args)...);
     }
     
     template<unsigned int descr, typename... Args>
     auto withDescriptor(Args&&... args) const
-        -> decltype(grb::original::foldl<descr>(std::forward<Args>(args)...)) {
-        return grb::original::foldl<descr>(std::forward<Args>(args)...);
+        -> decltype(::grb::original::foldl<descr>(std::forward<Args>(args)...)) {
+        return ::grb::original::foldl<descr>(std::forward<Args>(args)...);
     }
 };
 
 struct FoldrFunc {
     template<typename... Args>
     auto operator()(Args&&... args) const
-        -> decltype(grb::original::foldr(std::forward<Args>(args)...)) {
-        return grb::original::foldr(std::forward<Args>(args)...);
+        -> decltype(::grb::original::foldr(std::forward<Args>(args)...)) {
+        return ::grb::original::foldr(std::forward<Args>(args)...);
     }
     
     template<unsigned int descr, typename... Args>
     auto withDescriptor(Args&&... args) const
-        -> decltype(grb::original::foldr<descr>(std::forward<Args>(args)...)) {
-        return grb::original::foldr<descr>(std::forward<Args>(args)...);
+        -> decltype(::grb::original::foldr<descr>(std::forward<Args>(args)...)) {
+        return ::grb::original::foldr<descr>(std::forward<Args>(args)...);
     }
 };
 
 struct DotFunc {
     template<typename... Args>
     auto operator()(Args&&... args) const
-        -> decltype(grb::original::dot(std::forward<Args>(args)...)) {
-        return grb::original::dot(std::forward<Args>(args)...);
+        -> decltype(::grb::dot(std::forward<Args>(args)...)) {
+        return ::grb::dot(std::forward<Args>(args)...);
     }
     
     template<unsigned int descr, typename... Args>
     auto withDescriptor(Args&&... args) const
-        -> decltype(grb::original::dot<descr>(std::forward<Args>(args)...)) {
-        return grb::original::dot<descr>(std::forward<Args>(args)...);
+        -> decltype(::grb::dot<descr>(std::forward<Args>(args)...)) {
+        return ::grb::dot<descr>(std::forward<Args>(args)...);
     }
 };
 
 struct SetFunc {
     template<typename... Args>
     auto operator()(Args&&... args) const
-        -> decltype(grb::original::set(std::forward<Args>(args)...)) {
-        return grb::original::set(std::forward<Args>(args)...);
+        -> decltype(::grb::original::set(std::forward<Args>(args)...)) {
+        return ::grb::original::set(std::forward<Args>(args)...);
     }
     
     template<unsigned int descr, typename... Args>
     auto withDescriptor(Args&&... args) const
-        -> decltype(grb::original::set<descr>(std::forward<Args>(args)...)) {
-        return grb::original::set<descr>(std::forward<Args>(args)...);
+        -> decltype(::grb::original::set<descr>(std::forward<Args>(args)...)) {
+        return ::grb::original::set<descr>(std::forward<Args>(args)...);
     }
 };
 
 struct ApplyFunc {
     template<typename... Args>
     auto operator()(Args&&... args) const
-        -> decltype(grb::original::apply(std::forward<Args>(args)...)) {
-        return grb::original::apply(std::forward<Args>(args)...);
+        -> decltype(::grb::original::apply(std::forward<Args>(args)...)) {
+        return ::grb::original::apply(std::forward<Args>(args)...);
     }
     
     template<unsigned int descr, typename... Args>
     auto withDescriptor(Args&&... args) const
-        -> decltype(grb::original::apply<descr>(std::forward<Args>(args)...)) {
-        return grb::original::apply<descr>(std::forward<Args>(args)...);
+        -> decltype(::grb::original::apply<descr>(std::forward<Args>(args)...)) {
+        return ::grb::original::apply<descr>(std::forward<Args>(args)...);
     }
 };
 
 struct MxvFunc {
     template<typename... Args>
     auto operator()(Args&&... args) const
-        -> decltype(grb::original::mxv(std::forward<Args>(args)...)) {
-        return grb::original::mxv(std::forward<Args>(args)...);
+        -> decltype(::grb::original::mxv(std::forward<Args>(args)...)) {
+        return ::grb::original::mxv(std::forward<Args>(args)...);
     }
     
     template<unsigned int descr, typename... Args>
     auto withDescriptor(Args&&... args) const
-        -> decltype(grb::original::mxv<descr>(std::forward<Args>(args)...)) {
-        return grb::original::mxv<descr>(std::forward<Args>(args)...);
+        -> decltype(::grb::original::mxv<descr>(std::forward<Args>(args)...)) {
+        return ::grb::original::mxv<descr>(std::forward<Args>(args)...);
     }
 };
 
 struct EWiseAddFunc {
     template<typename... Args>
     auto operator()(Args&&... args) const
-        -> decltype(grb::original::eWiseAdd(std::forward<Args>(args)...)) {
-        return grb::original::eWiseAdd(std::forward<Args>(args)...);
+        -> decltype(::grb::original::eWiseAdd(std::forward<Args>(args)...)) {
+        return ::grb::original::eWiseAdd(std::forward<Args>(args)...);
     }
     
     template<unsigned int descr, typename... Args>
     auto withDescriptor(Args&&... args) const
-        -> decltype(grb::original::eWiseAdd<descr>(std::forward<Args>(args)...)) {
-        return grb::original::eWiseAdd<descr>(std::forward<Args>(args)...);
+        -> decltype(::grb::original::eWiseAdd<descr>(std::forward<Args>(args)...)) {
+        return ::grb::original::eWiseAdd<descr>(std::forward<Args>(args)...);
     }
 };
 
 struct VxmFunc {
     template<typename... Args>
     auto operator()(Args&&... args) const
-        -> decltype(grb::original::vxm(std::forward<Args>(args)...)) {
-        return grb::original::vxm(std::forward<Args>(args)...);
+        -> grb::RC {
+        return ::grb::original::vxm(std::forward<Args>(args)...);
     }
     
     template<unsigned int descr, typename... Args>
     auto withDescriptor(Args&&... args) const
-        -> decltype(grb::original::vxm<descr>(std::forward<Args>(args)...)) {
-        return grb::original::vxm<descr>(std::forward<Args>(args)...);
+        -> decltype(::grb::original::vxm<descr>(std::forward<Args>(args)...)) {
+        return ::grb::original::vxm<descr>(std::forward<Args>(args)...);
     }
 };
 
 struct EWiseLambdaFunc {
     template<typename... Args>
     auto operator()(Args&&... args) const
-        -> decltype(grb::original::eWiseLambda(std::forward<Args>(args)...)) {
-        return grb::original::eWiseLambda(std::forward<Args>(args)...);
+        -> decltype(::grb::original::eWiseLambda(std::forward<Args>(args)...)) {
+        return ::grb::original::eWiseLambda(std::forward<Args>(args)...);
     }
     
     template<unsigned int descr, typename... Args>
     auto withDescriptor(Args&&... args) const
-        -> decltype(grb::original::eWiseLambda<descr>(std::forward<Args>(args)...)) {
-        return grb::original::eWiseLambda<descr>(std::forward<Args>(args)...);
+        -> decltype(::grb::original::eWiseLambda<descr>(std::forward<Args>(args)...)) {
+        return ::grb::original::eWiseLambda<descr>(std::forward<Args>(args)...);
     }
 };
 
 struct MxmFunc {
     template<typename... Args>
     auto operator()(Args&&... args) const
-        -> decltype(grb::original::mxm(std::forward<Args>(args)...)) {
-        return grb::original::mxm(std::forward<Args>(args)...);
+        -> decltype(::grb::original::mxm(std::forward<Args>(args)...)) {
+        return ::grb::original::mxm(std::forward<Args>(args)...);
     }
     
     template<unsigned int descr, typename... Args>
     auto withDescriptor(Args&&... args) const
-        -> decltype(grb::original::mxm<descr>(std::forward<Args>(args)...)) {
-        return grb::original::mxm<descr>(std::forward<Args>(args)...);
+        -> decltype(::grb::original::mxm<descr>(std::forward<Args>(args)...)) {
+        return ::grb::original::mxm<descr>(std::forward<Args>(args)...);
     }
 };
 
 struct ZipFunc {
     template<typename... Args>
     auto operator()(Args&&... args) const
-        -> decltype(grb::original::zip(std::forward<Args>(args)...)) {
-        return grb::original::zip(std::forward<Args>(args)...);
+        -> decltype(::grb::original::zip(std::forward<Args>(args)...)) {
+        return ::grb::original::zip(std::forward<Args>(args)...);
     }
     
     template<unsigned int descr, typename... Args>
     auto withDescriptor(Args&&... args) const
-        -> decltype(grb::original::zip<descr>(std::forward<Args>(args)...)) {
-        return grb::original::zip<descr>(std::forward<Args>(args)...);
+        -> decltype(::grb::original::zip<descr>(std::forward<Args>(args)...)) {
+        return ::grb::original::zip<descr>(std::forward<Args>(args)...);
     }
 };
 
 struct OuterFunc {
     template<typename... Args>
     auto operator()(Args&&... args) const
-        -> decltype(grb::original::outer(std::forward<Args>(args)...)) {
-        return grb::original::outer(std::forward<Args>(args)...);
+        -> decltype(::grb::original::outer(std::forward<Args>(args)...)) {
+        return ::grb::original::outer(std::forward<Args>(args)...);
     }
     
     template<unsigned int descr, typename... Args>
     auto withDescriptor(Args&&... args) const
-        -> decltype(grb::original::outer<descr>(std::forward<Args>(args)...)) {
-        return grb::original::outer<descr>(std::forward<Args>(args)...);
+        -> decltype(::grb::original::outer<descr>(std::forward<Args>(args)...)) {
+        return ::grb::original::outer<descr>(std::forward<Args>(args)...);
     }
 };
 
 struct SelectFunc {
     template<typename... Args>
     auto operator()(Args&&... args) const
-        -> decltype(grb::original::select(std::forward<Args>(args)...)) {
-        return grb::original::select(std::forward<Args>(args)...);
+        -> decltype(::grb::original::select(std::forward<Args>(args)...)) {
+        return ::grb::original::select(std::forward<Args>(args)...);
     }
     
     template<unsigned int descr, typename... Args>
     auto withDescriptor(Args&&... args) const
-        -> decltype(grb::original::select<descr>(std::forward<Args>(args)...)) {
-        return grb::original::select<descr>(std::forward<Args>(args)...);
+        -> decltype(::grb::original::select<descr>(std::forward<Args>(args)...)) {
+        return ::grb::original::select<descr>(std::forward<Args>(args)...);
     }
 };
 
 struct ClearFunc {
     template<typename... Args>
     auto operator()(Args&&... args) const
-        -> decltype(grb::original::clear(std::forward<Args>(args)...)) {
-        return grb::original::clear(std::forward<Args>(args)...);
+        -> decltype(::grb::original::clear(std::forward<Args>(args)...)) {
+        return ::grb::original::clear(std::forward<Args>(args)...);
     }
     
     template<unsigned int descr, typename... Args>
     auto withDescriptor(Args&&... args) const
-        -> decltype(grb::original::clear<descr>(std::forward<Args>(args)...)) {
-        return grb::original::clear<descr>(std::forward<Args>(args)...);
+        -> decltype(::grb::original::clear<descr>(std::forward<Args>(args)...)) {
+        return ::grb::original::clear<descr>(std::forward<Args>(args)...);
     }
 };
 
@@ -1013,63 +1018,63 @@ public:
             "Please add appropriate entries in cost_factory.hpp for this function.");
     }
 
-	// Version for non-templated calls
-	template< typename... Args >
-	auto operator()( Args &&... args ) const -> decltype( std::declval< Func >()( std::forward< Args >( args )... ) ) {
-		std::cout << "\n[TRACING] Entering function: " << name_ << " with " << sizeof...( args ) << " arguments" << std::endl;
+	// // Version for non-templated calls
+	// template< typename... Args >
+	// auto operator()( Args &&... args ) const -> decltype( std::declval< Func >()( std::forward< Args >( args )... ) ) {
+	// 	std::cout << "\n[TRACING] Entering function: " << name_ << " with " << sizeof...( args ) << " arguments" << std::endl;
 
-		printArgTypes( std::forward< Args >( args )... );
+	// 	printArgTypes( std::forward< Args >( args )... );
 
-		// Predict the cost
-		double predicted_cost = 0.0;
-		bool has_specialized = false;
+	// 	// Predict the cost
+	// 	double predicted_cost = 0.0;
+	// 	bool has_specialized = false;
 		
-		try {
-			predicted_cost = CostPredictor< Func, typename std::decay< Args >::type... >::predict( args... );
-			has_specialized = has_specialized_cost_predictor< Func, typename std::decay< Args >::type... >::value;
+	// 	try {
+	// 		predicted_cost = CostPredictor< Func, typename std::decay< Args >::type... >::predict( args... );
+	// 		has_specialized = has_specialized_cost_predictor< Func, typename std::decay< Args >::type... >::value;
 			
-			std::cout << "[TRACING] Predicted cost: " << predicted_cost << " units (cost model: " << getCostPredictorName< Func >();
+	// 		std::cout << "[TRACING] Predicted cost: " << predicted_cost << " units (cost model: " << getCostPredictorName< Func >();
 
-			if( !has_specialized ) {
-				std::cout << " - DEFAULT MODEL";
-			}
+	// 		if( !has_specialized ) {
+	// 			std::cout << " - DEFAULT MODEL";
+	// 		}
 
-			std::cout << ")" << std::endl;
-		} catch(const std::exception& e) {
-			std::cout << "[ERROR] Cost prediction failed: " << e.what() << std::endl;
+	// 		std::cout << ")" << std::endl;
+	// 	} catch(const std::exception& e) {
+	// 		std::cout << "[ERROR] Cost prediction failed: " << e.what() << std::endl;
 			
-			// In test mode, return FAILED rather than propagating the exception
-			#if _GRB_COST_MODEL_TEST_MODE
-				return grb::FAILED;
-			#else
-				throw; // Re-throw in normal mode
-			#endif
-		} catch(...) {
-			std::cout << "[ERROR] Cost prediction failed with unknown exception" << std::endl;
+	// 		// In test mode, return FAILED rather than propagating the exception
+	// 		#if _GRB_COST_MODEL_TEST_MODE
+	// 			return grb::FAILED;
+	// 		#else
+	// 			throw; // Re-throw in normal mode
+	// 		#endif
+	// 	} catch(...) {
+	// 		std::cout << "[ERROR] Cost prediction failed with unknown exception" << std::endl;
 			
-			// In test mode, return FAILED rather than propagating the exception
-			#if _GRB_COST_MODEL_TEST_MODE
-				return grb::FAILED;
-			#else
-				throw; // Re-throw in normal mode
-			#endif
-		}
+	// 		// In test mode, return FAILED rather than propagating the exception
+	// 		#if _GRB_COST_MODEL_TEST_MODE
+	// 			return grb::FAILED;
+	// 		#else
+	// 			throw; // Re-throw in normal mode
+	// 		#endif
+	// 	}
 
-		auto start = std::chrono::high_resolution_clock::now();
-		Func func;
-		auto result = func( std::forward< Args >( args )... );
-        #pragma omp barrier
-		auto end = std::chrono::high_resolution_clock::now();
+	// 	auto start = std::chrono::high_resolution_clock::now();
+	// 	Func func;
+	// 	auto result = func( std::forward< Args >( args )... );
+    //  #pragma omp barrier
+	// 	auto end = std::chrono::high_resolution_clock::now();
 
-		auto duration = std::chrono::duration_cast< std::chrono::microseconds >( end - start );
-		std::cout << "[TRACING] Exiting function: " << name_ << " (took " << duration.count() << "μs)" << std::endl;
+	// 	auto duration = std::chrono::duration_cast< std::chrono::microseconds >( end - start );
+	// 	std::cout << "[TRACING] Exiting function: " << name_ << " (took " << duration.count() << "μs)" << std::endl;
 
-		// Calculate and report cost/time ratio
-		double cost_time_ratio = predicted_cost / static_cast< double >( duration.count() );
-		std::cout << "[TRACING] Cost/time ratio: " << cost_time_ratio << " cost units per microsecond" << std::endl;
+	// 	// Calculate and report cost/time ratio
+	// 	double cost_time_ratio = predicted_cost / static_cast< double >( duration.count() );
+	// 	std::cout << "[TRACING] Cost/time ratio: " << cost_time_ratio << " cost units per microsecond" << std::endl;
 
-		return result;
-	}
+	// 	return result;
+	// }
 
 	// Version for templated calls with descriptor
 	template< unsigned int descr, typename... Args >
@@ -1161,156 +1166,155 @@ private:
 
 			// Non-templated versions
 			template< typename... Args >
-			auto eWiseApply( Args &&... args ) -> decltype( original::eWiseApply( std::forward< Args >( args )... ) ) {
+			grb::RC eWiseApply( Args &&... args ) {
 				return eWiseApplyTracer( std::forward< Args >( args )... );
 			}
 
 			template< typename... Args >
-			auto foldl( Args &&... args ) -> decltype( original::foldl( std::forward< Args >( args )... ) ) {
+			grb::RC foldl( Args &&... args ) {
 				return foldlTracer( std::forward< Args >( args )... );
 			}
 
 			template< typename... Args >
-			auto foldr( Args &&... args ) -> decltype( original::foldr( std::forward< Args >( args )... ) ) {
+			grb::RC foldr( Args &&... args ) {
 				return foldrTracer( std::forward< Args >( args )... );
 			}
 
 			template< typename... Args >
-			auto dot( Args &&... args ) -> decltype( original::dot( std::forward< Args >( args )... ) ) {
+			grb::RC dot( Args &&... args ) {
 				return dotTracer( std::forward< Args >( args )... );
 			}
 
 			template< typename... Args >
-			auto set( Args &&... args ) -> decltype( original::set( std::forward< Args >( args )... ) ) {
+			grb::RC set( Args &&... args ) {
 				return setTracer( std::forward< Args >( args )... );
 			}
 
 			template< typename... Args >
-			auto apply( Args &&... args ) -> decltype( original::apply( std::forward< Args >( args )... ) ) {
+			grb::RC apply( Args &&... args ) {
 				return applyTracer( std::forward< Args >( args )... );
 			}
 
 			template< typename... Args >
-			auto mxv( Args &&... args ) -> decltype( original::mxv( std::forward< Args >( args )... ) ) {
+			grb::RC mxv( Args &&... args ) {
 				return mxvTracer( std::forward< Args >( args )... );
 			}
 
             template< typename... Args >
-            auto eWiseAdd( Args &&... args ) -> decltype( original::eWiseAdd( std::forward< Args >( args )... ) ) {
+            grb::RC eWiseAdd( Args &&... args ) {
                 return eWiseAddTracer( std::forward< Args >( args )... );
             }
 
             template< typename... Args >
-            auto vxm( Args &&... args ) -> decltype( original::vxm( std::forward< Args >( args )... ) ) {
+            grb::RC vxm( Args &&... args ) {
                 return vxmTracer( std::forward< Args >( args )... );
             }
 
-            template<typename... Args>
-            auto eWiseLambda(Args&&... args) -> decltype(original::eWiseLambda(std::forward<Args>(args)...)) {
-                return eWiseLambdaTracer(std::forward<Args>(args)...);
-            }
+            // template<typename... Args>
+            // grb::RC eWiseLambda(Args&&... args) {
+            //     return eWiseLambdaTracer( std::forward<Args>(args)... );
+            // }
 
             template< typename... Args >
-            auto mxm( Args &&... args ) -> decltype( original::mxm( std::forward< Args >( args )... ) ) {
+            grb::RC mxm( Args &&... args ) {
                 return mxmTracer( std::forward< Args >( args )... );
             }
 
             template< typename... Args >
-            auto zip( Args &&... args ) -> decltype( original::zip( std::forward< Args >( args )... ) ) {
+            grb::RC zip( Args &&... args ) {
                 return zipTracer( std::forward< Args >( args )... );
             }
 
             template< typename... Args >
-            auto outer( Args &&... args ) -> decltype( original::outer( std::forward< Args >( args )... ) ) {
+            grb::RC outer( Args &&... args ) {
                 return outerTracer( std::forward< Args >( args )... );
             }
 
             template< typename... Args >
-            auto select( Args &&... args ) -> decltype( original::select( std::forward< Args >( args )... ) ) {
+            grb::RC select( Args &&... args ) {
                 return selectTracer( std::forward< Args >( args )... );
             }
 
             template< typename... Args >
-            auto clear( Args &&... args ) -> decltype( original::clear( std::forward< Args >( args )... ) ) {
+            grb::RC clear( Args &&... args ) {
                 return clearTracer( std::forward< Args >( args )... );
             }
 
             // Templated versions with descriptor
-			template< unsigned int descr, typename... Args >
-			auto eWiseApply( Args &&... args ) -> decltype( original::eWiseApply< descr >( std::forward< Args >( args )... ) ) {
-				return eWiseApplyTracer.template withDescriptor< descr >( std::forward< Args >( args )... );
-			}
+            template< unsigned int descr, typename... Args >
+            grb::RC eWiseApply( Args &&... args ) {
+                return eWiseApplyTracer.template withDescriptor< descr >( std::forward< Args >( args )... );
+            }
 
-			template< unsigned int descr, typename... Args >
-			auto foldl( Args &&... args ) -> decltype( original::foldl< descr >( std::forward< Args >( args )... ) ) {
-				return foldlTracer.template withDescriptor< descr >( std::forward< Args >( args )... );
-			}
+            template< unsigned int descr, typename... Args >
+            grb::RC foldl( Args &&... args ) {
+                return foldlTracer.template withDescriptor< descr >( std::forward< Args >( args )... );
+            }
 
-			template< unsigned int descr, typename... Args >
-			auto foldr( Args &&... args ) -> decltype( original::foldr< descr >( std::forward< Args >( args )... ) ) {
-				return foldrTracer.template withDescriptor< descr >( std::forward< Args >( args )... );
-			}
+            template< unsigned int descr, typename... Args >
+            grb::RC foldr( Args &&... args ) {
+                return foldrTracer.template withDescriptor< descr >( std::forward< Args >( args )... );
+            }
 
-			template< unsigned int descr, typename... Args >
-			auto dot( Args &&... args ) -> decltype( original::dot< descr >( std::forward< Args >( args )... ) ) {
-				return dotTracer.template withDescriptor< descr >( std::forward< Args >( args )... );
-			}
+            template< unsigned int descr, typename... Args >
+            grb::RC dot( Args &&... args ) {
+                return dotTracer.template withDescriptor< descr >( std::forward< Args >( args )... );
+            }
 
-			template< unsigned int descr, typename... Args >
-			auto set( Args &&... args ) -> decltype( original::set< descr >( std::forward< Args >( args )... ) ) {
-				return setTracer.template withDescriptor< descr >( std::forward< Args >( args )... );
-			}
+            template< unsigned int descr, typename... Args >
+            grb::RC set( Args &&... args ) {
+                return setTracer.template withDescriptor< descr >( std::forward< Args >( args )... );
+            }
 
-			template< unsigned int descr, typename... Args >
-			auto apply( Args &&... args ) -> decltype( original::apply< descr >( std::forward< Args >( args )... ) ) {
-				return applyTracer.template withDescriptor< descr >( std::forward< Args >( args )... );
-			}
+            template< unsigned int descr, typename... Args >
+            grb::RC apply( Args &&... args ) {
+                return applyTracer.template withDescriptor< descr >( std::forward< Args >( args )... );
+            }
 
-			template< unsigned int descr, typename... Args >
-			auto mxv( Args &&... args ) -> decltype( original::mxv< descr >( std::forward< Args >( args )... ) ) {
-				return mxvTracer.template withDescriptor< descr >( std::forward< Args >( args )... );
-			}
+            template< unsigned int descr, typename... Args >
+            grb::RC mxv( Args &&... args ) {
+                return mxvTracer.template withDescriptor< descr >( std::forward< Args >( args )... );
+            }
 
-            // TODO: Enable when eWiseLambda bug is fixed
             // template< unsigned int descr, typename... Args >
-            // auto eWiseLambda( Args &&... args ) -> decltype( original::eWiseLambda< descr >( std::forward< Args >( args )... ) ) {
+            // grb::RC eWiseLambda( Args &&... args ) {
             //     return eWiseLambdaTracer.template withDescriptor< descr >( std::forward< Args >( args )... );
             // }
 
             template< unsigned int descr, typename... Args >
-            auto eWiseAdd( Args &&... args ) -> decltype( original::eWiseAdd< descr >( std::forward< Args >( args )... ) ) {
+            grb::RC eWiseAdd( Args &&... args ) {
                 return eWiseAddTracer.template withDescriptor< descr >( std::forward< Args >( args )... );
             }
 
             template< unsigned int descr, typename... Args >
-            auto vxm( Args &&... args ) -> decltype( original::vxm< descr >( std::forward< Args >( args )... ) ) {
+            grb::RC vxm( Args &&... args ) {
                 return vxmTracer.template withDescriptor< descr >( std::forward< Args >( args )... );
             }
 
             template< unsigned int descr, typename... Args >
-            auto mxm( Args &&... args ) -> decltype( original::mxm< descr >( std::forward< Args >( args )... ) ) {
+            grb::RC mxm( Args &&... args ) {
                 return mxmTracer.template withDescriptor< descr >( std::forward< Args >( args )... );
             }
 
             template< unsigned int descr, typename... Args >
-            auto zip( Args &&... args ) -> decltype( original::zip< descr >( std::forward< Args >( args )... ) ) {
+            grb::RC zip( Args &&... args ) {
                 return zipTracer.template withDescriptor< descr >( std::forward< Args >( args )... );
             }
 
             template< unsigned int descr, typename... Args >
-            auto outer( Args &&... args ) -> decltype( original::outer< descr >( std::forward< Args >( args )... ) ) {
+            grb::RC outer( Args &&... args ) {
                 return outerTracer.template withDescriptor< descr >( std::forward< Args >( args )... );
             }
 
             template< unsigned int descr, typename... Args >
-            auto select( Args &&... args ) -> decltype( original::select< descr >( std::forward< Args >( args )... ) ) {
+            grb::RC select( Args &&... args ) {
                 return selectTracer.template withDescriptor< descr >( std::forward< Args >( args )... );
             }
 
             template< unsigned int descr, typename... Args >
-            auto clear( Args &&... args ) -> decltype( original::clear< descr >( std::forward< Args >( args )... ) ) {
+            grb::RC clear( Args &&... args ) {
                 return clearTracer.template withDescriptor< descr >( std::forward< Args >( args )... );
             }
-		}
+        } // namespace grb
 
 #endif // _GRB_ENABLE_TRACING
