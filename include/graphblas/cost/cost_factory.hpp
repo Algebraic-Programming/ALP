@@ -239,169 +239,153 @@ std::string getMatrixInfoString(const T& arg) {
 
 
 // #################### operator type traits ###############################
-// Primary template for operator name traits - delegates to existing traits when possible
-template<typename T>
-struct OperatorNameTrait {
-    // For operators that have a defined grb::operator_name trait
-    template<typename U = T>
-    static auto name_impl(int) -> 
-        decltype(std::string(grb::operator_name<U>::name)) {
-        return std::string(grb::operator_name<U>::name);
-    }
-    
-    // Fallback for types without an grb::operator_name trait
-    template<typename U = T>
-    static std::string name_impl(...) {
-        return typeid(U).name();
-    }
-    
-    static std::string name() {
-        return name_impl<T>(0);
-    }
-};
+// ===================== Operator/Semiring category tags ======================
+struct grb_operator_true_tag {};
+struct grb_operator_false_tag {};
+template<class T, bool B = grb::is_operator<T>::value>
+struct grb_operator_category_impl { typedef grb_operator_false_tag type; };
+template<class T>
+struct grb_operator_category_impl<T, true> { typedef grb_operator_true_tag type; };
+template<class T>
+using grb_operator_category = typename grb_operator_category_impl<T>::type;
 
-// Template to check if type is a GraphBLAS operator
+struct grb_semiring_true_tag {};
+struct grb_semiring_false_tag {};
+template<class T, bool B = grb::is_semiring<T>::value>
+struct grb_semiring_category_impl { typedef grb_semiring_false_tag type; };
+template<class T>
+struct grb_semiring_category_impl<T, true> { typedef grb_semiring_true_tag type; };
+template<class T>
+using grb_semiring_category = typename grb_semiring_category_impl<T>::type;
+
+// ===================== Operator name availability (no decltype) =============
+struct operator_name_present_tag {};
+struct operator_name_absent_tag {};
+
+// Probe that only forms if grb::operator_name<U>::name exists (and is a const char*)
+template<class U, const char* P = ::grb::operator_name<U>::name>
+struct operator_name_probe { typedef operator_name_present_tag tag; static const char* get() { return P; } };
+
+// Select present/absent via SFINAE
+template<class U, class = void>
+struct operator_name_category { typedef operator_name_absent_tag type; };
+template<class U>
+struct operator_name_category<U, typename operator_name_probe<U>::tag> { typedef operator_name_present_tag type; };
+template<class U>
+using operator_name_category_t = typename operator_name_category<U>::type;
+
+// Helper to fetch name (tag-dispatch)
+template<class U>
+inline const char* operator_name_of_impl(operator_name_present_tag) { return operator_name_probe<U>::get(); }
+template<class>
+inline const char* operator_name_of_impl(operator_name_absent_tag) { return "operators::..."; }
+
+template<class U>
+inline const char* operator_name_of() { return operator_name_of_impl<U>(operator_name_category_t<U>()); }
+
+// ===================== Type name facility (no string parsing) ===============
+template<class T> struct TypeName { static const char* get() { return "T"; } };
+
+// Fundamental specialisations (extend as needed)
+template<> struct TypeName<double> { static const char* get() { return "double"; } };
+template<> struct TypeName<float>  { static const char* get() { return "float"; } };
+template<> struct TypeName<int>    { static const char* get() { return "int"; } };
+template<> struct TypeName<unsigned int> { static const char* get() { return "unsigned int"; } };
+template<> struct TypeName<long>   { static const char* get() { return "long"; } };
+// template<> struct TypeName<unsigned long> { static const char* get() { return "unsigned long"; } };
+template<> struct TypeName<size_t> { static const char* get() { return "size_t"; } };
+template<> struct TypeName<char>   { static const char* get() { return "char"; } };
+template<> struct TypeName<bool>   { static const char* get() { return "bool"; } };
+
+// GraphBLAS containers
+template<class D, ::grb::Backend B, class C>
+struct TypeName< ::grb::Vector<D, B, C> > { static const char* get() { return "Vector<...>"; } };
+
+template<class D, ::grb::Backend B, class RI, class CI, class NZI>
+struct TypeName< ::grb::Matrix<D, B, RI, CI, NZI> > { static const char* get() { return "Matrix<...>"; } };
+
+// Operators and semirings via categories
+template<class T>
+inline const char* type_name_select(grb_operator_true_tag) { return operator_name_of<T>(); }
+template<class>
+inline const char* type_name_select(grb_operator_false_tag) { return 0; }
+
+template<class T>
+inline const char* type_name_select_semiring(grb_semiring_true_tag) { return "Semiring<...>"; }
+template<class>
+inline const char* type_name_select_semiring(grb_semiring_false_tag) { return 0; }
+
+// Final name: prefer Vector/Matrix, then Operator, then Semiring, then fundamentals
+template<class T>
+inline const char* type_name_cstr() {
+    // Prefer container names by direct specialisation
+    return TypeName<T>::get();
+}
+
+// Optional std::string wrapper if needed by call sites
+template<class T>
+inline std::string getTypeName() { return std::string(type_name_cstr<T>()); }
+
+// ===================== is_graphblas_operator (no decltype/declval) ===========
 template<typename T>
 struct is_graphblas_operator {
-private:
-    template<typename U>
-    static auto test(int) -> decltype(
-        std::declval<U>().template getAdditiveOperator<void>(), 
-        std::true_type{}
-    );
-    
-    template<typename>
-    static std::false_type test(...);
-    
-public:
-    static constexpr bool value = decltype(test<T>(0))::value || grb::is_operator<T>::value;
+    static const bool value = grb::is_operator<T>::value;
 };
 
-// Helper to get type names
-template<typename T>
-std::string getTypeName() {
-    std::string type_name = typeid(T).name();
-    
-    // Simple demangling for common types
-    if (std::is_same<T, double>::value) return "double";
-    if (std::is_same<T, float>::value) return "float";
-    if (std::is_same<T, int>::value) return "int";
-    if (std::is_same<T, unsigned int>::value) return "unsigned int";
-    if (std::is_same<T, long>::value) return "long";
-    if (std::is_same<T, unsigned long>::value) return "unsigned long";
-    if (std::is_same<T, size_t>::value) return "size_t";
-    if (std::is_same<T, char>::value) return "char";
-    if (std::is_same<T, bool>::value) return "bool";
-    
-    // GraphBLAS Vector type detection - explicit common cases
-    if (std::is_same<T, grb::Vector<double>>::value) return "Vector<double>";
-    if (std::is_same<T, grb::Vector<float>>::value) return "Vector<float>";
-    if (std::is_same<T, grb::Vector<int>>::value) return "Vector<int>";
-    if (std::is_same<T, grb::Vector<unsigned int>>::value) return "Vector<unsigned int>";
-    if (std::is_same<T, grb::Vector<long>>::value) return "Vector<long>";
-    if (std::is_same<T, grb::Vector<unsigned long>>::value) return "Vector<unsigned long>";
-    if (std::is_same<T, grb::Vector<bool>>::value) return "Vector<bool>";
-
-    // GraphBLAS Matrix type detection - expanded for more types
-    if (std::is_same<T, grb::Matrix<double>>::value) return "Matrix<double>";
-    if (std::is_same<T, grb::Matrix<float>>::value) return "Matrix<float>";
-    if (std::is_same<T, grb::Matrix<int>>::value) return "Matrix<int>";
-    if (std::is_same<T, grb::Matrix<unsigned int>>::value) return "Matrix<unsigned int>";
-    if (std::is_same<T, grb::Matrix<long>>::value) return "Matrix<long>";
-    if (std::is_same<T, grb::Matrix<unsigned long>>::value) return "Matrix<unsigned long>";
-    if (std::is_same<T, grb::Matrix<char>>::value) return "Matrix<char>";
-    if (std::is_same<T, grb::Matrix<bool>>::value) return "Matrix<bool>";
-    
-    // Use operator traits for all operators
-    if (grb::is_operator<T>::value) {
-        return OperatorNameTrait<T>::name() + "<...>";
-    }
-    
-    // Check for semiring
-    if (grb::is_semiring<T>::value) {
-        return "Semiring<...>";
-    }
-    
-    // Better fallback mechanism - extract type name from mangled name
-    if (type_name.find("Vector") != std::string::npos) return "Vector<...>";
-    if (type_name.find("Matrix") != std::string::npos) return "Matrix<...>";
-    
-    // Improved operator detection in mangled names
-    if (type_name.find("operators") != std::string::npos) {
-        // Try to extract the operator name
-        const std::vector<std::pair<std::string, std::string>> op_names = {
-            {"add", "operators::add<...>"},
-            {"mul", "operators::mul<...>"},
-            {"subtract", "operators::subtract<...>"},
-            {"divide", "operators::divide<...>"},
-            {"min", "operators::min<...>"},
-            {"max", "operators::max<...>"},
-            {"identity", "operators::identity"},
-            {"logical_or", "operators::logical_or"},
-            {"logical_and", "operators::logical_and"},
-            {"any_or", "operators::any_or"},
-            {"equal", "operators::equal<...>"},
-            {"not_equal", "operators::not_equal<...>"},
-            {"less_than", "operators::less_than<...>"},
-            {"greater_than", "operators::greater_than<...>"},
-            {"leq", "operators::leq<...>"},
-            {"geq", "operators::geq<...>"},
-            {"abs_diff", "operators::abs_diff<...>"},
-            {"square_diff", "operators::square_diff<...>"},
-            {"relu", "operators::relu<...>"},
-            {"argmin", "operators::argmin<...>"},
-            {"argmax", "operators::argmax<...>"},
-            {"left_assign", "operators::left_assign<...>"},
-            {"right_assign", "operators::right_assign<...>"},
-            {"left_assign_if", "operators::left_assign_if<...>"},
-            {"right_assign_if", "operators::right_assign_if<...>"}
-        };
-        
-        for (const auto& op : op_names) {
-            if (type_name.find(op.first) != std::string::npos) {
-                return op.second;
-            }
-        }
-        
-        // Generic fallback for operators
-        return "operators::...";
-    }
-    
-    return type_name;
+// ===================== Argument printing (tag-dispatch, no parsing) =========
+template<class T>
+inline void printArgInfo_vector(const T& arg, is_grb_vector_true_tag) {
+    std::cout << TypeName<typename std::remove_cv<typename std::remove_reference<T>::type>::type>::get();
+    std::cout << getVectorInfoString<typename std::remove_reference<T>::type>(arg);
+}
+template<class T>
+inline void printArgInfo_vector(const T& arg, is_grb_vector_false_tag) {
+    (void)arg;
+    // do nothing here; matrix or plain will handle
 }
 
-// Forward declaration for printArgTypes
-template<typename... Args>
-void printArgTypes(Args&&... args);
+template<class T>
+inline void printArgInfo_matrix(const T& arg, is_grb_matrix_true_tag) {
+    std::cout << TypeName<typename std::remove_cv<typename std::remove_reference<T>::type>::type>::get();
+    std::cout << getMatrixInfoString<typename std::remove_reference<T>::type>(arg);
+}
+template<class T>
+inline void printArgInfo_matrix(const T& arg, is_grb_matrix_false_tag) {
+    (void)arg;
+    // do nothing here; vector or plain will handle
+}
+
+template<class T>
+inline void printArgInfo_plain(const T&) {
+    typedef typename std::remove_cv<typename std::remove_reference<T>::type>::type base_t;
+    std::cout << TypeName<base_t>::get() << " ";
+}
+
+template<typename T>
+inline void printOneArg(const T& arg) {
+    typedef typename std::remove_cv<typename std::remove_reference<T>::type>::type base_t;
+
+    // Try matrix
+    if (std::is_same<is_grb_matrix_category<base_t>, is_grb_matrix_true_tag>::value) {
+        printArgInfo_matrix(arg, is_grb_matrix_true_tag());
+        return;
+    }
+    // Try vector
+    if (std::is_same<is_grb_vector_category<base_t>, is_grb_vector_true_tag>::value) {
+        printArgInfo_vector(arg, is_grb_vector_true_tag());
+        return;
+    }
+    // Plain
+    printArgInfo_plain(arg);
+}
 
 // Base case
-void printArgTypesHelper() {
-    // End of recursion
-}
+inline void printArgTypesHelper() {}
 
 // Recursive case
 template<typename T, typename... Args>
 void printArgTypesHelper(T&& arg, Args&&... args) {
-    // Get the type name
-    std::string type_name = getTypeName<typename std::decay<T>::type>();
-    
-    // Print the type name
-    std::cout << type_name;
-    
-    // If it's a Matrix type, print matrix dimensions and nnz
-    if (type_name.find("Matrix<") != std::string::npos) {
-        std::cout << getMatrixInfoString<typename std::remove_reference<T>::type>(arg);
-    }
-    // Otherwise if it's a Vector type, print its size
-    else if (type_name.find("Vector<") != std::string::npos) {
-        std::cout << getVectorInfoString<typename std::remove_reference<T>::type>(arg);
-    }
-    // For other types, just print a space
-    else {
-        std::cout << " ";
-    }
-    
-    // Continue with remaining arguments
+    printOneArg(arg);
     printArgTypesHelper(std::forward<Args>(args)...);
 }
 
