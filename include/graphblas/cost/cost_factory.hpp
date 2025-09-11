@@ -119,32 +119,35 @@ template<> struct has_tracer<OuterFunc> { static constexpr bool value = true; };
 template<> struct has_tracer<SelectFunc> { static constexpr bool value = true; };
 template<> struct has_tracer<ClearFunc> { static constexpr bool value = true; };
 
-// Function to get cost predictor name (moved before its usage)
+// Primary template for function name trait
 template<typename Func>
-std::string getCostPredictorName() {
-    // At compile time, verify this function has a tracer
-    // static_assert(has_tracer<Func>::value, 
-    //     "Function not registered in cost factory. Add specialization for this function type.");
-        
-    if (std::is_same<Func, EWiseApplyFunc>::value) return "eWiseApply";
-    if (std::is_same<Func, FoldlFunc>::value) return "foldl";
-    if (std::is_same<Func, FoldrFunc>::value) return "foldr";
-    if (std::is_same<Func, DotFunc>::value) return "dot";
-    if (std::is_same<Func, SetFunc>::value) return "set";
-    if (std::is_same<Func, ApplyFunc>::value) return "apply";
-    if (std::is_same<Func, MxvFunc>::value) return "mxv";
-    if (std::is_same<Func, EWiseAddFunc>::value) return "eWiseAdd";
-    if (std::is_same<Func, VxmFunc>::value) return "vxm";
-    if (std::is_same<Func, EWiseLambdaFunc>::value) return "eWiseLambda";
-    if (std::is_same<Func, MxmFunc>::value) return "mxm";
-    if (std::is_same<Func, ZipFunc>::value) return "zip";
-    if (std::is_same<Func, OuterFunc>::value) return "outer";
-    if (std::is_same<Func, SelectFunc>::value) return "select";
-    if (std::is_same<Func, ClearFunc>::value) return "clear";
-    
-    // This should never be reached due to the static_assert above
-    return "unknown";
+struct FunctionNameTrait {
+    static constexpr const char* name = "unknown";
+};
+
+// Specializations for each function type
+template<> struct FunctionNameTrait<EWiseApplyFunc> { static constexpr const char* name = "eWiseApply"; };
+template<> struct FunctionNameTrait<FoldlFunc> { static constexpr const char* name = "foldl"; };
+template<> struct FunctionNameTrait<FoldrFunc> { static constexpr const char* name = "foldr"; };
+template<> struct FunctionNameTrait<DotFunc> { static constexpr const char* name = "dot"; };
+template<> struct FunctionNameTrait<SetFunc> { static constexpr const char* name = "set"; };
+template<> struct FunctionNameTrait<ApplyFunc> { static constexpr const char* name = "apply"; };
+template<> struct FunctionNameTrait<MxvFunc> { static constexpr const char* name = "mxv"; };
+template<> struct FunctionNameTrait<EWiseAddFunc> { static constexpr const char* name = "eWiseAdd"; };
+template<> struct FunctionNameTrait<VxmFunc> { static constexpr const char* name = "vxm"; };
+template<> struct FunctionNameTrait<EWiseLambdaFunc> { static constexpr const char* name = "eWiseLambda"; };
+template<> struct FunctionNameTrait<MxmFunc> { static constexpr const char* name = "mxm"; };
+template<> struct FunctionNameTrait<ZipFunc> { static constexpr const char* name = "zip"; };
+template<> struct FunctionNameTrait<OuterFunc> { static constexpr const char* name = "outer"; };
+template<> struct FunctionNameTrait<SelectFunc> { static constexpr const char* name = "select"; };
+template<> struct FunctionNameTrait<ClearFunc> { static constexpr const char* name = "clear"; };
+
+// Simple function to get cost predictor name using the trait
+template<typename Func>
+constexpr const char* getCostPredictorName() {
+    return FunctionNameTrait<Func>::name;
 }
+
 // Type trait to check if we can call grb::size on a type
 template<typename T, typename = void>
 struct has_grb_size : std::false_type {};
@@ -468,26 +471,26 @@ struct CostPredictor<void, void> {
 template<typename Func, typename... Args>
 struct has_specialized_cost_predictor {
 private:
-    // Test function - returns true_type if specialized, false_type if base template
+    // Test for a specialized CostPredictor implementation
     template<typename F, typename... A>
-    static constexpr auto test(int) 
-        -> decltype(
-            CostPredictor<F, A...>::predict(std::declval<A>()...),
-            std::integral_constant<bool, 
-                !std::is_same<
-                    decltype(&CostPredictor<F, A...>::predict),
-                    decltype(&CostPredictor<void, void>::predict)
-                >::value
-            >()
-        );
+    static std::true_type test(
+        // This will only match if CostPredictor is not the base template
+        typename std::enable_if<
+            !std::is_same<
+                CostPredictor<F, A...>,
+                CostPredictor<void, void>
+            >::value
+        >::type* = nullptr
+    );
     
-    // Fallback function
+    // Fallback for non-specialized implementations
     template<typename F, typename... A>
-    static constexpr std::false_type test(...);
-
+    static std::false_type test(...);
+    
 public:
-    // Result of the test
-    static constexpr bool value = decltype(test<Func, Args...>(0))::value;
+    // Result of the specialization test
+  
+    static constexpr bool value = decltype(test<Func, Args...>(nullptr))::value;
 };
 
 // Function object wrappers for each GraphBLAS function
@@ -1018,47 +1021,47 @@ public:
             "Please add appropriate entries in cost_factory.hpp for this function.");
     }
 
-	// // Version for non-templated calls
-	// template< typename... Args >
-	// auto operator()( Args &&... args ) const -> decltype( std::declval< Func >()( std::forward< Args >( args )... ) ) {
-	// 	std::cout << "\n[TRACING] Entering function: " << name_ << " with " << sizeof...( args ) << " arguments" << std::endl;
+	// Version for non-templated calls
+	template< typename... Args >
+	auto operator()( Args &&... args ) const -> decltype( std::declval< Func >()( std::forward< Args >( args )... ) ) {
+		std::cout << "\n[TRACING] Entering function: " << name_ << " with " << sizeof...( args ) << " arguments" << std::endl;
 
-	// 	printArgTypes( std::forward< Args >( args )... );
+		printArgTypes( std::forward< Args >( args )... );
 
-	// 	// Predict the cost
-	// 	double predicted_cost = 0.0;
-	// 	bool has_specialized = false;
+		// Predict the cost
+		double predicted_cost = 0.0;
+		bool has_specialized = false;
 		
-	// 	try {
-	// 		predicted_cost = CostPredictor< Func, typename std::decay< Args >::type... >::predict( args... );
-	// 		has_specialized = has_specialized_cost_predictor< Func, typename std::decay< Args >::type... >::value;
+		try {
+			predicted_cost = CostPredictor< Func, typename std::decay< Args >::type... >::predict( args... );
+			has_specialized = has_specialized_cost_predictor< Func, typename std::decay< Args >::type... >::value;
 			
-	// 		std::cout << "[TRACING] Predicted cost: " << predicted_cost << " units (cost model: " << getCostPredictorName< Func >();
+			std::cout << "[TRACING] Predicted cost: " << predicted_cost << " units (cost model: " << getCostPredictorName< Func >();
 
-	// 		if( !has_specialized ) {
-	// 			std::cout << " - DEFAULT MODEL";
-	// 		}
+			if( !has_specialized ) {
+				std::cout << " - DEFAULT MODEL";
+			}
 
-	// 		std::cout << ")" << std::endl;
-	// 	} catch(const std::exception& e) {
-	// 		std::cout << "[ERROR] Cost prediction failed: " << e.what() << std::endl;
+			std::cout << ")" << std::endl;
+		} catch(const std::exception& e) {
+			std::cout << "[ERROR] Cost prediction failed: " << e.what() << std::endl;
 			
-	// 		// In test mode, return FAILED rather than propagating the exception
-	// 		#if _GRB_COST_MODEL_TEST_MODE
-	// 			return grb::FAILED;
-	// 		#else
-	// 			throw; // Re-throw in normal mode
-	// 		#endif
-	// 	} catch(...) {
-	// 		std::cout << "[ERROR] Cost prediction failed with unknown exception" << std::endl;
+			// In test mode, return FAILED rather than propagating the exception
+			#if _GRB_COST_MODEL_TEST_MODE
+				return grb::FAILED;
+			#else
+				throw; // Re-throw in normal mode
+			#endif
+		} catch(...) {
+			std::cout << "[ERROR] Cost prediction failed with unknown exception" << std::endl;
 			
-	// 		// In test mode, return FAILED rather than propagating the exception
-	// 		#if _GRB_COST_MODEL_TEST_MODE
-	// 			return grb::FAILED;
-	// 		#else
-	// 			throw; // Re-throw in normal mode
-	// 		#endif
-	// 	}
+			// In test mode, return FAILED rather than propagating the exception
+			#if _GRB_COST_MODEL_TEST_MODE
+				return grb::FAILED;
+			#else
+				throw; // Re-throw in normal mode
+			#endif
+		}
 
 	// 	auto start = std::chrono::high_resolution_clock::now();
 	// 	Func func;
@@ -1066,15 +1069,15 @@ public:
     //  #pragma omp barrier
 	// 	auto end = std::chrono::high_resolution_clock::now();
 
-	// 	auto duration = std::chrono::duration_cast< std::chrono::microseconds >( end - start );
-	// 	std::cout << "[TRACING] Exiting function: " << name_ << " (took " << duration.count() << "μs)" << std::endl;
+		auto duration = std::chrono::duration_cast< std::chrono::microseconds >( end - start );
+		std::cout << "[TRACING] Exiting function: " << name_ << " (took " << duration.count() << "μs)" << std::endl;
 
-	// 	// Calculate and report cost/time ratio
-	// 	double cost_time_ratio = predicted_cost / static_cast< double >( duration.count() );
-	// 	std::cout << "[TRACING] Cost/time ratio: " << cost_time_ratio << " cost units per microsecond" << std::endl;
+		// Calculate and report cost/time ratio
+		double cost_time_ratio = predicted_cost / static_cast< double >( duration.count() );
+		std::cout << "[TRACING] Cost/time ratio: " << cost_time_ratio << " cost units per microsecond" << std::endl;
 
-	// 	return result;
-	// }
+		return result;
+	}
 
 	// Version for templated calls with descriptor
 	template< unsigned int descr, typename... Args >
