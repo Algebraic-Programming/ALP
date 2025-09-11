@@ -4,137 +4,105 @@
 #include <functional>
 #include <vector>
 #include <type_traits>
-#include <unordered_map>
-#include <typeindex>
+#include <tuple>
+#include <utility>
+#include <stdexcept>
+#include <graphblas/type_traits.hpp>
 
 #include "hw_params_arm920.hpp"
 
 // Define a compile-time toggle
 #ifndef _GRB_ENABLE_TRACING
-#define _GRB_ENABLE_TRACING 0  // Default to off
+#define _GRB_ENABLE_TRACING 1  // Default to on
 #endif
 
-// Add this near the top of the file, after other #defines
 #ifndef _GRB_COST_MODEL_TEST_MODE
 #define _GRB_COST_MODEL_TEST_MODE 0  // Default to off
 #endif
 
-#ifdef _GRB_ENABLE_TRACING
+// Use value-based guard so 0 disables the block
+#if _GRB_ENABLE_TRACING
 
+// -- CostPredictor (forward decls)
+template<typename Func>
+inline const char* getCostPredictorName();
+
+template<typename Func>
+struct has_tracer : std::false_type {};
+
+// C++11 polyfill for detail::index_sequence / make_index_sequence
+#ifndef GRB_COST_DETAIL_INDEX_SEQUENCE
+#define GRB_COST_DETAIL_INDEX_SEQUENCE
 namespace detail {
-    template<size_t... Ints>
+    template <size_t... Is>
     struct index_sequence {
         using type = index_sequence;
-        static constexpr size_t size() noexcept { return sizeof...(Ints); }
+        static inline size_t size() { return sizeof...(Is); }
     };
-    
-    // Index sequence builder via recursion
-    template<size_t N, size_t... Ints>
-    struct make_index_sequence_helper : make_index_sequence_helper<N-1, N-1, Ints...> {};
-    
-    template<size_t... Ints>
-    struct make_index_sequence_helper<0, Ints...> {
-        using type = index_sequence<Ints...>;
+
+    template <size_t N, size_t... Is>
+    struct make_index_sequence_helper : make_index_sequence_helper<N - 1, N - 1, Is...> {};
+
+    template <size_t... Is>
+    struct make_index_sequence_helper<0, Is...> {
+        using type = index_sequence<Is...>;
     };
-    
-    template<size_t N>
+
+    template <size_t N>
     using make_index_sequence = typename make_index_sequence_helper<N>::type;
+} // namespace detail
+#endif // GRB_COST_DETAIL_INDEX_SEQUENCE
 
-}
-
-
-// First, save the original functions before we redefine them
-namespace grb {
-    namespace original {
-        // Don't use "using namespace grb" as it creates ambiguity
-        using ::grb::eWiseApply;
-        using ::grb::foldl;
-        using ::grb::foldr;
-        //using ::grb::dot;
-        using ::grb::set;
-        using ::grb::apply;
-        using ::grb::mxv;
-        using ::grb::eWiseAdd;
-        using ::grb::vxm;
-        using ::grb::eWiseLambda;
-        //typedef ::grb::eWiseLambda eWiseLambda_original;
-        using ::grb::mxm;
-        using ::grb::zip;
-        using ::grb::outer;
-        using ::grb::select;
-        using ::grb::clear;
+// Simple role selector using existing GraphBLAS traits (no decltype/sizeof)
+template<class T>
+struct RoleName {
+    typedef typename std::remove_cv<typename std::remove_reference<T>::type>::type base_t;
+    static const char* get() {
+        return pick_semiring(std::integral_constant<bool, grb::is_semiring<base_t>::value>());
     }
-}
-
-// Forward declarations for the function objects
-struct EWiseApplyFunc;
-struct FoldlFunc;
-struct FoldrFunc;
-struct DotFunc;
-struct SetFunc;
-struct ApplyFunc;
-struct MxvFunc;
-struct EWiseAddFunc; 
-struct VxmFunc;
-struct EWiseLambdaFunc;
-struct MxmFunc;
-struct ZipFunc;
-struct OuterFunc;
-struct SelectFunc;
-struct ClearFunc;
-
-// Type trait to check at compile time if a function has a corresponding tracer
-template<typename Func>
-struct has_tracer {
-    static constexpr bool value = false;
+private:
+    static const char* pick_semiring(std::true_type)  { return "Semiring<...>"; }
+    static const char* pick_semiring(std::false_type) {
+        return pick_monoid(std::integral_constant<bool, grb::is_monoid<base_t>::value>());
+    }
+    static const char* pick_monoid(std::true_type)  { return "Monoid<...>"; }
+    static const char* pick_monoid(std::false_type) {
+        return pick_operator(std::integral_constant<bool, grb::is_operator<base_t>::value>());
+    }
+    static const char* pick_operator(std::true_type)  { return "Operator<...>"; }
+    static const char* pick_operator(std::false_type) { return 0; }
 };
 
-// Specializations for each supported function
-template<> struct has_tracer<EWiseApplyFunc> { static constexpr bool value = true; };
-template<> struct has_tracer<FoldlFunc> { static constexpr bool value = true; };
-template<> struct has_tracer<FoldrFunc> { static constexpr bool value = true; };
-template<> struct has_tracer<DotFunc> { static constexpr bool value = true; };
-template<> struct has_tracer<SetFunc> { static constexpr bool value = true; };
-template<> struct has_tracer<ApplyFunc> { static constexpr bool value = true; };
-template<> struct has_tracer<MxvFunc> { static constexpr bool value = true; };
-template<> struct has_tracer<EWiseAddFunc> { static constexpr bool value = true; };
-template<> struct has_tracer<VxmFunc> { static constexpr bool value = true; };
-template<> struct has_tracer<EWiseLambdaFunc> { static constexpr bool value = true; };
-template<> struct has_tracer<MxmFunc> { static constexpr bool value = true; };
-template<> struct has_tracer<ZipFunc> { static constexpr bool value = true; };
-template<> struct has_tracer<OuterFunc> { static constexpr bool value = true; };
-template<> struct has_tracer<SelectFunc> { static constexpr bool value = true; };
-template<> struct has_tracer<ClearFunc> { static constexpr bool value = true; };
-
-// Primary template for function name trait
-template<typename Func>
-struct FunctionNameTrait {
-    static constexpr const char* name = "unknown";
+// TypeName uses RoleName first; specialisations override below
+template<class T>
+struct TypeName {
+    static const char* get() {
+        if (const char* role = RoleName<T>::get()) return role;
+        return "T";
+    }
 };
 
-// Specializations for each function type
-template<> struct FunctionNameTrait<EWiseApplyFunc> { static constexpr const char* name = "eWiseApply"; };
-template<> struct FunctionNameTrait<FoldlFunc> { static constexpr const char* name = "foldl"; };
-template<> struct FunctionNameTrait<FoldrFunc> { static constexpr const char* name = "foldr"; };
-template<> struct FunctionNameTrait<DotFunc> { static constexpr const char* name = "dot"; };
-template<> struct FunctionNameTrait<SetFunc> { static constexpr const char* name = "set"; };
-template<> struct FunctionNameTrait<ApplyFunc> { static constexpr const char* name = "apply"; };
-template<> struct FunctionNameTrait<MxvFunc> { static constexpr const char* name = "mxv"; };
-template<> struct FunctionNameTrait<EWiseAddFunc> { static constexpr const char* name = "eWiseAdd"; };
-template<> struct FunctionNameTrait<VxmFunc> { static constexpr const char* name = "vxm"; };
-template<> struct FunctionNameTrait<EWiseLambdaFunc> { static constexpr const char* name = "eWiseLambda"; };
-template<> struct FunctionNameTrait<MxmFunc> { static constexpr const char* name = "mxm"; };
-template<> struct FunctionNameTrait<ZipFunc> { static constexpr const char* name = "zip"; };
-template<> struct FunctionNameTrait<OuterFunc> { static constexpr const char* name = "outer"; };
-template<> struct FunctionNameTrait<SelectFunc> { static constexpr const char* name = "select"; };
-template<> struct FunctionNameTrait<ClearFunc> { static constexpr const char* name = "clear"; };
+// Fundamental specialisations (extend as needed)
+template<> struct TypeName<double> { static const char* get() { return "double"; } };
+template<> struct TypeName<float>  { static const char* get() { return "float"; } };
+template<> struct TypeName<int>    { static const char* get() { return "int"; } };
+template<> struct TypeName<unsigned int> { static const char* get() { return "unsigned int"; } };
+template<> struct TypeName<long>   { static const char* get() { return "long"; } };
+template<> struct TypeName<size_t> { static const char* get() { return "size_t"; } };
+template<> struct TypeName<char>   { static const char* get() { return "char"; } };
+template<> struct TypeName<bool>   { static const char* get() { return "bool"; } };
 
-// Simple function to get cost predictor name using the trait
-template<typename Func>
-constexpr const char* getCostPredictorName() {
-    return FunctionNameTrait<Func>::name;
-}
+// GraphBLAS containers
+template<class D, ::grb::Backend B, class C>
+struct TypeName< ::grb::Vector<D, B, C> > { static const char* get() { return "Vector<...>"; } };
+template<class D, ::grb::Backend B, class RI, class CI, class NZI>
+struct TypeName< ::grb::Matrix<D, B, RI, CI, NZI> > { static const char* get() { return "Matrix<...>"; } };
 
+// Final name helper
+template<class T>
+inline const char* type_name_cstr() { return TypeName<T>::get(); }
+template<class T>
+inline std::string getTypeName() { return std::string(type_name_cstr<T>()); }
 
 // ===================== unified argument category (Vector / Matrix / Other) ===
 struct arg_vector_tag {};
@@ -253,101 +221,6 @@ std::string getMatrixInfoString(const T& arg) {
     return getMatrixInfoString_impl(arg, is_grb_matrix_category<base_t>());
 }
 
-
-// #################### operator type traits ###############################
-// ===================== Operator/Semiring category tags ======================
-struct grb_operator_true_tag {};
-struct grb_operator_false_tag {};
-template<class T, bool B = grb::is_operator<T>::value>
-struct grb_operator_category_impl { typedef grb_operator_false_tag type; };
-template<class T>
-struct grb_operator_category_impl<T, true> { typedef grb_operator_true_tag type; };
-template<class T>
-using grb_operator_category = typename grb_operator_category_impl<T>::type;
-
-struct grb_semiring_true_tag {};
-struct grb_semiring_false_tag {};
-template<class T, bool B = grb::is_semiring<T>::value>
-struct grb_semiring_category_impl { typedef grb_semiring_false_tag type; };
-template<class T>
-struct grb_semiring_category_impl<T, true> { typedef grb_semiring_true_tag type; };
-template<class T>
-using grb_semiring_category = typename grb_semiring_category_impl<T>::type;
-
-// ===================== Operator name availability (no decltype) =============
-struct operator_name_present_tag {};
-struct operator_name_absent_tag {};
-
-// Probe that only forms if grb::operator_name<U>::name exists (and is a const char*)
-template<class U, const char* P = ::grb::operator_name<U>::name>
-struct operator_name_probe { typedef operator_name_present_tag tag; static const char* get() { return P; } };
-
-// Select present/absent via SFINAE
-template<class U, class = void>
-struct operator_name_category { typedef operator_name_absent_tag type; };
-template<class U>
-struct operator_name_category<U, typename operator_name_probe<U>::tag> { typedef operator_name_present_tag type; };
-template<class U>
-using operator_name_category_t = typename operator_name_category<U>::type;
-
-// Helper to fetch name (tag-dispatch)
-template<class U>
-inline const char* operator_name_of_impl(operator_name_present_tag) { return operator_name_probe<U>::get(); }
-template<class>
-inline const char* operator_name_of_impl(operator_name_absent_tag) { return "operators::..."; }
-
-template<class U>
-inline const char* operator_name_of() { return operator_name_of_impl<U>(operator_name_category_t<U>()); }
-
-// ===================== Type name facility (no string parsing) ===============
-template<class T> struct TypeName { static const char* get() { return "T"; } };
-
-// Fundamental specialisations (extend as needed)
-template<> struct TypeName<double> { static const char* get() { return "double"; } };
-template<> struct TypeName<float>  { static const char* get() { return "float"; } };
-template<> struct TypeName<int>    { static const char* get() { return "int"; } };
-template<> struct TypeName<unsigned int> { static const char* get() { return "unsigned int"; } };
-template<> struct TypeName<long>   { static const char* get() { return "long"; } };
-// template<> struct TypeName<unsigned long> { static const char* get() { return "unsigned long"; } };
-template<> struct TypeName<size_t> { static const char* get() { return "size_t"; } };
-template<> struct TypeName<char>   { static const char* get() { return "char"; } };
-template<> struct TypeName<bool>   { static const char* get() { return "bool"; } };
-
-// GraphBLAS containers
-template<class D, ::grb::Backend B, class C>
-struct TypeName< ::grb::Vector<D, B, C> > { static const char* get() { return "Vector<...>"; } };
-
-template<class D, ::grb::Backend B, class RI, class CI, class NZI>
-struct TypeName< ::grb::Matrix<D, B, RI, CI, NZI> > { static const char* get() { return "Matrix<...>"; } };
-
-// Operators and semirings via categories
-template<class T>
-inline const char* type_name_select(grb_operator_true_tag) { return operator_name_of<T>(); }
-template<class>
-inline const char* type_name_select(grb_operator_false_tag) { return 0; }
-
-template<class T>
-inline const char* type_name_select_semiring(grb_semiring_true_tag) { return "Semiring<...>"; }
-template<class>
-inline const char* type_name_select_semiring(grb_semiring_false_tag) { return 0; }
-
-// Final name: prefer Vector/Matrix, then Operator, then Semiring, then fundamentals
-template<class T>
-inline const char* type_name_cstr() {
-    // Prefer container names by direct specialisation
-    return TypeName<T>::get();
-}
-
-// Optional std::string wrapper if needed by call sites
-template<class T>
-inline std::string getTypeName() { return std::string(type_name_cstr<T>()); }
-
-// ===================== is_graphblas_operator (no decltype/declval) ===========
-template<typename T>
-struct is_graphblas_operator {
-    static const bool value = grb::is_operator<T>::value;
-};
-
 // ===================== Argument printing (pure tag-dispatch) ================
 template<class T>
 inline void printOneArgImpl(const T& arg, arg_vector_tag) {
@@ -408,10 +281,10 @@ struct CostPredictor {
     template<size_t... Is>
     static std::string getArgTypeNamesHelper(detail::index_sequence<Is...>) {
         std::string result;
-        // Use fold expression in C++17, but for C++11 we need this workaround
         using expander = int[];
         (void)expander{0, (void(
-            result += (Is == 0 ? "" : ", ") + getArgTypeName<typename std::tuple_element<Is, std::tuple<Args...>>::type>()
+            result += (Is == 0 ? "" : ", ")
+                   + getArgTypeName<typename std::tuple_element<Is, std::tuple<Args...>>::type>()
         ), 0)...};
         return result;
     }
@@ -421,11 +294,9 @@ struct CostPredictor {
     }
     
     static double predict(const Args&... args) {
-        // Silence unused parameter warnings with a fold-expression-like trick
         int unused[] = { 0, (void(args), 0)... };
-        (void)unused;  // Silence unused variable warning
+        (void)unused;
 
-        // Enhanced diagnostic message with function name and argument types
         std::string funcName = getCostPredictorName<Func>();
         std::string argTypes = getArgTypeNames();
         
@@ -438,13 +309,11 @@ struct CostPredictor {
         std::cout << "[WARNING]     static double predict(...) { ... }" << std::endl;
         std::cout << "[WARNING] };" << std::endl;
 
-        // error if _GRB_COST_MODEL_TEST_MODE is enabled
         if (_GRB_COST_MODEL_TEST_MODE) {
             std::cerr << "[ERROR] Missing cost model for this function." << std::endl;
-            // print function name
             std::cerr << "[ERROR] Function name: " << funcName << std::endl;
         }
-        return 1.0; // Default cost
+        return 1.0;
     }
 };
 
@@ -498,7 +367,6 @@ template<typename Func, typename... Args>
 using cost_predictor_category = typename has_specialized_cost_predictor<Func, Args...>::type;
 
 // Function object wrappers for each GraphBLAS function
-// Function object wrappers for each GraphBLAS function
 struct EWiseApplyFunc {
     template<typename... Args>
     grb::RC operator()(Args&&... args) const {
@@ -514,24 +382,24 @@ struct EWiseApplyFunc {
 struct FoldlFunc {
     template<typename... Args>
     grb::RC operator()(Args&&... args) const {
-        return ::grb::original::foldl(std::forward<Args>(args)...);
+        return ::grb::foldl(std::forward<Args>(args)...);
     }
     
     template<unsigned int descr, typename... Args>
     grb::RC withDescriptor(Args&&... args) const {
-        return ::grb::original::foldl<descr>(std::forward<Args>(args)...);
+        return ::grb::foldl<descr>(std::forward<Args>(args)...);
     }
 };
 
 struct FoldrFunc {
     template<typename... Args>
     grb::RC operator()(Args&&... args) const {
-        return ::grb::original::foldr(std::forward<Args>(args)...);
+        return ::grb::foldr(std::forward<Args>(args)...);
     }
     
     template<unsigned int descr, typename... Args>
     grb::RC withDescriptor(Args&&... args) const {
-        return ::grb::original::foldr<descr>(std::forward<Args>(args)...);
+        return ::grb::foldr<descr>(std::forward<Args>(args)...);
     }
 };
 
@@ -550,132 +418,132 @@ struct DotFunc {
 struct SetFunc {
     template<typename... Args>
     grb::RC operator()(Args&&... args) const {
-        return ::grb::original::set(std::forward<Args>(args)...);
+        return ::grb::set(std::forward<Args>(args)...);
     }
     
     template<unsigned int descr, typename... Args>
     grb::RC withDescriptor(Args&&... args) const {
-        return ::grb::original::set<descr>(std::forward<Args>(args)...);
+        return ::grb::set<descr>(std::forward<Args>(args)...);
     }
 };
 
 struct ApplyFunc {
     template<typename... Args>
     grb::RC operator()(Args&&... args) const {
-        return ::grb::original::apply(std::forward<Args>(args)...);
+        return ::grb::apply(std::forward<Args>(args)...);
     }
     
     template<unsigned int descr, typename... Args>
     grb::RC withDescriptor(Args&&... args) const {
-        return ::grb::original::apply<descr>(std::forward<Args>(args)...);
+        return ::grb::apply<descr>(std::forward<Args>(args)...);
     }
 };
 
 struct MxvFunc {
     template<typename... Args>
     grb::RC operator()(Args&&... args) const {
-        return ::grb::original::mxv(std::forward<Args>(args)...);
+        return ::grb::mxv(std::forward<Args>(args)...);
     }
     
     template<unsigned int descr, typename... Args>
     grb::RC withDescriptor(Args&&... args) const {
-        return ::grb::original::mxv<descr>(std::forward<Args>(args)...);
+        return ::grb::mxv<descr>(std::forward<Args>(args)...);
     }
 };
 
 struct EWiseAddFunc {
     template<typename... Args>
     grb::RC operator()(Args&&... args) const {
-        return ::grb::original::eWiseAdd(std::forward<Args>(args)...);
+        return ::grb::eWiseAdd(std::forward<Args>(args)...);
     }
     
     template<unsigned int descr, typename... Args>
     grb::RC withDescriptor(Args&&... args) const {
-        return ::grb::original::eWiseAdd<descr>(std::forward<Args>(args)...);
+        return ::grb::eWiseAdd<descr>(std::forward<Args>(args)...);
     }
 };
 
 struct VxmFunc {
     template<typename... Args>
     grb::RC operator()(Args&&... args) const {
-        return ::grb::original::vxm(std::forward<Args>(args)...);
+        return ::grb::vxm(std::forward<Args>(args)...);
     }
     
     template<unsigned int descr, typename... Args>
     grb::RC withDescriptor(Args&&... args) const {
-        return ::grb::original::vxm<descr>(std::forward<Args>(args)...);
+        return ::grb::vxm<descr>(std::forward<Args>(args)...);
     }
 };
 
 struct EWiseLambdaFunc {
     template<typename... Args>
     grb::RC operator()(Args&&... args) const {
-        return ::grb::original::eWiseLambda(std::forward<Args>(args)...);
+        return ::grb::eWiseLambda(std::forward<Args>(args)...);
     }
     
     template<unsigned int descr, typename... Args>
     grb::RC withDescriptor(Args&&... args) const {
-        return ::grb::original::eWiseLambda<descr>(std::forward<Args>(args)...);
+        return ::grb::eWiseLambda<descr>(std::forward<Args>(args)...);
     }
 };
 
 struct MxmFunc {
     template<typename... Args>
     grb::RC operator()(Args&&... args) const {
-        return ::grb::original::mxm(std::forward<Args>(args)...);
+        return ::grb::mxm(std::forward<Args>(args)...);
     }
     
     template<unsigned int descr, typename... Args>
     grb::RC withDescriptor(Args&&... args) const {
-        return ::grb::original::mxm<descr>(std::forward<Args>(args)...);
+        return ::grb::mxm<descr>(std::forward<Args>(args)...);
     }
 };
 
 struct ZipFunc {
     template<typename... Args>
     grb::RC operator()(Args&&... args) const {
-        return ::grb::original::zip(std::forward<Args>(args)...);
+        return ::grb::zip(std::forward<Args>(args)...);
     }
     
     template<unsigned int descr, typename... Args>
     grb::RC withDescriptor(Args&&... args) const {
-        return ::grb::original::zip<descr>(std::forward<Args>(args)...);
+        return ::grb::zip<descr>(std::forward<Args>(args)...);
     }
 };
 
 struct OuterFunc {
     template<typename... Args>
     grb::RC operator()(Args&&... args) const {
-        return ::grb::original::outer(std::forward<Args>(args)...);
+        return ::grb::outer(std::forward<Args>(args)...);
     }
     
     template<unsigned int descr, typename... Args>
     grb::RC withDescriptor(Args&&... args) const {
-        return ::grb::original::outer<descr>(std::forward<Args>(args)...);
+        return ::grb::outer<descr>(std::forward<Args>(args)...);
     }
 };
 
 struct SelectFunc {
     template<typename... Args>
     grb::RC operator()(Args&&... args) const {
-        return ::grb::original::select(std::forward<Args>(args)...);
+        return ::grb::select(std::forward<Args>(args)...);
     }
     
     template<unsigned int descr, typename... Args>
     grb::RC withDescriptor(Args&&... args) const {
-        return ::grb::original::select<descr>(std::forward<Args>(args)...);
+        return ::grb::select<descr>(std::forward<Args>(args)...);
     }
 };
 
 struct ClearFunc {
     template<typename... Args>
     grb::RC operator()(Args&&... args) const {
-        return ::grb::original::clear(std::forward<Args>(args)...);
+        return ::grb::clear(std::forward<Args>(args)...);
     }
     
     template<unsigned int descr, typename... Args>
     grb::RC withDescriptor(Args&&... args) const {
-        return ::grb::original::clear<descr>(std::forward<Args>(args)...);
+        return ::grb::clear<descr>(std::forward<Args>(args)...);
     }
 };
 
@@ -1095,6 +963,42 @@ public:
         return operator()<descr>(std::forward<Args>(args)...);
     }
 };
+
+
+    // Names for each wrapped GraphBLAS function
+    template<> inline const char* getCostPredictorName<EWiseApplyFunc>() { return "eWiseApply"; }
+    template<> inline const char* getCostPredictorName<FoldlFunc>()      { return "foldl"; }
+    template<> inline const char* getCostPredictorName<FoldrFunc>()      { return "foldr"; }
+    template<> inline const char* getCostPredictorName<DotFunc>()        { return "dot"; }
+    template<> inline const char* getCostPredictorName<SetFunc>()        { return "set"; }
+    template<> inline const char* getCostPredictorName<ApplyFunc>()      { return "apply"; }
+    template<> inline const char* getCostPredictorName<MxvFunc>()        { return "mxv"; }
+    template<> inline const char* getCostPredictorName<EWiseAddFunc>()   { return "eWiseAdd"; }
+    template<> inline const char* getCostPredictorName<VxmFunc>()        { return "vxm"; }
+    template<> inline const char* getCostPredictorName<EWiseLambdaFunc>(){ return "eWiseLambda"; }
+    template<> inline const char* getCostPredictorName<MxmFunc>()        { return "mxm"; }
+    template<> inline const char* getCostPredictorName<ZipFunc>()        { return "zip"; }
+    template<> inline const char* getCostPredictorName<OuterFunc>()      { return "outer"; }
+    template<> inline const char* getCostPredictorName<SelectFunc>()     { return "select"; }
+    template<> inline const char* getCostPredictorName<ClearFunc>()      { return "clear"; }
+
+    // Mark which wrappers have tracers (for the static_assert in FunctionTracer)
+    template<> struct has_tracer<EWiseApplyFunc>   : std::true_type {};
+    template<> struct has_tracer<FoldlFunc>        : std::true_type {};
+    template<> struct has_tracer<FoldrFunc>        : std::true_type {};
+    template<> struct has_tracer<DotFunc>          : std::true_type {};
+    template<> struct has_tracer<SetFunc>          : std::true_type {};
+    template<> struct has_tracer<ApplyFunc>        : std::true_type {};
+    template<> struct has_tracer<MxvFunc>          : std::true_type {};
+    template<> struct has_tracer<EWiseAddFunc>     : std::true_type {};
+    template<> struct has_tracer<VxmFunc>          : std::true_type {};
+    template<> struct has_tracer<EWiseLambdaFunc>  : std::true_type {};
+    template<> struct has_tracer<MxmFunc>          : std::true_type {};
+    template<> struct has_tracer<ZipFunc>          : std::true_type {};
+    template<> struct has_tracer<OuterFunc>        : std::true_type {};
+    template<> struct has_tracer<SelectFunc>       : std::true_type {};
+    template<> struct has_tracer<ClearFunc>        : std::true_type {};
+
 
 
         // Now redefine the functions in the grb namespace with tracing
