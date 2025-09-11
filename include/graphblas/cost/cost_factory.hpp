@@ -7,7 +7,6 @@
 #include <tuple>
 #include <utility>
 #include <stdexcept>
-#include <graphblas/type_traits.hpp>
 
 #include "hw_params_arm920.hpp"
 
@@ -73,14 +72,43 @@ private:
     static const char* pick_operator(std::false_type) { return 0; }
 };
 
-// TypeName uses RoleName first; specialisations override below
+
+// Detect whether grb::operator_name<Base>::present exists (no decltype/sizeof)
+struct op_name_present_tag {};
+struct op_name_absent_tag {};
+
+template<class U, class = void>
+struct op_name_category { using type = op_name_absent_tag; };
+
+template<class U>
+struct op_name_category<
+    U,
+    typename grb::operator_name<
+        typename std::remove_cv<typename std::remove_reference<U>::type>::type
+    >::present
+> { using type = op_name_present_tag; };
+
+template<class U>
+using op_name_category_t = typename op_name_category<U>::type;
+
+// TypeName prefers concrete operator_name<> if available, then RoleName
 template<class T>
 struct TypeName {
     static const char* get() {
+        typedef typename std::remove_cv<typename std::remove_reference<T>::type>::type base_t;
+        return pick(op_name_category_t<base_t>());
+    }
+private:
+    static const char* pick(op_name_present_tag) {
+        typedef typename std::remove_cv<typename std::remove_reference<T>::type>::type base_t;
+        return grb::operator_name<base_t>::name;
+    }
+    static const char* pick(op_name_absent_tag) {
         if (const char* role = RoleName<T>::get()) return role;
         return "T";
     }
 };
+
 
 // Fundamental specialisations (extend as needed)
 template<> struct TypeName<double> { static const char* get() { return "double"; } };
@@ -98,11 +126,11 @@ struct TypeName< ::grb::Vector<D, B, C> > { static const char* get() { return "V
 template<class D, ::grb::Backend B, class RI, class CI, class NZI>
 struct TypeName< ::grb::Matrix<D, B, RI, CI, NZI> > { static const char* get() { return "Matrix<...>"; } };
 
-// Final name helper
 template<class T>
 inline const char* type_name_cstr() { return TypeName<T>::get(); }
 template<class T>
 inline std::string getTypeName() { return std::string(type_name_cstr<T>()); }
+
 
 // ===================== unified argument category (Vector / Matrix / Other) ===
 struct arg_vector_tag {};
@@ -112,113 +140,55 @@ struct arg_other_tag {};
 // Primary
 template<class T> struct arg_category { typedef arg_other_tag type; };
 
-// Vector specialisations (incl. cv-qualified)
+// Vector specialization (unqualified only; callers pass remove_cvref<T>::type)
 template<class D, ::grb::Backend B, class C>
 struct arg_category< ::grb::Vector<D, B, C> > { typedef arg_vector_tag type; };
-template<class D, ::grb::Backend B, class C>
-struct arg_category< const ::grb::Vector<D, B, C> > { typedef arg_vector_tag type; };
-template<class D, ::grb::Backend B, class C>
-struct arg_category< volatile ::grb::Vector<D, B, C> > { typedef arg_vector_tag type; };
-template<class D, ::grb::Backend B, class C>
-struct arg_category< const volatile ::grb::Vector<D, B, C> > { typedef arg_vector_tag type; };
 
-// Matrix specialisations (incl. cv-qualified)
+// Matrix specialization (unqualified only)
 template<class D, ::grb::Backend B, class RI, class CI, class NZI>
 struct arg_category< ::grb::Matrix<D, B, RI, CI, NZI> > { typedef arg_matrix_tag type; };
-template<class D, ::grb::Backend B, class RI, class CI, class NZI>
-struct arg_category< const ::grb::Matrix<D, B, RI, CI, NZI> > { typedef arg_matrix_tag type; };
-template<class D, ::grb::Backend B, class RI, class CI, class NZI>
-struct arg_category< volatile ::grb::Matrix<D, B, RI, CI, NZI> > { typedef arg_matrix_tag type; };
-template<class D, ::grb::Backend B, class RI, class CI, class NZI>
-struct arg_category< const volatile ::grb::Matrix<D, B, RI, CI, NZI> > { typedef arg_matrix_tag type; };
+
 // ===================== end of unified argument category =======================
-
-// #################### is_grb_vector check for grb::Vector type trait ############################### 
-struct is_grb_vector_true_tag {};
-struct is_grb_vector_false_tag {};
-
-// Primary: false by default
-template<class T>
-struct is_grb_vector { typedef is_grb_vector_false_tag type; };
-
-// Matches any grb::Vector<DataType, backend, Coords> (incl. cv-qualified)
-template<class D, grb::Backend B, class C>
-struct is_grb_vector< grb::Vector<D, B, C> > { typedef is_grb_vector_true_tag type; };
-template<class D, grb::Backend B, class C>
-struct is_grb_vector< const grb::Vector<D, B, C> > { typedef is_grb_vector_true_tag type; };
-template<class D, grb::Backend B, class C>
-struct is_grb_vector< volatile grb::Vector<D, B, C> > { typedef is_grb_vector_true_tag type; };
-template<class D, grb::Backend B, class C>
-struct is_grb_vector< const volatile grb::Vector<D, B, C> > { typedef is_grb_vector_true_tag type; };
-
-template<class T>
-using is_grb_vector_category = typename is_grb_vector<T>::type;
 
 // Normalize cv/ref before dispatch
 template<class T>
-struct remove_cvref { 
-    typedef typename std::remove_cv< typename std::remove_reference<T>::type >::type type; 
+struct remove_cvref {
+    typedef typename std::remove_cv< typename std::remove_reference<T>::type >::type type;
 };
 
-// Helper to safely get size if available - using type tags
+// Vector info via arg_category
 template<typename T>
-std::string getVectorInfoString_impl(const T& arg, is_grb_vector_true_tag) {
+inline std::string getVectorInfoString_impl(const T& arg, arg_vector_tag) {
     try { return "[size=" + std::to_string(grb::size(arg)) + "] "; }
     catch(...) { return " "; }
 }
 template<typename T>
-std::string getVectorInfoString_impl(const T&, is_grb_vector_false_tag) { return " "; }
+inline std::string getVectorInfoString_impl(const T&, arg_other_tag) { return " "; }
 
-// Main function that dispatches based on type
 template<typename T>
-std::string getVectorInfoString(const T& arg) {
+inline std::string getVectorInfoString(const T& arg) {
     typedef typename remove_cvref<T>::type base_t;
-    return getVectorInfoString_impl(arg, is_grb_vector_category<base_t>());
+    return getVectorInfoString_impl(arg, typename arg_category<base_t>::type());
 }
 
-
-// #################### is_grb_matrix check for grb::Matrix type trait ###############################
-struct is_grb_matrix_true_tag {};
-struct is_grb_matrix_false_tag {};
-
-// Primary: false by default
-template<class T>
-struct is_grb_matrix { typedef is_grb_matrix_false_tag type; };
-
-// Matches any grb::Matrix<DataType, backend, RowIndexType, ColIndexType, NonzeroIndexType> (incl. cv-qualified)
-template<class D, grb::Backend B, class RI, class CI, class NZI>
-struct is_grb_matrix< grb::Matrix<D, B, RI, CI, NZI> > { typedef is_grb_matrix_true_tag type; };
-template<class D, grb::Backend B, class RI, class CI, class NZI>
-struct is_grb_matrix< const grb::Matrix<D, B, RI, CI, NZI> > { typedef is_grb_matrix_true_tag type; };
-template<class D, grb::Backend B, class RI, class CI, class NZI>
-struct is_grb_matrix< volatile grb::Matrix<D, B, RI, CI, NZI> > { typedef is_grb_matrix_true_tag type; };
-template<class D, grb::Backend B, class RI, class CI, class NZI>
-struct is_grb_matrix< const volatile grb::Matrix<D, B, RI, CI, NZI> > { typedef is_grb_matrix_true_tag type; };
-
-template<class T>
-using is_grb_matrix_category = typename is_grb_matrix<T>::type;
-
-// Helper to get matrix dimensions and nnz using tag-dispatch
+// Matrix info via arg_category
 template<typename T>
-std::string getMatrixInfoString_impl(const T& arg, is_grb_matrix_true_tag) {
+inline std::string getMatrixInfoString_impl(const T& arg, arg_matrix_tag) {
     try {
-        return "[rows=" + std::to_string(grb::nrows(arg)) + 
+        return "[rows=" + std::to_string(grb::nrows(arg)) +
                ",cols=" + std::to_string(grb::ncols(arg)) +
                ",nnz=" + std::to_string(grb::nnz(arg)) + "] ";
     } catch(...) {
         return " ";
     }
 }
+template<typename T>
+inline std::string getMatrixInfoString_impl(const T&, arg_other_tag) { return " "; }
 
 template<typename T>
-std::string getMatrixInfoString_impl(const T&, is_grb_matrix_false_tag) {
-    return " ";
-}
-
-template<typename T>
-std::string getMatrixInfoString(const T& arg) {
+inline std::string getMatrixInfoString(const T& arg) {
     typedef typename remove_cvref<T>::type base_t;
-    return getMatrixInfoString_impl(arg, is_grb_matrix_category<base_t>());
+    return getMatrixInfoString_impl(arg, typename arg_category<base_t>::type());
 }
 
 // ===================== Argument printing (pure tag-dispatch) ================

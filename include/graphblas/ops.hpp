@@ -1215,162 +1215,191 @@ namespace grb {
 	struct operator_name;
 
 	// Assignment operators
-	template< typename D1, typename D2, typename D3 >
-	struct operator_name< operators::left_assign< D1, D2, D3 > > {
-		static constexpr const char* name = "operators::left_assign";
+	template< typename D1, typename D2, typename D3, Backend Impl >
+	struct operator_name< operators::left_assign< D1, D2, D3, Impl > > {
+		using present = void;
+		static constexpr const char * name = "operators::left_assign";
 	};
 
-	template< typename D1, typename D2, typename D3 >
-	struct operator_name< operators::right_assign< D1, D2, D3 > > {
-		static constexpr const char* name = "operators::right_assign";
+	template< typename D1, typename D2, typename D3, Backend Impl >
+	struct operator_name< operators::right_assign< D1, D2, D3, Impl > > {
+		using present = void;
+		static constexpr const char * name = "operators::right_assign";
 	};
 
-	template< typename D1, typename D2, typename D3 >
-	struct operator_name< operators::left_assign_if< D1, D2, D3 > > {
-		static constexpr const char* name = "operators::left_assign_if";
+	template< typename D1, typename D2, typename D3, Backend Impl >
+	struct operator_name< operators::left_assign_if< D1, D2, D3, Impl > > {
+		using present = void;
+		static constexpr const char * name = "operators::left_assign_if";
 	};
 
-	template< typename D1, typename D2, typename D3 >
-	struct operator_name< operators::right_assign_if< D1, D2, D3 > > {
-		static constexpr const char* name = "operators::right_assign_if";
+	template< typename D1, typename D2, typename D3, Backend Impl >
+	struct operator_name< operators::right_assign_if< D1, D2, D3, Impl > > {
+		using present = void;
+		static constexpr const char * name = "operators::right_assign_if";
 	};
 
-	// Additional arithmetic operators
-	template< typename D1, typename D2, typename D3 >
-	struct operator_name< operators::divide_reverse< D1, D2, D3 > > {
-		static constexpr const char* name = "operators::divide_reverse";
+	// Arithmetic and comparisons
+	template< typename D1, typename D2, typename D3, Backend Impl >
+	struct operator_name< operators::add< D1, D2, D3, Impl > > {
+		using present = void;
+		static constexpr const char * name = "operators::add";
 	};
 
-	// Min/max operators
-	template< typename D1, typename D2, typename D3 >
-	struct operator_name< operators::min< D1, D2, D3 > > {
-		static constexpr const char* name = "operators::min";
+	template< typename D1, typename D2, typename D3, Backend Impl >
+	struct operator_name< operators::mul< D1, D2, D3, Impl > > {
+		using present = void;
+		static constexpr const char * name = "operators::mul";
 	};
 
-	template< typename D1, typename D2, typename D3 >
-	struct operator_name< operators::max< D1, D2, D3 > > {
-		static constexpr const char* name = "operators::max";
+	template< typename D1, typename D2, typename D3, Backend Impl >
+	struct operator_name< operators::max< D1, D2, D3, Impl > > {
+		using present = void;
+		static constexpr const char * name = "operators::max";
 	};
 
-	// Comparison operators
-	template< typename D1, typename D2, typename D3 >
-	struct operator_name< operators::equal< D1, D2, D3 > > {
-		static constexpr const char* name = "operators::equal";
+	template< typename D1, typename D2, typename D3, Backend Impl >
+	struct operator_name< operators::min< D1, D2, D3, Impl > > {
+		using present = void;
+		static constexpr const char * name = "operators::min";
 	};
 
-	template< typename D1, typename D2, typename D3 >
-	struct operator_name< operators::not_equal< D1, D2, D3 > > {
-		static constexpr const char* name = "operators::not_equal";
+	template< typename D1, typename D2, typename D3, Backend Impl >
+	struct operator_name< operators::subtract< D1, D2, D3, Impl > > {
+		using present = void;
+		static constexpr const char * name = "operators::subtract";
 	};
 
-	template< typename D1, typename D2, typename D3 >
-	struct operator_name< operators::less_than< D1, D2, D3 > > {
-		static constexpr const char* name = "operators::less_than";
+	template< typename D1, typename D2, typename D3, Backend Impl >
+	struct operator_name< operators::divide< D1, D2, D3, Impl > > {
+		using present = void;
+		static constexpr const char * name = "operators::divide";
 	};
 
-	template< typename D1, typename D2, typename D3 >
-	struct operator_name< operators::leq< D1, D2, D3 > > {
-		static constexpr const char* name = "operators::leq";
+	template< typename D1, typename D2, typename D3, Backend Impl >
+	struct operator_name< operators::divide_reverse< D1, D2, D3, Impl > > {
+		using present = void;
+		static constexpr const char * name = "operators::divide_reverse";
 	};
 
-	template< typename D1, typename D2, typename D3 >
-	struct operator_name< operators::greater_than< D1, D2, D3 > > {
-		static constexpr const char* name = "operators::greater_than";
+	template< typename D1, typename D2, typename D3, Backend Impl >
+	struct operator_name< operators::equal< D1, D2, D3, Impl > > {
+		using present = void;
+		static constexpr const char * name = "operators::equal";
 	};
 
-	template< typename D1, typename D2, typename D3 >
-	struct operator_name< operators::geq< D1, D2, D3 > > {
-		static constexpr const char* name = "operators::geq";
+	template< typename D1, typename D2, typename D3, Backend Impl >
+	struct operator_name< operators::not_equal< D1, D2, D3, Impl > > {
+		using present = void;
+		static constexpr const char * name = "operators::not_equal";
 	};
 
-	// Logical operators
-	template< typename D1, typename D2, typename D3 >
-	struct operator_name< operators::any_or< D1, D2, D3 > > {
-		static constexpr const char* name = "operators::any_or";
+	template< typename D1, typename D2, typename D3, Backend Impl >
+	struct operator_name< operators::less_than< D1, D2, D3, Impl > > {
+		using present = void;
+		static constexpr const char * name = "operators::less_than";
 	};
 
-	template< typename D1, typename D2, typename D3 >
-	struct operator_name< operators::logical_or< D1, D2, D3 > > {
-		static constexpr const char* name = "operators::logical_or";
+	template< typename D1, typename D2, typename D3, Backend Impl >
+	struct operator_name< operators::leq< D1, D2, D3, Impl > > {
+		using present = void;
+		static constexpr const char * name = "operators::leq";
 	};
 
-	template< typename D1, typename D2, typename D3 >
-	struct operator_name< operators::logical_and< D1, D2, D3 > > {
-		static constexpr const char* name = "operators::logical_and";
+	template< typename D1, typename D2, typename D3, Backend Impl >
+	struct operator_name< operators::greater_than< D1, D2, D3, Impl > > {
+		using present = void;
+		static constexpr const char * name = "operators::greater_than";
 	};
 
-	// Mathematical operators
-	template< typename D1, typename D2, typename D3 >
-	struct operator_name< operators::abs_diff< D1, D2, D3 > > {
-		static constexpr const char* name = "operators::abs_diff";
+	template< typename D1, typename D2, typename D3, Backend Impl >
+	struct operator_name< operators::geq< D1, D2, D3, Impl > > {
+		using present = void;
+		static constexpr const char * name = "operators::geq";
 	};
 
-	template< typename D1, typename D2, typename D3 >
-	struct operator_name< operators::square_diff< D1, D2, D3 > > {
-		static constexpr const char* name = "operators::square_diff";
+	// Logical
+	template< typename D1, typename D2, typename D3, Backend Impl >
+	struct operator_name< operators::any_or< D1, D2, D3, Impl > > {
+		using present = void;
+		static constexpr const char * name = "operators::any_or";
 	};
 
-	template< typename D1, typename D2, typename D3 >
-	struct operator_name< operators::relu< D1, D2, D3 > > {
-		static constexpr const char* name = "operators::relu";
+	template< typename D1, typename D2, typename D3, Backend Impl >
+	struct operator_name< operators::logical_or< D1, D2, D3, Impl > > {
+		using present = void;
+		static constexpr const char * name = "operators::logical_or";
 	};
 
-	// Complex number operators
-	template< typename D1, typename D2, typename D3, bool conj_left >
-	struct operator_name< operators::conjugate_mul< D1, D2, D3, conj_left > > {
-		static constexpr const char* name = "operators::conjugate_mul";
+	template< typename D1, typename D2, typename D3, Backend Impl >
+	struct operator_name< operators::logical_and< D1, D2, D3, Impl > > {
+		using present = void;
+		static constexpr const char * name = "operators::logical_and";
 	};
 
-	template< typename D1, typename D2, typename D3 >
-	struct operator_name< operators::conjugate_left_mul< D1, D2, D3 > > {
-		static constexpr const char* name = "operators::conjugate_left_mul";
+	// Math utilities
+	template< typename D1, typename D2, typename D3, Backend Impl >
+	struct operator_name< operators::abs_diff< D1, D2, D3, Impl > > {
+		using present = void;
+		static constexpr const char * name = "operators::abs_diff";
 	};
 
-	template< typename D1, typename D2, typename D3 >
-	struct operator_name< operators::conjugate_right_mul< D1, D2, D3 > > {
-		static constexpr const char* name = "operators::conjugate_right_mul";
+	template< typename D1, typename D2, typename D3, Backend Impl >
+	struct operator_name< operators::square_diff< D1, D2, D3, Impl > > {
+		using present = void;
+		static constexpr const char * name = "operators::square_diff";
 	};
 
-	// Argument operators
+	template< typename D1, typename D2, typename D3, Backend Impl >
+	struct operator_name< operators::relu< D1, D2, D3, Impl > > {
+		using present = void;
+		static constexpr const char * name = "operators::relu";
+	};
+
+	// Pair ops (no Backend)
 	template< typename IType, typename VType >
 	struct operator_name< operators::argmin< IType, VType > > {
-		static constexpr const char* name = "operators::argmin";
+		using present = void;
+		static constexpr const char * name = "operators::argmin";
 	};
 
 	template< typename IType, typename VType >
 	struct operator_name< operators::argmax< IType, VType > > {
-		static constexpr const char* name = "operators::argmax";
+		using present = void;
+		static constexpr const char * name = "operators::argmax";
 	};
 
-	// Basic arithmetic operators
-	template< typename D1, typename D2, typename D3 >
-	struct operator_name< operators::add< D1, D2, D3 > > {
-	    static constexpr const char* name = "operators::add";
+	// zip has a Backend
+	template< typename IN1, typename IN2, Backend Impl >
+	struct operator_name< operators::zip< IN1, IN2, Impl > > {
+		using present = void;
+		static constexpr const char * name = "operators::zip";
 	};
 
-	template< typename D1, typename D2, typename D3 >
-	struct operator_name< operators::mul< D1, D2, D3 > > {
-	    static constexpr const char* name = "operators::mul";
+	// equal_first has a Backend
+	template< typename D1, typename D2, typename D3, Backend Impl >
+	struct operator_name< operators::equal_first< D1, D2, D3, Impl > > {
+		using present = void;
+		static constexpr const char * name = "operators::equal_first";
 	};
 
-	template< typename D1, typename D2, typename D3 >
-	struct operator_name< operators::subtract< D1, D2, D3 > > {
-	    static constexpr const char* name = "operators::subtract";
+	// Conjugate variants
+	template< typename IN1, typename IN2, typename OUT, bool CL, Backend Impl >
+	struct operator_name< operators::conjugate_mul< IN1, IN2, OUT, CL, Impl > > {
+		using present = void;
+		static constexpr const char * name = "operators::conjugate_mul";
 	};
 
-	template< typename D1, typename D2, typename D3 >
-	struct operator_name< operators::divide< D1, D2, D3 > > {
-	    static constexpr const char* name = "operators::divide";
-	};
-	// Utility operators
-	template< typename IN1, typename IN2 >
-	struct operator_name< operators::zip< IN1, IN2 > > {
-		static constexpr const char* name = "operators::zip";
+	template< typename IN1, typename IN2, typename OUT, Backend Impl >
+	struct operator_name< operators::conjugate_left_mul< IN1, IN2, OUT, Impl > > {
+		using present = void;
+		static constexpr const char * name = "operators::conjugate_left_mul";
 	};
 
-	template< typename D1, typename D2, typename D3 >
-	struct operator_name< operators::equal_first< D1, D2, D3 > > {
-		static constexpr const char* name = "operators::equal_first";
+	template< typename IN1, typename IN2, typename OUT, Backend Impl >
+	struct operator_name< operators::conjugate_right_mul< IN1, IN2, OUT, Impl > > {
+		using present = void;
+		static constexpr const char * name = "operators::conjugate_right_mul";
 	};
 
 	// internal type traits follow
