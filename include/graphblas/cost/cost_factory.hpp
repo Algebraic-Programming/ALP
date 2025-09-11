@@ -467,31 +467,39 @@ struct CostPredictor<void, void> {
         // return 1.0;
     }
 };
-// Type trait to detect if a specialized cost predictor exists
+
+
+// Type tags
+struct specialized_cost_predictor_tag {};
+struct default_cost_predictor_tag {};
+
+// Completely pure template implementation
 template<typename Func, typename... Args>
 struct has_specialized_cost_predictor {
 private:
-    // Test for a specialized CostPredictor implementation
-    template<typename F, typename... A>
-    static std::true_type test(
-        // This will only match if CostPredictor is not the base template
-        typename std::enable_if<
-            !std::is_same<
-                CostPredictor<F, A...>,
-                CostPredictor<void, void>
-            >::value
-        >::type* = nullptr
-    );
+    // Helper trait to check if types are the same
+    template<typename T1, typename T2>
+    struct is_not_same : std::true_type {};
     
-    // Fallback for non-specialized implementations
-    template<typename F, typename... A>
-    static std::false_type test(...);
+    template<typename T>
+    struct is_not_same<T, T> : std::false_type {};
+    
+    // Check if specialization exists by comparing to base template
+    static constexpr bool has_specialization = 
+        is_not_same<CostPredictor<Func, Args...>, CostPredictor<void, void>>::value;
     
 public:
-    // Result of the specialization test
-  
-    static constexpr bool value = decltype(test<Func, Args...>(nullptr))::value;
+    // Pure template conditional logic
+    using type = typename std::conditional<
+        has_specialization,
+        specialized_cost_predictor_tag,
+        default_cost_predictor_tag
+    >::type;
 };
+
+// Helper alias for cleaner usage
+template<typename Func, typename... Args>
+using cost_predictor_category = typename has_specialized_cost_predictor<Func, Args...>::type;
 
 // Function object wrappers for each GraphBLAS function
 struct EWiseApplyFunc {
@@ -1013,55 +1021,69 @@ struct CostPredictor< DotFunc, T0, T1, T2, MonoidType, OpType > {
 // Function tracer class template for handling tracing logic
 template< typename Func >
 class FunctionTracer {
+private:
+    std::string name_;
+    
+    // Compile-time helper to print model type - specialized version
+    template<typename CategoryTag, typename... Args>
+    struct ModelTypePrinter {
+        static void print() {
+            // Default: do nothing (for specialized models)
+        }
+    };
+    
+    // Specialization for default models
+    template<typename... Args>
+    struct ModelTypePrinter<default_cost_predictor_tag, Args...> {
+        static void print() {
+            std::cout << " - DEFAULT MODEL";
+        }
+    };
+
 public:
     FunctionTracer(const std::string& name) : name_(name) {
-        // This static_assert will fail at compile time if the function doesn't have a tracer
         static_assert(has_tracer<Func>::value, 
             "Missing tracer implementation for a GraphBLAS function. "
             "Please add appropriate entries in cost_factory.hpp for this function.");
     }
 
-	// Version for non-templated calls
-	template< typename... Args >
-	auto operator()( Args &&... args ) const -> decltype( std::declval< Func >()( std::forward< Args >( args )... ) ) {
-		std::cout << "\n[TRACING] Entering function: " << name_ << " with " << sizeof...( args ) << " arguments" << std::endl;
+    // Version for non-templated calls - completely compile-time dispatch
+    template< typename... Args >
+    auto operator()( Args &&... args ) const -> decltype( std::declval< Func >()( std::forward< Args >( args )... ) ) {
+        std::cout << "\n[TRACING] Entering function: " << name_ << " with " << sizeof...( args ) << " arguments" << std::endl;
 
-		printArgTypes( std::forward< Args >( args )... );
+        printArgTypes( std::forward< Args >( args )... );
 
-		// Predict the cost
-		double predicted_cost = 0.0;
-		bool has_specialized = false;
-		
-		try {
-			predicted_cost = CostPredictor< Func, typename std::decay< Args >::type... >::predict( args... );
-			has_specialized = has_specialized_cost_predictor< Func, typename std::decay< Args >::type... >::value;
-			
-			std::cout << "[TRACING] Predicted cost: " << predicted_cost << " units (cost model: " << getCostPredictorName< Func >();
+        // Predict the cost - all compile-time template resolution
+        double predicted_cost = 0.0;
+        
+        try {
+            predicted_cost = CostPredictor< Func, typename std::decay< Args >::type... >::predict( args... );
+            
+            std::cout << "[TRACING] Predicted cost: " << predicted_cost << " units (cost model: " << getCostPredictorName< Func >();
 
-			if( !has_specialized ) {
-				std::cout << " - DEFAULT MODEL";
-			}
+            // Compile-time dispatch - zero runtime overhead
+            using predictor_category = cost_predictor_category<Func, typename std::decay<Args>::type...>;
+            ModelTypePrinter<predictor_category, Args...>::print();
 
-			std::cout << ")" << std::endl;
-		} catch(const std::exception& e) {
-			std::cout << "[ERROR] Cost prediction failed: " << e.what() << std::endl;
-			
-			// In test mode, return FAILED rather than propagating the exception
-			#if _GRB_COST_MODEL_TEST_MODE
-				return grb::FAILED;
-			#else
-				throw; // Re-throw in normal mode
-			#endif
-		} catch(...) {
-			std::cout << "[ERROR] Cost prediction failed with unknown exception" << std::endl;
-			
-			// In test mode, return FAILED rather than propagating the exception
-			#if _GRB_COST_MODEL_TEST_MODE
-				return grb::FAILED;
-			#else
-				throw; // Re-throw in normal mode
-			#endif
-		}
+            std::cout << ")" << std::endl;
+        } catch(const std::exception& e) {
+            std::cout << "[ERROR] Cost prediction failed: " << e.what() << std::endl;
+            
+            #if _GRB_COST_MODEL_TEST_MODE
+                return grb::FAILED;
+            #else
+                throw;
+            #endif
+        } catch(...) {
+            std::cout << "[ERROR] Cost prediction failed with unknown exception" << std::endl;
+            
+            #if _GRB_COST_MODEL_TEST_MODE
+                return grb::FAILED;
+            #else
+                throw;
+            #endif
+        }
 
 	// 	auto start = std::chrono::high_resolution_clock::now();
 	// 	Func func;
@@ -1069,83 +1091,72 @@ public:
     //  #pragma omp barrier
 	// 	auto end = std::chrono::high_resolution_clock::now();
 
-		auto duration = std::chrono::duration_cast< std::chrono::microseconds >( end - start );
-		std::cout << "[TRACING] Exiting function: " << name_ << " (took " << duration.count() << "μs)" << std::endl;
+        auto duration = std::chrono::duration_cast< std::chrono::microseconds >( end - start );
+        std::cout << "[TRACING] Exiting function: " << name_ << " (took " << duration.count() << "μs)" << std::endl;
 
-		// Calculate and report cost/time ratio
-		double cost_time_ratio = predicted_cost / static_cast< double >( duration.count() );
-		std::cout << "[TRACING] Cost/time ratio: " << cost_time_ratio << " cost units per microsecond" << std::endl;
+        double cost_time_ratio = predicted_cost / static_cast< double >( duration.count() );
+        std::cout << "[TRACING] Cost/time ratio: " << cost_time_ratio << " cost units per microsecond" << std::endl;
 
-		return result;
-	}
-
-	// Version for templated calls with descriptor
-	template< unsigned int descr, typename... Args >
-	auto withDescriptor( Args &&... args ) const -> decltype( std::declval< Func >().template withDescriptor< descr >( std::forward< Args >( args )... ) ) {
-    std::string descriptor_name = std::to_string( descr );
-    if( descr == grb::descriptors::dense )
-        descriptor_name = "dense";
-    if( descr == grb::descriptors::structural )
-        descriptor_name = "structural";
-
-    std::cout << "\n[TRACING] Entering function: " << name_ << "<" << descriptor_name << "> with " << sizeof...( args ) << " arguments" << std::endl;
-
-    printArgTypes( std::forward< Args >( args )... );
-
-    // Predict the cost
-    double predicted_cost = 0.0;
-    bool has_specialized = false;
-    
-    try {
-        predicted_cost = CostPredictor< Func, typename std::decay< Args >::type... >::predict( args... );
-        has_specialized = has_specialized_cost_predictor< Func, typename std::decay< Args >::type... >::value;
-        
-        std::cout << "[TRACING] Predicted cost: " << predicted_cost << " units (cost model: " << getCostPredictorName< Func >();
-
-        if( !has_specialized ) {
-            std::cout << " - DEFAULT MODEL";
-        }
-
-        std::cout << ")" << std::endl;
-    } catch(const std::exception& e) {
-        std::cout << "[ERROR] Cost prediction failed: " << e.what() << std::endl;
-        
-        // In test mode, return FAILED rather than propagating the exception
-        #if _GRB_COST_MODEL_TEST_MODE
-            return grb::FAILED;
-        #else
-            throw; // Re-throw in normal mode
-        #endif
-    } catch(...) {
-        std::cout << "[ERROR] Cost prediction failed with unknown exception" << std::endl;
-        
-        // In test mode, return FAILED rather than propagating the exception
-        #if _GRB_COST_MODEL_TEST_MODE
-            return grb::FAILED;
-        #else
-            throw; // Re-throw in normal mode
-        #endif
+        return result;
     }
 
-    auto start = std::chrono::high_resolution_clock::now();
-    Func func;
-    auto result = func.template withDescriptor< descr >( std::forward< Args >( args )... );
-    auto end = std::chrono::high_resolution_clock::now();
+    // Version for templated calls with descriptor - same compile-time approach
+    template< unsigned int descr, typename... Args >
+    auto withDescriptor( Args &&... args ) const -> decltype( std::declval< Func >().template withDescriptor< descr >( std::forward< Args >( args )... ) ) {
+        std::string descriptor_name = std::to_string( descr );
+        if( descr == grb::descriptors::dense )
+            descriptor_name = "dense";
+        if( descr == grb::descriptors::structural )
+            descriptor_name = "structural";
 
-    auto duration = std::chrono::duration_cast< std::chrono::microseconds >( end - start );
-    std::cout << "[TRACING] Exiting function: " << name_ << "<" << descriptor_name << "> (took " << duration.count() << "μs)" << std::endl;
+        std::cout << "\n[TRACING] Entering function: " << name_ << "<" << descriptor_name << "> with " << sizeof...( args ) << " arguments" << std::endl;
 
-    // Calculate and report cost/time ratio
-    double cost_time_ratio = predicted_cost / static_cast< double >( duration.count() );
-    std::cout << "[TRACING] Cost/time ratio: " << cost_time_ratio << " cost units per microsecond" << std::endl;
+        printArgTypes( std::forward< Args >( args )... );
 
-    return result;
-}
+        double predicted_cost = 0.0;
+        
+        try {
+            predicted_cost = CostPredictor< Func, typename std::decay< Args >::type... >::predict( args... );
+            
+            std::cout << "[TRACING] Predicted cost: " << predicted_cost << " units (cost model: " << getCostPredictorName< Func >();
 
-private:
-	std::string name_;
+            // Compile-time dispatch - zero runtime overhead
+            using predictor_category = cost_predictor_category<Func, typename std::decay<Args>::type...>;
+            ModelTypePrinter<predictor_category, Args...>::print();
+
+            std::cout << ")" << std::endl;
+        } catch(const std::exception& e) {
+            std::cout << "[ERROR] Cost prediction failed: " << e.what() << std::endl;
+            
+            #if _GRB_COST_MODEL_TEST_MODE
+                return grb::FAILED;
+            #else
+                throw;
+            #endif
+        } catch(...) {
+            std::cout << "[ERROR] Cost prediction failed with unknown exception" << std::endl;
+            
+            #if _GRB_COST_MODEL_TEST_MODE
+                return grb::FAILED;
+            #else
+                throw;
+            #endif
+        }
+
+        auto start = std::chrono::high_resolution_clock::now();
+        Func func;
+        auto result = func.template withDescriptor< descr >( std::forward< Args >( args )... );
+        auto end = std::chrono::high_resolution_clock::now();
+
+        auto duration = std::chrono::duration_cast< std::chrono::microseconds >( end - start );
+        std::cout << "[TRACING] Exiting function: " << name_ << "<" << descriptor_name << "> (took " << duration.count() << "μs)" << std::endl;
+
+        double cost_time_ratio = predicted_cost / static_cast< double >( duration.count() );
+        std::cout << "[TRACING] Cost/time ratio: " << cost_time_ratio << " cost units per microsecond" << std::endl;
+
+        return result;
+    }
 };
-
 		// Now redefine the functions in the grb namespace with tracing
 		namespace grb {
 			// Create tracers for each function
