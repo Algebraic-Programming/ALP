@@ -148,38 +148,50 @@ constexpr const char* getCostPredictorName() {
     return FunctionNameTrait<Func>::name;
 }
 
-// Type trait to check if we can call grb::size on a type
-template<typename T, typename = void>
-struct has_grb_size : std::false_type {};
 
-// Specialization for types where grb::size(T) is valid
-template<typename T>
-struct has_grb_size<T, 
-    typename std::enable_if<
-        !std::is_same<
-            decltype(grb::size(std::declval<T>())),
-            void
-        >::value
-    >::type
-> : std::true_type {};
+// #################### is_grb_vector check for grb::Vector type trait ############################### 
+struct is_grb_vector_true_tag {};
+struct is_grb_vector_false_tag {};
 
-// Helper to safely get size if available
+// Primary: false by default
+template<class T>
+struct is_grb_vector { typedef is_grb_vector_false_tag type; };
+
+// Matches any grb::Vector<DataType, backend, Coords> (incl. cv-qualified)
+template<class D, grb::Backend B, class C>
+struct is_grb_vector< grb::Vector<D, B, C> > { typedef is_grb_vector_true_tag type; };
+template<class D, grb::Backend B, class C>
+struct is_grb_vector< const grb::Vector<D, B, C> > { typedef is_grb_vector_true_tag type; };
+template<class D, grb::Backend B, class C>
+struct is_grb_vector< volatile grb::Vector<D, B, C> > { typedef is_grb_vector_true_tag type; };
+template<class D, grb::Backend B, class C>
+struct is_grb_vector< const volatile grb::Vector<D, B, C> > { typedef is_grb_vector_true_tag type; };
+
+template<class T>
+using is_grb_vector_category = typename is_grb_vector<T>::type;
+
+// Normalize cv/ref before dispatch
+template<class T>
+struct remove_cvref { 
+    typedef typename std::remove_cv< typename std::remove_reference<T>::type >::type type; 
+};
+
+// Helper to safely get size if available - using type tags
 template<typename T>
-typename std::enable_if<has_grb_size<T>::value, std::string>::type
-getSizeString(const T& arg) {
-    try {
-        return "[size=" + std::to_string(grb::size(arg)) + "] ";
-    } catch(...) {
-        return " ";
-    }
+std::string getSizeString_impl(const T& arg, is_grb_vector_true_tag) {
+    try { return "[size=" + std::to_string(grb::size(arg)) + "] "; }
+    catch(...) { return " "; }
+}
+template<typename T>
+std::string getSizeString_impl(const T&, is_grb_vector_false_tag) { return " "; }
+
+// Main function that dispatches based on type
+template<typename T>
+std::string getSizeString(const T& arg) {
+    typedef typename remove_cvref<T>::type base_t;
+    return getSizeString_impl(arg, is_grb_vector_category<base_t>());
 }
 
-// Helper for types that don't support size
-template<typename T>
-typename std::enable_if<!has_grb_size<T>::value, std::string>::type
-getSizeString(const T&) {
-    return " ";
-}
 
 // Add these type traits to detect Matrix types safely
 template<typename T, typename = void>
