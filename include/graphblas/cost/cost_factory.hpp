@@ -1,75 +1,109 @@
 #include <iostream>
 #include <chrono>
 #include <string>
-#include <functional>
-#include <vector>
 #include <type_traits>
 #include <tuple>
 #include <utility>
 #include <stdexcept>
 
+#include <graphblas/type_traits.hpp>
+#include <graphblas/ops.hpp>
+
 #include "hw_params_arm920.hpp"
 
-// Define a compile-time toggle
 #ifndef _GRB_ENABLE_TRACING
-#define _GRB_ENABLE_TRACING 1  // Default to on
+ #define _GRB_ENABLE_TRACING 1
 #endif
 
 #ifndef _GRB_COST_MODEL_TEST_MODE
-#define _GRB_COST_MODEL_TEST_MODE 0  // Default to off
+ #define _GRB_COST_MODEL_TEST_MODE 0
 #endif
 
-// Use value-based guard so 0 disables the block
 #if _GRB_ENABLE_TRACING
 
 // -- CostPredictor (forward decls)
-template<typename Func>
-inline const char* getCostPredictorName();
+template< typename Func >
+inline const char * getCostPredictorName();
 
-template<typename Func>
+template< typename Func >
 struct has_tracer : std::false_type {};
 
 // C++11 polyfill for detail::index_sequence / make_index_sequence
 #ifndef GRB_COST_DETAIL_INDEX_SEQUENCE
-#define GRB_COST_DETAIL_INDEX_SEQUENCE
+ #define GRB_COST_DETAIL_INDEX_SEQUENCE
 namespace detail {
-    template <size_t... Is>
+
+    template< size_t... Is >
     struct index_sequence {
         using type = index_sequence;
-        static inline size_t size() { return sizeof...(Is); }
+        static inline size_t size() { return sizeof...( Is ); }
     };
 
-    template <size_t N, size_t... Is>
-    struct make_index_sequence_helper : make_index_sequence_helper<N - 1, N - 1, Is...> {};
+    template< size_t N, size_t... Is >
+    struct make_index_sequence_helper
+        : make_index_sequence_helper< N - 1, N - 1, Is... > {};
 
-    template <size_t... Is>
-    struct make_index_sequence_helper<0, Is...> {
-        using type = index_sequence<Is...>;
+    template< size_t... Is >
+    struct make_index_sequence_helper< 0, Is... > {
+        using type = index_sequence< Is... >;
     };
 
-    template <size_t N>
-    using make_index_sequence = typename make_index_sequence_helper<N>::type;
+    template< size_t N >
+    using make_index_sequence = typename make_index_sequence_helper< N >::type;
+
 } // namespace detail
 #endif // GRB_COST_DETAIL_INDEX_SEQUENCE
 
-// Simple role selector using existing GraphBLAS traits (no decltype/sizeof)
-template<class T>
+
+// Role selector using existing GraphBLAS traits (no decltype/sizeof)
+template< class T >
 struct RoleName {
-    typedef typename std::remove_cv<typename std::remove_reference<T>::type>::type base_t;
-    static const char* get() {
-        return pick_semiring(std::integral_constant<bool, grb::is_semiring<base_t>::value>());
+
+    typedef typename std::remove_cv<
+        typename std::remove_reference< T >::type
+    >::type base_t;
+
+    static const char * get() {
+        return pick_semiring(
+            std::integral_constant<
+                bool, grb::is_semiring< base_t >::value
+            >()
+        );
     }
+
 private:
-    static const char* pick_semiring(std::true_type)  { return "Semiring<...>"; }
-    static const char* pick_semiring(std::false_type) {
-        return pick_monoid(std::integral_constant<bool, grb::is_monoid<base_t>::value>());
+
+    static const char * pick_semiring( std::true_type ) {
+        return "Semiring<...>";
     }
-    static const char* pick_monoid(std::true_type)  { return "Monoid<...>"; }
-    static const char* pick_monoid(std::false_type) {
-        return pick_operator(std::integral_constant<bool, grb::is_operator<base_t>::value>());
+
+    static const char * pick_semiring( std::false_type ) {
+        return pick_monoid(
+            std::integral_constant<
+                bool, grb::is_monoid< base_t >::value
+            >()
+        );
     }
-    static const char* pick_operator(std::true_type)  { return "Operator<...>"; }
-    static const char* pick_operator(std::false_type) { return 0; }
+
+    static const char * pick_monoid( std::true_type ) {
+        return "Monoid<...>";
+    }
+
+    static const char * pick_monoid( std::false_type ) {
+        return pick_operator(
+            std::integral_constant<
+                bool, grb::is_operator< base_t >::value
+            >()
+        );
+    }
+
+    static const char * pick_operator( std::true_type ) {
+        return "Operator<...>";
+    }
+
+    static const char * pick_operator( std::false_type ) {
+        return nullptr;
+    }
 };
 
 
@@ -77,210 +111,288 @@ private:
 struct op_name_present_tag {};
 struct op_name_absent_tag {};
 
-template<class U, class = void>
-struct op_name_category { using type = op_name_absent_tag; };
+template< class U, class = void >
+struct op_name_category {
+    typedef op_name_absent_tag type;
+};
 
-template<class U>
+template< class U >
 struct op_name_category<
     U,
     typename grb::operator_name<
-        typename std::remove_cv<typename std::remove_reference<U>::type>::type
+        typename std::remove_cv<
+            typename std::remove_reference< U >::type
+        >::type
     >::present
-> { using type = op_name_present_tag; };
+> {
+    typedef op_name_present_tag type;
+};
 
-template<class U>
-using op_name_category_t = typename op_name_category<U>::type;
+template< class U >
+using op_name_category_t = typename op_name_category< U >::type;
+
 
 // TypeName prefers concrete operator_name<> if available, then RoleName
-template<class T>
+template< class T >
 struct TypeName {
-    static const char* get() {
-        typedef typename std::remove_cv<typename std::remove_reference<T>::type>::type base_t;
-        return pick(op_name_category_t<base_t>());
+
+    static const char * get() {
+        typedef typename std::remove_cv<
+            typename std::remove_reference< T >::type
+        >::type base_t;
+        return pick( op_name_category_t< base_t >() );
     }
+
 private:
-    static const char* pick(op_name_present_tag) {
-        typedef typename std::remove_cv<typename std::remove_reference<T>::type>::type base_t;
-        return grb::operator_name<base_t>::name;
+
+    static const char * pick( op_name_present_tag ) {
+        typedef typename std::remove_cv<
+            typename std::remove_reference< T >::type
+        >::type base_t;
+        return grb::operator_name< base_t >::name;
     }
-    static const char* pick(op_name_absent_tag) {
-        if (const char* role = RoleName<T>::get()) return role;
+
+    static const char * pick( op_name_absent_tag ) {
+        if( const char * role = RoleName< T >::get() ) { return role; }
         return "T";
     }
 };
 
 
 // Fundamental specialisations (extend as needed)
-template<> struct TypeName<double> { static const char* get() { return "double"; } };
-template<> struct TypeName<float>  { static const char* get() { return "float"; } };
-template<> struct TypeName<int>    { static const char* get() { return "int"; } };
-template<> struct TypeName<unsigned int> { static const char* get() { return "unsigned int"; } };
-template<> struct TypeName<long>   { static const char* get() { return "long"; } };
-template<> struct TypeName<size_t> { static const char* get() { return "size_t"; } };
-template<> struct TypeName<char>   { static const char* get() { return "char"; } };
-template<> struct TypeName<bool>   { static const char* get() { return "bool"; } };
+template<>
+struct TypeName< double > { static const char * get() { return "double"; } };
+template<>
+struct TypeName< float > { static const char * get() { return "float"; } };
+template<>
+struct TypeName< int > { static const char * get() { return "int"; } };
+template<>
+struct TypeName< unsigned int > { static const char * get() { return "unsigned int"; } };
+template<>
+struct TypeName< long > { static const char * get() { return "long"; } };
+template<>
+struct TypeName< size_t > { static const char * get() { return "size_t"; } };
+template<>
+struct TypeName< char > { static const char * get() { return "char"; } };
+template<>
+struct TypeName< bool > { static const char * get() { return "bool"; } };
 
 // GraphBLAS containers
-template<class D, ::grb::Backend B, class C>
-struct TypeName< ::grb::Vector<D, B, C> > { static const char* get() { return "Vector<...>"; } };
-template<class D, ::grb::Backend B, class RI, class CI, class NZI>
-struct TypeName< ::grb::Matrix<D, B, RI, CI, NZI> > { static const char* get() { return "Matrix<...>"; } };
+template< class D, grb::Backend B, class C >
+struct TypeName< grb::Vector< D, B, C > > {
+    static const char * get() { return "Vector<...>"; }
+};
 
-template<class T>
-inline const char* type_name_cstr() { return TypeName<T>::get(); }
-template<class T>
-inline std::string getTypeName() { return std::string(type_name_cstr<T>()); }
+template< class D, grb::Backend B, class RI, class CI, class NZI >
+struct TypeName< grb::Matrix< D, B, RI, CI, NZI > > {
+    static const char * get() { return "Matrix<...>"; }
+};
+
+template< class T >
+inline const char * type_name_cstr() {
+    return TypeName< T >::get();
+}
+
+template< class T >
+inline std::string getTypeName() {
+    return std::string( type_name_cstr< T >() );
+}
 
 
 // ===================== unified argument category (Vector / Matrix / Other) ===
 struct arg_vector_tag {};
 struct arg_matrix_tag {};
-struct arg_other_tag {};
+struct arg_other_tag  {};
 
 // Primary
-template<class T> struct arg_category { typedef arg_other_tag type; };
-
-// Vector specialization (unqualified only; callers pass remove_cvref<T>::type)
-template<class D, ::grb::Backend B, class C>
-struct arg_category< ::grb::Vector<D, B, C> > { typedef arg_vector_tag type; };
-
-// Matrix specialization (unqualified only)
-template<class D, ::grb::Backend B, class RI, class CI, class NZI>
-struct arg_category< ::grb::Matrix<D, B, RI, CI, NZI> > { typedef arg_matrix_tag type; };
-
-// ===================== end of unified argument category =======================
-
-// Normalize cv/ref before dispatch
-template<class T>
-struct remove_cvref {
-    typedef typename std::remove_cv< typename std::remove_reference<T>::type >::type type;
+template< class T >
+struct arg_category {
+    typedef arg_other_tag type;
 };
 
+// Vector specialization (unqualified only; callers pass remove_cvref<T>::type)
+template< class D, grb::Backend B, class C >
+struct arg_category< grb::Vector< D, B, C > > {
+    typedef arg_vector_tag type;
+};
+
+// Matrix specialization (unqualified only)
+template< class D, grb::Backend B, class RI, class CI, class NZI >
+struct arg_category< grb::Matrix< D, B, RI, CI, NZI > > {
+    typedef arg_matrix_tag type;
+};
+
+// Normalize cv/ref before dispatch
+template< class T >
+struct remove_cvref {
+    typedef typename std::remove_cv<
+        typename std::remove_reference< T >::type
+    >::type type;
+};
+
+
 // Vector info via arg_category
-template<typename T>
-inline std::string getVectorInfoString_impl(const T& arg, arg_vector_tag) {
-    try { return "[size=" + std::to_string(grb::size(arg)) + "] "; }
-    catch(...) { return " "; }
-}
-template<typename T>
-inline std::string getVectorInfoString_impl(const T&, arg_other_tag) { return " "; }
-
-template<typename T>
-inline std::string getVectorInfoString(const T& arg) {
-    typedef typename remove_cvref<T>::type base_t;
-    return getVectorInfoString_impl(arg, typename arg_category<base_t>::type());
-}
-
-// Matrix info via arg_category
-template<typename T>
-inline std::string getMatrixInfoString_impl(const T& arg, arg_matrix_tag) {
+template< typename T >
+inline std::string getVectorInfoString_impl( const T &arg, arg_vector_tag ) {
     try {
-        return "[rows=" + std::to_string(grb::nrows(arg)) +
-               ",cols=" + std::to_string(grb::ncols(arg)) +
-               ",nnz=" + std::to_string(grb::nnz(arg)) + "] ";
-    } catch(...) {
+        return std::string( "[size=" )
+            + std::to_string( grb::size( arg ) ) + "] ";
+    } catch( ... ) {
         return " ";
     }
 }
-template<typename T>
-inline std::string getMatrixInfoString_impl(const T&, arg_other_tag) { return " "; }
 
-template<typename T>
-inline std::string getMatrixInfoString(const T& arg) {
-    typedef typename remove_cvref<T>::type base_t;
-    return getMatrixInfoString_impl(arg, typename arg_category<base_t>::type());
+template< typename T >
+inline std::string getVectorInfoString_impl( const T &, arg_other_tag ) {
+    return " ";
 }
+
+template< typename T >
+inline std::string getVectorInfoString( const T &arg ) {
+    typedef typename remove_cvref< T >::type base_t;
+    return getVectorInfoString_impl( arg, typename arg_category< base_t >::type() );
+}
+
+
+// Matrix info via arg_category
+template< typename T >
+inline std::string getMatrixInfoString_impl( const T &arg, arg_matrix_tag ) {
+    try {
+        return std::string( "[rows=" )
+            + std::to_string( grb::nrows( arg ) )
+            + ",cols=" + std::to_string( grb::ncols( arg ) )
+            + ",nnz=" + std::to_string( grb::nnz( arg ) )
+            + "] ";
+    } catch( ... ) {
+        return " ";
+    }
+}
+
+template< typename T >
+inline std::string getMatrixInfoString_impl( const T &, arg_other_tag ) {
+    return " ";
+}
+
+template< typename T >
+inline std::string getMatrixInfoString( const T &arg ) {
+    typedef typename remove_cvref< T >::type base_t;
+    return getMatrixInfoString_impl( arg, typename arg_category< base_t >::type() );
+}
+
 
 // ===================== Argument printing (pure tag-dispatch) ================
-template<class T>
-inline void printOneArgImpl(const T& arg, arg_vector_tag) {
-    typedef typename std::remove_cv<typename std::remove_reference<T>::type>::type base_t;
-    std::cout << TypeName<base_t>::get();
-    std::cout << getVectorInfoString<typename std::remove_reference<T>::type>(arg);
+template< class T >
+inline void printOneArgImpl( const T &arg, arg_vector_tag ) {
+    typedef typename std::remove_cv<
+        typename std::remove_reference< T >::type
+    >::type base_t;
+    std::cout << TypeName< base_t >::get();
+    std::cout << getVectorInfoString< typename std::remove_reference< T >::type >( arg );
 }
 
-template<class T>
-inline void printOneArgImpl(const T& arg, arg_matrix_tag) {
-    typedef typename std::remove_cv<typename std::remove_reference<T>::type>::type base_t;
-    std::cout << TypeName<base_t>::get();
-    std::cout << getMatrixInfoString<typename std::remove_reference<T>::type>(arg);
+template< class T >
+inline void printOneArgImpl( const T &arg, arg_matrix_tag ) {
+    typedef typename std::remove_cv<
+        typename std::remove_reference< T >::type
+    >::type base_t;
+    std::cout << TypeName< base_t >::get();
+    std::cout << getMatrixInfoString< typename std::remove_reference< T >::type >( arg );
 }
 
-template<class T>
-inline void printOneArgImpl(const T&, arg_other_tag) {
-    typedef typename std::remove_cv<typename std::remove_reference<T>::type>::type base_t;
-    std::cout << TypeName<base_t>::get() << " ";
+template< class T >
+inline void printOneArgImpl( const T &, arg_other_tag ) {
+    typedef typename std::remove_cv<
+        typename std::remove_reference< T >::type
+    >::type base_t;
+    std::cout << TypeName< base_t >::get() << " ";
 }
 
 // Single entry that dispatches purely by type (no runtime if/branches)
-template<class T>
-inline void printOneArg(const T& arg) {
-    typedef typename remove_cvref<T>::type base_t;
-    printOneArgImpl(arg, typename arg_category<base_t>::type());
+template< class T >
+inline void printOneArg( const T &arg ) {
+    typedef typename remove_cvref< T >::type base_t;
+    printOneArgImpl( arg, typename arg_category< base_t >::type() );
 }
 
 // Base case
 inline void printArgTypesHelper() {}
 
 // Recursive case
-template<typename T, typename... Args>
-void printArgTypesHelper(T&& arg, Args&&... args) {
-    printOneArg(arg);
-    printArgTypesHelper(std::forward<Args>(args)...);
+template< typename T, typename... Args >
+void printArgTypesHelper( T &&arg, Args&&... args ) {
+    printOneArg( arg );
+    printArgTypesHelper( std::forward< Args >( args )... );
 }
 
 // Entry point for printing argument types
-template<typename... Args>
-void printArgTypes(Args&&... args) {
+template< typename... Args >
+void printArgTypes( Args&&... args ) {
     std::cout << "[TRACING] Argument types: ";
-    printArgTypesHelper(std::forward<Args>(args)...);
+    printArgTypesHelper( std::forward< Args >( args )... );
     std::cout << std::endl;
 }
 
 // Cost prediction framework
 // Base template for cost prediction
-template<typename Func, typename... Args>
+template<
+    typename Func, typename... Args
+>
 struct CostPredictor {
+
     // Helper to get argument type names for diagnostic purposes
-    template<typename T>
+    template< typename T >
     static std::string getArgTypeName() {
-        return getTypeName<T>();
+        return getTypeName< T >();
     }
-    
+
     // Helper to build a comma-separated list of argument type names
-    template<size_t... Is>
-    static std::string getArgTypeNamesHelper(detail::index_sequence<Is...>) {
+    template< size_t... Is >
+    static std::string getArgTypeNamesHelper(
+        detail::index_sequence< Is... >
+    ) {
         std::string result;
         using expander = int[];
-        (void)expander{0, (void(
-            result += (Is == 0 ? "" : ", ")
-                   + getArgTypeName<typename std::tuple_element<Is, std::tuple<Args...>>::type>()
-        ), 0)...};
+        (void) expander{ 0, (void(
+            result += (Is == 0 ? "" : ", ") +
+                getArgTypeName<
+                    typename std::tuple_element<
+                        Is, std::tuple< Args... >
+                    >::type
+                >()
+        ), 0 )... };
         return result;
     }
-    
-    static std::string getArgTypeNames() {
-        return getArgTypeNamesHelper(detail::make_index_sequence<sizeof...(Args)>{});
-    }
-    
-    static double predict(const Args&... args) {
-        int unused[] = { 0, (void(args), 0)... };
-        (void)unused;
 
-        std::string funcName = getCostPredictorName<Func>();
+    static std::string getArgTypeNames() {
+        return getArgTypeNamesHelper(
+            detail::make_index_sequence< sizeof...( Args ) >{}
+        );
+    }
+
+    static double predict( const Args &... args ) {
+        int unused[] = { 0, (void( args ), 0 )... };
+        (void) unused;
+
+        std::string funcName = getCostPredictorName< Func >();
         std::string argTypes = getArgTypeNames();
-        
+
         std::cout << "[WARNING] *** MISSING COST MODEL ***" << std::endl;
-        std::cout << "[WARNING] No specialized cost model for: " << funcName << std::endl;
+        std::cout << "[WARNING] No specialized cost model for: "
+                  << funcName << std::endl;
         std::cout << "[WARNING] With argument types: " << argTypes << std::endl;
-        std::cout << "[WARNING] To fix this, add a specialization like:" << std::endl;
-        std::cout << "[WARNING] template<...appropriate template params...>" << std::endl;
-        std::cout << "[WARNING] struct CostPredictor<" << funcName << "Func, " << argTypes << "> {" << std::endl;
-        std::cout << "[WARNING]     static double predict(...) { ... }" << std::endl;
+        std::cout << "[WARNING] To fix this, add a specialization like:"
+                  << std::endl;
+        std::cout << "[WARNING] template<...appropriate template params...>"
+                  << std::endl;
+        std::cout << "[WARNING] struct CostPredictor<" << funcName
+                  << "Func, " << argTypes << "> {" << std::endl;
+        std::cout << "[WARNING]     static double predict(...) { ... }"
+                  << std::endl;
         std::cout << "[WARNING] };" << std::endl;
 
-        if (_GRB_COST_MODEL_TEST_MODE) {
-            std::cerr << "[ERROR] Missing cost model for this function." << std::endl;
+        if( _GRB_COST_MODEL_TEST_MODE ) {
+            std::cerr << "[ERROR] Missing cost model for this function."
+                      << std::endl;
             std::cerr << "[ERROR] Function name: " << funcName << std::endl;
         }
         return 1.0;
@@ -289,17 +401,13 @@ struct CostPredictor {
 
 // Special case for the void template parameters - needed for SFINAE detection
 template<>
-struct CostPredictor<void, void> {
+struct CostPredictor< void, void > {
     static double predict() {
-        // Always fail with a clear message
-        // TODO:: enable assertions in the final code 
-        // static_assert(!std::is_same<void, void>::value, 
-        //     "Non-implemented cost function detected");
-        std::cerr << "[ERROR] Missing cost model for this function." << std::endl;
-        // print function name
-        std::cerr << "[ERROR] Function name: " << getCostPredictorName<void>() << std::endl;
-        throw std::runtime_error("Missing cost model");
-        // return 1.0;
+        std::cerr << "[ERROR] Missing cost model for this function."
+                  << std::endl;
+        std::cerr << "[ERROR] Function name: "
+                  << getCostPredictorName< void >() << std::endl;
+        throw std::runtime_error( "Missing cost model" );
     }
 };
 
@@ -324,7 +432,7 @@ private:
         is_not_same<CostPredictor<Func, Args...>, CostPredictor<void, void>>::value;
     
 public:
-    // Pure template conditional logic
+    // template conditional logic
     using type = typename std::conditional<
         has_specialization,
         specialized_cost_predictor_tag,
@@ -935,217 +1043,217 @@ public:
 };
 
 
-    // Names for each wrapped GraphBLAS function
-    template<> inline const char* getCostPredictorName<EWiseApplyFunc>() { return "eWiseApply"; }
-    template<> inline const char* getCostPredictorName<FoldlFunc>()      { return "foldl"; }
-    template<> inline const char* getCostPredictorName<FoldrFunc>()      { return "foldr"; }
-    template<> inline const char* getCostPredictorName<DotFunc>()        { return "dot"; }
-    template<> inline const char* getCostPredictorName<SetFunc>()        { return "set"; }
-    template<> inline const char* getCostPredictorName<ApplyFunc>()      { return "apply"; }
-    template<> inline const char* getCostPredictorName<MxvFunc>()        { return "mxv"; }
-    template<> inline const char* getCostPredictorName<EWiseAddFunc>()   { return "eWiseAdd"; }
-    template<> inline const char* getCostPredictorName<VxmFunc>()        { return "vxm"; }
-    template<> inline const char* getCostPredictorName<EWiseLambdaFunc>(){ return "eWiseLambda"; }
-    template<> inline const char* getCostPredictorName<MxmFunc>()        { return "mxm"; }
-    template<> inline const char* getCostPredictorName<ZipFunc>()        { return "zip"; }
-    template<> inline const char* getCostPredictorName<OuterFunc>()      { return "outer"; }
-    template<> inline const char* getCostPredictorName<SelectFunc>()     { return "select"; }
-    template<> inline const char* getCostPredictorName<ClearFunc>()      { return "clear"; }
+// Names for each wrapped GraphBLAS function
+template<> inline const char* getCostPredictorName<EWiseApplyFunc>() { return "eWiseApply"; }
+template<> inline const char* getCostPredictorName<FoldlFunc>()      { return "foldl"; }
+template<> inline const char* getCostPredictorName<FoldrFunc>()      { return "foldr"; }
+template<> inline const char* getCostPredictorName<DotFunc>()        { return "dot"; }
+template<> inline const char* getCostPredictorName<SetFunc>()        { return "set"; }
+template<> inline const char* getCostPredictorName<ApplyFunc>()      { return "apply"; }
+template<> inline const char* getCostPredictorName<MxvFunc>()        { return "mxv"; }
+template<> inline const char* getCostPredictorName<EWiseAddFunc>()   { return "eWiseAdd"; }
+template<> inline const char* getCostPredictorName<VxmFunc>()        { return "vxm"; }
+template<> inline const char* getCostPredictorName<EWiseLambdaFunc>(){ return "eWiseLambda"; }
+template<> inline const char* getCostPredictorName<MxmFunc>()        { return "mxm"; }
+template<> inline const char* getCostPredictorName<ZipFunc>()        { return "zip"; }
+template<> inline const char* getCostPredictorName<OuterFunc>()      { return "outer"; }
+template<> inline const char* getCostPredictorName<SelectFunc>()     { return "select"; }
+template<> inline const char* getCostPredictorName<ClearFunc>()      { return "clear"; }
 
-    // Mark which wrappers have tracers (for the static_assert in FunctionTracer)
-    template<> struct has_tracer<EWiseApplyFunc>   : std::true_type {};
-    template<> struct has_tracer<FoldlFunc>        : std::true_type {};
-    template<> struct has_tracer<FoldrFunc>        : std::true_type {};
-    template<> struct has_tracer<DotFunc>          : std::true_type {};
-    template<> struct has_tracer<SetFunc>          : std::true_type {};
-    template<> struct has_tracer<ApplyFunc>        : std::true_type {};
-    template<> struct has_tracer<MxvFunc>          : std::true_type {};
-    template<> struct has_tracer<EWiseAddFunc>     : std::true_type {};
-    template<> struct has_tracer<VxmFunc>          : std::true_type {};
-    template<> struct has_tracer<EWiseLambdaFunc>  : std::true_type {};
-    template<> struct has_tracer<MxmFunc>          : std::true_type {};
-    template<> struct has_tracer<ZipFunc>          : std::true_type {};
-    template<> struct has_tracer<OuterFunc>        : std::true_type {};
-    template<> struct has_tracer<SelectFunc>       : std::true_type {};
-    template<> struct has_tracer<ClearFunc>        : std::true_type {};
-
-
-
-        // Now redefine the functions in the grb namespace with tracing
-		namespace grb {
-			// Create tracers for each function
-			static const FunctionTracer< EWiseApplyFunc > eWiseApplyTracer( "eWiseApply" );
-			static const FunctionTracer< FoldlFunc > foldlTracer( "foldl" );
-			static const FunctionTracer< FoldrFunc > foldrTracer( "foldr" );
-			static const FunctionTracer< DotFunc > dotTracer( "dot" );
-			static const FunctionTracer< SetFunc > setTracer( "set" );
-			static const FunctionTracer< ApplyFunc > applyTracer( "apply" );
-			static const FunctionTracer< MxvFunc > mxvTracer( "mxv" );
-            static const FunctionTracer< EWiseAddFunc > eWiseAddTracer( "eWiseAdd" );
-            static const FunctionTracer< VxmFunc > vxmTracer( "vxm" );
-            static const FunctionTracer< EWiseLambdaFunc > eWiseLambdaTracer( "eWiseLambda" );
-            static const FunctionTracer< MxmFunc > mxmTracer( "mxm" );
-            static const FunctionTracer< ZipFunc > zipTracer( "zip" );
-            static const FunctionTracer< OuterFunc > outerTracer( "outer" );
-            static const FunctionTracer< SelectFunc > selectTracer( "select" );
-            static const FunctionTracer< ClearFunc > clearTracer( "clear" );
-
-
-            // Non-templated versions (descriptor = 0 by default)
-            template<typename... Args>
-            grb::RC eWiseApply(Args&&... args) {
-                return eWiseApplyTracer(std::forward<Args>(args)...);
-            }
-
-            template<typename... Args>
-            grb::RC foldl(Args&&... args) {
-                return foldlTracer(std::forward<Args>(args)...);
-            }
-
-            template<typename... Args>
-            grb::RC foldr(Args&&... args) {
-                return foldrTracer(std::forward<Args>(args)...);
-            }
-
-            template<typename... Args>
-            grb::RC dot(Args&&... args) {
-                return dotTracer(std::forward<Args>(args)...);
-            }
-
-            template<typename... Args>
-            grb::RC set(Args&&... args) {
-                return setTracer(std::forward<Args>(args)...);
-            }
-
-            template<typename... Args>
-            grb::RC apply(Args&&... args) {
-                return applyTracer(std::forward<Args>(args)...);
-            }
-
-            template<typename... Args>
-            grb::RC mxv(Args&&... args) {
-                return mxvTracer(std::forward<Args>(args)...);
-            }
-
-            template<typename... Args>
-            grb::RC eWiseAdd(Args&&... args) {
-                return eWiseAddTracer(std::forward<Args>(args)...);
-            }
-
-            template<typename... Args>
-            grb::RC vxm(Args&&... args) {
-                return vxmTracer(std::forward<Args>(args)...);
-            }
-
-            template<typename... Args>
-            grb::RC eWiseLambda(Args&&... args) {
-                return eWiseLambdaTracer(std::forward<Args>(args)...);
-            }
-
-            template<typename... Args>
-            grb::RC mxm(Args&&... args) {
-                return mxmTracer(std::forward<Args>(args)...);
-            }
-
-            template<typename... Args>
-            grb::RC zip(Args&&... args) {
-                return zipTracer(std::forward<Args>(args)...);
-            }
-
-            template<typename... Args>
-            grb::RC outer(Args&&... args) {
-                return outerTracer(std::forward<Args>(args)...);
-            }
-
-            template<typename... Args>
-            grb::RC select(Args&&... args) {
-                return selectTracer(std::forward<Args>(args)...);
-            }
-
-            template<typename... Args>
-            grb::RC clear(Args&&... args) {
-                return clearTracer(std::forward<Args>(args)...);
-            }
-
-            // Templated versions with explicit descriptor
-            template<unsigned int descr, typename... Args>
-            grb::RC eWiseApply(Args&&... args) {
-                return eWiseApplyTracer.template operator()<descr>(std::forward<Args>(args)...);
-            }
-
-            template<unsigned int descr, typename... Args>
-            grb::RC foldl(Args&&... args) {
-                return foldlTracer.template operator()<descr>(std::forward<Args>(args)...);
-            }
-
-            template<unsigned int descr, typename... Args>
-            grb::RC foldr(Args&&... args) {
-                return foldrTracer.template operator()<descr>(std::forward<Args>(args)...);
-            }
-
-            template<unsigned int descr, typename... Args>
-            grb::RC dot(Args&&... args) {
-                return dotTracer.template operator()<descr>(std::forward<Args>(args)...);
-            }
-
-            template<unsigned int descr, typename... Args>
-            grb::RC set(Args&&... args) {
-                return setTracer.template operator()<descr>(std::forward<Args>(args)...);
-            }
-
-            template<unsigned int descr, typename... Args>
-            grb::RC apply(Args&&... args) {
-                return applyTracer.template operator()<descr>(std::forward<Args>(args)...);
-            }
-
-            template<unsigned int descr, typename... Args>
-            grb::RC mxv(Args&&... args) {
-                return mxvTracer.template operator()<descr>(std::forward<Args>(args)...);
-            }
-
-            template<unsigned int descr, typename... Args>
-            grb::RC eWiseAdd(Args&&... args) {
-                return eWiseAddTracer.template operator()<descr>(std::forward<Args>(args)...);
-            }
-
-            // TODO:: Implement eWiseLambda with descriptor
-            // template<unsigned int descr, typename... Args>
-            // grb::RC eWiseLambda(Args&&... args) {
-            //     return eWiseLambdaTracer.template operator()<descr>(std::forward<Args>(args)...);
-            // }
-
-            template<unsigned int descr, typename... Args>
-            grb::RC vxm(Args&&... args) {
-                return vxmTracer.template operator()<descr>(std::forward<Args>(args)...);
-            }
-
-            template<unsigned int descr, typename... Args>
-            grb::RC mxm(Args&&... args) {
-                return mxmTracer.template operator()<descr>(std::forward<Args>(args)...);
-            }
-
-            template<unsigned int descr, typename... Args>
-            grb::RC zip(Args&&... args) {
-                return zipTracer.template operator()<descr>(std::forward<Args>(args)...);
-            }
-
-            template<unsigned int descr, typename... Args>
-            grb::RC outer(Args&&... args) {
-                return outerTracer.template operator()<descr>(std::forward<Args>(args)...);
-            }
-
-            template<unsigned int descr, typename... Args>
-            grb::RC select(Args&&... args) {
-                return selectTracer.template operator()<descr>(std::forward<Args>(args)...);
-            }
-
-            template<unsigned int descr, typename... Args>
-            grb::RC clear(Args&&... args) {
-                return clearTracer.template operator()<descr>(std::forward<Args>(args)...);
-            }
+// Mark which wrappers have tracers (for the static_assert in FunctionTracer)
+template<> struct has_tracer<EWiseApplyFunc>   : std::true_type {};
+template<> struct has_tracer<FoldlFunc>        : std::true_type {};
+template<> struct has_tracer<FoldrFunc>        : std::true_type {};
+template<> struct has_tracer<DotFunc>          : std::true_type {};
+template<> struct has_tracer<SetFunc>          : std::true_type {};
+template<> struct has_tracer<ApplyFunc>        : std::true_type {};
+template<> struct has_tracer<MxvFunc>          : std::true_type {};
+template<> struct has_tracer<EWiseAddFunc>     : std::true_type {};
+template<> struct has_tracer<VxmFunc>          : std::true_type {};
+template<> struct has_tracer<EWiseLambdaFunc>  : std::true_type {};
+template<> struct has_tracer<MxmFunc>          : std::true_type {};
+template<> struct has_tracer<ZipFunc>          : std::true_type {};
+template<> struct has_tracer<OuterFunc>        : std::true_type {};
+template<> struct has_tracer<SelectFunc>       : std::true_type {};
+template<> struct has_tracer<ClearFunc>        : std::true_type {};
 
 
 
-        } // namespace grb
+// redefine the functions in the grb namespace with tracing
+namespace grb {
+    // Create tracers for each function
+    static const FunctionTracer< EWiseApplyFunc > eWiseApplyTracer( "eWiseApply" );
+    static const FunctionTracer< FoldlFunc > foldlTracer( "foldl" );
+    static const FunctionTracer< FoldrFunc > foldrTracer( "foldr" );
+    static const FunctionTracer< DotFunc > dotTracer( "dot" );
+    static const FunctionTracer< SetFunc > setTracer( "set" );
+    static const FunctionTracer< ApplyFunc > applyTracer( "apply" );
+    static const FunctionTracer< MxvFunc > mxvTracer( "mxv" );
+    static const FunctionTracer< EWiseAddFunc > eWiseAddTracer( "eWiseAdd" );
+    static const FunctionTracer< VxmFunc > vxmTracer( "vxm" );
+    static const FunctionTracer< EWiseLambdaFunc > eWiseLambdaTracer( "eWiseLambda" );
+    static const FunctionTracer< MxmFunc > mxmTracer( "mxm" );
+    static const FunctionTracer< ZipFunc > zipTracer( "zip" );
+    static const FunctionTracer< OuterFunc > outerTracer( "outer" );
+    static const FunctionTracer< SelectFunc > selectTracer( "select" );
+    static const FunctionTracer< ClearFunc > clearTracer( "clear" );
+
+
+    // Non-templated versions (descriptor = 0 by default)
+    template<typename... Args>
+    grb::RC eWiseApply(Args&&... args) {
+        return eWiseApplyTracer(std::forward<Args>(args)...);
+    }
+
+    template<typename... Args>
+    grb::RC foldl(Args&&... args) {
+        return foldlTracer(std::forward<Args>(args)...);
+    }
+
+    template<typename... Args>
+    grb::RC foldr(Args&&... args) {
+        return foldrTracer(std::forward<Args>(args)...);
+    }
+
+    template<typename... Args>
+    grb::RC dot(Args&&... args) {
+        return dotTracer(std::forward<Args>(args)...);
+    }
+
+    template<typename... Args>
+    grb::RC set(Args&&... args) {
+        return setTracer(std::forward<Args>(args)...);
+    }
+
+    template<typename... Args>
+    grb::RC apply(Args&&... args) {
+        return applyTracer(std::forward<Args>(args)...);
+    }
+
+    template<typename... Args>
+    grb::RC mxv(Args&&... args) {
+        return mxvTracer(std::forward<Args>(args)...);
+    }
+
+    template<typename... Args>
+    grb::RC eWiseAdd(Args&&... args) {
+        return eWiseAddTracer(std::forward<Args>(args)...);
+    }
+
+    template<typename... Args>
+    grb::RC vxm(Args&&... args) {
+        return vxmTracer(std::forward<Args>(args)...);
+    }
+
+    template<typename... Args>
+    grb::RC eWiseLambda(Args&&... args) {
+        return eWiseLambdaTracer(std::forward<Args>(args)...);
+    }
+
+    template<typename... Args>
+    grb::RC mxm(Args&&... args) {
+        return mxmTracer(std::forward<Args>(args)...);
+    }
+
+    template<typename... Args>
+    grb::RC zip(Args&&... args) {
+        return zipTracer(std::forward<Args>(args)...);
+    }
+
+    template<typename... Args>
+    grb::RC outer(Args&&... args) {
+        return outerTracer(std::forward<Args>(args)...);
+    }
+
+    template<typename... Args>
+    grb::RC select(Args&&... args) {
+        return selectTracer(std::forward<Args>(args)...);
+    }
+
+    template<typename... Args>
+    grb::RC clear(Args&&... args) {
+        return clearTracer(std::forward<Args>(args)...);
+    }
+
+    // Templated versions with explicit descriptor
+    template<unsigned int descr, typename... Args>
+    grb::RC eWiseApply(Args&&... args) {
+        return eWiseApplyTracer.template operator()<descr>(std::forward<Args>(args)...);
+    }
+
+    template<unsigned int descr, typename... Args>
+    grb::RC foldl(Args&&... args) {
+        return foldlTracer.template operator()<descr>(std::forward<Args>(args)...);
+    }
+
+    template<unsigned int descr, typename... Args>
+    grb::RC foldr(Args&&... args) {
+        return foldrTracer.template operator()<descr>(std::forward<Args>(args)...);
+    }
+
+    template<unsigned int descr, typename... Args>
+    grb::RC dot(Args&&... args) {
+        return dotTracer.template operator()<descr>(std::forward<Args>(args)...);
+    }
+
+    template<unsigned int descr, typename... Args>
+    grb::RC set(Args&&... args) {
+        return setTracer.template operator()<descr>(std::forward<Args>(args)...);
+    }
+
+    template<unsigned int descr, typename... Args>
+    grb::RC apply(Args&&... args) {
+        return applyTracer.template operator()<descr>(std::forward<Args>(args)...);
+    }
+
+    template<unsigned int descr, typename... Args>
+    grb::RC mxv(Args&&... args) {
+        return mxvTracer.template operator()<descr>(std::forward<Args>(args)...);
+    }
+
+    template<unsigned int descr, typename... Args>
+    grb::RC eWiseAdd(Args&&... args) {
+        return eWiseAddTracer.template operator()<descr>(std::forward<Args>(args)...);
+    }
+
+    // TODO:: Implement eWiseLambda with descriptor
+    // template<unsigned int descr, typename... Args>
+    // grb::RC eWiseLambda(Args&&... args) {
+    //     return eWiseLambdaTracer.template operator()<descr>(std::forward<Args>(args)...);
+    // }
+
+    template<unsigned int descr, typename... Args>
+    grb::RC vxm(Args&&... args) {
+        return vxmTracer.template operator()<descr>(std::forward<Args>(args)...);
+    }
+
+    template<unsigned int descr, typename... Args>
+    grb::RC mxm(Args&&... args) {
+        return mxmTracer.template operator()<descr>(std::forward<Args>(args)...);
+    }
+
+    template<unsigned int descr, typename... Args>
+    grb::RC zip(Args&&... args) {
+        return zipTracer.template operator()<descr>(std::forward<Args>(args)...);
+    }
+
+    template<unsigned int descr, typename... Args>
+    grb::RC outer(Args&&... args) {
+        return outerTracer.template operator()<descr>(std::forward<Args>(args)...);
+    }
+
+    template<unsigned int descr, typename... Args>
+    grb::RC select(Args&&... args) {
+        return selectTracer.template operator()<descr>(std::forward<Args>(args)...);
+    }
+
+    template<unsigned int descr, typename... Args>
+    grb::RC clear(Args&&... args) {
+        return clearTracer.template operator()<descr>(std::forward<Args>(args)...);
+    }
+
+
+
+} // namespace grb
 
 #endif // _GRB_ENABLE_TRACING
