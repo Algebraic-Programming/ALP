@@ -40,19 +40,6 @@ namespace detail {
     template<size_t N>
     using make_index_sequence = typename make_index_sequence_helper<N>::type;
 
-    template<typename T>
-    struct is_internal_lambda {
-        static constexpr bool value = false;
-    };
-    
-    // // Detect the specific lambda types used in fold operations
-    // template<unsigned int descr, bool left, bool sparse, bool masked, bool monoid, 
-    //          typename MaskType, typename IOType, typename IType, typename OP, typename Coords>
-    // struct is_internal_lambda<grb::internal::fold_from_vector_to_vector_generic<descr, left, sparse, masked, monoid, 
-    //                              MaskType, IOType, IType, OP, Coords>> {
-    //     static constexpr bool value = true;
-    // };
-
 }
 
 
@@ -148,6 +135,35 @@ constexpr const char* getCostPredictorName() {
     return FunctionNameTrait<Func>::name;
 }
 
+
+// ===================== unified argument category (Vector / Matrix / Other) ===
+struct arg_vector_tag {};
+struct arg_matrix_tag {};
+struct arg_other_tag {};
+
+// Primary
+template<class T> struct arg_category { typedef arg_other_tag type; };
+
+// Vector specialisations (incl. cv-qualified)
+template<class D, ::grb::Backend B, class C>
+struct arg_category< ::grb::Vector<D, B, C> > { typedef arg_vector_tag type; };
+template<class D, ::grb::Backend B, class C>
+struct arg_category< const ::grb::Vector<D, B, C> > { typedef arg_vector_tag type; };
+template<class D, ::grb::Backend B, class C>
+struct arg_category< volatile ::grb::Vector<D, B, C> > { typedef arg_vector_tag type; };
+template<class D, ::grb::Backend B, class C>
+struct arg_category< const volatile ::grb::Vector<D, B, C> > { typedef arg_vector_tag type; };
+
+// Matrix specialisations (incl. cv-qualified)
+template<class D, ::grb::Backend B, class RI, class CI, class NZI>
+struct arg_category< ::grb::Matrix<D, B, RI, CI, NZI> > { typedef arg_matrix_tag type; };
+template<class D, ::grb::Backend B, class RI, class CI, class NZI>
+struct arg_category< const ::grb::Matrix<D, B, RI, CI, NZI> > { typedef arg_matrix_tag type; };
+template<class D, ::grb::Backend B, class RI, class CI, class NZI>
+struct arg_category< volatile ::grb::Matrix<D, B, RI, CI, NZI> > { typedef arg_matrix_tag type; };
+template<class D, ::grb::Backend B, class RI, class CI, class NZI>
+struct arg_category< const volatile ::grb::Matrix<D, B, RI, CI, NZI> > { typedef arg_matrix_tag type; };
+// ===================== end of unified argument category =======================
 
 // #################### is_grb_vector check for grb::Vector type trait ############################### 
 struct is_grb_vector_true_tag {};
@@ -332,51 +348,32 @@ struct is_graphblas_operator {
     static const bool value = grb::is_operator<T>::value;
 };
 
-// ===================== Argument printing (tag-dispatch, no parsing) =========
+// ===================== Argument printing (pure tag-dispatch) ================
 template<class T>
-inline void printArgInfo_vector(const T& arg, is_grb_vector_true_tag) {
-    std::cout << TypeName<typename std::remove_cv<typename std::remove_reference<T>::type>::type>::get();
+inline void printOneArgImpl(const T& arg, arg_vector_tag) {
+    typedef typename std::remove_cv<typename std::remove_reference<T>::type>::type base_t;
+    std::cout << TypeName<base_t>::get();
     std::cout << getVectorInfoString<typename std::remove_reference<T>::type>(arg);
 }
-template<class T>
-inline void printArgInfo_vector(const T& arg, is_grb_vector_false_tag) {
-    (void)arg;
-    // do nothing here; matrix or plain will handle
-}
 
 template<class T>
-inline void printArgInfo_matrix(const T& arg, is_grb_matrix_true_tag) {
-    std::cout << TypeName<typename std::remove_cv<typename std::remove_reference<T>::type>::type>::get();
+inline void printOneArgImpl(const T& arg, arg_matrix_tag) {
+    typedef typename std::remove_cv<typename std::remove_reference<T>::type>::type base_t;
+    std::cout << TypeName<base_t>::get();
     std::cout << getMatrixInfoString<typename std::remove_reference<T>::type>(arg);
 }
-template<class T>
-inline void printArgInfo_matrix(const T& arg, is_grb_matrix_false_tag) {
-    (void)arg;
-    // do nothing here; vector or plain will handle
-}
 
 template<class T>
-inline void printArgInfo_plain(const T&) {
+inline void printOneArgImpl(const T&, arg_other_tag) {
     typedef typename std::remove_cv<typename std::remove_reference<T>::type>::type base_t;
     std::cout << TypeName<base_t>::get() << " ";
 }
 
-template<typename T>
+// Single entry that dispatches purely by type (no runtime if/branches)
+template<class T>
 inline void printOneArg(const T& arg) {
-    typedef typename std::remove_cv<typename std::remove_reference<T>::type>::type base_t;
-
-    // Try matrix
-    if (std::is_same<is_grb_matrix_category<base_t>, is_grb_matrix_true_tag>::value) {
-        printArgInfo_matrix(arg, is_grb_matrix_true_tag());
-        return;
-    }
-    // Try vector
-    if (std::is_same<is_grb_vector_category<base_t>, is_grb_vector_true_tag>::value) {
-        printArgInfo_vector(arg, is_grb_vector_true_tag());
-        return;
-    }
-    // Plain
-    printArgInfo_plain(arg);
+    typedef typename remove_cvref<T>::type base_t;
+    printOneArgImpl(arg, typename arg_category<base_t>::type());
 }
 
 // Base case
