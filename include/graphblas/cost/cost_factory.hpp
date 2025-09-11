@@ -178,48 +178,45 @@ struct remove_cvref {
 
 // Helper to safely get size if available - using type tags
 template<typename T>
-std::string getSizeString_impl(const T& arg, is_grb_vector_true_tag) {
+std::string getVectorInfoString_impl(const T& arg, is_grb_vector_true_tag) {
     try { return "[size=" + std::to_string(grb::size(arg)) + "] "; }
     catch(...) { return " "; }
 }
 template<typename T>
-std::string getSizeString_impl(const T&, is_grb_vector_false_tag) { return " "; }
+std::string getVectorInfoString_impl(const T&, is_grb_vector_false_tag) { return " "; }
 
 // Main function that dispatches based on type
 template<typename T>
-std::string getSizeString(const T& arg) {
+std::string getVectorInfoString(const T& arg) {
     typedef typename remove_cvref<T>::type base_t;
-    return getSizeString_impl(arg, is_grb_vector_category<base_t>());
+    return getVectorInfoString_impl(arg, is_grb_vector_category<base_t>());
 }
 
 
-// Add these type traits to detect Matrix types safely
-template<typename T, typename = void>
-struct has_grb_matrix_functions : std::false_type {};
+// #################### is_grb_matrix check for grb::Matrix type trait ###############################
+struct is_grb_matrix_true_tag {};
+struct is_grb_matrix_false_tag {};
 
-// Specialization for types where grb::nnz(T), grb::nrows(T), and grb::ncols(T) are valid
-template<typename T>
-struct has_grb_matrix_functions<T, 
-    typename std::enable_if<
-        !std::is_same<
-            decltype(grb::nnz(std::declval<T>())),
-            void
-        >::value &&
-        !std::is_same<
-            decltype(grb::nrows(std::declval<T>())),
-            void
-        >::value &&
-        !std::is_same<
-            decltype(grb::ncols(std::declval<T>())),
-            void
-        >::value
-    >::type
-> : std::true_type {};
+// Primary: false by default
+template<class T>
+struct is_grb_matrix { typedef is_grb_matrix_false_tag type; };
 
-// Helper to get matrix dimensions and nnz if available
+// Matches any grb::Matrix<DataType, backend, RowIndexType, ColIndexType, NonzeroIndexType> (incl. cv-qualified)
+template<class D, grb::Backend B, class RI, class CI, class NZI>
+struct is_grb_matrix< grb::Matrix<D, B, RI, CI, NZI> > { typedef is_grb_matrix_true_tag type; };
+template<class D, grb::Backend B, class RI, class CI, class NZI>
+struct is_grb_matrix< const grb::Matrix<D, B, RI, CI, NZI> > { typedef is_grb_matrix_true_tag type; };
+template<class D, grb::Backend B, class RI, class CI, class NZI>
+struct is_grb_matrix< volatile grb::Matrix<D, B, RI, CI, NZI> > { typedef is_grb_matrix_true_tag type; };
+template<class D, grb::Backend B, class RI, class CI, class NZI>
+struct is_grb_matrix< const volatile grb::Matrix<D, B, RI, CI, NZI> > { typedef is_grb_matrix_true_tag type; };
+
+template<class T>
+using is_grb_matrix_category = typename is_grb_matrix<T>::type;
+
+// Helper to get matrix dimensions and nnz using tag-dispatch
 template<typename T>
-typename std::enable_if<has_grb_matrix_functions<T>::value, std::string>::type
-getMatrixInfoString(const T& arg) {
+std::string getMatrixInfoString_impl(const T& arg, is_grb_matrix_true_tag) {
     try {
         return "[rows=" + std::to_string(grb::nrows(arg)) + 
                ",cols=" + std::to_string(grb::ncols(arg)) +
@@ -229,13 +226,19 @@ getMatrixInfoString(const T& arg) {
     }
 }
 
-// Helper for types that don't support matrix functions
 template<typename T>
-typename std::enable_if<!has_grb_matrix_functions<T>::value, std::string>::type
-getMatrixInfoString(const T&) {
+std::string getMatrixInfoString_impl(const T&, is_grb_matrix_false_tag) {
     return " ";
 }
 
+template<typename T>
+std::string getMatrixInfoString(const T& arg) {
+    typedef typename remove_cvref<T>::type base_t;
+    return getMatrixInfoString_impl(arg, is_grb_matrix_category<base_t>());
+}
+
+
+// #################### operator type traits ###############################
 // Primary template for operator name traits - delegates to existing traits when possible
 template<typename T>
 struct OperatorNameTrait {
@@ -391,7 +394,7 @@ void printArgTypesHelper(T&& arg, Args&&... args) {
     }
     // Otherwise if it's a Vector type, print its size
     else if (type_name.find("Vector<") != std::string::npos) {
-        std::cout << getSizeString<typename std::remove_reference<T>::type>(arg);
+        std::cout << getVectorInfoString<typename std::remove_reference<T>::type>(arg);
     }
     // For other types, just print a space
     else {
