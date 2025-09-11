@@ -502,215 +502,187 @@ template<typename Func, typename... Args>
 using cost_predictor_category = typename has_specialized_cost_predictor<Func, Args...>::type;
 
 // Function object wrappers for each GraphBLAS function
+// Function object wrappers for each GraphBLAS function
 struct EWiseApplyFunc {
     template<typename... Args>
-    auto operator()(Args&&... args) const
-        -> decltype(::grb::eWiseApply(std::forward<Args>(args)...)) {
+    grb::RC operator()(Args&&... args) const {
         return ::grb::eWiseApply(std::forward<Args>(args)...);
     }
     
     template<unsigned int descr, typename... Args>
-    auto withDescriptor(Args&&... args) const
-        -> decltype(::grb::eWiseApply<descr>(std::forward<Args>(args)...)) {
+    grb::RC withDescriptor(Args&&... args) const {
         return ::grb::eWiseApply<descr>(std::forward<Args>(args)...);
     }
 };
 
 struct FoldlFunc {
     template<typename... Args>
-    auto operator()(Args&&... args) const
-        -> decltype(::grb::original::foldl(std::forward<Args>(args)...)) {
+    grb::RC operator()(Args&&... args) const {
         return ::grb::original::foldl(std::forward<Args>(args)...);
     }
     
     template<unsigned int descr, typename... Args>
-    auto withDescriptor(Args&&... args) const
-        -> decltype(::grb::original::foldl<descr>(std::forward<Args>(args)...)) {
+    grb::RC withDescriptor(Args&&... args) const {
         return ::grb::original::foldl<descr>(std::forward<Args>(args)...);
     }
 };
 
 struct FoldrFunc {
     template<typename... Args>
-    auto operator()(Args&&... args) const
-        -> decltype(::grb::original::foldr(std::forward<Args>(args)...)) {
+    grb::RC operator()(Args&&... args) const {
         return ::grb::original::foldr(std::forward<Args>(args)...);
     }
     
     template<unsigned int descr, typename... Args>
-    auto withDescriptor(Args&&... args) const
-        -> decltype(::grb::original::foldr<descr>(std::forward<Args>(args)...)) {
+    grb::RC withDescriptor(Args&&... args) const {
         return ::grb::original::foldr<descr>(std::forward<Args>(args)...);
     }
 };
 
 struct DotFunc {
     template<typename... Args>
-    auto operator()(Args&&... args) const
-        -> decltype(::grb::dot(std::forward<Args>(args)...)) {
+    grb::RC operator()(Args&&... args) const {
         return ::grb::dot(std::forward<Args>(args)...);
     }
     
     template<unsigned int descr, typename... Args>
-    auto withDescriptor(Args&&... args) const
-        -> decltype(::grb::dot<descr>(std::forward<Args>(args)...)) {
+    grb::RC withDescriptor(Args&&... args) const {
         return ::grb::dot<descr>(std::forward<Args>(args)...);
     }
 };
 
 struct SetFunc {
     template<typename... Args>
-    auto operator()(Args&&... args) const
-        -> decltype(::grb::original::set(std::forward<Args>(args)...)) {
+    grb::RC operator()(Args&&... args) const {
         return ::grb::original::set(std::forward<Args>(args)...);
     }
     
     template<unsigned int descr, typename... Args>
-    auto withDescriptor(Args&&... args) const
-        -> decltype(::grb::original::set<descr>(std::forward<Args>(args)...)) {
+    grb::RC withDescriptor(Args&&... args) const {
         return ::grb::original::set<descr>(std::forward<Args>(args)...);
     }
 };
 
 struct ApplyFunc {
     template<typename... Args>
-    auto operator()(Args&&... args) const
-        -> decltype(::grb::original::apply(std::forward<Args>(args)...)) {
+    grb::RC operator()(Args&&... args) const {
         return ::grb::original::apply(std::forward<Args>(args)...);
     }
     
     template<unsigned int descr, typename... Args>
-    auto withDescriptor(Args&&... args) const
-        -> decltype(::grb::original::apply<descr>(std::forward<Args>(args)...)) {
+    grb::RC withDescriptor(Args&&... args) const {
         return ::grb::original::apply<descr>(std::forward<Args>(args)...);
     }
 };
 
 struct MxvFunc {
     template<typename... Args>
-    auto operator()(Args&&... args) const
-        -> decltype(::grb::original::mxv(std::forward<Args>(args)...)) {
+    grb::RC operator()(Args&&... args) const {
         return ::grb::original::mxv(std::forward<Args>(args)...);
     }
     
     template<unsigned int descr, typename... Args>
-    auto withDescriptor(Args&&... args) const
-        -> decltype(::grb::original::mxv<descr>(std::forward<Args>(args)...)) {
+    grb::RC withDescriptor(Args&&... args) const {
         return ::grb::original::mxv<descr>(std::forward<Args>(args)...);
     }
 };
 
 struct EWiseAddFunc {
     template<typename... Args>
-    auto operator()(Args&&... args) const
-        -> decltype(::grb::original::eWiseAdd(std::forward<Args>(args)...)) {
+    grb::RC operator()(Args&&... args) const {
         return ::grb::original::eWiseAdd(std::forward<Args>(args)...);
     }
     
     template<unsigned int descr, typename... Args>
-    auto withDescriptor(Args&&... args) const
-        -> decltype(::grb::original::eWiseAdd<descr>(std::forward<Args>(args)...)) {
+    grb::RC withDescriptor(Args&&... args) const {
         return ::grb::original::eWiseAdd<descr>(std::forward<Args>(args)...);
     }
 };
 
 struct VxmFunc {
     template<typename... Args>
-    auto operator()(Args&&... args) const
-        -> grb::RC {
+    grb::RC operator()(Args&&... args) const {
         return ::grb::original::vxm(std::forward<Args>(args)...);
     }
     
     template<unsigned int descr, typename... Args>
-    auto withDescriptor(Args&&... args) const
-        -> decltype(::grb::original::vxm<descr>(std::forward<Args>(args)...)) {
+    grb::RC withDescriptor(Args&&... args) const {
         return ::grb::original::vxm<descr>(std::forward<Args>(args)...);
     }
 };
 
 struct EWiseLambdaFunc {
     template<typename... Args>
-    auto operator()(Args&&... args) const
-        -> decltype(::grb::original::eWiseLambda(std::forward<Args>(args)...)) {
+    grb::RC operator()(Args&&... args) const {
         return ::grb::original::eWiseLambda(std::forward<Args>(args)...);
     }
     
     template<unsigned int descr, typename... Args>
-    auto withDescriptor(Args&&... args) const
-        -> decltype(::grb::original::eWiseLambda<descr>(std::forward<Args>(args)...)) {
+    grb::RC withDescriptor(Args&&... args) const {
         return ::grb::original::eWiseLambda<descr>(std::forward<Args>(args)...);
     }
 };
 
 struct MxmFunc {
     template<typename... Args>
-    auto operator()(Args&&... args) const
-        -> decltype(::grb::original::mxm(std::forward<Args>(args)...)) {
+    grb::RC operator()(Args&&... args) const {
         return ::grb::original::mxm(std::forward<Args>(args)...);
     }
     
     template<unsigned int descr, typename... Args>
-    auto withDescriptor(Args&&... args) const
-        -> decltype(::grb::original::mxm<descr>(std::forward<Args>(args)...)) {
+    grb::RC withDescriptor(Args&&... args) const {
         return ::grb::original::mxm<descr>(std::forward<Args>(args)...);
     }
 };
 
 struct ZipFunc {
     template<typename... Args>
-    auto operator()(Args&&... args) const
-        -> decltype(::grb::original::zip(std::forward<Args>(args)...)) {
+    grb::RC operator()(Args&&... args) const {
         return ::grb::original::zip(std::forward<Args>(args)...);
     }
     
     template<unsigned int descr, typename... Args>
-    auto withDescriptor(Args&&... args) const
-        -> decltype(::grb::original::zip<descr>(std::forward<Args>(args)...)) {
+    grb::RC withDescriptor(Args&&... args) const {
         return ::grb::original::zip<descr>(std::forward<Args>(args)...);
     }
 };
 
 struct OuterFunc {
     template<typename... Args>
-    auto operator()(Args&&... args) const
-        -> decltype(::grb::original::outer(std::forward<Args>(args)...)) {
+    grb::RC operator()(Args&&... args) const {
         return ::grb::original::outer(std::forward<Args>(args)...);
     }
     
     template<unsigned int descr, typename... Args>
-    auto withDescriptor(Args&&... args) const
-        -> decltype(::grb::original::outer<descr>(std::forward<Args>(args)...)) {
+    grb::RC withDescriptor(Args&&... args) const {
         return ::grb::original::outer<descr>(std::forward<Args>(args)...);
     }
 };
 
 struct SelectFunc {
     template<typename... Args>
-    auto operator()(Args&&... args) const
-        -> decltype(::grb::original::select(std::forward<Args>(args)...)) {
+    grb::RC operator()(Args&&... args) const {
         return ::grb::original::select(std::forward<Args>(args)...);
     }
     
     template<unsigned int descr, typename... Args>
-    auto withDescriptor(Args&&... args) const
-        -> decltype(::grb::original::select<descr>(std::forward<Args>(args)...)) {
+    grb::RC withDescriptor(Args&&... args) const {
         return ::grb::original::select<descr>(std::forward<Args>(args)...);
     }
 };
 
 struct ClearFunc {
     template<typename... Args>
-    auto operator()(Args&&... args) const
-        -> decltype(::grb::original::clear(std::forward<Args>(args)...)) {
+    grb::RC operator()(Args&&... args) const {
         return ::grb::original::clear(std::forward<Args>(args)...);
     }
     
     template<unsigned int descr, typename... Args>
-    auto withDescriptor(Args&&... args) const
-        -> decltype(::grb::original::clear<descr>(std::forward<Args>(args)...)) {
+    grb::RC withDescriptor(Args&&... args) const {
         return ::grb::original::clear<descr>(std::forward<Args>(args)...);
     }
 };
+
 
 // Specializations of CostPredictor for different function/argument combinations
 /*=====================================================================*/
