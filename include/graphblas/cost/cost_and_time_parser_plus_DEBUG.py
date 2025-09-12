@@ -1,11 +1,12 @@
 import re
 from collections import defaultdict
 import sys
+import numpy as np
 
 def parse_log_file(log_file_path):
     """
     Parse the log file and extract function calls with their argument types, costs,
-    and additional debug information.
+    and execution times.
     
     Args:
         log_file_path (str): Path to the log file
@@ -77,6 +78,15 @@ def parse_log_file(log_file_path):
             cost_match = re.search(r'\[TRACING\] Predicted cost: ([0-9.e+-]+)', line)
             if cost_match and current_function and current_args:
                 cost = float(cost_match.group(1))
+                # Keep track of cost but don't create a record yet, wait for execution time
+                continue
+                
+            # Match execution time (when exiting function)
+            exit_match = re.search(r'\[TRACING\] Exiting function: (\w+<[^>]*>|\w+<\d+>|\w+) \(took (\d+)μs\)', line)
+            if exit_match and current_function and current_args and exit_match.group(1) == current_function:
+                execution_time_us = int(exit_match.group(2))
+                execution_time_s = execution_time_us / 1e6  # Convert μs to seconds
+                
                 # Extract base function name (remove template part if present)
                 base_function = re.match(r'(\w+)', current_function).group(1)
                 
@@ -91,6 +101,7 @@ def parse_log_file(log_file_path):
                     'full_name': current_function,
                     'args': current_args,
                     'cost': cost,
+                    'execution_time': execution_time_s,
                     'threads': current_threads,
                     'aggregator': current_aggregator,
                     'model': current_model,
@@ -101,6 +112,23 @@ def parse_log_file(log_file_path):
                 
     return function_data
 
+def extract_iterations(log_file_path):
+    """
+    Extract the number of iterations from the log file.
+    
+    Args:
+        log_file_path (str): Path to the log file
+        
+    Returns:
+        int: Number of iterations, or None if not found
+    """
+    with open(log_file_path, 'r') as file:
+        for line in file:
+            match = re.search(r'Benchmark completed successfully and took (\d+) iterations', line)
+            if match:
+                return int(match.group(1))
+    return None
+
 def analyze_function(function_name, log_file_path):
     """
     Analyze function calls for a specific function name.
@@ -110,21 +138,28 @@ def analyze_function(function_name, log_file_path):
         log_file_path (str): Path to the log file
         
     Returns:
-        dict: Dictionary with argument types as keys and list of (count, cost) as values
+        dict: Dictionary with argument types as keys and function statistics
     """
     data = parse_log_file(log_file_path)
     
     if function_name not in data:
         return {}
     
-    analysis = defaultdict(lambda: {"count": 0, "costs": [], "details": []})
+    analysis = defaultdict(lambda: {
+        "count": 0, 
+        "costs": [], 
+        "execution_times": [], 
+        "details": []
+    })
     
     for call in data[function_name]:
         args = call['args']
         cost = call['cost']
+        execution_time = call['execution_time']
         
         analysis[args]["count"] += 1
         analysis[args]["costs"].append(cost)
+        analysis[args]["execution_times"].append(execution_time)
         analysis[args]["details"].append({
             'threads': call.get('threads'),
             'aggregator': call.get('aggregator'),
@@ -190,6 +225,21 @@ def print_function_analysis(function_name, log_file_path):
         
         # If we get here, all costs are consistent or there's just one cost
         print(f"Predicted cost: {costs[0]}")
+        
+        # Process execution times
+        execution_times = data['execution_times']
+        if execution_times:
+            min_time = min(execution_times)
+            max_time = max(execution_times)
+            avg_time = sum(execution_times) / len(execution_times)
+            
+            # Calculate standard deviation if we have more than one sample
+            if len(execution_times) > 1:
+                std_dev = np.std(execution_times)
+                print(f"Execution time (seconds): min={min_time:.5e}, max={max_time:.5e}, avg={avg_time:.5e}, std_dev={std_dev:.5e}")
+            else:
+                print(f"Execution time (seconds): {execution_times[0]:.5e}")
+        
         print("-" * 80)
 
 def analyze_all_functions(log_file_path, num_itters=None):
@@ -244,44 +294,54 @@ def analyze_with_iteration_separation(function_data, log_file_path, num_itters):
         for args, arg_calls in args_groups.items():
             call_count = len(arg_calls)
             
-            # Check if this function with these args is called at least num_itters times
-            if call_count >= num_itters:
-                # Number of complete iterations
+            # Consider a function iterative if it's called at least num_itters-1 times
+            # This handles cases where a function might be called slightly fewer times due to end conditions
+            if call_count >= num_itters - 1:
+                # Calculate the number of complete iterations and any deficit
                 iterations = call_count // num_itters
-                
-                # Remainder calls go to preprocessing
                 remainder = call_count % num_itters
+                
+                # If remainder is close to num_itters, it's likely another iteration with a deficit
+                if remainder >= num_itters - 1:
+                    iterations += 1
+                    deficit = num_itters - remainder
+                else:
+                    deficit = 0
                 
                 if function_name not in iterative_functions:
                     iterative_functions[function_name] = {}
                 
-                # Add to iterative functions
+                # Add to iterative functions with deficit information
                 iterative_functions[function_name][args] = {
-                    "count": iterations * num_itters,
+                    "count": call_count,
                     "iterations": iterations,
+                    "deficit": deficit,
                     "costs": [arg_calls[0]['cost']],  # Assuming costs are consistent
-                    "calls_per_iteration": num_itters // num_itters,  # This is just 1 for now
+                    "execution_times": [call['execution_time'] for call in arg_calls],  # All execution times
                     "details": arg_calls[0]  # Store the first call's details for display
                 }
                 
-                # If there are remainder calls, add them to preprocessing
-                if remainder > 0:
+                # Any small remainder (less than num_itters-1) goes to preprocessing
+                if remainder > 0 and remainder < num_itters - 1:
                     if function_name not in preprocessing_functions:
                         preprocessing_functions[function_name] = {}
                     
+                    # Add the first 'remainder' calls to preprocessing
                     preprocessing_functions[function_name][args] = {
                         "count": remainder,
                         "costs": [arg_calls[0]['cost']],  # Assuming costs are consistent
+                        "execution_times": [arg_calls[i]['execution_time'] for i in range(remainder)],
                         "details": arg_calls[0]  # Store the first call's details for display
                     }
             else:
-                # This function is called less than num_itters times, so it's preprocessing
+                # This function is called less than num_itters-1 times, so it's preprocessing
                 if function_name not in preprocessing_functions:
                     preprocessing_functions[function_name] = {}
                 
                 preprocessing_functions[function_name][args] = {
                     "count": call_count,
                     "costs": [arg_calls[0]['cost']],  # Assuming costs are consistent
+                    "execution_times": [call['execution_time'] for call in arg_calls],
                     "details": arg_calls[0]  # Store the first call's details for display
                 }
     
@@ -315,6 +375,20 @@ def analyze_with_iteration_separation(function_data, log_file_path, num_itters):
                         print(f"Level range: {detail['level_range']}")
                 
                 print(f"Predicted cost: {data['costs'][0]}")
+                
+                # Print execution time statistics
+                if data['execution_times']:
+                    execution_times = data['execution_times']
+                    min_time = min(execution_times)
+                    max_time = max(execution_times)
+                    avg_time = sum(execution_times) / len(execution_times)
+                    
+                    if len(execution_times) > 1:
+                        std_dev = np.std(execution_times)
+                        print(f"Execution time (seconds): min={min_time:.5e}, max={max_time:.5e}, avg={avg_time:.5e}, std_dev={std_dev:.5e}")
+                    else:
+                        print(f"Execution time (seconds): {execution_times[0]:.5e}")
+                
                 print("-" * 80)
     
     # Print iterative functions
@@ -324,16 +398,28 @@ def analyze_with_iteration_separation(function_data, log_file_path, num_itters):
     if not iterative_functions:
         print("No iterative functions found.")
     else:
-        # Calculate total cost per iteration
-        total_cost_per_iteration = 0.0
+        # Organize execution times by iteration for each function
+        function_execution_times_by_iteration = {}
+        
+        # Initialize a data structure to hold execution times for each iteration
+        iteration_execution_times = defaultdict(list)
+        
+        # Track the maximum number of iterations seen
+        max_iterations = 0
         
         for function_name in sorted(iterative_functions.keys()):
             print(f"\nAnalysis for function '{function_name}':")
             print("=" * 80)
             
             for args, data in iterative_functions[function_name].items():
+                # Format the display to show any deficit
+                if data['deficit'] > 0:
+                    invocation_display = f"{num_itters} × {data['iterations']} (-{data['deficit']})"
+                else:
+                    invocation_display = f"{num_itters} × {data['iterations']}"
+                
                 print(f"Argument types: {args}")
-                print(f"Invocation count: {num_itters} × {data['iterations']} times")
+                print(f"Invocation count: {invocation_display}")
                 
                 # Print details
                 if 'details' in data:
@@ -350,58 +436,100 @@ def analyze_with_iteration_separation(function_data, log_file_path, num_itters):
                         print(f"Level range: {detail['level_range']}")
                 
                 print(f"Predicted cost: {data['costs'][0]}")
-                print("-" * 80)
                 
-                # Add to the total cost per iteration
-                # Each function contributes its cost times how many times it appears in one iteration
-                total_cost_per_iteration += data['costs'][0]
+                # Print execution time statistics for this function
+                if data['execution_times']:
+                    execution_times = data['execution_times']
+                    min_time = min(execution_times)
+                    max_time = max(execution_times)
+                    avg_time = sum(execution_times) / len(execution_times)
+                    
+                    if len(execution_times) > 1:
+                        std_dev = np.std(execution_times)
+                        print(f"Execution time (seconds): min={min_time:.5e}, max={max_time:.5e}, avg={avg_time:.5e}, std_dev={std_dev:.5e}")
+                    else:
+                        print(f"Execution time (seconds): {execution_times[0]:.5e}")
+                
+                # Organize execution times by iteration
+                function_key = f"{function_name}:{args}"
+                times = data['execution_times']
+                
+                # Update the maximum iterations seen
+                max_iterations = max(max_iterations, data['iterations'])
+                
+                # Distribute execution times to iterations
+                # This assumes that functions are called in order across iterations
+                for i in range(min(data['iterations'], len(times) // num_itters)):
+                    # For each iteration, get the corresponding times for this function
+                    start_idx = i * num_itters
+                    end_idx = min(start_idx + num_itters, len(times))
+                    iter_times = times[start_idx:end_idx]
+                    
+                    # Add these times to the corresponding iteration
+                    iteration_execution_times[i].extend(iter_times)
+                
+                print("-" * 80)
         
-        # Print the total cost of one iteration
-        print("\nTOTAL COST PER ITERATION")
+        # Print the total execution time per iteration statistics
+        print("\nTOTAL EXECUTION TIME PER ITERATION")
         print("=" * 80)
-        print(f"Total cost for one iteration: {total_cost_per_iteration}")
-        print(f"(Sum of the predicted costs of all functions executed in one iteration)")
+        
+        # Calculate total execution time for each iteration
+        if iteration_execution_times:
+            # Sum the execution times for each iteration
+            iteration_total_times = [sum(times) for iter_idx, times in sorted(iteration_execution_times.items())]
+            
+            if iteration_total_times:
+                min_exec_time = min(iteration_total_times)
+                max_exec_time = max(iteration_total_times)
+                avg_exec_time = sum(iteration_total_times) / len(iteration_total_times)
+                
+                print(f"Total execution time for one iteration (seconds): {avg_exec_time:.5e}")
+                
+                if len(iteration_total_times) > 1:
+                    std_dev_exec_time = np.std(iteration_total_times)
+                    print(f"Execution time statistics: min={min_exec_time:.5e}, max={max_exec_time:.5e}, avg={avg_exec_time:.5e}, std_dev={std_dev_exec_time:.5e}")
+                else:
+                    print(f"Only one complete iteration found.")
+        else:
+            print("No complete iterations found for execution time analysis.")
+        
+        print("=" * 80)
+        
+        # Also show the predicted cost per iteration for comparison
+        total_cost_per_iteration = sum(data['costs'][0] for func_data in iterative_functions.values() 
+                                      for data in func_data.values())
+        
+        print("\nPREDICTED COST PER ITERATION (FOR REFERENCE)")
+        print("=" * 80)
+        print(f"Total predicted cost for one iteration: {total_cost_per_iteration:.5e}")
         print("=" * 80)
 
 def main():
     """Example usage of the module"""
     
     if len(sys.argv) < 2:
-        print("Usage: python cost_and_time_parser.py <log_file_path> [function_name] [num_itters]")
+        print("Usage: python cost_and_time_parser.py <log_file_path> [function_name]")
         return
     
     log_file_path = sys.argv[1]
     
-    if len(sys.argv) >= 4:
-        # Analyze with iteration separation
-        try:
-            num_itters = int(sys.argv[3])
-        except ValueError:
-            print(f"Error: num_itters must be an integer, got '{sys.argv[3]}'")
-            return
-        
-        if len(sys.argv) >= 3:
-            # Analyze a specific function with iteration separation
-            function_name = sys.argv[2]
-            # For a specific function, we'll still use print_function_analysis
-            # as the separation is most useful for the overall analysis
-            print_function_analysis(function_name, log_file_path)
-        else:
-            # Analyze all functions with iteration separation
-            analyze_all_functions(log_file_path, num_itters)
-    elif len(sys.argv) >= 3:
-        # Try to parse as num_itters first
-        try:
-            num_itters = int(sys.argv[2])
-            # If successful, analyze all functions with iteration separation
-            analyze_all_functions(log_file_path, num_itters)
-        except ValueError:
-            # Not a number, must be a function name
-            function_name = sys.argv[2]
-            print_function_analysis(function_name, log_file_path)
+    # Extract the number of iterations from the log file
+    num_itters = extract_iterations(log_file_path)
+    
+    if num_itters is None:
+        print("Warning: Could not extract the number of iterations from the log file.")
+        print("The analysis will proceed without iteration separation.")
     else:
-        # Standard analysis of all functions
-        analyze_all_functions(log_file_path)
+        print(f"Extracted {num_itters} iterations from the log file.")
+    
+    if len(sys.argv) >= 3:
+        # Analyze a specific function
+        function_name = sys.argv[2]
+        print_function_analysis(function_name, log_file_path)
+    else:
+        # Analyze all functions
+        analyze_all_functions(log_file_path, num_itters)
 
 if __name__ == "__main__":
     main()
