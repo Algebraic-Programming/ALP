@@ -411,217 +411,167 @@ struct CostPredictor< void, void > {
     }
 };
 
-
-// Type tags
-struct specialized_cost_predictor_tag {};
-struct default_cost_predictor_tag {};
-
-// Completely pure template implementation
-template<typename Func, typename... Args>
-struct has_specialized_cost_predictor {
-private:
-    // Helper trait to check if types are the same
-    template<typename T1, typename T2>
-    struct is_not_same : std::true_type {};
-    
-    template<typename T>
-    struct is_not_same<T, T> : std::false_type {};
-    
-    // Check if specialization exists by comparing to base template
-    static constexpr bool has_specialization = 
-        is_not_same<CostPredictor<Func, Args...>, CostPredictor<void, void>>::value;
-    
-public:
-    // template conditional logic
-    using type = typename std::conditional<
-        has_specialization,
-        specialized_cost_predictor_tag,
-        default_cost_predictor_tag
-    >::type;
-};
-
-// Helper alias for cleaner usage
-template<typename Func, typename... Args>
-using cost_predictor_category = typename has_specialized_cost_predictor<Func, Args...>::type;
-
-// Function object wrappers for each GraphBLAS function
+// Function object wrappers for each GraphBLAS function (descriptor logic is handled
+// by the public traced wrappers; functors just forward without re-entering tracer)
 struct EWiseApplyFunc {
-    template<typename... Args>
-    grb::RC operator()(Args&&... args) const {
-        return ::grb::eWiseApply(std::forward<Args>(args)...);
-    }
-    
-    template<unsigned int descr, typename... Args>
-    grb::RC withDescriptor(Args&&... args) const {
-        return ::grb::eWiseApply<descr>(std::forward<Args>(args)...);
+    template< typename... Args >
+    grb::RC operator()( Args&&... args ) const {
+        return ::grb::eWiseApply( std::forward< Args >( args )... );
     }
 };
-
 struct FoldlFunc {
-    template<typename... Args>
-    grb::RC operator()(Args&&... args) const {
-        return ::grb::foldl(std::forward<Args>(args)...);
-    }
-    
-    template<unsigned int descr, typename... Args>
-    grb::RC withDescriptor(Args&&... args) const {
-        return ::grb::foldl<descr>(std::forward<Args>(args)...);
+    template< typename... Args >
+    grb::RC operator()( Args&&... args ) const {
+        return ::grb::foldl( std::forward< Args >( args )... );
     }
 };
-
 struct FoldrFunc {
-    template<typename... Args>
-    grb::RC operator()(Args&&... args) const {
-        return ::grb::foldr(std::forward<Args>(args)...);
-    }
-    
-    template<unsigned int descr, typename... Args>
-    grb::RC withDescriptor(Args&&... args) const {
-        return ::grb::foldr<descr>(std::forward<Args>(args)...);
+    template< typename... Args >
+    grb::RC operator()( Args&&... args ) const {
+        return ::grb::foldr( std::forward< Args >( args )... );
     }
 };
-
 struct DotFunc {
-    template<typename... Args>
-    grb::RC operator()(Args&&... args) const {
-        return ::grb::dot(std::forward<Args>(args)...);
-    }
-    
-    template<unsigned int descr, typename... Args>
-    grb::RC withDescriptor(Args&&... args) const {
-        return ::grb::dot<descr>(std::forward<Args>(args)...);
+    template< typename... Args >
+    grb::RC operator()( Args&&... args ) const {
+        return ::grb::dot( std::forward< Args >( args )... );
     }
 };
-
 struct SetFunc {
-    template<typename... Args>
-    grb::RC operator()(Args&&... args) const {
-        return ::grb::set(std::forward<Args>(args)...);
-    }
-    
-    template<unsigned int descr, typename... Args>
-    grb::RC withDescriptor(Args&&... args) const {
-        return ::grb::set<descr>(std::forward<Args>(args)...);
+    template< typename... Args >
+    grb::RC operator()( Args&&... args ) const {
+        return ::grb::set( std::forward< Args >( args )... );
     }
 };
-
 struct ApplyFunc {
-    template<typename... Args>
-    grb::RC operator()(Args&&... args) const {
-        return ::grb::apply(std::forward<Args>(args)...);
-    }
-    
-    template<unsigned int descr, typename... Args>
-    grb::RC withDescriptor(Args&&... args) const {
-        return ::grb::apply<descr>(std::forward<Args>(args)...);
+    template< typename... Args >
+    grb::RC operator()( Args&&... args ) const {
+        return ::grb::apply( std::forward< Args >( args )... );
     }
 };
-
 struct MxvFunc {
-    template<typename... Args>
-    grb::RC operator()(Args&&... args) const {
-        return ::grb::mxv(std::forward<Args>(args)...);
-    }
-    
-    template<unsigned int descr, typename... Args>
-    grb::RC withDescriptor(Args&&... args) const {
-        return ::grb::mxv<descr>(std::forward<Args>(args)...);
+    template< typename... Args >
+    grb::RC operator()( Args&&... args ) const {
+        return ::grb::mxv( std::forward< Args >( args )... );
     }
 };
-
 struct EWiseAddFunc {
-    template<typename... Args>
-    grb::RC operator()(Args&&... args) const {
-        return ::grb::eWiseAdd(std::forward<Args>(args)...);
-    }
-    
-    template<unsigned int descr, typename... Args>
-    grb::RC withDescriptor(Args&&... args) const {
-        return ::grb::eWiseAdd<descr>(std::forward<Args>(args)...);
+    template< typename... Args >
+    grb::RC operator()( Args&&... args ) const {
+        return ::grb::eWiseAdd( std::forward< Args >( args )... );
     }
 };
-
 struct VxmFunc {
-    template<typename... Args>
-    grb::RC operator()(Args&&... args) const {
-        return ::grb::vxm(std::forward<Args>(args)...);
-    }
-    
-    template<unsigned int descr, typename... Args>
-    grb::RC withDescriptor(Args&&... args) const {
-        return ::grb::vxm<descr>(std::forward<Args>(args)...);
+    template< typename... Args >
+    grb::RC operator()( Args&&... args ) const {
+        return ::grb::vxm( std::forward< Args >( args )... );
     }
 };
-
 struct EWiseLambdaFunc {
-    template<typename... Args>
-    grb::RC operator()(Args&&... args) const {
-        return ::grb::eWiseLambda(std::forward<Args>(args)...);
-    }
-    
-    template<unsigned int descr, typename... Args>
-    grb::RC withDescriptor(Args&&... args) const {
-        return ::grb::eWiseLambda<descr>(std::forward<Args>(args)...);
+    template< typename... Args >
+    grb::RC operator()( Args&&... args ) const {
+        return ::grb::eWiseLambda( std::forward< Args >( args )... );
     }
 };
-
 struct MxmFunc {
-    template<typename... Args>
-    grb::RC operator()(Args&&... args) const {
-        return ::grb::mxm(std::forward<Args>(args)...);
-    }
-    
-    template<unsigned int descr, typename... Args>
-    grb::RC withDescriptor(Args&&... args) const {
-        return ::grb::mxm<descr>(std::forward<Args>(args)...);
+    template< typename... Args >
+    grb::RC operator()( Args&&... args ) const {
+        return ::grb::mxm( std::forward< Args >( args )... );
     }
 };
-
 struct ZipFunc {
-    template<typename... Args>
-    grb::RC operator()(Args&&... args) const {
-        return ::grb::zip(std::forward<Args>(args)...);
-    }
-    
-    template<unsigned int descr, typename... Args>
-    grb::RC withDescriptor(Args&&... args) const {
-        return ::grb::zip<descr>(std::forward<Args>(args)...);
+    template< typename... Args >
+    grb::RC operator()( Args&&... args ) const {
+        return ::grb::zip( std::forward< Args >( args )... );
     }
 };
-
 struct OuterFunc {
-    template<typename... Args>
-    grb::RC operator()(Args&&... args) const {
-        return ::grb::outer(std::forward<Args>(args)...);
-    }
-    
-    template<unsigned int descr, typename... Args>
-    grb::RC withDescriptor(Args&&... args) const {
-        return ::grb::outer<descr>(std::forward<Args>(args)...);
+    template< typename... Args >
+    grb::RC operator()( Args&&... args ) const {
+        return ::grb::outer( std::forward< Args >( args )... );
     }
 };
-
 struct SelectFunc {
-    template<typename... Args>
-    grb::RC operator()(Args&&... args) const {
-        return ::grb::select(std::forward<Args>(args)...);
+    template< typename... Args >
+    grb::RC operator()( Args&&... args ) const {
+        return ::grb::select( std::forward< Args >( args )... );
     }
-    
-    template<unsigned int descr, typename... Args>
-    grb::RC withDescriptor(Args&&... args) const {
-        return ::grb::select<descr>(std::forward<Args>(args)...);
+};
+struct ClearFunc {
+    template< typename... Args >
+    grb::RC operator()( Args&&... args ) const {
+        return ::grb::clear( std::forward< Args >( args )... );
     }
 };
 
-struct ClearFunc {
-    template<typename... Args>
-    grb::RC operator()(Args&&... args) const {
-        return ::grb::clear(std::forward<Args>(args)...);
+// Function tracer class template
+template< typename Func >
+class FunctionTracer {
+private:
+    std::string name_;
+public:
+    explicit FunctionTracer( const std::string & name ) : name_( name ) {
+        static_assert( has_tracer< Func >::value,
+            "Missing tracer implementation for a GraphBLAS function." );
     }
-    
-    template<unsigned int descr, typename... Args>
-    grb::RC withDescriptor(Args&&... args) const {
-        return ::grb::clear<descr>(std::forward<Args>(args)...);
+
+    template< unsigned int descr = 0, typename... Args >
+    grb::RC operator()( Args&&... args ) const {
+        std::string function_name = name_;
+        if( descr != 0 ) {
+            std::string descriptor_name = std::to_string( descr );
+            if( descr == grb::descriptors::dense ) descriptor_name = "dense";
+            if( descr == grb::descriptors::structural ) descriptor_name = "structural";
+            function_name += "<" + descriptor_name + ">";
+        }
+        std::cout << "\n[TRACING] Entering function: " << function_name
+                  << " with " << sizeof...( args ) << " arguments" << std::endl;
+
+        printArgTypes( std::forward< Args >( args )... );
+
+        double predicted_cost = 0.0;
+        try {
+            predicted_cost = CostPredictor<
+                Func, typename std::decay< Args >::type...
+            >::predict( args... );
+
+            std::cout << "[TRACING] Predicted cost: " << predicted_cost
+                      << " units (cost model: " << getCostPredictorName< Func >()
+                      << ")" << std::endl;
+        } catch( const std::exception & e ) {
+            std::cout << "[ERROR] Cost prediction failed: " << e.what() << std::endl;
+            #if _GRB_COST_MODEL_TEST_MODE
+                return grb::FAILED;
+            #else
+                throw;
+            #endif
+        } catch( ... ) {
+            std::cout << "[ERROR] Cost prediction failed with unknown exception" << std::endl;
+            #if _GRB_COST_MODEL_TEST_MODE
+                return grb::FAILED;
+            #else
+                throw;
+            #endif
+        }
+
+        auto start = std::chrono::high_resolution_clock::now();
+        Func func;
+        // Call underlying implementation (already traced once here)
+        grb::RC result = func( std::forward< Args >( args )... );
+        auto end = std::chrono::high_resolution_clock::now();
+
+        auto duration =
+            std::chrono::duration_cast< std::chrono::microseconds >( end - start );
+        std::cout << "[TRACING] Exiting function: " << function_name
+                  << " (took " << duration.count() << "μs)" << std::endl;
+
+        double cost_time_ratio =
+            duration.count() == 0 ? 0.0 :
+            predicted_cost / static_cast< double >( duration.count() );
+        std::cout << "[TRACING] Cost/time ratio: " << cost_time_ratio
+                  << " cost units per microsecond" << std::endl;
+
+        return result;
     }
 };
 
@@ -932,115 +882,6 @@ struct CostPredictor< DotFunc, T0, T1, T2, MonoidType, OpType > {
 /*=====================================================================*/
 /*--------------------------------muladd-------------------------------*/
 
-// Function tracer class template for handling tracing logic
-template< typename Func >
-class FunctionTracer {
-private:
-    std::string name_;
-    
-    // Compile-time helper to print model type - specialized version
-    template<typename CategoryTag, typename... Args>
-    struct ModelTypePrinter {
-        static void print() {
-            // Default: do nothing (for specialized models)
-        }
-    };
-    
-    // Specialization for default models
-    template<typename... Args>
-    struct ModelTypePrinter<default_cost_predictor_tag, Args...> {
-        static void print() {
-            std::cout << " - DEFAULT MODEL";
-        }
-    };
-
-public:
-    FunctionTracer(const std::string& name) : name_(name) {
-        static_assert(has_tracer<Func>::value, 
-            "Missing tracer implementation for a GraphBLAS function. "
-            "Please add appropriate entries in cost_factory.hpp for this function.");
-    }
-
-    // Single unified version that handles both cases with default template argument
-    template<unsigned int descr = 0, typename... Args>
-    grb::RC operator()(Args&&... args) const {
-        // Build function name with descriptor info if provided
-        std::string function_name = name_;
-        if (descr != 0) {
-            std::string descriptor_name = std::to_string(descr);
-            if (descr == grb::descriptors::dense)
-                descriptor_name = "dense";
-            if (descr == grb::descriptors::structural)
-                descriptor_name = "structural";
-            function_name += "<" + descriptor_name + ">";
-        }
-        
-        std::cout << "\n[TRACING] Entering function: " << function_name 
-                  << " with " << sizeof...(args) << " arguments" << std::endl;
-
-        printArgTypes(std::forward<Args>(args)...);
-
-        double predicted_cost = 0.0;
-        
-        try {
-            predicted_cost = CostPredictor<Func, typename std::decay<Args>::type...>::predict(args...);
-            
-            std::cout << "[TRACING] Predicted cost: " << predicted_cost 
-                      << " units (cost model: " << getCostPredictorName<Func>();
-
-            // Compile-time dispatch - zero runtime overhead
-            using predictor_category = cost_predictor_category<Func, typename std::decay<Args>::type...>;
-            ModelTypePrinter<predictor_category, Args...>::print();
-
-            std::cout << ")" << std::endl;
-        } catch(const std::exception& e) {
-            std::cout << "[ERROR] Cost prediction failed: " << e.what() << std::endl;
-            
-            #if _GRB_COST_MODEL_TEST_MODE
-                return grb::FAILED;
-            #else
-                throw;
-            #endif
-        } catch(...) {
-            std::cout << "[ERROR] Cost prediction failed with unknown exception" << std::endl;
-            
-            #if _GRB_COST_MODEL_TEST_MODE
-                return grb::FAILED;
-            #else
-                throw;
-            #endif
-        }
-
-        auto start = std::chrono::high_resolution_clock::now();
-        Func func;
-        
-        // Call the appropriate function based on whether descriptor is provided
-        grb::RC result;
-        if (descr == 0) {
-            result = func(std::forward<Args>(args)...);
-        } else {
-            result = func.template withDescriptor<descr>(std::forward<Args>(args)...);
-        }
-        
-        auto end = std::chrono::high_resolution_clock::now();
-
-        auto duration = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
-        std::cout << "[TRACING] Exiting function: " << function_name 
-                  << " (took " << duration.count() << "μs)" << std::endl;
-
-        double cost_time_ratio = predicted_cost / static_cast<double>(duration.count());
-        std::cout << "[TRACING] Cost/time ratio: " << cost_time_ratio 
-                  << " cost units per microsecond" << std::endl;
-
-        return result;
-    }
-    
-    // Convenience method for explicit descriptor calls
-    template<unsigned int descr, typename... Args>
-    grb::RC withDescriptor(Args&&... args) const {
-        return operator()<descr>(std::forward<Args>(args)...);
-    }
-};
 
 
 // Names for each wrapped GraphBLAS function
@@ -1099,160 +940,80 @@ namespace grb {
     static const FunctionTracer< ClearFunc > clearTracer( "clear" );
 
 
-    // Non-templated versions (descriptor = 0 by default)
-    template<typename... Args>
-    grb::RC eWiseApply(Args&&... args) {
-        return eWiseApplyTracer(std::forward<Args>(args)...);
+    template< unsigned int descr = 0, typename... Args >
+    inline grb::RC eWiseApply( Args&&... args ) {
+        return eWiseApplyTracer.template operator()< descr >( std::forward< Args >( args )... );
     }
 
-    template<typename... Args>
-    grb::RC foldl(Args&&... args) {
-        return foldlTracer(std::forward<Args>(args)...);
+    template< unsigned int descr = 0, typename... Args >
+    inline grb::RC foldl( Args&&... args ) {
+        return foldlTracer.template operator()< descr >( std::forward< Args >( args )... );
     }
 
-    template<typename... Args>
-    grb::RC foldr(Args&&... args) {
-        return foldrTracer(std::forward<Args>(args)...);
+    template< unsigned int descr = 0, typename... Args >
+    inline grb::RC foldr( Args&&... args ) {
+        return foldrTracer.template operator()< descr >( std::forward< Args >( args )... );
     }
 
-    template<typename... Args>
-    grb::RC dot(Args&&... args) {
-        return dotTracer(std::forward<Args>(args)...);
+    template< unsigned int descr = 0, typename... Args >
+    inline grb::RC dot( Args&&... args ) {
+        return dotTracer.template operator()< descr >( std::forward< Args >( args )... );
     }
 
-    template<typename... Args>
-    grb::RC set(Args&&... args) {
-        return setTracer(std::forward<Args>(args)...);
+    template< unsigned int descr = 0, typename... Args >
+    inline grb::RC set( Args&&... args ) {
+        return setTracer.template operator()< descr >( std::forward< Args >( args )... );
     }
 
-    template<typename... Args>
-    grb::RC apply(Args&&... args) {
-        return applyTracer(std::forward<Args>(args)...);
+    template< unsigned int descr = 0, typename... Args >
+    inline grb::RC apply( Args&&... args ) {
+        return applyTracer.template operator()< descr >( std::forward< Args >( args )... );
     }
 
-    template<typename... Args>
-    grb::RC mxv(Args&&... args) {
-        return mxvTracer(std::forward<Args>(args)...);
+    template< unsigned int descr = 0, typename... Args >
+    inline grb::RC mxv( Args&&... args ) {
+        return mxvTracer.template operator()< descr >( std::forward< Args >( args )... );
     }
 
-    template<typename... Args>
-    grb::RC eWiseAdd(Args&&... args) {
-        return eWiseAddTracer(std::forward<Args>(args)...);
+    template< unsigned int descr = 0, typename... Args >
+    inline grb::RC eWiseAdd( Args&&... args ) {
+        return eWiseAddTracer.template operator()< descr >( std::forward< Args >( args )... );
     }
 
-    template<typename... Args>
-    grb::RC vxm(Args&&... args) {
-        return vxmTracer(std::forward<Args>(args)...);
+    template< unsigned int descr = 0, typename... Args >
+    inline grb::RC vxm( Args&&... args ) {
+        return vxmTracer.template operator()< descr >( std::forward< Args >( args )... );
     }
 
-    template<typename... Args>
-    grb::RC eWiseLambda(Args&&... args) {
-        return eWiseLambdaTracer(std::forward<Args>(args)...);
+    template< unsigned int descr = 0, typename... Args >
+    inline grb::RC eWiseLambda( Args&&... args ) {
+        return eWiseLambdaTracer.template operator()< descr >( std::forward< Args >( args )... );
     }
 
-    template<typename... Args>
-    grb::RC mxm(Args&&... args) {
-        return mxmTracer(std::forward<Args>(args)...);
+    template< unsigned int descr = 0, typename... Args >
+    inline grb::RC mxm( Args&&... args ) {
+        return mxmTracer.template operator()< descr >( std::forward< Args >( args )... );
     }
 
-    template<typename... Args>
-    grb::RC zip(Args&&... args) {
-        return zipTracer(std::forward<Args>(args)...);
+    template< unsigned int descr = 0, typename... Args >
+    inline grb::RC zip( Args&&... args ) {
+        return zipTracer.template operator()< descr >( std::forward< Args >( args )... );
     }
 
-    template<typename... Args>
-    grb::RC outer(Args&&... args) {
-        return outerTracer(std::forward<Args>(args)...);
+    template< unsigned int descr = 0, typename... Args >
+    inline grb::RC outer( Args&&... args ) {
+        return outerTracer.template operator()< descr >( std::forward< Args >( args )... );
     }
 
-    template<typename... Args>
-    grb::RC select(Args&&... args) {
-        return selectTracer(std::forward<Args>(args)...);
+    template< unsigned int descr = 0, typename... Args >
+    inline grb::RC select( Args&&... args ) {
+        return selectTracer.template operator()< descr >( std::forward< Args >( args )... );
     }
 
-    template<typename... Args>
-    grb::RC clear(Args&&... args) {
-        return clearTracer(std::forward<Args>(args)...);
+    template< unsigned int descr = 0, typename... Args >
+    inline grb::RC clear( Args&&... args ) {
+        return clearTracer.template operator()< descr >( std::forward< Args >( args )... );
     }
-
-    // Templated versions with explicit descriptor
-    template<unsigned int descr, typename... Args>
-    grb::RC eWiseApply(Args&&... args) {
-        return eWiseApplyTracer.template operator()<descr>(std::forward<Args>(args)...);
-    }
-
-    template<unsigned int descr, typename... Args>
-    grb::RC foldl(Args&&... args) {
-        return foldlTracer.template operator()<descr>(std::forward<Args>(args)...);
-    }
-
-    template<unsigned int descr, typename... Args>
-    grb::RC foldr(Args&&... args) {
-        return foldrTracer.template operator()<descr>(std::forward<Args>(args)...);
-    }
-
-    template<unsigned int descr, typename... Args>
-    grb::RC dot(Args&&... args) {
-        return dotTracer.template operator()<descr>(std::forward<Args>(args)...);
-    }
-
-    template<unsigned int descr, typename... Args>
-    grb::RC set(Args&&... args) {
-        return setTracer.template operator()<descr>(std::forward<Args>(args)...);
-    }
-
-    template<unsigned int descr, typename... Args>
-    grb::RC apply(Args&&... args) {
-        return applyTracer.template operator()<descr>(std::forward<Args>(args)...);
-    }
-
-    template<unsigned int descr, typename... Args>
-    grb::RC mxv(Args&&... args) {
-        return mxvTracer.template operator()<descr>(std::forward<Args>(args)...);
-    }
-
-    template<unsigned int descr, typename... Args>
-    grb::RC eWiseAdd(Args&&... args) {
-        return eWiseAddTracer.template operator()<descr>(std::forward<Args>(args)...);
-    }
-
-    // TODO:: Implement eWiseLambda with descriptor
-    // template<unsigned int descr, typename... Args>
-    // grb::RC eWiseLambda(Args&&... args) {
-    //     return eWiseLambdaTracer.template operator()<descr>(std::forward<Args>(args)...);
-    // }
-
-    template<unsigned int descr, typename... Args>
-    grb::RC vxm(Args&&... args) {
-        return vxmTracer.template operator()<descr>(std::forward<Args>(args)...);
-    }
-
-    template<unsigned int descr, typename... Args>
-    grb::RC mxm(Args&&... args) {
-        return mxmTracer.template operator()<descr>(std::forward<Args>(args)...);
-    }
-
-    template<unsigned int descr, typename... Args>
-    grb::RC zip(Args&&... args) {
-        return zipTracer.template operator()<descr>(std::forward<Args>(args)...);
-    }
-
-    template<unsigned int descr, typename... Args>
-    grb::RC outer(Args&&... args) {
-        return outerTracer.template operator()<descr>(std::forward<Args>(args)...);
-    }
-
-    template<unsigned int descr, typename... Args>
-    grb::RC select(Args&&... args) {
-        return selectTracer.template operator()<descr>(std::forward<Args>(args)...);
-    }
-
-    template<unsigned int descr, typename... Args>
-    grb::RC clear(Args&&... args) {
-        return clearTracer.template operator()<descr>(std::forward<Args>(args)...);
-    }
-
-
 
 } // namespace grb
 
