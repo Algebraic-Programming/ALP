@@ -1056,8 +1056,10 @@ namespace HW_model
                                                 uint64_t m, size_t x_dsize, size_t y_dsize,
                                                 size_t A_dsize, size_t A_rowidx_size, size_t A_colidx_size, size_t batch_sz)
         {
-            printf("get_params_coo_batched not implemented, falling back to get_params_coo\n", batch_sz);
+            std::cout << "get_params_coo_batched not implemented, falling back to get_params_coo\n";
+            (void)batch_sz;
             return get_params_coo(nz, n, m, x_dsize, y_dsize, A_dsize, A_rowidx_size, A_colidx_size);
+
 
             // AlgoParameters_p spmv_coo = new AlgoParameters();
             // spmv_coo->n = nz / batch_sz;
@@ -1116,7 +1118,8 @@ namespace HW_model
                                                 uint64_t m, size_t x_dsize, size_t y_dsize,
                                                 size_t A_dsize, size_t A_rowptr_size, size_t A_colidx_size, size_t batch_sz)
         {
-            printf("get_params_csr_batched not implemented, falling back to get_params_csr\n", batch_sz);
+            std::cout << "get_params_csr_batched not implemented, falling back to get_params_csr\n";
+            (void)batch_sz;
             return get_params_coo(nz, n, m, x_dsize, y_dsize, A_dsize, A_rowptr_size, A_colidx_size);
 
             // AlgoParameters_p spmv_csr = new AlgoParameters();
@@ -1310,6 +1313,7 @@ namespace HW_model
         AlgoParameters_p get_params_dot(uint64_t n,
             size_t z_dsize, size_t x_dsize, size_t y_dsize)
         {
+            (void)z_dsize;
             AlgoParameters_p algo_p = new AlgoParameters();
             algo_p->n = 1;
             algo_p->num_v = 1;

@@ -23,7 +23,10 @@
 
 // -- CostPredictor (forward decls)
 template< typename Func >
-inline const char * getCostPredictorName();
+inline const char * getCostPredictorName() { return "unknown"; }
+
+template<>
+inline const char * getCostPredictorName< void >() { return "void"; }
 
 template< typename Func >
 struct has_tracer : std::false_type {};
@@ -582,7 +585,13 @@ public:
 
 template< typename T1, typename T2, typename T3, grb::Backend Backend, typename RowIndexType, typename ColIndexType, typename NonzeroIndexType, typename SRingType >
 struct CostPredictor< MxvFunc, grb::Vector< T1 >, grb::Matrix< T2, Backend, RowIndexType, ColIndexType, NonzeroIndexType >, grb::Vector< T3 >, SRingType > {
-    static double predict( const grb::Vector< T1 > & y, const grb::Matrix< T2, Backend, RowIndexType, ColIndexType, NonzeroIndexType > & A, const grb::Vector< T3 > & x, const SRingType & ring ) {
+    static double predict( 
+        const grb::Vector< T1 > & y, 
+        const grb::Matrix< T2, Backend, RowIndexType, ColIndexType, NonzeroIndexType > & A, 
+        const grb::Vector< T3 > & x, 
+        const SRingType & ring ) {
+        (void)ring;
+
         try {
             size_t nnz = grb::nnz( A ), m = grb::size( y ), n = grb::size( x );
             cost_models::HW_model::HWParameters hw_model = cost_models::HW_model::get_hw_params_for_threads( 1, dis_system_params );
@@ -603,6 +612,8 @@ struct CostPredictor< MxvFunc, grb::Vector< T1 >, grb::Matrix< T2, Backend, RowI
 template< typename T1, typename T2 >
 struct CostPredictor< SetFunc, grb::Vector< T1 >, grb::Vector< T2 > > {
     static double predict( grb::Vector< T1 > & x, grb::Vector< T2 > & y ){
+        (void)x; 
+        (void)y;
         try {
             size_t n = grb::size( x );
             cost_models::HW_model::HWParameters hw_model = cost_models::HW_model::get_hw_params_for_threads( 1, dis_system_params );
@@ -642,6 +653,10 @@ struct CostPredictor< SetFunc, grb::Vector< T1 >, T1 > {
 template< typename T1, typename T2, typename T3, typename Op >
 struct CostPredictor< ApplyFunc, T1, T2, T3, Op > {
     static double predict( T1 & x, T2 y, T3 z, const Op &op ){
+        (void)x; 
+        (void)y; 
+        (void)z; 
+        (void)op;
         try {
             cost_models::HW_model::HWParameters hw_model = cost_models::HW_model::get_hw_params_for_threads( 1, dis_system_params );
             cost_models::k_multi_bsp::AlgoParameters_p algo_model = cost_models::k_multi_bsp::get_params_apply();
@@ -696,7 +711,14 @@ struct CostPredictor< EWiseApplyFunc, grb::Vector< T1 >, T2, grb::Vector< T3 >, 
 // Specialization for eWiseApply with three vectors and an operator
 template< typename T1, typename T2, typename T3, typename Op >
 struct CostPredictor< EWiseApplyFunc, grb::Vector< T1 >, grb::Vector< T2 > , grb::Vector< T3 >, Op > {
-	static double predict( const grb::Vector< T1 > & z, const grb::Vector< T2 > & x, const grb::Vector< T3 > & y, const Op & ) {
+	static double predict( 
+        const grb::Vector< T1 > & z, 
+        const grb::Vector< T2 > & x, 
+        const grb::Vector< T3 > & y, 
+        const Op & ) {
+        (void)x;
+        (void)y;
+        (void)z;
 		try {
 			size_t n = grb::size( z );
 			cost_models::HW_model::HWParameters hw_model = cost_models::HW_model::get_hw_params_for_threads( 1, dis_system_params );
@@ -718,6 +740,8 @@ struct CostPredictor< EWiseApplyFunc, grb::Vector< T1 >, grb::Vector< T2 > , grb
 template< typename T1, typename T2, typename Monoid >
 struct CostPredictor< FoldlFunc, grb::Vector< T1 >, grb::Vector< T2 >, Monoid > {
 	static double predict(grb::Vector<T1>& x, const grb::Vector<T2>& y, const Monoid&) {
+        (void)x; 
+        (void)y;
         try {
             size_t n = grb::size( x );
             cost_models::HW_model::HWParameters hw_model = cost_models::HW_model::get_hw_params_for_threads( 1, dis_system_params );
@@ -752,6 +776,8 @@ struct CostPredictor< FoldlFunc, T1 , grb::Vector< T2 >, Monoid > {
 template< typename T1, typename T2, typename Monoid >
 struct CostPredictor< FoldlFunc, grb::Vector< T1 >, T2 , Monoid > {
 	static double predict(grb::Vector< T1 > & x, const T2 & y, const Monoid & ) {
+        (void)x; 
+        (void)y;
         try {
             size_t n = grb::size( x );
             cost_models::HW_model::HWParameters hw_model = cost_models::HW_model::get_hw_params_for_threads( 1, dis_system_params );
@@ -771,6 +797,8 @@ struct CostPredictor< FoldlFunc, grb::Vector< T1 >, T2 , Monoid > {
 template< typename T1, typename T2, typename Monoid >
 struct CostPredictor< FoldrFunc, grb::Vector< T1 > , grb::Vector< T2 > , Monoid > {
 	static double predict(const grb::Vector< T1 > & x, grb::Vector< T2 > & y, const Monoid & ) {
+        (void)x; 
+        (void)y;
 		try {
 			size_t n = grb::size( y );
 			cost_models::HW_model::HWParameters hw_model = cost_models::HW_model::get_hw_params_for_threads( 1, dis_system_params );
@@ -787,6 +815,8 @@ struct CostPredictor< FoldrFunc, grb::Vector< T1 > , grb::Vector< T2 > , Monoid 
 template< typename T1, typename T2, typename Monoid >
 struct CostPredictor< FoldrFunc, T1, grb::Vector< T2 >, Monoid > {
 	static double predict( const T1 & x, grb::Vector< T2 > & y, const Monoid & ) {
+        (void)x; 
+        (void)y;
 		try {
 			size_t n = grb::size( y );
 			cost_models::HW_model::HWParameters hw_model = cost_models::HW_model::get_hw_params_for_threads( 1, dis_system_params );
@@ -823,6 +853,9 @@ struct CostPredictor< FoldrFunc, grb::Vector< T1 >, T2, Monoid > {
 template< typename T0, typename T1, typename T2, typename MonoidType, typename OpType >
 struct CostPredictor< DotFunc, T0, T1, T2, MonoidType, OpType > {
 	static double predict(T0 z, T1 x, T2 y, MonoidType monoid, OpType op) {
+        (void)z; 
+        (void)monoid; 
+        (void)op;
         std::cout << "[TRACING] Using catch-all 5-argument dot predictor" << std::endl;
 
         // Extract type information for diagnostics
@@ -985,10 +1018,11 @@ namespace grb {
         return vxmTracer.template operator()< descr >( std::forward< Args >( args )... );
     }
 
-    template< unsigned int descr = 0, typename... Args >
-    inline grb::RC eWiseLambda( Args&&... args ) {
-        return eWiseLambdaTracer.template operator()< descr >( std::forward< Args >( args )... );
-    }
+    // Note: eWiseLambda is handled via a proxy below to avoid interfering with existing user code
+    // template< unsigned int descr = 0, typename... Args >
+    // inline grb::RC eWiseLambda( Args&&... args ) {
+    //     return eWiseLambdaTracer.template operator()< descr >( std::forward< Args >( args )... );
+    // }
 
     template< unsigned int descr = 0, typename... Args >
     inline grb::RC mxm( Args&&... args ) {
@@ -1016,5 +1050,42 @@ namespace grb {
     }
 
 } // namespace grb
+
+
+
+#ifndef GRB_EWISELAMBDA_TRACING_PROXY_DEFINED
+#define GRB_EWISELAMBDA_TRACING_PROXY_DEFINED
+
+namespace grb {
+    namespace tracing_detail {
+
+        struct eWiseLambda_proxy_t {
+            template< 
+                unsigned int descr = 0, 
+                class F, 
+                class... Args 
+            >
+            inline grb::RC operator()( F && f, Args &&... args ) const {
+                // Re-use existing tracer object:
+                return eWiseLambdaTracer.template operator()< descr >(
+                    std::forward< F >( f ),
+                    std::forward< Args >( args )...
+                );
+            }
+        };
+
+        static const eWiseLambda_proxy_t eWiseLambda_proxy;
+
+    } // namespace tracing_detail
+} // namespace grb
+
+// Redirect only subsequent user code tokens; does not affect already parsed defs.
+#ifndef eWiseLambda
+#define eWiseLambda grb::tracing_detail::eWiseLambda_proxy
+#endif
+
+#endif // GRB_EWISELAMBDA_TRACING_PROXY_DEFINED
+
+
 
 #endif // _GRB_ENABLE_TRACING
