@@ -10,10 +10,14 @@ mkdir -p outputs
 mkdir -p results
 mkdir -p results/plots
 
+export OMP_NUM_THREADS=1  # Set number of threads for OpenMP
+export OMP_PROC_BIND=true
+export OMP_PLACES={0:1}
+
 ALPDIR="/home/panastasiadis/ALP"
 # Define range of problem sizes to test
 # You can adjust these values as needed
-SIZES=(256 512 1024 2048 4096 8192 16384 32768 65536 131072 262144 524288) # 1048576)
+SIZES=(256 512 1024 2048 4096 8192 16384) #  32768 65536 131072 262144 524288 1048576)
 BANDSIZE=1
 # Loop through each problem size
 for N in "${SIZES[@]}"; do
@@ -32,7 +36,7 @@ for N in "${SIZES[@]}"; do
     OUTPUT_FILE="outputs/banded_diag_${N}x${N}_band_${BANDSIZE}_output.log"
     if [ ! -f "$OUTPUT_FILE" ] || [ "$FORCE_REPEAT" -eq 1 ]; then
         echo "Running conjugate gradient solver, output to: $OUTPUT_FILE"
-        $ALPDIR/build_nocostprints/tests/smoke/conjugate_gradient_reference_omp $MATRIX_FILE direct 1 1 > $OUTPUT_FILE 2>&1
+        $ALPDIR/build/tests/smoke/conjugate_gradient_reference_omp $MATRIX_FILE direct 1 1 > $OUTPUT_FILE 2>&1
     else
         echo "Output file $OUTPUT_FILE already exists, skipping conjugate gradient solver"
     fi

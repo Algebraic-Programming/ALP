@@ -12,6 +12,13 @@ import matplotlib.pyplot as plt
 from collections import defaultdict
 import matplotlib.colors as mcolors
 
+# Cache sizes in bytes
+CACHE_SIZES = {
+    'L1': 64 * 1024,        # 64 KB
+    'L2': 512 * 1024,       # 512 KB
+    'L3': 24 * 1024 * 1024  # 24 MB
+}
+
 def extract_size_from_filename(filename):
     """Extract matrix size (N) from the analysis filename."""
     match = re.search(r'banded_diag_(\d+)x\d+_band_\d+_analysis\.log', filename)
@@ -50,6 +57,32 @@ def simplify_args(args):
         simplified = re.sub(r'nnz=\d+', 'nnz=X', simplified)
         return simplified[:30] + "..." if len(simplified) > 30 else simplified
 
+def parse_memory_footprint(footprint_str):
+    """Parse memory footprint string (e.g. '15.0 KB') and convert to bytes."""
+    if not footprint_str or footprint_str == "0 B":
+        return 0
+        
+    match = re.match(r'([\d.]+)\s+([KMGTP]?B)', footprint_str)
+    if not match:
+        return 0
+        
+    value = float(match.group(1))
+    unit = match.group(2)
+    
+    # Convert to bytes
+    if unit == 'KB':
+        return value * 1024
+    elif unit == 'MB':
+        return value * 1024 * 1024
+    elif unit == 'GB':
+        return value * 1024 * 1024 * 1024
+    elif unit == 'TB':
+        return value * 1024 * 1024 * 1024 * 1024
+    elif unit == 'PB':
+        return value * 1024 * 1024 * 1024 * 1024 * 1024
+    else:  # Bytes
+        return value
+
 def parse_analysis_file(filepath):
     """Parse an analysis file to extract function metrics."""
     result = {}
@@ -82,13 +115,21 @@ def parse_analysis_file(filepath):
                 'execution_time_stddev': 0.0,
                 'matrix_size': extract_size_from_filename(os.path.basename(filepath)),
                 'simplified_args': simplify_args(current_args),
-                'operator_info': extract_operator_info(current_args)
+                'operator_info': extract_operator_info(current_args),
+                'memory_footprint_bytes': 0
             }
         
         # Find invocation count
         elif line.startswith('Invocation count:') and current_function and current_args:
             count = int(line.replace('Invocation count:', '').strip())
             result[current_function][current_args]['count'] = count
+        
+        # Find memory footprint
+        elif line.startswith('Memory footprint:') and current_function and current_args:
+            footprint_str = line.replace('Memory footprint:', '').strip()
+            memory_bytes = parse_memory_footprint(footprint_str)
+            result[current_function][current_args]['memory_footprint_bytes'] = memory_bytes
+            result[current_function][current_args]['memory_footprint_str'] = footprint_str
         
         # Find predicted cost
         elif line.startswith('Predicted cost:') and current_function and current_args:
@@ -147,10 +188,48 @@ def collect_all_results(results_dir):
                     'execution_time_max': metrics['execution_time_max'],
                     'execution_time_stddev': metrics['execution_time_stddev'],
                     'simplified_args': metrics['simplified_args'],
-                    'operator_info': metrics['operator_info']
+                    'operator_info': metrics['operator_info'],
+                    'memory_footprint_bytes': metrics['memory_footprint_bytes'],
+                    'memory_footprint_str': metrics.get('memory_footprint_str', '0 B')
                 })
     
     return function_data
+
+def calculate_cache_thresholds(data_points):
+    """
+    Calculate matrix sizes where memory usage hits cache thresholds.
+    Returns a dictionary of cache level -> matrix size thresholds.
+    """
+    thresholds = {}
+    
+    # Check if we have enough data points with non-zero memory footprint
+    valid_points = [(d['matrix_size'], d['memory_footprint_bytes']) 
+                   for d in data_points if d['memory_footprint_bytes'] > 0]
+    
+    if len(valid_points) < 2:
+        return thresholds
+    
+    # Sort by matrix size
+    valid_points.sort(key=lambda x: x[0])
+    
+    # Calculate average memory per element (relative memory usage)
+    rel_mems = []
+    for size, mem in valid_points:
+        rel_mem = mem / size
+        rel_mems.append(rel_mem)
+    
+    # Use median relative memory to avoid outliers
+    rel_mem = np.median(rel_mems)
+    
+    if rel_mem <= 0:
+        return thresholds
+    
+    # Calculate thresholds for each cache level
+    for cache_name, cache_size in CACHE_SIZES.items():
+        threshold_size = int(cache_size / rel_mem)
+        thresholds[cache_name] = threshold_size
+    
+    return thresholds
 
 def plot_results(function_data, output_dir="plots"):
     """Create plots for each function's performance metrics."""
@@ -194,6 +273,7 @@ def plot_results(function_data, output_dir="plots"):
             exec_times_avg = []
             exec_times_min = []
             exec_times_max = []
+            memory_footprints = []
             
             for size in sorted(size_data.keys()):
                 data_points = size_data[size]
@@ -202,6 +282,7 @@ def plot_results(function_data, output_dir="plots"):
                 exec_times_avg.append(np.mean([d['execution_time_avg'] for d in data_points]))
                 exec_times_min.append(np.mean([d['execution_time_min'] for d in data_points]))
                 exec_times_max.append(np.mean([d['execution_time_max'] for d in data_points]))
+                memory_footprints.append(np.mean([d['memory_footprint_bytes'] for d in data_points]))
             
             # Get the simplified name for display
             if len(function_data[func_key]) > 0:
@@ -228,6 +309,27 @@ def plot_results(function_data, output_dir="plots"):
             # Add to legend
             all_lines.extend([time_line, cost_line])
             all_labels.extend([f"Time: {display_name}", f"Cost: {display_name}"])
+            
+            # Calculate cache thresholds
+            cache_thresholds = calculate_cache_thresholds(function_data[func_key])
+            
+            # Add cache threshold lines using the same color as the function
+            # but with a dotted style and without adding to legend
+            for cache_name, threshold in cache_thresholds.items():
+                if threshold > 0:
+                    # Add a dotted line with the same color as the function
+                    ax1.axvline(x=threshold, color=color, linestyle=':', alpha=0.7, linewidth=1.5)
+                    
+                    # Add a small annotation
+                    ax1.annotate(f"{cache_name}", 
+                               (threshold, ax1.get_ylim()[1]*0.95),
+                               xytext=(5, 0),
+                               textcoords="offset points",
+                               ha='left',
+                               va='center',
+                               fontsize=8,
+                               rotation=90,
+                               color=color)
         
         # Configure axes
         ax1.set_xlabel('Matrix Size (N)')
@@ -242,9 +344,6 @@ def plot_results(function_data, output_dir="plots"):
         # Grid and title
         ax1.grid(True, which="both", ls="--", alpha=0.3)
         plt.title(f'{base_name} - Performance vs. Matrix Size')
-        
-        # Add legend
-        plt.legend(all_lines, all_labels, loc='best')
         
         # Add vertical lines at matrix sizes
         all_sizes = set()
@@ -262,6 +361,9 @@ def plot_results(function_data, output_dir="plots"):
                        ha='center',
                        fontsize=8,
                        rotation=90)
+        
+        # Add legend for function lines only (cache lines excluded)
+        plt.legend(all_lines, all_labels, loc='best')
         
         plt.tight_layout()
         plt.savefig(os.path.join(output_dir, f'{base_name}_performance.png'))

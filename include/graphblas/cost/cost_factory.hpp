@@ -597,8 +597,11 @@ struct CostPredictor< MxvFunc, grb::Vector< T1 >, grb::Matrix< T2, Backend, RowI
             cost_models::HW_model::HWParameters hw_model = cost_models::HW_model::get_hw_params_for_threads( 1, dis_system_params );
             cost_models::k_multi_bsp::AlgoParameters_p algo_model = cost_models::k_multi_bsp::get_params_csr(
                 nnz, n, m, sizeof( T1 ), sizeof( T3 ), sizeof( T2 ), sizeof( NonzeroIndexType ), sizeof( RowIndexType ) );
-            return cost_models::k_multi_bsp::predict_cost( &hw_model, algo_model, 1 );
-        } catch(const std::exception& e) {
+			double sum_cost = cost_models::k_multi_bsp::predict_cost( &hw_model, algo_model, 1 , "sum");
+			double max_cost = cost_models::k_multi_bsp::predict_cost( &hw_model, algo_model, 1, "max" );
+			return max_cost;
+
+		} catch(const std::exception& e) {
             throw std::runtime_error("Error in CostPredictor<MxvFunc>: " + std::string(e.what()));
         } catch(...) {
             throw std::runtime_error("Unknown error in CostPredictor<MxvFunc> with Matrix");
