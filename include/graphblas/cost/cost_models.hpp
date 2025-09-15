@@ -149,7 +149,7 @@ namespace HW_model
         {
             // Algorithm parameters
 #ifdef DEBUG_COST_MODELS
-            std::cout << "\nHierarchical Roofline Model Parameters:\n";
+            std::cout << "\nHierarchical-Roofline Model Parameters:\n";
 
             // Compute operations
             std::cout << "  - Compute Operations:\n";
@@ -222,7 +222,7 @@ namespace HW_model
                         AlgoParameters_p algo_params,
                         size_t target_threads){
 #ifdef DEBUG_COST_MODELS
-            std::cout << "===== Hierarchical Roofline Cost Prediction =====\n\n";
+            std::cout << "===== Hierarchical-Roofline Cost Prediction =====\n\n";
             std::cout << "Threads: " << target_threads << "\n";
 #endif
 
@@ -235,10 +235,17 @@ namespace HW_model
             double comp_t = 0.0, mem_t = 0.0;
             comp_t = 0; // Currently ignoring compute time
             // (hw_params->r_scalar * algo_params->ops_scalar / target_threads + hw_params->r_SIMD * algo_params->ops_SIMD / target_threads);
-            mem_t = hw_params->g[algo_params->lvl - 1] 
+            if (algo_params->b_foot)
+                mem_t = hw_params->g[algo_params->lvl - 1] 
                 * (algo_params->b_reads / target_threads + algo_params->b_writes / target_threads)
                 + hw_params->ls[algo_params->lvl - 1];
-            return std::max(comp_t, mem_t);
+            else mem_t = 0;
+
+			double total_cost = std::max( comp_t, mem_t );
+			std::cout << "\nMemory footprint: " << HW_model::format_bytes( algo_params->b_foot ) << "\n";
+			// Print final summary
+			std::cout << "\nTotal cost: " << std::scientific << std::setprecision( 4 ) << total_cost << " seconds\n";
+			return total_cost;
         }
         /*=====================================================================*/
 		/*--------------------------------COO----------------------------------*/
@@ -427,7 +434,7 @@ namespace HW_model
         {
             // Algorithm parameters
 #ifdef DEBUG_COST_MODELS
-            std::cout << "\nHierarchical Latency-Aware Roofline Model Parameters:\n";
+            std::cout << "\nHierarchical-Latency-Aware-Roofline Model Parameters:\n";
             
             // Compute operations
             std::cout << "  - Compute Operations:\n";
@@ -523,8 +530,8 @@ namespace HW_model
                             size_t target_threads)
         {
 #ifdef DEBUG_COST_MODELS
-            std::cout << "===== Hierarchical Roofline Cost Prediction =====\n\n";
-            std::cout << "Threads: " << target_threads << "\n";
+			std::cout << "===== Hierarchical-Latency-Aware-Roofline Cost Prediction =====\n\n";
+			std::cout << "Threads: " << target_threads << "\n";
 #endif
 
             algo_params_validate(algo_params);
@@ -540,7 +547,12 @@ namespace HW_model
             * (algo_params->b_reads / target_threads + algo_params->b_writes / target_threads) 
             + hw_params->ls[algo_params->lvl - 1] 
             * (algo_params->rand_reads / target_threads + algo_params->rand_writes / target_threads);
-            return std::max(comp_t, mem_t);
+
+			double total_cost = std::max(comp_t, mem_t);
+            std::cout << "\nMemory footprint: " << HW_model::format_bytes( algo_params->b_foot ) << "\n";
+			// Print final summary
+			std::cout << "\nTotal cost: " << std::scientific << std::setprecision( 4 ) << total_cost << " seconds\n";
+			return total_cost;
         }
         /*=====================================================================*/
         /*--------------------------------COO----------------------------------*/
@@ -904,7 +916,7 @@ namespace HW_model
                             const std::string &stream_aggregator = "sum")
         {
 #ifdef DEBUG_COST_MODELS
-            std::cout << "===== k-Multi-BSP Kernel Cost Prediction =====\n\n";
+            std::cout << "===== k-Multi-BSP Cost Prediction =====\n\n";
             std::cout << "Threads: " << target_threads << "\n";
             std::cout << "Stream aggregator: " << stream_aggregator << "\n";
 #endif
@@ -974,7 +986,7 @@ namespace HW_model
                 std::string aggregator_name = (stream_aggregator == "sum" ? "sum_hi" : "max_hi");
 
                 // Calculate cost for one superstep: access_size * g + ls
-                double superstep_cost = access_size * g_level + ls_level;
+                double superstep_cost = access_size * g_level + (access_size ? ls_level : 0);
 
                 // Total cost for all supersteps of this type
                 double type_cost = num_supersteps / target_threads * superstep_cost;

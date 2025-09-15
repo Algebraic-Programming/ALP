@@ -14,13 +14,13 @@ import numpy as np
 PATTERNS = {
     'function_entry': re.compile(r'\[TRACING\] Entering function: (\w+<[^>]*>|\w+<\d+>|\w+) with (\d+) arguments'),
     'arg_types': re.compile(r'\[TRACING\] Argument types: (.*)'),
-    'model_header': re.compile(r'===== (.*) Kernel Cost Prediction ====='),
+    'model_header': re.compile(r'===== (.*) Cost Prediction ====='),  # Updated to match any model header
     'threads': re.compile(r'Threads: (\d+)'),
     'aggregator': re.compile(r'Stream aggregator: (\w+)'),
     'footprint': re.compile(r'Memory footprint: ([\d.]+ [KMGTP]?B)'),
     'level': re.compile(r'Superstep type \d+ \(level (\d+)\):'),
     'model_cost': re.compile(r'Total cost: ([0-9.e+-]+) seconds'),
-    'cost': re.compile(r'\[TRACING\] Predicted cost: ([0-9.e+-]+)'),
+    # Removed 'cost' pattern
     'exit': re.compile(r'\[TRACING\] Exiting function: (\w+<[^>]*>|\w+<\d+>|\w+) \(took (\d+)μs\)'),
     'cg_iterations': re.compile(r'number of CG iterations: (\d+)')
 }
@@ -103,71 +103,63 @@ def parse_log_file(log_file_path: str) -> DefaultDict[str, List[Dict[str, Any]]]
                         i += 1
                         while i < len(lines):
                             # Check if we're at the start of a model section
-                            if '===== ' in lines[i] and ' Kernel Cost Prediction =====' in lines[i]:
+                            if '===== ' in lines[i] and ' =====' in lines[i]:
                                 model_header = lines[i].strip()
-                                model_name = model_header.replace('===== ', '').replace(' Kernel Cost Prediction =====', '')
-                                
-                                # Initialize model data
-                                model_data = {
-                                    'model': model_name,
-                                    'threads': None,
-                                    'aggregator': None,
-                                    'footprint': None,
-                                    'cost': None
-                                }
-                                
-                                # Parse model details
-                                j = i + 1
-                                while j < len(lines) and not ('===== ' in lines[j] and ' Kernel Cost Prediction =====' in lines[j]) and not '[TRACING] Predicted cost:' in lines[j]:
-                                    model_line = lines[j].strip()
+                                model_match = PATTERNS['model_header'].search(model_header)
+                                if model_match:
+                                    model_name = model_match.group(1).strip()
                                     
-                                    # Extract thread count
-                                    if 'Threads:' in model_line:
-                                        threads_match = PATTERNS['threads'].search(model_line)
-                                        if threads_match:
-                                            model_data['threads'] = int(threads_match.group(1))
+                                    # Initialize model data
+                                    model_data = {
+                                        'model': model_name,
+                                        'threads': None,
+                                        'aggregator': None,
+                                        'footprint': None,
+                                        'cost': None
+                                    }
                                     
-                                    # Extract aggregator
-                                    elif 'Stream aggregator:' in model_line:
-                                        agg_match = PATTERNS['aggregator'].search(model_line)
-                                        if agg_match:
-                                            model_data['aggregator'] = agg_match.group(1)
+                                    # Parse model details
+                                    j = i + 1
+                                    while j < len(lines) and not ('===== ' in lines[j] and ' =====' in lines[j]) and not '[TRACING] Exiting function:' in lines[j]:
+                                        model_line = lines[j].strip()
+                                        
+                                        # Extract thread count
+                                        if 'Threads:' in model_line:
+                                            threads_match = PATTERNS['threads'].search(model_line)
+                                            if threads_match:
+                                                model_data['threads'] = int(threads_match.group(1))
+                                        
+                                        # Extract aggregator
+                                        elif 'Stream aggregator:' in model_line:
+                                            agg_match = PATTERNS['aggregator'].search(model_line)
+                                            if agg_match:
+                                                model_data['aggregator'] = agg_match.group(1)
+                                        
+                                        # Extract memory footprint
+                                        elif 'Memory footprint:' in model_line and not model_line.startswith('Algorithm parameters:'):
+                                            fp_match = PATTERNS['footprint'].search(model_line)
+                                            if fp_match:
+                                                model_data['footprint'] = fp_match.group(1)
+                                        
+                                        # Extract cost
+                                        elif 'Total cost:' in model_line:
+                                            cost_match = PATTERNS['model_cost'].search(model_line)
+                                            if cost_match:
+                                                model_data['cost'] = float(cost_match.group(1))
+                                        
+                                        j += 1
                                     
-                                    # Extract memory footprint
-                                    elif 'Memory footprint:' in model_line and not model_line.startswith('Algorithm parameters:'):
-                                        fp_match = PATTERNS['footprint'].search(model_line)
-                                        if fp_match:
-                                            model_data['footprint'] = fp_match.group(1)
+                                    # Add model to the call data
+                                    call_data['models'].append(model_data)
                                     
-                                    # Extract cost
-                                    elif 'Total cost:' in model_line:
-                                        cost_match = PATTERNS['model_cost'].search(model_line)
-                                        if cost_match:
-                                            model_data['cost'] = float(cost_match.group(1))
-                                    
-                                    j += 1
-                                
-                                # Add model to the call data
-                                call_data['models'].append(model_data)
-                                
-                                i = j - 1  # Move i to the line before the next model or cost
+                                    i = j - 1  # Move i to the line before the next model or exit
                             
-                            # Check if we're at the predicted cost
-                            elif '[TRACING] Predicted cost:' in lines[i]:
-                                cost_match = PATTERNS['cost'].search(lines[i])
-                                if cost_match:
-                                    call_data['cost'] = float(cost_match.group(1))
-                                
-                                # Look for execution time in the next lines
-                                k = i + 1
-                                while k < len(lines) and not '[TRACING] Exiting function:' in lines[k]:
-                                    k += 1
-                                
-                                if k < len(lines) and '[TRACING] Exiting function:' in lines[k]:
-                                    exit_match = PATTERNS['exit'].search(lines[k])
-                                    if exit_match and exit_match.group(1) == function_name:
-                                        exec_time_us = int(exit_match.group(2))
-                                        call_data['execution_time'] = exec_time_us / 1e6
+                            # Look for execution time 
+                            elif '[TRACING] Exiting function:' in lines[i]:
+                                exit_match = PATTERNS['exit'].search(lines[i])
+                                if exit_match and exit_match.group(1) == function_name:
+                                    exec_time_us = int(exit_match.group(2))
+                                    call_data['execution_time'] = exec_time_us / 1e6
                                 
                                 # Add the function call data to the results
                                 function_data[base_function].append(call_data)
