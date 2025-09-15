@@ -19,12 +19,17 @@ CACHE_SIZES = {
     'L3': 24 * 1024 * 1024  # 24 MB
 }
 
-def extract_size_from_filename(filename):
-    """Extract matrix size (N) from the analysis filename."""
-    match = re.search(r'banded_diag_(\d+)x\d+_band_\d+_analysis\.log', filename)
+def extract_info_from_filename(filename):
+    """Extract both matrix size (N) and thread count from the analysis filename."""
+
+    # First try the _threads-X pattern
+    match = re.search(r'banded_diag_(\d+)x(\d+)_band_(\d+)_threads-(\d+)_analysis\.log', filename)
     if match:
-        return int(match.group(1))
-    return None
+        print(f"extract_info_from_filename({filename}): size = {match.group(1)}, threads = {match.group(4)}")
+        return int(match.group(1)), int(match.group(4))
+    
+    # Return None for both if no match
+    return None, None
 
 def extract_operator_info(args):
     """Extract operator information from the argument string."""
@@ -89,72 +94,76 @@ def parse_analysis_file(filepath):
     current_function = None
     current_args = None
     
-    with open(filepath, 'r') as f:
-        lines = f.readlines()
-        
-    for i, line in enumerate(lines):
-        line = line.strip()
-        
-        # Find function analysis sections
-        if line.startswith('Analysis for function'):
-            match = re.search(r"Analysis for function '(\w+)':", line)
-            if match:
-                current_function = match.group(1)
-                result[current_function] = defaultdict(dict)
-        
-        # Find argument types
-        elif line.startswith('Argument types:') and current_function:
-            current_args = line.replace('Argument types:', '').strip()
-            # Initialize metrics for this function+args combination
-            result[current_function][current_args] = {
-                'count': 0,
-                'cost': 0.0,
-                'execution_time_min': 0.0,
-                'execution_time_max': 0.0,
-                'execution_time_avg': 0.0,
-                'execution_time_stddev': 0.0,
-                'matrix_size': extract_size_from_filename(os.path.basename(filepath)),
-                'simplified_args': simplify_args(current_args),
-                'operator_info': extract_operator_info(current_args),
-                'memory_footprint_bytes': 0
-            }
-        
-        # Find invocation count
-        elif line.startswith('Invocation count:') and current_function and current_args:
-            count = int(line.replace('Invocation count:', '').strip())
-            result[current_function][current_args]['count'] = count
-        
-        # Find memory footprint
-        elif line.startswith('Memory footprint:') and current_function and current_args:
-            footprint_str = line.replace('Memory footprint:', '').strip()
-            memory_bytes = parse_memory_footprint(footprint_str)
-            result[current_function][current_args]['memory_footprint_bytes'] = memory_bytes
-            result[current_function][current_args]['memory_footprint_str'] = footprint_str
-        
-        # Find predicted cost
-        elif line.startswith('Predicted cost:') and current_function and current_args:
-            cost = float(line.replace('Predicted cost:', '').strip())
-            result[current_function][current_args]['cost'] = cost
-        
-        # Find execution time statistics
-        elif line.startswith('Execution time (seconds):') and current_function and current_args:
-            # Parse the execution time stats
-            match = re.search(r'min=([\d.e+-]+), max=([\d.e+-]+), avg=([\d.e+-]+), std_dev=([\d.e+-]+)', line)
-            if match:
-                result[current_function][current_args]['execution_time_min'] = float(match.group(1))
-                result[current_function][current_args]['execution_time_max'] = float(match.group(2))
-                result[current_function][current_args]['execution_time_avg'] = float(match.group(3))
-                result[current_function][current_args]['execution_time_stddev'] = float(match.group(4))
-            else:
-                # Handle case where there's only one measurement
-                match = re.search(r'Execution time \(seconds\): ([\d.e+-]+)', line)
-                if match:
-                    value = float(match.group(1))
-                    result[current_function][current_args]['execution_time_min'] = value
-                    result[current_function][current_args]['execution_time_max'] = value
-                    result[current_function][current_args]['execution_time_avg'] = value
-                    result[current_function][current_args]['execution_time_stddev'] = 0.0
+    # Get matrix size and thread count from filename
+    matrix_size, thread_count = extract_info_from_filename(os.path.basename(filepath))
     
+    try:
+        with open(filepath, 'r') as f:
+            lines = f.readlines()
+        
+        for i, line in enumerate(lines):
+            line = line.strip()
+            
+            # Find function analysis sections
+            if line.startswith('Analysis for function'):
+                match = re.search(r"Analysis for function '(\w+)':", line)
+                if match:
+                    current_function = match.group(1)
+                    result[current_function] = defaultdict(dict)
+            
+            # Find argument types
+            elif line.startswith('Argument types:') and current_function:
+                current_args = line.replace('Argument types:', '').strip()
+                # Initialize metrics for this function+args combination
+                result[current_function][current_args] = {
+                    'count': 0,
+                    'cost': 0.0,
+                    'execution_time_min': 0.0,
+                    'execution_time_max': 0.0,
+                    'execution_time_avg': 0.0,
+                    'execution_time_stddev': 0.0,
+                    'matrix_size': matrix_size,
+                    'thread_count': thread_count,
+                    'simplified_args': simplify_args(current_args),
+                    'operator_info': extract_operator_info(current_args),
+                    'memory_footprint_bytes': 0
+                }
+            
+            # Find memory footprint
+            elif line.startswith('Memory footprint:') and current_function and current_args:
+                footprint_str = line.replace('Memory footprint:', '').strip()
+                memory_bytes = parse_memory_footprint(footprint_str)
+                result[current_function][current_args]['memory_footprint_bytes'] = memory_bytes
+                result[current_function][current_args]['memory_footprint_str'] = footprint_str
+            
+            # Find predicted cost
+            elif line.startswith('Predicted cost:') and current_function and current_args:
+                cost = float(line.replace('Predicted cost:', '').strip())
+                result[current_function][current_args]['cost'] = cost
+            
+            # Find execution time statistics
+            elif line.startswith('Execution time (seconds):') and current_function and current_args:
+                # Parse the execution time stats
+                match = re.search(r'min=([\d.e+-]+), max=([\d.e+-]+), avg=([\d.e+-]+), std_dev=([\d.e+-]+)', line)
+                if match:
+                    result[current_function][current_args]['execution_time_min'] = float(match.group(1))
+                    result[current_function][current_args]['execution_time_max'] = float(match.group(2))
+                    result[current_function][current_args]['execution_time_avg'] = float(match.group(3))
+                    result[current_function][current_args]['execution_time_stddev'] = float(match.group(4))
+                else:
+                    # Handle case where there's only one measurement
+                    match = re.search(r'Execution time \(seconds\): ([\d.e+-]+)', line)
+                    if match:
+                        value = float(match.group(1))
+                        result[current_function][current_args]['execution_time_min'] = value
+                        result[current_function][current_args]['execution_time_max'] = value
+                        result[current_function][current_args]['execution_time_avg'] = value
+                        result[current_function][current_args]['execution_time_stddev'] = 0.0
+    
+    except Exception as e:
+        print(f"Error parsing file {filepath}: {e}")
+        return {}  # Return empty dict on error
+        
     return result
 
 def collect_all_results(results_dir):
@@ -165,12 +174,18 @@ def collect_all_results(results_dir):
     function_data = defaultdict(list)
     
     for filepath in all_files:
-        matrix_size = extract_size_from_filename(os.path.basename(filepath))
+        matrix_size, thread_count = extract_info_from_filename(os.path.basename(filepath))
+        
         if matrix_size is None:
             continue
             
         file_results = parse_analysis_file(filepath)
         
+        # Skip if file_results is empty
+        if not file_results:
+            print(f"Warning: No valid data found in {filepath}")
+            continue
+            
         for function_name, args_data in file_results.items():
             for args, metrics in args_data.items():
                 # Create a key that includes function name and operator info
@@ -178,9 +193,14 @@ def collect_all_results(results_dir):
                 operator_info = metrics['operator_info']
                 key = f"{function_name}_{operator_info}" if operator_info else function_name
                 
+                # For multiple thread counts, add thread count to the key
+                if thread_count > 1:
+                    key = f"{key}_{thread_count}t"
+                
                 # Add this data point
                 function_data[key].append({
                     'matrix_size': matrix_size,
+                    'thread_count': thread_count,
                     'count': metrics['count'],
                     'cost': metrics['cost'],
                     'execution_time_avg': metrics['execution_time_avg'],

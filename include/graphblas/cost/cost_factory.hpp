@@ -622,7 +622,9 @@ struct CostPredictor< SetFunc, grb::Vector< T1 >, grb::Vector< T2 > > {
             cost_models::HW_model::HWParameters hw_model = cost_models::HW_model::get_hw_params_for_threads( 1, dis_system_params );
 
             cost_models::k_multi_bsp::AlgoParameters_p algo_model = cost_models::k_multi_bsp::get_params_set( n, 1, sizeof( T1 ), sizeof( T2 ), 0 );
-            return cost_models::k_multi_bsp::predict_cost( &hw_model, algo_model, 1 );
+            			double sum_cost = cost_models::k_multi_bsp::predict_cost( &hw_model, algo_model, 1 , "sum");
+			double max_cost = cost_models::k_multi_bsp::predict_cost( &hw_model, algo_model, 1, "max" );
+			return max_cost;
         } catch(const std::exception& e) {
             throw std::runtime_error("Error in CostPredictor<SetFunc, Vector, Vector>: " + std::string(e.what()));
         } catch(...) {
@@ -639,7 +641,9 @@ struct CostPredictor< SetFunc, grb::Vector< T1 >, T1 > {
 			cost_models::HW_model::HWParameters hw_model = cost_models::HW_model::get_hw_params_for_threads( 1, dis_system_params );
 
             cost_models::k_multi_bsp::AlgoParameters_p algo_model = cost_models::k_multi_bsp::get_params_set( n, 0, sizeof( T1 ), sizeof( T1 ), 0 );
-            return cost_models::k_multi_bsp::predict_cost( &hw_model, algo_model, 1 );
+            			double sum_cost = cost_models::k_multi_bsp::predict_cost( &hw_model, algo_model, 1 , "sum");
+			double max_cost = cost_models::k_multi_bsp::predict_cost( &hw_model, algo_model, 1, "max" );
+			return max_cost;
         } catch(const std::exception& e) {
             throw std::runtime_error("Error in CostPredictor<SetFunc, Vector, scalar>: " + std::string(e.what()));
         } catch(...) {
@@ -663,7 +667,9 @@ struct CostPredictor< ApplyFunc, T1, T2, T3, Op > {
         try {
             cost_models::HW_model::HWParameters hw_model = cost_models::HW_model::get_hw_params_for_threads( 1, dis_system_params );
             cost_models::k_multi_bsp::AlgoParameters_p algo_model = cost_models::k_multi_bsp::get_params_apply();
-            return cost_models::k_multi_bsp::predict_cost( &hw_model, algo_model, 1 );
+            			double sum_cost = cost_models::k_multi_bsp::predict_cost( &hw_model, algo_model, 1 , "sum");
+			double max_cost = cost_models::k_multi_bsp::predict_cost( &hw_model, algo_model, 1, "max" );
+			return max_cost;
         } catch(const std::exception& e) {
             throw std::runtime_error("Error in CostPredictor<ApplyFunc>: " + std::string(e.what()));
         } catch(...) {
@@ -684,7 +690,9 @@ struct CostPredictor< EWiseApplyFunc, grb::Vector< T1 >, grb::Vector< T2 >, T3, 
 			cost_models::HW_model::HWParameters hw_model = cost_models::HW_model::get_hw_params_for_threads( 1, dis_system_params );
 			cost_models::k_multi_bsp::AlgoParameters_p algo_model = cost_models::k_multi_bsp::get_params_eWiseApply( n, 
                 sizeof( T1 ), sizeof( T2 ), sizeof( T3 ), 1, 0 );
-			return cost_models::k_multi_bsp::predict_cost( &hw_model, algo_model, 1 );
+						double sum_cost = cost_models::k_multi_bsp::predict_cost( &hw_model, algo_model, 1 , "sum");
+			double max_cost = cost_models::k_multi_bsp::predict_cost( &hw_model, algo_model, 1, "max" );
+			return max_cost;
 		} catch(const std::exception& e) {
             throw std::runtime_error("Error in CostPredictor<EWiseApplyFunc, Vector, Vector, scalar>: " + std::string(e.what()));
         } catch(...) {
@@ -702,7 +710,9 @@ struct CostPredictor< EWiseApplyFunc, grb::Vector< T1 >, T2, grb::Vector< T3 >, 
 			cost_models::HW_model::HWParameters hw_model = cost_models::HW_model::get_hw_params_for_threads( 1, dis_system_params );
 			cost_models::k_multi_bsp::AlgoParameters_p algo_model = cost_models::k_multi_bsp::get_params_eWiseApply
                 ( n, sizeof( T1 ), sizeof( T2 ), sizeof( T3 ), 0, 1 );
-			return cost_models::k_multi_bsp::predict_cost( &hw_model, algo_model, 1 );
+						double sum_cost = cost_models::k_multi_bsp::predict_cost( &hw_model, algo_model, 1 , "sum");
+			double max_cost = cost_models::k_multi_bsp::predict_cost( &hw_model, algo_model, 1, "max" );
+			return max_cost;
 		} catch(const std::exception& e) {
             throw std::runtime_error("Error in CostPredictor<EWiseApplyFunc, Vector, scalar, Vector>: " + std::string(e.what()));
         } catch(...) {
@@ -727,7 +737,9 @@ struct CostPredictor< EWiseApplyFunc, grb::Vector< T1 >, grb::Vector< T2 > , grb
 			cost_models::HW_model::HWParameters hw_model = cost_models::HW_model::get_hw_params_for_threads( 1, dis_system_params );
 			cost_models::k_multi_bsp::AlgoParameters_p algo_model = cost_models::k_multi_bsp::get_params_eWiseApply
                 ( n, sizeof( T1 ), sizeof( T2 ), sizeof( T3 ), 0, 1 );
-			return cost_models::k_multi_bsp::predict_cost( &hw_model, algo_model, 1 );
+						double sum_cost = cost_models::k_multi_bsp::predict_cost( &hw_model, algo_model, 1 , "sum");
+			double max_cost = cost_models::k_multi_bsp::predict_cost( &hw_model, algo_model, 1, "max" );
+			return max_cost;
 		} catch(const std::exception& e) {
             throw std::runtime_error("Error in CostPredictor<EWiseApplyFunc, Vector, Vector, Vector>: " + std::string(e.what()));
         } catch(...) {
@@ -750,7 +762,9 @@ struct CostPredictor< FoldlFunc, grb::Vector< T1 >, grb::Vector< T2 >, Monoid > 
             cost_models::HW_model::HWParameters hw_model = cost_models::HW_model::get_hw_params_for_threads( 1, dis_system_params );
 			cost_models::k_multi_bsp::AlgoParameters_p algo_model = cost_models::k_multi_bsp::get_params_foldl
                 ( n, sizeof( T1 ), sizeof( T2 ), 1, 1 );
-			return cost_models::k_multi_bsp::predict_cost( &hw_model, algo_model, 1 );
+						double sum_cost = cost_models::k_multi_bsp::predict_cost( &hw_model, algo_model, 1 , "sum");
+			double max_cost = cost_models::k_multi_bsp::predict_cost( &hw_model, algo_model, 1, "max" );
+			return max_cost;
         } catch(const std::exception& e) {
             throw std::runtime_error("Error in CostPredictor<FoldlFunc, Vector, Vector>: " + std::string(e.what()));
         } catch(...) {
@@ -767,7 +781,9 @@ struct CostPredictor< FoldlFunc, T1 , grb::Vector< T2 >, Monoid > {
             cost_models::HW_model::HWParameters hw_model = cost_models::HW_model::get_hw_params_for_threads( 1, dis_system_params );
 			cost_models::k_multi_bsp::AlgoParameters_p algo_model = cost_models::k_multi_bsp::get_params_foldl
                 ( n, sizeof( T1 ), sizeof( T2 ), 0, 1 );
-			return cost_models::k_multi_bsp::predict_cost( &hw_model, algo_model, 1 );
+						double sum_cost = cost_models::k_multi_bsp::predict_cost( &hw_model, algo_model, 1 , "sum");
+			double max_cost = cost_models::k_multi_bsp::predict_cost( &hw_model, algo_model, 1, "max" );
+			return max_cost;
         } catch(const std::exception& e) {
             throw std::runtime_error("Error in CostPredictor<FoldlFunc, scalar, Vector>: " + std::string(e.what()));
         } catch(...) {
@@ -786,7 +802,9 @@ struct CostPredictor< FoldlFunc, grb::Vector< T1 >, T2 , Monoid > {
             cost_models::HW_model::HWParameters hw_model = cost_models::HW_model::get_hw_params_for_threads( 1, dis_system_params );
 			cost_models::k_multi_bsp::AlgoParameters_p algo_model = cost_models::k_multi_bsp::get_params_foldl
                 ( n, sizeof( T1 ), sizeof( T2 ), 1, 0 );
-			return cost_models::k_multi_bsp::predict_cost( &hw_model, algo_model, 1 );
+						double sum_cost = cost_models::k_multi_bsp::predict_cost( &hw_model, algo_model, 1 , "sum");
+			double max_cost = cost_models::k_multi_bsp::predict_cost( &hw_model, algo_model, 1, "max" );
+			return max_cost;
 		} catch(const std::exception& e) {
             throw std::runtime_error("Error in CostPredictor<FoldlFunc, Vector, scalar>: " + std::string(e.what()));
         } catch(...) {
@@ -806,7 +824,9 @@ struct CostPredictor< FoldrFunc, grb::Vector< T1 > , grb::Vector< T2 > , Monoid 
 			size_t n = grb::size( y );
 			cost_models::HW_model::HWParameters hw_model = cost_models::HW_model::get_hw_params_for_threads( 1, dis_system_params );
 			cost_models::k_multi_bsp::AlgoParameters_p algo_model = cost_models::k_multi_bsp::get_params_foldr( n, sizeof( T1 ), sizeof( T2 ), 1, 1 );
-			return cost_models::k_multi_bsp::predict_cost( &hw_model, algo_model, 1 );
+						double sum_cost = cost_models::k_multi_bsp::predict_cost( &hw_model, algo_model, 1 , "sum");
+			double max_cost = cost_models::k_multi_bsp::predict_cost( &hw_model, algo_model, 1, "max" );
+			return max_cost;
 		} catch(const std::exception& e) {
             throw std::runtime_error("Error in CostPredictor<FoldrFunc, Vector, Vector>: " + std::string(e.what()));
         } catch(...) {
@@ -824,7 +844,9 @@ struct CostPredictor< FoldrFunc, T1, grb::Vector< T2 >, Monoid > {
 			size_t n = grb::size( y );
 			cost_models::HW_model::HWParameters hw_model = cost_models::HW_model::get_hw_params_for_threads( 1, dis_system_params );
 			cost_models::k_multi_bsp::AlgoParameters_p algo_model = cost_models::k_multi_bsp::get_params_foldr( n, sizeof( T1 ), sizeof( T2 ), 0, 1 );
-			return cost_models::k_multi_bsp::predict_cost( &hw_model, algo_model, 1 );
+						double sum_cost = cost_models::k_multi_bsp::predict_cost( &hw_model, algo_model, 1 , "sum");
+			double max_cost = cost_models::k_multi_bsp::predict_cost( &hw_model, algo_model, 1, "max" );
+			return max_cost;
 		} catch(const std::exception& e) {
             throw std::runtime_error("Error in CostPredictor<FoldrFunc, scalar, Vector>: " + std::string(e.what()));
         } catch(...) {
@@ -840,7 +862,9 @@ struct CostPredictor< FoldrFunc, grb::Vector< T1 >, T2, Monoid > {
 			size_t n = grb::size( x );
 			cost_models::HW_model::HWParameters hw_model = cost_models::HW_model::get_hw_params_for_threads( 1, dis_system_params );
 			cost_models::k_multi_bsp::AlgoParameters_p algo_model = cost_models::k_multi_bsp::get_params_foldr( n, sizeof( T1 ), sizeof( T2 ), 1, 0 );
-			return cost_models::k_multi_bsp::predict_cost( &hw_model, algo_model, 1 );
+						double sum_cost = cost_models::k_multi_bsp::predict_cost( &hw_model, algo_model, 1 , "sum");
+			double max_cost = cost_models::k_multi_bsp::predict_cost( &hw_model, algo_model, 1, "max" );
+			return max_cost;
 		} catch(const std::exception& e) {
             throw std::runtime_error("Error in CostPredictor<FoldrFunc, Vector, scalar>: " + std::string(e.what()));
         } catch(...) {
@@ -895,11 +919,12 @@ struct CostPredictor< DotFunc, T0, T1, T2, MonoidType, OpType > {
             cost_models::k_multi_bsp::AlgoParameters_p algo_model =
                 cost_models::k_multi_bsp::get_params_dot(n, sizeof(T0), sizeof(T1), sizeof(T2));
 
-            double base_cost = cost_models::k_multi_bsp::predict_cost(&hw_model, algo_model, 1);
-
-            // Additional cost for conjugate operations
-            double multiplier = is_conjugate ? 1.0 : 1.0;
-            return base_cost * multiplier;
+			double sum_cost = cost_models::k_multi_bsp::predict_cost( &hw_model, algo_model, 1, "sum" );
+			double max_cost = cost_models::k_multi_bsp::predict_cost( &hw_model, algo_model, 1, "max" );
+			double base_cost = max_cost;
+			// Additional cost for conjugate operations
+			double multiplier = is_conjugate ? 1.0 : 1.0;
+			return base_cost * multiplier;
 
         } catch(const std::exception& e) {
             throw std::runtime_error("Error in CostPredictor<DotFunc>: " + std::string(e.what()));
