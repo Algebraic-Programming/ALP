@@ -241,60 +241,49 @@ namespace HW_model
             return std::max(comp_t, mem_t);
         }
         /*=====================================================================*/
-        /*--------------------------------COO----------------------------------*/
-        AlgoParameters_p get_params_coo(uint64_t nz, uint64_t n,
-                                        uint64_t m, size_t idx_size, size_t dtype_size)
-        {
-            AlgoParameters_p spmv_coo = new AlgoParameters();
-            spmv_coo->lvl = 0; // Auto-adjust memory level
-            spmv_coo->b_foot = (2 * idx_size + dtype_size) * nz + dtype_size * (m + n);
-            spmv_coo->b_reads = (2 * idx_size + 3 * dtype_size) * nz;
-            spmv_coo->b_writes = dtype_size * nz;
-            spmv_coo->ops_scalar = 2 * nz;
+		/*--------------------------------COO----------------------------------*/
+		AlgoParameters_p get_params_coo( uint64_t nz, uint64_t n, uint64_t m, size_t x_dsize, 
+            size_t y_dsize, size_t A_dsize, size_t A_rowidx_size, size_t A_colidx_size ) {
+			AlgoParameters_p spmv_coo = new AlgoParameters();
+			spmv_coo->b_foot = ( A_dsize + A_rowidx_size + A_colidx_size ) * nz + y_dsize * m + x_dsize * n;
+			spmv_coo->lvl = 0; // Auto-adjust memory level
+			spmv_coo->b_reads = ( A_dsize + A_rowidx_size + A_colidx_size + x_dsize + y_dsize ) * nz;
+			spmv_coo->b_writes = y_dsize * nz;
+			spmv_coo->ops_scalar = 2 * nz;
             spmv_coo->ops_SIMD = 0;
             return spmv_coo;
-        }
+		}
 
-        /*=====================================================================*/
+		/*=====================================================================*/
         /*--------------------------------CSR----------------------------------*/
-
-        AlgoParameters_p get_params_csr(uint64_t nz, uint64_t n, uint64_t m, size_t idx_size, size_t dtype_size)
-        {
-            AlgoParameters_p spmv_csr = new AlgoParameters();
-            spmv_csr->lvl = 0; // Auto-adjust memory level
-            spmv_csr->b_foot = (idx_size + dtype_size) * nz + dtype_size * (m + n) + idx_size * (m + 1);
-            spmv_csr->b_reads = (idx_size + 2 * dtype_size) * nz + dtype_size * m + idx_size * (m + 1);
-            spmv_csr->b_writes = dtype_size * m;
-            spmv_csr->ops_scalar = 2 * nz;
+		AlgoParameters_p get_params_csr( uint64_t nz, uint64_t n, uint64_t m, size_t y_dsize, size_t x_dsize, size_t A_dsize, size_t A_rowptr_size, size_t A_colidx_size ) {
+			AlgoParameters_p spmv_csr = new AlgoParameters();
+			spmv_csr->b_foot = ( A_colidx_size + A_dsize ) * nz + A_rowptr_size * ( m + 1 ) + y_dsize * m + x_dsize * n;
+			spmv_csr->b_reads = ( A_colidx_size + A_dsize + x_dsize ) * nz + A_rowptr_size * ( m + 1 ) + y_dsize * m;
+			spmv_csr->b_writes = y_dsize * m;
+			spmv_csr->ops_scalar = 2 * nz;
             spmv_csr->ops_SIMD = 0;
             return spmv_csr;
-        }
-        /*=====================================================================*/
+		}
+		/*=====================================================================*/
         /*--------------------------------set----------------------------------*/
-        AlgoParameters_p get_params_set(uint64_t n, bool y_vec, size_t dtype_size, bool i)
-        {
-            AlgoParameters_p algo_p = new AlgoParameters();
-            if (i)
-            {
-                algo_p->b_foot = 1;
-                algo_p->b_reads = 1;
-                algo_p->b_writes = 1;
-                algo_p->ops_scalar = 0;
-                algo_p->ops_SIMD = 0;
-                algo_p->lvl = 0;
-            }
-            else
-            {
-                algo_p->b_foot = dtype_size * n + (y_vec ? dtype_size * n : 0);
-                algo_p->b_reads = 0 + (y_vec ? dtype_size * n : 0);
-                algo_p->b_writes = dtype_size * n;
-                algo_p->ops_scalar = 0;
-                algo_p->ops_SIMD = 0;
-                algo_p->lvl = 0;
-            }
-            return algo_p;
-        }
-        /*=====================================================================*/
+		AlgoParameters_p get_params_set( uint64_t n, bool y_vec, size_t x_dsize, size_t y_dsize, bool i ) {
+			AlgoParameters_p algo_p = new AlgoParameters();
+			if( i ) {
+				algo_p->b_foot = 1;
+				algo_p->b_reads = 1;
+				algo_p->b_writes = 1;
+			} else {
+				algo_p->b_foot = x_dsize * n + ( y_vec ? y_dsize * n : 0 );
+				algo_p->b_reads = 0 + ( y_vec ? y_dsize * n : 0 );
+				algo_p->b_writes = x_dsize * n;
+			}
+			algo_p->ops_scalar = 0;
+			algo_p->ops_SIMD = 0;
+			algo_p->lvl = 0;
+			return algo_p;
+		}
+		/*=====================================================================*/
         /*--------------------------------clear--------------------------------*/
         AlgoParameters_p get_params_clear(uint64_t n, size_t dtype_size)
         {
@@ -322,97 +311,92 @@ namespace HW_model
         }
         /*=====================================================================*/
         /*------------------------------eWiseApply-----------------------------*/
-        AlgoParameters_p get_params_eWiseApply(uint64_t n, size_t dtype_size, bool x_vec, bool y_vec)
-        {
-            AlgoParameters_p algo_p = new AlgoParameters();
-            algo_p->b_foot = dtype_size * n +
-                             (x_vec ? dtype_size * n : 0) + (y_vec ? dtype_size * n : 0);
-            algo_p->b_reads = (x_vec ? dtype_size * n : 0) + (y_vec ? dtype_size * n : 0);
-            algo_p->b_writes = dtype_size * n;
-            algo_p->ops_scalar = 0;
+		AlgoParameters_p get_params_eWiseApply( uint64_t n, size_t z_dsize, size_t x_dsize, 
+            size_t y_dsize, bool x_vec, bool y_vec ) {
+			AlgoParameters_p algo_p = new AlgoParameters();
+			algo_p->b_foot = z_dsize * n + ( x_vec ? x_dsize * n : 0 ) + ( y_vec ? y_dsize * n : 0 );
+			algo_p->b_reads = ( x_vec ? x_dsize * n : 0 ) + ( y_vec ? y_dsize * n : 0 );
+			algo_p->b_writes = z_dsize * n;
+			algo_p->ops_scalar = 0;
             algo_p->ops_SIMD = n;
             algo_p->lvl = 0;
             return algo_p;
-        }
-        /*=====================================================================*/
+		}
+		/*=====================================================================*/
         /*--------------------------------foldl--------------------------------*/
-        AlgoParameters_p get_params_foldl(uint64_t n, size_t dtype_size, bool x_vec, bool y_vec)
-        {
-            AlgoParameters_p algo_p = new AlgoParameters();
-            algo_p->b_foot = 0 + (x_vec ? dtype_size * n : 0) + (y_vec ? dtype_size * n : 0);
-            algo_p->b_reads = (x_vec ? dtype_size * n : 0) + (y_vec ? dtype_size * n : 0);
-            algo_p->b_writes = (x_vec ? dtype_size * n : 0);
+		AlgoParameters_p get_params_foldl( uint64_t n, size_t x_dsize, size_t y_dsize, 
+            bool x_vec, bool y_vec ) {
+			AlgoParameters_p algo_p = new AlgoParameters();
+            algo_p->b_foot = 0 + (x_vec ? x_dsize * n : 0) + (y_vec ? y_dsize * n : 0);
+            algo_p->b_reads = (x_vec ? x_dsize * n : 0) + (y_vec ? y_dsize * n : 0);
+            algo_p->b_writes = (x_vec ? x_dsize * n : 0);
             algo_p->ops_scalar = 0;
             algo_p->ops_SIMD = n;
             algo_p->lvl = 0;
             return algo_p;
-        }
-        /*=====================================================================*/
+		}
+		/*=====================================================================*/
         /*--------------------------------foldr--------------------------------*/
-        AlgoParameters_p get_params_foldr(uint64_t n, size_t dtype_size, bool x_vec, bool y_vec)
-        {
-            AlgoParameters_p algo_p = new AlgoParameters();
-            algo_p->b_foot = 0 + (x_vec ? dtype_size * n : 0) + (y_vec ? dtype_size * n : 0);
-            algo_p->b_reads = (x_vec ? dtype_size * n : 0) + (y_vec ? dtype_size * n : 0);
-            algo_p->b_writes = (y_vec ? dtype_size * n : 0);
+		AlgoParameters_p get_params_foldr( uint64_t n, size_t x_dsize, size_t y_dsize, 
+            bool x_vec, bool y_vec ) {
+			AlgoParameters_p algo_p = new AlgoParameters();
+            algo_p->b_foot = 0 + (x_vec ? x_dsize * n : 0) + (y_vec ? y_dsize * n : 0);
+            algo_p->b_reads = (x_vec ? x_dsize * n : 0) + (y_vec ? y_dsize * n : 0);
+            algo_p->b_writes = (y_vec ? y_dsize * n : 0);
             algo_p->ops_scalar = 0;
             algo_p->ops_SIMD = n;
             algo_p->lvl = 0;
             return algo_p;
-        }
-        /*=====================================================================*/
+		}
+		/*=====================================================================*/
         /*---------------------------------dot---------------------------------*/
-        AlgoParameters_p get_params_dot(uint64_t n, size_t dtype_size)
-        {
-            AlgoParameters_p algo_p = new AlgoParameters();
-            algo_p->b_foot = 2 * dtype_size * n;
-            algo_p->b_reads = 2 * dtype_size * n;
-            algo_p->b_writes = 0;
+		AlgoParameters_p get_params_dot( uint64_t n, size_t z_dsize, size_t x_dsize, size_t y_dsize ) {
+			AlgoParameters_p algo_p = new AlgoParameters();
+			algo_p->b_foot = ( x_dsize + y_dsize ) * n;
+			algo_p->b_reads = ( x_dsize + y_dsize ) * n;
+			algo_p->b_writes = 0;
             algo_p->ops_scalar = 0;
             algo_p->ops_SIMD = 2*n;
             algo_p->lvl = 0;
             return algo_p;
-        }
-        /*=====================================================================*/
+		}
+		/*=====================================================================*/
         /*---------------------------------add---------------------------------*/
-        AlgoParameters_p get_params_add(uint64_t n, size_t dtype_size)
-        {
-            AlgoParameters_p algo_p = new AlgoParameters();
-            algo_p->b_foot = 3 * dtype_size * n;
-            algo_p->b_reads = 2 * dtype_size * n;
-            algo_p->b_writes = dtype_size * n;
-            algo_p->ops_scalar = 0;
+		AlgoParameters_p get_params_add( uint64_t n, size_t z_dsize, size_t x_dsize, size_t y_dsize ) {
+			AlgoParameters_p algo_p = new AlgoParameters();
+			algo_p->b_foot = ( z_dsize + x_dsize + y_dsize ) * n;
+			algo_p->b_reads = 2 * ( x_dsize + y_dsize ) * n;
+			algo_p->b_writes = z_dsize * n;
+			algo_p->ops_scalar = 0;
             algo_p->ops_SIMD = n;
             algo_p->lvl = 0;
             return algo_p;
-        }
-        /*=====================================================================*/
+		}
+		/*=====================================================================*/
         /*---------------------------------mul---------------------------------*/
-        AlgoParameters_p get_params_mul(uint64_t n, size_t dtype_size)
-        {
-            AlgoParameters_p algo_p = new AlgoParameters();
-            algo_p->b_foot = 3 * dtype_size * n;
-            algo_p->b_reads = 2 * dtype_size * n;
-            algo_p->b_writes = dtype_size * n;
-            algo_p->ops_scalar = 0;
+		AlgoParameters_p get_params_mul( uint64_t n, size_t z_dsize, size_t x_dsize, size_t y_dsize ) {
+			AlgoParameters_p algo_p = new AlgoParameters();
+			algo_p->b_foot = ( z_dsize + x_dsize + y_dsize ) * n;
+			algo_p->b_reads = ( x_dsize + y_dsize ) * n;
+			algo_p->b_writes = ( z_dsize ) * n;
+			algo_p->ops_scalar = 0;
             algo_p->ops_SIMD = n;
             algo_p->lvl = 0;
             return algo_p;
-        }
-        /*=====================================================================*/
+		}
+		/*=====================================================================*/
         /*--------------------------------muladd-------------------------------*/
-        AlgoParameters_p get_params_muladd(uint64_t n, size_t dtype_size, bool a_vec)
-        {
-            AlgoParameters_p algo_p = new AlgoParameters();
-            algo_p->b_foot = 3 * dtype_size * n + (a_vec ? dtype_size * n : 0);
-            algo_p->b_reads = 2 * dtype_size * n + (a_vec ? dtype_size * n : 0);
-            algo_p->b_writes = dtype_size * n;
-            algo_p->ops_scalar = 0;
+		AlgoParameters_p get_params_muladd( uint64_t n, size_t z_dsize, size_t a_dsize, size_t x_dsize, size_t y_dsize, bool a_vec ) {
+			AlgoParameters_p algo_p = new AlgoParameters();
+			algo_p->b_foot = ( z_dsize + x_dsize + y_dsize ) * n + ( a_vec ? a_dsize * n : 0 );
+			algo_p->b_reads = ( x_dsize + y_dsize ) * n + ( a_vec ? a_dsize * n : 0 );
+			algo_p->b_writes = (z_dsize)*n;
+			algo_p->ops_scalar = 0;
             algo_p->ops_SIMD = 2 * n;
             algo_p->lvl = 0;
             return algo_p;
-        }
-        /*==================================================================*/
+		}
+		/*==================================================================*/
     }
 /*=====================================================================*/
 /*----------------------hier_lat_roofline namespace--------------------*/
@@ -560,42 +544,37 @@ namespace HW_model
         }
         /*=====================================================================*/
         /*--------------------------------COO----------------------------------*/
-        AlgoParameters_p get_params_coo(uint64_t nz, uint64_t n,
-                                        uint64_t m, size_t idx_size, size_t dtype_size)
-        {
-            AlgoParameters_p spmv_coo = new AlgoParameters();
+		AlgoParameters_p get_params_coo( uint64_t nz, uint64_t n, uint64_t m, size_t x_dsize, size_t y_dsize, 
+            size_t A_dsize, size_t A_rowidx_size, size_t A_colidx_size ) {
+			AlgoParameters_p spmv_coo = new AlgoParameters();
+			spmv_coo->b_foot = ( A_dsize + A_rowidx_size + A_colidx_size ) * nz + y_dsize * m + x_dsize * n;
             spmv_coo->lvl = 0; // Auto-adjust memory level
-            spmv_coo->b_foot = (2 * idx_size + dtype_size) * nz + dtype_size * (m + n);
-            spmv_coo->b_reads = (2 * idx_size + 3 * dtype_size) * nz;
-            spmv_coo->b_writes = dtype_size * nz;
+			spmv_coo->b_reads = ( A_dsize + A_rowidx_size + A_colidx_size + x_dsize + y_dsize ) * nz;
+			spmv_coo->b_writes = y_dsize * nz;
             spmv_coo->rand_reads = 2 * nz; // * dtype_size
             spmv_coo->rand_writes = nz; // * dtype_size
 
             return spmv_coo;
-        }
+		}
 
-        /*=====================================================================*/
+		/*=====================================================================*/
         /*--------------------------------CSR----------------------------------*/
 
-        AlgoParameters_p get_params_csr(uint64_t nz, uint64_t n, uint64_t m, size_t idx_size, size_t dtype_size)
-        {
-            AlgoParameters_p spmv_csr = new AlgoParameters();
-            spmv_csr->lvl = 0; // Auto-adjust memory level
-            spmv_csr->b_foot = (idx_size + dtype_size) * nz + dtype_size * (m + n) + idx_size * (m + 1);
-            // TODO: What is defined as a random access depends on interpratation for rowPtr, y
-            spmv_csr->b_foot = (idx_size + dtype_size) * nz + dtype_size * (m + n) + idx_size * (m + 1);
-            spmv_csr->b_reads = (idx_size + 2 * dtype_size) * nz + dtype_size * m + idx_size * (m + 1);
-            spmv_csr->b_writes = dtype_size * m;
-            spmv_csr->rand_reads = nz;
+		AlgoParameters_p get_params_csr( uint64_t nz, uint64_t n, uint64_t m, size_t y_dsize, 
+            size_t x_dsize, size_t A_dsize, size_t A_rowptr_size, size_t A_colidx_size ) {
+			AlgoParameters_p spmv_csr = new AlgoParameters();
+			spmv_csr->b_foot = ( A_colidx_size + A_dsize ) * nz + A_rowptr_size * ( m + 1 ) + y_dsize * m + x_dsize * n;
+			spmv_csr->b_reads = ( A_colidx_size + A_dsize + x_dsize ) * nz + A_rowptr_size * ( m + 1 ) + y_dsize * m;
+			spmv_csr->b_writes = y_dsize * m;
+			spmv_csr->rand_reads = nz;
             spmv_csr->rand_writes = 0;
 
             return spmv_csr;
-        }
-        /*=====================================================================*/
+		}
+		/*=====================================================================*/
         /*--------------------------------set----------------------------------*/
-        AlgoParameters_p get_params_set(uint64_t n, bool y_vec, size_t dtype_size, bool i)
-        {
-            AlgoParameters_p algo_p = new AlgoParameters();
+		AlgoParameters_p get_params_set( uint64_t n, bool y_vec, size_t x_dsize, size_t y_dsize, bool i ) {
+			AlgoParameters_p algo_p = new AlgoParameters();
             if (i)
             {
                 algo_p->b_foot = 1;
@@ -606,18 +585,18 @@ namespace HW_model
             }
             else
             {
-                algo_p->b_foot = dtype_size * n + (y_vec ? dtype_size * n : 0);
-                algo_p->b_reads = 0 + (y_vec ? dtype_size * n : 0);
-                algo_p->b_writes = dtype_size * n;
-                algo_p->rand_writes = 0;
+				algo_p->b_foot = x_dsize * n + ( y_vec ? y_dsize * n : 0 );
+				algo_p->b_reads = 0 + ( y_vec ? y_dsize * n : 0 );
+				algo_p->b_writes = x_dsize * n;
+				algo_p->rand_writes = 0;
                 algo_p->rand_reads = 0;
             }
             algo_p->ops_scalar = 0;
             algo_p->ops_SIMD = 0;
             algo_p->lvl = 0;
             return algo_p;
-        }
-        /*=====================================================================*/
+		}
+		/*=====================================================================*/
         /*--------------------------------clear--------------------------------*/
         AlgoParameters_p get_params_clear(uint64_t n, size_t dtype_size)
         {
@@ -649,111 +628,108 @@ namespace HW_model
         }
         /*=====================================================================*/
         /*------------------------------eWiseApply-----------------------------*/
-        AlgoParameters_p get_params_eWiseApply(uint64_t n, size_t dtype_size, bool x_vec, bool y_vec)
-        {
-            AlgoParameters_p algo_p = new AlgoParameters();
-            algo_p->b_foot = dtype_size * n +
-                             (x_vec ? dtype_size * n : 0) + (y_vec ? dtype_size * n : 0);
-            algo_p->b_reads = (x_vec ? dtype_size * n : 0) + (y_vec ? dtype_size * n : 0);
-            algo_p->b_writes = dtype_size * n;
+		AlgoParameters_p get_params_eWiseApply( uint64_t n, size_t z_dsize, 
+            size_t x_dsize, size_t y_dsize, bool x_vec, bool y_vec ) {
+			AlgoParameters_p algo_p = new AlgoParameters();
+            algo_p->b_foot = z_dsize * n +
+                             (x_vec ? x_dsize * n : 0) + (y_vec ? y_dsize * n : 0);
+            algo_p->b_reads = (x_vec ? x_dsize * n : 0) + (y_vec ? y_dsize * n : 0);
+            algo_p->b_writes = z_dsize * n;
             algo_p->rand_writes = 0;
             algo_p->rand_reads = 0;
             algo_p->ops_scalar = 0;
             algo_p->ops_SIMD = n;
             algo_p->lvl = 0;
             return algo_p;
-        }
-        /*=====================================================================*/
+		}
+		/*=====================================================================*/
         /*--------------------------------foldl--------------------------------*/
-        AlgoParameters_p get_params_foldl(uint64_t n, size_t dtype_size, bool x_vec, bool y_vec)
-        {
-            AlgoParameters_p algo_p = new AlgoParameters();
-            algo_p->b_foot = 0 + (x_vec ? dtype_size * n : 0) + (y_vec ? dtype_size * n : 0);
-            algo_p->b_reads = (x_vec ? dtype_size * n : 0) + (y_vec ? dtype_size * n : 0);
-            algo_p->b_writes = (x_vec ? dtype_size * n : 0);
+		AlgoParameters_p get_params_foldl( uint64_t n, size_t x_dsize, size_t y_dsize, 
+            bool x_vec, bool y_vec ) {
+			AlgoParameters_p algo_p = new AlgoParameters();
+            algo_p->b_foot = 0 + (x_vec ? x_dsize * n : 0) + (y_vec ? y_dsize * n : 0);
+            algo_p->b_reads = (x_vec ? x_dsize * n : 0) + (y_vec ? y_dsize * n : 0);
+            algo_p->b_writes = (x_vec ? x_dsize * n : 0);
             algo_p->rand_writes = 0;
             algo_p->rand_reads = 0;
             algo_p->ops_scalar = 0;
             algo_p->ops_SIMD = n;
             algo_p->lvl = 0;
             return algo_p;
-        }
-        /*=====================================================================*/
+		}
+		/*=====================================================================*/
         /*--------------------------------foldr--------------------------------*/
-        AlgoParameters_p get_params_foldr(uint64_t n, size_t dtype_size, bool x_vec, bool y_vec)
-        {
-            AlgoParameters_p algo_p = new AlgoParameters();
-            algo_p->b_foot = 0 + (x_vec ? dtype_size * n : 0) + (y_vec ? dtype_size * n : 0);
-            algo_p->b_reads = (x_vec ? dtype_size * n : 0) + (y_vec ? dtype_size * n : 0);
-            algo_p->b_writes = (y_vec ? dtype_size * n : 0);
+		AlgoParameters_p get_params_foldr( uint64_t n, size_t x_dsize, size_t y_dsize, 
+            bool x_vec, bool y_vec ) {
+			AlgoParameters_p algo_p = new AlgoParameters();
+            algo_p->b_foot = 0 + (x_vec ? x_dsize * n : 0) + (y_vec ? y_dsize * n : 0);
+            algo_p->b_reads = (x_vec ? x_dsize * n : 0) + (y_vec ? y_dsize * n : 0);
+            algo_p->b_writes = (y_vec ? y_dsize * n : 0);
             algo_p->rand_writes = 0;
             algo_p->rand_reads = 0;
             algo_p->ops_scalar = 0;
             algo_p->ops_SIMD = n;
             algo_p->lvl = 0;
             return algo_p;
-        }
-        /*=====================================================================*/
+		}
+		/*=====================================================================*/
         /*---------------------------------dot---------------------------------*/
-        AlgoParameters_p get_params_dot(uint64_t n, size_t dtype_size)
-        {
-            AlgoParameters_p algo_p = new AlgoParameters();
-            algo_p->b_foot = 2 * dtype_size * n;
-            algo_p->b_reads = 2 * dtype_size * n;
-            algo_p->b_writes = 0;
+		AlgoParameters_p get_params_dot( uint64_t n, size_t z_dsize, size_t x_dsize, size_t y_dsize ) {
+			AlgoParameters_p algo_p = new AlgoParameters();
+			algo_p->b_foot = (x_dsize + y_dsize) * n;
+			algo_p->b_reads = (x_dsize + y_dsize) * n;
+			algo_p->b_writes = 0;
             algo_p->rand_writes = 0;
             algo_p->rand_reads = 0;
             algo_p->ops_scalar = 0;
             algo_p->ops_SIMD = 2 * n;
             algo_p->lvl = 0;
             return algo_p;
-        }
-        /*=====================================================================*/
+		}
+		/*=====================================================================*/
         /*---------------------------------add---------------------------------*/
-        AlgoParameters_p get_params_add(uint64_t n, size_t dtype_size)
-        {
-            AlgoParameters_p algo_p = new AlgoParameters();
-            algo_p->b_foot = 3 * dtype_size * n;
-            algo_p->b_reads = 2 * dtype_size * n;
-            algo_p->b_writes = dtype_size * n;
-            algo_p->rand_writes = 0;
+		AlgoParameters_p get_params_add( uint64_t n, size_t z_dsize, size_t x_dsize, size_t y_dsize ) {
+			AlgoParameters_p algo_p = new AlgoParameters();
+            algo_p->b_foot = (z_dsize + x_dsize + y_dsize) * n;
+            algo_p->b_reads = 2 * (x_dsize + y_dsize) * n;
+			algo_p->b_writes = z_dsize * n;
+			algo_p->rand_writes = 0;
             algo_p->rand_reads = 0;
             algo_p->ops_scalar = 0;
             algo_p->ops_SIMD = n;
             algo_p->lvl = 0;
             return algo_p;
-        }
-        /*=====================================================================*/
+		}
+		/*=====================================================================*/
         /*---------------------------------mul---------------------------------*/
-        AlgoParameters_p get_params_mul(uint64_t n, size_t dtype_size)
-        {
-            AlgoParameters_p algo_p = new AlgoParameters();
-            algo_p->b_foot = 3 * dtype_size * n;
-            algo_p->b_reads = 2 * dtype_size * n;
-            algo_p->b_writes = dtype_size * n;
+		AlgoParameters_p get_params_mul( uint64_t n, size_t z_dsize, size_t x_dsize, size_t y_dsize ) {
+			AlgoParameters_p algo_p = new AlgoParameters();
+			algo_p->b_foot = ( z_dsize + x_dsize + y_dsize ) * n;
+			algo_p->b_reads = ( x_dsize + y_dsize ) * n;
+            algo_p->b_writes = ( z_dsize ) * n;
             algo_p->rand_writes = 0;
             algo_p->rand_reads = 0;
             algo_p->ops_scalar = 0;
             algo_p->ops_SIMD = n;
             algo_p->lvl = 0;
             return algo_p;
-        }
-        /*=====================================================================*/
+		}
+		/*=====================================================================*/
         /*--------------------------------muladd-------------------------------*/
-        AlgoParameters_p get_params_muladd(uint64_t n, size_t dtype_size, bool a_vec)
-        {
-            AlgoParameters_p algo_p = new AlgoParameters();
-            algo_p->b_foot = 3 * dtype_size * n + (a_vec ? dtype_size * n : 0);
-            algo_p->b_reads = 2 * dtype_size * n + (a_vec ? dtype_size * n : 0);
-            algo_p->b_writes = dtype_size * n;
+		AlgoParameters_p get_params_muladd( uint64_t n, size_t z_dsize, size_t a_dsize, 
+            size_t x_dsize, size_t y_dsize, bool a_vec ) {
+			AlgoParameters_p algo_p = new AlgoParameters();
+            algo_p->b_foot = (z_dsize + x_dsize + y_dsize) * n + (a_vec ? a_dsize * n : 0);
+            algo_p->b_reads = (x_dsize + y_dsize) * n + (a_vec ? a_dsize * n : 0);
+            algo_p->b_writes = (z_dsize) * n;
             algo_p->rand_writes = 0;
             algo_p->rand_reads = 0;
             algo_p->ops_scalar = 0;
             algo_p->ops_SIMD = 2 * n;
             algo_p->lvl = 0;
             return algo_p;
-        }
-        /*==================================================================*/
+		}
+		/*==================================================================*/
     } 
 
     // k-Multi-BSP performance model
