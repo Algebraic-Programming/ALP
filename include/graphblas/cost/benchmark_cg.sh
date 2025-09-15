@@ -27,7 +27,7 @@ export OMP_PLACES={0:1}
 ALPDIR="/home/panastasiadis/ALP"
 # Define range of problem sizes to test
 # You can adjust these values as needed
-SIZES=(256 512 1024 2048 4096 8192 16384 32768 65536 131072 262144 524288 1048576 2097152 4194304 8388608) #
+SIZES=(256 512 1024 2048 4096 8192 16384 32768 65536 131072 262144 ) #524288 1048576 2097152 4194304 8388608
 BANDSIZE=1
 # Loop through each problem size
 for N in "${SIZES[@]}"; do

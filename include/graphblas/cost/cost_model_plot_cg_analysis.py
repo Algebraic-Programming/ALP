@@ -355,7 +355,7 @@ def calculate_cache_thresholds(data_points):
     return thresholds
 
 def plot_results(function_data, output_dir="plots"):
-    """Create plots for each function's performance metrics."""
+    """Create plots for each function's performance metrics with different argument types in subplots."""
     # Create output directory if it doesn't exist
     os.makedirs(output_dir, exist_ok=True)
     
@@ -383,146 +383,234 @@ def plot_results(function_data, output_dir="plots"):
         '#C71585'   # medium violet red
     ]
     
-    # Plot each function
+    # For each function name, create a figure with subplots
     for function_name, args_data in function_data.items():
-        # Create a figure with a single plot and twin y-axes
-        fig, ax1 = plt.subplots(figsize=(12, 8))
-        ax2 = ax1.twinx()  # Create a secondary y-axis
+        # Group function variations by argument type signature and operator
+        arg_categories = {}
         
-        # Keep track of lines for the legend
-        all_lines = []
-        all_labels = []
-        
-        # For each simplified argument type
-        for i, (args_key, data) in enumerate(args_data.items()):
-            # Extract information about this function variation
+        for args_key, data in args_data.items():
+            # Extract signature information (operator type, args types)
             operator_info = data['operator_info']
-            thread_count = data['thread_count']
-            per_iter_count = data['per_iter_count']
             
-            # Create a display name for this function variation
-            if operator_info:
-                display_name = f"{function_name} ({operator_info})"
-            else:
-                display_name = function_name
-                
-            # Add per-iteration count if available
-            if per_iter_count is not None and per_iter_count > 0:
-                display_name = f"{display_name} [{per_iter_count}/iter]"
+            # Determine the argument pattern type for better categorization
+            arg_pattern = "default"
             
-            # Add thread count if > 1
-            if thread_count > 1:
-                display_name = f"{display_name} ({thread_count}t)"
+            # Check for Vector vs scalar arguments patterns
+            if "Vector" in args_key and "scalar" in args_key:
+                arg_pattern = "vector_scalar"
+            elif "Vector" in args_key and "Vector" in args_key[args_key.find("Vector")+6:]:
+                arg_pattern = "vector_vector"
+            elif "Vector" in args_key:
+                arg_pattern = "vector_only"
+            elif "scalar" in args_key:
+                arg_pattern = "scalar_only"
             
-            # Prepare data for plotting (X = memory footprint, Y = time/cost)
-            footprints = []
-            exec_times_avg = []
-            exec_times_min = []
-            exec_times_max = []
-            
-            # Store model data separately for each model/aggregator pair
-            model_data = defaultdict(lambda: {'footprints': [], 'costs': []})
-            
-            # Extract data points from different matrix sizes
-            for size, size_data in sorted(data['sizes'].items()):
-                # Only include sizes with valid memory footprint
-                if size_data['memory_footprint_bytes'] > 0:
-                    # Convert to KB for better scale
-                    memory_kb = size_data['memory_footprint_bytes'] / 1024.0
+            # More specific matching for function types from the args_key
+            if function_name == "foldr" or function_name == "foldl":
+                if "double" in args_key and "Vector" in args_key:
+                    arg_pattern = "scalar_vector"
+                elif "Vector" in args_key and "double" in args_key:
+                    arg_pattern = "vector_scalar"
+                elif "Vector" in args_key and "Vector" in args_key[args_key.find("Vector")+6:]:
+                    arg_pattern = "vector_vector"
                     
-                    # Add execution time data point
-                    footprints.append(memory_kb)
-                    exec_times_avg.append(size_data['execution_time_avg'])
-                    exec_times_min.append(size_data['execution_time_min'])
-                    exec_times_max.append(size_data['execution_time_max'])
-                    
-                    # Process model data
-                    for model in size_data['models']:
-                        model_key = (model['model_name'], model['aggregator'])
-                        model_data[model_key]['footprints'].append(memory_kb)
-                        model_data[model_key]['costs'].append(model['cost'])
+            # Check if there's a Monoid vs specific operator
+            if "Monoid" in args_key:
+                if operator_info:
+                    arg_pattern += "_op_" + operator_info
+                else:
+                    arg_pattern += "_monoid"
+            elif operator_info:
+                arg_pattern += "_" + operator_info
             
-            # Skip if no valid data points
-            if not footprints:
-                continue
+            # Create a category key combining arg pattern and operator info
+            category_key = arg_pattern
+            
+            # Initialize this category if not seen before
+            if category_key not in arg_categories:
+                arg_categories[category_key] = []
+            
+            # Add this argument variation to the category
+            arg_categories[category_key].append(args_key)
+        
+        # Determine subplot grid dimensions
+        num_categories = len(arg_categories)
+        if num_categories == 0:
+            continue
+            
+        # Adjust figure size based on number of categories
+        if num_categories == 1:
+            # Single plot - use a more appropriate size
+            fig = plt.figure(figsize=(10, 8))
+            grid_cols = 1
+            grid_rows = 1
+        else:
+            # Calculate grid dimensions (try to make it somewhat square)
+            grid_cols = min(3, num_categories)  # Max 3 columns
+            grid_rows = (num_categories + grid_cols - 1) // grid_cols
+            fig = plt.figure(figsize=(6*grid_cols, 5*grid_rows))
+        
+        # Process each category in a separate subplot
+        for idx, (category_key, args_keys) in enumerate(arg_categories.items()):
+            # Create subplot
+            ax1 = fig.add_subplot(grid_rows, grid_cols, idx+1)
+            ax2 = ax1.twinx()  # Create a secondary y-axis
+            
+            # Add subplot title with better formatting
+            subplot_title = f"{function_name}"
+            if category_key != "default":
+                # Format the category key for display
+                display_category = category_key.replace("_", " ").replace("vector", "Vector")
+                display_category = display_category.replace("scalar", "Scalar").replace("monoid", "Monoid")
+                subplot_title += f" ({display_category})"
+            ax1.set_title(subplot_title)
+            
+            # Keep track of lines for the legend
+            all_lines = []
+            all_labels = []
+            
+            # Process each argument variation in this category
+            for i, args_key in enumerate(args_keys):
+                data = args_data[args_key]
                 
-            # Choose a color and marker for this function variation
-            time_color = non_red_colors[i % len(non_red_colors)]
-            marker = markers[i % len(markers)]
-            
-            # Plot execution time with this marker and color
-            time_line, = ax1.plot(footprints, exec_times_avg, '-', marker=marker, color=time_color, 
-                           label=f"Time: {display_name}")
-            ax1.fill_between(footprints, exec_times_min, exec_times_max, color=time_color, alpha=0.2)
-            
-            # Add time line to legend
-            all_lines.append(time_line)
-            all_labels.append(f"Time: {display_name}")
-            
-            # Plot a cost line for each model/aggregator pair
-            for j, (model_key, m_data) in enumerate(model_data.items()):
-                model_name, aggregator = model_key
+                # Extract information about this function variation
+                thread_count = data['thread_count']
+                per_iter_count = data['per_iter_count']
                 
-                # Skip if no valid data
-                if not m_data['footprints']:
+                # Create a simplified display name with just the per-iteration count
+                display_name = ""
+                
+                # Add per-iteration count if available
+                if per_iter_count is not None and per_iter_count > 0:
+                    display_name = f"[{per_iter_count}/iter]"
+                
+                # Prepare data for plotting (X = memory footprint, Y = time/cost)
+                footprints = []
+                exec_times_avg = []
+                exec_times_min = []
+                exec_times_max = []
+                
+                # Store model data separately for each model/aggregator pair
+                model_data = defaultdict(lambda: {'footprints': [], 'costs': []})
+                
+                # Extract data points from different matrix sizes
+                for size, size_data in sorted(data['sizes'].items()):
+                    # Only include sizes with valid memory footprint
+                    if size_data['memory_footprint_bytes'] > 0:
+                        # Convert to KB for better scale
+                        memory_kb = size_data['memory_footprint_bytes'] / 1024.0
+                        
+                        # Add execution time data point
+                        footprints.append(memory_kb)
+                        exec_times_avg.append(size_data['execution_time_avg'])
+                        exec_times_min.append(size_data['execution_time_min'])
+                        exec_times_max.append(size_data['execution_time_max'])
+                        
+                        # Process model data
+                        for model in size_data['models']:
+                            model_key = (model['model_name'], model['aggregator'])
+                            model_data[model_key]['footprints'].append(memory_kb)
+                            model_data[model_key]['costs'].append(model['cost'])
+                
+                # Skip if no valid data points
+                if not footprints:
                     continue
                     
-                # Choose a red color variant for this model
-                cost_color = red_colors[j % len(red_colors)]
+                # Choose a color and marker for this function variation
+                time_color = non_red_colors[i % len(non_red_colors)]
+                marker = markers[i % len(markers)]
                 
-                # Create model display name
-                model_display = f"{model_name} {aggregator}"
+                # Plot execution time with this marker and color
+                legend_name = "Execution Time"
+                if display_name:
+                    legend_name += f" {display_name}"
                 
-                # Plot cost line
-                cost_line, = ax2.plot(m_data['footprints'], m_data['costs'], '--', marker=marker, color=cost_color, 
-                               label=f"Cost: {model_display}")
+                time_line, = ax1.plot(footprints, exec_times_avg, '-', marker=marker, color=time_color, 
+                               label=legend_name)
+                ax1.fill_between(footprints, exec_times_min, exec_times_max, color=time_color, alpha=0.2)
                 
-                # Add cost line to legend
-                all_lines.append(cost_line)
-                all_labels.append(f"Cost: {display_name} - {model_display}")
-        
-        # Add vertical lines for cache sizes
-        for cache_name, cache_size in CACHE_SIZES.items():
-            # Convert cache size to KB for consistent x-axis
-            cache_kb = cache_size / 1024.0
-            ax1.axvline(x=cache_kb, color='gray', linestyle='--', alpha=0.7)
+                # Add time line to legend
+                all_lines.append(time_line)
+                all_labels.append(legend_name)
+                
+                # Plot a cost line for each model/aggregator pair
+                for j, (model_key, m_data) in enumerate(model_data.items()):
+                    model_name, aggregator = model_key
+                    
+                    # Skip if no valid data
+                    if not m_data['footprints']:
+                        continue
+                        
+                    # Choose a red color variant for this model
+                    cost_color = red_colors[j % len(red_colors)]
+                    
+                    # Create simplified model display name
+                    if aggregator and aggregator != "default":
+                        model_display = f"{model_name} {aggregator}"
+                    else:
+                        model_display = model_name
+                    
+                    # Plot cost line
+                    cost_line, = ax2.plot(m_data['footprints'], m_data['costs'], '--', marker=marker, color=cost_color, 
+                                   label=f"Cost Model: {model_display}")
+                    
+                    # Add cost line to legend
+                    all_lines.append(cost_line)
+                    all_labels.append(f"Cost Model: {model_display}")
             
-            # Add cache size annotation with appropriate unit
-            if cache_size < 1024 * 1024:  # Less than 1 MB
-                label = f"{cache_name} ({cache_kb:.0f} KB)"
-            else:  # MB or larger
-                label = f"{cache_name} ({cache_kb/1024:.0f} MB)"
+            # Add vertical lines for cache sizes
+            for cache_name, cache_size in CACHE_SIZES.items():
+                # Convert cache size to KB for consistent x-axis
+                cache_kb = cache_size / 1024.0
+                ax1.axvline(x=cache_kb, color='gray', linestyle='--', alpha=0.7)
                 
-            ax1.annotate(label, 
-                       (cache_kb, ax1.get_ylim()[1]*0.95),
-                       xytext=(5, 0),
-                       textcoords="offset points",
-                       ha='left',
-                       va='center',
-                       fontsize=9,
-                       rotation=90,
-                       color='black')
+                # Add cache size annotation near x-axis instead of at the top
+                if cache_size < 1024 * 1024:  # Less than 1 MB
+                    label = f"{cache_name} ({cache_kb:.0f} KB)"
+                else:  # MB or larger
+                    label = f"{cache_name} ({cache_kb/1024:.0f} MB)"
+                
+                # Position the cache size labels at the bottom near the x-axis
+                ax1.annotate(label, 
+                           (cache_kb, ax1.get_ylim()[0] * 1.1),  # Position near bottom
+                           xytext=(0, 10),  # Offset text slightly above the x-axis
+                           textcoords="offset points",
+                           ha='center',  # Center horizontally on the line
+                           va='bottom',
+                           fontsize=8,
+                           rotation=90,
+                           color='black')
+            
+            # Configure axes
+            ax1.set_xlabel('Memory Footprint (KB)')
+            ax1.set_ylabel('Execution Time (seconds)', color='blue')
+            ax2.set_ylabel('Predicted Cost', color='#990000')  # Darker red for y-axis label
+            
+            # Set to log scale
+            ax1.set_xscale('log', base=2)
+            ax1.set_yscale('log')
+            ax2.set_yscale('log')
+            
+            # Grid
+            ax1.grid(True, which="both", ls="--", alpha=0.3)
+            
+            # Add legend for this subplot - always at the upper left
+            if all_lines:  # Only add legend if we have lines to show
+                if num_categories == 1:
+                    # For single plot, use larger font
+                    ax1.legend(all_lines, all_labels, loc='upper left', fontsize=9)
+                else:
+                    # For multi-plot, keep legend compact
+                    ax1.legend(all_lines, all_labels, loc='upper left', fontsize=7)
         
-        # Configure axes
-        ax1.set_xlabel('Memory Footprint (KB)')
-        ax1.set_ylabel('Execution Time (seconds)', color='blue')
-        ax2.set_ylabel('Predicted Cost', color='#990000')  # Darker red for y-axis label
+        # Add a main title for the whole figure
+        plt.suptitle(f'{function_name} - Performance vs. Memory Footprint', fontsize=16)
         
-        # Set to log scale
-        ax1.set_xscale('log', base=2)
-        ax1.set_yscale('log')
-        ax2.set_yscale('log')
+        # Adjust layout
+        plt.tight_layout(rect=[0, 0, 1, 0.96])  # Make room for the suptitle
         
-        # Grid and title
-        ax1.grid(True, which="both", ls="--", alpha=0.3)
-        plt.title(f'{function_name} - Performance vs. Memory Footprint')
-        
-        # Add legend for function lines only (cache lines excluded)
-        if all_lines:  # Only add legend if we have lines to show
-            plt.legend(all_lines, all_labels, loc='best', fontsize=8)
-        
-        plt.tight_layout()
-        plt.savefig(os.path.join(output_dir, f'{function_name}_performance.png'))
+        # Save figure with high resolution
+        plt.savefig(os.path.join(output_dir, f'{function_name}_performance.png'), dpi=150)
         plt.close()
 
 def main():
