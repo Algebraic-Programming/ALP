@@ -225,6 +225,203 @@ def analyze_function(function_name: str, log_file_path: str) -> Dict[str, Dict[s
     
     return analysis
 
+def create_solver_iteration_function(log_file_path: str) -> Dict[str, Dict[str, Any]]:
+    """
+    Create a synthetic function that represents one complete solver iteration by aggregating
+    all functions that are part of the iteration.
+    
+    Args:
+        log_file_path: Path to the log file
+        
+    Returns:
+        Dictionary with synthetic function data
+    """
+    # Get all function data
+    function_data = parse_log_file(log_file_path)
+    
+    # Get number of CG iterations
+    num_iterations = extract_cg_iterations(log_file_path)
+    
+    # Initialize the synthetic function
+    synthetic_function = {}
+    
+    # Track the maximum memory footprint
+    max_memory_footprint = 0
+    max_memory_footprint_str = "0 B"
+    
+    # Track model information
+    model_info = {}
+    
+    # To calculate per-iteration statistics, we need to track which functions are part of each iteration
+    per_iteration_funcs = {}
+    
+    # First, identify all functions that are part of iterations and their per-iteration count
+    for function_name, function_calls in function_data.items():
+        # Group calls by argument type
+        calls_by_args = defaultdict(list)
+        for call in function_calls:
+            calls_by_args[call['args']].append(call)
+        
+        # Process each argument type
+        for args, calls in calls_by_args.items():
+            count = len(calls)
+            per_iter_count = determine_per_iteration_count(count, num_iterations)
+            
+            if per_iter_count is not None and per_iter_count > 0:
+                # This function type is part of the iteration
+                key = (function_name, args)
+                per_iteration_funcs[key] = {
+                    'per_iter_count': per_iter_count,
+                    'calls': calls,
+                    'execution_times': [c.get('execution_time', 0.0) for c in calls]
+                }
+                
+                # Update max memory footprint
+                for call in calls:
+                    for model in call.get('models', []):
+                        footprint_str = model.get('footprint', '0 B')
+                        footprint_bytes = parse_memory_footprint(footprint_str)
+                        if footprint_bytes > max_memory_footprint:
+                            max_memory_footprint = footprint_bytes
+                            max_memory_footprint_str = footprint_str
+                
+                # Collect model info for cost calculation
+                for call in calls:
+                    for model in call.get('models', []):
+                        model_key = (
+                            model.get('model', '') + "-additive",  # Rename model
+                            model.get('aggregator', ''),
+                            model.get('threads', 0)
+                        )
+                        
+                        # Store model information if not already stored
+                        if model_key not in model_info:
+                            model_info[model_key] = {
+                                'model': model.get('model', '') + "-additive",
+                                'threads': model.get('threads', 0),
+                                'aggregator': model.get('aggregator', ''),
+                                'level_range': model.get('level_range'),
+                                'cost': 0.0
+                            }
+                        
+                        # Add to total cost for this model (multiplied by per-iteration count)
+                        if model.get('cost') is not None:
+                            model_info[model_key]['cost'] += model.get('cost', 0.0) * per_iter_count
+    
+    # Calculate per-iteration execution times
+    per_iteration_times = []
+    
+    # For each iteration, sum the execution times of all functions that are part of the iteration
+    for i in range(num_iterations):
+        iteration_time = 0.0
+        
+        # Add execution time for each function type that's part of the iteration
+        for func_key, func_data in per_iteration_funcs.items():
+            per_iter_count = func_data['per_iter_count']
+            execution_times = func_data['execution_times']
+            
+            # Calculate which calls belong to this iteration
+            start_idx = i * per_iter_count
+            end_idx = min((i + 1) * per_iter_count, len(execution_times))
+            
+            # Sum the execution times for this iteration
+            if start_idx < len(execution_times):
+                for j in range(start_idx, end_idx):
+                    iteration_time += execution_times[j]
+        
+        per_iteration_times.append(iteration_time)
+    
+    # If we have data, create the synthetic function
+    if per_iteration_times:
+        # Calculate statistics
+        min_time = min(per_iteration_times) if per_iteration_times else 0.0
+        max_time = max(per_iteration_times) if per_iteration_times else 0.0
+        avg_time = sum(per_iteration_times) / len(per_iteration_times) if per_iteration_times else 0.0
+        std_dev = np.std(per_iteration_times) if len(per_iteration_times) > 1 else None
+        
+        synthetic_function["aggregated"] = {
+            "count": num_iterations,
+            "per_iter_count": 1,
+            "costs": [sum(model_info[k]['cost'] for k in model_info) / num_iterations],  # Average cost per iteration
+            "execution_times": per_iteration_times,
+            "execution_time_min": min_time,
+            "execution_time_max": max_time,
+            "execution_time_avg": avg_time,
+            "execution_time_stddev": std_dev,
+            "all_models": []
+        }
+        
+        # Add model data
+        for model_key, model_data in model_info.items():
+            model_data['footprint'] = max_memory_footprint_str
+            synthetic_function["aggregated"]["all_models"].append(model_data)
+    
+    return synthetic_function
+
+def analyze_all_functions(log_file_path: str) -> None:
+    """
+    Analyze all functions found in the given log file.
+    
+    Args:
+        log_file_path: Path to the log file
+    """
+    function_data = parse_log_file(log_file_path)
+    
+    if not function_data:
+        print(f"No function calls found in log file: {log_file_path}")
+        return
+    
+    # Create a synthetic "Solver iteration" function
+    synthetic_function = create_solver_iteration_function(log_file_path)
+    
+    # Get number of CG iterations
+    num_iterations = extract_cg_iterations(log_file_path)
+    
+    # Print summary of functions found
+    print(f"Found {len(function_data) + 1} distinct functions in log file (including synthetic function)")
+    print("=" * 80)
+    
+    # First print the synthetic function if it has data
+    if synthetic_function:
+        print("\nAnalysis for function 'Solver_iteration':")
+        print("=" * 80)
+        
+        for args, data in synthetic_function.items():
+            print(f"Argument types: {args}")
+            print(f"Invocation count: {num_iterations} (per solver iteration: 1)")
+            
+            # Print all models
+            for model_data in data.get('all_models', []):
+                print(f"Model: {model_data.get('model', 'Unknown')}")
+                print(f"Threads: {model_data.get('threads', 'Unknown')}")
+                print(f"Stream aggregator: {model_data.get('aggregator', 'Unknown')}")
+                print(f"Memory footprint: {model_data.get('footprint', 'Unknown')}")
+                
+                if model_data.get('level_range'):
+                    print(f"Level range: {model_data.get('level_range')}")
+                    
+                print(f"Predicted cost: {model_data.get('cost', 0.0):.5e}")
+                print("-" * 80)
+            
+            # Process execution times with statistics
+            if data.get('execution_time_min') is not None:
+                min_time = data.get('execution_time_min')
+                max_time = data.get('execution_time_max')
+                avg_time = data.get('execution_time_avg')
+                std_dev = data.get('execution_time_stddev')
+                
+                if std_dev is not None:
+                    print(f"Execution time (seconds): min={min_time:.5e}, max={max_time:.5e}, avg={avg_time:.5e}, std_dev={std_dev:.5e}")
+                else:
+                    print(f"Execution time (seconds): min={min_time:.5e}, max={max_time:.5e}, avg={avg_time:.5e}")
+            
+            print("-" * 80)
+    
+    # Analyze each regular function
+    for function_name in sorted(function_data.keys()):
+        print("\n")  # Add space between function analyses
+        print_function_analysis(function_name, log_file_path)
+
 def calculate_statistics(values: List[float]) -> Tuple[float, float, float, Optional[float]]:
     """Calculate min, max, avg, and std_dev for a list of values."""
     if not values:
@@ -361,14 +558,82 @@ def analyze_all_functions(log_file_path: str) -> None:
         print(f"No function calls found in log file: {log_file_path}")
         return
     
+    # Create a synthetic "Solver iteration" function
+    synthetic_function = create_solver_iteration_function(log_file_path)
+    
+    # Get number of CG iterations
+    num_iterations = extract_cg_iterations(log_file_path)
+    
     # Print summary of functions found
-    print(f"Found {len(function_data)} distinct functions in log file")
+    print(f"Found {len(function_data) + 1} distinct functions in log file (including synthetic function)")
     print("=" * 80)
     
-    # Analyze each function
+    # First print the synthetic function if it has data
+    if synthetic_function:
+        print("\nAnalysis for function 'Solver_iteration':")
+        print("=" * 80)
+        
+        for args, data in synthetic_function.items():
+            print(f"Argument types: {args}")
+            print(f"Invocation count: {num_iterations} (per solver iteration: 1)")
+            
+            # Print all models
+            for model_data in data.get('all_models', []):
+                print(f"Model: {model_data.get('model', 'Unknown')}")
+                print(f"Threads: {model_data.get('threads', 'Unknown')}")
+                print(f"Stream aggregator: {model_data.get('aggregator', 'Unknown')}")
+                print(f"Memory footprint: {model_data.get('footprint', 'Unknown')}")
+                
+                if model_data.get('level_range'):
+                    print(f"Level range: {model_data.get('level_range')}")
+                    
+                print(f"Predicted cost: {model_data.get('cost', 0.0):.5e}")
+                print("-" * 80)
+            
+            # Process execution times with statistics
+            if data.get('execution_time_min') is not None:
+                min_time = data.get('execution_time_min')
+                max_time = data.get('execution_time_max')
+                avg_time = data.get('execution_time_avg')
+                std_dev = data.get('execution_time_stddev')
+                
+                if std_dev is not None:
+                    print(f"Execution time (seconds): min={min_time:.5e}, max={max_time:.5e}, avg={avg_time:.5e}, std_dev={std_dev:.5e}")
+                else:
+                    print(f"Execution time (seconds): min={min_time:.5e}, max={max_time:.5e}, avg={avg_time:.5e}")
+            
+            print("-" * 80)
+    
+    # Analyze each regular function
     for function_name in sorted(function_data.keys()):
         print("\n")  # Add space between function analyses
         print_function_analysis(function_name, log_file_path)
+
+def parse_memory_footprint(footprint_str: str) -> int:
+    """Parse memory footprint string (e.g. '15.0 KB') and convert to bytes."""
+    if not footprint_str or footprint_str == "0 B":
+        return 0
+        
+    match = re.match(r'([\d.]+)\s+([KMGTP]?B)', footprint_str)
+    if not match:
+        return 0
+        
+    value = float(match.group(1))
+    unit = match.group(2)
+    
+    # Convert to bytes
+    if unit == 'KB':
+        return int(value * 1024)
+    elif unit == 'MB':
+        return int(value * 1024 * 1024)
+    elif unit == 'GB':
+        return int(value * 1024 * 1024 * 1024)
+    elif unit == 'TB':
+        return int(value * 1024 * 1024 * 1024 * 1024)
+    elif unit == 'PB':
+        return int(value * 1024 * 1024 * 1024 * 1024 * 1024)
+    else:  # Bytes
+        return int(value)
 
 def main() -> None:
     """Main function to process command-line arguments and analyze the log file."""
