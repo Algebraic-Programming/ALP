@@ -53,12 +53,12 @@ for N in "${SIZES[@]}"; do
     
     # 3. Parse the output
     RESULT_FILE="results/banded_diag_${N}x${N}_band_${BANDSIZE}_threads-${OMP_NUM_THREADS}_analysis.log"
-    if [ ! -f "$RESULT_FILE" ] || [ "$FORCE_REPEAT" -eq 1 ]; then
+    #if [ ! -f "$RESULT_FILE" ] || [ "$FORCE_REPEAT" -eq 1 ]; then
         echo "Parsing results to: $RESULT_FILE"
         python3 $ALPDIR/include/graphblas/cost/cost_and_time_parser_plus_DEBUG.py $OUTPUT_FILE > $RESULT_FILE
-    else
-        echo "Result file $RESULT_FILE already exists, skipping analysis"
-    fi
+    #else
+    #    echo "Result file $RESULT_FILE already exists, skipping analysis"
+    #fi
     
     echo "Completed analysis for size $N"
     echo "----------------------------------------"

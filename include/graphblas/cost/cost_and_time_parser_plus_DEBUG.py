@@ -14,11 +14,12 @@ import numpy as np
 PATTERNS = {
     'function_entry': re.compile(r'\[TRACING\] Entering function: (\w+<[^>]*>|\w+<\d+>|\w+) with (\d+) arguments'),
     'arg_types': re.compile(r'\[TRACING\] Argument types: (.*)'),
-    'model': re.compile(r'===== (.*) Kernel Cost Prediction ====='),
+    'model_header': re.compile(r'===== (.*) Kernel Cost Prediction ====='),
     'threads': re.compile(r'Threads: (\d+)'),
     'aggregator': re.compile(r'Stream aggregator: (\w+)'),
     'footprint': re.compile(r'Memory footprint: ([\d.]+ [KMGTP]?B)'),
     'level': re.compile(r'Superstep type \d+ \(level (\d+)\):'),
+    'model_cost': re.compile(r'Total cost: ([0-9.e+-]+) seconds'),
     'cost': re.compile(r'\[TRACING\] Predicted cost: ([0-9.e+-]+)'),
     'exit': re.compile(r'\[TRACING\] Exiting function: (\w+<[^>]*>|\w+<\d+>|\w+) \(took (\d+)μs\)')
 }
@@ -32,8 +33,7 @@ def extract_base_function_name(full_name: str) -> str:
 
 def parse_log_file(log_file_path: str) -> DefaultDict[str, List[Dict[str, Any]]]:
     """
-    Parse the log file and extract function calls with their argument types, costs,
-    and execution times.
+    Parse the log file and extract function calls with their argument details, models and costs.
     
     Args:
         log_file_path: Path to the log file
@@ -42,113 +42,151 @@ def parse_log_file(log_file_path: str) -> DefaultDict[str, List[Dict[str, Any]]]
         Dictionary with function calls information
     """
     function_data = defaultdict(list)
-    current_function = None
-    current_args = None
-    current_cost = None
-    current_threads = None
-    current_aggregator = None
-    current_model = None
-    current_footprint = None
-    current_levels = []
     
     try:
         with open(log_file_path, 'r') as file:
-            for line in file:
-                line = line.strip()
+            lines = file.readlines()
+            
+        i = 0
+        while i < len(lines):
+            line = lines[i].strip()
+            
+            # Match function entry
+            match = PATTERNS['function_entry'].search(line)
+            if match:
+                function_name = match.group(1)
+                base_function = extract_base_function_name(function_name)
                 
-                # Match function entry
-                match = PATTERNS['function_entry'].search(line)
-                if match:
-                    current_function = match.group(1)
-                    current_args = None
-                    current_cost = None
-                    current_threads = None
-                    current_aggregator = None
-                    current_model = None
-                    current_footprint = None
-                    current_levels = []
-                    continue
-                    
-                # Only process other patterns if we're inside a function
-                if not current_function:
-                    continue
-                
-                # Match argument types
-                match = PATTERNS['arg_types'].search(line)
-                if match:
-                    current_args = match.group(1).strip()
-                    continue
-                
-                # Match model name
-                match = PATTERNS['model'].search(line)
-                if match:
-                    current_model = match.group(1).strip()
-                    continue
-                    
-                # Match threads
-                match = PATTERNS['threads'].search(line)
-                if match:
-                    current_threads = int(match.group(1))
-                    continue
-                    
-                # Match stream aggregator
-                match = PATTERNS['aggregator'].search(line)
-                if match:
-                    current_aggregator = match.group(1).strip()
-                    continue
-                    
-                # Match memory footprint
-                match = PATTERNS['footprint'].search(line)
-                if match:
-                    current_footprint = match.group(1).strip()
-                    continue
-                    
-                # Match level information
-                match = PATTERNS['level'].search(line)
-                if match:
-                    current_levels.append(int(match.group(1)))
-                    continue
-                    
-                # Match predicted cost
-                match = PATTERNS['cost'].search(line)
-                if match and current_args:
-                    current_cost = float(match.group(1))
-                    continue
-                    
-                # Match execution time (when exiting function)
-                match = PATTERNS['exit'].search(line)
-                if match and current_args and current_cost and match.group(1) == current_function:
-                    execution_time_us = int(match.group(2))
-                    execution_time_s = execution_time_us / 1e6  # Convert μs to seconds
-                    
-                    # Extract base function name
-                    base_function = extract_base_function_name(current_function)
-                    
-                    # Calculate level range
-                    level_range = None
-                    if current_levels:
-                        level_range = [min(current_levels), max(current_levels)]
-                    
-                    # Store the function call data
-                    function_data[base_function].append({
-                        'full_name': current_function,
-                        'args': current_args,
-                        'cost': current_cost,
-                        'execution_time': execution_time_s,
-                        'threads': current_threads,
-                        'aggregator': current_aggregator,
-                        'model': current_model,
-                        'footprint': current_footprint,
-                        'level_range': level_range
-                    })
-                    current_args = None  # Reset to prevent duplicate entries
+                # Get arguments from the next line
+                i += 1
+                if i < len(lines) and '[TRACING] Argument types:' in lines[i]:
+                    args_line = lines[i].strip()
+                    args_match = PATTERNS['arg_types'].search(args_line)
+                    if args_match:
+                        args = args_match.group(1).strip()
+                        
+                        # Extract sizes, dimensions from args
+                        sizes = re.findall(r'size=(\d+)', args)
+                        dimensions = re.findall(r'rows=(\d+),cols=(\d+)', args)
+                        nnz = re.findall(r'nnz=(\d+)', args)
+                        operators = re.findall(r'operators::(\w+)', args)
+                        
+                        # Initialize function call data
+                        call_data = {
+                            'full_name': function_name,
+                            'args': args,
+                            'sizes': sizes,
+                            'dimensions': dimensions,
+                            'nnz': nnz,
+                            'operators': operators,
+                            'models': [],
+                            'cost': None,
+                            'execution_time': None
+                        }
+                        
+                        # Look for models after the args
+                        i += 1
+                        while i < len(lines):
+                            # Check if we're at the start of a model section
+                            if '===== ' in lines[i] and ' Kernel Cost Prediction =====' in lines[i]:
+                                model_header = lines[i].strip()
+                                model_name = model_header.replace('===== ', '').replace(' Kernel Cost Prediction =====', '')
+                                
+                                # Initialize model data
+                                model_data = {
+                                    'model': model_name,
+                                    'threads': None,
+                                    'aggregator': None,
+                                    'footprint': None,
+                                    'cost': None
+                                }
+                                
+                                # Parse model details
+                                j = i + 1
+                                while j < len(lines) and not ('===== ' in lines[j] and ' Kernel Cost Prediction =====' in lines[j]) and not '[TRACING] Predicted cost:' in lines[j]:
+                                    model_line = lines[j].strip()
+                                    
+                                    # Extract thread count
+                                    if 'Threads:' in model_line:
+                                        threads_match = PATTERNS['threads'].search(model_line)
+                                        if threads_match:
+                                            model_data['threads'] = int(threads_match.group(1))
+                                    
+                                    # Extract aggregator
+                                    elif 'Stream aggregator:' in model_line:
+                                        agg_match = PATTERNS['aggregator'].search(model_line)
+                                        if agg_match:
+                                            model_data['aggregator'] = agg_match.group(1)
+                                    
+                                    # Extract memory footprint
+                                    elif 'Memory footprint:' in model_line and not model_line.startswith('Algorithm parameters:'):
+                                        fp_match = PATTERNS['footprint'].search(model_line)
+                                        if fp_match:
+                                            model_data['footprint'] = fp_match.group(1)
+                                    
+                                    # Extract cost
+                                    elif 'Total cost:' in model_line:
+                                        cost_match = PATTERNS['model_cost'].search(model_line)
+                                        if cost_match:
+                                            model_data['cost'] = float(cost_match.group(1))
+                                    
+                                    j += 1
+                                
+                                # Add model to the call data
+                                call_data['models'].append(model_data)
+                                
+                                # Print parsed model info for correctness check
+                                # print(f"Parsed model: {model_name}")
+                                # print(f"  Threads: {model_data['threads']}")
+                                # print(f"  Aggregator: {model_data['aggregator']}")
+                                # print(f"  Memory footprint: {model_data['footprint']}")
+                                # print(f"  Cost: {model_data['cost']}")
+                                
+                                i = j - 1  # Move i to the line before the next model or cost
+                            
+                            # Check if we're at the predicted cost
+                            elif '[TRACING] Predicted cost:' in lines[i]:
+                                cost_match = PATTERNS['cost'].search(lines[i])
+                                if cost_match:
+                                    call_data['cost'] = float(cost_match.group(1))
+                                
+                                # Look for execution time in the next lines
+                                k = i + 1
+                                while k < len(lines) and not '[TRACING] Exiting function:' in lines[k]:
+                                    k += 1
+                                
+                                if k < len(lines) and '[TRACING] Exiting function:' in lines[k]:
+                                    exit_match = PATTERNS['exit'].search(lines[k])
+                                    if exit_match and exit_match.group(1) == function_name:
+                                        exec_time_us = int(exit_match.group(2))
+                                        call_data['execution_time'] = exec_time_us / 1e6
+                                
+                                # Add the function call data to the results
+                                function_data[base_function].append(call_data)
+                                
+                                # Print function info for correctness check
+                                # print(f"\nParsed function: {function_name}")
+                                # print(f"  Arguments: {args}")
+                                # print(f"  Sizes: {sizes}")
+                                # print(f"  Dimensions: {dimensions}")
+                                # print(f"  NNZ: {nnz}")
+                                # print(f"  Operators: {operators}")
+                                # print(f"  Final cost: {call_data['cost']}")
+                                # print(f"  Execution time: {call_data['execution_time']}")
+                                # print("-" * 50)
+                                
+                                # Move to the next function
+                                break
+                            
+                            i += 1
+            
+            i += 1
+    
     except FileNotFoundError:
         print(f"Error: File not found: {log_file_path}")
-        return function_data
     except Exception as e:
         print(f"Error parsing log file: {e}")
-        return function_data
-                
+    
     return function_data
 
 def analyze_function(function_name: str, log_file_path: str) -> Dict[str, Dict[str, Any]]:
@@ -171,24 +209,22 @@ def analyze_function(function_name: str, log_file_path: str) -> Dict[str, Dict[s
         "count": 0, 
         "costs": [], 
         "execution_times": [], 
-        "details": []
+        "all_models": []
     })
     
     for call in data[function_name]:
         args = call['args']
         cost = call['cost']
         execution_time = call['execution_time']
+        models = call.get('models', [])
         
         analysis[args]["count"] += 1
         analysis[args]["costs"].append(cost)
         analysis[args]["execution_times"].append(execution_time)
-        analysis[args]["details"].append({
-            'threads': call.get('threads'),
-            'aggregator': call.get('aggregator'),
-            'model': call.get('model'),
-            'footprint': call.get('footprint'),
-            'level_range': call.get('level_range')
-        })
+        
+        # Store all models
+        for model in models:
+            analysis[args]["all_models"].append(model)
     
     return analysis
 
@@ -228,38 +264,36 @@ def print_function_analysis(function_name: str, log_file_path: str) -> None:
         print(f"Argument types: {args}")
         print(f"Invocation count: {data['count']}")
         
-        # Print the first detail record
-        if data['details'] and data['details'][0]:
-            detail = data['details'][0]
-            if detail.get('model'):
-                print(f"Model: {detail['model']}")
-            if detail.get('threads'):
-                print(f"Threads: {detail['threads']}")
-            if detail.get('aggregator'):
-                print(f"Stream aggregator: {detail['aggregator']}")
-            if detail.get('footprint'):
-                print(f"Memory footprint: {detail['footprint']}")
-            if detail.get('level_range'):
-                print(f"Level range: {detail['level_range']}")
-        
-        # Check if all costs are consistent
-        costs = data['costs']
-        if costs:
-            if len(costs) > 1:
-                # Check for consistency
-                epsilon = 1e-10
-                reference_cost = costs[0]
-                consistent = all(abs(cost - reference_cost) < epsilon for cost in costs)
-                
-                if not consistent:
-                    print("ERROR: Inconsistent cost predictions for the same parameter set:")
-                    for i, cost in enumerate(costs):
-                        print(f"  Prediction {i+1}: {cost}")
-                    print("-" * 80)
-                    continue
+        # Print all models
+        models_seen = set()
+        for model_data in data.get('all_models', []):
+            # Create a key to avoid duplicates
+            model_key = (
+                model_data.get('model', ''),
+                model_data.get('aggregator', ''),
+                model_data.get('threads', 0)
+            )
             
-            # If consistent or just one cost
-            print(f"Predicted cost: {costs[0]}")
+            if model_key in models_seen:
+                continue
+                
+            models_seen.add(model_key)
+            
+            print(f"Model: {model_data.get('model', 'Unknown')}")
+            print(f"Threads: {model_data.get('threads', 'Unknown')}")
+            print(f"Stream aggregator: {model_data.get('aggregator', 'Unknown')}")
+            print(f"Memory footprint: {model_data.get('footprint', 'Unknown')}")
+            
+            if model_data.get('level_range'):
+                print(f"Level range: {model_data.get('level_range')}")
+                
+            # Use model-specific cost
+            if model_data.get('cost') is not None:
+                print(f"Predicted cost: {model_data.get('cost'):.5e}")
+            else:
+                print(f"Predicted cost: {data['costs'][0]:.5e}")
+                
+            print("-" * 80)
         
         # Process execution times
         execution_times = data['execution_times']
@@ -298,18 +332,11 @@ def analyze_all_functions(log_file_path: str) -> None:
 def main() -> None:
     """Main function to process command-line arguments and analyze the log file."""
     if len(sys.argv) < 2:
-        print("Usage: python cost_and_time_parser.py <log_file_path> [function_name]")
+        print("Usage: python cost_and_time_parser.py <log_file_path>")
         return
     
     log_file_path = sys.argv[1]
-    
-    if len(sys.argv) >= 3:
-        # Analyze a specific function
-        function_name = sys.argv[2]
-        print_function_analysis(function_name, log_file_path)
-    else:
-        # Analyze all functions
-        analyze_all_functions(log_file_path)
+    analyze_all_functions(log_file_path)
 
 if __name__ == "__main__":
     main()

@@ -21,12 +21,28 @@ CACHE_SIZES = {
 
 def extract_info_from_filename(filename):
     """Extract both matrix size (N) and thread count from the analysis filename."""
-
-    # First try the _threads-X pattern
-    match = re.search(r'banded_diag_(\d+)x(\d+)_band_(\d+)_threads-(\d+)_analysis\.log', filename)
+    # Default thread count if not specified
+    thread_count = 1
+    
+    # First try the _threads-X pattern (with hyphen)
+    match = re.search(r'banded_diag_(\d+)x\d+_band_\d+_threads-(\d+)_analysis\.log', filename)
     if match:
-        print(f"extract_info_from_filename({filename}): size = {match.group(1)}, threads = {match.group(4)}")
-        return int(match.group(1)), int(match.group(4))
+        return int(match.group(1)), int(match.group(2))
+    
+    # Then try the _threads_X pattern (with underscore)
+    match = re.search(r'banded_diag_(\d+)x\d+_band_\d+_threads_(\d+)_analysis\.log', filename)
+    if match:
+        return int(match.group(1)), int(match.group(2))
+    
+    # Then try the _Xt pattern
+    match = re.search(r'banded_diag_(\d+)x\d+_band_\d+_(\d+)t_analysis\.log', filename)
+    if match:
+        return int(match.group(1)), int(match.group(2))
+    
+    # Finally, try without thread specification
+    match = re.search(r'banded_diag_(\d+)x\d+_band_\d+_analysis\.log', filename)
+    if match:
+        return int(match.group(1)), thread_count
     
     # Return None for both if no match
     return None, None
@@ -93,6 +109,7 @@ def parse_analysis_file(filepath):
     result = {}
     current_function = None
     current_args = None
+    current_model_data = None
     
     # Get matrix size and thread count from filename
     matrix_size, thread_count = extract_info_from_filename(os.path.basename(filepath))
@@ -101,45 +118,91 @@ def parse_analysis_file(filepath):
         with open(filepath, 'r') as f:
             lines = f.readlines()
         
-        for i, line in enumerate(lines):
-            line = line.strip()
+        i = 0
+        while i < len(lines):
+            line = lines[i].strip()
             
             # Find function analysis sections
             if line.startswith('Analysis for function'):
                 match = re.search(r"Analysis for function '(\w+)':", line)
                 if match:
                     current_function = match.group(1)
-                    result[current_function] = defaultdict(dict)
+                    result[current_function] = defaultdict(lambda: {'models': []})
             
             # Find argument types
             elif line.startswith('Argument types:') and current_function:
                 current_args = line.replace('Argument types:', '').strip()
-                # Initialize metrics for this function+args combination
-                result[current_function][current_args] = {
-                    'count': 0,
-                    'cost': 0.0,
-                    'execution_time_min': 0.0,
-                    'execution_time_max': 0.0,
-                    'execution_time_avg': 0.0,
-                    'execution_time_stddev': 0.0,
-                    'matrix_size': matrix_size,
-                    'thread_count': thread_count,
-                    'simplified_args': simplify_args(current_args),
-                    'operator_info': extract_operator_info(current_args),
-                    'memory_footprint_bytes': 0
+                # Initialize if not already present
+                if current_args not in result[current_function]:
+                    result[current_function][current_args] = {
+                        'count': 0,
+                        'execution_time_min': 0.0,
+                        'execution_time_max': 0.0,
+                        'execution_time_avg': 0.0,
+                        'execution_time_stddev': 0.0,
+                        'matrix_size': matrix_size,
+                        'thread_count': thread_count,
+                        'simplified_args': simplify_args(current_args),
+                        'operator_info': extract_operator_info(current_args),
+                        'memory_footprint_bytes': 0,
+                        'memory_footprint_str': '0 B',
+                        'models': []
+                    }
+                
+                # Get invocation count from next line if available
+                if i + 1 < len(lines) and lines[i+1].strip().startswith('Invocation count:'):
+                    count_line = lines[i+1].strip()
+                    count = int(count_line.replace('Invocation count:', '').strip())
+                    result[current_function][current_args]['count'] = count
+                    i += 1  # Skip the next line since we've processed it
+            
+            # Find model information
+            elif line.startswith('Model:') and current_function and current_args:
+                # Start a new model data dictionary
+                current_model_data = {
+                    'model_name': line.replace('Model:', '').strip(),
+                    'threads': None,
+                    'aggregator': None,
+                    'footprint': None,
+                    'level_range': None,
+                    'cost': None
                 }
-            
-            # Find memory footprint
-            elif line.startswith('Memory footprint:') and current_function and current_args:
-                footprint_str = line.replace('Memory footprint:', '').strip()
-                memory_bytes = parse_memory_footprint(footprint_str)
-                result[current_function][current_args]['memory_footprint_bytes'] = memory_bytes
-                result[current_function][current_args]['memory_footprint_str'] = footprint_str
-            
-            # Find predicted cost
-            elif line.startswith('Predicted cost:') and current_function and current_args:
-                cost = float(line.replace('Predicted cost:', '').strip())
-                result[current_function][current_args]['cost'] = cost
+                
+                # Read the next lines to get model details
+                model_lines = []
+                j = i + 1
+                while j < len(lines) and not lines[j].strip().startswith('-' * 10):
+                    model_lines.append(lines[j].strip())
+                    j += 1
+                
+                # Process model lines
+                for model_line in model_lines:
+                    if model_line.startswith('Threads:'):
+                        current_model_data['threads'] = int(model_line.replace('Threads:', '').strip())
+                    elif model_line.startswith('Stream aggregator:'):
+                        current_model_data['aggregator'] = model_line.replace('Stream aggregator:', '').strip()
+                    elif model_line.startswith('Memory footprint:'):
+                        footprint_str = model_line.replace('Memory footprint:', '').strip()
+                        current_model_data['footprint'] = footprint_str
+                        result[current_function][current_args]['memory_footprint_str'] = footprint_str
+                        result[current_function][current_args]['memory_footprint_bytes'] = parse_memory_footprint(footprint_str)
+                    elif model_line.startswith('Level range:'):
+                        level_range_str = model_line.replace('Level range:', '').strip()
+                        try:
+                            level_range = eval(level_range_str)  # Safely convert [1, 1] string to list
+                            current_model_data['level_range'] = level_range
+                        except:
+                            current_model_data['level_range'] = [1, 1]  # Default
+                    elif model_line.startswith('Predicted cost:'):
+                        cost_str = model_line.replace('Predicted cost:', '').strip()
+                        current_model_data['cost'] = float(cost_str)
+                
+                # Add the model data to the result
+                if current_model_data:
+                    result[current_function][current_args]['models'].append(current_model_data)
+                
+                # Skip to the end of the model section
+                i = j
             
             # Find execution time statistics
             elif line.startswith('Execution time (seconds):') and current_function and current_args:
@@ -159,10 +222,12 @@ def parse_analysis_file(filepath):
                         result[current_function][current_args]['execution_time_max'] = value
                         result[current_function][current_args]['execution_time_avg'] = value
                         result[current_function][current_args]['execution_time_stddev'] = 0.0
+            
+            i += 1
     
     except Exception as e:
         print(f"Error parsing file {filepath}: {e}")
-        return {}  # Return empty dict on error
+        return {}
         
     return result
 
@@ -170,8 +235,9 @@ def collect_all_results(results_dir):
     """Collect results from all analysis files in the directory."""
     all_files = glob.glob(os.path.join(results_dir, '*_analysis.log'))
     
-    # FIX: Use simple defaultdict(list) instead of nested defaultdict
-    function_data = defaultdict(list)
+    # Use nested dictionaries to organize data
+    # function_key -> model_key -> list of data points
+    function_data = defaultdict(lambda: defaultdict(list))
     
     for filepath in all_files:
         matrix_size, thread_count = extract_info_from_filename(os.path.basename(filepath))
@@ -188,30 +254,36 @@ def collect_all_results(results_dir):
             
         for function_name, args_data in file_results.items():
             for args, metrics in args_data.items():
-                # Create a key that includes function name and operator info
-                # This ensures different operators get different lines
+                # Base function name and operator info for the key
                 operator_info = metrics['operator_info']
-                key = f"{function_name}_{operator_info}" if operator_info else function_name
+                base_key = f"{function_name}_{operator_info}" if operator_info else function_name
                 
-                # For multiple thread counts, add thread count to the key
-                if thread_count > 1:
-                    key = f"{key}_{thread_count}t"
-                
-                # Add this data point
-                function_data[key].append({
-                    'matrix_size': matrix_size,
-                    'thread_count': thread_count,
-                    'count': metrics['count'],
-                    'cost': metrics['cost'],
-                    'execution_time_avg': metrics['execution_time_avg'],
-                    'execution_time_min': metrics['execution_time_min'],
-                    'execution_time_max': metrics['execution_time_max'],
-                    'execution_time_stddev': metrics['execution_time_stddev'],
-                    'simplified_args': metrics['simplified_args'],
-                    'operator_info': metrics['operator_info'],
-                    'memory_footprint_bytes': metrics['memory_footprint_bytes'],
-                    'memory_footprint_str': metrics.get('memory_footprint_str', '0 B')
-                })
+                # For each model, create a separate data point
+                for model in metrics.get('models', []):
+                    # Create a unique key for this function+operator+model+aggregator
+                    model_key = f"{base_key}_{model['model_name']}_{model['aggregator']}"
+                    
+                    # If threads > 1, add that to the key
+                    if thread_count > 1 or model.get('threads', 1) > 1:
+                        model_key = f"{model_key}_{thread_count}t"
+                    
+                    # Add this data point
+                    function_data[base_key][model_key].append({
+                        'matrix_size': matrix_size,
+                        'thread_count': thread_count,
+                        'count': metrics['count'],
+                        'cost': model.get('cost', 0.0),
+                        'execution_time_avg': metrics['execution_time_avg'],
+                        'execution_time_min': metrics['execution_time_min'],
+                        'execution_time_max': metrics['execution_time_max'],
+                        'execution_time_stddev': metrics['execution_time_stddev'],
+                        'simplified_args': metrics['simplified_args'],
+                        'operator_info': metrics['operator_info'],
+                        'memory_footprint_bytes': metrics['memory_footprint_bytes'],
+                        'memory_footprint_str': metrics['memory_footprint_str'],
+                        'model_name': model.get('model_name', ''),
+                        'aggregator': model.get('aggregator', '')
+                    })
     
     return function_data
 
@@ -256,18 +328,11 @@ def plot_results(function_data, output_dir="plots"):
     # Create output directory if it doesn't exist
     os.makedirs(output_dir, exist_ok=True)
     
-    # Group functions by their base name for plotting together
-    base_functions = defaultdict(list)
-    for func_key in function_data:
-        # Extract base function name (before the underscore)
-        base_name = func_key.split('_')[0]
-        base_functions[base_name].append(func_key)
-    
     # Define markers to use
     markers = ['o', 's', '^', 'D', 'v', '<', '>', 'p', '*', 'h', 'H', '+', 'x']
     
     # Plot each base function
-    for base_name, func_keys in base_functions.items():
+    for base_name, model_data in function_data.items():
         # Create a figure with a single plot and twin y-axes
         fig, ax1 = plt.subplots(figsize=(12, 8))
         ax2 = ax1.twinx()  # Create a secondary y-axis
@@ -276,15 +341,33 @@ def plot_results(function_data, output_dir="plots"):
         all_lines = []
         all_labels = []
         
-        # Create a non-red color palette
+        # Create a non-red color palette for time lines
         colors = plt.cm.tab10.colors
         non_red_colors = [c for c in colors if c[0] < 0.7 or c[1] > 0.3]
         
-        # For each function/operator variation
-        for i, func_key in enumerate(sorted(func_keys)):
+        # Create a red color palette for cost lines
+        # Use different shades of red/orange/burgundy
+        red_colors = [
+            '#FF0000',  # bright red
+            '#CC0000',  # darker red
+            '#990000',  # very dark red
+            '#FF3333',  # lighter red
+            '#FF6666',  # pale red
+            '#800000',  # maroon
+            '#A52A2A',  # brown
+            '#B22222',  # firebrick
+            '#DC143C',  # crimson
+            '#CD5C5C',  # indian red
+            '#FF4500',  # orange red
+            '#FF8C00',  # dark orange
+            '#C71585'   # medium violet red
+        ]
+        
+        # For each model variation
+        for i, (model_key, data_points) in enumerate(model_data.items()):
             # Group data by matrix size
             size_data = defaultdict(list)
-            for data_point in function_data[func_key]:
+            for data_point in data_points:
                 size_data[data_point['matrix_size']].append(data_point)
             
             # Calculate averages for each size
@@ -293,7 +376,6 @@ def plot_results(function_data, output_dir="plots"):
             exec_times_avg = []
             exec_times_min = []
             exec_times_max = []
-            memory_footprints = []
             
             for size in sorted(size_data.keys()):
                 data_points = size_data[size]
@@ -302,28 +384,49 @@ def plot_results(function_data, output_dir="plots"):
                 exec_times_avg.append(np.mean([d['execution_time_avg'] for d in data_points]))
                 exec_times_min.append(np.mean([d['execution_time_min'] for d in data_points]))
                 exec_times_max.append(np.mean([d['execution_time_max'] for d in data_points]))
-                memory_footprints.append(np.mean([d['memory_footprint_bytes'] for d in data_points]))
             
-            # Get the simplified name for display
-            if len(function_data[func_key]) > 0:
-                operator_info = function_data[func_key][0]['operator_info']
-                display_name = f"{base_name} ({operator_info})" if operator_info else base_name
+            # Get the display name from the model key
+            if len(data_points) > 0:
+                # Extract model and aggregator information
+                model_name = data_points[0]['model_name']
+                aggregator = data_points[0]['aggregator']
+                thread_count = data_points[0]['thread_count']
+                
+                # Base name is the function name
+                func_name = base_name.split('_')[0]
+                
+                # Operator info (if any)
+                operator_info = data_points[0]['operator_info']
+                
+                # Create a display name
+                if operator_info:
+                    display_name = f"{func_name} ({operator_info})"
+                else:
+                    display_name = func_name
+                
+                # Add model and aggregator info
+                display_name = f"{display_name} - {model_name} {aggregator}"
+                
+                # Add thread count if > 1
+                if thread_count > 1:
+                    display_name = f"{display_name} ({thread_count}t)"
             else:
-                display_name = func_key
+                display_name = model_key
             
-            # Choose a marker for this function variation
+            # Choose a marker for this model variation
             marker = markers[i % len(markers)]
             
-            # Choose a color for this function variation
-            color = non_red_colors[i % len(non_red_colors)]
+            # Choose colors for this model variation
+            time_color = non_red_colors[i % len(non_red_colors)]
+            cost_color = red_colors[i % len(red_colors)]
             
             # Plot execution time with this marker and color
-            time_line, = ax1.plot(sizes, exec_times_avg, '-', marker=marker, color=color, 
+            time_line, = ax1.plot(sizes, exec_times_avg, '-', marker=marker, color=time_color, 
                            label=f"Time: {display_name}")
-            ax1.fill_between(sizes, exec_times_min, exec_times_max, color=color, alpha=0.2)
+            ax1.fill_between(sizes, exec_times_min, exec_times_max, color=time_color, alpha=0.2)
             
-            # Plot cost with the same marker but in red and dashed
-            cost_line, = ax2.plot(sizes, costs, '--', marker=marker, color='red', 
+            # Plot cost with the same marker but in a different shade of red and dashed
+            cost_line, = ax2.plot(sizes, costs, '--', marker=marker, color=cost_color, 
                            label=f"Cost: {display_name}")
             
             # Add to legend
@@ -331,14 +434,14 @@ def plot_results(function_data, output_dir="plots"):
             all_labels.extend([f"Time: {display_name}", f"Cost: {display_name}"])
             
             # Calculate cache thresholds
-            cache_thresholds = calculate_cache_thresholds(function_data[func_key])
+            cache_thresholds = calculate_cache_thresholds(data_points)
             
             # Add cache threshold lines using the same color as the function
             # but with a dotted style and without adding to legend
             for cache_name, threshold in cache_thresholds.items():
                 if threshold > 0:
                     # Add a dotted line with the same color as the function
-                    ax1.axvline(x=threshold, color=color, linestyle=':', alpha=0.7, linewidth=1.5)
+                    ax1.axvline(x=threshold, color=time_color, linestyle=':', alpha=0.7, linewidth=1.5)
                     
                     # Add a small annotation
                     ax1.annotate(f"{cache_name}", 
@@ -349,12 +452,12 @@ def plot_results(function_data, output_dir="plots"):
                                va='center',
                                fontsize=8,
                                rotation=90,
-                               color=color)
+                               color=time_color)
         
         # Configure axes
         ax1.set_xlabel('Matrix Size (N)')
         ax1.set_ylabel('Execution Time (seconds)', color='blue')
-        ax2.set_ylabel('Predicted Cost', color='red')
+        ax2.set_ylabel('Predicted Cost', color='#990000')  # Darker red for y-axis label
         
         # Set to log scale
         ax1.set_xscale('log', base=2)
@@ -363,12 +466,12 @@ def plot_results(function_data, output_dir="plots"):
         
         # Grid and title
         ax1.grid(True, which="both", ls="--", alpha=0.3)
-        plt.title(f'{base_name} - Performance vs. Matrix Size')
+        plt.title(f'{base_name.split("_")[0]} - Performance vs. Matrix Size')
         
         # Add vertical lines at matrix sizes
         all_sizes = set()
-        for func_key in func_keys:
-            for data_point in function_data[func_key]:
+        for model_key, data_points in model_data.items():
+            for data_point in data_points:
                 all_sizes.add(data_point['matrix_size'])
         
         for size in sorted(all_sizes):
@@ -386,7 +489,7 @@ def plot_results(function_data, output_dir="plots"):
         plt.legend(all_lines, all_labels, loc='best')
         
         plt.tight_layout()
-        plt.savefig(os.path.join(output_dir, f'{base_name}_performance.png'))
+        plt.savefig(os.path.join(output_dir, f'{base_name.split("_")[0]}_performance.png'))
         plt.close()
 
 def main():
