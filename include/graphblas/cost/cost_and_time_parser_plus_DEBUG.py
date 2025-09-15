@@ -21,7 +21,8 @@ PATTERNS = {
     'level': re.compile(r'Superstep type \d+ \(level (\d+)\):'),
     'model_cost': re.compile(r'Total cost: ([0-9.e+-]+) seconds'),
     'cost': re.compile(r'\[TRACING\] Predicted cost: ([0-9.e+-]+)'),
-    'exit': re.compile(r'\[TRACING\] Exiting function: (\w+<[^>]*>|\w+<\d+>|\w+) \(took (\d+)μs\)')
+    'exit': re.compile(r'\[TRACING\] Exiting function: (\w+<[^>]*>|\w+<\d+>|\w+) \(took (\d+)μs\)'),
+    'cg_iterations': re.compile(r'number of CG iterations: (\d+)')
 }
 
 def extract_base_function_name(full_name: str) -> str:
@@ -30,6 +31,20 @@ def extract_base_function_name(full_name: str) -> str:
     if match:
         return match.group(1)
     return full_name
+
+def extract_cg_iterations(log_file_path: str) -> int:
+    """Extract the number of CG iterations from the log file."""
+    try:
+        with open(log_file_path, 'r') as file:
+            content = file.read()
+            match = PATTERNS['cg_iterations'].search(content)
+            if match:
+                return int(match.group(1))
+    except Exception as e:
+        print(f"Error extracting CG iterations: {e}")
+    
+    # Default to 10 iterations if not found
+    return 10
 
 def parse_log_file(log_file_path: str) -> DefaultDict[str, List[Dict[str, Any]]]:
     """
@@ -135,13 +150,6 @@ def parse_log_file(log_file_path: str) -> DefaultDict[str, List[Dict[str, Any]]]
                                 # Add model to the call data
                                 call_data['models'].append(model_data)
                                 
-                                # Print parsed model info for correctness check
-                                # print(f"Parsed model: {model_name}")
-                                # print(f"  Threads: {model_data['threads']}")
-                                # print(f"  Aggregator: {model_data['aggregator']}")
-                                # print(f"  Memory footprint: {model_data['footprint']}")
-                                # print(f"  Cost: {model_data['cost']}")
-                                
                                 i = j - 1  # Move i to the line before the next model or cost
                             
                             # Check if we're at the predicted cost
@@ -163,17 +171,6 @@ def parse_log_file(log_file_path: str) -> DefaultDict[str, List[Dict[str, Any]]]
                                 
                                 # Add the function call data to the results
                                 function_data[base_function].append(call_data)
-                                
-                                # Print function info for correctness check
-                                # print(f"\nParsed function: {function_name}")
-                                # print(f"  Arguments: {args}")
-                                # print(f"  Sizes: {sizes}")
-                                # print(f"  Dimensions: {dimensions}")
-                                # print(f"  NNZ: {nnz}")
-                                # print(f"  Operators: {operators}")
-                                # print(f"  Final cost: {call_data['cost']}")
-                                # print(f"  Execution time: {call_data['execution_time']}")
-                                # print("-" * 50)
                                 
                                 # Move to the next function
                                 break
@@ -243,6 +240,39 @@ def calculate_statistics(values: List[float]) -> Tuple[float, float, float, Opti
         
     return min_val, max_val, avg_val, std_dev
 
+def determine_per_iteration_count(count: int, num_iterations: int) -> Optional[int]:
+    """
+    Determine if a function is part of the iterative loop and how many times it's called per iteration.
+    
+    Args:
+        count: Total invocation count
+        num_iterations: Number of CG iterations
+        
+    Returns:
+        Per-iteration count if it's part of the iterative loop, None otherwise
+    """
+    # If count is divisible by num_iterations, it's likely called exactly that many times per iteration
+    if count % num_iterations == 0:
+        return count // num_iterations
+    
+    # If count is divisible by (num_iterations - 1), it might be called in all but the last iteration
+    if count % (num_iterations - 1) == 0 and num_iterations > 1:
+        return count // (num_iterations - 1)
+    
+    # If count is slightly more than a multiple of num_iterations (e.g., setup + per iteration)
+    for offset in range(1, 4):  # Try a few offsets
+        if (count - offset) > 0 and (count - offset) % num_iterations == 0:
+            return (count - offset) // num_iterations
+    
+    # If count is close to a multiple of num_iterations
+    for per_iter in range(1, 20):  # Try reasonable per-iteration counts
+        expected = per_iter * num_iterations
+        if abs(count - expected) <= 2:  # Allow small deviation
+            return per_iter
+    
+    # Not part of the iterative loop or doesn't fit a simple pattern
+    return None
+
 def print_function_analysis(function_name: str, log_file_path: str) -> None:
     """
     Print analysis of function calls for a specific function name.
@@ -257,12 +287,23 @@ def print_function_analysis(function_name: str, log_file_path: str) -> None:
         print(f"No data found for function '{function_name}'")
         return
     
+    # Get number of CG iterations
+    num_iterations = extract_cg_iterations(log_file_path)
+    
     print(f"Analysis for function '{function_name}':")
     print("=" * 80)
     
     for args, data in analysis.items():
+        invocation_count = data['count']
+        per_iteration_count = determine_per_iteration_count(invocation_count, num_iterations)
+        
         print(f"Argument types: {args}")
-        print(f"Invocation count: {data['count']}")
+        
+        # Always include per-iteration information, using 0 if not part of iteration
+        if per_iteration_count is not None:
+            print(f"Invocation count: {invocation_count} (per solver iteration: {per_iteration_count})")
+        else:
+            print(f"Invocation count: {invocation_count} (per solver iteration: 0)")
         
         # Print all models
         models_seen = set()
