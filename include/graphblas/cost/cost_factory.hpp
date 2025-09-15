@@ -594,23 +594,24 @@ struct CostPredictor< MxvFunc, grb::Vector< T1 >, grb::Matrix< T2, Backend, RowI
 
         try {
             size_t nnz = grb::nnz( A ), m = grb::size( y ), n = grb::size( x );
-            cost_models::HW_model::HWParameters hw_model = cost_models::HW_model::get_hw_params_for_threads( 1, dis_system_params );
-            
-            // k-Multi-BSP model
+			size_t num_threads = 96;
+			cost_models::HW_model::HWParameters hw_model = cost_models::HW_model::get_hw_params_for_threads( num_threads, dis_system_params );
+
+			// k-Multi-BSP model
             cost_models::k_multi_bsp::AlgoParameters_p k_bsp_model = cost_models::k_multi_bsp::get_params_csr(
                 nnz, n, m, sizeof( T1 ), sizeof( T3 ), sizeof( T2 ), sizeof( NonzeroIndexType ), sizeof( RowIndexType ) );
-            double sum_cost = cost_models::k_multi_bsp::predict_cost( &hw_model, k_bsp_model, 1, "sum" );
-            double max_cost = cost_models::k_multi_bsp::predict_cost( &hw_model, k_bsp_model, 1, "max" );
+            double sum_cost = cost_models::k_multi_bsp::predict_cost( &hw_model, k_bsp_model, num_threads, "sum" );
+            double max_cost = cost_models::k_multi_bsp::predict_cost( &hw_model, k_bsp_model, num_threads, "max" );
             
             // Hierarchical Roofline model
             cost_models::hier_roofline::AlgoParameters_p hr_model = cost_models::hier_roofline::get_params_csr(
                 nnz, n, m, sizeof( T1 ), sizeof( T3 ), sizeof( T2 ), sizeof( RowIndexType ), sizeof( NonzeroIndexType ) );
-            double hr_cost = cost_models::hier_roofline::predict_cost( &hw_model, hr_model, 1 );
+            double hr_cost = cost_models::hier_roofline::predict_cost( &hw_model, hr_model, num_threads );
             
             // Hierarchical Latency-Aware Roofline model
             cost_models::hier_lat_roofline::AlgoParameters_p hlr_model = cost_models::hier_lat_roofline::get_params_csr(
                 nnz, n, m, sizeof( T1 ), sizeof( T3 ), sizeof( T2 ), sizeof( RowIndexType ), sizeof( NonzeroIndexType ) );
-            double hlr_cost = cost_models::hier_lat_roofline::predict_cost( &hw_model, hlr_model, 1 );
+            double hlr_cost = cost_models::hier_lat_roofline::predict_cost( &hw_model, hlr_model, num_threads );
             
             
             // Return k-Multi-BSP max cost as before
@@ -634,20 +635,21 @@ struct CostPredictor< SetFunc, grb::Vector< T1 >, grb::Vector< T2 > > {
         (void)y;
         try {
             size_t n = grb::size( x );
-            cost_models::HW_model::HWParameters hw_model = cost_models::HW_model::get_hw_params_for_threads( 1, dis_system_params );
+            size_t num_threads = 96;
+			cost_models::HW_model::HWParameters hw_model = cost_models::HW_model::get_hw_params_for_threads( num_threads, dis_system_params );
 
             // k-Multi-BSP model
             cost_models::k_multi_bsp::AlgoParameters_p k_bsp_model = cost_models::k_multi_bsp::get_params_set( n, 1, sizeof( T1 ), sizeof( T2 ), 0 );
-            double sum_cost = cost_models::k_multi_bsp::predict_cost( &hw_model, k_bsp_model, 1, "sum" );
-            double max_cost = cost_models::k_multi_bsp::predict_cost( &hw_model, k_bsp_model, 1, "max" );
+            double sum_cost = cost_models::k_multi_bsp::predict_cost( &hw_model, k_bsp_model, num_threads, "sum" );
+            double max_cost = cost_models::k_multi_bsp::predict_cost( &hw_model, k_bsp_model, num_threads, "max" );
             
             // Hierarchical Roofline model
             cost_models::hier_roofline::AlgoParameters_p hr_model = cost_models::hier_roofline::get_params_set( n, 1, sizeof( T1 ), sizeof( T2 ), 0 );
-            double hr_cost = cost_models::hier_roofline::predict_cost( &hw_model, hr_model, 1 );
+            double hr_cost = cost_models::hier_roofline::predict_cost( &hw_model, hr_model, num_threads );
             
             // Hierarchical Latency-Aware Roofline model
             cost_models::hier_lat_roofline::AlgoParameters_p hlr_model = cost_models::hier_lat_roofline::get_params_set( n, 1, sizeof( T1 ), sizeof( T2 ), 0 );
-            double hlr_cost = cost_models::hier_lat_roofline::predict_cost( &hw_model, hlr_model, 1 );
+            double hlr_cost = cost_models::hier_lat_roofline::predict_cost( &hw_model, hlr_model, num_threads );
             
             
             return max_cost;
@@ -664,20 +666,21 @@ struct CostPredictor< SetFunc, grb::Vector< T1 >, T1 > {
     static double predict( grb::Vector< T1 > & x, T1 & y ){
         try {
             size_t n = grb::size( x );
-            cost_models::HW_model::HWParameters hw_model = cost_models::HW_model::get_hw_params_for_threads( 1, dis_system_params );
+            size_t num_threads = 96;
+			cost_models::HW_model::HWParameters hw_model = cost_models::HW_model::get_hw_params_for_threads( num_threads, dis_system_params );
 
             // k-Multi-BSP model
             cost_models::k_multi_bsp::AlgoParameters_p k_bsp_model = cost_models::k_multi_bsp::get_params_set( n, 0, sizeof( T1 ), sizeof( T1 ), 0 );
-            double sum_cost = cost_models::k_multi_bsp::predict_cost( &hw_model, k_bsp_model, 1, "sum" );
-            double max_cost = cost_models::k_multi_bsp::predict_cost( &hw_model, k_bsp_model, 1, "max" );
+            double sum_cost = cost_models::k_multi_bsp::predict_cost( &hw_model, k_bsp_model, num_threads, "sum" );
+            double max_cost = cost_models::k_multi_bsp::predict_cost( &hw_model, k_bsp_model, num_threads, "max" );
             
             // Hierarchical Roofline model
             cost_models::hier_roofline::AlgoParameters_p hr_model = cost_models::hier_roofline::get_params_set( n, 0, sizeof( T1 ), sizeof( T1 ), 0 );
-            double hr_cost = cost_models::hier_roofline::predict_cost( &hw_model, hr_model, 1 );
+            double hr_cost = cost_models::hier_roofline::predict_cost( &hw_model, hr_model, num_threads );
             
             // Hierarchical Latency-Aware Roofline model
             cost_models::hier_lat_roofline::AlgoParameters_p hlr_model = cost_models::hier_lat_roofline::get_params_set( n, 0, sizeof( T1 ), sizeof( T1 ), 0 );
-            double hlr_cost = cost_models::hier_lat_roofline::predict_cost( &hw_model, hlr_model, 1 );
+            double hlr_cost = cost_models::hier_lat_roofline::predict_cost( &hw_model, hlr_model, num_threads );
             
             
             return max_cost;
@@ -702,20 +705,21 @@ struct CostPredictor< ApplyFunc, T1, T2, T3, Op > {
         (void)z; 
         (void)op;
         try {
-            cost_models::HW_model::HWParameters hw_model = cost_models::HW_model::get_hw_params_for_threads( 1, dis_system_params );
+            size_t num_threads = 96;
+			cost_models::HW_model::HWParameters hw_model = cost_models::HW_model::get_hw_params_for_threads( num_threads, dis_system_params );
             
             // k-Multi-BSP model
             cost_models::k_multi_bsp::AlgoParameters_p k_bsp_model = cost_models::k_multi_bsp::get_params_apply();
-            double sum_cost = cost_models::k_multi_bsp::predict_cost( &hw_model, k_bsp_model, 1, "sum" );
-            double max_cost = cost_models::k_multi_bsp::predict_cost( &hw_model, k_bsp_model, 1, "max" );
+            double sum_cost = cost_models::k_multi_bsp::predict_cost( &hw_model, k_bsp_model, num_threads, "sum" );
+            double max_cost = cost_models::k_multi_bsp::predict_cost( &hw_model, k_bsp_model, num_threads, "max" );
             
             // Hierarchical Roofline model
             cost_models::hier_roofline::AlgoParameters_p hr_model = cost_models::hier_roofline::get_params_apply();
-            double hr_cost = cost_models::hier_roofline::predict_cost( &hw_model, hr_model, 1 );
+            double hr_cost = cost_models::hier_roofline::predict_cost( &hw_model, hr_model, num_threads );
             
             // Hierarchical Latency-Aware Roofline model
             cost_models::hier_lat_roofline::AlgoParameters_p hlr_model = cost_models::hier_lat_roofline::get_params_apply();
-            double hlr_cost = cost_models::hier_lat_roofline::predict_cost( &hw_model, hlr_model, 1 );
+            double hlr_cost = cost_models::hier_lat_roofline::predict_cost( &hw_model, hlr_model, num_threads );
             
             
             return max_cost;
@@ -736,23 +740,24 @@ struct CostPredictor< EWiseApplyFunc, grb::Vector< T1 >, grb::Vector< T2 >, T3, 
     static double predict( const grb::Vector< T1 > & z, const grb::Vector< T2 > & x, T3 & y, const Op & ) {
         try {
             size_t n = grb::size( z );
-            cost_models::HW_model::HWParameters hw_model = cost_models::HW_model::get_hw_params_for_threads( 1, dis_system_params );
+            size_t num_threads = 96;
+			cost_models::HW_model::HWParameters hw_model = cost_models::HW_model::get_hw_params_for_threads( num_threads, dis_system_params );
             
             // k-Multi-BSP model
             cost_models::k_multi_bsp::AlgoParameters_p k_bsp_model = cost_models::k_multi_bsp::get_params_eWiseApply( n, 
                 sizeof( T1 ), sizeof( T2 ), sizeof( T3 ), 1, 0 );
-            double sum_cost = cost_models::k_multi_bsp::predict_cost( &hw_model, k_bsp_model, 1, "sum" );
-            double max_cost = cost_models::k_multi_bsp::predict_cost( &hw_model, k_bsp_model, 1, "max" );
+            double sum_cost = cost_models::k_multi_bsp::predict_cost( &hw_model, k_bsp_model, num_threads, "sum" );
+            double max_cost = cost_models::k_multi_bsp::predict_cost( &hw_model, k_bsp_model, num_threads, "max" );
             
             // Hierarchical Roofline model
             cost_models::hier_roofline::AlgoParameters_p hr_model = cost_models::hier_roofline::get_params_eWiseApply( n, 
                 sizeof( T1 ), sizeof( T2 ), sizeof( T3 ), 1, 0 );
-            double hr_cost = cost_models::hier_roofline::predict_cost( &hw_model, hr_model, 1 );
+            double hr_cost = cost_models::hier_roofline::predict_cost( &hw_model, hr_model, num_threads );
             
             // Hierarchical Latency-Aware Roofline model
             cost_models::hier_lat_roofline::AlgoParameters_p hlr_model = cost_models::hier_lat_roofline::get_params_eWiseApply( n, 
                 sizeof( T1 ), sizeof( T2 ), sizeof( T3 ), 1, 0 );
-            double hlr_cost = cost_models::hier_lat_roofline::predict_cost( &hw_model, hlr_model, 1 );
+            double hlr_cost = cost_models::hier_lat_roofline::predict_cost( &hw_model, hlr_model, num_threads );
             
             
             return max_cost;
@@ -770,23 +775,24 @@ struct CostPredictor< EWiseApplyFunc, grb::Vector< T1 >, T2, grb::Vector< T3 >, 
     static double predict( const grb::Vector< T1 > & z, T2 & x, const grb::Vector< T3 > & y, const Op & ) {
         try {
             size_t n = grb::size( z );
-            cost_models::HW_model::HWParameters hw_model = cost_models::HW_model::get_hw_params_for_threads( 1, dis_system_params );
+            size_t num_threads = 96;
+			cost_models::HW_model::HWParameters hw_model = cost_models::HW_model::get_hw_params_for_threads( num_threads, dis_system_params );
             
             // k-Multi-BSP model
             cost_models::k_multi_bsp::AlgoParameters_p k_bsp_model = cost_models::k_multi_bsp::get_params_eWiseApply( n, 
                 sizeof( T1 ), sizeof( T2 ), sizeof( T3 ), 0, 1 );
-            double sum_cost = cost_models::k_multi_bsp::predict_cost( &hw_model, k_bsp_model, 1, "sum" );
-            double max_cost = cost_models::k_multi_bsp::predict_cost( &hw_model, k_bsp_model, 1, "max" );
+            double sum_cost = cost_models::k_multi_bsp::predict_cost( &hw_model, k_bsp_model, num_threads, "sum" );
+            double max_cost = cost_models::k_multi_bsp::predict_cost( &hw_model, k_bsp_model, num_threads, "max" );
             
             // Hierarchical Roofline model
             cost_models::hier_roofline::AlgoParameters_p hr_model = cost_models::hier_roofline::get_params_eWiseApply( n, 
                 sizeof( T1 ), sizeof( T2 ), sizeof( T3 ), 0, 1 );
-            double hr_cost = cost_models::hier_roofline::predict_cost( &hw_model, hr_model, 1 );
+            double hr_cost = cost_models::hier_roofline::predict_cost( &hw_model, hr_model, num_threads );
             
             // Hierarchical Latency-Aware Roofline model
             cost_models::hier_lat_roofline::AlgoParameters_p hlr_model = cost_models::hier_lat_roofline::get_params_eWiseApply( n, 
                 sizeof( T1 ), sizeof( T2 ), sizeof( T3 ), 0, 1 );
-            double hlr_cost = cost_models::hier_lat_roofline::predict_cost( &hw_model, hlr_model, 1 );
+            double hlr_cost = cost_models::hier_lat_roofline::predict_cost( &hw_model, hlr_model, num_threads );
             
             
             return max_cost;
@@ -811,23 +817,24 @@ struct CostPredictor< EWiseApplyFunc, grb::Vector< T1 >, grb::Vector< T2 > , grb
         (void)z;
         try {
             size_t n = grb::size( z );
-            cost_models::HW_model::HWParameters hw_model = cost_models::HW_model::get_hw_params_for_threads( 1, dis_system_params );
+            size_t num_threads = 96;
+			cost_models::HW_model::HWParameters hw_model = cost_models::HW_model::get_hw_params_for_threads( num_threads, dis_system_params );
             
             // k-Multi-BSP model
             cost_models::k_multi_bsp::AlgoParameters_p k_bsp_model = cost_models::k_multi_bsp::get_params_eWiseApply( n, 
                 sizeof( T1 ), sizeof( T2 ), sizeof( T3 ), 0, 1 );
-            double sum_cost = cost_models::k_multi_bsp::predict_cost( &hw_model, k_bsp_model, 1, "sum" );
-            double max_cost = cost_models::k_multi_bsp::predict_cost( &hw_model, k_bsp_model, 1, "max" );
+            double sum_cost = cost_models::k_multi_bsp::predict_cost( &hw_model, k_bsp_model, num_threads, "sum" );
+            double max_cost = cost_models::k_multi_bsp::predict_cost( &hw_model, k_bsp_model, num_threads, "max" );
             
             // Hierarchical Roofline model
             cost_models::hier_roofline::AlgoParameters_p hr_model = cost_models::hier_roofline::get_params_eWiseApply( n, 
                 sizeof( T1 ), sizeof( T2 ), sizeof( T3 ), 0, 1 );
-            double hr_cost = cost_models::hier_roofline::predict_cost( &hw_model, hr_model, 1 );
+            double hr_cost = cost_models::hier_roofline::predict_cost( &hw_model, hr_model, num_threads );
             
             // Hierarchical Latency-Aware Roofline model
             cost_models::hier_lat_roofline::AlgoParameters_p hlr_model = cost_models::hier_lat_roofline::get_params_eWiseApply( n, 
                 sizeof( T1 ), sizeof( T2 ), sizeof( T3 ), 0, 1 );
-            double hlr_cost = cost_models::hier_lat_roofline::predict_cost( &hw_model, hlr_model, 1 );
+            double hlr_cost = cost_models::hier_lat_roofline::predict_cost( &hw_model, hlr_model, num_threads );
             
             
             return max_cost;
@@ -850,23 +857,24 @@ struct CostPredictor< FoldlFunc, grb::Vector< T1 >, grb::Vector< T2 >, Monoid > 
         (void)y;
         try {
             size_t n = grb::size( x );
-            cost_models::HW_model::HWParameters hw_model = cost_models::HW_model::get_hw_params_for_threads( 1, dis_system_params );
+            size_t num_threads = 96;
+			cost_models::HW_model::HWParameters hw_model = cost_models::HW_model::get_hw_params_for_threads( num_threads, dis_system_params );
             
             // k-Multi-BSP model
             cost_models::k_multi_bsp::AlgoParameters_p k_bsp_model = cost_models::k_multi_bsp::get_params_foldl( n, 
                 sizeof( T1 ), sizeof( T2 ), 1, 1 );
-            double sum_cost = cost_models::k_multi_bsp::predict_cost( &hw_model, k_bsp_model, 1, "sum" );
-            double max_cost = cost_models::k_multi_bsp::predict_cost( &hw_model, k_bsp_model, 1, "max" );
+            double sum_cost = cost_models::k_multi_bsp::predict_cost( &hw_model, k_bsp_model, num_threads, "sum" );
+            double max_cost = cost_models::k_multi_bsp::predict_cost( &hw_model, k_bsp_model, num_threads, "max" );
             
             // Hierarchical Roofline model
             cost_models::hier_roofline::AlgoParameters_p hr_model = cost_models::hier_roofline::get_params_foldl( n, 
                 sizeof( T1 ), sizeof( T2 ), 1, 1 );
-            double hr_cost = cost_models::hier_roofline::predict_cost( &hw_model, hr_model, 1 );
+            double hr_cost = cost_models::hier_roofline::predict_cost( &hw_model, hr_model, num_threads );
             
             // Hierarchical Latency-Aware Roofline model
             cost_models::hier_lat_roofline::AlgoParameters_p hlr_model = cost_models::hier_lat_roofline::get_params_foldl( n, 
                 sizeof( T1 ), sizeof( T2 ), 1, 1 );
-            double hlr_cost = cost_models::hier_lat_roofline::predict_cost( &hw_model, hlr_model, 1 );
+            double hlr_cost = cost_models::hier_lat_roofline::predict_cost( &hw_model, hlr_model, num_threads );
             
             
             return max_cost;
@@ -883,23 +891,24 @@ struct CostPredictor< FoldlFunc, T1 , grb::Vector< T2 >, Monoid > {
 	static double predict( T1 & x, const grb::Vector< T2 > & y, const Monoid & ) {
         try {
             size_t n = grb::size( y );
-            cost_models::HW_model::HWParameters hw_model = cost_models::HW_model::get_hw_params_for_threads( 1, dis_system_params );
+            size_t num_threads = 96;
+			cost_models::HW_model::HWParameters hw_model = cost_models::HW_model::get_hw_params_for_threads( num_threads, dis_system_params );
             
             // k-Multi-BSP model
             cost_models::k_multi_bsp::AlgoParameters_p k_bsp_model = cost_models::k_multi_bsp::get_params_foldl( n, 
                 sizeof( T1 ), sizeof( T2 ), 0, 1 );
-            double sum_cost = cost_models::k_multi_bsp::predict_cost( &hw_model, k_bsp_model, 1, "sum" );
-            double max_cost = cost_models::k_multi_bsp::predict_cost( &hw_model, k_bsp_model, 1, "max" );
+            double sum_cost = cost_models::k_multi_bsp::predict_cost( &hw_model, k_bsp_model, num_threads, "sum" );
+            double max_cost = cost_models::k_multi_bsp::predict_cost( &hw_model, k_bsp_model, num_threads, "max" );
             
             // Hierarchical Roofline model
             cost_models::hier_roofline::AlgoParameters_p hr_model = cost_models::hier_roofline::get_params_foldl( n, 
                 sizeof( T1 ), sizeof( T2 ), 0, 1 );
-            double hr_cost = cost_models::hier_roofline::predict_cost( &hw_model, hr_model, 1 );
+            double hr_cost = cost_models::hier_roofline::predict_cost( &hw_model, hr_model, num_threads );
             
             // Hierarchical Latency-Aware Roofline model
             cost_models::hier_lat_roofline::AlgoParameters_p hlr_model = cost_models::hier_lat_roofline::get_params_foldl( n, 
                 sizeof( T1 ), sizeof( T2 ), 0, 1 );
-            double hlr_cost = cost_models::hier_lat_roofline::predict_cost( &hw_model, hlr_model, 1 );
+            double hlr_cost = cost_models::hier_lat_roofline::predict_cost( &hw_model, hlr_model, num_threads );
             
             
             return max_cost;
@@ -918,23 +927,24 @@ struct CostPredictor< FoldlFunc, grb::Vector< T1 >, T2 , Monoid > {
         (void)y;
         try {
             size_t n = grb::size( x );
-            cost_models::HW_model::HWParameters hw_model = cost_models::HW_model::get_hw_params_for_threads( 1, dis_system_params );
+            size_t num_threads = 96;
+			cost_models::HW_model::HWParameters hw_model = cost_models::HW_model::get_hw_params_for_threads( num_threads, dis_system_params );
             
             // k-Multi-BSP model
             cost_models::k_multi_bsp::AlgoParameters_p k_bsp_model = cost_models::k_multi_bsp::get_params_foldl( n, 
                 sizeof( T1 ), sizeof( T2 ), 1, 0 );
-            double sum_cost = cost_models::k_multi_bsp::predict_cost( &hw_model, k_bsp_model, 1, "sum" );
-            double max_cost = cost_models::k_multi_bsp::predict_cost( &hw_model, k_bsp_model, 1, "max" );
+            double sum_cost = cost_models::k_multi_bsp::predict_cost( &hw_model, k_bsp_model, num_threads, "sum" );
+            double max_cost = cost_models::k_multi_bsp::predict_cost( &hw_model, k_bsp_model, num_threads, "max" );
             
             // Hierarchical Roofline model
             cost_models::hier_roofline::AlgoParameters_p hr_model = cost_models::hier_roofline::get_params_foldl( n, 
                 sizeof( T1 ), sizeof( T2 ), 1, 0 );
-            double hr_cost = cost_models::hier_roofline::predict_cost( &hw_model, hr_model, 1 );
+            double hr_cost = cost_models::hier_roofline::predict_cost( &hw_model, hr_model, num_threads );
             
             // Hierarchical Latency-Aware Roofline model
             cost_models::hier_lat_roofline::AlgoParameters_p hlr_model = cost_models::hier_lat_roofline::get_params_foldl( n, 
                 sizeof( T1 ), sizeof( T2 ), 1, 0 );
-            double hlr_cost = cost_models::hier_lat_roofline::predict_cost( &hw_model, hlr_model, 1 );
+            double hlr_cost = cost_models::hier_lat_roofline::predict_cost( &hw_model, hlr_model, num_threads );
             
             
             return max_cost;
@@ -955,23 +965,24 @@ struct CostPredictor< FoldrFunc, grb::Vector< T1 > , grb::Vector< T2 > , Monoid 
         (void)y;
 		try {
 			size_t n = grb::size( y );
-			cost_models::HW_model::HWParameters hw_model = cost_models::HW_model::get_hw_params_for_threads( 1, dis_system_params );
+			size_t num_threads = 96;
+			cost_models::HW_model::HWParameters hw_model = cost_models::HW_model::get_hw_params_for_threads( num_threads, dis_system_params );
 			
 			// k-Multi-BSP model
 			cost_models::k_multi_bsp::AlgoParameters_p k_bsp_model = cost_models::k_multi_bsp::get_params_foldr( n, 
 				sizeof( T1 ), sizeof( T2 ), 1, 1 );
-			double sum_cost = cost_models::k_multi_bsp::predict_cost( &hw_model, k_bsp_model, 1, "sum" );
-			double max_cost = cost_models::k_multi_bsp::predict_cost( &hw_model, k_bsp_model, 1, "max" );
+			double sum_cost = cost_models::k_multi_bsp::predict_cost( &hw_model, k_bsp_model, num_threads, "sum" );
+			double max_cost = cost_models::k_multi_bsp::predict_cost( &hw_model, k_bsp_model, num_threads, "max" );
 			
 			// Hierarchical Roofline model
 			cost_models::hier_roofline::AlgoParameters_p hr_model = cost_models::hier_roofline::get_params_foldr( n, 
 				sizeof( T1 ), sizeof( T2 ), 1, 1 );
-			double hr_cost = cost_models::hier_roofline::predict_cost( &hw_model, hr_model, 1 );
+			double hr_cost = cost_models::hier_roofline::predict_cost( &hw_model, hr_model, num_threads );
 			
 			// Hierarchical Latency-Aware Roofline model
 			cost_models::hier_lat_roofline::AlgoParameters_p hlr_model = cost_models::hier_lat_roofline::get_params_foldr( n, 
 				sizeof( T1 ), sizeof( T2 ), 1, 1 );
-			double hlr_cost = cost_models::hier_lat_roofline::predict_cost( &hw_model, hlr_model, 1 );
+			double hlr_cost = cost_models::hier_lat_roofline::predict_cost( &hw_model, hlr_model, num_threads );
 			
 			// Print all model predictions
 			std::cout << "[TRACING] k-Multi-BSP-additive cost: " << sum_cost << " seconds" << std::endl;
@@ -995,23 +1006,24 @@ struct CostPredictor< FoldrFunc, T1, grb::Vector< T2 >, Monoid > {
         (void)y;
 		try {
 			size_t n = grb::size( y );
-			cost_models::HW_model::HWParameters hw_model = cost_models::HW_model::get_hw_params_for_threads( 1, dis_system_params );
+            size_t num_threads = 96;
+			cost_models::HW_model::HWParameters hw_model = cost_models::HW_model::get_hw_params_for_threads( num_threads, dis_system_params );
 			
 			// k-Multi-BSP model
 			cost_models::k_multi_bsp::AlgoParameters_p k_bsp_model = cost_models::k_multi_bsp::get_params_foldr( n, 
 				sizeof( T1 ), sizeof( T2 ), 0, 1 );
-			double sum_cost = cost_models::k_multi_bsp::predict_cost( &hw_model, k_bsp_model, 1, "sum" );
-			double max_cost = cost_models::k_multi_bsp::predict_cost( &hw_model, k_bsp_model, 1, "max" );
+			double sum_cost = cost_models::k_multi_bsp::predict_cost( &hw_model, k_bsp_model, num_threads, "sum" );
+			double max_cost = cost_models::k_multi_bsp::predict_cost( &hw_model, k_bsp_model, num_threads, "max" );
 			
 			// Hierarchical Roofline model
 			cost_models::hier_roofline::AlgoParameters_p hr_model = cost_models::hier_roofline::get_params_foldr( n, 
 				sizeof( T1 ), sizeof( T2 ), 0, 1 );
-			double hr_cost = cost_models::hier_roofline::predict_cost( &hw_model, hr_model, 1 );
+			double hr_cost = cost_models::hier_roofline::predict_cost( &hw_model, hr_model, num_threads );
 			
 			// Hierarchical Latency-Aware Roofline model
 			cost_models::hier_lat_roofline::AlgoParameters_p hlr_model = cost_models::hier_lat_roofline::get_params_foldr( n, 
 				sizeof( T1 ), sizeof( T2 ), 0, 1 );
-			double hlr_cost = cost_models::hier_lat_roofline::predict_cost( &hw_model, hlr_model, 1 );
+			double hlr_cost = cost_models::hier_lat_roofline::predict_cost( &hw_model, hlr_model, num_threads );
 			
 			// Print all model predictions
 			std::cout << "[TRACING] k-Multi-BSP-additive cost: " << sum_cost << " seconds" << std::endl;
@@ -1033,23 +1045,24 @@ struct CostPredictor< FoldrFunc, grb::Vector< T1 >, T2, Monoid > {
 	static double predict(const grb::Vector< T1 > & x, T2 & y, const Monoid & ) {
 		try {
 			size_t n = grb::size( x );
-			cost_models::HW_model::HWParameters hw_model = cost_models::HW_model::get_hw_params_for_threads( 1, dis_system_params );
+			size_t num_threads = 96;
+			cost_models::HW_model::HWParameters hw_model = cost_models::HW_model::get_hw_params_for_threads( num_threads, dis_system_params );
 			
 			// k-Multi-BSP model
 			cost_models::k_multi_bsp::AlgoParameters_p k_bsp_model = cost_models::k_multi_bsp::get_params_foldr( n, 
 				sizeof( T1 ), sizeof( T2 ), 1, 0 );
-			double sum_cost = cost_models::k_multi_bsp::predict_cost( &hw_model, k_bsp_model, 1, "sum" );
-			double max_cost = cost_models::k_multi_bsp::predict_cost( &hw_model, k_bsp_model, 1, "max" );
+			double sum_cost = cost_models::k_multi_bsp::predict_cost( &hw_model, k_bsp_model, num_threads, "sum" );
+			double max_cost = cost_models::k_multi_bsp::predict_cost( &hw_model, k_bsp_model, num_threads, "max" );
 			
 			// Hierarchical Roofline model
 			cost_models::hier_roofline::AlgoParameters_p hr_model = cost_models::hier_roofline::get_params_foldr( n, 
 				sizeof( T1 ), sizeof( T2 ), 1, 0 );
-			double hr_cost = cost_models::hier_roofline::predict_cost( &hw_model, hr_model, 1 );
+			double hr_cost = cost_models::hier_roofline::predict_cost( &hw_model, hr_model, num_threads );
 			
 			// Hierarchical Latency-Aware Roofline model
 			cost_models::hier_lat_roofline::AlgoParameters_p hlr_model = cost_models::hier_lat_roofline::get_params_foldr( n, 
 				sizeof( T1 ), sizeof( T2 ), 1, 0 );
-			double hlr_cost = cost_models::hier_lat_roofline::predict_cost( &hw_model, hlr_model, 1 );
+			double hlr_cost = cost_models::hier_lat_roofline::predict_cost( &hw_model, hlr_model, num_threads );
 			
 			// Print all model predictions
 			std::cout << "[TRACING] k-Multi-BSP-additive cost: " << sum_cost << " seconds" << std::endl;
@@ -1104,33 +1117,28 @@ struct CostPredictor< DotFunc, T0, T1, T2, MonoidType, OpType > {
             bool is_conjugate = t4_name.find("conjugate") != std::string::npos;
 
             // Get hardware parameters
+            size_t num_threads = 96;
             cost_models::HW_model::HWParameters hw_model =
-                cost_models::HW_model::get_hw_params_for_threads(1, dis_system_params);
-                
+                cost_models::HW_model::get_hw_params_for_threads(num_threads, dis_system_params);
+
             // k-Multi-BSP model
             cost_models::k_multi_bsp::AlgoParameters_p k_bsp_model =
                 cost_models::k_multi_bsp::get_params_dot(n, sizeof(T0), sizeof(T1), sizeof(T2));
-            double sum_cost = cost_models::k_multi_bsp::predict_cost( &hw_model, k_bsp_model, 1, "sum" );
-            double max_cost = cost_models::k_multi_bsp::predict_cost( &hw_model, k_bsp_model, 1, "max" );
+            double sum_cost = cost_models::k_multi_bsp::predict_cost( &hw_model, k_bsp_model, num_threads, "sum" );
+            double max_cost = cost_models::k_multi_bsp::predict_cost( &hw_model, k_bsp_model, num_threads, "max" );
             
             // Hierarchical Roofline model
             cost_models::hier_roofline::AlgoParameters_p hr_model =
                 cost_models::hier_roofline::get_params_dot(n, sizeof(T0), sizeof(T1), sizeof(T2));
-            double hr_cost = cost_models::hier_roofline::predict_cost( &hw_model, hr_model, 1 );
+            double hr_cost = cost_models::hier_roofline::predict_cost( &hw_model, hr_model, num_threads );
             
             // Hierarchical Latency-Aware Roofline model
             cost_models::hier_lat_roofline::AlgoParameters_p hlr_model =
                 cost_models::hier_lat_roofline::get_params_dot(n, sizeof(T0), sizeof(T1), sizeof(T2));
-            double hlr_cost = cost_models::hier_lat_roofline::predict_cost( &hw_model, hlr_model, 1 );
-
-            // Print all model predictions
-            std::cout << "[TRACING] k-Multi-BSP-additive cost: " << sum_cost << " seconds" << std::endl;
-            std::cout << "[TRACING] k-Multi-BSP-max cost: " << max_cost << " seconds" << std::endl;
-            std::cout << "[TRACING] Hierarchical-Roofline cost: " << hr_cost << " seconds" << std::endl;
-            std::cout << "[TRACING] Hierarchical-Latency-Roofline cost: " << hlr_cost << " seconds" << std::endl;
+            double hlr_cost = cost_models::hier_lat_roofline::predict_cost( &hw_model, hlr_model, num_threads );
 
             // Additional cost for conjugate operations
-            double multiplier = is_conjugate ? 1.2 : 1.0;
+            double multiplier = 1; //is_conjugate ? 1.2 : 1.0;
             return max_cost * multiplier;
 
         } catch(const std::exception& e) {

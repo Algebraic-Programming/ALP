@@ -253,8 +253,8 @@ def collect_all_results(results_dir):
     """Collect results from all analysis files in the directory."""
     all_files = glob.glob(os.path.join(results_dir, '*_analysis.log'))
     
-    # Organize data by function -> simplified_args -> size -> data
-    function_data = {}
+    # Organize data by thread count -> function -> simplified_args -> size -> data
+    thread_data = {}
     
     for filepath in all_files:
         matrix_size, thread_count = extract_info_from_filename(os.path.basename(filepath))
@@ -268,11 +268,15 @@ def collect_all_results(results_dir):
         if not file_results:
             print(f"Warning: No valid data found in {filepath}")
             continue
+        
+        # Initialize thread count in data structure if needed
+        if thread_count not in thread_data:
+            thread_data[thread_count] = {}
             
         for function_name, args_data in file_results.items():
             # Initialize function in data structure if needed
-            if function_name not in function_data:
-                function_data[function_name] = {}
+            if function_name not in thread_data[thread_count]:
+                thread_data[thread_count][function_name] = {}
             
             for args, metrics in args_data.items():
                 # Create a key that removes size information
@@ -281,15 +285,12 @@ def collect_all_results(results_dir):
                 # Get operator info for display
                 operator_info = extract_operator_info(args)
                 
-                # Add thread count to key if > 1
-                if thread_count > 1:
-                    key = f"{simplified_args}_{thread_count}t"
-                else:
-                    key = simplified_args
+                # We don't need to add thread count to the key now as we're already grouping by thread count
+                key = simplified_args
                 
                 # Initialize simplified args in data structure if needed
-                if key not in function_data[function_name]:
-                    function_data[function_name][key] = {
+                if key not in thread_data[thread_count][function_name]:
+                    thread_data[thread_count][function_name][key] = {
                         'sizes': {},
                         'operator_info': operator_info,
                         'thread_count': thread_count,
@@ -297,7 +298,7 @@ def collect_all_results(results_dir):
                     }
                 
                 # Add data for this matrix size
-                function_data[function_name][key]['sizes'][matrix_size] = {
+                thread_data[thread_count][function_name][key]['sizes'][matrix_size] = {
                     'memory_footprint_bytes': metrics['memory_footprint_bytes'],
                     'memory_footprint_str': metrics['memory_footprint_str'],
                     'execution_time_avg': metrics['execution_time_avg'],
@@ -314,9 +315,9 @@ def collect_all_results(results_dir):
                         'cost': model.get('cost', 0.0),
                         'footprint': model.get('footprint', '0 B')
                     }
-                    function_data[function_name][key]['sizes'][matrix_size]['models'].append(model_data)
+                    thread_data[thread_count][function_name][key]['sizes'][matrix_size]['models'].append(model_data)
     
-    return function_data
+    return thread_data
 
 def calculate_cache_thresholds(data_points):
     """
@@ -452,9 +453,8 @@ def plot_results(function_data, output_dir="plots"):
         
         # Process each category in a separate subplot
         for idx, (category_key, args_keys) in enumerate(arg_categories.items()):
-            # Create subplot
-            ax1 = fig.add_subplot(grid_rows, grid_cols, idx+1)
-            ax2 = ax1.twinx()  # Create a secondary y-axis
+            # Create subplot - ONLY ONE Y-AXIS NOW
+            ax = fig.add_subplot(grid_rows, grid_cols, idx+1)
             
             # Add subplot title with better formatting
             subplot_title = f"{function_name}"
@@ -463,7 +463,7 @@ def plot_results(function_data, output_dir="plots"):
                 display_category = category_key.replace("_", " ").replace("vector", "Vector")
                 display_category = display_category.replace("scalar", "Scalar").replace("monoid", "Monoid")
                 subplot_title += f" ({display_category})"
-            ax1.set_title(subplot_title)
+            ax.set_title(subplot_title)
             
             # Keep track of lines for the legend
             all_lines = []
@@ -525,15 +525,15 @@ def plot_results(function_data, output_dir="plots"):
                 if display_name:
                     legend_name += f" {display_name}"
                 
-                time_line, = ax1.plot(footprints, exec_times_avg, '-', marker=marker, color=time_color, 
+                time_line, = ax.plot(footprints, exec_times_avg, '-', marker=marker, color=time_color, 
                                label=legend_name)
-                ax1.fill_between(footprints, exec_times_min, exec_times_max, color=time_color, alpha=0.2)
+                ax.fill_between(footprints, exec_times_min, exec_times_max, color=time_color, alpha=0.2)
                 
                 # Add time line to legend
                 all_lines.append(time_line)
                 all_labels.append(legend_name)
                 
-                # Plot a cost line for each model/aggregator pair
+                # Plot a cost line for each model/aggregator pair ON THE SAME AXIS
                 for j, (model_key, m_data) in enumerate(model_data.items()):
                     model_name, aggregator = model_key
                     
@@ -550,8 +550,8 @@ def plot_results(function_data, output_dir="plots"):
                     else:
                         model_display = model_name
                     
-                    # Plot cost line
-                    cost_line, = ax2.plot(m_data['footprints'], m_data['costs'], '--', marker=marker, color=cost_color, 
+                    # Plot cost line on the same axis
+                    cost_line, = ax.plot(m_data['footprints'], m_data['costs'], '--', marker=marker, color=cost_color, 
                                    label=f"Cost Model: {model_display}")
                     
                     # Add cost line to legend
@@ -562,7 +562,7 @@ def plot_results(function_data, output_dir="plots"):
             for cache_name, cache_size in CACHE_SIZES.items():
                 # Convert cache size to KB for consistent x-axis
                 cache_kb = cache_size / 1024.0
-                ax1.axvline(x=cache_kb, color='gray', linestyle='--', alpha=0.7)
+                ax.axvline(x=cache_kb, color='gray', linestyle='--', alpha=0.7)
                 
                 # Add cache size annotation near x-axis instead of at the top
                 if cache_size < 1024 * 1024:  # Less than 1 MB
@@ -571,8 +571,8 @@ def plot_results(function_data, output_dir="plots"):
                     label = f"{cache_name} ({cache_kb/1024:.0f} MB)"
                 
                 # Position the cache size labels at the bottom near the x-axis
-                ax1.annotate(label, 
-                           (cache_kb, ax1.get_ylim()[0] * 1.1),  # Position near bottom
+                ax.annotate(label, 
+                           (cache_kb, ax.get_ylim()[0] * 1.1),  # Position near bottom
                            xytext=(0, 10),  # Offset text slightly above the x-axis
                            textcoords="offset points",
                            ha='center',  # Center horizontally on the line
@@ -581,27 +581,25 @@ def plot_results(function_data, output_dir="plots"):
                            rotation=90,
                            color='black')
             
-            # Configure axes
-            ax1.set_xlabel('Memory Footprint (KB)')
-            ax1.set_ylabel('Execution Time (seconds)', color='blue')
-            ax2.set_ylabel('Predicted Cost', color='#990000')  # Darker red for y-axis label
+            # Configure axes - single y-axis for both time and cost
+            ax.set_xlabel('Memory Footprint (KB)')
+            ax.set_ylabel('Time / Cost (seconds)', color='black')  # Updated label for combined axis
             
             # Set to log scale
-            ax1.set_xscale('log', base=2)
-            ax1.set_yscale('log')
-            ax2.set_yscale('log')
+            ax.set_xscale('log', base=2)
+            ax.set_yscale('log')
             
             # Grid
-            ax1.grid(True, which="both", ls="--", alpha=0.3)
+            ax.grid(True, which="both", ls="--", alpha=0.3)
             
             # Add legend for this subplot - always at the upper left
             if all_lines:  # Only add legend if we have lines to show
                 if num_categories == 1:
                     # For single plot, use larger font
-                    ax1.legend(all_lines, all_labels, loc='upper left', fontsize=9)
+                    ax.legend(all_lines, all_labels, loc='upper left', fontsize=9)
                 else:
                     # For multi-plot, keep legend compact
-                    ax1.legend(all_lines, all_labels, loc='upper left', fontsize=7)
+                    ax.legend(all_lines, all_labels, loc='upper left', fontsize=7)
         
         # Add a main title for the whole figure
         plt.suptitle(f'{function_name} - Performance vs. Memory Footprint', fontsize=16)
@@ -617,22 +615,30 @@ def main():
     # Directory containing the analysis files
     results_dir = 'results'
     
-    # Create plots directory
-    plots_dir = 'results/plots'
+    # Base plots directory
+    plots_base_dir = 'results/plots'
     
     # Collect and process results
     print(f"Scanning results directory: {results_dir}")
-    function_data = collect_all_results(results_dir)
+    thread_data = collect_all_results(results_dir)
     
-    # Count the total number of functions found
-    function_count = len(function_data)
-    print(f"Found data for {function_count} distinct function variations")
+    # For each thread count, generate plots in a separate subdirectory
+    for thread_count, function_data in sorted(thread_data.items()):
+        # Create thread-specific output directory
+        thread_plots_dir = os.path.join(plots_base_dir, f't{thread_count}')
+        os.makedirs(thread_plots_dir, exist_ok=True)
+        
+        # Count the total number of functions found for this thread count
+        function_count = len(function_data)
+        print(f"Found data for {function_count} distinct function variations with {thread_count} threads")
+        
+        # Generate plots for this thread count
+        print(f"Generating plots in: {thread_plots_dir}")
+        plot_results(function_data, thread_plots_dir)
+        
+        print(f"Plotting complete for {thread_count} threads!")
     
-    # Generate plots
-    print(f"Generating plots in: {plots_dir}")
-    plot_results(function_data, plots_dir)
-    
-    print("Plotting complete!")
+    print("All plotting tasks completed!")
 
 if __name__ == "__main__":
     main()
