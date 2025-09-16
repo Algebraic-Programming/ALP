@@ -241,13 +241,13 @@ def create_solver_iteration_function(log_file_path: str) -> Dict[str, Dict[str, 
     max_memory_footprint = 0
     max_memory_footprint_str = "0 B"
     
+    # Track functions that are part of iterations
+    iteration_functions = []
+    
     # Track model information
     model_info = {}
     
-    # To calculate per-iteration statistics, we need to track which functions are part of each iteration
-    per_iteration_funcs = {}
-    
-    # First, identify all functions that are part of iterations and their per-iteration count
+    # Identify functions that are part of iterations and calculate their contribution
     for function_name, function_calls in function_data.items():
         # Group calls by argument type
         calls_by_args = defaultdict(list)
@@ -260,13 +260,29 @@ def create_solver_iteration_function(log_file_path: str) -> Dict[str, Dict[str, 
             per_iter_count = determine_per_iteration_count(count, num_iterations)
             
             if per_iter_count is not None and per_iter_count > 0:
-                # This function type is part of the iteration
-                key = (function_name, args)
-                per_iteration_funcs[key] = {
+                # This function is part of the iteration
+                execution_times = [c.get('execution_time', 0.0) for c in calls if c.get('execution_time') is not None]
+                
+                if not execution_times:
+                    continue
+                
+                # Calculate statistics for this function
+                min_time, max_time, avg_time, std_dev = calculate_statistics(execution_times)
+                
+                # Store function info
+                func_info = {
+                    'function_name': function_name,
+                    'args': args,
                     'per_iter_count': per_iter_count,
-                    'calls': calls,
-                    'execution_times': [c.get('execution_time', 0.0) for c in calls]
+                    'total_count': count,
+                    'avg_exec_time': avg_time,
+                    'min_exec_time': min_time,
+                    'max_exec_time': max_time,
+                    'per_iter_exec_time': avg_time * per_iter_count,  # Time contribution to each iteration
+                    'calls': calls
                 }
+                
+                iteration_functions.append(func_info)
                 
                 # Update max memory footprint
                 for call in calls:
@@ -296,55 +312,51 @@ def create_solver_iteration_function(log_file_path: str) -> Dict[str, Dict[str, 
                                 'cost': 0.0
                             }
                         
-                        # Add to total cost for this model (multiplied by per-iteration count)
-                        if model.get('cost') is not None:
-                            model_info[model_key]['cost'] += model.get('cost', 0.0) * per_iter_count
+                        # Calculate average cost per call for this model
+                        if model.get('cost') is not None and count > 0:
+                            cost_per_call = model.get('cost', 0.0)
+                            # Total contribution to iterations
+                            cost_contribution = cost_per_call * per_iter_count
+                            model_info[model_key]['cost'] += cost_contribution
     
-    # Calculate per-iteration execution times
-    per_iteration_times = []
-    
-    # For each iteration, sum the execution times of all functions that are part of the iteration
-    for i in range(num_iterations):
-        iteration_time = 0.0
+    # Calculate per-iteration totals
+    if iteration_functions:
+        # Calculate total execution time per iteration (sum of per_iter_exec_time for each function)
+        total_exec_time_per_iter = sum(func['per_iter_exec_time'] for func in iteration_functions)
         
-        # Add execution time for each function type that's part of the iteration
-        for func_key, func_data in per_iteration_funcs.items():
-            per_iter_count = func_data['per_iter_count']
-            execution_times = func_data['execution_times']
-            
-            # Calculate which calls belong to this iteration
-            start_idx = i * per_iter_count
-            end_idx = min((i + 1) * per_iter_count, len(execution_times))
-            
-            # Sum the execution times for this iteration
-            if start_idx < len(execution_times):
-                for j in range(start_idx, end_idx):
-                    iteration_time += execution_times[j]
+        # Calculate min/max range using the proportions of min/max to avg for each function
+        min_factor = sum(func['min_exec_time'] * func['per_iter_count'] for func in iteration_functions) / \
+                    sum(func['avg_exec_time'] * func['per_iter_count'] for func in iteration_functions) \
+                    if sum(func['avg_exec_time'] * func['per_iter_count'] for func in iteration_functions) > 0 else 1.0
+                    
+        max_factor = sum(func['max_exec_time'] * func['per_iter_count'] for func in iteration_functions) / \
+                    sum(func['avg_exec_time'] * func['per_iter_count'] for func in iteration_functions) \
+                    if sum(func['avg_exec_time'] * func['per_iter_count'] for func in iteration_functions) > 0 else 1.0
         
-        per_iteration_times.append(iteration_time)
-    
-    # If we have data, create the synthetic function
-    if per_iteration_times:
-        # Calculate statistics
-        min_time = min(per_iteration_times) if per_iteration_times else 0.0
-        max_time = max(per_iteration_times) if per_iteration_times else 0.0
-        avg_time = sum(per_iteration_times) / len(per_iteration_times) if per_iteration_times else 0.0
-        std_dev = np.std(per_iteration_times) if len(per_iteration_times) > 1 else None
+        min_exec_time_per_iter = total_exec_time_per_iter * min_factor
+        max_exec_time_per_iter = total_exec_time_per_iter * max_factor
         
+        # Create synthetic execution times list - one entry per iteration
+        # All iterations get the same calculated values since we're using averages
+        exec_times = [total_exec_time_per_iter] * num_iterations
+        
+        # Create the synthetic function entry
         synthetic_function["aggregated"] = {
             "count": num_iterations,
             "per_iter_count": 1,
             "costs": [sum(model_info[k]['cost'] for k in model_info) / num_iterations],  # Average cost per iteration
-            "execution_times": per_iteration_times,
-            "execution_time_min": min_time,
-            "execution_time_max": max_time,
-            "execution_time_avg": avg_time,
-            "execution_time_stddev": std_dev,
+            "execution_times": exec_times,
+            "execution_time_min": min_exec_time_per_iter,
+            "execution_time_max": max_exec_time_per_iter,
+            "execution_time_avg": total_exec_time_per_iter,
+            "execution_time_stddev": 0.0,  # Standard deviation is 0 since all values are the same
             "all_models": []
         }
         
         # Add model data
         for model_key, model_data in model_info.items():
+            # Adjust cost to be average per iteration
+            model_data['cost'] = model_data['cost'] / num_iterations
             model_data['footprint'] = max_memory_footprint_str
             synthetic_function["aggregated"]["all_models"].append(model_data)
     

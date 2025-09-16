@@ -594,7 +594,7 @@ struct CostPredictor< MxvFunc, grb::Vector< T1 >, grb::Matrix< T2, Backend, RowI
 
         try {
             size_t nnz = grb::nnz( A ), m = grb::size( y ), n = grb::size( x );
-			size_t num_threads = 96;
+			size_t num_threads = grb::config::OMP::threads();
 			cost_models::HW_model::HWParameters hw_model = cost_models::HW_model::get_hw_params_for_threads( num_threads, dis_system_params );
 
 			// k-Multi-BSP model
@@ -635,7 +635,7 @@ struct CostPredictor< SetFunc, grb::Vector< T1 >, grb::Vector< T2 > > {
         (void)y;
         try {
             size_t n = grb::size( x );
-            size_t num_threads = 96;
+            size_t num_threads = grb::config::OMP::threads();
 			cost_models::HW_model::HWParameters hw_model = cost_models::HW_model::get_hw_params_for_threads( num_threads, dis_system_params );
 
             // k-Multi-BSP model
@@ -666,7 +666,7 @@ struct CostPredictor< SetFunc, grb::Vector< T1 >, T1 > {
     static double predict( grb::Vector< T1 > & x, T1 & y ){
         try {
             size_t n = grb::size( x );
-            size_t num_threads = 96;
+            size_t num_threads = grb::config::OMP::threads();
 			cost_models::HW_model::HWParameters hw_model = cost_models::HW_model::get_hw_params_for_threads( num_threads, dis_system_params );
 
             // k-Multi-BSP model
@@ -705,7 +705,7 @@ struct CostPredictor< ApplyFunc, T1, T2, T3, Op > {
         (void)z; 
         (void)op;
         try {
-            size_t num_threads = 96;
+            size_t num_threads = grb::config::OMP::threads();
 			cost_models::HW_model::HWParameters hw_model = cost_models::HW_model::get_hw_params_for_threads( num_threads, dis_system_params );
             
             // k-Multi-BSP model
@@ -740,7 +740,7 @@ struct CostPredictor< EWiseApplyFunc, grb::Vector< T1 >, grb::Vector< T2 >, T3, 
     static double predict( const grb::Vector< T1 > & z, const grb::Vector< T2 > & x, T3 & y, const Op & ) {
         try {
             size_t n = grb::size( z );
-            size_t num_threads = 96;
+            size_t num_threads = grb::config::OMP::threads();
 			cost_models::HW_model::HWParameters hw_model = cost_models::HW_model::get_hw_params_for_threads( num_threads, dis_system_params );
             
             // k-Multi-BSP model
@@ -775,7 +775,7 @@ struct CostPredictor< EWiseApplyFunc, grb::Vector< T1 >, T2, grb::Vector< T3 >, 
     static double predict( const grb::Vector< T1 > & z, T2 & x, const grb::Vector< T3 > & y, const Op & ) {
         try {
             size_t n = grb::size( z );
-            size_t num_threads = 96;
+            size_t num_threads = grb::config::OMP::threads();
 			cost_models::HW_model::HWParameters hw_model = cost_models::HW_model::get_hw_params_for_threads( num_threads, dis_system_params );
             
             // k-Multi-BSP model
@@ -817,7 +817,7 @@ struct CostPredictor< EWiseApplyFunc, grb::Vector< T1 >, grb::Vector< T2 > , grb
         (void)z;
         try {
             size_t n = grb::size( z );
-            size_t num_threads = 96;
+            size_t num_threads = grb::config::OMP::threads();
 			cost_models::HW_model::HWParameters hw_model = cost_models::HW_model::get_hw_params_for_threads( num_threads, dis_system_params );
             
             // k-Multi-BSP model
@@ -857,7 +857,7 @@ struct CostPredictor< FoldlFunc, grb::Vector< T1 >, grb::Vector< T2 >, Monoid > 
         (void)y;
         try {
             size_t n = grb::size( x );
-            size_t num_threads = 96;
+            size_t num_threads = grb::config::OMP::threads();
 			cost_models::HW_model::HWParameters hw_model = cost_models::HW_model::get_hw_params_for_threads( num_threads, dis_system_params );
             
             // k-Multi-BSP model
@@ -891,7 +891,7 @@ struct CostPredictor< FoldlFunc, T1 , grb::Vector< T2 >, Monoid > {
 	static double predict( T1 & x, const grb::Vector< T2 > & y, const Monoid & ) {
         try {
             size_t n = grb::size( y );
-            size_t num_threads = 96;
+            size_t num_threads = grb::config::OMP::threads();
 			cost_models::HW_model::HWParameters hw_model = cost_models::HW_model::get_hw_params_for_threads( num_threads, dis_system_params );
             
             // k-Multi-BSP model
@@ -927,7 +927,7 @@ struct CostPredictor< FoldlFunc, grb::Vector< T1 >, T2 , Monoid > {
         (void)y;
         try {
             size_t n = grb::size( x );
-            size_t num_threads = 96;
+            size_t num_threads = grb::config::OMP::threads();
 			cost_models::HW_model::HWParameters hw_model = cost_models::HW_model::get_hw_params_for_threads( num_threads, dis_system_params );
             
             // k-Multi-BSP model
@@ -965,7 +965,7 @@ struct CostPredictor< FoldrFunc, grb::Vector< T1 > , grb::Vector< T2 > , Monoid 
         (void)y;
 		try {
 			size_t n = grb::size( y );
-			size_t num_threads = 96;
+			size_t num_threads = grb::config::OMP::threads();
 			cost_models::HW_model::HWParameters hw_model = cost_models::HW_model::get_hw_params_for_threads( num_threads, dis_system_params );
 			
 			// k-Multi-BSP model
@@ -1006,7 +1006,7 @@ struct CostPredictor< FoldrFunc, T1, grb::Vector< T2 >, Monoid > {
         (void)y;
 		try {
 			size_t n = grb::size( y );
-            size_t num_threads = 96;
+            size_t num_threads = grb::config::OMP::threads();
 			cost_models::HW_model::HWParameters hw_model = cost_models::HW_model::get_hw_params_for_threads( num_threads, dis_system_params );
 			
 			// k-Multi-BSP model
@@ -1045,7 +1045,7 @@ struct CostPredictor< FoldrFunc, grb::Vector< T1 >, T2, Monoid > {
 	static double predict(const grb::Vector< T1 > & x, T2 & y, const Monoid & ) {
 		try {
 			size_t n = grb::size( x );
-			size_t num_threads = 96;
+			size_t num_threads = grb::config::OMP::threads();
 			cost_models::HW_model::HWParameters hw_model = cost_models::HW_model::get_hw_params_for_threads( num_threads, dis_system_params );
 			
 			// k-Multi-BSP model
@@ -1117,7 +1117,7 @@ struct CostPredictor< DotFunc, T0, T1, T2, MonoidType, OpType > {
             bool is_conjugate = t4_name.find("conjugate") != std::string::npos;
 
             // Get hardware parameters
-            size_t num_threads = 96;
+            size_t num_threads = grb::config::OMP::threads();
             cost_models::HW_model::HWParameters hw_model =
                 cost_models::HW_model::get_hw_params_for_threads(num_threads, dis_system_params);
 

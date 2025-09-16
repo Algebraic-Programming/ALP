@@ -611,6 +611,535 @@ def plot_results(function_data, output_dir="plots"):
         plt.savefig(os.path.join(output_dir, f'{function_name}_performance.png'), dpi=150)
         plt.close()
 
+def plot_iteration_percentages(thread_data, output_dir="plots"):
+    """
+    Create a stacked bar chart showing what percentage of the Solver_iteration time 
+    is taken by each function that runs per iteration, for all matrix sizes.
+    """
+    # Create output directory if it doesn't exist
+    os.makedirs(output_dir, exist_ok=True)
+    
+    # Helper function to determine text color based on background color
+    def get_text_color(bg_color):
+        # Convert color to RGB if it's not already
+        if isinstance(bg_color, str):
+            bg_color = mcolors.to_rgb(bg_color)
+        
+        # Calculate perceived brightness (luminance)
+        # Using the formula: 0.299*R + 0.587*G + 0.114*B
+        luminance = (0.299 * bg_color[0] + 0.587 * bg_color[1] + 0.114 * bg_color[2])
+        
+        # Use black text on bright backgrounds, white text on dark backgrounds
+        return 'black' if luminance > 0.6 else 'white'
+    
+    # Helper function to format size with appropriate units
+    def format_size(size_kb):
+        if size_kb >= 1024 * 1024:  # >= 1 GB
+            return f"{size_kb / (1024 * 1024):.1f} GB"
+        elif size_kb >= 1024:  # >= 1 MB
+            return f"{size_kb / 1024:.1f} MB"
+        else:
+            return f"{size_kb:.0f} KB"
+    
+    # Helper function to format matrix dimensions with K, M, B units
+    def format_dimension(dim):
+        if dim >= 1024 * 1024 * 1024:  # >= 1B (1,073,741,824)
+            return f"{dim//(1024*1024*1024)}B"
+        elif dim >= 1024 * 1024:  # >= 1M (1,048,576)
+            return f"{dim//(1024*1024)}M"
+        elif dim >= 1024:  # >= 1K
+            return f"{dim//1024}K"
+        else:
+            return str(dim)
+    
+    # For each thread count
+    for thread_count, function_data in thread_data.items():
+        # Check if we have Solver_iteration data
+        if 'Solver_iteration' not in function_data:
+            print(f"Warning: No Solver_iteration data found for {thread_count} threads, skipping percentage plot")
+            continue
+        
+        # Get Solver_iteration data
+        solver_data = function_data['Solver_iteration']
+        solver_args = next(iter(solver_data))
+        solver_sizes = solver_data[solver_args]['sizes']
+        
+        # Create a dictionary to store data for all matrix sizes
+        all_size_data = {}
+        
+        # Process each matrix size
+        for matrix_size, solver_size_data in sorted(solver_sizes.items()):
+            solver_time = solver_size_data['execution_time_avg']
+            
+            if solver_time <= 0:
+                print(f"Warning: Invalid Solver_iteration time for size {matrix_size}, skipping")
+                continue
+            
+            # Initialize storage for this matrix size
+            size_functions = []
+            size_percentages = {}
+            size_footprint = solver_size_data['memory_footprint_bytes'] / 1024.0  # KB
+            
+            # Find all functions with per_iter_count > 0
+            for function_name, args_data in function_data.items():
+                if function_name == 'Solver_iteration':
+                    continue
+                    
+                for args_key, data in args_data.items():
+                    per_iter_count = data.get('per_iter_count', 0)
+                    
+                    if per_iter_count and per_iter_count > 0:
+                        # Get the execution time for this matrix size
+                        if matrix_size in data['sizes']:
+                            function_time = data['sizes'][matrix_size]['execution_time_avg']
+                            
+                            # Calculate percentage of solver time
+                            percentage = (function_time * per_iter_count / solver_time) * 100.0
+                            
+                            # Skip functions with 0% contribution
+                            if percentage <= 0:
+                                continue
+                            
+                            # Get operation type for display
+                            operator_info = data['operator_info']
+                            display_name = function_name
+                            if operator_info:
+                                display_name = f"{function_name} ({operator_info})"
+                            
+                            # Add details to simplify display in multi-function cases
+                            if args_key and 'Vector' in args_key and 'scalar' in args_key:
+                                display_name += " (Vec+scalar)"
+                            elif args_key and 'Vector' in args_key and 'Vector' in args_key[args_key.find('Vector')+6:]:
+                                display_name += " (Vec+Vec)"
+                            
+                            # Add to function list if not already there
+                            if display_name not in size_functions:
+                                size_functions.append(display_name)
+                            
+                            # Store percentage data
+                            size_percentages[display_name] = {
+                                'percentage': percentage,
+                                'time': function_time,
+                                'per_iter': per_iter_count
+                            }
+            
+            # Store data for this size
+            all_size_data[matrix_size] = {
+                'footprint': size_footprint,
+                'functions': size_functions,
+                'percentages': size_percentages,
+                'solver_time': solver_time
+            }
+        
+        # If we have no valid data, skip
+        if not all_size_data:
+            print(f"No valid data for thread count {thread_count}, skipping")
+            continue
+        
+        # Get unique set of all functions across all sizes with non-zero percentages
+        all_functions = set()
+        for size_data in all_size_data.values():
+            for func_name, func_data in size_data['percentages'].items():
+                if func_data['percentage'] > 0:  # Only include functions with non-zero percentage
+                    all_functions.add(func_name)
+        
+        # Sort functions by their maximum percentage across all sizes
+        function_max_percentages = {}
+        for func in all_functions:
+            max_pct = 0
+            for size_data in all_size_data.values():
+                if func in size_data['percentages']:
+                    max_pct = max(max_pct, size_data['percentages'][func]['percentage'])
+            function_max_percentages[func] = max_pct
+        
+        # Sort functions by max percentage (descending)
+        sorted_functions = sorted(all_functions, key=lambda f: function_max_percentages[f], reverse=True)
+        
+        # Create consistent colors for each function
+        color_map = {}
+        colormap = plt.cm.viridis
+        for i, func in enumerate(sorted_functions):
+            color_map[func] = colormap(i / max(1, len(sorted_functions) - 1))
+        
+        # Create figure with more width for the actual plot
+        plt.figure(figsize=(16, 8))  # Reduced height slightly
+        
+        # Prepare data for plotting
+        matrix_sizes = sorted(all_size_data.keys())
+        x_labels = []
+        x_positions = []
+        bottom_values = np.zeros(len(matrix_sizes))
+        
+        # Create x-axis labels with formatted dimensions and memory size
+        for i, size in enumerate(matrix_sizes):
+            footprint = all_size_data[size]['footprint']
+            formatted_dim = f"{format_dimension(size)}×{format_dimension(size)}"
+            formatted_footprint = format_size(footprint)
+            x_labels.append(f"{formatted_dim}\n({formatted_footprint})")
+            x_positions.append(i)
+        
+        # Plot stacked bars for each function
+        handles = []  # For legend
+        labels = []   # For legend
+        
+        # Add "Total (μs)" annotation near the top-right of the y-axis
+        plt.annotate("Total (μs)", xy=(0, 1.05), xycoords=('axes fraction', 'axes fraction'),
+                     ha='left', va='center', fontsize=9)
+        
+        for func in sorted_functions:
+            values = []
+            for size in matrix_sizes:
+                if func in all_size_data[size]['percentages']:
+                    values.append(all_size_data[size]['percentages'][func]['percentage'])
+                else:
+                    values.append(0)
+            
+            # Skip function if all values are zero
+            if all(v == 0 for v in values):
+                continue
+                
+            # Plot this function's bars
+            bar = plt.bar(x_positions, values, bottom=bottom_values, label=func, color=color_map[func])
+            
+            # Store for legend
+            handles.append(bar)
+            labels.append(func)
+            
+            # Add percentage labels inside the bars if they're large enough
+            for i, v in enumerate(values):
+                if v >= 5.0:  # Only show label if percentage is at least 5%
+                    # Get data for annotation
+                    size = matrix_sizes[i]
+                    func_data = all_size_data[size]['percentages'].get(func, {})
+                    time_us = func_data.get('time', 0) * 1e6
+                    per_iter = func_data.get('per_iter', 0)
+                    
+                    # Position label in the middle of this function's segment
+                    y_pos = bottom_values[i] + v/2
+                    
+                    # Get the color of this segment
+                    segment_color = color_map[func]
+                    
+                    # Determine optimal text color for this background
+                    text_color = get_text_color(segment_color)
+                    
+                    # Add text with percentage and time - using dynamic text color
+                    plt.text(x_positions[i], y_pos, f"{v:.1f}%\n({time_us:.1f}μs×{per_iter})", 
+                             ha='center', va='center', fontsize=8, 
+                             color=text_color)  # Dynamic text color
+            
+            # Update bottom values for next function
+            bottom_values = bottom_values + values
+        
+        # Add execution time above each bar (just the value, no "Total: " or "μs")
+        for i, size in enumerate(matrix_sizes):
+            solver_time_us = all_size_data[size]['solver_time'] * 1e6
+            plt.text(x_positions[i], 105, f"{solver_time_us:.1f}", 
+                     ha='center', va='bottom', fontsize=9)
+        
+        # Set up the plot
+        plt.ylabel('Percentage of Solver Iteration Time (%)')
+        plt.title(f'Function Time Distribution per Iteration ({thread_count} threads)', fontsize=14, pad=15)  # Added padding
+        plt.xticks(x_positions, x_labels)
+        plt.ylim(0, 108)  # Increased slightly for more space at top
+        plt.grid(axis='y', linestyle='--', alpha=0.3)
+        
+        # Position the legend below the plot with less space
+        legend_cols = min(5, len(sorted_functions))  # Max 5 columns, adjust as needed
+        
+        # Add the legend below the plot with reduced spacing
+        plt.legend(handles=handles, labels=labels, 
+                  loc='upper center', bbox_to_anchor=(0.5, -0.08),  # Reduced space
+                  ncol=legend_cols, fontsize=10)
+        
+        # Tight layout with room for legend but reduced bottom margin
+        plt.tight_layout(rect=[0, 0.05, 1, 0.95])  # Reduced bottom margin
+        
+        # Save the plot with higher resolution but smaller margins
+        plt.savefig(os.path.join(output_dir, f'iteration_percentages_{thread_count}t.png'), 
+                   dpi=150, bbox_inches='tight')
+        plt.close()
+
+def plot_cost_percentages(thread_data, output_dir="plots"):
+    """
+    Create a stacked bar chart showing what percentage of the total predicted cost
+    is taken by each function that runs per iteration, for all matrix sizes.
+    """
+    # Create output directory if it doesn't exist
+    os.makedirs(output_dir, exist_ok=True)
+    
+    # Helper function to determine text color based on background color
+    def get_text_color(bg_color):
+        # Convert color to RGB if it's not already
+        if isinstance(bg_color, str):
+            bg_color = mcolors.to_rgb(bg_color)
+        
+        # Calculate perceived brightness (luminance)
+        luminance = (0.299 * bg_color[0] + 0.587 * bg_color[1] + 0.114 * bg_color[2])
+        
+        # Use black text on bright backgrounds, white text on dark backgrounds
+        return 'black' if luminance > 0.6 else 'white'
+    
+    # Helper function to format size with appropriate units
+    def format_size(size_kb):
+        if size_kb >= 1024 * 1024:  # >= 1 GB
+            return f"{size_kb / (1024 * 1024):.1f} GB"
+        elif size_kb >= 1024:  # >= 1 MB
+            return f"{size_kb / 1024:.1f} MB"
+        else:
+            return f"{size_kb:.0f} KB"
+    
+    # Helper function to format matrix dimensions with K, M, B units
+    def format_dimension(dim):
+        if dim >= 1024 * 1024 * 1024:  # >= 1B (1,073,741,824)
+            return f"{dim//(1024*1024*1024)}B"
+        elif dim >= 1024 * 1024:  # >= 1M (1,048,576)
+            return f"{dim//(1024*1024)}M"
+        elif dim >= 1024:  # >= 1K
+            return f"{dim//1024}K"
+        else:
+            return str(dim)
+    
+    # For each thread count
+    for thread_count, function_data in thread_data.items():
+        # Create a dictionary to store data for all matrix sizes
+        all_size_data = {}
+        
+        # Process each matrix size
+        matrix_sizes = set()
+        for function_name, args_data in function_data.items():
+            for args_key, data in args_data.items():
+                per_iter_count = data.get('per_iter_count', 0)
+                if per_iter_count and per_iter_count > 0:
+                    for size in data['sizes']:
+                        matrix_sizes.add(size)
+        
+        matrix_sizes = sorted(matrix_sizes)
+        
+        # For each matrix size, calculate total cost and percentage breakdown
+        for matrix_size in matrix_sizes:
+            # Initialize storage for this matrix size
+            size_functions = []
+            size_percentages = {}
+            size_footprint = 0
+            total_cost = 0
+            
+            # First pass: calculate total cost for this matrix size
+            for function_name, args_data in function_data.items():
+                for args_key, data in args_data.items():
+                    per_iter_count = data.get('per_iter_count', 0)
+                    
+                    if per_iter_count and per_iter_count > 0:
+                        # Check if we have cost data for this matrix size
+                        if matrix_size in data['sizes']:
+                            size_data = data['sizes'][matrix_size]
+                            
+                            # Update memory footprint if available
+                            if size_footprint == 0 and size_data['memory_footprint_bytes'] > 0:
+                                size_footprint = size_data['memory_footprint_bytes'] / 1024.0  # KB
+                            
+                            # Get cost from first available model (assuming consistent models)
+                            for model in size_data['models']:
+                                if model.get('cost') is not None:
+                                    # Add to total cost (cost × per_iter_count)
+                                    function_cost = model.get('cost', 0.0) * per_iter_count
+                                    total_cost += function_cost
+                                    break
+            
+            # Skip if no cost data found
+            if total_cost <= 0:
+                print(f"Warning: No valid cost data for size {matrix_size}, skipping")
+                continue
+            
+            # Second pass: calculate percentages
+            for function_name, args_data in function_data.items():
+                for args_key, data in args_data.items():
+                    per_iter_count = data.get('per_iter_count', 0)
+                    
+                    if per_iter_count and per_iter_count > 0:
+                        # Check if we have cost data for this matrix size
+                        if matrix_size in data['sizes']:
+                            size_data = data['sizes'][matrix_size]
+                            
+                            # Get cost from first available model
+                            model_cost = None
+                            model_name = None
+                            for model in size_data['models']:
+                                if model.get('cost') is not None:
+                                    model_cost = model.get('cost', 0.0)
+                                    model_name = model.get('model_name', '')
+                                    break
+                            
+                            if model_cost is not None:
+                                # Calculate percentage of total cost
+                                function_cost = model_cost * per_iter_count
+                                percentage = (function_cost / total_cost) * 100.0
+                                
+                                # Skip functions with negligible contribution
+                                if percentage <= 0.01:
+                                    continue
+                                
+                                # Get operation type for display
+                                operator_info = data['operator_info']
+                                display_name = function_name
+                                if operator_info:
+                                    display_name = f"{function_name} ({operator_info})"
+                                
+                                # Add details to simplify display in multi-function cases
+                                if args_key and 'Vector' in args_key and 'scalar' in args_key:
+                                    display_name += " (Vec+scalar)"
+                                elif args_key and 'Vector' in args_key and 'Vector' in args_key[args_key.find('Vector')+6:]:
+                                    display_name += " (Vec+Vec)"
+                                
+                                # Add to function list if not already there
+                                if display_name not in size_functions:
+                                    size_functions.append(display_name)
+                                
+                                # Store percentage data
+                                size_percentages[display_name] = {
+                                    'percentage': percentage,
+                                    'cost': model_cost,
+                                    'total_cost': function_cost,
+                                    'per_iter': per_iter_count,
+                                    'model': model_name
+                                }
+            
+            # Store data for this size
+            all_size_data[matrix_size] = {
+                'footprint': size_footprint,
+                'functions': size_functions,
+                'percentages': size_percentages,
+                'total_cost': total_cost
+            }
+        
+        # If we have no valid data, skip
+        if not all_size_data:
+            print(f"No valid cost data for thread count {thread_count}, skipping")
+            continue
+        
+        # Get unique set of all functions across all sizes with non-zero percentages
+        all_functions = set()
+        for size_data in all_size_data.values():
+            for func_name, func_data in size_data['percentages'].items():
+                if func_data['percentage'] > 0:  # Only include functions with non-zero percentage
+                    all_functions.add(func_name)
+        
+        # Sort functions by their maximum percentage across all sizes
+        function_max_percentages = {}
+        for func in all_functions:
+            max_pct = 0
+            for size_data in all_size_data.values():
+                if func in size_data['percentages']:
+                    max_pct = max(max_pct, size_data['percentages'][func]['percentage'])
+            function_max_percentages[func] = max_pct
+        
+        # Sort functions by max percentage (descending)
+        sorted_functions = sorted(all_functions, key=lambda f: function_max_percentages[f], reverse=True)
+        
+        # Create consistent colors for each function
+        color_map = {}
+        colormap = plt.cm.viridis
+        for i, func in enumerate(sorted_functions):
+            color_map[func] = colormap(i / max(1, len(sorted_functions) - 1))
+        
+        # Create figure with more width for the actual plot
+        plt.figure(figsize=(16, 8))
+        
+        # Prepare data for plotting
+        matrix_sizes = sorted(all_size_data.keys())
+        x_labels = []
+        x_positions = []
+        bottom_values = np.zeros(len(matrix_sizes))
+        
+        # Create x-axis labels with formatted dimensions and memory size
+        for i, size in enumerate(matrix_sizes):
+            footprint = all_size_data[size]['footprint']
+            formatted_dim = f"{format_dimension(size)}×{format_dimension(size)}"
+            formatted_footprint = format_size(footprint)
+            x_labels.append(f"{formatted_dim}\n({formatted_footprint})")
+            x_positions.append(i)
+        
+        # Plot stacked bars for each function
+        handles = []  # For legend
+        labels = []   # For legend
+        
+        # Add "Total Cost" annotation near the top-left of the y-axis
+        plt.annotate("Total Cost", xy=(0, 1.05), xycoords=('axes fraction', 'axes fraction'),
+                     ha='left', va='center', fontsize=9)
+        
+        for func in sorted_functions:
+            values = []
+            for size in matrix_sizes:
+                if func in all_size_data[size]['percentages']:
+                    values.append(all_size_data[size]['percentages'][func]['percentage'])
+                else:
+                    values.append(0)
+            
+            # Skip function if all values are zero
+            if all(v == 0 for v in values):
+                continue
+                
+            # Plot this function's bars
+            bar = plt.bar(x_positions, values, bottom=bottom_values, label=func, color=color_map[func])
+            
+            # Store for legend
+            handles.append(bar)
+            labels.append(func)
+            
+            # Add percentage labels inside the bars if they're large enough
+            for i, v in enumerate(values):
+                if v >= 5.0:  # Only show label if percentage is at least 5%
+                    # Get data for annotation
+                    size = matrix_sizes[i]
+                    func_data = all_size_data[size]['percentages'].get(func, {})
+                    cost_value = func_data.get('cost', 0)
+                    per_iter = func_data.get('per_iter', 0)
+                    model_name = func_data.get('model', '')
+                    
+                    # Position label in the middle of this function's segment
+                    y_pos = bottom_values[i] + v/2
+                    
+                    # Get the color of this segment
+                    segment_color = color_map[func]
+                    
+                    # Determine optimal text color for this background
+                    text_color = get_text_color(segment_color)
+                    
+                    # Add text with percentage and cost
+                    plt.text(x_positions[i], y_pos, f"{v:.1f}%\n({cost_value:.2e}×{per_iter})", 
+                             ha='center', va='center', fontsize=8, 
+                             color=text_color)  # Dynamic text color
+            
+            # Update bottom values for next function
+            bottom_values = bottom_values + values
+        
+        # Add total cost above each bar
+        for i, size in enumerate(matrix_sizes):
+            total = all_size_data[size]['total_cost']
+            plt.text(x_positions[i], 105, f"{total:.2e}", 
+                     ha='center', va='bottom', fontsize=9)
+        
+        # Set up the plot
+        plt.ylabel('Percentage of Total Predicted Cost (%)')
+        plt.title(f'Function Cost Distribution per Iteration ({thread_count} threads)', fontsize=14, pad=15)
+        plt.xticks(x_positions, x_labels)
+        plt.ylim(0, 108)  # Leave room for total cost label
+        plt.grid(axis='y', linestyle='--', alpha=0.3)
+        
+        # Position the legend below the plot
+        legend_cols = min(5, len(sorted_functions))
+        plt.legend(handles=handles, labels=labels, 
+                  loc='upper center', bbox_to_anchor=(0.5, -0.08),
+                  ncol=legend_cols, fontsize=10)
+        
+        # Tight layout
+        plt.tight_layout(rect=[0, 0.05, 1, 0.95])
+        
+        # Save the plot
+        plt.savefig(os.path.join(output_dir, f'cost_percentages_{thread_count}t.png'), 
+                   dpi=150, bbox_inches='tight')
+        plt.close()
+# Update main function to include the new plot
 def main():
     # Directory containing the analysis files
     results_dir = 'results'
@@ -632,9 +1161,17 @@ def main():
         function_count = len(function_data)
         print(f"Found data for {function_count} distinct function variations with {thread_count} threads")
         
-        # Generate plots for this thread count
-        print(f"Generating plots in: {thread_plots_dir}")
+        # Generate regular plots for this thread count
+        print(f"Generating performance plots in: {thread_plots_dir}")
         plot_results(function_data, thread_plots_dir)
+        
+        # Generate time percentage plots
+        print(f"Generating time percentage plots in: {thread_plots_dir}")
+        plot_iteration_percentages({thread_count: function_data}, thread_plots_dir)
+        
+        # Generate cost percentage plots
+        print(f"Generating cost percentage plots in: {thread_plots_dir}")
+        plot_cost_percentages({thread_count: function_data}, thread_plots_dir)
         
         print(f"Plotting complete for {thread_count} threads!")
     
