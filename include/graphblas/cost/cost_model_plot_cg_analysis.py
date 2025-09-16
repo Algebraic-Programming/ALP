@@ -1141,11 +1141,18 @@ def plot_cost_percentages(thread_data, output_dir="plots"):
         plt.close()
 # Update main function to include the new plot
 def main():
-    # Directory containing the analysis files
-    results_dir = 'results'
+    # Parse command line arguments
+    import argparse
+    parser = argparse.ArgumentParser(description='Plot performance data from analysis files.')
+    parser.add_argument('--results-dir', default='results', 
+                        help='Directory containing the analysis files (default: results)')
+    args = parser.parse_args()
+    
+    # Use the specified results directory
+    results_dir = args.results_dir
     
     # Base plots directory
-    plots_base_dir = 'results/plots'
+    plots_base_dir = os.path.join(results_dir, 'plots')
     
     # Collect and process results
     print(f"Scanning results directory: {results_dir}")
