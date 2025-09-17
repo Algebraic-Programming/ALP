@@ -43,10 +43,8 @@ for THREADS in "${THREAD_COUNTS[@]}"; do
         fi
         # Set OpenMP environment for this thread count
         export OMP_NUM_THREADS=$THREADS
-        export OMP_PROC_BIND=true
-        export OMP_PLACES={0:$THREADS}  # Adjust placement according to thread count
-        
-        echo "=== Processing matrix of size $N x $N with $THREADS threads ==="
+        export GOMP_CPU_AFFINITY="$(seq -s' ' 0 $((THREADS-1)))"
+        echo "=== Processing matrix of size $N x $N with $THREADS threads (GOMP_CPU_AFFINITY: $GOMP_CPU_AFFINITY) ==="
 
         # Run conjugate gradient solver
         OUTPUT_FILE="$DATADIR/outputs/banded_diag_${N}x${N}_band_${BANDSIZE}_threads-${THREADS}_output.log"
@@ -72,7 +70,7 @@ for THREADS in "${THREAD_COUNTS[@]}"; do
     # Generate plots for this thread count
     echo "Generating plots for $THREADS threads"
     python3 $ALPDIR/include/graphblas/cost/cost_model_plot_cg_analysis.py --results-dir $DATADIR/results
-    cp -r $DATADIR/results ./results_scratch
+    cp -r $DATADIR/results .
     echo "Benchmark complete for $THREADS threads!"
     echo "========================================================"
 done

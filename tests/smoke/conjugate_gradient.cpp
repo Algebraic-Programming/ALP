@@ -80,7 +80,7 @@ typedef grb::utils::Singleton<
 constexpr const BaseScalarType tol = 0.000001;
 
 /** The default number of maximum iterations. */
-constexpr const size_t max_iters = 10;
+constexpr const size_t max_iters = 100;
 
 constexpr const double c1 = 0.0001;
 constexpr const double c2 = 0.0001;

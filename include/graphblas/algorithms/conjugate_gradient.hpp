@@ -502,7 +502,8 @@ namespace grb {
 
 				// check residual
 				if( ret == grb::SUCCESS ) {
-					if( sqrt( residual ) < tol || iter >= max_iterations ) { break; }
+					if( /*sqrt( residual ) < tol ||*/ iter >= max_iterations ) { break; }
+					
 				}
 
 				// apply preconditioner action (if required), and compute beta for the

@@ -586,7 +586,7 @@ def plot_results(function_data, output_dir="plots"):
             ax.set_ylabel('Time / Cost (seconds)', color='black')  # Updated label for combined axis
             
             # Set to log scale
-            ax.set_xscale('log', base=2)
+            ax.set_xscale('log', basex=2)
             ax.set_yscale('log')
             
             # Grid
