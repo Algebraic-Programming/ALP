@@ -982,8 +982,9 @@ namespace HW_model
                 double superstep_cost = access_size * g_level + (access_size ? ls_level : 0);
 
                 // Total cost for all supersteps of this type
-				double type_cost = num_supersteps * superstep_cost / target_threads;
-				total_cost += type_cost;
+				double type_cost = num_supersteps * superstep_cost;
+                if (lvl != hw_params->d) type_cost /= target_threads;
+                total_cost += type_cost;
 #ifdef DEBUG_COST_MODELS
 				// Print details
                 std::cout << "Superstep type " << (t + 1) << " (level " << lvl << "):\n";

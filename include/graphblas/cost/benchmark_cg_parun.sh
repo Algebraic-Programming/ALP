@@ -69,7 +69,7 @@ for THREADS in "${THREAD_COUNTS[@]}"; do
     done
     # Generate plots for this thread count
     echo "Generating plots for $THREADS threads"
-    python3 $ALPDIR/include/graphblas/cost/cost_model_plot_cg_analysis.py --results-dir $DATADIR/results
+    python3 $ALPDIR/include/graphblas/cost/cost_model_plot_cg_analysis.py --results-dir $DATADIR/results --threads $THREADS
     cp -r $DATADIR/results .
     echo "Benchmark complete for $THREADS threads!"
     echo "========================================================"

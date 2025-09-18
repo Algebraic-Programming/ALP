@@ -1146,40 +1146,32 @@ def main():
     parser = argparse.ArgumentParser(description='Plot performance data from analysis files.')
     parser.add_argument('--results-dir', default='results', 
                         help='Directory containing the analysis files (default: results)')
+    parser.add_argument('--threads', type=int, default=None,
+                        help='Only plot results for this thread count (default: all)')
     args = parser.parse_args()
     
-    # Use the specified results directory
     results_dir = args.results_dir
-    
-    # Base plots directory
     plots_base_dir = os.path.join(results_dir, 'plots')
-    
-    # Collect and process results
-    print(f"Scanning results directory: {results_dir}")
     thread_data = collect_all_results(results_dir)
     
-    # For each thread count, generate plots in a separate subdirectory
-    for thread_count, function_data in sorted(thread_data.items()):
-        # Create thread-specific output directory
+    # If --threads is specified, only plot for that thread count
+    thread_counts = [args.threads] if args.threads is not None else sorted(thread_data.keys())
+    
+    for thread_count in thread_counts:
+        if thread_count not in thread_data:
+            print(f"No data found for {thread_count} threads, skipping.")
+            continue
+        function_data = thread_data[thread_count]
         thread_plots_dir = os.path.join(plots_base_dir, f't{thread_count}')
         os.makedirs(thread_plots_dir, exist_ok=True)
-        
-        # Count the total number of functions found for this thread count
         function_count = len(function_data)
         print(f"Found data for {function_count} distinct function variations with {thread_count} threads")
-        
-        # Generate regular plots for this thread count
         print(f"Generating performance plots in: {thread_plots_dir}")
         plot_results(function_data, thread_plots_dir)
-        
-        # Generate time percentage plots
         print(f"Generating time percentage plots in: {thread_plots_dir}")
         plot_iteration_percentages({thread_count: function_data}, thread_plots_dir)
-        
-        # Generate cost percentage plots
         print(f"Generating cost percentage plots in: {thread_plots_dir}")
         plot_cost_percentages({thread_count: function_data}, thread_plots_dir)
-        
         print(f"Plotting complete for {thread_count} threads!")
     
     print("All plotting tasks completed!")
