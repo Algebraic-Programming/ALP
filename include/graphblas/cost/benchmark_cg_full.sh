@@ -1,6 +1,5 @@
 #!/bin/bash
 
-# Usage: ./benchmark_cg_controller.sh
 # Set these flags to control which matrices to use
 RUN_REAL=1
 RUN_SYNTHETIC=0
@@ -14,9 +13,10 @@ DATADIR="/scratch/panastasiadis/${MODEL_NAME}"
 ALPDIR="/home/panastasiadis/ALP"
 THREAD_COUNTS=(96 48 24 12 8 4 2 1)
 
-mkdir -p "$SYNTH_DIR"
-mkdir -p "$MM_DIR"
-mkdir -p "$DATADIR"
+mkdir -p $SYNTH_DIR
+mkdir -p $MM_DIR
+mkdir -p $DATADIR
+mkdir -p $ALPDIR/build/$MODEL_NAME
 
 if [ "$RUN_REAL" -eq 1 ]; then
     bash ${ALPDIR}/include/graphblas/cost/download_MM.sh "$MM_DIR"
