@@ -233,10 +233,10 @@ namespace HW_model
             adjust_lvl_naive(hw_params, algo_params, target_threads);
             double comp_t = 0.0, mem_t = 0.0;
             comp_t = 0; // Currently ignoring compute time
-            // (hw_params->r_scalar * algo_params->ops_scalar / target_threads + hw_params->r_SIMD * algo_params->ops_SIMD / target_threads);
+            // (hw_params->r_scalar * algo_params->ops_scalar + hw_params->r_SIMD * algo_params->ops_SIMD / target_threads);
             if (algo_params->b_foot)
                 mem_t = hw_params->g[algo_params->lvl - 1] 
-                * (algo_params->b_reads / target_threads + algo_params->b_writes / target_threads)
+                * (algo_params->b_reads + algo_params->b_writes)
                 + hw_params->ls[algo_params->lvl - 1];
             else mem_t = 0;
 
@@ -542,9 +542,9 @@ namespace HW_model
             comp_t = 0; // Currently ignoring compute time
             // (hw_params->r_scalar * algo_params->ops_scalar / target_threads + hw_params->r_SIMD * algo_params->ops_SIMD / target_threads);
             mem_t = hw_params->g[algo_params->lvl - 1] 
-            * (algo_params->b_reads / target_threads + algo_params->b_writes / target_threads) 
+            * (algo_params->b_reads + algo_params->b_writes) 
             + hw_params->ls[algo_params->lvl - 1] 
-            * (algo_params->rand_reads / target_threads + algo_params->rand_writes / target_threads);
+            * (algo_params->rand_reads + algo_params->rand_writes / target_threads);
 
 			double total_cost = std::max(comp_t, mem_t);
             std::cout << "\nMemory footprint: " << HW_model::format_bytes( algo_params->b_foot ) << "\n";
@@ -979,11 +979,12 @@ namespace HW_model
                 std::string aggregator_name = (stream_aggregator == "sum" ? "sum_hi" : "max_hi");
 
                 // Calculate cost for one superstep: access_size * g + ls
-                double superstep_cost = access_size * g_level + (access_size ? ls_level : 0);
+                double superstep_cost = access_size * g_level + 
+                // FIXME: This is a trick, ideally the model should just use g = 0 for the GLOBAL_SNC levle
+                ((lvl == hw_params->d || access_size) ? ls_level : 0);
 
                 // Total cost for all supersteps of this type
 				double type_cost = num_supersteps * superstep_cost;
-                if (lvl != hw_params->d) type_cost /= target_threads;
                 total_cost += type_cost;
 #ifdef DEBUG_COST_MODELS
 				// Print details
@@ -1029,7 +1030,7 @@ namespace HW_model
             ss_omp_barrier->lvl = 42;
             ss_omp_barrier->ks = 1;
             ss_omp_barrier->hi_rep = 0;
-            ss_omp_barrier->hi = {1}; // This should technically be zero, but zero currently results in no latency as well
+            ss_omp_barrier->hi = {0}; // This should technically be zero, but zero currently results in no latency as well
             spmv_coo->ss_v.push_back(ss_omp_barrier);
             Superstep_p ss_coo = new Superstep();
             ss_coo->nv = nz;
@@ -1087,7 +1088,7 @@ namespace HW_model
         ss_omp_barrier->lvl = 42;
         ss_omp_barrier->ks = 1;
         ss_omp_barrier->hi_rep = 0;
-        ss_omp_barrier->hi = {1}; // This should technically be zero, but zero currently results in no latency as well
+        ss_omp_barrier->hi = {0}; // This should technically be zero, but zero currently results in no latency as well
         spmv_csr->ss_v.push_back(ss_omp_barrier);
         // Superstep A (pipelined) - internal loop
         Superstep_p ss_A = new Superstep();
@@ -1172,7 +1173,7 @@ namespace HW_model
             ss_omp_barrier->lvl = 42;
             ss_omp_barrier->ks = 1;
             ss_omp_barrier->hi_rep = 0;
-            ss_omp_barrier->hi = {1}; // This should technically be zero, but zero currently results in no latency as well
+            ss_omp_barrier->hi = {0}; // This should technically be zero, but zero currently results in no latency as well
             algo_p->ss_v.push_back(ss_omp_barrier);
             Superstep_p ss_A = new Superstep();
             if (i)
@@ -1217,7 +1218,7 @@ namespace HW_model
             ss_omp_barrier->lvl = 42;
             ss_omp_barrier->ks = 1;
             ss_omp_barrier->hi_rep = 0;
-            ss_omp_barrier->hi = {1}; // This should technically be zero, but zero currently results in no latency as well
+            ss_omp_barrier->hi = {0}; // This should technically be zero, but zero currently results in no latency as well
             algo_p->ss_v.push_back(ss_omp_barrier);
             Superstep_p ss_A = new Superstep();
             algo_p->b_foot = dtype_size * n;
@@ -1245,7 +1246,7 @@ namespace HW_model
             ss_omp_barrier->lvl = 42;
             ss_omp_barrier->ks = 1;
             ss_omp_barrier->hi_rep = 0;
-            ss_omp_barrier->hi = {1}; // This should technically be zero, but zero currently results in no latency as well
+            ss_omp_barrier->hi = {0}; // This should technically be zero, but zero currently results in no latency as well
             algo_p->ss_v.push_back(ss_omp_barrier);
             Superstep_p ss_A = new Superstep();
             algo_p->b_foot = 0;
@@ -1274,7 +1275,7 @@ namespace HW_model
             ss_omp_barrier->lvl = 42;
             ss_omp_barrier->ks = 1;
             ss_omp_barrier->hi_rep = 0;
-            ss_omp_barrier->hi = {1}; // This should technically be zero, but zero currently results in no latency as well
+            ss_omp_barrier->hi = {0}; // This should technically be zero, but zero currently results in no latency as well
             algo_p->ss_v.push_back(ss_omp_barrier);
             Superstep_p ss_A = new Superstep();
             algo_p->b_foot = z_dsize * n + 
@@ -1309,7 +1310,7 @@ namespace HW_model
             ss_omp_barrier->lvl = 42;
             ss_omp_barrier->ks = 1;
             ss_omp_barrier->hi_rep = 0;
-            ss_omp_barrier->hi = {1}; // This should technically be zero, but zero currently results in no latency as well
+            ss_omp_barrier->hi = {0}; // This should technically be zero, but zero currently results in no latency as well
             algo_p->ss_v.push_back(ss_omp_barrier);
             Superstep_p ss_A = new Superstep();
             algo_p->b_foot = (x_vec ? 2 * x_dsize * n : 0) + (y_vec ? y_dsize * n : 0);
@@ -1343,7 +1344,7 @@ namespace HW_model
             ss_omp_barrier->lvl = 42;
             ss_omp_barrier->ks = 1;
             ss_omp_barrier->hi_rep = 0;
-            ss_omp_barrier->hi = {1}; // This should technically be zero, but zero currently results in no latency as well
+            ss_omp_barrier->hi = {0}; // This should technically be zero, but zero currently results in no latency as well
             algo_p->ss_v.push_back(ss_omp_barrier);
             Superstep_p ss_A = new Superstep();
             algo_p->b_foot = (x_vec ? x_dsize * n : 0) + (y_vec ? 2 * y_dsize * n : 0);
@@ -1378,7 +1379,7 @@ namespace HW_model
             ss_omp_barrier->lvl = 42;
             ss_omp_barrier->ks = 1;
             ss_omp_barrier->hi_rep = 0;
-            ss_omp_barrier->hi = {1}; // This should technically be zero, but zero currently results in no latency as well
+            ss_omp_barrier->hi = {0}; // This should technically be zero, but zero currently results in no latency as well
             algo_p->ss_v.push_back(ss_omp_barrier);
             Superstep_p ss_A = new Superstep();
             algo_p->b_foot = y_dsize * n + x_dsize * n;
@@ -1406,7 +1407,7 @@ namespace HW_model
             ss_omp_barrier->lvl = 42;
             ss_omp_barrier->ks = 1;
             ss_omp_barrier->hi_rep = 0;
-            ss_omp_barrier->hi = {1}; // This should technically be zero, but zero currently results in no latency as well
+            ss_omp_barrier->hi = {0}; // This should technically be zero, but zero currently results in no latency as well
             algo_p->ss_v.push_back(ss_omp_barrier);
             Superstep_p ss_A = new Superstep();
             algo_p->b_foot = (z_dsize + y_dsize + x_dsize) * n;
@@ -1434,7 +1435,7 @@ namespace HW_model
             ss_omp_barrier->lvl = 42;
             ss_omp_barrier->ks = 1;
             ss_omp_barrier->hi_rep = 0;
-            ss_omp_barrier->hi = {1}; // This should technically be zero, but zero currently results in no latency as well
+            ss_omp_barrier->hi = {0}; // This should technically be zero, but zero currently results in no latency as well
             algo_p->ss_v.push_back(ss_omp_barrier);
             Superstep_p ss_A = new Superstep();
             algo_p->b_foot = (z_dsize + y_dsize + x_dsize) * n;
@@ -1463,7 +1464,7 @@ namespace HW_model
             ss_omp_barrier->lvl = 42;
             ss_omp_barrier->ks = 1;
             ss_omp_barrier->hi_rep = 0;
-            ss_omp_barrier->hi = {1}; // This should technically be zero, but zero currently results in no latency as well
+            ss_omp_barrier->hi = {0}; // This should technically be zero, but zero currently results in no latency as well
             algo_p->ss_v.push_back(ss_omp_barrier);
             Superstep_p ss_A = new Superstep();
             algo_p->b_foot = (z_dsize + x_dsize + y_dsize) * n + (a_vec ? a_dsize * n : 0);

@@ -19,33 +19,38 @@ CACHE_SIZES = {
     'L3': 24 * 1024 * 1024  # 24 MB
 }
 
-def extract_info_from_filename(filename):
-    """Extract both matrix size (N) and thread count from the analysis filename."""
-    # Default thread count if not specified
-    thread_count = 1
-    
-    # First try the _threads-X pattern (with hyphen)
-    match = re.search(r'banded_diag_(\d+)x\d+_band_\d+_threads-(\d+)_analysis\.log', filename)
+def extract_thread_count_from_path(filepath):
+    """Extract thread count from the file path (e.g., from 't96' in the path)."""
+    # Look for thread count pattern in the path (e.g., 't96', 't1', etc.)
+    match = re.search(r'/t(\d+)/', filepath)
     if match:
-        return int(match.group(1)), int(match.group(2))
+        return int(match.group(1))
     
-    # Then try the _threads_X pattern (with underscore)
-    match = re.search(r'banded_diag_(\d+)x\d+_band_\d+_threads_(\d+)_analysis\.log', filename)
+    # Look for thread count in filename patterns
+    filename = os.path.basename(filepath)
+    
+    # Try _threads-X pattern (with hyphen)
+    match = re.search(r'_threads-(\d+)_', filename)
     if match:
-        return int(match.group(1)), int(match.group(2))
+        return int(match.group(1))
     
-    # Then try the _Xt pattern
-    match = re.search(r'banded_diag_(\d+)x\d+_band_\d+_(\d+)t_analysis\.log', filename)
+    # Try _threads_X pattern (with underscore)
+    match = re.search(r'_threads_(\d+)_', filename)
     if match:
-        return int(match.group(1)), int(match.group(2))
+        return int(match.group(1))
     
-    # Finally, try without thread specification
-    match = re.search(r'banded_diag_(\d+)x\d+_band_\d+_analysis\.log', filename)
+    # Try _Xt pattern
+    match = re.search(r'_(\d+)t_', filename)
     if match:
-        return int(match.group(1)), thread_count
+        return int(match.group(1))
     
-    # Return None for both if no match
-    return None, None
+    # Default to 1 if no thread count found
+    return 1
+
+def extract_info_from_filename(filename, filepath=None):
+    """Extract thread count from filename or filepath. Returns (None, thread_count) since size is not needed."""
+    thread_count = extract_thread_count_from_path(filepath) if filepath else 1
+    return None, thread_count
 
 def extract_operator_info(args):
     """Extract operator information from the argument string."""
@@ -115,8 +120,8 @@ def parse_analysis_file(filepath):
     current_args = None
     current_model_data = None
     
-    # Get matrix size and thread count from filename
-    matrix_size, thread_count = extract_info_from_filename(os.path.basename(filepath))
+    # Get thread count from filepath (size is not needed since we use memory footprint)
+    matrix_size, thread_count = extract_info_from_filename(os.path.basename(filepath), filepath)
     
     try:
         with open(filepath, 'r') as f:
@@ -145,7 +150,6 @@ def parse_analysis_file(filepath):
                         'execution_time_max': 0.0,
                         'execution_time_avg': 0.0,
                         'execution_time_stddev': 0.0,
-                        'matrix_size': matrix_size,
                         'thread_count': thread_count,
                         'simplified_args': simplify_args(current_args),
                         'operator_info': extract_operator_info(current_args),
@@ -251,15 +255,17 @@ def parse_analysis_file(filepath):
 
 def collect_all_results(results_dir):
     """Collect results from all analysis files in the directory."""
-    all_files = glob.glob(os.path.join(results_dir, '*_analysis.log'))
+    all_files = glob.glob(os.path.join(results_dir, '**/*_analysis.log'), recursive=True)
     
-    # Organize data by thread count -> function -> simplified_args -> size -> data
+    # Organize data by thread count -> function -> simplified_args -> memory_footprint -> data
     thread_data = {}
     
     for filepath in all_files:
-        matrix_size, thread_count = extract_info_from_filename(os.path.basename(filepath))
+        matrix_size, thread_count = extract_info_from_filename(os.path.basename(filepath), filepath)
         
-        if matrix_size is None:
+        # Skip if we can't determine thread count
+        if thread_count is None:
+            print(f"Warning: Could not determine thread count for {filepath}, skipping")
             continue
             
         file_results = parse_analysis_file(filepath)
@@ -285,21 +291,20 @@ def collect_all_results(results_dir):
                 # Get operator info for display
                 operator_info = extract_operator_info(args)
                 
-                # We don't need to add thread count to the key now as we're already grouping by thread count
-                key = simplified_args
-                
                 # Initialize simplified args in data structure if needed
-                if key not in thread_data[thread_count][function_name]:
-                    thread_data[thread_count][function_name][key] = {
-                        'sizes': {},
+                if simplified_args not in thread_data[thread_count][function_name]:
+                    thread_data[thread_count][function_name][simplified_args] = {
                         'operator_info': operator_info,
                         'thread_count': thread_count,
-                        'per_iter_count': metrics.get('per_iter_count', 0)
+                        'per_iter_count': metrics.get('per_iter_count', 0),
+                        'memory_footprints': {}  # Group by memory footprint
                     }
                 
-                # Add data for this matrix size
-                thread_data[thread_count][function_name][key]['sizes'][matrix_size] = {
-                    'memory_footprint_bytes': metrics['memory_footprint_bytes'],
+                # Use memory footprint as the key for grouping data points
+                memory_footprint = metrics['memory_footprint_bytes']
+                
+                # Store data for this memory footprint
+                thread_data[thread_count][function_name][simplified_args]['memory_footprints'][memory_footprint] = {
                     'memory_footprint_str': metrics['memory_footprint_str'],
                     'execution_time_avg': metrics['execution_time_avg'],
                     'execution_time_min': metrics['execution_time_min'],
@@ -315,7 +320,7 @@ def collect_all_results(results_dir):
                         'cost': model.get('cost', 0.0),
                         'footprint': model.get('footprint', '0 B')
                     }
-                    thread_data[thread_count][function_name][key]['sizes'][matrix_size]['models'].append(model_data)
+                    thread_data[thread_count][function_name][simplified_args]['memory_footprints'][memory_footprint]['models'].append(model_data)
     
     return thread_data
 
@@ -493,21 +498,20 @@ def plot_results(function_data, output_dir="plots"):
                 # Store model data separately for each model/aggregator pair
                 model_data = defaultdict(lambda: {'footprints': [], 'costs': []})
                 
-                # Extract data points from different matrix sizes
-                for size, size_data in sorted(data['sizes'].items()):
-                    # Only include sizes with valid memory footprint
-                    if size_data['memory_footprint_bytes'] > 0:
+                # Extract data points from different memory footprints
+                for memory_footprint_bytes, footprint_data in sorted(data['memory_footprints'].items()):
+                    if memory_footprint_bytes > 0:
                         # Convert to KB for better scale
-                        memory_kb = size_data['memory_footprint_bytes'] / 1024.0
+                        memory_kb = memory_footprint_bytes / 1024.0
                         
                         # Add execution time data point
                         footprints.append(memory_kb)
-                        exec_times_avg.append(size_data['execution_time_avg'])
-                        exec_times_min.append(size_data['execution_time_min'])
-                        exec_times_max.append(size_data['execution_time_max'])
+                        exec_times_avg.append(footprint_data['execution_time_avg'])
+                        exec_times_min.append(footprint_data['execution_time_min'])
+                        exec_times_max.append(footprint_data['execution_time_max'])
                         
                         # Process model data
-                        for model in size_data['models']:
+                        for model in footprint_data['models']:
                             model_key = (model['model_name'], model['aggregator'])
                             model_data[model_key]['footprints'].append(memory_kb)
                             model_data[model_key]['costs'].append(model['cost'])
@@ -586,7 +590,7 @@ def plot_results(function_data, output_dir="plots"):
             ax.set_ylabel('Time / Cost (seconds)', color='black')  # Updated label for combined axis
             
             # Set to log scale
-            ax.set_xscale('log', basex=2)
+            ax.set_xscale('log', base=2)
             ax.set_yscale('log')
             
             # Grid
@@ -662,23 +666,23 @@ def plot_iteration_percentages(thread_data, output_dir="plots"):
         # Get Solver_iteration data
         solver_data = function_data['Solver_iteration']
         solver_args = next(iter(solver_data))
-        solver_sizes = solver_data[solver_args]['sizes']
+        solver_data_point = solver_data[solver_args]
         
-        # Create a dictionary to store data for all matrix sizes
+        # Create a dictionary to store data for all memory footprints
         all_size_data = {}
         
-        # Process each matrix size
-        for matrix_size, solver_size_data in sorted(solver_sizes.items()):
-            solver_time = solver_size_data['execution_time_avg']
+        # Process each memory footprint for Solver_iteration
+        for memory_footprint_bytes, solver_footprint_data in sorted(solver_data_point['memory_footprints'].items()):
+            solver_time = solver_footprint_data['execution_time_avg']
             
             if solver_time <= 0:
-                print(f"Warning: Invalid Solver_iteration time for size {matrix_size}, skipping")
+                print(f"Warning: Invalid Solver_iteration time for memory footprint {memory_footprint_bytes}, skipping")
                 continue
             
-            # Initialize storage for this matrix size
+            # Initialize storage for this memory footprint
             size_functions = []
             size_percentages = {}
-            size_footprint = solver_size_data['memory_footprint_bytes'] / 1024.0  # KB
+            size_footprint = memory_footprint_bytes / 1024.0  # KB
             
             # Find all functions with per_iter_count > 0
             for function_name, args_data in function_data.items():
@@ -689,9 +693,10 @@ def plot_iteration_percentages(thread_data, output_dir="plots"):
                     per_iter_count = data.get('per_iter_count', 0)
                     
                     if per_iter_count and per_iter_count > 0:
-                        # Get the execution time for this matrix size
-                        if matrix_size in data['sizes']:
-                            function_time = data['sizes'][matrix_size]['execution_time_avg']
+                        # Find matching memory footprint for this function
+                        if memory_footprint_bytes in data['memory_footprints']:
+                            function_footprint_data = data['memory_footprints'][memory_footprint_bytes]
+                            function_time = function_footprint_data['execution_time_avg']
                             
                             # Calculate percentage of solver time
                             percentage = (function_time * per_iter_count / solver_time) * 100.0
@@ -723,8 +728,8 @@ def plot_iteration_percentages(thread_data, output_dir="plots"):
                                 'per_iter': per_iter_count
                             }
             
-            # Store data for this size
-            all_size_data[matrix_size] = {
+            # Store data for this memory footprint
+            all_size_data[memory_footprint_bytes] = {
                 'footprint': size_footprint,
                 'functions': size_functions,
                 'percentages': size_percentages,
@@ -765,17 +770,16 @@ def plot_iteration_percentages(thread_data, output_dir="plots"):
         plt.figure(figsize=(16, 8))  # Reduced height slightly
         
         # Prepare data for plotting
-        matrix_sizes = sorted(all_size_data.keys())
+        memory_footprints = sorted(all_size_data.keys())
         x_labels = []
         x_positions = []
-        bottom_values = np.zeros(len(matrix_sizes))
+        bottom_values = np.zeros(len(memory_footprints))
         
-        # Create x-axis labels with formatted dimensions and memory size
-        for i, size in enumerate(matrix_sizes):
-            footprint = all_size_data[size]['footprint']
-            formatted_dim = f"{format_dimension(size)}×{format_dimension(size)}"
+        # Create x-axis labels with memory size
+        for i, footprint_bytes in enumerate(memory_footprints):
+            footprint = all_size_data[footprint_bytes]['footprint']
             formatted_footprint = format_size(footprint)
-            x_labels.append(f"{formatted_dim}\n({formatted_footprint})")
+            x_labels.append(f"Memory: {formatted_footprint}")
             x_positions.append(i)
         
         # Plot stacked bars for each function
@@ -788,9 +792,9 @@ def plot_iteration_percentages(thread_data, output_dir="plots"):
         
         for func in sorted_functions:
             values = []
-            for size in matrix_sizes:
-                if func in all_size_data[size]['percentages']:
-                    values.append(all_size_data[size]['percentages'][func]['percentage'])
+            for footprint_bytes in memory_footprints:
+                if func in all_size_data[footprint_bytes]['percentages']:
+                    values.append(all_size_data[footprint_bytes]['percentages'][func]['percentage'])
                 else:
                     values.append(0)
             
@@ -809,8 +813,8 @@ def plot_iteration_percentages(thread_data, output_dir="plots"):
             for i, v in enumerate(values):
                 if v >= 5.0:  # Only show label if percentage is at least 5%
                     # Get data for annotation
-                    size = matrix_sizes[i]
-                    func_data = all_size_data[size]['percentages'].get(func, {})
+                    footprint_bytes = memory_footprints[i]
+                    func_data = all_size_data[footprint_bytes]['percentages'].get(func, {})
                     time_us = func_data.get('time', 0) * 1e6
                     per_iter = func_data.get('per_iter', 0)
                     
@@ -832,8 +836,8 @@ def plot_iteration_percentages(thread_data, output_dir="plots"):
             bottom_values = bottom_values + values
         
         # Add execution time above each bar (just the value, no "Total: " or "μs")
-        for i, size in enumerate(matrix_sizes):
-            solver_time_us = all_size_data[size]['solver_time'] * 1e6
+        for i, footprint_bytes in enumerate(memory_footprints):
+            solver_time_us = all_size_data[footprint_bytes]['solver_time'] * 1e6
             plt.text(x_positions[i], 105, f"{solver_time_us:.1f}", 
                      ha='center', va='bottom', fontsize=9)
         
@@ -905,66 +909,60 @@ def plot_cost_percentages(thread_data, output_dir="plots"):
         # Create a dictionary to store data for all matrix sizes
         all_size_data = {}
         
-        # Process each matrix size
-        matrix_sizes = set()
+        # Create a dictionary to store data for all memory footprints
+        all_size_data = {}
+        
+        # Get all unique memory footprints across all functions
+        all_memory_footprints = set()
         for function_name, args_data in function_data.items():
             for args_key, data in args_data.items():
-                per_iter_count = data.get('per_iter_count', 0)
-                if per_iter_count and per_iter_count > 0:
-                    for size in data['sizes']:
-                        matrix_sizes.add(size)
+                for memory_footprint_bytes in data['memory_footprints'].keys():
+                    all_memory_footprints.add(memory_footprint_bytes)
         
-        matrix_sizes = sorted(matrix_sizes)
-        
-        # For each matrix size, calculate total cost and percentage breakdown
-        for matrix_size in matrix_sizes:
-            # Initialize storage for this matrix size
+        # Process each memory footprint
+        for memory_footprint_bytes in sorted(all_memory_footprints):
+            # Initialize storage for this memory footprint
             size_functions = []
             size_percentages = {}
-            size_footprint = 0
+            size_footprint = memory_footprint_bytes / 1024.0  # KB
             total_cost = 0
             
-            # First pass: calculate total cost for this matrix size
+            # First pass: calculate total cost for this memory footprint
             for function_name, args_data in function_data.items():
                 for args_key, data in args_data.items():
                     per_iter_count = data.get('per_iter_count', 0)
                     
                     if per_iter_count and per_iter_count > 0:
-                        # Check if we have cost data for this matrix size
-                        if matrix_size in data['sizes']:
-                            size_data = data['sizes'][matrix_size]
-                            
-                            # Update memory footprint if available
-                            if size_footprint == 0 and size_data['memory_footprint_bytes'] > 0:
-                                size_footprint = size_data['memory_footprint_bytes'] / 1024.0  # KB
+                        # Check if we have cost data for this memory footprint
+                        if memory_footprint_bytes in data['memory_footprints']:
+                            footprint_data = data['memory_footprints'][memory_footprint_bytes]
                             
                             # Get cost from first available model (assuming consistent models)
-                            for model in size_data['models']:
+                            for model in footprint_data['models']:
                                 if model.get('cost') is not None:
                                     # Add to total cost (cost × per_iter_count)
                                     function_cost = model.get('cost', 0.0) * per_iter_count
                                     total_cost += function_cost
                                     break
             
-            # Skip if no cost data found
+            # Skip if no cost data found for this memory footprint
             if total_cost <= 0:
-                print(f"Warning: No valid cost data for size {matrix_size}, skipping")
                 continue
             
-            # Second pass: calculate percentages
+            # Second pass: calculate percentages for this memory footprint
             for function_name, args_data in function_data.items():
                 for args_key, data in args_data.items():
                     per_iter_count = data.get('per_iter_count', 0)
                     
                     if per_iter_count and per_iter_count > 0:
-                        # Check if we have cost data for this matrix size
-                        if matrix_size in data['sizes']:
-                            size_data = data['sizes'][matrix_size]
+                        # Check if we have cost data for this memory footprint
+                        if memory_footprint_bytes in data['memory_footprints']:
+                            footprint_data = data['memory_footprints'][memory_footprint_bytes]
                             
                             # Get cost from first available model
                             model_cost = None
                             model_name = None
-                            for model in size_data['models']:
+                            for model in footprint_data['models']:
                                 if model.get('cost') is not None:
                                     model_cost = model.get('cost', 0.0)
                                     model_name = model.get('model_name', '')
@@ -1004,8 +1002,8 @@ def plot_cost_percentages(thread_data, output_dir="plots"):
                                     'model': model_name
                                 }
             
-            # Store data for this size
-            all_size_data[matrix_size] = {
+            # Store data for this memory footprint
+            all_size_data[memory_footprint_bytes] = {
                 'footprint': size_footprint,
                 'functions': size_functions,
                 'percentages': size_percentages,
@@ -1046,17 +1044,16 @@ def plot_cost_percentages(thread_data, output_dir="plots"):
         plt.figure(figsize=(16, 8))
         
         # Prepare data for plotting
-        matrix_sizes = sorted(all_size_data.keys())
+        memory_footprints = sorted(all_size_data.keys())
         x_labels = []
         x_positions = []
-        bottom_values = np.zeros(len(matrix_sizes))
+        bottom_values = np.zeros(len(memory_footprints))
         
-        # Create x-axis labels with formatted dimensions and memory size
-        for i, size in enumerate(matrix_sizes):
-            footprint = all_size_data[size]['footprint']
-            formatted_dim = f"{format_dimension(size)}×{format_dimension(size)}"
+        # Create x-axis labels with memory size
+        for i, footprint_bytes in enumerate(memory_footprints):
+            footprint = all_size_data[footprint_bytes]['footprint']
             formatted_footprint = format_size(footprint)
-            x_labels.append(f"{formatted_dim}\n({formatted_footprint})")
+            x_labels.append(f"Memory: {formatted_footprint}")
             x_positions.append(i)
         
         # Plot stacked bars for each function
@@ -1069,9 +1066,9 @@ def plot_cost_percentages(thread_data, output_dir="plots"):
         
         for func in sorted_functions:
             values = []
-            for size in matrix_sizes:
-                if func in all_size_data[size]['percentages']:
-                    values.append(all_size_data[size]['percentages'][func]['percentage'])
+            for footprint_bytes in memory_footprints:
+                if func in all_size_data[footprint_bytes]['percentages']:
+                    values.append(all_size_data[footprint_bytes]['percentages'][func]['percentage'])
                 else:
                     values.append(0)
             
@@ -1090,8 +1087,8 @@ def plot_cost_percentages(thread_data, output_dir="plots"):
             for i, v in enumerate(values):
                 if v >= 5.0:  # Only show label if percentage is at least 5%
                     # Get data for annotation
-                    size = matrix_sizes[i]
-                    func_data = all_size_data[size]['percentages'].get(func, {})
+                    footprint_bytes = memory_footprints[i]
+                    func_data = all_size_data[footprint_bytes]['percentages'].get(func, {})
                     cost_value = func_data.get('cost', 0)
                     per_iter = func_data.get('per_iter', 0)
                     model_name = func_data.get('model', '')
@@ -1114,8 +1111,8 @@ def plot_cost_percentages(thread_data, output_dir="plots"):
             bottom_values = bottom_values + values
         
         # Add total cost above each bar
-        for i, size in enumerate(matrix_sizes):
-            total = all_size_data[size]['total_cost']
+        for i, footprint_bytes in enumerate(memory_footprints):
+            total = all_size_data[footprint_bytes]['total_cost']
             plt.text(x_positions[i], 105, f"{total:.2e}", 
                      ha='center', va='bottom', fontsize=9)
         
@@ -1162,16 +1159,15 @@ def main():
             print(f"No data found for {thread_count} threads, skipping.")
             continue
         function_data = thread_data[thread_count]
-        thread_plots_dir = os.path.join(plots_base_dir, f't{thread_count}')
-        os.makedirs(thread_plots_dir, exist_ok=True)
         function_count = len(function_data)
         print(f"Found data for {function_count} distinct function variations with {thread_count} threads")
-        print(f"Generating performance plots in: {thread_plots_dir}")
-        plot_results(function_data, thread_plots_dir)
-        print(f"Generating time percentage plots in: {thread_plots_dir}")
-        plot_iteration_percentages({thread_count: function_data}, thread_plots_dir)
-        print(f"Generating cost percentage plots in: {thread_plots_dir}")
-        plot_cost_percentages({thread_count: function_data}, thread_plots_dir)
+        print(f"Generating performance plots in: {plots_base_dir}")
+        os.makedirs(plots_base_dir, exist_ok=True)
+        plot_results(function_data, plots_base_dir)
+        print(f"Generating time percentage plots in: {plots_base_dir}")
+        plot_iteration_percentages({thread_count: function_data}, plots_base_dir)
+        print(f"Generating cost percentage plots in: {plots_base_dir}")
+        plot_cost_percentages({thread_count: function_data}, plots_base_dir)
         print(f"Plotting complete for {thread_count} threads!")
     
     print("All plotting tasks completed!")

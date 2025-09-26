@@ -2,15 +2,16 @@
 
 # Usage: ./benchmark_cg_controller.sh
 # Set these flags to control which matrices to use
-RUN_REAL=1
+RUN_REAL=0
 RUN_SYNTHETIC=1
 
-MATRIX_DIR="/home/panastas/huawei_research/ALP/build/matrices"
+MATRIX_DIR="/scratch/panastasiadis/matrices"
 SYNTH_DIR="$MATRIX_DIR/synthetic"
 MM_DIR="$MATRIX_DIR/MM_suite"
 MODEL_NAME="d_4_GS"
-DATADIR="/home/panastas/huawei_research/ALP/build/${MODEL_NAME}"
-ALPDIR="/home/panastas/huawei_research/ALP"
+ALLOC_POLICY="close"
+DATADIR="/scratch/panastasiadis/${MODEL_NAME}"
+ALPDIR="/home/panastasiadis/ALP"
 THREAD_COUNTS=(96 48 24 12 8 4 2 1)
 
 mkdir -p "$SYNTH_DIR"
@@ -18,11 +19,11 @@ mkdir -p "$MM_DIR"
 mkdir -p "$DATADIR"
 
 if [ "$RUN_REAL" -eq 1 ]; then
-    bash /home/panastas/huawei_research/ALP/include/graphblas/cost/download_MM.sh "$MM_DIR"
+    bash ${ALPDIR}/include/graphblas/cost/download_MM.sh "$MM_DIR"
 fi
 
 if [ "$RUN_SYNTHETIC" -eq 1 ]; then
-    bash /home/panastas/huawei_research/ALP/include/graphblas/cost/generate_synthetic.sh "$SYNTH_DIR" "$ALPDIR"
+    bash ${ALPDIR}/include/graphblas/cost/generate_synthetic.sh "$SYNTH_DIR" "$ALPDIR"
 fi
 
 for THREADS in "${THREAD_COUNTS[@]}"; do
@@ -32,7 +33,9 @@ for THREADS in "${THREAD_COUNTS[@]}"; do
     mkdir -p $THREAD_DIR/results/analysis
 
     export OMP_NUM_THREADS=$THREADS
-    export GOMP_CPU_AFFINITY="$(seq -s' ' 0 $((THREADS-1)))"
+    if [ "$ALLOC_POLICY" == "close" ]; then
+        export GOMP_CPU_AFFINITY="$(seq -s' ' 0 $((THREADS-1)))"
+    fi
 
     if [ "$RUN_REAL" -eq 1 ]; then
         for MM_MTX in $MM_DIR/*.mtx; do
@@ -41,11 +44,11 @@ for THREADS in "${THREAD_COUNTS[@]}"; do
             RESULT_FILE="$THREAD_DIR/results/analysis/${MM_NAME}_analysis.log"
             if [ ! -f "$OUTPUT_FILE" ]; then
                 echo "$ALPDIR/build/tests/smoke/conjugate_gradient_reference_omp "$MM_MTX" direct 1 1 > "$OUTPUT_FILE" 2>&1"
-                #$ALPDIR/build/tests/smoke/conjugate_gradient_reference_omp "$MM_MTX" direct 1 1 > "$OUTPUT_FILE" 2>&1
+                $ALPDIR/build/tests/smoke/conjugate_gradient_reference_omp "$MM_MTX" direct 1 1 > "$OUTPUT_FILE" 2>&1
             fi
             if [ ! -f "$RESULT_FILE" ]; then
                 echo "python3 $ALPDIR/include/graphblas/cost/cost_and_time_parser_plus_DEBUG.py "$OUTPUT_FILE" > "$RESULT_FILE""
-                #python3 $ALPDIR/include/graphblas/cost/cost_and_time_parser_plus_DEBUG.py "$OUTPUT_FILE" > "$RESULT_FILE"
+                python3 $ALPDIR/include/graphblas/cost/cost_and_time_parser_plus_DEBUG.py "$OUTPUT_FILE" > "$RESULT_FILE"
             fi
         done
     fi
@@ -59,18 +62,19 @@ for THREADS in "${THREAD_COUNTS[@]}"; do
             RESULT_FILE="$THREAD_DIR/results/analysis/banded_diag_${N}x${N}_band_${BANDSIZE}_analysis.log"
             if [ ! -f "$OUTPUT_FILE" ]; then
                 echo "$ALPDIR/build/tests/smoke/conjugate_gradient_reference_omp "$MATRIX_FILE" direct 1 1 > "$OUTPUT_FILE" 2>&1"
-                #$ALPDIR/build/tests/smoke/conjugate_gradient_reference_omp "$MATRIX_FILE" direct 1 1 > "$OUTPUT_FILE" 2>&1
+                $ALPDIR/build/tests/smoke/conjugate_gradient_reference_omp "$MATRIX_FILE" direct 1 1 > "$OUTPUT_FILE" 2>&1
             fi
             if [ ! -f "$RESULT_FILE" ]; then
                 echo "python3 $ALPDIR/include/graphblas/cost/cost_and_time_parser_plus_DEBUG.py "$OUTPUT_FILE" > "$RESULT_FILE""
-                #python3 $ALPDIR/include/graphblas/cost/cost_and_time_parser_plus_DEBUG.py "$OUTPUT_FILE" > "$RESULT_FILE"
+                python3 $ALPDIR/include/graphblas/cost/cost_and_time_parser_plus_DEBUG.py "$OUTPUT_FILE" > "$RESULT_FILE"
             fi
         done
     fi
 
     echo "python3 $ALPDIR/include/graphblas/cost/cost_model_plot_cg_analysis.py --results-dir $THREAD_DIR/results --threads $THREADS"
-    #python3 $ALPDIR/include/graphblas/cost/cost_model_plot_cg_analysis.py --results-dir $THREAD_DIR/results --threads $THREADS
-    cp -r $THREAD_DIR $ALPDIR/build
+    python3 $ALPDIR/include/graphblas/cost/cost_model_plot_cg_analysis.py --results-dir $THREAD_DIR/results --threads $THREADS
+    mkdir -p $ALPDIR/build/${MODEL_NAME}
+    cp -r $THREAD_DIR $ALPDIR/build/${MODEL_NAME}
 done
 
 echo "All thread count benchmarks complete! Results are in the '$DATADIR' directory"
