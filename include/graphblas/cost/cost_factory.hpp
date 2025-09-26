@@ -599,7 +599,7 @@ struct CostPredictor< MxvFunc, grb::Vector< T1 >, grb::Matrix< T2, Backend, RowI
 
 			// k-Multi-BSP model
             cost_models::k_multi_bsp::AlgoParameters_p k_bsp_model = cost_models::k_multi_bsp::get_params_csr(
-                nnz, n, m, sizeof( T1 ), sizeof( T3 ), sizeof( T2 ), sizeof( NonzeroIndexType ), sizeof( RowIndexType ) );
+                nnz, n, m, sizeof( T1 ), sizeof( T3 ), sizeof( T2 ), sizeof( RowIndexType ), sizeof( NonzeroIndexType ) );
             //double sum_cost = cost_models::k_multi_bsp::predict_cost( &hw_model, k_bsp_model, num_threads, "sum" );
             double max_cost = cost_models::k_multi_bsp::predict_cost( &hw_model, k_bsp_model, num_threads, "max" );
             

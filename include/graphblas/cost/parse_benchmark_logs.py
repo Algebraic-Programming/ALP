@@ -249,6 +249,11 @@ def create_solver_iteration_function(log_file_path: str) -> Dict[str, Dict[str, 
     
     # Identify functions that are part of iterations and calculate their contribution
     for function_name, function_calls in function_data.items():
+        # Extract mxv argument types if this is the mxv function
+        if function_name == 'mxv' and function_calls:
+            # Get the first call's args as representative
+            mxv_args = function_calls[0]['args']
+        
         # Group calls by argument type
         calls_by_args = defaultdict(list)
         for call in function_calls:
@@ -340,8 +345,12 @@ def create_solver_iteration_function(log_file_path: str) -> Dict[str, Dict[str, 
         # All iterations get the same calculated values since we're using averages
         exec_times = [total_exec_time_per_iter] * num_iterations
         
-        # Create the synthetic function entry
-        synthetic_function["aggregated"] = {
+        # Create the synthetic function entry with mxv args if available
+        aggregated_key = "aggregated"
+        if mxv_args:
+            aggregated_key = f"aggregated for mxv - {mxv_args}"
+        
+        synthetic_function[aggregated_key] = {
             "count": num_iterations,
             "per_iter_count": 1,
             "costs": [sum(model_info[k]['cost'] for k in model_info) / num_iterations],  # Average cost per iteration
@@ -358,7 +367,7 @@ def create_solver_iteration_function(log_file_path: str) -> Dict[str, Dict[str, 
             # Adjust cost to be average per iteration
             model_data['cost'] = model_data['cost'] / num_iterations
             model_data['footprint'] = max_memory_footprint_str
-            synthetic_function["aggregated"]["all_models"].append(model_data)
+            synthetic_function[aggregated_key]["all_models"].append(model_data)
     
     return synthetic_function
 

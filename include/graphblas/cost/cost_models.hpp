@@ -371,7 +371,7 @@ namespace HW_model
 		AlgoParameters_p get_params_add( uint64_t n, size_t z_dsize, size_t x_dsize, size_t y_dsize ) {
 			AlgoParameters_p algo_p = new AlgoParameters();
 			algo_p->b_foot = ( z_dsize + x_dsize + y_dsize ) * n;
-			algo_p->b_reads = 2 * ( x_dsize + y_dsize ) * n;
+			algo_p->b_reads = ( x_dsize + y_dsize ) * n;
 			algo_p->b_writes = z_dsize * n;
 			algo_p->ops_scalar = 0;
             algo_p->ops_SIMD = n;
@@ -701,7 +701,7 @@ namespace HW_model
 		AlgoParameters_p get_params_add( uint64_t n, size_t z_dsize, size_t x_dsize, size_t y_dsize ) {
 			AlgoParameters_p algo_p = new AlgoParameters();
 			algo_p->b_foot = (z_dsize + x_dsize + y_dsize) * n;
-            algo_p->b_reads = 2 * (x_dsize + y_dsize) * n;
+            algo_p->b_reads = x_dsize + y_dsize * n;
 			algo_p->b_writes = z_dsize * n;
 			algo_p->rand_writes = 0;
             algo_p->rand_reads = 0;
@@ -1313,7 +1313,7 @@ namespace HW_model
             ss_omp_barrier->hi = {0}; // This should technically be zero, but zero currently results in no latency as well
             algo_p->ss_v.push_back(ss_omp_barrier);
             Superstep_p ss_A = new Superstep();
-            algo_p->b_foot = (x_vec ? 2 * x_dsize * n : 0) + (y_vec ? y_dsize * n : 0);
+            algo_p->b_foot = (x_vec ? x_dsize * n : 0) + (y_vec ? y_dsize * n : 0);
             ss_A->nv = 1;
             ss_A->ops_scalar = 0;
             ss_A->ops_SIMD = n;
@@ -1347,7 +1347,7 @@ namespace HW_model
             ss_omp_barrier->hi = {0}; // This should technically be zero, but zero currently results in no latency as well
             algo_p->ss_v.push_back(ss_omp_barrier);
             Superstep_p ss_A = new Superstep();
-            algo_p->b_foot = (x_vec ? x_dsize * n : 0) + (y_vec ? 2 * y_dsize * n : 0);
+            algo_p->b_foot = (x_vec ? x_dsize * n : 0) + (y_vec ? y_dsize * n : 0);
             ss_A->nv = 1;
             ss_A->ops_scalar = 0;
             ss_A->ops_SIMD = n;
