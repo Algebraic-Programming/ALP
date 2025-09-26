@@ -47,8 +47,8 @@ for THREADS in "${THREAD_COUNTS[@]}"; do
                 $ALPDIR/build/tests/smoke/conjugate_gradient_reference_omp "$MM_MTX" direct 1 1 > "$OUTPUT_FILE" 2>&1
             fi
             if [ ! -f "$RESULT_FILE" ]; then
-                echo "python3 $ALPDIR/include/graphblas/cost/cost_and_time_parser_plus_DEBUG.py "$OUTPUT_FILE" > "$RESULT_FILE""
-                python3 $ALPDIR/include/graphblas/cost/cost_and_time_parser_plus_DEBUG.py "$OUTPUT_FILE" > "$RESULT_FILE"
+                echo "python3 $ALPDIR/include/graphblas/cost/parse_benchmark_logs.py "$OUTPUT_FILE" > "$RESULT_FILE""
+                python3 $ALPDIR/include/graphblas/cost/parse_benchmark_logs.py "$OUTPUT_FILE" > "$RESULT_FILE"
             fi
         done
     fi
@@ -65,8 +65,8 @@ for THREADS in "${THREAD_COUNTS[@]}"; do
                 $ALPDIR/build/tests/smoke/conjugate_gradient_reference_omp "$MATRIX_FILE" direct 1 1 > "$OUTPUT_FILE" 2>&1
             fi
             if [ ! -f "$RESULT_FILE" ]; then
-                echo "python3 $ALPDIR/include/graphblas/cost/cost_and_time_parser_plus_DEBUG.py "$OUTPUT_FILE" > "$RESULT_FILE""
-                python3 $ALPDIR/include/graphblas/cost/cost_and_time_parser_plus_DEBUG.py "$OUTPUT_FILE" > "$RESULT_FILE"
+                echo "python3 $ALPDIR/include/graphblas/cost/parse_benchmark_logs.py "$OUTPUT_FILE" > "$RESULT_FILE""
+                python3 $ALPDIR/include/graphblas/cost/parse_benchmark_logs.py "$OUTPUT_FILE" > "$RESULT_FILE"
             fi
         done
     fi
