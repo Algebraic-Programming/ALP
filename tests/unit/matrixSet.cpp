@@ -425,9 +425,16 @@ void grb_program( const size_t &n, grb::RC &rc ) {
 	//  - input will be an n by n matrix with each element on its diagonal and
 	//    superdiagonal set to its row index (meaning the entries on row 0 have
 	//    value 0).
-	size_t I_mask[ 2 * n - 1 ], J_mask[ 2 * n - 1 ];
-	int mask_vals [ 2 * n - 1 ];
-	int input_vals [ 2 * n - 1 ];
+	size_t * const I_mask = new size_t[ 2 * n - 1 ];
+	size_t * const J_mask = new size_t[ 2 * n - 1 ];
+	int * const mask_vals = new int[ 2 * n - 1 ];
+	int * const input_vals = new int[ 2 * n - 1 ];
+	if( I_mask == nullptr || J_mask == nullptr || mask_vals == nullptr ||
+		input_vals == nullptr
+	) {
+		std::cerr << "\t initialisation FAILED\n";
+		return;
+	}
 	for( size_t k = 0; k < n; ++k ) {
 		I_mask[ k ] = J_mask[ k ] = k;
 		mask_vals[ k ] = 1;
@@ -478,6 +485,10 @@ void grb_program( const size_t &n, grb::RC &rc ) {
 	// postpone materialisation of inputVoid since it relies on unmasked grb::set
 	// (which is itself unit-tested later)
 
+	delete [] I_mask;
+	delete [] J_mask;
+	delete [] mask_vals;
+	delete [] input_vals;
 	std::cout << "\t test initialisation complete\n";
 
 	// check grb::set for non-voids
