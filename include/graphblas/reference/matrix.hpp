@@ -1283,7 +1283,9 @@ namespace grb {
 					"We hit here a configuration border case which the implementation does not "
 					"handle at present. Please submit a bug report."
 				);
-				// compute and return
+				// compute and return the maximum of
+				//  - row- and column-wise buffers. The added factor two is for padding
+				//  - minimal buffer requirement for parallel buildMatrixUnique
 				return std::max( (m + n + 2) * globalBufferUnitSize,
 #ifdef _H_GRB_REFERENCE_OMP_MATRIX
 					config::OMP::threads() * config::CACHE_LINE_SIZE::value() *
@@ -2533,6 +2535,7 @@ namespace grb {
 					#pragma omp critical
 					std::cout << "\t\t\t free buffer size: " << freeBufferSize
 						<< ", (padded) SPA size: " << paddedSPASize
+						<< ", bufferOffset: " << bufferOffset
 						<< " -> supported #threads: " << nthreads << ". "
 						<< " The shifts for the bit-array and the stack are " << arrayShift
 						<< ", respectively, " << stackShift << "."
@@ -2564,9 +2567,10 @@ namespace grb {
 				 */
 				char * getSPABuffers( size_t t ) const noexcept {
 					assert( t > 0 );
+					assert( nthreads > 1 );
 					(void) --t;
 					char * raw = internal::template getReferenceBuffer< char >(
-						bufferOffset + nthreads * paddedSPASize );
+						bufferOffset + (nthreads - 1) * paddedSPASize );
 					assert( reinterpret_cast< uintptr_t >(raw) % sizeof(int) == 0 );
 					raw += bufferOffset;
 					assert( reinterpret_cast< uintptr_t >(raw) % sizeof(int) == 0 );
