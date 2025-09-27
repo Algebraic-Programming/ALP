@@ -2486,7 +2486,7 @@ namespace grb {
 					bufferOffset = (std::max( m, n ) + 1) * sizeof( NIT );
 
 					// compute value buffer size
-					const size_t valBufSize = n * sizeof( ValueType );
+					const size_t valBufSize = n * utils::SizeOf< ValueType >::value;
 
  #ifdef _DEBUG_REFERENCE_MATRIX
 					std::cout << "\t\t\t\t bit-array size has byte-size " <<
