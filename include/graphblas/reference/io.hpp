@@ -2097,37 +2097,89 @@ namespace grb {
 
 		// go for implementation, preliminaries:
 		size_t nzc = 0;
-		char * mask_arr = nullptr;
-		char * mask_buf = nullptr;
-		MaskType * mask_valbuf = nullptr;
 		const auto &A_raw = internal::getCRS( A );
 		const auto &mask_raw = internal::getCRS( M );
-		internal::Coordinates< reference > mask_coors;
-		internal::getMatrixBuffers( mask_arr, mask_buf, mask_valbuf, 1, M );
-		mask_coors.set( mask_arr, false, mask_buf, ncols );
-
 		// we now have one (guaranteed) SPA, which is mask_coors. We now are going to
 		// check how many more SPAs ideally we would like (for reference_omp), and
 		// then go about trying to get those. If, finally, we get just this one SPA,
 		// we will go into this mostly-sequential code (essentially, big-Omega nrows):
-		for( size_t i = 0; i < nrows; ++i ) {
-			mask_coors.clear();
-			for( auto k = mask_raw.col_start[ i ]; k < mask_raw.col_start[ i + 1 ]; ++k ) {
-				const auto k_col = mask_raw.row_index[ k ];
-				if( utils::interpretMatrixMask< descr, MaskType >( true, mask_raw.getValues(), k ) ) {
-					mask_coors.assign( k_col );
-				}
-			}
-#ifdef _H_GRB_REFERENCE_OMP_BLAS3
-			#pragma omp parallel for reduction( +: nzc ) \
-				schedule( dynamic, config::CACHE_LINE_SIZE::value() )
+#ifdef _H_GRB_REFERENCE_OMP_IO
+		const size_t nnz_based_nthreads = std::max( config::OMP::threads(),
+			grb::nnz( A ) / config::CACHE_LINE_SIZE::value() );
+		grb::internal::SPA_BufferMetaData< NIT1, OutputType > bufferMD( m, n,
+			nnz_based_nthreads );
+		const size_t nthreads = bufferMD.threads();
+		std::cout << "\t set( matrix, matrix, matrix ) will use " << nthreads
+			<< " threads\n";
+#else
+		const size_t nthreads = 1;
 #endif
-			for( auto k = A_raw.col_start[ i ]; k < A_raw.col_start[ i + 1 ]; ++k ) {
-				const auto k_col = A_raw.row_index[ k ];
-				if( mask_coors.assigned( k_col ) ) {
-					(void) nzc++;
+		if( nthreads == 1 ) {
+			char * arr = nullptr;
+			char * buf = nullptr;
+			OutputType * valbuf = nullptr;
+			internal::Coordinates< reference > coors;
+			internal::getMatrixBuffers( arr, buf, valbuf, 1, C );
+			coors.set( arr, false, buf, ncols );
+			for( size_t i = 0; i < nrows; ++i ) {
+				coors.clear();
+				for( auto k = mask_raw.col_start[ i ]; k < mask_raw.col_start[ i + 1 ]; ++k ) {
+					const auto k_col = mask_raw.row_index[ k ];
+					if( utils::interpretMatrixMask< descr, MaskType >( true, mask_raw.getValues(), k ) ) {
+						coors.assign( k_col );
+					}
+				}
+#ifdef _H_GRB_REFERENCE_OMP_IO
+				#pragma omp parallel for reduction( +: nzc ) \
+					schedule( dynamic, config::CACHE_LINE_SIZE::value() )
+#endif
+				for( auto k = A_raw.col_start[ i ]; k < A_raw.col_start[ i + 1 ]; ++k ) {
+					const auto k_col = A_raw.row_index[ k ];
+					if( coors.assigned( k_col ) ) {
+						(void) ++nzc;
+					}
 				}
 			}
+		} else {
+#ifdef _H_GRB_REFERENCE_OMP_IO
+			#pragma omp parallel num_threads( nthreads ) reduction( +: nzc )
+			{
+				// get thread-local buffers
+				size_t local_nz = 0;
+				char * arr = nullptr;
+				char * buf = nullptr;
+				OutputType * valbuf = nullptr;
+				internal::spa_ompPar_getBuffers( arr, buf, valbuf, bufferMD, C );
+				internal::Coordinates< reference > coors;
+				coors.set_seq( arr, false, buf, n );
+				// follow dynamic schedule since we cannot predict sparsity structure
+				#pragma omp for schedule( dynamic, config::CACHE_LINE_SIZE::value() )
+				for( size_t i = 0; i < nrows; ++i ) {
+					coors.clear();
+					for( auto k = mask_raw.col_start[ i ]; k < mask_raw.col_start[ i + 1 ]; ++k ) {
+						const auto k_col = mask_raw.row_index[ k ];
+						if( utils::interpretMatrixMask< descr, MaskType >( true, mask_raw.getValues(), k ) ) {
+							coors.assign( k_col );
+						}
+					}
+					for( auto k = A_raw.col_start[ i ]; k < A_raw.col_start[ i + 1 ]; ++k ) {
+						const auto k_col = A_raw.row_index[ k ];
+						if( coors.assigned( k_col ) ) {
+							(void) ++local_nz;
+						}
+					}
+				}
+				nzc += local_nz;
+			}
+#else
+			const bool code_path_should_not_be_reached = false;
+			std::cerr << "\t logic error in grb::set( matrix, matrix, matrix ): "
+				<< "code path should not reach here. Please submit a bug report\n";
+			assert( code_path_should_not_be_reached );
+ #ifdef NDEBUG
+			(void) code_path_should_not_be_reached;
+ #endif
+#endif
 		}
 
 		// we now have a count. If we're in the resize phase that means we're done:
@@ -2158,7 +2210,7 @@ namespace grb {
 			getReferenceBuffer< typename config::NonzeroIndexType >( ncols + 1 );
 		CRS_raw.col_start[ 0 ] = 0;
 
-#ifdef _H_GRB_REFERENCE_OMP_BLAS3
+#ifdef _H_GRB_REFERENCE_OMP_IO
 		// TODO ALPify the below
 		#pragma omp parallel for simd
 #endif
@@ -2167,20 +2219,28 @@ namespace grb {
 			C_col_index[ j ] = 0;
 		}
 
+		//TODO: revise the below, WIP
+		char * arr = nullptr;
+		char * buf = nullptr;
+		MaskType * valbuf = nullptr;
+		internal::Coordinates< reference > coors;
+		internal::getMatrixBuffers( arr, buf, valbuf, 1, M );
+		coors.set( arr, false, buf, ncols );
+
 		// do counting sort, phase 1 -- also this loop should employ the same
 		// parallelisation strategy during counting
 		nzc = 0;
 		for( size_t i = 0; i < nrows; ++i ) {
-			mask_coors.clear();
+			coors.clear();
 			for( auto k = mask_raw.col_start[ i ]; k < mask_raw.col_start[ i + 1 ]; ++k ) {
 				const auto k_col = mask_raw.row_index[ k ];
 				if( utils::interpretMask< descr, MaskType >( true, mask_raw.getValues(), k ) ) {
-					mask_coors.assign( k_col );
+					coors.assign( k_col );
 				}
 			}
 			for( auto k = A_raw.col_start[ i ]; k < A_raw.col_start[ i + 1 ]; ++k ) {
 				const auto k_col = A_raw.row_index[ k ];
-				if( mask_coors.assigned( k_col ) ) {
+				if( coors.assigned( k_col ) ) {
 					(void) nzc++;
 					(void) (CCS_raw.col_start[ k_col + 1 ])++;
 				}
@@ -2199,18 +2259,18 @@ namespace grb {
 		// the same (multiple-SPA) parallelisation strategy as above
 		nzc = 0;
 		for( size_t i = 0; i < nrows; ++i ) {
-			mask_coors.clear();
+			coors.clear();
 			for( auto k = mask_raw.col_start[ i ]; k < mask_raw.col_start[ i + 1 ]; ++k ) {
 				const auto k_col = mask_raw.row_index[ k ];
 				if( utils::interpretMatrixMask< descr, MaskType >(
 					true, mask_raw.getValues(), k )
 				) {
-					mask_coors.assign( k_col );
+					coors.assign( k_col );
 				}
 			}
 			for( auto k = A_raw.col_start[ i ]; k < A_raw.col_start[ i + 1 ]; ++k ) {
 				const auto k_col = A_raw.row_index[ k ];
-				if( mask_coors.assigned( k_col ) ) {
+				if( coors.assigned( k_col ) ) {
 					constexpr int zero = 0;
 					CRS_raw.row_index[ nzc ] = k_col;
 					CRS_raw.setValue( nzc, A_raw.getValue( k, zero ) );
