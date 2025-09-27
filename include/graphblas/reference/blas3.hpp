@@ -789,6 +789,7 @@ namespace grb {
 
 			// a basic analytic model based on the number of nonzeroes
 			size_t max_threads = config::OMP::threads();
+			assert( max_threads > 0 );
 			{
 				size_t target_nnz = 0;
 				if( phase == EXECUTE ) {
@@ -800,7 +801,7 @@ namespace grb {
 				const size_t nnz_based_nthreads =
 					target_nnz / config::CACHE_LINE_SIZE::value();
 				if( nnz_based_nthreads < max_threads ) {
-					max_threads = nnz_based_nthreads;
+					max_threads = nnz_based_nthreads > 0 ? nnz_based_nthreads : 1;
 				}
 #ifdef _DEBUG_REFERENCE_BLAS3
 				std::cout << "\t simple analytic model selects max threads of "
