@@ -76,7 +76,8 @@ for THREADS in "${THREAD_COUNTS[@]}"; do
                 python3 $ALPDIR/include/graphblas/cost/parse_benchmark_logs.py "$OUTPUT_FILE" > "$RESULT_FILE"
             fi
         done
-
+        rm -rf /scratch/panastasiadis/d_4_GS/t96/results/plots/
+        rm -rf /home/panastasiadis/ALP/build/d_4_GS/t96/results/plots/
         echo "python3 $ALPDIR/include/graphblas/cost/benchmark_ploter.py --results-dir $DATADIR --threads $THREADS" --filegroup-name synthetic
         python3 $ALPDIR/include/graphblas/cost/benchmark_ploter.py --results-dir $DATADIR --threads $THREADS --filegroup-name synthetic
     fi

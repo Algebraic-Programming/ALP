@@ -500,6 +500,11 @@ def plot_results(function_data, output_dir="plots"):
                 
                 for benchmark_id, benchmark_data in sorted_benchmarks:
                     memory_footprint_bytes = benchmark_data['memory_footprint_bytes']
+                    execution_time_avg = benchmark_data['execution_time_avg']
+                    
+                    # Skip functions with zero execution time
+                    if execution_time_avg <= 0:
+                        continue
                     
                     if memory_footprint_bytes > 0:
                         # Convert to KB for better scale
@@ -507,7 +512,7 @@ def plot_results(function_data, output_dir="plots"):
                         
                         # Add execution time data point
                         footprints.append(memory_kb)
-                        exec_times_avg.append(benchmark_data['execution_time_avg'])
+                        exec_times_avg.append(execution_time_avg)
                         exec_times_min.append(benchmark_data['execution_time_min'])
                         exec_times_max.append(benchmark_data['execution_time_max'])
                         
@@ -689,6 +694,10 @@ def plot_iteration_percentages(thread_data, output_dir="plots"):
                             function_benchmark_data = data['benchmarks'][benchmark_id]
                             function_time = function_benchmark_data['execution_time_avg']
                             
+                            # Skip functions with zero execution time
+                            if function_time <= 0:
+                                continue
+                            
                             # Calculate percentage of solver time
                             percentage = (function_time * per_iter_count / solver_time) * 100.0
                             
@@ -860,13 +869,281 @@ def plot_iteration_percentages(thread_data, output_dir="plots"):
                    dpi=150, bbox_inches='tight')
         plt.close()
 
+
 def plot_cost_percentages(thread_data, output_dir="plots"):
     """
     Create a stacked bar chart showing what percentage of the total predicted cost
-    is taken by each function that runs per iteration, for all matrix sizes.
+    is taken by each function that runs per iteration, for all benchmarks.
     """
-    # TODO: Implement cost percentage plotting
-    pass
+    # Create output directory if it doesn't exist
+    os.makedirs(output_dir, exist_ok=True)
+
+    # Helper function to determine text color based on background color
+    def get_text_color(bg_color):
+        # Convert color to RGB if it's not already
+        if isinstance(bg_color, str):
+            bg_color = mcolors.to_rgb(bg_color)
+
+        # Calculate perceived brightness (luminance)
+        # Using the formula: 0.299*R + 0.587*G + 0.114*B
+        luminance = (0.299 * bg_color[0] + 0.587 *
+                     bg_color[1] + 0.114 * bg_color[2])
+
+        # Use black text on bright backgrounds, white text on dark backgrounds
+        return 'black' if luminance > 0.6 else 'white'
+
+    # Helper function to format size with appropriate units
+    def format_size(size_kb):
+        if size_kb >= 1024 * 1024:  # >= 1 GB
+            return f"{size_kb / (1024 * 1024):.1f} GB"
+        elif size_kb >= 1024:  # >= 1 MB
+            return f"{size_kb / 1024:.1f} MB"
+        else:
+            return f"{size_kb:.0f} KB"
+
+    # For each thread count
+    for thread_count, function_data in thread_data.items():
+        # Check if we have Solver_iteration data
+        if 'Solver_iteration' not in function_data:
+            print(f"Warning: No Solver_iteration data found for {thread_count} threads, skipping cost percentage plot")
+            continue
+        
+        # Get Solver_iteration data
+        solver_data = function_data['Solver_iteration']
+        solver_args = next(iter(solver_data))
+        solver_data_point = solver_data[solver_args]
+        
+        # Create a dictionary to store data for all benchmarks
+        all_benchmark_data = {}
+        
+        # Process each benchmark for Solver_iteration
+        for benchmark_id, solver_benchmark_data in sorted(solver_data_point['benchmarks'].items()):
+            # Get solver cost from first available model
+            solver_cost = None
+            for model in solver_benchmark_data['models']:
+                if model.get('cost') is not None:
+                    solver_cost = model.get('cost', 0.0)
+                    break
+            
+            if solver_cost is None or solver_cost <= 0:
+                print(f"Warning: Invalid Solver_iteration cost for benchmark {benchmark_id}, skipping")
+                continue
+            
+            # Initialize storage for this benchmark
+            benchmark_functions = []
+            benchmark_percentages = {}
+            memory_footprint_bytes = solver_benchmark_data['memory_footprint_bytes']
+            size_footprint = memory_footprint_bytes / 1024.0  # KB
+            
+            # Find all functions with per_iter_count > 0 (excluding Solver_iteration)
+            for function_name, args_data in function_data.items():
+                if function_name == 'Solver_iteration':
+                    continue
+                    
+                for args_key, data in args_data.items():
+                    per_iter_count = data.get('per_iter_count', 0)
+                    
+                    if per_iter_count and per_iter_count > 0:
+                        # Find matching benchmark for this function
+                        if benchmark_id in data['benchmarks']:
+                            function_benchmark_data = data['benchmarks'][benchmark_id]
+                            function_time = function_benchmark_data['execution_time_avg']
+                            
+                            # Skip functions with zero execution time
+                            if function_time <= 0:
+                                continue
+                            
+                            # Get cost from first available model
+                            model_cost = None
+                            model_name = None
+                            for model in function_benchmark_data['models']:
+                                if model.get('cost') is not None:
+                                    model_cost = model.get('cost', 0.0)
+                                    model_name = model.get('model_name', '')
+                                    break
+                            
+                            if model_cost is not None:
+                                # Calculate percentage of solver cost
+                                function_cost = model_cost * per_iter_count
+                                percentage = (function_cost / solver_cost) * 100.0
+                                
+                                # Skip functions with 0% contribution
+                                if percentage <= 0:
+                                    continue
+                                
+                                # Get operation type for display
+                                operator_info = data['operator_info']
+                                display_name = function_name
+                                if operator_info:
+                                    display_name = f"{function_name} ({operator_info})"
+                                
+                                # Add details to simplify display in multi-function cases
+                                if args_key and 'Vector' in args_key and 'scalar' in args_key:
+                                    display_name += " (Vec+scalar)"
+                                elif args_key and 'Vector' in args_key and 'Vector' in args_key[args_key.find('Vector')+6:]:
+                                    display_name += " (Vec+Vec)"
+                                
+                                # Add to function list if not already there
+                                if display_name not in benchmark_functions:
+                                    benchmark_functions.append(display_name)
+                                
+                                # Store percentage data
+                                benchmark_percentages[display_name] = {
+                                    'percentage': percentage,
+                                    'cost': model_cost,
+                                    'total_cost': function_cost,
+                                    'per_iter': per_iter_count,
+                                    'model': model_name
+                                }
+            
+            # Store data for this benchmark
+            all_benchmark_data[benchmark_id] = {
+                'footprint': size_footprint,
+                'memory_footprint_bytes': memory_footprint_bytes,
+                'functions': benchmark_functions,
+                'percentages': benchmark_percentages,
+                'solver_cost': solver_cost
+            }
+
+        # If we have no valid data, skip
+        if not all_benchmark_data:
+            print(
+                f"No valid cost data for thread count {thread_count}, skipping")
+            continue
+
+        # Sort benchmarks by memory footprint for consistent ordering
+        sorted_benchmarks = sorted(all_benchmark_data.items(),
+                                   key=lambda x: x[1]['memory_footprint_bytes'])
+
+        # Get unique set of all functions across all benchmarks with non-zero percentages
+        all_functions = set()
+        for benchmark_data in all_benchmark_data.values():
+            for func_name, func_data in benchmark_data['percentages'].items():
+                # Only include functions with non-zero percentage
+                if func_data['percentage'] > 0:
+                    all_functions.add(func_name)
+
+        # Sort functions by their maximum percentage across all benchmarks
+        function_max_percentages = {}
+        for func in all_functions:
+            max_pct = 0
+            for benchmark_data in all_benchmark_data.values():
+                if func in benchmark_data['percentages']:
+                    max_pct = max(
+                        max_pct, benchmark_data['percentages'][func]['percentage'])
+            function_max_percentages[func] = max_pct
+
+        # Sort functions by max percentage (descending)
+        sorted_functions = sorted(
+            all_functions, key=lambda f: function_max_percentages[f], reverse=True)
+
+        # Create consistent colors for each function
+        color_map = {}
+        colormap = plt.cm.viridis
+        for i, func in enumerate(sorted_functions):
+            color_map[func] = colormap(i / max(1, len(sorted_functions) - 1))
+
+        # Create figure with more width for the actual plot
+        plt.figure(figsize=(16, 8))
+
+        # Prepare data for plotting
+        x_labels = []
+        x_positions = []
+        bottom_values = np.zeros(len(sorted_benchmarks))
+
+        # Create x-axis labels with memory size
+        for i, (benchmark_id, benchmark_data) in enumerate(sorted_benchmarks):
+            footprint = benchmark_data['footprint']
+            formatted_footprint = format_size(footprint)
+            # Only the value, no "Memory:" prefix
+            x_labels.append(formatted_footprint)
+            x_positions.append(i)
+
+        # Plot stacked bars for each function
+        handles = []  # For legend
+        labels = []   # For legend
+
+        # Add "Total Cost" annotation near the top-left of the y-axis
+        plt.annotate("Total Cost", xy=(0, 1.05), xycoords=('axes fraction', 'axes fraction'),
+                     ha='left', va='center', fontsize=9)
+
+        for func in sorted_functions:
+            values = []
+            for benchmark_id, benchmark_data in sorted_benchmarks:
+                if func in benchmark_data['percentages']:
+                    values.append(
+                        benchmark_data['percentages'][func]['percentage'])
+                else:
+                    values.append(0)
+
+            # Skip function if all values are zero
+            if all(v == 0 for v in values):
+                continue
+
+            # Plot this function's bars
+            bar = plt.bar(x_positions, values, bottom=bottom_values,
+                          label=func, color=color_map[func])
+
+            # Store for legend
+            handles.append(bar)
+            labels.append(func)
+
+            # Add percentage labels inside the bars if they're large enough
+            for i, v in enumerate(values):
+                if v >= 5.0:  # Only show label if percentage is at least 5%
+                    # Get data for annotation
+                    benchmark_id, benchmark_data = sorted_benchmarks[i]
+                    func_data = benchmark_data['percentages'].get(func, {})
+                    cost_value = func_data.get('cost', 0)
+                    per_iter = func_data.get('per_iter', 0)
+                    model_name = func_data.get('model', '')
+
+                    # Position label in the middle of this function's segment
+                    y_pos = bottom_values[i] + v/2
+
+                    # Get the color of this segment
+                    segment_color = color_map[func]
+
+                    # Determine optimal text color for this background
+                    text_color = get_text_color(segment_color)
+
+                    # Add text with percentage and cost
+                    plt.text(x_positions[i], y_pos, f"{v:.1f}%\n({cost_value:.2e}×{per_iter})",
+                             ha='center', va='center', fontsize=8,
+                             color=text_color)  # Dynamic text color
+
+            # Update bottom values for next function
+            bottom_values = bottom_values + values
+
+        # Add solver cost above each bar
+        for i, (benchmark_id, benchmark_data) in enumerate(sorted_benchmarks):
+            solver_cost = benchmark_data['solver_cost']
+            plt.text(x_positions[i], 105, f"{solver_cost:.2e}",
+                     ha='center', va='bottom', fontsize=9)
+
+        # Set up the plot
+        plt.ylabel('Percentage of Total Predicted Cost (%)')
+        plt.xlabel('Memory Footprint')  # Global x-axis label
+        plt.title(
+            f'Function Cost Distribution per Iteration ({thread_count} threads)', fontsize=14, pad=15)
+        plt.xticks(x_positions, x_labels, rotation=15,
+                   ha='right')  # Rotate labels 15 degrees
+        plt.ylim(0, 108)  # Leave room for total cost label
+        plt.grid(axis='y', linestyle='--', alpha=0.3)
+
+        # Position the legend below the plot
+        legend_cols = len(sorted_functions)
+        plt.legend(handles=handles, labels=labels,
+                   loc='upper center', bbox_to_anchor=(0.5, -0.08),
+                   ncol=legend_cols, fontsize=10)
+
+        # Tight layout
+        # plt.tight_layout(rect=[0, 0.05, 1, 0.95])
+
+        # Save the plot
+        plt.savefig(os.path.join(output_dir, f'cost_percentages_{thread_count}t.png'),
+                    dpi=150, bbox_inches='tight')
+        plt.close()
 
 def main():
     # Parse command line arguments
