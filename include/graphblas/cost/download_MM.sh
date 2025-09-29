@@ -4,8 +4,8 @@
 MM_DIR="$1"
 mkdir -p "$MM_DIR/downloads"
 
-MM_MATRIX_LIST=("gyro_m") #"vanbody" "G2_circuit" "bundle_adj" "apache2" "Emilia_923" "ecology2" "Serena" "G3_circuit" "Queen_4147")
-MM_GROUP_LIST=("Oberwolfach") #"GHS_psdef" "AMD" "Mazaheri" "GHS_psdef" "Janna" "McRae" "Janna" "AMD" "Janna")
+MM_MATRIX_LIST=("gyro_m" "vanbody" "G2_circuit" "bundle_adj" "apache2" "Emilia_923" "ecology2" "Serena" "G3_circuit" "Queen_4147")
+MM_GROUP_LIST=("Oberwolfach" "GHS_psdef" "AMD" "Mazaheri" "GHS_psdef" "Janna" "McRae" "Janna" "AMD" "Janna")
 
 for idx in "${!MM_MATRIX_LIST[@]}"; do
     M="${MM_MATRIX_LIST[$idx]}"
