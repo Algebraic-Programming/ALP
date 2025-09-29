@@ -299,8 +299,10 @@ def create_solver_iteration_function(log_file_path: str) -> Dict[str, Dict[str, 
                             max_memory_footprint_str = footprint_str
                 
                 # Collect model info for cost calculation
-                for call in calls:
-                    for model in call.get('models', []):
+                # Since model predictions are persistent across iterations, we only need one call
+                if calls:  # Use the first call since all calls have the same model costs
+                    first_call = calls[0]
+                    for model in first_call.get('models', []):
                         model_key = (
                             model.get('model', '') + "-additive",  # Rename model
                             model.get('aggregator', ''),
@@ -317,10 +319,22 @@ def create_solver_iteration_function(log_file_path: str) -> Dict[str, Dict[str, 
                                 'cost': 0.0
                             }
                         
-                        # Calculate average cost per call for this model
-                        if model.get('cost') is not None and count > 0:
+                        # Use the model cost directly (should be same across all calls)
+                        if model.get('cost') is not None:
                             cost_per_call = model.get('cost', 0.0)
-                            # Total contribution to iterations
+                            # Verify that all calls have the same model cost
+                            for call in calls[1:]:  # Check remaining calls
+                                for other_model in call.get('models', []):
+                                    if (other_model.get('model', '') == model.get('model', '') and
+                                        other_model.get('aggregator', '') == model.get('aggregator', '') and
+                                        other_model.get('threads', 0) == model.get('threads', 0)):
+                                        other_cost = other_model.get('cost', 0.0)
+                                        if abs(other_cost - cost_per_call) > 1e-10:  # Allow small floating point differences
+                                            print(f"WARNING: Model cost mismatch for {model.get('model', '')} - "
+                                                  f"Expected: {cost_per_call}, Found: {other_cost}")
+                                        break
+                            
+                            # Total contribution to one iteration
                             cost_contribution = cost_per_call * per_iter_count
                             model_info[model_key]['cost'] += cost_contribution
     
@@ -353,7 +367,7 @@ def create_solver_iteration_function(log_file_path: str) -> Dict[str, Dict[str, 
         synthetic_function[aggregated_key] = {
             "count": num_iterations,
             "per_iter_count": 1,
-            "costs": [sum(model_info[k]['cost'] for k in model_info) / num_iterations],  # Average cost per iteration
+            "costs": [sum(model_info[k]['cost'] for k in model_info)],  # Cost per iteration
             "execution_times": exec_times,
             "execution_time_min": min_exec_time_per_iter,
             "execution_time_max": max_exec_time_per_iter,
@@ -364,8 +378,7 @@ def create_solver_iteration_function(log_file_path: str) -> Dict[str, Dict[str, 
         
         # Add model data
         for model_key, model_data in model_info.items():
-            # Adjust cost to be average per iteration
-            model_data['cost'] = model_data['cost'] / num_iterations
+            # Cost is already per iteration (no division needed)
             model_data['footprint'] = max_memory_footprint_str
             synthetic_function[aggregated_key]["all_models"].append(model_data)
     
