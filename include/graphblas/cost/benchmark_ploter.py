@@ -1161,7 +1161,8 @@ def main():
     print(f"Found data for {function_count} distinct function variations")
     
     # Create output directory
-    plots_base_dir = os.path.join(results_dir, f't{threads}', 'results', 'plots')
+    plots_base_dir = os.path.join(
+        results_dir, f't{threads}', 'results', 'plots', f'{filegroup_name}')
     os.makedirs(plots_base_dir, exist_ok=True)
     print(f"Generating plots in: {plots_base_dir}")
     

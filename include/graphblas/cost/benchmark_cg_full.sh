@@ -2,8 +2,8 @@
 
 # Usage: ./benchmark_cg_controller.sh
 # Set these flags to control which matrices to use
-RUN_REAL=0
-RUN_SYNTHETIC=1
+RUN_REAL=1
+RUN_SYNTHETIC=0
 
 MATRIX_DIR="/scratch/panastasiadis/matrices"
 SYNTH_DIR="$MATRIX_DIR/synthetic"
@@ -12,7 +12,7 @@ MODEL_NAME="d_4_GS"
 ALLOC_POLICY="close"
 DATADIR="/scratch/panastasiadis/${MODEL_NAME}"
 ALPDIR="/home/panastasiadis/ALP"
-THREAD_COUNTS=(96) # 48 24 12 8 4 2 1
+THREAD_COUNTS=(96 48 24 12 8 4 2 1)
 
 mkdir -p "$SYNTH_DIR"
 mkdir -p "$MM_DIR"
@@ -55,12 +55,12 @@ for THREADS in "${THREAD_COUNTS[@]}"; do
         done
 
         echo "python3 $ALPDIR/include/graphblas/cost/benchmark_ploter.py --results-dir $DATADIR --threads $THREADS" --filegroup-name real
-        python3 $ALPDIR/include/graphblas/cost/benchmark_ploter.py.py --results-dir $DATADIR --threads $THREADS --filegroup-name real
+        python3 $ALPDIR/include/graphblas/cost/benchmark_ploter.py --results-dir $DATADIR --threads $THREADS --filegroup-name real
     fi
 
     if [ "$RUN_SYNTHETIC" -eq 1 ]; then
         BANDSIZE=1
-        SIZES=(256 512 1024 2048 4096 8192 16384 32768 65536 131072 262144 524288 1048576 2097152 4194304)
+        SIZES=(256 512 1024 2048 4096 8192 16384 32768 65536 131072 262144 524288 1048576 2097152 4194304 8388608 16777216 33554432)
         for N in "${SIZES[@]}"; do
             mkdir -p $THREAD_DIR/results/analysis/synthetic
             mkdir -p $THREAD_DIR/outputs/synthetic
