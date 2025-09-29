@@ -1238,16 +1238,7 @@ namespace HW_model
         {
             AlgoParameters_p algo_p = new AlgoParameters();
             algo_p->n = 1;
-            algo_p->num_v = 2;
-            Superstep_p ss_omp_barrier = new Superstep();
-            ss_omp_barrier->nv = 1;
-            ss_omp_barrier->ops_scalar = 0;
-            ss_omp_barrier->ops_SIMD = 0;
-            ss_omp_barrier->lvl = 42;
-            ss_omp_barrier->ks = 1;
-            ss_omp_barrier->hi_rep = 0;
-            ss_omp_barrier->hi = {0}; // This should technically be zero, but zero currently results in no latency as well
-            algo_p->ss_v.push_back(ss_omp_barrier);
+            algo_p->num_v = 1;
             Superstep_p ss_A = new Superstep();
             algo_p->b_foot = 0;
             ss_A->nv = 1;
