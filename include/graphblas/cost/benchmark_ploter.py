@@ -693,17 +693,11 @@ def plot_iteration_percentages(thread_data, output_dir="plots"):
                         if benchmark_id in data['benchmarks']:
                             function_benchmark_data = data['benchmarks'][benchmark_id]
                             function_time = function_benchmark_data['execution_time_avg']
-                            
                             # Skip functions with zero execution time
                             if function_time <= 0:
                                 continue
-                            
                             # Calculate percentage of solver time
                             percentage = (function_time * per_iter_count / solver_time) * 100.0
-                            
-                            # Skip functions with 0% contribution
-                            if percentage <= 0:
-                                continue
                             
                             # Get operation type for display
                             operator_info = data['operator_info']
@@ -752,6 +746,7 @@ def plot_iteration_percentages(thread_data, output_dir="plots"):
             for func_name, func_data in benchmark_data['percentages'].items():
                 if func_data['percentage'] > 0:  # Only include functions with non-zero percentage
                     all_functions.add(func_name)
+                #print(f"Function: {func_name}, Percentage: {func_data['percentage']}")
         
         # Sort functions by their maximum percentage across all benchmarks
         function_max_percentages = {}
