@@ -746,17 +746,14 @@ def plot_iteration_percentages(thread_data, output_dir="plots"):
             for func_name, func_data in benchmark_data['percentages'].items():
                 if func_data['percentage'] > 0:  # Only include functions with non-zero percentage
                     all_functions.add(func_name)
-                #print(f"Function: {func_name}, Percentage: {func_data['percentage']}")
         
         # Sort functions by their maximum percentage across all benchmarks
         function_max_percentages = {}
         for func in all_functions:
-            max_pct = 0
-            for benchmark_data in all_benchmark_data.values():
-                if func in benchmark_data['percentages']:
-                    max_pct = max(max_pct, benchmark_data['percentages'][func]['percentage'])
-            function_max_percentages[func] = max_pct
-        
+            if func in sorted_benchmarks[-1][1]['percentages']:
+                function_max_percentages[func] = sorted_benchmarks[-1][1]['percentages'][func]['percentage']
+            else: 
+                function_max_percentages[func] = 0
         # Sort functions by max percentage (descending)
         sorted_functions = sorted(all_functions, key=lambda f: function_max_percentages[f], reverse=True)
         
@@ -1021,13 +1018,10 @@ def plot_cost_percentages(thread_data, output_dir="plots"):
         # Sort functions by their maximum percentage across all benchmarks
         function_max_percentages = {}
         for func in all_functions:
-            max_pct = 0
-            for benchmark_data in all_benchmark_data.values():
-                if func in benchmark_data['percentages']:
-                    max_pct = max(
-                        max_pct, benchmark_data['percentages'][func]['percentage'])
-            function_max_percentages[func] = max_pct
-
+            if func in sorted_benchmarks[-1][1]['percentages']:
+                function_max_percentages[func] = sorted_benchmarks[-1][1]['percentages'][func]['percentage']
+            else: 
+                function_max_percentages[func] = 0
         # Sort functions by max percentage (descending)
         sorted_functions = sorted(
             all_functions, key=lambda f: function_max_percentages[f], reverse=True)
