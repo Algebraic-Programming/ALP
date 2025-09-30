@@ -20,22 +20,4 @@ set( TEST_CATEGORY "python" )
 
 enable_testing()
 
-# add_test(
-#     NAME hello.py
-#     COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/hello.py
-#     WORKING_DIRECTORY $<TARGET_FILE_DIR:numpy2alp>
-# )
-
-# add_test(
-#     NAME numpy_array_add.py
-#     COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/numpy_array_add.py
-#     WORKING_DIRECTORY $<TARGET_FILE_DIR:numpy2alp>
-# )
-
-# add_test(
-#     NAME numpy_array_add_nD.py
-#     COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/numpy_array_add_nD.py
-#     WORKING_DIRECTORY $<TARGET_FILE_DIR:numpy2alp>
-# )
-
 
