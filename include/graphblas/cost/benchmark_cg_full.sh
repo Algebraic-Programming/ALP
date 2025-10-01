@@ -2,7 +2,7 @@
 
 # Set these flags to control which matrices to use
 RUN_REAL=1
-RUN_SYNTHETIC=0
+RUN_SYNTHETIC=1
 
 MATRIX_DIR="/scratch/panastasiadis/matrices"
 SYNTH_DIR="$MATRIX_DIR/synthetic"

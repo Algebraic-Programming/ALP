@@ -862,6 +862,597 @@ def plot_iteration_percentages(thread_data, output_dir="plots"):
         plt.close()
 
 
+def find_all_thread_directories(results_dir):
+    """Find all thread directories (t*) in the results directory."""
+    pattern = os.path.join(results_dir, 't*')
+    thread_dirs = glob.glob(pattern)
+    
+    # Extract thread counts and sort
+    thread_counts = []
+    for thread_dir in thread_dirs:
+        basename = os.path.basename(thread_dir)
+        match = re.match(r't(\d+)', basename)
+        if match:
+            thread_counts.append(int(match.group(1)))
+    
+    return sorted(thread_counts)
+
+
+def collect_all_results_multi_thread(results_dir, filegroup_name):
+    """
+    Collect results from all analysis files across ALL thread counts for a specific filegroup.
+    
+    Returns:
+        Dictionary organized as:
+        {
+            thread_count: {
+                function_name: {
+                    simplified_args: {
+                        'operator_info': str,
+                        'thread_count': int,
+                        'per_iter_count': int,
+                        'benchmarks': {
+                            benchmark_id: {
+                                'benchmark_id': str,
+                                'memory_footprint_str': str,
+                                'memory_footprint_bytes': float,
+                                'execution_time_avg': float,
+                                'execution_time_min': float,
+                                'execution_time_max': float,
+                                'execution_time_stddev': float,
+                                'models': [...]
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    """
+    # Find all thread directories
+    thread_counts = find_all_thread_directories(results_dir)
+    
+    if not thread_counts:
+        print(f"Error: No thread directories (t*) found in: {results_dir}")
+        exit(1)
+    
+    print(f"Found {len(thread_counts)} thread configurations: {thread_counts}")
+    
+    # Collect data for each thread count
+    all_thread_data = {}
+    
+    for threads in thread_counts:
+        print(f"\n{'='*80}")
+        print(f"Processing thread count: {threads}")
+        print(f"{'='*80}")
+        
+        # Construct the path: results_dir/t{threads}/results/analysis/{filegroup_name}
+        analysis_dir = os.path.join(
+            results_dir, f't{threads}', 'results', 'analysis', f'{filegroup_name}')
+
+        if not os.path.exists(analysis_dir):
+            print(f"Warning: Analysis directory does not exist: {analysis_dir}")
+            print(f"Skipping thread count {threads}")
+            continue
+
+        # Find all files matching the filegroup pattern
+        pattern = os.path.join(analysis_dir, f'*_analysis.log')
+        all_files = glob.glob(pattern)
+        
+        if not all_files:
+            print(f"Warning: No analysis files found matching pattern: {pattern}")
+            print(f"Skipping thread count {threads}")
+            continue
+        
+        print(f"Found {len(all_files)} analysis files for filegroup '{filegroup_name}' with {threads} threads")
+        
+        # Group data by function -> simplified_args -> benchmark_file
+        grouped_data = {}
+        
+        for i, filepath in enumerate(all_files):
+            print(f"  Parsing ({i+1}/{len(all_files)}): {os.path.basename(filepath)}")
+            
+            # Extract benchmark identifier from filename (remove _analysis.log suffix)
+            benchmark_id = os.path.basename(filepath).replace('_analysis.log', '')
+            
+            file_results = parse_analysis_file(filepath)
+            
+            # Skip if file_results is empty
+            if not file_results:
+                print(f"    Warning: No valid data found")
+                continue
+            
+            for function_name, args_data in file_results.items():
+                # Initialize function in data structure if needed
+                if function_name not in grouped_data:
+                    grouped_data[function_name] = {}
+                
+                for args, metrics in args_data.items():
+                    # Create a key that removes size information
+                    simplified_args = simplify_args(args)
+                    
+                    # Initialize simplified args in data structure if needed
+                    if simplified_args not in grouped_data[function_name]:
+                        grouped_data[function_name][simplified_args] = {
+                            'operator_info': metrics.get('operator_info', ''),
+                            'thread_count': metrics['thread_count'],
+                            'per_iter_count': metrics.get('per_iter_count', 0),
+                            'benchmarks': {}  # Group by benchmark file
+                        }
+                    
+                    # Get memory footprint from the first model (should be same for all models)
+                    memory_footprint_str = metrics.get('expected_footprint', '0 B')
+                    memory_footprint_bytes = parse_memory_footprint(memory_footprint_str)
+                    
+                    # Store data for this benchmark
+                    grouped_data[function_name][simplified_args]['benchmarks'][benchmark_id] = {
+                        'benchmark_id': benchmark_id,
+                        'memory_footprint_str': memory_footprint_str,
+                        'memory_footprint_bytes': memory_footprint_bytes,
+                        'execution_time_avg': metrics['execution_time_avg'],
+                        'execution_time_min': metrics['execution_time_min'],
+                        'execution_time_max': metrics['execution_time_max'],
+                        'execution_time_stddev': metrics['execution_time_stddev'],
+                        'models': []
+                    }
+                    
+                    # Add model data
+                    for model in metrics.get('models', []):
+                        model_data = {
+                            'model_name': model.get('model_name', ''),
+                            'aggregator': model.get('aggregator', ''),
+                            'cost': model.get('cost', 0.0),
+                            'footprint': model.get('footprint', '0 B')
+                        }
+                        grouped_data[function_name][simplified_args]['benchmarks'][benchmark_id]['models'].append(model_data)
+        
+        # Store grouped data for this thread count
+        if grouped_data:
+            all_thread_data[threads] = grouped_data
+            
+            # Print summary for this thread count
+            print(f"\n  Summary for {threads} threads:")
+            print(f"  Total functions found: {len(grouped_data)}")
+            for func_name in sorted(grouped_data.keys())[:5]:  # Show first 5 functions
+                args_count = len(grouped_data[func_name])
+                total_benchmarks = sum(len(data['benchmarks']) for data in grouped_data[func_name].values())
+                print(f"    {func_name}: {args_count} arg variations, {total_benchmarks} total benchmarks")
+            if len(grouped_data) > 5:
+                print(f"    ... and {len(grouped_data) - 5} more functions")
+    
+    return all_thread_data
+
+
+def print_summary(all_thread_data):
+    """Print a comprehensive summary of all collected data."""
+    print(f"\n{'='*80}")
+    print("COMPREHENSIVE SUMMARY - ALL THREAD COUNTS")
+    print(f"{'='*80}")
+    
+    if not all_thread_data:
+        print("No data collected!")
+        return
+    
+    # Get all unique functions across all thread counts
+    all_functions = set()
+    for thread_data in all_thread_data.values():
+        all_functions.update(thread_data.keys())
+    
+    print(f"\nTotal thread configurations: {len(all_thread_data)}")
+    print(f"Thread counts: {sorted(all_thread_data.keys())}")
+    print(f"Total unique functions across all threads: {len(all_functions)}")
+    
+    # For each function, show data across thread counts
+    print(f"\n{'='*80}")
+    print("FUNCTION ANALYSIS ACROSS THREAD COUNTS")
+    print(f"{'='*80}")
+    
+    for function_name in sorted(all_functions):
+        print(f"\nFunction: {function_name}")
+        print(f"-" * 80)
+        
+        # Show which thread counts have this function
+        available_threads = [t for t in sorted(all_thread_data.keys()) if function_name in all_thread_data[t]]
+        print(f"  Available in thread counts: {available_threads}")
+        
+        # For each thread count, show argument variations and benchmark counts
+        for threads in available_threads:
+            function_data = all_thread_data[threads][function_name]
+            print(f"\n  Thread count: {threads}")
+            
+            for simplified_args, data in function_data.items():
+                num_benchmarks = len(data['benchmarks'])
+                operator_info = data['operator_info']
+                per_iter = data['per_iter_count']
+                
+                # Get memory footprint range
+                if data['benchmarks']:
+                    footprints = [b['memory_footprint_bytes'] for b in data['benchmarks'].values()]
+                    min_fp = min(footprints) / 1024  # KB
+                    max_fp = max(footprints) / 1024  # KB
+                    
+                    fp_str = f"{min_fp:.1f} KB - {max_fp:.1f} KB" if min_fp != max_fp else f"{min_fp:.1f} KB"
+                else:
+                    fp_str = "N/A"
+                
+                op_str = f" ({operator_info})" if operator_info else ""
+                iter_str = f" [per_iter: {per_iter}]" if per_iter else ""
+                
+                print(f"    {simplified_args}{op_str}{iter_str}")
+                print(f"      Benchmarks: {num_benchmarks}, Memory footprint range: {fp_str}")
+                
+                # Show example execution times
+                if data['benchmarks']:
+                    example_benchmark = list(data['benchmarks'].values())[0]
+                    print(f"      Example execution time: {example_benchmark['execution_time_avg']:.4e} s")
+                    print(f"      Example models: {len(example_benchmark['models'])} models")
+
+
+def plot_best_performance_across_threads(all_thread_data, output_dir="plots"):
+    """
+    Create plots showing the best (minimum) execution time across all thread counts.
+    For each memory footprint, shows which thread count achieved the best performance.
+    
+    Args:
+        all_thread_data: Dictionary with structure {thread_count: {function_name: {simplified_args: {...}}}}
+        output_dir: Directory to save plots
+    """
+    # Create output directory if it doesn't exist
+    os.makedirs(output_dir, exist_ok=True)
+    
+    # Get all unique functions across all thread counts
+    all_functions = set()
+    for thread_data in all_thread_data.values():
+        all_functions.update(thread_data.keys())
+    
+    # Define markers to use
+    markers = ['o', 's', '^', 'D', 'v', '<', '>', 'p', '*', 'h', 'H', '+', 'x']
+    
+    # Create a color palette
+    colors = plt.cm.tab10.colors
+    
+    # Process each function
+    for function_name in sorted(all_functions):
+        # Collect all argument variations across all threads for this function
+        all_args_variations = set()
+        for thread_count, thread_data in all_thread_data.items():
+            if function_name in thread_data:
+                all_args_variations.update(thread_data[function_name].keys())
+        
+        if not all_args_variations:
+            continue
+        
+        # Group function variations by argument type signature and operator
+        arg_categories = {}
+        
+        for args_key in all_args_variations:
+            # Get operator info from first available thread
+            operator_info = ""
+            for thread_count, thread_data in all_thread_data.items():
+                if function_name in thread_data and args_key in thread_data[function_name]:
+                    operator_info = thread_data[function_name][args_key].get('operator_info', '')
+                    break
+            
+            # Determine the argument pattern type for better categorization
+            arg_pattern = "default"
+            
+            # Check for Vector vs scalar arguments patterns
+            if "Vector" in args_key and "scalar" in args_key:
+                arg_pattern = "vector_scalar"
+            elif "Vector" in args_key and "Vector" in args_key[args_key.find("Vector")+6:]:
+                arg_pattern = "vector_vector"
+            elif "Vector" in args_key:
+                arg_pattern = "vector_only"
+            elif "scalar" in args_key:
+                arg_pattern = "scalar_only"
+            
+            # More specific matching for function types
+            if function_name == "foldr" or function_name == "foldl":
+                if "double" in args_key and "Vector" in args_key:
+                    arg_pattern = "scalar_vector"
+                elif "Vector" in args_key and "double" in args_key:
+                    arg_pattern = "vector_scalar"
+                elif "Vector" in args_key and "Vector" in args_key[args_key.find("Vector")+6:]:
+                    arg_pattern = "vector_vector"
+            
+            # Check if there's a Monoid vs specific operator
+            if "Monoid" in args_key:
+                if operator_info:
+                    arg_pattern += "_op_" + operator_info
+                else:
+                    arg_pattern += "_monoid"
+            elif operator_info:
+                arg_pattern += "_" + operator_info
+            
+            # Create a category key combining arg pattern and operator info
+            category_key = arg_pattern
+            
+            # Initialize this category if not seen before
+            if category_key not in arg_categories:
+                arg_categories[category_key] = []
+            
+            # Add this argument variation to the category
+            arg_categories[category_key].append(args_key)
+        
+        # Determine subplot grid dimensions
+        num_categories = len(arg_categories)
+        if num_categories == 0:
+            continue
+        
+        # Adjust figure size based on number of categories
+        if num_categories == 1:
+            fig = plt.figure(figsize=(10, 8))
+            grid_cols = 1
+            grid_rows = 1
+        else:
+            grid_cols = min(3, num_categories)
+            grid_rows = (num_categories + grid_cols - 1) // grid_cols
+            fig = plt.figure(figsize=(6*grid_cols, 5*grid_rows))
+        
+        # Process each category in a separate subplot
+        for idx, (category_key, args_keys) in enumerate(arg_categories.items()):
+            ax = fig.add_subplot(grid_rows, grid_cols, idx+1)
+            
+            # Add subplot title
+            subplot_title = f"{function_name}"
+            if category_key != "default":
+                display_category = category_key.replace("_", " ").replace("vector", "Vector")
+                display_category = display_category.replace("scalar", "Scalar").replace("monoid", "Monoid")
+                subplot_title += f" ({display_category})"
+            ax.set_title(subplot_title)
+            
+            # Keep track of lines for the legend
+            all_lines = []
+            all_labels = []
+            
+            # Process each argument variation in this category
+            for i, args_key in enumerate(args_keys):
+                # Aggregate data across all thread counts for this args_key
+                # Structure: {memory_footprint_bytes: {thread_count: execution_time}}
+                footprint_data = defaultdict(dict)
+                # Structure: {memory_footprint_bytes: {thread_count: cost_prediction}}
+                footprint_cost_data = defaultdict(dict)
+                
+                # Collect data from all thread counts
+                for thread_count, thread_data in all_thread_data.items():
+                    if function_name not in thread_data or args_key not in thread_data[function_name]:
+                        continue
+                    
+                    data = thread_data[function_name][args_key]
+                    
+                    for benchmark_id, benchmark_data in data['benchmarks'].items():
+                        memory_footprint_bytes = benchmark_data['memory_footprint_bytes']
+                        execution_time_avg = benchmark_data['execution_time_avg']
+                        
+                        # Skip functions with zero execution time
+                        if execution_time_avg <= 0 or memory_footprint_bytes <= 0:
+                            continue
+                        
+                        footprint_data[memory_footprint_bytes][thread_count] = execution_time_avg
+                        
+                        # Also collect cost predictions for all threads
+                        for model in benchmark_data['models']:
+                            model_name = model.get('model_name', '')
+                            if 'k-multi-bsp' in model_name.lower():
+                                cost = model.get('cost', None)
+                                if cost is not None and cost > 0:
+                                    footprint_cost_data[memory_footprint_bytes][thread_count] = cost
+                                break
+                
+                # Skip if no valid data points
+                if not footprint_data:
+                    continue
+                
+                # For each footprint, find the best (minimum) execution time and which thread achieved it
+                footprints = []
+                best_times = []
+                best_threads = []
+                predicted_costs = []
+                cost_model_name = None  # Track which model we're using
+                
+                for memory_footprint_bytes in sorted(footprint_data.keys()):
+                    thread_times = footprint_data[memory_footprint_bytes]
+                    
+                    # Find the thread with minimum execution time
+                    best_thread = min(thread_times.keys(), key=lambda t: thread_times[t])
+                    best_time = thread_times[best_thread]
+                    
+                    memory_kb = memory_footprint_bytes / 1024.0
+                    footprints.append(memory_kb)
+                    best_times.append(best_time)
+                    best_threads.append(best_thread)
+                    
+                    # Get predicted cost from k-multi-BSP model for this thread and footprint
+                    predicted_cost = None
+                    if function_name in all_thread_data[best_thread] and args_key in all_thread_data[best_thread][function_name]:
+                        data = all_thread_data[best_thread][function_name][args_key]
+                        for benchmark_id, benchmark_data in data['benchmarks'].items():
+                            if benchmark_data['memory_footprint_bytes'] == memory_footprint_bytes:
+                                # Find k-multi-BSP model (case-insensitive)
+                                for model in benchmark_data['models']:
+                                    model_name = model.get('model_name', '')
+                                    if 'k-multi-bsp' in model_name.lower():
+                                        predicted_cost = model.get('cost', None)
+                                        if cost_model_name is None:
+                                            cost_model_name = model_name  # Save the actual model name
+                                        break
+                                break
+                    
+                    predicted_costs.append(predicted_cost)
+                
+                # Skip if no valid data points
+                if not footprints:
+                    continue
+                
+                # Choose a color and marker for this function variation
+                color = colors[i % len(colors)]
+                marker = markers[i % len(markers)]
+                
+                # Get per_iter_count for display name
+                per_iter_count = None
+                for thread_count, thread_data in all_thread_data.items():
+                    if function_name in thread_data and args_key in thread_data[function_name]:
+                        per_iter_count = thread_data[function_name][args_key].get('per_iter_count')
+                        break
+                
+                # Create a simplified display name
+                display_name = "Best Performance"
+                if per_iter_count is not None and per_iter_count > 0:
+                    display_name += f" [{per_iter_count}/iter]"
+                
+                # Plot the best performance line
+                time_line, = ax.plot(footprints, best_times, '-', marker=marker, color=color, 
+                                    label=display_name, linewidth=2, markersize=8)
+                
+                # Add time line to legend
+                all_lines.append(time_line)
+                all_labels.append(display_name)
+                
+                # Plot predicted cost line (k-multi-BSP model) if available
+                valid_predicted_costs = [c for c in predicted_costs if c is not None and c > 0]
+                if valid_predicted_costs and cost_model_name:
+                    # Filter to only plot points where we have predictions
+                    pred_footprints = []
+                    pred_costs = []
+                    for fp, cost in zip(footprints, predicted_costs):
+                        if cost is not None and cost > 0:
+                            pred_footprints.append(fp)
+                            pred_costs.append(cost)
+                    
+                    if pred_footprints:
+                        cost_label = f"{cost_model_name} cost for Best"
+                        cost_line, = ax.plot(pred_footprints, pred_costs, '--', marker=marker, color=color,
+                                            label=cost_label, linewidth=2, markersize=6, alpha=0.7)
+                        all_lines.append(cost_line)
+                        all_labels.append(cost_label)
+                
+                # Plot the lowest cost prediction across ALL threads (red dotted line)
+                if footprint_cost_data:
+                    best_cost_footprints = []
+                    best_costs = []
+                    best_cost_threads = []
+                    best_cost_actual_times = []  # Actual execution times for the predicted-best threads
+                    
+                    for memory_footprint_bytes in sorted(footprint_cost_data.keys()):
+                        thread_costs = footprint_cost_data[memory_footprint_bytes]
+                        
+                        if not thread_costs:
+                            continue
+                        
+                        # Find the thread with minimum cost prediction
+                        best_cost_thread = min(thread_costs.keys(), key=lambda t: thread_costs[t])
+                        best_cost = thread_costs[best_cost_thread]
+                        
+                        # Get the actual execution time for this predicted-best thread
+                        actual_time = footprint_data[memory_footprint_bytes].get(best_cost_thread, None)
+                        
+                        memory_kb = memory_footprint_bytes / 1024.0
+                        best_cost_footprints.append(memory_kb)
+                        best_costs.append(best_cost)
+                        best_cost_threads.append(best_cost_thread)
+                        best_cost_actual_times.append(actual_time)
+                    
+                    if best_cost_footprints and cost_model_name:
+                        # Plot red dotted line (predicted costs)
+                        best_cost_label = f"{cost_model_name} Lowest cost"
+                        best_cost_line, = ax.plot(best_cost_footprints, best_costs, ':', marker=marker, color='red',
+                                                  label=best_cost_label, linewidth=2, markersize=6, alpha=0.8)
+                        all_lines.append(best_cost_line)
+                        all_labels.append(best_cost_label)
+                        
+                        # Plot red solid line (actual execution times for predicted-best threads)
+                        actual_time_footprints = []
+                        actual_times = []
+                        for fp, time in zip(best_cost_footprints, best_cost_actual_times):
+                            if time is not None and time > 0:
+                                actual_time_footprints.append(fp)
+                                actual_times.append(time)
+                        
+                        if actual_time_footprints:
+                            actual_time_label = f"Actual time for Lowest cost"
+                            actual_time_line, = ax.plot(actual_time_footprints, actual_times, '-', marker=marker, color='red',
+                                                        label=actual_time_label, linewidth=2, markersize=8, alpha=0.8)
+                            all_lines.append(actual_time_line)
+                            all_labels.append(actual_time_label)
+                        
+                        # Annotate each point with the thread count that achieved lowest cost
+                        for j, (fp, cost, thread) in enumerate(zip(best_cost_footprints, best_costs, best_cost_threads)):
+                            # Only annotate every few points if there are many to avoid clutter
+                            if len(best_cost_footprints) <= 10 or j % max(1, len(best_cost_footprints) // 10) == 0 or j == len(best_cost_footprints) - 1:
+                                ax.annotate(f't{thread}', 
+                                           (fp, cost),
+                                           xytext=(0, -8),  # Negative offset to place below the point
+                                           textcoords='offset points',
+                                           ha='center',
+                                           va='top',
+                                           fontsize=10,
+                                           color='red',
+                                           weight='bold')
+                
+                # Annotate each point with the thread count that achieved it
+                for j, (fp, time, thread) in enumerate(zip(footprints, best_times, best_threads)):
+                    # Only annotate every few points if there are many to avoid clutter
+                    if len(footprints) <= 10 or j % max(1, len(footprints) // 10) == 0 or j == len(footprints) - 1:
+                        ax.annotate(f't{thread}', 
+                                   (fp, time),
+                                   xytext=(0, 5),
+                                   textcoords='offset points',
+                                   ha='center',
+                                   va='bottom',
+                                   fontsize=10,
+                                   color=color,
+                                   weight='bold')
+            
+            # Add vertical lines for cache sizes
+            for cache_name, cache_size in CACHE_SIZES.items():
+                cache_kb = cache_size / 1024.0
+                ax.axvline(x=cache_kb, color='gray', linestyle='--', alpha=0.7)
+                
+                if cache_size < 1024 * 1024:
+                    label = f"{cache_name} ({cache_kb:.0f} KB)"
+                else:
+                    label = f"{cache_name} ({cache_kb/1024:.0f} MB)"
+                
+                ax.annotate(label, 
+                           (cache_kb, ax.get_ylim()[0] * 1.1),
+                           xytext=(0, 10),
+                           textcoords="offset points",
+                           ha='center',
+                           va='bottom',
+                           fontsize=8,
+                           rotation=90,
+                           color='black')
+            
+            # Configure axes
+            ax.set_xlabel('Memory Footprint (KB)')
+            ax.set_ylabel('Time / Cost (seconds)', color='black')
+            
+            # Set to log scale
+            ax.set_xscale('log', base=2)
+            ax.set_yscale('log')
+            
+            # Grid
+            ax.grid(True, which="both", ls="--", alpha=0.3)
+            
+            # Add legend for this subplot
+            if all_lines:
+                if num_categories == 1:
+                    ax.legend(all_lines, all_labels, loc='upper left', fontsize=9)
+                else:
+                    ax.legend(all_lines, all_labels, loc='upper left', fontsize=7)
+        
+        # Add a main title for the whole figure
+        plt.suptitle(f'{function_name} - Best Performance Across All Threads', fontsize=16)
+        
+        # Adjust layout
+        plt.tight_layout(rect=[0, 0, 1, 0.96])
+        
+        # Save figure with high resolution
+        plt.savefig(os.path.join(output_dir, f'{function_name}_best_across_threads.png'), dpi=150)
+        plt.close()
+        
+        print(f"  Generated plot: {function_name}_best_across_threads.png")
+
+
 def plot_cost_percentages(thread_data, output_dir="plots"):
     """
     Create a stacked bar chart showing what percentage of the total predicted cost
@@ -1140,41 +1731,80 @@ def main():
     parser = argparse.ArgumentParser(description='Plot performance data from analysis files.')
     parser.add_argument('--results-dir', default='results', 
                         help='Directory containing the analysis files (default: results)')
-    parser.add_argument('--threads', type=int, default=1,
-                        help='Only plot results for this thread count (default: all)')
+    parser.add_argument('--threads', default='1',
+                        help='Thread count to plot (default: 1). Use "all" to analyze all available thread counts.')
     parser.add_argument('--filegroup-name', required=True,
                         help='Name of the filegroup (e.g., banded_diag)')
     args = parser.parse_args()
     
     results_dir = args.results_dir
     filegroup_name = args.filegroup_name
-    threads = args.threads
+    threads_arg = args.threads
     
-    # Collect results for the specified filegroup and thread count
-    function_data = collect_all_results(results_dir, filegroup_name, threads)
-    
-    if not function_data:
-        print(f"No data found for filegroup '{filegroup_name}' with {threads} threads")
-        exit(1)
-    
-    function_count = len(function_data)
-    print(f"Found data for {function_count} distinct function variations")
-    
-    # Create output directory
-    plots_base_dir = os.path.join(
-        results_dir, f't{threads}', 'results', 'plots', f'{filegroup_name}')
-    os.makedirs(plots_base_dir, exist_ok=True)
-    print(f"Generating plots in: {plots_base_dir}")
-    
-    # Generate plots
-    plot_results(function_data, plots_base_dir)
-    print(f"Generating time percentage plots in: {plots_base_dir}")
-    plot_iteration_percentages({threads: function_data}, plots_base_dir)
-    print(f"Generating cost percentage plots in: {plots_base_dir}")
-    plot_cost_percentages({threads: function_data}, plots_base_dir)
-    print(f"Plotting complete for {threads} threads!")
-    
-    print("All plotting tasks completed!")
+    # Check if we should analyze all thread counts
+    if threads_arg.lower() == 'all':
+        print(f"Multi-Thread Analysis Mode")
+        print(f"Results directory: {results_dir}")
+        print(f"Filegroup: {filegroup_name}")
+        print(f"{'='*80}\n")
+        
+        # Collect results across all thread counts
+        all_thread_data = collect_all_results_multi_thread(results_dir, filegroup_name)
+        
+        if not all_thread_data:
+            print(f"\nNo data found for filegroup '{filegroup_name}'")
+            exit(1)
+        
+        # Print comprehensive summary
+        print_summary(all_thread_data)
+        
+        # Create output directory for multi-thread plots
+        plots_base_dir = os.path.join(results_dir, 'results', 'plots', f'{filegroup_name}_all_threads')
+        os.makedirs(plots_base_dir, exist_ok=True)
+        
+        print(f"\n{'='*80}")
+        print(f"Generating aggregated plots in: {plots_base_dir}")
+        print(f"{'='*80}\n")
+        
+        # Generate plots showing best performance across all threads
+        plot_best_performance_across_threads(all_thread_data, plots_base_dir)
+        
+        print(f"\n{'='*80}")
+        print("Analysis and plotting complete!")
+        print(f"{'='*80}")
+    else:
+        # Single thread mode (original behavior)
+        try:
+            threads = int(threads_arg)
+        except ValueError:
+            print(f"Error: --threads must be an integer or 'all', got: {threads_arg}")
+            exit(1)
+        
+        # Collect results for the specified filegroup and thread count
+        function_data = collect_all_results(results_dir, filegroup_name, threads)
+        
+        if not function_data:
+            print(f"No data found for filegroup '{filegroup_name}' with {threads} threads")
+            exit(1)
+        
+        function_count = len(function_data)
+        print(f"Found data for {function_count} distinct function variations")
+        
+        # Create output directory
+        plots_base_dir = os.path.join(
+            results_dir, f't{threads}', 'results', 'plots', f'{filegroup_name}')
+        os.makedirs(plots_base_dir, exist_ok=True)
+        print(f"Generating plots in: {plots_base_dir}")
+        
+        # Generate plots
+        plot_results(function_data, plots_base_dir)
+        print(f"Generating time percentage plots in: {plots_base_dir}")
+        plot_iteration_percentages({threads: function_data}, plots_base_dir)
+        print(f"Generating cost percentage plots in: {plots_base_dir}")
+        plot_cost_percentages({threads: function_data}, plots_base_dir)
+        print(f"Plotting complete for {threads} threads!")
+        
+        print("All plotting tasks completed!")
 
 if __name__ == "__main__":
     main()
