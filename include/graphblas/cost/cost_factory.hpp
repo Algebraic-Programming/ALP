@@ -9,7 +9,7 @@
 #include <graphblas/type_traits.hpp>
 #include <graphblas/ops.hpp>
 
-#include "hw_params_arm920_close_d_4_GS.hpp"
+#include "hw_params_arm920_spread_d_4_GS.hpp"
 
 #ifndef _GRB_ENABLE_TRACING
  #define _GRB_ENABLE_TRACING 1

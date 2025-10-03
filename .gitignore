@@ -10,3 +10,4 @@ paths.mk
 [Ii]nstall*/
 cmake-build-*/
 .vscode/settings.json
+nohup.out

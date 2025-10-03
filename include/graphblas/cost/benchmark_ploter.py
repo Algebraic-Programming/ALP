@@ -31,6 +31,25 @@ def extract_thread_count_from_path(filepath):
     print("Expected patterns: /t<number>/ or _threads-<number>_ or _threads_<number>_ or _<number>t_")
     exit(1)
 
+def parse_output_log_file(output_filepath):
+    """Parse an output.log file to extract milliseconds per iteration data."""
+    try:
+        with open(output_filepath, 'r') as f:
+            content = f.read()
+        
+        # Look for the "milliseconds per iteration" line
+        match = re.search(r'milliseconds per iteration:\s+([\d.]+)', content)
+        if match:
+            milliseconds_per_iter = float(match.group(1))
+            # Convert to seconds
+            return milliseconds_per_iter / 1000.0
+        else:
+            print(f"Warning: Could not find 'milliseconds per iteration' in {output_filepath}")
+            return None
+    except Exception as e:
+        print(f"Error reading output file {output_filepath}: {e}")
+        return None
+
 def parse_memory_footprint(footprint_str):
     """Parse memory footprint string (e.g. '15.0 KB') and convert to bytes."""
     if not footprint_str or footprint_str == "0 B":
@@ -243,7 +262,7 @@ def parse_analysis_file(filepath):
     return result
 
 
-def collect_all_results(results_dir, filegroup_name, threads):
+def collect_all_results(results_dir, filegroup_name, threads, clearun_dir=None):
     """Collect results from all analysis files in the directory for a specific filegroup and thread count."""
     # Construct the path: results_dir/t{threads}/results/analysis/{filegroup_name}*
     analysis_dir = os.path.join(
@@ -283,6 +302,17 @@ def collect_all_results(results_dir, filegroup_name, threads):
             print(f"Warning: No valid data found in {filepath}")
             continue
         
+        # Try to get actual execution time from output.log file if clearun_dir is provided
+        actual_execution_time = None
+        if clearun_dir:
+            output_filepath = os.path.join(clearun_dir, f't{threads}', 'outputs', filegroup_name, f'{benchmark_id}_output.log')
+            if os.path.exists(output_filepath):
+                actual_execution_time = parse_output_log_file(output_filepath)
+                if actual_execution_time is not None:
+                    print(f"  Found actual execution time: {actual_execution_time:.6f}s for {benchmark_id}")
+            else:
+                print(f"  Warning: Output file not found: {output_filepath}")
+        
         for function_name, args_data in file_results.items():
             # Initialize function in data structure if needed
             if function_name not in grouped_data:
@@ -314,6 +344,7 @@ def collect_all_results(results_dir, filegroup_name, threads):
                     'execution_time_min': metrics['execution_time_min'],
                     'execution_time_max': metrics['execution_time_max'],
                     'execution_time_stddev': metrics['execution_time_stddev'],
+                    'actual_execution_time': actual_execution_time,  # Add actual execution time if available
                     'models': []
                 }
                 
@@ -567,6 +598,22 @@ def plot_results(function_data, output_dir="plots"):
                     # Add cost line to legend
                     all_lines.append(cost_line)
                     all_labels.append(f"Cost Model: {model_display}")
+                
+                # For Solver_iteration, add actual execution time as a green line if available
+                if function_name == 'Solver_iteration':
+                    actual_times = []
+                    actual_footprints = []
+                    
+                    for benchmark_id, benchmark_data in sorted_benchmarks:
+                        if benchmark_data.get('actual_execution_time') is not None:
+                            actual_times.append(benchmark_data['actual_execution_time'])
+                            actual_footprints.append(benchmark_data['memory_footprint_bytes'] / 1024.0)  # Convert to KB
+                    
+                    if actual_times:
+                        actual_line, = ax.plot(actual_footprints, actual_times, '-', marker='o', color='green', 
+                                             linewidth=2, markersize=6, label="Avg Isolated Execution Time [1/iter]")
+                        all_lines.append(actual_line)
+                        all_labels.append("Avg Isolated Execution Time [1/iter]")
             
             # Add vertical lines for cache sizes
             for cache_name, cache_size in CACHE_SIZES.items():
@@ -878,7 +925,7 @@ def find_all_thread_directories(results_dir):
     return sorted(thread_counts)
 
 
-def collect_all_results_multi_thread(results_dir, filegroup_name):
+def collect_all_results_multi_thread(results_dir, filegroup_name, clearun_dir=None):
     """
     Collect results from all analysis files across ALL thread counts for a specific filegroup.
     
@@ -900,6 +947,7 @@ def collect_all_results_multi_thread(results_dir, filegroup_name):
                                 'execution_time_min': float,
                                 'execution_time_max': float,
                                 'execution_time_stddev': float,
+                                'actual_execution_time': float,  # Added for actual execution time
                                 'models': [...]
                             }
                         }
@@ -961,6 +1009,17 @@ def collect_all_results_multi_thread(results_dir, filegroup_name):
                 print(f"    Warning: No valid data found")
                 continue
             
+            # Try to get actual execution time from output.log file if clearun_dir is provided
+            actual_execution_time = None
+            if clearun_dir:
+                output_filepath = os.path.join(clearun_dir, f't{threads}', 'outputs', filegroup_name, f'{benchmark_id}_output.log')
+                if os.path.exists(output_filepath):
+                    actual_execution_time = parse_output_log_file(output_filepath)
+                    if actual_execution_time is not None:
+                        print(f"    Found actual execution time: {actual_execution_time:.6f}s for {benchmark_id}")
+                else:
+                    print(f"    Warning: Output file not found: {output_filepath}")
+            
             for function_name, args_data in file_results.items():
                 # Initialize function in data structure if needed
                 if function_name not in grouped_data:
@@ -992,6 +1051,7 @@ def collect_all_results_multi_thread(results_dir, filegroup_name):
                         'execution_time_min': metrics['execution_time_min'],
                         'execution_time_max': metrics['execution_time_max'],
                         'execution_time_stddev': metrics['execution_time_stddev'],
+                        'actual_execution_time': actual_execution_time,  # Add actual execution time if available
                         'models': []
                     }
                     
@@ -1324,6 +1384,49 @@ def plot_best_performance_across_threads(all_thread_data, output_dir="plots"):
                                             label=cost_label, linewidth=2, markersize=6, alpha=0.7)
                         all_lines.append(cost_line)
                         all_labels.append(cost_label)
+                
+                # For Solver_iteration, add actual execution time as a green line if available
+                # Only show actual execution times for the best-performing threads (same as blue line)
+                if function_name == 'Solver_iteration':
+                    actual_times = []
+                    actual_footprints = []
+                    actual_threads = []
+                    
+                    # Use the same footprints and best_threads that were determined for the blue line
+                    for j, (fp, best_thread) in enumerate(zip(footprints, best_threads)):
+                        # Get actual execution time for this best-performing thread and footprint
+                        if best_thread in all_thread_data and function_name in all_thread_data[best_thread]:
+                            function_data = all_thread_data[best_thread][function_name]
+                            if args_key in function_data:
+                                args_data = function_data[args_key]
+                                if 'benchmarks' in args_data:
+                                    for benchmark_id, benchmark_data in args_data['benchmarks'].items():
+                                        if (benchmark_data['memory_footprint_bytes'] / 1024.0 == fp and 
+                                            benchmark_data.get('actual_execution_time') is not None):
+                                            actual_times.append(benchmark_data['actual_execution_time'])
+                                            actual_footprints.append(fp)
+                                            actual_threads.append(best_thread)
+                                            break
+                    
+                    if actual_times:
+                        actual_line, = ax.plot(actual_footprints, actual_times, '-', marker='o', color='green', 
+                                             linewidth=2, markersize=6, label="Avg Isolated Execution Time [1/iter]")
+                        all_lines.append(actual_line)
+                        all_labels.append("Avg Isolated Execution Time [1/iter]")
+                        
+                        # Add thread annotations for the actual execution time points (similar to blue line)
+                        for j, (fp, time, thread) in enumerate(zip(actual_footprints, actual_times, actual_threads)):
+                            # Only annotate every few points if there are many to avoid clutter
+                            if len(actual_footprints) <= 10 or j % max(1, len(actual_footprints) // 10) == 0 or j == len(actual_footprints) - 1:
+                                ax.annotate(f't{thread}', 
+                                           (fp, time),
+                                           xytext=(0, -8),  # Negative offset to place below the point
+                                           textcoords='offset points',
+                                           ha='center',
+                                           va='top',
+                                           fontsize=10,
+                                           color='green',
+                                           weight='bold')
                 
                 # Plot the lowest cost prediction across ALL threads (red dotted line)
                 if footprint_cost_data:
@@ -1735,11 +1838,14 @@ def main():
                         help='Thread count to plot (default: 1). Use "all" to analyze all available thread counts.')
     parser.add_argument('--filegroup-name', required=True,
                         help='Name of the filegroup (e.g., banded_diag)')
+    parser.add_argument('--clearun-dir', default=None,
+                        help='Directory containing output.log files for actual execution time measurements (optional)')
     args = parser.parse_args()
     
     results_dir = args.results_dir
     filegroup_name = args.filegroup_name
     threads_arg = args.threads
+    clearun_dir = args.clearun_dir
     
     # Check if we should analyze all thread counts
     if threads_arg.lower() == 'all':
@@ -1749,7 +1855,7 @@ def main():
         print(f"{'='*80}\n")
         
         # Collect results across all thread counts
-        all_thread_data = collect_all_results_multi_thread(results_dir, filegroup_name)
+        all_thread_data = collect_all_results_multi_thread(results_dir, filegroup_name, clearun_dir)
         
         if not all_thread_data:
             print(f"\nNo data found for filegroup '{filegroup_name}'")
@@ -1781,7 +1887,7 @@ def main():
             exit(1)
         
         # Collect results for the specified filegroup and thread count
-        function_data = collect_all_results(results_dir, filegroup_name, threads)
+        function_data = collect_all_results(results_dir, filegroup_name, threads, clearun_dir)
         
         if not function_data:
             print(f"No data found for filegroup '{filegroup_name}' with {threads} threads")

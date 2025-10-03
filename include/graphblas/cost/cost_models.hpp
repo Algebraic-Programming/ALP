@@ -1030,7 +1030,7 @@ namespace HW_model
             ss_omp_barrier->lvl = 42;
             ss_omp_barrier->ks = 1;
             ss_omp_barrier->hi_rep = 0;
-            ss_omp_barrier->hi = {0}; // This should technically be zero, but zero currently results in no latency as well
+            ss_omp_barrier->hi = {0};
             spmv_coo->ss_v.push_back(ss_omp_barrier);
             Superstep_p ss_coo = new Superstep();
             ss_coo->nv = nz;
