@@ -338,8 +338,8 @@ static int update_spmv_dot(
 	// compiled in debug mode:
 	for( size_t i = 0; i < n; ++i ) {
 		assert( ia[ i + 1 ] >= ia[ i ] );
-		for( size_t k = ia[ i ]; k < ia[ i + 1 ]; ++k ) {
-			assert( ij[ k ] < n );
+		for( OffsetT k = ia[ i ]; k < ia[ i + 1 ]; ++k ) {
+			assert( ij[ k ] <  static_cast<OffsetT>( n ) );
 		}
 	}
 #endif

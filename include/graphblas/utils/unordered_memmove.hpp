@@ -303,11 +303,11 @@ namespace grb {
 						size_t lStartBatch = std::lower_bound(
 								src_offsets, src_offsets + endBatch + 1, lStart
 							) - src_offsets;
-						assert( src_offsets[ endBatch ] >= lStart );
+						assert( static_cast< size_t >( src_offsets[ endBatch ] ) >= lStart );
 						if( src_offsets[ lStartBatch ] > static_cast< IND >(lStart) ) {
 							assert( lStartBatch > 0 );
 							(void) --lStartBatch;
-							assert( src_offsets[ lStartBatch ] < lStart );
+							assert( static_cast< size_t >( src_offsets[ lStartBatch ] ) < lStart );
 						}
 						assert( lStartBatch >= startBatch );
 						assert( lStartBatch <= endBatch );
@@ -337,8 +337,8 @@ namespace grb {
 
 						// process complete batches
 						for( ; lCurBatch < lEndBatch - 1; ++lCurBatch ) {
-							assert( lStart <= src_offsets[ lCurBatch ] );
-							assert( lEnd >= src_offsets[ lCurBatch + 1 ] );
+							assert( lStart <= static_cast< size_t >( src_offsets[ lCurBatch ] ) );
+							assert( lEnd >= static_cast< size_t >( src_offsets[ lCurBatch + 1 ] ) );
 							const size_t nElems =
 								(src_offsets[ lCurBatch + 1 ] - src_offsets[ lCurBatch ]);
 							(void) std::memcpy(
@@ -350,8 +350,8 @@ namespace grb {
 						}
 
 						// process last batch, which may be incomplete
-						assert( lEnd > src_offsets[ lEndBatch - 1 ] );
-						assert( lEnd <= src_offsets[ lEndBatch ] );
+						assert( lEnd > static_cast< size_t >( src_offsets[ lEndBatch - 1 ] ) );
+						assert( lEnd <= static_cast< size_t >( src_offsets[ lEndBatch ] ) );
 						(void) std::memcpy(
 							source + dst_offsets[ lEndBatch - 1 ],
 							buffer + bOffset,
