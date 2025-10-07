@@ -122,6 +122,37 @@ void grb_program1( const struct input &in, struct output &out ) {
 		return;
 	}
 
+
+	/**
+	 * Test for copy assignement id
+	 *
+	 * Creating and performing copy assignment on multiple new objects and check
+	 * for collisions.
+	 */
+	for( int i = 0; i < 100; i++ ) {
+		grb::Vector< int > new_one( 10 );
+		grb::Vector< int > new_two( 10 );
+		if( grb::getID( new_one ) == grb::getID( new_two ) ) {
+			std::cerr << "\t two calls to getID on two new containers return same ID\n";
+			rc = grb::FAILED;
+			return;
+		}
+		const size_t old_one_id = grb::getID( new_one );
+		const size_t old_two_id = grb::getID( new_two );
+		new_two = new_one;
+
+		if( grb::getID( new_two ) == old_one_id ) {
+			std::cerr << "\t detected duplicated ID transferred with copy-assignment\n";
+			rc = grb::FAILED;
+			return;
+		}
+		if( (grb::getID( new_two ) != old_two_id)
+         || (grb::getID( new_one ) == grb::getID( new_two ) ) ) {
+			std::cerr << "\t detected new ID was different from original after assignment\n";
+			rc = grb::FAILED;
+			return;
+		}
+	}
 }
 
 // test grb::getID on matrices
