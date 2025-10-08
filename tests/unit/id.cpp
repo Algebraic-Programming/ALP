@@ -124,7 +124,7 @@ void grb_program1( const struct input &in, struct output &out ) {
 
 
 	/**
-	 * Test for copy assignement id
+	 * Test for copy assignment id
 	 *
 	 * Creating and performing copy assignment on multiple new objects and check
 	 * for collisions.
@@ -146,18 +146,27 @@ void grb_program1( const struct input &in, struct output &out ) {
 			rc = grb::FAILED;
 			return;
 		}
-		if( (grb::getID( new_two ) != old_two_id)
-         || (grb::getID( new_one ) == grb::getID( new_two ) ) ) {
+		if( grb::getID( new_one ) != old_one_id ) {
+			std::cerr << "\t detected ID change in source object after copty\n";
+			rc = grb::FAILED;
+			return;
+		}
+		if( grb::getID( new_two ) != old_two_id) {
 			std::cerr << "\t detected new ID was different from original after assignment\n";
+			rc = grb::FAILED;
+			return;
+		}
+        if( grb::getID( new_one ) == grb::getID( new_two ) ) {
+			std::cerr << "\t detected duplicated ID after copy-assignment\n";
 			rc = grb::FAILED;
 			return;
 		}
 	}
 
 	/**
-	 * Test for move assignement id
+	 * Test for move assignment id
 	 *
-	 * Creating and performing copy assignment on multiple new objects and check
+	 * Creating and performing move assignment on multiple new objects and check
 	 * for collisions.
 	 */
 	for( int i = 0; i < 100; i++ ) {
@@ -172,14 +181,14 @@ void grb_program1( const struct input &in, struct output &out ) {
 		const size_t old_two_id = grb::getID( new_two );
 		new_two = std::move( new_one );
 
-		if( grb::getID( new_two ) == old_one_id ) {
-			std::cerr << "\t detected duplicated ID transferred with copy-assignment\n";
+		if( grb::getID( new_two ) == old_two_id ) {
+			std::cerr << "\t detected old ID was retained after a call to std::move\n";
 			rc = grb::FAILED;
 			return;
 		}
-		if( (grb::getID( new_two ) != old_two_id)
-         || (grb::getID( new_one ) == grb::getID( new_two ) ) ) {
-			std::cerr << "\t detected new ID was different from original after assignment\n";
+		if( grb::getID( new_two ) != old_one_id ) {
+			std::cerr << "\t detected a new ID after std::move, expected the moved-from "
+				<< "ID to have been retained\n";
 			rc = grb::FAILED;
 			return;
 		}
@@ -278,7 +287,7 @@ void grb_program2( const struct input &in, struct output &out ) {
 	}
 
 	/**
-	 * Test for move assignement id cleanup.
+	 * Test for move assignment id cleanup.
 	 *
 	 * Creating and performing move assignment on multiple new objects and check
 	 * for collisions.
