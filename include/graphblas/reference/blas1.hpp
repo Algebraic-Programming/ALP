@@ -3735,14 +3735,10 @@ namespace grb {
 							}
 						}
 						for( size_t k = 0; k < block_size; ++k ) {
-							if( mask_b[ k ] ) {
-								apply( z_b[ k ], x_b[ k ], y_b[ k ], op );
-							}
-						}
-						for( size_t k = 0; k < block_size; ++k ) {
 							const size_t index = i + k;
 							assert( index < n );
 							if( mask_b[ k ] ) {
+								apply( z_b[ k ], x_b[ k ], y_b[ k ], op );
 #ifdef _H_GRB_REFERENCE_OMP_BLAS1
 								if( !z_coors.asyncAssign( index, update ) ) {
 									(void) ++asyncAssigns;
