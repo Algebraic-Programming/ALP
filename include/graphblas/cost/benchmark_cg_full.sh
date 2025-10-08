@@ -1,5 +1,6 @@
 #!/bin/bash
 
+# Usage: ./benchmark_cg_controller.sh
 # Set these flags to control which matrices to use
 RUN_REAL=1
 RUN_SYNTHETIC=1
@@ -72,23 +73,19 @@ calculate_spread_cpu_affinity() {
     echo "${cpu_affinity[*]}"
 }
 
-MODEL_NAME="nomodel_close"
-ALLOC_POLICY="close"
-
 MATRIX_DIR="/scratch/panastasiadis/matrices"
 SYNTH_DIR="$MATRIX_DIR/synthetic"
 MM_DIR="$MATRIX_DIR/MM_suite"
-MODEL_NAME="nomodel_close"
+MODEL_NAME="d_4_GS_close"
 ALLOC_POLICY="close"
 DATADIR="/scratch/panastasiadis/${MODEL_NAME}"
 ALPDIR="/home/panastasiadis/ALP"
 BUILD_DIR="${ALPDIR}/build_nocost"
 THREAD_COUNTS=(96 64 48 32 24 16 12 8 4 2 1)
 
-mkdir -p $SYNTH_DIR
-mkdir -p $MM_DIR
-mkdir -p $DATADIR
-mkdir -p $ALPDIR/build/$MODEL_NAME
+mkdir -p "$SYNTH_DIR"
+mkdir -p "$MM_DIR"
+mkdir -p "$DATADIR"
 
 if [ "$RUN_REAL" -eq 1 ]; then
     bash ${ALPDIR}/include/graphblas/cost/download_MM.sh "$MM_DIR"
