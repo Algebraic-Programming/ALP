@@ -44,7 +44,7 @@
 #include <graphblas/bsp/internal-collectives.hpp>
 #include <graphblas/bsp/collectives_blas1_vec.hpp>
 
-#include <graphblas/utils/alloc.hpp>
+#include <graphblas/alloc.hpp>
 #include <graphblas/utils/autodeleter.hpp>
 
 #include "init.hpp"

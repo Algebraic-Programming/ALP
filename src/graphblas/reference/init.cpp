@@ -22,7 +22,7 @@
 
 #include <graphblas/reference/init.hpp>
 
-#include <graphblas/utils/alloc.hpp>
+#include <graphblas/alloc.hpp>
 
 #ifndef _GRB_NO_LIBNUMA
  #include <numa.h> //numa_set_localalloc
