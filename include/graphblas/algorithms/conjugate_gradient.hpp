@@ -365,7 +365,7 @@ namespace grb {
 			}
 
 			// r = b - temp;
-			ret = ret ? ret : grb::set< descr >( temp, 0 );
+			ret = ret ? ret : grb::set< descr >( temp, zero );
 			assert( ret == grb::SUCCESS );
 			ret = ret ? ret : grb::mxv< descr_dense >( temp, A, x, ring );
 			assert( ret == grb::SUCCESS );
@@ -415,7 +415,7 @@ namespace grb {
 
 			// z = M^-1r
 			if( preconditioned ) {
-				ret = ret ? ret : grb::set< descr >( z, 0 );
+				ret = ret ? ret : grb::set< descr >( z, zero );
 				// henceforth, also z is structurally dense and we can force a dense
 				// descriptor for it
 				if( preconditioned == 2 ) {
@@ -457,7 +457,7 @@ namespace grb {
 				(void) ++iter;
 
 				// temp = A * u;
-				ret = ret ? ret : grb::set< descr_dense >( temp, 0 );
+				ret = ret ? ret : grb::set< descr_dense >( temp, zero );
 				assert( ret == grb::SUCCESS );
 				ret = ret ? ret : grb::mxv< descr_dense >( temp, A, u, ring );
 				assert( ret == grb::SUCCESS );

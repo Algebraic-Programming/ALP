@@ -375,7 +375,7 @@ struct CostPredictor {
 
     static double predict( const Args &... args ) {
         int unused[] = { 0, (void( args ), 0 )... };
-        (void) unused;
+        // (void) unused;
 
         std::string funcName = getCostPredictorName< Func >();
         std::string argTypes = getArgTypeNames();
@@ -463,6 +463,12 @@ struct EWiseAddFunc {
     template< typename... Args >
     grb::RC operator()( Args&&... args ) const {
         return ::grb::eWiseAdd( std::forward< Args >( args )... );
+    }
+};
+struct EWiseMulFunc {
+    template< typename... Args >
+    grb::RC operator()( Args&&... args ) const {
+        return ::grb::eWiseMul( std::forward< Args >( args )... );
     }
 };
 struct VxmFunc {
@@ -591,7 +597,7 @@ struct CostPredictor< MxvFunc, grb::Vector< T1 >, grb::Matrix< T2, Backend, RowI
         const grb::Matrix< T2, Backend, RowIndexType, ColIndexType, NonzeroIndexType > & A, 
         const grb::Vector< T3 > & x, 
         const SRingType & ring ) {
-        (void)ring;
+        // (void)ring;
 
         try {
             size_t nnz = grb::nnz( A ), m = grb::size( y ), n = grb::size( x );
@@ -632,8 +638,8 @@ struct CostPredictor< MxvFunc, grb::Vector< T1 >, grb::Matrix< T2, Backend, RowI
 template< typename T1, typename T2 >
 struct CostPredictor< SetFunc, grb::Vector< T1 >, grb::Vector< T2 > > {
     static double predict( grb::Vector< T1 > & x, grb::Vector< T2 > & y ){
-        (void)x; 
-        (void)y;
+        // (void)x; 
+        // (void)y;
         try {
             size_t n = grb::size( x );
             size_t num_threads = grb::config::OMP::threads();
@@ -662,25 +668,25 @@ struct CostPredictor< SetFunc, grb::Vector< T1 >, grb::Vector< T2 > > {
     }
 };
 
-template< typename T1 >
-struct CostPredictor< SetFunc, grb::Vector< T1 >, T1 > { 
-    static double predict( grb::Vector< T1 > & x, T1 & y ){
+template< typename T1, typename T2 >
+struct CostPredictor< SetFunc, grb::Vector< T1 >, T2 > { 
+    static double predict( grb::Vector< T1 > & x, const T2 y ){
         try {
             size_t n = grb::size( x );
             size_t num_threads = grb::config::OMP::threads();
 			cost_models::HW_model::HWParameters hw_model = cost_models::HW_model::select_hw_model_auto( num_threads, dis_system_params );
 
             // k-Multi-BSP model
-            cost_models::k_multi_bsp::AlgoParameters_p k_bsp_model = cost_models::k_multi_bsp::get_params_set( n, 0, sizeof( T1 ), sizeof( T1 ), 0 );
+            cost_models::k_multi_bsp::AlgoParameters_p k_bsp_model = cost_models::k_multi_bsp::get_params_set( n, 0, sizeof( T1 ), sizeof( T2 ), 0 );
             //double sum_cost = cost_models::k_multi_bsp::predict_cost( &hw_model, k_bsp_model, num_threads, "sum" );
             double max_cost = cost_models::k_multi_bsp::predict_cost( &hw_model, k_bsp_model, num_threads, "max" );
             
             // Hierarchical Roofline model
-            cost_models::hier_roofline::AlgoParameters_p hr_model = cost_models::hier_roofline::get_params_set( n, 0, sizeof( T1 ), sizeof( T1 ), 0 );
+            cost_models::hier_roofline::AlgoParameters_p hr_model = cost_models::hier_roofline::get_params_set( n, 0, sizeof( T1 ), sizeof( T2 ), 0 );
             double hr_cost = cost_models::hier_roofline::predict_cost( &hw_model, hr_model, num_threads );
             
             // Hierarchical Latency-Aware Roofline model
-            cost_models::hier_lat_roofline::AlgoParameters_p hlr_model = cost_models::hier_lat_roofline::get_params_set( n, 0, sizeof( T1 ), sizeof( T1 ), 0 );
+            cost_models::hier_lat_roofline::AlgoParameters_p hlr_model = cost_models::hier_lat_roofline::get_params_set( n, 0, sizeof( T1 ), sizeof( T2 ), 0 );
             double hlr_cost = cost_models::hier_lat_roofline::predict_cost( &hw_model, hlr_model, num_threads );
             
             
@@ -692,7 +698,6 @@ struct CostPredictor< SetFunc, grb::Vector< T1 >, T1 > {
         }
     }
 };
-
 /*=====================================================================*/
 /*--------------------------------clear--------------------------------*/
 
@@ -701,10 +706,10 @@ struct CostPredictor< SetFunc, grb::Vector< T1 >, T1 > {
 template< typename T1, typename T2, typename T3, typename Op >
 struct CostPredictor< ApplyFunc, T1, T2, T3, Op > {
     static double predict( T1 & x, T2 y, T3 z, const Op &op ){
-        (void)x; 
-        (void)y; 
-        (void)z; 
-        (void)op;
+        // (void)x; 
+        // (void)y; 
+        // (void)z; 
+        // (void)op;
         try {
             size_t num_threads = grb::config::OMP::threads();
 			cost_models::HW_model::HWParameters hw_model = cost_models::HW_model::select_hw_model_auto( num_threads, dis_system_params );
@@ -732,6 +737,159 @@ struct CostPredictor< ApplyFunc, T1, T2, T3, Op > {
     }
 };
 
+/*=====================================================================*/
+/*------------------------------eWiseMul-----------------------------*/
+// Specialization for eWiseMul with three vectors
+template< typename T1, typename T2, typename T3, typename Op >
+struct CostPredictor< EWiseMulFunc, grb::Vector< T1 >, grb::Vector< T2 > , grb::Vector< T3 >, Op > {
+    static double predict( 
+        const grb::Vector< T1 > & z, 
+        const grb::Vector< T2 > & x, 
+        const grb::Vector< T3 > & y, 
+        const Op & ) {
+        try {
+            size_t n = grb::size( z );
+            size_t num_threads = grb::config::OMP::threads();
+			cost_models::HW_model::HWParameters hw_model = cost_models::HW_model::select_hw_model_auto( num_threads, dis_system_params );
+            
+            // k-Multi-BSP model
+            cost_models::k_multi_bsp::AlgoParameters_p k_bsp_model = cost_models::k_multi_bsp::get_params_eWiseMul( n, 
+                sizeof( T1 ), sizeof( T2 ), sizeof( T3 ), 1, 1 );
+            //double sum_cost = cost_models::k_multi_bsp::predict_cost( &hw_model, k_bsp_model, num_threads, "sum" );
+            double max_cost = cost_models::k_multi_bsp::predict_cost( &hw_model, k_bsp_model, num_threads, "max" );
+            
+            // Hierarchical Roofline model
+            cost_models::hier_roofline::AlgoParameters_p hr_model = cost_models::hier_roofline::get_params_eWiseMul( n, 
+                sizeof( T1 ), sizeof( T2 ), sizeof( T3 ), 1, 1 );
+            double hr_cost = cost_models::hier_roofline::predict_cost( &hw_model, hr_model, num_threads );
+            
+            // Hierarchical Latency-Aware Roofline model
+            cost_models::hier_lat_roofline::AlgoParameters_p hlr_model = cost_models::hier_lat_roofline::get_params_eWiseMul( n, 
+                sizeof( T1 ), sizeof( T2 ), sizeof( T3 ), 1, 1 );
+            double hlr_cost = cost_models::hier_lat_roofline::predict_cost( &hw_model, hlr_model, num_threads );
+            
+            return max_cost;
+        } catch(const std::exception& e) {
+            throw std::runtime_error("Error in CostPredictor<EWiseMulFunc, Vector, Vector, Vector>: " + std::string(e.what()));
+        } catch(...) {
+            throw std::runtime_error("Unknown error in CostPredictor<EWiseMulFunc> with three Vectors");
+        }
+    }
+};
+
+// Specialization for eWiseMul with vector-scalar-vector
+template< typename T1, typename T2, typename T3, typename Op >
+struct CostPredictor< EWiseMulFunc, grb::Vector< T1 >, T2 , grb::Vector< T3 >, Op > {
+    static double predict( 
+        const grb::Vector< T1 > & z, 
+        T2  x, 
+        const grb::Vector< T3 > & y, 
+        const Op & ) {
+        try {
+            size_t n = grb::size( z );
+            size_t num_threads = grb::config::OMP::threads();
+			cost_models::HW_model::HWParameters hw_model = cost_models::HW_model::select_hw_model_auto( num_threads, dis_system_params );
+            
+            // k-Multi-BSP model
+            cost_models::k_multi_bsp::AlgoParameters_p k_bsp_model = cost_models::k_multi_bsp::get_params_eWiseMul( n, 
+                sizeof( T1 ), sizeof( T2 ), sizeof( T3 ), 0, 1 );
+            //double sum_cost = cost_models::k_multi_bsp::predict_cost( &hw_model, k_bsp_model, num_threads, "sum" );
+            double max_cost = cost_models::k_multi_bsp::predict_cost( &hw_model, k_bsp_model, num_threads, "max" );
+            
+            // Hierarchical Roofline model
+            cost_models::hier_roofline::AlgoParameters_p hr_model = cost_models::hier_roofline::get_params_eWiseMul( n, 
+                sizeof( T1 ), sizeof( T2 ), sizeof( T3 ), 0, 1 );
+            double hr_cost = cost_models::hier_roofline::predict_cost( &hw_model, hr_model, num_threads );
+            
+            // Hierarchical Latency-Aware Roofline model
+            cost_models::hier_lat_roofline::AlgoParameters_p hlr_model = cost_models::hier_lat_roofline::get_params_eWiseMul( n, 
+                sizeof( T1 ), sizeof( T2 ), sizeof( T3 ), 0, 1 );
+            double hlr_cost = cost_models::hier_lat_roofline::predict_cost( &hw_model, hlr_model, num_threads );
+            
+            return max_cost;
+        } catch(const std::exception& e) {
+            throw std::runtime_error("Error in CostPredictor<EWiseMulFunc, Vector, scalar, Vector>: " + std::string(e.what()));
+        } catch(...) {
+            throw std::runtime_error("Unknown error in CostPredictor<EWiseMulFunc> with Vector, scalar, Vector");
+        }
+    }
+};
+
+// Specialization for eWiseMul with vector-vector-scalar
+template< typename T1, typename T2, typename T3, typename Op >
+struct CostPredictor< EWiseMulFunc, grb::Vector< T1 >, grb::Vector< T2 >, T3, Op > {
+    static double predict( 
+        const grb::Vector< T1 > & z, 
+        const grb::Vector< T2 > & x, 
+        T3 beta, 
+        const Op & ) {
+        try {
+            size_t n = grb::size( z );
+            size_t num_threads = grb::config::OMP::threads();
+			cost_models::HW_model::HWParameters hw_model = cost_models::HW_model::select_hw_model_auto( num_threads, dis_system_params );
+            
+            // k-Multi-BSP model
+            cost_models::k_multi_bsp::AlgoParameters_p k_bsp_model = cost_models::k_multi_bsp::get_params_eWiseMul( n, 
+                sizeof( T1 ), sizeof( T2 ), sizeof( T3 ), 1, 0 );
+            //double sum_cost = cost_models::k_multi_bsp::predict_cost( &hw_model, k_bsp_model, num_threads, "sum" );
+            double max_cost = cost_models::k_multi_bsp::predict_cost( &hw_model, k_bsp_model, num_threads, "max" );
+            
+            // Hierarchical Roofline model
+            cost_models::hier_roofline::AlgoParameters_p hr_model = cost_models::hier_roofline::get_params_eWiseMul( n, 
+                sizeof( T1 ), sizeof( T2 ), sizeof( T3 ), 1, 0 );
+            double hr_cost = cost_models::hier_roofline::predict_cost( &hw_model, hr_model, num_threads );
+            
+            // Hierarchical Latency-Aware Roofline model
+            cost_models::hier_lat_roofline::AlgoParameters_p hlr_model = cost_models::hier_lat_roofline::get_params_eWiseMul( n, 
+                sizeof( T1 ), sizeof( T2 ), sizeof( T3 ), 1, 0 );
+            double hlr_cost = cost_models::hier_lat_roofline::predict_cost( &hw_model, hlr_model, num_threads );
+            
+            return max_cost;
+        } catch(const std::exception& e) {
+            throw std::runtime_error("Error in CostPredictor<EWiseMulFunc, Vector, Vector, scalar>: " + std::string(e.what()));
+        } catch(...) {
+            throw std::runtime_error("Unknown error in CostPredictor<EWiseMulFunc> with Vector, Vector, scalar");
+        }
+    }
+};
+
+// Specialization for eWiseMul with vector-scalar-scalar
+template< typename T1, typename T2, typename T3, typename Op >
+struct CostPredictor< EWiseMulFunc, grb::Vector< T1 >, T2, T3, Op > {
+    static double predict( 
+        const grb::Vector< T1 > & z, 
+        T2 alpha, 
+        T3 beta, 
+        const Op & ) {
+        try {
+            size_t n = grb::size( z );
+            size_t num_threads = grb::config::OMP::threads();
+			cost_models::HW_model::HWParameters hw_model = cost_models::HW_model::select_hw_model_auto( num_threads, dis_system_params );
+            
+            // k-Multi-BSP model
+            cost_models::k_multi_bsp::AlgoParameters_p k_bsp_model = cost_models::k_multi_bsp::get_params_eWiseMul( n, 
+                sizeof( T1 ), sizeof( T2 ), sizeof( T3 ), 0, 0 );
+            //double sum_cost = cost_models::k_multi_bsp::predict_cost( &hw_model, k_bsp_model, num_threads, "sum" );
+            double max_cost = cost_models::k_multi_bsp::predict_cost( &hw_model, k_bsp_model, num_threads, "max" );
+            
+            // Hierarchical Roofline model
+            cost_models::hier_roofline::AlgoParameters_p hr_model = cost_models::hier_roofline::get_params_eWiseMul( n, 
+                sizeof( T1 ), sizeof( T2 ), sizeof( T3 ), 0, 0 );
+            double hr_cost = cost_models::hier_roofline::predict_cost( &hw_model, hr_model, num_threads );
+            
+            // Hierarchical Latency-Aware Roofline model
+            cost_models::hier_lat_roofline::AlgoParameters_p hlr_model = cost_models::hier_lat_roofline::get_params_eWiseMul( n, 
+                sizeof( T1 ), sizeof( T2 ), sizeof( T3 ), 0, 0 );
+            double hlr_cost = cost_models::hier_lat_roofline::predict_cost( &hw_model, hlr_model, num_threads );
+            
+            return max_cost;
+        } catch(const std::exception& e) {
+            throw std::runtime_error("Error in CostPredictor<EWiseMulFunc, Vector, scalar, scalar>: " + std::string(e.what()));
+        } catch(...) {
+            throw std::runtime_error("Unknown error in CostPredictor<EWiseMulFunc> with Vector, scalar, scalar");
+        }
+    }
+};
 /*=====================================================================*/
 /*------------------------------eWiseApply-----------------------------*/
 
@@ -813,9 +971,9 @@ struct CostPredictor< EWiseApplyFunc, grb::Vector< T1 >, grb::Vector< T2 > , grb
         const grb::Vector< T2 > & x, 
         const grb::Vector< T3 > & y, 
         const Op & ) {
-        (void)x;
-        (void)y;
-        (void)z;
+        // (void)x;
+        // (void)y;
+        // (void)z;
         try {
             size_t n = grb::size( z );
             size_t num_threads = grb::config::OMP::threads();
@@ -854,8 +1012,8 @@ struct CostPredictor< EWiseApplyFunc, grb::Vector< T1 >, grb::Vector< T2 > , grb
 template< typename T1, typename T2, typename Monoid >
 struct CostPredictor< FoldlFunc, grb::Vector< T1 >, grb::Vector< T2 >, Monoid > {
 	static double predict(grb::Vector<T1>& x, const grb::Vector<T2>& y, const Monoid&) {
-        (void)x; 
-        (void)y;
+        // (void)x; 
+        // (void)y;
         try {
             size_t n = grb::size( x );
             size_t num_threads = grb::config::OMP::threads();
@@ -924,8 +1082,8 @@ struct CostPredictor< FoldlFunc, T1 , grb::Vector< T2 >, Monoid > {
 template< typename T1, typename T2, typename Monoid >
 struct CostPredictor< FoldlFunc, grb::Vector< T1 >, T2 , Monoid > {
 	static double predict(grb::Vector< T1 > & x, const T2 & y, const Monoid & ) {
-        (void)x; 
-        (void)y;
+        // (void)x; 
+        // (void)y;
         try {
             size_t n = grb::size( x );
             size_t num_threads = grb::config::OMP::threads();
@@ -962,8 +1120,8 @@ struct CostPredictor< FoldlFunc, grb::Vector< T1 >, T2 , Monoid > {
 template< typename T1, typename T2, typename Monoid >
 struct CostPredictor< FoldrFunc, grb::Vector< T1 > , grb::Vector< T2 > , Monoid > {
 	static double predict(const grb::Vector< T1 > & x, grb::Vector< T2 > & y, const Monoid & ) {
-        (void)x; 
-        (void)y;
+        // (void)x; 
+        // (void)y;
 		try {
 			size_t n = grb::size( y );
 			size_t num_threads = grb::config::OMP::threads();
@@ -1003,8 +1161,8 @@ struct CostPredictor< FoldrFunc, grb::Vector< T1 > , grb::Vector< T2 > , Monoid 
 template< typename T1, typename T2, typename Monoid >
 struct CostPredictor< FoldrFunc, T1, grb::Vector< T2 >, Monoid > {
 	static double predict( const T1 & x, grb::Vector< T2 > & y, const Monoid & ) {
-        (void)x; 
-        (void)y;
+        // (void)x; 
+        // (void)y;
 		try {
 			size_t n = grb::size( y );
             size_t num_threads = grb::config::OMP::threads();
@@ -1084,9 +1242,9 @@ struct CostPredictor< FoldrFunc, grb::Vector< T1 >, T2, Monoid > {
 template< typename T0, typename T1, typename T2, typename MonoidType, typename OpType >
 struct CostPredictor< DotFunc, T0, grb::Vector< T1 >, grb::Vector< T2 >, MonoidType, OpType > {
     static double predict(T0 z, const grb::Vector< T1 > x, const grb::Vector< T2 > y, MonoidType monoid, OpType op) {
-        (void)z; 
-        (void)monoid; 
-        (void)op;
+        // (void)z; 
+        // (void)monoid; 
+        // (void)op;
         try {
             std::cout << "[TRACING] Using catch-all 5-argument dot predictor" << std::endl;
 
@@ -1142,6 +1300,7 @@ template<> inline const char* getCostPredictorName<SetFunc>()        { return "s
 template<> inline const char* getCostPredictorName<ApplyFunc>()      { return "apply"; }
 template<> inline const char* getCostPredictorName<MxvFunc>()        { return "mxv"; }
 template<> inline const char* getCostPredictorName<EWiseAddFunc>()   { return "eWiseAdd"; }
+template<> inline const char* getCostPredictorName<EWiseMulFunc>() { return "eWiseMul"; }
 template<> inline const char* getCostPredictorName<VxmFunc>()        { return "vxm"; }
 template<> inline const char* getCostPredictorName<EWiseLambdaFunc>(){ return "eWiseLambda"; }
 template<> inline const char* getCostPredictorName<MxmFunc>()        { return "mxm"; }
@@ -1159,6 +1318,7 @@ template<> struct has_tracer<SetFunc>          : std::true_type {};
 template<> struct has_tracer<ApplyFunc>        : std::true_type {};
 template<> struct has_tracer<MxvFunc>          : std::true_type {};
 template<> struct has_tracer<EWiseAddFunc>     : std::true_type {};
+template<> struct has_tracer<EWiseMulFunc>     : std::true_type {};
 template<> struct has_tracer<VxmFunc>          : std::true_type {};
 template<> struct has_tracer<EWiseLambdaFunc>  : std::true_type {};
 template<> struct has_tracer<MxmFunc>          : std::true_type {};
@@ -1180,6 +1340,7 @@ namespace grb {
     static const FunctionTracer< ApplyFunc > applyTracer( "apply" );
     static const FunctionTracer< MxvFunc > mxvTracer( "mxv" );
     static const FunctionTracer< EWiseAddFunc > eWiseAddTracer( "eWiseAdd" );
+    static const FunctionTracer< EWiseMulFunc > eWiseMulTracer( "eWiseMul" );
     static const FunctionTracer< VxmFunc > vxmTracer( "vxm" );
     static const FunctionTracer< EWiseLambdaFunc > eWiseLambdaTracer( "eWiseLambda" );
     static const FunctionTracer< MxmFunc > mxmTracer( "mxm" );
@@ -1227,6 +1388,11 @@ namespace grb {
     template< unsigned int descr = 0, typename... Args >
     inline grb::RC eWiseAdd( Args&&... args ) {
         return eWiseAddTracer.template operator()< descr >( std::forward< Args >( args )... );
+    }
+
+    template< unsigned int descr = 0, typename... Args >
+    inline grb::RC eWiseMul( Args&&... args ) {
+        return eWiseMulTracer.template operator()< descr >( std::forward< Args >( args )... );
     }
 
     template< unsigned int descr = 0, typename... Args >
