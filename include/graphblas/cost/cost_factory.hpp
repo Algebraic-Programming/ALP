@@ -1094,8 +1094,7 @@ struct CostPredictor< DotFunc, T0, grb::Vector< T1 >, grb::Vector< T2 >, MonoidT
 
             // Get hardware parameters
             size_t num_threads = grb::config::OMP::threads();
-            cost_models::HW_model::HWParameters hw_model =
-                cost_models::HW_model::get_hw_params_for_threads(num_threads, dis_system_params);
+            cost_models::HW_model::HWParameters hw_model = cost_models::HW_model::select_hw_model_auto( num_threads, dis_system_params );
 
             // k-Multi-BSP model
             cost_models::k_multi_bsp::AlgoParameters_p k_bsp_model =
