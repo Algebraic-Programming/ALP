@@ -1073,6 +1073,21 @@ namespace HW_model
             for (size_t lvl = 0; lvl < hw_params->d; lvl++)
             {
                 pi_mult *= hw_params->p[lvl];
+                
+#ifdef DEBUG_COST_MODELS
+                bool mem_fits = algo_params->b_foot <= hw_params->m[lvl];
+                bool is_cache_level = lvl + 1 < hw_params->d_numa;
+                bool threads_ok = target_threads <= pi_mult;
+                bool numa_skip = NUMA_optimism || (is_cache_level || threads_ok);
+                
+                std::cout << "  Level " << (lvl + 1) << ": mem_fits=" << mem_fits 
+                          << ", is_cache=" << is_cache_level << " (lvl+1=" << (lvl+1) 
+                          << " vs d_numa=" << hw_params->d_numa << ")"
+                          << ", threads_ok=" << threads_ok << " (" << target_threads << " <= " << pi_mult << ")"
+                          << ", NUMA_optimism=" << NUMA_optimism
+                          << ", accepts=" << (mem_fits && numa_skip) << "\n";
+#endif
+                
                 if ((algo_params->b_foot <= hw_params->m[lvl]) 
                 && ( NUMA_optimism || (lvl + 1 < hw_params->d_numa || target_threads <= pi_mult)))
                 {
@@ -1104,7 +1119,7 @@ namespace HW_model
         double predict_cost(HW_model::HWParameters_p hw_params,
                             AlgoParameters_p algo_params,
                             size_t target_threads,
-                            const std::string &stream_aggregator = "sum",
+                            const std::string &stream_aggregator = "max",
                             bool NUMA_optimistic = false)
         {
 #ifdef DEBUG_COST_MODELS

@@ -605,11 +605,13 @@ struct CostPredictor< MxvFunc, grb::Vector< T1 >, grb::Matrix< T2, Backend, RowI
 			cost_models::HW_model::HWParameters hw_model = cost_models::HW_model::select_hw_model_auto( num_threads, dis_system_params );
 
             // k-Multi-BSP model
-            cost_models::k_multi_bsp::AlgoParameters_p k_bsp_model = cost_models::k_multi_bsp::get_params_csr(
+            cost_models::k_multi_bsp::AlgoParameters_p k_bsp_model_optimistic = cost_models::k_multi_bsp::get_params_csr(
+                nnz, n, m, sizeof( T1 ), sizeof( T3 ), sizeof( T2 ), sizeof( RowIndexType ), sizeof( NonzeroIndexType ) );
+            cost_models::k_multi_bsp::AlgoParameters_p k_bsp_model_pessimistic = cost_models::k_multi_bsp::get_params_csr(
                 nnz, n, m, sizeof( T1 ), sizeof( T3 ), sizeof( T2 ), sizeof( RowIndexType ), sizeof( NonzeroIndexType ) );
             //double sum_cost = cost_models::k_multi_bsp::predict_cost( &hw_model, k_bsp_model, num_threads, "sum" );
-            double max_cost_optimistic = cost_models::k_multi_bsp::predict_cost( &hw_model, k_bsp_model, num_threads, "max", true );
-            double max_cost_pessimistic = cost_models::k_multi_bsp::predict_cost( &hw_model, k_bsp_model, num_threads, "max", false );
+            double max_cost_optimistic = cost_models::k_multi_bsp::predict_cost( &hw_model, k_bsp_model_optimistic, num_threads, "max", true );
+            double max_cost_pessimistic = cost_models::k_multi_bsp::predict_cost( &hw_model, k_bsp_model_pessimistic, num_threads, "max", false );
             
             // Hierarchical Roofline model
             cost_models::hier_roofline::AlgoParameters_p hr_model = cost_models::hier_roofline::get_params_csr(
@@ -647,10 +649,11 @@ struct CostPredictor< SetFunc, grb::Vector< T1 >, grb::Vector< T2 > > {
 			cost_models::HW_model::HWParameters hw_model = cost_models::HW_model::select_hw_model_auto( num_threads, dis_system_params );
 
             // k-Multi-BSP model
-            cost_models::k_multi_bsp::AlgoParameters_p k_bsp_model = cost_models::k_multi_bsp::get_params_set( n, 1, sizeof( T1 ), sizeof( T2 ), 0 );
+            cost_models::k_multi_bsp::AlgoParameters_p k_bsp_model_optimistic = cost_models::k_multi_bsp::get_params_set( n, 1, sizeof( T1 ), sizeof( T2 ), 0 );
+            cost_models::k_multi_bsp::AlgoParameters_p k_bsp_model_pessimistic = cost_models::k_multi_bsp::get_params_set( n, 1, sizeof( T1 ), sizeof( T2 ), 0 );
             //double sum_cost = cost_models::k_multi_bsp::predict_cost( &hw_model, k_bsp_model, num_threads, "sum" );
-            double max_cost_optimistic = cost_models::k_multi_bsp::predict_cost( &hw_model, k_bsp_model, num_threads, "max", true );
-            double max_cost_pessimistic = cost_models::k_multi_bsp::predict_cost( &hw_model, k_bsp_model, num_threads, "max", false );
+            double max_cost_optimistic = cost_models::k_multi_bsp::predict_cost( &hw_model, k_bsp_model_optimistic, num_threads, "max", true );
+            double max_cost_pessimistic = cost_models::k_multi_bsp::predict_cost( &hw_model, k_bsp_model_pessimistic, num_threads, "max", false );
             
             // Hierarchical Roofline model
             cost_models::hier_roofline::AlgoParameters_p hr_model = cost_models::hier_roofline::get_params_set( n, 1, sizeof( T1 ), sizeof( T2 ), 0 );
@@ -679,10 +682,11 @@ struct CostPredictor< SetFunc, grb::Vector< T1 >, T2 > {
 			cost_models::HW_model::HWParameters hw_model = cost_models::HW_model::select_hw_model_auto( num_threads, dis_system_params );
 
             // k-Multi-BSP model
-            cost_models::k_multi_bsp::AlgoParameters_p k_bsp_model = cost_models::k_multi_bsp::get_params_set( n, 0, sizeof( T1 ), sizeof( T2 ), 0 );
+            cost_models::k_multi_bsp::AlgoParameters_p k_bsp_model_optimistic = cost_models::k_multi_bsp::get_params_set( n, 0, sizeof( T1 ), sizeof( T2 ), 0 );
+            cost_models::k_multi_bsp::AlgoParameters_p k_bsp_model_pessimistic = cost_models::k_multi_bsp::get_params_set( n, 0, sizeof( T1 ), sizeof( T2 ), 0 );
             //double sum_cost = cost_models::k_multi_bsp::predict_cost( &hw_model, k_bsp_model, num_threads, "sum" );
-            double max_cost_optimistic = cost_models::k_multi_bsp::predict_cost( &hw_model, k_bsp_model, num_threads, "max", true );
-            double max_cost_pessimistic = cost_models::k_multi_bsp::predict_cost( &hw_model, k_bsp_model, num_threads, "max", false );
+            double max_cost_optimistic = cost_models::k_multi_bsp::predict_cost( &hw_model, k_bsp_model_optimistic, num_threads, "max", true );
+            double max_cost_pessimistic = cost_models::k_multi_bsp::predict_cost( &hw_model, k_bsp_model_pessimistic, num_threads, "max", false );
             
             // Hierarchical Roofline model
             cost_models::hier_roofline::AlgoParameters_p hr_model = cost_models::hier_roofline::get_params_set( n, 0, sizeof( T1 ), sizeof( T2 ), 0 );
@@ -718,10 +722,11 @@ struct CostPredictor< ApplyFunc, T1, T2, T3, Op > {
 			cost_models::HW_model::HWParameters hw_model = cost_models::HW_model::select_hw_model_auto( num_threads, dis_system_params );
             
             // k-Multi-BSP model
-            cost_models::k_multi_bsp::AlgoParameters_p k_bsp_model = cost_models::k_multi_bsp::get_params_apply();
+            cost_models::k_multi_bsp::AlgoParameters_p k_bsp_model_optimistic = cost_models::k_multi_bsp::get_params_apply();
+            cost_models::k_multi_bsp::AlgoParameters_p k_bsp_model_pessimistic = cost_models::k_multi_bsp::get_params_apply();
             //double sum_cost = cost_models::k_multi_bsp::predict_cost( &hw_model, k_bsp_model, num_threads, "sum" );
-            double max_cost_optimistic = cost_models::k_multi_bsp::predict_cost( &hw_model, k_bsp_model, num_threads, "max", true );
-            double max_cost_pessimistic = cost_models::k_multi_bsp::predict_cost( &hw_model, k_bsp_model, num_threads, "max", false );
+            double max_cost_optimistic = cost_models::k_multi_bsp::predict_cost( &hw_model, k_bsp_model_optimistic, num_threads, "max", true );
+            double max_cost_pessimistic = cost_models::k_multi_bsp::predict_cost( &hw_model, k_bsp_model_pessimistic, num_threads, "max", false );
             
             // Hierarchical Roofline model
             cost_models::hier_roofline::AlgoParameters_p hr_model = cost_models::hier_roofline::get_params_apply();
@@ -757,11 +762,13 @@ struct CostPredictor< EWiseMulFunc, grb::Vector< T1 >, grb::Vector< T2 > , grb::
 			cost_models::HW_model::HWParameters hw_model = cost_models::HW_model::select_hw_model_auto( num_threads, dis_system_params );
             
             // k-Multi-BSP model
-            cost_models::k_multi_bsp::AlgoParameters_p k_bsp_model = cost_models::k_multi_bsp::get_params_eWiseMul( n, 
+            cost_models::k_multi_bsp::AlgoParameters_p k_bsp_model_optimistic = cost_models::k_multi_bsp::get_params_eWiseMul( n, 
+                sizeof( T1 ), sizeof( T2 ), sizeof( T3 ), 1, 1 );
+            cost_models::k_multi_bsp::AlgoParameters_p k_bsp_model_pessimistic = cost_models::k_multi_bsp::get_params_eWiseMul( n, 
                 sizeof( T1 ), sizeof( T2 ), sizeof( T3 ), 1, 1 );
             //double sum_cost = cost_models::k_multi_bsp::predict_cost( &hw_model, k_bsp_model, num_threads, "sum" );
-            double max_cost_optimistic = cost_models::k_multi_bsp::predict_cost( &hw_model, k_bsp_model, num_threads, "max", true );
-            double max_cost_pessimistic = cost_models::k_multi_bsp::predict_cost( &hw_model, k_bsp_model, num_threads, "max", false );
+            double max_cost_optimistic = cost_models::k_multi_bsp::predict_cost( &hw_model, k_bsp_model_optimistic, num_threads, "max", true );
+            double max_cost_pessimistic = cost_models::k_multi_bsp::predict_cost( &hw_model, k_bsp_model_pessimistic, num_threads, "max", false );
             
             // Hierarchical Roofline model
             cost_models::hier_roofline::AlgoParameters_p hr_model = cost_models::hier_roofline::get_params_eWiseMul( n, 
@@ -796,11 +803,13 @@ struct CostPredictor< EWiseMulFunc, grb::Vector< T1 >, T2 , grb::Vector< T3 >, O
 			cost_models::HW_model::HWParameters hw_model = cost_models::HW_model::select_hw_model_auto( num_threads, dis_system_params );
             
             // k-Multi-BSP model
-            cost_models::k_multi_bsp::AlgoParameters_p k_bsp_model = cost_models::k_multi_bsp::get_params_eWiseMul( n, 
+            cost_models::k_multi_bsp::AlgoParameters_p k_bsp_model_optimistic = cost_models::k_multi_bsp::get_params_eWiseMul( n, 
+                sizeof( T1 ), sizeof( T2 ), sizeof( T3 ), 0, 1 );
+            cost_models::k_multi_bsp::AlgoParameters_p k_bsp_model_pessimistic = cost_models::k_multi_bsp::get_params_eWiseMul( n, 
                 sizeof( T1 ), sizeof( T2 ), sizeof( T3 ), 0, 1 );
             //double sum_cost = cost_models::k_multi_bsp::predict_cost( &hw_model, k_bsp_model, num_threads, "sum" );
-            double max_cost_optimistic = cost_models::k_multi_bsp::predict_cost( &hw_model, k_bsp_model, num_threads, "max", true );
-            double max_cost_pessimistic = cost_models::k_multi_bsp::predict_cost( &hw_model, k_bsp_model, num_threads, "max", false );
+            double max_cost_optimistic = cost_models::k_multi_bsp::predict_cost( &hw_model, k_bsp_model_optimistic, num_threads, "max", true );
+            double max_cost_pessimistic = cost_models::k_multi_bsp::predict_cost( &hw_model, k_bsp_model_pessimistic, num_threads, "max", false );
             
             // Hierarchical Roofline model
             cost_models::hier_roofline::AlgoParameters_p hr_model = cost_models::hier_roofline::get_params_eWiseMul( n, 
@@ -835,11 +844,13 @@ struct CostPredictor< EWiseMulFunc, grb::Vector< T1 >, grb::Vector< T2 >, T3, Op
 			cost_models::HW_model::HWParameters hw_model = cost_models::HW_model::select_hw_model_auto( num_threads, dis_system_params );
             
             // k-Multi-BSP model
-            cost_models::k_multi_bsp::AlgoParameters_p k_bsp_model = cost_models::k_multi_bsp::get_params_eWiseMul( n, 
+            cost_models::k_multi_bsp::AlgoParameters_p k_bsp_model_optimistic = cost_models::k_multi_bsp::get_params_eWiseMul( n, 
+                sizeof( T1 ), sizeof( T2 ), sizeof( T3 ), 1, 0 );
+            cost_models::k_multi_bsp::AlgoParameters_p k_bsp_model_pessimistic = cost_models::k_multi_bsp::get_params_eWiseMul( n, 
                 sizeof( T1 ), sizeof( T2 ), sizeof( T3 ), 1, 0 );
             //double sum_cost = cost_models::k_multi_bsp::predict_cost( &hw_model, k_bsp_model, num_threads, "sum" );
-            double max_cost_optimistic = cost_models::k_multi_bsp::predict_cost( &hw_model, k_bsp_model, num_threads, "max", true );
-            double max_cost_pessimistic = cost_models::k_multi_bsp::predict_cost( &hw_model, k_bsp_model, num_threads, "max", false );
+            double max_cost_optimistic = cost_models::k_multi_bsp::predict_cost( &hw_model, k_bsp_model_optimistic, num_threads, "max", true );
+            double max_cost_pessimistic = cost_models::k_multi_bsp::predict_cost( &hw_model, k_bsp_model_pessimistic, num_threads, "max", false );
             
             // Hierarchical Roofline model
             cost_models::hier_roofline::AlgoParameters_p hr_model = cost_models::hier_roofline::get_params_eWiseMul( n, 
@@ -874,11 +885,13 @@ struct CostPredictor< EWiseMulFunc, grb::Vector< T1 >, T2, T3, Op > {
 			cost_models::HW_model::HWParameters hw_model = cost_models::HW_model::select_hw_model_auto( num_threads, dis_system_params );
             
             // k-Multi-BSP model
-            cost_models::k_multi_bsp::AlgoParameters_p k_bsp_model = cost_models::k_multi_bsp::get_params_eWiseMul( n, 
+            cost_models::k_multi_bsp::AlgoParameters_p k_bsp_model_optimistic = cost_models::k_multi_bsp::get_params_eWiseMul( n, 
+                sizeof( T1 ), sizeof( T2 ), sizeof( T3 ), 0, 0 );
+            cost_models::k_multi_bsp::AlgoParameters_p k_bsp_model_pessimistic = cost_models::k_multi_bsp::get_params_eWiseMul( n, 
                 sizeof( T1 ), sizeof( T2 ), sizeof( T3 ), 0, 0 );
             //double sum_cost = cost_models::k_multi_bsp::predict_cost( &hw_model, k_bsp_model, num_threads, "sum" );
-            double max_cost_optimistic = cost_models::k_multi_bsp::predict_cost( &hw_model, k_bsp_model, num_threads, "max", true );
-            double max_cost_pessimistic = cost_models::k_multi_bsp::predict_cost( &hw_model, k_bsp_model, num_threads, "max", false );
+            double max_cost_optimistic = cost_models::k_multi_bsp::predict_cost( &hw_model, k_bsp_model_optimistic, num_threads, "max", true );
+            double max_cost_pessimistic = cost_models::k_multi_bsp::predict_cost( &hw_model, k_bsp_model_pessimistic, num_threads, "max", false );
             
             // Hierarchical Roofline model
             cost_models::hier_roofline::AlgoParameters_p hr_model = cost_models::hier_roofline::get_params_eWiseMul( n, 
@@ -911,11 +924,13 @@ struct CostPredictor< EWiseApplyFunc, grb::Vector< T1 >, grb::Vector< T2 >, T3, 
 			cost_models::HW_model::HWParameters hw_model = cost_models::HW_model::select_hw_model_auto( num_threads, dis_system_params );
             
             // k-Multi-BSP model
-            cost_models::k_multi_bsp::AlgoParameters_p k_bsp_model = cost_models::k_multi_bsp::get_params_eWiseApply( n, 
+            cost_models::k_multi_bsp::AlgoParameters_p k_bsp_model_optimistic = cost_models::k_multi_bsp::get_params_eWiseApply( n, 
+                sizeof( T1 ), sizeof( T2 ), sizeof( T3 ), 1, 0 );
+            cost_models::k_multi_bsp::AlgoParameters_p k_bsp_model_pessimistic = cost_models::k_multi_bsp::get_params_eWiseApply( n, 
                 sizeof( T1 ), sizeof( T2 ), sizeof( T3 ), 1, 0 );
             //double sum_cost = cost_models::k_multi_bsp::predict_cost( &hw_model, k_bsp_model, num_threads, "sum" );
-            double max_cost_optimistic = cost_models::k_multi_bsp::predict_cost( &hw_model, k_bsp_model, num_threads, "max", true );
-            double max_cost_pessimistic = cost_models::k_multi_bsp::predict_cost( &hw_model, k_bsp_model, num_threads, "max", false );
+            double max_cost_optimistic = cost_models::k_multi_bsp::predict_cost( &hw_model, k_bsp_model_optimistic, num_threads, "max", true );
+            double max_cost_pessimistic = cost_models::k_multi_bsp::predict_cost( &hw_model, k_bsp_model_pessimistic, num_threads, "max", false );
             
             // Hierarchical Roofline model
             cost_models::hier_roofline::AlgoParameters_p hr_model = cost_models::hier_roofline::get_params_eWiseApply( n, 
@@ -947,11 +962,13 @@ struct CostPredictor< EWiseApplyFunc, grb::Vector< T1 >, T2, grb::Vector< T3 >, 
 			cost_models::HW_model::HWParameters hw_model = cost_models::HW_model::select_hw_model_auto( num_threads, dis_system_params );
             
             // k-Multi-BSP model
-            cost_models::k_multi_bsp::AlgoParameters_p k_bsp_model = cost_models::k_multi_bsp::get_params_eWiseApply( n, 
+            cost_models::k_multi_bsp::AlgoParameters_p k_bsp_model_optimistic = cost_models::k_multi_bsp::get_params_eWiseApply( n, 
+                sizeof( T1 ), sizeof( T2 ), sizeof( T3 ), 0, 1 );
+            cost_models::k_multi_bsp::AlgoParameters_p k_bsp_model_pessimistic = cost_models::k_multi_bsp::get_params_eWiseApply( n, 
                 sizeof( T1 ), sizeof( T2 ), sizeof( T3 ), 0, 1 );
             //double sum_cost = cost_models::k_multi_bsp::predict_cost( &hw_model, k_bsp_model, num_threads, "sum" );
-            double max_cost_optimistic = cost_models::k_multi_bsp::predict_cost( &hw_model, k_bsp_model, num_threads, "max", true );
-            double max_cost_pessimistic = cost_models::k_multi_bsp::predict_cost( &hw_model, k_bsp_model, num_threads, "max", false );
+            double max_cost_optimistic = cost_models::k_multi_bsp::predict_cost( &hw_model, k_bsp_model_optimistic, num_threads, "max", true );
+            double max_cost_pessimistic = cost_models::k_multi_bsp::predict_cost( &hw_model, k_bsp_model_pessimistic, num_threads, "max", false );
             
             // Hierarchical Roofline model
             cost_models::hier_roofline::AlgoParameters_p hr_model = cost_models::hier_roofline::get_params_eWiseApply( n, 
@@ -990,11 +1007,13 @@ struct CostPredictor< EWiseApplyFunc, grb::Vector< T1 >, grb::Vector< T2 > , grb
 			cost_models::HW_model::HWParameters hw_model = cost_models::HW_model::select_hw_model_auto( num_threads, dis_system_params );
             
             // k-Multi-BSP model
-            cost_models::k_multi_bsp::AlgoParameters_p k_bsp_model = cost_models::k_multi_bsp::get_params_eWiseApply( n, 
+            cost_models::k_multi_bsp::AlgoParameters_p k_bsp_model_optimistic = cost_models::k_multi_bsp::get_params_eWiseApply( n, 
+                sizeof( T1 ), sizeof( T2 ), sizeof( T3 ), 0, 1 );
+            cost_models::k_multi_bsp::AlgoParameters_p k_bsp_model_pessimistic = cost_models::k_multi_bsp::get_params_eWiseApply( n, 
                 sizeof( T1 ), sizeof( T2 ), sizeof( T3 ), 0, 1 );
             //double sum_cost = cost_models::k_multi_bsp::predict_cost( &hw_model, k_bsp_model, num_threads, "sum" );
-            double max_cost_optimistic = cost_models::k_multi_bsp::predict_cost( &hw_model, k_bsp_model, num_threads, "max", true );
-            double max_cost_pessimistic = cost_models::k_multi_bsp::predict_cost( &hw_model, k_bsp_model, num_threads, "max", false );
+            double max_cost_optimistic = cost_models::k_multi_bsp::predict_cost( &hw_model, k_bsp_model_optimistic, num_threads, "max", true );
+            double max_cost_pessimistic = cost_models::k_multi_bsp::predict_cost( &hw_model, k_bsp_model_pessimistic, num_threads, "max", false );
             
             // Hierarchical Roofline model
             cost_models::hier_roofline::AlgoParameters_p hr_model = cost_models::hier_roofline::get_params_eWiseApply( n, 
@@ -1031,11 +1050,13 @@ struct CostPredictor< FoldlFunc, grb::Vector< T1 >, grb::Vector< T2 >, Monoid > 
 			cost_models::HW_model::HWParameters hw_model = cost_models::HW_model::select_hw_model_auto( num_threads, dis_system_params );
             
             // k-Multi-BSP model
-            cost_models::k_multi_bsp::AlgoParameters_p k_bsp_model = cost_models::k_multi_bsp::get_params_foldl( n, 
+            cost_models::k_multi_bsp::AlgoParameters_p k_bsp_model_optimistic = cost_models::k_multi_bsp::get_params_foldl( n, 
+                sizeof( T1 ), sizeof( T2 ), 1, 1 );
+            cost_models::k_multi_bsp::AlgoParameters_p k_bsp_model_pessimistic = cost_models::k_multi_bsp::get_params_foldl( n, 
                 sizeof( T1 ), sizeof( T2 ), 1, 1 );
             //double sum_cost = cost_models::k_multi_bsp::predict_cost( &hw_model, k_bsp_model, num_threads, "sum" );
-            double max_cost_optimistic = cost_models::k_multi_bsp::predict_cost( &hw_model, k_bsp_model, num_threads, "max", true );
-            double max_cost_pessimistic = cost_models::k_multi_bsp::predict_cost( &hw_model, k_bsp_model, num_threads, "max", false );
+            double max_cost_optimistic = cost_models::k_multi_bsp::predict_cost( &hw_model, k_bsp_model_optimistic, num_threads, "max", true );
+            double max_cost_pessimistic = cost_models::k_multi_bsp::predict_cost( &hw_model, k_bsp_model_pessimistic, num_threads, "max", false );
             
             // Hierarchical Roofline model
             cost_models::hier_roofline::AlgoParameters_p hr_model = cost_models::hier_roofline::get_params_foldl( n, 
@@ -1066,11 +1087,13 @@ struct CostPredictor< FoldlFunc, T1 , grb::Vector< T2 >, Monoid > {
 			cost_models::HW_model::HWParameters hw_model = cost_models::HW_model::select_hw_model_auto( num_threads, dis_system_params );
             
             // k-Multi-BSP model
-            cost_models::k_multi_bsp::AlgoParameters_p k_bsp_model = cost_models::k_multi_bsp::get_params_foldl( n, 
+            cost_models::k_multi_bsp::AlgoParameters_p k_bsp_model_optimistic = cost_models::k_multi_bsp::get_params_foldl( n, 
+                sizeof( T1 ), sizeof( T2 ), 0, 1 );
+            cost_models::k_multi_bsp::AlgoParameters_p k_bsp_model_pessimistic = cost_models::k_multi_bsp::get_params_foldl( n, 
                 sizeof( T1 ), sizeof( T2 ), 0, 1 );
             //double sum_cost = cost_models::k_multi_bsp::predict_cost( &hw_model, k_bsp_model, num_threads, "sum" );
-            double max_cost_optimistic = cost_models::k_multi_bsp::predict_cost( &hw_model, k_bsp_model, num_threads, "max", true );
-            double max_cost_pessimistic = cost_models::k_multi_bsp::predict_cost( &hw_model, k_bsp_model, num_threads, "max", false );
+            double max_cost_optimistic = cost_models::k_multi_bsp::predict_cost( &hw_model, k_bsp_model_optimistic, num_threads, "max", true );
+            double max_cost_pessimistic = cost_models::k_multi_bsp::predict_cost( &hw_model, k_bsp_model_pessimistic, num_threads, "max", false );
             
             // Hierarchical Roofline model
             cost_models::hier_roofline::AlgoParameters_p hr_model = cost_models::hier_roofline::get_params_foldl( n, 
@@ -1103,11 +1126,13 @@ struct CostPredictor< FoldlFunc, grb::Vector< T1 >, T2 , Monoid > {
 			cost_models::HW_model::HWParameters hw_model = cost_models::HW_model::select_hw_model_auto( num_threads, dis_system_params );
             
             // k-Multi-BSP model
-            cost_models::k_multi_bsp::AlgoParameters_p k_bsp_model = cost_models::k_multi_bsp::get_params_foldl( n, 
+            cost_models::k_multi_bsp::AlgoParameters_p k_bsp_model_optimistic = cost_models::k_multi_bsp::get_params_foldl( n, 
+                sizeof( T1 ), sizeof( T2 ), 1, 0 );
+            cost_models::k_multi_bsp::AlgoParameters_p k_bsp_model_pessimistic = cost_models::k_multi_bsp::get_params_foldl( n, 
                 sizeof( T1 ), sizeof( T2 ), 1, 0 );
             //double sum_cost = cost_models::k_multi_bsp::predict_cost( &hw_model, k_bsp_model, num_threads, "sum" );
-            double max_cost_optimistic = cost_models::k_multi_bsp::predict_cost( &hw_model, k_bsp_model, num_threads, "max", true );
-            double max_cost_pessimistic = cost_models::k_multi_bsp::predict_cost( &hw_model, k_bsp_model, num_threads, "max", false );
+            double max_cost_optimistic = cost_models::k_multi_bsp::predict_cost( &hw_model, k_bsp_model_optimistic, num_threads, "max", true );
+            double max_cost_pessimistic = cost_models::k_multi_bsp::predict_cost( &hw_model, k_bsp_model_pessimistic, num_threads, "max", false );
             
             // Hierarchical Roofline model
             cost_models::hier_roofline::AlgoParameters_p hr_model = cost_models::hier_roofline::get_params_foldl( n, 
@@ -1142,11 +1167,13 @@ struct CostPredictor< FoldrFunc, grb::Vector< T1 > , grb::Vector< T2 > , Monoid 
 			cost_models::HW_model::HWParameters hw_model = cost_models::HW_model::select_hw_model_auto( num_threads, dis_system_params );
 			
 			// k-Multi-BSP model
-			cost_models::k_multi_bsp::AlgoParameters_p k_bsp_model = cost_models::k_multi_bsp::get_params_foldr( n, 
+			cost_models::k_multi_bsp::AlgoParameters_p k_bsp_model_optimistic = cost_models::k_multi_bsp::get_params_foldr( n, 
+				sizeof( T1 ), sizeof( T2 ), 1, 1 );
+			cost_models::k_multi_bsp::AlgoParameters_p k_bsp_model_pessimistic = cost_models::k_multi_bsp::get_params_foldr( n, 
 				sizeof( T1 ), sizeof( T2 ), 1, 1 );
 			//double sum_cost = cost_models::k_multi_bsp::predict_cost( &hw_model, k_bsp_model, num_threads, "sum" );
-			double max_cost_optimistic = cost_models::k_multi_bsp::predict_cost( &hw_model, k_bsp_model, num_threads, "max", true );
-			double max_cost_pessimistic = cost_models::k_multi_bsp::predict_cost( &hw_model, k_bsp_model, num_threads, "max", false );
+			double max_cost_optimistic = cost_models::k_multi_bsp::predict_cost( &hw_model, k_bsp_model_optimistic, num_threads, "max", true );
+			double max_cost_pessimistic = cost_models::k_multi_bsp::predict_cost( &hw_model, k_bsp_model_pessimistic, num_threads, "max", false );
 			
 			// Hierarchical Roofline model
 			cost_models::hier_roofline::AlgoParameters_p hr_model = cost_models::hier_roofline::get_params_foldr( n, 
@@ -1184,11 +1211,13 @@ struct CostPredictor< FoldrFunc, T1, grb::Vector< T2 >, Monoid > {
 			cost_models::HW_model::HWParameters hw_model = cost_models::HW_model::select_hw_model_auto( num_threads, dis_system_params );
 			
 			// k-Multi-BSP model
-			cost_models::k_multi_bsp::AlgoParameters_p k_bsp_model = cost_models::k_multi_bsp::get_params_foldr( n, 
+			cost_models::k_multi_bsp::AlgoParameters_p k_bsp_model_optimistic = cost_models::k_multi_bsp::get_params_foldr( n, 
+				sizeof( T1 ), sizeof( T2 ), 0, 1 );
+			cost_models::k_multi_bsp::AlgoParameters_p k_bsp_model_pessimistic = cost_models::k_multi_bsp::get_params_foldr( n, 
 				sizeof( T1 ), sizeof( T2 ), 0, 1 );
 			//double sum_cost = cost_models::k_multi_bsp::predict_cost( &hw_model, k_bsp_model, num_threads, "sum" );
-			double max_cost_optimistic = cost_models::k_multi_bsp::predict_cost( &hw_model, k_bsp_model, num_threads, "max", true );
-			double max_cost_pessimistic = cost_models::k_multi_bsp::predict_cost( &hw_model, k_bsp_model, num_threads, "max", false );
+			double max_cost_optimistic = cost_models::k_multi_bsp::predict_cost( &hw_model, k_bsp_model_optimistic, num_threads, "max", true );
+			double max_cost_pessimistic = cost_models::k_multi_bsp::predict_cost( &hw_model, k_bsp_model_pessimistic, num_threads, "max", false );
 			
 			// Hierarchical Roofline model
 			cost_models::hier_roofline::AlgoParameters_p hr_model = cost_models::hier_roofline::get_params_foldr( n, 
@@ -1224,11 +1253,13 @@ struct CostPredictor< FoldrFunc, grb::Vector< T1 >, T2, Monoid > {
 			cost_models::HW_model::HWParameters hw_model = cost_models::HW_model::select_hw_model_auto( num_threads, dis_system_params );
 			
 			// k-Multi-BSP model
-			cost_models::k_multi_bsp::AlgoParameters_p k_bsp_model = cost_models::k_multi_bsp::get_params_foldr( n, 
+			cost_models::k_multi_bsp::AlgoParameters_p k_bsp_model_optimistic = cost_models::k_multi_bsp::get_params_foldr( n, 
+				sizeof( T1 ), sizeof( T2 ), 1, 0 );
+			cost_models::k_multi_bsp::AlgoParameters_p k_bsp_model_pessimistic = cost_models::k_multi_bsp::get_params_foldr( n, 
 				sizeof( T1 ), sizeof( T2 ), 1, 0 );
 			//double sum_cost = cost_models::k_multi_bsp::predict_cost( &hw_model, k_bsp_model, num_threads, "sum" );
-			double max_cost_optimistic = cost_models::k_multi_bsp::predict_cost( &hw_model, k_bsp_model, num_threads, "max", true );
-			double max_cost_pessimistic = cost_models::k_multi_bsp::predict_cost( &hw_model, k_bsp_model, num_threads, "max", false );
+			double max_cost_optimistic = cost_models::k_multi_bsp::predict_cost( &hw_model, k_bsp_model_optimistic, num_threads, "max", true );
+			double max_cost_pessimistic = cost_models::k_multi_bsp::predict_cost( &hw_model, k_bsp_model_pessimistic, num_threads, "max", false );
 			
 			// Hierarchical Roofline model
 			cost_models::hier_roofline::AlgoParameters_p hr_model = cost_models::hier_roofline::get_params_foldr( n, 
@@ -1272,11 +1303,13 @@ struct CostPredictor< DotFunc, T0, grb::Vector< T1 >, grb::Vector< T2 >, MonoidT
             cost_models::HW_model::HWParameters hw_model = cost_models::HW_model::select_hw_model_auto( num_threads, dis_system_params );
 
             // k-Multi-BSP model
-            cost_models::k_multi_bsp::AlgoParameters_p k_bsp_model =
+            cost_models::k_multi_bsp::AlgoParameters_p k_bsp_model_optimistic =
+                cost_models::k_multi_bsp::get_params_dot(n, sizeof(T0), sizeof(T1), sizeof(T2));
+            cost_models::k_multi_bsp::AlgoParameters_p k_bsp_model_pessimistic =
                 cost_models::k_multi_bsp::get_params_dot(n, sizeof(T0), sizeof(T1), sizeof(T2));
             //double sum_cost = cost_models::k_multi_bsp::predict_cost( &hw_model, k_bsp_model, num_threads, "sum" );
-            double max_cost_optimistic = cost_models::k_multi_bsp::predict_cost( &hw_model, k_bsp_model, num_threads, "max", true );
-            double max_cost_pessimistic = cost_models::k_multi_bsp::predict_cost( &hw_model, k_bsp_model, num_threads, "max", false );
+            double max_cost_optimistic = cost_models::k_multi_bsp::predict_cost( &hw_model, k_bsp_model_optimistic, num_threads, "max", true );
+            double max_cost_pessimistic = cost_models::k_multi_bsp::predict_cost( &hw_model, k_bsp_model_pessimistic, num_threads, "max", false );
             
             // Hierarchical Roofline model
             cost_models::hier_roofline::AlgoParameters_p hr_model =
