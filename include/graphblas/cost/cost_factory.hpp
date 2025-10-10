@@ -1421,9 +1421,32 @@ namespace grb {
         return dotTracer.template operator()< descr >( std::forward< Args >( args )... );
     }
 
-    template< unsigned int descr = 0, typename... Args >
+    template< unsigned int descr = descriptors::no_operation, typename... Args >
     inline grb::RC set( Args&&... args ) {
         return setTracer.template operator()< descr >( std::forward< Args >( args )... );
+    }
+
+    // Note: we avoid defining reference-specific `set` overloads here because
+    // the reference backend already provides identical templates in
+    // `reference/io.hpp`. 
+
+    template< unsigned int descr = descriptors::no_operation, typename Coords, typename T >
+    inline grb::RC set(
+        grb::Vector< T, grb::reference, Coords > & x,
+        const T val,
+        const grb::Phase & phase = grb::EXECUTE
+    ) {
+        return setTracer.template operator()< descr >( x, val, phase );
+    }
+
+    template< unsigned int descr = descriptors::no_operation, typename OutputType, grb::Backend B, typename Coords, typename InputType >
+    inline grb::RC set(
+        grb::Vector< OutputType, B, Coords > & x,
+        const grb::Vector< InputType, B, Coords > & y,
+        const grb::Phase & phase = grb::EXECUTE
+    ) {
+        std::cout << "DBG: line " << __LINE__ << " in file " << __FILE__ << "\n";
+        return setTracer.template operator()< descr >( x, y, phase );
     }
 
     template< unsigned int descr = 0, typename... Args >
