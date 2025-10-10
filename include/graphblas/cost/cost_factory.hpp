@@ -604,11 +604,12 @@ struct CostPredictor< MxvFunc, grb::Vector< T1 >, grb::Matrix< T2, Backend, RowI
 			size_t num_threads = grb::config::OMP::threads();
 			cost_models::HW_model::HWParameters hw_model = cost_models::HW_model::select_hw_model_auto( num_threads, dis_system_params );
 
-			// k-Multi-BSP model
+            // k-Multi-BSP model
             cost_models::k_multi_bsp::AlgoParameters_p k_bsp_model = cost_models::k_multi_bsp::get_params_csr(
                 nnz, n, m, sizeof( T1 ), sizeof( T3 ), sizeof( T2 ), sizeof( RowIndexType ), sizeof( NonzeroIndexType ) );
             //double sum_cost = cost_models::k_multi_bsp::predict_cost( &hw_model, k_bsp_model, num_threads, "sum" );
-            double max_cost = cost_models::k_multi_bsp::predict_cost( &hw_model, k_bsp_model, num_threads, "max" );
+            double max_cost_optimistic = cost_models::k_multi_bsp::predict_cost( &hw_model, k_bsp_model, num_threads, "max", true );
+            double max_cost_pessimistic = cost_models::k_multi_bsp::predict_cost( &hw_model, k_bsp_model, num_threads, "max", false );
             
             // Hierarchical Roofline model
             cost_models::hier_roofline::AlgoParameters_p hr_model = cost_models::hier_roofline::get_params_csr(
@@ -622,7 +623,7 @@ struct CostPredictor< MxvFunc, grb::Vector< T1 >, grb::Matrix< T2, Backend, RowI
             
             
             // Return k-Multi-BSP max cost as before
-            return max_cost;
+            return max_cost_pessimistic;
 
         } catch(const std::exception& e) {
             throw std::runtime_error("Error in CostPredictor<MxvFunc>: " + std::string(e.what()));
@@ -648,7 +649,8 @@ struct CostPredictor< SetFunc, grb::Vector< T1 >, grb::Vector< T2 > > {
             // k-Multi-BSP model
             cost_models::k_multi_bsp::AlgoParameters_p k_bsp_model = cost_models::k_multi_bsp::get_params_set( n, 1, sizeof( T1 ), sizeof( T2 ), 0 );
             //double sum_cost = cost_models::k_multi_bsp::predict_cost( &hw_model, k_bsp_model, num_threads, "sum" );
-            double max_cost = cost_models::k_multi_bsp::predict_cost( &hw_model, k_bsp_model, num_threads, "max" );
+            double max_cost_optimistic = cost_models::k_multi_bsp::predict_cost( &hw_model, k_bsp_model, num_threads, "max", true );
+            double max_cost_pessimistic = cost_models::k_multi_bsp::predict_cost( &hw_model, k_bsp_model, num_threads, "max", false );
             
             // Hierarchical Roofline model
             cost_models::hier_roofline::AlgoParameters_p hr_model = cost_models::hier_roofline::get_params_set( n, 1, sizeof( T1 ), sizeof( T2 ), 0 );
@@ -659,7 +661,7 @@ struct CostPredictor< SetFunc, grb::Vector< T1 >, grb::Vector< T2 > > {
             double hlr_cost = cost_models::hier_lat_roofline::predict_cost( &hw_model, hlr_model, num_threads );
             
             
-            return max_cost;
+            return max_cost_pessimistic;
         } catch(const std::exception& e) {
             throw std::runtime_error("Error in CostPredictor<SetFunc, Vector, Vector>: " + std::string(e.what()));
         } catch(...) {
@@ -679,7 +681,8 @@ struct CostPredictor< SetFunc, grb::Vector< T1 >, T2 > {
             // k-Multi-BSP model
             cost_models::k_multi_bsp::AlgoParameters_p k_bsp_model = cost_models::k_multi_bsp::get_params_set( n, 0, sizeof( T1 ), sizeof( T2 ), 0 );
             //double sum_cost = cost_models::k_multi_bsp::predict_cost( &hw_model, k_bsp_model, num_threads, "sum" );
-            double max_cost = cost_models::k_multi_bsp::predict_cost( &hw_model, k_bsp_model, num_threads, "max" );
+            double max_cost_optimistic = cost_models::k_multi_bsp::predict_cost( &hw_model, k_bsp_model, num_threads, "max", true );
+            double max_cost_pessimistic = cost_models::k_multi_bsp::predict_cost( &hw_model, k_bsp_model, num_threads, "max", false );
             
             // Hierarchical Roofline model
             cost_models::hier_roofline::AlgoParameters_p hr_model = cost_models::hier_roofline::get_params_set( n, 0, sizeof( T1 ), sizeof( T2 ), 0 );
@@ -690,7 +693,7 @@ struct CostPredictor< SetFunc, grb::Vector< T1 >, T2 > {
             double hlr_cost = cost_models::hier_lat_roofline::predict_cost( &hw_model, hlr_model, num_threads );
             
             
-            return max_cost;
+            return max_cost_pessimistic;
         } catch(const std::exception& e) {
             throw std::runtime_error("Error in CostPredictor<SetFunc, Vector, scalar>: " + std::string(e.what()));
         } catch(...) {
@@ -717,7 +720,8 @@ struct CostPredictor< ApplyFunc, T1, T2, T3, Op > {
             // k-Multi-BSP model
             cost_models::k_multi_bsp::AlgoParameters_p k_bsp_model = cost_models::k_multi_bsp::get_params_apply();
             //double sum_cost = cost_models::k_multi_bsp::predict_cost( &hw_model, k_bsp_model, num_threads, "sum" );
-            double max_cost = cost_models::k_multi_bsp::predict_cost( &hw_model, k_bsp_model, num_threads, "max" );
+            double max_cost_optimistic = cost_models::k_multi_bsp::predict_cost( &hw_model, k_bsp_model, num_threads, "max", true );
+            double max_cost_pessimistic = cost_models::k_multi_bsp::predict_cost( &hw_model, k_bsp_model, num_threads, "max", false );
             
             // Hierarchical Roofline model
             cost_models::hier_roofline::AlgoParameters_p hr_model = cost_models::hier_roofline::get_params_apply();
@@ -728,7 +732,7 @@ struct CostPredictor< ApplyFunc, T1, T2, T3, Op > {
             double hlr_cost = cost_models::hier_lat_roofline::predict_cost( &hw_model, hlr_model, num_threads );
             
             
-            return max_cost;
+            return max_cost_pessimistic;
         } catch(const std::exception& e) {
             throw std::runtime_error("Error in CostPredictor<ApplyFunc>: " + std::string(e.what()));
         } catch(...) {
@@ -756,7 +760,8 @@ struct CostPredictor< EWiseMulFunc, grb::Vector< T1 >, grb::Vector< T2 > , grb::
             cost_models::k_multi_bsp::AlgoParameters_p k_bsp_model = cost_models::k_multi_bsp::get_params_eWiseMul( n, 
                 sizeof( T1 ), sizeof( T2 ), sizeof( T3 ), 1, 1 );
             //double sum_cost = cost_models::k_multi_bsp::predict_cost( &hw_model, k_bsp_model, num_threads, "sum" );
-            double max_cost = cost_models::k_multi_bsp::predict_cost( &hw_model, k_bsp_model, num_threads, "max" );
+            double max_cost_optimistic = cost_models::k_multi_bsp::predict_cost( &hw_model, k_bsp_model, num_threads, "max", true );
+            double max_cost_pessimistic = cost_models::k_multi_bsp::predict_cost( &hw_model, k_bsp_model, num_threads, "max", false );
             
             // Hierarchical Roofline model
             cost_models::hier_roofline::AlgoParameters_p hr_model = cost_models::hier_roofline::get_params_eWiseMul( n, 
@@ -768,7 +773,7 @@ struct CostPredictor< EWiseMulFunc, grb::Vector< T1 >, grb::Vector< T2 > , grb::
                 sizeof( T1 ), sizeof( T2 ), sizeof( T3 ), 1, 1 );
             double hlr_cost = cost_models::hier_lat_roofline::predict_cost( &hw_model, hlr_model, num_threads );
             
-            return max_cost;
+            return max_cost_pessimistic;
         } catch(const std::exception& e) {
             throw std::runtime_error("Error in CostPredictor<EWiseMulFunc, Vector, Vector, Vector>: " + std::string(e.what()));
         } catch(...) {
@@ -794,7 +799,8 @@ struct CostPredictor< EWiseMulFunc, grb::Vector< T1 >, T2 , grb::Vector< T3 >, O
             cost_models::k_multi_bsp::AlgoParameters_p k_bsp_model = cost_models::k_multi_bsp::get_params_eWiseMul( n, 
                 sizeof( T1 ), sizeof( T2 ), sizeof( T3 ), 0, 1 );
             //double sum_cost = cost_models::k_multi_bsp::predict_cost( &hw_model, k_bsp_model, num_threads, "sum" );
-            double max_cost = cost_models::k_multi_bsp::predict_cost( &hw_model, k_bsp_model, num_threads, "max" );
+            double max_cost_optimistic = cost_models::k_multi_bsp::predict_cost( &hw_model, k_bsp_model, num_threads, "max", true );
+            double max_cost_pessimistic = cost_models::k_multi_bsp::predict_cost( &hw_model, k_bsp_model, num_threads, "max", false );
             
             // Hierarchical Roofline model
             cost_models::hier_roofline::AlgoParameters_p hr_model = cost_models::hier_roofline::get_params_eWiseMul( n, 
@@ -806,7 +812,7 @@ struct CostPredictor< EWiseMulFunc, grb::Vector< T1 >, T2 , grb::Vector< T3 >, O
                 sizeof( T1 ), sizeof( T2 ), sizeof( T3 ), 0, 1 );
             double hlr_cost = cost_models::hier_lat_roofline::predict_cost( &hw_model, hlr_model, num_threads );
             
-            return max_cost;
+            return max_cost_pessimistic;
         } catch(const std::exception& e) {
             throw std::runtime_error("Error in CostPredictor<EWiseMulFunc, Vector, scalar, Vector>: " + std::string(e.what()));
         } catch(...) {
@@ -832,7 +838,8 @@ struct CostPredictor< EWiseMulFunc, grb::Vector< T1 >, grb::Vector< T2 >, T3, Op
             cost_models::k_multi_bsp::AlgoParameters_p k_bsp_model = cost_models::k_multi_bsp::get_params_eWiseMul( n, 
                 sizeof( T1 ), sizeof( T2 ), sizeof( T3 ), 1, 0 );
             //double sum_cost = cost_models::k_multi_bsp::predict_cost( &hw_model, k_bsp_model, num_threads, "sum" );
-            double max_cost = cost_models::k_multi_bsp::predict_cost( &hw_model, k_bsp_model, num_threads, "max" );
+            double max_cost_optimistic = cost_models::k_multi_bsp::predict_cost( &hw_model, k_bsp_model, num_threads, "max", true );
+            double max_cost_pessimistic = cost_models::k_multi_bsp::predict_cost( &hw_model, k_bsp_model, num_threads, "max", false );
             
             // Hierarchical Roofline model
             cost_models::hier_roofline::AlgoParameters_p hr_model = cost_models::hier_roofline::get_params_eWiseMul( n, 
@@ -844,7 +851,7 @@ struct CostPredictor< EWiseMulFunc, grb::Vector< T1 >, grb::Vector< T2 >, T3, Op
                 sizeof( T1 ), sizeof( T2 ), sizeof( T3 ), 1, 0 );
             double hlr_cost = cost_models::hier_lat_roofline::predict_cost( &hw_model, hlr_model, num_threads );
             
-            return max_cost;
+            return max_cost_pessimistic;
         } catch(const std::exception& e) {
             throw std::runtime_error("Error in CostPredictor<EWiseMulFunc, Vector, Vector, scalar>: " + std::string(e.what()));
         } catch(...) {
@@ -870,7 +877,8 @@ struct CostPredictor< EWiseMulFunc, grb::Vector< T1 >, T2, T3, Op > {
             cost_models::k_multi_bsp::AlgoParameters_p k_bsp_model = cost_models::k_multi_bsp::get_params_eWiseMul( n, 
                 sizeof( T1 ), sizeof( T2 ), sizeof( T3 ), 0, 0 );
             //double sum_cost = cost_models::k_multi_bsp::predict_cost( &hw_model, k_bsp_model, num_threads, "sum" );
-            double max_cost = cost_models::k_multi_bsp::predict_cost( &hw_model, k_bsp_model, num_threads, "max" );
+            double max_cost_optimistic = cost_models::k_multi_bsp::predict_cost( &hw_model, k_bsp_model, num_threads, "max", true );
+            double max_cost_pessimistic = cost_models::k_multi_bsp::predict_cost( &hw_model, k_bsp_model, num_threads, "max", false );
             
             // Hierarchical Roofline model
             cost_models::hier_roofline::AlgoParameters_p hr_model = cost_models::hier_roofline::get_params_eWiseMul( n, 
@@ -882,7 +890,7 @@ struct CostPredictor< EWiseMulFunc, grb::Vector< T1 >, T2, T3, Op > {
                 sizeof( T1 ), sizeof( T2 ), sizeof( T3 ), 0, 0 );
             double hlr_cost = cost_models::hier_lat_roofline::predict_cost( &hw_model, hlr_model, num_threads );
             
-            return max_cost;
+            return max_cost_pessimistic;
         } catch(const std::exception& e) {
             throw std::runtime_error("Error in CostPredictor<EWiseMulFunc, Vector, scalar, scalar>: " + std::string(e.what()));
         } catch(...) {
@@ -906,7 +914,8 @@ struct CostPredictor< EWiseApplyFunc, grb::Vector< T1 >, grb::Vector< T2 >, T3, 
             cost_models::k_multi_bsp::AlgoParameters_p k_bsp_model = cost_models::k_multi_bsp::get_params_eWiseApply( n, 
                 sizeof( T1 ), sizeof( T2 ), sizeof( T3 ), 1, 0 );
             //double sum_cost = cost_models::k_multi_bsp::predict_cost( &hw_model, k_bsp_model, num_threads, "sum" );
-            double max_cost = cost_models::k_multi_bsp::predict_cost( &hw_model, k_bsp_model, num_threads, "max" );
+            double max_cost_optimistic = cost_models::k_multi_bsp::predict_cost( &hw_model, k_bsp_model, num_threads, "max", true );
+            double max_cost_pessimistic = cost_models::k_multi_bsp::predict_cost( &hw_model, k_bsp_model, num_threads, "max", false );
             
             // Hierarchical Roofline model
             cost_models::hier_roofline::AlgoParameters_p hr_model = cost_models::hier_roofline::get_params_eWiseApply( n, 
@@ -919,7 +928,7 @@ struct CostPredictor< EWiseApplyFunc, grb::Vector< T1 >, grb::Vector< T2 >, T3, 
             double hlr_cost = cost_models::hier_lat_roofline::predict_cost( &hw_model, hlr_model, num_threads );
             
             
-            return max_cost;
+            return max_cost_pessimistic;
         } catch(const std::exception& e) {
             throw std::runtime_error("Error in CostPredictor<EWiseApplyFunc, Vector, Vector, scalar>: " + std::string(e.what()));
         } catch(...) {
@@ -941,7 +950,8 @@ struct CostPredictor< EWiseApplyFunc, grb::Vector< T1 >, T2, grb::Vector< T3 >, 
             cost_models::k_multi_bsp::AlgoParameters_p k_bsp_model = cost_models::k_multi_bsp::get_params_eWiseApply( n, 
                 sizeof( T1 ), sizeof( T2 ), sizeof( T3 ), 0, 1 );
             //double sum_cost = cost_models::k_multi_bsp::predict_cost( &hw_model, k_bsp_model, num_threads, "sum" );
-            double max_cost = cost_models::k_multi_bsp::predict_cost( &hw_model, k_bsp_model, num_threads, "max" );
+            double max_cost_optimistic = cost_models::k_multi_bsp::predict_cost( &hw_model, k_bsp_model, num_threads, "max", true );
+            double max_cost_pessimistic = cost_models::k_multi_bsp::predict_cost( &hw_model, k_bsp_model, num_threads, "max", false );
             
             // Hierarchical Roofline model
             cost_models::hier_roofline::AlgoParameters_p hr_model = cost_models::hier_roofline::get_params_eWiseApply( n, 
@@ -954,7 +964,7 @@ struct CostPredictor< EWiseApplyFunc, grb::Vector< T1 >, T2, grb::Vector< T3 >, 
             double hlr_cost = cost_models::hier_lat_roofline::predict_cost( &hw_model, hlr_model, num_threads );
             
             
-            return max_cost;
+            return max_cost_pessimistic;
         } catch(const std::exception& e) {
             throw std::runtime_error("Error in CostPredictor<EWiseApplyFunc, Vector, scalar, Vector>: " + std::string(e.what()));
         } catch(...) {
@@ -983,7 +993,8 @@ struct CostPredictor< EWiseApplyFunc, grb::Vector< T1 >, grb::Vector< T2 > , grb
             cost_models::k_multi_bsp::AlgoParameters_p k_bsp_model = cost_models::k_multi_bsp::get_params_eWiseApply( n, 
                 sizeof( T1 ), sizeof( T2 ), sizeof( T3 ), 0, 1 );
             //double sum_cost = cost_models::k_multi_bsp::predict_cost( &hw_model, k_bsp_model, num_threads, "sum" );
-            double max_cost = cost_models::k_multi_bsp::predict_cost( &hw_model, k_bsp_model, num_threads, "max" );
+            double max_cost_optimistic = cost_models::k_multi_bsp::predict_cost( &hw_model, k_bsp_model, num_threads, "max", true );
+            double max_cost_pessimistic = cost_models::k_multi_bsp::predict_cost( &hw_model, k_bsp_model, num_threads, "max", false );
             
             // Hierarchical Roofline model
             cost_models::hier_roofline::AlgoParameters_p hr_model = cost_models::hier_roofline::get_params_eWiseApply( n, 
@@ -996,7 +1007,7 @@ struct CostPredictor< EWiseApplyFunc, grb::Vector< T1 >, grb::Vector< T2 > , grb
             double hlr_cost = cost_models::hier_lat_roofline::predict_cost( &hw_model, hlr_model, num_threads );
             
             
-            return max_cost;
+            return max_cost_pessimistic;
         } catch(const std::exception& e) {
             throw std::runtime_error("Error in CostPredictor<EWiseApplyFunc, Vector, Vector, Vector>: " + std::string(e.what()));
         } catch(...) {
@@ -1023,7 +1034,8 @@ struct CostPredictor< FoldlFunc, grb::Vector< T1 >, grb::Vector< T2 >, Monoid > 
             cost_models::k_multi_bsp::AlgoParameters_p k_bsp_model = cost_models::k_multi_bsp::get_params_foldl( n, 
                 sizeof( T1 ), sizeof( T2 ), 1, 1 );
             //double sum_cost = cost_models::k_multi_bsp::predict_cost( &hw_model, k_bsp_model, num_threads, "sum" );
-            double max_cost = cost_models::k_multi_bsp::predict_cost( &hw_model, k_bsp_model, num_threads, "max" );
+            double max_cost_optimistic = cost_models::k_multi_bsp::predict_cost( &hw_model, k_bsp_model, num_threads, "max", true );
+            double max_cost_pessimistic = cost_models::k_multi_bsp::predict_cost( &hw_model, k_bsp_model, num_threads, "max", false );
             
             // Hierarchical Roofline model
             cost_models::hier_roofline::AlgoParameters_p hr_model = cost_models::hier_roofline::get_params_foldl( n, 
@@ -1036,7 +1048,7 @@ struct CostPredictor< FoldlFunc, grb::Vector< T1 >, grb::Vector< T2 >, Monoid > 
             double hlr_cost = cost_models::hier_lat_roofline::predict_cost( &hw_model, hlr_model, num_threads );
             
             
-            return max_cost;
+            return max_cost_pessimistic;
         } catch(const std::exception& e) {
             throw std::runtime_error("Error in CostPredictor<FoldlFunc, Vector, Vector>: " + std::string(e.what()));
         } catch(...) {
@@ -1057,7 +1069,8 @@ struct CostPredictor< FoldlFunc, T1 , grb::Vector< T2 >, Monoid > {
             cost_models::k_multi_bsp::AlgoParameters_p k_bsp_model = cost_models::k_multi_bsp::get_params_foldl( n, 
                 sizeof( T1 ), sizeof( T2 ), 0, 1 );
             //double sum_cost = cost_models::k_multi_bsp::predict_cost( &hw_model, k_bsp_model, num_threads, "sum" );
-            double max_cost = cost_models::k_multi_bsp::predict_cost( &hw_model, k_bsp_model, num_threads, "max" );
+            double max_cost_optimistic = cost_models::k_multi_bsp::predict_cost( &hw_model, k_bsp_model, num_threads, "max", true );
+            double max_cost_pessimistic = cost_models::k_multi_bsp::predict_cost( &hw_model, k_bsp_model, num_threads, "max", false );
             
             // Hierarchical Roofline model
             cost_models::hier_roofline::AlgoParameters_p hr_model = cost_models::hier_roofline::get_params_foldl( n, 
@@ -1070,7 +1083,7 @@ struct CostPredictor< FoldlFunc, T1 , grb::Vector< T2 >, Monoid > {
             double hlr_cost = cost_models::hier_lat_roofline::predict_cost( &hw_model, hlr_model, num_threads );
             
             
-            return max_cost;
+            return max_cost_pessimistic;
         } catch(const std::exception& e) {
             throw std::runtime_error("Error in CostPredictor<FoldlFunc, scalar, Vector>: " + std::string(e.what()));
         } catch(...) {
@@ -1093,7 +1106,8 @@ struct CostPredictor< FoldlFunc, grb::Vector< T1 >, T2 , Monoid > {
             cost_models::k_multi_bsp::AlgoParameters_p k_bsp_model = cost_models::k_multi_bsp::get_params_foldl( n, 
                 sizeof( T1 ), sizeof( T2 ), 1, 0 );
             //double sum_cost = cost_models::k_multi_bsp::predict_cost( &hw_model, k_bsp_model, num_threads, "sum" );
-            double max_cost = cost_models::k_multi_bsp::predict_cost( &hw_model, k_bsp_model, num_threads, "max" );
+            double max_cost_optimistic = cost_models::k_multi_bsp::predict_cost( &hw_model, k_bsp_model, num_threads, "max", true );
+            double max_cost_pessimistic = cost_models::k_multi_bsp::predict_cost( &hw_model, k_bsp_model, num_threads, "max", false );
             
             // Hierarchical Roofline model
             cost_models::hier_roofline::AlgoParameters_p hr_model = cost_models::hier_roofline::get_params_foldl( n, 
@@ -1106,7 +1120,7 @@ struct CostPredictor< FoldlFunc, grb::Vector< T1 >, T2 , Monoid > {
             double hlr_cost = cost_models::hier_lat_roofline::predict_cost( &hw_model, hlr_model, num_threads );
             
             
-            return max_cost;
+            return max_cost_pessimistic;
         } catch(const std::exception& e) {
             throw std::runtime_error("Error in CostPredictor<FoldlFunc, Vector, scalar>: " + std::string(e.what()));
         } catch(...) {
@@ -1131,7 +1145,8 @@ struct CostPredictor< FoldrFunc, grb::Vector< T1 > , grb::Vector< T2 > , Monoid 
 			cost_models::k_multi_bsp::AlgoParameters_p k_bsp_model = cost_models::k_multi_bsp::get_params_foldr( n, 
 				sizeof( T1 ), sizeof( T2 ), 1, 1 );
 			//double sum_cost = cost_models::k_multi_bsp::predict_cost( &hw_model, k_bsp_model, num_threads, "sum" );
-			double max_cost = cost_models::k_multi_bsp::predict_cost( &hw_model, k_bsp_model, num_threads, "max" );
+			double max_cost_optimistic = cost_models::k_multi_bsp::predict_cost( &hw_model, k_bsp_model, num_threads, "max", true );
+			double max_cost_pessimistic = cost_models::k_multi_bsp::predict_cost( &hw_model, k_bsp_model, num_threads, "max", false );
 			
 			// Hierarchical Roofline model
 			cost_models::hier_roofline::AlgoParameters_p hr_model = cost_models::hier_roofline::get_params_foldr( n, 
@@ -1145,11 +1160,11 @@ struct CostPredictor< FoldrFunc, grb::Vector< T1 > , grb::Vector< T2 > , Monoid 
 			
 			// Print all model predictions
 			//std::cout << "[TRACING] k-Multi-BSP-additive cost: " << sum_cost << " seconds" << std::endl;
-			std::cout << "[TRACING] k-Multi-BSP-max cost: " << max_cost << " seconds" << std::endl;
+			std::cout << "[TRACING] k-Multi-BSP-max cost: " << max_cost_pessimistic << " seconds" << std::endl;
 			std::cout << "[TRACING] Hierarchical-Roofline cost: " << hr_cost << " seconds" << std::endl;
 			std::cout << "[TRACING] Hierarchical-Latency-Roofline cost: " << hlr_cost << " seconds" << std::endl;
 			
-			return max_cost;
+			return max_cost_pessimistic;
 		} catch(const std::exception& e) {
             throw std::runtime_error("Error in CostPredictor<FoldrFunc, Vector, Vector>: " + std::string(e.what()));
         } catch(...) {
@@ -1172,7 +1187,8 @@ struct CostPredictor< FoldrFunc, T1, grb::Vector< T2 >, Monoid > {
 			cost_models::k_multi_bsp::AlgoParameters_p k_bsp_model = cost_models::k_multi_bsp::get_params_foldr( n, 
 				sizeof( T1 ), sizeof( T2 ), 0, 1 );
 			//double sum_cost = cost_models::k_multi_bsp::predict_cost( &hw_model, k_bsp_model, num_threads, "sum" );
-			double max_cost = cost_models::k_multi_bsp::predict_cost( &hw_model, k_bsp_model, num_threads, "max" );
+			double max_cost_optimistic = cost_models::k_multi_bsp::predict_cost( &hw_model, k_bsp_model, num_threads, "max", true );
+			double max_cost_pessimistic = cost_models::k_multi_bsp::predict_cost( &hw_model, k_bsp_model, num_threads, "max", false );
 			
 			// Hierarchical Roofline model
 			cost_models::hier_roofline::AlgoParameters_p hr_model = cost_models::hier_roofline::get_params_foldr( n, 
@@ -1186,11 +1202,11 @@ struct CostPredictor< FoldrFunc, T1, grb::Vector< T2 >, Monoid > {
 			
 			// Print all model predictions
 			//std::cout << "[TRACING] k-Multi-BSP-additive cost: " << sum_cost << " seconds" << std::endl;
-			std::cout << "[TRACING] k-Multi-BSP-max cost: " << max_cost << " seconds" << std::endl;
+			std::cout << "[TRACING] k-Multi-BSP-max cost: " << max_cost_pessimistic << " seconds" << std::endl;
 			std::cout << "[TRACING] Hierarchical-Roofline cost: " << hr_cost << " seconds" << std::endl;
 			std::cout << "[TRACING] Hierarchical-Latency-Roofline cost: " << hlr_cost << " seconds" << std::endl;
 			
-			return max_cost;
+			return max_cost_pessimistic;
 		} catch(const std::exception& e) {
             throw std::runtime_error("Error in CostPredictor<FoldrFunc, scalar, Vector>: " + std::string(e.what()));
         } catch(...) {
@@ -1211,7 +1227,8 @@ struct CostPredictor< FoldrFunc, grb::Vector< T1 >, T2, Monoid > {
 			cost_models::k_multi_bsp::AlgoParameters_p k_bsp_model = cost_models::k_multi_bsp::get_params_foldr( n, 
 				sizeof( T1 ), sizeof( T2 ), 1, 0 );
 			//double sum_cost = cost_models::k_multi_bsp::predict_cost( &hw_model, k_bsp_model, num_threads, "sum" );
-			double max_cost = cost_models::k_multi_bsp::predict_cost( &hw_model, k_bsp_model, num_threads, "max" );
+			double max_cost_optimistic = cost_models::k_multi_bsp::predict_cost( &hw_model, k_bsp_model, num_threads, "max", true );
+			double max_cost_pessimistic = cost_models::k_multi_bsp::predict_cost( &hw_model, k_bsp_model, num_threads, "max", false );
 			
 			// Hierarchical Roofline model
 			cost_models::hier_roofline::AlgoParameters_p hr_model = cost_models::hier_roofline::get_params_foldr( n, 
@@ -1225,11 +1242,11 @@ struct CostPredictor< FoldrFunc, grb::Vector< T1 >, T2, Monoid > {
 			
 			// Print all model predictions
 			//std::cout << "[TRACING] k-Multi-BSP-additive cost: " << sum_cost << " seconds" << std::endl;
-			std::cout << "[TRACING] k-Multi-BSP-max cost: " << max_cost << " seconds" << std::endl;
+			std::cout << "[TRACING] k-Multi-BSP-max cost: " << max_cost_pessimistic << " seconds" << std::endl;
 			std::cout << "[TRACING] Hierarchical-Roofline cost: " << hr_cost << " seconds" << std::endl;
 			std::cout << "[TRACING] Hierarchical-Latency-Roofline cost: " << hlr_cost << " seconds" << std::endl;
 			
-			return max_cost;
+			return max_cost_pessimistic;
 		} catch(const std::exception& e) {
             throw std::runtime_error("Error in CostPredictor<FoldrFunc, Vector, scalar>: " + std::string(e.what()));
         } catch(...) {
@@ -1258,7 +1275,8 @@ struct CostPredictor< DotFunc, T0, grb::Vector< T1 >, grb::Vector< T2 >, MonoidT
             cost_models::k_multi_bsp::AlgoParameters_p k_bsp_model =
                 cost_models::k_multi_bsp::get_params_dot(n, sizeof(T0), sizeof(T1), sizeof(T2));
             //double sum_cost = cost_models::k_multi_bsp::predict_cost( &hw_model, k_bsp_model, num_threads, "sum" );
-            double max_cost = cost_models::k_multi_bsp::predict_cost( &hw_model, k_bsp_model, num_threads, "max" );
+            double max_cost_optimistic = cost_models::k_multi_bsp::predict_cost( &hw_model, k_bsp_model, num_threads, "max", true );
+            double max_cost_pessimistic = cost_models::k_multi_bsp::predict_cost( &hw_model, k_bsp_model, num_threads, "max", false );
             
             // Hierarchical Roofline model
             cost_models::hier_roofline::AlgoParameters_p hr_model =
@@ -1270,7 +1288,7 @@ struct CostPredictor< DotFunc, T0, grb::Vector< T1 >, grb::Vector< T2 >, MonoidT
                 cost_models::hier_lat_roofline::get_params_dot(n, sizeof(T0), sizeof(T1), sizeof(T2));
             double hlr_cost = cost_models::hier_lat_roofline::predict_cost( &hw_model, hlr_model, num_threads );
 
-            return max_cost;
+            return max_cost_pessimistic;
 
         } catch(const std::exception& e) {
             throw std::runtime_error("Error in CostPredictor<DotFunc>: " + std::string(e.what()));

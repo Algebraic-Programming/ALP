@@ -25,6 +25,7 @@ namespace HW_model
     typedef struct HWParameters
     {
         size_t d;       // Number of levels
+        size_t d_numa;  // The level (1-indexed) at which NUMA effects start (first level after LLC), 0 if no NUMA
         // size_t SIMD_size;        // Size of each SIMD operation
         // double r_scalar, r_SIMD;// inverse OPS/s (seconds/op)
         std::vector<double> g;    // inverse BW (seconds/access)
@@ -100,23 +101,6 @@ namespace HW_model
         }
         
         return active_levels;
-    }
-
-    // Utility function to find hw_model index by thread count and policy
-    size_t find_hw_model_idx(size_t threads, const std::string& policy, HWParameter_configurations config)
-    {
-        for (size_t i = 0; i < config.hw_models.size(); ++i)
-        {
-            uint64_t model_threads = config.threads_options_num[config.hw_model_thread_id[i]];
-            std::string model_policy = config.policy_options_str[config.hw_model_policy_id[i]];
-            
-            if (model_threads == threads && model_policy == policy)
-            {
-                return i;
-            }
-        }
-        
-        throw std::invalid_argument("No hw_model found for given threads and policy");
     }
 
     // Validate HWParameter_configurations structure
@@ -574,8 +558,8 @@ namespace HW_model
             return algo_p;
 		}
 		/*=====================================================================*/
-        /*---------------------------------add---------------------------------*/
-		AlgoParameters_p get_params_add( uint64_t n, size_t z_dsize, size_t x_dsize, size_t y_dsize,
+        /*---------------------------------eWiseAdd---------------------------------*/
+		AlgoParameters_p get_params_eWiseAdd( uint64_t n, size_t z_dsize, size_t x_dsize, size_t y_dsize,
             bool x_vec, bool y_vec ) {
 			AlgoParameters_p algo_p = new AlgoParameters();
 			algo_p->b_foot = z_dsize * n + (x_vec ? x_dsize * n : 0) + (y_vec ? y_dsize * n : 0);
@@ -587,8 +571,8 @@ namespace HW_model
             return algo_p;
 		}
 		/*=====================================================================*/
-        /*---------------------------------mul---------------------------------*/
-		AlgoParameters_p get_params_mul( uint64_t n, size_t z_dsize, size_t x_dsize, size_t y_dsize,
+        /*---------------------------------eWiseMul---------------------------------*/
+		AlgoParameters_p get_params_eWiseMul( uint64_t n, size_t z_dsize, size_t x_dsize, size_t y_dsize,
             bool x_vec, bool y_vec ) {
 			AlgoParameters_p algo_p = new AlgoParameters();
 			algo_p->b_foot = z_dsize * n + (x_vec ? x_dsize * n : 0) + (y_vec ? y_dsize * n : 0);
@@ -906,8 +890,8 @@ namespace HW_model
             return algo_p;
 		}
 		/*=====================================================================*/
-        /*---------------------------------add---------------------------------*/
-		AlgoParameters_p get_params_add( uint64_t n, size_t z_dsize, size_t x_dsize, size_t y_dsize,
+        /*---------------------------------eWiseAdd---------------------------------*/
+		AlgoParameters_p get_params_eWiseAdd( uint64_t n, size_t z_dsize, size_t x_dsize, size_t y_dsize,
             bool x_vec, bool y_vec ) {
 			AlgoParameters_p algo_p = new AlgoParameters();
 			algo_p->b_foot = z_dsize * n + (x_vec ? x_dsize * n : 0) + (y_vec ? y_dsize * n : 0);
@@ -921,8 +905,8 @@ namespace HW_model
             return algo_p;
 		}
 		/*=====================================================================*/
-        /*---------------------------------mul---------------------------------*/
-		AlgoParameters_p get_params_mul( uint64_t n, size_t z_dsize, size_t x_dsize, size_t y_dsize,
+        /*---------------------------------eWiseMul---------------------------------*/
+		AlgoParameters_p get_params_eWiseMul( uint64_t n, size_t z_dsize, size_t x_dsize, size_t y_dsize,
             bool x_vec, bool y_vec ) {
 			AlgoParameters_p algo_p = new AlgoParameters();
 			algo_p->b_foot = z_dsize * n + (x_vec ? x_dsize * n : 0) + (y_vec ? y_dsize * n : 0);
@@ -1072,7 +1056,7 @@ namespace HW_model
 
         // Adjust memory level for supersteps
         void adjust_lvl_naive(HW_model::HWParameters_p hw_params,
-                              AlgoParameters_p algo_params, size_t target_threads)
+                              AlgoParameters_p algo_params, size_t target_threads, bool NUMA_optimism)
         {
             // The base level for auto-adjustment is the maximum level of all supersteps
             size_t target_level = hw_params->d - 1;
@@ -1085,10 +1069,12 @@ namespace HW_model
 
             // Naive search for the appropriate memory level (d)
             size_t pi_mult = 1;
+
             for (size_t lvl = 0; lvl < hw_params->d; lvl++)
             {
                 pi_mult *= hw_params->p[lvl];
-                if (algo_params->b_foot <= hw_params->m[lvl]) // && target_threads <= pi_mult)
+                if ((algo_params->b_foot <= hw_params->m[lvl]) 
+                && ( NUMA_optimism || (lvl + 1 < hw_params->d_numa || target_threads <= pi_mult)))
                 {
                     target_level = lvl + 1;
                     break;
@@ -1112,17 +1098,20 @@ namespace HW_model
          * @param algo_params Algorithm parameters
          * @param target_threads Number of threads
          * @param stream_aggregator Method to aggregate streams ("max" or "sum")
+         * @param NUMA_optimistic Whether to assume optimal NUMA behavior (default: false)
          * @return Predicted execution cost in seconds
          */
         double predict_cost(HW_model::HWParameters_p hw_params,
                             AlgoParameters_p algo_params,
                             size_t target_threads,
-                            const std::string &stream_aggregator = "sum")
+                            const std::string &stream_aggregator = "sum",
+                            bool NUMA_optimistic = false)
         {
 #ifdef DEBUG_COST_MODELS
             std::cout << "===== k-Multi-BSP Cost Prediction =====\n\n";
             std::cout << "Threads: " << target_threads << "\n";
             std::cout << "Stream aggregator: " << stream_aggregator << "\n";
+            std::cout << "NUMA optimistic: " << (NUMA_optimistic ? "true" : "false") << "\n";
 #endif
 
             algo_params_validate(algo_params);
@@ -1130,7 +1119,7 @@ namespace HW_model
             hw_params_validate(hw_params);
             // hw_params_print(hw_params);
 
-            adjust_lvl_naive(hw_params, algo_params, target_threads);
+            adjust_lvl_naive(hw_params, algo_params, target_threads, NUMA_optimistic);
 
             // Calculate cost for each superstep type
             double total_cost = 0.0;

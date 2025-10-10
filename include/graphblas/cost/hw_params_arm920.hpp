@@ -3,7 +3,7 @@
 // Allocation policies: close, spread
 // Base levels: L2Cache, L3Cache, NUMANode, NodeMem, GLOBAL_SYNC
 // Exact levels only (no subsets)
-// Generated on 2025-10-09 12:21:16
+// Generated on 2025-10-10 09:59:55
 
 #ifndef HW_PARAMS_ARM920_HPP
 #define HW_PARAMS_ARM920_HPP
@@ -16,6 +16,7 @@ const std::vector<cost_models::HW_model::HWParameters> hw_models_vector = {
     // Hardware parameters for 1 thread(s), policy: close, subset: L2Cache, L3Cache, NUMANode, NodeMem, GLOBAL_SYNC
    {
     /* d            */ 5,
+    /* d_numa       */ 3,
     /* g            */ {4.704307e-11, 7.869834e-11, 1.183435e-10, 1.857639e-10, 2.503395e-06},
     /* ls           */ {1.220061e-09, 3.151055e-09, 4.377526e-09, 7.502419e-09, 2.217293e-06},
     /* m            */ {524288, 25165824, 135291469824, 541165879296, 541165879296},
@@ -24,6 +25,7 @@ const std::vector<cost_models::HW_model::HWParameters> hw_models_vector = {
     // Hardware parameters for 2 thread(s), policy: close, subset: L2Cache, L3Cache, NUMANode, NodeMem, GLOBAL_SYNC
    {
     /* d            */ 5,
+    /* d_numa       */ 3,
     /* g            */ {2.325483e-11, 5.120760e-11, 6.620053e-11, 9.475240e-11, 1.931191e-06},
     /* ls           */ {6.895785e-10, 2.697968e-09, 2.896586e-09, 3.959072e-09, 2.443791e-06},
     /* m            */ {524288, 25165824, 135291469824, 541165879296, 541165879296},
@@ -32,6 +34,7 @@ const std::vector<cost_models::HW_model::HWParameters> hw_models_vector = {
     // Hardware parameters for 4 thread(s), policy: close, subset: L2Cache, L3Cache, NUMANode, NodeMem, GLOBAL_SYNC
    {
     /* d            */ 5,
+    /* d_numa       */ 3,
     /* g            */ {1.216898e-11, 3.141160e-11, 3.745975e-11, 4.977566e-11, 3.719330e-06},
     /* ls           */ {4.205849e-10, 1.986984e-09, 2.088403e-09, 2.692659e-09, 3.588200e-06},
     /* m            */ {524288, 25165824, 135291469824, 541165879296, 541165879296},
@@ -40,6 +43,7 @@ const std::vector<cost_models::HW_model::HWParameters> hw_models_vector = {
     // Hardware parameters for 8 thread(s), policy: close, subset: L2Cache, L3Cache, NUMANode, NodeMem, GLOBAL_SYNC
    {
     /* d            */ 5,
+    /* d_numa       */ 3,
     /* g            */ {6.220618e-12, 1.643502e-11, 2.193186e-11, 2.604668e-11, 4.613400e-06},
     /* ls           */ {2.238497e-10, 1.183197e-09, 1.295675e-09, 1.472085e-09, 4.911422e-06},
     /* m            */ {524288, 25165824, 135291469824, 541165879296, 541165879296},
@@ -48,30 +52,61 @@ const std::vector<cost_models::HW_model::HWParameters> hw_models_vector = {
     // Hardware parameters for 12 thread(s), policy: close, subset: L2Cache, L3Cache, NUMANode, NodeMem, GLOBAL_SYNC
    {
     /* d            */ 5,
+    /* d_numa       */ 3,
     /* g            */ {4.265756e-12, 1.189379e-11, 1.750302e-11, 1.851089e-11, 7.688997e-06},
     /* ls           */ {1.797765e-10, 8.689776e-10, 1.041810e-09, 1.146673e-09, 6.961822e-06},
+    /* m            */ {524288, 25165824, 135291469824, 541165879296, 541165879296},
+    /* p            */ {1, 24, 1, 4, 1},
+    /* kmax         */ {999, 999, 999, 999, 999}},
+    // Hardware parameters for 16 thread(s), policy: close, subset: L2Cache, L3Cache, NUMANode, NodeMem, GLOBAL_SYNC
+   {
+    /* d            */ 5,
+    /* d_numa       */ 3,
+    /* g            */ {3.294345e-12, 1.015133e-11, 1.543769e-11, 1.579307e-11, 2.183914e-05},
+    /* ls           */ {1.484338e-10, 7.595400e-10, 1.004934e-09, 1.061221e-09, 2.493858e-05},
     /* m            */ {524288, 25165824, 135291469824, 541165879296, 541165879296},
     /* p            */ {1, 24, 1, 4, 1},
     /* kmax         */ {999, 999, 999, 999, 999}},
     // Hardware parameters for 24 thread(s), policy: close, subset: L2Cache, L3Cache, NUMANode, NodeMem, GLOBAL_SYNC
    {
     /* d            */ 5,
+    /* d_numa       */ 3,
     /* g            */ {2.280146e-12, 5.955418e-12, 1.255653e-11, 1.315468e-11, 8.952619e-06},
     /* ls           */ {9.300533e-11, 4.417624e-10, 7.994690e-10, 8.750512e-10, 8.249284e-06},
+    /* m            */ {524288, 25165824, 135291469824, 541165879296, 541165879296},
+    /* p            */ {1, 24, 1, 4, 1},
+    /* kmax         */ {999, 999, 999, 999, 999}},
+    // Hardware parameters for 32 thread(s), policy: close, subset: L2Cache, L3Cache, NUMANode, NodeMem, GLOBAL_SYNC
+   {
+    /* d            */ 5,
+    /* d_numa       */ 3,
+    /* g            */ {1.711599e-12, 4.444358e-12, 9.438568e-12, 1.224574e-11, 3.510714e-05},
+    /* ls           */ {7.436606e-11, 3.532937e-10, 6.102326e-10, 8.299121e-10, 4.001856e-05},
     /* m            */ {524288, 25165824, 135291469824, 541165879296, 541165879296},
     /* p            */ {1, 24, 1, 4, 1},
     /* kmax         */ {999, 999, 999, 999, 999}},
     // Hardware parameters for 48 thread(s), policy: close, subset: L2Cache, L3Cache, NUMANode, NodeMem, GLOBAL_SYNC
    {
     /* d            */ 5,
+    /* d_numa       */ 3,
     /* g            */ {1.169244e-12, 3.155775e-12, 7.195628e-12, 1.237560e-11, 6.256103e-05},
     /* ls           */ {4.908825e-11, 2.369889e-10, 4.529260e-10, 8.563975e-10, 6.915331e-05},
+    /* m            */ {524288, 25165824, 135291469824, 541165879296, 541165879296},
+    /* p            */ {1, 24, 1, 4, 1},
+    /* kmax         */ {999, 999, 999, 999, 999}},
+    // Hardware parameters for 64 thread(s), policy: close, subset: L2Cache, L3Cache, NUMANode, NodeMem, GLOBAL_SYNC
+   {
+    /* d            */ 5,
+    /* d_numa       */ 3,
+    /* g            */ {8.885908e-13, 2.108379e-12, 5.605207e-12, 9.129807e-12, 9.292364e-05},
+    /* ls           */ {3.665152e-11, 1.684369e-10, 3.587535e-10, 6.495532e-10, 1.113296e-04},
     /* m            */ {524288, 25165824, 135291469824, 541165879296, 541165879296},
     /* p            */ {1, 24, 1, 4, 1},
     /* kmax         */ {999, 999, 999, 999, 999}},
     // Hardware parameters for 96 thread(s), policy: close, subset: L2Cache, L3Cache, NUMANode, NodeMem, GLOBAL_SYNC
    {
     /* d            */ 5,
+    /* d_numa       */ 3,
     /* g            */ {6.345705e-13, 1.439972e-12, 4.554426e-12, 9.184656e-12, 3.641129e-04},
     /* ls           */ {2.705177e-11, 1.141888e-10, 2.908892e-10, 6.728599e-10, 2.368450e-04},
     /* m            */ {524288, 25165824, 135291469824, 541165879296, 541165879296},
@@ -80,6 +115,7 @@ const std::vector<cost_models::HW_model::HWParameters> hw_models_vector = {
     // Hardware parameters for 1 thread(s), policy: spread, subset: L2Cache, L3Cache, NUMANode, NodeMem, GLOBAL_SYNC
    {
     /* d            */ 5,
+    /* d_numa       */ 3,
     /* g            */ {4.704307e-11, 7.869834e-11, 1.183435e-10, 1.857639e-10, 2.503395e-06},
     /* ls           */ {1.220061e-09, 3.151055e-09, 4.377526e-09, 7.502419e-09, 2.217293e-06},
     /* m            */ {524288, 25165824, 135291469824, 541165879296, 541165879296},
@@ -88,6 +124,7 @@ const std::vector<cost_models::HW_model::HWParameters> hw_models_vector = {
     // Hardware parameters for 2 thread(s), policy: spread, subset: L2Cache, L3Cache, NUMANode, NodeMem, GLOBAL_SYNC
    {
     /* d            */ 5,
+    /* d_numa       */ 3,
     /* g            */ {2.325483e-11, 5.120760e-11, 6.620053e-11, 9.475240e-11, 1.931191e-06},
     /* ls           */ {6.895785e-10, 2.697968e-09, 2.896586e-09, 3.959072e-09, 2.443791e-06},
     /* m            */ {524288, 25165824, 135291469824, 541165879296, 541165879296},
@@ -96,6 +133,7 @@ const std::vector<cost_models::HW_model::HWParameters> hw_models_vector = {
     // Hardware parameters for 4 thread(s), policy: spread, subset: L2Cache, L3Cache, NUMANode, NodeMem, GLOBAL_SYNC
    {
     /* d            */ 5,
+    /* d_numa       */ 3,
     /* g            */ {1.216898e-11, 3.141160e-11, 3.745975e-11, 4.977566e-11, 3.719330e-06},
     /* ls           */ {4.205849e-10, 1.986984e-09, 2.088403e-09, 2.692659e-09, 3.588200e-06},
     /* m            */ {524288, 25165824, 135291469824, 541165879296, 541165879296},
@@ -104,6 +142,7 @@ const std::vector<cost_models::HW_model::HWParameters> hw_models_vector = {
     // Hardware parameters for 8 thread(s), policy: spread, subset: L2Cache, L3Cache, NUMANode, NodeMem, GLOBAL_SYNC
    {
     /* d            */ 5,
+    /* d_numa       */ 3,
     /* g            */ {6.220618e-12, 1.643502e-11, 2.193186e-11, 2.604668e-11, 4.613400e-06},
     /* ls           */ {2.238497e-10, 1.183197e-09, 1.295675e-09, 1.472085e-09, 4.911422e-06},
     /* m            */ {524288, 25165824, 135291469824, 541165879296, 541165879296},
@@ -112,30 +151,61 @@ const std::vector<cost_models::HW_model::HWParameters> hw_models_vector = {
     // Hardware parameters for 12 thread(s), policy: spread, subset: L2Cache, L3Cache, NUMANode, NodeMem, GLOBAL_SYNC
    {
     /* d            */ 5,
+    /* d_numa       */ 3,
     /* g            */ {4.265756e-12, 1.189379e-11, 1.750302e-11, 1.851089e-11, 7.688997e-06},
     /* ls           */ {1.797765e-10, 8.689776e-10, 1.041810e-09, 1.146673e-09, 6.961822e-06},
+    /* m            */ {524288, 25165824, 135291469824, 541165879296, 541165879296},
+    /* p            */ {1, 24, 1, 4, 1},
+    /* kmax         */ {999, 999, 999, 999, 999}},
+    // Hardware parameters for 16 thread(s), policy: spread, subset: L2Cache, L3Cache, NUMANode, NodeMem, GLOBAL_SYNC
+   {
+    /* d            */ 5,
+    /* d_numa       */ 3,
+    /* g            */ {3.294345e-12, 1.015133e-11, 1.543769e-11, 1.579307e-11, 2.183914e-05},
+    /* ls           */ {1.484338e-10, 7.595400e-10, 1.004934e-09, 1.061221e-09, 2.493858e-05},
     /* m            */ {524288, 25165824, 135291469824, 541165879296, 541165879296},
     /* p            */ {1, 24, 1, 4, 1},
     /* kmax         */ {999, 999, 999, 999, 999}},
     // Hardware parameters for 24 thread(s), policy: spread, subset: L2Cache, L3Cache, NUMANode, NodeMem, GLOBAL_SYNC
    {
     /* d            */ 5,
+    /* d_numa       */ 3,
     /* g            */ {2.280146e-12, 5.955418e-12, 1.255653e-11, 1.315468e-11, 8.952619e-06},
     /* ls           */ {9.300533e-11, 4.417624e-10, 7.994690e-10, 8.750512e-10, 8.249284e-06},
+    /* m            */ {524288, 25165824, 135291469824, 541165879296, 541165879296},
+    /* p            */ {1, 24, 1, 4, 1},
+    /* kmax         */ {999, 999, 999, 999, 999}},
+    // Hardware parameters for 32 thread(s), policy: spread, subset: L2Cache, L3Cache, NUMANode, NodeMem, GLOBAL_SYNC
+   {
+    /* d            */ 5,
+    /* d_numa       */ 3,
+    /* g            */ {1.711599e-12, 4.444358e-12, 9.438568e-12, 1.224574e-11, 3.510714e-05},
+    /* ls           */ {7.436606e-11, 3.532937e-10, 6.102326e-10, 8.299121e-10, 4.001856e-05},
     /* m            */ {524288, 25165824, 135291469824, 541165879296, 541165879296},
     /* p            */ {1, 24, 1, 4, 1},
     /* kmax         */ {999, 999, 999, 999, 999}},
     // Hardware parameters for 48 thread(s), policy: spread, subset: L2Cache, L3Cache, NUMANode, NodeMem, GLOBAL_SYNC
    {
     /* d            */ 5,
+    /* d_numa       */ 3,
     /* g            */ {1.169244e-12, 3.155775e-12, 7.195628e-12, 1.237560e-11, 6.256103e-05},
     /* ls           */ {4.908825e-11, 2.369889e-10, 4.529260e-10, 8.563975e-10, 6.915331e-05},
+    /* m            */ {524288, 25165824, 135291469824, 541165879296, 541165879296},
+    /* p            */ {1, 24, 1, 4, 1},
+    /* kmax         */ {999, 999, 999, 999, 999}},
+    // Hardware parameters for 64 thread(s), policy: spread, subset: L2Cache, L3Cache, NUMANode, NodeMem, GLOBAL_SYNC
+   {
+    /* d            */ 5,
+    /* d_numa       */ 3,
+    /* g            */ {8.885908e-13, 2.108379e-12, 5.605207e-12, 9.129807e-12, 9.292364e-05},
+    /* ls           */ {3.665152e-11, 1.684369e-10, 3.587535e-10, 6.495532e-10, 1.113296e-04},
     /* m            */ {524288, 25165824, 135291469824, 541165879296, 541165879296},
     /* p            */ {1, 24, 1, 4, 1},
     /* kmax         */ {999, 999, 999, 999, 999}},
     // Hardware parameters for 96 thread(s), policy: spread, subset: L2Cache, L3Cache, NUMANode, NodeMem, GLOBAL_SYNC
    {
     /* d            */ 5,
+    /* d_numa       */ 3,
     /* g            */ {6.345705e-13, 1.439972e-12, 4.554426e-12, 9.184656e-12, 3.641129e-04},
     /* ls           */ {2.705177e-11, 1.141888e-10, 2.908892e-10, 6.728599e-10, 2.368450e-04},
     /* m            */ {524288, 25165824, 135291469824, 541165879296, 541165879296},
@@ -146,12 +216,12 @@ const std::vector<cost_models::HW_model::HWParameters> hw_models_vector = {
 
 // HWParameter_configurations struct
 const cost_models::HW_model::HWParameter_configurations dis_system_params = {
-    /* threads_options_num */ {1, 2, 4, 8, 12, 24, 48, 96},
+    /* threads_options_num */ {1, 2, 4, 8, 12, 16, 24, 32, 48, 64, 96},
     /* policy_options_str */ {"close", "spread"},
     /* level_options_str  */ {"L2Cache", "L3Cache", "NUMANode", "NodeMem", "GLOBAL_SYNC"},
-    /* hw_model_thread_id */ {0, 1, 2, 3, 4, 5, 6, 7, 0, 1, 2, 3, 4, 5, 6, 7},
-    /* hw_model_policy_id */ {0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1},
-    /* hw_model_level_bithash */ {31, 31, 31, 31, 31, 31, 31, 31, 31, 31, 31, 31, 31, 31, 31, 31},
+    /* hw_model_thread_id */ {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10},
+    /* hw_model_policy_id */ {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1},
+    /* hw_model_level_bithash */ {31, 31, 31, 31, 31, 31, 31, 31, 31, 31, 31, 31, 31, 31, 31, 31, 31, 31, 31, 31, 31, 31},
     /* hw_models */ hw_models_vector
 };
 
