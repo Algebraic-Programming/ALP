@@ -277,12 +277,12 @@ namespace grb {
 #endif
 
 						// pause for next outer loop
-						if( sleep( 1 ) != 0 && ret == grb::SUCCESS ) {
+						if( ret == grb::SUCCESS && sleep( 1 ) != 0 ) {
 #ifndef _GRB_NO_STDIO
 							std::cerr << "Sleep interrupted, assume benchmark is unreliable; "
 								<< "exiting.\n";
 #endif
-							abort();
+							ret = grb::FAILED;
 						}
 					}
 
