@@ -1445,7 +1445,6 @@ namespace grb {
         const grb::Vector< InputType, B, Coords > & y,
         const grb::Phase & phase = grb::EXECUTE
     ) {
-        std::cout << "DBG: line " << __LINE__ << " in file " << __FILE__ << "\n";
         return setTracer.template operator()< descr >( x, y, phase );
     }
 
