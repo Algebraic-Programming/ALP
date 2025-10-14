@@ -540,6 +540,7 @@ public:
         printArgTypes( std::forward< Args >( args )... );
 
         double predicted_cost = 0.0;
+#ifndef CM_DISABLE_PREDICT
         try {
             predicted_cost = CostPredictor<
                 Func, typename std::decay< Args >::type...
@@ -563,7 +564,8 @@ public:
                 throw;
             #endif
         }
-
+#endif
+#ifndef CM_DISABLE_EXEC
         auto start = std::chrono::high_resolution_clock::now();
         Func func;
         // Call underlying implementation (already traced once here)
@@ -583,6 +585,7 @@ public:
 
         return result;
     }
+#endif
 };
 
 
@@ -1429,6 +1432,15 @@ namespace grb {
     // Note: we avoid defining reference-specific `set` overloads here because
     // the reference backend already provides identical templates in
     // `reference/io.hpp`. 
+
+    template< unsigned int descr = descriptors::no_operation, typename Coords, typename T >
+    inline grb::RC set(
+        grb::Vector< T, grb::reference_omp, Coords > & x,
+        const T val,
+        const grb::Phase & phase = grb::EXECUTE
+    ) {
+        return setTracer.template operator()< descr >( x, val, phase );
+    }
 
     template< unsigned int descr = descriptors::no_operation, typename Coords, typename T >
     inline grb::RC set(

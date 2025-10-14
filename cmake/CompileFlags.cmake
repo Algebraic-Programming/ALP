@@ -39,6 +39,48 @@ if(GRB_ENABLE_TRACING)
     message(STATUS "GraphBLAS tracing enabled (_GRB_ENABLE_TRACING=1)")
 endif()
 
+option(CM_DISABLE_PREDICT "Disable actual prediction for the cost backend (but keep per-functiion timing)" OFF)
+if(CM_DISABLE_PREDICT)
+    # Append to both backend and test definitions
+    if(DEFINED ADDITIONAL_BACKEND_DEFINITIONS)
+        set(ADDITIONAL_BACKEND_DEFINITIONS "${ADDITIONAL_BACKEND_DEFINITIONS};_CM_DISABLE_PREDICT=1" 
+            CACHE STRING "Updated with tracing flag" FORCE)
+    else()
+        set(ADDITIONAL_BACKEND_DEFINITIONS "_CM_DISABLE_PREDICT=1" 
+            CACHE STRING "Set tracing flag" FORCE)
+    endif()
+
+    if(DEFINED ADDITIONAL_TEST_DEFINITIONS)
+        set(ADDITIONAL_TEST_DEFINITIONS "${ADDITIONAL_TEST_DEFINITIONS};_CM_DISABLE_PREDICT=1" 
+            CACHE STRING "Updated with tracing flag" FORCE)
+    else()
+        set(ADDITIONAL_TEST_DEFINITIONS "_CM_DISABLE_PREDICT=1" 
+            CACHE STRING "Set tracing flag" FORCE)
+    endif()
+    message(STATUS "Disable actual prediction for cost backend (_CM_DISABLE_PREDICT=1)")
+endif()
+
+option(CM_DISABLE_EXEC "Disable actual execution for the cost backend (but keep per-functiion prediction)" OFF)
+if(CM_DISABLE_EXEC)
+    # Append to both backend and test definitions
+    if(DEFINED ADDITIONAL_BACKEND_DEFINITIONS)
+        set(ADDITIONAL_BACKEND_DEFINITIONS "${ADDITIONAL_BACKEND_DEFINITIONS};_CM_DISABLE_EXEC=1" 
+            CACHE STRING "Updated with tracing flag" FORCE)
+    else()
+        set(ADDITIONAL_BACKEND_DEFINITIONS "_CM_DISABLE_EXEC=1" 
+            CACHE STRING "Set tracing flag" FORCE)
+    endif()
+
+    if(DEFINED ADDITIONAL_TEST_DEFINITIONS)
+        set(ADDITIONAL_TEST_DEFINITIONS "${ADDITIONAL_TEST_DEFINITIONS};_CM_DISABLE_EXEC=1" 
+            CACHE STRING "Updated with tracing flag" FORCE)
+    else()
+        set(ADDITIONAL_TEST_DEFINITIONS "_CM_DISABLE_EXEC=1" 
+            CACHE STRING "Set tracing flag" FORCE)
+    endif()
+    message(STATUS "Disable actual prediction for cost backend (_CM_DISABLE_EXEC=1)")
+endif()
+
 #
 # Generic compilation flags
 #
