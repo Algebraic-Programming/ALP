@@ -540,7 +540,7 @@ public:
         printArgTypes( std::forward< Args >( args )... );
 
         double predicted_cost = 0.0;
-#ifndef CM_DISABLE_PREDICT
+#ifndef _CM_DISABLE_PREDICT
         try {
             predicted_cost = CostPredictor<
                 Func, typename std::decay< Args >::type...
@@ -565,7 +565,7 @@ public:
             #endif
         }
 #endif
-#ifndef CM_DISABLE_EXEC
+#ifndef _CM_DISABLE_EXEC
         auto start = std::chrono::high_resolution_clock::now();
         Func func;
         // Call underlying implementation (already traced once here)
@@ -584,8 +584,10 @@ public:
                   << " cost units per microsecond" << std::endl;
 
         return result;
-    }
+#else
+        return grb::SUCCESS;
 #endif
+    }
 };
 
 
