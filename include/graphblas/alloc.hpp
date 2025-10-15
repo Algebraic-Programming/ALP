@@ -20,8 +20,8 @@
  * @date 13th of September, 2017
  */
 
-#ifndef _H_GRB_UTILS_ALLOC
-#define _H_GRB_UTILS_ALLOC
+#ifndef _H_GRB_ALLOC
+#define _H_GRB_ALLOC
 
 #include <stdlib.h> //posix_memalign
 
@@ -62,5 +62,5 @@ namespace grb {
 }
 #endif
 
-#endif
+#endif // _H_GRB_ALLOC
 
