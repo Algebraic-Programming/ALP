@@ -560,6 +560,20 @@ namespace grb {
 		}
 
 		/**
+		 * Removes the internal reference_mapper references to the id.
+		 */
+		void remove_mapper_references() {
+			if( _coordinates.size() > 0 && _remove_id ) {
+				internal::reference_mapper.remove( _id );
+				_id = std::numeric_limits< uintptr_t >::max();
+			} else {
+				if( _remove_id ) {
+					assert( _id == std::numeric_limits< uintptr_t >::max() );
+				}
+			}
+		}
+
+		/**
 		 * \internal Internal constructor that wraps around an existing raw dense
 		 *           vector. This constructor results in a dense vector whose
 		 *           structure is immutable. Any invalid use incurs UB; use with care.
@@ -998,22 +1012,6 @@ namespace grb {
 				x._raw = nullptr;
 				return *this;
 			}
-
-			/**
-			 * Removes the internal reference_mapper references to the id.
-			 * 
-			 */
-			void remove_mapper_references(){
-				if( _coordinates.size() > 0 && _remove_id ) {
-					internal::reference_mapper.remove( _id );
-					_id = std::numeric_limits< uintptr_t >::max();
-				} else {
-					if( _remove_id ) {
-						assert( _id == std::numeric_limits< uintptr_t >::max() );
-					}
-				}
-			}
-
 
 			/**
 			 * No implementation remarks.
