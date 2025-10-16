@@ -19,7 +19,10 @@
 #include <memory>
 #include <algorithm>
 #include <cassert>
+#include <cstdlib>
+#include <unistd.h>
 
+#include <graphblas/algorithms/simulated_annealing_re.cpp>
 #include <graphblas/nonzeroStorage.hpp>
 #include <graphblas/utils/timer.hpp>
 #include <graphblas/utils/parser.hpp>
@@ -62,6 +65,7 @@ typedef grb::utils::Singleton<
         size_t,                    // nz (nonzeros)
         size_t,                    // nsweeps
         size_t,                    // n_replicas
+        bool,                      // use_pt
         unsigned,                  // seed
         std::string,               // sweep_name
         std::vector<NonzeroT>,     // matrix data
@@ -71,8 +75,9 @@ typedef grb::utils::Singleton<
 
 namespace test_data {
     constexpr size_t n = 16;
-    constexpr size_t n_replicas = 3;
     constexpr size_t nsweeps = 2;
+    constexpr size_t n_replicas = 3;
+    constexpr bool use_pt = true; 
     constexpr unsigned seed = 8;
 
     const std::vector< std::pair< std::pair< grb::config::RowIndexType, grb::config::ColIndexType >, JType > > j_matrix_data = {
@@ -112,6 +117,7 @@ struct input {
     std::string filename_h;
     size_t n_replicas = 3;
     size_t nsweeps = 2;
+    bool use_pt = true;
     unsigned seed = 8;
     std::string sweep_name = "sequential_sweep_immediate";
     bool verify = false;
@@ -124,8 +130,8 @@ struct input {
 struct output {
     int error_code = 0;
     // TODO: remove itrations if not applicable
-    size_t iterations = 0; // total number of iterations performed does not make sense since the code does not have convergence criteria
-    double best_energy = 0.0;
+    size_t iterations = 10; // total number of iterations performed does not make sense since the code does not have convergence criteria
+    double best_energy = std::numeric_limits< JType >::max();
 	size_t rep;
 	grb::utils::TimerResults times;
     std::unique_ptr< PinnedVector< JType > > pinnedSolutionVector;
@@ -161,7 +167,7 @@ void read_matrix_data(const std::string &filename, std::vector<Dtype> &data, boo
 			data.push_back( Dtype( *it ) );
 #ifdef DEBUG_IMSB
 			// print last data element from std::vector<NonzeroT> data
-			std::cout << "read_matrix_data: " << data.back().first.first << ", "
+			std::cout << "readmatrix_data: " << data.back().first.first << ", "
 				<< data.back().first.second << ", " << data.back().second << "\n";
 #endif
 		}
@@ -237,6 +243,90 @@ void read_vector_data_from_array(
 	}
 }
 
+template<
+		// Backend backend=grb::reference,
+		class Ring = Semiring<
+			grb::operators::add< JType >, grb::operators::mul< JType >,
+			grb::identities::zero, grb::identities::one
+		> >
+static JType sequential_sweep_immediate(
+				 const grb::Matrix< JType >& couplings,
+				 const grb::Vector< JType > &local_fields,
+				 grb::Vector< IOType > &state,
+				 const JType &beta,
+				 const Ring &ring = Ring()
+			  ){
+
+		const size_t n = grb::size( state );
+		static JType delta_energy = static_cast< JType >(0.0);
+
+		static grb::Vector< JType > delta ( n );
+		static grb::Vector< JType > dn ( n );
+		static grb::Vector< JType > log_rand ( n );
+		static grb::Vector< JType > h ( n );
+
+		for( size_t j = 0 ; j < n ; ++j ){
+			constexpr auto rm = static_cast< JType >( RAND_MAX ) + 2;
+			const auto randi =static_cast< JType >( std::rand() ) + 1;
+			const auto rand = randi / rm ;
+			grb::setElement(log_rand,  std::log( rand ), j );
+		}
+
+		grb::set( h, static_cast< JType >( 0.0 ) );
+		grb::mxv( h, couplings, state , ring.getAdditiveMonoid(), ring.getMultiplicativeOperator() );
+		grb::foldl( h, local_fields, ring.getAdditiveOperator() );
+
+
+		// TODO: masking
+		for( size_t j = 0 ; j < n ; ++j ){
+#ifndef NDEBUG
+			// std::cerr << "...." << std::endl;
+#endif
+			grb::setElement( dn,  (2.0 * state[ j ] - 1.0) * h[ j ], j );
+			if( dn[ j ] >= 0 || (log_rand[ j ] < beta * dn[ j ]) ){
+				grb::setElement( state,  1 - state[j], j );
+				grb::setElement( delta,  static_cast< JType >( 1 ), j );
+				delta_energy -= dn[ j ] * delta[ j ];
+			}
+
+			// update h
+			grb::mxv( h, couplings, delta, ring.getAdditiveMonoid(), ring.getMultiplicativeOperator() );
+		}
+
+		return delta_energy;
+}
+
+
+template<
+		// Backend backend=grb::reference,
+		class Ring = Semiring<
+			grb::operators::add< JType >, grb::operators::mul< JType >,
+			grb::identities::zero, grb::identities::one
+		> >
+std::function< JType(
+					 const grb::Matrix< JType >&,
+					 const grb::Vector< JType >&,
+					 grb::Vector< IOType >&,
+					 const JType&,
+					 const Ring&
+				 ) > get_sweep_function( std::string sweep_name ){
+	/*
+	if( sweep_name != "sequential_sweep_x" ){
+		return [](
+				 const grb::Matrix< JType >& couplings,
+				 const grb::Vector< JType > &local_fields,
+				 grb::Vector< IOType > &state,
+				 const JType &beta,
+				 const Ring &ring = Ring()
+			  ){ return 0; };
+	} */
+	if( sweep_name != "sequential_sweep_immediate" ){
+			std::cerr << "Warning: unknown sweep setting. Falling back to  \"sequential_sweep_immediate\"" << std::endl;
+	}
+	 return sequential_sweep_immediate< Ring >;
+}
+
+
 
 void ioProgram( const struct input &data_in, bool &success ) {
 
@@ -249,14 +339,16 @@ void ioProgram( const struct input &data_in, bool &success ) {
     auto &nnz         = std::get<1>(storage); // nz (nonzeros)
     auto &nsweeps_st  = std::get<2>(storage); // nsweeps
     auto &n_replicas_st = std::get<3>(storage); // n_replicas
-    auto &seed_st     = std::get<4>(storage); // seed
-    auto &sweep_name  = std::get<5>(storage); // sweep_name
-    auto &Jdata       = std::get<6>(storage); // std::vector<NonzeroT>
-    auto &h           = std::get<7>(storage); // std::vector<JType>
+    auto &use_pt      = std::get<4>(storage); // seed
+    auto &seed_st     = std::get<5>(storage); // seed
+    auto &sweep_name  = std::get<6>(storage); // sweep_name
+    auto &Jdata       = std::get<7>(storage); // std::vector<NonzeroT>
+    auto &h           = std::get<8>(storage); // std::vector<JType>
 
     // Initialize metadata from input (allow CLI to override defaults)
     nsweeps_st    = data_in.nsweeps;
     n_replicas_st = data_in.n_replicas;
+    use_pt        = data_in.use_pt;
     seed_st       = data_in.seed;
     sweep_name    = data_in.sweep_name;
 
@@ -307,7 +399,7 @@ void grbProgram(
     // load into GraphBLAS
     grb::Matrix<JType> J( n, n );
 	{
-		const auto &data = std::get<6>(Storage::getData());
+		const auto &data = std::get<7>(Storage::getData());
 		RC io_rc = buildMatrixUnique(
 			J,
 			utils::makeNonzeroIterator<
@@ -347,7 +439,7 @@ void grbProgram(
 
     // build vector h with data from singleton
     {
-        const auto &h_data = std::get<7>(Storage::getData());
+        const auto &h_data = std::get<8>(Storage::getData());
 		rc = rc ? rc : buildVector(
 			h,
 			h_data.cbegin(),
@@ -362,8 +454,8 @@ void grbProgram(
     for ( size_t r = 0; r < n_replicas; ++r ) {
         states.emplace_back( grb::Vector<IOType>(n) );
         // initialize with random values
-        std::default_random_engine generator( std::get<4>(Storage::getData()) + r );
-        std::uniform_int_distribution<int> distribution(0,1);
+        std::default_random_engine generator( std::get<5>(Storage::getData()) + r );
+        std::uniform_int_distribution< int > distribution(0,1);
         // we use buildvectorUnique with a random set of indices
         std::vector< IOType > rand_data;
         for ( size_t i = 0; i < n; ++i ) {
@@ -377,6 +469,9 @@ void grbProgram(
             SEQUENTIAL
         );
     }
+	
+	const auto sweep = get_sweep_function( data_in.sweep_name );
+
 
     #ifdef DEBUG_IMSB
     if( s == 0 ) {
@@ -391,18 +486,18 @@ void grbProgram(
 
 
     // also make betas vector os size n_replicas and initialize with 10.0
-    grb::Vector<IOType> betas( n_replicas );
+    grb::Vector< JType > betas( n_replicas );
     for ( size_t r = 0; r < n_replicas; ++r ) {
-        rc = rc ? rc : grb::setElement( betas, static_cast<IOType>(10.0), r );
+        rc = rc ? rc : grb::setElement( betas, static_cast<JType>(10.0/r), r );
     }
     rc = rc ? rc : wait();
 
     // also make energies vector os size n_replicas and calculate values
     // in python energies = np.array([get_energy(couplings, local_fields, state) for state in states])
     // will be initalize in the algorithm
-    grb::Vector<IOType> energies( n_replicas );
+    grb::Vector< JType > energies( n_replicas );
+	grb::set( energies, 1 );
 
-    // all temporary vectors and matrices should be created here
 
     // TODO: add times
 
@@ -410,10 +505,9 @@ void grbProgram(
 	// time a single call
 	if( out.rep == 0 ) {
 		timer.reset();
-		// rc = simulated_annealing_RE(
-        //     energies, states, J, h, ... other params ... ,
-        //     .. temp args, sol, out.iterations
-        // );
+		rc = grb::algorithms::simulated_annealing_RE(
+				sweep, states, J, h, energies, betas, data_in.nsweeps, data_in.use_pt
+        );
 
 		rc = rc ? rc : wait();
 		double single_time = timer.time();
@@ -427,6 +521,10 @@ void grbProgram(
 		}
 		if( rc == SUCCESS ) {
 			rc = collectives<>::reduce( single_time, 0, operators::max< double >() );
+
+			for(size_t i = 0 ; i < n_replicas ; ++i ){
+				out.best_energy = std::min( out.best_energy, energies[ i ] );
+			}
 		}
 		if( rc != SUCCESS ) {
 			out.error_code = 25;
@@ -451,16 +549,27 @@ void grbProgram(
 		timer.reset();
 		for( size_t i = 0; i < out.rep && rc == SUCCESS; ++i ) {
 			if( rc == SUCCESS ) {
-                // rc = simulated_annealing_RE(
-                //     energies, states, J, h, ... other params ... ,
-                //     .. temp args, sol, out.iterations
-                // );
+				out.iterations = data_in.nsweeps;
+
+                rc = grb::algorithms::simulated_annealing_RE(
+					sweep, states, J, h, energies, betas, data_in.nsweeps, data_in.use_pt
+                );
+
 			}
 			if( grb::Properties<>::isNonblockingExecution ) {
 				rc = rc ? rc : wait();
 			}
 		}
 		const double time_taken = timer.time();
+		for ( size_t r = 0; r < n_replicas; ++r ) {
+			std::cout << "Final state replica " << r << ":\n";
+			print_vector( states[r], 30 ,"states values" );  
+			std::cout << std::endl;
+		}
+		for(size_t i = 0 ; i < n_replicas ; ++i ){
+			out.best_energy = std::min( out.best_energy, energies[ i ] );
+		}
+
 		out.times.useful = time_taken / static_cast< double >( out.rep );
 		// print timing at root process
 		if( grb::spmd<>::pid() == 0 ) {
@@ -478,6 +587,8 @@ void grbProgram(
 	// start postamble
 	timer.reset();
 
+
+
 	// set error code
 	if( rc == FAILED ) {
 		out.error_code = 30;
@@ -486,9 +597,6 @@ void grbProgram(
 		out.error_code = 35;
 		return;
 	}
-
-
-
 }
 
 
@@ -503,6 +611,7 @@ void printhelp( char *progname ) {
               << "  --h-fname STR              Path to h (local fields) vector (whitespace separated)\n"
               << "  --n-replicas INT           Number of replicas (default: 3)\n"
               << "  --nsweeps INT              Number of sweeps (default: 2)\n"
+              << "  --use-pt BOOL              Use Parallel Tampering (default: 1)\n"
               << "  --seed INT                 RNG seed (default: 8)\n"
               << "  --sweep STR                Sweep selector (default: sequential_sweep_immediate)\n"
               << "  --verify                   Verify output against reference solution\n"
@@ -537,6 +646,9 @@ bool parse_arguments( input &in, int argc, char ** argv ) {
         } else if ( a == "--nsweeps" ) {
             if ( i+1 >= argc ) { std::cerr << "--nsweeps requires an argument\n"; return false; }
             in.nsweeps = static_cast<size_t>( std::stoul(argv[++i]) );
+        } else if ( a == "--use-pt" ) {
+            if ( i+1 >= argc ) { std::cerr << "--use-pt requires an argument\n"; return false; }
+            in.use_pt = static_cast<bool>( std::stoul(argv[++i]) );
         } else if ( a == "--seed" ) {
             if ( i+1 >= argc ) { std::cerr << "--seed requires an argument\n"; return false; }
             in.seed = static_cast<unsigned>( std::stoul(argv[++i]) );
@@ -559,7 +671,7 @@ bool parse_arguments( input &in, int argc, char ** argv ) {
 
     // basic validation
     if ( !in.use_default_data ) {
-        if ( in.filename_Jmatrix.empty() || in.filename_h.empty() ) {
+        if ( in.filename_Jmatrix.empty() ) {
             std::cerr << "Either --use-default-data or both --j-matrix-fname and --h-fname must be provided\n";
             return false;
         }
