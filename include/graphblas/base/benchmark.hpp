@@ -283,7 +283,7 @@ namespace grb {
 							std::cerr << "Sleep interrupted, assume benchmark is unreliable; "
 								<< "exiting.\n";
 #endif
-							ret = grb::FAILED;
+							ret = grb::PANIC;
 						}
 					}
 
