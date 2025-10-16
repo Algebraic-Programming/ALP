@@ -657,7 +657,7 @@ struct CostPredictor< SetFunc, grb::Vector< T1 >, grb::Vector< T2 > > {
             size_t num_threads = grb::config::OMP::threads();
             
 #ifdef _CM_DISABLE_PREDICT
-            std::cout << "[TRACING] SetFunc arguments (" << num_threads << " threads): n = " << n << ", x_dsize=" << sizeof( T1 ) << ", y_dsize=" << sizeof( T2 ) << std::endl;
+            std::cout << "[TRACING] SetFunc arguments (" << num_threads << " threads): n = " << n << ", y_vec=1, x_dsize=" << sizeof( T1 ) << ", y_dsize=" << sizeof( T2 ) << ", i=0" << std::endl;
             return 0.0;
 #else
 			cost_models::HW_model::HWParameters hw_model = cost_models::HW_model::select_hw_model_auto( num_threads, dis_system_params );
@@ -696,7 +696,7 @@ struct CostPredictor< SetFunc, grb::Vector< T1 >, T2 , some_param> {
             size_t num_threads = grb::config::OMP::threads();
             
 #ifdef _CM_DISABLE_PREDICT
-            std::cout << "[TRACING] SetFunc arguments (" << num_threads << " threads): n = " << n << ", x_dsize=" << sizeof( T1 ) << ", y_dsize=" << sizeof( T2 ) << std::endl;
+            std::cout << "[TRACING] SetFunc arguments (" << num_threads << " threads): n = " << n << ", y_vec=0, x_dsize=" << sizeof( T1 ) << ", y_dsize=" << sizeof( T2 ) << ", i=0" << std::endl;
             return 0.0;
 #else
 			cost_models::HW_model::HWParameters hw_model = cost_models::HW_model::select_hw_model_auto( num_threads, dis_system_params );
@@ -742,7 +742,7 @@ struct CostPredictor< ApplyFunc, T1, T2, T3, Op > {
             size_t num_threads = grb::config::OMP::threads();
             
 #ifdef _CM_DISABLE_PREDICT
-            std::cout << "[TRACING] ApplyFunc arguments (" << num_threads << " threads): apply operation" << std::endl;
+            std::cout << "[TRACING] ApplyFunc arguments (" << num_threads << " threads):" << std::endl;
             return 0.0;
 #else
 			cost_models::HW_model::HWParameters hw_model = cost_models::HW_model::select_hw_model_auto( num_threads, dis_system_params );
