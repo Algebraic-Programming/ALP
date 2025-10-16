@@ -688,9 +688,9 @@ struct CostPredictor< SetFunc, grb::Vector< T1 >, grb::Vector< T2 > > {
     }
 };
 
-template< typename T1, typename T2 >
-struct CostPredictor< SetFunc, grb::Vector< T1 >, T2 > { 
-    static double predict( grb::Vector< T1 > & x, const T2 y ){
+template< typename T1, typename T2 , typename some_param>
+struct CostPredictor< SetFunc, grb::Vector< T1 >, T2 , some_param> { 
+    static double predict( grb::Vector< T1 > & x, const T2 y, const some_param some_param_val ){
         try {
             size_t n = grb::size( x );
             size_t num_threads = grb::config::OMP::threads();
