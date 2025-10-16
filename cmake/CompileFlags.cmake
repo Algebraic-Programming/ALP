@@ -78,7 +78,7 @@ if(CM_DISABLE_EXEC)
         set(ADDITIONAL_TEST_DEFINITIONS "_CM_DISABLE_EXEC=1" 
             CACHE STRING "Set tracing flag" FORCE)
     endif()
-    message(STATUS "Disable actual prediction for cost backend (_CM_DISABLE_EXEC=1)")
+    message(STATUS "Disable actual execution for cost backend (_CM_DISABLE_EXEC=1)")
 endif()
 
 #

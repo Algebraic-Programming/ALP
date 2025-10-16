@@ -540,7 +540,6 @@ public:
         printArgTypes( std::forward< Args >( args )... );
 
         double predicted_cost = 0.0;
-#ifndef _CM_DISABLE_PREDICT
         try {
             predicted_cost = CostPredictor<
                 Func, typename std::decay< Args >::type...
@@ -564,7 +563,6 @@ public:
                 throw;
             #endif
         }
-#endif
 #ifndef _CM_DISABLE_EXEC
         auto start = std::chrono::high_resolution_clock::now();
         Func func;
@@ -605,38 +603,44 @@ struct CostPredictor< MxvFunc, grb::Vector< T1 >, grb::Matrix< T2, Backend, RowI
         // (void)ring;
 
         try {
-            size_t nnz = grb::nnz( A ), m = grb::size( y ), n = grb::size( x );
+            size_t nnz = grb::nnz( A ), n = grb::size( x ), m = grb::size( y ), y_dsize = sizeof( T1 ), x_dsize = sizeof( T3 ), A_dsize = sizeof( T2 ), A_rowptr_size = sizeof( RowIndexType ), A_colidx_size = sizeof( NonzeroIndexType );
 			size_t num_threads = grb::config::OMP::threads();
+            
+#ifdef _CM_DISABLE_PREDICT
+            std::cout << "[TRACING] MxvFunc arguments (" << num_threads << " threads): nnz = " << nnz << ", n = " << n << ", m = " << m << ", y_dsize=" << y_dsize << ", x_dsize=" << x_dsize << ", A_dsize= " << A_dsize << ", A_rowptr_size=" << A_rowptr_size << ", A_colidx_size=" << A_colidx_size << std::endl;
+            return 0.0;
+#else
 			cost_models::HW_model::HWParameters hw_model = cost_models::HW_model::select_hw_model_auto( num_threads, dis_system_params );
 
             // k-Multi-BSP model
             cost_models::k_multi_bsp::AlgoParameters_p k_bsp_model_optimistic = cost_models::k_multi_bsp::get_params_csr(
-                nnz, n, m, sizeof( T1 ), sizeof( T3 ), sizeof( T2 ), sizeof( RowIndexType ), sizeof( NonzeroIndexType ) );
+                nnz, n, m, y_dsize, x_dsize, A_dsize, A_rowptr_size, A_colidx_size );
             cost_models::k_multi_bsp::AlgoParameters_p k_bsp_model_pessimistic = cost_models::k_multi_bsp::get_params_csr(
-                nnz, n, m, sizeof( T1 ), sizeof( T3 ), sizeof( T2 ), sizeof( RowIndexType ), sizeof( NonzeroIndexType ) );
+                nnz, n, m, y_dsize, x_dsize, A_dsize, A_rowptr_size, A_colidx_size );
             //double sum_cost = cost_models::k_multi_bsp::predict_cost( &hw_model, k_bsp_model, num_threads, "sum" );
             double max_cost_optimistic = cost_models::k_multi_bsp::predict_cost( &hw_model, k_bsp_model_optimistic, num_threads, "max", true );
             double max_cost_pessimistic = cost_models::k_multi_bsp::predict_cost( &hw_model, k_bsp_model_pessimistic, num_threads, "max", false );
             
             // Hierarchical Roofline model
             cost_models::hier_roofline::AlgoParameters_p hr_model = cost_models::hier_roofline::get_params_csr(
-                nnz, n, m, sizeof( T1 ), sizeof( T3 ), sizeof( T2 ), sizeof( RowIndexType ), sizeof( NonzeroIndexType ) );
+                nnz, n, m, y_dsize, x_dsize, A_dsize, A_rowptr_size, A_colidx_size );
             double hr_cost = cost_models::hier_roofline::predict_cost( &hw_model, hr_model, num_threads );
             
             // Hierarchical Latency-Aware Roofline model
             cost_models::hier_lat_roofline::AlgoParameters_p hlr_model = cost_models::hier_lat_roofline::get_params_csr(
-                nnz, n, m, sizeof( T1 ), sizeof( T3 ), sizeof( T2 ), sizeof( RowIndexType ), sizeof( NonzeroIndexType ) );
+                nnz, n, m, y_dsize, x_dsize, A_dsize, A_rowptr_size, A_colidx_size );
             double hlr_cost = cost_models::hier_lat_roofline::predict_cost( &hw_model, hlr_model, num_threads );
             
             
             // Return k-Multi-BSP max cost as before
             return max_cost_pessimistic;
-
+#endif
         } catch(const std::exception& e) {
             throw std::runtime_error("Error in CostPredictor<MxvFunc>: " + std::string(e.what()));
         } catch(...) {
             throw std::runtime_error("Unknown error in CostPredictor<MxvFunc> with Matrix");
         }
+
     }
 };
 
@@ -651,6 +655,11 @@ struct CostPredictor< SetFunc, grb::Vector< T1 >, grb::Vector< T2 > > {
         try {
             size_t n = grb::size( x );
             size_t num_threads = grb::config::OMP::threads();
+            
+#ifdef _CM_DISABLE_PREDICT
+            std::cout << "[TRACING] SetFunc arguments (" << num_threads << " threads): n = " << n << ", x_dsize=" << sizeof( T1 ) << ", y_dsize=" << sizeof( T2 ) << std::endl;
+            return 0.0;
+#else
 			cost_models::HW_model::HWParameters hw_model = cost_models::HW_model::select_hw_model_auto( num_threads, dis_system_params );
 
             // k-Multi-BSP model
@@ -670,6 +679,7 @@ struct CostPredictor< SetFunc, grb::Vector< T1 >, grb::Vector< T2 > > {
             
             
             return max_cost_pessimistic;
+#endif
         } catch(const std::exception& e) {
             throw std::runtime_error("Error in CostPredictor<SetFunc, Vector, Vector>: " + std::string(e.what()));
         } catch(...) {
@@ -684,6 +694,11 @@ struct CostPredictor< SetFunc, grb::Vector< T1 >, T2 > {
         try {
             size_t n = grb::size( x );
             size_t num_threads = grb::config::OMP::threads();
+            
+#ifdef _CM_DISABLE_PREDICT
+            std::cout << "[TRACING] SetFunc arguments (" << num_threads << " threads): n = " << n << ", x_dsize=" << sizeof( T1 ) << ", y_dsize=" << sizeof( T2 ) << std::endl;
+            return 0.0;
+#else
 			cost_models::HW_model::HWParameters hw_model = cost_models::HW_model::select_hw_model_auto( num_threads, dis_system_params );
 
             // k-Multi-BSP model
@@ -703,6 +718,7 @@ struct CostPredictor< SetFunc, grb::Vector< T1 >, T2 > {
             
             
             return max_cost_pessimistic;
+#endif
         } catch(const std::exception& e) {
             throw std::runtime_error("Error in CostPredictor<SetFunc, Vector, scalar>: " + std::string(e.what()));
         } catch(...) {
@@ -724,6 +740,11 @@ struct CostPredictor< ApplyFunc, T1, T2, T3, Op > {
         // (void)op;
         try {
             size_t num_threads = grb::config::OMP::threads();
+            
+#ifdef _CM_DISABLE_PREDICT
+            std::cout << "[TRACING] ApplyFunc arguments (" << num_threads << " threads): apply operation" << std::endl;
+            return 0.0;
+#else
 			cost_models::HW_model::HWParameters hw_model = cost_models::HW_model::select_hw_model_auto( num_threads, dis_system_params );
             
             // k-Multi-BSP model
@@ -743,6 +764,7 @@ struct CostPredictor< ApplyFunc, T1, T2, T3, Op > {
             
             
             return max_cost_pessimistic;
+#endif
         } catch(const std::exception& e) {
             throw std::runtime_error("Error in CostPredictor<ApplyFunc>: " + std::string(e.what()));
         } catch(...) {
@@ -764,6 +786,11 @@ struct CostPredictor< EWiseMulFunc, grb::Vector< T1 >, grb::Vector< T2 > , grb::
         try {
             size_t n = grb::size( z );
             size_t num_threads = grb::config::OMP::threads();
+            
+#ifdef _CM_DISABLE_PREDICT
+            std::cout << "[TRACING] EWiseMulFunc arguments (" << num_threads << " threads): n = " << n << ", z_dsize=" << sizeof( T1 ) << ", x_dsize=" << sizeof( T2 ) << ", y_dsize=" << sizeof( T3 ) << ", x_vec=1, y_vec=1" << std::endl;
+            return 0.0;
+#else
 			cost_models::HW_model::HWParameters hw_model = cost_models::HW_model::select_hw_model_auto( num_threads, dis_system_params );
             
             // k-Multi-BSP model
@@ -786,6 +813,7 @@ struct CostPredictor< EWiseMulFunc, grb::Vector< T1 >, grb::Vector< T2 > , grb::
             double hlr_cost = cost_models::hier_lat_roofline::predict_cost( &hw_model, hlr_model, num_threads );
             
             return max_cost_pessimistic;
+#endif
         } catch(const std::exception& e) {
             throw std::runtime_error("Error in CostPredictor<EWiseMulFunc, Vector, Vector, Vector>: " + std::string(e.what()));
         } catch(...) {
@@ -805,6 +833,11 @@ struct CostPredictor< EWiseMulFunc, grb::Vector< T1 >, T2 , grb::Vector< T3 >, O
         try {
             size_t n = grb::size( z );
             size_t num_threads = grb::config::OMP::threads();
+            
+#ifdef _CM_DISABLE_PREDICT
+            std::cout << "[TRACING] EWiseMulFunc arguments (" << num_threads << " threads): n = " << n << ", z_dsize=" << sizeof( T1 ) << ", x_dsize=" << sizeof( T2 ) << ", y_dsize=" << sizeof( T3 ) << ", x_vec=0, y_vec=1" << std::endl;
+            return 0.0;
+#else
 			cost_models::HW_model::HWParameters hw_model = cost_models::HW_model::select_hw_model_auto( num_threads, dis_system_params );
             
             // k-Multi-BSP model
@@ -827,6 +860,7 @@ struct CostPredictor< EWiseMulFunc, grb::Vector< T1 >, T2 , grb::Vector< T3 >, O
             double hlr_cost = cost_models::hier_lat_roofline::predict_cost( &hw_model, hlr_model, num_threads );
             
             return max_cost_pessimistic;
+#endif
         } catch(const std::exception& e) {
             throw std::runtime_error("Error in CostPredictor<EWiseMulFunc, Vector, scalar, Vector>: " + std::string(e.what()));
         } catch(...) {
@@ -846,6 +880,11 @@ struct CostPredictor< EWiseMulFunc, grb::Vector< T1 >, grb::Vector< T2 >, T3, Op
         try {
             size_t n = grb::size( z );
             size_t num_threads = grb::config::OMP::threads();
+            
+#ifdef _CM_DISABLE_PREDICT
+            std::cout << "[TRACING] EWiseMulFunc arguments (" << num_threads << " threads): n = " << n << ", z_dsize=" << sizeof( T1 ) << ", x_dsize=" << sizeof( T2 ) << ", y_dsize=" << sizeof( T3 ) << ", x_vec=1, y_vec=0" << std::endl;
+            return 0.0;
+#else
 			cost_models::HW_model::HWParameters hw_model = cost_models::HW_model::select_hw_model_auto( num_threads, dis_system_params );
             
             // k-Multi-BSP model
@@ -868,6 +907,7 @@ struct CostPredictor< EWiseMulFunc, grb::Vector< T1 >, grb::Vector< T2 >, T3, Op
             double hlr_cost = cost_models::hier_lat_roofline::predict_cost( &hw_model, hlr_model, num_threads );
             
             return max_cost_pessimistic;
+#endif
         } catch(const std::exception& e) {
             throw std::runtime_error("Error in CostPredictor<EWiseMulFunc, Vector, Vector, scalar>: " + std::string(e.what()));
         } catch(...) {
@@ -887,6 +927,11 @@ struct CostPredictor< EWiseMulFunc, grb::Vector< T1 >, T2, T3, Op > {
         try {
             size_t n = grb::size( z );
             size_t num_threads = grb::config::OMP::threads();
+            
+#ifdef _CM_DISABLE_PREDICT
+            std::cout << "[TRACING] EWiseMulFunc arguments (" << num_threads << " threads): n = " << n << ", z_dsize=" << sizeof( T1 ) << ", x_dsize=" << sizeof( T2 ) << ", y_dsize=" << sizeof( T3 ) << ", x_vec=0, y_vec=0" << std::endl;
+            return 0.0;
+#else
 			cost_models::HW_model::HWParameters hw_model = cost_models::HW_model::select_hw_model_auto( num_threads, dis_system_params );
             
             // k-Multi-BSP model
@@ -909,6 +954,7 @@ struct CostPredictor< EWiseMulFunc, grb::Vector< T1 >, T2, T3, Op > {
             double hlr_cost = cost_models::hier_lat_roofline::predict_cost( &hw_model, hlr_model, num_threads );
             
             return max_cost_pessimistic;
+#endif
         } catch(const std::exception& e) {
             throw std::runtime_error("Error in CostPredictor<EWiseMulFunc, Vector, scalar, scalar>: " + std::string(e.what()));
         } catch(...) {
@@ -926,6 +972,11 @@ struct CostPredictor< EWiseApplyFunc, grb::Vector< T1 >, grb::Vector< T2 >, T3, 
         try {
             size_t n = grb::size( z );
             size_t num_threads = grb::config::OMP::threads();
+            
+#ifdef _CM_DISABLE_PREDICT
+            std::cout << "[TRACING] EWiseApplyFunc arguments (" << num_threads << " threads): n = " << n << ", z_dsize=" << sizeof( T1 ) << ", x_dsize=" << sizeof( T2 ) << ", y_dsize=" << sizeof( T3 ) << ", x_vec=1, y_vec=0" << std::endl;
+            return 0.0;
+#else
 			cost_models::HW_model::HWParameters hw_model = cost_models::HW_model::select_hw_model_auto( num_threads, dis_system_params );
             
             // k-Multi-BSP model
@@ -949,6 +1000,7 @@ struct CostPredictor< EWiseApplyFunc, grb::Vector< T1 >, grb::Vector< T2 >, T3, 
             
             
             return max_cost_pessimistic;
+#endif
         } catch(const std::exception& e) {
             throw std::runtime_error("Error in CostPredictor<EWiseApplyFunc, Vector, Vector, scalar>: " + std::string(e.what()));
         } catch(...) {
@@ -964,6 +1016,11 @@ struct CostPredictor< EWiseApplyFunc, grb::Vector< T1 >, T2, grb::Vector< T3 >, 
         try {
             size_t n = grb::size( z );
             size_t num_threads = grb::config::OMP::threads();
+            
+#ifdef _CM_DISABLE_PREDICT
+            std::cout << "[TRACING] EWiseApplyFunc arguments (" << num_threads << " threads): n = " << n << ", z_dsize=" << sizeof( T1 ) << ", x_dsize=" << sizeof( T2 ) << ", y_dsize=" << sizeof( T3 ) << ", x_vec=0, y_vec=1" << std::endl;
+            return 0.0;
+#else
 			cost_models::HW_model::HWParameters hw_model = cost_models::HW_model::select_hw_model_auto( num_threads, dis_system_params );
             
             // k-Multi-BSP model
@@ -987,6 +1044,7 @@ struct CostPredictor< EWiseApplyFunc, grb::Vector< T1 >, T2, grb::Vector< T3 >, 
             
             
             return max_cost_pessimistic;
+#endif
         } catch(const std::exception& e) {
             throw std::runtime_error("Error in CostPredictor<EWiseApplyFunc, Vector, scalar, Vector>: " + std::string(e.what()));
         } catch(...) {
@@ -1009,6 +1067,11 @@ struct CostPredictor< EWiseApplyFunc, grb::Vector< T1 >, grb::Vector< T2 > , grb
         try {
             size_t n = grb::size( z );
             size_t num_threads = grb::config::OMP::threads();
+            
+#ifdef _CM_DISABLE_PREDICT
+            std::cout << "[TRACING] EWiseApplyFunc arguments (" << num_threads << " threads): n = " << n << ", z_dsize=" << sizeof( T1 ) << ", x_dsize=" << sizeof( T2 ) << ", y_dsize=" << sizeof( T3 ) << ", x_vec=0, y_vec=1" << std::endl;
+            return 0.0;
+#else
 			cost_models::HW_model::HWParameters hw_model = cost_models::HW_model::select_hw_model_auto( num_threads, dis_system_params );
             
             // k-Multi-BSP model
@@ -1032,6 +1095,7 @@ struct CostPredictor< EWiseApplyFunc, grb::Vector< T1 >, grb::Vector< T2 > , grb
             
             
             return max_cost_pessimistic;
+#endif
         } catch(const std::exception& e) {
             throw std::runtime_error("Error in CostPredictor<EWiseApplyFunc, Vector, Vector, Vector>: " + std::string(e.what()));
         } catch(...) {
@@ -1052,6 +1116,11 @@ struct CostPredictor< FoldlFunc, grb::Vector< T1 >, grb::Vector< T2 >, Monoid > 
         try {
             size_t n = grb::size( x );
             size_t num_threads = grb::config::OMP::threads();
+            
+#ifdef _CM_DISABLE_PREDICT
+            std::cout << "[TRACING] FoldlFunc arguments (" << num_threads << " threads): n = " << n << ", x_dsize=" << sizeof( T1 ) << ", y_dsize=" << sizeof( T2 ) << ", x_vec=1, y_vec=1" << std::endl;
+            return 0.0;
+#else
 			cost_models::HW_model::HWParameters hw_model = cost_models::HW_model::select_hw_model_auto( num_threads, dis_system_params );
             
             // k-Multi-BSP model
@@ -1075,6 +1144,7 @@ struct CostPredictor< FoldlFunc, grb::Vector< T1 >, grb::Vector< T2 >, Monoid > 
             
             
             return max_cost_pessimistic;
+#endif
         } catch(const std::exception& e) {
             throw std::runtime_error("Error in CostPredictor<FoldlFunc, Vector, Vector>: " + std::string(e.what()));
         } catch(...) {
@@ -1089,6 +1159,11 @@ struct CostPredictor< FoldlFunc, T1 , grb::Vector< T2 >, Monoid > {
         try {
             size_t n = grb::size( y );
             size_t num_threads = grb::config::OMP::threads();
+            
+#ifdef _CM_DISABLE_PREDICT
+            std::cout << "[TRACING] FoldlFunc arguments (" << num_threads << " threads): n = " << n << ", x_dsize=" << sizeof( T1 ) << ", y_dsize=" << sizeof( T2 ) << ", x_vec=0, y_vec=1" << std::endl;
+            return 0.0;
+#else
 			cost_models::HW_model::HWParameters hw_model = cost_models::HW_model::select_hw_model_auto( num_threads, dis_system_params );
             
             // k-Multi-BSP model
@@ -1112,6 +1187,7 @@ struct CostPredictor< FoldlFunc, T1 , grb::Vector< T2 >, Monoid > {
             
             
             return max_cost_pessimistic;
+#endif
         } catch(const std::exception& e) {
             throw std::runtime_error("Error in CostPredictor<FoldlFunc, scalar, Vector>: " + std::string(e.what()));
         } catch(...) {
@@ -1128,6 +1204,11 @@ struct CostPredictor< FoldlFunc, grb::Vector< T1 >, T2 , Monoid > {
         try {
             size_t n = grb::size( x );
             size_t num_threads = grb::config::OMP::threads();
+            
+#ifdef _CM_DISABLE_PREDICT
+            std::cout << "[TRACING] FoldlFunc arguments (" << num_threads << " threads): n = " << n << ", x_dsize=" << sizeof( T1 ) << ", y_dsize=" << sizeof( T2 ) << ", x_vec=1, y_vec=0" << std::endl;
+            return 0.0;
+#else
 			cost_models::HW_model::HWParameters hw_model = cost_models::HW_model::select_hw_model_auto( num_threads, dis_system_params );
             
             // k-Multi-BSP model
@@ -1151,6 +1232,7 @@ struct CostPredictor< FoldlFunc, grb::Vector< T1 >, T2 , Monoid > {
             
             
             return max_cost_pessimistic;
+#endif
         } catch(const std::exception& e) {
             throw std::runtime_error("Error in CostPredictor<FoldlFunc, Vector, scalar>: " + std::string(e.what()));
         } catch(...) {
@@ -1169,6 +1251,11 @@ struct CostPredictor< FoldrFunc, grb::Vector< T1 > , grb::Vector< T2 > , Monoid 
 		try {
 			size_t n = grb::size( y );
 			size_t num_threads = grb::config::OMP::threads();
+			
+#ifdef _CM_DISABLE_PREDICT
+			std::cout << "[TRACING] FoldrFunc arguments (" << num_threads << " threads): n = " << n << ", x_dsize=" << sizeof( T1 ) << ", y_dsize=" << sizeof( T2 ) << ", x_vec=1, y_vec=1" << std::endl;
+			return 0.0;
+#else
 			cost_models::HW_model::HWParameters hw_model = cost_models::HW_model::select_hw_model_auto( num_threads, dis_system_params );
 			
 			// k-Multi-BSP model
@@ -1197,6 +1284,7 @@ struct CostPredictor< FoldrFunc, grb::Vector< T1 > , grb::Vector< T2 > , Monoid 
 			std::cout << "[TRACING] Hierarchical-Latency-Roofline cost: " << hlr_cost << " seconds" << std::endl;
 			
 			return max_cost_pessimistic;
+#endif
 		} catch(const std::exception& e) {
             throw std::runtime_error("Error in CostPredictor<FoldrFunc, Vector, Vector>: " + std::string(e.what()));
         } catch(...) {
@@ -1213,6 +1301,11 @@ struct CostPredictor< FoldrFunc, T1, grb::Vector< T2 >, Monoid > {
 		try {
 			size_t n = grb::size( y );
             size_t num_threads = grb::config::OMP::threads();
+            
+#ifdef _CM_DISABLE_PREDICT
+			std::cout << "[TRACING] FoldrFunc arguments (" << num_threads << " threads): n = " << n << ", x_dsize=" << sizeof( T1 ) << ", y_dsize=" << sizeof( T2 ) << ", x_vec=0, y_vec=1" << std::endl;
+			return 0.0;
+#else
 			cost_models::HW_model::HWParameters hw_model = cost_models::HW_model::select_hw_model_auto( num_threads, dis_system_params );
 			
 			// k-Multi-BSP model
@@ -1241,6 +1334,7 @@ struct CostPredictor< FoldrFunc, T1, grb::Vector< T2 >, Monoid > {
 			std::cout << "[TRACING] Hierarchical-Latency-Roofline cost: " << hlr_cost << " seconds" << std::endl;
 			
 			return max_cost_pessimistic;
+#endif
 		} catch(const std::exception& e) {
             throw std::runtime_error("Error in CostPredictor<FoldrFunc, scalar, Vector>: " + std::string(e.what()));
         } catch(...) {
@@ -1255,6 +1349,11 @@ struct CostPredictor< FoldrFunc, grb::Vector< T1 >, T2, Monoid > {
 		try {
 			size_t n = grb::size( x );
 			size_t num_threads = grb::config::OMP::threads();
+			
+#ifdef _CM_DISABLE_PREDICT
+			std::cout << "[TRACING] FoldrFunc arguments (" << num_threads << " threads): n = " << n << ", x_dsize=" << sizeof( T1 ) << ", y_dsize=" << sizeof( T2 ) << ", x_vec=1, y_vec=0" << std::endl;
+			return 0.0;
+#else
 			cost_models::HW_model::HWParameters hw_model = cost_models::HW_model::select_hw_model_auto( num_threads, dis_system_params );
 			
 			// k-Multi-BSP model
@@ -1283,6 +1382,7 @@ struct CostPredictor< FoldrFunc, grb::Vector< T1 >, T2, Monoid > {
 			std::cout << "[TRACING] Hierarchical-Latency-Roofline cost: " << hlr_cost << " seconds" << std::endl;
 			
 			return max_cost_pessimistic;
+#endif
 		} catch(const std::exception& e) {
             throw std::runtime_error("Error in CostPredictor<FoldrFunc, Vector, scalar>: " + std::string(e.what()));
         } catch(...) {
@@ -1305,6 +1405,11 @@ struct CostPredictor< DotFunc, T0, grb::Vector< T1 >, grb::Vector< T2 >, MonoidT
 
             // Get hardware parameters
             size_t num_threads = grb::config::OMP::threads();
+            
+#ifdef _CM_DISABLE_PREDICT
+            std::cout << "[TRACING] DotFunc arguments (" << num_threads << " threads): n = " << n << ", z_dsize=" << sizeof( T0 ) << ", x_dsize=" << sizeof( T1 ) << ", y_dsize=" << sizeof( T2 ) << std::endl;
+            return 0.0;
+#else
             cost_models::HW_model::HWParameters hw_model = cost_models::HW_model::select_hw_model_auto( num_threads, dis_system_params );
 
             // k-Multi-BSP model
@@ -1327,6 +1432,7 @@ struct CostPredictor< DotFunc, T0, grb::Vector< T1 >, grb::Vector< T2 >, MonoidT
             double hlr_cost = cost_models::hier_lat_roofline::predict_cost( &hw_model, hlr_model, num_threads );
 
             return max_cost_pessimistic;
+#endif
 
         } catch(const std::exception& e) {
             throw std::runtime_error("Error in CostPredictor<DotFunc>: " + std::string(e.what()));
