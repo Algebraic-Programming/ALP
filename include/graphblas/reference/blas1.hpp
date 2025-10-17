@@ -3751,9 +3751,7 @@ namespace grb {
 								(void) z_coors.assign( index );
 #endif
 								GRB_UTIL_IGNORE_MAYBE_UNINITIALIZED
-								// z_b[ k ] has been initialized in te loop just before
-								// Some compilers do not see it, others do.
-								// See issue #345 and related PR
+								// z_b[ k ] has been initialized in the loop just before
 								*( z_p + index ) = z_b[ k ];
 								GRB_UTIL_RESTORE_WARNINGS
 							}
