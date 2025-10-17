@@ -439,26 +439,26 @@ namespace HW_model
         }
         /*=====================================================================*/
 		/*--------------------------------COO----------------------------------*/
-		AlgoParameters_p get_params_coo( uint64_t nz, uint64_t n, uint64_t m, size_t x_dsize, 
+		AlgoParameters_p get_params_coo( uint64_t nnz, uint64_t n, uint64_t m, size_t x_dsize, 
             size_t y_dsize, size_t A_dsize, size_t A_rowidx_size, size_t A_colidx_size ) {
 			AlgoParameters_p spmv_coo = new AlgoParameters();
-			spmv_coo->b_foot = ( A_dsize + A_rowidx_size + A_colidx_size ) * nz + y_dsize * m + x_dsize * n;
+			spmv_coo->b_foot = ( A_dsize + A_rowidx_size + A_colidx_size ) * nnz + y_dsize * m + x_dsize * n;
 			spmv_coo->lvl = 0; // Auto-adjust memory level
-			spmv_coo->b_reads = ( A_dsize + A_rowidx_size + A_colidx_size + x_dsize + y_dsize ) * nz;
-			spmv_coo->b_writes = y_dsize * nz;
-			spmv_coo->ops_scalar = 2 * nz;
+			spmv_coo->b_reads = ( A_dsize + A_rowidx_size + A_colidx_size + x_dsize + y_dsize ) * nnz;
+			spmv_coo->b_writes = y_dsize * nnz;
+			spmv_coo->ops_scalar = 2 * nnz;
             spmv_coo->ops_SIMD = 0;
             return spmv_coo;
 		}
 
 		/*=====================================================================*/
         /*--------------------------------CSR----------------------------------*/
-		AlgoParameters_p get_params_csr( uint64_t nz, uint64_t n, uint64_t m, size_t y_dsize, size_t x_dsize, size_t A_dsize, size_t A_rowptr_size, size_t A_colidx_size ) {
+		AlgoParameters_p get_params_csr( uint64_t nnz, uint64_t n, uint64_t m, size_t y_dsize, size_t x_dsize, size_t A_dsize, size_t A_rowptr_size, size_t A_colidx_size ) {
 			AlgoParameters_p spmv_csr = new AlgoParameters();
-			spmv_csr->b_foot = ( A_colidx_size + A_dsize ) * nz + A_rowptr_size * ( m + 1 ) + y_dsize * m + x_dsize * n;
-			spmv_csr->b_reads = ( A_colidx_size + A_dsize + x_dsize ) * nz + A_rowptr_size * ( m + 1 ) + y_dsize * m;
+			spmv_csr->b_foot = ( A_colidx_size + A_dsize ) * nnz + A_rowptr_size * ( m + 1 ) + y_dsize * m + x_dsize * n;
+			spmv_csr->b_reads = ( A_colidx_size + A_dsize + x_dsize ) * nnz + A_rowptr_size * ( m + 1 ) + y_dsize * m;
 			spmv_csr->b_writes = y_dsize * m;
-			spmv_csr->ops_scalar = 2 * nz;
+			spmv_csr->ops_scalar = 2 * nnz;
             spmv_csr->ops_SIMD = 0;
             return spmv_csr;
 		}
@@ -747,15 +747,15 @@ namespace HW_model
         }
         /*=====================================================================*/
         /*--------------------------------COO----------------------------------*/
-		AlgoParameters_p get_params_coo( uint64_t nz, uint64_t n, uint64_t m, size_t x_dsize, size_t y_dsize, 
+		AlgoParameters_p get_params_coo( uint64_t nnz, uint64_t n, uint64_t m, size_t x_dsize, size_t y_dsize, 
             size_t A_dsize, size_t A_rowidx_size, size_t A_colidx_size ) {
 			AlgoParameters_p spmv_coo = new AlgoParameters();
-			spmv_coo->b_foot = ( A_dsize + A_rowidx_size + A_colidx_size ) * nz + y_dsize * m + x_dsize * n;
+			spmv_coo->b_foot = ( A_dsize + A_rowidx_size + A_colidx_size ) * nnz + y_dsize * m + x_dsize * n;
             spmv_coo->lvl = 0; // Auto-adjust memory level
-			spmv_coo->b_reads = ( A_dsize + A_rowidx_size + A_colidx_size + x_dsize + y_dsize ) * nz;
-			spmv_coo->b_writes = y_dsize * nz;
-            spmv_coo->rand_reads = 2 * nz; // * dtype_size
-            spmv_coo->rand_writes = nz; // * dtype_size
+			spmv_coo->b_reads = ( A_dsize + A_rowidx_size + A_colidx_size + x_dsize + y_dsize ) * nnz;
+			spmv_coo->b_writes = y_dsize * nnz;
+            spmv_coo->rand_reads = 2 * nnz; // * dtype_size
+            spmv_coo->rand_writes = nnz; // * dtype_size
 
             return spmv_coo;
 		}
@@ -763,13 +763,13 @@ namespace HW_model
 		/*=====================================================================*/
         /*--------------------------------CSR----------------------------------*/
 
-		AlgoParameters_p get_params_csr( uint64_t nz, uint64_t n, uint64_t m, size_t y_dsize, 
+		AlgoParameters_p get_params_csr( uint64_t nnz, uint64_t n, uint64_t m, size_t y_dsize, 
             size_t x_dsize, size_t A_dsize, size_t A_rowptr_size, size_t A_colidx_size ) {
 			AlgoParameters_p spmv_csr = new AlgoParameters();
-			spmv_csr->b_foot = ( A_colidx_size + A_dsize ) * nz + A_rowptr_size * ( m + 1 ) + y_dsize * m + x_dsize * n;
-			spmv_csr->b_reads = ( A_colidx_size + A_dsize + x_dsize ) * nz + A_rowptr_size * ( m + 1 ) + y_dsize * m;
+			spmv_csr->b_foot = ( A_colidx_size + A_dsize ) * nnz + A_rowptr_size * ( m + 1 ) + y_dsize * m + x_dsize * n;
+			spmv_csr->b_reads = ( A_colidx_size + A_dsize + x_dsize ) * nnz + A_rowptr_size * ( m + 1 ) + y_dsize * m;
 			spmv_csr->b_writes = y_dsize * m;
-			spmv_csr->rand_reads = nz;
+			spmv_csr->rand_reads = nnz;
             spmv_csr->rand_writes = 0;
 
             return spmv_csr;
@@ -1212,13 +1212,13 @@ namespace HW_model
 
         /*=====================================================================*/
         /*--------------------------------COO----------------------------------*/
-        AlgoParameters_p get_params_coo(uint64_t nz, uint64_t n,
+        AlgoParameters_p get_params_coo(uint64_t nnz, uint64_t n,
                                         uint64_t m, size_t x_dsize, size_t y_dsize,
                                         size_t A_dsize, size_t A_rowidx_size, size_t A_colidx_size)
         {
             AlgoParameters_p spmv_coo = new AlgoParameters();
-            spmv_coo->n = nz;
-            spmv_coo->b_foot = (A_dsize + A_rowidx_size + A_colidx_size) * nz
+            spmv_coo->n = nnz;
+            spmv_coo->b_foot = (A_dsize + A_rowidx_size + A_colidx_size) * nnz
                 + y_dsize * m + x_dsize * n;
             spmv_coo->num_v = 2;
             Superstep_p ss_omp_barrier = new Superstep();
@@ -1231,7 +1231,7 @@ namespace HW_model
             ss_omp_barrier->hi = {0};
             spmv_coo->ss_v.push_back(ss_omp_barrier);
             Superstep_p ss_coo = new Superstep();
-            ss_coo->nv = nz;
+            ss_coo->nv = nnz;
             ss_coo->ops_scalar = 2;
             ss_coo->ops_SIMD = 0;
             ss_coo->lvl = 0;
@@ -1242,21 +1242,21 @@ namespace HW_model
             return spmv_coo;
         }
 
-        AlgoParameters_p get_params_coo_batched(uint64_t nz, uint64_t n,
+        AlgoParameters_p get_params_coo_batched(uint64_t nnz, uint64_t n,
                                                 uint64_t m, size_t x_dsize, size_t y_dsize,
                                                 size_t A_dsize, size_t A_rowidx_size, size_t A_colidx_size, size_t batch_sz)
         {
             std::cout << "get_params_coo_batched not implemented, falling back to get_params_coo\n";
             (void)batch_sz;
-            return get_params_coo(nz, n, m, x_dsize, y_dsize, A_dsize, A_rowidx_size, A_colidx_size);
+            return get_params_coo(nnz, n, m, x_dsize, y_dsize, A_dsize, A_rowidx_size, A_colidx_size);
 
 
             // AlgoParameters_p spmv_coo = new AlgoParameters();
-            // spmv_coo->n = nz / batch_sz;
+            // spmv_coo->n = nnz / batch_sz;
             // spmv_coo->num_v = 1;
-            // spmv_coo->b_foot = (2 * idx_size + dtype_size) * nz + dtype_size * (m + n);
+            // spmv_coo->b_foot = (2 * idx_size + dtype_size) * nnz + dtype_size * (m + n);
             // Superstep_p ss_coo = new Superstep();
-            // ss_coo->nv = nz / batch_sz;
+            // ss_coo->nv = nnz / batch_sz;
             // ss_coo->ops_scalar = 2 * batch_sz;
             // ss_coo->ops_SIMD = 0;
             // ss_coo->lvl = 0;
@@ -1270,13 +1270,13 @@ namespace HW_model
         /*=====================================================================*/
         /*--------------------------------CSR----------------------------------*/
 
-        AlgoParameters_p get_params_csr(uint64_t nz, uint64_t n,
+        AlgoParameters_p get_params_csr(uint64_t nnz, uint64_t n,
                                         uint64_t m, size_t y_dsize, size_t x_dsize,
                                         size_t A_dsize, size_t A_rowptr_size, size_t A_colidx_size)
         {
         AlgoParameters_p spmv_csr = new AlgoParameters();
-        spmv_csr->n = nz;    // Same number of non-zeros
-        spmv_csr->b_foot = (A_colidx_size + A_dsize) * nz + A_rowptr_size * (m + 1)
+        spmv_csr->n = nnz;    // Same number of non-zeros
+        spmv_csr->b_foot = (A_colidx_size + A_dsize) * nnz + A_rowptr_size * (m + 1)
             + y_dsize * m + x_dsize * n;
         spmv_csr->num_v = 3;
         Superstep_p ss_omp_barrier = new Superstep();
@@ -1290,7 +1290,7 @@ namespace HW_model
         spmv_csr->ss_v.push_back(ss_omp_barrier);
         // Superstep A (pipelined) - internal loop
         Superstep_p ss_A = new Superstep();
-        ss_A->nv = (nz > m) ? nz - m : 0;
+        ss_A->nv = (nnz > m) ? nnz - m : 0;
         ss_A->ops_scalar = 2;
         ss_A->ops_SIMD = 0;
         ss_A->lvl = 0;
@@ -1313,26 +1313,26 @@ namespace HW_model
         return spmv_csr;
         }
 
-        AlgoParameters_p get_params_csr_batched(uint64_t nz, uint64_t n,
+        AlgoParameters_p get_params_csr_batched(uint64_t nnz, uint64_t n,
                                                 uint64_t m, size_t x_dsize, size_t y_dsize,
                                                 size_t A_dsize, size_t A_rowptr_size, size_t A_colidx_size, size_t batch_sz)
         {
             std::cout << "get_params_csr_batched not implemented, falling back to get_params_csr\n";
             (void)batch_sz;
-            return get_params_coo(nz, n, m, x_dsize, y_dsize, A_dsize, A_rowptr_size, A_colidx_size);
+            return get_params_coo(nnz, n, m, x_dsize, y_dsize, A_dsize, A_rowptr_size, A_colidx_size);
 
             // AlgoParameters_p spmv_csr = new AlgoParameters();
-            // spmv_csr->n = nz / batch_sz; // Same number of non-zeros
+            // spmv_csr->n = nnz / batch_sz; // Same number of non-zeros
             // spmv_csr->num_v = 2;           // Two superstep types
-            // spmv_csr->b_foot = (idx_size + dtype_size) * nz + dtype_size * (m + n) + idx_size * (m + 1);
-            // if (nz < batch_sz * n)
+            // spmv_csr->b_foot = (idx_size + dtype_size) * nnz + dtype_size * (m + n) + idx_size * (m + 1);
+            // if (nnz < batch_sz * n)
             // {
             //     throw std::invalid_argument("Batch size too large for the given matrix dimensions.");
             // }
 
             // // Superstep A (pipelined) - internal loop
             // Superstep_p ss_A = new Superstep();
-            // ss_A->nv = nz / batch_sz - m;
+            // ss_A->nv = nnz / batch_sz - m;
             // ss_A->ops_scalar = 2 * batch_sz;
             // ss_A->ops_SIMD = 0;
             // ss_A->lvl = 0;
