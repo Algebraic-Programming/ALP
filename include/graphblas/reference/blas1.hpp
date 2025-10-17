@@ -3750,7 +3750,10 @@ namespace grb {
 #else
 								(void) z_coors.assign( index );
 #endif
+								GRB_UTIL_IGNORE_MAYBE_UNINITIALIZED
+								// z_b[ k ] has been initialized in the loop just before
 								*( z_p + index ) = z_b[ k ];
+								GRB_UTIL_RESTORE_WARNINGS
 							}
 						}
 #ifdef _H_GRB_REFERENCE_OMP_BLAS1

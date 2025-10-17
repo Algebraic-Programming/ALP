@@ -336,10 +336,11 @@ static int update_spmv_dot(
 #ifndef NDEBUG
 	// we employ defensive programming and perform expensive input checks when
 	// compiled in debug mode:
+    assert(n <= std::numeric_limits< OffsetT >::max() );
 	for( size_t i = 0; i < n; ++i ) {
 		assert( ia[ i + 1 ] >= ia[ i ] );
-		for( size_t k = ia[ i ]; k < ia[ i + 1 ]; ++k ) {
-			assert( ij[ k ] < n );
+		for( OffsetT k = ia[ i ]; k < ia[ i + 1 ]; ++k ) {
+			assert( ij[ k ] <  static_cast<OffsetT>( n ) );
 		}
 	}
 #endif

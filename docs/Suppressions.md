@@ -82,3 +82,30 @@ for( size_t k = 0; k < block_size; ++k ) {
 }
 ```
 
+7. `include/graphblas/reference/blas1.hpp`, masked_apply_generic
+```
+for( size_t k = 0; k < block_size; ++k ) {
+	if( mask_b[ k ] ) {
+		apply( z_b[ k ], x_b[ k ], y_b[ k ], op );
+	}
+}
+for( size_t k = 0; k < block_size; ++k ) {
+	const size_t index = i + k;
+	assert( index < n );
+	if( mask_b[ k ] ) {
+#ifdef _H_GRB_REFERENCE_OMP_BLAS1
+		if( !z_coors.asyncAssign( index, update ) ) {
+				(void) ++asyncAssigns;
+		}
+#else
+		(void) z_coors.assign( index );
+#endif
+		GRB_UTIL_IGNORE_MAYBE_UNINITIALIZED
+		// z_b[ k ] has been initialized in the loop just before
+		*( z_p + index ) = z_b[ k ];
+		GRB_UTIL_RESTORE_WARNINGS
+	}
+}
+#ifdef _H_GRB_REFERENCE_OMP_BLAS1
+
+```
