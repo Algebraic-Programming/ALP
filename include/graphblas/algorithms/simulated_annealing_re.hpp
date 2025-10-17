@@ -43,8 +43,18 @@ namespace grb {
 	namespace algorithms {
 
 		/*
-		 * Parallel Tempering
+		 * Do a Parallel Tempering pass.
+		 * This means exchanging states at low temperature with states at higher temperature.
+		 * To make the code simpler, this will be done by exchanging the temperatures instead.
 		 *
+		 * @param[in] states        On input: initial states.
+		 * @param[in] energies      The initial energy of each state.
+		 * @param[in,out] betas     Inverse temperature of each state.
+		 * 							The betas may be permuted.
+		 *
+		 * @tparam StateType	The state variable type.
+		 * @tparam EnergyType	The energy type.
+		 * @tparam TempType		The inverse temperature type.
 		 *
 		 */
 		template<
@@ -75,20 +85,29 @@ namespace grb {
 		 * (QUBO) optimization problem. The solution is found using Simulated Annealing-
 		 * Replica Exchange (also known as Parallel Tempering).
 		 *
-		 * The state will be optimized to minimize the expression:
-		 * $x^TQx$, where $x$ is the binary state vector, and $couplings$ is the coupling matrix.
+		 * The state will be optimized to minimize the value of the energy $U(x)$,
+		 * where $x$ is the binary state vector, and $couplings$ is the coupling matrix.
+		 * Energies will be changed when changing the states, so that each energy is
+		 * the actual energy of the relative state.
+		 * The parameter sweep is a function that (randomly) changes a given state and
+		 * returns the variation of energy made from its changes of the state.
 		 *
-		 * @param[in,out] x              On input: an initial state.
-		 *                               On output: the optimized state
-		 * @param[in]     couplings      The (square, symmetric) couplings matrix.
-		 * @param[in]     te             Probabilities of flipping each bit at each
-		 *                               iteration (values between 0 and 1)
-		 * @param[in]     n_replicas     Number of replicas to run concurrently.
-		 * @param[in]     n_sweeps       Number of iterations.
-		 * @param[in]     seed 			 Seed to use in the generation of random bit flips.
+		 * @param[in]     sweep      	The sweeping function.
+		 * 								Should return the energy variation implied from the changes that it made on the state.
+		 * @param[in,out] states        On input: initial states.
+		 *                              On output: optimized states.
+		 * @param[in]     couplings     The square (symmetric) couplings matrix.
+		 * @param[in,out] energies      The initial energy of each state.
+		 * @param[in,out] betas     	Inverse temperature of each state.
+		 * @param[in]     n_replicas    Number of replicas to run concurrently.
+		 * @param[in]     n_sweeps      Number of Simulated Annealing iterations.
+		 * @param[in]     use_pt		Whether to use Parallel Tampering or not.
 		 *
-		 * @tparam QType         The input/output vector nonzero type
-		 * @tparam QType         The input/output vector nonzero type
+		 * @tparam QType		The coupling matrix and the local fields type.
+		 * @tparam StateType	The state variable type.
+		 * @tparam EnergyType	The energy type.
+		 * @tparam TempType		The inverse temperature type.
+		 * @tparam Ring			The semiring under which to make the sweeps.
 		 *
 		 */
 		template<
