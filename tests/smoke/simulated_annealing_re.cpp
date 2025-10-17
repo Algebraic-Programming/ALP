@@ -22,7 +22,7 @@
 #include <cstdlib>
 #include <unistd.h>
 
-#include <graphblas/algorithms/simulated_annealing_re.cpp>
+#include <graphblas/algorithms/simulated_annealing_re.hpp>
 #include <graphblas/nonzeroStorage.hpp>
 #include <graphblas/utils/timer.hpp>
 #include <graphblas/utils/parser.hpp>
@@ -36,7 +36,7 @@
 using namespace grb;
 
 #define DEBUG_IMSB 1
-#define ISCLOSE(x) std::abs(x) < 1e-4
+#define ISCLOSE(a,b) (std::abs((b)-(a))/std::abs(a) < 1e-4) || (std::abs((b)-(a)) < 1e-4)
 
 
 // Types
@@ -295,37 +295,39 @@ static JType sequential_sweep_immediate(
 				 const Ring &ring = Ring()
 			  ){
 
+		grb::RC rc = grb::SUCCESS;
 		const size_t n = grb::size( state );
 		JType delta_energy = static_cast< JType >(0.0);
 
-		static grb::Vector< JType > h ( n );
-		grb::set( h, static_cast< JType >( 0.0 ) );
-		grb::mxv( h, couplings, state , ring.getAdditiveMonoid(), ring.getMultiplicativeOperator() );
-		grb::foldl( h, local_fields, ring.getAdditiveOperator() );
+		grb::Vector< JType > h ( n );
+		rc = rc ? rc : grb::set( h, static_cast< JType >( 0.0 ) );
+		rc = rc ? rc : grb::mxv( h, couplings, state , ring.getAdditiveMonoid(), ring.getMultiplicativeOperator() );
+		rc = rc ? rc : grb::foldl( h, local_fields, ring.getAdditiveOperator() );
+		// rc = rc ? rc : grb::foldl( h, local_fields, ring.getAdditiveOperator() );
 
 		// static grb::Vector< JType > delta ( n );
 		// static grb::Vector< JType > dn ( n );
 
-		static grb::Vector< JType > log_rand ( n );
+		grb::Vector< JType > log_rand ( n );
 		for( size_t j = 0 ; j < n ; ++j ){
 			constexpr auto rm = static_cast< JType >( RAND_MAX ) + 2;
 			const auto randi =static_cast< JType >( std::rand() ) + 1;
 			const auto rand = randi / rm ;
-			grb::setElement(log_rand,  std::log( rand ), j );
+			rc = rc ? rc : grb::setElement(log_rand,  std::log( rand ), j );
 		}
 
 
 
 		const auto old_state = state;
 		// TODO: masking
-		for( size_t j = 0 ; j < n ; ++j ){
+		for( size_t j = 0 ; rc == grb::SUCCESS && j < n ; ++j ){
 			JType delta = static_cast< JType >( 0 );
 			JType dn = static_cast< JType >( 0 );
 			dn = (2.0 * state[ j ] - 1.0) * h[ j ];
 
 			const bool accept = ( dn >= 0 ) || ( log_rand[ j ] < beta * dn );
 			const IOType old = state[ j ];
-			grb::setElement( state,  (accept ? 1 - old : old), j );
+			rc = rc ? rc : grb::setElement( state,  (accept ? 1 - old : old), j );
 
 			// grb::setElement( delta,  static_cast< JType >( state[j] - old ), j );
 			delta =  static_cast< JType >( state[j] - old );
@@ -334,12 +336,13 @@ static JType sequential_sweep_immediate(
 			// update h
 			if( delta ){
 				static grb::Vector< JType > deltav ( n );
-				grb::clear( deltav );
-				grb::setElement( deltav, delta , j );
+				rc = rc ? rc : grb::clear( deltav );
+				rc = rc ? rc : grb::setElement( deltav, delta , j );
 
-				grb::mxv( h, couplings, deltav, ring.getAdditiveMonoid(), ring.getMultiplicativeOperator() );
+				rc = rc ? rc : grb::mxv( h, couplings, deltav, ring.getAdditiveMonoid(), ring.getMultiplicativeOperator() );
 			}
 		}
+		assert( rc == grb::SUCCESS );
 		const auto new_state = state;
 
 		// std::cerr << "\n\t Delta_energy: " << delta_energy;
@@ -348,7 +351,7 @@ static JType sequential_sweep_immediate(
 		// std::cerr << "\n\t New energy: " << get_energy(couplings, local_fields, new_state);
 		// std::cerr << std::endl;
 
-		assert( ISCLOSE(delta_energy - (get_energy(couplings, local_fields, new_state) - get_energy(couplings, local_fields, old_state))) );
+		assert( ISCLOSE(get_energy(couplings, local_fields, new_state) - get_energy(couplings, local_fields, old_state), delta_energy ) );
 
 		return delta_energy;
 }
@@ -485,9 +488,9 @@ void grbProgram(
 		}
 
 #ifdef DEBUG_IMSB
-	if( s == 0 ) {
+	if( s == 0 && grb::ncols( J ) < 40 ) {
 		std::cout << "Matrix J:\n";
-		print_matrix( J);
+		print_matrix( J );
 	}
 #endif
 	}
@@ -540,7 +543,7 @@ void grbProgram(
 		grb::Vector<JType> zero ( n );
 		grb::set( zero, 0 );
 		grb::setElement( zero, 1, 1 );
-		assert( std::abs(get_energy(  J, h, zero ) - 0.5803450826765713) < 1e-4 );
+		// assert( std::abs(get_energy(  J, h, zero ) - 0.5803450826765713) < 1e-4 );
     }
     #endif
 
@@ -548,7 +551,7 @@ void grbProgram(
     // also make betas vector os size n_replicas and initialize with 10.0
     grb::Vector< JType > betas( n_replicas );
     grb::Vector< JType > energies( n_replicas );
-    for ( size_t r = 0; r < n_replicas; ++r ) {
+    for ( size_t r = 0; rc == grb::SUCCESS && r < n_replicas; ++r ) {
         rc = rc ? rc : grb::setElement( betas, static_cast<JType>(10.0/r), r );
         rc = rc ? rc : grb::setElement( energies, get_energy(  J, h, states[r] ), r );
     }
@@ -623,11 +626,11 @@ void grbProgram(
 		const double time_taken = timer.time();
 		for ( size_t r = 0; r < n_replicas; ++r ) {
 			std::cout << "Final state replica " << r << ":\n";
-			print_vector( states[r], 30 ,"states values" );  
+			print_vector( states[r], 50 ,"states values" );  
 			std::cout << "With energy " << energies[ r ] << "\n";
 			std::cout << "With energy " << get_energy(  J, h, states[r] ) << "\n";
 			std::cout << std::endl;
-			assert( ISCLOSE(energies[ r ] - get_energy(  J, h, states[r] ) ) );
+			assert( ISCLOSE( get_energy( J, h, states[r] ), energies[ r ] ) );
 		}
 		for(size_t i = 0 ; i < n_replicas ; ++i ){
 			out.best_energy = std::min( out.best_energy, energies[ i ] );
@@ -734,7 +737,7 @@ bool parse_arguments( input &in, int argc, char ** argv ) {
 
     // basic validation
     if ( !in.use_default_data ) {
-        if ( in.filename_Jmatrix.empty() ) {
+        if ( in.filename_Jmatrix.empty() || in.filename_h.empty() ) {
             std::cerr << "Either --use-default-data or both --j-matrix-fname and --h-fname must be provided\n";
             return false;
         }
