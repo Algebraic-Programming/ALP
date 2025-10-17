@@ -29,7 +29,7 @@
 #include <vector>
 #include <algorithm>
 #include <cstdlib>
-#include <assert.h>
+#include <cassert>
 
 #ifndef NDEBUG
 #include <iostream>
@@ -54,8 +54,8 @@ namespace grb {
 			Backend backend
 			>
 		grb::RC pt(
-				std::vector< grb::Vector< StateType, backend > > &states,
-				grb::Vector< EnergyType > &energies,
+				const std::vector< grb::Vector< StateType, backend > > &states,
+				const grb::Vector< EnergyType > &energies,
 				grb::Vector< TempType > &betas
 				){
 			const size_t n_replicas = states.size();
@@ -76,11 +76,11 @@ namespace grb {
 		 * Replica Exchange (also known as Parallel Tempering).
 		 *
 		 * The state will be optimized to minimize the expression:
-		 * $x^TQx$, where $x$ is the binary state vector, and $Q$ is the coupling matrix.
+		 * $x^TQx$, where $x$ is the binary state vector, and $couplings$ is the coupling matrix.
 		 *
 		 * @param[in,out] x              On input: an initial state.
 		 *                               On output: the optimized state
-		 * @param[in]     Q              The (square, symmetric) couplings matrix.
+		 * @param[in]     couplings      The (square, symmetric) couplings matrix.
 		 * @param[in]     te             Probabilities of flipping each bit at each
 		 *                               iteration (values between 0 and 1)
 		 * @param[in]     n_replicas     Number of replicas to run concurrently.
@@ -113,7 +113,7 @@ namespace grb {
 				 	)
 				> &sweep,
 				std::vector< grb::Vector< StateType, backend > > &states,
-				const grb::Matrix< QType, backend, RSI, CSI, NZI > &Q,
+				const grb::Matrix< QType, backend, RSI, CSI, NZI > &couplings,
 				const grb::Vector< QType, backend > &local_fields,
 				grb::Vector< EnergyType > &energies,
 				grb::Vector< TempType > &betas,
@@ -122,12 +122,12 @@ namespace grb {
 				const Ring &ring = Ring()
 				){
 
-			const size_t n_replicas = states.size();
+			size_t n_replicas = states.size();
 
 			assert( n_replicas > 0 );
 			assert( n_replicas == grb::size( betas ) );
-			assert( grb::ncols( Q ) == grb::nrows( Q ) );
-			assert( grb::size( states[0] ) == grb::nrows( Q ) );
+			assert( grb::ncols( couplings ) == grb::nrows( couplings ) );
+			assert( grb::size( states[0] ) == grb::nrows( couplings ) );
 			assert( grb::size( states[0] ) == grb::size( local_fields ) );
 
 			for(size_t i = 1; i < n_replicas ; ++i ){
@@ -147,16 +147,25 @@ namespace grb {
 
 			grb::RC rc = grb::SUCCESS;
 
-			static std::vector< grb::Vector< StateType, backend > >  best_states = states;
-			auto best_energies = energies;
+			static std::vector< grb::Vector< StateType, backend > >  best_states;
+			static grb::Vector< EnergyType > best_energies ( n_replicas );
+			best_energies = energies;
+			best_states =  states;
 
 			for( size_t i_sweep = 0 ; rc == grb::SUCCESS && i_sweep < n_sweeps ; ++i_sweep ){
 				// randomize order of replicas
-				std::random_shuffle( states.begin(), states.end() );
+				// std::random_shuffle( states.begin(), states.end() );
 
+				/*
+				grb::eWiseApply(energies, states, betas, 
+						[&](auto state, auto beta){
+						return sweep( couplings, local_fields, state, beta, ring )
+						}
+						);
+						*/
 				for( size_t j = 0 ; rc == grb::SUCCESS && j < n_replicas ; ++j ){
 					
-					energies[j] += sweep( Q, local_fields, states[j], betas[j], ring );
+					energies[j] += sweep( couplings, local_fields, states[j], betas[j], ring );
 				
 					// update_best state and energy
 					if( energies[j] < best_energies[j] ){

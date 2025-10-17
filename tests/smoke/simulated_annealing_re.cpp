@@ -36,6 +36,8 @@
 using namespace grb;
 
 #define DEBUG_IMSB 1
+#define ISCLOSE(x) std::abs(x) < 1e-4
+
 
 // Types
 using IOType = double;   // scalar/vector element type
@@ -81,33 +83,44 @@ namespace test_data {
     constexpr unsigned seed = 8;
 
     const std::vector< std::pair< std::pair< grb::config::RowIndexType, grb::config::ColIndexType >, JType > > j_matrix_data = {
-        {{0, 1}, -0.27523006},
-        {{1, 0}, -0.27523006},
-        {{1, 2},  0.28977992},
-        {{2, 1},  0.28977992},
-        {{2, 3}, -0.15453839},
-        {{3, 2}, -0.15453839},
-        {{3, 4},  0.48474944},
-        {{3, 5}, -0.61958321},
-        {{4, 3},  0.48474944},
-        {{4, 5}, -0.11904111},
-        {{5, 3}, -0.61958321},
-        {{5, 4}, -0.11904111},
-        {{5, 6},  0.70296404},
-        {{6, 5},  0.70296404},
-        {{7, 8}, -0.18031020},
-        {{8, 7}, -0.18031020},
-        {{9, 10}, 0.13823881},
-        {{10, 9}, 0.13823881}
+		{{0, 1}, -0.2752300610319546},
+		{{1, 0}, -0.2752300610319546},
+		{{1, 2}, -0.10636508505639508},
+		{{2, 1}, -0.10636508505639508},
+		{{2, 3}, 0.3961450048806352},
+		{{3, 2}, 0.3961450048806352},
+		{{3, 4}, -0.15453838800213293},
+		{{3, 5}, 0.4847494372852713},
+		{{4, 3}, -0.15453838800213293},
+		{{4, 5}, -0.4712679510367046},
+		{{5, 3}, 0.4847494372852713},
+		{{5, 4}, -0.4712679510367046},
+		{{5, 6}, -0.1483152637298799},
+		{{6, 5}, -0.1483152637298799},
+		{{7, 8}, -0.11904111079614699},
+		{{8, 7}, -0.11904111079614699},
+		{{9, 10}, -0.18031020353297234},
+		{{10, 9}, -0.18031020353297234},
+		{{10, 11}, -0.22985425840853468},
+		{{11, 10}, -0.22985425840853468},
+		{{11, 12}, 0.30105588632639446},
+		{{11, 13}, 0.13823880612312134},
+		{{12, 11}, 0.30105588632639446},
+		{{13, 11}, 0.13823880612312134},
+		{{13, 14}, 0.10364447636911123},
+		{{14, 13}, 0.10364447636911123},
+		{{14, 15}, 0.2955745584289766},
+		{{15, 14}, 0.2955745584289766},
     };
+
 
     const size_t nnz = j_matrix_data.size();
 
     const std::vector< JType > h_array_data = {
-        0.03076145, -0.06152290, 0.09228435, -0.12304580,
-        0.15380725, -0.18456870, 0.21533015, -0.24609160,
-        0.27685305, -0.30761450, 0.33837595, -0.36913740,
-        0.39989885, -0.43066030, 0.46142175, -0.49218320
+		-0.08910436,  0.58034508,  0.97719304,  0.16792909,
+		-0.9221754 , -0.10715418 -0.62365497,  0.25411129,
+		-0.5693644 , -0.69805978 , 0.07228861 -0.79922641,
+		0.46231686 , 0.87930208 , 0.88663637, -0.25052299
     };
 }
 // --- New, minimal runner configuration and result types ---
@@ -244,6 +257,31 @@ void read_vector_data_from_array(
 }
 
 template<
+		class Ring = Semiring<
+			grb::operators::add< JType >, grb::operators::mul< JType >,
+			grb::identities::zero, grb::identities::one
+		> >
+JType get_energy(
+				 const grb::Matrix< JType >& couplings,
+				 const grb::Vector< JType > &local_fields,
+				 const grb::Vector< IOType > &state,
+				 const Ring &ring = Ring()
+			  ){
+	static grb::Vector< JType > tmp ( grb::size( state ) );
+	grb::clear( tmp );
+	JType energy = 0.0;
+
+	grb::mxv( tmp, couplings, state, ring.getAdditiveMonoid(), ring.getMultiplicativeOperator() );
+	grb::foldl( tmp, static_cast< JType >( 0.5 ), ring.getMultiplicativeOperator() );
+	grb::foldl( tmp, local_fields, ring.getAdditiveOperator() );
+	grb::dot( energy, tmp, state, ring );
+
+	return energy;
+}
+
+
+
+template<
 		// Backend backend=grb::reference,
 		class Ring = Semiring<
 			grb::operators::add< JType >, grb::operators::mul< JType >,
@@ -258,13 +296,17 @@ static JType sequential_sweep_immediate(
 			  ){
 
 		const size_t n = grb::size( state );
-		static JType delta_energy = static_cast< JType >(0.0);
+		JType delta_energy = static_cast< JType >(0.0);
 
-		static grb::Vector< JType > delta ( n );
-		static grb::Vector< JType > dn ( n );
-		static grb::Vector< JType > log_rand ( n );
 		static grb::Vector< JType > h ( n );
+		grb::set( h, static_cast< JType >( 0.0 ) );
+		grb::mxv( h, couplings, state , ring.getAdditiveMonoid(), ring.getMultiplicativeOperator() );
+		grb::foldl( h, local_fields, ring.getAdditiveOperator() );
 
+		// static grb::Vector< JType > delta ( n );
+		// static grb::Vector< JType > dn ( n );
+
+		static grb::Vector< JType > log_rand ( n );
 		for( size_t j = 0 ; j < n ; ++j ){
 			constexpr auto rm = static_cast< JType >( RAND_MAX ) + 2;
 			const auto randi =static_cast< JType >( std::rand() ) + 1;
@@ -272,26 +314,41 @@ static JType sequential_sweep_immediate(
 			grb::setElement(log_rand,  std::log( rand ), j );
 		}
 
-		grb::set( h, static_cast< JType >( 0.0 ) );
-		grb::mxv( h, couplings, state , ring.getAdditiveMonoid(), ring.getMultiplicativeOperator() );
-		grb::foldl( h, local_fields, ring.getAdditiveOperator() );
 
 
+		const auto old_state = state;
 		// TODO: masking
 		for( size_t j = 0 ; j < n ; ++j ){
-#ifndef NDEBUG
-			// std::cerr << "...." << std::endl;
-#endif
-			grb::setElement( dn,  (2.0 * state[ j ] - 1.0) * h[ j ], j );
-			if( dn[ j ] >= 0 || (log_rand[ j ] < beta * dn[ j ]) ){
-				grb::setElement( state,  1 - state[j], j );
-				grb::setElement( delta,  static_cast< JType >( 1 ), j );
-				delta_energy -= dn[ j ] * delta[ j ];
-			}
+			JType delta = static_cast< JType >( 0 );
+			JType dn = static_cast< JType >( 0 );
+			dn = (2.0 * state[ j ] - 1.0) * h[ j ];
+
+			const bool accept = ( dn >= 0 ) || ( log_rand[ j ] < beta * dn );
+			const IOType old = state[ j ];
+			grb::setElement( state,  (accept ? 1 - old : old), j );
+
+			// grb::setElement( delta,  static_cast< JType >( state[j] - old ), j );
+			delta =  static_cast< JType >( state[j] - old );
+			delta_energy -= dn * accept ;
 
 			// update h
-			grb::mxv( h, couplings, delta, ring.getAdditiveMonoid(), ring.getMultiplicativeOperator() );
+			if( delta ){
+				static grb::Vector< JType > deltav ( n );
+				grb::clear( deltav );
+				grb::setElement( deltav, delta , j );
+
+				grb::mxv( h, couplings, deltav, ring.getAdditiveMonoid(), ring.getMultiplicativeOperator() );
+			}
 		}
+		const auto new_state = state;
+
+		// std::cerr << "\n\t Delta_energy: " << delta_energy;
+		// std::cerr << "\n\t Real delta: " << (get_energy(couplings, local_fields, new_state) - get_energy(couplings, local_fields, old_state));
+		// std::cerr << "\n\t Old energy: " << get_energy(couplings, local_fields, old_state) ;
+		// std::cerr << "\n\t New energy: " << get_energy(couplings, local_fields, new_state);
+		// std::cerr << std::endl;
+
+		assert( ISCLOSE(delta_energy - (get_energy(couplings, local_fields, new_state) - get_energy(couplings, local_fields, old_state))) );
 
 		return delta_energy;
 }
@@ -326,8 +383,6 @@ std::function< JType(
 	 return sequential_sweep_immediate< Ring >;
 }
 
-
-
 void ioProgram( const struct input &data_in, bool &success ) {
 
     using namespace test_data;
@@ -335,8 +390,8 @@ void ioProgram( const struct input &data_in, bool &success ) {
 	// Parse and store matrix in singleton class
     // Map Storage tuple fields to meaningful names and wire up default data
     auto &storage = Storage::getData();
-    auto &n           = std::get<0>(storage); // n (rows/cols)
-    auto &nnz         = std::get<1>(storage); // nz (nonzeros)
+    // auto &n           = std::get<0>(storage); // n (rows/cols)
+    // auto &nnz         = std::get<1>(storage); // nz (nonzeros)
     auto &nsweeps_st  = std::get<2>(storage); // nsweeps
     auto &n_replicas_st = std::get<3>(storage); // n_replicas
     auto &use_pt      = std::get<4>(storage); // seed
@@ -478,25 +533,30 @@ void grbProgram(
         for ( size_t r = 0; r < n_replicas; ++r ) {
             std::cout << "Initial state replica " << r << ":\n";
             print_vector( states[r], 30 ,"states values" );  
+			std::cout << "With energy " << get_energy(  J, h, states[r] ) << "\n";
             std::cout << std::endl;
-
         }
+
+		grb::Vector<JType> zero ( n );
+		grb::set( zero, 0 );
+		grb::setElement( zero, 1, 1 );
+		assert( std::abs(get_energy(  J, h, zero ) - 0.5803450826765713) < 1e-4 );
     }
     #endif
 
 
     // also make betas vector os size n_replicas and initialize with 10.0
     grb::Vector< JType > betas( n_replicas );
+    grb::Vector< JType > energies( n_replicas );
     for ( size_t r = 0; r < n_replicas; ++r ) {
         rc = rc ? rc : grb::setElement( betas, static_cast<JType>(10.0/r), r );
+        rc = rc ? rc : grb::setElement( energies, get_energy(  J, h, states[r] ), r );
     }
     rc = rc ? rc : wait();
 
     // also make energies vector os size n_replicas and calculate values
     // in python energies = np.array([get_energy(couplings, local_fields, state) for state in states])
     // will be initalize in the algorithm
-    grb::Vector< JType > energies( n_replicas );
-	grb::set( energies, 1 );
 
 
     // TODO: add times
@@ -564,7 +624,10 @@ void grbProgram(
 		for ( size_t r = 0; r < n_replicas; ++r ) {
 			std::cout << "Final state replica " << r << ":\n";
 			print_vector( states[r], 30 ,"states values" );  
+			std::cout << "With energy " << energies[ r ] << "\n";
+			std::cout << "With energy " << get_energy(  J, h, states[r] ) << "\n";
 			std::cout << std::endl;
+			assert( ISCLOSE(energies[ r ] - get_energy(  J, h, states[r] ) ) );
 		}
 		for(size_t i = 0 ; i < n_replicas ; ++i ){
 			out.best_energy = std::min( out.best_energy, energies[ i ] );
