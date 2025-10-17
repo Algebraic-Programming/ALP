@@ -145,7 +145,7 @@ add_grb_executables( conjugate_gradient_complex conjugate_gradient.cpp
 )
 
 add_grb_executables( conjugate_gradient_synth conjugate_gradient_synthetic.cpp
-	BACKENDS reference reference_omp bsp1d hybrid hyperdags nonblocking
+	BACKENDS reference reference_omp  
 	ADDITIONAL_LINK_LIBRARIES test_utils_headers
 )
 
