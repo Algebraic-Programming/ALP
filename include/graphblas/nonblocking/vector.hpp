@@ -51,7 +51,7 @@
 #include <graphblas/ops.hpp>
 #include <graphblas/rc.hpp>
 #include <graphblas/type_traits.hpp>
-#include <graphblas/utils/alloc.hpp>
+#include <graphblas/alloc.hpp>
 #include <graphblas/utils/autodeleter.hpp>
 
 #include <graphblas/reference/compressed_storage.hpp>
