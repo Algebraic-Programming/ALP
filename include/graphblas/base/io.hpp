@@ -866,13 +866,13 @@ namespace grb {
 	 *
 	 * In #grb::EXECUTE mode:
 	 *
-	 * @returns #grb::FAILED  When \a x did not have sufficient capacity. The
+	 * @returns #grb::ILLEGAL  When \a x did not have sufficient capacity. The
 	 *                        vector \a x on exit shall be cleared.
 	 * @returns #grb::SUCCESS When the call completes successfully.
 	 *
 	 * In #grb::TRY mode (experimental and may not be supported):
 	 *
-	 * @returns #grb::FAILED  When \a x did not have sufficient capacity. The
+	 * @returns #grb::ILLEGAL When \a x did not have sufficient capacity. The
 	 *                        vector \a x on exit will have contents defined as
 	 *                        described for #grb::TRY.
 	 * @returns #grb::SUCCESS When the call completes successfully.
@@ -950,13 +950,13 @@ namespace grb {
 	 *
 	 * In #grb::EXECUTE mode:
 	 *
-	 * @returns #grb::FAILED  When \a x did not have sufficient capacity. The
+	 * @returns #grb::ILLEGAL When \a x did not have sufficient capacity. The
 	 *                        vector \a x on exit shall be cleared.
 	 * @returns #grb::SUCCESS When the call completes successfully.
 	 *
 	 * In #grb::TRY mode (experimental and may not be supported):
 	 *
-	 * @returns #grb::FAILED  When \a x did not have sufficient capacity. The
+	 * @returns #grb::ILLEGAL When \a x did not have sufficient capacity. The
 	 *                        vector \a x on exit will have contents defined as
 	 *                        described for #grb::TRY.
 	 * @returns #grb::SUCCESS When the call completes successfully.

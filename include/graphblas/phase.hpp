@@ -196,7 +196,7 @@ namespace grb {
 		 * \em must complete as specified-- unless #grb::PANIC is returned.
 		 *
 		 * If, nevertheless, capacity was not sufficient then the result of the
-		 * computation is incomplete and the primitive shall return #grb::FAILED.
+		 * computation is incomplete and the primitive shall return #grb::ILLEGAL.
 		 * Regarding each output container \a A, the following are guaranteed:
 		 *    -# the capacity of \a A remains unchanged;
 		 *    -# contains #grb::capacity (of \a A) nonzeroes;
@@ -236,7 +236,7 @@ namespace grb {
 		 * execute phase.
 		 *
 		 * If, instead, the output container capacity was found to be insufficient,
-		 * then the requested operation may return #grb::FAILED, in which case the
+		 * then the requested operation may return #grb::ILLEGAL, in which case the
 		 * contents of output containers shall be cleared.
 		 *
 		 * \note That on failure a primitive called using the execute phase may
