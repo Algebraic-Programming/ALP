@@ -40,8 +40,9 @@ using namespace grb;
 
 
 // Types
-using IOType = double;   // scalar/vector element type
+using IOType = int;   // scalar/vector element type
 using JType  = double;   // coupling (matrix) value type
+using EnergyType  = double;   // coupling (matrix) value type
 
 /** Parser type */
 typedef grb::utils::MatrixFileReader<
@@ -144,7 +145,7 @@ struct output {
     int error_code = 0;
     // TODO: remove itrations if not applicable
     size_t iterations = 10; // total number of iterations performed does not make sense since the code does not have convergence criteria
-    double best_energy = std::numeric_limits< JType >::max();
+    EnergyType best_energy = std::numeric_limits< EnergyType >::max();
 	size_t rep;
 	grb::utils::TimerResults times;
     std::unique_ptr< PinnedVector< JType > > pinnedSolutionVector;
@@ -261,7 +262,7 @@ template<
 			grb::operators::add< JType >, grb::operators::mul< JType >,
 			grb::identities::zero, grb::identities::one
 		> >
-JType get_energy(
+EnergyType get_energy(
 				 const grb::Matrix< JType >& couplings,
 				 const grb::Vector< JType > &local_fields,
 				 const grb::Vector< IOType > &state,
@@ -286,29 +287,29 @@ template<
 		class Ring = Semiring<
 			grb::operators::add< JType >, grb::operators::mul< JType >,
 			grb::identities::zero, grb::identities::one
-		> >
-static JType sequential_sweep_immediate(
+		>
+	>
+static EnergyType sequential_sweep_immediate(
 				 const grb::Matrix< JType >& couplings,
 				 const grb::Vector< JType > &local_fields,
 				 grb::Vector< IOType > &state,
 				 const JType &beta,
+				 grb::Vector< JType > &h,
+				 grb::Vector< JType > &log_rand,
+				 grb::Vector< EnergyType > &deltav,
 				 const Ring &ring = Ring()
 			  ){
 
 		grb::RC rc = grb::SUCCESS;
 		const size_t n = grb::size( state );
-		JType delta_energy = static_cast< JType >(0.0);
+		EnergyType delta_energy = static_cast< JType >(0.0);
 
-		grb::Vector< JType > h ( n );
+		rc = rc ? rc : grb::resize( h, n );
 		rc = rc ? rc : grb::set( h, static_cast< JType >( 0.0 ) );
 		rc = rc ? rc : grb::mxv( h, couplings, state , ring.getAdditiveMonoid(), ring.getMultiplicativeOperator() );
 		rc = rc ? rc : grb::foldl( h, local_fields, ring.getAdditiveOperator() );
-		// rc = rc ? rc : grb::foldl( h, local_fields, ring.getAdditiveOperator() );
 
-		// static grb::Vector< JType > delta ( n );
-		// static grb::Vector< JType > dn ( n );
-
-		grb::Vector< JType > log_rand ( n );
+		rc = rc ? rc : grb::resize( log_rand, n );
 		for( size_t j = 0 ; j < n ; ++j ){
 			constexpr auto rm = static_cast< JType >( RAND_MAX ) + 2;
 			const auto randi =static_cast< JType >( std::rand() ) + 1;
@@ -316,26 +317,25 @@ static JType sequential_sweep_immediate(
 			rc = rc ? rc : grb::setElement(log_rand,  std::log( rand ), j );
 		}
 
-
-
-		const auto old_state = state;
+#ifndef NDEBUG
+		const grb::Vector< IOType > old_state = state;
+#endif
 		// TODO: masking
 		for( size_t j = 0 ; rc == grb::SUCCESS && j < n ; ++j ){
-			JType delta = static_cast< JType >( 0 );
-			JType dn = static_cast< JType >( 0 );
+			EnergyType delta = static_cast< EnergyType >( 0 );
+			EnergyType dn = static_cast< EnergyType >( 0 );
 			dn = (2.0 * state[ j ] - 1.0) * h[ j ];
 
 			const bool accept = ( dn >= 0 ) || ( log_rand[ j ] < beta * dn );
 			const IOType old = state[ j ];
 			rc = rc ? rc : grb::setElement( state,  (accept ? 1 - old : old), j );
 
-			// grb::setElement( delta,  static_cast< JType >( state[j] - old ), j );
-			delta =  static_cast< JType >( state[j] - old );
+			// grb::setElement( delta,  static_cast< IOType >( state[j] - old ), j );
+			delta =  static_cast< EnergyType >( state[j] - old );
 			delta_energy -= dn * accept ;
 
 			// update h
 			if( delta ){
-				static grb::Vector< JType > deltav ( n );
 				rc = rc ? rc : grb::clear( deltav );
 				rc = rc ? rc : grb::setElement( deltav, delta , j );
 
@@ -343,6 +343,7 @@ static JType sequential_sweep_immediate(
 			}
 		}
 		assert( rc == grb::SUCCESS );
+#ifndef NDEBUG
 		const auto new_state = state;
 
 		// std::cerr << "\n\t Delta_energy: " << delta_energy;
@@ -352,6 +353,7 @@ static JType sequential_sweep_immediate(
 		// std::cerr << std::endl;
 
 		assert( ISCLOSE(get_energy(couplings, local_fields, new_state) - get_energy(couplings, local_fields, old_state), delta_energy ) );
+#endif
 
 		return delta_energy;
 }
@@ -363,23 +365,16 @@ template<
 			grb::operators::add< JType >, grb::operators::mul< JType >,
 			grb::identities::zero, grb::identities::one
 		> >
-std::function< JType(
+std::function< EnergyType(
 					 const grb::Matrix< JType >&,
 					 const grb::Vector< JType >&,
 					 grb::Vector< IOType >&,
 					 const JType&,
+					 grb::Vector< JType >&,
+					 grb::Vector< JType >&,
+					 grb::Vector< EnergyType >&,
 					 const Ring&
 				 ) > get_sweep_function( std::string sweep_name ){
-	/*
-	if( sweep_name != "sequential_sweep_x" ){
-		return [](
-				 const grb::Matrix< JType >& couplings,
-				 const grb::Vector< JType > &local_fields,
-				 grb::Vector< IOType > &state,
-				 const JType &beta,
-				 const Ring &ring = Ring()
-			  ){ return 0; };
-	} */
 	if( sweep_name != "sequential_sweep_immediate" ){
 			std::cerr << "Warning: unknown sweep setting. Falling back to  \"sequential_sweep_immediate\"" << std::endl;
 	}
@@ -450,12 +445,12 @@ void grbProgram(
     /* --- Problem setup --- */
     const size_t n = std::get<0>(Storage::getData());
 	std::cout << "problem size n = " << n << "\n";
-    grb::Vector<JType> h( n );
+    grb::Vector< JType > h( n );
     // populate J with test (random) values
     grb::RC rc = grb::SUCCESS;
 
     // load into GraphBLAS
-    grb::Matrix<JType> J( n, n );
+    grb::Matrix< JType > J( n, n );
 	{
 		const auto &data = std::get<7>(Storage::getData());
 		RC io_rc = buildMatrixUnique(
@@ -540,9 +535,9 @@ void grbProgram(
             std::cout << std::endl;
         }
 
-		grb::Vector<JType> zero ( n );
-		grb::set( zero, 0 );
-		grb::setElement( zero, 1, 1 );
+		// grb::Vector< JType > zero ( n );
+		// grb::set( zero, 0 );
+		// grb::setElement( zero, 1, 1 );
 		// assert( std::abs(get_energy(  J, h, zero ) - 0.5803450826765713) < 1e-4 );
     }
     #endif
@@ -550,9 +545,10 @@ void grbProgram(
 
     // also make betas vector os size n_replicas and initialize with 10.0
     grb::Vector< JType > betas( n_replicas );
-    grb::Vector< JType > energies( n_replicas );
+    grb::Vector< EnergyType > energies( n_replicas );
+    grb::Vector< EnergyType > temp_energies( n_replicas );
     for ( size_t r = 0; rc == grb::SUCCESS && r < n_replicas; ++r ) {
-        rc = rc ? rc : grb::setElement( betas, static_cast<JType>(10.0/r), r );
+        rc = rc ? rc : grb::setElement( betas, static_cast< JType >(10.0), r );
         rc = rc ? rc : grb::setElement( energies, get_energy(  J, h, states[r] ), r );
     }
     rc = rc ? rc : wait();
@@ -562,14 +558,18 @@ void grbProgram(
     // will be initalize in the algorithm
 
 
-    // TODO: add times
+    std::vector< grb::Vector<IOType> > temp_states;
+	grb::Vector< JType > temp_h ( n );
+	grb::Vector< JType > temp_log_rand ( n );
+	grb::Vector< EnergyType > temp_deltav ( n );
+
 
 	out.rep = data_in.rep;
 	// time a single call
 	if( out.rep == 0 ) {
 		timer.reset();
 		rc = grb::algorithms::simulated_annealing_RE(
-				sweep, states, J, h, energies, betas, data_in.nsweeps, data_in.use_pt
+				sweep, states, J, h, energies, betas, temp_states, temp_energies, temp_h, temp_log_rand, temp_deltav, data_in.nsweeps, data_in.use_pt
         );
 
 		rc = rc ? rc : wait();
@@ -615,7 +615,7 @@ void grbProgram(
 				out.iterations = data_in.nsweeps;
 
                 rc = grb::algorithms::simulated_annealing_RE(
-					sweep, states, J, h, energies, betas, data_in.nsweeps, data_in.use_pt
+					sweep, states, J, h, energies, betas, temp_states, temp_energies, temp_h, temp_log_rand, temp_deltav, data_in.nsweeps, data_in.use_pt
                 );
 
 			}
