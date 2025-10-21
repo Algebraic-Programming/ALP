@@ -27,9 +27,11 @@
 #define _H_GRB_ALGORITHMS_SA_RE
 
 #include <vector>
+#include <type_traits>
 #include <algorithm>
 #include <cstdlib>
 #include <cassert>
+#include <cmath>
 
 #ifndef NDEBUG
 #include <iostream>
@@ -70,9 +72,10 @@ namespace grb {
 				){
 			const size_t n_replicas = states.size();
 
-			for( size_t i = 1 ; i < n_replicas ; ++i ){
+			for( size_t i = n_replicas-1 ; i > 0 ; --i ){
         		const EnergyType de = ( energies[ i ] - energies[ i-1 ]) * (betas[ i ] - betas[ i-1 ]);
-				if( de >= 0 || std::rand() < RAND_MAX*std::exp(de) ){
+
+				if( de >= 0 || std::rand() < RAND_MAX * exp( de ) ){
 					std::swap( betas[i], betas[i-1] );
 				}	
 			}
@@ -99,6 +102,8 @@ namespace grb {
 		 * @param[in]     couplings     The square (symmetric) couplings matrix.
 		 * @param[in,out] energies      The initial energy of each state.
 		 * @param[in,out] betas     	Inverse temperature of each state.
+		 * @param[in,out] temp_states   Inverse temperature of each state.
+		 * @param[in,out] temp_energies Inverse temperature of each state.
 		 * @param[in]     n_replicas    Number of replicas to run concurrently.
 		 * @param[in]     n_sweeps      Number of Simulated Annealing iterations.
 		 * @param[in]     use_pt		Whether to use Parallel Tampering or not.
@@ -128,6 +133,9 @@ namespace grb {
 						 const grb::Vector< QType, backend >&,
 						 grb::Vector< StateType, backend >&,
 						 const TempType&,
+						 grb::Vector< QType >&,
+						 grb::Vector< QType >&,
+						 grb::Vector< EnergyType >&,
 						 const Ring&
 				 	)
 				> &sweep,
@@ -136,6 +144,11 @@ namespace grb {
 				const grb::Vector< QType, backend > &local_fields,
 				grb::Vector< EnergyType > &energies,
 				grb::Vector< TempType > &betas,
+				std::vector< grb::Vector< StateType, backend > >  &temp_states,
+				grb::Vector< EnergyType > &temp_energies,
+				grb::Vector< QType > &temp_sweep1,
+				grb::Vector< QType > &temp_sweep2,
+				grb::Vector< EnergyType > &temp_sweep3,
 				const size_t &n_sweeps = 1,
 				const bool &use_pt = false,
 				const Ring &ring = Ring()
@@ -166,34 +179,26 @@ namespace grb {
 
 			grb::RC rc = grb::SUCCESS;
 
-			static std::vector< grb::Vector< StateType, backend > >  best_states;
-			static grb::Vector< EnergyType > best_energies ( n_replicas );
-			best_energies = energies;
-			best_states =  states;
+			temp_energies = energies;
+			temp_states =  states;
 
 			for( size_t i_sweep = 0 ; rc == grb::SUCCESS && i_sweep < n_sweeps ; ++i_sweep ){
 				// randomize order of replicas
 				// std::random_shuffle( states.begin(), states.end() );
 
-				/*
-				grb::eWiseApply(energies, states, betas, 
-						[&](auto state, auto beta){
-						return sweep( couplings, local_fields, state, beta, ring )
-						}
-						);
-						*/
 				for( size_t j = 0 ; rc == grb::SUCCESS && j < n_replicas ; ++j ){
 					
-					energies[j] += sweep( couplings, local_fields, states[j], betas[j], ring );
+				energies[j] += sweep( couplings, local_fields, states[j], betas[j], temp_sweep1, temp_sweep2 , temp_sweep3 , ring );
 				
 					// update_best state and energy
-					if( energies[j] < best_energies[j] ){
-						best_energies[j] = energies[j];
-						best_states[j] = states[j];
+					if( energies[j] < temp_energies[j] ){
+						temp_energies[j] = energies[j];
+						temp_states[j] = states[j];
 					}
 				} // n_replicas
 
-				if( rc == SUCCESS && use_pt ){ // Parallel Tempering move
+				if( rc == SUCCESS && use_pt ){
+					// do a Parallel Tempering move
 					rc = pt( states, energies, betas );
 				}
 #ifndef NDEBUG
@@ -208,14 +213,21 @@ namespace grb {
 			}
 #endif
 			if( rc == SUCCESS ){
-				// copy assignment throws an error. We'll do move-assignment I guess
-				states = std::move(best_states);
-				energies = std::move(best_energies);
+				states = temp_states;
+				energies = temp_energies;
 			}
 
 			return rc;
 		}
 
+		template< typename T >
+		inline T
+		exp(T x ){
+			static_assert(std::is_same<T, float>::value ||
+				std::is_same<T, double>::value ||
+				std::is_same<T, long double>::value);
+			return std::exp( x );
+		}
 	} // namespace algorithms
 
 } // end namespace grb
