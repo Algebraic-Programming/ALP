@@ -41,7 +41,7 @@ set( HEADERS_REGEX ".+\.(hpp|h|hxx|hh|h\\+\\+)$" )
 # to avoid flaky acrobatics with regex or glob expressions, copy main files directly
 install( FILES "graphblas.hpp" DESTINATION "${INCLUDE_INSTALL_DIR}" )
 set( root_files
-	"graphblas/backends.hpp" "graphblas/benchmark.hpp"
+	"graphblas/alloc.hpp" "graphblas/backends.hpp" "graphblas/benchmark.hpp"
 	"graphblas/blas0.hpp" "graphblas/blas1.hpp" "graphblas/blas2.hpp"
 	"graphblas/blas3.hpp" "graphblas/collectives.hpp" "graphblas/config.hpp"
 	"graphblas/coordinates.hpp" "graphblas/descriptors.hpp"
