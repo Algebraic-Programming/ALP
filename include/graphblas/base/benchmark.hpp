@@ -31,6 +31,7 @@
 #include <cmath>  // for sqrt
 #include <limits>
 #include <vector> // warning: normally should not be used in ALP backends(!)
+#include <unistd.h> // for sleep
 
 #ifndef _GRB_NO_STDIO
  #include <ios>
@@ -277,12 +278,14 @@ namespace grb {
 #endif
 
 						// pause for next outer loop
-						if( sleep( 1 ) != 0 && ret == grb::SUCCESS ) {
+						if( ret == grb::SUCCESS ) {
+							if( sleep( 1 ) != 0 ) {
 #ifndef _GRB_NO_STDIO
-							std::cerr << "Sleep interrupted, assume benchmark is unreliable; "
-								<< "exiting.\n";
+								std::cerr << "Sleep interrupted, assume benchmark is unreliable; "
+									<< "exiting.\n";
 #endif
-							abort();
+								ret = grb::PANIC;
+							}
 						}
 					}
 
