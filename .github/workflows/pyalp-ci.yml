@@ -20,12 +20,15 @@ jobs:
         # Fail early if the checked-out pybind11 is not the pinned commit
         run: |
           set -euo pipefail
-          PIN_FILE=pyalp/extern/pybind11/PINNED_COMMIT
-          if [ ! -f "$PIN_FILE" ]; then
-            echo "PINNED_COMMIT file not found in pyalp/extern/pybind11" >&2
+          # Prefer top-level pinned file so it survives moves; fallback to submodule path
+          if [ -f pyalp/PINNED_PYBIND11 ]; then
+            PINNED_SHA=$(cat pyalp/PINNED_PYBIND11 | tr -d '\n')
+          elif [ -f pyalp/extern/pybind11/PINNED_COMMIT ]; then
+            PINNED_SHA=$(cat pyalp/extern/pybind11/PINNED_COMMIT | tr -d '\n')
+          else
+            echo "No pinned commit file found (tried pyalp/PINNED_PYBIND11 and pyalp/extern/pybind11/PINNED_COMMIT)" >&2
             exit 2
           fi
-          PINNED_SHA=$(cat "$PIN_FILE" | tr -d '\n')
           echo "Expected pybind11 commit: $PINNED_SHA"
           ACTUAL=$(git -C pyalp/extern/pybind11 rev-parse HEAD || true)
           echo "Found pybind11 commit: $ACTUAL"
