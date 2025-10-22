@@ -338,7 +338,7 @@ include( AddGRBTests )
 add_subdirectory( tests )
 
 if( ENABLE_PYALP )
-	add_subdirectory(python)
+	add_subdirectory(pyalp)
 endif()
 add_subdirectory( examples )
 
