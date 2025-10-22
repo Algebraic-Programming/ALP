@@ -90,12 +90,4 @@ jobs:
           . venv/bin/activate
           pip install --upgrade pip wheel
           pip install dist_wheel/*.whl
-          python - <<'PY'
-import pyalp
-print('pyalp import OK, compiled ext:', hasattr(pyalp, '_pyalp'))
-try:
-    print('backend_name:', pyalp._pyalp.backend_name())
-except Exception as e:
-    print('calling backend failed:', e)
-    raise
-PY
+          python -c "import pyalp, traceback; print('pyalp import OK, compiled ext:', hasattr(pyalp, '_pyalp')); try: print('backend_name:', pyalp._pyalp.backend_name()); except Exception as e: print('calling backend failed:', e); traceback.print_exc(); raise"
