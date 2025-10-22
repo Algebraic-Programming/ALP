@@ -1,0 +1,101 @@
+name: pyalp CI
+
+# Run only on pushes that create tags starting with 'pyalp'
+on:
+  push:
+    tags: [ 'pyalp*' ]
+
+jobs:
+  build-bindings:
+    name: Build C++ bindings
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout (with submodules)
+        uses: actions/checkout@v4
+        with:
+          submodules: 'recursive'
+          fetch-depth: 0
+
+      - name: Verify pinned pybind11 submodule commit
+        # Fail early if the checked-out pybind11 is not the pinned commit
+        run: |
+          set -euo pipefail
+          PIN_FILE=pyalp/extern/pybind11/PINNED_COMMIT
+          if [ ! -f "$PIN_FILE" ]; then
+            echo "PINNED_COMMIT file not found in pyalp/extern/pybind11" >&2
+            exit 2
+          fi
+          PINNED_SHA=$(cat "$PIN_FILE" | tr -d '\n')
+          echo "Expected pybind11 commit: $PINNED_SHA"
+          ACTUAL=$(git -C pyalp/extern/pybind11 rev-parse HEAD || true)
+          echo "Found pybind11 commit: $ACTUAL"
+          if [ "$ACTUAL" != "$PINNED_SHA" ]; then
+            echo "ERROR: pybind11 submodule commit does not match pinned commit" >&2
+            exit 2
+          fi
+
+      - name: Install build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential cmake ninja-build pkg-config python3-venv python3-dev python3-pip
+
+      - name: Configure and build pyalp bindings
+        run: |
+          mkdir -p build_alp
+          cmake -S . -B build_alp -DENABLE_PYALP=ON
+          cmake --build build_alp --target pyalp_ref -- -j
+          cmake --build build_alp --target pyalp_omp -- -j || true
+
+      - name: Find and list built shared objects
+        run: |
+          find build_alp -name "*.so" -maxdepth 6 -print || true
+
+      - name: Upload built bindings
+        uses: actions/upload-artifact@v4
+        with:
+          name: pyalp-so
+          path: |
+            build_alp/**/pyalp*.so
+
+  build-wheel-and-test:
+    name: Build wheel from prebuilt .so and smoke-test
+    runs-on: ubuntu-latest
+    needs: build-bindings
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Download built bindings
+        uses: actions/download-artifact@v4
+        with:
+          name: pyalp-so
+          path: artifacts
+
+      - name: Show downloaded artifacts
+        run: ls -la artifacts || true
+
+      - name: Build wheel from prebuilt .so (helper)
+        run: |
+          # pick the first built so
+          SO_PATH=$(find artifacts -name "pyalp*.so" | head -n1)
+          echo "Using SO: $SO_PATH"
+          python3 tools/make_wheel_from_so.py "$SO_PATH" --out-dir dist_wheel
+
+      - name: Show wheel
+        run: ls -la dist_wheel || true
+
+      - name: Smoke test wheel in venv
+        run: |
+          python3 -m venv venv
+          . venv/bin/activate
+          pip install --upgrade pip wheel
+          pip install dist_wheel/*.whl
+          python - <<'PY'
+import pyalp
+print('pyalp import OK, compiled ext:', hasattr(pyalp, '_pyalp'))
+try:
+    print('backend_name:', pyalp._pyalp.backend_name())
+except Exception as e:
+    print('calling backend failed:', e)
+    raise
+PY
