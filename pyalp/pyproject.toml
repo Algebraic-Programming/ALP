@@ -1,0 +1,56 @@
+
+[build-system]
+requires = ["setuptools>=61.0.0", "scikit-build-core>=0.5.0", "pybind11>=2.10.0"]
+build-backend = "scikit_build_core.build"
+
+[project]
+name = "pyalp"
+version = "0.0.0"
+description = "Python bindings for ALP GraphBLAS (minimal package layout)"
+authors = [{ name = "ALP" }]
+readme = "README.md"
+license = { file = "LICENSE" }
+requires-python = ">=3.8"
+classifiers = [
+	"Programming Language :: Python :: 3",
+	"License :: OSI Approved :: Apache Software License",
+	"Operating System :: OS Independent",
+	"Development Status :: 3 - Alpha",
+	"Intended Audience :: Developers",
+	"Topic :: Software Development :: Libraries :: Python Modules",
+]
+dependencies = [
+	"numpy",
+]
+
+[tool.scikit-build]
+# scikit-build-core will run CMake. Use Release by default for wheel builds.
+cmake.build-type = "Release"
+# Build using the top-level ALP CMakeLists so we get a properly configured ALP build
+# The project root is one level above this package folder
+# Use the package-local CMake which configures an out-of-tree ALP build and
+# installs only the compiled Python extension into the wheel.
+cmake.source-dir = "."
+# Ensure the pyalp subproject is enabled when configuring the top-level project.
+# Use canonical scikit-build keys so behavior is explicit.
+cmake.args = [
+	"-DENABLE_PYALP=ON",
+	"-DWITH_REFERENCE_BACKEND=ON",
+	"-DWITH_OMP_BACKEND=OFF",
+	"-DWITH_HYPERDAGS_BACKEND=OFF",
+	"-DWITH_NONBLOCKING_BACKEND=OFF",
+	"-DWITH_BSP1D_BACKEND=OFF",
+	"-DWITH_HYBRID_BACKEND=OFF",
+	"-DENABLE_SOLVER_LIB=OFF",
+	"-DENABLE_EXTRA_SOLVER_LIBS=OFF"
+]
+# Request CMake to only build the python module target (pyalp_ref) so the build is
+# equivalent to: cmake <ALPROOT> -DENABLE_PYALP=ON && make pyalp_ref
+# Build the packaging helper target which configures and builds only pyalp_ref
+# in an out-of-tree ALP build and installs the extension into the wheel staging
+# area.
+cmake.targets = ["build_pyalp_ref"]
+
+[tool.scikit-build.wheel]
+# Ensure wheels are platform specific by leaving py-api unspecified (default behavior)
+py-api = "cp38"
