@@ -1,18 +1,10 @@
 cmake_minimum_required(VERSION 3.14)
 project(python_module LANGUAGES CXX)
 
-# Try to use an installed pybind11 if available; otherwise fall back to the vendored copy.
-find_package(pybind11 CONFIG QUIET)
-if(NOT pybind11_FOUND)
-	# Vendored pybind11 is expected at <pyalp-root>/extern/pybind11. Compute path relative
-	# to this CMakeLists file (pyalp/src).
-	set(_vendored_pybind11_dir "${CMAKE_CURRENT_SOURCE_DIR}/../extern/pybind11")
-	if(EXISTS ${_vendored_pybind11_dir})
-		add_subdirectory(${_vendored_pybind11_dir} ${CMAKE_BINARY_DIR}/pyalp/extern/pybind11)
-	else()
-		message(FATAL_ERROR "pybind11 not found (tried find_package and ${_vendored_pybind11_dir}). Please install pybind11 or ensure vendored copy exists.")
-	endif()
-endif()
+# Include pybind11 relative to the project root directory ie CMAKE_ROOTDIR/pyalp/extern/pybind11
+# When adding an out-of-tree source directory to add_subdirectory, provide an explicit
+# binary directory to avoid the "not a subdirectory" error.
+add_subdirectory(${CMAKE_SOURCE_DIR}/pyalp/extern/pybind11 ${CMAKE_BINARY_DIR}/pyalp/extern/pybind11)
 
 assert_defined_variables( WITH_REFERENCE_BACKEND WITH_OMP_BACKEND )
 

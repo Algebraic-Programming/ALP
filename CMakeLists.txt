@@ -338,7 +338,12 @@ include( AddGRBTests )
 add_subdirectory( tests )
 
 if( ENABLE_PYALP )
-	add_subdirectory(python)
+	# Only add the pyalp subdirectory if it contains a CMakeLists.txt in the source tree.
+	if(EXISTS "${PROJECT_SOURCE_DIR}/pyalp/CMakeLists.txt")
+		add_subdirectory(pyalp)
+	else()
+		message(STATUS "pyalp subdirectory not present in source tree; skipping add_subdirectory(pyalp)")
+	endif()
 endif()
 add_subdirectory( examples )
 
