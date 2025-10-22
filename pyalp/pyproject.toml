@@ -13,3 +13,10 @@ requires-python = ">=3.8"
 
 [tool.setuptools.packages.find]
 where = ["src"]
+
+[tool.cibuildwheel]
+# Build CPython 3.9–3.12 wheels; skip PyPy and musllinux for now
+build = "cp39-* cp310-* cp311-* cp312-*"
+skip = "pp* *-musllinux* *-manylinux_i686 *-win32"
+archs = { linux = ["x86_64"], macos = ["x86_64", "arm64"], windows = ["AMD64"] }
+build-verbosity = 1

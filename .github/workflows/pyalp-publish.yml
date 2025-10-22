@@ -1,0 +1,85 @@
+name: pyalp wheels (cibuildwheel)
+
+on:
+  push:
+    tags: [ 'pyalp.v*' ]
+  workflow_dispatch: {}
+
+jobs:
+  build-wheels:
+    name: Build wheels on ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    steps:
+      - name: Checkout (with submodules)
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          fetch-depth: 0
+
+      - name: Verify pinned pybind11 submodule commit
+        if: runner.os == 'Linux' || runner.os == 'macOS' || runner.os == 'Windows'
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ -f pyalp/PINNED_PYBIND11 ]; then
+            PINNED_SHA=$(tr -d '\n' < pyalp/PINNED_PYBIND11)
+          elif [ -f pyalp/extern/pybind11/PINNED_COMMIT ]; then
+            PINNED_SHA=$(tr -d '\n' < pyalp/extern/pybind11/PINNED_COMMIT)
+          else
+            echo "No pinned commit file found (pyalp/PINNED_PYBIND11 or pyalp/extern/pybind11/PINNED_COMMIT)" >&2
+            exit 2
+          fi
+          ACTUAL=$(git -C pyalp/extern/pybind11 rev-parse HEAD || true)
+          echo "Expected pybind11 commit: $PINNED_SHA"
+          echo "Found pybind11 commit: $ACTUAL"
+          test "$ACTUAL" = "$PINNED_SHA"
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install cibuildwheel
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install cibuildwheel==2.21.3
+
+      - name: Build wheels
+        env:
+          CIBW_BUILD: "cp39-* cp310-* cp311-* cp312-*"
+          CIBW_SKIP: "*-musllinux* pp* *-win32 *-manylinux_i686"
+          CIBW_ARCHS_LINUX: "x86_64"
+          CIBW_ARCHS_MACOS: "x86_64 arm64"
+          CIBW_ARCHS_WINDOWS: "AMD64"
+          CIBW_BUILD_VERBOSITY: "1"
+          # Ensure submodule headers are used by setup.py
+          CIBW_ENVIRONMENT: |
+            PYTHONUTF8=1
+        run: |
+          python -m cibuildwheel --output-dir wheelhouse pyalp
+
+      - name: Upload wheels
+        uses: actions/upload-artifact@v4
+        with:
+          name: pyalp-wheels-${{ matrix.os }}
+          path: wheelhouse/*.whl
+
+  # Placeholder for publish job; enable when versioning is PEP 440 compliant
+  # publish:
+  #   needs: build-wheels
+  #   runs-on: ubuntu-latest
+  #   permissions:
+  #     id-token: write
+  #   steps:
+  #     - name: Download wheels
+  #       uses: actions/download-artifact@v4
+  #       with:
+  #         path: dist
+  #     - name: Publish to PyPI
+  #       uses: pypa/gh-action-pypi-publish@release/v1
+  #       with:
+  #         packages-dir: dist
