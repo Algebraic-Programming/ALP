@@ -65,7 +65,8 @@ jobs:
           CIBW_BEFORE_BUILD: |
             python -m pip install --upgrade pip
             python -m pip install cmake ninja
-            cmake -S . -B build_pyalp -DWITH_NUMA=OFF -DCMAKE_BUILD_TYPE=Release
+            # /project is the repository root in the container; configure from the pyalp package dir
+            cmake -S pyalp -B build_pyalp -DCMAKE_BUILD_TYPE=Release
             cmake --build build_pyalp --target _pyalp -- -j
         run: |
           python -m cibuildwheel --output-dir wheelhouse pyalp

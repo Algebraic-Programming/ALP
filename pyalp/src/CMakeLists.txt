@@ -76,3 +76,10 @@ if( WITH_NONBLOCKING_BACKEND )
 
 endif()
 
+# Also include the self-contained pyalp module that builds a private
+# extension named _pyalp using only headers. This allows building
+# from the pyalp package root inside cibuildwheel containers.
+if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/pyalp/CMakeLists.txt)
+	add_subdirectory(pyalp)
+endif()
+
