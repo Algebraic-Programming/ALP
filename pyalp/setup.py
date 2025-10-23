@@ -2,7 +2,7 @@ from setuptools import setup, Extension
 from setuptools import find_packages
 import sys
 import os
-
+import glob
 import shutil
 _have_pybind11 = False
 try:
@@ -16,6 +16,15 @@ except Exception:
 here = os.path.abspath(os.path.dirname(__file__))
 
 prebuilt_so = os.environ.get("PREBUILT_PYALP_SO") or os.environ.get("PYALP_PREBUILT_SO")
+# Prefer a prebuilt extension compiled by CMake if present in the tree
+if not prebuilt_so:
+    candidates = []
+    # Source tree location (if copied there)
+    candidates.extend(glob.glob(os.path.join(here, 'src', 'pyalp', '_pyalp*.so')))
+    # Typical CMake build tree location
+    candidates.extend(glob.glob(os.path.join(here, '..', 'build_pyalp', 'pyalp', 'src', 'pyalp', '_pyalp*.so')))
+    if candidates:
+        prebuilt_so = candidates[0]
 package_data = {}
 ext_modules = []
 if prebuilt_so:
