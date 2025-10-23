@@ -4,6 +4,20 @@ import sys
 import os
 import glob
 import shutil
+bdist_wheel_cmd = None
+try:
+    # Used to mark wheel as non-pure when bundling a prebuilt .so
+    from wheel.bdist_wheel import bdist_wheel as _bdist_wheel
+
+    class bdist_wheel(_bdist_wheel):
+        def finalize_options(self):
+            super().finalize_options()
+            # wheel contains a native shared object; mark as platform-specific
+            self.root_is_pure = False
+
+    bdist_wheel_cmd = bdist_wheel
+except Exception:
+    bdist_wheel_cmd = None
 _have_pybind11 = False
 try:
     # import lazily — only needed when we build from sources
@@ -80,8 +94,13 @@ setup_kwargs = {
     "package_data": package_data,
 }
 
-# Only supply cmdclass when build_ext is available (pybind11 installed).
+# Supply cmdclass entries for build_ext (when available) and bdist_wheel
+cmdclass = {}
 if build_ext is not None:
-    setup_kwargs["cmdclass"] = {"build_ext": build_ext}
+    cmdclass["build_ext"] = build_ext
+if bdist_wheel_cmd is not None:
+    cmdclass["bdist_wheel"] = bdist_wheel_cmd
+if cmdclass:
+    setup_kwargs["cmdclass"] = cmdclass
 
 setup(**setup_kwargs)
