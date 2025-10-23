@@ -135,7 +135,8 @@ namespace grb {
 						 const TempType&,
 						 grb::Vector< QType >&,
 						 grb::Vector< QType >&,
-						 grb::Vector< EnergyType >&,
+						 grb::Vector< StateType >&,
+					 	 const std::vector< grb::Vector< bool > >&,
 						 const Ring&
 				 	)
 				> &sweep,
@@ -148,7 +149,8 @@ namespace grb {
 				grb::Vector< EnergyType > &temp_energies,
 				grb::Vector< QType > &temp_sweep1,
 				grb::Vector< QType > &temp_sweep2,
-				grb::Vector< EnergyType > &temp_sweep3,
+				grb::Vector< StateType > &temp_sweep3,
+				const std::vector< grb::Vector< bool > >& masks,
 				const size_t &n_sweeps = 1,
 				const bool &use_pt = false,
 				const Ring &ring = Ring()
@@ -188,7 +190,7 @@ namespace grb {
 
 				for( size_t j = 0 ; rc == grb::SUCCESS && j < n_replicas ; ++j ){
 					
-				energies[j] += sweep( couplings, local_fields, states[j], betas[j], temp_sweep1, temp_sweep2 , temp_sweep3 , ring );
+				energies[j] += sweep( couplings, local_fields, states[j], betas[j], temp_sweep1, temp_sweep2 , temp_sweep3, masks , ring );
 				
 					// update_best state and energy
 					if( energies[j] < temp_energies[j] ){
