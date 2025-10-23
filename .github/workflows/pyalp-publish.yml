@@ -25,9 +25,11 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          if [ -f pyalp/PINNED_PYBIND11 ]; then
+          if [ -f pyalp/PINNED_PYBIND11 ]; 
+          then
             PINNED_SHA=$(tr -d '\n' < pyalp/PINNED_PYBIND11)
-          elif [ -f pyalp/extern/pybind11/PINNED_COMMIT ]; then
+          elif [ -f pyalp/extern/pybind11/PINNED_COMMIT ]; 
+          then
             PINNED_SHA=$(tr -d '\n' < pyalp/extern/pybind11/PINNED_COMMIT)
           else
             echo "No pinned commit file found (pyalp/PINNED_PYBIND11 or pyalp/extern/pybind11/PINNED_COMMIT)" >&2
@@ -64,22 +66,18 @@ jobs:
             python -m pip install --upgrade pip
             python -m pip install cmake ninja
             echo "[cibw] Working directory and contents:"; pwd; ls -la
-            echo "[cibw] Checking for pyalp CMakeLists:"; ls -la pyalp || true; if [ -f pyalp/CMakeLists.txt ]; then echo "found pyalp/CMakeLists.txt"; else echo "pyalp/CMakeLists.txt NOT found"; fi
+            echo "[cibw] Checking for pyalp CMakeLists:"; ls -la pyalp || true; if [ -f pyalp/CMakeLists.txt ]; 
+            then echo "found pyalp/CMakeLists.txt"; else echo "pyalp/CMakeLists.txt NOT found"; fi
             # If the wrapper CMakeLists.txt wasn't copied (e.g., untracked file when cibuildwheel uses git ls-files), create a minimal shim
-            if [ ! -f pyalp/CMakeLists.txt ]; then
+            if [ ! -f pyalp/CMakeLists.txt ]; 
+            then
               echo "[cibw] Creating pyalp/CMakeLists.txt shim (add_subdirectory(src)) for wheel build"
               printf '%s\n' 'add_subdirectory(src)' > pyalp/CMakeLists.txt
             fi
             # Ensure no stale extension from a previous ABI remains in the source tree
             rm -f pyalp/src/pyalp/_pyalp*.so || true
             # Overwrite root setup.py inside the container to delegate packaging to pyalp/setup.py (keep git root clean)
-            cat > setup.py << 'PYALP_SETUP'
-import os, runpy
-ROOT = os.path.dirname(os.path.abspath(__file__))
-PKG = os.path.join(ROOT, 'pyalp')
-os.chdir(PKG)
-runpy.run_path(os.path.join(PKG, 'setup.py'), run_name='__main__')
-PYALP_SETUP
+            printf '%s\n' "import os, runpy; ROOT=os.path.dirname(os.path.abspath(__file__)); PKG=os.path.join(ROOT, 'pyalp'); os.chdir(PKG); runpy.run_path(os.path.join(PKG, 'setup.py'), run_name='__main__')" > setup.py
             # Configure from repository root; enable pyalp and disable NUMA for wheels
             PYEXEC=$(python -c 'import sys; print(sys.executable)')
             # Use a per-ABI build directory to avoid cross-ABI contamination
