@@ -63,8 +63,8 @@ jobs:
           CIBW_BEFORE_BUILD: |
             python -m pip install --upgrade pip
             python -m pip install cmake ninja
-            cmake -S . -B build_pyalp -DENABLE_PYALP=ON -DCMAKE_BUILD_TYPE=Release
-            cmake --build build_pyalp --target _pyalp -- -j
+            cmake -S . -B build_pyalp -DENABLE_PYALP=ON -DWITH_NUMA=OFF -DCMAKE_BUILD_TYPE=Release
+            cmake --build build_pyalp --target pyalp_ref -- -j
         run: |
           python -m cibuildwheel --output-dir wheelhouse pyalp
 

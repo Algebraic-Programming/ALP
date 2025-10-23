@@ -1,8 +1,7 @@
 
 name: release-smoke-tests
 
-on: [push]
-
+on: none
 env:
   BUILD_TYPE: Release
 

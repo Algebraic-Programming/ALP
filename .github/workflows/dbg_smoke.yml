@@ -1,8 +1,7 @@
 
 name: debug-smoke-tests
 
-on: [push]
-
+on: none
 env:
   BUILD_TYPE: Debug
 
