@@ -39,8 +39,14 @@ else:
         Pybind11Extension(
             "pyalp._pyalp",
             ["src/pyalp/bindings.cpp"],
-            include_dirs=[os.path.join(here, "src"), os.path.join(here, "src", "pyalp"), os.path.join(here, "extern", "pybind11", "include")],
+            include_dirs=[
+                os.path.join(here, "src"),
+                os.path.join(here, "src", "pyalp"),
+                os.path.join(here, "extern", "pybind11", "include"),
+                os.path.normpath(os.path.join(here, "..", "include")),  # project GraphBLAS headers
+            ],
             define_macros=[("PYALP_MODULE_NAME", "_pyalp")],
+            cxx_std=14,
         )
     ]
 
