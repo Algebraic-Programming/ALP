@@ -22,18 +22,13 @@ if not prebuilt_so:
     # Source tree location (if copied there)
     candidates.extend(glob.glob(os.path.join(here, 'src', 'pyalp', '_pyalp*.so')))
     candidates.extend(glob.glob(os.path.join(here, 'src', 'pyalp', '_pyalp*.pyd')))
-    # Typical CMake build tree locations
-    # When building from the repo root
-    candidates.extend(glob.glob(os.path.join(here, '..', 'build_pyalp', 'pyalp', 'src', 'pyalp', '_pyalp*.so')))
-    candidates.extend(glob.glob(os.path.join(here, '..', 'build_pyalp', 'pyalp', 'src', 'pyalp', '_pyalp*.pyd')))
-    # When building from the pyalp package root (cibuildwheel container mounts pyalp/ at /project)
-    candidates.extend(glob.glob(os.path.join(here, 'build_pyalp', 'src', 'pyalp', '_pyalp*.so')))
-    candidates.extend(glob.glob(os.path.join(here, 'build_pyalp', 'src', 'pyalp', '_pyalp*.pyd')))
-    # Also allow building from repo CMake targets that produce pyalp_ref / pyalp_omp
-    candidates.extend(glob.glob(os.path.join(here, '..', 'build_pyalp', '**', 'pyalp_ref*.so'), recursive=True))
-    candidates.extend(glob.glob(os.path.join(here, '..', 'build_pyalp', '**', 'pyalp_ref*.pyd'), recursive=True))
-    candidates.extend(glob.glob(os.path.join(here, '..', 'build_pyalp', '**', 'pyalp_omp*.so'), recursive=True))
-    candidates.extend(glob.glob(os.path.join(here, '..', 'build_pyalp', '**', 'pyalp_omp*.pyd'), recursive=True))
+    # Top-level CMake build tree locations (preferred flow):
+    #   rm -rf build && cmake .. -DENABLE_PYALP=ON && make pyalp_ref
+    # The extension may be named either _pyalp* or pyalp_ref*; both are accepted and renamed.
+    candidates.extend(glob.glob(os.path.join(here, '..', 'build', 'pyalp', 'src', 'pyalp', '_pyalp*.so')))
+    candidates.extend(glob.glob(os.path.join(here, '..', 'build', 'pyalp', 'src', 'pyalp', '_pyalp*.pyd')))
+    candidates.extend(glob.glob(os.path.join(here, '..', 'build', '**', 'pyalp_ref*.so'), recursive=True))
+    candidates.extend(glob.glob(os.path.join(here, '..', 'build', '**', 'pyalp_ref*.pyd'), recursive=True))
     if candidates:
         prebuilt_so = candidates[0]
 package_data = {}
@@ -42,8 +37,7 @@ if prebuilt_so:
     # If a prebuilt shared object is supplied, copy it into the package directory
     if os.path.exists(prebuilt_so):
         basename = os.path.basename(prebuilt_so)
-        # Normalize the filename to private module name _pyalp, preserving ABI/platform suffix
-        # Accept both prebuilt names: _pyalp*.so and pyalp_ref*.so / pyalp_omp*.so
+    # Normalize the filename to private module name _pyalp, preserving ABI/platform suffix
         name_root, ext = os.path.splitext(basename)
         # strip potential leading package/module part until first dot, then keep the suffix
         dot_index = basename.find('.')

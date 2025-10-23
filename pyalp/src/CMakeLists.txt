@@ -1,10 +1,20 @@
 cmake_minimum_required(VERSION 3.14)
 project(python_module LANGUAGES CXX)
+# Include pybind11 relative to this CMakeLists.txt directory
+get_filename_component(PYBIND11_SRC_DIR "${CMAKE_CURRENT_LIST_DIR}/../extern/pybind11" ABSOLUTE)
+add_subdirectory(${PYBIND11_SRC_DIR} ${CMAKE_BINARY_DIR}/pyalp/extern/pybind11)
 
-# Include pybind11 relative to the project root directory ie CMAKE_ROOTDIR/pyalp/extern/pybind11
-# When adding an out-of-tree source directory to add_subdirectory, provide an explicit
-# binary directory to avoid the "not a subdirectory" error.
-add_subdirectory(${CMAKE_SOURCE_DIR}/pyalp/extern/pybind11 ${CMAKE_BINARY_DIR}/pyalp/extern/pybind11)
+# When configuring from the pyalp package directory (e.g. in cibuildwheel
+# containers) the top-level CMake that usually defines these options is not
+# executed. Provide sensible cached defaults so this CMakeLists can be used
+# standalone. The top-level configuration will override these cached values
+# when present.
+if(NOT DEFINED WITH_REFERENCE_BACKEND)
+	set(WITH_REFERENCE_BACKEND ON CACHE BOOL "Build Reference backend (default for pyalp package)")
+endif()
+if(NOT DEFINED WITH_OMP_BACKEND)
+	set(WITH_OMP_BACKEND ON CACHE BOOL "Build OMP backend (default for pyalp package)")
+endif()
 
 assert_defined_variables( WITH_REFERENCE_BACKEND WITH_OMP_BACKEND )
 
@@ -79,7 +89,6 @@ endif()
 # Also include the self-contained pyalp module that builds a private
 # extension named _pyalp using only headers. This allows building
 # from the pyalp package root inside cibuildwheel containers.
-if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/pyalp/CMakeLists.txt)
-	add_subdirectory(pyalp)
-endif()
+# Do not attempt to build pyalp as a standalone subproject from here.
+# This project must be configured from the repository top-level CMake only.
 
