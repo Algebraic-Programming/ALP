@@ -64,7 +64,12 @@ jobs:
             python -m pip install --upgrade pip
             python -m pip install cmake ninja
             echo "[cibw] Working directory and contents:"; pwd; ls -la
-            echo "[cibw] Checking for pyalp CMakeLists:"; ls -la pyalp || true; test -f pyalp/CMakeLists.txt && echo "found pyalp/CMakeLists.txt" || echo "pyalp/CMakeLists.txt NOT found"
+            echo "[cibw] Checking for pyalp CMakeLists:"; ls -la pyalp || true; if [ -f pyalp/CMakeLists.txt ]; then echo "found pyalp/CMakeLists.txt"; else echo "pyalp/CMakeLists.txt NOT found"; fi
+            # If the wrapper CMakeLists.txt wasn't copied (e.g., untracked file when cibuildwheel uses git ls-files), create a minimal shim
+            if [ ! -f pyalp/CMakeLists.txt ]; then
+              echo "[cibw] Creating pyalp/CMakeLists.txt shim (add_subdirectory(src)) for wheel build"
+              printf '%s\n' 'add_subdirectory(src)' > pyalp/CMakeLists.txt
+            fi
             # Configure from repository root; enable pyalp and disable NUMA for wheels
             PYEXEC=$(python -c 'import sys; print(sys.executable)')
             cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DENABLE_PYALP=ON -DWITH_NUMA=OFF -DPython3_EXECUTABLE="${PYEXEC}"
