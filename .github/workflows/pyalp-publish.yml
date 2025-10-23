@@ -70,6 +70,8 @@ jobs:
               echo "[cibw] Creating pyalp/CMakeLists.txt shim (add_subdirectory(src)) for wheel build"
               printf '%s\n' 'add_subdirectory(src)' > pyalp/CMakeLists.txt
             fi
+            # Ensure no stale extension from a previous ABI remains in the source tree
+            rm -f pyalp/src/pyalp/_pyalp*.so || true
             # Configure from repository root; enable pyalp and disable NUMA for wheels
             PYEXEC=$(python -c 'import sys; print(sys.executable)')
             # Use a per-ABI build directory to avoid cross-ABI contamination
@@ -78,8 +80,8 @@ jobs:
             cmake -S . -B "${BUILD_DIR}" -G Ninja -DCMAKE_BUILD_TYPE=Release -DENABLE_PYALP=ON -DWITH_NUMA=OFF -DPython3_EXECUTABLE="${PYEXEC}"
             cmake --build "${BUILD_DIR}" --target pyalp_ref --parallel
         run: |
-          # Build from repository root so the full CMake project is available in the container
-          python -m cibuildwheel --output-dir wheelhouse .
+          # Build wheels for the pyalp subproject; we still configured CMake at repo root above
+          python -m cibuildwheel --output-dir wheelhouse pyalp
 
       - name: Upload wheels
         uses: actions/upload-artifact@v4

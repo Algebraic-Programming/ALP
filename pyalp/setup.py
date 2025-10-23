@@ -4,6 +4,7 @@ import sys
 import os
 import glob
 import shutil
+import sysconfig
 bdist_wheel_cmd = None
 try:
     # Used to mark wheel as non-pure when bundling a prebuilt .so
@@ -33,32 +34,43 @@ prebuilt_so = os.environ.get("PREBUILT_PYALP_SO") or os.environ.get("PYALP_PREBU
 # Prefer a prebuilt extension compiled by CMake if present in the tree
 if not prebuilt_so:
     candidates = []
-    # Source tree location (if copied there)
+    # Source tree location (if a previous build copied there)
     candidates.extend(glob.glob(os.path.join(here, 'src', 'pyalp', '_pyalp*.so')))
     candidates.extend(glob.glob(os.path.join(here, 'src', 'pyalp', '_pyalp*.pyd')))
-    # Top-level CMake build tree locations (preferred flow):
-    #   rm -rf build && cmake .. -DENABLE_PYALP=ON && make pyalp_ref
-    # The extension may be named either _pyalp* or pyalp_ref*; both are accepted and renamed.
-    candidates.extend(glob.glob(os.path.join(here, '..', 'build', 'pyalp', 'src', 'pyalp', '_pyalp*.so')))
-    candidates.extend(glob.glob(os.path.join(here, '..', 'build', 'pyalp', 'src', 'pyalp', '_pyalp*.pyd')))
+    # Top-level CMake build tree locations (preferred flow)
     candidates.extend(glob.glob(os.path.join(here, '..', 'build', '**', 'pyalp_ref*.so'), recursive=True))
     candidates.extend(glob.glob(os.path.join(here, '..', 'build', '**', 'pyalp_ref*.pyd'), recursive=True))
-    if candidates:
-        prebuilt_so = candidates[0]
+    candidates.extend(glob.glob(os.path.join(here, '..', 'build', '**', '_pyalp*.so'), recursive=True))
+    candidates.extend(glob.glob(os.path.join(here, '..', 'build', '**', '_pyalp*.pyd'), recursive=True))
+
+    # Prefer the candidate matching the current Python tag
+    py_tag = f"cpython-{sys.version_info[0]}{sys.version_info[1]}"
+    matching = [c for c in candidates if py_tag in os.path.basename(c)] or candidates
+    if matching:
+        prebuilt_so = matching[0]
 package_data = {}
 ext_modules = []
 if prebuilt_so:
     # If a prebuilt shared object is supplied, copy it into the package directory
     if os.path.exists(prebuilt_so):
         basename = os.path.basename(prebuilt_so)
-    # Normalize the filename to private module name _pyalp, preserving ABI/platform suffix
+        # Normalize the filename to private module name _pyalp, preserving ABI/platform suffix
         name_root, ext = os.path.splitext(basename)
         # strip potential leading package/module part until first dot, then keep the suffix
         dot_index = basename.find('.')
         suffix = basename[dot_index:] if dot_index != -1 else ext
         dest_name = '_pyalp' + suffix
         dest_path = os.path.join(here, 'src', 'pyalp', dest_name)
-        shutil.copyfile(prebuilt_so, dest_path)
+        # Remove any stale extension to avoid cross-ABI contamination
+        for stale in glob.glob(os.path.join(here, 'src', 'pyalp', '_pyalp*.so')):
+            try:
+                if os.path.realpath(stale) != os.path.realpath(prebuilt_so):
+                    os.remove(stale)
+            except OSError:
+                pass
+        # Copy only if source and destination differ
+        if os.path.realpath(prebuilt_so) != os.path.realpath(dest_path):
+            shutil.copyfile(prebuilt_so, dest_path)
         # ensure the copied .so is included in the wheel as package data
         package_data = {'pyalp': [dest_name]}
     else:
