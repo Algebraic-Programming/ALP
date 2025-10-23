@@ -59,12 +59,14 @@ jobs:
           # Ensure submodule headers are used by setup.py
           CIBW_ENVIRONMENT: |
             PYTHONUTF8=1
-          # Prebuild the CMake-based extension so setup.py can bundle the prebuilt .so
+          # Prebuild the CMake-based extension so setup.py can bundle the prebuilt .so.
+          # In cibuildwheel containers, /project is the package root (pyalp/),
+          # where pyalp/CMakeLists.txt adds the src/ subdir and defines the _pyalp target.
           CIBW_BEFORE_BUILD: |
             python -m pip install --upgrade pip
             python -m pip install cmake ninja
-            cmake -S . -B build_pyalp -DENABLE_PYALP=ON -DWITH_NUMA=OFF -DCMAKE_BUILD_TYPE=Release
-            cmake --build build_pyalp --target pyalp_ref -- -j
+            cmake -S . -B build_pyalp -DWITH_NUMA=OFF -DCMAKE_BUILD_TYPE=Release
+            cmake --build build_pyalp --target _pyalp -- -j
         run: |
           python -m cibuildwheel --output-dir wheelhouse pyalp
 
