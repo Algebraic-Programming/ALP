@@ -40,8 +40,8 @@ using namespace grb;
 
 
 // Types
-using IOType = double;   // scalar/vector element type
-using JType  = double;   // coupling (matrix) value type
+using IOType = int8_t;   // scalar/vector element type
+using JType  = float;   // coupling (matrix) value type
 using EnergyType  = double;   // coupling (matrix) value type
 
 /** Parser type */
@@ -305,7 +305,7 @@ static EnergyType sequential_sweep_immediate(
 				 const JType &beta,
 				 grb::Vector< JType > &h,
 				 grb::Vector< JType > &log_rand,
-				 grb::Vector< JType > &delta,
+				 grb::Vector< IOType > &delta,
 				 const std::vector< grb::Vector< bool > > &masks,
 				 const Ring &ring = Ring()
 			  ){
@@ -366,8 +366,8 @@ static EnergyType sequential_sweep_immediate(
 			// delta = new - old ==> delta[accept] = 2*new_state[accept]-1
 			rc = rc ? rc : grb::clear( delta  );
 			rc = rc ? rc : grb::set( delta, accept, state );
-			rc = rc ? rc : grb::foldl( delta, accept, static_cast< JType >( 2.0 ), ring.getMultiplicativeMonoid() );
-			rc = rc ? rc : grb::foldl( delta, accept, static_cast< JType >( -1.0 ), ring.getAdditiveMonoid() );
+			rc = rc ? rc : grb::foldl( delta, accept, static_cast< IOType >( 2.0 ), ring.getMultiplicativeMonoid() );
+			rc = rc ? rc : grb::foldl( delta, accept, static_cast< IOType >( -1.0 ), ring.getAdditiveMonoid() );
 			
 			// Update delta_energy -= dot(dn, accept)
 			rc = rc ? rc : grb::dot( delta_energy, delta, h, ring );
@@ -377,7 +377,6 @@ static EnergyType sequential_sweep_immediate(
 			
 			grb::wait();
 		}
-		// delta_energy = - delta_energy;
 
 #ifndef NDEBUG
 		if( rc != grb::SUCCESS ){
@@ -386,11 +385,11 @@ static EnergyType sequential_sweep_immediate(
 		assert( rc == grb::SUCCESS );
 		const auto new_state = state;
 
-		std::cerr << "\n\t Delta_energy: " << delta_energy;
-		std::cerr << "\n\t Real delta: " << (get_energy(couplings, local_fields, new_state) - get_energy(couplings, local_fields, old_state));
-		std::cerr << "\n\t Old energy: " << get_energy(couplings, local_fields, old_state) ;
-		std::cerr << "\n\t New energy: " << get_energy(couplings, local_fields, new_state);
-		std::cerr << std::endl;
+		// std::cerr << "\n\t Delta_energy: " << delta_energy;
+		// std::cerr << "\n\t Real delta: " << (get_energy(couplings, local_fields, new_state) - get_energy(couplings, local_fields, old_state));
+		// std::cerr << "\n\t Old energy: " << get_energy(couplings, local_fields, old_state) ;
+		// std::cerr << "\n\t New energy: " << get_energy(couplings, local_fields, new_state);
+		// std::cerr << std::endl;
 
 		assert( ISCLOSE(get_energy(couplings, local_fields, new_state) - get_energy(couplings, local_fields, old_state), delta_energy ) );
 #endif
