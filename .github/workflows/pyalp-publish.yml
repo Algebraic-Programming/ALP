@@ -70,7 +70,8 @@ jobs:
             cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DENABLE_PYALP=ON -DWITH_NUMA=OFF -DPython3_EXECUTABLE="${PYEXEC}"
             cmake --build build --target pyalp_ref --parallel
         run: |
-          python -m cibuildwheel --output-dir wheelhouse pyalp
+          # Build from repository root so the full CMake project is available in the container
+          python -m cibuildwheel --output-dir wheelhouse .
 
       - name: Upload wheels
         uses: actions/upload-artifact@v4
