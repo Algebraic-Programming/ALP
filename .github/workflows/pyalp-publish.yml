@@ -63,9 +63,12 @@ jobs:
           CIBW_BEFORE_BUILD: |
             python -m pip install --upgrade pip
             python -m pip install cmake ninja
+            echo "[cibw] Working directory and contents:"; pwd; ls -la
+            echo "[cibw] Checking for pyalp CMakeLists:"; ls -la pyalp || true; test -f pyalp/CMakeLists.txt && echo "found pyalp/CMakeLists.txt" || echo "pyalp/CMakeLists.txt NOT found"
             # Configure from repository root; enable pyalp and disable NUMA for wheels
-            cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DENABLE_PYALP=ON -DWITH_NUMA=OFF
-            cmake --build build --target pyalp_ref -- -j
+            PYEXEC=$(python -c 'import sys; print(sys.executable)')
+            cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DENABLE_PYALP=ON -DWITH_NUMA=OFF -DPython3_EXECUTABLE="${PYEXEC}"
+            cmake --build build --target pyalp_ref --parallel
         run: |
           python -m cibuildwheel --output-dir wheelhouse pyalp
 
