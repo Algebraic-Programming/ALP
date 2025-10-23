@@ -72,8 +72,11 @@ jobs:
             fi
             # Configure from repository root; enable pyalp and disable NUMA for wheels
             PYEXEC=$(python -c 'import sys; print(sys.executable)')
-            cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release -DENABLE_PYALP=ON -DWITH_NUMA=OFF -DPython3_EXECUTABLE="${PYEXEC}"
-            cmake --build build --target pyalp_ref --parallel
+            # Use a per-ABI build directory to avoid cross-ABI contamination
+            ABI_TAG=$(python -c 'import sys; print(f"cp{sys.version_info[0]}{sys.version_info[1]}")')
+            BUILD_DIR="build/${ABI_TAG}"
+            cmake -S . -B "${BUILD_DIR}" -G Ninja -DCMAKE_BUILD_TYPE=Release -DENABLE_PYALP=ON -DWITH_NUMA=OFF -DPython3_EXECUTABLE="${PYEXEC}"
+            cmake --build "${BUILD_DIR}" --target pyalp_ref --parallel
         run: |
           # Build from repository root so the full CMake project is available in the container
           python -m cibuildwheel --output-dir wheelhouse .
