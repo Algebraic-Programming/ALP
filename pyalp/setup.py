@@ -1,5 +1,6 @@
 from setuptools import setup, Extension
 from setuptools import find_packages
+from setuptools.command.build_ext import build_ext as _build_ext
 import sys
 import os
 import glob
@@ -32,53 +33,47 @@ here = os.path.abspath(os.path.dirname(__file__))
 
 prebuilt_so = os.environ.get("PREBUILT_PYALP_SO") or os.environ.get("PYALP_PREBUILT_SO")
 # Prefer a prebuilt extension compiled by CMake if present in the tree
-if not prebuilt_so:
+def find_prebuilt():
     candidates = []
-    # Source tree location (if a previous build copied there)
-    candidates.extend(glob.glob(os.path.join(here, 'src', 'pyalp', '_pyalp*.so')))
-    candidates.extend(glob.glob(os.path.join(here, 'src', 'pyalp', '_pyalp*.pyd')))
     # Top-level CMake build tree locations (preferred flow)
     candidates.extend(glob.glob(os.path.join(here, '..', 'build', '**', 'pyalp_ref*.so'), recursive=True))
     candidates.extend(glob.glob(os.path.join(here, '..', 'build', '**', 'pyalp_ref*.pyd'), recursive=True))
     candidates.extend(glob.glob(os.path.join(here, '..', 'build', '**', '_pyalp*.so'), recursive=True))
     candidates.extend(glob.glob(os.path.join(here, '..', 'build', '**', '_pyalp*.pyd'), recursive=True))
-
     # Prefer the candidate matching the current Python tag
     py_tag = f"cpython-{sys.version_info[0]}{sys.version_info[1]}"
     matching = [c for c in candidates if py_tag in os.path.basename(c)] or candidates
-    if matching:
-        prebuilt_so = matching[0]
+    return matching[0] if matching else None
+
+if not prebuilt_so:
+    prebuilt_so = find_prebuilt()
 package_data = {}
 ext_modules = []
+
+class build_ext_copy_prebuilt(_build_ext):
+    """Custom build_ext that copies a prebuilt shared object into the build dir.
+
+    This ensures the extension is installed into platlib and the wheel is valid
+    for auditwheel repair.
+    """
+
+    def build_extension(self, ext):
+        # Determine target path for the extension
+        target_path = self.get_ext_fullpath(ext.name)
+        os.makedirs(os.path.dirname(target_path), exist_ok=True)
+        src = os.environ.get("PREBUILT_PYALP_SO") or os.environ.get("PYALP_PREBUILT_SO") or find_prebuilt()
+        if not src or not os.path.exists(src):
+            raise RuntimeError("Prebuilt pyalp shared object not found during build_ext")
+        shutil.copyfile(src, target_path)
+
 if prebuilt_so:
-    # If a prebuilt shared object is supplied, copy it into the package directory
-    if os.path.exists(prebuilt_so):
-        basename = os.path.basename(prebuilt_so)
-        # Normalize the filename to private module name _pyalp, preserving ABI/platform suffix
-        name_root, ext = os.path.splitext(basename)
-        # strip potential leading package/module part until first dot, then keep the suffix
-        dot_index = basename.find('.')
-        suffix = basename[dot_index:] if dot_index != -1 else ext
-        dest_name = '_pyalp' + suffix
-        dest_path = os.path.join(here, 'src', 'pyalp', dest_name)
-        # Remove any stale extension to avoid cross-ABI contamination
-        for stale in glob.glob(os.path.join(here, 'src', 'pyalp', '_pyalp*.so')):
-            try:
-                if os.path.realpath(stale) != os.path.realpath(prebuilt_so):
-                    os.remove(stale)
-            except OSError:
-                pass
-        # Copy only if source and destination differ
-        if os.path.realpath(prebuilt_so) != os.path.realpath(dest_path):
-            shutil.copyfile(prebuilt_so, dest_path)
-        # ensure the copied .so is included in the wheel as package data
-        package_data = {'pyalp': [dest_name]}
-    else:
+    if not os.path.exists(prebuilt_so):
         raise FileNotFoundError(f"PREBUILT_PYALP_SO set but file not found: {prebuilt_so}")
+    # Declare a binary extension so files go to platlib; actual build just copies the prebuilt .so
+    ext_modules = [Extension("pyalp._pyalp", sources=[])]
 else:
     if not _have_pybind11:
         raise RuntimeError("pybind11 is required to build the extension from sources. Install pybind11 or provide PREBUILT_PYALP_SO to bundle a prebuilt .so.")
-    # At this point Pybind11Extension and build_ext must be available
     assert Pybind11Extension is not None
     ext_modules = [
         Pybind11Extension(
@@ -88,7 +83,7 @@ else:
                 os.path.join(here, "src"),
                 os.path.join(here, "src", "pyalp"),
                 os.path.join(here, "extern", "pybind11", "include"),
-                os.path.normpath(os.path.join(here, "..", "include")),  # project GraphBLAS headers
+                os.path.normpath(os.path.join(here, "..", "include")),
             ],
             define_macros=[("PYALP_MODULE_NAME", "_pyalp")],
             cxx_std=14,
@@ -103,12 +98,13 @@ setup_kwargs = {
     "package_dir": {"": "src"},
     "ext_modules": ext_modules,
     "include_package_data": True,
-    "package_data": package_data,
 }
 
-# Supply cmdclass entries for build_ext (when available) and bdist_wheel
+# Supply cmdclass entries for build_ext (copy-prebuilt or pybind11) and bdist_wheel
 cmdclass = {}
-if build_ext is not None:
+if prebuilt_so:
+    cmdclass["build_ext"] = build_ext_copy_prebuilt
+elif build_ext is not None:
     cmdclass["build_ext"] = build_ext
 if bdist_wheel_cmd is not None:
     cmdclass["bdist_wheel"] = bdist_wheel_cmd
