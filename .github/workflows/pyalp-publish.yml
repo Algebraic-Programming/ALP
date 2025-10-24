@@ -1,0 +1,175 @@
+name: pyalp wheels (cibuildwheel)
+
+on:
+  push:
+    tags: [ 'pyalp.v*' ]
+  workflow_dispatch: {}
+
+jobs:
+  build-wheels:
+    name: Build wheels on ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    steps:
+      - name: Checkout (with submodules)
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          fetch-depth: 0
+
+      - name: Verify pinned pybind11 submodule commit
+        if: runner.os == 'Linux' || runner.os == 'macOS'
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ -f pyalp/PINNED_PYBIND11 ]; 
+          then
+            PINNED_SHA=$(tr -d '\n' < pyalp/PINNED_PYBIND11)
+          elif [ -f pyalp/extern/pybind11/PINNED_COMMIT ]; 
+          then
+            PINNED_SHA=$(tr -d '\n' < pyalp/extern/pybind11/PINNED_COMMIT)
+          else
+            echo "No pinned commit file found (pyalp/PINNED_PYBIND11 or pyalp/extern/pybind11/PINNED_COMMIT)" >&2
+            exit 2
+          fi
+          ACTUAL=$(git -C pyalp/extern/pybind11 rev-parse HEAD || true)
+          echo "Expected pybind11 commit: $PINNED_SHA"
+          echo "Found pybind11 commit: $ACTUAL"
+          test "$ACTUAL" = "$PINNED_SHA"
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install cibuildwheel
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install cibuildwheel==2.21.3
+
+      - name: Build wheels
+        env:
+          CIBW_BUILD: "cp39-* cp310-* cp311-* cp312-*"
+          CIBW_SKIP: "*-musllinux* pp*"
+          CIBW_ARCHS_LINUX: "x86_64"
+          CIBW_ARCHS_MACOS: "arm64"
+          CIBW_BUILD_VERBOSITY: "1"
+          # Ensure submodule headers are used by setup.py
+          CIBW_ENVIRONMENT: >
+            PYTHONUTF8=1
+          CIBW_ENVIRONMENT_MACOS: >
+            PYTHONUTF8=1
+            MACOSX_DEPLOYMENT_TARGET=15.0
+          # Prebuild the CMake-based extension via top-level CMake so all variables/options are defined.
+          CIBW_BEFORE_BUILD: |
+            python -m pip install --upgrade pip
+            python -m pip install cmake ninja
+            echo "[cibw] Working directory and contents:"; pwd; ls -la
+            echo "[cibw] Checking for pyalp CMakeLists:"; ls -la pyalp || true; if [ -f pyalp/CMakeLists.txt ]; 
+            then echo "found pyalp/CMakeLists.txt"; else echo "pyalp/CMakeLists.txt NOT found"; fi
+            # If the wrapper CMakeLists.txt wasn't copied (e.g., untracked file when cibuildwheel uses git ls-files), create a minimal shim
+            if [ ! -f pyalp/CMakeLists.txt ]; 
+            then
+              echo "[cibw] Creating pyalp/CMakeLists.txt shim (add_subdirectory(src)) for wheel build"
+              printf '%s\n' 'add_subdirectory(src)' > pyalp/CMakeLists.txt
+            fi
+            # Ensure no stale extension from a previous ABI remains in the source tree
+            rm -f pyalp/src/pyalp/_pyalp*.so || true
+            # Overwrite root setup.py inside the container to delegate packaging to pyalp/setup.py (keep git root clean)
+            printf '%s\n' "import os, runpy; ROOT=os.path.dirname(os.path.abspath(__file__)); PKG=os.path.join(ROOT, 'pyalp'); os.chdir(PKG); runpy.run_path(os.path.join(PKG, 'setup.py'), run_name='__main__')" > setup.py
+            # Configure from repository root; enable pyalp and choose NUMA setting per-platform
+            PYEXEC=$(python -c 'import sys; print(sys.executable)')
+            # Use a per-ABI build directory to avoid cross-ABI contamination
+            ABI_TAG=$(python -c 'import sys; print(f"cp{sys.version_info[0]}{sys.version_info[1]}")')
+            BUILD_DIR="build/${ABI_TAG}"
+            # Enable NUMA on Linux runners (for linux wheels), keep disabled elsewhere.
+            if [ "$(uname -s)" = "Linux" ]; 
+            then
+              echo "[cibw] Linux build container detected — attempting to install NUMA dev libs"
+              # Try package managers commonly present in manylinux containers. Ignore failures
+              if command -v yum >/dev/null 2>&1; 
+              then
+                yum -y install numactl-devel || true
+              elif command -v apt-get >/dev/null 2>&1; 
+              then
+                apt-get update || true
+                apt-get install -y libnuma-dev || true
+              fi
+              NUMA_FLAG="-DWITH_NUMA=ON"
+            else
+              # On macOS install Homebrew libomp but do NOT export CPPFLAGS/LDFLAGS.
+              # Exporting CPPFLAGS was the cause of incorrect header ordering; instead
+              # pass a CMake prefix hint so FindOpenMP can locate libomp without
+              # prepending include paths to the global compiler invocation.
+              if command -v brew >/dev/null 2>&1; 
+              then
+                echo "[cibw] Homebrew detected — ensuring libomp is available"
+                # Only install if not already present to avoid reinstall warnings
+                if ! brew list libomp >/dev/null 2>&1; then
+                  brew install libomp
+                fi
+                
+                # Locate libomp installation
+                if [ -d "/opt/homebrew/opt/libomp" ]; then
+                  HOMEBREW_LIBOMP_DIR="/opt/homebrew/opt/libomp"
+                elif [ -d "/usr/local/opt/libomp" ]; then
+                  HOMEBREW_LIBOMP_DIR="/usr/local/opt/libomp"
+                else
+                  HOMEBREW_LIBOMP_DIR=""
+                fi
+                
+                if [ -n "${HOMEBREW_LIBOMP_DIR}" ]; then
+                  CMAKE_PREFIX_HINT="-DCMAKE_PREFIX_PATH=${HOMEBREW_LIBOMP_DIR}"
+                  echo "[cibw] Using libomp from ${HOMEBREW_LIBOMP_DIR}"
+                else
+                  CMAKE_PREFIX_HINT=""
+                fi
+              fi
+              NUMA_FLAG="-DWITH_NUMA=OFF"
+              # Set macOS deployment target for arm64 to match libomp requirement
+              export MACOSX_DEPLOYMENT_TARGET=15.0
+              OSX_DEPLOY_FLAG="-DCMAKE_OSX_DEPLOYMENT_TARGET=${MACOSX_DEPLOYMENT_TARGET}"
+            fi
+            # Clean build directory to prevent CMake caching issues
+            rm -rf "${BUILD_DIR}"
+            # On macOS, add flag to downgrade template keyword warning from error to warning
+            if [ "$(uname -s)" = "Darwin" ]; 
+            then
+              MACOS_FLAGS="-DCMAKE_CXX_FLAGS=-Wno-error=missing-template-arg-list-after-template-kw"
+            else
+              MACOS_FLAGS=""
+            fi
+            # For wheel builds, request portable flags (avoid -march=native) and disable
+            # interprocedural optimization (LTO) to improve portability of the produced wheels.
+            PORTABLE_FLAG="-DALP_PORTABLE_BUILD=ON"
+            LTO_FLAG="-DCMAKE_INTERPROCEDURAL_OPTIMIZATION=OFF"
+            cmake -S . -B "${BUILD_DIR}" -G Ninja -DCMAKE_BUILD_TYPE=Release -DENABLE_PYALP=ON -DCMAKE_POSITION_INDEPENDENT_CODE=ON -DCMAKE_FIND_FRAMEWORK=NEVER ${MACOS_FLAGS} ${NUMA_FLAG} ${CMAKE_PREFIX_HINT:-} ${OSX_DEPLOY_FLAG:-} ${PORTABLE_FLAG} ${LTO_FLAG} -DPython3_EXECUTABLE="${PYEXEC}"
+            cmake --build "${BUILD_DIR}" --target pyalp_ref --parallel
+        run: |
+          # Build from repository root so the full CMake project is available in the container
+          python -m cibuildwheel --output-dir wheelhouse .
+
+      - name: Upload wheels
+        uses: actions/upload-artifact@v4
+        with:
+          name: pyalp-wheels-${{ matrix.os }}
+          path: wheelhouse/*.whl
+
+  # Placeholder for publish job; enable when versioning is PEP 440 compliant
+  # publish:
+  #   needs: build-wheels
+  #   runs-on: ubuntu-latest
+  #   permissions:
+  #     id-token: write
+  #   steps:
+  #     - name: Download wheels
+  #       uses: actions/download-artifact@v4
+  #       with:
+  #         path: dist
+  #     - name: Publish to PyPI
+  #       uses: pypa/gh-action-pypi-publish@release/v1
+  #       with:
+  #         packages-dir: dist

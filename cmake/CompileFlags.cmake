@@ -92,7 +92,25 @@ target_link_libraries( common_flags INTERFACE
 ## defaults performance options for all targets (backends and tests)
 
 set( COMMON_PERF_DEFS_Release "NDEBUG" )
-set( COMMON_PERF_OPTS_Release "-O3" "-march=native" "-mtune=native" "-funroll-loops" )
+
+# Option to produce portable builds (for wheels): avoid per-host microarch
+# flags like -march=native/-mtune=native and aggressive unrolling. When
+# building wheels in CI set -DALP_PORTABLE_BUILD=ON to get portable artifacts.
+option( ALP_PORTABLE_BUILD "Build portable binaries (disable host-specific optimizations)" OFF )
+
+# Avoid GCC/GNU-specific microarchitecture flags on Apple/Clang toolchains
+if(APPLE)
+	# On macOS with AppleClang, -march/-mtune and aggressive unrolling can
+	# cause header search/order issues and unsupported-flag errors. Keep -O3 only.
+	set( COMMON_PERF_OPTS_Release "-O3" )
+else()
+	if( ALP_PORTABLE_BUILD )
+		# Portable: avoid host-specific tuning
+		set( COMMON_PERF_OPTS_Release "-O3" )
+	else()
+		set( COMMON_PERF_OPTS_Release "-O3" "-march=native" "-mtune=native" "-funroll-loops" )
+	endif()
+endif()
 set( COMMON_PERF_DEFS_Debug "" )
 set( COMMON_PERF_OPTS_Debug "-O0" )
 set( COMMON_PERF_DEFS_Coverage "" )

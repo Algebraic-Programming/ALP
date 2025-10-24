@@ -1,0 +1,30 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel", "pybind11>=2.6"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "pyalp"
+version = "0.0.0"
+description = "Python bindings for ALP GraphBLAS (minimal package layout)"
+authors = [ { name = "ALP" } ]
+readme = "README.md"
+license = { text = "Apache-2.0" }
+requires-python = ">=3.8"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.cibuildwheel]
+# Build CPython 3.9–3.12 wheels; skip PyPy and musllinux for now
+build = "cp39-* cp310-* cp311-* cp312-*"
+skip = "pp* *-musllinux* *-manylinux_i686 *-win32"
+build-verbosity = 1
+
+[tool.cibuildwheel.linux]
+archs = ["x86_64"]
+
+[tool.cibuildwheel.macos]
+archs = ["x86_64", "arm64"]
+
+[tool.cibuildwheel.windows]
+archs = ["AMD64"]

@@ -163,6 +163,10 @@ if( GNN_DATASET_PATH )
 	)
 endif()
 
+if( ENABLE_PYALP )
+	add_subdirectory( python )
+endif()
+
 add_subdirectory( unit )
 
 add_subdirectory( smoke )

@@ -243,7 +243,13 @@ endif()
 
 # always look for math and rt libraries
 find_package( LibM REQUIRED )
-find_library( LIBRT rt REQUIRED )
+# librt exists on Linux but not on macOS; only require it on non-Apple UNIX
+if(UNIX AND NOT APPLE)
+	find_library( LIBRT rt REQUIRED )
+else()
+	# On macOS librt is not provided/needed; define an empty variable for compatibility
+	set(LIBRT "" CACHE FILEPATH "rt library (not present on Apple platforms)")
+endif()
 
 # pthreads is needed for hpparser
 find_package( Threads REQUIRED )
@@ -321,10 +327,12 @@ if( WITH_OMP_BACKEND OR WITH_HYBRID_BACKEND )
 	set( WITH_OMP_BACKEND_HEADERS ON )
 endif()
 
+
 add_subdirectory( include )
 
 ### BACKEND IMPLEMENTATIONS
 add_subdirectory( src )
+
 
 ### TESTS and EXAMPLES
 
@@ -335,6 +343,14 @@ include( AddGRBTests )
 
 add_subdirectory( tests )
 
+if( ENABLE_PYALP )
+	# Only add the pyalp subdirectory if it contains a CMakeLists.txt in the source tree.
+	if(EXISTS "${PROJECT_SOURCE_DIR}/pyalp/CMakeLists.txt")
+		add_subdirectory(pyalp)
+	else()
+		message(STATUS "pyalp subdirectory not present in source tree; skipping add_subdirectory(pyalp)")
+	endif()
+endif()
 add_subdirectory( examples )
 
 
@@ -376,4 +392,8 @@ add_dependencies( docs userdocs devdocs )
 
 message( "Tests enabled for backends: ${AVAILABLE_TEST_BACKENDS}" )
 message( "Enabled backend targets: ${AVAILABLE_BACKENDS}\n" )
+
+
+
+
 
