@@ -243,7 +243,13 @@ endif()
 
 # always look for math and rt libraries
 find_package( LibM REQUIRED )
-find_library( LIBRT rt REQUIRED )
+# librt exists on Linux but not on macOS; only require it on non-Apple UNIX
+if(UNIX AND NOT APPLE)
+	find_library( LIBRT rt REQUIRED )
+else()
+	# On macOS librt is not provided/needed; define an empty variable for compatibility
+	set(LIBRT "" CACHE FILEPATH "rt library (not present on Apple platforms)")
+endif()
 
 # pthreads is needed for hpparser
 find_package( Threads REQUIRED )
