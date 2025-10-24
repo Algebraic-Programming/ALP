@@ -1,0 +1,65 @@
+Metadata-Version: 2.4
+Name: pyalp
+Version: 0.0.0
+Summary: Python bindings for ALP GraphBLAS (minimal package layout)
+Author: ALP
+License:                                  Apache License
+                                   Version 2.0, January 2004
+                                http://www.apache.org/licenses/
+        
+        TERMS AND CONDITIONS FOR USE, REPRODUCTION, AND DISTRIBUTION
+        
+        1. Definitions.
+        
+           "License" shall mean the terms and conditions for use, reproduction,
+           and distribution as defined by Sections 1 through 9 of this document.
+        
+           ... (full license text omitted here - original file retained at project root)
+        
+Classifier: Programming Language :: Python :: 3
+Classifier: License :: OSI Approved :: Apache Software License
+Classifier: Operating System :: OS Independent
+Classifier: Development Status :: 3 - Alpha
+Classifier: Intended Audience :: Developers
+Classifier: Topic :: Software Development :: Libraries :: Python Modules
+Requires-Python: >=3.8
+Description-Content-Type: text/markdown
+License-File: LICENSE
+Requires-Dist: numpy
+Dynamic: license-file
+
+# pyalp (packaged)
+
+This directory contains a minimal Python package layout for the existing `pyalp` C++ bindings using pybind11.
+
+Quick usage:
+
+1. Install in editable mode (from `pyalp/`):
+
+   python -m pip install -e .
+
+2. Build with CMake (optional) from repository root or `pyalp/` CMakeLists can be used when integrating with the full project.
+
+The C++ extension is exposed as `pyalp._pyalp` and the package `pyalp` imports it lazily from `__init__.py`.
+
+Building a wheel from a prebuilt .so (no install)
+------------------------------------------------
+
+If you already build the extension with the project's CMake and have a `.so` file, you can produce a wheel without re-compiling by pointing `setup.py` at the shared object and then building a wheel:
+
+1. Build with CMake (example from your message):
+
+   cd /tmp/build_alp && cmake ~/Repos/graphblas -DENABLE_PYALP=ON && make pyalp_ref
+
+   This produces a file like `/tmp/build_alp/pyalp/src/pyalp_ref.cpython-311-x86_64-linux-gnu.so`.
+
+2. Build a wheel that contains that `.so` (no install):
+
+   PREBUILT_PYALP_SO=/tmp/build_alp/pyalp/src/pyalp_ref.cpython-311-x86_64-linux-gnu.so python3 -m pip wheel . -w dist/
+
+   The `setup.py` will copy the provided .so into the package as the `_pyalp` extension and produce a wheel in `dist/`.
+
+Notes:
+- The prebuilt .so will be bundled into the wheel as package data. Make sure the python ABI tag in the filename matches your target interpreter (cpython-311 => Python 3.11 etc.).
+- If you don't provide `PREBUILT_PYALP_SO`, `pip wheel` will attempt to compile the extension via pybind11.
+

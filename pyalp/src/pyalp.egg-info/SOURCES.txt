@@ -1,0 +1,12 @@
+LICENSE
+README.md
+pyproject.toml
+setup.py
+src/pyalp/__init__.py
+src/pyalp/_pyalp.cpython-311-x86_64-linux-gnu.so
+src/pyalp/your_module.py
+src/pyalp.egg-info/PKG-INFO
+src/pyalp.egg-info/SOURCES.txt
+src/pyalp.egg-info/dependency_links.txt
+src/pyalp.egg-info/requires.txt
+src/pyalp.egg-info/top_level.txt
