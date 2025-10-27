@@ -85,6 +85,12 @@ jobs:
             # Use a per-ABI build directory to avoid cross-ABI contamination
             ABI_TAG=$(python -c 'import sys; print(f"cp{sys.version_info[0]}{sys.version_info[1]}")')
             BUILD_DIR="build/${ABI_TAG}"
+            # Export the per-ABI build dir so setup.py (inside the wheel build) can find
+            # the CMake-generated metadata file. cibuildwheel runs this before_build
+            # inside the container and environment variables exported here are visible
+            # to the subsequent packaging steps in that container.
+            export CMAKE_BUILD_DIR="${BUILD_DIR}"
+            echo "[cibw] Exported CMAKE_BUILD_DIR=${CMAKE_BUILD_DIR}"
             # Enable NUMA on Linux runners (for linux wheels), keep disabled elsewhere.
             if [ "$(uname -s)" = "Linux" ]; 
             then
@@ -148,6 +154,14 @@ jobs:
             LTO_FLAG="-DCMAKE_INTERPROCEDURAL_OPTIMIZATION=OFF"
             cmake -S . -B "${BUILD_DIR}" -G Ninja -DCMAKE_BUILD_TYPE=Release -DENABLE_PYALP=ON -DCMAKE_POSITION_INDEPENDENT_CODE=ON -DCMAKE_FIND_FRAMEWORK=NEVER ${MACOS_FLAGS} ${NUMA_FLAG} ${CMAKE_PREFIX_HINT:-} ${OSX_DEPLOY_FLAG:-} ${PORTABLE_FLAG} ${LTO_FLAG} -DPython3_EXECUTABLE="${PYEXEC}"
             cmake --build "${BUILD_DIR}" --target pyalp_ref --parallel
+            # Debug: show the generated metadata file (if present) to the CI logs
+            echo "[cibw] Checking for generated metadata file: ${CMAKE_BUILD_DIR}/pyalp_metadata.py"
+            if [ -f "${CMAKE_BUILD_DIR}/pyalp_metadata.py" ]; then
+              echo "[cibw] Found metadata file:"; ls -l "${CMAKE_BUILD_DIR}/pyalp_metadata.py"
+              echo "[cibw] First 100 lines of metadata:"; sed -n '1,100p' "${CMAKE_BUILD_DIR}/pyalp_metadata.py" || true
+            else
+              echo "[cibw] Metadata file not found at ${CMAKE_BUILD_DIR}/pyalp_metadata.py"
+            fi
         run: |
           # Build from repository root so the full CMake project is available in the container
           python -m cibuildwheel --output-dir wheelhouse .

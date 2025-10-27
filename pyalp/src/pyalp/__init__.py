@@ -31,7 +31,21 @@ except Exception:  # pragma: no cover - fallback for source tree
     except Exception:
         _pyalp = None
 
-__all__ = ["_pyalp"]
+# compiled metadata will be available after installation or build
+try:
+    from ._metadata import get_build_metadata, get_algorithm_metadata
+except ImportError:  # pragma: no cover - fallback for source tree
+
+    def get_build_metadata():
+        """Return an empty dictionary if metadata is not available."""
+        return {}
+
+    def get_algorithm_metadata():
+        """Return an empty dictionary if metadata is not available."""
+        return {}
+
+
+__all__ = ["_pyalp", "version", "get_build_metadata", "get_algorithm_metadata"]
 
 
 def version():

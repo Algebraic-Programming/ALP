@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "pyalp"
-version = "0.0.0"
+version = "0.8.1"
 description = "Python bindings for ALP GraphBLAS (minimal package layout)"
 authors = [ { name = "ALP" } ]
 readme = "README.md"

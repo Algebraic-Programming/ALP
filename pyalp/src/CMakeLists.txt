@@ -109,3 +109,43 @@ if( WITH_NONBLOCKING_BACKEND )
 
 endif()
 
+# --- Metadata generation ---
+# These variables are expected to be set by the top-level CMakeLists.txt,
+# but we provide defaults for standalone builds.
+if(NOT DEFINED pyalp_VERSION)
+    set(pyalp_VERSION "0.0.0")
+endif()
+if(NOT DEFINED ALP_VERSION)
+    set(ALP_VERSION "unknown")
+endif()
+if(NOT DEFINED ALP_BUILD_TYPE)
+    set(ALP_BUILD_TYPE "unknown")
+endif()
+if(NOT DEFINED ALP_GIT_COMMIT_SHA)
+    set(ALP_GIT_COMMIT_SHA "unknown")
+endif()
+if(NOT DEFINED ALP_GIT_BRANCH)
+    set(ALP_GIT_BRANCH "unknown")
+endif()
+
+# Get Python and pybind11 versions
+find_package(PythonInterp REQUIRED)
+set(PYTHON_VERSION ${PYTHON_VERSION_STRING})
+set(pybind11_VERSION ${pybind11_VERSION})
+
+# This is a simplified list. A more robust solution would inspect the build targets.
+set(pyalp_ALGORITHMS "conjugate_gradient")
+set(pyalp_BACKENDS "reference, reference_omp")
+
+# Configure the metadata file from the template
+set(METADATA_TEMPLATE "${CMAKE_CURRENT_SOURCE_DIR}/pyalp/_metadata.py.in")
+set(METADATA_OUTPUT "${CMAKE_BINARY_DIR}/pyalp_metadata.py")
+configure_file(${METADATA_TEMPLATE} ${METADATA_OUTPUT} @ONLY)
+
+# This command is useful for debugging inside a cibuildwheel container
+# to verify that the file is being generated correctly.
+# add_custom_command(TARGET ${PYALP_MODULE_NAME} POST_BUILD
+#     COMMAND ${CMAKE_COMMAND} -E echo "Generated metadata file content:"
+#     COMMAND ${CMAKE_COMMAND} -E cat ${METADATA_OUTPUT}
+# )
+
