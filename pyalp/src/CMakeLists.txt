@@ -117,9 +117,23 @@ if(NOT DEFINED pyalp_VERSION)
 endif()
 if(NOT DEFINED ALP_VERSION)
     set(ALP_VERSION "unknown")
+	# If the top-level project provided ALP_VERSION (cached) this will be used.
+	# Otherwise keep 'unknown'. When building from the top-level CMakeLists
+	# ALP_VERSION should already be set via cache.
+	if(DEFINED ALP_VERSION)
+		# already defined (likely cached) — keep it
+	else()
+		set(ALP_VERSION "unknown")
+	endif()
 endif()
 if(NOT DEFINED ALP_BUILD_TYPE)
     set(ALP_BUILD_TYPE "unknown")
+	# Use CMAKE_BUILD_TYPE as the ALP build type unless explicitly supplied
+	if(DEFINED CMAKE_BUILD_TYPE)
+		set(ALP_BUILD_TYPE "${CMAKE_BUILD_TYPE}")
+	else()
+		set(ALP_BUILD_TYPE "unknown")
+	endif()
 endif()
 if(NOT DEFINED ALP_GIT_COMMIT_SHA)
     set(ALP_GIT_COMMIT_SHA "unknown")
@@ -128,11 +142,44 @@ if(NOT DEFINED ALP_GIT_BRANCH)
     set(ALP_GIT_BRANCH "unknown")
 endif()
 
+# Determine repository license (simple heuristic from LICENSE file) if not provided
+if(NOT DEFINED ALP_LICENSE)
+	if(EXISTS "${CMAKE_SOURCE_DIR}/LICENSE")
+		file(READ "${CMAKE_SOURCE_DIR}/LICENSE" ALP_LICENSE_RAW)
+		string(FIND "${ALP_LICENSE_RAW}" "Apache" _has_apache)
+		if(_has_apache GREATER -1)
+			set(ALP_LICENSE "Apache-2.0")
+		else()
+			string(FIND "${ALP_LICENSE_RAW}" "BSD" _has_bsd)
+			if(_has_bsd GREATER -1)
+				set(ALP_LICENSE "BSD-3-Clause")
+			else()
+				set(ALP_LICENSE "unknown")
+			endif()
+		endif()
+	else()
+		set(ALP_LICENSE "unknown")
+	endif()
+endif()
+
 # If a top-level README.md exists, read it and make it available to the
 # metadata template. We escape triple quotes so the Python triple-quoted
 # string in the template remains valid.
 if(EXISTS "${CMAKE_SOURCE_DIR}/README.md")
 	file(READ "${CMAKE_SOURCE_DIR}/README.md" PYALP_README_RAW)
+	# Escape triple-quotes to avoid breaking the Python triple-quoted string
+	string(REPLACE "\"\"\"" "\\\"\\\"\\\"" PYALP_README_ESCAPED "${PYALP_README_RAW}")
+else()
+	set(PYALP_README_ESCAPED "")
+endif()
+if(EXISTS "${CMAKE_SOURCE_DIR}/pyalp/README.md")
+	file(READ "${CMAKE_SOURCE_DIR}/pyalp/README.md" PYALP_README_RAW)
+elseif(EXISTS "${CMAKE_SOURCE_DIR}/README.md")
+	file(READ "${CMAKE_SOURCE_DIR}/README.md" PYALP_README_RAW)
+else()
+	set(PYALP_README_ESCAPED "")
+endif()
+if(DEFINED PYALP_README_RAW)
 	# Escape triple-quotes to avoid breaking the Python triple-quoted string
 	string(REPLACE "\"\"\"" "\\\"\\\"\\\"" PYALP_README_ESCAPED "${PYALP_README_RAW}")
 else()
