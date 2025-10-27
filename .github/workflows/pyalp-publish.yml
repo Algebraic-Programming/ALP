@@ -82,6 +82,22 @@ jobs:
             printf '%s\n' "import os, runpy; ROOT=os.path.dirname(os.path.abspath(__file__)); PKG=os.path.join(ROOT, 'pyalp'); os.chdir(PKG); runpy.run_path(os.path.join(PKG, 'setup.py'), run_name='__main__')" > setup.py
             # Configure from repository root; enable pyalp and choose NUMA setting per-platform
             PYEXEC=$(python -c 'import sys; print(sys.executable)')
+            # Gather Git metadata and package version to pass into CMake so the
+            # generated runtime metadata contains accurate values even in CI.
+            # Prefer environment-provided values when available (GITHUB_SHA/REF_NAME)
+            ALP_GIT_COMMIT="${GITHUB_SHA:-$(git rev-parse --short HEAD)}"
+            # GITHUB_REF_NAME is available in Actions; fallback to git branch
+            ALP_GIT_BRANCH="${GITHUB_REF_NAME:-$(git rev-parse --abbrev-ref HEAD)}"
+            # Try to pick a semantic/alp version from tags (prefer nearest tag)
+            ALP_VERSION=$(git describe --tags --match "v*" --abbrev=0 2>/dev/null || true)
+            if [ -z "${ALP_VERSION}" ]; then
+              # Fall back to a describe-style value
+              ALP_VERSION=$(git describe --tags --match "v*" --always 2>/dev/null || echo "unknown")
+            fi
+            # Read the pyalp package version from pyalp/pyproject.toml (simple grep)
+            PYALP_VERSION=$(grep -E '^version\s*=\s*"' pyalp/pyproject.toml | head -n1 | sed -E 's/^version\s*=\s*"([^"]+)".*/\1/')
+            PYALP_VERSION=${PYALP_VERSION:-0.0.0}
+            echo "[cibw] Derived ALP_VERSION=${ALP_VERSION}, ALP_GIT_COMMIT=${ALP_GIT_COMMIT}, ALP_GIT_BRANCH=${ALP_GIT_BRANCH}, PYALP_VERSION=${PYALP_VERSION}"
             # Use a per-ABI build directory to avoid cross-ABI contamination
             ABI_TAG=$(python -c 'import sys; print(f"cp{sys.version_info[0]}{sys.version_info[1]}")')
             BUILD_DIR="build/${ABI_TAG}"
@@ -152,7 +168,7 @@ jobs:
             # interprocedural optimization (LTO) to improve portability of the produced wheels.
             PORTABLE_FLAG="-DALP_PORTABLE_BUILD=ON"
             LTO_FLAG="-DCMAKE_INTERPROCEDURAL_OPTIMIZATION=OFF"
-            cmake -S . -B "${BUILD_DIR}" -G Ninja -DCMAKE_BUILD_TYPE=Release -DENABLE_PYALP=ON -DCMAKE_POSITION_INDEPENDENT_CODE=ON -DCMAKE_FIND_FRAMEWORK=NEVER ${MACOS_FLAGS} ${NUMA_FLAG} ${CMAKE_PREFIX_HINT:-} ${OSX_DEPLOY_FLAG:-} ${PORTABLE_FLAG} ${LTO_FLAG} -DPython3_EXECUTABLE="${PYEXEC}"
+            cmake -S . -B "${BUILD_DIR}" -G Ninja -DCMAKE_BUILD_TYPE=Release -DENABLE_PYALP=ON -DCMAKE_POSITION_INDEPENDENT_CODE=ON -DCMAKE_FIND_FRAMEWORK=NEVER ${MACOS_FLAGS} ${NUMA_FLAG} ${CMAKE_PREFIX_HINT:-} ${OSX_DEPLOY_FLAG:-} ${PORTABLE_FLAG} ${LTO_FLAG} -DPython3_EXECUTABLE="${PYEXEC}" -DALP_VERSION="${ALP_VERSION}" -DALP_GIT_COMMIT_SHA="${ALP_GIT_COMMIT}" -DALP_GIT_BRANCH="${ALP_GIT_BRANCH}" -Dpyalp_VERSION="${PYALP_VERSION}"
             cmake --build "${BUILD_DIR}" --target pyalp_ref --parallel
             # Debug: show the generated metadata file (if present) to the CI logs
             echo "[cibw] Checking for generated metadata file: ${CMAKE_BUILD_DIR}/pyalp_metadata.py"

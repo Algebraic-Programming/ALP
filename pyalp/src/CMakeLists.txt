@@ -128,6 +128,17 @@ if(NOT DEFINED ALP_GIT_BRANCH)
     set(ALP_GIT_BRANCH "unknown")
 endif()
 
+# If a top-level README.md exists, read it and make it available to the
+# metadata template. We escape triple quotes so the Python triple-quoted
+# string in the template remains valid.
+if(EXISTS "${CMAKE_SOURCE_DIR}/README.md")
+	file(READ "${CMAKE_SOURCE_DIR}/README.md" PYALP_README_RAW)
+	# Escape triple-quotes to avoid breaking the Python triple-quoted string
+	string(REPLACE "\"\"\"" "\\\"\\\"\\\"" PYALP_README_ESCAPED "${PYALP_README_RAW}")
+else()
+	set(PYALP_README_ESCAPED "")
+endif()
+
 # Get Python and pybind11 versions
 find_package(PythonInterp REQUIRED)
 set(PYTHON_VERSION ${PYTHON_VERSION_STRING})
@@ -140,6 +151,8 @@ set(pyalp_BACKENDS "reference, reference_omp")
 # Configure the metadata file from the template
 set(METADATA_TEMPLATE "${CMAKE_CURRENT_SOURCE_DIR}/pyalp/_metadata.py.in")
 set(METADATA_OUTPUT "${CMAKE_BINARY_DIR}/pyalp_metadata.py")
+# Make the README content available as @PYALP_README_ESCAPED@ to the
+# template (CMake configure_file will perform the substitution).
 configure_file(${METADATA_TEMPLATE} ${METADATA_OUTPUT} @ONLY)
 
 # This command is useful for debugging inside a cibuildwheel container

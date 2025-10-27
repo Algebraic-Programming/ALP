@@ -25,6 +25,9 @@ _algorithm_metadata = {
     "backends": "@pyalp_BACKENDS@",
 }
 
+# README content (may be large); inserted as a Python triple-quoted string.
+_algorithm_metadata["readme"] = """@PYALP_README_ESCAPED@"""
+
 
 def get_build_metadata():
     """Return a dictionary of build-time metadata."""
