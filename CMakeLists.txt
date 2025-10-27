@@ -31,6 +31,16 @@ set( MINORVERSION 7 )
 set( BUGVERSION 0 )
 set( VERSION "${MAJORVERSION}.${MINORVERSION}.${BUGVERSION}" )
 
+# Export a canonical ALP version string for subprojects and packaging. This
+# defaults to the VERSION defined above but can be overridden by -DALP_VERSION
+# on the cmake command line (CI may pass this explicitly).
+if(NOT DEFINED ALP_VERSION)
+	set(ALP_VERSION "${VERSION}" CACHE STRING "ALP project version (for packaging)")
+else()
+	# Keep user-provided ALP_VERSION in cache so subprojects see it
+	set(ALP_VERSION "${ALP_VERSION}" CACHE STRING "ALP project version (for packaging)" FORCE)
+endif()
+
 # set the project name
 project( GraphBLAS
 	VERSION ${VERSION}
