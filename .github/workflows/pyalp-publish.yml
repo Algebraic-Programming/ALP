@@ -267,7 +267,9 @@ jobs:
           source "${VENV_DIR}/bin/activate"
           python -m pip install --upgrade pip setuptools wheel numpy
 
-          # Install from TestPyPI (use extra-index-url to allow dependencies from PyPI)
+          # Wait for the published package to propagate to TestPyPI, then install
+          echo "Waiting for pyalp==${PYALP_VERSION} to appear on TestPyPI"
+          .github/scripts/wait_for_testpypi_release.sh pyalp "${PYALP_VERSION}" 18 10
           echo "Installing pyalp==${PYALP_VERSION} from TestPyPI"
           python -m pip install --index-url https://test.pypi.org/simple/ --extra-index-url https://pypi.org/simple pyalp==${PYALP_VERSION} --no-deps -v
 
