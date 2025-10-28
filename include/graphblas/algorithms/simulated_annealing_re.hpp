@@ -112,14 +112,16 @@ namespace grb {
 		 * @tparam StateType	The state variable type.
 		 * @tparam EnergyType	The energy type.
 		 * @tparam TempType		The inverse temperature type.
+		 * @tparam SweepDataType	Type of data to be passed on to the sweep function (e.g. a tuple of references to temporary vectors).
 		 * @tparam Ring			The semiring under which to make the sweeps.
 		 *
 		 */
 		template<
 			typename QType, // type of coupling matrix values
-			typename StateType, // type of state, ideally 0/1
+			typename StateType, // type of state, possibly 0/1
 			typename EnergyType,
 			typename TempType,
+			typename SweepDataType, // type of data to be passed through to the sweep function
 			typename RSI, typename CSI, typename NZI, Backend backend,
 			class Ring = Semiring<
 				grb::operators::add< QType >, grb::operators::mul< QType >,
@@ -133,10 +135,7 @@ namespace grb {
 						 const grb::Vector< QType, backend >&,
 						 grb::Vector< StateType, backend >&,
 						 const TempType&,
-						 grb::Vector< QType >&,
-						 grb::Vector< QType >&,
-						 grb::Vector< StateType >&,
-					 	 const std::vector< grb::Vector< bool > >&,
+						 SweepDataType&,
 						 const Ring&
 				 	)
 				> &sweep,
@@ -147,36 +146,35 @@ namespace grb {
 				grb::Vector< TempType > &betas,
 				std::vector< grb::Vector< StateType, backend > >  &temp_states,
 				grb::Vector< EnergyType > &temp_energies,
-				grb::Vector< QType > &temp_sweep1,
-				grb::Vector< QType > &temp_sweep2,
-				grb::Vector< StateType > &temp_sweep3,
-				const std::vector< grb::Vector< bool > >& masks,
+				SweepDataType& temp_sweep,
 				const size_t &n_sweeps = 1,
 				const bool &use_pt = false,
 				const Ring &ring = Ring()
 				){
 
-			size_t n_replicas = states.size();
+			const size_t n_replicas = states.size();
+			const size_t n = grb::size(states[0]);
 
 			assert( n_replicas > 0 );
 			assert( n_replicas == grb::size( betas ) );
-			assert( grb::ncols( couplings ) == grb::nrows( couplings ) );
-			assert( grb::size( states[0] ) == grb::nrows( couplings ) );
-			assert( grb::size( states[0] ) == grb::size( local_fields ) );
+			assert( n == grb::ncols( couplings ) );
+			assert( n == grb::nrows( couplings ) );
+			assert( n == grb::size( local_fields ) );
 
-			for(size_t i = 1; i < n_replicas ; ++i ){
-				assert( grb::size( states[0] ) == grb::size( states[ i ] ) );
+			for(size_t i = 0; i < n_replicas ; ++i ){
+				assert( n == grb::size( states[ i ] ) );
 			}
 
-			const size_t n = grb::size(states[0]);
 
 #ifndef NDEBUG
-			std::cerr << "DEBUG: Called  simulated_annealing_RE with parameters: "
-				      << "\n\t n = " << n
-				      << "\n\t n_replicas = " << n_replicas
-				      << "\n\t n_sweeps = " << n_sweeps
-				      << "\n\t use_pt = " << use_pt
-				      << std::endl;
+			if( grb::spmd<>::pid() == 0 ) {
+				std::cerr << "DEBUG: Called  simulated_annealing_RE with parameters: "
+						  << "\n\t n = " << n
+						  << "\n\t n_replicas = " << n_replicas
+						  << "\n\t n_sweeps = " << n_sweeps
+						  << "\n\t use_pt = " << use_pt
+						  << std::endl;
+			}
 #endif
 
 			grb::RC rc = grb::SUCCESS;
@@ -185,12 +183,9 @@ namespace grb {
 			temp_states =  states;
 
 			for( size_t i_sweep = 0 ; rc == grb::SUCCESS && i_sweep < n_sweeps ; ++i_sweep ){
-				// randomize order of replicas
-				// std::random_shuffle( states.begin(), states.end() );
-
-				for( size_t j = 0 ; rc == grb::SUCCESS && j < n_replicas ; ++j ){
+				for( size_t j = 0 ; j < n_replicas ; ++j ){
 					
-				energies[j] += sweep( couplings, local_fields, states[j], betas[j], temp_sweep1, temp_sweep2 , temp_sweep3, masks , ring );
+					energies[j] += sweep( couplings, local_fields, states[j], betas[j], temp_sweep, ring );
 				
 					// update_best state and energy
 					if( energies[j] < temp_energies[j] ){
@@ -204,7 +199,9 @@ namespace grb {
 					rc = pt( states, energies, betas );
 				}
 #ifndef NDEBUG
-				std::cerr << "Energy at iteration " << i_sweep << " = " << energies[ 0 ] << std::endl;
+				if( grb::spmd<>::pid() == 0 ) {
+					std::cerr << "Energy at iteration " << i_sweep << " = " << energies[ 0 ] << std::endl;
+				}
 #endif
 			} // n_sweeps
 

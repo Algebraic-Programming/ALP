@@ -18,6 +18,7 @@
 #include <string>
 #include <memory>
 #include <algorithm>
+#include <random>
 #include <cassert>
 #include <cstdlib>
 #include <unistd.h>
@@ -31,7 +32,6 @@
 #include <utils/output_verification.hpp>
 #include <graphblas.hpp>
 #include <utils/print_vec_mat.hpp>
-#include <random>
 
 using namespace grb;
 
@@ -126,11 +126,13 @@ namespace test_data {
 
 	const std::vector< std::vector< size_t > > row_blocks = {
 		// {3, 1, 6, 7, 9, 11, 12, 13, 14, 15}, {5, 2, 0, 8, 10}, {4} // for python data files
-		// {2, 4}, {0, 3, 11, 12, 13, 14, 15}, {1, 5, 6, 7, 8, 9, 10}
-		{0, 2, 4, 7, 9, 12, 13, 15}, {1, 3, 6, 8, 11},
+		{0, 2, 4, 7, 9, 12, 13, 15},
+		{1, 3, 6, 8, 11},
 		{5, 10, 14},
 		
 	};
+
+    std::minstd_rand global_rng ( 8 ); // or std::mt19937
 }
 // --- New, minimal runner configuration and result types ---
 struct input {
@@ -249,7 +251,6 @@ void read_vector_data(const std::string &filename, std::vector<Dtype> &data) {
     }
 }
 
-
 template< typename Dtype >
 void read_vector_data_from_array(
 	const std::vector<Dtype> &array, std::vector<Dtype> &data
@@ -278,21 +279,18 @@ EnergyType get_energy(
 			  ){
 	static grb::Vector< JType > tmp ( grb::size( local_fields ) );
 	grb::RC rc = grb::clear( tmp );
-	JType energy = 0.0;
+	EnergyType energy = 0.0;
 
 	rc = rc ? rc : grb::mxv( tmp, couplings, state, ring );
-	rc = rc ? rc : grb::foldl( tmp, static_cast< JType >( 0.5 ), ring.getMultiplicativeOperator() );
-	rc = rc ? rc : grb::foldl( tmp, local_fields, ring.getAdditiveOperator() );
+	rc = rc ? rc : grb::foldl( tmp, static_cast< JType >( 0.5 ), ring.getMultiplicativeMonoid() );
+	rc = rc ? rc : grb::foldl( tmp, local_fields, ring.getAdditiveMonoid() );
 	rc = rc ? rc : grb::dot( energy, tmp, state, ring );
 	assert( rc == grb::SUCCESS );
 
 	return energy;
 }
 
-
-
 template<
-		// Backend backend=grb::reference,
 		class Ring = Semiring<
 			grb::operators::add< JType >, grb::operators::mul< JType >,
 			grb::identities::zero, grb::identities::one
@@ -303,10 +301,14 @@ static EnergyType sequential_sweep_immediate(
 				 const grb::Vector< JType > &local_fields,
 				 grb::Vector< IOType > &state,
 				 const JType &beta,
-				 grb::Vector< JType > &h,
-				 grb::Vector< JType > &log_rand,
-				 grb::Vector< IOType > &delta,
-				 const std::vector< grb::Vector< bool > > &masks,
+				 std::tuple<
+					 grb::Vector< JType >&,
+					 grb::Vector< JType >&,
+					 grb::Vector< IOType >&,
+					 const std::vector< grb::Vector< bool > >&,
+					 grb::Vector< EnergyType >&,
+					 grb::Vector< bool >&
+					 > &data,
 				 const Ring &ring = Ring()
 			  ){
 
@@ -314,22 +316,28 @@ static EnergyType sequential_sweep_immediate(
 		const size_t n = grb::size( state );
 		EnergyType delta_energy = static_cast< JType >(0.0);
 
-		rc = rc ? rc : grb::resize( h, n );
-		rc = rc ? rc : grb::set( h, static_cast< JType >( 0.0 ) );
-		rc = rc ? rc : grb::mxv( h, couplings, state , ring.getAdditiveMonoid(), ring.getMultiplicativeOperator() );
-		rc = rc ? rc : grb::foldl( h, local_fields, ring.getAdditiveOperator() );
+		auto &h 		= std::get<0>(data);
+		auto &log_rand	= std::get<1>(data);
+		auto &delta		= std::get<2>(data);
+		const auto &masks = std::get<3>(data);
+		auto &dn		= std::get<4>(data);
+		auto &accept	= std::get<5>(data);
 
+		rc = rc ? rc : grb::resize( h, n );
 		rc = rc ? rc : grb::resize( log_rand, n );
+		rc = rc ? rc : grb::resize( delta, n );
+		rc = rc ? rc : grb::resize( dn, n );
+		rc = rc ? rc : grb::resize( accept, n );
+
+		rc = rc ? rc : grb::set( h, local_fields );
+		rc = rc ? rc : grb::mxv( h, couplings, state , ring );
+
+		std::uniform_real_distribution< JType > rand ( 0.0, 1.0 );
 		for( size_t j = 0 ; j < n ; ++j ){
-			constexpr auto rm = static_cast< JType >( RAND_MAX ) + 2;
-			const auto randi =static_cast< JType >( std::rand() ) + 1;
-			const auto rand = randi / rm ;
-			rc = rc ? rc : grb::setElement(log_rand,  std::log( rand ), j );
+			const auto rnd = rand( test_data::global_rng );
+			rc = rc ? rc : grb::setElement(log_rand,  std::log( rnd ), j );
 		}
 		// print_vector( log_rand, 30, "log_rand" );
-
-		grb::Vector< EnergyType > dn ( n ); // TODO don't allocate O(n) memory
-		grb::Vector< bool > accept ( n );
 
 #ifndef NDEBUG
 		const grb::Vector< IOType > old_state = state;
@@ -344,8 +352,8 @@ static EnergyType sequential_sweep_immediate(
 
 			// dn = (2*state_slice - 1) * h_slice
 			rc = rc ? rc : grb::set( dn, mask, state );
-			rc = rc ? rc : grb::foldl( dn, mask, static_cast< EnergyType >( 2 ), ring.getMultiplicativeOperator()  );
-			rc = rc ? rc : grb::foldl( dn, mask, static_cast< EnergyType >( -1 ), ring.getAdditiveOperator() );
+			rc = rc ? rc : grb::foldl( dn, static_cast< EnergyType >( 2 ), ring.getMultiplicativeMonoid()  );
+			rc = rc ? rc : grb::foldl( dn, static_cast< EnergyType >( -1 ), ring.getAdditiveMonoid() );
 			rc = rc ? rc : grb::foldl( dn, h, ring.getMultiplicativeMonoid() );
 
 			// ( dn >= 0 ) | ( log_rand < beta * dn )
@@ -358,16 +366,15 @@ static EnergyType sequential_sweep_immediate(
 						}
 					}, accept, log_rand, mask, dn );
 
-
 			// new_state = np.where(accept, 1 - old, old)
-			rc = rc ? rc : grb::foldl( state, accept, static_cast< IOType >( -1 ), ring.getMultiplicativeOperator() );
-			rc = rc ? rc : grb::foldl( state, accept, static_cast< IOType >( 1 ), ring.getAdditiveOperator() );
+			rc = rc ? rc : grb::foldl( state, accept, static_cast< IOType >( -1 ), ring.getMultiplicativeMonoid() );
+			rc = rc ? rc : grb::foldl( state, accept, static_cast< IOType >( 1 ), ring.getAdditiveMonoid() );
 			
 			// delta = new - old ==> delta[accept] = 2*new_state[accept]-1
 			rc = rc ? rc : grb::clear( delta  );
 			rc = rc ? rc : grb::set( delta, accept, state );
-			rc = rc ? rc : grb::foldl( delta, accept, static_cast< IOType >( 2.0 ), ring.getMultiplicativeMonoid() );
-			rc = rc ? rc : grb::foldl( delta, accept, static_cast< IOType >( -1.0 ), ring.getAdditiveMonoid() );
+			rc = rc ? rc : grb::foldl( delta, accept, static_cast< IOType >( 2 ), ring.getMultiplicativeMonoid() );
+			rc = rc ? rc : grb::foldl( delta, accept, static_cast< IOType >( -1 ), ring.getAdditiveMonoid() );
 			
 			// Update delta_energy -= dot(dn, accept)
 			rc = rc ? rc : grb::dot( delta_energy, delta, h, ring );
@@ -381,6 +388,7 @@ static EnergyType sequential_sweep_immediate(
 #ifndef NDEBUG
 		if( rc != grb::SUCCESS ){
 			std::cerr << "\n\t Error in some GraphBLAS function " << rc << " : " << grb::toString( rc ) << std::endl;
+			abort();
 		}
 		assert( rc == grb::SUCCESS );
 		const auto new_state = state;
@@ -399,20 +407,25 @@ static EnergyType sequential_sweep_immediate(
 
 
 template<
-		// Backend backend=grb::reference,
+		typename SweepDataType = std::tuple<
+					 grb::Vector< JType >&,
+					 grb::Vector< JType >&,
+					 grb::Vector< IOType >&,
+					 const std::vector< grb::Vector< bool > >&,
+					 grb::Vector< EnergyType >&,
+					 grb::Vector< bool >&
+					 >,
 		class Ring = Semiring<
 			grb::operators::add< JType >, grb::operators::mul< JType >,
 			grb::identities::zero, grb::identities::one
-		> >
+		>
+	>
 std::function< EnergyType(
 					 const grb::Matrix< JType >&,
 					 const grb::Vector< JType >&,
 					 grb::Vector< IOType >&,
 					 const JType&,
-					 grb::Vector< JType >&,
-					 grb::Vector< JType >&,
-					 grb::Vector< IOType >&,
-					 const std::vector< grb::Vector< bool > >&,
+					 SweepDataType&,
 					 const Ring&
 				 ) > get_sweep_function( std::string sweep_name ){
 	if( sweep_name != "sequential_sweep_immediate" ){
@@ -432,7 +445,7 @@ void ioProgram( const struct input &data_in, bool &success ) {
     // auto &nnz         = std::get<1>(storage); // nz (nonzeros)
     auto &nsweeps_st  = std::get<2>(storage); // nsweeps
     auto &n_replicas_st = std::get<3>(storage); // n_replicas
-    auto &use_pt      = std::get<4>(storage); // seed
+    auto &use_pt      = std::get<4>(storage); // use_pt
     auto &seed_st     = std::get<5>(storage); // seed
     auto &sweep_name  = std::get<6>(storage); // sweep_name
     auto &Jdata       = std::get<7>(storage); // std::vector<NonzeroT>
@@ -484,7 +497,9 @@ void grbProgram(
 
     /* --- Problem setup --- */
     const size_t n = std::get<0>(Storage::getData());
-	std::cout << "problem size n = " << n << "\n";
+	if( s == 0 ){
+		std::cout << "problem size n = " << n << "\n";
+	}
     grb::Vector< JType > h( n );
     // populate J with test (random) values
     grb::RC rc = grb::SUCCESS;
@@ -559,13 +574,12 @@ void grbProgram(
     for ( size_t r = 0; r < n_replicas; ++r ) {
         states.emplace_back( grb::Vector<IOType>(n) );
         // initialize with random values
-        std::default_random_engine generator( std::get<5>(Storage::getData()) + r );
-        std::uniform_int_distribution< int > distribution(0,1);
+        std::uniform_int_distribution< unsigned short > randint(0,1);
         // we use buildvectorUnique with a random set of indices
         std::vector< IOType > rand_data;
         for ( size_t i = 0; i < n; ++i ) {
             rand_data.emplace_back( static_cast<IOType>(
-                distribution(generator) ) );
+                randint( test_data::global_rng ) ) );
         }
         rc = rc ? rc : grb::buildVector(
             states.back(),
@@ -606,7 +620,18 @@ void grbProgram(
     std::vector< grb::Vector<IOType> > temp_states;
 	grb::Vector< JType > temp_h ( n );
 	grb::Vector< JType > temp_log_rand ( n );
-	grb::Vector< IOType > temp_deltav ( n );
+	grb::Vector< EnergyType > temp_dn ( n );
+	grb::Vector< bool > temp_accept ( n );
+	grb::Vector< IOType > temp_delta ( n );
+	auto sweep_data = std::tie(
+ 			temp_h,
+			temp_log_rand,
+			temp_delta,
+			(const typeof(masks)&) masks,
+			temp_dn,
+			temp_accept
+			);
+
 
 
 	out.rep = data_in.rep;
@@ -614,7 +639,7 @@ void grbProgram(
 	if( out.rep == 0 ) {
 		timer.reset();
 		rc = grb::algorithms::simulated_annealing_RE(
-				sweep, states, J, h, energies, betas, temp_states, temp_energies, temp_h, temp_log_rand, temp_deltav, masks, data_in.nsweeps, data_in.use_pt
+				sweep, states, J, h, energies, betas, temp_states, temp_energies, sweep_data, data_in.nsweeps, data_in.use_pt
         );
 
 		rc = rc ? rc : wait();
@@ -660,22 +685,23 @@ void grbProgram(
 				out.iterations = data_in.nsweeps;
 
                 rc = grb::algorithms::simulated_annealing_RE(
-					sweep, states, J, h, energies, betas, temp_states, temp_energies, temp_h, temp_log_rand, temp_deltav, masks, data_in.nsweeps, data_in.use_pt
+				sweep, states, J, h, energies, betas, temp_states, temp_energies, sweep_data, data_in.nsweeps, data_in.use_pt
                 );
-
 			}
 			if( grb::Properties<>::isNonblockingExecution ) {
 				rc = rc ? rc : wait();
 			}
 		}
 		const double time_taken = timer.time();
-		for ( size_t r = 0; r < n_replicas; ++r ) {
-			std::cout << "Final state replica " << r << ":\n";
-			print_vector( states[r], 50 ,"states values" );  
-			std::cout << "With energy " << energies[ r ] << "\n";
-			std::cout << "With energy " << get_energy(  J, h, states[r] ) << "\n";
-			std::cout << std::endl;
-			assert( ISCLOSE( get_energy( J, h, states[r] ), energies[ r ] ) );
+		if( s == 0 ) {
+			for ( size_t r = 0; r < n_replicas; ++r ) {
+				std::cout << "Final state replica " << r << ":\n";
+				print_vector( states[r], 50 ,"states values" );  
+				std::cout << "With energy " << energies[ r ] << "\n";
+				std::cout << "With energy " << get_energy(  J, h, states[r] ) << "\n";
+				std::cout << std::endl;
+				assert( ISCLOSE( get_energy( J, h, states[r] ), energies[ r ] ) );
+			}
 		}
 		for(size_t i = 0 ; i < n_replicas ; ++i ){
 			out.best_energy = std::min( out.best_energy, energies[ i ] );
@@ -683,7 +709,7 @@ void grbProgram(
 
 		out.times.useful = time_taken / static_cast< double >( out.rep );
 		// print timing at root process
-		if( grb::spmd<>::pid() == 0 ) {
+		if( s == 0 ) {
 			std::cout << "Time taken for " << out.rep << " "
 				<< "Simulated Annealing RE calls (hot start): " << out.times.useful << ". "
 				<< "Error code is " << grb::toString( rc ) << std::endl;
@@ -697,8 +723,6 @@ void grbProgram(
 
 	// start postamble
 	timer.reset();
-
-
 
 	// set error code
 	if( rc == FAILED ) {
@@ -807,7 +831,7 @@ int main( int argc, char ** argv ) {
 
     // seed RNGs (C and C++ engines) using requested seed (hardcoded default 8 if not provided)
     std::srand( static_cast<unsigned>( in.seed ) );
-    static std::mt19937 global_rng( static_cast<unsigned>( in.seed ) );
+	test_data::global_rng.seed(in.seed);
 
     std::cout << "seed=" << in.seed << " n_replicas=" << in.n_replicas << " nsweeps=" << in.nsweeps << " sweep=" << in.sweep_name << "\n";
 
