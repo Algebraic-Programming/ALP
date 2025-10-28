@@ -6,6 +6,7 @@ from importlib import metadata
 import importlib
 import pathlib
 import sys
+import os
 
 # compiled extension will be available after installation or build
 try:
@@ -45,7 +46,7 @@ except ImportError:  # pragma: no cover - fallback for source tree
         return {}
 
 
-__all__ = ["_pyalp", "version", "get_build_metadata", "get_algorithm_metadata"]
+__all__ = ["version", "get_build_metadata", "get_algorithm_metadata", "get_backend", "list_backends"]
 
 
 def version():
@@ -56,25 +57,68 @@ def version():
 
 
 # Expose available backend submodules (if present in the installed wheel) so users
-# can import them as `from pyalp import pyalp_ref` or access `pyalp.pyalp_ref`.
-_backend_candidates = ["pyalp_ref", "pyalp_omp", "pyalp_nonblocking", "_pyalp"]
-for _b in _backend_candidates:
+# Backend discovery and selection helpers.
+import pkgutil
+
+
+def list_backends():
+    """Return a sorted list of backend module names available in the package.
+
+    This inspects the package directory for compiled extension modules with
+    expected names (e.g. pyalp_ref, pyalp_omp, pyalp_nonblocking, _pyalp).
+    """
+    pkgdir = pathlib.Path(__file__).parent
+    found = set()
+    # Use pkgutil.iter_modules on the package path to discover installed modules
     try:
-        _m = importlib.import_module(f"{__package__}.{_b}")
-        globals()[_b] = _m
-        if _b not in __all__:
-            __all__.append(_b)
+        for mod in pkgutil.iter_modules([str(pkgdir)]):
+            name = mod.name
+            if name in ("_pyalp",) or name.startswith("pyalp_"):
+                found.add(name)
     except Exception:
-        # ignore missing backends
-        continue
-    else:
-        # if imported successfully, also register a top-level alias so
-        # `import pyalp_ref` can work for users expecting the former layout.
-        try:
-            # ensure the module object is in globals
-            _mod = globals().get(_b)
-            if _mod is not None:
-                # register top-level module name to point to the submodule
-                sys.modules[_b] = _mod
-        except Exception:
-            pass
+        # fallback: scan filenames
+        for p in pkgdir.iterdir():
+            if p.is_file() and p.suffix in (".so", ".pyd"):
+                stem = p.name.split(".", 1)[0]
+                if stem == "_pyalp" or stem.startswith("pyalp_"):
+                    found.add(stem)
+    return sorted(found)
+
+
+def import_backend(name: str):
+    """Import and return the backend module `pyalp.<name>`.
+
+    Raises ImportError with a helpful message if the backend is not present.
+    """
+    try:
+        return importlib.import_module(f"{__package__}.{name}")
+    except Exception as e:
+        raise ImportError(f"Backend module '{name}' is not available: {e}") from e
+
+
+def get_backend(name: str | None = None, preferred=("pyalp_omp", "pyalp_nonblocking", "pyalp_ref", "_pyalp")):
+    """Return an imported backend module.
+
+    Selection order:
+    - If ``name`` is provided, import that backend or raise ImportError.
+    - If environment variable PYALP_BACKEND is set, try to import that.
+    - Otherwise iterate over ``preferred`` and return the first available.
+
+    Raises ImportError if no backend is available.
+    """
+    # explicit name wins
+    if name:
+        return import_backend(name)
+
+    # environment override
+    env = os.environ.get("PYALP_BACKEND")
+    if env:
+        return import_backend(env)
+
+    # try preferred list
+    available = set(list_backends())
+    for pref in preferred:
+        if pref in available:
+            return import_backend(pref)
+
+    raise ImportError(f"No pyalp backend available. Found: {sorted(available)}")
