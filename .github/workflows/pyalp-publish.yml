@@ -168,8 +168,8 @@ jobs:
             # interprocedural optimization (LTO) to improve portability of the produced wheels.
             PORTABLE_FLAG="-DALP_PORTABLE_BUILD=ON"
             LTO_FLAG="-DCMAKE_INTERPROCEDURAL_OPTIMIZATION=OFF"
-            cmake -S . -B "${BUILD_DIR}" -G Ninja -DCMAKE_BUILD_TYPE=Release -DENABLE_PYALP=ON -DCMAKE_POSITION_INDEPENDENT_CODE=ON -DCMAKE_FIND_FRAMEWORK=NEVER ${MACOS_FLAGS} ${NUMA_FLAG} ${CMAKE_PREFIX_HINT:-} ${OSX_DEPLOY_FLAG:-} ${PORTABLE_FLAG} ${LTO_FLAG} -DPython3_EXECUTABLE="${PYEXEC}" -DALP_VERSION="${ALP_VERSION}" -DALP_GIT_COMMIT_SHA="${ALP_GIT_COMMIT}" -DALP_GIT_BRANCH="${ALP_GIT_BRANCH}" -Dpyalp_VERSION="${PYALP_VERSION}"
-            cmake --build "${BUILD_DIR}" --target pyalp_ref --parallel
+            cmake -S . -B "${BUILD_DIR}" -G Ninja -DCMAKE_BUILD_TYPE=Release -DENABLE_PYALP=ON -DCMAKE_POSITION_INDEPENDENT_CODE=ON -DCMAKE_FIND_FRAMEWORK=NEVER ${MACOS_FLAGS} ${NUMA_FLAG} ${CMAKE_PREFIX_HINT:-} ${OSX_DEPLOY_FLAG:-} ${PORTABLE_FLAG} ${LTO_FLAG} -DPython3_EXECUTABLE="${PYEXEC}" -DALP_VERSION="${ALP_VERSION}" -DALP_GIT_COMMIT_SHA="${ALP_GIT_COMMIT}" -DALP_GIT_BRANCH="${ALP_GIT_BRANCH}" -Dpyalp_VERSION="${PYALP_VERSION}" -DWITH_OMP_BACKEND=ON -DWITH_NONBLOCKING_BACKEND=ON
+            cmake --build "${BUILD_DIR}" --target pyalp_ref pyalp_omp pyalp_nonblocking --parallel
             # Debug: show the generated metadata file (if present) to the CI logs
             echo "[cibw] Checking for generated metadata file: ${CMAKE_BUILD_DIR}/pyalp_metadata.py"
             if [ -f "${CMAKE_BUILD_DIR}/pyalp_metadata.py" ]; then
