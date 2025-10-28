@@ -208,6 +208,11 @@ jobs:
     permissions:
       id-token: write
     steps:
+      - name: Checkout repository (for tests)
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
       - name: Download all wheels
         uses: actions/download-artifact@v4
         with:
@@ -220,3 +225,56 @@ jobs:
           repository-url: https://test.pypi.org/legacy/
           packages-dir: dist/
           verbose: true
+
+      - name: Skip in-publish verification
+        shell: bash
+        run: |
+          echo "Installation verification moved to 'verify-installed' job"
+
+  verify-installed:
+    needs: publish
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        backend: [pyalp_ref, pyalp_omp, pyalp_nonblocking, _pyalp]
+    steps:
+      - name: Checkout repository (for tests)
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Verify installed backend
+        shell: bash
+        env:
+          BACKEND: ${{ matrix.backend }}
+        run: |
+          set -euo pipefail
+          # Determine package version from pyalp/pyproject.toml
+          PYALP_VERSION=$(grep -E '^version\s*=\s*"' pyalp/pyproject.toml | head -n1 | sed -E 's/^version\s*=\s*"([^\"]+)".*/\1/')
+          echo "Testing pyalp version: ${PYALP_VERSION}"
+
+          PY=$(which python3 || which python)
+          echo "Using python: ${PY}"
+          VENV_DIR="./.venv_test"
+          rm -rf "${VENV_DIR}"
+          ${PY} -m venv "${VENV_DIR}"
+          source "${VENV_DIR}/bin/activate"
+          python -m pip install --upgrade pip setuptools wheel
+
+          # Install from TestPyPI (use extra-index-url to allow dependencies from PyPI)
+          echo "Installing pyalp==${PYALP_VERSION} from TestPyPI"
+          python -m pip install --index-url https://test.pypi.org/simple/ --extra-index-url https://pypi.org/simple pyalp==${PYALP_VERSION} --no-deps -v
+
+          # Inspect installed package using the script moved out of the workflow
+          echo "Inspecting installed package"
+          python .github/scripts/inspect_installed_pyalp.py
+
+          # Run the smoke runner script for the backend for this matrix job
+          echo "Running backend smoke runner for ${BACKEND}"
+          python .github/scripts/run_backend_smoke_installed.py "${BACKEND}"
