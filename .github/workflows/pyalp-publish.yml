@@ -265,7 +265,7 @@ jobs:
           rm -rf "${VENV_DIR}"
           ${PY} -m venv "${VENV_DIR}"
           source "${VENV_DIR}/bin/activate"
-          python -m pip install --upgrade pip setuptools wheel
+          python -m pip install --upgrade pip setuptools wheel numpy
 
           # Install from TestPyPI (use extra-index-url to allow dependencies from PyPI)
           echo "Installing pyalp==${PYALP_VERSION} from TestPyPI"
