@@ -20,12 +20,9 @@ def run_smoke(backend_name: str) -> int:
     # Import backend module as pyalp.<backend_name>, fallback to top-level name
     try:
         m = importlib.import_module(f"pyalp.{backend_name}")
-    except Exception:
-        try:
-            m = importlib.import_module(backend_name)
-        except Exception as e:
-            print(f"Failed to import backend '{backend_name}': {e}", file=sys.stderr)
-            return 2
+    except Exception as e:
+        print(f"Failed to import backend 'pyalp.{backend_name}': {e}", file=sys.stderr)
+        return 2
 
     idata = np.array([0, 1, 2, 3, 3, 4, 2, 3, 3, 4, 1, 4, 1, 4, 4], dtype=np.int32)
     jdata = np.array([0, 1, 2, 3, 2, 2, 1, 4, 1, 1, 0, 3, 0, 3, 4], dtype=np.int32)
