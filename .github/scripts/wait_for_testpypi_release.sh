@@ -22,10 +22,25 @@ while [ $attempt -le $max_attempts ]; do
   # fetch JSON; tolerate transient network errors by not exiting on curl non-zero
   body=$(curl -sS --max-time 10 "${url}" || true)
   if [ -n "$body" ]; then
-    found=$(printf "%s" "$body" | python3 - <<PY
-import sys, json
-try:
-    j = json.load(sys.stdin)
+    found=$(printf "%s" "$body" | python3 -c "import sys, json; j = json.load(sys.stdin); releases = j.get('releases', {}); print('1' if '${ver}' in releases else '0')")
+    if [ "$found" = "1" ]; then
+      echo "Found ${pkg} ${ver} on TestPyPI"
+      exit 0
+    fi
+  else
+    echo "No response from TestPyPI (attempt ${attempt})"
+  fi
+
+  attempt=$((attempt + 1))
+  if [ $attempt -le $max_attempts ]; then
+    echo "Sleeping ${sleep_secs}s before retrying..."
+    sleep ${sleep_secs}
+  fi
+done
+
+echo "Timed out waiting for ${pkg}==${ver} on TestPyPI after ${max_attempts} attempts" >&2
+exit 1
+
     releases = j.get('releases', {})
     print('1' if '${ver}' in releases else '0')
 except Exception:
