@@ -53,3 +53,28 @@ def version():
         return metadata.version("pyalp")
     except Exception:
         return "0.0.0"
+
+
+# Expose available backend submodules (if present in the installed wheel) so users
+# can import them as `from pyalp import pyalp_ref` or access `pyalp.pyalp_ref`.
+_backend_candidates = ["pyalp_ref", "pyalp_omp", "pyalp_nonblocking", "_pyalp"]
+for _b in _backend_candidates:
+    try:
+        _m = importlib.import_module(f"{__package__}.{_b}")
+        globals()[_b] = _m
+        if _b not in __all__:
+            __all__.append(_b)
+    except Exception:
+        # ignore missing backends
+        continue
+    else:
+        # if imported successfully, also register a top-level alias so
+        # `import pyalp_ref` can work for users expecting the former layout.
+        try:
+            # ensure the module object is in globals
+            _mod = globals().get(_b)
+            if _mod is not None:
+                # register top-level module name to point to the submodule
+                sys.modules[_b] = _mod
+        except Exception:
+            pass
