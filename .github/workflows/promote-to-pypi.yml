@@ -1,0 +1,36 @@
+name: Promote release to PyPI
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Git tag / release to promote (e.g. pyalp.v0.8.14)'
+        required: true
+
+jobs:
+  promote:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout (for local scripts)
+        uses: actions/checkout@v4
+
+      - name: Download release assets
+        uses: softprops/action-download-release@v1
+        with:
+          tag: ${{ github.event.inputs.tag }}
+          # downloads into ./release_assets by default
+
+      - name: List downloaded assets
+        run: |
+          echo "Assets in release_assets:"
+          ls -la release_assets || true
+
+      - name: Publish to PyPI (alp-graphblas)
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          packages-dir: release_assets/
+        env:
+          TWINE_USERNAME: __token__
+          TWINE_PASSWORD: ${{ secrets.PYPI_API_TOKEN }}
