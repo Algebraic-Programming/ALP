@@ -292,6 +292,9 @@ jobs:
   publish-to-pypi:
     needs: verify-installed
     runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
     # This job publishes the already-built artifacts to the real PyPI index.
     # It requires a PyPI API token stored in the repository secrets as PYPI_API_TOKEN.
     steps:
