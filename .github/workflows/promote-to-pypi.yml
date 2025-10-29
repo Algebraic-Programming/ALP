@@ -59,6 +59,10 @@ jobs:
           echo "Assets in release_assets:"
           ls -la release_assets || true
 
+    - name: Show package name and version (diagnostic)
+    run: |
+      python -c "import importlib,importlib.util,sys,pathlib; spec=importlib.util.find_spec('tomllib') or importlib.util.find_spec('tomli'); name=spec.name if spec else sys.exit(print('No TOML parser available (tomllib/tomli), skipping')); toml=importlib.import_module(name); p=pathlib.Path('pyalp/pyproject.toml'); (sys.exit(print('pyalp/pyproject.toml not found at', p)) if not p.exists() else None); data=toml.loads(p.read_text()); proj=data.get('project',{}); print('project.name =', proj.get('name')); print('project.version =', proj.get('version'))"
+
       - name: Publish to PyPI (alp-graphblas)
         uses: pypa/gh-action-pypi-publish@release/v1
         with:
