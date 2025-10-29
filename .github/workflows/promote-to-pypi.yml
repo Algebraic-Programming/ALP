@@ -7,10 +7,19 @@ on:
         description: 'Git tag / release to promote (e.g. pyalp.v0.8.14)'
         required: true
 
+# Request OIDC id-token permissions at workflow level so actions can use
+# the GitHub Actions OIDC provider. The pypa publish action requires this
+# for trusted publisher flow when using repository-provided credentials.
+permissions:
+  id-token: write
+  contents: read
+
 jobs:
   promote:
     runs-on: ubuntu-latest
+    # Also explicitly request id-token at the job level to be extra clear.
     permissions:
+      id-token: write
       contents: read
     steps:
       - name: Checkout (for local scripts)
