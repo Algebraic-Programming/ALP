@@ -1,0 +1,323 @@
+name: alp-graphblas wheels (cibuildwheel)
+
+on:
+  push:
+    tags: [ 'pyalp.v*' ]
+  workflow_dispatch: {}
+
+jobs:
+  build-wheels:
+    name: Build wheels on ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    steps:
+      - name: Checkout (with submodules)
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          fetch-depth: 0
+
+      - name: Verify pinned pybind11 submodule commit
+        if: runner.os == 'Linux' || runner.os == 'macOS'
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ -f pyalp/PINNED_PYBIND11 ]; 
+          then
+            PINNED_SHA=$(tr -d '\n' < pyalp/PINNED_PYBIND11)
+          elif [ -f pyalp/extern/pybind11/PINNED_COMMIT ]; 
+          then
+            PINNED_SHA=$(tr -d '\n' < pyalp/extern/pybind11/PINNED_COMMIT)
+          else
+            echo "No pinned commit file found (pyalp/PINNED_PYBIND11 or pyalp/extern/pybind11/PINNED_COMMIT)" >&2
+            exit 2
+          fi
+          ACTUAL=$(git -C pyalp/extern/pybind11 rev-parse HEAD || true)
+          echo "Expected pybind11 commit: $PINNED_SHA"
+          echo "Found pybind11 commit: $ACTUAL"
+          test "$ACTUAL" = "$PINNED_SHA"
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install cibuildwheel
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install cibuildwheel==2.21.3
+
+      - name: Build wheels
+        env:
+          CIBW_BUILD: "cp39-* cp310-* cp311-* cp312-*"
+          CIBW_SKIP: "*-musllinux* pp*"
+          CIBW_ARCHS_LINUX: "x86_64"
+          CIBW_ARCHS_MACOS: "arm64"
+          CIBW_BUILD_VERBOSITY: "1"
+          # Ensure submodule headers are used by setup.py
+          CIBW_ENVIRONMENT: >
+            PYTHONUTF8=1
+          CIBW_ENVIRONMENT_MACOS: >
+            PYTHONUTF8=1
+            MACOSX_DEPLOYMENT_TARGET=15.0
+          # Prebuild the CMake-based extension via top-level CMake so all variables/options are defined.
+          CIBW_BEFORE_BUILD: |
+            python -m pip install --upgrade pip
+            python -m pip install cmake ninja
+            echo "[cibw] Working directory and contents:"; pwd; ls -la
+            echo "[cibw] Checking for pyalp CMakeLists:"; ls -la pyalp || true; if [ -f pyalp/CMakeLists.txt ]; 
+            then echo "found pyalp/CMakeLists.txt"; else echo "pyalp/CMakeLists.txt NOT found"; fi
+            # If the wrapper CMakeLists.txt wasn't copied (e.g., untracked file when cibuildwheel uses git ls-files), create a minimal shim
+            if [ ! -f pyalp/CMakeLists.txt ]; 
+            then
+              echo "[cibw] Creating pyalp/CMakeLists.txt shim (add_subdirectory(src)) for wheel build"
+              printf '%s\n' 'add_subdirectory(src)' > pyalp/CMakeLists.txt
+            fi
+            # Ensure no stale extension from a previous ABI remains in the source tree
+            rm -f pyalp/src/pyalp/_pyalp*.so || true
+            # Overwrite root setup.py inside the container to delegate packaging to pyalp/setup.py (keep git root clean)
+            printf '%s\n' "import os, runpy; ROOT=os.path.dirname(os.path.abspath(__file__)); PKG=os.path.join(ROOT, 'pyalp'); os.chdir(PKG); runpy.run_path(os.path.join(PKG, 'setup.py'), run_name='__main__')" > setup.py
+            # Configure from repository root; enable pyalp and choose NUMA setting per-platform
+            PYEXEC=$(python -c 'import sys; print(sys.executable)')
+            # Gather Git metadata and package version to pass into CMake so the
+            # generated runtime metadata contains accurate values even in CI.
+            # Prefer environment-provided values when available (GITHUB_SHA/REF_NAME)
+            ALP_GIT_COMMIT="${GITHUB_SHA:-$(git rev-parse --short HEAD)}"
+            # GITHUB_REF_NAME is available in Actions; fallback to git branch
+            ALP_GIT_BRANCH="${GITHUB_REF_NAME:-$(git rev-parse --abbrev-ref HEAD)}"
+            # Try to pick a semantic/alp version from tags (prefer nearest tag)
+            ALP_VERSION=$(git describe --tags --match "v*" --abbrev=0 2>/dev/null || true)
+            if [ -z "${ALP_VERSION}" ]; then
+              # Fall back to a describe-style value
+              ALP_VERSION=$(git describe --tags --match "v*" --always 2>/dev/null || echo "unknown")
+            fi
+            # Read the pyalp package version from pyalp/pyproject.toml (simple grep)
+            PYALP_VERSION=$(grep -E '^version\s*=\s*"' pyalp/pyproject.toml | head -n1 | sed -E 's/^version\s*=\s*"([^"]+)".*/\1/')
+            PYALP_VERSION=${PYALP_VERSION:-0.0.0}
+            echo "[cibw] Derived ALP_VERSION=${ALP_VERSION}, ALP_GIT_COMMIT=${ALP_GIT_COMMIT}, ALP_GIT_BRANCH=${ALP_GIT_BRANCH}, PYALP_VERSION=${PYALP_VERSION}"
+            # Use a per-ABI build directory to avoid cross-ABI contamination
+            ABI_TAG=$(python -c 'import sys; print(f"cp{sys.version_info[0]}{sys.version_info[1]}")')
+            BUILD_DIR="build/${ABI_TAG}"
+            # Export the per-ABI build dir so setup.py (inside the wheel build) can find
+            # the CMake-generated metadata file. cibuildwheel runs this before_build
+            # inside the container and environment variables exported here are visible
+            # to the subsequent packaging steps in that container.
+            export CMAKE_BUILD_DIR="${BUILD_DIR}"
+            echo "[cibw] Exported CMAKE_BUILD_DIR=${CMAKE_BUILD_DIR}"
+            # Enable NUMA on Linux runners (for linux wheels), keep disabled elsewhere.
+            if [ "$(uname -s)" = "Linux" ]; 
+            then
+              echo "[cibw] Linux build container detected — attempting to install NUMA dev libs"
+              # Try package managers commonly present in manylinux containers. Ignore failures
+              if command -v yum >/dev/null 2>&1; 
+              then
+                yum -y install numactl-devel || true
+              elif command -v apt-get >/dev/null 2>&1; 
+              then
+                apt-get update || true
+                apt-get install -y libnuma-dev || true
+              fi
+              NUMA_FLAG="-DWITH_NUMA=ON"
+            else
+              # On macOS install Homebrew libomp but do NOT export CPPFLAGS/LDFLAGS.
+              # Exporting CPPFLAGS was the cause of incorrect header ordering; instead
+              # pass a CMake prefix hint so FindOpenMP can locate libomp without
+              # prepending include paths to the global compiler invocation.
+              if command -v brew >/dev/null 2>&1; 
+              then
+                echo "[cibw] Homebrew detected — ensuring libomp is available"
+                # Only install if not already present to avoid reinstall warnings
+                if ! brew list libomp >/dev/null 2>&1; then
+                  brew install libomp
+                fi
+                
+                # Locate libomp installation
+                if [ -d "/opt/homebrew/opt/libomp" ]; then
+                  HOMEBREW_LIBOMP_DIR="/opt/homebrew/opt/libomp"
+                elif [ -d "/usr/local/opt/libomp" ]; then
+                  HOMEBREW_LIBOMP_DIR="/usr/local/opt/libomp"
+                else
+                  HOMEBREW_LIBOMP_DIR=""
+                fi
+                
+                if [ -n "${HOMEBREW_LIBOMP_DIR}" ]; then
+                  CMAKE_PREFIX_HINT="-DCMAKE_PREFIX_PATH=${HOMEBREW_LIBOMP_DIR}"
+                  echo "[cibw] Using libomp from ${HOMEBREW_LIBOMP_DIR}"
+                else
+                  CMAKE_PREFIX_HINT=""
+                fi
+              fi
+              NUMA_FLAG="-DWITH_NUMA=OFF"
+              # Set macOS deployment target for arm64 to match libomp requirement
+              export MACOSX_DEPLOYMENT_TARGET=15.0
+              OSX_DEPLOY_FLAG="-DCMAKE_OSX_DEPLOYMENT_TARGET=${MACOSX_DEPLOYMENT_TARGET}"
+            fi
+            # Clean build directory to prevent CMake caching issues
+            rm -rf "${BUILD_DIR}"
+            # On macOS, add flag to downgrade template keyword warning from error to warning
+            if [ "$(uname -s)" = "Darwin" ]; 
+            then
+              MACOS_FLAGS="-DCMAKE_CXX_FLAGS=-Wno-error=missing-template-arg-list-after-template-kw"
+            else
+              MACOS_FLAGS=""
+            fi
+            # For wheel builds, request portable flags (avoid -march=native) and disable
+            # interprocedural optimization (LTO) to improve portability of the produced wheels.
+            PORTABLE_FLAG="-DALP_PORTABLE_BUILD=ON"
+            LTO_FLAG="-DCMAKE_INTERPROCEDURAL_OPTIMIZATION=OFF"
+            # Only enable OMP and nonblocking backends on Linux runners where libomp
+            # and required build support are available. macOS wheels will build the
+            # stable reference backend only to avoid SDK/ABI compile issues.
+            if [ "$(uname -s)" = "Linux" ]; then
+              BACKEND_FLAGS="-DWITH_OMP_BACKEND=ON -DWITH_NONBLOCKING_BACKEND=ON"
+              BUILD_TARGETS="pyalp_ref pyalp_omp pyalp_nonblocking"
+            else
+              BACKEND_FLAGS="-DWITH_OMP_BACKEND=OFF -DWITH_NONBLOCKING_BACKEND=OFF"
+              BUILD_TARGETS="pyalp_ref"
+            fi
+
+            cmake -S . -B "${BUILD_DIR}" -G Ninja -DCMAKE_BUILD_TYPE=Release -DENABLE_PYALP=ON -DCMAKE_POSITION_INDEPENDENT_CODE=ON -DCMAKE_FIND_FRAMEWORK=NEVER ${MACOS_FLAGS} ${NUMA_FLAG} ${CMAKE_PREFIX_HINT:-} ${OSX_DEPLOY_FLAG:-} ${PORTABLE_FLAG} ${LTO_FLAG} ${BACKEND_FLAGS} -DPython3_EXECUTABLE="${PYEXEC}" -DALP_VERSION="${ALP_VERSION}" -DALP_GIT_COMMIT_SHA="${ALP_GIT_COMMIT}" -DALP_GIT_BRANCH="${ALP_GIT_BRANCH}" -Dpyalp_VERSION="${PYALP_VERSION}"
+            cmake --build "${BUILD_DIR}" --target ${BUILD_TARGETS} --parallel
+            # Debug: show the generated metadata file (if present) to the CI logs
+            echo "[cibw] Checking for generated metadata file: ${CMAKE_BUILD_DIR}/pyalp_metadata.py"
+            if [ -f "${CMAKE_BUILD_DIR}/pyalp_metadata.py" ]; then
+              echo "[cibw] Found metadata file:"; ls -l "${CMAKE_BUILD_DIR}/pyalp_metadata.py"
+              echo "[cibw] First 100 lines of metadata:"; sed -n '1,100p' "${CMAKE_BUILD_DIR}/pyalp_metadata.py" || true
+            else
+              echo "[cibw] Metadata file not found at ${CMAKE_BUILD_DIR}/pyalp_metadata.py"
+            fi
+        run: |
+          # Build from repository root so the full CMake project is available in the container
+          python -m cibuildwheel --output-dir wheelhouse .
+
+      - name: Upload wheels
+        uses: actions/upload-artifact@v4
+        with:
+          name: alp-graphblas-wheels-${{ matrix.os }}
+          path: wheelhouse/*.whl
+
+  publish:
+    needs: build-wheels
+    runs-on: ubuntu-latest
+    environment:
+      name: testpypi
+      url: https://test.pypi.org/p/alp-graphblas
+    permissions:
+      id-token: write
+      contents: write
+    steps:
+      - name: Checkout repository (for tests)
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Download all wheels
+        uses: actions/download-artifact@v4
+        with:
+          path: dist
+          pattern: alp-graphblas-wheels-*
+          merge-multiple: true
+      - name: Publish to TestPyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          repository-url: https://test.pypi.org/legacy/
+          packages-dir: dist/
+          verbose: true
+
+      - name: Create GitHub Release and upload wheels
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: ${{ github.ref_name }}
+          name: ${{ github.ref_name }}
+          files: dist/*.whl
+
+      - name: Skip in-publish verification
+        shell: bash
+        run: |
+          echo "Installation verification moved to 'verify-installed' job"
+
+  verify-installed:
+    needs: publish
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        backend: [pyalp_ref, pyalp_omp, pyalp_nonblocking, _pyalp]
+    steps:
+      - name: Checkout repository (for tests)
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Verify installed backend
+        shell: bash
+        env:
+          BACKEND: ${{ matrix.backend }}
+        run: |
+          set -euo pipefail
+          # Determine package version from pyalp/pyproject.toml
+          PYALP_VERSION=$(grep -E '^version\s*=\s*"' pyalp/pyproject.toml | head -n1 | sed -E 's/^version\s*=\s*"([^\"]+)".*/\1/')
+          echo "Testing alp-graphblas version: ${PYALP_VERSION}"
+
+          PY=$(which python3 || which python)
+          echo "Using python: ${PY}"
+          VENV_DIR="./.venv_test"
+          rm -rf "${VENV_DIR}"
+          ${PY} -m venv "${VENV_DIR}"
+          source "${VENV_DIR}/bin/activate"
+          python -m pip install --upgrade pip setuptools wheel numpy
+
+          # Wait for the published package to propagate to TestPyPI, then install
+          echo "Waiting for alp-graphblas==${PYALP_VERSION} to appear on TestPyPI"
+          .github/scripts/wait_for_testpypi_release.sh alp-graphblas "${PYALP_VERSION}" 18 10
+          echo "Installing alp-graphblas==${PYALP_VERSION} from TestPyPI"
+          python -m pip install --index-url https://test.pypi.org/simple/ --extra-index-url https://pypi.org/simple alp-graphblas==${PYALP_VERSION} --no-deps -v
+
+          # Inspect installed package using the script moved out of the workflow
+          echo "Inspecting installed package"
+          python .github/scripts/inspect_installed_pyalp.py
+
+          # Run the smoke runner script for the backend for this matrix job
+          echo "Running backend smoke runner for ${BACKEND}"
+          python .github/scripts/run_backend_smoke_installed.py "${BACKEND}"
+
+  publish-to-pypi:
+    # Disabled by default to avoid triggering PyPI uploads from this workflow.
+    # PyPI publisher was configured to accept uploads from `promote-to-pypi.yml`.
+    # Keep the job present for maintainers, but skip execution unless intentionally enabled.
+    if: false
+    needs: verify-installed
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+    # This job publishes the already-built artifacts to the real PyPI index.
+    # It requires a PyPI API token stored in the repository secrets as PYPI_API_TOKEN.
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Download built wheels
+        uses: actions/download-artifact@v4
+        with:
+          path: dist
+          pattern: alp-graphblas-wheels-*
+          merge-multiple: true
+
+      - name: Publish to PyPI (alp-graphblas)
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          packages-dir: dist/
+        env:
+          TWINE_USERNAME: __token__
+          TWINE_PASSWORD: ${{ secrets.PYPI_API_TOKEN }}
