@@ -207,6 +207,7 @@ jobs:
       url: https://test.pypi.org/p/pyalp
     permissions:
       id-token: write
+      contents: write
     steps:
       - name: Checkout repository (for tests)
         uses: actions/checkout@v4
@@ -225,6 +226,13 @@ jobs:
           repository-url: https://test.pypi.org/legacy/
           packages-dir: dist/
           verbose: true
+
+      - name: Create GitHub Release and upload wheels
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: ${{ github.ref_name }}
+          name: ${{ github.ref_name }}
+          files: dist/*.whl
 
       - name: Skip in-publish verification
         shell: bash
@@ -280,3 +288,29 @@ jobs:
           # Run the smoke runner script for the backend for this matrix job
           echo "Running backend smoke runner for ${BACKEND}"
           python .github/scripts/run_backend_smoke_installed.py "${BACKEND}"
+
+  publish-to-pypi:
+    needs: verify-installed
+    runs-on: ubuntu-latest
+    # This job publishes the already-built artifacts to the real PyPI index.
+    # It requires a PyPI API token stored in the repository secrets as PYPI_API_TOKEN.
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Download built wheels
+        uses: actions/download-artifact@v4
+        with:
+          path: dist
+          pattern: pyalp-wheels-*
+          merge-multiple: true
+
+      - name: Publish to PyPI (alp-graphblas)
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          packages-dir: dist/
+        env:
+          TWINE_USERNAME: __token__
+          TWINE_PASSWORD: ${{ secrets.PYPI_API_TOKEN }}
