@@ -8,12 +8,22 @@ Quick start
 -----------
 
 Create and activate a virtual environment, then install the package (example
-using TestPyPI):
+using PyPI (recommended):
 
 ```bash
 python -m venv venv
 source venv/bin/activate
-pip install --index-url https://test.pypi.org/simple/ --no-deps pyalp
+pip install alp-graphblas
+```
+
+If you want to try a pre-release from TestPyPI instead, use the TestPyPI
+index but install the same package name `alp-graphblas` (pip will pull the
+package and its dependencies from the given index):
+
+```bash
+python -m venv venv
+source venv/bin/activate
+pip install --index-url https://test.pypi.org/simple/ --extra-index-url https://pypi.org/simple alp-graphblas
 ```
 
 Basic usage
@@ -26,14 +36,10 @@ that expose parts of the ALP GraphBLAS project via pybind11.
 Quick start
 -----------
 
-Create and activate a virtual environment, then install the package (example
-using TestPyPI):
-
-```bash
-python -m venv venv
-source venv/bin/activate
-pip install --index-url https://test.pypi.org/simple/ --extra-index-url https://pypi.org/simple pyalp
-```
+Create and activate a virtual environment, then install the published package
+`alp-graphblas` from PyPI or TestPyPI as shown above. Note: the import name
+inside Python remains `pyalp` (the package provides the `pyalp` module), so
+your code still does `import pyalp` after installation.
 
 Basic usage
 -----------
