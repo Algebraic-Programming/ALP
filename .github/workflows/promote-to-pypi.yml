@@ -6,6 +6,9 @@ on:
       tag:
         description: 'Git tag / release to promote (e.g. pyalp.v0.8.14)'
         required: true
+  push:
+    tags:
+      - 'pyalp.v*'
 
 # Request OIDC id-token permissions at workflow level so actions can use
 # the GitHub Actions OIDC provider. The pypa publish action requires this
@@ -17,6 +20,10 @@ permissions:
 jobs:
   promote:
     runs-on: ubuntu-latest
+    # Require approval from the `production` environment before the job can
+    # access environment-scoped secrets (e.g. the PyPI API token). Create the
+    # environment in the repository settings and add the secret `PYPI_API_TOKEN`.
+    environment: production
     # Also explicitly request id-token at the job level to be extra clear.
     permissions:
       id-token: write
@@ -28,7 +35,8 @@ jobs:
       - name: Download release assets
         uses: softprops/action-download-release@v1
         with:
-          tag: ${{ github.event.inputs.tag }}
+          # Accept tag from workflow_dispatch input OR from the push event's ref name
+          tag: ${{ github.event.inputs.tag || github.ref_name }}
           # downloads into ./release_assets by default
 
       - name: List downloaded assets
