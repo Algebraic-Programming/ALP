@@ -3,8 +3,8 @@ requires = ["setuptools>=61.0", "wheel", "pybind11>=2.6"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "pyalp"
-version = "0.8.25"
+name = "alp-graphblas"
+version = "0.8.26"
 description = "Python bindings for ALP GraphBLAS (minimal package layout)"
 authors = [ { name = "ALP" } ]
 readme = "README.md"
