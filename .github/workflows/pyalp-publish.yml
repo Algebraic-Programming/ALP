@@ -290,6 +290,10 @@ jobs:
           python .github/scripts/run_backend_smoke_installed.py "${BACKEND}"
 
   publish-to-pypi:
+    # Disabled by default to avoid triggering PyPI uploads from this workflow.
+    # PyPI publisher was configured to accept uploads from `promote-to-pypi.yml`.
+    # Keep the job present for maintainers, but skip execution unless intentionally enabled.
+    if: false
     needs: verify-installed
     runs-on: ubuntu-latest
     permissions:
