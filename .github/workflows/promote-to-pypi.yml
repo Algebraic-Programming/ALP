@@ -32,12 +32,27 @@ jobs:
       - name: Checkout (for local scripts)
         uses: actions/checkout@v4
 
-      - name: Download release assets
-        uses: softprops/action-download-release@v1
-        with:
-          # Accept tag from workflow_dispatch input OR from the push event's ref name
-          tag: ${{ github.event.inputs.tag || github.ref_name }}
-          # downloads into ./release_assets by default
+      - name: Download release assets (via GitHub API)
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+          TAG: ${{ github.event.inputs.tag || github.ref_name }}
+        run: |
+          set -euo pipefail
+          echo "Downloading release assets for ${REPO} tag ${TAG}"
+          mkdir -p release_assets
+          # Fetch release metadata for the tag
+          release_json=$(curl -sSf -H "Authorization: Bearer ${GITHUB_TOKEN}" "https://api.github.com/repos/${REPO}/releases/tags/${TAG}")
+          if [ -z "${release_json}" ]; then
+            echo "No release metadata found for tag ${TAG}" >&2
+            exit 1
+          fi
+          # Iterate assets and download each one using the assets API (requires Accept header)
+          echo "$release_json" | jq -r '.assets[] | [.id, .name] | @tsv' | while IFS=$'\t' read -r id name; do
+            echo "Downloading asset: ${name} (id ${id})"
+            curl -sSfL -H "Authorization: Bearer ${GITHUB_TOKEN}" -H "Accept: application/octet-stream" "https://api.github.com/repos/${REPO}/releases/assets/${id}" -o "release_assets/${name}"
+          done
+          echo "Downloaded files:" && ls -la release_assets || true
 
       - name: List downloaded assets
         run: |
