@@ -42,10 +42,11 @@ jobs:
           echo "Downloading release assets for ${REPO} tag ${TAG}"
           mkdir -p release_assets
           # Fetch release metadata for the tag
-          release_json=$(curl -sSf -H "Authorization: Bearer ${GITHUB_TOKEN}" "https://api.github.com/repos/${REPO}/releases/tags/${TAG}")
-          if [ -z "${release_json}" ]; then
-            echo "No release metadata found for tag ${TAG}" >&2
-            exit 1
+          release_json=$(curl -sS -H "Authorization: Bearer ${GITHUB_TOKEN}" "https://api.github.com/repos/${REPO}/releases/tags/${TAG}" || true)
+          if [ -z "${release_json}" ] || [ "${release_json}" = "null" ]; then
+            echo "No release metadata found for tag ${TAG}; nothing to download. Skipping publish."
+            mkdir -p release_assets
+            exit 0
           fi
           # Iterate assets and download each one using the assets API (requires Accept header)
           echo "$release_json" | jq -r '.assets[] | [.id, .name] | @tsv' | while IFS=$'\t' read -r id name; do
@@ -58,11 +59,24 @@ jobs:
         run: |
           echo "Assets in release_assets:"
           ls -la release_assets || true
+      - name: Check for wheel assets
+        id: assets_check
+        run: |
+          set -euo pipefail
+          mkdir -p release_assets
+          count=0
+          # Count wheel files (if any). Use glob safely.
+          shopt -s nullglob || true
+          files=(release_assets/*.whl)
+          count=${#files[@]}
+          echo "Found $count .whl files in release_assets"
+          echo "asset_count=$count" >> $GITHUB_OUTPUT
       - name: Show package name and version (diagnostic)
         run: |
           python -c "import importlib,importlib.util,sys,pathlib; spec=importlib.util.find_spec('tomllib') or importlib.util.find_spec('tomli'); name=spec.name if spec else sys.exit(print('No TOML parser available (tomllib/tomli), skipping')); toml=importlib.import_module(name); p=pathlib.Path('pyalp/pyproject.toml'); (sys.exit(print('pyalp/pyproject.toml not found at', p)) if not p.exists() else None); data=toml.loads(p.read_text()); proj=data.get('project',{}); print('project.name =', proj.get('name')); print('project.version =', proj.get('version'))"
 
       - name: Publish to PyPI (alp-graphblas)
+        if: ${{ steps.assets_check.outputs.asset_count != '0' }}
         uses: pypa/gh-action-pypi-publish@release/v1
         with:
           packages-dir: release_assets/
