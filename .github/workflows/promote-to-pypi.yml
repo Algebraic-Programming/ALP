@@ -48,6 +48,14 @@ jobs:
             mkdir -p release_assets
             exit 0
           fi
+          # If there are no assets, skip downloading to avoid jq iterating over null
+          assets_len=$(echo "$release_json" | jq '.assets | length // 0')
+          if [ "$assets_len" -eq 0 ]; then
+            echo "Release ${TAG} has no assets (assets length = ${assets_len}); skipping download and publish."
+            mkdir -p release_assets
+            exit 0
+          fi
+
           # Iterate assets and download each one using the assets API (requires Accept header)
           echo "$release_json" | jq -r '.assets[] | [.id, .name] | @tsv' | while IFS=$'\t' read -r id name; do
             echo "Downloading asset: ${name} (id ${id})"
