@@ -11,40 +11,6 @@
 
 namespace py = pybind11;
 
-// using BaseScalarType = double;
-// #ifdef _CG_COMPLEX
-//  using ScalarType = std::complex< BaseScalarType >;
-// #else
-//  using ScalarType = BaseScalarType;
-// #endif
-
-// /** Parser type */
-// typedef grb::utils::MatrixFileReader<
-// 	ScalarType,
-// 	std::conditional<
-// 		(sizeof(grb::config::RowIndexType) > sizeof(grb::config::ColIndexType)),
-// 		grb::config::RowIndexType,
-// 		grb::config::ColIndexType
-// 	>::type
-// > Parser;
-
-// /** Nonzero type */
-// typedef grb::internal::NonzeroStorage<
-// 	grb::config::RowIndexType,
-// 	grb::config::ColIndexType,
-// 	ScalarType
-// > NonzeroT;
-
-// /** In-memory storage type */
-// typedef grb::utils::Singleton<
-// 	std::pair<
-// 		// stores n and nz (according to parser)
-// 		std::pair< size_t, size_t >,
-// 		// stores the actual nonzeroes
-// 		std::vector< NonzeroT >
-// 	>
-// > Storage;
-
 template<
     typename IntType
     , typename ScalarType

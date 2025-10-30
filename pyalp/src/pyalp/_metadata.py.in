@@ -16,7 +16,7 @@ _build_metadata = {
     "alp_git_branch": "@ALP_GIT_BRANCH@",
     "python_version": "@PYTHON_VERSION@",
     "pybind11_version": "@pybind11_VERSION@",
-    "license": "BSD-3-Clause",
+    "license": "@ALP_LICENSE@",
     "homepage": "https://github.com/Algebraic-Programming/graphblas",
 }
 
@@ -24,6 +24,9 @@ _algorithm_metadata = {
     "algorithms": "@pyalp_ALGORITHMS@",
     "backends": "@pyalp_BACKENDS@",
 }
+
+# README content (may be large); inserted as a Python triple-quoted string.
+_algorithm_metadata["readme"] = """@PYALP_README_ESCAPED@"""
 
 
 def get_build_metadata():

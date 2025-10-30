@@ -1,8 +1,9 @@
 cmake_minimum_required(VERSION 3.14)
 project(pyalp_bindings LANGUAGES CXX)
 
-pybind11_add_module(_pyalp bindings.cpp ../matrix_wrappers.hpp ../utils.hpp ../vector_wrappers.hpp ../conjugate_gradient.hpp)
+pybind11_add_module(_pyalp module_entry.cpp ../matrix_wrappers.hpp ../utils.hpp ../vector_wrappers.hpp ../conjugate_gradient.hpp)
 target_compile_definitions(_pyalp PRIVATE PYALP_MODULE_NAME=_pyalp)
+target_compile_definitions(_pyalp PRIVATE PYALP_MODULE_LOCAL=1)
 set_target_properties(_pyalp PROPERTIES CXX_STANDARD 14 CXX_STANDARD_REQUIRED YES)
 target_include_directories(_pyalp PRIVATE ${CMAKE_SOURCE_DIR}/include ${CMAKE_CURRENT_SOURCE_DIR}/..)
 

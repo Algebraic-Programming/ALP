@@ -29,25 +29,7 @@ PYBIND11_MODULE(PYALP_MODULE_NAME, m) {
 	}),
 	     py::arg("m"), py::arg("n"),
 	     py::arg("i_array"), py::arg("j_array"), py::arg("k_array"));
-    // simple constructor
-    // .def(py::init([](size_t m, size_t n,
-    //                  py::array_t<size_t> data1,
-    //                  py::array_t<size_t> data2,
-    //                  py::array_t<ScalarType> data3) {
-    //     grb::Matrix< ScalarType > mat(m, n); // call the basic constructor
-    //     buildMatrix<size_t>(mat, data1, data2, data3); // initialize with data
-    //     return mat;
-    // }),
-    //      py::arg("m"), py::arg("n"),
-    //      py::arg("i_array"), py::arg("j_array"), py::arg("k_array")
-    //     )
-
-    // add some existing things
-        // .def("get", &Matrix::get)
-        // .def("set", &Matrix::set)
-        // .def("rows", &Matrix::rows)
-        // .def("cols", &Matrix::cols)
-	; //
+         
     py::class_<grb::Vector< ScalarType >>(m, "Vector")
 	.def(py::init<size_t>())
 	.def(py::init([](size_t m,

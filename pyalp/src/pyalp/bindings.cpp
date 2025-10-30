@@ -18,7 +18,7 @@ namespace py = pybind11;
 PYBIND11_MODULE(PYALP_MODULE_NAME, m) {
     // Common bindings for all backends (kept minimal here)
     m.def("backend_name", [](){ return "backend"; });
-    py::class_<grb::Matrix< ScalarType >>(m, "Matrix")
+    py::class_<grb::Matrix< ScalarType >>(m, "Matrix", py::module_local())
     .def(py::init([](size_t m_, size_t n_,
             py::array data1,
             py::array data2,
@@ -28,7 +28,7 @@ PYBIND11_MODULE(PYALP_MODULE_NAME, m) {
      py::arg("m"), py::arg("n"),
      py::arg("i_array"), py::arg("j_array"), py::arg("k_array"));
 
-    py::class_<grb::Vector< ScalarType >>(m, "Vector")
+    py::class_<grb::Vector< ScalarType >>(m, "Vector", py::module_local())
     .def(py::init<size_t>())
     .def(py::init([](size_t m,
                          py::array_t<ScalarType> data3) {

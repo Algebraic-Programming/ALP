@@ -30,8 +30,11 @@ assert_defined_variables( WITH_REFERENCE_BACKEND WITH_OMP_BACKEND )
 if( WITH_REFERENCE_BACKEND )
 	set(PYALP_MODULE_NAME pyalp_ref)
 
-	pybind11_add_module( ${PYALP_MODULE_NAME} pyalp.cpp conjugate_gradient.hpp matrix_wrappers.hpp utils.hpp vector_wrappers.hpp )
+	pybind11_add_module( ${PYALP_MODULE_NAME} pyalp/module_entry.cpp conjugate_gradient.hpp matrix_wrappers.hpp utils.hpp vector_wrappers.hpp )
 	target_compile_definitions(${PYALP_MODULE_NAME} PRIVATE PYALP_MODULE_NAME=${PYALP_MODULE_NAME})
+	target_compile_definitions(${PYALP_MODULE_NAME} PRIVATE PYALP_MODULE_LOCAL=0)
+	# Ensure compiler can find headers placed under pyalp/src and pyalp/src/pyalp
+	target_include_directories(${PYALP_MODULE_NAME} PRIVATE ${CMAKE_SOURCE_DIR}/include ${CMAKE_CURRENT_SOURCE_DIR} ${CMAKE_CURRENT_SOURCE_DIR}/pyalp)
 	# Link your required libraries
 	target_link_libraries(${PYALP_MODULE_NAME} PRIVATE backend_shmem_shared backend_reference common_flags)
 	# If OpenMP support is available, ensure the module links the OpenMP imported target
@@ -61,8 +64,10 @@ endif()
 if( WITH_OMP_BACKEND )
 	set(PYALP_MODULE_NAME pyalp_omp)
 
-	pybind11_add_module( ${PYALP_MODULE_NAME} pyalp.cpp conjugate_gradient.hpp matrix_wrappers.hpp utils.hpp vector_wrappers.hpp )
+	pybind11_add_module( ${PYALP_MODULE_NAME} pyalp/module_entry.cpp conjugate_gradient.hpp matrix_wrappers.hpp utils.hpp vector_wrappers.hpp )
 	target_compile_definitions( ${PYALP_MODULE_NAME} PRIVATE PYALP_MODULE_NAME=${PYALP_MODULE_NAME})
+	target_compile_definitions(${PYALP_MODULE_NAME} PRIVATE PYALP_MODULE_LOCAL=0)
+	target_include_directories(${PYALP_MODULE_NAME} PRIVATE ${CMAKE_SOURCE_DIR}/include ${CMAKE_CURRENT_SOURCE_DIR} ${CMAKE_CURRENT_SOURCE_DIR}/pyalp)
 	# Link your required libraries
 	target_link_libraries(${PYALP_MODULE_NAME} PRIVATE backend_shmem_shared backend_reference_omp common_flags)
 	# If OpenMP support is available, ensure the module links the OpenMP imported target
@@ -87,8 +92,10 @@ endif()
 if( WITH_NONBLOCKING_BACKEND )
 	set(PYALP_MODULE_NAME pyalp_nonblocking)
 
-	pybind11_add_module( ${PYALP_MODULE_NAME} pyalp.cpp conjugate_gradient.hpp matrix_wrappers.hpp utils.hpp vector_wrappers.hpp )
+	pybind11_add_module( ${PYALP_MODULE_NAME} pyalp/module_entry.cpp conjugate_gradient.hpp matrix_wrappers.hpp utils.hpp vector_wrappers.hpp )
 	target_compile_definitions( ${PYALP_MODULE_NAME} PRIVATE PYALP_MODULE_NAME=${PYALP_MODULE_NAME})
+	target_compile_definitions(${PYALP_MODULE_NAME} PRIVATE PYALP_MODULE_LOCAL=0)
+	target_include_directories(${PYALP_MODULE_NAME} PRIVATE ${CMAKE_SOURCE_DIR}/include ${CMAKE_CURRENT_SOURCE_DIR} ${CMAKE_CURRENT_SOURCE_DIR}/pyalp)
 	# Link your required libraries
 	target_link_libraries(${PYALP_MODULE_NAME} PRIVATE backend_shmem_shared backend_reference_omp common_flags)
 	# If OpenMP support is available, ensure the module links the OpenMP imported target
@@ -117,15 +124,73 @@ if(NOT DEFINED pyalp_VERSION)
 endif()
 if(NOT DEFINED ALP_VERSION)
     set(ALP_VERSION "unknown")
+	# If the top-level project provided ALP_VERSION (cached) this will be used.
+	# Otherwise keep 'unknown'. When building from the top-level CMakeLists
+	# ALP_VERSION should already be set via cache.
+	if(DEFINED ALP_VERSION)
+		# already defined (likely cached) — keep it
+	else()
+		set(ALP_VERSION "unknown")
+	endif()
 endif()
 if(NOT DEFINED ALP_BUILD_TYPE)
     set(ALP_BUILD_TYPE "unknown")
+	# Use CMAKE_BUILD_TYPE as the ALP build type unless explicitly supplied
+	if(DEFINED CMAKE_BUILD_TYPE)
+		set(ALP_BUILD_TYPE "${CMAKE_BUILD_TYPE}")
+	else()
+		set(ALP_BUILD_TYPE "unknown")
+	endif()
 endif()
 if(NOT DEFINED ALP_GIT_COMMIT_SHA)
     set(ALP_GIT_COMMIT_SHA "unknown")
 endif()
 if(NOT DEFINED ALP_GIT_BRANCH)
     set(ALP_GIT_BRANCH "unknown")
+endif()
+
+# Determine repository license (simple heuristic from LICENSE file) if not provided
+if(NOT DEFINED ALP_LICENSE)
+	if(EXISTS "${CMAKE_SOURCE_DIR}/LICENSE")
+		file(READ "${CMAKE_SOURCE_DIR}/LICENSE" ALP_LICENSE_RAW)
+		string(FIND "${ALP_LICENSE_RAW}" "Apache" _has_apache)
+		if(_has_apache GREATER -1)
+			set(ALP_LICENSE "Apache-2.0")
+		else()
+			string(FIND "${ALP_LICENSE_RAW}" "BSD" _has_bsd)
+			if(_has_bsd GREATER -1)
+				set(ALP_LICENSE "BSD-3-Clause")
+			else()
+				set(ALP_LICENSE "unknown")
+			endif()
+		endif()
+	else()
+		set(ALP_LICENSE "unknown")
+	endif()
+endif()
+
+# If a top-level README.md exists, read it and make it available to the
+# metadata template. We escape triple quotes so the Python triple-quoted
+# string in the template remains valid.
+if(EXISTS "${CMAKE_SOURCE_DIR}/README.md")
+	file(READ "${CMAKE_SOURCE_DIR}/README.md" PYALP_README_RAW)
+	# Escape triple-quotes to avoid breaking the Python triple-quoted string
+	string(REPLACE "\"\"\"" "\\\"\\\"\\\"" PYALP_README_ESCAPED "${PYALP_README_RAW}")
+else()
+	set(PYALP_README_ESCAPED "")
+endif()
+if(EXISTS "${CMAKE_SOURCE_DIR}/pyalp/README.md")
+	file(READ "${CMAKE_SOURCE_DIR}/pyalp/README.md" PYALP_README_RAW)
+elseif(EXISTS "${CMAKE_SOURCE_DIR}/README.md")
+	file(READ "${CMAKE_SOURCE_DIR}/README.md" PYALP_README_RAW)
+else()
+	set(PYALP_README_ESCAPED "")
+endif()
+if(DEFINED PYALP_README_RAW)
+	# Escape triple-quotes to avoid breaking the Python triple-quoted string
+	string(REPLACE "\"\"\"" "\\\"\\\"\\\"" PYALP_README_ESCAPED "${PYALP_README_RAW}")
+else()
+	set(PYALP_README_ESCAPED "")
 endif()
 
 # Get Python and pybind11 versions
@@ -140,6 +205,8 @@ set(pyalp_BACKENDS "reference, reference_omp")
 # Configure the metadata file from the template
 set(METADATA_TEMPLATE "${CMAKE_CURRENT_SOURCE_DIR}/pyalp/_metadata.py.in")
 set(METADATA_OUTPUT "${CMAKE_BINARY_DIR}/pyalp_metadata.py")
+# Make the README content available as @PYALP_README_ESCAPED@ to the
+# template (CMake configure_file will perform the substitution).
 configure_file(${METADATA_TEMPLATE} ${METADATA_OUTPUT} @ONLY)
 
 # This command is useful for debugging inside a cibuildwheel container

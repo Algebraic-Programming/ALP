@@ -1,4 +1,4 @@
-name: pyalp wheels (cibuildwheel)
+name: alp-graphblas wheels (cibuildwheel)
 
 on:
   push:
@@ -82,6 +82,22 @@ jobs:
             printf '%s\n' "import os, runpy; ROOT=os.path.dirname(os.path.abspath(__file__)); PKG=os.path.join(ROOT, 'pyalp'); os.chdir(PKG); runpy.run_path(os.path.join(PKG, 'setup.py'), run_name='__main__')" > setup.py
             # Configure from repository root; enable pyalp and choose NUMA setting per-platform
             PYEXEC=$(python -c 'import sys; print(sys.executable)')
+            # Gather Git metadata and package version to pass into CMake so the
+            # generated runtime metadata contains accurate values even in CI.
+            # Prefer environment-provided values when available (GITHUB_SHA/REF_NAME)
+            ALP_GIT_COMMIT="${GITHUB_SHA:-$(git rev-parse --short HEAD)}"
+            # GITHUB_REF_NAME is available in Actions; fallback to git branch
+            ALP_GIT_BRANCH="${GITHUB_REF_NAME:-$(git rev-parse --abbrev-ref HEAD)}"
+            # Try to pick a semantic/alp version from tags (prefer nearest tag)
+            ALP_VERSION=$(git describe --tags --match "v*" --abbrev=0 2>/dev/null || true)
+            if [ -z "${ALP_VERSION}" ]; then
+              # Fall back to a describe-style value
+              ALP_VERSION=$(git describe --tags --match "v*" --always 2>/dev/null || echo "unknown")
+            fi
+            # Read the pyalp package version from pyalp/pyproject.toml (simple grep)
+            PYALP_VERSION=$(grep -E '^version\s*=\s*"' pyalp/pyproject.toml | head -n1 | sed -E 's/^version\s*=\s*"([^"]+)".*/\1/')
+            PYALP_VERSION=${PYALP_VERSION:-0.0.0}
+            echo "[cibw] Derived ALP_VERSION=${ALP_VERSION}, ALP_GIT_COMMIT=${ALP_GIT_COMMIT}, ALP_GIT_BRANCH=${ALP_GIT_BRANCH}, PYALP_VERSION=${PYALP_VERSION}"
             # Use a per-ABI build directory to avoid cross-ABI contamination
             ABI_TAG=$(python -c 'import sys; print(f"cp{sys.version_info[0]}{sys.version_info[1]}")')
             BUILD_DIR="build/${ABI_TAG}"
@@ -152,8 +168,19 @@ jobs:
             # interprocedural optimization (LTO) to improve portability of the produced wheels.
             PORTABLE_FLAG="-DALP_PORTABLE_BUILD=ON"
             LTO_FLAG="-DCMAKE_INTERPROCEDURAL_OPTIMIZATION=OFF"
-            cmake -S . -B "${BUILD_DIR}" -G Ninja -DCMAKE_BUILD_TYPE=Release -DENABLE_PYALP=ON -DCMAKE_POSITION_INDEPENDENT_CODE=ON -DCMAKE_FIND_FRAMEWORK=NEVER ${MACOS_FLAGS} ${NUMA_FLAG} ${CMAKE_PREFIX_HINT:-} ${OSX_DEPLOY_FLAG:-} ${PORTABLE_FLAG} ${LTO_FLAG} -DPython3_EXECUTABLE="${PYEXEC}"
-            cmake --build "${BUILD_DIR}" --target pyalp_ref --parallel
+            # Only enable OMP and nonblocking backends on Linux runners where libomp
+            # and required build support are available. macOS wheels will build the
+            # stable reference backend only to avoid SDK/ABI compile issues.
+            if [ "$(uname -s)" = "Linux" ]; then
+              BACKEND_FLAGS="-DWITH_OMP_BACKEND=ON -DWITH_NONBLOCKING_BACKEND=ON"
+              BUILD_TARGETS="pyalp_ref pyalp_omp pyalp_nonblocking"
+            else
+              BACKEND_FLAGS="-DWITH_OMP_BACKEND=OFF -DWITH_NONBLOCKING_BACKEND=OFF"
+              BUILD_TARGETS="pyalp_ref"
+            fi
+
+            cmake -S . -B "${BUILD_DIR}" -G Ninja -DCMAKE_BUILD_TYPE=Release -DENABLE_PYALP=ON -DCMAKE_POSITION_INDEPENDENT_CODE=ON -DCMAKE_FIND_FRAMEWORK=NEVER ${MACOS_FLAGS} ${NUMA_FLAG} ${CMAKE_PREFIX_HINT:-} ${OSX_DEPLOY_FLAG:-} ${PORTABLE_FLAG} ${LTO_FLAG} ${BACKEND_FLAGS} -DPython3_EXECUTABLE="${PYEXEC}" -DALP_VERSION="${ALP_VERSION}" -DALP_GIT_COMMIT_SHA="${ALP_GIT_COMMIT}" -DALP_GIT_BRANCH="${ALP_GIT_BRANCH}" -Dpyalp_VERSION="${PYALP_VERSION}"
+            cmake --build "${BUILD_DIR}" --target ${BUILD_TARGETS} --parallel
             # Debug: show the generated metadata file (if present) to the CI logs
             echo "[cibw] Checking for generated metadata file: ${CMAKE_BUILD_DIR}/pyalp_metadata.py"
             if [ -f "${CMAKE_BUILD_DIR}/pyalp_metadata.py" ]; then
@@ -169,21 +196,130 @@ jobs:
       - name: Upload wheels
         uses: actions/upload-artifact@v4
         with:
-          name: pyalp-wheels-${{ matrix.os }}
+          name: alp-graphblas-wheels-${{ matrix.os }}
           path: wheelhouse/*.whl
 
-  # Placeholder for publish job; enable when versioning is PEP 440 compliant
-  # publish:
-  #   needs: build-wheels
-  #   runs-on: ubuntu-latest
-  #   permissions:
-  #     id-token: write
-  #   steps:
-  #     - name: Download wheels
-  #       uses: actions/download-artifact@v4
-  #       with:
-  #         path: dist
-  #     - name: Publish to PyPI
-  #       uses: pypa/gh-action-pypi-publish@release/v1
-  #       with:
-  #         packages-dir: dist
+  publish:
+    needs: build-wheels
+    runs-on: ubuntu-latest
+    environment:
+      name: testpypi
+      url: https://test.pypi.org/p/alp-graphblas
+    permissions:
+      id-token: write
+      contents: write
+    steps:
+      - name: Checkout repository (for tests)
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Download all wheels
+        uses: actions/download-artifact@v4
+        with:
+          path: dist
+          pattern: alp-graphblas-wheels-*
+          merge-multiple: true
+      - name: Publish to TestPyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          repository-url: https://test.pypi.org/legacy/
+          packages-dir: dist/
+          verbose: true
+
+      - name: Create GitHub Release and upload wheels
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: ${{ github.ref_name }}
+          name: ${{ github.ref_name }}
+          files: dist/*.whl
+
+      - name: Skip in-publish verification
+        shell: bash
+        run: |
+          echo "Installation verification moved to 'verify-installed' job"
+
+  verify-installed:
+    needs: publish
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        backend: [pyalp_ref, pyalp_omp, pyalp_nonblocking, _pyalp]
+    steps:
+      - name: Checkout repository (for tests)
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Verify installed backend
+        shell: bash
+        env:
+          BACKEND: ${{ matrix.backend }}
+        run: |
+          set -euo pipefail
+          # Determine package version from pyalp/pyproject.toml
+          PYALP_VERSION=$(grep -E '^version\s*=\s*"' pyalp/pyproject.toml | head -n1 | sed -E 's/^version\s*=\s*"([^\"]+)".*/\1/')
+          echo "Testing alp-graphblas version: ${PYALP_VERSION}"
+
+          PY=$(which python3 || which python)
+          echo "Using python: ${PY}"
+          VENV_DIR="./.venv_test"
+          rm -rf "${VENV_DIR}"
+          ${PY} -m venv "${VENV_DIR}"
+          source "${VENV_DIR}/bin/activate"
+          python -m pip install --upgrade pip setuptools wheel numpy
+
+          # Short sleep to allow TestPyPI to propagate the newly uploaded files
+          # before attempting the install. Keep logic minimal to reduce workflow
+          # complexity (the previous retry loop was removed per request).
+          echo "Sleeping 60s to allow TestPyPI propagation before install..."
+          sleep 60
+          echo "Installing alp-graphblas==${PYALP_VERSION} from TestPyPI"
+          python -m pip install --index-url https://test.pypi.org/simple/ --extra-index-url https://pypi.org/simple alp-graphblas==${PYALP_VERSION} --no-deps -v
+
+          # Inspect installed package using the script moved out of the workflow
+          echo "Inspecting installed package"
+          python .github/scripts/inspect_installed_pyalp.py
+
+          # Run the smoke runner script for the backend for this matrix job
+          echo "Running backend smoke runner for ${BACKEND}"
+          python .github/scripts/run_backend_smoke_installed.py "${BACKEND}"
+
+  publish-to-pypi:
+    # Disabled by default to avoid triggering PyPI uploads from this workflow.
+    # PyPI publisher was configured to accept uploads from `promote-to-pypi.yml`.
+    # Keep the job present for maintainers, but skip execution unless intentionally enabled.
+    if: false
+    needs: verify-installed
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+    # This job publishes the already-built artifacts to the real PyPI index.
+    # It requires a PyPI API token stored in the repository secrets as PYPI_API_TOKEN.
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Download built wheels
+        uses: actions/download-artifact@v4
+        with:
+          path: dist
+          pattern: alp-graphblas-wheels-*
+          merge-multiple: true
+
+      - name: Publish to PyPI (alp-graphblas)
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          packages-dir: dist/
+        env:
+          TWINE_USERNAME: __token__
+          TWINE_PASSWORD: ${{ secrets.PYPI_API_TOKEN }}
