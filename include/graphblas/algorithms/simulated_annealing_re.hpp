@@ -66,27 +66,27 @@ namespace grb {
 			Backend backend
 			>
 		grb::RC pt(
-				const std::vector< grb::Vector< StateType, backend > > &states,
-				const grb::Vector< EnergyType > &energies,
-				grb::Vector< TempType > &betas
+				std::vector< grb::Vector< StateType, backend > > &states,
+				grb::Vector< EnergyType > &energies,
+				const grb::Vector< TempType > &betas
 				){
 			const size_t n_replicas = states.size();
 
-			for( size_t i = n_replicas-1 ; i > 0 ; --i ){
+			for( size_t i = 1 ; i < n_replicas ; ++i ){
         		const EnergyType de = ( energies[ i ] - energies[ i-1 ]) * (betas[ i ] - betas[ i-1 ]);
 
 				if( de >= 0 || std::rand() < RAND_MAX * exp( de ) ){
-					std::swap( betas[i], betas[i-1] );
-				}	
+					std::swap( states[i], states[i-1] );
+					std::swap( energies[i], energies[i-1] );
+				}
 			}
 
 			return grb::SUCCESS;
 		}
 
 		/*
-		 * Estimate a solution to a given Quadratic Unconstrained Binary Optimization
-		 * (QUBO) optimization problem. The solution is found using Simulated Annealing-
-		 * Replica Exchange (also known as Parallel Tempering).
+		 * Estimate a solution to a given optimization problem. The solution is found
+		 * using Simulated Annealing-Replica Exchange (also known as Parallel Tempering).
 		 *
 		 * The state will be optimized to minimize the value of the energy $U(x)$,
 		 * where $x$ is the binary state vector, and $couplings$ is the coupling matrix.
@@ -96,7 +96,7 @@ namespace grb {
 		 * returns the variation of energy made from its changes of the state.
 		 *
 		 * @param[in]     sweep      	The sweeping function.
-		 * 								Should return the energy variation implied from the changes that it made on the state.
+		 * 								Should return the energy variation relative to the changes that it made on the state.
 		 * @param[in,out] states        On input: initial states.
 		 *                              On output: optimized states.
 		 * @param[in]     couplings     The square (symmetric) couplings matrix.
@@ -113,7 +113,6 @@ namespace grb {
 		 * @tparam EnergyType	The energy type.
 		 * @tparam TempType		The inverse temperature type.
 		 * @tparam SweepDataType	Type of data to be passed on to the sweep function (e.g. a tuple of references to temporary vectors).
-		 * @tparam Ring			The semiring under which to make the sweeps.
 		 *
 		 */
 		template<
@@ -123,22 +122,18 @@ namespace grb {
 			typename TempType,
 			typename SweepDataType, // type of data to be passed through to the sweep function
 			typename RSI, typename CSI, typename NZI, Backend backend,
-			class Ring = Semiring<
-				grb::operators::add< QType >, grb::operators::mul< QType >,
-				grb::identities::zero, grb::identities::one
-				>
-			>
-		grb::RC simulated_annealing_RE(
-				const std::function< 
+			typename SweepFuncType = std::function< 
 					EnergyType(
 						 const grb::Matrix< QType, backend, RSI, CSI, NZI >&,
 						 const grb::Vector< QType, backend >&,
 						 grb::Vector< StateType, backend >&,
 						 const TempType&,
-						 SweepDataType&,
-						 const Ring&
+						 SweepDataType&
 				 	)
-				> &sweep,
+				>
+			>
+		grb::RC simulated_annealing_RE(
+				const SweepFuncType &sweep,
 				std::vector< grb::Vector< StateType, backend > > &states,
 				const grb::Matrix< QType, backend, RSI, CSI, NZI > &couplings,
 				const grb::Vector< QType, backend > &local_fields,
@@ -148,8 +143,7 @@ namespace grb {
 				grb::Vector< EnergyType > &temp_energies,
 				SweepDataType& temp_sweep,
 				const size_t &n_sweeps = 1,
-				const bool &use_pt = false,
-				const Ring &ring = Ring()
+				const bool &use_pt = false
 				){
 
 			const size_t n_replicas = states.size();
@@ -185,7 +179,9 @@ namespace grb {
 			for( size_t i_sweep = 0 ; rc == grb::SUCCESS && i_sweep < n_sweeps ; ++i_sweep ){
 				for( size_t j = 0 ; j < n_replicas ; ++j ){
 					
-					energies[j] += sweep( couplings, local_fields, states[j], betas[j], temp_sweep, ring );
+					grb::wait();
+					energies[j] += sweep( couplings, local_fields, states[j], betas[j], temp_sweep );
+					grb::wait();
 				
 					// update_best state and energy
 					if( energies[j] < temp_energies[j] ){
@@ -215,7 +211,7 @@ namespace grb {
 				states = temp_states;
 				energies = temp_energies;
 			}
-
+			
 			return rc;
 		}
 
