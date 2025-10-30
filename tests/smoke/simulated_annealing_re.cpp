@@ -40,8 +40,8 @@ using namespace grb;
 
 
 // Types
-using IOType = int8_t;   // scalar/vector element type
-using JType  = float;   // coupling (matrix) value type
+using IOType = double;   // scalar/vector element type
+using JType  = double;   // coupling (matrix) value type
 using EnergyType  = double;   // coupling (matrix) value type
 
 /** Parser type */
@@ -126,10 +126,8 @@ namespace test_data {
 
 	const std::vector< std::vector< size_t > > row_blocks = {
 		// {3, 1, 6, 7, 9, 11, 12, 13, 14, 15}, {5, 2, 0, 8, 10}, {4} // for python data files
-		{0, 2, 4, 7, 9, 12, 13, 15},
-		{1, 3, 6, 8, 11},
-		{5, 10, 14},
-		
+		{0, 2, 4, 7, 9, 12, 13, 15}, {1, 3, 6, 8, 11}, {5, 10, 14},
+		// {0}, {1}, {2}, {3}, {4}, {5}, {6}, {7}, {8}, {9}, {10}, {11}, {12}, {13}, {14}, {15}
 	};
 
     std::minstd_rand global_rng ( 8 ); // or std::mt19937
@@ -291,6 +289,14 @@ EnergyType get_energy(
 }
 
 template<
+		typename SweepDataType = std::tuple<
+					 grb::Vector< JType >&,
+					 grb::Vector< JType >&,
+					 grb::Vector< IOType >&,
+					 const std::vector< grb::Vector< bool > >&,
+					 grb::Vector< EnergyType >&,
+					 grb::Vector< bool >&
+					 >,
 		class Ring = Semiring<
 			grb::operators::add< JType >, grb::operators::mul< JType >,
 			grb::identities::zero, grb::identities::one
@@ -308,9 +314,10 @@ static EnergyType sequential_sweep_immediate(
 					 const std::vector< grb::Vector< bool > >&,
 					 grb::Vector< EnergyType >&,
 					 grb::Vector< bool >&
-					 > &data,
-				 const Ring &ring = Ring()
+					 > &data
 			  ){
+		const Ring ring = Ring();
+
 
 		grb::RC rc = grb::SUCCESS;
 		const size_t n = grb::size( state );
@@ -323,6 +330,7 @@ static EnergyType sequential_sweep_immediate(
 		auto &dn		= std::get<4>(data);
 		auto &accept	= std::get<5>(data);
 
+		rc = rc ? rc : grb::wait();
 		rc = rc ? rc : grb::resize( h, n );
 		rc = rc ? rc : grb::resize( log_rand, n );
 		rc = rc ? rc : grb::resize( delta, n );
@@ -337,13 +345,12 @@ static EnergyType sequential_sweep_immediate(
 			const auto rnd = rand( test_data::global_rng );
 			rc = rc ? rc : grb::setElement(log_rand,  std::log( rnd ), j );
 		}
+		// rc = rc ? rc : grb::wait();
 		// print_vector( log_rand, 30, "log_rand" );
 
 #ifndef NDEBUG
 		const grb::Vector< IOType > old_state = state;
-		const auto h0 = h;
 #endif
-		grb::wait();
 		for(const auto &mask : masks ){
 
 			rc = rc ? rc : grb::clear( accept  );
@@ -358,17 +365,22 @@ static EnergyType sequential_sweep_immediate(
 
 			// ( dn >= 0 ) | ( log_rand < beta * dn )
 			rc = rc ? rc : grb::set( accept, mask );
+			rc = rc ? rc : grb::wait(); // ERROR: Segmentation Fault with nonblocking backend
 			rc = rc ? rc : grb::eWiseLambda<>(
 					[ &mask, &accept, &dn, &log_rand, beta ]( const size_t i ){
 						(void) i;
 						if( mask[i] ){
 							accept[i] = ( dn[i] >= 0 ) || ( log_rand[i] < beta * dn[i] );
 						}
-					}, accept, log_rand, mask, dn );
+					}, mask, log_rand, dn, accept );
+			// print_vector( log_rand, 30, "log_rand" );
+			// print_vector( mask, 30, "mask" );
+			// print_vector( accept, 30, "accept" );
 
 			// new_state = np.where(accept, 1 - old, old)
 			rc = rc ? rc : grb::foldl( state, accept, static_cast< IOType >( -1 ), ring.getMultiplicativeMonoid() );
 			rc = rc ? rc : grb::foldl( state, accept, static_cast< IOType >( 1 ), ring.getAdditiveMonoid() );
+			// print_vector( state, 30, "state" );
 			
 			// delta = new - old ==> delta[accept] = 2*new_state[accept]-1
 			rc = rc ? rc : grb::clear( delta  );
@@ -378,12 +390,13 @@ static EnergyType sequential_sweep_immediate(
 			
 			// Update delta_energy -= dot(dn, accept)
 			rc = rc ? rc : grb::dot( delta_energy, delta, h, ring );
+			// rc = rc ? rc : grb::wait();
 
 			// update h
 			rc = rc ? rc : grb::mxv( h, couplings, delta, ring );
 			
-			grb::wait();
 		}
+		rc = rc ? rc : grb::wait();
 
 #ifndef NDEBUG
 		if( rc != grb::SUCCESS ){
@@ -392,14 +405,18 @@ static EnergyType sequential_sweep_immediate(
 		}
 		assert( rc == grb::SUCCESS );
 		const auto new_state = state;
+		rc = rc ? rc : grb::wait();
 
-		// std::cerr << "\n\t Delta_energy: " << delta_energy;
-		// std::cerr << "\n\t Real delta: " << (get_energy(couplings, local_fields, new_state) - get_energy(couplings, local_fields, old_state));
+		const auto real_delta = get_energy(couplings, local_fields, new_state) - get_energy(couplings, local_fields, old_state);
+		std::cerr << "\n\t Delta_energy: " << delta_energy;
+		std::cerr << "\n\t Real delta: " << real_delta;
+		std::cerr << "\n\t Discrepancy: " << real_delta - delta_energy;
 		// std::cerr << "\n\t Old energy: " << get_energy(couplings, local_fields, old_state) ;
 		// std::cerr << "\n\t New energy: " << get_energy(couplings, local_fields, new_state);
-		// std::cerr << std::endl;
+		std::cerr << std::endl;
 
-		assert( ISCLOSE(get_energy(couplings, local_fields, new_state) - get_energy(couplings, local_fields, old_state), delta_energy ) );
+		assert( ISCLOSE(real_delta, delta_energy ) );
+		// TODO: assert fails with nonblocking backend -> see issue #397
 #endif
 
 		return delta_energy;
@@ -415,19 +432,19 @@ template<
 					 grb::Vector< EnergyType >&,
 					 grb::Vector< bool >&
 					 >,
+		typename SweepFuncType = std::function< EnergyType(
+					 const grb::Matrix< JType >&,
+					 const grb::Vector< JType >&,
+					 grb::Vector< IOType >&,
+					 const JType&,
+					 SweepDataType&
+				 ) >,
 		class Ring = Semiring<
 			grb::operators::add< JType >, grb::operators::mul< JType >,
 			grb::identities::zero, grb::identities::one
 		>
 	>
-std::function< EnergyType(
-					 const grb::Matrix< JType >&,
-					 const grb::Vector< JType >&,
-					 grb::Vector< IOType >&,
-					 const JType&,
-					 SweepDataType&,
-					 const Ring&
-				 ) > get_sweep_function( std::string sweep_name ){
+SweepFuncType get_sweep_function( std::string sweep_name ){
 	if( sweep_name != "sequential_sweep_immediate" ){
 			std::cerr << "Warning: unknown sweep setting. Falling back to  \"sequential_sweep_immediate\"" << std::endl;
 	}
@@ -565,7 +582,9 @@ void grbProgram(
 		for(const auto&i : v ){
 			grb::setElement( masks.back(), 1, i );
 		}
-		print_vector( masks.back(), 30, "MASK" );
+		if( s == 0 ){
+			print_vector( masks.back(), 30, "MASK" );
+		}
 	}
 
     // create states storage and initialize with random 1/0 values
@@ -631,7 +650,7 @@ void grbProgram(
 			temp_dn,
 			temp_accept
 			);
-
+	grb::wait();
 
 
 	out.rep = data_in.rep;
@@ -830,6 +849,7 @@ int main( int argc, char ** argv ) {
     }
 
     // seed RNGs (C and C++ engines) using requested seed (hardcoded default 8 if not provided)
+	in.seed += spmd<>::pid();
     std::srand( static_cast<unsigned>( in.seed ) );
 	test_data::global_rng.seed(in.seed);
 
