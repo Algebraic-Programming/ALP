@@ -167,25 +167,24 @@ void grb_program( const size_t &n, grb::RC &rc ) {
 	int true_dot = 0;
 	alpha = 0;
 
-	for(size_t i = n; i > 0 ; --i ){
-		rc = rc ? rc :  grb::setElement( y, i-1, i-1 );
+	for(size_t i = 0; i < n ; ++i ){
+		rc = rc ? rc :  grb::setElement( y, i, i );
 	}
 	for( size_t i : {2,3,5,7,13,17,19,23,29} ){
 		if( i >= n ) break;
 		rc = rc ? rc :  grb::setElement( x, 1, i );
 		true_dot += i;
-
 	}
 	assert( rc == grb::SUCCESS );
 
-	// test 4, exec
+	// test 5, exec
 	rc = grb::dot( alpha, x, y, intRing );
 	if( rc != SUCCESS ) {
 		std::cerr << "\t test 5 (non constant-value vectors) dot FAILED\n";
 		return;
 	}
 
-	// test 4, check
+	// test 5, check
 	if( alpha != true_dot ) {
 		std::cerr << "\t test 5 (non constant-value vectors) unexpected value "
 			<< alpha << ", expected " << true_dot << ".\n";
