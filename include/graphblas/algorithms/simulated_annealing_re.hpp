@@ -71,17 +71,56 @@ namespace grb {
 				const grb::Vector< TempType > &betas
 				){
 			const size_t n_replicas = states.size();
+			const size_t s 		= spmd<>::pid();
+			const size_t nprocs = spmd<>::nprocs();
+			grb::RC rc = grb::SUCCESS;
+			struct data {
+					grb::Vector< StateType, backend > *s;
+					EnergyType e;
+					TempType b;
+					int r;
+				};
+			static struct data msg[ 2 ];
+			int rand = std::rand();
 
-			for( size_t i = 1 ; i < n_replicas ; ++i ){
-        		const EnergyType de = ( energies[ i ] - energies[ i-1 ]) * (betas[ i ] - betas[ i-1 ]);
+			for( int si = static_cast< int >( nprocs ) - 1 ; si >= 0; --si ){
+				if( si == static_cast< int >( s ) ){
+					for( size_t i = n_replicas - 1 ; i > 0 ; --i ){
+						const EnergyType de = ( energies[ i ] - energies[ i-1 ]) * (betas[ i ] - betas[ i-1 ]);
 
-				if( de >= 0 || std::rand() < RAND_MAX * exp( de ) ){
-					std::swap( states[i], states[i-1] );
-					std::swap( energies[i], energies[i-1] );
+						if( de >= 0 || std::rand() < RAND_MAX * exp( de ) ){
+							std::swap( states[i], states[i-1] );
+							std::swap( energies[i], energies[i-1] );
+						}
+					}
+					msg[ 1 ].s = &states[ 0 ];
+					msg[ 1 ].e = energies[ 0 ];
+					msg[ 1 ].b = betas[0];
+					msg[ 1 ].r = rand;
+				}else if( si == static_cast< int >( s ) + 1 ){
+					msg[ 0 ].s = &states[ n_replicas - 1 ];
+					msg[ 0 ].e = energies[ n_replicas - 1 ];
+					msg[ 0 ].b = betas[ n_replicas - 1 ];
+					msg[ 0 ].r = rand;
+				}
+				if( si == 0 ) continue;
+				rc = rc ? rc : grb::collectives<>::broadcast( msg[ 0 ], si-1 );
+				rc = rc ? rc : grb::collectives<>::broadcast( msg[ 1 ], si );
+
+				const EnergyType de = ( msg[ 1 ].e - msg[ 0 ].e ) * ( msg[ 1 ].b - msg[ 0 ].b );
+
+				if( de >= 0 || msg[ 0 ].r < RAND_MAX * exp( de ) ){
+					if( si == static_cast< int >( s ) ){
+						states[ 0 ] = *msg[ 0 ].s;
+						energies[ 0 ] = msg[ 0 ].e;
+					}else if( si == static_cast< int >( s ) + 1 ){
+						states[ n_replicas-1 ] = *msg[ 1 ].s;
+						energies[ n_replicas-1 ] = msg[ 1 ].e;
+					}
 				}
 			}
 
-			return grb::SUCCESS;
+			return rc;
 		}
 
 		/*
