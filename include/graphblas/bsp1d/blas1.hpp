@@ -23,15 +23,15 @@
 #ifndef _H_GRB_BSP1D_BLAS1
 #define _H_GRB_BSP1D_BLAS1
 
+#include <graphblas/rc.hpp>
+#include <graphblas/ops.hpp>
 #include <graphblas/blas0.hpp>
 #include <graphblas/blas1.hpp>
 #include <graphblas/bsp/collectives.hpp>
-#include <graphblas/ops.hpp>
-#include <graphblas/rc.hpp>
 #include <graphblas/type_traits.hpp>
 
-#include "distribution.hpp"
 #include "vector.hpp"
+#include "distribution.hpp"
 
 #define NO_CAST_ASSERT( x, y, z )                                                          \
 	static_assert( x,                                                                  \
@@ -402,8 +402,10 @@ namespace grb {
 			} else if( !config::IMPLEMENTATION< BSP1D >::fixedVectorCapacities() &&
 				ret == FAILED
 			) {
+				// handle failed TRY
 				const RC subrc = internal::updateNnz( y );
 				if( subrc != SUCCESS ) { ret = PANIC; }
+				// otherwise, still return FAILED (as required)
 			}
 		}
 
@@ -685,9 +687,13 @@ namespace grb {
 		if( phase != RESIZE ) {
 			if( ret == SUCCESS ) {
 				internal::setDense( x );
-			} else if( ret == FAILED ) {
+			} else if( !config::IMPLEMENTATION< BSP1D >::fixedVectorCapacities() &&
+				ret == FAILED
+			) {
+				// handle failed try
 				const RC subrc = internal::updateNnz( x );
 				if( subrc != SUCCESS ) { ret = PANIC; }
+				// ensure we still propagate the FAILED error code
 			}
 		}
 
@@ -846,10 +852,13 @@ namespace grb {
 					const RC subrc = internal::updateNnz( x );
 					if( subrc != SUCCESS ) { ret = PANIC; }
 				}
-			} else if( ret == FAILED ) {
+			} else if( !config::IMPLEMENTATION< BSP1D >::fixedVectorCapacities() &&
+				ret == FAILED
+			) {
 				assert( phase == TRY );
 				const RC subrc = internal::updateNnz( x );
 				if( subrc != SUCCESS ) { ret = PANIC; }
+				// ensure propagate failed error code
 			}
 		}
 
@@ -1016,6 +1025,7 @@ namespace grb {
 				// (recall that the dense case is not handled here)
 				ret = internal::updateNnz( x );
 			} else if( ret == FAILED ) {
+				// handle failed TRY
 				// x may contain useful results that are a subset of the requested
 				// computation. Therefore the nnz may have changed, but we should
 				// take care to continue propagate FAILED
@@ -1105,9 +1115,13 @@ namespace grb {
 		if( phase != RESIZE ) {
 			if( ret == SUCCESS ) {
 				ret = internal::updateNnz( x );
-			} else if( ret == FAILED ) {
+			} else if( !config::IMPLEMENTATION< BSP1D >::fixedVectorCapacities() &&
+				ret == FAILED
+			) {
+				// handle failed TRY
 				const RC subrc = internal::updateNnz( x );
 				if( subrc != SUCCESS ) { ret = PANIC; }
+				// ensure propagate FAILED error code
 			}
 		}
 
@@ -1192,9 +1206,13 @@ namespace grb {
 		if( phase != RESIZE ) {
 			if( ret == SUCCESS ) {
 				ret = internal::updateNnz( x );
-			} else if( ret == FAILED ) {
+			} else if( !config::IMPLEMENTATION< BSP1D >::fixedVectorCapacities() &&
+				ret == FAILED
+			) {
+				// handled failed TRY
 				const RC subrc = internal::updateNnz( x );
 				if( subrc != SUCCESS ) { ret = PANIC; }
+				// ensure FAILED error code propagates
 			}
 		}
 
@@ -1249,7 +1267,12 @@ namespace grb {
 			return ILLEGAL;
 		}
 		if( capacity( z ) < n && phase == EXECUTE ) {
-			return FAILED;
+			const grb::RC clear_rc = grb::clear( z );
+			if( clear_rc == grb::SUCCESS ) {
+				return ILLEGAL;
+			} else {
+				return PANIC;
+			}
 		}
 
 		// catch trivial resize
@@ -1326,8 +1349,13 @@ namespace grb {
 		if( size( mask ) != n ) {
 			return MISMATCH;
 		}
-		if( capacity( z ) < n && phase == EXECUTE ) {
-			return FAILED;
+		if( grb::capacity( z ) < n && phase == grb::EXECUTE ) {
+			const grb::RC clear_rc = grb::clear( z );
+			if( clear_rc == grb::SUCCESS ) {
+				return grb::ILLEGAL;
+			} else {
+				return grb::PANIC;
+			}
 		}
 
 		// catch trivial resize
@@ -1393,8 +1421,13 @@ namespace grb {
 		if( (descr & descriptors::dense) && nnz( z ) != n ) {
 			return ILLEGAL;
 		}
-		if( capacity( z ) < n && phase == EXECUTE ) {
-			return FAILED;
+		if( grb::capacity( z ) < n && phase == grb::EXECUTE ) {
+			const grb::RC clear_rc = grb::clear( z );
+			if( clear_rc == grb::SUCCESS ) {
+				return grb::ILLEGAL;
+			} else {
+				return grb::PANIC;
+			}
 		}
 
 		// catch trivial resize
@@ -1471,8 +1504,13 @@ namespace grb {
 		if( size( mask ) != n ) {
 			return MISMATCH;
 		}
-		if( capacity( z ) < n && phase == EXECUTE ) {
-			return FAILED;
+		if( grb::capacity( z ) < n && phase == grb::EXECUTE ) {
+			const grb::RC clear_rc = grb::clear( z );
+			if( clear_rc == grb::SUCCESS ) {
+				return grb::ILLEGAL;
+			} else {
+				return grb::PANIC;
+			}
 		}
 
 		// catch trivial resize
@@ -1572,8 +1610,8 @@ namespace grb {
 		} else if( phase == EXECUTE ) {
 			if( ret == SUCCESS ) {
 				internal::setDense( z );
-			} else if( ret == FAILED ) {
-				const RC subrc = internal::updateNnz( z );
+			} else if( ret == ILLEGAL ) {
+				const RC subrc = grb::clear( z );
 				if( subrc != SUCCESS ) { ret = PANIC; }
 			}
 		}
@@ -1662,8 +1700,8 @@ namespace grb {
 		} else if( phase == EXECUTE ) {
 			if( ret == SUCCESS ) {
 				internal::setDense( z );
-			} else if( ret == FAILED ) {
-				const RC subrc = internal::updateNnz( z );
+			} else if( ret == ILLEGAL ) {
+				const RC subrc = grb::clear( z );
 				if( subrc != SUCCESS ) { ret = PANIC; }
 			}
 		}
@@ -1770,10 +1808,13 @@ namespace grb {
 
 		// catch execute
 		if( phase != RESIZE ) {
-			assert( phase == EXECUTE );
-			if( ret == FAILED ) {
+			if( !config::IMPLEMENTATION< BSP1D >::fixedVectorCapacities() && 
+				ret == FAILED
+			) {
+				// handle failed TRY
 				const RC subrc = internal::updateNnz( z );
 				if( subrc != SUCCESS ) { ret = PANIC; }
+				// take care to propagate FAILED error code
 			} else if( ret == SUCCESS ) {
 				if( !(descr & descriptors::dense) ) {
 					ret = internal::updateNnz( z );
@@ -1879,9 +1920,13 @@ namespace grb {
 		if( phase != RESIZE ) {
 			if( ret == SUCCESS ) {
 				ret = internal::updateNnz( z );
-			} else if( ret == FAILED ) {
+			} else if( !config::IMPLEMENTATION< BSP1D >::fixedVectorCapacities() &&
+				ret == FAILED
+			) {
+				// handle failed TRY
 				const RC subrc = internal::updateNnz( z );
 				if( subrc != SUCCESS ) { ret = PANIC; }
+				// take care to propagate FAILED error code
 			}
 		}
 
@@ -1980,9 +2025,13 @@ namespace grb {
 		if( phase != RESIZE ) {
 			if( ret == SUCCESS ) {
 				ret = internal::updateNnz( z );
-			} else if( ret == FAILED ) {
+			} else if( !config::IMPLEMENTATION< BSP1D >::fixedVectorCapacities() &&
+				ret == FAILED
+			) {
+				// handle failed TRY
 				const RC subrc = internal::updateNnz( z );
 				if( subrc != SUCCESS ) { ret = PANIC; }
+				// take care to propagate FAILED error code
 			}
 		}
 
@@ -2093,9 +2142,13 @@ namespace grb {
 			if( ret == SUCCESS ) {
 				ret = internal::updateNnz( z );
 			}
-			if( ret == FAILED ) {
+			if( !config::IMPLEMENTATION< BSP1D >::fixedVectorCapacities() &&
+				ret == FAILED
+			) {
+				// handle failed TRY
 				const RC update_rc = internal::updateNnz( z );
 				if( update_rc != SUCCESS ) { ret = PANIC; }
+				// take care to propagate FAILED error code
 			}
 		}
 
@@ -2187,9 +2240,13 @@ namespace grb {
 			assert( phase == EXECUTE );
 			if( ret == SUCCESS ) {
 				internal::setDense( z );
-			} else if( ret == FAILED ) {
+			} else if( !config::IMPLEMENTATION< BSP1D >::fixedVectorCapacities() &&
+				ret == FAILED
+			) {
+				// handle failed TRY
 				const RC subrc = internal::updateNnz( z );
 				if( subrc != SUCCESS ) { ret = PANIC; }
+				// take care to propagate FAILED error code
 			}
 		}
 		return ret;
@@ -2279,9 +2336,13 @@ namespace grb {
 			assert( phase == EXECUTE );
 			if( ret == SUCCESS ) {
 				internal::setDense( z );
-			} else if( ret == FAILED ) {
+			} else if( !config::IMPLEMENTATION< BSP1D >::fixedVectorCapacities() &&
+				ret == FAILED
+			) {
+				// handle failed TRY
 				const RC subrc = internal::updateNnz( z );
 				if( subrc != SUCCESS ) { ret = PANIC; }
+				// take care to propagate FAILED error code
 			}
 		}
 
@@ -2380,9 +2441,13 @@ namespace grb {
 		if( phase != RESIZE ) {
 			if( ret == SUCCESS ) {
 				ret = internal::updateNnz( z );
-			} else if( ret == FAILED ) {
+			} else if( !config::IMPLEMENTATION< BSP1D >::fixedVectorCapacities() &&
+				ret == FAILED
+			) {
+				// handle failed TRY
 				const RC subrc = internal::updateNnz( z );
 				if( subrc != SUCCESS ) { ret = PANIC; }
+				// take care to propagate original error code (FAILED)
 			}
 		}
 
@@ -2481,9 +2546,13 @@ namespace grb {
 		if( phase != RESIZE ) {
 			if( ret == SUCCESS ) {
 				ret = internal::updateNnz( z );
-			} else if( ret == FAILED ) {
+			} else if( !config::IMPLEMENTATION< BSP1D >::fixedVectorCapacities() &&
+				ret == FAILED
+			) {
+				// handle failed TRY
 				const RC subrc = internal::updateNnz( z );
 				if( subrc != SUCCESS ) { ret = PANIC; }
+				// take care to propagate FAILED erro code
 			}
 		}
 
@@ -2588,9 +2657,13 @@ namespace grb {
 		if( phase != RESIZE ) {
 			if( ret == SUCCESS ) {
 				ret = internal::updateNnz( z );
-			} else if( ret == FAILED ) {
+			} else if( !config::IMPLEMENTATION< BSP1D >::fixedVectorCapacities() &&
+				ret == FAILED
+			) {
+				// handle failed TRY
 				const RC subrc = internal::updateNnz( z );
 				if( subrc != SUCCESS ) { ret = PANIC; }
+				// take care to propagate FAILED error code
 			}
 		}
 
@@ -2695,9 +2768,13 @@ namespace grb {
 		if( phase != RESIZE ) {
 			if( ret == SUCCESS ) {
 				ret = internal::updateNnz( z );
-			} else if( ret == FAILED ) {
+			} else if( !config::IMPLEMENTATION< BSP1D >::fixedVectorCapacities() &&
+				ret == FAILED
+			) {
+				// handle failed TRY
 				const RC subrc = internal::updateNnz( z );
 				if( subrc != SUCCESS ) { ret = PANIC; }
+				// propagate FAILED error code
 			}
 		}
 
@@ -3256,9 +3333,13 @@ namespace grb {
 		if( phase != RESIZE ) {
 			if( ret == SUCCESS ) {
 				ret = internal::updateNnz( z );
-			} else if( ret == FAILED ) {
+			} else if( !config::IMPLEMENTATION< BSP1D >::fixedVectorCapacities() &&
+				ret == FAILED
+			) {
+				// handle failed TRY
 				const RC subrc = internal::updateNnz( z );
 				if( subrc != SUCCESS ) { ret = PANIC; }
+				// take care to propagate FAILED
 			}
 		}
 
@@ -3336,9 +3417,13 @@ namespace grb {
 		if( phase != RESIZE ) {
 			if( ret == SUCCESS ) {
 				ret = internal::updateNnz( z );
-			} else if( ret == FAILED ) {
+			} else if( !config::IMPLEMENTATION< BSP1D >::fixedVectorCapacities() &&
+				ret == FAILED
+			) {
+				// handle failed TRY
 				const RC subrc = internal::updateNnz( z );
 				if( subrc != SUCCESS ) { ret = PANIC; }
+				// propagate FAILED
 			}
 		}
 
@@ -3415,9 +3500,13 @@ namespace grb {
 		if( phase != RESIZE ) {
 			if( ret == SUCCESS ) {
 				ret = internal::updateNnz( z );
-			} else if( ret == FAILED ) {
+			} else if( !config::IMPLEMENTATION< BSP1D >::fixedVectorCapacities() &&
+				ret == FAILED
+			) {
+				// handle failed TRY
 				const RC subrc = internal::updateNnz( z );
 				if( subrc != SUCCESS ) { ret = FAILED; }
+				// propagate FAILED
 			}
 		}
 
@@ -3577,9 +3666,13 @@ namespace grb {
 		if( phase != RESIZE ) {
 			if( ret == SUCCESS ) {
 				ret = internal::updateNnz( z );
-			} else if( ret == FAILED ) {
+			} else if( !config::IMPLEMENTATION< BSP1D >::fixedVectorCapacities() &&
+				ret == FAILED
+			) {
+				// handle failed TRY
 				const RC subrc = internal::updateNnz( z );
 				if( subrc != SUCCESS ) { ret = PANIC; }
+				// propagate FAILED
 			}
 		}
 
@@ -3670,9 +3763,13 @@ namespace grb {
 		if( phase != RESIZE ) {
 			if( ret == SUCCESS ) {
 				ret = internal::updateNnz( z );
-			} else if( ret == FAILED ) {
+			} else if( !config::IMPLEMENTATION< BSP1D >::fixedVectorCapacities() &&
+				ret == FAILED
+			) {
+				// handle failed TRY
 				const RC subrc = internal::updateNnz( z );
 				if( subrc != SUCCESS ) { ret = PANIC; }
+				// propagate FAILED
 			}
 		}
 
@@ -3763,9 +3860,13 @@ namespace grb {
 		if( phase != RESIZE ) {
 			if( ret == SUCCESS ) {
 				ret = internal::updateNnz( z );
-			} else if( ret == FAILED ) {
+			} else if( !config::IMPLEMENTATION< BSP1D >::fixedVectorCapacities() &&
+				ret == FAILED
+			) {
+				// handle failed TRY
 				const RC subrc = internal::updateNnz( z );
 				if( subrc != SUCCESS ) { ret = FAILED; }
+				// propagate FAILED
 			}
 		}
 
@@ -3853,9 +3954,13 @@ namespace grb {
 		if( phase != RESIZE ) {
 			if( ret == SUCCESS ) {
 				ret = internal::updateNnz( z );
-			} else if( ret == FAILED ) {
+			} else if( !config::IMPLEMENTATION< BSP1D >::fixedVectorCapacities() &&
+				ret == FAILED
+			) {
+				// handle failed TRY
 				const RC subrc = internal::updateNnz( z );
 				if( subrc != SUCCESS ) { ret = FAILED; }
+				// propagate FAILED
 			}
 		}
 
