@@ -280,7 +280,8 @@ namespace grb {
 						properties._nz = nz;
 						properties._entries = entries;
 						properties._pattern = pattern;
-						properties._symmetric = symmetric;
+						properties._symmetric = symmetric
+							? Symmetry::Symmetric : Symmetry::General;
 						properties._direct = direct;
 						properties._symmetricmap = symmetricmap;
 						// check for existance of file

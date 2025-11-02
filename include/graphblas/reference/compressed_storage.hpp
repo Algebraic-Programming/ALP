@@ -1156,7 +1156,7 @@ namespace grb {
 				{}
 
 				/** Move constructor. */
-				Compressed_Storage< void, IND, SIZE >( SelfType &&other ) {
+				Compressed_Storage( SelfType &&other ) {
 					moveFromOther( other );
 				}
 
