@@ -866,7 +866,7 @@ namespace grb {
 	 *
 	 * In #grb::EXECUTE mode:
 	 *
-	 * @returns #grb::ILLEGAL  When \a x did not have sufficient capacity. The
+	 * @returns #grb::ILLEGAL When \a x did not have sufficient capacity. The
 	 *                        vector \a x on exit shall be cleared.
 	 * @returns #grb::SUCCESS When the call completes successfully.
 	 *
@@ -893,7 +893,8 @@ namespace grb {
 		typename Coords, Backend backend
 	>
 	RC set(
-		Vector< DataType, backend, Coords > &x, const T val,
+		Vector< DataType, backend, Coords > &x,
+		const T val,
 		const Phase &phase = EXECUTE,
 		const typename std::enable_if<
 			!grb::is_object< DataType >::value &&
