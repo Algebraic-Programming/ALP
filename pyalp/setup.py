@@ -51,12 +51,13 @@ def find_all_prebuilt():
     mapping = {}
 
     cmake_build_dir = os.environ.get("CMAKE_BUILD_DIR") or os.environ.get("PYALP_BUILD_DIR")
+    # If no explicit build dir is provided, fall back to the conventional
+    # out-of-source `../build` directory. This keeps discovery inside a
+    # single well-defined location and preserves prior CI behavior.
     if not cmake_build_dir:
-        # No explicit build dir provided — do not search outside well-defined
-        # locations. Return empty mapping to signal 'no prebuilt modules'.
-        return mapping
-
-    cmake_build_dir = os.path.abspath(cmake_build_dir)
+        cmake_build_dir = os.path.abspath(os.path.join(here, '..', 'build'))
+    else:
+        cmake_build_dir = os.path.abspath(cmake_build_dir)
 
     for mod in supported:
         found = []
@@ -113,12 +114,9 @@ class build_ext_copy_prebuilt(_build_ext):
         if not src:
             src = prebuilt_modules.get(modname)
         if not src:
-            # No explicit PREBUILT path or discovered prebuilt module in the
-            # provided build directory. We do not search arbitrary locations;
-            # instead, signal an error so the caller can provide the path via
-            # PREBUILT_PYALP_SO or set CMAKE_BUILD_DIR so prebuilt discovery
-            # will locate the artifacts.
-            src = None
+                # No explicit PREBUILT path or discovered prebuilt module in the
+                # provided build directory. Do not search arbitrary locations.
+                src = None
 
         if not src or not os.path.exists(src):
             raise RuntimeError(f"Prebuilt pyalp shared object not found for module '{modname}' during build_ext")
