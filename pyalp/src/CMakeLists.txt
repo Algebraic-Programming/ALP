@@ -22,6 +22,23 @@ if(NOT DEFINED WITH_OMP_BACKEND)
 	set(WITH_OMP_BACKEND ON CACHE BOOL "Build OMP backend (default for pyalp package)")
 endif()
 
+# Allow callers to choose whether backend modules use py::module_local()
+# for type registration. Enabling module-local registrations avoids
+# duplicate-type registration errors when importing multiple backend
+# extension modules into the same interpreter. However, module-local
+# registrations isolate types per-module and will prevent passing
+# pybind11-wrapped C++ objects between modules unless extra conversion
+# glue is implemented. Default: ON (safe for multi-backend imports).
+if(NOT DEFINED PYALP_MODULE_LOCAL_DEFAULT)
+	option(PYALP_MODULE_LOCAL_DEFAULT "Use py::module_local for backend modules" ON)
+endif()
+
+if(PYALP_MODULE_LOCAL_DEFAULT)
+	set(PYALP_MODULE_LOCAL_VAL 1)
+else()
+	set(PYALP_MODULE_LOCAL_VAL 0)
+endif()
+
 assert_defined_variables( WITH_REFERENCE_BACKEND WITH_OMP_BACKEND )
 
 # target listing all examples, to build them at once with 'make examples'
@@ -32,7 +49,11 @@ if( WITH_REFERENCE_BACKEND )
 
 	pybind11_add_module( ${PYALP_MODULE_NAME} pyalp/module_entry.cpp conjugate_gradient.hpp matrix_wrappers.hpp utils.hpp vector_wrappers.hpp )
 	target_compile_definitions(${PYALP_MODULE_NAME} PRIVATE PYALP_MODULE_NAME=${PYALP_MODULE_NAME})
-	target_compile_definitions(${PYALP_MODULE_NAME} PRIVATE PYALP_MODULE_LOCAL=0)
+	# By default enable module-local pybind11 registrations so multiple backend
+	# extension modules can be imported into the same interpreter without
+	# colliding over identical C++ type registrations. Set to 0 only when
+	# explicit cross-module type sharing is required.
+	target_compile_definitions(${PYALP_MODULE_NAME} PRIVATE PYALP_MODULE_LOCAL=${PYALP_MODULE_LOCAL_VAL})
 	# Ensure compiler can find headers placed under pyalp/src and pyalp/src/pyalp
 	target_include_directories(${PYALP_MODULE_NAME} PRIVATE ${CMAKE_SOURCE_DIR}/include ${CMAKE_CURRENT_SOURCE_DIR} ${CMAKE_CURRENT_SOURCE_DIR}/pyalp)
 	# Link your required libraries
@@ -71,7 +92,8 @@ if( WITH_OMP_BACKEND )
 
 	pybind11_add_module( ${PYALP_MODULE_NAME} pyalp/module_entry.cpp conjugate_gradient.hpp matrix_wrappers.hpp utils.hpp vector_wrappers.hpp )
 	target_compile_definitions( ${PYALP_MODULE_NAME} PRIVATE PYALP_MODULE_NAME=${PYALP_MODULE_NAME})
-	target_compile_definitions(${PYALP_MODULE_NAME} PRIVATE PYALP_MODULE_LOCAL=0)
+	# Enable module-local registration for this backend (see note above)
+	target_compile_definitions(${PYALP_MODULE_NAME} PRIVATE PYALP_MODULE_LOCAL=${PYALP_MODULE_LOCAL_VAL})
 	target_include_directories(${PYALP_MODULE_NAME} PRIVATE ${CMAKE_SOURCE_DIR}/include ${CMAKE_CURRENT_SOURCE_DIR} ${CMAKE_CURRENT_SOURCE_DIR}/pyalp)
 	# Link your required libraries
 	target_link_libraries(${PYALP_MODULE_NAME} PRIVATE backend_shmem_shared backend_reference_omp common_flags)
@@ -101,7 +123,8 @@ if( WITH_NONBLOCKING_BACKEND )
 
 	pybind11_add_module( ${PYALP_MODULE_NAME} pyalp/module_entry.cpp conjugate_gradient.hpp matrix_wrappers.hpp utils.hpp vector_wrappers.hpp )
 	target_compile_definitions( ${PYALP_MODULE_NAME} PRIVATE PYALP_MODULE_NAME=${PYALP_MODULE_NAME})
-	target_compile_definitions(${PYALP_MODULE_NAME} PRIVATE PYALP_MODULE_LOCAL=0)
+	# Enable module-local registration for this backend (see note above)
+	target_compile_definitions(${PYALP_MODULE_NAME} PRIVATE PYALP_MODULE_LOCAL=${PYALP_MODULE_LOCAL_VAL})
 	target_include_directories(${PYALP_MODULE_NAME} PRIVATE ${CMAKE_SOURCE_DIR}/include ${CMAKE_CURRENT_SOURCE_DIR} ${CMAKE_CURRENT_SOURCE_DIR}/pyalp)
 	# Link your required libraries
 	target_link_libraries(${PYALP_MODULE_NAME} PRIVATE backend_shmem_shared backend_reference_omp common_flags)

@@ -34,6 +34,11 @@ void register_pyalp(py::module_ &m) {
          py::arg("m"), py::arg("n"),
          py::arg("i_array"), py::arg("j_array"), py::arg("k_array"));
 
+    // Expose a COO serializer so Matrix instances can be moved between
+    // modules/processes without depending on pybind11 cross-module
+    // type registration. Returns (i_array, j_array, values_array, nrows, ncols).
+    m.def("matrix_to_coo", &matrix_to_coo<ScalarType>, "Serialize Matrix to COO arrays");
+
         py::class_<grb::Vector< ScalarType >>(m, "Vector", py::module_local())
         .def(py::init<size_t>())
         .def(py::init([](size_t m,
@@ -56,6 +61,9 @@ void register_pyalp(py::module_ &m) {
         }),
          py::arg("m"), py::arg("n"),
          py::arg("i_array"), py::arg("j_array"), py::arg("k_array"));
+
+        // Expose the matrix_to_coo helper in the non-module_local case as well.
+        m.def("matrix_to_coo", &matrix_to_coo<ScalarType>, "Serialize Matrix to COO arrays");
 
         py::class_<grb::Vector< ScalarType >>(m, "Vector")
         .def(py::init<size_t>())

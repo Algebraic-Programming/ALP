@@ -323,3 +323,46 @@ jobs:
         env:
           TWINE_USERNAME: __token__
           TWINE_PASSWORD: ${{ secrets.PYPI_API_TOKEN }}
+
+  verify-installed-inprocess:
+    needs: publish
+    runs-on: ubuntu-latest
+    name: Verify installed wheel (in-process smoke)
+    steps:
+      - name: Checkout repository (for tests)
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Create venv and install prerequisites
+        shell: bash
+        run: |
+          set -euo pipefail
+          PY=$(which python3 || which python)
+          VENV_DIR="./.venv_test_inprocess"
+          rm -rf "${VENV_DIR}"
+          ${PY} -m venv "${VENV_DIR}"
+          source "${VENV_DIR}/bin/activate"
+          python -m pip install --upgrade pip setuptools wheel numpy
+
+          # Short sleep to allow TestPyPI to propagate uploaded wheels
+          echo "Sleeping 60s to allow TestPyPI propagation before install..."
+          sleep 60
+
+          # Determine version from pyalp/pyproject.toml
+          PYALP_VERSION=$(grep -E '^version\s*=\s*"' pyalp/pyproject.toml | head -n1 | sed -E 's/^version\s*=\s*"([^"]+)".*/\1/')
+          echo "Installing alp-graphblas==${PYALP_VERSION} from TestPyPI"
+          python -m pip install --index-url https://test.pypi.org/simple/ --extra-index-url https://pypi.org/simple alp-graphblas==${PYALP_VERSION} -v
+
+      - name: Run in-process backend import smoke test
+        shell: bash
+        run: |
+          set -euo pipefail
+          source ./.venv_test_inprocess/bin/activate
+          echo "Running pyalp/tests/test_bckds_inprocess.py"
+          python pyalp/tests/test_bckds_inprocess.py
