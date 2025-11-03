@@ -54,7 +54,12 @@ if( WITH_REFERENCE_BACKEND )
 	    COMMAND ${CMAKE_COMMAND} -E echo ""
 	    COMMAND ${CMAKE_COMMAND} -E echo "============================================================"
 	    COMMAND ${CMAKE_COMMAND} -E echo "Build complete!"
-	    COMMAND ${CMAKE_COMMAND} -E echo "To use the Python bindings, append ${CMAKE_BINARY_DIR}/python to your PYTHONPATH:"
+	    # Print the exact built module path and a PYTHONPATH suggestion pointing
+	    # to the directory where the extension module is placed inside the
+	    # top-level build tree for pyalp: ${CMAKE_BINARY_DIR}/pyalp/src
+	    COMMAND ${CMAKE_COMMAND} -E echo "Built module: $<TARGET_FILE:${PYALP_MODULE_NAME}>"
+	    COMMAND ${CMAKE_COMMAND} -E echo "To use the Python bindings, append ${CMAKE_BINARY_DIR}/pyalp/src to your PYTHONPATH:"
+	    COMMAND ${CMAKE_COMMAND} -E echo "Or import the compiled module by name: ${PYALP_MODULE_NAME}"
 	    COMMAND ${CMAKE_COMMAND} -E echo "============================================================"
 	)
 
@@ -82,7 +87,9 @@ if( WITH_OMP_BACKEND )
 	    COMMAND ${CMAKE_COMMAND} -E echo ""
 	    COMMAND ${CMAKE_COMMAND} -E echo "============================================================"
 	    COMMAND ${CMAKE_COMMAND} -E echo "Build complete!"
-	    COMMAND ${CMAKE_COMMAND} -E echo "To use the Python bindings, append ${CMAKE_BINARY_DIR}/python to your PYTHONPATH:"
+	    COMMAND ${CMAKE_COMMAND} -E echo "Built module: $<TARGET_FILE:${PYALP_MODULE_NAME}>"
+	    COMMAND ${CMAKE_COMMAND} -E echo "To use the Python bindings, append ${CMAKE_BINARY_DIR}/pyalp/src to your PYTHONPATH:"
+	    COMMAND ${CMAKE_COMMAND} -E echo "Or import the compiled module by name: ${PYALP_MODULE_NAME}"
 	    COMMAND ${CMAKE_COMMAND} -E echo "============================================================"
 	)
 
@@ -110,7 +117,9 @@ if( WITH_NONBLOCKING_BACKEND )
 	    COMMAND ${CMAKE_COMMAND} -E echo ""
 	    COMMAND ${CMAKE_COMMAND} -E echo "============================================================"
 	    COMMAND ${CMAKE_COMMAND} -E echo "Build complete!"
-	    COMMAND ${CMAKE_COMMAND} -E echo "To use the Python bindings, append ${CMAKE_BINARY_DIR}/python to your PYTHONPATH:"
+	    COMMAND ${CMAKE_COMMAND} -E echo "Built module: $<TARGET_FILE:${PYALP_MODULE_NAME}>"
+	    COMMAND ${CMAKE_COMMAND} -E echo "To use the Python bindings, append ${CMAKE_BINARY_DIR}/pyalp/src to your PYTHONPATH:"
+	    COMMAND ${CMAKE_COMMAND} -E echo "Or import the compiled module by name: ${PYALP_MODULE_NAME}"
 	    COMMAND ${CMAKE_COMMAND} -E echo "============================================================"
 	)
 
@@ -215,4 +224,47 @@ configure_file(${METADATA_TEMPLATE} ${METADATA_OUTPUT} @ONLY)
 #     COMMAND ${CMAKE_COMMAND} -E echo "Generated metadata file content:"
 #     COMMAND ${CMAKE_COMMAND} -E cat ${METADATA_OUTPUT}
 # )
+
+
+# Add a convenience CMake target to build all enabled pyalp backends and
+# package them into a wheel using the standard Python packaging path.
+# This creates a "pyalp" top-level build target you can invoke via
+#   cmake --build <build-dir> --target pyalp --parallel
+# The target will build the enabled backend extension targets and then
+# run `python -m pip wheel pyalp` with CMAKE_BUILD_DIR set so
+# `pyalp/setup.py` can discover the prebuilt shared objects and metadata.
+
+set(pyalp_package_targets "")
+if(WITH_REFERENCE_BACKEND)
+	list(APPEND pyalp_package_targets pyalp_ref)
+endif()
+if(WITH_OMP_BACKEND)
+	list(APPEND pyalp_package_targets pyalp_omp)
+endif()
+if(WITH_NONBLOCKING_BACKEND)
+	list(APPEND pyalp_package_targets pyalp_nonblocking)
+endif()
+
+if(NOT pyalp_package_targets)
+	# No backends enabled: provide a dummy target that still attempts packaging
+	list(APPEND pyalp_package_targets "")
+endif()
+
+string(JOIN " " pyalp_package_targets_str ${pyalp_package_targets})
+
+# Create a simple, top-level alias target `pyalp` that just builds the
+# enabled backend extension targets. This avoids packing logic in the
+# subdirectory and makes `make pyalp` (or `cmake --build --target pyalp`) a
+# straightforward way to build the Python extension modules.
+if(NOT pyalp_package_targets)
+	# No enabled backends: provide an empty phony target.
+	add_custom_target(pyalp
+		COMMENT "pyalp: no backends enabled"
+	)
+else()
+	add_custom_target(pyalp
+		DEPENDS ${pyalp_package_targets}
+		COMMENT "Build enabled pyalp backend extension modules"
+	)
+endif()
 
