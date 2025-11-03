@@ -36,6 +36,7 @@ def make_simple_matrix():
 
 def main():
     m,n,i,j,v = make_simple_matrix()
+    exercised = 0
 
     # If the installed package exposes a `pyalp` package, prefer to query
     # it for the list of available backends and skip any that aren't present
@@ -87,12 +88,18 @@ def main():
         # Construct an instance
         try:
             mat = Matrix(m, n, i, j, v)
+            exercised += 1
             print(f"Constructed Matrix from {backend}:", type(mat))
         except Exception as e:
             print(f"FAILED TO CONSTRUCT Matrix from {backend}: {e}")
             raise
 
     print('\nALL BACKENDS IMPORTED AND INSTANCES CREATED SUCCESSFULLY')
+    if exercised == 0:
+        print('ERROR: no backends were exercised (none installed).', file=sys.stderr)
+        raise SystemExit(2)
+    else:
+        print(f'SUCCESS: exercised {exercised} backend(s).')
 
 if __name__ == '__main__':
     main()
