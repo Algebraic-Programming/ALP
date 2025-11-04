@@ -22,6 +22,23 @@ if(NOT DEFINED WITH_OMP_BACKEND)
 	set(WITH_OMP_BACKEND ON CACHE BOOL "Build OMP backend (default for pyalp package)")
 endif()
 
+# Allow callers to choose whether backend modules use py::module_local()
+# for type registration. Enabling module-local registrations avoids
+# duplicate-type registration errors when importing multiple backend
+# extension modules into the same interpreter. However, module-local
+# registrations isolate types per-module and will prevent passing
+# pybind11-wrapped C++ objects between modules unless extra conversion
+# glue is implemented. Default: ON (safe for multi-backend imports).
+if(NOT DEFINED PYALP_MODULE_LOCAL_DEFAULT)
+	option(PYALP_MODULE_LOCAL_DEFAULT "Use py::module_local for backend modules" ON)
+endif()
+
+if(PYALP_MODULE_LOCAL_DEFAULT)
+	set(PYALP_MODULE_LOCAL_VAL 1)
+else()
+	set(PYALP_MODULE_LOCAL_VAL 0)
+endif()
+
 assert_defined_variables( WITH_REFERENCE_BACKEND WITH_OMP_BACKEND )
 
 # target listing all examples, to build them at once with 'make examples'
@@ -30,8 +47,15 @@ assert_defined_variables( WITH_REFERENCE_BACKEND WITH_OMP_BACKEND )
 if( WITH_REFERENCE_BACKEND )
 	set(PYALP_MODULE_NAME pyalp_ref)
 
-	pybind11_add_module( ${PYALP_MODULE_NAME} pyalp.cpp conjugate_gradient.hpp matrix_wrappers.hpp utils.hpp vector_wrappers.hpp )
+	pybind11_add_module( ${PYALP_MODULE_NAME} pyalp/module_entry.cpp conjugate_gradient.hpp matrix_wrappers.hpp utils.hpp vector_wrappers.hpp )
 	target_compile_definitions(${PYALP_MODULE_NAME} PRIVATE PYALP_MODULE_NAME=${PYALP_MODULE_NAME})
+	# By default enable module-local pybind11 registrations so multiple backend
+	# extension modules can be imported into the same interpreter without
+	# colliding over identical C++ type registrations. Set to 0 only when
+	# explicit cross-module type sharing is required.
+	target_compile_definitions(${PYALP_MODULE_NAME} PRIVATE PYALP_MODULE_LOCAL=${PYALP_MODULE_LOCAL_VAL})
+	# Ensure compiler can find headers placed under pyalp/src and pyalp/src/pyalp
+	target_include_directories(${PYALP_MODULE_NAME} PRIVATE ${CMAKE_SOURCE_DIR}/include ${CMAKE_CURRENT_SOURCE_DIR} ${CMAKE_CURRENT_SOURCE_DIR}/pyalp)
 	# Link your required libraries
 	target_link_libraries(${PYALP_MODULE_NAME} PRIVATE backend_shmem_shared backend_reference common_flags)
 	# If OpenMP support is available, ensure the module links the OpenMP imported target
@@ -51,7 +75,12 @@ if( WITH_REFERENCE_BACKEND )
 	    COMMAND ${CMAKE_COMMAND} -E echo ""
 	    COMMAND ${CMAKE_COMMAND} -E echo "============================================================"
 	    COMMAND ${CMAKE_COMMAND} -E echo "Build complete!"
-	    COMMAND ${CMAKE_COMMAND} -E echo "To use the Python bindings, append ${CMAKE_BINARY_DIR}/python to your PYTHONPATH:"
+	    # Print the exact built module path and a PYTHONPATH suggestion pointing
+	    # to the directory where the extension module is placed inside the
+	    # top-level build tree for pyalp: ${CMAKE_BINARY_DIR}/pyalp/src
+	    COMMAND ${CMAKE_COMMAND} -E echo "Built module: $<TARGET_FILE:${PYALP_MODULE_NAME}>"
+	    COMMAND ${CMAKE_COMMAND} -E echo "To use the Python bindings, append ${CMAKE_BINARY_DIR}/pyalp/src to your PYTHONPATH:"
+	    COMMAND ${CMAKE_COMMAND} -E echo "Or import the compiled module by name: ${PYALP_MODULE_NAME}"
 	    COMMAND ${CMAKE_COMMAND} -E echo "============================================================"
 	)
 
@@ -61,8 +90,11 @@ endif()
 if( WITH_OMP_BACKEND )
 	set(PYALP_MODULE_NAME pyalp_omp)
 
-	pybind11_add_module( ${PYALP_MODULE_NAME} pyalp.cpp conjugate_gradient.hpp matrix_wrappers.hpp utils.hpp vector_wrappers.hpp )
+	pybind11_add_module( ${PYALP_MODULE_NAME} pyalp/module_entry.cpp conjugate_gradient.hpp matrix_wrappers.hpp utils.hpp vector_wrappers.hpp )
 	target_compile_definitions( ${PYALP_MODULE_NAME} PRIVATE PYALP_MODULE_NAME=${PYALP_MODULE_NAME})
+	# Enable module-local registration for this backend (see note above)
+	target_compile_definitions(${PYALP_MODULE_NAME} PRIVATE PYALP_MODULE_LOCAL=${PYALP_MODULE_LOCAL_VAL})
+	target_include_directories(${PYALP_MODULE_NAME} PRIVATE ${CMAKE_SOURCE_DIR}/include ${CMAKE_CURRENT_SOURCE_DIR} ${CMAKE_CURRENT_SOURCE_DIR}/pyalp)
 	# Link your required libraries
 	target_link_libraries(${PYALP_MODULE_NAME} PRIVATE backend_shmem_shared backend_reference_omp common_flags)
 	# If OpenMP support is available, ensure the module links the OpenMP imported target
@@ -77,7 +109,9 @@ if( WITH_OMP_BACKEND )
 	    COMMAND ${CMAKE_COMMAND} -E echo ""
 	    COMMAND ${CMAKE_COMMAND} -E echo "============================================================"
 	    COMMAND ${CMAKE_COMMAND} -E echo "Build complete!"
-	    COMMAND ${CMAKE_COMMAND} -E echo "To use the Python bindings, append ${CMAKE_BINARY_DIR}/python to your PYTHONPATH:"
+	    COMMAND ${CMAKE_COMMAND} -E echo "Built module: $<TARGET_FILE:${PYALP_MODULE_NAME}>"
+	    COMMAND ${CMAKE_COMMAND} -E echo "To use the Python bindings, append ${CMAKE_BINARY_DIR}/pyalp/src to your PYTHONPATH:"
+	    COMMAND ${CMAKE_COMMAND} -E echo "Or import the compiled module by name: ${PYALP_MODULE_NAME}"
 	    COMMAND ${CMAKE_COMMAND} -E echo "============================================================"
 	)
 
@@ -87,8 +121,11 @@ endif()
 if( WITH_NONBLOCKING_BACKEND )
 	set(PYALP_MODULE_NAME pyalp_nonblocking)
 
-	pybind11_add_module( ${PYALP_MODULE_NAME} pyalp.cpp conjugate_gradient.hpp matrix_wrappers.hpp utils.hpp vector_wrappers.hpp )
+	pybind11_add_module( ${PYALP_MODULE_NAME} pyalp/module_entry.cpp conjugate_gradient.hpp matrix_wrappers.hpp utils.hpp vector_wrappers.hpp )
 	target_compile_definitions( ${PYALP_MODULE_NAME} PRIVATE PYALP_MODULE_NAME=${PYALP_MODULE_NAME})
+	# Enable module-local registration for this backend (see note above)
+	target_compile_definitions(${PYALP_MODULE_NAME} PRIVATE PYALP_MODULE_LOCAL=${PYALP_MODULE_LOCAL_VAL})
+	target_include_directories(${PYALP_MODULE_NAME} PRIVATE ${CMAKE_SOURCE_DIR}/include ${CMAKE_CURRENT_SOURCE_DIR} ${CMAKE_CURRENT_SOURCE_DIR}/pyalp)
 	# Link your required libraries
 	target_link_libraries(${PYALP_MODULE_NAME} PRIVATE backend_shmem_shared backend_reference_omp common_flags)
 	# If OpenMP support is available, ensure the module links the OpenMP imported target
@@ -103,7 +140,9 @@ if( WITH_NONBLOCKING_BACKEND )
 	    COMMAND ${CMAKE_COMMAND} -E echo ""
 	    COMMAND ${CMAKE_COMMAND} -E echo "============================================================"
 	    COMMAND ${CMAKE_COMMAND} -E echo "Build complete!"
-	    COMMAND ${CMAKE_COMMAND} -E echo "To use the Python bindings, append ${CMAKE_BINARY_DIR}/python to your PYTHONPATH:"
+	    COMMAND ${CMAKE_COMMAND} -E echo "Built module: $<TARGET_FILE:${PYALP_MODULE_NAME}>"
+	    COMMAND ${CMAKE_COMMAND} -E echo "To use the Python bindings, append ${CMAKE_BINARY_DIR}/pyalp/src to your PYTHONPATH:"
+	    COMMAND ${CMAKE_COMMAND} -E echo "Or import the compiled module by name: ${PYALP_MODULE_NAME}"
 	    COMMAND ${CMAKE_COMMAND} -E echo "============================================================"
 	)
 
@@ -208,4 +247,47 @@ configure_file(${METADATA_TEMPLATE} ${METADATA_OUTPUT} @ONLY)
 #     COMMAND ${CMAKE_COMMAND} -E echo "Generated metadata file content:"
 #     COMMAND ${CMAKE_COMMAND} -E cat ${METADATA_OUTPUT}
 # )
+
+
+# Add a convenience CMake target to build all enabled pyalp backends and
+# package them into a wheel using the standard Python packaging path.
+# This creates a "pyalp" top-level build target you can invoke via
+#   cmake --build <build-dir> --target pyalp --parallel
+# The target will build the enabled backend extension targets and then
+# run `python -m pip wheel pyalp` with CMAKE_BUILD_DIR set so
+# `pyalp/setup.py` can discover the prebuilt shared objects and metadata.
+
+set(pyalp_package_targets "")
+if(WITH_REFERENCE_BACKEND)
+	list(APPEND pyalp_package_targets pyalp_ref)
+endif()
+if(WITH_OMP_BACKEND)
+	list(APPEND pyalp_package_targets pyalp_omp)
+endif()
+if(WITH_NONBLOCKING_BACKEND)
+	list(APPEND pyalp_package_targets pyalp_nonblocking)
+endif()
+
+if(NOT pyalp_package_targets)
+	# No backends enabled: provide a dummy target that still attempts packaging
+	list(APPEND pyalp_package_targets "")
+endif()
+
+string(JOIN " " pyalp_package_targets_str ${pyalp_package_targets})
+
+# Create a simple, top-level alias target `pyalp` that just builds the
+# enabled backend extension targets. This avoids packing logic in the
+# subdirectory and makes `make pyalp` (or `cmake --build --target pyalp`) a
+# straightforward way to build the Python extension modules.
+if(NOT pyalp_package_targets)
+	# No enabled backends: provide an empty phony target.
+	add_custom_target(pyalp
+		COMMENT "pyalp: no backends enabled"
+	)
+else()
+	add_custom_target(pyalp
+		DEPENDS ${pyalp_package_targets}
+		COMMENT "Build enabled pyalp backend extension modules"
+	)
+endif()
 

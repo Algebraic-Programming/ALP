@@ -98,6 +98,25 @@ set( COMMON_PERF_DEFS_Release "NDEBUG" )
 # building wheels in CI set -DALP_PORTABLE_BUILD=ON to get portable artifacts.
 option( ALP_PORTABLE_BUILD "Build portable binaries (disable host-specific optimizations)" OFF )
 
+# Build profile: controls portability and default LTO/optimization choices.
+# Use -DALP_BUILD_PROFILE=LOCAL for developer/local builds (enables native
+# host optimizations, enables LTO by default). Use -DALP_BUILD_PROFILE=DEPLOYMENT
+# for wheel/deployment builds (portable by default).
+set(ALP_BUILD_PROFILE "DEPLOYMENT" CACHE STRING "Build profile: LOCAL or DEPLOYMENT. LOCAL enables native optimizations; DEPLOYMENT favors portability for wheels.")
+string(TOUPPER "${ALP_BUILD_PROFILE}" ALP_BUILD_PROFILE_UP)
+
+if(ALP_BUILD_PROFILE_UP STREQUAL "LOCAL")
+	# Local builds should prefer host-specific optimizations
+	set(ALP_PORTABLE_BUILD OFF CACHE BOOL "Build portable binaries (disable host-specific optimizations)" FORCE)
+	# Enable LTO by default for local performance builds; user may override.
+	set(CMAKE_INTERPROCEDURAL_OPTIMIZATION ON CACHE BOOL "Enable LTO (interprocedural optimization)" FORCE)
+else()
+	# Deployment builds default to portable flags for maximum wheel compatibility
+	set(ALP_PORTABLE_BUILD ON CACHE BOOL "Build portable binaries (disable host-specific optimizations)" FORCE)
+	# Disable LTO for portable deployment builds; user may override explicitly
+	set(CMAKE_INTERPROCEDURAL_OPTIMIZATION OFF CACHE BOOL "Enable LTO (interprocedural optimization)" FORCE)
+endif()
+
 # Avoid GCC/GNU-specific microarchitecture flags on Apple/Clang toolchains
 if(APPLE)
 	# On macOS with AppleClang, -march/-mtune and aggressive unrolling can

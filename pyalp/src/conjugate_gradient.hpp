@@ -1,5 +1,3 @@
-#include <pybind11/pybind11.h>
-#include <pybind11/numpy.h>
 #include <iostream>
 #include <stdexcept>
 #include <vector>
@@ -24,8 +22,6 @@
 #include <graphblas/utils/singleton.hpp>
 
 #include <graphblas/utils/iterators/nonzeroIterator.hpp>
-
-namespace py = pybind11;
 
 using BaseScalarType = double;
 #ifdef _CG_COMPLEX

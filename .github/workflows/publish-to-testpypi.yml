@@ -321,3 +321,65 @@ jobs:
         env:
           TWINE_USERNAME: __token__
           TWINE_PASSWORD: ${{ secrets.PYPI_API_TOKEN }}
+
+  verify-installed-inprocess:
+    needs: publish
+    runs-on: ubuntu-latest
+    name: Verify installed wheel (in-process smoke)
+    steps:
+      - name: Checkout repository (for tests)
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Create venv and install prerequisites
+        shell: bash
+        run: |
+          set -euo pipefail
+          PY=$(which python3 || which python)
+          VENV_DIR="./.venv_test_inprocess"
+          rm -rf "${VENV_DIR}"
+          ${PY} -m venv "${VENV_DIR}"
+          source "${VENV_DIR}/bin/activate"
+          python -m pip install --upgrade pip setuptools wheel numpy
+
+          # Retry pip install from TestPyPI with exponential backoff (bounded attempts)
+          PYALP_VERSION=$(grep -E '^version\s*=\s*"' pyalp/pyproject.toml | head -n1 | sed -E 's/^version\s*=\s*"([^"]+)".*/\1/')
+          echo "Installing alp-graphblas==${PYALP_VERSION} from TestPyPI (with retries)"
+
+          MAX_ATTEMPTS=6
+          SLEEP_BASE=10
+          SUCCESS=0
+
+          for attempt in $(seq 1 ${MAX_ATTEMPTS}); do
+            echo "--- attempt ${attempt} of ${MAX_ATTEMPTS} ---"
+            # verbose pip output helps debugging in CI logs
+            python -m pip install --index-url https://test.pypi.org/simple/ --extra-index-url https://pypi.org/simple alp-graphblas==${PYALP_VERSION} -v && SUCCESS=1 && break
+            echo "pip install failed on attempt ${attempt}"
+            if [ "${attempt}" -lt "${MAX_ATTEMPTS}" ]; then
+              SLEEP_SECONDS=$((SLEEP_BASE * attempt))
+              echo "Sleeping ${SLEEP_SECONDS}s before retry..."
+              sleep "${SLEEP_SECONDS}"
+            fi
+          done
+
+          if [ "${SUCCESS}" -ne 1 ]; then
+            echo "ERROR: failed to install alp-graphblas from TestPyPI after ${MAX_ATTEMPTS} attempts" >&2
+            exit 1
+          fi
+
+          # Print a compact JSON summary of installed backends for easy scanning in CI logs
+            python -c "import json,importlib,sys; print(json.dumps({'backends': importlib.import_module('pyalp').list_backends()}))"
+
+      - name: Run in-process backend import smoke test
+        shell: bash
+        run: |
+          set -euo pipefail
+          source ./.venv_test_inprocess/bin/activate
+          echo "Running pyalp/tests/test_bckds_inprocess.py"
+          python pyalp/tests/test_bckds_inprocess.py
