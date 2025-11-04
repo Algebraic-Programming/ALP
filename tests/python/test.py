@@ -21,7 +21,7 @@ Dependencies:
     - pyalp_ref (should be available in the Python path)
 """
 
-import pyalp_ref as pyalp
+import pyalp.pyalp_ref as pyalp
 import numpy as np
 
 # Gnerate a small sparse linear system using numpy arrays

@@ -179,9 +179,53 @@ Checklist before releasing
 - Bump `pyalp/pyproject.toml` version.
 - Ensure `pyalp/pyproject.toml` includes runtime dependencies (e.g., `numpy>=1.22`) so pip installs them automatically.
 - Ensure `CIBW_BEFORE_BUILD` in `.github/workflows/publish-to-testpypi.yml` builds your new backend (`BUILD_TARGETS` updated).
-- If your backend needs extra system packages (libnuma, libomp, etc.), add those install steps to the before-build script or document the manual requirements.
-- Add smoke tests that import and exercise the backend. Run them against installed wheels (CI verifies installed wheels in a separate job).
-- Create the tag `pyalp.vX.Y.Z` and push it; observe the `alp-graphblas wheels (cibuildwheel)` workflow.
+
+----------------------
+Local developer workflow (CMake-generated target)
+------------------------------------------------
+
+The project now exposes a CMake-generated `pyalp` target that builds all
+enabled pyalp backends and packages wheel(s) using the same packaging logic
+that CI uses. This is the recommended local path and replaces the previous
+helper script.
+
+Usage:
+
+```bash
+# Configure from repo root (LOCAL profile enables host-optimizations)
+cmake -S . -B build/host -DALP_BUILD_PROFILE=LOCAL -DENABLE_PYALP=ON -G Ninja
+
+# Build and package via the CMake target (this will place wheels in build/host/dist)
+cmake --build build/host --target pyalp --parallel
+```
+
+After the target completes you will see a message pointing to the wheel(s).
+You can either add the generated python directory to `PYTHONPATH` for quick
+iteration:
+
+```bash
+export PYTHONPATH="$PYTHONPATH:$(pwd)/build/host/python"
+```
+
+Or install the wheel into a venv:
+
+```bash
+python -m venv /tmp/pyalp-venv
+source /tmp/pyalp-venv/bin/activate
+pip install build/host/dist/*.whl
+```
+
+If you need to reproduce CI-style portable wheels, configure with the
+`DEPLOYMENT` profile instead:
+
+```bash
+cmake -S . -B build/cp311 -DALP_BUILD_PROFILE=DEPLOYMENT -DENABLE_PYALP=ON -G Ninja
+cmake --build build/cp311 --target pyalp --parallel
+```
+
+Notes:
+- Ensure system dependencies like `libnuma-dev` and `libomp` are installed when building backends that require them.
+- The packaging step relies on `CMAKE_BUILD_DIR` to locate generated metadata and prebuilt `.so` files; the CMake target sets this environment appropriately when invoking `pip wheel`.
 
 Troubleshooting / common pitfalls
 - Missing metadata in wheels: Make sure CMake writes the generated `pyalp_metadata.py` into the per-ABI build dir (CI sets `CMAKE_BUILD_DIR` and `setup.py` copies `pyalp_metadata.py` -> `_metadata.py`). If your metadata template changed, update `pyalp/src/pyalp/_metadata.py.in`.
