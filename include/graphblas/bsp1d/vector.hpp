@@ -2536,7 +2536,7 @@ namespace grb {
 		 *
 		 * \internal Dispatches to #grb::set.
 		 */
-		Vector< D, BSP1D, C > & operator=( Vector< D, BSP1D, C > &x ) {
+		Vector< D, BSP1D, C > & operator=( const Vector< D, BSP1D, C > &x ) {
 			const auto rc = set( *this, x );
 			if( rc != SUCCESS ) {
 				throw std::runtime_error( "grb::set inside copy-constructor: "
