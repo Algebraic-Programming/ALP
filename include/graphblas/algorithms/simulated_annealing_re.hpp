@@ -37,7 +37,6 @@
 #include <iostream>
 #endif
 
-
 #include <graphblas.hpp>
 
 namespace grb {
@@ -58,33 +57,79 @@ namespace grb {
 		 * @tparam EnergyType	The energy type.
 		 * @tparam TempType		The inverse temperature type.
 		 *
+		 * This implementation of parallel tempering does not use any spmd characteristics.
 		 */
 		template<
+			Backend backend,
 			typename StateType, 
 			typename EnergyType,
-			typename TempType,
-			Backend backend
+			typename TempType
 			>
-		grb::RC pt(
+	typename std::enable_if<
+		(grb::_GRB_BACKEND != grb::BSP1D) || (backend == grb::BSP1D),
+		grb::RC >::type
+	pt(
 				std::vector< grb::Vector< StateType, backend > > &states,
-				grb::Vector< EnergyType > &energies,
-				const grb::Vector< TempType > &betas
+				grb::Vector< EnergyType, backend > &energies,
+				const grb::Vector< TempType, backend > &betas
 				){
+
+			const size_t n_replicas = states.size();
+			// const size_t s 		= spmd<>::pid();
+			// const size_t nprocs = spmd<>::nprocs();
+			grb::RC rc = grb::SUCCESS;
+
+			for( size_t i = n_replicas - 1 ; i > 0 ; --i ){
+				const EnergyType de = ( energies[ i ] - energies[ i-1 ]) * (betas[ i ] - betas[ i-1 ]);
+
+				if( de >= 0 || std::rand() < RAND_MAX * exp( de ) ){
+					std::swap( states[i], states[i-1] );
+					std::swap( energies[i], energies[i-1] );
+				}
+			}
+
+			return rc;
+		}
+
+		/*
+		 * Implementation of parallel tempering using spmd.
+		 */
+		template<
+			Backend backend,
+			typename StateType, 
+			typename EnergyType,
+			typename TempType
+			>
+			typename std::enable_if<
+				(grb::_GRB_BACKEND == grb::BSP1D) && (backend != grb::BSP1D),
+				grb::RC >::type
+		pt(
+				std::vector< grb::Vector< StateType, backend > > &states,
+				grb::Vector< EnergyType, backend > &energies,
+				const grb::Vector< TempType, backend > &betas
+				){
+			static_assert( backend != grb::BSP1D );
+			// static_assert( grb::_GRB_BACKEND == grb::BSP1D );
+
+			const size_t n = grb::size( states[0] );
 			const size_t n_replicas = states.size();
 			const size_t s 		= spmd<>::pid();
 			const size_t nprocs = spmd<>::nprocs();
 			grb::RC rc = grb::SUCCESS;
 			struct data {
-					grb::Vector< StateType, backend > *s;
+					grb::Vector< StateType, backend > s;
 					EnergyType e;
 					TempType b;
 					int r;
 				};
-			static struct data msg[ 2 ];
+			struct data msg[ 2 ];
+			grb::resize( msg[0].s, n );
+			grb::resize( msg[1].s, n );
 			int rand = std::rand();
 
-			for( int si = static_cast< int >( nprocs ) - 1 ; si >= 0; --si ){
-				if( si == static_cast< int >( s ) ){
+			for( size_t si = nprocs ; rc == grb::SUCCESS && si > 0; --si ){
+				std::cerr << "Hello from process " << s << std::endl;
+				if( si == s+1 ){
 					for( size_t i = n_replicas - 1 ; i > 0 ; --i ){
 						const EnergyType de = ( energies[ i ] - energies[ i-1 ]) * (betas[ i ] - betas[ i-1 ]);
 
@@ -93,35 +138,53 @@ namespace grb {
 							std::swap( energies[i], energies[i-1] );
 						}
 					}
-					msg[ 1 ].s = &states[ 0 ];
+					grb::set( msg[1].s, states[0] );
 					msg[ 1 ].e = energies[ 0 ];
 					msg[ 1 ].b = betas[0];
-					msg[ 1 ].r = rand;
-				}else if( si == static_cast< int >( s ) + 1 ){
-					msg[ 0 ].s = &states[ n_replicas - 1 ];
+					// msg[ 1 ].r = rand;
+				}else if( si == s+2 ){
+					grb::set( msg[0].s, states[ n_replicas - 1 ] );
 					msg[ 0 ].e = energies[ n_replicas - 1 ];
 					msg[ 0 ].b = betas[ n_replicas - 1 ];
 					msg[ 0 ].r = rand;
 				}
-				if( si == 0 ) continue;
-				rc = rc ? rc : grb::collectives<>::broadcast( msg[ 0 ], si-1 );
-				rc = rc ? rc : grb::collectives<>::broadcast( msg[ 1 ], si );
+				if( si == 1 ) continue;
+
+				std::cerr << "Calling broadcasts" << std::endl;
+				rc = rc ? rc : grb::collectives<>::broadcast( msg[ 0 ].s, si-2 );
+				rc = rc ? rc : grb::collectives<>::broadcast( msg[ 0 ].e, si-2 );
+				rc = rc ? rc : grb::collectives<>::broadcast( msg[ 0 ].b, si-2 );
+				rc = rc ? rc : grb::collectives<>::broadcast( msg[ 0 ].r, si-2 );
+				rc = rc ? rc : grb::collectives<>::broadcast( msg[ 1 ].s, si-1 );
+				rc = rc ? rc : grb::collectives<>::broadcast( msg[ 1 ].e, si-1 );
+				rc = rc ? rc : grb::collectives<>::broadcast( msg[ 1 ].b, si-1 );
+
+#ifndef NDEBUG
+	
+				if( rc != grb::SUCCESS ){
+					std::cerr << "\n\t Error in a collective broadcast " << rc << " : " << grb::toString( rc ) << std::endl;
+				}
+				assert( rc == grb::SUCCESS );
+#endif
 
 				const EnergyType de = ( msg[ 1 ].e - msg[ 0 ].e ) * ( msg[ 1 ].b - msg[ 0 ].b );
 
-				if( de >= 0 || msg[ 0 ].r < RAND_MAX * exp( de ) ){
-					if( si == static_cast< int >( s ) ){
-						states[ 0 ] = *msg[ 0 ].s;
+				if( rc == grb::SUCCESS && ( de >= 0 || msg[ 0 ].r < RAND_MAX * exp( de ) ) ){
+					if( si == s+2 ){
+						states[ 0 ] = msg[ 0 ].s;
 						energies[ 0 ] = msg[ 0 ].e;
-					}else if( si == static_cast< int >( s ) + 1 ){
-						states[ n_replicas-1 ] = *msg[ 1 ].s;
+						// betas[ 0 ] = msg[ 0 ].b;
+					}else if( si ==  s+1 ){
+						states[ n_replicas-1 ] = msg[ 1 ].s;
 						energies[ n_replicas-1 ] = msg[ 1 ].e;
+						// betas[ n_replicas-1 ] = msg[ 1 ].b;
 					}
 				}
 			}
 
 			return rc;
 		}
+
 
 		/*
 		 * Estimate a solution to a given optimization problem. The solution is found
@@ -155,12 +218,13 @@ namespace grb {
 		 *
 		 */
 		template<
+			Backend backend,
 			typename QType, // type of coupling matrix values
 			typename StateType, // type of state, possibly 0/1
 			typename EnergyType,
 			typename TempType,
 			typename SweepDataType, // type of data to be passed through to the sweep function
-			typename RSI, typename CSI, typename NZI, Backend backend,
+			typename RSI, typename CSI, typename NZI,
 			typename SweepFuncType = std::function< 
 					EnergyType(
 						 const grb::Matrix< QType, backend, RSI, CSI, NZI >&,
@@ -176,15 +240,16 @@ namespace grb {
 				std::vector< grb::Vector< StateType, backend > > &states,
 				const grb::Matrix< QType, backend, RSI, CSI, NZI > &couplings,
 				const grb::Vector< QType, backend > &local_fields,
-				grb::Vector< EnergyType > &energies,
-				grb::Vector< TempType > &betas,
+				grb::Vector< EnergyType, backend > &energies,
+				grb::Vector< TempType, backend > &betas,
 				std::vector< grb::Vector< StateType, backend > >  &temp_states,
-				grb::Vector< EnergyType > &temp_energies,
+				grb::Vector< EnergyType, backend > &temp_energies,
 				SweepDataType& temp_sweep,
 				const size_t &n_sweeps = 1,
 				const bool &use_pt = false
 				){
 
+			const size_t s = spmd<>::pid();
 			const size_t n_replicas = states.size();
 			const size_t n = grb::size(states[0]);
 
@@ -198,6 +263,8 @@ namespace grb {
 				assert( n == grb::size( states[ i ] ) );
 			}
 
+			grb::RC rc = grb::SUCCESS;
+
 
 #ifndef NDEBUG
 			if( grb::spmd<>::pid() == 0 ) {
@@ -210,15 +277,12 @@ namespace grb {
 			}
 #endif
 
-			grb::RC rc = grb::SUCCESS;
-
 			temp_energies = energies;
 			temp_states =  states;
 
 			for( size_t i_sweep = 0 ; rc == grb::SUCCESS && i_sweep < n_sweeps ; ++i_sweep ){
 				for( size_t j = 0 ; j < n_replicas ; ++j ){
 					
-					grb::wait();
 					energies[j] += sweep( couplings, local_fields, states[j], betas[j], temp_sweep );
 					grb::wait();
 				
@@ -228,13 +292,13 @@ namespace grb {
 						temp_states[j] = states[j];
 					}
 				} // n_replicas
-
+				// std::cerr << "Iteration " << i_sweep << " " << rc << std::endl;
 				if( rc == SUCCESS && use_pt ){
 					// do a Parallel Tempering move
-					rc = pt( states, energies, betas );
+					rc = pt< backend >( states, energies, betas );
 				}
 #ifndef NDEBUG
-				if( grb::spmd<>::pid() == 0 ) {
+				if( s == 0 ) {
 					std::cerr << "Energy at iteration " << i_sweep << " = " << energies[ 0 ] << std::endl;
 				}
 #endif
@@ -246,6 +310,7 @@ namespace grb {
 					      << __FILE__ << ": " << grb::toString( rc ) << "\n";
 			}
 #endif
+			// grb::collectives<>::reduce(); ?
 			if( rc == SUCCESS ){
 				states = temp_states;
 				energies = temp_energies;

@@ -23,6 +23,8 @@
 #include <cstdlib>
 #include <unistd.h>
 
+#include <mpi.h>
+
 #include <graphblas/algorithms/simulated_annealing_re.hpp>
 #include <graphblas/nonzeroStorage.hpp>
 #include <graphblas/utils/timer.hpp>
@@ -32,6 +34,8 @@
 #include <utils/output_verification.hpp>
 #include <graphblas.hpp>
 #include <utils/print_vec_mat.hpp>
+
+const int LPF_MPI_AUTO_INITIALIZE = 0;
 
 using namespace grb;
 
@@ -155,8 +159,8 @@ struct output {
     EnergyType best_energy = std::numeric_limits< EnergyType >::max();
 	size_t rep;
 	grb::utils::TimerResults times;
-    std::unique_ptr< PinnedVector< JType > > pinnedSolutionVector;
-    std::unique_ptr< PinnedVector< JType > > pinnedRefSolutionVector;
+    std::unique_ptr< PinnedVector< JType, grb::reference > > pinnedSolutionVector;
+    std::unique_ptr< PinnedVector< JType, grb::reference > > pinnedRefSolutionVector;
     // other things like eg: best replicas ...
 };
 
@@ -268,17 +272,19 @@ void read_vector_data_from_array(
 }
 
 template<
-		class Ring = Semiring<
-			grb::operators::add< JType >, grb::operators::mul< JType >,
-			grb::identities::zero, grb::identities::one
-		> >
+	Backend backend,
+	class Ring = Semiring<
+		grb::operators::add< JType >, grb::operators::mul< JType >,
+		grb::identities::zero, grb::identities::one
+	>
+	>
 EnergyType get_energy(
-				 const grb::Matrix< JType >& couplings,
-				 const grb::Vector< JType > &local_fields,
-				 const grb::Vector< IOType > &state,
+				 const grb::Matrix< JType, backend >& couplings,
+				 const grb::Vector< JType, backend > &local_fields,
+				 const grb::Vector< IOType, backend > &state,
 				 const Ring &ring = Ring()
 			  ){
-	static grb::Vector< JType > tmp ( grb::size( local_fields ) );
+	static grb::Vector< JType, backend > tmp ( grb::size( local_fields ) );
 	grb::RC rc = grb::clear( tmp );
 	EnergyType energy = 0.0;
 
@@ -292,35 +298,38 @@ EnergyType get_energy(
 }
 
 template<
-		typename SweepDataType = std::tuple<
-					 grb::Vector< JType >&,
-					 grb::Vector< JType >&,
-					 grb::Vector< IOType >&,
-					 const std::vector< grb::Vector< bool > >&,
-					 grb::Vector< EnergyType >&,
-					 grb::Vector< bool >&
-					 >,
-		grb::Descriptor descr = grb::descriptors::no_operation,
 		class Ring = Semiring<
 			grb::operators::add< JType >, grb::operators::mul< JType >,
 			grb::identities::zero, grb::identities::one
-		>
+		>,
+		Backend backend = grb::reference,
+		typename SweepDataType = std::tuple<
+					 grb::Vector< JType, backend >&,
+					 grb::Vector< JType, backend >&,
+					 grb::Vector< IOType, backend >&,
+					 const std::vector< grb::Vector< bool, backend > >&,
+					 grb::Vector< EnergyType, backend >&,
+					 grb::Vector< bool, backend >&
+					 >,
+		grb::Descriptor descr = grb::descriptors::no_operation
 	>
-static EnergyType sequential_sweep_immediate(
-				 const grb::Matrix< JType >& couplings,
-				 const grb::Vector< JType > &local_fields,
-				 grb::Vector< IOType > &state,
+EnergyType sequential_sweep_immediate(
+				 const grb::Matrix< JType, backend >& couplings,
+				 const grb::Vector< JType, backend > &local_fields,
+				 grb::Vector< IOType, backend > &state,
 				 const JType &beta,
 				 std::tuple<
-					 grb::Vector< JType >&,
-					 grb::Vector< JType >&,
-					 grb::Vector< IOType >&,
-					 const std::vector< grb::Vector< bool > >&,
-					 grb::Vector< EnergyType >&,
-					 grb::Vector< bool >&,
+					 grb::Vector< JType, backend >&,
+					 grb::Vector< JType, backend >&,
+					 grb::Vector< IOType, backend >&,
+					 const std::vector< grb::Vector< bool, backend > >&,
+					 grb::Vector< EnergyType, backend >&,
+					 grb::Vector< bool, backend >&,
 					 std::minstd_rand&
 					 > &data
 			  ){
+		const size_t s = spmd<>::pid();
+		// std::cerr << "Process " << s <<  " running at line " << __LINE__ << std::endl;
 		const Ring ring = Ring();
 
 
@@ -355,7 +364,7 @@ static EnergyType sequential_sweep_immediate(
 		// print_vector( log_rand, 30, "log_rand" );
 
 #ifndef NDEBUG
-		const grb::Vector< IOType > old_state = state;
+		const grb::Vector< IOType, backend > old_state = state;
 #endif
 		for(const auto &mask : masks ){
 
@@ -379,14 +388,10 @@ static EnergyType sequential_sweep_immediate(
 							accept[i] = ( dn[i] >= 0 ) || ( log_rand[i] < beta * dn[i] );
 						}
 					}, mask, log_rand, dn, accept );
-			// print_vector( log_rand, 30, "log_rand" );
-			// print_vector( mask, 30, "mask" );
-			// print_vector( accept, 30, "accept" );
 
 			// new_state = np.where(accept, 1 - old, old)
 			rc = rc ? rc : grb::foldl( state, accept, static_cast< IOType >( -1 ), ring.getMultiplicativeMonoid() );
 			rc = rc ? rc : grb::foldl( state, accept, static_cast< IOType >( 1 ), ring.getAdditiveMonoid() );
-			// print_vector( state, 30, "state" );
 			
 			// delta = new - old ==> delta[accept] = 2*new_state[accept]-1
 			rc = rc ? rc : grb::clear( delta  );
@@ -396,7 +401,6 @@ static EnergyType sequential_sweep_immediate(
 			
 			// Update delta_energy -= dot(dn, accept)
 			rc = rc ? rc : grb::dot< descr >( delta_energy, delta, h, ring );
-			// rc = rc ? rc : grb::wait();
 
 			// update h
 			rc = rc ? rc : grb::mxv( h, couplings, delta, ring );
@@ -410,19 +414,20 @@ static EnergyType sequential_sweep_immediate(
 			abort();
 		}
 		assert( rc == grb::SUCCESS );
-		const auto new_state = state;
-		rc = rc ? rc : grb::wait();
+		if(s == 0){
+			const auto new_state = state;
 
-		const auto real_delta = get_energy(couplings, local_fields, new_state) - get_energy(couplings, local_fields, old_state);
-		std::cerr << "\n\t Delta_energy: " << delta_energy;
-		std::cerr << "\n\t Real delta: " << real_delta;
-		std::cerr << "\n\t Discrepancy: " << real_delta - delta_energy;
-		// std::cerr << "\n\t Old energy: " << get_energy(couplings, local_fields, old_state) ;
-		// std::cerr << "\n\t New energy: " << get_energy(couplings, local_fields, new_state);
-		std::cerr << std::endl;
+			const auto real_delta = get_energy(couplings, local_fields, new_state) - get_energy(couplings, local_fields, old_state);
+			std::cerr << "\n\t Delta_energy: " << delta_energy;
+			std::cerr << "\n\t Real delta: " << real_delta;
+			std::cerr << "\n\t Discrepancy: " << real_delta - delta_energy;
+			// std::cerr << "\n\t Old energy: " << get_energy(couplings, local_fields, old_state) ;
+			// std::cerr << "\n\t New energy: " << get_energy(couplings, local_fields, new_state);
+			std::cerr << std::endl;
 
-		assert( ISCLOSE(real_delta, delta_energy ) );
-		// TODO: assert fails with nonblocking backend -> see issue #397
+			assert( ISCLOSE(real_delta, delta_energy ) );
+			// TODO: assert fails with nonblocking backend -> see issue #397
+		}
 #endif
 
 		return delta_energy;
@@ -430,19 +435,20 @@ static EnergyType sequential_sweep_immediate(
 
 
 template<
+		Backend backend,
 		typename SweepDataType = std::tuple<
-					 grb::Vector< JType >&,
-					 grb::Vector< JType >&,
-					 grb::Vector< IOType >&,
-					 const std::vector< grb::Vector< bool > >&,
-					 grb::Vector< EnergyType >&,
-					 grb::Vector< bool >&,
+					 grb::Vector< JType, backend >&,
+					 grb::Vector< JType, backend >&,
+					 grb::Vector< IOType, backend >&,
+					 const std::vector< grb::Vector< bool, backend > >&,
+					 grb::Vector< EnergyType, backend >&,
+					 grb::Vector< bool, backend >&,
 					 std::minstd_rand&
 					 >,
 		typename SweepFuncType = std::function< EnergyType(
-					 const grb::Matrix< JType >&,
-					 const grb::Vector< JType >&,
-					 grb::Vector< IOType >&,
+					 const grb::Matrix< JType, backend >&,
+					 const grb::Vector< JType, backend >&,
+					 grb::Vector< IOType, backend >&,
 					 const JType&,
 					 SweepDataType&
 				 ) >,
@@ -451,7 +457,7 @@ template<
 			grb::identities::zero, grb::identities::one
 		>
 	>
-SweepFuncType get_sweep_function( std::string sweep_name ){
+SweepFuncType get_sweep_function( const std::string &sweep_name ){
 	if( sweep_name != "sequential_sweep_immediate" ){
 			std::cerr << "Warning: unknown sweep setting. Falling back to  \"sequential_sweep_immediate\"" << std::endl;
 	}
@@ -485,7 +491,7 @@ void ioProgram( const struct input &data_in, bool &success ) {
 		n_replicas_st = data_in.n_replicas;
 		use_pt        = data_in.use_pt;
 		seed_st       = data_in.seed;
-		sweep_name    = data_in.sweep_name; // TODO: makes bsp1d backend crash!?
+		// sweep_name    = data_in.sweep_name; // TODO: makes bsp1d backend crash!?
 
 
 		if ( data_in.use_default_data ) {
@@ -523,7 +529,6 @@ void grbProgram(
 	const size_t s = spmd<>::pid();
 	assert( s < spmd<>::nprocs() );
 
-	// std::cerr << "Process " << s <<  " running at line " << __LINE__ << std::endl;
 
     grb::utils::Timer timer;
 	timer.reset();
@@ -533,13 +538,13 @@ void grbProgram(
 	if( s == 0 ){
 		std::cout << "problem size n = " << n << "\n";
 	}
-    grb::Vector< JType > h( n );
+    grb::Vector< JType, grb::reference > h( n );
 
     // populate J with test (random) values
     grb::RC rc = grb::SUCCESS;
 
     // load into GraphBLAS
-    grb::Matrix< JType > J( n, n );
+    grb::Matrix< JType, grb::reference > J( n, n );
 	{
 		const auto &data = std::get<7>(Storage::getData());
 		RC io_rc = buildMatrixUnique(
@@ -590,12 +595,10 @@ void grbProgram(
 		);
     }
 
-	assert( grb::nnz( grb::Vector< bool >( n ) ) == 0 );
-
 	// build masks from row block indices
-    std::vector< grb::Vector< bool > > masks;
+    std::vector< grb::Vector< bool, grb::reference > > masks;
 	for(const auto&v : test_data::row_blocks ){
-		masks.emplace_back( grb::Vector< bool >( n ) );
+		masks.emplace_back( grb::Vector< bool, grb::reference >( n ) );
 		for(const auto&i : v ){
 			grb::setElement( masks.back(), 1, i );
 		}
@@ -609,10 +612,10 @@ void grbProgram(
     std::minstd_rand rng ( data_in.seed + s ); // rng or std::mt19937
 
     // create states storage and initialize with random 1/0 values
-    const size_t n_replicas = std::get<3>(Storage::getData());
-    std::vector< grb::Vector<IOType> > states;
+    const size_t n_replicas = data_in.n_replicas;
+    std::vector< grb::Vector< IOType, grb::reference > > states;
     for ( size_t r = 0; r < n_replicas; ++r ) {
-        states.emplace_back( grb::Vector<IOType>(n) );
+        states.emplace_back( grb::Vector< IOType, grb::reference >(n) );
         // initialize with random values
         std::uniform_int_distribution< unsigned short > randint(0,1);
         // we use buildvectorUnique with a random set of indices
@@ -628,41 +631,42 @@ void grbProgram(
             SEQUENTIAL
         );
     }
+	using Ring = Semiring<
+			grb::operators::add< JType >, grb::operators::mul< JType >,
+			grb::identities::zero, grb::identities::one >;
 	
-	const auto sweep = get_sweep_function( data_in.sweep_name );
+	const auto sweep = sequential_sweep_immediate< Ring >; // get_sweep_function( data_in.sweep_name );
 
+    // also make betas vector os size n_replicas and initialize with 10.0
+    grb::Vector< JType, grb::reference > betas( n_replicas );
+    grb::Vector< EnergyType, grb::reference > energies( n_replicas );
+    grb::Vector< EnergyType, grb::reference > temp_energies( n_replicas );
+    for ( size_t r = 0; rc == grb::SUCCESS && r < n_replicas; ++r ) {
+        rc = rc ? rc : grb::setElement( betas, static_cast< JType >(10.0), r );
+        rc = rc ? rc : grb::setElement( energies, get_energy(  J, h, states[r] ), r );
+    }
 
     #ifdef DEBUG_IMSB
     if( s == 0 ) {
         for ( size_t r = 0; r < n_replicas; ++r ) {
+            std::cout << "Process " << s << ": ";
             std::cout << "Initial state replica " << r << ":\n";
             print_vector( states[r], 30 ,"states values" );  
-			std::cout << "With energy " << get_energy(  J, h, states[r] ) << "\n";
+			std::cout << "With energy " << energies[r] << "\n";
             std::cout << std::endl;
         }
 
 		// assert( std::abs(get_energy(  J, h, zero ) - 0.5803450826765713) < 1e-4 );
     }
     #endif
-
-
-    // also make betas vector os size n_replicas and initialize with 10.0
-    grb::Vector< JType > betas( n_replicas );
-    grb::Vector< EnergyType > energies( n_replicas );
-    grb::Vector< EnergyType > temp_energies( n_replicas );
-    for ( size_t r = 0; rc == grb::SUCCESS && r < n_replicas; ++r ) {
-        rc = rc ? rc : grb::setElement( betas, static_cast< JType >(10.0), r );
-        rc = rc ? rc : grb::setElement( energies, get_energy(  J, h, states[r] ), r );
-    }
     rc = rc ? rc : wait();
 
-
-    std::vector< grb::Vector<IOType> > temp_states;
-	grb::Vector< JType > temp_h ( n );
-	grb::Vector< JType > temp_log_rand ( n );
-	grb::Vector< EnergyType > temp_dn ( n );
-	grb::Vector< bool > temp_accept ( n );
-	grb::Vector< IOType > temp_delta ( n );
+    std::vector< grb::Vector< IOType, grb::reference > > temp_states;
+	grb::Vector< JType, grb::reference > temp_h ( n );
+	grb::Vector< JType, grb::reference > temp_log_rand ( n );
+	grb::Vector< EnergyType, grb::reference > temp_dn ( n );
+	grb::Vector< bool, grb::reference > temp_accept ( n );
+	grb::Vector< IOType, grb::reference > temp_delta ( n );
 	auto sweep_data = std::tie(
  			temp_h,
 			temp_log_rand,
@@ -673,7 +677,6 @@ void grbProgram(
 			rng
 			);
 	grb::wait();
-
 
 	out.rep = data_in.rep;
 	// time a single call
@@ -865,6 +868,12 @@ int main( int argc, char ** argv ) {
     input in;
     output out;
 
+	// init MPI
+	if( MPI_Init( &argc, &argv ) != MPI_SUCCESS ) {
+		std::cerr << "MPI_Init returns with non-SUCCESS exit code." << std::endl;
+		return 10;
+	}
+
     if ( !parse_arguments( in, argc, argv ) ) {
         printhelp( argv[0] );
         return 1;
@@ -876,7 +885,7 @@ int main( int argc, char ** argv ) {
     // Run IO program (populates Storage or similar)
     {
         bool success = false;
-        grb::Launcher< AUTOMATIC > launcher;
+		grb::Launcher< FROM_MPI > launcher( MPI_COMM_WORLD );
         grb::RC rc = launcher.exec( &ioProgram, in, success, true );
         if ( rc != SUCCESS ) {
             std::cerr << "I/O launcher failed: " << toString(rc) << "\n";
@@ -890,13 +899,19 @@ int main( int argc, char ** argv ) {
 
     // Run main GraphBLAS program that builds data and calls reSA stub
     {
-        grb::Launcher< AUTOMATIC > launcher;
+		grb::Launcher< FROM_MPI > launcher( MPI_COMM_WORLD );
         grb::RC rc = launcher.exec( &grbProgram, in, out, true );
         if ( rc != SUCCESS ) {
             std::cerr << "grbProgram launcher failed: " << toString(rc) << "\n";
             return 4;
         }
     }
+	
+	// finalise MPI
+	if( MPI_Finalize() != MPI_SUCCESS ) {
+		std::cerr << "MPI_Finalize returns with non-SUCCESS exit code." << std::endl;
+		return 50;
+	}
 
     std::cout << "Finished: error_code=" << out.error_code << " iterations=" << out.iterations << " best_energy=" << out.best_energy << "\n";
     return out.error_code;
