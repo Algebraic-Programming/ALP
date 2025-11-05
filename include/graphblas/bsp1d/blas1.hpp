@@ -53,6 +53,34 @@
 
 namespace grb {
 
+	namespace internal {
+
+		/*
+		 * Handle try and execute phases return code
+		 */
+		template< typename T >
+		grb::RC handle_try_execute( grb::Vector< T > &x, const grb::Phase phase, const grb::RC ret ){
+			// handle try and execute
+			if( phase != RESIZE ) {
+				if( ret == SUCCESS ) {
+					// in this case, the number of nonzeroes in the output vector may have
+					// changed (recall that the dense case is not handled here)
+					return internal::updateNnz( x );
+				} else if( !config::IMPLEMENTATION< BSP1D >::fixedVectorCapacities() &&
+					ret == FAILED
+				) {
+					// in this case, the full computation has not completed but the contents of
+					// x do contain a subset of results. Therefore, the number of nonzeroes may
+					// have changed, but we need to take care to still propagate FAILED
+					const RC subrc = internal::updateNnz( x );
+					if( subrc != SUCCESS ) { return grb::PANIC; }
+				}
+			}
+			return ret;
+		}
+
+	}
+
 	/**
 	 * \defgroup BLAS1_REF The Level-1 ALP/GraphBLAS routines -- BSP1D backend
 	 *
@@ -684,18 +712,7 @@ namespace grb {
 		}
 
 		// handle try and execute
-		if( phase != RESIZE ) {
-			if( ret == SUCCESS ) {
-				internal::setDense( x );
-			} else if( !config::IMPLEMENTATION< BSP1D >::fixedVectorCapacities() &&
-				ret == FAILED
-			) {
-				// handle failed try
-				const RC subrc = internal::updateNnz( x );
-				if( subrc != SUCCESS ) { ret = PANIC; }
-				// ensure we still propagate the FAILED error code
-			}
-		}
+		ret = grb::internal::handle_try_execute( x, phase, ret );
 
 		// done
 		return ret;
@@ -1019,20 +1036,7 @@ namespace grb {
 		}
 
 		// handle try and execute
-		if( phase != RESIZE ) {
-			if( ret == SUCCESS ) {
-				// x may have a new global number of nonzeroes that needs to be synced
-				// (recall that the dense case is not handled here)
-				ret = internal::updateNnz( x );
-			} else if( ret == FAILED ) {
-				// handle failed TRY
-				// x may contain useful results that are a subset of the requested
-				// computation. Therefore the nnz may have changed, but we should
-				// take care to continue propagate FAILED
-				const RC subrc = internal::updateNnz( x );
-				if( subrc != SUCCESS ) { ret = PANIC; }
-			}
-		}
+		ret = handle_try_execute( x, phase, ret );
 
 		// done
 		return ret;
@@ -1112,18 +1116,7 @@ namespace grb {
 		}
 
 		// handle try and execute phases
-		if( phase != RESIZE ) {
-			if( ret == SUCCESS ) {
-				ret = internal::updateNnz( x );
-			} else if( !config::IMPLEMENTATION< BSP1D >::fixedVectorCapacities() &&
-				ret == FAILED
-			) {
-				// handle failed TRY
-				const RC subrc = internal::updateNnz( x );
-				if( subrc != SUCCESS ) { ret = PANIC; }
-				// ensure propagate FAILED error code
-			}
-		}
+		ret = handle_try_execute( x, phase, ret );
 
 		// done
 		return ret;
@@ -1203,18 +1196,7 @@ namespace grb {
 		}
 
 		// handle try and execute phases
-		if( phase != RESIZE ) {
-			if( ret == SUCCESS ) {
-				ret = internal::updateNnz( x );
-			} else if( !config::IMPLEMENTATION< BSP1D >::fixedVectorCapacities() &&
-				ret == FAILED
-			) {
-				// handled failed TRY
-				const RC subrc = internal::updateNnz( x );
-				if( subrc != SUCCESS ) { ret = PANIC; }
-				// ensure FAILED error code propagates
-			}
-		}
+		ret = grb::internal::handle_try_execute( x, phase, ret );
 
 		// done
 		return ret;
@@ -1917,18 +1899,7 @@ namespace grb {
 		}
 
 		// handle try and execute
-		if( phase != RESIZE ) {
-			if( ret == SUCCESS ) {
-				ret = internal::updateNnz( z );
-			} else if( !config::IMPLEMENTATION< BSP1D >::fixedVectorCapacities() &&
-				ret == FAILED
-			) {
-				// handle failed TRY
-				const RC subrc = internal::updateNnz( z );
-				if( subrc != SUCCESS ) { ret = PANIC; }
-				// take care to propagate FAILED error code
-			}
-		}
+		ret = grb::internal::handle_try_execute( z, phase, ret );
 
 		// done
 		return ret;
@@ -2022,18 +1993,7 @@ namespace grb {
 		}
 
 		// handle try and execute
-		if( phase != RESIZE ) {
-			if( ret == SUCCESS ) {
-				ret = internal::updateNnz( z );
-			} else if( !config::IMPLEMENTATION< BSP1D >::fixedVectorCapacities() &&
-				ret == FAILED
-			) {
-				// handle failed TRY
-				const RC subrc = internal::updateNnz( z );
-				if( subrc != SUCCESS ) { ret = PANIC; }
-				// take care to propagate FAILED error code
-			}
-		}
+		ret = grb::internal::handle_try_execute( z, phase, ret );
 
 		// done
 		return ret;
@@ -2138,19 +2098,7 @@ namespace grb {
 		}
 
 		// handle try and execute
-		if( phase != RESIZE ) {
-			if( ret == SUCCESS ) {
-				ret = internal::updateNnz( z );
-			}
-			if( !config::IMPLEMENTATION< BSP1D >::fixedVectorCapacities() &&
-				ret == FAILED
-			) {
-				// handle failed TRY
-				const RC update_rc = internal::updateNnz( z );
-				if( update_rc != SUCCESS ) { ret = PANIC; }
-				// take care to propagate FAILED error code
-			}
-		}
+		ret = grb::internal::handle_try_execute( z, phase, ret );
 
 		// done
 		return ret;
@@ -2236,19 +2184,8 @@ namespace grb {
 		}
 
 		// handle execute phase
-		if( phase != RESIZE ) {
-			assert( phase == EXECUTE );
-			if( ret == SUCCESS ) {
-				internal::setDense( z );
-			} else if( !config::IMPLEMENTATION< BSP1D >::fixedVectorCapacities() &&
-				ret == FAILED
-			) {
-				// handle failed TRY
-				const RC subrc = internal::updateNnz( z );
-				if( subrc != SUCCESS ) { ret = PANIC; }
-				// take care to propagate FAILED error code
-			}
-		}
+		ret = grb::internal::handle_try_execute( z, phase, ret );
+
 		return ret;
 	}
 
@@ -2332,19 +2269,7 @@ namespace grb {
 		}
 
 		// handle execute
-		if( phase != RESIZE ) {
-			assert( phase == EXECUTE );
-			if( ret == SUCCESS ) {
-				internal::setDense( z );
-			} else if( !config::IMPLEMENTATION< BSP1D >::fixedVectorCapacities() &&
-				ret == FAILED
-			) {
-				// handle failed TRY
-				const RC subrc = internal::updateNnz( z );
-				if( subrc != SUCCESS ) { ret = PANIC; }
-				// take care to propagate FAILED error code
-			}
-		}
+		ret = grb::internal::handle_try_execute( z, phase, ret );
 
 		// done
 		return ret;
@@ -2438,18 +2363,7 @@ namespace grb {
 		}
 
 		// handle try and execute phases
-		if( phase != RESIZE ) {
-			if( ret == SUCCESS ) {
-				ret = internal::updateNnz( z );
-			} else if( !config::IMPLEMENTATION< BSP1D >::fixedVectorCapacities() &&
-				ret == FAILED
-			) {
-				// handle failed TRY
-				const RC subrc = internal::updateNnz( z );
-				if( subrc != SUCCESS ) { ret = PANIC; }
-				// take care to propagate original error code (FAILED)
-			}
-		}
+		ret = grb::internal::handle_try_execute( z, phase, ret );
 
 		// done
 		return ret;
@@ -2543,18 +2457,7 @@ namespace grb {
 		}
 
 		// handle execute and try phases
-		if( phase != RESIZE ) {
-			if( ret == SUCCESS ) {
-				ret = internal::updateNnz( z );
-			} else if( !config::IMPLEMENTATION< BSP1D >::fixedVectorCapacities() &&
-				ret == FAILED
-			) {
-				// handle failed TRY
-				const RC subrc = internal::updateNnz( z );
-				if( subrc != SUCCESS ) { ret = PANIC; }
-				// take care to propagate FAILED erro code
-			}
-		}
+		ret = grb::internal::handle_try_execute( z, phase, ret );
 
 		// done
 		return ret;
@@ -2654,18 +2557,7 @@ namespace grb {
 		}
 
 		// handle execute and try phases
-		if( phase != RESIZE ) {
-			if( ret == SUCCESS ) {
-				ret = internal::updateNnz( z );
-			} else if( !config::IMPLEMENTATION< BSP1D >::fixedVectorCapacities() &&
-				ret == FAILED
-			) {
-				// handle failed TRY
-				const RC subrc = internal::updateNnz( z );
-				if( subrc != SUCCESS ) { ret = PANIC; }
-				// take care to propagate FAILED error code
-			}
-		}
+		ret = grb::internal::handle_try_execute( z, phase, ret );
 
 		// done
 		return ret;
@@ -2765,18 +2657,7 @@ namespace grb {
 		}
 
 		// handle try and execute
-		if( phase != RESIZE ) {
-			if( ret == SUCCESS ) {
-				ret = internal::updateNnz( z );
-			} else if( !config::IMPLEMENTATION< BSP1D >::fixedVectorCapacities() &&
-				ret == FAILED
-			) {
-				// handle failed TRY
-				const RC subrc = internal::updateNnz( z );
-				if( subrc != SUCCESS ) { ret = PANIC; }
-				// propagate FAILED error code
-			}
-		}
+		ret = grb::internal::handle_try_execute( z, phase, ret );
 
 		// done
 		return ret;
@@ -3330,18 +3211,7 @@ namespace grb {
 		}
 
 		// handle try and execute phases
-		if( phase != RESIZE ) {
-			if( ret == SUCCESS ) {
-				ret = internal::updateNnz( z );
-			} else if( !config::IMPLEMENTATION< BSP1D >::fixedVectorCapacities() &&
-				ret == FAILED
-			) {
-				// handle failed TRY
-				const RC subrc = internal::updateNnz( z );
-				if( subrc != SUCCESS ) { ret = PANIC; }
-				// take care to propagate FAILED
-			}
-		}
+		ret = grb::internal::handle_try_execute( z, phase, ret );
 
 		// done
 		return ret;
@@ -3414,18 +3284,7 @@ namespace grb {
 		}
 
 		// handle execute and try phases
-		if( phase != RESIZE ) {
-			if( ret == SUCCESS ) {
-				ret = internal::updateNnz( z );
-			} else if( !config::IMPLEMENTATION< BSP1D >::fixedVectorCapacities() &&
-				ret == FAILED
-			) {
-				// handle failed TRY
-				const RC subrc = internal::updateNnz( z );
-				if( subrc != SUCCESS ) { ret = PANIC; }
-				// propagate FAILED
-			}
-		}
+		ret = grb::internal::handle_try_execute( z, phase, ret );
 
 		// done
 		return ret;
@@ -3497,18 +3356,7 @@ namespace grb {
 		}
 
 		// handle try and execute phases
-		if( phase != RESIZE ) {
-			if( ret == SUCCESS ) {
-				ret = internal::updateNnz( z );
-			} else if( !config::IMPLEMENTATION< BSP1D >::fixedVectorCapacities() &&
-				ret == FAILED
-			) {
-				// handle failed TRY
-				const RC subrc = internal::updateNnz( z );
-				if( subrc != SUCCESS ) { ret = FAILED; }
-				// propagate FAILED
-			}
-		}
+		ret = grb::internal::handle_try_execute( z, phase, ret );
 
 		// done
 		return ret;
@@ -3663,18 +3511,7 @@ namespace grb {
 		}
 
 		// handle try and execute phases
-		if( phase != RESIZE ) {
-			if( ret == SUCCESS ) {
-				ret = internal::updateNnz( z );
-			} else if( !config::IMPLEMENTATION< BSP1D >::fixedVectorCapacities() &&
-				ret == FAILED
-			) {
-				// handle failed TRY
-				const RC subrc = internal::updateNnz( z );
-				if( subrc != SUCCESS ) { ret = PANIC; }
-				// propagate FAILED
-			}
-		}
+		ret = grb::internal::handle_try_execute( z, phase, ret );
 
 		// done
 		return ret;
@@ -3760,18 +3597,7 @@ namespace grb {
 		}
 
 		// handle execute and try phases
-		if( phase != RESIZE ) {
-			if( ret == SUCCESS ) {
-				ret = internal::updateNnz( z );
-			} else if( !config::IMPLEMENTATION< BSP1D >::fixedVectorCapacities() &&
-				ret == FAILED
-			) {
-				// handle failed TRY
-				const RC subrc = internal::updateNnz( z );
-				if( subrc != SUCCESS ) { ret = PANIC; }
-				// propagate FAILED
-			}
-		}
+		ret = grb::internal::handle_try_execute( z, phase, ret );
 
 		// done
 		return ret;
@@ -3857,18 +3683,7 @@ namespace grb {
 		}
 
 		// handle try and execute phases
-		if( phase != RESIZE ) {
-			if( ret == SUCCESS ) {
-				ret = internal::updateNnz( z );
-			} else if( !config::IMPLEMENTATION< BSP1D >::fixedVectorCapacities() &&
-				ret == FAILED
-			) {
-				// handle failed TRY
-				const RC subrc = internal::updateNnz( z );
-				if( subrc != SUCCESS ) { ret = FAILED; }
-				// propagate FAILED
-			}
-		}
+		ret = grb::internal::handle_try_execute( z, phase, ret );
 
 		// done
 		return ret;
@@ -3951,18 +3766,7 @@ namespace grb {
 		}
 
 		// handle try and execute phases
-		if( phase != RESIZE ) {
-			if( ret == SUCCESS ) {
-				ret = internal::updateNnz( z );
-			} else if( !config::IMPLEMENTATION< BSP1D >::fixedVectorCapacities() &&
-				ret == FAILED
-			) {
-				// handle failed TRY
-				const RC subrc = internal::updateNnz( z );
-				if( subrc != SUCCESS ) { ret = FAILED; }
-				// propagate FAILED
-			}
-		}
+		ret = grb::internal::handle_try_execute( z, phase, ret );
 
 		// done
 		return ret;
