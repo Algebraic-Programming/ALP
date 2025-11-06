@@ -443,7 +443,7 @@ namespace grb {
 		}
 
 		// handle try and execute phases
-		grb::internal::handle_try_execute< true >( y, phase, ret );
+		internal::template handle_try_execute< true >( y, phase, ret );
 
 		// done
 		return ret;
@@ -1797,7 +1797,9 @@ namespace grb {
 		}
 
 		// catch execute
-		grb::internal::handle_try_execute< descriptors::dense == (descr & descriptors::dense) >( z, phase, ret );
+		internal::template handle_try_execute<
+				(descr & descriptors::dense)
+			>( z, phase, ret );
 
 		// done
 		return ret;
