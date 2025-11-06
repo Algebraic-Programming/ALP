@@ -1798,7 +1798,7 @@ namespace grb {
 
 		// catch execute
 		internal::template handle_try_execute<
-				(descr & descriptors::dense)
+				((descr & descriptors::dense) > 0)
 			>( z, phase, ret );
 
 		// done
