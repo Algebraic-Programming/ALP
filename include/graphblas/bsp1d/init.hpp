@@ -23,7 +23,8 @@
 #ifndef _H_GRB_BSP1D_INIT
 #define _H_GRB_BSP1D_INIT
 
-#include <vector> //queue of HP put and get requests
+#include <vector> // for queue of HP put and get requests
+#include <cstdint> // for uintptr_t
 
 #include "config.hpp"
 
