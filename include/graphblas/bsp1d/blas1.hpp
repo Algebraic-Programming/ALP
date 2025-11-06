@@ -71,7 +71,8 @@ namespace grb {
 		template< bool isgd, typename T >
 		void handle_try_execute(
 			grb::Vector< T > &x,
-			const grb::Phase &phase, grb::RC &ret
+			const grb::Phase &phase,
+			grb::RC &ret
 		) {
 			// handle try and execute
 			if( phase != RESIZE ) {
@@ -442,18 +443,7 @@ namespace grb {
 		}
 
 		// handle try and execute phases
-		if( phase != RESIZE ) {
-			if( ret == SUCCESS ) {
-				internal::setDense( y );
-			} else if( !config::IMPLEMENTATION< BSP1D >::fixedVectorCapacities() &&
-				ret == FAILED
-			) {
-				// handle failed TRY
-				const RC subrc = internal::updateNnz( y );
-				if( subrc != SUCCESS ) { ret = PANIC; }
-				// otherwise, still return FAILED (as required)
-			}
-		}
+		grb::internal::handle_try_execute< true >( y, phase, ret );
 
 		// done
 		return ret;
@@ -1807,22 +1797,7 @@ namespace grb {
 		}
 
 		// catch execute
-		if( phase != RESIZE ) {
-			if( !config::IMPLEMENTATION< BSP1D >::fixedVectorCapacities() && 
-				ret == FAILED
-			) {
-				// handle failed TRY
-				const RC subrc = internal::updateNnz( z );
-				if( subrc != SUCCESS ) { ret = PANIC; }
-				// take care to propagate FAILED error code
-			} else if( ret == SUCCESS ) {
-				if( !(descr & descriptors::dense) ) {
-					ret = internal::updateNnz( z );
-				} else {
-					internal::setDense( z );
-				}
-			}
-		}
+		grb::internal::handle_try_execute< descriptors::dense == (descr & descriptors::dense) >( z, phase, ret );
 
 		// done
 		return ret;
