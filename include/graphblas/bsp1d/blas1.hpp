@@ -56,16 +56,35 @@ namespace grb {
 	namespace internal {
 
 		/*
-		 * Handle try and execute phases return code
+		 * Handles TRY and EXECUTE phases return code and associated global
+		 * updates.
+		 *
+		 * This helper function applies to both cases when
+		 *  -# on SUCCESS, the output vector becomes dense;
+		 *  -# on FAILED, the output vector global nonzero count needs
+		 *     updating.
+		 *
+		 * @tparam isgd If on SUCCESS, the Global output vector is
+		 *              guaranteed Dense (ISGD).
+		 * @tparam T    The value type of the output vector
 		 */
-		template< typename T >
-		grb::RC handle_try_execute( grb::Vector< T > &x, const grb::Phase phase, const grb::RC ret ){
+		template< bool isgd, typename T >
+		void handle_try_execute(
+			grb::Vector< T > &x,
+			const grb::Phase &phase, grb::RC &ret
+		) {
 			// handle try and execute
 			if( phase != RESIZE ) {
 				if( ret == SUCCESS ) {
-					// in this case, the number of nonzeroes in the output vector may have
-					// changed (recall that the dense case is not handled here)
-					return internal::updateNnz( x );
+					if( isgd ) {
+						// in this case, the number of nonzeroes in the output vector is
+						// guaranteed full - no communication required
+						internal::setDense( x );
+					} else {
+						// in this case, the number of nonzeroes in the output vector may have
+						// changed
+						ret = internal::updateNnz( x );
+					}
 				} else if( !config::IMPLEMENTATION< BSP1D >::fixedVectorCapacities() &&
 					ret == FAILED
 				) {
@@ -73,13 +92,12 @@ namespace grb {
 					// x do contain a subset of results. Therefore, the number of nonzeroes may
 					// have changed, but we need to take care to still propagate FAILED
 					const RC subrc = internal::updateNnz( x );
-					if( subrc != SUCCESS ) { return grb::PANIC; }
+					if( subrc != SUCCESS ) { ret = grb::PANIC; }
 				}
 			}
-			return ret;
 		}
 
-	}
+	} // end namespace ``grb::internal''
 
 	/**
 	 * \defgroup BLAS1_REF The Level-1 ALP/GraphBLAS routines -- BSP1D backend
@@ -711,8 +729,8 @@ namespace grb {
 			}
 		}
 
-		// handle try and execute
-		ret = grb::internal::handle_try_execute( x, phase, ret );
+		// handle try and execute phases
+		internal::template handle_try_execute< true >( x, phase, ret );
 
 		// done
 		return ret;
@@ -1036,7 +1054,7 @@ namespace grb {
 		}
 
 		// handle try and execute
-		ret = handle_try_execute( x, phase, ret );
+		internal::template handle_try_execute< false >( x, phase, ret );
 
 		// done
 		return ret;
@@ -1116,7 +1134,7 @@ namespace grb {
 		}
 
 		// handle try and execute phases
-		ret = handle_try_execute( x, phase, ret );
+		internal::template handle_try_execute< false >( x, phase, ret );
 
 		// done
 		return ret;
@@ -1196,7 +1214,7 @@ namespace grb {
 		}
 
 		// handle try and execute phases
-		ret = grb::internal::handle_try_execute( x, phase, ret );
+		internal::template handle_try_execute< false >( x, phase, ret );
 
 		// done
 		return ret;
@@ -1899,7 +1917,7 @@ namespace grb {
 		}
 
 		// handle try and execute
-		ret = grb::internal::handle_try_execute( z, phase, ret );
+		internal::template handle_try_execute< false >( z, phase, ret );
 
 		// done
 		return ret;
@@ -1993,7 +2011,7 @@ namespace grb {
 		}
 
 		// handle try and execute
-		ret = grb::internal::handle_try_execute( z, phase, ret );
+		internal::template handle_try_execute< false >( z, phase, ret );
 
 		// done
 		return ret;
@@ -2098,7 +2116,7 @@ namespace grb {
 		}
 
 		// handle try and execute
-		ret = grb::internal::handle_try_execute( z, phase, ret );
+		internal::template handle_try_execute< false >( z, phase, ret );
 
 		// done
 		return ret;
@@ -2184,7 +2202,7 @@ namespace grb {
 		}
 
 		// handle execute phase
-		ret = grb::internal::handle_try_execute( z, phase, ret );
+		internal::template handle_try_execute< true >( z, phase, ret );
 
 		return ret;
 	}
@@ -2269,7 +2287,7 @@ namespace grb {
 		}
 
 		// handle execute
-		ret = grb::internal::handle_try_execute( z, phase, ret );
+		internal::template handle_try_execute< true >( z, phase, ret );
 
 		// done
 		return ret;
@@ -2363,7 +2381,7 @@ namespace grb {
 		}
 
 		// handle try and execute phases
-		ret = grb::internal::handle_try_execute( z, phase, ret );
+		internal::template handle_try_execute< false >( z, phase, ret );
 
 		// done
 		return ret;
@@ -2457,7 +2475,7 @@ namespace grb {
 		}
 
 		// handle execute and try phases
-		ret = grb::internal::handle_try_execute( z, phase, ret );
+		internal::template handle_try_execute< false >( z, phase, ret );
 
 		// done
 		return ret;
@@ -2557,7 +2575,7 @@ namespace grb {
 		}
 
 		// handle execute and try phases
-		ret = grb::internal::handle_try_execute( z, phase, ret );
+		internal::template handle_try_execute< false >( z, phase, ret );
 
 		// done
 		return ret;
@@ -2657,7 +2675,7 @@ namespace grb {
 		}
 
 		// handle try and execute
-		ret = grb::internal::handle_try_execute( z, phase, ret );
+		internal::template handle_try_execute< false >( z, phase, ret );
 
 		// done
 		return ret;
@@ -3211,7 +3229,7 @@ namespace grb {
 		}
 
 		// handle try and execute phases
-		ret = grb::internal::handle_try_execute( z, phase, ret );
+		internal::template handle_try_execute< false >( z, phase, ret );
 
 		// done
 		return ret;
@@ -3284,7 +3302,7 @@ namespace grb {
 		}
 
 		// handle execute and try phases
-		ret = grb::internal::handle_try_execute( z, phase, ret );
+		internal::template handle_try_execute< false >( z, phase, ret );
 
 		// done
 		return ret;
@@ -3356,7 +3374,7 @@ namespace grb {
 		}
 
 		// handle try and execute phases
-		ret = grb::internal::handle_try_execute( z, phase, ret );
+		internal::template handle_try_execute< false >( z, phase, ret );
 
 		// done
 		return ret;
@@ -3511,7 +3529,7 @@ namespace grb {
 		}
 
 		// handle try and execute phases
-		ret = grb::internal::handle_try_execute( z, phase, ret );
+		internal::template handle_try_execute< false >( z, phase, ret );
 
 		// done
 		return ret;
@@ -3597,7 +3615,7 @@ namespace grb {
 		}
 
 		// handle execute and try phases
-		ret = grb::internal::handle_try_execute( z, phase, ret );
+		internal::template handle_try_execute< false >( z, phase, ret );
 
 		// done
 		return ret;
@@ -3683,7 +3701,7 @@ namespace grb {
 		}
 
 		// handle try and execute phases
-		ret = grb::internal::handle_try_execute( z, phase, ret );
+		internal::template handle_try_execute< false >( z, phase, ret );
 
 		// done
 		return ret;
@@ -3766,7 +3784,7 @@ namespace grb {
 		}
 
 		// handle try and execute phases
-		ret = grb::internal::handle_try_execute( z, phase, ret );
+		internal::template handle_try_execute< false >( z, phase, ret );
 
 		// done
 		return ret;
