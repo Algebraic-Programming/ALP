@@ -309,6 +309,101 @@ namespace grb {
 			return rc;
 		}
 
+		/*
+		 * Estimate a solution to a given Ising problem. The solution is found
+		 * using the Simulated Annealing-Replica Exchange function above.
+		 *
+		 *  TODO: expand and complete documentation
+		 *
+		 * @param[in,out] states        On input: initial states.
+		 *                              On output: optimized states.
+		 * @param[in]     couplings     The square (symmetric) couplings matrix.
+		 * @param[in]     local_fields  The vector of local fields.
+		 * @param[in,out] energies      The initial energy of each state.
+		 * @param[in,out] betas     	Inverse temperature of each state.
+		 * @param[in]     n_replicas    Number of replicas to run concurrently.
+		 * @param[in]     n_sweeps      Number of Simulated Annealing iterations.
+		 * @param[in]     use_pt		Whether to use Parallel Tampering or not.
+		 *
+		 * @tparam StateType	The state variable type.
+		 * @tparam QType		The matrix values' type.
+		 * @tparam EnergyType	The energy type.
+		 * @tparam TempType		The inverse temperature type.
+		 * @tparam SweepDataType	Type of data to be passed on to the sweep function (e.g. a tuple of references to temporary vectors).
+		 *
+		 */
+		template<
+			Backend backend,
+			typename StateType, // type of state, possibly 0/1
+			typename QType, // type of coupling matrix values
+			typename EnergyType,
+			typename TempType,
+			typename SweepDataType, // type of data to be passed through to the sweep function
+			typename SweepFuncType = std::function< 
+					EnergyType(
+						 grb::Vector< StateType, backend >&,
+						 const TempType&,
+						 SweepDataType&
+				 	)
+				>,
+				typename RSI, typename CSI, typename NZI
+			>
+		grb::RC simulated_annealing_RE_Ising(
+				const grb::Matrix< QType, backend, RSI, CSI, NZI >& Q,
+				std::vector< grb::Vector< StateType, backend > > &states,
+				grb::Vector< EnergyType, backend > &energies,
+				grb::Vector< TempType, backend > &betas,
+				const size_t &n_sweeps,
+				const bool &use_pt = false
+				);
+
+		/*
+		 * Estimate a solution to a given QUBO problem. The solution is found
+		 * using the Simulated Annealing-Replica Exchange function above.
+		 *
+		 *  TODO: expand and complete documentation
+		 *
+		 * @param[in,out] states        On input: initial states.
+		 *                              On output: optimized states.
+		 * @param[in]     couplings     The square (symmetric) couplings matrix.
+		 * @param[in,out] energies      The initial energy of each state.
+		 * @param[in,out] betas     	Inverse temperature of each state.
+		 * @param[in]     n_replicas    Number of replicas to run concurrently.
+		 * @param[in]     n_sweeps      Number of Simulated Annealing iterations.
+		 * @param[in]     use_pt		Whether to use Parallel Tampering or not.
+		 *
+		 * @tparam StateType	The state variable type.
+		 * @tparam QType		The matrix values' type.
+		 * @tparam EnergyType	The energy type.
+		 * @tparam TempType		The inverse temperature type.
+		 * @tparam SweepDataType	Type of data to be passed on to the sweep function (e.g. a tuple of references to temporary vectors).
+		 *
+		 */
+		template<
+			Backend backend,
+			typename StateType, // type of state, possibly 0/1
+			typename QType, // type of coupling matrix values
+			typename EnergyType,
+			typename TempType,
+			typename SweepDataType, // type of data to be passed through to the sweep function
+			typename SweepFuncType = std::function< 
+					EnergyType(
+						 grb::Vector< StateType, backend >&,
+						 const TempType&,
+						 SweepDataType&
+				 	)
+				>,
+				typename RSI, typename CSI, typename NZI
+			>
+		grb::RC simulated_annealing_RE_QUBO(
+				const grb::Matrix< QType, backend, RSI, CSI, NZI >& Q,
+				std::vector< grb::Vector< StateType, backend > > &states,
+				grb::Vector< EnergyType, backend > &energies,
+				grb::Vector< TempType, backend > &betas,
+				const size_t &n_sweeps,
+				const bool &use_pt = false
+				);
+
 		template< typename T >
 		inline T
 		exp(T x ){
