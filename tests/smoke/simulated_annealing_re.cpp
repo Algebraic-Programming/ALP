@@ -293,6 +293,8 @@ EnergyType get_energy(
 
 template<
 		typename SweepDataType = std::tuple<
+				 	 const grb::Matrix< JType >&,
+				 	 const grb::Vector< JType >&,
 					 grb::Vector< JType >&,
 					 grb::Vector< JType >&,
 					 grb::Vector< IOType >&,
@@ -307,11 +309,11 @@ template<
 		>
 	>
 static EnergyType sequential_sweep_immediate(
-				 const grb::Matrix< JType >& couplings,
-				 const grb::Vector< JType > &local_fields,
 				 grb::Vector< IOType > &state,
 				 const JType &beta,
 				 std::tuple<
+				 	 const grb::Matrix< JType > &,
+				 	 const grb::Vector< JType > &,
 					 grb::Vector< JType >&,
 					 grb::Vector< JType >&,
 					 grb::Vector< IOType >&,
@@ -328,13 +330,15 @@ static EnergyType sequential_sweep_immediate(
 		const size_t n = grb::size( state );
 		EnergyType delta_energy = static_cast< JType >(0.0);
 
-		auto &h 		= std::get<0>(data);
-		auto &log_rand	= std::get<1>(data);
-		auto &delta		= std::get<2>(data);
-		const auto &masks = std::get<3>(data);
-		auto &dn		= std::get<4>(data);
-		auto &accept	= std::get<5>(data);
-		auto &rng       = std::get<6>(data);
+		const auto &couplings 	= std::get<0>(data);
+		const auto &local_fields = std::get<1>(data);
+		auto &h 		= std::get<2>(data);
+		auto &log_rand	= std::get<3>(data);
+		auto &delta		= std::get<4>(data);
+		const auto &masks = std::get<5>(data);
+		auto &dn		= std::get<6>(data);
+		auto &accept	= std::get<7>(data);
+		auto &rng       = std::get<8>(data);
 
 		rc = rc ? rc : grb::wait();
 		rc = rc ? rc : grb::resize( h, n );
@@ -431,6 +435,8 @@ static EnergyType sequential_sweep_immediate(
 
 template<
 		typename SweepDataType = std::tuple<
+				 	 const grb::Matrix< JType >&,
+				 	 const grb::Vector< JType >&,
 					 grb::Vector< JType >&,
 					 grb::Vector< JType >&,
 					 grb::Vector< IOType >&,
@@ -440,8 +446,6 @@ template<
 					 std::minstd_rand&
 					 >,
 		typename SweepFuncType = std::function< EnergyType(
-					 const grb::Matrix< JType >&,
-					 const grb::Vector< JType >&,
 					 grb::Vector< IOType >&,
 					 const JType&,
 					 SweepDataType&
@@ -664,6 +668,8 @@ void grbProgram(
 	grb::Vector< bool > temp_accept ( n );
 	grb::Vector< IOType > temp_delta ( n );
 	auto sweep_data = std::tie(
+			(const typeof(J)&) J,
+			(const typeof(h)&) h,
  			temp_h,
 			temp_log_rand,
 			temp_delta,
@@ -680,7 +686,7 @@ void grbProgram(
 	if( out.rep == 0 ) {
 		timer.reset();
 		rc = grb::algorithms::simulated_annealing_RE(
-				sweep, states, J, h, energies, betas, temp_states, temp_energies, sweep_data, data_in.nsweeps, data_in.use_pt
+				sweep, sweep_data, states, energies, betas, temp_states, temp_energies, data_in.nsweeps, data_in.use_pt
         );
 
 		rc = rc ? rc : wait();
@@ -726,7 +732,7 @@ void grbProgram(
 				out.iterations = data_in.nsweeps;
 
                 rc = grb::algorithms::simulated_annealing_RE(
-				sweep, states, J, h, energies, betas, temp_states, temp_energies, sweep_data, data_in.nsweeps, data_in.use_pt
+				sweep, sweep_data, states, energies, betas, temp_states, temp_energies, data_in.nsweeps, data_in.use_pt
                 );
 			}
 			if( grb::Properties<>::isNonblockingExecution ) {

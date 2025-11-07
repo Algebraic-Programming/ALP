@@ -210,7 +210,6 @@ namespace grb {
 		 * @param[in]     n_sweeps      Number of Simulated Annealing iterations.
 		 * @param[in]     use_pt		Whether to use Parallel Tampering or not.
 		 *
-		 * @tparam QType		The coupling matrix and the local fields type.
 		 * @tparam StateType	The state variable type.
 		 * @tparam EnergyType	The energy type.
 		 * @tparam TempType		The inverse temperature type.
@@ -219,16 +218,12 @@ namespace grb {
 		 */
 		template<
 			Backend backend,
-			typename QType, // type of coupling matrix values
 			typename StateType, // type of state, possibly 0/1
 			typename EnergyType,
 			typename TempType,
 			typename SweepDataType, // type of data to be passed through to the sweep function
-			typename RSI, typename CSI, typename NZI,
 			typename SweepFuncType = std::function< 
 					EnergyType(
-						 const grb::Matrix< QType, backend, RSI, CSI, NZI >&,
-						 const grb::Vector< QType, backend >&,
 						 grb::Vector< StateType, backend >&,
 						 const TempType&,
 						 SweepDataType&
@@ -237,15 +232,13 @@ namespace grb {
 			>
 		grb::RC simulated_annealing_RE(
 				const SweepFuncType &sweep,
+				SweepDataType& sweep_data,
 				std::vector< grb::Vector< StateType, backend > > &states,
-				const grb::Matrix< QType, backend, RSI, CSI, NZI > &couplings,
-				const grb::Vector< QType, backend > &local_fields,
 				grb::Vector< EnergyType, backend > &energies,
 				grb::Vector< TempType, backend > &betas,
 				std::vector< grb::Vector< StateType, backend > >  &temp_states,
 				grb::Vector< EnergyType, backend > &temp_energies,
-				SweepDataType& temp_sweep,
-				const size_t &n_sweeps = 1,
+				const size_t &n_sweeps,
 				const bool &use_pt = false
 				){
 
@@ -255,9 +248,6 @@ namespace grb {
 
 			assert( n_replicas > 0 );
 			assert( n_replicas == grb::size( betas ) );
-			assert( n == grb::ncols( couplings ) );
-			assert( n == grb::nrows( couplings ) );
-			assert( n == grb::size( local_fields ) );
 
 			for(size_t i = 0; i < n_replicas ; ++i ){
 				assert( n == grb::size( states[ i ] ) );
@@ -283,7 +273,7 @@ namespace grb {
 			for( size_t i_sweep = 0 ; rc == grb::SUCCESS && i_sweep < n_sweeps ; ++i_sweep ){
 				for( size_t j = 0 ; j < n_replicas ; ++j ){
 					
-					energies[j] += sweep( couplings, local_fields, states[j], betas[j], temp_sweep );
+					energies[j] += sweep( states[j], betas[j], sweep_data );
 					grb::wait();
 				
 					// update_best state and energy
