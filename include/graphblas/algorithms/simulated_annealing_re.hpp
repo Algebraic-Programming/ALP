@@ -76,8 +76,10 @@ namespace grb {
 		 * This means exchanging states at low temperature with states at higher temperature.
 		 * To make the code simpler, this will be done by exchanging the temperatures instead.
 		 *
-		 * @param[in] states        On input: initial states.
-		 * @param[in] energies      The initial energy of each state.
+		 * TODO: Fix this documentation.
+		 *
+		 * @param[in,out] states        On input: initial states.
+		 * @param[in,out] energies      The initial energy of each state.
 		 * @param[in,out] betas     Inverse temperature of each state.
 		 * 							The betas may be permuted.
 		 *
@@ -189,7 +191,8 @@ namespace grb {
 #ifndef NDEBUG
 	
 				if( rc != grb::SUCCESS ){
-					std::cerr << "\n\t Error in a collective broadcast " << rc << " : " << grb::toString( rc ) << std::endl;
+					std::cerr << "\n\t Error in a collective broadcast " << rc << " : " <<
+						grb::toString( rc ) << std::endl;
 				}
 				assert( rc == grb::SUCCESS );
 #endif
@@ -217,29 +220,36 @@ namespace grb {
 		 * Estimate a solution to a given optimization problem. The solution is found
 		 * using Simulated Annealing-Replica Exchange (also known as Parallel Tempering).
 		 *
-		 * The state will be optimized to minimize the value of the energy $U(x)$,
-		 * where $x$ is the binary state vector, and $couplings$ is the coupling matrix.
-		 * Energies will be changed when changing the states, so that each energy is
-		 * the actual energy of the relative state.
-		 * The parameter sweep is a function that (randomly) changes a given state and
-		 * returns the variation of energy made from its changes of the state.
+		 * The state will be optimized to minimize the value of an energy function $U(x)$,
+		 * where $x$ is the state vector. Energies will be changed when changing the
+		 * states, so that each energy is the actual energy of the relative state.
+		 *
+		 * The parameter sweep is a user-defined function that changes a given state
+		 * (possibly randomly) and returns the variation of energy made from its
+		 * changes of the state. It should take three parameters: a state vector, the
+		 * inverse temperature (a scalar) and sweep_data.
 		 *
 		 * @param[in]     sweep      	The sweeping function.
-		 * 								Should return the energy variation relative to the changes that it made on the state.
+		 * 								Should return the energy variation relative to the changes that it
+		 * 								made on the state.
+		 * @param[in]     sweep_data    Additional data to be passed to the sweep function.
 		 * @param[in,out] states        On input: initial states.
 		 *                              On output: optimized states.
-		 * @param[in]     couplings     The square (symmetric) couplings matrix.
 		 * @param[in,out] energies      The initial energy of each state.
 		 * @param[in,out] betas     	Inverse temperature of each state.
-		 * @param[in,out] best_state
-		 * @param[in,out] best_energy
+		 * @param[in,out] best_state	The state with the minimum energy found by the algorithm.
+		 * @param[in,out] best_energy	The minimum value of an energy found.
 		 * @param[in]     n_sweeps      Number of Simulated Annealing iterations.
 		 * @param[in]     use_pt		Whether to use Parallel Tampering or not.
 		 *
+		 * @tparam backend		The backend used for the single objects
 		 * @tparam StateType	The state variable type.
 		 * @tparam EnergyType	The energy type.
 		 * @tparam TempType		The inverse temperature type.
-		 * @tparam SweepDataType	Type of data to be passed on to the sweep function (e.g. a tuple of references to temporary vectors).
+		 * @tparam SweepDataType	Type of data to be passed on to the sweep function
+		 * (e.g. a tuple of references to temporary vectors).
+		 * @tparam SweepFuncType    The type of the function.
+		 * The default value suggests the signature that the function should have.
 		 *
 		 */
 		template<
@@ -337,12 +347,18 @@ namespace grb {
 		 * Estimate a solution to a given Ising problem. The solution is found
 		 * using the Simulated Annealing-Replica Exchange function above.
 		 *
+		 * The function minimized is $U(x) = x^T(Jx/2 + h)$, where $J$ is the supplied
+		 * couplings matrix and $h$ is the local_fields vector. The solution is searched
+		 * in the space of vectors $x$ with entries $0$ or $1$.
+		 *
+		 * states should be a vector of already initialized and filled dense grb::Vector.
+		 *
 		 *  TODO: expand and complete documentation
 		 *
-		 * This function allocates O(n*n_replicas) memory for temporary vectors.
+		 * Warning: This function allocates O(n*n_replicas) memory for temporary vectors.
 		 *
-		 * @param[in,out] states        On input: initial states.
-		 *                              On output: optimized states.
+		 * @param[in,out] states        On input: initial (dense) states.
+		 *                              On output: optimized (dense) states.
 		 * @param[in]     couplings     The square (symmetric) couplings matrix.
 		 *                              The diagonal has to be zero!
 		 * @param[in]     local_fields  The vector of local fields.
@@ -355,7 +371,8 @@ namespace grb {
 		 * @tparam QType		The matrix values' type.
 		 * @tparam EnergyType	The energy type.
 		 * @tparam TempType		The inverse temperature type.
-		 * @tparam SweepDataType	Type of data to be passed on to the sweep function (e.g. a tuple of references to temporary vectors).
+		 * @tparam SweepDataType	Type of data to be passed on to the sweep function
+		 * (e.g. a tuple of references to temporary vectors).
 		 *
 		 */
 		template<
@@ -535,13 +552,16 @@ namespace grb {
 		 * Estimate a solution to a given QUBO problem. The solution is found
 		 * using the Simulated Annealing-Replica Exchange function above.
 		 *
+		 * The function optimized is $U(x) = x^TQx$, with the constraint that $x$ is a
+		 * 0/1 vector.
+		 *
 		 *  TODO: expand and complete documentation
 		 *
 		 * Warning: This function allocates O(n*n_replicas) memory for temporary vectors.
 		 *
 		 * @param[in,out] states        On input: initial (dense) states.
 		 *                              On output: optimized (dense) states.
-		 * @param[in]     Q             The square symmetric $Q$ matrix.
+		 * @param[in]     Q             The square (symmetric) Q matrix.
 		 * @param[in,out] energies      The initial energy of each state.
 		 * @param[in,out] betas     	Inverse temperature of each state.
 		 * @param[in]     n_replicas    Number of replicas to run concurrently.
