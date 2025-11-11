@@ -202,9 +202,8 @@ namespace grb {
 		 * @param[in]     couplings     The square (symmetric) couplings matrix.
 		 * @param[in,out] energies      The initial energy of each state.
 		 * @param[in,out] betas     	Inverse temperature of each state.
-		 * @param[in,out] temp_states   Inverse temperature of each state.
-		 * @param[in,out] temp_energies Inverse temperature of each state.
-		 * @param[in]     n_replicas    Number of replicas to run concurrently.
+		 * @param[in,out] best_state
+		 * @param[in,out] best_energy
 		 * @param[in]     n_sweeps      Number of Simulated Annealing iterations.
 		 * @param[in]     use_pt		Whether to use Parallel Tampering or not.
 		 *
@@ -234,8 +233,8 @@ namespace grb {
 				std::vector< grb::Vector< StateType, backend > > &states,
 				grb::Vector< EnergyType, backend > &energies,
 				grb::Vector< TempType, backend > &betas,
-				std::vector< grb::Vector< StateType, backend > >  &temp_states,
-				grb::Vector< EnergyType, backend > &temp_energies,
+				grb::Vector< StateType, backend >  &best_state,
+				EnergyType &best_energy,
 				const size_t &n_sweeps,
 				const bool &use_pt = false
 				){
@@ -265,8 +264,8 @@ namespace grb {
 			}
 #endif
 
-			temp_energies = energies;
-			temp_states =  states;
+			best_energy = std::numeric_limits< EnergyType >::max();
+			assert( grb::size(best_state) >= n );
 
 			for( size_t i_sweep = 0 ; rc == grb::SUCCESS && i_sweep < n_sweeps ; ++i_sweep ){
 				for( size_t j = 0 ; j < n_replicas ; ++j ){
@@ -275,9 +274,9 @@ namespace grb {
 					grb::wait();
 				
 					// update_best state and energy
-					if( energies[j] < temp_energies[j] ){
-						temp_energies[j] = energies[j];
-						temp_states[j] = states[j];
+					if( energies[j] < best_energy ){
+						best_energy = energies[j];
+						best_state = states[j];
 					}
 				} // n_replicas
 				if( rc == SUCCESS && use_pt ){
@@ -297,10 +296,9 @@ namespace grb {
 					      << __FILE__ << ": " << grb::toString( rc ) << "\n";
 			}
 #endif
-			// grb::collectives<>::reduce(); ?
 			if( rc == SUCCESS ){
-				states = temp_states;
-				energies = temp_energies;
+				rc = rc ? rc : grb::collectives<>::allreduce(
+						best_energy, grb::operators::min< EnergyType >() );
 			}
 			
 			return rc;
