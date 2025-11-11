@@ -268,6 +268,7 @@ void read_vector_data_from_array(
 }
 
 template<
+		grb::Descriptor descr = grb::descriptors::no_operation,
 		class Ring = Semiring<
 			grb::operators::add< JType >, grb::operators::mul< JType >,
 			grb::identities::zero, grb::identities::one
@@ -279,13 +280,14 @@ EnergyType get_energy(
 				 const Ring &ring = Ring()
 			  ){
 	static grb::Vector< JType > tmp ( grb::size( local_fields ) );
-	grb::RC rc = grb::clear( tmp );
+	grb::RC rc = grb::SUCCESS;
 	EnergyType energy = 0.0;
 
-	rc = rc ? rc : grb::mxv( tmp, couplings, state, ring );
-	rc = rc ? rc : grb::foldl( tmp, static_cast< JType >( 0.5 ), ring.getMultiplicativeMonoid() );
-	rc = rc ? rc : grb::foldl( tmp, local_fields, ring.getAdditiveMonoid() );
-	rc = rc ? rc : grb::dot<>( energy, tmp, state, ring );
+	rc = rc ? rc : grb::set( tmp, 0.0 );
+	rc = rc ? rc : grb::mxv< descr | grb::descriptors::dense >( tmp, couplings, state, ring );
+	rc = rc ? rc : grb::foldl< descr | grb::descriptors::dense >( tmp, static_cast< JType >( 0.5 ), ring.getMultiplicativeMonoid() );
+	rc = rc ? rc : grb::foldl< descr | grb::descriptors::dense >( tmp, local_fields, ring.getAdditiveMonoid() );
+	rc = rc ? rc : grb::dot< descr | grb::descriptors::dense >( energy, tmp, state, ring );
 	assert( rc == grb::SUCCESS );
 
 	return energy;
@@ -337,8 +339,9 @@ static EnergyType sequential_sweep_immediate(
 		rc = rc ? rc : grb::resize( dn, n );
 		rc = rc ? rc : grb::resize( accept, n );
 
-		rc = rc ? rc : grb::set( h, local_fields );
-		rc = rc ? rc : grb::mxv( h, couplings, state , ring );
+		rc = rc ? rc : grb::set< descr >( h, 0.0 );
+		rc = rc ? rc : grb::set< descr | grb::descriptors::dense >( h, local_fields );
+		rc = rc ? rc : grb::mxv< descr | grb::descriptors::dense >( h, couplings, state , ring );
 
 		static std::uniform_real_distribution< JType > rand ( 0.0, 1.0 );
 		for( size_t j = 0 ; j < n ; ++j ){
@@ -356,15 +359,15 @@ static EnergyType sequential_sweep_immediate(
 			rc = rc ? rc : grb::clear( dn );
 
 			// dn = (2*state_slice - 1) * h_slice
-			rc = rc ? rc : grb::set( dn, mask, state );
-			rc = rc ? rc : grb::foldl( dn, static_cast< EnergyType >( 2 ), ring.getMultiplicativeMonoid()  );
-			rc = rc ? rc : grb::foldl( dn, static_cast< EnergyType >( -1 ), ring.getAdditiveMonoid() );
-			rc = rc ? rc : grb::foldl( dn, h, ring.getMultiplicativeMonoid() );
+			rc = rc ? rc : grb::set< descr >( dn, mask, state );
+			rc = rc ? rc : grb::foldl< descr >( dn, static_cast< EnergyType >( 2 ), ring.getMultiplicativeMonoid()  );
+			rc = rc ? rc : grb::foldl< descr >( dn, static_cast< EnergyType >( -1 ), ring.getAdditiveMonoid() );
+			rc = rc ? rc : grb::foldl< descr >( dn, h, ring.getMultiplicativeMonoid() );
 
 			// ( dn >= 0 ) | ( log_rand < beta * dn )
-			rc = rc ? rc : grb::set( accept, mask );
-			rc = rc ? rc : grb::wait(); // ERROR: Segmentation Fault with nonblocking backend
-			rc = rc ? rc : grb::eWiseLambda<>(
+			rc = rc ? rc : grb::set< descr >( accept, mask );
+			rc = rc ? rc : grb::wait(); // needed to avoid ERROR: Segmentation Fault with nonblocking backend
+			rc = rc ? rc : grb::eWiseLambda< descr >(
 					[ &mask, &accept, &dn, &log_rand, beta ]( const size_t i ){
 						(void) i;
 						if( mask[i] ){
@@ -373,20 +376,20 @@ static EnergyType sequential_sweep_immediate(
 					}, mask, log_rand, dn, accept );
 
 			// new_state = np.where(accept, 1 - old, old)
-			rc = rc ? rc : grb::foldl( state, accept, static_cast< IOType >( -1 ), ring.getMultiplicativeMonoid() );
-			rc = rc ? rc : grb::foldl( state, accept, static_cast< IOType >( 1 ), ring.getAdditiveMonoid() );
+			rc = rc ? rc : grb::foldl< descr >( state, accept, static_cast< IOType >( -1 ), ring.getMultiplicativeMonoid() );
+			rc = rc ? rc : grb::foldl< descr >( state, accept, static_cast< IOType >( 1 ), ring.getAdditiveMonoid() );
 			
 			// delta = new - old ==> delta[accept] = 2*new_state[accept]-1
 			rc = rc ? rc : grb::clear( delta  );
-			rc = rc ? rc : grb::set( delta, accept, state );
-			rc = rc ? rc : grb::foldl( delta, accept, static_cast< IOType >( 2 ), ring.getMultiplicativeMonoid() );
-			rc = rc ? rc : grb::foldl( delta, accept, static_cast< IOType >( -1 ), ring.getAdditiveMonoid() );
+			rc = rc ? rc : grb::set< descr >( delta, accept, state );
+			rc = rc ? rc : grb::foldl< descr >( delta, accept, static_cast< IOType >( 2 ), ring.getMultiplicativeMonoid() );
+			rc = rc ? rc : grb::foldl< descr >( delta, accept, static_cast< IOType >( -1 ), ring.getAdditiveMonoid() );
 			
 			// Update delta_energy -= dot(dn, accept)
 			rc = rc ? rc : grb::dot< descr >( delta_energy, delta, h, ring );
 
 			// update h
-			rc = rc ? rc : grb::mxv( h, couplings, delta, ring );
+			rc = rc ? rc : grb::mxv< descr >( h, couplings, delta, ring );
 		}
 		rc = rc ? rc : grb::wait();
 
@@ -432,13 +435,14 @@ template<
 		class Ring = Semiring<
 			grb::operators::add< JType >, grb::operators::mul< JType >,
 			grb::identities::zero, grb::identities::one
-		>
+		>,
+		grb::Descriptor descr = grb::descriptors::no_operation
 	>
 SweepFuncType get_sweep_function( std::string sweep_name ){
 	if( sweep_name != "sequential_sweep_immediate" ){
 			std::cerr << "Warning: unknown sweep setting. Falling back to  \"sequential_sweep_immediate\"" << std::endl;
 	}
-	 return sequential_sweep_immediate< Ring >;
+	 return sequential_sweep_immediate< Ring, descr >;
 }
 
 void ioProgram( const struct input &data_in, bool &success ) {
