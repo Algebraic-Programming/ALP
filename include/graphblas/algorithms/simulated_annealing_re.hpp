@@ -30,7 +30,6 @@
 #include <type_traits>
 #include <algorithm>
 #include <cstdlib>
-#include <cassert>
 #include <cmath>
 
 #ifndef NDEBUG
@@ -128,7 +127,6 @@ namespace grb {
 			int rand = std::rand();
 
 			for( size_t si = nprocs ; rc == grb::SUCCESS && si > 0; --si ){
-				std::cerr << "Hello from process " << s << std::endl;
 				if( si == s+1 ){
 					for( size_t i = n_replicas - 1 ; i > 0 ; --i ){
 						const EnergyType de = ( energies[ i ] - energies[ i-1 ]) * (betas[ i ] - betas[ i-1 ]);
@@ -150,7 +148,7 @@ namespace grb {
 				}
 				if( si == 1 ) continue;
 
-				std::cerr << "Calling broadcasts" << std::endl;
+				// std::cerr << "Calling broadcasts" << std::endl;
 				rc = rc ? rc : grb::collectives<>::broadcast( msg[ 0 ].s, si-2 );
 				rc = rc ? rc : grb::collectives<>::broadcast( msg[ 0 ].e, si-2 );
 				rc = rc ? rc : grb::collectives<>::broadcast( msg[ 0 ].b, si-2 );
@@ -282,7 +280,6 @@ namespace grb {
 						temp_states[j] = states[j];
 					}
 				} // n_replicas
-				// std::cerr << "Iteration " << i_sweep << " " << rc << std::endl;
 				if( rc == SUCCESS && use_pt ){
 					// do a Parallel Tempering move
 					rc = pt< backend >( states, energies, betas );
@@ -315,13 +312,14 @@ namespace grb {
 		 *
 		 *  TODO: expand and complete documentation
 		 *
+		 * This function allocates O(n*n_replicas) memory for temporary vectors.
+		 *
 		 * @param[in,out] states        On input: initial states.
 		 *                              On output: optimized states.
 		 * @param[in]     couplings     The square (symmetric) couplings matrix.
 		 * @param[in]     local_fields  The vector of local fields.
 		 * @param[in,out] energies      The initial energy of each state.
 		 * @param[in,out] betas     	Inverse temperature of each state.
-		 * @param[in]     n_replicas    Number of replicas to run concurrently.
 		 * @param[in]     n_sweeps      Number of Simulated Annealing iterations.
 		 * @param[in]     use_pt		Whether to use Parallel Tampering or not.
 		 *
@@ -396,7 +394,7 @@ namespace grb {
 				typename RSI, typename CSI, typename NZI
 			>
 		grb::RC simulated_annealing_RE_QUBO(
-				const grb::Matrix< QType, backend, RSI, CSI, NZI >& Q,
+				const grb::Matrix< QType, backend, RSI, CSI, NZI > &Q,
 				std::vector< grb::Vector< StateType, backend > > &states,
 				grb::Vector< EnergyType, backend > &energies,
 				grb::Vector< TempType, backend > &betas,
