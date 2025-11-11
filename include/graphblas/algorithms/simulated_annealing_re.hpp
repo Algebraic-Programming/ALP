@@ -28,6 +28,8 @@
 
 #include <vector>
 #include <type_traits>
+#include <tuple>
+#include <random>
 #include <algorithm>
 #include <cstdlib>
 #include <cmath>
@@ -38,7 +40,34 @@
 
 #include <graphblas.hpp>
 
+#define ISCLOSE(a,b) (std::abs((b)-(a))/std::abs(a) < 1e-4) || (std::abs((b)-(a)) < 1e-4)
+
 namespace grb {
+	namespace internal {
+		/*
+		 * The following functions are used to ensure the correct type of the value in
+		 * in the exponential function.
+		 */
+		template< typename T >
+		inline T exp(T x ){
+			static_assert(
+					std::is_same<T, float>::value
+				 || std::is_same<T, double>::value
+				 || std::is_same<T, long double>::value
+					);
+			return std::exp( x );
+		}
+
+		template< typename T >
+		inline T log(T x ){
+			static_assert(
+					std::is_same<T, float>::value
+				 || std::is_same<T, double>::value
+				 || std::is_same<T, long double>::value
+					);
+			return std::log( x );
+		}
+	} // namespace internal
 
 	namespace algorithms {
 
@@ -81,7 +110,7 @@ namespace grb {
 			for( size_t i = n_replicas - 1 ; i > 0 ; --i ){
 				const EnergyType de = ( energies[ i ] - energies[ i-1 ]) * (betas[ i ] - betas[ i-1 ]);
 
-				if( de >= 0 || std::rand() < RAND_MAX * exp( de ) ){
+				if( de >= 0 || std::rand() < RAND_MAX * internal::exp( de ) ){
 					std::swap( states[i], states[i-1] );
 					std::swap( energies[i], energies[i-1] );
 				}
@@ -131,7 +160,7 @@ namespace grb {
 					for( size_t i = n_replicas - 1 ; i > 0 ; --i ){
 						const EnergyType de = ( energies[ i ] - energies[ i-1 ]) * (betas[ i ] - betas[ i-1 ]);
 
-						if( de >= 0 || std::rand() < RAND_MAX * exp( de ) ){
+						if( de >= 0 || std::rand() < RAND_MAX * internal::exp( de ) ){
 							std::swap( states[i], states[i-1] );
 							std::swap( energies[i], energies[i-1] );
 						}
@@ -167,7 +196,7 @@ namespace grb {
 
 				const EnergyType de = ( msg[ 1 ].e - msg[ 0 ].e ) * ( msg[ 1 ].b - msg[ 0 ].b );
 
-				if( rc == grb::SUCCESS && ( de >= 0 || msg[ 0 ].r < RAND_MAX * exp( de ) ) ){
+				if( rc == grb::SUCCESS && ( de >= 0 || msg[ 0 ].r < RAND_MAX * internal::exp( de ) ) ){
 					if( si == s+2 ){
 						states[ 0 ] = msg[ 0 ].s;
 						energies[ 0 ] = msg[ 0 ].e;
@@ -315,6 +344,7 @@ namespace grb {
 		 * @param[in,out] states        On input: initial states.
 		 *                              On output: optimized states.
 		 * @param[in]     couplings     The square (symmetric) couplings matrix.
+		 *                              The diagonal has to be zero!
 		 * @param[in]     local_fields  The vector of local fields.
 		 * @param[in,out] energies      The initial energy of each state.
 		 * @param[in,out] betas     	Inverse temperature of each state.
@@ -330,28 +360,176 @@ namespace grb {
 		 */
 		template<
 			Backend backend,
+			grb::Descriptor descr = grb::descriptors::no_operation,
+			bool empty_local_fields = false,
 			typename StateType, // type of state, possibly 0/1
 			typename QType, // type of coupling matrix values
 			typename EnergyType,
 			typename TempType,
-			typename SweepDataType, // type of data to be passed through to the sweep function
-			typename SweepFuncType = std::function< 
-					EnergyType(
-						 grb::Vector< StateType, backend >&,
-						 const TempType&,
-						 SweepDataType&
-				 	)
-				>,
-				typename RSI, typename CSI, typename NZI
+			typename RSI, typename CSI, typename NZI,
+			class Ring = Semiring<
+				grb::operators::add< QType >, grb::operators::mul< QType >,
+				grb::identities::zero, grb::identities::one
+			>
 			>
 		grb::RC simulated_annealing_RE_Ising(
-				const grb::Matrix< QType, backend, RSI, CSI, NZI >& Q,
+				const grb::Matrix< QType, backend, RSI, CSI, NZI > &couplings,
+				const grb::Vector< QType, backend> &local_fields,
 				std::vector< grb::Vector< StateType, backend > > &states,
 				grb::Vector< EnergyType, backend > &energies,
 				grb::Vector< TempType, backend > &betas,
+				grb::Vector< StateType, backend > &best_state,
+				EnergyType &best_energy,
 				const size_t &n_sweeps,
-				const bool &use_pt = false
-				);
+				const bool &use_pt = false,
+				const int seed = 42,
+				const Ring &ring = Ring()
+				){
+			const size_t n = grb::size(local_fields);
+			const size_t n_replicas = grb::size(betas);
+			const size_t s 		= spmd<>::pid();
+			grb::RC rc = grb::SUCCESS;
+
+			assert( grb::size(states[0]) == n );
+			assert( grb::nnz(states[0]) == n ); // state is dense
+			assert( states.size() == n_replicas );
+
+			EnergyType energy;
+			grb::Vector< EnergyType > tmp_calc_energy ( n );
+			const auto get_energy = [&couplings, &local_fields, &tmp_calc_energy, &ring](
+					EnergyType &energy, const grb::Vector< StateType > &state
+					){
+				grb::RC rc = grb::SUCCESS;
+				grb::set( tmp_calc_energy, static_cast<EnergyType>( 0.0 ) );
+				rc = rc ? rc : grb::mxv< descr | grb::descriptors::dense >( tmp_calc_energy, couplings, state, ring );
+				rc = rc ? rc : grb::foldl< descr | grb::descriptors::dense >( tmp_calc_energy, static_cast< EnergyType >( 0.5 ),
+						ring.getMultiplicativeMonoid() );
+				if( !empty_local_fields) {
+					rc = rc ? rc : grb::foldl< descr | grb::descriptors::dense >( tmp_calc_energy, local_fields, ring.getAdditiveMonoid() );
+				}
+				rc = rc ? rc : grb::dot< descr | grb::descriptors::dense >( energy, tmp_calc_energy, state, ring );
+				return rc;
+			};
+
+			// it is reasonable to allow the energies to be allocated and evaluated by this function
+			if( grb::nnz(energies) == 0 ){
+				grb::resize( energies, n_replicas );
+
+				for(size_t i = 0 ; i < n_replicas ; ++i){
+					energy = static_cast< EnergyType >( 0.0 );
+					rc = rc ? rc : get_energy( energy, states[i] );
+					grb::setElement( energies, energy, i );
+				}
+			}
+
+			std::vector< grb::Vector< bool > > masks ;
+			for( size_t i = 0 ; i < n ; ++i ){
+				masks.push_back( grb::Vector< bool >(n) );
+				grb::setElement( masks[i], true, i );
+			}
+			grb::Vector< QType > h ( n );
+			grb::Vector< QType > log_rand ( n );
+			grb::Vector< StateType > delta ( n );
+			grb::Vector< EnergyType > dn ( n );
+			grb::Vector< bool > accept ( n );
+    		std::srand( static_cast<unsigned>( seed + s ) );
+    		std::minstd_rand rng ( seed ); // minstd_rand or std::mt19937
+
+			auto sweep_data = std::tie(energy);
+
+			const auto ising_sweep = [&](
+				 grb::Vector< StateType > &state,
+				 const TempType &beta,
+				 typeof(sweep_data) &data
+			  ){
+				(void) data;
+				const size_t n = grb::size( state );
+				EnergyType delta_energy = static_cast< EnergyType >(0.0);
+				grb::RC rc = grb::SUCCESS;
+
+				if( !empty_local_fields) {
+					rc = rc ? rc : grb::set< descr >( h, local_fields );
+				}else {
+					rc = rc ? rc : grb::set< descr >( h, static_cast< QType >( 0.0 ) );
+				}
+				rc = rc ? rc : grb::mxv< descr >( h, couplings, state , ring );
+				std::uniform_real_distribution< QType > rand ( 0.0, 1.0 );
+				for( size_t j = 0 ; j < n ; ++j ){
+					const auto rnd = rand( rng );
+					rc = rc ? rc : grb::setElement(log_rand,  log( rnd ), j );
+				}
+#ifndef NDEBUG
+				const grb::Vector< StateType > old_state = state;
+
+#endif
+				for(const auto &mask : masks ){
+					rc = rc ? rc : grb::clear( accept  );
+					rc = rc ? rc : grb::clear( delta  );
+					rc = rc ? rc : grb::clear( dn );
+
+					// dn = (2*state_slice - 1) * h_slice
+					rc = rc ? rc : grb::set< descr >( dn, mask, state );
+					rc = rc ? rc : grb::foldl< descr >( dn, static_cast< EnergyType >( 2 ), ring.getMultiplicativeMonoid()  );
+					rc = rc ? rc : grb::foldl< descr >( dn, static_cast< EnergyType >( -1 ), ring.getAdditiveMonoid() );
+					rc = rc ? rc : grb::foldl< descr >( dn, h, ring.getMultiplicativeMonoid() );
+
+					// ( dn >= 0 ) | ( log_rand < beta * dn )
+					rc = rc ? rc : grb::set< descr >( accept, mask );
+					rc = rc ? rc : grb::wait(); // needed to avoid ERROR: Segmentation Fault with nonblocking backend
+					rc = rc ? rc : grb::eWiseLambda< descr >(
+							[ &mask, &accept, &dn, &log_rand, beta ]( const size_t i ){
+								(void) i;
+								if( mask[i] ){
+									accept[i] = ( dn[i] >= 0 ) || ( log_rand[i] < beta * dn[i] );
+								}
+							}, mask, log_rand, dn, accept );
+
+					// new_state = np.where(accept, 1 - old, old)
+					rc = rc ? rc : grb::foldl< descr >( state, accept, static_cast< StateType >( -1 ), ring.getMultiplicativeMonoid() );
+					rc = rc ? rc : grb::foldl< descr >( state, accept, static_cast< StateType >( 1 ), ring.getAdditiveMonoid() );
+					
+					// delta = new - old ==> delta[accept] = 2*new_state[accept]-1
+					rc = rc ? rc : grb::clear( delta  );
+					rc = rc ? rc : grb::set< descr >( delta, accept, state );
+					rc = rc ? rc : grb::foldl< descr >( delta, accept, static_cast< StateType >( 2 ), ring.getMultiplicativeMonoid() );
+					rc = rc ? rc : grb::foldl< descr >( delta, accept, static_cast< StateType >( -1 ), ring.getAdditiveMonoid() );
+					
+					// Update delta_energy -= dot(dn, accept)
+					rc = rc ? rc : grb::dot< descr >( delta_energy, delta, h, ring );
+
+					// update h
+					rc = rc ? rc : grb::mxv< descr >( h, couplings, delta, ring );
+				}
+				rc = rc ? rc : grb::wait();
+
+#ifndef NDEBUG
+				if( rc != grb::SUCCESS ){
+					std::cerr << "\n\t Error in some GraphBLAS function of ising_sweep " << rc << " : " << grb::toString( rc ) << std::endl;
+					abort();
+				}
+				assert( rc == grb::SUCCESS );
+				const auto new_state = state;
+				rc = rc ? rc : grb::wait();
+
+				EnergyType e1 = static_cast< EnergyType >( 0.0 ),
+						   e2 = static_cast< EnergyType >( 0.0 );
+				get_energy(e1, old_state);
+				get_energy(e2, new_state);
+				const auto real_delta = e2 - e1;
+				std::cerr << "\n\t Delta_energy: " << delta_energy;
+				std::cerr << "\n\t Real delta: " << real_delta;
+				std::cerr << "\n\t Discrepancy: " << real_delta - delta_energy;
+				std::cerr << std::endl;
+
+				assert( ISCLOSE(real_delta, delta_energy ) );
+#endif
+				return delta_energy;
+			};
+
+			return simulated_annealing_RE(
+					ising_sweep, sweep_data, states, energies, betas, best_state, best_energy, n_sweeps, use_pt
+					);
+		}
 
 		/*
 		 * Estimate a solution to a given QUBO problem. The solution is found
@@ -359,9 +537,11 @@ namespace grb {
 		 *
 		 *  TODO: expand and complete documentation
 		 *
-		 * @param[in,out] states        On input: initial states.
-		 *                              On output: optimized states.
-		 * @param[in]     couplings     The square (symmetric) couplings matrix.
+		 * Warning: This function allocates O(n*n_replicas) memory for temporary vectors.
+		 *
+		 * @param[in,out] states        On input: initial (dense) states.
+		 *                              On output: optimized (dense) states.
+		 * @param[in]     Q             The square symmetric $Q$ matrix.
 		 * @param[in,out] energies      The initial energy of each state.
 		 * @param[in,out] betas     	Inverse temperature of each state.
 		 * @param[in]     n_replicas    Number of replicas to run concurrently.
@@ -377,40 +557,40 @@ namespace grb {
 		 */
 		template<
 			Backend backend,
+			grb::Descriptor descr = grb::descriptors::no_operation,
 			typename StateType, // type of state, possibly 0/1
 			typename QType, // type of coupling matrix values
 			typename EnergyType,
 			typename TempType,
-			typename SweepDataType, // type of data to be passed through to the sweep function
-			typename SweepFuncType = std::function< 
-					EnergyType(
-						 grb::Vector< StateType, backend >&,
-						 const TempType&,
-						 SweepDataType&
-				 	)
-				>,
-				typename RSI, typename CSI, typename NZI
+			typename RSI, typename CSI, typename NZI,
+				class Ring = Semiring<
+					grb::operators::add< QType >, grb::operators::mul< QType >,
+					grb::identities::zero, grb::identities::one
+				>
 			>
 		grb::RC simulated_annealing_RE_QUBO(
 				const grb::Matrix< QType, backend, RSI, CSI, NZI > &Q,
 				std::vector< grb::Vector< StateType, backend > > &states,
 				grb::Vector< EnergyType, backend > &energies,
 				grb::Vector< TempType, backend > &betas,
+				grb::Vector< StateType, backend > &best_state,
+				EnergyType &best_energy,
 				const size_t &n_sweeps,
-				const bool &use_pt = false
-				);
+				const bool &use_pt = false,
+				const int seed = 42,
+				const Ring &ring = Ring()
+				){
+			grb::Vector< QType > empty_local_fields ( grb::ncols( Q ) );
 
-		template< typename T >
-		inline T
-		exp(T x ){
-			static_assert(std::is_same<T, float>::value ||
-				std::is_same<T, double>::value ||
-				std::is_same<T, long double>::value);
-			return std::exp( x );
+			return simulated_annealing_RE_Ising< backend, descr, true >(
+					Q, empty_local_fields, states, energies, betas, best_state, best_energy, n_sweeps, use_pt, seed, ring
+					);
 		}
-	} // namespace algorithms
 
+	
+	} // namespace algorithms
 } // end namespace grb
+#undef ISCLOSE
 
 #endif // end _H_GRB_ALGORITHMS_SA-RE
 
