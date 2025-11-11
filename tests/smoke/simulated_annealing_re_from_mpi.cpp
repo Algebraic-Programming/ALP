@@ -630,7 +630,6 @@ void grbProgram(
     // also make betas vector os size n_replicas and initialize with 10.0
     grb::Vector< JType, grb::reference > betas( n_replicas );
     grb::Vector< EnergyType, grb::reference > energies( n_replicas );
-    grb::Vector< EnergyType, grb::reference > temp_energies( n_replicas );
     for ( size_t r = 0; rc == grb::SUCCESS && r < n_replicas; ++r ) {
         rc = rc ? rc : grb::setElement( betas, static_cast< JType >(10.0), r );
         rc = rc ? rc : grb::setElement( energies, get_energy(  J, h, states[r] ), r );
@@ -649,7 +648,7 @@ void grbProgram(
     #endif
     rc = rc ? rc : wait();
 
-    std::vector< grb::Vector< IOType, grb::reference > > temp_states;
+    grb::Vector< IOType, grb::reference > best_state ( n );
 	grb::Vector< JType, grb::reference > temp_h ( n );
 	grb::Vector< JType, grb::reference > temp_log_rand ( n );
 	grb::Vector< EnergyType, grb::reference > temp_dn ( n );
@@ -673,7 +672,7 @@ void grbProgram(
 	if( out.rep == 0 ) {
 		timer.reset();
 		rc = grb::algorithms::simulated_annealing_RE(
-				sweep, sweep_data, states, energies, betas, temp_states, temp_energies, data_in.nsweeps, data_in.use_pt
+				sweep, sweep_data, states, energies, betas, best_state, out.best_energy, data_in.nsweeps, data_in.use_pt
         );
 
 		rc = rc ? rc : wait();
@@ -689,9 +688,6 @@ void grbProgram(
 		if( rc == SUCCESS ) {
 			rc = collectives<>::reduce( single_time, 0, operators::max< double >() );
 
-			for(size_t i = 0 ; i < n_replicas ; ++i ){
-				out.best_energy = std::min( out.best_energy, energies[ i ] );
-			}
 		}
 		if( rc != SUCCESS ) {
 			out.error_code = 25;
@@ -719,7 +715,7 @@ void grbProgram(
 				out.iterations = data_in.nsweeps;
 
                 rc = grb::algorithms::simulated_annealing_RE(
-					sweep, sweep_data, states, energies, betas, temp_states, temp_energies, data_in.nsweeps, data_in.use_pt
+					sweep, sweep_data, states, energies, betas, best_state, out.best_energy, data_in.nsweeps, data_in.use_pt
                 );
 			}
 			if( grb::Properties<>::isNonblockingExecution ) {
@@ -736,9 +732,6 @@ void grbProgram(
 				std::cout << std::endl;
 				assert( ISCLOSE( get_energy( J, h, states[r] ), energies[ r ] ) );
 			}
-		}
-		for(size_t i = 0 ; i < n_replicas ; ++i ){
-			out.best_energy = std::min( out.best_energy, energies[ i ] );
 		}
 
 		out.times.useful = time_taken / static_cast< double >( out.rep );
