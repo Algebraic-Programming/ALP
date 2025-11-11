@@ -292,21 +292,11 @@ EnergyType get_energy(
 }
 
 template<
-		typename SweepDataType = std::tuple<
-				 	 const grb::Matrix< JType >&,
-				 	 const grb::Vector< JType >&,
-					 grb::Vector< JType >&,
-					 grb::Vector< JType >&,
-					 grb::Vector< IOType >&,
-					 const std::vector< grb::Vector< bool > >&,
-					 grb::Vector< EnergyType >&,
-					 grb::Vector< bool >&
-					 >,
-		grb::Descriptor descr = grb::descriptors::no_operation,
 		class Ring = Semiring<
 			grb::operators::add< JType >, grb::operators::mul< JType >,
 			grb::identities::zero, grb::identities::one
-		>
+		>,
+		grb::Descriptor descr = grb::descriptors::no_operation
 	>
 static EnergyType sequential_sweep_immediate(
 				 grb::Vector< IOType > &state,
@@ -328,7 +318,7 @@ static EnergyType sequential_sweep_immediate(
 
 		grb::RC rc = grb::SUCCESS;
 		const size_t n = grb::size( state );
-		EnergyType delta_energy = static_cast< JType >(0.0);
+		EnergyType delta_energy = static_cast< EnergyType >(0.0);
 
 		const auto &couplings 	= std::get<0>(data);
 		const auto &local_fields = std::get<1>(data);
@@ -350,13 +340,11 @@ static EnergyType sequential_sweep_immediate(
 		rc = rc ? rc : grb::set( h, local_fields );
 		rc = rc ? rc : grb::mxv( h, couplings, state , ring );
 
-		std::uniform_real_distribution< JType > rand ( 0.0, 1.0 );
+		static std::uniform_real_distribution< JType > rand ( 0.0, 1.0 );
 		for( size_t j = 0 ; j < n ; ++j ){
 			const auto rnd = rand( rng );
 			rc = rc ? rc : grb::setElement(log_rand,  std::log( rnd ), j );
 		}
-		// rc = rc ? rc : grb::wait();
-		// print_vector( log_rand, 30, "log_rand" );
 
 #ifndef NDEBUG
 		const grb::Vector< IOType > old_state = state;
@@ -383,14 +371,10 @@ static EnergyType sequential_sweep_immediate(
 							accept[i] = ( dn[i] >= 0 ) || ( log_rand[i] < beta * dn[i] );
 						}
 					}, mask, log_rand, dn, accept );
-			// print_vector( log_rand, 30, "log_rand" );
-			// print_vector( mask, 30, "mask" );
-			// print_vector( accept, 30, "accept" );
 
 			// new_state = np.where(accept, 1 - old, old)
 			rc = rc ? rc : grb::foldl( state, accept, static_cast< IOType >( -1 ), ring.getMultiplicativeMonoid() );
 			rc = rc ? rc : grb::foldl( state, accept, static_cast< IOType >( 1 ), ring.getAdditiveMonoid() );
-			// print_vector( state, 30, "state" );
 			
 			// delta = new - old ==> delta[accept] = 2*new_state[accept]-1
 			rc = rc ? rc : grb::clear( delta  );
@@ -400,7 +384,6 @@ static EnergyType sequential_sweep_immediate(
 			
 			// Update delta_energy -= dot(dn, accept)
 			rc = rc ? rc : grb::dot< descr >( delta_energy, delta, h, ring );
-			// rc = rc ? rc : grb::wait();
 
 			// update h
 			rc = rc ? rc : grb::mxv( h, couplings, delta, ring );
@@ -421,12 +404,9 @@ static EnergyType sequential_sweep_immediate(
 		std::cerr << "\n\t Delta_energy: " << delta_energy;
 		std::cerr << "\n\t Real delta: " << real_delta;
 		std::cerr << "\n\t Discrepancy: " << real_delta - delta_energy;
-		// std::cerr << "\n\t Old energy: " << get_energy(couplings, local_fields, old_state) ;
-		// std::cerr << "\n\t New energy: " << get_energy(couplings, local_fields, new_state);
 		std::cerr << std::endl;
 
 		assert( ISCLOSE(real_delta, delta_energy ) );
-		// TODO: assert fails with nonblocking backend -> see issue #397
 #endif
 
 		return delta_energy;
@@ -526,8 +506,6 @@ void grbProgram(
 	// get user process ID
 	const size_t s = spmd<>::pid();
 	assert( s < spmd<>::nprocs() );
-
-	// std::cerr << "Process " << s <<  " running at line " << __LINE__ << std::endl;
 
     grb::utils::Timer timer;
 	timer.reset();
@@ -644,8 +622,6 @@ void grbProgram(
 			std::cout << "With energy " << get_energy(  J, h, states[r] ) << "\n";
             std::cout << std::endl;
         }
-
-		// assert( std::abs(get_energy(  J, h, zero ) - 0.5803450826765713) < 1e-4 );
     }
     #endif
 

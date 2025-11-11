@@ -303,16 +303,6 @@ template<
 			grb::identities::zero, grb::identities::one
 		>,
 		Backend backend = grb::reference,
-		typename SweepDataType = std::tuple<
-				 	 const grb::Matrix< JType >&,
-				 	 const grb::Vector< JType >&,
-					 grb::Vector< JType, backend >&,
-					 grb::Vector< JType, backend >&,
-					 grb::Vector< IOType, backend >&,
-					 const std::vector< grb::Vector< bool, backend > >&,
-					 grb::Vector< EnergyType, backend >&,
-					 grb::Vector< bool, backend >&
-					 >,
 		grb::Descriptor descr = grb::descriptors::no_operation
 	>
 EnergyType sequential_sweep_immediate(
@@ -331,13 +321,12 @@ EnergyType sequential_sweep_immediate(
 					 > &data
 			  ){
 		const size_t s = spmd<>::pid();
-		// std::cerr << "Process " << s <<  " running at line " << __LINE__ << std::endl;
 		const Ring ring = Ring();
 
 
 		grb::RC rc = grb::SUCCESS;
 		const size_t n = grb::size( state );
-		EnergyType delta_energy = static_cast< JType >(0.0);
+		EnergyType delta_energy = static_cast< EnergyType >(0.0);
 
 		const auto &couplings 	= std::get<0>(data);
 		const auto &local_fields = std::get<1>(data);
@@ -364,8 +353,6 @@ EnergyType sequential_sweep_immediate(
 			const auto rnd = rand( rng );
 			rc = rc ? rc : grb::setElement(log_rand,  std::log( rnd ), j );
 		}
-		// rc = rc ? rc : grb::wait();
-		// print_vector( log_rand, 30, "log_rand" );
 
 #ifndef NDEBUG
 		const grb::Vector< IOType, backend > old_state = state;
@@ -384,7 +371,7 @@ EnergyType sequential_sweep_immediate(
 
 			// ( dn >= 0 ) | ( log_rand < beta * dn )
 			rc = rc ? rc : grb::set( accept, mask );
-			rc = rc ? rc : grb::wait(); // ERROR: Segmentation Fault with nonblocking backend
+			rc = rc ? rc : grb::wait(); // needed to avoid ERROR: Segmentation Fault with nonblocking backend
 			rc = rc ? rc : grb::eWiseLambda<>(
 					[ &mask, &accept, &dn, &log_rand, beta ]( const size_t i ){
 						(void) i;
@@ -425,12 +412,9 @@ EnergyType sequential_sweep_immediate(
 			std::cerr << "\n\t Delta_energy: " << delta_energy;
 			std::cerr << "\n\t Real delta: " << real_delta;
 			std::cerr << "\n\t Discrepancy: " << real_delta - delta_energy;
-			// std::cerr << "\n\t Old energy: " << get_energy(couplings, local_fields, old_state) ;
-			// std::cerr << "\n\t New energy: " << get_energy(couplings, local_fields, new_state);
 			std::cerr << std::endl;
 
 			assert( ISCLOSE(real_delta, delta_energy ) );
-			// TODO: assert fails with nonblocking backend -> see issue #397
 		}
 #endif
 
@@ -661,8 +645,6 @@ void grbProgram(
 			std::cout << "With energy " << energies[r] << "\n";
             std::cout << std::endl;
         }
-
-		// assert( std::abs(get_energy(  J, h, zero ) - 0.5803450826765713) < 1e-4 );
     }
     #endif
     rc = rc ? rc : wait();
