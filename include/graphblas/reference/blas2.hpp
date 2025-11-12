@@ -954,6 +954,12 @@ namespace grb {
 #endif
 					return ILLEGAL;
 				}
+				if( nnz( u ) < size( u ) ) {
+#ifdef _DEBUG
+					std::cout << "\t Dense descriptor given but output vector was sparse\n";
+#endif
+					return ILLEGAL;
+				}
 				if( size( mask ) > 0 && nnz( mask ) < size( mask ) ) {
 #ifdef _DEBUG
 					std::cout << "\t Dense descriptor given but output mask has sparse "
