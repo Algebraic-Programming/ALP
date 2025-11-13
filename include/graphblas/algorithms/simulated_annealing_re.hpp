@@ -344,6 +344,96 @@ namespace grb {
 		}
 
 		/*
+		 * Create a set of independent masks.
+		 *
+		 * Uses a graph coloring algorithm.
+		 * Adapted from Alg. 2 of `Graph Coloring on the GPU, M. Osama, M. Truong, C. Yang, A. Buluc, J.D. Owens`.
+		 *
+		 * @param[out] masks            The vector of constructed masks.
+		 * @param[in]     A             The square (symmetric) A matrix.
+		 *
+		 * @tparam MaskType	The state variable type.
+		 * @tparam AType		The matrix values' type.
+		 *
+		 */
+		template<
+			grb::Descriptor descr = grb::descriptors::no_operation,
+			Backend backend,
+			typename MaskType,
+			typename AType,
+			typename RSI, typename CSI, typename NZI
+		>
+		grb::RC matrix_partition(
+				std::vector< grb::Vector< MaskType, backend > > &masks,
+				const grb::Matrix< AType, backend, RSI, CSI, NZI > &A,
+				const int seed = 42
+				) {
+			masks.clear();
+			grb::RC rc = grb::SUCCESS;
+			const size_t n = grb::nrows( A );
+			assert( n == grb::ncols( A ) ); // A needs to be square
+
+			grb::Vector< AType, backend > frontier ( n );
+			grb::Vector< AType, backend > w ( n );
+
+    		std::minstd_rand rng ( seed );
+			std::uniform_real_distribution< AType > rand ( 0.1, 2.0 );
+
+			for( size_t i = 0 ; i < n ; ++i ){
+				rc = rc ? rc : grb::setElement( w, rand( rng ), i );
+			}
+
+			const grb::Semiring<
+			grb::operators::max< AType >, grb::operators::right_assign< AType >,
+			grb::identities::negative_infinity, grb::identities::zero
+			> maxTimesRing;
+			const grb::Monoid< grb::operators::add< AType >, grb::identities::zero > addMonoid;
+			const grb::operators::greater_than< AType > gtOp;
+			const grb::operators::logical_and< bool > orOp;
+			const grb::operators::not_equal< bool > xorOp;
+
+			grb::Vector< bool > remaining ( n );
+			grb::set( remaining, true );
+			for( size_t i = 0; rc == grb::SUCCESS && i < n ; ++i ) {
+				// find max of neighbors
+				const auto w1 = w;
+				rc = rc ? rc : grb::clear( frontier );
+				rc = rc ? rc : grb::mxv< descr >( frontier, A, w1, maxTimesRing );
+				rc = rc ? rc : grb::foldl< descr >( frontier, w1, gtOp );
+
+				AType succ = static_cast< AType >( 0 );
+				rc = rc ? rc : grb::foldl< descr >( succ, frontier, addMonoid );
+				if( succ <= 0 ){
+					break;
+				}
+				if( masks.size() <= i ) {
+					masks.emplace_back( grb::Vector< bool >( n ) );
+				}else{
+					grb::clear( masks.at(i) );
+				}
+				auto &new_mask = masks.at(i);
+				rc = rc ? rc : grb::resize( new_mask, n );
+				new_mask = remaining;
+				rc = rc ? rc : grb::foldl< descr >( new_mask, frontier, orOp);
+
+				rc = rc ? rc : grb::foldl< descr >( remaining, new_mask, xorOp );
+				rc = rc ? rc : grb::set< descr >( w, remaining, w1 );
+			}
+			assert( rc == grb::SUCCESS );
+
+#ifndef NDEBUG
+			std::cerr << "Final masks: \n";
+			for(const auto&mask : masks ){
+				for( const auto &x : mask ){
+					if( x.second ) std::cerr << x.first << ", ";
+				}
+				std::cerr << std::endl;
+			}
+#endif
+			return rc;
+		}
+	
+		/*
 		 * Estimate a solution to a given Ising problem. The solution is found
 		 * using the Simulated Annealing-Replica Exchange function above.
 		 *
@@ -402,7 +492,7 @@ namespace grb {
 				const int seed = 42,
 				const Ring &ring = Ring()
 				){
-			const size_t n = grb::size(local_fields);
+			const size_t n = grb::size( states[0] );
 			const size_t n_replicas = grb::size(betas);
 			const size_t s 		= spmd<>::pid();
 			grb::RC rc = grb::SUCCESS;
@@ -412,7 +502,7 @@ namespace grb {
 			assert( states.size() == n_replicas );
 
 			EnergyType energy;
-			grb::Vector< EnergyType > tmp_calc_energy ( n );
+			grb::Vector< EnergyType, backend > tmp_calc_energy ( n );
 			const auto get_energy = [&couplings, &local_fields, &tmp_calc_energy, &ring](
 					EnergyType &energy, const grb::Vector< StateType > &state
 					){
@@ -439,23 +529,21 @@ namespace grb {
 				}
 			}
 
-			std::vector< grb::Vector< bool > > masks ;
-			for( size_t i = 0 ; i < n ; ++i ){
-				masks.push_back( grb::Vector< bool >(n) );
-				grb::setElement( masks[i], true, i );
-			}
-			grb::Vector< QType > h ( n );
-			grb::Vector< QType > log_rand ( n );
-			grb::Vector< StateType > delta ( n );
-			grb::Vector< EnergyType > dn ( n );
-			grb::Vector< bool > accept ( n );
+			std::vector< grb::Vector< bool, backend > > masks ;
+			rc = rc ? rc : matrix_partition< descr >( masks, couplings, seed );
+
+			grb::Vector< QType, backend > h ( n );
+			grb::Vector< QType, backend > log_rand ( n );
+			grb::Vector< StateType, backend > delta ( n );
+			grb::Vector< EnergyType, backend > dn ( n );
+			grb::Vector< bool, backend > accept ( n );
     		std::srand( static_cast<unsigned>( seed + s ) );
     		std::minstd_rand rng ( seed ); // minstd_rand or std::mt19937
 
 			auto sweep_data = std::tie(energy);
 
 			const auto ising_sweep = [&](
-				 grb::Vector< StateType > &state,
+				 grb::Vector< StateType, backend > &state,
 				 const TempType &beta,
 				 typeof(sweep_data) &data
 			  ){
@@ -473,11 +561,10 @@ namespace grb {
 				std::uniform_real_distribution< QType > rand ( 0.0, 1.0 );
 				for( size_t j = 0 ; j < n ; ++j ){
 					const auto rnd = rand( rng );
-					rc = rc ? rc : grb::setElement(log_rand,  log( rnd ), j );
+					rc = rc ? rc : grb::setElement(log_rand,  internal::log( rnd ), j );
 				}
 #ifndef NDEBUG
 				const grb::Vector< StateType > old_state = state;
-
 #endif
 				for(const auto &mask : masks ){
 					rc = rc ? rc : grb::clear( accept  );
@@ -572,7 +659,6 @@ namespace grb {
 		 * @tparam QType		The matrix values' type.
 		 * @tparam EnergyType	The energy type.
 		 * @tparam TempType		The inverse temperature type.
-		 * @tparam SweepDataType	Type of data to be passed on to the sweep function (e.g. a tuple of references to temporary vectors).
 		 *
 		 */
 		template<
@@ -600,14 +686,12 @@ namespace grb {
 				const int seed = 42,
 				const Ring &ring = Ring()
 				){
-			grb::Vector< QType > empty_local_fields ( grb::ncols( Q ) );
+			grb::Vector< QType > empty_local_fields ( 0 );
 
 			return simulated_annealing_RE_Ising< backend, descr, true >(
 					Q, empty_local_fields, states, energies, betas, best_state, best_energy, n_sweeps, use_pt, seed, ring
 					);
 		}
-
-	
 	} // namespace algorithms
 } // end namespace grb
 #undef ISCLOSE
