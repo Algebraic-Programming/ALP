@@ -70,7 +70,6 @@ typedef grb::utils::Singleton<
         size_t,                    // n_replicas
         bool,                      // use_pt
         unsigned,                  // seed
-        std::string,               // sweep_name
         std::vector<NonzeroT>,     // matrix data
         std::vector<JType>         // h vector
     >
@@ -140,7 +139,6 @@ struct input {
     size_t nsweeps = test_data::nsweeps;
     bool use_pt = test_data::use_pt;
     unsigned seed = test_data::seed;
-    std::string sweep_name = "sequential_sweep_immediate";
     bool verify = false;
     std::string filename_ref_solution;
 	bool direct;
@@ -268,18 +266,25 @@ void read_vector_data_from_array(
 }
 
 template<
-		grb::Descriptor descr = grb::descriptors::no_operation,
-		class Ring = Semiring<
-			grb::operators::add< JType >, grb::operators::mul< JType >,
-			grb::identities::zero, grb::identities::one
-		> >
+	Backend backend,
+	grb::Descriptor descr = grb::descriptors::no_operation,
+	class Ring = Semiring<
+		grb::operators::add< JType >, grb::operators::mul< JType >,
+		grb::identities::zero, grb::identities::one
+	>
+	>
 EnergyType get_energy(
-				 const grb::Matrix< JType >& couplings,
-				 const grb::Vector< JType > &local_fields,
-				 const grb::Vector< IOType > &state,
+				 const grb::Matrix< JType, backend >& couplings,
+				 const grb::Vector< JType, backend > &local_fields,
+				 const grb::Vector< IOType, backend > &state,
+				 grb::Vector< JType, backend > &tmp,
 				 const Ring &ring = Ring()
 			  ){
-	static grb::Vector< JType > tmp ( grb::size( local_fields ) );
+	const size_t n = grb::size( local_fields );
+	assert( n == grb::size( state ) );
+	assert( n == grb::ncols( couplings ) );
+	assert( n == grb::nrows( couplings ) );
+	grb::resize( tmp, n );
 	grb::RC rc = grb::SUCCESS;
 	EnergyType energy = 0.0;
 
@@ -291,158 +296,6 @@ EnergyType get_energy(
 	assert( rc == grb::SUCCESS );
 
 	return energy;
-}
-
-template<
-		class Ring = Semiring<
-			grb::operators::add< JType >, grb::operators::mul< JType >,
-			grb::identities::zero, grb::identities::one
-		>,
-		grb::Descriptor descr = grb::descriptors::no_operation
-	>
-static EnergyType sequential_sweep_immediate(
-				 grb::Vector< IOType > &state,
-				 const JType &beta,
-				 std::tuple<
-				 	 const grb::Matrix< JType > &,
-				 	 const grb::Vector< JType > &,
-					 grb::Vector< JType >&,
-					 grb::Vector< JType >&,
-					 grb::Vector< IOType >&,
-					 const std::vector< grb::Vector< bool > >&,
-					 grb::Vector< EnergyType >&,
-					 grb::Vector< bool >&,
-					 std::minstd_rand&
-					 > &data
-			  ){
-		const Ring ring = Ring();
-
-
-		grb::RC rc = grb::SUCCESS;
-		const size_t n = grb::size( state );
-		EnergyType delta_energy = static_cast< EnergyType >(0.0);
-
-		const auto &couplings 	= std::get<0>(data);
-		const auto &local_fields = std::get<1>(data);
-		auto &h 		= std::get<2>(data);
-		auto &log_rand	= std::get<3>(data);
-		auto &delta		= std::get<4>(data);
-		const auto &masks = std::get<5>(data);
-		auto &dn		= std::get<6>(data);
-		auto &accept	= std::get<7>(data);
-		auto &rng       = std::get<8>(data);
-
-		rc = rc ? rc : grb::wait();
-		rc = rc ? rc : grb::resize( h, n );
-		rc = rc ? rc : grb::resize( log_rand, n );
-		rc = rc ? rc : grb::resize( delta, n );
-		rc = rc ? rc : grb::resize( dn, n );
-		rc = rc ? rc : grb::resize( accept, n );
-
-		rc = rc ? rc : grb::set< descr >( h, 0.0 );
-		rc = rc ? rc : grb::set< descr | grb::descriptors::dense >( h, local_fields );
-		rc = rc ? rc : grb::mxv< descr | grb::descriptors::dense >( h, couplings, state , ring );
-
-		static std::uniform_real_distribution< JType > rand ( 0.0, 1.0 );
-		for( size_t j = 0 ; j < n ; ++j ){
-			const auto rnd = rand( rng );
-			rc = rc ? rc : grb::setElement(log_rand,  std::log( rnd ), j );
-		}
-
-#ifndef NDEBUG
-		const grb::Vector< IOType > old_state = state;
-#endif
-		for(const auto &mask : masks ){
-
-			rc = rc ? rc : grb::clear( accept  );
-			rc = rc ? rc : grb::clear( delta  );
-			rc = rc ? rc : grb::clear( dn );
-
-			// dn = (2*state_slice - 1) * h_slice
-			rc = rc ? rc : grb::set< descr >( dn, mask, state );
-			rc = rc ? rc : grb::foldl< descr >( dn, static_cast< EnergyType >( 2 ), ring.getMultiplicativeMonoid()  );
-			rc = rc ? rc : grb::foldl< descr >( dn, static_cast< EnergyType >( -1 ), ring.getAdditiveMonoid() );
-			rc = rc ? rc : grb::foldl< descr >( dn, h, ring.getMultiplicativeMonoid() );
-
-			// ( dn >= 0 ) | ( log_rand < beta * dn )
-			rc = rc ? rc : grb::set< descr >( accept, mask );
-			rc = rc ? rc : grb::wait(); // needed to avoid ERROR: Segmentation Fault with nonblocking backend
-			rc = rc ? rc : grb::eWiseLambda< descr >(
-					[ &mask, &accept, &dn, &log_rand, beta ]( const size_t i ){
-						(void) i;
-						if( mask[i] ){
-							accept[i] = ( dn[i] >= 0 ) || ( log_rand[i] < beta * dn[i] );
-						}
-					}, mask, log_rand, dn, accept );
-
-			// new_state = np.where(accept, 1 - old, old)
-			rc = rc ? rc : grb::foldl< descr >( state, accept, static_cast< IOType >( -1 ), ring.getMultiplicativeMonoid() );
-			rc = rc ? rc : grb::foldl< descr >( state, accept, static_cast< IOType >( 1 ), ring.getAdditiveMonoid() );
-			
-			// delta = new - old ==> delta[accept] = 2*new_state[accept]-1
-			rc = rc ? rc : grb::clear( delta  );
-			rc = rc ? rc : grb::set< descr >( delta, accept, state );
-			rc = rc ? rc : grb::foldl< descr >( delta, accept, static_cast< IOType >( 2 ), ring.getMultiplicativeMonoid() );
-			rc = rc ? rc : grb::foldl< descr >( delta, accept, static_cast< IOType >( -1 ), ring.getAdditiveMonoid() );
-			
-			// Update delta_energy -= dot(dn, accept)
-			rc = rc ? rc : grb::dot< descr >( delta_energy, delta, h, ring );
-
-			// update h
-			rc = rc ? rc : grb::mxv< descr >( h, couplings, delta, ring );
-		}
-		rc = rc ? rc : grb::wait();
-
-#ifndef NDEBUG
-		if( rc != grb::SUCCESS ){
-			std::cerr << "\n\t Error in some GraphBLAS function " << rc << " : " << grb::toString( rc ) << std::endl;
-			abort();
-		}
-		assert( rc == grb::SUCCESS );
-		const auto new_state = state;
-		rc = rc ? rc : grb::wait();
-
-		const auto real_delta = get_energy(couplings, local_fields, new_state) - get_energy(couplings, local_fields, old_state);
-		std::cerr << "\n\t Delta_energy: " << delta_energy;
-		std::cerr << "\n\t Real delta: " << real_delta;
-		std::cerr << "\n\t Discrepancy: " << real_delta - delta_energy;
-		std::cerr << std::endl;
-
-		assert( ISCLOSE(real_delta, delta_energy ) );
-#endif
-
-		return delta_energy;
-}
-
-
-template<
-		typename SweepDataType = std::tuple<
-				 	 const grb::Matrix< JType >&,
-				 	 const grb::Vector< JType >&,
-					 grb::Vector< JType >&,
-					 grb::Vector< JType >&,
-					 grb::Vector< IOType >&,
-					 const std::vector< grb::Vector< bool > >&,
-					 grb::Vector< EnergyType >&,
-					 grb::Vector< bool >&,
-					 std::minstd_rand&
-					 >,
-		typename SweepFuncType = std::function< EnergyType(
-					 grb::Vector< IOType >&,
-					 const JType&,
-					 SweepDataType&
-				 ) >,
-		class Ring = Semiring<
-			grb::operators::add< JType >, grb::operators::mul< JType >,
-			grb::identities::zero, grb::identities::one
-		>,
-		grb::Descriptor descr = grb::descriptors::no_operation
-	>
-SweepFuncType get_sweep_function( std::string sweep_name ){
-	if( sweep_name != "sequential_sweep_immediate" ){
-			std::cerr << "Warning: unknown sweep setting. Falling back to  \"sequential_sweep_immediate\"" << std::endl;
-	}
-	 return sequential_sweep_immediate< Ring, descr >;
 }
 
 void ioProgram( const struct input &data_in, bool &success ) {
@@ -457,22 +310,22 @@ void ioProgram( const struct input &data_in, bool &success ) {
 		// Parse and store matrix in singleton class
 		// Map Storage tuple fields to meaningful names and wire up default data
 		auto &storage = Storage::getData();
-		// auto &n           = std::get<0>(storage); // n (rows/cols)
-		// auto &nnz         = std::get<1>(storage); // nz (nonzeros)
+		auto &n           = std::get<0>(storage); // n (rows/cols)
+		auto &nnz         = std::get<1>(storage); // nz (nonzeros)
 		auto &nsweeps_st  = std::get<2>(storage); // nsweeps
 		auto &n_replicas_st = std::get<3>(storage); // n_replicas
 		auto &use_pt      = std::get<4>(storage); // use_pt
 		auto &seed_st     = std::get<5>(storage); // seed
-		auto &sweep_name  = std::get<6>(storage); // sweep_name
-		auto &Jdata       = std::get<7>(storage); // std::vector<NonzeroT>
-		auto &h           = std::get<8>(storage); // std::vector<JType>
+		auto &Jdata       = std::get<6>(storage); // std::vector<NonzeroT>
+		auto &h           = std::get<7>(storage); // std::vector<JType>
 
 		// Initialize metadata from input (allow CLI to override defaults)
+		(void) n;
+		(void) nnz;
 		nsweeps_st    = data_in.nsweeps;
 		n_replicas_st = data_in.n_replicas;
 		use_pt        = data_in.use_pt;
 		seed_st       = data_in.seed;
-		sweep_name    = data_in.sweep_name; // TODO: makes bsp1d backend crash!?
 
 
 		if ( data_in.use_default_data ) {
@@ -526,7 +379,7 @@ void grbProgram(
     // load into GraphBLAS
     grb::Matrix< JType > J( n, n );
 	{
-		const auto &data = std::get<7>(Storage::getData());
+		const auto &data = std::get<6>(Storage::getData());
 		RC io_rc = buildMatrixUnique(
 			J,
 			utils::makeNonzeroIterator<
@@ -566,7 +419,7 @@ void grbProgram(
 
     // build vector h with data from singleton
     {
-        const auto &h_data = std::get<8>(Storage::getData());
+        const auto &h_data = std::get<7>(Storage::getData());
 		rc = rc ? rc : buildVector(
 			h,
 			h_data.cbegin(),
@@ -574,20 +427,6 @@ void grbProgram(
 			SEQUENTIAL
 		);
     }
-
-	assert( grb::nnz( grb::Vector< bool >( n ) ) == 0 );
-
-	// build masks from row block indices
-    std::vector< grb::Vector< bool > > masks;
-	for(const auto&v : test_data::row_blocks ){
-		masks.emplace_back( grb::Vector< bool >( n ) );
-		for(const auto&i : v ){
-			grb::setElement( masks.back(), 1, i );
-		}
-		if( s == 0 ){
-			print_vector( masks.back(), 30, "MASK" );
-		}
-	}
 
     // seed RNGs (C and C++ engines) using requested seed (hardcoded default 8 if not provided)
     std::srand( static_cast<unsigned>( data_in.seed + s ) );
@@ -613,16 +452,14 @@ void grbProgram(
             SEQUENTIAL
         );
     }
-	
-	const auto sweep = get_sweep_function( data_in.sweep_name );
-
 
     #ifdef DEBUG_IMSB
+	grb::Vector< EnergyType > tmp_energy ( n );
     if( s == 0 ) {
         for ( size_t r = 0; r < n_replicas; ++r ) {
             std::cout << "Initial state replica " << r << ":\n";
             print_vector( states[r], 30 ,"states values" );  
-			std::cout << "With energy " << get_energy(  J, h, states[r] ) << "\n";
+			std::cout << "With energy " << get_energy(  J, h, states[r], tmp_energy ) << "\n";
             std::cout << std::endl;
         }
     }
@@ -634,37 +471,17 @@ void grbProgram(
     grb::Vector< EnergyType > energies( n_replicas );
     for ( size_t r = 0; rc == grb::SUCCESS && r < n_replicas; ++r ) {
         rc = rc ? rc : grb::setElement( betas, static_cast< JType >(10.0), r );
-        rc = rc ? rc : grb::setElement( energies, get_energy(  J, h, states[r] ), r );
+        // rc = rc ? rc : grb::setElement( energies, get_energy(  J, h, states[r], tmp_energy ), r );
     }
-    rc = rc ? rc : wait();
 
-
-    grb::Vector<IOType> best_state ( n );
-	grb::Vector< JType > temp_h ( n );
-	grb::Vector< JType > temp_log_rand ( n );
-	grb::Vector< EnergyType > temp_dn ( n );
-	grb::Vector< bool > temp_accept ( n );
-	grb::Vector< IOType > temp_delta ( n );
-	auto sweep_data = std::tie(
-			(const typeof(J)&) J,
-			(const typeof(h)&) h,
- 			temp_h,
-			temp_log_rand,
-			temp_delta,
-			(const typeof(masks)&) masks,
-			temp_dn,
-			temp_accept,
-			rng
-			);
-	grb::wait();
-
+	grb::Vector< IOType > best_state ( n );
 
 	out.rep = data_in.rep;
 	// time a single call
 	if( out.rep == 0 ) {
 		timer.reset();
-		rc = grb::algorithms::simulated_annealing_RE(
-				sweep, sweep_data, states, energies, betas, best_state, out.best_energy, data_in.nsweeps, data_in.use_pt
+		rc = grb::algorithms::simulated_annealing_RE_Ising(
+				 J, h, states, energies, betas, best_state, out.best_energy, data_in.nsweeps, data_in.use_pt
         );
 
 		rc = rc ? rc : wait();
@@ -705,8 +522,8 @@ void grbProgram(
 			if( rc == SUCCESS ) {
 				out.iterations = data_in.nsweeps;
 
-                rc = grb::algorithms::simulated_annealing_RE(
-				sweep, sweep_data, states, energies, betas, best_state, out.best_energy, data_in.nsweeps, data_in.use_pt
+                rc = grb::algorithms::simulated_annealing_RE_Ising(
+				 J, h, states, energies, betas, best_state, out.best_energy, data_in.nsweeps, data_in.use_pt
                 );
 			}
 			if( grb::Properties<>::isNonblockingExecution ) {
@@ -719,9 +536,9 @@ void grbProgram(
 				std::cout << "Final state replica " << r << ":\n";
 				print_vector( states[r], 50 ,"states values" );  
 				std::cout << "With energy " << energies[ r ] << "\n";
-				std::cout << "With energy " << get_energy(  J, h, states[r] ) << "\n";
+				std::cout << "With energy " << get_energy(  J, h, states[r], tmp_energy ) << "\n";
 				std::cout << std::endl;
-				assert( ISCLOSE( get_energy( J, h, states[r] ), energies[ r ] ) );
+				assert( ISCLOSE( get_energy( J, h, states[r], tmp_energy ), energies[ r ] ) );
 			}
 		}
 
@@ -766,7 +583,6 @@ void printhelp( char *progname ) {
               << "  --nsweeps INT              Number of sweeps (default: 2)\n"
               << "  --use-pt BOOL              Use Parallel Tampering (default: 1)\n"
               << "  --seed INT                 RNG seed (default: 8)\n"
-              << "  --sweep STR                Sweep selector (default: sequential_sweep_immediate)\n"
               << "  --verify                   Verify output against reference solution\n"
               << "  --ref-solution-fname STR   Reference solution file (required with --verify unless using default data)\n"
               << "  --help, -h                 Print this help message\n";
@@ -805,9 +621,6 @@ bool parse_arguments( input &in, int argc, char ** argv ) {
         } else if ( a == "--seed" ) {
             if ( i+1 >= argc ) { std::cerr << "--seed requires an argument\n"; return false; }
             in.seed = static_cast<unsigned>( std::stoul(argv[++i]) );
-        } else if ( a == "--sweep" ) {
-            if ( i+1 >= argc ) { std::cerr << "--sweep requires an argument\n"; return false; }
-            in.sweep_name = argv[++i];
         } else if ( a == "--verify" ) {
             in.verify = true;
         } else if ( a == "--ref-solution-fname" ) {
@@ -848,7 +661,7 @@ int main( int argc, char ** argv ) {
     }
 
 
-    std::cout << "seed=" << in.seed << " n_replicas=" << in.n_replicas << " nsweeps=" << in.nsweeps << " sweep=" << in.sweep_name << "\n";
+    std::cout << "seed=" << in.seed << " n_replicas=" << in.n_replicas << " nsweeps=" << in.nsweeps << " sweep=ising_sweep" << "\n";
 
     // Run IO program (populates Storage or similar)
     {
