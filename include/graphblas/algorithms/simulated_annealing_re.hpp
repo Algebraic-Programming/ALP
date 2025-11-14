@@ -350,10 +350,15 @@ namespace grb {
 		 * Adapted from Alg. 2 of `Graph Coloring on the GPU, M. Osama, M. Truong, C. Yang, A. Buluc, J.D. Owens`.
 		 *
 		 * @param[out] masks            The vector of constructed masks.
-		 * @param[in]     A             The square (symmetric) A matrix.
+		 * @param[in]     A             The square (symmetric) A matrix. It should not contain any explicit zeros!
+		 * @param[in]     frontier      Temporary (dense) vector used in the function
+		 * @param[in]     w      Temporary (dense) vector used in the function
+		 * @param[in]     seed      seed for randomization
 		 *
+		 * @tparam descr	grb::Descriptor for matrix operations. Should probably not be used
+		 * @tparam backend	The backend of GraphBLAS to be used
 		 * @tparam MaskType	The state variable type.
-		 * @tparam AType		The matrix values' type.
+		 * @tparam AType	The matrix values' type.
 		 *
 		 */
 		template<
@@ -366,6 +371,8 @@ namespace grb {
 		grb::RC matrix_partition(
 				std::vector< grb::Vector< MaskType, backend > > &masks,
 				const grb::Matrix< AType, backend, RSI, CSI, NZI > &A,
+				grb::Vector< AType, backend > &frontier,
+				grb::Vector< AType, backend > &w,
 				const int seed = 42
 				) {
 			masks.clear();
@@ -373,8 +380,8 @@ namespace grb {
 			const size_t n = grb::nrows( A );
 			assert( n == grb::ncols( A ) ); // A needs to be square
 
-			grb::Vector< AType, backend > frontier ( n );
-			grb::Vector< AType, backend > w ( n );
+			grb::resize( frontier, n );
+			grb::resize( w, n );
 
     		std::minstd_rand rng ( seed );
 			std::uniform_real_distribution< AType > rand ( 0.1, 2.0 );
@@ -389,46 +396,50 @@ namespace grb {
 			> maxTimesRing;
 			const grb::Monoid< grb::operators::add< AType >, grb::identities::zero > addMonoid;
 			const grb::operators::greater_than< AType > gtOp;
-			const grb::operators::logical_and< bool > orOp;
-			const grb::operators::not_equal< bool > xorOp;
-
-			grb::Vector< bool > remaining ( n );
-			grb::set( remaining, true );
+			const grb::operators::right_assign< AType > right_assign;
+ 
 			for( size_t i = 0; rc == grb::SUCCESS && i < n ; ++i ) {
 				// find max of neighbors
-				const auto w1 = w;
-				rc = rc ? rc : grb::clear( frontier );
-				rc = rc ? rc : grb::mxv< descr >( frontier, A, w1, maxTimesRing );
-				rc = rc ? rc : grb::foldl< descr >( frontier, w1, gtOp );
+				rc = rc ? rc : grb::set< descr >( frontier, static_cast< AType >( 0 ) );
+				rc = rc ? rc : grb::mxv< descr | grb::descriptors::dense >( frontier, A, w, maxTimesRing );
+				rc = rc ? rc : grb::foldl< descr | grb::descriptors::dense >( frontier, w, gtOp );
 
+				// is there any new node?
 				AType succ = static_cast< AType >( 0 );
 				rc = rc ? rc : grb::foldl< descr >( succ, frontier, addMonoid );
 				if( succ <= 0 ){
 					break;
 				}
-				if( masks.size() <= i ) {
-					masks.emplace_back( grb::Vector< bool >( n ) );
-				}else{
-					grb::clear( masks.at(i) );
-				}
+
+				// add new mask
+				masks.emplace_back( grb::Vector< bool >( n ) );
 				auto &new_mask = masks.at(i);
 				rc = rc ? rc : grb::resize( new_mask, n );
-				new_mask = remaining;
-				rc = rc ? rc : grb::foldl< descr >( new_mask, frontier, orOp);
+				rc = rc ? rc : grb::set< descr >( new_mask, frontier, static_cast< MaskType >(true) );
 
-				rc = rc ? rc : grb::foldl< descr >( remaining, new_mask, xorOp );
-				rc = rc ? rc : grb::set< descr >( w, remaining, w1 );
+				// do not consider the weights of used nodes
+				rc = rc ? rc : grb::foldl< descr >( w, new_mask,
+						static_cast< AType >( 0 ), right_assign );
 			}
 			assert( rc == grb::SUCCESS );
 
 #ifndef NDEBUG
+			if( rc != grb::SUCCESS) {
+				std::cerr << "Error in matrix_partition: " << rc << " " << grb::toString(rc) << std::endl;
+
+			}
+			size_t cnt = 0;
 			std::cerr << "Final masks: \n";
 			for(const auto&mask : masks ){
 				for( const auto &x : mask ){
-					if( x.second ) std::cerr << x.first << ", ";
+					if( x.second ){
+						std::cerr << x.first << ", ";
+						cnt ++;
+					}
 				}
 				std::cerr << std::endl;
 			}
+			assert( cnt == n );
 #endif
 			return rc;
 		}
@@ -437,7 +448,7 @@ namespace grb {
 		 * Estimate a solution to a given Ising problem. The solution is found
 		 * using the Simulated Annealing-Replica Exchange function above.
 		 *
-		 * The function minimized is $U(x) = x^T(Jx/2 + h)$, where $J$ is the supplied
+		 * The function minimized is $U(x) = x^T(\frac{1}{2}Jx + h)$, where $J$ is the supplied
 		 * couplings matrix and $h$ is the local_fields vector. The solution is searched
 		 * in the space of vectors $x$ with entries $0$ or $1$.
 		 *
@@ -445,7 +456,7 @@ namespace grb {
 		 *
 		 *  TODO: expand and complete documentation
 		 *
-		 * Warning: This function allocates O(n*n_replicas) memory for temporary vectors.
+		 * Warning: This function allocates $O(n)$ memory for temporary vectors.
 		 *
 		 * @param[in,out] states        On input: initial (dense) states.
 		 *                              On output: optimized (dense) states.
@@ -503,9 +514,14 @@ namespace grb {
 
 			EnergyType energy;
 			grb::Vector< EnergyType, backend > tmp_calc_energy ( n );
+
 			const auto get_energy = [&couplings, &local_fields, &tmp_calc_energy, &ring](
 					EnergyType &energy, const grb::Vector< StateType > &state
 					){
+				const size_t n = grb::size( local_fields );
+				assert( n == grb::size( state ) );
+				assert( n == grb::ncols( couplings ) );
+				assert( n == grb::nrows( couplings ) );
 				grb::RC rc = grb::SUCCESS;
 				grb::set( tmp_calc_energy, static_cast<EnergyType>( 0.0 ) );
 				rc = rc ? rc : grb::mxv< descr | grb::descriptors::dense >( tmp_calc_energy, couplings, state, ring );
@@ -529,9 +545,6 @@ namespace grb {
 				}
 			}
 
-			std::vector< grb::Vector< bool, backend > > masks ;
-			rc = rc ? rc : matrix_partition< descr >( masks, couplings, seed );
-
 			grb::Vector< QType, backend > h ( n );
 			grb::Vector< QType, backend > log_rand ( n );
 			grb::Vector< StateType, backend > delta ( n );
@@ -539,6 +552,17 @@ namespace grb {
 			grb::Vector< bool, backend > accept ( n );
     		std::srand( static_cast<unsigned>( seed + s ) );
     		std::minstd_rand rng ( seed ); // minstd_rand or std::mt19937
+
+			grb::resize( h, n );
+			grb::resize( log_rand, n );
+			grb::resize( delta, n );
+			grb::resize( dn, n );
+			grb::resize( accept, n );
+
+			std::vector< grb::Vector< bool, backend > > masks ;
+			rc = rc ? rc : matrix_partition< descr >( masks, couplings, h, log_rand, seed );
+			grb::clear(h);
+			constexpr auto dense_descr = descr | grb::descriptors::dense;
 
 			auto sweep_data = std::tie(energy);
 
@@ -557,7 +581,7 @@ namespace grb {
 				}else {
 					rc = rc ? rc : grb::set< descr >( h, static_cast< QType >( 0.0 ) );
 				}
-				rc = rc ? rc : grb::mxv< descr >( h, couplings, state , ring );
+				rc = rc ? rc : grb::mxv< dense_descr >( h, couplings, state , ring );
 				std::uniform_real_distribution< QType > rand ( 0.0, 1.0 );
 				for( size_t j = 0 ; j < n ; ++j ){
 					const auto rnd = rand( rng );
@@ -566,6 +590,7 @@ namespace grb {
 #ifndef NDEBUG
 				const grb::Vector< StateType > old_state = state;
 #endif
+				rc = rc ? rc : grb::wait();
 				for(const auto &mask : masks ){
 					rc = rc ? rc : grb::clear( accept  );
 					rc = rc ? rc : grb::clear( delta  );
@@ -579,14 +604,14 @@ namespace grb {
 
 					// ( dn >= 0 ) | ( log_rand < beta * dn )
 					rc = rc ? rc : grb::set< descr >( accept, mask );
+					const auto lambda_fun = [ &mask, &accept, &dn, &log_rand, beta ]( const size_t i ){
+						if( mask[i] ){
+							accept[i] = ( dn[i] >= 0 ) || ( log_rand[i] < beta * dn[i] );
+						}
+					};
 					rc = rc ? rc : grb::wait(); // needed to avoid ERROR: Segmentation Fault with nonblocking backend
 					rc = rc ? rc : grb::eWiseLambda< descr >(
-							[ &mask, &accept, &dn, &log_rand, beta ]( const size_t i ){
-								(void) i;
-								if( mask[i] ){
-									accept[i] = ( dn[i] >= 0 ) || ( log_rand[i] < beta * dn[i] );
-								}
-							}, mask, log_rand, dn, accept );
+							lambda_fun, mask, log_rand, dn, accept );
 
 					// new_state = np.where(accept, 1 - old, old)
 					rc = rc ? rc : grb::foldl< descr >( state, accept, static_cast< StateType >( -1 ), ring.getMultiplicativeMonoid() );
@@ -639,7 +664,7 @@ namespace grb {
 		 * Estimate a solution to a given QUBO problem. The solution is found
 		 * using the Simulated Annealing-Replica Exchange function above.
 		 *
-		 * The function optimized is $U(x) = x^TQx$, with the constraint that $x$ is a
+		 * The function optimized is $U(x) = \frac{1}{2}x^TQx$, with the constraint that $x$ is a
 		 * 0/1 vector.
 		 *
 		 *  TODO: expand and complete documentation
