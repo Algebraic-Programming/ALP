@@ -283,9 +283,14 @@ EnergyType get_energy(
 				 const grb::Matrix< JType, backend >& couplings,
 				 const grb::Vector< JType, backend > &local_fields,
 				 const grb::Vector< IOType, backend > &state,
+				 grb::Vector< JType, backend > &tmp,
 				 const Ring &ring = Ring()
 			  ){
-	static grb::Vector< JType, backend > tmp ( grb::size( local_fields ) );
+	const size_t n = grb::size( local_fields );
+	assert( n == grb::size( state ) );
+	assert( n == grb::ncols( couplings ) );
+	assert( n == grb::nrows( couplings ) );
+	grb::resize( tmp, n );
 	grb::RC rc = grb::SUCCESS;
 	EnergyType energy = 0.0;
 
@@ -403,14 +408,14 @@ EnergyType sequential_sweep_immediate(
 
 #ifndef NDEBUG
 		if( rc != grb::SUCCESS ){
-			std::cerr << "\n\t Error in some GraphBLAS function " << rc << " : " << grb::toString( rc ) << std::endl;
+			std::cerr << "\n\t Error in some GraphBLAS function in sequential_sweep_immediate " << rc << " : " << grb::toString( rc ) << std::endl;
 			abort();
 		}
 		assert( rc == grb::SUCCESS );
 		if(s == 0){
 			const auto new_state = state;
 
-			const auto real_delta = get_energy(couplings, local_fields, new_state) - get_energy(couplings, local_fields, old_state);
+			const auto real_delta = get_energy(couplings, local_fields, new_state, h) - get_energy(couplings, local_fields, old_state, h);
 			std::cerr << "\n\t Delta_energy: " << delta_energy;
 			std::cerr << "\n\t Real delta: " << real_delta;
 			std::cerr << "\n\t Discrepancy: " << real_delta - delta_energy;
@@ -468,8 +473,8 @@ void ioProgram( const struct input &data_in, bool &success ) {
 		// Parse and store matrix in singleton class
 		// Map Storage tuple fields to meaningful names and wire up default data
 		auto &storage = Storage::getData();
-		// auto &n           = std::get<0>(storage); // n (rows/cols)
-		// auto &nnz         = std::get<1>(storage); // nz (nonzeros)
+		auto &n           = std::get<0>(storage); // n (rows/cols)
+		auto &nnz         = std::get<1>(storage); // nz (nonzeros)
 		auto &nsweeps_st  = std::get<2>(storage); // nsweeps
 		auto &n_replicas_st = std::get<3>(storage); // n_replicas
 		auto &use_pt      = std::get<4>(storage); // use_pt
@@ -479,11 +484,14 @@ void ioProgram( const struct input &data_in, bool &success ) {
 		auto &h           = std::get<8>(storage); // std::vector<JType>
 
 		// Initialize metadata from input (allow CLI to override defaults)
+		(void) n;
+		(void) nnz;
 		nsweeps_st    = data_in.nsweeps;
 		n_replicas_st = data_in.n_replicas;
 		use_pt        = data_in.use_pt;
 		seed_st       = data_in.seed;
-		// sweep_name    = data_in.sweep_name; // TODO: makes bsp1d backend crash!?
+		(void) sweep_name;
+		sweep_name    = data_in.sweep_name; // TODO: makes bsp1d backend crash!?
 
 
 		if ( data_in.use_default_data ) {
@@ -632,9 +640,10 @@ void grbProgram(
     // also make betas vector os size n_replicas and initialize with 10.0
     grb::Vector< JType, grb::reference > betas( n_replicas );
     grb::Vector< EnergyType, grb::reference > energies( n_replicas );
+    grb::Vector< EnergyType, grb::reference > tmp_energy( n );
     for ( size_t r = 0; rc == grb::SUCCESS && r < n_replicas; ++r ) {
         rc = rc ? rc : grb::setElement( betas, static_cast< JType >(10.0), r );
-        rc = rc ? rc : grb::setElement( energies, get_energy(  J, h, states[r] ), r );
+        rc = rc ? rc : grb::setElement( energies, get_energy(  J, h, states[r], tmp_energy ), r );
     }
 
     #ifdef DEBUG_IMSB
@@ -730,9 +739,9 @@ void grbProgram(
 				std::cout << "Final state replica " << r << ":\n";
 				print_vector( states[r], 50 ,"states values" );  
 				std::cout << "With energy " << energies[ r ] << "\n";
-				std::cout << "With energy " << get_energy(  J, h, states[r] ) << "\n";
+				std::cout << "With energy " << get_energy(  J, h, states[r], tmp_energy ) << "\n";
 				std::cout << std::endl;
-				assert( ISCLOSE( get_energy( J, h, states[r] ), energies[ r ] ) );
+				assert( ISCLOSE( get_energy( J, h, states[r], tmp_energy ), energies[ r ] ) );
 			}
 		}
 

@@ -148,7 +148,8 @@ add_grb_executables( simulated_annealing_re_from_mpi simulated_annealing_re_from
 	BACKENDS bsp1d
 	ADDITIONAL_LINK_LIBRARIES test_utils_headers
 )
-add_grb_executables( simulated_annealing_re simulated_annealing_re.cpp
+
+add_grb_executables( simulated_annealing_re_ising simulated_annealing_re_ising.cpp
 	BACKENDS reference reference_omp bsp1d hybrid hyperdags nonblocking
 	ADDITIONAL_LINK_LIBRARIES test_utils_headers
 )
