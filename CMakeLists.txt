@@ -338,6 +338,17 @@ add_subdirectory( tests )
 
 add_subdirectory( examples )
 
+### OPTIONAL EIGEN CG BENCHMARKS
+option( ENABLE_EIGEN_CG_BENCH "Build Eigen-based CG benchmark targets" ON )
+if( ENABLE_EIGEN_CG_BENCH )
+	if( EXISTS "${PROJECT_SOURCE_DIR}/bench/eigen_cg/CMakeLists.txt" )
+		add_subdirectory( bench/eigen_cg )
+		message( STATUS "Enabled Eigen CG benchmarks" )
+	else()
+		message( STATUS "Eigen CG benchmark directory not present; skip" )
+	endif()
+endif()
+
 
 ### COVERAGE REPORT GENERATION
 

@@ -11,3 +11,7 @@ paths.mk
 cmake-build-*/
 .vscode/settings.json
 nohup.out
+extern/eigen/
+data/matrices/
+results/
+bench/eigen_cg/*.csv

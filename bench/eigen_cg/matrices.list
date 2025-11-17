@@ -1,0 +1,9 @@
+# Matrix list for Eigen CG benchmarking (fixed iterations)
+# Format: name<TAB>url
+# Provided core set:
+gyro_m	https://suitesparse-collection-website.herokuapp.com/MM/Oberwolfach/gyro_m.tar.gz
+ca-AstroPh	https://suitesparse-collection-website.herokuapp.com/MM/SNAP/ca-AstroPh.tar.gz
+G2_circuit	https://suitesparse-collection-website.herokuapp.com/MM/AMD/G2_circuit.tar.gz
+
+# TODO: Replace placeholder URLs with actual sources.
+# TODO: Augment with the full matrix list from the paper "Design and Implementation for Nonblocking Execution in GraphBLAS: Tradeoffs and Performance" once source URL is provided.
