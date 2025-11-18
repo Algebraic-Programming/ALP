@@ -77,7 +77,7 @@ typedef grb::utils::Singleton<
         size_t,                    // n_replicas
         bool,                      // use_pt
         unsigned,                  // seed
-        char[MAX_FN_SIZE],         // sweep_name
+        char[ MAX_FN_SIZE + 1 ],   // sweep_name
         std::vector<NonzeroT>,     // matrix data
         std::vector<JType>         // h vector
     >
@@ -139,11 +139,11 @@ struct input {
     size_t nsweeps = test_data::nsweeps;
     bool use_pt = test_data::use_pt;
     unsigned seed = test_data::seed;
-    char sweep_name [ MAX_FN_SIZE ] = "sequential_sweep_immediate";
+    char sweep_name [ MAX_FN_SIZE + 1 ] = "sequential_sweep_immediate";
     bool verify = false;
-    char filename_Jmatrix [ MAX_FN_SIZE ];
-    char filename_h [ MAX_FN_SIZE ];
-    char filename_ref_solution [ MAX_FN_SIZE ];
+    char filename_Jmatrix [ MAX_FN_SIZE + 1 ];
+    char filename_h [ MAX_FN_SIZE + 1 ];
+    char filename_ref_solution [ MAX_FN_SIZE + 1 ];
 	bool direct;
     size_t rep = 0;
     size_t outer = 1;
@@ -326,6 +326,7 @@ EnergyType sequential_sweep_immediate(
 			  ){
 		const size_t s = spmd<>::pid();
 		const Ring ring = Ring();
+		(void) s;
 
 		grb::RC rc = grb::SUCCESS;
 		const size_t n = grb::size( state );
@@ -463,6 +464,7 @@ void ioProgram( const struct input &data_in, bool &success ) {
 	success = false;
 
 	const size_t s = spmd<>::pid();
+	(void) s;
 	assert( s < spmd<>::nprocs() );
 
 	try {
@@ -486,7 +488,7 @@ void ioProgram( const struct input &data_in, bool &success ) {
 		n_replicas_st = data_in.n_replicas;
 		use_pt        = data_in.use_pt;
 		seed_st       = data_in.seed;
-        std::strncpy( sweep_name, data_in.sweep_name, MAX_FN_SIZE );
+        std::strncpy( sweep_name, data_in.sweep_name, MAX_FN_SIZE+1 );
 
 
 		if ( data_in.use_default_data ) {
@@ -530,6 +532,7 @@ void grbProgram(
 
     /* --- Problem setup --- */
     const size_t n = std::get<0>(Storage::getData());
+	(void) n;
 	if( s == 0 ){
 		std::cout << "problem size n = " << n << "\n";
 	}
