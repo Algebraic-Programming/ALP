@@ -281,6 +281,8 @@ namespace grb {
 			const size_t s = spmd<>::pid();
 			const size_t n_replicas = states.size();
 			const size_t n = grb::size(states[0]);
+			(void) n;
+			(void) s;
 
 			assert( n_replicas > 0 );
 			assert( n_replicas == grb::size( betas ) );
@@ -380,6 +382,7 @@ namespace grb {
 			const size_t n = grb::nrows( A );
 			const size_t s = spmd<>::pid();
 			assert( n == grb::ncols( A ) ); // A needs to be square
+			(void) s;
 
 			grb::resize( frontier, n );
 			grb::resize( w, n );
@@ -529,6 +532,7 @@ namespace grb {
 					EnergyType &energy, const grb::Vector< StateType > &state
 					){
 				const size_t n = grb::size( local_fields );
+				(void) n;
 				assert( n == grb::size( state ) );
 				assert( n == grb::ncols( couplings ) );
 				assert( n == grb::nrows( couplings ) );
@@ -593,7 +597,8 @@ namespace grb {
 				 typeof(sweep_data) &data
 			  ){
 				const size_t s 		= spmd<>::pid();
-				std::cerr << "Process " << s << " inside sweep... " << std::endl;
+				(void) s;
+
 				const auto &couplings = std::get<0>(data);
 				const auto &local_fields = std::get<1>(data);
 				const auto &masks = std::get<2>(data);
@@ -638,7 +643,6 @@ namespace grb {
 					// ( dn >= 0 ) | ( log_rand < beta * dn )
 					rc = rc ? rc : grb::set< descr >( accept, mask );
 					rc = rc ? rc : grb::wait(); // needed to avoid ERROR: Segmentation Fault with nonblocking backend
-					std::cerr << "\t calling eWiseLambda" << std::endl;
 					rc = rc ? rc : grb::eWiseLambda< descr >(
 							[ &mask, &accept, &dn, &log_rand, beta ]( const size_t i ){
 						if( mask[i] ){

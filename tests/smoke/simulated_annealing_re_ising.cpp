@@ -131,11 +131,11 @@ struct input {
     bool use_pt = test_data::use_pt;
     unsigned seed = test_data::seed;
     bool use_default_data = false;
-    char filename_Jmatrix [ MAX_FN_SIZE ];
-    char filename_h [ MAX_FN_SIZE ];
-    char sweep_name [ MAX_FN_SIZE ]= "sequential_sweep_immediate";
+    char filename_Jmatrix [ MAX_FN_SIZE + 1 ];
+    char filename_h [ MAX_FN_SIZE + 1 ];
+    char sweep_name [ MAX_FN_SIZE + 1 ]= "sequential_sweep_immediate";
     bool verify = false;
-    char filename_ref_solution [ MAX_FN_SIZE ];
+    char filename_ref_solution [ MAX_FN_SIZE + 1 ];
 	bool direct;
     size_t rep = 0;
     size_t outer = 1;
