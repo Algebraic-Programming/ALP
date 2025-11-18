@@ -682,5 +682,12 @@ int main( int argc, char ** argv ) {
     }
 
     std::cout << "Finished: error_code=" << out.error_code << " iterations=" << out.iterations << " best_energy=" << out.best_energy << "\n";
+	if( in.verify && in.use_default_data ){
+		if( out.best_energy <= -5 ){
+    		std::cout << "Test OK" << std::endl;
+		}else{
+    		std::cout << "Test FAILED" << std::endl;
+		}
+	}
     return out.error_code;
 }
