@@ -15,7 +15,6 @@
 #include <sstream>
 #include <vector>
 #include <tuple>
-#include <string>
 #include <memory>
 #include <algorithm>
 #include <random>
@@ -42,11 +41,15 @@ using namespace grb;
 #define DEBUG_IMSB 1
 #define ISCLOSE(a,b) (std::abs((b)-(a))/std::abs(a) < 1e-4) || (std::abs((b)-(a)) < 1e-4)
 
+constexpr size_t MAX_FN_SIZE = 255;
 
 // Types
 using IOType = double;   // scalar/vector element type
 using JType  = double;   // coupling (matrix) value type
 using EnergyType  = double;   // coupling (matrix) value type
+
+// Backend to be used inside each process
+constexpr grb::Backend internal_backend = grb::reference;
 
 /** Parser type */
 typedef grb::utils::MatrixFileReader<
@@ -74,7 +77,7 @@ typedef grb::utils::Singleton<
         size_t,                    // n_replicas
         bool,                      // use_pt
         unsigned,                  // seed
-        std::string,               // sweep_name
+        char[MAX_FN_SIZE],         // sweep_name
         std::vector<NonzeroT>,     // matrix data
         std::vector<JType>         // h vector
     >
@@ -128,25 +131,19 @@ namespace test_data {
 		0.46231686 , 0.87930208 ,  0.88663637, -0.25052299,
     };
 
-	const std::vector< std::vector< size_t > > row_blocks = {
-		// {3, 1, 6, 7, 9, 11, 12, 13, 14, 15}, {5, 2, 0, 8, 10}, {4} // for python data files
-		{0, 2, 4, 7, 9, 12, 13, 15}, {1, 3, 6, 8, 11}, {5, 10, 14},
-		// {0}, {1}, {2}, {3}, {4}, {5}, {6}, {7}, {8}, {9}, {10}, {11}, {12}, {13}, {14}, {15}
-	};
-
 }
 // --- New, minimal runner configuration and result types ---
 struct input {
     bool use_default_data = false;
-    std::string filename_Jmatrix;
-    std::string filename_h;
     size_t n_replicas = test_data::n_replicas;
     size_t nsweeps = test_data::nsweeps;
     bool use_pt = test_data::use_pt;
     unsigned seed = test_data::seed;
-    std::string sweep_name = "sequential_sweep_immediate";
+    char sweep_name [ MAX_FN_SIZE ] = "sequential_sweep_immediate";
     bool verify = false;
-    std::string filename_ref_solution;
+    char filename_Jmatrix [ MAX_FN_SIZE ];
+    char filename_h [ MAX_FN_SIZE ];
+    char filename_ref_solution [ MAX_FN_SIZE ];
 	bool direct;
     size_t rep = 0;
     size_t outer = 1;
@@ -159,8 +156,8 @@ struct output {
     EnergyType best_energy = std::numeric_limits< EnergyType >::max();
 	size_t rep;
 	grb::utils::TimerResults times;
-    std::unique_ptr< PinnedVector< JType, grb::reference > > pinnedSolutionVector;
-    std::unique_ptr< PinnedVector< JType, grb::reference > > pinnedRefSolutionVector;
+    std::unique_ptr< PinnedVector< JType, internal_backend > > pinnedSolutionVector;
+    std::unique_ptr< PinnedVector< JType, internal_backend > > pinnedRefSolutionVector;
     // other things like eg: best replicas ...
 };
 
@@ -282,7 +279,7 @@ template<
 EnergyType get_energy(
 				 const grb::Matrix< JType, backend >& couplings,
 				 const grb::Vector< JType, backend > &local_fields,
-				 const grb::Vector< IOType, backend > &state,
+				 const grb::Vector< IOType,backend > &state,
 				 grb::Vector< JType, backend > &tmp,
 				 const Ring &ring = Ring()
 			  ){
@@ -313,7 +310,7 @@ template<
 		grb::Descriptor descr = grb::descriptors::no_operation
 	>
 EnergyType sequential_sweep_immediate(
-				 grb::Vector< IOType, backend > &state,
+				 grb::Vector< IOType, internal_backend > &state,
 				 const JType &beta,
 				 std::tuple<
 				 	 const grb::Matrix< JType, backend >&,
@@ -329,7 +326,6 @@ EnergyType sequential_sweep_immediate(
 			  ){
 		const size_t s = spmd<>::pid();
 		const Ring ring = Ring();
-
 
 		grb::RC rc = grb::SUCCESS;
 		const size_t n = grb::size( state );
@@ -352,8 +348,8 @@ EnergyType sequential_sweep_immediate(
 		rc = rc ? rc : grb::resize( dn, n );
 		rc = rc ? rc : grb::resize( accept, n );
 
-		rc = rc ? rc : grb::set< descr | grb::descriptors::dense >( h, local_fields );
-		rc = rc ? rc : grb::mxv< descr | grb::descriptors::dense >( h, couplings, state , ring );
+		rc = rc ? rc : grb::set< descr >( h, local_fields );
+		rc = rc ? rc : grb::mxv< descr >( h, couplings, state , ring );
 
 		std::uniform_real_distribution< JType > rand ( 0.0, 1.0 );
 		for( size_t j = 0 ; j < n ; ++j ){
@@ -454,8 +450,8 @@ template<
 			grb::identities::zero, grb::identities::one
 		>
 	>
-SweepFuncType get_sweep_function( const std::string &sweep_name ){
-	if( sweep_name != "sequential_sweep_immediate" ){
+SweepFuncType get_sweep_function( const char sweep_name[] ){
+	if( std::strcmp(sweep_name, "sequential_sweep_immediate") != 0 ){
 			std::cerr << "Warning: unknown sweep setting. Falling back to  \"sequential_sweep_immediate\"" << std::endl;
 	}
 	 return sequential_sweep_immediate< Ring >;
@@ -490,8 +486,7 @@ void ioProgram( const struct input &data_in, bool &success ) {
 		n_replicas_st = data_in.n_replicas;
 		use_pt        = data_in.use_pt;
 		seed_st       = data_in.seed;
-		(void) sweep_name;
-		sweep_name    = data_in.sweep_name; // TODO: makes bsp1d backend crash!?
+        std::strncpy( sweep_name, data_in.sweep_name, MAX_FN_SIZE );
 
 
 		if ( data_in.use_default_data ) {
@@ -503,8 +498,8 @@ void ioProgram( const struct input &data_in, bool &success ) {
 			// read from files if provided
 			read_matrix_data<NonzeroT>( data_in.filename_Jmatrix, Jdata, data_in.direct );
 			read_vector_data<JType>( data_in.filename_h, h );
-			if(data_in.verify) {
-				if(data_in.filename_ref_solution.empty()) {
+			if( data_in.verify ) {
+				if( std::strlen(data_in.filename_ref_solution) == 0 ) {
 					std::cerr << "Reference solution file not provided for verification\n";
 					return;
 				}
@@ -538,13 +533,13 @@ void grbProgram(
 	if( s == 0 ){
 		std::cout << "problem size n = " << n << "\n";
 	}
-    grb::Vector< JType, grb::reference > h( n );
+    grb::Vector< JType, internal_backend > h( n );
 
     // populate J with test (random) values
     grb::RC rc = grb::SUCCESS;
 
     // load into GraphBLAS
-    grb::Matrix< JType, grb::reference > J( n, n );
+    grb::Matrix< JType, internal_backend > J( n, n );
 	{
 		const auto &data = std::get<7>(Storage::getData());
 		RC io_rc = buildMatrixUnique(
@@ -595,27 +590,15 @@ void grbProgram(
 		);
     }
 
-	// build masks from row block indices
-    std::vector< grb::Vector< bool, grb::reference > > masks;
-	for(const auto&v : test_data::row_blocks ){
-		masks.emplace_back( grb::Vector< bool, grb::reference >( n ) );
-		for(const auto&i : v ){
-			grb::setElement( masks.back(), 1, i );
-		}
-		if( s == 0 ){
-			print_vector( masks.back(), 30, "MASK" );
-		}
-	}
-
     // seed RNGs (C and C++ engines) using requested seed (hardcoded default 8 if not provided)
     std::srand( static_cast<unsigned>( data_in.seed + s ) );
     std::minstd_rand rng ( data_in.seed + s ); // rng or std::mt19937
 
     // create states storage and initialize with random 1/0 values
     const size_t n_replicas = data_in.n_replicas;
-    std::vector< grb::Vector< IOType, grb::reference > > states;
+    std::vector< grb::Vector< IOType, internal_backend > > states;
     for ( size_t r = 0; r < n_replicas; ++r ) {
-        states.emplace_back( grb::Vector< IOType, grb::reference >(n) );
+        states.emplace_back( grb::Vector< IOType, internal_backend >(n) );
         // initialize with random values
         std::uniform_int_distribution< unsigned short > randint(0,1);
         // we use buildvectorUnique with a random set of indices
@@ -638,9 +621,9 @@ void grbProgram(
 	const auto sweep = sequential_sweep_immediate< Ring >; // get_sweep_function( data_in.sweep_name );
 
     // also make betas vector os size n_replicas and initialize with 10.0
-    grb::Vector< JType, grb::reference > betas( n_replicas );
-    grb::Vector< EnergyType, grb::reference > energies( n_replicas );
-    grb::Vector< EnergyType, grb::reference > tmp_energy( n );
+    grb::Vector< JType, internal_backend > betas( n_replicas );
+    grb::Vector< EnergyType, internal_backend > energies( n_replicas );
+    grb::Vector< EnergyType, internal_backend > tmp_energy( n );
     for ( size_t r = 0; rc == grb::SUCCESS && r < n_replicas; ++r ) {
         rc = rc ? rc : grb::setElement( betas, static_cast< JType >(10.0), r );
         rc = rc ? rc : grb::setElement( energies, get_energy(  J, h, states[r], tmp_energy ), r );
@@ -659,12 +642,21 @@ void grbProgram(
     #endif
     rc = rc ? rc : wait();
 
-    grb::Vector< IOType, grb::reference > best_state ( n );
-	grb::Vector< JType, grb::reference > temp_h ( n );
-	grb::Vector< JType, grb::reference > temp_log_rand ( n );
-	grb::Vector< EnergyType, grb::reference > temp_dn ( n );
-	grb::Vector< bool, grb::reference > temp_accept ( n );
-	grb::Vector< IOType, grb::reference > temp_delta ( n );
+	// we allocate temporary vectors
+	grb::Vector< JType, internal_backend > temp_h ( n );
+	grb::Vector< JType, internal_backend > temp_log_rand ( n );
+	grb::Vector< IOType, internal_backend > best_state ( n );
+	grb::Vector< EnergyType, internal_backend > temp_dn ( n );
+	grb::Vector< bool, internal_backend > temp_accept ( n );
+	grb::Vector< IOType, internal_backend > temp_delta ( n );
+
+	// build masks, we'll use two of the above temporary vectors
+    std::vector< grb::Vector< bool, internal_backend > > masks;
+	rc = rc ? rc : grb::algorithms::matrix_partition( masks, J, temp_h, temp_log_rand, test_data::seed );
+
+	if( s == 0 ){
+		print_vector( masks.back(), 30, "MASK" );
+	}
 	auto sweep_data = std::tie(
 			(const typeof(J)&) J,
 			(const typeof(h)&) h,
@@ -793,9 +785,9 @@ void printhelp( char *progname ) {
 }
 
 bool parse_arguments( input &in, int argc, char ** argv ) {
-    in.filename_Jmatrix.clear();
-    in.filename_h.clear();
-    in.filename_ref_solution.clear();
+	std::fill( in.filename_Jmatrix, in.filename_Jmatrix + MAX_FN_SIZE, '\0' );
+	std::fill( in.filename_h, in.filename_h + MAX_FN_SIZE, '\0' );
+	std::fill( in.filename_ref_solution, in.filename_ref_solution + MAX_FN_SIZE, '\0' );
     in.direct = true;
     // map benchmarking configuration to the runner's fields
     in.rep = grb::config::BENCHMARKING::inner();
@@ -809,10 +801,10 @@ bool parse_arguments( input &in, int argc, char ** argv ) {
             in.use_default_data = true;
         } else if ( a == "--j-matrix-fname" ) {
             if ( i+1 >= argc ) { std::cerr << "--j-matrix-fname requires an argument\n"; return false; }
-            in.filename_Jmatrix = argv[++i];
+			std::strncpy( in.filename_Jmatrix, argv[++i], MAX_FN_SIZE );
         } else if ( a == "--h-fname" ) {
             if ( i+1 >= argc ) { std::cerr << "--h-fname requires an argument\n"; return false; }
-            in.filename_h = argv[++i];
+			std::strncpy( in.filename_h, argv[++i], MAX_FN_SIZE );
         } else if ( a == "--n-replicas" ) {
             if ( i+1 >= argc ) { std::cerr << "--n-replicas requires an argument\n"; return false; }
             in.n_replicas = static_cast<size_t>( std::stoul(argv[++i]) );
@@ -827,12 +819,12 @@ bool parse_arguments( input &in, int argc, char ** argv ) {
             in.seed = static_cast<unsigned>( std::stoul(argv[++i]) );
         } else if ( a == "--sweep" ) {
             if ( i+1 >= argc ) { std::cerr << "--sweep requires an argument\n"; return false; }
-            in.sweep_name = argv[++i];
+			std::strncpy( in.sweep_name, argv[++i], MAX_FN_SIZE );
         } else if ( a == "--verify" ) {
             in.verify = true;
         } else if ( a == "--ref-solution-fname" ) {
             if ( i+1 >= argc ) { std::cerr << "--ref-solution-fname requires an argument\n"; return false; }
-            in.filename_ref_solution = argv[++i];
+			std::strncpy( in.filename_ref_solution, argv[++i], MAX_FN_SIZE );
         } else if ( a == "--help" || a == "-h" ) {
             printhelp( argv[0] );
             return false;
@@ -844,12 +836,14 @@ bool parse_arguments( input &in, int argc, char ** argv ) {
 
     // basic validation
     if ( !in.use_default_data ) {
-        if ( in.filename_Jmatrix.empty() || in.filename_h.empty() ) {
+        if ( std::strlen( in.filename_Jmatrix ) == 0
+				|| std::strlen( in.filename_h ) == 0 ) {
             std::cerr << "Either --use-default-data or both --j-matrix-fname and --h-fname must be provided\n";
             return false;
         }
     }
-    if ( in.verify && !in.use_default_data && in.filename_ref_solution.empty() ) {
+    if ( in.verify && !in.use_default_data
+			&& std::strlen( in.filename_ref_solution ) == 0 ) {
         std::cerr << "--ref-solution-fname required when --verify is used without --use-default-data\n";
         return false;
     }
