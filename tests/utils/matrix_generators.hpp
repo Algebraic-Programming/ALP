@@ -601,31 +601,31 @@ namespace grb {
 					return static_cast< ValueType >( _v.offset ) + 1;
 				}
 
-			static SelfType make_begin( const InputSizesType &sizes ) {
-				return SelfType( sizes[1U], 0 );
-			}
+				static SelfType make_begin( const InputSizesType &sizes ) {
+					return SelfType( sizes[1], 0 );
+				}
 
-			static SelfType make_end( const InputSizesType &sizes ) {
-				const size_t num_nonzeroes = compute_num_nonzeroes( sizes );
-				return SelfType( sizes[1U], num_nonzeroes );
-			}
+				static SelfType make_end( const InputSizesType &sizes ) {
+					const size_t num_nonzeroes = compute_num_nonzeroes( sizes );
+					return SelfType( sizes[1], num_nonzeroes );
+				}
 
-			static SelfType make_parallel_begin( const InputSizesType &sizes ) {
-				size_t num_non_zeroes_per_process, first_local_nonzero;
-				compute_parallel_first_nonzero( compute_num_nonzeroes( sizes ),
-					num_non_zeroes_per_process, first_local_nonzero );
-				return SelfType( sizes[1U], first_local_nonzero );
-			}
+				static SelfType make_parallel_begin( const InputSizesType &sizes ) {
+					size_t num_non_zeroes_per_process, first_local_nonzero;
+					compute_parallel_first_nonzero( compute_num_nonzeroes( sizes ),
+						num_non_zeroes_per_process, first_local_nonzero );
+					return SelfType( sizes[1], first_local_nonzero );
+				}
 
-			static SelfType make_parallel_end( const InputSizesType &sizes ) {
-				size_t last = compute_parallel_last_nonzero(
-					compute_num_nonzeroes( sizes ) );
-				return SelfType( sizes[1U], last );
-			}
+				static SelfType make_parallel_end( const InputSizesType &sizes ) {
+					size_t last = compute_parallel_last_nonzero(
+						compute_num_nonzeroes( sizes ) );
+					return SelfType( sizes[1], last );
+				}
 
-			static size_t compute_num_nonzeroes( const InputSizesType &sizes ) {
-				return sizes[0U] * sizes[1U];
-			}
+				static size_t compute_num_nonzeroes( const InputSizesType &sizes ) {
+					return sizes[0] * sizes[1];
+				}
 
 		};
 
