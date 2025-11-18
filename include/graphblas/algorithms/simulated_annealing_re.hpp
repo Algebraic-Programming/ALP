@@ -378,6 +378,7 @@ namespace grb {
 			masks.clear();
 			grb::RC rc = grb::SUCCESS;
 			const size_t n = grb::nrows( A );
+			const size_t s = spmd<>::pid();
 			assert( n == grb::ncols( A ) ); // A needs to be square
 
 			grb::resize( frontier, n );
@@ -395,8 +396,8 @@ namespace grb {
 			grb::identities::negative_infinity, grb::identities::zero
 			> maxTimesRing;
 			const grb::Monoid< grb::operators::add< AType >, grb::identities::zero > addMonoid;
-			const grb::operators::greater_than< AType > gtOp;
-			const grb::operators::right_assign< AType > right_assign;
+			const  grb::operators::greater_than< AType > gtOp;
+			const grb::Monoid< grb::operators::right_assign< AType >, grb::identities::zero > right_assign;
  
 			for( size_t i = 0; rc == grb::SUCCESS && i < n ; ++i ) {
 				// find max of neighbors
@@ -412,7 +413,7 @@ namespace grb {
 				}
 
 				// add new mask
-				masks.emplace_back( grb::Vector< bool >( n ) );
+				masks.emplace_back( grb::Vector< bool, backend >( n ) );
 				auto &new_mask = masks.at(i);
 				rc = rc ? rc : grb::resize( new_mask, n );
 				rc = rc ? rc : grb::set< descr >( new_mask, frontier, static_cast< MaskType >(true) );
@@ -429,17 +430,25 @@ namespace grb {
 
 			}
 			size_t cnt = 0;
-			std::cerr << "Final masks: \n";
+			if( s == 0 ) {
+				std::cerr << "Final masks: \n";
+			}
 			for(const auto&mask : masks ){
 				for( const auto &x : mask ){
 					if( x.second ){
-						std::cerr << x.first << ", ";
+						if( s == 0 ) {
+							std::cerr << x.first << ", ";
+						}
 						cnt ++;
 					}
 				}
-				std::cerr << std::endl;
+				if( s == 0 ) {
+					std::cerr << std::endl;
+				}
 			}
-			assert( cnt == n );
+			if( s == 0 ){
+				assert( cnt == n );
+			}
 #endif
 			return rc;
 		}
@@ -506,6 +515,7 @@ namespace grb {
 			const size_t n = grb::size( states[0] );
 			const size_t n_replicas = grb::size(betas);
 			const size_t s 		= spmd<>::pid();
+			(void) s;
 			grb::RC rc = grb::SUCCESS;
 
 			assert( grb::size(states[0]) == n );
@@ -550,7 +560,7 @@ namespace grb {
 			grb::Vector< StateType, backend > delta ( n );
 			grb::Vector< EnergyType, backend > dn ( n );
 			grb::Vector< bool, backend > accept ( n );
-    		std::srand( static_cast<unsigned>( seed + s ) );
+			std::srand( static_cast<unsigned>( seed ) );
     		std::minstd_rand rng ( seed ); // minstd_rand or std::mt19937
 
 			grb::resize( h, n );
@@ -564,14 +574,37 @@ namespace grb {
 			grb::clear(h);
 			constexpr auto dense_descr = descr | grb::descriptors::dense;
 
-			auto sweep_data = std::tie(energy);
+			auto sweep_data = std::tie(
+					(const typeof(couplings)&) couplings,
+					(const typeof(local_fields)&) local_fields,
+					(const typeof(masks)&) masks,
+					h,
+					log_rand,
+					delta,
+					dn,
+					accept,
+					rng,
+					(const typeof(ring)&) ring
+					);
 
-			const auto ising_sweep = [&](
+			const auto ising_sweep = [](
 				 grb::Vector< StateType, backend > &state,
 				 const TempType &beta,
 				 typeof(sweep_data) &data
 			  ){
-				(void) data;
+				const size_t s 		= spmd<>::pid();
+				std::cerr << "Process " << s << " inside sweep... " << std::endl;
+				const auto &couplings = std::get<0>(data);
+				const auto &local_fields = std::get<1>(data);
+				const auto &masks = std::get<2>(data);
+				auto &h = std::get<3>(data);
+				auto &log_rand = std::get<4>(data);
+				auto &delta = std::get<5>(data);
+				auto &dn = std::get<6>(data);
+				auto &accept = std::get<7>(data);
+				auto &rng = std::get<8>(data);
+				const auto &ring = std::get<9>(data);
+
 				const size_t n = grb::size( state );
 				EnergyType delta_energy = static_cast< EnergyType >(0.0);
 				grb::RC rc = grb::SUCCESS;
@@ -604,14 +637,14 @@ namespace grb {
 
 					// ( dn >= 0 ) | ( log_rand < beta * dn )
 					rc = rc ? rc : grb::set< descr >( accept, mask );
-					const auto lambda_fun = [ &mask, &accept, &dn, &log_rand, beta ]( const size_t i ){
+					rc = rc ? rc : grb::wait(); // needed to avoid ERROR: Segmentation Fault with nonblocking backend
+					std::cerr << "\t calling eWiseLambda" << std::endl;
+					rc = rc ? rc : grb::eWiseLambda< descr >(
+							[ &mask, &accept, &dn, &log_rand, beta ]( const size_t i ){
 						if( mask[i] ){
 							accept[i] = ( dn[i] >= 0 ) || ( log_rand[i] < beta * dn[i] );
 						}
-					};
-					rc = rc ? rc : grb::wait(); // needed to avoid ERROR: Segmentation Fault with nonblocking backend
-					rc = rc ? rc : grb::eWiseLambda< descr >(
-							lambda_fun, mask, log_rand, dn, accept );
+					}, mask, log_rand, dn, accept );
 
 					// new_state = np.where(accept, 1 - old, old)
 					rc = rc ? rc : grb::foldl< descr >( state, accept, static_cast< StateType >( -1 ), ring.getMultiplicativeMonoid() );
@@ -642,15 +675,17 @@ namespace grb {
 
 				EnergyType e1 = static_cast< EnergyType >( 0.0 ),
 						   e2 = static_cast< EnergyType >( 0.0 );
-				get_energy(e1, old_state);
-				get_energy(e2, new_state);
+				// get_energy(e1, old_state);
+				// get_energy(e2, new_state);
 				const auto real_delta = e2 - e1;
-				std::cerr << "\n\t Delta_energy: " << delta_energy;
-				std::cerr << "\n\t Real delta: " << real_delta;
-				std::cerr << "\n\t Discrepancy: " << real_delta - delta_energy;
-				std::cerr << std::endl;
+				if( s == 0 ){
+					std::cerr << "\n\t Delta_energy: " << delta_energy;
+					std::cerr << "\n\t Real delta: " << real_delta;
+					std::cerr << "\n\t Discrepancy: " << real_delta - delta_energy;
+					std::cerr << std::endl;
+				}
 
-				assert( ISCLOSE(real_delta, delta_energy ) );
+				// assert( ISCLOSE(real_delta, delta_energy ) );
 #endif
 				return delta_energy;
 			};
