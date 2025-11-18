@@ -38,6 +38,7 @@ using namespace grb;
 #define DEBUG_IMSB 1
 #define ISCLOSE(a,b) (std::abs((b)-(a))/std::abs(a) < 1e-4) || (std::abs((b)-(a)) < 1e-4)
 
+constexpr size_t MAX_FN_SIZE = 255;
 
 // Types
 using IOType = double;   // scalar/vector element type
@@ -82,7 +83,7 @@ namespace test_data {
     constexpr bool use_pt = true; 
     constexpr unsigned seed = 8;
 
-    const std::vector< std::pair< std::pair< grb::config::RowIndexType, grb::config::ColIndexType >, JType > > j_matrix_data = {
+    const std::vector<  std::pair< std::pair< grb::config::RowIndexType, grb::config::ColIndexType >, JType > > j_matrix_data = {
 		{{0, 1}, -0.2752300610319546},
 		{{1, 0}, -0.2752300610319546},
 		{{1, 2}, -0.10636508505639508},
@@ -113,34 +114,28 @@ namespace test_data {
 		{{15, 14}, 0.2955745584289766},
     };
 
-
     const size_t nnz = j_matrix_data.size();
 
-    const std::vector< JType > h_array_data = {
+    const auto h_array_data = {
         -0.08910436,  0.58034508,  0.97719304,  0.16792909,
 		-0.9221754 , -0.10715418, -0.62365497,  0.25411129,
 		-0.5693644 , -0.69805978,  0.07228861, -0.79922641,
 		0.46231686 , 0.87930208 ,  0.88663637, -0.25052299,
     };
-
-	const std::vector< std::vector< size_t > > row_blocks = {
-		// {3, 1, 6, 7, 9, 11, 12, 13, 14, 15}, {5, 2, 0, 8, 10}, {4} // for python data files
-		{0, 2, 4, 7, 9, 12, 13, 15}, {1, 3, 6, 8, 11}, {5, 10, 14},
-		// {0}, {1}, {2}, {3}, {4}, {5}, {6}, {7}, {8}, {9}, {10}, {11}, {12}, {13}, {14}, {15}
-	};
-
 }
 // --- New, minimal runner configuration and result types ---
 struct input {
-    bool use_default_data = false;
-    std::string filename_Jmatrix;
-    std::string filename_h;
+    size_t n = test_data::n;
     size_t n_replicas = test_data::n_replicas;
     size_t nsweeps = test_data::nsweeps;
     bool use_pt = test_data::use_pt;
     unsigned seed = test_data::seed;
+    bool use_default_data = false;
+    char filename_Jmatrix [ MAX_FN_SIZE ];
+    char filename_h [ MAX_FN_SIZE ];
+    char sweep_name [ MAX_FN_SIZE ]= "sequential_sweep_immediate";
     bool verify = false;
-    std::string filename_ref_solution;
+    char filename_ref_solution [ MAX_FN_SIZE ];
 	bool direct;
     size_t rep = 0;
     size_t outer = 1;
@@ -210,7 +205,7 @@ void read_matrix_data_from_array(
                 NonzeroT( entry.first.first, entry.first.second, entry.second )
             );
 #ifdef DEBUG_IMSB
-			if( spmd<>::pid() < 2 ){
+			if( spmd<>::pid() < 1 ){
 				// print last data element from std::vector<NonzeroT> data
 				std::cout << "read_matrix_data_from_array: " << data.back().first.first << ", "
 					<< data.back().first.second << ", " << data.back().second << "\n";
@@ -299,34 +294,28 @@ EnergyType get_energy(
 }
 
 void ioProgram( const struct input &data_in, bool &success ) {
-
-    using namespace test_data;
 	success = false;
 
-	const size_t s = spmd<>::pid();
-	assert( s < spmd<>::nprocs() );
+	// Parse and store matrix in singleton class
+	// Map Storage tuple fields to meaningful names and wire up default data
+	auto &storage = Storage::getData();
+	auto &n           = std::get<0>(storage); // n (rows/cols)
+	auto &nnz         = std::get<1>(storage); // nz (nonzeros)
+	auto &nsweeps_st  = std::get<2>(storage); // nsweeps
+	auto &n_replicas_st = std::get<3>(storage); // n_replicas
+	auto &use_pt      = std::get<4>(storage); // use_pt
+	auto &seed_st     = std::get<5>(storage); // seed
+	auto &Jdata       = std::get<6>(storage); // std::vector<NonzeroT>
+	auto &h           = std::get<7>(storage); // std::vector<JType>
 
 	try {
-		// Parse and store matrix in singleton class
-		// Map Storage tuple fields to meaningful names and wire up default data
-		auto &storage = Storage::getData();
-		auto &n           = std::get<0>(storage); // n (rows/cols)
-		auto &nnz         = std::get<1>(storage); // nz (nonzeros)
-		auto &nsweeps_st  = std::get<2>(storage); // nsweeps
-		auto &n_replicas_st = std::get<3>(storage); // n_replicas
-		auto &use_pt      = std::get<4>(storage); // use_pt
-		auto &seed_st     = std::get<5>(storage); // seed
-		auto &Jdata       = std::get<6>(storage); // std::vector<NonzeroT>
-		auto &h           = std::get<7>(storage); // std::vector<JType>
-
 		// Initialize metadata from input (allow CLI to override defaults)
-		(void) n;
-		(void) nnz;
+		(void) n; // initialized by read_matrix_*
+		(void) nnz; // initialized by read_matrix_*
 		nsweeps_st    = data_in.nsweeps;
 		n_replicas_st = data_in.n_replicas;
 		use_pt        = data_in.use_pt;
 		seed_st       = data_in.seed;
-
 
 		if ( data_in.use_default_data ) {
 			// if no file provided, use default data from file_content
@@ -338,7 +327,7 @@ void ioProgram( const struct input &data_in, bool &success ) {
 			read_matrix_data<NonzeroT>( data_in.filename_Jmatrix, Jdata, data_in.direct );
 			read_vector_data<JType>( data_in.filename_h, h );
 			if(data_in.verify) {
-				if(data_in.filename_ref_solution.empty()) {
+				if( std::strlen(data_in.filename_ref_solution) == 0 ) {
 					std::cerr << "Reference solution file not provided for verification\n";
 					return;
 				}
@@ -368,6 +357,7 @@ void grbProgram(
 
     /* --- Problem setup --- */
     const size_t n = std::get<0>(Storage::getData());
+    const size_t n_replicas = std::get<3>(Storage::getData());
 	if( s == 0 ){
 		std::cout << "problem size n = " << n << "\n";
 	}
@@ -433,7 +423,6 @@ void grbProgram(
     std::minstd_rand rng ( data_in.seed + s ); // rng or std::mt19937
 
     // create states storage and initialize with random 1/0 values
-    const size_t n_replicas = std::get<3>(Storage::getData());
     std::vector< grb::Vector<IOType> > states;
     for ( size_t r = 0; r < n_replicas; ++r ) {
         states.emplace_back( grb::Vector<IOType>(n) );
@@ -455,14 +444,15 @@ void grbProgram(
 
     #ifdef DEBUG_IMSB
 	grb::Vector< EnergyType > tmp_energy ( n );
-    if( s == 0 ) {
-        for ( size_t r = 0; r < n_replicas; ++r ) {
-            std::cout << "Initial state replica " << r << ":\n";
-            print_vector( states[r], 30 ,"states values" );  
-			std::cout << "With energy " << get_energy(  J, h, states[r], tmp_energy ) << "\n";
-            std::cout << std::endl;
-        }
-    }
+	for ( size_t r = 0; r < n_replicas; ++r ) {
+		const auto en = get_energy(  J, h, states[r], tmp_energy );
+		if( s == 0 ) {
+			std::cout << "Initial state replica " << r << ":\n";
+			print_vector( states[r], 30 ,"states values" );
+			std::cout << "With energy " << en << "\n";
+			std::cout << std::endl;
+		}
+	}
     #endif
 
 
@@ -473,6 +463,7 @@ void grbProgram(
         rc = rc ? rc : grb::setElement( betas, static_cast< JType >(10.0), r );
         // rc = rc ? rc : grb::setElement( energies, get_energy(  J, h, states[r], tmp_energy ), r );
     }
+	assert( rc == grb::SUCCESS );
 
 	grb::Vector< IOType > best_state ( n );
 
@@ -531,15 +522,15 @@ void grbProgram(
 			}
 		}
 		const double time_taken = timer.time();
-		if( s == 0 ) {
-			for ( size_t r = 0; r < n_replicas; ++r ) {
+		for ( size_t r = 0; r < n_replicas; ++r ) {
+			const auto energy = energies[r];
+			if( s == 0 ) {
 				std::cout << "Final state replica " << r << ":\n";
 				print_vector( states[r], 50 ,"states values" );  
-				std::cout << "With energy " << energies[ r ] << "\n";
-				std::cout << "With energy " << get_energy(  J, h, states[r], tmp_energy ) << "\n";
+				std::cout << "With energy " << energy << "\n";
 				std::cout << std::endl;
-				assert( ISCLOSE( get_energy( J, h, states[r], tmp_energy ), energies[ r ] ) );
 			}
+			assert( ISCLOSE( get_energy( J, h, states[r], tmp_energy ), energies[ r ] ) );
 		}
 
 		out.times.useful = time_taken / static_cast< double >( out.rep );
@@ -589,9 +580,9 @@ void printhelp( char *progname ) {
 }
 
 bool parse_arguments( input &in, int argc, char ** argv ) {
-    in.filename_Jmatrix.clear();
-    in.filename_h.clear();
-    in.filename_ref_solution.clear();
+	std::fill( in.filename_Jmatrix, in.filename_Jmatrix + MAX_FN_SIZE, '\0' );
+	std::fill( in.filename_h, in.filename_h + MAX_FN_SIZE, '\0' );
+	std::fill( in.filename_ref_solution, in.filename_ref_solution + MAX_FN_SIZE, '\0' );
     in.direct = true;
     // map benchmarking configuration to the runner's fields
     in.rep = grb::config::BENCHMARKING::inner();
@@ -605,10 +596,10 @@ bool parse_arguments( input &in, int argc, char ** argv ) {
             in.use_default_data = true;
         } else if ( a == "--j-matrix-fname" ) {
             if ( i+1 >= argc ) { std::cerr << "--j-matrix-fname requires an argument\n"; return false; }
-            in.filename_Jmatrix = argv[++i];
+            std::strncpy( in.filename_Jmatrix, argv[++i], MAX_FN_SIZE );
         } else if ( a == "--h-fname" ) {
             if ( i+1 >= argc ) { std::cerr << "--h-fname requires an argument\n"; return false; }
-            in.filename_h = argv[++i];
+			std::strncpy( in.filename_h, argv[++i], MAX_FN_SIZE );
         } else if ( a == "--n-replicas" ) {
             if ( i+1 >= argc ) { std::cerr << "--n-replicas requires an argument\n"; return false; }
             in.n_replicas = static_cast<size_t>( std::stoul(argv[++i]) );
@@ -625,7 +616,7 @@ bool parse_arguments( input &in, int argc, char ** argv ) {
             in.verify = true;
         } else if ( a == "--ref-solution-fname" ) {
             if ( i+1 >= argc ) { std::cerr << "--ref-solution-fname requires an argument\n"; return false; }
-            in.filename_ref_solution = argv[++i];
+			std::strncpy( in.filename_ref_solution, argv[++i], MAX_FN_SIZE );
         } else if ( a == "--help" || a == "-h" ) {
             printhelp( argv[0] );
             return false;
@@ -637,12 +628,14 @@ bool parse_arguments( input &in, int argc, char ** argv ) {
 
     // basic validation
     if ( !in.use_default_data ) {
-        if ( in.filename_Jmatrix.empty() || in.filename_h.empty() ) {
+        if ( std::strlen( in.filename_Jmatrix ) == 0
+				|| std::strlen( in.filename_h ) == 0 ) {
             std::cerr << "Either --use-default-data or both --j-matrix-fname and --h-fname must be provided\n";
             return false;
         }
     }
-    if ( in.verify && !in.use_default_data && in.filename_ref_solution.empty() ) {
+    if ( in.verify && !in.use_default_data
+			&& std::strlen( in.filename_ref_solution ) == 0 ) {
         std::cerr << "--ref-solution-fname required when --verify is used without --use-default-data\n";
         return false;
     }
