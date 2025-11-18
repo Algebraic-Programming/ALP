@@ -440,7 +440,7 @@ for BACKEND in ${BACKENDS[@]}; do
 			if [ "$BACKEND" = "reference_omp" ] || [ "$BACKEND" = "reference"  ] || [ "$BACKEND" = "hyperdags" ] || [ "$BACKEND" = "nonblocking"  ]; then
 				echo ">>>      [x]           [ ]       Tests Simulated Annealing-Replica Exchange on a"
 				echo "                                 small 16x16 matrix."
-				echo "Functional test executable: ${TEST_BIN_DIR}/simulated_annealing_re_ising_reference"
+				echo "Functional test executable: ${TEST_BIN_DIR}/simulated_annealing_re_ising_${BACKEND}"
 				$runner ${TEST_BIN_DIR}/simulated_annealing_re_ising_${BACKEND} --use-default-data --verify &> ${TEST_OUT_DIR}/simulated_annealing_re_ising_${BACKEND}_${P}_${T}.log
 				( grep "Test OK" ${TEST_OUT_DIR}/simulated_annealing_re_ising_${BACKEND}_${P}_${T}.log ) || printf 'Test FAILED.\n'
 			fi
