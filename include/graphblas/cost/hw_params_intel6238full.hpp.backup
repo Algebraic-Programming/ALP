@@ -1,0 +1,2913 @@
+
+// Auto-generated hardware parameters for Intel6238Full
+// Allocation policies: close, spread
+// Base levels: L2Cache, L3Cache, NUMANode, NodeMem, GLOBAL_SYNC
+// ALL subset combinations (16 total)
+// Generated on 2025-11-07 15:17:41
+//
+// Command used to generate this file:
+// python3 runner.py --threads 88,64,44,32,22,12,8,4,2,1 --core-policy close,spread --keep-levels L2Cache,L3Cache,NUMANode,NodeMem,GLOBAL_SYNC --create-sync-level empirical_monotony
+
+#ifndef HW_PARAMS_INTEL6238FULL_HPP
+#define HW_PARAMS_INTEL6238FULL_HPP
+
+#include "cost_models.hpp"
+
+// Array of hardware parameters for different thread configurations and level subsets
+const std::vector<cost_models::HW_model::HWParameters> hw_models_vector = {
+
+    // Hardware parameters for 1 thread(s), policy: close, subset: NodeMem
+   {
+    /* d            */ 1,
+    /* d_numa       */ 0,
+    /* g            */ {1.182530e-10},
+    /* ls           */ {6.699527e-09},
+    /* m            */ {201863462912},
+    /* p            */ {88},
+    /* kmax         */ {999}},
+    // Hardware parameters for 1 thread(s), policy: close, subset: L2Cache, NodeMem
+   {
+    /* d            */ 2,
+    /* d_numa       */ 2,
+    /* g            */ {5.073238e-11, 1.182530e-10},
+    /* ls           */ {1.386973e-09, 6.699527e-09},
+    /* m            */ {1048576, 201863462912},
+    /* p            */ {2, 44},
+    /* kmax         */ {999, 999}},
+    // Hardware parameters for 1 thread(s), policy: close, subset: L3Cache, NodeMem
+   {
+    /* d            */ 2,
+    /* d_numa       */ 2,
+    /* g            */ {7.510712e-11, 1.182530e-10},
+    /* ls           */ {3.449734e-09, 6.699527e-09},
+    /* m            */ {31457280, 201863462912},
+    /* p            */ {44, 2},
+    /* kmax         */ {999, 999}},
+    // Hardware parameters for 1 thread(s), policy: close, subset: NUMANode, NodeMem
+   {
+    /* d            */ 2,
+    /* d_numa       */ 0,
+    /* g            */ {1.066926e-10, 1.182530e-10},
+    /* ls           */ {5.859733e-09, 6.699527e-09},
+    /* m            */ {100931731456, 201863462912},
+    /* p            */ {44, 2},
+    /* kmax         */ {999, 999}},
+    // Hardware parameters for 1 thread(s), policy: close, subset: NodeMem, GLOBAL_SYNC
+   {
+    /* d            */ 2,
+    /* d_numa       */ 0,
+    /* g            */ {1.182530e-10, 0.000000e+00},
+    /* ls           */ {6.699527e-09, 2.560019e-06},
+    /* m            */ {201863462912, 201863462912},
+    /* p            */ {88, 1},
+    /* kmax         */ {999, 999}},
+    // Hardware parameters for 1 thread(s), policy: close, subset: L2Cache, L3Cache, NodeMem
+   {
+    /* d            */ 3,
+    /* d_numa       */ 3,
+    /* g            */ {5.073238e-11, 7.510712e-11, 1.182530e-10},
+    /* ls           */ {1.386973e-09, 3.449734e-09, 6.699527e-09},
+    /* m            */ {1048576, 31457280, 201863462912},
+    /* p            */ {2, 22, 2},
+    /* kmax         */ {999, 999, 999}},
+    // Hardware parameters for 1 thread(s), policy: close, subset: L2Cache, NUMANode, NodeMem
+   {
+    /* d            */ 3,
+    /* d_numa       */ 2,
+    /* g            */ {5.073238e-11, 1.066926e-10, 1.182530e-10},
+    /* ls           */ {1.386973e-09, 5.859733e-09, 6.699527e-09},
+    /* m            */ {1048576, 100931731456, 201863462912},
+    /* p            */ {2, 22, 2},
+    /* kmax         */ {999, 999, 999}},
+    // Hardware parameters for 1 thread(s), policy: close, subset: L2Cache, NodeMem, GLOBAL_SYNC
+   {
+    /* d            */ 3,
+    /* d_numa       */ 2,
+    /* g            */ {5.073238e-11, 1.182530e-10, 0.000000e+00},
+    /* ls           */ {1.386973e-09, 6.699527e-09, 2.560019e-06},
+    /* m            */ {1048576, 201863462912, 201863462912},
+    /* p            */ {2, 44, 1},
+    /* kmax         */ {999, 999, 999}},
+    // Hardware parameters for 1 thread(s), policy: close, subset: L3Cache, NUMANode, NodeMem
+   {
+    /* d            */ 3,
+    /* d_numa       */ 2,
+    /* g            */ {7.510712e-11, 1.066926e-10, 1.182530e-10},
+    /* ls           */ {3.449734e-09, 5.859733e-09, 6.699527e-09},
+    /* m            */ {31457280, 100931731456, 201863462912},
+    /* p            */ {44, 1, 2},
+    /* kmax         */ {999, 999, 999}},
+    // Hardware parameters for 1 thread(s), policy: close, subset: L3Cache, NodeMem, GLOBAL_SYNC
+   {
+    /* d            */ 3,
+    /* d_numa       */ 2,
+    /* g            */ {7.510712e-11, 1.182530e-10, 0.000000e+00},
+    /* ls           */ {3.449734e-09, 6.699527e-09, 2.560019e-06},
+    /* m            */ {31457280, 201863462912, 201863462912},
+    /* p            */ {44, 2, 1},
+    /* kmax         */ {999, 999, 999}},
+    // Hardware parameters for 1 thread(s), policy: close, subset: NUMANode, NodeMem, GLOBAL_SYNC
+   {
+    /* d            */ 3,
+    /* d_numa       */ 0,
+    /* g            */ {1.066926e-10, 1.182530e-10, 0.000000e+00},
+    /* ls           */ {5.859733e-09, 6.699527e-09, 2.560019e-06},
+    /* m            */ {100931731456, 201863462912, 201863462912},
+    /* p            */ {44, 2, 1},
+    /* kmax         */ {999, 999, 999}},
+    // Hardware parameters for 1 thread(s), policy: close, subset: L2Cache, L3Cache, NUMANode, NodeMem
+   {
+    /* d            */ 4,
+    /* d_numa       */ 3,
+    /* g            */ {5.073238e-11, 7.510712e-11, 1.066926e-10, 1.182530e-10},
+    /* ls           */ {1.386973e-09, 3.449734e-09, 5.859733e-09, 6.699527e-09},
+    /* m            */ {1048576, 31457280, 100931731456, 201863462912},
+    /* p            */ {2, 22, 1, 2},
+    /* kmax         */ {999, 999, 999, 999}},
+    // Hardware parameters for 1 thread(s), policy: close, subset: L2Cache, L3Cache, NodeMem, GLOBAL_SYNC
+   {
+    /* d            */ 4,
+    /* d_numa       */ 3,
+    /* g            */ {5.073238e-11, 7.510712e-11, 1.182530e-10, 0.000000e+00},
+    /* ls           */ {1.386973e-09, 3.449734e-09, 6.699527e-09, 2.560019e-06},
+    /* m            */ {1048576, 31457280, 201863462912, 201863462912},
+    /* p            */ {2, 22, 2, 1},
+    /* kmax         */ {999, 999, 999, 999}},
+    // Hardware parameters for 1 thread(s), policy: close, subset: L2Cache, NUMANode, NodeMem, GLOBAL_SYNC
+   {
+    /* d            */ 4,
+    /* d_numa       */ 2,
+    /* g            */ {5.073238e-11, 1.066926e-10, 1.182530e-10, 0.000000e+00},
+    /* ls           */ {1.386973e-09, 5.859733e-09, 6.699527e-09, 2.560019e-06},
+    /* m            */ {1048576, 100931731456, 201863462912, 201863462912},
+    /* p            */ {2, 22, 2, 1},
+    /* kmax         */ {999, 999, 999, 999}},
+    // Hardware parameters for 1 thread(s), policy: close, subset: L3Cache, NUMANode, NodeMem, GLOBAL_SYNC
+   {
+    /* d            */ 4,
+    /* d_numa       */ 2,
+    /* g            */ {7.510712e-11, 1.066926e-10, 1.182530e-10, 0.000000e+00},
+    /* ls           */ {3.449734e-09, 5.859733e-09, 6.699527e-09, 2.560019e-06},
+    /* m            */ {31457280, 100931731456, 201863462912, 201863462912},
+    /* p            */ {44, 1, 2, 1},
+    /* kmax         */ {999, 999, 999, 999}},
+    // Hardware parameters for 1 thread(s), policy: close, subset: L2Cache, L3Cache, NUMANode, NodeMem, GLOBAL_SYNC
+   {
+    /* d            */ 5,
+    /* d_numa       */ 3,
+    /* g            */ {5.073238e-11, 7.510712e-11, 1.066926e-10, 1.182530e-10, 0.000000e+00},
+    /* ls           */ {1.386973e-09, 3.449734e-09, 5.859733e-09, 6.699527e-09, 2.560019e-06},
+    /* m            */ {1048576, 31457280, 100931731456, 201863462912, 201863462912},
+    /* p            */ {2, 22, 1, 2, 1},
+    /* kmax         */ {999, 999, 999, 999, 999}},
+    // Hardware parameters for 2 thread(s), policy: close, subset: NodeMem
+   {
+    /* d            */ 1,
+    /* d_numa       */ 0,
+    /* g            */ {5.953216e-11},
+    /* ls           */ {3.379082e-09},
+    /* m            */ {201863462912},
+    /* p            */ {88},
+    /* kmax         */ {999}},
+    // Hardware parameters for 2 thread(s), policy: close, subset: L2Cache, NodeMem
+   {
+    /* d            */ 2,
+    /* d_numa       */ 2,
+    /* g            */ {2.362403e-11, 5.953216e-11},
+    /* ls           */ {5.409838e-10, 3.379082e-09},
+    /* m            */ {1048576, 201863462912},
+    /* p            */ {2, 44},
+    /* kmax         */ {999, 999}},
+    // Hardware parameters for 2 thread(s), policy: close, subset: L3Cache, NodeMem
+   {
+    /* d            */ 2,
+    /* d_numa       */ 2,
+    /* g            */ {3.701268e-11, 5.953216e-11},
+    /* ls           */ {1.704930e-09, 3.379082e-09},
+    /* m            */ {31457280, 201863462912},
+    /* p            */ {44, 2},
+    /* kmax         */ {999, 999}},
+    // Hardware parameters for 2 thread(s), policy: close, subset: NUMANode, NodeMem
+   {
+    /* d            */ 2,
+    /* d_numa       */ 0,
+    /* g            */ {5.350574e-11, 5.953216e-11},
+    /* ls           */ {2.928282e-09, 3.379082e-09},
+    /* m            */ {100931731456, 201863462912},
+    /* p            */ {44, 2},
+    /* kmax         */ {999, 999}},
+    // Hardware parameters for 2 thread(s), policy: close, subset: NodeMem, GLOBAL_SYNC
+   {
+    /* d            */ 2,
+    /* d_numa       */ 0,
+    /* g            */ {5.953216e-11, 0.000000e+00},
+    /* ls           */ {3.379082e-09, 2.560019e-06},
+    /* m            */ {201863462912, 201863462912},
+    /* p            */ {88, 1},
+    /* kmax         */ {999, 999}},
+    // Hardware parameters for 2 thread(s), policy: close, subset: L2Cache, L3Cache, NodeMem
+   {
+    /* d            */ 3,
+    /* d_numa       */ 3,
+    /* g            */ {2.362403e-11, 3.701268e-11, 5.953216e-11},
+    /* ls           */ {5.409838e-10, 1.704930e-09, 3.379082e-09},
+    /* m            */ {1048576, 31457280, 201863462912},
+    /* p            */ {2, 22, 2},
+    /* kmax         */ {999, 999, 999}},
+    // Hardware parameters for 2 thread(s), policy: close, subset: L2Cache, NUMANode, NodeMem
+   {
+    /* d            */ 3,
+    /* d_numa       */ 2,
+    /* g            */ {2.362403e-11, 5.350574e-11, 5.953216e-11},
+    /* ls           */ {5.409838e-10, 2.928282e-09, 3.379082e-09},
+    /* m            */ {1048576, 100931731456, 201863462912},
+    /* p            */ {2, 22, 2},
+    /* kmax         */ {999, 999, 999}},
+    // Hardware parameters for 2 thread(s), policy: close, subset: L2Cache, NodeMem, GLOBAL_SYNC
+   {
+    /* d            */ 3,
+    /* d_numa       */ 2,
+    /* g            */ {2.362403e-11, 5.953216e-11, 0.000000e+00},
+    /* ls           */ {5.409838e-10, 3.379082e-09, 2.560019e-06},
+    /* m            */ {1048576, 201863462912, 201863462912},
+    /* p            */ {2, 44, 1},
+    /* kmax         */ {999, 999, 999}},
+    // Hardware parameters for 2 thread(s), policy: close, subset: L3Cache, NUMANode, NodeMem
+   {
+    /* d            */ 3,
+    /* d_numa       */ 2,
+    /* g            */ {3.701268e-11, 5.350574e-11, 5.953216e-11},
+    /* ls           */ {1.704930e-09, 2.928282e-09, 3.379082e-09},
+    /* m            */ {31457280, 100931731456, 201863462912},
+    /* p            */ {44, 1, 2},
+    /* kmax         */ {999, 999, 999}},
+    // Hardware parameters for 2 thread(s), policy: close, subset: L3Cache, NodeMem, GLOBAL_SYNC
+   {
+    /* d            */ 3,
+    /* d_numa       */ 2,
+    /* g            */ {3.701268e-11, 5.953216e-11, 0.000000e+00},
+    /* ls           */ {1.704930e-09, 3.379082e-09, 2.560019e-06},
+    /* m            */ {31457280, 201863462912, 201863462912},
+    /* p            */ {44, 2, 1},
+    /* kmax         */ {999, 999, 999}},
+    // Hardware parameters for 2 thread(s), policy: close, subset: NUMANode, NodeMem, GLOBAL_SYNC
+   {
+    /* d            */ 3,
+    /* d_numa       */ 0,
+    /* g            */ {5.350574e-11, 5.953216e-11, 0.000000e+00},
+    /* ls           */ {2.928282e-09, 3.379082e-09, 2.560019e-06},
+    /* m            */ {100931731456, 201863462912, 201863462912},
+    /* p            */ {44, 2, 1},
+    /* kmax         */ {999, 999, 999}},
+    // Hardware parameters for 2 thread(s), policy: close, subset: L2Cache, L3Cache, NUMANode, NodeMem
+   {
+    /* d            */ 4,
+    /* d_numa       */ 3,
+    /* g            */ {2.362403e-11, 3.701268e-11, 5.350574e-11, 5.953216e-11},
+    /* ls           */ {5.409838e-10, 1.704930e-09, 2.928282e-09, 3.379082e-09},
+    /* m            */ {1048576, 31457280, 100931731456, 201863462912},
+    /* p            */ {2, 22, 1, 2},
+    /* kmax         */ {999, 999, 999, 999}},
+    // Hardware parameters for 2 thread(s), policy: close, subset: L2Cache, L3Cache, NodeMem, GLOBAL_SYNC
+   {
+    /* d            */ 4,
+    /* d_numa       */ 3,
+    /* g            */ {2.362403e-11, 3.701268e-11, 5.953216e-11, 0.000000e+00},
+    /* ls           */ {5.409838e-10, 1.704930e-09, 3.379082e-09, 2.560019e-06},
+    /* m            */ {1048576, 31457280, 201863462912, 201863462912},
+    /* p            */ {2, 22, 2, 1},
+    /* kmax         */ {999, 999, 999, 999}},
+    // Hardware parameters for 2 thread(s), policy: close, subset: L2Cache, NUMANode, NodeMem, GLOBAL_SYNC
+   {
+    /* d            */ 4,
+    /* d_numa       */ 2,
+    /* g            */ {2.362403e-11, 5.350574e-11, 5.953216e-11, 0.000000e+00},
+    /* ls           */ {5.409838e-10, 2.928282e-09, 3.379082e-09, 2.560019e-06},
+    /* m            */ {1048576, 100931731456, 201863462912, 201863462912},
+    /* p            */ {2, 22, 2, 1},
+    /* kmax         */ {999, 999, 999, 999}},
+    // Hardware parameters for 2 thread(s), policy: close, subset: L3Cache, NUMANode, NodeMem, GLOBAL_SYNC
+   {
+    /* d            */ 4,
+    /* d_numa       */ 2,
+    /* g            */ {3.701268e-11, 5.350574e-11, 5.953216e-11, 0.000000e+00},
+    /* ls           */ {1.704930e-09, 2.928282e-09, 3.379082e-09, 2.560019e-06},
+    /* m            */ {31457280, 100931731456, 201863462912, 201863462912},
+    /* p            */ {44, 1, 2, 1},
+    /* kmax         */ {999, 999, 999, 999}},
+    // Hardware parameters for 2 thread(s), policy: close, subset: L2Cache, L3Cache, NUMANode, NodeMem, GLOBAL_SYNC
+   {
+    /* d            */ 5,
+    /* d_numa       */ 3,
+    /* g            */ {2.362403e-11, 3.701268e-11, 5.350574e-11, 5.953216e-11, 0.000000e+00},
+    /* ls           */ {5.409838e-10, 1.704930e-09, 2.928282e-09, 3.379082e-09, 2.560019e-06},
+    /* m            */ {1048576, 31457280, 100931731456, 201863462912, 201863462912},
+    /* p            */ {2, 22, 1, 2, 1},
+    /* kmax         */ {999, 999, 999, 999, 999}},
+    // Hardware parameters for 4 thread(s), policy: close, subset: NodeMem
+   {
+    /* d            */ 1,
+    /* d_numa       */ 0,
+    /* g            */ {3.147368e-11},
+    /* ls           */ {1.770299e-09},
+    /* m            */ {201863462912},
+    /* p            */ {88},
+    /* kmax         */ {999}},
+    // Hardware parameters for 4 thread(s), policy: close, subset: L2Cache, NodeMem
+   {
+    /* d            */ 2,
+    /* d_numa       */ 2,
+    /* g            */ {1.182646e-11, 3.147368e-11},
+    /* ls           */ {2.759005e-10, 1.770299e-09},
+    /* m            */ {1048576, 201863462912},
+    /* p            */ {2, 44},
+    /* kmax         */ {999, 999}},
+    // Hardware parameters for 4 thread(s), policy: close, subset: L3Cache, NodeMem
+   {
+    /* d            */ 2,
+    /* d_numa       */ 2,
+    /* g            */ {1.885855e-11, 3.147368e-11},
+    /* ls           */ {8.727489e-10, 1.770299e-09},
+    /* m            */ {31457280, 201863462912},
+    /* p            */ {44, 2},
+    /* kmax         */ {999, 999}},
+    // Hardware parameters for 4 thread(s), policy: close, subset: NUMANode, NodeMem
+   {
+    /* d            */ 2,
+    /* d_numa       */ 0,
+    /* g            */ {2.800630e-11, 3.147368e-11},
+    /* ls           */ {1.551903e-09, 1.770299e-09},
+    /* m            */ {100931731456, 201863462912},
+    /* p            */ {44, 2},
+    /* kmax         */ {999, 999}},
+    // Hardware parameters for 4 thread(s), policy: close, subset: NodeMem, GLOBAL_SYNC
+   {
+    /* d            */ 2,
+    /* d_numa       */ 0,
+    /* g            */ {3.147368e-11, 0.000000e+00},
+    /* ls           */ {1.770299e-09, 2.729893e-06},
+    /* m            */ {201863462912, 201863462912},
+    /* p            */ {88, 1},
+    /* kmax         */ {999, 999}},
+    // Hardware parameters for 4 thread(s), policy: close, subset: L2Cache, L3Cache, NodeMem
+   {
+    /* d            */ 3,
+    /* d_numa       */ 3,
+    /* g            */ {1.182646e-11, 1.885855e-11, 3.147368e-11},
+    /* ls           */ {2.759005e-10, 8.727489e-10, 1.770299e-09},
+    /* m            */ {1048576, 31457280, 201863462912},
+    /* p            */ {2, 22, 2},
+    /* kmax         */ {999, 999, 999}},
+    // Hardware parameters for 4 thread(s), policy: close, subset: L2Cache, NUMANode, NodeMem
+   {
+    /* d            */ 3,
+    /* d_numa       */ 2,
+    /* g            */ {1.182646e-11, 2.800630e-11, 3.147368e-11},
+    /* ls           */ {2.759005e-10, 1.551903e-09, 1.770299e-09},
+    /* m            */ {1048576, 100931731456, 201863462912},
+    /* p            */ {2, 22, 2},
+    /* kmax         */ {999, 999, 999}},
+    // Hardware parameters for 4 thread(s), policy: close, subset: L2Cache, NodeMem, GLOBAL_SYNC
+   {
+    /* d            */ 3,
+    /* d_numa       */ 2,
+    /* g            */ {1.182646e-11, 3.147368e-11, 0.000000e+00},
+    /* ls           */ {2.759005e-10, 1.770299e-09, 2.729893e-06},
+    /* m            */ {1048576, 201863462912, 201863462912},
+    /* p            */ {2, 44, 1},
+    /* kmax         */ {999, 999, 999}},
+    // Hardware parameters for 4 thread(s), policy: close, subset: L3Cache, NUMANode, NodeMem
+   {
+    /* d            */ 3,
+    /* d_numa       */ 2,
+    /* g            */ {1.885855e-11, 2.800630e-11, 3.147368e-11},
+    /* ls           */ {8.727489e-10, 1.551903e-09, 1.770299e-09},
+    /* m            */ {31457280, 100931731456, 201863462912},
+    /* p            */ {44, 1, 2},
+    /* kmax         */ {999, 999, 999}},
+    // Hardware parameters for 4 thread(s), policy: close, subset: L3Cache, NodeMem, GLOBAL_SYNC
+   {
+    /* d            */ 3,
+    /* d_numa       */ 2,
+    /* g            */ {1.885855e-11, 3.147368e-11, 0.000000e+00},
+    /* ls           */ {8.727489e-10, 1.770299e-09, 2.729893e-06},
+    /* m            */ {31457280, 201863462912, 201863462912},
+    /* p            */ {44, 2, 1},
+    /* kmax         */ {999, 999, 999}},
+    // Hardware parameters for 4 thread(s), policy: close, subset: NUMANode, NodeMem, GLOBAL_SYNC
+   {
+    /* d            */ 3,
+    /* d_numa       */ 0,
+    /* g            */ {2.800630e-11, 3.147368e-11, 0.000000e+00},
+    /* ls           */ {1.551903e-09, 1.770299e-09, 2.729893e-06},
+    /* m            */ {100931731456, 201863462912, 201863462912},
+    /* p            */ {44, 2, 1},
+    /* kmax         */ {999, 999, 999}},
+    // Hardware parameters for 4 thread(s), policy: close, subset: L2Cache, L3Cache, NUMANode, NodeMem
+   {
+    /* d            */ 4,
+    /* d_numa       */ 3,
+    /* g            */ {1.182646e-11, 1.885855e-11, 2.800630e-11, 3.147368e-11},
+    /* ls           */ {2.759005e-10, 8.727489e-10, 1.551903e-09, 1.770299e-09},
+    /* m            */ {1048576, 31457280, 100931731456, 201863462912},
+    /* p            */ {2, 22, 1, 2},
+    /* kmax         */ {999, 999, 999, 999}},
+    // Hardware parameters for 4 thread(s), policy: close, subset: L2Cache, L3Cache, NodeMem, GLOBAL_SYNC
+   {
+    /* d            */ 4,
+    /* d_numa       */ 3,
+    /* g            */ {1.182646e-11, 1.885855e-11, 3.147368e-11, 0.000000e+00},
+    /* ls           */ {2.759005e-10, 8.727489e-10, 1.770299e-09, 2.729893e-06},
+    /* m            */ {1048576, 31457280, 201863462912, 201863462912},
+    /* p            */ {2, 22, 2, 1},
+    /* kmax         */ {999, 999, 999, 999}},
+    // Hardware parameters for 4 thread(s), policy: close, subset: L2Cache, NUMANode, NodeMem, GLOBAL_SYNC
+   {
+    /* d            */ 4,
+    /* d_numa       */ 2,
+    /* g            */ {1.182646e-11, 2.800630e-11, 3.147368e-11, 0.000000e+00},
+    /* ls           */ {2.759005e-10, 1.551903e-09, 1.770299e-09, 2.729893e-06},
+    /* m            */ {1048576, 100931731456, 201863462912, 201863462912},
+    /* p            */ {2, 22, 2, 1},
+    /* kmax         */ {999, 999, 999, 999}},
+    // Hardware parameters for 4 thread(s), policy: close, subset: L3Cache, NUMANode, NodeMem, GLOBAL_SYNC
+   {
+    /* d            */ 4,
+    /* d_numa       */ 2,
+    /* g            */ {1.885855e-11, 2.800630e-11, 3.147368e-11, 0.000000e+00},
+    /* ls           */ {8.727489e-10, 1.551903e-09, 1.770299e-09, 2.729893e-06},
+    /* m            */ {31457280, 100931731456, 201863462912, 201863462912},
+    /* p            */ {44, 1, 2, 1},
+    /* kmax         */ {999, 999, 999, 999}},
+    // Hardware parameters for 4 thread(s), policy: close, subset: L2Cache, L3Cache, NUMANode, NodeMem, GLOBAL_SYNC
+   {
+    /* d            */ 5,
+    /* d_numa       */ 3,
+    /* g            */ {1.182646e-11, 1.885855e-11, 2.800630e-11, 3.147368e-11, 0.000000e+00},
+    /* ls           */ {2.759005e-10, 8.727489e-10, 1.551903e-09, 1.770299e-09, 2.729893e-06},
+    /* m            */ {1048576, 31457280, 100931731456, 201863462912, 201863462912},
+    /* p            */ {2, 22, 1, 2, 1},
+    /* kmax         */ {999, 999, 999, 999, 999}},
+    // Hardware parameters for 8 thread(s), policy: close, subset: NodeMem
+   {
+    /* d            */ 1,
+    /* d_numa       */ 0,
+    /* g            */ {1.812070e-11},
+    /* ls           */ {1.033053e-09},
+    /* m            */ {201863462912},
+    /* p            */ {88},
+    /* kmax         */ {999}},
+    // Hardware parameters for 8 thread(s), policy: close, subset: L2Cache, NodeMem
+   {
+    /* d            */ 2,
+    /* d_numa       */ 2,
+    /* g            */ {5.894211e-12, 1.812070e-11},
+    /* ls           */ {1.342884e-10, 1.033053e-09},
+    /* m            */ {1048576, 201863462912},
+    /* p            */ {2, 44},
+    /* kmax         */ {999, 999}},
+    // Hardware parameters for 8 thread(s), policy: close, subset: L3Cache, NodeMem
+   {
+    /* d            */ 2,
+    /* d_numa       */ 2,
+    /* g            */ {9.533775e-12, 1.812070e-11},
+    /* ls           */ {4.431525e-10, 1.033053e-09},
+    /* m            */ {31457280, 201863462912},
+    /* p            */ {44, 2},
+    /* kmax         */ {999, 999}},
+    // Hardware parameters for 8 thread(s), policy: close, subset: NUMANode, NodeMem
+   {
+    /* d            */ 2,
+    /* d_numa       */ 0,
+    /* g            */ {1.675360e-11, 1.812070e-11},
+    /* ls           */ {9.705230e-10, 1.033053e-09},
+    /* m            */ {100931731456, 201863462912},
+    /* p            */ {44, 2},
+    /* kmax         */ {999, 999}},
+    // Hardware parameters for 8 thread(s), policy: close, subset: NodeMem, GLOBAL_SYNC
+   {
+    /* d            */ 2,
+    /* d_numa       */ 0,
+    /* g            */ {1.812070e-11, 0.000000e+00},
+    /* ls           */ {1.033053e-09, 4.398823e-06},
+    /* m            */ {201863462912, 201863462912},
+    /* p            */ {88, 1},
+    /* kmax         */ {999, 999}},
+    // Hardware parameters for 8 thread(s), policy: close, subset: L2Cache, L3Cache, NodeMem
+   {
+    /* d            */ 3,
+    /* d_numa       */ 3,
+    /* g            */ {5.894211e-12, 9.533775e-12, 1.812070e-11},
+    /* ls           */ {1.342884e-10, 4.431525e-10, 1.033053e-09},
+    /* m            */ {1048576, 31457280, 201863462912},
+    /* p            */ {2, 22, 2},
+    /* kmax         */ {999, 999, 999}},
+    // Hardware parameters for 8 thread(s), policy: close, subset: L2Cache, NUMANode, NodeMem
+   {
+    /* d            */ 3,
+    /* d_numa       */ 2,
+    /* g            */ {5.894211e-12, 1.675360e-11, 1.812070e-11},
+    /* ls           */ {1.342884e-10, 9.705230e-10, 1.033053e-09},
+    /* m            */ {1048576, 100931731456, 201863462912},
+    /* p            */ {2, 22, 2},
+    /* kmax         */ {999, 999, 999}},
+    // Hardware parameters for 8 thread(s), policy: close, subset: L2Cache, NodeMem, GLOBAL_SYNC
+   {
+    /* d            */ 3,
+    /* d_numa       */ 2,
+    /* g            */ {5.894211e-12, 1.812070e-11, 0.000000e+00},
+    /* ls           */ {1.342884e-10, 1.033053e-09, 4.398823e-06},
+    /* m            */ {1048576, 201863462912, 201863462912},
+    /* p            */ {2, 44, 1},
+    /* kmax         */ {999, 999, 999}},
+    // Hardware parameters for 8 thread(s), policy: close, subset: L3Cache, NUMANode, NodeMem
+   {
+    /* d            */ 3,
+    /* d_numa       */ 2,
+    /* g            */ {9.533775e-12, 1.675360e-11, 1.812070e-11},
+    /* ls           */ {4.431525e-10, 9.705230e-10, 1.033053e-09},
+    /* m            */ {31457280, 100931731456, 201863462912},
+    /* p            */ {44, 1, 2},
+    /* kmax         */ {999, 999, 999}},
+    // Hardware parameters for 8 thread(s), policy: close, subset: L3Cache, NodeMem, GLOBAL_SYNC
+   {
+    /* d            */ 3,
+    /* d_numa       */ 2,
+    /* g            */ {9.533775e-12, 1.812070e-11, 0.000000e+00},
+    /* ls           */ {4.431525e-10, 1.033053e-09, 4.398823e-06},
+    /* m            */ {31457280, 201863462912, 201863462912},
+    /* p            */ {44, 2, 1},
+    /* kmax         */ {999, 999, 999}},
+    // Hardware parameters for 8 thread(s), policy: close, subset: NUMANode, NodeMem, GLOBAL_SYNC
+   {
+    /* d            */ 3,
+    /* d_numa       */ 0,
+    /* g            */ {1.675360e-11, 1.812070e-11, 0.000000e+00},
+    /* ls           */ {9.705230e-10, 1.033053e-09, 4.398823e-06},
+    /* m            */ {100931731456, 201863462912, 201863462912},
+    /* p            */ {44, 2, 1},
+    /* kmax         */ {999, 999, 999}},
+    // Hardware parameters for 8 thread(s), policy: close, subset: L2Cache, L3Cache, NUMANode, NodeMem
+   {
+    /* d            */ 4,
+    /* d_numa       */ 3,
+    /* g            */ {5.894211e-12, 9.533775e-12, 1.675360e-11, 1.812070e-11},
+    /* ls           */ {1.342884e-10, 4.431525e-10, 9.705230e-10, 1.033053e-09},
+    /* m            */ {1048576, 31457280, 100931731456, 201863462912},
+    /* p            */ {2, 22, 1, 2},
+    /* kmax         */ {999, 999, 999, 999}},
+    // Hardware parameters for 8 thread(s), policy: close, subset: L2Cache, L3Cache, NodeMem, GLOBAL_SYNC
+   {
+    /* d            */ 4,
+    /* d_numa       */ 3,
+    /* g            */ {5.894211e-12, 9.533775e-12, 1.812070e-11, 0.000000e+00},
+    /* ls           */ {1.342884e-10, 4.431525e-10, 1.033053e-09, 4.398823e-06},
+    /* m            */ {1048576, 31457280, 201863462912, 201863462912},
+    /* p            */ {2, 22, 2, 1},
+    /* kmax         */ {999, 999, 999, 999}},
+    // Hardware parameters for 8 thread(s), policy: close, subset: L2Cache, NUMANode, NodeMem, GLOBAL_SYNC
+   {
+    /* d            */ 4,
+    /* d_numa       */ 2,
+    /* g            */ {5.894211e-12, 1.675360e-11, 1.812070e-11, 0.000000e+00},
+    /* ls           */ {1.342884e-10, 9.705230e-10, 1.033053e-09, 4.398823e-06},
+    /* m            */ {1048576, 100931731456, 201863462912, 201863462912},
+    /* p            */ {2, 22, 2, 1},
+    /* kmax         */ {999, 999, 999, 999}},
+    // Hardware parameters for 8 thread(s), policy: close, subset: L3Cache, NUMANode, NodeMem, GLOBAL_SYNC
+   {
+    /* d            */ 4,
+    /* d_numa       */ 2,
+    /* g            */ {9.533775e-12, 1.675360e-11, 1.812070e-11, 0.000000e+00},
+    /* ls           */ {4.431525e-10, 9.705230e-10, 1.033053e-09, 4.398823e-06},
+    /* m            */ {31457280, 100931731456, 201863462912, 201863462912},
+    /* p            */ {44, 1, 2, 1},
+    /* kmax         */ {999, 999, 999, 999}},
+    // Hardware parameters for 8 thread(s), policy: close, subset: L2Cache, L3Cache, NUMANode, NodeMem, GLOBAL_SYNC
+   {
+    /* d            */ 5,
+    /* d_numa       */ 3,
+    /* g            */ {5.894211e-12, 9.533775e-12, 1.675360e-11, 1.812070e-11, 0.000000e+00},
+    /* ls           */ {1.342884e-10, 4.431525e-10, 9.705230e-10, 1.033053e-09, 4.398823e-06},
+    /* m            */ {1048576, 31457280, 100931731456, 201863462912, 201863462912},
+    /* p            */ {2, 22, 1, 2, 1},
+    /* kmax         */ {999, 999, 999, 999, 999}},
+    // Hardware parameters for 12 thread(s), policy: close, subset: NodeMem
+   {
+    /* d            */ 1,
+    /* d_numa       */ 0,
+    /* g            */ {1.469696e-11},
+    /* ls           */ {9.216356e-10},
+    /* m            */ {201863462912},
+    /* p            */ {88},
+    /* kmax         */ {999}},
+    // Hardware parameters for 12 thread(s), policy: close, subset: L2Cache, NodeMem
+   {
+    /* d            */ 2,
+    /* d_numa       */ 2,
+    /* g            */ {3.932412e-12, 1.469696e-11},
+    /* ls           */ {8.954989e-11, 9.216356e-10},
+    /* m            */ {1048576, 201863462912},
+    /* p            */ {2, 44},
+    /* kmax         */ {999, 999}},
+    // Hardware parameters for 12 thread(s), policy: close, subset: L3Cache, NodeMem
+   {
+    /* d            */ 2,
+    /* d_numa       */ 2,
+    /* g            */ {6.339494e-12, 1.469696e-11},
+    /* ls           */ {2.949152e-10, 9.216356e-10},
+    /* m            */ {31457280, 201863462912},
+    /* p            */ {44, 2},
+    /* kmax         */ {999, 999}},
+    // Hardware parameters for 12 thread(s), policy: close, subset: NUMANode, NodeMem
+   {
+    /* d            */ 2,
+    /* d_numa       */ 0,
+    /* g            */ {1.401522e-11, 1.469696e-11},
+    /* ls           */ {8.366696e-10, 9.216356e-10},
+    /* m            */ {100931731456, 201863462912},
+    /* p            */ {44, 2},
+    /* kmax         */ {999, 999}},
+    // Hardware parameters for 12 thread(s), policy: close, subset: NodeMem, GLOBAL_SYNC
+   {
+    /* d            */ 2,
+    /* d_numa       */ 0,
+    /* g            */ {1.469696e-11, 0.000000e+00},
+    /* ls           */ {9.216356e-10, 6.163120e-06},
+    /* m            */ {201863462912, 201863462912},
+    /* p            */ {88, 1},
+    /* kmax         */ {999, 999}},
+    // Hardware parameters for 12 thread(s), policy: close, subset: L2Cache, L3Cache, NodeMem
+   {
+    /* d            */ 3,
+    /* d_numa       */ 3,
+    /* g            */ {3.932412e-12, 6.339494e-12, 1.469696e-11},
+    /* ls           */ {8.954989e-11, 2.949152e-10, 9.216356e-10},
+    /* m            */ {1048576, 31457280, 201863462912},
+    /* p            */ {2, 22, 2},
+    /* kmax         */ {999, 999, 999}},
+    // Hardware parameters for 12 thread(s), policy: close, subset: L2Cache, NUMANode, NodeMem
+   {
+    /* d            */ 3,
+    /* d_numa       */ 2,
+    /* g            */ {3.932412e-12, 1.401522e-11, 1.469696e-11},
+    /* ls           */ {8.954989e-11, 8.366696e-10, 9.216356e-10},
+    /* m            */ {1048576, 100931731456, 201863462912},
+    /* p            */ {2, 22, 2},
+    /* kmax         */ {999, 999, 999}},
+    // Hardware parameters for 12 thread(s), policy: close, subset: L2Cache, NodeMem, GLOBAL_SYNC
+   {
+    /* d            */ 3,
+    /* d_numa       */ 2,
+    /* g            */ {3.932412e-12, 1.469696e-11, 0.000000e+00},
+    /* ls           */ {8.954989e-11, 9.216356e-10, 6.163120e-06},
+    /* m            */ {1048576, 201863462912, 201863462912},
+    /* p            */ {2, 44, 1},
+    /* kmax         */ {999, 999, 999}},
+    // Hardware parameters for 12 thread(s), policy: close, subset: L3Cache, NUMANode, NodeMem
+   {
+    /* d            */ 3,
+    /* d_numa       */ 2,
+    /* g            */ {6.339494e-12, 1.401522e-11, 1.469696e-11},
+    /* ls           */ {2.949152e-10, 8.366696e-10, 9.216356e-10},
+    /* m            */ {31457280, 100931731456, 201863462912},
+    /* p            */ {44, 1, 2},
+    /* kmax         */ {999, 999, 999}},
+    // Hardware parameters for 12 thread(s), policy: close, subset: L3Cache, NodeMem, GLOBAL_SYNC
+   {
+    /* d            */ 3,
+    /* d_numa       */ 2,
+    /* g            */ {6.339494e-12, 1.469696e-11, 0.000000e+00},
+    /* ls           */ {2.949152e-10, 9.216356e-10, 6.163120e-06},
+    /* m            */ {31457280, 201863462912, 201863462912},
+    /* p            */ {44, 2, 1},
+    /* kmax         */ {999, 999, 999}},
+    // Hardware parameters for 12 thread(s), policy: close, subset: NUMANode, NodeMem, GLOBAL_SYNC
+   {
+    /* d            */ 3,
+    /* d_numa       */ 0,
+    /* g            */ {1.401522e-11, 1.469696e-11, 0.000000e+00},
+    /* ls           */ {8.366696e-10, 9.216356e-10, 6.163120e-06},
+    /* m            */ {100931731456, 201863462912, 201863462912},
+    /* p            */ {44, 2, 1},
+    /* kmax         */ {999, 999, 999}},
+    // Hardware parameters for 12 thread(s), policy: close, subset: L2Cache, L3Cache, NUMANode, NodeMem
+   {
+    /* d            */ 4,
+    /* d_numa       */ 3,
+    /* g            */ {3.932412e-12, 6.339494e-12, 1.401522e-11, 1.469696e-11},
+    /* ls           */ {8.954989e-11, 2.949152e-10, 8.366696e-10, 9.216356e-10},
+    /* m            */ {1048576, 31457280, 100931731456, 201863462912},
+    /* p            */ {2, 22, 1, 2},
+    /* kmax         */ {999, 999, 999, 999}},
+    // Hardware parameters for 12 thread(s), policy: close, subset: L2Cache, L3Cache, NodeMem, GLOBAL_SYNC
+   {
+    /* d            */ 4,
+    /* d_numa       */ 3,
+    /* g            */ {3.932412e-12, 6.339494e-12, 1.469696e-11, 0.000000e+00},
+    /* ls           */ {8.954989e-11, 2.949152e-10, 9.216356e-10, 6.163120e-06},
+    /* m            */ {1048576, 31457280, 201863462912, 201863462912},
+    /* p            */ {2, 22, 2, 1},
+    /* kmax         */ {999, 999, 999, 999}},
+    // Hardware parameters for 12 thread(s), policy: close, subset: L2Cache, NUMANode, NodeMem, GLOBAL_SYNC
+   {
+    /* d            */ 4,
+    /* d_numa       */ 2,
+    /* g            */ {3.932412e-12, 1.401522e-11, 1.469696e-11, 0.000000e+00},
+    /* ls           */ {8.954989e-11, 8.366696e-10, 9.216356e-10, 6.163120e-06},
+    /* m            */ {1048576, 100931731456, 201863462912, 201863462912},
+    /* p            */ {2, 22, 2, 1},
+    /* kmax         */ {999, 999, 999, 999}},
+    // Hardware parameters for 12 thread(s), policy: close, subset: L3Cache, NUMANode, NodeMem, GLOBAL_SYNC
+   {
+    /* d            */ 4,
+    /* d_numa       */ 2,
+    /* g            */ {6.339494e-12, 1.401522e-11, 1.469696e-11, 0.000000e+00},
+    /* ls           */ {2.949152e-10, 8.366696e-10, 9.216356e-10, 6.163120e-06},
+    /* m            */ {31457280, 100931731456, 201863462912, 201863462912},
+    /* p            */ {44, 1, 2, 1},
+    /* kmax         */ {999, 999, 999, 999}},
+    // Hardware parameters for 12 thread(s), policy: close, subset: L2Cache, L3Cache, NUMANode, NodeMem, GLOBAL_SYNC
+   {
+    /* d            */ 5,
+    /* d_numa       */ 3,
+    /* g            */ {3.932412e-12, 6.339494e-12, 1.401522e-11, 1.469696e-11, 0.000000e+00},
+    /* ls           */ {8.954989e-11, 2.949152e-10, 8.366696e-10, 9.216356e-10, 6.163120e-06},
+    /* m            */ {1048576, 31457280, 100931731456, 201863462912, 201863462912},
+    /* p            */ {2, 22, 1, 2, 1},
+    /* kmax         */ {999, 999, 999, 999, 999}},
+    // Hardware parameters for 22 thread(s), policy: close, subset: NodeMem
+   {
+    /* d            */ 1,
+    /* d_numa       */ 0,
+    /* g            */ {1.470278e-11},
+    /* ls           */ {9.387060e-10},
+    /* m            */ {201863462912},
+    /* p            */ {88},
+    /* kmax         */ {999}},
+    // Hardware parameters for 22 thread(s), policy: close, subset: L2Cache, NodeMem
+   {
+    /* d            */ 2,
+    /* d_numa       */ 2,
+    /* g            */ {2.143353e-12, 1.470278e-11},
+    /* ls           */ {4.870798e-11, 9.387060e-10},
+    /* m            */ {1048576, 201863462912},
+    /* p            */ {2, 44},
+    /* kmax         */ {999, 999}},
+    // Hardware parameters for 22 thread(s), policy: close, subset: L3Cache, NodeMem
+   {
+    /* d            */ 2,
+    /* d_numa       */ 2,
+    /* g            */ {3.893562e-12, 1.470278e-11},
+    /* ls           */ {1.995063e-10, 9.387060e-10},
+    /* m            */ {31457280, 201863462912},
+    /* p            */ {44, 2},
+    /* kmax         */ {999, 999}},
+    // Hardware parameters for 22 thread(s), policy: close, subset: NUMANode, NodeMem
+   {
+    /* d            */ 2,
+    /* d_numa       */ 0,
+    /* g            */ {1.301425e-11, 1.470278e-11},
+    /* ls           */ {8.318746e-10, 9.387060e-10},
+    /* m            */ {100931731456, 201863462912},
+    /* p            */ {44, 2},
+    /* kmax         */ {999, 999}},
+    // Hardware parameters for 22 thread(s), policy: close, subset: NodeMem, GLOBAL_SYNC
+   {
+    /* d            */ 2,
+    /* d_numa       */ 0,
+    /* g            */ {1.470278e-11, 0.000000e+00},
+    /* ls           */ {9.387060e-10, 8.881092e-06},
+    /* m            */ {201863462912, 201863462912},
+    /* p            */ {88, 1},
+    /* kmax         */ {999, 999}},
+    // Hardware parameters for 22 thread(s), policy: close, subset: L2Cache, L3Cache, NodeMem
+   {
+    /* d            */ 3,
+    /* d_numa       */ 3,
+    /* g            */ {2.143353e-12, 3.893562e-12, 1.470278e-11},
+    /* ls           */ {4.870798e-11, 1.995063e-10, 9.387060e-10},
+    /* m            */ {1048576, 31457280, 201863462912},
+    /* p            */ {2, 22, 2},
+    /* kmax         */ {999, 999, 999}},
+    // Hardware parameters for 22 thread(s), policy: close, subset: L2Cache, NUMANode, NodeMem
+   {
+    /* d            */ 3,
+    /* d_numa       */ 2,
+    /* g            */ {2.143353e-12, 1.301425e-11, 1.470278e-11},
+    /* ls           */ {4.870798e-11, 8.318746e-10, 9.387060e-10},
+    /* m            */ {1048576, 100931731456, 201863462912},
+    /* p            */ {2, 22, 2},
+    /* kmax         */ {999, 999, 999}},
+    // Hardware parameters for 22 thread(s), policy: close, subset: L2Cache, NodeMem, GLOBAL_SYNC
+   {
+    /* d            */ 3,
+    /* d_numa       */ 2,
+    /* g            */ {2.143353e-12, 1.470278e-11, 0.000000e+00},
+    /* ls           */ {4.870798e-11, 9.387060e-10, 8.881092e-06},
+    /* m            */ {1048576, 201863462912, 201863462912},
+    /* p            */ {2, 44, 1},
+    /* kmax         */ {999, 999, 999}},
+    // Hardware parameters for 22 thread(s), policy: close, subset: L3Cache, NUMANode, NodeMem
+   {
+    /* d            */ 3,
+    /* d_numa       */ 2,
+    /* g            */ {3.893562e-12, 1.301425e-11, 1.470278e-11},
+    /* ls           */ {1.995063e-10, 8.318746e-10, 9.387060e-10},
+    /* m            */ {31457280, 100931731456, 201863462912},
+    /* p            */ {44, 1, 2},
+    /* kmax         */ {999, 999, 999}},
+    // Hardware parameters for 22 thread(s), policy: close, subset: L3Cache, NodeMem, GLOBAL_SYNC
+   {
+    /* d            */ 3,
+    /* d_numa       */ 2,
+    /* g            */ {3.893562e-12, 1.470278e-11, 0.000000e+00},
+    /* ls           */ {1.995063e-10, 9.387060e-10, 8.881092e-06},
+    /* m            */ {31457280, 201863462912, 201863462912},
+    /* p            */ {44, 2, 1},
+    /* kmax         */ {999, 999, 999}},
+    // Hardware parameters for 22 thread(s), policy: close, subset: NUMANode, NodeMem, GLOBAL_SYNC
+   {
+    /* d            */ 3,
+    /* d_numa       */ 0,
+    /* g            */ {1.301425e-11, 1.470278e-11, 0.000000e+00},
+    /* ls           */ {8.318746e-10, 9.387060e-10, 8.881092e-06},
+    /* m            */ {100931731456, 201863462912, 201863462912},
+    /* p            */ {44, 2, 1},
+    /* kmax         */ {999, 999, 999}},
+    // Hardware parameters for 22 thread(s), policy: close, subset: L2Cache, L3Cache, NUMANode, NodeMem
+   {
+    /* d            */ 4,
+    /* d_numa       */ 3,
+    /* g            */ {2.143353e-12, 3.893562e-12, 1.301425e-11, 1.470278e-11},
+    /* ls           */ {4.870798e-11, 1.995063e-10, 8.318746e-10, 9.387060e-10},
+    /* m            */ {1048576, 31457280, 100931731456, 201863462912},
+    /* p            */ {2, 22, 1, 2},
+    /* kmax         */ {999, 999, 999, 999}},
+    // Hardware parameters for 22 thread(s), policy: close, subset: L2Cache, L3Cache, NodeMem, GLOBAL_SYNC
+   {
+    /* d            */ 4,
+    /* d_numa       */ 3,
+    /* g            */ {2.143353e-12, 3.893562e-12, 1.470278e-11, 0.000000e+00},
+    /* ls           */ {4.870798e-11, 1.995063e-10, 9.387060e-10, 8.881092e-06},
+    /* m            */ {1048576, 31457280, 201863462912, 201863462912},
+    /* p            */ {2, 22, 2, 1},
+    /* kmax         */ {999, 999, 999, 999}},
+    // Hardware parameters for 22 thread(s), policy: close, subset: L2Cache, NUMANode, NodeMem, GLOBAL_SYNC
+   {
+    /* d            */ 4,
+    /* d_numa       */ 2,
+    /* g            */ {2.143353e-12, 1.301425e-11, 1.470278e-11, 0.000000e+00},
+    /* ls           */ {4.870798e-11, 8.318746e-10, 9.387060e-10, 8.881092e-06},
+    /* m            */ {1048576, 100931731456, 201863462912, 201863462912},
+    /* p            */ {2, 22, 2, 1},
+    /* kmax         */ {999, 999, 999, 999}},
+    // Hardware parameters for 22 thread(s), policy: close, subset: L3Cache, NUMANode, NodeMem, GLOBAL_SYNC
+   {
+    /* d            */ 4,
+    /* d_numa       */ 2,
+    /* g            */ {3.893562e-12, 1.301425e-11, 1.470278e-11, 0.000000e+00},
+    /* ls           */ {1.995063e-10, 8.318746e-10, 9.387060e-10, 8.881092e-06},
+    /* m            */ {31457280, 100931731456, 201863462912, 201863462912},
+    /* p            */ {44, 1, 2, 1},
+    /* kmax         */ {999, 999, 999, 999}},
+    // Hardware parameters for 22 thread(s), policy: close, subset: L2Cache, L3Cache, NUMANode, NodeMem, GLOBAL_SYNC
+   {
+    /* d            */ 5,
+    /* d_numa       */ 3,
+    /* g            */ {2.143353e-12, 3.893562e-12, 1.301425e-11, 1.470278e-11, 0.000000e+00},
+    /* ls           */ {4.870798e-11, 1.995063e-10, 8.318746e-10, 9.387060e-10, 8.881092e-06},
+    /* m            */ {1048576, 31457280, 100931731456, 201863462912, 201863462912},
+    /* p            */ {2, 22, 1, 2, 1},
+    /* kmax         */ {999, 999, 999, 999, 999}},
+    // Hardware parameters for 32 thread(s), policy: close, subset: NodeMem
+   {
+    /* d            */ 1,
+    /* d_numa       */ 0,
+    /* g            */ {1.008366e-11},
+    /* ls           */ {6.396336e-10},
+    /* m            */ {201863462912},
+    /* p            */ {88},
+    /* kmax         */ {999}},
+    // Hardware parameters for 32 thread(s), policy: close, subset: L2Cache, NodeMem
+   {
+    /* d            */ 2,
+    /* d_numa       */ 2,
+    /* g            */ {1.474849e-12, 1.008366e-11},
+    /* ls           */ {3.361359e-11, 6.396336e-10},
+    /* m            */ {1048576, 201863462912},
+    /* p            */ {2, 44},
+    /* kmax         */ {999, 999}},
+    // Hardware parameters for 32 thread(s), policy: close, subset: L3Cache, NodeMem
+   {
+    /* d            */ 2,
+    /* d_numa       */ 2,
+    /* g            */ {2.197167e-12, 1.008366e-11},
+    /* ls           */ {9.489464e-11, 6.396336e-10},
+    /* m            */ {31457280, 201863462912},
+    /* p            */ {44, 2},
+    /* kmax         */ {999, 999}},
+    // Hardware parameters for 32 thread(s), policy: close, subset: NUMANode, NodeMem
+   {
+    /* d            */ 2,
+    /* d_numa       */ 0,
+    /* g            */ {7.532769e-12, 1.008366e-11},
+    /* ls           */ {4.735987e-10, 6.396336e-10},
+    /* m            */ {100931731456, 201863462912},
+    /* p            */ {44, 2},
+    /* kmax         */ {999, 999}},
+    // Hardware parameters for 32 thread(s), policy: close, subset: NodeMem, GLOBAL_SYNC
+   {
+    /* d            */ 2,
+    /* d_numa       */ 0,
+    /* g            */ {1.008366e-11, 0.000000e+00},
+    /* ls           */ {6.396336e-10, 1.676082e-05},
+    /* m            */ {201863462912, 201863462912},
+    /* p            */ {88, 1},
+    /* kmax         */ {999, 999}},
+    // Hardware parameters for 32 thread(s), policy: close, subset: L2Cache, L3Cache, NodeMem
+   {
+    /* d            */ 3,
+    /* d_numa       */ 3,
+    /* g            */ {1.474849e-12, 2.197167e-12, 1.008366e-11},
+    /* ls           */ {3.361359e-11, 9.489464e-11, 6.396336e-10},
+    /* m            */ {1048576, 31457280, 201863462912},
+    /* p            */ {2, 22, 2},
+    /* kmax         */ {999, 999, 999}},
+    // Hardware parameters for 32 thread(s), policy: close, subset: L2Cache, NUMANode, NodeMem
+   {
+    /* d            */ 3,
+    /* d_numa       */ 2,
+    /* g            */ {1.474849e-12, 7.532769e-12, 1.008366e-11},
+    /* ls           */ {3.361359e-11, 4.735987e-10, 6.396336e-10},
+    /* m            */ {1048576, 100931731456, 201863462912},
+    /* p            */ {2, 22, 2},
+    /* kmax         */ {999, 999, 999}},
+    // Hardware parameters for 32 thread(s), policy: close, subset: L2Cache, NodeMem, GLOBAL_SYNC
+   {
+    /* d            */ 3,
+    /* d_numa       */ 2,
+    /* g            */ {1.474849e-12, 1.008366e-11, 0.000000e+00},
+    /* ls           */ {3.361359e-11, 6.396336e-10, 1.676082e-05},
+    /* m            */ {1048576, 201863462912, 201863462912},
+    /* p            */ {2, 44, 1},
+    /* kmax         */ {999, 999, 999}},
+    // Hardware parameters for 32 thread(s), policy: close, subset: L3Cache, NUMANode, NodeMem
+   {
+    /* d            */ 3,
+    /* d_numa       */ 2,
+    /* g            */ {2.197167e-12, 7.532769e-12, 1.008366e-11},
+    /* ls           */ {9.489464e-11, 4.735987e-10, 6.396336e-10},
+    /* m            */ {31457280, 100931731456, 201863462912},
+    /* p            */ {44, 1, 2},
+    /* kmax         */ {999, 999, 999}},
+    // Hardware parameters for 32 thread(s), policy: close, subset: L3Cache, NodeMem, GLOBAL_SYNC
+   {
+    /* d            */ 3,
+    /* d_numa       */ 2,
+    /* g            */ {2.197167e-12, 1.008366e-11, 0.000000e+00},
+    /* ls           */ {9.489464e-11, 6.396336e-10, 1.676082e-05},
+    /* m            */ {31457280, 201863462912, 201863462912},
+    /* p            */ {44, 2, 1},
+    /* kmax         */ {999, 999, 999}},
+    // Hardware parameters for 32 thread(s), policy: close, subset: NUMANode, NodeMem, GLOBAL_SYNC
+   {
+    /* d            */ 3,
+    /* d_numa       */ 0,
+    /* g            */ {7.532769e-12, 1.008366e-11, 0.000000e+00},
+    /* ls           */ {4.735987e-10, 6.396336e-10, 1.676082e-05},
+    /* m            */ {100931731456, 201863462912, 201863462912},
+    /* p            */ {44, 2, 1},
+    /* kmax         */ {999, 999, 999}},
+    // Hardware parameters for 32 thread(s), policy: close, subset: L2Cache, L3Cache, NUMANode, NodeMem
+   {
+    /* d            */ 4,
+    /* d_numa       */ 3,
+    /* g            */ {1.474849e-12, 2.197167e-12, 7.532769e-12, 1.008366e-11},
+    /* ls           */ {3.361359e-11, 9.489464e-11, 4.735987e-10, 6.396336e-10},
+    /* m            */ {1048576, 31457280, 100931731456, 201863462912},
+    /* p            */ {2, 22, 1, 2},
+    /* kmax         */ {999, 999, 999, 999}},
+    // Hardware parameters for 32 thread(s), policy: close, subset: L2Cache, L3Cache, NodeMem, GLOBAL_SYNC
+   {
+    /* d            */ 4,
+    /* d_numa       */ 3,
+    /* g            */ {1.474849e-12, 2.197167e-12, 1.008366e-11, 0.000000e+00},
+    /* ls           */ {3.361359e-11, 9.489464e-11, 6.396336e-10, 1.676082e-05},
+    /* m            */ {1048576, 31457280, 201863462912, 201863462912},
+    /* p            */ {2, 22, 2, 1},
+    /* kmax         */ {999, 999, 999, 999}},
+    // Hardware parameters for 32 thread(s), policy: close, subset: L2Cache, NUMANode, NodeMem, GLOBAL_SYNC
+   {
+    /* d            */ 4,
+    /* d_numa       */ 2,
+    /* g            */ {1.474849e-12, 7.532769e-12, 1.008366e-11, 0.000000e+00},
+    /* ls           */ {3.361359e-11, 4.735987e-10, 6.396336e-10, 1.676082e-05},
+    /* m            */ {1048576, 100931731456, 201863462912, 201863462912},
+    /* p            */ {2, 22, 2, 1},
+    /* kmax         */ {999, 999, 999, 999}},
+    // Hardware parameters for 32 thread(s), policy: close, subset: L3Cache, NUMANode, NodeMem, GLOBAL_SYNC
+   {
+    /* d            */ 4,
+    /* d_numa       */ 2,
+    /* g            */ {2.197167e-12, 7.532769e-12, 1.008366e-11, 0.000000e+00},
+    /* ls           */ {9.489464e-11, 4.735987e-10, 6.396336e-10, 1.676082e-05},
+    /* m            */ {31457280, 100931731456, 201863462912, 201863462912},
+    /* p            */ {44, 1, 2, 1},
+    /* kmax         */ {999, 999, 999, 999}},
+    // Hardware parameters for 32 thread(s), policy: close, subset: L2Cache, L3Cache, NUMANode, NodeMem, GLOBAL_SYNC
+   {
+    /* d            */ 5,
+    /* d_numa       */ 3,
+    /* g            */ {1.474849e-12, 2.197167e-12, 7.532769e-12, 1.008366e-11, 0.000000e+00},
+    /* ls           */ {3.361359e-11, 9.489464e-11, 4.735987e-10, 6.396336e-10, 1.676082e-05},
+    /* m            */ {1048576, 31457280, 100931731456, 201863462912, 201863462912},
+    /* p            */ {2, 22, 1, 2, 1},
+    /* kmax         */ {999, 999, 999, 999, 999}},
+    // Hardware parameters for 44 thread(s), policy: close, subset: NodeMem
+   {
+    /* d            */ 1,
+    /* d_numa       */ 0,
+    /* g            */ {9.929566e-12},
+    /* ls           */ {6.348120e-10},
+    /* m            */ {201863462912},
+    /* p            */ {88},
+    /* kmax         */ {999}},
+    // Hardware parameters for 44 thread(s), policy: close, subset: L2Cache, NodeMem
+   {
+    /* d            */ 2,
+    /* d_numa       */ 2,
+    /* g            */ {1.072665e-12, 9.929566e-12},
+    /* ls           */ {2.438662e-11, 6.348120e-10},
+    /* m            */ {1048576, 201863462912},
+    /* p            */ {2, 44},
+    /* kmax         */ {999, 999}},
+    // Hardware parameters for 44 thread(s), policy: close, subset: L3Cache, NodeMem
+   {
+    /* d            */ 2,
+    /* d_numa       */ 2,
+    /* g            */ {1.456654e-12, 9.929566e-12},
+    /* ls           */ {5.614092e-11, 6.348120e-10},
+    /* m            */ {31457280, 201863462912},
+    /* p            */ {44, 2},
+    /* kmax         */ {999, 999}},
+    // Hardware parameters for 44 thread(s), policy: close, subset: NUMANode, NodeMem
+   {
+    /* d            */ 2,
+    /* d_numa       */ 0,
+    /* g            */ {6.360879e-12, 9.929566e-12},
+    /* ls           */ {4.066082e-10, 6.348120e-10},
+    /* m            */ {100931731456, 201863462912},
+    /* p            */ {44, 2},
+    /* kmax         */ {999, 999}},
+    // Hardware parameters for 44 thread(s), policy: close, subset: NodeMem, GLOBAL_SYNC
+   {
+    /* d            */ 2,
+    /* d_numa       */ 0,
+    /* g            */ {9.929566e-12, 0.000000e+00},
+    /* ls           */ {6.348120e-10, 2.634525e-05},
+    /* m            */ {201863462912, 201863462912},
+    /* p            */ {88, 1},
+    /* kmax         */ {999, 999}},
+    // Hardware parameters for 44 thread(s), policy: close, subset: L2Cache, L3Cache, NodeMem
+   {
+    /* d            */ 3,
+    /* d_numa       */ 3,
+    /* g            */ {1.072665e-12, 1.456654e-12, 9.929566e-12},
+    /* ls           */ {2.438662e-11, 5.614092e-11, 6.348120e-10},
+    /* m            */ {1048576, 31457280, 201863462912},
+    /* p            */ {2, 22, 2},
+    /* kmax         */ {999, 999, 999}},
+    // Hardware parameters for 44 thread(s), policy: close, subset: L2Cache, NUMANode, NodeMem
+   {
+    /* d            */ 3,
+    /* d_numa       */ 2,
+    /* g            */ {1.072665e-12, 6.360879e-12, 9.929566e-12},
+    /* ls           */ {2.438662e-11, 4.066082e-10, 6.348120e-10},
+    /* m            */ {1048576, 100931731456, 201863462912},
+    /* p            */ {2, 22, 2},
+    /* kmax         */ {999, 999, 999}},
+    // Hardware parameters for 44 thread(s), policy: close, subset: L2Cache, NodeMem, GLOBAL_SYNC
+   {
+    /* d            */ 3,
+    /* d_numa       */ 2,
+    /* g            */ {1.072665e-12, 9.929566e-12, 0.000000e+00},
+    /* ls           */ {2.438662e-11, 6.348120e-10, 2.634525e-05},
+    /* m            */ {1048576, 201863462912, 201863462912},
+    /* p            */ {2, 44, 1},
+    /* kmax         */ {999, 999, 999}},
+    // Hardware parameters for 44 thread(s), policy: close, subset: L3Cache, NUMANode, NodeMem
+   {
+    /* d            */ 3,
+    /* d_numa       */ 2,
+    /* g            */ {1.456654e-12, 6.360879e-12, 9.929566e-12},
+    /* ls           */ {5.614092e-11, 4.066082e-10, 6.348120e-10},
+    /* m            */ {31457280, 100931731456, 201863462912},
+    /* p            */ {44, 1, 2},
+    /* kmax         */ {999, 999, 999}},
+    // Hardware parameters for 44 thread(s), policy: close, subset: L3Cache, NodeMem, GLOBAL_SYNC
+   {
+    /* d            */ 3,
+    /* d_numa       */ 2,
+    /* g            */ {1.456654e-12, 9.929566e-12, 0.000000e+00},
+    /* ls           */ {5.614092e-11, 6.348120e-10, 2.634525e-05},
+    /* m            */ {31457280, 201863462912, 201863462912},
+    /* p            */ {44, 2, 1},
+    /* kmax         */ {999, 999, 999}},
+    // Hardware parameters for 44 thread(s), policy: close, subset: NUMANode, NodeMem, GLOBAL_SYNC
+   {
+    /* d            */ 3,
+    /* d_numa       */ 0,
+    /* g            */ {6.360879e-12, 9.929566e-12, 0.000000e+00},
+    /* ls           */ {4.066082e-10, 6.348120e-10, 2.634525e-05},
+    /* m            */ {100931731456, 201863462912, 201863462912},
+    /* p            */ {44, 2, 1},
+    /* kmax         */ {999, 999, 999}},
+    // Hardware parameters for 44 thread(s), policy: close, subset: L2Cache, L3Cache, NUMANode, NodeMem
+   {
+    /* d            */ 4,
+    /* d_numa       */ 3,
+    /* g            */ {1.072665e-12, 1.456654e-12, 6.360879e-12, 9.929566e-12},
+    /* ls           */ {2.438662e-11, 5.614092e-11, 4.066082e-10, 6.348120e-10},
+    /* m            */ {1048576, 31457280, 100931731456, 201863462912},
+    /* p            */ {2, 22, 1, 2},
+    /* kmax         */ {999, 999, 999, 999}},
+    // Hardware parameters for 44 thread(s), policy: close, subset: L2Cache, L3Cache, NodeMem, GLOBAL_SYNC
+   {
+    /* d            */ 4,
+    /* d_numa       */ 3,
+    /* g            */ {1.072665e-12, 1.456654e-12, 9.929566e-12, 0.000000e+00},
+    /* ls           */ {2.438662e-11, 5.614092e-11, 6.348120e-10, 2.634525e-05},
+    /* m            */ {1048576, 31457280, 201863462912, 201863462912},
+    /* p            */ {2, 22, 2, 1},
+    /* kmax         */ {999, 999, 999, 999}},
+    // Hardware parameters for 44 thread(s), policy: close, subset: L2Cache, NUMANode, NodeMem, GLOBAL_SYNC
+   {
+    /* d            */ 4,
+    /* d_numa       */ 2,
+    /* g            */ {1.072665e-12, 6.360879e-12, 9.929566e-12, 0.000000e+00},
+    /* ls           */ {2.438662e-11, 4.066082e-10, 6.348120e-10, 2.634525e-05},
+    /* m            */ {1048576, 100931731456, 201863462912, 201863462912},
+    /* p            */ {2, 22, 2, 1},
+    /* kmax         */ {999, 999, 999, 999}},
+    // Hardware parameters for 44 thread(s), policy: close, subset: L3Cache, NUMANode, NodeMem, GLOBAL_SYNC
+   {
+    /* d            */ 4,
+    /* d_numa       */ 2,
+    /* g            */ {1.456654e-12, 6.360879e-12, 9.929566e-12, 0.000000e+00},
+    /* ls           */ {5.614092e-11, 4.066082e-10, 6.348120e-10, 2.634525e-05},
+    /* m            */ {31457280, 100931731456, 201863462912, 201863462912},
+    /* p            */ {44, 1, 2, 1},
+    /* kmax         */ {999, 999, 999, 999}},
+    // Hardware parameters for 44 thread(s), policy: close, subset: L2Cache, L3Cache, NUMANode, NodeMem, GLOBAL_SYNC
+   {
+    /* d            */ 5,
+    /* d_numa       */ 3,
+    /* g            */ {1.072665e-12, 1.456654e-12, 6.360879e-12, 9.929566e-12, 0.000000e+00},
+    /* ls           */ {2.438662e-11, 5.614092e-11, 4.066082e-10, 6.348120e-10, 2.634525e-05},
+    /* m            */ {1048576, 31457280, 100931731456, 201863462912, 201863462912},
+    /* p            */ {2, 22, 1, 2, 1},
+    /* kmax         */ {999, 999, 999, 999, 999}},
+    // Hardware parameters for 64 thread(s), policy: close, subset: NodeMem
+   {
+    /* d            */ 1,
+    /* d_numa       */ 0,
+    /* g            */ {9.747216e-12},
+    /* ls           */ {6.235735e-10},
+    /* m            */ {201863462912},
+    /* p            */ {88},
+    /* kmax         */ {999}},
+    // Hardware parameters for 64 thread(s), policy: close, subset: L2Cache, NodeMem
+   {
+    /* d            */ 2,
+    /* d_numa       */ 2,
+    /* g            */ {9.207317e-13, 9.747216e-12},
+    /* ls           */ {3.212810e-11, 6.235735e-10},
+    /* m            */ {1048576, 201863462912},
+    /* p            */ {2, 44},
+    /* kmax         */ {999, 999}},
+    // Hardware parameters for 64 thread(s), policy: close, subset: L3Cache, NodeMem
+   {
+    /* d            */ 2,
+    /* d_numa       */ 2,
+    /* g            */ {1.568930e-12, 9.747216e-12},
+    /* ls           */ {8.624948e-11, 6.235735e-10},
+    /* m            */ {31457280, 201863462912},
+    /* p            */ {44, 2},
+    /* kmax         */ {999, 999}},
+    // Hardware parameters for 64 thread(s), policy: close, subset: NUMANode, NodeMem
+   {
+    /* d            */ 2,
+    /* d_numa       */ 0,
+    /* g            */ {6.940061e-12, 9.747216e-12},
+    /* ls           */ {4.438092e-10, 6.235735e-10},
+    /* m            */ {100931731456, 201863462912},
+    /* p            */ {44, 2},
+    /* kmax         */ {999, 999}},
+    // Hardware parameters for 64 thread(s), policy: close, subset: NodeMem, GLOBAL_SYNC
+   {
+    /* d            */ 2,
+    /* d_numa       */ 0,
+    /* g            */ {9.747216e-12, 0.000000e+00},
+    /* ls           */ {6.235735e-10, 4.197359e-05},
+    /* m            */ {201863462912, 201863462912},
+    /* p            */ {88, 1},
+    /* kmax         */ {999, 999}},
+    // Hardware parameters for 64 thread(s), policy: close, subset: L2Cache, L3Cache, NodeMem
+   {
+    /* d            */ 3,
+    /* d_numa       */ 3,
+    /* g            */ {9.207317e-13, 1.568930e-12, 9.747216e-12},
+    /* ls           */ {3.212810e-11, 8.624948e-11, 6.235735e-10},
+    /* m            */ {1048576, 31457280, 201863462912},
+    /* p            */ {2, 22, 2},
+    /* kmax         */ {999, 999, 999}},
+    // Hardware parameters for 64 thread(s), policy: close, subset: L2Cache, NUMANode, NodeMem
+   {
+    /* d            */ 3,
+    /* d_numa       */ 2,
+    /* g            */ {9.207317e-13, 6.940061e-12, 9.747216e-12},
+    /* ls           */ {3.212810e-11, 4.438092e-10, 6.235735e-10},
+    /* m            */ {1048576, 100931731456, 201863462912},
+    /* p            */ {2, 22, 2},
+    /* kmax         */ {999, 999, 999}},
+    // Hardware parameters for 64 thread(s), policy: close, subset: L2Cache, NodeMem, GLOBAL_SYNC
+   {
+    /* d            */ 3,
+    /* d_numa       */ 2,
+    /* g            */ {9.207317e-13, 9.747216e-12, 0.000000e+00},
+    /* ls           */ {3.212810e-11, 6.235735e-10, 4.197359e-05},
+    /* m            */ {1048576, 201863462912, 201863462912},
+    /* p            */ {2, 44, 1},
+    /* kmax         */ {999, 999, 999}},
+    // Hardware parameters for 64 thread(s), policy: close, subset: L3Cache, NUMANode, NodeMem
+   {
+    /* d            */ 3,
+    /* d_numa       */ 2,
+    /* g            */ {1.568930e-12, 6.940061e-12, 9.747216e-12},
+    /* ls           */ {8.624948e-11, 4.438092e-10, 6.235735e-10},
+    /* m            */ {31457280, 100931731456, 201863462912},
+    /* p            */ {44, 1, 2},
+    /* kmax         */ {999, 999, 999}},
+    // Hardware parameters for 64 thread(s), policy: close, subset: L3Cache, NodeMem, GLOBAL_SYNC
+   {
+    /* d            */ 3,
+    /* d_numa       */ 2,
+    /* g            */ {1.568930e-12, 9.747216e-12, 0.000000e+00},
+    /* ls           */ {8.624948e-11, 6.235735e-10, 4.197359e-05},
+    /* m            */ {31457280, 201863462912, 201863462912},
+    /* p            */ {44, 2, 1},
+    /* kmax         */ {999, 999, 999}},
+    // Hardware parameters for 64 thread(s), policy: close, subset: NUMANode, NodeMem, GLOBAL_SYNC
+   {
+    /* d            */ 3,
+    /* d_numa       */ 0,
+    /* g            */ {6.940061e-12, 9.747216e-12, 0.000000e+00},
+    /* ls           */ {4.438092e-10, 6.235735e-10, 4.197359e-05},
+    /* m            */ {100931731456, 201863462912, 201863462912},
+    /* p            */ {44, 2, 1},
+    /* kmax         */ {999, 999, 999}},
+    // Hardware parameters for 64 thread(s), policy: close, subset: L2Cache, L3Cache, NUMANode, NodeMem
+   {
+    /* d            */ 4,
+    /* d_numa       */ 3,
+    /* g            */ {9.207317e-13, 1.568930e-12, 6.940061e-12, 9.747216e-12},
+    /* ls           */ {3.212810e-11, 8.624948e-11, 4.438092e-10, 6.235735e-10},
+    /* m            */ {1048576, 31457280, 100931731456, 201863462912},
+    /* p            */ {2, 22, 1, 2},
+    /* kmax         */ {999, 999, 999, 999}},
+    // Hardware parameters for 64 thread(s), policy: close, subset: L2Cache, L3Cache, NodeMem, GLOBAL_SYNC
+   {
+    /* d            */ 4,
+    /* d_numa       */ 3,
+    /* g            */ {9.207317e-13, 1.568930e-12, 9.747216e-12, 0.000000e+00},
+    /* ls           */ {3.212810e-11, 8.624948e-11, 6.235735e-10, 4.197359e-05},
+    /* m            */ {1048576, 31457280, 201863462912, 201863462912},
+    /* p            */ {2, 22, 2, 1},
+    /* kmax         */ {999, 999, 999, 999}},
+    // Hardware parameters for 64 thread(s), policy: close, subset: L2Cache, NUMANode, NodeMem, GLOBAL_SYNC
+   {
+    /* d            */ 4,
+    /* d_numa       */ 2,
+    /* g            */ {9.207317e-13, 6.940061e-12, 9.747216e-12, 0.000000e+00},
+    /* ls           */ {3.212810e-11, 4.438092e-10, 6.235735e-10, 4.197359e-05},
+    /* m            */ {1048576, 100931731456, 201863462912, 201863462912},
+    /* p            */ {2, 22, 2, 1},
+    /* kmax         */ {999, 999, 999, 999}},
+    // Hardware parameters for 64 thread(s), policy: close, subset: L3Cache, NUMANode, NodeMem, GLOBAL_SYNC
+   {
+    /* d            */ 4,
+    /* d_numa       */ 2,
+    /* g            */ {1.568930e-12, 6.940061e-12, 9.747216e-12, 0.000000e+00},
+    /* ls           */ {8.624948e-11, 4.438092e-10, 6.235735e-10, 4.197359e-05},
+    /* m            */ {31457280, 100931731456, 201863462912, 201863462912},
+    /* p            */ {44, 1, 2, 1},
+    /* kmax         */ {999, 999, 999, 999}},
+    // Hardware parameters for 64 thread(s), policy: close, subset: L2Cache, L3Cache, NUMANode, NodeMem, GLOBAL_SYNC
+   {
+    /* d            */ 5,
+    /* d_numa       */ 3,
+    /* g            */ {9.207317e-13, 1.568930e-12, 6.940061e-12, 9.747216e-12, 0.000000e+00},
+    /* ls           */ {3.212810e-11, 8.624948e-11, 4.438092e-10, 6.235735e-10, 4.197359e-05},
+    /* m            */ {1048576, 31457280, 100931731456, 201863462912, 201863462912},
+    /* p            */ {2, 22, 1, 2, 1},
+    /* kmax         */ {999, 999, 999, 999, 999}},
+    // Hardware parameters for 88 thread(s), policy: close, subset: NodeMem
+   {
+    /* d            */ 1,
+    /* d_numa       */ 0,
+    /* g            */ {1.012584e-11},
+    /* ls           */ {6.480697e-10},
+    /* m            */ {201863462912},
+    /* p            */ {88},
+    /* kmax         */ {999}},
+    // Hardware parameters for 88 thread(s), policy: close, subset: L2Cache, NodeMem
+   {
+    /* d            */ 2,
+    /* d_numa       */ 2,
+    /* g            */ {7.687359e-13, 1.012584e-11},
+    /* ls           */ {3.253589e-11, 6.480697e-10},
+    /* m            */ {1048576, 201863462912},
+    /* p            */ {2, 44},
+    /* kmax         */ {999, 999}},
+    // Hardware parameters for 88 thread(s), policy: close, subset: L3Cache, NodeMem
+   {
+    /* d            */ 2,
+    /* d_numa       */ 2,
+    /* g            */ {2.216973e-12, 1.012584e-11},
+    /* ls           */ {1.405377e-10, 6.480697e-10},
+    /* m            */ {31457280, 201863462912},
+    /* p            */ {44, 2},
+    /* kmax         */ {999, 999}},
+    // Hardware parameters for 88 thread(s), policy: close, subset: NUMANode, NodeMem
+   {
+    /* d            */ 2,
+    /* d_numa       */ 0,
+    /* g            */ {6.531814e-12, 1.012584e-11},
+    /* ls           */ {4.182267e-10, 6.480697e-10},
+    /* m            */ {100931731456, 201863462912},
+    /* p            */ {44, 2},
+    /* kmax         */ {999, 999}},
+    // Hardware parameters for 88 thread(s), policy: close, subset: NodeMem, GLOBAL_SYNC
+   {
+    /* d            */ 2,
+    /* d_numa       */ 0,
+    /* g            */ {1.012584e-11, 0.000000e+00},
+    /* ls           */ {6.480697e-10, 5.724430e-05},
+    /* m            */ {201863462912, 201863462912},
+    /* p            */ {88, 1},
+    /* kmax         */ {999, 999}},
+    // Hardware parameters for 88 thread(s), policy: close, subset: L2Cache, L3Cache, NodeMem
+   {
+    /* d            */ 3,
+    /* d_numa       */ 3,
+    /* g            */ {7.687359e-13, 2.216973e-12, 1.012584e-11},
+    /* ls           */ {3.253589e-11, 1.405377e-10, 6.480697e-10},
+    /* m            */ {1048576, 31457280, 201863462912},
+    /* p            */ {2, 22, 2},
+    /* kmax         */ {999, 999, 999}},
+    // Hardware parameters for 88 thread(s), policy: close, subset: L2Cache, NUMANode, NodeMem
+   {
+    /* d            */ 3,
+    /* d_numa       */ 2,
+    /* g            */ {7.687359e-13, 6.531814e-12, 1.012584e-11},
+    /* ls           */ {3.253589e-11, 4.182267e-10, 6.480697e-10},
+    /* m            */ {1048576, 100931731456, 201863462912},
+    /* p            */ {2, 22, 2},
+    /* kmax         */ {999, 999, 999}},
+    // Hardware parameters for 88 thread(s), policy: close, subset: L2Cache, NodeMem, GLOBAL_SYNC
+   {
+    /* d            */ 3,
+    /* d_numa       */ 2,
+    /* g            */ {7.687359e-13, 1.012584e-11, 0.000000e+00},
+    /* ls           */ {3.253589e-11, 6.480697e-10, 5.724430e-05},
+    /* m            */ {1048576, 201863462912, 201863462912},
+    /* p            */ {2, 44, 1},
+    /* kmax         */ {999, 999, 999}},
+    // Hardware parameters for 88 thread(s), policy: close, subset: L3Cache, NUMANode, NodeMem
+   {
+    /* d            */ 3,
+    /* d_numa       */ 2,
+    /* g            */ {2.216973e-12, 6.531814e-12, 1.012584e-11},
+    /* ls           */ {1.405377e-10, 4.182267e-10, 6.480697e-10},
+    /* m            */ {31457280, 100931731456, 201863462912},
+    /* p            */ {44, 1, 2},
+    /* kmax         */ {999, 999, 999}},
+    // Hardware parameters for 88 thread(s), policy: close, subset: L3Cache, NodeMem, GLOBAL_SYNC
+   {
+    /* d            */ 3,
+    /* d_numa       */ 2,
+    /* g            */ {2.216973e-12, 1.012584e-11, 0.000000e+00},
+    /* ls           */ {1.405377e-10, 6.480697e-10, 5.724430e-05},
+    /* m            */ {31457280, 201863462912, 201863462912},
+    /* p            */ {44, 2, 1},
+    /* kmax         */ {999, 999, 999}},
+    // Hardware parameters for 88 thread(s), policy: close, subset: NUMANode, NodeMem, GLOBAL_SYNC
+   {
+    /* d            */ 3,
+    /* d_numa       */ 0,
+    /* g            */ {6.531814e-12, 1.012584e-11, 0.000000e+00},
+    /* ls           */ {4.182267e-10, 6.480697e-10, 5.724430e-05},
+    /* m            */ {100931731456, 201863462912, 201863462912},
+    /* p            */ {44, 2, 1},
+    /* kmax         */ {999, 999, 999}},
+    // Hardware parameters for 88 thread(s), policy: close, subset: L2Cache, L3Cache, NUMANode, NodeMem
+   {
+    /* d            */ 4,
+    /* d_numa       */ 3,
+    /* g            */ {7.687359e-13, 2.216973e-12, 6.531814e-12, 1.012584e-11},
+    /* ls           */ {3.253589e-11, 1.405377e-10, 4.182267e-10, 6.480697e-10},
+    /* m            */ {1048576, 31457280, 100931731456, 201863462912},
+    /* p            */ {2, 22, 1, 2},
+    /* kmax         */ {999, 999, 999, 999}},
+    // Hardware parameters for 88 thread(s), policy: close, subset: L2Cache, L3Cache, NodeMem, GLOBAL_SYNC
+   {
+    /* d            */ 4,
+    /* d_numa       */ 3,
+    /* g            */ {7.687359e-13, 2.216973e-12, 1.012584e-11, 0.000000e+00},
+    /* ls           */ {3.253589e-11, 1.405377e-10, 6.480697e-10, 5.724430e-05},
+    /* m            */ {1048576, 31457280, 201863462912, 201863462912},
+    /* p            */ {2, 22, 2, 1},
+    /* kmax         */ {999, 999, 999, 999}},
+    // Hardware parameters for 88 thread(s), policy: close, subset: L2Cache, NUMANode, NodeMem, GLOBAL_SYNC
+   {
+    /* d            */ 4,
+    /* d_numa       */ 2,
+    /* g            */ {7.687359e-13, 6.531814e-12, 1.012584e-11, 0.000000e+00},
+    /* ls           */ {3.253589e-11, 4.182267e-10, 6.480697e-10, 5.724430e-05},
+    /* m            */ {1048576, 100931731456, 201863462912, 201863462912},
+    /* p            */ {2, 22, 2, 1},
+    /* kmax         */ {999, 999, 999, 999}},
+    // Hardware parameters for 88 thread(s), policy: close, subset: L3Cache, NUMANode, NodeMem, GLOBAL_SYNC
+   {
+    /* d            */ 4,
+    /* d_numa       */ 2,
+    /* g            */ {2.216973e-12, 6.531814e-12, 1.012584e-11, 0.000000e+00},
+    /* ls           */ {1.405377e-10, 4.182267e-10, 6.480697e-10, 5.724430e-05},
+    /* m            */ {31457280, 100931731456, 201863462912, 201863462912},
+    /* p            */ {44, 1, 2, 1},
+    /* kmax         */ {999, 999, 999, 999}},
+    // Hardware parameters for 88 thread(s), policy: close, subset: L2Cache, L3Cache, NUMANode, NodeMem, GLOBAL_SYNC
+   {
+    /* d            */ 5,
+    /* d_numa       */ 3,
+    /* g            */ {7.687359e-13, 2.216973e-12, 6.531814e-12, 1.012584e-11, 0.000000e+00},
+    /* ls           */ {3.253589e-11, 1.405377e-10, 4.182267e-10, 6.480697e-10, 5.724430e-05},
+    /* m            */ {1048576, 31457280, 100931731456, 201863462912, 201863462912},
+    /* p            */ {2, 22, 1, 2, 1},
+    /* kmax         */ {999, 999, 999, 999, 999}},
+    // Hardware parameters for 1 thread(s), policy: spread, subset: NodeMem
+   {
+    /* d            */ 1,
+    /* d_numa       */ 0,
+    /* g            */ {1.190152e-10},
+    /* ls           */ {6.731364e-09},
+    /* m            */ {201863462912},
+    /* p            */ {88},
+    /* kmax         */ {999}},
+    // Hardware parameters for 1 thread(s), policy: spread, subset: L2Cache, NodeMem
+   {
+    /* d            */ 2,
+    /* d_numa       */ -2,
+    /* g            */ {5.245866e-11, 1.190152e-10},
+    /* ls           */ {1.421491e-09, 6.731364e-09},
+    /* m            */ {1048576, 201863462912},
+    /* p            */ {2, 44},
+    /* kmax         */ {999, 999}},
+    // Hardware parameters for 1 thread(s), policy: spread, subset: L3Cache, NodeMem
+   {
+    /* d            */ 2,
+    /* d_numa       */ -2,
+    /* g            */ {7.461658e-11, 1.190152e-10},
+    /* ls           */ {3.410178e-09, 6.731364e-09},
+    /* m            */ {31457280, 201863462912},
+    /* p            */ {44, 2},
+    /* kmax         */ {999, 999}},
+    // Hardware parameters for 1 thread(s), policy: spread, subset: NUMANode, NodeMem
+   {
+    /* d            */ 2,
+    /* d_numa       */ 0,
+    /* g            */ {1.050794e-10, 1.190152e-10},
+    /* ls           */ {5.757162e-09, 6.731364e-09},
+    /* m            */ {100931731456, 201863462912},
+    /* p            */ {44, 2},
+    /* kmax         */ {999, 999}},
+    // Hardware parameters for 1 thread(s), policy: spread, subset: NodeMem, GLOBAL_SYNC
+   {
+    /* d            */ 2,
+    /* d_numa       */ 0,
+    /* g            */ {1.190152e-10, 0.000000e+00},
+    /* ls           */ {6.731364e-09, 2.843141e-06},
+    /* m            */ {201863462912, 201863462912},
+    /* p            */ {88, 1},
+    /* kmax         */ {999, 999}},
+    // Hardware parameters for 1 thread(s), policy: spread, subset: L2Cache, L3Cache, NodeMem
+   {
+    /* d            */ 3,
+    /* d_numa       */ -3,
+    /* g            */ {5.245866e-11, 7.461658e-11, 1.190152e-10},
+    /* ls           */ {1.421491e-09, 3.410178e-09, 6.731364e-09},
+    /* m            */ {1048576, 31457280, 201863462912},
+    /* p            */ {2, 22, 2},
+    /* kmax         */ {999, 999, 999}},
+    // Hardware parameters for 1 thread(s), policy: spread, subset: L2Cache, NUMANode, NodeMem
+   {
+    /* d            */ 3,
+    /* d_numa       */ -2,
+    /* g            */ {5.245866e-11, 1.050794e-10, 1.190152e-10},
+    /* ls           */ {1.421491e-09, 5.757162e-09, 6.731364e-09},
+    /* m            */ {1048576, 100931731456, 201863462912},
+    /* p            */ {2, 22, 2},
+    /* kmax         */ {999, 999, 999}},
+    // Hardware parameters for 1 thread(s), policy: spread, subset: L2Cache, NodeMem, GLOBAL_SYNC
+   {
+    /* d            */ 3,
+    /* d_numa       */ -2,
+    /* g            */ {5.245866e-11, 1.190152e-10, 0.000000e+00},
+    /* ls           */ {1.421491e-09, 6.731364e-09, 2.843141e-06},
+    /* m            */ {1048576, 201863462912, 201863462912},
+    /* p            */ {2, 44, 1},
+    /* kmax         */ {999, 999, 999}},
+    // Hardware parameters for 1 thread(s), policy: spread, subset: L3Cache, NUMANode, NodeMem
+   {
+    /* d            */ 3,
+    /* d_numa       */ -2,
+    /* g            */ {7.461658e-11, 1.050794e-10, 1.190152e-10},
+    /* ls           */ {3.410178e-09, 5.757162e-09, 6.731364e-09},
+    /* m            */ {31457280, 100931731456, 201863462912},
+    /* p            */ {44, 1, 2},
+    /* kmax         */ {999, 999, 999}},
+    // Hardware parameters for 1 thread(s), policy: spread, subset: L3Cache, NodeMem, GLOBAL_SYNC
+   {
+    /* d            */ 3,
+    /* d_numa       */ -2,
+    /* g            */ {7.461658e-11, 1.190152e-10, 0.000000e+00},
+    /* ls           */ {3.410178e-09, 6.731364e-09, 2.843141e-06},
+    /* m            */ {31457280, 201863462912, 201863462912},
+    /* p            */ {44, 2, 1},
+    /* kmax         */ {999, 999, 999}},
+    // Hardware parameters for 1 thread(s), policy: spread, subset: NUMANode, NodeMem, GLOBAL_SYNC
+   {
+    /* d            */ 3,
+    /* d_numa       */ 0,
+    /* g            */ {1.050794e-10, 1.190152e-10, 0.000000e+00},
+    /* ls           */ {5.757162e-09, 6.731364e-09, 2.843141e-06},
+    /* m            */ {100931731456, 201863462912, 201863462912},
+    /* p            */ {44, 2, 1},
+    /* kmax         */ {999, 999, 999}},
+    // Hardware parameters for 1 thread(s), policy: spread, subset: L2Cache, L3Cache, NUMANode, NodeMem
+   {
+    /* d            */ 4,
+    /* d_numa       */ -3,
+    /* g            */ {5.245866e-11, 7.461658e-11, 1.050794e-10, 1.190152e-10},
+    /* ls           */ {1.421491e-09, 3.410178e-09, 5.757162e-09, 6.731364e-09},
+    /* m            */ {1048576, 31457280, 100931731456, 201863462912},
+    /* p            */ {2, 22, 1, 2},
+    /* kmax         */ {999, 999, 999, 999}},
+    // Hardware parameters for 1 thread(s), policy: spread, subset: L2Cache, L3Cache, NodeMem, GLOBAL_SYNC
+   {
+    /* d            */ 4,
+    /* d_numa       */ -3,
+    /* g            */ {5.245866e-11, 7.461658e-11, 1.190152e-10, 0.000000e+00},
+    /* ls           */ {1.421491e-09, 3.410178e-09, 6.731364e-09, 2.843141e-06},
+    /* m            */ {1048576, 31457280, 201863462912, 201863462912},
+    /* p            */ {2, 22, 2, 1},
+    /* kmax         */ {999, 999, 999, 999}},
+    // Hardware parameters for 1 thread(s), policy: spread, subset: L2Cache, NUMANode, NodeMem, GLOBAL_SYNC
+   {
+    /* d            */ 4,
+    /* d_numa       */ -2,
+    /* g            */ {5.245866e-11, 1.050794e-10, 1.190152e-10, 0.000000e+00},
+    /* ls           */ {1.421491e-09, 5.757162e-09, 6.731364e-09, 2.843141e-06},
+    /* m            */ {1048576, 100931731456, 201863462912, 201863462912},
+    /* p            */ {2, 22, 2, 1},
+    /* kmax         */ {999, 999, 999, 999}},
+    // Hardware parameters for 1 thread(s), policy: spread, subset: L3Cache, NUMANode, NodeMem, GLOBAL_SYNC
+   {
+    /* d            */ 4,
+    /* d_numa       */ -2,
+    /* g            */ {7.461658e-11, 1.050794e-10, 1.190152e-10, 0.000000e+00},
+    /* ls           */ {3.410178e-09, 5.757162e-09, 6.731364e-09, 2.843141e-06},
+    /* m            */ {31457280, 100931731456, 201863462912, 201863462912},
+    /* p            */ {44, 1, 2, 1},
+    /* kmax         */ {999, 999, 999, 999}},
+    // Hardware parameters for 1 thread(s), policy: spread, subset: L2Cache, L3Cache, NUMANode, NodeMem, GLOBAL_SYNC
+   {
+    /* d            */ 5,
+    /* d_numa       */ -3,
+    /* g            */ {5.245866e-11, 7.461658e-11, 1.050794e-10, 1.190152e-10, 0.000000e+00},
+    /* ls           */ {1.421491e-09, 3.410178e-09, 5.757162e-09, 6.731364e-09, 2.843141e-06},
+    /* m            */ {1048576, 31457280, 100931731456, 201863462912, 201863462912},
+    /* p            */ {2, 22, 1, 2, 1},
+    /* kmax         */ {999, 999, 999, 999, 999}},
+    // Hardware parameters for 2 thread(s), policy: spread, subset: NodeMem
+   {
+    /* d            */ 1,
+    /* d_numa       */ 0,
+    /* g            */ {9.682272e-11},
+    /* ls           */ {6.164767e-09},
+    /* m            */ {201863462912},
+    /* p            */ {88},
+    /* kmax         */ {999}},
+    // Hardware parameters for 2 thread(s), policy: spread, subset: L2Cache, NodeMem
+   {
+    /* d            */ 2,
+    /* d_numa       */ -2,
+    /* g            */ {4.861164e-11, 9.682272e-11},
+    /* ls           */ {2.706314e-09, 6.164767e-09},
+    /* m            */ {1048576, 201863462912},
+    /* p            */ {2, 44},
+    /* kmax         */ {999, 999}},
+    // Hardware parameters for 2 thread(s), policy: spread, subset: L3Cache, NodeMem
+   {
+    /* d            */ 2,
+    /* d_numa       */ -2,
+    /* g            */ {6.688944e-11, 9.682272e-11},
+    /* ls           */ {4.030237e-09, 6.164767e-09},
+    /* m            */ {31457280, 201863462912},
+    /* p            */ {44, 2},
+    /* kmax         */ {999, 999}},
+    // Hardware parameters for 2 thread(s), policy: spread, subset: NUMANode, NodeMem
+   {
+    /* d            */ 2,
+    /* d_numa       */ 0,
+    /* g            */ {9.442383e-11, 9.682272e-11},
+    /* ls           */ {6.028833e-09, 6.164767e-09},
+    /* m            */ {100931731456, 201863462912},
+    /* p            */ {44, 2},
+    /* kmax         */ {999, 999}},
+    // Hardware parameters for 2 thread(s), policy: spread, subset: NodeMem, GLOBAL_SYNC
+   {
+    /* d            */ 2,
+    /* d_numa       */ 0,
+    /* g            */ {9.682272e-11, 0.000000e+00},
+    /* ls           */ {6.164767e-09, 3.218651e-06},
+    /* m            */ {201863462912, 201863462912},
+    /* p            */ {88, 1},
+    /* kmax         */ {999, 999}},
+    // Hardware parameters for 2 thread(s), policy: spread, subset: L2Cache, L3Cache, NodeMem
+   {
+    /* d            */ 3,
+    /* d_numa       */ -3,
+    /* g            */ {4.861164e-11, 6.688944e-11, 9.682272e-11},
+    /* ls           */ {2.706314e-09, 4.030237e-09, 6.164767e-09},
+    /* m            */ {1048576, 31457280, 201863462912},
+    /* p            */ {2, 22, 2},
+    /* kmax         */ {999, 999, 999}},
+    // Hardware parameters for 2 thread(s), policy: spread, subset: L2Cache, NUMANode, NodeMem
+   {
+    /* d            */ 3,
+    /* d_numa       */ -2,
+    /* g            */ {4.861164e-11, 9.442383e-11, 9.682272e-11},
+    /* ls           */ {2.706314e-09, 6.028833e-09, 6.164767e-09},
+    /* m            */ {1048576, 100931731456, 201863462912},
+    /* p            */ {2, 22, 2},
+    /* kmax         */ {999, 999, 999}},
+    // Hardware parameters for 2 thread(s), policy: spread, subset: L2Cache, NodeMem, GLOBAL_SYNC
+   {
+    /* d            */ 3,
+    /* d_numa       */ -2,
+    /* g            */ {4.861164e-11, 9.682272e-11, 0.000000e+00},
+    /* ls           */ {2.706314e-09, 6.164767e-09, 3.218651e-06},
+    /* m            */ {1048576, 201863462912, 201863462912},
+    /* p            */ {2, 44, 1},
+    /* kmax         */ {999, 999, 999}},
+    // Hardware parameters for 2 thread(s), policy: spread, subset: L3Cache, NUMANode, NodeMem
+   {
+    /* d            */ 3,
+    /* d_numa       */ -2,
+    /* g            */ {6.688944e-11, 9.442383e-11, 9.682272e-11},
+    /* ls           */ {4.030237e-09, 6.028833e-09, 6.164767e-09},
+    /* m            */ {31457280, 100931731456, 201863462912},
+    /* p            */ {44, 1, 2},
+    /* kmax         */ {999, 999, 999}},
+    // Hardware parameters for 2 thread(s), policy: spread, subset: L3Cache, NodeMem, GLOBAL_SYNC
+   {
+    /* d            */ 3,
+    /* d_numa       */ -2,
+    /* g            */ {6.688944e-11, 9.682272e-11, 0.000000e+00},
+    /* ls           */ {4.030237e-09, 6.164767e-09, 3.218651e-06},
+    /* m            */ {31457280, 201863462912, 201863462912},
+    /* p            */ {44, 2, 1},
+    /* kmax         */ {999, 999, 999}},
+    // Hardware parameters for 2 thread(s), policy: spread, subset: NUMANode, NodeMem, GLOBAL_SYNC
+   {
+    /* d            */ 3,
+    /* d_numa       */ 0,
+    /* g            */ {9.442383e-11, 9.682272e-11, 0.000000e+00},
+    /* ls           */ {6.028833e-09, 6.164767e-09, 3.218651e-06},
+    /* m            */ {100931731456, 201863462912, 201863462912},
+    /* p            */ {44, 2, 1},
+    /* kmax         */ {999, 999, 999}},
+    // Hardware parameters for 2 thread(s), policy: spread, subset: L2Cache, L3Cache, NUMANode, NodeMem
+   {
+    /* d            */ 4,
+    /* d_numa       */ -3,
+    /* g            */ {4.861164e-11, 6.688944e-11, 9.442383e-11, 9.682272e-11},
+    /* ls           */ {2.706314e-09, 4.030237e-09, 6.028833e-09, 6.164767e-09},
+    /* m            */ {1048576, 31457280, 100931731456, 201863462912},
+    /* p            */ {2, 22, 1, 2},
+    /* kmax         */ {999, 999, 999, 999}},
+    // Hardware parameters for 2 thread(s), policy: spread, subset: L2Cache, L3Cache, NodeMem, GLOBAL_SYNC
+   {
+    /* d            */ 4,
+    /* d_numa       */ -3,
+    /* g            */ {4.861164e-11, 6.688944e-11, 9.682272e-11, 0.000000e+00},
+    /* ls           */ {2.706314e-09, 4.030237e-09, 6.164767e-09, 3.218651e-06},
+    /* m            */ {1048576, 31457280, 201863462912, 201863462912},
+    /* p            */ {2, 22, 2, 1},
+    /* kmax         */ {999, 999, 999, 999}},
+    // Hardware parameters for 2 thread(s), policy: spread, subset: L2Cache, NUMANode, NodeMem, GLOBAL_SYNC
+   {
+    /* d            */ 4,
+    /* d_numa       */ -2,
+    /* g            */ {4.861164e-11, 9.442383e-11, 9.682272e-11, 0.000000e+00},
+    /* ls           */ {2.706314e-09, 6.028833e-09, 6.164767e-09, 3.218651e-06},
+    /* m            */ {1048576, 100931731456, 201863462912, 201863462912},
+    /* p            */ {2, 22, 2, 1},
+    /* kmax         */ {999, 999, 999, 999}},
+    // Hardware parameters for 2 thread(s), policy: spread, subset: L3Cache, NUMANode, NodeMem, GLOBAL_SYNC
+   {
+    /* d            */ 4,
+    /* d_numa       */ -2,
+    /* g            */ {6.688944e-11, 9.442383e-11, 9.682272e-11, 0.000000e+00},
+    /* ls           */ {4.030237e-09, 6.028833e-09, 6.164767e-09, 3.218651e-06},
+    /* m            */ {31457280, 100931731456, 201863462912, 201863462912},
+    /* p            */ {44, 1, 2, 1},
+    /* kmax         */ {999, 999, 999, 999}},
+    // Hardware parameters for 2 thread(s), policy: spread, subset: L2Cache, L3Cache, NUMANode, NodeMem, GLOBAL_SYNC
+   {
+    /* d            */ 5,
+    /* d_numa       */ -3,
+    /* g            */ {4.861164e-11, 6.688944e-11, 9.442383e-11, 9.682272e-11, 0.000000e+00},
+    /* ls           */ {2.706314e-09, 4.030237e-09, 6.028833e-09, 6.164767e-09, 3.218651e-06},
+    /* m            */ {1048576, 31457280, 100931731456, 201863462912, 201863462912},
+    /* p            */ {2, 22, 1, 2, 1},
+    /* kmax         */ {999, 999, 999, 999, 999}},
+    // Hardware parameters for 4 thread(s), policy: spread, subset: NodeMem
+   {
+    /* d            */ 1,
+    /* d_numa       */ 0,
+    /* g            */ {4.860517e-11},
+    /* ls           */ {3.093195e-09},
+    /* m            */ {201863462912},
+    /* p            */ {88},
+    /* kmax         */ {999}},
+    // Hardware parameters for 4 thread(s), policy: spread, subset: L2Cache, NodeMem
+   {
+    /* d            */ 2,
+    /* d_numa       */ -2,
+    /* g            */ {2.421826e-11, 4.860517e-11},
+    /* ls           */ {1.351861e-09, 3.093195e-09},
+    /* m            */ {1048576, 201863462912},
+    /* p            */ {2, 44},
+    /* kmax         */ {999, 999}},
+    // Hardware parameters for 4 thread(s), policy: spread, subset: L3Cache, NodeMem
+   {
+    /* d            */ 2,
+    /* d_numa       */ -2,
+    /* g            */ {3.405006e-11, 4.860517e-11},
+    /* ls           */ {2.044849e-09, 3.093195e-09},
+    /* m            */ {31457280, 201863462912},
+    /* p            */ {44, 2},
+    /* kmax         */ {999, 999}},
+    // Hardware parameters for 4 thread(s), policy: spread, subset: NUMANode, NodeMem
+   {
+    /* d            */ 2,
+    /* d_numa       */ 0,
+    /* g            */ {4.790487e-11, 4.860517e-11},
+    /* ls           */ {3.045029e-09, 3.093195e-09},
+    /* m            */ {100931731456, 201863462912},
+    /* p            */ {44, 2},
+    /* kmax         */ {999, 999}},
+    // Hardware parameters for 4 thread(s), policy: spread, subset: NodeMem, GLOBAL_SYNC
+   {
+    /* d            */ 2,
+    /* d_numa       */ 0,
+    /* g            */ {4.860517e-11, 0.000000e+00},
+    /* ls           */ {3.093195e-09, 3.218651e-06},
+    /* m            */ {201863462912, 201863462912},
+    /* p            */ {88, 1},
+    /* kmax         */ {999, 999}},
+    // Hardware parameters for 4 thread(s), policy: spread, subset: L2Cache, L3Cache, NodeMem
+   {
+    /* d            */ 3,
+    /* d_numa       */ -3,
+    /* g            */ {2.421826e-11, 3.405006e-11, 4.860517e-11},
+    /* ls           */ {1.351861e-09, 2.044849e-09, 3.093195e-09},
+    /* m            */ {1048576, 31457280, 201863462912},
+    /* p            */ {2, 22, 2},
+    /* kmax         */ {999, 999, 999}},
+    // Hardware parameters for 4 thread(s), policy: spread, subset: L2Cache, NUMANode, NodeMem
+   {
+    /* d            */ 3,
+    /* d_numa       */ -2,
+    /* g            */ {2.421826e-11, 4.790487e-11, 4.860517e-11},
+    /* ls           */ {1.351861e-09, 3.045029e-09, 3.093195e-09},
+    /* m            */ {1048576, 100931731456, 201863462912},
+    /* p            */ {2, 22, 2},
+    /* kmax         */ {999, 999, 999}},
+    // Hardware parameters for 4 thread(s), policy: spread, subset: L2Cache, NodeMem, GLOBAL_SYNC
+   {
+    /* d            */ 3,
+    /* d_numa       */ -2,
+    /* g            */ {2.421826e-11, 4.860517e-11, 0.000000e+00},
+    /* ls           */ {1.351861e-09, 3.093195e-09, 3.218651e-06},
+    /* m            */ {1048576, 201863462912, 201863462912},
+    /* p            */ {2, 44, 1},
+    /* kmax         */ {999, 999, 999}},
+    // Hardware parameters for 4 thread(s), policy: spread, subset: L3Cache, NUMANode, NodeMem
+   {
+    /* d            */ 3,
+    /* d_numa       */ -2,
+    /* g            */ {3.405006e-11, 4.790487e-11, 4.860517e-11},
+    /* ls           */ {2.044849e-09, 3.045029e-09, 3.093195e-09},
+    /* m            */ {31457280, 100931731456, 201863462912},
+    /* p            */ {44, 1, 2},
+    /* kmax         */ {999, 999, 999}},
+    // Hardware parameters for 4 thread(s), policy: spread, subset: L3Cache, NodeMem, GLOBAL_SYNC
+   {
+    /* d            */ 3,
+    /* d_numa       */ -2,
+    /* g            */ {3.405006e-11, 4.860517e-11, 0.000000e+00},
+    /* ls           */ {2.044849e-09, 3.093195e-09, 3.218651e-06},
+    /* m            */ {31457280, 201863462912, 201863462912},
+    /* p            */ {44, 2, 1},
+    /* kmax         */ {999, 999, 999}},
+    // Hardware parameters for 4 thread(s), policy: spread, subset: NUMANode, NodeMem, GLOBAL_SYNC
+   {
+    /* d            */ 3,
+    /* d_numa       */ 0,
+    /* g            */ {4.790487e-11, 4.860517e-11, 0.000000e+00},
+    /* ls           */ {3.045029e-09, 3.093195e-09, 3.218651e-06},
+    /* m            */ {100931731456, 201863462912, 201863462912},
+    /* p            */ {44, 2, 1},
+    /* kmax         */ {999, 999, 999}},
+    // Hardware parameters for 4 thread(s), policy: spread, subset: L2Cache, L3Cache, NUMANode, NodeMem
+   {
+    /* d            */ 4,
+    /* d_numa       */ -3,
+    /* g            */ {2.421826e-11, 3.405006e-11, 4.790487e-11, 4.860517e-11},
+    /* ls           */ {1.351861e-09, 2.044849e-09, 3.045029e-09, 3.093195e-09},
+    /* m            */ {1048576, 31457280, 100931731456, 201863462912},
+    /* p            */ {2, 22, 1, 2},
+    /* kmax         */ {999, 999, 999, 999}},
+    // Hardware parameters for 4 thread(s), policy: spread, subset: L2Cache, L3Cache, NodeMem, GLOBAL_SYNC
+   {
+    /* d            */ 4,
+    /* d_numa       */ -3,
+    /* g            */ {2.421826e-11, 3.405006e-11, 4.860517e-11, 0.000000e+00},
+    /* ls           */ {1.351861e-09, 2.044849e-09, 3.093195e-09, 3.218651e-06},
+    /* m            */ {1048576, 31457280, 201863462912, 201863462912},
+    /* p            */ {2, 22, 2, 1},
+    /* kmax         */ {999, 999, 999, 999}},
+    // Hardware parameters for 4 thread(s), policy: spread, subset: L2Cache, NUMANode, NodeMem, GLOBAL_SYNC
+   {
+    /* d            */ 4,
+    /* d_numa       */ -2,
+    /* g            */ {2.421826e-11, 4.790487e-11, 4.860517e-11, 0.000000e+00},
+    /* ls           */ {1.351861e-09, 3.045029e-09, 3.093195e-09, 3.218651e-06},
+    /* m            */ {1048576, 100931731456, 201863462912, 201863462912},
+    /* p            */ {2, 22, 2, 1},
+    /* kmax         */ {999, 999, 999, 999}},
+    // Hardware parameters for 4 thread(s), policy: spread, subset: L3Cache, NUMANode, NodeMem, GLOBAL_SYNC
+   {
+    /* d            */ 4,
+    /* d_numa       */ -2,
+    /* g            */ {3.405006e-11, 4.790487e-11, 4.860517e-11, 0.000000e+00},
+    /* ls           */ {2.044849e-09, 3.045029e-09, 3.093195e-09, 3.218651e-06},
+    /* m            */ {31457280, 100931731456, 201863462912, 201863462912},
+    /* p            */ {44, 1, 2, 1},
+    /* kmax         */ {999, 999, 999, 999}},
+    // Hardware parameters for 4 thread(s), policy: spread, subset: L2Cache, L3Cache, NUMANode, NodeMem, GLOBAL_SYNC
+   {
+    /* d            */ 5,
+    /* d_numa       */ -3,
+    /* g            */ {2.421826e-11, 3.405006e-11, 4.790487e-11, 4.860517e-11, 0.000000e+00},
+    /* ls           */ {1.351861e-09, 2.044849e-09, 3.045029e-09, 3.093195e-09, 3.218651e-06},
+    /* m            */ {1048576, 31457280, 100931731456, 201863462912, 201863462912},
+    /* p            */ {2, 22, 1, 2, 1},
+    /* kmax         */ {999, 999, 999, 999, 999}},
+    // Hardware parameters for 8 thread(s), policy: spread, subset: NodeMem
+   {
+    /* d            */ 1,
+    /* d_numa       */ 0,
+    /* g            */ {2.514682e-11},
+    /* ls           */ {1.596887e-09},
+    /* m            */ {201863462912},
+    /* p            */ {88},
+    /* kmax         */ {999}},
+    // Hardware parameters for 8 thread(s), policy: spread, subset: L2Cache, NodeMem
+   {
+    /* d            */ 2,
+    /* d_numa       */ -2,
+    /* g            */ {1.210211e-11, 2.514682e-11},
+    /* ls           */ {6.764119e-10, 1.596887e-09},
+    /* m            */ {1048576, 201863462912},
+    /* p            */ {2, 44},
+    /* kmax         */ {999, 999}},
+    // Hardware parameters for 8 thread(s), policy: spread, subset: L3Cache, NodeMem
+   {
+    /* d            */ 2,
+    /* d_numa       */ -2,
+    /* g            */ {1.779476e-11, 2.514682e-11},
+    /* ls           */ {1.075599e-09, 1.596887e-09},
+    /* m            */ {31457280, 201863462912},
+    /* p            */ {44, 2},
+    /* kmax         */ {999, 999}},
+    // Hardware parameters for 8 thread(s), policy: spread, subset: NUMANode, NodeMem
+   {
+    /* d            */ 2,
+    /* d_numa       */ 0,
+    /* g            */ {2.463655e-11, 2.514682e-11},
+    /* ls           */ {1.570882e-09, 1.596887e-09},
+    /* m            */ {100931731456, 201863462912},
+    /* p            */ {44, 2},
+    /* kmax         */ {999, 999}},
+    // Hardware parameters for 8 thread(s), policy: spread, subset: NodeMem, GLOBAL_SYNC
+   {
+    /* d            */ 2,
+    /* d_numa       */ 0,
+    /* g            */ {2.514682e-11, 0.000000e+00},
+    /* ls           */ {1.596887e-09, 4.506112e-06},
+    /* m            */ {201863462912, 201863462912},
+    /* p            */ {88, 1},
+    /* kmax         */ {999, 999}},
+    // Hardware parameters for 8 thread(s), policy: spread, subset: L2Cache, L3Cache, NodeMem
+   {
+    /* d            */ 3,
+    /* d_numa       */ -3,
+    /* g            */ {1.210211e-11, 1.779476e-11, 2.514682e-11},
+    /* ls           */ {6.764119e-10, 1.075599e-09, 1.596887e-09},
+    /* m            */ {1048576, 31457280, 201863462912},
+    /* p            */ {2, 22, 2},
+    /* kmax         */ {999, 999, 999}},
+    // Hardware parameters for 8 thread(s), policy: spread, subset: L2Cache, NUMANode, NodeMem
+   {
+    /* d            */ 3,
+    /* d_numa       */ -2,
+    /* g            */ {1.210211e-11, 2.463655e-11, 2.514682e-11},
+    /* ls           */ {6.764119e-10, 1.570882e-09, 1.596887e-09},
+    /* m            */ {1048576, 100931731456, 201863462912},
+    /* p            */ {2, 22, 2},
+    /* kmax         */ {999, 999, 999}},
+    // Hardware parameters for 8 thread(s), policy: spread, subset: L2Cache, NodeMem, GLOBAL_SYNC
+   {
+    /* d            */ 3,
+    /* d_numa       */ -2,
+    /* g            */ {1.210211e-11, 2.514682e-11, 0.000000e+00},
+    /* ls           */ {6.764119e-10, 1.596887e-09, 4.506112e-06},
+    /* m            */ {1048576, 201863462912, 201863462912},
+    /* p            */ {2, 44, 1},
+    /* kmax         */ {999, 999, 999}},
+    // Hardware parameters for 8 thread(s), policy: spread, subset: L3Cache, NUMANode, NodeMem
+   {
+    /* d            */ 3,
+    /* d_numa       */ -2,
+    /* g            */ {1.779476e-11, 2.463655e-11, 2.514682e-11},
+    /* ls           */ {1.075599e-09, 1.570882e-09, 1.596887e-09},
+    /* m            */ {31457280, 100931731456, 201863462912},
+    /* p            */ {44, 1, 2},
+    /* kmax         */ {999, 999, 999}},
+    // Hardware parameters for 8 thread(s), policy: spread, subset: L3Cache, NodeMem, GLOBAL_SYNC
+   {
+    /* d            */ 3,
+    /* d_numa       */ -2,
+    /* g            */ {1.779476e-11, 2.514682e-11, 0.000000e+00},
+    /* ls           */ {1.075599e-09, 1.596887e-09, 4.506112e-06},
+    /* m            */ {31457280, 201863462912, 201863462912},
+    /* p            */ {44, 2, 1},
+    /* kmax         */ {999, 999, 999}},
+    // Hardware parameters for 8 thread(s), policy: spread, subset: NUMANode, NodeMem, GLOBAL_SYNC
+   {
+    /* d            */ 3,
+    /* d_numa       */ 0,
+    /* g            */ {2.463655e-11, 2.514682e-11, 0.000000e+00},
+    /* ls           */ {1.570882e-09, 1.596887e-09, 4.506112e-06},
+    /* m            */ {100931731456, 201863462912, 201863462912},
+    /* p            */ {44, 2, 1},
+    /* kmax         */ {999, 999, 999}},
+    // Hardware parameters for 8 thread(s), policy: spread, subset: L2Cache, L3Cache, NUMANode, NodeMem
+   {
+    /* d            */ 4,
+    /* d_numa       */ -3,
+    /* g            */ {1.210211e-11, 1.779476e-11, 2.463655e-11, 2.514682e-11},
+    /* ls           */ {6.764119e-10, 1.075599e-09, 1.570882e-09, 1.596887e-09},
+    /* m            */ {1048576, 31457280, 100931731456, 201863462912},
+    /* p            */ {2, 22, 1, 2},
+    /* kmax         */ {999, 999, 999, 999}},
+    // Hardware parameters for 8 thread(s), policy: spread, subset: L2Cache, L3Cache, NodeMem, GLOBAL_SYNC
+   {
+    /* d            */ 4,
+    /* d_numa       */ -3,
+    /* g            */ {1.210211e-11, 1.779476e-11, 2.514682e-11, 0.000000e+00},
+    /* ls           */ {6.764119e-10, 1.075599e-09, 1.596887e-09, 4.506112e-06},
+    /* m            */ {1048576, 31457280, 201863462912, 201863462912},
+    /* p            */ {2, 22, 2, 1},
+    /* kmax         */ {999, 999, 999, 999}},
+    // Hardware parameters for 8 thread(s), policy: spread, subset: L2Cache, NUMANode, NodeMem, GLOBAL_SYNC
+   {
+    /* d            */ 4,
+    /* d_numa       */ -2,
+    /* g            */ {1.210211e-11, 2.463655e-11, 2.514682e-11, 0.000000e+00},
+    /* ls           */ {6.764119e-10, 1.570882e-09, 1.596887e-09, 4.506112e-06},
+    /* m            */ {1048576, 100931731456, 201863462912, 201863462912},
+    /* p            */ {2, 22, 2, 1},
+    /* kmax         */ {999, 999, 999, 999}},
+    // Hardware parameters for 8 thread(s), policy: spread, subset: L3Cache, NUMANode, NodeMem, GLOBAL_SYNC
+   {
+    /* d            */ 4,
+    /* d_numa       */ -2,
+    /* g            */ {1.779476e-11, 2.463655e-11, 2.514682e-11, 0.000000e+00},
+    /* ls           */ {1.075599e-09, 1.570882e-09, 1.596887e-09, 4.506112e-06},
+    /* m            */ {31457280, 100931731456, 201863462912, 201863462912},
+    /* p            */ {44, 1, 2, 1},
+    /* kmax         */ {999, 999, 999, 999}},
+    // Hardware parameters for 8 thread(s), policy: spread, subset: L2Cache, L3Cache, NUMANode, NodeMem, GLOBAL_SYNC
+   {
+    /* d            */ 5,
+    /* d_numa       */ -3,
+    /* g            */ {1.210211e-11, 1.779476e-11, 2.463655e-11, 2.514682e-11, 0.000000e+00},
+    /* ls           */ {6.764119e-10, 1.075599e-09, 1.570882e-09, 1.596887e-09, 4.506112e-06},
+    /* m            */ {1048576, 31457280, 100931731456, 201863462912, 201863462912},
+    /* p            */ {2, 22, 1, 2, 1},
+    /* kmax         */ {999, 999, 999, 999, 999}},
+    // Hardware parameters for 12 thread(s), policy: spread, subset: NodeMem
+   {
+    /* d            */ 1,
+    /* d_numa       */ 0,
+    /* g            */ {1.800047e-11},
+    /* ls           */ {1.147135e-09},
+    /* m            */ {201863462912},
+    /* p            */ {88},
+    /* kmax         */ {999}},
+    // Hardware parameters for 12 thread(s), policy: spread, subset: L2Cache, NodeMem
+   {
+    /* d            */ 2,
+    /* d_numa       */ -2,
+    /* g            */ {8.141107e-12, 1.800047e-11},
+    /* ls           */ {4.535615e-10, 1.147135e-09},
+    /* m            */ {1048576, 201863462912},
+    /* p            */ {2, 44},
+    /* kmax         */ {999, 999}},
+    // Hardware parameters for 12 thread(s), policy: spread, subset: L3Cache, NodeMem
+   {
+    /* d            */ 2,
+    /* d_numa       */ -2,
+    /* g            */ {1.266852e-11, 1.800047e-11},
+    /* ls           */ {7.717883e-10, 1.147135e-09},
+    /* m            */ {31457280, 201863462912},
+    /* p            */ {44, 2},
+    /* kmax         */ {999, 999}},
+    // Hardware parameters for 12 thread(s), policy: spread, subset: NUMANode, NodeMem
+   {
+    /* d            */ 2,
+    /* d_numa       */ 0,
+    /* g            */ {1.754385e-11, 1.800047e-11},
+    /* ls           */ {1.117080e-09, 1.147135e-09},
+    /* m            */ {100931731456, 201863462912},
+    /* p            */ {44, 2},
+    /* kmax         */ {999, 999}},
+    // Hardware parameters for 12 thread(s), policy: spread, subset: NodeMem, GLOBAL_SYNC
+   {
+    /* d            */ 2,
+    /* d_numa       */ 0,
+    /* g            */ {1.800047e-11, 0.000000e+00},
+    /* ls           */ {1.147135e-09, 9.346006e-06},
+    /* m            */ {201863462912, 201863462912},
+    /* p            */ {88, 1},
+    /* kmax         */ {999, 999}},
+    // Hardware parameters for 12 thread(s), policy: spread, subset: L2Cache, L3Cache, NodeMem
+   {
+    /* d            */ 3,
+    /* d_numa       */ -3,
+    /* g            */ {8.141107e-12, 1.266852e-11, 1.800047e-11},
+    /* ls           */ {4.535615e-10, 7.717883e-10, 1.147135e-09},
+    /* m            */ {1048576, 31457280, 201863462912},
+    /* p            */ {2, 22, 2},
+    /* kmax         */ {999, 999, 999}},
+    // Hardware parameters for 12 thread(s), policy: spread, subset: L2Cache, NUMANode, NodeMem
+   {
+    /* d            */ 3,
+    /* d_numa       */ -2,
+    /* g            */ {8.141107e-12, 1.754385e-11, 1.800047e-11},
+    /* ls           */ {4.535615e-10, 1.117080e-09, 1.147135e-09},
+    /* m            */ {1048576, 100931731456, 201863462912},
+    /* p            */ {2, 22, 2},
+    /* kmax         */ {999, 999, 999}},
+    // Hardware parameters for 12 thread(s), policy: spread, subset: L2Cache, NodeMem, GLOBAL_SYNC
+   {
+    /* d            */ 3,
+    /* d_numa       */ -2,
+    /* g            */ {8.141107e-12, 1.800047e-11, 0.000000e+00},
+    /* ls           */ {4.535615e-10, 1.147135e-09, 9.346006e-06},
+    /* m            */ {1048576, 201863462912, 201863462912},
+    /* p            */ {2, 44, 1},
+    /* kmax         */ {999, 999, 999}},
+    // Hardware parameters for 12 thread(s), policy: spread, subset: L3Cache, NUMANode, NodeMem
+   {
+    /* d            */ 3,
+    /* d_numa       */ -2,
+    /* g            */ {1.266852e-11, 1.754385e-11, 1.800047e-11},
+    /* ls           */ {7.717883e-10, 1.117080e-09, 1.147135e-09},
+    /* m            */ {31457280, 100931731456, 201863462912},
+    /* p            */ {44, 1, 2},
+    /* kmax         */ {999, 999, 999}},
+    // Hardware parameters for 12 thread(s), policy: spread, subset: L3Cache, NodeMem, GLOBAL_SYNC
+   {
+    /* d            */ 3,
+    /* d_numa       */ -2,
+    /* g            */ {1.266852e-11, 1.800047e-11, 0.000000e+00},
+    /* ls           */ {7.717883e-10, 1.147135e-09, 9.346006e-06},
+    /* m            */ {31457280, 201863462912, 201863462912},
+    /* p            */ {44, 2, 1},
+    /* kmax         */ {999, 999, 999}},
+    // Hardware parameters for 12 thread(s), policy: spread, subset: NUMANode, NodeMem, GLOBAL_SYNC
+   {
+    /* d            */ 3,
+    /* d_numa       */ 0,
+    /* g            */ {1.754385e-11, 1.800047e-11, 0.000000e+00},
+    /* ls           */ {1.117080e-09, 1.147135e-09, 9.346006e-06},
+    /* m            */ {100931731456, 201863462912, 201863462912},
+    /* p            */ {44, 2, 1},
+    /* kmax         */ {999, 999, 999}},
+    // Hardware parameters for 12 thread(s), policy: spread, subset: L2Cache, L3Cache, NUMANode, NodeMem
+   {
+    /* d            */ 4,
+    /* d_numa       */ -3,
+    /* g            */ {8.141107e-12, 1.266852e-11, 1.754385e-11, 1.800047e-11},
+    /* ls           */ {4.535615e-10, 7.717883e-10, 1.117080e-09, 1.147135e-09},
+    /* m            */ {1048576, 31457280, 100931731456, 201863462912},
+    /* p            */ {2, 22, 1, 2},
+    /* kmax         */ {999, 999, 999, 999}},
+    // Hardware parameters for 12 thread(s), policy: spread, subset: L2Cache, L3Cache, NodeMem, GLOBAL_SYNC
+   {
+    /* d            */ 4,
+    /* d_numa       */ -3,
+    /* g            */ {8.141107e-12, 1.266852e-11, 1.800047e-11, 0.000000e+00},
+    /* ls           */ {4.535615e-10, 7.717883e-10, 1.147135e-09, 9.346006e-06},
+    /* m            */ {1048576, 31457280, 201863462912, 201863462912},
+    /* p            */ {2, 22, 2, 1},
+    /* kmax         */ {999, 999, 999, 999}},
+    // Hardware parameters for 12 thread(s), policy: spread, subset: L2Cache, NUMANode, NodeMem, GLOBAL_SYNC
+   {
+    /* d            */ 4,
+    /* d_numa       */ -2,
+    /* g            */ {8.141107e-12, 1.754385e-11, 1.800047e-11, 0.000000e+00},
+    /* ls           */ {4.535615e-10, 1.117080e-09, 1.147135e-09, 9.346006e-06},
+    /* m            */ {1048576, 100931731456, 201863462912, 201863462912},
+    /* p            */ {2, 22, 2, 1},
+    /* kmax         */ {999, 999, 999, 999}},
+    // Hardware parameters for 12 thread(s), policy: spread, subset: L3Cache, NUMANode, NodeMem, GLOBAL_SYNC
+   {
+    /* d            */ 4,
+    /* d_numa       */ -2,
+    /* g            */ {1.266852e-11, 1.754385e-11, 1.800047e-11, 0.000000e+00},
+    /* ls           */ {7.717883e-10, 1.117080e-09, 1.147135e-09, 9.346006e-06},
+    /* m            */ {31457280, 100931731456, 201863462912, 201863462912},
+    /* p            */ {44, 1, 2, 1},
+    /* kmax         */ {999, 999, 999, 999}},
+    // Hardware parameters for 12 thread(s), policy: spread, subset: L2Cache, L3Cache, NUMANode, NodeMem, GLOBAL_SYNC
+   {
+    /* d            */ 5,
+    /* d_numa       */ -3,
+    /* g            */ {8.141107e-12, 1.266852e-11, 1.754385e-11, 1.800047e-11, 0.000000e+00},
+    /* ls           */ {4.535615e-10, 7.717883e-10, 1.117080e-09, 1.147135e-09, 9.346006e-06},
+    /* m            */ {1048576, 31457280, 100931731456, 201863462912, 201863462912},
+    /* p            */ {2, 22, 1, 2, 1},
+    /* kmax         */ {999, 999, 999, 999, 999}},
+    // Hardware parameters for 22 thread(s), policy: spread, subset: NodeMem
+   {
+    /* d            */ 1,
+    /* d_numa       */ 0,
+    /* g            */ {1.413516e-11},
+    /* ls           */ {9.025053e-10},
+    /* m            */ {201863462912},
+    /* p            */ {88},
+    /* kmax         */ {999}},
+    // Hardware parameters for 22 thread(s), policy: spread, subset: L2Cache, NodeMem
+   {
+    /* d            */ 2,
+    /* d_numa       */ -2,
+    /* g            */ {4.526072e-12, 1.413516e-11},
+    /* ls           */ {2.547764e-10, 9.025053e-10},
+    /* m            */ {1048576, 201863462912},
+    /* p            */ {2, 44},
+    /* kmax         */ {999, 999}},
+    // Hardware parameters for 22 thread(s), policy: spread, subset: L3Cache, NodeMem
+   {
+    /* d            */ 2,
+    /* d_numa       */ -2,
+    /* g            */ {8.729400e-12, 1.413516e-11},
+    /* ls           */ {5.476787e-10, 9.025053e-10},
+    /* m            */ {31457280, 201863462912},
+    /* p            */ {44, 2},
+    /* kmax         */ {999, 999}},
+    // Hardware parameters for 22 thread(s), policy: spread, subset: NUMANode, NodeMem
+   {
+    /* d            */ 2,
+    /* d_numa       */ 0,
+    /* g            */ {1.272974e-11, 1.413516e-11},
+    /* ls           */ {8.216676e-10, 9.025053e-10},
+    /* m            */ {100931731456, 201863462912},
+    /* p            */ {44, 2},
+    /* kmax         */ {999, 999}},
+    // Hardware parameters for 22 thread(s), policy: spread, subset: NodeMem, GLOBAL_SYNC
+   {
+    /* d            */ 2,
+    /* d_numa       */ 0,
+    /* g            */ {1.413516e-11, 0.000000e+00},
+    /* ls           */ {9.025053e-10, 1.312495e-05},
+    /* m            */ {201863462912, 201863462912},
+    /* p            */ {88, 1},
+    /* kmax         */ {999, 999}},
+    // Hardware parameters for 22 thread(s), policy: spread, subset: L2Cache, L3Cache, NodeMem
+   {
+    /* d            */ 3,
+    /* d_numa       */ -3,
+    /* g            */ {4.526072e-12, 8.729400e-12, 1.413516e-11},
+    /* ls           */ {2.547764e-10, 5.476787e-10, 9.025053e-10},
+    /* m            */ {1048576, 31457280, 201863462912},
+    /* p            */ {2, 22, 2},
+    /* kmax         */ {999, 999, 999}},
+    // Hardware parameters for 22 thread(s), policy: spread, subset: L2Cache, NUMANode, NodeMem
+   {
+    /* d            */ 3,
+    /* d_numa       */ -2,
+    /* g            */ {4.526072e-12, 1.272974e-11, 1.413516e-11},
+    /* ls           */ {2.547764e-10, 8.216676e-10, 9.025053e-10},
+    /* m            */ {1048576, 100931731456, 201863462912},
+    /* p            */ {2, 22, 2},
+    /* kmax         */ {999, 999, 999}},
+    // Hardware parameters for 22 thread(s), policy: spread, subset: L2Cache, NodeMem, GLOBAL_SYNC
+   {
+    /* d            */ 3,
+    /* d_numa       */ -2,
+    /* g            */ {4.526072e-12, 1.413516e-11, 0.000000e+00},
+    /* ls           */ {2.547764e-10, 9.025053e-10, 1.312495e-05},
+    /* m            */ {1048576, 201863462912, 201863462912},
+    /* p            */ {2, 44, 1},
+    /* kmax         */ {999, 999, 999}},
+    // Hardware parameters for 22 thread(s), policy: spread, subset: L3Cache, NUMANode, NodeMem
+   {
+    /* d            */ 3,
+    /* d_numa       */ -2,
+    /* g            */ {8.729400e-12, 1.272974e-11, 1.413516e-11},
+    /* ls           */ {5.476787e-10, 8.216676e-10, 9.025053e-10},
+    /* m            */ {31457280, 100931731456, 201863462912},
+    /* p            */ {44, 1, 2},
+    /* kmax         */ {999, 999, 999}},
+    // Hardware parameters for 22 thread(s), policy: spread, subset: L3Cache, NodeMem, GLOBAL_SYNC
+   {
+    /* d            */ 3,
+    /* d_numa       */ -2,
+    /* g            */ {8.729400e-12, 1.413516e-11, 0.000000e+00},
+    /* ls           */ {5.476787e-10, 9.025053e-10, 1.312495e-05},
+    /* m            */ {31457280, 201863462912, 201863462912},
+    /* p            */ {44, 2, 1},
+    /* kmax         */ {999, 999, 999}},
+    // Hardware parameters for 22 thread(s), policy: spread, subset: NUMANode, NodeMem, GLOBAL_SYNC
+   {
+    /* d            */ 3,
+    /* d_numa       */ 0,
+    /* g            */ {1.272974e-11, 1.413516e-11, 0.000000e+00},
+    /* ls           */ {8.216676e-10, 9.025053e-10, 1.312495e-05},
+    /* m            */ {100931731456, 201863462912, 201863462912},
+    /* p            */ {44, 2, 1},
+    /* kmax         */ {999, 999, 999}},
+    // Hardware parameters for 22 thread(s), policy: spread, subset: L2Cache, L3Cache, NUMANode, NodeMem
+   {
+    /* d            */ 4,
+    /* d_numa       */ -3,
+    /* g            */ {4.526072e-12, 8.729400e-12, 1.272974e-11, 1.413516e-11},
+    /* ls           */ {2.547764e-10, 5.476787e-10, 8.216676e-10, 9.025053e-10},
+    /* m            */ {1048576, 31457280, 100931731456, 201863462912},
+    /* p            */ {2, 22, 1, 2},
+    /* kmax         */ {999, 999, 999, 999}},
+    // Hardware parameters for 22 thread(s), policy: spread, subset: L2Cache, L3Cache, NodeMem, GLOBAL_SYNC
+   {
+    /* d            */ 4,
+    /* d_numa       */ -3,
+    /* g            */ {4.526072e-12, 8.729400e-12, 1.413516e-11, 0.000000e+00},
+    /* ls           */ {2.547764e-10, 5.476787e-10, 9.025053e-10, 1.312495e-05},
+    /* m            */ {1048576, 31457280, 201863462912, 201863462912},
+    /* p            */ {2, 22, 2, 1},
+    /* kmax         */ {999, 999, 999, 999}},
+    // Hardware parameters for 22 thread(s), policy: spread, subset: L2Cache, NUMANode, NodeMem, GLOBAL_SYNC
+   {
+    /* d            */ 4,
+    /* d_numa       */ -2,
+    /* g            */ {4.526072e-12, 1.272974e-11, 1.413516e-11, 0.000000e+00},
+    /* ls           */ {2.547764e-10, 8.216676e-10, 9.025053e-10, 1.312495e-05},
+    /* m            */ {1048576, 100931731456, 201863462912, 201863462912},
+    /* p            */ {2, 22, 2, 1},
+    /* kmax         */ {999, 999, 999, 999}},
+    // Hardware parameters for 22 thread(s), policy: spread, subset: L3Cache, NUMANode, NodeMem, GLOBAL_SYNC
+   {
+    /* d            */ 4,
+    /* d_numa       */ -2,
+    /* g            */ {8.729400e-12, 1.272974e-11, 1.413516e-11, 0.000000e+00},
+    /* ls           */ {5.476787e-10, 8.216676e-10, 9.025053e-10, 1.312495e-05},
+    /* m            */ {31457280, 100931731456, 201863462912, 201863462912},
+    /* p            */ {44, 1, 2, 1},
+    /* kmax         */ {999, 999, 999, 999}},
+    // Hardware parameters for 22 thread(s), policy: spread, subset: L2Cache, L3Cache, NUMANode, NodeMem, GLOBAL_SYNC
+   {
+    /* d            */ 5,
+    /* d_numa       */ -3,
+    /* g            */ {4.526072e-12, 8.729400e-12, 1.272974e-11, 1.413516e-11, 0.000000e+00},
+    /* ls           */ {2.547764e-10, 5.476787e-10, 8.216676e-10, 9.025053e-10, 1.312495e-05},
+    /* m            */ {1048576, 31457280, 100931731456, 201863462912, 201863462912},
+    /* p            */ {2, 22, 1, 2, 1},
+    /* kmax         */ {999, 999, 999, 999, 999}},
+    // Hardware parameters for 32 thread(s), policy: spread, subset: NodeMem
+   {
+    /* d            */ 1,
+    /* d_numa       */ 0,
+    /* g            */ {1.400812e-11},
+    /* ls           */ {8.976534e-10},
+    /* m            */ {201863462912},
+    /* p            */ {88},
+    /* kmax         */ {999}},
+    // Hardware parameters for 32 thread(s), policy: spread, subset: L2Cache, NodeMem
+   {
+    /* d            */ 2,
+    /* d_numa       */ -2,
+    /* g            */ {3.402733e-12, 1.400812e-11},
+    /* ls           */ {1.983975e-10, 8.976534e-10},
+    /* m            */ {1048576, 201863462912},
+    /* p            */ {2, 44},
+    /* kmax         */ {999, 999}},
+    // Hardware parameters for 32 thread(s), policy: spread, subset: L3Cache, NodeMem
+   {
+    /* d            */ 2,
+    /* d_numa       */ -2,
+    /* g            */ {9.016817e-12, 1.400812e-11},
+    /* ls           */ {5.762254e-10, 8.976534e-10},
+    /* m            */ {31457280, 201863462912},
+    /* p            */ {44, 2},
+    /* kmax         */ {999, 999}},
+    // Hardware parameters for 32 thread(s), policy: spread, subset: NUMANode, NodeMem
+   {
+    /* d            */ 2,
+    /* d_numa       */ 0,
+    /* g            */ {1.243297e-11, 1.400812e-11},
+    /* ls           */ {8.121208e-10, 8.976534e-10},
+    /* m            */ {100931731456, 201863462912},
+    /* p            */ {44, 2},
+    /* kmax         */ {999, 999}},
+    // Hardware parameters for 32 thread(s), policy: spread, subset: NodeMem, GLOBAL_SYNC
+   {
+    /* d            */ 2,
+    /* d_numa       */ 0,
+    /* g            */ {1.400812e-11, 0.000000e+00},
+    /* ls           */ {8.976534e-10, 1.493692e-05},
+    /* m            */ {201863462912, 201863462912},
+    /* p            */ {88, 1},
+    /* kmax         */ {999, 999}},
+    // Hardware parameters for 32 thread(s), policy: spread, subset: L2Cache, L3Cache, NodeMem
+   {
+    /* d            */ 3,
+    /* d_numa       */ -3,
+    /* g            */ {3.402733e-12, 9.016817e-12, 1.400812e-11},
+    /* ls           */ {1.983975e-10, 5.762254e-10, 8.976534e-10},
+    /* m            */ {1048576, 31457280, 201863462912},
+    /* p            */ {2, 22, 2},
+    /* kmax         */ {999, 999, 999}},
+    // Hardware parameters for 32 thread(s), policy: spread, subset: L2Cache, NUMANode, NodeMem
+   {
+    /* d            */ 3,
+    /* d_numa       */ -2,
+    /* g            */ {3.402733e-12, 1.243297e-11, 1.400812e-11},
+    /* ls           */ {1.983975e-10, 8.121208e-10, 8.976534e-10},
+    /* m            */ {1048576, 100931731456, 201863462912},
+    /* p            */ {2, 22, 2},
+    /* kmax         */ {999, 999, 999}},
+    // Hardware parameters for 32 thread(s), policy: spread, subset: L2Cache, NodeMem, GLOBAL_SYNC
+   {
+    /* d            */ 3,
+    /* d_numa       */ -2,
+    /* g            */ {3.402733e-12, 1.400812e-11, 0.000000e+00},
+    /* ls           */ {1.983975e-10, 8.976534e-10, 1.493692e-05},
+    /* m            */ {1048576, 201863462912, 201863462912},
+    /* p            */ {2, 44, 1},
+    /* kmax         */ {999, 999, 999}},
+    // Hardware parameters for 32 thread(s), policy: spread, subset: L3Cache, NUMANode, NodeMem
+   {
+    /* d            */ 3,
+    /* d_numa       */ -2,
+    /* g            */ {9.016817e-12, 1.243297e-11, 1.400812e-11},
+    /* ls           */ {5.762254e-10, 8.121208e-10, 8.976534e-10},
+    /* m            */ {31457280, 100931731456, 201863462912},
+    /* p            */ {44, 1, 2},
+    /* kmax         */ {999, 999, 999}},
+    // Hardware parameters for 32 thread(s), policy: spread, subset: L3Cache, NodeMem, GLOBAL_SYNC
+   {
+    /* d            */ 3,
+    /* d_numa       */ -2,
+    /* g            */ {9.016817e-12, 1.400812e-11, 0.000000e+00},
+    /* ls           */ {5.762254e-10, 8.976534e-10, 1.493692e-05},
+    /* m            */ {31457280, 201863462912, 201863462912},
+    /* p            */ {44, 2, 1},
+    /* kmax         */ {999, 999, 999}},
+    // Hardware parameters for 32 thread(s), policy: spread, subset: NUMANode, NodeMem, GLOBAL_SYNC
+   {
+    /* d            */ 3,
+    /* d_numa       */ 0,
+    /* g            */ {1.243297e-11, 1.400812e-11, 0.000000e+00},
+    /* ls           */ {8.121208e-10, 8.976534e-10, 1.493692e-05},
+    /* m            */ {100931731456, 201863462912, 201863462912},
+    /* p            */ {44, 2, 1},
+    /* kmax         */ {999, 999, 999}},
+    // Hardware parameters for 32 thread(s), policy: spread, subset: L2Cache, L3Cache, NUMANode, NodeMem
+   {
+    /* d            */ 4,
+    /* d_numa       */ -3,
+    /* g            */ {3.402733e-12, 9.016817e-12, 1.243297e-11, 1.400812e-11},
+    /* ls           */ {1.983975e-10, 5.762254e-10, 8.121208e-10, 8.976534e-10},
+    /* m            */ {1048576, 31457280, 100931731456, 201863462912},
+    /* p            */ {2, 22, 1, 2},
+    /* kmax         */ {999, 999, 999, 999}},
+    // Hardware parameters for 32 thread(s), policy: spread, subset: L2Cache, L3Cache, NodeMem, GLOBAL_SYNC
+   {
+    /* d            */ 4,
+    /* d_numa       */ -3,
+    /* g            */ {3.402733e-12, 9.016817e-12, 1.400812e-11, 0.000000e+00},
+    /* ls           */ {1.983975e-10, 5.762254e-10, 8.976534e-10, 1.493692e-05},
+    /* m            */ {1048576, 31457280, 201863462912, 201863462912},
+    /* p            */ {2, 22, 2, 1},
+    /* kmax         */ {999, 999, 999, 999}},
+    // Hardware parameters for 32 thread(s), policy: spread, subset: L2Cache, NUMANode, NodeMem, GLOBAL_SYNC
+   {
+    /* d            */ 4,
+    /* d_numa       */ -2,
+    /* g            */ {3.402733e-12, 1.243297e-11, 1.400812e-11, 0.000000e+00},
+    /* ls           */ {1.983975e-10, 8.121208e-10, 8.976534e-10, 1.493692e-05},
+    /* m            */ {1048576, 100931731456, 201863462912, 201863462912},
+    /* p            */ {2, 22, 2, 1},
+    /* kmax         */ {999, 999, 999, 999}},
+    // Hardware parameters for 32 thread(s), policy: spread, subset: L3Cache, NUMANode, NodeMem, GLOBAL_SYNC
+   {
+    /* d            */ 4,
+    /* d_numa       */ -2,
+    /* g            */ {9.016817e-12, 1.243297e-11, 1.400812e-11, 0.000000e+00},
+    /* ls           */ {5.762254e-10, 8.121208e-10, 8.976534e-10, 1.493692e-05},
+    /* m            */ {31457280, 100931731456, 201863462912, 201863462912},
+    /* p            */ {44, 1, 2, 1},
+    /* kmax         */ {999, 999, 999, 999}},
+    // Hardware parameters for 32 thread(s), policy: spread, subset: L2Cache, L3Cache, NUMANode, NodeMem, GLOBAL_SYNC
+   {
+    /* d            */ 5,
+    /* d_numa       */ -3,
+    /* g            */ {3.402733e-12, 9.016817e-12, 1.243297e-11, 1.400812e-11, 0.000000e+00},
+    /* ls           */ {1.983975e-10, 5.762254e-10, 8.121208e-10, 8.976534e-10, 1.493692e-05},
+    /* m            */ {1048576, 31457280, 100931731456, 201863462912, 201863462912},
+    /* p            */ {2, 22, 1, 2, 1},
+    /* kmax         */ {999, 999, 999, 999, 999}},
+    // Hardware parameters for 44 thread(s), policy: spread, subset: NodeMem
+   {
+    /* d            */ 1,
+    /* d_numa       */ 0,
+    /* g            */ {1.436574e-11},
+    /* ls           */ {9.213299e-10},
+    /* m            */ {201863462912},
+    /* p            */ {88},
+    /* kmax         */ {999}},
+    // Hardware parameters for 44 thread(s), policy: spread, subset: L2Cache, NodeMem
+   {
+    /* d            */ 2,
+    /* d_numa       */ -2,
+    /* g            */ {3.118372e-12, 1.436574e-11},
+    /* ls           */ {1.900411e-10, 9.213299e-10},
+    /* m            */ {1048576, 201863462912},
+    /* p            */ {2, 44},
+    /* kmax         */ {999, 999}},
+    // Hardware parameters for 44 thread(s), policy: spread, subset: L3Cache, NodeMem
+   {
+    /* d            */ 2,
+    /* d_numa       */ -2,
+    /* g            */ {1.006662e-11, 1.436574e-11},
+    /* ls           */ {6.485821e-10, 9.213299e-10},
+    /* m            */ {31457280, 201863462912},
+    /* p            */ {44, 2},
+    /* kmax         */ {999, 999}},
+    // Hardware parameters for 44 thread(s), policy: spread, subset: NUMANode, NodeMem
+   {
+    /* d            */ 2,
+    /* d_numa       */ 0,
+    /* g            */ {1.279224e-11, 1.436574e-11},
+    /* ls           */ {8.441623e-10, 9.213299e-10},
+    /* m            */ {100931731456, 201863462912},
+    /* p            */ {44, 2},
+    /* kmax         */ {999, 999}},
+    // Hardware parameters for 44 thread(s), policy: spread, subset: NodeMem, GLOBAL_SYNC
+   {
+    /* d            */ 2,
+    /* d_numa       */ 0,
+    /* g            */ {1.436574e-11, 0.000000e+00},
+    /* ls           */ {9.213299e-10, 2.957582e-05},
+    /* m            */ {201863462912, 201863462912},
+    /* p            */ {88, 1},
+    /* kmax         */ {999, 999}},
+    // Hardware parameters for 44 thread(s), policy: spread, subset: L2Cache, L3Cache, NodeMem
+   {
+    /* d            */ 3,
+    /* d_numa       */ -3,
+    /* g            */ {3.118372e-12, 1.006662e-11, 1.436574e-11},
+    /* ls           */ {1.900411e-10, 6.485821e-10, 9.213299e-10},
+    /* m            */ {1048576, 31457280, 201863462912},
+    /* p            */ {2, 22, 2},
+    /* kmax         */ {999, 999, 999}},
+    // Hardware parameters for 44 thread(s), policy: spread, subset: L2Cache, NUMANode, NodeMem
+   {
+    /* d            */ 3,
+    /* d_numa       */ -2,
+    /* g            */ {3.118372e-12, 1.279224e-11, 1.436574e-11},
+    /* ls           */ {1.900411e-10, 8.441623e-10, 9.213299e-10},
+    /* m            */ {1048576, 100931731456, 201863462912},
+    /* p            */ {2, 22, 2},
+    /* kmax         */ {999, 999, 999}},
+    // Hardware parameters for 44 thread(s), policy: spread, subset: L2Cache, NodeMem, GLOBAL_SYNC
+   {
+    /* d            */ 3,
+    /* d_numa       */ -2,
+    /* g            */ {3.118372e-12, 1.436574e-11, 0.000000e+00},
+    /* ls           */ {1.900411e-10, 9.213299e-10, 2.957582e-05},
+    /* m            */ {1048576, 201863462912, 201863462912},
+    /* p            */ {2, 44, 1},
+    /* kmax         */ {999, 999, 999}},
+    // Hardware parameters for 44 thread(s), policy: spread, subset: L3Cache, NUMANode, NodeMem
+   {
+    /* d            */ 3,
+    /* d_numa       */ -2,
+    /* g            */ {1.006662e-11, 1.279224e-11, 1.436574e-11},
+    /* ls           */ {6.485821e-10, 8.441623e-10, 9.213299e-10},
+    /* m            */ {31457280, 100931731456, 201863462912},
+    /* p            */ {44, 1, 2},
+    /* kmax         */ {999, 999, 999}},
+    // Hardware parameters for 44 thread(s), policy: spread, subset: L3Cache, NodeMem, GLOBAL_SYNC
+   {
+    /* d            */ 3,
+    /* d_numa       */ -2,
+    /* g            */ {1.006662e-11, 1.436574e-11, 0.000000e+00},
+    /* ls           */ {6.485821e-10, 9.213299e-10, 2.957582e-05},
+    /* m            */ {31457280, 201863462912, 201863462912},
+    /* p            */ {44, 2, 1},
+    /* kmax         */ {999, 999, 999}},
+    // Hardware parameters for 44 thread(s), policy: spread, subset: NUMANode, NodeMem, GLOBAL_SYNC
+   {
+    /* d            */ 3,
+    /* d_numa       */ 0,
+    /* g            */ {1.279224e-11, 1.436574e-11, 0.000000e+00},
+    /* ls           */ {8.441623e-10, 9.213299e-10, 2.957582e-05},
+    /* m            */ {100931731456, 201863462912, 201863462912},
+    /* p            */ {44, 2, 1},
+    /* kmax         */ {999, 999, 999}},
+    // Hardware parameters for 44 thread(s), policy: spread, subset: L2Cache, L3Cache, NUMANode, NodeMem
+   {
+    /* d            */ 4,
+    /* d_numa       */ -3,
+    /* g            */ {3.118372e-12, 1.006662e-11, 1.279224e-11, 1.436574e-11},
+    /* ls           */ {1.900411e-10, 6.485821e-10, 8.441623e-10, 9.213299e-10},
+    /* m            */ {1048576, 31457280, 100931731456, 201863462912},
+    /* p            */ {2, 22, 1, 2},
+    /* kmax         */ {999, 999, 999, 999}},
+    // Hardware parameters for 44 thread(s), policy: spread, subset: L2Cache, L3Cache, NodeMem, GLOBAL_SYNC
+   {
+    /* d            */ 4,
+    /* d_numa       */ -3,
+    /* g            */ {3.118372e-12, 1.006662e-11, 1.436574e-11, 0.000000e+00},
+    /* ls           */ {1.900411e-10, 6.485821e-10, 9.213299e-10, 2.957582e-05},
+    /* m            */ {1048576, 31457280, 201863462912, 201863462912},
+    /* p            */ {2, 22, 2, 1},
+    /* kmax         */ {999, 999, 999, 999}},
+    // Hardware parameters for 44 thread(s), policy: spread, subset: L2Cache, NUMANode, NodeMem, GLOBAL_SYNC
+   {
+    /* d            */ 4,
+    /* d_numa       */ -2,
+    /* g            */ {3.118372e-12, 1.279224e-11, 1.436574e-11, 0.000000e+00},
+    /* ls           */ {1.900411e-10, 8.441623e-10, 9.213299e-10, 2.957582e-05},
+    /* m            */ {1048576, 100931731456, 201863462912, 201863462912},
+    /* p            */ {2, 22, 2, 1},
+    /* kmax         */ {999, 999, 999, 999}},
+    // Hardware parameters for 44 thread(s), policy: spread, subset: L3Cache, NUMANode, NodeMem, GLOBAL_SYNC
+   {
+    /* d            */ 4,
+    /* d_numa       */ -2,
+    /* g            */ {1.006662e-11, 1.279224e-11, 1.436574e-11, 0.000000e+00},
+    /* ls           */ {6.485821e-10, 8.441623e-10, 9.213299e-10, 2.957582e-05},
+    /* m            */ {31457280, 100931731456, 201863462912, 201863462912},
+    /* p            */ {44, 1, 2, 1},
+    /* kmax         */ {999, 999, 999, 999}},
+    // Hardware parameters for 44 thread(s), policy: spread, subset: L2Cache, L3Cache, NUMANode, NodeMem, GLOBAL_SYNC
+   {
+    /* d            */ 5,
+    /* d_numa       */ -3,
+    /* g            */ {3.118372e-12, 1.006662e-11, 1.279224e-11, 1.436574e-11, 0.000000e+00},
+    /* ls           */ {1.900411e-10, 6.485821e-10, 8.441623e-10, 9.213299e-10, 2.957582e-05},
+    /* m            */ {1048576, 31457280, 100931731456, 201863462912, 201863462912},
+    /* p            */ {2, 22, 1, 2, 1},
+    /* kmax         */ {999, 999, 999, 999, 999}},
+    // Hardware parameters for 64 thread(s), policy: spread, subset: NodeMem
+   {
+    /* d            */ 1,
+    /* d_numa       */ 0,
+    /* g            */ {9.945949e-12},
+    /* ls           */ {6.371674e-10},
+    /* m            */ {201863462912},
+    /* p            */ {88},
+    /* kmax         */ {999}},
+    // Hardware parameters for 64 thread(s), policy: spread, subset: L2Cache, NodeMem
+   {
+    /* d            */ 2,
+    /* d_numa       */ -2,
+    /* g            */ {1.418715e-12, 9.945949e-12},
+    /* ls           */ {7.541260e-11, 6.371674e-10},
+    /* m            */ {1048576, 201863462912},
+    /* p            */ {2, 44},
+    /* kmax         */ {999, 999}},
+    // Hardware parameters for 64 thread(s), policy: spread, subset: L3Cache, NodeMem
+   {
+    /* d            */ 2,
+    /* d_numa       */ -2,
+    /* g            */ {4.320048e-12, 9.945949e-12},
+    /* ls           */ {2.745386e-10, 6.371674e-10},
+    /* m            */ {31457280, 201863462912},
+    /* p            */ {44, 2},
+    /* kmax         */ {999, 999}},
+    // Hardware parameters for 64 thread(s), policy: spread, subset: NUMANode, NodeMem
+   {
+    /* d            */ 2,
+    /* d_numa       */ 0,
+    /* g            */ {9.123684e-12, 9.945949e-12},
+    /* ls           */ {5.956256e-10, 6.371674e-10},
+    /* m            */ {100931731456, 201863462912},
+    /* p            */ {44, 2},
+    /* kmax         */ {999, 999}},
+    // Hardware parameters for 64 thread(s), policy: spread, subset: NodeMem, GLOBAL_SYNC
+   {
+    /* d            */ 2,
+    /* d_numa       */ 0,
+    /* g            */ {9.945949e-12, 0.000000e+00},
+    /* ls           */ {6.371674e-10, 3.838539e-05},
+    /* m            */ {201863462912, 201863462912},
+    /* p            */ {88, 1},
+    /* kmax         */ {999, 999}},
+    // Hardware parameters for 64 thread(s), policy: spread, subset: L2Cache, L3Cache, NodeMem
+   {
+    /* d            */ 3,
+    /* d_numa       */ -3,
+    /* g            */ {1.418715e-12, 4.320048e-12, 9.945949e-12},
+    /* ls           */ {7.541260e-11, 2.745386e-10, 6.371674e-10},
+    /* m            */ {1048576, 31457280, 201863462912},
+    /* p            */ {2, 22, 2},
+    /* kmax         */ {999, 999, 999}},
+    // Hardware parameters for 64 thread(s), policy: spread, subset: L2Cache, NUMANode, NodeMem
+   {
+    /* d            */ 3,
+    /* d_numa       */ -2,
+    /* g            */ {1.418715e-12, 9.123684e-12, 9.945949e-12},
+    /* ls           */ {7.541260e-11, 5.956256e-10, 6.371674e-10},
+    /* m            */ {1048576, 100931731456, 201863462912},
+    /* p            */ {2, 22, 2},
+    /* kmax         */ {999, 999, 999}},
+    // Hardware parameters for 64 thread(s), policy: spread, subset: L2Cache, NodeMem, GLOBAL_SYNC
+   {
+    /* d            */ 3,
+    /* d_numa       */ -2,
+    /* g            */ {1.418715e-12, 9.945949e-12, 0.000000e+00},
+    /* ls           */ {7.541260e-11, 6.371674e-10, 3.838539e-05},
+    /* m            */ {1048576, 201863462912, 201863462912},
+    /* p            */ {2, 44, 1},
+    /* kmax         */ {999, 999, 999}},
+    // Hardware parameters for 64 thread(s), policy: spread, subset: L3Cache, NUMANode, NodeMem
+   {
+    /* d            */ 3,
+    /* d_numa       */ -2,
+    /* g            */ {4.320048e-12, 9.123684e-12, 9.945949e-12},
+    /* ls           */ {2.745386e-10, 5.956256e-10, 6.371674e-10},
+    /* m            */ {31457280, 100931731456, 201863462912},
+    /* p            */ {44, 1, 2},
+    /* kmax         */ {999, 999, 999}},
+    // Hardware parameters for 64 thread(s), policy: spread, subset: L3Cache, NodeMem, GLOBAL_SYNC
+   {
+    /* d            */ 3,
+    /* d_numa       */ -2,
+    /* g            */ {4.320048e-12, 9.945949e-12, 0.000000e+00},
+    /* ls           */ {2.745386e-10, 6.371674e-10, 3.838539e-05},
+    /* m            */ {31457280, 201863462912, 201863462912},
+    /* p            */ {44, 2, 1},
+    /* kmax         */ {999, 999, 999}},
+    // Hardware parameters for 64 thread(s), policy: spread, subset: NUMANode, NodeMem, GLOBAL_SYNC
+   {
+    /* d            */ 3,
+    /* d_numa       */ 0,
+    /* g            */ {9.123684e-12, 9.945949e-12, 0.000000e+00},
+    /* ls           */ {5.956256e-10, 6.371674e-10, 3.838539e-05},
+    /* m            */ {100931731456, 201863462912, 201863462912},
+    /* p            */ {44, 2, 1},
+    /* kmax         */ {999, 999, 999}},
+    // Hardware parameters for 64 thread(s), policy: spread, subset: L2Cache, L3Cache, NUMANode, NodeMem
+   {
+    /* d            */ 4,
+    /* d_numa       */ -3,
+    /* g            */ {1.418715e-12, 4.320048e-12, 9.123684e-12, 9.945949e-12},
+    /* ls           */ {7.541260e-11, 2.745386e-10, 5.956256e-10, 6.371674e-10},
+    /* m            */ {1048576, 31457280, 100931731456, 201863462912},
+    /* p            */ {2, 22, 1, 2},
+    /* kmax         */ {999, 999, 999, 999}},
+    // Hardware parameters for 64 thread(s), policy: spread, subset: L2Cache, L3Cache, NodeMem, GLOBAL_SYNC
+   {
+    /* d            */ 4,
+    /* d_numa       */ -3,
+    /* g            */ {1.418715e-12, 4.320048e-12, 9.945949e-12, 0.000000e+00},
+    /* ls           */ {7.541260e-11, 2.745386e-10, 6.371674e-10, 3.838539e-05},
+    /* m            */ {1048576, 31457280, 201863462912, 201863462912},
+    /* p            */ {2, 22, 2, 1},
+    /* kmax         */ {999, 999, 999, 999}},
+    // Hardware parameters for 64 thread(s), policy: spread, subset: L2Cache, NUMANode, NodeMem, GLOBAL_SYNC
+   {
+    /* d            */ 4,
+    /* d_numa       */ -2,
+    /* g            */ {1.418715e-12, 9.123684e-12, 9.945949e-12, 0.000000e+00},
+    /* ls           */ {7.541260e-11, 5.956256e-10, 6.371674e-10, 3.838539e-05},
+    /* m            */ {1048576, 100931731456, 201863462912, 201863462912},
+    /* p            */ {2, 22, 2, 1},
+    /* kmax         */ {999, 999, 999, 999}},
+    // Hardware parameters for 64 thread(s), policy: spread, subset: L3Cache, NUMANode, NodeMem, GLOBAL_SYNC
+   {
+    /* d            */ 4,
+    /* d_numa       */ -2,
+    /* g            */ {4.320048e-12, 9.123684e-12, 9.945949e-12, 0.000000e+00},
+    /* ls           */ {2.745386e-10, 5.956256e-10, 6.371674e-10, 3.838539e-05},
+    /* m            */ {31457280, 100931731456, 201863462912, 201863462912},
+    /* p            */ {44, 1, 2, 1},
+    /* kmax         */ {999, 999, 999, 999}},
+    // Hardware parameters for 64 thread(s), policy: spread, subset: L2Cache, L3Cache, NUMANode, NodeMem, GLOBAL_SYNC
+   {
+    /* d            */ 5,
+    /* d_numa       */ -3,
+    /* g            */ {1.418715e-12, 4.320048e-12, 9.123684e-12, 9.945949e-12, 0.000000e+00},
+    /* ls           */ {7.541260e-11, 2.745386e-10, 5.956256e-10, 6.371674e-10, 3.838539e-05},
+    /* m            */ {1048576, 31457280, 100931731456, 201863462912, 201863462912},
+    /* p            */ {2, 22, 1, 2, 1},
+    /* kmax         */ {999, 999, 999, 999, 999}},
+    // Hardware parameters for 88 thread(s), policy: spread, subset: NodeMem
+   {
+    /* d            */ 1,
+    /* d_numa       */ 0,
+    /* g            */ {1.012194e-11},
+    /* ls           */ {6.482350e-10},
+    /* m            */ {201863462912},
+    /* p            */ {88},
+    /* kmax         */ {999}},
+    // Hardware parameters for 88 thread(s), policy: spread, subset: L2Cache, NodeMem
+   {
+    /* d            */ 2,
+    /* d_numa       */ -2,
+    /* g            */ {7.847522e-13, 1.012194e-11},
+    /* ls           */ {3.227153e-11, 6.482350e-10},
+    /* m            */ {1048576, 201863462912},
+    /* p            */ {2, 44},
+    /* kmax         */ {999, 999}},
+    // Hardware parameters for 88 thread(s), policy: spread, subset: L3Cache, NodeMem
+   {
+    /* d            */ 2,
+    /* d_numa       */ -2,
+    /* g            */ {2.715910e-12, 1.012194e-11},
+    /* ls           */ {1.731814e-10, 6.482350e-10},
+    /* m            */ {31457280, 201863462912},
+    /* p            */ {44, 2},
+    /* kmax         */ {999, 999}},
+    // Hardware parameters for 88 thread(s), policy: spread, subset: NUMANode, NodeMem
+   {
+    /* d            */ 2,
+    /* d_numa       */ 0,
+    /* g            */ {9.266967e-12, 1.012194e-11},
+    /* ls           */ {6.071917e-10, 6.482350e-10},
+    /* m            */ {100931731456, 201863462912},
+    /* p            */ {44, 2},
+    /* kmax         */ {999, 999}},
+    // Hardware parameters for 88 thread(s), policy: spread, subset: NodeMem, GLOBAL_SYNC
+   {
+    /* d            */ 2,
+    /* d_numa       */ 0,
+    /* g            */ {1.012194e-11, 0.000000e+00},
+    /* ls           */ {6.482350e-10, 5.724430e-05},
+    /* m            */ {201863462912, 201863462912},
+    /* p            */ {88, 1},
+    /* kmax         */ {999, 999}},
+    // Hardware parameters for 88 thread(s), policy: spread, subset: L2Cache, L3Cache, NodeMem
+   {
+    /* d            */ 3,
+    /* d_numa       */ -3,
+    /* g            */ {7.847522e-13, 2.715910e-12, 1.012194e-11},
+    /* ls           */ {3.227153e-11, 1.731814e-10, 6.482350e-10},
+    /* m            */ {1048576, 31457280, 201863462912},
+    /* p            */ {2, 22, 2},
+    /* kmax         */ {999, 999, 999}},
+    // Hardware parameters for 88 thread(s), policy: spread, subset: L2Cache, NUMANode, NodeMem
+   {
+    /* d            */ 3,
+    /* d_numa       */ -2,
+    /* g            */ {7.847522e-13, 9.266967e-12, 1.012194e-11},
+    /* ls           */ {3.227153e-11, 6.071917e-10, 6.482350e-10},
+    /* m            */ {1048576, 100931731456, 201863462912},
+    /* p            */ {2, 22, 2},
+    /* kmax         */ {999, 999, 999}},
+    // Hardware parameters for 88 thread(s), policy: spread, subset: L2Cache, NodeMem, GLOBAL_SYNC
+   {
+    /* d            */ 3,
+    /* d_numa       */ -2,
+    /* g            */ {7.847522e-13, 1.012194e-11, 0.000000e+00},
+    /* ls           */ {3.227153e-11, 6.482350e-10, 5.724430e-05},
+    /* m            */ {1048576, 201863462912, 201863462912},
+    /* p            */ {2, 44, 1},
+    /* kmax         */ {999, 999, 999}},
+    // Hardware parameters for 88 thread(s), policy: spread, subset: L3Cache, NUMANode, NodeMem
+   {
+    /* d            */ 3,
+    /* d_numa       */ -2,
+    /* g            */ {2.715910e-12, 9.266967e-12, 1.012194e-11},
+    /* ls           */ {1.731814e-10, 6.071917e-10, 6.482350e-10},
+    /* m            */ {31457280, 100931731456, 201863462912},
+    /* p            */ {44, 1, 2},
+    /* kmax         */ {999, 999, 999}},
+    // Hardware parameters for 88 thread(s), policy: spread, subset: L3Cache, NodeMem, GLOBAL_SYNC
+   {
+    /* d            */ 3,
+    /* d_numa       */ -2,
+    /* g            */ {2.715910e-12, 1.012194e-11, 0.000000e+00},
+    /* ls           */ {1.731814e-10, 6.482350e-10, 5.724430e-05},
+    /* m            */ {31457280, 201863462912, 201863462912},
+    /* p            */ {44, 2, 1},
+    /* kmax         */ {999, 999, 999}},
+    // Hardware parameters for 88 thread(s), policy: spread, subset: NUMANode, NodeMem, GLOBAL_SYNC
+   {
+    /* d            */ 3,
+    /* d_numa       */ 0,
+    /* g            */ {9.266967e-12, 1.012194e-11, 0.000000e+00},
+    /* ls           */ {6.071917e-10, 6.482350e-10, 5.724430e-05},
+    /* m            */ {100931731456, 201863462912, 201863462912},
+    /* p            */ {44, 2, 1},
+    /* kmax         */ {999, 999, 999}},
+    // Hardware parameters for 88 thread(s), policy: spread, subset: L2Cache, L3Cache, NUMANode, NodeMem
+   {
+    /* d            */ 4,
+    /* d_numa       */ -3,
+    /* g            */ {7.847522e-13, 2.715910e-12, 9.266967e-12, 1.012194e-11},
+    /* ls           */ {3.227153e-11, 1.731814e-10, 6.071917e-10, 6.482350e-10},
+    /* m            */ {1048576, 31457280, 100931731456, 201863462912},
+    /* p            */ {2, 22, 1, 2},
+    /* kmax         */ {999, 999, 999, 999}},
+    // Hardware parameters for 88 thread(s), policy: spread, subset: L2Cache, L3Cache, NodeMem, GLOBAL_SYNC
+   {
+    /* d            */ 4,
+    /* d_numa       */ -3,
+    /* g            */ {7.847522e-13, 2.715910e-12, 1.012194e-11, 0.000000e+00},
+    /* ls           */ {3.227153e-11, 1.731814e-10, 6.482350e-10, 5.724430e-05},
+    /* m            */ {1048576, 31457280, 201863462912, 201863462912},
+    /* p            */ {2, 22, 2, 1},
+    /* kmax         */ {999, 999, 999, 999}},
+    // Hardware parameters for 88 thread(s), policy: spread, subset: L2Cache, NUMANode, NodeMem, GLOBAL_SYNC
+   {
+    /* d            */ 4,
+    /* d_numa       */ -2,
+    /* g            */ {7.847522e-13, 9.266967e-12, 1.012194e-11, 0.000000e+00},
+    /* ls           */ {3.227153e-11, 6.071917e-10, 6.482350e-10, 5.724430e-05},
+    /* m            */ {1048576, 100931731456, 201863462912, 201863462912},
+    /* p            */ {2, 22, 2, 1},
+    /* kmax         */ {999, 999, 999, 999}},
+    // Hardware parameters for 88 thread(s), policy: spread, subset: L3Cache, NUMANode, NodeMem, GLOBAL_SYNC
+   {
+    /* d            */ 4,
+    /* d_numa       */ -2,
+    /* g            */ {2.715910e-12, 9.266967e-12, 1.012194e-11, 0.000000e+00},
+    /* ls           */ {1.731814e-10, 6.071917e-10, 6.482350e-10, 5.724430e-05},
+    /* m            */ {31457280, 100931731456, 201863462912, 201863462912},
+    /* p            */ {44, 1, 2, 1},
+    /* kmax         */ {999, 999, 999, 999}},
+    // Hardware parameters for 88 thread(s), policy: spread, subset: L2Cache, L3Cache, NUMANode, NodeMem, GLOBAL_SYNC
+   {
+    /* d            */ 5,
+    /* d_numa       */ -3,
+    /* g            */ {7.847522e-13, 2.715910e-12, 9.266967e-12, 1.012194e-11, 0.000000e+00},
+    /* ls           */ {3.227153e-11, 1.731814e-10, 6.071917e-10, 6.482350e-10, 5.724430e-05},
+    /* m            */ {1048576, 31457280, 100931731456, 201863462912, 201863462912},
+    /* p            */ {2, 22, 1, 2, 1},
+    /* kmax         */ {999, 999, 999, 999, 999}}
+
+};
+
+// HWParameter_configurations struct
+const cost_models::HW_model::HWParameter_configurations dis_system_params = {
+    /* threads_options_num */ {1, 2, 4, 8, 12, 22, 32, 44, 64, 88},
+    /* policy_options_str */ {"close", "spread"},
+    /* level_options_str  */ {"L2Cache", "L3Cache", "NUMANode", "NodeMem", "GLOBAL_SYNC"},
+    /* hw_model_thread_id */ {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 6, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 8, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9},
+    /* hw_model_policy_id */ {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1},
+    /* hw_model_level_bithash */ {8, 9, 10, 12, 24, 11, 13, 25, 14, 26, 28, 15, 27, 29, 30, 31, 8, 9, 10, 12, 24, 11, 13, 25, 14, 26, 28, 15, 27, 29, 30, 31, 8, 9, 10, 12, 24, 11, 13, 25, 14, 26, 28, 15, 27, 29, 30, 31, 8, 9, 10, 12, 24, 11, 13, 25, 14, 26, 28, 15, 27, 29, 30, 31, 8, 9, 10, 12, 24, 11, 13, 25, 14, 26, 28, 15, 27, 29, 30, 31, 8, 9, 10, 12, 24, 11, 13, 25, 14, 26, 28, 15, 27, 29, 30, 31, 8, 9, 10, 12, 24, 11, 13, 25, 14, 26, 28, 15, 27, 29, 30, 31, 8, 9, 10, 12, 24, 11, 13, 25, 14, 26, 28, 15, 27, 29, 30, 31, 8, 9, 10, 12, 24, 11, 13, 25, 14, 26, 28, 15, 27, 29, 30, 31, 8, 9, 10, 12, 24, 11, 13, 25, 14, 26, 28, 15, 27, 29, 30, 31, 8, 9, 10, 12, 24, 11, 13, 25, 14, 26, 28, 15, 27, 29, 30, 31, 8, 9, 10, 12, 24, 11, 13, 25, 14, 26, 28, 15, 27, 29, 30, 31, 8, 9, 10, 12, 24, 11, 13, 25, 14, 26, 28, 15, 27, 29, 30, 31, 8, 9, 10, 12, 24, 11, 13, 25, 14, 26, 28, 15, 27, 29, 30, 31, 8, 9, 10, 12, 24, 11, 13, 25, 14, 26, 28, 15, 27, 29, 30, 31, 8, 9, 10, 12, 24, 11, 13, 25, 14, 26, 28, 15, 27, 29, 30, 31, 8, 9, 10, 12, 24, 11, 13, 25, 14, 26, 28, 15, 27, 29, 30, 31, 8, 9, 10, 12, 24, 11, 13, 25, 14, 26, 28, 15, 27, 29, 30, 31, 8, 9, 10, 12, 24, 11, 13, 25, 14, 26, 28, 15, 27, 29, 30, 31, 8, 9, 10, 12, 24, 11, 13, 25, 14, 26, 28, 15, 27, 29, 30, 31},
+    /* hw_models */ hw_models_vector
+};
+
+#endif // HW_PARAMS_INTEL6238FULL_HPP
