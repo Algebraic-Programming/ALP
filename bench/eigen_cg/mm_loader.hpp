@@ -19,7 +19,9 @@ namespace alp_bench {
 //  - "coordinate" format; symmetric matrices may have 'symmetric' banner but we do not
 //    auto-complete entries; we assume full explicit listing.
 //  - Ignores comments and blank lines.
+//  - Returns a RowMajor sparse matrix so Eigen's OpenMP SpMV kernels can engage.
 // Throws std::runtime_error on parse errors.
-Eigen::SparseMatrix<double> load_matrix_market(const std::string &path);
+using SparseMatrixRM = Eigen::SparseMatrix<double, Eigen::RowMajor>;
+SparseMatrixRM load_matrix_market(const std::string &path);
 
 } // namespace alp_bench
