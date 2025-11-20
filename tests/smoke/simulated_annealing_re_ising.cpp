@@ -651,7 +651,7 @@ bool parse_arguments( input &in, int argc, char ** argv ) {
     // basic validation
     if ( !in.use_default_data ) {
         if ( std::strlen( in.filename_Jmatrix ) == 0 ) {
-            std::cerr << "Either --use-default-data or both --j-matrix-fname and --h-fname must be provided\n";
+            std::cerr << "Either --use-default-data or both --j-matrix-fname must be provided\n";
             return false;
         }
     }
