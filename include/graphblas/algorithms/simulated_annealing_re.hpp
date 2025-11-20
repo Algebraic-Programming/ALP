@@ -146,19 +146,30 @@ namespace grb {
 			const size_t s 		= spmd<>::pid();
 			const size_t nprocs = spmd<>::nprocs();
 			grb::RC rc = grb::SUCCESS;
+
+#ifndef NDEBUG
+			assert( grb::size(energies) == n_replicas );
+			assert( grb::size(betas) == n_replicas );
+#endif
 			struct data {
-					grb::Vector< StateType, backend > s;
 					EnergyType e;
 					TempType b;
 					int r;
 				};
+			grb::Vector< StateType, backend > s0 ( n );
+			grb::Vector< StateType, backend > s1 ( n );
+			grb::set( s0, static_cast< StateType >( 0 ) );
+			grb::set( s1, static_cast< StateType >( 0 ) );
+
+
 			struct data msg[ 2 ];
-			grb::resize( msg[0].s, n );
-			grb::resize( msg[1].s, n );
+			rc = rc ? rc : grb::resize( s0, n );
+			rc = rc ? rc : grb::resize( s1, n );
+			if( rc != grb::SUCCESS ) return rc;
 			int rand = std::rand();
 
 			for( size_t si = nprocs ; rc == grb::SUCCESS && si > 0; --si ){
-				if( si == s+1 ){
+				if( si-1 == s ){
 					for( size_t i = n_replicas - 1 ; i > 0 ; --i ){
 						const EnergyType de = ( energies[ i ] - energies[ i-1 ]) * (betas[ i ] - betas[ i-1 ]);
 
@@ -167,26 +178,32 @@ namespace grb {
 							std::swap( energies[i], energies[i-1] );
 						}
 					}
-					grb::set( msg[1].s, states[0] );
+					grb::set( s1, states[0] );
 					msg[ 1 ].e = energies[ 0 ];
 					msg[ 1 ].b = betas[0];
 					// msg[ 1 ].r = rand;
-				}else if( si == s+2 ){
-					grb::set( msg[0].s, states[ n_replicas - 1 ] );
+				}else if( si-2 == s ){
+					grb::set( s0, states[ n_replicas - 1 ] );
 					msg[ 0 ].e = energies[ n_replicas - 1 ];
 					msg[ 0 ].b = betas[ n_replicas - 1 ];
 					msg[ 0 ].r = rand;
 				}
 				if( si == 1 ) continue;
 
-				// std::cerr << "Calling broadcasts" << std::endl;
-				rc = rc ? rc : grb::collectives<>::broadcast( msg[ 0 ].s, si-2 );
+#ifdef _GRB_WITH_LPF
+				rc = rc ? rc : grb::internal::broadcast( s0, si-2 );
 				rc = rc ? rc : grb::collectives<>::broadcast( msg[ 0 ].e, si-2 );
 				rc = rc ? rc : grb::collectives<>::broadcast( msg[ 0 ].b, si-2 );
 				rc = rc ? rc : grb::collectives<>::broadcast( msg[ 0 ].r, si-2 );
-				rc = rc ? rc : grb::collectives<>::broadcast( msg[ 1 ].s, si-1 );
+				rc = rc ? rc : grb::internal::broadcast( s1, si-1 );
 				rc = rc ? rc : grb::collectives<>::broadcast( msg[ 1 ].e, si-1 );
 				rc = rc ? rc : grb::collectives<>::broadcast( msg[ 1 ].b, si-1 );
+
+				assert( grb::nnz(s0) == n ); // state has to be dense!
+				assert( grb::nnz(s1) == n ); // state has to be dense!
+#else
+				assert( false ); // this should never run
+#endif
 
 #ifndef NDEBUG
 	
@@ -200,18 +217,16 @@ namespace grb {
 				const EnergyType de = ( msg[ 1 ].e - msg[ 0 ].e ) * ( msg[ 1 ].b - msg[ 0 ].b );
 
 				if( rc == grb::SUCCESS && ( de >= 0 || msg[ 0 ].r < RAND_MAX * internal::exp( de ) ) ){
-					if( si == s+2 ){
-						states[ 0 ] = msg[ 0 ].s;
-						energies[ 0 ] = msg[ 0 ].e;
-						// betas[ 0 ] = msg[ 0 ].b;
-					}else if( si ==  s+1 ){
-						states[ n_replicas-1 ] = msg[ 1 ].s;
-						energies[ n_replicas-1 ] = msg[ 1 ].e;
-						// betas[ n_replicas-1 ] = msg[ 1 ].b;
+					if( si == s+1 ){
+
+						rc = rc ? rc : grb::set( states[ n_replicas - 1 ], s0 );
+						rc = rc ? rc : grb::setElement(energies, msg[ 0 ].e, n_replicas - 1 );
+					}else if( si ==  s+2 ){
+						rc = rc ? rc : grb::set( states[ 0 ], s1 );
+						rc = rc ? rc : grb::setElement(energies, msg[ 1 ].e, 0 );
 					}
 				}
 			}
-
 			return rc;
 		}
 
