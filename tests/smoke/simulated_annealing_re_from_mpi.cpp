@@ -290,12 +290,13 @@ EnergyType get_energy(
 	grb::resize( tmp, n );
 	grb::RC rc = grb::SUCCESS;
 	EnergyType energy = 0.0;
+	constexpr auto dense_descr = descr | grb::descriptors::dense;
 
 	rc = rc ? rc : grb::set< descr >( tmp, 0.0 );
-	rc = rc ? rc : grb::mxv< descr | grb::descriptors::dense >( tmp, couplings, state, ring );
-	rc = rc ? rc : grb::foldl< descr | grb::descriptors::dense >( tmp, static_cast< JType >( 0.5 ), ring.getMultiplicativeMonoid() );
-	rc = rc ? rc : grb::foldl< descr | grb::descriptors::dense >( tmp, local_fields, ring.getAdditiveMonoid() );
-	rc = rc ? rc : grb::dot< descr | grb::descriptors::dense >( energy, tmp, state, ring );
+	rc = rc ? rc : grb::mxv< dense_descr >( tmp, couplings, state, ring );
+	rc = rc ? rc : grb::foldl< dense_descr >( tmp, static_cast< JType >( 0.5 ), ring.getMultiplicativeMonoid() );
+	rc = rc ? rc : grb::foldl< dense_descr >( tmp, local_fields, ring.getAdditiveMonoid() );
+	rc = rc ? rc : grb::dot< dense_descr >( energy, tmp, state, ring );
 	assert( rc == grb::SUCCESS );
 
 	return energy;
@@ -306,11 +307,11 @@ template<
 			grb::operators::add< JType >, grb::operators::mul< JType >,
 			grb::identities::zero, grb::identities::one
 		>,
-		Backend backend = grb::reference,
+		Backend backend = internal_backend,
 		grb::Descriptor descr = grb::descriptors::no_operation
 	>
 EnergyType sequential_sweep_immediate(
-				 grb::Vector< IOType, internal_backend > &state,
+				 grb::Vector< IOType, backend > &state,
 				 const JType &beta,
 				 std::tuple<
 				 	 const grb::Matrix< JType, backend >&,
@@ -330,8 +331,9 @@ EnergyType sequential_sweep_immediate(
 
 		grb::RC rc = grb::SUCCESS;
 		const size_t n = grb::size( state );
-		EnergyType delta_energy = static_cast< EnergyType >(0.0);
+		assert( grb::nnz(state) == n ); // state has to be dense!
 
+		EnergyType delta_energy = static_cast< EnergyType >(0.0);
 		const auto &couplings 	= std::get<0>(data);
 		const auto &local_fields = std::get<1>(data);
 		auto &h 		= std::get<2>(data);
@@ -409,17 +411,17 @@ EnergyType sequential_sweep_immediate(
 			abort();
 		}
 		assert( rc == grb::SUCCESS );
-		if(s == 0){
-			const auto new_state = state;
+		const auto new_state = state;
 
-			const auto real_delta = get_energy(couplings, local_fields, new_state, h) - get_energy(couplings, local_fields, old_state, h);
+		const auto real_delta = get_energy(couplings, local_fields, new_state, h) - get_energy(couplings, local_fields, old_state, h);
+		if(s == 0){
 			std::cerr << "\n\t Delta_energy: " << delta_energy;
 			std::cerr << "\n\t Real delta: " << real_delta;
 			std::cerr << "\n\t Discrepancy: " << real_delta - delta_energy;
 			std::cerr << std::endl;
 
-			assert( ISCLOSE(real_delta, delta_energy ) );
 		}
+		assert( ISCLOSE(real_delta, delta_energy ) );
 #endif
 
 		return delta_energy;
@@ -723,6 +725,7 @@ void grbProgram(
                 rc = grb::algorithms::simulated_annealing_RE(
 					sweep, sweep_data, states, energies, betas, best_state, out.best_energy, data_in.nsweeps, data_in.use_pt
                 );
+				grb::collectives<>::allreduce( out.best_energy, grb::operators::min< EnergyType >() );
 			}
 			if( grb::Properties<>::isNonblockingExecution ) {
 				rc = rc ? rc : wait();
@@ -739,6 +742,7 @@ void grbProgram(
 				assert( ISCLOSE( get_energy( J, h, states[r], tmp_energy ), energies[ r ] ) );
 			}
 		}
+
 
 		out.times.useful = time_taken / static_cast< double >( out.rep );
 		// print timing at root process
@@ -897,6 +901,15 @@ int main( int argc, char ** argv ) {
             return 4;
         }
     }
+
+	int s;
+	if( MPI_Comm_rank(MPI_COMM_WORLD, &s) != MPI_SUCCESS ) {
+		std::cerr << "MPI_Comm_rank returns with non-SUCCESS exit code." << std::endl;
+		return 51;
+	}
+	if( s == 0 ){
+		std::cout << "Finished: error_code=" << out.error_code << " iterations=" << out.iterations << " best_energy=" << out.best_energy << "\n";
+	}
 	
 	// finalise MPI
 	if( MPI_Finalize() != MPI_SUCCESS ) {
@@ -904,6 +917,5 @@ int main( int argc, char ** argv ) {
 		return 50;
 	}
 
-    std::cout << "Finished: error_code=" << out.error_code << " iterations=" << out.iterations << " best_energy=" << out.best_energy << "\n";
     return out.error_code;
 }
