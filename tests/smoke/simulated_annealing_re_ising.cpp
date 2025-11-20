@@ -116,7 +116,7 @@ namespace test_data {
 
     const size_t nnz = j_matrix_data.size();
 
-    const auto h_array_data = {
+    const std::vector< JType > h_array_data = {
         -0.08910436,  0.58034508,  0.97719304,  0.16792909,
 		-0.9221754 , -0.10715418, -0.62365497,  0.25411129,
 		-0.5693644 , -0.69805978,  0.07228861, -0.79922641,
@@ -325,7 +325,12 @@ void ioProgram( const struct input &data_in, bool &success ) {
 		} else {
 			// read from files if provided
 			read_matrix_data<NonzeroT>( data_in.filename_Jmatrix, Jdata, data_in.direct );
-			read_vector_data<JType>( data_in.filename_h, h );
+			if( std::strlen( data_in.filename_h ) > 0 ) {
+				read_vector_data<JType>( data_in.filename_h, h );
+			}else{
+				h.resize( n );
+				std::fill( h.begin(), h.end(), static_cast< JType >( 0 ) );
+			}
 			if(data_in.verify) {
 				if( std::strlen(data_in.filename_ref_solution) == 0 ) {
 					std::cerr << "Reference solution file not provided for verification\n";
@@ -340,7 +345,6 @@ void ioProgram( const struct input &data_in, bool &success ) {
 
 	success = true;
 }
-
 
 void grbProgram(
     const struct input &data_in, 
@@ -398,6 +402,13 @@ void grbProgram(
 			out.error_code = 5;
 			return;
 		}
+		// make J symmetric
+		// grb::Matrix< JType > Jt ( n, n );
+		// Jt = J;
+		// const grb::Monoid< grb::operators::add< JType >, grb::identities::zero > addMonoid;
+		// const grb::Monoid< grb::operators::mul< JType >, grb::identities::one > mulMonoid;
+		// grb::foldl< grb::descriptors::transpose_right >( J, Jt, addMonoid); // issue  #210
+		// grb::foldl<>( J, static_cast< JType >( 0.5 ), mulMonoid);
 
 #ifdef DEBUG_IMSB
 		if( s == 0 && grb::ncols( J ) < 40 ) {
@@ -442,18 +453,21 @@ void grbProgram(
         );
     }
 
-    #ifdef DEBUG_IMSB
 	grb::Vector< EnergyType > tmp_energy ( n );
+	EnergyType initial_energy = get_energy(  J, h, states[0], tmp_energy );
+
 	for ( size_t r = 0; r < n_replicas; ++r ) {
 		const auto en = get_energy(  J, h, states[r], tmp_energy );
+		initial_energy = std::min( en, initial_energy );
+    #ifdef DEBUG_IMSB
 		if( s == 0 ) {
 			std::cout << "Initial state replica " << r << ":\n";
 			print_vector( states[r], 30 ,"states values" );
 			std::cout << "With energy " << en << "\n";
 			std::cout << std::endl;
 		}
-	}
     #endif
+	}
 
 
     // also make betas vector os size n_replicas and initialize with 10.0
@@ -543,6 +557,14 @@ void grbProgram(
 			std::cout << "\tmilliseconds per iteration: "
 				<< ( out.times.useful / static_cast< double >( out.iterations ) )
 				<< "\n";
+
+			if( data_in.verify ){
+				if( out.best_energy < initial_energy ){
+					std::cout << "Test OK" << std::endl;
+				}else{
+					std::cout << "Test FAILED" << std::endl;
+				}
+			}
 		}
 		sleep( 1 );
 	}
@@ -569,7 +591,7 @@ void printhelp( char *progname ) {
               << "Options:\n"
               << "  --use-default-data         Use embedded default test data\n"
               << "  --j-matrix-fname STR       Path to J matrix file (matrix-market or supported)\n"
-              << "  --h-fname STR              Path to h (local fields) vector (whitespace separated)\n"
+              << "  --h-fname STR              Path to h (local fields) vector (whitespace separated), if not provided assume zero\n"
               << "  --n-replicas INT           Number of replicas (default: 3)\n"
               << "  --nsweeps INT              Number of sweeps (default: 2)\n"
               << "  --use-pt BOOL              Use Parallel Tampering (default: 1)\n"
@@ -628,8 +650,7 @@ bool parse_arguments( input &in, int argc, char ** argv ) {
 
     // basic validation
     if ( !in.use_default_data ) {
-        if ( std::strlen( in.filename_Jmatrix ) == 0
-				|| std::strlen( in.filename_h ) == 0 ) {
+        if ( std::strlen( in.filename_Jmatrix ) == 0 ) {
             std::cerr << "Either --use-default-data or both --j-matrix-fname and --h-fname must be provided\n";
             return false;
         }
@@ -682,12 +703,5 @@ int main( int argc, char ** argv ) {
     }
 
     std::cout << "Finished: error_code=" << out.error_code << " iterations=" << out.iterations << " best_energy=" << out.best_energy << "\n";
-	if( in.verify && in.use_default_data ){
-		if( out.best_energy <= -5 ){
-    		std::cout << "Test OK" << std::endl;
-		}else{
-    		std::cout << "Test FAILED" << std::endl;
-		}
-	}
     return out.error_code;
 }
