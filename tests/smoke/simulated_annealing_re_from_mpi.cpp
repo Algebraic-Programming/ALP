@@ -501,7 +501,12 @@ void ioProgram( const struct input &data_in, bool &success ) {
 		} else {
 			// read from files if provided
 			read_matrix_data<NonzeroT>( data_in.filename_Jmatrix, Jdata, data_in.direct );
-			read_vector_data<JType>( data_in.filename_h, h );
+			if( std::strlen( data_in.filename_h ) > 0 ) {
+				read_vector_data<JType>( data_in.filename_h, h );
+			}else{
+				h.resize( n );
+				std::fill( h.begin(), h.end(), static_cast< JType >( 0 ) );
+			}
 			if( data_in.verify ) {
 				if( std::strlen(data_in.filename_ref_solution) == 0 ) {
 					std::cerr << "Reference solution file not provided for verification\n";
@@ -780,7 +785,7 @@ void printhelp( char *progname ) {
               << "Options:\n"
               << "  --use-default-data         Use embedded default test data\n"
               << "  --j-matrix-fname STR       Path to J matrix file (matrix-market or supported)\n"
-              << "  --h-fname STR              Path to h (local fields) vector (whitespace separated)\n"
+              << "  --h-fname STR              Path to h (local fields) vector (whitespace separated), if not provided assume zero\n"
               << "  --n-replicas INT           Number of replicas (default: 3)\n"
               << "  --nsweeps INT              Number of sweeps (default: 2)\n"
               << "  --use-pt BOOL              Use Parallel Tampering (default: 1)\n"
@@ -843,9 +848,8 @@ bool parse_arguments( input &in, int argc, char ** argv ) {
 
     // basic validation
     if ( !in.use_default_data ) {
-        if ( std::strlen( in.filename_Jmatrix ) == 0
-				|| std::strlen( in.filename_h ) == 0 ) {
-            std::cerr << "Either --use-default-data or both --j-matrix-fname and --h-fname must be provided\n";
+        if ( std::strlen( in.filename_Jmatrix ) == 0 ) {
+            std::cerr << "Either --use-default-data or --j-matrix-fname must be provided\n";
             return false;
         }
     }
