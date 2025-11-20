@@ -11,6 +11,7 @@
 #include <cstring>
 
 using Clock = std::chrono::steady_clock;
+using alp_bench::SparseMatrixRM;
 
 struct RunStats {
     double mean_iter_ms = 0.0;
@@ -27,7 +28,7 @@ static void usage(const char *prog) {
 }
 
 // Manual CG for benchmarking. If fixed mode: always run exactly NITER iterations regardless of convergence.
-RunStats run_cg(const Eigen::SparseMatrix<double> &A,
+RunStats run_cg(const SparseMatrixRM &A,
                const Eigen::VectorXd &b,
                int max_iter,
                double tol,
@@ -138,7 +139,7 @@ int main(int argc, char **argv) {
     }
 
     try {
-        auto A = alp_bench::load_matrix_market(matrix_path);
+        SparseMatrixRM A = alp_bench::load_matrix_market(matrix_path);
         if(A.rows() != A.cols()) {
             std::cerr << "Warning: matrix is not square; CG may not be valid.\n";
         }

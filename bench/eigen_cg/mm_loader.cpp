@@ -5,7 +5,7 @@
 
 namespace alp_bench {
 
-Eigen::SparseMatrix<double> load_matrix_market(const std::string &path) {
+SparseMatrixRM load_matrix_market(const std::string &path) {
     std::ifstream in(path);
     if(!in) {
         throw std::runtime_error("Cannot open matrix file: " + path);
@@ -78,7 +78,7 @@ Eigen::SparseMatrix<double> load_matrix_market(const std::string &path) {
     if(count != nnz) {
         std::cerr << "Warning: declared nnz=" << nnz << " but parsed " << count << " entries\n";
     }
-    Eigen::SparseMatrix<double> A(static_cast<int>(rows), static_cast<int>(cols));
+    SparseMatrixRM A(static_cast<int>(rows), static_cast<int>(cols));
     A.setFromTriplets(triplets.begin(), triplets.end());
     A.makeCompressed();
     return A;
