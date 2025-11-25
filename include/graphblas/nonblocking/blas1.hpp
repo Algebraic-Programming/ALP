@@ -10461,7 +10461,7 @@ namespace grb {
 					for( size_t k = 0; k < AnyOp::blocksize; ++k, ++i ) {
 						if( mask[ k ] ) {
 							xx[ k ] = static_cast< typename AnyOp::D1 >(
-								a[ ( already_dense_input_y ? i : local_y.index( i ) ) + lower_bound ] );
+								a[ ( already_dense_input_x ? i : local_x.index( i ) ) + lower_bound ] );
 							yy[ k ] = static_cast< typename AnyOp::D2 >(
 								b[ ( already_dense_input_y ? i : local_y.index( i ) ) + lower_bound ] );
 						}
@@ -10504,10 +10504,11 @@ namespace grb {
 				for( ; i < local_nz; ++i ) {
 					typename AddMonoid::D3 temp =
 						addMonoid.template getIdentity< typename AddMonoid::D3 >();
-					const size_t index = ( already_dense_input_x ? i : local_x.index( i ) ) +
+					const size_t index_a = ( already_dense_input_x ? i : local_x.index( i ) ) +
 						lower_bound;
-					if( already_dense_input_y || local_y.assigned( index - lower_bound ) ) {
-						apply( temp, a[ index ], b[ index ], anyOp );
+					if( already_dense_input_y || local_y.assigned( i ) ) {
+						const size_t index_b = ( already_dense_input_y ? i : local_y.index( i ) ) + lower_bound;
+						apply( temp, a[ index_a ], b[ index_b ], anyOp );
 						foldr( temp, thread_local_output, addMonoid.getOperator() );
 					}
 				}
