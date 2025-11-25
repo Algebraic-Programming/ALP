@@ -575,7 +575,7 @@ namespace grb {
 			}
 
 			grb::Vector< QType, backend > h ( n );
-			grb::Vector< QType, backend > log_rand ( n );
+			grb::Vector< QType, backend > rand ( n );
 			grb::Vector< StateType, backend > delta ( n );
 			grb::Vector< EnergyType, backend > dn ( n );
 			grb::Vector< bool, backend > accept ( n );
@@ -583,13 +583,13 @@ namespace grb {
     		std::minstd_rand rng ( seed ); // minstd_rand or std::mt19937
 
 			grb::resize( h, n );
-			grb::resize( log_rand, n );
+			grb::resize( rand, n );
 			grb::resize( delta, n );
 			grb::resize( dn, n );
 			grb::resize( accept, n );
 
 			std::vector< grb::Vector< bool, backend > > masks ;
-			rc = rc ? rc : matrix_partition< descr >( masks, couplings, h, log_rand, seed );
+			rc = rc ? rc : matrix_partition< descr >( masks, couplings, h, rand, seed );
 			grb::clear(h);
 			constexpr auto dense_descr = descr | grb::descriptors::dense;
 
@@ -598,7 +598,7 @@ namespace grb {
 					(const typeof(local_fields)&) local_fields,
 					(const typeof(masks)&) masks,
 					h,
-					log_rand,
+					rand,
 					delta,
 					dn,
 					accept,
@@ -606,7 +606,11 @@ namespace grb {
 					(const typeof(ring)&) ring
 					);
 
-			const auto ising_sweep = [](
+#ifdef NDEBUG
+            const auto ising_sweep = [](
+#else
+            const auto ising_sweep = [&get_energy](
+#endif
 				 grb::Vector< StateType, backend > &state,
 				 const TempType &beta,
 				 typeof(sweep_data) &data
@@ -618,7 +622,7 @@ namespace grb {
 				const auto &local_fields = std::get<1>(data);
 				const auto &masks = std::get<2>(data);
 				auto &h = std::get<3>(data);
-				auto &log_rand = std::get<4>(data);
+				auto &rand = std::get<4>(data);
 				auto &delta = std::get<5>(data);
 				auto &dn = std::get<6>(data);
 				auto &accept = std::get<7>(data);
@@ -628,6 +632,7 @@ namespace grb {
 				const size_t n = grb::size( state );
 				EnergyType delta_energy = static_cast< EnergyType >(0.0);
 				grb::RC rc = grb::SUCCESS;
+				(void) n;
 
 				if( !empty_local_fields) {
 					rc = rc ? rc : grb::set< descr >( h, local_fields );
@@ -635,42 +640,37 @@ namespace grb {
 					rc = rc ? rc : grb::set< descr >( h, static_cast< QType >( 0.0 ) );
 				}
 				rc = rc ? rc : grb::mxv< dense_descr >( h, couplings, state , ring );
-				std::uniform_real_distribution< QType > rand ( 0.0, 1.0 );
-				for( size_t j = 0 ; j < n ; ++j ){
-					const auto rnd = rand( rng );
-					rc = rc ? rc : grb::setElement(log_rand,  internal::log( rnd ), j );
+				std::uniform_real_distribution< QType > rand_gen ( 0.0, 1.0 );
+				for( size_t i = 0 ; i < n; ++i ){
+					grb::setElement( rand, rand_gen( rng ), i );
 				}
+
 #ifndef NDEBUG
 				const grb::Vector< StateType > old_state = state;
 #endif
 				rc = rc ? rc : grb::wait();
 				for(const auto &mask : masks ){
-					rc = rc ? rc : grb::clear( accept  );
-					rc = rc ? rc : grb::clear( delta  );
-					rc = rc ? rc : grb::clear( dn );
-
 					// dn = (2*state_slice - 1) * h_slice
 					rc = rc ? rc : grb::set< descr >( dn, mask, state );
 					rc = rc ? rc : grb::foldl< descr >( dn, static_cast< EnergyType >( 2 ), ring.getMultiplicativeMonoid()  );
 					rc = rc ? rc : grb::foldl< descr >( dn, static_cast< EnergyType >( -1 ), ring.getAdditiveMonoid() );
 					rc = rc ? rc : grb::foldl< descr >( dn, h, ring.getMultiplicativeMonoid() );
 
-					// ( dn >= 0 ) | ( log_rand < beta * dn )
+					// ( dn >= 0 ) | ( rand < beta * dn )
 					rc = rc ? rc : grb::set< descr >( accept, mask );
 					rc = rc ? rc : grb::wait(); // needed to avoid ERROR: Segmentation Fault with nonblocking backend
 					rc = rc ? rc : grb::eWiseLambda< descr >(
-							[ &mask, &accept, &dn, &log_rand, beta ]( const size_t i ){
+							[ &mask, &accept, &dn, &rand, beta ]( const size_t i ){
 						if( mask[i] ){
-							accept[i] = ( dn[i] >= 0 ) || ( log_rand[i] < beta * dn[i] );
+							accept[i] = ( dn[i] >= 0 ) || ( internal::log( rand[i] ) < beta * dn[i] );
 						}
-					}, mask, log_rand, dn, accept );
+					}, mask, rand, dn, accept );
 
 					// new_state = np.where(accept, 1 - old, old)
 					rc = rc ? rc : grb::foldl< descr >( state, accept, static_cast< StateType >( -1 ), ring.getMultiplicativeMonoid() );
 					rc = rc ? rc : grb::foldl< descr >( state, accept, static_cast< StateType >( 1 ), ring.getAdditiveMonoid() );
 					
 					// delta = new - old ==> delta[accept] = 2*new_state[accept]-1
-					rc = rc ? rc : grb::clear( delta  );
 					rc = rc ? rc : grb::set< descr >( delta, accept, state );
 					rc = rc ? rc : grb::foldl< descr >( delta, accept, static_cast< StateType >( 2 ), ring.getMultiplicativeMonoid() );
 					rc = rc ? rc : grb::foldl< descr >( delta, accept, static_cast< StateType >( -1 ), ring.getAdditiveMonoid() );
@@ -694,8 +694,8 @@ namespace grb {
 
 				EnergyType e1 = static_cast< EnergyType >( 0.0 ),
 						   e2 = static_cast< EnergyType >( 0.0 );
-				// get_energy(e1, old_state);
-				// get_energy(e2, new_state);
+				get_energy(e1, old_state);
+				get_energy(e2, new_state);
 				const auto real_delta = e2 - e1;
 				if( s == 0 ){
 					std::cerr << "\n\t Delta_energy: " << delta_energy;
@@ -704,7 +704,7 @@ namespace grb {
 					std::cerr << std::endl;
 				}
 
-				// assert( ISCLOSE(real_delta, delta_energy ) );
+				assert( ISCLOSE(real_delta, delta_energy ) );
 #endif
 				return delta_energy;
 			};
