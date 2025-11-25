@@ -378,7 +378,7 @@ namespace grb {
 			const size_t
 		) {
 			bool ret = assigned;
-			if( ( descriptor & descriptors::structural_complement ) == descriptors::structural_complement ) {
+			if( ( descriptor & descriptors::invert_mask ) == descriptors::invert_mask ) {
 				return !ret;
 			} else {
 				return ret;
