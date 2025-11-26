@@ -34,6 +34,7 @@
 #include <utility>
 #include <iterator>
 #include <cmath>
+#include <cstdint>
 
 #include <assert.h>
 

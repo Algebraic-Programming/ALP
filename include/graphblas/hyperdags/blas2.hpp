@@ -32,6 +32,7 @@
 #include <graphblas/hyperdags/init.hpp>
 
 #include <array>
+#include <cstdint>
 
 
 namespace grb {

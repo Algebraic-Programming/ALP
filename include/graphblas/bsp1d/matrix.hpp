@@ -23,6 +23,8 @@
 #ifndef _H_GRB_BSP1D_MATRIX
 #define _H_GRB_BSP1D_MATRIX
 
+#include <cstdint>
+
 #include <graphblas/backends.hpp>
 #include <graphblas/base/matrix.hpp>
 #include <graphblas/rc.hpp>

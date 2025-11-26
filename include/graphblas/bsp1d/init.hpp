@@ -24,6 +24,8 @@
 #define _H_GRB_BSP1D_INIT
 
 #include <vector> //queue of HP put and get requests
+#include <cstdint> // uintptr_t
+
 
 #include "config.hpp"
 

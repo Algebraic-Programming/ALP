@@ -26,6 +26,7 @@
 #include <map>
 #include <sstream>
 #include <vector>
+#include <cstdint>
 
 #include <lpf/core.h>
 

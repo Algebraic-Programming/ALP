@@ -24,6 +24,7 @@
 #define _H_GRB_BANSHEE_COORDINATES
 
 #include <stddef.h> //size_t
+#include <cstdint.h> //size_t
 
 #include <vector>
 

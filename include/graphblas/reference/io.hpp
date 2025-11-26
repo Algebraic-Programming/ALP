@@ -24,6 +24,7 @@
 #define _H_GRB_REFERENCE_IO
 
 #include <graphblas/base/io.hpp>
+#include <cstdint>
 
 #include "vector.hpp"
 #include "matrix.hpp"
