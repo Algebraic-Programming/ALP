@@ -337,7 +337,7 @@ EnergyType sequential_sweep_immediate(
 		const auto &couplings 	= std::get<0>(data);
 		const auto &local_fields = std::get<1>(data);
 		auto &h 		= std::get<2>(data);
-		auto &log_rand	= std::get<3>(data);
+		auto &rand	= std::get<3>(data);
 		auto &delta		= std::get<4>(data);
 		const auto &masks = std::get<5>(data);
 		auto &dn		= std::get<6>(data);
@@ -346,7 +346,7 @@ EnergyType sequential_sweep_immediate(
 
 		rc = rc ? rc : grb::wait();
 		rc = rc ? rc : grb::resize( h, n );
-		rc = rc ? rc : grb::resize( log_rand, n );
+		rc = rc ? rc : grb::resize( rand, n );
 		rc = rc ? rc : grb::resize( delta, n );
 		rc = rc ? rc : grb::resize( dn, n );
 		rc = rc ? rc : grb::resize( accept, n );
@@ -354,12 +354,13 @@ EnergyType sequential_sweep_immediate(
 		rc = rc ? rc : grb::set< descr >( h, local_fields );
 		rc = rc ? rc : grb::mxv< descr >( h, couplings, state , ring );
 
-		std::uniform_real_distribution< JType > rand ( 0.0, 1.0 );
-		for( size_t j = 0 ; j < n ; ++j ){
-			const auto rnd = rand( rng );
-			rc = rc ? rc : grb::setElement(log_rand,  std::log( rnd ), j );
+		std::exponential_distribution< EnergyType > rand_gen ( beta );
+		for( size_t i = 0 ; i < n; ++i ){
+			const auto rnd = -rand_gen( rng );
+			grb::setElement( rand, rnd, i );
 		}
 
+		const grb::operators::leq< EnergyType > leq_operator;
 #ifndef NDEBUG
 		const grb::Vector< IOType, backend > old_state = state;
 #endif
@@ -375,16 +376,10 @@ EnergyType sequential_sweep_immediate(
 			rc = rc ? rc : grb::foldl< descr >( dn, static_cast< EnergyType >( -1 ), ring.getAdditiveMonoid() );
 			rc = rc ? rc : grb::foldl< descr >( dn, h, ring.getMultiplicativeMonoid() );
 
-			// ( dn >= 0 ) | ( log_rand < beta * dn )
-			rc = rc ? rc : grb::set< descr >( accept, mask );
-			rc = rc ? rc : grb::wait(); // needed to avoid ERROR: Segmentation Fault with nonblocking backend
-			rc = rc ? rc : grb::eWiseLambda< descr >(
-					[ &mask, &accept, &dn, &log_rand, beta ]( const size_t i ){
-						(void) i;
-						if( mask[i] ){
-							accept[i] = ( dn[i] >= 0 ) || ( log_rand[i] < beta * dn[i] );
-						}
-					}, mask, log_rand, dn, accept );
+			// Choose which changes to accept
+			// ( dn >= 0 ) | ( rand/beta < dn )
+			rc = rc ? rc : grb::foldl< descr >( dn, rand, leq_operator );
+			rc = rc ? rc : grb::set< descr >( accept, dn, mask );
 
 			// new_state = np.where(accept, 1 - old, old)
 			rc = rc ? rc : grb::foldl< descr >( state, accept, static_cast< IOType >( -1 ), ring.getMultiplicativeMonoid() );
