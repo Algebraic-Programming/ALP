@@ -35,6 +35,7 @@
 
 #include <stddef.h> //size_t
 #include <assert.h>
+#include <cstdint> // uintptr_t
 
 #include <graphblas/rc.hpp>
 #include <graphblas/backends.hpp>
