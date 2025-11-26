@@ -25,6 +25,7 @@
 
 #include <new>
 #include <algorithm>
+#include <cstdint>
 
 #include <graphblas/base/init.hpp>
 #include <graphblas/utils/DMapper.hpp>

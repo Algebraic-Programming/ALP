@@ -26,6 +26,7 @@
 
 #include <type_traits>
 #include <typeinfo>
+#include <cstdint>
 
 #ifndef _H_GRB_IO_BASE
 #define _H_GRB_IO_BASE
