@@ -1205,7 +1205,7 @@ void grb_program( const size_t &n, grb::RC &rc ) {
 	rc = grb::set< invert >( dst, one_mask, 3.14 );
 	rc = rc ? rc : grb::wait( dst );
 	if( !expect_success( rc ) ) { return; }
-	rc = expect_all_but_one( dst, half_size );
+	rc = expect_none( dst );
 	if( rc != grb::SUCCESS ) { return; }
 
 	std::cerr << "\b 20:";
@@ -1256,7 +1256,7 @@ void grb_program( const size_t &n, grb::RC &rc ) {
 	rc = grb::set< invert >( dst, one_mask, src );
 	rc = rc ? rc : grb::wait( dst );
 	if( !expect_success( rc ) ) { return; }
-	rc = expect_one( dst, 0, 0 );
+	rc = expect_none( dst );
 	if( rc != grb::SUCCESS ) { return; }
 
 	std::cerr << "\b 22:";
@@ -1277,7 +1277,7 @@ void grb_program( const size_t &n, grb::RC &rc ) {
 	rc = grb::set< invert >( dst, one_mask, src );
 	rc = rc ? rc : grb::wait( dst );
 	if( !expect_success( rc ) ) { return; }
-	rc = expect_all_but_one( dst, half_size );
+	rc = expect_none( dst );
 	if( rc != grb::SUCCESS ) { return; }
 
 	std::cerr << "\b 24:";
@@ -1298,7 +1298,7 @@ void grb_program( const size_t &n, grb::RC &rc ) {
 	rc = grb::set< invert >( dst, one_mask, 7.17 );
 	rc = rc ? rc : grb::wait( dst );
 	if( !expect_success( rc ) ) { return; }
-	rc = expect_all_but_one( dst, half_size );
+	rc = expect_none( dst );
 	if( rc != grb::SUCCESS ) { return; }
 
 	std::cerr << "\b 26:";
@@ -1365,7 +1365,7 @@ void grb_program( const size_t &n, grb::RC &rc ) {
 	rc = grb::set< invert >( dst, one_mask, src );
 	rc = rc ? rc : grb::wait( dst );
 	if( !expect_success( rc ) ) { return; }
-	rc = expect_one( dst, 0, 0 );
+	rc = expect_none( dst );
 	if( rc != grb::SUCCESS ) { return; }
 
 	std::cerr << "\b 28:";
@@ -1408,7 +1408,7 @@ void grb_program( const size_t &n, grb::RC &rc ) {
 	rc = grb::set< invert >( dst, one_mask, src );
 	rc = rc ? rc : grb::wait( dst );
 	if( !expect_success( rc ) ) { return; }
-	rc = expect_all_but_one( dst, half_size );
+	rc = expect_none( dst );
 	if( rc != grb::SUCCESS ) { return; }
 
 	std::cerr << "\b 30:";
