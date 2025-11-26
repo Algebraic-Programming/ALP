@@ -640,11 +640,14 @@ namespace grb {
 					rc = rc ? rc : grb::set< descr >( h, static_cast< QType >( 0.0 ) );
 				}
 				rc = rc ? rc : grb::mxv< dense_descr >( h, couplings, state , ring );
-				std::uniform_real_distribution< QType > rand_gen ( 0.0, 1.0 );
+
+				std::exponential_distribution< EnergyType > rand_gen ( beta );
 				for( size_t i = 0 ; i < n; ++i ){
-					grb::setElement( rand, rand_gen( rng ), i );
+					const auto rnd = -rand_gen( rng );
+					grb::setElement( rand, rnd, i );
 				}
 
+				const grb::operators::leq< EnergyType > leq_operator;
 #ifndef NDEBUG
 				const grb::Vector< StateType > old_state = state;
 #endif
@@ -656,15 +659,10 @@ namespace grb {
 					rc = rc ? rc : grb::foldl< descr >( dn, static_cast< EnergyType >( -1 ), ring.getAdditiveMonoid() );
 					rc = rc ? rc : grb::foldl< descr >( dn, h, ring.getMultiplicativeMonoid() );
 
-					// ( dn >= 0 ) | ( rand < beta * dn )
-					rc = rc ? rc : grb::set< descr >( accept, mask );
-					rc = rc ? rc : grb::wait(); // needed to avoid ERROR: Segmentation Fault with nonblocking backend
-					rc = rc ? rc : grb::eWiseLambda< descr >(
-							[ &mask, &accept, &dn, &rand, beta ]( const size_t i ){
-						if( mask[i] ){
-							accept[i] = ( dn[i] >= 0 ) || ( internal::log( rand[i] ) < beta * dn[i] );
-						}
-					}, mask, rand, dn, accept );
+					// Choose which changes to accept
+					// ( dn >= 0 ) | ( rand/beta < dn )
+					rc = rc ? rc : grb::foldl< descr >( dn, rand, leq_operator );
+					rc = rc ? rc : grb::set< descr >( accept, dn, mask );
 
 					// new_state = np.where(accept, 1 - old, old)
 					rc = rc ? rc : grb::foldl< descr >( state, accept, static_cast< StateType >( -1 ), ring.getMultiplicativeMonoid() );
