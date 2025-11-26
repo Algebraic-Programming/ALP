@@ -51,6 +51,18 @@ for MODE in ${MODES}; do
 		echo "                                 field (double, integers, and floats)"
 		${TEST_BIN_DIR}/mul15m_${MODE}
 
+		echo ">>>      [x]           [ ]       Testing pre-defined monoids"
+		${TEST_BIN_DIR}/monoids_${MODE} &> ${TEST_OUT_DIR}/monoids_${MODE}.log
+		head -1 ${TEST_OUT_DIR}/monoids_${MODE}.log
+		grep 'Test OK' ${TEST_OUT_DIR}/monoids_${MODE}.log || echo "Test FAILED"
+		echo " "
+
+		echo ">>>      [x]           [ ]       Testing pre-defined semirings"
+		${TEST_BIN_DIR}/semirings_${MODE} &> ${TEST_OUT_DIR}/semirings_${MODE}.log
+		head -1 ${TEST_OUT_DIR}/semirings_${MODE}.log
+		grep 'Test OK' ${TEST_OUT_DIR}/semirings_${MODE}.log || echo "Test FAILED"
+		echo " "
+
 		echo ">>>      [x]           [ ]       Tests the built-in parser on the west0497 MatrixMarket file"
 		if [ -f ${INPUT_DIR}/west0497.mtx ]; then
 			${TEST_BIN_DIR}/parserTest_${MODE} ${INPUT_DIR}/west0497.mtx 2> ${TEST_OUT_DIR}/parserTest_${MODE}.err 1> ${TEST_OUT_DIR}/parserTest_${MODE}.out
@@ -101,7 +113,7 @@ for MODE in ${MODES}; do
 			echo "[ 0, *] nrow =           59, ncol =           59, nnnz =          163
 [ 0, *] offb =          564, fsiz =         1494, offe =         1493
 [ *, *] ntot =          163" > ${TEST_OUT_DIR}/hpparser.chk
-			(diff ${TEST_OUT_DIR}/hpparser_${MODE} ${TEST_OUT_DIR}/hpparser.chk && printf "Test OK.\n\n") || printf "Test FAILED.\n\n"
+			(diff ${TEST_OUT_DIR}/hpparser_${MODE} ${TEST_OUT_DIR}/hpparser.chk && printf "Test OK\n\n") || printf "Test FAILED\n\n"
 		else
 			echo "Test DISABLED: dwt_59.mtx was not found. To enable, please provide ${INPUT_DIR}/dwt_59.mtx"
 			echo " "
@@ -153,11 +165,12 @@ for MODE in ${MODES}; do
 				elif [ "${BACKEND}" = "hybrid" ]; then
 					runner="${runner} ${MPI_PASS_ENV} ${LPFRUN_PASSTHROUGH}OMP_NUM_THREADS=${T}"
 					runner="${runner} ${BIND_PROCESSES_TO_MULTIPLE_HW_THREADS}${T}"
-				elif [ "$BACKEND" = "reference_omp" ]; then
+				elif [ "$BACKEND" = "reference_omp" ] || [ "$BACKEND" = "nonblocking" ]; then
 					export OMP_NUM_THREADS=${T}
 				fi
 
 				if [ "$BACKEND" = "reference" ] || [ "${BACKEND}" = "reference_omp" ]; then
+
 					echo "#################################################################"
 					echo "# Starting unit tests specific to the ${BACKEND} backend"
 					echo "#   using ${MODE} mode"
@@ -175,6 +188,15 @@ for MODE in ${MODES}; do
 					head -1 ${TEST_OUT_DIR}/eWiseApplyMatrixReference_${MODE}_${BACKEND}_${T}.log
 					grep 'Test OK' ${TEST_OUT_DIR}/eWiseApplyMatrixReference_${MODE}_${BACKEND}_${T}.log || echo "Test FAILED"
 					echo " "
+
+					echo ">>>      [x]           [ ]       Testing BLAS3 grb::mxm (unmasked) on simple matrices"
+					echo "                                 of size 100 x 100 using the (+,*) semiring over"
+					echo "                                 doubles. This test uses the force_row_major descriptor"
+					$runner ${TEST_BIN_DIR}/mxm_crs_${MODE}_${BACKEND} &> ${TEST_OUT_DIR}/mxm_crs_${MODE}_${BACKEND}_${P}_${T}.log
+					head -1 ${TEST_OUT_DIR}/mxm_crs_${MODE}_${BACKEND}_${P}_${T}.log
+					grep 'Test OK' ${TEST_OUT_DIR}/mxm_crs_${MODE}_${BACKEND}_${P}_${T}.log || echo "Test FAILED"
+					echo " "
+
 				fi
 
 				echo "#################################################################"
@@ -250,6 +272,13 @@ for MODE in ${MODES}; do
 				$runner ${TEST_BIN_DIR}/set_${MODE}_${BACKEND} 1000000 &> ${TEST_OUT_DIR}/set_${MODE}_${BACKEND}_${P}_${T}.log
 				head -1 ${TEST_OUT_DIR}/set_${MODE}_${BACKEND}_${P}_${T}.log
 				grep 'Test OK' ${TEST_OUT_DIR}/set_${MODE}_${BACKEND}_${P}_${T}.log || echo "Test FAILED"
+				echo " "
+
+				echo ">>>      [x]           [ ]       Testing grb::set on vectors of doubles of size"
+				echo "                                 1 000 002 using the use_index descriptor."
+				$runner ${TEST_BIN_DIR}/setToIndex_${MODE}_${BACKEND} 1000002 &> ${TEST_OUT_DIR}/setToIndex_${MODE}_${BACKEND}_${P}_${T}.log
+				head -1 ${TEST_OUT_DIR}/setToIndex_${MODE}_${BACKEND}_${P}_${T}.log
+				grep 'Test OK' ${TEST_OUT_DIR}/setToIndex_${MODE}_${BACKEND}_${P}_${T}.log || echo "Test FAILED"
 				echo " "
 
 				echo ">>>      [x]           [ ]       Testing the grb::pinnedVector on fundamental and"
@@ -452,7 +481,19 @@ for MODE in ${MODES}; do
 				echo ">>>      [x]           [ ]       Testing grb::set (matrices)"
 				$runner ${TEST_BIN_DIR}/matrixSet_${MODE}_${BACKEND} 2> ${TEST_OUT_DIR}/matrixSet_${MODE}_${BACKEND}_${P}_${T}.err 1> ${TEST_OUT_DIR}/matrixSet_${MODE}_${BACKEND}_${P}_${T}.log
 				head -1 ${TEST_OUT_DIR}/matrixSet_${MODE}_${BACKEND}_${P}_${T}.log
-				echo "Test OK" ${TEST_OUT_DIR}/matrixSet_${MODE}_${BACKEND}_${P}_${T}.log || echo "Test FAILED"
+				grep "Test OK" ${TEST_OUT_DIR}/matrixSet_${MODE}_${BACKEND}_${P}_${T}.log || echo "Test FAILED"
+				echo " "
+
+				echo ">>>      [x]           [ ]       Testing grb::set (matrix, value)"
+				$runner ${TEST_BIN_DIR}/setMatrixValue_${MODE}_${BACKEND} 2> ${TEST_OUT_DIR}/setMatrixValue_${MODE}_${BACKEND}_${P}_${T}.err 1> ${TEST_OUT_DIR}/setMatrixValue_${MODE}_${BACKEND}_${P}_${T}.log
+				head -1 ${TEST_OUT_DIR}/setMatrixValue_${MODE}_${BACKEND}_${P}_${T}.log
+				grep "Test OK" ${TEST_OUT_DIR}/setMatrixValue_${MODE}_${BACKEND}_${P}_${T}.log || echo "Test FAILED"
+				echo " "
+
+				echo ">>>      [x]           [ ]       Testing grb::foldl+r (scalar, matrix, [mask], monoid)"
+				$runner ${TEST_BIN_DIR}/fold_matrix_to_scalar_${MODE}_${BACKEND} 2> ${TEST_OUT_DIR}/fold_matrix_to_scalar_${MODE}_${BACKEND}_${P}_${T}.err 1> ${TEST_OUT_DIR}/fold_matrix_to_scalar_${MODE}_${BACKEND}_${P}_${T}.log
+				head -1 ${TEST_OUT_DIR}/fold_matrix_to_scalar_${MODE}_${BACKEND}_${P}_${T}.log
+				grep "Test OK" ${TEST_OUT_DIR}/fold_matrix_to_scalar_${MODE}_${BACKEND}_${P}_${T}.log || echo "Test FAILED"
 				echo " "
 
 				echo ">>>      [x]           [ ]       Tests the \`level-0' grb::collectives"
@@ -610,11 +651,30 @@ for MODE in ${MODES}; do
 				grep 'Test OK' ${TEST_OUT_DIR}/zip_large_${MODE}_${BACKEND}_${P}_${T} || echo "Test FAILED"
 				echo " "
 
+				echo ">>>      [x]           [ ]       Testing grb::select on matrices of integers and of size 3"
+				$runner ${TEST_BIN_DIR}/selectMatrix_${MODE}_${BACKEND} 3 &> ${TEST_OUT_DIR}/selectMatrix_${MODE}_${BACKEND}_${P}_${T}_3
+				head -1 ${TEST_OUT_DIR}/selectMatrix_${MODE}_${BACKEND}_${P}_${T}_3
+				grep 'Test OK' ${TEST_OUT_DIR}/selectMatrix_${MODE}_${BACKEND}_${P}_${T}_3 || echo "Test FAILED"
+				echo " "
+
+				echo ">>>      [x]           [ ]       Testing grb::select on matrices of integers and of size 5'000"
+				$runner ${TEST_BIN_DIR}/selectMatrix_${MODE}_${BACKEND} 5000 &> ${TEST_OUT_DIR}/selectMatrix_${MODE}_${BACKEND}_${P}_${T}
+				head -1 ${TEST_OUT_DIR}/selectMatrix_${MODE}_${BACKEND}_${P}_${T}
+				grep 'Test OK' ${TEST_OUT_DIR}/selectMatrix_${MODE}_${BACKEND}_${P}_${T} || echo "Test FAILED"
+				echo " "
+
 				echo ">>>      [x]           [ ]       Testing copy-constructor of square pattern matrices"
 				echo "                                 of size 1003."
 				$runner ${TEST_BIN_DIR}/copyVoidMatrices_${MODE}_${BACKEND} 1003 &> ${TEST_OUT_DIR}/copyVoidMatrices_${MODE}_${BACKEND}_${P}_${T}
 				head -1 ${TEST_OUT_DIR}/copyVoidMatrices_${MODE}_${BACKEND}_${P}_${T}
 				grep 'Test OK' ${TEST_OUT_DIR}/copyVoidMatrices_${MODE}_${BACKEND}_${P}_${T} || echo "Test FAILED"
+				echo " "
+
+				echo ">>>      [x]           [ ]       Testing copy-constructor of square matrices with mixed-domains"
+				echo "                                 of size 1003."
+				$runner ${TEST_BIN_DIR}/copyMixedDomainsMatrices_${MODE}_${BACKEND} 1003 &> ${TEST_OUT_DIR}/copyMixedDomainsMatrices_${MODE}_${BACKEND}_${P}_${T}
+				head -1 ${TEST_OUT_DIR}/copyMixedDomainsMatrices_${MODE}_${BACKEND}_${P}_${T}
+				grep 'Test OK' ${TEST_OUT_DIR}/copyMixedDomainsMatrices_${MODE}_${BACKEND}_${P}_${T} || echo "Test FAILED"
 				echo " "
 
 				if [ "$BACKEND" = "bsp1d" ] || [ "$BACKEND" = "hybrid" ]; then
@@ -749,15 +809,21 @@ for MODE in ${MODES}; do
 				wait"
 			head -1 ${test_log}.0
 			(grep -q 'Test OK' ${test_log}.1 && grep -q 'Test OK' ${test_log}.2 && grep -q 'Test OK' ${test_log}.3 \
-				&& grep -q 'Test OK' ${test_log}.0 && printf "Test OK.\n\n") || (printf "Test FAILED.\n\n")
+				&& grep -q 'Test OK' ${test_log}.0 && printf "Test OK\n\n") || (printf "Test FAILED\n\n")
 		fi
 
 		if [ "$BACKEND" = "bsp1d" ]; then
 			echo "Additional unit tests for the BSP1D backend:"
 			echo " "
-			echo ">>>      [x]           [ ]       Testing BSP1D distribution for a vector of size 100000"
+			echo ">>>      [x]           [ ]       Testing BSP1D distribution for a vector of size 100 000"
 			echo " "
 			${TEST_BIN_DIR}/distribution_bsp1d_${MODE}
+
+			echo ">>>      [x]           [ ]       Testing BSP1D distribution for an identity matrix of size"
+			echo "                                 7777 x 7777. The test evaluates whether the internal data"
+			echo "                                 structures match the BSP1D distribution"
+			echo " "
+			${TEST_BIN_DIR}/distribution_matrix_bsp1d_${MODE} 7777
 
 			echo ">>>      [x]           [ ]       Testing dense vector times matrix using the double (+,*)"
 			echo "                                 semiring where matrix elements are doubles and vector"
@@ -774,16 +840,16 @@ for MODE in ${MODES}; do
 					head -1 ${TEST_OUT_DIR}/vxm_${MODE}_reference_1_1.west0497
 					grep 'Test OK' ${TEST_OUT_DIR}/vxm_${MODE}_reference_1_1.west0497 || echo "Test FAILED"
 				fi
-				(grep -q 'Test OK' ${TEST_OUT_DIR}/vxm_${MODE}_reference_1_1.west0497 && grep -q 'Test OK' ${TEST_OUT_DIR}/vxm_${MODE}_bsp1d.west0497.P1 && grep -q 'Test OK' ${TEST_OUT_DIR}/vxm_${MODE}_bsp1d.west0497.P2 && grep -q 'Test OK' ${TEST_OUT_DIR}/vxm_${MODE}_bsp1d.west0497.P3 && grep -q 'Test OK' ${TEST_OUT_DIR}/vxm_${MODE}_bsp1d.west0497.P4 && printf "Test OK.\n") || printf "Test FAILED.\n"
+				(grep -q 'Test OK' ${TEST_OUT_DIR}/vxm_${MODE}_reference_1_1.west0497 && grep -q 'Test OK' ${TEST_OUT_DIR}/vxm_${MODE}_bsp1d.west0497.P1 && grep -q 'Test OK' ${TEST_OUT_DIR}/vxm_${MODE}_bsp1d.west0497.P2 && grep -q 'Test OK' ${TEST_OUT_DIR}/vxm_${MODE}_bsp1d.west0497.P3 && grep -q 'Test OK' ${TEST_OUT_DIR}/vxm_${MODE}_bsp1d.west0497.P4 && printf "Test OK\n") || printf "Test FAILED\n"
 				cat ${TEST_OUT_DIR}/vxm_${MODE}_reference_1_1.west0497 | grep '^[0-9][0-9]* [ ]*[-]*[0-9]' | sort -n > ${TEST_OUT_DIR}/vxm_${MODE}.west0497.chk
 				cat ${TEST_OUT_DIR}/vxm_${MODE}_bsp1d.west0497.P1 | grep '^[0-9][0-9]* [ ]*[-]*[0-9]' | sort -n  > ${TEST_OUT_DIR}/vxm_${MODE}_bsp1d.west0497.P1.chk
 				cat ${TEST_OUT_DIR}/vxm_${MODE}_bsp1d.west0497.P2 | grep '^[0-9][0-9]* [ ]*[-]*[0-9]' | sort -n  > ${TEST_OUT_DIR}/vxm_${MODE}_bsp1d.west0497.P2.chk
 				cat ${TEST_OUT_DIR}/vxm_${MODE}_bsp1d.west0497.P3 | grep '^[0-9][0-9]* [ ]*[-]*[0-9]' | sort -n  > ${TEST_OUT_DIR}/vxm_${MODE}_bsp1d.west0497.P3.chk
 				cat ${TEST_OUT_DIR}/vxm_${MODE}_bsp1d.west0497.P4 | grep '^[0-9][0-9]* [ ]*[-]*[0-9]' | sort -n  > ${TEST_OUT_DIR}/vxm_${MODE}_bsp1d.west0497.P4.chk
-				(diff -q ${TEST_OUT_DIR}/vxm_${MODE}_bsp1d.west0497.P1.chk ${TEST_OUT_DIR}/vxm_${MODE}.west0497.chk && printf "Verification (1 to serial) OK.\n") || printf "Verification (1 to serial) FAILED.\n"
-				(diff -q ${TEST_OUT_DIR}/vxm_${MODE}_bsp1d.west0497.P1.chk ${TEST_OUT_DIR}/vxm_${MODE}_bsp1d.west0497.P2.chk && printf "Verification (1 to 2) OK.\n") || printf "Verification (1 to 2) FAILED.\n"
-				(diff -q ${TEST_OUT_DIR}/vxm_${MODE}_bsp1d.west0497.P1.chk ${TEST_OUT_DIR}/vxm_${MODE}_bsp1d.west0497.P3.chk && printf "Verification (1 to 3) OK.\n") || printf "Verification (1 to 3) FAILED.\n"
-				(diff -q ${TEST_OUT_DIR}/vxm_${MODE}_bsp1d.west0497.P1.chk ${TEST_OUT_DIR}/vxm_${MODE}_bsp1d.west0497.P4.chk && printf "Verification (1 to 4) OK.\n\n") || printf "Verification (1 to 4) FAILED.\n\n"
+				(diff -q ${TEST_OUT_DIR}/vxm_${MODE}_bsp1d.west0497.P1.chk ${TEST_OUT_DIR}/vxm_${MODE}.west0497.chk && printf "Verification (1 to serial) OK\n") || printf "Verification (1 to serial) FAILED\n"
+				(diff -q ${TEST_OUT_DIR}/vxm_${MODE}_bsp1d.west0497.P1.chk ${TEST_OUT_DIR}/vxm_${MODE}_bsp1d.west0497.P2.chk && printf "Verification (1 to 2) OK\n") || printf "Verification (1 to 2) FAILED\n"
+				(diff -q ${TEST_OUT_DIR}/vxm_${MODE}_bsp1d.west0497.P1.chk ${TEST_OUT_DIR}/vxm_${MODE}_bsp1d.west0497.P3.chk && printf "Verification (1 to 3) OK\n") || printf "Verification (1 to 3) FAILED\n"
+				(diff -q ${TEST_OUT_DIR}/vxm_${MODE}_bsp1d.west0497.P1.chk ${TEST_OUT_DIR}/vxm_${MODE}_bsp1d.west0497.P4.chk && printf "Verification (1 to 4) OK\n\n") || printf "Verification (1 to 4) FAILED\n\n"
 			else
 				echo "Test DISABLED: west0497.mtx was not found. To enable, please provide ${INPUT_DIR}/west0497.mtx"
 			fi
@@ -805,16 +871,16 @@ for MODE in ${MODES}; do
 					head -1 ${TEST_OUT_DIR}/mxv_${MODE}_reference_1_1.west0497
 					grep 'Test OK' ${TEST_OUT_DIR}/mxv_${MODE}_reference_1_1.west0497 || echo "Test FAILED"
 				fi
-				(grep -q 'Test OK' ${TEST_OUT_DIR}/mxv_${MODE}_reference_1_1.west0497 && grep -q 'Test OK' ${TEST_OUT_DIR}/mxv_${MODE}_bsp1d.west0497.P1 && grep -q 'Test OK' ${TEST_OUT_DIR}/mxv_${MODE}_bsp1d.west0497.P2 && grep -q 'Test OK' ${TEST_OUT_DIR}/mxv_${MODE}_bsp1d.west0497.P3 && grep -q 'Test OK' ${TEST_OUT_DIR}/mxv_${MODE}_bsp1d.west0497.P4 && printf "Test OK.\n") || printf "Test FAILED.\n"
+				(grep -q 'Test OK' ${TEST_OUT_DIR}/mxv_${MODE}_reference_1_1.west0497 && grep -q 'Test OK' ${TEST_OUT_DIR}/mxv_${MODE}_bsp1d.west0497.P1 && grep -q 'Test OK' ${TEST_OUT_DIR}/mxv_${MODE}_bsp1d.west0497.P2 && grep -q 'Test OK' ${TEST_OUT_DIR}/mxv_${MODE}_bsp1d.west0497.P3 && grep -q 'Test OK' ${TEST_OUT_DIR}/mxv_${MODE}_bsp1d.west0497.P4 && printf "Test OK\n") || printf "Test FAILED\n"
 				cat ${TEST_OUT_DIR}/mxv_${MODE}_reference_1_1.west0497 | grep '^[0-9][0-9]* [ ]*[-]*[0-9]' | sort -n > ${TEST_OUT_DIR}/mxv_${MODE}.west0497.chk
 				cat ${TEST_OUT_DIR}/mxv_${MODE}_bsp1d.west0497.P1 | grep '^[0-9][0-9]* [ ]*[-]*[0-9]' | sort -n  > ${TEST_OUT_DIR}/mxv_${MODE}_bsp1d.west0497.P1.chk
 				cat ${TEST_OUT_DIR}/mxv_${MODE}_bsp1d.west0497.P2 | grep '^[0-9][0-9]* [ ]*[-]*[0-9]' | sort -n  > ${TEST_OUT_DIR}/mxv_${MODE}_bsp1d.west0497.P2.chk
 				cat ${TEST_OUT_DIR}/mxv_${MODE}_bsp1d.west0497.P3 | grep '^[0-9][0-9]* [ ]*[-]*[0-9]' | sort -n  > ${TEST_OUT_DIR}/mxv_${MODE}_bsp1d.west0497.P3.chk
 				cat ${TEST_OUT_DIR}/mxv_${MODE}_bsp1d.west0497.P4 | grep '^[0-9][0-9]* [ ]*[-]*[0-9]' | sort -n  > ${TEST_OUT_DIR}/mxv_${MODE}_bsp1d.west0497.P4.chk
-				(diff -q ${TEST_OUT_DIR}/mxv_${MODE}_bsp1d.west0497.P1.chk ${TEST_OUT_DIR}/mxv_${MODE}.west0497.chk && printf "Verification (1 to serial) OK.\n") || printf "Verification (1 to serial) FAILED.\n"
-				(diff -q ${TEST_OUT_DIR}/mxv_${MODE}_bsp1d.west0497.P1.chk ${TEST_OUT_DIR}/mxv_${MODE}_bsp1d.west0497.P2.chk && printf "Verification (1 to 2) OK.\n") || printf "Verification (1 to 2) FAILED.\n"
-				(diff -q ${TEST_OUT_DIR}/mxv_${MODE}_bsp1d.west0497.P1.chk ${TEST_OUT_DIR}/mxv_${MODE}_bsp1d.west0497.P3.chk && printf "Verification (1 to 3) OK.\n") || printf "Verification (1 to 3) FAILED.\n"
-				(diff -q ${TEST_OUT_DIR}/mxv_${MODE}_bsp1d.west0497.P1.chk ${TEST_OUT_DIR}/mxv_${MODE}_bsp1d.west0497.P4.chk && printf "Verification (1 to 4) OK.\n\n") || printf "Verification (1 to 4) FAILED.\n\n"
+				(diff -q ${TEST_OUT_DIR}/mxv_${MODE}_bsp1d.west0497.P1.chk ${TEST_OUT_DIR}/mxv_${MODE}.west0497.chk && printf "Verification (1 to serial) OK\n") || printf "Verification (1 to serial) FAILED\n"
+				(diff -q ${TEST_OUT_DIR}/mxv_${MODE}_bsp1d.west0497.P1.chk ${TEST_OUT_DIR}/mxv_${MODE}_bsp1d.west0497.P2.chk && printf "Verification (1 to 2) OK\n") || printf "Verification (1 to 2) FAILED\n"
+				(diff -q ${TEST_OUT_DIR}/mxv_${MODE}_bsp1d.west0497.P1.chk ${TEST_OUT_DIR}/mxv_${MODE}_bsp1d.west0497.P3.chk && printf "Verification (1 to 3) OK\n") || printf "Verification (1 to 3) FAILED\n"
+				(diff -q ${TEST_OUT_DIR}/mxv_${MODE}_bsp1d.west0497.P1.chk ${TEST_OUT_DIR}/mxv_${MODE}_bsp1d.west0497.P4.chk && printf "Verification (1 to 4) OK\n\n") || printf "Verification (1 to 4) FAILED\n\n"
 			else
 				echo "Test DISABLED: west0497.mtx was not found. To enable, please provide ${INPUT_DIR}/west0497.mtx"
 			fi

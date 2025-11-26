@@ -413,6 +413,9 @@ namespace grb {
 					) {
 						throw std::runtime_error( "Could not compute vertex IDs" );
 					}
+					if( grb::wait( IDs, indegrees, outdegrees, ones ) != SUCCESS ) {
+						throw std::runtime_error( "Error during initialisation" );
+					}
 				}
 
 

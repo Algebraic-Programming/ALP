@@ -22,53 +22,49 @@
 #if !defined _H_GRB_REFERENCE_MATRIX || defined _H_GRB_REFERENCE_OMP_MATRIX
 #define _H_GRB_REFERENCE_MATRIX
 
+#include <cmath>
+#include <limits>
 #include <numeric> //std::accumulate
 #include <sstream> //std::stringstream
-#include <algorithm>
-#include <functional>
-#include <limits>
-#include <stdexcept>
 #include <utility>
 #include <iterator>
 #include <cmath>
 #include <cstdint>
+#include <algorithm>
+#include <stdexcept>
+#include <functional>
 
 #include <assert.h>
 
-#include <graphblas/backends.hpp>
 #include <graphblas/base/matrix.hpp>
-#include <graphblas/config.hpp>
-#include <graphblas/utils.hpp>
-#include <graphblas/ops.hpp>
+#include <graphblas/base/final.hpp>
+
 #include <graphblas/rc.hpp>
-#include <graphblas/reference/compressed_storage.hpp>
-#include <graphblas/reference/init.hpp>
+#include <graphblas/ops.hpp>
+#include <graphblas/config.hpp>
+#include <graphblas/backends.hpp>
 #include <graphblas/type_traits.hpp>
+
+#include <graphblas/utils.hpp>
 #include <graphblas/utils/autodeleter.hpp>
 #include <graphblas/utils/DMapper.hpp>
-#include <graphblas/type_traits.hpp>
 #include <graphblas/utils/iterators/utils.hpp>
+
+#include <graphblas/reference/init.hpp>
+#include <graphblas/reference/compressed_storage.hpp>
 
 #include "NonzeroWrapper.hpp"
 #include "forward.hpp"
+
+#ifdef _DEBUG
+ #define _DEBUG_REFERENCE_MATRIX
+#endif
 
 
 namespace grb {
 
 #ifndef _H_GRB_REFERENCE_OMP_MATRIX
 	namespace internal {
-
-		template< typename D >
-		class SizeOf {
-		public:
-			static constexpr size_t value = sizeof( D );
-		};
-
-		template<>
-		class SizeOf< void > {
-		public:
-			static constexpr size_t value = 0;
-		};
 
 		template<
 			typename ValType, typename ColType, typename IndType,
@@ -95,6 +91,48 @@ namespace grb {
 			char * const buf1 = nullptr, char * const buf2 = nullptr,
 			ValType *__restrict__ const buf3 = nullptr
 		);
+
+		template< typename D >
+		struct MatrixResizeCopy {
+
+			MatrixResizeCopy() = delete;
+
+			/**
+			 * Helper function to copy values. Non-void variant.
+			 */
+			static inline void copyValue(
+				D *__restrict__ const x,
+				const D *__restrict__ y,
+				const size_t k
+			) {
+				assert( x != y );
+				x[ k ] = y[ k ];
+			}
+
+		};
+
+		template<>
+		struct MatrixResizeCopy< void > {
+
+			MatrixResizeCopy() = delete;
+
+			/**
+			 * Helper function to copy values. Void variant.
+			 */
+			static inline void copyValue(
+				void * const x,
+				const void * const y,
+				const size_t k
+			) {
+				(void) k;
+				assert( x != y );
+#ifdef NDEBUG
+				(void) x;
+				(void) y;
+#endif
+			}
+
+		};
 
 	} // end namespace internal
 #endif
@@ -149,6 +187,56 @@ namespace grb {
 			coorArr = const_cast< char * >( A.coorArr[ k ] );
 			coorBuf = const_cast< char * >( A.coorBuf[ k ] );
 			valbuf = const_cast< InputType * >( A.valbuf[ k ] );
+		}
+
+		/**
+		 * \internal
+		 * Retrieves the row-wise SPA value array interpreted as a nonzero index array
+		 * of size m.
+		 * \endinternal
+		 */
+		template< typename InputType, typename RIT, typename CIT, typename NIT >
+		NIT * getMatrixRowBuffer(
+			const grb::Matrix< InputType, reference, RIT, CIT, NIT > &A
+		) noexcept {
+			return reinterpret_cast< NIT * >(A.valbuf[ 0 ]);
+		}
+
+		/**
+		 * \internal
+		 * Retrieves the column-wise SPA value array interpreted as a nonzero index
+		 * array of size n.
+		 * \endinternal
+		 */
+		template< typename InputType, typename RIT, typename CIT, typename NIT >
+		NIT * getMatrixColBuffer(
+			const grb::Matrix< InputType, reference, RIT, CIT, NIT > &A
+		) noexcept {
+			return reinterpret_cast< NIT * >(A.valbuf[ 1 ]);
+		}
+
+		/**
+		 * \internal
+		 * Retrieves the row-wise SPA value buffer.
+		 * \endinternal
+		 */
+		template< typename InputType, typename RIT, typename CIT, typename NIT >
+		InputType * getMatrixRowValueBuffer(
+			const grb::Matrix< InputType, reference, RIT, CIT, NIT > &A
+		) noexcept {
+			return A.valbuf[ 0 ];
+		}
+
+		/**
+		 * \internal
+		 * Retrieves the row-wise SPA value buffer.
+		 * \endinternal
+		 */
+		template< typename InputType, typename RIT, typename CIT, typename NIT >
+		InputType * getMatrixColValueBuffer(
+			const grb::Matrix< InputType, reference, RIT, CIT, NIT > &A
+		) noexcept {
+			return A.valbuf[ 1 ];
 		}
 
 		template<
@@ -295,14 +383,14 @@ namespace grb {
 			ColGetter< ColIndexType, rndacc_iterator, populate_ccs > col_getter;
 
 			if( nz < 1 ) {
-#ifdef _DEBUG
+#ifdef _DEBUG_REFERENCE_MATRIX
 				std::cerr << "Attempting to ingest an iterator in end position"
 					<< std::endl;
 #endif
 				return RC::ILLEGAL;
 			}
 			if( num_cols == 0 || num_rows == 0 ) {
-#ifdef _DEBUG
+#ifdef _DEBUG_REFERENCE_MATRIX
 				std::cerr << "Attempting to ingest into an empty matrix" << std::endl;
 #endif
 				return RC::ILLEGAL;
@@ -332,7 +420,7 @@ namespace grb {
 					: ccs_col_buffer_size / per_thread_buffer_size
 				) + 1;
 
-#ifdef _DEBUG
+#ifdef _DEBUG_REFERENCE_MATRIX
 			std::cout << "In populate_storage_parallel with\n"
 				<< "\tnz =" << nz << ", "
 				<< "bufferlen = " << per_thread_buffer_size << ", "
@@ -394,7 +482,7 @@ namespace grb {
 
 				// continue only if no thread detected an error
 				if( global_rc == SUCCESS ) {
-#ifdef _DEBUG
+#ifdef _DEBUG_REFERENCE_MATRIX
 					#pragma omp single
 					{
 						std::cout << "after first step:" << std::endl;
@@ -419,7 +507,7 @@ namespace grb {
 					// holds the number of elements in each bucket across all threads:
 					//   - prefix_sum_buffer + (num_threads - 1) * per_thread_buffer_size
 
-#ifdef _DEBUG
+#ifdef _DEBUG_REFERENCE_MATRIX
 					#pragma omp single
 					{
 						std::cout << "after second step: " << std::endl;
@@ -449,7 +537,7 @@ namespace grb {
 								prefix_sum_buffer[ (num_threads - 1) * per_thread_buffer_size + i - 1 ];
 						}
 					}
-#ifdef _DEBUG
+#ifdef _DEBUG_REFERENCE_MATRIX
 					#pragma omp single
 					{
 						std::cout << "after third step:" << std::endl;
@@ -468,7 +556,7 @@ namespace grb {
 					}
 
 					#pragma omp barrier
-#ifdef _DEBUG
+#ifdef _DEBUG_REFERENCE_MATRIX
 					#pragma omp single
 					{
 						std::cout << "after fourth step:" << std::endl;
@@ -502,7 +590,7 @@ namespace grb {
 				std::cerr << "error while reading input values" << std::endl;
 				return global_rc;
 			}
-#ifdef _DEBUG
+#ifdef _DEBUG_REFERENCE_MATRIX
 			std::cout << "CCS/CRS before sort:" << std::endl;
 			for( size_t s = 0; s < nz; s++ ) {
 				std::cout << s << ": ";
@@ -531,7 +619,7 @@ namespace grb {
 						storage.col_start[ i ] = prefix_sum_buffer[ i ];
 					}
 				}
-#ifdef _DEBUG
+#ifdef _DEBUG_REFERENCE_MATRIX
 				std::cout << "\t col_start array already fully sorted after bucket sort:\n";
 				for( size_t s = 0; s < ccs_col_buffer_size; s++ ) {
 					std::cout << "\t\t" << s << ": " << storage.col_start[ s ] << "\n";
@@ -543,11 +631,11 @@ namespace grb {
 
 			// In this case, a bucket stores more than one column, and we must sort each
 			// bucket prior to generating a col_start.
-#ifdef _DEBUG
+#ifdef _DEBUG_REFERENCE_MATRIX
 			std::cout << "\t sorting buckets\n";
 #endif
 			assert( col_values_buffer != nullptr );
-#ifdef _DEBUG
+#ifdef _DEBUG_REFERENCE_MATRIX
 			// fill is not parallel, but so is (not) the printout-- and this is debug
 			// mode only
 			std::fill( storage.col_start, storage.col_start + ccs_col_buffer_size, 0 );
@@ -575,7 +663,7 @@ namespace grb {
 
 				if( ipsl_max == ipsl_min ) {
 					// the rows are all empty, then done here
-#ifdef _DEBUG
+#ifdef _DEBUG_REFERENCE_MATRIX
 					std::cout << "-- thread " << omp_get_thread_num() << ", empty cols fill ["
 						<< previous_destination << ", " << max_col << ")" << std::endl;
 #endif
@@ -590,13 +678,13 @@ namespace grb {
 				NZIterator< ValType, RowIndexType, NonzeroIndexType, ColIndexType > end(
 					storage, col_values_buffer, ipsl_max );
 				std::sort( begin, end );
-#ifdef _DEBUG
+#ifdef _DEBUG_REFERENCE_MATRIX
 				std::cout << "-- thread " << omp_get_thread_num() <<", sort [" << previous_destination
 					<< ", " << max_col <<")\n" << ">> max_col= " << max_col << std::endl;
 #endif
 				// INIT: populate initial value with existing count
 				storage.col_start[ previous_destination ] = ipsl_min;
-#ifdef _DEBUG
+#ifdef _DEBUG_REFERENCE_MATRIX
 				std::cout << "thread " << omp_get_thread_num() << ", init write "
 					<< ipsl_min << " to pos " << previous_destination << std::endl;
 #endif
@@ -613,7 +701,7 @@ namespace grb {
 					// fill previous columns [previous_destination + 1, current_destination)
 					// if skipped because empty
 					if( previous_destination + 1 <= current_col ) {
-#ifdef _DEBUG
+#ifdef _DEBUG_REFERENCE_MATRIX
 						std::cout << "thread " << omp_get_thread_num() << ", write "
 							<< count <<" in range [" << previous_destination + 1
 							<< " - " << current_destination << ")" << std::endl;
@@ -633,7 +721,7 @@ namespace grb {
 					// otherwise, the next thread will do it in INIT
 					if( current_destination < max_col ) {
 						storage.col_start[ current_destination ] = count;
-#ifdef _DEBUG
+#ifdef _DEBUG_REFERENCE_MATRIX
 						std::cout << "thread " << omp_get_thread_num() << ", write "
 							<< count << " to pos " << current_destination << std::endl;
 #endif
@@ -647,7 +735,7 @@ namespace grb {
 				// if the columns in [ previous_destination + 1, max_col ) are empty,
 				// write the count also there, since the loop has skipped them
 				if( previous_destination + 1 < max_col ) {
-#ifdef _DEBUG
+#ifdef _DEBUG_REFERENCE_MATRIX
 					std::cout << "thread " << omp_get_thread_num() << ", final write "
 						<< previous_count << " in range [" << previous_destination + 1
 						<< ", " << max_col << ")" << std::endl;
@@ -657,19 +745,19 @@ namespace grb {
 				}
 			}
 			const ColIndexType last_existing_col = col_values_buffer[ nz - 1 ];
-#ifdef _DEBUG
+#ifdef _DEBUG_REFERENCE_MATRIX
 			std::cout << "final offset " << last_existing_col << std::endl;
 #endif
 
 			if( last_existing_col + 1 <= num_cols ) {
-#ifdef _DEBUG
+#ifdef _DEBUG_REFERENCE_MATRIX
 				std::cout << "final write " << nz << " into [" << last_existing_col + 1
 					<<", " << num_cols << "]" << std::endl;
 #endif
 				std::fill( storage.col_start + last_existing_col + 1,
 					storage.col_start + ccs_col_buffer_size, nz );
 			}
-#ifdef _DEBUG
+#ifdef _DEBUG_REFERENCE_MATRIX
 			std::cout << "CRS data after sorting:" << std::endl;
 			for( size_t s = 0; s < nz; s++ ) {
 				std::cout << s << ": ";
@@ -826,7 +914,7 @@ namespace grb {
 				// a buffer already exists large enough for fully parallel execution
 				|| existing_buf_size >= fully_parallel_buffer_els;
 
-#ifdef _DEBUG
+#ifdef _DEBUG_REFERENCE_MATRIX
 			if( is_fully_parallel ) {
 				std::cout << "fully parallel matrix creation: no extra sorting required" << std::endl;
 			} else {
@@ -841,7 +929,7 @@ namespace grb {
 				? fully_parallel_buffer_size
 				: partial_parallel_buffer_size;
 			if( !internal::ensureReferenceBufsize< unsigned char >( bufferlen_tot ) ) {
-#ifndef _DEBUG
+#ifndef _DEBUG_REFERENCE_MATRIX
 				std::cerr << "Not enough memory available for populate_storage_parallel buffer" << std::endl;
 #endif
 				return RC::OUTOFMEM;
@@ -898,6 +986,7 @@ namespace grb {
 	) noexcept;
 
 	template<
+		Descriptor,
 		class ActiveDistribution, typename Func, typename DataType,
 		typename RIT, typename CIT, typename NIT
 	>
@@ -984,6 +1073,7 @@ namespace grb {
 		   ********************* */
 
 		template<
+			Descriptor,
 			typename Func,
 			typename DataType1, typename RIT, typename CIT, typename NIT
 		>
@@ -993,6 +1083,7 @@ namespace grb {
 		);
 
 		template<
+			Descriptor,
 			class ActiveDistribution, typename Func, typename DataType,
 			typename RIT, typename CIT, typename NIT
 		>
@@ -1116,6 +1207,26 @@ namespace grb {
 			const grb::Matrix< InputType, reference, RIT, CIT, NIT > &
 		) noexcept;
 
+		template< typename InputType, typename RIT, typename CIT, typename NIT >
+		friend NIT * internal::getMatrixRowBuffer(
+			const grb::Matrix< InputType, reference, RIT, CIT, NIT > &A
+		) noexcept;
+
+		template< typename InputType, typename RIT, typename CIT, typename NIT >
+		friend NIT * internal::getMatrixColBuffer(
+			const grb::Matrix< InputType, reference, RIT, CIT, NIT > &A
+		) noexcept;
+
+		template< typename InputType, typename RIT, typename CIT, typename NIT >
+		friend InputType * internal::getMatrixRowValueBuffer(
+			const grb::Matrix< InputType, reference, RIT, CIT, NIT > &A
+		) noexcept;
+
+		template< typename InputType, typename RIT, typename CIT, typename NIT >
+		friend InputType * internal::getMatrixColValueBuffer(
+			const grb::Matrix< InputType, reference, RIT, CIT, NIT > &A
+		) noexcept;
+
 		friend const grb::Matrix<
 			D, reference,
 			ColIndexType, ColIndexType, NonzeroIndexType
@@ -1175,7 +1286,7 @@ namespace grb {
 					"handle at present. Please submit a bug report."
 				);
 				// compute and return
-				return std::max( (std::max( m, n ) + 1) * globalBufferUnitSize,
+				return std::max( (m + n + 2) * globalBufferUnitSize,
 #ifdef _H_GRB_REFERENCE_OMP_MATRIX
 					config::OMP::threads() * config::CACHE_LINE_SIZE::value() *
 						utils::SizeOf< D >::value
@@ -1315,7 +1426,7 @@ namespace grb {
 				const size_t rows, const size_t cols,
 				const size_t cap_in
 			) {
-#ifdef _DEBUG
+#ifdef _DEBUG_REFERENCE_MATRIX
 				std::cerr << "\t in Matrix< reference >::initialize...\n"
 					<< "\t\t matrix size " << rows << " by " << cols << "\n"
 					<< "\t\t requested capacity " << cap_in << "\n";
@@ -1357,19 +1468,25 @@ namespace grb {
 						(cap_in / rows == cols && (cap_in % rows > 0)) ||
 						(cap_in / cols == rows && (cap_in % cols > 0))
 					) {
-#ifdef _DEBUG
+#ifdef _DEBUG_REFERENCE_MATRIX
 						std::cerr << "\t\t Illegal capacity requested\n";
 #endif
 						throw std::runtime_error( toString( ILLEGAL ) );
 					}
 					// get sizes of arrays that we need to allocate
 					size_t sizes[ 12 ];
+					const size_t valBufElemSize =
+						sizeof( NonzeroIndexType ) > utils::SizeOf< D >::value
+							? sizeof( NonzeroIndexType )
+							: utils::SizeOf< D >::value;
+					// the below are the buffer sizes of the row & column SPAs
+					// the value buffer may furthermore be reused as a row/col offset buffer
 					sizes[ 0 ] = internal::Coordinates< reference >::arraySize( rows );
 					sizes[ 1 ] = internal::Coordinates< reference >::arraySize( cols );
 					sizes[ 2 ] = internal::Coordinates< reference >::bufferSize( rows );
 					sizes[ 3 ] = internal::Coordinates< reference >::bufferSize( cols );
-					sizes[ 4 ] = rows * internal::SizeOf< D >::value;
-					sizes[ 5 ] = cols * internal::SizeOf< D >::value;
+					sizes[ 4 ] = (rows + 1) * valBufElemSize;
+					sizes[ 5 ] = (cols + 1) * valBufElemSize;
 					CRS.getStartAllocSize( &( sizes[ 6 ] ), rows );
 					CCS.getStartAllocSize( &( sizes[ 7 ] ), cols );
 					if( cap_in > 0 ) {
@@ -1397,8 +1514,8 @@ namespace grb {
 					);
 				} else {
 					const size_t sizes[ 2 ] = {
-						rows * internal::SizeOf< D >::value,
-						cols * internal::SizeOf< D >::value
+						rows * utils::SizeOf< D >::value,
+						cols * utils::SizeOf< D >::value
 					};
 					coorArr[ 0 ] = coorArr[ 1 ] = nullptr;
 					coorBuf[ 0 ] = coorBuf[ 1 ] = nullptr;
@@ -1416,7 +1533,7 @@ namespace grb {
 				} else if( alloc_ok != SUCCESS ) {
 					throw std::runtime_error( toString( alloc_ok ) );
 				}
-#ifdef _DEBUG
+#ifdef _DEBUG_REFERENCE_MATRIX
 				if( rows > 0 && cols > 0 ) {
 					std::cerr << "\t\t allocations for an " << m << " by " << n << " matrix "
 						<< "have successfully completed.\n";
@@ -1429,7 +1546,7 @@ namespace grb {
 				if( id_in != nullptr ) {
 					assert( !remove_id );
 					id = *id_in;
-#ifdef _DEBUG
+#ifdef _DEBUG_REFERENCE_MATRIX
 					std::cerr << "\t\t inherited ID " << id << "\n";
 #endif
 				} else {
@@ -1438,7 +1555,7 @@ namespace grb {
 							reinterpret_cast< uintptr_t >(alloc[ 0 ])
 						);
 						remove_id = true;
-#ifdef _DEBUG
+#ifdef _DEBUG_REFERENCE_MATRIX
 						std::cerr << "\t\t assigned new ID " << id << "\n";
 #endif
 					}
@@ -1565,7 +1682,7 @@ namespace grb {
 			/** @see grb::resize() */
 			RC resize( const size_t nonzeroes ) {
 				// check for trivial case
-				if( m == 0 || n == 0 || nonzeroes == 0 ) {
+				if( m == 0 || n == 0 ) {
 					// simply do not do anything and return
 					return SUCCESS;
 				}
@@ -1575,19 +1692,23 @@ namespace grb {
 					return SUCCESS;
 				}
 
+				// check internal limitation
 				if( nonzeroes >= static_cast< size_t >(
 						std::numeric_limits< NonzeroIndexType >::max()
 					)
 				) {
-					return OVERFLW;
+					std::cerr << "Error: requested capacity exceeds the maximum representable "
+						<< "nonzero index. Please set grb::config::NonzeroIndexType to a wider "
+						<< "integer type.\n";
+					return UNSUPPORTED;
 				}
 
 				// allocate and catch errors
 				char * alloc[ 4 ] = { nullptr, nullptr, nullptr, nullptr };
-				size_t sizes[ 4 ];
+				size_t sizes[ 4 ] = { 0, 0, 0, 0 };
+
 				// cache old allocation data
 				size_t old_sizes[ 4 ] = { 0, 0, 0, 0 };
-				size_t freed = 0;
 				if( cap > 0 ) {
 					CRS.getAllocSize( &( old_sizes[ 0 ] ), cap );
 					CCS.getAllocSize( &( old_sizes[ 2 ] ), cap );
@@ -1603,12 +1724,13 @@ namespace grb {
 					<< "times " << n << " matrix.\n";
 
 				// do allocation
+				utils::AutoDeleter< char > new_deleters[ 4 ];
 				RC ret = utils::alloc(
-					"grb::Matrix< T, reference >::resize", description.str(),
-					alloc[ 0 ], sizes[ 0 ], true, _deleter[ 2 ],
-					alloc[ 1 ], sizes[ 1 ], true, _deleter[ 3 ],
-					alloc[ 2 ], sizes[ 2 ], true, _deleter[ 4 ],
-					alloc[ 3 ], sizes[ 3 ], true, _deleter[ 5 ]
+					"grb::Matrix< T, reference >::resize", description.str(), // should go in
+					alloc[ 0 ], sizes[ 0 ], true, new_deleters[ 0 ], // _deleter[ 2 ]
+					alloc[ 1 ], sizes[ 1 ], true, new_deleters[ 1 ], // _deleter[ 3 ],
+					alloc[ 2 ], sizes[ 2 ], true, new_deleters[ 2 ], // _deleter[ 4 ],
+					alloc[ 3 ], sizes[ 3 ], true, new_deleters[ 3 ]  // _deleter[ 5 ]
 				);
 
 				if( ret != SUCCESS ) {
@@ -1616,17 +1738,62 @@ namespace grb {
 					return ret;
 				}
 
+				// copy old data
+#ifdef _H_GRB_REFERENCE_OMP_MATRIX
+				size_t nthreads = 1;
+				if( nz > config::OMP::minLoopSize() ) {
+					nthreads = std::max( static_cast< size_t >(1),
+						config::OMP::nranges( 0, nz ) );
+				}
+				#pragma omp parallel num_threads( nthreads )
+#endif
+				{
+					const size_t old_nz = nz;
+					size_t start, end;
+#ifdef _H_GRB_REFERENCE_OMP_MATRIX
+					config::OMP::localRange( start, end, 0, old_nz );
+#else
+					start = 0;
+					end = old_nz;
+#endif
+					RowIndexType * const new_crs_index_array =
+						reinterpret_cast< RowIndexType * >(alloc[ 1 ]);
+					ColIndexType * const new_ccs_index_array =
+						reinterpret_cast< ColIndexType * >(alloc[ 3 ]);
+					D * new_crs_value_array, * new_ccs_value_array;
+					if( std::is_void< D >::value ) {
+						new_crs_value_array = new_ccs_value_array = nullptr;
+					} else {
+						new_crs_value_array = reinterpret_cast< D * >(alloc[ 0 ]);
+						new_ccs_value_array = reinterpret_cast< D * >(alloc[ 2 ]);
+					}
+					D * const src_crs_vals = CRS.getValues();
+					D * const src_ccs_vals = CCS.getValues();
+					for( size_t k = start; k < end; ++k ) {
+						assert( k < old_nz );
+						new_crs_index_array[ k ] = CRS.row_index[ k ];
+						new_ccs_index_array[ k ] = CCS.row_index[ k ];
+						if( !std::is_void< D >::value ) {
+							internal::MatrixResizeCopy< D >::copyValue(
+								new_crs_value_array, src_crs_vals, k );
+							internal::MatrixResizeCopy< D >::copyValue(
+								new_ccs_value_array, src_ccs_vals, k );
+						}
+					}
+				}
+
 				// put allocated arrays in their intended places
 				CRS.replace( alloc[ 0 ], alloc[ 1 ] );
 				CCS.replace( alloc[ 2 ], alloc[ 3 ] );
+				_deleter[ 2 ] = std::move( new_deleters[ 0 ] );
+				_deleter[ 3 ] = std::move( new_deleters[ 1 ] );
+				_deleter[ 4 ] = std::move( new_deleters[ 2 ] );
+				_deleter[ 5 ] = std::move( new_deleters[ 3 ] );
 
 				// if we had old data emplaced
 				if( cap > 0 ) {
-					for( unsigned int i = 0; i < 4; ++i ) {
-						if( old_sizes[ i ] > 0 ) {
-							freed += sizes[ i ];
-						}
-					}
+					const size_t freed = old_sizes[ 0 ] + old_sizes[ 1 ] +
+						old_sizes[ 2 ] + old_sizes[ 3 ];
 					if( config::MEMORY::report( "grb::Matrix< T, reference >::resize",
 						"freed (or will eventually free)", freed, false )
 					) {
@@ -1690,7 +1857,7 @@ namespace grb {
 				const fwd_iterator &_start,
 				const fwd_iterator &_end
 			) {
-#ifdef _DEBUG
+#ifdef _DEBUG_REFERENCE_MATRIX
 				std::cout << "forward access iterator detected\n";
 				std::cout << "buildMatrixUnique called with " << cap << " nonzeroes.\n";
 				std::cout << "buildMatrixUnique: input is\n";
@@ -1703,8 +1870,9 @@ namespace grb {
 				if( _start == _end || m == 0 || n == 0 ) {
 					return SUCCESS;
 				}
+
 				// keep count of nonzeroes
-				nz = 0;
+				size_t local_nz = 0;
 
 				// counting sort, phase 1
 				clear_cxs_offsets();
@@ -1714,27 +1882,23 @@ namespace grb {
 					}
 					(void) ++( CRS.col_start[ it.i() ] );
 					(void) ++( CCS.col_start[ it.j() ] );
-					(void) ++nz;
+					(void) ++local_nz;
 				}
 
 				// check if we can indeed store nz values
-				if( nz >= static_cast< size_t >(
+				if( local_nz >= static_cast< size_t >(
 						std::numeric_limits< grb::config::NonzeroIndexType >::max()
 					)
 				) {
 					return OVERFLW;
 				}
 
-				// put final entries in offset arrays
-				CRS.col_start[ m ] = nz;
-				CCS.col_start[ n ] = nz;
-
 				// allocate enough space
-				resize( nz );
+				resize( local_nz );
 
 				// make counting sort array cumulative
 				for( size_t i = 1; i < m; ++i ) {
-#ifdef _DEBUG
+#ifdef _DEBUG_REFERENCE_MATRIX
 					std::cout << "There are " << CRS.col_start[ i ] << " "
 						<< "nonzeroes at row " << i << "\n";
 #endif
@@ -1743,32 +1907,36 @@ namespace grb {
 
 				// make counting sort array cumulative
 				for( size_t i = 1; i < n; ++i ) {
-#ifdef _DEBUG
+#ifdef _DEBUG_REFERENCE_MATRIX
 					std::cout << "There are " << CCS.col_start[ i ] << " "
 						<< "nonzeroes at column " << i << "\n";
 #endif
 					CCS.col_start[ i ] += CCS.col_start[ i - 1 ];
 				}
 
+				// put final entries in offset arrays
+				CRS.col_start[ m ] = local_nz;
+				CCS.col_start[ n ] = local_nz;
+
 				// counting sort, phase 2
 				fwd_iterator it = _start;
 				for( size_t k = 0; it != _end; ++k, ++it ) {
 					const size_t crs_pos = --( CRS.col_start[ it.i() ] );
 					CRS.recordValue( crs_pos, false, it );
-#ifdef _DEBUG
+#ifdef _DEBUG_REFERENCE_MATRIX
 					std::cout << "Nonzero " << k << ", ( " << it.i() << ", " << it.j() << " ) "
 						<< "is stored at CRS position "
 						<< static_cast< size_t >( crs_pos ) << ".\n";
 #endif
 					const size_t ccs_pos = --( CCS.col_start[ it.j() ] );
 					CCS.recordValue( ccs_pos, true, it );
-#ifdef _DEBUG
+#ifdef _DEBUG_REFERENCE_MATRIX
 					std::cout << "Nonzero " << k << ", ( " << it.i() << ", " << it.j() << " ) "
 						<< "is stored at CCS position "
 						<< static_cast< size_t >( ccs_pos ) << ".\n";
 #endif
 				}
-#ifdef _DEBUG
+#ifdef _DEBUG_REFERENCE_MATRIX
 				for( size_t i = 0; i <= m; ++i ) {
 					std::cout << "row_start[ " << i << " ] = " << CRS.col_start[ i ]
 						<< "." << std::endl;
@@ -1778,6 +1946,9 @@ namespace grb {
 						<< "." << std::endl;
 				}
 #endif
+				// record nonzero count
+				nz = local_nz;
+
 				// done
 				return SUCCESS;
 			}
@@ -1792,7 +1963,7 @@ namespace grb {
 				const rndacc_iterator &_end,
 				std::random_access_iterator_tag
 			) {
-#ifdef _DEBUG
+#ifdef _DEBUG_REFERENCE_MATRIX
 				std::cout << " rnd access iterator " << '\n';
 				std::cout << "buildMatrixUnique called with " << cap << " nonzeroes.\n";
 				std::cout << "buildMatrixUnique: input is\n";
@@ -1818,7 +1989,17 @@ namespace grb {
 					// no need to clean here, since we did not allocate any additional memory
 					return RC::OVERFLW;
 				}
-				// after checkign it's possible, store it
+
+				// ensure enough space
+				RC ret = resize( _nz );
+				if( ret != SUCCESS ) {
+#ifdef _DEBUG_REFERENCE_MATRIX
+					std::cerr << "\t cannot resize the matrix to store the nonzeroes\n";
+#endif
+					return ret;
+				}
+
+				// after checking storage is possible, store it
 				nz = _nz;
 
 				// for small sizes, delegate to sequential routine
@@ -1837,19 +2018,11 @@ namespace grb {
 				CRS.col_start[ m ] = nz;
 				CCS.col_start[ n ] = nz;
 
-				// allocate enough space
-				RC ret = resize( nz );
-				if( ret != SUCCESS ) {
-#ifdef _DEBUG
-					std::cerr << "cannot resize the matrix to store the nonzero" << std::endl;
-#endif
-					return ret;
-				}
 				ret = internal::populate_storage<
 					true, ColIndexType, RowIndexType
 				>( n, m, nz, _start, CCS );
 				if( ret != SUCCESS ) {
-#ifdef _DEBUG
+#ifdef _DEBUG_REFERENCE_MATRIX
 					std::cerr << "cannot populate the CRS" << std::endl;
 #endif
 					clear(); // we resized before, so we need to clean the memory
@@ -1859,7 +2032,7 @@ namespace grb {
 					false, RowIndexType, ColIndexType
 				>( m, n, nz, _start, CRS );
 				if( ret != SUCCESS ) {
-#ifdef _DEBUG
+#ifdef _DEBUG_REFERENCE_MATRIX
 					std::cerr << "cannot populate the CCS" << std::endl;
 #endif
 					clear();
@@ -1910,7 +2083,7 @@ namespace grb {
 			Matrix( const size_t rows, const size_t columns, const size_t nz ) :
 				Matrix()
 			{
-#ifdef _DEBUG
+#ifdef _DEBUG_REFERENCE_MATRIX
 				std::cout << "In grb::Matrix constructor (reference, with requested "
 					<< "capacity)\n";
 #endif
@@ -1939,7 +2112,7 @@ namespace grb {
 			Matrix( const size_t rows, const size_t columns ) :
 				Matrix( rows, columns, std::max( rows, columns ) )
 			{
-#ifdef _DEBUG
+#ifdef _DEBUG_REFERENCE_MATRIX
 				std::cout << "In grb::Matrix constructor (reference, default capacity)\n";
 #endif
 			}
@@ -1963,7 +2136,7 @@ namespace grb {
 			) :
 				Matrix( other.m, other.n, other.cap )
 			{
-#ifdef _DEBUG
+#ifdef _DEBUG_REFERENCE_MATRIX
 				std::cerr << "In grb::Matrix (reference) copy-constructor\n"
 					<< "\t source matrix has " << other.nz << " nonzeroes\n";
 #endif
@@ -1976,6 +2149,7 @@ namespace grb {
 				#pragma omp parallel
 #endif
 				{
+					const char * const dummy = nullptr;
 					size_t range = CRS.copyFromRange( nz, m );
 #ifdef _H_GRB_REFERENCE_OMP_MATRIX
 					size_t start, end;
@@ -1984,14 +2158,16 @@ namespace grb {
 					const size_t start = 0;
 					size_t end = range;
 #endif
-					CRS.copyFrom( other.CRS, nz, m, start, end );
+					CRS.template copyFrom< descriptors::no_operation, false >(
+						other.CRS, nz, m, start, end, dummy );
 					range = CCS.copyFromRange( nz, n );
 #ifdef _H_GRB_REFERENCE_OMP_MATRIX
 					config::OMP::localRange( start, end, 0, range );
 #else
 					end = range;
 #endif
-					CCS.copyFrom( other.CCS, nz, n, start, end );
+					CCS.template copyFrom< descriptors::no_operation, false >(
+						other.CCS, nz, n, start, end, dummy );
 				}
 			}
 
@@ -2002,6 +2178,12 @@ namespace grb {
 
 			/** \internal No implementation notes. */
 			SelfType& operator=( SelfType &&other ) noexcept {
+				if( m > 0 && n > 0 && remove_id ) {
+#ifdef _DEBUG_REFERENCE_MATRIX
+					std::cout << "move-assignment: removing ID " << id << "\n";
+#endif
+					internal::reference_mapper.remove( id );
+				}
 				moveFromOther( std::forward< SelfType >(other) );
 				return *this;
 			}
@@ -2029,7 +2211,7 @@ namespace grb {
 			 * \endparblock
 			 */
 			~Matrix() {
-#ifdef _DEBUG
+#ifdef _DEBUG_REFERENCE_MATRIX
 				std::cerr << "In ~Matrix (reference)\n"
 					<< "\t matrix is " << m << " by " << n << "\n"
 					<< "\t capacity is " << cap << "\n"
@@ -2043,6 +2225,9 @@ namespace grb {
 				}
 #endif
 				if( m > 0 && n > 0 && remove_id ) {
+#ifdef _DEBUG_REFERENCE_MATRIX
+					std::cout << "destructor: removing ID " << id << "\n";
+#endif
 					internal::reference_mapper.remove( id );
 				}
 			}
@@ -2068,7 +2253,7 @@ namespace grb {
 					RowIndexType,
 					NonzeroIndexType
 				>::template ConstIterator< ActiveDistribution > IteratorType;
-#ifdef _DEBUG
+#ifdef _DEBUG_REFERENCE_MATRIX
 				std::cout << "In grb::Matrix<T,reference>::cbegin\n";
 #endif
 				return IteratorType( CRS, m, n, nz, false, s, P );

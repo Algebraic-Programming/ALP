@@ -88,7 +88,9 @@ namespace grb {
 			 *       initiating messages.
 			 * \endinternal
 			 */
-			static enum RC sync( const size_t msgs_in = 0, const size_t msgs_out = 0 ) noexcept {
+			static enum RC sync(
+				const size_t msgs_in = 0, const size_t msgs_out = 0
+			) noexcept {
 				(void) msgs_in;
 				(void) msgs_out;
 				return PANIC;

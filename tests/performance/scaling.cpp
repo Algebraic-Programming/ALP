@@ -120,20 +120,34 @@ void grbProgram( const struct input &data_in, struct output &out ) {
 		// Ax
 		case 1: {
 			// do experiment
+			bool init_error = false;
 			out.times.io = 0;
 			timer.reset();
-			if( out.error_code == SUCCESS ) {
-				out.error_code = grb::set( vx, 1 );
-			}
-			if( out.error_code == SUCCESS ) {
-				out.error_code = setupSparseMatrix( mx, n );
+			out.error_code = grb::set( vx, 1 );
+			out.error_code = out.error_code ? out.error_code :
+				grb::set( vy, 0 );
+			out.error_code = out.error_code ? out.error_code :
+				setupSparseMatrix( mx, n );
+			out.error_code = out.error_code ? out.error_code : grb::wait();
+			if( out.error_code != grb::SUCCESS ) {
+				std::cerr << "Error in experiment set-up: "
+					<< grb::toString( out.error_code ) << "\n";
+				init_error = true;
 			}
 			out.times.preamble = timer.time();
 			timer.reset();
 			for( size_t i = 0; out.error_code == SUCCESS && i < data_in.rep; ++i ) {
 				out.error_code = mxv< descr >( vy, mx, vx, ring );
+				// only wait if required (otherwise performance overhead)
+				if( grb::Properties<>::isNonblockingExecution ) {
+					out.error_code = out.error_code ? out.error_code : grb::wait();
+				}
 			}
 			out.times.useful = timer.time() / static_cast< double >( data_in.rep );
+			if( out.error_code != grb::SUCCESS && !init_error ) {
+				std::cerr << "Error during experiment hot loop: "
+					<< grb::toString( out.error_code ) << "\n";
+			}
 			// done
 			out.times.postamble = 0;
 			break;
@@ -142,21 +156,35 @@ void grbProgram( const struct input &data_in, struct output &out ) {
 		// A^Tx
 		case 2: {
 			// do experiment
+			bool init_error = false;
 			out.times.io = 0;
 			timer.reset();
-			if( out.error_code == SUCCESS ) {
-				out.error_code = grb::set( vx, 1 );
-			}
-			if( out.error_code == SUCCESS ) {
-				out.error_code = setupSparseMatrix( mx, n );
+			out.error_code = grb::set( vx, 1 );
+			out.error_code = out.error_code ? out.error_code :
+				grb::set( vy, 0 );
+			out.error_code = out.error_code ? out.error_code :
+				setupSparseMatrix( mx, n );
+			out.error_code = out.error_code ? out.error_code : grb::wait();
+			if( out.error_code != grb::SUCCESS ) {
+				std::cerr << "Error in experiment set-up: "
+					<< grb::toString( out.error_code ) << "\n";
+				init_error = true;
 			}
 			out.times.preamble = timer.time();
 			timer.reset();
 			for( size_t i = 0; out.error_code == SUCCESS && i < data_in.rep; ++i ) {
 				out.error_code = mxv< descr | descriptors::transpose_matrix >(
 					vy, mx, vx, ring );
+				// only wait if required (otherwise performance overhead)
+				if( grb::Properties<>::isNonblockingExecution ) {
+					out.error_code = out.error_code ? out.error_code : grb::wait();
+				}
 			}
 			out.times.useful = timer.time() / static_cast< double >( data_in.rep );
+			if( out.error_code != grb::SUCCESS && !init_error ) {
+				std::cerr << "Error during experiment hot loop: "
+					<< grb::toString( out.error_code ) << "\n";
+			}
 			// done
 			out.times.postamble = 0;
 			break;
@@ -165,20 +193,34 @@ void grbProgram( const struct input &data_in, struct output &out ) {
 		// xA
 		case 3: {
 			// do experiment
+			bool init_error = false;
 			out.times.io = 0;
 			timer.reset();
-			if( out.error_code == SUCCESS ) {
-				out.error_code = grb::set( vx, 1 );
-			}
-			if( out.error_code == SUCCESS ) {
-				out.error_code = setupSparseMatrix( mx, n );
+			out.error_code = grb::set( vx, 1 );
+			out.error_code = out.error_code ? out.error_code :
+				grb::set( vy, 0 );
+			out.error_code = out.error_code ? out.error_code :
+				setupSparseMatrix( mx, n );
+			out.error_code = out.error_code ? out.error_code : grb::wait();
+			if( out.error_code != grb::SUCCESS ) {
+				std::cerr << "Error in experiment set-up: "
+					<< grb::toString( out.error_code ) << "\n";
+				init_error = true;
 			}
 			out.times.preamble = timer.time();
 			timer.reset();
 			for( size_t i = 0; out.error_code == SUCCESS && i < data_in.rep; ++i ) {
 				out.error_code = vxm< descr >( vy, vx, mx, ring );
+				// only wait if required (otherwise performance overhead)
+				if( grb::Properties<>::isNonblockingExecution ) {
+					out.error_code = out.error_code ? out.error_code : grb::wait();
+				}
 			}
 			out.times.useful = timer.time() / static_cast< double >( data_in.rep );
+			if( out.error_code != grb::SUCCESS && !init_error ) {
+				std::cerr << "Error during experiment hot loop: "
+					<< grb::toString( out.error_code ) << "\n";
+			}
 			// done
 			out.times.postamble = 0;
 			break;
@@ -187,21 +229,35 @@ void grbProgram( const struct input &data_in, struct output &out ) {
 		// xA^T
 		case 4: {
 			// do experiment
+			bool init_error = false;
 			out.times.io = 0;
 			timer.reset();
-			if( out.error_code == SUCCESS ) {
-				out.error_code = grb::set( vx, 1 );
-			}
-			if( out.error_code == SUCCESS ) {
-				out.error_code = setupSparseMatrix( mx, n );
+			out.error_code = grb::set( vx, 1 );
+			out.error_code = out.error_code ? out.error_code :
+				grb::set( vy, 0 );
+			out.error_code = out.error_code ? out.error_code :
+				setupSparseMatrix( mx, n );
+			out.error_code = out.error_code ? out.error_code : grb::wait();
+			if( out.error_code != grb::SUCCESS ) {
+				std::cerr << "Error in experiment set-up: "
+					<< grb::toString( out.error_code ) << "\n";
+				init_error = true;
 			}
 			out.times.preamble = timer.time();
 			timer.reset();
 			for( size_t i = 0; out.error_code == SUCCESS && i < data_in.rep; ++i ) {
 				out.error_code = vxm< descr | descriptors::transpose_matrix >(
 					vy, vx, mx, ring );
+				// only wait if required (otherwise performance overhead)
+				if( grb::Properties<>::isNonblockingExecution ) {
+					out.error_code = out.error_code ? out.error_code : grb::wait();
+				}
 			}
 			out.times.useful = timer.time() / static_cast< double >( data_in.rep );
+			if( out.error_code != grb::SUCCESS && !init_error ) {
+				std::cerr << "Error during experiment hot loop: "
+					<< grb::toString( out.error_code ) << "\n";
+			}
 			// done
 			out.times.postamble = 0;
 			break;

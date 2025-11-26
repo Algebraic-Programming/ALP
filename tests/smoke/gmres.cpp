@@ -453,14 +453,17 @@ void grbProgram( const struct input &data_in, struct output &out ) {
 				>( data.cend() ),
 				PARALLEL
 			);*/
+			rc = rc ? rc : wait();
 #ifdef DEBUG
-			if( rc == grb::SUCCESS ) {
+			if( rc == SUCCESS ) {
 				std::cout << "Matrix P built from " << data_in.precond_filename
 					<< "file successfully\n";
 			}
 #endif
 		}
 	}
+	if( rc != SUCCESS ) { return; }
+	out.rc = 10;
 
 	out.time_io += timer.time();
 	timer.reset();
@@ -476,53 +479,60 @@ void grbProgram( const struct input &data_in, struct output &out ) {
 			for(size_t i = 0; i < n; ++i) {
 				if( !( inFile >> buffer[ i ] ) ){
 					std::cerr << "Error reading from: " << data_in.rhs_filename << "\n";
-					rc = grb::ILLEGAL;
+					rc = ILLEGAL;
 					break;
 				};
 			}
 			inFile.close(); // close input file
 
-			rc = rc ? rc : grb::buildVector( b, buffer.begin(), buffer.end(),
+			rc = rc ? rc : buildVector( b, buffer.begin(), buffer.end(),
 				SEQUENTIAL );
-			if( rc != SUCCESS ) {
-				std::cout << "RHS vector: buildVector failed!\n ";
-			}
+			rc = rc ? rc : wait();
 		}
 		out.time_io += timer.time();
 		timer.reset();
 	} else {
-		grb::set( x, one );
-		grb::set( b, zero );
-		rc = rc ? rc : grb::mxv( b, A, x, ring );
-		grb::set( x, zero );
+		rc = set( x, one );
+		rc = rc ? rc : set( b, zero );
+		rc = rc ? rc : mxv( b, A, x, ring );
+		rc = rc ? rc : set( x, zero );
+		rc = rc ? rc : wait();
 		out.time_preamble += timer.time();
 		timer.reset();
 	}
+	if( rc != SUCCESS ) {
+		std::cout << "RHS vector: buildVector failed!\n ";
+		return;
+	}
+	out.rc = 20;
 
 	// inner iterations
-	for( size_t i_inner = 0; i_inner < data_in.rep; ++i_inner ) {
+	for( size_t i_inner = 0; i_inner < data_in.rep && rc == SUCCESS; ++i_inner ) {
+		const std::function< BaseScalarType( BaseScalarType ) > &my_sqrt =
+			sqrt_generic;
 
-		grb::set( temp, zero );
+		// set up dense workspace, and include set-up time in timings
 		std::vector< ScalarType > Hmatrix(
 			( data_in.gmres_restart + 1 ) * ( data_in.gmres_restart + 1 ),
 			zero
 		);
 		std::vector< ScalarType > temp3( n, 0 );
-
 		std::vector< grb::Vector< ScalarType > > Q;
 		for( size_t i = 0; i < data_in.gmres_restart + 1; ++i ) {
 			Q.push_back(x);
 		}
-		grb::set( x, zero );
 
+		// set up sparse workspace
+		rc = set( temp, zero );
+		rc = rc ? rc : set( x, zero );
+		rc = rc ? rc : wait();
+
+		// preamble done
 		out.time_preamble += timer.time();
 		timer.reset();
 
-		const std::function< BaseScalarType( BaseScalarType ) > &my_sqrt =
-			sqrt_generic;
-
 		if( data_in.no_preconditioning ) {
-			rc = rc ? rc : grb::algorithms::gmres(
+			rc = rc ? rc : algorithms::gmres(
 				x, A, b,
 				data_in.gmres_restart, data_in.max_iterations,
 				data_in.tol,
@@ -544,11 +554,13 @@ void grbProgram( const struct input &data_in, struct output &out ) {
 				ring, minus, divide, my_sqrt
 			);
 		}
-
+		if( Properties<>::isNonblockingExecution ) {
+			rc = rc ? rc : wait();
+		}
 		out.time_gmres += timer.time();
 		timer.reset();
 
-		if( i_inner + 1 > data_in.rep ) {
+		if( rc == SUCCESS && i_inner + 1 > data_in.rep ) {
 			std::cout << "Residual norm = " << out.residual << " \n";
 			std::cout << "IO time = " << out.time_io << "\n";
 			std::cout << "GMRES iterations = " << out.iterations_gmres << "\n";
@@ -559,40 +571,51 @@ void grbProgram( const struct input &data_in, struct output &out ) {
 		}
 
 	} // inner iterations
+	if( rc != grb::SUCCESS ) { return; }
 
+	out.rc = 0;
 	out.times.postamble += timer.time();
 	out.times.useful += out.time_gmres;
 	out.times.io += out.time_io;
 	out.times.preamble += out.time_preamble;
-
-	if( rc == grb::SUCCESS ) {
-		out.rc = 0;
-	}
 }
 
 void printhelp( char *progname ) {
 	std::cout << " Use: \n";
-	std::cout << "     --n INT              random generated matrix size, default 0\n";
+	std::cout << "     --n INT              random generated matrix size, "
+		<< "default 0\n";
 	std::cout << "                          cannot be used with --matA-fname\n";
-	std::cout << "     --nz-per-row INT     numer of nz per row in a random generated matrix, defaiult  10\n";
-	std::cout << "                          can only be used when --n is present\n";
-	std::cout << "     --test-rep INT       consecutive test inner algorithm repetitions, default 1\n";
-	std::cout << "     --test-outer-rep INT consecutive test outer (including IO) algorithm repetitions, default 1\n";
-	std::cout << "     --gmres-restart INT  gmres restart (max size of KSP space), default 10\n";
-	std::cout << "     --max-gmres-iter INT maximum number of GMRES iterations, default 1\n";
-	std::cout << "     --matA-fname STR     matrix A filename in matrix market format\n";
+	std::cout << "     --nz-per-row INT     numer of nz per row in a random "
+		<< "generated matrix, default  10\n";
+	std::cout << "                          can only be used when --n is "
+		<< "present\n";
+	std::cout << "     --test-rep INT       consecutive test inner algorithm "
+		<< "repetitions, default 1\n";
+	std::cout << "     --test-outer-rep INT consecutive test outer (including IO) "
+		<< "algorithm repetitions, default 1\n";
+	std::cout << "     --gmres-restart INT  gmres restart (max size of KSP "
+		<< "space), default 10\n";
+	std::cout << "     --max-gmres-iter INT maximum number of GMRES iterations, "
+		<< "default 1\n";
+	std::cout << "     --matA-fname STR     matrix A filename in matrix market "
+		<< "format\n";
 	std::cout << "                          cannot be used with --n\n";
-	std::cout << "     --matP-fname STR     preconditioning matrix P filename in matrix market format\n";
-	std::cout << "                          can only be used when --matA-fname is present\n";
-	std::cout << "     --rhs-fname STR      RHS vector filename, where vector elements are stored line-by-line\n";
-	std::cout << "     --tol DBL            convergence tolerance within GMRES, default 1.e-9\n";
+	std::cout << "     --matP-fname STR     preconditioning matrix P filename in "
+		<< "matrix market format\n";
+	std::cout << "                          can only be used when --matA-fname is "
+		<< "present\n";
+	std::cout << "     --rhs-fname STR      RHS vector filename, where vector "
+		<< "elements are stored line-by-line\n";
+	std::cout << "     --tol DBL            convergence tolerance within GMRES, "
+		<< "default 1.e-9\n";
 	std::cout << "     --no-preconditioning disable pre-conditioning\n";
 	std::cout << "     --no-direct          disable direct addressing\n";
 	std::cout << "\nExamples\n";
 	std::cout << "\n";
 	std::cout << "         " << progname << " --n 100 --gmres-restart 50 \n";
 	std::cout << "\n";
-	std::cout << "         " << progname << " --matA-fname /path/tp/MatA.mtx  --matP-fname /path/to/matP.mtx \n";
+	std::cout << "         " << progname << " --matA-fname /path/tp/MatA.mtx "
+		<< "--matP-fname /path/to/matP.mtx \n";
 }
 
 bool parse_arguments(
@@ -773,11 +796,11 @@ int main( int argc, char **argv ) {
 		if( rc != SUCCESS ) {
 			std::cerr << "Error: launcher.exec(I/O) returns non-SUCCESS error code \""
 				<< grb::toString( rc ) << "\"\n";
-			return 10;
+			return 100;
 		}
 		if( !success ) {
 			std::cerr << "Error: I/O program caught an exception\n";
-			return 20;
+			return 200;
 		}
 	}
 
@@ -791,7 +814,7 @@ int main( int argc, char **argv ) {
 		if( rc != SUCCESS ) {
 			std::cerr << "launcher.exec returns with non-SUCCESS error code "
 				<< (int)rc << std::endl;
-			return 30;
+			return 300;
 		}
 	}
 
@@ -803,7 +826,7 @@ int main( int argc, char **argv ) {
 	if( rc != SUCCESS ) {
 		std::cerr << "benchmarker.exec returns with non-SUCCESS error code "
 			<< grb::toString( rc ) << std::endl;
-		return 40;
+		return 400;
 	} else if( out.rc == 0 ) {
 		std::cout << "Benchmark completed successfully and took "
 			<< out.iterations << " iterations to converge "
@@ -834,7 +857,7 @@ int main( int argc, char **argv ) {
 	if( out.rc == 0 ) {
 		return 0;
 	} else {
-		return (50 + out.rc);
+		return (500 + out.rc);
 	}
 }
 

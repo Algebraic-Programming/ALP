@@ -122,6 +122,77 @@ void grb_program1( const struct input &in, struct output &out ) {
 		return;
 	}
 
+
+	/**
+	 * Test for copy assignment id
+	 *
+	 * Creating and performing copy assignment on multiple new objects and check
+	 * for collisions.
+	 */
+	for( int i = 0; i < 100; i++ ) {
+		grb::Vector< int > new_one( 10 );
+		grb::Vector< int > new_two( 10 );
+		if( grb::getID( new_one ) == grb::getID( new_two ) ) {
+			std::cerr << "\t two calls to getID on two new containers return same ID\n";
+			rc = grb::FAILED;
+			return;
+		}
+		const size_t old_one_id = grb::getID( new_one );
+		const size_t old_two_id = grb::getID( new_two );
+		new_two = new_one;
+
+		if( grb::getID( new_two ) == old_one_id ) {
+			std::cerr << "\t detected duplicated ID transferred with copy-assignment\n";
+			rc = grb::FAILED;
+			return;
+		}
+		if( grb::getID( new_one ) != old_one_id ) {
+			std::cerr << "\t detected ID change in source object after copty\n";
+			rc = grb::FAILED;
+			return;
+		}
+		if( grb::getID( new_two ) != old_two_id) {
+			std::cerr << "\t detected new ID was different from original after assignment\n";
+			rc = grb::FAILED;
+			return;
+		}
+        if( grb::getID( new_one ) == grb::getID( new_two ) ) {
+			std::cerr << "\t detected duplicated ID after copy-assignment\n";
+			rc = grb::FAILED;
+			return;
+		}
+	}
+
+	/**
+	 * Test for move assignment id
+	 *
+	 * Creating and performing move assignment on multiple new objects and check
+	 * for collisions.
+	 */
+	for( int i = 0; i < 100; i++ ) {
+		grb::Vector< int > new_one( 10 );
+		grb::Vector< int > new_two( 10 );
+		if( grb::getID( new_one ) == grb::getID( new_two ) ) {
+			std::cerr << "\t two calls to getID on two new containers return same ID\n";
+			rc = grb::FAILED;
+			return;
+		}
+		const size_t old_one_id = grb::getID( new_one );
+		const size_t old_two_id = grb::getID( new_two );
+		new_two = std::move( new_one );
+
+		if( grb::getID( new_two ) == old_two_id ) {
+			std::cerr << "\t detected old ID was retained after a call to std::move\n";
+			rc = grb::FAILED;
+			return;
+		}
+		if( grb::getID( new_two ) != old_one_id ) {
+			std::cerr << "\t detected a new ID after std::move, expected the moved-from "
+				<< "ID to have been retained\n";
+			rc = grb::FAILED;
+			return;
+		}
+	}
 }
 
 // test grb::getID on matrices
@@ -215,6 +286,35 @@ void grb_program2( const struct input &in, struct output &out ) {
 		return;
 	}
 
+	/**
+	 * Test for move assignment id cleanup.
+	 *
+	 * Creating and performing move assignment on multiple new objects and check
+	 * for collisions.
+	 */
+	for( int i = 0; i < 100; i++ ) {
+		grb::Matrix< int > new_one( 10, 10, 10 );
+		grb::Matrix< int > new_two( 10, 10, 10 );
+		if( grb::getID( new_one ) == grb::getID( new_two ) ) {
+			std::cerr << "\t two calls to getID on two new containers return same ID\n";
+			rc = grb::FAILED;
+			return;
+		}
+		const size_t old_one_id = grb::getID( new_one );
+		const size_t old_two_id = grb::getID( new_two );
+		new_two = std::move(new_one);
+		if( grb::getID( new_two ) == old_two_id ) {
+			std::cerr << "\t detected old ID was retained after a call to std::move\n";
+			rc = grb::FAILED;
+			return;
+		}
+		if( grb::getID( new_two ) != old_one_id ) {
+			std::cerr << "\t detected a new ID after std::move, expected the moved-from "
+				<< "ID to have been retained\n";
+			rc = grb::FAILED;
+			return;
+		}
+	}
 }
 
 // NOTE:

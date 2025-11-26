@@ -26,6 +26,8 @@
 #include <graphblas/base/io.hpp>
 #include <cstdint>
 
+#include <graphblas/utils/prefixsum.hpp>
+
 #include "vector.hpp"
 #include "matrix.hpp"
 
@@ -48,6 +50,10 @@
 		"********************************************************************" \
 		"********************************************************************" \
 		"******************************\n" );
+
+#ifdef _DEBUG
+ #define _DEBUG_REFERENCE_IO
+#endif
 
 
 namespace grb {
@@ -211,9 +217,7 @@ namespace grb {
 #ifdef _DEBUG
 		std::cerr << "In grb::resize (vector, reference)\n";
 #endif
-		// this cannot wait until after the below check, as the spec defines that
-		// anything is OK for an empty vector
-		if( new_nz == 0 ) { return grb::clear( x ); }
+		if( grb::size( x ) == 0 ) { return grb::SUCCESS; }
 
 		// check if we have a mismatch
 		if( new_nz > grb::size( x ) ) {
@@ -222,13 +226,20 @@ namespace grb {
 				<< "expected a value smaller than or equal to "
 				<< size( x ) << "\n";
 #endif
-			return ILLEGAL;
+			return grb::ILLEGAL;
+		}
+		if( new_nz < grb::nnz( x ) ) {
+#ifdef _DEBUG
+			std::cerr << "\t requested capacity of " << new_nz << ", "
+				<< "expected a value larger than or equal to "
+				<< grb::nnz( x ) << "\n";
+#endif
+			return grb::ILLEGAL;
 		}
 
 		// in the reference implementation, vectors are of static size
-		// so this function immediately succeeds. However, all existing contents
-		// must be removed
-		return grb::clear( x );
+		// so this function immediately succeeds.
+		return grb::SUCCESS;
 	}
 
 	/**
@@ -271,16 +282,15 @@ namespace grb {
 			<< "\t matrix is " << nrows(A) << " by " << ncols(A) << "\n"
 			<< "\t requested capacity is " << new_nz << "\n";
 #endif
-		RC ret = clear( A );
-		if( ret != SUCCESS ) { return ret; }
-
 		const size_t m = nrows( A );
 		const size_t n = ncols( A );
+
 		// catch trivial case
 		if( m == 0 || n == 0 ) {
 			return SUCCESS;
 		}
-		// catch illegal input
+
+		// catch illegal (overflow)
 		if( new_nz / m > n ||
 			new_nz / n > m ||
 			(new_nz / m == n && (new_nz % m > 0)) ||
@@ -293,40 +303,59 @@ namespace grb {
 			return ILLEGAL;
 		}
 
-		// delegate
-		ret = A.resize( new_nz );
+		// catch illegal (underflow)
+		if( new_nz < grb::nnz( A ) ) {
+#ifdef _DEBUG
+			std::cerr << "\t requesting lower capacity than required by current "
+				<< "contents\n";
+#endif
+			return ILLEGAL;
+		}
 
-		// done
-		return ret;
+		// delegate
+		return A.resize( new_nz );
 	}
 
 	namespace internal {
 
 #ifndef _H_GRB_REFERENCE_OMP_IO
-		template< Descriptor descr,
+		template<
+			Descriptor descr,
+			class ActiveDistribution,
 			typename OutputType, typename IndexType, typename ValueType
 		>
-		OutputType setIndexOrValue( const IndexType &index, const ValueType &value,
+		OutputType setIndexOrValue(
+			const IndexType &index, const ValueType &value, const IndexType &n,
+			const size_t &s, const size_t &P,
 			const typename std::enable_if<
 				std::is_convertible< IndexType, OutputType >::value,
 			void >::type * const = nullptr
 		) {
 			if( descr & grb::descriptors::use_index ) {
-				return static_cast< OutputType >( index );
+				return static_cast< OutputType >(
+					ActiveDistribution::local_index_to_global( index, n, s, P )
+				);
 			} else {
 				return static_cast< OutputType >( value );
 			}
 		}
 
-		template< Descriptor descr,
+		template<
+			Descriptor descr,
+			class ActiveDistribution,
 			typename OutputType, typename IndexType, typename ValueType
 		>
-		OutputType setIndexOrValue( const IndexType &index, const ValueType &value,
+		OutputType setIndexOrValue(
+			const IndexType &index, const ValueType &value, const IndexType &n,
+			const size_t &s, const size_t &P,
 			const typename std::enable_if<
 				!std::is_convertible< IndexType, OutputType >::value,
 			void >::type * const = nullptr
 		) {
-			(void)index;
+			(void) index;
+			(void) n;
+			(void) s;
+			(void) P;
 			static_assert( !( descr & grb::descriptors::use_index ),
 				"use_index descriptor passed while the index type cannot be cast "
 				"to the output type" );
@@ -335,6 +364,1255 @@ namespace grb {
 #endif
 
 	} // namespace internal
+
+	/**
+	 * Sets the element of a given vector at a given position to a given value.
+	 *
+	 * \parblock
+	 * \par Performance semantics
+	 * A call to this function
+	 *   -# consists of \f$ \Theta(1) \f$ work;
+	 *   -# moves \f$ \Theta(1) \f$ bytes of memory;
+	 *   -# does not allocate nor free any dynamic memory;
+	 *   -# shall not make any system calls.
+	 * \endparblock
+	 *
+	 * \todo Check and, if needed, revise performance semantics.
+	 */
+	template<
+		Descriptor descr = descriptors::no_operation,
+		typename DataType, typename T, typename Coords
+	>
+	RC setElement(
+		Vector< DataType, reference, Coords > &x,
+		const T val,
+		const size_t i,
+		const Phase &phase = EXECUTE,
+		const typename std::enable_if<
+			!grb::is_object< DataType >::value &&
+			!grb::is_object< T >::value, void
+		>::type * const = nullptr
+	) {
+		// static sanity checks
+		NO_CAST_ASSERT( ( !(descr & descriptors::no_casting) ||
+				std::is_same< DataType, T >::value ),
+			"grb::set (Vector, at index)",
+			"called with a value type that does not match that of the given vector"
+		);
+		if( phase == RESIZE ) {
+			return SUCCESS;
+		}
+		assert( phase == EXECUTE );
+
+		// dynamic sanity checks
+		if( i >= size( x ) ) {
+			return MISMATCH;
+		}
+		if( (descr & descriptors::dense) && nnz( x ) < size( x ) ) {
+			return ILLEGAL;
+		}
+
+		// do set
+		(void) internal::getCoordinates( x ).assign( i );
+		internal::getRaw( x )[ i ] = static_cast< DataType >( val );
+
+#ifdef _DEBUG
+		std::cout << "setElement (reference) set index " << i << " to value "
+			<< internal::getRaw( x )[ i ] << "\n";
+#endif
+
+		// done
+		return SUCCESS;
+	}
+
+	namespace internal {
+
+		/**
+		 * This function should be called for masked calls to set-matrix-to-value. It
+		 * provides the most generic implementation where masks need to be interpreted
+		 * and may result in an nnz(output) that is smaller than nnz(mask).
+		 *
+		 * This function also supports self-masking.
+		 */
+		template<
+			Descriptor descr,
+			typename OutputType, typename InputType1, typename InputType2,
+			typename RIT, typename CIT, typename NIT
+		>
+		RC set_masked(
+			Matrix< OutputType, reference, RIT, CIT, NIT > &A,
+			const Matrix< InputType1, reference, RIT, CIT, NIT > &mask,
+			InputType2 &val,
+			const Phase &phase
+		) noexcept {
+#ifdef _DEBUG_REFERENCE_IO
+			std::cout << "\t called grb::internal::set_masked (reference), ";
+			if( phase == EXECUTE ) {
+				std::cout << "execute phase\n";
+			} else {
+				assert( phase == RESIZE );
+				std::cout << "resize phase\n";
+			}
+			std::cout << "\t Mask has " << grb::nnz( mask ) << " nonzeroes\n";
+#endif
+			// static checks
+			static_assert( !(descr & descriptors::no_casting) ||
+					std::is_same< InputType1, bool >::value,
+				"grb::internal::set_masked called with non-matching mask types. This is an "
+				"internal error. Please submit a bug report."
+			);
+			static_assert( !(descr & descriptors::no_casting) ||
+					std::is_same< OutputType, InputType2 >::value,
+				"grb::internal::set_masked called with non-matching output and value "
+				"types. This is an internal error. Please submit a bug report."
+			);
+			static_assert( !((descr & descriptors::invert_mask) &&
+					(descr & descriptors::structural)),
+				"grb::internal::set_masked called with structural inversion. This is an "
+				"internal error. Please submit a bug report."
+			);
+			static_assert( !std::is_void< InputType1 >::value,
+				"grb::internal::set_masked called with void mask type. This is an internal "
+				"error. Please submit a bug report."
+			);
+
+			// run-time checks
+			const size_t m = nrows( A );
+			const size_t n = ncols( A );
+#ifndef NDEBUG
+			assert( nrows( mask ) == m );
+			assert( ncols( mask ) == n );
+#endif
+
+			// catch trivial cases
+			const size_t nz = nnz( mask );
+			if( m == 0 || n == 0 ) {
+				return SUCCESS;
+			}
+			if( nz == 0 ) {
+#ifdef _DEBUG
+				std::cout << "\t mask has no nonzeroes, simply clearing output matrix...\n";
+#endif
+				return grb::clear( A );
+			}
+
+			// check if self-masked
+			const bool self_masked = getID( A ) == getID( mask );
+
+			// retrieve separate buffer if self-masked, point to existing buffers if not
+			RIT *__restrict__ buffer_row_ind = nullptr;
+			CIT *__restrict__ buffer_col_ind = nullptr;
+			NIT *__restrict__ out_crs_offsets = nullptr;
+			NIT *__restrict__ out_ccs_offsets = nullptr;
+			if( self_masked ) {
+				out_crs_offsets = internal::getMatrixRowBuffer( A );
+				out_ccs_offsets = internal::getMatrixColBuffer( A );
+				const size_t bufsize = ( sizeof( RIT ) + sizeof( CIT ) ) * nz + sizeof( int );
+				char * buffer_raw =
+					internal::template getReferenceBuffer< char >( bufsize );
+				buffer_row_ind = reinterpret_cast< RIT * >( buffer_raw );
+				buffer_raw += sizeof( RIT ) * nz;
+				{
+					const size_t shift =
+						reinterpret_cast< uintptr_t >(buffer_raw) % sizeof(int);
+					if( shift > 0 ) {
+						buffer_raw += (sizeof(int) - shift);
+					}
+				}
+				buffer_col_ind = reinterpret_cast< CIT * >( buffer_raw );
+			} else {
+				(void) buffer_row_ind;
+				(void) buffer_col_ind;
+				out_crs_offsets = internal::getCRS( A ).col_start;
+				out_ccs_offsets = internal::getCCS( A ).col_start;
+			}
+
+			// resize phase first
+			if( phase == RESIZE ) {
+				// compute number of nonzeroes
+				size_t min_req_nz = 0;
+#ifdef _H_GRB_REFERENCE_OMP_IO
+				#pragma omp parallel reduction( + : min_req_nz )
+#endif
+				{
+					size_t local_nz = 0;
+					size_t start, end;
+#ifdef _H_GRB_REFERENCE_OMP_IO
+					config::OMP::localRange( start, end, 0, nz );
+#else
+					start = 0;
+					end = nz;
+#endif
+					InputType1 *__restrict__ const crs = internal::getCRS( mask ).values;
+					for( size_t k = start; k < end; ++k ) {
+						const bool nonzero = utils::interpretMask< descr >( true, crs, k );
+						if( nonzero ) {
+							(void) ++local_nz;
+						}
+					}
+#ifdef _DEBUG_REFERENCE_IO
+ #ifdef _H_GRB_REFERENCE_OMP_IO
+					#pragma omp critical
+ #endif
+					{
+ #ifdef _H_GRB_REFERENCE_OMP_IO
+						std::cout << "\t\t thread " << config::OMP::current_thread_ID() << ": "
+ #else
+						std::cout << "\t\t "
+ #endif
+							<< "got range " << start << " to " << end << " and counted " << local_nz
+							<< " nonzeroes\n";
+					}
+#endif
+					min_req_nz += local_nz;
+				}
+#ifdef _DEBUG_REFERENCE_IO
+				std::cout << "\t\t assuring capacity of at least " << min_req_nz << "\n";
+#endif
+				if( grb::capacity( A ) >= min_req_nz ) {
+					return SUCCESS;
+				} else {
+#ifdef _DEBUG_REFERENCE_IO
+					std::cout << "\t\t output matrix capacity insuffient ( "
+						<< grb::capacity( A ) << " ), resizing\n";
+#endif
+					return grb::resize( A, min_req_nz );
+				}
+			} else {
+				// execute phase
+				assert( phase == EXECUTE );
+				size_t new_nnz = 0, checksum = 0;
+#ifdef _H_GRB_REFERENCE_OMP_IO
+				#pragma omp parallel
+#endif
+				{
+					size_t start, end, local_nz = 0, local_checksum = 0;
+					// first, use CRS to compute row count
+					{
+#ifdef _H_GRB_REFERENCE_OMP_IO
+						config::OMP::localRange( start, end, 0, m );
+#else
+						start = 0;
+						end = m;
+#endif
+						const auto &mask_crs = internal::getCRS( mask );
+						for( size_t i = start; i < end; ++i ) {
+							// reset output count
+							out_crs_offsets[ i ] = 0;
+							for(
+								size_t k = mask_crs.col_start[ i ];
+								k < mask_crs.col_start[ i + 1 ];
+								++k
+							) {
+								const bool mask =
+									utils::interpretMask< descr >( true, mask_crs.values, k );
+								if( mask ) {
+									(void) ++out_crs_offsets[ i ];
+									(void) ++local_nz;
+								}
+							}
+						}
+					}
+					if( !(descr & descriptors::force_row_major) ) {
+						// I also need a column count, so get that too
+#ifdef _H_GRB_REFERENCE_OMP_IO
+						config::OMP::localRange( start, end, 0, n );
+#else
+						start = 0;
+						end = n;
+#endif
+						const auto &mask_ccs = internal::getCCS( mask );
+						for( size_t j = start; j < end; ++j ) {
+							// reset output count
+							out_ccs_offsets[ j ] = 0;
+							for(
+								size_t k = mask_ccs.col_start[ j ];
+								k < mask_ccs.col_start[ j + 1 ];
+								++k
+							) {
+								const bool mask =
+									utils::interpretMask< descr >( true, mask_ccs.values, k );
+								if( mask ) {
+									(void) ++out_ccs_offsets[ j ];
+									(void) ++local_checksum;
+								}
+							}
+						}
+					}
+#ifdef _H_GRB_REFERENCE_OMP_IO
+					#pragma omp critical
+#endif
+					{
+						new_nnz += local_nz;
+						checksum += local_checksum;
+					}
+#ifdef _DEBUG_REFERENCE_IO
+ #ifdef _H_GRB_REFERENCE_OMP_IO
+					#pragma omp barrier
+					#pragma omp single
+ #endif
+					std::cout << "\t New nonzero count (checksum): " << new_nnz << " ("
+						<< checksum << ")\n";
+#endif
+					// we assume here a happy path and first try to complete the computation
+					// (we could also have first evaluated whether new_nz == checksum and quit
+					// early if not, but we elect to not incur such overhead in the happy path)
+
+					// first, make the row- and column-counts cumulative
+					{
+#ifdef _DEBUG_REFERENCE_IO
+ #ifdef _H_GRB_REFERENCE_OMP_IO
+						#pragma omp single
+ #endif
+						{
+							std::cout << "\t Row counts: [ " << out_crs_offsets[ 0 ];
+							for( size_t i = 1; i < m; ++i ) {
+								std::cout << ", " << out_crs_offsets[ i ];
+							}
+							std::cout << " ]\n";
+							std::cout << "\t Column counts: [ " << out_ccs_offsets[ 0 ];
+							for( size_t i = 1; i < n; ++i ) {
+								std::cout << ", " << out_ccs_offsets[ i ];
+							}
+							std::cout << " ]\n";
+						}
+#endif
+#ifndef _H_GRB_REFERENCE_OMP_IO
+						utils::template prefixSum_seq< true >( out_crs_offsets, m );
+						if( !(descr & descriptors::force_row_major) ) {
+							utils::template prefixSum_seq< true >( out_ccs_offsets, n );
+						}
+#else
+						NIT crs_ws, ccs_ws;
+						utils::template prefixSum_ompPar_phase1< true >( out_crs_offsets, m,
+							crs_ws );
+						if( !(descr & descriptors::force_row_major) ) {
+							utils::template prefixSum_ompPar_phase1< true >( out_ccs_offsets, n,
+								ccs_ws );
+						}
+						#pragma omp barrier
+						utils::template prefixSum_ompPar_phase2< true >( out_crs_offsets, m,
+							crs_ws );
+						if( !(descr & descriptors::force_row_major) ) {
+							utils::template prefixSum_ompPar_phase2< true >( out_ccs_offsets, n,
+								ccs_ws );
+						}
+						#pragma omp barrier
+						utils::template prefixSum_ompPar_phase3< true >( out_crs_offsets, m,
+							crs_ws );
+						if( !(descr & descriptors::force_row_major) ) {
+							utils::template prefixSum_ompPar_phase3< true >( out_ccs_offsets, n,
+								ccs_ws );
+						}
+#endif
+#ifdef _DEBUG_REFERENCE_IO
+ #ifdef _H_GRB_REFERENCE_OMP_IO
+						#pragma omp single
+ #endif
+						{
+							std::cout << "\t prefix-summed row counts: [ " << out_crs_offsets[ 0 ];
+							for( size_t i = 1; i < m; ++i ) {
+								std::cout << ", " << out_crs_offsets[ i ];
+							}
+							std::cout << " ]\n";
+							std::cout << "\t prefix-summed column counts: [ " << out_ccs_offsets[ 0 ];
+							for( size_t i = 1; i < n; ++i ) {
+								std::cout << ", " << out_ccs_offsets[ i ];
+							}
+							std::cout << " ]\n";
+						}
+#endif
+					}
+
+					// second, populate the output matrix accordingly
+					{
+#ifdef _H_GRB_REFERENCE_OMP_IO
+						config::OMP::localRange( start, end, 0, m );
+#else
+						start = 0;
+						end = m;
+#endif
+						const auto &mask_crs = internal::getCRS( mask );
+						auto &out_crs = internal::getCRS( A );
+						for( size_t i = start; i < end; ++i ) {
+							for(
+								size_t k = mask_crs.col_start[ i ];
+								k < mask_crs.col_start[ i + 1 ];
+								++k
+							) {
+								const bool mask =
+									utils::interpretMask< descr >( true, mask_crs.values, k );
+								if( mask ) {
+									assert( out_crs_offsets[ i ] > 0 );
+									const size_t out_k = --(out_crs_offsets[ i ]);
+#ifdef _DEBUG_REFERENCE_IO
+ #ifdef _H_GRB_REFERENCE_OMP_IO
+									#pragma omp critical
+ #endif
+									std::cout << "Nonzero on row " << i << ", column "
+										<< mask_crs.row_index[ k ] << " will be written to k = " << out_k
+										<< "\n";
+#endif
+									assert( out_k <= out_crs.col_start[ m ] );
+									if( self_masked ) {
+										buffer_row_ind[ out_k ] = mask_crs.row_index[ k ];
+									} else {
+										out_crs.row_index[ out_k ] = mask_crs.row_index[ k ];
+										out_crs.setValue( out_k, val );
+									}
+								} else {
+#ifdef _DEBUG_REFERENCE_IO
+ #ifdef _H_GRB_REFERENCE_OMP_IO
+									#pragma omp critical
+ #endif
+									std::cout << "Nonzero on row " << i << ", column "
+										<< mask_crs.row_index[ k ] << ", value "
+										<< mask_crs.values[ k ] << " does not evaluate true\n";
+#endif
+								}
+							}
+						}
+					}
+					if( !(descr & descriptors::force_row_major) ) {
+#ifdef _H_GRB_REFERENCE_OMP_IO
+						config::OMP::localRange( start, end, 0, n );
+#else
+						start = 0;
+						end = n;
+#endif
+						const auto &mask_ccs = internal::getCCS( mask );
+						auto &out_ccs = internal::getCCS( A );
+						for( size_t j = start; j < end; ++j ) {
+							for(
+								size_t k = mask_ccs.col_start[ j ];
+								k < mask_ccs.col_start[ j + 1 ];
+								++k
+							) {
+								const bool mask =
+									utils::interpretMask< descr >( true, mask_ccs.values, k );
+								if( mask ) {
+									assert( out_ccs_offsets[ j ] > 0 );
+									const size_t out_k = --(out_ccs_offsets[ j ]);
+									if( self_masked ) {
+										buffer_col_ind[ out_k ] = mask_ccs.row_index[ k ];
+									} else {
+										out_ccs.row_index[ out_k ] = mask_ccs.row_index[ k ];
+										out_ccs.setValue( out_k, val );
+									}
+								}
+							}
+						}
+					}
+#ifdef _DEBUG_REFERENCE_IO
+ #ifdef _H_GRB_REFERENCE_OMP_IO
+					#pragma omp barrier
+					#pragma omp single
+ #endif
+					{
+						if( self_masked ) {
+							std::cout << "\t CRS offset buffer: [ " << out_crs_offsets[ 0 ];
+							for( size_t i = 1; i <= m; ++i ) {
+								std::cout << ", " << out_crs_offsets[ i ];
+							}
+							std::cout << " ]\n";
+							std::cout << "\t CCS offset buffer: [ " <<
+								out_ccs_offsets[ 0 ];
+							for( size_t j = 1; j <= n; ++j ) {
+								std::cout << ", " << out_ccs_offsets [ j ];
+							}
+							std::cout << " ]\n";
+						}
+					}
+#endif
+					// if self-masked, we can now finally copy back the offset and index
+					// arrays, while we can also now set the value arrays
+					if( self_masked ) {
+						auto &out_crs = internal::getCRS( A );
+						auto &out_ccs = internal::getCCS( A );
+#ifdef _H_GRB_REFERENCE_OMP_IO
+						// first make sure write-outs to the buffer_{row,col}_ind and
+						// out_{crs,ccs}_offsets arrays have all completed
+						#pragma omp barrier
+						config::OMP::localRange( start, end, 0, m );
+#else
+						start = 0;
+						end = m;
+#endif
+						assert( out_crs.col_start != out_crs_offsets );
+						for( size_t i = start; i < end; ++i ) {
+							out_crs.col_start[ i ] = out_crs_offsets[ i ];
+						}
+						if( start < m && end == m ) {
+							out_crs.col_start[ m ] = out_crs_offsets[ m ];
+						}
+#ifdef _H_GRB_REFERENCE_OMP_IO
+						config::OMP::localRange( start, end, 0, n );
+#else
+						start = 0;
+						end = n;
+#endif
+						assert( out_ccs.col_start != out_ccs_offsets );
+						for( size_t j = start; j < end; ++j ) {
+							out_ccs.col_start[ j ] = out_ccs_offsets[ j ];
+						}
+						if( start < n && end == n ) {
+							out_ccs.col_start[ n ] = out_ccs_offsets[ n ];
+						}
+#ifdef _H_GRB_REFERENCE_OMP_IO
+						config::OMP::localRange( start, end, 0, new_nnz );
+#else
+						start = 0;
+						end = new_nnz;
+#endif
+						for( size_t k = start; k < end; ++k ) {
+							out_crs.setValue( k, val );
+							out_crs.row_index[ k ] = buffer_row_ind[ k ];
+							if( !(descr & descriptors::force_row_major) ) {
+								out_ccs.setValue( k, val );
+								out_ccs.row_index[ k ] = buffer_col_ind[ k ];
+							}
+						}
+#ifdef _DEBUG_REFERENCE_IO
+ #ifdef _H_GRB_REFERENCE_OMP_IO
+						#pragma omp barrier
+						#pragma omp single
+ #endif
+						{
+							std::cout << "\t new CRS offset array: [ " <<
+								internal::getCRS( A ).col_start[ 0 ];
+							for( size_t i = 1; i <= m; ++i ) {
+								std::cout << ", " << internal::getCRS( A ).col_start[ i ];
+							}
+							std::cout << " ]\n";
+							std::cout << "\t new CCS offset array: [ " <<
+								internal::getCCS( A ).col_start[ 0 ];
+							for( size_t j = 1; j <= n; ++j ) {
+								std::cout << ", " << internal::getCCS( A ).col_start[ j ];
+							}
+							std::cout << " ]\n";
+							std::cout << "CRS index array: [ " << out_crs.row_index[ 0 ];
+							for( size_t k = 1; k < new_nnz; ++k ) {
+								std::cout << ", " << out_crs.row_index[ k ];
+							}
+							std::cout << " ]\n";
+							std::cout << "CRS value array: [ " << out_crs.getValue( 0, 17 );
+							for( size_t k = 1; k < new_nnz; ++k ) {
+								std::cout << ", " << out_crs.getValue( k, 17 );
+							}
+							std::cout << " ]\n";
+						}
+#endif
+					}
+				}
+				if( new_nnz != checksum && !(descr & descriptors::force_row_major) ) {
+					std::cerr << "Error: new nonzeroes in CRS and CCS do not agree\n";
+					assert( false );
+					return PANIC;
+				}
+				internal::setCurrentNonzeroes( A, new_nnz );
+			}
+
+			// all OK
+			return SUCCESS;
+		}
+
+		/**
+		 * This function should be called for self-masked calls to grb::set( matrix ),
+		 * for calls to masked grb::set< descr >( matrix ) where \a descr includes the
+		 * #grb::descriptors::structural, as well as for non-masked calls to the
+		 * matrix #grb::set.
+		 */
+		template<
+			bool A_is_mask,
+			Descriptor descr,
+			typename OutputType, typename InputType1,
+			typename InputType2,
+			typename RIT, typename CIT, typename NIT
+		>
+		RC set_copy(
+			Matrix< OutputType, reference, RIT, CIT, NIT > &C,
+			const Matrix< InputType1, reference, RIT, CIT, NIT > &A,
+			const InputType2 * __restrict__ id
+		) noexcept {
+#ifndef NDEBUG
+			if( A_is_mask ) {
+				assert( id != nullptr );
+			}
+#endif
+#ifdef _DEBUG_REFERENCE_IO
+			std::cout << "\t called grb::internal::set_copy (reference), "
+				<< "execute phase\n";
+#endif
+			// static checks
+			static_assert(
+				( !(descr & descriptors::no_casting) ||
+					( !A_is_mask && std::is_same< InputType1, OutputType >::value ) ),
+				"grb::internal::set_copy called with non-matching value types. This is an "
+				"internal error. Please submit a bug report."
+			);
+			static_assert(
+				( !(descr & descriptors::no_casting) ||
+					( A_is_mask && std::is_same< InputType2, OutputType >::value ) ),
+				"grb::internal::set_copy called with non-matching value types. This is an "
+				"internal error. Please submit a bug report."
+			);
+			static_assert(
+				!(descr & descriptors::invert_mask), "internal::grb::set_copy called with "
+				"the invert_mask descriptor. This is an internal error; please submit a "
+				"bug report."
+			);
+
+			// run-time checks
+			const size_t m = nrows( A );
+			const size_t n = ncols( A );
+#ifndef NDEBUG
+			assert( nrows( C ) == m );
+			assert( ncols( C ) == n );
+			if( A_is_mask ) {
+				assert( id != nullptr );
+			}
+#endif
+
+			// catch trivial cases
+			if( m == 0 || n == 0 ) {
+				return SUCCESS;
+			}
+			const size_t nz = nnz( A );
+			if( nz == 0 ) {
+#ifdef _DEBUG_REFERENCE_IO
+				std::cout << "\t input matrix has no nonzeroes, "
+					<< "simply clearing output matrix...\n";
+#endif
+				return clear( C );
+			}
+			if( nz > capacity( C ) ) {
+#ifdef _DEBUG_REFERENCE_IO
+				std::cout << "\t output matrix does not have sufficient capacity to "
+					<< "complete requested operation\n";
+#endif
+				const RC clear_rc = clear( C );
+				if( clear_rc != SUCCESS ) {
+					return PANIC;
+				} else {
+					return ILLEGAL;
+				}
+			}
+
+#ifdef _H_GRB_REFERENCE_OMP_IO
+			// simple analytic model to prevent using too many threads
+			// relies on the minimum loop size OMP config variable, and makes sure that
+			// active cores will have at least CACHE_LINE_SIZE elements to operate on
+			const size_t minRange = std::min(
+					internal::getCRS( C ).copyFromRange( nz, m ),
+					internal::getCCS( C ).copyFromRange( nz, n )
+				);
+			const size_t nthreads = minRange < config::OMP::minLoopSize()
+				? 1
+				: std::min(
+						config::OMP::threads(),
+						std::max(
+							static_cast< size_t >(1),
+							minRange / config::CACHE_LINE_SIZE::value()
+						)
+					);
+			#pragma omp parallel num_threads( nthreads )
+#endif
+			{
+				size_t range = internal::getCRS( C ).copyFromRange( nz, m );
+#ifdef _H_GRB_REFERENCE_OMP_IO
+				size_t start, end;
+				config::OMP::localRange( start, end, 0, range );
+#else
+				const size_t start = 0;
+				size_t end = range;
+#endif
+				internal::getCRS( C ).template copyFrom< descr, A_is_mask >(
+					internal::getCRS( A ), nz, m, start, end, id
+				);
+				range = internal::getCCS( C ).copyFromRange( nz, n );
+#ifdef _H_GRB_REFERENCE_OMP_IO
+				config::OMP::localRange( start, end, 0, range );
+#else
+				end = range;
+#endif
+				internal::getCCS( C ).template copyFrom< descr, A_is_mask >(
+					internal::getCCS( A ), nz, n, start, end, id
+				);
+
+			}
+			internal::setCurrentNonzeroes( C, nz );
+
+			// done
+			return SUCCESS;
+		}
+
+		/**
+		 * A variation of set_copy that only touches the CRS and CCS value arrays.
+		 */
+		template<
+			grb::Descriptor descr,
+			typename OutputType,
+			typename InputType2,
+			typename RIT, typename CIT, typename NIT
+		>
+		RC set_copy_values(
+			Matrix< OutputType, reference, RIT, CIT, NIT > &C,
+			const InputType2 * const value,
+			const size_t nz
+		) noexcept {
+#ifdef _DEBUG_REFERENCE_IO
+			std::cout << "\t called grb::internal::set_copy_values (reference), "
+				<< "execute phase\n";
+#endif
+#ifdef _H_GRB_REFERENCE_OMP_IO
+			// basic analytic model that only uses threads if there are at least cache
+			// line size elements that it could locally process. Also employs the
+			// minimum loop size config.
+			const size_t nthreads = nz < config::OMP::minLoopSize()
+				? 1
+				: std::min(
+						config::OMP::threads(),
+						std::max(
+							static_cast< size_t >(1),
+							nz / config::CACHE_LINE_SIZE::value()
+						)
+					  );
+			#pragma omp parallel num_threads( nthreads )
+#endif
+			{
+				size_t start, end;
+#ifdef _H_GRB_REFERENCE_OMP_IO
+				config::OMP::localRange( start, end, 0, nz );
+#else
+				start = 0;
+				end = nz;
+#endif
+				OutputType *__restrict__ const crs = internal::getCRS( C ).values;
+				OutputType *__restrict__ const ccs = internal::getCCS( C ).values;
+				for( size_t k = start; k < end; ++k ) {
+					crs[ k ] = *value;
+					if( !(descr & descriptors::force_row_major) ) {
+						ccs[ k ] = *value;
+					}
+				}
+			}
+
+			// done
+			return SUCCESS;
+		}
+
+		/**
+		 * Variation of set_copy_values for void matrices, which translates to a
+		 * no-op.
+		 */
+		template<
+			grb::Descriptor descr,
+			typename InputType2,
+			typename RIT, typename CIT, typename NIT
+		>
+		RC set_copy_values(
+			Matrix< void, reference, RIT, CIT, NIT > &C,
+			const InputType2 * const value,
+			const size_t nz
+		) noexcept {
+			(void) descr;
+			(void) C;
+			(void) value;
+			(void) nz;
+#ifdef _DEBUG
+			std::cout << "\t called grb::internal::set_copy_values (reference), "
+				<< "void variant (which is a no-op)\n";
+#endif
+			return SUCCESS;
+		}
+
+		/**
+		 * Variation of set_masked for void masks, which translates to a call to
+		 * set_copy with the structural descriptor.
+		 */
+		template<
+			Descriptor descr,
+			typename OutputType, typename InputType,
+			typename RIT, typename CIT, typename NIT
+		>
+		RC set_masked(
+			Matrix< OutputType, reference, RIT, CIT, NIT > &A,
+			const Matrix< void, reference, RIT, CIT, NIT > &mask,
+			InputType &val,
+			const Phase &phase
+		) noexcept {
+#ifdef _DEBUG_REFERENCE_IO
+			std::cout << "\t called grb::internal::set_masked (void mask, reference)\n";
+#endif
+			// handle resize
+			if( phase == RESIZE ) {
+				if( grb::capacity( A ) < nnz( mask ) ) {
+					return grb::resize( A, std::max( nnz( A ), nnz( mask ) ) );
+				} else {
+					return SUCCESS;
+				}
+			}
+			// delegate to structural set_copy
+			assert( phase == EXECUTE );
+			return set_copy< true, descr | descriptors::structural >( A, mask, &val );
+		}
+
+		template<
+			Descriptor descr,
+			class ActiveDistribution,
+			typename DataType, typename T,
+			typename Coords
+		>
+		RC set_to_value(
+			Vector< DataType, reference, Coords > &x,
+			const T val,
+			const Phase &phase,
+			const size_t s, const size_t P
+		) {
+			// dynamic checks
+			const size_t n = size( x );
+			if( (descr & descriptors::dense) && nnz( x ) < n ) {
+				return ILLEGAL;
+			}
+
+			if( phase == RESIZE ) {
+				return SUCCESS;
+			}
+			assert( phase == EXECUTE );
+
+			// pre-cast value to be copied
+			const DataType toCopy = static_cast< DataType >( val );
+
+			// make vector dense if it was not already
+			if( !(descr & descriptors::dense) ) {
+				internal::getCoordinates( x ).assignAll();
+			}
+			DataType * const raw = internal::getRaw( x );
+
+#ifdef _H_GRB_REFERENCE_OMP_IO
+			#pragma omp parallel
+			{
+				size_t start, end;
+				config::OMP::localRange( start, end, 0, n );
+#else
+				const size_t start = 0;
+				const size_t end = n;
+#endif
+				for( size_t i = start; i < end; ++ i ) {
+					raw[ i ] = internal::template ValueOrIndex< descr, DataType, DataType >::
+						getFromScalar( toCopy,
+							ActiveDistribution::local_index_to_global( i, n, s, P )
+						);
+				}
+#ifdef _H_GRB_REFERENCE_OMP_IO
+			}
+#endif
+			// sanity check
+			assert( internal::getCoordinates( x ).nonzeroes() ==
+				internal::getCoordinates( x ).size() );
+
+			// done
+			return SUCCESS;
+		}
+
+		template<
+			Descriptor descr,
+			class ActiveDistribution,
+			typename DataType, typename MaskType, typename T,
+			typename Coords
+		>
+		RC set_to_value_masked(
+			Vector< DataType, reference, Coords > &x,
+			const Vector< MaskType, reference, Coords > &m,
+			const T val,
+			const Phase &phase,
+			const size_t s, const size_t P
+		) {
+			// catch empty mask
+			if( size( m ) == 0 ) {
+				return internal::set_to_value< descr, ActiveDistribution >(
+					x, val, phase, s, P );
+			}
+
+			// dynamic sanity checks
+			const size_t sizex = size( x );
+			if( sizex != size( m ) ) {
+				return MISMATCH;
+			}
+			if( (descr & descriptors::dense) &&
+				(nnz( x ) < sizex || nnz( m ) < sizex)
+			) {
+				return ILLEGAL;
+			}
+
+			// handle trivial resize
+			if( phase == RESIZE ) {
+				return SUCCESS;
+			}
+			assert( phase == EXECUTE );
+
+			// make the vector empty unless the dense descriptor is provided
+			const bool mask_is_dense = (descr & descriptors::structural) &&
+				!(descr & descriptors::invert_mask) && (
+					(descr & descriptors::dense) ||
+					nnz( m ) == sizex
+				);
+			if( !((descr & descriptors::dense) && mask_is_dense) ) {
+				internal::getCoordinates( x ).clear();
+			} else if( mask_is_dense ) {
+				// dispatch to faster variant if mask is structurally dense
+				return set_to_value< descr, ActiveDistribution >(
+					x, val, phase, s, P );
+			}
+
+			// pre-cast value to be copied and get coordinate handles
+			const DataType toCopy = static_cast< DataType >( val );
+			DataType * const raw = internal::getRaw( x );
+			auto &coors = internal::getCoordinates( x );
+			const auto &m_coors = internal::getCoordinates( m );
+			const MaskType * const m_p = internal::getRaw( m );
+
+#ifdef _H_GRB_REFERENCE_OMP_IO
+			#pragma omp parallel
+			{
+				auto localUpdate = coors.EMPTY_UPDATE();
+				const size_t maxAsyncAssigns = coors.maxAsyncAssigns();
+				size_t asyncAssigns = 0;
+#endif
+				const bool loop_over_vector_length = (descr & descriptors::invert_mask) ||
+					(4 * m_coors.nonzeroes() > 3 * m_coors.size());
+#ifdef _DEBUG
+				if( loop_over_vector_length ) {
+					std::cout << "\t using loop of size n (the vector length)\n";
+				} else {
+					std::cout << "\t using loop of size nz (the number of nonzeroes in the vector)\n";
+				}
+#endif
+				const size_t n = loop_over_vector_length ?
+					coors.size() :
+					m_coors.nonzeroes();
+#ifdef _H_GRB_REFERENCE_OMP_IO
+				// since masks are irregularly structured, use dynamic schedule to ensure
+				// load balance
+				#pragma omp for schedule( dynamic,config::CACHE_LINE_SIZE::value() ) nowait
+#endif
+				for( size_t k = 0; k < n; ++k ) {
+					const size_t index = loop_over_vector_length ? k : m_coors.index( k );
+					if( !m_coors.template mask< descr >( index, m_p ) ) {
+						continue;
+					}
+#ifdef _H_GRB_REFERENCE_OMP_IO
+					if( !coors.asyncAssign( index, localUpdate ) ) {
+						(void) ++asyncAssigns;
+					}
+					if( asyncAssigns == maxAsyncAssigns ) {
+						(void) coors.joinUpdate( localUpdate );
+						asyncAssigns = 0;
+					}
+#else
+					(void) coors.assign( index );
+#endif
+					raw[ index ] = internal::ValueOrIndex<
+							descr, DataType, DataType
+						>::getFromScalar(
+							toCopy, ActiveDistribution::local_index_to_global( index, n, s, P )
+						);
+				}
+#ifdef _H_GRB_REFERENCE_OMP_IO
+				while( !coors.joinUpdate( localUpdate ) ) {}
+			} // end pragma omp parallel
+#endif
+
+			// done
+			return SUCCESS;
+		}
+
+		template<
+			Descriptor descr,
+			class ActiveDistribution,
+			typename OutputType, typename InputType, typename Coords
+		>
+		RC set_vector_to_vector(
+			Vector< OutputType, reference, Coords > &x,
+			const Vector< InputType, reference, Coords > &y,
+			const Phase &phase,
+			const size_t s, const size_t P
+		) {
+			constexpr bool out_is_void = std::is_void< OutputType >::value;
+			constexpr bool in_is_void = std::is_void< OutputType >::value;
+
+			// check contract
+			const size_t n = size( x );
+			if( n != size( y ) ) {
+				return MISMATCH;
+			}
+			// check trivial op
+			// note: the below check cannot move after the check that uses getID
+			if( n == 0 ) {
+				return SUCCESS;
+			}
+			// continue contract checks
+			if( getID( x ) == getID( y ) ) {
+				return ILLEGAL;
+			}
+			if( descr & descriptors::dense ) {
+				if( nnz( y ) < size( y ) || nnz( x ) < size( x ) ) {
+					return ILLEGAL;
+				}
+			}
+
+			// on resize
+			if( phase == RESIZE ) {
+				return SUCCESS;
+			}
+
+			// on execute
+			assert( phase == EXECUTE );
+
+			// get raw value arrays
+			OutputType * __restrict__ const dst = internal::getRaw( x );
+			const InputType * __restrict__ const src = internal::getRaw( y );
+
+			// make the vector empty unless the dense descriptor is provided
+			if( !(descr & descriptors::dense) ) {
+				internal::getCoordinates( x ).clear();
+			}
+
+			// get #nonzeroes
+			const size_t nz = nnz( y );
+#ifdef _DEBUG
+			std::cout << "grb::set called with source vector containing "
+				<< nz << " nonzeroes." << std::endl;
+#endif
+
+#ifndef NDEBUG
+			if( src == nullptr ) {
+				assert( dst == nullptr );
+			}
+#endif
+			// first copy contents
+			if( src == nullptr && dst == nullptr ) {
+				// if both source and destination are dense void vectors, this is a no-op
+				if( (descr & descriptors::dense) || (
+						nnz( x ) == size( x ) && nz == size( y )
+					)
+				) {
+					return SUCCESS;
+				}
+				// otherwise, copy source nonzero pattern to destination:
+#ifdef _H_GRB_REFERENCE_OMP_IO
+				#pragma omp parallel
+				{
+					size_t start, end;
+					config::OMP::localRange( start, end, 0, nz );
+#else
+					const size_t start = 0;
+					const size_t end = nz;
+#endif
+					for( size_t i = start; i < end; ++i ) {
+						(void) internal::getCoordinates( x ).asyncCopy(
+							internal::getCoordinates( y ), i );
+					}
+#ifdef _H_GRB_REFERENCE_OMP_IO
+				}
+#endif
+			} else {
+				// if the output is a void vector that is furthermore dense, then this is
+				// actually also a no-op:
+				if( (descr & descriptors::dense) && out_is_void ) {
+					return SUCCESS;
+				}
+				// otherwise, the regular copy variant:
+#ifdef _H_GRB_REFERENCE_OMP_IO
+				#pragma omp parallel
+				{
+					size_t start, end;
+					config::OMP::localRange( start, end, 0, nz );
+#else
+					const size_t start = 0;
+					const size_t end = nz;
+#endif
+					for( size_t i = start; i < end; ++i ) {
+						size_t index;
+						if( !(descr & descriptors::dense) ) {
+							index = internal::getCoordinates( x ).asyncCopy(
+								internal::getCoordinates( y ), i );
+						} else {
+							index = i;
+						}
+						if( !out_is_void && !in_is_void ) {
+							dst[ index ] = internal::setIndexOrValue<
+								descr, ActiveDistribution, OutputType
+							>( index, src[ index ], n, s, P );
+						}
+					}
+#ifdef _H_GRB_REFERENCE_OMP_IO
+				}
+#endif
+			}
+
+			// set number of nonzeroes
+			if( !(descr & descriptors::dense) ) {
+				internal::getCoordinates( x ).joinCopy( internal::getCoordinates( y ) );
+			}
+
+			// done
+			return SUCCESS;
+		}
+
+		template<
+			Descriptor descr,
+			class ActiveDistribution,
+			typename OutputType, typename MaskType, typename InputType,
+			typename Coords
+		>
+		RC set_vector_to_vector_masked(
+			Vector< OutputType, reference, Coords > &x,
+			const Vector< MaskType, reference, Coords > &mask,
+			const Vector< InputType, reference, Coords > &y,
+			const Phase &phase,
+			const size_t s, const size_t P
+		) {
+			constexpr bool out_is_void = std::is_void< OutputType >::value;
+			constexpr bool in_is_void = std::is_void< OutputType >::value;
+
+			// catch contract violations
+			const size_t size = grb::size( y );
+			if( size != grb::size( x ) ) {
+				return MISMATCH;
+			}
+			if( size == 0 ) {
+				return SUCCESS;
+			}
+			if( getID( x ) == getID( y ) ) {
+				return ILLEGAL;
+			}
+			if( descr & descriptors::dense ) {
+				if( nnz( x ) < grb::size( x ) ||
+					nnz( y ) < grb::size( y ) ||
+					nnz( mask ) < grb::size( mask )
+				) {
+					return ILLEGAL;
+				}
+			}
+
+			// delegate if possible
+			if( grb::size( mask ) == 0 ) {
+				return set_vector_to_vector<
+					descr, ActiveDistribution
+				>( x, y, phase, s, P );
+			}
+
+			// additional contract check
+			if( size != grb::size( mask ) ) {
+				return MISMATCH;
+			}
+
+			// on resize
+			if( phase == RESIZE ) {
+				return SUCCESS;
+			}
+
+			// on execute
+			assert( phase == EXECUTE );
+			RC ret = SUCCESS;
+
+			// handle non-trivial, fully masked vector copy
+			const auto &m_coors = internal::getCoordinates( mask );
+			const auto &y_coors = internal::getCoordinates( y );
+			auto &x_coors = internal::getCoordinates( x );
+
+			// make the vector empty unless the dense descriptor is provided
+			const bool mask_is_dense = (descr & descriptors::structural) &&
+				!(descr & descriptors::invert_mask) && (
+					(descr & descriptors::dense) ||
+					nnz( mask ) == grb::size( mask )
+				);
+			if( !((descr & descriptors::dense) && mask_is_dense) ) {
+				internal::getCoordinates( x ).clear();
+			}
+
+			// choose optimal loop size
+			const bool loop_over_y = (descr & descriptors::invert_mask) ||
+				(y_coors.nonzeroes() < m_coors.nonzeroes());
+			const size_t n = loop_over_y ? y_coors.nonzeroes() : m_coors.nonzeroes();
+
+#ifdef _H_GRB_REFERENCE_OMP_IO
+			// keeps track of updates of the sparsity pattern
+			#pragma omp parallel
+			{
+				// keeps track of nonzeroes that the mask ignores
+				internal::Coordinates< reference >::Update local_update =
+					x_coors.EMPTY_UPDATE();
+				const size_t maxAsyncAssigns = x_coors.maxAsyncAssigns();
+				size_t asyncAssigns = 0;
+				RC local_rc = SUCCESS;
+				// since masks are irregularly structured, use dynamic schedule to ensure
+				// load balance
+				#pragma omp for schedule( dynamic, config::CACHE_LINE_SIZE::value() ) nowait
+				for( size_t k = 0; k < n; ++k ) {
+					const size_t i = loop_over_y ? y_coors.index( k ) : m_coors.index( k );
+					// if not masked, continue
+					if( !m_coors.template mask< descr >( i, internal::getRaw( mask ) ) ) {
+						continue;
+					}
+					// if source has nonzero
+					if( loop_over_y || y_coors.assigned( i ) ) {
+						// get value
+						if( !out_is_void && !in_is_void ) {
+							internal::getRaw( x )[ i ] =
+								internal::ValueOrIndex< descr, OutputType, InputType >::getFromArray(
+									internal::getRaw( y ), [&size, &s, &P] (const size_t i) {
+										return ActiveDistribution::local_index_to_global( i, size, s, P );
+									}, i
+								);
+						}
+						// check if destination has nonzero
+						if( !x_coors.asyncAssign( i, local_update ) ) {
+							(void) ++asyncAssigns;
+						}
+					}
+					if( asyncAssigns == maxAsyncAssigns ) {
+						const bool was_empty = x_coors.joinUpdate( local_update );
+#ifdef NDEBUG
+						(void) was_empty;
+#else
+						assert( !was_empty );
+#endif
+						asyncAssigns = 0;
+					}
+				}
+				while( !x_coors.joinUpdate( local_update ) ) {}
+				if( local_rc != SUCCESS ) {
+					ret = local_rc;
+				}
+			} // end omp parallel for
+#else
+			for( size_t k = 0; k < n; ++k ) {
+				const size_t i = loop_over_y ? y_coors.index( k ) : m_coors.index( k );
+				if( !m_coors.template mask< descr >( i, internal::getRaw( mask ) ) ) {
+					continue;
+				}
+				if( loop_over_y || internal::getCoordinates( y ).assigned( i ) ) {
+					if( !out_is_void && !in_is_void ) {
+						// get value
+						(void) x_coors.assign( i );
+						internal::getRaw( x )[ i ] =
+							internal::ValueOrIndex< descr, OutputType, InputType >::getFromArray(
+								internal::getRaw( y ), [&size, &s, &P] (const size_t i) {
+									return ActiveDistribution::local_index_to_global( i, size, s, P );
+								}, i
+							);
+					}
+				}
+			}
+#endif
+
+			// done
+			return ret;
+		}
+
+	} // end namespace internal::grb
 
 	/**
 	 * Sets all elements of a vector to the given value.
@@ -383,49 +1661,8 @@ namespace grb {
 			), "grb::set (Vector, unmasked)",
 			"called with a value type that does not match that of the given vector"
 		);
-
-		// dynamic checks
-		const size_t n = size( x );
-		if( (descr & descriptors::dense) && nnz( x ) < n ) {
-			return ILLEGAL;
-		}
-
-		if( phase == RESIZE ) {
-			return SUCCESS;
-		}
-		assert( phase == EXECUTE );
-
-		// pre-cast value to be copied
-		const DataType toCopy = static_cast< DataType >( val );
-
-		// make vector dense if it was not already
-		if( !(descr & descriptors::dense) ) {
-			internal::getCoordinates( x ).assignAll();
-		}
-		DataType * const raw = internal::getRaw( x );
-
-#ifdef _H_GRB_REFERENCE_OMP_IO
-		#pragma omp parallel
-		{
-			size_t start, end;
-			config::OMP::localRange( start, end, 0, n );
-#else
-			const size_t start = 0;
-			const size_t end = n;
-#endif
-			for( size_t i = start; i < end; ++ i ) {
-				raw[ i ] = internal::template ValueOrIndex< descr, DataType, DataType >::
-					getFromScalar( toCopy, i );
-			}
-#ifdef _H_GRB_REFERENCE_OMP_IO
-		}
-#endif
-		// sanity check
-		assert( internal::getCoordinates( x ).nonzeroes() ==
-			internal::getCoordinates( x ).size() );
-
-		// done
-		return SUCCESS;
+		return internal::set_to_value< descr, internal::Distribution< reference > >(
+			x, val, phase, 0, 1 );
 	}
 
 	/**
@@ -463,6 +1700,14 @@ namespace grb {
 #ifdef _DEBUG
 		std::cout << "In grb::set (vector-to-value, masked)\n";
 #endif
+		static_assert(
+			std::is_void< MaskType >::value ||
+			(descr & descriptors::structural) ||
+			std::is_convertible< MaskType, bool > ::value,
+			"grb::set (masked set to value): mask vector must be a "
+			"pattern vector, or have a data-type that is convertible to bool, "
+			"or use the structural descriptor"
+		);
 		// static sanity checks
 		NO_CAST_ASSERT( ( !(descr & descriptors::no_casting) ||
 			std::is_same< DataType, T >::value ), "grb::set (Vector to scalar, masked)",
@@ -470,160 +1715,9 @@ namespace grb {
 			"vector"
 		);
 
-		// catch empty mask
-		if( size( m ) == 0 ) {
-			return set< descr >( x, val, phase );
-		}
-
-		// dynamic sanity checks
-		const size_t sizex = size( x );
-		if( sizex != size( m ) ) {
-			return MISMATCH;
-		}
-		if( (descr & descriptors::dense) &&
-			(nnz( x ) < sizex || nnz( m ) < sizex)
-		) {
-			return ILLEGAL;
-		}
-
-		// handle trivial resize
-		if( phase == RESIZE ) {
-			return SUCCESS;
-		}
-		assert( phase == EXECUTE );
-
-		// make the vector empty unless the dense descriptor is provided
-		const bool mask_is_dense = (descr & descriptors::structural) &&
-			!(descr & descriptors::invert_mask) && (
-				(descr & descriptors::dense) ||
-				nnz( m ) == sizex
-			);
-		if( !((descr & descriptors::dense) && mask_is_dense) ) {
-			internal::getCoordinates( x ).clear();
-		} else if( mask_is_dense ) {
-			// dispatch to faster variant if mask is structurally dense
-			return set< descr >( x, val, phase );
-		}
-
-		// pre-cast value to be copied and get coordinate handles
-		const DataType toCopy = static_cast< DataType >( val );
-		DataType * const raw = internal::getRaw( x );
-		auto &coors = internal::getCoordinates( x );
-		const auto &m_coors = internal::getCoordinates( m );
-		const MaskType * const m_p = internal::getRaw( m );
-
-#ifdef _H_GRB_REFERENCE_OMP_IO
-		#pragma omp parallel
-		{
-			auto localUpdate = coors.EMPTY_UPDATE();
-			const size_t maxAsyncAssigns = coors.maxAsyncAssigns();
-			size_t asyncAssigns = 0;
-#endif
-			const bool loop_over_vector_length = (descr & descriptors::invert_mask) ||
-				( 4 * m_coors.nonzeroes() > 3 * m_coors.size() );
-#ifdef _DEBUG
-			if( loop_over_vector_length ) {
-				std::cout << "\t using loop of size n (the vector length)\n";
-			} else {
-				std::cout << "\t using loop of size nz (the number of nonzeroes in the vector)\n";
-			}
-#endif
-			const size_t n = loop_over_vector_length ?
-				coors.size() :
-				m_coors.nonzeroes();
-#ifdef _H_GRB_REFERENCE_OMP_IO
-			// since masks are irregularly structured, use dynamic schedule to ensure
-			// load balance
-			#pragma omp for schedule( dynamic,config::CACHE_LINE_SIZE::value() ) nowait
-#endif
-			for( size_t k = 0; k < n; ++k ) {
-				const size_t index = loop_over_vector_length ? k : m_coors.index( k );
-				if( !m_coors.template mask< descr >( index, m_p ) ) {
-					continue;
-				}
-#ifdef _H_GRB_REFERENCE_OMP_IO
-				if( !coors.asyncAssign( index, localUpdate ) ) {
-					(void) ++asyncAssigns;
-				}
-				if( asyncAssigns == maxAsyncAssigns ) {
-					(void) coors.joinUpdate( localUpdate );
-					asyncAssigns = 0;
-				}
-#else
-				(void) coors.assign( index );
-#endif
-				raw[ index ] = internal::ValueOrIndex<
-						descr, DataType, DataType
-					>::getFromScalar(
-						toCopy, index
-					);
-			}
-#ifdef _H_GRB_REFERENCE_OMP_IO
-			while( !coors.joinUpdate( localUpdate ) ) {}
-		} // end pragma omp parallel
-#endif
-
-		// done
-		return SUCCESS;
-	}
-
-	/**
-	 * Sets the element of a given vector at a given position to a given value.
-	 *
-	 * \parblock
-	 * \par Performance semantics
-	 * A call to this function
-	 *   -# consists of \f$ \Theta(1) \f$ work;
-	 *   -# moves \f$ \Theta(1) \f$ bytes of memory;
-	 *   -# does not allocate nor free any dynamic memory;
-	 *   -# shall not make any system calls.
-	 * \endparblock
-	 *
-	 * \todo Check and, if needed, revise performance semantics.
-	 */
-	template<
-		Descriptor descr = descriptors::no_operation,
-		typename DataType, typename T, typename Coords
-	>
-	RC setElement(
-		Vector< DataType, reference, Coords > &x,
-		const T val,
-		const size_t i,
-		const Phase &phase = EXECUTE,
-		const typename std::enable_if< !grb::is_object< DataType >::value &&
-			!grb::is_object< T >::value, void >::type * const = nullptr
-	) {
-		// static sanity checks
-		NO_CAST_ASSERT( ( !(descr & descriptors::no_casting) ||
-				std::is_same< DataType, T >::value ),
-			"grb::set (Vector, at index)",
-			"called with a value type that does not match that of the given "
-			"vector"
-		);
-		if( phase == RESIZE ) {
-			return SUCCESS;
-		}
-		assert( phase == EXECUTE );
-
-		// dynamic sanity checks
-		if( i >= size( x ) ) {
-			return MISMATCH;
-		}
-		if( (descr & descriptors::dense) && nnz( x ) < size( x ) ) {
-			return ILLEGAL;
-		}
-
-		// do set
-		(void) internal::getCoordinates( x ).assign( i );
-		internal::getRaw( x )[ i ] = static_cast< DataType >( val );
-
-#ifdef _DEBUG
-		std::cout << "setElement (reference) set index " << i << " to value "
-			<< internal::getRaw( x )[ i ] << "\n";
-#endif
-
-		// done
-		return SUCCESS;
+		return internal::set_to_value_masked<
+			descr, internal::Distribution< reference >
+		>( x, m, val, phase, 0, 1 );
 	}
 
 	/**
@@ -643,8 +1737,10 @@ namespace grb {
 	 *
 	 * \todo Check and, if needed, revise performance semantics.
 	 */
-	template< Descriptor descr = descriptors::no_operation,
-		typename OutputType, typename InputType, typename Coords >
+	template<
+		Descriptor descr = descriptors::no_operation,
+		typename OutputType, typename InputType, typename Coords
+	>
 	RC set(
 		Vector< OutputType, reference, Coords > &x,
 		const Vector< InputType, reference, Coords > &y,
@@ -653,7 +1749,7 @@ namespace grb {
 		// static sanity checks
 		NO_CAST_ASSERT( ( !(descr & descriptors::no_casting) ||
 				std::is_same< OutputType, InputType >::value ),
-			"grb::copy (Vector)",
+			"grb::set (Vector)",
 			"called with vector parameters whose element data types do not match"
 		);
 		constexpr bool out_is_void = std::is_void< OutputType >::value;
@@ -665,122 +1761,9 @@ namespace grb {
 			"grb::set (reference, vector <- vector, masked): "
 			"use_index descriptor cannot be set if output vector is void" );
 
-		// check contract
-		const size_t n = size( x );
-		if( n != size( y ) ) {
-			return MISMATCH;
-		}
-		// check trivial op
-		// note: the below check cannot move after the check that uses getID
-		if( n == 0 ) {
-			return SUCCESS;
-		}
-		// continue contract checks
-		if( getID( x ) == getID( y ) ) {
-			return ILLEGAL;
-		}
-		if( descr & descriptors::dense ) {
-			if( nnz( y ) < size( y ) || nnz( x ) < size( x ) ) {
-				return ILLEGAL;
-			}
-		}
-
-		// on resize
-		if( phase == RESIZE ) {
-			return SUCCESS;
-		}
-
-		// on execute
-		assert( phase == EXECUTE );
-
-		// get raw value arrays
-		OutputType * __restrict__ const dst = internal::getRaw( x );
-		const InputType * __restrict__ const src = internal::getRaw( y );
-
-		// make the vector empty unless the dense descriptor is provided
-		if( !(descr & descriptors::dense) ) {
-			internal::getCoordinates( x ).clear();
-		}
-
-		// get #nonzeroes
-		const size_t nz = nnz( y );
-#ifdef _DEBUG
-		std::cout << "grb::set called with source vector containing "
-			<< nz << " nonzeroes." << std::endl;
-#endif
-
-#ifndef NDEBUG
-		if( src == nullptr ) {
-			assert( dst == nullptr );
-		}
-#endif
-		// first copy contents
-		if( src == nullptr && dst == nullptr ) {
-			// if both source and destination are dense void vectors, this is a no-op
-			if( (descr & descriptors::dense) || (
-					nnz( x ) == size( x ) && nz == size( y )
-				)
-			) {
-				return SUCCESS;
-			}
-			// otherwise, copy source nonzero pattern to destination:
-#ifdef _H_GRB_REFERENCE_OMP_IO
-			#pragma omp parallel
-			{
-				size_t start, end;
-				config::OMP::localRange( start, end, 0, nz );
-#else
-				const size_t start = 0;
-				const size_t end = nz;
-#endif
-				for( size_t i = start; i < end; ++i ) {
-					(void) internal::getCoordinates( x ).asyncCopy(
-						internal::getCoordinates( y ), i );
-				}
-#ifdef _H_GRB_REFERENCE_OMP_IO
-			}
-#endif
-		} else {
-			// if the output is a void vector that is furthermore dense, then this is
-			// actually also a no-op:
-			if( (descr & descriptors::dense) && out_is_void ) {
-				return SUCCESS;
-			}
-			// otherwise, the regular copy variant:
-#ifdef _H_GRB_REFERENCE_OMP_IO
-			#pragma omp parallel
-			{
-				size_t start, end;
-				config::OMP::localRange( start, end, 0, nz );
-#else
-				const size_t start = 0;
-				const size_t end = nz;
-#endif
-				for( size_t i = start; i < end; ++i ) {
-					size_t index;
-					if( !(descr & descriptors::dense) ) {
-						index = internal::getCoordinates( x ).asyncCopy(
-							internal::getCoordinates( y ), i );
-					} else {
-						index = i;
-					}
-					if( !out_is_void && !in_is_void ) {
-						dst[ index ] = internal::setIndexOrValue< descr, OutputType >(
-							index, src[ index ] );
-					}
-				}
-#ifdef _H_GRB_REFERENCE_OMP_IO
-			}
-#endif
-		}
-
-		// set number of nonzeroes
-		if( !(descr & descriptors::dense) ) {
-			internal::getCoordinates( x ).joinCopy( internal::getCoordinates( y ) );
-		}
-
-		// done
-		return SUCCESS;
+		return internal::set_vector_to_vector<
+			descr, internal::Distribution< reference >
+		>( x, y, phase, 0, 1 );
 	}
 
 	/**
@@ -835,284 +1818,76 @@ namespace grb {
 			"grb::set (reference, vector <- vector, masked): "
 			"use_index descriptor cannot be set if output vector is void" );
 
-		// catch contract violations
-		const size_t size = grb::size( y );
-		if( size != grb::size( x ) ) {
-			return MISMATCH;
-		}
-		if( size == 0 ) {
-			return SUCCESS;
-		}
-		if( getID( x ) == getID( y ) ) {
-			return ILLEGAL;
-		}
-		if( descr & descriptors::dense ) {
-			if( nnz( x ) < grb::size( x ) ||
-				nnz( y ) < grb::size( y ) ||
-				nnz( mask ) < grb::size( mask )
-			) {
-				return ILLEGAL;
-			}
-		}
-
-		// delegate if possible
-		if( grb::size( mask ) == 0 ) {
-			return set( x, y );
-		}
-
-		// additional contract check
-		if( size != grb::size( mask ) ) {
-			return MISMATCH;
-		}
-
-		// on resize
-		if( phase == RESIZE ) {
-			return SUCCESS;
-		}
-
-		// on execute
-		assert( phase == EXECUTE );
-		RC ret = SUCCESS;
-
-		// handle non-trivial, fully masked vector copy
-		const auto &m_coors = internal::getCoordinates( mask );
-		const auto &y_coors = internal::getCoordinates( y );
-		auto &x_coors = internal::getCoordinates( x );
-
-		// make the vector empty unless the dense descriptor is provided
-		const bool mask_is_dense = (descr & descriptors::structural) &&
-			!(descr & descriptors::invert_mask) && (
-				(descr && descriptors::dense) ||
-				nnz( mask ) == grb::size( mask )
-			);
-		if( !((descr & descriptors::dense) && mask_is_dense) ) {
-			internal::getCoordinates( x ).clear();
-		}
-
-		// choose optimal loop size
-		const bool loop_over_y = (descr & descriptors::invert_mask) ||
-			( y_coors.nonzeroes() < m_coors.nonzeroes() );
-		const size_t n = loop_over_y ? y_coors.nonzeroes() : m_coors.nonzeroes();
-
-#ifdef _H_GRB_REFERENCE_OMP_IO
-		// keeps track of updates of the sparsity pattern
-		#pragma omp parallel
-		{
-			// keeps track of nonzeroes that the mask ignores
-			internal::Coordinates< reference >::Update local_update =
-				x_coors.EMPTY_UPDATE();
-			const size_t maxAsyncAssigns = x_coors.maxAsyncAssigns();
-			size_t asyncAssigns = 0;
-			RC local_rc = SUCCESS;
-			// since masks are irregularly structured, use dynamic schedule to ensure
-			// load balance
-			#pragma omp for schedule( dynamic, config::CACHE_LINE_SIZE::value() ) nowait
-			for( size_t k = 0; k < n; ++k ) {
-				const size_t i = loop_over_y ? y_coors.index( k ) : m_coors.index( k );
-				// if not masked, continue
-				if( !m_coors.template mask< descr >( i, internal::getRaw( mask ) ) ) {
-					continue;
-				}
-				// if source has nonzero
-				if( loop_over_y || y_coors.assigned( i ) ) {
-					// get value
-					if( !out_is_void && !in_is_void ) {
-						internal::getRaw( x )[ i ] =
-							internal::ValueOrIndex< descr, OutputType, InputType >::getFromArray(
-								internal::getRaw( y ), [] (const size_t i) {return i;}, i
-							);
-					}
-					// check if destination has nonzero
-					if( !x_coors.asyncAssign( i, local_update ) ) {
-						(void) ++asyncAssigns;
-					}
-				}
-				if( asyncAssigns == maxAsyncAssigns ) {
-					const bool was_empty = x_coors.joinUpdate( local_update );
-#ifdef NDEBUG
-					(void) was_empty;
-#else
-					assert( !was_empty );
-#endif
-					asyncAssigns = 0;
-				}
-			}
-			while( !x_coors.joinUpdate( local_update ) ) {}
-			if( local_rc != SUCCESS ) {
-				ret = local_rc;
-			}
-		} // end omp parallel for
-#else
-		for( size_t k = 0; k < n; ++k ) {
-			const size_t i = loop_over_y ? y_coors.index( k ) : m_coors.index( k );
-			if( !m_coors.template mask< descr >( i, internal::getRaw( mask ) ) ) {
-				continue;
-			}
-			if( loop_over_y || internal::getCoordinates( y ).assigned( i ) ) {
-				if( !out_is_void && !in_is_void ) {
-					// get value
-					(void) x_coors.assign( i );
-					internal::getRaw( x )[ i ] =
-						internal::ValueOrIndex< descr, OutputType, InputType >::getFromArray(
-							internal::getRaw( y ), [] (const size_t i) {return i;}, i
-						);
-				}
-			}
-		}
-#endif
-
-		// done
-		return ret;
+		return internal::set_vector_to_vector_masked<
+			descr, internal::Distribution< reference >
+		>( x, mask, y, phase, 0, 1 );
 	}
-
-	namespace internal {
-
-		template<
-			bool A_is_mask,
-			Descriptor descr,
-			typename OutputType, typename InputType1,
-			typename InputType2 = const OutputType,
-			typename RIT1, typename CIT1, typename NIT1,
-			typename RIT2, typename CIT2, typename NIT2
-		>
-		RC set(
-			Matrix< OutputType, reference, RIT1, CIT1, NIT1 > &C,
-			const Matrix< InputType1, reference, RIT2, CIT2, NIT2 > &A,
-			const InputType2 * __restrict__ id = nullptr
-		) noexcept {
-#ifdef _DEBUG
-			std::cout << "Called grb::set (matrices, reference), execute phase\n";
-#endif
-			// static checks
-			NO_CAST_ASSERT(
-				( !( descr & descriptors::no_casting ) ||
-				( !A_is_mask && std::is_same< InputType1, OutputType >::value ) ),
-				"internal::grb::set", "called with non-matching value types"
-			);
-			NO_CAST_ASSERT( ( !( descr & descriptors::no_casting ) ||
-				( A_is_mask && std::is_same< InputType2, OutputType >::value ) ),
-				"internal::grb::set", "Called with non-matching value types"
-			);
-
-			// run-time checks
-			const size_t m = nrows( A );
-			const size_t n = ncols( A );
-			if( nrows( C ) != m ) {
-				return MISMATCH;
-			}
-			if( ncols( C ) != n ) {
-				return MISMATCH;
-			}
-			if( A_is_mask ) {
-				assert( id != nullptr );
-			}
-
-			// catch trivial cases
-			if( m == 0 || n == 0 ) {
-				return SUCCESS;
-			}
-			const size_t nz = nnz( A );
-			if( nz == 0 ) {
-#ifdef _DEBUG
-				std::cout << "\t input matrix has no nonzeroes, "
-					<< "simply clearing output matrix...\n";
-#endif
-				return clear( C );
-			}
-			if( nz > capacity( C ) ) {
-#ifdef _DEBUG
-				std::cout << "\t output matrix does not have sufficient capacity to "
-					<< "complete requested operation\n";
-#endif
-				const RC clear_rc = clear( C );
-				if( clear_rc != SUCCESS ) {
-					return PANIC;
-				} else {
-					return FAILED;
-				}
-			}
-
-#ifdef _H_GRB_REFERENCE_OMP_IO
-			#pragma omp parallel
-#endif
-			{
-				size_t range = internal::getCRS( C ).copyFromRange( nz, m );
-#ifdef _H_GRB_REFERENCE_OMP_IO
-				size_t start, end;
-				config::OMP::localRange( start, end, 0, range );
-#else
-				const size_t start = 0;
-				size_t end = range;
-#endif
-				if( A_is_mask ) {
-					internal::getCRS( C ).template copyFrom< true >(
-						internal::getCRS( A ), nz, m, start, end, id
-					);
-				} else {
-					internal::getCRS( C ).template copyFrom< false >(
-						internal::getCRS( A ), nz, m, start, end
-					);
-				}
-				range = internal::getCCS( C ).copyFromRange( nz, n );
-#ifdef _H_GRB_REFERENCE_OMP_IO
-				config::OMP::localRange( start, end, 0, range );
-#else
-				end = range;
-#endif
-				if( A_is_mask ) {
-					internal::getCCS( C ).template copyFrom< true >(
-						internal::getCCS( A ), nz, n, start, end, id
-					);
-				} else {
-					internal::getCCS( C ).template copyFrom< false >(
-						internal::getCCS( A ), nz, n, start, end
-					);
-				}
-			}
-			internal::setCurrentNonzeroes( C, nz );
-
-			// done
-			return SUCCESS;
-		}
-
-	} // end namespace internal::grb
 
 	template<
 		Descriptor descr = descriptors::no_operation,
 		typename OutputType, typename InputType,
-		typename RIT1, typename CIT1, typename NIT1,
-		typename RIT2, typename CIT2, typename NIT2
+		typename RIT, typename CIT, typename NIT
 	>
 	RC set(
-		Matrix< OutputType, reference, RIT1, CIT1, NIT1 > &C,
-		const Matrix< InputType, reference, RIT2, CIT2, NIT2 > &A,
-		const Phase &phase = EXECUTE
+		Matrix< OutputType, reference, RIT, CIT, NIT > &C,
+		const Matrix< InputType, reference, RIT, CIT, NIT > &A,
+		const Phase &phase = EXECUTE,
+		const typename std::enable_if<
+			!grb::is_object< OutputType >::value &&
+			!grb::is_object< InputType >::value,
+		void >::type * const = nullptr
 	) noexcept {
-		static_assert( std::is_same< OutputType, void >::value ||
-			!std::is_same< InputType, void >::value,
+		static_assert(
+			!std::is_void< InputType >::value ||
+				std::is_same< OutputType, InputType >::value,
 			"grb::set cannot interpret an input pattern matrix without a "
 			"semiring or a monoid. This interpretation is needed for "
 			"writing the non-pattern matrix output. Possible solutions: 1) "
 			"use a (monoid-based) foldl / foldr, 2) use a masked set, or "
 			"3) change the output of grb::set to a pattern matrix also." );
-#ifdef _DEBUG
+#ifdef _DEBUG_REFERENCE_IO
 		std::cout << "Called grb::set (matrix-to-matrix, reference)" << std::endl;
 #endif
 		// static checks
-		NO_CAST_ASSERT( ( !(descr & descriptors::no_casting) ||
+		NO_CAST_ASSERT(
+			( !(descr & descriptors::no_casting) ||
 				std::is_same< InputType, OutputType >::value
 			), "grb::set",
 			"called with non-matching value types" );
+		static_assert( !((
+				descr & descriptors::invert_mask) &&
+				(descr & descriptors::structural)
+			), "Structural mask inversion for matrix outputs is illegal"
+		);
 
-		// dynamic checks
+		// dynamic checks (I)
+		const size_t m = nrows( A );
+		const size_t n = ncols( A );
+		if( m != nrows( C ) ) {
+			return MISMATCH;
+		}
+		if( n != ncols( C ) ) {
+			return MISMATCH;
+		}
+
+		// check trivial op
+		if( m == 0 || n == 0 ) {
+			return SUCCESS;
+		}
+
+		// dynamic checks (II)
+		if( getID( C ) == getID( A ) ) {
+			return ILLEGAL;
+		}
 		assert( phase != TRY );
 
 		// delegate
 		if( phase == RESIZE ) {
-			return resize( C, nnz( A ) );
+			return grb::resize( C, std::max( nnz( C ), nnz( A ) ) );
 		} else {
 			assert( phase == EXECUTE );
-			return internal::set< false, descr >( C, A );
+			const OutputType * const dummy = nullptr;
+			return internal::set_copy< false, descr >( C, A, dummy );
 		}
 	}
 
@@ -1126,34 +1901,131 @@ namespace grb {
 		Matrix< OutputType, reference, RIT1, CIT1, NIT1 > &C,
 		const Matrix< InputType1, reference, RIT2, CIT2, NIT2 > &A,
 		const InputType2 &val,
-		const Phase &phase = EXECUTE
+		const Phase &phase = EXECUTE,
+		const typename std::enable_if<
+			!grb::is_object< OutputType >::value &&
+			!grb::is_object< InputType1 >::value &&
+			!grb::is_object< InputType2 >::value
+		>::type * const = nullptr
 	) noexcept {
-		static_assert( !std::is_same< OutputType, void >::value,
-			"internal::grb::set (masked set to value): cannot have a pattern "
-			"matrix as output" );
-#ifdef _DEBUG
+#ifdef _DEBUG_REFERENCE_IO
 		std::cout << "Called grb::set (matrix-to-value-masked, reference)\n";
 #endif
 		// static checks
-		NO_CAST_ASSERT( ( !(descr & descriptors::no_casting) ||
-				std::is_same< InputType2, OutputType >::value
-			), "grb::set",
+		static_assert( std::is_void< OutputType >::value ||
+			std::is_same< OutputType, InputType2 >::value ||
+			std::is_convertible< InputType2, OutputType >::value,
+			"grb::set (masked set to value): non-void output type should be either a) "
+			"the same as the input scalar value type or b) the input scalar type should "
+			"be convertible to the output type"
+		);
+		static_assert(
+			std::is_void< InputType1 >::value ||
+			std::is_convertible< InputType1, bool >::value,
+			"grb::set (masked set to value): mask matrix must be a "
+			"pattern matrix or have a data-type that is convertible to bool"
+		);
+		static_assert( !(
+				( descr & descriptors::structural ) &&
+				( descr & descriptors::invert_mask)
+			),
+			"grb::set (masked set to value): descriptors::structural "
+			"and descriptors::invert_mask cannot be combined"
+		);
+		NO_CAST_ASSERT(
+			( !(descr & descriptors::no_casting) ||
+				std::is_same< InputType2, OutputType >::value ),
+			"grb::set( matrix, mask, value )",
 			"called with non-matching value types"
+		);
+		NO_CAST_ASSERT(
+			( !(descr & descriptors::no_casting) ||
+				std::is_same< InputType1, bool >::value ),
+			"grb::set( matrix, mask, value )",
+			"called with non-Boolean mask value type"
+		);
+		static_assert( !( (descr & descriptors::structural) &&
+				(descr & descriptors::invert_mask)
+			), "Primitives with matrix outputs may not employ structurally inverted "
+			"masking"
 		);
 
 		// dynamic checks
+		const size_t m = nrows( A );
+		const size_t n = ncols( A );
+		if( n == 0 || m == 0 ) {
+			std::cerr << "Error: grb::set( matrix, mask, scalar ) called with mask = "
+				<< "NO_MASK, which is illegal\n";
+			return ILLEGAL;
+		}
+		if( m != nrows( C ) ) {
+			return MISMATCH;
+		}
+		if( n != ncols( C ) ) {
+			return MISMATCH;
+		}
 		assert( phase != TRY );
 
-		// delegate
-		if( phase == RESIZE ) {
-			return resize( C, nnz( A ) );
-		} else {
-			assert( phase == EXECUTE );
-			if( std::is_same< OutputType, void >::value ) {
-				return internal::set< false, descr >( C, A );
+#ifdef _DEBUG_REFERENCE_IO
+		std::cout << "\t starting dispatching logic\n";
+#endif
+
+		// delegate non-structural
+		constexpr bool mask_is_void = std::is_void< InputType1 >::value;
+		if( !mask_is_void && !(descr & descriptors::structural) ) {
+#ifdef _DEBUG_REFERENCE_IO
+			std::cout << "\t dispatching to set_masked "
+				<< "(non-structural, non-void mask)\n";
+#endif
+			return internal::set_masked< descr >( C, A, val, phase );
+		}
+
+		// delegate structural self-assignment
+		if( getID( C ) == getID( A ) ) {
+			if( std::is_void< OutputType >::value ) {
+#ifdef _DEBUG_REFERENCE_IO
+				std::cout << "\t trivial structural self-assignment detected\n";
+#endif
+				// catch trivial self-assignment
+				return SUCCESS;
+			} else if( phase == RESIZE ) {
+#ifdef _DEBUG_REFERENCE_IO
+				std::cout << "\t trivial structural resize phase detected\n";
+#endif
+				// catch trivial resize
+				return SUCCESS;
 			} else {
-				return internal::set< true, descr >( C, A, &val );
+#ifdef _DEBUG_REFERENCE_IO
+				std::cout << "\t dispatching structural self-assignment to "
+					<< "set_copy_values\n";
+#endif
+				// mask inversion should be handled as part of non-structural, meaning we
+				// can simply overwrite the values array
+				assert( !(descr & descriptors::invert_mask) );
+				assert( phase == EXECUTE );
+				return internal::set_copy_values< descr & ~(descriptors::invert_mask) >(
+					C, &val, nnz( C ) );
 			}
+		}
+
+		// at this point, we have structural non-self masking
+		// inversion is not possible
+		// delegate resize and other set variants for execute
+		assert( !(descr & descriptors::invert_mask) );
+		if( phase == RESIZE ) {
+#ifdef _DEBUG_REFERENCE_IO
+			std::cout << "\t delegating resize for structural non-self masking\n";
+#endif
+			return resize( C, std::max( nnz( C ), nnz( A ) ) );
+		} else {
+#ifdef _DEBUG_REFERENCE_IO
+			std::cout << "\t dispatching to void or non-void set_copy variant\n";
+#endif
+			assert( phase == EXECUTE );
+			constexpr bool outputIsVoid = std::is_void< OutputType >::value;
+			return internal::set_copy<
+				!outputIsVoid, descr & ~(descriptors::invert_mask)
+			>( C, A, &val );
 		}
 	}
 

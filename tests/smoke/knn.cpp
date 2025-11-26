@@ -29,9 +29,6 @@
 #include <graphblas/utils/iterators/nonzeroIterator.hpp>
 
 
-using namespace grb;
-using namespace algorithms;
-
 /** Parser type */
 typedef grb::utils::MatrixFileReader<
 	void,
@@ -43,7 +40,7 @@ typedef grb::utils::MatrixFileReader<
 > Parser;
 
 /** Nonzero type */
-typedef internal::NonzeroStorage<
+typedef grb::internal::NonzeroStorage<
 	grb::config::RowIndexType,
 	grb::config::ColIndexType,
 	void
@@ -66,8 +63,8 @@ struct input {
 };
 
 struct output {
-	RC error_code;
-	PinnedVector< bool > neighbourhood;
+	grb::RC error_code;
+	grb::PinnedVector< bool > neighbourhood;
 	grb::utils::TimerResults times;
 	size_t rep;
 };
@@ -97,8 +94,8 @@ void ioProgram( const struct input &data_in, bool &success ) {
 			data.push_back( *it );
 		}*/
 		for(
-			auto it = parser.begin( SEQUENTIAL );
-			it != parser.end( SEQUENTIAL );
+			auto it = parser.begin( grb::SEQUENTIAL );
+			it != parser.end( grb::SEQUENTIAL );
 			++it
 		) {
 			data.push_back( NonzeroT( *it ) );
@@ -112,8 +109,8 @@ void ioProgram( const struct input &data_in, bool &success ) {
 
 void grbProgram( const struct input &data_in, struct output &out ) {
 	// get user process ID
-	const size_t s = spmd<>::pid();
-	assert( s < spmd<>::nprocs() );
+	const size_t s = grb::spmd<>::pid();
+	assert( s < grb::spmd<>::nprocs() );
 
 	grb::utils::Timer timer;
 	timer.reset();
@@ -122,19 +119,19 @@ void grbProgram( const struct input &data_in, struct output &out ) {
 	const size_t n = Storage::getData().first.first;
 
 	// create output
-	Vector< bool > neighbourhood( n );
+	grb::Vector< bool > neighbourhood( n );
 
 	// create buffers
-	Vector< bool > buf1( n );
+	grb::Vector< bool > buf1( n );
 
 	out.times.preamble = timer.time();
 	timer.reset();
 
 	// assume successful run
-	out.error_code = SUCCESS;
+	out.error_code = grb::SUCCESS;
 
 	// load parsed file into GraphBLAS
-	Matrix< void > A( n, n );
+	grb::Matrix< void > A( n, n );
 	{
 		const auto &data = Storage::getData().second;
 		/* Once internal issue #342 is resolved this can be re-enabled
@@ -148,17 +145,18 @@ void grbProgram( const struct input &data_in, struct output &out ) {
 			>( data.cend() ),
 			PARALLEL
 		);*/
-		RC rc = buildMatrixUnique(
+		grb::RC rc = grb::buildMatrixUnique(
 			A,
-			utils::makeNonzeroIterator<
+			grb::utils::makeNonzeroIterator<
 				grb::config::RowIndexType, grb::config::ColIndexType, void
 			>( data.cbegin() ),
-			utils::makeNonzeroIterator<
+			grb::utils::makeNonzeroIterator<
 				grb::config::RowIndexType, grb::config::ColIndexType, void
 			>( data.cend() ),
-			SEQUENTIAL
+			grb::SEQUENTIAL
 		);
-		if( rc != SUCCESS ) {
+		rc = rc ? rc : grb::wait();
+		if( rc != grb::SUCCESS ) {
 			std::cerr << "Error: populating matrix failed ( " << grb::toString( rc )
 				<< ")\n";
 			out.error_code = rc;
@@ -187,17 +185,20 @@ void grbProgram( const struct input &data_in, struct output &out ) {
 	std::cout << s << ": starting knn with a " << grb::nrows( A ) << " by "
 		<< grb::ncols( A ) << " matrix holding " << grb::nnz( A ) << " nonzeroes.\n";
 #endif
-	RC rc = knn< descriptors::no_operation >(
+	grb::RC rc = grb::algorithms::knn< grb::descriptors::no_operation >(
 		neighbourhood, A, source, data_in.k,
 		buf1
 	);
+	if( grb::Properties<>::isNonblockingExecution ) {
+		rc = rc ? rc : grb::wait();
+	}
 	time_taken = timer.time();
 	out.times.useful = time_taken;
 	out.rep = static_cast< size_t >( 100.0 / time_taken ) + 1;
 	timer.reset();
 
 	// sanity check
-	if( rc != SUCCESS ) {
+	if( rc != grb::SUCCESS ) {
 		std::cerr << "Error: call to k-hop BFS failed ( " << grb::toString( rc )
 			<< ")\n";
 		out.error_code = rc;
@@ -205,7 +206,7 @@ void grbProgram( const struct input &data_in, struct output &out ) {
 	}
 
 #ifdef _DEBUG
-	for( size_t k = 0; k < spmd<>::nprocs(); ++k ) {
+	for( size_t k = 0; k < grb::spmd<>::nprocs(); ++k ) {
 		if( k == s ) {
 			auto it = neighbourhood.cbegin();
 			for( ; it != neighbourhood.cend(); ++it ) {
@@ -214,12 +215,13 @@ void grbProgram( const struct input &data_in, struct output &out ) {
 				}
 			}
 		}
-		spmd<>::sync();
+		grb::spmd<>::sync();
 	}
 #endif
 
 	// pin output
-	out.neighbourhood = PinnedVector< bool >( neighbourhood, SEQUENTIAL );
+	out.neighbourhood =
+		grb::PinnedVector< bool >( neighbourhood, grb::SEQUENTIAL );
 
 	// print test output at root process
 	if( s == 0 ) {
@@ -315,12 +317,12 @@ int main( int argc, char ** argv ) {
 	struct output out;
 
 	// launch I/O
-	grb::RC rc = SUCCESS;
+	grb::RC rc = grb::SUCCESS;
 	{
-		grb::Launcher< AUTOMATIC > launcer;
+		grb::Launcher< grb::AUTOMATIC > launcer;
 		bool success;
 		rc = launcer.exec( &ioProgram, in, success, true );
-		if( rc != SUCCESS ) {
+		if( rc != grb::SUCCESS ) {
 			std::cerr << "Error: I/O program launch failed\n";
 			return 40;
 		}
@@ -332,9 +334,9 @@ int main( int argc, char ** argv ) {
 
 	// launch estimator (if requested)
 	if( inner == 0 ) {
-		grb::Launcher< AUTOMATIC > launcher;
+		grb::Launcher< grb::AUTOMATIC > launcher;
 		rc = launcher.exec( &grbProgram, in, out, true );
-		if( rc == SUCCESS ) {
+		if( rc == grb::SUCCESS ) {
 			inner = out.rep;
 			std::cout << "Auto-selected " << inner << " repetitions to reach approx. "
 				<< "1 second run-time." << std::endl;
@@ -345,10 +347,10 @@ int main( int argc, char ** argv ) {
 		}
 	}
 
-	if( rc == SUCCESS ) {
-		grb::Benchmarker< AUTOMATIC > launcher;
+	if( rc == grb::SUCCESS ) {
+		grb::Benchmarker< grb::AUTOMATIC > launcher;
 		rc = launcher.exec( &grbProgram, in, out, inner, outer, true );
-		if( rc != SUCCESS ) {
+		if( rc != grb::SUCCESS ) {
 			std::cerr << "Error: benchmarker launch failed ( " << grb::toString( rc )
 				<< std::endl;
 			return 70;
@@ -374,7 +376,7 @@ int main( int argc, char ** argv ) {
 #endif
 
 	// done
-	if( out.error_code != SUCCESS ) {
+	if( out.error_code != grb::SUCCESS ) {
 		std::cerr << std::flush;
 		std::cout << "Test FAILED\n" << std::endl;
 		return 255;

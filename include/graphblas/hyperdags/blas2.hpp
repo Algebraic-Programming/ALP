@@ -445,6 +445,7 @@ namespace grb {
 
 	/** \internal Uses a direct implementation. */
 	template<
+		Descriptor = descriptors::no_operation,
 		typename Func, typename DataType,
 		typename RIT, typename CIT, typename NIT
 	>
@@ -471,6 +472,7 @@ namespace grb {
 
 		/** \internal This is the end recursion */
 		template<
+			Descriptor descr,
 			typename Func, typename DataType,
 			typename RIT, typename CIT, typename NIT
 		>
@@ -480,7 +482,7 @@ namespace grb {
 			std::vector< uintptr_t > &sources,
 			std::vector< uintptr_t > &destinations
 		) {
-			const RC ret = grb::eWiseLambda( f, internal::getMatrix(A) );
+			const RC ret = grb::eWiseLambda< descr >( f, internal::getMatrix(A) );
 			if( ret != SUCCESS ) { return ret; }
 			if( nrows( A ) == 0 || ncols( A ) == 0 ) { return ret; }
 			std::array< const void *, 0 > sourcesP{};
@@ -496,6 +498,7 @@ namespace grb {
 
 		/** \internal This is the base recursion */
 		template<
+			Descriptor descr,
 			typename Func, typename DataType1, typename DataType2,
 			typename Coords,
 			typename RIT, typename CIT, typename NIT,
@@ -511,13 +514,14 @@ namespace grb {
 		) {
 			sources.push_back( getID( internal::getVector(x) ) );
 			destinations.push_back( getID( internal::getVector(x) ) );
-			return hyperdag_ewisematrix( f, A, sources, destinations, args... );
+			return hyperdag_ewisematrix< descr >( f, A, sources, destinations, args... );
 		}
 
 	} // end namespace grb::internal
 
 	/** \internal Implements the recursive case */
 	template<
+		Descriptor descr = descriptors::no_operation,
 		typename Func,
 		typename DataType1, typename DataType2,
 		typename Coords,
@@ -531,7 +535,7 @@ namespace grb {
 		Args... args
 	) {
 		std::vector< uintptr_t > sources, destinations;
-		return internal::hyperdag_ewisematrix(
+		return internal::hyperdag_ewisematrix< descr >(
 			f, A, sources, destinations, x, args...
 		);
 	}
@@ -567,8 +571,11 @@ namespace grb {
 		}
 		const RC ret = vxm< descr >(
 			internal::getVector(u), internal::getVector(mask),
-			internal::getVector(v), internal::getVector(v_mask), internal::getMatrix(A),
-			ring, phase
+			internal::getVector(v),
+			internal::getVector(v_mask),
+			internal::getMatrix(A),
+			ring,
+			phase
 		);
 		if( ret != SUCCESS ) { return ret; }
 		if( phase != EXECUTE ) { return ret; }
@@ -626,8 +633,10 @@ namespace grb {
 			return vxm< descr >( u, mask, v, A, add, mul, phase );
 		}
 		const RC ret = vxm< descr >(
-			internal::getVector(u), internal::getVector(mask),
-			internal::getVector(v), internal::getVector(v_mask), internal::getMatrix(A),
+			internal::getVector(u),
+			internal::getVector(mask),
+			internal::getVector(v), internal::getVector(v_mask),
+			internal::getMatrix(A),
 			add, mul, phase
 		);
 		if( ret != SUCCESS ) { return ret; }
@@ -635,10 +644,10 @@ namespace grb {
 		if( nrows( A ) == 0 || ncols( A ) == 0 ) { return ret; }
 		std::array< const void *, 0 > sourcesP{};
 		std::vector< uintptr_t > sourcesC{
+			getID( internal::getVector(u) ),
 			getID( internal::getVector(v) ),
-			getID( internal::getMatrix(A) ),
 			getID( internal::getVector(v_mask) ),
-			getID( internal::getVector(u) )
+			getID( internal::getMatrix(A) ),
 		};
 		if( size( internal::getVector(mask) ) == 0 ) {
 			sourcesC.push_back( getID( internal::getVector(mask) ) );

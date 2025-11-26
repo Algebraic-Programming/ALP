@@ -38,6 +38,7 @@ namespace grb::internal {
 	// forward-declared and this forward definition file included from both
 	// matrix.hpp and blas2.hpp
 	template<
+		Descriptor,
 		class ActiveDistribution,
 		typename Func, typename DataType,
 		typename RIT, typename CIT, typename NIT
@@ -49,6 +50,7 @@ namespace grb::internal {
 	);
 
 	template<
+		Descriptor,
 		class ActiveDistribution,
 		typename Func, typename DataType,
 		typename RIT, typename CIT, typename NIT

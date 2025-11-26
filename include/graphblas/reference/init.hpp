@@ -24,6 +24,7 @@
 #define _H_GRB_REFERENCE_INIT
 
 #include <new>
+#include <cstdint> // for uintptr_t
 #include <algorithm>
 #include <cstdint>
 

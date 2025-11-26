@@ -192,7 +192,8 @@ namespace grb {
 	}
 
 	template<
-		Descriptor descr = descriptors::no_operation, class OP,
+		Descriptor descr = descriptors::no_operation,
+		class OP,
 		typename OutputType, typename InputType1, typename InputType2,
 		typename Coords
 	>
@@ -958,9 +959,15 @@ namespace grb {
 		return ret;
 	}
 
-	template< typename Func, typename DataType, typename Coords >
+	template<
+		Descriptor descr = descriptors::no_operation,
+		typename Func,
+		typename DataType,
+		typename Coords
+	>
 	RC eWiseLambda(
-		const Func f, const Vector< DataType, hyperdags, Coords > &x
+		const Func f,
+		const Vector< DataType, hyperdags, Coords > &x
 	) {
 		std::array< const void *, 0 > sourcesP{};
 		std::array< uintptr_t, 1 > sourcesC{ getID( internal::getVector(x) ) };
@@ -971,13 +978,14 @@ namespace grb {
 			sourcesC.begin(), sourcesC.end(),
 			destinations.begin(), destinations.end()
 		);
-		return eWiseLambda( f, internal::getVector(x) );
+		return eWiseLambda< descr >( f, internal::getVector(x) );
 	}
 
 	namespace internal {
 
 		/** \internal This is the end recursion */
 		template<
+			Descriptor descr,
 			typename Func, typename DataType,
 			typename Coords
 		>
@@ -987,7 +995,7 @@ namespace grb {
 			std::vector< uintptr_t > &sources,
 			std::vector< uintptr_t > &destinations
 		) {
-			const RC ret = grb::eWiseLambda( f, internal::getVector(x) );
+			const RC ret = grb::eWiseLambda< descr >( f, internal::getVector(x) );
 			if( ret != grb::SUCCESS ) { return ret; }
 			if( size( internal::getVector(x) ) == 0 ) { return ret; }
 			std::array< const void *, 0 > sourcesP{};
@@ -1003,6 +1011,7 @@ namespace grb {
 
 		/** \internal This is the base recursion */
 		template<
+			Descriptor descr = descriptors::no_operation,
 			typename Func, typename DataType1, typename DataType2,
 			typename Coords, typename... Args
 		>
@@ -1016,12 +1025,15 @@ namespace grb {
 		) {
 			sources.push_back( getID( internal::getVector(y) ) );
 			destinations.push_back( getID( internal::getVector(y) ) );
-			return hyperdag_ewisevector( f, x, sources, destinations, args... );
+			return hyperdag_ewisevector< descr >(
+				f, x, sources, destinations, args...
+			);
 		}
 
 	} // end namespace grb::internal
 
 	template<
+		Descriptor descr = descriptors::no_operation,
 		typename Func,
 		typename DataType1, typename DataType2, typename Coords,
 		typename... Args
@@ -1033,13 +1045,14 @@ namespace grb {
 		Args const &... args
 	) {
 		std::vector< uintptr_t > sources, destinations;
-		return internal::hyperdag_ewisevector(
+		return internal::hyperdag_ewisevector< descr >(
 			f, x, sources, destinations, y, args...
 		);
 	}
 
 	template<
-		Descriptor descr = descriptors::no_operation, class OP,
+		Descriptor descr = descriptors::no_operation,
+		class OP,
 		typename OutputType, typename InputType1, typename InputType2,
 		typename Coords
 	>
@@ -1086,7 +1099,8 @@ namespace grb {
 	}
 
 	template<
-		Descriptor descr = descriptors::no_operation, class Monoid,
+		Descriptor descr = descriptors::no_operation,
+		class Monoid,
 		typename OutputType,
 		typename InputType1, typename InputType2,
 		typename Coords
@@ -1133,7 +1147,8 @@ namespace grb {
 	}
 
 	template<
-		Descriptor descr = descriptors::no_operation, class OP,
+		Descriptor descr = descriptors::no_operation,
+		class OP,
 		typename OutputType, typename MaskType,
 		typename InputType1, typename InputType2,
 		typename Coords
@@ -1189,7 +1204,8 @@ namespace grb {
 	}
 
 	template<
-		Descriptor descr = descriptors::no_operation, class Monoid,
+		Descriptor descr = descriptors::no_operation,
+		class Monoid,
 		typename OutputType, typename MaskType,
 		typename InputType1, typename InputType2,
 		typename Coords
@@ -1243,7 +1259,8 @@ namespace grb {
 	}
 
 	template<
-		Descriptor descr = descriptors::no_operation, class OP,
+		Descriptor descr = descriptors::no_operation,
+		class OP,
 		typename OutputType, typename InputType1, typename InputType2,
 		typename Coords
 	>
@@ -1287,7 +1304,9 @@ namespace grb {
 	}
 
 	template<
-		Descriptor descr = descriptors::no_operation, class OP, typename OutputType,
+		Descriptor descr = descriptors::no_operation,
+		class OP,
+		typename OutputType,
 		typename InputType1, typename InputType2, typename Coords
 	>
 	RC eWiseApply(
@@ -1330,7 +1349,8 @@ namespace grb {
 	}
 
 	template<
-		Descriptor descr = descriptors::no_operation, class Monoid,
+		Descriptor descr = descriptors::no_operation,
+		class Monoid,
 		typename OutputType, typename MaskType,
 		typename InputType1, typename InputType2,
 		typename Coords
@@ -1381,7 +1401,8 @@ namespace grb {
 	}
 
 	template<
-		Descriptor descr = descriptors::no_operation, class OP,
+		Descriptor descr = descriptors::no_operation,
+		class OP,
 		typename OutputType, typename MaskType, typename InputType1,
 		typename InputType2, typename Coords
 	>
@@ -1431,7 +1452,8 @@ namespace grb {
 	}
 
 	template<
-		Descriptor descr = descriptors::no_operation, class Monoid,
+		Descriptor descr = descriptors::no_operation,
+		class Monoid,
 		typename OutputType, typename MaskType,
 		typename InputType1, typename InputType2,
 		typename Coords
@@ -1482,7 +1504,8 @@ namespace grb {
 	}
 
 	template<
-		Descriptor descr = descriptors::no_operation, class OP,
+		Descriptor descr = descriptors::no_operation,
+		class OP,
 		typename OutputType, typename MaskType, typename InputType1,
 		typename InputType2, typename Coords
 	>
@@ -1532,7 +1555,8 @@ namespace grb {
 	}
 
 	template<
-		Descriptor descr = descriptors::no_operation, class OP,
+		Descriptor descr = descriptors::no_operation,
+		class OP,
 		typename OutputType, typename MaskType,
 		typename InputType1, typename InputType2,
 		typename Coords
@@ -1580,7 +1604,8 @@ namespace grb {
 	}
 
 	template<
-		Descriptor descr = descriptors::no_operation, class Monoid,
+		Descriptor descr = descriptors::no_operation,
+		class Monoid,
 		typename OutputType, typename InputType1, typename InputType2,
 		typename Coords
 	>
@@ -1625,7 +1650,8 @@ namespace grb {
 	}
 
 	template<
-		Descriptor descr = descriptors::no_operation, class Monoid,
+		Descriptor descr = descriptors::no_operation,
+		class Monoid,
 		typename OutputType, typename InputType1, typename InputType2,
 		typename Coords
 	>
@@ -1670,7 +1696,8 @@ namespace grb {
 	}
 
 	template<
-		Descriptor descr = descriptors::no_operation, class Monoid,
+		Descriptor descr = descriptors::no_operation,
+		class Monoid,
 		typename OutputType, typename MaskType,
 		typename InputType1, typename InputType2, typename Coords
 	>
@@ -1717,7 +1744,8 @@ namespace grb {
 	}
 
 	template<
-		Descriptor descr = descriptors::no_operation, class Monoid,
+		Descriptor descr = descriptors::no_operation,
+		class Monoid,
 		typename OutputType, typename InputType1, typename InputType2,
 		typename Coords
 	>

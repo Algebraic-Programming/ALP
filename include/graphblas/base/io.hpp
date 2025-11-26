@@ -42,6 +42,8 @@
 
 #include <assert.h>
 
+#include <cstdint> // for uintptr_t
+
 
 namespace grb {
 
@@ -632,11 +634,12 @@ namespace grb {
 	}
 
 	/**
-	 * Resizes the nonzero capacity of this vector. Any current contents of the
-	 * vector are \em not retained.
+	 * Resizes the nonzero capacity of this vector.
 	 *
-	 * @tparam InputType The type of elements contained in the matrix \a A.
-	 * @tparam backend  The backend of the matrix \a A.
+	 * Any current contents of the vector are retained.
+	 *
+	 * @tparam InputType The type of elements contained in the vector \a x.
+	 * @tparam backend   The backend of the vector \a x.
 	 *
 	 * \internal
 	 *    @tparam Coords How sparse coordinates are stored.
@@ -648,42 +651,57 @@ namespace grb {
 	 *                   for \a new_nz nonzeroes.
 	 *
 	 * The requested \a new_nz must be smaller than or equal to the size of \a x.
+	 * It must also be larger or equal to the current number of nonzeroes in \a x.
 	 *
-	 * Even for non-successful calls to this function, the vector after the call
-	 * shall not contain any nonzeroes; only if #grb::PANIC is returned shall the
-	 * resulting state of \a x be undefined.
-	 *
-	 * The size of this vector is fixed. By a call to this function, only the
-	 * maximum number of nonzeroes that the vector may contain can be adapted.
+	 * \note The size of this vector is fixed. By a call to this function, only the
+	 *       maximum number of nonzeroes that the vector may contain can be
+	 *       adapted.
 	 *
 	 * If the vector has size zero, all calls to this function will be equivalent
-	 * to a call to grb::clear. In particular, any value for \a new_nz shall be
-	 * ignored, even ones that would normally be considered illegal (which would
-	 * be any nonzero value in the case of an empty container).
+	 * to a no-op. In particular, any value for \a new_nz shall be ignored, even
+	 * ones that would normally be considered illegal.
 	 *
 	 * A request for less capacity than currently already may be allocated, may
-	 * or may not be ignored. A backend
-	 *   1. must define memory usage semantics that may be proportional
-	 *      to the requested capacity, and therefore must free any memory that the
-	 *      user has deemed unnecessary. However, a backend
-	 *   2. could define memory usage semantics that are \em not proportional to
-	 *      the requested capacity, and in that case a performant implementation
-	 *      may choose not to free memory that the user has deemed unnecessary.
+	 * or may not be ignored. More precisely,
+	 *   1. backends must define memory usage semantics for containers that may be
+	 *      proportional to its capacity and may free any memory that the user has
+	 *      deemed unnecessary, \em if indeed the call to resize results in a
+	 *      shrunk capacity. Both the definition of container memory semantics
+	 *      being proportional to capacities as well as the option of implementing
+	 *      capacity reductions (instead of simply ignoring such resize requests),
+	 *      are backend implementation choices and totally optional behaviour.
+	 *   2. Backends (thus) could define memory usage semantics that are \em not
+	 *      proportional to the requested capacity \em and (therefore) ignore user
+	 *      requests that attempt to free up unused memory via calls to this
+	 *      function.
 	 *
-	 * @returns ILLEGAL  When \a new_nz is larger than admissable and \a x was
-	 *                   non-empty. The vector \a x is cleared, but its capacity
-	 *                   remains unchanged.
+	 * \note If a user program must absolutely make sure to release memory, then
+	 *       the following pattern always works no matter what backend is selected:
+	 *       <tt>{ grb::Vector< T > empty( 0 ); std::swap( to_free, empty ); }</tt>
+	 *
+	 * \note The above pattern is trivially adapted to request non-empty vectors
+	 *       with some preferred capacity that may be lower than a current
+	 *       capacity.
+	 *
+	 * @returns SUCCESS  When \a is empty. The input \a new_nz is ignored.
+	 * @returns ILLEGAL  When \a new_nz is larger than admissable and \a x is
+	 *                   non-empty. Other than returning this error code, the call
+	 *                   to this function shall not have any other effects.
+	 * @returns ILLEGAL  When \a new_nz is smaller than the current number of
+	 *                   elements in \a x, and \a x is non-empty. Other than
+	 *                   returning this error code, the call to this function shall
+	 *                   not have any other effects.
 	 * @returns OUTOFMEM When the required memory memory could not be allocated.
-	 *                   The vector \a x is cleared, but its capacity remains
-	 *                   unchanged.
-	 * @returns SUCCESS  If \a x is empty (i.e., has #grb::size zero).
-	 * @returns PANIC    When allocation fails for any other reason. The vector
-	 *                   \a x, as well as ALP/GraphBLAS, enters an undefined
-	 *                   state.
-	 * @returns SUCCESS  If \a x is non-empty and when sufficient capacity for
-	 *                   the resize operation was available. The vector \a x has
-	 *                   obtained a capacity of at least \a new_nz \em while all
-	 *                   nonzeroes it previously contained, if any, are cleared.
+	 *                   Other than returning this error code, the call to this
+	 *                   function shall not have any other effects.
+	 * @returns PANIC    When the resize operation fails for any other reason. The
+	 *                   vector \a x, as well as the ALP framework as a whole,
+	 *                   enters an undefined state.
+	 * @returns SUCCESS  If \a x is non-empty and when sufficient capacity was
+	 *                   already available, or when sufficient capacity has been
+	 *                   allocated. After the call returns, the vector \a x has a
+	 *                   capacity of <em>at least</em> \a new_nz. Any previous
+	 *                   contents furthermore remain.
 	 *
 	 * \parblock
 	 * \par Performance semantics.
@@ -715,70 +733,89 @@ namespace grb {
 	}
 
 	/**
-	 * Resizes the nonzero capacity of this matrix. Any current contents of the
-	 * matrix are \em not retained.
+	 * Resizes the nonzero capacity of this matrix.
 	 *
 	 * @tparam InputType The type of elements contained in the matrix \a A.
-	 * @tparam backend  The backend of the matrix \a A.
+	 * @tparam backend   The backend corresponding to the matrix \a A.
+	 *
+	 * The size of an ALP matrix is immutable after construction. This function
+	 * only adapts the capacity of the matrix, i.e., the maximum number of
+	 * nonzeroes that the matrix may contain.
+	 *
+	 * Any current matrix contents are retained after a call to this function.
 	 *
 	 * @param[out]   A   The matrix whose capacity is to be resized.
 	 * @param[in] new_nz The number of nonzeroes this matrix is to contain. After
-	 *                   a successful call, the container will have space for <em>
-	 *                   at least</em> \a new_nz nonzeroes.
+	 *                   a successful call, the container will have space for
+	 *                   <em>at least</em> \a new_nz nonzeroes.
 	 *
 	 * The requested \a new_nz must be smaller or equal to product of the number
-	 * of rows and columns.
+	 * of rows and columns. The requested \a new_nz must be equal or greater than
+	 * the current number of nonzeroes in \a A. The only exception follows:
 	 *
-	 * After a call to this function, the matrix shall not contain any nonzeroes.
-	 * This is the case even after an unsuccessful call, with the exception for
-	 * cases where #grb::PANIC is returned-- see below.
+	 * \note if the matrix \a A has size zero, meaning either zero rows or zero
+	 *       columns (or, as the preceding implies, both), then any call to this
+	 *       function on \a A will always return #grb::SUCCESS, even if a value
+	 *       for \a new_nz was given that violates the aforementioned constraints.
 	 *
-	 * The size of this matrix is fixed. By a call to this function, only the
-	 * maximum number of nonzeroes that the matrix may contain can be adapted.
+	 * Additionally, and without exception, \a new_nz must not exceed any
+	 * configured limitations-- such as, for example, those implied by the
+	 * #grb::config::NonzeroIndexType configuration setting. If such a case is
+	 * encountered, the backend may return #grb::UNSUPPORTED and is encouraged to
+	 * give the user feedback on the encoutered limitation via, e.g., the standard
+	 * error stream.
 	 *
-	 * If the matrix has size zero, meaning either zero rows or zero columns (or,
-	 * as the preceding implies, both), then all calls to this function will be
-	 * equivalent to a call to grb::clear. In particular, any value of \a new_nz
-	 * shall be ignored, even ones that would normally be considered illegal
-	 * (which would be any nonzero value in the case of an empty container).
+	 * A request for less capacity than currently is allocated may or may not be
+	 * ignored by the implementing backend. A backend
+	 *   1. \em must define memory usage semantics that may be proportional to the
+	 *      requested capacity;
+	 *   2. \em could define memory usage semantics that are \em not proportional
+	 *      to the requested capacity.
 	 *
-	 * A request for less capacity than currently already may be allocated,
-	 * may or may not be ignored. A backend
-	 *   1. must define memory usage semantics that may be proportional to the
-	 *      requested capacity, and therefore must free any memory that the user
-	 *      has deemed unnecessary. However, a backend
-	 *   2. could define memory usage semantics that are \em not proportional to
-	 *      the requested capacity, and in that case a performant implementation
-	 *      may choose not to free memory that the user has deemed unnecessary.
+	 * \note The above two constraints allow for backends that dynamically free
+	 *       memory on resizes to smaller capacity, \em and allow for backends that
+	 *       ignore requests to resize to smaller capacities.
 	 *
-	 * \note However, useful implementations will almost surely define storage
-	 *       costs that are proportional to \a new_nz, and in such cases resizing
-	 *       to smaller capacity must indeed free up unused memory.
+	 * \note For matrices, useful backend implementations surely define memory
+	 *       usage semantics where matrix storage is proportional to \a new_nz and
+	 *       not \f$ mn \f$.
 	 *
-	 * @returns ILLEGAL  When \a new_nz is larger than admissable and \a A was
+	 * @returns SUCCESS  If \a A is empty.
+	 * @returns ILLEGAL  When \a new_nz is larger than admissable and \a A is
 	 *                   non-empty. The capacity of \a A remains unchanged while
-	 *                   its contents have been cleared.
-	 * @returns OUTOFMEM When the required memory memory could not be allocated.
-	 *                   The capacity of \a A remains unchanged while its contents
-	 *                   have been cleared.
-	 * @returns PANIC    When allocation fails for any other reason. The matrix
-	 *                   \a A as well as ALP/GraphBLAS, enters an undefined state.
-	 * @returns SUCCESS  If \a A is non-empty and when sufficient capacity for
-	 *                   resizing was available. The matrix \a A has obtained the
-	 *                   requested (or a larger) capacity. Its previous contents,
-	 *                   if any, have been cleared.
+	 *                   its contents remain unchanged also.
+	 * @returns ILLEGAL  When \a new_nz is smaller than the current number of
+	 *                   nonzeroes in \a A and \a A was is non-empty. The capacity
+	 *                   of \a A remains unchanged while its contents remain
+	 *                   unchanged also.
+	 * @returns OUTOFMEM When the required memory memory could not be allocated and
+	 *                   \a A is non-empty. The capacity of \a A remains unchanged
+	 *                   while its contents remain unchanged also.
+	 * @returns PANIC    When the call fails for any other and unmitigible reason.
+	 *                   The matrix \a A as well as ALP/GraphBLAS as a whole enters
+	 *                   an undefined state.
+	 * @returns SUCCESS  If \a A is non-empty and the requested matrix capacity
+	 *                   could successfully be guaranteed. The contents of \a A are
+	 *                   unchanged.
+	 *
+	 * @returns UNSUPPORTED If the backend is unable to fulfill the request due to
+	 *                      any inherent limitation in its implementation. This
+	 *                      error behaves the same as #grb::OUTOFMEM for this
+	 *                      particular primitive.
 	 *
 	 * \parblock
 	 * \par Performance semantics.
-	 * Each backend must define performance semantics for this primitive.
+	 *
+	 * A backend must define performance semantics for this primitive.
 	 *
 	 * @see perfSemantics
 	 * \endparblock
 	 *
-	 * \warning For useful backends, this function will indeed imply system calls
-	 *          and incur \f$ \Theta( \mathit{new\_nz} ) \f$ work and data movement
-	 *          costs. It is thus to be considered an expensive function, and
-	 *          should be used sparingly and only when absolutely necessary.
+	 * \warning For useful backends, this function \em will result in system calls
+	 *          such as for memory allocation, and incur
+	 *            \f$ \mathcal{O}( \mathit{new\_nz} ) \f$ work and data movement.
+	 *          This function should hence be considered expensive, and therefore
+	 *          be used only when absolutely necessary.
 	 */
 	template<
 		typename InputType, Backend backend,
@@ -830,13 +867,13 @@ namespace grb {
 	 *
 	 * In #grb::EXECUTE mode:
 	 *
-	 * @returns #grb::FAILED  When \a x did not have sufficient capacity. The
+	 * @returns #grb::ILLEGAL When \a x did not have sufficient capacity. The
 	 *                        vector \a x on exit shall be cleared.
 	 * @returns #grb::SUCCESS When the call completes successfully.
 	 *
 	 * In #grb::TRY mode (experimental and may not be supported):
 	 *
-	 * @returns #grb::FAILED  When \a x did not have sufficient capacity. The
+	 * @returns #grb::ILLEGAL When \a x did not have sufficient capacity. The
 	 *                        vector \a x on exit will have contents defined as
 	 *                        described for #grb::TRY.
 	 * @returns #grb::SUCCESS When the call completes successfully.
@@ -857,7 +894,8 @@ namespace grb {
 		typename Coords, Backend backend
 	>
 	RC set(
-		Vector< DataType, backend, Coords > &x, const T val,
+		Vector< DataType, backend, Coords > &x,
+		const T val,
 		const Phase &phase = EXECUTE,
 		const typename std::enable_if<
 			!grb::is_object< DataType >::value &&
@@ -914,13 +952,13 @@ namespace grb {
 	 *
 	 * In #grb::EXECUTE mode:
 	 *
-	 * @returns #grb::FAILED  When \a x did not have sufficient capacity. The
+	 * @returns #grb::ILLEGAL When \a x did not have sufficient capacity. The
 	 *                        vector \a x on exit shall be cleared.
 	 * @returns #grb::SUCCESS When the call completes successfully.
 	 *
 	 * In #grb::TRY mode (experimental and may not be supported):
 	 *
-	 * @returns #grb::FAILED  When \a x did not have sufficient capacity. The
+	 * @returns #grb::ILLEGAL When \a x did not have sufficient capacity. The
 	 *                        vector \a x on exit will have contents defined as
 	 *                        described for #grb::TRY.
 	 * @returns #grb::SUCCESS When the call completes successfully.
@@ -1080,6 +1118,211 @@ namespace grb {
 	}
 
 	/**
+	 * Copies the contents a given matrix into another, \f$ C = A \f$.
+	 *
+	 * This is an out-of-place operation.
+	 *
+	 * @tparam descr The descriptor used for this operation.
+	 *
+	 * \parblock
+	 * \par Accepted descriptors
+	 *   -# #grb::descriptors::no_operation, and
+	 *   -# #grb::descriptors::no_casting.
+	 * \endparblock
+	 *
+	 * @tparam OutputType The element type of the output matrix.
+	 * @tparam InputType  The element type of the input matrix.
+	 *
+	 * When \a descr includes #grb::descriptors::no_casting, then code shall not
+	 * compile if \a OutputType does not match \a InputType. This must result in a
+	 * compile-time error such as generated via <tt>static_assert</tt>.
+	 * Implementations are encouraged to generate clear such compile-time error
+	 * messages.
+	 *
+	 * @tparam RIT        The integer type for encoding row indices.
+	 * @tparam CIT        The integer type for encoding column indices.
+	 * @tparam NIT        The integer type for encoding nonzero indices.
+	 * @tparam backend    The backend selected for executing this primitive.
+	 *
+	 * @param[out] C The output matrix \f$ C \f$.
+	 * @param[in]  A The input matrix \f$ A \f$.
+	 *
+	 * The matrices \a C and \a A may not be the same container and must have
+	 * matching dimensions.
+	 *
+	 * @param[in] phase Which #grb::Phase the operation is requested. Optional;
+	 *                  the default is #grb::EXECUTE.
+	 *
+	 * In #grb::RESIZE mode:
+	 * @returns #grb::SUCCESS  When the capacity of \a C is sufficient, or has been
+	 *                         made sufficient, to store the requested output.
+	 * @returns #grb::OUTOFMEM If out-of-memory conditions were encountered while
+	 *                         resizing \a C. If this error code is returned, it
+	 *                         shall be as though the call to this primitive had
+	 *                         never occurred.
+	 *
+	 * In #grb::EXECUTE mode:
+	 * @returns #grb::SUCCESS When the call completes successfully. On exit, the
+	 *                        contents of \a C equal that of \a A.
+	 * @returns #grb::ILLEGAL When \a C did not have enough capacity to store the
+	 *                        output of the requested computation.
+	 *
+	 * Either mode may additionally return:
+	 * @returns #grb::ILLEGAL  If \a C and \a A are the same container.
+	 * @returns #grb::MISMATCH If the dimensions of \a C and \a A do not match.
+	 * @returns #grb::PANIC    In case an unmitigable error was encountered. The
+	 *                         caller is suggested to exit gracefully, and in any
+	 *                         case to not make any further calls to ALP.
+	 *
+	 * \parblock
+	 * \par Performance semantics
+	 * Each backend must define performance semantics for this primitive.
+	 *
+	 * @see perfSemantics
+	 * \endparblock
+	 */
+	template<
+		Descriptor descr = descriptors::no_operation,
+		typename OutputType, typename InputType,
+		typename RIT1, typename CIT1, typename NIT1,
+		typename RIT2, typename CIT2, typename NIT2,
+		Backend backend
+	>
+	RC set(
+		Matrix< OutputType, backend, RIT1, CIT1, NIT1 > &A,
+		const Matrix< InputType, backend, RIT2, CIT2, NIT2 > &C,
+		const Phase &phase = EXECUTE,
+		const typename std::enable_if<
+			!grb::is_object< OutputType >::value &&
+			!grb::is_object< InputType >::value,
+		void >::type * const = nullptr
+	) noexcept {
+#ifndef NDEBUG
+		const bool should_not_call_base_matrix_set = false;
+		assert( should_not_call_base_matrix_set );
+#endif
+		(void) A;
+		(void) C;
+		(void) phase;
+		return UNSUPPORTED;
+	}
+
+	/**
+	 * Sets all values of a matrix to the given value at all positions where the
+	 * given mask evaluates <tt>true</tt>.
+	 *
+	 * @tparam descr The descriptor used for this operation.
+	 *
+	 * \parblock
+	 * \par Accepted descriptors
+	 *   -# #grb::descriptors::no_operation,
+	 *   -# #grb::descriptors::no_casting,
+	 *   -# #grb::descriptors::invert_mask, and
+	 *   -# #grb::descriptors::structural.
+	 *
+	 * However, and differently from most ALP primtivies, the
+	 * #grb::descriptors::invert_mask and #grb::descriptors::structural are
+	 * mutually exclusive for this primitive.
+	 * \endparblock
+	 *
+	 * @tparam OutputType The type of each element in the given matrix.
+	 * @tparam MaskType   The type of each element in the given mask.
+	 * @tparam ValueType  The type of the given value. Should be convertible
+	 *                    to \a OutputType.
+	 * @tparam RIT       The integer type for encoding row indices.
+	 * @tparam CIT       The integer type for encoding column indices.
+	 * @tparam NIT       The integer type for encoding nonzero indices.
+	 * @tparam backend   The backend selected for executing this primitive.
+	 *
+	 * @param[out]    C The matrix whose nonzeroes are to be set to \a val. The
+	 *                  nonzero structure of \a C will match the nonzero structure
+	 *                  of nonzeroes in \a mask that evaluate <tt>true</tt>. Any
+	 *                  elements of \a C on input will be erased.
+	 * @param[in]  mask The mask which defines the nonzero structure of \a C on
+	 *                  output. The given mask may be the same container as \a C.
+	 *                  The given mask may never be empty.
+	 * @param[in]   val The value to set each nonzero of \a C to.
+	 * @param[in] phase Which #grb::Phase the operation is requested. Optional;
+	 *                  the default is #grb::EXECUTE.
+	 *
+	 * In #grb::RESIZE mode:
+	 * @returns #grb::SUCCESS  When the capacity of \a C has been (made) sufficient
+	 *                         to store the requested output.
+	 * @returns #grb::OUTOFMEM When out-of-memory conditions have been met while
+	 *                         executing. If this error code is returned, \a C
+	 *                         shall be unmodified compared to its state at
+	 *                         function entry.
+	 *
+	 * In #grb::EXECUTE mode:
+	 * @returns #grb::SUCCESS When the call completes successfully.
+	 * @returns #grb::ILLEGAL When \a C did not have enough capacity to store the
+	 *                        output of the requested computation.
+	 *
+	 * Either mode may additionally return:
+	 * @returns #grb::ILLEGAL  In case the given \a mask was empty.
+	 * @returns #grb::MISMATCH In case \a C and \a mask have mismatching sizes.
+	 * @returns #grb::PANIC    In case an unmitigable error was encountered. The
+	 *                         caller is suggested to exit gracefully, and in any
+	 *                         case to not make any further calls to ALP.
+	 *
+	 * When \a descr includes #grb::descriptors::no_casting then code shall not
+	 * compile if one of the following conditions are met:
+	 *  -# \a ValueType does not match \a OutputType; or
+	 *  -# \a MaskType does not match <tt>bool</tt>.
+	 *
+	 * In these cases, the code shall not compile: implementations must throw
+	 * a static assertion failure in this case.
+	 *
+	 * Similarly, it is forbidden to call this function with both following
+	 * descriptors simultaneously:
+	 *  - #grb::descriptors::invert_mask \em and #grb::descriptors::structural.
+	 *
+	 * The use of the #grb::descriptors::structural_complement descriptor hence is
+	 * is forbidden also. Implementations shall throw a static assertion failure
+	 * if the user nonetheless asks for structural mask inversion.
+	 *
+	 * \parblock
+	 * \par Performance semantics
+	 * Each backend must define performance semantics for this primitive.
+	 *
+	 * @see perfSemantics
+	 *
+	 * \warning Generally, if \a mask equals \a C and the mask is non-structural,
+	 *          then optimised implementations will assign higher costs than when
+	 *          \a mask does not equal \a C. This is because the nonzero structure
+	 *          update cannot be done in-place.
+	 * \endparblock
+	 */
+	template<
+		Descriptor descr = descriptors::no_operation,
+		typename OutputType, typename MaskType, typename ValueType,
+		typename RIT1, typename CIT1, typename NIT1,
+		typename RIT2, typename CIT2, typename NIT2,
+		Backend backend
+	>
+	RC set(
+		Matrix< OutputType, backend, RIT1, CIT1, NIT1 > &C,
+		const Matrix< MaskType, backend, RIT2, CIT2, NIT2 > &mask,
+		const ValueType &val,
+		const Phase &phase = EXECUTE,
+		const typename std::enable_if<
+			!grb::is_object< OutputType >::value &&
+			!grb::is_object< ValueType >::value &&
+			!grb::is_object< MaskType >::value,
+		void >::type * const = nullptr
+	) noexcept {
+#ifndef NDEBUG
+		const bool should_not_call_base_matrix_masked_set = false;
+		assert( should_not_call_base_matrix_masked_set );
+#endif
+		(void) C;
+		(void) mask;
+		(void) val;
+		(void) phase;
+		return UNSUPPORTED;
+	}
+
+	/**
 	 * Sets the element of a given vector at a given position to a given value.
 	 *
 	 * If the input vector \a x already has an element \f$ x_i \f$, that element
@@ -1102,6 +1345,14 @@ namespace grb {
 	 *                  the default is #grb::EXECUTE.
 	 *
 	 * @return #grb::SUCCESS   Upon successful execution of this operation.
+	 * @return #grb::OUTOFMEM  If the capacity of \a x could not be resized to
+	 *                         store a new value at coordinate \a i while \a phase
+	 *                         is #grb::RESIZE.
+	 * @return #grb::ILLEGAL   If the capacity of \a x is insufficient to store a
+	 *                         new value at coordinate \a i while \a phase is
+	 *                         #grb::EXECUTE.
+	 * @return #grb::ILLEGAL   If \a x on input is not dense while the
+	 *                         #grb::descriptors::dense descriptor was given.
 	 * @return #grb::MISMATCH  If \a i is greater or equal than the dimension of
 	 *                         \a x.
 	 *

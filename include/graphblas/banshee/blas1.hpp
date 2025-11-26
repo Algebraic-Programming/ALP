@@ -827,14 +827,20 @@ namespace grb {
 		 *                    match.
 		 * @returns #SUCCESS  On successful completion of this function call.
 		 */
-		template< Descriptor descr,
+		template<
+			Descriptor descr = descriptors::no_operation,
 			bool left, // if this is false, the right-looking fold is assumed
 			bool sparse,
 			class OP,
 			typename IOType,
 			typename IType,
-			typename Coords >
-		RC fold_from_vector_to_vector_generic( Vector< IOType, banshee, Coords > & fold_into, const Vector< IType, banshee, Coords > & to_fold, const OP & op ) {
+			typename Coords
+		>
+		RC fold_from_vector_to_vector_generic(
+			Vector< IOType, banshee, Coords > & fold_into,
+			const Vector< IType, banshee, Coords > & to_fold,
+			const OP & op
+		) {
 			// take at least a number of elements so that no two threads operate on the same cache line
 			const size_t n = size( fold_into );
 			if( n != size( to_fold ) ) {
@@ -877,7 +883,7 @@ namespace grb {
 								"eWiseLambda, foldl, using to_fold's "
 								"sparsity\n" );
 #endif
-						return eWiseLambda(
+						return eWiseLambda< descr >(
 							[ &fold_into, &to_fold, &op ]( const size_t i ) {
 #ifdef _DEBUG
 								printf( "Left-folding %d into %d", (int)to_fold[ i ], (int)fold_into[ i ] );
@@ -894,7 +900,7 @@ namespace grb {
 								"eWiseLambda, foldl, using to_fold's "
 								"sparsity\n" );
 #endif
-						return eWiseLambda(
+						return eWiseLambda< descr >(
 							[ &fold_into, &to_fold, &op ]( const size_t i ) {
 #ifdef _DEBUG
 								printf( "Right-folding %d into %d", (int)to_fold[ i ], (int)fold_into[ i ] );
@@ -914,7 +920,7 @@ namespace grb {
 								"eWiseLambda, foldl, using fold_into's "
 								"sparsity\n" );
 #endif
-						return eWiseLambda(
+						return eWiseLambda< descr >(
 							[ &fold_into, &to_fold, &op ]( const size_t i ) {
 #ifdef _DEBUG
 								printf( "Left-folding %d into %d", (int)to_fold[ i ], (int)fold_into[ i ] );
@@ -931,7 +937,7 @@ namespace grb {
 								"eWiseLambda, foldr, using fold_into's "
 								"sparsity\n" );
 #endif
-						return eWiseLambda(
+						return eWiseLambda< descr >(
 							[ &fold_into, &to_fold, &op ]( const size_t i ) {
 #ifdef _DEBUG
 								printf( "Right-folding %d into %d", (int)to_fold[ i ], (int)fold_into[ i ] );
@@ -1086,7 +1092,8 @@ namespace grb {
 	 *      and/or vectorised operations are used.
 	 */
 	template< Descriptor descr = descriptors::no_operation, class Monoid, typename InputType, typename Coords, typename IOType >
-	RC foldr( const Vector< InputType, banshee, Coords > & x,
+	RC foldr(
+		const Vector< InputType, banshee, Coords > & x,
 		IOType & beta,
 		const Monoid & monoid = Monoid(),
 		const typename std::enable_if< ! grb::is_object< InputType >::value && ! grb::is_object< IOType >::value && grb::is_monoid< Monoid >::value, void >::type * const = NULL ) {
@@ -1164,7 +1171,8 @@ namespace grb {
 	 *      and/or vectorised operations are used.
 	 */
 	template< Descriptor descr = descriptors::no_operation, class Monoid, typename IOType, typename Coords, typename InputType >
-	RC foldr( const InputType & alpha,
+	RC foldr(
+		const InputType & alpha,
 		Vector< IOType, banshee, Coords > & y,
 		const Monoid & monoid = Monoid(),
 		const typename std::enable_if< ! grb::is_object< InputType >::value && ! grb::is_object< IOType >::value && grb::is_monoid< Monoid >::value, void >::type * const = NULL ) {
@@ -1241,7 +1249,8 @@ namespace grb {
 	 *      and/or vectorised operations are used.
 	 */
 	template< Descriptor descr = descriptors::no_operation, class OP, typename IOType, typename InputType, typename Coords >
-	RC foldr( const Vector< InputType, banshee, Coords > & x,
+	RC foldr(
+		const Vector< InputType, banshee, Coords > & x,
 		Vector< IOType, banshee, Coords > & y,
 		const OP & op = OP(),
 		const typename std::enable_if< grb::is_operator< OP >::value && ! grb::is_object< InputType >::value && ! grb::is_object< IOType >::value, void >::type * = NULL ) {
@@ -1339,7 +1348,8 @@ namespace grb {
 	 *      and/or vectorised operations are used.
 	 */
 	template< Descriptor descr = descriptors::no_operation, class Monoid, typename IOType, typename InputType, typename Coords >
-	RC foldr( const Vector< InputType, banshee, Coords > & x,
+	RC foldr(
+		const Vector< InputType, banshee, Coords > & x,
 		Vector< IOType, banshee, Coords > & y,
 		const Monoid & monoid = Monoid(),
 		const typename std::enable_if< grb::is_monoid< Monoid >::value && ! grb::is_object< InputType >::value && ! grb::is_object< IOType >::value, void >::type * = NULL ) {
@@ -1438,7 +1448,8 @@ namespace grb {
 	 *      and/or vectorised operations are used.
 	 */
 	template< Descriptor descr = descriptors::no_operation, class Op, typename IOType, typename Coords, typename InputType >
-	RC foldl( Vector< IOType, banshee, Coords > & x,
+	RC foldl(
+		Vector< IOType, banshee, Coords > & x,
 		const InputType & beta,
 		const Op & op = Op(),
 		const typename std::enable_if< ! grb::is_object< IOType >::value && ! grb::is_object< InputType >::value && grb::is_operator< Op >::value, void >::type * = NULL ) {
@@ -1532,7 +1543,8 @@ namespace grb {
 	 *      and/or vectorised operations are used.
 	 */
 	template< Descriptor descr = descriptors::no_operation, class Monoid, typename IOType, typename Coords, typename InputType >
-	RC foldl( Vector< IOType, banshee, Coords > & x,
+	RC foldl(
+		Vector< IOType, banshee, Coords > & x,
 		const InputType & beta,
 		const Monoid & monoid = Monoid(),
 		const typename std::enable_if< ! grb::is_object< IOType >::value && ! grb::is_object< InputType >::value && grb::is_monoid< Monoid >::value, void >::type * = NULL ) {
@@ -1626,7 +1638,8 @@ namespace grb {
 	 *      and/or vectorised operations are used.
 	 */
 	template< Descriptor descr = descriptors::no_operation, class OP, typename IOType, typename InputType, typename Coords >
-	RC foldl( Vector< IOType, banshee, Coords > & x,
+	RC foldl(
+		Vector< IOType, banshee, Coords > & x,
 		const Vector< InputType, banshee, Coords > & y,
 		const OP & op = OP(),
 		const typename std::enable_if< grb::is_operator< OP >::value && ! grb::is_object< IOType >::value && ! grb::is_object< InputType >::value, void >::type * = NULL ) {
@@ -1728,7 +1741,8 @@ namespace grb {
 	 *      and/or vectorised operations are used.
 	 */
 	template< Descriptor descr = descriptors::no_operation, class Monoid, typename IOType, typename InputType, typename Coords >
-	RC foldl( Vector< IOType, banshee, Coords > & x,
+	RC foldl(
+		Vector< IOType, banshee, Coords > & x,
 		const Vector< InputType, banshee, Coords > & y,
 		const Monoid & monoid = Monoid(),
 		const typename std::enable_if< grb::is_monoid< Monoid >::value && ! grb::is_object< IOType >::value && ! grb::is_object< InputType >::value, void >::type * = NULL ) {
@@ -1812,7 +1826,8 @@ namespace grb {
 	 * \endparblock
 	 */
 	template< Descriptor descr = descriptors::no_operation, class OP, typename OutputType, typename InputType1, typename Coords, typename InputType2 >
-	RC eWiseApply( Vector< OutputType, banshee, Coords > & z,
+	RC eWiseApply(
+		Vector< OutputType, banshee, Coords > & z,
 		const Vector< InputType1, banshee, Coords > & x,
 		const InputType2 beta,
 		const OP & op = OP(),
@@ -1846,7 +1861,8 @@ namespace grb {
 	namespace internal {
 
 		template< bool masked, Descriptor descr, class OP, typename OutputType, typename MaskType, typename InputType1, typename InputType2 >
-		RC sparse_apply_generic( OutputType * const z_p,
+		RC sparse_apply_generic(
+			OutputType * const z_p,
 			Coordinates< banshee > & z_coors,
 			MaskType * const mask_p,
 			const InputType1 * const x_p,
@@ -1931,7 +1947,8 @@ namespace grb {
 		}
 
 		template< bool left_scalar, bool right_scalar, bool left_sparse, bool right_sparse, Descriptor descr, class OP, typename OutputType, typename MaskType, typename InputType1, typename InputType2 >
-		RC masked_apply_generic( OutputType * const z_p,
+		RC masked_apply_generic(
+			OutputType * const z_p,
 			Coordinates< banshee > & z_coors,
 			const MaskType * const mask_p,
 			const Coordinates< banshee > & mask_coors,
@@ -2160,7 +2177,8 @@ namespace grb {
 	} // namespace internal
 
 	template< Descriptor descr = descriptors::no_operation, class OP, typename OutputType, typename MaskType, typename InputType1, typename Coords, typename InputType2 >
-	RC eWiseApply( Vector< OutputType, banshee, Coords > & z,
+	RC eWiseApply(
+		Vector< OutputType, banshee, Coords > & z,
 		const Vector< MaskType, banshee, Coords > & mask,
 		const Vector< InputType1, banshee, Coords > & x,
 		const InputType2 beta,
@@ -2201,7 +2219,8 @@ namespace grb {
 	}
 
 	template< Descriptor descr = descriptors::no_operation, class Monoid, typename OutputType, typename InputType1, typename InputType2, typename Coords >
-	RC eWiseApply( Vector< OutputType, banshee, Coords > & z,
+	RC eWiseApply(
+		Vector< OutputType, banshee, Coords > & z,
 		const Vector< InputType1, banshee, Coords > & x,
 		const Vector< InputType2, banshee, Coords > & y,
 		const Monoid & monoid = Monoid(),
@@ -2240,7 +2259,8 @@ namespace grb {
 	}
 
 	template< Descriptor descr = descriptors::no_operation, class Monoid, typename OutputType, typename InputType1, typename InputType2, typename Coords >
-	RC eWiseApply( Vector< OutputType, banshee, Coords > & z,
+	RC eWiseApply(
+		Vector< OutputType, banshee, Coords > & z,
 		const InputType1 alpha,
 		const Vector< InputType2, banshee, Coords > & y,
 		const Monoid & monoid = Monoid(),
@@ -2283,7 +2303,8 @@ namespace grb {
 	}
 
 	template< Descriptor descr = descriptors::no_operation, class Monoid, typename OutputType, typename InputType1, typename Coords, typename InputType2 >
-	RC eWiseApply( Vector< OutputType, banshee, Coords > & z,
+	RC eWiseApply(
+		Vector< OutputType, banshee, Coords > & z,
 		const Vector< InputType1, banshee, Coords > & x,
 		const InputType2 beta,
 		const Monoid & monoid = Monoid(),
@@ -2325,7 +2346,8 @@ namespace grb {
 	}
 
 	template< Descriptor descr = descriptors::no_operation, class Monoid, typename OutputType, typename MaskType, typename InputType1, typename InputType2, typename Coords >
-	RC eWiseApply( Vector< OutputType, banshee, Coords > & z,
+	RC eWiseApply(
+		Vector< OutputType, banshee, Coords > & z,
 		const Vector< MaskType, banshee, Coords > & mask,
 		const Vector< InputType1, banshee, Coords > & x,
 		const Vector< InputType2, banshee, Coords > & y,
@@ -2388,7 +2410,8 @@ namespace grb {
 	}
 
 	template< Descriptor descr = descriptors::no_operation, class Monoid, typename OutputType, typename MaskType, typename InputType1, typename InputType2, typename Coords >
-	RC eWiseApply( Vector< OutputType, banshee, Coords > & z,
+	RC eWiseApply(
+		Vector< OutputType, banshee, Coords > & z,
 		const Vector< MaskType, banshee, Coords > & mask,
 		const InputType1 alpha,
 		const Vector< InputType2, banshee, Coords > & y,
@@ -2435,7 +2458,8 @@ namespace grb {
 	}
 
 	template< Descriptor descr = descriptors::no_operation, class Monoid, typename OutputType, typename MaskType, typename InputType1, typename InputType2, typename Coords >
-	RC eWiseApply( Vector< OutputType, banshee, Coords > & z,
+	RC eWiseApply(
+		Vector< OutputType, banshee, Coords > & z,
 		const Vector< MaskType, banshee, Coords > & mask,
 		const Vector< InputType1, banshee, Coords > & x,
 		const InputType2 beta,
@@ -2546,7 +2570,8 @@ namespace grb {
 	 * \endparblock
 	 */
 	template< Descriptor descr = descriptors::no_operation, class OP, typename OutputType, typename InputType1, typename InputType2, typename Coords >
-	RC eWiseApply( Vector< OutputType, banshee, Coords > & z,
+	RC eWiseApply(
+		Vector< OutputType, banshee, Coords > & z,
 		const InputType1 alpha,
 		const Vector< InputType2, banshee, Coords > & y,
 		const OP & op = OP(),
@@ -2576,7 +2601,8 @@ namespace grb {
 	}
 
 	template< Descriptor descr = descriptors::no_operation, class OP, typename OutputType, typename MaskType, typename InputType1, typename InputType2, typename Coords >
-	RC eWiseApply( Vector< OutputType, banshee, Coords > & z,
+	RC eWiseApply(
+		Vector< OutputType, banshee, Coords > & z,
 		const Vector< MaskType, banshee, Coords > & mask,
 		const InputType1 alpha,
 		const Vector< InputType2, banshee, Coords > & y,
@@ -2685,7 +2711,8 @@ namespace grb {
 	 * \endparblock
 	 */
 	template< Descriptor descr = descriptors::no_operation, class OP, typename OutputType, typename InputType1, typename InputType2, typename Coords >
-	RC eWiseApply( Vector< OutputType, banshee, Coords > & z,
+	RC eWiseApply(
+		Vector< OutputType, banshee, Coords > & z,
 		const Vector< InputType1, banshee, Coords > & x,
 		const Vector< InputType2, banshee, Coords > & y,
 		const OP & op = OP(),
@@ -2753,7 +2780,8 @@ namespace grb {
 	}
 
 	template< Descriptor descr = descriptors::no_operation, class OP, typename OutputType, typename MaskType, typename InputType1, typename InputType2, typename Coords >
-	RC eWiseApply( Vector< OutputType, banshee, Coords > & z,
+	RC eWiseApply(
+		Vector< OutputType, banshee, Coords > & z,
 		const Vector< MaskType, banshee, Coords > & mask,
 		const Vector< InputType1, banshee, Coords > & x,
 		const Vector< InputType2, banshee, Coords > & y,

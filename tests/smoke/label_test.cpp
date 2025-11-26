@@ -143,6 +143,7 @@ void grbProgram( const struct input &data_in, struct output &out ) {
 		W, &(I[ 0 ]), &(J[ 0 ]), &(weights[ 0 ]), nz,
 		SEQUENTIAL
 	);
+	rc = rc ? rc : wait();
 	if( rc != SUCCESS ) {
 		out.error_code = ILLEGAL;
 		free_input();
@@ -151,9 +152,18 @@ void grbProgram( const struct input &data_in, struct output &out ) {
 	out.times.preamble = timer.time();
 	timer.reset();
 
-	algorithms::label( f, y, W, n, l );
+	rc = algorithms::label( f, y, W, n, l );
+	if( Properties<>::isNonblockingExecution ) {
+		rc = rc ? rc : wait();
+	}
 	out.times.useful = timer.time();
 	timer.reset();
+	if( rc != SUCCESS ) {
+		out.error_code = rc;
+		free_input();
+		return;
+	}
+
 	out.f = PinnedVector< double >( f, SEQUENTIAL );
 	free_input();
 	out.times.postamble = timer.time();

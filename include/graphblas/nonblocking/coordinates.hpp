@@ -27,11 +27,13 @@
 #ifndef _H_GRB_NONBLOCKING_COORDINATES
 #define _H_GRB_NONBLOCKING_COORDINATES
 
-#include <stdexcept> //std::runtime_error
 #include <vector>
+#include <cstdint> // uintptr_t
+#include <stdexcept> //std::runtime_error
 #if defined _DEBUG && ! defined NDEBUG
  #include <set>
 #endif
+
 
 #include <stddef.h> //size_t
 #include <assert.h>

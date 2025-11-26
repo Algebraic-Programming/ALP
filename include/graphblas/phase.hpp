@@ -81,7 +81,9 @@ namespace grb {
 	 *   1. f( A, ..., EXECUTE ), which shall always be successful if it somehow
 	 *      is guaranteed that \a A has enough capacity prior to the call. If
 	 *      \a A did not have enough capacity, the call to \a f shall fail and
-	 *      the contents of \a A, after function exit, shall be cleared.
+	 *      the contents of \a A, after function exit, shall be cleared. Failure
+	 *      is indicated by the #grb::ILLEGAL error code (since it indicates a
+	 *      container with invalid capacity was used for output).
 	 *   2. a successful call to f( A, ..., RESIZE ) shall guarantee that a
 	 *      following call to f( A, ..., EXECUTE ) is successful;
 	 *   3. a call to f( A, ..., TRY ), which may or may not succeed. If the call
@@ -122,7 +124,7 @@ namespace grb {
 	 * \code
 	 * resize( B, nnz( A ) );
 	 * set( B, A );
-	 * if( f( A, ..., EXECUTE ) == FAILED ) {
+	 * if( f( A, ..., EXECUTE ) == ILLEGAL ) {
 	 *     f( B, ..., RESIZE );
 	 *     std::swap( A, B );
 	 * }
@@ -131,7 +133,7 @@ namespace grb {
 	 * \code
 	 * resize( B, nnz( A ) );
 	 * set( B, A );
-	 * while( f( A, ..., EXECUTE ) == FAILED ) {
+	 * while( f( A, ..., EXECUTE ) == ILLEGAL ) {
 	 *     resize( A, capacity( A ) + 1 );
 	 *     set( A, B );
 	 * }
@@ -152,37 +154,41 @@ namespace grb {
 	enum Phase {
 
 		/**
-		 * Speculatively assumes that the output container(s) of the requested
-		 * operation lack the necessary capacity to hold all outputs of the
-		 * computation. Instead of executing the requested operation, this phase
-		 * attempts to both estimate and resize the output container(s).
+		 * Assumes that the output container(s) of the requested operation may lack
+		 * the required capacity to hold all outputs of the requested computation.
+		 *
+		 * Instead of executing the requested operation, this phase attempts to both
+		 * estimate and resize the output container(s).
 		 *
 		 * A successful call using this phase guarantees that a subsequent and
 		 * equivalent call using the #grb::EXECUTE phase shall be successful.
 		 *
-		 * Here, an <em>equivalent call</em> means that the operation must be called
-		 * with exactly the same arguments, except for the #grb::Phase argument.
+		 * Here,
+		 *  -# an <em>equivalent call</em> means that the operation must be called
+		 *     with exactly the same arguments except for the #grb::Phase argument;
+		 *  -# a <em>subsequent</em> call means that all involved containers are not
+		 *     nonzero-structure-altering outputs of any other ALP primitive prior to
+		 *     the call that requests the execute phase.
 		 *
-		 * Here, <em>subsequent</em> means that all involved containers are not
-		 * arguments to any other ALP/GraphBLAS primitives prior to the final call
-		 * that requests the execute phase.
-		 *
-		 * Different from #grb::resize, calling operations using the resize phase does
-		 * \em not modify the contents of output containers, and may only enlargen
-		 * capacities-- not shrink them.
+		 * Different from #grb::EXECUTE, calling primitives with the resize phase does
+		 * \em not modify the contents of output containers. Furthermore, the call may
+		 * only enlargen the capacity of output containers-- not shrink them.
 		 *
 		 * \note This specification does \em not disallow implementations or backends
 		 *       that perform part of the computation during the resize phase. Any
-		 *       such behaviour is totally optional for implementations and backends.
-		 *       However, any progress made in such manner must remain hidden from the
-		 *       user since output container contents must not be modified by
-		 *       primitives executing a resize phase.
+		 *       such behaviour is optional for implementations and backends. However,
+		 *       any such intermediate progress made must remain hidden from the user
+		 *       until a call with an execute phase passes.
 		 *
 		 * A backend must define clear performance semantics for each primitive and
 		 * for each phase that primitive can be called with. In particular, backends
 		 * must specify whether system calls such as dynamic memory allocations or
 		 * frees may occur, and whether primtives operating in a resize phase may
 		 * return #grb::OUTOFMEM.
+		 *
+		 * \note Both of these (may make dynamic allocations and may return
+		 *       #grb::OUTOFMEM would be expected from resize phases for most
+		 *       implementations.
 		 */
 		RESIZE,
 
@@ -191,15 +197,16 @@ namespace grb {
 		 * has enough capacity to complete the computation, and attempts to do so.
 		 *
 		 * If the capacity was indeed found to be sufficient, then the computation
-		 * \em must complete as specified-- unless #grb::PANIC is returned.
+		 * \em must complete as specified.
 		 *
 		 * If, nevertheless, capacity was not sufficient then the result of the
 		 * computation is incomplete and the primitive shall return #grb::FAILED.
 		 * Regarding each output container \a A, the following are guaranteed:
 		 *    -# the capacity of \a A remains unchanged;
-		 *    -# contains #grb::capacity (of \a A) nonzeroes;
-		 *    -# has nonzeroes at the coordinates where \a A on entry had nonzeroes;
-		 *    -# has nonzeroes with values equal to those that would have been
+		 *    -# contains that number of nonzeroes (i.e., reaches full capacity);
+		 *    -# has <em>at minimum</em> nonzeroes at the coordinates where \a A on
+		 *       entry had nonzeroes;
+		 *    -# every nonzero has values equal to those that would have been
 		 *       computed at its coordinates were the call successul; and
 		 *    -# does not contain all nonzeroes that would have been present in \a A
 		 *       were the call successful (or otherwise #grb::SUCCESS would have been
@@ -210,8 +217,7 @@ namespace grb {
 		 *          full output without re-initiating the full computation. In other
 		 *          words, this mechanism does not allow for the partial computation
 		 *          to complete the remainder computation using less effort than the
-		 *          full computation would have required. This is the main difference
-		 *          with the #grb::EXECUTE phase.
+		 *          full computation would have required.
 		 *
 		 * \note This phase is particularly useful if partial output is still usable
 		 *       and recomputation to generate the full output is not required.
@@ -220,7 +226,8 @@ namespace grb {
 		 * for each phase that primitive can be called with.
 		 *
 		 * \warning The <tt>try</tt> phase is current experimental and \em not broadly
-		 *          supported in the reference implementation.
+		 *          supported in the reference implementation, nor within any other
+		 *          public backend implementation.
 		 */
 		TRY,
 
@@ -234,15 +241,16 @@ namespace grb {
 		 * execute phase.
 		 *
 		 * If, instead, the output container capacity was found to be insufficient,
-		 * then the requested operation may return #grb::FAILED, in which case the
+		 * then the requested operation returns #grb::ILLEGAL, in which case the
 		 * contents of output containers shall be cleared.
 		 *
 		 * \note That on failure a primitive called using the execute phase may
-		 *       destroy any pre-existing contents of output containers is a critical
-		 *       difference with the #grb::TRY phase.
+		 *       destroy any pre-existing contents of output containers. This is a
+		 *       critical difference to the proposed not-yet-pervasively-available
+		 *       #grb::TRY phase.
 		 *
-		 * \warning When calling ALP/GraphBLAS primitives without specifying a phase
-		 *          explicitly, this execute phase will be assumed by default.
+		 * \warning When calling ALP primitives without specifying an explicit phase,
+		 *          this execute phase will be assumed by default.
 		 *
 		 * A backend must define clear performance semantics for each primitive and
 		 * for each phase that primitive can be called with. In particular, backends
@@ -251,8 +259,9 @@ namespace grb {
 		 * return #grb::OUTOFMEM.
 		 *
 		 * \note Typically, implementations and backends are advised to specify no
-		 *       system calls and in particular dynamic memory management calls are
-		 *       allowed as part of an execute phase.
+		 *       system calls for the execute phase of any ALP primitive -- in
+		 *       particular, dynamic memory management calls should not be allowed as
+		 *       part of an execute phase.
 		 */
 		EXECUTE
 
