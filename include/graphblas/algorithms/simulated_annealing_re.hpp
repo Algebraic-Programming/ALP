@@ -648,6 +648,8 @@ namespace grb {
 				}
 
 				const grb::operators::leq< EnergyType > leq_operator;
+				const grb::operators::right_assign< EnergyType > right_assign_op;
+				const grb::operators::not_equal< EnergyType > neq_operator;
 #ifndef NDEBUG
 				const grb::Vector< StateType > old_state = state;
 #endif
@@ -655,8 +657,7 @@ namespace grb {
 				for(const auto &mask : masks ){
 					// dn = (2*state_slice - 1) * h_slice
 					rc = rc ? rc : grb::set< descr >( dn, mask, state );
-					rc = rc ? rc : grb::foldl< descr >( dn, static_cast< EnergyType >( 2 ), ring.getMultiplicativeMonoid()  );
-					rc = rc ? rc : grb::foldl< descr >( dn, static_cast< EnergyType >( -1 ), ring.getAdditiveMonoid() );
+					rc = rc ? rc : grb::foldl< descr | grb::descriptors::invert_mask >( dn, state, static_cast< QType >( -1 ), right_assign_op );
 					rc = rc ? rc : grb::foldl< descr >( dn, h, ring.getMultiplicativeMonoid() );
 
 					// Choose which changes to accept
@@ -665,13 +666,11 @@ namespace grb {
 					rc = rc ? rc : grb::set< descr >( accept, dn, mask );
 
 					// new_state = np.where(accept, 1 - old, old)
-					rc = rc ? rc : grb::foldl< descr >( state, accept, static_cast< StateType >( -1 ), ring.getMultiplicativeMonoid() );
-					rc = rc ? rc : grb::foldl< descr >( state, accept, static_cast< StateType >( 1 ), ring.getAdditiveMonoid() );
+					rc = rc ? rc : grb::foldl< descr >( state, accept, static_cast< StateType >( 1 ), neq_operator );
 					
 					// delta = new - old ==> delta[accept] = 2*new_state[accept]-1
 					rc = rc ? rc : grb::set< descr >( delta, accept, state );
-					rc = rc ? rc : grb::foldl< descr >( delta, accept, static_cast< StateType >( 2 ), ring.getMultiplicativeMonoid() );
-					rc = rc ? rc : grb::foldl< descr >( delta, accept, static_cast< StateType >( -1 ), ring.getAdditiveMonoid() );
+					rc = rc ? rc : grb::foldl< descr | grb::descriptors::invert_mask >( delta, delta, static_cast< QType >( -1 ), right_assign_op );
 					
 					// Update delta_energy -= dot(dn, accept)
 					rc = rc ? rc : grb::dot< descr >( delta_energy, delta, h, ring );
