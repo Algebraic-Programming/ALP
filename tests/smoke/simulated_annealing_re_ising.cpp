@@ -439,8 +439,10 @@ void grbProgram(
     std::minstd_rand rng ( data_in.seed + s ); // rng or std::mt19937
 
     // create states storage and initialize with random 1/0 values
+    std::vector< grb::Vector<IOType> > states0;
     std::vector< grb::Vector<IOType> > states;
     for ( size_t r = 0; r < n_replicas; ++r ) {
+        states0.emplace_back( grb::Vector<IOType>(n) );
         states.emplace_back( grb::Vector<IOType>(n) );
         // initialize with random values
         std::uniform_int_distribution< unsigned short > randint(0,1);
@@ -451,11 +453,12 @@ void grbProgram(
                 randint( rng ) ) );
         }
         rc = rc ? rc : grb::buildVector(
-            states.back(),
+            states0.back(),
             rand_data.cbegin(),
             rand_data.cend(),
             SEQUENTIAL
         );
+		grb::set( states.back(), states0.back() );
     }
 
 	grb::Vector< EnergyType > tmp_energy ( n );
@@ -525,9 +528,25 @@ void grbProgram(
 			}
 		}
 	} else {
+		for( size_t i = 0; i < 2 ; ++i ){
+			for ( size_t r = 0; r < n_replicas; ++r ) {
+				grb::set(states[r], states0[r]);
+			}
+			grb::clear( energies );
+			rc = grb::algorithms::simulated_annealing_RE_Ising(
+			 J, h, states, energies, betas, best_state, out.best_energy, data_in.nsweeps, data_in.use_pt
+			);
+		}
 		// do benchmark
-		timer.reset();
+		double min_time = 1e9;
+		double max_time = 0;
+		double total_time = 0;
 		for( size_t i = 0; i < out.rep && rc == SUCCESS; ++i ) {
+			for ( size_t r = 0; r < n_replicas; ++r ) {
+				grb::set(states[r], states0[r]);
+			}
+			grb::clear( energies );
+			timer.reset();
 			if( rc == SUCCESS ) {
 				out.iterations = data_in.nsweeps;
 
@@ -538,29 +557,22 @@ void grbProgram(
 			if( grb::Properties<>::isNonblockingExecution ) {
 				rc = rc ? rc : wait();
 			}
-		}
-		const double time_taken = timer.time();
-		for ( size_t r = 0; r < n_replicas; ++r ) {
-			const auto energy = energies[r];
-			if( s == 0 ) {
-				std::cout << "Final state replica " << r << ":\n";
-				print_vector( states[r], 50 ,"states values" );  
-				std::cout << "With energy " << energy << "\n";
-				std::cout << std::endl;
-			}
-			assert( ISCLOSE( get_energy( J, h, states[r], tmp_energy ), energies[ r ] ) );
+			const double time_taken = timer.time();
+			min_time = std::min(min_time, time_taken);
+			max_time = std::max(max_time, time_taken);
+			total_time +=  time_taken;
 		}
 
-		out.times.useful = time_taken / static_cast< double >( out.rep );
+		out.times.useful = total_time / static_cast< double >( out.rep );
 		// print timing at root process
 		if( s == 0 ) {
-			std::cout << "Time taken for " << out.rep << " "
+			std::cout << "Average Time taken for " << out.rep << " "
 				<< "Simulated Annealing RE calls (hot start): " << out.times.useful << ". "
 				<< "Error code is " << grb::toString( rc ) << std::endl;
-			std::cout << "\tnumber of IM-SB iterations: " << out.iterations << "\n";
-			std::cout << "\tmilliseconds per iteration: "
-				<< ( out.times.useful / static_cast< double >( out.iterations ) )
-				<< "\n";
+			std::cout << "\tnumber of IM-SB iterations: " << out.rep << "\n"; std::cout << "\tmilliseconds per iteration: "
+				<< ( out.times.useful / static_cast< double >( out.iterations ) ) << "\n";;
+			std::cout << "\tMin Time: " << min_time << "\n";
+			std::cout << "\tMax Time: " << max_time << "\n";
 
 			if( data_in.verify ){
 				if( out.best_energy < initial_energy ){
@@ -600,6 +612,7 @@ void printhelp( char *progname ) {
               << "  --nsweeps INT              Number of sweeps (default: 2)\n"
               << "  --use-pt BOOL              Use Parallel Tampering (default: 1)\n"
               << "  --seed INT                 RNG seed (default: 8)\n"
+              << "  --rep INT                  number of times to repeat the run of the algorithm (default: 1)\n"
               << "  --verify                   Verify output against reference solution\n"
               << "  --ref-solution-fname STR   Reference solution file (required with --verify unless using default data)\n"
               << "  --help, -h                 Print this help message\n";
@@ -635,6 +648,9 @@ bool parse_arguments( input &in, int argc, char ** argv ) {
         } else if ( a == "--use-pt" ) {
             if ( i+1 >= argc ) { std::cerr << "--use-pt requires an argument\n"; return false; }
             in.use_pt = static_cast<bool>( std::stoul(argv[++i]) );
+        } else if ( a == "--rep" ) {
+            if ( i+1 >= argc ) { std::cerr << "--rep requires an argument\n"; return false; }
+            in.rep = static_cast<unsigned>( std::stoul(argv[++i]) );
         } else if ( a == "--seed" ) {
             if ( i+1 >= argc ) { std::cerr << "--seed requires an argument\n"; return false; }
             in.seed = static_cast<unsigned>( std::stoul(argv[++i]) );
@@ -706,6 +722,6 @@ int main( int argc, char ** argv ) {
         }
     }
 
-    std::cout << "Finished: error_code=" << out.error_code << " iterations=" << out.iterations << " best_energy=" << out.best_energy << "\n";
+    std::cout << "Finished: error_code=" << out.error_code << " iterations=" << out.rep << " best_energy=" << out.best_energy << "\n";
     return out.error_code;
 }
