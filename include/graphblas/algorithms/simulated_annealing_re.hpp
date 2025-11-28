@@ -197,16 +197,11 @@ namespace grb {
 				if( si == 1 ) continue;
 
 #ifdef _GRB_WITH_LPF
-				rc = rc ? rc : grb::internal::broadcast( s0, si-2 );
 				rc = rc ? rc : grb::collectives<>::broadcast( msg[ 0 ].e, si-2 );
 				rc = rc ? rc : grb::collectives<>::broadcast( msg[ 0 ].b, si-2 );
 				rc = rc ? rc : grb::collectives<>::broadcast( msg[ 0 ].r, si-2 );
-				rc = rc ? rc : grb::internal::broadcast( s1, si-1 );
 				rc = rc ? rc : grb::collectives<>::broadcast( msg[ 1 ].e, si-1 );
 				rc = rc ? rc : grb::collectives<>::broadcast( msg[ 1 ].b, si-1 );
-
-				assert( grb::nnz(s0) == n ); // state has to be dense!
-				assert( grb::nnz(s1) == n ); // state has to be dense!
 #else
 				assert( false ); // this should never run
 #endif
@@ -223,6 +218,14 @@ namespace grb {
 				const EnergyType de = ( msg[ 1 ].e - msg[ 0 ].e ) * ( msg[ 1 ].b - msg[ 0 ].b );
 
 				if( rc == grb::SUCCESS && ( msg[ 0 ].r < de ) ){
+#ifdef _GRB_WITH_LPF
+					rc = rc ? rc : grb::internal::broadcast( s0, si-2 );
+					rc = rc ? rc : grb::internal::broadcast( s1, si-1 );
+					assert( grb::nnz(s0) == n ); // state has to be dense!
+					assert( grb::nnz(s1) == n ); // state has to be dense!
+#else
+					assert( false ); // this should never run
+#endif
 					if( si == s+1 ){
 						rc = rc ? rc : grb::set( states[ n_replicas - 1 ], s0 );
 						rc = rc ? rc : grb::setElement(energies, msg[ 0 ].e, n_replicas - 1 );
