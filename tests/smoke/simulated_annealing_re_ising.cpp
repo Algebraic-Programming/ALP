@@ -35,15 +35,18 @@
 
 using namespace grb;
 
-#define DEBUG_IMSB 1
-#define ISCLOSE(a,b) (std::abs((b)-(a))/std::abs(a) < 1e-4) || (std::abs((b)-(a)) < 1e-4)
-
+// #define DEBUG_IMSB 1
 constexpr size_t MAX_FN_SIZE = 255;
 
 // Types
-using IOType = double;   // scalar/vector element type
-using JType  = double;   // coupling (matrix) value type
-using EnergyType  = double;   // coupling (matrix) value type
+using IOType = int8_t;   // scalar/vector element type
+using JType  = float;   // coupling (matrix) value type
+using EnergyType  = double;   // energy value type
+
+template< typename T1, typename T2 >
+inline bool ISCLOSE( const T1 &a, const T2 &b, const double tol = 1e-4){
+	return (std::abs((b)-(a))/std::abs(a) < tol) || (std::abs((b)-(a)) < tol);
+}
 
 /** Parser type */
 typedef grb::utils::MatrixFileReader<
@@ -266,13 +269,14 @@ template<
 	class Ring = Semiring<
 		grb::operators::add< JType >, grb::operators::mul< JType >,
 		grb::identities::zero, grb::identities::one
-	>
+	>,
+	typename Ttmp
 	>
 EnergyType get_energy(
 				 const grb::Matrix< JType, backend >& couplings,
 				 const grb::Vector< JType, backend > &local_fields,
 				 const grb::Vector< IOType, backend > &state,
-				 grb::Vector< JType, backend > &tmp,
+				 grb::Vector< Ttmp, backend > &tmp,
 				 const Ring &ring = Ring()
 			  ){
 	const size_t n = grb::size( local_fields );
@@ -282,12 +286,13 @@ EnergyType get_energy(
 	grb::resize( tmp, n );
 	grb::RC rc = grb::SUCCESS;
 	EnergyType energy = 0.0;
+	constexpr auto dense_descr = descr | grb::descriptors::dense;
 
-	rc = rc ? rc : grb::set( tmp, 0.0 );
-	rc = rc ? rc : grb::mxv< descr | grb::descriptors::dense >( tmp, couplings, state, ring );
-	rc = rc ? rc : grb::foldl< descr | grb::descriptors::dense >( tmp, static_cast< JType >( 0.5 ), ring.getMultiplicativeMonoid() );
-	rc = rc ? rc : grb::foldl< descr | grb::descriptors::dense >( tmp, local_fields, ring.getAdditiveMonoid() );
-	rc = rc ? rc : grb::dot< descr | grb::descriptors::dense >( energy, tmp, state, ring );
+	rc = rc ? rc : grb::set< descr >( tmp, 0.0 );
+	rc = rc ? rc : grb::mxv< dense_descr >( tmp, couplings, state, ring );
+	rc = rc ? rc : grb::foldl< dense_descr >( tmp, static_cast< JType >( 0.5 ), ring.getMultiplicativeMonoid() );
+	rc = rc ? rc : grb::foldl< dense_descr >( tmp, local_fields, ring.getAdditiveMonoid() );
+	rc = rc ? rc : grb::dot< dense_descr >( energy, tmp, state, ring );
 	assert( rc == grb::SUCCESS );
 
 	return energy;
