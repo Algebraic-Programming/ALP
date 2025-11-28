@@ -287,8 +287,8 @@ EnergyType get_energy(
 	assert( n == grb::size( state ) );
 	assert( n == grb::ncols( couplings ) );
 	assert( n == grb::nrows( couplings ) );
-	grb::resize( tmp, n );
 	grb::RC rc = grb::SUCCESS;
+	rc = rc ? rc : grb::resize( tmp, n );
 	EnergyType energy = 0.0;
 	constexpr auto dense_descr = descr | grb::descriptors::dense;
 
@@ -318,20 +318,17 @@ EnergyType sequential_sweep_immediate(
 				 	 const grb::Vector< JType, backend >&,
 					 grb::Vector< JType, backend >&,
 					 grb::Vector< JType, backend >&,
-					 grb::Vector< IOType, backend >&,
+					 grb::Vector< JType, backend >&,
 					 const std::vector< grb::Vector< bool, backend > >&,
-					 grb::Vector< EnergyType, backend >&,
+					 grb::Vector< JType, backend >&,
 					 grb::Vector< bool, backend >&,
 					 std::minstd_rand&
 					 > &data
 			  ){
 		const size_t s = spmd<>::pid();
 		const Ring ring = Ring();
+		constexpr auto dense_descr = descr | grb::descriptors::dense;
 		(void) s;
-
-		grb::RC rc = grb::SUCCESS;
-		const size_t n = grb::size( state );
-		assert( grb::nnz(state) == n ); // state has to be dense!
 
 		EnergyType delta_energy = static_cast< EnergyType >(0.0);
 		const auto &couplings 	= std::get<0>(data);
@@ -344,6 +341,11 @@ EnergyType sequential_sweep_immediate(
 		auto &accept	= std::get<7>(data);
 		auto &rng       = std::get<8>(data);
 
+		grb::RC rc = grb::SUCCESS;
+		const size_t n = grb::size( state );
+		assert( grb::nnz(state) == n ); // state has to be dense!
+		assert( grb::nnz(local_fields) == n );
+
 		rc = rc ? rc : grb::wait();
 		rc = rc ? rc : grb::resize( h, n );
 		rc = rc ? rc : grb::resize( rand, n );
@@ -351,13 +353,13 @@ EnergyType sequential_sweep_immediate(
 		rc = rc ? rc : grb::resize( dn, n );
 		rc = rc ? rc : grb::resize( accept, n );
 
-		rc = rc ? rc : grb::set< descr >( h, local_fields );
-		rc = rc ? rc : grb::mxv< descr >( h, couplings, state , ring );
+		rc = rc ? rc : grb::set< dense_descr >( h, local_fields );
+		rc = rc ? rc : grb::mxv< dense_descr >( h, couplings, state , ring );
 
 		std::exponential_distribution< EnergyType > rand_gen ( beta );
 		for( size_t i = 0 ; i < n; ++i ){
-			const auto rnd = -rand_gen( rng );
-			grb::setElement( rand, rnd, i );
+			const auto rnd = rand_gen( rng );
+			rc = rc ? rc : grb::setElement( rand, rnd, i );
 		}
 
 		const grb::operators::leq< EnergyType > leq_operator;
@@ -423,9 +425,9 @@ template<
 				 	 const grb::Vector< JType, backend >&,
 					 grb::Vector< JType, backend >&,
 					 grb::Vector< JType, backend >&,
-					 grb::Vector< IOType, backend >&,
+					 grb::Vector< JType, backend >&,
 					 const std::vector< grb::Vector< bool, backend > >&,
-					 grb::Vector< EnergyType, backend >&,
+					 grb::Vector< JType, backend >&,
 					 grb::Vector< bool, backend >&,
 					 std::minstd_rand&
 					 >,
@@ -519,7 +521,7 @@ void grbProgram(
 
 	// get user process ID
 	const size_t s = spmd<>::pid();
-	assert( s < spmd<>::nprocs() );
+	const size_t nprocs = spmd<>::nprocs();
 
 
     grb::utils::Timer timer;
@@ -623,7 +625,7 @@ void grbProgram(
     grb::Vector< EnergyType, internal_backend > energies( n_replicas );
     grb::Vector< EnergyType, internal_backend > tmp_energy( n );
     for ( size_t r = 0; rc == grb::SUCCESS && r < n_replicas; ++r ) {
-        rc = rc ? rc : grb::setElement( betas, static_cast< JType >(10.0), r );
+        rc = rc ? rc : grb::setElement( betas, static_cast< JType >( 10.0 * ( n_replicas * nprocs ) / ( n_replicas * s + r + 1) ), r );
         rc = rc ? rc : grb::setElement( energies, get_energy(  J, h, states[r], tmp_energy ), r );
     }
 
@@ -644,9 +646,9 @@ void grbProgram(
 	grb::Vector< JType, internal_backend > temp_h ( n );
 	grb::Vector< JType, internal_backend > temp_log_rand ( n );
 	grb::Vector< IOType, internal_backend > best_state ( n );
-	grb::Vector< EnergyType, internal_backend > temp_dn ( n );
+	grb::Vector< JType, internal_backend > temp_dn ( n );
 	grb::Vector< bool, internal_backend > temp_accept ( n );
-	grb::Vector< IOType, internal_backend > temp_delta ( n );
+	grb::Vector< JType, internal_backend > temp_delta ( n );
 
 	// build masks, we'll use two of the above temporary vectors
     std::vector< grb::Vector< bool, internal_backend > > masks;
