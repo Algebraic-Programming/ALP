@@ -474,7 +474,7 @@ void grbProgram(
     grb::Vector< JType > betas( n_replicas );
     grb::Vector< EnergyType > energies( n_replicas );
     for ( size_t r = 0; rc == grb::SUCCESS && r < n_replicas; ++r ) {
-        rc = rc ? rc : grb::setElement( betas, static_cast< JType >(10.0), r );
+        rc = rc ? rc : grb::setElement( betas, static_cast< JType >( 10.0* n_replicas / (r+1) ), r );
         // rc = rc ? rc : grb::setElement( energies, get_energy(  J, h, states[r], tmp_energy ), r );
     }
 	assert( rc == grb::SUCCESS );

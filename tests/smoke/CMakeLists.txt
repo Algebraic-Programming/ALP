@@ -150,7 +150,7 @@ add_grb_executables( simulated_annealing_re_from_mpi simulated_annealing_re_from
 )
 
 add_grb_executables( simulated_annealing_re_ising simulated_annealing_re_ising.cpp
-	BACKENDS reference reference_omp bsp1d hybrid hyperdags nonblocking
+	BACKENDS reference reference_omp hyperdags nonblocking
 	ADDITIONAL_LINK_LIBRARIES test_utils_headers
 )
 
