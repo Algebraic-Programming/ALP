@@ -74,9 +74,8 @@ namespace grb {
 		/*
 		 * Do a Parallel Tempering pass.
 		 * This means exchanging states at low temperature with states at higher temperature.
-		 * To make the code simpler, this will be done by exchanging the temperatures instead.
 		 *
-		 * TODO: Fix this documentation.
+		 * TODO: Complete this documentation.
 		 *
 		 * @param[in,out] states        On input: initial states.
 		 * @param[in,out] energies      The initial energy of each state.
@@ -101,18 +100,22 @@ namespace grb {
 	pt(
 				std::vector< grb::Vector< StateType, backend > > &states,
 				grb::Vector< EnergyType, backend > &energies,
-				const grb::Vector< TempType, backend > &betas
+				const grb::Vector< TempType, backend > &betas,
+				const int seed = 42
 				){
 
 			const size_t n_replicas = states.size();
 			// const size_t s 		= spmd<>::pid();
 			// const size_t nprocs = spmd<>::nprocs();
+			std::srand( seed );
 			grb::RC rc = grb::SUCCESS;
+			std::minstd_rand rng ( seed );
+			std::exponential_distribution< EnergyType > rand ( 1.0 );
 
 			for( size_t i = n_replicas - 1 ; i > 0 ; --i ){
 				const EnergyType de = ( energies[ i ] - energies[ i-1 ]) * (betas[ i ] - betas[ i-1 ]);
 
-				if( de >= 0 || std::rand() < RAND_MAX * internal::exp( de ) ){
+				if( -rand( rng ) < de ){
 					std::swap( states[i], states[i-1] );
 					std::swap( energies[i], energies[i-1] );
 				}
@@ -136,7 +139,8 @@ namespace grb {
 		pt(
 				std::vector< grb::Vector< StateType, backend > > &states,
 				grb::Vector< EnergyType, backend > &energies,
-				const grb::Vector< TempType, backend > &betas
+				const grb::Vector< TempType, backend > &betas,
+				const int seed = 42
 				){
 			static_assert( backend != grb::BSP1D );
 			// static_assert( grb::_GRB_BACKEND == grb::BSP1D );
@@ -151,29 +155,30 @@ namespace grb {
 			assert( grb::size(energies) == n_replicas );
 			assert( grb::size(betas) == n_replicas );
 #endif
+			std::minstd_rand rng ( seed + s );
+			std::exponential_distribution< EnergyType > rand ( 1.0 );
 			struct data {
 					EnergyType e;
 					TempType b;
-					int r;
+					EnergyType r;
 				};
 			grb::Vector< StateType, backend > s0 ( n );
 			grb::Vector< StateType, backend > s1 ( n );
 			grb::set( s0, static_cast< StateType >( 0 ) );
 			grb::set( s1, static_cast< StateType >( 0 ) );
 
-
 			struct data msg[ 2 ];
 			rc = rc ? rc : grb::resize( s0, n );
 			rc = rc ? rc : grb::resize( s1, n );
 			if( rc != grb::SUCCESS ) return rc;
-			int rand = std::rand();
+			const auto myrand = -rand( rng );
 
 			for( size_t si = nprocs ; rc == grb::SUCCESS && si > 0; --si ){
 				if( si-1 == s ){
 					for( size_t i = n_replicas - 1 ; i > 0 ; --i ){
 						const EnergyType de = ( energies[ i ] - energies[ i-1 ]) * (betas[ i ] - betas[ i-1 ]);
 
-						if( de >= 0 || std::rand() < RAND_MAX * internal::exp( de ) ){
+						if( -rand( rng ) < de ){
 							std::swap( states[i], states[i-1] );
 							std::swap( energies[i], energies[i-1] );
 						}
@@ -186,7 +191,7 @@ namespace grb {
 					grb::set( s0, states[ n_replicas - 1 ] );
 					msg[ 0 ].e = energies[ n_replicas - 1 ];
 					msg[ 0 ].b = betas[ n_replicas - 1 ];
-					msg[ 0 ].r = rand;
+					msg[ 0 ].r = myrand;
 				}
 				if( si == 1 ) continue;
 
@@ -216,9 +221,8 @@ namespace grb {
 
 				const EnergyType de = ( msg[ 1 ].e - msg[ 0 ].e ) * ( msg[ 1 ].b - msg[ 0 ].b );
 
-				if( rc == grb::SUCCESS && ( de >= 0 || msg[ 0 ].r < RAND_MAX * internal::exp( de ) ) ){
+				if( rc == grb::SUCCESS && ( msg[ 0 ].r < de ) ){
 					if( si == s+1 ){
-
 						rc = rc ? rc : grb::set( states[ n_replicas - 1 ], s0 );
 						rc = rc ? rc : grb::setElement(energies, msg[ 0 ].e, n_replicas - 1 );
 					}else if( si ==  s+2 ){
@@ -294,6 +298,7 @@ namespace grb {
 				){
 
 			const size_t s = spmd<>::pid();
+			const size_t n_procs = spmd<>::nprocs();
 			const size_t n_replicas = states.size();
 			const size_t n = grb::size(states[0]);
 			(void) n;
@@ -337,7 +342,7 @@ namespace grb {
 				} // n_replicas
 				if( rc == SUCCESS && use_pt ){
 					// do a Parallel Tempering move
-					rc = pt< backend >( states, energies, betas );
+					rc = pt< backend >( states, energies, betas, i_sweep*n_procs + s );
 				}
 #ifndef NDEBUG
 				if( s == 0 ) {
@@ -355,6 +360,7 @@ namespace grb {
 			if( rc == SUCCESS ){
 				rc = rc ? rc : grb::collectives<>::allreduce(
 						best_energy, grb::operators::min< EnergyType >() );
+				// TODO: update best state to match best energy
 			}
 			
 			return rc;
@@ -481,8 +487,6 @@ namespace grb {
 		 *
 		 * states should be a vector of already initialized and filled dense grb::Vector.
 		 *
-		 *  TODO: expand and complete documentation
-		 *
 		 * Warning: This function allocates $O(n)$ memory for temporary vectors.
 		 *
 		 * @param[in,out] states        On input: initial (dense) states.
@@ -536,7 +540,6 @@ namespace grb {
 			(void) s;
 			grb::RC rc = grb::SUCCESS;
 
-			assert( grb::size(states[0]) == n );
 			assert( grb::nnz(states[0]) == n ); // state is dense
 			assert( states.size() == n_replicas );
 
@@ -576,21 +579,20 @@ namespace grb {
 
 			grb::Vector< QType, backend > h ( n );
 			grb::Vector< QType, backend > rand ( n );
-			grb::Vector< StateType, backend > delta ( n );
-			grb::Vector< EnergyType, backend > dn ( n );
+			grb::Vector< QType, backend > delta ( n );
+			grb::Vector< QType, backend > dn ( n );
 			grb::Vector< bool, backend > accept ( n );
-			std::srand( static_cast<unsigned>( seed ) );
     		std::minstd_rand rng ( seed ); // minstd_rand or std::mt19937
 
-			grb::resize( h, n );
-			grb::resize( rand, n );
-			grb::resize( delta, n );
-			grb::resize( dn, n );
-			grb::resize( accept, n );
+			rc = rc ? rc : grb::resize( h, n );
+			rc = rc ? rc : grb::resize( rand, n );
+			rc = rc ? rc : grb::resize( delta, n );
+			rc = rc ? rc : grb::resize( dn, n );
+			rc = rc ? rc : grb::resize( accept, n );
 
 			std::vector< grb::Vector< bool, backend > > masks ;
 			rc = rc ? rc : matrix_partition< descr >( masks, couplings, h, rand, seed );
-			grb::clear(h);
+			rc = rc ? rc : grb::clear(h);
 			constexpr auto dense_descr = descr | grb::descriptors::dense;
 
 			auto sweep_data = std::tie(
@@ -632,7 +634,9 @@ namespace grb {
 				const size_t n = grb::size( state );
 				EnergyType delta_energy = static_cast< EnergyType >(0.0);
 				grb::RC rc = grb::SUCCESS;
-				(void) n;
+
+				assert( grb::nnz(state) == n ); // state has to be dense!
+				assert( grb::nnz(local_fields) == n );
 
 				if( !empty_local_fields) {
 					rc = rc ? rc : grb::set< descr >( h, local_fields );
@@ -644,7 +648,7 @@ namespace grb {
 				std::exponential_distribution< EnergyType > rand_gen ( beta );
 				for( size_t i = 0 ; i < n; ++i ){
 					const auto rnd = -rand_gen( rng );
-					grb::setElement( rand, rnd, i );
+					rc = rc ? rc : grb::setElement( rand, rnd, i );
 				}
 
 				const grb::operators::leq< EnergyType > leq_operator;
