@@ -150,6 +150,7 @@ namespace grb {
 			const size_t s 		= spmd<>::pid();
 			const size_t nprocs = spmd<>::nprocs();
 			grb::RC rc = grb::SUCCESS;
+			std::srand( seed + s );
 
 #ifndef NDEBUG
 			assert( grb::size(energies) == n_replicas );
