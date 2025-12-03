@@ -38,7 +38,7 @@ const int LPF_MPI_AUTO_INITIALIZE = 0;
 
 using namespace grb;
 
-// #define DEBUG_IMSB 1
+// #define DEBUG_SARE 1
 constexpr size_t MAX_FN_SIZE = 255;
 
 // Types
@@ -190,7 +190,7 @@ void read_matrix_data(const std::string &filename, std::vector<Dtype> &data, boo
 			++it
 		) {
 			data.push_back( Dtype( *it ) );
-#ifdef DEBUG_IMSB
+#ifdef DEBUG_SARE
 			if( spmd<>::pid() == 0 ){
 				// print last data element from std::vector<NonzeroT> data
 				std::cout << "readmatrix_data: " << data.back().first.first << ", "
@@ -215,7 +215,7 @@ void read_matrix_data_from_array(
             data.emplace_back(
                 NonzeroT( entry.first.first, entry.first.second, entry.second )
             );
-#ifdef DEBUG_IMSB
+#ifdef DEBUG_SARE
 			if( spmd<>::pid() < 2 ){
 				// print last data element from std::vector<NonzeroT> data
 				std::cout << "read_matrix_data_from_array: " << data.back().first.first << ", "
@@ -575,7 +575,7 @@ void grbProgram(
 			return;
 		}
 
-#ifdef DEBUG_IMSB
+#ifdef DEBUG_SARE
 		if( s == 0 && grb::ncols( J ) < 40 ) {
 			std::cout << "Matrix J:\n";
 			print_matrix( J );
@@ -624,7 +624,7 @@ void grbProgram(
 			grb::operators::add< JType >, grb::operators::mul< JType >,
 			grb::identities::zero, grb::identities::one >;
 	
-	const auto sweep = sequential_sweep_immediate< Ring >; // get_sweep_function( data_in.sweep_name );
+	// const auto sweep = sequential_sweep_immediate< Ring >; // get_sweep_function( data_in.sweep_name );
 
     // also make betas vector os size n_replicas and initialize with 10.0
     grb::Vector< JType, internal_backend > betas( n_replicas );
@@ -632,12 +632,12 @@ void grbProgram(
     grb::Vector< EnergyType, internal_backend > energies0( n_replicas );
     grb::Vector< EnergyType, internal_backend > tmp_energy( n );
     for ( size_t r = 0; rc == grb::SUCCESS && r < n_replicas; ++r ) {
-        rc = rc ? rc : grb::setElement( betas, static_cast< JType >( 10.0 * ( n_replicas * nprocs ) / ( n_replicas * s + r + 1) ), r );
+        rc = rc ? rc : grb::setElement( betas, static_cast< JType >( (10.0 / (s * n_replicas) ) * std::pow<JType>( 1.5, ( n_replicas * s + r ) ) ), r );
         rc = rc ? rc : grb::setElement( energies0, get_energy(  J, h, states[r], tmp_energy ), r );
     }
 	rc = rc ? rc : grb::set( energies, energies0 );
 
-    #ifdef DEBUG_IMSB
+    #ifdef DEBUG_SARE
     if( s == 0 ) {
         for ( size_t r = 0; r < n_replicas; ++r ) {
             std::cout << "Process " << s << ": ";
@@ -648,44 +648,15 @@ void grbProgram(
         }
     }
     #endif
-    rc = rc ? rc : wait();
-
-	// we allocate temporary vectors
-	grb::Vector< JType, internal_backend > temp_h ( n );
-	grb::Vector< JType, internal_backend > temp_log_rand ( n );
 	grb::Vector< IOType, internal_backend > best_state ( n );
-	grb::Vector< JType, internal_backend > temp_dn ( n );
-	grb::Vector< bool, internal_backend > temp_accept ( n );
-	grb::Vector< JType, internal_backend > temp_delta ( n );
-
-	// build masks, we'll use two of the above temporary vectors
-    std::vector< grb::Vector< bool, internal_backend > > masks;
-	rc = rc ? rc : grb::algorithms::matrix_partition( masks, J, temp_h, temp_log_rand, data_in.seed );
-
-#ifdef DEBUG_IMSB
-	if( s == 0 ){
-		print_vector( masks.back(), 30, "MASK" );
-	}
-#endif
-	auto sweep_data = std::tie(
-			(const typeof(J)&) J,
-			(const typeof(h)&) h,
- 			temp_h,
-			temp_log_rand,
-			temp_delta,
-			(const typeof(masks)&) masks,
-			temp_dn,
-			temp_accept,
-			rng
-			);
-	grb::wait();
+    rc = rc ? rc : wait();
 
 	out.rep = data_in.rep;
 	// time a single call
 	if( out.rep == 0 ) {
 		timer.reset();
-		rc = grb::algorithms::simulated_annealing_RE(
-				sweep, sweep_data, states, energies, betas, best_state, out.best_energy, data_in.nsweeps, data_in.use_pt, data_in.seed
+		rc = grb::algorithms::simulated_annealing_RE_Ising(
+				 J, h, states, energies, betas, best_state, out.best_energy, data_in.nsweeps, data_in.use_pt, data_in.seed
         );
 
 		rc = rc ? rc : wait();
@@ -727,8 +698,8 @@ void grbProgram(
 			}
 			rc = rc ? rc : grb::set( energies, energies0 );
 
-			rc = grb::algorithms::simulated_annealing_RE(
-				sweep, sweep_data, states, energies, betas, best_state, out.best_energy, data_in.nsweeps, data_in.use_pt, data_in.seed
+			rc = grb::algorithms::simulated_annealing_RE_Ising(
+				J, h, states, energies, betas, best_state, out.best_energy, data_in.nsweeps, data_in.use_pt, data_in.seed
 			);
 		}
 		// do benchmark
@@ -744,9 +715,9 @@ void grbProgram(
 			if( rc == SUCCESS ) {
 				out.iterations = data_in.nsweeps;
 
-                rc = grb::algorithms::simulated_annealing_RE(
-					sweep, sweep_data, states, energies, betas, best_state, out.best_energy, data_in.nsweeps, data_in.use_pt, data_in.seed + i
-                );
+				rc = grb::algorithms::simulated_annealing_RE_Ising(
+					 J, h, states, energies, betas, best_state, out.best_energy, data_in.nsweeps, data_in.use_pt, data_in.seed
+				);
 				grb::collectives<>::allreduce( out.best_energy, grb::operators::min< EnergyType >() );
 			}
 			if( grb::Properties<>::isNonblockingExecution ) {
