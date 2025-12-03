@@ -406,6 +406,7 @@ namespace grb {
 			const size_t n = grb::nrows( A );
 			const size_t s = spmd<>::pid();
 			assert( n == grb::ncols( A ) ); // A needs to be square
+			// assert( grb::is_symmetric( A ) );
 			(void) s;
 
 			grb::resize( frontier, n );
@@ -545,27 +546,30 @@ namespace grb {
 
 			assert( grb::nnz(states[0]) == n ); // state is dense
 			assert( states.size() == n_replicas );
+			// assert( grb::is_symmetric( couplings ) );
 
+			assert( empty_local_fields || ( grb::size( local_fields ) == n ) );
+			assert( empty_local_fields || ( grb::nnz(local_fields) == n ) );
 			EnergyType energy;
 			grb::Vector< EnergyType, backend > tmp_calc_energy ( n );
 
-			const auto get_energy = [&couplings, &local_fields, &tmp_calc_energy, &ring](
-					EnergyType &energy, const grb::Vector< StateType > &state
+			const auto get_energy = [&couplings, &local_fields, &tmp_calc_energy, &ring, &n](
+					EnergyType &energy, const grb::Vector< StateType, backend > &state
 					){
-				const size_t n = grb::size( local_fields );
-				(void) n;
 				assert( n == grb::size( state ) );
 				assert( n == grb::ncols( couplings ) );
 				assert( n == grb::nrows( couplings ) );
 				grb::RC rc = grb::SUCCESS;
+				constexpr auto dense_descr = descr | grb::descriptors::dense;
+
 				grb::set( tmp_calc_energy, static_cast<EnergyType>( 0.0 ) );
-				rc = rc ? rc : grb::mxv< descr | grb::descriptors::dense >( tmp_calc_energy, couplings, state, ring );
-				rc = rc ? rc : grb::foldl< descr | grb::descriptors::dense >( tmp_calc_energy, static_cast< EnergyType >( 0.5 ),
+				rc = rc ? rc : grb::mxv< dense_descr >( tmp_calc_energy, couplings, state, ring );
+				rc = rc ? rc : grb::foldl< dense_descr >( tmp_calc_energy, static_cast< EnergyType >( 0.5 ),
 						ring.getMultiplicativeMonoid() );
 				if( !empty_local_fields) {
-					rc = rc ? rc : grb::foldl< descr | grb::descriptors::dense >( tmp_calc_energy, local_fields, ring.getAdditiveMonoid() );
+					rc = rc ? rc : grb::foldl< dense_descr >( tmp_calc_energy, local_fields, ring.getAdditiveMonoid() );
 				}
-				rc = rc ? rc : grb::dot< descr | grb::descriptors::dense >( energy, tmp_calc_energy, state, ring );
+				rc = rc ? rc : grb::dot< dense_descr >( energy, tmp_calc_energy, state, ring );
 				return rc;
 			};
 
@@ -639,7 +643,6 @@ namespace grb {
 				grb::RC rc = grb::SUCCESS;
 
 				assert( grb::nnz(state) == n ); // state has to be dense!
-				assert( grb::nnz(local_fields) == n );
 
 				if( !empty_local_fields) {
 					rc = rc ? rc : grb::set< descr >( h, local_fields );
@@ -658,7 +661,7 @@ namespace grb {
 				const grb::operators::right_assign< EnergyType > right_assign_op;
 				const grb::operators::not_equal< EnergyType > neq_operator;
 #ifndef NDEBUG
-				const grb::Vector< StateType > old_state = state;
+				const grb::Vector< StateType, backend > old_state = state;
 #endif
 				rc = rc ? rc : grb::wait();
 				for(const auto &mask : masks ){
