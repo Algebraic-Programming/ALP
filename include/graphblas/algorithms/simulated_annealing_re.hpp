@@ -225,10 +225,10 @@ namespace grb {
 					assert( false ); // this should never run
 #endif
 					if( si == s+1 ){
-						rc = rc ? rc : grb::set( states[ n_replicas - 1 ], s0 );
+						rc = rc ? rc : grb::set( states[ n_replicas - 1 ], s1 );
 						rc = rc ? rc : grb::setElement(energies, msg[ 0 ].e, n_replicas - 1 );
 					}else if( si ==  s+2 ){
-						rc = rc ? rc : grb::set( states[ 0 ], s1 );
+						rc = rc ? rc : grb::set( states[ 0 ], s0 );
 						rc = rc ? rc : grb::setElement(energies, msg[ 1 ].e, 0 );
 					}
 				}
