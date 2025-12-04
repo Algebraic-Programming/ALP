@@ -234,7 +234,6 @@ struct remove_cvref {
     >::type type;
 };
 
-
 // Vector info via arg_category
 template< typename T >
 inline std::string getVectorInfoString_impl( const T &arg, arg_vector_tag ) {
@@ -1105,6 +1104,9 @@ struct CostPredictor< EWiseApplyFunc, grb::Vector< T1 >, grb::Vector< T2 > , grb
 };
 
 /*=====================================================================*/
+/*-------------------------------eWiseLambda----------------------------*/
+
+/*=====================================================================*/
 /*--------------------------------foldl--------------------------------*/
 // ( uint64_t n, size_t x_dsize, size_t y_dsize, bool x_vec, bool y_vec )
 
@@ -1228,6 +1230,51 @@ struct CostPredictor< FoldlFunc, grb::Vector< T1 >, T2 , Monoid > {
             // Hierarchical Latency-Aware Roofline model
             cost_models::hier_lat_roofline::AlgoParameters_p hlr_model = cost_models::hier_lat_roofline::get_params_foldl( n, 
                 sizeof( T1 ), sizeof( T2 ), 1, 0 );
+            double hlr_cost = cost_models::hier_lat_roofline::predict_cost( &hw_model, hlr_model, num_threads );
+            
+            
+            return max_cost_pessimistic;
+#endif
+        } catch(const std::exception& e) {
+            throw std::runtime_error("Error in CostPredictor<FoldlFunc, Vector, scalar>: " + std::string(e.what()));
+        } catch(...) {
+            throw std::runtime_error("Unknown error in CostPredictor<FoldlFunc> with Vector, scalar");
+        }
+    }
+};
+
+template< typename T1, typename T2, typename Monoid >
+struct CostPredictor< FoldlFunc, T1, T2 , Monoid > {
+	static double predict(T1 & x, const T2 & y, const Monoid & ) {
+        // (void)x; 
+        // (void)y;
+        try {
+            size_t n = 1;
+            size_t num_threads = grb::config::OMP::threads();
+            
+#ifdef _CM_DISABLE_PREDICT
+            std::cout << "[TRACING] FoldlFunc arguments (" << num_threads << " threads): n = " << n << ", x_dsize=" << sizeof( T1 ) << ", y_dsize=" << sizeof( T2 ) << ", x_vec=0, y_vec=0" << std::endl;
+            return 0.0;
+#else
+			cost_models::HW_model::HWParameters hw_model = cost_models::HW_model::select_hw_model_auto( num_threads, dis_system_params );
+            
+            // k-Multi-BSP model
+            cost_models::k_multi_bsp::AlgoParameters_p k_bsp_model_optimistic = cost_models::k_multi_bsp::get_params_foldl( n, 
+                sizeof( T1 ), sizeof( T2 ), 0, 0 );
+            cost_models::k_multi_bsp::AlgoParameters_p k_bsp_model_pessimistic = cost_models::k_multi_bsp::get_params_foldl( n, 
+                sizeof( T1 ), sizeof( T2 ), 0, 0 );
+            //double sum_cost = cost_models::k_multi_bsp::predict_cost( &hw_model, k_bsp_model, num_threads, "sum" );
+            double max_cost_optimistic = cost_models::k_multi_bsp::predict_cost( &hw_model, k_bsp_model_optimistic, num_threads, "max", true );
+            double max_cost_pessimistic = cost_models::k_multi_bsp::predict_cost( &hw_model, k_bsp_model_pessimistic, num_threads, "max", false );
+            
+            // Hierarchical Roofline model
+            cost_models::hier_roofline::AlgoParameters_p hr_model = cost_models::hier_roofline::get_params_foldl( n, 
+                sizeof( T1 ), sizeof( T2 ), 0, 0 );
+            double hr_cost = cost_models::hier_roofline::predict_cost( &hw_model, hr_model, num_threads );
+            
+            // Hierarchical Latency-Aware Roofline model
+            cost_models::hier_lat_roofline::AlgoParameters_p hlr_model = cost_models::hier_lat_roofline::get_params_foldl( n, 
+                sizeof( T1 ), sizeof( T2 ), 0, 0 );
             double hlr_cost = cost_models::hier_lat_roofline::predict_cost( &hw_model, hlr_model, num_threads );
             
             
@@ -1391,7 +1438,105 @@ struct CostPredictor< FoldrFunc, grb::Vector< T1 >, T2, Monoid > {
 	}
 };
 
+template< typename T1, typename T2, typename Monoid >
+struct CostPredictor< FoldrFunc, T1 , T2, Monoid > {
+	static double predict(const T1 & x, T2 & y, const Monoid & ) {
+		try {
+			size_t n = 1;
+			size_t num_threads = grb::config::OMP::threads();
+			
+#ifdef _CM_DISABLE_PREDICT
+			std::cout << "[TRACING] FoldrFunc arguments (" << num_threads << " threads): n = " << n << ", x_dsize=" << sizeof( T1 ) << ", y_dsize=" << sizeof( T2 ) << ", x_vec=0, y_vec=0" << std::endl;
+			return 0.0;
+#else
+			cost_models::HW_model::HWParameters hw_model = cost_models::HW_model::select_hw_model_auto( num_threads, dis_system_params );
+			
+			// k-Multi-BSP model
+			cost_models::k_multi_bsp::AlgoParameters_p k_bsp_model_optimistic = cost_models::k_multi_bsp::get_params_foldr( n, 
+				sizeof( T1 ), sizeof( T2 ), 0, 0 );
+			cost_models::k_multi_bsp::AlgoParameters_p k_bsp_model_pessimistic = cost_models::k_multi_bsp::get_params_foldr( n, 
+				sizeof( T1 ), sizeof( T2 ), 0, 0 );
+			//double sum_cost = cost_models::k_multi_bsp::predict_cost( &hw_model, k_bsp_model, num_threads, "sum" );
+			double max_cost_optimistic = cost_models::k_multi_bsp::predict_cost( &hw_model, k_bsp_model_optimistic, num_threads, "max", true );
+			double max_cost_pessimistic = cost_models::k_multi_bsp::predict_cost( &hw_model, k_bsp_model_pessimistic, num_threads, "max", false );
+			
+			// Hierarchical Roofline model
+			cost_models::hier_roofline::AlgoParameters_p hr_model = cost_models::hier_roofline::get_params_foldr( n, 
+				sizeof( T1 ), sizeof( T2 ), 0, 0 );
+			double hr_cost = cost_models::hier_roofline::predict_cost( &hw_model, hr_model, num_threads );
+			
+			// Hierarchical Latency-Aware Roofline model
+			cost_models::hier_lat_roofline::AlgoParameters_p hlr_model = cost_models::hier_lat_roofline::get_params_foldr( n, 
+				sizeof( T1 ), sizeof( T2 ), 0, 0 );
+			double hlr_cost = cost_models::hier_lat_roofline::predict_cost( &hw_model, hlr_model, num_threads );
+			
+			// Print all model predictions
+			//std::cout << "[TRACING] k-Multi-BSP-additive cost: " << sum_cost << " seconds" << std::endl;
+			std::cout << "[TRACING] k-Multi-BSP-max cost: " << max_cost_pessimistic << " seconds" << std::endl;
+			std::cout << "[TRACING] Hierarchical-Roofline cost: " << hr_cost << " seconds" << std::endl;
+			std::cout << "[TRACING] Hierarchical-Latency-Roofline cost: " << hlr_cost << " seconds" << std::endl;
+			
+			return max_cost_pessimistic;
+#endif
+		} catch(const std::exception& e) {
+            throw std::runtime_error("Error in CostPredictor<FoldrFunc, Vector, scalar>: " + std::string(e.what()));
+        } catch(...) {
+            throw std::runtime_error("Unknown error in CostPredictor<FoldrFunc> with Vector, scalar");
+        }
+	}
+};
+
 // Updated dot specialization
+template< typename T0, typename T1, typename T2, typename MonoidType>
+struct CostPredictor< DotFunc, T0, grb::Vector< T1 >, grb::Vector< T2 >, MonoidType > {
+    static double predict(T0 z, const grb::Vector< T1 > x, const grb::Vector< T2 > y, MonoidType monoid) {
+        // (void)z; 
+        // (void)monoid; 
+        try {
+            std::cout << "[TRACING] Using 4-argument dot predictor" << std::endl;
+
+            size_t n = grb::size( x );
+
+            // Get hardware parameters
+            size_t num_threads = grb::config::OMP::threads();
+            
+#ifdef _CM_DISABLE_PREDICT
+            std::cout << "[TRACING] DotFunc arguments (" << num_threads << " threads): n = " << n << ", z_dsize=" << sizeof( T0 ) << ", x_dsize=" << sizeof( T1 ) << ", y_dsize=" << sizeof( T2 ) << std::endl;
+            return 0.0;
+#else
+            cost_models::HW_model::HWParameters hw_model = cost_models::HW_model::select_hw_model_auto( num_threads, dis_system_params );
+
+            // k-Multi-BSP model
+            cost_models::k_multi_bsp::AlgoParameters_p k_bsp_model_optimistic =
+                cost_models::k_multi_bsp::get_params_dot(n, sizeof(T0), sizeof(T1), sizeof(T2));
+            cost_models::k_multi_bsp::AlgoParameters_p k_bsp_model_pessimistic =
+                cost_models::k_multi_bsp::get_params_dot(n, sizeof(T0), sizeof(T1), sizeof(T2));
+            //double sum_cost = cost_models::k_multi_bsp::predict_cost( &hw_model, k_bsp_model, num_threads, "sum" );
+            double max_cost_optimistic = cost_models::k_multi_bsp::predict_cost( &hw_model, k_bsp_model_optimistic, num_threads, "max", true );
+            double max_cost_pessimistic = cost_models::k_multi_bsp::predict_cost( &hw_model, k_bsp_model_pessimistic, num_threads, "max", false );
+            
+            // Hierarchical Roofline model
+            cost_models::hier_roofline::AlgoParameters_p hr_model =
+                cost_models::hier_roofline::get_params_dot(n, sizeof(T0), sizeof(T1), sizeof(T2));
+            double hr_cost = cost_models::hier_roofline::predict_cost( &hw_model, hr_model, num_threads );
+            
+            // Hierarchical Latency-Aware Roofline model
+            cost_models::hier_lat_roofline::AlgoParameters_p hlr_model =
+                cost_models::hier_lat_roofline::get_params_dot(n, sizeof(T0), sizeof(T1), sizeof(T2));
+            double hlr_cost = cost_models::hier_lat_roofline::predict_cost( &hw_model, hlr_model, num_threads );
+
+            return max_cost_pessimistic;
+#endif
+
+        } catch(const std::exception& e) {
+            throw std::runtime_error("Error in CostPredictor<DotFunc>: " + std::string(e.what()));
+        } catch(...) {
+            throw std::runtime_error("Unknown error in CostPredictor<DotFunc> with 5 arguments");
+        }
+    }
+};
+
+// Updated dot specialization + op
 template< typename T0, typename T1, typename T2, typename MonoidType, typename OpType >
 struct CostPredictor< DotFunc, T0, grb::Vector< T1 >, grb::Vector< T2 >, MonoidType, OpType > {
     static double predict(T0 z, const grb::Vector< T1 > x, const grb::Vector< T2 > y, MonoidType monoid, OpType op) {
