@@ -1534,6 +1534,8 @@ namespace HW_model
         AlgoParameters_p get_params_foldl(uint64_t n,
             size_t x_dsize, size_t y_dsize, bool x_vec, bool y_vec)
         {
+            if (!x_vec && !y_vec) return get_params_apply();
+
             AlgoParameters_p algo_p = new AlgoParameters();
             algo_p->n = 1;
             algo_p->num_v = 2;
@@ -1568,6 +1570,8 @@ namespace HW_model
         AlgoParameters_p get_params_foldr(uint64_t n,
             size_t x_dsize, size_t y_dsize, bool x_vec, bool y_vec)
         {
+            if (!x_vec && !y_vec) return get_params_apply();
+
             AlgoParameters_p algo_p = new AlgoParameters();
             algo_p->n = 1;
             algo_p->num_v = 2;
