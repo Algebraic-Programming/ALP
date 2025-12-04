@@ -351,15 +351,20 @@ namespace grb {
 #endif
 
 				// p = r + beta ( p - omega * v )
-				ret = ret ? ret : eWiseLambda(
-					[&r,beta,&p,&v,omega,&semiring,&minus] (const size_t i) {
-						InputType tmp;
-						apply( tmp, omega, v[i], semiring.getMultiplicativeOperator() );
-						foldl( p[ i ], tmp, minus );
-						foldr( beta, p[ i ], semiring.getMultiplicativeOperator() );
-						foldr( r[ i ], p[ i ], semiring.getAdditiveOperator() );
-					}, v, p, r
-				);
+				// ret = ret ? ret : eWiseLambda(
+				// 	[&r,beta,&p,&v,omega,&semiring,&minus] (const size_t i) {
+				// 		InputType tmp;
+				// 		apply( tmp, omega, v[i], semiring.getMultiplicativeOperator() );
+				// 		foldl( p[ i ], tmp, minus );
+				// 		foldr( beta, p[ i ], semiring.getMultiplicativeOperator() );
+				// 		foldr( r[ i ], p[ i ], semiring.getAdditiveOperator() );
+				// 	}, v, p, r
+				// );
+				// Rewritten using foldr/foldl for cleaner vector operations:
+				ret = ret ? ret : foldr< dense_descr >( omega, v, semiring.getMultiplicativeMonoid() ); // v = omega * v
+				ret = ret ? ret : foldl< dense_descr >( p, v, minus );  // p = p - v (element-wise)
+				ret = ret ? ret : foldr< dense_descr >( beta, p, semiring.getMultiplicativeMonoid() );  // p = beta * p (element-wise)
+				ret = ret ? ret : foldl< dense_descr >( p, r, semiring.getAdditiveMonoid() );  // p = p + r (element-wise)
 
 				// v = Ap
 				ret = ret ? ret : set( v, zero );

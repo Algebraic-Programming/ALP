@@ -25,7 +25,8 @@ namespace HW_model
     typedef struct HWParameters
     {
         size_t d;       // Number of levels
-        size_t d_numa;  // The level (1-indexed) at which NUMA effects start (first level after LLC), 0 if no NUMA
+        int d_numa;  // The level (1-indexed) at which NUMA effects start (first level after LLC), 0 if no NUMA
+                     // Positive for close policy, negative for spread policy
         // size_t SIMD_size;        // Size of each SIMD operation
         // double r_scalar, r_SIMD;// inverse OPS/s (seconds/op)
         std::vector<double> g;    // inverse BW (seconds/access)
@@ -1073,8 +1074,52 @@ namespace HW_model
             for (size_t lvl = 0; lvl < hw_params->d; lvl++)
             {
                 pi_mult *= hw_params->p[lvl];
-                if ((algo_params->b_foot <= hw_params->m[lvl]) 
-                && ( NUMA_optimism || (lvl + 1 < hw_params->d_numa || target_threads <= pi_mult)))
+                
+                // Extract policy from d_numa sign: positive = close, negative = spread
+                bool is_spread_policy = (hw_params->d_numa < 0);
+                size_t abs_d_numa = static_cast<size_t>(std::abs(hw_params->d_numa));
+                
+                // Calculate pi_of_next_level for spread policy
+                size_t pi_of_next_level = (lvl + 1 < hw_params->d) ? hw_params->p[lvl + 1] : 1;
+                
+                // NUMA constraint logic differs between close and spread policies
+                bool numa_constraint_satisfied;
+                if (NUMA_optimism) {
+                    // NUMA optimistic: ignore NUMA constraints
+                    numa_constraint_satisfied = true;
+                } else if (lvl + 1 < abs_d_numa) {
+                    // Not at NUMA boundary: no constraint
+                    numa_constraint_satisfied = true;
+                } else {
+                    // At NUMA boundary: apply policy-specific constraint
+                    if (is_spread_policy) {
+                        // Spread policy: threads must be less than next level capacity
+                        numa_constraint_satisfied = (target_threads <= pi_of_next_level);
+                    } else {
+                        // Close policy: threads must fit in current level
+                        numa_constraint_satisfied = (target_threads <= pi_mult);
+                    }
+                }
+                
+                // Calculate bench_mem_multiplier based on policy
+                size_t bench_mem_multiplier;
+                if (is_spread_policy) {
+                    // Spread policy: min(threads, system_cores // pi_mult)
+                    // Calculate max_system_cores as pi_mult of the last level
+                    size_t max_system_cores = 1;
+                    for (size_t i = 0; i < hw_params->d; ++i) {
+                        max_system_cores *= hw_params->p[i];
+                    }
+                    bench_mem_multiplier = std::min(target_threads, max_system_cores / pi_mult);
+                } else {
+                    // Close policy: (threads // pi_mult) if (threads // pi_mult) else 1
+                    bench_mem_multiplier = (target_threads / pi_mult) ? (target_threads / pi_mult) : 1;
+                }
+                
+                // Apply bench_mem_multiplier to effective memory size
+                uint64_t effective_memory = hw_params->m[lvl] * bench_mem_multiplier;
+                
+                if ((algo_params->b_foot <= effective_memory) && numa_constraint_satisfied)
                 {
                     target_level = lvl + 1;
                     break;
