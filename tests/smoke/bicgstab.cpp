@@ -69,7 +69,7 @@ typedef grb::utils::Singleton<
 constexpr const double tol = 0.0001;
 
 /** Default maximum number of solver iterations */
-constexpr const size_t max_iters = 10000;
+constexpr const size_t max_iters = 100;
 
 constexpr const double c1 = 0.001;
 

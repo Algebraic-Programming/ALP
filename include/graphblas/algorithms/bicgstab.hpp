@@ -308,9 +308,9 @@ namespace grb {
 			}
 
 			// check if the guess was good enough
-			if( residual < tol ) {
+			/*if( residual < tol ) {
 				return SUCCESS;
-			}
+			}*/
 
 #ifdef _DEBUG
 			std::cout << "\t prelude completed\n";
@@ -398,11 +398,11 @@ namespace grb {
 				std::cout << "\t\t running residual, pre-stabilisation: " << sqrt(residual)
 					<< "\n";
 #endif
-				if( ret == SUCCESS && residual < tol ) {
+				/*if( ret == SUCCESS && residual < tol ) {
 					// update result (x += alpha * p) and exit
 					ret = eWiseMul< dense_descr >( x, alpha, p, semiring );
 					return ret;
-				}
+				}*/
 
 				// t = As
 				ret = ret ? ret : set( t, zero );
@@ -451,7 +451,7 @@ namespace grb {
 					<< "Residual squared: " << residual << ".\n";
 #endif
 				if( ret == SUCCESS ) {
-				       if( residual < tol ) { return SUCCESS; }
+				       /*if( residual < tol ) { return SUCCESS; }*/
 
 					// go to next iteration
 					rho_old = rho;
@@ -459,12 +459,17 @@ namespace grb {
 			}
 
 			if( ret == SUCCESS ) {
-				// if we are here, then we did not detect convergence
-				std::cerr << "Warning: call to BiCGstab did not converge within "
-					<< max_iterations << " iterations. Squared two-norm of the running "
-					<< "residual is " << residual << ". "
-					<< "Target residual squared: " << tol << ".\n";
-				return FAILED;
+				// check tolerance after max_iterations (similar to CG)
+				if( residual >= tol ) {
+					// did not converge within iterations
+					std::cerr << "Warning: call to BiCGstab did not converge within "
+						<< max_iterations << " iterations. Squared two-norm of the running "
+						<< "residual is " << residual << ". "
+						<< "Target residual squared: " << tol << ".\n";
+					return FAILED;
+				}
+				// converged
+				return SUCCESS;
 			} else {
 				// if we are here, we exited due to an ALP error code
 				std::cerr << "Error: BiCGstab encountered error \"" << toString(ret)
