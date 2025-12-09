@@ -378,6 +378,10 @@ add_grb_executables( launch_benchmark_frommpi_manual launcherAndBenchmarker.cpp
 	COMPILE_DEFINITIONS NO_LPF_AUTO_INIT
 )
 
+add_grb_executables( rdma rdma.cpp
+	BACKENDS bsp1d
+)
+
 # targets to list and build the test for this category
 get_property( unit_tests_list GLOBAL PROPERTY tests_category_unit )
 add_custom_target( "list_tests_category_unit"
