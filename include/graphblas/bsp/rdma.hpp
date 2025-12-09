@@ -128,7 +128,7 @@ namespace grb {
 		rdma( const size_t register_size = 2 ) {
 
 			const internal::BSP1D_Data & data = internal::grb_BSP1D.cload();
-			lpf_rc = lpf_rc ? lpf_rc : lpf_resize_message_queue( data.context, 42 );
+			lpf_err_t lpf_rc = lpf_rc ? lpf_rc : lpf_resize_message_queue( data.context, 42 );
 
 			registered_slots.clear();
 			memslots.clear();
