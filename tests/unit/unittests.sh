@@ -909,6 +909,12 @@ for MODE in ${MODES}; do
 			echo ">>>      [x]           [ ]       Testing BSP1D distribution."
 			echo " "
 			${LPFRUN} -np 1 ${TEST_BIN_DIR}/distribution_${MODE}
+
+			echo "RDMA unit tests for the BSP1D backend:"
+			echo " "
+			echo ">>>      [x]           [ ]       Testing Remote Direct Memory Access interface"
+			echo " "
+			${LPFRUN} -np 2 ${TEST_BIN_DIR}/rdma_${MODE}_bsp1d
 		fi
 	done
 
