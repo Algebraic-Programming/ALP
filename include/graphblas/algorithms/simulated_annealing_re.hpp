@@ -296,6 +296,7 @@ namespace grb {
 				grb::Vector< StateType, backend >  &best_state,
 				EnergyType &best_energy,
 				const size_t &n_sweeps,
+				const EnergyType &goal = 0,
 				const bool &use_pt = false,
 				const size_t &seed = 42
 				){
@@ -323,6 +324,7 @@ namespace grb {
 						  << "\n\t n = " << n
 						  << "\n\t n_replicas = " << n_replicas
 						  << "\n\t n_sweeps = " << n_sweeps
+						  << "\n\t goal = " << goal
 						  << "\n\t use_pt = " << use_pt
 						  << std::endl;
 			}
@@ -342,16 +344,24 @@ namespace grb {
 						best_energy = energies[j];
 						best_state = states[j];
 					}
+					if( goal < -1 && best_energy <= goal ) break;
 				} // n_replicas
+
+				// TODO: find a better way than this, to avoid a sync at each iteration
+				rc = rc ? rc : grb::collectives<>::allreduce(
+						best_energy, grb::operators::min< EnergyType >() );
+
 				if( rc == SUCCESS && use_pt ){
 					// do a Parallel Tempering move
 					rc = pt< backend >( states, energies, betas, seed + i_sweep*n_procs + s );
 				}
+
 #ifndef NDEBUG
 				if( s == 0 ) {
-					std::cerr << "Energy at iteration " << i_sweep << " = " << energies[ 0 ] << std::endl;
+					std::cerr << "Energy at iteration " << i_sweep << " = " << best_energy << std::endl;
 				}
 #endif
+				if( goal < -1 &&  best_energy <= goal ) i_sweep = n_sweeps;
 			} // n_sweeps
 
 #ifndef NDEBUG
@@ -534,6 +544,7 @@ namespace grb {
 				grb::Vector< StateType, backend > &best_state,
 				EnergyType &best_energy,
 				const size_t &n_sweeps,
+				const EnergyType &goal = 0,
 				const bool &use_pt = false,
 				const int seed = 42,
 				const Ring &ring = Ring()
@@ -717,7 +728,7 @@ namespace grb {
 			};
 
 			return simulated_annealing_RE(
-					ising_sweep, sweep_data, states, energies, betas, best_state, best_energy, n_sweeps, use_pt
+					ising_sweep, sweep_data, states, energies, betas, best_state, best_energy, n_sweeps, goal, use_pt
 					);
 		}
 
@@ -768,6 +779,7 @@ namespace grb {
 				grb::Vector< StateType, backend > &best_state,
 				EnergyType &best_energy,
 				const size_t &n_sweeps,
+				const EnergyType &goal = 0,
 				const bool &use_pt = false,
 				const int seed = 42,
 				const Ring &ring = Ring()
@@ -775,7 +787,7 @@ namespace grb {
 			grb::Vector< QType > empty_local_fields ( 0 );
 
 			return simulated_annealing_RE_Ising< backend, descr, true >(
-					Q, empty_local_fields, states, energies, betas, best_state, best_energy, n_sweeps, use_pt, seed, ring
+					Q, empty_local_fields, states, energies, betas, best_state, best_energy, n_sweeps, goal, use_pt, seed, ring
 					);
 		}
 	} // namespace algorithms

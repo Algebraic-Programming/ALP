@@ -142,7 +142,7 @@ struct input {
     size_t nsweeps = test_data::nsweeps;
     bool use_pt = test_data::use_pt;
     unsigned seed = test_data::seed;
-    char sweep_name [ MAX_FN_SIZE + 1 ] = "sequential_sweep_immediate";
+    EnergyType reference_energy = 0.0;
     bool verify = false;
     char filename_Jmatrix [ MAX_FN_SIZE + 1 ];
     char filename_h [ MAX_FN_SIZE + 1 ];
@@ -501,7 +501,7 @@ void grbProgram(
 	if( out.rep == 0 ) {
 		timer.reset();
 		rc = grb::algorithms::simulated_annealing_RE_Ising(
-				 J, h, states, energies, betas, best_state, out.best_energy, data_in.nsweeps, data_in.use_pt, data_in.seed
+			 J, h, states, energies, betas, best_state, out.best_energy, data_in.nsweeps, data_in.reference_energy, data_in.use_pt, data_in.seed
         );
 
 		rc = rc ? rc : wait();
@@ -544,7 +544,7 @@ void grbProgram(
 			rc = rc ? rc : grb::set( energies, energies0 );
 
 			rc = grb::algorithms::simulated_annealing_RE_Ising(
-				J, h, states, energies, betas, best_state, out.best_energy, data_in.nsweeps, data_in.use_pt, data_in.seed
+			 J, h, states, energies, betas, best_state, out.best_energy, data_in.nsweeps, data_in.reference_energy, data_in.use_pt, data_in.seed
 			);
 		}
 		// do benchmark
@@ -562,12 +562,9 @@ void grbProgram(
 				out.iterations = data_in.nsweeps;
 
 				rc = grb::algorithms::simulated_annealing_RE_Ising(
-					 J, h, states, energies, betas, best_state, out.best_energy, data_in.nsweeps, data_in.use_pt, data_in.seed
+					J, h, states, energies, betas, best_state, out.best_energy, data_in.nsweeps, data_in.reference_energy, data_in.use_pt, data_in.seed + i
 				);
 				grb::collectives<>::allreduce( out.best_energy, grb::operators::min< EnergyType >() );
-			}
-			if( grb::Properties<>::isNonblockingExecution ) {
-				rc = rc ? rc : wait();
 			}
 			const double time_taken = timer.time();
 			min_time = std::min(min_time, time_taken);
@@ -609,8 +606,8 @@ void grbProgram(
 // --- Simple help / CLI parser for the new runner (no backward compatibility) ---
 void printhelp( char *progname ) {
     std::cout << "Usage: " << progname << " [--use-default-data] [--j-matrix-fname STR] [--h-fname STR]\n"
-              << "       [--n-replicas INT] [--nsweeps INT] [--seed INT] [--sweep STR]\n"
-              << "       [--verify] [--ref-solution-fname STR] [--help]\n\n"
+              << "       [--n-replicas INT] [--nsweeps INT] [--seed INT]\n"
+              << "       [--rep INT] [--goal INT] [--verify] [--ref-solution-fname STR] [--help]\n\n"
               << "Options:\n"
               << "  --use-default-data         Use embedded default test data\n"
               << "  --j-matrix-fname STR       Path to J matrix file (matrix-market or supported)\n"
@@ -619,8 +616,8 @@ void printhelp( char *progname ) {
               << "  --nsweeps INT              Number of sweeps (default: 2)\n"
               << "  --use-pt BOOL              Use Parallel Tampering (default: 1)\n"
               << "  --seed INT                 RNG seed (default: 8)\n"
-              << "  --sweep STR                Sweep selector (default: sequential_sweep_immediate)\n"
-              << "  --rep INT                  number of times to repeat the run of the algorithm (default: 1)\n"
+              << "  --rep INT                  Number of times to repeat the run of the algorithm (default: 1)\n"
+              << "  --goal FLOAT               The value of the energy to achieve before stopping (default: 0, no such check).\n"
               << "  --verify                   Verify output against reference solution\n"
               << "  --ref-solution-fname STR   Reference solution file (required with --verify unless using default data)\n"
               << "  --help, -h                 Print this help message\n";
@@ -634,6 +631,7 @@ bool parse_arguments( input &in, int argc, char ** argv ) {
     // map benchmarking configuration to the runner's fields
     in.rep = grb::config::BENCHMARKING::inner();
     in.outer = grb::config::BENCHMARKING::outer();
+    in.reference_energy = static_cast<EnergyType>( 0.0 );
     // keep verify default (false) unless overridden via CLI
     in.verify = false;
 
@@ -662,6 +660,9 @@ bool parse_arguments( input &in, int argc, char ** argv ) {
         } else if ( a == "--rep" ) {
             if ( i+1 >= argc ) { std::cerr << "--rep requires an argument\n"; return false; }
             in.rep = static_cast<unsigned>( std::stoul(argv[++i]) );
+        } else if ( a == "--goal" ) {
+            if ( i+1 >= argc ) { std::cerr << "--goal requires an argument\n"; return false; }
+            in.reference_energy = std::stof(argv[++i]);
         } else if ( a == "--verify" ) {
             in.verify = true;
         } else if ( a == "--ref-solution-fname" ) {
@@ -709,7 +710,7 @@ int main( int argc, char ** argv ) {
     }
 
 
-    std::cout << "seed=" << in.seed << " n_replicas=" << in.n_replicas << " nsweeps=" << in.nsweeps << " sweep=" << in.sweep_name << "\n";
+    std::cout << "seed=" << in.seed << " n_replicas=" << in.n_replicas << " nsweeps=" << in.nsweeps << " sweep=ising_sweep_spmd" << "\n";
 
     // Run IO program (populates Storage or similar)
     {
