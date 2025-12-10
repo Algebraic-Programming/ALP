@@ -32,13 +32,12 @@ void grbProgram( const size_t &in, grb::RC &exit_status ) {
 	// sleep( 10 );
 	int x = 42, y = 69;
 
-	grb::rdma rdma(4);
 	lpf_memslot_t memslot;
-	rc = rc ? rc : rdma.register_global( x, memslot );
+	rc = rc ? rc : grb::rdma::register_global( x, memslot );
 
 	assert( rc == grb::SUCCESS );
 	if( s == 0 ){
-		rc = rc ? rc : rdma.put( y, 1, memslot );
+		rc = rc ? rc : grb::rdma::put( y, 1, memslot );
 		x = 0;
 	}
 	assert( rc == grb::SUCCESS );
@@ -49,7 +48,7 @@ void grbProgram( const size_t &in, grb::RC &exit_status ) {
 	rc = rc ? rc : grb::spmd<>::sync();
 
 	if( s == 1 ){
-		rc = rc ? rc : rdma.get( y, 0, memslot );
+		rc = rc ? rc : grb::rdma::get( y, 0, memslot );
 	}
 	assert( rc == grb::SUCCESS );
 	rc = rc ? rc : grb::spmd<>::sync();
