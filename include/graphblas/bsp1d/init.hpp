@@ -192,8 +192,14 @@ namespace grb {
 				/** Whether a finalize has been called. */
 				bool destroyed;
 
-				/** Mapper to assign IDs to BSP1D containers .*/
+				/** Mapper to assign IDs to BSP1D containers. */
 				utils::DMapper< uintptr_t > mapper;
+
+				/** Map of registered addresses. */
+				std::map< const void* , std::pair< size_t, const lpf_memslot_t > > registered_slots;
+
+				/** Map of registered memory slots to their address. */
+				std::map< const lpf_memslot_t , const void* > global_memslots;
 
 				/**
 				 * This class is default-constructible.
