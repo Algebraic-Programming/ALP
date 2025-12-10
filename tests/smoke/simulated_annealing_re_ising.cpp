@@ -136,7 +136,7 @@ struct input {
     bool use_default_data = false;
     char filename_Jmatrix [ MAX_FN_SIZE + 1 ];
     char filename_h [ MAX_FN_SIZE + 1 ];
-    char sweep_name [ MAX_FN_SIZE + 1 ]= "sequential_sweep_immediate";
+    EnergyType reference_energy = 0.0;
     bool verify = false;
     char filename_ref_solution [ MAX_FN_SIZE + 1 ];
 	bool direct;
@@ -492,7 +492,7 @@ void grbProgram(
 	if( out.rep == 0 ) {
 		timer.reset();
 		rc = grb::algorithms::simulated_annealing_RE_Ising(
-			 J, h, states, energies, betas, best_state, out.best_energy, data_in.nsweeps, data_in.use_pt, data_in.seed
+			 J, h, states, energies, betas, best_state, out.best_energy, data_in.nsweeps, data_in.reference_energy, data_in.use_pt, data_in.seed
         );
 
 		rc = rc ? rc : wait();
@@ -531,10 +531,13 @@ void grbProgram(
 			for ( size_t r = 0; r < n_replicas; ++r ) {
 				rc = rc ? rc : grb::set(states[r], states0[r]);
 			}
+			out.best_energy = std::numeric_limits< EnergyType >::max();
 			rc = rc ? rc : grb::clear( energies );
+
 			rc = grb::algorithms::simulated_annealing_RE_Ising(
-			 J, h, states, energies, betas, best_state, out.best_energy, data_in.nsweeps, data_in.use_pt, data_in.seed
+			 J, h, states, energies, betas, best_state, out.best_energy, data_in.nsweeps, data_in.reference_energy, data_in.use_pt, data_in.seed + i
 			);
+
 			assert( ISCLOSE( get_energy(  J, h, best_state, tmp_energy ), out.best_energy) );
 		}
 		// do benchmark
@@ -545,13 +548,14 @@ void grbProgram(
 			for ( size_t r = 0; r < n_replicas; ++r ) {
 				rc = rc ? rc : grb::set(states[r], states0[r]);
 			}
+			out.best_energy = std::numeric_limits< EnergyType >::max();
 			rc = rc ? rc : grb::clear( energies );
 			timer.reset();
 			if( rc == SUCCESS ) {
 				out.iterations = data_in.nsweeps;
 
                 rc = grb::algorithms::simulated_annealing_RE_Ising(
-				 J, h, states, energies, betas, best_state, out.best_energy, data_in.nsweeps, data_in.use_pt, data_in.seed + i
+			 J, h, states, energies, betas, best_state, out.best_energy, data_in.nsweeps, data_in.reference_energy, data_in.use_pt, data_in.seed + i
                 );
 			}
 			if( grb::Properties<>::isNonblockingExecution ) {
@@ -563,6 +567,7 @@ void grbProgram(
 			min_time = std::min(min_time, time_taken);
 			max_time = std::max(max_time, time_taken);
 			total_time +=  time_taken;
+			std::cerr << n_replicas << "," << data_in.nsweeps << "," << time_taken << "," << out.best_energy << std::endl;
 		}
 
 		out.times.useful = total_time / static_cast< double >( out.rep );
@@ -604,8 +609,8 @@ void grbProgram(
 // --- Simple help / CLI parser for the new runner (no backward compatibility) ---
 void printhelp( char *progname ) {
     std::cout << "Usage: " << progname << " [--use-default-data] [--j-matrix-fname STR] [--h-fname STR]\n"
-              << "       [--n-replicas INT] [--nsweeps INT] [--seed INT] [--sweep STR]\n"
-              << "       [--verify] [--ref-solution-fname STR] [--help]\n\n"
+              << "       [--n-replicas INT] [--nsweeps INT] [--seed INT]\n"
+              << "       [--rep INT] [--goal INT] [--verify] [--ref-solution-fname STR] [--help]\n\n"
               << "Options:\n"
               << "  --use-default-data         Use embedded default test data\n"
               << "  --j-matrix-fname STR       Path to J matrix file (matrix-market or supported)\n"
@@ -615,6 +620,7 @@ void printhelp( char *progname ) {
               << "  --use-pt BOOL              Use Parallel Tampering (default: 1)\n"
               << "  --seed INT                 RNG seed (default: 8)\n"
               << "  --rep INT                  number of times to repeat the run of the algorithm (default: 1)\n"
+              << "  --goal FLOAT               The value of the energy to achieve before stopping (default: 0, no such check).\n"
               << "  --verify                   Verify output against reference solution\n"
               << "  --ref-solution-fname STR   Reference solution file (required with --verify unless using default data)\n"
               << "  --help, -h                 Print this help message\n";
@@ -628,6 +634,7 @@ bool parse_arguments( input &in, int argc, char ** argv ) {
     // map benchmarking configuration to the runner's fields
     in.rep = grb::config::BENCHMARKING::inner();
     in.outer = grb::config::BENCHMARKING::outer();
+    in.reference_energy = static_cast<EnergyType>( 0.0 );
     // keep verify default (false) unless overridden via CLI
     in.verify = false;
 
@@ -656,6 +663,9 @@ bool parse_arguments( input &in, int argc, char ** argv ) {
         } else if ( a == "--seed" ) {
             if ( i+1 >= argc ) { std::cerr << "--seed requires an argument\n"; return false; }
             in.seed = static_cast<unsigned>( std::stoul(argv[++i]) );
+        } else if ( a == "--goal" ) {
+            if ( i+1 >= argc ) { std::cerr << "--goal requires an argument\n"; return false; }
+            in.reference_energy = std::stof(argv[++i]);
         } else if ( a == "--verify" ) {
             in.verify = true;
         } else if ( a == "--ref-solution-fname" ) {
