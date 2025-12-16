@@ -55,6 +55,20 @@ namespace grb {
 			size_t src_offset;
 			void * dst;
 			size_t size;
+
+			get_request(
+				lpf_pid_t src_pid,
+				lpf_memslot_t src,
+				size_t src_offset,
+				void * dst,
+				size_t size
+					)
+				: src_pid(src_pid)
+				, src(src)
+				, src_offset(src_offset)
+				, dst(dst)
+				, size(size)
+			{}
 		};
 
 		/** All information corresponding to a put request. */
@@ -64,6 +78,20 @@ namespace grb {
 			lpf_memslot_t dst;
 			size_t dst_offset;
 			size_t size;
+
+			put_request(
+				void * src,
+				lpf_pid_t dst_pid,
+				lpf_memslot_t dst,
+				size_t dst_offset,
+				size_t size
+					)
+				: src(src)
+				, dst_pid(dst_pid)
+				, dst(dst)
+				, dst_offset(dst_offset)
+				, size(size)
+			{}
 		};
 
 		/**
@@ -195,8 +223,8 @@ namespace grb {
 				/** Mapper to assign IDs to BSP1D containers. */
 				utils::DMapper< uintptr_t > mapper;
 
-				/** Map of registered addresses. */
-				std::map< const void* , std::pair< size_t, const lpf_memslot_t > > registered_slots;
+				/** Map of globally registered addresses. */
+				std::map< const void* , std::pair< const size_t, const lpf_memslot_t > > registered_slots;
 
 				/** Map of registered memory slots to their address. */
 				std::map< const lpf_memslot_t , const void* > global_memslots;
