@@ -55,7 +55,6 @@ namespace grb {
 				const void* buf_void = reinterpret_cast< const void* >( buf );
 
 				data.ensureMemslotAvailable( 1 ); 
-				data.signalMemslotTaken();
 
 				assert( data.registered_slots.find( buf_void ) == data.registered_slots.end() );
 
@@ -65,6 +64,7 @@ namespace grb {
 				);
 				lpf_rc = lpf_rc ? lpf_rc : lpf_sync( data.context, LPF_SYNC_DEFAULT );
 
+				data.signalMemslotTaken();
 				data.registered_slots.insert({ buf_void, std::make_pair( size, memslot ) });
 				data.global_memslots.insert({ memslot, buf_void });
 
@@ -90,7 +90,6 @@ namespace grb {
 				grb::internal::BSP1D_Data & data = grb::internal::grb_BSP1D.load();
 				lpf_err_t lpf_rc = LPF_SUCCESS;
 				lpf_memslot_t memslot = LPF_INVALID_MEMSLOT;
-
 
 				const auto it0 = data.registered_slots.find( buf )
 				assert( it0 != data.registered_slots.end() );
@@ -216,7 +215,6 @@ namespace grb {
 				if( it == data.registered_slots.end() ){
 					lpf_rc = lpf_rc ? lpf_rc : lpf_register_local( data.context, const_cast< void* >( dst_void ), size, &dst_memslot );
 				} else {
-					// there must be a better check...
 					assert( it->second.first >= size );
 					dst_memslot = it->second.second;
 				}
@@ -254,9 +252,6 @@ namespace grb {
 			const size_t size = grb::internal::getCoordinates( buf ).size();
 			const size_t bsize = size * sizeof( T );
 			T* raw_ptr = grb::internal::getRaw( buf );
-
-			lpf_memslot_t slot = LPF_INVALID_MEMSLOT;
-			lpf_err_t lpf_rc = LPF_SUCCESS;
 
 			return register_global( raw_ptr, bsize );
 		}

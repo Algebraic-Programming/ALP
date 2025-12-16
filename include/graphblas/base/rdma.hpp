@@ -51,7 +51,7 @@ namespace grb {
 	class rdma {
 		public:
 		template< typename T >
-		static grb::RC register_global( T &buf);
+		static grb::RC register_global( T &buf );
 
 		template< typename T >
 		static grb::RC register_global( grb::Vector< T, grb::reference > &buf );
@@ -60,8 +60,8 @@ namespace grb {
 		static grb::RC get( const size_t src_pid, T &src, T &dst );
 
 		template<
-			grb::Descriptor descr = descriptors::no_operation,
-			grb::Backend backend = grb::reference,
+			grb::Descriptor descr,
+			grb::Backend backend,
 			typename T,
 			typename Coords
 			>
@@ -71,12 +71,12 @@ namespace grb {
 		static grb::RC put( const T &src, const size_t dst_pid, T &dst );
 
 		template<
-			grb::Descriptor descr = descriptors::no_operation,
-			grb::Backend backend = grb::reference,
+			grb::Descriptor descr,
+			grb::Backend backend,
 			typename T,
 			typename Coords
 			>
-		static grb::RC put( const grb::Vector< T, backend, Coords > &src, const size_t dst_pid, grb::Vector< T, backend, Coords > &dst);
+		static grb::RC put( const grb::Vector< T, backend, Coords > &src, const size_t dst_pid, grb::Vector< T, backend, Coords > &dst );
 	}; // end class ``rdma''
 
 } // namespace grb
