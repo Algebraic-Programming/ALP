@@ -51,13 +51,15 @@ namespace grb {
 	class rdma {
 		public:
 		template< typename T >
-		static grb::RC register_global( T &buf );
+		static inline grb::RC register_global( T &buf );
 
 		template< typename T >
-		static grb::RC register_global( grb::Vector< T, grb::reference > &buf );
+		static inline grb::RC register_global( grb::Vector< T, grb::reference > &buf );
+
+		static inline grb::RC localRegisterSize( const size_t size );
 
 		template< typename T >
-		static grb::RC get( const size_t src_pid, T &src, T &dst );
+		static inline grb::RC get( const size_t src_pid, T &src, T &dst );
 
 		template<
 			grb::Descriptor descr,
@@ -65,10 +67,10 @@ namespace grb {
 			typename T,
 			typename Coords
 			>
-		static grb::RC get( const size_t src_pid, const grb::Vector< T, backend, Coords > &src, grb::Vector< T, backend, Coords > &dst );
+		static inline grb::RC get( const size_t src_pid, const grb::Vector< T, backend, Coords > &src, grb::Vector< T, backend, Coords > &dst );
 
 		template< typename T >
-		static grb::RC put( const T &src, const size_t dst_pid, T &dst );
+		static inline grb::RC put( const T &src, const size_t dst_pid, T &dst );
 
 		template<
 			grb::Descriptor descr,
@@ -76,7 +78,7 @@ namespace grb {
 			typename T,
 			typename Coords
 			>
-		static grb::RC put( const grb::Vector< T, backend, Coords > &src, const size_t dst_pid, grb::Vector< T, backend, Coords > &dst );
+		static inline grb::RC put( const grb::Vector< T, backend, Coords > &src, const size_t dst_pid, grb::Vector< T, backend, Coords > &dst );
 	}; // end class ``rdma''
 
 } // namespace grb
