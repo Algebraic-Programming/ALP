@@ -34,10 +34,9 @@
 namespace grb {
 
 	/** Superclass implementation for all LPF-backed implementations. */
-	// template<>
-	// class rdma< GENERIC_BSP > {
-	namespace rdma {
-		namespace internal {
+	template<>
+	class rdma< GENERIC_BSP > {
+		private:
 
 			/**
 			 * Registers a global buffer for RDMA
@@ -49,26 +48,25 @@ namespace grb {
 			 *                      returned, the library enters an undefined state.
 			 */
 			template< typename T >
-			RC register_global( T* buf, const size_t size ) {
+			static grb::RC register_global( const T* buf, const size_t size ) {
 				grb::internal::BSP1D_Data & data = grb::internal::grb_BSP1D.load();
 				lpf_err_t lpf_rc = LPF_SUCCESS;
 				lpf_memslot_t memslot = LPF_INVALID_MEMSLOT;
+				const void* buf_void = reinterpret_cast< const void* >( buf );
 
-				data.ensureMemslotAvailable( 1 );
+				data.ensureMemslotAvailable( 1 ); 
 				data.signalMemslotTaken();
 
-				assert( data.registered_slots.find( static_cast< const void* >( buf ) ) == data.registered_slots.end() );
+				assert( data.registered_slots.find( buf_void ) == data.registered_slots.end() );
 
 				lpf_rc = lpf_rc ? lpf_rc : lpf_register_global(
-					data.context,
-					static_cast< void* >( buf ),
+					data.context, const_cast< void* >( buf_void ),
 					size, &memslot
 				);
 				lpf_rc = lpf_rc ? lpf_rc : lpf_sync( data.context, LPF_SYNC_DEFAULT );
 
-				data.registered_slots.insert({ static_cast< const void* >( buf ),
-						std::make_pair( size, memslot ) });
-				data.global_memslots.insert({ memslot, static_cast< const void* >( buf ) });
+				data.registered_slots.insert({ buf_void, std::make_pair( size, memslot ) });
+				data.global_memslots.insert({ memslot, buf_void });
 
 				if( lpf_rc == LPF_SUCCESS ) {
 					return grb::SUCCESS;
@@ -85,7 +83,7 @@ namespace grb {
 			 *                      returned, the library enters an undefined state.
 			 */
 			template< typename T >
-			RC deregister( const T &buf ) {
+			static grb::RC deregister( const T &buf ) {
 #ifdef _DEBUG
 				std::cout << "deregister: memslot " << memslot << std::endl;
 #endif
@@ -124,7 +122,7 @@ namespace grb {
 			 *                      returned, the library enters an undefined state.
 			 */
 			template< typename T1, typename T2 >
-			RC put( T1* src, const size_t dst_pid, T2* dst, const size_t &size ) {
+			static grb::RC put( const T1* src, const size_t dst_pid, T2* dst, const size_t &size ) {
 #ifdef _DEBUG
 				std::cout << "rdma::put( " << src << ", " << size << ", " << dst_pid  << ", " << dst << ") called" << std::endl;
 #endif
@@ -134,6 +132,7 @@ namespace grb {
 				lpf_err_t lpf_rc = LPF_SUCCESS;
 				lpf_memslot_t src_memslot = LPF_INVALID_MEMSLOT;
 				lpf_memslot_t dst_memslot = LPF_INVALID_MEMSLOT;
+				const void* src_void = reinterpret_cast< const void * >( src );
 
 				// dynamic checks
 				if( dst_pid >= data.P ) {
@@ -144,21 +143,18 @@ namespace grb {
 				if( size == 0 ) {
 					return grb::SUCCESS;
 				}
-				if( data.P == 1 ) {
-					return grb::SUCCESS;
-				}
 
-				data.ensureMemslotAvailable( 1 );
+				// data.ensureMemslotAvailable( 1 ); // this function calls lpf_sync
 				{
-					const auto it = data.registered_slots.find( dst );
+					const auto it = data.registered_slots.find( reinterpret_cast< const void* >( dst ) );
 					assert( it != data.registered_slots.end() );
 					assert( it->second.first >= size );
 					dst_memslot = it->second.second;
 				}
 
-				const auto it = data.registered_slots.find( src );
+				const auto it = data.registered_slots.find( src_void );
 				if( it == data.registered_slots.end() ){
-					lpf_rc = lpf_rc ? lpf_rc : lpf_register_local( data.context, src, size, &src_memslot );
+					lpf_rc = lpf_rc ? lpf_rc : lpf_register_local( data.context, const_cast< void* >( src_void ), size, &src_memslot );
 				} else {
 					// there must be a better check...
 					assert( it->second.first >= size ); // is there enough space?
@@ -166,7 +162,7 @@ namespace grb {
 				}
 
 				lpf_rc = lpf_rc ? lpf_rc : lpf_put( data.context, src_memslot, 0, dst_pid, dst_memslot, 0, size, lpf_attr  );
-				data.put_requests.emplace_back( src, dst_pid, dst_memslot, 0, size );
+				data.put_requests.emplace_back( src_void, dst_pid, dst_memslot, 0, size );
 
 				if( it == data.registered_slots.end() ){
 					lpf_rc = lpf_rc ? lpf_rc : lpf_deregister( data.context, src_memslot );
@@ -187,7 +183,7 @@ namespace grb {
 			 *                      returned, the library enters an undefined state.
 			 */
 			template< typename T >
-			RC get( const size_t &src_pid, T* src, T* dst, const size_t size ) {
+			static grb::RC get( const size_t &src_pid, const T* src, T* dst, const size_t size ) {
 #ifdef _DEBUG
 				std::cout << "rdma::get( " << src << ", " << size << ", " << src_pid  << ", " << src_memslot << ") called" << std::endl;
 #endif
@@ -196,23 +192,21 @@ namespace grb {
 				lpf_memslot_t src_memslot = LPF_INVALID_MEMSLOT;
 				lpf_memslot_t dst_memslot = LPF_INVALID_MEMSLOT;
 				lpf_err_t lpf_rc = LPF_SUCCESS;
+				const void* dst_void = reinterpret_cast< const void * >( dst );
 
 				// dynamic checks
 				if( src_pid >= data.P ) {
-					return ILLEGAL;
+					return grb::ILLEGAL;
 				}
 
 				// check trivial dispatch
 				if( size == 0 ) {
-					return SUCCESS;
-				}
-				if( data.P == 1 ) {
-					return SUCCESS;
+					return grb::SUCCESS;
 				}
 
-				data.ensureMemslotAvailable( 1 );
+				// data.ensureMemslotAvailable( 1 ); // this function calls lpf_sync
 				{
-					const auto it = data.registered_slots.find( src );
+					const auto it = data.registered_slots.find( reinterpret_cast< const void* >( src ) );
 					assert( it != data.registered_slots.end() );
 					assert( it->second.first >= size );
 					src_memslot = it->second.second;
@@ -220,7 +214,7 @@ namespace grb {
 
 				const auto it = data.registered_slots.find( dst );
 				if( it == data.registered_slots.end() ){
-					lpf_rc = lpf_rc ? lpf_rc : lpf_register_local( data.context, dst, size, &dst_memslot );
+					lpf_rc = lpf_rc ? lpf_rc : lpf_register_local( data.context, const_cast< void* >( dst_void ), size, &dst_memslot );
 				} else {
 					// there must be a better check...
 					assert( it->second.first >= size );
@@ -241,42 +235,44 @@ namespace grb {
 				}
 			}
 
-		} // namespace internal
-
+		public:
 		/*
 		 * RDMA wrappers for internal functions
 		 */
 		template< typename T >
-		inline RC register_global( T &buf) {
-			return internal::register_global( &buf, sizeof(T) );
+		static inline grb::RC register_global( T &buf) {
+			return register_global( &buf, sizeof(T) );
 		}
 
-
-		template< typename T >
-		inline RC register_global( grb::Vector< T, grb::reference > &inout ) {
-			const size_t size = grb::internal::getCoordinates( inout ).size();
-			const size_t bsize = size * sizeof( T );
-			T* raw_ptr = grb::internal::getRaw( inout );
-
-			lpf_memslot_t slot = LPF_INVALID_MEMSLOT;
-			lpf_err_t lpf_rc = LPF_SUCCESS;
-
-			return internal::register_global( raw_ptr, bsize );
-		}
-
-
-		template< typename T >
-		inline RC get( const size_t src_pid, T &src, T &dst ) {
-			return internal::get(  src_pid, &src, &dst, sizeof(T) );
-		}
 
 		template<
-			grb::Descriptor descr = descriptors::no_operation,
 			grb::Backend backend = grb::reference,
 			typename T,
 			typename Coords
 			>
-		inline RC get( const size_t src_pid, const grb::Vector< T, backend, Coords > &src, grb::Vector< T, backend, Coords > &dst ) {
+		static inline grb::RC register_global( grb::Vector< T, backend, Coords > &buf ) {
+			const size_t size = grb::internal::getCoordinates( buf ).size();
+			const size_t bsize = size * sizeof( T );
+			T* raw_ptr = grb::internal::getRaw( buf );
+
+			lpf_memslot_t slot = LPF_INVALID_MEMSLOT;
+			lpf_err_t lpf_rc = LPF_SUCCESS;
+
+			return register_global( raw_ptr, bsize );
+		}
+
+
+		template< typename T >
+		static inline grb::RC get( const size_t src_pid, const T &src, T &dst ) {
+			return get(  src_pid, &src, &dst, sizeof(T) );
+		}
+
+		template<
+			grb::Backend backend = grb::reference,
+			typename T,
+			typename Coords
+			>
+		static inline grb::RC get( const size_t src_pid, const grb::Vector< T, backend, Coords > &src, grb::Vector< T, backend, Coords > &dst ) {
 
  			// we only support grb::reference for now
 			static_assert( grb::reference ==  backend );
@@ -284,27 +280,26 @@ namespace grb {
 			const size_t size = grb::internal::getCoordinates( dst ).size();
 			const size_t bsize = size * sizeof( T );
 
-			return internal::get( src_pid, grb::internal::getRaw( src ), grb::internal::getRaw( dst ), bsize );
+			return get( src_pid, grb::internal::getRaw( src ), grb::internal::getRaw( dst ), bsize );
 		}
 
 		template< typename T >
-		inline RC put( T &src, const size_t dst_pid, T &dst ) {
-			return internal::put( &src, dst_pid, &dst, sizeof(T) );
+		static inline grb::RC put( const T &src, const size_t dst_pid, T &dst ) {
+			return put( &src, dst_pid, &dst, sizeof(T) );
 		}
 
 		template<
-			grb::Descriptor descr = descriptors::no_operation,
 			grb::Backend backend = grb::reference,
 			typename T,
 			typename Coords
 			>
-		inline RC put( const grb::Vector< T, backend, Coords > &src, const size_t dst_pid, grb::Vector< T, backend, Coords > &dst) {
+		static inline grb::RC put( const grb::Vector< T, backend, Coords > &src, const size_t dst_pid, grb::Vector< T, backend, Coords > &dst) {
  			// we only support grb::reference for now
 			static_assert( grb::reference ==  backend );
 			const size_t size = grb::internal::getCoordinates( src ).size();
 			const size_t bsize = size * sizeof( T );
 
-			return internal::put( grb::internal::getRaw( src ), dst_pid, grb::internal::getRaw( dst ), bsize );
+			return put( grb::internal::getRaw( src ), dst_pid, grb::internal::getRaw( dst ), bsize );
 		}
 
 	}; // end class ``rdma'' generic LPF implementation

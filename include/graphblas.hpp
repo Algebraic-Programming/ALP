@@ -545,6 +545,7 @@ namespace grb {
 #include <graphblas/pinnedvector.hpp>
 #include <graphblas/properties.hpp>
 #include <graphblas/spmd.hpp>
+#include <graphblas/rdma.hpp>
 
 #ifdef _GRB_WITH_LPF
  // collects various BSP utilities

@@ -53,14 +53,14 @@ namespace grb {
 			lpf_pid_t src_pid;
 			lpf_memslot_t src;
 			size_t src_offset;
-			void * dst;
+			const void * dst;
 			size_t size;
 
 			get_request(
 				lpf_pid_t src_pid,
 				lpf_memslot_t src,
 				size_t src_offset,
-				void * dst,
+				const void * dst,
 				size_t size
 					)
 				: src_pid(src_pid)
@@ -73,14 +73,14 @@ namespace grb {
 
 		/** All information corresponding to a put request. */
 		struct put_request {
-			void * src;
+			const void * src;
 			lpf_pid_t dst_pid;
 			lpf_memslot_t dst;
 			size_t dst_offset;
 			size_t size;
 
 			put_request(
-				void * src,
+				const void * src,
 				lpf_pid_t dst_pid,
 				lpf_memslot_t dst,
 				size_t dst_offset,

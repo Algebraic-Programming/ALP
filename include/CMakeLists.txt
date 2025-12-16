@@ -50,7 +50,7 @@ set( root_files
 	"graphblas/io.hpp" "graphblas/iomode.hpp" "graphblas/matrix.hpp"
 	"graphblas/monoid.hpp" "graphblas/ops.hpp" "graphblas/phase.hpp"
 	"graphblas/pinnedvector.hpp" "graphblas/properties.hpp" "graphblas/rc.hpp"
-	"graphblas/semiring.hpp" "graphblas/spmd.hpp" "graphblas/tags.hpp"
+	"graphblas/semiring.hpp" "graphblas/spmd.hpp" "graphblas/rdma.hpp" "graphblas/tags.hpp"
 	"graphblas/type_traits.hpp" "graphblas/utils.hpp" "graphblas/vector.hpp"
 	"graphblas/synchronizedNonzeroIterator.hpp" "graphblas/nonzeroStorage.hpp"
 	"graphblas/selection_ops.hpp"
