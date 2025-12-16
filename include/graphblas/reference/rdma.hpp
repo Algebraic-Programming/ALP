@@ -57,7 +57,7 @@ namespace grb {
 			typename Coords
 			>
 		static grb::RC get( const size_t src_pid, const grb::Vector< T, backend, Coords > &src, grb::Vector< T, backend, Coords > &dst ) {
-			assert( dst_pid == 0 );
+			assert( src_pid == 0 );
 			return grb::set< descr >( dst, src );
 		}
 
