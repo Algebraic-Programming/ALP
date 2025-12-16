@@ -344,7 +344,6 @@ namespace grb {
 						best_energy = energies[j];
 						best_state = states[j];
 					}
-					if( goal < -1 && best_energy <= goal ) break;
 				} // n_replicas
 
 				// TODO: find a better way than this, to avoid a sync at each iteration
@@ -423,10 +422,20 @@ namespace grb {
 			grb::resize( w, n );
 
     		std::minstd_rand rng ( seed );
-			std::uniform_real_distribution< AType > rand ( 0.1, 2.0 );
 
+			// random shuffle w
+			// const auto w_raw = grb::internal::getRaw( w );
 			for( size_t i = 0 ; i < n ; ++i ){
-				rc = rc ? rc : grb::setElement( w, rand( rng ), i );
+				rc = rc ? rc : grb::setElement( w, i+1, i );
+			}
+			for( size_t i = 0 ; i < n ; ++i ){
+				std::uniform_int_distribution< size_t > rand ( i, n-1 );
+				const auto j = rand(rng);
+				const auto a = w[i];
+				const auto b = w[j];
+				rc = rc ? rc : grb::setElement( w, b, i );
+				rc = rc ? rc : grb::setElement( w, a, j );
+				// std::swap( w_raw[i],  w_raw[j] );
 			}
 
 			const grb::Semiring<
@@ -512,6 +521,7 @@ namespace grb {
 		 * @param[in,out] betas     	Inverse temperature of each state.
 		 * @param[in]     n_sweeps      Number of Simulated Annealing iterations.
 		 * @param[in]     use_pt		Whether to use Parallel Tampering or not.
+		 * @param[in]     seed			Seed to use for internal randomization (must be the same for all processees);
 		 *
 		 * @tparam StateType	The state variable type.
 		 * @tparam QType		The matrix values' type.
