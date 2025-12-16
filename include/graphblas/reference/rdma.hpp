@@ -34,17 +34,24 @@ namespace grb {
 	class rdma< reference > {
 	public:
 		template< typename T >
-		static grb::RC register_global( T &buf) {
+		static inline grb::RC register_global( T &buf ) {
+			(void) buf;
 			return grb::SUCCESS;
 		}
 
 		template< typename T >
-		static grb::RC register_global( grb::Vector< T, grb::reference > &buf ) {
+		static inline grb::RC register_global( grb::Vector< T, grb::reference > &buf ) {
+			(void) buf;
+			return grb::SUCCESS;
+		}
+
+		static inline grb::RC localRegisterSize( const size_t size ) {
+			(void) size;
 			return grb::SUCCESS;
 		}
 
 		template< typename T >
-		static grb::RC get( const size_t src_pid, T &src, T &dst ) {
+		static inline grb::RC get( const size_t src_pid, T &src, T &dst ) {
 			assert( src_pid == 0 );
 			dst = src;
 			return grb::SUCCESS;
@@ -56,13 +63,13 @@ namespace grb {
 			typename T,
 			typename Coords
 			>
-		static grb::RC get( const size_t src_pid, const grb::Vector< T, backend, Coords > &src, grb::Vector< T, backend, Coords > &dst ) {
+		static inline grb::RC get( const size_t src_pid, const grb::Vector< T, backend, Coords > &src, grb::Vector< T, backend, Coords > &dst ) {
 			assert( src_pid == 0 );
 			return grb::set< descr >( dst, src );
 		}
 
 		template< typename T >
-		static grb::RC put( const T &src, const size_t dst_pid, T &dst ) {
+		static inline grb::RC put( const T &src, const size_t dst_pid, T &dst ) {
 			assert( dst_pid == 0 );
 			dst = src;
 			return grb::SUCCESS;
@@ -74,7 +81,7 @@ namespace grb {
 			typename T,
 			typename Coords
 			>
-		static grb::RC put( const grb::Vector< T, backend, Coords > &src, const size_t dst_pid, grb::Vector< T, backend, Coords > &dst) {
+		static inline grb::RC put( const grb::Vector< T, backend, Coords > &src, const size_t dst_pid, grb::Vector< T, backend, Coords > &dst ) {
 			assert( dst_pid == 0 );
 			return grb::set< descr >( dst, src );
 		}
