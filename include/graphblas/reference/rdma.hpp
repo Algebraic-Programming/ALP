@@ -57,7 +57,8 @@ namespace grb {
 			typename Coords
 			>
 		static grb::RC get( const size_t src_pid, const grb::Vector< T, backend, Coords > &src, grb::Vector< T, backend, Coords > &dst ) {
-			return grb::SUCCESS;
+			assert( dst_pid == 0 );
+			return grb::set< descr >( dst, src );
 		}
 
 		template< typename T >
@@ -74,7 +75,8 @@ namespace grb {
 			typename Coords
 			>
 		static grb::RC put( const grb::Vector< T, backend, Coords > &src, const size_t dst_pid, grb::Vector< T, backend, Coords > &dst) {
-			return grb::SUCCESS;
+			assert( dst_pid == 0 );
+			return grb::set< descr >( dst, src );
 		}
 	}; // end class ``rdma'' reference implementation
 
