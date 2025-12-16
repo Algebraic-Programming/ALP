@@ -51,10 +51,11 @@ namespace grb {
 			static grb::RC register_global( const T* buf, const size_t size ) {
 				grb::internal::BSP1D_Data & data = grb::internal::grb_BSP1D.load();
 				lpf_err_t lpf_rc = LPF_SUCCESS;
+				grb::RC rc = grb::SUCCESS;
 				lpf_memslot_t memslot = LPF_INVALID_MEMSLOT;
 				const void* buf_void = reinterpret_cast< const void* >( buf );
 
-				data.ensureMemslotAvailable( 1 ); 
+				rc = rc ? rc : data.ensureMemslotAvailable( 1 );
 
 				assert( data.registered_slots.find( buf_void ) == data.registered_slots.end() );
 
@@ -69,7 +70,7 @@ namespace grb {
 				data.global_memslots.insert({ memslot, buf_void });
 
 				if( lpf_rc == LPF_SUCCESS ) {
-					return grb::SUCCESS;
+					return rc;
 				} else {
 					return grb::PANIC;
 				}
@@ -94,7 +95,7 @@ namespace grb {
 				const auto it0 = data.registered_slots.find( buf )
 				assert( it0 != data.registered_slots.end() );
 
-				memslot = it0->second->second;
+				memslot = it0->second.second;
 				data.registered_slots.erase( it0 );
 
 				// TODO: delete registered memory from map
@@ -143,7 +144,7 @@ namespace grb {
 					return grb::SUCCESS;
 				}
 
-				// data.ensureMemslotAvailable( 1 ); // this function calls lpf_sync
+				// rc = rc ? rc : data.ensureMemslotAvailable( 1 ); // this function calls lpf_sync
 				{
 					const auto it = data.registered_slots.find( reinterpret_cast< const void* >( dst ) );
 					assert( it != data.registered_slots.end() );
@@ -203,7 +204,7 @@ namespace grb {
 					return grb::SUCCESS;
 				}
 
-				// data.ensureMemslotAvailable( 1 ); // this function calls lpf_sync
+				// rc = rc ? rc : data.ensureMemslotAvailable( 1 ); // this function calls lpf_sync
 				{
 					const auto it = data.registered_slots.find( reinterpret_cast< const void* >( src ) );
 					assert( it != data.registered_slots.end() );
@@ -234,11 +235,9 @@ namespace grb {
 			}
 
 		public:
-		/*
-		 * RDMA wrappers for internal functions
-		 */
+
 		template< typename T >
-		static inline grb::RC register_global( T &buf) {
+		static inline grb::RC register_global( const T &buf ) {
 			return register_global( &buf, sizeof(T) );
 		}
 
@@ -248,18 +247,24 @@ namespace grb {
 			typename T,
 			typename Coords
 			>
-		static inline grb::RC register_global( grb::Vector< T, backend, Coords > &buf ) {
+		static inline grb::RC register_global( const grb::Vector< T, backend, Coords > &buf ) {
 			const size_t size = grb::internal::getCoordinates( buf ).size();
 			const size_t bsize = size * sizeof( T );
-			T* raw_ptr = grb::internal::getRaw( buf );
+			const T* raw_ptr = grb::internal::getRaw( buf );
 
 			return register_global( raw_ptr, bsize );
 		}
 
+		static inline grb::RC localRegisterSize( const size_t size ) {
+				grb::internal::BSP1D_Data & data = grb::internal::grb_BSP1D.load();
+
+				grb::RC rc = data.ensureMemslotAvailable( size );
+				return rc;
+		}
 
 		template< typename T >
 		static inline grb::RC get( const size_t src_pid, const T &src, T &dst ) {
-			return get(  src_pid, &src, &dst, sizeof(T) );
+			return get( src_pid, &src, &dst, sizeof(T) );
 		}
 
 		template<
@@ -296,7 +301,6 @@ namespace grb {
 
 			return put( grb::internal::getRaw( src ), dst_pid, grb::internal::getRaw( dst ), bsize );
 		}
-
 	}; // end class ``rdma'' generic LPF implementation
 
 } // namespace grb
