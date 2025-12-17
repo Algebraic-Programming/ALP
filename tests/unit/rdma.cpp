@@ -119,7 +119,6 @@ void grbProgram( const size_t &n, grb::RC &rc ) {
 	if( s == 1 ){
 		sleep(1);
 		for(const auto &i : b ){
-			std::cerr << i.first << " " << i.second << std::endl;
 			assert( i.second == v1 );
 		}
 	}
