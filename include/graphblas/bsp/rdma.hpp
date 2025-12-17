@@ -38,36 +38,37 @@ namespace grb {
 	class rdma< GENERIC_BSP > {
 		private:
 
-			/**
+			/*
 			 * Registers a global buffer for RDMA
 			 *
-			 * This is a collective operation!
+			 * \warning This is a collective operation, therefore it must be called by all the processes!
 			 *
-			 * @return grb::SUCCESS When all queued communication is executed succesfully.
+			 * @param[in] buf	Pointer to the start of the buffer of memory to be registered.
+			 * @param[in] size	Size of the buffer in bytes.
+			 *
+			 * @return grb::SUCCESS When registration is completed successfully
 			 * @return grb::PANIC   When an unrecoverable error occurs. When this value is
 			 *                      returned, the library enters an undefined state.
 			 */
-			template< typename T >
-			static grb::RC register_global( const T* buf, const size_t size ) {
+			static grb::RC register_global( const void *buf, const size_t size ) {
 				grb::internal::BSP1D_Data & data = grb::internal::grb_BSP1D.load();
 				lpf_err_t lpf_rc = LPF_SUCCESS;
 				grb::RC rc = grb::SUCCESS;
 				lpf_memslot_t memslot = LPF_INVALID_MEMSLOT;
-				const void* buf_void = reinterpret_cast< const void* >( buf );
 
 				rc = rc ? rc : data.ensureMemslotAvailable( 1 );
 
-				assert( data.registered_slots.find( buf_void ) == data.registered_slots.end() );
+				assert( data.registered_slots.find( buf ) == data.registered_slots.end() );
 
 				lpf_rc = lpf_rc ? lpf_rc : lpf_register_global(
-					data.context, const_cast< void* >( buf_void ),
+					data.context, const_cast< void* >( buf ),
 					size, &memslot
 				);
 				lpf_rc = lpf_rc ? lpf_rc : lpf_sync( data.context, LPF_SYNC_DEFAULT );
 
 				data.signalMemslotTaken();
-				data.registered_slots.insert({ buf_void, std::make_pair( size, memslot ) });
-				data.global_memslots.insert({ memslot, buf_void });
+				data.registered_slots.insert({ buf, std::make_pair( size, memslot ) });
+				data.global_memslots.insert({ memslot, buf });
 
 				if( lpf_rc == LPF_SUCCESS ) {
 					return rc;
@@ -77,14 +78,17 @@ namespace grb {
 			}
 
 			/**
-			 * Deregisters a local buffer for RDMA
+			 * Deregisters a buffer for RDMA. If the buffer is global, this is a collective
+			 * function
 			 *
-			 * @return grb::SUCCESS When all queued communication is executed succesfully.
+			 * \warning This is a collective operation, therefore it must be called by all the processes!
+			 * @param[in] buf	Pointer to the start of the buffer of memory to be deregistered.
+			 *
+			 * @return grb::SUCCESS When deregistration is completed successfully
 			 * @return grb::PANIC   When an unrecoverable error occurs. When this value is
 			 *                      returned, the library enters an undefined state.
 			 */
-			template< typename T >
-			static grb::RC deregister( const T &buf ) {
+			static grb::RC deregister( const void *buf ) {
 #ifdef _DEBUG
 				std::cout << "deregister: memslot " << memslot << std::endl;
 #endif
@@ -92,7 +96,7 @@ namespace grb {
 				lpf_err_t lpf_rc = LPF_SUCCESS;
 				lpf_memslot_t memslot = LPF_INVALID_MEMSLOT;
 
-				const auto it0 = data.registered_slots.find( buf )
+				const auto it0 = data.registered_slots.find( buf );
 				assert( it0 != data.registered_slots.end() );
 
 				memslot = it0->second.second;
@@ -103,7 +107,7 @@ namespace grb {
 				assert( it1 != data.global_memslots.end() );
 				data.global_memslots.erase( it1 );
 
-				lpf_rc = lpf_rc ? lpf_rc : lpf_deregister( data.context, &memslot );
+				lpf_rc = lpf_rc ? lpf_rc : lpf_deregister( data.context, memslot );
 
 				data.signalMemslotReleased( 1 );
 
@@ -115,14 +119,87 @@ namespace grb {
 			}
 
 			/**
-			 * Writes a message to another process' registered memory
+			 * Reads a message from another process' registered memory
+			 *
+			 * Before calling this function, the user is responsible for ensuring that
+			 * enough registers are free, using the function localRegisterSize. Each call
+			 * to function will use one register if the source pointer has not been
+			 * already registered (locally or globally), and zero otherwise.
+			 *
+			 * @param[in] src_pid	PID of process whose memory to access.
+			 * @param[in] src		Local pointer to the buffer whose associated pointer in the source process where to read.
+			 * @param[out] dst		Pointer to the begin of the output buffer.
+			 * @param[in] size		Number of bytes to copy.
 			 *
 			 * @return grb::SUCCESS When all queued communication is executed succesfully.
 			 * @return grb::PANIC   When an unrecoverable error occurs. When this value is
 			 *                      returned, the library enters an undefined state.
 			 */
-			template< typename T1, typename T2 >
-			static grb::RC put( const T1* src, const size_t dst_pid, T2* dst, const size_t &size ) {
+			static grb::RC get( const size_t &src_pid, const void *src, void *dst, const size_t size ) {
+#ifdef _DEBUG
+				std::cout << "rdma::get( " << src << ", " << size << ", " << src_pid  << ", " << src_memslot << ") called" << std::endl;
+#endif
+				const auto lpf_attr = LPF_MSG_DEFAULT;
+				grb::internal::BSP1D_Data & data = grb::internal::grb_BSP1D.load();
+				lpf_memslot_t src_memslot = LPF_INVALID_MEMSLOT;
+				lpf_memslot_t dst_memslot = LPF_INVALID_MEMSLOT;
+				lpf_err_t lpf_rc = LPF_SUCCESS;
+
+				// dynamic checks
+				if( src_pid >= data.P ) {
+					return grb::ILLEGAL;
+				}
+
+				// check trivial dispatch
+				if( size == 0 ) {
+					return grb::SUCCESS;
+				}
+
+				{
+					const auto it = data.registered_slots.find( src );
+					assert( it != data.registered_slots.end() );
+					assert( it->second.first >= size );
+					src_memslot = it->second.second;
+				}
+
+				const auto it = data.registered_slots.find( dst );
+				if( it == data.registered_slots.end() ){
+					lpf_rc = lpf_rc ? lpf_rc : lpf_register_local( data.context, const_cast< void* >( dst ), size, &dst_memslot );
+					data.signalMemslotTaken();
+				} else {
+					assert( it->first == dst );
+					assert( it->second.first >= size );
+					dst_memslot = it->second.second;
+				}
+
+				lpf_rc = lpf_rc ? lpf_rc : lpf_get( data.context, src_pid, src_memslot , 0, dst_memslot, 0, size, lpf_attr );
+				data.get_requests.emplace_back( src_pid, src_memslot, 0, src, size );
+
+				if( lpf_rc == LPF_SUCCESS ) {
+					return grb::SUCCESS;
+				} else {
+					return grb::PANIC;
+				}
+			}
+
+			/**
+			 * Writes a message to another process' registered memory.
+			 *
+			 * Before calling this function, the user is responsible for ensuring that
+			 * enough registers are free, using the function localRegisterSize. Each call
+			 * to function will use one register if the destination pointer has not been
+			 * already registered (locally or globally), and zero otherwise.
+			 *
+			 * @param[in] src		Pointer to the begin of the input buffer.
+			 * @param[in] dst_pid	PID of process whose memory to access.
+			 * @param[out] dst		Local pointer to the buffer whose associated pointer in the source process where to write.
+			 * @param[in] size		Number of bytes to copy.
+			 *
+			 * @return grb::SUCCESS When all queued communication is executed succesfully.
+			 * @return grb::PANIC   When an unrecoverable error occurs. When this value is
+			 *                      returned, the library enters an undefined state.
+			 */
+			static grb::RC put( const void *src, const size_t dst_pid, void *dst, const size_t &size ) {
 #ifdef _DEBUG
 				std::cout << "rdma::put( " << src << ", " << size << ", " << dst_pid  << ", " << dst << ") called" << std::endl;
 #endif
@@ -132,7 +209,6 @@ namespace grb {
 				lpf_err_t lpf_rc = LPF_SUCCESS;
 				lpf_memslot_t src_memslot = LPF_INVALID_MEMSLOT;
 				lpf_memslot_t dst_memslot = LPF_INVALID_MEMSLOT;
-				const void* src_void = reinterpret_cast< const void * >( src );
 
 				// dynamic checks
 				if( dst_pid >= data.P ) {
@@ -146,86 +222,24 @@ namespace grb {
 
 				// rc = rc ? rc : data.ensureMemslotAvailable( 1 ); // this function calls lpf_sync
 				{
-					const auto it = data.registered_slots.find( reinterpret_cast< const void* >( dst ) );
+					const auto it = data.registered_slots.find( dst );
 					assert( it != data.registered_slots.end() );
 					assert( it->second.first >= size );
 					dst_memslot = it->second.second;
 				}
 
-				const auto it = data.registered_slots.find( src_void );
+				const auto it = data.registered_slots.find( src );
 				if( it == data.registered_slots.end() ){
-					lpf_rc = lpf_rc ? lpf_rc : lpf_register_local( data.context, const_cast< void* >( src_void ), size, &src_memslot );
+					lpf_rc = lpf_rc ? lpf_rc : lpf_register_local( data.context, const_cast< void* >( src ), size, &src_memslot );
+					data.signalMemslotTaken();
 				} else {
-					// there must be a better check...
+					assert( it->first == src );
 					assert( it->second.first >= size ); // is there enough space?
 					src_memslot = it->second.second;
 				}
 
 				lpf_rc = lpf_rc ? lpf_rc : lpf_put( data.context, src_memslot, 0, dst_pid, dst_memslot, 0, size, lpf_attr  );
-				data.put_requests.emplace_back( src_void, dst_pid, dst_memslot, 0, size );
-
-				if( it == data.registered_slots.end() ){
-					lpf_rc = lpf_rc ? lpf_rc : lpf_deregister( data.context, src_memslot );
-				}
-
-				if( lpf_rc == LPF_SUCCESS ) {
-					return grb::SUCCESS;
-				} else {
-					return grb::PANIC;
-				}
-			}
-
-			/**
-			 * Reads a message from another process' registered memory
-			 *
-			 * @return grb::SUCCESS When all queued communication is executed succesfully.
-			 * @return grb::PANIC   When an unrecoverable error occurs. When this value is
-			 *                      returned, the library enters an undefined state.
-			 */
-			template< typename T >
-			static grb::RC get( const size_t &src_pid, const T* src, T* dst, const size_t size ) {
-#ifdef _DEBUG
-				std::cout << "rdma::get( " << src << ", " << size << ", " << src_pid  << ", " << src_memslot << ") called" << std::endl;
-#endif
-				const auto lpf_attr = LPF_MSG_DEFAULT;
-				grb::internal::BSP1D_Data & data = grb::internal::grb_BSP1D.load();
-				lpf_memslot_t src_memslot = LPF_INVALID_MEMSLOT;
-				lpf_memslot_t dst_memslot = LPF_INVALID_MEMSLOT;
-				lpf_err_t lpf_rc = LPF_SUCCESS;
-				const void* dst_void = reinterpret_cast< const void * >( dst );
-
-				// dynamic checks
-				if( src_pid >= data.P ) {
-					return grb::ILLEGAL;
-				}
-
-				// check trivial dispatch
-				if( size == 0 ) {
-					return grb::SUCCESS;
-				}
-
-				// rc = rc ? rc : data.ensureMemslotAvailable( 1 ); // this function calls lpf_sync
-				{
-					const auto it = data.registered_slots.find( reinterpret_cast< const void* >( src ) );
-					assert( it != data.registered_slots.end() );
-					assert( it->second.first >= size );
-					src_memslot = it->second.second;
-				}
-
-				const auto it = data.registered_slots.find( dst );
-				if( it == data.registered_slots.end() ){
-					lpf_rc = lpf_rc ? lpf_rc : lpf_register_local( data.context, const_cast< void* >( dst_void ), size, &dst_memslot );
-				} else {
-					assert( it->second.first >= size );
-					dst_memslot = it->second.second;
-				}
-
-				lpf_rc = lpf_rc ? lpf_rc : lpf_get( data.context, src_pid, src_memslot , 0, dst_memslot, 0, size, lpf_attr );
-				data.get_requests.emplace_back( src_pid, src_memslot, 0, src, size );
-
-				if( it == data.registered_slots.end() ){
-					lpf_rc = lpf_rc ? lpf_rc : lpf_deregister( data.context, dst_memslot );
-				}
+				data.put_requests.emplace_back( src, dst_pid, dst_memslot, 0, size );
 
 				if( lpf_rc == LPF_SUCCESS ) {
 					return grb::SUCCESS;
@@ -236,12 +250,34 @@ namespace grb {
 
 		public:
 
+		/*
+		 * Registers a global buffer for RDMA on a POD variable.
+		 *
+		 * \warning This is a collective operation, therefore it must be called by all the processes!
+		 *
+		 * @param[in] buf	Scalar to be registered
+		 *
+		 * @return grb::SUCCESS When registration is completed successfully
+		 * @return grb::PANIC   When an unrecoverable error occurs. When this value is
+		 *                      returned, the library enters an undefined state.
+		 */
 		template< typename T >
 		static inline grb::RC register_global( const T &buf ) {
-			return register_global( &buf, sizeof(T) );
+			return register_global( reinterpret_cast< const void* >( &buf ), sizeof(T) );
 		}
 
-
+		/*
+		 * Registers a global buffer for RDMA
+		 *
+		 * \warning This is a collective operation, therefore it must be called by all the processes!
+		 *
+		 * @param[in] buf	Pointer to the start of the buffer of memory to be reserved.
+		 * @param[in] size	Size of the buffer in bytes.
+		 *
+		 * @return grb::SUCCESS When registration is completed successfully
+		 * @return grb::PANIC   When an unrecoverable error occurs. When this value is
+		 *                      returned, the library enters an undefined state.
+		 */
 		template<
 			grb::Backend backend = grb::reference,
 			typename T,
@@ -250,11 +286,25 @@ namespace grb {
 		static inline grb::RC register_global( const grb::Vector< T, backend, Coords > &buf ) {
 			const size_t size = grb::internal::getCoordinates( buf ).size();
 			const size_t bsize = size * sizeof( T );
-			const T* raw_ptr = grb::internal::getRaw( buf );
+			const void *raw_ptr = reinterpret_cast< const void* >( grb::internal::getRaw( buf ) );
 
 			return register_global( raw_ptr, bsize );
 		}
 
+		/*
+		 * Reserve space for size additional registers. This function should be used
+		 * before calling put and/or get. These RDMA functions automatically register
+		 * local unregistered buffers, so need space in LPF register to do so.
+		 * One register is needed for each put/get between successive a syncs.
+		 *
+		 * \warning This is a collective operation. A sync could be called internally, therefore it must be called by all the processes!
+		 *
+		 * @param[in] size	The number of registers to reserve space for.
+		 *
+		 * @return grb::SUCCESS	The register space was successfully ensured.
+		 * @return PANIC   Could not ensure a large enough buffer space. The state
+		 *                 of the library has become undefined.
+		 */
 		static inline grb::RC localRegisterSize( const size_t size ) {
 				grb::internal::BSP1D_Data & data = grb::internal::grb_BSP1D.load();
 
@@ -262,11 +312,45 @@ namespace grb {
 				return rc;
 		}
 
+		/*
+		 * Copy a variable from a remote process.
+		 * Source variable must have been globally registered.
+		 *
+		 * See private get function for more details.
+		 *
+		 * @param[in] src_pid	Source Process ID.
+		 * @param[in] src	Object associated with the remote object to read from.
+		 * @param[out] dst	Destination object to write to.
+		 *
+		 * @return grb::SUCCESS	The register space was successfully ensured.
+		 * @return PANIC   Could not ensure a large enough buffer space. The state
+		 *                 of the library has become undefined.
+		 */
 		template< typename T >
 		static inline grb::RC get( const size_t src_pid, const T &src, T &dst ) {
-			return get( src_pid, &src, &dst, sizeof(T) );
+
+			const void *src_ptr = reinterpret_cast< const void* >( &src );
+			void *dst_ptr = reinterpret_cast< void* >( &dst );
+			constexpr size_t size = sizeof(T);
+
+			return get( src_pid, src_ptr, dst_ptr, size );
 		}
 
+		/*
+		 *
+		 * Copy a grb::Vector from a remote process.
+		 * Source grb::Vector must have been globally registered.
+		 *
+		 * See private get function for more details.
+		 *
+		 * @param[in] src_pid	Source Process ID.
+		 * @param[in] src	Object associated with the remote Vector to read from.
+		 * @param[out] dst	Destination Vector to write to.
+		 *
+		 * @return grb::SUCCESS	The register space was successfully ensured.
+		 * @return PANIC   Could not ensure a large enough buffer space. The state
+		 *                 of the library has become undefined.
+		 */
 		template<
 			grb::Backend backend = grb::reference,
 			typename T,
@@ -279,15 +363,48 @@ namespace grb {
 
 			const size_t size = grb::internal::getCoordinates( dst ).size();
 			const size_t bsize = size * sizeof( T );
+			const void *src_ptr = reinterpret_cast< const void* >( grb::internal::getRaw( src ) );
+			void *dst_ptr = reinterpret_cast< void* >( grb::internal::getRaw( dst ) );
 
-			return get( src_pid, grb::internal::getRaw( src ), grb::internal::getRaw( dst ), bsize );
+			return get( src_pid, src_ptr, dst_ptr, bsize );
 		}
 
+		/*
+		 * Write a scalar variable to another process.
+		 *
+		 * Vectors must be of the same size (in the respective processes)!
+		 *
+		 * See private put function for more details.
+		 *
+		 * @param[in] src	Variable to read from.
+		 * @param[in] dst_pid	Destination Process ID.
+		 * @param[out] dst	Variable associated with the scalar in the destination process to write to.
+		 *
+		 * @return grb::SUCCESS	The register space was successfully ensured.
+		 * @return PANIC   Could not ensure a large enough buffer space. The state
+		 *                 of the library has become undefined.
+		 */
 		template< typename T >
 		static inline grb::RC put( const T &src, const size_t dst_pid, T &dst ) {
-			return put( &src, dst_pid, &dst, sizeof(T) );
+
+			const void *src_ptr = reinterpret_cast< const void* >( &src );
+			void *dst_ptr = reinterpret_cast< void* >( &dst );
+			constexpr size_t size = sizeof(T);
+
+			return put( src_ptr, dst_pid, dst_ptr, size );
 		}
 
+		/*
+		 * Write a grb::Vector to another process.
+		 *
+		 * @param[in] src	grb::Vector to read from.
+		 * @param[in] dst_pid	Destination Process ID.
+		 * @param[out] dst	grb::Vector whose associated object in the destination process to write to.
+		 *
+		 * @return grb::SUCCESS	The register space was successfully ensured.
+		 * @return PANIC   Could not ensure a large enough buffer space. The state
+		 *                 of the library has become undefined.
+		 */
 		template<
 			grb::Backend backend = grb::reference,
 			typename T,
@@ -296,10 +413,13 @@ namespace grb {
 		static inline grb::RC put( const grb::Vector< T, backend, Coords > &src, const size_t dst_pid, grb::Vector< T, backend, Coords > &dst) {
  			// we only support grb::reference for now
 			static_assert( grb::reference ==  backend );
+
 			const size_t size = grb::internal::getCoordinates( src ).size();
 			const size_t bsize = size * sizeof( T );
+			const void *src_ptr = reinterpret_cast< const void* >( grb::internal::getRaw( src ) );
+			void *dst_ptr = reinterpret_cast< void* >( grb::internal::getRaw( dst ) );
 
-			return put( grb::internal::getRaw( src ), dst_pid, grb::internal::getRaw( dst ), bsize );
+			return put( src_ptr, dst_pid, dst_ptr, bsize );
 		}
 	}; // end class ``rdma'' generic LPF implementation
 
