@@ -139,21 +139,14 @@ namespace grb {
 					EnergyType r;
 				};
 			// TODO: should these two be static? Probably.
-			grb::Vector< StateType, backend > s0 ( n );
-			grb::Vector< StateType, backend > s1 ( n );
-			grb::set( s0, static_cast< StateType >( 0 ) );
-			grb::set( s1, static_cast< StateType >( 0 ) );
+			grb::Vector< StateType, backend > tmp ( n );
+			rc = rc ? rc : grb::set( tmp, static_cast< StateType >( 0 ) );
 
 			struct data msg[ 2 ];
 
-			rc = rc ? rc : grb::resize( s0, n );
-			rc = rc ? rc : grb::resize( s1, n );
-			if( rc != grb::SUCCESS ) return rc;
-
 			rc = rc ? rc : grb::rdma<>::register_global( msg[ 0 ] );
 			rc = rc ? rc : grb::rdma<>::register_global( msg[ 1 ] );
-			rc = rc ? rc : grb::rdma<>::register_global( s0 );
-			rc = rc ? rc : grb::rdma<>::register_global( s1 );
+			rc = rc ? rc : grb::rdma<>::register_global( tmp );
 
 			std::minstd_rand rng;
 			std::exponential_distribution< EnergyType > rand ( 1.0 );
@@ -171,17 +164,13 @@ namespace grb {
 							std::swap( energies[i], energies[i-1] );
 						}
 					}
-				}
-
-				if( si == 1 ) continue;
-				if( si == s + 1 ){
-					grb::set( s1, states[0] );
+					grb::set( tmp, states[0] );
 					msg[ 1 ].e = energies[ 0 ];
 					msg[ 1 ].b = betas[0];
 					msg[ 1 ].r = myrand;
 					rc = rc ? rc : grb::rdma<>::put( msg[ 1 ], si-1, msg[ 1 ] );
-				}else if( si == s + 2 ){
-					grb::set( s0, states[ n_replicas - 1 ] );
+				}else if( si + 1 == s ){
+					grb::set( tmp, states[ n_replicas - 1 ] );
 					msg[ 0 ].e = energies[ n_replicas - 1 ];
 					msg[ 0 ].b = betas[ n_replicas - 1 ];
 					msg[ 0 ].r = myrand;
@@ -202,23 +191,14 @@ namespace grb {
 				const EnergyType de = ( msg[ 1 ].e - msg[ 0 ].e ) * ( msg[ 1 ].b - msg[ 0 ].b );
 
 				if( rc == grb::SUCCESS && ( msg[ 1 ].r < de ) ){
-
-					assert( grb::nnz(s0) == n ); // state has to be dense!
-					assert( grb::nnz(s1) == n ); // state has to be dense!
-
 					if( si == s + 1 ){
-						rc = rc ? rc : grb::rdma<>::get( si-2, s0, s0 );
-						rc = rc ? rc : grb::spmd<>::sync();
-						rc = rc ? rc : grb::set( states[ 0 ], s0 );
+						rc = rc ? rc : grb::rdma<>::get( si-2, tmp, states[ 0 ] );
 						rc = rc ? rc : grb::setElement( energies, msg[ 0 ].e, 0 );
-					}else if( si + 2 ==  s ){
-						rc = rc ? rc : grb::rdma<>::get( si-1, s1, s1 );
-						rc = rc ? rc : grb::spmd<>::sync();
-						rc = rc ? rc : grb::set( states[ n_replicas - 1 ], s1 );
+					}else if( si ==  s + 1 ){
+						rc = rc ? rc : grb::rdma<>::get( si-1, tmp, states[n_replicas - 1] );
 						rc = rc ? rc : grb::setElement( energies, msg[ 1 ].e, n_replicas - 1 );
-					}else{
-						rc = rc ? rc : grb::spmd<>::sync();
 					}
+					rc = rc ? rc : grb::spmd<>::sync();
 				}
 			}
 			return rc;
