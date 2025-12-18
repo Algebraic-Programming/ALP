@@ -43,32 +43,6 @@
 #define ISCLOSE(a,b) (std::abs((b)-(a))/std::abs(a) < 1e-4) || (std::abs((b)-(a)) < 1e-4)
 
 namespace grb {
-	namespace internal {
-		/*
-		 * The following functions are used to ensure the correct type of the value in
-		 * in the exponential function.
-		 */
-		template< typename T >
-		inline T exp(T x ){
-			static_assert(
-					std::is_same<T, float>::value
-				 || std::is_same<T, double>::value
-				 || std::is_same<T, long double>::value
-					);
-			return std::exp( x );
-		}
-
-		template< typename T >
-		inline T log(T x ){
-			static_assert(
-					std::is_same<T, float>::value
-				 || std::is_same<T, double>::value
-				 || std::is_same<T, long double>::value
-					);
-			return std::log( x );
-		}
-	} // namespace internal
-
 	namespace algorithms {
 
 		/*
@@ -154,13 +128,12 @@ namespace grb {
 			assert( grb::size(energies) == n_replicas );
 			assert( grb::size(betas) == n_replicas );
 #endif
-			std::minstd_rand rng ( seed + s );
-			std::exponential_distribution< EnergyType > rand ( 1.0 );
 			struct data {
 					EnergyType e;
 					TempType b;
 					EnergyType r;
 				};
+			// TODO: should these two be static? Probably.
 			grb::Vector< StateType, backend > s0 ( n );
 			grb::Vector< StateType, backend > s1 ( n );
 			grb::set( s0, static_cast< StateType >( 0 ) );
@@ -170,13 +143,19 @@ namespace grb {
 			rc = rc ? rc : grb::resize( s0, n );
 			rc = rc ? rc : grb::resize( s1, n );
 			if( rc != grb::SUCCESS ) return rc;
-			const auto myrand = -rand( rng );
+
+			std::minstd_rand rng;
+			std::exponential_distribution< EnergyType > rand ( 1.0 );
+
+			rng.seed( seed + s*n_replicas );
+			const EnergyType myrand = -rand( rng );
 
 			for( size_t si = nprocs ; rc == grb::SUCCESS && si > 0; --si ){
 				if( si-1 == s ){
 					for( size_t i = n_replicas - 1 ; i > 0 ; --i ){
 						const EnergyType de = ( energies[ i ] - energies[ i-1 ]) * (betas[ i ] - betas[ i-1 ]);
 
+						rng.seed( seed + s*n_replicas + i );
 						if( -rand( rng ) < de ){
 							std::swap( states[i], states[i-1] );
 							std::swap( energies[i], energies[i-1] );
@@ -185,7 +164,7 @@ namespace grb {
 					grb::set( s1, states[0] );
 					msg[ 1 ].e = energies[ 0 ];
 					msg[ 1 ].b = betas[0];
-					// msg[ 1 ].r = rand;
+					msg[ 1 ].r = myrand;
 				}else if( si-2 == s ){
 					grb::set( s0, states[ n_replicas - 1 ] );
 					msg[ 0 ].e = energies[ n_replicas - 1 ];
@@ -200,6 +179,7 @@ namespace grb {
 				rc = rc ? rc : grb::collectives<>::broadcast( msg[ 0 ].r, si-2 );
 				rc = rc ? rc : grb::collectives<>::broadcast( msg[ 1 ].e, si-1 );
 				rc = rc ? rc : grb::collectives<>::broadcast( msg[ 1 ].b, si-1 );
+				rc = rc ? rc : grb::collectives<>::broadcast( msg[ 1 ].r, si-1 );
 #else
 				assert( false ); // this should never run
 #endif
@@ -215,21 +195,21 @@ namespace grb {
 
 				const EnergyType de = ( msg[ 1 ].e - msg[ 0 ].e ) * ( msg[ 1 ].b - msg[ 0 ].b );
 
-				if( rc == grb::SUCCESS && ( msg[ 0 ].r < de ) ){
+				if( rc == grb::SUCCESS && ( msg[ 1 ].r < de ) ){
 #ifdef _GRB_WITH_LPF
-					rc = rc ? rc : grb::internal::broadcast( s0, si-2 );
 					rc = rc ? rc : grb::internal::broadcast( s1, si-1 );
+					rc = rc ? rc : grb::internal::broadcast( s0, si-2 );
 					assert( grb::nnz(s0) == n ); // state has to be dense!
 					assert( grb::nnz(s1) == n ); // state has to be dense!
 #else
 					assert( false ); // this should never run
 #endif
-					if( si == s+1 ){
-						rc = rc ? rc : grb::set( states[ n_replicas - 1 ], s1 );
-						rc = rc ? rc : grb::setElement(energies, msg[ 0 ].e, n_replicas - 1 );
-					}else if( si ==  s+2 ){
+					if( si-1 == s ){
 						rc = rc ? rc : grb::set( states[ 0 ], s0 );
-						rc = rc ? rc : grb::setElement(energies, msg[ 1 ].e, 0 );
+						rc = rc ? rc : grb::setElement( energies, msg[ 0 ].e, 0 );
+					}else if( si-2 ==  s ){
+						rc = rc ? rc : grb::set( states[ n_replicas - 1 ], s1 );
+						rc = rc ? rc : grb::setElement( energies, msg[ 1 ].e, n_replicas - 1 );
 					}
 				}
 			}
@@ -308,18 +288,16 @@ namespace grb {
 			(void) n;
 			(void) s;
 
+			grb::RC rc = grb::SUCCESS;
+
+#ifndef NDEBUG
 			assert( n_replicas > 0 );
 			assert( n_replicas == grb::size( betas ) );
 
 			for(size_t i = 0; i < n_replicas ; ++i ){
 				assert( n == grb::size( states[ i ] ) );
 			}
-
-			grb::RC rc = grb::SUCCESS;
-
-
-#ifndef NDEBUG
-			if( grb::spmd<>::pid() == 0 ) {
+			if( s == 0 ) {
 				std::cerr << "DEBUG: Called  simulated_annealing_RE with parameters: "
 						  << "\n\t n = " << n
 						  << "\n\t n_replicas = " << n_replicas
@@ -328,14 +306,18 @@ namespace grb {
 						  << "\n\t use_pt = " << use_pt
 						  << std::endl;
 			}
+			assert( grb::size(best_state) == n );
 #endif
 
 			best_energy = std::numeric_limits< EnergyType >::max();
-			assert( grb::size(best_state) >= n );
 
 			for( size_t i_sweep = 0 ; rc == grb::SUCCESS && i_sweep < n_sweeps ; ++i_sweep ){
 				for( size_t j = 0 ; j < n_replicas ; ++j ){
-					
+
+					const int seedi = i_sweep*n_procs*n_replicas + n_replicas*s + j;
+
+					std::get<8>(sweep_data).seed(seedi);
+
 					energies[j] += sweep( states[j], betas[j], sweep_data );
 					grb::wait();
 				
@@ -352,7 +334,7 @@ namespace grb {
 
 				if( rc == SUCCESS && use_pt ){
 					// do a Parallel Tempering move
-					rc = pt< backend >( states, energies, betas, seed + i_sweep*n_procs + s );
+					rc = pt( states, energies, betas, seed + i_sweep );
 				}
 
 #ifndef NDEBUG
@@ -421,21 +403,19 @@ namespace grb {
 			grb::resize( frontier, n );
 			grb::resize( w, n );
 
-    		std::minstd_rand rng ( seed );
+			std::minstd_rand rng ( seed );
 
 			// random shuffle w
-			// const auto w_raw = grb::internal::getRaw( w );
 			for( size_t i = 0 ; i < n ; ++i ){
 				rc = rc ? rc : grb::setElement( w, i+1, i );
 			}
 			for( size_t i = 0 ; i < n ; ++i ){
 				std::uniform_int_distribution< size_t > rand ( i, n-1 );
-				const auto j = rand(rng);
+				const auto j = rand( rng );
 				const auto a = w[i];
 				const auto b = w[j];
 				rc = rc ? rc : grb::setElement( w, b, i );
 				rc = rc ? rc : grb::setElement( w, a, j );
-				// std::swap( w_raw[i],  w_raw[j] );
 			}
 
 			const grb::Semiring<
@@ -486,7 +466,7 @@ namespace grb {
 						if( s == 0 ) {
 							std::cerr << x.first << ", ";
 						}
-						cnt ++;
+						cnt++;
 					}
 				}
 				if( s == 0 ) {
@@ -610,7 +590,7 @@ namespace grb {
 			grb::Vector< QType, backend > delta ( n );
 			grb::Vector< QType, backend > dn ( n );
 			grb::Vector< bool, backend > accept ( n );
-    		std::minstd_rand rng ( seed ); // minstd_rand or std::mt19937
+			std::minstd_rand rng ( seed ); // minstd_rand or std::mt19937
 
 			rc = rc ? rc : grb::resize( h, n );
 			rc = rc ? rc : grb::resize( rand, n );
