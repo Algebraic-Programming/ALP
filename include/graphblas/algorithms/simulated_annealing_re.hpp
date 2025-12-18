@@ -147,9 +147,15 @@ namespace grb {
 			grb::set( s1, static_cast< StateType >( 0 ) );
 
 			struct data msg[ 2 ];
+
 			rc = rc ? rc : grb::resize( s0, n );
 			rc = rc ? rc : grb::resize( s1, n );
 			if( rc != grb::SUCCESS ) return rc;
+
+			rc = rc ? rc : grb::rdma<>::register_global( msg[ 0 ] );
+			rc = rc ? rc : grb::rdma<>::register_global( msg[ 1 ] );
+			rc = rc ? rc : grb::rdma<>::register_global( s0 );
+			rc = rc ? rc : grb::rdma<>::register_global( s1 );
 
 			std::minstd_rand rng;
 			std::exponential_distribution< EnergyType > rand ( 1.0 );
@@ -177,19 +183,16 @@ namespace grb {
 					msg[ 1 ].e = energies[ 0 ];
 					msg[ 1 ].b = betas[0];
 					msg[ 1 ].r = myrand;
+					rc = rc ? rc : grb::rdma<>::put( msg[ 1 ], si-1, msg[ 1 ] );
 				}else if( si == s + 2 ){
 					grb::set( s0, states[ n_replicas - 1 ] );
 					msg[ 0 ].e = energies[ n_replicas - 1 ];
 					msg[ 0 ].b = betas[ n_replicas - 1 ];
 					msg[ 0 ].r = myrand;
+					rc = rc ? rc : grb::rdma<>::put( msg[ 0 ], si-2, msg[ 0 ] );
 				}
 
-#ifdef _GRB_WITH_LPF
-				rc = rc ? rc : grb::collectives<>::broadcast( msg[ 0 ], si-2 );
-				rc = rc ? rc : grb::collectives<>::broadcast( msg[ 1 ], si-1 );
-#else
-				assert( false ); // this should never run
-#endif
+				rc = rc ? rc : grb::spmd<>::sync();
 
 #ifndef NDEBUG
 	
@@ -203,20 +206,22 @@ namespace grb {
 				const EnergyType de = ( msg[ 1 ].e - msg[ 0 ].e ) * ( msg[ 1 ].b - msg[ 0 ].b );
 
 				if( rc == grb::SUCCESS && ( msg[ 1 ].r < de ) ){
-#ifdef _GRB_WITH_LPF
-					rc = rc ? rc : grb::internal::broadcast( s1, si-1 );
-					rc = rc ? rc : grb::internal::broadcast( s0, si-2 );
+
 					assert( grb::nnz(s0) == n ); // state has to be dense!
 					assert( grb::nnz(s1) == n ); // state has to be dense!
-#else
-					assert( false ); // this should never run
-#endif
+
 					if( si == s + 1 ){
+						rc = rc ? rc : grb::rdma<>::get( si-2, s0, s0 );
+						rc = rc ? rc : grb::spmd<>::sync();
 						rc = rc ? rc : grb::set( states[ 0 ], s0 );
 						rc = rc ? rc : grb::setElement( energies, msg[ 0 ].e, 0 );
-					}else if( si ==  s + 2 ){
+					}else if( si + 2 ==  s ){
+						rc = rc ? rc : grb::rdma<>::get( si-1, s1, s1 );
+						rc = rc ? rc : grb::spmd<>::sync();
 						rc = rc ? rc : grb::set( states[ n_replicas - 1 ], s1 );
 						rc = rc ? rc : grb::setElement( energies, msg[ 1 ].e, n_replicas - 1 );
+					}else{
+						rc = rc ? rc : grb::spmd<>::sync();
 					}
 				}
 			}
@@ -292,6 +297,7 @@ namespace grb {
 			const size_t nprocs = spmd<>::nprocs();
 			const size_t n_replicas = states.size();
 			const size_t n = grb::size(states[0]);
+			(void) n_procs;
 			(void) n;
 			(void) nprocs;
 			(void) s;
