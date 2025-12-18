@@ -445,22 +445,20 @@ void grbProgram(
     }
 
     // seed RNGs (C and C++ engines) using requested seed (hardcoded default 8 if not provided)
-    std::minstd_rand rng ( data_in.seed ); // rng or std::mt19937
+    std::minstd_rand rng ( data_in.seed + s ); // rng or std::mt19937
 
     // create states storage and initialize with random 1/0 values
     const size_t n_replicas = data_in.n_replicas;
     std::vector< grb::Vector< IOType, internal_backend > > states0;
     std::vector< grb::Vector< IOType, internal_backend > > states;
     std::vector< IOType > rand_data (n);
-    for ( size_t r = 0; r < nprocs * n_replicas; ++r ) {
+    for ( size_t r = 0; r < n_replicas; ++r ) {
         // initialize with random values
         std::uniform_int_distribution< IOType > randint(0,1);
         // we use buildvectorUnique with a random set of indices
         for ( size_t i = 0; i < n; ++i ) {
             rand_data[i] = randint( rng );
         }
-
-		if( r/n_replicas != s ) continue;
 
         states.emplace_back( n );
         states0.emplace_back( n );
