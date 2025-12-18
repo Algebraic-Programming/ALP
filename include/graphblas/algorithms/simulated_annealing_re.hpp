@@ -147,7 +147,7 @@ namespace grb {
 			std::minstd_rand rng;
 			std::exponential_distribution< EnergyType > rand ( 1.0 );
 
-			rng.seed( seed + s*n_replicas );
+			rng.seed( seed + s );
 			const EnergyType myrand = -rand( rng );
 
 			for( size_t si = nprocs ; rc == grb::SUCCESS && si > 0; --si ){
@@ -155,7 +155,6 @@ namespace grb {
 					for( size_t i = n_replicas - 1 ; i > 0 ; --i ){
 						const EnergyType de = ( energies[ i ] - energies[ i-1 ]) * (betas[ i ] - betas[ i-1 ]);
 
-						rng.seed( seed + s*n_replicas + i );
 						if( -rand( rng ) < de ){
 							std::swap( states[i], states[i-1] );
 							std::swap( energies[i], energies[i-1] );
@@ -313,10 +312,6 @@ namespace grb {
 
 			for( size_t i_sweep = 0 ; rc == grb::SUCCESS && i_sweep < n_sweeps ; ++i_sweep ){
 				for( size_t j = 0 ; j < n_replicas ; ++j ){
-
-					const int seedi = i_sweep*n_procs*n_replicas + n_replicas*s + j;
-
-					std::get<8>(sweep_data).seed(seedi);
 
 					energies[j] += sweep( states[j], betas[j], sweep_data );
 					grb::wait();
