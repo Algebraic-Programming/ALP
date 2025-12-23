@@ -199,9 +199,6 @@ void grb_program( const size_t &n, grb::RC &rc ) {
 	}
 
 	// test 6, init
-	// Note: there is a bug with std::swap for nonblocking. Need to raise an issue(!)
-	//std::swap( x, y );
-	// meanwhile, work around:
 	rc = grb::set( y, x );
 	rc = rc ? rc : grb::set< grb::descriptors::use_index >( x, 0 );
 	alpha = 0;
