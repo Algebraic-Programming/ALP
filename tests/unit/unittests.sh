@@ -612,12 +612,14 @@ for MODE in ${MODES}; do
 				$runner ${TEST_BIN_DIR}/illegal_spmv_${MODE}_${BACKEND} &> ${TEST_OUT_DIR}/illegal_spmv_${MODE}_${BACKEND}_${P}_${T}.log
 				head -1 ${TEST_OUT_DIR}/illegal_spmv_${MODE}_${BACKEND}_${P}_${T}.log
 				grep -i 'Test OK' ${TEST_OUT_DIR}/illegal_spmv_${MODE}_${BACKEND}_${P}_${T}.log || echo "Test FAILED"
+				echo " "
 
 				echo ">>>      [x]           [ ]       Testing matrix times vector using at least one sparse"
 				echo "                                 vector while the dense descriptor is set (large vectors)"
 				$runner ${TEST_BIN_DIR}/illegal_spmv_${MODE}_${BACKEND} 100000 &> ${TEST_OUT_DIR}/illegal_spmv_large_${MODE}_${BACKEND}_${P}_${T}.log
 				head -1 ${TEST_OUT_DIR}/illegal_spmv_large_${MODE}_${BACKEND}_${P}_${T}.log
 				grep -i 'Test OK' ${TEST_OUT_DIR}/illegal_spmv_large_${MODE}_${BACKEND}_${P}_${T}.log || echo "Test FAILED"
+				echo " "
 
 				echo ">>>      [x]           [ ]       Testing matrix times dense vector using the double (+,*)"
 				echo "                                 semiring where matrix elements are doubles and vector"
