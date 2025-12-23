@@ -272,6 +272,10 @@ add_grb_executables( dense_spmv dense_spmv.cpp
 	BACKENDS reference reference_omp bsp1d hybrid hyperdags nonblocking
 )
 
+add_grb_executables( illegal_spmv illegal_spmv.cpp
+	BACKENDS reference reference_omp bsp1d hybrid hyperdags nonblocking
+)
+
 add_grb_executables( moveMatrix moveMatrix.cpp
 	BACKENDS reference reference_omp bsp1d hybrid hyperdags nonblocking
 )
