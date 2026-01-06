@@ -28,6 +28,14 @@ bool exec_tests(
 ) {
 	grb::semirings::boolean ring;
 
+	// at least one of the vectors is sparse
+	assert(
+			grb::nnz( out ) < grb::size( out ) ||
+			grb::nnz( out2 ) < grb::size( out2 ) ||
+			grb::nnz( in ) < grb::size( in ) ||
+			grb::nnz( in2 ) < grb::size( in2 )
+		  );
+
 	// test 1, exec
 	grb::RC rc = grb::mxv< grb::descriptors::dense >( out, A, in2, ring );
 	if( rc != grb::ILLEGAL ) {
