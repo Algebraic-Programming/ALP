@@ -51,10 +51,16 @@ namespace grb {
 	class rdma {
 		public:
 		template< typename T >
-		static inline grb::RC register_global( T &buf );
+		static inline grb::RC register_global( const T &buf );
 
 		template< typename T >
-		static inline grb::RC register_global( grb::Vector< T, grb::reference > &buf );
+		static inline grb::RC register_global( const grb::Vector< T, grb::reference > &buf );
+
+		template< typename T >
+		static inline grb::RC deregister( const T &buf );
+
+		template< typename T >
+		static inline grb::RC deregister( const grb::Vector< T, grb::reference > &buf );
 
 		static inline grb::RC localRegisterSize( const size_t size );
 

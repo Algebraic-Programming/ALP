@@ -56,9 +56,15 @@ namespace grb {
 				grb::RC rc = grb::SUCCESS;
 				lpf_memslot_t memslot = LPF_INVALID_MEMSLOT;
 
-				rc = rc ? rc : data.ensureMemslotAvailable( 1 );
+				const bool buffer_already_registered = (data.registered_slots.find( buf ) != data.registered_slots.end()); 
+				if( buffer_already_registered ){
+#ifdef _DEBUG
+					std::cerr << "Buffer already registered. Nothing to do." << std::endl;
+#endif
+					return grb::SUCCESS;
+				}
 
-				assert( data.registered_slots.find( buf ) == data.registered_slots.end() );
+				rc = rc ? rc : data.ensureMemslotAvailable( 1 );
 
 				lpf_rc = lpf_rc ? lpf_rc : lpf_register_global(
 					data.context, const_cast< void* >( buf ),
@@ -102,7 +108,6 @@ namespace grb {
 				memslot = it0->second.second;
 				data.registered_slots.erase( it0 );
 
-				// TODO: delete registered memory from map
 				const auto it1 = data.global_memslots.find( memslot );
 				assert( it1 != data.global_memslots.end() );
 				data.global_memslots.erase( it1 );
@@ -289,6 +294,44 @@ namespace grb {
 			const void *raw_ptr = reinterpret_cast< const void* >( grb::internal::getRaw( buf ) );
 
 			return register_global( raw_ptr, bsize );
+		}
+
+		/*
+		 * Deregisters a global buffer on a POD variable.
+		 *
+		 * \warning This is a collective operation, therefore it must be called by all the processes!
+		 *
+		 * @param[in] buf	Scalar to be deregistered
+		 *
+		 * @return grb::SUCCESS When registration is completed successfully
+		 * @return grb::PANIC   When an unrecoverable error occurs. When this value is
+		 *                      returned, the library enters an undefined state.
+		 */
+		template< typename T >
+		static inline grb::RC deregister( const T &buf ) {
+			return deregister( reinterpret_cast< const void* >( &buf ) );
+		}
+
+		/*
+		 * Deregisters a global buffer.
+		 *
+		 * \warning This is a collective operation, therefore it must be called by all the processes!
+		 *
+		 * @param[in] buf	Pointer to the start of the buffer of memory to be deregistered.
+		 *
+		 * @return grb::SUCCESS When registration is completed successfully
+		 * @return grb::PANIC   When an unrecoverable error occurs. When this value is
+		 *                      returned, the library enters an undefined state.
+		 */
+		template<
+			grb::Backend backend = grb::reference,
+			typename T,
+			typename Coords
+			>
+		static inline grb::RC deregister( const grb::Vector< T, backend, Coords > &buf ) {
+			const void *raw_ptr = reinterpret_cast< const void* >( grb::internal::getRaw( buf ) );
+
+			return deregister( raw_ptr );
 		}
 
 		/*

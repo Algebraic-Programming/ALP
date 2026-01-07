@@ -34,13 +34,25 @@ namespace grb {
 	class rdma< reference > {
 	public:
 		template< typename T >
-		static inline grb::RC register_global( T &buf ) {
+		static inline grb::RC register_global( const T &buf ) {
 			(void) buf;
 			return grb::SUCCESS;
 		}
 
 		template< typename T >
-		static inline grb::RC register_global( grb::Vector< T, grb::reference > &buf ) {
+		static inline grb::RC register_global( const grb::Vector< T, grb::reference > &buf ) {
+			(void) buf;
+			return grb::SUCCESS;
+		}
+
+		template< typename T >
+		static inline grb::RC deregister( const T &buf ) {
+			(void) buf;
+			return grb::SUCCESS;
+		}
+
+		template< typename T >
+		static inline grb::RC deregister( const grb::Vector< T, grb::reference > &buf ) {
 			(void) buf;
 			return grb::SUCCESS;
 		}
