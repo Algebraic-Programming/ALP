@@ -62,6 +62,7 @@ void grbProgram( const size_t &n, grb::RC &rc ) {
 	}
 	rc = rc ? rc : grb::spmd<>::sync();
 	assert( s != 1 || y == 0 );
+	rc = rc ? rc : grb::rdma< >::deregister( x );
 	rc = rc ? rc : grb::spmd<>::sync();
 
 	if( rc != grb::SUCCESS ) return;
@@ -79,7 +80,7 @@ void grbProgram( const size_t &n, grb::RC &rc ) {
 	}
 
 	rc = rc ? rc : grb::set( a, static_cast<T>( s ) );
-	rc = rc ? rc : grb::set( b, static_cast<T>( 0 ) );
+	rc = rc ? rc : grb::set( b, static_cast<T>( s+1 ) );
 
 	rc = rc ? rc : grb::rdma<>::register_global( a );
 	assert( rc == grb::SUCCESS );
@@ -122,6 +123,8 @@ void grbProgram( const size_t &n, grb::RC &rc ) {
 			assert( i.second == v1 );
 		}
 	}
+	rc = rc ? rc : grb::rdma<>::deregister( a );
+	rc = rc ? rc : grb::spmd<>::sync();
 
 	return;
 }
