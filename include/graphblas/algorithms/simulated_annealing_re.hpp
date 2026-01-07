@@ -107,7 +107,6 @@ namespace grb {
 			const size_t n_replicas = states.size();
 			// const size_t s 		= spmd<>::pid();
 			// const size_t nprocs = spmd<>::nprocs();
-			std::srand( seed );
 			grb::RC rc = grb::SUCCESS;
 			std::minstd_rand rng ( seed );
 			std::exponential_distribution< EnergyType > rand ( 1.0 );
@@ -150,7 +149,6 @@ namespace grb {
 			const size_t s 		= spmd<>::pid();
 			const size_t nprocs = spmd<>::nprocs();
 			grb::RC rc = grb::SUCCESS;
-			std::srand( seed + s );
 
 #ifndef NDEBUG
 			assert( grb::size(energies) == n_replicas );
@@ -298,7 +296,8 @@ namespace grb {
 				grb::Vector< StateType, backend >  &best_state,
 				EnergyType &best_energy,
 				const size_t &n_sweeps,
-				const bool &use_pt = false
+				const bool &use_pt = false,
+				const size_t &seed = 42
 				){
 
 			const size_t s = spmd<>::pid();
@@ -346,7 +345,7 @@ namespace grb {
 				} // n_replicas
 				if( rc == SUCCESS && use_pt ){
 					// do a Parallel Tempering move
-					rc = pt< backend >( states, energies, betas, i_sweep*n_procs + s );
+					rc = pt< backend >( states, energies, betas, seed + i_sweep*n_procs + s );
 				}
 #ifndef NDEBUG
 				if( s == 0 ) {
