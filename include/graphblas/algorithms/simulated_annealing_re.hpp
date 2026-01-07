@@ -285,6 +285,7 @@ namespace grb {
 			const size_t n_replicas = states.size();
 			const size_t n = grb::size(states[0]);
 			(void) n;
+			(void) n_procs;
 			(void) s;
 
 			grb::RC rc = grb::SUCCESS;
@@ -436,7 +437,7 @@ namespace grb {
 				}
 
 				// add new mask
-				masks.emplace_back( grb::Vector< bool, backend >( n ) );
+				masks.emplace_back( n );
 				auto &new_mask = masks.at(i);
 				rc = rc ? rc : grb::resize( new_mask, n );
 				rc = rc ? rc : grb::set< descr >( new_mask, frontier, static_cast< MaskType >(true) );
@@ -594,9 +595,22 @@ namespace grb {
 			rc = rc ? rc : grb::resize( dn, n );
 			rc = rc ? rc : grb::resize( accept, n );
 
-			std::vector< grb::Vector< bool, backend > > masks ;
+			std::vector< grb::Vector< bool, backend > > masks;
 			rc = rc ? rc : matrix_partition< descr >( masks, couplings, h, rand, seed );
-			rc = rc ? rc : grb::clear(h);
+
+			std::vector< grb::Vector< bool, backend > > trivial_masks;
+
+			for(const auto &mask : masks ){
+				for( const auto &x : mask ){
+					trivial_masks.emplace_back( n );
+					grb::setElement( trivial_masks.back(), x.second, x.first );
+				}
+			}
+			assert( trivial_masks.size() == n );
+
+			masks = trivial_masks;
+
+			rc = rc ? rc : grb::clear( h );
 			constexpr auto dense_descr = descr | grb::descriptors::dense;
 
 			auto sweep_data = std::tie(
