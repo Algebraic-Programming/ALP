@@ -38,15 +38,18 @@ const int LPF_MPI_AUTO_INITIALIZE = 0;
 
 using namespace grb;
 
-#define DEBUG_IMSB 1
-#define ISCLOSE(a,b) (std::abs((b)-(a))/std::abs(a) < 1e-4) || (std::abs((b)-(a)) < 1e-4)
-
+// #define DEBUG_IMSB 1
 constexpr size_t MAX_FN_SIZE = 255;
 
 // Types
-using IOType = double;   // scalar/vector element type
-using JType  = double;   // coupling (matrix) value type
-using EnergyType  = double;   // coupling (matrix) value type
+using IOType = int8_t;   // scalar/vector element type
+using JType  = float;   // coupling (matrix) value type
+using EnergyType  = double;   // energy value type
+
+template< typename T1, typename T2 >
+inline bool ISCLOSE( const T1 &a, const T2 &b, const double tol = 1e-4){
+	return (std::abs((b)-(a))/std::abs(a) < tol) || (std::abs((b)-(a)) < tol);
+}
 
 // Backend to be used inside each process
 constexpr grb::Backend internal_backend = grb::reference;
@@ -274,13 +277,14 @@ template<
 	class Ring = Semiring<
 		grb::operators::add< JType >, grb::operators::mul< JType >,
 		grb::identities::zero, grb::identities::one
-	>
+	>,
+	typename Ttmp
 	>
 EnergyType get_energy(
 				 const grb::Matrix< JType, backend >& couplings,
 				 const grb::Vector< JType, backend > &local_fields,
 				 const grb::Vector< IOType,backend > &state,
-				 grb::Vector< JType, backend > &tmp,
+				 grb::Vector< Ttmp, backend > &tmp,
 				 const Ring &ring = Ring()
 			  ){
 	const size_t n = grb::size( local_fields );
@@ -358,7 +362,7 @@ EnergyType sequential_sweep_immediate(
 
 		std::exponential_distribution< EnergyType > rand_gen ( beta );
 		for( size_t i = 0 ; i < n; ++i ){
-			const auto rnd = rand_gen( rng );
+			const auto rnd = -rand_gen( rng );
 			rc = rc ? rc : grb::setElement( rand, rnd, i );
 		}
 
@@ -371,7 +375,7 @@ EnergyType sequential_sweep_immediate(
 		for(const auto &mask : masks ){
 			// dn = (2*state_slice - 1) * h_slice
 			rc = rc ? rc : grb::set< descr >( dn, mask, state );
-			rc = rc ? rc : grb::foldl< descr | grb::descriptors::invert_mask >( dn, state, static_cast< EnergyType >( -1 ), right_assign_op );
+			rc = rc ? rc : grb::foldl< descr | grb::descriptors::invert_mask >( dn, state, static_cast< JType >( -1 ), right_assign_op );
 			rc = rc ? rc : grb::foldl< descr >( dn, h, ring.getMultiplicativeMonoid() );
 
 			// Choose which changes to accept
@@ -403,7 +407,7 @@ EnergyType sequential_sweep_immediate(
 		assert( rc == grb::SUCCESS );
 		const auto new_state = state;
 
-		const auto real_delta = get_energy(couplings, local_fields, new_state, h) - get_energy(couplings, local_fields, old_state, h);
+		const auto real_delta = get_energy( couplings, local_fields, new_state, dn ) - get_energy( couplings, local_fields, old_state, dn );
 		if(s == 0){
 			std::cerr << "\n\t Delta_energy: " << delta_energy;
 			std::cerr << "\n\t Real delta: " << real_delta;
@@ -591,7 +595,6 @@ void grbProgram(
     }
 
     // seed RNGs (C and C++ engines) using requested seed (hardcoded default 8 if not provided)
-    std::srand( static_cast<unsigned>( data_in.seed + s ) );
     std::minstd_rand rng ( data_in.seed + s ); // rng or std::mt19937
 
     // create states storage and initialize with random 1/0 values
@@ -625,7 +628,7 @@ void grbProgram(
     grb::Vector< EnergyType, internal_backend > energies( n_replicas );
     grb::Vector< EnergyType, internal_backend > tmp_energy( n );
     for ( size_t r = 0; rc == grb::SUCCESS && r < n_replicas; ++r ) {
-        rc = rc ? rc : grb::setElement( betas, static_cast< JType >( 10.0 * ( n_replicas * nprocs ) / ( n_replicas * s + r + 1) ), r );
+        rc = rc ? rc : grb::setElement( betas, static_cast< JType >( 10.0 / ( n_replicas * s + r + 1) ), r );
         rc = rc ? rc : grb::setElement( energies, get_energy(  J, h, states[r], tmp_energy ), r );
     }
 
@@ -654,9 +657,11 @@ void grbProgram(
     std::vector< grb::Vector< bool, internal_backend > > masks;
 	rc = rc ? rc : grb::algorithms::matrix_partition( masks, J, temp_h, temp_log_rand, test_data::seed );
 
+#ifdef DEBUG_IMSB
 	if( s == 0 ){
 		print_vector( masks.back(), 30, "MASK" );
 	}
+#endif
 	auto sweep_data = std::tie(
 			(const typeof(J)&) J,
 			(const typeof(h)&) h,
