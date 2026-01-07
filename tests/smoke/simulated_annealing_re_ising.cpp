@@ -435,7 +435,6 @@ void grbProgram(
     }
 
     // seed RNGs (C and C++ engines) using requested seed (hardcoded default 8 if not provided)
-    std::srand( static_cast<unsigned>( data_in.seed + s ) );
     std::minstd_rand rng ( data_in.seed + s ); // rng or std::mt19937
 
     // create states storage and initialize with random 1/0 values
@@ -534,7 +533,7 @@ void grbProgram(
 			}
 			rc = rc ? rc : grb::clear( energies );
 			rc = grb::algorithms::simulated_annealing_RE_Ising(
-			 J, h, states, energies, betas, best_state, out.best_energy, data_in.nsweeps, data_in.use_pt
+			 J, h, states, energies, betas, best_state, out.best_energy, data_in.nsweeps, data_in.use_pt, data_in.seed
 			);
 		}
 		// do benchmark
@@ -551,7 +550,7 @@ void grbProgram(
 				out.iterations = data_in.nsweeps;
 
                 rc = grb::algorithms::simulated_annealing_RE_Ising(
-				 J, h, states, energies, betas, best_state, out.best_energy, data_in.nsweeps, data_in.use_pt
+				 J, h, states, energies, betas, best_state, out.best_energy, data_in.nsweeps, data_in.use_pt, data_in.seed + i
                 );
 			}
 			if( grb::Properties<>::isNonblockingExecution ) {
