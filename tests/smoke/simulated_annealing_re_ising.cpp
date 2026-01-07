@@ -458,7 +458,7 @@ void grbProgram(
             rand_data.cend(),
             SEQUENTIAL
         );
-		grb::set( states.back(), states0.back() );
+		rc = rc ? rc : grb::set( states.back(), states0.back() );
     }
 
 	grb::Vector< EnergyType > tmp_energy ( n );
@@ -530,9 +530,9 @@ void grbProgram(
 	} else {
 		for( size_t i = 0; i < 2 ; ++i ){
 			for ( size_t r = 0; r < n_replicas; ++r ) {
-				grb::set(states[r], states0[r]);
+				rc = rc ? rc : grb::set(states[r], states0[r]);
 			}
-			grb::clear( energies );
+			rc = rc ? rc : grb::clear( energies );
 			rc = grb::algorithms::simulated_annealing_RE_Ising(
 			 J, h, states, energies, betas, best_state, out.best_energy, data_in.nsweeps, data_in.use_pt
 			);
@@ -543,9 +543,9 @@ void grbProgram(
 		double total_time = 0;
 		for( size_t i = 0; i < out.rep && rc == SUCCESS; ++i ) {
 			for ( size_t r = 0; r < n_replicas; ++r ) {
-				grb::set(states[r], states0[r]);
+				rc = rc ? rc : grb::set(states[r], states0[r]);
 			}
-			grb::clear( energies );
+			rc = rc ? rc : grb::clear( energies );
 			timer.reset();
 			if( rc == SUCCESS ) {
 				out.iterations = data_in.nsweeps;

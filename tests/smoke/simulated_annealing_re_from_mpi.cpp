@@ -599,9 +599,11 @@ void grbProgram(
 
     // create states storage and initialize with random 1/0 values
     const size_t n_replicas = data_in.n_replicas;
+    std::vector< grb::Vector< IOType, internal_backend > > states0;
     std::vector< grb::Vector< IOType, internal_backend > > states;
     for ( size_t r = 0; r < n_replicas; ++r ) {
         states.emplace_back( grb::Vector< IOType, internal_backend >(n) );
+        states0.emplace_back( grb::Vector< IOType, internal_backend >(n) );
         // initialize with random values
         std::uniform_int_distribution< unsigned short > randint(0,1);
         // we use buildvectorUnique with a random set of indices
@@ -611,11 +613,12 @@ void grbProgram(
                 randint( rng ) ) );
         }
         rc = rc ? rc : grb::buildVector(
-            states.back(),
+            states0.back(),
             rand_data.cbegin(),
             rand_data.cend(),
             SEQUENTIAL
         );
+		rc = rc ? rc : grb::set( states.back(), states0.back() );
     }
 	using Ring = Semiring<
 			grb::operators::add< JType >, grb::operators::mul< JType >,
@@ -626,11 +629,13 @@ void grbProgram(
     // also make betas vector os size n_replicas and initialize with 10.0
     grb::Vector< JType, internal_backend > betas( n_replicas );
     grb::Vector< EnergyType, internal_backend > energies( n_replicas );
+    grb::Vector< EnergyType, internal_backend > energies0( n_replicas );
     grb::Vector< EnergyType, internal_backend > tmp_energy( n );
     for ( size_t r = 0; rc == grb::SUCCESS && r < n_replicas; ++r ) {
-        rc = rc ? rc : grb::setElement( betas, static_cast< JType >( 10.0 / ( n_replicas * s + r + 1) ), r );
-        rc = rc ? rc : grb::setElement( energies, get_energy(  J, h, states[r], tmp_energy ), r );
+        rc = rc ? rc : grb::setElement( betas, static_cast< JType >( 10.0 * ( n_replicas * nprocs ) / ( n_replicas * s + r + 1) ), r );
+        rc = rc ? rc : grb::setElement( energies0, get_energy(  J, h, states[r], tmp_energy ), r );
     }
+	rc = rc ? rc : grb::set( energies, energies0 );
 
     #ifdef DEBUG_IMSB
     if( s == 0 ) {
@@ -638,7 +643,7 @@ void grbProgram(
             std::cout << "Process " << s << ": ";
             std::cout << "Initial state replica " << r << ":\n";
             print_vector( states[r], 30 ,"states values" );  
-			std::cout << "With energy " << energies[r] << "\n";
+			std::cout << "With energy " << energies0[r] << "\n";
             std::cout << std::endl;
         }
     }
@@ -716,18 +721,26 @@ void grbProgram(
 			}
 		}
 	} else {
-		rc = grb::algorithms::simulated_annealing_RE(
-			sweep, sweep_data, states, energies, betas, best_state, out.best_energy, data_in.nsweeps, data_in.use_pt
-		);
-		rc = grb::algorithms::simulated_annealing_RE(
-			sweep, sweep_data, states, energies, betas, best_state, out.best_energy, data_in.nsweeps, data_in.use_pt
-		);
+		for( size_t i = 0; i < 2 ; ++i ){
+			for ( size_t r = 0; r < n_replicas; ++r ) {
+				rc = rc ? rc : grb::set(states[r], states0[r]);
+			}
+			rc = rc ? rc : grb::set( energies, energies0 );
+
+			rc = grb::algorithms::simulated_annealing_RE(
+				sweep, sweep_data, states, energies, betas, best_state, out.best_energy, data_in.nsweeps, data_in.use_pt
+			);
+		}
 		// do benchmark
 		double min_time = 1e9;
 		double max_time = 0;
 		double total_time = 0;
 		for( size_t i = 0; i < out.rep && rc == SUCCESS; ++i ) {
-		timer.reset();
+			for ( size_t r = 0; r < n_replicas; ++r ) {
+				rc = rc ? rc : grb::set(states[r], states0[r]);
+			}
+			rc = rc ? rc : grb::set( energies, energies0 );
+			timer.reset();
 			if( rc == SUCCESS ) {
 				out.iterations = data_in.nsweeps;
 
