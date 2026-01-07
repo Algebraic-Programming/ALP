@@ -471,13 +471,13 @@ void grbProgram(
 		rc = rc ? rc : grb::set( states.back(), states0.back() );
     }
 
-    // also make betas vector os size n_replicas and initialize with 10.0
+    // also make betas vector of size n_replicas and initialize with a geometric gradient
     grb::Vector< JType, internal_backend > betas( n_replicas );
     grb::Vector< EnergyType, internal_backend > energies( n_replicas );
     grb::Vector< EnergyType, internal_backend > energies0( n_replicas );
     grb::Vector< EnergyType, internal_backend > tmp_energy( n );
     for ( size_t r = 0; rc == grb::SUCCESS && r < n_replicas; ++r ) {
-        rc = rc ? rc : grb::setElement( betas, static_cast< JType >( (10.0 / (s * n_replicas) ) * std::pow<JType>( 1.5, ( n_replicas * s + r ) ) ), r );
+		rc = rc ? rc : grb::setElement( betas, static_cast< JType >( ( 1.0 ) * std::pow< JType >( 1.5, ( n_replicas * s + r ) ) ), r );
         rc = rc ? rc : grb::setElement( energies0, get_energy(  J, h, states[r], tmp_energy ), r );
     }
 	rc = rc ? rc : grb::set( energies, energies0 );
