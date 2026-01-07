@@ -35,7 +35,7 @@
 
 using namespace grb;
 
-// #define DEBUG_IMSB 1
+// #define DEBUG_SARE 1
 constexpr size_t MAX_FN_SIZE = 255;
 
 // Types
@@ -182,7 +182,7 @@ void read_matrix_data(const std::string &filename, std::vector<Dtype> &data, boo
 			++it
 		) {
 			data.push_back( Dtype( *it ) );
-#ifdef DEBUG_IMSB
+#ifdef DEBUG_SARE
 			if( spmd<>::pid() == 0 ){
 				// print last data element from std::vector<NonzeroT> data
 				std::cout << "readmatrix_data: " << data.back().first.first << ", "
@@ -207,7 +207,7 @@ void read_matrix_data_from_array(
             data.emplace_back(
                 NonzeroT( entry.first.first, entry.first.second, entry.second )
             );
-#ifdef DEBUG_IMSB
+#ifdef DEBUG_SARE
 			if( spmd<>::pid() < 1 ){
 				// print last data element from std::vector<NonzeroT> data
 				std::cout << "read_matrix_data_from_array: " << data.back().first.first << ", "
@@ -415,7 +415,7 @@ void grbProgram(
 		// grb::foldl< grb::descriptors::transpose_right >( J, Jt, addMonoid); // issue  #210
 		// grb::foldl<>( J, static_cast< JType >( 0.5 ), mulMonoid);
 
-#ifdef DEBUG_IMSB
+#ifdef DEBUG_SARE
 		if( s == 0 && grb::ncols( J ) < 40 ) {
 			std::cout << "Matrix J:\n";
 			print_matrix( J );
@@ -466,7 +466,7 @@ void grbProgram(
 	for ( size_t r = 0; r < n_replicas; ++r ) {
 		const auto en = get_energy(  J, h, states[r], tmp_energy );
 		initial_energy = std::min( en, initial_energy );
-    #ifdef DEBUG_IMSB
+    #ifdef DEBUG_SARE
 		if( s == 0 ) {
 			std::cout << "Initial state replica " << r << ":\n";
 			print_vector( states[r], 30 ,"states values" );
@@ -480,7 +480,7 @@ void grbProgram(
     grb::Vector< JType > betas( n_replicas );
     grb::Vector< EnergyType > energies( n_replicas );
     for ( size_t r = 0; rc == grb::SUCCESS && r < n_replicas; ++r ) {
-        rc = rc ? rc : grb::setElement( betas, static_cast< JType >( n_replicas / (r+1) ), r );
+        rc = rc ? rc : grb::setElement( betas, static_cast< JType >( (10.0) * std::pow<JType>( 2, r ) ), r );
         // rc = rc ? rc : grb::setElement( energies, get_energy(  J, h, states[r], tmp_energy ), r );
     }
 	assert( rc == grb::SUCCESS );
@@ -492,7 +492,7 @@ void grbProgram(
 	if( out.rep == 0 ) {
 		timer.reset();
 		rc = grb::algorithms::simulated_annealing_RE_Ising(
-				 J, h, states, energies, betas, best_state, out.best_energy, data_in.nsweeps, data_in.use_pt
+			 J, h, states, energies, betas, best_state, out.best_energy, data_in.nsweeps, data_in.use_pt, data_in.seed
         );
 
 		rc = rc ? rc : wait();
@@ -535,6 +535,7 @@ void grbProgram(
 			rc = grb::algorithms::simulated_annealing_RE_Ising(
 			 J, h, states, energies, betas, best_state, out.best_energy, data_in.nsweeps, data_in.use_pt, data_in.seed
 			);
+			assert( ISCLOSE( get_energy(  J, h, best_state, tmp_energy ), out.best_energy) );
 		}
 		// do benchmark
 		double min_time = 1e9;
@@ -557,6 +558,8 @@ void grbProgram(
 				rc = rc ? rc : wait();
 			}
 			const double time_taken = timer.time();
+
+			assert( ISCLOSE( get_energy(  J, h, best_state, tmp_energy ), out.best_energy) );
 			min_time = std::min(min_time, time_taken);
 			max_time = std::max(max_time, time_taken);
 			total_time +=  time_taken;
