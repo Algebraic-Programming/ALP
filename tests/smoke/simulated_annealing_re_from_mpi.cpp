@@ -625,7 +625,7 @@ void grbProgram(
     grb::Vector< EnergyType, internal_backend > energies( n_replicas );
     grb::Vector< EnergyType, internal_backend > tmp_energy( n );
     for ( size_t r = 0; rc == grb::SUCCESS && r < n_replicas; ++r ) {
-        rc = rc ? rc : grb::setElement( betas, static_cast< JType >( 10.0 * ( n_replicas * nprocs ) / ( n_replicas * s + r + 1) ), r );
+        rc = rc ? rc : grb::setElement( betas, static_cast< JType >( 10.0 / ( n_replicas * s + r + 1) ), r );
         rc = rc ? rc : grb::setElement( energies, get_energy(  J, h, states[r], tmp_energy ), r );
     }
 
