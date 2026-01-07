@@ -660,7 +660,7 @@ void grbProgram(
 
 	// build masks, we'll use two of the above temporary vectors
     std::vector< grb::Vector< bool, internal_backend > > masks;
-	rc = rc ? rc : grb::algorithms::matrix_partition( masks, J, temp_h, temp_log_rand, test_data::seed );
+	rc = rc ? rc : grb::algorithms::matrix_partition( masks, J, temp_h, temp_log_rand, data_in.seed );
 
 #ifdef DEBUG_IMSB
 	if( s == 0 ){
@@ -685,7 +685,7 @@ void grbProgram(
 	if( out.rep == 0 ) {
 		timer.reset();
 		rc = grb::algorithms::simulated_annealing_RE(
-				sweep, sweep_data, states, energies, betas, best_state, out.best_energy, data_in.nsweeps, data_in.use_pt
+				sweep, sweep_data, states, energies, betas, best_state, out.best_energy, data_in.nsweeps, data_in.use_pt, data_in.seed
         );
 
 		rc = rc ? rc : wait();
@@ -728,7 +728,7 @@ void grbProgram(
 			rc = rc ? rc : grb::set( energies, energies0 );
 
 			rc = grb::algorithms::simulated_annealing_RE(
-				sweep, sweep_data, states, energies, betas, best_state, out.best_energy, data_in.nsweeps, data_in.use_pt
+				sweep, sweep_data, states, energies, betas, best_state, out.best_energy, data_in.nsweeps, data_in.use_pt, data_in.seed
 			);
 		}
 		// do benchmark
@@ -745,7 +745,7 @@ void grbProgram(
 				out.iterations = data_in.nsweeps;
 
                 rc = grb::algorithms::simulated_annealing_RE(
-					sweep, sweep_data, states, energies, betas, best_state, out.best_energy, data_in.nsweeps, data_in.use_pt
+					sweep, sweep_data, states, energies, betas, best_state, out.best_energy, data_in.nsweeps, data_in.use_pt, data_in.seed + i
                 );
 				grb::collectives<>::allreduce( out.best_energy, grb::operators::min< EnergyType >() );
 			}
