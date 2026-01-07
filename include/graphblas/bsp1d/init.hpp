@@ -57,11 +57,11 @@ namespace grb {
 			size_t size;
 
 			get_request(
-				lpf_pid_t src_pid,
-				lpf_memslot_t src,
-				size_t src_offset,
+				const lpf_pid_t src_pid,
+				const lpf_memslot_t src,
+				const size_t src_offset,
 				const void * dst,
-				size_t size
+				const size_t size
 					)
 				: src_pid(src_pid)
 				, src(src)
@@ -81,16 +81,35 @@ namespace grb {
 
 			put_request(
 				const void * src,
-				lpf_pid_t dst_pid,
-				lpf_memslot_t dst,
-				size_t dst_offset,
-				size_t size
+				const lpf_pid_t dst_pid,
+				const lpf_memslot_t dst,
+				const size_t dst_offset,
+				const size_t size
 					)
 				: src(src)
 				, dst_pid(dst_pid)
 				, dst(dst)
 				, dst_offset(dst_offset)
 				, size(size)
+			{}
+		};
+
+		struct registered_slot {
+			const void * buf;
+			lpf_memslot_t slot;
+			size_t size;
+			bool global;
+
+			registered_slot(
+				const void * buf,
+				const lpf_memslot_t slot,
+				const size_t size,
+				const bool global
+					)
+				: buf(buf)
+				, slot(slot)
+				, size(size)
+				, global(global)
 			{}
 		};
 
@@ -224,7 +243,7 @@ namespace grb {
 				utils::DMapper< uintptr_t > mapper;
 
 				/** Map of globally registered addresses. */
-				std::map< const void* , std::pair< const size_t, const lpf_memslot_t > > registered_slots;
+				std::map< const void* , registered_slot > registered_slots;
 
 				/** Map of registered memory slots to their address. */
 				std::map< const lpf_memslot_t , const void* > global_memslots;

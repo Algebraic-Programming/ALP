@@ -73,7 +73,7 @@ namespace grb {
 				lpf_rc = lpf_rc ? lpf_rc : lpf_sync( data.context, LPF_SYNC_DEFAULT );
 
 				data.signalMemslotTaken();
-				data.registered_slots.insert({ buf, std::make_pair( size, memslot ) });
+				data.registered_slots.insert({ buf, grb::internal::registered_slot(buf, memslot, size, true ) });
 				data.global_memslots.insert({ memslot, buf });
 
 				if( lpf_rc == LPF_SUCCESS ) {
@@ -105,7 +105,7 @@ namespace grb {
 				const auto it0 = data.registered_slots.find( buf );
 				assert( it0 != data.registered_slots.end() );
 
-				memslot = it0->second.second;
+				memslot = it0->second.slot;
 				data.registered_slots.erase( it0 );
 
 				const auto it1 = data.global_memslots.find( memslot );
@@ -163,18 +163,20 @@ namespace grb {
 				{
 					const auto it = data.registered_slots.find( src );
 					assert( it != data.registered_slots.end() );
-					assert( it->second.first >= size );
-					src_memslot = it->second.second;
+					assert( it->second.size >= size );
+					assert( it->second.global );
+					src_memslot = it->second.slot;
 				}
 
 				const auto it = data.registered_slots.find( dst );
 				if( it == data.registered_slots.end() ){
 					lpf_rc = lpf_rc ? lpf_rc : lpf_register_local( data.context, const_cast< void* >( dst ), size, &dst_memslot );
 					data.signalMemslotTaken();
+					data.registered_slots.insert({dst, grb::internal::registered_slot( dst, dst_memslot, size, false )});
 				} else {
-					assert( it->first == dst );
-					assert( it->second.first >= size );
-					dst_memslot = it->second.second;
+					assert( it->second.buf == dst );
+					assert( it->second.size >= size );
+					dst_memslot = it->second.slot;
 				}
 
 				lpf_rc = lpf_rc ? lpf_rc : lpf_get( data.context, src_pid, src_memslot , 0, dst_memslot, 0, size, lpf_attr );
@@ -229,18 +231,21 @@ namespace grb {
 				{
 					const auto it = data.registered_slots.find( dst );
 					assert( it != data.registered_slots.end() );
-					assert( it->second.first >= size );
-					dst_memslot = it->second.second;
+					assert( it->second.buf == dst );
+					assert( it->second.size >= size );
+					assert( it->second.global );
+					dst_memslot = it->second.slot;
 				}
 
 				const auto it = data.registered_slots.find( src );
 				if( it == data.registered_slots.end() ){
 					lpf_rc = lpf_rc ? lpf_rc : lpf_register_local( data.context, const_cast< void* >( src ), size, &src_memslot );
 					data.signalMemslotTaken();
+					data.registered_slots.insert({src, grb::internal::registered_slot( src, src_memslot, size, false )});
 				} else {
-					assert( it->first == src );
-					assert( it->second.first >= size ); // is there enough space?
-					src_memslot = it->second.second;
+					assert( it->second.buf == src );
+					assert( it->second.size >= size ); // is there enough space?
+					src_memslot = it->second.slot;
 				}
 
 				lpf_rc = lpf_rc ? lpf_rc : lpf_put( data.context, src_memslot, 0, dst_pid, dst_memslot, 0, size, lpf_attr  );
