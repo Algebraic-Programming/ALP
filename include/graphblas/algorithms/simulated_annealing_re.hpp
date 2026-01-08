@@ -303,6 +303,7 @@ namespace grb {
 						  << "\n\t n_sweeps = " << n_sweeps
 						  << "\n\t goal = " << goal
 						  << "\n\t use_pt = " << use_pt
+						  << "\n\t seed = " << seed
 						  << std::endl;
 			}
 			assert( grb::size(best_state) == n );
@@ -665,14 +666,46 @@ namespace grb {
 					rc = rc ? rc : grb::set< descr >( dn, mask, state );
 					rc = rc ? rc : grb::foldl< descr | grb::descriptors::invert_mask >( dn, state, static_cast< QType >( -1 ), right_assign_op );
 					rc = rc ? rc : grb::foldl< descr >( dn, h, ring.getMultiplicativeMonoid() );
+					assert( grb::nnz( dn ) == grb::nnz( mask ) );
+#ifndef NDEBUG
+					for( const auto x : dn ){
+						assert( mask[x.first] == 1 );
+						assert( (2*int(state[x.first])-1)*h[x.first] == x.second );
+					}
+					const auto dn0 = dn;
+#endif
 
 					// Choose which changes to accept
 					// ( dn >= 0 ) | ( rand/beta < dn )
 					rc = rc ? rc : grb::foldl< descr >( dn, rand, leq_operator );
 					rc = rc ? rc : grb::set< descr >( accept, dn, mask );
+					assert( grb::nnz( accept ) <= grb::nnz( mask ) );
+#ifndef NDEBUG
+					size_t cnt = 0;
+					for( const auto x : dn0 ){
+						const size_t i = x.first;
+						assert( mask[x.first] == 1 );
+						assert( x.second );
+						if( x.second >= rand[i] ){
+							assert( dn[i] == 1 );
+							assert( accept[i] == 1 );
+							cnt++;
+						}else{
+							assert( dn[i] == 0 );
+						}
+					}
+					assert( grb::nnz( accept ) == cnt );
+#endif
 
 					// new_state = np.where(accept, 1 - old, old)
 					rc = rc ? rc : grb::foldl< descr >( state, accept, static_cast< StateType >( 1 ), neq_operator );
+#ifndef NDEBUG
+					for( const auto x : accept ){
+						const size_t i = x.first;
+						if( x.second ) assert( state0[i] == 1-state[i] );
+						else assert( state0[i] == state[i] );
+					}
+#endif
 					
 					// delta = new - old ==> delta[accept] = 2*new_state[accept]-1
 					rc = rc ? rc : grb::set< descr >( delta, accept, state );
@@ -706,14 +739,14 @@ namespace grb {
 					std::cerr << "\n\t Discrepancy: " << real_delta - delta_energy;
 					std::cerr << std::endl;
 				}
-
 				assert( ISCLOSE(real_delta, delta_energy ) );
 #endif
+
 				return delta_energy;
 			};
 
 			return simulated_annealing_RE(
-					ising_sweep, sweep_data, states, energies, betas, best_state, best_energy, n_sweeps, goal, use_pt
+					ising_sweep, sweep_data, states, energies, betas, best_state, best_energy, n_sweeps, goal, use_pt, seed
 					);
 		}
 
