@@ -154,6 +154,11 @@ add_grb_executables( simulated_annealing_re_ising simulated_annealing_re_ising.c
 	ADDITIONAL_LINK_LIBRARIES test_utils_headers
 )
 
+add_grb_executables( simulated_annealing_re_planted_sol simulated_annealing_re_planted_sol.cpp
+	BACKENDS reference reference_omp hyperdags nonblocking bsp1d
+	ADDITIONAL_LINK_LIBRARIES test_utils_headers
+)
+
 add_grb_executables( gmres gmres.cpp
 	BACKENDS reference reference_omp bsp1d hybrid hyperdags nonblocking
 	ADDITIONAL_LINK_LIBRARIES test_utils_headers
