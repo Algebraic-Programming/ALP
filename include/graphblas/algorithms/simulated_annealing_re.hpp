@@ -600,16 +600,16 @@ namespace grb {
 			constexpr auto dense_descr = descr | grb::descriptors::dense;
 
 			auto sweep_data = std::tie(
-					(const typeof(couplings)&) couplings,
-					(const typeof(local_fields)&) local_fields,
-					(const typeof(masks)&) masks,
+					(const decltype(couplings)&) couplings,
+					(const decltype(local_fields)&) local_fields,
+					(const decltype(masks)&) masks,
 					h,
 					rand,
 					delta,
 					dn,
 					accept,
 					rng,
-					(const typeof(ring)&) ring
+					(const decltype(ring)&) ring
 					);
 
 #ifdef NDEBUG
@@ -619,7 +619,7 @@ namespace grb {
 #endif
 				 grb::Vector< StateType, backend > &state,
 				 const TempType &beta,
-				 typeof(sweep_data) &data
+				 decltype(sweep_data) &data
 			  ){
 				const size_t s 		= spmd<>::pid();
 				(void) s;
