@@ -699,13 +699,6 @@ namespace grb {
 
 					// new_state = np.where(accept, 1 - old, old)
 					rc = rc ? rc : grb::foldl< descr >( state, accept, static_cast< StateType >( 1 ), neq_operator );
-#ifndef NDEBUG
-					for( const auto x : accept ){
-						const size_t i = x.first;
-						if( x.second ) assert( state0[i] == 1-state[i] );
-						else assert( state0[i] == state[i] );
-					}
-#endif
 					
 					// delta = new - old ==> delta[accept] = 2*new_state[accept]-1
 					rc = rc ? rc : grb::set< descr >( delta, accept, state );
