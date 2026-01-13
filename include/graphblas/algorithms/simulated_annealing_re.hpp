@@ -285,6 +285,7 @@ namespace grb {
 			const size_t n_replicas = states.size();
 			const size_t n = grb::size(states[0]);
 			(void) n;
+			(void) n_procs;
 			(void) s;
 
 			grb::RC rc = grb::SUCCESS;
