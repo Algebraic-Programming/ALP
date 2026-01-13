@@ -1308,8 +1308,8 @@ namespace grb {
 
 			template< typename D, typename C >
 			inline C & getCoordinates( Vector< D, reference, C > &x ) noexcept {
-#ifdef _H_GRB_REFERENCE_OMP_VECTOR
-				(void) x._coordinates.checkNumThreadsSeq();
+#if defined(_H_GRB_REFERENCE_OMP_VECTOR) && !defined(NDEBUG)
+				(void) x._coordinates.checkNumThreads();
 #endif
 				return x._coordinates;
 			}
@@ -1318,8 +1318,8 @@ namespace grb {
 			inline const C & getCoordinates(
 				const Vector< D, reference, C > &x
 			) noexcept {
-#ifdef _H_GRB_REFERENCE_OMP_VECTOR
-				(void) x._coordinates.checkNumThreadsSeq();
+#if defined(_H_GRB_REFERENCE_OMP_VECTOR) && !defined(NDEBUG)
+				(void) x._coordinates.checkNumThreads();
 #endif
 				return x._coordinates;
 			}

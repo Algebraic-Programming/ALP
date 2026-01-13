@@ -477,6 +477,31 @@ namespace grb {
 				 * Checks whether a new OpenMP parallel section returns the same number of
 				 * threads that was given during initialisation of this instance.
 				 *
+				 * This variant automatically determines if it is in a sequential or
+				 * (OpenMP) parallel context.
+				 *
+				 * This is intended exclusively for use within a debug mode, as the test
+				 * has the significant overhead of opening up an OpenMP parallel section.
+				 *
+				 * @returns <tt>true</tt> if the number of threads matches that during
+				 *          setup;
+				 * @returns <tt>false</tt> otherwise.
+				 *
+				 * An assertion will trip in debug mode instead of returning <tt>false</tt>,
+				 * however.
+				 */
+				bool checkNumThreads() const noexcept {
+					if( omp_in_parallel() ) {
+						return checkNumThreadsPar();
+					} else {
+						return checkNumThreadsSeq();
+					}
+				}
+
+				/**
+				 * Checks whether a new OpenMP parallel section returns the same number of
+				 * threads that was given during initialisation of this instance.
+				 *
 				 * This variant should be called from a sequential context.
 				 *
 				 * This is intended exclusively for use within a debug mode, as the test
