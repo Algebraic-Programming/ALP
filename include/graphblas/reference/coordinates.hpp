@@ -59,9 +59,32 @@ namespace grb {
 
 		/**
 		 * This class encapsulates everything needed to store a sparse set of 1D
-		 * coordinates. Its use is internal via, e.g., grb::Vector< T, reference, C >.
-		 * All functions needed to rebuild or update sparsity information are
-		 * encapsulated here.
+		 * coordinates.
+		 *
+		 * Its use is internal via, e.g., grb::Vector< T, reference, C >. All
+		 * functions needed to rebuild or update sparsity information are encapsulated
+		 * here.
+		 *
+		 * An instance of this class should always be initialised using one of the
+		 * following functions:
+		 *  -# set
+		 *  -# set_seq
+		 *  -# set_ompPar
+		 *  -# setDense
+		 * The use of both the default constructor and that of setDense does not lead
+		 * to a fully initialised instance and may only be used in restricted use
+		 * cases.
+		 *
+		 * The coordinates are in essense traditional sparse accumulators. There are
+		 * three main arrays in which sparsity information is stored:
+		 *  -# _assigned
+		 *  -# _stack
+		 *  -# _buffer
+		 *
+		 * In the case of shared-memory parallel backends, the size of the buffer
+		 * depends on the number of threads the instance needs to support. (Or
+		 * rather, this is the case for all presently-supported shared-memory parallel
+		 * backends).
 		 */
 		template<>
 		class Coordinates< reference > {
@@ -105,11 +128,7 @@ namespace grb {
 				size_t _buf;
 
 				/** Number of threads for which these coordinates have been initialised. */
-#ifdef _H_GRB_REFERENCE_OMP_COORDINATES
-				const size_t _threads = config::OMP::threads();
-#else
-				const size_t _threads = 1;
-#endif
+				size_t _threads;
 
 				/**
 				 * Increments the number of nonzeroes in the current thread-local stack.
@@ -170,6 +189,7 @@ namespace grb {
 						_n = 0;
 						_cap = 0;
 						_buf = 0;
+						_threads = 0;
 						return;
 					}
 
@@ -189,6 +209,11 @@ namespace grb {
 					// initialise
 					_n = 0;
 					_cap = dim;
+#ifdef _H_GRB_REFERENCE_OMP_COORDINATES
+					_threads = config::OMP::threads();
+#else
+					_threads = 1;
+#endif
 				}
 
 				/**
@@ -377,7 +402,7 @@ namespace grb {
 				/** Base constructor. Creates an empty coordinates list of dimension 0. */
 				inline Coordinates() noexcept :
 					_assigned( nullptr ), _stack( nullptr ), _buffer( nullptr ),
-					_n( 0 ), _cap( 0 ), _buf( 0 )
+					_n( 0 ), _cap( 0 ), _buf( 0 ), _threads( 0 )
 				{}
 
 				/**
@@ -386,12 +411,12 @@ namespace grb {
 				 */
 				inline Coordinates( Coordinates &&x ) noexcept :
 					_assigned( x._assigned ), _stack( x._stack ), _buffer( x._buffer ),
-					_n( x._n ), _cap( x._cap ), _buf( x._buf )
+					_n( x._n ), _cap( x._cap ), _buf( x._buf ), _threads( x._threads )
 				{
 					x._assigned = nullptr;
 					x._stack = nullptr;
 					x._buffer = nullptr;
-					x._n = x._cap = x._buf = 0;
+					x._n = x._cap = x._buf = x._threads = 0;
 				}
 
 				/**
@@ -403,7 +428,7 @@ namespace grb {
 				 */
 				inline Coordinates( const Coordinates &x ) noexcept :
 					_assigned( x._assigned ), _stack( x._stack ), _buffer( x._buffer ),
-					_n( x._n ), _cap( x._cap ), _buf( x._buf )
+					_n( x._n ), _cap( x._cap ), _buf( x._buf ), _threads( x._threads )
 				{
 					// self-assignment is a programming error
 					assert( this != &x );
@@ -433,9 +458,10 @@ namespace grb {
 					_n = x._n;
 					_cap = x._cap;
 					_buf = x._buf;
+					_threads = x._threads;
 					x._assigned = NULL;
 					x._stack = x._buffer = NULL;
-					x._n = x._cap = x._buf = 0;
+					x._n = x._cap = x._buf = x._threads = 0;
 					return *this;
 				}
 
@@ -447,8 +473,68 @@ namespace grb {
 					// blocks are not managed by this class)
 				}
 
-				size_t requiredThreadsForUpdate() const noexcept {
-					return _threads;
+				/**
+				 * Checks whether a new OpenMP parallel section returns the same number of
+				 * threads that was given during initialisation of this instance.
+				 *
+				 * This variant should be called from a sequential context.
+				 *
+				 * This is intended exclusively for use within a debug mode, as the test
+				 * has the significant overhead of opening up an OpenMP parallel section.
+				 *
+				 * @returns <tt>true</tt> if the number of threads matches that during
+				 *          setup;
+				 * @returns <tt>false</tt> otherwise.
+				 *
+				 * An assertion will trip in debug mode instead of returning <tt>false</tt>,
+				 * however.
+				 */
+				bool checkNumThreadsSeq() const noexcept {
+					const size_t actualThreads = config::OMP::threads();
+					if( actualThreads != _threads ) {
+						std::cerr << "\t Error: coordinates instance was set for " << _threads
+							<< " threads, however, current OpenMP parallel region reports "
+							<< actualThreads << " threads instead!\n";
+#ifndef NDEBUG
+						const bool num_omp_threads_has_changed = false;
+						assert( num_omp_threads_has_changed );
+#endif
+						return false;
+					}
+					return true;
+				}
+
+				/**
+				 * Checks whether a new OpenMP parallel section returns the same number of
+				 * threads that was given during initialisation of this instance.
+				 *
+				 * This variant should be called from a sequential context.
+				 *
+				 * This is intended for use within a debug mode, but could conceivably be
+				 * used defensively in performance mode as well (there is no significant
+				 * performance overhead for this variant).
+				 *
+				 * @returns <tt>true</tt> if the number of threads matches that during
+				 *          setup;
+				 * @returns <tt>false</tt> otherwise.
+				 *
+				 * An assertion will trip in debug mode instead of returning <tt>false</tt>,
+				 * however.
+				 */
+				bool checkNumThreadsPar() const noexcept {
+					const size_t actualThreads =
+						static_cast< size_t >( omp_get_num_threads() );
+					if( actualThreads != _threads ) {
+						std::cerr << "\t Error: coordinates instance was set for " << _threads
+							<< " threads, however, current OpenMP parallel region reports "
+							<< actualThreads << " threads instead!\n";
+#ifndef NDEBUG
+						const bool num_omp_threads_has_changed = false;
+						assert( num_omp_threads_has_changed );
+#endif
+						return false;
+					}
+					return true;
 				}
 
 				/**
@@ -468,8 +554,9 @@ namespace grb {
 				}
 
 				/**
-				 * Sets the data structure. A call to this function sets the number of
-				 * coordinates to zero.
+				 * Sets the data structure.
+				 *
+				 * A call to this function sets the number of coordinates to zero.
 				 *
 				 * @param[in] arr Pointer to an array of size #arraySize. This array is
 				 *                is managed by a container outside this class (and thus
@@ -481,6 +568,8 @@ namespace grb {
 				 *                managed by a container outside this class (and thus will
 				 *                not be freed on destruction of this instance).
 				 * @param[in] dim Size (dimension) of this vector, in number of elements.
+				 * @param[in] threads The number of threads that \a buf has been constructed
+				 *                    for.
 				 *
 				 * The memory area \a raw will be reset to reflect an empty coordinate set.
 				 *
@@ -576,6 +665,7 @@ namespace grb {
 					_n = dim;
 					_cap = dim;
 					_buf = 0;
+					_threads = 0;
 				}
 
 				/**

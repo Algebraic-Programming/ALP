@@ -1308,13 +1308,8 @@ namespace grb {
 
 			template< typename D, typename C >
 			inline C & getCoordinates( Vector< D, reference, C > &x ) noexcept {
-#if defined(_H_GRB_REFERENCE_OMP_VECTOR) && !defined(NDEBUG)
-				if( x._coordinates.requiredThreadsForUpdate() != config::OMP::maxThreads() ) {
-					#pragma omp critical
-						std::cerr << "   " << x._coordinates.requiredThreadsForUpdate()
-							<< " != " << config::OMP::maxThreads() << "\n";
-				}
-				assert( x._coordinates.requiredThreadsForUpdate() == config::OMP::maxThreads() );
+#ifdef _H_GRB_REFERENCE_OMP_VECTOR
+				(void) x._coordinates.checkNumThreadsSeq();
 #endif
 				return x._coordinates;
 			}
@@ -1323,6 +1318,9 @@ namespace grb {
 			inline const C & getCoordinates(
 				const Vector< D, reference, C > &x
 			) noexcept {
+#ifdef _H_GRB_REFERENCE_OMP_VECTOR
+				(void) x._coordinates.checkNumThreadsSeq();
+#endif
 				return x._coordinates;
 			}
 
