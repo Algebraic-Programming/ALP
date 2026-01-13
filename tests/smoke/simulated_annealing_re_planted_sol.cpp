@@ -2,7 +2,7 @@
 #include <vector>
 #include <random>
 #include <algorithm>
-#include <cmath>
+#include <cstdlib>
 #include <cassert>
 
 #include <graphblas/algorithms/simulated_annealing_re.hpp>
@@ -12,10 +12,25 @@ using QType = float;
 using StateType = int8_t;
 using EnergyType = double;
 
+constexpr EnergyType EPS = 1e-6;
+
+template< typename T >
+inline bool ISCLOSE( const T a, const T b ){
+	return (std::abs<T>(a-b) < EPS) || (std::abs<T>((a-b)/a) < EPS);
+}
+
+struct data_in {
+	size_t n = 18;
+	size_t degree = 5;
+	size_t n_replicas = 8;
+	size_t nsweeps = 5;
+	int seed = 0;
+};
+
 template< grb::Backend backend >
 void generate_sparse_planted_qubo(
-    int n,
-    int degree,
+    const size_t n,
+    const size_t degree,
     std::pair< QType, QType > weight_range,
     grb::Vector< QType, backend >  &Q_diag,
     grb::Matrix< QType, backend > &Q_off,
@@ -127,7 +142,7 @@ bool brute_force_check(
     const grb::Vector< StateType, backend > &x_star,
     double E_star
 ) {
-    const int n = grb::size( x_star );
+    const size_t n = grb::size( x_star );
     EnergyType min_energy = 1e7;
 	std::vector< grb::Vector< StateType > > argmins;
 	assert( n < 8 * sizeof( int64_t ) );
@@ -135,7 +150,7 @@ bool brute_force_check(
 	grb::Vector< double, backend > tmp ( n );
 	grb::Vector< StateType, backend > x ( n );
     for (int64_t bits = 0; bits < (1 << n); ++bits) {
-        for (int i = 0; i < n; ++i) {
+        for (size_t i = 0; i < n; ++i) {
 			grb::setElement( x, (bits >> i) & 1, i);
         }
         double E = get_energy( Q_off, Q_diag, x, tmp );
@@ -167,11 +182,12 @@ bool brute_force_check(
 	return planted_ok;
 }
 
-void grbProgram( const size_t&n, grb::RC &rc ) {
+void grbProgram( const struct data_in &in, grb::RC &rc ) {
 	rc = grb::SUCCESS;
-    const int degree = 4;
-    const std::pair< QType, QType > weight_range = {1.0, 1.0};
-    const unsigned int seed = 1;
+	const auto n = in.n;
+    const int degree = in.degree;
+    const std::pair< QType, QType > weight_range = {0.1, 1.0};
+    const unsigned int seed = in.seed;
 
     grb::Vector< QType > Q_diag ( n );
     grb::Matrix< QType > Q_off ( n, n );
@@ -179,17 +195,23 @@ void grbProgram( const size_t&n, grb::RC &rc ) {
     double E_star = 0.0;
 
     generate_sparse_planted_qubo( n, degree, weight_range, Q_diag, Q_off, x_star, E_star, seed );
+	std::cout << "Optimal value: " << -E_star << std::endl;
 
-    const bool optimal = brute_force_check(Q_diag, Q_off, x_star, E_star);
-	// assert( optimal );
+	if( n < 22 ){
+		const bool optimal = brute_force_check(Q_diag, Q_off, x_star, E_star);
+		if( !optimal ){
+			rc = grb::FAILED;
+			std::cerr << "Constructed solution is not optimal." << std::endl;
+		}
+	}
 
-	std::cout << "------------------ Test with SA-RE ----------------------" << std::endl;
+	// std::cout << "------------------ Test with SA-RE ----------------------" << std::endl;
 	grb::Vector< StateType > best_state ( n );
 	EnergyType best_energy = 42;
 	constexpr bool use_pt = true;
 	constexpr EnergyType reference_energy = 0;
-	constexpr size_t nsweeps = 100;
-	constexpr size_t n_replicas = 16;
+	const size_t nsweeps = in.nsweeps;
+	const size_t n_replicas = in.n_replicas;
 	const size_t s = grb::spmd<>::pid();
 
     std::minstd_rand rng ( seed + s ); // rng or std::mt19937
@@ -227,16 +249,35 @@ void grbProgram( const size_t&n, grb::RC &rc ) {
 	);
 	assert( get_energy( Q_off, Q_diag, best_state, tmp_energy ) == best_energy );
 	std::cout << "Optimized SA-RE value: " << best_energy << std::endl;
+	std::cout << "Absolute error: " << best_energy+E_star << std::endl;
+	std::cout << "Relative error: " << (best_energy+E_star)/best_energy << std::endl;
 
-	if( best_energy != -E_star ){
+
+	if( !ISCLOSE(best_energy, -E_star) ){
 		rc = grb::FAILED;
 	}
 }
 
-int main() {
-	const size_t in = 18;
-	grb::RC out;
+int main( int argc, char **argv ){
+	struct data_in in;
+	in.n = argc > 1 ? atoi(argv[1]) : 18 ;
+	in.degree = argc > 2 ? atoi(argv[2]) : 5 ;
+	in.n_replicas = argc > 3 ? atoi(argv[3]) : 8 ;
+	in.nsweeps = argc > 4 ? atoi(argv[4]) : 5 ;
+	in.seed = argc > 5 ? atoi(argv[5]) : 0 ;
 
+	if( in.n == 0 || in.degree == 0 || in.n_replicas == 0 ){
+		std::cout << "Usage: " << std::endl;
+		std::cout << argv[0] << " [n] [degree] [n_replicas] [nsweeps] [seed]" << std::endl;
+		exit( 0 );
+	}
+	std::cout << "n = " << in.n << std::endl;
+	std::cout << "degree = " << in.degree << std::endl;
+	std::cout << "n_replicas = " << in.n_replicas << std::endl;
+	std::cout << "nsweeps = " << in.nsweeps << std::endl;
+	std::cout << "seed = " << in.seed << std::endl;
+
+	grb::RC out;
 	grb::Launcher< grb::AUTOMATIC > launcher;
 	grb::RC rc = launcher.exec( &grbProgram, in, out, true );
 	if ( rc != grb::SUCCESS ) {
