@@ -515,6 +515,11 @@ namespace grb {
 				 * however.
 				 */
 				bool checkNumThreadsSeq() const noexcept {
+					// guard against (valid) use of non-initialised coordinates
+					if( _threads == 0 ) {
+						return true;
+					}
+					// then, get actual number of threads now active and compare
 					const size_t actualThreads = config::OMP::threads();
 					if( actualThreads != _threads ) {
 						std::cerr << "\t Error: coordinates instance was set for " << _threads
@@ -547,6 +552,11 @@ namespace grb {
 				 * however.
 				 */
 				bool checkNumThreadsPar() const noexcept {
+					// guard against (valid) use of non-initialised coordinates
+					if( _threads == 0 ) {
+						return true;
+					}
+					// then, get actual number of threads now active and compare
 					const size_t actualThreads =
 						static_cast< size_t >( omp_get_num_threads() );
 					if( actualThreads != _threads ) {
