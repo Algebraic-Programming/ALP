@@ -653,6 +653,9 @@ namespace grb {
 				/** The maximum value of #position. */
 				size_t max;
 
+				/** The size of the vector (not necessarily equal to \a max). */
+				size_t n;
+
 				/** The local process ID. */
 				const size_t s;
 
@@ -689,10 +692,14 @@ namespace grb {
 					// if not, go to the next valid value:
 					if( container->_coordinates.isEmpty() ) {
 						max = 0;
-					} else if( container->_coordinates.isDense() ) {
-						max = container->_coordinates.size();
+						n = 0;
 					} else {
-						max = container->_coordinates.nonzeroes();
+						n = container->_coordinates.size();
+						if( container->_coordinates.isDense() ) {
+							max = n;
+						} else {
+							max = container->_coordinates.nonzeroes();
+						}
 					}
 					if( position < max ) {
 						setValue();
@@ -712,7 +719,7 @@ namespace grb {
 				 * \note If the \a other iterator is not derived from the same container
 				 *       as this iterator, the result is undefined.
 				 */
-				bool equal( const ConstIterator & other ) const noexcept {
+				bool equal( const ConstIterator &other ) const noexcept {
 					return other.position == position;
 				}
 
@@ -729,7 +736,7 @@ namespace grb {
 					}
 					assert( container->_coordinates.assigned( index ) );
 					const size_t global_index = ActiveDistribution::local_index_to_global(
-						index, size( *container ), s, P );
+						index, n, s, P );
 #ifdef _DEBUG
 					std::cout << "\t ConstIterator at process " << s << " / " << P
 						<< " translated index " << index << " to " << global_index << "\n";
@@ -742,7 +749,7 @@ namespace grb {
 
 				/** Default constructor. */
 				ConstIterator() noexcept :
-					container( nullptr ), position( 0 ), max( 0 ),
+					container( nullptr ), position( 0 ), max( 0 ), n( 0 ),
 					s( grb::spmd< spmd_backend >::pid() ),
 					P( grb::spmd< spmd_backend >::nprocs() )
 				{}
@@ -751,7 +758,7 @@ namespace grb {
 				ConstIterator( const ConstIterator &other ) noexcept :
 					container( other.container ),
 					value( other.value ), position( other.position ),
-					max( other.max ),
+					max( other.max ), n( other.n ),
 					s( other.s ), P( other.P )
 				{}
 
@@ -762,6 +769,7 @@ namespace grb {
 					std::swap( value, other.value );
 					std::swap( position, other.position );
 					std::swap( max, other.max );
+					std::swap( n, other.n );
 				}
 
 				/** Copy assignment. */
@@ -770,6 +778,7 @@ namespace grb {
 					value = other.value;
 					position = other.position;
 					max = other.max;
+					n = other.n;
 					assert( s == other.s );
 					assert( P == other.P );
 					return *this;
@@ -781,6 +790,7 @@ namespace grb {
 					std::swap( value, other.value );
 					std::swap( position, other.position );
 					std::swap( max, other.max );
+					std::swap( n, other.n );
 					assert( s == other.s );
 					assert( P == other.P );
 					return *this;
