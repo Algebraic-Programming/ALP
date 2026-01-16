@@ -56,6 +56,10 @@ EnergyType get_energy(
 	EnergyType energy = 0.0;
 	constexpr auto dense_descr = descr | grb::descriptors::dense;
 
+	assert( grb::ncols( couplings ) == grb::size( local_fields ) );
+	assert( grb::nrows( couplings ) == grb::size( state ) );
+	assert( grb::size( local_fields ) == grb::size( state ) );
+
 	rc = rc ? rc : grb::resize( tmp, n );
 	rc = rc ? rc : grb::set< descr >( tmp, 0.0 );
 	rc = rc ? rc : grb::mxv< dense_descr >( tmp, couplings, state, ring );
