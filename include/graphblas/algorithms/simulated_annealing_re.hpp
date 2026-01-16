@@ -542,12 +542,20 @@ namespace grb {
 			(void) s;
 			grb::RC rc = grb::SUCCESS;
 
+#ifndef NDEBUG
 			assert( grb::nnz(states[0]) == n ); // state is dense
 			assert( states.size() == n_replicas );
 			// assert( grb::is_symmetric( couplings ) );
+			for( const auto &state : states ){
+				for( size_t i = 0; i < n; ++i ){
+					assert( (state[i] == static_cast< StateType >( 0 )) ||
+							(state[i] == static_cast< StateType >( 1 )) );
+				}
+			}
 
 			assert( empty_local_fields || ( grb::size( local_fields ) == n ) );
 			assert( empty_local_fields || ( grb::nnz(local_fields) == n ) );
+#endif
 			EnergyType energy;
 			grb::Vector< EnergyType, backend > tmp_calc_energy ( n );
 
@@ -671,7 +679,8 @@ namespace grb {
 #ifndef NDEBUG
 					for( const auto x : dn ){
 						assert( mask[x.first] == 1 );
-						assert( (2*int(state[x.first])-1)*h[x.first] == x.second );
+						assert( ( (state[x.first] == 1) && ( x.second  == h[x.first]) ) ||
+								( (state[x.first] == 0) && ( x.second  == -h[x.first]) ) );
 					}
 					const auto dn0 = dn;
 #endif
