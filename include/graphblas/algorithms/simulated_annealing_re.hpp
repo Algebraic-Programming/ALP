@@ -568,6 +568,10 @@ namespace grb {
 				grb::RC rc = grb::SUCCESS;
 				constexpr auto dense_descr = descr | grb::descriptors::dense;
 
+				assert( empty_local_fields || grb::size( local_fields ) == grb::size( state ) );
+				assert( grb::ncols( couplings ) == grb::size( state ) );
+				assert( grb::nrows( couplings ) == grb::size( state ) );
+
 				grb::set( tmp_calc_energy, static_cast<EnergyType>( 0.0 ) );
 				rc = rc ? rc : grb::mxv< dense_descr >( tmp_calc_energy, couplings, state, ring );
 				rc = rc ? rc : grb::foldl< dense_descr >( tmp_calc_energy, static_cast< EnergyType >( 0.5 ),
