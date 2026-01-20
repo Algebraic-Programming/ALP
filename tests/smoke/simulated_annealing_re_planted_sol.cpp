@@ -1,4 +1,5 @@
 #include <iostream>
+#include <fstream>
 #include <vector>
 #include <random>
 #include <algorithm>
@@ -7,6 +8,7 @@
 #include <cassert>
 
 #include <graphblas/algorithms/simulated_annealing_re.hpp>
+#include <utils/print_vec_mat.hpp>
 #include <graphblas.hpp>
 
 using QType = double;
@@ -76,20 +78,19 @@ template< grb::Backend backend >
 void generate_random_qubo(
     const size_t n,
     const size_t k,
-    grb::Vector< QType, backend >  &Q_diag,
-    grb::Matrix< QType, backend > &Q_off,
+    std::map< std::pair< size_t, size_t >, QType > &Q,
+    std::vector< QType > &Qdiag,
     grb::Vector< StateType, backend >  &x_star,
     unsigned int seed = 0
 ) {
 	grb::RC rc = grb::SUCCESS;
-	rc = rc ? rc : grb::clear( Q_diag );
-	rc = rc ? rc : grb::clear( Q_off );
+
+	grb::Vector< QType > Q_diag ( n*k );
+	grb::Matrix< QType > Q_off ( n*k, n*k );
 
 	std::minstd_rand rng( seed );
 	std::uniform_real_distribution< QType > weight_dist( -1, 1 );
 
-	std::map< std::pair<size_t,size_t>, QType > Q;
-	std::vector< QType > Qdiag ( n*k, 0 );
 	for(size_t kk = 0; kk < k ; ++kk){
 		for (size_t i = 0; i < n; ++i) {
 			for (size_t j = i; j < n; ++j) {
@@ -154,18 +155,13 @@ void generate_sparse_planted_qubo(
     grb::Matrix< QType, backend > &Q_off,
     const grb::Vector< StateType, backend > &x_star,
     double &E_star,
+	std::map< std::pair<size_t,size_t>, QType > &Q,
+	std::vector< QType > &Qdiag,
     unsigned int seed = 0
 ) {
 	std::minstd_rand rng( seed );
 	std::uniform_real_distribution< QType > weight_dist(weight_range.first, weight_range.second);
-
-	grb::RC rc = grb::SUCCESS;
-	rc = rc ? rc : grb::clear( Q_diag );
-	rc = rc ? rc : grb::clear( Q_off );
 	E_star = 0.0;
-
-	std::map< std::pair<size_t,size_t>, QType > Q;
-	std::vector< QType > Qdiag ( n, 0 );
 
     for (size_t i = 0; i < n; ++i) {
 		std::vector< size_t > neighbors;
@@ -179,7 +175,7 @@ void generate_sparse_planted_qubo(
             if (j < i) continue;
 
             const double w = weight_dist( rng );
-            const int b = x_star[i] ^ x_star[j];
+            const auto b = x_star[i] ^ x_star[j];
 
             if (b == 0) {
                 Qdiag[i] += w;
@@ -203,6 +199,10 @@ void generate_sparse_planted_qubo(
 		v.push_back( x.second );
 	}
 
+	grb::RC rc = grb::SUCCESS;
+	rc = rc ? rc : grb::clear( Q_diag );
+	rc = rc ? rc : grb::clear( Q_off );
+
 	rc = rc ? rc : grb::buildVector( Q_diag, Qdiag.begin(), Qdiag.end(), grb::SEQUENTIAL );
 	rc = rc ? rc : grb::buildMatrixUnique( Q_off,
 			i.begin(), i.end(),
@@ -210,6 +210,100 @@ void generate_sparse_planted_qubo(
 			v.begin(), v.end(),
 			grb::SEQUENTIAL );
 	assert( rc == grb::SUCCESS );
+}
+
+template< grb::Backend backend >
+void random_permute(
+		std::map< std::pair<size_t,size_t>, QType > &Q,
+		std::vector< QType > &Qdiag,
+		grb::Vector< StateType, backend > &x_star,
+		unsigned int seed = 0
+	){
+	const size_t n = grb::size(x_star);
+	std::minstd_rand rng ( seed );
+	std::vector< size_t > perm ( n );
+	grb::RC rc = grb::SUCCESS;
+
+// --------------------------------------------------------------
+#ifndef NDEBUG
+	std::vector< size_t > i, j;
+	std::vector< QType > v;
+	grb::Vector< QType > tmp ( n );
+	grb::Vector< QType > Qvec ( n );
+	grb::Matrix< QType > Qmat ( n, n );
+
+	for(const auto &x : Q ){
+		i.push_back( x.first.first );
+		j.push_back( x.first.second );
+		v.push_back( x.second );
+	}
+	grb::clear( Qvec );
+	grb::clear( Qmat );
+
+	rc = rc ? rc : grb::buildVector( Qvec, Qdiag.begin(), Qdiag.end(), grb::SEQUENTIAL );
+	rc = rc ? rc : grb::buildMatrixUnique( Qmat,
+			i.begin(), i.end(),
+			j.begin(), j.end(),
+			v.begin(), v.end(),
+			grb::SEQUENTIAL );
+
+	const auto old_en = get_energy( Qmat, Qvec, x_star, tmp );
+#endif
+// --------------------------------------------------------------
+	for( size_t i = 0; i < n ; ++i ){
+		perm[i] = i;
+	}
+	std::shuffle( perm.begin(), perm.end(), rng );
+
+	std::vector< QType > diagtmp ( n );
+	for( size_t i = 0; i < n ; ++i ){
+		diagtmp[perm[i]] = Qdiag[i];
+	}
+	Qdiag = std::move( diagtmp );
+
+	std::vector< StateType > tmpstate ( n );
+	for( size_t i = 0; i < n ; ++i ){
+		tmpstate[perm[i]] = x_star[i];
+	}
+	rc = rc ? rc : grb::clear( x_star );
+	rc = rc ? rc : grb::buildVector( x_star,
+			tmpstate.begin(), tmpstate.end(),
+			grb::SEQUENTIAL );
+
+	assert( rc == grb::SUCCESS );
+
+	std::map< std::pair< size_t, size_t >, QType> Qtmp;
+	std::swap( Q, Qtmp );
+	for( const auto &x : Qtmp ){
+		Q[{perm[x.first.first], perm[x.first.second]}] = x.second;
+	}
+// --------------------------------------------------------------
+#ifndef NDEBUG
+	i.clear();
+	j.clear();
+	v.clear();
+
+	for(const auto &x : Q ){
+		i.push_back( x.first.first );
+		j.push_back( x.first.second );
+		v.push_back( x.second );
+	}
+	grb::clear( Qvec );
+	grb::clear( Qmat );
+
+	rc = rc ? rc : grb::buildVector( Qvec, Qdiag.begin(), Qdiag.end(), grb::SEQUENTIAL );
+	rc = rc ? rc : grb::buildMatrixUnique( Qmat,
+			i.begin(), i.end(),
+			j.begin(), j.end(),
+			v.begin(), v.end(),
+			grb::SEQUENTIAL );
+
+	const auto new_en = get_energy( Qmat, Qvec, x_star, tmp );
+	std::cerr << old_en << "  " << new_en << std::endl;
+
+	assert( rc == grb::SUCCESS );
+	assert( ISCLOSE( old_en, new_en ) );
+#endif
 }
 
 template< grb::Backend backend >
@@ -271,21 +365,18 @@ void grbProgram( const struct data_in &in, grb::RC &rc ) {
     const std::pair< QType, QType > weight_range = {0.1, 1.0};
     const unsigned int seed = in.seed;
 
-    grb::Vector< QType > Q_diag ( n*k ), Q_diag_rand ( n*k );
-    grb::Matrix< QType > Q_off ( n*k, n*k ), Q_off_rand ( n*k, n*k );
+    std::map< std::pair< size_t, size_t >, QType > Q_off_tmp;
+    std::vector< QType > Q_diag_tmp ( n*k, 0 );
+
+    grb::Vector< QType > Q_diag ( n*k );
+    grb::Matrix< QType > Q_off ( n*k, n*k );
 	grb::Vector< StateType > x_star ( n*k );
     double opt_energy = 0.0;
 
-	generate_random_qubo( n, k, Q_diag_rand, Q_off_rand, x_star, seed );
-    // generate_sparse_planted_qubo( n, degree, weight_range, Q_diag, Q_off, x_star, opt_energy, seed );
-
-	const grb::Monoid< grb::operators::add<QType>, grb::identities::zero > addMonoid;
-	// rc = rc ? rc :grb::foldl( Q_diag, Q_diag_rand, addMonoid );
-	// rc = rc ? rc :grb::foldl( Q_off, Q_off_rand, addMonoid );
+	generate_random_qubo( n, k, Q_off_tmp, Q_diag_tmp, x_star, seed );
+	random_permute( Q_off_tmp, Q_diag_tmp, x_star, seed );
+    generate_sparse_planted_qubo( n*k, degree, weight_range, Q_diag, Q_off, x_star, opt_energy, Q_off_tmp, Q_diag_tmp, seed );
 	
-	rc = rc ? rc : grb::set( Q_diag, Q_diag_rand );
-	// rc = rc ? rc : grb::set( Q_off, Q_off_rand );
-	std::swap( Q_off, Q_off_rand );
 	assert( rc == grb::SUCCESS );
 
     grb::Vector< QType > tmp ( n*k );
@@ -294,6 +385,22 @@ void grbProgram( const struct data_in &in, grb::RC &rc ) {
     opt_energy = get_energy( Q_off, Q_diag, x_star, tmp );
 
 	std::cout << "Optimal value: " << opt_energy << std::endl;
+
+	// write matrix to file
+
+	std::ofstream outQdiag ("out_vec.txt");
+	size_t i = 0;
+	for( const auto &x : Q_diag ){
+		while( i < x.first ){ outQdiag << "\n"; ++i; }
+		outQdiag << x.second;
+	}
+	outQdiag.close();
+
+	std::ofstream outQ ("out_matr.txt");
+	for( const auto &x : Q_off_tmp ){
+		outQ << x.first.first << " " << x.first.second << " " << x.second << "\n";
+	}
+	outQ.close();
 
 	if( n*k < 22 ){
 		const bool optimal = brute_force_check(Q_diag, Q_off, x_star, opt_energy);
