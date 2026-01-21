@@ -49,11 +49,6 @@ namespace grb {
 		template< typename C >
 		class is_complex {
 
-			static_assert(
-				std::is_floating_point< C >::value,
-				"is_complex: C is not a floating point type"
-			);
-
 			public:
 
 				/**
@@ -115,8 +110,8 @@ namespace grb {
 		{
 
 			static_assert(
-				std::is_floating_point< T >::value,
-				"is_complex: T is not a floating point type"
+				std::is_arithmetic< T >::value,
+				"is_complex: C is not a numeric (arithmetic) type"
 			);
 
 			public:

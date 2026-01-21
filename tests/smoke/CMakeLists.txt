@@ -185,6 +185,90 @@ add_grb_executables( kcore_decomposition kcore_decomposition.cpp
 	BACKENDS reference reference_omp hyperdags nonblocking bsp1d hybrid
 )
 
+add_grb_executables( alp_gemm alp_gemm.cpp
+	BACKENDS alp_reference
+)
+
+add_grb_executables( alp_cholesky alp_cholesky.cpp
+	BACKENDS alp_reference alp_dispatch
+)
+
+# add_grb_executables( alp_cholesky_complex alp_cholesky.cpp
+# 	BACKENDS alp_reference
+# 	COMPILE_DEFINITIONS _COMPLEX
+# )
+
+add_grb_executables( alp_zhetrd alp_zhetrd.cpp
+        BACKENDS alp_reference
+)
+
+add_grb_executables( alp_zhetrd_complex alp_zhetrd.cpp
+        BACKENDS alp_reference
+        COMPILE_DEFINITIONS _COMPLEX
+)
+
+add_grb_executables( alp_zgeqrf alp_zgeqrf.cpp
+        BACKENDS alp_reference
+)
+
+add_grb_executables( alp_zgeqrf_complex alp_zgeqrf.cpp
+        BACKENDS alp_reference
+	COMPILE_DEFINITIONS _COMPLEX
+)
+
+add_grb_executables( alp_zgesvd alp_zgesvd.cpp
+        BACKENDS alp_reference
+)
+
+add_grb_executables( alp_zgesvd_complex alp_zgesvd.cpp
+        BACKENDS alp_reference
+	COMPILE_DEFINITIONS _COMPLEX
+)
+
+add_grb_executables( alp_zgetrf alp_zgetrf.cpp
+        BACKENDS alp_reference
+)
+
+add_grb_executables( alp_zgetrf_complex alp_zgetrf.cpp
+        BACKENDS alp_reference
+	COMPILE_DEFINITIONS _COMPLEX
+)
+
+add_grb_executables( alp_dstedc alp_stedc.cpp
+        BACKENDS alp_reference
+)
+
+add_grb_executables( alp_backsubstitution alp_backsubstitution.cpp
+        BACKENDS alp_reference
+)
+
+add_grb_executables( alp_backsubstitution_complex alp_backsubstitution.cpp
+        BACKENDS alp_reference
+	COMPILE_DEFINITIONS _COMPLEX
+)
+
+add_grb_executables( alp_forwardsubstitution alp_forwardsubstitution.cpp
+        BACKENDS alp_reference
+)
+
+add_grb_executables( alp_forwardsubstitution_complex alp_forwardsubstitution.cpp
+        BACKENDS alp_reference
+	COMPILE_DEFINITIONS _COMPLEX
+)
+
+add_grb_executables( alp_syevd alp_zheevd.cpp
+        BACKENDS alp_reference
+)
+
+add_grb_executables( alp_potri alp_potri.cpp
+        BACKENDS alp_reference
+)
+
+add_grb_executables( alp_potri_complex alp_potri.cpp
+        BACKENDS alp_reference
+	COMPILE_DEFINITIONS _COMPLEX
+)      
+
 # targets to list and build the test for this category
 get_property( smoke_tests_list GLOBAL PROPERTY tests_category_smoke )
 add_custom_target( "list_tests_category_smoke"
@@ -215,3 +299,39 @@ add_custom_target( tests_smoke
 # custom target "smoketests" just to keep old naming
 add_custom_target( smoketests DEPENDS tests_smoke )
 
+set( ALP_SCRIPTS_COMMON_ARGS "--backends" )
+
+foreach( b ${AVAILABLE_BACKENDS} )
+	string( FIND ${b} "alp" alp_pos_in_b )
+	# message("alp_pos_in_b = ${alp_pos_in_b}")
+	if( "${alp_pos_in_b}" STREQUAL "-1" )
+		continue()
+	endif()
+	# message("Adding ALP backend ${b} to the test list")
+	get_property( bt GLOBAL PROPERTY tests_backend_${b} )
+	list( APPEND ALP_TEST_BACKENDS "${bt}" )
+	list( APPEND ALP_SCRIPTS_COMMON_ARGS ${b} )
+endforeach()
+
+# message("ALP backends enabled for testing: ${ALP_SCRIPTS_COMMON_ARGS}")
+# message("Collected ALP test targets: ${ALP_TEST_BACKENDS}")
+
+set( alp_smoke_tests_list ${ALP_TEST_BACKENDS})
+list(APPEND S_minus_T ${ALP_TEST_BACKENDS})
+list(REMOVE_ITEM S_minus_T ${smoke_tests_list})
+list(REMOVE_ITEM alp_smoke_tests_list "${S_minus_T}" )
+
+add_custom_target( smoketests_alp
+	COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/smoketests.sh
+		${ALP_SCRIPTS_COMMON_ARGS}
+		"--test-bin-dir" "\"${CMAKE_CURRENT_BINARY_DIR}\""
+		"--test-out-dir" "\"${CMAKE_CURRENT_BINARY_DIR}/output\""
+		"--output-verification-dir" "\"${CMAKE_CURRENT_SOURCE_DIR}/output_verification\""
+		"--test-data-dir" "\"${CMAKE_CURRENT_SOURCE_DIR}/test_data\""
+
+	WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}"
+	DEPENDS ${alp_smoke_tests_list} # add dependency on this target
+	                                   # to automatically build before running
+	COMMAND_EXPAND_LISTS
+	USES_TERMINAL
+)

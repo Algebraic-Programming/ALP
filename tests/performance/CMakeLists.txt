@@ -111,6 +111,14 @@ add_grb_executables( driver_spmspm spmspm.cpp
 	ADDITIONAL_LINK_LIBRARIES test_utils_headers
 )
 
+add_grb_executables( alp_cholesky_perf alp_cholesky.cpp
+	BACKENDS alp_reference alp_dispatch
+)
+
+add_grb_executables( alp_mxm_perf alp_mxm.cpp
+	BACKENDS alp_reference alp_dispatch alp_omp
+)
+
 # targets to list and build the test for this category
 get_property( performance_tests_list GLOBAL PROPERTY tests_category_performance )
 add_custom_target( "list_tests_category_performance"

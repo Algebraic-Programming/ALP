@@ -37,10 +37,10 @@
  #include "graphblas/nonblocking/matrix.hpp"
 #endif
 #ifdef _GRB_WITH_LPF
- #include <graphblas/bsp1d/matrix.hpp>
+#include <graphblas/bsp1d/matrix.hpp>
 #endif
 #ifdef _GRB_WITH_BANSHEE
- #include <graphblas/banshee/matrix.hpp>
+#include <graphblas/banshee/matrix.hpp>
 #endif
 
 // specify default only if requested during compilation
@@ -54,7 +54,8 @@ namespace grb {
 		typename NonzeroIndexType = config::NonzeroIndexType
 	>
 	class Matrix;
-}
+
+} // namespace grb
 #endif
 
 #endif // end ``_H_GRB_MATRIX''
