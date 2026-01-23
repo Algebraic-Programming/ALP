@@ -89,8 +89,7 @@ void generate_random_qubo(
 	grb::Matrix< QType > Q_off ( n*k, n*k );
 
 	std::minstd_rand rng( seed );
-	std::uniform_real_distribution< QType > weight-1.32978  -0.22213
-_dist( -1, 1 );
+	std::uniform_real_distribution< QType > weight_dist( -1, 1 );
 
 	for(size_t kk = 0; kk < k ; ++kk){
 		for (size_t i = 0; i < n; ++i) {
