@@ -89,7 +89,7 @@ typedef grb::utils::Singleton<
 namespace test_data {
     constexpr size_t n = 16;
     constexpr size_t nsweeps = 2;
-    constexpr size_t n_replicas = 3;
+    constexpr size_t n_replicas = 4;
     constexpr bool use_pt = true; 
     constexpr unsigned seed = 8;
 
@@ -150,6 +150,7 @@ struct input {
 	bool direct;
     size_t rep = 0;
     size_t outer = 1;
+    float timeout = 0;
 };
 
 struct output {
@@ -477,7 +478,7 @@ void grbProgram(
     grb::Vector< EnergyType, internal_backend > energies0( n_replicas );
     grb::Vector< EnergyType, internal_backend > tmp_energy( n );
 
-    constexpr EnergyType logmin = std::log( 1e-2 );
+    constexpr EnergyType logmin = std::log( 1e-3 );
     constexpr EnergyType logmax = std::log( 1e+2 );
     const EnergyType delta = (logmax - logmin) / (n_replicas * nprocs - 1);
 
@@ -543,21 +544,14 @@ void grbProgram(
 			}
 		}
 	} else {
-		for( size_t i = 0; i < 2 ; ++i ){
-			for ( size_t r = 0; r < n_replicas; ++r ) {
-				rc = rc ? rc : grb::set(states[r], states0[r]);
-			}
-			rc = rc ? rc : grb::set( energies, energies0 );
-
-			rc = grb::algorithms::simulated_annealing_RE_Ising(
-			 J, h, states, energies, betas, best_state, out.best_energy, data_in.nsweeps, data_in.reference_energy, data_in.use_pt, data_in.seed
-			);
-		}
+		const size_t n_warmup = 3;
+		size_t nsweeps = data_in.nsweeps;
+		out.iterations = data_in.nsweeps;
 		// do benchmark
 		double min_time = 1e9;
 		double max_time = 0;
 		double total_time = 0;
-		for( size_t i = 0; i < out.rep && rc == SUCCESS; ++i ) {
+		for( size_t i = 0; i < out.rep + n_warmup && rc == SUCCESS; ++i ) {
 			for ( size_t r = 0; r < n_replicas; ++r ) {
 				rc = rc ? rc : grb::set(states[r], states0[r]);
 			}
@@ -565,10 +559,9 @@ void grbProgram(
 			rc = rc ? rc : grb::set( energies, energies0 );
 			timer.reset();
 			if( rc == SUCCESS ) {
-				out.iterations = data_in.nsweeps;
 
 				rc = grb::algorithms::simulated_annealing_RE_Ising(
-					J, h, states, energies, betas, best_state, out.best_energy, data_in.nsweeps, data_in.reference_energy, data_in.use_pt, data_in.seed + i
+					J, h, states, energies, betas, best_state, out.best_energy, nsweeps, data_in.reference_energy, data_in.use_pt, data_in.seed + i
 				);
 				grb::collectives<>::allreduce( out.best_energy, grb::operators::min< EnergyType >() );
 			}
@@ -576,9 +569,19 @@ void grbProgram(
 			min_time = std::min(min_time, time_taken);
 			max_time = std::max(max_time, time_taken);
 			total_time +=  time_taken;
-			if(s == 0){
-				std::cerr << n_replicas << "," << data_in.nsweeps << "," << time_taken << "," << out.best_energy << std::endl;
+
+			if( i < n_warmup ){
+				if( i+1 == n_warmup ){
+					nsweeps = nsweeps * data_in.timeout*1000 / (total_time / n_warmup);
+					total_time = 0.0f;
+				}
+				continue;
 			}
+
+			if(s == 0){
+				std::cerr << n_replicas << "," << nsweeps << "," << time_taken << "," << out.best_energy << std::endl;
+			}
+
 		}
 
 		out.times.useful = total_time / static_cast< double >( out.rep );
@@ -669,6 +672,9 @@ bool parse_arguments( input &in, int argc, char ** argv ) {
         } else if ( a == "--goal" ) {
             if ( i+1 >= argc ) { std::cerr << "--goal requires an argument\n"; return false; }
             in.reference_energy = std::stof(argv[++i]);
+        } else if ( a == "--timeout" ) {
+            if ( i+1 >= argc ) { std::cerr << "--timeout requires an argument\n"; return false; }
+            in.timeout = std::stof(argv[++i]);
         } else if ( a == "--verify" ) {
             in.verify = true;
         } else if ( a == "--ref-solution-fname" ) {
