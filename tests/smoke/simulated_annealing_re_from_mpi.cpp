@@ -476,8 +476,14 @@ void grbProgram(
     grb::Vector< EnergyType, internal_backend > energies( n_replicas );
     grb::Vector< EnergyType, internal_backend > energies0( n_replicas );
     grb::Vector< EnergyType, internal_backend > tmp_energy( n );
+
+    constexpr EnergyType logmin = std::log( 1e-2 );
+    constexpr EnergyType logmax = std::log( 1e+2 );
+    const EnergyType delta = (logmax - logmin) / (n_replicas * nprocs - 1);
+
     for ( size_t r = 0; rc == grb::SUCCESS && r < n_replicas; ++r ) {
-		rc = rc ? rc : grb::setElement( betas, static_cast< JType >( ( 1.0 ) * std::pow< JType >( 1.5, ( n_replicas * s + r ) ) ), r );
+        const EnergyType val = std::exp( logmin + ( n_replicas * s + r ) * delta );
+		rc = rc ? rc : grb::setElement( betas,  val, r );
         rc = rc ? rc : grb::setElement( energies0, get_energy(  J, h, states[r], tmp_energy ), r );
     }
 	rc = rc ? rc : grb::set( energies, energies0 );
