@@ -559,22 +559,23 @@ void grbProgram(
 			rc = rc ? rc : grb::set( energies, energies0 );
 			timer.reset();
 			if( rc == SUCCESS ) {
-
 				rc = grb::algorithms::simulated_annealing_RE_Ising(
 					J, h, states, energies, betas, best_state, out.best_energy, nsweeps, data_in.reference_energy, data_in.use_pt, data_in.seed + i
 				);
 				grb::collectives<>::allreduce( out.best_energy, grb::operators::min< EnergyType >() );
 			}
-			const double time_taken = timer.time();
+			double time_taken = timer.time();
+			grb::collectives<>::allreduce( time_taken, grb::operators::max< double >() );
 			min_time = std::min(min_time, time_taken);
 			max_time = std::max(max_time, time_taken);
 			total_time +=  time_taken;
 
+			if( data_in.timeout != 0 && i+1 == n_warmup ){
+				nsweeps = double( nsweeps ) * (data_in.timeout * 1000 / (total_time / n_warmup));
+				total_time = 0.0f;
+			}
+
 			if( i < n_warmup ){
-				if( i+1 == n_warmup ){
-					nsweeps = nsweeps * data_in.timeout*1000 / (total_time / n_warmup);
-					total_time = 0.0f;
-				}
 				continue;
 			}
 
