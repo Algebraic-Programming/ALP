@@ -24,7 +24,6 @@
 #define _H_GRB_REFERENCE_VECTOR
 
 #include <cstdlib>
-#include <cstdint>
 #include <functional>
 #include <iterator>
 #include <stdexcept>

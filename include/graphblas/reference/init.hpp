@@ -26,7 +26,6 @@
 #include <new>
 #include <cstdint> // for uintptr_t
 #include <algorithm>
-#include <cstdint>
 
 #include <graphblas/base/init.hpp>
 #include <graphblas/utils/DMapper.hpp>

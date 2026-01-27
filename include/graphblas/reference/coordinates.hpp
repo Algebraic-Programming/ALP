@@ -32,7 +32,6 @@
 
 #include <assert.h>
 #include <string.h> //memcpy
-#include <cstdint> // uintptr_t
 
 #include <graphblas/backends.hpp>
 #include <graphblas/base/coordinates.hpp>

@@ -27,7 +27,6 @@
 #include <graphblas/config.hpp>
 
 #include <array>
-#include <cstdint>
 
 
 namespace grb {

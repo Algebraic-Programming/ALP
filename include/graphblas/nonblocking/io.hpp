@@ -27,8 +27,6 @@
 #ifndef _H_GRB_NONBLOCKING_IO
 #define _H_GRB_NONBLOCKING_IO
 
-#include <cstdint>
-
 #include <graphblas/base/io.hpp>
 #include <graphblas/reference/io.hpp>
 #include "vector.hpp"
