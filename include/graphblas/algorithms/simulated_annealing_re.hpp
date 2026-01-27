@@ -34,6 +34,11 @@
 #include <cstdlib>
 #include <cmath>
 
+#ifdef TIMING
+#include <iomanip>
+#include <chrono>
+#endif
+
 #ifndef NDEBUG
 #include <iostream>
 #endif
@@ -281,11 +286,11 @@ namespace grb {
 				){
 
 			const size_t s = spmd<>::pid();
-			const size_t n_procs = spmd<>::nprocs();
+			const size_t nprocs = spmd<>::nprocs();
 			const size_t n_replicas = states.size();
 			const size_t n = grb::size(states[0]);
 			(void) n;
-			(void) n_procs;
+			(void) nprocs;
 			(void) s;
 
 			grb::RC rc = grb::SUCCESS;
@@ -312,11 +317,24 @@ namespace grb {
 
 			best_energy = std::numeric_limits< EnergyType >::max();
 
+#ifdef TIMING
+			auto start = std::chrono::high_resolution_clock::now();
+			auto end = std::chrono::high_resolution_clock::now();
+			auto duration = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
+			if( s == 0 ){
+				std::cerr << "Starting with sweep..." << "\n";
+			}
+#endif
+
 			for( size_t i_sweep = 0 ; rc == grb::SUCCESS && i_sweep < n_sweeps ; ++i_sweep ){
+#ifdef TIMING
+				start = std::chrono::high_resolution_clock::now();
+#endif
+
 				for( size_t j = 0 ; j < n_replicas ; ++j ){
 
 					energies[j] += sweep( states[j], betas[j], sweep_data );
-					grb::wait();
+					rc = rc ? rc : grb::wait< backend >(); // should be done with nonblocking backend, I guess
 				
 					// update_best state and energy
 					if( energies[j] < best_energy ){
@@ -325,21 +343,39 @@ namespace grb {
 					}
 				} // n_replicas
 
-				// TODO: find a better way than this, to avoid a sync at each iteration
-				rc = rc ? rc : grb::collectives<>::allreduce(
-						best_energy, grb::operators::min< EnergyType >() );
+#ifdef TIMING
+				end = std::chrono::high_resolution_clock::now();
+				duration = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
+				if( s == 0 ){
+					std::cerr << "Sweeps took " << (duration.count() / 1000.0) << " ms.\t";
+				}
+				start = std::chrono::high_resolution_clock::now();
+#endif
 
 				if( rc == SUCCESS && use_pt ){
 					// do a Parallel Tempering move
 					rc = pt( states, energies, betas, seed + i_sweep );
 				}
+#ifdef TIMING
+				end = std::chrono::high_resolution_clock::now();
+				duration = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
+				if(s == 0){
+					std::cerr << "PT took " << (duration.count() / 1000.0) << " ms." << "\n";
+				}
+#endif
+
 
 #ifndef NDEBUG
 				if( s == 0 ) {
 					std::cerr << "Energy at iteration " << i_sweep << " = " << best_energy << std::endl;
 				}
 #endif
-				if( goal < -1 &&  best_energy <= goal ) i_sweep = n_sweeps;
+				if( goal < -1 ){
+					// TODO: find a better way than this, to avoid a sync at each iteration
+					rc = rc ? rc : grb::collectives<>::allreduce(
+							best_energy, grb::operators::min< EnergyType >() );
+					if( best_energy <= goal ) i_sweep = n_sweeps;
+				}
 			} // n_sweeps
 
 #ifndef NDEBUG
@@ -556,6 +592,13 @@ namespace grb {
 			assert( empty_local_fields || ( grb::size( local_fields ) == n ) );
 			assert( empty_local_fields || ( grb::nnz(local_fields) == n ) );
 #endif
+
+#ifdef TIMING
+			if( s == 0 ){
+				std::cerr << "Starting simulated_annealing_RE_ising" << "\n";
+			}
+			auto start = std::chrono::high_resolution_clock::now();
+#endif
 			EnergyType energy;
 			grb::Vector< EnergyType, backend > tmp_calc_energy ( n );
 
@@ -606,9 +649,27 @@ namespace grb {
 			rc = rc ? rc : grb::resize( delta, n );
 			rc = rc ? rc : grb::resize( dn, n );
 			rc = rc ? rc : grb::resize( accept, n );
+#ifdef TIMING
+			auto end = std::chrono::high_resolution_clock::now();
+			auto duration = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
+			if(s == 0){
+				std::cerr << std::fixed << std::setprecision(3);
+				std::cerr << "Setup took " << (duration.count() / 1000.0) << " ms.\t";
+			}
+			start = std::chrono::high_resolution_clock::now();
+#endif
 
 			std::vector< grb::Vector< bool, backend > > masks ;
 			rc = rc ? rc : matrix_partition< descr >( masks, couplings, h, rand, seed );
+#ifdef TIMING
+				end = std::chrono::high_resolution_clock::now();
+				duration = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
+				if( s == 0 ){
+					std::cerr << "Calculating masks took " << (duration.count() / 1000.0) << " ms.\t";
+				}
+				start = std::chrono::high_resolution_clock::now();
+#endif
+
 			rc = rc ? rc : grb::clear(h);
 			constexpr auto dense_descr = descr | grb::descriptors::dense;
 
@@ -673,7 +734,7 @@ namespace grb {
 #ifndef NDEBUG
 				const grb::Vector< StateType, backend > old_state = state;
 #endif
-				rc = rc ? rc : grb::wait();
+				rc = rc ? rc : grb::wait< backend >();
 				for(const auto &mask : masks ){
 					// dn = (2*state_slice - 1) * h_slice
 					rc = rc ? rc : grb::set< descr >( dn, mask, state );
@@ -724,7 +785,7 @@ namespace grb {
 					// update h
 					rc = rc ? rc : grb::mxv< descr >( h, couplings, delta, ring );
 				}
-				rc = rc ? rc : grb::wait();
+				rc = rc ? rc : grb::wait< backend >();
 
 #ifndef NDEBUG
 				if( rc != grb::SUCCESS ){
@@ -733,7 +794,7 @@ namespace grb {
 				}
 				assert( rc == grb::SUCCESS );
 				const auto new_state = state;
-				rc = rc ? rc : grb::wait();
+				rc = rc ? rc : grb::wait< backend >();
 
 				EnergyType e1 = static_cast< EnergyType >( 0.0 ),
 						   e2 = static_cast< EnergyType >( 0.0 );
@@ -751,6 +812,13 @@ namespace grb {
 
 				return delta_energy;
 			};
+#ifdef TIMING
+				end = std::chrono::high_resolution_clock::now();
+				duration = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
+				if( s == 0 ){
+					std::cerr << "Final setup took " << (duration.count() / 1000.0) << " ms." << "\n";
+				}
+#endif
 
 			return simulated_annealing_RE(
 					ising_sweep, sweep_data, states, energies, betas, best_state, best_energy, n_sweeps, goal, use_pt, seed
