@@ -144,6 +144,7 @@ struct input {
     unsigned seed = test_data::seed;
     EnergyType reference_energy = 0.0;
     bool verify = false;
+    bool iteration_sweep = false;
     char filename_Jmatrix [ MAX_FN_SIZE + 1 ];
     char filename_h [ MAX_FN_SIZE + 1 ];
     char filename_ref_solution [ MAX_FN_SIZE + 1 ];
@@ -545,13 +546,17 @@ void grbProgram(
 		}
 	} else {
 		const size_t n_warmup = 3;
-		size_t nsweeps = data_in.nsweeps;
+		size_t nsweeps = data_in.nsweeps, nsweeps0 = data_in.nsweeps;
 		out.iterations = data_in.nsweeps;
 		// do benchmark
 		double min_time = 1e9;
 		double max_time = 0;
 		double total_time = 0;
+
 		for( size_t i = 0; i < out.rep + n_warmup && rc == SUCCESS; ++i ) {
+			if( data_in.iteration_sweep && n_warmup <= i ){
+				nsweeps = 50 + float(( int(nsweeps0) - 50 ) * (1 + i - n_warmup))/out.rep;
+			}
 			for ( size_t r = 0; r < n_replicas; ++r ) {
 				rc = rc ? rc : grb::set(states[r], states0[r]);
 			}
@@ -562,7 +567,7 @@ void grbProgram(
 				rc = grb::algorithms::simulated_annealing_RE_Ising(
 					J, h, states, energies, betas, best_state, out.best_energy, nsweeps, data_in.reference_energy, data_in.use_pt, data_in.seed + i
 				);
-				grb::collectives<>::allreduce( out.best_energy, grb::operators::min< EnergyType >() );
+				rc = rc ? rc : grb::collectives<>::allreduce( out.best_energy, grb::operators::min< EnergyType >() );
 			}
 			double time_taken = timer.time();
 			grb::collectives<>::allreduce( time_taken, grb::operators::max< double >() );
@@ -571,7 +576,7 @@ void grbProgram(
 			total_time +=  time_taken;
 
 			if( data_in.timeout != 0 && i+1 == n_warmup ){
-				nsweeps = double( nsweeps ) * (data_in.timeout * 1000 / (total_time / n_warmup));
+				nsweeps0 = double( (nsweeps0 ) * (data_in.timeout * 1000) ) / (total_time / n_warmup);
 				total_time = 0.0f;
 			}
 
@@ -617,7 +622,8 @@ void grbProgram(
 void printhelp( char *progname ) {
     std::cout << "Usage: " << progname << " [--use-default-data] [--j-matrix-fname STR] [--h-fname STR]\n"
               << "       [--n-replicas INT] [--nsweeps INT] [--seed INT]\n"
-              << "       [--rep INT] [--goal INT] [--verify] [--ref-solution-fname STR] [--help]\n\n"
+              << "       [--rep INT] [--goal INT] [--verify] [--ref-solution-fname STR] \n"
+              << "       [--timeout FLOAT] [--iteration_sweep]  [--help]\n\n"
               << "Options:\n"
               << "  --use-default-data         Use embedded default test data\n"
               << "  --j-matrix-fname STR       Path to J matrix file (matrix-market or supported)\n"
@@ -628,7 +634,9 @@ void printhelp( char *progname ) {
               << "  --seed INT                 RNG seed (default: 8)\n"
               << "  --rep INT                  Number of times to repeat the run of the algorithm (default: 1)\n"
               << "  --goal FLOAT               The value of the energy to achieve before stopping (default: 0, no such check).\n"
+              << "  --timeout FLOAT            Run solver for about the given time, by adjusting the number of sweeps.\n"
               << "  --verify                   Verify output against reference solution\n"
+              << "  --iteration-sweep          Run multiple times with different number of sweeps.\n"
               << "  --ref-solution-fname STR   Reference solution file (required with --verify unless using default data)\n"
               << "  --help, -h                 Print this help message\n";
 }
@@ -678,6 +686,8 @@ bool parse_arguments( input &in, int argc, char ** argv ) {
             in.timeout = std::stof(argv[++i]);
         } else if ( a == "--verify" ) {
             in.verify = true;
+        } else if ( a == "--iteration-sweep" ) {
+            in.iteration_sweep = true;
         } else if ( a == "--ref-solution-fname" ) {
             if ( i+1 >= argc ) { std::cerr << "--ref-solution-fname requires an argument\n"; return false; }
 			std::strncpy( in.filename_ref_solution, argv[++i], MAX_FN_SIZE );
