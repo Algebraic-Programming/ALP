@@ -79,7 +79,7 @@ typedef grb::utils::Singleton<
         size_t,                    // nz (nonzeros)
         size_t,                    // nsweeps
         size_t,                    // n_replicas
-        bool,                      // use_pt
+        size_t,                      // pt_time
         unsigned,                  // seed
         std::vector<NonzeroT>,     // matrix data
         std::vector<JType>         // h vector
@@ -90,7 +90,7 @@ namespace test_data {
     constexpr size_t n = 16;
     constexpr size_t nsweeps = 2;
     constexpr size_t n_replicas = 4;
-    constexpr bool use_pt = true; 
+    constexpr size_t pt_time = 1;
     constexpr unsigned seed = 8;
 
     const std::vector< std::pair< std::pair< grb::config::RowIndexType, grb::config::ColIndexType >, JType > > j_matrix_data = {
@@ -140,7 +140,7 @@ struct input {
     bool use_default_data = false;
     size_t n_replicas = test_data::n_replicas;
     size_t nsweeps = test_data::nsweeps;
-    bool use_pt = test_data::use_pt;
+    size_t pt_time = test_data::pt_time;
     unsigned seed = test_data::seed;
     EnergyType reference_energy = 0.0;
     bool verify = false;
@@ -325,7 +325,7 @@ void ioProgram( const struct input &data_in, bool &success ) {
 		auto &nnz         = std::get<1>(storage); // nz (nonzeros)
 		auto &nsweeps_st  = std::get<2>(storage); // nsweeps
 		auto &n_replicas_st = std::get<3>(storage); // n_replicas
-		auto &use_pt      = std::get<4>(storage); // use_pt
+		auto &pt_time_st  = std::get<4>(storage); // pt_time
 		auto &seed_st     = std::get<5>(storage); // seed
 		auto &Jdata       = std::get<6>(storage); // std::vector<NonzeroT>
 		auto &h           = std::get<7>(storage); // std::vector<JType>
@@ -335,7 +335,7 @@ void ioProgram( const struct input &data_in, bool &success ) {
 		(void) nnz;
 		nsweeps_st    = data_in.nsweeps;
 		n_replicas_st = data_in.n_replicas;
-		use_pt        = data_in.use_pt;
+		pt_time_st    = data_in.pt_time;
 		seed_st       = data_in.seed;
 
 
@@ -525,7 +525,7 @@ void grbProgram(
 	if( out.rep == 0 ) {
 		timer.reset();
 		rc = grb::algorithms::simulated_annealing_RE_Ising(
-			 J, h, states, energies, betas, best_state, out.best_energy, data_in.nsweeps, data_in.reference_energy, data_in.use_pt, data_in.seed
+			 J, h, states, energies, betas, best_state, out.best_energy, data_in.nsweeps, data_in.reference_energy, data_in.pt_time, data_in.seed
         );
 
 		rc = rc ? rc : wait();
@@ -581,7 +581,7 @@ void grbProgram(
 			timer.reset();
 			if( rc == SUCCESS ) {
 				rc = grb::algorithms::simulated_annealing_RE_Ising(
-					J, h, states, energies, betas, best_state, out.best_energy, nsweeps, data_in.reference_energy, data_in.use_pt, data_in.seed + i
+					J, h, states, energies, betas, best_state, out.best_energy, nsweeps, data_in.reference_energy, data_in.pt_time, data_in.seed + i
 				);
 				rc = rc ? rc : grb::collectives<>::allreduce( out.best_energy, grb::operators::min< EnergyType >() );
 			}
@@ -646,7 +646,7 @@ void printhelp( char *progname ) {
               << "  --h-fname STR              Path to h (local fields) vector (whitespace separated), if not provided assume zero\n"
               << "  --n-replicas INT           Number of replicas (default: 3)\n"
               << "  --nsweeps INT              Number of sweeps (default: 2)\n"
-              << "  --use-pt BOOL              Use Parallel Tampering (default: 1)\n"
+              << "  --pt-time INT              Number of iterations between exchange steps (default: 1, after each iteration)\n"
               << "  --seed INT                 RNG seed (default: 8)\n"
               << "  --rep INT                  Number of times to repeat the run of the algorithm (default: 1)\n"
               << "  --goal FLOAT               The value of the energy to achieve before stopping (default: 0, no such check).\n"
@@ -685,9 +685,9 @@ bool parse_arguments( input &in, int argc, char ** argv ) {
         } else if ( a == "--nsweeps" ) {
             if ( i+1 >= argc ) { std::cerr << "--nsweeps requires an argument\n"; return false; }
             in.nsweeps = static_cast<size_t>( std::stoul(argv[++i]) );
-        } else if ( a == "--use-pt" ) {
-            if ( i+1 >= argc ) { std::cerr << "--use-pt requires an argument\n"; return false; }
-            in.use_pt = static_cast<bool>( std::stoul(argv[++i]) );
+        } else if ( a == "--pt-time" ) {
+            if ( i+1 >= argc ) { std::cerr << "--pt-time requires an argument\n"; return false; }
+            in.pt_time = static_cast<size_t>( std::stoul(argv[++i]) );
         } else if ( a == "--seed" ) {
             if ( i+1 >= argc ) { std::cerr << "--seed requires an argument\n"; return false; }
             in.seed = static_cast<unsigned>( std::stoul(argv[++i]) );
