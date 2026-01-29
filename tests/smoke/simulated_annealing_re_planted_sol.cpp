@@ -415,7 +415,7 @@ void grbProgram( const struct data_in &in, grb::RC &rc ) {
 	std::cout << "------------------ Test with SA-RE ----------------------" << std::endl;
 	grb::Vector< StateType > best_state ( n*k );
 	EnergyType best_energy = 42;
-	constexpr bool use_pt = true;
+	constexpr size_t pt_time = 1;
 	constexpr EnergyType reference_energy = 0;
 	const size_t nsweeps = in.nsweeps;
 	const size_t n_replicas = in.n_replicas;
@@ -452,7 +452,7 @@ void grbProgram( const struct data_in &in, grb::RC &rc ) {
 	assert( rc == grb::SUCCESS );
 
 	rc = grb::algorithms::simulated_annealing_RE_Ising(
-		 Q_off, Q_diag, states, energies, betas, best_state, best_energy, nsweeps, reference_energy, use_pt, seed
+		 Q_off, Q_diag, states, energies, betas, best_state, best_energy, nsweeps, reference_energy, pt_time, seed
 	);
 	std::cout << "Optimized SA-RE value: " << best_energy << std::endl;
 	std::cout << "Absolute error: " << best_energy-opt_energy << std::endl;

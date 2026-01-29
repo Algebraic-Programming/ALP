@@ -244,7 +244,7 @@ namespace grb {
 		 * @param[in,out] best_state	The state with the minimum energy found by the algorithm.
 		 * @param[in,out] best_energy	The minimum value of an energy found.
 		 * @param[in]     n_sweeps      Number of Simulated Annealing iterations.
-		 * @param[in]     use_pt		Whether to use Parallel Tampering or not.
+		 * @param[in]     pt_time		Number of iterations between exchange steps
 		 *
 		 * @tparam backend		The backend used for the single objects
 		 * @tparam StateType	The state variable type.
@@ -280,7 +280,7 @@ namespace grb {
 				EnergyType &best_energy,
 				const size_t &n_sweeps,
 				const EnergyType &goal = 0,
-				const bool &use_pt = false,
+				const size_t &pt_time = 1,
 				const size_t &seed = 42
 				){
 
@@ -307,7 +307,7 @@ namespace grb {
 						  << "\n\t n_replicas = " << n_replicas
 						  << "\n\t n_sweeps = " << n_sweeps
 						  << "\n\t goal = " << goal
-						  << "\n\t use_pt = " << use_pt
+						  << "\n\t pt_time = " << pt_time
 						  << "\n\t seed = " << seed
 						  << std::endl;
 			}
@@ -351,7 +351,7 @@ namespace grb {
 				start = std::chrono::high_resolution_clock::now();
 #endif
 
-				if( rc == SUCCESS && use_pt ){
+				if( rc == SUCCESS && pt_time && ((i_sweep % pt_time) == 0) ){
 					// do a Parallel Tempering move
 					rc = pt( states, energies, betas, seed + i_sweep );
 				}
@@ -532,7 +532,7 @@ namespace grb {
 		 * @param[in,out] energies      The initial energy of each state.
 		 * @param[in,out] betas     	Inverse temperature of each state.
 		 * @param[in]     n_sweeps      Number of Simulated Annealing iterations.
-		 * @param[in]     use_pt		Whether to use Parallel Tampering or not.
+		 * @param[in]     pt_time		Number of iterations between exchange steps
 		 * @param[in]     seed			Seed to use for internal randomization (must be the same for all processees);
 		 *
 		 * @tparam StateType	The state variable type.
@@ -567,7 +567,7 @@ namespace grb {
 				EnergyType &best_energy,
 				const size_t &n_sweeps,
 				const EnergyType &goal = 0,
-				const bool &use_pt = false,
+				const size_t &pt_time = 1,
 				const int seed = 42,
 				const Ring &ring = Ring()
 				){
@@ -820,7 +820,7 @@ namespace grb {
 #endif
 
 			return simulated_annealing_RE(
-					ising_sweep, sweep_data, states, energies, betas, best_state, best_energy, n_sweeps, goal, use_pt, seed
+					ising_sweep, sweep_data, states, energies, betas, best_state, best_energy, n_sweeps, goal, pt_time, seed
 					);
 		}
 
@@ -842,7 +842,7 @@ namespace grb {
 		 * @param[in,out] betas     	Inverse temperature of each state.
 		 * @param[in]     n_replicas    Number of replicas to run concurrently.
 		 * @param[in]     n_sweeps      Number of Simulated Annealing iterations.
-		 * @param[in]     use_pt		Whether to use Parallel Tampering or not.
+		 * @param[in]     pt_time		Number of iterations between exchange steps
 		 *
 		 * @tparam StateType	The state variable type.
 		 * @tparam QType		The matrix values' type.
@@ -872,14 +872,14 @@ namespace grb {
 				EnergyType &best_energy,
 				const size_t &n_sweeps,
 				const EnergyType &goal = 0,
-				const bool &use_pt = false,
+				const size_t &pt_time = false,
 				const int seed = 42,
 				const Ring &ring = Ring()
 				){
 			grb::Vector< QType > empty_local_fields ( 0 );
 
 			return simulated_annealing_RE_Ising< backend, descr, true >(
-					Q, empty_local_fields, states, energies, betas, best_state, best_energy, n_sweeps, goal, use_pt, seed, ring
+					Q, empty_local_fields, states, energies, betas, best_state, best_energy, n_sweeps, goal, pt_time, seed, ring
 					);
 		}
 	} // namespace algorithms
