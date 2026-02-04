@@ -102,6 +102,18 @@ namespace grb {
 			return rc;
 		}
 
+		template<
+			typename StateType,
+			typename EnergyType
+			>
+		struct data {
+				EnergyType e;
+				StateType b;
+				EnergyType r;
+			};
+		struct data< int8_t, double > *msg = nullptr;
+		grb::Vector< int8_t, grb::reference > *pt_tmp = nullptr;
+
 		/*
 		 * Implementation of parallel tempering using spmd.
 		 */
@@ -133,20 +145,15 @@ namespace grb {
 			assert( grb::size(energies) == n_replicas );
 			assert( grb::size(betas) == n_replicas );
 #endif
-			struct data {
-					EnergyType e;
-					TempType b;
-					EnergyType r;
-				};
-			// TODO: should these two be static? Probably.
-			grb::Vector< StateType, backend > tmp ( n );
-			rc = rc ? rc : grb::set( tmp, static_cast< StateType >( 0 ) );
-
-			struct data msg[ 2 ];
-
-			rc = rc ? rc : grb::rdma<>::register_global( msg[ 0 ] );
-			rc = rc ? rc : grb::rdma<>::register_global( msg[ 1 ] );
-			rc = rc ? rc : grb::rdma<>::register_global( tmp );
+			if( msg == nullptr ){
+				msg = new struct data< StateType, EnergyType > [2];
+				pt_tmp = new grb::Vector< StateType, backend >( n );
+				rc = rc ? rc : grb::set( *pt_tmp, static_cast< StateType >( 0 ) );
+				rc = rc ? rc : grb::rdma<>::register_global( msg[ 0 ] );
+				rc = rc ? rc : grb::rdma<>::register_global( msg[ 1 ] );
+				rc = rc ? rc : grb::rdma<>::register_global( *pt_tmp );
+			}
+			grb::Vector< StateType, backend > &tmp = *pt_tmp;
 
 			std::minstd_rand rng;
 			std::exponential_distribution< EnergyType > rand ( 1.0 );
@@ -164,17 +171,20 @@ namespace grb {
 							std::swap( energies[i], energies[i-1] );
 						}
 					}
-					grb::set( tmp, states[0] );
+				}
+				if( si == 1 ) continue;
+				if( si == s + 1 ){
 					msg[ 1 ].e = energies[ 0 ];
 					msg[ 1 ].b = betas[0];
 					msg[ 1 ].r = myrand;
 					rc = rc ? rc : grb::rdma<>::put( msg[ 1 ], si-1, msg[ 1 ] );
-				}else if( si + 1 == s ){
-					grb::set( tmp, states[ n_replicas - 1 ] );
+					rc = rc ? rc : grb::set( tmp, states[0] );
+				}else if( si == s ){
 					msg[ 0 ].e = energies[ n_replicas - 1 ];
 					msg[ 0 ].b = betas[ n_replicas - 1 ];
 					msg[ 0 ].r = myrand;
 					rc = rc ? rc : grb::rdma<>::put( msg[ 0 ], si-2, msg[ 0 ] );
+					rc = rc ? rc : grb::set( tmp, states[ n_replicas - 1 ] );
 				}
 
 				rc = rc ? rc : grb::spmd<>::sync();
@@ -273,7 +283,7 @@ namespace grb {
 			const size_t nprocs = spmd<>::nprocs();
 			const size_t n_replicas = states.size();
 			const size_t n = grb::size(states[0]);
-			(void) n_procs;
+			(void) nprocs;
 			(void) n;
 			(void) nprocs;
 			(void) s;
@@ -327,7 +337,6 @@ namespace grb {
 						best_state = states[j];
 					}
 				} // n_replicas
-
 #ifdef TIMING
 				end = std::chrono::high_resolution_clock::now();
 				duration = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
@@ -348,7 +357,6 @@ namespace grb {
 					std::cerr << "PT took " << (duration.count() / 1000.0) << " ms." << "\n";
 				}
 #endif
-
 
 #ifndef NDEBUG
 				if( s == 0 ) {
@@ -375,6 +383,10 @@ namespace grb {
 				// TODO: update best state to match best energy
 			}
 			
+			if( msg != nullptr ){
+				delete msg;
+				delete pt_tmp;
+			}
 			return rc;
 		}
 
@@ -654,7 +666,6 @@ namespace grb {
 				}
 				start = std::chrono::high_resolution_clock::now();
 #endif
-
 			rc = rc ? rc : grb::clear(h);
 			constexpr auto dense_descr = descr | grb::descriptors::dense;
 
@@ -804,6 +815,7 @@ namespace grb {
 					std::cerr << "Final setup took " << (duration.count() / 1000.0) << " ms." << "\n";
 				}
 #endif
+			grb::spmd<>::sync();
 
 			return simulated_annealing_RE(
 					ising_sweep, sweep_data, states, energies, betas, best_state, best_energy, n_sweeps, goal, pt_time, seed
