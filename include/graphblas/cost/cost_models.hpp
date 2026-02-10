@@ -1,5 +1,5 @@
-#ifndef MULTI_BSP_MODEL_BASELINE_HPP
-#define MULTI_BSP_MODEL_BASELINE_HPP
+#ifndef TSIrCo_MODEL_BASELINE_HPP
+#define TSIrCo_MODEL_BASELINE_HPP
 
 #include <iostream>
 #include <sys/types.h>
@@ -938,8 +938,8 @@ namespace HW_model
 		/*==================================================================*/
     } 
 
-    // k-Multi-BSP performance model
-    namespace k_multi_bsp
+    // TSIrCo performance model
+    namespace tsirco
     {
         // Superstep structure
         typedef struct Superstep
@@ -1137,7 +1137,7 @@ namespace HW_model
         /*=====================================================================*/
         /*------------------------------Predictor-------------------------------*/
         /**
-         * Predicts execution cost for a kernel using the k-Multi-BSP model with configurable stream aggregation.
+         * Predicts execution cost for a kernel using the TSIrCo model with configurable stream aggregation.
          *
          * @param hw_params Hardware parameters
          * @param algo_params Algorithm parameters
@@ -1153,7 +1153,7 @@ namespace HW_model
                             bool NUMA_optimistic = false)
         {
 #ifdef DEBUG_COST_MODELS
-            std::cout << "===== k-Multi-BSP Cost Prediction =====\n\n";
+            std::cout << "===== TSIrCo Cost Prediction =====\n\n";
             std::cout << "Threads: " << target_threads << "\n";
             std::cout << "Stream aggregator: " << stream_aggregator << "\n";
             std::cout << "NUMA optimistic: " << (NUMA_optimistic ? "true" : "false") << "\n";
@@ -1737,7 +1737,7 @@ namespace HW_model
         }
         /*==================================================================*/
 
-    } // namespace multi_bsp
+    } // namespace TSIrCo
 } // namespace cost_models
 
-#endif // MULTI_BSP_MODEL_BASELINE_HPP
+#endif // TSIrCo_MODEL_BASELINE_HPP
