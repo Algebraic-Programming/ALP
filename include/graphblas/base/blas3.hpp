@@ -610,6 +610,8 @@ namespace grb {
 	 *                        capacity of \a B was insufficient. The output
 	 *                        matrix \a B is cleared, and the call to this function
    */
+   template<
+		Descriptor descr = descriptors::no_operation,
 		class SelectionOperator,
 		typename Tin,
 		typename RITin, typename CITin, typename NITin,
